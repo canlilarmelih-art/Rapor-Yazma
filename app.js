@@ -9274,20 +9274,7 @@ async function recognizeImageText(file) {
 }
 
 function parseEkbFields(text) {
-  const raw = String(text || "");
-  const lines = raw.split(/\n+/).map((line) => line.replace(/\s+/g, " ").trim()).filter(Boolean);
-  const normalizedText = lines.join("\n");
-  const belgeNo = extractEkbDocumentNo(normalizedText);
-  const dates = extractEkbDates(lines);
-  const classes = extractEkbClasses(lines, normalizedText);
-
-  return {
-    ekbDocumentNo: belgeNo,
-    ekbIssueDate: dateTrToIso(dates.issueDate),
-    ekbValidUntil: dateTrToIso(dates.validUntil),
-    ekbEnergyClass: classes.energyClass,
-    ekbEmissionClass: classes.emissionClass,
-  };
+  return globalThis.RaporEkbParser.parseEkbFields(text);
 }
 
 function parseImarFields(text) {

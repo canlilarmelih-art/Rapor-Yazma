@@ -5,7 +5,7 @@
   "description": "Yerel rapor yazma programi icin gelistirme ve regresyon kontrolleri.",
   "scripts": {
     "check": "node tools/check-basic.js",
-    "test": "node tools/test-parsers.js && node tools/test-kml-parser-module.js && node tools/test-imar-normalizer-module.js",
+    "test": "node tools/test-parsers.js && node tools/test-kml-parser-module.js && node tools/test-imar-normalizer-module.js && node tools/test-ekb-parser-module.js",
     "verify": "npm run check && npm run test"
   }
 }
