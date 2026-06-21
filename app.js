@@ -14119,16 +14119,12 @@ function resetKmlDerivedFields() {
 }
 
 function parseKml(text) {
-  const xml = new DOMParser().parseFromString(text, "application/xml");
-  const parseError = xml.querySelector("parsererror");
-  if (parseError) {
-    throw new Error("KML dosyası okunamadı.");
+  const kmlParser = globalThis.RaporKmlParser;
+  if (!kmlParser || typeof kmlParser.parseKmlDocument !== "function") {
+    throw new Error("KML ayrıştırıcı yüklenemedi.");
   }
 
-  const extended = readKmlExtendedData(xml);
-  const coordinates = readKmlCoordinates(xml);
-  const centroid = calculateCentroid(coordinates);
-  const rawText = xml.documentElement?.textContent || text;
+  const { extended, coordinates, centroid, rawText } = kmlParser.parseKmlDocument(text);
   const fields = {
     city: readKmlExtendedValue(extended, ["İl", "Il", "il", "IL"]),
     district: readKmlExtendedValue(extended, ["İlçe", "Ilce", "ilce", "ILCE"]),
@@ -14148,55 +14144,6 @@ function parseKml(text) {
     coordinates,
     centroid,
     readAt: new Date().toISOString(),
-  };
-}
-
-function readKmlExtendedData(xml) {
-  const values = {};
-
-  xml.querySelectorAll("Data").forEach((node) => {
-    const name = node.getAttribute("name");
-    const value = node.querySelector("value")?.textContent?.trim();
-    if (name && value) values[name.trim()] = value;
-  });
-
-  xml.querySelectorAll("SimpleData").forEach((node) => {
-    const name = node.getAttribute("name");
-    const value = node.textContent?.trim();
-    if (name && value) values[name.trim()] = value;
-  });
-
-  return values;
-}
-
-function readKmlCoordinates(xml) {
-  const points = [];
-
-  xml.querySelectorAll("coordinates").forEach((node) => {
-    const chunks = (node.textContent || "").trim().split(/\s+/);
-    chunks.forEach((chunk) => {
-      const [lngRaw, latRaw] = chunk.split(",");
-      const lat = Number.parseFloat(latRaw);
-      const lng = Number.parseFloat(lngRaw);
-      if (Number.isFinite(lat) && Number.isFinite(lng)) {
-        points.push({ lat, lng });
-      }
-    });
-  });
-
-  return points;
-}
-
-function calculateCentroid(points) {
-  if (!points.length) return null;
-  const total = points.reduce(
-    (acc, point) => ({ lat: acc.lat + point.lat, lng: acc.lng + point.lng }),
-    { lat: 0, lng: 0 },
-  );
-
-  return {
-    lat: (total.lat / points.length).toFixed(6),
-    lng: (total.lng / points.length).toFixed(6),
   };
 }
 
