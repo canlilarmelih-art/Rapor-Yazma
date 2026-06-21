@@ -25,11 +25,25 @@ function runNodeSyntaxCheck(relativePath) {
   });
 }
 
+function listJavaScriptFiles(relativeDir) {
+  const fullDir = path.join(root, relativeDir);
+  if (!fs.existsSync(fullDir)) {
+    return [];
+  }
+
+  return fs.readdirSync(fullDir, { withFileTypes: true }).flatMap((entry) => {
+    const relativePath = path.join(relativeDir, entry.name);
+    if (entry.isDirectory()) {
+      return listJavaScriptFiles(relativePath);
+    }
+    return entry.isFile() && entry.name.endsWith(".js") ? [relativePath] : [];
+  });
+}
+
 function main() {
   ["index.html", "app.js", "styles.css", "server.js"].forEach(checkFileExists);
 
-  runNodeSyntaxCheck("app.js");
-  runNodeSyntaxCheck("server.js");
+  ["app.js", "server.js", ...listJavaScriptFiles("src")].forEach(runNodeSyntaxCheck);
 
   const indexHtml = readText("index.html");
   assert(indexHtml.includes("installCompatibilityFixes"), "index.html uyumluluk blogu bulunamadi.");
@@ -44,4 +58,3 @@ function main() {
 }
 
 main();
-
