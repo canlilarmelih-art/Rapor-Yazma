@@ -1,0 +1,604 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Rapor Yazma Programı</title>
+        <script>
+      (function installCompatibilityFixes() {
+        if (typeof URL !== "undefined" && typeof URL.parse !== "function") {
+          URL.parse = function parseUrl(url, base) {
+            try {
+              return base === undefined || base === null ? new URL(url) : new URL(url, base);
+            } catch (error) {
+              return null;
+            }
+          };
+        }
+
+        if (typeof Response !== "undefined" && Response.prototype && typeof Response.prototype.bytes !== "function") {
+          Response.prototype.bytes = function bytes() {
+            return this.arrayBuffer().then(function toBytes(buffer) {
+              return new Uint8Array(buffer);
+            });
+          };
+        }
+
+        if (!Array.prototype.at) {
+          Array.prototype.at = function at(index) {
+            var length = this == null ? 0 : this.length >>> 0;
+            var relativeIndex = Number(index) || 0;
+            var targetIndex = relativeIndex >= 0 ? relativeIndex : length + relativeIndex;
+            return targetIndex < 0 || targetIndex >= length ? undefined : this[targetIndex];
+          };
+        }
+
+        var typedArrayConstructors = [
+          "Int8Array",
+          "Uint8Array",
+          "Uint8ClampedArray",
+          "Int16Array",
+          "Uint16Array",
+          "Int32Array",
+          "Uint32Array",
+          "Float32Array",
+          "Float64Array",
+          "BigInt64Array",
+          "BigUint64Array"
+        ];
+        typedArrayConstructors.forEach(function installTypedArrayAt(name) {
+          var TypedArray = window[name];
+          if (typeof TypedArray === "function" && TypedArray.prototype && !TypedArray.prototype.at) {
+            TypedArray.prototype.at = function at(index) {
+              var length = this == null ? 0 : this.length >>> 0;
+              var relativeIndex = Number(index) || 0;
+              var targetIndex = relativeIndex >= 0 ? relativeIndex : length + relativeIndex;
+              return targetIndex < 0 || targetIndex >= length ? undefined : this[targetIndex];
+            };
+          }
+        });
+        if (!Array.prototype.findLast) {
+          Array.prototype.findLast = function findLast(callback, thisArg) {
+            if (typeof callback !== "function") {
+              throw new TypeError("callback must be a function");
+            }
+            for (var index = this.length - 1; index >= 0; index -= 1) {
+              var value = this[index];
+              if (callback.call(thisArg, value, index, this)) {
+                return value;
+              }
+            }
+            return undefined;
+          };
+        }
+
+
+        if (!Array.prototype.findLastIndex) {
+          Array.prototype.findLastIndex = function findLastIndex(callback, thisArg) {
+            if (typeof callback !== "function") {
+              throw new TypeError("callback must be a function");
+            }
+            for (var index = this.length - 1; index >= 0; index -= 1) {
+              if (callback.call(thisArg, this[index], index, this)) {
+                return index;
+              }
+            }
+            return -1;
+          };
+        }        if (!Array.prototype.flat) {
+          Array.prototype.flat = function flat(depth) {
+            var maxDepth = depth === undefined ? 1 : Number(depth) || 0;
+            var output = [];
+            function append(items, currentDepth) {
+              for (var index = 0; index < items.length; index += 1) {
+                if (!Object.prototype.hasOwnProperty.call(items, index)) {
+                  continue;
+                }
+                var value = items[index];
+                if (Array.isArray(value) && currentDepth < maxDepth) {
+                  append(value, currentDepth + 1);
+                } else {
+                  output.push(value);
+                }
+              }
+            }
+            append(this, 0);
+            return output;
+          };
+        }
+
+        if (!Array.prototype.flatMap) {
+          Array.prototype.flatMap = function flatMap(callback, thisArg) {
+            if (typeof callback !== "function") {
+              throw new TypeError("callback must be a function");
+            }
+            return this.map(function mapItem(value, index, array) {
+              return callback.call(thisArg, value, index, array);
+            }).flat(1);
+          };
+        }
+        if (typeof queueMicrotask !== "function") {
+          window.queueMicrotask = function queueMicrotaskPolyfill(callback) {
+            Promise.resolve()
+              .then(callback)
+              .catch(function handleQueueMicrotaskError(error) {
+                setTimeout(function throwAsync() {
+                  throw error;
+                }, 0);
+              });
+          };
+        }
+
+
+        if (typeof window.requestIdleCallback !== "function") {
+          window.requestIdleCallback = function requestIdleCallbackPolyfill(callback) {
+            var start = Date.now();
+            return setTimeout(function runIdleCallback() {
+              callback({
+                didTimeout: false,
+                timeRemaining: function timeRemaining() {
+                  return Math.max(0, 50 - (Date.now() - start));
+                }
+              });
+            }, 1);
+          };
+        }
+
+        if (typeof window.cancelIdleCallback !== "function") {
+          window.cancelIdleCallback = function cancelIdleCallbackPolyfill(id) {
+            clearTimeout(id);
+          };
+        }        if (!Array.prototype.includes) {
+          Array.prototype.includes = function includes(searchElement, fromIndex) {
+            var length = this == null ? 0 : this.length >>> 0;
+            if (!length) return false;
+            var start = Number(fromIndex) || 0;
+            var index = start >= 0 ? start : Math.max(length + start, 0);
+            for (; index < length; index += 1) {
+              var value = this[index];
+              if (value === searchElement || (value !== value && searchElement !== searchElement)) {
+                return true;
+              }
+            }
+            return false;
+          };
+        }
+
+        if (!String.prototype.includes) {
+          String.prototype.includes = function includes(search, start) {
+            return this.indexOf(search, start || 0) !== -1;
+          };
+        }
+
+        if (!String.prototype.padStart) {
+          String.prototype.padStart = function padStart(targetLength, padString) {
+            var text = String(this);
+            var target = targetLength >> 0;
+            var pad = padString === undefined ? " " : String(padString);
+            if (text.length >= target || pad === "") return text;
+            target -= text.length;
+            while (pad.length < target) pad += pad;
+            return pad.slice(0, target) + text;
+          };
+        }
+
+        if (!String.prototype.padEnd) {
+          String.prototype.padEnd = function padEnd(targetLength, padString) {
+            var text = String(this);
+            var target = targetLength >> 0;
+            var pad = padString === undefined ? " " : String(padString);
+            if (text.length >= target || pad === "") return text;
+            target -= text.length;
+            while (pad.length < target) pad += pad;
+            return text + pad.slice(0, target);
+          };
+        }
+
+        if (!Object.values) {
+          Object.values = function values(object) {
+            var source = Object(object);
+            return Object.keys(source).map(function mapValue(key) {
+              return source[key];
+            });
+          };
+        }
+
+        if (!Object.entries) {
+          Object.entries = function entries(object) {
+            var source = Object(object);
+            return Object.keys(source).map(function mapEntry(key) {
+              return [key, source[key]];
+            });
+          };
+        }
+
+        if (!Object.fromEntries) {
+          Object.fromEntries = function fromEntries(entries) {
+            if (entries == null) {
+              throw new TypeError("Object.fromEntries requires an iterable");
+            }
+            var object = {};
+            if (typeof Symbol !== "undefined" && entries[Symbol.iterator]) {
+              var iterator = entries[Symbol.iterator]();
+              var step = iterator.next();
+              while (!step.done) {
+                object[step.value[0]] = step.value[1];
+                step = iterator.next();
+              }
+              return object;
+            }
+            for (var index = 0; index < entries.length; index += 1) {
+              object[entries[index][0]] = entries[index][1];
+            }
+            return object;
+          };
+        }
+
+        if (typeof Promise !== "undefined" && typeof Promise.allSettled !== "function") {
+          Promise.allSettled = function allSettled(promises) {
+            return Promise.all(Array.prototype.map.call(promises, function settle(promise) {
+              return Promise.resolve(promise).then(
+                function fulfilled(value) {
+                  return { status: "fulfilled", value: value };
+                },
+                function rejected(reason) {
+                  return { status: "rejected", reason: reason };
+                }
+              );
+            }));
+          };
+        }
+        if (typeof Number.isFinite !== "function") {
+          Number.isFinite = function isFiniteNumber(value) {
+            return typeof value === "number" && isFinite(value);
+          };
+        }
+
+        if (!Array.from) {
+          Array.from = function from(source, mapFn, thisArg) {
+            if (source == null) {
+              throw new TypeError("Array.from requires an array-like object");
+            }
+            var result = [];
+            var index = 0;
+            if (typeof Symbol !== "undefined" && source[Symbol.iterator]) {
+              var iterator = source[Symbol.iterator]();
+              var step = iterator.next();
+              while (!step.done) {
+                result.push(typeof mapFn === "function" ? mapFn.call(thisArg, step.value, index) : step.value);
+                index += 1;
+                step = iterator.next();
+              }
+              return result;
+            }
+            var length = source.length >>> 0;
+            for (; index < length; index += 1) {
+              result.push(typeof mapFn === "function" ? mapFn.call(thisArg, source[index], index) : source[index]);
+            }
+            return result;
+          };
+        }
+
+        if (typeof NodeList !== "undefined" && NodeList.prototype && !NodeList.prototype.forEach) {
+          NodeList.prototype.forEach = Array.prototype.forEach;
+        }
+
+        if (typeof HTMLCollection !== "undefined" && HTMLCollection.prototype && !HTMLCollection.prototype.forEach) {
+          HTMLCollection.prototype.forEach = Array.prototype.forEach;
+        }
+
+        function installDomChildCompat(prototype) {
+          if (!prototype) return;
+          if (!prototype.append) {
+            prototype.append = function appendPolyfill() {
+              for (var index = 0; index < arguments.length; index += 1) {
+                var child = arguments[index];
+                this.appendChild(typeof child === "string" ? document.createTextNode(child) : child);
+              }
+            };
+          }
+          if (!prototype.prepend) {
+            prototype.prepend = function prependPolyfill() {
+              for (var index = arguments.length - 1; index >= 0; index -= 1) {
+                var child = arguments[index];
+                this.insertBefore(typeof child === "string" ? document.createTextNode(child) : child, this.firstChild);
+              }
+            };
+          }
+          if (!prototype.replaceChildren) {
+            prototype.replaceChildren = function replaceChildrenPolyfill() {
+              while (this.firstChild) {
+                this.removeChild(this.firstChild);
+              }
+              this.append.apply(this, arguments);
+            };
+          }
+        }
+
+        installDomChildCompat(typeof Element !== "undefined" ? Element.prototype : null);
+        installDomChildCompat(typeof Document !== "undefined" ? Document.prototype : null);
+        installDomChildCompat(typeof DocumentFragment !== "undefined" ? DocumentFragment.prototype : null);
+
+        if (typeof Element !== "undefined" && Element.prototype && !Element.prototype.remove) {
+          Element.prototype.remove = function removePolyfill() {
+            if (this.parentNode) {
+              this.parentNode.removeChild(this);
+            }
+          };
+        }
+        if (typeof Element !== "undefined" && Element.prototype && !Element.prototype.replaceChildren) {
+          Element.prototype.replaceChildren = function replaceChildrenPolyfill() {
+            while (this.firstChild) {
+              this.removeChild(this.firstChild);
+            }
+            for (var index = 0; index < arguments.length; index += 1) {
+              var child = arguments[index];
+              this.appendChild(typeof child === "string" ? document.createTextNode(child) : child);
+            }
+          };
+        }
+
+        if (!String.prototype.matchAll) {
+          String.prototype.matchAll = function matchAll(regexp) {
+            if (!(regexp instanceof RegExp)) {
+              regexp = new RegExp(regexp, "g");
+            }
+            var flags = regexp.flags || "";
+            if (flags.indexOf("g") === -1) {
+              flags += "g";
+            }
+            var matcher = new RegExp(regexp.source, flags);
+            var source = String(this);
+            var matches = [];
+            var match;
+            while ((match = matcher.exec(source)) !== null) {
+              matches.push(match);
+              if (match[0] === "") {
+                matcher.lastIndex += 1;
+              }
+            }
+            if (typeof Symbol !== "undefined") {
+              matches[Symbol.iterator] = Array.prototype[Symbol.iterator];
+            }
+            return matches;
+          };
+        }
+        if (!String.prototype.replaceAll) {
+          String.prototype.replaceAll = function replaceAll(search, replacement) {
+            if (search instanceof RegExp) {
+              return this.replace(search, replacement);
+            }
+            return this.split(String(search)).join(String(replacement));
+          };
+        }
+
+        if (typeof structuredClone !== "function") {
+          window.structuredClone = function structuredClonePolyfill(value) {
+            function clone(item, seen) {
+              if (item === null || typeof item !== "object") return item;
+              if (seen.indexOf(item) !== -1) {
+                throw new TypeError("Circular structuredClone data is not supported in this browser.");
+              }
+              seen.push(item);
+              if (item instanceof Date) return new Date(item.getTime());
+              if (typeof ArrayBuffer !== "undefined" && item instanceof ArrayBuffer) return item.slice(0);
+              if (ArrayBuffer.isView && ArrayBuffer.isView(item)) {
+                return new item.constructor(item);
+              }
+              if (typeof Map !== "undefined" && item instanceof Map) {
+                var mapCopy = new Map();
+                item.forEach(function copyMap(mapValue, mapKey) {
+                  mapCopy.set(clone(mapKey, seen.slice()), clone(mapValue, seen.slice()));
+                });
+                return mapCopy;
+              }
+              if (typeof Set !== "undefined" && item instanceof Set) {
+                var setCopy = new Set();
+                item.forEach(function copySet(setValue) {
+                  setCopy.add(clone(setValue, seen.slice()));
+                });
+                return setCopy;
+              }
+              if (Array.isArray(item)) {
+                return item.map(function copyArray(arrayValue) {
+                  return clone(arrayValue, seen.slice());
+                });
+              }
+              var objectCopy = {};
+              Object.keys(item).forEach(function copyKey(key) {
+                objectCopy[key] = clone(item[key], seen.slice());
+              });
+              return objectCopy;
+            }
+            return clone(value, []);
+          };
+        }
+        if (typeof Promise !== "undefined" && typeof Promise.withResolvers !== "function") {
+          Promise.withResolvers = function withResolvers() {
+            var resolve;
+            var reject;
+            var promise = new Promise(function executor(res, rej) {
+              resolve = res;
+              reject = rej;
+            });
+            return { promise: promise, resolve: resolve, reject: reject };
+          };
+        }
+
+        // pdf.js 5.x MessageHandler'i Promise.try kullanir (Safari 18.2 / iOS 18.2'de geldi).
+        // iOS 18.0-18.1'de eksik oldugundan cekirdek mesajlasma yolunda "undefined is not a
+        // function" firlatiyor ve TUM PDF okumalari (TAKBIS/Adres/EKB/Imar) cokuyordu.
+        if (typeof Promise !== "undefined" && typeof Promise.try !== "function") {
+          Promise.try = function tryFn(callback) {
+            var args = Array.prototype.slice.call(arguments, 1);
+            return new Promise(function executor(resolve) {
+              resolve(callback.apply(undefined, args));
+            });
+          };
+        }
+
+        // Uint8Array.fromBase64 (Safari 18.4 / iOS 18.4). pdf.js imza cozme yolunda kullaniyor.
+        if (typeof Uint8Array === "function" && typeof Uint8Array.fromBase64 !== "function" && typeof atob === "function") {
+          Uint8Array.fromBase64 = function fromBase64(base64) {
+            var normalized = String(base64).replace(/[\r\n\t ]+/g, "").replace(/-/g, "+").replace(/_/g, "/");
+            var binary = atob(normalized);
+            var bytes = new Uint8Array(binary.length);
+            for (var index = 0; index < binary.length; index += 1) {
+              bytes[index] = binary.charCodeAt(index);
+            }
+            return bytes;
+          };
+        }
+
+        // ASIL DUZELTME: Safari/iOS, ReadableStream uzerinde async iterasyonu (for await...of)
+        // HICBIR surumde desteklemiyor (iOS 26.5 dahil). pdf.js 5.x getTextContent() metni
+        // "for await (const x of streamTextContent())" ile okuyor; bu yuzden TUM PDF okumalari
+        // iOS'ta "undefined is not a function (near '...t of e...')" ile cokuyordu.
+        // ReadableStream.prototype[Symbol.asyncIterator] / .values() polyfill'i bunu cozer.
+        if (typeof ReadableStream === "function" && ReadableStream.prototype &&
+            typeof Symbol !== "undefined" && Symbol.asyncIterator &&
+            typeof ReadableStream.prototype[Symbol.asyncIterator] !== "function") {
+          var readableStreamAsyncValues = function values(options) {
+            var reader = this.getReader();
+            var preventCancel = !!(options && options.preventCancel);
+            var iterator = {
+              next: function next() {
+                return reader.read().then(function (result) {
+                  if (result && result.done) {
+                    reader.releaseLock();
+                  }
+                  return result;
+                }, function (reason) {
+                  reader.releaseLock();
+                  throw reason;
+                });
+              }
+            };
+            iterator["return"] = function streamReturn(value) {
+              if (preventCancel) {
+                reader.releaseLock();
+                return Promise.resolve({ done: true, value: value });
+              }
+              return reader.cancel(value).then(function () {
+                reader.releaseLock();
+                return { done: true, value: value };
+              }, function (reason) {
+                reader.releaseLock();
+                throw reason;
+              });
+            };
+            iterator[Symbol.asyncIterator] = function () { return this; };
+            return iterator;
+          };
+          if (typeof ReadableStream.prototype.values !== "function") {
+            ReadableStream.prototype.values = readableStreamAsyncValues;
+          }
+          ReadableStream.prototype[Symbol.asyncIterator] = ReadableStream.prototype.values || readableStreamAsyncValues;
+        }
+      })();
+    </script><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="styles.css?v=20260621-1728" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Bölümler">
+        <div class="brand">
+          <div class="brand-mark">RY</div>
+          <div>
+            <h1>Rapor Yazma</h1>
+            <p>Mobil saha, masaüstü tamamlama</p>
+          </div>
+        </div>
+
+        <nav class="section-nav" id="sectionNav"></nav>
+
+        <div class="sync-panel">
+          <span class="sync-dot" id="syncDot"></span>
+          <div>
+            <strong id="syncLabel">Kaydedildi</strong>
+            <p id="syncDetail">Bu cihazdaki taslak güncel.</p>
+          </div>
+        </div>
+      </aside>
+
+      <main class="workspace">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Aktif iş dosyası</p>
+            <h2 id="caseTitle">Yeni Ekspertiz Raporu</h2>
+          </div>
+          <div class="topbar-actions">
+            <button class="ghost-button" id="newCaseBtn" type="button">Yeni iş</button>
+            <button class="primary-button" id="saveBtn" type="button">Kaydet</button>
+          </div>
+        </header>
+
+        <section class="status-strip" aria-label="İş durumu">
+          <article>
+            <span>Dosya</span>
+            <strong id="caseCode">Taslak</strong>
+          </article>
+          <article>
+            <span>Banka</span>
+            <strong id="bankStatus">Seçilmedi</strong>
+          </article>
+          <article>
+            <span>Eksik kritik alan</span>
+            <strong id="missingCount">0</strong>
+          </article>
+          <article>
+            <span>Son işlem</span>
+            <strong id="lastSaved">Henüz yok</strong>
+          </article>
+        </section>
+
+        <section class="mobile-flow">
+          <div class="mobile-flow-copy">
+            <strong>Saha modu</strong>
+            <span>Mobilde yalnız hızlı ve kritik alanlar öne çıkar; masaüstünde tüm detaylar açılır.</span>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="fieldMode" />
+            <span>Saha görünümü</span>
+          </label>
+        </section>
+
+        <section class="content-grid">
+          <div class="section-stage" id="sectionStage"></div>
+
+          <aside class="assistant-panel" aria-label="Kontrol paneli">
+            <div class="panel-block">
+              <h3>İş Akışı</h3>
+              <ol class="workflow" id="workflowList"></ol>
+            </div>
+
+            <div class="panel-block">
+              <h3>Belge Okuma Kuyrugu</h3>
+              <div class="document-queue" id="documentQueue"></div>
+            </div>
+
+            <div class="panel-block">
+              <h3>Üretim Kontrolü</h3>
+              <ul class="check-list" id="validationList"></ul>
+            </div>
+          </aside>
+        </section>
+      </main>
+    </div>
+
+    <nav class="bottom-nav" id="bottomNav" aria-label="Mobil bölümler"></nav>
+
+    <template id="fieldTemplate">
+      <label class="field">
+        <span></span>
+        <input />
+      </label>
+    </template>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="./vendor/pdfjs/pdf.worker.fake.js?v=20260620-1147"></script>
+    <script src="./vendor/pdfjs/pdf.local.js?v=20260620-1147"></script>
+    <script src="./vendor/tesseract/tesseract.min.js?v=20260620-1147"></script>
+    <script src="app.js?v=20260621-1728"></script>
+  </body>
+</html>

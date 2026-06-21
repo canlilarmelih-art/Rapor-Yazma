@@ -1,0 +1,46 @@
+.KML Formatında Parsel Geometrisini İNDİR
+ YÜRÜRLÜKTEKİ İMAR PLANI
+Ölçeği 1/1000
+Tasdik Tarihi 10.01.2005
+Mer'i İmar Planı HAMİTLER MEZARLIK BATISI UYGULAMA İMAR PLANI
+
+Fonsiyon Uyarı -
+Plan Fonksiyonu - Uygulama İmar Planı plan notları ektedir.
+Yerleşik Konut Alanı (5300,1 m²)
+Bina Yüksekliği Serbest
+Ön Bahçe 5
+Yan Bahçe 3
+Arka Bahçe -
+Bina Derinliği -
+İnşaat Nizamı -
+T.A.K.S. -
+K.A.K.S (Emsal) 0.9
+Kot Alınacak Nokta -
+Açıklama -
+Sit Açıklama -
+ KADASTRO PARSELİ
+İl BURSA
+İlçe OSMANGAZİ
+Tapu Kütüğü HAMİTLER
+Pafta H21B25C4A
+Ada/Parsel 7234 / 7
+Parsel Alanı 509,69 m² (Tapu alanı değildir! )
+ KADASTRO PARSEL ADRESİ
+İdari Mahalle HAMİTLER
+Cadde / Sokak TOPÇU Sokak
+Kapı No 12/1
+
+ KADASTRO PARSEL KONUM BİLGİSİ
+Projeksiyon ED50, Transvers Merkator (TM), Dilim Genişliği=3°, D.O.M=30°
+Kartezyen Koordinat SAĞA (Y) = 413197.12m - YUKARI (X) = 4458889.27m
+Coğrafi Koordinat 40°15'29.668" N 28°58'45.293" E
+
+YALNIZCA BİLGİ AMAÇLIDIR
+Herhangi bir resmi işlem için kullanılamaz.
+Erkan AYDIN
+Osmangazi Belediye Başkanı
+Bu Belge Osmangazi Belediyesi Resmi Web Sitesinden 25.05.2026 Tarihinde Hazırlanmıştır.
+OSMANGAZİ BELEDİYESİ
+İmar Durumu Sayfası
+25.05.2026 17:36 Osmangazi Belediyesi E-İmar
+https://harita.osmangazi.bel.tr/imardurumu/imar.aspx?parselid=240559 1/1

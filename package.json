@@ -1,0 +1,12 @@
+{
+  "name": "rapor-yazma-programi",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Yerel rapor yazma programi icin gelistirme ve regresyon kontrolleri.",
+  "scripts": {
+    "check": "node tools/check-basic.js",
+    "test": "node tools/test-parsers.js",
+    "verify": "npm run check && npm run test"
+  }
+}
+

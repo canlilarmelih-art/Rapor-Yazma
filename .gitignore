@@ -1,0 +1,25 @@
+# Local runtime data
+server-data/
+*.log
+mobile-server.err.log
+mobile-server.out.log
+
+# Manual safety backups stay on disk, but not in git history
+backups/
+
+# Temporary files produced while reading documents
+*.tmp
+*.temp
+*.bak
+~$*
+
+# OS/editor noise
+Thumbs.db
+Desktop.ini
+.DS_Store
+.vscode/
+.idea/
+
+# Dependencies, if package tooling is added later
+node_modules/
+

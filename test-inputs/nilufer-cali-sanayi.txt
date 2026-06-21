@@ -1,0 +1,68 @@
+1.İmar durmu yürürlükte bulunan imar planı, yönetmelik ve imar mevzuatına göre tanzim olunur.
+2.İmar durumu ile proje tanzim edilebilir, inşaat yapılamaz.
+3.İmar planı, yönetmelik ve imar mevzuatında bir değişiklik olduğu takdirde imar durumu geçerliliğini kaybeder ve hiç bir hak iddia
+edilemez.
+4.İmar parselinin teşekkülü ve yola terk ile ilgili harita bürosunca imar hattı tespiti yapılmadan proje tanzim edilemez.
+.KML Formatında Parsel Geometrisini İNDİR
+Plan Fonsiyon Uyarı(²) -
+Yapı Adası Notu 5490 Sayılı Nüfus Hizmetleri Kanunun Adres ve Numaralamaya İlişkin Yönetmelik hükümlerine uyulacaktır.
+Plan Özel Notu -
+Zemin Durumu QAL ALÜVYONEL YELPAZE (ÖA-1) zeminde kalmaktadır.
+Kısıtlama Notu -
+Hava Mania -
+Parselasyon 15.07.2009 Tarihli, 1069 Sayılı Encümen Tasdikli Parselasyon Planına Göre Verildi.
+Plan Fonksiyonu
+- Otopark parsel içinde çözümlenir.
+- Uygulama İmar Planı plan notları ektedir.
+- Parantez içinde belirtilen alan, parselin fonksiyonda kalan miktarını gösterir.
+Sanayi Tesis Alanı (1329,2 m²)
+ KADASTRO PARSELİ
+İl BURSA
+İlçe NİLÜFER
+Tapu Kütüğü ÇALI
+Pafta H21C09A3C
+Ada/Parsel 5910 / 6
+Parsel Alanı () 1.329,42 m² (Tapu alanı değildir! )1
+ YÜRÜRLÜKTEKİ İMAR PLANI ve YAPILAŞMA BİLGİLERİ
+Ölçeği 1/1000
+Tasdik Tarihi - No'su 10.09.2009 - 532
+Planı Adı 1060/ 1/1000 ÖLÇEKLİ ÇALI UYGULAMA İMAR PLANI REVİZYONU
+
+Bina Yüksekliği 9.50
+Ön Bahçe PLAN
+Yan Bahçe PLAN NOTU
+Arka Bahçe YÖNETMELİK
+Bina Derinliği -
+Kat Adedi 2
+İnşaat Nizamı AYRIK
+T.A.K.S. YÖNETMELİK
+K.A.K.S. (Emsal) 1.00
+Kot Alınacak Nokta YÖNETMELİK
+Bu Belge NİLÜFER Belediyesi Resmi Web Sitesinden 26.5.2026 Tarihinde Hazırlanmıştır.
+T.C. NİLÜFER BELEDİYESİ
+İMAR ve ŞEHİRCİLİK MÜDÜRLÜĞÜ
+26.05.2026 01:48 Nilüfer Belediyesi E-İmar Uygulaması
+https://webgis.nilufer.bel.tr/imardurumu/imar.aspx?parselid=283401 1/2
+ KADASTRO PARSEL ADRESİ
+İdari Mahalle Adı ÇALI
+Cadde / Sokak 20.(410) SK.
+Kapı No 8
+
+ KADASTRO PARSEL KONUM BİLGİSİ ()
+Projeksiyon ED50 (European Datum 1950), Transvers Merkator (TM), Bölge:Turkey (v30), Dilim Genişiliği=3°, D.O.M=30°,
+EPSG:2320
+Kartezyen Koordinat SAĞA(Y)= 408134.16m - YUKARI(X)= 4449707.71m
+Coğrafi Koordinat 40°10'33.433" N 28°55'17.652" E
+ 3
+( )UYARI: Tapu alanı değildir!
+( )UYARI: Yönlendirme mesajı dikkate alınmalıdır.
+( )UYARI: Parselin orta noktasına ait koordinat değeridir.
+YALNIZCA BİLGİ AMAÇLIDIR
+Herhangi bir resmi işlem için kullanılamaz.
+1
+2
+3
+Şadi ÖZDEMİR
+Nilüfer Belediye Başkanı
+26.05.2026 01:48 Nilüfer Belediyesi E-İmar Uygulaması
+https://webgis.nilufer.bel.tr/imardurumu/imar.aspx?parselid=283401 2/2

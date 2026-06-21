@@ -1,0 +1,21 @@
+@ECHO OFF
+ECHO Adding Windows Firewall rule for Rapor Yazma...
+ECHO.
+
+NETSH ADVFIREWALL FIREWALL DELETE RULE NAME="Rapor Yazma 5173" >NUL 2>NUL
+NETSH ADVFIREWALL FIREWALL ADD RULE NAME="Rapor Yazma 5173" DIR=IN ACTION=ALLOW PROTOCOL=TCP LOCALPORT=5173 PROFILE=ANY
+
+FOR /F "tokens=2 delims=:" %%A IN ('ipconfig ^| findstr /C:"IPv4"') DO (
+  SET "LOCAL_IP=%%A"
+  GOTO :FOUND_IP
+)
+
+:FOUND_IP
+SET "LOCAL_IP=%LOCAL_IP: =%"
+
+ECHO.
+ECHO Done.
+ECHO Open this address on the tablet:
+ECHO http://%LOCAL_IP%:5173
+ECHO.
+PAUSE

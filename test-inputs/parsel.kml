@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Placemark>
+    <name>Millet Mahallesi 3113-ada-8-parsel</name>
+    <ExtendedData>
+      <Data name="İl">
+        <value>Bursa</value>
+      </Data>
+      <Data name="İlçe">
+        <value>Yıldırım</value>
+      </Data>
+      <Data name="Mahalle">
+        <value>Millet</value>
+      </Data>
+      <Data name="Ada">
+        <value>3113</value>
+      </Data>
+      <Data name="ParselNo">
+        <value>8</value>
+      </Data>
+      <Data name="Alan">
+        <value>6.834,76</value>
+      </Data>
+      <Data name="Pafta">
+        <value>H22d02c3b</value>
+      </Data>
+      <Data name="Nitelik">
+        <value>Bir Adet Sekiz Katlı Betonarme Apartman,Üç Adet Dokuz Katlı Betonarme Apartman Ofis,İşyeri Ve Arsası</value>
+      </Data>
+      <Data name="Mevkii">
+        <value />
+      </Data>
+    </ExtendedData>
+    <Polygon>
+      <outerBoundaryIs>
+        <LinearRing>
+          <coordinates>29.095120000000001,40.207509999999999
+29.095220000000001,40.207470000000001
+29.094889999999999,40.206910000000001
+29.095199999999998,40.206800000000001
+29.095479999999998,40.206800000000001
+29.096070000000001,40.2072
+29.0961,40.207210000000003
+29.09553,40.207859999999997
+29.095410000000001,40.207920000000001
+29.095369999999999,40.207859999999997
+29.095369999999999,40.207859999999997
+29.095120000000001,40.207509999999999</coordinates>
+        </LinearRing>
+      </outerBoundaryIs>
+    </Polygon>
+  </Placemark>
+</kml>
