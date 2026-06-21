@@ -1,0 +1,16 @@
+{
+  "type": "imarText",
+  "source": "nilufer-cali-sanayi.txt",
+  "expected": {
+    "planScale": "1/1000",
+    "planDate": "10.09.2009",
+    "planName": "ÇALI UYGULAMA İMAR PLANI REVİZYONU",
+    "legend": "Sanayi Tesis Alanı",
+    "nizam": "AYRIK",
+    "hmax": "9.50",
+    "katAdedi": "2",
+    "kaks": "1.00",
+    "onBahce": "PLAN",
+    "yanBahce": "PLAN NOTU"
+  }
+}

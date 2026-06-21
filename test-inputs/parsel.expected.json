@@ -1,0 +1,16 @@
+{
+  "type": "kml",
+  "source": "parsel.kml",
+  "expected": {
+    "coordinateCount": 12,
+    "uniqueCoordinateCount": 11,
+    "centroid": {
+      "lat": 40.207368,
+      "lng": 29.09541
+    },
+    "neighborhood": "Millet",
+    "ada": "3113",
+    "parsel": "8",
+    "pafta": "H22d02c3b"
+  }
+}

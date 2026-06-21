@@ -1,0 +1,16 @@
+{
+  "type": "imarText",
+  "source": "osmangazi-yunuseli.txt",
+  "expected": {
+    "planScale": "1/1000",
+    "planDate": "10.01.2005",
+    "planName": "HAMİTLER MEZARLIK BATISI UYGULAMA İMAR PLANI",
+    "legend": "Konut Alanı",
+    "nizam": "",
+    "hmax": "Serbest",
+    "katAdedi": "",
+    "kaks": "0.9",
+    "onBahce": "5",
+    "yanBahce": "3"
+  }
+}

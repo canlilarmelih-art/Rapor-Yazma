@@ -1,0 +1,11 @@
+{
+  "type": "ekbText",
+  "source": "ekb-docx-text.txt",
+  "expected": {
+    "documentNo": "M221613B8E360",
+    "issueDate": "03.01.2020",
+    "validUntil": "03.01.2030",
+    "energyClass": "C",
+    "emissionClass": "C"
+  }
+}
