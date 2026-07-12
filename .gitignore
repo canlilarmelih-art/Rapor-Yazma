@@ -23,3 +23,7 @@ Desktop.ini
 # Dependencies, if package tooling is added later
 node_modules/
 
+# Local analysis artifacts and large private archives
+graphify-out/
+yeni-kodlar.zip
+test-inputs/project-reference-19-nisan.xlsm
