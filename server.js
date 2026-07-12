@@ -1,12 +1,15 @@
 const http = require("http");
 const https = require("https");
 const fs = require("fs/promises");
+const { existsSync, readdirSync } = require("fs");
+const os = require("os");
 const path = require("path");
 const { spawn } = require("child_process");
 
 const appDir = __dirname;
 const dataDir = path.join(appDir, "server-data");
 const stateFile = path.join(dataDir, "active-case.json");
+const userPoisFile = path.join(dataDir, "user-pois.json");
 const backupDir = path.join(appDir, "backups");
 const port = Number(process.env.PORT || 5173);
 const host = process.env.HOST || "0.0.0.0";
@@ -238,6 +241,50 @@ async function handleOverpassApi(request, response) {
   sendJson(response, 502, { ok: false, error: lastError?.message || "Yakın çevre servisine ulaşılamadı." });
 }
 
+async function readUserPois() {
+  try {
+    const raw = await fs.readFile(userPoisFile, "utf8");
+    const parsed = JSON.parse(raw || "[]");
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    if (error.code === "ENOENT") return [];
+    throw error;
+  }
+}
+
+async function handleUserPoisApi(request, response) {
+  if (request.method === "GET") {
+    const pois = await readUserPois();
+    sendJson(response, 200, { ok: true, pois });
+    return;
+  }
+  if (request.method === "POST") {
+    const body = await readBody(request);
+    const parsed = JSON.parse(body || "{}");
+    const name = String(parsed.name || "").trim().slice(0, 160);
+    const category = normalizeUserPoiCategory(parsed.category);
+    const lat = Number(parsed.lat);
+    const lng = Number(parsed.lng);
+    if (!name || !Number.isFinite(lat) || !Number.isFinite(lng)) {
+      sendJson(response, 400, { ok: false, error: "Nokta adı veya koordinat eksik." });
+      return;
+    }
+    const pois = await readUserPois();
+    const id = `user-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const next = [{ id, name, lat, lng, category, source: category === "user-artery" ? "Kullanıcı Ulaşım Arteri" : "Kullanıcı", createdAt: new Date().toISOString() }, ...pois]
+      .slice(0, 300);
+    await fs.mkdir(dataDir, { recursive: true });
+    await fs.writeFile(userPoisFile, JSON.stringify(next, null, 2), "utf8");
+    sendJson(response, 200, { ok: true, poi: next[0], pois: next });
+    return;
+  }
+  sendJson(response, 405, { ok: false, error: "Bu işlem desteklenmiyor." });
+}
+
+function normalizeUserPoiCategory(value) {
+  return value === "user-artery" ? "user-artery" : "user";
+}
+
 function safeUploadName(name) {
   return String(name || "belge.pdf")
     .replace(/[^\wğüşöçıİĞÜŞÖÇ.-]+/gi, "_")
@@ -245,23 +292,49 @@ function safeUploadName(name) {
     .slice(0, 120) || "belge.pdf";
 }
 
-function findPythonExecutable() {
-  const bundled = path.join(
-    process.env.USERPROFILE || "",
-    ".cache",
-    "codex-runtimes",
-    "codex-primary-runtime",
-    "dependencies",
-    "python",
-    "python.exe",
-  );
-  return bundled;
+// Python adayları öncelik sırasıyla döner. Eski sürüm USERPROFILE boş
+// geldiğinde ".cache/..." şeklinde GÖRELİ yol üretiyor ve tek adaya bağlı
+// kaldığından spawn hatası ("spawn .cache/...python.exe") kullanıcı arayüzüne
+// düşüyordu. Artık mutlak yollar os.homedir() ile kurulur, codex çalışma
+// zamanının yeniden adlandırılmış kopyaları taranır ve PATH üzerindeki
+// python/py son çare olarak denenir.
+function getPythonCandidates() {
+  const candidates = [];
+  if (process.env.RAPOR_PYTHON && process.env.RAPOR_PYTHON.trim()) {
+    candidates.push(process.env.RAPOR_PYTHON.trim());
+  }
+
+  let homeDir = "";
+  try {
+    homeDir = os.homedir() || "";
+  } catch {
+    homeDir = process.env.USERPROFILE || "";
+  }
+
+  if (homeDir) {
+    const runtimesDir = path.join(homeDir, ".cache", "codex-runtimes");
+    const primary = path.join(runtimesDir, "codex-primary-runtime", "dependencies", "python", "python.exe");
+    if (existsSync(primary)) candidates.push(primary);
+    try {
+      readdirSync(runtimesDir, { withFileTypes: true })
+        .filter((entry) => entry.isDirectory() && entry.name !== "codex-primary-runtime")
+        .forEach((entry) => {
+          const alt = path.join(runtimesDir, entry.name, "dependencies", "python", "python.exe");
+          if (existsSync(alt)) candidates.push(alt);
+        });
+    } catch {
+      /* codex-runtimes klasörü yoksa sorun değil */
+    }
+  }
+
+  // Sistem PATH'i (varsa): Windows py launcher ve python.
+  candidates.push("py", "python");
+  return candidates;
 }
 
-function runPdfTextExtractor(filePath) {
+function spawnPdfTextExtractor(pythonPath, scriptPath, filePath) {
   return new Promise((resolve, reject) => {
-    const scriptPath = path.join(appDir, "tools", "extract_pdf_text.py");
-    const child = spawn(findPythonExecutable(), [scriptPath, filePath], {
+    const child = spawn(pythonPath, [scriptPath, filePath], {
       windowsHide: true,
       cwd: appDir,
       env: { ...process.env, PYTHONIOENCODING: "utf-8" },
@@ -276,7 +349,10 @@ function runPdfTextExtractor(filePath) {
     child.stderr.on("data", (chunk) => {
       stderr += chunk;
     });
-    child.on("error", reject);
+    child.on("error", (error) => {
+      error.isSpawnError = true;
+      reject(error);
+    });
     child.on("close", (code) => {
       if (code !== 0) {
         reject(new Error(stderr.trim() || "PDF metni okunamadı."));
@@ -289,6 +365,25 @@ function runPdfTextExtractor(filePath) {
       }
     });
   });
+}
+
+async function runPdfTextExtractor(filePath) {
+  const scriptPath = path.join(appDir, "tools", "extract_pdf_text.py");
+  let lastError = null;
+  for (const pythonPath of getPythonCandidates()) {
+    try {
+      return await spawnPdfTextExtractor(pythonPath, scriptPath, filePath);
+    } catch (error) {
+      lastError = error;
+      // Çalıştırılabilir bulunamadıysa (ENOENT vb.) sıradaki adaya geç;
+      // python çalışıp da hata verdiyse gerçek hatayı hemen bildir.
+      if (!error.isSpawnError) throw error;
+    }
+  }
+  throw new Error(
+    "PDF metin okuyucu (Python) sunucuda bulunamadı. Sunucuyu yeniden başlatın; "
+      + "gerekirse RAPOR_PYTHON ortam değişkeni ile python.exe yolunu belirtin.",
+  );
 }
 
 async function handlePdfTextApi(request, response) {
@@ -338,6 +433,9 @@ async function handleStatic(request, response) {
     const data = await fs.readFile(filePath);
     response.writeHead(200, {
       "Content-Type": mimeTypes.get(path.extname(filePath).toLowerCase()) || "application/octet-stream",
+      "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+      "Pragma": "no-cache",
+      "Expires": "0",
     });
     response.end(data);
   } catch (error) {
@@ -355,6 +453,10 @@ const server = http.createServer(async (request, response) => {
     }
     if ((request.url || "").startsWith("/api/overpass")) {
       await handleOverpassApi(request, response);
+      return;
+    }
+    if ((request.url || "").startsWith("/api/user-pois")) {
+      await handleUserPoisApi(request, response);
       return;
     }
     if ((request.url || "").startsWith("/api/pdf-text")) {

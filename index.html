@@ -2,8 +2,17 @@
 <html lang="tr">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#111d3d" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Rapor Yazma" />
     <title>Rapor Yazma Programı</title>
+    <!-- PWA (Faz 3): Ana Ekrana Ekle desteği; iOS'ta 7 gün etkileşimsizlikte
+         localStorage silinme riskini azaltır (bkz. cloud/FAZ0-TASARIM.md). -->
+    <link rel="manifest" href="manifest.json?v=20260709-2130" />
+    <link rel="icon" href="icons/icon-192.png?v=20260709-2130" type="image/png" />
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png?v=20260709-2130" />
         <script>
       (function installCompatibilityFixes() {
         if (typeof URL !== "undefined" && typeof URL.parse !== "function") {
@@ -497,11 +506,112 @@
         }
       })();
     </script><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="styles.css?v=20260621-1728" />
+    <link rel="stylesheet" href="styles.css?v=20260712-1720" />
   </head>
   <body>
-    <div class="app-shell">
+    <!--
+      ZORUNLU GİRİŞ KAPISI (2026-07-09) — kullanıcı isteği: "internet olmadan
+      çalışmamalı, login olmadan hiçbir detay görülememeli." Bu, önceki
+      "bulutsuz da tamamen çalışır" ilkesinin BİLİNÇLİ tersine çevrilmesidir
+      (bkz. cloud/FAZ0-TASARIM.md D6 — artık SÜPÜRÜLDÜ/superseded).
+
+      Bu <div>, harici styles.css yüklenmesini BEKLEMEDEN, satır içi stil ile
+      body açılır açılmaz opak ve tüm ekranı kaplayan biçimde görünür — altındaki
+      uygulama (app.js tarafından hemen render edilir) hiçbir zaman görsel
+      olarak açığa çıkmaz. cloud/cloud-sync.js, gerçek kimlik doğrulanmış +
+      çevrimiçi durum onaylanana kadar bunu KALDIRMAZ (fail-closed: Firebase
+      yapılandırılmamışsa/yüklenemezse de kapı kapalı kalır).
+
+      SINIR (dürüstçe belirtilmeli): bu istemci-taraflı bir kapıdır. Sunucu
+      (server.js) dosyaları HERKESE koşulsuz servis eder — gerçek/tam güvenlik
+      için sunucu tarafı erişim denetimi gerekir (bkz. handoff.md ilgili not).
+    -->
+    <div id="authGateOverlay" style="position:fixed;inset:0;z-index:99999;background:#111d3d;display:flex;align-items:center;justify-content:center;padding:20px;">
+      <div id="authGateContent" style="position:relative;z-index:10;max-width:360px;width:100%;text-align:center;color:#f3f6fc;font-family:Inter,ui-sans-serif,system-ui,-apple-system,'Segoe UI',Arial,sans-serif;">
+        <p style="font-weight:800;font-size:15px;letter-spacing:.02em;">RAPOR YAZMA</p>
+        <p style="color:#b9c5d6;font-size:14px;">Kontrol ediliyor…</p>
+      </div>
+    </div>
+    <script>
+      // Giriş kapısı arka plan sahnesi (blueprint illüstrasyon + açık/koyu tema
+      // anahtarı + parçacıklar). #authGateOverlay'in kendisi hâlâ satır içi
+      // (inline) opak arkaplanla ilk boyamadan itibaren engelleyicidir; bu
+      // script yalnızca üzerine binen görsel katmanı ekler, Firebase/cloud-sync
+      // yüklenmesini beklemez.
+      (function () {
+        var overlay = document.getElementById("authGateOverlay");
+        if (!overlay) return;
+        var THEME_KEY = "rapor-gate-theme";
+        var lightBtn, darkBtn;
+
+        function setGateTheme(theme) {
+          overlay.setAttribute("data-gate-theme", theme);
+          if (lightBtn) lightBtn.setAttribute("aria-pressed", String(theme === "light"));
+          if (darkBtn) darkBtn.setAttribute("aria-pressed", String(theme === "dark"));
+          try { localStorage.setItem(THEME_KEY, theme); } catch (e) {}
+        }
+
+        var saved = "dark";
+        try { saved = localStorage.getItem(THEME_KEY) || "dark"; } catch (e) {}
+
+        var scene = document.createElement("div");
+        scene.className = "gate-scene";
+        scene.innerHTML =
+          '<div class="gate-blueprint"></div>' +
+          '<div class="gate-particles"></div>' +
+          '<div class="gate-vignette"></div>' +
+          '<div class="gate-theme-toggle" role="group" aria-label="Tema seçimi">' +
+          '<button type="button" data-gate-theme-btn="light" aria-label="Açık tema" title="Açık tema">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 2.5v2.5M12 19v2.5M4.2 4.2l1.8 1.8M18 18l1.8 1.8M2.5 12H5M19 12h2.5M4.2 19.8l1.8-1.8M18 6l1.8-1.8"/></svg>' +
+          "</button>" +
+          '<button type="button" data-gate-theme-btn="dark" aria-label="Koyu tema" title="Koyu tema">' +
+          '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5 8.5 8.5 0 1 0 20.5 14.5Z"/></svg>' +
+          "</button>" +
+          "</div>";
+        overlay.insertBefore(scene, overlay.firstChild);
+
+        lightBtn = scene.querySelector('[data-gate-theme-btn="light"]');
+        darkBtn = scene.querySelector('[data-gate-theme-btn="dark"]');
+        setGateTheme(saved);
+        lightBtn.addEventListener("click", function () { setGateTheme("light"); });
+        darkBtn.addEventListener("click", function () { setGateTheme("dark"); });
+
+        var particlesHost = scene.querySelector(".gate-particles");
+        for (var i = 0; i < 10; i++) {
+          var p = document.createElement("i");
+          p.className = "gate-particle";
+          p.style.left = Math.random() * 100 + "%";
+          p.style.top = Math.random() * 100 + "%";
+          p.style.setProperty("--t", (6 + Math.random() * 8) + "s");
+          p.style.setProperty("--o", (0.12 + Math.random() * 0.28).toFixed(2));
+          p.style.animationDelay = -Math.random() * 8 + "s";
+          particlesHost.appendChild(p);
+        }
+
+        var reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        if (!reduceMotion) {
+          var blueprint = scene.querySelector(".gate-blueprint");
+          var tx = 0, ty = 0, cx = 0, cy = 0;
+          overlay.addEventListener("pointermove", function (e) {
+            tx = (e.clientX / window.innerWidth - 0.5) * -8;
+            ty = (e.clientY / window.innerHeight - 0.5) * -6;
+          });
+          overlay.addEventListener("pointerleave", function () { tx = 0; ty = 0; });
+          (function animate() {
+            cx += (tx - cx) * 0.045;
+            cy += (ty - cy) * 0.045;
+            blueprint.style.marginLeft = cx + "px";
+            blueprint.style.marginTop = cy + "px";
+            requestAnimationFrame(animate);
+          })();
+        }
+      })();
+    </script>
+    <div class="app-shell" id="appShell">
       <aside class="sidebar" aria-label="Bölümler">
+        <button class="sidebar-collapse-button" id="sidebarCollapseBtn" type="button" aria-label="Bölümleri gizle" title="Bölümleri gizle">
+          &lsaquo;
+        </button>
         <div class="brand">
           <div class="brand-mark">RY</div>
           <div>
@@ -520,6 +630,10 @@
           </div>
         </div>
       </aside>
+
+      <button class="sidebar-open-button" id="sidebarOpenBtn" type="button" aria-label="Bölümleri aç" title="Bölümleri aç">
+        Bölümler
+      </button>
 
       <main class="workspace">
         <header class="topbar">
@@ -552,36 +666,8 @@
           </article>
         </section>
 
-        <section class="mobile-flow">
-          <div class="mobile-flow-copy">
-            <strong>Saha modu</strong>
-            <span>Mobilde yalnız hızlı ve kritik alanlar öne çıkar; masaüstünde tüm detaylar açılır.</span>
-          </div>
-          <label class="toggle">
-            <input type="checkbox" id="fieldMode" />
-            <span>Saha görünümü</span>
-          </label>
-        </section>
-
         <section class="content-grid">
           <div class="section-stage" id="sectionStage"></div>
-
-          <aside class="assistant-panel" aria-label="Kontrol paneli">
-            <div class="panel-block">
-              <h3>İş Akışı</h3>
-              <ol class="workflow" id="workflowList"></ol>
-            </div>
-
-            <div class="panel-block">
-              <h3>Belge Okuma Kuyrugu</h3>
-              <div class="document-queue" id="documentQueue"></div>
-            </div>
-
-            <div class="panel-block">
-              <h3>Üretim Kontrolü</h3>
-              <ul class="check-list" id="validationList"></ul>
-            </div>
-          </aside>
         </section>
       </main>
     </div>
@@ -599,9 +685,39 @@
     <script src="./vendor/pdfjs/pdf.worker.fake.js?v=20260620-1147"></script>
     <script src="./vendor/pdfjs/pdf.local.js?v=20260620-1147"></script>
     <script src="./vendor/tesseract/tesseract.min.js?v=20260620-1147"></script>
-    <script src="src/parsers/imar-normalizer.js?v=20260621-2359"></script>
+    <script src="src/parsers/imar-normalizer.js?v=20260624-1700"></script>
     <script src="src/parsers/ekb-parser.js?v=20260622-0008"></script>
     <script src="src/parsers/kml-parser.js?v=20260621-2213"></script>
-    <script src="app.js?v=20260621-1728"></script>
+    <script src="src/risk/halkbank-risk-data.js?v=20260703-1540"></script>
+    <script src="src/risk/halkbank-risk-rules.js?v=20260707-1812"></script>
+    <script src="src/comparables/comparable-market-analysis.js?v=20260711-0341"></script>
+    <script src="src/land/minimum-parcel-sizes.js?v=20260711-0400"></script>
+    <script src="src/value-factors/value-factors-rules.js?v=20260707-1050"></script>
+    <script src="src/land/climate-earthquake-data.js?v=20260712-1720"></script>
+    <script src="app.js?v=20260712-0142"></script>
+    <!-- Banka şablonlarıyla dışa aktarma: app.js'ten SONRA yüklenmeli (global'leri çağrı anında kullanır). -->
+    <script src="src/templates/template-engine.js?v=20260712-1542"></script>
+    <!-- Bulut senkron (Faz 1): app.js'ten SONRA yüklenmeli; yapılandırma yoksa pasif kalır. -->
+    <script src="vendor/firebase/firebase-app-compat.js?v=11.10.0"></script>
+    <script src="vendor/firebase/firebase-auth-compat.js?v=11.10.0"></script>
+    <script src="vendor/firebase/firebase-firestore-compat.js?v=11.10.0"></script>
+    <script src="cloud/firebase-config.js?v=20260709-1854"></script>
+    <script src="cloud/cloud-sync.js?v=20260711-1539"></script>
+    <script src="cloud/report-library.js?v=20260710-1626"></script>
+    <script>
+      // PWA (Faz 3): service worker YALNIZCA "güvenli bağlam"da (https: veya
+      // localhost/127.0.0.1) kaydolabilir — tarayıcı kuralı budur, bizim
+      // seçimimiz değil. Telefon LAN IP'si üzerinden düz http ile bağlandığında
+      // (ör. http://192.168.x.x:5174) isSecureContext false olur ve kayıt
+      // denenmez; iOS'ta "Ana Ekrana Ekle" ile kurulmanın depolama koruması
+      // yine de manifest + meta etiketleri sayesinde çalışır (SW şart değildir).
+      if ("serviceWorker" in navigator && window.isSecureContext) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker.register("service-worker.js?v=20260712-0142").catch((error) => {
+            console.warn("Service worker kaydı yapılamadı:", error);
+          });
+        });
+      }
+    </script>
   </body>
 </html>

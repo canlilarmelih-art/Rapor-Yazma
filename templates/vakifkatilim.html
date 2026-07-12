@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+<meta charset="utf-8">
+<title>Vakıf Katılım Rapor Formatı</title>
+<!--
+  VAKIF KATILIM ÖZET RAPOR ŞABLONU — {{PLACEHOLDER}} işaretleri dışa
+  aktarmada programdaki verilerle doldurulur. Tüm placeholder adları için
+  templates/PLACEHOLDER-REHBERI.md dosyasına bakın. Serbestçe düzenleyebilirsiniz.
+-->
+<style>
+  @page { size: 595.35pt 841.95pt; margin: 42pt 36pt; }
+  body { font-family: Arial, sans-serif; font-size: 10pt; color: #1f2a32; background: #ffffff; }
+  h1 { font-size: 18pt; margin: 0 0 12pt; color: #12202a; font-weight: 900; }
+  h2 { font-size: 14pt; margin: 16pt 0 8pt; border-bottom: 2pt solid #213f77; padding-bottom: 4pt; color: #12202a; font-weight: 900; }
+  h3 { font-size: 11.5pt; margin: 12pt 0 6pt; color: #263642; font-weight: 900; }
+  p { margin: 0 0 8pt; line-height: 1.35; }
+  table.meta { border-collapse: collapse; width: 100%; margin: 6pt 0 12pt; border: 1pt solid #d9dfdc; font-size: 9pt; }
+  table.meta td { border: 1pt solid #d9dfdc; padding: 3.2pt 4pt; vertical-align: top; }
+  table.meta td.l { width: 32%; font-weight: 900; background: #eaf0fa; }
+  .word-table { border-collapse: collapse; width: 100%; margin: 6pt 0 12pt; border: 1pt solid #d9dfdc; font-size: 8.5pt; }
+  .word-table th, .word-table td { border: 1pt solid #d9dfdc; padding: 3.2pt 3.8pt; vertical-align: top; }
+  .word-table th { background: #eaf0fa; font-weight: 900; text-align: left; }
+</style>
+</head>
+<body>
+
+<h1>VAKIF KATILIM BANKASI ÖZET RAPOR FORMATI</h1>
+<p>Sisteme giriş: https://ekspertiz.vakifkatilim.com.tr/</p>
+
+<h2>Tapu Kaydı — Tapu Açıklaması</h2>
+{{ENCUMBRANCE_SUMMARY_TEXT}}
+
+<h2>Tapu Sekmesi ve Konum</h2>
+<p><em>Adres ve ulaşım bilgilerinde sadece ad yazılmalı: "Cumhuriyet Caddesi" değil "Cumhuriyet"; "Çiçek Konutları Sitesi" değil "Çiçek Konutları".</em></p>
+<table class="meta">
+  <tr><td class="l">TAPU MAHALLE</td><td>{{TİTLE_NEİGHBORHOOD}}</td></tr>
+  <tr><td class="l">İDARİ MAHALLE</td><td>{{NEİGHBORHOOD}}</td></tr>
+  <tr><td class="l">PAFTA</td><td>{{SHEET_NO}}</td></tr>
+  <tr><td class="l">SOKAK / CADDE</td><td>{{STREET}}</td></tr>
+  <tr><td class="l">ADA - PARSEL</td><td>{{BLOCK_NO}} - {{PARCEL_NO}}</td></tr>
+  <tr><td class="l">APT. / SİTE</td><td>{{ADDRESS_SİTE_NAME}}</td></tr>
+  <tr><td class="l">ESKİ ADA - PARSEL</td><td>{{OLD_BLOCK_NO}} - {{OLD_PARCEL_NO}}</td></tr>
+  <tr><td class="l">BİNA NO</td><td>{{OUTER_DOOR}}</td></tr>
+  <tr><td class="l">ARSA PAYI</td><td>{{SHARE}} / {{DENOMİNATOR}}</td></tr>
+  <tr><td class="l">BLOK – KAT – BB.NO</td><td>{{TİTLE_BLOCK_NAME}} / {{TİTLE_FLOOR}} / {{UNİT_NO}}</td></tr>
+  <tr><td class="l">YÜZÖLÇÜMÜ</td><td>{{LAND_AREA}}</td></tr>
+  <tr><td class="l">UAVT</td><td>{{UAVT}}</td></tr>
+  <tr><td class="l">ANA TAŞINMAZ</td><td>{{MAİN_PROPERTY_QUALİTY}}</td></tr>
+  <tr><td class="l">KOORDİNATLAR</td><td>{{LATİTUDE}}, {{LONGİTUDE}}</td></tr>
+  <tr><td class="l">ADRES</td><td>{{ACIK_ADRES}}</td></tr>
+  <tr><td class="l">ENERJİ KİMLİK BELGESİ</td><td>{{EKB_ISSUE_DATE}} / {{EKB_ENERGY_CLASS}} / {{EKB_DOCUMENT_NO}}</td></tr>
+</table>
+
+<h2>Özellikler Sekmesi — Bağımsız Bölüm Alt Sekmesi</h2>
+<table class="meta">
+  <tr><td class="l">YASAL KULLANIM ALANI</td><td>{{LEGAL_AREA}} m²</td></tr>
+  <tr><td class="l">MEVCUT KULLANIM ALANI</td><td>{{CURRENT_AREA}} m²</td></tr>
+  <tr><td class="l">YAPIM YILI</td><td>{{BUİLDİNG_CONSTRUCTİON_YEAR}}</td></tr>
+  <tr><td class="l">BAKIMLI MI, TADİLAT İHTİYACI VAR MI?</td><td>{{UNİT_MATERİAL_QUALİTY}}</td></tr>
+  <tr><td class="l">YAPI KALİTESİ</td><td>{{UNİT_MATERİAL_QUALİTY}}</td></tr>
+  <tr><td class="l">ISINMA SİSTEMİ</td><td>{{UNİT_HEATİNG_TYPE}}</td></tr>
+  <tr><td class="l">MANZARA</td><td>{{UNİT_VİEW_STATUS}}</td></tr>
+  <tr><td class="l">TOPLAM KAT SAYISI (BODRUM KATLAR HARİÇ)</td><td>{{TOTAL_FLOORS}}</td></tr>
+  <tr><td class="l">TOPLAM B. BÖLÜM SAYISI</td><td>{{TOTAL_UNİTS}} adet</td></tr>
+  <tr><td class="l">KAT DAĞILIMI</td><td>{{BUİLDİNG_FLOOR_SUMMARY_TEXT}}</td></tr>
+  <tr><td class="l">İÇ HACİMLER</td><td>{{KAT_BAZLI_İÇ_HACİMLER}}</td></tr>
+  <tr><td class="l">BULUNDUĞU KAT</td><td>{{TİTLE_FLOOR}}</td></tr>
+</table>
+
+{{TAKYIDAT_TABLO}}
+
+<h2>Gayrimenkul Özellikleri Alt Sekmesi — Takyidat Bilgileri</h2>
+<table class="meta">
+  <tr><td class="l">TAKYİDAT TARİH</td><td>{{TAKBİS_DATE}}</td><td class="l">TAKYİDAT SAAT</td><td>{{TAKBİS_TİME}}</td></tr>
+</table>
+<p><em>DİKKAT! Vakıf Katılım Bankasında başka banka lehine rehin kaydı bulunması halinde satış kabiliyeti "Satışı Zor" olarak değerlendirilmelidir.</em></p>
+
+<h2>Bölge Özellikleri</h2>
+{{ENVIRONMENTAL_FEATURES_TEXT}}
+
+<h2>Ana Gayrimenkulün Fiziksel Özellikleri</h2>
+<table class="meta">
+  <tr><td class="l">BİNA YAPI TARZI</td><td>{{BUİLDİNG_STYLE}}</td></tr>
+  <tr><td class="l">YAPI SINIFI</td><td>{{BUİLDİNG_CLASS}}</td></tr>
+  <tr><td class="l">YAPI NİZAMI</td><td>{{BUİLDİNG_ORDER}}</td></tr>
+  <tr><td class="l">OTOPARK</td><td>{{CARPARK}}</td></tr>
+  <tr><td class="l">ASANSÖR</td><td>{{ELEVATOR}}</td></tr>
+  <tr><td class="l">SOSYAL TESİSLER</td><td>{{SOCİAL_FACİLİTİES}}</td></tr>
+</table>
+{{MAİN_PROPERTY_DESCRİPTİON_TEXT}}
+
+<h2>Bağımsız Bölümün Bilgileri</h2>
+{{UNİT_İNTERİOR_DESCRİPTİON_TEXT}}
+{{UNİT_DECORATİVE_DESCRİPTİON_TEXT}}
+
+<h2>İncelenen Belgeler</h2>
+<table class="meta">
+  <tr><td class="l">İSKAN VAR MI?</td><td>{{İSKAN_VAR_MI}}</td></tr>
+</table>
+{{İNCELENEN_BELGELER_TABLO}}
+{{PROJECT_CONFORMİTY}}
+{{REVİEWED_DOCUMENTS_TEXT}}
+<p><strong>İncelenen Belgelere Göre Mevcut Durum İle Yasal Durum Arasında Fark Var mı?:</strong> {{PROJECT_DİFFERENCE}}</p>
+
+<h2>İmar Durumu</h2>
+<p>{{PLAN_NAME}} - {{PLAN_DATE}}</p>
+<table class="meta">
+  <tr><td class="l">PLAN ÖLÇEĞİ</td><td>{{PLAN_SCALE}}</td></tr>
+  <tr><td class="l">LEJANT</td><td>{{LEGEND}}</td></tr>
+  <tr><td class="l">PLAN TARİHİ</td><td>{{PLAN_DATE}}</td></tr>
+  <tr><td class="l">HMAX / KAT ADEDİ</td><td>{{HMAX}} / {{FLOOR_COUNT}}</td></tr>
+  <tr><td class="l">PLAN ADI</td><td>{{PLAN_NAME}}</td></tr>
+  <tr><td class="l">TAKS VE KAKS</td><td>{{TAKS}} / {{KAKS}}</td></tr>
+  <tr><td class="l">NİZAM</td><td>{{ORDER}}</td></tr>
+  <tr><td class="l">ÖN/YAN BAHÇE</td><td>{{FRONT_GARDEN}} / {{SİDE_GARDEN}}</td></tr>
+  <tr><td class="l">HESAPLANAN EMSAL</td><td>{{CALCULATED_EMSAL}}</td></tr>
+  <tr><td class="l">TERK VAR MI?</td><td>{{ROAD_SETBACK}}</td></tr>
+  <tr><td class="l">MİNİMUM CEPHE ŞARTI</td><td>{{MİNİMUM_FRONTAGE_CONDİTİON}}</td></tr>
+  <tr><td class="l">TEVHİD ŞARTI</td><td>{{TEVHİD_CONDİTİON}}</td></tr>
+  <tr><td class="l">18.MD. İMAR UYGULAMASI PROBLEMİ VAR MI?</td><td>{{ARTİCLE18_APPLİED}}</td></tr>
+</table>
+{{PLANNİNG_NOTE_TEXT}}
+
+<h2>Değerlemeyi Etkileyen Faktörler</h2>
+<h3>Olumlu Faktörler</h3>
+{{DEGERI_ETKILEYEN_OLUMLU_FAKTORLER}}
+<h3>Olumsuz Faktörler</h3>
+{{DEGERI_ETKILEYEN_OLUMSUZ_FAKTORLER}}
+<h3>Varsa Risk Yaratacak Unsurlar</h3>
+<p>Herhangi bir risk bulunmamaktadır. <em>(VAR İSE AÇIKLANMALIDIR.)</em></p>
+
+<h2>Değerleme Sekmesi — Genel Bilgiler</h2>
+{{DEGERLENDIRME_TABLOSU}}
+{{DEGERLENDIRME_SEMASI}}
+{{SALEABİLİTY_NOTE}}
+<h3>Kısıtlayıcı Koşullar ile Analiz Sonuçlarının Değerlendirilmesi</h3>
+<p>Herhangi bir kısıtlayıcı koşul bulunmamaktadır. <em>(VAR İSE AÇIKLANMALIDIR.)</em></p>
+
+<h2>Emsaller Sekmesi</h2>
+{{EMSAL_PIYASA_ANALIZI}}
+{{EMSAL_TABLOSU}}
+<p>{{EMSAL_1}}</p>
+<p>{{EMSAL_2}}</p>
+<p>{{EMSAL_3}}</p>
+<p>{{EMSAL_4}}</p>
+<p>{{EMSAL_5}}</p>
+<p>{{EMSAL_6}}</p>
+<p>{{EMSAL_7}}</p>
+
+<h2>GDYS YARDIMCI BİLGİLER</h2>
+<table class="meta">
+  <tr><td class="l">İL</td><td>{{CİTY}}</td></tr>
+  <tr><td class="l">İLÇE</td><td>{{DİSTRİCT}}</td></tr>
+  <tr><td class="l">MAHALLE / KÖY</td><td>{{NEİGHBORHOOD}}</td></tr>
+  <tr><td class="l">SOKAK / CADDE</td><td>{{STREET}}</td></tr>
+  <tr><td class="l">AÇIK ADRES</td><td>{{ACIK_ADRES}}</td></tr>
+  <tr><td class="l">UAVT KODU</td><td>{{UAVT}}</td></tr>
+  <tr><td class="l">BİNA YAPI TARZI</td><td>{{BUİLDİNG_STYLE}}</td></tr>
+  <tr><td class="l">TAMAMLANMA ORANI</td><td>{{UNİT_CONSTRUCTİON_LEVEL}}</td></tr>
+  <tr><td class="l">İNŞAAT NİZAMI</td><td>{{BUİLDİNG_ORDER}}</td></tr>
+  <tr><td class="l">MALZEME KALİTESİ</td><td>{{UNİT_MATERİAL_QUALİTY}}</td></tr>
+  <tr><td class="l">ISINMA ŞEKLİ</td><td>{{UNİT_HEATİNG_TYPE}}</td></tr>
+  <tr><td class="l">YAPIM YILI</td><td>{{BUİLDİNG_CONSTRUCTİON_YEAR}}</td></tr>
+  <tr><td class="l">BİNA KAT SAYISI</td><td>{{TOTAL_FLOORS}}</td></tr>
+  <tr><td class="l">TOPLAM B. BÖLÜM SAYISI</td><td>{{TOTAL_UNİTS}}</td></tr>
+  <tr><td class="l">YAPI SINIFI</td><td>{{BUİLDİNG_CLASS}}</td></tr>
+  <tr><td class="l">OTOPARK</td><td>{{CARPARK}}</td></tr>
+  <tr><td class="l">ASANSÖR</td><td>{{ELEVATOR}}</td></tr>
+  <tr><td class="l">SOSYAL TESİSLER</td><td>{{SOCİAL_FACİLİTİES}}</td></tr>
+  <tr><td class="l">SİTE / APARTMAN ADI</td><td>{{ADDRESS_SİTE_NAME}}</td></tr>
+  <tr><td class="l">BULUNDUĞU KAT</td><td>{{TİTLE_FLOOR}}</td></tr>
+  <tr><td class="l">BİNA DIŞ KAPI NO</td><td>{{OUTER_DOOR}}</td></tr>
+  <tr><td class="l">İÇ KAPI NO</td><td>{{UNİT_NO}}</td></tr>
+  <tr><td class="l">İÇ HACİMLER</td><td>{{KAT_BAZLI_İÇ_HACİMLER}}</td></tr>
+  <tr><td class="l">ENERJİ SINIFI</td><td>{{EKB_ENERGY_CLASS}}</td></tr>
+  <tr><td class="l">YASAL DURUM PİYASA DEĞERİ</td><td>{{LEGAL_VALUE}}</td></tr>
+  <tr><td class="l">MEVCUT DURUM PİYASA DEĞERİ</td><td>{{CURRENT_VALUE}}</td></tr>
+  <tr><td class="l">AYLIK MEVCUT KİRA BEDELİ</td><td>{{CURRENT_RENT}}</td></tr>
+  <tr><td class="l">YASAL KULLANIM ALANI</td><td>{{LEGAL_AREA}}</td></tr>
+  <tr><td class="l">MEVCUT KULLANIM ALANI</td><td>{{CURRENT_AREA}}</td></tr>
+  <tr><td class="l">EKSPER KANAATİ</td><td>{{SALEABİLİTY_NOTE}}</td></tr>
+  <tr><td class="l">SATIŞ KABİLİYETİ AÇIKLAMA</td><td>{{SALEABİLİTY_NOTE}}</td></tr>
+</table>
+
+<h2>GABİM VERİ SETİ</h2>
+<table class="meta">
+  <tr><td class="l">TAPU MAHALLE / KÖY</td><td>{{TİTLE_NEİGHBORHOOD}}</td></tr>
+  <tr><td class="l">İDARİ MAHALLE / KÖY</td><td>{{NEİGHBORHOOD}}</td></tr>
+  <tr><td class="l">SOKAK / CADDE</td><td>{{STREET}}</td></tr>
+  <tr><td class="l">TAPU TARİHİ</td><td>{{TAPU_TARİHİ}}</td></tr>
+  <tr><td class="l">HESAPLANAN EMSAL</td><td>{{CALCULATED_EMSAL}}</td></tr>
+  <tr><td class="l">HİSSELİ Mİ</td><td>{{HİSSELİ_Mİ}}</td></tr>
+  <tr><td class="l">DEPREM DERECESİ</td><td>{{EARTHQUAKE_ZONE}}</td></tr>
+  <tr><td class="l">HALİHAZIR KULLANIM DURUMU</td><td>{{UNİT_USAGE_STATUS}}</td></tr>
+  <tr><td class="l">İMAR PLAN ÖLÇEĞİ</td><td>{{PLAN_SCALE}}</td></tr>
+  <tr><td class="l">KENTSEL DÖNÜŞÜM BÖLGESİNDE Mİ</td><td>{{URBAN_TRANSFORMATİON_AREA}}</td></tr>
+  <tr><td class="l">YAPI KULLANIM İZİN BELGESİ VAR MI</td><td>{{İSKAN_VAR_MI}}</td></tr>
+  <tr><td class="l">DEPREME DAYANIKLILIK</td><td>HASARSIZ</td></tr>
+  <tr><td class="l">KONUT TÜRÜ</td><td>{{TİTLE_QUALİTY}}</td></tr>
+  <tr><td class="l">İLK KEZ Mİ SATIŞA KONU EDİLİYOR</td><td>EVET / HAYIR</td></tr>
+  <tr><td class="l">ISINMA SİSTEMİ</td><td>{{UNİT_HEATİNG_TYPE}}</td></tr>
+  <tr><td class="l">YASAL KİRA M2 BİRİM DEĞERİ</td><td>{{LEGAL_RENT_UNİT}}</td></tr>
+  <tr><td class="l">ARSA M2 BİRİM DEĞERİ</td><td>{{LAND_UNİT_VALUE}}</td></tr>
+  <tr><td class="l">LEJANT</td><td>{{LEGEND}}</td></tr>
+  <tr><td class="l">TAKS</td><td>{{TAKS}}</td></tr>
+  <tr><td class="l">KAKS</td><td>{{KAKS}}</td></tr>
+  <tr><td class="l">HMAX</td><td>{{HMAX}}</td></tr>
+</table>
+
+<h2>ÇALIŞMA KAĞIDI</h2>
+<table class="meta">
+  <tr><td class="l">PLAN ADI</td><td>{{PLAN_NAME}}</td></tr>
+  <tr><td class="l">İMAR LEJANDI</td><td>{{LEGEND}}</td></tr>
+  <tr><td class="l">PLAN ÖLÇEĞİ</td><td>{{PLAN_SCALE}}</td></tr>
+  <tr><td class="l">PLAN ONAY TARİHİ</td><td>{{PLAN_DATE}}</td></tr>
+  <tr><td class="l">TAKS</td><td>{{TAKS}}</td></tr>
+  <tr><td class="l">KAKS</td><td>{{KAKS}}</td></tr>
+  <tr><td class="l">HMAX</td><td>{{HMAX}}</td></tr>
+  <tr><td class="l">ÖN/YAN BAHÇE</td><td>{{FRONT_GARDEN}} / {{SİDE_GARDEN}}</td></tr>
+</table>
+{{İNCELENEN_BELGELER_TABLO}}
+
+</body>
+</html>

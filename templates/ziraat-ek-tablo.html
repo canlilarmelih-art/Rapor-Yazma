@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+<meta charset="utf-8">
+<title>Ziraat Bankası Ek Tablo</title>
+<!--
+  ZİRAAT BANKASI EK TABLO ŞABLONU (eski ZIRAAT_EK_TABLO_TEMPLATE.xlsx karşılığı)
+  {{PLACEHOLDER}} işaretleri dışa aktarmada programdaki verilerle doldurulur.
+  Tüm placeholder adları için templates/PLACEHOLDER-REHBERI.md dosyasına bakın.
+  Birden fazla gayrimenkul olan raporlarda satırları çoğaltıp elle doldurun.
+-->
+<style>
+  @page { size: 841.95pt 595.35pt; mso-page-orientation: landscape; margin: 30pt 28pt; }
+  body { font-family: Arial, sans-serif; font-size: 9pt; color: #1f2a32; background: #ffffff; }
+  h1 { font-size: 14pt; margin: 0 0 10pt; color: #12202a; font-weight: 900; }
+  table { border-collapse: collapse; width: 100%; border: 1pt solid #d9dfdc; }
+  th, td { border: 1pt solid #d9dfdc; padding: 4pt 5pt; vertical-align: top; text-align: left; }
+  th { background: #eaf0fa; font-weight: 900; }
+  .toplam td { font-weight: 900; background: #eef6ff; }
+</style>
+</head>
+<body>
+
+<h1>ZİRAAT BANKASI — KONUT / İŞYERLERİ DEĞER TABLOSU</h1>
+
+<table>
+  <tr>
+    <th>SIRA NO</th>
+    <th>GAYRİMENKUL ADI</th>
+    <th>YAPI RUHSATI / YKİB / YAPI KAYIT BELGESİ V.B. YASAL EVRAK TARİH/SAYI</th>
+    <th>YASAL ALAN (M²)</th>
+    <th>MEVCUT ALAN (M²)</th>
+    <th>YASAL BİRİM DEĞER (TL/M²)</th>
+    <th>MEVCUT BİRİM DEĞER (TL/M²)</th>
+    <th>YASAL DEĞER (TL)</th>
+    <th>MEVCUT DEĞER (TL)</th>
+  </tr>
+  <tr>
+    <td>1</td>
+    <td>{{TİTLE_QUALİTY}}</td>
+    <td>{{ZRT_BELGE_TÜRÜ}} - {{ZRT_BELGE_TARİHİ}} - {{ZRT_BELGE_NO}}</td>
+    <td>{{LEGAL_AREA}}</td>
+    <td>{{CURRENT_AREA}}</td>
+    <td>Sistemden BKNZ.</td>
+    <td>Sistemden BKNZ.</td>
+    <td>{{LEGAL_VALUE}}</td>
+    <td>{{CURRENT_VALUE}}</td>
+  </tr>
+  <tr class="toplam">
+    <td colspan="7">GENEL TOPLAM</td>
+    <td>{{LEGAL_VALUE}}</td>
+    <td>{{CURRENT_VALUE}}</td>
+  </tr>
+</table>
+
+</body>
+</html>

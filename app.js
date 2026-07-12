@@ -5,7 +5,7 @@ const imarLegendOptions = [
   "Ticaret",
   "Konut + Ticaret",
   "Konut Dışı Kentsel Çalışma",
-  "Özel Proje Alanı",
+  "Özel Proje",
   "Merkezi İş",
   "Ofis ve İş Merkezi",
   "Küçük Sanayi",
@@ -26,7 +26,7 @@ const imarLegendOptions = [
   "Doğal Sit",
   "Kentsel Sit",
   "Tarım",
-  "Köy Yerleşik Alanı",
+  "Köy Yerleşik",
 ];
 const imarOrderOptions = ["", "Ayrık", "Bitişik", "Blok", "İkiz", "Kütle", "Serbest"];
 const imarFloorCountOptions = ["", "Serbest", ...Array.from({ length: 40 }, (_, index) => String(index + 1))];
@@ -59,6 +59,18 @@ const caseBankOptions = [
   "Vakıf Katılım Bankası A.Ş.",
   "Yapı ve Kredi Bankası A.Ş.",
   "T.C. Ziraat Bankası A.Ş.",
+];
+
+const projectTypeOptions = [
+  "",
+  "Onaylı Mimari Projesi",
+  "Kat İrtifakı Projesi",
+  "Tadilat Projesi",
+  "Statik Projesi",
+  "Restorasyon Projesi",
+  "Restitüsyon Projesi",
+  "Rölöve Projesi",
+  "Avan Projesi",
 ];
 
 const sections = [
@@ -142,15 +154,15 @@ const sections = [
       },
       {
         id: "address",
-        title: "Adres Kodu PDF / Görsel",
-        hint: "PDF metni veya OCR ile UAVT ve adres alanlarını ön dolduracak.",
-        accept: ".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/*",
+        title: "Adres Kodu PDF",
+        hint: "PDF metin katmanından UAVT ve adres alanlarını ön dolduracak.",
+        accept: ".pdf,application/pdf",
       },
       {
         id: "ekb",
-        title: "EKB PDF / Görsel",
+        title: "EKB PDF",
         hint: "Enerji kimlik belge no, tarihler ve enerji/emisyon sınıflarını okuyacak.",
-        accept: ".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/*",
+        accept: ".pdf,application/pdf",
       },
       {
         id: "kml",
@@ -163,6 +175,12 @@ const sections = [
         title: "E-İmar PDF / Görsel",
         hint: "Belediye e-imar çıktısından plan ve yapılaşma koşullarını otomatik okur.",
         accept: ".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/*",
+      },
+      {
+        id: "jsonDraft",
+        title: "JSON Taslak",
+        hint: "Daha önce farklı kaydedilen JSON dosyasını yükleyerek tüm rapor verilerini geri getirir.",
+        accept: ".json,application/json",
       },
     ],
   },
@@ -288,6 +306,20 @@ const sections = [
         options: regionUsePurposeOptions,
       },
       {
+        key: "earthquakeZone",
+        label: "Deprem derecesi",
+        type: "select",
+        options: [
+          "",
+          "1. Derece - Çok Yüksek",
+          "2. Derece - Yüksek",
+          "3. Derece - Orta",
+          "4. Derece - Düşük",
+          "5. Derece - Çok Düşük",
+        ],
+        defaultValue: "",
+      },
+      {
         key: "planningPrincipleHarmony",
         label: "Plancılık ilkeleri ile uyumu",
         type: "select",
@@ -364,6 +396,7 @@ const sections = [
       { key: "registryVolume", label: "Cilt", type: "text" },
       { key: "registryPage", label: "Sayfa", type: "text" },
       { key: "mainPropertyQuality", label: "Ana taşınmaz niteliği", type: "text", wide: true },
+      { key: "titleAttachment", label: "Eklenti", type: "text", wide: true },
     ],
     table: {
       title: "Malikler",
@@ -444,13 +477,13 @@ const sections = [
       { key: "projectDifference", label: "Tapu Projesi ve Belediye Projesi Arasında Fark Var mı?", type: "select", options: ["", "Evet", "Hayır"] },
       { key: "projectDate", label: "Proje tarihi", type: "date" },
       { key: "projectNo", label: "Proje no", type: "text" },
-      { key: "projectType", label: "Proje türü", type: "select", options: ["", "Kat İrtifakı Projesi", "Tadilat Projesi", "Statik Projesi", "Restorasyon Projesi", "Restitüsyon Projesi", "Rölöve Projesi", "Avan Projesi"] },
+      { key: "projectType", label: "Proje türü", type: "select", options: projectTypeOptions },
       { key: "titleProjectDate", label: "Tapu Proje Tarihi", type: "date" },
       { key: "titleProjectNo", label: "Tapu Proje No", type: "text" },
-      { key: "titleProjectType", label: "Tapu Proje Türü", type: "select", options: ["", "Kat İrtifakı Projesi", "Tadilat Projesi", "Statik Projesi", "Restorasyon Projesi", "Restitüsyon Projesi", "Rölöve Projesi", "Avan Projesi"] },
+      { key: "titleProjectType", label: "Tapu Proje Türü", type: "select", options: projectTypeOptions },
       { key: "municipalityProjectDate", label: "Belediye Proje Tarihi", type: "date" },
       { key: "municipalityProjectNo", label: "Belediye Proje No", type: "text" },
-      { key: "municipalityProjectType", label: "Belediye Proje Türü", type: "select", options: ["", "Kat İrtifakı Projesi", "Tadilat Projesi", "Statik Projesi", "Restorasyon Projesi", "Restitüsyon Projesi", "Rölöve Projesi", "Avan Projesi"] },
+      { key: "municipalityProjectType", label: "Belediye Proje Türü", type: "select", options: projectTypeOptions },
       { key: "projectConformity", label: "Projeye uygunluk", type: "textarea", critical: true },
       { key: "reviewedDocumentsDescription", label: "İncelenen Belgeler Açıklaması", type: "textarea", wide: true },
       { key: "hasEkb", label: "Enerji Kimlik Belgesi", type: "select", options: ["", "Evet", "Hayır"], wide: true },
@@ -460,12 +493,6 @@ const sections = [
       {
         key: "ekbEnergyClass",
         label: "Enerji performans sınıfı",
-        type: "select",
-        options: ["", "A", "B", "C", "D", "E", "F", "G"],
-      },
-      {
-        key: "ekbEmissionClass",
-        label: "Sera gazı emisyon sınıfı",
         type: "select",
         options: ["", "A", "B", "C", "D", "E", "F", "G"],
       },
@@ -490,6 +517,7 @@ const sections = [
       { key: "landBoundaryElement", label: "Sınırları Belirleyici Unsur Var mı?", type: "select", options: ["", "Evet", "Hayır"] },
       { key: "landAgriculturalProduct", label: "Parsel üzerinde Zirai Ürün Var mı?", type: "select", options: ["", "Evet", "Hayır"] },
       { key: "landNote", label: "Arsa açıklaması", type: "textarea" },
+      { key: "landClimateEarthquakeExplanation", label: "İklim ve Deprem Bilgileri", type: "textarea", hidden: true },
     ],
   },
   {
@@ -512,36 +540,34 @@ const sections = [
     ],
   },
   {
-    id: "valuation",
-    title: "Değerleme",
-    badge: "Sonuç",
-    description:
-      "Yasal/mevcut değer, kira, risk notları, satış kabiliyeti ve değerleme açıklamaları bu bölümde hesaplanır ve kontrol edilir.",
-    fields: [
-      { key: "legalValue", label: "Yasal durum değeri", type: "number", required: true, critical: true },
-      { key: "currentValue", label: "Mevcut durum değeri", type: "number", required: true, critical: true },
-      { key: "currentRent", label: "Mevcut kira", type: "number" },
-      { key: "legalRent", label: "Yasal kira", type: "number" },
-      { key: "landUnitValue", label: "Arsa birim değeri", type: "number" },
-      { key: "saleNote", label: "Satış açıklaması", type: "textarea", critical: true },
-      { key: "riskCodes", label: "Risk kodları", type: "textarea" },
-    ],
-  },
-  {
     id: "comparables",
     title: "Emsaller",
     badge: "Piyasa",
     description:
       "Emsaller satır bazlı girilir; sistem kısa metin, uzun metin ve banka tablosu çıktılarını buradan üretir.",
     fields: [
-      { key: "marketSummary", label: "Piyasa özeti", type: "textarea" },
-      { key: "adjustmentNote", label: "Düzeltme / şerefiye notu", type: "textarea" },
+      { key: "comparableMarketAnalysisText", label: "Piyasa Analizi ve Emsal Değerlendirmesi", type: "textarea", hidden: true },
     ],
     table: {
       title: "Emsal kayıtları",
       columns: ["Kaynak", "Konum", "Alan", "Fiyat", "Düzeltme"],
       rows: 7,
     },
+  },
+  {
+    id: "valuation",
+    title: "Değerleme",
+    badge: "Sonuç",
+    description:
+      "Yasal/mevcut değer, kira, risk notları, satış kabiliyeti ve değerleme açıklamaları bu bölümde hesaplanır ve kontrol edilir.",
+    fields: [
+      { key: "legalValue", label: "Yasal Durum Değeri", type: "number", required: true, critical: true, hidden: true },
+      { key: "currentValue", label: "Mevcut Durum Değeri", type: "number", required: true, critical: true, hidden: true },
+      { key: "currentRent", label: "Mevcut Kira Değeri", type: "number", hidden: true },
+      { key: "legalRent", label: "Yasal Kira Değeri", type: "number", hidden: true },
+      { key: "landUnitValue", label: "Arsa M2 Birim Değeri", type: "number", hidden: true },
+      { key: "saleabilityNote", label: "Satış Kabiliyeti Açıklaması", type: "textarea", hidden: true },
+    ],
   },
   {
     id: "output",
@@ -570,14 +596,73 @@ const sections = [
     description:
       "Rapor genelinde seçilen koşullara göre kullanılacak ek açıklama metinleri burada toplanır. Hisseli mülkiyet, imar, takyidat, belge ve benzeri özel durum açıklamaları bu bölümden yönetilir.",
     fields: [
-      { key: "shareExplanation", label: "Hisse Açıklaması", type: "textarea", wide: true },
-      { key: "encumbranceExplanation", label: "Takyidat Açıklaması", type: "textarea", wide: true },
-      { key: "planningExplanation", label: "İmar Açıklaması", type: "textarea", wide: true },
-      { key: "documentExplanation", label: "Belge / Proje Açıklaması", type: "textarea", wide: true },
-      { key: "generalExplanation", label: "Genel Açıklama", type: "textarea", wide: true },
+      { key: "shareExplanation", label: "Hisse Açıklaması", type: "textarea", wide: true, hidden: true },
+      {
+        key: "ekbEmissionClass",
+        label: "Sera Gazı Emisyon Sınıfı",
+        type: "select",
+        options: ["", "A", "B", "C", "D", "E", "F", "G"],
+      },
+      { key: "ekbExplanation", label: "EKB Açıklaması", type: "textarea", wide: true },
+      { key: "penaltyDecisionExplanation", label: "Cezai Karar Açıklaması", type: "textarea", wide: true },
+      { key: "staticSuitabilityExplanation", label: "Statik Uygunluk Açıklaması", type: "textarea", wide: true },
+      { key: "buildingInspectionExplanation", label: "Yapı Denetim Açıklaması", type: "textarea", wide: true, readOnly: true },
+      { key: "buildingCompletionDate", label: "Yapı Bitiş Tarihi", type: "text", readOnly: true },
+      { key: "buildingConstructionYear", label: "Yapım Yılı", type: "text", readOnly: true },
+      { key: "buildingAge", label: "Yapı Yaşı", type: "text", readOnly: true },
+      { key: "buildingCompletionExplanation", label: "Yapı Bitiş Tarihi Açıklaması", type: "textarea", wide: true, readOnly: true },
+      { key: "buildingDepreciationType", label: "Yıpranma İnşaat Nevi", type: "text", readOnly: true },
+      { key: "buildingDepreciationRate", label: "Yapı Yıpranma Oranı", type: "text", readOnly: true },
+      { key: "insuranceConstructionClass", label: "Sigortaya Esas Yapı Sınıfı", type: "text", readOnly: true },
+      { key: "insuranceUnitCost", label: "Yapı Yaklaşık Birim Maliyeti", type: "text", readOnly: true },
+      { key: "insuranceConstructionCostExplanation", label: "Sigortaya Esas Değer Açıklaması", type: "textarea", wide: true, readOnly: true },
     ],
   },
+  {
+    id: "halkbankRisk",
+    title: "Halkbank Risk Kodları",
+    badge: "Risk",
+    description:
+      "Raporda girilen değerler ve takyidat kayıtlarına göre Halkbank risk kodları otomatik seçilir; kullanıcı gerekirse kodları pasife alır veya manuel kod ekler.",
+    fields: [
+      { key: "halkbankRiskSelectedCodes", label: "Seçilen Halkbank Risk Kodları", type: "text", hidden: true },
+      { key: "halkbankRiskReportText", label: "Halkbank Risk Kodları Rapor Metni", type: "textarea", hidden: true },
+    ],
+  },
+  {
+    id: "valueFactors",
+    title: "Değeri Etkileyen Faktörler",
+    badge: "Analiz",
+    description:
+      "Sistem alanlarından otomatik gelen olumlu ve olumsuz değer etkenleri bu bölümde listelenir; kullanıcı gerekirse faktörleri pasife alır veya manuel ekleme yapar.",
+    fields: [
+      { key: "valueFactorsPositiveText", label: "Olumlu Özellikler", type: "textarea", hidden: true },
+      { key: "valueFactorsNegativeText", label: "Olumsuz Özellikler", type: "textarea", hidden: true },
+      { key: "valueFactorsReportText", label: "Değeri Etkileyen Faktörler", type: "textarea", hidden: true },
+    ],
+  },
+  {
+    id: "gabimData",
+    title: "Gabim Veri Seti",
+    badge: "Veri",
+    description:
+      "GABİM veri seti formatında, sistemdeki tapu, yapı, bağımsız bölüm, değerleme ve imar bilgilerinden otomatik derlenen kontrol ekranıdır.",
+    fields: [],
+  },
 ];
+
+// Tapu ve Mülkiyet bölümündeki metin alanları büyük harf saklanır (form görünümü
+// + kopyala/yapıştır büyük harf gelsin). Anlatı cümleleri bu alanları kullanırken
+// normalizeReportTitleText ile yeniden proper-case yaptığından metinler bozulmaz.
+const titleTextUppercaseKeys = new Set(
+  (sections.find((section) => section.id === "title")?.fields || [])
+    .filter((field) => !field.type || field.type === "text" || field.type === "textarea")
+    .map((field) => field.key),
+);
+
+function toTitleFieldUppercase(value) {
+  return String(value ?? "").toLocaleUpperCase("tr-TR");
+}
 
 const workflow = [
   "İş dosyası açıldı",
@@ -604,12 +689,14 @@ const sourceGeneratedDefaultExcludedKeys = new Set([
 ]);
 const nearbyRadiusMeters = 500;
 const nearbyExpandedRadiusMeters = 1000;
+const userNearbyRadiusMeters = 1000;
 const nearbyArteryFallbackRadiusMeters = 2000;
 const nearbySettlementFallbackRadiusMeters = 2000;
 const nearbyRequestTimeoutMs = 7000;
 const nearbyResultLimit = 45;
 const mainArteryAutoLimit = 4;
 const nearbyAutoLimit = 6;
+const nearbySettlementFallbackMinUsefulCount = 3;
 const nearbyCacheStorageKey = "rapor-yazma-programi-nearby-overpass-cache-v2";
 const nearbyCacheTtlMs = 1000 * 60 * 60 * 24 * 30;
 const nearbyCacheMaxEntries = 80;
@@ -625,8 +712,9 @@ const nearbyCategories = [
   { id: "malls", label: "Alışveriş merkezleri" },
   { id: "coast", label: "Sahil / deniz" },
 ];
-const importantNearbyCategories = new Set(["government", "historic", "parks", "junctions", "metro", "education", "health", "malls", "coast", "settlements"]);
+const importantNearbyCategories = new Set(["user", "government", "historic", "parks", "junctions", "metro", "education", "health", "malls", "coast", "settlements"]);
 const nearbyCategoryPriority = {
+  user: -1,
   arteries: 0,
   education: 1,
   metro: 2,
@@ -698,6 +786,8 @@ const mortgageCreditorBankNames = [
   "Türkiye Sınai Kalkınma Bankası A.Ş.",
   "Dünya Katılım Bankası A.Ş.",
 ];
+const encumbranceDeclarationTypeOptions = ["Beyan", "İrtifak"];
+const encumbranceAnnotationTypeOptions = ["Şerh", "Haciz", "İhtiyati Haciz", "Kamu Haczi", "İhtiyati Tedbir", "Tedbir"];
 let activeSectionId = sections[0].id;
 let state = loadState();
 normalizeAddressSourceState(state);
@@ -774,6 +864,9 @@ const syncLabel = document.querySelector("#syncLabel");
 const syncDetail = document.querySelector("#syncDetail");
 const syncDot = document.querySelector("#syncDot");
 const fieldMode = document.querySelector("#fieldMode");
+const appShell = document.querySelector("#appShell");
+const sidebarCollapseBtn = document.querySelector("#sidebarCollapseBtn");
+const sidebarOpenBtn = document.querySelector("#sidebarOpenBtn");
 
 function loadState() {
   const savedUserDefaults = loadUserDefaults();
@@ -965,6 +1058,18 @@ function applySystemDefaults(targetState) {
   }
 
   syncEkbPresenceField(targetState);
+  syncCurrentUsageNatureWithLegalNature(targetState);
+}
+
+function syncCurrentUsageNatureWithLegalNature(targetState = state) {
+  const fields = targetState?.fields;
+  if (!fields || fields.usageNatureDifference === "Evet") return false;
+
+  const nextNature = fields.legalUsageNature || "";
+  if (fields.currentUsageNature === nextNature) return false;
+
+  fields.currentUsageNature = nextNature;
+  return true;
 }
 
 function syncEkbPresenceField(targetState) {
@@ -1091,8 +1196,9 @@ function setSyncState(label, detail, mode) {
 function createNav() {
   sectionNav.innerHTML = "";
   bottomNav.innerHTML = "";
+  const visibleSections = getVisibleSections();
 
-  sections.forEach((section, index) => {
+  visibleSections.forEach((section, index) => {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "nav-button";
@@ -1106,7 +1212,7 @@ function createNav() {
     sectionNav.append(button);
   });
 
-  sections.forEach((section, index) => {
+  visibleSections.forEach((section, index) => {
     const button = document.createElement("button");
     button.type = "button";
     button.dataset.section = section.id;
@@ -1117,6 +1223,83 @@ function createNav() {
     button.addEventListener("click", () => setActiveSection(section.id));
     bottomNav.append(button);
   });
+}
+
+function normalizeOwnershipTypeForSectionVisibility(value) {
+  return foldTurkish(value || "").replace(/\s+/g, " ").trim();
+}
+
+function isLandOwnershipType(value = state.fields.ownershipType) {
+  return ["ARSA", "TARLA"].includes(normalizeOwnershipTypeForSectionVisibility(value));
+}
+
+function isTarlaOwnershipType(value = state.fields.ownershipType) {
+  return normalizeOwnershipTypeForSectionVisibility(value) === "TARLA";
+}
+
+function isArsaOwnershipType(value = state.fields.ownershipType) {
+  return normalizeOwnershipTypeForSectionVisibility(value) === "ARSA";
+}
+
+function clearLandOwnershipDependentData(value) {
+  if (!isLandOwnershipType(value)) return;
+
+  const exactKeys = new Set([
+    "buildingFloorCounts", "carpark", "elevator", "exteriorCladding", "stairLanding", "interiorWalls",
+    "buildingEntranceDoor", "buildingFootprintReference", "buildingEntranceLevel", "buildingEntranceDirection",
+    "buildingSocialFacilities", "legalArea", "currentArea", "unitFloor", "unitAreaReductionRate",
+    "unitLegalTerrace", "unitCurrentTerrace", "unitTerraceReductionRate", "interiorFeatures", "landNote",
+    "legalValueArea", "currentValueArea", "legalRentArea", "currentRentArea", "legalValue", "currentValue",
+    "legalRent", "currentRent", "legalValueUnit", "currentValueUnit", "legalRentUnit", "currentRentUnit",
+    "legalIncompleteValueArea", "legalIncompleteValueUnit", "legalIncompleteValue", "currentIncompleteValueArea",
+    "currentIncompleteValueUnit", "currentIncompleteValue", "legalBuildingValueArea", "currentBuildingValueArea",
+    "legalBuildingUnitCost", "currentBuildingUnitCost", "legalBuildingValue", "currentBuildingValue",
+    "legalBuildingConstructionLevel", "currentBuildingConstructionLevel", "legalBuildingDepreciationRate",
+    "currentBuildingDepreciationRate", "legalBuildingDepreciationRateAuto", "currentBuildingDepreciationRateAuto",
+    "legalBuildingUnitCostAuto", "currentBuildingUnitCostAuto", "insuranceValueArea", "insuranceUnitCost",
+    "insuranceValue", "legalPremiumLandValue", "currentPremiumLandValue", "legalPremiumValue", "currentPremiumValue",
+    "legalPremiumRate", "currentPremiumRate", "legalCapitalizationRate", "currentCapitalizationRate",
+    "legalAmortizationMonths", "currentAmortizationMonths", "landValue",
+  ]);
+  const prefixList = ["building", "unit", "legalBuilding", "currentBuilding", "insurance", "incompleteConstruction"];
+  Object.keys(state.fields).forEach((key) => {
+    if (exactKeys.has(key) || prefixList.some((prefix) => key.startsWith(prefix))) state.fields[key] = "";
+  });
+  state.fields.buildingFloorCounts = {};
+  state.tables.buildingFloors = [];
+  state.tables.unitFloors = [];
+}
+
+function shouldHideSection(sectionId) {
+  const ownershipType = normalizeOwnershipTypeForSectionVisibility(state.fields.ownershipType);
+  if (["DIKEY KAT IRTIFAKI", "YATAY KAT IRTIFAKI"].includes(ownershipType)) {
+    return sectionId === "land";
+  }
+  if (["ARSA", "TARLA"].includes(ownershipType)) {
+    return sectionId === "building" || sectionId === "unit";
+  }
+  return false;
+}
+
+function getVisibleSections() {
+  return sections.filter((section) => !shouldHideSection(section.id));
+}
+
+function ensureActiveSectionVisible() {
+  if (getVisibleSections().some((section) => section.id === activeSectionId)) return;
+  activeSectionId = getVisibleSections()[0]?.id || sections[0]?.id || activeSectionId;
+}
+
+function shouldIncludeReportCategory(category) {
+  const normalizedCategory = foldTurkish(category || "");
+  const section = sections.find((item) => foldTurkish(item.title) === normalizedCategory);
+  return section ? !shouldHideSection(section.id) : true;
+}
+
+function shouldIncludeReportTableKey(key) {
+  if (key === "buildingFloors") return !shouldHideSection("building");
+  if (key === "unitFloors") return !shouldHideSection("unit");
+  return true;
 }
 
 function formatMobileNavTitle(title) {
@@ -1137,8 +1320,13 @@ function formatMobileNavTitle(title) {
   return formatUiHeading(shortcuts.get(title) || title.split(" ")[0]);
 }
 
+// Bölüm geçiş animasyonu yalnızca bölüm değişiminde oynatılır; alan
+// güncellemelerinin tetiklediği re-render'larda kart titremez.
+let pendingSectionEnterAnimation = true;
+
 function setActiveSection(id) {
-  activeSectionId = id;
+  activeSectionId = shouldHideSection(id) ? getVisibleSections()[0]?.id || sections[0]?.id || id : id;
+  pendingSectionEnterAnimation = true;
   render();
   if (window.matchMedia("(max-width: 820px)").matches) {
     requestAnimationFrame(() => {
@@ -1156,7 +1344,9 @@ function setActiveSection(id) {
 }
 
 function render() {
-  document.body.classList.toggle("field-mode", fieldMode.checked);
+  ensureActiveSectionVisible();
+  document.body.classList.toggle("field-mode", Boolean(fieldMode?.checked));
+  createNav();
   renderNavState();
   renderSection();
   renderWorkflow();
@@ -1173,20 +1363,15 @@ function renderNavState() {
 }
 
 function renderSection() {
-  const section = sections.find((item) => item.id === activeSectionId);
+  // Açık kalmış lehdar combobox panellerini temizle (yeniden render yetim bırakmasın).
+  document.querySelectorAll(".creditor-combo-panel").forEach((node) => node.remove());
+  ensureActiveSectionVisible();
+  const section = getVisibleSections().find((item) => item.id === activeSectionId) || getVisibleSections()[0] || sections[0];
+  if (section.id === "land") refreshLandMinimumParcelAssessment();
   const card = document.createElement("article");
   card.className = `section-card section-${section.id}`;
 
-  card.innerHTML = `
-    <header class="section-head">
-      <div>
-        <h3>${formatUiHeading(section.title)}</h3>
-        <p>${section.description}</p>
-      </div>
-      <span class="section-pill">${section.badge}</span>
-    </header>
-    <div class="section-body"></div>
-  `;
+  card.innerHTML = `<div class="section-body"></div>`;
 
   const body = card.querySelector(".section-body");
 
@@ -1203,11 +1388,63 @@ function renderSection() {
   }
 
   if (section.id === "explanations") {
+    refreshLandMinimumParcelAssessment();
     refreshShareExplanationFromCurrentFields("titleOwnershipKind");
+    refreshPenaltyDecisionExplanationFromCurrentFields("penaltyDecision");
+    refreshStaticSuitabilityExplanationFromCurrentFields("staticSuitability");
+    refreshBuildingInspectionExplanationFromCurrentFields();
+    refreshEkbExplanationFromCurrentFields("hasEkb");
+    refreshBuildingCompletionFromCurrentFields();
+    refreshInsuranceConstructionCostFromCurrentFields("buildingClass");
+    refreshBuildingDepreciationFromCurrentFields();
+    refreshValuationMethodsExplanationFromCurrentFields();
+  }
+
+  if (section.id === "documents" && section.table) {
+    body.append(createTable(section));
   }
 
   if ((section.fields || []).length && section.id !== "unit") {
     body.append(createForm(section));
+  }
+
+  if (section.id === "land") {
+    const climatePanel = createLandClimateEarthquakePanel();
+    if (climatePanel) body.append(climatePanel);
+  }
+
+  if (section.id === "explanations") {
+    body.append(createOpenAddressPanel());
+    body.append(createTakyidatTablePanel());
+    body.append(createMaliklerTablePanel());
+    body.append(createInsuranceConstructionCostPanel());
+    body.append(createBuildingDepreciationRatePanel());
+    body.append(createValuationSummaryPanel());
+    body.append(createExplanationsPropertyTaxDeclarationPanel());
+    const incompleteConstructionValuePanel = createIncompleteConstructionValuePanel();
+    if (incompleteConstructionValuePanel) body.append(incompleteConstructionValuePanel);
+    body.append(createExplanationsFloorValuationTablePanel());
+    body.append(createValuationMethodsSchemePanel());
+  }
+
+  if (section.id === "halkbankRisk") {
+    body.append(createHalkbankRiskCodesPanel());
+  }
+
+  if (section.id === "valueFactors") {
+    body.append(createValueFactorsPanel());
+  }
+
+  if (section.id === "gabimData") {
+    body.append(createGabimDataSetPanel());
+  }
+
+  if (section.id === "valuation") {
+    body.append(createValuationEditor());
+  }
+
+  if (section.id === "output") {
+    body.append(createOutputExportPanel());
   }
 
   if (section.uploads && section.id === "case") {
@@ -1224,7 +1461,6 @@ function renderSection() {
   }
 
   if (section.id === "documents" && shouldShowArchitecturalProjectFields()) {
-    body.append(createEkbSourceSummary());
     body.append(createDocumentDecisionControls());
   }
 
@@ -1245,10 +1481,14 @@ function renderSection() {
     body.append(createEncumbranceReportTables());
   } else if (section.id === "comparables") {
     body.append(createComparablesVerticalEditor(section));
-  } else if (section.table) {
+  } else if (section.table && section.id !== "documents") {
     body.append(createTable(section));
   }
 
+  if (pendingSectionEnterAnimation) {
+    card.classList.add("section-enter");
+    pendingSectionEnterAnimation = false;
+  }
   sectionStage.replaceChildren(card);
 }
 
@@ -1371,6 +1611,13 @@ function createForm(section) {
     if (!state.fields[field.key] && effectiveDefaultValue && !isFieldKeyOwnedBySource(field.key)) {
       state.fields[field.key] = effectiveDefaultValue;
     }
+    if (titleTextUppercaseKeys.has(field.key) && value) {
+      const upperValue = toTitleFieldUppercase(value);
+      if (upperValue !== value) {
+        value = upperValue;
+        state.fields[field.key] = upperValue;
+      }
+    }
     if (
       field.key === "takbisSummary"
       && (/Bila üzerinden alınan TA(KBİS|KBIS)/i.test(value) || /Beyanlar - Hak ve Mükellefiyetler Bölümü/i.test(value) || /\b(?:T|A)\.a\./.test(value))
@@ -1381,6 +1628,10 @@ function createForm(section) {
     if (field.key === "environmentDescription" && (!value || /\{\{[^}]+\}\}/.test(value))) {
       state.fields.environmentDescription = buildEnvironmentalDescription();
       value = state.fields.environmentDescription;
+    }
+    if (field.key === "landNote" && !value) {
+      state.fields.landNote = buildLandDescription();
+      value = state.fields.landNote;
     }
     let control;
 
@@ -1412,6 +1663,10 @@ function createForm(section) {
         form.append(createLookupDatalist(listId, lookupValues));
       }
     }
+    if (isFieldReadOnly(field)) {
+      control.readOnly = true;
+      control.classList.add("is-readonly");
+    }
 
     control.dataset.field = field.key;
 
@@ -1420,6 +1675,10 @@ function createForm(section) {
     control.addEventListener("input", (event) => {
       clearFieldSourceOwnership(field.key);
       state.fields[field.key] = event.target.value;
+      if (["legalUsageNature", "usageNatureDifference"].includes(field.key)) {
+        if (syncCurrentUsageNatureWithLegalNature()) clearFieldSourceOwnership("currentUsageNature");
+      }
+      if (section.id === "case" && field.key === "ownershipType") clearLandOwnershipDependentData(event.target.value);
       if (field.key === "caseName") caseTitle.textContent = event.target.value || "Yeni Ekspertiz Raporu";
       refreshPlanningNoteFromCurrentFields(field.key);
       refreshEnvironmentDescriptionFromCurrentFields(field.key);
@@ -1427,9 +1686,26 @@ function createForm(section) {
       refreshEncumbranceSummaryFromCurrentFields(field.key);
       refreshMainPropertyDescriptionFromCurrentFields(field.key);
       refreshShareExplanationFromCurrentFields(field.key);
+      refreshPenaltyDecisionExplanationFromCurrentFields(field.key);
+      refreshStaticSuitabilityExplanationFromCurrentFields(field.key);
+      refreshBuildingInspectionExplanationFromCurrentFields(field.key);
+      refreshEkbExplanationFromCurrentFields(field.key);
+      refreshLandDescriptionFromCurrentFields(field.key);
+      refreshClimateEarthquakeExplanationFromCurrentFields(field.key);
+      refreshInsuranceConstructionCostFromCurrentFields(field.key);
+      refreshBuildingDepreciationFromCurrentFields(field.key);
+      if (["legalUsageNature", "currentUsageNature", "projectInstitution"].includes(field.key)) {
+        refreshValuationMethodExplanation();
+      }
+      if (["bank", "titleDistrict", "district", "municipalityInspectionDate", "appointmentDate"].includes(field.key)) {
+        refreshPropertyTaxDeclarationExplanation();
+      }
       autosave();
       renderValidation();
       updateStatus();
+      if (section.id === "case" && field.key === "ownershipType") render();
+      if (section.id === "case" && field.key === "legalUsageNature") renderSection();
+      if (section.id === "case" && ["legalUsageNature", "ownershipType"].includes(field.key) && activeSectionId === "land") renderSection();
       if (section.id === "title" && field.key === "groundType") renderSection();
       if (section.id === "address" && field.key === "environmentRegionType") {
         normalizeRegionUsePurposeForEnvironment();
@@ -1437,7 +1713,7 @@ function createForm(section) {
         renderSection();
       }
       if (section.id === "documents" && field.key === "hasEkb") renderSection();
-      if (section.id === "documents" && field.key === "projectDifference") renderSection();
+      if (section.id === "documents" && ["projectInstitution", "projectDifference"].includes(field.key)) renderSection();
       if (section.id === "documents" && field.key === "projectRegisteredInCadastre") renderSection();
       if (section.id === "address" && ["city", "district", "neighborhood"].includes(field.key)) {
         applyPostalCodeFromNeighborhoodDebounced();
@@ -1448,6 +1724,10 @@ function createForm(section) {
       if (formattedValue === control.value) return;
       control.value = formattedValue;
       state.fields[field.key] = formattedValue;
+      if (["legalUsageNature", "usageNatureDifference"].includes(field.key)) {
+        if (syncCurrentUsageNatureWithLegalNature()) clearFieldSourceOwnership("currentUsageNature");
+      }
+      if (section.id === "case" && field.key === "ownershipType") clearLandOwnershipDependentData(formattedValue);
       if (field.key === "caseName") caseTitle.textContent = formattedValue || "Yeni Ekspertiz Raporu";
       refreshPlanningNoteFromCurrentFields(field.key);
       refreshEnvironmentDescriptionFromCurrentFields(field.key);
@@ -1455,12 +1735,33 @@ function createForm(section) {
       refreshEncumbranceSummaryFromCurrentFields(field.key);
       refreshMainPropertyDescriptionFromCurrentFields(field.key);
       refreshShareExplanationFromCurrentFields(field.key);
+      refreshPenaltyDecisionExplanationFromCurrentFields(field.key);
+      refreshStaticSuitabilityExplanationFromCurrentFields(field.key);
+      refreshBuildingInspectionExplanationFromCurrentFields(field.key);
+      refreshEkbExplanationFromCurrentFields(field.key);
+      refreshLandDescriptionFromCurrentFields(field.key);
+      refreshClimateEarthquakeExplanationFromCurrentFields(field.key);
+      refreshInsuranceConstructionCostFromCurrentFields(field.key);
+      refreshBuildingDepreciationFromCurrentFields(field.key);
+      if (["legalUsageNature", "currentUsageNature", "projectInstitution"].includes(field.key)) {
+        refreshValuationMethodExplanation();
+      }
+      if (["bank", "titleDistrict", "district", "municipalityInspectionDate", "appointmentDate"].includes(field.key)) {
+        refreshPropertyTaxDeclarationExplanation();
+      }
       autosave();
       renderValidation();
       updateStatus();
+      if (section.id === "case" && field.key === "ownershipType") render();
+      if (section.id === "case" && field.key === "legalUsageNature") renderSection();
+      if (section.id === "case" && ["legalUsageNature", "ownershipType"].includes(field.key) && activeSectionId === "land") renderSection();
     });
 
     label.append(createSpan(getFieldDisplayLabel(section.id, field)), control);
+    if (field.type === "textarea") {
+      label.classList.add("has-field-copy");
+      label.append(createFieldCopyButton());
+    }
     if (section.id === "planning" && field.key === "planningNote") {
       label.append(createPlanningNoteRefreshActions());
     }
@@ -1470,6 +1771,30 @@ function createForm(section) {
   });
 
   return form;
+}
+
+function createFieldCopyButton() {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "field-copy-button";
+  button.textContent = "Kopyala";
+  button.title = "Açıklama paragrafını kopyala";
+  button.addEventListener("click", async (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const control = button.closest(".field")?.querySelector("textarea, input, select");
+    const text = control ? control.value : "";
+    try {
+      await navigator.clipboard.writeText(text || "");
+      button.textContent = "Kopyalandı";
+    } catch {
+      button.textContent = "Kopyalanamadı";
+    }
+    setTimeout(() => {
+      button.textContent = "Kopyala";
+    }, 1500);
+  });
+  return button;
 }
 
 function createPlanningNoteRefreshActions() {
@@ -1488,6 +1813,2947 @@ function createPlanningNoteRefreshActions() {
   });
   actions.append(button);
   return actions;
+}
+
+const landDescriptionAutoRefreshFields = new Set([
+  "legalUsageNature",
+  "ownershipType",
+  "mainPropertyQuality",
+  "titleQuality",
+  "landArea",
+  "landShape",
+  "landTopography",
+  "landRoadFrontage",
+  "landRoadFrontageItems",
+  "landRoadType",
+  "landRoadName",
+  "landRoadDirection",
+  "landRoadFrontageLength",
+  "landAgricultureType",
+  "landIrrigationWaterSource",
+  "landIrrigationSystem",
+  "landBoundaryElement",
+  "landBoundaryElementItems",
+  "landBoundaryElementOther",
+  "landAgriculturalProduct",
+  "landAgriculturalProductItems",
+  "landAgriculturalProductType",
+  "landAgriculturalUnitCount",
+  "landAgriculturalAge",
+  "landAgriculturalYield",
+  "landAgriculturalTotalCount",
+  "city",
+  "district",
+  "titleCity",
+  "titleDistrict",
+]);
+
+function refreshLandDescriptionFromCurrentFields(changedKey = "") {
+  if (changedKey && !landDescriptionAutoRefreshFields.has(changedKey)) return;
+  refreshLandMinimumParcelAssessment();
+  const description = buildLandDescription();
+  if (!description) return;
+  state.fields.landNote = description;
+  const control = document.querySelector('[data-field="landNote"]');
+  if (control && control.value !== description) {
+    control.value = description;
+    markFieldSourceState(control, "landNote");
+  }
+}
+
+function normalizeClimateLookupValue(value) {
+  return foldTurkish(String(value || ""))
+    .replace(/[()]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function findClimateEarthquakeRecord() {
+  const rows = Array.isArray(globalThis.climateEarthquakeData) ? globalThis.climateEarthquakeData : [];
+  const city = normalizeClimateLookupValue(state.fields.city || state.fields.titleCity);
+  const district = normalizeClimateLookupValue(state.fields.district || state.fields.titleDistrict);
+  if (!city || !district) return null;
+
+  const cityRows = rows.filter((row) => normalizeClimateLookupValue(row.il) === city);
+  return cityRows.find((row) => normalizeClimateLookupValue(row.ilce) === district)
+    || cityRows.find((row) => normalizeClimateLookupValue(row.ilce).includes(district))
+    || cityRows.find((row) => district.includes(normalizeClimateLookupValue(row.ilce)));
+}
+
+function formatClimateNumber(value, maximumFractionDigits = 0) {
+  if (value === null || value === undefined || value === "") return "";
+  return new Intl.NumberFormat("tr-TR", { maximumFractionDigits }).format(Number(value));
+}
+
+function formatEarthquakeZoneForReport(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  const normalized = raw.replace(/[–—]/g, "-").replace(/\s+/g, " ").trim();
+  const match = normalized.match(/^(\d)\s*[-:]\s*(.+)$/);
+  if (match) return `${match[1]}. Derece - ${match[2].trim()}`;
+  return normalized;
+}
+
+function applyClimateEarthquakeAutoFields(record) {
+  if (!record) return;
+
+  const earthquakeZone = formatEarthquakeZoneForReport(record.depremBolgesi);
+  if (!earthquakeZone) return;
+
+  state.sourceValues.climateEarthquake = state.sourceValues.climateEarthquake || {};
+  const previousAutoValue = state.sourceValues.climateEarthquake.applied?.earthquakeZone || "";
+  const currentValue = state.fields.earthquakeZone || "";
+  const shouldReplaceLegacyDefault = currentValue === "1. Derece" && !previousAutoValue;
+  setFieldFromSource("climateEarthquake", "earthquakeZone", earthquakeZone, {
+    force: shouldReplaceLegacyDefault,
+  });
+
+  const control = document.querySelector('[data-field="earthquakeZone"]');
+  if (control && control.value !== state.fields.earthquakeZone) {
+    control.value = state.fields.earthquakeZone || "";
+  }
+  if (control) markFieldSourceState(control, "earthquakeZone");
+}
+
+function buildClimateEarthquakeExplanation() {
+  const record = findClimateEarthquakeRecord();
+  if (!record) return "";
+
+  const city = state.fields.city || state.fields.titleCity || record.il;
+  const district = state.fields.district || state.fields.titleDistrict || record.ilce;
+  const earthquakeZone = formatEarthquakeZoneForReport(
+    state.fields.earthquakeZone || record.depremBolgesi,
+  );
+  const climateSentence = [
+    `Taşınmazın konumlandığı ${city} ili, ${district} ilçesine ait iklimsel ve coğrafi veriler incelendiğinde;`,
+    record.bolge ? `bölgenin ${record.bolge} Bölgesi iklim özelliklerini taşıdığı` : "",
+    record.yagisSinifi ? `ve \"${record.yagisSinifi}\" yağış sınıfında yer aldığı görülmektedir.` : "görülmektedir.",
+    record.rakimM !== null
+      ? `Sahip olduğu yaklaşık ${formatClimateNumber(record.rakimM)} metre tahmini rakımla birlikte ilçede,`
+      : "İlçede,",
+    record.sicaklikC !== null
+      ? `yıllık ortalama sıcaklık ${formatClimateNumber(record.sicaklikC, 1)} °C,`
+      : "",
+    record.nemYuzde !== null
+      ? `yıllık ortalama nem oranı ise %${formatClimateNumber(record.nemYuzde)} olarak ölçülmektedir.`
+      : "ölçülmektedir.",
+    record.yagisMmYil !== null
+      ? `Meteorolojik verilere göre yıllık ortalama ${formatClimateNumber(record.yagisMmYil)} mm yağış alan`
+      : "Meteorolojik verilere göre yağış alan",
+    record.guneslenmeSaatYil !== null
+      ? `ve ${formatClimateNumber(record.guneslenmeSaatYil)} saatlik yıllık güneşlenme süresine sahip olan bölgede,`
+      : "bölgede,",
+    record.donGunu !== null
+      ? `yıllık ortalama donlu gün sayısı ise ${formatClimateNumber(record.donGunu)} gün olarak tespit edilmiştir.`
+      : "yıllık ortalama donlu gün sayısı tespit edilmiştir.",
+    `Öte yandan yapısal risk ve planlama kriterleri açısından önem arz eden depremsellik verilerine göre söz konusu taşınmaz, \"${earthquakeZone}\" deprem bölgesinde yer almaktadır.`,
+  ].filter(Boolean).join(" ");
+
+  return normalizeReportDescriptionText(climateSentence);
+}
+
+function refreshClimateEarthquakeExplanationFromCurrentFields(changedKey = "") {
+  if (changedKey && !["city", "district", "titleCity", "titleDistrict", "earthquakeZone"].includes(changedKey)) return;
+  const record = findClimateEarthquakeRecord();
+  applyClimateEarthquakeAutoFields(record);
+  const text = buildClimateEarthquakeExplanation();
+  state.fields.landClimateEarthquakeExplanation = text;
+  const control = document.querySelector('[data-field="landClimateEarthquakeExplanation"]');
+  if (control && control.value !== text) control.value = text;
+  const panelText = document.querySelector("[data-land-climate-earthquake-text]");
+  if (panelText) panelText.textContent = text || "İl ve ilçe seçildiğinde iklim ve deprem bilgileri burada oluşturulur.";
+}
+
+function createLandClimateEarthquakePanel() {
+  refreshClimateEarthquakeExplanationFromCurrentFields();
+  const text = state.fields.landClimateEarthquakeExplanation || "";
+  if (!text) return null;
+
+  const panel = document.createElement("div");
+  panel.className = "land-climate-earthquake-panel";
+  panel.innerHTML = `
+    <div class="land-climate-earthquake-head">
+      <h3>İklim ve Deprem Bilgileri</h3>
+      <button type="button" class="secondary-button" data-copy-climate-earthquake> Kopyala </button>
+    </div>
+    <p data-land-climate-earthquake-text>${escapeHtml(text)}</p>
+  `;
+  panel.querySelector("[data-copy-climate-earthquake]").addEventListener("click", async () => {
+    const button = panel.querySelector("[data-copy-climate-earthquake]");
+    try {
+      await navigator.clipboard.writeText(state.fields.landClimateEarthquakeExplanation || "");
+      button.textContent = "Kopyalandı";
+    } catch {
+      button.textContent = "Kopyalanamadı";
+    }
+    setTimeout(() => { button.textContent = "Kopyala"; }, 1500);
+  });
+  return panel;
+}
+
+function buildLandDescription() {
+  const sentences = [
+    buildLandIdentitySentence(),
+    buildLandGeometrySentence(),
+    buildLandRoadFrontageSentence(),
+    buildLandAgriculturalProductSentence(),
+    buildLandAgricultureSentence(),
+    buildLandBoundarySentence(),
+  ].filter(Boolean);
+  return normalizeReportDescriptionText(sentences.join(" "));
+}
+
+function buildLandIdentitySentence() {
+  const subject = buildLandParcelSubject();
+  const quality = normalizeReportTitleText(state.fields.mainPropertyQuality || state.fields.titleQuality || "Arsa") || "Arsa";
+  const area = formatLandAreaForDescription(state.fields.landArea);
+  return area
+    ? `${subject}, tapu kaydında “${quality}” vasıflı olup ${area} yüzölçümüne sahiptir.`
+    : `${subject}, tapu kaydında “${quality}” vasıflıdır.`;
+}
+
+function buildLandParcelSubject() {
+  const blockNo = normalizeReportTitleText(state.fields.blockNo || "");
+  const parcelNo = normalizeReportTitleText(state.fields.parcelNo || "");
+  if (blockNo && parcelNo) return `Ekspertize konu ${blockNo} Ada ${parcelNo} Parsel`;
+  if (parcelNo) return `Ekspertize konu ${parcelNo} Parsel`;
+  return "Ekspertize konu taşınmaz";
+}
+
+function buildLandGeometrySentence() {
+  const shape = toLowerText(state.fields.landShape || "");
+  const topography = toLowerText(state.fields.landTopography || "");
+  if (shape && topography) {
+    return `Parsel geometrik olarak ${shape} forma sahip olup, topografik açıdan ${topography} zemin yapısındadır.`;
+  }
+  if (shape) return `Parsel geometrik olarak ${shape} forma sahiptir.`;
+  if (topography) return `Parsel topografik açıdan ${topography} zemin yapısındadır.`;
+  return "";
+}
+
+function buildLandRoadFrontageSentence() {
+  const frontage = normalizeYesNoChoice(state.fields.landRoadFrontage);
+  if (frontage === "Hayır") return "Konu parselin kadastro yoluna veya imar yoluna cephesi bulunmamaktadır.";
+  if (frontage !== "Evet") return "";
+  const items = getLandRoadFrontageItems()
+    .map(formatLandRoadFrontagePhrase)
+    .filter(Boolean);
+  if (!items.length) return "";
+  return `Konu parselin ${formatTurkishList(items)} cephesi bulunmaktadır.`;
+}
+
+function formatLandRoadFrontagePhrase(item = {}) {
+  const direction = item.direction ? `${toLowerText(item.direction)} yönünde yer alan ` : "";
+  const road = formatLandRoadNameForDescription(item);
+  const length = formatLandFrontageLength(item.length);
+  if (!road && !length) return "";
+  return `${direction}${road || "kadastro/imar yoluna"}${length ? ` yaklaşık ${length}` : ""}`;
+}
+
+function formatLandRoadNameForDescription(item = {}) {
+  const roadType = toLowerText(item.roadType || "");
+  const roadName = normalizeReportTitleText(item.roadName || "");
+  if (roadName) {
+    return roadType.includes("imar") ? `${roadName} imar yoluna` : `${roadName} yoluna`;
+  }
+  if (roadType.includes("kadastro") && roadType.includes("imar")) return "kadastro ve imar yoluna";
+  if (roadType.includes("imar")) return "imar yoluna";
+  if (roadType.includes("kadastro")) return "kadastro yoluna";
+  return "";
+}
+
+function formatLandFrontageLength(value) {
+  const number = parseReportNumber(value);
+  if (!Number.isFinite(number)) return normalizeReportTitleText(value || "");
+  const formatted = number.toLocaleString("tr-TR", {
+    minimumFractionDigits: Number.isInteger(number) ? 0 : 2,
+    maximumFractionDigits: 2,
+  });
+  return `${formatted} metre`;
+}
+
+function buildLandAgriculturalProductSentence() {
+  if (shouldHideLandAgricultureControls()) return "";
+  const value = normalizeYesNoChoice(state.fields.landAgriculturalProduct);
+  if (value === "Hayır") {
+    return state.fields.landAgricultureType === "Kuru Tarım"
+      ? "Taşınmaz üzerinde hâlihazırda herhangi bir zirai ürün bulunmamakta olup, parselin kuru tarım arazisi niteliğinde olduğu değerlendirilmektedir."
+      : "Taşınmaz üzerinde hâlihazırda herhangi bir zirai ürün bulunmamaktadır.";
+  }
+  if (value !== "Evet") return "";
+  const items = getLandAgriculturalProductItems();
+  if (!items.length) return "";
+  const productSentences = items
+    .map(formatLandAgriculturalProductPhrase)
+    .filter(Boolean);
+  const yieldSentence = buildLandAgriculturalYieldSentence(items);
+  return [productSentences.join(" "), yieldSentence].filter(Boolean).join(" ");
+}
+
+function formatLandAgriculturalProductPhrase(item = {}) {
+  const totalCount = item.totalCount || calculateAgriculturalTotalCount(item.unitCount);
+  const product = normalizeReportTitleText(item.productType || "");
+  const age = normalizeReportTitleText(item.age || "");
+  const parts = [];
+  if (totalCount) parts.push(`yaklaşık ${totalCount} adet`);
+  if (age) parts.push(`${age} yaşlarında`);
+  if (product) parts.push(product);
+  return parts.length ? `Taşınmaz üzerinde ${parts.join(" ")} mevcuttur.` : "";
+}
+
+function buildLandAgriculturalYieldSentence(items = []) {
+  const firstYield = items.map((item) => item.yieldRate).find(Boolean) || state.fields.landAgriculturalYield || "";
+  if (!firstYield) return "";
+  const hasTree = items.some((item) => /ağaç|agac/i.test(foldTurkish(item.productType || "")));
+  const subject = hasTree ? "Ağaçların" : "Zirai ürünlerin";
+  if (/bakımsız|bakimsiz/i.test(foldTurkish(firstYield))) return `${subject} bakımsız oldukları gözlemlenmiştir.`;
+  if (/yüksek|yuksek|bakımlı|bakimli/i.test(foldTurkish(firstYield))) return `${subject} bakımlı oldukları gözlemlenmiştir.`;
+  if (/orta/i.test(foldTurkish(firstYield))) return `${subject} bakım durumunun orta düzeyde olduğu gözlemlenmiştir.`;
+  return "";
+}
+
+function buildLandAgricultureSentence() {
+  if (shouldHideLandAgricultureControls()) return "";
+  const type = state.fields.landAgricultureType || "";
+  if (type === "Kuru Tarım") {
+    return normalizeYesNoChoice(state.fields.landAgriculturalProduct) === "Hayır"
+      ? ""
+      : "Parselin kuru tarım arazisi niteliğinde olduğu değerlendirilmektedir.";
+  }
+  if (type !== "Sulu Tarım") return "";
+  const source = formatIrrigationWaterSourceForDescription(state.fields.landIrrigationWaterSource);
+  const system = formatIrrigationSystemForDescription(state.fields.landIrrigationSystem);
+  const sentences = [
+    source
+      ? `Taşınmazda sulu tarım yapılmakta olup, sulama ihtiyacı ${source} sağlanmaktadır.`
+      : "Taşınmazda sulu tarım yapılmaktadır.",
+    system ? `Parsel üzerinde ${system} sulama sistemi bulunmaktadır.` : "",
+  ];
+  return sentences.filter(Boolean).join(" ");
+}
+
+function getMinimumAgriculturalParcelLimit() {
+  if (shouldHideLandAgricultureControls()) return null;
+  const rows = Array.isArray(globalThis.MinimumAgriculturalParcelSizes) ? globalThis.MinimumAgriculturalParcelSizes : [];
+  const city = foldTurkish(state.fields.titleCity || state.fields.city || "");
+  const district = foldTurkish(state.fields.titleDistrict || state.fields.district || "");
+  const area = parseReportNumber(state.fields.landArea);
+  const agricultureType = normalizeReportTitleText(state.fields.landAgricultureType || "");
+  const productChoice = normalizeYesNoChoice(state.fields.landAgriculturalProduct);
+  const row = rows.find((item) => foldTurkish(item.city) === city && foldTurkish(item.district) === district);
+  if (!row || !Number.isFinite(area) || area <= 0 || !agricultureType || !productChoice) return null;
+
+  const landKind = productChoice === "Evet"
+    ? { label: "Dikili Arazi", key: "dikiliM2" }
+    : agricultureType === "Sulu Tarım"
+      ? { label: "Sulu Arazi", key: "suluM2" }
+      : agricultureType === "Kuru Tarım"
+        ? { label: "Kuru Arazi", key: "kuruM2" }
+        : null;
+  const minimum = landKind ? Number(row[landKind.key]) : Number.NaN;
+  if (!landKind || !Number.isFinite(minimum) || minimum <= 0) return null;
+  return { area, minimum, label: landKind.label, city: state.fields.titleCity || state.fields.city, district: state.fields.titleDistrict || state.fields.district };
+}
+
+function buildLandMinimumParcelAssessmentSentence() {
+  if (shouldHideLandAgricultureControls()) return "";
+  const city = state.fields.titleCity || state.fields.city || "";
+  const district = state.fields.titleDistrict || state.fields.district || "";
+  const area = parseReportNumber(state.fields.landArea);
+  const agricultureType = normalizeReportTitleText(state.fields.landAgricultureType || "");
+  const productChoice = normalizeYesNoChoice(state.fields.landAgriculturalProduct);
+  if (!city || !district || !Number.isFinite(area) || area <= 0 || !agricultureType || !productChoice) return "";
+  const assessment = getMinimumAgriculturalParcelLimit();
+  if (!assessment) return `5403 sayılı Kanuna göre ${city}/${district} için seçilen tarım türüne ait minimum parsel verisi bulunamadığından kontrol yapılamamıştır.`;
+  const areaText = area.toLocaleString("tr-TR", { maximumFractionDigits: 2 });
+  const minimumText = assessment.minimum.toLocaleString("tr-TR", { maximumFractionDigits: 2 });
+  const result = area >= assessment.minimum ? "karşılamaktadır" : "karşılamamaktadır";
+  return `Parselin ${areaText} m² yüzölçümü, ${city}/${district} için ${assessment.label} bakımından 5403 sayılı Kanuna göre belirlenen ${minimumText} m² minimum parsel sınırını ${result}.`;
+}
+
+function refreshLandMinimumParcelAssessment() {
+  const assessment = buildLandMinimumParcelAssessmentSentence();
+  state.fields.landMinimumParcelAssessment = assessment;
+  const control = document.querySelector('[data-field="landMinimumParcelAssessment"]');
+  if (control && control.value !== assessment) control.value = assessment;
+  const text = document.querySelector("[data-valuation-minimum-parcel-assessment-text]");
+  if (text) text.textContent = assessment || "Minimum parsel kontrolü için gerekli tarım ve parsel bilgileri girilmelidir.";
+}
+
+function formatIrrigationWaterSourceForDescription(value) {
+  const key = foldTurkish(value || "").toLocaleLowerCase("tr");
+  const map = {
+    "sulama kanali": "sulama kanallarından",
+    "kuyu suyu": "kuyu suyundan",
+    "sulama havuzu": "sulama havuzundan",
+    "dere": "dereden",
+    "cay": "çaydan",
+    "nehir": "nehirden",
+    "baraj": "barajdan",
+    "sulama goleti": "sulama göletinden",
+  };
+  return map[key] || (value ? `${toLowerText(value)}ndan` : "");
+}
+
+function formatIrrigationSystemForDescription(value) {
+  const key = foldTurkish(value || "").toLocaleLowerCase("tr");
+  const map = {
+    "damla sulama": "damlama tipi",
+    "yer alti damla sulama": "yer altı damlama tipi",
+    "yagmurlama sulama": "yağmurlama",
+    "mikro yagmurlama": "mikro yağmurlama",
+    "salma sulama": "salma",
+    "karik sulama": "karık",
+    "tava sulama": "tava",
+    "pivot sulama": "pivot",
+    "lineer hareketli sulama": "lineer hareketli",
+  };
+  return map[key] || toLowerText(value || "");
+}
+
+function buildLandBoundarySentence() {
+  const value = normalizeYesNoChoice(state.fields.landBoundaryElement);
+  if (value === "Hayır") return "Parsel sınırlarını arazide belirgin şekilde gösteren çit, duvar, tel örgü vb. herhangi bir unsur bulunmamaktadır.";
+  if (value !== "Evet") return "";
+  const items = [...getLandBoundaryElementItems()];
+  if (state.fields.landBoundaryElementOther) items.push(state.fields.landBoundaryElementOther);
+  const text = formatTurkishList(items.map(formatLandBoundaryElementForDescription).filter(Boolean));
+  return text ? `Parsel sınırları ${text} ile belirgin vaziyettedir.` : "";
+}
+
+function formatLandBoundaryElementForDescription(item) {
+  const text = toLowerText(item || "");
+  if (!text) return "";
+  if (foldTurkish(text) === "komsu parsel siniri") return "komşu parsel sınırları";
+  return text;
+}
+
+function formatLandAreaForDescription(value) {
+  const number = parseReportNumber(value);
+  if (Number.isFinite(number)) return formatSquareMeterArea(number);
+  const text = normalizeReportTitleText(value || "");
+  return text ? (/\bm²|\bm2/i.test(text) ? text : `${text} m²`) : "";
+}
+
+function getInsuranceConstructionCostRow(buildingClass = state.fields.buildingClass) {
+  const selectedClass = String(buildingClass || "").trim();
+  if (!selectedClass) return null;
+  return insuranceConstructionCostRows.find((row) => row.group === selectedClass) || null;
+}
+
+function formatInsuranceUnitCost(value) {
+  if (!Number.isFinite(value)) return "";
+  return `${value.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL/m²`;
+}
+
+function buildInsuranceConstructionCostExplanation() {
+  const row = getInsuranceConstructionCostRow();
+  if (!row) return "";
+  return normalizeReportDescriptionText(
+    `Ana gayrimenkul yapı sınıfı ${row.group} olarak seçildiğinden sigortaya esas yapı yaklaşık birim maliyeti ${formatInsuranceUnitCost(row.unitCost)} olarak alınmıştır.`
+  );
+}
+
+function refreshInsuranceConstructionCostFromCurrentFields(changedKey = "") {
+  if (isLandOwnershipType()) {
+    state.fields.insuranceConstructionClass = "";
+    state.fields.insuranceUnitCost = "";
+    state.fields.insuranceConstructionCostExplanation = "";
+    return;
+  }
+  if (changedKey && changedKey !== "buildingClass") return;
+  const row = getInsuranceConstructionCostRow();
+  state.fields.insuranceConstructionClass = row?.group || "";
+  state.fields.insuranceUnitCost = row ? formatInsuranceUnitCost(row.unitCost) : "";
+  state.fields.insuranceConstructionCostExplanation = row ? buildInsuranceConstructionCostExplanation() : "";
+  [
+    "insuranceConstructionClass",
+    "insuranceUnitCost",
+    "insuranceConstructionCostExplanation",
+  ].forEach((key) => {
+    const control = document.querySelector(`[data-field="${key}"]`);
+    if (control && control.value !== state.fields[key]) {
+      control.value = state.fields[key] || "";
+    }
+  });
+}
+
+function getBuildingDepreciationAgeNumber() {
+  const directAge = parseValuationNumber(state.fields.buildingAge);
+  if (Number.isFinite(directAge)) return Math.max(0, Math.round(directAge));
+  const completionDate = dateTrToIso(state.fields.buildingCompletionDate);
+  if (!completionDate) return Number.NaN;
+  const calculatedAge = calculateBuildingAgeText(completionDate);
+  const number = parseValuationNumber(calculatedAge);
+  return Number.isFinite(number) ? Math.max(0, Math.round(number)) : Number.NaN;
+}
+
+function getBuildingDepreciationAgeColumn(age = getBuildingDepreciationAgeNumber()) {
+  if (!Number.isFinite(age)) return buildingDepreciationAgeColumns[0];
+  return buildingDepreciationAgeColumns.find((column) => age >= column.min && age <= column.max) || buildingDepreciationAgeColumns[buildingDepreciationAgeColumns.length - 1];
+}
+
+function getBuildingDepreciationRow() {
+  const style = foldTurkish(state.fields.buildingStyle || "").toLocaleUpperCase("tr");
+  return buildingDepreciationRateRows.find((row) => row.match.some((item) => style.includes(item))) || buildingDepreciationRateRows[0];
+}
+
+function getBuildingDepreciationRate() {
+  const row = getBuildingDepreciationRow();
+  const column = getBuildingDepreciationAgeColumn();
+  return Number(row?.[column.key] ?? 0);
+}
+
+function refreshBuildingDepreciationFromCurrentFields(changedKey = "") {
+  if (isLandOwnershipType()) {
+    state.fields.buildingDepreciationType = "";
+    state.fields.buildingDepreciationRate = "";
+    return;
+  }
+  if (changedKey && !["buildingAge", "buildingCompletionDate", "buildingStyle"].includes(changedKey)) return;
+  const row = getBuildingDepreciationRow();
+  const rate = getBuildingDepreciationRate();
+  state.fields.buildingDepreciationType = row?.type || "";
+  state.fields.buildingDepreciationRate = Number.isFinite(rate) ? `%${rate}` : "";
+  ["buildingDepreciationType", "buildingDepreciationRate"].forEach((key) => {
+    const control = document.querySelector(`[data-field="${key}"]`);
+    if (control && control.value !== state.fields[key]) control.value = state.fields[key] || "";
+  });
+}
+
+function createBuildingDepreciationRatePanel() {
+  refreshBuildingDepreciationFromCurrentFields();
+  const panel = document.createElement("div");
+  panel.className = "subsection insurance-cost-panel";
+  const header = document.createElement("div");
+  header.className = "subsection-title-row";
+  const title = document.createElement("h4");
+  title.textContent = "Yapı Yıpranma Oranları";
+  const description = document.createElement("p");
+  description.textContent = "Yapı tarzı ve yapı yaşına göre değerleme hesabında kullanılacak yıpranma oranı otomatik seçilir.";
+  header.append(title, description);
+
+  const tableWrap = document.createElement("div");
+  tableWrap.className = "insurance-cost-table-wrap";
+  const table = document.createElement("table");
+  table.className = "insurance-cost-table building-depreciation-table";
+  table.innerHTML = `
+    <thead>
+      <tr>
+        <th>İnşaatın Nevi</th>
+        ${buildingDepreciationAgeColumns.map((column) => `<th>${column.label}</th>`).join("")}
+      </tr>
+    </thead>
+  `;
+  const tbody = document.createElement("tbody");
+  const selectedType = state.fields.buildingDepreciationType || getBuildingDepreciationRow()?.type || "";
+  const selectedColumn = getBuildingDepreciationAgeColumn();
+  buildingDepreciationRateRows.forEach((row) => {
+    const tr = document.createElement("tr");
+    if (row.type === selectedType) tr.className = "is-selected";
+    const typeCell = document.createElement("td");
+    typeCell.textContent = row.type;
+    tr.append(typeCell);
+    buildingDepreciationAgeColumns.forEach((column) => {
+      const cell = document.createElement("td");
+      cell.textContent = String(row[column.key]);
+      if (row.type === selectedType && column.key === selectedColumn.key) {
+        cell.className = "is-selected";
+      }
+      tr.append(cell);
+    });
+    tbody.append(tr);
+  });
+  table.append(tbody);
+  tableWrap.append(table);
+  panel.append(header, tableWrap);
+  return panel;
+}
+
+function createInsuranceConstructionCostPanel() {
+  const panel = document.createElement("div");
+  panel.className = "subsection insurance-cost-panel";
+  const header = document.createElement("div");
+  header.className = "subsection-title-row";
+  const title = document.createElement("h4");
+  title.textContent = "Sigortaya Esas Değer";
+  const description = document.createElement("p");
+  description.textContent = "Ana gayrimenkulde seçilen yapı sınıfına göre yapı yaklaşık birim maliyeti otomatik alınır.";
+  header.append(title, description);
+
+  const tableWrap = document.createElement("div");
+  tableWrap.className = "insurance-cost-table-wrap";
+  const table = document.createElement("table");
+  table.className = "insurance-cost-table";
+  table.innerHTML = `
+    <thead>
+      <tr>
+        <th>Grup</th>
+        <th>Birim Maliyet (TL/m²)</th>
+        <th>Açıklama</th>
+      </tr>
+    </thead>
+  `;
+  const tbody = document.createElement("tbody");
+  const selectedGroup = state.fields.insuranceConstructionClass || state.fields.buildingClass || "";
+  insuranceConstructionCostRows.forEach((row) => {
+    const tr = document.createElement("tr");
+    if (row.group === selectedGroup) tr.className = "is-selected";
+    const groupCell = document.createElement("td");
+    groupCell.textContent = row.group;
+    const costCell = document.createElement("td");
+    costCell.textContent = formatInsuranceUnitCost(row.unitCost);
+    const descriptionCell = document.createElement("td");
+    descriptionCell.textContent = row.description;
+    tr.append(groupCell, costCell, descriptionCell);
+    tbody.append(tr);
+  });
+  table.append(tbody);
+  tableWrap.append(table);
+  panel.append(header, tableWrap);
+  return panel;
+}
+
+const valuationMarketRows = [
+  { label: "Yasal Durum Değeri", areaKey: "legalValueArea", unitKey: "legalValueUnit", totalKey: "legalValue", unitLabel: "M2 Birim Değeri" },
+  { label: "Mevcut Durum Değeri", areaKey: "currentValueArea", unitKey: "currentValueUnit", totalKey: "currentValue", unitLabel: "M2 Birim Değeri" },
+  { label: "Yasal Kira Değeri", areaKey: "legalRentArea", unitKey: "legalRentUnit", totalKey: "legalRent", unitLabel: "M2 Birim Değeri" },
+  { label: "Mevcut Kira Değeri", areaKey: "currentRentArea", unitKey: "currentRentUnit", totalKey: "currentRent", unitLabel: "M2 Birim Değeri" },
+];
+
+const incompleteConstructionMarketRows = {
+  legalValue: {
+    label: "Natamam Yasal Durum Değeri",
+    areaKey: "legalIncompleteValueArea",
+    unitKey: "legalIncompleteValueUnit",
+    totalKey: "legalIncompleteValue",
+  },
+  currentValue: {
+    label: "Natamam Mevcut Durum Değeri",
+    areaKey: "currentIncompleteValueArea",
+    unitKey: "currentIncompleteValueUnit",
+    totalKey: "currentIncompleteValue",
+  },
+};
+
+const comparableValuationRoundStep = 50000;
+const comparableValuationRentRoundStep = 1000;
+
+const valuationBuildingValueRows = [
+  {
+    label: "Yasal Yapı Değeri",
+    areaKey: "legalBuildingValueArea",
+    unitKey: "legalBuildingUnitCost",
+    depreciationKey: "legalBuildingDepreciationRate",
+    levelKey: "legalBuildingConstructionLevel",
+    totalKey: "legalBuildingValue",
+  },
+  {
+    label: "Mevcut Yapı Değeri",
+    areaKey: "currentBuildingValueArea",
+    unitKey: "currentBuildingUnitCost",
+    depreciationKey: "currentBuildingDepreciationRate",
+    levelKey: "currentBuildingConstructionLevel",
+    totalKey: "currentBuildingValue",
+  },
+];
+
+const valuationPremiumRows = [
+  {
+    label: "Yasal Şerefiye",
+    marketKey: "legalValue",
+    landKey: "legalPremiumLandValue",
+    buildingKey: "legalBuildingValue",
+    premiumKey: "legalPremiumValue",
+    rateKey: "legalPremiumRate",
+  },
+  {
+    label: "Mevcut Şerefiye",
+    marketKey: "currentValue",
+    landKey: "currentPremiumLandValue",
+    buildingKey: "currentBuildingValue",
+    premiumKey: "currentPremiumValue",
+    rateKey: "currentPremiumRate",
+  },
+];
+
+const valuationIncomeMetricRows = {
+  legalRent: {
+    label: "Kapitilizasyon Oranı",
+    capitalizationKey: "legalCapitalizationRate",
+    amortizationKey: "legalAmortizationMonths",
+    rentKey: "legalRent",
+    valueKey: "legalValue",
+  },
+  currentRent: {
+    label: "Kapitilizasyon Oranı",
+    capitalizationKey: "currentCapitalizationRate",
+    amortizationKey: "currentAmortizationMonths",
+    rentKey: "currentRent",
+    valueKey: "currentValue",
+  },
+};
+
+const valuationDefaultFields = {
+  valuationDiscountRate: "5,50",
+  valuationPrestigeRate: "15",
+  valuationPaybackMonths: "218",
+  valuationMethod: "Emsal Karşılaştırma Yöntemi",
+  saleability: "Satılabilir",
+};
+
+const valuationMethodOptions = [
+  "Emsal Karşılaştırma Yöntemi",
+  "Maliyet Yöntemi",
+  "Gelir İndirgeme Yöntemi",
+];
+
+const saleabilityOptions = [
+  "Satılabilir",
+  "Alıcısı Az",
+  "Satışı Güç",
+  "Satılamaz",
+];
+
+function createValuationEditor() {
+  clearLandOwnershipDependentData(state.fields.ownershipType);
+  applyValuationDefaults();
+  refreshInsuranceConstructionCostFromCurrentFields("buildingClass");
+  refreshValuationComputedFields();
+  const wrapper = document.createElement("div");
+  wrapper.className = "valuation-editor";
+  const landOwnershipPanels = isLandOwnershipType()
+    ? []
+    : [
+      createValuationBuildingValueTable(),
+      createValuationInsuranceTable(),
+      createValuationLandTable(),
+      createValuationPremiumTable(),
+    ];
+  wrapper.append(
+    createValuationTopControls(),
+    createValuationMethodExplanationPanel(),
+    ...(isSharedTitleOwnership() ? [createValuationShareExplanationPanel()] : []),
+    createValuationSaleabilityExplanationPanel(),
+    createValuationRentExplanationPanel(),
+    createValuationPropertyTaxDeclarationExplanationPanel(),
+    ...(shouldShowWorkplaceFloorCalculationTable() ? [createWorkplaceFloorCalculationTable()] : []),
+    ...(isArsaOwnershipType() ? [createComparableCalculatedEmsalValuationPanel()] : []),
+    ...(isTarlaOwnershipType() ? [createValuationMinimumParcelAssessmentPanel()] : []),
+    createValuationMarketTable(),
+    ...landOwnershipPanels,
+    createPropertyTaxDeclarationValuePanel(),
+  );
+  return wrapper;
+}
+
+function applyValuationDefaults() {
+  Object.entries(valuationDefaultFields).forEach(([key, value]) => {
+    if (!String(state.fields[key] || "").trim()) state.fields[key] = value;
+  });
+}
+
+function createValuationMarketTable() {
+  const landOwnership = isLandOwnershipType();
+  syncLandOwnershipValuationDefaults();
+  const panel = createValuationPanel("Piyasa Değeri", "Kullanıcı piyasa değerini girer; m2 birim değeri alan bilgisine göre otomatik hesaplanır.");
+  const table = document.createElement("table");
+  table.className = "valuation-table valuation-market-table";
+  table.innerHTML = `
+    <thead>
+      <tr>
+        <th></th>
+        <th>Alan</th>
+        <th>M2 Birim Değeri</th>
+        <th>Piyasa Değeri</th>
+      </tr>
+    </thead>
+  `;
+  const tbody = document.createElement("tbody");
+  const marketRows = landOwnership
+    ? valuationMarketRows.filter((row) => ["legalValue", "currentValue"].includes(row.totalKey))
+    : valuationMarketRows;
+  marketRows.forEach((row) => {
+    const tr = document.createElement("tr");
+    tr.append(
+      createValuationLabelCell(getValuationMarketRowLabel(row), { note: buildValuationIncomeMetricNote(row.totalKey), marketRowKey: row.totalKey }),
+      createValuationInputCell(row.areaKey, "Alan", { suffix: "m²" }),
+      createValuationInputCell(row.unitKey, row.unitLabel, { suffix: "TL/m²", readOnly: true }),
+      createValuationInputCell(row.totalKey, "Piyasa Değeri", { suffix: row.totalKey.includes("Rent") ? "TL/ay" : "TL" }),
+    );
+    tbody.append(tr);
+    const incompleteRow = createIncompleteConstructionMarketRow(row.totalKey);
+    if (incompleteRow) tbody.append(incompleteRow);
+  });
+  table.append(tbody);
+  panel.append(createValuationTableWrap(table));
+  return panel;
+}
+
+function getValuationMarketRowLabel(row = {}) {
+  if (!isIncompleteConstructionValuationActive()) return row.label || "";
+  const labels = {
+    legalValue: "Tamamlanması Durumunda Yasal Durum Değeri",
+    currentValue: "Tamamlanması Durumunda Mevcut Durum Değeri",
+    legalRent: "Tamamlanması Durumunda Yasal Kira Değeri",
+    currentRent: "Tamamlanması Durumunda Mevcut Kira Değeri",
+  };
+  return labels[row.totalKey] || row.label || "";
+}
+
+function createIncompleteConstructionMarketRow(parentTotalKey) {
+  if (!isIncompleteConstructionValuationActive()) return null;
+  const row = incompleteConstructionMarketRows[parentTotalKey];
+  if (!row) return null;
+  const tr = document.createElement("tr");
+  tr.className = "valuation-incomplete-market-row";
+  tr.append(
+    createValuationLabelCell(row.label),
+    createValuationInputCell(row.areaKey, "Alan", { suffix: "m²", readOnly: true }),
+    createValuationInputCell(row.unitKey, "M2 Birim Değeri", { suffix: "TL/m²", readOnly: true }),
+    createValuationInputCell(row.totalKey, "Natamam Durum Değeri", { suffix: "TL", readOnly: true }),
+  );
+  return tr;
+}
+
+function buildValuationIncomeMetricNote(totalKey) {
+  const row = valuationIncomeMetricRows[totalKey];
+  if (!row) return "";
+  const capRate = String(state.fields[row.capitalizationKey] || "").trim();
+  const amortization = String(state.fields[row.amortizationKey] || "").trim();
+  const parts = [];
+  if (capRate) parts.push(`KAP: % ${capRate}`);
+  if (amortization) parts.push(`GDS ${amortization} AY`);
+  return parts.length ? `(${parts.join(", ")})` : "";
+}
+
+function createValuationIncomeMetricRow(row) {
+  const tr = document.createElement("tr");
+  tr.className = "valuation-income-metric-row";
+  tr.append(
+    createValuationLabelCell(row.label),
+    createValuationInputCell(row.capitalizationKey, "Oran", { suffix: "%", readOnly: true }),
+    createValuationStaticCell("Gayrimenkul Amortisman Süresi"),
+    createValuationInputCell(row.amortizationKey, "Süre", { suffix: "Ay", readOnly: true }),
+  );
+  return tr;
+}
+
+function shouldShowWorkplaceFloorCalculationTable() {
+  if (isLandOwnershipType()) return false;
+  return !shouldHideWorkplaceFloorCalculationTableByEqualAreas();
+}
+
+function shouldHideWorkplaceFloorCalculationTableByEqualAreas() {
+  const rows = getUnitFloorRows();
+  if (!rows.length) return false;
+  const unitAreaTotals = getValuationUnitAreaTotals();
+  const legalArea = parseValuationNumber(unitAreaTotals.legal);
+  const currentArea = parseValuationNumber(unitAreaTotals.current);
+  const legalReducedArea = calculateReducedUnitFloorTotal(rows, "legal");
+  const currentReducedArea = calculateReducedUnitFloorTotal(rows, "current");
+  return areValuationAreasEqual(legalArea, legalReducedArea)
+    && areValuationAreasEqual(currentArea, currentReducedArea);
+}
+
+function areValuationAreasEqual(left, right) {
+  if (!Number.isFinite(left) || !Number.isFinite(right)) return false;
+  return Math.abs(left - right) < 0.005;
+}
+
+function createWorkplaceFloorCalculationTable() {
+  const panel = createValuationPanel("Kat Bazında Hesaplama Tablosu", "Kat alanları, teras alanları, indirgeme oranları, piyasa değeri ve kira değeri toplam indirgenmiş alan yaklaşımıyla gösterilir.");
+  panel.classList.add("workplace-floor-calculation-panel");
+  const rows = getUnitFloorRows().filter((row) => hasExplanationsFloorValuationRowData(row));
+  if (!rows.length) {
+    const note = document.createElement("p");
+    note.className = "subtle-text";
+    note.textContent = "Bağımsız bölümde kat, alan veya indirgeme oranı girildiğinde tablo burada otomatik oluşacaktır.";
+    panel.append(note);
+    return panel;
+  }
+  const table = document.createElement("table");
+  table.className = "valuation-table workplace-floor-calculation-table explanations-floor-valuation-table";
+  table.dataset.workplaceFloorCalculationTable = "true";
+  table.innerHTML = `
+    <thead>
+      <tr class="workplace-floor-title-row explanations-floor-valuation-title-row">
+        <th colspan="9">KONU TAŞINMAZIN DEĞERİNİN HESAPLANMASINDA KULLANILACAK TABLO</th>
+      </tr>
+      <tr>
+        <th>Hesaplama</th>
+        <th>Kat / Alan Türü</th>
+        <th>Normal Alan (m²)</th>
+        <th>İndirgeme Oranı (%)</th>
+        <th>İndirgenmiş Alan (m²)</th>
+        <th>Piyasa m² Birim Değeri</th>
+        <th>Piyasa Değeri</th>
+        <th>Kira m² Birim</th>
+        <th>Piyasa Kira Değeri</th>
+      </tr>
+    </thead>
+  `;
+  const tbody = document.createElement("tbody");
+  fillWorkplaceFloorCalculationTableBody(tbody, rows);
+  table.append(tbody);
+  const introText = composeWorkplaceFloorCalculationIntro(rows);
+  if (introText) {
+    const intro = document.createElement("p");
+    intro.className = "workplace-floor-calculation-intro";
+    intro.textContent = introText;
+    panel.append(intro);
+  }
+  panel.append(createValuationTableWrap(table));
+  return panel;
+}
+
+function composeWorkplaceFloorCalculationIntro(rows = []) {
+  const sourceRows = rows.filter((row) => hasExplanationsFloorValuationRowData(row));
+  if (sourceRows.length < 2) return "";
+  const areaRows = sourceRows
+    .filter((row) => hasWorkplaceFloorCalculationArea(row))
+    .map((row) => ({
+      label: normalizeFloorCalculationLabel(row.floor),
+      rate: parseUnitReductionRate(row.areaReductionRate),
+    }))
+    .filter((row) => row.label);
+  if (areaRows.length < 2) return "";
+  const baseRows = areaRows.filter((row) => Math.abs(row.rate - 1) < 0.0001);
+  if (!baseRows.length) return "";
+  const referenceRows = baseRows;
+  const referenceLabels = uniqueLabels(referenceRows.map((row) => row.label));
+  const reducedRows = uniqueFloorRateRows(areaRows.filter((row) => !referenceLabels.includes(row.label)));
+  if (!referenceLabels.length || !reducedRows.length) return "";
+  const referenceText = joinTurkishList(referenceLabels);
+  const reducedText = joinTurkishList(reducedRows.map((row) => `${row.label} kat alanı ${formatExplanationsFloorRate(row.rate)} oranında`));
+  const referenceLevel = referenceLabels.length > 1 ? "seviyeleri" : "seviyesi";
+  const targetLevel = referenceLabels.length > 1 ? "seviyelerine" : "seviyesine";
+  const terraceText = hasWorkplaceFloorCalculationTerrace(sourceRows)
+    ? " Teras Alanları yasal ve mevcut kapalı kullanım alanına dahil edilmemiş, ancak şerefiye unsuru olarak dikkate alınmıştır."
+    : "";
+  const effectiveAreaText = composeWorkplaceFloorEffectiveAreaSummary(sourceRows);
+  return `Ekspertize konu taşınmazın birden fazla katta yer alması göz önüne alınmış olup, kat bazında erişim imkanı, yapı özellikleri ve kullanım koşulları bakımından farklılıklar bulunmaktadır. Etkili Alan ${referenceText} kat ${referenceLevel} olarak belirlenmiş olup, ${reducedText} etkili alan olarak belirlenen ${referenceText} kat ${targetLevel} indirgenmiştir.${terraceText}${effectiveAreaText} Kat bazında uygulanan indirgeme oranları rapor ekinde tablo halinde tarafınıza sunulmuştur.`;
+}
+
+function hasWorkplaceFloorCalculationArea(row = {}) {
+  return parseReportNumber(row.legalArea) > 0 || parseReportNumber(row.currentArea) > 0;
+}
+
+function composeWorkplaceFloorEffectiveAreaSummary(rows = []) {
+  const legalReducedArea = calculateReducedUnitFloorTotal(rows, "legal");
+  const currentReducedArea = calculateReducedUnitFloorTotal(rows, "current");
+  const legalText = formatUnitReducedAreaValue(legalReducedArea);
+  const currentText = formatUnitReducedAreaValue(currentReducedArea);
+  if (!legalText && !currentText) return "";
+  if (areValuationAreasEqual(legalReducedArea, currentReducedArea)) {
+    return ` Konu taşınmazın yasal ve mevcut etkili alana indirgenmiş alanı ${legalText || currentText} m² olarak hesaplanmıştır.`;
+  }
+  return ` Konu taşınmazın yasal etkili alana indirgenmiş alanı ${legalText || "0"} m², mevcut etkili alana indirgenmiş alanı ${currentText || "0"} m² olarak hesaplanmıştır.`;
+}
+
+function hasWorkplaceFloorCalculationTerrace(rows = []) {
+  return rows.some((row) => parseReportNumber(row.legalTerrace) > 0 || parseReportNumber(row.currentTerrace) > 0);
+}
+
+function normalizeFloorCalculationLabel(value) {
+  return String(value || "Kat").trim().replace(/\s+kat$/i, "").trim() || "Kat";
+}
+
+function uniqueLabels(labels = []) {
+  return labels.filter((label, index, list) => label && list.indexOf(label) === index);
+}
+
+function uniqueFloorRateRows(rows = []) {
+  const seen = new Set();
+  return rows.filter((row) => {
+    const key = `${row.label}|${Number(row.rate).toFixed(4)}`;
+    if (!row.label || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function joinTurkishList(items = []) {
+  const list = items.filter(Boolean);
+  if (list.length <= 1) return list[0] || "";
+  if (list.length === 2) return `${list[0]} ve ${list[1]}`;
+  return `${list.slice(0, -1).join(", ")} ve ${list[list.length - 1]}`;
+}
+
+function fillWorkplaceFloorCalculationTableBody(tbody, rows = getUnitFloorRows()) {
+  const sourceRows = rows.filter((row) => hasExplanationsFloorValuationRowData(row));
+  tbody.replaceChildren(
+    ...createExplanationsFloorValuationSectionRows("YASAL ALANA GÖRE HESAPLAMA", sourceRows, "legal"),
+    ...createExplanationsFloorValuationSectionRows("MEVCUT ALANA GÖRE HESAPLAMA", sourceRows, "current"),
+  );
+}
+
+function refreshWorkplaceFloorCalculationTable() {
+  const table = document.querySelector("[data-workplace-floor-calculation-table]");
+  if (!table) return;
+  const tbody = table.querySelector("tbody");
+  if (!tbody) return;
+  fillWorkplaceFloorCalculationTableBody(tbody);
+}
+
+function createWorkplaceFloorCalculationSectionRows(label, rows, mode) {
+  const sourceRows = rows.length ? rows : [createEmptyUnitFloorRow()];
+  const totalArea = calculateReducedUnitFloorTotal(sourceRows, mode);
+  const valueKey = mode === "current" ? "currentValue" : "legalValue";
+  const marketValue = parseValuationNumber(state.fields[valueKey]);
+  const unitValue = calculateWorkplaceFloorCalculationUnitValue(marketValue, totalArea);
+  return sourceRows.map((row, index) => {
+    const tr = document.createElement("tr");
+    if (index === 0) {
+      const group = document.createElement("th");
+      group.className = "workplace-floor-group-cell";
+      group.rowSpan = sourceRows.length;
+      group.textContent = label;
+      tr.append(group);
+    }
+    const rowData = getWorkplaceFloorCalculationRowData(row, mode);
+    tr.append(
+      createWorkplaceFloorTableCell(rowData.floor, "is-floor"),
+      createWorkplaceFloorTableCell(rowData.area),
+      createWorkplaceFloorTableCell(rowData.rate),
+      createWorkplaceFloorTableCell(rowData.effectiveArea, "is-accent"),
+    );
+    if (index === 0) {
+      tr.append(
+        createWorkplaceFloorSummaryCell(formatValuationMoney(unitValue, { decimals: 2 }), sourceRows.length),
+        createWorkplaceFloorSummaryCell(formatValuationMoney(marketValue), sourceRows.length, "is-value"),
+      );
+    }
+    return tr;
+  });
+}
+
+function calculateWorkplaceFloorCalculationUnitValue(marketValue, totalReducedArea) {
+  if (!Number.isFinite(marketValue) || !Number.isFinite(totalReducedArea) || totalReducedArea <= 0) return Number.NaN;
+  return marketValue / totalReducedArea;
+}
+
+function getWorkplaceFloorCalculationRowData(row, mode) {
+  const areaKey = mode === "current" ? "currentArea" : "legalArea";
+  const terraceKey = mode === "current" ? "currentTerrace" : "legalTerrace";
+  const area = parseReportNumber(row[areaKey]);
+  const terrace = parseReportNumber(row[terraceKey]);
+  const grossArea = (Number.isFinite(area) ? area : 0) + (Number.isFinite(terrace) ? terrace : 0);
+  const effectiveArea = calculateReducedUnitFloorArea(row, mode);
+  const rate = grossArea > 0 ? (effectiveArea / grossArea) * 100 : Number.NaN;
+  return {
+    floor: row.floor || "Kat",
+    area: formatValuationMoney(grossArea, { decimals: Number.isInteger(grossArea) ? 0 : 2 }),
+    rate: Number.isFinite(rate) ? `%${formatValuationMoney(rate, { decimals: Number.isInteger(rate) ? 0 : 2 })}` : "",
+    effectiveArea: formatValuationMoney(effectiveArea, { decimals: Number.isInteger(effectiveArea) ? 0 : 2 }),
+  };
+}
+
+function createWorkplaceFloorTableCell(text, className = "") {
+  const cell = document.createElement("td");
+  if (className) cell.className = className;
+  cell.textContent = text || "";
+  return cell;
+}
+
+function createWorkplaceFloorSummaryCell(text, rowSpan, className = "") {
+  const cell = document.createElement("td");
+  cell.rowSpan = rowSpan;
+  cell.className = ["workplace-floor-summary-cell", className].filter(Boolean).join(" ");
+  cell.textContent = text || "";
+  return cell;
+}
+
+function createValuationBuildingValueTable() {
+  const panel = createValuationPanel("Yapı Değeri", "Toplam kullanım alanı, yapı birim değeri, yıpranma oranı ve inşaat seviyesine göre otomatik hesaplanır.");
+  const showDepreciationColumn = shouldShowBuildingDepreciationColumn();
+  const showConstructionLevelColumn = shouldShowBuildingConstructionLevelColumn();
+  const table = document.createElement("table");
+  table.className = "valuation-table valuation-building-table";
+  table.innerHTML = `
+    <thead>
+      <tr>
+        <th></th>
+        <th>Alan</th>
+        <th>Yapı Birim Değeri</th>
+        ${showDepreciationColumn ? "<th>Yıpranma Payı</th>" : ""}
+        ${showConstructionLevelColumn ? "<th>İnşaat Seviyesi</th>" : ""}
+        <th>Yapı Değeri</th>
+      </tr>
+    </thead>
+  `;
+  const tbody = document.createElement("tbody");
+  valuationBuildingValueRows.forEach((row) => {
+    const tr = document.createElement("tr");
+    tr.append(
+      createValuationLabelCell(row.label),
+      createValuationInputCell(row.areaKey, "Alan", { suffix: "m²", readOnly: true }),
+      createValuationInputCell(row.unitKey, "Yapı Birim Değeri", { suffix: "TL/m²" }),
+      createValuationInputCell(row.totalKey, "Yapı Değeri", { suffix: "TL", readOnly: true }),
+    );
+    if (showDepreciationColumn) {
+      tr.insertBefore(createValuationInputCell(row.depreciationKey, "Yıpranma Payı", { suffix: "%" }), tr.lastChild);
+    }
+    if (showConstructionLevelColumn) {
+      tr.insertBefore(createValuationInputCell(row.levelKey, "İnşaat Seviyesi", { suffix: "%", readOnly: true }), tr.lastChild);
+    }
+    tbody.append(tr);
+  });
+  table.append(tbody);
+  panel.append(createValuationTableWrap(table));
+  return panel;
+}
+
+function createValuationTopControls() {
+  const panel = document.createElement("div");
+  panel.className = "valuation-top-controls";
+  panel.append(createValuationMethodControl(), createValuationSaleabilityControl());
+  return panel;
+}
+
+function createValuationMethodControl() {
+  const wrapper = document.createElement("div");
+  wrapper.className = "valuation-control-card";
+  const title = document.createElement("h4");
+  title.textContent = "Değerleme Metodu";
+  const list = document.createElement("div");
+  list.className = "valuation-check-list";
+  const selected = parseValuationMultiValue(state.fields.valuationMethod);
+  valuationMethodOptions.forEach((option) => {
+    const label = document.createElement("label");
+    label.className = "valuation-check-row";
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.value = option;
+    checkbox.checked = selected.includes(option);
+    checkbox.addEventListener("change", () => {
+      const values = [...list.querySelectorAll("input[type='checkbox']:checked")].map((item) => item.value);
+      state.fields.valuationMethod = values.join(", ");
+      refreshValuationMethodExplanation();
+      autosave();
+      renderValidation();
+      updateStatus();
+      refreshValuationControls();
+    });
+    label.append(checkbox, createSpan(option));
+    list.append(label);
+  });
+  wrapper.append(title, list);
+  return wrapper;
+}
+
+function createValuationSaleabilityControl() {
+  const wrapper = document.createElement("div");
+  wrapper.className = "valuation-control-card";
+  const title = document.createElement("h4");
+  title.textContent = "Satış Kabiliyeti";
+  const select = document.createElement("select");
+  select.dataset.field = "saleability";
+  saleabilityOptions.forEach((option) => {
+    const item = document.createElement("option");
+    item.value = option;
+    item.textContent = option;
+    select.append(item);
+  });
+  select.value = saleabilityOptions.includes(state.fields.saleability) ? state.fields.saleability : "Satılabilir";
+  select.addEventListener("change", () => {
+    state.fields.saleability = select.value;
+    if (select.value === "Satılabilir") {
+      state.fields.saleabilityNote = "";
+      note.textContent = "";
+      refreshValuationSaleabilityExplanation();
+      autosave();
+      renderValidation();
+      updateStatus();
+      refreshValuationControls();
+      return;
+    }
+    autosave();
+    openSaleabilityNoteModal(() => {
+      renderValidation();
+      updateStatus();
+      refreshValuationControls();
+    });
+  });
+  const note = document.createElement("p");
+  note.className = "valuation-saleability-note";
+  note.textContent = state.fields.saleabilityNote || "";
+  wrapper.append(title, select, note);
+  return wrapper;
+}
+
+function parseValuationMultiValue(value) {
+  return String(value || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function buildValuationMethodExplanation() {
+  const approaches = parseValuationMultiValue(state.fields.valuationMethod)
+    .map((method) => method.replace(/\s*Yöntemi$/i, "").trim())
+    .filter(Boolean);
+  if (!approaches.length) return "";
+  const joined = approaches.length === 1
+    ? approaches[0]
+    : `${approaches.slice(0, -1).join(", ")} ve ${approaches[approaches.length - 1]}`;
+  const approachWord = approaches.length > 1 ? "yaklaşımları" : "yaklaşımı";
+  const baseText = `Konu gayrimenkulün değerlemesinde ${joined} ${approachWord} kullanılmıştır. Konumuz taşınmazın değerlendirmesinde civardaki alım satım rayiç değerleri ve günümüz ekonomik koşulları, taşınmazın konumu, yaşı, fiziki özellikleri, emsallerdeki pazarlık payları, arz/talep dengesi gibi dışsal etkenler dikkate alınmıştır.`;
+  const externalAppraisalText = buildValuationExternalAppraisalText();
+  const usageNatureDifferenceText = buildValuationUsageNatureDifferenceText();
+  const constructionLevelText = buildValuationConstructionLevelRiskText();
+  return [baseText, externalAppraisalText, usageNatureDifferenceText, constructionLevelText].filter(Boolean).join("\n\n");
+}
+
+function buildValuationExternalAppraisalText() {
+  if (!isExternalAppointmentType(state.fields.appointmentType)) return "";
+  const reason = getExternalAppraisalReasonText() || "Taşınmazın içi görülememesi";
+  const projectInstitution = state.fields.projectInstitution || "ilgili kurumda";
+  return `${reason} sebebi ile dışarıdan ekspertiz yapılmış, taşınmazın alan ve mimari açıdan proje ile uygunluğu kontrol edilememiş olup proje ile uygun olduğu kabul edilmiştir. Taşınmazın, bağımsız bölüm bazında projesinde planlanan katta ve konumda olduğu ${projectInstitution} incelenen projesinden tespit edilmiştir. Proje üzerinden hesaplanan alan dikkate alınmış, iç hacim özellikleri vasat kabulüyle değerleme yapılmıştır.`;
+}
+
+function getExternalAppraisalReasonText() {
+  const reason = String(state.fields.externalAppraisalReason || "").trim();
+  if (reason === "Diğer") return String(state.fields.externalAppraisalOtherNote || "").trim();
+  return reason;
+}
+
+function buildValuationUsageNatureDifferenceText() {
+  if (state.fields.usageNatureDifference !== "Evet") return "";
+  const legalNature = state.fields.legalUsageNature || "yasal kullanım";
+  const currentNature = state.fields.currentUsageNature || "mevcut kullanım";
+  const legalUnitValue = parseValuationNumber(state.fields.legalValueUnit);
+  const currentUnitValue = parseValuationNumber(state.fields.currentValueUnit);
+  const intro = `Ekspertize konu taşınmaz Tapu Kayıtlarına göre "${legalNature}" Nitelikli olup, Mevcut Kullanımı "${currentNature}" nitelikli olduğu gözlemlenmiştir.`;
+  if (!Number.isFinite(legalUnitValue) || legalUnitValue <= 0 || !Number.isFinite(currentUnitValue) || currentUnitValue <= 0) {
+    return intro;
+  }
+  const differenceRate = Math.abs(currentUnitValue - legalUnitValue) / legalUnitValue;
+  if (differenceRate < 0.1) {
+    return `${intro} Bölge genelinde yapılan incelemelerde ${legalNature} nitelikli gayrimenkuller ile ${currentNature} nitelikli gayrimenkuller arasında m2 birim değeri olarak herhangi bir farklılık bulunmadığı gözlemlenmiştir. Bu sebeple yasal ve mevcut m2 birim değeri arasında herhangi bir farklılık bulunmamaktadır.`;
+  }
+  return `${intro} Yasal durum değeri tespitinde bölgedeki ${legalNature} nitelikli gayrimenkullerin araştırması yapılmış olup, Mevcut durum değeri tespitinde ${currentNature} nitelikli gayrimenkullerin araştırması yapılmıştır.`;
+}
+
+function buildValuationConstructionLevelRiskText() {
+  const level = parseConstructionLevelPercentForExplanation(state.fields.unitConstructionLevel);
+  if (!Number.isFinite(level) || level >= 100) return "";
+  const formattedLevel = level.toLocaleString("tr-TR", {
+    minimumFractionDigits: Number.isInteger(level) ? 0 : 2,
+    maximumFractionDigits: 2,
+  });
+  return `Konu taşınmaz hali hazırda %${formattedLevel} inşaat seviyeli olup, herhangi bir nedenle inşaatın yasal prosedürlere uygun tamamlanıp tamamlanamayacağı, yapı ruhsatı süresinin yeterli olup olmayacağı, yenileme ruhsatı ve inşaatın tamamlanması durumunda iskan belgesinin alınıp alınamayacağı rapor tarihi itibari ile öngörülememekte olup, inşaatın herhangi bir nedenle tamamlanamama riski bulunmaktadır.`;
+}
+
+function parseConstructionLevelPercentForExplanation(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return 100;
+  let normalized = raw.replace(/%/g, "").trim().replace(",", ".");
+  if ((normalized.match(/\./g) || []).length > 1) {
+    normalized = normalized.replace(/\.(?=.*\.)/g, "");
+  }
+  const parsed = Number.parseFloat(normalized);
+  if (!Number.isFinite(parsed)) return 100;
+  let percent = parsed <= 1 ? parsed * 100 : parsed;
+  if (percent <= 0) percent = 100;
+  return Math.min(percent, 100);
+}
+
+const valuationMethodExplanationFallback = "Değerleme metodu seçildiğinde açıklama otomatik oluşacaktır.";
+
+function refreshValuationMethodExplanation() {
+  state.fields.valuationMethodExplanation = buildValuationMethodExplanation();
+  const text = document.querySelector("[data-valuation-method-explanation-text]");
+  if (text) text.textContent = state.fields.valuationMethodExplanation || valuationMethodExplanationFallback;
+}
+
+function createValuationMethodExplanationPanel() {
+  state.fields.valuationMethodExplanation = buildValuationMethodExplanation();
+  const card = document.createElement("div");
+  card.className = "valuation-method-explanation-card";
+  const head = document.createElement("div");
+  head.className = "valuation-method-explanation-head";
+  const title = document.createElement("h4");
+  title.textContent = "Değerleme Yöntemi Açıklaması";
+  const copyButton = document.createElement("button");
+  copyButton.type = "button";
+  copyButton.className = "valuation-method-copy-button";
+  copyButton.textContent = "Kopyala";
+  copyButton.title = "Açıklama paragrafını kopyala";
+  copyButton.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(state.fields.valuationMethodExplanation || "");
+      copyButton.textContent = "Kopyalandı";
+    } catch {
+      copyButton.textContent = "Kopyalanamadı";
+    }
+    setTimeout(() => {
+      copyButton.textContent = "Kopyala";
+    }, 1500);
+  });
+  head.append(title, copyButton);
+  const text = document.createElement("p");
+  text.className = "valuation-method-explanation-text";
+  text.dataset.valuationMethodExplanationText = "true";
+  text.textContent = state.fields.valuationMethodExplanation || valuationMethodExplanationFallback;
+  card.append(head, text);
+  return card;
+}
+
+function createValuationShareExplanationPanel() {
+  const card = document.createElement("div");
+  card.className = "valuation-method-explanation-card valuation-share-explanation-card";
+  const head = document.createElement("div");
+  head.className = "valuation-method-explanation-head";
+  const title = document.createElement("h4");
+  title.textContent = "Hisse Açıklaması";
+  const copyButton = document.createElement("button");
+  copyButton.type = "button";
+  copyButton.className = "valuation-method-copy-button";
+  copyButton.textContent = "Kopyala";
+  copyButton.title = "Hisse açıklamasını kopyala";
+  copyButton.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(state.fields.shareExplanation || "");
+      copyButton.textContent = "Kopyalandı";
+    } catch {
+      copyButton.textContent = "Kopyalanamadı";
+    }
+    setTimeout(() => {
+      copyButton.textContent = "Kopyala";
+    }, 1500);
+  });
+  head.append(title, copyButton);
+  const text = document.createElement("p");
+  text.className = "valuation-method-explanation-text";
+  text.dataset.valuationShareExplanationText = "true";
+  text.textContent = state.fields.shareExplanation || "";
+  card.append(head, text);
+  return card;
+}
+
+function createValuationMinimumParcelAssessmentPanel() {
+  refreshLandMinimumParcelAssessment();
+  const card = document.createElement("div");
+  card.className = "valuation-method-explanation-card valuation-minimum-parcel-card";
+  const head = document.createElement("div");
+  head.className = "valuation-method-explanation-head";
+  const title = document.createElement("h4");
+  title.textContent = "5403 Sayılı Kanuna Göre Minimum Parsel Kontrolü";
+  head.append(title);
+  const text = document.createElement("p");
+  text.className = "valuation-method-explanation-text";
+  text.dataset.valuationMinimumParcelAssessmentText = "true";
+  text.textContent = buildLandMinimumParcelAssessmentSentence() || "Minimum parsel kontrolü için gerekli tarım ve parsel bilgileri girilmelidir.";
+  card.append(head, text);
+  return card;
+}
+
+function buildValuationSaleabilityExplanation() {
+  const saleability = saleabilityOptions.includes(state.fields.saleability)
+    ? state.fields.saleability
+    : "Satılabilir";
+  if (saleability === "Satılabilir") {
+    return "Değerlemeye konu taşınmaz yukarıdaki özellikleri sebebiyle tercih edilmektedir. Konumu, ulaşım imkânları ve diğer özellikleri dikkate alındığında SATILABİLİR olduğu kanaatine varılmıştır.";
+  }
+  const userNote = normalizeReportDescriptionText(state.fields.saleabilityNote || "");
+  const conclusion = `Bu sebeple taşınmazın satış kabiliyetinin ${saleability} olacağı görüş ve kanaatindeyiz.`;
+  return [userNote, conclusion].filter(Boolean).join(" ");
+}
+
+const valuationSaleabilityExplanationFallback = "Satış kabiliyeti seçildiğinde açıklama otomatik oluşacaktır.";
+
+function refreshValuationSaleabilityExplanation() {
+  state.fields.valuationSaleabilityExplanation = buildValuationSaleabilityExplanation();
+  const text = document.querySelector("[data-valuation-saleability-explanation-text]");
+  if (text) text.textContent = state.fields.valuationSaleabilityExplanation || valuationSaleabilityExplanationFallback;
+}
+
+function createValuationSaleabilityExplanationPanel() {
+  refreshValuationSaleabilityExplanation();
+  const card = document.createElement("div");
+  card.className = "valuation-method-explanation-card valuation-saleability-explanation-card";
+  const head = document.createElement("div");
+  head.className = "valuation-method-explanation-head";
+  const title = document.createElement("h4");
+  title.textContent = "Satış Kabiliyeti Açıklaması";
+  const copyButton = document.createElement("button");
+  copyButton.type = "button";
+  copyButton.className = "valuation-method-copy-button";
+  copyButton.textContent = "Kopyala";
+  copyButton.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(state.fields.valuationSaleabilityExplanation || "");
+      copyButton.textContent = "Kopyalandı";
+    } catch {
+      copyButton.textContent = "Kopyalanamadı";
+    }
+    setTimeout(() => {
+      copyButton.textContent = "Kopyala";
+    }, 1500);
+  });
+  head.append(title, copyButton);
+  const text = document.createElement("p");
+  text.className = "valuation-method-explanation-text";
+  text.dataset.valuationSaleabilityExplanationText = "true";
+  text.textContent = state.fields.valuationSaleabilityExplanation || valuationSaleabilityExplanationFallback;
+  card.append(head, text);
+  return card;
+}
+
+function buildValuationRentExplanation() {
+  const legalRent = parseValuationNumber(state.fields.legalRent);
+  const currentRent = parseValuationNumber(state.fields.currentRent);
+  if (!Number.isFinite(legalRent) && !Number.isFinite(currentRent)) return "";
+  if (Number.isFinite(legalRent) && Number.isFinite(currentRent) && areValuationAreasEqual(legalRent, currentRent)) {
+    return `Ekspertize konu taşınmazın yasal ve mevcut kira değerinin ${formatValuationRentExplanationMoney(legalRent)} TL/ay olacağı görüş ve kanaatindeyiz.`;
+  }
+  if (Number.isFinite(legalRent) && Number.isFinite(currentRent)) {
+    return `Ekspertize konu taşınmazın yasal kira değerinin ${formatValuationRentExplanationMoney(legalRent)} TL/ay, mevcut kira değerinin ${formatValuationRentExplanationMoney(currentRent)} TL/ay olacağı görüş ve kanaatindeyiz.`;
+  }
+  if (Number.isFinite(legalRent)) {
+    return `Ekspertize konu taşınmazın yasal kira değerinin ${formatValuationRentExplanationMoney(legalRent)} TL/ay olacağı görüş ve kanaatindeyiz.`;
+  }
+  return `Ekspertize konu taşınmazın mevcut kira değerinin ${formatValuationRentExplanationMoney(currentRent)} TL/ay olacağı görüş ve kanaatindeyiz.`;
+}
+
+function formatValuationRentExplanationMoney(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return "";
+  return Math.round(number).toLocaleString("tr-TR");
+}
+
+const valuationRentExplanationFallback = "Yasal ve mevcut kira değerleri girildiğinde kira açıklaması otomatik oluşacaktır.";
+
+function refreshValuationRentExplanation() {
+  state.fields.valuationRentExplanation = buildValuationRentExplanation();
+  const text = document.querySelector("[data-valuation-rent-explanation-text]");
+  if (text) text.textContent = state.fields.valuationRentExplanation || valuationRentExplanationFallback;
+}
+
+function createValuationRentExplanationPanel() {
+  refreshValuationRentExplanation();
+  const card = document.createElement("div");
+  card.className = "valuation-method-explanation-card valuation-rent-explanation-card";
+  const head = document.createElement("div");
+  head.className = "valuation-method-explanation-head";
+  const title = document.createElement("h4");
+  title.textContent = "Kira Açıklaması";
+  const copyButton = document.createElement("button");
+  copyButton.type = "button";
+  copyButton.className = "valuation-method-copy-button";
+  copyButton.textContent = "Kopyala";
+  copyButton.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(state.fields.valuationRentExplanation || "");
+      copyButton.textContent = "Kopyalandı";
+    } catch {
+      copyButton.textContent = "Kopyalanamadı";
+    }
+    setTimeout(() => {
+      copyButton.textContent = "Kopyala";
+    }, 1500);
+  });
+  head.append(title, copyButton);
+  const text = document.createElement("p");
+  text.className = "valuation-method-explanation-text";
+  text.dataset.valuationRentExplanationText = "true";
+  text.textContent = state.fields.valuationRentExplanation || valuationRentExplanationFallback;
+  card.append(head, text);
+  return card;
+}
+
+function isPropertyTaxDeclarationEnabled() {
+  return state.fields.propertyTaxDeclarationEnabled === "1";
+}
+
+function isZiraatBankSelectedForPropertyTaxDeclaration() {
+  const bank = foldTurkish(state.fields.bank || "");
+  return (
+    (
+      bank.includes("T.C. ZIRAAT BANKASI")
+      || bank.includes("TURKIYE CUMHURIYETI ZIRAAT BANKASI")
+      || bank.includes("ZIRAAT BANKASI A.S")
+    )
+    && !bank.includes("KATILIM")
+  );
+}
+
+function shouldShowPropertyTaxUnavailableInValuation() {
+  return !isPropertyTaxDeclarationEnabled() && isZiraatBankSelectedForPropertyTaxDeclaration();
+}
+
+function getPropertyTaxDeclarationMunicipalityText() {
+  const district = normalizeReportTitleText(state.fields.titleDistrict || state.fields.district || "").trim();
+  return district ? `${district} Belediyesi` : "İlgili Belediye";
+}
+
+function getPropertyTaxDeclarationMunicipalitySourceText() {
+  const district = normalizeReportTitleText(state.fields.titleDistrict || state.fields.district || "").trim();
+  return district ? `${district} Belediyesinden` : "ilgili belediyeden";
+}
+
+function getPropertyTaxDeclarationInspectionDateText() {
+  return dateIsoToTr(state.fields.municipalityInspectionDate || state.fields.appointmentDate || "").trim();
+}
+
+function getPropertyTaxDeclarationYearText() {
+  const dateValue = state.fields.municipalityInspectionDate || state.fields.appointmentDate || state.system?.businessDate || "";
+  const isoDate = dateTrToIso(dateValue) || dateValue;
+  const yearMatch = String(isoDate || "").match(/\b(20\d{2}|19\d{2})\b/);
+  return yearMatch ? yearMatch[1] : String(new Date().getFullYear());
+}
+
+function buildPropertyTaxDeclarationValueExplanation() {
+  if (!isPropertyTaxDeclarationEnabled()) return "";
+  const value = parseValuationNumber(state.fields.propertyTaxDeclarationValue);
+  if (!Number.isFinite(value) || value <= 0) return "";
+  const dateText = getPropertyTaxDeclarationInspectionDateText();
+  const datePrefix = dateText ? `${dateText} tarihinde ` : "";
+  const municipality = getPropertyTaxDeclarationMunicipalityText();
+  const declarationYear = getPropertyTaxDeclarationYearText();
+  return `${datePrefix}${municipality} Emlak Servisinden alınan bilgiye göre değerlemeye konu taşınmazın ${declarationYear} Yılı Emlak Beyan Değeri ${formatValuationRentExplanationMoney(value)} TL'dir.`;
+}
+
+function buildPropertyTaxDeclarationUnavailableExplanation() {
+  if (isPropertyTaxDeclarationEnabled()) return "";
+  const municipality = getPropertyTaxDeclarationMunicipalityText();
+  return `${municipality} Emlak Servisinde yapılan incelemelerde taşınmaza ait rayiç bedel hakkında bilgilerin malik dışındaki 3. Kişilere verilmediği beyan edilmiştir.`;
+}
+
+const propertyTaxDeclarationExplanationFallback = "Emlak beyan değeri girildiğinde açıklama otomatik oluşacaktır.";
+
+function refreshPropertyTaxDeclarationExplanation() {
+  const unavailableExplanation = buildPropertyTaxDeclarationUnavailableExplanation();
+  state.fields.propertyTaxDeclarationExplanation = buildPropertyTaxDeclarationValueExplanation()
+    || (shouldShowPropertyTaxUnavailableInValuation() ? unavailableExplanation : "");
+  state.fields.propertyTaxDeclarationUnavailableExplanation = buildPropertyTaxDeclarationUnavailableExplanation();
+  document.querySelectorAll("[data-property-tax-declaration-explanation-card]").forEach((card) => {
+    card.hidden = !isPropertyTaxDeclarationEnabled() && !shouldShowPropertyTaxUnavailableInValuation();
+  });
+  const valuationText = document.querySelector("[data-property-tax-declaration-explanation-text]");
+  if (valuationText) valuationText.textContent = state.fields.propertyTaxDeclarationExplanation || propertyTaxDeclarationExplanationFallback;
+  const unavailableText = document.querySelector("[data-property-tax-declaration-unavailable-text]");
+  if (unavailableText) unavailableText.textContent = state.fields.propertyTaxDeclarationUnavailableExplanation || "";
+}
+
+function createValuationPropertyTaxDeclarationExplanationPanel() {
+  refreshPropertyTaxDeclarationExplanation();
+  const card = document.createElement("div");
+  card.className = "valuation-method-explanation-card property-tax-declaration-explanation-card";
+  card.dataset.propertyTaxDeclarationExplanationCard = "true";
+  card.hidden = !isPropertyTaxDeclarationEnabled() && !shouldShowPropertyTaxUnavailableInValuation();
+  const head = document.createElement("div");
+  head.className = "valuation-method-explanation-head";
+  const title = document.createElement("h4");
+  title.textContent = "Emlak Beyan Değeri Açıklaması";
+  const copyButton = document.createElement("button");
+  copyButton.type = "button";
+  copyButton.className = "valuation-method-copy-button";
+  copyButton.textContent = "Kopyala";
+  copyButton.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(state.fields.propertyTaxDeclarationExplanation || "");
+      copyButton.textContent = "Kopyalandı";
+    } catch {
+      copyButton.textContent = "Kopyalanamadı";
+    }
+    setTimeout(() => {
+      copyButton.textContent = "Kopyala";
+    }, 1500);
+  });
+  head.append(title, copyButton);
+  const text = document.createElement("p");
+  text.className = "valuation-method-explanation-text";
+  text.dataset.propertyTaxDeclarationExplanationText = "true";
+  text.textContent = state.fields.propertyTaxDeclarationExplanation || propertyTaxDeclarationExplanationFallback;
+  card.append(head, text);
+  return card;
+}
+
+function createExplanationsPropertyTaxDeclarationPanel() {
+  refreshPropertyTaxDeclarationExplanation();
+  const panel = document.createElement("div");
+  panel.className = "valuation-method-explanation-card property-tax-declaration-explanation-card";
+  panel.hidden = isPropertyTaxDeclarationEnabled() || shouldShowPropertyTaxUnavailableInValuation();
+  const head = document.createElement("div");
+  head.className = "valuation-method-explanation-head";
+  const title = document.createElement("h4");
+  title.textContent = "Emlak Beyan Değeri Açıklaması";
+  const copyButton = document.createElement("button");
+  copyButton.type = "button";
+  copyButton.className = "valuation-method-copy-button";
+  copyButton.textContent = "Kopyala";
+  copyButton.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(state.fields.propertyTaxDeclarationUnavailableExplanation || "");
+      copyButton.textContent = "Kopyalandı";
+    } catch {
+      copyButton.textContent = "Kopyalanamadı";
+    }
+    setTimeout(() => {
+      copyButton.textContent = "Kopyala";
+    }, 1500);
+  });
+  head.append(title, copyButton);
+  const text = document.createElement("p");
+  text.className = "valuation-method-explanation-text";
+  text.dataset.propertyTaxDeclarationUnavailableText = "true";
+  text.textContent = state.fields.propertyTaxDeclarationUnavailableExplanation || "";
+  panel.append(head, text);
+  return panel;
+}
+
+function openSaleabilityNoteModal(onSave = () => {}) {
+  document.querySelector(".modal-overlay")?.remove();
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.innerHTML = `
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="saleabilityNoteModalTitle">
+      <div class="modal-head">
+        <h3 id="saleabilityNoteModalTitle">Satış Kabiliyeti Açıklaması</h3>
+        <button type="button" class="modal-close" data-modal-close>×</button>
+      </div>
+      <div class="modal-body">
+        <label class="field field-wide">
+          <span>Açıklama</span>
+          <textarea data-saleability-note rows="5" placeholder="Satış kabiliyeti ile ilgili açıklamayı yazın."></textarea>
+        </label>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="secondary-button" data-modal-cancel>Vazgeç</button>
+        <button type="button" class="primary-button" data-modal-save>Kaydet</button>
+      </div>
+    </div>
+  `;
+  const textarea = overlay.querySelector("[data-saleability-note]");
+  textarea.value = state.fields.saleabilityNote || "";
+  const close = () => overlay.remove();
+  overlay.querySelector("[data-modal-close]").addEventListener("click", close);
+  overlay.querySelector("[data-modal-cancel]").addEventListener("click", close);
+  overlay.querySelector("[data-modal-save]").addEventListener("click", () => {
+    state.fields.saleabilityNote = normalizeReportDescriptionText(textarea.value);
+    refreshValuationSaleabilityExplanation();
+    autosave();
+    close();
+    onSave();
+    renderSection();
+  });
+  document.body.append(overlay);
+  textarea.focus();
+}
+
+function createValuationInsuranceTable() {
+  const panel = createValuationPanel("Sigortaya Esas Değer", "Yapı yaklaşık birim değeri Ana Gayrimenkul bölümündeki yapı sınıfından otomatik alınır.");
+  const table = document.createElement("table");
+  table.className = "valuation-table valuation-insurance-table";
+  table.innerHTML = `
+    <thead>
+      <tr>
+        <th></th>
+        <th>Alan</th>
+        <th>Yapı Yaklaşık Birim Değeri</th>
+        <th>Sigortaya Esas Değer</th>
+      </tr>
+    </thead>
+  `;
+  const tbody = document.createElement("tbody");
+  const tr = document.createElement("tr");
+  tr.append(
+    createValuationLabelCell("Sigortaya Esas Değer"),
+    createValuationInputCell("insuranceValueArea", "Alan", { suffix: "m²" }),
+    createValuationInputCell("insuranceUnitCost", "Yapı Yaklaşık Birim Değeri", { suffix: "TL/m²", readOnly: true }),
+    createValuationInputCell("insuranceValue", "Sigortaya Esas Değer", { suffix: "TL", readOnly: true }),
+  );
+  tbody.append(tr);
+  table.append(tbody);
+  panel.append(createValuationTableWrap(table));
+  return panel;
+}
+
+function createValuationLandTable() {
+  const panel = createValuationPanel("Arsa Değeri", "Arsa payı/payda, yüzölçüm ve arsa m2 birim değeri ile arsa değeri hesaplanır.");
+  const table = document.createElement("table");
+  table.className = "valuation-table valuation-land-table";
+  const tbody = document.createElement("tbody");
+  const tr = document.createElement("tr");
+  tr.append(
+    createValuationLabelCell("Arsa Değeri"),
+    createValuationInputCell("share", "Arsa Payı", { suffix: "pay" }),
+    createValuationStaticCell("/"),
+    createValuationInputCell("denominator", "Arsa Payda", { suffix: "payda" }),
+    createValuationStaticCell("x"),
+    createValuationInputCell("landArea", "Yüzölçüm", { suffix: "m²" }),
+    createValuationStaticCell("x"),
+    createValuationInputCell("landUnitValue", "Arsa M2 Birim Değeri", { suffix: "TL/m²" }),
+    createValuationStaticCell("="),
+    createValuationInputCell("landValue", "Arsa Değeri", { suffix: "TL", readOnly: true }),
+  );
+  tbody.append(tr);
+  table.append(tbody);
+  panel.append(createValuationTableWrap(table));
+  return panel;
+}
+
+function createValuationPremiumTable() {
+  const panel = createValuationPanel("Şerefiye Bölümü", "Durum değerinden arsa değeri ve yapı değeri düşülerek yasal/mevcut şerefiye tutarı ve yüzdesi otomatik hesaplanır.");
+  const table = document.createElement("table");
+  table.className = "valuation-table valuation-premium-table";
+  table.innerHTML = `
+    <thead>
+      <tr>
+        <th></th>
+        <th>Arsa Değeri</th>
+        <th>Yapı Değeri</th>
+        <th>Şerefiye Değeri</th>
+        <th>Şerefiye Yüzdesi</th>
+      </tr>
+    </thead>
+  `;
+  const tbody = document.createElement("tbody");
+  valuationPremiumRows.forEach((row) => {
+    const premiumValue = parseValuationNumber(state.fields[row.premiumKey]);
+    const isNegative = Number.isFinite(premiumValue) && premiumValue < 0;
+    const tr = document.createElement("tr");
+    tr.append(
+      createValuationLabelCell(row.label),
+      createValuationInputCell(row.landKey, "Arsa Değeri", { suffix: "TL", readOnly: true }),
+      createValuationInputCell(row.buildingKey, "Yapı Değeri", { suffix: "TL", readOnly: true }),
+      createValuationInputCell(row.premiumKey, "Şerefiye Değeri", { suffix: "TL", readOnly: true, negative: isNegative }),
+      createValuationInputCell(row.rateKey, "Şerefiye Yüzdesi", { suffix: "%", readOnly: true, negative: isNegative }),
+    );
+    tbody.append(tr);
+  });
+  table.append(tbody);
+  panel.append(createValuationTableWrap(table));
+  return panel;
+}
+
+function createPropertyTaxDeclarationValuePanel() {
+  const panel = document.createElement("div");
+  panel.className = "subsection valuation-panel property-tax-declaration-panel";
+
+  const head = document.createElement("div");
+  head.className = "property-tax-declaration-head";
+
+  const toggleLabel = document.createElement("label");
+  toggleLabel.className = "property-tax-declaration-toggle";
+  const checkbox = document.createElement("input");
+  checkbox.type = "checkbox";
+  checkbox.checked = state.fields.propertyTaxDeclarationEnabled === "1";
+  const title = document.createElement("span");
+  title.textContent = "Emlak Beyan Değeri";
+  toggleLabel.append(checkbox, title);
+
+  const valueField = document.createElement("label");
+  valueField.className = "valuation-input property-tax-declaration-value";
+  valueField.hidden = !checkbox.checked;
+  const caption = document.createElement("span");
+  caption.textContent = "Belediye Emlak Beyan Değeri";
+  const input = document.createElement("input");
+  input.dataset.field = "propertyTaxDeclarationValue";
+  input.inputMode = "decimal";
+  input.placeholder = "TL";
+  input.value = state.fields.propertyTaxDeclarationValue || "";
+  valueField.append(caption, input);
+
+  checkbox.addEventListener("change", () => {
+    state.fields.propertyTaxDeclarationEnabled = checkbox.checked ? "1" : "";
+    valueField.hidden = !checkbox.checked;
+    if (!checkbox.checked) {
+      state.fields.propertyTaxDeclarationValue = "";
+      input.value = "";
+    } else {
+      input.focus();
+    }
+    refreshPropertyTaxDeclarationExplanation();
+    autosave();
+    renderValidation();
+    updateStatus();
+  });
+
+  input.addEventListener("input", (event) => {
+    state.fields.propertyTaxDeclarationValue = event.target.value;
+    refreshPropertyTaxDeclarationExplanation();
+    autosave();
+    renderValidation();
+    updateStatus();
+  });
+
+  input.addEventListener("blur", () => {
+    const formatted = normalizeValuationInputValue(input.value);
+    input.value = formatted;
+    state.fields.propertyTaxDeclarationValue = formatted;
+    refreshPropertyTaxDeclarationExplanation();
+    autosave();
+    renderValidation();
+    updateStatus();
+  });
+
+  head.append(toggleLabel, valueField);
+  panel.append(head);
+  return panel;
+}
+
+function createValuationPanel(titleText, descriptionText) {
+  const panel = document.createElement("div");
+  panel.className = "subsection valuation-panel";
+  const header = document.createElement("div");
+  header.className = "subsection-title-row";
+  const title = document.createElement("h4");
+  title.textContent = titleText;
+  const description = document.createElement("p");
+  description.textContent = descriptionText;
+  header.append(title, description);
+  panel.append(header);
+  return panel;
+}
+
+function createValuationTableWrap(table) {
+  const wrap = document.createElement("div");
+  wrap.className = "valuation-table-wrap";
+  wrap.append(table);
+  return wrap;
+}
+
+function createValuationLabelCell(text, options = {}) {
+  const cell = document.createElement("th");
+  cell.scope = "row";
+  if (options.marketRowKey) cell.dataset.marketRowKey = options.marketRowKey;
+  const label = document.createElement("span");
+  label.className = "valuation-label-text";
+  label.textContent = text;
+  cell.append(label);
+  if (options.note) {
+    const note = document.createElement("span");
+    note.className = "valuation-label-note";
+    note.textContent = options.note;
+    cell.append(note);
+  }
+  return cell;
+}
+
+function createValuationStaticCell(text) {
+  const cell = document.createElement("td");
+  cell.className = "valuation-static-cell";
+  cell.textContent = text;
+  return cell;
+}
+
+function createValuationInputCell(key, label, options = {}) {
+  const cell = document.createElement("td");
+  const control = createValuationInput(key, label, options);
+  cell.append(control);
+  return cell;
+}
+
+function createValuationInput(key, label, options = {}) {
+  const wrapper = document.createElement("label");
+  wrapper.className = "valuation-input";
+  const caption = document.createElement("span");
+  caption.textContent = label;
+  const input = document.createElement("input");
+  input.dataset.field = key;
+  input.inputMode = options.text ? "text" : "decimal";
+  input.value = state.fields[key] || "";
+  input.placeholder = options.suffix || "";
+  if (options.readOnly) {
+    input.readOnly = true;
+    input.classList.add("is-readonly");
+  }
+  if (options.negative) {
+    input.classList.add("valuation-input-negative");
+  }
+  input.addEventListener("input", (event) => {
+    if (options.readOnly) return;
+    state.fields[key] = event.target.value;
+    markValuationManualField(key);
+    refreshValuationComputedFields();
+    autosave();
+    renderValidation();
+    updateStatus();
+  });
+  input.addEventListener("blur", () => {
+    if (options.readOnly) return;
+    const formatted = normalizeValuationInputValue(input.value);
+    input.value = formatted;
+    state.fields[key] = formatted;
+    markValuationManualField(key);
+    refreshValuationComputedFields();
+    autosave();
+    renderValidation();
+    updateStatus();
+    if (isBuildingValueVisibilityField(key)) renderSection();
+  });
+  wrapper.append(caption, input);
+  return wrapper;
+}
+
+function isBuildingValueVisibilityField(key) {
+  return ["legalBuildingDepreciationRate", "currentBuildingDepreciationRate"].includes(key);
+}
+
+function markValuationManualField(key) {
+  if (!["legalValue", "currentValue", "legalRent", "currentRent"].includes(key)) return;
+  state.fields[`${key}ComparableAutoManual`] = "1";
+}
+
+function refreshValuationComputedFields() {
+  syncValuationAreasFromUnitAreas();
+  syncComparableValuationMarketValues();
+  syncLandOwnershipValuationDefaults();
+  refreshBuildingDepreciationFromCurrentFields();
+  syncBuildingValueDefaults();
+  valuationMarketRows.forEach((row) => {
+    state.fields[row.unitKey] = calculateValuationUnitValue(state.fields[row.totalKey], state.fields[row.areaKey]);
+  });
+  refreshWorkplaceFloorCalculationTable();
+  refreshValuationIncomeMetricFields();
+  valuationBuildingValueRows.forEach((row) => {
+    const value = calculateBuildingValuationValue(row);
+    state.fields[row.totalKey] = value ? formatValuationMoney(value) : "";
+  });
+  refreshIncompleteConstructionValueFields();
+  const insuranceUnitCost = parseValuationNumber(state.fields.insuranceUnitCost);
+  const insuranceValue = calculateValuationProduct(state.fields.insuranceValueArea, insuranceUnitCost);
+  state.fields.insuranceValue = insuranceValue ? formatValuationMoney(insuranceValue) : "";
+  const landValue = calculateLandValuationValue();
+  state.fields.landValue = landValue ? formatValuationMoney(landValue) : "";
+  refreshValuationPremiumFields();
+  refreshValuationSaleabilityExplanation();
+  refreshValuationRentExplanation();
+  refreshValuationMethodExplanation();
+  refreshValuationControls();
+}
+
+function syncLandOwnershipValuationDefaults() {
+  if (!isLandOwnershipType()) return;
+  const area = parseValuationNumber(state.fields.landArea);
+  if (!Number.isFinite(area) || area <= 0) return;
+  const formattedArea = formatValuationArea(area);
+  state.fields.legalValueArea = formattedArea;
+  state.fields.currentValueArea = formattedArea;
+  state.fields.insuranceValueArea = formattedArea;
+
+  if (!isTarlaOwnershipType()) {
+    const arsaMarketValue = getComparableCalculatedEmsalValuationMetrics().marketValue;
+    if (!Number.isFinite(arsaMarketValue) || arsaMarketValue <= 0) return;
+    const formattedValue = formatValuationMoney(arsaMarketValue);
+    state.fields.legalValue = formattedValue;
+    state.fields.currentValue = formattedValue;
+    state.fields.legalValueComparableAuto = formattedValue;
+    state.fields.currentValueComparableAuto = formattedValue;
+    return;
+  }
+  const landRows = getComparableValuationRows().filter((row) => row.landComparable);
+  const average = calculateComparableValuationAverages(landRows);
+  const unitValue = average.adjustedUnitValue;
+  if (!Number.isFinite(unitValue) || unitValue <= 0) return;
+  const roundedValue = roundComparableValuationValue(area * unitValue, comparableValuationRoundStep);
+  if (!Number.isFinite(roundedValue)) return;
+  const formattedValue = formatValuationMoney(roundedValue);
+  state.fields.legalValue = formattedValue;
+  state.fields.currentValue = formattedValue;
+  state.fields.legalValueComparableAuto = formattedValue;
+  state.fields.currentValueComparableAuto = formattedValue;
+}
+
+function syncBuildingValueDefaults() {
+  if (isLandOwnershipType()) return;
+  const totals = getValuationUnitAreaTotals();
+  state.fields.legalBuildingValueArea = totals.legal || "";
+  state.fields.currentBuildingValueArea = totals.current || "";
+  const unitCost = getInsuranceConstructionCostRow()?.unitCost;
+  const formattedUnitCost = Number.isFinite(unitCost) ? formatValuationMoney(unitCost, { decimals: 2 }) : "";
+  setAutoValuationField("legalBuildingUnitCost", "legalBuildingUnitCostAuto", formattedUnitCost);
+  setAutoValuationField("currentBuildingUnitCost", "currentBuildingUnitCostAuto", formattedUnitCost);
+  const constructionLevel = normalizeConstructionLevelValue(state.fields.unitConstructionLevel || "100%");
+  state.fields.legalBuildingConstructionLevel = constructionLevel;
+  state.fields.currentBuildingConstructionLevel = constructionLevel;
+  const constructionLevelNumber = parseValuationNumberOrZero(constructionLevel);
+  const depreciationRate = getBuildingDepreciationRate();
+  const effectiveDepreciationRate = constructionLevelNumber !== 100 ? 0 : depreciationRate;
+  const formattedDepreciationRate = Number.isFinite(effectiveDepreciationRate) ? formatValuationMoney(effectiveDepreciationRate, { decimals: 2 }) : "";
+  if (constructionLevelNumber !== 100) {
+    state.fields.legalBuildingDepreciationRate = formattedDepreciationRate;
+    state.fields.currentBuildingDepreciationRate = formattedDepreciationRate;
+    state.fields.legalBuildingDepreciationRateAuto = formattedDepreciationRate;
+    state.fields.currentBuildingDepreciationRateAuto = formattedDepreciationRate;
+  } else {
+    setAutoValuationField("legalBuildingDepreciationRate", "legalBuildingDepreciationRateAuto", formattedDepreciationRate);
+    setAutoValuationField("currentBuildingDepreciationRate", "currentBuildingDepreciationRateAuto", formattedDepreciationRate);
+  }
+}
+
+function setAutoValuationField(key, autoKey, nextValue) {
+  const currentValue = String(state.fields[key] || "").trim();
+  const previousAutoValue = String(state.fields[autoKey] || "").trim();
+  if (!currentValue || currentValue === previousAutoValue) {
+    state.fields[key] = nextValue || "";
+  }
+  state.fields[autoKey] = nextValue || "";
+}
+
+function calculateBuildingValuationValue(row) {
+  const area = parseValuationNumber(state.fields[row.areaKey]);
+  const unit = parseValuationNumber(state.fields[row.unitKey]);
+  const depreciationRate = getEffectiveBuildingDepreciationRate(row);
+  const constructionLevelRate = getConstructionLevelRate(state.fields[row.levelKey]);
+  if (![area, unit, constructionLevelRate].every(Number.isFinite)) return 0;
+  const depreciationFactor = Math.max(0, 1 - depreciationRate / 100);
+  return area * unit * depreciationFactor * constructionLevelRate;
+}
+
+function getEffectiveBuildingDepreciationRate(row) {
+  const constructionLevel = parseValuationNumberOrZero(state.fields[row.levelKey]);
+  return constructionLevel !== 100 ? 0 : parseValuationNumberOrZero(state.fields[row.depreciationKey]);
+}
+
+function shouldShowBuildingDepreciationColumn() {
+  return valuationBuildingValueRows.some((row) => getEffectiveBuildingDepreciationRate(row) > 0);
+}
+
+function shouldShowBuildingConstructionLevelColumn() {
+  return valuationBuildingValueRows.some((row) => parseValuationNumberOrZero(state.fields[row.levelKey]) !== 100);
+}
+
+function normalizeConstructionLevelValue(value) {
+  const number = parseValuationNumber(value);
+  if (!Number.isFinite(number) || number <= 0) return "100";
+  return formatValuationMoney(Math.min(number, 100), { decimals: 2 });
+}
+
+function getConstructionLevelRate(value) {
+  const number = parseValuationNumber(value);
+  if (!Number.isFinite(number) || number <= 0) return 1;
+  return Math.min(number, 100) / 100;
+}
+
+function calculateValuationUnitValue(totalValue, areaValue) {
+  const total = parseValuationNumber(totalValue);
+  const area = parseValuationNumber(areaValue);
+  if (!Number.isFinite(total) || !Number.isFinite(area) || area === 0) return "";
+  return formatValuationMoney(total / area, { decimals: 2 });
+}
+
+function refreshValuationPremiumFields() {
+  valuationPremiumRows.forEach((row) => {
+    state.fields[row.landKey] = state.fields.landValue || "";
+    const premiumValue = calculateValuationPremiumValue(row);
+    state.fields[row.premiumKey] = Number.isFinite(premiumValue) ? formatValuationMoney(premiumValue) : "";
+    state.fields[row.rateKey] = calculateValuationPremiumRate(premiumValue, state.fields[row.marketKey]);
+  });
+}
+
+function refreshValuationIncomeMetricFields() {
+  Object.values(valuationIncomeMetricRows).forEach((row) => {
+    state.fields[row.capitalizationKey] = calculateValuationCapitalizationRate(state.fields[row.rentKey], state.fields[row.valueKey]);
+    state.fields[row.amortizationKey] = calculateValuationAmortizationMonths(state.fields[row.valueKey], state.fields[row.rentKey]);
+  });
+}
+
+function calculateValuationCapitalizationRate(rentValue, marketValue) {
+  const rent = parseValuationNumber(rentValue);
+  const value = parseValuationNumber(marketValue);
+  if (!Number.isFinite(rent) || !Number.isFinite(value) || value === 0) return "";
+  return formatValuationMoney((rent * 12 / value) * 100, { decimals: 2 });
+}
+
+function calculateValuationAmortizationMonths(marketValue, rentValue) {
+  const value = parseValuationNumber(marketValue);
+  const rent = parseValuationNumber(rentValue);
+  if (!Number.isFinite(value) || !Number.isFinite(rent) || rent === 0) return "";
+  return formatValuationMoney(Math.round(value / rent));
+}
+
+function calculateValuationPremiumValue(row) {
+  const marketValue = parseValuationNumber(state.fields[row.marketKey]);
+  const landValue = parseValuationNumber(state.fields.landValue);
+  const buildingValue = parseValuationNumber(state.fields[row.buildingKey]);
+  if (![marketValue, landValue, buildingValue].every(Number.isFinite)) return Number.NaN;
+  return marketValue - landValue - buildingValue;
+}
+
+function calculateValuationPremiumRate(premiumValue, marketValueInput) {
+  const marketValue = parseValuationNumber(marketValueInput);
+  if (!Number.isFinite(premiumValue) || !Number.isFinite(marketValue) || marketValue === 0) return "";
+  return formatValuationMoney((premiumValue / marketValue) * 100, { decimals: 2 });
+}
+
+// ==========================================================
+//  Değerleme Yöntemleri Hesap Açıklaması (Değerlendirme Şeması)
+//  Excel makrosundaki üç yöntemli şemanın sistemimizdeki alanlara
+//  uyarlanmış halidir. Yapı değeri sistemimizde ÜFE çarpanı olmadan
+//  alan x birim maliyet x (1-yıpranma) x inşaat seviyesi ile hesaplanır.
+// ==========================================================
+function formatSchemeNumber(value, decimals = 0) {
+  const number = parseValuationNumber(value);
+  if (!Number.isFinite(number)) return "0";
+  return number.toLocaleString("tr-TR", {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
+}
+
+function formatSchemeRate(number) {
+  if (!Number.isFinite(number)) return "0";
+  return number.toLocaleString("tr-TR", { maximumFractionDigits: 2 });
+}
+
+function formatSchemeKapRate(rentValue, marketValue) {
+  const rent = parseValuationNumber(rentValue);
+  const value = parseValuationNumber(marketValue);
+  if (!Number.isFinite(rent) || !Number.isFinite(value) || value === 0) return "0,000";
+  const kap = Math.round(((rent * 12) / value) * 1000) / 1000;
+  return kap.toLocaleString("tr-TR", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+}
+
+function valuationLegalCurrentDiffers() {
+  const legalArea = parseValuationNumber(state.fields.legalValueArea);
+  const currentArea = parseValuationNumber(state.fields.currentValueArea);
+  const legalValue = parseValuationNumber(state.fields.legalValue);
+  const currentValue = parseValuationNumber(state.fields.currentValue);
+  const areaDiff = Number.isFinite(legalArea) && Number.isFinite(currentArea) && Math.abs(legalArea - currentArea) > 0.0001;
+  const valueDiff = Number.isFinite(legalValue) && Number.isFinite(currentValue) && Math.abs(legalValue - currentValue) > 0.0001;
+  return areaDiff || valueDiff;
+}
+
+function hasValuationSchemeData() {
+  const legalValue = parseValuationNumber(state.fields.legalValue);
+  return Number.isFinite(legalValue) && legalValue > 0;
+}
+
+function buildSchemeYapiItem(prefix, row) {
+  const area = formatSchemeNumber(state.fields[row.areaKey], 0);
+  const unit = formatSchemeNumber(state.fields[row.unitKey], 2);
+  const factors = [];
+  const depreciation = getEffectiveBuildingDepreciationRate(row);
+  if (Number.isFinite(depreciation) && depreciation > 0) {
+    factors.push(`(1 - %${formatSchemeRate(depreciation)}) Yıpranma Oranı`);
+  }
+  const constructionLevel = parseValuationNumberOrZero(state.fields[row.levelKey]);
+  if (constructionLevel && constructionLevel !== 100) {
+    factors.push(`%${formatSchemeRate(constructionLevel)} İnşaat Seviyesi`);
+  }
+  const factorText = factors.length ? ` x ${factors.join(" x ")}` : "";
+  const text = `${prefix}: ${area} m² x ${unit} TL/m²${factorText} = ${formatSchemeNumber(state.fields[row.totalKey])} TL`;
+  return { kind: "yapi", text, factors };
+}
+
+function buildValuationMethodsScheme() {
+  const fark = valuationLegalCurrentDiffers();
+  const legalArea = state.fields.legalValueArea;
+  const currentArea = state.fields.currentValueArea;
+  const legalUnit = state.fields.legalValueUnit;
+  const currentUnit = state.fields.currentValueUnit;
+  const legalValue = state.fields.legalValue;
+  const currentValue = state.fields.currentValue;
+  const legalRent = state.fields.legalRent;
+  const currentRent = state.fields.currentRent;
+  const share = (state.fields.share || "").trim() || "1";
+  const denominator = (state.fields.denominator || "").trim() || "1";
+  const arsaText = `ARSA DEĞERİ: ${formatSchemeNumber(state.fields.landArea, 2)} m² x ${share}/${denominator} x ${formatSchemeNumber(state.fields.landUnitValue, 2)} TL/m² = ${formatSchemeNumber(state.fields.landValue)} TL`;
+
+  const items = [];
+
+  // Emsal Karşılaştırma Yöntemi
+  items.push({ kind: "heading", text: "EMSAL KARŞILAŞTIRMA YÖNTEMİ" });
+  if (fark) {
+    items.push({ kind: "line", text: `Ekspertize Konu Taşınmazın Yasal Durum Değeri: ${formatSchemeNumber(legalArea)} m² x ${formatSchemeNumber(legalUnit, 2)} TL/m² = ${formatSchemeNumber(legalValue)} TL` });
+    items.push({ kind: "line", text: `Ekspertize Konu Taşınmazın Mevcut Durum Değeri: ${formatSchemeNumber(currentArea)} m² x ${formatSchemeNumber(currentUnit, 2)} TL/m² = ${formatSchemeNumber(currentValue)} TL` });
+  } else {
+    items.push({ kind: "line", text: `Ekspertize Konu Taşınmazın Yasal ve Mevcut Durum Değeri: ${formatSchemeNumber(legalArea)} m² x ${formatSchemeNumber(legalUnit, 2)} TL/m² = ${formatSchemeNumber(legalValue)} TL` });
+  }
+  items.push({ kind: "blank" });
+
+  // Gelir İndirgeme Yöntemi
+  items.push({ kind: "heading", text: "GELİR İNDİRGEME YÖNTEMİ" });
+  if (fark) {
+    items.push({ kind: "line", text: `Ekspertize Konu Taşınmazın Yasal Durum Değeri: ${formatSchemeNumber(legalRent)} TL/ay x 12 ay / ${formatSchemeKapRate(legalRent, legalValue)} (Kap. Oranı) = ${formatSchemeNumber(legalValue)} TL` });
+    items.push({ kind: "line", text: `Ekspertize Konu Taşınmazın Mevcut Durum Değeri: ${formatSchemeNumber(currentRent)} TL/ay x 12 ay / ${formatSchemeKapRate(currentRent, currentValue)} (Kap. Oranı) = ${formatSchemeNumber(currentValue)} TL` });
+  } else {
+    items.push({ kind: "line", text: `Ekspertize Konu Taşınmazın Yasal ve Mevcut Durum Değeri: ${formatSchemeNumber(legalRent)} TL/ay x 12 ay / ${formatSchemeKapRate(legalRent, legalValue)} (Kap. Oranı) = ${formatSchemeNumber(legalValue)} TL` });
+  }
+  items.push({ kind: "blank" });
+
+  // Maliyet Yöntemi
+  items.push({ kind: "heading", text: "MALİYET YÖNTEMİ" });
+  if (fark) {
+    items.push({ kind: "subheading", text: "Yasal Durum Değeri:" });
+    items.push({ kind: "line", text: arsaText });
+    items.push(buildSchemeYapiItem("YASAL YAPI DEĞERİ", valuationBuildingValueRows[0]));
+    items.push({ kind: "line", text: `ÇEVRE DÜZENLEME VE ŞEREFİYE (Yasal): ${formatSchemeNumber(state.fields.legalPremiumValue)} TL` });
+    items.push({ kind: "line", text: `TOPLAM (Yasal Durum Değeri): ${formatSchemeNumber(legalValue)} TL` });
+    items.push({ kind: "blank" });
+    items.push({ kind: "subheading", text: "Mevcut Durum Değeri:" });
+    items.push({ kind: "line", text: arsaText });
+    items.push(buildSchemeYapiItem("MEVCUT YAPI DEĞERİ", valuationBuildingValueRows[1]));
+    items.push({ kind: "line", text: `ÇEVRE DÜZENLEME VE ŞEREFİYE (Mevcut): ${formatSchemeNumber(state.fields.currentPremiumValue)} TL` });
+    items.push({ kind: "line", text: `TOPLAM (Mevcut Durum Değeri): ${formatSchemeNumber(currentValue)} TL` });
+  } else {
+    items.push({ kind: "subheading", text: "Yasal ve Mevcut Durum Değeri:" });
+    items.push({ kind: "line", text: arsaText });
+    items.push(buildSchemeYapiItem("YAPI DEĞERİ", valuationBuildingValueRows[0]));
+    items.push({ kind: "line", text: `ÇEVRE DÜZENLEME VE ŞEREFİYE: ${formatSchemeNumber(state.fields.legalPremiumValue)} TL` });
+    items.push({ kind: "line", text: `TOPLAM: ${formatSchemeNumber(legalValue)} TL` });
+  }
+
+  return items;
+}
+
+function buildValuationMethodsSchemeText() {
+  if (!hasValuationSchemeData()) return "";
+  return buildValuationMethodsScheme()
+    .map((item) => (item.kind === "blank" ? "" : item.text))
+    .join("\n");
+}
+
+function refreshValuationMethodsExplanationFromCurrentFields() {
+  refreshValuationComputedFields();
+  state.fields.valuationMethodsScheme = buildValuationMethodsSchemeText();
+}
+
+function appendSchemeYapiContent(container, item) {
+  let remaining = item.text;
+  (item.factors || []).forEach((factor) => {
+    const index = remaining.indexOf(factor);
+    if (index === -1) return;
+    container.append(document.createTextNode(remaining.slice(0, index)));
+    const span = document.createElement("span");
+    span.className = "valuation-scheme-factor";
+    span.textContent = factor;
+    container.append(span);
+    remaining = remaining.slice(index + factor.length);
+  });
+  container.append(document.createTextNode(remaining));
+}
+
+function createValuationMethodsSchemePanel() {
+  refreshValuationMethodsExplanationFromCurrentFields();
+  const panel = document.createElement("div");
+  panel.className = "subsection valuation-scheme-panel";
+  const header = document.createElement("div");
+  header.className = "subsection-title-row";
+  const title = document.createElement("h4");
+  title.textContent = "Değerleme Yöntemleri Hesap Açıklaması";
+  const description = document.createElement("p");
+  description.textContent = "Değerleme bölümündeki alanlardan üç yönteme (emsal karşılaştırma, gelir indirgeme, maliyet) göre hesap açıklaması otomatik üretilir. Rapora {{DEGERLENDIRME_SEMASI}} alanı ile aktarılır.";
+  header.append(title, description);
+  panel.append(header);
+
+  if (!hasValuationSchemeData()) {
+    const note = document.createElement("p");
+    note.className = "subtle-text";
+    note.textContent = "Değerleme bölümündeki piyasa değerleri girildiğinde hesap açıklaması burada otomatik oluşacaktır.";
+    panel.append(note);
+    return panel;
+  }
+
+  const body = document.createElement("div");
+  body.className = "valuation-scheme-body";
+  buildValuationMethodsScheme().forEach((item) => {
+    if (item.kind === "blank") {
+      const spacer = document.createElement("div");
+      spacer.className = "valuation-scheme-spacer";
+      body.append(spacer);
+      return;
+    }
+    const line = document.createElement("div");
+    line.className = `valuation-scheme-${item.kind}`;
+    if (item.kind === "yapi") {
+      appendSchemeYapiContent(line, item);
+    } else {
+      line.textContent = item.text;
+    }
+    body.append(line);
+  });
+  panel.append(body);
+
+  const actions = document.createElement("div");
+  actions.className = "valuation-scheme-actions";
+  const copyButton = document.createElement("button");
+  copyButton.type = "button";
+  copyButton.className = "mini-button";
+  copyButton.textContent = "Kopyala";
+  copyButton.addEventListener("click", async () => {
+    const text = state.fields.valuationMethodsScheme || buildValuationMethodsSchemeText();
+    try {
+      await navigator.clipboard.writeText(text);
+      copyButton.textContent = "Kopyalandı";
+    } catch {
+      copyButton.textContent = "Kopyalanamadı";
+    }
+    setTimeout(() => {
+      copyButton.textContent = "Kopyala";
+    }, 1500);
+  });
+  actions.append(copyButton);
+  panel.append(actions);
+  return panel;
+}
+
+// ==========================================================
+//  Değerleme Özet Tablosu (14 - Açıklamalar bölümü)
+//  Piyasa / Arsa / Yapı / Şerefiye / Sigorta değerlerini, m² birim
+//  değerleri ve oranlarla birlikte tek kompakt tabloda gösterir.
+// ==========================================================
+function formatValuationSummaryMoney(value, suffix = "TL") {
+  const number = parseValuationNumber(value);
+  if (!Number.isFinite(number) || number === 0) return "—";
+  return `${Math.round(number).toLocaleString("tr-TR")} ${suffix}`;
+}
+
+function formatValuationSummaryRate(value) {
+  const number = parseValuationNumber(value);
+  return Number.isFinite(number) ? `%${formatSchemeRate(number)}` : "—";
+}
+
+function buildValuationSummaryAreaUnitDetail(areaKey, unitKey) {
+  const area = parseValuationNumber(state.fields[areaKey]);
+  const unit = parseValuationNumber(state.fields[unitKey]);
+  const areaStr = Number.isFinite(area) && area > 0 ? `${formatSchemeNumber(state.fields[areaKey], Number.isInteger(area) ? 0 : 2)} m²` : "";
+  const unitStr = Number.isFinite(unit) && unit > 0 ? `${formatSchemeNumber(state.fields[unitKey], 2)} TL/m²` : "";
+  if (areaStr && unitStr) return `${areaStr} × ${unitStr}`;
+  return areaStr || unitStr || "—";
+}
+
+function buildValuationSummaryBuildingDetail(row) {
+  const area = parseValuationNumber(state.fields[row.areaKey]);
+  const unit = parseValuationNumber(state.fields[row.unitKey]);
+  if (!(Number.isFinite(area) && area > 0) && !(Number.isFinite(unit) && unit > 0)) return "—";
+  let detail = `${formatSchemeNumber(state.fields[row.areaKey], 0)} m² × ${formatSchemeNumber(state.fields[row.unitKey], 2)} TL/m²`;
+  const depreciation = getEffectiveBuildingDepreciationRate(row);
+  if (Number.isFinite(depreciation) && depreciation > 0) detail += ` × (1-%${formatSchemeRate(depreciation)})`;
+  const constructionLevel = parseValuationNumberOrZero(state.fields[row.levelKey]);
+  if (constructionLevel && constructionLevel !== 100) detail += ` × %${formatSchemeRate(constructionLevel)} sev.`;
+  return detail;
+}
+
+function buildValuationSummaryGroups() {
+  const share = (state.fields.share || "").trim() || "-";
+  const denominator = (state.fields.denominator || "").trim() || "-";
+  return [
+    {
+      key: "market",
+      title: "Piyasa Değeri",
+      rows: [
+        { label: "Yasal Durum Değeri", detail: buildValuationSummaryAreaUnitDetail("legalValueArea", "legalValueUnit"), value: formatValuationSummaryMoney(state.fields.legalValue) },
+        { label: "Mevcut Durum Değeri", detail: buildValuationSummaryAreaUnitDetail("currentValueArea", "currentValueUnit"), value: formatValuationSummaryMoney(state.fields.currentValue) },
+        { label: "Yasal Kira Değeri", detail: `${buildValuationSummaryAreaUnitDetail("legalRentArea", "legalRentUnit")} · Kap. ${formatValuationSummaryRate(state.fields.legalCapitalizationRate)}`, value: formatValuationSummaryMoney(state.fields.legalRent, "TL/ay") },
+        { label: "Mevcut Kira Değeri", detail: `${buildValuationSummaryAreaUnitDetail("currentRentArea", "currentRentUnit")} · Kap. ${formatValuationSummaryRate(state.fields.currentCapitalizationRate)}`, value: formatValuationSummaryMoney(state.fields.currentRent, "TL/ay") },
+      ],
+    },
+    {
+      key: "land",
+      title: "Arsa Değeri",
+      rows: [
+        { label: "Arsa Değeri", detail: `${formatSchemeNumber(state.fields.landArea, 2)} m² × ${share}/${denominator} × ${formatSchemeNumber(state.fields.landUnitValue, 2)} TL/m²`, value: formatValuationSummaryMoney(state.fields.landValue) },
+      ],
+    },
+    {
+      key: "building",
+      title: "Yapı Değeri",
+      rows: [
+        { label: "Yasal Yapı Değeri", detail: buildValuationSummaryBuildingDetail(valuationBuildingValueRows[0]), value: formatValuationSummaryMoney(state.fields.legalBuildingValue) },
+        { label: "Mevcut Yapı Değeri", detail: buildValuationSummaryBuildingDetail(valuationBuildingValueRows[1]), value: formatValuationSummaryMoney(state.fields.currentBuildingValue) },
+      ],
+    },
+    {
+      key: "premium",
+      title: "Şerefiye Bölümü",
+      rows: valuationPremiumRows.map((row) => ({
+        label: row.label,
+        detail: `Piyasa − Arsa − Yapı · Oran ${formatValuationSummaryRate(state.fields[row.rateKey])}`,
+        value: formatValuationSummaryMoney(state.fields[row.premiumKey]),
+      })),
+    },
+    {
+      key: "insurance",
+      title: "Sigortaya Esas Değer",
+      rows: [
+        { label: "Sigortaya Esas Değer", detail: buildValuationSummaryAreaUnitDetail("insuranceValueArea", "insuranceUnitCost"), value: formatValuationSummaryMoney(state.fields.insuranceValue) },
+      ],
+    },
+  ];
+}
+
+function hasValuationSummaryData() {
+  return ["legalValue", "currentValue", "legalRent", "currentRent", "landValue", "legalBuildingValue", "currentBuildingValue", "insuranceValue"]
+    .some((key) => {
+      const number = parseValuationNumber(state.fields[key]);
+      return Number.isFinite(number) && number > 0;
+    });
+}
+
+function buildValuationSummaryText() {
+  if (!hasValuationSummaryData()) return "";
+  return buildValuationSummaryGroups()
+    .map((group) => {
+      const lines = group.rows.map((row) => `${row.label}: ${row.value}${row.detail && row.detail !== "—" ? ` (${row.detail})` : ""}`);
+      return `${group.title}:\n${lines.join("\n")}`;
+    })
+    .join("\n\n");
+}
+
+function createValuationSummaryPanel() {
+  refreshValuationComputedFields();
+  const panel = document.createElement("div");
+  panel.className = "subsection valuation-summary-panel";
+
+  const head = document.createElement("div");
+  head.className = "subsection-title-row";
+  const title = document.createElement("h4");
+  title.textContent = "Değerleme Özet Tablosu";
+  head.append(title);
+  if (hasValuationSummaryData()) {
+    const copyButton = document.createElement("button");
+    copyButton.type = "button";
+    copyButton.className = "valuation-method-copy-button";
+    copyButton.textContent = "Kopyala";
+    copyButton.title = "Değerleme özetini metin olarak kopyala";
+    copyButton.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(buildValuationSummaryText());
+        copyButton.textContent = "Kopyalandı";
+      } catch {
+        copyButton.textContent = "Kopyalanamadı";
+      }
+      setTimeout(() => {
+        copyButton.textContent = "Kopyala";
+      }, 1500);
+    });
+    head.append(copyButton);
+  }
+  panel.append(head);
+
+  const hint = document.createElement("p");
+  hint.className = "subtle-text";
+  hint.textContent = "Piyasa, arsa, yapı, şerefiye ve sigortaya esas değerler; m² birim değerleri ve oranlarla birlikte tek bakışta listelenir.";
+  panel.append(hint);
+
+  if (!hasValuationSummaryData()) {
+    const note = document.createElement("p");
+    note.className = "subtle-text valuation-summary-empty-note";
+    note.textContent = "Değerleme bölümü doldurulduğunda özet tablosu burada otomatik oluşacaktır.";
+    panel.append(note);
+    return panel;
+  }
+
+  const shell = document.createElement("div");
+  shell.className = "table-shell valuation-summary-shell";
+  const table = document.createElement("table");
+  table.className = "valuation-summary-table";
+  table.innerHTML = `
+    <thead>
+      <tr>
+        <th>Kalem</th>
+        <th>Birim Değer / Oran</th>
+        <th class="valuation-summary-value-col">Tutar</th>
+      </tr>
+    </thead>
+  `;
+  const tbody = document.createElement("tbody");
+  buildValuationSummaryGroups().forEach((group) => {
+    const groupRow = document.createElement("tr");
+    groupRow.className = `valuation-summary-group-row valuation-summary-group-${group.key}`;
+    const groupCell = document.createElement("th");
+    groupCell.colSpan = 3;
+    groupCell.textContent = group.title.toLocaleUpperCase("tr-TR");
+    groupRow.append(groupCell);
+    tbody.append(groupRow);
+    group.rows.forEach((row) => {
+      const tr = document.createElement("tr");
+      const labelCell = document.createElement("td");
+      labelCell.className = "valuation-summary-label";
+      labelCell.textContent = row.label;
+      const detailCell = document.createElement("td");
+      detailCell.className = "valuation-summary-detail";
+      detailCell.textContent = row.detail;
+      const valueCell = document.createElement("td");
+      valueCell.className = "valuation-summary-value-col";
+      valueCell.textContent = row.value;
+      tr.append(labelCell, detailCell, valueCell);
+      tbody.append(tr);
+    });
+  });
+  table.append(tbody);
+  shell.append(table);
+  panel.append(shell);
+  return panel;
+}
+
+// ==========================================================
+//  Natamam Durum Değeri Tablosu (14 - Açıklamalar bölümü)
+//  İnşaat seviyesi %60-99 aralığındaki taşınmazlarda eksik imalat
+//  tutarını yalnız yapı değeri üzerinden hesaplar ve piyasa değerinden
+//  düşerek 50.000 TL adımlı natamam durum değerini gösterir.
+// ==========================================================
+function createIncompleteConstructionValuePanel() {
+  refreshValuationComputedFields();
+  const rows = buildIncompleteConstructionValueRows();
+  if (!rows.length) return null;
+
+  const panel = document.createElement("div");
+  panel.className = "subsection incomplete-construction-value-panel";
+
+  const head = document.createElement("div");
+  head.className = "subsection-title-row";
+  const title = document.createElement("h4");
+  title.textContent = "Eksik İmalat ve Natamam Durum Değeri";
+  const description = document.createElement("p");
+  description.textContent = "İnşaat seviyesi %60 ve üzeri olan taşınmazlarda eksik imalat tutarı yapı maliyeti üzerinden düşülerek natamam durum değeri hesaplanır.";
+  head.append(title, description);
+  panel.append(head);
+
+  const table = document.createElement("table");
+  table.className = "valuation-table incomplete-construction-value-table";
+  table.innerHTML = `
+    <thead>
+      <tr class="incomplete-construction-title-row">
+        <th colspan="8">NATAMAM DURUM DEĞERİ HESAPLAMA TABLOSU</th>
+      </tr>
+      <tr>
+        <th>Hesaplama</th>
+        <th>Piyasa Değeri</th>
+        <th>Alan (m²)</th>
+        <th>Yapı Birim Değeri</th>
+        <th>İnşaat Seviyesi</th>
+        <th>Eksik İmalat Tutarı</th>
+        <th>Yuvarlatılmış Eksik İmalat</th>
+        <th>Natamam Durum Değeri</th>
+      </tr>
+    </thead>
+  `;
+  const tbody = document.createElement("tbody");
+  rows.forEach((row) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <th>${escapeHtml(row.label)}</th>
+      <td>${formatIncompleteConstructionMoney(row.marketValue)}</td>
+      <td>${formatIncompleteConstructionArea(row.area)}</td>
+      <td>${formatIncompleteConstructionMoney(row.unitCost, "TL/m²")}</td>
+      <td>%${formatSchemeRate(row.constructionLevel)}</td>
+      <td class="incomplete-construction-deduction">${formatIncompleteConstructionMoney(row.missingManufacturingValue)}</td>
+      <td class="incomplete-construction-rounded-deduction">${formatIncompleteConstructionMoney(row.roundedMissingManufacturingValue)}</td>
+      <td class="incomplete-construction-result">${formatIncompleteConstructionMoney(row.roundedIncompleteValue)}</td>
+    `;
+    tbody.append(tr);
+  });
+  table.append(tbody);
+  panel.append(createValuationTableWrap(table));
+  return panel;
+}
+
+function buildIncompleteConstructionValueRows() {
+  const rowDefinitions = [
+    {
+      label: "Yasal Natamam Durum Değeri",
+      marketKey: "legalValue",
+      areaKey: "legalBuildingValueArea",
+      unitKey: "legalBuildingUnitCost",
+      levelKey: "legalBuildingConstructionLevel",
+    },
+    {
+      label: "Mevcut Natamam Durum Değeri",
+      marketKey: "currentValue",
+      areaKey: "currentBuildingValueArea",
+      unitKey: "currentBuildingUnitCost",
+      levelKey: "currentBuildingConstructionLevel",
+    },
+  ];
+  return rowDefinitions
+    .map((row) => calculateIncompleteConstructionValueRow(row))
+    .filter(Boolean);
+}
+
+function isIncompleteConstructionValuationActive() {
+  return valuationBuildingValueRows.some((row) => {
+    const level = parseValuationNumber(state.fields[row.levelKey] || state.fields.unitConstructionLevel);
+    return Number.isFinite(level) && level > 0 && level !== 100;
+  });
+}
+
+function refreshIncompleteConstructionValueFields() {
+  const rows = buildIncompleteConstructionValueRows();
+  const byMarketKey = new Map(rows.map((row) => [row.marketKey, row]));
+  Object.entries(incompleteConstructionMarketRows).forEach(([marketKey, target]) => {
+    const source = byMarketKey.get(marketKey);
+    if (!source) {
+      state.fields[target.areaKey] = "";
+      state.fields[target.unitKey] = "";
+      state.fields[target.totalKey] = "";
+      return;
+    }
+    state.fields[target.areaKey] = formatValuationMoney(source.area, { decimals: Number.isInteger(source.area) ? 0 : 2 });
+    state.fields[target.unitKey] = calculateValuationUnitValue(source.roundedIncompleteValue, source.area);
+    state.fields[target.totalKey] = formatValuationMoney(source.roundedIncompleteValue);
+  });
+}
+
+function calculateIncompleteConstructionValueRow(row) {
+  const marketValue = parseValuationNumber(state.fields[row.marketKey]);
+  const area = parseValuationNumber(state.fields[row.areaKey]);
+  const unitCost = parseValuationNumber(state.fields[row.unitKey]);
+  const constructionLevel = parseValuationNumber(state.fields[row.levelKey]);
+  if (![marketValue, area, unitCost, constructionLevel].every(Number.isFinite)) return null;
+  if (constructionLevel < 60 || constructionLevel >= 100) return null;
+  const constructionLevelRate = constructionLevel / 100;
+  const missingManufacturingValue = area * unitCost * Math.max(0, 1 - constructionLevelRate);
+  const roundedMissingManufacturingValue = roundComparableValuationValue(missingManufacturingValue, comparableValuationRoundStep);
+  const incompleteValue = Math.max(0, marketValue - missingManufacturingValue);
+  const roundedIncompleteValue = roundComparableValuationValue(incompleteValue, comparableValuationRoundStep);
+  if (!Number.isFinite(roundedMissingManufacturingValue) || !Number.isFinite(roundedIncompleteValue)) return null;
+  return {
+    ...row,
+    marketValue,
+    area,
+    unitCost,
+    constructionLevel,
+    missingManufacturingValue,
+    roundedMissingManufacturingValue,
+    incompleteValue,
+    roundedIncompleteValue,
+    formulaText: `${formatIncompleteConstructionArea(area)} × ${formatIncompleteConstructionMoney(unitCost, "TL/m²")} × (1 - ${constructionLevelRate.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`,
+  };
+}
+
+function formatIncompleteConstructionMoney(value, suffix = "TL") {
+  if (!Number.isFinite(value)) return "";
+  return `${Math.round(value).toLocaleString("tr-TR")} ${suffix}`;
+}
+
+function formatIncompleteConstructionArea(value) {
+  if (!Number.isFinite(value)) return "";
+  return `${value.toLocaleString("tr-TR", {
+    minimumFractionDigits: Number.isInteger(value) ? 0 : 2,
+    maximumFractionDigits: 2,
+  })} m²`;
+}
+
+// ==========================================================
+//  Kat Bazında İndirgenmiş Alan Tablosu (14 - Açıklamalar bölümü)
+//  Bağımsız bölüm kat satırlarını normal alan / indirgeme oranı /
+//  indirgenmiş alan şeklinde yasal ve mevcut durum için ayrı listeler.
+// ==========================================================
+function createExplanationsFloorValuationTablePanel() {
+  const panel = document.createElement("div");
+  panel.className = "subsection explanations-floor-valuation-panel";
+
+  const head = document.createElement("div");
+  head.className = "subsection-title-row";
+  const title = document.createElement("h4");
+  title.textContent = "Kat Bazında İndirgenmiş Alan Tablosu";
+  const description = document.createElement("p");
+  description.textContent = "Her katın normal alanı, indirgeme oranı ve indirgenmiş alanı yasal/mevcut durum ayrımında gösterilir; teras alanı varsa en alt satırda ayrıca özetlenir.";
+  head.append(title, description);
+  panel.append(head);
+
+  const rows = getUnitFloorRows().filter((row) => hasExplanationsFloorValuationRowData(row));
+  if (!rows.length) {
+    const note = document.createElement("p");
+    note.className = "subtle-text explanations-floor-valuation-empty-note";
+    note.textContent = "Bağımsız bölümde kat, alan veya indirgeme oranı girildiğinde tablo burada otomatik oluşacaktır.";
+    panel.append(note);
+    return panel;
+  }
+
+  const table = document.createElement("table");
+  table.className = "valuation-table explanations-floor-valuation-table";
+  table.innerHTML = `
+    <thead>
+      <tr class="explanations-floor-valuation-title-row">
+        <th colspan="9">KONU TAŞINMAZIN KAT BAZINDA İNDİRGENMİŞ ALAN HESABI</th>
+      </tr>
+      <tr>
+        <th>Hesaplama</th>
+        <th>Kat / Alan Türü</th>
+        <th>Normal Alan (m²)</th>
+        <th>İndirgeme Oranı (%)</th>
+        <th>İndirgenmiş Alan (m²)</th>
+        <th>Piyasa m² Birim Değeri</th>
+        <th>Piyasa Değeri</th>
+        <th>Kira m² Birim</th>
+        <th>Piyasa Kira Değeri</th>
+      </tr>
+    </thead>
+  `;
+  const tbody = document.createElement("tbody");
+  tbody.append(
+    ...createExplanationsFloorValuationSectionRows("YASAL ALANA GÖRE HESAPLAMA", rows, "legal"),
+    ...createExplanationsFloorValuationSectionRows("MEVCUT ALANA GÖRE HESAPLAMA", rows, "current"),
+  );
+  table.append(tbody);
+  panel.append(createValuationTableWrap(table));
+  return panel;
+}
+
+function hasExplanationsFloorValuationRowData(row = {}) {
+  return ["floor", "legalArea", "currentArea", "legalTerrace", "currentTerrace", "areaReductionRate", "terraceReductionRate"]
+    .some((key) => String(row[key] || "").trim());
+}
+
+function createExplanationsFloorValuationSectionRows(label, rows, mode) {
+  const detailRows = buildExplanationsFloorValuationRows(rows, mode);
+  const metrics = getExplanationsFloorValuationMetrics(detailRows, mode);
+  return detailRows.map((row, index) => {
+    const tr = document.createElement("tr");
+    if (row.isTerrace) tr.classList.add("is-terrace-row");
+    if (row.isTotal) tr.classList.add("is-total-row");
+    if (index === 0) {
+      const group = document.createElement("th");
+      group.className = "explanations-floor-valuation-group-cell";
+      group.rowSpan = detailRows.length;
+      group.textContent = label;
+      tr.append(group);
+    }
+    tr.append(
+      createExplanationsFloorValuationCell(row.label, row.isTotal ? "is-total-label" : "is-floor-label"),
+      createExplanationsFloorValuationCell(formatExplanationsFloorArea(row.area), "is-number"),
+      createExplanationsFloorValuationCell(formatExplanationsFloorRate(row.rate), "is-rate"),
+      createExplanationsFloorValuationCell(formatExplanationsFloorArea(row.reducedArea), "is-number is-accent"),
+    );
+    if (index === 0) {
+      tr.append(
+        createExplanationsFloorValuationSummaryCell(formatExplanationsFloorMoney(metrics.marketUnitValue, "TL/m²"), detailRows.length),
+        createExplanationsFloorValuationSummaryCell(formatExplanationsFloorMoney(metrics.marketValue, "TL"), detailRows.length, "is-value"),
+        createExplanationsFloorValuationSummaryCell(formatExplanationsFloorMoney(metrics.rentUnitValue, "TL/m²"), detailRows.length),
+        createExplanationsFloorValuationSummaryCell(formatExplanationsFloorMoney(metrics.rentValue, "TL/ay"), detailRows.length, "is-rent-value"),
+      );
+    }
+    return tr;
+  });
+}
+
+function getExplanationsFloorValuationMetrics(detailRows = [], mode = "legal") {
+  const totalReducedArea = detailRows
+    .filter((row) => !row.isTotal)
+    .reduce((sum, row) => sum + (Number.isFinite(row.reducedArea) ? row.reducedArea : 0), 0);
+  const marketKey = mode === "current" ? "currentValue" : "legalValue";
+  const rentKey = mode === "current" ? "currentRent" : "legalRent";
+  const marketValue = parseValuationNumber(state.fields[marketKey]);
+  const rentValue = parseValuationNumber(state.fields[rentKey]);
+  return {
+    marketValue,
+    marketUnitValue: Number.isFinite(marketValue) && totalReducedArea > 0 ? marketValue / totalReducedArea : Number.NaN,
+    rentValue,
+    rentUnitValue: Number.isFinite(rentValue) && totalReducedArea > 0 ? rentValue / totalReducedArea : Number.NaN,
+  };
+}
+
+function buildExplanationsFloorValuationRows(rows, mode) {
+  const areaKey = mode === "current" ? "currentArea" : "legalArea";
+  const terraceKey = mode === "current" ? "currentTerrace" : "legalTerrace";
+  const detailRows = rows.map((row) => {
+    const area = parseReportNumber(row[areaKey]);
+    const normalArea = Number.isFinite(area) ? area : 0;
+    const rate = parseUnitReductionRate(row.areaReductionRate);
+    return {
+      label: row.floor || "Kat",
+      area: normalArea,
+      rate,
+      reducedArea: normalArea * rate,
+    };
+  });
+  const terraceArea = rows.reduce((sum, row) => {
+    const terrace = parseReportNumber(row[terraceKey]);
+    return sum + (Number.isFinite(terrace) ? terrace : 0);
+  }, 0);
+  const terraceReducedArea = rows.reduce((sum, row) => {
+    const terrace = parseReportNumber(row[terraceKey]);
+    const rate = parseUnitReductionRate(row.terraceReductionRate);
+    return sum + (Number.isFinite(terrace) ? terrace * rate : 0);
+  }, 0);
+  if (terraceArea > 0) {
+    detailRows.push({
+      label: "Teras Alanı",
+      area: terraceArea,
+      rate: terraceReducedArea / terraceArea,
+      reducedArea: terraceReducedArea,
+      isTerrace: true,
+    });
+  }
+  const totalArea = detailRows.reduce((sum, row) => sum + row.area, 0);
+  const totalReducedArea = detailRows.reduce((sum, row) => sum + row.reducedArea, 0);
+  detailRows.push({
+    label: "Toplam İndirgenmiş Alan",
+    area: totalArea,
+    rate: totalArea > 0 ? totalReducedArea / totalArea : Number.NaN,
+    reducedArea: totalReducedArea,
+    isTotal: true,
+  });
+  return detailRows;
+}
+
+function createExplanationsFloorValuationCell(text, className = "") {
+  const cell = document.createElement("td");
+  if (className) cell.className = className;
+  cell.textContent = text || "";
+  return cell;
+}
+
+function createExplanationsFloorValuationSummaryCell(text, rowSpan, className = "") {
+  const cell = document.createElement("td");
+  cell.rowSpan = rowSpan;
+  cell.className = ["explanations-floor-valuation-summary-cell", className].filter(Boolean).join(" ");
+  cell.textContent = text || "";
+  return cell;
+}
+
+function formatExplanationsFloorArea(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number) || number <= 0) return "";
+  return number.toLocaleString("tr-TR", {
+    minimumFractionDigits: Number.isInteger(number) ? 0 : 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+function formatExplanationsFloorRate(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number) || number < 0) return "";
+  const percent = number * 100;
+  return `%${percent.toLocaleString("tr-TR", {
+    minimumFractionDigits: Number.isInteger(percent) ? 0 : 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+function formatExplanationsFloorMoney(value, suffix = "TL") {
+  const number = Number(value);
+  if (!Number.isFinite(number) || number <= 0) return "";
+  const decimals = suffix.includes("/m²") ? 2 : 0;
+  return `${number.toLocaleString("tr-TR", {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  })} ${suffix}`;
+}
+
+function syncValuationAreasFromUnitAreas() {
+  const totals = getValuationUnitAreaTotals();
+  if (totals.legal) {
+    state.fields.legalValueArea = totals.legal;
+    state.fields.legalRentArea = totals.legal;
+    state.fields.insuranceValueArea = totals.legal;
+  }
+  if (totals.current) {
+    state.fields.currentValueArea = totals.current;
+    state.fields.currentRentArea = totals.current;
+  }
+}
+
+function getValuationUnitAreaTotals() {
+  const rows = getUnitFloorRows();
+  const totalLegal = rows.reduce((sum, row) => sum + parseValuationNumberOrZero(row.legalArea), 0);
+  const totalCurrent = rows.reduce((sum, row) => sum + parseValuationNumberOrZero(row.currentArea), 0);
+  const legalFallback = parseValuationNumberOrZero(state.fields.legalArea);
+  const currentFallback = parseValuationNumberOrZero(state.fields.currentArea);
+  return {
+    legal: formatValuationArea(totalLegal || legalFallback),
+    current: formatValuationArea(totalCurrent || currentFallback),
+  };
+}
+
+function parseValuationNumberOrZero(value) {
+  const number = parseValuationNumber(value);
+  return Number.isFinite(number) ? number : 0;
+}
+
+function formatValuationArea(value) {
+  if (!Number.isFinite(value) || value <= 0) return "";
+  return value.toLocaleString("tr-TR", {
+    minimumFractionDigits: Number.isInteger(value) ? 0 : 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+function calculateValuationProduct(areaValue, unitValue) {
+  const area = parseValuationNumber(areaValue);
+  const unit = Number.isFinite(unitValue) ? unitValue : parseValuationNumber(unitValue);
+  if (!Number.isFinite(area) || !Number.isFinite(unit)) return 0;
+  return area * unit;
+}
+
+function calculateLandValuationValue() {
+  const share = parseValuationNumber(state.fields.share);
+  const denominator = parseValuationNumber(state.fields.denominator);
+  const landArea = parseValuationNumber(state.fields.landArea);
+  const landUnit = parseValuationNumber(state.fields.landUnitValue);
+  if (![share, denominator, landArea, landUnit].every(Number.isFinite) || denominator === 0) return 0;
+  return (share / denominator) * landArea * landUnit;
+}
+
+function calculateValuationSummaryUnitValue() {
+  const value = parseValuationNumber(state.fields.currentValue || state.fields.legalValue);
+  const area = parseValuationNumber(state.fields.currentValueArea || state.fields.legalValueArea || state.fields.currentArea || state.fields.legalArea);
+  if (!Number.isFinite(value) || !Number.isFinite(area) || area === 0) return "";
+  return formatValuationMoney(value / area, { decimals: 2 });
+}
+
+function refreshValuationControls() {
+  document.querySelectorAll(".valuation-editor [data-field]").forEach((control) => {
+    const key = control.dataset.field;
+    const nextValue = state.fields[key] || "";
+    if (control.value !== nextValue) control.value = nextValue;
+  });
+  refreshValuationMarketLabels();
+}
+
+function refreshValuationMarketLabels() {
+  document.querySelectorAll(".valuation-editor [data-market-row-key]").forEach((cell) => {
+    const key = cell.dataset.marketRowKey;
+    const row = valuationMarketRows.find((item) => item.totalKey === key);
+    const label = cell.querySelector(".valuation-label-text");
+    if (label && row) label.textContent = getValuationMarketRowLabel(row);
+    const nextNote = buildValuationIncomeMetricNote(key);
+    let note = cell.querySelector(".valuation-label-note");
+    if (nextNote) {
+      if (!note) {
+        note = document.createElement("span");
+        note.className = "valuation-label-note";
+        cell.append(note);
+      }
+      note.textContent = nextNote;
+    } else if (note) {
+      note.remove();
+    }
+  });
+}
+
+function formatValuationMoney(value, options = {}) {
+  if (!Number.isFinite(value)) return "";
+  const decimals = options.decimals ?? 0;
+  return value.toLocaleString("tr-TR", {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
+}
+
+function normalizeValuationInputValue(value) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  const number = parseValuationNumber(text);
+  if (!Number.isFinite(number)) return text;
+  return number.toLocaleString("tr-TR", {
+    minimumFractionDigits: Number.isInteger(number) ? 0 : 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+function parseValuationNumber(value) {
+  const text = String(value || "")
+    .replace(/\s+/g, "")
+    .replace(/[^\d,.-]/g, "");
+  if (!text) return Number.NaN;
+  const hasComma = text.includes(",");
+  const dotCount = (text.match(/\./g) || []).length;
+  const hasOnlyThousandDots = !hasComma && /^\d{1,3}(?:\.\d{3})+$/.test(text);
+  const normalized = hasComma
+    ? text.replace(/\./g, "").replace(",", ".")
+    : dotCount > 1 || hasOnlyThousandDots
+      ? text.replace(/\./g, "")
+      : text;
+  const number = Number.parseFloat(normalized);
+  return Number.isFinite(number) ? number : Number.NaN;
 }
 
 const planningNoteAutoRefreshFields = new Set([
@@ -1945,6 +5211,94 @@ const buildingClassOptions = [
   "5/E",
 ];
 
+const insuranceConstructionCostRows = [
+  { group: "1/A", unitCost: 2600, description: "Basit hayvancılık/tarım yapıları, çardak, ihata duvarı, plastik sera vb." },
+  { group: "1/B", unitCost: 3900, description: "Basit padok, cam/plastik seralar, depo amaçlı oyma yapılar, yardımcı yapılar" },
+  { group: "1/C", unitCost: 4200, description: "Betonarme su depoları, büyükbaş ahırları, istinat duvarı, şişirme yapılar" },
+  { group: "1/D", unitCost: 4800, description: "Güneş enerji santralleri ve benzeri yapılar" },
+  { group: "2/A", unitCost: 8100, description: "İskele, genel depo, hayvan barınağı, tarımsal endüstri yapıları" },
+  { group: "2/B", unitCost: 12500, description: "Botanik park, konteyner kent, halı saha, hangar, kapalı pazar" },
+  { group: "2/C", unitCost: 15100, description: "Bağ evi, bungalow, halı binası, mezbaha, taziye evi, sanayi tesisi (0-500 kg/m²)" },
+  { group: "3/A", unitCost: 19800, description: "Akaryakıt istasyonu, konut (3 kata kadar), kreş, sosyal tesis" },
+  { group: "3/B", unitCost: 21050, description: "112 istasyonu, ASM, apart otel, okul, iş merkezi (≤21.50 m), müstakil konut (≤200 m²)" },
+  { group: "3/C", unitCost: 23400, description: "Diş sağlığı merkezi, lise, konut (21.50-30.50 m), yurt, iş merkezi, termal tesis" },
+  { group: "4/A", unitCost: 26450, description: "AVM (<25.000 m²), otel (1-2★), konut (30.50-51.50 m), yüzme havuzu tesisi" },
+  { group: "4/B", unitCost: 33900, description: "Banka, ibadethane (500-1500 kişi), konut (>51.50 m), 4 katlı iş merkezleri" },
+  { group: "4/C", unitCost: 40500, description: "Adliye, büyük AVM, bakanlık binası, belediye, 3★ otel, hastane (<200 yatak)" },
+  { group: "5/A", unitCost: 42350, description: "Eğitim araştırma hastaneleri, AVM+ofis+konut karma, stadyum, kampüs" },
+  { group: "5/B", unitCost: 43850, description: "4★ otel, askeri tesisler, 200-400 yataklı hastaneler, büyük ibadethaneler" },
+  { group: "5/C", unitCost: 48750, description: "Opera, müze, 400+ yataklı hastane, kongre merkezi, restore yapılar" },
+  { group: "5/D", unitCost: 53500, description: "Havalimanı terminali, metro istasyonu, 5★ otel, şehir hastanesi" },
+  { group: "5/E", unitCost: 103500, description: "Rüzgâr enerji santrali (RES) ve benzeri yapılar" },
+];
+
+const buildingDepreciationAgeColumns = [
+  { key: "age0To5", label: "0-5 Yaş arası %", min: 0, max: 5 },
+  { key: "age6To10", label: "6-10 Yaş arası %", min: 6, max: 10 },
+  { key: "age11To15", label: "11-15 Yaş arası %", min: 11, max: 15 },
+  { key: "age16To20", label: "16-20 Yaş arası %", min: 16, max: 20 },
+  { key: "age21To30", label: "21-30 Yaş arası %", min: 21, max: 30 },
+  { key: "age31To40", label: "31-40 Yaş arası %", min: 31, max: 40 },
+  { key: "age41To50", label: "41-50 Yaş arası %", min: 41, max: 50 },
+  { key: "age51To75", label: "51-75 Yaş arası %", min: 51, max: 75 },
+  { key: "age75Plus", label: "75 ve üstü yaş %", min: 76, max: Number.POSITIVE_INFINITY },
+];
+
+const buildingDepreciationRateRows = [
+  {
+    type: "Çelik karkas – Betonarme karkas binalar",
+    match: ["BETONARME", "CELIK", "ÇELIK"],
+    age0To5: 0,
+    age6To10: 10,
+    age11To15: 15,
+    age16To20: 20,
+    age21To30: 25,
+    age31To40: 32,
+    age41To50: 40,
+    age51To75: 50,
+    age75Plus: 60,
+  },
+  {
+    type: "Yığma kagir, yığma yarı kagir binalar",
+    match: ["YIGMA", "YIĞMA", "KAGIR", "KAGİR"],
+    age0To5: 0,
+    age6To10: 12,
+    age11To15: 18,
+    age16To20: 25,
+    age21To30: 32,
+    age31To40: 40,
+    age41To50: 50,
+    age51To75: 60,
+    age75Plus: 70,
+  },
+  {
+    type: "Ahşap, taş duvarlı (çamur harçlı) gecekondu tarz ve vasfında binalar",
+    match: ["AHSAP", "AHŞAP", "TAS", "TAŞ", "GECEKONDU"],
+    age0To5: 0,
+    age6To10: 18,
+    age11To15: 25,
+    age16To20: 32,
+    age21To30: 40,
+    age31To40: 50,
+    age41To50: 60,
+    age51To75: 70,
+    age75Plus: 80,
+  },
+  {
+    type: "Kerpiç ve diğer basit binalar",
+    match: ["KERPIC", "KERPİÇ", "BASIT", "BASİT", "PREFABRIK", "PREFABRİK"],
+    age0To5: 0,
+    age6To10: 25,
+    age11To15: 35,
+    age16To20: 45,
+    age21To30: 55,
+    age31To40: 65,
+    age41To50: 75,
+    age51To75: 85,
+    age75Plus: 95,
+  },
+];
+
 const buildingBlockCountOptions = ["", "Tek", ...Array.from({ length: 99 }, (_, index) => String(index + 2))];
 
 const buildingBlockPositionOptions = [
@@ -2030,6 +5384,15 @@ const buildingEntranceDirectionOptions = [
   "Güneybatı",
 ];
 
+const buildingFootprintReferenceOptions = [
+  "",
+  "bina girişi",
+  "bina köşe kotları",
+  "bina özgün şekli",
+  "cephe görselleri",
+  "bina oturumu geometrisi",
+];
+
 const buildingSocialFacilityOptions = [
   "Açık Yüzme Havuzu",
   "Kapalı Yüzme Havuzu",
@@ -2105,6 +5468,7 @@ function createBuildingFloorDistribution() {
     state.fields.buildingFloorCounts = nextCounts;
     state.tables.buildingFloors = buildBuildingFloorRowsFromCounts(nextCounts, state.tables.buildingFloors || []);
     updateBuildingFloorTotals();
+    refreshMainPropertyFloorCountTextFromCounts({ force: true });
     autosave();
     renderValidation();
     updateStatus();
@@ -2133,6 +5497,7 @@ function createBuildingTechnicalOptionsPanel() {
     createBuildingSelectField("Bina Yapı Tarzı", "buildingStyle", buildingStructureStyleOptions),
     createBuildingSelectField("Mevcut Yapı Nizamı", "buildingOrder", buildingOrderOptions),
     createBuildingSelectField("Yapı Sınıfı", "buildingClass", buildingClassOptions),
+    createBuildingReadOnlyField("Yapı Yaşı", "buildingAge"),
     createBuildingBlockCountControl(),
     createBuildingSelectField("Otopark", "carpark", buildingCarparkOptions),
   ];
@@ -2148,6 +5513,7 @@ function createBuildingTechnicalOptionsPanel() {
       createBuildingSelectField("Apartman Merdiven Ve Sahanlık", "stairLanding", buildingStairLandingOptions),
       createBuildingSelectField("Apartman İç Duvarlar", "interiorWalls", buildingInteriorWallOptions),
       createBuildingSelectField("Bina Giriş Kapısı", "buildingEntranceDoor", buildingEntranceDoorOptions),
+      createBuildingSelectField("Bina Oturumu Referansı", "buildingFootprintReference", buildingFootprintReferenceOptions),
       createBuildingSelectField("Bina Giriş Kat Seviyesi", "buildingEntranceLevel", buildingEntranceLevelOptions),
       createBuildingSelectField("Bina Giriş Yönü", "buildingEntranceDirection", buildingEntranceDirectionOptions),
     );
@@ -2181,6 +5547,41 @@ function createBuildingSelectField(labelText, key, options) {
     updateStatus();
   });
   label.append(createSpan(labelText), select);
+  return label;
+}
+
+function createBuildingReadOnlyField(labelText, key) {
+  refreshBuildingCompletionFromCurrentFields();
+  const label = document.createElement("label");
+  label.className = "field";
+  const input = document.createElement("input");
+  input.dataset.field = key;
+  const isManualBuildingAge = key === "buildingAge" && canEditBuildingAgeManually();
+  if (!isManualBuildingAge) {
+    input.readOnly = true;
+    input.classList.add("is-readonly");
+  }
+  input.value = state.fields[key] || "";
+  if (isManualBuildingAge) {
+    input.placeholder = "Örn. 25 yıl";
+    input.addEventListener("input", (event) => {
+      state.fields[key] = event.target.value;
+      refreshBuildingDepreciationFromCurrentFields("buildingAge");
+      autosave();
+      renderValidation();
+      updateStatus();
+    });
+    input.addEventListener("blur", () => {
+      const formattedValue = normalizeReportFieldValue(key, input.value);
+      input.value = formattedValue;
+      state.fields[key] = formattedValue;
+      refreshBuildingDepreciationFromCurrentFields("buildingAge");
+      autosave();
+      renderValidation();
+      updateStatus();
+    });
+  }
+  label.append(createSpan(labelText), input);
   return label;
 }
 
@@ -2613,6 +6014,7 @@ function createMainPropertyDescriptionPanel() {
     </div>
   `;
 
+  const floorCountLabel = createMainPropertyFloorCountTextControl();
   const label = document.createElement("label");
   label.className = "field field-wide";
   const textarea = document.createElement("textarea");
@@ -2649,9 +6051,54 @@ function createMainPropertyDescriptionPanel() {
   });
   actions.append(refreshButton);
 
-  label.append(createSpan("Ana Gayrimenkul Açıklaması"), textarea, actions);
-  panel.append(label);
+  label.classList.add("has-field-copy");
+  label.append(createSpan("Ana Gayrimenkul Açıklaması"), createFieldCopyButton(), textarea, actions);
+  panel.append(floorCountLabel, label);
   return panel;
+}
+
+function createMainPropertyFloorCountTextControl() {
+  refreshMainPropertyFloorCountTextFromCounts();
+  const label = document.createElement("label");
+  label.className = "field field-wide";
+  const input = document.createElement("input");
+  input.type = "text";
+  input.dataset.field = "mainPropertyFloorCountText";
+  input.placeholder = "BODRUM + ZEMİN + 5 NORMAL";
+  input.value = state.fields.mainPropertyFloorCountText || "";
+  input.addEventListener("input", (event) => {
+    const upperValue = formatMainPropertyFloorCountText(event.target.value);
+    event.target.value = upperValue;
+    state.fields.mainPropertyFloorCountText = upperValue;
+    autosave();
+    renderValidation();
+    updateStatus();
+  });
+  input.addEventListener("blur", () => {
+    const upperValue = formatMainPropertyFloorCountText(input.value);
+    input.value = upperValue;
+    state.fields.mainPropertyFloorCountText = upperValue;
+    autosave();
+  });
+  label.classList.add("has-field-copy");
+  label.append(createSpan("Ana Gayrimenkul Kat Adedi"), createFieldCopyButton(), input);
+  return label;
+}
+
+function refreshMainPropertyFloorCountTextFromCounts(options = {}) {
+  const existing = String(state.fields.mainPropertyFloorCountText || "").trim();
+  if (existing && !options.force) return existing;
+  const generated = formatMainPropertyFloorCountText(buildMainPropertyFloorComposition().replace(/\s+kat[ıi]?(?=\s*\+|$)/gi, ""));
+  if (generated) state.fields.mainPropertyFloorCountText = generated;
+  return generated;
+}
+
+function formatMainPropertyFloorCountText(value) {
+  return String(value || "")
+    .replace(/\s+/g, " ")
+    .replace(/\s*\+\s*/g, " + ")
+    .trim()
+    .toLocaleUpperCase("tr-TR");
 }
 
 const mainPropertyDescriptionAutoRefreshFields = new Set([
@@ -2672,6 +6119,7 @@ const mainPropertyDescriptionAutoRefreshFields = new Set([
   "stairLanding",
   "interiorWalls",
   "buildingEntranceDoor",
+  "buildingFootprintReference",
   "buildingEntranceLevel",
   "buildingEntranceDirection",
   "socialFacilities",
@@ -2711,6 +6159,7 @@ function buildMainPropertyDescription(options = {}) {
     stairLanding: readMainPropertyField("stairLanding", "MERDİVEN.SAHANLIK", { usePlaceholderTokens }),
     interiorWalls: readMainPropertyField("interiorWalls", "APARTMAN.İÇ.DUVARLAR", { usePlaceholderTokens }),
     entranceDoor: readMainPropertyField("buildingEntranceDoor", "BİNA.GİRİŞ.KAPISI", { usePlaceholderTokens }),
+    footprintReference: readMainPropertyField("buildingFootprintReference", "BİNAOTURUMU", { usePlaceholderTokens, fallbackToToken: false }),
     entranceLevel: readMainPropertyField("buildingEntranceLevel", "BİNA.GİRİŞ.KAT.SEVİYESİ", { usePlaceholderTokens, fallbackToToken: false }),
     entranceDirection: readMainPropertyField("buildingEntranceDirection", "BİNA.GİRİŞ.YÖNÜ", { usePlaceholderTokens, fallbackToToken: false }),
     socialFacilities: readMainPropertyField("socialFacilities", "SOSYAL.TESİSLER", { usePlaceholderTokens, fallbackToToken: false }),
@@ -3198,6 +6647,7 @@ function joinTurkishList(items) {
 
 const unitEntrancePositionOptions = ["", "Sağ", "Sağ Ön", "Sağ Arka", "Sol", "Sol Ön", "Sol Arka", "Ön", "Arka"];
 const unitUsageStatusOptions = ["", "Boş (Hiç Kullanılmamış)", "Boş (Kullanılmış)", "Mal Sahibi", "Kiracı", "İşgalci"];
+const unitFirstSaleStatusOptions = ["1.El", "2.El"];
 const unitFacadeOptions = ["Kuzey", "Güney", "Doğu", "Batı"];
 const unitConstructionLevelOptions = Array.from({ length: 101 }, (_, index) => `${100 - index}%`);
 const unitViewStatusOptions = ["", "Manzara Yok", "Geniş Deniz Manzarası", "Kısmi Deniz Manzarası", "Orman Manzarası", "Şehir Manzarası"];
@@ -3257,6 +6707,95 @@ const unitInteriorValidationOptions = [
   "Çamaşırlık",
   "Kömürlük",
   "Otopark",
+];
+const commercialUnitInteriorValidationOptions = [
+  "Dükkan",
+  "İşyeri",
+  "Satış alanı",
+  "Mağaza alanı",
+  "Ofis alanı",
+  "Çalışma alanı",
+  "Açık ofis alanı",
+  "Kapalı ofis",
+  "Yönetici odası",
+  "Müşteri kabul alanı",
+  "Resepsiyon",
+  "Showroom",
+  "Teşhir alanı",
+  "Hizmet alanı",
+  "Operasyon alanı",
+  "Depo",
+  "Arka depo",
+  "Bodrum depo",
+  "Mal kabul alanı",
+  "Arşiv",
+  "Dosya odası",
+  "Teknik hacim",
+  "Elektrik odası",
+  "Mekanik oda",
+  "Sistem odası",
+  "Soğuk hava deposu",
+  "Paketleme alanı",
+  "Sevkiyat alanı",
+  "Yükleme-boşaltma alanı",
+  "WC",
+  "Lavabo",
+  "Personel WC",
+  "Müşteri WC",
+  "Engelli WC",
+  "Duş",
+  "Banyo",
+  "Temizlik odası",
+  "Mutfak",
+  "Mini mutfak",
+  "Çay ocağı",
+  "Personel mutfağı",
+  "Personel odası",
+  "Soyunma odası",
+  "Dinlenme odası",
+  "Yemekhane",
+  "Personel girişi",
+  "Giriş holü",
+  "Hol",
+  "Koridor",
+  "İç merdiven",
+  "Ara hol",
+  "Galeri boşluğu",
+  "Rampa",
+  "Yangın kaçış koridoru",
+  "Kasa bölümü",
+  "Banko alanı",
+  "Tezgah alanı",
+  "Servis alanı",
+  "Toplantı odası",
+  "Eğitim odası",
+  "Muayene odası",
+  "İşlem odası",
+  "Atölye alanı",
+  "İmalat alanı",
+  "Tamir-bakım alanı",
+  "Yıkama alanı",
+  "Hazırlık bölümü",
+  "Pişirme alanı",
+  "Fırın alanı",
+  "Bulaşıkhane",
+  "Asma kat",
+  "Asma kat ofis",
+  "Asma kat depo",
+  "Bodrum kat satış alanı",
+  "Bodrum kat işyeri bölümü",
+  "Çekme kat",
+  "Teras kullanım alanı",
+  "Ön kullanım alanı",
+  "Bahçe kullanım alanı",
+  "Kapalı otopark",
+  "Açık otopark",
+  "Araç kabul alanı",
+  "Garaj",
+  "Servis girişi",
+  "Yükleme rampası",
+  "Mal indirme-bindirme alanı",
+  "Vitrin önü kullanım alanı",
 ];
 const unitDecorativeFields = [
   { key: "unitWindows", label: "Pencereler", options: ["", "PVC", "Alüminyum", "Ahşap", "Çelik", "Isıcamlı", "Yok"] },
@@ -3354,6 +6893,7 @@ function createUnitFeaturesEditor() {
   if (!shouldHideUnitDecorativePanel()) {
     panels.push(createUnitDecorativePanel());
   }
+  panels.push(createUnitInteriorDescriptionField());
   wrapper.append(...panels);
   return wrapper;
 }
@@ -3364,23 +6904,83 @@ function shouldHideUnitDecorativePanel() {
 
 function isExternalAppointmentType(value) {
   const appointmentType = normalizeSearchText(value || "");
-  return appointmentType.includes("disar");
+  const foldedAppointmentType = foldTurkish(appointmentType).toLocaleLowerCase("tr-TR");
+  return appointmentType.includes("dışarı") || foldedAppointmentType.includes("disari") || foldedAppointmentType.includes("disar");
+}
+
+function refreshUnitFirstSaleStatusFromCurrentFields() {
+  if (
+    state.fields.unitFirstSaleStatusManual === "Evet" &&
+    unitFirstSaleStatusOptions.includes(state.fields.unitFirstSaleStatus)
+  ) {
+    return state.fields.unitFirstSaleStatus;
+  }
+  const nextValue = calculateUnitFirstSaleStatus();
+  state.fields.unitFirstSaleStatus = nextValue;
+  const control = document.querySelector('[data-field="unitFirstSaleStatus"]');
+  if (control && control.value !== nextValue) {
+    control.value = nextValue;
+    markFieldSourceState(control, "unitFirstSaleStatus", true);
+  }
+  return nextValue;
+}
+
+function calculateUnitFirstSaleStatus() {
+  return isFirstSaleUnit() ? "1.El" : "2.El";
+}
+
+function isFirstSaleUnit() {
+  return isFirstSaleAcquisitionReason(state.fields.acquisitionReason)
+    && foldTurkish(state.fields.unitUsageStatus).includes("BOS (HIC KULLANILMAMIS)")
+    && isBuildingAgeLessThanFive(state.fields.buildingAge);
+}
+
+function isFirstSaleAcquisitionReason(value) {
+  const text = foldTurkish(value).replace(/\s+/g, " ").trim();
+  const compact = text.replace(/[^A-Z0-9]/g, "");
+  return (
+    compact.includes("KATIRTIFAKITESISI")
+    || compact.includes("KATKARSILIGITEMLIK")
+    || (compact.includes("6306") && compact.includes("KATKARSILIGITEMLIK"))
+  );
+}
+
+function isBuildingAgeLessThanFive(value) {
+  const age = parseReportNumber(value);
+  return Number.isFinite(age) && age < 5;
 }
 
 function createUnitGeneralPanel() {
+  refreshUnitFirstSaleStatusFromCurrentFields();
   const panel = createUnitSubsection("Bağımsız Bölüm Genel Bilgileri", "Bina girişine göre konum, cephe, seviye, manzara ve ısınma bilgileri burada seçilir.");
   const grid = document.createElement("div");
   grid.className = "unit-general-grid";
   grid.append(
     createUnitSelectField("Kullanım Durumu", "unitUsageStatus", unitUsageStatusOptions),
+    createUnitSelectField("İlk Kez mi Satışa Konu Ediliyor?", "unitFirstSaleStatus", unitFirstSaleStatusOptions),
     createUnitSelectField("Projeye Göre B. Bölümün Bina Girişine Göre Konumu", "unitEntrancePosition", unitEntrancePositionOptions),
     createUnitFacadeControl(),
     createUnitSelectField("İnşaat Seviye", "unitConstructionLevel", unitConstructionLevelOptions),
     createUnitSelectField("Manzara Var mı?", "unitViewStatus", unitViewStatusOptions),
     createUnitHeatingControl(),
   );
+  if (shouldShowWorkplaceFrontageDepthFields()) {
+    grid.append(
+      createUnitTextField("Cephe (m)", "unitShopFrontage"),
+      createUnitTextField("Derinlik (m)", "unitShopDepth"),
+    );
+  }
   panel.append(grid);
   return panel;
+}
+
+function shouldShowWorkplaceFrontageDepthFields() {
+  return foldTurkish(state.fields.legalUsageNature || "").replace(/\s+/g, " ").trim() === "ISYERI";
+}
+
+function shouldShowUnitReductionFields() {
+  const normalized = foldTurkish(state.fields.legalUsageNature || "").replace(/\s+/g, " ").trim();
+  return ["KONUT", "OFIS", "ISYERI", "TICARI BINA"].includes(normalized);
 }
 
 function createUnitAreaInteriorPanel() {
@@ -3399,7 +6999,7 @@ function createUnitAreaInteriorPanel() {
     renderSection();
   });
   toolbar.append(addButton);
-  panel.append(toolbar, createUnitFloorInteriorRows(), createUnitInteriorDescriptionField());
+  panel.append(toolbar, createUnitFloorInteriorRows());
   return panel;
 }
 
@@ -3425,6 +7025,11 @@ function createUnitFloorInteriorRows() {
     return wrapper;
   }
 
+  const showReductionFields = shouldShowUnitReductionFields();
+  if (showReductionFields) {
+    wrapper.append(createUnitFloorReducedTotalSummary(rows));
+  }
+
   rows.forEach((row, index) => {
     const card = document.createElement("div");
     card.className = "unit-floor-card";
@@ -3434,14 +7039,21 @@ function createUnitFloorInteriorRows() {
       createUnitFloorRowSelect(index, "floor", "Kat", unitFloorOptions),
       createUnitFloorRowInput(index, "legalArea", "Yasal Alan"),
       createUnitFloorRowInput(index, "currentArea", "Mevcut Alan"),
+      ...(showReductionFields ? [createUnitFloorReductionInput(index, "areaReductionRate", "İnd. Oranı")] : []),
       createUnitFloorRowInput(index, "legalTerrace", "Yasal Teras"),
       createUnitFloorRowInput(index, "currentTerrace", "Mevcut Teras"),
+      ...(showReductionFields ? [
+        createUnitFloorReductionInput(index, "terraceReductionRate", "İnd. Oranı"),
+        createUnitFloorReducedAreaField(index, "legal", "Yasal İnd. Kat Alanı"),
+        createUnitFloorReducedAreaField(index, "current", "Mevcut İnd. Kat Alanı"),
+      ] : []),
       createUnitFloorDeleteButton(index),
     );
 
-    const note = createUnitFloorRowTextarea(index, "note", "Kat Açıklaması");
-    head.append(createUnitFloorInteriorPicker(index));
-    card.append(head, note);
+    const interiorRow = document.createElement("div");
+    interiorRow.className = "unit-floor-card-interior-row";
+    interiorRow.append(createUnitFloorInteriorPicker(index));
+    card.append(head, interiorRow);
     wrapper.append(card);
   });
   return wrapper;
@@ -3452,8 +7064,10 @@ function createEmptyUnitFloorRow() {
     floor: "",
     legalArea: "",
     currentArea: "",
+    areaReductionRate: "100",
     legalTerrace: "",
     currentTerrace: "",
+    terraceReductionRate: "100",
     interiors: "",
     note: "",
   };
@@ -3469,8 +7083,10 @@ function getUnitFloorRows() {
     floor: state.fields.unitFloor || "",
     legalArea: state.fields.legalArea || "",
     currentArea: state.fields.currentArea || "",
+    areaReductionRate: state.fields.unitAreaReductionRate || state.fields.unitLegalReductionRate || state.fields.unitCurrentReductionRate || "100",
     legalTerrace: state.fields.unitLegalTerrace || "",
     currentTerrace: state.fields.unitCurrentTerrace || "",
+    terraceReductionRate: state.fields.unitTerraceReductionRate || state.fields.unitLegalTerraceReductionRate || state.fields.unitCurrentTerraceReductionRate || "100",
     interiors: [
       state.fields.unitLivingRoom,
       state.fields.unitRoomCount,
@@ -3501,8 +7117,10 @@ function syncUnitFloorSummaryFields(rows = getUnitFloorRows()) {
   state.fields.unitFloor = first.floor || "";
   state.fields.legalArea = first.legalArea || "";
   state.fields.currentArea = first.currentArea || "";
+  state.fields.unitAreaReductionRate = first.areaReductionRate || "100";
   state.fields.unitLegalTerrace = first.legalTerrace || "";
   state.fields.unitCurrentTerrace = first.currentTerrace || "";
+  state.fields.unitTerraceReductionRate = first.terraceReductionRate || "100";
   state.fields.interiorFeatures = formatUnitFloorInteriorSummary(rows);
 }
 
@@ -3519,7 +7137,10 @@ function updateUnitFloorRow(index, key, value) {
   if (!rows[index]) return;
   rows[index][key] = value;
   setUnitFloorRows(rows);
+  updateUnitReducedAreaControls(index);
+  updateUnitReducedTotalControls();
   updateUnitDecorativeDescription();
+  updateUnitInteriorDescription();
 }
 
 function createUnitInteriorDescriptionField() {
@@ -3556,7 +7177,8 @@ function createUnitInteriorDescriptionField() {
     renderSection();
   });
   actions.append(regenerate);
-  label.append(textarea, actions);
+  label.classList.add("has-field-copy");
+  label.append(createFieldCopyButton(), textarea, actions);
   return label;
 }
 
@@ -3572,33 +7194,184 @@ function composeUnitInteriorDescription() {
   const rows = getUnitFloorRows()
     .map((row) => normalizeUnitFloorDescriptionRow(row))
     .filter((row) => row.floor || row.legalArea || row.currentArea || row.legalTerrace || row.currentTerrace || row.interiorText);
-  if (!rows.length) return "";
+  const intro = composeUnitDescriptionIntro(rows);
+  if (!rows.length) return normalizeReportDescriptionText(intro);
 
+  let areaDescription = "";
   if (rows.length === 1) {
-    return normalizeReportDescriptionText(composeSingleUnitFloorInteriorParagraph(rows[0]));
+    areaDescription = composeSingleUnitFloorInteriorParagraph(rows[0]);
+  } else {
+    const floorSentences = rows
+      .map((row) => composeMultiUnitFloorInteriorSentence(row))
+      .filter(Boolean);
+    const legalTotal = rows.reduce((sum, row) => sum + (Number.isFinite(row.legalAreaNumber) ? row.legalAreaNumber : 0), 0);
+    const currentTotal = rows.reduce((sum, row) => sum + (Number.isFinite(row.currentAreaNumber) ? row.currentAreaNumber : 0), 0);
+    const legalTerraceTotal = rows.reduce((sum, row) => sum + (Number.isFinite(row.legalTerraceNumber) ? row.legalTerraceNumber : 0), 0);
+    const currentTerraceTotal = rows.reduce((sum, row) => sum + (Number.isFinite(row.currentTerraceNumber) ? row.currentTerraceNumber : 0), 0);
+    const hasTerrace = legalTerraceTotal > 0 || currentTerraceTotal > 0;
+
+    const totalSentences = [];
+    const totalAreaTerraceSentence = composeUnitTotalAreaTerraceSentence(
+      legalTotal,
+      currentTotal,
+      legalTerraceTotal,
+      currentTerraceTotal,
+    );
+    if (totalAreaTerraceSentence) totalSentences.push(totalAreaTerraceSentence);
+    if (hasTerrace) {
+      totalSentences.push("Teras alanları kullanım alanına dahil edilmemiş olup, değer arttırıcı faktör olarak değerlemede dikkate alınmıştır.");
+    }
+
+    areaDescription = [...floorSentences, ...totalSentences].join(" ");
   }
 
-  const floorSentences = rows
-    .map((row) => composeMultiUnitFloorInteriorSentence(row))
+  const externalSentence = shouldUseExternalUnitInspectionText() ? composeExternalUnitInspectionSentence() : "";
+  const decorativeDescription = getUnitDecorativeDescriptionForCombinedText();
+  const shopFrontageDepthSentence = composeUnitShopFrontageDepthSentence();
+  return normalizeReportDescriptionText(joinNonEmptySentences([intro, areaDescription, shopFrontageDepthSentence, externalSentence, decorativeDescription]));
+}
+
+function getUnitDecorativeDescriptionForCombinedText() {
+  if (shouldUseExternalUnitInspectionText()) return "";
+  if (state.fields.unitDecorativeDescriptionManual === "Evet" && state.fields.unitDecorativeDescription) {
+    return state.fields.unitDecorativeDescription;
+  }
+  return composeUnitDecorativeDescription();
+}
+
+function shouldUseExternalUnitInspectionText() {
+  return isExternalAppointmentType(state.fields.appointmentType) || Boolean(state.fields.externalAppraisalReason);
+}
+
+function composeUnitDescriptionIntro(rows = []) {
+  if (shouldMentionMainPropertyOwnership(state.fields.ownershipType)) {
+    return composeHorizontalUnitDescriptionIntro();
+  }
+  return composeVerticalUnitDescriptionIntro(rows);
+}
+
+function composeVerticalUnitDescriptionIntro(rows = []) {
+  const floorPhrase = formatUnitFloorsIntroPhrase(rows);
+  const entranceDirectionPhrase = formatUnitBuildingEntranceDirectionPhrase(state.fields.buildingEntranceDirection);
+  const positionPhrase = formatUnitEntrancePositionPhrase(state.fields.unitEntrancePosition);
+  const facadePhrase = formatUnitFacadePhrase(state.fields.facades);
+  const unitNoPhrase = state.fields.unitNo ? `${state.fields.unitNo} bağımsız bölüm no.lu` : "";
+  const naturePhrase = formatUnitNaturePhrase();
+  const details = [floorPhrase, entranceDirectionPhrase, positionPhrase, facadePhrase, unitNoPhrase, naturePhrase].filter(Boolean).join(", ");
+  return details
+    ? `Ekspertize konu taşınmaz, incelenen onaylı mimari projesine göre, ${details}.`
+    : "Ekspertize konu taşınmaz, incelenen onaylı mimari projesine göre değerlendirilmiştir.";
+}
+
+function formatUnitFloorsIntroPhrase(rows = []) {
+  const floorNames = [];
+  rows.forEach((row) => {
+    const floor = formatUnitFloorNameForSentence(row?.floor || "");
+    if (floor && !floorNames.some((item) => foldTurkish(item) === foldTurkish(floor))) {
+      floorNames.push(floor);
+    }
+  });
+  if (!floorNames.length) {
+    const fallbackFloor = state.fields.addressFloor || state.fields.titleFloor || "";
+    if (fallbackFloor) floorNames.push(formatUnitFloorNameForSentence(fallbackFloor));
+  }
+  if (!floorNames.length) return "binada yer alan";
+  if (floorNames.length === 1) return `binanın ${formatUnitFloorLocative(floorNames[0])} yer alan`;
+
+  const allFloorNamesEndWithKat = floorNames.every((floor) => /\bkat$/i.test(foldTurkish(floor)));
+  if (allFloorNamesEndWithKat) {
+    const trimmedFloors = floorNames.map((floor) => floor.replace(/\s+Kat$/i, "").trim()).filter(Boolean);
+    return `binanın ${formatTurkishList(trimmedFloors)} Katında yer alan`;
+  }
+  return `binanın ${formatTurkishList(floorNames)} katında yer alan`;
+}
+
+function formatUnitBuildingEntranceDirectionPhrase(value) {
+  const direction = toLowerText(value);
+  if (!direction) return "";
+  return `${direction} yönünden sağlanan`;
+}
+
+function composeHorizontalUnitDescriptionIntro() {
+  updateBuildingFloorTotals();
+  const sharePhrase = composeUnitLandSharePhrase();
+  const floorComposition = buildMainPropertyFloorComposition();
+  const totalFloors = String(state.fields.totalFloors || "").trim();
+  const floorPhrase = floorComposition
+    ? `Taşınmaz projesine göre ${floorComposition}${totalFloors ? ` olmak üzere toplam ${totalFloors} kattan` : ""} oluşmaktadır.`
+    : "";
+  return joinNonEmptySentences([sharePhrase, floorPhrase]);
+}
+
+function composeUnitLandSharePhrase() {
+  const share = parseReportNumber(state.fields.share);
+  const denominator = parseReportNumber(state.fields.denominator);
+  const landArea = parseReportNumber(state.fields.landArea);
+  const rawShare = [state.fields.share, state.fields.denominator].filter(Boolean).join("/");
+  if (share > 0 && denominator > 0 && landArea > 0) {
+    const shareArea = (landArea * share) / denominator;
+    return `Ekspertize konu taşınmaz (${rawShare}) ${formatUnitAreaText(shareArea)} arsa payına sahiptir.`;
+  }
+  if (rawShare) return `Ekspertize konu taşınmaz (${rawShare}) arsa payına sahiptir.`;
+  return "";
+}
+
+function formatUnitFloorLocative(value) {
+  const floor = formatUnitFloorNameForSentence(value);
+  if (!floor) return "";
+  if (/kat$/i.test(foldTurkish(floor))) return `${floor}ında`;
+  return `${floor} katında`;
+}
+
+function formatUnitEntrancePositionPhrase(value) {
+  const text = toLowerText(value);
+  if (!text) return "";
+  return `bina giriş istikametine göre ${text} tarafta konumlu`;
+}
+
+function formatUnitFacadePhrase(value) {
+  const facades = String(value || "")
+    .split(",")
+    .map((item) => toLowerText(item))
     .filter(Boolean);
-  const legalTotal = rows.reduce((sum, row) => sum + (Number.isFinite(row.legalAreaNumber) ? row.legalAreaNumber : 0), 0);
-  const currentTotal = rows.reduce((sum, row) => sum + (Number.isFinite(row.currentAreaNumber) ? row.currentAreaNumber : 0), 0);
-  const legalTerraceTotal = rows.reduce((sum, row) => sum + (Number.isFinite(row.legalTerraceNumber) ? row.legalTerraceNumber : 0), 0);
-  const currentTerraceTotal = rows.reduce((sum, row) => sum + (Number.isFinite(row.currentTerraceNumber) ? row.currentTerraceNumber : 0), 0);
-  const hasTerrace = legalTerraceTotal > 0 || currentTerraceTotal > 0;
+  return facades.length ? `(${formatTurkishList(facades)} cepheli)` : "";
+}
 
-  const totalSentences = [];
-  if (legalTotal > 0 || currentTotal > 0) {
-    totalSentences.push(legalTotal === currentTotal
-      ? `Taşınmaz projesine ve mevcut duruma göre toplam ${formatUnitAreaText(legalTotal)} kullanım alanına sahiptir.`
-      : `Taşınmaz yasal olarak toplam ${formatUnitAreaText(legalTotal)}, mevcut olarak toplam ${formatUnitAreaText(currentTotal)} kullanım alanına sahiptir.`);
+function formatUnitNaturePhrase() {
+  const nature = state.fields.titleQuality || state.fields.legalUsageNature || state.fields.currentUsageNature || "";
+  const text = toLowerText(nature);
+  if (!text) return "";
+  const folded = foldTurkish(text).toLocaleLowerCase("tr-TR");
+  if (/(daire|villa|dukkan|ofis|isyeri|depo|arsa|tarla|arazi)$/.test(folded)) {
+    return `${text} niteliklidir`;
   }
-  if (hasTerrace) {
-    totalSentences.push(composeUnitTerraceTotalSentence(legalTerraceTotal, currentTerraceTotal));
-    totalSentences.push("Teras alanları değer artırıcı faktör olarak değerlendirilmiştir.");
-  }
+  return `${text} nitelikli bağımsız bölümdür`;
+}
 
-  return normalizeReportDescriptionText([...floorSentences, ...totalSentences].join(" "));
+function composeExternalUnitInspectionSentence() {
+  return "Yer görme işlemi şube bilgisi dahilinde dışarıdan yapılmış olup mimari uygunluk tespit edilememiş ve iç hacimlerin malzeme ve işçilik kalitesi standart olarak varsayılmıştır.";
+}
+
+function composeUnitShopFrontageDepthSentence() {
+  if (!shouldShowWorkplaceFrontageDepthFields()) return "";
+  const frontage = formatUnitMeasurementForSentence(state.fields.unitShopFrontage);
+  const depth = formatUnitMeasurementForSentence(state.fields.unitShopDepth);
+  if (frontage && depth) {
+    return `Taşınmazın dükkan cephe uzunluğu ${frontage} metre, dükkan derinliği ise ${depth} metre olarak ölçümlenmiştir.`;
+  }
+  if (frontage) {
+    return `Taşınmazın dükkan cephe uzunluğu ${frontage} metre olarak ölçümlenmiştir.`;
+  }
+  if (depth) {
+    return `Taşınmazın dükkan derinliği ${depth} metre olarak ölçümlenmiştir.`;
+  }
+  return "";
+}
+
+function formatUnitMeasurementForSentence(value) {
+  const number = parseReportNumber(value);
+  if (!Number.isFinite(number) || number <= 0) return "";
+  return number.toLocaleString("tr-TR", { maximumFractionDigits: 2 });
 }
 
 function normalizeUnitFloorDescriptionRow(row = {}) {
@@ -3623,14 +7396,19 @@ function normalizeUnitFloorDescriptionRow(row = {}) {
 function composeSingleUnitFloorInteriorParagraph(row) {
   const legalArea = formatUnitAreaText(row.legalAreaNumber);
   const currentArea = formatUnitAreaText(row.currentAreaNumber || row.legalAreaNumber);
+  const externalInspection = shouldUseExternalUnitInspectionText();
   const parts = [];
   if (row.legalAreaNumber > 0 || row.currentAreaNumber > 0) {
     const interiorClause = row.interiorText
       ? ` kullanım alanına sahip olup, ${row.interiorText} hacimlerinden oluşmaktadır.`
       : " kullanım alanına sahiptir.";
-    parts.push(row.legalAreaNumber === row.currentAreaNumber || !row.currentAreaNumber
-      ? `Taşınmaz projesine ve mevcut duruma göre ${legalArea}${interiorClause}`
-      : `Taşınmaz projesine göre ${legalArea}, mevcut durumda ${currentArea}${interiorClause}`);
+    if (externalInspection || row.legalAreaNumber === row.currentAreaNumber || !row.currentAreaNumber) {
+      const areaText = row.legalAreaNumber > 0 ? legalArea : currentArea;
+      const prefix = externalInspection ? "Taşınmaz projesine göre" : "Taşınmaz projesine ve mevcut duruma göre";
+      parts.push(`${prefix} ${areaText}${interiorClause}`);
+    } else {
+      parts.push(`Taşınmaz projesine göre ${legalArea}, mevcut durumda ${currentArea}${interiorClause}`);
+    }
   } else if (row.interiorText) {
     parts.push(`Taşınmaz ${row.interiorText} hacimlerinden oluşmaktadır.`);
   }
@@ -3648,8 +7426,11 @@ function composeMultiUnitFloorInteriorSentence(row) {
     ? ` kullanım alanına sahip olup, projesine göre ${row.interiorText} iç hacimlerinden oluşmaktadır.`
     : " kullanım alanına sahiptir.";
   if (row.legalAreaNumber > 0 || row.currentAreaNumber > 0) {
-    if (row.legalAreaNumber === row.currentAreaNumber || !row.currentAreaNumber) {
-      return `${floor} projesine ve mevcut duruma göre ${legalArea}${legalTerrace}${interiorClause}`;
+    if (shouldUseExternalUnitInspectionText() || row.legalAreaNumber === row.currentAreaNumber || !row.currentAreaNumber) {
+      const areaText = row.legalAreaNumber > 0 ? legalArea : currentArea;
+      const terraceText = row.legalAreaNumber > 0 ? legalTerrace : currentTerrace;
+      const prefix = shouldUseExternalUnitInspectionText() ? `${floor} projesine göre` : `${floor} projesine ve mevcut duruma göre`;
+      return `${prefix} ${areaText}${terraceText}${interiorClause}`;
     }
     return `${floor} projesine göre ${legalArea}${legalTerrace}, mevcut durumda ${currentArea}${currentTerrace}${interiorClause}`;
   }
@@ -3668,21 +7449,49 @@ function composeUnitTerraceSentence(row) {
   const legal = row.legalTerraceNumber;
   const current = row.currentTerraceNumber;
   if (!(legal > 0) && !(current > 0)) return "";
+  const terraceNote = "Teras alanları kullanım alanına dahil edilmemiş olup, değer arttırıcı faktör olarak değerlemede dikkate alınmıştır.";
   if (legal === current) {
-    return `Taşınmazın ${formatUnitAreaText(legal)} yasal ve mevcut teras alanı bulunmaktadır. Teras alanları kullanım alanına dahil edilmemiş olup, değer artırıcı faktör olarak dikkate alınmıştır.`;
+    return `Taşınmazın ${formatUnitAreaText(legal)} yasal ve mevcut teras alanı bulunmaktadır. ${terraceNote}`;
   }
-  return `Taşınmazın ${formatUnitAreaText(legal)} yasal teras ve ${formatUnitAreaText(current)} mevcut teras alanı bulunmaktadır. Teras alanları kullanım alanına dahil edilmemiş olup, değer artırıcı faktör olarak değerlendirilmiştir.`;
+  return `Taşınmazın ${formatUnitAreaText(legal)} yasal teras ve ${formatUnitAreaText(current)} mevcut teras alanı bulunmaktadır. ${terraceNote}`;
+}
+
+function composeUnitTotalAreaTerraceSentence(legalTotal, currentTotal, legalTerraceTotal, currentTerraceTotal) {
+  const areaClause = composeUnitTotalAreaClause(legalTotal, currentTotal);
+  const terraceClause = composeUnitTerraceTotalClause(legalTerraceTotal, currentTerraceTotal);
+  if (areaClause && terraceClause) return `${areaClause}na ve ${terraceClause}na sahiptir.`;
+  if (areaClause) return `${areaClause}na sahiptir.`;
+  if (terraceClause) return `Taşınmaz ${terraceClause}na sahiptir.`;
+  return "";
+}
+
+function composeUnitTotalAreaClause(legalTotal, currentTotal) {
+  if (!(legalTotal > 0) && !(currentTotal > 0)) return "";
+  if (shouldUseExternalUnitInspectionText()) {
+    const area = legalTotal > 0 ? legalTotal : currentTotal;
+    return `Taşınmaz projesine göre toplam ${formatUnitAreaText(area)} kullanım alanı`;
+  }
+  if (legalTotal === currentTotal || !(currentTotal > 0)) {
+    return `Taşınmaz projesine ve mevcut duruma göre toplam ${formatUnitAreaText(legalTotal)} kullanım alanı`;
+  }
+  return `Taşınmaz yasal olarak toplam ${formatUnitAreaText(legalTotal)}, mevcut olarak toplam ${formatUnitAreaText(currentTotal)} kullanım alanı`;
+}
+
+function composeUnitTerraceTotalClause(legalTotal, currentTotal) {
+  if (!(legalTotal > 0) && !(currentTotal > 0)) return "";
+  if (legalTotal > 0 && currentTotal > 0) {
+    if (legalTotal === currentTotal) {
+      return `toplam ${formatUnitAreaText(legalTotal)} yasal ve mevcut teras alanı`;
+    }
+    return `toplam ${formatUnitAreaText(legalTotal)} yasal teras ve ${formatUnitAreaText(currentTotal)} mevcut teras alanı`;
+  }
+  if (legalTotal > 0) return `toplam ${formatUnitAreaText(legalTotal)} yasal teras alanı`;
+  return `toplam ${formatUnitAreaText(currentTotal)} mevcut teras alanı`;
 }
 
 function composeUnitTerraceTotalSentence(legalTotal, currentTotal) {
-  if (legalTotal > 0 && currentTotal > 0) {
-    if (legalTotal === currentTotal) {
-      return `Taşınmaz toplam ${formatUnitAreaText(legalTotal)} yasal ve mevcut teras alanına sahiptir.`;
-    }
-    return `Ayrıca taşınmaz toplam ${formatUnitAreaText(legalTotal)} yasal teras ve ${formatUnitAreaText(currentTotal)} mevcut teras alanına sahiptir.`;
-  }
-  if (legalTotal > 0) return `Ayrıca taşınmaz toplam ${formatUnitAreaText(legalTotal)} yasal teras alanına sahiptir.`;
-  return `Ayrıca taşınmaz toplam ${formatUnitAreaText(currentTotal)} mevcut teras alanına sahiptir.`;
+  const terraceClause = composeUnitTerraceTotalClause(legalTotal, currentTotal);
+  return terraceClause ? `Taşınmaz ${terraceClause}na sahiptir.` : "";
 }
 
 function buildUnitInteriorTextForRow(value) {
@@ -3795,6 +7604,114 @@ function createUnitFloorRowInput(index, key, labelText) {
   return label;
 }
 
+function createUnitFloorReductionInput(index, key, labelText) {
+  const label = document.createElement("label");
+  label.className = "field has-field-suffix";
+  const input = document.createElement("input");
+  input.type = "text";
+  input.inputMode = "decimal";
+  input.value = normalizeUnitReductionRate(getUnitFloorRows()[index]?.[key]);
+  input.addEventListener("input", (event) => updateUnitFloorRow(index, key, event.target.value));
+  input.addEventListener("blur", () => {
+    const formattedValue = normalizeUnitReductionRate(input.value);
+    if (formattedValue !== input.value) {
+      input.value = formattedValue;
+      updateUnitFloorRow(index, key, formattedValue);
+    }
+  });
+  const suffix = document.createElement("span");
+  suffix.className = "field-suffix";
+  suffix.textContent = "%";
+  label.append(createSpan(labelText), input, suffix);
+  return label;
+}
+
+function createUnitFloorReducedAreaField(index, mode, labelText) {
+  const label = document.createElement("label");
+  label.className = "field";
+  const input = document.createElement("input");
+  input.type = "text";
+  input.readOnly = true;
+  input.classList.add("is-readonly");
+  input.dataset.unitReducedAreaIndex = String(index);
+  input.dataset.unitReducedAreaMode = mode;
+  input.value = formatUnitReducedAreaValue(calculateReducedUnitFloorArea(getUnitFloorRows()[index] || {}, mode));
+  label.append(createSpan(labelText), input);
+  return label;
+}
+
+function createUnitFloorReducedTotalSummary(rows = getUnitFloorRows()) {
+  const summary = document.createElement("div");
+  summary.className = "unit-floor-reduced-total-summary";
+  summary.append(
+    createUnitFloorReducedTotalField("legal", "İndirgenmiş Toplam Yasal Alan", rows),
+    createUnitFloorReducedTotalField("current", "İndirgenmiş Toplam Mevcut Alan", rows),
+  );
+  return summary;
+}
+
+function createUnitFloorReducedTotalField(mode, labelText, rows = getUnitFloorRows()) {
+  const label = document.createElement("label");
+  label.className = "field";
+  const input = document.createElement("input");
+  input.type = "text";
+  input.readOnly = true;
+  input.classList.add("is-readonly");
+  input.dataset.unitReducedTotalMode = mode;
+  input.value = formatUnitReducedAreaValue(calculateReducedUnitFloorTotal(rows, mode));
+  label.append(createSpan(labelText), input);
+  return label;
+}
+
+function updateUnitReducedAreaControls(index) {
+  document.querySelectorAll(`[data-unit-reduced-area-index="${index}"]`).forEach((input) => {
+    const mode = input.dataset.unitReducedAreaMode || "legal";
+    input.value = formatUnitReducedAreaValue(calculateReducedUnitFloorArea(getUnitFloorRows()[index] || {}, mode));
+  });
+}
+
+function updateUnitReducedTotalControls() {
+  const rows = getUnitFloorRows();
+  document.querySelectorAll("[data-unit-reduced-total-mode]").forEach((input) => {
+    const mode = input.dataset.unitReducedTotalMode || "legal";
+    input.value = formatUnitReducedAreaValue(calculateReducedUnitFloorTotal(rows, mode));
+  });
+}
+
+function normalizeUnitReductionRate(value) {
+  const parsed = parseReportNumber(value);
+  if (!Number.isFinite(parsed) || parsed < 0) return "100";
+  return parsed.toLocaleString("tr-TR", { maximumFractionDigits: 2 });
+}
+
+function calculateReducedUnitFloorArea(row = {}, mode = "legal") {
+  const areaKey = mode === "current" ? "currentArea" : "legalArea";
+  const terraceKey = mode === "current" ? "currentTerrace" : "legalTerrace";
+  const area = parseReportNumber(row[areaKey]);
+  const rate = parseUnitReductionRate(row.areaReductionRate);
+  const terrace = parseReportNumber(row[terraceKey]);
+  const terraceRate = parseUnitReductionRate(row.terraceReductionRate);
+  const reducedArea = (Number.isFinite(area) ? area : 0) * rate;
+  const reducedTerrace = (Number.isFinite(terrace) ? terrace : 0) * terraceRate;
+  return reducedArea + reducedTerrace;
+}
+
+function calculateReducedUnitFloorTotal(rows = [], mode = "legal") {
+  return rows.reduce((total, row) => total + calculateReducedUnitFloorArea(row, mode), 0);
+}
+
+function parseUnitReductionRate(value) {
+  const parsed = parseReportNumber(value);
+  if (!Number.isFinite(parsed) || parsed < 0) return 1;
+  return parsed / 100;
+}
+
+function formatUnitReducedAreaValue(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number) || number <= 0) return "";
+  return number.toLocaleString("tr-TR", { minimumFractionDigits: Number.isInteger(number) ? 0 : 2, maximumFractionDigits: 2 });
+}
+
 function createUnitFloorRowTextarea(index, key, labelText) {
   const label = document.createElement("label");
   label.className = "field field-wide";
@@ -3821,6 +7738,7 @@ function createUnitFloorInteriorPicker(index) {
     .filter(Boolean);
   const list = document.createElement("div");
   list.className = "unit-interior-validation-list";
+  const options = getUnitInteriorValidationOptions();
   Array.from({ length: 10 }, (_, selectIndex) => {
     const select = document.createElement("select");
     select.dataset.unitInteriorSelect = String(selectIndex);
@@ -3828,7 +7746,7 @@ function createUnitFloorInteriorPicker(index) {
     empty.value = "";
     empty.textContent = "Seçiniz";
     select.append(empty);
-    unitInteriorValidationOptions.forEach((option) => {
+    options.forEach((option) => {
       const item = document.createElement("option");
       item.value = option;
       item.textContent = option;
@@ -3845,6 +7763,17 @@ function createUnitFloorInteriorPicker(index) {
   });
   label.append(createSpan("İç Hacimler"), list);
   return label;
+}
+
+function getUnitInteriorValidationOptions() {
+  return isCommercialLegalUsageNature(state.fields.legalUsageNature)
+    ? commercialUnitInteriorValidationOptions
+    : unitInteriorValidationOptions;
+}
+
+function isCommercialLegalUsageNature(value) {
+  const normalized = foldTurkish(value || "").replace(/\s+/g, " ").trim();
+  return ["ISYERI", "OFIS", "TICARI BINA"].includes(normalized);
 }
 
 function createUnitFloorDeleteButton(index) {
@@ -3872,7 +7801,7 @@ function createUnitDecorativePanel() {
     createUnitDecorativeFieldCard("Kapı, Pencere ve Mutfak", unitGeneralDecorativeFields),
     createUnitDecorativeFieldCard("Banyo Vitrifiye Elemanları", unitBathroomFixtureFields),
   );
-  panel.append(wrapper, createUnitDecorativeDescriptionField());
+  panel.append(wrapper);
   return panel;
 }
 
@@ -3955,14 +7884,11 @@ function createUnitDecorativeSelectOnly(key, options) {
   });
   select.value = optionValues.includes(state.fields[key]) ? state.fields[key] : "";
   markFieldSourceState(select, key);
-  select.addEventListener("input", (event) => {
-    clearFieldSourceOwnership(key);
-    state.fields[key] = event.target.value;
-    updateUnitDecorativeDescription();
-    autosave();
-    renderValidation();
-    updateStatus();
-  });
+  const handleDecorativeChange = (event) => {
+    applyUnitDecorativeFieldChange(key, event.target.value);
+  };
+  select.addEventListener("input", handleDecorativeChange);
+  select.addEventListener("change", handleDecorativeChange);
   return select;
 }
 
@@ -3979,16 +7905,32 @@ function createUnitDecorativeSelectField(labelText, key, options) {
   });
   select.value = optionValues.includes(state.fields[key]) ? state.fields[key] : "";
   markFieldSourceState(select, key);
-  select.addEventListener("input", (event) => {
-    clearFieldSourceOwnership(key);
-    state.fields[key] = event.target.value;
-    updateUnitDecorativeDescription();
-    autosave();
-    renderValidation();
-    updateStatus();
-  });
+  const handleDecorativeChange = (event) => {
+    applyUnitDecorativeFieldChange(key, event.target.value);
+  };
+  select.addEventListener("input", handleDecorativeChange);
+  select.addEventListener("change", handleDecorativeChange);
   label.append(select);
   return label;
+}
+
+function applyUnitDecorativeFieldChange(key, value) {
+  const previousGeneratedInteriorDescription = composeUnitInteriorDescription();
+  clearFieldSourceOwnership(key);
+  state.fields[key] = value;
+  updateUnitDecorativeDescription();
+  if (
+    state.fields.unitInteriorDescriptionManual !== "Evet" ||
+    state.fields.unitInteriorDescription === previousGeneratedInteriorDescription
+  ) {
+    state.fields.unitInteriorDescriptionManual = "";
+    updateUnitInteriorDescription(true);
+  } else {
+    updateUnitInteriorDescription();
+  }
+  autosave();
+  renderValidation();
+  updateStatus();
 }
 
 function createUnitDecorativeDescriptionField() {
@@ -4074,6 +8016,7 @@ function getOutdoorInteriorPrefix(presence) {
 }
 
 function composeUnitDecorativeDescription() {
+  if (shouldUseExternalUnitInspectionText()) return "";
   const presence = getUnitInteriorPresence();
   return normalizeReportDescriptionText(joinNonEmptySentences([
     composeMainRoomDecorativeSentence(presence),
@@ -4083,7 +8026,32 @@ function composeUnitDecorativeDescription() {
     composeDoorsWindowsSentence(),
     hasKitchenInterior(presence) ? composeKitchenCabinetCounterSentence() : "",
     composeMaterialQualitySentence(),
+    composeUnitViewSentence(),
+    composeUnitHeatingSentence(),
+    composeUnitConstructionLevelSentence(),
   ]));
+}
+
+function composeUnitViewSentence() {
+  const view = toLowerText(state.fields.unitViewStatus);
+  if (!view || view === "manzara yok") return "";
+  const viewPhrase = view.endsWith("manzarası") ? view.replace(/manzarası$/i, "manzarasına") : `${view}na`;
+  return `${capitalizeSentence(viewPhrase)} sahip olan taşınmaz bu yönüyle manzara şerefiyesine sahiptir.`;
+}
+
+function composeUnitHeatingSentence() {
+  const heating = toLowerText(state.fields.unitHeatingType);
+  if (!heating) return "";
+  const mounted = normalizeYesNoChoice(state.fields.unitHeatingMounted || "Evet") !== "Hayır";
+  const base = `Taşınmazda ısınma ihtiyacı ${heating} ile sağlanacak şekilde tesisat bulunmaktadır.`;
+  return mounted ? `${base} Halihazırda ısıtma sistemi monte edilmiştir.` : `${base} Halihazırda ısıtma sistemi monte edilmemiştir.`;
+}
+
+function composeUnitConstructionLevelSentence() {
+  const level = String(state.fields.unitConstructionLevel || "").trim();
+  if (!level || level === "100%") return "";
+  const formattedLevel = level.startsWith("%") ? level : `%${level.replace(/%/g, "")}`;
+  return `Taşınmazın bazı inşaat işleri eksik vaziyette olup, yerinde yapılan incelemeler ve düzenlenen pursantaj tablosuna göre taşınmazın inşaat seviyesi ${formattedLevel} mertebesinde olduğu tespit edilmiştir.`;
 }
 
 function composeMainRoomDecorativeSentence(presence = getUnitInteriorPresence()) {
@@ -4097,13 +8065,26 @@ function composeMainRoomDecorativeSentence(presence = getUnitInteriorPresence())
   const floorValues = areas.map((area) => area.floor);
   const wallValues = areas.map((area) => area.wall);
   const floorGroups = groupDecorativeAreasByValue(areaNames, floorValues);
-  const commonWall = getMostCommonDecorativeValue(wallValues);
-  if (!floorGroups.length && !commonWall) return "";
+  const wallGroups = groupDecorativeAreasByValue(areaNames, wallValues);
+  if (!floorGroups.length && !wallGroups.length) return "";
   const floorText = floorGroups.length
     ? `${floorGroups.map((group) => `${formatTurkishList(group.names)} zeminleri ${toLowerText(group.value)} kaplı`).join(", ")} vaziyette`
     : `${formatTurkishList(areaNames)} bölümlerinde`;
-  const wallText = commonWall ? `duvarlar ${formatWallMaterialPhrase(commonWall)}` : "";
+  const wallText = wallGroups.length ? formatDecorativeWallGroups(wallGroups) : "";
   return [floorText, wallText].filter(Boolean).join(" olup, ") + ".";
+}
+
+function formatDecorativeWallGroups(groups = []) {
+  if (!groups.length) return "";
+  if (groups.length === 1) {
+    return `${formatTurkishList(groups[0].names)} duvarları ${formatWallMaterialPhrase(groups[0].value)}`;
+  }
+  return groups
+    .map((group, index) => {
+      const isLast = index === groups.length - 1;
+      return `${formatTurkishList(group.names)} duvarları ${formatWallMaterialPhrase(group.value, { terminal: isLast })}`;
+    })
+    .join(", ");
 }
 
 function composeSingleAreaDecorativeSentence(prefix, floorValue, wallValue) {
@@ -4221,12 +8202,13 @@ function normalizeDecorativeMaterial(value) {
     .trim();
 }
 
-function formatWallMaterialPhrase(value) {
+function formatWallMaterialPhrase(value, options = {}) {
   const text = toLowerText(value);
   if (!text) return "";
-  if (text.endsWith("boya")) return `${text}lıdır`;
-  if (/boyalı|kaplı|sıvalı|sıvasız/i.test(text)) return `${text}dır`;
-  return `${text} kaplıdır`;
+  const terminal = options.terminal !== false;
+  if (text.endsWith("boya")) return terminal ? `${text}lıdır` : `${text}lı`;
+  if (/boyalı|kaplı|sıvalı|sıvasız/i.test(text)) return terminal ? `${text}dır` : text;
+  return terminal ? `${text} kaplıdır` : `${text} kaplı`;
 }
 
 function formatDoorWindowMaterial(value) {
@@ -4246,6 +8228,12 @@ function ensureCabinetText(value) {
 function toLowerText(value) {
   const text = normalizeReportTitleText(value || "");
   return text.toLocaleUpperCase("tr") === "PVC" ? "PVC" : text.toLocaleLowerCase("tr");
+}
+
+function capitalizeSentence(value) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  return text.charAt(0).toLocaleUpperCase("tr-TR") + text.slice(1);
 }
 
 function joinNonEmptySentences(sentences = []) {
@@ -4300,6 +8288,19 @@ function createUnitTextField(labelText, key, config = {}) {
   return label;
 }
 
+function createUnitReadOnlyField(labelText, key, config = {}) {
+  const label = createUnitFieldShell(labelText, key, config);
+  const input = document.createElement("input");
+  input.type = "text";
+  input.dataset.field = key;
+  input.readOnly = true;
+  input.classList.add("is-readonly");
+  input.value = state.fields[key] || "";
+  markFieldSourceState(input, key);
+  label.append(input);
+  return label;
+}
+
 function createUnitTextareaField(labelText, key, config = {}) {
   const label = createUnitFieldShell(labelText, key, config);
   const textarea = document.createElement("textarea");
@@ -4322,18 +8323,42 @@ function createUnitFieldShell(labelText, key, config = {}) {
 
 function attachUnitFieldEvents(control, key) {
   markFieldSourceState(control, key);
-  control.addEventListener("input", (event) => {
+  const handleValueChange = (event) => {
     clearFieldSourceOwnership(key);
     state.fields[key] = event.target.value;
+    if (key === "unitFirstSaleStatus") {
+      state.fields.unitFirstSaleStatusManual = "Evet";
+    } else {
+      refreshUnitFirstSaleStatusFromCurrentFields();
+    }
+    updateUnitInteriorDescription();
+    updateUnitDecorativeDescription();
+    if (key === "unitConstructionLevel") {
+      refreshValuationMethodExplanation();
+    }
     autosave();
     renderValidation();
     updateStatus();
-  });
+  };
+  control.addEventListener("input", handleValueChange);
+  if (control.tagName === "SELECT") {
+    control.addEventListener("change", handleValueChange);
+  }
   control.addEventListener("blur", () => {
     const formattedValue = normalizeReportFieldValue(key, control.value);
     if (formattedValue === control.value) return;
     control.value = formattedValue;
     state.fields[key] = formattedValue;
+    if (key === "unitFirstSaleStatus") {
+      state.fields.unitFirstSaleStatusManual = "Evet";
+    } else {
+      refreshUnitFirstSaleStatusFromCurrentFields();
+    }
+    updateUnitInteriorDescription();
+    updateUnitDecorativeDescription();
+    if (key === "unitConstructionLevel") {
+      refreshValuationMethodExplanation();
+    }
     autosave();
     renderValidation();
     updateStatus();
@@ -4360,9 +8385,14 @@ function createUnitFacadeControl() {
       state.fields.facades = [...list.querySelectorAll("input[type='checkbox']:checked")]
         .map((checkbox) => checkbox.value)
         .join(", ");
+      updateUnitInteriorDescription();
+      updateUnitDecorativeDescription();
       autosave();
       renderValidation();
       updateStatus();
+      if (field.key === "projectInstitution") {
+        renderSection();
+      }
     });
   });
   label.append(createSpan("Gayrimenkulün Cepheli Olduğu Yönler"), list);
@@ -4394,6 +8424,8 @@ function createUnitCheckboxField(labelText, key, checkedValue = "Evet") {
   input.addEventListener("change", () => {
     clearFieldSourceOwnership(key);
     state.fields[key] = input.checked ? checkedValue : "Hayır";
+    updateUnitInteriorDescription();
+    updateUnitDecorativeDescription();
     autosave();
     renderValidation();
     updateStatus();
@@ -4419,7 +8451,7 @@ function isProjectDetailFieldKey(fieldKey) {
 function createProjectDetailsGrid(section) {
   const wrapper = document.createElement("div");
   wrapper.className = "project-details-grid field-wide";
-  const hasDifferentProjects = state.fields.projectDifference === "Evet";
+  const hasDifferentProjects = shouldUseProjectDifferenceComparison();
   const fieldMap = new Map(section.fields.map((field) => [field.key, field]));
   const rows = hasDifferentProjects
     ? [
@@ -4459,6 +8491,7 @@ function createProjectDetailField(section, field) {
   control.addEventListener("input", (event) => {
     clearFieldSourceOwnership(field.key);
     state.fields[field.key] = event.target.value;
+    refreshReviewedDocumentsDescriptionFromCurrentFields(field.key);
     autosave();
     renderValidation();
     updateStatus();
@@ -4468,6 +8501,7 @@ function createProjectDetailField(section, field) {
     if (formattedValue === control.value) return;
     control.value = formattedValue;
     state.fields[field.key] = formattedValue;
+    refreshReviewedDocumentsDescriptionFromCurrentFields(field.key);
     autosave();
     renderValidation();
     updateStatus();
@@ -4480,7 +8514,7 @@ function createProjectDetailField(section, field) {
 function createProjectSuitabilityControl() {
   const wrapper = document.createElement("div");
   wrapper.className = "project-suitability-grid field-wide";
-  const hasDifferentProjects = state.fields.projectDifference === "Evet";
+  const hasDifferentProjects = shouldUseProjectDifferenceComparison();
 
   if (hasDifferentProjects) {
     wrapper.append(
@@ -4550,14 +8584,21 @@ function createProjectSuitabilityField(labelText, key, noteKey, repairKey) {
       title: labelText,
       selectedStatus: state.fields[key] || select.value,
     }, () => {
+      refreshReviewedDocumentsDescriptionFromCurrentFields(key);
       renderSection();
     });
   };
 
   select.addEventListener("input", (event) => {
     clearFieldSourceOwnership(key);
+    const previousValue = state.fields[key] || "";
     state.fields[key] = event.target.value;
+    if (previousValue !== state.fields[key]) {
+      state.fields[noteKey] = "";
+      state.fields[repairKey] = "Evet";
+    }
     detailButton.hidden = !shouldOpenProjectSuitabilityDetail(state.fields[key]);
+    refreshReviewedDocumentsDescriptionFromCurrentFields(key);
     autosave();
     renderValidation();
     updateStatus();
@@ -4573,6 +8614,20 @@ function createProjectSuitabilityField(labelText, key, noteKey, repairKey) {
 
 function shouldOpenProjectSuitabilityDetail(value) {
   return Boolean(value) && value !== "uygundur.";
+}
+
+function projectSuitabilityStatusKey(value) {
+  return foldTurkish(normalizeReportDescriptionText(value || "")).replace(/\./g, "").trim();
+}
+
+function isProjectSuitabilityOk(value) {
+  const key = projectSuitabilityStatusKey(value);
+  return !key || key === "UYGUNDUR";
+}
+
+function shouldShowProjectSuitabilityRepair(value) {
+  const key = projectSuitabilityStatusKey(value);
+  return Boolean(key) && key !== "UYGUNDUR" && key !== "PROJEYE UYGUNLUK TESPIT EDILEMEMISTIR";
 }
 
 function openProjectSuitabilityDetailModal(config, onSave = () => {}) {
@@ -4612,6 +8667,9 @@ function openProjectSuitabilityDetailModal(config, onSave = () => {}) {
   const repairSelect = overlay.querySelector("[data-project-suitability-repair]");
   noteInput.value = state.fields[config.noteKey] || "";
   repairSelect.value = normalizeYesNoChoice(state.fields[config.repairKey]) || "Evet";
+  const repairField = repairSelect.closest(".field");
+  const showRepair = shouldShowProjectSuitabilityRepair(config.selectedStatus || state.fields[config.statusKey]);
+  if (repairField) repairField.hidden = !showRepair;
 
   const close = () => overlay.remove();
   overlay.querySelector(".modal-close").addEventListener("click", close);
@@ -4621,10 +8679,11 @@ function openProjectSuitabilityDetailModal(config, onSave = () => {}) {
   });
   overlay.querySelector("[data-project-suitability-save]").addEventListener("click", () => {
     state.fields[config.statusKey] = config.selectedStatus || state.fields[config.statusKey] || "";
-    state.fields[config.noteKey] = normalizeReportDescriptionText(noteInput.value);
-    state.fields[config.repairKey] = normalizeYesNoChoice(repairSelect.value) || "Evet";
+    state.fields[config.noteKey] = stripProjectSuitabilityRepairSentence(noteInput.value);
+    state.fields[config.repairKey] = showRepair ? normalizeYesNoChoice(repairSelect.value) || "Evet" : "";
     refreshMainPropertyDescriptionFromCurrentFields(config.statusKey);
     refreshMainPropertyDescriptionFromCurrentFields(config.noteKey);
+    refreshReviewedDocumentsDescriptionFromCurrentFields(config.statusKey);
     autosave();
     renderValidation();
     updateStatus();
@@ -4672,6 +8731,7 @@ function createMainRealEstateProjectSuitabilityControl() {
       detailTitle: "Ana Gayrimenkul Projesine Uygunluk Açıklaması",
       detailLabel: "Açıklama",
     }, () => {
+      refreshReviewedDocumentsDescriptionFromCurrentFields(key);
       renderSection();
     });
   };
@@ -4681,6 +8741,7 @@ function createMainRealEstateProjectSuitabilityControl() {
     state.fields[key] = event.target.value;
     detailButton.hidden = state.fields[key] !== "Hayır";
     refreshMainPropertyDescriptionFromCurrentFields(key);
+    refreshReviewedDocumentsDescriptionFromCurrentFields(key);
     autosave();
     renderValidation();
     updateStatus();
@@ -4726,6 +8787,11 @@ function shouldHideField(sectionId, fieldKey) {
       return state.fields.usageNatureDifference !== "Evet";
     }
   }
+  if (sectionId === "land") {
+    if (["landAgricultureType", "landAgriculturalProduct"].includes(fieldKey)) {
+      return shouldHideLandAgricultureControls();
+    }
+  }
   if (sectionId === "title") {
     if (!["titleQuality", "titleBlockName", "titleFloor", "unitNo"].includes(fieldKey)) return false;
     return isMainPropertyGroundType(state.fields.groundType);
@@ -4768,7 +8834,10 @@ function shouldHideField(sectionId, fieldKey) {
     if (!shouldShowArchitecturalProjectFields() && isArchitecturalProjectDependentField(fieldKey)) {
       return true;
     }
-    const hasDifferentProjects = state.fields.projectDifference === "Evet";
+    const hasDifferentProjects = shouldUseProjectDifferenceComparison();
+    if (fieldKey === "projectDifference" && !shouldShowProjectDifferenceField()) {
+      return true;
+    }
     if (["titleProjectDate", "titleProjectNo", "titleProjectType", "municipalityProjectDate", "municipalityProjectNo", "municipalityProjectType"].includes(fieldKey)) {
       return !hasDifferentProjects;
     }
@@ -4782,8 +8851,36 @@ function shouldHideField(sectionId, fieldKey) {
   return false;
 }
 
+function shouldHideLandAgricultureControls() {
+  const usageNature = foldTurkish(state.fields.legalUsageNature || "").replace(/\s+/g, " ").trim();
+  const ownershipType = foldTurkish(state.fields.ownershipType || "").replace(/\s+/g, " ").trim();
+  return usageNature === "ARSA" || ownershipType === "ARSA" || ownershipType === "MUSTAKIL BINA";
+}
+
 function shouldShowArchitecturalProjectFields() {
   return (state.fields.hasArchitecturalProject || "Evet") === "Evet";
+}
+
+function getOwnershipTypeText() {
+  return normalizeReportTitleText(state.fields.ownershipType || "").trim();
+}
+
+function isCondominiumOwnershipType() {
+  const folded = foldTurkish(getOwnershipTypeText());
+  return folded.includes("DIKEY KAT IRTIFAKI") || folded.includes("YATAY KAT IRTIFAKI");
+}
+
+function isOwnershipProjectDifferenceComparable() {
+  const folded = foldTurkish(getOwnershipTypeText());
+  return !["MUSTAKIL BINA", "ARSA", "TARLA"].some((keyword) => folded.includes(keyword));
+}
+
+function shouldShowProjectDifferenceField() {
+  return shouldShowArchitecturalProjectFields() && isOwnershipProjectDifferenceComparable() && getSelectedProjectInstitutions().length !== 1;
+}
+
+function shouldUseProjectDifferenceComparison() {
+  return state.fields.projectDifference === "Evet" && shouldShowProjectDifferenceField();
 }
 
 function isArchitecturalProjectDependentField(fieldKey) {
@@ -4801,7 +8898,6 @@ function isArchitecturalProjectDependentField(fieldKey) {
     "municipalityProjectNo",
     "municipalityProjectType",
     "projectConformity",
-    "reviewedDocumentsDescription",
     "hasEkb",
     "ekbDocumentNo",
     "ekbIssueDate",
@@ -4843,10 +8939,11 @@ function shouldShowPlanningIssueFields(fields = state.fields) {
 }
 
 function getFieldDisplayLabel(sectionId, field) {
-  if (sectionId === "documents" && state.fields.projectDifference !== "Evet") {
-    if (field.key === "projectDate") return "Tapu/Belediye Proje Tarihi";
-    if (field.key === "projectNo") return "Tapu/Belediye Proje No";
-    if (field.key === "projectType") return "Tapu/Belediye Proje Türü";
+  if (sectionId === "documents" && !shouldUseProjectDifferenceComparison()) {
+    const prefix = getProjectDetailLabelPrefix();
+    if (field.key === "projectDate") return `${prefix} Proje Tarihi`;
+    if (field.key === "projectNo") return `${prefix} Proje No`;
+    if (field.key === "projectType") return `${prefix} Proje Türü`;
   }
   return field.label;
 }
@@ -5048,6 +9145,7 @@ function createTextareaField(field, labelText, extraClass = "") {
   textarea.addEventListener("input", (event) => {
     clearFieldSourceOwnership(field.key);
     state.fields[field.key] = event.target.value;
+    refreshEnvironmentDescriptionFromCurrentFields(field.key);
     autosave();
     renderValidation();
     updateStatus();
@@ -5057,6 +9155,7 @@ function createTextareaField(field, labelText, extraClass = "") {
     if (formattedValue === textarea.value) return;
     textarea.value = formattedValue;
     state.fields[field.key] = formattedValue;
+    refreshEnvironmentDescriptionFromCurrentFields(field.key);
     autosave();
     renderValidation();
     updateStatus();
@@ -5168,6 +9267,7 @@ function createLandRoadFrontageControl(field) {
     }
 
     summary.textContent = formatLandRoadFrontageSummary();
+    refreshLandDescriptionFromCurrentFields(field.key);
     autosave();
     renderValidation();
     updateStatus();
@@ -5388,6 +9488,7 @@ function openLandRoadFrontageModal(onSave = () => {}) {
     state.fields.landRoadName = firstItem.roadName || "";
     state.fields.landRoadDirection = firstItem.direction || "";
     state.fields.landRoadFrontageLength = firstItem.length || "";
+    refreshLandDescriptionFromCurrentFields("landRoadFrontageItems");
     autosave();
     renderValidation();
     updateStatus();
@@ -5464,6 +9565,7 @@ function createLandAgricultureTypeControl(field) {
     }
 
     summary.textContent = formatLandAgricultureTypeSummary();
+    refreshLandDescriptionFromCurrentFields(field.key);
     autosave();
     renderValidation();
     updateStatus();
@@ -5548,6 +9650,7 @@ function openLandIrrigationModal(onSave = () => {}) {
     state.fields.landAgricultureType = "Sulu Tarım";
     state.fields.landIrrigationWaterSource = waterSourceSelect.value;
     state.fields.landIrrigationSystem = irrigationSystemSelect.value;
+    refreshLandDescriptionFromCurrentFields("landIrrigationSystem");
     autosave();
     renderValidation();
     updateStatus();
@@ -5616,6 +9719,7 @@ function createLandBoundaryElementControl(field) {
     }
 
     summary.textContent = formatLandBoundaryElementSummary();
+    refreshLandDescriptionFromCurrentFields(field.key);
     autosave();
     renderValidation();
     updateStatus();
@@ -5709,6 +9813,7 @@ function openLandBoundaryElementModal(onSave = () => {}) {
       .filter((checkbox) => checkbox.checked)
       .map((checkbox) => checkbox.value);
     state.fields.landBoundaryElementOther = normalizeReportDescriptionText(otherInput.value);
+    refreshLandDescriptionFromCurrentFields("landBoundaryElementItems");
     autosave();
     renderValidation();
     updateStatus();
@@ -5760,6 +9865,7 @@ function createLandAgriculturalProductControl(field) {
     }
 
     summary.textContent = formatLandAgriculturalProductSummary();
+    refreshLandDescriptionFromCurrentFields(field.key);
     autosave();
     renderValidation();
     updateStatus();
@@ -6010,6 +10116,7 @@ function openLandAgriculturalProductModal(onSave = () => {}) {
     state.fields.landAgriculturalAge = firstItem.age || "";
     state.fields.landAgriculturalYield = firstItem.yieldRate || "";
     state.fields.landAgriculturalTotalCount = firstItem.totalCount || "";
+    refreshLandDescriptionFromCurrentFields("landAgriculturalProductItems");
     autosave();
     renderValidation();
     updateStatus();
@@ -6060,8 +10167,9 @@ function createAppointmentTypeControl(field) {
   summary.textContent = formatAppointmentTypeSummary(select.value);
   summary.hidden = !shouldShowAppointmentTypeDetail(select.value);
 
-  select.addEventListener("input", (event) => {
+  const handleAppointmentTypeChange = (event) => {
     const nextValue = event.target.value;
+    if (state.fields[field.key] === nextValue && event.type === "change") return;
     state.fields[field.key] = nextValue;
 
     const shouldShowDetail = shouldShowAppointmentTypeDetail(nextValue);
@@ -6079,6 +10187,7 @@ function createAppointmentTypeControl(field) {
 
     summary.textContent = formatAppointmentTypeSummary(nextValue);
     summary.hidden = !shouldShowDetail;
+    refreshValuationMethodExplanation();
     autosave();
     renderValidation();
     updateStatus();
@@ -6098,7 +10207,9 @@ function createAppointmentTypeControl(field) {
         summary.textContent = formatAppointmentTypeSummary(nextValue);
       });
     }
-  });
+  };
+  select.addEventListener("input", handleAppointmentTypeChange);
+  select.addEventListener("change", handleAppointmentTypeChange);
 
   detailButton.addEventListener("click", () => {
     if (state.fields.appointmentType === "Dışarıdan ekspertiz") {
@@ -6204,6 +10315,7 @@ function openExternalAppraisalReasonModal(onSave = () => {}) {
     state.fields.appointmentType = "Dışarıdan ekspertiz";
     state.fields.externalAppraisalReason = selectedReason;
     state.fields.externalAppraisalOtherNote = selectedReason === "Diğer" ? normalizeReportDescriptionText(otherText.value) : "";
+    refreshValuationMethodExplanation();
     autosave();
     renderValidation();
     updateStatus();
@@ -6571,6 +10683,9 @@ function createConditionalYesNoControl(field) {
     summary.hidden = Boolean(field.hideInactiveDetail && !shouldOpenConditionalDetail(field, nextValue));
     refreshPlanningNoteFromCurrentFields(field.key);
     refreshPlanningNoteFromCurrentFields(field.detailKey);
+    refreshPenaltyDecisionExplanationFromCurrentFields(field.key);
+    refreshStaticSuitabilityExplanationFromCurrentFields(field.key);
+    refreshEkbExplanationFromCurrentFields(field.key);
     autosave();
     renderValidation();
     updateStatus();
@@ -6635,9 +10750,13 @@ function createMultiCheckboxControl(field) {
       state.fields[field.key] = formatMultiCheckboxValue(values, field);
       summaryButton.textContent = formatMultiCheckboxSummary(values, field);
       refreshEnvironmentDescriptionFromCurrentFields(field.key);
+      refreshReviewedDocumentsDescriptionFromCurrentFields(field.key);
       autosave();
       renderValidation();
       updateStatus();
+      if (field.key === "projectInstitution") {
+        renderSection();
+      }
     });
   });
 
@@ -6700,10 +10819,16 @@ function createCheckboxControl(section, field) {
   input.addEventListener("change", () => {
     clearFieldSourceOwnership(field.key);
     state.fields[field.key] = input.checked ? checkedValue : uncheckedValue;
+    if (field.key === "usageNatureDifference") {
+      if (syncCurrentUsageNatureWithLegalNature()) clearFieldSourceOwnership("currentUsageNature");
+    }
     refreshPlanningNoteFromCurrentFields(field.key);
     refreshEnvironmentDescriptionFromCurrentFields(field.key);
     refreshReviewedDocumentsDescriptionFromCurrentFields(field.key);
     refreshEncumbranceSummaryFromCurrentFields(field.key);
+    if (field.key === "usageNatureDifference") {
+      refreshValuationMethodExplanation();
+    }
     autosave();
     renderValidation();
     updateStatus();
@@ -6791,6 +10916,15 @@ function createDocumentDecisionControls() {
     })
   );
 
+  if (hasReviewedOccupancyPermitDocument()) {
+    state.fields.buildingInspectionContractActive = "";
+    state.fields.buildingInspectionProgressLevel = "";
+    state.fields.buildingInspectionTerminationDate = "";
+    state.fields.buildingInspectionTerminationLevel = "";
+    state.fields.buildingInspectionExplanation = "";
+    return wrapper;
+  }
+
   const contractTitle = document.createElement("h4");
   contractTitle.className = "document-decision-title";
   contractTitle.textContent = "Yapı Denetim Sözleşme Durumu";
@@ -6808,13 +10942,19 @@ function createDocumentDecisionControls() {
           state.fields.buildingInspectionTerminationLevel = "";
         }
       },
-    }),
-    createDocumentDecisionSelect({
-      key: "buildingInspectionProgressLevel",
-      label: "Yapı Denetim Hakediş Seviyesi",
-      options: ["", ...Array.from({ length: 100 }, (_, index) => `%${100 - index}`)],
     })
   );
+  if (state.fields.buildingInspectionContractActive === "Evet") {
+    wrapper.append(
+      createDocumentDecisionSelect({
+        key: "buildingInspectionProgressLevel",
+        label: "Yapı Denetim Hakediş Seviyesi",
+        options: ["", ...Array.from({ length: 100 }, (_, index) => `%${100 - index}`)],
+      })
+    );
+  } else {
+    state.fields.buildingInspectionProgressLevel = "";
+  }
   return wrapper;
 }
 
@@ -6837,9 +10977,11 @@ function createDocumentDecisionSelect(field) {
     state.fields[field.key] = nextValue;
     select.value = nextValue;
     field.onChange?.(nextValue);
+    refreshBuildingInspectionExplanationFromCurrentFields(field.key);
     autosave();
     renderValidation();
     updateStatus();
+    if (field.key === "buildingInspectionContractActive") renderSection();
   });
 
   label.append(createSpan(field.label), select);
@@ -6895,6 +11037,7 @@ function openBuildingInspectionTerminationModal(onSave = () => {}) {
     state.fields.buildingInspectionContractActive = "Hayır (Fesihli)";
     state.fields.buildingInspectionTerminationDate = dateInput.value;
     state.fields.buildingInspectionTerminationLevel = levelSelect.value;
+    refreshBuildingInspectionExplanationFromCurrentFields();
     autosave();
     renderValidation();
     updateStatus();
@@ -6957,6 +11100,9 @@ function openConditionalExplanationModal(field, onSave = () => {}) {
     state.fields[field.detailKey] = normalizeReportDescriptionText(explanation.value);
     refreshPlanningNoteFromCurrentFields(field.key);
     refreshPlanningNoteFromCurrentFields(field.detailKey);
+    refreshPenaltyDecisionExplanationFromCurrentFields(field.detailKey);
+    refreshStaticSuitabilityExplanationFromCurrentFields(field.detailKey);
+    refreshEkbExplanationFromCurrentFields(field.detailKey);
     autosave();
     renderValidation();
     updateStatus();
@@ -7033,7 +11179,7 @@ function createMainArteryComposer(field) {
   const wrapper = document.createElement("div");
   wrapper.className = "artery-composer";
   const source = state.sourceValues.nearbyPlaces || {};
-  const roads = getNearbyArteries(source.places || []);
+  const roads = getAllMainArteryPlacesWithUser(source.places || []);
   const selectedId = state.fields.mainArteryId || "";
   const selectedRoad = roads.find((road) => road.id === selectedId);
 
@@ -7058,7 +11204,7 @@ function createMainArteryComposer(field) {
     empty.textContent = "1000 m içinde cadde/bulvar bulunamadı.";
     list.append(empty);
   } else {
-    roads.slice(0, mainArteryAutoLimit).forEach((road) => {
+    roads.slice(0, mainArteryAutoLimit + getUserMainArteryPlaces().length).forEach((road) => {
       const item = document.createElement("label");
       item.className = "nearby-item artery-item";
       item.innerHTML = `
@@ -7133,6 +11279,8 @@ function createUploadGrid(uploads) {
           await processImarFile(file);
         } else if (upload.id === "takbis") {
           await processTakbisFile(file);
+        } else if (upload.id === "jsonDraft") {
+          await processJsonDraftFile(file);
         }
         state.uploadErrors = { ...(state.uploadErrors || {}), [upload.id]: "" };
       } catch (error) {
@@ -7147,6 +11295,734 @@ function createUploadGrid(uploads) {
   });
 
   return grid;
+}
+
+async function processJsonDraftFile(file) {
+  const text = await readFileAsText(file);
+  let payload;
+  try {
+    payload = JSON.parse(text);
+  } catch (error) {
+    throw new Error("JSON dosyası okunamadı. Dosyanın rapor taslağı olduğundan emin olun.");
+  }
+  restoreStateFromImportedJson(payload, file.name || "taslak.json");
+}
+
+function restoreStateFromImportedJson(payload, fileName = "") {
+  const imported = payload?.state && typeof payload.state === "object" ? payload.state : payload;
+  if (!imported || typeof imported !== "object" || Array.isArray(imported)) {
+    throw new Error("JSON taslak yapısı geçerli değil.");
+  }
+
+  const previousUserDefaults = loadUserDefaults();
+  localStorage.removeItem(storageKey);
+  const fallback = loadState();
+  state = {
+    ...fallback,
+    ...imported,
+    fields: { ...(fallback.fields || {}), ...(imported.fields || {}) },
+    uploads: { ...(fallback.uploads || {}), ...(imported.uploads || {}) },
+    sourceValues: { ...(fallback.sourceValues || {}), ...(imported.sourceValues || {}) },
+    sourceConflicts: { ...(fallback.sourceConflicts || {}), ...(imported.sourceConflicts || {}) },
+    lookupOptions: { ...(fallback.lookupOptions || {}), ...(imported.lookupOptions || {}) },
+    settings: {
+      ...(fallback.settings || {}),
+      ...(imported.settings || {}),
+      userDefaults: {
+        ...previousUserDefaults,
+        ...((imported.settings || {}).userDefaults || {}),
+      },
+    },
+    tables: { ...(fallback.tables || {}), ...(imported.tables || {}) },
+    importedAt: new Date().toISOString(),
+    importedFileName: fileName,
+  };
+  normalizeAddressSourceState(state);
+  applySystemDefaults(state);
+  applyUserFieldDefaults(state);
+  hydrateImportedAddressAdministrativeFields(state);
+  applyImarDerivedBusinessRules(state);
+  normalizeReportStateFields(state);
+  saveState();
+  setSyncState("JSON yüklendi", "Taslak verileri bu cihaza aktarıldı.", "saved");
+  // Faz 3: paket kökünde activeSectionId varsa (bkz. exportReportJson,
+  // cloud/report-library.js), kullanıcı diğer cihazda kaldığı bölümden devam
+  // eder; yoksa (eski dosyalar / dış kaynak) her zamanki gibi 1. bölümden başlar.
+  const requestedSectionId = typeof payload?.activeSectionId === "string" ? payload.activeSectionId : "";
+  if (requestedSectionId && sections.some((section) => section.id === requestedSectionId)) {
+    setActiveSection(requestedSectionId);
+  } else {
+    activeSectionId = sections[0].id;
+    render();
+  }
+}
+
+function hydrateImportedAddressAdministrativeFields(appState) {
+  if (!appState || typeof appState !== "object") return;
+  const fields = appState.fields || {};
+  const kmlFields = appState.sourceValues?.kml?.fields || {};
+  const addressFields = appState.sourceValues?.address?.fields || {};
+  const fillIfBlank = (targetKey, sourceKeys) => {
+    if (String(fields[targetKey] || "").trim()) return;
+    const nextValue = sourceKeys
+      .map((key) => fields[key] || kmlFields[key] || addressFields[key])
+      .find((value) => String(value || "").trim());
+    if (nextValue) fields[targetKey] = String(nextValue).trim();
+  };
+  fillIfBlank("city", ["city", "titleCity"]);
+  fillIfBlank("district", ["district", "titleDistrict"]);
+  fillIfBlank("neighborhood", ["neighborhood", "titleNeighborhood"]);
+}
+
+function createOutputExportPanel() {
+  const panel = document.createElement("div");
+  panel.className = "subsection output-export-panel";
+  panel.innerHTML = `
+    <div class="subsection-title-row">
+      <div>
+        <h4>Farklı Kaydet</h4>
+        <p>Rapor taslağını JSON olarak saklayabilir veya Word ile açılabilir rapor çıktısı üretebilirsiniz.</p>
+      </div>
+      <span class="export-status" data-output-export-status aria-live="polite"></span>
+    </div>
+    <div class="output-export-actions">
+      <button type="button" class="secondary-button" data-export-json>JSON olarak farklı kaydet</button>
+      <button type="button" class="primary-button" data-export-word>Word olarak farklı kaydet</button>
+      <button type="button" class="secondary-button" data-export-pdf>PDF olarak kaydet</button>
+    </div>
+    <p class="subtle-text">JSON dosyası 1-Dosya bölümünden tekrar yüklendiğinde tüm alanlar ve tablolar geri gelir. Word çıktısı tabloları ve açıklama metinlerini tablo düzeni korunarak üretir; kroki verileri rapora eklenir.</p>
+  `;
+  const status = panel.querySelector("[data-output-export-status]");
+  panel.querySelector("[data-export-json]").addEventListener("click", () => {
+    exportReportJson();
+    showOutputExportStatus(status, "JSON hazırlandı.");
+  });
+  panel.querySelector("[data-export-word]").addEventListener("click", async () => {
+    await exportReportWord();
+    showOutputExportStatus(status, "Word çıktısı hazırlandı.");
+  });
+  panel.querySelector("[data-export-pdf]").addEventListener("click", async () => {
+    await exportReportPdf();
+    showOutputExportStatus(status, "PDF penceresi açıldı.");
+  });
+  appendBankTemplateExportBlock(panel, status);
+  return panel;
+}
+
+// Banka şablonlarıyla dışa aktarma (templates/*.html + src/templates/template-engine.js).
+// Motor yüklenmemişse blok hiç görünmez; app.js tek başına da çalışmaya devam eder.
+function appendBankTemplateExportBlock(panel, status) {
+  if (!window.RaporTemplates) return;
+  const block = document.createElement("div");
+  block.className = "output-template-export";
+  const options = window.RaporTemplates.listTemplates()
+    .map((entry) => `<option value="${escapeHtml(entry.key)}">${escapeHtml(entry.title)}</option>`)
+    .join("");
+  block.innerHTML = `
+    <div class="subsection-title-row" style="margin-top:14px;">
+      <div>
+        <h4>Banka Şablonuyla Kaydet</h4>
+        <p>templates/ klasöründeki düzenlenebilir HTML şablonu doldurulur ve Word (.doc) olarak iner.</p>
+      </div>
+    </div>
+    <div class="output-export-actions">
+      <select data-template-select class="text-input" style="max-width:320px;">${options}</select>
+      <button type="button" class="primary-button" data-export-template>Banka şablonuyla kaydet (Word)</button>
+    </div>
+    <p class="subtle-text">Placeholder adları için templates/PLACEHOLDER-REHBERI.md dosyasına bakın. Eşleşmeyen adlar çıktıda ⚠ ile işaretlenir.</p>
+  `;
+  const select = block.querySelector("[data-template-select]");
+  const defaultKey = window.RaporTemplates.defaultTemplateKeyForBank(state.fields.bank);
+  if (defaultKey) select.value = defaultKey;
+  block.querySelector("[data-export-template]").addEventListener("click", async () => {
+    try {
+      saveState();
+      const result = await window.RaporTemplates.exportTemplate(select.value);
+      if (result.missing.length) {
+        showOutputExportStatus(status, `Hazırlandı; ${result.missing.length} placeholder eşleşmedi.`);
+        window.alert(`Şablon hazırlandı ancak şu placeholder adları eşleşmedi (çıktıda ⚠ ile işaretli):\n\n${[...new Set(result.missing)].join("\n")}\n\nYazımı templates/PLACEHOLDER-REHBERI.md dosyasından kontrol edebilirsiniz.`);
+      } else {
+        showOutputExportStatus(status, `${result.title} hazırlandı.`);
+      }
+    } catch (error) {
+      console.error("Şablon dışa aktarma hatası:", error);
+      showOutputExportStatus(status, "Şablon hazırlanamadı.");
+      window.alert(`Şablon hazırlanamadı: ${error?.message || error}`);
+    }
+  });
+  panel.append(block);
+}
+
+function showOutputExportStatus(status, text) {
+  if (!status) return;
+  status.textContent = text;
+  setTimeout(() => {
+    if (status.textContent === text) status.textContent = "";
+  }, 1800);
+}
+
+function exportReportJson() {
+  saveState();
+  const payload = {
+    schema: "rapor-yazma-programi-state",
+    schemaVersion: 1,
+    exportedAt: new Date().toISOString(),
+    appVersion: "20260707-1101",
+    activeSectionId,
+    state,
+  };
+  downloadTextFile(`${buildExportBaseFileName()}.json`, JSON.stringify(payload, null, 2), "application/json;charset=utf-8");
+}
+
+async function exportReportWord() {
+  saveState();
+  const documentPackage = await buildWordReportDocumentPackage();
+  downloadTextFile(`${buildExportBaseFileName()}.doc`, documentPackage.content, documentPackage.mimeType);
+}
+
+async function exportReportPdf() {
+  saveState();
+  const imageAssets = (await buildWordReportImageAssets()).map((asset) => ({
+    ...asset,
+    src: asset.dataUrl || asset.location,
+  }));
+  const html = buildPdfReportHtml({ imageAssets });
+  openPdfPrintWindow(html);
+}
+
+function buildPdfReportHtml(options = {}) {
+  const html = buildWordReportHtml(options);
+  return html.replace(
+    "</style>",
+    `
+    @media print {
+      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .word-landscape-section { page-break-before: always; page-break-after: always; }
+    }
+    </style>`
+  );
+}
+
+function openPdfPrintWindow(html) {
+  const printWindow = window.open("", "_blank");
+  if (!printWindow) {
+    downloadTextFile(`${buildExportBaseFileName()}-pdf.html`, html, "text/html;charset=utf-8");
+    return;
+  }
+  printWindow.document.open();
+  printWindow.document.write(html);
+  printWindow.document.close();
+  printWindow.focus();
+  printWindow.setTimeout(() => {
+    printWindow.print();
+  }, 500);
+}
+
+function downloadTextFile(fileName, content, mimeType) {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function buildExportBaseFileName() {
+  const parts = [
+    state.fields.caseName || "ekspertiz-raporu",
+    state.fields.bank || "",
+    new Date().toISOString().slice(0, 10),
+  ].filter(Boolean);
+  return slugifyFileName(parts.join("-")) || "ekspertiz-raporu";
+}
+
+function slugifyFileName(value) {
+  return String(value || "")
+    .toLocaleLowerCase("tr-TR")
+    .replace(/[ç]/g, "c")
+    .replace(/[ğ]/g, "g")
+    .replace(/[ı]/g, "i")
+    .replace(/[ö]/g, "o")
+    .replace(/[ş]/g, "s")
+    .replace(/[ü]/g, "u")
+    .replace(/[^a-z0-9]+/gi, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 120);
+}
+
+async function buildWordReportDocumentPackage() {
+  const imageAssets = await buildWordReportImageAssets();
+  const html = buildWordReportHtml({ imageAssets });
+  if (!imageAssets.length) {
+    return { content: html, mimeType: "application/msword;charset=utf-8" };
+  }
+  return {
+    content: buildWordMhtmlPackage(html, imageAssets),
+    mimeType: "application/msword;charset=utf-8",
+  };
+}
+
+async function buildWordReportImageAssets() {
+  const definitions = getWordSketchDefinitions();
+  const assets = [];
+  for (const definition of definitions) {
+    const dataUrl = await createSketchPngDataUrl(definition.items, definition.title);
+    const base64 = String(dataUrl || "").split(",")[1] || "";
+    if (base64) {
+      assets.push({ ...definition, dataUrl, base64 });
+    }
+  }
+  return assets;
+}
+
+function buildWordMhtmlPackage(html, imageAssets = []) {
+  const boundary = `----=_RaporYazma_${Date.now().toString(36)}`;
+  const lines = [
+    "MIME-Version: 1.0",
+    `Content-Type: multipart/related; boundary="${boundary}"`,
+    "",
+    `--${boundary}`,
+    "Content-Type: text/html; charset=\"utf-8\"",
+    "Content-Transfer-Encoding: base64",
+    "Content-Location: report.html",
+    "",
+    toBase64Utf8(html),
+    "",
+  ];
+  imageAssets.forEach((asset) => {
+    lines.push(
+      `--${boundary}`,
+      "Content-Type: image/png",
+      "Content-Transfer-Encoding: base64",
+      `Content-Location: ${asset.location}`,
+      "",
+      asset.base64,
+      ""
+    );
+  });
+  lines.push(`--${boundary}--`, "");
+  return lines.join("\r\n");
+}
+
+function toBase64Utf8(value) {
+  return btoa(unescape(encodeURIComponent(String(value || ""))));
+}
+
+function getWordSketchDefinitions() {
+  const definitions = [];
+  const subjectPoint = getComparableSubjectPoint();
+  if (subjectPoint) {
+    definitions.push({
+      key: "location",
+      title: "Konu Taşınmaz Krokisi",
+      location: "word-sketch-location.png",
+      items: [{ label: "Konu Taşınmaz", lat: subjectPoint[0], lng: subjectPoint[1], kind: "subject" }],
+    });
+  }
+  const comparableItems = [];
+  if (subjectPoint) comparableItems.push({ label: "Konu Taşınmaz", lat: subjectPoint[0], lng: subjectPoint[1], kind: "subject" });
+  getComparableRows().forEach((row, index) => {
+    const lat = Number.parseFloat(String(row.c18 || "").replace(",", "."));
+    const lng = Number.parseFloat(String(row.c19 || "").replace(",", "."));
+    if (Number.isFinite(lat) && Number.isFinite(lng)) {
+      comparableItems.push({ label: `Emsal ${index + 1}`, lat, lng, kind: "comparable" });
+    }
+  });
+  if (comparableItems.length >= 2) {
+    definitions.push({
+      key: "comparables",
+      title: "Emsal Konum Krokisi",
+      location: "word-sketch-comparables.png",
+      items: comparableItems,
+    });
+  }
+  return definitions;
+}
+
+async function createSketchPngDataUrl(items, title) {
+  const width = 1200;
+  const height = 700;
+  const pad = 92;
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext("2d");
+  if (!context) return "";
+  drawWordSketchCanvas(context, items, title, width, height, pad);
+  return canvas.toDataURL("image/png");
+}
+
+function drawWordSketchCanvas(context, items, title, width, height, pad) {
+  const lats = items.map((item) => Number(item.lat));
+  const lngs = items.map((item) => Number(item.lng));
+  const minLat = Math.min(...lats);
+  const maxLat = Math.max(...lats);
+  const minLng = Math.min(...lngs);
+  const maxLng = Math.max(...lngs);
+  const latSpan = Math.max(maxLat - minLat, 0.0005);
+  const lngSpan = Math.max(maxLng - minLng, 0.0005);
+  context.fillStyle = "#f7faf8";
+  context.fillRect(0, 0, width, height);
+  context.strokeStyle = "#cbd5d1";
+  context.lineWidth = 3;
+  context.strokeRect(8, 8, width - 16, height - 16);
+  context.fillStyle = "#12202a";
+  context.font = "900 30px Arial";
+  context.fillText(title, pad, 58);
+  context.strokeStyle = "#d8e1de";
+  context.lineWidth = 2;
+  context.beginPath();
+  context.moveTo(pad, height / 2);
+  context.lineTo(width - pad, height / 2);
+  context.moveTo(width / 2, pad);
+  context.lineTo(width / 2, height - pad);
+  context.stroke();
+  items.forEach((item) => {
+    const x = pad + ((Number(item.lng) - minLng) / lngSpan) * (width - pad * 2);
+    const y = height - pad - ((Number(item.lat) - minLat) / latSpan) * (height - pad * 2);
+    const isSubject = item.kind === "subject";
+    const color = isSubject ? "#b91c1c" : "#0f766e";
+    context.fillStyle = color;
+    context.beginPath();
+    context.arc(x, y, isSubject ? 15 : 12, 0, Math.PI * 2);
+    context.fill();
+    context.font = "900 22px Arial";
+    context.textAlign = "center";
+    context.fillText(item.label, x, y - 24 < 78 ? y + 42 : y - 24);
+  });
+  context.textAlign = "left";
+}
+
+function buildWordReportHtml(options = {}) {
+  const title = state.fields.caseName || "Ekspertiz Raporu";
+  const sectionsHtml = [
+    buildWordReportSummaryHtml(),
+    buildWordReportGeneratedTextsHtml(),
+    buildWordReportTablesHtml(),
+    buildWordReportSketchesHtml(options),
+  ].filter(Boolean).join("\n");
+  return `<!DOCTYPE html>
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:v="urn:schemas-microsoft-com:vml">
+<head>
+  <meta charset="utf-8">
+  <title>${escapeHtml(title)}</title>
+  <style>
+    @page { size: 595.35pt 841.95pt; margin: 42pt 36pt; }
+    @page WordLandscape { size: 841.95pt 595.35pt; mso-page-orientation: landscape; margin: 30pt 28pt; }
+    v\\:* { behavior: url(#default#VML); }
+    body { font-family: Arial, sans-serif; font-size: 10pt; color: #1f2a32; background: #ffffff; }
+    h1 { font-size: 20pt; margin: 0 0 12pt; color: #12202a; font-weight: 900; }
+    h2 { font-size: 15pt; margin: 18pt 0 8pt; border-bottom: 2pt solid #213f77; padding-bottom: 4pt; color: #12202a; font-weight: 900; }
+    h3 { font-size: 12pt; margin: 12pt 0 6pt; color: #263642; font-weight: 900; }
+    p { margin: 0 0 8pt; line-height: 1.35; }
+    .word-landscape-section { page: WordLandscape; mso-page-orientation: landscape; page-break-before: always; page-break-after: always; }
+    .word-table { border-collapse: collapse; width: 100%; margin: 6pt 0 12pt; table-layout: fixed; border: 1pt solid #d9dfdc; font-size: 8.25pt; }
+    .word-table th,
+    .word-table td { border: 1pt solid #d9dfdc; padding: 3.2pt 3.8pt; vertical-align: top; line-height: 1.15; }
+    .word-table th { background: #eaf0fa; color: #1f2a32; font-weight: 900; text-align: left; }
+    .word-table tbody tr:nth-child(even) td { background: #f6f8fd; }
+    .word-table.is-wide { font-size: 7pt; table-layout: auto; }
+    .word-table.is-wide th,
+    .word-table.is-wide td { padding: 2.4pt 2.8pt; line-height: 1.08; }
+    .word-table.is-matrix th:first-child,
+    .word-table.is-matrix td:first-child,
+    .word-table.meta td:first-child { width: 26%; font-weight: 900; background: #eaf0fa; color: #1f2a32; }
+    .word-table.is-summary tbody tr:last-child td { font-weight: 900; background: #eef6ff; }
+    .placeholder-title { background: #f8fafc; font-weight: bold; }
+    .sketch { margin: 8pt 0 16pt; text-align: center; }
+    .sketch-vml { width: 100%; text-align: center; }
+    .sketch-note { font-size: 8pt; color: #64748b; text-align: left; margin-top: 4pt; }
+  </style>
+</head>
+<body>
+  <h1>${escapeHtml(title)}</h1>
+  ${sectionsHtml}
+</body>
+</html>`;
+}
+
+function buildWordReportSummaryHtml() {
+  const rows = [
+    ["Banka", state.fields.bank],
+    ["Müşteri / Talep Eden", state.fields.customerName],
+    ["İş Adı", state.fields.caseName],
+    ["Taşınmaz", [state.fields.titleCity || state.fields.city, state.fields.titleDistrict || state.fields.district, state.fields.titleNeighborhood || state.fields.neighborhood].filter(Boolean).join(" / ")],
+    ["Ada / Parsel", [state.fields.blockNo, state.fields.parcelNo].filter(Boolean).join(" / ")],
+    ["Bağımsız Bölüm", [state.fields.titleBlockName, state.fields.titleFloor, state.fields.unitNo].filter(Boolean).join(" / ")],
+    ["Yasal Durum Değeri", formatSchemeNumber(state.fields.legalValue) ? `${formatSchemeNumber(state.fields.legalValue)} TL` : ""],
+    ["Mevcut Durum Değeri", formatSchemeNumber(state.fields.currentValue) ? `${formatSchemeNumber(state.fields.currentValue)} TL` : ""],
+  ].filter((row) => String(row[1] || "").trim());
+  if (!rows.length) return "";
+  return `<h2>Rapor Özeti</h2>${buildSimpleHtmlTable(["Alan", "Değer"], rows, "meta")}`;
+}
+
+function buildWordReportGeneratedTextsHtml() {
+  const rows = collectGeneratedTextPlaceholders()
+    .filter(shouldIncludeGeneratedTextInWord)
+    .filter((row) => String(row.value || "").trim())
+    .map((row) => [row.category, row.title, row.value]);
+  if (!rows.length) return "";
+  return `<h2>Açıklama Metinleri</h2>${rows.map((row) => `
+    <h3>${escapeHtml(row[0])} - ${escapeHtml(row[1])}</h3>
+    ${formatWordParagraphs(row[2])}
+  `).join("")}`;
+}
+
+function shouldIncludeGeneratedTextInWord(row = {}) {
+  const key = String(row.key || "").trim().toLocaleLowerCase("tr-TR");
+  const title = String(row.title || "").trim().toLocaleLowerCase("tr-TR");
+  const value = String(row.value || "");
+  if (!value.trim()) return false;
+  if (key.endsWith("_template") || title.includes("şablonu")) return false;
+  if (/\{\{[^}]+\}\}/.test(value)) return false;
+  return true;
+}
+
+function buildWordReportTablesHtml() {
+  const parts = [];
+  const regularTables = [
+    ["Malikler", ["Malik", "Hisse", "Edinme sebebi", "Tapu tarihi", "Yevmiye"], state.tables.title],
+    ["İncelenen Belgeler", ["Belge Türü", "İncelenen Kurum", "Tarih", "No", "Kapsam"], state.tables.documents],
+    ["Beyanlar", ["Tür", "Açıklama", "Tarih", "Yevmiye No"], state.tables.encumbranceDeclarations],
+    ["Rehinler", ["Lehdar", "Derece", "Tutar", "Tarih", "Yevmiye"], state.tables.encumbranceMortgages],
+    ["Şerhler", ["Tür", "Açıklama", "Tutar", "Tarih", "Yevmiye"], state.tables.encumbranceAnnotations],
+  ];
+  regularTables.forEach(([title, headers, rows]) => {
+    const tableRows = formatStateRowsForWord(headers, rows);
+    if (tableRows.length) {
+      const tableHtml = buildSimpleHtmlTable(headers, tableRows);
+      parts.push(headers.length > 6 ? wrapWordLandscapeSection(title, tableHtml) : `<h3>${escapeHtml(title)}</h3>${tableHtml}`);
+    }
+  });
+  const comparableMatrixHtml = buildComparableMatrixWordTableHtml();
+  if (comparableMatrixHtml) {
+    parts.push(wrapWordLandscapeSection("Emsaller", comparableMatrixHtml));
+  }
+  const valuationSummaryText = buildValuationSummaryText();
+  if (valuationSummaryText) {
+    parts.push(`<h3>Değerleme Özet Tablosu</h3>${formatTextTableForWord(valuationSummaryText)}`);
+  }
+  const comparableValuationHtml = buildComparableValuationWordTableHtml();
+  if (comparableValuationHtml) {
+    parts.push(`<h3>Emsal Değerleme Tablosu</h3>${comparableValuationHtml}`);
+  }
+  const generatedTables = [
+    ["Takyidat Tablosu", buildTakyidatTableText()],
+    ["Malikler Değer Tablosu", buildMaliklerTableText()],
+    ["Halkbank Risk Kodları Tablosu", buildHalkbankRiskCodesTableText()],
+  ].filter((row) => String(row[1] || "").trim());
+  generatedTables.forEach(([title, text]) => {
+    parts.push(`<h3>${escapeHtml(title)}</h3>${formatTextTableForWord(text)}`);
+  });
+  return parts.length ? `<h2>Tablolar</h2>${parts.join("\n")}` : "";
+}
+
+function formatStateRowsForWord(headers, rows) {
+  return (Array.isArray(rows) ? rows : [])
+    .filter((row) => Object.values(row || {}).some((value) => String(value || "").trim()))
+    .map((row) => headers.map((_, index) => row[`c${index}`] || ""));
+}
+
+function buildComparableMatrixWordTableHtml() {
+  const rows = getComparableRows().filter((row) => Object.values(row || {}).some((value) => String(value || "").trim()));
+  if (!rows.length) return "";
+  const fields = comparableFields.filter((field) => !field.hidden);
+  const headers = ["Alan", ...rows.map((_, index) => `Emsal ${index + 1}`)];
+  const bodyRows = fields
+    .map((field) => [
+      field.label,
+      ...rows.map((row, rowIndex) => (field.computed ? calculateComparableFieldValue(field.key, row, rowIndex) : row[field.key] || "")),
+    ])
+    .filter((row) => row.slice(1).some((value) => String(value || "").trim()));
+  const distanceRow = buildComparableDistanceWordMatrixRow(rows);
+  if (distanceRow) {
+    const locationRowIndex = bodyRows.findIndex((row) => row[0] === "Emsal Konumu");
+    if (locationRowIndex >= 0) {
+      bodyRows.splice(locationRowIndex + 1, 0, distanceRow);
+    } else {
+      bodyRows.push(distanceRow);
+    }
+  }
+  if (!bodyRows.length) return "";
+  return buildSimpleHtmlTable(headers, bodyRows, "is-matrix");
+}
+
+function buildComparableDistanceWordMatrixRow(rows) {
+  const values = rows.map((row) => getComparableDistanceTextForWord(row));
+  if (!values.some((value) => String(value || "").trim())) return null;
+  return ["Taşınmaza Olan Mesafesi", ...values];
+}
+
+function getComparableDistanceTextForWord(row = {}) {
+  const savedText = String(row.c20 || "").trim();
+  if (savedText) return savedText;
+  const lat = Number.parseFloat(String(row.c18 || "").replace(",", "."));
+  const lng = Number.parseFloat(String(row.c19 || "").replace(",", "."));
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return "";
+  return buildComparableLocationText(lat, lng);
+}
+
+function buildComparableValuationWordTableHtml() {
+  const rows = getComparableValuationRows();
+  if (!rows.length) return "";
+  const headers = ["No", "Alan (m²)", "Talep Edilen Değer", "P. Payı", "Pazarlıklı Değer", "M² Birim", "İç Özellik Şerefiye", "Konum Şerefiye", "İnd. M² Birim", "Kira", "Kira Birim", "İnd. Kira Birim"];
+  const bodyRows = rows.map((row) => formatComparableValuationWordRow(row));
+  bodyRows.push(formatComparableValuationWordRow({ no: "ORTALAMA", ...calculateComparableValuationAverages(rows) }));
+  return wrapWordLandscapeSection("Emsal DeÄŸerleme Tablosu", buildSimpleHtmlTable(headers, bodyRows, "is-summary"));
+}
+
+function formatComparableValuationWordRow(row) {
+  return [
+    row.no,
+    formatComparableSummaryNumber(row.area, { decimals: 2 }),
+    formatComparableSummaryMoney(row.askingPrice),
+    formatComparableSummaryPercent(row.negotiationRate),
+    formatComparableSummaryMoney(row.saleValue),
+    formatComparableSummaryNumber(row.unitValue, { decimals: 2 }),
+    formatComparableSummarySignedPercent(row.featureAdjustment),
+    formatComparableSummarySignedPercent(row.locationAdjustment),
+    formatComparableSummaryNumber(row.adjustedUnitValue, { decimals: 2 }),
+    formatComparableSummaryMoney(row.rent),
+    formatComparableSummaryNumber(row.rentUnitValue, { decimals: 2 }),
+    formatComparableSummaryNumber(row.adjustedRentUnitValue, { decimals: 2 }),
+  ];
+}
+
+function formatTextTableForWord(text) {
+  const lines = String(text || "").split(/\n+/).map((line) => line.trim()).filter(Boolean);
+  if (!lines.length) return "";
+  const pipeRows = lines.filter((line) => line.includes("|")).map((line) => line.split("|").map((cell) => cell.trim()));
+  if (pipeRows.length >= 2) {
+    const tableHtml = buildSimpleHtmlTable(pipeRows[0], pipeRows.slice(1));
+    return pipeRows[0].length > 6 ? wrapWordLandscapeSection("", tableHtml) : tableHtml;
+  }
+  return buildSimpleHtmlTable(["Açıklama"], lines.map((line) => [line]));
+}
+
+function buildSimpleHtmlTable(headers, rows, className = "") {
+  const classes = ["word-table"];
+  if (headers.length > 6) classes.push("is-wide");
+  if (className) classes.push(...String(className).split(/\s+/).filter(Boolean));
+  return `<table class="${escapeHtml(classes.join(" "))}">
+    <thead><tr>${headers.map((header) => `<th>${escapeHtml(header)}</th>`).join("")}</tr></thead>
+    <tbody>${rows.map((row) => `<tr>${row.map((cell) => `<td>${formatWordCell(cell)}</td>`).join("")}</tr>`).join("")}</tbody>
+  </table>`;
+}
+
+function wrapWordLandscapeSection(title, html) {
+  const heading = title ? `<h3>${escapeHtml(title)}</h3>` : "";
+  return `<div class="word-landscape-section">${heading}${html}</div>`;
+}
+
+function formatWordCell(value) {
+  return escapeHtml(value == null ? "" : value).replace(/\n/g, "<br>");
+}
+
+function formatWordParagraphs(value) {
+  const paragraphs = String(value || "").split(/\n{2,}|\n/).map((line) => line.trim()).filter(Boolean);
+  return paragraphs.map((line) => `<p>${escapeHtml(line)}</p>`).join("") || "<p>-</p>";
+}
+
+function buildWordReportSketchesHtml(options = {}) {
+  const parts = [];
+  const imageAssets = Array.isArray(options.imageAssets) ? options.imageAssets : [];
+  if (imageAssets.length) {
+    const imageParts = imageAssets.map((asset) => buildWordSketchImageHtml(asset));
+    return `<h2>Krokiler</h2>${imageParts.join("\n")}`;
+  }
+  const locationSketch = buildLocationSketchSvgMarkup();
+  if (locationSketch) parts.push(`<h3>Konu Taşınmaz Krokisi</h3><div class="sketch">${locationSketch}</div>`);
+  const comparableSketch = buildComparableSketchSvgMarkup();
+  if (comparableSketch) parts.push(`<h3>Emsal Konum Krokisi</h3><div class="sketch">${comparableSketch}</div>`);
+  return parts.length ? `<h2>Krokiler</h2>${parts.join("\n")}` : "";
+}
+
+function buildWordSketchImageHtml(asset) {
+  const imageSource = asset.src || asset.location;
+  return `<h3>${escapeHtml(asset.title)}</h3>
+    <div class="sketch">
+      <img src="${escapeHtml(imageSource)}" width="680" style="width:680pt;max-width:100%;border:1pt solid #94a3b8;" alt="${escapeHtml(asset.title)}">
+      ${buildPointSketchLegendTable(asset.items)}
+    </div>`;
+}
+
+function buildLocationSketchSvgMarkup() {
+  const point = getComparableSubjectPoint();
+  if (!point) return "";
+  return buildPointSketchSvg([
+    { label: "Konu Taşınmaz", lat: point[0], lng: point[1], kind: "subject" },
+  ]);
+}
+
+function buildComparableSketchSvgMarkup() {
+  const subjectPoint = getComparableSubjectPoint();
+  const items = [];
+  if (subjectPoint) items.push({ label: "Konu Taşınmaz", lat: subjectPoint[0], lng: subjectPoint[1], kind: "subject" });
+  getComparableRows().forEach((row, index) => {
+    const lat = Number.parseFloat(String(row.c18 || "").replace(",", "."));
+    const lng = Number.parseFloat(String(row.c19 || "").replace(",", "."));
+    if (Number.isFinite(lat) && Number.isFinite(lng)) {
+      items.push({ label: `Emsal ${index + 1}`, lat, lng, kind: "comparable" });
+    }
+  });
+  return items.length >= 2 ? buildPointSketchSvg(items) : "";
+}
+
+function buildPointSketchSvg(items) {
+  const lats = items.map((item) => item.lat);
+  const lngs = items.map((item) => item.lng);
+  const minLat = Math.min(...lats);
+  const maxLat = Math.max(...lats);
+  const minLng = Math.min(...lngs);
+  const maxLng = Math.max(...lngs);
+  const width = 720;
+  const height = 420;
+  const pad = 54;
+  const latSpan = Math.max(maxLat - minLat, 0.0005);
+  const lngSpan = Math.max(maxLng - minLng, 0.0005);
+  const points = items.map((item) => ({
+    ...item,
+    x: pad + ((item.lng - minLng) / lngSpan) * (width - pad * 2),
+    y: height - pad - ((item.lat - minLat) / latSpan) * (height - pad * 2),
+  }));
+  return `${buildPointSketchVml(points, width, height, pad)}${buildPointSketchLegendTable(points)}`;
+}
+
+function buildPointSketchVml(points, width, height, pad) {
+  const middleX = width / 2;
+  const middleY = height / 2;
+  return `<div class="sketch-vml">
+    <v:group coordorigin="0,0" coordsize="${width},${height}" style="width:${width}pt;height:${height}pt;">
+      <v:rect style="position:absolute;left:0;top:0;width:${width};height:${height}" fillcolor="#f8fafc" strokecolor="#94a3b8" strokeweight="1pt"/>
+      <v:line from="${pad},${middleY}" to="${width - pad},${middleY}" strokecolor="#d1d5db" strokeweight="1.5pt"/>
+      <v:line from="${middleX},${pad}" to="${middleX},${height - pad}" strokecolor="#d1d5db" strokeweight="1.5pt"/>
+      ${points.map((point) => {
+        const color = point.kind === "subject" ? "#dc2626" : "#0f766e";
+        const size = point.kind === "subject" ? 18 : 14;
+        const left = Math.max(2, point.x - size / 2);
+        const top = Math.max(2, point.y - size / 2);
+        const labelWidth = Math.min(150, Math.max(72, String(point.label || "").length * 8));
+        const labelLeft = Math.max(4, Math.min(width - labelWidth - 4, point.x - labelWidth / 2));
+        const labelTop = point.y - 30 < 8 ? point.y + 16 : point.y - 30;
+        return `<v:oval style="position:absolute;left:${left.toFixed(1)};top:${top.toFixed(1)};width:${size};height:${size}" fillcolor="${color}" stroked="f"/>
+        <v:shape style="position:absolute;left:${labelLeft.toFixed(1)};top:${labelTop.toFixed(1)};width:${labelWidth};height:18" stroked="f" filled="f">
+          <v:textbox inset="0,0,0,0"><div style="font-family:Arial;font-size:8pt;font-weight:900;color:${color};text-align:center;">${escapeHtml(point.label)}</div></v:textbox>
+        </v:shape>`;
+      }).join("")}
+    </v:group>
+  </div>`;
+}
+
+function buildPointSketchLegendTable(points) {
+  const rows = points.map((point) => [
+    point.label,
+    Number(point.lat).toLocaleString("tr-TR", { maximumFractionDigits: 6 }),
+    Number(point.lng).toLocaleString("tr-TR", { maximumFractionDigits: 6 }),
+  ]);
+  return `<div class="sketch-note">Kroki Word uyumlu VML çizim olarak oluşturulmuştur.</div>${buildSimpleHtmlTable(["Nokta", "Enlem", "Boylam"], rows, "is-sketch-legend")}`;
 }
 
 function createLocationMapTools() {
@@ -7199,6 +12075,16 @@ function createLocationMapTools() {
         <span>Önemli noktalar belirtilsin mi?</span>
       </label>
     </div>
+    <div class="user-poi-tools">
+      <label class="field compact-field">
+        <span>Kullanıcı Önemli Noktası</span>
+        <input type="text" data-user-poi-name placeholder="Örn. Ali İhsan Dikmen İlkokulu" />
+      </label>
+      <button class="mini-button" type="button" data-user-poi-save>Yakın Çevre Kaydet</button>
+      <button class="mini-button" type="button" data-user-artery-save>Ulaşım Arteri Kaydet</button>
+      <button class="mini-button" type="button" data-user-poi-refresh>Kullanıcı Noktalarını Getir</button>
+      <span class="export-status" data-user-poi-status aria-live="polite"></span>
+    </div>
     <div class="map-panel" id="kmlMapPanel">
       <div class="map-placeholder" id="kmlMapPlaceholder">KML yüklendiğinde harita burada OpenStreetMap altlığıyla gösterilecek.</div>
     </div>
@@ -7242,6 +12128,20 @@ function createLocationMapTools() {
   wrapper.querySelector("[data-map-export-labels]").addEventListener("change", (event) => {
     state.settings.mapExportLabels = event.target.checked;
     autosave();
+  });
+
+  wrapper.querySelector("[data-user-poi-save]").addEventListener("click", async () => {
+    await saveUserPoiFromMap(wrapper.querySelector("[data-user-poi-name]"), wrapper.querySelector("[data-user-poi-status]"));
+  });
+
+  wrapper.querySelector("[data-user-artery-save]").addEventListener("click", async () => {
+    await saveUserMainArteryFromMap(wrapper.querySelector("[data-user-poi-name]"), wrapper.querySelector("[data-user-poi-status]"));
+  });
+
+  wrapper.querySelector("[data-user-poi-refresh]").addEventListener("click", async () => {
+    await refreshUserPoisFromServer({ force: true, select: true, userOnly: true });
+    autosave();
+    renderSection();
   });
 
   wrapper.querySelectorAll("[data-map-coordinate-field]").forEach((input) => {
@@ -7393,28 +12293,26 @@ async function processAddressFile(file) {
     neighborhood: parsed.neighborhood,
     postalCode: parsed.postalCode,
   });
-  applyAddressFieldsToReport({ force: true });
+  // Posta kodu düzeltmesi mahalle veritabanını (async) beklediğinden, ilk
+  // yüklemede yanlış (PDF'ten gelen) posta kodunun görünmemesi için düzeltmeyi
+  // await ediyoruz; böylece yükleme bittiğinde posta kodu kesin olarak doğru olur.
+  await applyAddressFieldsToReport({ force: true });
   refreshTransportAfterAddressChange();
 }
 
+// Adres kodu YALNIZCA PDF metin katmanından okunur; OCR ve sunucu tarafı
+// okuma kaldırıldı (kullanıcı isteği, 2026-07-08).
 async function readAddressFileText(file) {
   const lowerName = file.name.toLowerCase();
   const isPdf = file.type === "application/pdf" || lowerName.endsWith(".pdf");
-  const isImage = file.type.startsWith("image/") || /\.(jpe?g|png|webp)$/i.test(lowerName);
 
-  if (isPdf) {
-    const text = await readPdfText(file);
-    if (text.trim()) return text;
-    if (shouldUsePdfTextOnlyMode()) throw getIosPdfTextOnlyError();
-    return recognizeImageText(file);
+  if (!isPdf) {
+    throw new Error("Adres kodu görselden okuma (OCR) kaldırıldı; lütfen metin katmanlı PDF yükleyin.");
   }
 
-  if (isImage) {
-    if (shouldUsePdfTextOnlyMode()) throw getIosPdfTextOnlyError();
-    return recognizeImageText(file);
-  }
-
-  throw new Error("Adres kodu için PDF veya görsel dosyası yükleyin.");
+  const text = await readPdfTextLayerOnly(file);
+  if (text.trim()) return text;
+  throw new Error("Adres kodu PDF'inde metin katmanı bulunamadı. Taranmış görüntü yerine metin içeren PDF yükleyin.");
 }
 
 async function processEkbFile(file) {
@@ -7432,23 +12330,22 @@ async function processEkbFile(file) {
   applyEkbFieldsToReport({ force: true });
 }
 
+// EKB YALNIZCA PDF metin katmanından okunur; OCR ve sunucu tarafı okuma
+// kaldırıldı (kullanıcı isteği, 2026-07-08). Koordinatlı okuma da pdf.js
+// metin katmanı kullanır, OCR değildir.
 async function readEkbFileText(file) {
   const lowerName = file.name.toLowerCase();
   const isPdf = file.type === "application/pdf" || lowerName.endsWith(".pdf");
-  const isImage = file.type.startsWith("image/") || /\.(jpe?g|png|webp)$/i.test(lowerName);
 
-  if (isPdf) {
-    const text = await readCoordinatePdfText(file, 3);
-    if (text.trim()) return text;
-    return readPdfText(file);
+  if (!isPdf) {
+    throw new Error("EKB görselden okuma (OCR) kaldırıldı; lütfen metin katmanlı PDF yükleyin.");
   }
 
-  if (isImage) {
-    if (shouldUsePdfTextOnlyMode()) throw getIosPdfTextOnlyError();
-    return recognizeImageText(file);
-  }
-
-  throw new Error("EKB için PDF veya görsel dosyası yükleyin.");
+  const text = await readCoordinatePdfText(file, 3);
+  if (text.trim()) return text;
+  const plainText = await readPdfTextLayerOnly(file);
+  if (plainText.trim()) return plainText;
+  throw new Error("EKB PDF'inde metin katmanı bulunamadı. Taranmış görüntü yerine metin içeren PDF yükleyin.");
 }
 
 async function processImarFile(file) {
@@ -7686,6 +12583,16 @@ async function processTakbisFile(file) {
   applyTakbisOwnersToTable(parsed.owners || []);
   applyTakbisEncumbranceFieldsToReport(parsed, { force: true });
   applyTakbisEncumbrancesToTable(parsed.encumbrances || []);
+  // Adres kodu PDF'i il/ilçe içermeyebiliyor; TAKBİS'ten gelen tapu il/ilçe ile,
+  // daha önce yüklenmiş adresin posta kodu doğru ile göre yeniden hesaplanır
+  // (yükleme sırası ne olursa olsun posta kodu doğru gelsin).
+  if (String(state.fields.neighborhood || "").trim()) {
+    await triggerPostalCodeLookupAfterAddressApply({
+      city: state.fields.city || state.fields.titleCity,
+      district: state.fields.district || state.fields.titleDistrict,
+      neighborhood: state.fields.neighborhood,
+    });
+  }
 }
 
 async function readTakbisPdf(file) {
@@ -7699,6 +12606,8 @@ async function readTakbisPdf(file) {
   let titleRaw = parseTakbisTitleRows(pdfData.rows, pdfData.pageWidth);
   let extraRows = [];
   let fields = mapTakbisTitleToReportFields(titleRaw, pdfData.rows);
+  let attachments = parseTakbisAttachments(pdfData.rows);
+  fields.titleAttachment = formatTakbisAttachmentsForReport(attachments);
   let owners = parseTakbisOwners(pdfData.rows);
   let encumbrances = parseTakbisEncumbrances(pdfData.rows, pdfData.pageWidth);
 
@@ -7710,6 +12619,7 @@ async function readTakbisPdf(file) {
       const ocrRaw = parseTakbisTitleFromText(ocrText);
       titleRaw = mergeTakbisTitleRaw(titleRaw, ocrRaw);
       fields = mapTakbisTitleToReportFields(titleRaw, pdfData.rows);
+      fields.titleAttachment = formatTakbisAttachmentsForReport(attachments);
       owners = owners.length ? owners : parseTakbisOwnersFromText(ocrText);
       encumbrances = attachTakbisOcrTextToMissingLienRecords(encumbrances, ocrText);
       extraRows = ocrText
@@ -7727,6 +12637,7 @@ async function readTakbisPdf(file) {
   return {
     titleRaw,
     fields,
+    attachments,
     owners,
     encumbrances,
     ownerShareWarning: getOwnerShareWarning(owners),
@@ -7832,6 +12743,49 @@ function parseTakbisTitleRows(rows, pageWidth) {
     return parseTakbisTitleFromText(titleRows.map((row) => row.text).join("\n"));
   }
   return raw;
+}
+
+function parseTakbisAttachments(rows) {
+  const sourceRows = rows || [];
+  const start = sourceRows.findIndex((row) => /EKLENTI\s+BILGILERI/.test(foldTurkish(row?.text || "")));
+  if (start < 0) return [];
+  const stopPattern = /MULKIYET\s+BILGILERI|MULKIYETE\s+AIT\s+REHIN|IPOTEK\s+BILGILERI|TASINMAZA\s+AIT\s+SERH|SERH\s+BEYAN\s+IRTIFAK/i;
+  const end = sourceRows.findIndex((row, index) => index > start && stopPattern.test(foldTurkish(row?.text || "")));
+  const sectionRows = sourceRows.slice(start + 1, end > start ? end : sourceRows.length);
+
+  return sectionRows.map((row) => cleanTakbisValue(row?.text || ""))
+    .filter((text) => text && !/^(Sistem\s+No|Tip\s+Tanım|Tesis\s+Kurum|Tarih|Yevmiye)/i.test(text))
+    .map((text) => {
+      const match = text.match(/^([0-9]+)\s+(.+?)\s+EKLENT[İI]S[İI]\s*:?\s*(.+)$/i);
+      if (!match) return null;
+      return {
+        systemNo: cleanTakbisValue(match[1]),
+        type: normalizeTakbisAttachmentType(match[2]),
+        description: cleanTakbisValue(match[3]),
+      };
+    })
+    .filter(Boolean);
+}
+
+function normalizeTakbisAttachmentType(value) {
+  const text = cleanTakbisValue(value);
+  const folded = foldTurkish(text);
+  if (folded === "KOMURLUK") return "Kömürlük";
+  if (folded === "DEPO") return "Depo";
+  if (folded === "OTOPARK") return "Otopark";
+  return toTitleCaseTr(text);
+}
+
+function formatTakbisAttachmentsForReport(attachments) {
+  return (attachments || [])
+    .map((attachment) => {
+      const type = cleanTakbisValue(attachment?.type || "");
+      const description = cleanTakbisValue(attachment?.description || "");
+      if (type && description) return `${type}: ${description}`;
+      return description || type;
+    })
+    .filter(Boolean)
+    .join("; ");
 }
 
 function enrichTakbisTitleFromRows(raw, rows) {
@@ -8288,11 +13242,13 @@ function getTakbisEncumbranceGroups(rows) {
 
   return starts.map((start, startIndex) => {
     const nextSectionIndex = startIndex + 1 < starts.length ? starts[startIndex + 1].index : sourceRows.length;
-    const ownerStart = sourceRows.findIndex((row, index) => {
+    // Mülkiyet ve Eklenti bölümleri şerh grubuna dahil edilmez; eklenti sistem
+    // numaraları yevmiye sanılmasın diye grup bu başlıklarda kesilir.
+    const boundaryStart = sourceRows.findIndex((row, index) => {
       if (index <= start.index || index >= nextSectionIndex) return false;
-      return /MULKIYET\s+BILGILERI/.test(foldTurkish(row?.text || ""));
+      return /MULKIYET\s+BILGILERI|EKLENTI\s+BILGILERI/.test(foldTurkish(row?.text || ""));
     });
-    const end = ownerStart > start.index ? ownerStart : nextSectionIndex;
+    const end = boundaryStart > start.index ? boundaryStart : nextSectionIndex;
     return { key: start.key, rows: sourceRows.slice(start.index, end) };
   }).filter((group) => group.rows.length);
 }
@@ -8329,7 +13285,9 @@ function parseTakbisEncumbranceRows(rows, sectionKey, pageWidth = 842) {
       description = extractTakbisEncumbranceDescriptionFromScope(scope, recordScope.type);
     }
     if (!dateInfo.date && !dateInfo.journalNo) {
-      dateInfo = extractTakbisEncumbranceDateInfo(scope.map((entry) => entry.row?.text || "").join(" "));
+      dateInfo = extractTakbisEncumbranceDateInfo(
+        sanitizeTakbisEncumbranceDateFallbackText(scope.map((entry) => entry.row?.text || "").join(" ")),
+      );
     }
 
     return {
@@ -8464,12 +13422,26 @@ function shouldStartNewTakbisEncumbranceScope(currentScope, entry) {
   if (!currentEntries.length) return true;
   if (hasCompleteTakbisEncumbranceDateInfo(currentEntries)) return true;
 
+  const hasExistingDescription = currentEntries.some((item, index) => getTakbisEncumbranceScopeDescription(item, index === 0));
+  // S/B/İ sütununda kendi tip etiketi (Beyan/Şerh/İrtifak) olan satır yeni
+  // kaydın başlangıcıdır; önceki kayıt tarihsiz bir beyan olsa bile
+  // birleştirilmez (tarihsiz Yönetim Planı beyanı sonraki kaydın
+  // tarih-yevmiyesini almamalı). Yalnızca gerçek Ş/B/İ etiketleri kayıt
+  // başlatır: satır sarmasında sola taşan "Haciz Yazısı..." gibi kelimeler
+  // Rehin/İpotek tipi üretir ve kayıt ortasından bölmemelidir.
+  if (hasExistingDescription && isTakbisSbiStartType(entry?.type)) return true;
+
   const lastEntry = currentEntries[currentEntries.length - 1];
   const rowGap = Math.abs((entry?.row?.y || 0) - (lastEntry?.row?.y || 0));
-  const hasExistingDescription = currentEntries.some((item, index) => getTakbisEncumbranceScopeDescription(item, index === 0));
   if (hasExistingDescription && rowGap > 20) return true;
 
   return false;
+}
+
+// Ş/B/İ sütununun gerçek kayıt-başlangıç etiketleri. Rehin/İpotek çıkarımı
+// ("Haciz Yazısı..." gibi sarma satırlarından) şerh bölümünde kayıt başlatmaz.
+function isTakbisSbiStartType(typeValue) {
+  return typeValue === "Beyan" || typeValue === "Şerh" || typeValue === "İrtifak";
 }
 
 function hasCompleteTakbisEncumbranceDateInfo(entries) {
@@ -8638,6 +13610,17 @@ function stripTakbisEncumbranceLeadingTypeNoise(value) {
     .trim();
 }
 
+// Tarih-yevmiye fallback metninden içerik tarihlerini ayıklar: "( Şablon: ...)"
+// kalıpları ve "YÖNETİM PLANI : 17/07/1981" gibi etiket tarihleri tesis
+// tarih-yevmiyesi değildir; tarihsiz beyanlar tarihsiz kalmalıdır.
+function sanitizeTakbisEncumbranceDateFallbackText(value) {
+  return String(value || "")
+    .replace(/\(\s*[SŞsş]ablon\s*:[^)]*\)?/g, " ")
+    .replace(/:\s*\d{1,2}[-.\/]\d{1,2}[-.\/]\d{4}\s*\(?/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function extractTakbisEncumbranceDateInfo(value) {
   const text = cleanTakbisValue(value)
     .replace(/\b(?:Tesis\s+Kurum|Tesis|Terkin\s+Sebebi|Terkin|Tarih|Yevmiye|TARİH|YEVMİYE)\b/gi, " ")
@@ -8652,7 +13635,11 @@ function extractTakbisEncumbranceDateInfo(value) {
     : "";
   const afterDate = dateMatch ? text.slice(dateMatch.index + dateMatch[0].length) : text;
 
-  const dashJournal = afterDate.match(/[-–—]\s*([0-9]{3,8})\b/);
+  // Yevmiye numarası 1-2 haneli de olabilir (örn. yıl başında "33"); ancak
+  // kısa sayılar yalnızca tarihe bitişik tire sonrasında kabul edilir ki
+  // "Ada - 8 Parsel" gibi içerik sayıları yevmiye sanılmasın.
+  const dashJournal = afterDate.match(/[-–—]\s*([0-9]{3,8})\b/)
+    || afterDate.match(/^\s*[-–—]\s*([0-9]{1,2})\b/);
   let journalNo = dashJournal ? dashJournal[1] : "";
   if (!journalNo) {
     const candidates = [...afterDate.matchAll(/\b([0-9]{3,8})\b/g)]
@@ -8698,13 +13685,49 @@ function parseTakbisOwnersFromRows(rows) {
     .filter((index) => index >= 0);
   if (!starts.length) return [];
 
-  const owners = starts.map((start, index) => {
+  const owners = mergeTakbisSameOwnerShares(starts.map((start, index) => {
     const nextStart = starts[index + 1] ?? sourceRows.length;
     return parseTakbisOwnerRows(sourceRows.slice(start, nextStart));
-  }).filter((owner) => owner.name);
+  }).filter((owner) => owner.name));
 
   if (owners.length === 1 && !owners[0].share) owners[0].share = "1/1";
   return owners;
+}
+
+// Aynı malikin (aynı SN, aynı ad) birden fazla hisse kaydını tek satırda
+// toplar; hisse payları BigInt kesir toplamı ile birleştirilir (örn. Uşak tipi
+// "Mülkiyet ve Hisse Oranlarının Düzeltilmesi" kayıtları). SN yoksa
+// birleştirme yapılmaz.
+function mergeTakbisSameOwnerShares(owners) {
+  const merged = [];
+  const bySn = new Map();
+  (owners || []).forEach((owner) => {
+    const sn = String(owner?.sn || "").trim();
+    if (!sn) {
+      merged.push(owner);
+      return;
+    }
+    const existing = bySn.get(sn);
+    const sameName = existing && (!existing.name || !owner.name
+      || foldTurkish(existing.name) === foldTurkish(owner.name));
+    if (!existing || !sameName) {
+      const copy = { ...owner };
+      if (!existing) bySn.set(sn, copy);
+      merged.push(copy);
+      return;
+    }
+    const total = sumOwnerFractionsBigInt([existing.share, owner.share]);
+    if (existing.share && owner.share && total && total.validCount === 2) {
+      existing.share = `${total.numerator}/${total.denominator}`;
+    } else if (!existing.share && owner.share) {
+      existing.share = owner.share;
+    }
+    if (!existing.name && owner.name) existing.name = owner.name;
+    if (!existing.acquisition && owner.acquisition) existing.acquisition = owner.acquisition;
+    if (!existing.date && owner.date) existing.date = owner.date;
+    if (!existing.journalNo && owner.journalNo) existing.journalNo = owner.journalNo;
+  });
+  return merged;
 }
 
 function parseTakbisOwnerRows(rows) {
@@ -8755,11 +13778,13 @@ function findWrappedDenominatorPart(rows, startIndex, fractionX, page) {
     const row = rows[index];
     if (!row || row.page !== page || /^\s*\d{8,10}\s*\(\s*SN\s*:\s*\d+\s*\)/i.test(row.text || "")) return null;
     if (/^\s*\d+\s*\/\s*\d+\s*$/.test(row.text || "")) continue;
-    const candidate = (row.items || []).find((item) => {
-      const text = cleanTakbisValue(item.str || "");
-      return /^\d{1,2}$/.test(text) && Math.abs(Number(item.x) - Number(fractionX)) <= 18;
-    });
-    if (candidate) return { text: cleanTakbisValue(candidate.str || "") };
+    // Devam rakamı kesir hücresinin yatay aralığında kalır: soldaki komşu kolon
+    // (El Birliği No sarması) elenir, adaylar arasında kesre en yakın x seçilir.
+    const candidates = (row.items || [])
+      .map((item) => ({ text: cleanTakbisValue(item.str || ""), delta: Number(item.x) - Number(fractionX) }))
+      .filter(({ text, delta }) => /^\d{1,2}$/.test(text) && delta >= -18 && delta <= 45)
+      .sort((a, b) => Math.abs(a.delta) - Math.abs(b.delta));
+    if (candidates.length) return { text: candidates[0].text };
     if (/\b\d{1,2}[-.\/]\d{1,2}[-.\/]\d{4}\b/.test(row.text || "")) return null;
   }
   return null;
@@ -8837,10 +13862,10 @@ function parseTakbisOwnersFromText(text) {
   const starts = [...compact.matchAll(/\b\d{8,10}\s*\(\s*SN\s*:\s*\d+\s*\)/gi)].map((match) => match.index);
   if (!starts.length) return [];
 
-  const owners = starts.map((start, index) => {
+  const owners = mergeTakbisSameOwnerShares(starts.map((start, index) => {
     const nextStart = starts[index + 1] ?? compact.length;
     return parseTakbisOwnerSegment(compact.slice(start, nextStart));
-  }).filter((owner) => owner.name);
+  }).filter((owner) => owner.name));
 
   if (owners.length === 1 && !owners[0].share) owners[0].share = "1/1";
   return owners;
@@ -8848,10 +13873,24 @@ function parseTakbisOwnersFromText(text) {
 
 function parseTakbisOwnerSegment(segment) {
   const text = cleanTakbisValue(segment);
+  const snMatch = text.match(/\(\s*SN\s*:\s*(\d+)\s*\)/i);
   const withoutSystem = text.replace(/^\s*\d{8,10}\s*\(\s*SN\s*:\s*\d+\s*\)\s*/i, "");
   const fraction = findTakbisFraction(withoutSystem);
-  const fractionIndex = fraction ? withoutSystem.indexOf(fraction.original) : -1;
-  const tail = fractionIndex >= 0 ? withoutSystem.slice(fractionIndex + fraction.original.length) : withoutSystem;
+  // Sarmalanmış payda ("8117/8728" + devam "8") birleştirilmiş fraction.original
+  // metinde birebir geçmez; kesrin gerçek konumu taban kesir üzerinden bulunur.
+  // Aksi halde tail tüm segment olur ve malik adı edinme sebebi sanılır.
+  let fractionIndex = -1;
+  let fractionLength = 0;
+  if (fraction) {
+    fractionIndex = withoutSystem.indexOf(fraction.original);
+    fractionLength = fraction.original.length;
+    if (fractionIndex < 0) {
+      const baseFraction = fraction.original.split(/\s+/)[0] || "";
+      fractionIndex = baseFraction ? withoutSystem.indexOf(baseFraction) : -1;
+      fractionLength = baseFraction.length;
+    }
+  }
+  const tail = fractionIndex >= 0 ? withoutSystem.slice(fractionIndex + fractionLength) : withoutSystem;
   const dateMatch = tail.match(/\b(\d{1,2})[-.\/](\d{1,2})[-.\/](\d{4})\b/);
   const date = dateMatch ? `${dateMatch[3]}-${dateMatch[2].padStart(2, "0")}-${dateMatch[1].padStart(2, "0")}` : "";
   const afterDate = dateMatch ? tail.slice(dateMatch.index + dateMatch[0].length) : "";
@@ -8861,6 +13900,7 @@ function parseTakbisOwnerSegment(segment) {
 
   return {
     name,
+    sn: snMatch ? snMatch[1] : "",
     share: fraction ? fraction.value : "",
     acquisition: edinme,
     date,
@@ -8979,6 +14019,11 @@ function findTakbisAcquisitionToken(value) {
   }
   const foldedText = foldTurkish(value).replace(/\s+/g, " ");
   if (/\bKAT\s+IRTIFAKI?\b/.test(foldedText) && /\bTESIS(?:I)?\b/.test(foldedText)) return "Kat İrtifakı Tesisi";
+  if (/\bHISSE\s+ORANLARININ\s+DUZELTILMESI\b/.test(foldedText)) {
+    return /\bMULKIYET\s+VE\b/.test(foldedText)
+      ? "Mülkiyet ve Hisse Oranlarının Düzeltilmesi"
+      : "Hisse Oranlarının Düzeltilmesi";
+  }
   if (/\bIMAR\b/.test(foldedText)) return "İmar";
   if (/\b(?:TUZEL\s+)?KISILIKLERIN\s+UNVAN\s+DEGIS(?:IMI|IKLIGI)\b/.test(foldedText) || /\b[VT]\s+KISILIKLERIN\s+UNVAN\s+DEGIS(?:IMI|IKLIGI)\b/.test(foldedText)) return "Tüzel Kişiliklerin Ünvan Değişikliği";
   if (/\bKAT\s+IRTIFAKI\b/.test(foldedText)) return "Kat İrtifakı";
@@ -9181,11 +14226,50 @@ async function readTakbisOcrText(file, pageLimit = 1) {
   return texts.join("\n");
 }
 
+// EKB ve Adres Kodu akışları için: YALNIZCA PDF metin katmanını okur.
+// OCR ve sunucu tarafı (python) okuma bilinçli olarak devre dışıdır
+// (kullanıcı isteği, 2026-07-08 — iOS'ta OCR/sunucu kaynaklı hatalar).
+// Taranmış/görüntü PDF'lerde metin bulunamazsa boş metin döner; çağıran
+// akış anlamlı Türkçe hata üretir.
+async function readPdfTextLayerOnly(file) {
+  if (window.pdfReady) {
+    await window.pdfReady;
+  }
+  const pdfjs = window.pdfjsLib || globalThis.pdfjsLib;
+  if (!pdfjs?.getDocument) {
+    throw new Error("PDF okuma kütüphanesi yüklenemedi. Sayfayı yenileyip tekrar deneyin.");
+  }
+  if (pdfjs.GlobalWorkerOptions) {
+    pdfjs.GlobalWorkerOptions.workerSrc = new URL("./vendor/pdfjs/pdf.worker.local.js", window.location.href).href;
+  }
+  const buffer = await readFileAsArrayBuffer(file);
+  const pdf = await loadPdfDocument(pdfjs, buffer);
+  const pages = [];
+  for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+    const page = await pdf.getPage(pageNumber);
+    const content = await page.getTextContent();
+    pages.push(content.items.map((item) => item.str).join(" "));
+  }
+  return pages.join("\n");
+}
+
 async function readPdfText(file) {
   if (shouldUsePdfTextOnlyMode()) {
-    return readPdfTextOnServer(file);
+    // Sunucu tarafı okuma birincil yoldur; sunucu ya da Python bulunamazsa
+    // tarayıcı içi (worker'sız) metin katmanı okumaya düşülür. OCR iOS'ta
+    // kapalı kalır; metin katmanı da boşsa sunucu hatası aynen bildirilir.
+    try {
+      return await readPdfTextOnServer(file);
+    } catch (serverError) {
+      const fallbackText = await readPdfTextInBrowser(file).catch(() => "");
+      if (String(fallbackText || "").trim()) return fallbackText;
+      throw serverError;
+    }
   }
+  return readPdfTextInBrowser(file);
+}
 
+async function readPdfTextInBrowser(file) {
   if (window.pdfReady) {
     await window.pdfReady;
   }
@@ -9355,7 +14439,7 @@ function parseImarFields(text) {
   let planOlcegi = cleanImarToken(scaleLine.match(/(\d+\s*\/\s*\d+)/)?.[1] || (scaleFromName || flat.match(/[ÖöOo]l[çc][eğg]?[iı]\s*:?\s*(\d+\s*\/\s*\d+)/i) || [])[1] || "");
   planAdi = cleanImarPlanName(planAdi);
 
-  const planTarihi = normalizeImarDate(tasdikLine || pick(
+  const planTarihi = extractImarPlanDate(lines) || extractImarPlanDate(allLines) || normalizeImarDate(tasdikLine || pick(
     /(?:Plan\s+)?(?:Tasdik|Onay)\s+Tarih(?:i)?(?:\s+ve\s+No)?\s*:?\s*(\d{1,2}[./-]\d{1,2}[./-]\d{4})/i,
     /Tasdik\s*:?\s*(\d{1,2}[./-]\d{1,2}[./-]\d{4})/i
   ));
@@ -9442,32 +14526,11 @@ function cleanImarToken(value) {
 }
 
 function extractImarInfoInstitution(lines) {
-  const source = Array.isArray(lines) ? lines : [];
-  for (const line of source.slice(0, 30)) {
-    const afterDateTime = line.match(/\b\d{1,2}[./-]\d{1,2}[./-]\d{4}(?:\s+(?:Saat|Saati)\s*:?)?\s+\d{1,2}:\d{2}\s+(.+)$/i);
-    if (!afterDateTime) continue;
-    const institution = cleanImarInstitutionName(afterDateTime[1]);
-    if (institution) return institution;
-  }
-
-  const fullText = source.slice(0, 30).join(" ");
-  const afterLabel = fullText.match(/Bilgi\s+Al[ıi]n(?:ma|an)\s+(?:Tarih(?:i)?|Zaman[ıi])[^0-9]{0,80}\d{1,2}[./-]\d{1,2}[./-]\d{4}(?:\s+(?:Saat|Saati)\s*:?)?(?:\s+\d{1,2}:\d{2})?\s+(.+?Belediyesi)\b/i);
-  if (afterLabel) return cleanImarInstitutionName(afterLabel[1]);
-
-  return "";
+  return globalThis.RaporImarNormalizer.extractImarInfoInstitution(lines);
 }
 
 function cleanImarInstitutionName(value) {
-  let text = cleanImarToken(value)
-    .replace(/^(?:T\.?\s*C\.?|TC)\s+/i, "")
-    .replace(/\bE\s*[- ]?\s*İmar\b.*$/i, "")
-    .replace(/\bE\s*[- ]?\s*Imar\b.*$/i, "")
-    .replace(/\bİmar\s+ve\s+Şehircilik\b.*$/i, "")
-    .replace(/\bImar\s+ve\s+Sehircilik\b.*$/i, "");
-  const municipalityMatch = text.match(/(.+?\bBelediyesi)\b/i);
-  if (municipalityMatch) text = municipalityMatch[1];
-  text = text.replace(/^(?:T\.?\s*C\.?|TC)\s+/i, "").trim();
-  return text ? toTitleCaseTr(text) : "";
+  return globalThis.RaporImarNormalizer.cleanImarInstitutionName(value);
 }
 
 function extractImarPlanInfoLines(lines) {
@@ -9706,6 +14769,10 @@ function normalizeImarDate(value) {
   return `${match[1].padStart(2, "0")}.${match[2].padStart(2, "0")}.${match[3]}`;
 }
 
+function extractImarPlanDate(lines) {
+  return globalThis.RaporImarNormalizer.extractImarPlanDate(lines);
+}
+
 function normalizeDecimalToken(value) {
   const clean = cleanImarToken(value);
   if (!clean || clean === "-") return "";
@@ -9928,27 +14995,449 @@ function refreshReviewedDocumentsDescriptionFromCurrentRows() {
     control.value = state.fields.reviewedDocumentsDescription || "";
     markFieldSourceState(control, "reviewedDocumentsDescription", true);
   }
+  refreshBuildingCompletionFromCurrentFields();
+  refreshBuildingInspectionExplanationFromCurrentFields();
 }
 
 function refreshReviewedDocumentsDescriptionFromCurrentFields(changedKey) {
-  if (!["municipalityInspectionDate", "appointmentDate", "district", "titleDistrict", "documentReviewInstitution"].includes(changedKey)) return;
-  if (["district", "titleDistrict"].includes(changedKey)) {
+  const watchedKeys = [
+    "municipalityInspectionDate",
+    "appointmentDate",
+    "district",
+    "titleDistrict",
+    "ownershipType",
+    "mainPropertyQuality",
+    "oldBlockNo",
+    "oldParcelNo",
+    "documentReviewInstitution",
+    "hasArchitecturalProject",
+    "projectRegisteredInCadastre",
+    "cadastralRegisteredBaseArea",
+    "cadastralFootprintMatches",
+    "cadastralCorrectionFloorCount",
+    "projectInstitution",
+    "projectDifference",
+    "projectType",
+    "projectDate",
+    "projectNo",
+    "titleProjectType",
+    "titleProjectDate",
+    "titleProjectNo",
+    "municipalityProjectType",
+    "municipalityProjectDate",
+    "municipalityProjectNo",
+    "projectSuitabilityStatus",
+    "projectConformity",
+    "projectSuitabilitySimpleRepair",
+    "buildingFootprintReference",
+    "buildingEntranceLevel",
+    "buildingEntranceDirection",
+    "titleProjectSuitabilityStatus",
+    "titleProjectSuitabilityNote",
+    "titleProjectSuitabilitySimpleRepair",
+    "municipalityProjectSuitabilityStatus",
+    "municipalityProjectSuitabilityNote",
+    "municipalityProjectSuitabilitySimpleRepair",
+    "mainRealEstateProjectSuitable",
+    "mainRealEstateProjectSuitabilityNote",
+  ];
+  if (!watchedKeys.includes(changedKey)) return;
+  if (changedKey === "projectInstitution") {
+    ensureDocumentReviewInstitutionDefault(true);
+  } else if (["district", "titleDistrict"].includes(changedKey)) {
     ensureDocumentReviewInstitutionDefault();
   }
-  if (!(state.tables.documents || []).some((row) => Object.values(row || {}).some((value) => String(value || "").trim()))) return;
   refreshReviewedDocumentsDescriptionFromCurrentRows();
 }
 
-function ensureDocumentReviewInstitutionDefault() {
-  if (String(state.fields.documentReviewInstitution || "").trim()) return;
-  const district = normalizeReportTitleText(state.fields.titleDistrict || state.fields.district || "").trim();
-  if (!district) return;
-  state.fields.documentReviewInstitution = `${district} Belediyesi`;
+function ensureDocumentReviewInstitutionDefault(force = false) {
+  if (!force && String(state.fields.documentReviewInstitution || "").trim()) return;
+  if (!getSelectedProjectInstitutions().length) return;
+  const summary = buildProjectReviewInstitutionSummary();
+  if (!summary) return;
+  state.fields.documentReviewInstitution = summary;
+}
+
+function getSelectedProjectInstitutions() {
+  const seen = new Set();
+  return String(state.fields.projectInstitution || "")
+    .split(",")
+    .map((item) => normalizeReportTitleText(item).trim())
+    .filter((value) => value && !/^seçiniz$/i.test(value))
+    .filter((value) => {
+      const key = foldTurkish(value);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+}
+
+function projectInstitutionIncludes(keyword) {
+  const foldedKeyword = foldTurkish(keyword);
+  return getSelectedProjectInstitutions().some((institution) => foldTurkish(institution).includes(foldedKeyword));
+}
+
+function buildProjectReviewInstitutionSummary() {
+  const selected = getSelectedProjectInstitutions();
+  const district = getProjectReviewDistrictText();
+  const mapped = selected.map((institution) => formatProjectInstitutionForSummary(institution, district)).filter(Boolean);
+  if (mapped.length) return joinTurkishList(mapped);
+  return district ? `${district} Belediyesi` : "";
+}
+
+function formatProjectInstitutionForSummary(institution, district = getProjectReviewDistrictText()) {
+  const clean = normalizeReportTitleText(institution || "").trim();
+  const folded = foldTurkish(clean);
+  if (folded.includes("WEBTAPU")) return "Webtapu Portalı";
+  if (folded.includes("BELEDIYE")) return district ? `${district} Belediyesi` : "Belediye";
+  if (folded.includes("OSB")) return "OSB Bölge Müdürlüğü";
+  if (folded.includes("OZEL IDARE")) return "İl Özel İdaresi";
+  if (folded.includes("BUYUKSEHIR")) return "Büyükşehir Belediyesi";
+  if (folded.includes("ANITLAR")) return "Anıtlar Kurulu";
+  return clean;
+}
+
+function getProjectDetailLabelPrefix() {
+  const selected = getSelectedProjectInstitutions();
+  if (selected.length === 1) {
+    const folded = foldTurkish(selected[0]);
+    if (folded.includes("WEBTAPU")) return "Tapu";
+    if (folded.includes("BELEDIYE")) return "Belediye";
+    return normalizeReportTitleText(selected[0]).trim() || "Proje";
+  }
+  if (projectInstitutionIncludes("Webtapu") && projectInstitutionIncludes("Belediye")) return "Tapu/Belediye";
+  return "Tapu/Belediye";
+}
+
+function getProjectReviewDateText() {
+  return dateIsoToTr(state.fields.municipalityInspectionDate || state.fields.appointmentDate || "").trim();
+}
+
+function getProjectReviewDistrictText() {
+  return normalizeReportTitleText(state.fields.titleDistrict || state.fields.district || "").trim();
+}
+
+function formatProjectReviewLocation(institution) {
+  const district = getProjectReviewDistrictText();
+  const clean = normalizeReportTitleText(institution || "").trim();
+  const folded = foldTurkish(clean);
+  if (folded.includes("WEBTAPU")) {
+    return district ? `${district} Tapu Müdürlüğü Webtapu Portalında` : "Tapu Müdürlüğü Webtapu Portalında";
+  }
+  if (folded.includes("BELEDIYE")) {
+    return district ? `${district} Belediyesi İmar ve Şehircilik Müdürlüğünde` : "Belediye İmar ve Şehircilik Müdürlüğünde";
+  }
+  if (folded.includes("OSB")) return `${clean} arşivinde`;
+  if (folded.includes("OZEL IDARE")) return `${clean} arşivinde`;
+  if (folded.includes("BUYUKSEHIR")) return `${clean} arşivinde`;
+  if (folded.includes("ANITLAR")) return `${clean} arşivinde`;
+  return clean ? `${clean} arşivinde` : "ilgili kurum arşivinde";
+}
+
+function formatProjectReviewLocationForMissing(institution) {
+  const district = getProjectReviewDistrictText();
+  const folded = foldTurkish(institution || "");
+  if (folded.includes("WEBTAPU")) return "Webtapu Portalında";
+  if (folded.includes("BELEDIYE")) return district ? `${district} Belediyesi İmar ve Şehircilik Müdürlüğünde` : "Belediye İmar ve Şehircilik Müdürlüğünde";
+  return formatProjectReviewLocation(institution);
+}
+
+function formatProjectReference(dateValue, noValue, typeValue = "") {
+  const date = dateIsoToTr(dateValue || "").trim();
+  const no = String(noValue || "").trim();
+  const type = normalizeReportTitleText(typeValue || "Mimari Proje").trim() || "Mimari Proje";
+  const parts = [];
+  if (date) parts.push(`${date} tarih`);
+  if (no) parts.push(`${no} sayılı`);
+  parts.push(type.toLocaleLowerCase("tr-TR"));
+  return parts.join(" ");
+}
+
+function formatOldAdaParcelProjectNote() {
+  const oldAda = String(state.fields.oldBlockNo || "").trim();
+  const oldParcel = String(state.fields.oldParcelNo || "").trim();
+  if (oldAda && oldParcel) return `(Projenin taşınmazın geçmişi olan ${oldAda} ada ${oldParcel} parsel için hazırlanmış olduğu görülmüştür.)`;
+  if (oldAda) return `(Projenin taşınmazın geçmişi olan ${oldAda} ada için hazırlanmış olduğu görülmüştür.)`;
+  if (oldParcel) return `(Projenin taşınmazın geçmişi olan ${oldParcel} parsel için hazırlanmış olduğu görülmüştür.)`;
+  return "";
+}
+
+function buildNoArchitecturalProjectDescription() {
+  const district = getProjectReviewDistrictText() || "İlgili";
+  const paragraphs = [
+    `${district} Belediyesi ve Webtapu Portalında yapılan incelemelerde ekspertize konu taşınmaza ait mimari proje bulunamamıştır.`,
+  ];
+  const cadastreValue = normalizeYesNoChoice(state.fields.projectRegisteredInCadastre);
+  const cadastrePrefix = `${district} Kadastro Müdürlüğünden alınan sözlü bilgiye göre parsel üzerinde yer alan yapının kadastral paftasına`;
+  if (cadastreValue === "Hayır") {
+    paragraphs.push(`${cadastrePrefix} işli olmadığı bilgisi alınmıştır.`);
+  } else if (cadastreValue === "Evet") {
+    const cadastralParts = [`${cadastrePrefix} işli olduğu`];
+    const baseArea = parseReportNumber(state.fields.cadastralRegisteredBaseArea);
+    if (Number.isFinite(baseArea) && baseArea > 0) {
+      cadastralParts.push(`pafta üzerine işli taban alanının ${formatSquareMeterArea(baseArea)} olduğu bilgisi alınmıştır`);
+    } else {
+      cadastralParts.push("bilgisi alınmıştır");
+    }
+    const footprint = normalizeYesNoChoice(state.fields.cadastralFootprintMatches);
+    const sentences = [`${cadastralParts.join(", ")}.`];
+    if (footprint) {
+      sentences.push(
+        `Yerinde yapılan incelemeler ve ölçümlerde parsel üzerindeki yapının taban oturumunun kadastral paftaya ${footprint === "Evet" ? "uygun olduğu" : "uygun olmadığı"} tespit edilmiştir.`
+      );
+    }
+    const quality = normalizeReportTitleText(state.fields.mainPropertyQuality || "").trim();
+    const floorCount = String(state.fields.cadastralCorrectionFloorCount || "").trim();
+    if (quality || floorCount) {
+      const qualityText = quality ? `Ana taşınmaz niteliği ${quality} olup` : "Ana taşınmaz yönünden";
+      const floorText = floorCount ? `Cins Tashihine Esas Kat Sayısı ${floorCount} kat olduğu` : "cins tashihi bilgisinin mevcut olduğu";
+      sentences.push(`${qualityText}, ${floorText} görüş ve kanaatindeyiz.`);
+    }
+    paragraphs.push(sentences.join(" "));
+  }
+  return normalizeReportDescriptionText(paragraphs.filter(Boolean).join("\n\n"));
+}
+
+function buildSingleInstitutionCondominiumProjectDescription(institution, projectReference, dateLead) {
+  const district = getProjectReviewDistrictText();
+  const folded = foldTurkish(institution || "");
+  if (folded.includes("BELEDIYE") && !folded.includes("WEBTAPU")) {
+    const reviewedAt = formatProjectReviewLocation("Belediye");
+    const missingPlace = district ? `Webtapu Portalında ve ${district} Tapu Müdürlüğünde` : "Webtapu Portalında ve Tapu Müdürlüğünde";
+    return `${dateLead}${reviewedAt} ekspertize konu taşınmaza ait ${projectReference} incelenmiştir. ${missingPlace} taşınmazın yer aldığı binaya ait mimari proje bulunamamıştır.`;
+  }
+  if (folded.includes("WEBTAPU")) {
+    const missingPlace = district ? `${district} Belediyesi İmar ve Şehircilik Arşivinde` : "Belediye İmar ve Şehircilik Arşivinde";
+    return `${dateLead}Webtapu Portalında ekspertize konu taşınmaza ait ${projectReference} incelenmiştir. ${missingPlace} taşınmazın yer aldığı binaya ait mimari proje bulunamamıştır.`;
+  }
+  return "";
+}
+
+function buildProjectReviewDescription() {
+  const hasArchitecturalProject = normalizeYesNoChoice(state.fields.hasArchitecturalProject || "Evet") !== "Hayır";
+  const selectedInstitutions = getSelectedProjectInstitutions();
+  const hasProjectData = [
+    "projectDate",
+    "projectNo",
+    "projectType",
+    "titleProjectDate",
+    "titleProjectNo",
+    "titleProjectType",
+    "municipalityProjectDate",
+    "municipalityProjectNo",
+    "municipalityProjectType",
+  ].some((key) => String(state.fields[key] || "").trim());
+  if (hasArchitecturalProject && !selectedInstitutions.length && !hasProjectData) return "";
+  const reviewDate = getProjectReviewDateText();
+  const dateLead = reviewDate ? `${reviewDate} tarihinde ` : "";
+  const oldAdaParcelNote = formatOldAdaParcelProjectNote();
+  const locationLead =
+    "Ana gayrimenkulle ilgili olarak ada, parsel bazında yerinin doğruluğu parselasyon planından ve imar planından tespit edilmiştir.";
+
+  if (!hasArchitecturalProject) {
+    return normalizeReportDescriptionText([buildNoArchitecturalProjectDescription(), oldAdaParcelNote].filter(Boolean).join("\n\n"));
+  }
+
+  const hasDifferentProjects = shouldUseProjectDifferenceComparison();
+  const reviewItems = [];
+  if (hasDifferentProjects) {
+    if (projectInstitutionIncludes("Webtapu") || !selectedInstitutions.length) {
+      reviewItems.push(
+        `${formatProjectReviewLocation("Webtapu")} ${formatProjectReference(
+          state.fields.titleProjectDate,
+          state.fields.titleProjectNo,
+          state.fields.titleProjectType,
+        )} incelenmiştir.`
+      );
+    }
+    if (projectInstitutionIncludes("Belediye") || !selectedInstitutions.length) {
+      reviewItems.push(
+        `${formatProjectReviewLocation("Belediye")} ${formatProjectReference(
+          state.fields.municipalityProjectDate,
+          state.fields.municipalityProjectNo,
+          state.fields.municipalityProjectType,
+        )} incelenmiştir.`
+      );
+    }
+  } else {
+    const institutions = selectedInstitutions.length ? selectedInstitutions : ["Webtapu", "Belediye"];
+    const projectReference = formatProjectReference(state.fields.projectDate, state.fields.projectNo, state.fields.projectType);
+    if (institutions.length === 1 && isCondominiumOwnershipType()) {
+      const singleText = buildSingleInstitutionCondominiumProjectDescription(institutions[0], projectReference, dateLead);
+      if (singleText) {
+        reviewItems.push(singleText.replace(dateLead, ""));
+      } else {
+        reviewItems.push(`${formatProjectReviewLocation(institutions[0])} ekspertize konu taşınmaza ait ${projectReference} incelenmiştir.`);
+      }
+    } else {
+      const institutionSummary = normalizeReportTitleText(state.fields.documentReviewInstitution || buildProjectReviewInstitutionSummary()).trim();
+      const placeText = institutionSummary ? `${institutionSummary} kurumlarında` : joinTurkishList(institutions.map(formatProjectReviewLocation));
+      reviewItems.push(`${placeText} ekspertize konu taşınmaza ait ${projectReference} incelenmiştir.`);
+    }
+  }
+
+  const suitabilityText = buildProjectSuitabilityDescription();
+  return normalizeReportDescriptionText(
+    [locationLead, dateLead ? `${dateLead}${reviewItems.join(" ")}` : reviewItems.join(" "), oldAdaParcelNote, suitabilityText]
+      .filter(Boolean)
+      .join("\n\n")
+  );
+}
+
+function buildProjectSuitabilityDescription() {
+  const hasDifferentProjects = shouldUseProjectDifferenceComparison();
+  const parts = [];
+
+  if (hasDifferentProjects) {
+    const titleOk = isProjectSuitabilityOk(state.fields.titleProjectSuitabilityStatus);
+    const municipalityOk = isProjectSuitabilityOk(state.fields.municipalityProjectSuitabilityStatus);
+    if (titleOk && municipalityOk) {
+      const district = normalizeReportTitleText(state.fields.titleDistrict || state.fields.district || "").trim();
+      const municipalityText = district ? `${district} Belediyesinde` : "Belediye arşivinde";
+      parts.push(
+        `Webtapu Portalında incelenen mimari proje ve ${municipalityText} incelenen proje karşılaştırıldığında taşınmazın konumunu ve alanını etkileyen herhangi bir farklılık bulunmamaktadır. Taşınmaz incelenen her iki projeye de uygun olarak inşa edilmiştir.`
+      );
+    } else {
+      const titleSentence = buildProjectSuitabilityStatusSentence(
+        state.fields.titleProjectSuitabilityStatus,
+        state.fields.titleProjectSuitabilityNote,
+        state.fields.titleProjectSuitabilitySimpleRepair,
+        "Webtapu Portalında incelenen mimari proje yönünden",
+      );
+      const municipalitySentence = buildProjectSuitabilityStatusSentence(
+        state.fields.municipalityProjectSuitabilityStatus,
+        state.fields.municipalityProjectSuitabilityNote,
+        state.fields.municipalityProjectSuitabilitySimpleRepair,
+        "Belediye arşivinde incelenen mimari proje yönünden",
+      );
+      if (titleSentence) parts.push(titleSentence);
+      if (municipalitySentence) parts.push(municipalitySentence);
+      if (!parts.length) {
+        parts.push(
+          "Webtapu Portalında ve belediye arşivinde incelenen mimari projeler arasında vaziyet planı ve kat planı bazında taşınmazın konumunu ve kullanım alanını etkileyen bir farklılık bulunmamaktadır."
+        );
+      }
+    }
+  } else {
+    const statusSentence = buildProjectSuitabilityStatusSentence(
+      state.fields.projectSuitabilityStatus,
+      state.fields.projectConformity,
+      state.fields.projectSuitabilitySimpleRepair,
+      "",
+    );
+    if (statusSentence) parts.push(statusSentence);
+  }
+
+  const mainProjectSuitable = normalizeYesNoChoice(state.fields.mainRealEstateProjectSuitable || "Evet");
+  if (mainProjectSuitable === "Hayır") {
+    const note = normalizeReportDescriptionText(state.fields.mainRealEstateProjectSuitabilityNote || "").trim();
+    parts.push(`Ana gayrimenkul projesine uygunluk yönünden ${note || "uyumsuzluk tespit edilmiştir."}`);
+  }
+
+  return normalizeReportDescriptionText(parts.join(" "));
+}
+
+function buildProjectSuitabilityStatusSentence(statusValue, noteValue, repairValue, prefix = "") {
+  const status = normalizeReportDescriptionText(statusValue || "").trim();
+  const statusKey = projectSuitabilityStatusKey(status);
+  const note = normalizeReportDescriptionText(noteValue || "").trim();
+  const repair = normalizeYesNoChoice(repairValue);
+  const lead = prefix ? `${prefix} ` : "";
+  let sentence = "";
+
+  switch (statusKey) {
+    case "":
+    case "UYGUNDUR":
+      sentence = `${lead}${buildProjectSuitabilityBuildingReferenceSentence({ includeWhenPrefixed: !prefix })}ekspertize konu bağımsız bölüm kat, kattaki konum, alan ve mimari olarak projesine uygundur.`;
+      break;
+    case "BLOK BAZINDA KONUM OLARAK UYGUN DEGILDIR":
+      sentence = `${lead}ekspertize konu taşınmaz vaziyet planına göre blok bazında konum olarak projesine uygun değildir.`;
+      break;
+    case "MIMARI OLARAK UYGUN DEGILDIR":
+      sentence = `${lead}ekspertize konu bağımsız bölüm vaziyet planına göre blok bazında konum, kat, kattaki konum ve kullanım alanı olarak projesine uygundur; mimari olarak projesine uygun değildir.`;
+      break;
+    case "KULLANIM ALANI OLARAK UYGUN DEGILDIR":
+      sentence = `${lead}ekspertize konu bağımsız bölüm vaziyet planına göre blok bazında konum, kat, kattaki konum ve mimari olarak projesine uygun olup, kullanım alanı olarak projesine uygun değildir.`;
+      break;
+    case "KULLANIM ALANI VE MIMARI OLARAK UYGUN DEGILDIR":
+      sentence = `${lead}ekspertize konu bağımsız bölüm vaziyet planına göre blok bazında konum, kat ve kattaki konum olarak projesine uygundur; kullanım alanı ve mimari olarak projesine uygun değildir.`;
+      break;
+    case "PROJEYE UYGUNLUK TESPIT EDILEMEMISTIR":
+      sentence = `${lead}ekspertize konu taşınmazın incelemesi şube bilgisi dahilinde dışarıdan yapılmış olup mimari uygunluk tespit edilememiştir.`;
+      break;
+    case "TRAMPA":
+      sentence = `${lead}ekspertize konu taşınmaz vaziyet planına göre blok bazında konum, kat, kattaki konum ve kullanım alanı olarak projesine uygun değildir.`;
+      break;
+    case "TRAMPA VE AYNA SIMETRISI":
+      sentence = `${lead}ekspertize konu taşınmaz kattaki konum olarak projesine uygun değildir.`;
+      break;
+    case "AYNA SIMETRISI (KONUM ETKILENMIYOR)":
+      sentence = `${lead}yapılan ruhsata aykırı imalat taşınmazın konumunu etkilememektedir.`;
+      break;
+    default:
+      sentence = `${lead}${status}`;
+      break;
+  }
+
+  const additions = [];
+  const cleanNote = stripProjectSuitabilityRepairSentence(note);
+  if (cleanNote) additions.push(cleanNote);
+  if (shouldShowProjectSuitabilityRepair(status) && repair) {
+    additions.push(`Basit bir tadilat ile ${repair === "Evet" ? "düzeltilebilir" : "düzeltilemez"} niteliktedir.`);
+  }
+  return normalizeReportDescriptionText([sentence, ...additions].filter(Boolean).join(" "));
+}
+
+function buildProjectSuitabilityBuildingReferenceSentence(options = {}) {
+  if (options.includeWhenPrefixed === false) return "";
+  const sentences = [];
+  const footprintReference = normalizeReportDescriptionText(state.fields.buildingFootprintReference || "").trim();
+  if (footprintReference) {
+    sentences.push(`Bina oturumu; vaziyet planında belirtilen ${toLowerText(footprintReference)} referansından tespit edilmiştir.`);
+  }
+
+  const entranceLevel = formatProjectSuitabilityEntranceLevel(state.fields.buildingEntranceLevel);
+  const entranceDirection = toLowerText(state.fields.buildingEntranceDirection || "");
+  if (entranceLevel && entranceDirection) {
+    sentences.push(`Bina girişi, projesine göre binanın ${entranceLevel} ve yapının ${entranceDirection} cephesinden sağlanmaktadır.`);
+  } else if (entranceLevel) {
+    sentences.push(`Bina girişi, projesine göre binanın ${entranceLevel} sağlanmaktadır.`);
+  } else if (entranceDirection) {
+    sentences.push(`Bina girişi, projesine göre yapının ${entranceDirection} cephesinden sağlanmaktadır.`);
+  }
+  return sentences.length ? `${sentences.join(" ")} ` : "";
+}
+
+function formatProjectSuitabilityEntranceLevel(value) {
+  const text = toLowerText(value || "");
+  if (!text) return "";
+  if (text.endsWith("katından") || text.endsWith("seviyesinden")) return text;
+  if (text.includes("kat")) return `${text}ından`;
+  return `${text} katından`;
+}
+
+function stripProjectSuitabilityRepairSentence(value = "") {
+  return normalizeReportDescriptionText(value || "")
+    .replace(/Basit bir tadilat ile\s+(düzeltilebilir|düzeltilemez)\s+niteliktedir\.?/gi, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+function buildMissingReviewedDocumentSentences(institutionValue = "") {
+  const prefix = buildDocumentArchivePrefix(institutionValue);
+  const occupancyPrefix = buildMissingOccupancyPermitArchivePrefix(institutionValue);
+  return [
+    `${occupancyPrefix} yapılan incelemelerde taşınmaza ait yapı kullanma izin belgesi bulunamamıştır.`,
+    `${prefix} yapılan incelemelerde taşınmaza ait yeni yapı ruhsatı bulunamamıştır.`,
+  ];
 }
 
 function buildReviewedDocumentsDescription() {
   const rows = (state.tables.documents || []).map(normalizeReviewedDocumentRow).filter((row) => row.type);
-  if (!rows.length) return "";
+  const projectText = buildProjectReviewDescription();
+  if (!rows.length) {
+    return normalizeReportDescriptionText([projectText, ...buildMissingReviewedDocumentSentences()].filter(Boolean).join("\n\n"));
+  }
 
   const permitGroups = new Map();
   const occupancyTexts = [];
@@ -9966,13 +15455,14 @@ function buildReviewedDocumentsDescription() {
   });
 
   const parts = [];
+  if (projectText) parts.push(projectText);
   if (permitGroups.size) {
     permitGroups.forEach((permitItems, prefix) => {
       parts.push(`${prefix} yer alan ${joinTurkishList(permitItems)} incelenmiştir.`);
     });
   } else {
     const prefix = buildDocumentArchivePrefix();
-    parts.push(`${prefix} yapılan incelemelerde taşınmaza ait herhangi bir ruhsat bulunmamaktadır.`);
+    parts.push(`${prefix} yapılan incelemelerde taşınmaza ait yeni yapı ruhsatı bulunamamıştır.`);
   }
   parts.push(...(occupancyTexts.length ? occupancyTexts : [buildOccupancyPermitDocumentSentence({})]));
 
@@ -9983,17 +15473,155 @@ function normalizeReviewedDocumentRow(row = {}) {
   const migrated = normalizeReviewedDocumentStorageRow(row);
   return {
     type: normalizeReportTitleText(migrated.c0 || "").trim(),
-    institution: normalizeReportTitleText(migrated.c1 || buildDefaultDocumentReviewInstitution() || "").trim(),
+    institution: normalizeDocumentInstitutionText(migrated.c1 || buildDefaultDocumentReviewInstitution() || ""),
     date: dateIsoToTr(migrated.c2 || "").trim(),
     no: String(migrated.c3 || "").trim(),
     scope: normalizeReviewedDocumentScope(migrated.c4 || ""),
   };
 }
 
+function hasReviewedDocumentInfo() {
+  return (state.tables.documents || [])
+    .map(normalizeReviewedDocumentRow)
+    .some((row) => row.type);
+}
+
+function canEditBuildingAgeManually() {
+  return !hasReviewedDocumentInfo() && normalizeYesNoChoice(state.fields.hasArchitecturalProject || "Evet") === "Hayır";
+}
+
+function isFieldReadOnly(field = {}) {
+  if (field.key === "buildingAge" && canEditBuildingAgeManually()) return false;
+  return Boolean(field.readOnly);
+}
+
+function refreshBuildingCompletionFromCurrentFields() {
+  const result = calculateBuildingCompletionFromReviewedDocuments();
+  const previousBuildingAge = state.fields.buildingAge || "";
+  state.fields.buildingCompletionDate = result.displayDate;
+  state.fields.buildingConstructionYear = calculateConstructionYearText(result.isoDate);
+  state.fields.buildingAge = canEditBuildingAgeManually() ? previousBuildingAge : calculateBuildingAgeText(result.isoDate);
+  state.fields.buildingCompletionExplanation = buildBuildingCompletionExplanation(result);
+  refreshUnitFirstSaleStatusFromCurrentFields();
+  refreshBuildingDepreciationFromCurrentFields();
+  ["buildingCompletionDate", "buildingConstructionYear", "buildingAge", "buildingCompletionExplanation"].forEach((key) => {
+    const control = document.querySelector(`[data-field="${key}"]`);
+    if (control && control.value !== (state.fields[key] || "")) {
+      control.value = state.fields[key] || "";
+    }
+  });
+}
+
+function calculateBuildingCompletionFromReviewedDocuments() {
+  const rows = (state.tables.documents || []).map(normalizeReviewedDocumentRow).filter((row) => row.type);
+  const occupancyRow = rows.find((row) => isBuildingCompletionOccupancyDocument(row.type) && parseReviewedDocumentDate(row.date));
+  if (occupancyRow) {
+    const isoDate = parseReviewedDocumentDate(occupancyRow.date);
+    return {
+      source: "occupancy",
+      isoDate,
+      displayDate: dateIsoToTr(isoDate),
+      documentType: occupancyRow.type,
+    };
+  }
+
+  const permitRows = rows
+    .map((row) => ({
+      ...row,
+      isoDate: isBuildingCompletionPermitDocument(row.type) ? parseReviewedDocumentDate(row.date) : "",
+    }))
+    .filter((row) => row.isoDate)
+    .sort((a, b) => b.isoDate.localeCompare(a.isoDate));
+  if (permitRows.length) {
+    const latestPermit = permitRows[0];
+    const completionIso = addYearsToIsoDate(latestPermit.isoDate, 2);
+    return {
+      source: "permit",
+      isoDate: completionIso,
+      displayDate: dateIsoToTr(completionIso),
+      documentType: latestPermit.type,
+      permitDate: dateIsoToTr(latestPermit.isoDate),
+    };
+  }
+
+  return {
+    source: "unknown",
+    isoDate: "",
+    displayDate: "Belirsiz",
+    documentType: "",
+  };
+}
+
+function isBuildingCompletionOccupancyDocument(value) {
+  const text = foldTurkish(value || "").toLocaleUpperCase("tr");
+  return text.includes("ISKAN")
+    || text.includes("KULLANMA")
+    || text.includes("KULLANIM")
+    || text.includes("OTURMA");
+}
+
+function isBuildingCompletionPermitDocument(value) {
+  return foldTurkish(value || "").toLocaleUpperCase("tr").includes("RUHSAT");
+}
+
+function parseReviewedDocumentDate(value) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  const iso = dateTrToIso(text) || (/^\d{4}-\d{2}-\d{2}$/.test(text) ? text : "");
+  return iso;
+}
+
+function addYearsToIsoDate(value, years) {
+  const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return "";
+  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  date.setFullYear(date.getFullYear() + years);
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ].join("-");
+}
+
+function calculateBuildingAgeText(completionIsoDate) {
+  const match = String(completionIsoDate || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return "";
+  const completionDate = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  const today = new Date();
+  const diffYears = (today.getTime() - completionDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000);
+  return `${Math.max(0, Math.round(diffYears)).toLocaleString("tr-TR")} yıl`;
+}
+
+function calculateConstructionYearText(completionIsoDate) {
+  const match = String(completionIsoDate || "").match(/^(\d{4})-\d{2}-\d{2}$/);
+  return match ? match[1] : "";
+}
+
+function buildBuildingCompletionExplanation(result = calculateBuildingCompletionFromReviewedDocuments()) {
+  if (!result.isoDate) {
+    return "İncelenen belgeler içerisinde yapı kullanma izin belgesi/iskan veya ruhsat tarihi tespit edilemediğinden yapı bitiş tarihi belirsizdir.";
+  }
+  const ageText = calculateBuildingAgeText(result.isoDate);
+  if (result.source === "occupancy") {
+    return `İncelenen belgeler içerisinde yer alan ${result.documentType} tarihine göre yapı bitiş tarihi ${result.displayDate} olarak alınmıştır.${ageText ? ` Buna göre yapı yaşı ${ageText} olarak hesaplanmıştır.` : ""}`;
+  }
+  return `İncelenen belgeler içerisinde yapı kullanma izin belgesi/iskan bulunmadığından, en son ruhsat tarihi olan ${result.permitDate} tarihine 2 yıl eklenerek yapı bitiş tarihi ${result.displayDate} olarak alınmıştır.${ageText ? ` Buna göre yapı yaşı ${ageText} olarak hesaplanmıştır.` : ""}`;
+}
+
 function normalizeReviewedDocumentStorageRow(row = {}) {
-  if (row.c4 !== undefined) return row;
-  const c1LooksLikeDate = /^\d{4}-\d{2}-\d{2}$/.test(String(row.c1 || "")) || /^\d{1,2}[./-]\d{1,2}[./-]\d{2,4}$/.test(String(row.c1 || ""));
-  const c1LooksLikeInstitution = /BELEDIYE|BAKANLIK|IDARE|BÜYÜKŞEHIR|BÜYÜKSEHIR|ÖZEL|OZEL/i.test(foldTurkish(row.c1 || ""));
+  const c1LooksLikeDate = looksLikeReviewedDocumentDate(row.c1);
+  const c2LooksLikeInstitution = looksLikeDocumentInstitution(row.c2);
+  if (c1LooksLikeDate && c2LooksLikeInstitution) {
+    return {
+      c0: row.c0 || "",
+      c1: row.c2 || "",
+      c2: row.c1 || "",
+      c3: row.c3 || "",
+      c4: row.c4 || "",
+    };
+  }
+  if (row.c4 !== undefined && String(row.c1 || "").trim()) return row;
+  const c1LooksLikeInstitution = looksLikeDocumentInstitution(row.c1);
   if (!c1LooksLikeDate && c1LooksLikeInstitution) return row;
   return {
     c0: row.c0 || "",
@@ -10004,21 +15632,61 @@ function normalizeReviewedDocumentStorageRow(row = {}) {
   };
 }
 
+function looksLikeReviewedDocumentDate(value = "") {
+  const text = String(value || "").trim();
+  return /^\d{4}-\d{2}-\d{2}$/.test(text) || /^\d{1,2}(?:[.]|\/|-)\d{1,2}(?:[.]|\/|-)\d{2,4}$/.test(text);
+}
+
+function looksLikeDocumentInstitution(value = "") {
+  const folded = foldTurkish(value || "");
+  return /BELEDIYE|BAKANLIK|BAKANLIGI|IDARE|BUYUKSEHIR|OZEL|WEBTAPU|OSB|MUDURLUGU/.test(folded);
+}
+
+function normalizeDocumentInstitutionText(value = "") {
+  const raw = String(value || "").replace(/\s+/g, " ").trim();
+  if (!raw) return "";
+  const folded = foldTurkish(raw);
+  if (/CEVRE\s+VE\s+SEHIRCILIK\s+BAKANLIGI/.test(folded)) {
+    return "T.C. Çevre ve Şehircilik Bakanlığı";
+  }
+  if (/OSB\s+BOLGE\s+MUDURLUGU/.test(folded)) {
+    return "OSB Bölge Müdürlüğü";
+  }
+  return normalizeReportTitleText(raw)
+    .replace(/\bT\.c\./g, "T.C.")
+    .replace(/\bA\.ş\./g, "A.Ş.")
+    .replace(/\bT\.a\.o\./g, "T.A.O.")
+    .replace(/\bVe\b/g, "ve")
+    .replace(/\bOsb\b/g, "OSB")
+    .trim();
+}
+
 function isPermitLikeDocument(type) {
   const folded = foldTurkish(type);
   return /RUHSAT/.test(folded) || /YAPI\s*KAYIT\s*BELGESI/.test(folded);
 }
 
 function isOccupancyPermitDocument(type) {
-  return /YAPI\s*KULLAN/.test(foldTurkish(type));
+  return isBuildingCompletionOccupancyDocument(type);
 }
 
 function buildOccupancyPermitDocumentSentence(row) {
-  const prefix = buildDocumentArchivePrefix(row.institution);
+  const prefix = buildMissingOccupancyPermitArchivePrefix(row.institution);
   if (!row.date || !row.no) {
     return `${prefix} yapılan incelemelerde taşınmaza ait yapı kullanma izin belgesi bulunamamıştır.`;
   }
-  return `${prefix} yer alan ${formatReviewedDocumentReference(row)} incelenmiştir.`;
+  return `${buildDocumentArchivePrefix(row.institution)} yer alan ${formatReviewedDocumentReference(row)} incelenmiştir.`;
+}
+
+function buildMissingOccupancyPermitArchivePrefix(institutionValue = "") {
+  if (shouldUseMunicipalityOnlyForMissingOccupancyPermit()) {
+    return buildDocumentArchivePrefix(buildDefaultDocumentReviewInstitution());
+  }
+  return buildDocumentArchivePrefix(institutionValue);
+}
+
+function shouldUseMunicipalityOnlyForMissingOccupancyPermit() {
+  return projectInstitutionIncludes("Webtapu") && projectInstitutionIncludes("Belediye");
 }
 
 function buildMunicipalityArchivePrefix() {
@@ -10027,9 +15695,9 @@ function buildMunicipalityArchivePrefix() {
 
 function buildDocumentArchivePrefix(institutionValue = "") {
   const date = dateIsoToTr(state.fields.municipalityInspectionDate || state.fields.appointmentDate || "");
-  const institution = normalizeReportTitleText(
+  const institution = normalizeDocumentInstitutionText(
     institutionValue || state.fields.documentReviewInstitution || buildDefaultDocumentReviewInstitution() || ""
-  ).trim();
+  );
   const archiveText = formatDocumentArchiveLocation(institution);
   if (date && archiveText) return `${date} tarihinde, ${archiveText}`;
   if (date) return `${date} tarihinde, inceleme yapılan kurum imar arşiv dosyasında`;
@@ -10038,7 +15706,7 @@ function buildDocumentArchivePrefix(institutionValue = "") {
 }
 
 function formatDocumentArchiveLocation(institution) {
-  const clean = normalizeReportTitleText(institution || "").trim();
+  const clean = normalizeDocumentInstitutionText(institution || "");
   if (!clean) return "";
   if (/BELEDIYE/.test(foldTurkish(clean))) return `${clean} İmar Arşiv dosyasında`;
   return `${clean} arşivinde`;
@@ -10047,6 +15715,226 @@ function formatDocumentArchiveLocation(institution) {
 function buildDefaultDocumentReviewInstitution() {
   const district = normalizeReportTitleText(state.fields.titleDistrict || state.fields.district || "").trim();
   return district ? `${district} Belediyesi` : "";
+}
+
+function buildPenaltyDecisionExplanation() {
+  const decision = normalizeYesNoChoice(state.fields.penaltyDecision);
+  if (!["Evet", "Hayır"].includes(decision)) return "";
+  const date = dateIsoToTr(state.fields.municipalityInspectionDate || state.fields.appointmentDate || "");
+  const dateText = date ? `${date} tarihinde ` : "";
+  const archiveText = formatPenaltyDecisionArchiveText();
+  if (decision === "Evet") {
+    const note = normalizeReportDescriptionText(state.fields.penaltyNote || "").trim();
+    return normalizeReportDescriptionText(
+      `${dateText}${archiveText} yapılan incelemeye göre${note ? ` ${note}` : ""}`
+    );
+  }
+  return normalizeReportDescriptionText(
+    `${dateText}${archiveText} yapılan incelemede herhangi bir cezai tutanak, zabıt, yıkım kararı vb. evraka rastlanılmamıştır.`
+  );
+}
+
+function hasPenaltyDecisionSpecialInstitution() {
+  return projectInstitutionIncludes("Büyükşehir") || projectInstitutionIncludes("Özel İdare");
+}
+
+function getPenaltyDecisionArchiveInstitutions() {
+  const institutions = [];
+  if (projectInstitutionIncludes("Büyükşehir")) {
+    institutions.push(buildCitySpecificInstitution("Büyükşehir Belediyesi"));
+  }
+  if (projectInstitutionIncludes("Özel İdare")) {
+    institutions.push(buildCitySpecificInstitution("İl Özel İdaresi"));
+  }
+  institutions.push(buildDefaultDocumentReviewInstitution());
+  return institutions.map(formatPenaltyDecisionArchiveInstitution).filter(Boolean);
+}
+
+function formatPenaltyDecisionArchiveText() {
+  const archiveInstitutions = hasPenaltyDecisionSpecialInstitution()
+    ? joinTurkishList(getPenaltyDecisionArchiveInstitutions())
+    : formatPenaltyDecisionArchiveInstitution(buildDefaultDocumentReviewInstitution());
+  return archiveInstitutions ? `${archiveInstitutions} Arşivinde` : "ilgili kurum arşivinde";
+}
+
+function formatPenaltyDecisionArchiveInstitution(value) {
+  const institution = normalizeReportTitleText(value || "").trim();
+  if (!institution) return "";
+  if (/BELEDIYE/.test(foldTurkish(institution)) && !/IMAR\s+VE\s+SEHIRCILIK/.test(foldTurkish(institution))) {
+    return `${institution} İmar ve Şehircilik Müdürlüğü`;
+  }
+  return institution;
+}
+
+function refreshPenaltyDecisionExplanationFromCurrentFields(changedKey = "") {
+  const watchedKeys = [
+    "penaltyDecision",
+    "penaltyNote",
+    "municipalityInspectionDate",
+    "appointmentDate",
+    "documentReviewInstitution",
+    "projectInstitution",
+    "district",
+    "titleDistrict",
+  ];
+  if (changedKey && !watchedKeys.includes(changedKey)) return;
+  if (["district", "titleDistrict"].includes(changedKey)) {
+    ensureDocumentReviewInstitutionDefault();
+  }
+
+  state.fields.penaltyDecisionExplanation = buildPenaltyDecisionExplanation();
+  const control = document.querySelector('[data-field="penaltyDecisionExplanation"]');
+  if (control && control.value !== state.fields.penaltyDecisionExplanation) {
+    control.value = state.fields.penaltyDecisionExplanation || "";
+  }
+}
+
+function buildStaticSuitabilityExplanation() {
+  const decision = normalizeYesNoChoice(state.fields.staticSuitability);
+  if (!["Evet", "Hayır"].includes(decision)) return "";
+  const institution = formatStaticSuitabilityInstitution(
+    state.fields.documentReviewInstitution || buildDefaultDocumentReviewInstitution() || ""
+  );
+  const fileText = institution ? `${institution} dosyasında` : "ilgili kurum dosyasında";
+  if (decision === "Evet") {
+    return normalizeReportDescriptionText(
+      `Taşınmazın ${fileText} bulunan statik proje incelenmiştir. Statik proje, mimari proje ve mahal durum ile uyumludur.`
+    );
+  }
+  const note = normalizeReportDescriptionText(state.fields.staticSuitabilityNote || "").trim();
+  return normalizeReportDescriptionText(
+    `Taşınmazın ${fileText} bulunan statik proje incelenmiştir. Statik proje, mimari proje ve mahal durum ile uyumlu değildir.${note ? ` ${note}` : ""}`
+  );
+}
+
+function formatStaticSuitabilityInstitution(value) {
+  const municipality = buildDefaultDocumentReviewInstitution();
+  if (municipality) return municipality;
+  const institution = normalizeReportTitleText(value || "").trim();
+  if (institution && !foldTurkish(institution).includes("WEBTAPU")) return institution;
+  return buildDefaultDocumentReviewInstitution();
+}
+
+function refreshStaticSuitabilityExplanationFromCurrentFields(changedKey = "") {
+  const watchedKeys = [
+    "staticSuitability",
+    "staticSuitabilityNote",
+    "documentReviewInstitution",
+    "district",
+    "titleDistrict",
+  ];
+  if (changedKey && !watchedKeys.includes(changedKey)) return;
+  if (["district", "titleDistrict"].includes(changedKey)) {
+    ensureDocumentReviewInstitutionDefault();
+  }
+
+  state.fields.staticSuitabilityExplanation = buildStaticSuitabilityExplanation();
+  const control = document.querySelector('[data-field="staticSuitabilityExplanation"]');
+  if (control && control.value !== state.fields.staticSuitabilityExplanation) {
+    control.value = state.fields.staticSuitabilityExplanation || "";
+  }
+}
+
+function hasReviewedOccupancyPermitDocument() {
+  return (state.tables.documents || [])
+    .map(normalizeReviewedDocumentRow)
+    .some((row) => isOccupancyPermitDocument(row.type));
+}
+
+function buildBuildingInspectionExplanation() {
+  if (hasReviewedOccupancyPermitDocument()) return "";
+  const status = String(state.fields.buildingInspectionContractActive || "").trim();
+  if (!status) return "";
+  const date = dateIsoToTr(state.fields.municipalityInspectionDate || state.fields.appointmentDate || "");
+  const district = normalizeReportTitleText(state.fields.titleDistrict || state.fields.district || "").trim();
+  const municipality = district ? `${district} Belediyesinden` : "ilgili belediyeden";
+  const dateText = date ? `${date} tarihinde ` : "";
+  if (status === "Evet") {
+    const level = state.fields.buildingInspectionProgressLevel || "";
+    return normalizeReportDescriptionText(
+      `${dateText}${municipality} alınan sözlü bilgiye göre taşınmazın yer aldığı binanın yapı denetim sözleşmesinin aktif olduğu${level ? ` ve yapı denetim hakediş seviyesinin ${level} olduğu` : ""} bilgisine ulaşılmıştır.`
+    );
+  }
+  if (status === "Hayır (Fesihli)") {
+    const terminationDate = dateIsoToTr(state.fields.buildingInspectionTerminationDate || "");
+    const level = state.fields.buildingInspectionTerminationLevel || "";
+    return normalizeReportDescriptionText(
+      `${dateText}${municipality} alınan sözlü bilgiye göre taşınmazın yer aldığı binanın yapı denetim sözleşmesinin${terminationDate ? ` ${terminationDate} tarihinde` : ""} feshedildiği${level ? ` ve yapı denetim fesih seviyesinin ${level} olduğu` : ""} bilgisine ulaşılmıştır.`
+    );
+  }
+  return "";
+}
+
+function refreshBuildingInspectionExplanationFromCurrentFields(changedKey = "") {
+  const watchedKeys = [
+    "buildingInspectionContractActive",
+    "buildingInspectionProgressLevel",
+    "buildingInspectionTerminationDate",
+    "buildingInspectionTerminationLevel",
+    "municipalityInspectionDate",
+    "appointmentDate",
+    "district",
+    "titleDistrict",
+  ];
+  if (changedKey && !watchedKeys.includes(changedKey)) return;
+  state.fields.buildingInspectionExplanation = buildBuildingInspectionExplanation();
+  const control = document.querySelector('[data-field="buildingInspectionExplanation"]');
+  if (control && control.value !== state.fields.buildingInspectionExplanation) {
+    control.value = state.fields.buildingInspectionExplanation || "";
+  }
+}
+
+function getEkbInspectionDateIso() {
+  return state.fields.municipalityInspectionDate || state.fields.appointmentDate || "";
+}
+
+function buildEkbExplanation() {
+  if (normalizeYesNoChoice(state.fields.hasEkb) !== "Evet") return "";
+
+  const validUntil = state.fields.ekbValidUntil || "";
+  const inspectionDate = getEkbInspectionDateIso();
+  const validUntilIso = dateTrToIso(validUntil) || validUntil;
+  const inspectionDateIso = dateTrToIso(inspectionDate) || inspectionDate;
+  if (validUntilIso && inspectionDateIso && validUntilIso < inspectionDateIso) {
+    return "Enerji Kimlik Belgesinin son geçerlilik tarihi sona erdiği için dikkate alınmamıştır.";
+  }
+
+  const issueDate = dateIsoToTr(state.fields.ekbIssueDate || "");
+  const documentNo = normalizeReportTitleText(state.fields.ekbDocumentNo || "").trim();
+  const validUntilText = dateIsoToTr(validUntilIso || validUntil);
+  const energyClass = normalizeReportTitleText(state.fields.ekbEnergyClass || "").trim();
+  const certificateParts = [];
+  if (issueDate) certificateParts.push(`${issueDate} tarih`);
+  if (documentNo) certificateParts.push(`${documentNo} belge numaralı`);
+  if (validUntilText) certificateParts.push(`${validUntilText} tarihine kadar geçerliliği bulunan`);
+
+  const certificateLead = certificateParts.length
+    ? `${certificateParts.join(", ")} Enerji Kimlik Belgesi`
+    : "Enerji Kimlik Belgesi";
+  const sentences = [`Konu taşınmazın yer aldığı binaya ait ${certificateLead} bulunmaktadır.`];
+  if (energyClass) {
+    sentences.push(`Belgeye göre taşınmazın yer aldığı binanın enerji performans sınıfı “${energyClass}” kategorisindedir.`);
+  }
+  return normalizeReportDescriptionText(sentences.join(" "));
+}
+
+function refreshEkbExplanationFromCurrentFields(changedKey = "") {
+  const watchedKeys = [
+    "hasEkb",
+    "ekbDocumentNo",
+    "ekbIssueDate",
+    "ekbValidUntil",
+    "ekbEnergyClass",
+    "municipalityInspectionDate",
+    "appointmentDate",
+  ];
+  if (changedKey && !watchedKeys.includes(changedKey)) return;
+
+  state.fields.ekbExplanation = buildEkbExplanation();
+  const control = document.querySelector('[data-field="ekbExplanation"]');
+  if (control && control.value !== state.fields.ekbExplanation) {
+    control.value = state.fields.ekbExplanation || "";
+  }
 }
 
 function formatReviewedDocumentReference(row) {
@@ -10094,8 +15982,8 @@ function parseAddressCodeText(text) {
   const neighborhood = cleanNeighborhoodName(fromAddress.neighborhood || extractNeighborhoodFromAddressText(clean));
 
   return {
-    city: "",
-    district: "",
+    city: fromAddress.city,
+    district: fromAddress.district,
     neighborhood,
     street: fromAddress.street,
     outerDoor: tableValues.outerDoor || fromAddress.outerDoor,
@@ -10235,8 +16123,14 @@ function parseAddressLine(addressRaw) {
   if (!addressRaw) return result;
 
   const parts = addressRaw.split("/").map((part) => part.trim()).filter(Boolean);
-  result.city = "";
-  result.district = "";
+  // Adres kodu satırı "İL / İLÇE / MAHALLE(Sİ) / SOKAK (Sokak) / KAPINO" düzenindedir.
+  // Yapı doğrulanırsa il/ilçe de çekilir; böylece posta kodu eşleşmesi TAKBİS'e
+  // bağımlı kalmadan doğru il ile yapılır (bkz. findLocalNeighborhoodByAddress).
+  const looksLikeFullAddress = parts.length >= 4
+    && /mahalle/i.test(parts[2] || "")
+    && /sokak|cadde|bulvar/i.test(parts[3] || "");
+  result.city = looksLikeFullAddress ? toTitleCaseTr(parts[0] || "") : "";
+  result.district = looksLikeFullAddress ? toTitleCaseTr(parts[1] || "") : "";
   result.neighborhood = parts[2] || "";
   const streetPart = parts[3] || "";
   result.street = /sokak|cadde|bulvar|\((?:sokak|cadde|bulvar)\)/i.test(streetPart)
@@ -10284,13 +16178,16 @@ function toTitleCaseTr(value) {
     .toLocaleLowerCase("tr")
     .split(/(\s+|-)/)
     .map((part) => (/^\s+$|^-$/.test(part) || !part ? part : part.charAt(0).toLocaleUpperCase("tr") + part.slice(1)))
-    .join("");
+    .join("")
+    .replace(/([.!?]\s*)([a-zçğıöşü])/giu, (_, prefix, letter) => prefix + letter.toLocaleUpperCase("tr-TR"));
 }
 
 function normalizeReportFieldValue(key, value) {
   const text = String(value ?? "");
   if (!text.trim()) return text.trim();
+  if (titleTextUppercaseKeys.has(key)) return toTitleFieldUppercase(text).trim();
   if (key === "postalCode") return normalizePostalCodeValue(text);
+  if (key === "planName") return normalizeImarPlanNameForReport(text);
   const field = findReportFieldDefinition(key);
   if (isReportTechnicalField(key, field)) return text.trim();
   if (isReportDescriptionField(key, field)) return normalizeReportDescriptionText(text);
@@ -10318,6 +16215,11 @@ function normalizeReportStateFields(targetState) {
 
   Object.entries(targetState.tables || {}).forEach(([tableKey, rows]) => {
     if (!Array.isArray(rows)) return;
+    // Emsal matrisi kendi şemasını (comparableFields) ve değer formatlamasını hücre
+    // bazında yönetir. Toplu normalizasyon burada section.table.columns ile yanlış
+    // sütun eşleştirip select/multiSelect değerlerini (ör. "1. normal kat" → "1. Normal
+    // Kat") bozar ve kat/mülkiyet seçimlerini silinmiş gibi gösterirdi; bu yüzden atlanır.
+    if (tableKey === "comparables") return;
     const section = sections.find((item) => item.id === tableKey);
     rows.forEach((row) => {
       if (!row || typeof row !== "object") return;
@@ -10369,8 +16271,14 @@ function isReportTitleField(key, field = {}) {
 function normalizeReportTableValue(section, column, value) {
   const text = String(value ?? "");
   if (!text.trim()) return text.trim();
+  if (section?.id === "title" && !isReportTechnicalTableColumn(column)) {
+    return toTitleFieldUppercase(text).trim();
+  }
   if (section?.id === "encumbranceMortgages" && /ipotek lehdar/i.test(String(column || ""))) {
     return normalizeMortgageCreditorDisplay(text);
+  }
+  if (section?.id === "documents" && /kurum/i.test(String(column || ""))) {
+    return normalizeDocumentInstitutionText(text);
   }
   if (isReportTechnicalTableColumn(column)) return text.trim();
   if (isReportDescriptionTableColumn(column)) return normalizeReportDescriptionText(text);
@@ -10663,18 +16571,22 @@ function applyAddressFieldsToReport(options = {}) {
     setFieldFromSource("address", key, nextValue, options);
   });
   syncAddressBlockFromTakbis(options);
-  triggerPostalCodeLookupAfterAddressApply(fields);
+  return triggerPostalCodeLookupAfterAddressApply(fields);
 }
 
 function triggerPostalCodeLookupAfterAddressApply(fields = {}) {
-  if (!fields.city && !fields.district && !fields.neighborhood) return;
-  applyPostalCodeFromSelectedNeighborhood({ silent: true }).then((changed) => {
-    if (!changed) return;
+  if (!fields.city && !fields.district && !fields.neighborhood) return Promise.resolve(false);
+  // Adres PDF'inden gelen posta kodu güvenilmez (yanlış il koduyla gelebiliyor);
+  // mahalle veritabanında eşleşme varsa DB değeri force ile yazılır. await
+  // edilebilmesi için promise döndürülür (bkz. processAddressFile).
+  return applyPostalCodeFromSelectedNeighborhood({ silent: true, force: true }).then((changed) => {
+    if (!changed) return false;
     autosave();
     if (activeSectionId === "address") renderSection();
     renderValidation();
     updateStatus();
-  }).catch(() => {});
+    return true;
+  }).catch(() => false);
 }
 
 function applyTakbisTitleFieldsToReport(options = {}) {
@@ -10753,6 +16665,12 @@ function refreshShareExplanationFromCurrentFields(changedKey = "") {
   if (control && control.value !== state.fields.shareExplanation) {
     control.value = state.fields.shareExplanation;
   }
+  const valuationText = document.querySelector("[data-valuation-share-explanation-text]");
+  if (valuationText) valuationText.textContent = state.fields.shareExplanation || "";
+}
+
+function isSharedTitleOwnership() {
+  return foldTurkish(state.fields.titleOwnershipKind || "").replace(/\s+/g, " ").trim() === "HISSELI MULKIYET";
 }
 
 function inferTitleOwnershipKindFromOwnerRows(rows = []) {
@@ -10882,6 +16800,425 @@ function buildEncumbranceSummary() {
 function normalizeEncumbranceSummaryText(value) {
   return normalizeReportDescriptionText(value)
     .replace(/\b(A\.Ş\.|T\.A\.O\.|T\.A\.Ş\.|Ltd\. Şti\.)\s+Lehine\b/g, "$1 lehine");
+}
+
+// ==========================================================
+//  Takyidat Tablosu (14 - Açıklamalar bölümü)
+//  Beyanlar / Hak ve Mükellefiyetler / Rehinler / Şerhler alt
+//  başlıkları altında, mevcut takyidat verisinden otomatik üretilir.
+// ==========================================================
+function buildTakyidatTableGroups() {
+  const declarationRows = getFilledEncumbranceRows("encumbranceDeclarations");
+  return [
+    {
+      key: "beyan",
+      title: "Beyanlar",
+      items: declarationRows
+        .filter((row) => !isEncumbranceRightOrLiabilityRow(row))
+        .map((row) => formatEncumbranceDeclarationRow(row, { addIsbankManagementPlanNote: true }))
+        .filter(Boolean),
+    },
+    {
+      key: "hak",
+      title: "Hak ve Mükellefiyetler",
+      items: declarationRows
+        .filter(isEncumbranceRightOrLiabilityRow)
+        .map((row) => formatEncumbranceDeclarationRow(row))
+        .filter(Boolean),
+    },
+    {
+      key: "rehin",
+      title: "Rehinler",
+      items: getFilledEncumbranceRows("encumbranceMortgages")
+        .map(formatEncumbranceMortgageRow)
+        .filter(Boolean),
+    },
+    {
+      key: "serh",
+      title: "Şerhler",
+      items: getFilledEncumbranceRows("encumbranceAnnotations")
+        .map(formatEncumbranceAnnotationRow)
+        .filter(Boolean),
+    },
+  ];
+}
+
+function hasTakyidatTableData() {
+  return buildTakyidatTableGroups().some((group) => group.items.length);
+}
+
+function buildTakyidatTableText() {
+  return buildTakyidatTableGroups()
+    .map((group) => {
+      const lines = group.items.length
+        ? group.items.map((item, index) => `${index + 1}. ${item}`)
+        : ["Herhangi bir kayıt bulunmamaktadır."];
+      return `${group.title}:\n${lines.join("\n")}`;
+    })
+    .join("\n\n");
+}
+
+function createTakyidatTablePanel() {
+  const groups = buildTakyidatTableGroups();
+  const hasData = groups.some((group) => group.items.length);
+  const panel = document.createElement("div");
+  panel.className = "subsection takyidat-table-panel";
+
+  const head = document.createElement("div");
+  head.className = "subsection-title-row";
+  const title = document.createElement("h4");
+  title.textContent = "Takyidat Tablosu";
+  head.append(title);
+  if (hasData) {
+    const copyButton = document.createElement("button");
+    copyButton.type = "button";
+    copyButton.className = "valuation-method-copy-button";
+    copyButton.textContent = "Kopyala";
+    copyButton.title = "Takyidat tablosunu metin olarak kopyala";
+    copyButton.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(buildTakyidatTableText());
+        copyButton.textContent = "Kopyalandı";
+      } catch {
+        copyButton.textContent = "Kopyalanamadı";
+      }
+      setTimeout(() => {
+        copyButton.textContent = "Kopyala";
+      }, 1500);
+    });
+    head.append(copyButton);
+  }
+  panel.append(head);
+
+  const hint = document.createElement("p");
+  hint.className = "subtle-text";
+  hint.textContent = "Takyidat bölümüne girilen kayıtlar; Beyanlar, Hak ve Mükellefiyetler, Rehinler ve Şerhler başlıkları altında otomatik listelenir.";
+  panel.append(hint);
+
+  if (!hasData) {
+    const note = document.createElement("p");
+    note.className = "subtle-text takyidat-empty-note";
+    note.textContent = "Henüz takyidat kaydı girilmedi. Takyidat bölümünden kayıt eklendiğinde tablo burada otomatik oluşacaktır.";
+    panel.append(note);
+    return panel;
+  }
+
+  const shell = document.createElement("div");
+  shell.className = "table-shell takyidat-table-shell";
+  const table = document.createElement("table");
+  table.className = "takyidat-table";
+  const tbody = document.createElement("tbody");
+
+  groups.forEach((group) => {
+    const groupRow = document.createElement("tr");
+    groupRow.className = `takyidat-group-row takyidat-group-${group.key}`;
+    const groupCell = document.createElement("th");
+    groupCell.colSpan = 2;
+    groupCell.textContent = group.title.toLocaleUpperCase("tr-TR");
+    groupRow.append(groupCell);
+    tbody.append(groupRow);
+
+    if (!group.items.length) {
+      const emptyRow = document.createElement("tr");
+      emptyRow.className = "takyidat-empty-row";
+      const emptyCell = document.createElement("td");
+      emptyCell.colSpan = 2;
+      emptyCell.textContent = "Herhangi bir kayıt bulunmamaktadır.";
+      emptyRow.append(emptyCell);
+      tbody.append(emptyRow);
+      return;
+    }
+
+    group.items.forEach((item, index) => {
+      const tr = document.createElement("tr");
+      const noCell = document.createElement("td");
+      noCell.className = "takyidat-no";
+      noCell.textContent = String(index + 1);
+      const textCell = document.createElement("td");
+      textCell.textContent = item;
+      tr.append(noCell, textCell);
+      tbody.append(tr);
+    });
+  });
+
+  table.append(tbody);
+  shell.append(table);
+  panel.append(shell);
+  return panel;
+}
+
+// ==========================================================
+//  Açık Adres (14 - Açıklamalar bölümü)
+//  İdari mahalle, sokak/cadde, site/apartman, blok, dış kapı, kat,
+//  iç kapı, ilçe/il ve UAVT kodundan Türkçe adres metni üretir.
+//  Örnek: "Görükle Mahallesi, Koza Caddesi, Atalay Apartmanı No: 26,
+//          Kat: 1. kat, D: 4 Nilüfer / Bursa (UAVT Kodu: 1234567)"
+// ==========================================================
+function formatOpenAddressNeighborhood(value) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  return /mahalle|mah\.?$/i.test(text) ? text : `${text} Mahallesi`;
+}
+
+function buildOpenAddressText() {
+  const get = (...keys) => {
+    for (const key of keys) {
+      const value = String(state.fields[key] || "").trim();
+      if (value) return value;
+    }
+    return "";
+  };
+  const neighborhood = get("neighborhood", "titleNeighborhood");
+  const street = get("street");
+  const siteName = get("addressSiteName");
+  const blockName = get("addressBlockName", "titleBlockName");
+  const outerDoor = get("outerDoor");
+  const floor = get("addressFloor", "titleFloor");
+  const innerDoor = get("innerDoor");
+  const district = get("district", "titleDistrict");
+  const city = get("city", "titleCity");
+  const uavt = get("uavt");
+
+  const segments = [];
+  if (neighborhood) segments.push(formatOpenAddressNeighborhood(neighborhood));
+  if (street) segments.push(street);
+
+  const buildingParts = [];
+  if (siteName) buildingParts.push(siteName);
+  if (blockName) buildingParts.push(/blok/i.test(blockName) ? blockName : `${blockName} Blok`);
+  if (outerDoor) buildingParts.push(`No: ${outerDoor}`);
+  if (buildingParts.length) segments.push(buildingParts.join(" "));
+
+  if (floor) segments.push(`Kat: ${floor}`);
+
+  const lastParts = [];
+  if (innerDoor) lastParts.push(`D: ${innerDoor}`);
+  const districtCity = [district, city].filter(Boolean).join(" / ");
+  if (districtCity) lastParts.push(districtCity);
+  if (lastParts.length) segments.push(lastParts.join(" "));
+
+  let result = segments.join(", ");
+  if (result && uavt) result += ` (UAVT Kodu: ${uavt})`;
+  return result;
+}
+
+function createOpenAddressPanel() {
+  const address = buildOpenAddressText();
+  state.fields.openAddress = address;
+  const card = document.createElement("div");
+  card.className = "subsection open-address-card";
+
+  const head = document.createElement("div");
+  head.className = "open-address-head";
+  const title = document.createElement("h4");
+  title.textContent = "Açık Adres";
+  head.append(title);
+  if (address) {
+    const copyButton = document.createElement("button");
+    copyButton.type = "button";
+    copyButton.className = "valuation-method-copy-button";
+    copyButton.textContent = "Kopyala";
+    copyButton.title = "Açık adres metnini kopyala";
+    copyButton.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(address);
+        copyButton.textContent = "Kopyalandı";
+      } catch {
+        copyButton.textContent = "Kopyalanamadı";
+      }
+      setTimeout(() => {
+        copyButton.textContent = "Kopyala";
+      }, 1500);
+    });
+    head.append(copyButton);
+  }
+  card.append(head);
+
+  const text = document.createElement("p");
+  text.className = "open-address-text";
+  text.textContent = address || "Adres ve Konum bölümündeki alanlar doldurulduğunda açık adres metni burada otomatik oluşacaktır.";
+  if (!address) text.classList.add("open-address-empty");
+  card.append(text);
+  return card;
+}
+
+// ==========================================================
+//  Malikler Tablosu (14 - Açıklamalar bölümü)
+//  Hisse yasal/mevcut durum değerleri, değerleme bölümündeki toplam
+//  yasal/mevcut değerlerden hisse oranına göre otomatik hesaplanır.
+//  Toplam değer henüz girilmemişse hisse değeri 0 gösterilir.
+// ==========================================================
+function getMaliklerOwnerRows() {
+  return (state.tables.title || []).filter((row) => String(row?.c0 || "").trim());
+}
+
+function parseOwnerShareComponent(value) {
+  const number = Number.parseFloat(String(value || "").replace(/\s/g, "").replace(",", "."));
+  return Number.isFinite(number) ? number : Number.NaN;
+}
+
+function parseOwnerShareRatioValue(shareText) {
+  const text = cleanTakbisValue(shareText);
+  if (!text) return Number.NaN;
+  if (/tam/i.test(text)) return 1;
+  const [payRaw, paydaRaw] = splitFirst(text, "/");
+  const pay = parseOwnerShareComponent(payRaw);
+  if (paydaRaw) {
+    const payda = parseOwnerShareComponent(paydaRaw);
+    return Number.isFinite(pay) && Number.isFinite(payda) && payda !== 0 ? pay / payda : Number.NaN;
+  }
+  return Number.isFinite(pay) ? pay : Number.NaN;
+}
+
+function formatMaliklerShareValue(value) {
+  if (!Number.isFinite(value) || value <= 0) return "0";
+  return `${Math.round(value).toLocaleString("tr-TR")} TL`;
+}
+
+function buildMaliklerTableRows() {
+  const owners = getMaliklerOwnerRows();
+  const legalTotal = parseValuationNumber(state.fields.legalValue);
+  const currentTotal = parseValuationNumber(state.fields.currentValue);
+  const ownerCount = owners.length;
+  return owners.map((row) => {
+    const share = cleanTakbisValue(row.c1);
+    let ratio = parseOwnerShareRatioValue(share);
+    if (!Number.isFinite(ratio) && ownerCount === 1) ratio = 1;
+    const legalShareValue = Number.isFinite(ratio) && Number.isFinite(legalTotal) ? ratio * legalTotal : 0;
+    const currentShareValue = Number.isFinite(ratio) && Number.isFinite(currentTotal) ? ratio * currentTotal : 0;
+    return {
+      malik: String(row.c0 || "").trim().toLocaleUpperCase("tr-TR"),
+      share: share || "-",
+      reason: String(row.c2 || "").trim() || "-",
+      deedDate: (dateIsoToTr(String(row.c3 || "").trim()) || "").trim() || "-",
+      journal: String(row.c4 || "").trim() || "-",
+      legalShareValue,
+      currentShareValue,
+    };
+  });
+}
+
+function hasMaliklerTableData() {
+  return getMaliklerOwnerRows().length > 0;
+}
+
+function buildMaliklerTableText() {
+  const rows = buildMaliklerTableRows();
+  if (!rows.length) return "";
+  const header = ["Malik / Hissedar", "Hisse Payı", "Edinme Sebebi", "Tapu Tarihi", "Yevmiye", "Hisse Yasal Durum Değeri", "Hisse Mevcut Durum Değeri"].join(" | ");
+  const lines = rows.map((row) => [
+    row.malik,
+    row.share,
+    row.reason,
+    row.deedDate,
+    row.journal,
+    formatMaliklerShareValue(row.legalShareValue),
+    formatMaliklerShareValue(row.currentShareValue),
+  ].join(" | "));
+  return [header, ...lines].join("\n");
+}
+
+function createMaliklerTablePanel() {
+  const rows = buildMaliklerTableRows();
+  const panel = document.createElement("div");
+  panel.className = "subsection malikler-table-panel";
+
+  const head = document.createElement("div");
+  head.className = "subsection-title-row";
+  const title = document.createElement("h4");
+  title.textContent = "Malikler Tablosu";
+  head.append(title);
+  if (rows.length) {
+    const copyButton = document.createElement("button");
+    copyButton.type = "button";
+    copyButton.className = "valuation-method-copy-button";
+    copyButton.textContent = "Kopyala";
+    copyButton.title = "Malikler tablosunu metin olarak kopyala";
+    copyButton.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(buildMaliklerTableText());
+        copyButton.textContent = "Kopyalandı";
+      } catch {
+        copyButton.textContent = "Kopyalanamadı";
+      }
+      setTimeout(() => {
+        copyButton.textContent = "Kopyala";
+      }, 1500);
+    });
+    head.append(copyButton);
+  }
+  panel.append(head);
+
+  const hint = document.createElement("p");
+  hint.className = "subtle-text";
+  hint.textContent = "Tapu ve Mülkiyet bölümündeki malikler listelenir. Hisse yasal/mevcut durum değerleri, değerleme bölümündeki toplam değerlerden hisse oranına göre otomatik hesaplanır (toplam değer girilmemişse 0).";
+  panel.append(hint);
+
+  if (!rows.length) {
+    const note = document.createElement("p");
+    note.className = "subtle-text malikler-empty-note";
+    note.textContent = "Henüz malik girilmedi. Tapu ve Mülkiyet bölümünden malik eklendiğinde tablo burada otomatik oluşacaktır.";
+    panel.append(note);
+    return panel;
+  }
+
+  const shell = document.createElement("div");
+  shell.className = "table-shell malikler-table-shell";
+  const table = document.createElement("table");
+  table.className = "malikler-table";
+  table.innerHTML = `
+    <thead>
+      <tr>
+        <th>Malik / Hissedar</th>
+        <th>Hisse Payı</th>
+        <th>Edinme Sebebi</th>
+        <th>Tapu Tarihi</th>
+        <th>Yevmiye</th>
+        <th class="malikler-value-col">Hisse Yasal Durum Değeri</th>
+        <th class="malikler-value-col">Hisse Mevcut Durum Değeri</th>
+      </tr>
+    </thead>
+  `;
+  const tbody = document.createElement("tbody");
+  rows.forEach((row) => {
+    const tr = document.createElement("tr");
+    [row.malik, row.share, row.reason, row.deedDate, row.journal].forEach((value) => {
+      const td = document.createElement("td");
+      td.textContent = value;
+      tr.append(td);
+    });
+    const legalCell = document.createElement("td");
+    legalCell.className = "malikler-value-col";
+    legalCell.textContent = formatMaliklerShareValue(row.legalShareValue);
+    const currentCell = document.createElement("td");
+    currentCell.className = "malikler-value-col";
+    currentCell.textContent = formatMaliklerShareValue(row.currentShareValue);
+    tr.append(legalCell, currentCell);
+    tbody.append(tr);
+  });
+  table.append(tbody);
+
+  const legalSum = rows.reduce((sum, row) => sum + (Number.isFinite(row.legalShareValue) ? row.legalShareValue : 0), 0);
+  const currentSum = rows.reduce((sum, row) => sum + (Number.isFinite(row.currentShareValue) ? row.currentShareValue : 0), 0);
+  const tfoot = document.createElement("tfoot");
+  const totalRow = document.createElement("tr");
+  totalRow.className = "malikler-total-row";
+  const totalLabel = document.createElement("th");
+  totalLabel.colSpan = 5;
+  totalLabel.textContent = "TOPLAM";
+  const legalTotalCell = document.createElement("td");
+  legalTotalCell.className = "malikler-value-col";
+  legalTotalCell.textContent = formatMaliklerShareValue(legalSum);
+  const currentTotalCell = document.createElement("td");
+  currentTotalCell.className = "malikler-value-col";
+  currentTotalCell.textContent = formatMaliklerShareValue(currentSum);
+  totalRow.append(totalLabel, legalTotalCell, currentTotalCell);
+  tfoot.append(totalRow);
+  table.append(tfoot);
+
+  shell.append(table);
+  panel.append(shell);
+  return panel;
 }
 
 function getFilledEncumbranceRows(tableKey) {
@@ -11037,7 +17374,10 @@ function getEncumbranceReportTableKey(record) {
 function parseTakbisAnnotationRecord(record) {
   const parsed = extractTakbisAnnotationType(record?.description || "", record?.type || "");
   const annotationType = normalizeTakbisAnnotationReportType(parsed.type, parsed.description);
-  const amountSource = getTakbisAnnotationSearchSource(record, parsed.description);
+  const amountSource = stripTakbisJournalNoFromAmountSource(
+    getTakbisAnnotationSearchSource(record, parsed.description),
+    record?.journalNo,
+  );
   const shouldReadAmount = isTakbisLienType(annotationType) && !shouldSkipTakbisLienAmount(annotationType, amountSource);
   const lienAmount = shouldReadAmount
     ? extractTakbisLienAmount(amountSource)
@@ -11064,7 +17404,10 @@ function normalizeTakbisAnnotationTableRow(row) {
     && !shouldSkipTakbisLienAmount(annotationType, row.__amountSource || row.c1 || "");
   row.__requiresLienAmount = requiresLienAmount ? "1" : "";
   if (requiresLienAmount && !row.c2) {
-    const amountSource = getTakbisAnnotationAmountSource(row, annotationType);
+    const amountSource = stripTakbisJournalNoFromAmountSource(
+      getTakbisAnnotationAmountSource(row, annotationType),
+      row.c4 || row.__journalNo,
+    );
     row.__amountSource = amountSource;
     row.c2 = extractTakbisLienAmount(amountSource);
   }
@@ -11081,6 +17424,18 @@ function stringifyTakbisSourceValue(value) {
     return Object.values(value).map(stringifyTakbisSourceValue).filter(Boolean).join(" ");
   }
   return cleanTakbisValue(value);
+}
+
+// Satır birleştirme sırasında tarih-yevmiye sütunundan tutar metnine karışan
+// yevmiye numarasını bağımsız token olarak ayıklar ("Borç : 4101 2000000 TL"
+// veya "Borç : 4500000 11760 TL"); yevmiye tutara yapışıp trilyonluk sahte
+// tutarlar üretmesin. Ondalıklı sayıların parçaları (örn. "11760.00") korunur.
+function stripTakbisJournalNoFromAmountSource(value, journalNo) {
+  const text = String(value || "");
+  const journal = cleanTakbisValue(journalNo);
+  if (!text || !/^\d{1,8}$/.test(journal)) return text;
+  const pattern = new RegExp(`(^|\\s)${journal}(?=\\s|$)`, "g");
+  return text.replace(pattern, " ").replace(/\s+/g, " ").trim();
 }
 
 function getTakbisAnnotationSearchSource(item, parsedDescription = "") {
@@ -11130,7 +17485,10 @@ function getTakbisAnnotationAmountSource(row, annotationType = "") {
     .filter((record) => getEncumbranceReportTableKey(record) === "encumbranceAnnotations")
     .map((record) => {
       const parsed = extractTakbisAnnotationType(record?.description || "", record?.type || "");
-      const source = getTakbisAnnotationSearchSource(record, parsed.description);
+      const source = stripTakbisJournalNoFromAmountSource(
+        getTakbisAnnotationSearchSource(record, parsed.description),
+        record?.journalNo,
+      );
       const recordType = normalizeTakbisAnnotationReportType(parsed.type || record?.type || "", parsed.description || record?.description || "");
       return {
         record,
@@ -11206,6 +17564,7 @@ function cleanTakbisAnnotationType(value) {
 
 function normalizeTakbisAnnotationReportType(typeValue, descriptionValue = "") {
   const type = cleanTakbisAnnotationType(typeValue);
+  const foldedType = foldTurkish(type);
   const foldedAll = foldTurkish(`${type} ${descriptionValue}`);
   if (/KONKORDATO/.test(foldedAll)) {
     return "Konkordato \u015eerhi";
@@ -11213,7 +17572,18 @@ function normalizeTakbisAnnotationReportType(typeValue, descriptionValue = "") {
   if (/(?:IIK|IIC|I\.I\.K|IICRA)\s*150\s*\/?\s*C|150\s*\/?\s*C/.test(foldedAll)) {
     return "\u0130\u0130K 150/C \u015eerhi";
   }
-  if (/HACIZ/.test(foldedAll)) {
+  // "\u0130htiyati Tedbir" bir haciz de\u011fildir: tip etiketi tedbir i\u00e7eriyorsa veya
+  // metinde "ihtiyati tedbir" ge\u00e7ip "ihtiyati haciz" ge\u00e7miyorsa haciz
+  // s\u0131n\u0131flamas\u0131 yap\u0131lmaz.
+  const mentionsPrecautionarySeizure = /IHTIYATI\s+HAC(?:IZ|Z)/.test(foldedAll);
+  if (/TEDBIR/.test(foldedType)) {
+    return toTitleCaseTr(type);
+  }
+  if (/IHTIYATI\s+TEDBIR/.test(foldedAll) && !mentionsPrecautionarySeizure) {
+    return "\u0130htiyati Tedbir";
+  }
+  // "Haciz" katlan\u0131nca "HACIZ", "Haczi/Haczin" ise "HACZ..." olur; ikisi de haciz say\u0131l\u0131r.
+  if (/HACIZ|HACZ/.test(foldedAll)) {
     if (/IHTIYATI/.test(foldedAll)) {
       return "\u0130htiyati Haciz";
     }
@@ -11226,7 +17596,10 @@ function normalizeTakbisAnnotationReportType(typeValue, descriptionValue = "") {
 }
 
 function isTakbisLienType(typeValue) {
-  return /HACIZ/.test(foldTurkish(typeValue || ""));
+  const folded = foldTurkish(typeValue || "");
+  // "Kamu Haczi" gibi tiplerde katlama "HACZI" \u00fcretir; tedbir \u015ferhleri haciz de\u011fildir.
+  if (/TEDBIR/.test(folded)) return false;
+  return /HACIZ|HACZ/.test(folded);
 }
 
 function extractTakbisDebtToCurrencyAmount(value) {
@@ -11824,6 +18197,7 @@ function resetTakbisTitleDerivedFields() {
     "registryVolume",
     "registryPage",
     "mainPropertyQuality",
+    "titleAttachment",
     "titleDate",
     "journalNo",
     "titleOwnershipKind",
@@ -11856,6 +18230,7 @@ function applyEkbFieldsToReport(options = {}) {
     if (!value) return;
     setFieldFromSource("ekb", key, value, options);
   });
+  refreshEkbExplanationFromCurrentFields("hasEkb");
 }
 
 function resetEkbDerivedFields() {
@@ -11865,6 +18240,7 @@ function resetEkbDerivedFields() {
     "ekbValidUntil",
     "ekbEnergyClass",
     "ekbEmissionClass",
+    "ekbExplanation",
   ].forEach((key) => {
     state.fields[key] = "";
   });
@@ -11943,6 +18319,36 @@ function resetImarDerivedFields() {
   state.sourceConflicts.imar = {};
 }
 
+function refreshMissingImarPlanDateFromRawText() {
+  const rawText = state.sourceValues.imar?.rawText || "";
+  if (!rawText || state.sourceValues.imar?.fields?.planTarihi) return false;
+  const parsed = parseImarFields(rawText);
+  if (!parsed.planTarihi) return false;
+  state.sourceValues.imar.fields = {
+    ...(state.sourceValues.imar.fields || {}),
+    planTarihi: parsed.planTarihi,
+  };
+  if (!state.fields.planDate) {
+    state.fields.planDate = dateTrToIso(parsed.planTarihi) || parsed.planTarihi;
+  }
+  return true;
+}
+
+function normalizeImarPlanNameForReport(value) {
+  const text = normalizeReportTitleText(value || "").trim();
+  if (!text) return "";
+  if (!/IMAR\s+PLAN/.test(foldTurkish(text))) return text;
+  const suffix = String(text.match(/\S+\s+\S+\s*$/)?.[0] || "");
+  if (!/^IMAR\s+PLAN[II]?$/i.test(foldTurkish(suffix))) return text;
+  return `${text.slice(0, text.length - suffix.length).trimEnd()} İmar Planı`.trim();
+}
+
+function normalizeImarLegendForReport(value) {
+  const text = normalizeReportTitleText(value || "").trim();
+  if (!text) return "";
+  return text.replace(/\s+Alanı\s*$/i, "");
+}
+
 function buildImarPlanningNote(fields = {}) {
   const current = state.fields || {};
   const data = {
@@ -11950,9 +18356,9 @@ function buildImarPlanningNote(fields = {}) {
     inspectionDate: firstFilled(dateIsoToTr(current.municipalityInspectionDate), current.municipalityInspectionDate),
     planScale: firstFilled(fields.planOlcegi, current.planScale),
     planDate: firstFilled(fields.planTarihi, dateIsoToTr(current.planDate)),
-    planName: firstFilled(fields.planAdi, current.planName),
+    planName: normalizeImarPlanNameForReport(firstFilled(fields.planAdi, current.planName)),
     order: firstFilled(fields.insaatNizami, current.order),
-    legend: firstFilled(fields.planFonk, current.legend),
+    legend: normalizeImarLegendForReport(firstFilled(fields.planFonk, current.legend)),
     roadSetback: normalizeYesNoChoice(firstFilled(fields.yolaTerk, current.roadSetback)),
     roadSetbackAmount: firstFilled(fields.terkMiktari, current.roadSetbackAmount),
     roadSetbackBuildingImpact: normalizeYesNoChoice(firstFilled(fields.yapidanEtkilenme, current.roadSetbackBuildingImpact)),
@@ -12033,10 +18439,16 @@ function buildImarPlanningNote(fields = {}) {
     mainText += conditions.length ? `, ${conditions.join(", ")} yapılaşma koşullarına sahiptir.` : ".";
     parts.push(mainText);
 
-    const roadSetbackText = hasPlanningIssue || useDetailedStatus
+    const shouldIncludeRoadSetbackText = (data.roadSetback === "Hayır" && isThousandScalePlan(data.planScale))
+      || hasPlanningIssue
+      || useDetailedStatus;
+    const roadSetbackText = shouldIncludeRoadSetbackText
       ? composeImarRoadSetbackSentence(data)
       : "";
     if (roadSetbackText) parts.push(roadSetbackText);
+    if (shouldIncludeIsbankUrbanNoRiskAreaNote(data)) {
+      parts.push("KENTSEL DÖNÜŞÜM(RİSKLİ ALAN) BÖLGESİNDE KALMAMAKTADIR.");
+    }
     if (data.planRestrictionNote) parts.push(data.planRestrictionNote);
   }
 
@@ -12126,9 +18538,23 @@ function composeImarRoadSetbackSentence(data) {
     return `Taşınmazın yer aldığı parselin yola/parka${amount} terki bulunmaktadır.${impact}`;
   }
   if (data.roadSetback === "Hayır") {
+    if (isThousandScalePlan(data.planScale)) return "Taşınmazın Yola/Parka terki bulunmamaktadır.";
     return "Taşınmazın yer aldığı parselin yola/parka terki bulunmamaktadır.";
   }
   return "";
+}
+
+function isThousandScalePlan(value) {
+  const text = String(value || "").trim();
+  if (!text) return false;
+  return /^1\s*\/\s*1\.?000\b/.test(text) || /^1\s*\/\s*1000\b/.test(text);
+}
+
+function shouldIncludeIsbankUrbanNoRiskAreaNote(data) {
+  return isIsbankSelectedForReport()
+    && data.roadSetback === "Hayır"
+    && data.urbanTransformationArea === "Hayır"
+    && isThousandScalePlan(data.planScale);
 }
 
 function composeImarPlanningStatusParagraphs(data) {
@@ -12218,7 +18644,7 @@ function formatImarSquareMeter(value) {
 }
 
 function refreshTransportAfterAddressChange() {
-  const road = getNearbyArteries(state.sourceValues.nearbyPlaces?.places || [])
+  const road = getAllMainArteryPlacesWithUser(state.sourceValues.nearbyPlaces?.places || [])
     .find((item) => item.id === state.fields.mainArteryId);
   if (road) {
     updateTransportFromMainArtery(road);
@@ -12489,7 +18915,7 @@ function createEkbSourceSummary() {
   wrapper.innerHTML = `
     <div>
       <h4>EKB Okuma Sonucu</h4>
-      <p>${parsed ? `${escapeHtml(parsed.fileName || "Dosya")} okundu.` : "EKB PDF veya görsel yüklendiğinde belge no, tarihler ve sınıflar burada görünecek."}</p>
+      <p>${parsed ? `${escapeHtml(parsed.fileName || "Dosya")} okundu.` : "EKB PDF yüklendiğinde belge no, tarihler ve sınıflar burada görünecek."}</p>
     </div>
     <div class="source-chip-row">
       <span>Belge no: ${escapeHtml(fields.ekbDocumentNo || "-")}</span>
@@ -12569,13 +18995,16 @@ function createImarSourceSummary() {
 function createNearbyEnvironmentTools(options = {}) {
   const wrapper = document.createElement("div");
   wrapper.className = options.compact ? "nearby-tools nearby-tools-inline" : "nearby-tools";
+  refreshUserPoisForCurrentLocationOnce();
   const source = state.sourceValues.nearbyPlaces || {};
-  const places = source.places || [];
+  const places = getAllNearbyPlacesWithUser(source.places || []);
   const error = formatNearbyError(state.uploadErrors?.nearbyPlaces);
   const loadingText = source.loading ? "Çevre taraması sürüyor..." : `${places.length} öğe bulundu`;
   const statusText = places.length ? loadingText : "KML yüklendiğinde önce 500 m, gerekirse 1000 m çevre otomatik taranacak.";
   const buttonDisabled = !getSelectedMapPoint() || source.loading;
   const selectedIds = new Set(source.selectedIds || []);
+  const displayPlaces = getNearbySelectionDisplayPlaces(source);
+  const displaySelectedCount = displayPlaces.filter((place) => selectedIds.has(place.id)).length;
 
   wrapper.innerHTML = `
     <div class="nearby-inline-head">
@@ -12584,7 +19013,7 @@ function createNearbyEnvironmentTools(options = {}) {
     </div>
     <div class="kml-summary">
       <span>${statusText}</span>
-      <span>${selectedIds.size} öğe seçili</span>
+      <span>${displaySelectedCount} öğe seçili</span>
       ${source.center ? `<span>Merkez: ${escapeHtml(source.center.lat)}, ${escapeHtml(source.center.lng)}</span>` : ""}
       ${error ? `<span class="warning-text">${escapeHtml(error)}</span>` : ""}
     </div>
@@ -12598,7 +19027,6 @@ function createNearbyEnvironmentTools(options = {}) {
     status.textContent = error;
     wrapper.insertBefore(status, list);
   }
-  const displayPlaces = getNearbyDisplayPlaces(places);
   if (!displayPlaces.length) {
     const empty = document.createElement("p");
     empty.className = "muted-note";
@@ -12695,6 +19123,202 @@ async function fetchNearbyPlacesForCurrentLocation(options = {}) {
       nearbyPlaces: error.message || "Yakın çevre verileri okunamadı.",
     };
   }
+}
+
+function getAllNearbyPlacesWithUser(places = []) {
+  const map = new Map();
+  [...getUserNearbyPlaces(), ...places].forEach((place) => {
+    if (!place?.id) return;
+    map.set(place.id, place);
+  });
+  return [...map.values()];
+}
+
+function getUserNearbyPlaces() {
+  return (state.sourceValues.userNearbyPlaces?.places || [])
+    .filter((place) => place.category === "user")
+    .filter((place) => isUserNearbyPlaceInAddressRadius(place))
+    .sort((a, b) => a.distance - b.distance);
+}
+
+function isUserNearbyPlaceInAddressRadius(place = {}) {
+  const distance = Number(place.distance);
+  return Number.isFinite(distance) && distance <= userNearbyRadiusMeters;
+}
+
+function getUserMainArteryPlaces() {
+  return (state.sourceValues.userNearbyPlaces?.places || [])
+    .filter((place) => place.category === "user-artery")
+    .sort((a, b) => a.distance - b.distance);
+}
+
+function getAllMainArteryPlacesWithUser(places = []) {
+  const map = new Map();
+  [...getUserMainArteryPlaces(), ...getNearbyArteries(places)].forEach((place) => {
+    if (!place?.id) return;
+    map.set(place.id, place);
+  });
+  return [...map.values()].sort((a, b) => a.distance - b.distance);
+}
+
+function getNearbySelectionDisplayPlaces(source = state.sourceValues.nearbyPlaces || {}) {
+  const allUserPlaces = getUserNearbyPlaces();
+  const usefulPlaceCount = [...allUserPlaces, ...(source.places || [])]
+    .filter((place) => importantNearbyCategories.has(place.category) && !isSettlementLikeNearbyPlace(place))
+    .length;
+  const userPlaces = usefulPlaceCount >= nearbySettlementFallbackMinUsefulCount
+    ? allUserPlaces.filter((place) => !isSettlementLikeNearbyPlace(place))
+    : allUserPlaces;
+  const userIds = new Set(userPlaces.map((place) => place.id));
+  const autoPlaces = getNearbyDisplayPlaces(source.places || [], source.scanCycle || 0)
+    .filter((place) => !userIds.has(place.id));
+  return [...userPlaces, ...autoPlaces];
+}
+
+function isSettlementLikeNearbyPlace(place) {
+  const name = String(place?.name || "");
+  return place?.category === "settlements" || /\b(?:mah\.?|mahallesi|mahalle|köyü|koyu|köy|koy)\b/i.test(name);
+}
+
+function refreshUserPoisForCurrentLocationOnce() {
+  const point = getSelectedMapPoint();
+  if (!point) return;
+  const key = `${Number(point[0]).toFixed(4)},${Number(point[1]).toFixed(4)}`;
+  if (state.sourceValues.userNearbyPlaces?.loadedFor === key || state.sourceValues.userNearbyPlaces?.loading) return;
+  refreshUserPoisFromServer({ loadedFor: key }).catch(() => {});
+}
+
+async function refreshUserPoisFromServer(options = {}) {
+  const point = getSelectedMapPoint();
+  if (!point) return [];
+  state.sourceValues.userNearbyPlaces = {
+    ...(state.sourceValues.userNearbyPlaces || {}),
+    loading: true,
+  };
+  try {
+    const response = await fetch("/api/user-pois");
+    const data = await response.json();
+    const places = (data.pois || [])
+      .map((poi) => normalizeUserPoiAsNearbyPlace(poi, point))
+      .filter(Boolean)
+      .sort((a, b) => a.distance - b.distance);
+    state.sourceValues.userNearbyPlaces = {
+      places,
+      loadedFor: options.loadedFor || `${Number(point[0]).toFixed(4)},${Number(point[1]).toFixed(4)}`,
+      loading: false,
+    };
+    if (options.select) {
+      const selected = new Set(state.sourceValues.nearbyPlaces?.selectedIds || []);
+      places
+        .filter((place) => place.category !== "user" || isUserNearbyPlaceInAddressRadius(place))
+        .forEach((place) => selected.add(place.id));
+      state.sourceValues.nearbyPlaces = {
+        ...(state.sourceValues.nearbyPlaces || {}),
+        selectedIds: options.userOnly
+          ? places.filter((place) => place.category === "user" && isUserNearbyPlaceInAddressRadius(place)).map((place) => place.id)
+          : [...selected],
+      };
+    }
+    updateNearbyFieldFromSelection();
+    return places;
+  } catch (error) {
+    state.sourceValues.userNearbyPlaces = {
+      ...(state.sourceValues.userNearbyPlaces || {}),
+      loading: false,
+      error: error.message || String(error),
+    };
+    return [];
+  }
+}
+
+function normalizeUserPoiAsNearbyPlace(poi, point) {
+  const lat = Number(poi?.lat);
+  const lng = Number(poi?.lng);
+  const name = cleanupPlaceName(poi?.name || "");
+  const category = poi?.category === "user-artery" ? "user-artery" : "user";
+  if (!name || !Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  return {
+    id: poi.id || `user-${lat}-${lng}-${name}`,
+    name,
+    category,
+    source: category === "user-artery" ? "Kullanıcı Ulaşım Arteri" : "Kullanıcı",
+    lat,
+    lng,
+    distance: calculateDistanceMeters(point[0], point[1], lat, lng),
+  };
+}
+
+async function saveUserPoiFromMap(input, statusElement) {
+  const point = getSelectedMapPoint();
+  const name = normalizeReportTitleText(input?.value || "").trim();
+  if (!point) {
+    if (statusElement) statusElement.textContent = "Önce haritada koordinat seçin.";
+    return;
+  }
+  if (!name) {
+    if (statusElement) statusElement.textContent = "Nokta adını yazın.";
+    return;
+  }
+  if (statusElement) statusElement.textContent = "Kaydediliyor...";
+  const response = await fetch("/api/user-pois", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, lat: point[0], lng: point[1] }),
+  });
+  const data = await response.json();
+  if (!response.ok || data.ok === false) {
+    if (statusElement) statusElement.textContent = data.error || "Kaydedilemedi.";
+    return;
+  }
+  if (input) input.value = "";
+  await refreshUserPoisFromServer({ force: true });
+  const selected = new Set(state.sourceValues.nearbyPlaces?.selectedIds || []);
+  if (data.poi?.id) selected.add(data.poi.id);
+  state.sourceValues.nearbyPlaces = {
+    ...(state.sourceValues.nearbyPlaces || {}),
+    selectedIds: [...selected],
+  };
+  updateNearbyFieldFromSelection();
+  autosave();
+  if (statusElement) statusElement.textContent = "Kaydedildi.";
+  renderSection();
+}
+
+async function saveUserMainArteryFromMap(input, statusElement) {
+  const point = getSelectedMapPoint();
+  const name = normalizeReportTitleText(input?.value || "").trim();
+  if (!point) {
+    if (statusElement) statusElement.textContent = "Önce haritada koordinat seçin.";
+    return;
+  }
+  if (!name) {
+    if (statusElement) statusElement.textContent = "Arter adını yazın.";
+    return;
+  }
+  if (statusElement) statusElement.textContent = "Ulaşım arteri kaydediliyor...";
+  const response = await fetch("/api/user-pois", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, lat: point[0], lng: point[1], category: "user-artery" }),
+  });
+  const data = await response.json();
+  if (!response.ok || data.ok === false) {
+    if (statusElement) statusElement.textContent = data.error || "Ulaşım arteri kaydedilemedi.";
+    return;
+  }
+  if (input) input.value = "";
+  await refreshUserPoisFromServer({ force: true });
+  const road = getUserMainArteryPlaces().find((place) => place.id === data.poi?.id);
+  if (road) {
+    state.fields.mainArteryId = road.id;
+    state.sourceValues.nearbyArtery = state.sourceValues.nearbyArtery || {};
+    setFieldFromSource("nearbyArtery", "mainArtery", road.name, { force: true });
+    updateTransportFromMainArtery(road, { force: true });
+    refreshEnvironmentDescriptionFromCurrentFields("mainArtery");
+  }
+  autosave();
+  if (statusElement) statusElement.textContent = "Ulaşım arteri kaydedildi.";
+  renderSection();
 }
 
 function maybeAutoFetchNearbyPlaces() {
@@ -13139,9 +19763,12 @@ async function applyLocalNeighborhoodForCurrentLocation(options = {}) {
 
 async function applyPostalCodeFromSelectedNeighborhood(options = {}) {
   const rows = await loadLocalNeighborhoodDatabase();
+  // Adres kodu PDF'i çoğu zaman il/ilçe içermediğinden, boşsa TAKBİS'ten (tapu il/
+  // ilçe) yedeklenir. Aksi halde mahalle adı başka ildeki bir mahalleyle eşleşip
+  // yanlış posta kodu gelebiliyordu (ör. Panayır → Balıkesir 10442, Soğanlı → 72502).
   const match = findLocalNeighborhoodByAddress({
-    city: state.fields.city,
-    district: state.fields.district,
+    city: state.fields.city || state.fields.titleCity,
+    district: state.fields.district || state.fields.titleDistrict,
     neighborhood: state.fields.neighborhood,
   }, rows);
   if (!match?.postalCode) return false;
@@ -13297,8 +19924,11 @@ function findLocalNeighborhoodByAddress(address, rows) {
   const districtKey = normalizeLocalPlaceKey(address.district);
   const neighborhoodKey = normalizeLocalNeighborhoodKey(address.neighborhood);
   if (!neighborhoodKey) return null;
+  // İl bilinmiyorsa mahalle-adı-tek-başına eşleşmesi güvenilmez (aynı mahalle adı
+  // birden çok ilde olabilir → yanlış posta kodu). Bu yüzden il olmadan eşleşme yok.
+  if (!cityKey) return null;
   const candidates = rows.filter((row) => {
-    if (cityKey && row.cityKey !== cityKey) return false;
+    if (row.cityKey !== cityKey) return false;
     if (districtKey && row.districtKey !== districtKey) return false;
     return row.neighborhoodKey === neighborhoodKey;
   });
@@ -13813,6 +20443,10 @@ function getNearbyDisplayPlaces(places, scanCycle = state.sourceValues.nearbyPla
       const priorityDiff = (nearbyCategoryPriority[a.category] ?? 99) - (nearbyCategoryPriority[b.category] ?? 99);
       return priorityDiff || a.distance - b.distance;
     });
+  const nonSettlementCandidates = candidates.filter((place) => !isSettlementLikeNearbyPlace(place));
+  if (nonSettlementCandidates.length >= nearbySettlementFallbackMinUsefulCount) {
+    candidates = nonSettlementCandidates;
+  }
   if (!candidates.length) {
     candidates = (places || [])
       .filter((place) => place.category !== "arteries")
@@ -13830,9 +20464,11 @@ function getNearbyDisplayPlaces(places, scanCycle = state.sourceValues.nearbyPla
 }
 
 function getAutoNearbySelectedIds(places, previousSelected, validIds, options = {}) {
-  const kept = [...previousSelected].filter((id) => validIds.has(id));
+  const displayPlaces = getNearbyDisplayPlaces(places, options.scanCycle || 0);
+  const displayIds = new Set(displayPlaces.map((place) => place.id));
+  const kept = [...previousSelected].filter((id) => validIds.has(id) && displayIds.has(id));
   if (kept.length && !options.rotate) return kept.slice(0, nearbyAutoLimit);
-  return getNearbyDisplayPlaces(places, options.scanCycle || 0).map((place) => place.id);
+  return displayPlaces.map((place) => place.id);
 }
 
 function hasRequiredNearbyCoverage(places) {
@@ -13864,7 +20500,7 @@ function toggleNearbySelection(id, checked) {
 function updateNearbyFieldFromSelection() {
   const source = state.sourceValues.nearbyPlaces || {};
   const selected = new Set(source.selectedIds || []);
-  const places = (source.places || []).filter((place) => selected.has(place.id)).sort((a, b) => a.distance - b.distance);
+  const places = getNearbySelectionDisplayPlaces(source).filter((place) => selected.has(place.id)).sort((a, b) => a.distance - b.distance);
   state.fields.nearby = buildNearbyReportText(places);
   refreshEnvironmentDescriptionFromCurrentFields("nearby");
 }
@@ -13880,7 +20516,7 @@ function getNearbyArteries(places) {
 }
 
 function autoSelectMainArtery(places) {
-  const roads = getNearbyArteries(places);
+  const roads = getAllMainArteryPlacesWithUser(places);
   if (!roads.length) return;
   const currentId = state.fields.mainArteryId || "";
   const stillValid = roads.some((road) => road.id === currentId);
@@ -13896,7 +20532,7 @@ function autoSelectMainArtery(places) {
 }
 
 function selectMainArtery(id, options = {}) {
-  const roads = getNearbyArteries(state.sourceValues.nearbyPlaces?.places || []);
+  const roads = getAllMainArteryPlacesWithUser(state.sourceValues.nearbyPlaces?.places || []);
   const road = roads.find((item) => item.id === id);
   if (!road) return;
 
@@ -14053,7 +20689,11 @@ function parseKml(text) {
   const fields = {
     city: readKmlExtendedValue(extended, ["İl", "Il", "il", "IL"]),
     district: readKmlExtendedValue(extended, ["İlçe", "Ilce", "ilce", "ILCE"]),
-    titleQuality: firstValue(extended, ["Nitelik", "nitelik", "NITELIK"]),
+    // KML "Nitelik" değeri parselin (ana taşınmazın) niteliğidir; bağımsız bölüm
+    // niteliği değildir. Bu yüzden mainPropertyQuality'e yazılır. Bağımsız bölüm
+    // niteliği (titleQuality) yalnızca TAKBİS boşsa fallback olarak doldurulur
+    // (bkz. applyKmlFieldsToReport) — TAKBİS'ten gelen BB niteliği ezilmez.
+    mainPropertyQuality: firstValue(extended, ["Nitelik", "nitelik", "NITELIK"]),
     blockNo: firstValue(extended, ["Ada", "ada", "ADA"]),
     parcelNo: firstValue(extended, ["ParselNo", "Parsel", "parsel", "PARSEL"]),
     sheetNo: firstValue(extended, ["Pafta", "pafta", "PAFTA"]) || extractPaftaFromText(rawText),
@@ -14393,9 +21033,13 @@ function applyKmlFieldsToReport(options = {}) {
 
   Object.entries(fields).forEach(([key, value]) => {
     if (!value) return;
+    // KML verisi bağımsız bölüm niteliği (titleQuality) ve posta koduna (postalCode)
+    // hiç dokunmaz; bu alanlar yalnızca TAKBİS/adres kaynaklarından gelir.
+    if (key === "titleQuality" || key === "postalCode") return;
     setFieldFromSource("kml", key, value, options);
   });
   applyAdministrativeNeighborhoodFallback("kml", state.sourceValues.kml?.parcelNeighborhood);
+  refreshLandDescriptionFromCurrentFields("landShape");
 }
 
 function applyAdministrativeNeighborhoodFallback(source, value) {
@@ -14498,13 +21142,6 @@ function renderLeafletKmlMap() {
     .addTo(leafletMap)
     .bindPopup(`Seçili konum${parsed?.fields?.sheetNo ? `<br>Pafta: ${escapeHtml(parsed.fields.sheetNo)}` : ""}`);
 
-  leafletSelectedMarker.bindTooltip("KONU TAŞINMAZ", {
-    permanent: true,
-    direction: "left",
-    offset: [-10, -22],
-    className: "subject-map-label",
-  });
-
   leafletSelectedMarker.on("dragend", (event) => {
     const point = event.target.getLatLng();
     updateSelectedCoordinates(point.lat, point.lng);
@@ -14545,9 +21182,9 @@ function isLeafletReady() {
 }
 
 function renderSelectedNearbyMarkers() {
+  if (!isLeafletReady() || !leafletMap) return;
   const places = getMapLabelPlaces().filter((place) => Number.isFinite(place.lat) && Number.isFinite(place.lng));
   places.forEach((place) => {
-    if (!isLeafletReady() || !leafletMap) return;
     const marker = window.L.circleMarker([place.lat, place.lng], {
       radius: 7,
       color: place.category === "arteries" ? "#7f1212" : "#0f6b5d",
@@ -14556,17 +21193,32 @@ function renderSelectedNearbyMarkers() {
       fillOpacity: 0.9,
     }).addTo(leafletMap);
     marker.bindPopup(escapeHtml(place.name));
-    marker.bindTooltip(place.name, {
-      permanent: true,
-      direction: "top",
-      offset: [0, -8],
-      className: "nearby-map-label",
+  });
+  // Etiketler: konu taşınmaz + yakın çevre noktaları çakışma-önleyen leader
+  // etiketleriyle çizilir (yakın konumlarda üst üste binmez).
+  const entries = [];
+  if (leafletSelectedMarker) {
+    entries.push({ kind: "subject", latlng: leafletSelectedMarker.getLatLng(), text: "KONU TAŞINMAZ" });
+  }
+  places.forEach((place) => {
+    entries.push({
+      kind: "place",
+      latlng: [place.lat, place.lng],
+      text: place.name,
+      color: place.category === "arteries" ? "#7f1212" : "#0f6b5d",
     });
   });
+  const leader = renderMapLeaderLabels(leafletMap, window.L, entries);
+  if (leafletSelectedMarker && entries.length) {
+    leafletSelectedMarker.on("drag", () => {
+      entries[0].latlng = leafletSelectedMarker.getLatLng();
+      leader.relayout();
+    });
+  }
 }
 
 function getMapLabelPlaces() {
-  const sourcePlaces = state.sourceValues.nearbyPlaces?.places || [];
+  const sourcePlaces = getAllNearbyPlacesWithUser(state.sourceValues.nearbyPlaces?.places || []);
   const selected = getSelectedNearbyPlaces();
   const arteries = getNearbyArteries(sourcePlaces).slice(0, 5);
   return [...new Map([...arteries, ...selected].map((place) => [place.id, place])).values()];
@@ -14655,7 +21307,7 @@ function createStaticMapProjector(bounds, width, height) {
 function getSelectedNearbyPlaces() {
   const source = state.sourceValues.nearbyPlaces || {};
   const selected = new Set(source.selectedIds || []);
-  return (source.places || []).filter((place) => selected.has(place.id));
+  return getAllNearbyPlacesWithUser(source.places || []).filter((place) => selected.has(place.id));
 }
 
 function normalizeMapMode(mode) {
@@ -14754,10 +21406,7 @@ async function exportMapAsJpeg(triggerButton) {
   await drawExportTiles(context, canvas, topLeft, zoom, "base");
   await drawExportTiles(context, canvas, topLeft, zoom, "labels");
   drawExportKmlPolygon(context, parsed, topLeft, zoom);
-  if (state.settings.mapExportLabels !== false) {
-    drawExportPlaces(context, topLeft, zoom);
-  }
-  drawExportSubject(context, subjectPoint, topLeft, zoom);
+  drawExportLocationLeaderLabels(context, subjectPoint, topLeft, zoom, state.settings.mapExportLabels !== false);
 
   try {
     const link = document.createElement("a");
@@ -14775,10 +21424,7 @@ async function exportMapAsJpeg(triggerButton) {
     try {
       drawExportFallbackBase(context, canvas);
       drawExportKmlPolygon(context, parsed, topLeft, zoom);
-      if (state.settings.mapExportLabels !== false) {
-        drawExportPlaces(context, topLeft, zoom);
-      }
-      drawExportSubject(context, subjectPoint, topLeft, zoom);
+      drawExportLocationLeaderLabels(context, subjectPoint, topLeft, zoom, state.settings.mapExportLabels !== false);
       const fallbackLink = document.createElement("a");
       fallbackLink.download = `harita-konu-tasinmaz-${new Date().toISOString().slice(0, 10)}.jpg`;
       fallbackLink.href = canvas.toDataURL("image/jpeg", 0.92);
@@ -14972,6 +21618,57 @@ function drawExportPlaces(context, topLeft, zoom) {
     const pixel = projectExportPoint(place.lat, place.lng, topLeft, zoom);
     drawExportPointLabel(context, pixel.x, pixel.y, place.name, place.category === "arteries" ? "#7f1212" : "#0f6b5d");
   });
+}
+
+// Konum haritası JPEG export'unda konu taşınmaz + yakın çevre etiketlerini
+// çakışma-önleyen leader etiketleriyle çizer (emsal krokisiyle aynı mantık).
+function drawExportLocationLeaderLabels(context, subjectPoint, topLeft, zoom, includePlaces) {
+  const anchors = [];
+  if (subjectPoint && Number.isFinite(subjectPoint[0]) && Number.isFinite(subjectPoint[1])) {
+    const pixel = projectExportPoint(subjectPoint[0], subjectPoint[1], topLeft, zoom);
+    context.font = "900 30px Arial";
+    anchors.push({
+      kind: "subject",
+      x: pixel.x,
+      y: pixel.y,
+      text: "KONU TAŞINMAZ",
+      w: Math.min(context.measureText("KONU TAŞINMAZ").width + 40, 430),
+      h: 58,
+      font: "900 30px Arial",
+      fill: "#c81e1e",
+      textColor: "#ffffff",
+      borderColor: "#ffffff",
+      markerColor: "#c81e1e",
+      markerRadius: 12,
+    });
+  }
+  if (includePlaces) {
+    getMapLabelPlaces()
+      .filter((place) => Number.isFinite(place.lat) && Number.isFinite(place.lng))
+      .forEach((place) => {
+        const pixel = projectExportPoint(place.lat, place.lng, topLeft, zoom);
+        const color = place.category === "arteries" ? "#7f1212" : "#0f6b5d";
+        context.font = "700 22px Arial";
+        anchors.push({
+          kind: "comparable",
+          x: pixel.x,
+          y: pixel.y,
+          text: place.name,
+          w: Math.min(context.measureText(place.name).width + 24, 420),
+          h: 42,
+          font: "700 22px Arial",
+          fill: "rgba(255, 255, 255, 0.94)",
+          textColor: color,
+          borderColor: color,
+          markerColor: color,
+          markerRadius: 9,
+        });
+      });
+  }
+  if (!anchors.length) return;
+  layoutSketchLabels(anchors, context.canvas.width, context.canvas.height);
+  anchors.forEach((a) => drawSketchLeaderAndMarker(context, a));
+  anchors.forEach((a) => drawSketchLabelBox(context, a));
 }
 
 function drawExportSubject(context, center, topLeft, zoom) {
@@ -15486,6 +22183,953 @@ function copyPlaceholderToken(token, button) {
   }
 }
 
+function createHalkbankRiskCodesPanel() {
+  const panel = document.createElement("div");
+  panel.className = "halkbank-risk-panel";
+
+  if (!globalThis.HalkbankRiskRules) {
+    const warning = document.createElement("p");
+    warning.className = "hint-text";
+    warning.textContent = "Halkbank risk kodu motoru yüklenemedi.";
+    panel.append(warning);
+    return panel;
+  }
+
+  const result = refreshHalkbankRiskCodesFromCurrentState();
+  panel.append(createHalkbankRiskSummary(result));
+  panel.append(createHalkbankRiskTable(result.selected));
+  panel.append(createHalkbankRiskDisabledList());
+  panel.append(createHalkbankRiskManualEditor());
+  panel.append(createHalkbankRiskReportTextBox(result.selected));
+  return panel;
+}
+
+function refreshHalkbankRiskCodesFromCurrentState() {
+  const result = globalThis.HalkbankRiskRules.calculateHalkbankRiskCodes(getHalkbankRiskInput());
+  state.fields.halkbankRiskSelectedCodes = result.selected.map((item) => item.code).join(", ");
+  state.fields.halkbankRiskReportText = globalThis.HalkbankRiskRules.formatHalkbankRiskReportText(result.selected);
+  return result;
+}
+
+function getHalkbankRiskInput() {
+  return {
+    fields: state.fields || {},
+    tables: state.tables || {},
+    disabledCodes: parseHalkbankRiskDisabledCodes(),
+    manualCodes: getHalkbankRiskManualRows(),
+  };
+}
+
+function parseHalkbankRiskDisabledCodes() {
+  return String(state.fields.halkbankRiskDisabledCodes || "")
+    .split(",")
+    .map((code) => code.trim().toUpperCase())
+    .filter(Boolean);
+}
+
+function setHalkbankRiskDisabledCodes(codes = []) {
+  const sorted = globalThis.HalkbankRiskRules?.sortHalkbankRiskCodes
+    ? globalThis.HalkbankRiskRules.sortHalkbankRiskCodes(codes)
+    : codes;
+  state.fields.halkbankRiskDisabledCodes = sorted.join(", ");
+}
+
+function getHalkbankRiskManualRows() {
+  return Array.isArray(state.tables.halkbankRiskManual)
+    ? state.tables.halkbankRiskManual.filter((row) => String(row?.code || "").trim())
+    : [];
+}
+
+function setHalkbankRiskManualRows(rows = []) {
+  state.tables.halkbankRiskManual = rows
+    .map((row) => ({
+      code: String(row?.code || "").trim().toUpperCase(),
+      reason: normalizeReportDescriptionText(row?.reason || "").trim(),
+    }))
+    .filter((row) => row.code);
+}
+
+function createHalkbankRiskSummary(result) {
+  const summary = document.createElement("div");
+  summary.className = "halkbank-risk-summary";
+  const values = [
+    ["Seçilen kod", result.selected.length],
+    ["Manuel kod", getHalkbankRiskManualRows().length],
+    ["Pasif kod", parseHalkbankRiskDisabledCodes().length],
+  ];
+  values.forEach(([label, value]) => {
+    const item = document.createElement("article");
+    const small = document.createElement("span");
+    small.textContent = label;
+    const strong = document.createElement("strong");
+    strong.textContent = String(value);
+    item.append(small, strong);
+    summary.append(item);
+  });
+  return summary;
+}
+
+function createHalkbankRiskTable(items = []) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "halkbank-risk-table-wrap";
+  const table = document.createElement("table");
+  table.className = "halkbank-risk-table";
+  table.innerHTML = `
+    <thead>
+      <tr>
+        <th>Kod</th>
+        <th>Konu</th>
+        <th>Durum</th>
+        <th>Değer Tipi</th>
+        <th>Seçilme Nedeni</th>
+        <th>İşlem</th>
+      </tr>
+    </thead>
+  `;
+  const tbody = document.createElement("tbody");
+  if (!items.length) {
+    const row = document.createElement("tr");
+    const cell = document.createElement("td");
+    cell.colSpan = 6;
+    cell.className = "empty-cell";
+    cell.textContent = "Seçilen risk kodu bulunmuyor.";
+    row.append(cell);
+    tbody.append(row);
+  } else {
+    items.forEach((item) => {
+      const row = document.createElement("tr");
+      row.append(
+        createHalkbankRiskCell(item.code, "risk-code"),
+        createHalkbankRiskCell(item.topic || "-"),
+        createHalkbankRiskCell(item.status || "-"),
+        createHalkbankRiskCell(item.valueType || "-"),
+        createHalkbankRiskCell(item.reason || "-"),
+        createHalkbankRiskActionCell(item),
+      );
+      tbody.append(row);
+    });
+  }
+  table.append(tbody);
+  wrapper.append(table);
+  return wrapper;
+}
+
+function createHalkbankRiskCell(text, className = "") {
+  const cell = document.createElement("td");
+  if (className) cell.className = className;
+  cell.textContent = text;
+  return cell;
+}
+
+function createHalkbankRiskActionCell(item) {
+  const cell = document.createElement("td");
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "halkbank-risk-passive-button";
+  button.textContent = "Pasife al";
+  button.addEventListener("click", () => {
+    const disabled = new Set(parseHalkbankRiskDisabledCodes());
+    disabled.add(item.code);
+    setHalkbankRiskDisabledCodes(Array.from(disabled));
+    saveState();
+    renderSection();
+  });
+  cell.append(button);
+  return cell;
+}
+
+function createHalkbankRiskDisabledList() {
+  const codes = parseHalkbankRiskDisabledCodes();
+  const box = document.createElement("div");
+  box.className = "halkbank-risk-disabled-list";
+  const title = document.createElement("h4");
+  title.textContent = "Pasife Alınan Kodlar";
+  box.append(title);
+  if (!codes.length) {
+    const empty = document.createElement("p");
+    empty.className = "hint-text";
+    empty.textContent = "Pasife alınan kod yok.";
+    box.append(empty);
+    return box;
+  }
+  codes.forEach((code) => {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.textContent = `${code} geri al`;
+    chip.addEventListener("click", () => {
+      setHalkbankRiskDisabledCodes(codes.filter((item) => item !== code));
+      saveState();
+      renderSection();
+    });
+    box.append(chip);
+  });
+  return box;
+}
+
+function createHalkbankRiskManualEditor() {
+  const box = document.createElement("div");
+  box.className = "halkbank-risk-manual";
+  const title = document.createElement("h4");
+  title.textContent = "Manuel Risk Kodu";
+  const controls = document.createElement("div");
+  controls.className = "halkbank-risk-manual-controls";
+  const select = document.createElement("select");
+  select.append(new Option("Kod seçiniz", ""));
+  getHalkbankRiskDefinitions().forEach((row) => {
+    select.append(new Option(`${row.code} - ${row.status || row.topic || ""}`.trim(), row.code));
+  });
+  const reason = document.createElement("input");
+  reason.type = "text";
+  reason.placeholder = "Manuel ekleme nedeni";
+  const addButton = document.createElement("button");
+  addButton.type = "button";
+  addButton.className = "secondary-button";
+  addButton.textContent = "Ekle";
+  addButton.addEventListener("click", () => {
+    if (!select.value) return;
+    const rows = getHalkbankRiskManualRows();
+    if (!rows.some((row) => row.code === select.value)) {
+      rows.push({ code: select.value, reason: reason.value || "Kullanıcı tarafından manuel eklendi." });
+      setHalkbankRiskManualRows(rows);
+    }
+    reason.value = "";
+    select.value = "";
+    saveState();
+    renderSection();
+  });
+  controls.append(select, reason, addButton);
+  box.append(title, controls, createHalkbankRiskManualList());
+  return box;
+}
+
+function createHalkbankRiskManualList() {
+  const rows = getHalkbankRiskManualRows();
+  const list = document.createElement("div");
+  list.className = "halkbank-risk-manual-list";
+  if (!rows.length) {
+    const empty = document.createElement("p");
+    empty.className = "hint-text";
+    empty.textContent = "Manuel eklenen risk kodu yok.";
+    list.append(empty);
+    return list;
+  }
+  rows.forEach((row, index) => {
+    const item = document.createElement("article");
+    const text = document.createElement("span");
+    text.textContent = `${row.code} - ${row.reason || "Manuel"}`;
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.textContent = "Kaldır";
+    remove.addEventListener("click", () => {
+      const nextRows = getHalkbankRiskManualRows();
+      nextRows.splice(index, 1);
+      setHalkbankRiskManualRows(nextRows);
+      saveState();
+      renderSection();
+    });
+    item.append(text, remove);
+    list.append(item);
+  });
+  return list;
+}
+
+function createHalkbankRiskReportTextBox(items = []) {
+  const box = document.createElement("label");
+  box.className = "field field-wide halkbank-risk-report-text";
+  const title = document.createElement("span");
+  title.textContent = "Rapor Açıklaması";
+  const textarea = document.createElement("textarea");
+  textarea.readOnly = true;
+  textarea.className = "is-readonly";
+  textarea.value = globalThis.HalkbankRiskRules.formatHalkbankRiskReportText(items);
+  box.append(title, textarea, createFieldCopyButton());
+  return box;
+}
+
+function getHalkbankRiskDefinitions() {
+  const rows = Array.isArray(globalThis.HalkbankRiskData) ? globalThis.HalkbankRiskData : [];
+  const seen = new Set();
+  return rows
+    .filter((row) => {
+      const code = String(row?.code || "").trim().toUpperCase();
+      if (!code || seen.has(code)) return false;
+      seen.add(code);
+      return true;
+    })
+    .sort((a, b) => globalThis.HalkbankRiskRules.compareRiskCodes(a.code, b.code));
+}
+
+function buildHalkbankRiskCodesText() {
+  if (!globalThis.HalkbankRiskRules) return "";
+  const result = globalThis.HalkbankRiskRules.calculateHalkbankRiskCodes(getHalkbankRiskInput());
+  return globalThis.HalkbankRiskRules.formatHalkbankRiskReportText(result.selected);
+}
+
+function buildHalkbankRiskCodesTableText() {
+  if (!globalThis.HalkbankRiskRules) return "";
+  const result = globalThis.HalkbankRiskRules.calculateHalkbankRiskCodes(getHalkbankRiskInput());
+  return result.selected
+    .map((item) => `${item.code}\t${item.status || ""}\t${item.reason || ""}`)
+    .join("\n");
+}
+
+function createValueFactorsPanel() {
+  const panel = document.createElement("div");
+  panel.className = "value-factors-panel";
+  if (!globalThis.ValueFactorsRules) {
+    const warning = document.createElement("p");
+    warning.className = "hint-text";
+    warning.textContent = "Değeri etkileyen faktör motoru yüklenemedi.";
+    panel.append(warning);
+    return panel;
+  }
+  const result = refreshValueFactorsFromCurrentState();
+  panel.append(createValueFactorsSummary(result));
+  panel.append(createValueFactorsGroup("Olumlu Özellikler", "positive", result.positive));
+  panel.append(createValueFactorsGroup("Olumsuz Özellikler", "negative", result.negative));
+  panel.append(createValueFactorsReportTextBox(result));
+  return panel;
+}
+
+function refreshValueFactorsFromCurrentState() {
+  const result = globalThis.ValueFactorsRules.calculateValueFactors(getValueFactorsInput());
+  state.fields.valueFactorsPositiveText = formatValueFactorsList(result.positive);
+  state.fields.valueFactorsNegativeText = formatValueFactorsList(result.negative);
+  state.fields.valueFactorsReportText = globalThis.ValueFactorsRules.formatValueFactorsText(result);
+  return result;
+}
+
+function getValueFactorsInput() {
+  refreshHalkbankRiskCodesFromCurrentState();
+  return {
+    fields: state.fields || {},
+    tables: {
+      unitFloors: Array.isArray(state.tables.unitFloors) ? state.tables.unitFloors : [],
+      documents: Array.isArray(state.tables.documents)
+        ? state.tables.documents.map(normalizeReviewedDocumentRow)
+        : [],
+    },
+    disabledIds: parseValueFactorsDisabledIds(),
+    manualPositive: getValueFactorsManualRows("positive"),
+    manualNegative: getValueFactorsManualRows("negative"),
+  };
+}
+
+function parseValueFactorsDisabledIds() {
+  return String(state.fields.valueFactorsDisabledIds || "")
+    .split(",")
+    .map((id) => id.trim())
+    .filter(Boolean);
+}
+
+function setValueFactorsDisabledIds(ids = []) {
+  state.fields.valueFactorsDisabledIds = Array.from(new Set(ids.filter(Boolean))).join(", ");
+}
+
+function getValueFactorsManualRows(kind) {
+  const key = kind === "positive" ? "valueFactorsManualPositive" : "valueFactorsManualNegative";
+  return Array.isArray(state.tables[key])
+    ? state.tables[key].filter((row) => String(row?.text || "").trim())
+    : [];
+}
+
+function setValueFactorsManualRows(kind, rows = []) {
+  const key = kind === "positive" ? "valueFactorsManualPositive" : "valueFactorsManualNegative";
+  state.tables[key] = rows
+    .map((row) => ({ text: normalizeReportDescriptionText(row?.text || "").trim() }))
+    .filter((row) => row.text);
+}
+
+function createValueFactorsSummary(result) {
+  const summary = document.createElement("div");
+  summary.className = "value-factors-summary";
+  [
+    ["Olumlu", result.positive.length],
+    ["Olumsuz", result.negative.length],
+    ["Pasif", parseValueFactorsDisabledIds().length],
+  ].forEach(([label, value]) => {
+    const item = document.createElement("article");
+    const small = document.createElement("span");
+    small.textContent = label;
+    const strong = document.createElement("strong");
+    strong.textContent = String(value);
+    item.append(small, strong);
+    summary.append(item);
+  });
+  return summary;
+}
+
+function createValueFactorsGroup(title, kind, items = []) {
+  const section = document.createElement("div");
+  section.className = `value-factors-group value-factors-${kind}`;
+  const head = document.createElement("div");
+  head.className = "value-factors-group-head";
+  const h4 = document.createElement("h4");
+  h4.textContent = title;
+  head.append(h4);
+  section.append(head, createValueFactorsTable(items), createValueFactorsManualEditor(kind));
+  return section;
+}
+
+function createValueFactorsTable(items = []) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "value-factors-table-wrap";
+  const table = document.createElement("table");
+  table.className = "value-factors-table";
+  table.innerHTML = `
+    <thead>
+      <tr>
+        <th>Özellik</th>
+        <th>Kaynak</th>
+        <th>Tür</th>
+        <th>İşlem</th>
+      </tr>
+    </thead>
+  `;
+  const tbody = document.createElement("tbody");
+  if (!items.length) {
+    const row = document.createElement("tr");
+    const cell = document.createElement("td");
+    cell.colSpan = 4;
+    cell.className = "empty-cell";
+    cell.textContent = "Kayıt bulunmuyor.";
+    row.append(cell);
+    tbody.append(row);
+  } else {
+    items.forEach((item) => {
+      const row = document.createElement("tr");
+      row.append(
+        createValueFactorsCell(item.text),
+        createValueFactorsCell(item.sourceLabel || "-"),
+        createValueFactorsCell(item.source === "manual" ? "Manuel" : "Otomatik"),
+        createValueFactorsActionCell(item),
+      );
+      tbody.append(row);
+    });
+  }
+  table.append(tbody);
+  wrapper.append(table);
+  return wrapper;
+}
+
+function createValueFactorsCell(text) {
+  const cell = document.createElement("td");
+  cell.textContent = text || "-";
+  return cell;
+}
+
+function createValueFactorsActionCell(item) {
+  const cell = document.createElement("td");
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "value-factor-passive-button";
+  button.textContent = item.source === "manual" ? "Kaldır" : "Pasife al";
+  button.addEventListener("click", () => {
+    if (item.source === "manual") {
+      const rows = getValueFactorsManualRows(item.kind).filter((row) => row.text !== item.text);
+      setValueFactorsManualRows(item.kind, rows);
+    } else {
+      const disabled = new Set(parseValueFactorsDisabledIds());
+      disabled.add(item.id);
+      setValueFactorsDisabledIds(Array.from(disabled));
+    }
+    saveState();
+    renderSection();
+  });
+  cell.append(button);
+  return cell;
+}
+
+function createValueFactorsManualEditor(kind) {
+  const box = document.createElement("div");
+  box.className = "value-factors-manual";
+  const input = document.createElement("input");
+  input.type = "text";
+  input.placeholder = kind === "positive" ? "Olumlu özellik ekle" : "Olumsuz özellik ekle";
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "secondary-button";
+  button.textContent = "Ekle";
+  button.addEventListener("click", () => {
+    const text = normalizeReportDescriptionText(input.value || "").trim();
+    if (!text) return;
+    const rows = getValueFactorsManualRows(kind);
+    rows.push({ text });
+    setValueFactorsManualRows(kind, rows);
+    saveState();
+    renderSection();
+  });
+  box.append(input, button, createValueFactorsDisabledList());
+  return box;
+}
+
+function createValueFactorsDisabledList() {
+  const ids = parseValueFactorsDisabledIds();
+  const box = document.createElement("div");
+  box.className = "value-factors-disabled-list";
+  if (!ids.length) return box;
+  ids.forEach((id) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = "Pasifi geri al";
+    button.title = id;
+    button.addEventListener("click", () => {
+      setValueFactorsDisabledIds(ids.filter((item) => item !== id));
+      saveState();
+      renderSection();
+    });
+    box.append(button);
+  });
+  return box;
+}
+
+function createValueFactorsReportTextBox(result) {
+  const box = document.createElement("label");
+  box.className = "field field-wide value-factors-report-text";
+  const title = document.createElement("span");
+  title.textContent = "Rapor Metni";
+  const textarea = document.createElement("textarea");
+  textarea.readOnly = true;
+  textarea.className = "is-readonly";
+  textarea.value = globalThis.ValueFactorsRules.formatValueFactorsText(result);
+  box.append(title, textarea, createFieldCopyButton());
+  return box;
+}
+
+function buildValueFactorsPositiveText() {
+  if (!globalThis.ValueFactorsRules) return "";
+  const result = globalThis.ValueFactorsRules.calculateValueFactors(getValueFactorsInput());
+  return formatValueFactorsList(result.positive);
+}
+
+function buildValueFactorsNegativeText() {
+  if (!globalThis.ValueFactorsRules) return "";
+  const result = globalThis.ValueFactorsRules.calculateValueFactors(getValueFactorsInput());
+  return formatValueFactorsList(result.negative);
+}
+
+function buildValueFactorsReportText() {
+  if (!globalThis.ValueFactorsRules) return "";
+  const result = globalThis.ValueFactorsRules.calculateValueFactors(getValueFactorsInput());
+  return globalThis.ValueFactorsRules.formatValueFactorsText(result);
+}
+
+function formatValueFactorsList(items = []) {
+  return items.map((item, index) => `${index + 1}. ${item.text}`).join("\n");
+}
+
+function createGabimDataSetPanel() {
+  const panel = document.createElement("div");
+  panel.className = "gabim-data-panel";
+  const intro = document.createElement("div");
+  intro.className = "gabim-data-intro";
+  intro.innerHTML = `
+    <strong>Gabim Verileri</strong>
+    <span>Bu ekran; genel bilgiler grubu hariç tutularak sistemdeki mevcut rapor alanlarından otomatik doldurulur.</span>
+  `;
+  panel.append(intro);
+  buildGabimDataGroups().forEach((group) => panel.append(createGabimDataGroup(group)));
+  return panel;
+}
+
+function buildGabimDataGroups() {
+  syncValuationAreasFromUnitAreas();
+  refreshValuationComputedFields();
+  const unitCounts = getGabimUnitInteriorCounts();
+  return [
+    {
+      title: "Genel Ek Bilgiler",
+      rows: buildGabimGeneralExtraInfoRows(),
+    },
+    {
+      title: "Tapu Bilgileri",
+      rows: [
+        ["Tapu İl", gabimTitle("titleCity", "city")],
+        ["İlçe", gabimTitle("titleDistrict", "district")],
+        ["Mahalle/Köy (Takbis)", gabimTitle("titleNeighborhood")],
+        ["Mevcut Mahalle/Köy", gabimTitle("neighborhood", "titleNeighborhood")],
+        ["Adres Bilgisi", buildOpenAddressText()],
+        ["Tapu Tarihi", gabimDate("titleDate")],
+      ],
+    },
+    {
+      title: "Tapuya Özel Bilgiler",
+      rows: [
+        ["Tapu Türü", gabimTitleTypeText()],
+        ["Ana Taşınmaz Niteliği", gabimField("mainPropertyQuality") || gabimField("titleQuality")],
+        ["Yapı Nizamı", gabimField("order") || gabimField("buildingOrder")],
+        ["Enlem", gabimField("latitude")],
+        ["Boylam", gabimField("longitude")],
+        ["Parsel Yüzölçümü (m²)", gabimField("landArea")],
+        ["Ada", gabimField("blockNo")],
+        ["Parsel", gabimField("parcelNo")],
+        ["İmar Plan Ölçeği", gabimField("planScale")],
+        ["Hisseli mi?", gabimHasShareText()],
+        ["Halihazır Kullanım Durumu", gabimField("unitUsageStatus")],
+        ["Kentsel Dönüşüm Bölgesinde mi?", gabimUrbanTransformationText()],
+        ["Deprem Derecesi", gabimField("earthquakeZone")],
+      ],
+    },
+    {
+      title: "Yapıya Özel Bilgiler",
+      rows: [
+        ["Bağımsız Bölüm Numarası", gabimField("unitNo")],
+        ["Bağımsız Bölüm Niteliği", gabimField("titleQuality")],
+        ["Blok", gabimField("titleBlockName")],
+        ["Kat", gabimField("titleFloor") || gabimUnitFloorsText()],
+        ["Arsa Payı", gabimField("share")],
+        ["Arsa Paydası", gabimField("denominator")],
+        ["Yapı Kullanma İzin Belgesi Var mı?", gabimOccupancyPermitText()],
+        ["Yapım Yılı", gabimConstructionYearText()],
+        ["Yapı Sınıfı ve Grubu", gabimField("buildingClass")],
+        ["Yapı Cinsi", gabimField("buildingStyle")],
+        ["Yapı Kat Sayısı", gabimField("totalFloors")],
+        ["İnşaat Seviyesi", gabimField("unitConstructionLevel") || "Tamamlanmış (%100)"],
+        ["Depreme Dayanıklılık ve Hasar Durumu", gabimField("damageStatus") || "Hasarsız"],
+      ],
+    },
+    {
+      title: "Yapı Tür Bilgisi",
+      rows: [
+        ["Konut Türü", gabimField("propertyType") || gabimField("titleQuality") || gabimSelect()],
+      ],
+    },
+    {
+      title: "Ek Bilgiler",
+      rows: [
+        ["Yüzme Havuzu Var mı?", gabimPoolText()],
+        ["İlk Kez mi Satışa Konu Ediliyor?", gabimFirstSaleText()],
+        ["Site İçerisinde mi?", gabimSiteWithinText()],
+        ["Toplam Bağımsız Bölüm Sayısı", gabimField("totalUnits")],
+        ["Açık Otopark Var mı?", gabimCarparkText("Açık")],
+        ["Kapalı Otopark Var mı?", gabimCarparkText("Kapalı")],
+        ["Asansör Var mı?", gabimElevatorText()],
+        ["Güvenlik Var mı?", gabimSecurityText()],
+        ["Isınma Sistemi", gabimField("unitHeatingType")],
+      ],
+    },
+    {
+      title: "Bağımsız Bölüm / Taşınmaz Özellikleri",
+      rows: [
+        ["Fiili Kullanım Amacı", gabimField("actualUsePurpose") || gabimField("propertyType") || gabimField("titleQuality")],
+        ["Yasal Brüt Kullanım Alanı (m²)", gabimField("legalValueArea") || gabimField("legalArea")],
+        ["Mevcut Brüt Kullanım Alanı (m²)", gabimField("currentValueArea") || gabimField("currentArea")],
+        ["Zemin Kata İndirgenmiş Yasal Alan", gabimTotalReducedAreaText("legal")],
+        ["Zemin Kata İndirgenmiş Mevcut Alan", gabimTotalReducedAreaText("current")],
+        ["Yasal Kullanıma Esas Piyasa Değeri (TL)", gabimMoney("legalValue")],
+        ["Mevcut Kullanıma Esas Piyasa Değeri (TL)", gabimMoney("currentValue")],
+        ["Aylık Kira Birim Değeri (TL/m²)", gabimField("legalRentUnit") || gabimField("currentRentUnit")],
+        ["Arsa Birim Değeri (TL/m²)", gabimField("landUnitValue")],
+        ["Site Adı", gabimField("addressSiteName")],
+        ["Oda", unitCounts.oda],
+        ["Salon", unitCounts.salon],
+        ["Banyo", unitCounts.banyo],
+        ["Mutfak", unitCounts.mutfak],
+        ["Balkon", unitCounts.balkon],
+        ["Cepheler", gabimField("facades")],
+      ],
+    },
+    {
+      title: "BB İçin İmar Bilgileri",
+      rows: [
+        ["İmar Lejandı", gabimField("legend")],
+        ["TAKS", gabimField("taks")],
+        ["KAKS", gabimField("kaks")],
+        ["Hmax (m)", gabimField("hmax")],
+      ],
+    },
+  ];
+}
+
+function buildGabimGeneralExtraInfoRows() {
+  return [
+    ["Değer Türü", gabimValueTypeText()],
+    ["Tasarruf Finansman Şirketi Adı", gabimField("savingsFinanceCompanyName") || gabimSelect()],
+    ["Hesaplanan Emsal (m²)", gabimCalculatedEmsalText()],
+    ["Ulaşım İmkanı", gabimTransportationLevelText()],
+    ["Çevresinde Büyük Yatırım Projeleri Var mı?", gabimMajorInvestmentProjectText()],
+    ["Çevresinde Markalı Konut Projelerinin Yoğunluğu", gabimBrandedHousingDensityText()],
+    ["Çevresinin Genel Yapılaşma Hızı", gabimDevelopmentSpeedText()],
+    ["Çevresinde Ticari Alanların Gelişme Hızı", gabimCommercialDevelopmentSpeedText()],
+    ["Çevrenin Sanayileşme Hızı", gabimIndustrializationSpeedText()],
+    ["Çevrenin Turizm Gelişme Potansiyeli", gabimTourismPotentialText()],
+    ["Gayrimenkulün Satılabilirliği", gabimSaleabilityText()],
+    ["Tercihli Kullanım Alanı mı?", gabimPreferredUseAreaText()],
+    ["İnşaat Kalitesi", gabimConstructionQualityText()],
+  ];
+}
+
+function createGabimDataGroup(group) {
+  const section = document.createElement("div");
+  section.className = "gabim-data-group";
+  const header = document.createElement("div");
+  header.className = "gabim-data-group-head";
+  const title = document.createElement("h4");
+  title.textContent = group.title;
+  header.append(title);
+  const grid = document.createElement("div");
+  grid.className = "gabim-data-grid";
+  group.rows.forEach(([label, value]) => grid.append(createGabimDataField(label, value)));
+  section.append(header, grid);
+  return section;
+}
+
+function createGabimDataField(labelText, value) {
+  const label = document.createElement("label");
+  label.className = "gabim-data-field";
+  const title = document.createElement("span");
+  title.textContent = labelText;
+  const input = document.createElement("input");
+  input.type = "text";
+  input.readOnly = true;
+  input.value = gabimDisplayValue(value);
+  label.append(title, input);
+  return label;
+}
+
+function gabimDisplayValue(value) {
+  const text = String(value ?? "").trim();
+  return text || "";
+}
+
+function gabimField(...keys) {
+  for (const key of keys) {
+    const value = String(state.fields?.[key] ?? "").trim();
+    if (value) return value;
+  }
+  return "";
+}
+
+function gabimTitle(...keys) {
+  const value = gabimField(...keys);
+  return value ? normalizeReportTitleText(value) : "";
+}
+
+function gabimDate(key) {
+  const value = gabimField(key);
+  return value ? dateIsoToTr(value) || value : "";
+}
+
+function gabimMoney(key) {
+  const value = parseValuationNumber(state.fields?.[key]);
+  return Number.isFinite(value) && value > 0 ? `${formatSchemeNumber(value)} TL` : "";
+}
+
+function gabimSelect(defaultValue = "Seçiniz") {
+  return defaultValue;
+}
+
+function gabimTextFromKeys(...keys) {
+  return keys.map((key) => gabimField(key)).filter(Boolean).join(" ");
+}
+
+function gabimFoldedTextFromKeys(...keys) {
+  return foldTurkish(gabimTextFromKeys(...keys));
+}
+
+function gabimLevelFromChoice(value, fallback = "Orta") {
+  const folded = foldTurkish(value);
+  if (folded.includes("YUKSEK") || folded.includes("HIZLI") || folded.includes("IYI")) return "Yüksek";
+  if (folded.includes("DUSUK") || folded.includes("YAVAS") || folded.includes("ZAYIF")) return "Düşük";
+  if (folded.includes("ORTA")) return "Orta";
+  return fallback;
+}
+
+function gabimValueTypeText() {
+  const methods = foldTurkish(gabimField("valuationMethod"));
+  if (methods.includes("MALIYET")) return "Maliyet";
+  if (methods.includes("GELIR")) return "Gelir";
+  return "Satış/Pazar";
+}
+
+function gabimCalculatedEmsalText() {
+  const fieldValue = gabimField("calculatedEmsal");
+  if (fieldValue) return fieldValue.replace(/\s*m²\s*$/i, "");
+  const calculated = buildImarCalculatedEmsal();
+  if (calculated) return calculated.replace(/\s*m²\s*$/i, "");
+  const parcelArea = parseValuationNumber(gabimField("landArea"));
+  const kaks = parseValuationNumber(gabimField("kaks"));
+  if (Number.isFinite(parcelArea) && parcelArea > 0 && Number.isFinite(kaks) && kaks > 0) {
+    return formatValuationArea(parcelArea * kaks);
+  }
+  return "";
+}
+
+function gabimTransportationLevelText() {
+  const proximity = foldTurkish(gabimField("mainArteryProximity"));
+  if (proximity.includes("ORTA YAKIN")) return "Orta";
+  if (proximity.includes("YAKIN")) return "Yüksek";
+  if (proximity.includes("UZAK")) return "Düşük";
+  const text = gabimFoldedTextFromKeys(
+    "transportDescription",
+    "mainArtery",
+    "mainArteryName",
+    "nearbyImportantRoads",
+    "environmentDescription"
+  );
+  if (/(METRO|TRAMVAY|OTOBUS|DURAK|CADDE|BULVAR|ANA ARTER|ULASIM|YAKIN)/.test(text)) return "Yüksek";
+  return text ? "Orta" : "Orta";
+}
+
+function gabimMajorInvestmentProjectText() {
+  const text = gabimFoldedTextFromKeys(
+    "environmentDescription",
+    "nearbyImportantPlaces",
+    "nearbyPlacesText",
+    "transportNearbyText",
+    "planningNote"
+  );
+  return /(AVM|METRO|HASTANE|UNIVERSITE|KAMU|PROJE|KENTSEL DONUSUM|TERMINAL|OSB|LIMAN)/.test(text) ? "Var" : "Yok";
+}
+
+function gabimBrandedHousingDensityText() {
+  const text = gabimFoldedTextFromKeys(
+    "environmentDescription",
+    "regionType",
+    "environmentRegionType",
+    "regionUsePurpose",
+    "addressSiteName"
+  );
+  if (/(REZIDANS|MARKALI|SITE|TOPLU KONUT|KONUT PROJESI)/.test(text)) return "Orta";
+  return "Düşük";
+}
+
+function gabimDevelopmentSpeedText() {
+  return gabimLevelFromChoice(gabimField("developmentSpeed"), "Orta");
+}
+
+function gabimCommercialDevelopmentSpeedText() {
+  const text = gabimFoldedTextFromKeys("legend", "regionUsePurpose", "environmentDescription", "actualUsePurpose");
+  if (/(TICARET|ISYERI|OFIS|DUKKAN|MAGAZA|AVM|CADDE)/.test(text)) return "Orta";
+  return "Düşük";
+}
+
+function gabimIndustrializationSpeedText() {
+  const text = gabimFoldedTextFromKeys("legend", "regionUsePurpose", "environmentDescription", "actualUsePurpose");
+  if (/(SANAYI|DEPO|IMALAT|FABRIKA|OSB|LOJISTIK)/.test(text)) return "Orta";
+  return "Düşük";
+}
+
+function gabimTourismPotentialText() {
+  const text = gabimFoldedTextFromKeys("legend", "regionUsePurpose", "environmentDescription", "nearbyImportantPlaces");
+  if (/(TURIZM|OTEL|SAHIL|DENIZ|TERMAL|TARIHI|PLAJ|MARINA)/.test(text)) return "Orta";
+  return "Düşük";
+}
+
+function gabimSaleabilityText() {
+  return gabimField("saleability") || "Satılabilir";
+}
+
+function gabimPreferredUseAreaText() {
+  return "Hayır";
+}
+
+function gabimConstructionQualityText() {
+  const quality = foldTurkish(gabimField("unitMaterialQuality"));
+  if (quality.includes("LUKS")) return "Lüks";
+  if (quality.includes("KALITELI")) return "İyi";
+  if (quality.includes("ORTA")) return "Orta";
+  if (quality.includes("VASAT") || quality.includes("KOTU") || quality.includes("DUSUK") || quality.includes("EKSIK")) return "Kötü";
+  const buildingClass = foldTurkish(gabimField("buildingClass"));
+  if (/^[45]\s*\//.test(buildingClass) || buildingClass.includes("5/") || buildingClass.includes("4/")) return "İyi";
+  if (buildingClass.includes("3/")) return "Orta";
+  if (buildingClass.includes("1/") || buildingClass.includes("2/")) return "Kötü";
+  return "Orta";
+}
+
+function gabimTitleTypeText() {
+  return [gabimField("groundType"), gabimField("ownershipType")]
+    .map((value) => normalizeReportTitleText(value || "").trim())
+    .filter(Boolean)
+    .join(" & ");
+}
+
+function gabimHasShareText() {
+  const ownershipKind = foldTurkish(gabimField("titleOwnershipKind"));
+  if (ownershipKind.includes("HISSELI")) return "Evet";
+  if (ownershipKind.includes("TAM MULKIYET")) return "Hayır";
+  return gabimSelect();
+}
+
+function gabimUrbanTransformationText() {
+  const hasPlanningIssue = normalizeYesNoChoice(state.fields.hasPlanningIssue);
+  const urbanTransformation = normalizeYesNoChoice(state.fields.urbanTransformationArea);
+  return hasPlanningIssue === "Evet" && urbanTransformation === "Evet" ? "Evet" : "Hayır";
+}
+
+function gabimOccupancyPermitText() {
+  return hasReviewedOccupancyPermitDocument() ? "Var" : "Yok";
+}
+
+function gabimConstructionYearText() {
+  const date = gabimField("buildingCompletionDate");
+  const match = String(date || "").match(/\b(19|20)\d{2}\b/);
+  return match ? match[0] : "";
+}
+
+function gabimUnitFloorsText() {
+  return getUnitFloorRows().map((row) => row.floor).filter(Boolean).join(", ");
+}
+
+function gabimTotalReducedAreaText(mode = "legal") {
+  const rows = getUnitFloorRows();
+  if (!rows.length) return "";
+  return formatUnitReducedAreaValue(calculateReducedUnitFloorTotal(rows, mode));
+}
+
+function gabimSiteWithinText() {
+  return gabimField("addressSiteName", "titleBlockName") ? "Evet" : "Seçiniz";
+}
+
+function gabimCarparkText(keyword) {
+  const carpark = foldTurkish(gabimField("carpark"));
+  if (!carpark) return gabimSelect();
+  if (carpark.includes("YOK")) return "Yok";
+  return carpark.includes(foldTurkish(keyword)) ? "Var" : "Yok";
+}
+
+function gabimElevatorText() {
+  const elevator = foldTurkish(gabimField("elevator"));
+  if (!elevator) return gabimSelect();
+  if (elevator.includes("YOK")) return "Yok";
+  return "Var";
+}
+
+function gabimSocialFacilityText(keyword) {
+  const source = foldTurkish([gabimField("socialFacilities"), gabimField("siteFacilities")].filter(Boolean).join(", "));
+  if (!source) return "Hayır";
+  return source.includes(foldTurkish(keyword)) ? "Var" : "Yok";
+}
+
+function gabimPoolText() {
+  const facilities = foldTurkish(gabimField("socialFacilities"));
+  return facilities.includes("ACIK YUZME HAVUZU") || facilities.includes("KAPALI YUZME HAVUZU") ? "Evet" : "Hayır";
+}
+
+function gabimFirstSaleText() {
+  return refreshUnitFirstSaleStatusFromCurrentFields();
+}
+
+function gabimSecurityText() {
+  return foldTurkish(gabimField("socialFacilities")).includes("OZEL GUVENLIK") ? "Evet" : "Hayır";
+}
+
+function getGabimUnitInteriorCounts() {
+  const summary = foldTurkish(formatUnitFloorInteriorSummary(getUnitFloorRows())).toLocaleLowerCase("tr");
+  const numberBefore = (word) => {
+    const match = summary.match(new RegExp(`\\b(\\d+)\\s*${word}\\b`, "i"));
+    if (match) return match[1];
+    return summary.includes(word) ? "1" : "";
+  };
+  return {
+    salon: numberBefore("salon"),
+    oda: numberBefore("oda"),
+    banyo: numberBefore("banyo"),
+    mutfak: summary.includes("mutfak") ? "1" : "",
+    balkon: numberBefore("balkon"),
+  };
+}
+
 function ensureLegacyPlaceholderRowsLoaded() {
   if (legacyPlaceholderRowsLoaded || legacyPlaceholderRowsLoading) return;
   legacyPlaceholderRowsLoading = true;
@@ -15518,7 +23162,7 @@ function collectPlaceholderDefinitions() {
 
 function collectApplicationFieldPlaceholders() {
   const rows = [];
-  sections
+  getVisibleSections()
     .filter((section) => section.id !== "placeholders")
     .forEach((section) => {
       (section.fields || []).forEach((field) => {
@@ -15616,6 +23260,30 @@ function collectGeneratedTextPlaceholders() {
       value: buildReviewedDocumentsDescription(),
     },
     {
+      category: "Belgeler ve Proje",
+      key: "ekb_explanation_text",
+      title: "EKB Açıklaması",
+      value: state.fields.ekbExplanation || buildEkbExplanation(),
+    },
+    {
+      category: "Belgeler ve Proje",
+      key: "penalty_decision_explanation_text",
+      title: "Cezai Karar Açıklaması",
+      value: state.fields.penaltyDecisionExplanation || buildPenaltyDecisionExplanation(),
+    },
+    {
+      category: "Belgeler ve Proje",
+      key: "static_suitability_explanation_text",
+      title: "Statik Uygunluk Açıklaması",
+      value: state.fields.staticSuitabilityExplanation || buildStaticSuitabilityExplanation(),
+    },
+    {
+      category: "Belgeler ve Proje",
+      key: "building_inspection_explanation_text",
+      title: "Yapı Denetim Açıklaması",
+      value: state.fields.buildingInspectionExplanation || buildBuildingInspectionExplanation(),
+    },
+    {
       category: "Ana Gayrimenkul Özellikleri",
       key: "building_floor_summary_text",
       title: "Kat Dağılımı Özeti",
@@ -15623,9 +23291,27 @@ function collectGeneratedTextPlaceholders() {
     },
     {
       category: "Ana Gayrimenkul Özellikleri",
+      key: "main_property_floor_count_text",
+      title: "Ana Gayrimenkul Kat Adedi",
+      value: refreshMainPropertyFloorCountTextFromCounts(),
+    },
+    {
+      category: "Ana Gayrimenkul Özellikleri",
       key: "main_property_description_text",
       title: "Ana Gayrimenkul Açıklaması",
       value: buildMainPropertyDescription(),
+    },
+    {
+      category: "Ana Gayrimenkul Özellikleri",
+      key: "building_completion_explanation_text",
+      title: "Yapı Bitiş Tarihi Açıklaması",
+      value: state.fields.buildingCompletionExplanation || buildBuildingCompletionExplanation(),
+    },
+    {
+      category: "Ana Gayrimenkul Özellikleri",
+      key: "insurance_construction_cost_text",
+      title: "Sigortaya Esas Yapı Birim Maliyeti Açıklaması",
+      value: state.fields.insuranceConstructionCostExplanation || buildInsuranceConstructionCostExplanation(),
     },
     {
       category: "Bağımsız Bölüm Özellikleri",
@@ -15639,9 +23325,75 @@ function collectGeneratedTextPlaceholders() {
       title: "Dekoratif Özellikler Açıklaması",
       value: composeUnitDecorativeDescription(),
     },
+    {
+      category: "Değerleme",
+      key: "DEGERLENDIRME_SEMASI",
+      title: "Değerleme Yöntemleri Hesap Açıklaması",
+      value: buildValuationMethodsSchemeText(),
+    },
+    {
+      category: "Değerleme",
+      key: "DEGERLEME_YONTEMI_ACIKLAMASI",
+      title: "Değerleme Yöntemi Seçimi Açıklaması",
+      value: buildValuationMethodExplanation(),
+    },
+    {
+      category: "Emsaller",
+      key: "EMSAL_PIYASA_ANALIZI",
+      title: "Piyasa Analizi ve Emsal Değerlendirmesi",
+      value: buildComparableMarketAnalysisText(),
+    },
+    {
+      category: "Takyidat",
+      key: "TAKYIDAT_TABLO",
+      title: "Takyidat Tablosu",
+      value: buildTakyidatTableText(),
+    },
+    {
+      category: "Tapu ve Mülkiyet",
+      key: "MALIKLER_TABLO",
+      title: "Malikler Tablosu",
+      value: buildMaliklerTableText(),
+    },
+    {
+      category: "Adres ve Konum",
+      key: "ACIK_ADRES",
+      title: "Açık Adres",
+      value: buildOpenAddressText(),
+    },
+    {
+      category: "Halkbank Risk Kodları",
+      key: "HALKBANK_RISK_KODLARI",
+      title: "Halkbank Risk Kodları Rapor Metni",
+      value: buildHalkbankRiskCodesText(),
+    },
+    {
+      category: "Halkbank Risk Kodları",
+      key: "HALKBANK_RISK_KODLARI_TABLO",
+      title: "Halkbank Risk Kodları Tablosu",
+      value: buildHalkbankRiskCodesTableText(),
+    },
+    {
+      category: "Değeri Etkileyen Faktörler",
+      key: "DEGERI_ETKILEYEN_OLUMLU_FAKTORLER",
+      title: "Olumlu Özellikler",
+      value: buildValueFactorsPositiveText(),
+    },
+    {
+      category: "Değeri Etkileyen Faktörler",
+      key: "DEGERI_ETKILEYEN_OLUMSUZ_FAKTORLER",
+      title: "Olumsuz Özellikler",
+      value: buildValueFactorsNegativeText(),
+    },
+    {
+      category: "Değeri Etkileyen Faktörler",
+      key: "DEGERI_ETKILEYEN_FAKTORLER",
+      title: "Değeri Etkileyen Faktörler",
+      value: buildValueFactorsReportText(),
+    },
   ];
 
-  return generatedRows.map((row) => ({
+  return generatedRows.filter((row) => shouldIncludeReportCategory(row.category)).map((row) => ({
     category: row.category,
     token: makePlaceholderToken(row.key),
     title: row.title,
@@ -15655,6 +23407,7 @@ function collectGeneratedTextPlaceholders() {
 function collectTablePlaceholders() {
   const rows = [];
   Object.entries(state.tables || {}).forEach(([key, tableRows]) => {
+    if (!shouldIncludeReportTableKey(key)) return;
     const usedRows = Array.isArray(tableRows)
       ? tableRows.filter((row) => Object.values(row || {}).some(Boolean)).length
       : 0;
@@ -15787,9 +23540,28 @@ const comparableFloorOptions = [
   "Çatı Dubleks",
   "Teras kat",
 ];
+const comparableNatureOptions = ["Konut", "Dükkan", "Tarla", "Arsa", "Müstakil Bina"];
+const comparableLandNatureKeys = new Set(["arsa", "tarla"]);
+const comparableLandLocationOptions = ["Aynı bölge", "Aynı sokak", "Aynı cadde"];
+const comparableViewModeOptions = [
+  { value: "all", label: "Tüm Emsaller" },
+  { value: "residential", label: "Konut / Yapı Emsalleri" },
+  { value: "land", label: "Arsa / Tarla Emsalleri" },
+];
+const comparableResidentialOnlyFieldKeys = new Set(["c4", "c5", "c6", "c8", "c11", "c12", "c13", "c16", "calcRentUnitValue"]);
+const comparableLandOnlyFieldKeys = new Set(["c24", "c25", "c26", "c27", "c28", "c31"]);
+const comparableTarlaZoningFieldKeys = new Set(["c25", "c26", "c27", "c28", "c31"]);
+const comparableRoadFrontageOptions = ["Kadastro yola cephesiz", "Kadastro yola cepheli", "İmar yoluna cepheli", "Asfalt yola cepheli", "Açılmamış imar yoluna cepheli"];
 const comparableFields = [
   { key: "c0", label: "İrtibat / Kaynak" },
   { key: "c1", label: "Telefon" },
+  {
+    key: "c23",
+    label: "Emsal Niteliği",
+    type: "select",
+    options: comparableNatureOptions,
+    allowEmpty: false,
+  },
   {
     key: "c2",
     label: "Emsal Durumu",
@@ -15821,6 +23593,9 @@ const comparableFields = [
     type: "select",
     options: ["Aynı bölge / site", "Aynı bölge / bina", "Aynı cadde / site", "Aynı cadde / bina", "Aynı sokak / site", "Aynı sokak / bina", "Aynı site", "Aynı site aynı blok", "Aynı bina"],
   },
+  { key: "c18", label: "Enlem", readOnly: true },
+  { key: "c19", label: "Boylam", readOnly: true },
+  { key: "c29", label: "Yola Cephe Durumu", type: "select", options: comparableRoadFrontageOptions },
   {
     key: "c8",
     label: "İç Özellikler",
@@ -15858,19 +23633,116 @@ const comparableFields = [
   },
   { key: "c12", label: "Beyan Edilen Alan" },
   { key: "c13", label: "Düzeltilmiş Alan" },
-  { key: "c14", label: "İstenen Fiyat" },
-  { key: "c15", label: "Pazarlıklı Fiyat" },
+  { key: "c24", label: "Yüzölçümü" },
+  { key: "c25", label: "İmar Lejantı", type: "select", options: imarLegendOptions.filter(Boolean), allowEmpty: false },
+  { key: "c26", label: "Yapılaşma Nizamı", type: "select", options: imarOrderOptions.filter(Boolean), allowEmpty: false },
+  { key: "c27", label: "Emsal / KAKS" },
+  { key: "c28", label: "Kat Adedi", type: "select", options: imarFloorCountOptions.filter(Boolean), allowEmpty: false },
+  { key: "c31", label: "Hesaplanan Emsal" },
+  { key: "c14", label: "Talep Edilen Değer" },
+  { key: "c15", label: "Pazarlıklı Değer" },
   { key: "calcNegotiation", label: "Pazarlık Payı", computed: true },
   { key: "calcUnitValue", label: "M2 Birim Değer", computed: true },
   { key: "calcFeatureAdjustment", label: "Özellik Şerefiyesi", computed: true, hidden: true },
   { key: "calcLocationAdjustment", label: "Konum Şerefiyesi", computed: true, hidden: true },
   { key: "calcAdjustedUnitValue", label: "İndirgenmiş M2 Birim Değer", computed: true },
+  { key: "calcCalculatedEmsalUnitValue", label: "Hesaplanan Emsal m2 Birim Değeri", computed: true },
+  { key: "calcAdjustedCalculatedEmsalUnitValue", label: "İndirgenmiş Hesaplanan Emsal m2 Birim Değeri", computed: true },
   { key: "c16", label: "Kira Değeri" },
   { key: "calcRentUnitValue", label: "Kira Birim Değer", computed: true },
   { key: "c17", label: "Açıklama / Düzeltme", type: "textarea", wide: true },
-  { key: "calcShortText", label: "Kısa Emsal Metni", computed: true, type: "textarea", wide: true },
   { key: "calcLongText", label: "Uzun Emsal Metni", computed: true, type: "textarea", wide: true },
 ];
+
+function normalizeComparableNature(row = {}) {
+  const raw = String(row.c23 || "Konut").trim();
+  return foldTurkish(raw).toLocaleLowerCase("tr-TR");
+}
+
+function isLandComparable(row = {}) {
+  return comparableLandNatureKeys.has(normalizeComparableNature(row));
+}
+
+function getComparableViewMode() {
+  const value = state.fields.comparableViewMode || "all";
+  return comparableViewModeOptions.some((option) => option.value === value) ? value : "all";
+}
+
+function getComparableRowsForView(rows, viewMode) {
+  return rows
+    .map((row, index) => ({ row, index }))
+    .filter(({ row }) => {
+      if (viewMode === "land") return isLandComparable(row);
+      if (viewMode === "residential") return !isLandComparable(row);
+      return true;
+    });
+}
+
+function getComparableDisplayFields(viewMode) {
+  return comparableFields.filter((field) => {
+    if (field.hidden) return false;
+    if (viewMode === "all") return true;
+    if (viewMode === "land") return !comparableResidentialOnlyFieldKeys.has(field.key);
+    return !comparableLandOnlyFieldKeys.has(field.key);
+  });
+}
+
+function createComparableViewModeControl() {
+  const wrapper = document.createElement("label");
+  wrapper.className = "comparable-view-mode-control";
+  const label = document.createElement("span");
+  label.textContent = "Görünüm";
+  const select = document.createElement("select");
+  comparableViewModeOptions.forEach((option) => {
+    const optionElement = document.createElement("option");
+    optionElement.value = option.value;
+    optionElement.textContent = option.label;
+    select.append(optionElement);
+  });
+  select.value = getComparableViewMode();
+  select.addEventListener("change", (event) => {
+    state.fields.comparableViewMode = event.target.value;
+    autosave();
+    renderSection();
+  });
+  wrapper.append(label, select);
+  return wrapper;
+}
+
+function getComparableFieldForRow(field, row) {
+  if (!isLandComparable(row)) return field;
+  if (field.key === "c7") return { ...field, options: comparableLandLocationOptions };
+  if (normalizeComparableNature(row) === "tarla" && comparableTarlaZoningFieldKeys.has(field.key)) {
+    return { ...field, allowEmpty: true, options: field.type === "select" ? ["", ...(field.options || [])] : field.options };
+  }
+  return field;
+}
+
+function calculateComparableLandBuildableArea(row = {}) {
+  if (!isLandComparable(row)) return Number.NaN;
+  const landArea = parseComparableNumber(row.c24);
+  const kaks = parseComparableNumber(row.c27);
+  if (!Number.isFinite(landArea) || landArea <= 0) return Number.NaN;
+  if (Number.isFinite(kaks) && kaks > 0) return landArea * kaks;
+  const floorCount = parseComparableNumber(row.c28);
+  if (Number.isFinite(floorCount) && floorCount > 0) return landArea * floorCount;
+  return Number.NaN;
+}
+
+function formatComparableAreaInput(value) {
+  if (!Number.isFinite(value)) return "";
+  return value.toLocaleString("tr-TR", { maximumFractionDigits: 2 });
+}
+
+function syncComparableLandBuildableArea(row = {}, force = false) {
+  if (!force && row.c31Manual === "1" && String(row.c31 || "").trim()) return false;
+  if (force || row.c31Manual === "1") row.c31Manual = "";
+  const buildableArea = calculateComparableLandBuildableArea(row);
+  const nextValue = formatComparableAreaInput(buildableArea);
+  if ((row.c31 || "") === nextValue) return false;
+  row.c31 = nextValue;
+  return true;
+}
 
 function createComparablesVerticalEditor(section) {
   const wrapper = document.createElement("div");
@@ -15885,32 +23757,51 @@ function createComparablesVerticalEditor(section) {
   addButton.className = "mini-button";
   addButton.textContent = "Emsal ekle";
   addButton.addEventListener("click", () => {
-    getComparableRows().push({ _comparablesVersion: 2 });
+    const viewMode = getComparableViewMode();
+    getComparableRows().push({
+      _comparablesVersion: 2,
+      c23: viewMode === "land" ? "Arsa" : "Konut",
+    });
     autosave();
     renderSection();
   });
-  headingRow.append(addButton);
+  headingRow.append(createComparableViewModeControl(), addButton);
 
   const rows = getComparableRows();
+  const viewMode = getComparableViewMode();
+  const visibleRows = getComparableRowsForView(rows, viewMode);
 
   if (!rows.length) {
     const emptyLine = document.createElement("div");
     emptyLine.className = "encumbrance-empty-line";
     emptyLine.textContent = "Henüz emsal eklenmedi. Yeni kayıt için Emsal ekle düğmesini kullanın.";
-    wrapper.append(headingRow, emptyLine, createComparableLocationSketchPanel());
+    wrapper.append(headingRow, emptyLine, createComparableMarketAnalysisPanel(), createComparableLocationSketchPanel(), createComparableValuationSummaryPanel());
+    return wrapper;
+  }
+
+  if (!visibleRows.length) {
+    const emptyLine = document.createElement("div");
+    emptyLine.className = "encumbrance-empty-line";
+    emptyLine.textContent = "Bu görünümde emsal bulunmuyor. Bu türe ait yeni kayıt için Emsal ekle düğmesini kullanın.";
+    wrapper.append(headingRow, emptyLine, createComparableMarketAnalysisPanel(), createComparableLocationSketchPanel(), createComparableValuationSummaryPanel());
     return wrapper;
   }
 
   const shell = document.createElement("div");
   shell.className = "table-shell comparables-matrix-shell";
+  const topScroll = document.createElement("div");
+  topScroll.className = "comparables-top-scroll";
+  const topScrollInner = document.createElement("div");
+  topScrollInner.className = "comparables-top-scroll-inner";
+  topScroll.append(topScrollInner);
   const table = document.createElement("table");
   table.className = "comparables-matrix-table";
 
   const thead = document.createElement("thead");
-  const headerCells = rows.map((row, rowIndex) => `
+  const headerCells = visibleRows.map(({ index: rowIndex }, displayIndex) => `
     <th>
       <div class="comparable-column-head">
-        <span>Emsal ${rowIndex + 1}</span>
+        <span>Emsal ${displayIndex + 1}</span>
         <div class="comparable-column-actions">
           <button type="button" class="mini-button comparable-copy-button" data-comparable-copy="${rowIndex}" aria-label="Emsali sonraki sütuna kopyala">Kopyala</button>
           <button type="button" class="mini-button comparable-reset-button" data-comparable-reset="${rowIndex}" aria-label="Emsali temizle">Reset</button>
@@ -15922,7 +23813,7 @@ function createComparablesVerticalEditor(section) {
   thead.innerHTML = `<tr><th class="comparables-row-label-cell">Sıra No</th>${headerCells}</tr>`;
 
   const tbody = document.createElement("tbody");
-  comparableFields.filter((field) => !field.hidden).forEach((field) => {
+  getComparableDisplayFields(viewMode).forEach((field) => {
     const tr = document.createElement("tr");
     if (field.key === "c10") tr.dataset.comparableReasonRow = "true";
     const labelCell = document.createElement("th");
@@ -15930,9 +23821,9 @@ function createComparablesVerticalEditor(section) {
     labelCell.textContent = formatUiHeading(field.label);
     tr.append(labelCell);
 
-    rows.forEach((row, rowIndex) => {
+    visibleRows.forEach(({ row, index: rowIndex }) => {
       const td = document.createElement("td");
-      td.append(createComparableMatrixCell(section, field, row, rowIndex));
+      td.append(createComparableMatrixCell(section, getComparableFieldForRow(field, row), row, rowIndex));
       tr.append(td);
     });
     tbody.append(tr);
@@ -15940,6 +23831,17 @@ function createComparablesVerticalEditor(section) {
 
   table.append(thead, tbody);
   shell.append(table);
+  topScrollInner.style.width = `${table.scrollWidth || 1180}px`;
+  topScroll.addEventListener("scroll", () => {
+    if (Math.abs(shell.scrollLeft - topScroll.scrollLeft) > 1) shell.scrollLeft = topScroll.scrollLeft;
+  });
+  shell.addEventListener("scroll", () => {
+    if (Math.abs(topScroll.scrollLeft - shell.scrollLeft) > 1) topScroll.scrollLeft = shell.scrollLeft;
+  });
+  wrapper.append(headingRow, topScroll, shell);
+  requestAnimationFrame(() => {
+    topScrollInner.style.width = `${table.scrollWidth}px`;
+  });
   updateComparableReasonRowsVisibility(shell);
   shell.querySelectorAll("[data-comparable-delete]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -15969,8 +23871,41 @@ function createComparablesVerticalEditor(section) {
     });
   });
 
-  wrapper.append(headingRow, shell, createComparableLocationSketchPanel());
+  wrapper.append(createComparableMarketAnalysisPanel(), createComparableLocationSketchPanel(), createComparableValuationSummaryPanel());
   return wrapper;
+}
+
+function createComparableMarketAnalysisPanel() {
+  const wrapper = document.createElement("div");
+  wrapper.className = "subsection is-detail comparable-market-analysis";
+  wrapper.dataset.comparableMarketAnalysis = "true";
+  const titleRow = document.createElement("div");
+  titleRow.className = "subsection-table-head";
+  titleRow.innerHTML = `<h4>Piyasa Analizi ve Emsal Değerlendirmesi</h4>`;
+  const textarea = document.createElement("textarea");
+  textarea.readOnly = true;
+  textarea.className = "computed-input";
+  textarea.rows = 7;
+  textarea.dataset.comparableMarketAnalysisText = "true";
+  textarea.value = buildComparableMarketAnalysisText();
+  wrapper.append(titleRow, textarea);
+  return wrapper;
+}
+
+function refreshComparableMarketAnalysisPanel() {
+  const textarea = document.querySelector("[data-comparable-market-analysis-text]");
+  if (!textarea) return;
+  textarea.value = buildComparableMarketAnalysisText();
+}
+
+function buildComparableMarketAnalysisText() {
+  if (!globalThis.ComparableMarketAnalysis) return "";
+  const text = globalThis.ComparableMarketAnalysis.buildComparableMarketAnalysisText({
+    fields: state.fields || {},
+    rows: getComparableRows(),
+  });
+  state.fields.comparableMarketAnalysisText = text;
+  return text;
 }
 
 function createComparableLocationSketchPanel() {
@@ -16054,12 +23989,8 @@ function renderComparableLocationSketchMap(wrapper) {
   }
 
   const boundsPoints = [subjectPoint];
-  leaflet.marker(subjectPoint).addTo(map).bindTooltip("KONU TAŞINMAZ", {
-    permanent: true,
-    direction: "top",
-    offset: [0, -12],
-    className: "subject-map-label",
-  });
+  leaflet.marker(subjectPoint).addTo(map);
+  const labelEntries = [{ kind: "subject", latlng: subjectPoint, text: "KONU TAŞINMAZ" }];
 
   comparablePoints.forEach((item) => {
     boundsPoints.push(item.point);
@@ -16075,12 +24006,8 @@ function renderComparableLocationSketchMap(wrapper) {
       weight: 2,
       fillColor: "#14b8a6",
       fillOpacity: 0.95,
-    }).addTo(map).bindTooltip(`Emsal ${item.index + 1}`, {
-      permanent: true,
-      direction: "top",
-      offset: [0, -10],
-      className: "comparable-map-label",
-    });
+    }).addTo(map);
+    labelEntries.push({ kind: "comparable", latlng: item.point, text: `Emsal ${item.index + 1}` });
   });
 
   if (!comparablePoints.length) {
@@ -16095,11 +24022,69 @@ function renderComparableLocationSketchMap(wrapper) {
 
   if (boundsPoints.length > 1) {
     map.fitBounds(leaflet.latLngBounds(boundsPoints), {
-      padding: [42, 42],
+      padding: [78, 78],
       maxZoom: 17,
     });
   }
+  renderMapLeaderLabels(map, leaflet, labelEntries);
   window.setTimeout(() => map.invalidateSize(), 0);
+}
+
+const sketchLabelMeasureContext = document.createElement("canvas").getContext("2d");
+
+function measureSketchLabelWidth(text, font) {
+  sketchLabelMeasureContext.font = font;
+  return sketchLabelMeasureContext.measureText(String(text || "")).width;
+}
+
+// Ekran haritasında etiketleri, kendi marker'larından kaydırılmış divIcon'lar
+// olarak çizer ve leader çizgisiyle bağlar; çakışma-önleyen yerleşim (layoutSketchLabels)
+// yakın konumlarda üst üste binmeyi engeller. Zoom/pan'de yeniden hesaplanır.
+// entries: [{ kind:'subject'|<diğer>, latlng, text, color? }]
+function renderMapLeaderLabels(map, leaflet, entries) {
+  if (!entries.length) return { relayout: () => {}, layer: null };
+  const layer = leaflet.layerGroup().addTo(map);
+  const relayout = () => {
+    if (!map._container) return;
+    layer.clearLayers();
+    const size = map.getSize();
+    const anchors = entries.map((entry) => {
+      const isSubject = entry.kind === "subject";
+      const font = isSubject ? "800 12px Arial" : "700 11px Arial";
+      const point = map.latLngToContainerPoint(entry.latlng);
+      return {
+        kind: isSubject ? "subject" : "place",
+        latlng: entry.latlng,
+        text: entry.text,
+        x: point.x,
+        y: point.y,
+        w: Math.min(measureSketchLabelWidth(entry.text, font) + (isSubject ? 24 : 20), 240),
+        h: isSubject ? 26 : 22,
+        markerColor: isSubject ? "#c81e1e" : (entry.color || "#0f766e"),
+      };
+    });
+    layoutSketchLabels(anchors, size.x, size.y);
+    anchors.forEach((a) => {
+      const labelLatLng = map.containerPointToLatLng([a.cx, a.cy]);
+      leaflet.polyline([a.latlng, labelLatLng], {
+        color: a.markerColor,
+        weight: 1.6,
+        opacity: 0.9,
+      }).addTo(layer);
+      const isSubject = a.kind === "subject";
+      const styleAttr = isSubject ? "" : ` style="border-color:${a.markerColor};color:${a.markerColor}"`;
+      const icon = leaflet.divIcon({
+        className: `sketch-leader-label${isSubject ? " is-subject" : ""}`,
+        html: `<span class="sketch-leader-label-inner"${styleAttr}>${escapeHtml(a.text)}</span>`,
+        iconSize: [0, 0],
+        iconAnchor: [0, 0],
+      });
+      leaflet.marker(labelLatLng, { icon, interactive: false, keyboard: false }).addTo(layer);
+    });
+  };
+  relayout();
+  map.on("zoomend moveend", relayout);
+  return { relayout, layer };
 }
 
 function getComparableSketchPoints() {
@@ -16218,15 +24203,126 @@ function getComparableSketchExportPoints(subjectPoint, comparablePoints, parsed)
   ].filter(([lat, lng]) => Number.isFinite(lat) && Number.isFinite(lng));
 }
 
+// Çakışma-önleyen etiket yerleşimi (piksel uzayında). Etiket merkezleri önce
+// küme merkezinden dışa doğru itilir, ardından birbirleriyle ve marker'larla
+// çakışmayacak şekilde ayrıştırılır. Böylece yakın konumlarda etiketler üst üste
+// binmez; her etiket kendi marker'ına leader çizgisiyle bağlanır.
+function layoutSketchLabels(anchors, canvasWidth, canvasHeight) {
+  const count = anchors.length;
+  if (!count) return anchors;
+  const centerX = anchors.reduce((sum, a) => sum + a.x, 0) / count;
+  const centerY = anchors.reduce((sum, a) => sum + a.y, 0) / count;
+  anchors.forEach((a, index) => {
+    let dirX = a.x - centerX;
+    let dirY = a.y - centerY;
+    let length = Math.hypot(dirX, dirY);
+    if (length < 1) {
+      const angle = (index / count) * Math.PI * 2 - Math.PI / 2;
+      dirX = Math.cos(angle);
+      dirY = Math.sin(angle);
+      length = 1;
+    }
+    const distance = 36 + a.h / 2;
+    a.cx = a.x + (dirX / length) * distance;
+    a.cy = a.y + (dirY / length) * distance;
+  });
+  for (let iteration = 0; iteration < 160; iteration += 1) {
+    let moved = false;
+    for (let i = 0; i < count; i += 1) {
+      for (let j = i + 1; j < count; j += 1) {
+        const a = anchors[i];
+        const b = anchors[j];
+        const dx = a.cx - b.cx;
+        const dy = a.cy - b.cy;
+        const overlapX = (a.w + b.w) / 2 + 8 - Math.abs(dx);
+        const overlapY = (a.h + b.h) / 2 + 6 - Math.abs(dy);
+        if (overlapX > 0 && overlapY > 0) {
+          if (overlapX < overlapY) {
+            const push = (dx >= 0 ? 1 : -1) * (overlapX / 2 + 0.5);
+            a.cx += push;
+            b.cx -= push;
+          } else {
+            const push = (dy >= 0 ? 1 : -1) * (overlapY / 2 + 0.5);
+            a.cy += push;
+            b.cy -= push;
+          }
+          moved = true;
+        }
+      }
+      for (let k = 0; k < count; k += 1) {
+        const a = anchors[i];
+        const marker = anchors[k];
+        const dx = a.cx - marker.x;
+        const dy = a.cy - marker.y;
+        const dist = Math.hypot(dx, dy);
+        const minDist = a.h / 2 + 14;
+        if (dist < minDist && dist > 0.01) {
+          a.cx += (dx / dist) * (minDist - dist);
+          a.cy += (dy / dist) * (minDist - dist);
+          moved = true;
+        }
+      }
+    }
+    if (!moved) break;
+  }
+  anchors.forEach((a) => {
+    a.cx = Math.max(a.w / 2 + 6, Math.min(a.cx, canvasWidth - a.w / 2 - 6));
+    a.cy = Math.max(a.h / 2 + 6, Math.min(a.cy, canvasHeight - a.h / 2 - 6));
+    a.lx = a.cx - a.w / 2;
+    a.ly = a.cy - a.h / 2;
+  });
+  return anchors;
+}
+
+function drawSketchLeaderAndMarker(context, a) {
+  if (!Number.isFinite(a.x) || !Number.isFinite(a.y)) return;
+  context.save();
+  context.setLineDash([]);
+  context.strokeStyle = a.markerColor;
+  context.lineWidth = a.kind === "subject" ? 4 : 3;
+  context.beginPath();
+  context.moveTo(a.x, a.y);
+  context.lineTo(a.cx, a.cy);
+  context.stroke();
+  context.beginPath();
+  context.fillStyle = "#ffffff";
+  context.arc(a.x, a.y, a.markerRadius + 3, 0, Math.PI * 2);
+  context.fill();
+  context.beginPath();
+  context.fillStyle = a.markerColor;
+  context.arc(a.x, a.y, a.markerRadius, 0, Math.PI * 2);
+  context.fill();
+  context.restore();
+}
+
+function drawSketchLabelBox(context, a) {
+  if (!Number.isFinite(a.cx) || !Number.isFinite(a.cy)) return;
+  context.save();
+  context.beginPath();
+  context.fillStyle = a.fill;
+  context.strokeStyle = a.borderColor;
+  context.lineWidth = a.kind === "subject" ? 5 : 2;
+  context.roundRect(a.lx, a.ly, a.w, a.h, a.kind === "subject" ? 12 : 10);
+  context.fill();
+  context.stroke();
+  context.fillStyle = a.textColor;
+  context.font = a.font;
+  context.textBaseline = "middle";
+  const padX = a.kind === "subject" ? 20 : 12;
+  context.fillText(a.text, a.lx + padX, a.cy + 1, a.w - padX * 2);
+  context.restore();
+}
+
 function drawExportComparableSketch(context, subjectPoint, comparablePoints, topLeft, zoom) {
   const subjectPixel = subjectPoint ? projectExportPoint(subjectPoint[0], subjectPoint[1], topLeft, zoom) : null;
-  if (subjectPoint) {
-    drawExportSubject(context, subjectPoint, topLeft, zoom);
-  }
+  const comps = comparablePoints.map((item) => ({
+    item,
+    pixel: projectExportPoint(item.point[0], item.point[1], topLeft, zoom),
+  }));
 
-  comparablePoints.forEach((item) => {
-    const pixel = projectExportPoint(item.point[0], item.point[1], topLeft, zoom);
-    if (subjectPixel) {
+  // Konu taşınmaz → emsal kesikli bağlantı çizgileri
+  if (subjectPixel) {
+    comps.forEach(({ pixel }) => {
       context.save();
       context.strokeStyle = "rgba(15, 118, 110, 0.72)";
       context.lineWidth = 4;
@@ -16236,9 +24332,50 @@ function drawExportComparableSketch(context, subjectPoint, comparablePoints, top
       context.lineTo(pixel.x, pixel.y);
       context.stroke();
       context.restore();
-    }
-    drawExportPointLabel(context, pixel.x, pixel.y, `Emsal ${item.index + 1}`, "#0f766e");
+    });
+  }
+
+  // Etiket anchor'ları
+  const anchors = [];
+  if (subjectPixel) {
+    context.font = "900 30px Arial";
+    anchors.push({
+      kind: "subject",
+      x: subjectPixel.x,
+      y: subjectPixel.y,
+      text: "KONU TAŞINMAZ",
+      w: Math.min(context.measureText("KONU TAŞINMAZ").width + 40, 430),
+      h: 58,
+      font: "900 30px Arial",
+      fill: "#c81e1e",
+      textColor: "#ffffff",
+      borderColor: "#ffffff",
+      markerColor: "#c81e1e",
+      markerRadius: 12,
+    });
+  }
+  comps.forEach(({ item, pixel }) => {
+    const text = `Emsal ${item.index + 1}`;
+    context.font = "700 22px Arial";
+    anchors.push({
+      kind: "comparable",
+      x: pixel.x,
+      y: pixel.y,
+      text,
+      w: Math.min(context.measureText(text).width + 24, 420),
+      h: 42,
+      font: "700 22px Arial",
+      fill: "rgba(255, 255, 255, 0.94)",
+      textColor: "#0f766e",
+      borderColor: "#0f766e",
+      markerColor: "#0f766e",
+      markerRadius: 10,
+    });
   });
+
+  layoutSketchLabels(anchors, context.canvas.width, context.canvas.height);
+  anchors.forEach((a) => drawSketchLeaderAndMarker(context, a));
+  anchors.forEach((a) => drawSketchLabelBox(context, a));
 }
 
 function cloneComparableRow(row) {
@@ -16259,6 +24396,14 @@ function getComparableRows() {
     rows = Array.from({ length: comparableDefaultRowCount }, () => ({ _comparablesVersion: 2 }));
   }
   rows = rows.map(migrateComparableRow);
+  rows.forEach((row) => {
+    if (normalizeComparableNature(row) === "tarla") {
+      comparableTarlaZoningFieldKeys.forEach((key) => {
+        row[key] = "";
+      });
+      row.c31Manual = "";
+    }
+  });
   rows = trimEmptyDefaultComparableRows(rows);
   state.tables.comparables = rows;
   return rows;
@@ -16304,6 +24449,9 @@ function migrateComparableRow(row = {}) {
 function createComparableMatrixCell(section, field, row, rowIndex) {
   const cell = document.createElement("div");
   cell.className = `comparable-matrix-cell${field.key === "c7" ? " comparable-location-cell" : ""}`;
+  if (field.key === "c31") {
+    syncComparableLandBuildableArea(row);
+  }
   if (field.computed) {
     const computed = createComparableComputedControl(field, row, rowIndex);
     cell.append(computed);
@@ -16314,7 +24462,13 @@ function createComparableMatrixCell(section, field, row, rowIndex) {
     return cell;
   }
   const control = createComparableFieldControl(field);
-  const currentValue = row[field.key] || "";
+  control.dataset.comparableRow = String(rowIndex);
+  control.dataset.comparableField = field.key;
+  let currentValue = row[field.key] || "";
+  if (control.tagName === "SELECT" && field.allowEmpty === false && !currentValue && field.options?.length) {
+    currentValue = field.options[0];
+    row[field.key] = currentValue;
+  }
   if (control.tagName === "SELECT" && currentValue && !Array.from(control.options).some((option) => option.value === currentValue)) {
     const currentOption = document.createElement("option");
     currentOption.value = currentValue;
@@ -16322,20 +24476,46 @@ function createComparableMatrixCell(section, field, row, rowIndex) {
     control.append(currentOption);
   }
   control.value = field.type === "date" ? toComparableDateInputValue(currentValue) : currentValue;
+  if (field.readOnly) {
+    control.readOnly = true;
+    control.classList.add("is-readonly");
+    if (!currentValue) control.placeholder = "Haritadan seçilince dolar";
+    cell.append(control);
+    return cell;
+  }
   control.addEventListener("input", (event) => {
     row[field.key] = event.target.value;
+    if (field.key === "c31") {
+      row.c31Manual = event.target.value.trim() ? "1" : "";
+      if (!row.c31Manual && syncComparableLandBuildableArea(row)) {
+        event.target.value = row.c31 || "";
+      }
+    }
     autosave();
+    if (["c24", "c26", "c27", "c28"].includes(field.key)) return;
     refreshComparableComputedCells(row, rowIndex);
     updateComparableReasonRowsVisibility(cell.closest(".comparables-matrix-shell"));
+    if (field.key === "c23") renderSection();
   });
   control.addEventListener("change", (event) => {
     row[field.key] = event.target.value;
+    if (field.key === "c31") {
+      row.c31Manual = event.target.value.trim() ? "1" : "";
+      if (!row.c31Manual) syncComparableLandBuildableArea(row);
+    }
+    if (["c24", "c26", "c27", "c28"].includes(field.key) && syncComparableLandBuildableArea(row, true)) {
+      autosave();
+      renderSection();
+      return;
+    }
     autosave();
     refreshComparableComputedCells(row, rowIndex);
     updateComparableReasonRowsVisibility(cell.closest(".comparables-matrix-shell"));
+    if (field.key === "c23") renderSection();
   });
   control.addEventListener("blur", () => {
     if (control.tagName === "SELECT" || field.type === "date") return;
+    if (field.key === "c10") return;
     const formattedValue = normalizeReportTableValue(section, field.label, control.value);
     if (formattedValue === control.value) return;
     control.value = formattedValue;
@@ -16495,9 +24675,351 @@ function createComparableComputedControl(field, row, rowIndex) {
 }
 
 function refreshComparableComputedCells(row, rowIndex) {
+  if (syncComparableLandBuildableArea(row)) {
+    document.querySelectorAll(`[data-comparable-row="${rowIndex}"][data-comparable-field="c31"]`).forEach((control) => {
+      control.value = row.c31 || "";
+    });
+  }
   document.querySelectorAll(`[data-comparable-row="${rowIndex}"][data-comparable-computed]`).forEach((control) => {
     control.value = calculateComparableFieldValue(control.dataset.comparableComputed, row, rowIndex);
   });
+  syncComparableValuationMarketValues();
+  refreshComparableValuationSummaryPanel();
+  refreshComparableMarketAnalysisPanel();
+}
+
+function createComparableValuationSummaryPanel() {
+  syncComparableValuationMarketValues();
+  const wrapper = document.createElement("div");
+  wrapper.className = "subsection is-detail comparable-valuation-summary";
+  wrapper.dataset.comparableValuationSummary = "true";
+  const titleRow = document.createElement("div");
+  titleRow.className = "subsection-table-head";
+  titleRow.innerHTML = `<h4>Emsal Değerleme Tablosu</h4>`;
+  const tableWrap = document.createElement("div");
+  tableWrap.className = "table-shell comparable-valuation-summary-shell";
+  tableWrap.append(createComparableValuationSummaryTable());
+  wrapper.append(titleRow, tableWrap);
+  return wrapper;
+}
+
+function refreshComparableValuationSummaryPanel() {
+  const panel = document.querySelector("[data-comparable-valuation-summary]");
+  if (!panel) return;
+  const shell = panel.querySelector(".comparable-valuation-summary-shell");
+  if (!shell) return;
+  shell.replaceChildren(createComparableValuationSummaryTable());
+  refreshComparableCalculatedEmsalValuationPanel();
+}
+
+function createComparableCalculatedEmsalValuationPanel() {
+  const wrapper = document.createElement("div");
+  wrapper.className = "comparable-calculated-emsal-valuation";
+  wrapper.dataset.comparableCalculatedEmsalValuation = "true";
+  const title = document.createElement("h4");
+  title.textContent = "Hesaplanan Emsale Göre Arsa Piyasa Değeri";
+  wrapper.append(title, createComparableCalculatedEmsalValuationTable());
+  return wrapper;
+}
+
+function refreshComparableCalculatedEmsalValuationPanel() {
+  const panel = document.querySelector("[data-comparable-calculated-emsal-valuation]");
+  if (!panel) return;
+  panel.replaceChildren(
+    Object.assign(document.createElement("h4"), { textContent: "Hesaplanan Emsale Göre Arsa Piyasa Değeri" }),
+    createComparableCalculatedEmsalValuationTable()
+  );
+}
+
+function getComparableCalculatedEmsalValuationMetrics() {
+  const landRows = getComparableValuationRows().filter((row) => row.landComparable);
+  const average = calculateComparableValuationAverages(landRows);
+  const subjectLandArea = parseValuationNumber(gabimField("landArea"));
+  const subjectKaks = parseValuationNumber(gabimField("kaks"));
+  const calculatedFromZoning = Number.isFinite(subjectLandArea) && subjectLandArea > 0 && Number.isFinite(subjectKaks) && subjectKaks > 0
+    ? subjectLandArea * subjectKaks
+    : parseValuationNumber(gabimCalculatedEmsalText());
+  const sourceUnitValue = average.adjustedCalculatedEmsalUnitValue;
+  const marketValue = Number.isFinite(calculatedFromZoning) && Number.isFinite(sourceUnitValue)
+    ? roundComparableValuationValue(calculatedFromZoning * sourceUnitValue, comparableValuationRoundStep)
+    : Number.NaN;
+  const unitValue = Number.isFinite(marketValue) && Number.isFinite(subjectLandArea) && subjectLandArea > 0
+    ? marketValue / subjectLandArea
+    : Number.NaN;
+  const calculatedUnitValue = Number.isFinite(marketValue) && Number.isFinite(calculatedFromZoning) && calculatedFromZoning > 0
+    ? marketValue / calculatedFromZoning
+    : Number.NaN;
+  return {
+    subjectLandArea,
+    subjectKaks,
+    subjectArea: calculatedFromZoning,
+    calculatedUnitValue,
+    unitValue,
+    marketValue,
+  };
+}
+
+function createComparableCalculatedEmsalValuationTable() {
+  const table = document.createElement("table");
+  table.className = "comparable-calculated-emsal-table";
+  const metrics = getComparableCalculatedEmsalValuationMetrics();
+  table.innerHTML = `
+    <thead>
+      <tr>
+        <th>TAŞINMAZ YÜZÖLÇÜMÜ<span>m²</span></th>
+        <th>KAKS ORANI</th>
+        <th>KONU TAŞINMAZIN HESAPLANAN EMSALİ<span>m²</span></th>
+        <th>HESAPLANAN EMSAL M² BİRİM DEĞERİ<span>TL/m²</span></th>
+        <th>m² BİRİM DEĞERİ<span>TL/m²</span></th>
+        <th>PİYASA DEĞERİ<span>TL</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>${formatComparableSummaryNumber(metrics.subjectLandArea, { decimals: 2 })}</td>
+        <td>${formatComparableSummaryNumber(metrics.subjectKaks, { decimals: 2 })}</td>
+        <td>${formatComparableSummaryNumber(metrics.subjectArea, { decimals: 2 })}</td>
+        <td>${formatComparableSummaryNumber(metrics.calculatedUnitValue, { decimals: 2 })}</td>
+        <td>${formatComparableSummaryNumber(metrics.unitValue, { decimals: 2 })}</td>
+        <td class="is-accent is-accent-sale">${formatComparableSummaryMoney(metrics.marketValue)}</td>
+      </tr>
+    </tbody>
+  `;
+  return table;
+}
+
+function createComparableValuationSummaryTable() {
+  const table = document.createElement("table");
+  table.className = "comparable-valuation-summary-table";
+  const rows = getComparableValuationRows();
+  const landMode = rows.length > 0 && rows.every((row) => row.landComparable);
+  table.innerHTML = `
+    <thead>
+      <tr class="comparable-summary-group-row">
+        <th rowspan="2" class="is-sticky">NO</th>
+        <th rowspan="2">ALAN<span>m²</span></th>
+        <th colspan="4" class="is-group-sale">SATIŞ / PİYASA DEĞERLEMESİ</th>
+        <th colspan="2" class="is-group-merit">ŞEREFİYE</th>
+        <th rowspan="2" class="is-accent is-accent-sale">İND. M² BİRİM<span>TL/m²</span></th>
+        <th colspan="3" class="is-group-rent">KİRA DEĞERLEMESİ</th>
+      </tr>
+      <tr class="comparable-summary-sub-row">
+        <th class="is-group-sale">TALEP EDİLEN DEĞER<span>TL</span></th>
+        <th class="is-group-sale">P. PAYI</th>
+        <th class="is-group-sale">PAZARLIKLI DEĞER<span>TL</span></th>
+        <th class="is-group-sale">M² BİRİM<span>TL/m²</span></th>
+        <th class="is-group-merit">İÇ ÖZELLİK</th>
+        <th class="is-group-merit">KONUM</th>
+        <th class="is-group-rent">KİRA<span>TL/ay</span></th>
+        <th class="is-group-rent">KİRA BİRİM<span>TL/m²</span></th>
+        <th class="is-group-rent is-accent is-accent-rent">İND. KİRA BİRİM<span>TL/m²</span></th>
+      </tr>
+    </thead>
+  `;
+  if (landMode) {
+    table.innerHTML = `
+      <thead>
+        <tr class="comparable-summary-group-row">
+          <th rowspan="2" class="is-sticky">NO</th>
+          <th rowspan="2">YÜZÖLÇÜMÜ<span>m²</span></th>
+          <th rowspan="2">HESAPLANAN EMSAL<span>m²</span></th>
+          <th colspan="4" class="is-group-sale">SATIŞ / ARSA DEĞERLEMESİ</th>
+          <th rowspan="2" class="is-group-merit">KONUM ŞEREFİYESİ</th>
+          <th rowspan="2" class="is-accent is-accent-sale">İND. M² BİRİM DEĞER<span>TL/m²</span></th>
+          <th rowspan="2" class="is-accent is-accent-calculated">HESAPLANAN EMSAL M² BİRİM DEĞERİ<span>TL/m²</span></th>
+          <th rowspan="2" class="is-accent is-accent-calculated">İND. HESAPLANAN EMSAL M² BİRİM DEĞERİ<span>TL/m²</span></th>
+        </tr>
+        <tr class="comparable-summary-sub-row">
+          <th class="is-group-sale">TALEP EDİLEN DEĞER<span>TL</span></th>
+          <th class="is-group-sale">P. PAYI</th>
+          <th class="is-group-sale">PAZARLIKLI DEĞER<span>TL</span></th>
+          <th class="is-group-sale">M² BİRİM<span>TL/m²</span></th>
+        </tr>
+      </thead>
+    `;
+  }
+  const tbody = document.createElement("tbody");
+  if (!rows.length) {
+    const emptyRow = document.createElement("tr");
+    emptyRow.innerHTML = `<td colspan="12" class="comparable-summary-empty">Hesaplanabilir emsal bulunamadı.</td>`;
+    tbody.append(emptyRow);
+    table.append(tbody);
+    return table;
+  }
+  rows.forEach((row) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <th class="is-sticky comparable-summary-row-no">${escapeHtml(row.no)}</th>
+      <td>${formatComparableSummaryNumber(row.area, { decimals: 2 })}</td>
+      <td>${formatComparableSummaryMoney(row.askingPrice)}</td>
+      <td>${formatComparableSummaryPercent(row.negotiationRate)}</td>
+      <td>${formatComparableSummaryMoney(row.saleValue)}</td>
+      <td>${formatComparableSummaryNumber(row.unitValue, { decimals: 2 })}</td>
+      <td class="is-merit">${formatComparableSummarySignedPercent(row.featureAdjustment)}</td>
+      <td class="is-merit">${formatComparableSummarySignedPercent(row.locationAdjustment)}</td>
+      <td class="is-accent is-accent-sale">${formatComparableSummaryNumber(row.adjustedUnitValue, { decimals: 2 })}</td>
+      <td>${formatComparableSummaryMoney(row.rent)}</td>
+      <td>${formatComparableSummaryNumber(row.rentUnitValue, { decimals: 2 })}</td>
+      <td class="is-accent is-accent-rent">${formatComparableSummaryNumber(row.adjustedRentUnitValue, { decimals: 2 })}</td>
+    `;
+    if (landMode) {
+      tr.innerHTML = `
+        <th class="is-sticky comparable-summary-row-no">${escapeHtml(row.no)}</th>
+        <td>${formatComparableSummaryNumber(row.area, { decimals: 2 })}</td>
+        <td>${formatComparableSummaryNumber(row.calculatedEmsalArea, { decimals: 2 })}</td>
+        <td>${formatComparableSummaryMoney(row.askingPrice)}</td>
+        <td>${formatComparableSummaryPercent(row.negotiationRate)}</td>
+        <td>${formatComparableSummaryMoney(row.saleValue)}</td>
+        <td>${formatComparableSummaryNumber(row.unitValue, { decimals: 2 })}</td>
+        <td class="is-merit">${formatComparableSummarySignedPercent(row.locationAdjustment)}</td>
+        <td class="is-accent is-accent-sale">${formatComparableSummaryNumber(row.adjustedUnitValue, { decimals: 2 })}</td>
+        <td class="is-accent is-accent-calculated">${formatComparableSummaryNumber(row.calculatedEmsalUnitValue, { decimals: 2 })}</td>
+        <td class="is-accent is-accent-calculated">${formatComparableSummaryNumber(row.adjustedCalculatedEmsalUnitValue, { decimals: 2 })}</td>
+      `;
+    }
+    tbody.append(tr);
+  });
+  const average = calculateComparableValuationAverages(rows);
+  const averageRow = document.createElement("tr");
+  averageRow.className = "comparable-summary-average-row";
+  averageRow.innerHTML = `
+    <th class="is-sticky">ORTALAMA</th>
+    <td>${formatComparableSummaryNumber(average.area, { decimals: 2 })}</td>
+    <td>${formatComparableSummaryMoney(average.askingPrice)}</td>
+    <td>${formatComparableSummaryPercent(average.negotiationRate)}</td>
+    <td>${formatComparableSummaryMoney(average.saleValue)}</td>
+    <td>${formatComparableSummaryNumber(average.unitValue, { decimals: 2 })}</td>
+    <td class="is-merit">${formatComparableSummarySignedPercent(average.featureAdjustment)}</td>
+    <td class="is-merit">${formatComparableSummarySignedPercent(average.locationAdjustment)}</td>
+    <td class="is-accent is-accent-sale">${formatComparableSummaryNumber(average.adjustedUnitValue, { decimals: 2 })}</td>
+    <td>${formatComparableSummaryMoney(average.rent)}</td>
+    <td>${formatComparableSummaryNumber(average.rentUnitValue, { decimals: 2 })}</td>
+    <td class="is-accent is-accent-rent">${formatComparableSummaryNumber(average.adjustedRentUnitValue, { decimals: 2 })}</td>
+  `;
+  if (landMode) {
+    averageRow.innerHTML = `
+      <th class="is-sticky">ORTALAMA</th>
+      <td>${formatComparableSummaryNumber(average.area, { decimals: 2 })}</td>
+      <td>${formatComparableSummaryNumber(average.calculatedEmsalArea, { decimals: 2 })}</td>
+      <td>${formatComparableSummaryMoney(average.askingPrice)}</td>
+      <td>${formatComparableSummaryPercent(average.negotiationRate)}</td>
+      <td>${formatComparableSummaryMoney(average.saleValue)}</td>
+      <td>${formatComparableSummaryNumber(average.unitValue, { decimals: 2 })}</td>
+      <td class="is-merit">${formatComparableSummarySignedPercent(average.locationAdjustment)}</td>
+      <td class="is-accent is-accent-sale">${formatComparableSummaryNumber(average.adjustedUnitValue, { decimals: 2 })}</td>
+      <td class="is-accent is-accent-calculated">${formatComparableSummaryNumber(average.calculatedEmsalUnitValue, { decimals: 2 })}</td>
+      <td class="is-accent is-accent-calculated">${formatComparableSummaryNumber(average.adjustedCalculatedEmsalUnitValue, { decimals: 2 })}</td>
+    `;
+  }
+  tbody.append(averageRow);
+  table.append(tbody);
+  return table;
+}
+
+function getComparableValuationRows() {
+  return getComparableRows()
+    .map((row, index) => {
+      const metrics = calculateComparableMetrics(row);
+      return {
+        no: `E${index + 1}`,
+        landComparable: isLandComparable(row),
+        area: metrics.adjustedArea,
+        calculatedEmsalArea: metrics.calculatedEmsalArea,
+        askingPrice: metrics.askingPrice,
+        negotiationRate: metrics.negotiationRate,
+        saleValue: metrics.saleValue,
+        unitValue: metrics.unitValue,
+        featureAdjustment: metrics.featureAdjustment,
+        locationAdjustment: metrics.locationAdjustment,
+        adjustedUnitValue: metrics.adjustedUnitValue,
+        calculatedEmsalUnitValue: metrics.calculatedEmsalUnitValue,
+        adjustedCalculatedEmsalUnitValue: metrics.adjustedCalculatedEmsalUnitValue,
+        rent: metrics.rent,
+        rentUnitValue: metrics.rentUnitValue,
+        adjustedRentUnitValue: metrics.adjustedRentUnitValue,
+      };
+    })
+    .filter((row) => Number.isFinite(row.adjustedUnitValue) || Number.isFinite(row.unitValue) || Number.isFinite(row.rentUnitValue));
+}
+
+function calculateComparableValuationAverages(rows = getComparableValuationRows()) {
+  const averageOf = (key) => {
+    const values = rows.map((row) => row[key]).filter(Number.isFinite);
+    if (!values.length) return Number.NaN;
+    return values.reduce((sum, value) => sum + value, 0) / values.length;
+  };
+  return {
+    area: averageOf("area"),
+    calculatedEmsalArea: averageOf("calculatedEmsalArea"),
+    askingPrice: averageOf("askingPrice"),
+    negotiationRate: averageOf("negotiationRate"),
+    saleValue: averageOf("saleValue"),
+    unitValue: averageOf("unitValue"),
+    featureAdjustment: averageOf("featureAdjustment"),
+    locationAdjustment: averageOf("locationAdjustment"),
+    adjustedUnitValue: averageOf("adjustedUnitValue"),
+    calculatedEmsalUnitValue: averageOf("calculatedEmsalUnitValue"),
+    adjustedCalculatedEmsalUnitValue: averageOf("adjustedCalculatedEmsalUnitValue"),
+    rent: averageOf("rent"),
+    rentUnitValue: averageOf("rentUnitValue"),
+    adjustedRentUnitValue: averageOf("adjustedRentUnitValue"),
+  };
+}
+
+function formatComparableSummaryNumber(value, options = {}) {
+  if (!Number.isFinite(value)) return "";
+  return value.toLocaleString("tr-TR", {
+    minimumFractionDigits: options.decimals ?? 0,
+    maximumFractionDigits: options.decimals ?? 0,
+  });
+}
+
+function formatComparableSummaryMoney(value) {
+  if (!Number.isFinite(value)) return "";
+  return Math.round(value).toLocaleString("tr-TR");
+}
+
+function formatComparableSummaryPercent(value) {
+  if (!Number.isFinite(value)) return "";
+  return `%${(value * 100).toLocaleString("tr-TR", { maximumFractionDigits: 2 })}`;
+}
+
+function formatComparableSummarySignedPercent(value) {
+  if (!Number.isFinite(value) || value === 0) return "+ 0%";
+  const sign = value > 0 ? "+" : "-";
+  return `${sign} %${(Math.abs(value) * 100).toLocaleString("tr-TR", { maximumFractionDigits: 2 })}`;
+}
+
+function roundComparableValuationValue(value, step = comparableValuationRoundStep) {
+  if (!Number.isFinite(value) || value <= 0) return Number.NaN;
+  return Math.round(value / step) * step;
+}
+
+function syncComparableValuationMarketValues() {
+  syncValuationAreasFromUnitAreas();
+  const average = calculateComparableValuationAverages();
+  const unitValue = average.adjustedUnitValue;
+  if (Number.isFinite(unitValue) && unitValue > 0) {
+    syncComparableValuationMarketValue("legalValue", "legalValueArea", unitValue);
+    syncComparableValuationMarketValue("currentValue", "currentValueArea", unitValue);
+  }
+  const rentUnitValue = average.adjustedRentUnitValue;
+  if (Number.isFinite(rentUnitValue) && rentUnitValue > 0) {
+    syncComparableValuationMarketValue("legalRent", "legalRentArea", rentUnitValue, comparableValuationRentRoundStep);
+    syncComparableValuationMarketValue("currentRent", "currentRentArea", rentUnitValue, comparableValuationRentRoundStep);
+  }
+  refreshValuationControls();
+}
+
+function syncComparableValuationMarketValue(totalKey, areaKey, unitValue, roundStep = comparableValuationRoundStep) {
+  if (state.fields[`${totalKey}ComparableAutoManual`] === "1") return;
+  const area = parseValuationNumber(state.fields[areaKey]);
+  if (!Number.isFinite(area) || area <= 0) return;
+  const roundedValue = roundComparableValuationValue(area * unitValue, roundStep);
+  if (!Number.isFinite(roundedValue)) return;
+  const formatted = formatValuationMoney(roundedValue);
+  state.fields[totalKey] = formatted;
+  state.fields[`${totalKey}ComparableAuto`] = formatted;
 }
 
 function calculateComparableFieldValue(key, row, rowIndex = 0) {
@@ -16507,19 +25029,23 @@ function calculateComparableFieldValue(key, row, rowIndex = 0) {
   if (key === "calcFeatureAdjustment") return formatComparableSignedPercent(metrics.featureAdjustment);
   if (key === "calcLocationAdjustment") return formatComparableSignedPercent(metrics.locationAdjustment);
   if (key === "calcAdjustedUnitValue") return formatComparableMoney(metrics.adjustedUnitValue, " TL/m²");
+  if (key === "calcCalculatedEmsalUnitValue") return formatComparableMoney(metrics.calculatedEmsalUnitValue, " TL/m²");
+  if (key === "calcAdjustedCalculatedEmsalUnitValue") return formatComparableMoney(metrics.adjustedCalculatedEmsalUnitValue, " TL/m²");
   if (key === "calcRentUnitValue") return formatComparableMoney(metrics.rentUnitValue, " TL/m²/ay");
-  if (key === "calcShortText") return buildComparableShortText(row, rowIndex, metrics);
   if (key === "calcLongText") return buildComparableLongText(row, rowIndex, metrics);
   return "";
 }
 
 function calculateComparableMetrics(row) {
   const status = String(row.c2 || "").toLocaleLowerCase("tr-TR");
+  const landComparable = isLandComparable(row);
   const askingPrice = parseComparableNumber(row.c14);
   const bargainPrice = parseComparableNumber(row.c15);
-  const adjustedArea = parseComparableNumber(row.c13 || row.c12);
-  const rent = parseComparableNumber(row.c16);
-  const featureAdjustment = calculateComparableAdjustment(row.c8, row.c21);
+  if (landComparable) syncComparableLandBuildableArea(row);
+  const adjustedArea = landComparable ? parseComparableNumber(row.c24) : parseComparableNumber(row.c13 || row.c12);
+  const calculatedEmsalArea = landComparable ? parseComparableNumber(row.c31) : Number.NaN;
+  const rent = landComparable ? Number.NaN : parseComparableNumber(row.c16);
+  const featureAdjustment = landComparable ? 0 : calculateComparableAdjustment(row.c8, row.c21);
   const locationAdjustment = calculateComparableAdjustment(row.c9, row.c22);
   const negotiationRate = askingPrice > 0 && bargainPrice > 0 ? 1 - bargainPrice / askingPrice : Number.NaN;
   const saleValue = status.includes("satılmış")
@@ -16529,19 +25055,28 @@ function calculateComparableMetrics(row) {
       : askingPrice;
   const unitValue = saleValue > 0 && adjustedArea > 0 ? saleValue / adjustedArea : Number.NaN;
   const adjustedUnitValue = Number.isFinite(unitValue) ? unitValue * (1 + featureAdjustment + locationAdjustment) : Number.NaN;
+  const calculatedEmsalUnitValue = saleValue > 0 && calculatedEmsalArea > 0 ? saleValue / calculatedEmsalArea : Number.NaN;
+  const adjustedCalculatedEmsalUnitValue = Number.isFinite(calculatedEmsalUnitValue)
+    ? calculatedEmsalUnitValue * (1 + locationAdjustment)
+    : Number.NaN;
   const rentUnitValue = rent > 0 && adjustedArea > 0 ? rent / adjustedArea : Number.NaN;
+  const adjustedRentUnitValue = Number.isFinite(rentUnitValue) ? rentUnitValue * (1 + featureAdjustment + locationAdjustment) : Number.NaN;
   return {
     askingPrice,
     bargainPrice,
     saleValue,
     adjustedArea,
+    calculatedEmsalArea,
     rent,
     featureAdjustment,
     locationAdjustment,
     negotiationRate,
     unitValue,
     adjustedUnitValue,
+    calculatedEmsalUnitValue,
+    adjustedCalculatedEmsalUnitValue,
     rentUnitValue,
+    adjustedRentUnitValue,
   };
 }
 
@@ -16560,9 +25095,11 @@ function parseComparableNumber(value) {
     .replace(/[₺\s]/g, "")
     .trim();
   if (!text) return Number.NaN;
-  const normalized = text.includes(",") && text.includes(".")
+  const normalized = text.includes(",")
     ? text.replace(/\./g, "").replace(",", ".")
-    : text.replace(",", ".");
+    : /^\d{1,3}(?:\.\d{3})+$/.test(text)
+      ? text.replace(/\./g, "")
+      : text;
   const number = Number.parseFloat(normalized.replace(/[^0-9.-]/g, ""));
   return Number.isFinite(number) ? number : Number.NaN;
 }
@@ -16589,14 +25126,8 @@ function formatComparableSignedPercent(value) {
   return `${sign}%${(Math.abs(value) * 100).toLocaleString("tr-TR", { maximumFractionDigits: 1 })}`;
 }
 
-function buildComparableShortText(row, rowIndex, metrics) {
-  const longText = buildComparableLongText(row, rowIndex, metrics);
-  if (!longText) return "";
-  const firstParagraph = longText.split(/\n\s*\n/).pop() || longText;
-  return normalizeReportSentenceLine(firstParagraph.replace(/\s*\(İndirgenmiş m2 Birim Değeri:[^)]+\)/i, ""));
-}
-
 function buildComparableLongText(row, rowIndex, metrics) {
+  if (isLandComparable(row)) return buildComparableLandLongText(row, rowIndex, metrics);
   if (!String(row.c0 || row.c2 || row.c4 || "").trim()) return "";
   const status = String(row.c2 || "").toLocaleLowerCase("tr-TR");
   if (status.includes("genel")) return buildComparableGeneralStatement(row, metrics);
@@ -16630,6 +25161,125 @@ function buildComparableLongText(row, rowIndex, metrics) {
     calculationText,
   ].join("");
   return normalizeComparableText(`${contactLine}\n\n${sentence}`);
+}
+
+function buildComparableLandLongText(row, rowIndex, metrics) {
+  if (!String(row.c0 || row.c2 || row.c23 || row.c24 || "").trim()) return "";
+  const status = String(row.c2 || "").toLocaleLowerCase("tr-TR");
+  if (status.includes("genel")) return buildComparableGeneralStatement(row, metrics);
+  const contactLine = buildComparableContactLine(row);
+  const location = buildComparableLocationLocative(row.c7);
+  const mapLocation = formatComparableMapLocationPhrase(row);
+  const positionText = buildComparableLandPositionText(row);
+  const roadFrontageText = buildComparableRoadFrontageText(row);
+  const area = formatComparableArea(row.c24, "m2");
+  const zoningText = buildComparableLandZoningText(row);
+  const nature = String(row.c23 || "Arsa").trim();
+  const statusText = getComparableStatusText(row, metrics);
+  const negotiationText = buildComparableLandNegotiationText(metrics);
+  const calculationText = buildComparableLandCalculationText(row, metrics);
+  const extraText = formatComparableExtraNote(row.c17);
+  const sentence = [
+    "Ekspertize konu taşınmazla ",
+    location,
+    mapLocation ? `, ${mapLocation}` : "",
+    positionText ? `, konum olarak ${positionText}` : "",
+    roadFrontageText ? `, ${roadFrontageText}` : "",
+    area ? `, ${area} yüzölçümüne sahip` : "",
+    zoningText ? `, ${zoningText}` : "",
+    ` ${nature} nitelikli gayrimenkul`,
+    statusText ? ` ${statusText}` : "",
+    negotiationText ? ` ${negotiationText}` : "",
+    extraText ? ` ${extraText}` : "",
+    calculationText,
+  ].join("");
+  return normalizeComparableText(`${contactLine}\n\n${sentence}`);
+}
+
+function buildComparableRoadFrontageText(row = {}) {
+  const frontage = String(row.c29 || "").trim();
+  return frontage ? `yola cephe durumu ${frontage.toLocaleLowerCase("tr-TR")}` : "";
+}
+
+function formatComparableMapLocationPhrase(row = {}) {
+  const text = String(row.c20 || "").trim();
+  if (!text) return "";
+  const match = text.match(/([\d.,]+)\s*(?:m|metre)\s+(.+)/i);
+  if (!match) return `taşınmazın ${text}`;
+  const distance = parseComparableNumber(match[1]);
+  const direction = String(match[2] || "").trim();
+  if (!Number.isFinite(distance) || distance <= 0 || !direction) return `taşınmazın ${text}`;
+  const roundedDistance = Math.max(10, Math.round(distance / 10) * 10);
+  return `taşınmazın yaklaşık ${roundedDistance.toLocaleString("tr-TR")} metre ${direction}`;
+}
+
+function buildComparableLandPositionText(row) {
+  const sign = String(row.c9 || "").trim();
+  const reason = row.c10 ? `${row.c10} sebebiyle ` : "";
+  const percent = parseComparablePercent(row.c22);
+  if (!Number.isFinite(percent) || percent === 0 || sign === "0") return "benzer konumda";
+  if (sign === "+") return `${reason}taşınmaza göre ${percent > 0.25 ? "çok daha iyi" : "daha iyi"} konumda`;
+  if (sign === "-") return `${reason}taşınmaza göre ${percent > 0.25 ? "çok daha vasat" : "daha vasat"} konumda`;
+  return "benzer konumda";
+}
+
+function buildComparableLandZoningText(row) {
+  syncComparableLandBuildableArea(row);
+  const conditions = [
+    formatComparableLandOrderText(row.c26),
+    formatComparableLandKaksText(row.c27),
+    formatComparableLandFloorCountText(row.c28),
+  ].filter(Boolean).join(", ");
+  const legend = String(row.c25 || "").trim();
+  const parts = [];
+  if (conditions) parts.push(`${conditions} yapılaşma koşullarına sahip`);
+  if (legend) parts.push(`${legend} lejantlı`);
+  return parts.join(", ");
+}
+
+function formatComparableLandOrderText(value) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  const key = foldTurkish(text).toLocaleLowerCase("tr-TR");
+  if (key.includes("nizam")) return formatUiHeading(text);
+  return `${formatUiHeading(text)} Nizam`;
+}
+
+function formatComparableLandKaksText(value) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  const key = foldTurkish(text).toLocaleLowerCase("tr-TR");
+  if (key.includes("kaks") || key.includes("emsal")) return formatUiHeading(text);
+  const number = parseComparableNumber(text);
+  if (Number.isFinite(number)) {
+    return `KAKS: ${number.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }
+  return `KAKS: ${text}`;
+}
+
+function formatComparableLandFloorCountText(value) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  const key = foldTurkish(text).toLocaleLowerCase("tr-TR");
+  if (key.includes("kat") || key === "serbest") return formatUiHeading(text);
+  const number = parseComparableNumber(text);
+  if (Number.isFinite(number)) return `${Math.round(number).toLocaleString("tr-TR")} Kat`;
+  return `${formatUiHeading(text)} Kat`;
+}
+
+function buildComparableLandNegotiationText(metrics) {
+  if (!Number.isFinite(metrics.negotiationRate) || metrics.negotiationRate <= 0) return "";
+  const negotiationRateText = Math.round(metrics.negotiationRate * 100).toLocaleString("tr-TR");
+  return `Pazarlık payının yaklaşık %${negotiationRateText} olduğu düşünülmektedir.`;
+}
+
+function buildComparableLandCalculationText(row, metrics) {
+  const status = String(row.c2 || "").toLocaleLowerCase("tr-TR");
+  if (!status.includes("satılık") && !status.includes("satılmış")) return "";
+  if (!Number.isFinite(metrics.adjustedUnitValue) || metrics.adjustedArea <= 0 || metrics.saleValue <= 0) return "";
+  const totalAdjustment = 1 + metrics.locationAdjustment;
+  const label = status.includes("satılmış") ? "Satış Değeri" : "Pazarlıklı Değer";
+  return ` (Pazarlık Payı Düşülmüş ve İndirgenmiş m2 birim Değeri: ${formatComparableMoney(metrics.saleValue)} (${label}) / ${metrics.adjustedArea.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} m2 X ${totalAdjustment.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (Toplam Şerefiye) = ${formatComparableMoney(metrics.adjustedUnitValue, " TL/m2")})`;
 }
 
 function formatComparableExtraNote(value) {
@@ -17056,10 +25706,12 @@ function renderComparableLocationMap(overlay, subjectPoint, selectedPoint, onPoi
 function createComparableFieldControl(field) {
   if (field.type === "select") {
     const select = document.createElement("select");
-    const empty = document.createElement("option");
-    empty.value = "";
-    empty.textContent = "Seçiniz";
-    select.append(empty);
+    if (field.allowEmpty !== false) {
+      const empty = document.createElement("option");
+      empty.value = "";
+      empty.textContent = "Seçiniz";
+      select.append(empty);
+    }
     field.options.forEach((option) => {
       const item = document.createElement("option");
       item.value = option;
@@ -17143,9 +25795,9 @@ function createTable(section) {
         input.rows = 4;
         input.className = "table-textarea table-textarea-description";
       }
-      input.value = row[key] || "";
+      input.value = input.type === "date" ? toComparableDateInputValue(row[key] || "") : row[key] || "";
       applyAnnotationAmountWarning(td, input, row, isAnnotationAmount);
-      input.addEventListener("input", (event) => {
+      const handleTableCellChange = (event) => {
         row[key] = event.target.value;
         if (section.id === "encumbranceAnnotations") {
           normalizeTakbisAnnotationTableRow(row);
@@ -17169,9 +25821,16 @@ function createTable(section) {
         }
         if (isDocumentsTable) {
           refreshReviewedDocumentsDescriptionFromCurrentRows();
+          if (key === "c0") {
+            renderSection();
+          }
         }
         autosave();
-      });
+      };
+      input.addEventListener("input", handleTableCellChange);
+      if (input.tagName === "SELECT") {
+        input.addEventListener("change", handleTableCellChange);
+      }
       input.addEventListener("blur", () => {
         const formattedValue = normalizeReportTableValue(section, column, input.value);
         if (formattedValue === input.value) return;
@@ -17357,11 +26016,30 @@ function createTableCellControl(section, key, isAnnotationDescription = false) {
     input.type = "date";
     return input;
   }
-  if (section.id === "encumbranceMortgages" && key === "c0") {
-    ensureMortgageCreditorBankDatalist();
+  if (section.id === "encumbranceDeclarations" && key === "c0") {
+    ensureEncumbranceTypeDatalist("encumbrance-declaration-type-list", encumbranceDeclarationTypeOptions);
     const input = document.createElement("input");
-    input.setAttribute("list", "mortgage-creditor-bank-list");
+    input.setAttribute("list", "encumbrance-declaration-type-list");
     input.autocomplete = "off";
+    return input;
+  }
+  if (section.id === "encumbranceAnnotations" && key === "c0") {
+    ensureEncumbranceTypeDatalist("encumbrance-annotation-type-list", encumbranceAnnotationTypeOptions);
+    const input = document.createElement("input");
+    input.setAttribute("list", "encumbrance-annotation-type-list");
+    input.autocomplete = "off";
+    return input;
+  }
+  if ((section.id === "encumbranceDeclarations" && key === "c2") || (section.id === "encumbranceAnnotations" && key === "c3")) {
+    const input = document.createElement("input");
+    input.type = "date";
+    return input;
+  }
+  if (section.id === "encumbranceMortgages" && key === "c0") {
+    const input = document.createElement("input");
+    input.autocomplete = "off";
+    input.placeholder = "Banka seçin veya lehdar yazın";
+    setupMortgageCreditorCombobox(input);
     return input;
   }
   return document.createElement(isAnnotationDescription ? "textarea" : "input");
@@ -17373,7 +26051,7 @@ function getDocumentInstitutionOptions() {
     ...documentInstitutionStaticOptions,
     buildCitySpecificInstitution("İl Özel İdaresi"),
     buildCitySpecificInstitution("Büyükşehir Belediyesi"),
-  ].filter(Boolean);
+  ].map(normalizeDocumentInstitutionText).filter(Boolean);
   return ["", ...new Set(options)];
 }
 
@@ -17382,13 +26060,156 @@ function buildCitySpecificInstitution(suffix) {
   return city ? `${city} ${suffix}` : suffix;
 }
 
-function ensureMortgageCreditorBankDatalist() {
-  if (document.querySelector("#mortgage-creditor-bank-list")) return;
+function setupMortgageCreditorCombobox(input) {
+  // TAKBİS değeri input.value olarak gelmeye devam eder; kullanıcı tüm banka
+  // listesinden seçebilir ya da serbest metin (örn. özel kuruluş) yazabilir.
+  input.setAttribute("role", "combobox");
+  input.setAttribute("aria-autocomplete", "list");
+  input.classList.add("creditor-combo-input");
+  let panel = null;
+  let activeIndex = -1;
+  let matches = [];
+  // Odakta tüm liste gösterilir; yalnızca kullanıcı yazdıkça filtrelenir.
+  let filterActive = false;
+
+  const reposition = () => {
+    if (!panel) return;
+    if (!panel.isConnected || !input.isConnected) {
+      closePanel();
+      return;
+    }
+    const rect = input.getBoundingClientRect();
+    panel.style.left = `${rect.left}px`;
+    panel.style.minWidth = `${Math.max(rect.width, 240)}px`;
+    panel.style.top = `${rect.bottom + 2}px`;
+    panel.style.bottom = "auto";
+    const panelRect = panel.getBoundingClientRect();
+    if (panelRect.bottom > window.innerHeight - 8 && rect.top > panelRect.height) {
+      panel.style.top = "auto";
+      panel.style.bottom = `${window.innerHeight - rect.top + 2}px`;
+    }
+  };
+
+  const scrollActiveIntoView = () => {
+    panel?.querySelector(".creditor-combo-option.is-active")?.scrollIntoView({ block: "nearest" });
+  };
+
+  const renderOptions = () => {
+    if (!panel) return;
+    const filter = filterActive ? foldTurkish(input.value || "").toLocaleLowerCase("tr").trim() : "";
+    matches = mortgageCreditorBankNames.filter(
+      (name) => !filter || foldTurkish(name).toLocaleLowerCase("tr").includes(filter),
+    );
+    if (activeIndex >= matches.length) activeIndex = matches.length - 1;
+    panel.innerHTML = "";
+    const hint = document.createElement("div");
+    hint.className = "creditor-combo-hint";
+    hint.textContent = "Listeden seçin veya serbest yazın (örn. özel kuruluş)";
+    panel.append(hint);
+    if (!matches.length) {
+      const empty = document.createElement("div");
+      empty.className = "creditor-combo-empty";
+      empty.textContent = "Eşleşen banka yok — yazdığınız değer korunur.";
+      panel.append(empty);
+      reposition();
+      return;
+    }
+    matches.forEach((name, index) => {
+      const option = document.createElement("button");
+      option.type = "button";
+      option.className = "creditor-combo-option";
+      if (index === activeIndex) option.classList.add("is-active");
+      if (name === input.value) option.classList.add("is-current");
+      option.textContent = name;
+      option.addEventListener("mousedown", (event) => {
+        event.preventDefault();
+        commit(name);
+      });
+      panel.append(option);
+    });
+    reposition();
+  };
+
+  const commit = (name) => {
+    input.value = name;
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    closePanel();
+    input.focus();
+  };
+
+  const openPanel = () => {
+    if (!panel) {
+      // Aynı anda yalnızca bir panel olsun; eski/yetim panelleri temizle.
+      document.querySelectorAll(".creditor-combo-panel").forEach((node) => node.remove());
+      panel = document.createElement("div");
+      panel.className = "creditor-combo-panel";
+      document.body.append(panel);
+      window.addEventListener("scroll", reposition, true);
+      window.addEventListener("resize", reposition);
+    }
+    renderOptions();
+  };
+
+  function closePanel() {
+    if (!panel) return;
+    panel.remove();
+    panel = null;
+    activeIndex = -1;
+    filterActive = false;
+    window.removeEventListener("scroll", reposition, true);
+    window.removeEventListener("resize", reposition);
+  }
+
+  input.addEventListener("focus", () => {
+    filterActive = false;
+    openPanel();
+  });
+  input.addEventListener("click", () => {
+    filterActive = false;
+    openPanel();
+  });
+  input.addEventListener("input", () => {
+    filterActive = true;
+    activeIndex = -1;
+    openPanel();
+  });
+  input.addEventListener("blur", () => {
+    setTimeout(closePanel, 150);
+  });
+  input.addEventListener("keydown", (event) => {
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      if (!panel) {
+        openPanel();
+        return;
+      }
+      activeIndex = Math.min(activeIndex + 1, matches.length - 1);
+      renderOptions();
+      scrollActiveIntoView();
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      if (!panel) return;
+      activeIndex = Math.max(activeIndex - 1, 0);
+      renderOptions();
+      scrollActiveIntoView();
+    } else if (event.key === "Enter") {
+      if (panel && activeIndex >= 0 && matches[activeIndex]) {
+        event.preventDefault();
+        commit(matches[activeIndex]);
+      }
+    } else if (event.key === "Escape") {
+      closePanel();
+    }
+  });
+}
+
+function ensureEncumbranceTypeDatalist(id, options = []) {
+  if (document.querySelector(`#${id}`)) return;
   const list = document.createElement("datalist");
-  list.id = "mortgage-creditor-bank-list";
-  mortgageCreditorBankNames.forEach((bankName) => {
+  list.id = id;
+  options.forEach((value) => {
     const option = document.createElement("option");
-    option.value = bankName;
+    option.value = value;
     list.append(option);
   });
   document.body.append(list);
@@ -17409,6 +26230,9 @@ function updateAnnotationLienSummary(summaryElement, rows = []) {
   rows.forEach((row) => {
     const normalizedType = normalizeTakbisAnnotationReportType(row?.c0 || "", row?.c1 || "");
     const foldedType = foldTurkish(normalizedType);
+    // Yalnızca haciz kayıtları sayılır; İhtiyati Tedbir gibi tedbir şerhleri
+    // ihtiyati haciz toplamına girmez.
+    if (!/HACIZ|HACZ/.test(foldedType) || /TEDBIR/.test(foldedType)) return;
     const amount = parseTakbisMoneyToNumber(row?.c2 || "");
     if (/KAMU/.test(foldedType)) {
       counts.public += 1;
@@ -17416,18 +26240,12 @@ function updateAnnotationLienSummary(summaryElement, rows = []) {
     } else if (/IHTIYATI/.test(foldedType)) {
       counts.precautionary += 1;
       totals.precautionary += amount;
-    } else if (/ICRAI/.test(foldedType) || /HACIZ/.test(foldedType)) {
+    } else {
       counts.executive += 1;
       totals.executive += amount;
     }
   });
 
-  summaryElement.innerHTML = `
-    <strong>Haciz Toplamları</strong>
-    <span>Toplam Kamu Haczi (${counts.public}): ${formatTakbisSummaryMoney(totals.public)}</span>
-    <span>Toplam İhtiyati Haciz: ${formatTakbisSummaryMoney(totals.precautionary)}</span>
-    <span>Toplam İcrai Haciz: ${formatTakbisSummaryMoney(totals.executive)}</span>
-  `;
   summaryElement.innerHTML = [
     "<strong>Haciz Toplamlar\u0131</strong>",
     `<span>Kamu Haczi Toplam\u0131 (${counts.public}): ${formatTakbisSummaryMoney(totals.public)}</span>`,
@@ -17520,7 +26338,28 @@ function updateOwnerShareSummary(element, rows) {
   element.textContent = summary.text;
 }
 
+function setSidebarCollapsed(collapsed) {
+  if (!appShell) return;
+  appShell.classList.toggle("sidebar-collapsed", collapsed);
+  localStorage.setItem("reportSidebarCollapsed", collapsed ? "1" : "0");
+  if (sidebarCollapseBtn) {
+    sidebarCollapseBtn.setAttribute("aria-expanded", collapsed ? "false" : "true");
+  }
+  if (sidebarOpenBtn) {
+    sidebarOpenBtn.setAttribute("aria-expanded", collapsed ? "false" : "true");
+  }
+}
+
+function initSidebarCollapse() {
+  if (!appShell) return;
+  const saved = localStorage.getItem("reportSidebarCollapsed") === "1";
+  setSidebarCollapsed(saved);
+  sidebarCollapseBtn?.addEventListener("click", () => setSidebarCollapsed(true));
+  sidebarOpenBtn?.addEventListener("click", () => setSidebarCollapsed(false));
+}
+
 function renderWorkflow() {
+  if (!workflowList) return;
   const currentIndex = Math.min(
     Math.floor((sections.findIndex((item) => item.id === activeSectionId) / sections.length) * workflow.length),
     workflow.length - 1,
@@ -17536,6 +26375,7 @@ function renderWorkflow() {
 }
 
 function renderDocuments() {
+  if (!documentQueue) return;
   const documents = [
     ["TAKBİS", state.uploads.takbis],
     ["Adres", state.uploads.address],
@@ -17553,7 +26393,7 @@ function renderDocuments() {
 }
 
 function getMissingRequiredFields() {
-  return sections.flatMap((section) =>
+  return getVisibleSections().flatMap((section) =>
     section.fields
       .filter((field) => field.required && !state.fields[field.key])
       .map((field) => `${section.title}: ${field.label}`),
@@ -17561,6 +26401,7 @@ function getMissingRequiredFields() {
 }
 
 function renderValidation() {
+  if (!validationList) return;
   const missing = getMissingRequiredFields();
   const checks = [
     missing.length ? `${missing.length} zorunlu alan bekliyor` : "Zorunlu alanlar tamam",
@@ -17595,21 +26436,60 @@ document.querySelector("#saveBtn").addEventListener("click", () => {
 });
 
 document.querySelector("#newCaseBtn").addEventListener("click", () => {
+  // Faz 2 (cloud/report-library.js) yüklüyse mevcut rapor "Raporlarım"
+  // kütüphanesine kaydedilir ve veri kaybı olmaz. YENİ raporun kendi
+  // reportId'sini alması ve bulut senkronunun doğru belgeyi hedeflemesi
+  // (setActiveReportId) için mantık burada TEKRARLANMAZ, doğrudan
+  // createNewReport() çağrılır — aksi halde arka plandaki bulut senkronu
+  // eski raporun bulut kaydının üzerine yeni boş veriyi yazabilirdi.
+  const hasLibrary = Boolean(window.RaporReportLibrary);
+  if (hasLibrary) {
+    const confirmed = confirm(
+      "Yeni iş açılırsa mevcut rapor \"Raporlarım\" kütüphanesine kaydedilip ekrandan temizlenecek. Devam edilsin mi?",
+    );
+    if (!confirmed) return;
+    window.RaporReportLibrary.createNewReport({});
+    return;
+  }
+
   const confirmed = confirm("Yeni iş açılırsa mevcut yerel taslak temizlenecek. Devam edilsin mi?");
   if (!confirmed) return;
   localStorage.removeItem(storageKey);
   state = loadState();
+  normalizeAddressSourceState(state);
+  applySystemDefaults(state);
+  applyUserFieldDefaults(state);
+  applyImarDerivedBusinessRules(state);
   activeSectionId = sections[0].id;
+  saveState();
   render();
 });
 
-fieldMode.addEventListener("change", render);
+fieldMode?.addEventListener("change", render);
 
 const initialImarRulesChanged = applyImarDerivedBusinessRules(state);
 const initialTextNormalizationChanged = normalizeReportStateFields(state);
-if (initialImarRulesChanged || initialTextNormalizationChanged) {
+const initialImarPlanDateChanged = refreshMissingImarPlanDateFromRawText();
+if (initialImarRulesChanged || initialTextNormalizationChanged || initialImarPlanDateChanged) {
   saveState();
 }
 
+initSidebarCollapse();
 createNav();
 render();
+
+// İlk adres/TAKBİS yüklemesinde async kaynaklar soğuk olduğundan (mahalle
+// veritabanı ~48MB, pdf.js worker) türetilen değerler ilk seferde yanlış gelip
+// ikinci yüklemede düzeliyordu. Bu kaynakları açılışta ön-yükleyerek ilk
+// yüklemede hazır olmalarını sağlıyoruz.
+warmUpDeferredResources();
+
+function warmUpDeferredResources() {
+  // Posta kodu, mahalle veritabanından türetiliyor; erken yüklenmesi ilk adres
+  // PDF'inde doğru posta kodunun gelmesini sağlar.
+  loadLocalNeighborhoodDatabase().catch(() => {});
+  // pdf.js kütüphanesi/worker'ı erken hazırlansın (ilk TAKBİS okuması için).
+  if (window.pdfReady && typeof window.pdfReady.then === "function") {
+    window.pdfReady.catch(() => {});
+  }
+}

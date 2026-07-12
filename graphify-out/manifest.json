@@ -1,0 +1,427 @@
+{
+  ".claude/launch.json": {
+    "mtime": 1782333413.2476606,
+    "ast_hash": "934678009e6eae973dc3da82f28922e9",
+    "semantic_hash": "934678009e6eae973dc3da82f28922e9"
+  },
+  "app.js": {
+    "mtime": 1783867262.1249864,
+    "ast_hash": "c674a5771c5f101ac0fe0cd6bb47115d",
+    "semantic_hash": ""
+  },
+  "backup-daily.ps1": {
+    "mtime": 1779841522.9291706,
+    "ast_hash": "ab9d9c1e3eb57c9b2d39871416d8e07b",
+    "semantic_hash": "ab9d9c1e3eb57c9b2d39871416d8e07b"
+  },
+  "cloud/cloud-sync.js": {
+    "mtime": 1783773575.0663955,
+    "ast_hash": "df2ac0ce7f3504adc40068ec67094daf",
+    "semantic_hash": "df2ac0ce7f3504adc40068ec67094daf"
+  },
+  "cloud/firebase-config.js": {
+    "mtime": 1783617274.8417332,
+    "ast_hash": "5d72f6d560b6e616b96037eadfcec905",
+    "semantic_hash": "5d72f6d560b6e616b96037eadfcec905"
+  },
+  "cloud/report-library.js": {
+    "mtime": 1783689975.0702438,
+    "ast_hash": "cdb30d45903c03ad4890ba5ea167f0db",
+    "semantic_hash": "cdb30d45903c03ad4890ba5ea167f0db"
+  },
+  "manifest.json": {
+    "mtime": 1783621494.116041,
+    "ast_hash": "e187f2539691d545252eccd8d8bf832f",
+    "semantic_hash": "e187f2539691d545252eccd8d8bf832f"
+  },
+  "package.json": {
+    "mtime": 1782076408.89497,
+    "ast_hash": "5afc12a8ce895626be888c6116345eec",
+    "semantic_hash": "5afc12a8ce895626be888c6116345eec"
+  },
+  "server.js": {
+    "mtime": 1783534180.5413613,
+    "ast_hash": "a447e7878c363c5215a924fa7aa55ec6",
+    "semantic_hash": "a447e7878c363c5215a924fa7aa55ec6"
+  },
+  "service-worker.js": {
+    "mtime": 1783621526.4969432,
+    "ast_hash": "541c3ec05a222b30be3820f486ca9501",
+    "semantic_hash": "541c3ec05a222b30be3820f486ca9501"
+  },
+  "src/comparables/comparable-market-analysis.js": {
+    "mtime": 1783756139.414375,
+    "ast_hash": "705467ad815dc14ac3470d80d2ec29ff",
+    "semantic_hash": "705467ad815dc14ac3470d80d2ec29ff"
+  },
+  "src/land/minimum-parcel-sizes.js": {
+    "mtime": 1783794642.039841,
+    "ast_hash": "77685b23f61aab27100cfc3849ab35d4",
+    "semantic_hash": "77685b23f61aab27100cfc3849ab35d4"
+  },
+  "src/parsers/ekb-parser.js": {
+    "mtime": 1782076315.1928046,
+    "ast_hash": "752e15b7b5a92e71a50e84a25bdde9a1",
+    "semantic_hash": "752e15b7b5a92e71a50e84a25bdde9a1"
+  },
+  "src/parsers/golden-fixture-parsers.js": {
+    "mtime": 1782068253.4436862,
+    "ast_hash": "6af38f0d10d7365c4693a07ea87d3d01",
+    "semantic_hash": "6af38f0d10d7365c4693a07ea87d3d01"
+  },
+  "src/parsers/imar-normalizer.js": {
+    "mtime": 1782669050.3596296,
+    "ast_hash": "37bbb49568016a2577c76dafed655838",
+    "semantic_hash": "37bbb49568016a2577c76dafed655838"
+  },
+  "src/parsers/kml-parser.js": {
+    "mtime": 1782069445.9006238,
+    "ast_hash": "913da5b3b7f51eee8856f75daf7c8040",
+    "semantic_hash": "913da5b3b7f51eee8856f75daf7c8040"
+  },
+  "src/risk/halkbank-risk-data.js": {
+    "mtime": 1783072765.201367,
+    "ast_hash": "0dacd0e0d57dc78b3589e1cb616706cb",
+    "semantic_hash": "0dacd0e0d57dc78b3589e1cb616706cb"
+  },
+  "src/risk/halkbank-risk-rules.js": {
+    "mtime": 1783436604.179662,
+    "ast_hash": "bb80b0a3df8deafbf2ff971c4f1c204d",
+    "semantic_hash": "bb80b0a3df8deafbf2ff971c4f1c204d"
+  },
+  "src/templates/template-engine.js": {
+    "mtime": 1783859827.1326406,
+    "ast_hash": "efc2f65fe8634b921f7c6f4340c4e0af",
+    "semantic_hash": "efc2f65fe8634b921f7c6f4340c4e0af"
+  },
+  "src/value-factors/value-factors-rules.js": {
+    "mtime": 1783425822.618703,
+    "ast_hash": "1013ad8af367dfc9e6276b2dfb35664f",
+    "semantic_hash": "1013ad8af367dfc9e6276b2dfb35664f"
+  },
+  "test-inputs/ekb-docx-text.expected.json": {
+    "mtime": 1782053784.720575,
+    "ast_hash": "7dec9e5cf866738ac23c686fabc09975",
+    "semantic_hash": "7dec9e5cf866738ac23c686fabc09975"
+  },
+  "test-inputs/nilufer-cali-sanayi.expected.json": {
+    "mtime": 1782053784.8206148,
+    "ast_hash": "21f18d30748196029ec4bc71e47c1b93",
+    "semantic_hash": "21f18d30748196029ec4bc71e47c1b93"
+  },
+  "test-inputs/noop.js": {
+    "mtime": 1780257453.7924464,
+    "ast_hash": "a5de419f0e87c9bfcb8a2a65bf1e5d79",
+    "semantic_hash": "a5de419f0e87c9bfcb8a2a65bf1e5d79"
+  },
+  "test-inputs/osmangazi-yunuseli.expected.json": {
+    "mtime": 1782053784.9206333,
+    "ast_hash": "4708163370dfabff365d3d7930b88000",
+    "semantic_hash": "4708163370dfabff365d3d7930b88000"
+  },
+  "test-inputs/parsel.expected.json": {
+    "mtime": 1782053784.6126268,
+    "ast_hash": "f5baa99aa0dbc51d0a47cdd958b0f4d1",
+    "semantic_hash": "f5baa99aa0dbc51d0a47cdd958b0f4d1"
+  },
+  "tools/check-basic.js": {
+    "mtime": 1783867353.1938288,
+    "ast_hash": "f68eac76cd6f13821d65df2576ac30a4",
+    "semantic_hash": ""
+  },
+  "tools/extract_pdf_text.py": {
+    "mtime": 1781930055.1066883,
+    "ast_hash": "19c2ffd04045239f5a31b262d8a05cf6",
+    "semantic_hash": "19c2ffd04045239f5a31b262d8a05cf6"
+  },
+  "tools/generate-pwa-icons.js": {
+    "mtime": 1783621467.5479414,
+    "ast_hash": "8c1f86750fc97081aec9f1567a6799e4",
+    "semantic_hash": "8c1f86750fc97081aec9f1567a6799e4"
+  },
+  "tools/measure-cloud-payload.js": {
+    "mtime": 1783601353.2123117,
+    "ast_hash": "90efa6c98ad858031a03909c03959eec",
+    "semantic_hash": "90efa6c98ad858031a03909c03959eec"
+  },
+  "tools/test-bank-templates.js": {
+    "mtime": 1783860051.10683,
+    "ast_hash": "257c53bfa576932b186bdf706fff9234",
+    "semantic_hash": "257c53bfa576932b186bdf706fff9234"
+  },
+  "tools/test-comparable-market-analysis.js": {
+    "mtime": 1783157950.2300663,
+    "ast_hash": "8d0540a43ff8b4c15c682ac53d873257",
+    "semantic_hash": "8d0540a43ff8b4c15c682ac53d873257"
+  },
+  "tools/test-ekb-parser-module.js": {
+    "mtime": 1782076216.4673493,
+    "ast_hash": "de039cebbc4d03e2bbc74ec5d37ecc92",
+    "semantic_hash": "de039cebbc4d03e2bbc74ec5d37ecc92"
+  },
+  "tools/test-halkbank-risk-rules.js": {
+    "mtime": 1783082269.4270618,
+    "ast_hash": "21575762de0a548ff1c8494f8a905a42",
+    "semantic_hash": "21575762de0a548ff1c8494f8a905a42"
+  },
+  "tools/test-imar-normalizer-module.js": {
+    "mtime": 1782669565.4201245,
+    "ast_hash": "b4aa111cb37f7481aecfd5c7b1a452de",
+    "semantic_hash": "b4aa111cb37f7481aecfd5c7b1a452de"
+  },
+  "tools/test-kml-parser-module.js": {
+    "mtime": 1782069636.5229454,
+    "ast_hash": "8f9b8793add74bf5a1e328d5ead72ae2",
+    "semantic_hash": "8f9b8793add74bf5a1e328d5ead72ae2"
+  },
+  "tools/test-parsers.js": {
+    "mtime": 1782068165.052734,
+    "ast_hash": "9d93e73f6ae0fe7adc709a927ddcbacb",
+    "semantic_hash": "9d93e73f6ae0fe7adc709a927ddcbacb"
+  },
+  "tools/test-takbis-parsing.js": {
+    "mtime": 1783439808.7992852,
+    "ast_hash": "6795e4fab7361bd0b31fa640ac03355c",
+    "semantic_hash": "6795e4fab7361bd0b31fa640ac03355c"
+  },
+  "tools/test-value-factors-rules.js": {
+    "mtime": 1783425834.765711,
+    "ast_hash": "2ea47afaa2bd4668c7691779e90fddbf",
+    "semantic_hash": "2ea47afaa2bd4668c7691779e90fddbf"
+  },
+  "vendor/firebase/firebase-app-compat.js": {
+    "mtime": 1783602080.385926,
+    "ast_hash": "7008d1f6fbc5bf0555ee61780d11e78c",
+    "semantic_hash": "7008d1f6fbc5bf0555ee61780d11e78c"
+  },
+  "vendor/firebase/firebase-auth-compat.js": {
+    "mtime": 1783602080.8917885,
+    "ast_hash": "481ed7d1d0d07b167b42bca689bcdf60",
+    "semantic_hash": "481ed7d1d0d07b167b42bca689bcdf60"
+  },
+  "vendor/firebase/firebase-firestore-compat.js": {
+    "mtime": 1783602081.4317968,
+    "ast_hash": "d5af7741428e28607f6cdc69e4e3af46",
+    "semantic_hash": "d5af7741428e28607f6cdc69e4e3af46"
+  },
+  "vendor/pdfjs/pdf.local.js": {
+    "mtime": 1778600678.3092299,
+    "ast_hash": "ac67988d5503ffa2e399f52d21f6ab18",
+    "semantic_hash": "ac67988d5503ffa2e399f52d21f6ab18"
+  },
+  "vendor/pdfjs/pdf.min.mjs": {
+    "mtime": 1778126043.0,
+    "ast_hash": "4e078e710c69a76700c8206f3063a1a6",
+    "semantic_hash": "4e078e710c69a76700c8206f3063a1a6"
+  },
+  "vendor/pdfjs/pdf.worker.fake.js": {
+    "mtime": 1778604113.3187118,
+    "ast_hash": "8a373200bec0d24e269499d887f20a85",
+    "semantic_hash": "8a373200bec0d24e269499d887f20a85"
+  },
+  "vendor/pdfjs/pdf.worker.local.js": {
+    "mtime": 1778601007.7756596,
+    "ast_hash": "592f472e85f9d214fc9c4ac777a358f6",
+    "semantic_hash": "592f472e85f9d214fc9c4ac777a358f6"
+  },
+  "vendor/pdfjs/pdf.worker.min.mjs": {
+    "mtime": 1778126043.0,
+    "ast_hash": "1bfdb143c44bb2cb921a3c47c74f35ac",
+    "semantic_hash": "1bfdb143c44bb2cb921a3c47c74f35ac"
+  },
+  "vendor/tesseract/tesseract.min.js": {
+    "mtime": 1778126045.0,
+    "ast_hash": "f986aa1f194139ec6bee969f02a3c707",
+    "semantic_hash": "f986aa1f194139ec6bee969f02a3c707"
+  },
+  "AGENTS.md": {
+    "mtime": 1783865002.7992623,
+    "ast_hash": "36ad6b19c7c0e405f26d2c939d40021a",
+    "semantic_hash": ""
+  },
+  "ARCHITECTURE_RULES.md": {
+    "mtime": 1781764791.0715272,
+    "ast_hash": "71328cf966a31d251bd0a6cc8cf06e74",
+    "semantic_hash": ""
+  },
+  "Codex Devam Notu.md": {
+    "mtime": 1782307825.1795619,
+    "ast_hash": "33268ed02bdfafc3932a1e78130b0c41",
+    "semantic_hash": ""
+  },
+  "IOS-PDF-FIX-NOTLARI.md": {
+    "mtime": 1782051592.058214,
+    "ast_hash": "fe5d65b052284ace22bb7fe97570f9b4",
+    "semantic_hash": ""
+  },
+  "PROGRAM-DEGERLENDIRME-VE-YOL-HARITASI.md": {
+    "mtime": 1782052457.3728633,
+    "ast_hash": "d755a59c8d9c5e1155383a5f47a7982a",
+    "semantic_hash": ""
+  },
+  "README.md": {
+    "mtime": 1778598920.130278,
+    "ast_hash": "5a10f4cd8959c9fffa249b7bff1b684c",
+    "semantic_hash": ""
+  },
+  "cloud/FAZ0-TASARIM.md": {
+    "mtime": 1783626694.043885,
+    "ast_hash": "236a4e264b889da97efbdff8cd0ad8ad",
+    "semantic_hash": ""
+  },
+  "cloud/KURULUM.md": {
+    "mtime": 1783626731.5811062,
+    "ast_hash": "f50296146c0ac6c2e1ee1d9fd0f33122",
+    "semantic_hash": ""
+  },
+  "graphify-out/converted/ekb_1c91b24c.md": {
+    "mtime": 1783864752.9334495,
+    "ast_hash": "a7037d35b4adeb5a09fe1397cee36a04",
+    "semantic_hash": ""
+  },
+  "handoff.md": {
+    "mtime": 1783866469.146871,
+    "ast_hash": "8022483b60b519e02d2e68fe553c43eb",
+    "semantic_hash": ""
+  },
+  "index.html": {
+    "mtime": 1783867350.961672,
+    "ast_hash": "6ca0b8e78f2804cfd0005ae8c31acb6a",
+    "semantic_hash": ""
+  },
+  "templates/PLACEHOLDER-REHBERI.md": {
+    "mtime": 1783860143.1139178,
+    "ast_hash": "de5fc680777b2c407aac5255368bff71",
+    "semantic_hash": ""
+  },
+  "templates/akbank.html": {
+    "mtime": 1783859977.3559577,
+    "ast_hash": "fe4db4aea080204b3e42c72dbf7072b8",
+    "semantic_hash": ""
+  },
+  "templates/halkbank.html": {
+    "mtime": 1783859977.3715355,
+    "ast_hash": "9d83564eff5c1749af54e3d33a5e9394",
+    "semantic_hash": ""
+  },
+  "templates/isbankasi-masraf.html": {
+    "mtime": 1783859977.3715355,
+    "ast_hash": "9688d56673cc625447284e8898836a71",
+    "semantic_hash": ""
+  },
+  "templates/isbankasi.html": {
+    "mtime": 1783859977.3763463,
+    "ast_hash": "65344bf20f15194dc90b6f1f37a2d9a0",
+    "semantic_hash": ""
+  },
+  "templates/kuveytturk.html": {
+    "mtime": 1783862381.3780577,
+    "ast_hash": "93702c08b1901b127ac5bc701496505d",
+    "semantic_hash": ""
+  },
+  "templates/vakifbank.html": {
+    "mtime": 1783859977.3808174,
+    "ast_hash": "5e69547b29af8f6e80247e06667e4f36",
+    "semantic_hash": ""
+  },
+  "templates/vakifkatilim.html": {
+    "mtime": 1783859997.4173253,
+    "ast_hash": "85815509407ce50e2047c6917500388f",
+    "semantic_hash": ""
+  },
+  "templates/yapikredi.html": {
+    "mtime": 1783859977.386826,
+    "ast_hash": "9a6abd707e3edd8a8c9e024805258d9e",
+    "semantic_hash": ""
+  },
+  "templates/ziraat-ek-tablo.html": {
+    "mtime": 1783859977.3883176,
+    "ast_hash": "752bc1dc7392ef9fb9db156e5d1ddc1d",
+    "semantic_hash": ""
+  },
+  "templates/ziraat.html": {
+    "mtime": 1783859977.3903205,
+    "ast_hash": "0c95a97b84bd64180dba6df0daf85d24",
+    "semantic_hash": ""
+  },
+  "test-inputs/README.md": {
+    "mtime": 1782052952.0057697,
+    "ast_hash": "89da2f3d497746412b5aac1b8efc7944",
+    "semantic_hash": ""
+  },
+  "test-inputs/ekb-docx-text.txt": {
+    "mtime": 1780257453.891513,
+    "ast_hash": "d8afff5313dedbbe37f3643c1727aa43",
+    "semantic_hash": ""
+  },
+  "test-inputs/nilufer-cali-sanayi.txt": {
+    "mtime": 1780246664.7415538,
+    "ast_hash": "240cd1929f2426c8d3d82d91103c09ed",
+    "semantic_hash": ""
+  },
+  "test-inputs/osmangazi-yunuseli.txt": {
+    "mtime": 1779949353.7132783,
+    "ast_hash": "1bb6d0276378fd11a3ed0ba8a7f9d9af",
+    "semantic_hash": ""
+  },
+  "test-inputs/adres.pdf": {
+    "mtime": 1779291397.915795,
+    "ast_hash": "6b81486facacd4e637a3c7e01e82009a",
+    "semantic_hash": ""
+  },
+  "test-inputs/ekb.pdf": {
+    "mtime": 1779291414.4435508,
+    "ast_hash": "193136fab801f39be7ace6821f9f0b0c",
+    "semantic_hash": ""
+  },
+  "test-inputs/imar.pdf": {
+    "mtime": 1779291211.957339,
+    "ast_hash": "8f28bd0982996c5bdcbe22b7e7e880f6",
+    "semantic_hash": ""
+  },
+  "test-inputs/nilufer-cali-sanayi.pdf": {
+    "mtime": 1779749333.1242995,
+    "ast_hash": "dd15f18c443ec25fe4b7afeef74c5e04",
+    "semantic_hash": ""
+  },
+  "test-inputs/osmangazi-yunuseli.pdf": {
+    "mtime": 1779719814.6527417,
+    "ast_hash": "d2f6d5f3622e9509f5d3e656975e22b7",
+    "semantic_hash": ""
+  },
+  "test-inputs/takbis.pdf": {
+    "mtime": 1779402586.0797145,
+    "ast_hash": "7aa4efdb09c17d1eed063db0b2db3447",
+    "semantic_hash": ""
+  },
+  "assets/gate-bg/blueprint-background-dark.png": {
+    "mtime": 1783773079.5010889,
+    "ast_hash": "495d44fb4a71e7cefec4281ebfa57151",
+    "semantic_hash": ""
+  },
+  "assets/gate-bg/blueprint-background.png": {
+    "mtime": 1783773079.4417288,
+    "ast_hash": "f55a6a0c2bee22286d42d766c0e9d420",
+    "semantic_hash": ""
+  },
+  "icons/apple-touch-icon.png": {
+    "mtime": 1783621476.6677275,
+    "ast_hash": "039902f967383e063bf7e104a65c0748",
+    "semantic_hash": ""
+  },
+  "icons/icon-192.png": {
+    "mtime": 1783621476.6513548,
+    "ast_hash": "2a11a041500e7460efcbd4a0975dc734",
+    "semantic_hash": ""
+  },
+  "icons/icon-512.png": {
+    "mtime": 1783621476.6647346,
+    "ast_hash": "0c6c6dbbfb8a6b3b35f3e4ee2d2ac903",
+    "semantic_hash": ""
+  },
+  "src/land/climate-earthquake-data.js": {
+    "mtime": 1783867129.2762406,
+    "ast_hash": "b4a3704ec9d33ced075d80481fdc89d1",
+    "semantic_hash": ""
+  }
+}

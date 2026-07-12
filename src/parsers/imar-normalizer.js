@@ -81,40 +81,104 @@
     const folded = foldTurkish(clean);
 
     if (/\b(TICARET\s*\+\s*KONUT|KONUT\s*\+\s*TICARET)(?:\s+ALANI)?\b/.test(folded)) {
-      return "Ticaret + Konut Alanı";
+      return "Ticaret + Konut";
     }
     if (/\b(GELISME|YERLESIK|YERLESIM)\s+KONUT(?:\s+ALANI)?\b/.test(folded)) {
-      return "Konut Alanı";
+      return "Konut";
     }
     if (/^KONUT(?:\s+ALANI)?$/.test(folded)) {
-      return "Konut Alanı";
+      return "Konut";
     }
-    return toTitleCaseTr(clean);
+    return toTitleCaseTr(clean).replace(/\s+Alanı\s*$/i, "");
   }
 
   function detectImarFunctionFromText(text) {
     const folded = foldTurkish(text);
     const candidates = [
-      [/TICARET\s*\+\s*KONUT|KONUT\s*\+\s*TICARET/, "Ticaret + Konut Alanı"],
-      [/\b(GELISME|YERLESIK|YERLESIM)\s+KONUT(?:\s+ALANI)?\b/, "Konut Alanı"],
-      [/KONUT\s+ALANI|\bKONUT\b/, "Konut Alanı"],
-      [/TICARET\s+ALANI|\bTICARET\b/, "Ticaret Alanı"],
-      [/SANAYI\s+ALANI|\bSANAYI\b/, "Sanayi Alanı"],
-      [/TURIZM\s+ALANI|\bTURIZM\b/, "Turizm Alanı"],
-      [/EGITIM\s+ALANI|\bOKUL\b/, "Eğitim Alanı"],
-      [/SAGLIK\s+ALANI|HASTANE/, "Sağlık Alanı"],
+      [/TICARET\s*\+\s*KONUT|KONUT\s*\+\s*TICARET/, "Ticaret + Konut"],
+      [/\b(GELISME|YERLESIK|YERLESIM)\s+KONUT(?:\s+ALANI)?\b/, "Konut"],
+      [/KONUT\s+ALANI|\bKONUT\b/, "Konut"],
+      [/TICARET\s+ALANI|\bTICARET\b/, "Ticaret"],
+      [/SANAYI\s+ALANI|\bSANAYI\b/, "Sanayi"],
+      [/TURIZM\s+ALANI|\bTURIZM\b/, "Turizm"],
+      [/EGITIM\s+ALANI|\bOKUL\b/, "Eğitim"],
+      [/SAGLIK\s+ALANI|HASTANE/, "Sağlık"],
       [/PARK|YESIL\s+ALAN|REKREASYON/, "Park / Yeşil Alan"],
-      [/SPOR\s+ALANI/, "Spor Alanı"],
-      [/SOSYAL\s+TESIS/, "Sosyal Tesis Alanı"],
+      [/SPOR\s+ALANI/, "Spor"],
+      [/SOSYAL\s+TESIS/, "Sosyal Tesis"],
     ];
     const found = candidates.find(([pattern]) => pattern.test(folded));
     return found ? normalizeImarPlanFunction(found[1]) : "";
   }
 
+  function cleanImarInstitutionName(value) {
+    let text = cleanImarToken(value)
+      .replace(/^(?:T\.?\s*C\.?|TC)\s+/i, "")
+      .replace(/\bE\s*[- ]?İmar\b.*$/i, "")
+      .replace(/\bE\s*[- ]?Imar\b.*$/i, "")
+      .replace(/\bİmar\s+ve\s+Şehircilik\b.*$/i, "")
+      .replace(/\bImar\s+ve\s+Sehircilik\b.*$/i, "");
+    const municipalityMatch = text.match(/(.+?\bBelediyesi)\b/i);
+    if (municipalityMatch) text = municipalityMatch[1];
+    text = text.replace(/^(?:T\.?\s*C\.?|TC)\s+/i, "").trim();
+    return text ? toTitleCaseTr(text) : "";
+  }
+
+  function extractImarInfoInstitution(lines) {
+    const source = Array.isArray(lines) ? lines : [];
+    const firstLines = source.slice(0, 30);
+    for (const line of firstLines) {
+      const afterDateTime = line.match(/\b\d{1,2}[./-]\d{1,2}[./-]\d{4}(?:\s+(?:Saat|Saati)\s*:?)?\s+\d{1,2}:\d{2}\s+(.+)$/i);
+      if (!afterDateTime) continue;
+      const institution = cleanImarInstitutionName(afterDateTime[1]);
+      if (institution) return institution;
+    }
+
+    for (const line of firstLines) {
+      const folded = foldTurkish(line);
+      if (!folded.includes("BELEDIYESI")) continue;
+      if (folded.includes("RESMI WEB SITESINDEN") || folded.includes("BU BELGE")) continue;
+      const institution = cleanImarInstitutionName(line);
+      if (institution) return institution;
+    }
+
+    const fullText = firstLines.join(" ");
+    const afterLabel = fullText.match(/Bilgi\s+Al[ıi]n(?:ma|an)\s+(?:Tarih(?:i)?|Zaman[ıi])[^0-9]{0,80}\d{1,2}[./-]\d{1,2}[./-]\d{4}(?:\s+(?:Saat|Saati)\s*:?)?(?:\s+\d{1,2}:\d{2})?\s+(.+?Belediyesi)\b/i);
+    if (afterLabel) return cleanImarInstitutionName(afterLabel[1]);
+
+    return "";
+  }
+
+  function normalizeImarDate(value) {
+    const match = String(value || "").match(/(\d{1,2})[./-](\d{1,2})[./-](\d{4})/);
+    if (!match) return "";
+    return `${match[1].padStart(2, "0")}.${match[2].padStart(2, "0")}.${match[3]}`;
+  }
+
+  function extractImarPlanDate(lines) {
+    const source = Array.isArray(lines) ? lines : [];
+    for (let index = 0; index < source.length; index += 1) {
+      const line = cleanImarToken(source[index]);
+      if (!line) continue;
+      const folded = foldTurkish(line);
+      if (folded.includes("BU BELGE") || folded.includes("RESMI WEB SITESINDEN")) continue;
+      if (/^\d{1,2}[./-]\d{1,2}[./-]\d{4}\s+\d{1,2}:\d{2}\b/.test(line)) continue;
+      const hasPlanDateLabel = /(?:PLAN\s+)?(?:TASDIK|ONAY)\s+TARIH|PLAN\s+TARIH/.test(folded);
+      if (!hasPlanDateLabel) continue;
+      const combined = `${line} ${cleanImarToken(source[index + 1] || "")}`;
+      const date = normalizeImarDate(combined);
+      if (date) return date;
+    }
+    return "";
+  }
+
   return {
     cleanImarLegendItem,
+    cleanImarInstitutionName,
     cleanImarPlanName,
     detectImarFunctionFromText,
+    extractImarInfoInstitution,
+    extractImarPlanDate,
     foldTurkish,
     normalizeImarLegendLabel,
     normalizeImarPlanFunction,

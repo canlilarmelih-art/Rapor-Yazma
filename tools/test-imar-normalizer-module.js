@@ -2,6 +2,8 @@ const {
   cleanImarLegendItem,
   cleanImarPlanName,
   detectImarFunctionFromText,
+  extractImarInfoInstitution,
+  extractImarPlanDate,
   normalizeImarPlanFunction
 } = require("../src/parsers/imar-normalizer");
 
@@ -19,10 +21,10 @@ function assertEqual(actual, expected, label) {
 }
 
 function main() {
-  assertEqual(cleanImarLegendItem("Gelişme Konut Alanı (6834.635 m²)"), "Konut Alanı", "Gelişme konut lejantı");
-  assertEqual(cleanImarLegendItem("Yerleşik Konut Alanı"), "Konut Alanı", "Yerleşik konut lejantı");
-  assertEqual(cleanImarLegendItem("Ticaret - Konut Alanı (715.848 m²)"), "Ticaret + Konut Alanı", "Karma lejant");
-  assertEqual(cleanImarLegendItem("Kırsal Yerleşme Alanı"), "Kırsal Yerleşme Alanı", "Kırsal lejant korunmalı");
+  assertEqual(cleanImarLegendItem("Gelişme Konut Alanı (6834.635 m²)"), "Konut", "Gelişme konut lejantı");
+  assertEqual(cleanImarLegendItem("Yerleşik Konut Alanı"), "Konut", "Yerleşik konut lejantı");
+  assertEqual(cleanImarLegendItem("Ticaret - Konut Alanı (715.848 m²)"), "Ticaret + Konut", "Karma lejant");
+  assertEqual(cleanImarLegendItem("Kırsal Yerleşme Alanı"), "Kırsal Yerleşme", "Kırsal lejant sadeleşmeli");
 
   assertEqual(
     cleanImarPlanName("1001/ ANKARA YOLU KUZEYİ 1. BÖLGE İLAVE VE REVİZYON UYGULAMA İMAR PLANI Plan Fonksiyon Uyarı"),
@@ -36,8 +38,36 @@ function main() {
   );
   assertEqual(cleanImarPlanName("KESTELRUIP"), "Kestel Revizyon Uygulama İmar Planı", "Kestel özel kural");
 
-  assertEqual(normalizeImarPlanFunction("Mevcut Gelişme Konut Alanı"), "Konut Alanı", "Fonksiyon konut sadeleştirme");
-  assertEqual(detectImarFunctionFromText("Taşınmaz Ticaret + Konut Alanı lejantında kalmaktadır."), "Ticaret + Konut Alanı", "Fonksiyon tespiti karma");
+  assertEqual(normalizeImarPlanFunction("Mevcut Gelişme Konut Alanı"), "Konut", "Fonksiyon konut sadeleştirme");
+  assertEqual(detectImarFunctionFromText("Taşınmaz Ticaret + Konut Alanı lejantında kalmaktadır."), "Ticaret + Konut", "Fonksiyon tespiti karma");
+  assertEqual(
+    extractImarInfoInstitution([
+      "9.05.2026 11:41 E-İmar",
+      "T.C. MUDANYA BELEDİYESİ",
+      "İMAR VE ŞEHİRCİLİK MÜDÜRLÜĞÜ",
+      "Bu Belge Mudanya Belediyesi Resmi Web Sitesinden 19.05.2026 Tarihinde Hazırlanmıştır."
+    ]),
+    "Mudanya Belediyesi",
+    "Mudanya belediye satırından bilgi alınan kurum"
+  );
+  assertEqual(
+    extractImarPlanDate([
+      "Bu Belge Mudanya Belediyesi Resmi Web Sitesinden 19.05.2026 Tarihinde Hazırlanmıştır.",
+      "YÜRÜRLÜKTEKİ İMAR PLANI YAPILAŞMA BİLGİLERİ",
+      "Planı Adı Mudanya Revizyon ve İlave Uygulama İmar Planı",
+      "Tasdik Tarihi - No'su 18.02.2016 - 120"
+    ]),
+    "18.02.2016",
+    "Tasdik tarihi no satırından plan tarihi"
+  );
+  assertEqual(
+    extractImarPlanDate([
+      "Bu Belge Mudanya Belediyesi Resmi Web Sitesinden 19.05.2026 Tarihinde Hazırlanmıştır.",
+      "9.05.2026 11:41 E-İmar"
+    ]),
+    "",
+    "Belge hazırlama tarihi plan tarihi olarak alınmamalı"
+  );
 
   console.log("İmar normalizasyon modul testi tamam.");
 }

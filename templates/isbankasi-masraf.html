@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+<meta charset="utf-8">
+<title>İş Bankası Masraf Yazısı</title>
+<!--
+  İŞ BANKASI MASRAF/ÜCRET YAZISI ŞABLONU
+  Ücret tutarları programda tutulmadığından noktalı alanlar (………) Word
+  çıktısında elle doldurulur. İsterseniz sabit tutarları buraya doğrudan
+  yazabilirsiniz — bu dosya serbestçe düzenlenebilir.
+-->
+<style>
+  @page { size: 595.35pt 841.95pt; margin: 56pt 48pt; }
+  body { font-family: Arial, sans-serif; font-size: 11pt; color: #1f2a32; background: #ffffff; }
+  p { margin: 0 0 10pt; line-height: 1.45; }
+  .right { text-align: right; }
+  .center { text-align: center; }
+  .fees { margin: 14pt 0; }
+  .fees p { margin: 0 0 6pt; }
+  .sign { margin-top: 32pt; }
+</style>
+</head>
+<body>
+
+<p class="right">{{APPOİNTMENT_DATE}}</p>
+
+<p><strong>İlgili Makama,</strong></p>
+
+<p>{{CUSTOMER_NAME}} isimli müşteriye ait {{CİTY}} ili, {{DİSTRİCT}} ilçesi,
+{{TİTLE_NEİGHBORHOOD}} Mahallesi, {{BLOCK_NO}} ada, {{PARCEL_NO}} parselde kayıtlı,
+{{TİTLE_QUALİTY}} vasıflı taşınmaza ait değerleme raporu {{APPOİNTMENT_DATE}}
+tarihinde firmamız tarafından hazırlanmıştır. Firmamıza ödenmiş olan değerleme
+ücretine ilişkin bilgiler aşağıda belirtilmiş olup söz konusu ücreti de
+kapsayan fatura ekte yer almaktadır.</p>
+
+<p>Bilgi edinilmesi rica olunur.</p>
+<p>Saygılarımızla,</p>
+
+<div class="fees">
+  <p>Değerleme Ücreti (TL): ……… TL + %20 KDV = ……… TL</p>
+  <p>Ulaşım Bedeli (TL): ……… TL + %20 KDV = ……… TL</p>
+  <p>Tapu Harcı (TL): ……… TL + %20 KDV = ……… TL</p>
+  <p>Belediye Harcı (TL): ……… TL + %20 KDV = ……… TL</p>
+  <p>Gayrimenkul Bilgi Merkezi Payı: ……… TL + %20 KDV = ……… TL</p>
+  <p>Birlik Payı: ……… TL + %20 KDV = ……… TL</p>
+  <p><strong>Toplam Ücret (TL): ……… TL</strong></p>
+</div>
+
+<div class="sign">
+  <p>Firma Unvanı: Denge Gayrimenkul Değerleme Ve Danışmanlık A.Ş.</p>
+  <p>Firma Yetkilisi İmza</p>
+  <p>Yönetim Kurulu Başkanı</p>
+  <p><strong>BAKİ BUDAKOĞLU</strong></p>
+</div>
+
+<p>Ek: Fatura fotokopisi</p>
+
+</body>
+</html>
