@@ -506,9 +506,11 @@
         }
       })();
     </script><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="styles.css?v=20260712-1720" />
+    <link rel="stylesheet" href="styles.css?v=20260713-0200" />
+    <link rel="stylesheet" href="themes/navy-blue.css?v=20260713-0200" />
+    <link rel="stylesheet" href="themes/apple.css?v=20260713-0200" />
   </head>
-  <body>
+  <body data-app-theme="apple">
     <!--
       ZORUNLU GİRİŞ KAPISI (2026-07-09) — kullanıcı isteği: "internet olmadan
       çalışmamalı, login olmadan hiçbir detay görülememeli." Bu, önceki
@@ -642,6 +644,12 @@
             <h2 id="caseTitle">Yeni Ekspertiz Raporu</h2>
           </div>
           <div class="topbar-actions">
+            <label class="theme-profile-control" for="themeProfileSelect">
+              <select id="themeProfileSelect" aria-label="Tema">
+                <option value="apple">Apple</option>
+                <option value="navy-blue">Navy Blue</option>
+              </select>
+            </label>
             <button class="ghost-button" id="newCaseBtn" type="button">Yeni iş</button>
             <button class="primary-button" id="saveBtn" type="button">Kaydet</button>
           </div>
@@ -694,9 +702,9 @@
     <script src="src/land/minimum-parcel-sizes.js?v=20260711-0400"></script>
     <script src="src/value-factors/value-factors-rules.js?v=20260707-1050"></script>
     <script src="src/land/climate-earthquake-data.js?v=20260712-1720"></script>
-    <script src="app.js?v=20260712-0142"></script>
+    <script src="app.js?v=20260713-0300"></script>
     <!-- Banka şablonlarıyla dışa aktarma: app.js'ten SONRA yüklenmeli (global'leri çağrı anında kullanır). -->
-    <script src="src/templates/template-engine.js?v=20260712-1542"></script>
+    <script src="src/templates/template-engine.js?v=20260712-2300"></script>
     <!-- Bulut senkron (Faz 1): app.js'ten SONRA yüklenmeli; yapılandırma yoksa pasif kalır. -->
     <script src="vendor/firebase/firebase-app-compat.js?v=11.10.0"></script>
     <script src="vendor/firebase/firebase-auth-compat.js?v=11.10.0"></script>

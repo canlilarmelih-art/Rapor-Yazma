@@ -83,4 +83,4 @@ jobs:
           ssh -i "$HOME/.ssh/deploy_key" -p "$DEPLOY_PORT" \
             -o BatchMode=yes -o StrictHostKeyChecking=yes \
             "$DEPLOY_USER@$DEPLOY_HOST" \
-            "set -e; cd '$DEPLOY_PATH'; pm2 restart rapor-app --update-env; pm2 save; curl -fsS http://127.0.0.1:5174/ >/dev/null || curl -fsS http://127.0.0.1:5173/ >/dev/null"
+            "set -e; cd '$DEPLOY_PATH'; pm2 startOrRestart ecosystem.config.cjs --only rapor-app --update-env; pm2 save; curl -fsS http://127.0.0.1:5174/ >/dev/null"

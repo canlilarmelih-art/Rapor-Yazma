@@ -120,6 +120,30 @@ const FORBIDDEN_LEGACY_TOKENS = [
   "{{RANDEVUTARİHİ}}", "{{ISBANKMUSTERI}}", "{{ZRTYASAL}}", "{{ZRTMEVCUT}}",
 ];
 
+// Kullanici karari 2026-07-13: Malikler Tablosu ekrandaki panelle (7 sutun +
+// TOPLAM satiri) BIREBIR ayni olmali. MALIKLERTABLO artik eski
+// formatTextTableForWord(buildMaliklerTableText()) yerine (TOPLAM satirini
+// URETMEYEN, 6+ sutunda zorla yatay sayfaya sokan eski yol) dogrudan
+// buildMaliklerTableWordHtml() cagirmali (TOPLAM satiri + tam hizalama
+// iceren, satir ici renkli, portrait sayfada kalan gercek kopya).
+assert(
+  engineSource.includes('MALIKLERTABLO: { h: () => safeCall("buildMaliklerTableWordHtml") }'),
+  "MALIKLERTABLO artik buildMaliklerTableWordHtml() kullanmiyor (TOPLAM satirsiz eski formata donulmus olabilir)."
+);
+assert(
+  appSource.includes("function buildMaliklerTableWordHtml()") &&
+  appSource.includes('colspan="5"') &&
+  appSource.includes(">TOPLAM<"),
+  "buildMaliklerTableWordHtml() bulunamadi veya TOPLAM satirini uretmiyor."
+);
+
+assert(
+  engineSource.includes("EMSAL_ARSA_PIYASA_DEGERI") &&
+  engineSource.includes("getComparablePlaceholderValue") &&
+  engineSource.includes("EMSAL${i}_${token}"),
+  "Emsal tablo ve satir placeholder baglantilari bulunamadi."
+);
+
 templateFiles.forEach((file) => {
   const text = fs.readFileSync(path.join(appDir, "templates", file), "utf8");
   const { missing } = engine.fillTemplate(text);
@@ -152,6 +176,24 @@ assert(engine.resolveToken("İSKAN_VAR_MI").ok, "ISKAN_VAR_MI cozumlenemedi.");
 assert(engine.resolveToken("SOCİAL_FACİLİTİES").ok, "SOCIAL_FACILITIES (ek alan indeksi) cozumlenemedi.");
 assert(engine.resolveToken("UNİT_CONSTRUCTİON_LEVEL").ok, "UNIT_CONSTRUCTION_LEVEL cozumlenemedi.");
 assert(engine.resolveToken("BOYLE_BIR_AD_YOK").ok === false, "tanimsiz ad yanlislikla cozumlendi.");
+
+// --- 2b) Emsaller bölümü tek format kullanmalı (kullanıcı kararı 2026-07-13):
+// dinamik sütunlu emsal matrisi (EMSAL_MATRISI, kaç emsal varsa o kadar
+// sütun) + altında "Emsal Açıklaması" başlıklı EMSAL_PIYASA_ANALIZI metni.
+// Eski EMSAL_TABLOSU / EMSAL_1../EMSAL_7 paragraf listesi artık HİÇBİR
+// şablonda kullanılmamalı (motor hâlâ çözer, sadece şablonlarda yasak).
+const comparableTemplateFiles = templateFiles.filter(
+  (file) => !["isbankasi-masraf.html", "ziraat-ek-tablo.html"].includes(file)
+);
+comparableTemplateFiles.forEach((file) => {
+  const text = fs.readFileSync(path.join(appDir, "templates", file), "utf8");
+  assert(text.includes("{{EMSAL_MATRISI}}"), `${file}: EMSAL_MATRISI (dinamik sutunlu emsal matrisi) bulunamadi.`);
+  assert(text.includes("Emsal Açıklaması"), `${file}: "Emsal Açıklaması" basligi bulunamadi.`);
+  assert(!text.includes("{{EMSAL_TABLOSU}}"), `${file}: eski EMSAL_TABLOSU hala kullanimda (tek format kuralina aykiri).`);
+  for (let i = 1; i <= 7; i += 1) {
+    assert(!text.includes(`{{EMSAL_${i}}}`), `${file}: eski EMSAL_${i} paragraf placeholder'i hala kullanimda.`);
+  }
+});
 
 // --- 3) katlama eşdeğerlikleri ------------------------------------------
 assert(engine.foldTokenName("DIŞ.KAPI.NO") === engine.foldTokenName("dis_kapi_no"), "katlama: DIS.KAPI.NO != dis_kapi_no");

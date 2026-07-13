@@ -20,13 +20,13 @@ uygulaması bu dokümana göre yapılacaktır.
 | D6 | ~~Bulut kapalıyken uygulama bugünkü gibi %100 çalışır.~~ **SÜPÜRÜLDÜ (superseded) — 2026-07-09.** Bkz. D7. | — |
 | D7 | **[D6'yı geçersiz kılar] Giriş ZORUNLUDUR; internet YOKSA uygulama çalışmaz.** Kullanıcı açık talimatı: dosyalar artık GCP Always Free'de barındırılıyor, dışarıdan bu şekilde erişiliyor, ilerde tam bir web servisine dönüştürülecek — "bu bir senkron durumu değil"; yetkisiz kimse ne kullanabilmeli ne görebilmeli. `index.html`'de sayfa açılır açılmaz (satır içi stille, harici CSS beklemeden) opak, tüm viewport'u kaplayan `#authGateOverlay` var; `cloud/cloud-sync.js` yalnızca **kimlik doğrulanmış VE `navigator.onLine`** ikisi birden sağlandığında kaldırır (fail-closed: Firebase yapılandırılmamış/yüklenemiyor/çevrimdışı/girişsiz → kapı kapalı kalır). Açık "Çıkış Yap" yerel taslak + rapor kütüphanesini temizler. | KVKK/erişim kontrolü artık ürünün temel gereksinimi; offline-first vizyonu (orijinal Gemini dokümanındaki "sahada mobil" senaryosu) bilinçli olarak feda edildi. |
 
-**ÖNEMLİ SINIR (D7 için dürüstçe belirtilmeli):** Bu bir **istemci tarafı** kapıdır.
-`server.js` dosyaları HERKESE koşulsuz servis eder (statik dosya sunucusu, oturum/
-yetki kontrolü yapmaz) — sunucu düzeyinde erişim engeli YOKTUR. Gerçek/tam güvenlik
-(dosyaların/JS'in kendisinin bile yetkisiz kişiye ulaşmaması) için sunucu tarafı
-oturum denetimi gerekir; bu, "web servisine dönüştürme" planının kendisiyle birlikte
-ele alınmalı (bkz. handoff.md ilgili not — GCP Always Free'de gerçek bir backend
-[Cloud Run + auth middleware, veya benzeri] kurulana kadar bu sınır geçerlidir).
+**D7 güvenlik sınırı güncellendi:** `#authGateOverlay` istemci tarafında kullanıcı
+arayüzünü kapalı tutmaya devam eder. Ayrıca `server.js` üzerindeki `/api/*`
+uçları Firebase Authentication ID tokenını sunucu tarafında doğrular; oturumsuz
+istekler reddedilir ve yerel state/kullanıcı noktaları Firebase UID'ye göre
+ayrılır. Statik HTML/JS/CSS dosyaları ise giriş ekranının yüklenebilmesi için
+public kalır; rapor verisi API katmanından geçer. Public erişimde Node servisi
+127.0.0.1'e bağlanır ve dış trafik HTTPS reverse proxy üzerinden alınır.
 
 ---
 

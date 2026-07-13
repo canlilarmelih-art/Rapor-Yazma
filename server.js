@@ -5,15 +5,245 @@ const { existsSync, readdirSync } = require("fs");
 const os = require("os");
 const path = require("path");
 const { spawn } = require("child_process");
+const crypto = require("crypto");
 
 const appDir = __dirname;
 const dataDir = path.join(appDir, "server-data");
-const stateFile = path.join(dataDir, "active-case.json");
-const userPoisFile = path.join(dataDir, "user-pois.json");
 const backupDir = path.join(appDir, "backups");
 const port = Number(process.env.PORT || 5173);
-const host = process.env.HOST || "0.0.0.0";
+const host = process.env.HOST || "127.0.0.1";
+const firebaseProjectId = String(process.env.RAPOR_FIREBASE_PROJECT_ID || "rapor-yazma-pro").trim();
+const firebaseIssuer = `https://securetoken.google.com/${firebaseProjectId}`;
+const firebaseCertsUrl = "https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com";
+let firebaseCertCache = { certs: null, expiresAt: 0, pending: null };
 let lastBackupCheckDate = "";
+
+// Statik olarak ASLA sunulmayacak kök klasör/isimler — tam kaynak yedekleri
+// (backups) ve versiyon geçmişi (.git) istemcinin talep edebileceği bir dosya
+// adı DEĞİLDİR. Eskiden tek kontrol `resolved.startsWith(root)` idi; bu appDir
+// ile aynı önekle başlayan bir KARDEŞ klasörü (ör. "app-yedek") de root
+// sanabiliyordu ve backups/.git altındaki her dosya normal statik dosya gibi
+// dışarıya servis edilebiliyordu.
+const STATIC_DENYLIST = new Set(["backups", ".git", "node_modules", "graphify-out"]);
+
+// server-data/ klasörü hem KİŞİSEL veriyi (aktif dosya durumu, kullanıcı
+// noktaları, yüklenen PDF'ler) hem de app.js'in çalışırken statik olarak
+// çektiği PAYLAŞILAN referans veri setlerini (mahalle/adres CSV, JSON) bir
+// arada tutuyor. Bu yüzden tüm klasörü değil, yalnızca kişisel dosyaları
+// engelliyoruz — bkz. app.js:807-808 (localNeighborhoodDatabaseUrl,
+// legacyPlaceholderDefinitionsUrl).
+const SENSITIVE_SERVER_DATA_FILES = new Set(["active-case.json", "user-pois.json"]);
+
+function isSensitivePath(relativeSegments) {
+  const first = relativeSegments[0];
+  if (!first) return false;
+  if (STATIC_DENYLIST.has(first)) return true;
+  if (first.startsWith(".env")) return true;
+  if (first === "server-data") {
+    const second = relativeSegments[1];
+    if (!second) return true; // server-data'nın kendisi (dizin listesi vb.) da kapalı.
+    if (second === "uploads" || second === "users") return true;
+    if (SENSITIVE_SERVER_DATA_FILES.has(second)) return true;
+  }
+  return false;
+}
+
+function userDataDirectory(uid) {
+  const safeUid = Buffer.from(String(uid || ""), "utf8").toString("base64url");
+  if (!safeUid) throw new Error("Kimlik bilgisi eksik.");
+  return path.join(dataDir, "users", safeUid);
+}
+
+function userStateFile(uid) {
+  return path.join(userDataDirectory(uid), "active-case.json");
+}
+
+function userPoisFile(uid) {
+  return path.join(userDataDirectory(uid), "user-pois.json");
+}
+
+// Basit bellek-içi sabit-pencere rate limiter. Harici bağımlılık eklemeden
+// (proje sıfır npm bağımlılığıyla çalışıyor) IP başına istek sayısını sınırlar.
+const rateLimitBuckets = new Map();
+
+function checkRateLimit(key, limit, windowMs) {
+  const now = Date.now();
+  const bucket = rateLimitBuckets.get(key);
+  if (!bucket || now - bucket.windowStart >= windowMs) {
+    rateLimitBuckets.set(key, { windowStart: now, count: 1 });
+    return { limited: false };
+  }
+  bucket.count += 1;
+  if (bucket.count > limit) {
+    const retryAfterSeconds = Math.max(1, Math.ceil((bucket.windowStart + windowMs - now) / 1000));
+    return { limited: true, retryAfterSeconds };
+  }
+  return { limited: false };
+}
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, bucket] of rateLimitBuckets) {
+    if (now - bucket.windowStart > 15 * 60 * 1000) rateLimitBuckets.delete(key);
+  }
+}, 5 * 60 * 1000).unref();
+
+function clientKeyFor(request) {
+  return request.socket?.remoteAddress || "unknown";
+}
+
+function sendRateLimited(response, retryAfterSeconds) {
+  response.writeHead(429, {
+    "Content-Type": "application/json; charset=utf-8",
+    "Cache-Control": "no-store",
+    "Retry-After": String(retryAfterSeconds),
+  });
+  response.end(JSON.stringify({ ok: false, error: "Çok fazla istek. Lütfen birkaç saniye sonra tekrar deneyin." }));
+}
+
+function logServerError(context, error) {
+  console.error(`[${new Date().toISOString()}] ${context}:`, error && error.stack ? error.stack : error);
+}
+
+const SECURITY_HEADERS = {
+  "X-Content-Type-Options": "nosniff",
+  "X-Frame-Options": "DENY",
+  "Referrer-Policy": "strict-origin-when-cross-origin",
+  // Uygulama build'siz vanilla JS: birkaç sayfa-içi <script> bloğu ve
+  // unpkg.com üzerinden yüklenen Leaflet var; bu yüzden 'unsafe-inline' ve
+  // unpkg.com script-src'te tutulmak zorunda (aksi halde sayfa çalışmaz).
+  // Yine de yabancı script/frame/obje kaynaklarını ve clickjacking'i engeller.
+  "Content-Security-Policy": [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' https://unpkg.com",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob: https://*.tile.openstreetmap.org https://*.arcgisonline.com",
+    "font-src 'self' data:",
+    "worker-src 'self' blob:",
+    "connect-src 'self' https://overpass-api.de https://overpass.kumi.systems https://overpass.osm.ch https://nominatim.openstreetmap.org https://geocode.arcgis.com https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+  ].join("; "),
+};
+
+function applySecurityHeaders(response) {
+  for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
+    response.setHeader(key, value);
+  }
+}
+
+// CSRF sertleştirmesi: sunucu farklı origin'lere Access-Control-Allow-Origin
+// vermiyor, ama application/x-www-form-urlencoded gibi "basit" isteklerde
+// tarayıcı preflight yapmadan isteği yine de gönderir (ör. /api/overpass).
+// Bu, kullanıcı çalışırken açtığı KÖTÜ NİYETLİ bir web sayfasının, kullanıcının
+// tarayıcısı üzerinden sessizce bu sunucuya yazma isteği göndermesine
+// (drive-by CSRF) izin verir. Özel bir header zorunlu kılmak tarayıcıyı
+// preflight yapmaya zorlar; preflight'a CORS izni verilmediği için başarısız
+// olur ve asıl istek hiç gönderilmez.
+const CSRF_HEADER = "x-rapor-client";
+const CSRF_HEADER_VALUE = "1";
+
+function isTrustedRequestOrigin(request) {
+  if (request.headers[CSRF_HEADER] !== CSRF_HEADER_VALUE) return false;
+  const origin = request.headers.origin;
+  if (!origin) return true;
+  try {
+    const originHost = new URL(origin).host;
+    return originHost === request.headers.host;
+  } catch {
+    return false;
+  }
+}
+
+function decodeJwtPart(value) {
+  try {
+    return JSON.parse(Buffer.from(value, "base64url").toString("utf8"));
+  } catch {
+    return null;
+  }
+}
+
+function fetchFirebaseCertificates() {
+  return new Promise((resolve, reject) => {
+    const request = https.get(firebaseCertsUrl, { timeout: 10000 }, (response) => {
+      let body = "";
+      response.setEncoding("utf8");
+      response.on("data", (chunk) => { body += chunk; });
+      response.on("end", () => {
+        if (response.statusCode !== 200) {
+          reject(new Error(`Firebase certificate endpoint returned ${response.statusCode}`));
+          return;
+        }
+        try {
+          const certs = JSON.parse(body);
+          const cacheControl = String(response.headers["cache-control"] || "");
+          const maxAge = Number(cacheControl.match(/max-age=(\\d+)/i)?.[1] || 3600);
+          firebaseCertCache = { certs, expiresAt: Date.now() + Math.max(60, maxAge - 60) * 1000, pending: null };
+          resolve(certs);
+        } catch (error) {
+          reject(error);
+        }
+      });
+    });
+    request.on("timeout", () => request.destroy(new Error("Firebase certificate request timed out")));
+    request.on("error", reject);
+  });
+}
+
+async function getFirebaseCertificates() {
+  if (firebaseCertCache.certs && firebaseCertCache.expiresAt > Date.now()) return firebaseCertCache.certs;
+  if (!firebaseCertCache.pending) {
+    firebaseCertCache.pending = fetchFirebaseCertificates().finally(() => {
+      firebaseCertCache.pending = null;
+    });
+  }
+  return firebaseCertCache.pending;
+}
+
+async function authenticateRequest(request) {
+  const authorization = String(request.headers.authorization || "");
+  if (!authorization.startsWith("Bearer ")) return null;
+  const token = authorization.slice("Bearer ".length).trim();
+  const parts = token.split(".");
+  if (parts.length !== 3) return null;
+  const header = decodeJwtPart(parts[0]);
+  const payload = decodeJwtPart(parts[1]);
+  if (!header || !payload || header.alg !== "RS256" || !header.kid || !payload.sub) return null;
+
+  const now = Math.floor(Date.now() / 1000);
+  const expiresAt = Number(payload.exp);
+  const issuedAt = Number(payload.iat);
+  if (payload.iss !== firebaseIssuer || payload.aud !== firebaseProjectId
+    || !Number.isFinite(expiresAt) || !Number.isFinite(issuedAt)
+    || expiresAt <= now || issuedAt > now + 60
+    || typeof payload.sub !== "string" || payload.sub.length > 256) return null;
+
+  try {
+    const certs = await getFirebaseCertificates();
+    const certificate = certs[header.kid];
+    if (!certificate) return null;
+    const verifier = crypto.createVerify("RSA-SHA256");
+    verifier.update(`${parts[0]}.${parts[1]}`);
+    verifier.end();
+    if (!verifier.verify(certificate, Buffer.from(parts[2], "base64url"))) return null;
+    return { uid: payload.sub, email: payload.email || null };
+  } catch (error) {
+    logServerError("Firebase token doğrulaması başarısız", error);
+    return null;
+  }
+}
+
+function sendUnauthorized(response) {
+  applySecurityHeaders(response);
+  response.writeHead(401, {
+    "Content-Type": "application/json; charset=utf-8",
+    "Cache-Control": "no-store",
+    "WWW-Authenticate": "Bearer",
+  });
+  response.end(JSON.stringify({ ok: false, error: "Oturum doğrulanamadı." }));
+}
 
 const mimeTypes = new Map([
   [".html", "text/html; charset=utf-8"],
@@ -30,6 +260,7 @@ const mimeTypes = new Map([
 ]);
 
 function sendJson(response, status, body) {
+  applySecurityHeaders(response);
   response.writeHead(status, {
     "Content-Type": "application/json; charset=utf-8",
     "Cache-Control": "no-store",
@@ -37,14 +268,16 @@ function sendJson(response, status, body) {
   response.end(JSON.stringify(body));
 }
 
-function readBody(request) {
+function readBody(request, maxBytes = 20 * 1024 * 1024) {
   return new Promise((resolve, reject) => {
     let body = "";
     request.setEncoding("utf8");
     request.on("data", (chunk) => {
       body += chunk;
-      if (body.length > 20 * 1024 * 1024) {
-        reject(new Error("İstek çok büyük."));
+      if (body.length > maxBytes) {
+        const error = new Error("İstek çok büyük.");
+        error.isPayloadTooLarge = true;
+        reject(error);
         request.destroy();
       }
     });
@@ -53,14 +286,16 @@ function readBody(request) {
   });
 }
 
-function readBinaryBody(request) {
+function readBinaryBody(request, maxBytes = 25 * 1024 * 1024) {
   return new Promise((resolve, reject) => {
     const chunks = [];
     let size = 0;
     request.on("data", (chunk) => {
       size += chunk.length;
-      if (size > 30 * 1024 * 1024) {
-        reject(new Error("Dosya çok büyük."));
+      if (size > maxBytes) {
+        const error = new Error("Dosya çok büyük.");
+        error.isPayloadTooLarge = true;
+        reject(error);
         request.destroy();
         return;
       }
@@ -127,7 +362,8 @@ async function createDailyBackupIfNeeded() {
   );
 }
 
-async function handleStateApi(request, response) {
+async function handleStateApi(request, response, user) {
+  const stateFile = userStateFile(user.uid);
   if (request.method === "GET") {
     try {
       const raw = await fs.readFile(stateFile, "utf8");
@@ -143,13 +379,25 @@ async function handleStateApi(request, response) {
   }
 
   if (request.method === "PUT" || request.method === "POST") {
-    const body = await readBody(request);
-    const parsed = JSON.parse(body || "{}");
-    if (!parsed || typeof parsed !== "object") {
+    let body;
+    try {
+      body = await readBody(request);
+    } catch (error) {
+      sendJson(response, error.isPayloadTooLarge ? 413 : 400, { ok: false, error: "İstek gövdesi okunamadı." });
+      return;
+    }
+    let parsed;
+    try {
+      parsed = JSON.parse(body || "{}");
+    } catch {
+      sendJson(response, 400, { ok: false, error: "Geçersiz JSON." });
+      return;
+    }
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
       sendJson(response, 400, { ok: false, error: "Geçersiz kayıt verisi." });
       return;
     }
-    await fs.mkdir(dataDir, { recursive: true });
+    await fs.mkdir(path.dirname(stateFile), { recursive: true });
     await fs.writeFile(stateFile, JSON.stringify(parsed, null, 2), "utf8");
     sendJson(response, 200, { ok: true, updatedAt: parsed.updatedAt || null });
     return;
@@ -205,11 +453,21 @@ async function handleOverpassApi(request, response) {
     return;
   }
 
-  const body = await readBody(request);
+  let body;
+  try {
+    body = await readBody(request, 200 * 1024);
+  } catch (error) {
+    sendJson(response, error.isPayloadTooLarge ? 413 : 400, { ok: false, error: "İstek gövdesi okunamadı." });
+    return;
+  }
   const params = new URLSearchParams(body || "");
   const query = params.get("data") || "";
   if (!query.trim()) {
     sendJson(response, 400, { ok: false, error: "Overpass sorgusu boş." });
+    return;
+  }
+  if (query.length > 20000) {
+    sendJson(response, 400, { ok: false, error: "Overpass sorgusu çok uzun." });
     return;
   }
 
@@ -225,6 +483,7 @@ async function handleOverpassApi(request, response) {
     try {
       const result = await postFormToOverpass(endpoint, formBody);
       if (result.statusCode >= 200 && result.statusCode < 300) {
+        applySecurityHeaders(response);
         response.writeHead(200, {
           "Content-Type": "application/json; charset=utf-8",
           "Cache-Control": "no-store",
@@ -238,12 +497,14 @@ async function handleOverpassApi(request, response) {
     }
   }
 
-  sendJson(response, 502, { ok: false, error: lastError?.message || "Yakın çevre servisine ulaşılamadı." });
+  logServerError("Overpass proxy hatası", lastError);
+  sendJson(response, 502, { ok: false, error: "Yakın çevre servisine ulaşılamadı." });
 }
 
-async function readUserPois() {
+async function readUserPois(uid) {
+  const poisFile = userPoisFile(uid);
   try {
-    const raw = await fs.readFile(userPoisFile, "utf8");
+    const raw = await fs.readFile(poisFile, "utf8");
     const parsed = JSON.parse(raw || "[]");
     return Array.isArray(parsed) ? parsed : [];
   } catch (error) {
@@ -252,29 +513,48 @@ async function readUserPois() {
   }
 }
 
-async function handleUserPoisApi(request, response) {
+async function handleUserPoisApi(request, response, user) {
+  const poisFile = userPoisFile(user.uid);
   if (request.method === "GET") {
-    const pois = await readUserPois();
+    const pois = await readUserPois(user.uid);
     sendJson(response, 200, { ok: true, pois });
     return;
   }
   if (request.method === "POST") {
-    const body = await readBody(request);
-    const parsed = JSON.parse(body || "{}");
-    const name = String(parsed.name || "").trim().slice(0, 160);
-    const category = normalizeUserPoiCategory(parsed.category);
-    const lat = Number(parsed.lat);
-    const lng = Number(parsed.lng);
-    if (!name || !Number.isFinite(lat) || !Number.isFinite(lng)) {
-      sendJson(response, 400, { ok: false, error: "Nokta adı veya koordinat eksik." });
+    let body;
+    try {
+      body = await readBody(request, 200 * 1024);
+    } catch (error) {
+      sendJson(response, error.isPayloadTooLarge ? 413 : 400, { ok: false, error: "İstek gövdesi okunamadı." });
       return;
     }
-    const pois = await readUserPois();
+    let parsed;
+    try {
+      parsed = JSON.parse(body || "{}");
+    } catch {
+      sendJson(response, 400, { ok: false, error: "Geçersiz JSON." });
+      return;
+    }
+    // Kontrol karakterlerini (ör. gizli yön/format karakterleri) temizle —
+    // isim serbest metin olarak dosyaya yazılıp sonradan ekranda gösteriliyor.
+    const name = String(parsed?.name || "").replace(/[\x00-\x1F\x7F]/g, "").trim().slice(0, 160);
+    const category = normalizeUserPoiCategory(parsed?.category);
+    const lat = Number(parsed?.lat);
+    const lng = Number(parsed?.lng);
+    // Türkiye'nin kabaca coğrafi sınırları — anlamsız/kötüye kullanım amaçlı
+    // koordinatları (ör. 0,0 ya da dünyanın diğer ucu) en baştan reddeder.
+    const isPlausibleLat = Number.isFinite(lat) && lat >= 35 && lat <= 43;
+    const isPlausibleLng = Number.isFinite(lng) && lng >= 25 && lng <= 45;
+    if (!name || !isPlausibleLat || !isPlausibleLng) {
+      sendJson(response, 400, { ok: false, error: "Nokta adı veya koordinat eksik/geçersiz." });
+      return;
+    }
+    const pois = await readUserPois(user.uid);
     const id = `user-${Date.now()}-${Math.random().toString(16).slice(2)}`;
     const next = [{ id, name, lat, lng, category, source: category === "user-artery" ? "Kullanıcı Ulaşım Arteri" : "Kullanıcı", createdAt: new Date().toISOString() }, ...pois]
       .slice(0, 300);
-    await fs.mkdir(dataDir, { recursive: true });
-    await fs.writeFile(userPoisFile, JSON.stringify(next, null, 2), "utf8");
+    await fs.mkdir(path.dirname(poisFile), { recursive: true });
+    await fs.writeFile(poisFile, JSON.stringify(next, null, 2), "utf8");
     sendJson(response, 200, { ok: true, poi: next[0], pois: next });
     return;
   }
@@ -392,9 +672,21 @@ async function handlePdfTextApi(request, response) {
     return;
   }
 
-  const buffer = await readBinaryBody(request);
+  let buffer;
+  try {
+    buffer = await readBinaryBody(request);
+  } catch (error) {
+    sendJson(response, error.isPayloadTooLarge ? 413 : 400, { ok: false, error: "Dosya alınamadı." });
+    return;
+  }
   if (!buffer.length) {
     sendJson(response, 400, { ok: false, error: "PDF dosyası alınamadı." });
+    return;
+  }
+  // İstemcinin content-type/uzantı beyanına güvenme — dosyanın gerçekten PDF
+  // olduğunu ilk baytlardaki "%PDF-" imzasıyla doğrula.
+  if (buffer.subarray(0, 5).toString("latin1") !== "%PDF-") {
+    sendJson(response, 400, { ok: false, error: "Yüklenen dosya geçerli bir PDF değil." });
     return;
   }
 
@@ -408,6 +700,9 @@ async function handlePdfTextApi(request, response) {
     await fs.writeFile(tempPath, buffer);
     const result = await runPdfTextExtractor(tempPath);
     sendJson(response, 200, { ok: true, text: result.text || "" });
+  } catch (error) {
+    logServerError("PDF metin çıkarma hatası", error);
+    sendJson(response, 502, { ok: false, error: "PDF metni okunamadı. Dosyayı kontrol edip tekrar deneyin." });
   } finally {
     fs.rm(tempPath, { force: true }).catch(() => {});
   }
@@ -416,21 +711,30 @@ async function handlePdfTextApi(request, response) {
 function resolveStaticPath(urlPath) {
   const pathname = decodeURIComponent(new URL(urlPath, `http://${host}:${port}`).pathname);
   const requested = pathname === "/" ? "/index.html" : pathname;
-  const resolved = path.resolve(appDir, `.${requested.replace(/\\/g, "/")}`);
+  const relative = requested.replace(/\\/g, "/").replace(/^\/+/, "");
+  const resolved = path.resolve(appDir, relative);
   const root = path.resolve(appDir);
-  if (!resolved.startsWith(root)) return null;
+  // "root + path.sep" karşılaştırması şart: salt `startsWith(root)` kontrolü,
+  // aynı önekle başlayan bir KARDEŞ klasörü (ör. root "...\app" iken
+  // "...\app-yedek") de izin verilen alan sanardı.
+  if (resolved !== root && !resolved.startsWith(root + path.sep)) return null;
+  const relativeFromRoot = path.relative(root, resolved);
+  const segments = relativeFromRoot.split(path.sep).filter(Boolean);
+  if (isSensitivePath(segments)) return null;
   return resolved;
 }
 
 async function handleStatic(request, response) {
   const filePath = resolveStaticPath(request.url || "/");
   if (!filePath) {
+    applySecurityHeaders(response);
     response.writeHead(403, { "Content-Type": "text/plain; charset=utf-8" });
     response.end("Erişim reddedildi.");
     return;
   }
   try {
     const data = await fs.readFile(filePath);
+    applySecurityHeaders(response);
     response.writeHead(200, {
       "Content-Type": mimeTypes.get(path.extname(filePath).toLowerCase()) || "application/octet-stream",
       "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
@@ -439,33 +743,83 @@ async function handleStatic(request, response) {
     });
     response.end(data);
   } catch (error) {
-    response.writeHead(error.code === "ENOENT" ? 404 : 500, { "Content-Type": "text/plain; charset=utf-8" });
-    response.end(error.code === "ENOENT" ? "Dosya bulunamadı." : error.message);
+    applySecurityHeaders(response);
+    if (error.code === "ENOENT") {
+      response.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
+      response.end("Dosya bulunamadı.");
+      return;
+    }
+    logServerError(`Statik dosya sunumu hatası (${filePath})`, error);
+    response.writeHead(500, { "Content-Type": "text/plain; charset=utf-8" });
+    response.end("Sunucu hatası.");
   }
+}
+
+// Rota başına rate limit (IP başına, sabit pencere). güvenlik.md rehberindeki
+// öneriler local/tek-kullanıcılı bu sunucu için ölçeklendirildi.
+const API_RATE_LIMITS = {
+  "/api/state": { limit: 60, windowMs: 60 * 1000 },
+  "/api/overpass": { limit: 30, windowMs: 60 * 1000 },
+  "/api/user-pois": { limit: 60, windowMs: 60 * 1000 },
+  "/api/pdf-text": { limit: 5, windowMs: 60 * 1000 },
+};
+
+function matchApiRoute(url) {
+  for (const route of Object.keys(API_RATE_LIMITS)) {
+    if (url.startsWith(route)) return route;
+  }
+  return null;
 }
 
 const server = http.createServer(async (request, response) => {
   try {
     createDailyBackupIfNeeded().catch((error) => console.warn("Backup skipped:", error.message));
-    if ((request.url || "").startsWith("/api/state")) {
-      await handleStateApi(request, response);
+    const url = request.url || "/";
+    const apiRoute = matchApiRoute(url);
+
+    if (apiRoute) {
+      const authenticatedUser = await authenticateRequest(request);
+      if (!authenticatedUser) {
+        sendUnauthorized(response);
+        return;
+      }
+      request.user = authenticatedUser;
+
+      const { limit, windowMs } = API_RATE_LIMITS[apiRoute];
+      const rateKey = `${apiRoute}:${clientKeyFor(request)}`;
+      const rate = checkRateLimit(rateKey, limit, windowMs);
+      if (rate.limited) {
+        sendRateLimited(response, rate.retryAfterSeconds);
+        return;
+      }
+
+      const isMutating = request.method === "POST" || request.method === "PUT";
+      if (isMutating && !isTrustedRequestOrigin(request)) {
+        sendJson(response, 403, { ok: false, error: "İstek doğrulanamadı." });
+        return;
+      }
+    }
+
+    if (apiRoute === "/api/state") {
+      await handleStateApi(request, response, request.user);
       return;
     }
-    if ((request.url || "").startsWith("/api/overpass")) {
+    if (apiRoute === "/api/overpass") {
       await handleOverpassApi(request, response);
       return;
     }
-    if ((request.url || "").startsWith("/api/user-pois")) {
-      await handleUserPoisApi(request, response);
+    if (apiRoute === "/api/user-pois") {
+      await handleUserPoisApi(request, response, request.user);
       return;
     }
-    if ((request.url || "").startsWith("/api/pdf-text")) {
+    if (apiRoute === "/api/pdf-text") {
       await handlePdfTextApi(request, response);
       return;
     }
     await handleStatic(request, response);
   } catch (error) {
-    sendJson(response, 500, { ok: false, error: error.message || String(error) });
+    logServerError(`İstek işlenirken hata (${request.method} ${request.url})`, error);
+    sendJson(response, 500, { ok: false, error: "Sunucu hatası." });
   }
 });
 

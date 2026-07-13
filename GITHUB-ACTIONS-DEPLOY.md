@@ -19,12 +19,40 @@ Private key'i repository dosyasina koymayin. GitHub Actions bu degerleri secret 
 
 ## Ubuntu hazirligi
 
-Sunucuda uygulama klasoru ve PM2 uygulamasi bir kez hazir olmalidir:
+Sunucuda uygulama klasoru ve PM2 uygulamasi bir kez hazir olmalidir. Yeni
+deployment akisi `ecosystem.config.cjs` ile PM2'yi yeniden baslatir ve Node
+sunucusunu yalnizca `127.0.0.1:5174` uzerinde dinletir:
 
 ```bash
 cd /home/canlilar_melih/proje/files-mentioned-by-the-user-rapor/app
-pm2 restart rapor-app --update-env
+pm2 startOrRestart ecosystem.config.cjs --only rapor-app --update-env
 pm2 save
 ```
 
-Workflow, aktarim sirasinda `server-data/` ve `backups/` klasorlerini korur. Her basarili deploy sonrasinda `rapor-app` yeniden baslatilir ve 5174, yoksa 5173 portu kontrol edilir.
+Workflow, aktarim sirasinda `server-data/` ve `backups/` klasorlerini korur.
+Her basarili deploy sonrasinda `rapor-app` yeniden baslatilir ve localhost
+uzerinden 5174 portu kontrol edilir.
+
+## Ilk HTTPS kurulumu
+
+Public IP'yi dogrudan acmak yerine bir alan adini sunucunun IP adresine
+yonlendirin. DNS kaydi hazir olduktan sonra Ubuntu'da bir kez su komutu
+calistirin:
+
+```bash
+cd /home/canlilar_melih/proje/files-mentioned-by-the-user-rapor/app
+bash deploy/ubuntu/setup-https.sh rapor.ornek.com admin@ornek.com
+```
+
+Bu script Nginx'i 80/443 uzerinden reverse proxy olarak kurar, Let's Encrypt
+sertifikasi alir ve PM2'deki 5174 servisine yonlendirir. Sertifika icin IP
+yerine kullanilan alan adi gerekir. Bundan sonra uygulamaya `https://alan-adiniz`
+ile erisin; 5174 portunu public firewall'da acik tutmayin.
+
+## API guvenligi
+
+Firebase Authentication ile giris yapan tarayici, API isteklerinde ID token
+gonderir. Sunucu token'i Firebase sertifikalariyla dogrular; `/api/state`,
+`/api/user-pois`, `/api/overpass` ve `/api/pdf-text` oturumsuz istekleri 401
+ile reddeder. State ve kullanici noktasi dosyalari Firebase UID'ye gore ayri
+klasorlere yazilir.

@@ -11704,37 +11704,48 @@ function buildWordReportHtml(options = {}) {
     buildWordReportTablesHtml(),
     buildWordReportSketchesHtml(options),
   ].filter(Boolean).join("\n");
+  const reportInk = getReportThemeToken("--ink", "#152238");
+  const reportLine = getReportThemeToken("--line", "#dde3ef");
+  const reportBlue = getReportThemeToken("--blue", "#3a5691");
+  const reportBlueSoft = getReportThemeToken("--blue-soft", "#e4ebf8");
+  const reportSurface = getReportThemeToken("--surface", "#ffffff");
+  const reportSurfaceMuted = getReportThemeToken("--surface-muted", "#eef2fa");
+  const reportMuted = getReportThemeToken("--muted", "#5a6576");
+  const reportGreen = getReportThemeToken("--green", "#213f77");
   return `<!DOCTYPE html>
 <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:v="urn:schemas-microsoft-com:vml">
 <head>
   <meta charset="utf-8">
   <title>${escapeHtml(title)}</title>
   <style>
-    @page { size: 595.35pt 841.95pt; margin: 42pt 36pt; }
-    @page WordLandscape { size: 841.95pt 595.35pt; mso-page-orientation: landscape; margin: 30pt 28pt; }
+    @page { size: 595.35pt 841.95pt; margin: 30pt 26pt; }
+    @page WordLandscape { size: 841.95pt 595.35pt; mso-page-orientation: landscape; margin: 22pt 20pt; }
     v\\:* { behavior: url(#default#VML); }
-    body { font-family: Arial, sans-serif; font-size: 10pt; color: #1f2a32; background: #ffffff; }
-    h1 { font-size: 20pt; margin: 0 0 12pt; color: #12202a; font-weight: 900; }
-    h2 { font-size: 15pt; margin: 18pt 0 8pt; border-bottom: 2pt solid #213f77; padding-bottom: 4pt; color: #12202a; font-weight: 900; }
-    h3 { font-size: 12pt; margin: 12pt 0 6pt; color: #263642; font-weight: 900; }
-    p { margin: 0 0 8pt; line-height: 1.35; }
+    /* Renkler app/styles.css'teki gercek tema token'lariyla eslesir:
+       --ink:#152238 --line:#dde3ef --blue:#3a5691 --blue-soft:#e4ebf8
+       (bkz. .malikler-table / .takyidat-table ekran ici stilleri). */
+    body { font-family: Arial, sans-serif; font-size: 7pt; color: ${reportInk}; background: ${reportSurface}; }
+    h1 { font-size: 14pt; margin: 0 0 8pt; color: ${reportInk}; font-weight: 900; }
+    h2 { font-size: 10pt; margin: 13pt 0 6pt; border-bottom: 1.5pt solid ${reportGreen}; padding-bottom: 3pt; color: ${reportInk}; font-weight: 900; }
+    h3 { font-size: 8.5pt; margin: 8pt 0 4pt; color: ${reportInk}; font-weight: 900; }
+    p { margin: 0 0 6pt; line-height: 1.3; }
     .word-landscape-section { page: WordLandscape; mso-page-orientation: landscape; page-break-before: always; page-break-after: always; }
-    .word-table { border-collapse: collapse; width: 100%; margin: 6pt 0 12pt; table-layout: fixed; border: 1pt solid #d9dfdc; font-size: 8.25pt; }
+    .word-table { border-collapse: collapse; width: 100%; margin: 5pt 0 9pt; table-layout: fixed; border: 1pt solid ${reportLine}; font-size: 7pt; }
     .word-table th,
-    .word-table td { border: 1pt solid #d9dfdc; padding: 3.2pt 3.8pt; vertical-align: top; line-height: 1.15; }
-    .word-table th { background: #eaf0fa; color: #1f2a32; font-weight: 900; text-align: left; }
-    .word-table tbody tr:nth-child(even) td { background: #f6f8fd; }
-    .word-table.is-wide { font-size: 7pt; table-layout: auto; }
+    .word-table td { border: 1pt solid ${reportLine}; padding: 2.4pt 3pt; vertical-align: top; line-height: 1.1; }
+    .word-table th { background: ${reportSurfaceMuted}; color: ${reportBlue}; font-weight: 900; text-align: left; }
+    .word-table tbody tr:nth-child(even) td { background: ${reportSurfaceMuted}; }
+    .word-table.is-wide { font-size: 6pt; table-layout: auto; }
     .word-table.is-wide th,
-    .word-table.is-wide td { padding: 2.4pt 2.8pt; line-height: 1.08; }
+    .word-table.is-wide td { padding: 1.8pt 2.2pt; line-height: 1.05; }
     .word-table.is-matrix th:first-child,
     .word-table.is-matrix td:first-child,
-    .word-table.meta td:first-child { width: 26%; font-weight: 900; background: #eaf0fa; color: #1f2a32; }
-    .word-table.is-summary tbody tr:last-child td { font-weight: 900; background: #eef6ff; }
-    .placeholder-title { background: #f8fafc; font-weight: bold; }
-    .sketch { margin: 8pt 0 16pt; text-align: center; }
+    .word-table.meta td:first-child { width: 26%; font-weight: 900; background: ${reportBlueSoft}; color: ${reportBlue}; }
+    .word-table.is-summary tbody tr:last-child td { font-weight: 900; background: #1f2a32; color: #ffffff; }
+    .placeholder-title { background: ${reportSurfaceMuted}; font-weight: bold; }
+    .sketch { margin: 6pt 0 12pt; text-align: center; }
     .sketch-vml { width: 100%; text-align: center; }
-    .sketch-note { font-size: 8pt; color: #64748b; text-align: left; margin-top: 4pt; }
+    .sketch-note { font-size: 6pt; color: ${reportMuted}; text-align: left; margin-top: 3pt; }
   </style>
 </head>
 <body>
@@ -11783,8 +11794,11 @@ function shouldIncludeGeneratedTextInWord(row = {}) {
 
 function buildWordReportTablesHtml() {
   const parts = [];
+  const maliklerTableHtml = buildMaliklerTableWordHtml();
+  if (maliklerTableHtml) {
+    parts.push(`<h3>Malikler Tablosu</h3>${maliklerTableHtml}`);
+  }
   const regularTables = [
-    ["Malikler", ["Malik", "Hisse", "Edinme sebebi", "Tapu tarihi", "Yevmiye"], state.tables.title],
     ["İncelenen Belgeler", ["Belge Türü", "İncelenen Kurum", "Tarih", "No", "Kapsam"], state.tables.documents],
     ["Beyanlar", ["Tür", "Açıklama", "Tarih", "Yevmiye No"], state.tables.encumbranceDeclarations],
     ["Rehinler", ["Lehdar", "Derece", "Tutar", "Tarih", "Yevmiye"], state.tables.encumbranceMortgages],
@@ -11811,7 +11825,6 @@ function buildWordReportTablesHtml() {
   }
   const generatedTables = [
     ["Takyidat Tablosu", buildTakyidatTableText()],
-    ["Malikler Değer Tablosu", buildMaliklerTableText()],
     ["Halkbank Risk Kodları Tablosu", buildHalkbankRiskCodesTableText()],
   ].filter((row) => String(row[1] || "").trim());
   generatedTables.forEach(([title, text]) => {
@@ -11892,6 +11905,9 @@ function formatComparableValuationWordRow(row) {
 }
 
 function formatTextTableForWord(text) {
+  if (String(text || "").trim() === String(buildValuationSummaryText() || "").trim()) {
+    return buildValuationSummaryWordTableHtml();
+  }
   const lines = String(text || "").split(/\n+/).map((line) => line.trim()).filter(Boolean);
   if (!lines.length) return "";
   const pipeRows = lines.filter((line) => line.includes("|")).map((line) => line.split("|").map((cell) => cell.trim()));
@@ -11902,13 +11918,103 @@ function formatTextTableForWord(text) {
   return buildSimpleHtmlTable(["Açıklama"], lines.map((line) => [line]));
 }
 
+// Tum uretilen tablolar (banka sablonlarina {{...}} ile enjekte edilenler
+// dahil) SATIR ICI stille boyanir; boylece hangi banka sablonuna
+// yerlestirilirse yerlestirilsin uygulamanin GERCEK ekran-ici renkleriyle
+// (bkz. .malikler-table / .takyidat-table) ayni gorunur — sablonun kendi
+// marka rengi (orn. Kuveyt Turk INVEX yesili) veri tablolarini etkilemez.
+// class niteligi geriye donuk uyumluluk icin korunur (harici .word-table
+// kurallari yalnizca burada belirtilmeyen ozellikler icin devreye girer).
 function buildSimpleHtmlTable(headers, rows, className = "") {
+  const classNames = String(className || "").split(/\s+/).filter(Boolean);
+  const isEmphasisFirstCol = classNames.includes("meta") || classNames.includes("is-matrix");
+  const isSummaryLastRow = classNames.includes("is-summary");
+  const isWide = headers.length > 6;
+  const ink = getReportThemeToken("--ink", "#152238");
+  const line = getReportThemeToken("--line", "#dde3ef");
+  const blue = getReportThemeToken("--blue", "#3a5691");
+  const blueSoft = getReportThemeToken("--blue-soft", "#e4ebf8");
+  const surface = getReportThemeToken("--surface", "#ffffff");
+  const surfaceMuted = getReportThemeToken("--surface-muted", "#eef2fa");
+  const border = `border:1pt solid ${line};`;
+  const pad = isWide ? "padding:1.8pt 2.2pt;" : "padding:2.4pt 3pt;";
+  const baseCell = `${border}${pad}vertical-align:top;line-height:1.1;color:${ink};background:${surface};`;
+  const headerCell = `${baseCell}background:${surfaceMuted};color:${blue};font-weight:800;text-align:left;`;
+  const emphasisCell = `${baseCell}background:${blueSoft};color:${blue};font-weight:900;`;
+  const summaryCell = `${baseCell}background:#1f2a32;color:#ffffff;font-weight:900;`;
+  const zebraCell = `${baseCell}background:${surfaceMuted};`;
   const classes = ["word-table"];
-  if (headers.length > 6) classes.push("is-wide");
-  if (className) classes.push(...String(className).split(/\s+/).filter(Boolean));
-  return `<table class="${escapeHtml(classes.join(" "))}">
-    <thead><tr>${headers.map((header) => `<th>${escapeHtml(header)}</th>`).join("")}</tr></thead>
-    <tbody>${rows.map((row) => `<tr>${row.map((cell) => `<td>${formatWordCell(cell)}</td>`).join("")}</tr>`).join("")}</tbody>
+  if (isWide) classes.push("is-wide");
+  classes.push(...classNames);
+  const theadHtml = `<tr>${headers.map((header) => `<th style="${headerCell}">${escapeHtml(header)}</th>`).join("")}</tr>`;
+  const lastIndex = rows.length - 1;
+  const bodyHtml = rows.map((row, rowIndex) => {
+    const isSummaryRow = isSummaryLastRow && rowIndex === lastIndex;
+    return `<tr>${row.map((cell, cellIndex) => {
+      let cellStyle = baseCell;
+      if (isSummaryRow) cellStyle = summaryCell;
+      else if (isEmphasisFirstCol && cellIndex === 0) cellStyle = emphasisCell;
+      else if (rowIndex % 2 === 1) cellStyle = zebraCell;
+      return `<td style="${cellStyle}">${formatWordCell(cell)}</td>`;
+    }).join("")}</tr>`;
+  }).join("");
+  return `<table class="${escapeHtml(classes.join(" "))}" style="border-collapse:collapse;width:100%;margin:5pt 0 9pt;table-layout:${isWide ? "auto" : "fixed"};font-size:${isWide ? "6pt" : "7pt"};">
+    <thead>${theadHtml}</thead>
+    <tbody>${bodyHtml}</tbody>
+  </table>`;
+}
+
+function getReportThemeToken(name, fallback) {
+  try {
+    const value = getComputedStyle(document.body).getPropertyValue(name).trim();
+    return value || fallback;
+  } catch (error) {
+    return fallback;
+  }
+}
+
+function buildValuationSummaryWordTableHtml() {
+  if (!hasValuationSummaryData()) return "";
+  const line = getReportThemeToken("--line", "#dde3ef");
+  const ink = getReportThemeToken("--ink", "#152238");
+  const muted = getReportThemeToken("--muted", "#5a6576");
+  const surface = getReportThemeToken("--surface", "#ffffff");
+  const surfaceMuted = getReportThemeToken("--surface-muted", "#eef2fa");
+  const blue = getReportThemeToken("--blue", "#3a5691");
+  const blueSoft = getReportThemeToken("--blue-soft", "#e4ebf8");
+  const amber = getReportThemeToken("--amber", "#9a6a16");
+  const amberSoft = getReportThemeToken("--amber-soft", "#f6ecd6");
+  const green = getReportThemeToken("--green", "#213f77");
+  const greenSoft = getReportThemeToken("--green-soft", "#dde7f6");
+  const red = getReportThemeToken("--red", "#b23434");
+  const tableStyle = `border-collapse:collapse;width:100%;margin:5pt 0 9pt;table-layout:fixed;font-family:Arial,sans-serif;font-size:9pt;border:1pt solid ${line};`;
+  const cellBase = `border-bottom:1pt solid ${line};padding:6pt 8pt;text-align:left;vertical-align:middle;color:${ink};background:${surface};line-height:1.3;`;
+  const headerCell = `${cellBase}background:${surfaceMuted};color:${muted};font-size:8pt;font-weight:800;text-transform:uppercase;`;
+  const groupColors = {
+    market: [blueSoft, blue],
+    land: [amberSoft, amber],
+    building: [greenSoft, green],
+    premium: ["#ece3f6", "#5a3e8c"],
+    insurance: ["#f6dede", red],
+  };
+  const body = buildValuationSummaryGroups().map((group) => {
+    const [background, color] = groupColors[group.key] || [surfaceMuted, ink];
+    const groupStyle = `${cellBase}background:${background};color:${color};font-weight:800;font-size:8pt;text-transform:uppercase;letter-spacing:.04em;`;
+    const heading = `<tr><th colspan="3" style="${groupStyle}">${escapeHtml(group.title.toLocaleUpperCase("tr-TR"))}</th></tr>`;
+    const rows = group.rows.map((row) => `<tr>
+      <td style="${cellBase}font-weight:700;white-space:nowrap;">${escapeHtml(row.label)}</td>
+      <td style="${cellBase}color:${muted};font-size:8pt;">${escapeHtml(row.detail)}</td>
+      <td style="${cellBase}text-align:right;white-space:nowrap;font-weight:800;">${escapeHtml(row.value)}</td>
+    </tr>`).join("");
+    return heading + rows;
+  }).join("");
+  return `<table class="valuation-summary-table" style="${tableStyle}">
+    <thead><tr>
+      <th style="${headerCell}">Kalem</th>
+      <th style="${headerCell}">Birim Değer / Oran</th>
+      <th style="${headerCell}text-align:right;">Tutar</th>
+    </tr></thead>
+    <tbody>${body}</tbody>
   </table>`;
 }
 
@@ -14299,8 +14405,18 @@ async function readPdfTextInBrowser(file) {
   return recognizePdfPages(pdf);
 }
 
+async function fetchRaporApi(input, init = {}, timeoutMs = 0) {
+  const token = await window.RaporCloudSync?.getIdToken?.();
+  if (!token) throw new Error("Sunucu işlemleri için geçerli bir oturum açın.");
+  const headers = new Headers(init.headers || {});
+  headers.set("Authorization", `Bearer ${token}`);
+  headers.set("X-Rapor-Client", "1");
+  const requestInit = { ...init, headers };
+  return timeoutMs > 0 ? fetchWithTimeout(input, timeoutMs, requestInit) : fetch(input, requestInit);
+}
+
 async function readPdfTextOnServer(file) {
-  const response = await fetch("/api/pdf-text", {
+  const response = await fetchRaporApi("/api/pdf-text", {
     method: "POST",
     headers: {
       "Content-Type": "application/pdf",
@@ -17118,6 +17234,54 @@ function buildMaliklerTableText() {
   return [header, ...lines].join("\n");
 }
 
+// Ekrandaki "Malikler Tablosu" panelinin (bkz. createMaliklerTablePanel,
+// .malikler-table) BIREBIR ayni yapida Word/HTML karsiligi: 7 sutun, deger
+// sutunlari sag hizali/tabular, ilk sutun kalin, en altta TOPLAM satiri
+// (koyu zemin + beyaz yazi). Renkler satir ici stille sabitlenir; hangi
+// banka sablonuna yerlestirilirse yerlestirilsin ayni gorunur.
+function buildMaliklerTableWordHtml() {
+  const rows = buildMaliklerTableRows();
+  if (!rows.length) return "";
+  const line = getReportThemeToken("--line", "#dde3ef");
+  const blue = getReportThemeToken("--blue", "#3a5691");
+  const blueSoft = getReportThemeToken("--blue-soft", "#e4ebf8");
+  const surfaceMuted = getReportThemeToken("--surface-muted", "#eef2fa");
+  const border = `border:1pt solid ${line};`;
+  const cellPad = "padding:2.4pt 3pt;vertical-align:top;line-height:1.1;";
+  const headerCell = `${border}${cellPad}background:${surfaceMuted};color:${blue};font-weight:800;text-align:center;`;
+  const nameCell = `${border}${cellPad}font-weight:700;text-align:left;`;
+  const plainCell = `${border}${cellPad}text-align:center;`;
+  const valueCell = `${border}${cellPad}text-align:right;white-space:nowrap;`;
+  const zebraExtra = `background:${surfaceMuted};`;
+  const totalCell = `${border}${cellPad}background:${blue};color:#ffffff;font-weight:800;`;
+  const headers = ["Malik / Hissedar", "Hisse Payı", "Edinme Sebebi", "Tapu Tarihi", "Yevmiye", "Hisse Yasal Durum Değeri", "Hisse Mevcut Durum Değeri"];
+  const theadHtml = `<tr>${headers.map((header) => `<th style="${headerCell}">${escapeHtml(header)}</th>`).join("")}</tr>`;
+  const bodyHtml = rows.map((row, rowIndex) => {
+    const zebra = rowIndex % 2 === 1 ? zebraExtra : "";
+    return `<tr>
+      <td style="${nameCell}${zebra}">${escapeHtml(row.malik)}</td>
+      <td style="${plainCell}${zebra}">${escapeHtml(row.share)}</td>
+      <td style="${plainCell}${zebra}">${escapeHtml(row.reason)}</td>
+      <td style="${plainCell}${zebra}">${escapeHtml(row.deedDate)}</td>
+      <td style="${plainCell}${zebra}">${escapeHtml(row.journal)}</td>
+      <td style="${valueCell}${zebra}">${escapeHtml(formatMaliklerShareValue(row.legalShareValue))}</td>
+      <td style="${valueCell}${zebra}">${escapeHtml(formatMaliklerShareValue(row.currentShareValue))}</td>
+    </tr>`;
+  }).join("");
+  const legalSum = rows.reduce((sum, row) => sum + (Number.isFinite(row.legalShareValue) ? row.legalShareValue : 0), 0);
+  const currentSum = rows.reduce((sum, row) => sum + (Number.isFinite(row.currentShareValue) ? row.currentShareValue : 0), 0);
+  const totalHtml = `<tr>
+    <th colspan="5" style="${totalCell}text-align:right;">TOPLAM</th>
+    <td style="${totalCell}text-align:right;white-space:nowrap;">${escapeHtml(formatMaliklerShareValue(legalSum))}</td>
+    <td style="${totalCell}text-align:right;white-space:nowrap;">${escapeHtml(formatMaliklerShareValue(currentSum))}</td>
+  </tr>`;
+  return `<table class="word-table" style="border-collapse:collapse;width:100%;margin:5pt 0 9pt;table-layout:fixed;font-size:7pt;">
+    <thead>${theadHtml}</thead>
+    <tbody>${bodyHtml}</tbody>
+    <tfoot>${totalHtml}</tfoot>
+  </table>`;
+}
+
 function createMaliklerTablePanel() {
   const rows = buildMaliklerTableRows();
   const panel = document.createElement("div");
@@ -19196,7 +19360,7 @@ async function refreshUserPoisFromServer(options = {}) {
     loading: true,
   };
   try {
-    const response = await fetch("/api/user-pois");
+    const response = await fetchRaporApi("/api/user-pois");
     const data = await response.json();
     const places = (data.pois || [])
       .map((poi) => normalizeUserPoiAsNearbyPlace(poi, point))
@@ -19260,7 +19424,7 @@ async function saveUserPoiFromMap(input, statusElement) {
     return;
   }
   if (statusElement) statusElement.textContent = "Kaydediliyor...";
-  const response = await fetch("/api/user-pois", {
+  const response = await fetchRaporApi("/api/user-pois", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name, lat: point[0], lng: point[1] }),
@@ -19296,7 +19460,7 @@ async function saveUserMainArteryFromMap(input, statusElement) {
     return;
   }
   if (statusElement) statusElement.textContent = "Ulaşım arteri kaydediliyor...";
-  const response = await fetch("/api/user-pois", {
+  const response = await fetchRaporApi("/api/user-pois", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name, lat: point[0], lng: point[1], category: "user-artery" }),
@@ -19518,13 +19682,21 @@ function cacheNearbyEnvironment(lat, lng, radius, environment) {
 }
 
 async function fetchNearbyEndpoint(endpoint, query, lat, lng) {
+  // Özel header sadece KENDİ /api/overpass proxy'imize gönderilir — üçüncü taraf
+  // Overpass ayna sunucuları (overpass-api.de vb.) bu header'ı görünce CORS
+  // preflight'ında reddedebilir ve yedek yollar kırılır.
+  const isOwnProxy = endpoint.startsWith("/api/");
   let response;
   try {
-    response = await fetchWithTimeout(endpoint, nearbyRequestTimeoutMs, {
+    const requestInit = {
       method: "POST",
       body: new URLSearchParams({ data: query }),
-    });
+    };
+    response = isOwnProxy
+      ? await fetchRaporApi(endpoint, requestInit, nearbyRequestTimeoutMs)
+      : await fetchWithTimeout(endpoint, nearbyRequestTimeoutMs, requestInit);
   } catch (error) {
+    if (isOwnProxy) throw error;
     response = await fetchWithTimeout(`${endpoint}?data=${encodeURIComponent(query)}`, nearbyRequestTimeoutMs);
   }
   if (!response.ok) {
@@ -21821,7 +21993,8 @@ function escapeHtml(value) {
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
 }
 
 function createPlaceholderDefinitionsPanel() {
@@ -23162,10 +23335,12 @@ function collectPlaceholderDefinitions() {
 
 function collectApplicationFieldPlaceholders() {
   const rows = [];
+  const registeredKeys = new Set();
   getVisibleSections()
     .filter((section) => section.id !== "placeholders")
     .forEach((section) => {
       (section.fields || []).forEach((field) => {
+        registeredKeys.add(field.key);
         rows.push({
           category: section.title,
           token: makePlaceholderToken(field.key),
@@ -23186,6 +23361,23 @@ function collectApplicationFieldPlaceholders() {
           value: state.uploads?.[upload.id]?.name || "",
           reference: upload.id,
         });
+      });
+    });
+
+  // Özel panellerin yönettiği, sections[].fields dışında kalan alanlar da
+  // placeholder kataloğunda görünür olmalı. Böylece yeni bir panel alanı
+  // eklenince ayrıca unutulmuş bir katalog kaydı bırakmayız.
+  Object.keys(state.fields || {})
+    .filter((key) => key && !registeredKeys.has(key) && !key.startsWith("_") && !key.startsWith("calc"))
+    .forEach((key) => {
+      rows.push({
+        category: "Özel Uygulama Alanları",
+        token: makePlaceholderToken(key),
+        title: key,
+        type: "Özel Alan",
+        source: "Uygulama Alanı",
+        value: formatPlaceholderValue(state.fields[key]),
+        reference: key,
       });
     });
   return rows;
@@ -23344,6 +23536,25 @@ function collectGeneratedTextPlaceholders() {
       value: buildComparableMarketAnalysisText(),
     },
     {
+      category: "Emsaller",
+      key: "EMSAL_MATRISI",
+      title: "Emsal Karşılaştırma Matrisi",
+      value: buildComparableMatrixWordTableHtml(),
+    },
+    {
+      category: "Emsaller",
+      key: "EMSAL_TABLOSU",
+      title: "Emsal Değerleme Tablosu",
+      value: buildComparableValuationWordTableHtml(),
+    },
+    {
+      category: "Emsaller",
+      key: "EMSAL_ARSA_PIYASA_DEGERI",
+      title: "Hesaplanan Emsale Göre Arsa Piyasa Değeri Tablosu",
+      value: buildComparableCalculatedEmsalWordTableHtml(),
+    },
+    ...getComparablePlaceholderDefinitions(),
+    {
       category: "Takyidat",
       key: "TAKYIDAT_TABLO",
       title: "Takyidat Tablosu",
@@ -23404,6 +23615,66 @@ function collectGeneratedTextPlaceholders() {
   }));
 }
 
+function getComparablePlaceholderDefinitions() {
+  const rows = Array.isArray(state.tables?.comparables) ? state.tables.comparables : [];
+  const definitions = [];
+  const maxRows = Math.max(comparableDefaultRowCount, Math.min(rows.length || comparableDefaultRowCount, 7));
+  for (let rowIndex = 0; rowIndex < maxRows; rowIndex += 1) {
+    const row = rows[rowIndex] || {};
+    comparableFields.forEach((field) => {
+      const token = `EMSAL_${rowIndex + 1}_${toPlaceholderName(field.label || field.key)}`;
+      const value = field.computed
+        ? calculateComparableFieldValue(field.key, row, rowIndex)
+        : row[field.key] || "";
+      definitions.push({
+        category: "Emsaller",
+        key: token,
+        title: `Emsal ${rowIndex + 1} - ${field.label || field.key}`,
+        value,
+        type: field.computed ? "Otomatik Hesap" : (field.type === "textarea" ? "Uzun Metin" : "Emsal Alanı"),
+        source: field.computed ? "Otomatik Hesap" : "Emsal Giriş Matrisi",
+        reference: `comparables[${rowIndex}].${field.key}`,
+      });
+    });
+  }
+  return definitions;
+}
+
+function getComparablePlaceholderValue(rowIndex = 0, fieldKey = "") {
+  const rows = Array.isArray(state.tables?.comparables) ? state.tables.comparables : [];
+  const row = rows[Number(rowIndex)] || {};
+  const field = comparableFields.find((item) => item.key === fieldKey);
+  if (!field) return "";
+  return field.computed ? calculateComparableFieldValue(field.key, row, Number(rowIndex)) : (row[field.key] || "");
+}
+
+function getTablePlaceholderValue(tableKey = "", rowIndex = 0, columnIndex = 0) {
+  const tableRows = Array.isArray(state.tables?.[tableKey]) ? state.tables[tableKey] : [];
+  return tableRows[Number(rowIndex)]?.[`c${Number(columnIndex)}`] || "";
+}
+
+function buildComparableCalculatedEmsalWordTableHtml() {
+  const metrics = getComparableCalculatedEmsalValuationMetrics();
+  if (!Number.isFinite(metrics.marketValue)) return "";
+  const headers = [
+    "Taşınmaz Yüzölçümü (m²)",
+    "KAKS Oranı",
+    "Konu Taşınmazın Hesaplanan Emsali (m²)",
+    "Hesaplanan Emsal m² Birim Değeri (TL/m²)",
+    "m² Birim Değeri (TL/m²)",
+    "Piyasa Değeri (TL)",
+  ];
+  const row = [[
+    formatComparableSummaryNumber(metrics.subjectLandArea, { decimals: 2 }),
+    formatComparableSummaryNumber(metrics.subjectKaks, { decimals: 2 }),
+    formatComparableSummaryNumber(metrics.subjectArea, { decimals: 2 }),
+    formatComparableSummaryNumber(metrics.calculatedUnitValue, { decimals: 2 }),
+    formatComparableSummaryNumber(metrics.unitValue, { decimals: 2 }),
+    formatComparableSummaryMoney(metrics.marketValue),
+  ]];
+  return wrapWordLandscapeSection("Hesaplanan Emsale Göre Arsa Piyasa Değeri", buildSimpleHtmlTable(headers, row, "is-calculated-emsal"));
+}
+
 function collectTablePlaceholders() {
   const rows = [];
   Object.entries(state.tables || {}).forEach(([key, tableRows]) => {
@@ -23419,6 +23690,28 @@ function collectTablePlaceholders() {
       source: "Uygulama Tablosu",
       value: usedRows ? `${usedRows} dolu satır` : "",
       reference: key,
+    });
+
+    // Tablo hücreleri de doğrudan veri giriş alanıdır. Genel tablo token'ına
+    // ek olarak satır/sütun bazlı adlar üretmek, şablonda tek bir hücreyi
+    // kullanmayı mümkün kılar. Emsaller kendi alan adlandırma şemasına sahip.
+    if (key === "comparables") return;
+    const section = sections.find((item) => item.table?.key === key);
+    const columns = Array.isArray(section?.table?.columns) ? section.table.columns : [];
+    if (!columns.length) return;
+    (Array.isArray(tableRows) ? tableRows : []).forEach((tableRow, rowIndex) => {
+      columns.forEach((column, columnIndex) => {
+        const fieldKey = `c${columnIndex}`;
+        rows.push({
+          category: `Tablolar / ${formatTablePlaceholderTitle(key)}`,
+          token: makePlaceholderToken(`table_${key}_${rowIndex + 1}_${toPlaceholderName(column)}`),
+          title: `${formatTablePlaceholderTitle(key)} ${rowIndex + 1} - ${column}`,
+          type: "Tablo Alanı",
+          source: "Uygulama Tablosu",
+          value: formatPlaceholderValue(tableRow?.[fieldKey]),
+          reference: `${key}[${rowIndex}].${fieldKey}`,
+        });
+      });
     });
   });
   return rows;
@@ -26434,6 +26727,18 @@ document.querySelector("#saveBtn").addEventListener("click", () => {
   saveState();
   setSyncState("Kaydedildi", "Bu cihazdaki taslak güncel.", "saved");
 });
+
+const themeProfileSelect = document.querySelector("#themeProfileSelect");
+if (themeProfileSelect) {
+  const savedTheme = localStorage.getItem("raporAppTheme") || document.body.dataset.appTheme || "apple";
+  document.body.dataset.appTheme = savedTheme;
+  themeProfileSelect.value = savedTheme;
+  themeProfileSelect.addEventListener("change", () => {
+    const nextTheme = themeProfileSelect.value === "navy-blue" ? "navy-blue" : "apple";
+    document.body.dataset.appTheme = nextTheme;
+    localStorage.setItem("raporAppTheme", nextTheme);
+  });
+}
 
 document.querySelector("#newCaseBtn").addEventListener("click", () => {
   // Faz 2 (cloud/report-library.js) yüklüyse mevcut rapor "Raporlarım"

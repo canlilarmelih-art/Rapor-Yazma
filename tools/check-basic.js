@@ -524,9 +524,9 @@ function main() {
       indexHtml.includes("src/risk/halkbank-risk-rules.js") &&
       indexHtml.includes("src/comparables/comparable-market-analysis.js") &&
       indexHtml.includes("src/value-factors/value-factors-rules.js") &&
-      indexHtml.includes("styles.css?v=20260712-1720") &&
-      indexHtml.includes("app.js?v=20260712-0142") &&
-      indexHtml.includes("src/templates/template-engine.js?v=20260712-1542"),
+      indexHtml.includes("styles.css?v=20260713-0200") &&
+      indexHtml.includes("app.js?v=20260713-0300") &&
+      indexHtml.includes("src/templates/template-engine.js?v=20260712-2300"),
     "Halkbank risk kodu scriptleri veya guncel app surumu index.html icinde bulunamadi."
   );
   checkFileExists("src/risk/halkbank-risk-data.js");
@@ -603,7 +603,6 @@ function main() {
       appJs.includes("gabimTotalReducedAreaText") &&
       !appJs.includes("getGabimGroundFloorRows") &&
       appJs.includes('key: "earthquakeZone"') &&
-      appJs.includes('defaultValue: "1. Derece"') &&
       appJs.includes('["Depreme Dayanıklılık ve Hasar Durumu", gabimField("damageStatus") || "Hasarsız"]') &&
       !appJs.includes('["Taşınmaz Kimlik No", gabimField("titlePropertyId")]') &&
       !appJs.includes('["Eşyalı Satış"') &&

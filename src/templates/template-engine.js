@@ -252,7 +252,7 @@
     EDINMESEBEBI: { fn: () => firstTitleRowCell("c2") }, // {{EDİNME_SEBEBİ}}
     SAHIPLER: { fn: ownersListText },
     HISSELIMI: { fn: () => safeCall("gabimHasShareText") },
-    MALIKLERTABLO: { h: () => safeCall("formatTextTableForWord", safeCall("buildMaliklerTableText")) },
+    MALIKLERTABLO: { h: () => safeCall("buildMaliklerTableWordHtml") },
     HISSEACIKLAMASI: { f: ["shareExplanation"] },
     EKLENTI: { f: ["titleAttachment"] },
 
@@ -384,13 +384,14 @@
     DEGERLEMEMETODU: { f: ["valuationMethod"] },
     OLUMLUFAKTOR: { t: () => safeCall("buildValueFactorsPositiveText") },
     OLUMSUZFAKTOR: { t: () => safeCall("buildValueFactorsNegativeText") },
-    DEGERLENDIRMETABLOSU: { h: () => safeCall("formatTextTableForWord", safeCall("buildValuationSummaryText")) },
+    DEGERLENDIRMETABLOSU: { h: () => safeCall("buildValuationSummaryWordTableHtml") || safeCall("formatTextTableForWord", safeCall("buildValuationSummaryText")) },
     DEGERLENDIRMESEMASI: { t: () => safeCall("buildValuationMethodsSchemeText") },
     DEGERLEMEYONTEMIACIKLAMASI: { t: () => safeCall("buildValuationMethodExplanation") },
 
     // --- Emsaller ---
     EMSALTABLOSU: { h: () => safeCall("buildComparableValuationWordTableHtml") || safeCall("buildComparableMatrixWordTableHtml") },
     EMSALMATRISI: { h: () => safeCall("buildComparableMatrixWordTableHtml") },
+    EMSAL_ARSA_PIYASA_DEGERI: { h: () => safeCall("buildComparableCalculatedEmsalWordTableHtml") },
     EMSALPIYASAANALIZI: { t: () => field("comparableMarketAnalysisText") || safeCall("buildComparableMarketAnalysisText") },
 
     // --- Halkbank ---
@@ -415,7 +416,44 @@
   for (let i = 1; i <= 7; i += 1) {
     LEGACY_ALIASES[`EMSAL${i}`] = { fn: () => comparableLineText(i - 1) };
     LEGACY_ALIASES[`KISAEMSAL${i}`] = { fn: () => comparableLineText(i - 1) };
+    [
+      ["IRTIBAT_KAYNAK", "c0"], ["TELEFON", "c1"], ["EMSAL_NITELIGI", "c23"],
+      ["EMSAL_DURUMU", "c2"], ["SATIS_ZAMANI", "c3"], ["NITELIK", "c4"],
+      ["ODA_SAYISI", "c5"], ["BULUNDUGU_KAT_MULKIYET", "c6"], ["EMSAL_KONUMU", "c7"],
+      ["ENLEM", "c18"], ["BOYLAM", "c19"], ["YOLA_CEPHE_DURUMU", "c29"],
+      ["IC_OZELLIKLER", "c8"], ["OZELLIK_SEREFIYE_ORANI", "c21"],
+      ["TASINMAZA_GORE_KONUM", "c9"], ["KONUM_SEREFIYE_ORANI", "c22"],
+      ["KONUM_KARSILASTIRMA_SEBEBI", "c10"], ["BULUNDUGU_YAPI_YASI", "c11"],
+      ["BEYAN_EDILEN_ALAN", "c12"], ["DUZELTILMIS_ALAN", "c13"], ["YUZOLCUMU", "c24"],
+      ["IMAR_LEJANDI", "c25"], ["YAPILASMA_NIZAMI", "c26"], ["EMSAL_KAKS", "c27"],
+      ["KAT_ADEDI", "c28"], ["HESAPLANAN_EMSAL", "c31"], ["TALEP_EDILEN_DEGER", "c14"],
+      ["PAZARLIKLI_DEGER", "c15"], ["PAZARLIK_PAYI", "calcNegotiation"],
+      ["M2_BIRIM_DEGERI", "calcUnitValue"], ["INDIRGENMIS_M2_BIRIM_DEGERI", "calcAdjustedUnitValue"],
+      ["HESAPLANAN_EMSAL_M2_BIRIM_DEGERI", "calcCalculatedEmsalUnitValue"],
+      ["INDIRGENMIS_HESAPLANAN_EMSAL_M2_BIRIM_DEGERI", "calcAdjustedCalculatedEmsalUnitValue"],
+      ["KIRA_DEGERI", "c16"], ["KIRA_BIRIM_DEGERI", "calcRentUnitValue"],
+      ["ACIKLAMA_DUZELTME", "c17"], ["UZUN_EMSAL_METNI", "calcLongText"],
+    ].forEach(([token, fieldKey]) => {
+      LEGACY_ALIASES[`EMSAL${i}_${token}`] = { fn: () => safeCall("getComparablePlaceholderValue", i - 1, fieldKey) };
+    });
   }
+
+  // Genel veri tablolarındaki hücreler de katalogda gösterilen adlarıyla
+  // çözümlensin: {{TABLE_TITLE_1_MALIK}} gibi.
+  const tableDefinitions = (Array.isArray(sections) ? sections : [])
+    .map((section) => section?.table)
+    .filter((table) => table?.key && Array.isArray(table.columns));
+  tableDefinitions.forEach((table) => {
+    table.columns.forEach((column, columnIndex) => {
+      for (let rowIndex = 1; rowIndex <= 50; rowIndex += 1) {
+        const columnToken = typeof globalThis.toPlaceholderName === "function"
+          ? globalThis.toPlaceholderName(column)
+          : String(column || "").replace(/[^a-zA-Z0-9]+/g, "_").replace(/^_+|_+$/g, "").toUpperCase();
+        const token = `TABLE_${table.key}_${rowIndex}_${columnToken}`;
+        LEGACY_ALIASES[token] = { fn: () => safeCall("getTablePlaceholderValue", table.key, rowIndex - 1, columnIndex) };
+      }
+    });
+  });
 
   // --------------------------------------------------------------
   // Çözümleyiciler

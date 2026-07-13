@@ -198,12 +198,22 @@ verilerinizle doldurur ve Word ile açılabilen bir `.doc` dosyası indirir.
 
 ### Emsaller
 
+**Standart format (2026-07-13 itibarıyla tüm banka şablonlarında kullanılan format):**
+Emsaller bölümünde önce `{{EMSAL_MATRISI}}` (kaç emsal girilmişse o kadar
+sütun açan karşılaştırma tablosu), altında "Emsal Açıklaması" başlığı ve
+`{{EMSAL_PIYASA_ANALIZI}}` (analiz metni) yer alır. Yeni bir şablon
+eklerken Emsaller bölümünü bu iki placeholder ile kurun; eski
+`{{EMSAL_TABLOSU}}` / `{{EMSAL_1}}`...`{{EMSAL_7}}` paragraf listesi artık
+hiçbir şablonda kullanılmaz (bkz. `tools/test-bank-templates.js`, bu kuralı
+otomatik doğrular).
+
 | Placeholder | İçerik |
 |---|---|
-| `{{EMSAL_TABLOSU}}` | Emsal değerleme tablosu (HTML tablo) * |
-| `{{EMSAL_MATRISI}}` | Emsal karşılaştırma matrisi (HTML tablo) * |
-| `{{EMSAL_1}}` ... `{{EMSAL_7}}` | Emsal özet cümleleri * |
+| `{{EMSAL_MATRISI}}` | Emsal karşılaştırma matrisi — satırlar alan (nitelik, konum, yüzölçümü, değer...), sütunlar dolu emsal sayısı kadar ("Emsal 1", "Emsal 2"...) (HTML tablo) * |
 | `{{EMSAL_PIYASA_ANALIZI}}` | Piyasa analizi ve emsal değerlendirme metni |
+| `{{EMSAL_ARSA_PIYASA_DEGERI}}` | Arsa/tarla için "Hesaplanan Emsale Göre Piyasa Değeri" tablosu (yalnızca hesaplanabiliyorsa) * |
+| `{{EMSAL_TABLOSU}}` | *(eski format — yeni şablonlarda kullanmayın)* Emsal değerleme özet tablosu (No/Alan/Talep Edilen Değer...) * |
+| `{{EMSAL_1}}` ... `{{EMSAL_7}}` | *(eski format — yeni şablonlarda kullanmayın)* Emsal özet cümleleri * |
 
 ### Halkbank'a özel
 
@@ -229,3 +239,22 @@ yazarsanız `⚠` görürsünüz; elle doldurmanız gerekir): acil satış değe
 terk sonrası parsel alanı, terk miktarı, arka bahçe, iskan tarihi, EKB bina
 kodu, net kullanım alanları ve İş Bankası masraf yazısındaki ücret kalemleri
 (masraf şablonunda bu alanlar noktalı boşluk olarak bırakılmıştır).
+## Emsal Alanlarinin Ayrintili Placeholder Adlari
+
+Emsal tablolarina ek olarak her emsal satirindaki veri girisi ve otomatik
+hesap alani `{{EMSAL_1_...}}` ile `{{EMSAL_7_...}}` arasinda ayrica kullanilabilir.
+Ornekler:
+
+| Placeholder | Icerik |
+|---|---|
+| `{{EMSAL_1_EMSAL_NITELIGI}}` | 1. emsalin niteligi |
+| `{{EMSAL_1_YUZOLCUMU}}` | 1. emsalin yuzolcumu |
+| `{{EMSAL_1_YOLA_CEPHE_DURUMU}}` | 1. emsalin yola cephe durumu |
+| `{{EMSAL_1_KONUM_KARSILASTIRMA_SEBEBI}}` | 1. emsalin konum karsilastirma aciklamasi |
+| `{{EMSAL_1_INDIRGENMIS_M2_BIRIM_DEGERI}}` | 1. emsalin otomatik indirgenmis birim degeri |
+| `{{EMSAL_1_UZUN_EMSAL_METNI}}` | 1. emsal icin olusturulan uzun aciklama |
+
+`1` yerine `2`-`7` kullanilarak diger emsal satirlarina erisilebilir. Ayrica
+`{{EMSAL_ARSA_PIYASA_DEGERI}}` hesaplanan emsale gore arsa piyasa degeri
+tablosunu, `{{EMSAL_MATRISI}}` emsal giris matrisini ve `{{EMSAL_TABLOSU}}`
+emsal degerleme tablosunu getirir.

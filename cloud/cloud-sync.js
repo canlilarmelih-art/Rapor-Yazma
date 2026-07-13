@@ -593,6 +593,16 @@
     });
   }
 
+  async function getIdToken(forceRefresh = false) {
+    if (!cloud.user || typeof cloud.user.getIdToken !== "function") return null;
+    try {
+      return await cloud.user.getIdToken(forceRefresh);
+    } catch (error) {
+      console.warn("Sunucu API oturum anahtarı alınamadı:", error?.code || error);
+      return null;
+    }
+  }
+
   // ---------------------------------------------------------------
   // ZORUNLU GİRİŞ KAPISI (2026-07-09) — kullanıcı isteği üzerine önceki D6
   // kararı ("bulutsuz da tam çalışır") TERSİNE ÇEVRİLDİ: artık kimlik
@@ -797,6 +807,7 @@
     getDailyPushCount,
     openCloudModal,
     onAuthChange,
+    getIdToken,
     getStatus: () => ({
       kind: cloud.statusKind,
       text: cloud.lastSyncText,

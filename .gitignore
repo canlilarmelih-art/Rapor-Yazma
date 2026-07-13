@@ -1,3 +1,9 @@
+# Secrets / ortam değişkenleri (bu projede şu an kullanılmıyor ama ileride
+# eklenirse asla commit edilmemeli)
+.env
+.env.local
+.env.*.local
+
 # Local runtime data
 server-data/
 *.log

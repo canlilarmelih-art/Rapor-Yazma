@@ -6,6 +6,41 @@ Bu belge, bir sonraki geliştirici/oturum için projeyi çalıştırma, doğrula
 oturumda yapılanları özetler.
 
 ---
+## 0.0.101 2026-07-13 Tema Secici
+
+- Ust menude `Apple` ve `Navy Blue` profilleri arasinda gecis yapilabilen tema secici eklendi.
+- Secim `localStorage` icinde saklaniyor ve sayfa yenilendiginde ayni tema geri yukleniyor.
+- In-app browser dogrulamasi: iki profil de tek secici uzerinden etkinlesti ve renk tokenlari degisti.
+
+---
+## 0.0.100 2026-07-13 Apple ve Navy Blue Tema Profilleri
+
+- Mevcut lacivert-beyaz arayuz `themes/navy-blue.css` ile Navy Blue profilinde sabitlendi.
+- `DESIGN-apple.md` tokenlari rapor yazma calisma alanina uyarlanarak `themes/apple.css` profili olusturuldu.
+- Uygulama varsayilan olarak Apple profilini aciyor; `body[data-app-theme="apple"]` ile etkinlestiriliyor.
+- Apple profilinde Action Blue, siyah yan menu, beyaz/parchment yuzeyler, hairline cerceveler, Apple tipografi yiginlari ve chrome golgesizligi uygulandi.
+- `THEME-PROFILES.md` tema profillerini ve kullanim amaclarini belgelemektedir.
+
+Yedek:
+`backups/before-design-theme-profiles_2026-07-13_01-57-00`
+
+Dogrulama: Uygulama in-app browser uzerinde Apple temasi ile goruntulendi; `app.js` ve template motoru sozdizimi ile banka sablon testleri onceki degisiklik kapsaminda gecti.
+
+---
+## 0.0.99 2026-07-12 Placeholder Envanterinin Emsal ve Tablo Alanlariyla Genisletilmesi
+
+- Placeholder yoneticisi, sections[].fields disinda state.fields icinde bulunan ozel panel alanlarini da otomatik katalogluyor.
+- Emsaller icin `{{EMSAL_MATRISI}}`, `{{EMSAL_TABLOSU}}` ve `{{EMSAL_ARSA_PIYASA_DEGERI}}` adlari eklendi.
+- Emsal 1-7 satirlarinin giris, aciklama ve otomatik hesap alanlari `{{EMSAL_1_...}}` ... `{{EMSAL_7_...}}` seklinde ayri adlandirildi.
+- Diger uygulama tablolari icin satir/sutun bazli `{{TABLE_<TABLO>_<SATIR>_<SUTUN>}}` adlari eklendi ve sablon motorunda cozumlenir hale getirildi.
+- Placeholder rehberine yeni emsal adlari ve ornekleri eklendi.
+
+Yedek:
+`backups/before-placeholder-catalog-audit_2026-07-12_22-25-46`
+
+Dogrulama: `node --check app.js`, `node --check src/templates/template-engine.js`, `tools/test-bank-templates.js` ve `tools/test-comparable-market-analysis.js` gecti. `tools/check-basic.js` mevcut mojibake tabanli `Gabim Veri Seti` kontrolunde halen bilinen nedenle basarisiz.
+
+---
 ## 0.0.100 2026-07-12 GitHub Actions ile Ubuntu Otomatik Yayin
 
 - `.github/workflows/deploy.yml` eklendi. `main` dalina push sonrasinda JavaScript syntax ve parser testleri calisir.
@@ -2995,3 +3030,315 @@ Servis sürümü:
 Dogrulama: 998 veri kaydı, Bursa/Yıldırım örnek kaydı, JavaScript sözdizimi, `tools/check-basic.js` ve Graphify güncellemesi geçti. Graphify: 18.533 düğüm, 42.079 bağlantı.
 
 ---
+
+---
+
+## 0.0.101 2026-07-13 Emsaller Bolumu Tek Standart Formata Gecirildi (Claude oturumu)
+
+Kullanici karari: tum banka sablonlarinin Emsaller bolumu AYNI formatta
+olsun - kac emsal girilmisse o kadar sutunlu bir tablo, en altta da emsal
+aciklamasi. 8 sablonda (akbank, halkbank, isbankasi, kuveytturk, vakifbank,
+vakifkatilim, yapikredi, ziraat) Emsaller bolumu eski
+`{{EMSAL_PIYASA_ANALIZI}} + {{EMSAL_TABLOSU}} + {{EMSAL_1}}...{{EMSAL_7}}`
+(sabit metin paragraflari) yerine su standart iki placeholder'a cevrildi:
+
+```
+{{EMSAL_MATRISI}}
+
+<h3>Emsal Açıklaması</h3>
+{{EMSAL_PIYASA_ANALIZI}}
+```
+
+(Kuveyt Turk INVEX-stilinde `<div class="kt-subsec">Emsal Açıklaması</div>`
+kullanildi, digerleri `<h3>`.)
+
+- `{{EMSAL_MATRISI}}` -> `buildComparableMatrixWordTableHtml()`: satirlar
+  emsal alanlari (Nitelik, Emsal Konumu, Yuzolcumu, Talep Edilen Deger...),
+  sutunlar YALNIZCA dolu doldurulmus emsal sayisi kadar ("Emsal 1", "Emsal
+  2"...) - baska bir oturumun 0.0.99'da ekledigi genisletilmis emsal
+  placeholder sistemiyle ayni motor uzerinden calisiyor, ek kod gerekmedi.
+- Yapi Kredi sablonunda ayrica statik "Emsallerin Yorumu" alt basligi
+  kaldirilip yeni formata gecirildi (diger 7 sablonda zaten sadece
+  EMSAL_PIYASA_ANALIZI/EMSAL_TABLOSU/EMSAL_1..7 vardi, ekstra baslik yoktu).
+- `tools/test-bank-templates.js`'e yeni regresyon eklendi: 8 sablonun
+  TAMAMINDA `{{EMSAL_MATRISI}}` ve "Emsal Açıklaması" basligi VAR, eski
+  `{{EMSAL_TABLOSU}}` / `{{EMSAL_1}}`..`{{EMSAL_7}}` YOK olarak dogrulanir
+  (masraf yazisi ve Ziraat ek tablosu bu kontrolun disinda, onlarda zaten
+  Emsaller bolumu yok). Boylece ileride biri eski formata donerse test kirilir.
+- `templates/PLACEHOLDER-REHBERI.md` Emsaller bolumu guncellendi: yeni
+  standart format basa yazildi, eski EMSAL_TABLOSU/EMSAL_1..7 "eski format
+  - yeni sablonlarda kullanmayin" notuyla isaretlendi (motor hala cozer,
+  geriye donuk uyumluluk icin).
+
+Dogrulama: `tools/test-bank-templates.js` (yeni regresyonla) GECTI.
+Tarayicida canli test: state.tables.comparables'a 2 sonra 5 satir konulup
+`{{EMSAL_MATRISI}}` basliklarinin sirasiyla "Emsal 1, Emsal 2" ve "Emsal 1
+... Emsal 5" olarak dogru sekilde dinamik degistigi dogrulandi. 10
+sablonun tamami gercek uygulama verisiyle sifir eksik token ile dolduruldu,
+konsolda hata yok.
+
+Yedek:
+`backups/before-emsal-matrix-format_2026-07-13_00-40-01`
+
+---
+
+## 0.0.102 2026-07-13 Word Ciktisi: Uygulama Renkleriyle Eslesme + Kompaktlik (Claude oturumu)
+
+Kullanici karari: Word/rapor ciktilarindaki tablolar programin ekranda
+gosterdigi tablolarla AYNI renk/bicimde olsun; ayrica punto ve bosluklar
+genel olarak %30-40 kucultulsun.
+
+- Once styles.css'teki GERCEK ekran-ici tablo stilleri incelendi
+  (.malikler-table, .takyidat-table, .halkbank-risk-table,
+  .valuation-summary-table): header arka plani `--blue-soft` (#e4ebf8),
+  header yazisi `--blue` (#3a5691), govde metni `--ink` (#152238), kenarlik
+  `--line` (#dde3ef), cift-satir tonlamasi ~#f7f9f8, toplam/ozet satiri
+  koyu `#1f2a32` zemin + beyaz yazi.
+- Bu paletle `app.js` `buildWordReportHtml()` CSS blogu ve 7 program-renkli
+  banka sablonu (akbank, halkbank, isbankasi, vakifbank, vakifkatilim,
+  yapikredi, ziraat) guncellendi: eski `#eaf0fa`/`#d9dfdc`/`#1f2a32`(metin)
+  degerleri yukaridaki gercek token degerleriyle degistirildi; ayrica bu 7
+  sablonda ONCEDEN HIC OLMAYAN zebra-cizgi kurali eklendi
+  (`.word-table tbody tr:nth-child(even) td { background:#f7f9f8; }`).
+- Kuveyt Turk sablonunun INVEX (yesil/turuncu) renk semasi KASITLI OLARAK
+  DEGISTIRILMEDI - o, bankanin kendi portal gorunumunu taklit ediyor
+  (onceki acik talep); yalnizca punto/bosluklari kucultuldu.
+- Kompaktlik: tum 10 dosyada (app.js word CSS + 9 sablon) punto/kenar
+  bosluklari ~%20-35 kucultuldu (ornek: app.js govde 10pt->7pt, h1
+  20pt->14pt, h2 15pt->10pt, .word-table 8.25pt->7pt, sayfa kenar bosluklari
+  42/36pt->30/26pt). Zaten kucuk olan tablo puntolari (7-8.5pt araligi)
+  okunabilirligi korumak icin biraz daha az agresif kesildi (~%15-20);
+  buyuk basliklar/govde metni tam istenen %30-35 araliginda kesildi.
+  Kuveyt Turk zaten yogun INVEX-stili oldugundan biraz daha yumusak
+  (~%20-25) kesildi.
+
+Dogrulama: `node --check app.js`, `tools/test-bank-templates.js` (regresyon
+dahil) ve diger 4 test paketi GECTI. Tarayicida canli dogrulama:
+`buildWordReportHtml()` cikan HTML'de yeni renk/punto degerleri dogrulandi;
+10 sablonun TAMAMI gercek uygulama verisiyle SIFIR eksik token ile
+dolduruldu, program-renkli 7 sablon + Ziraat ek tablo yeni mavi
+header/kenarlik renklerini iceriyor (Kuveyt Turk kendi INVEX renginde
+kaliyor, masraf yazisinda zaten tablo yok), tum sablonlarda govde puntosu
+beklenen kucuk degere indi; konsolda hata yok.
+
+Yedek:
+`backups/before-word-style-match-and-compact_2026-07-13_01-18-40`
+
+---
+
+## 0.0.103 2026-07-13 Malikler Tablosu: Ekrandaki Panelle Birebir Ayni Yapida Word Ciktisi (Claude oturumu)
+
+Kullanici gercek "Malikler Tablosu" panelinin ekran goruntusunu paylasip
+"tablo birebir eklediğim görseldeki gibi çıktısı olmalı, bankanın renk
+paletini boşver" dedi. Onceki oturumda (0.0.102) renk paletini styles.css
+token'larindan DOGRU cikardigim onaylandi (tarayicida getComputedStyle ile
+olculdu: header #e4ebf8/#3a5691, govde #152238, kenarlik #dde3ef, TOPLAM
+satiri #1f2a32/beyaz) ama YAPISAL bir eksik ortaya cikti:
+
+- `{{MALIKLER_TABLO}}` (ve ana Word ciktisindaki "Malikler Değer Tablosu")
+  `buildMaliklerTableText()` + `formatTextTableForWord()` uzerinden
+  uretiliyordu - bu yol TOPLAM satirini HIC URETMIYORDU ve 7 sutun oldugu
+  icin gereksiz yere yatay sayfaya (`word-landscape-section`) sokuyordu,
+  ayrica deger sutunlari sola hizaliydi (ekranda saga hizali/tabular).
+- Ayrica ana Word ciktisinda ("Word olarak farkli kaydet") ayni veri IKI
+  KEZ goruniyordu: eksik 5 sutunlu "Malikler" (ham state.tables.title) VE
+  7 sutunlu ama TOPLAM'siz "Malikler Değer Tablosu".
+
+Yapilanlar:
+- `app.js`'e yeni `buildMaliklerTableWordHtml()` eklendi: ekrandaki
+  `.malikler-table` ile BIREBIR ayni yapida (7 sutun, ilk sutun kalin/sola
+  hizali, deger sutunlari saga hizali/tabular, TOPLAM satiri colspan=5 +
+  2 deger hucresi, koyu zemin #1f2a32 + beyaz yazi) HTML uretir. Tum
+  renkler SATIR ICI (inline) stille sabitlenir - hangi banka sablonuna
+  yerlestirilirse yerlestirilsin ayni gorunur, sablonun kendi marka rengi
+  (orn. Kuveyt Turk yesili) veri tablosunu etkilemez.
+- Ana Word ciktisinda ("Word olarak farkli kaydet"): eksik 5 sutunlu
+  "Malikler" satiri regularTables'tan kaldirildi, "Malikler Değer Tablosu"
+  (TOPLAM'siz) generatedTables'tan kaldirildi; yerine tek, dogru,
+  "Malikler Tablosu" basligiyla `buildMaliklerTableWordHtml()` cikisi
+  eklendi (rapor akisinin basinda, ekrandaki gibi).
+- `template-engine.js`: `MALIKLERTABLO` takma adi artik dogrudan
+  `buildMaliklerTableWordHtml()` cagiriyor (eski formatTextTableForWord+
+  buildMaliklerTableText zincirini bypass eder).
+- DAHA GENIS ilke (kullanicinin "program içindeki tablolar" ifadesini
+  karsilamak icin): `buildSimpleHtmlTable()` (Takyidat, İncelenen Belgeler,
+  Beyanlar, Rehinler, Şerhler, Emsal matrisi/degerleme, Değerleme özet,
+  Halkbank risk tablolarinin ORTAK ureticisi) da SATIR ICI stille
+  boyanacak sekilde yeniden yazildi (ayni #e4ebf8/#3a5691/#dde3ef/#f7f9f8/
+  #1f2a32 paleti). Onceki externa CSS-sinifi tabanli yaklasim (`.word-table
+  th` vb.) her banka sablonunda ayri tanimlanmasi gerektiginden kirilgandi
+  ve Kuveyt Turk gibi kendi CSS'i olan sablonlarda hic uygulanmiyordu;
+  simdi TUM tablolar HANGI SABLONA YERLESTIRILIRSE YERLESTIRILSIN ayni
+  gorunur. className parametresi ("meta"/"is-matrix"/"is-summary") geriye
+  donuk uyumluluk icin korunur, sadece DAVRANISI artik satir ici stille
+  uygulanir.
+- `tools/test-bank-templates.js`'e iki yeni regresyon eklendi: (1)
+  MALIKLERTABLO'nun buildMaliklerTableWordHtml() kullandigini, (2) bu
+  fonksiyonun gercekten `colspan="5"` ve `>TOPLAM<` icerdigini dogrular -
+  ileride biri eski (TOPLAM'siz) yola donerse test kirilir.
+
+Dogrulama: `node --check app.js`, `tools/test-bank-templates.js` (yeni
+regresyonlar dahil) ve diger 4 test paketi GECTI. Tarayicida ekran
+goruntusundeki GERCEK verilerle (Enis Kaya, Kemal Kaya, Çiğdem Kaya Dağlı,
+1/3 hisse, 3.900.000 TL yasal/mevcut) `buildMaliklerTableWordHtml()`
+cagrildi - cikti BIREBIR eslesti: ENİS KAYA/KEMAL KAYA/ÇİĞDEM KAYA DAĞLI,
+1/3, SATIŞ, 20.08.2021, 29515, 1.300.000 TL x2, TOPLAM satirinda
+3.900.000 TL x2, koyu zemin+beyaz yazi, colspan=5, landscape'e SOKULMUYOR.
+10 sablonun tamami sifir eksik token ile dolduruldu (MALIKLERTABLO dahil),
+konsolda hata yok. check-basic.js, benimle ilgisiz onceden bilinen
+app.js surum-pin farkindan dolayi basarisiz (baska oturumun hizli surum
+artislari) - dokunulmadi.
+
+Yedek:
+`backups/before-word-style-match-and-compact_2026-07-13_01-18-40` (bu
+oturumun 0.0.102 ile paylastigi yedek; ek yedek alinmadi cunku ayni
+oturumun devami niteliginde).
+
+## 0.0.104 2026-07-13 Rapor Ciktisi Tablolarinda Ekranla Tema ve Yapi Eslesmesi (Codex oturumu)
+
+- `app.js`: `Değerleme Özet Tablosu`, ekrandaki `buildValuationSummaryGroups()` verisini kullanarak grup bantlari ve Kalem / Birim Değer / Tutar sutunlariyla Word/HTML raporuna aktariliyor. Eski duz metin tablosu yolu bu tablo icin devre disi birakildi.
+- `app.js`: Ortak `buildSimpleHtmlTable()` ve `buildMaliklerTableWordHtml()` ciktilari satir ici stille uretiliyor; tablo siniflari banka sablonunun CSS'i tarafindan ezilmeden uygulama tablolarina yaklasiyor.
+- `app.js`: Rapor CSS'i ve tablo renkleri secili tema tokenlarindan (`--ink`, `--line`, `--blue`, `--blue-soft`, `--surface`, `--surface-muted`, `--green`) okunuyor. Apple / Navy Blue secimi rapor ciktilarina da yansiyor.
+- `src/templates/template-engine.js`: `DEGERLENDIRMETABLOSU` dogrudan ekranla uyumlu ozet tablo uretecini, `MALIKLERTABLO` ise ekranla uyumlu malik tablosunu kullaniyor.
+- Dogrulama: `app.js` ve `src/templates/template-engine.js` syntax kontrolleri, `tools/test-bank-templates.js`, `tools/test-comparable-market-analysis.js` ve `git diff --check` basarili.
+
+## 0.0.105 2026-07-13 Güvenlik Sertleştirme Turu (Claude oturumu)
+
+Kullanıcı `Downloads/güvenlik.md` (12 kural + AI/LLM eki: secret yönetimi,
+rate limiting, input validation, auth, SQL injection, CORS, HTTP güvenlik
+header'ları, dosya yükleme, hata yönetimi, bağımlılık güvenliği, XSS/CSP,
+deploy kontrol listesi) paylaşıp "bu dosyadaki mümkün olan tüm güvenlik
+adımlarını ve aklına gelen diğer önlemleri son handoff ve graphify'ı
+inceledikten sonra uygula" dedi. Önce `graphify explain "server.js"` ile
+sunucunun gerçek yüzeyi çıkarıldı (POI API, PDF metin API, Overpass proxy,
+state API, statik dosya sunumu) ve `PROGRAM-DEGERLENDIRME-VE-YOL-HARITASI.md`
+(2026-06-21 tarihli, bu oturumdan önce yazılmış) okunarak İKİ bilinen ama
+henüz düzeltilmemiş risk teyit edildi: (1) `resolved.startsWith(root)`
+path-traversal kontrolü kardeş-klasör açığına sahipti, (2) `/api/state`
+0.0.0.0 üzerinde auth'suz dinliyor.
+
+`server.js` sertleştirmeleri:
+- **Path-traversal + hassas-yol düzeltmesi**: `resolveStaticPath` artık
+  `root + path.sep` karşılaştırıyor (eski `startsWith(root)` kardeş klasörü
+  root sanabiliyordu). Ayrıca `backups/`, `.git/`, `node_modules/`,
+  `graphify-out/`, `.env*` ve `server-data/` altındaki KİŞİSEL dosyalar
+  (`active-case.json`, `user-pois.json`, `uploads/`) artık statik olarak
+  hiç sunulmuyor (403). **Önemli düzeltme**: ilk denemede `server-data/`
+  klasörünün TAMAMINI kapatmıştım ama bu, `app.js`'in runtime'da fetch
+  ettiği paylaşılan referans veri setlerini (`bursa_manuel_duzeltilmis_
+  ana_dosya.csv`, `adlandirilmis_hucreler_listesi.json` — mahalle/adres
+  eşleştirme tabloları, kişisel veri değil) kırdı; tarayıcıda 403 görüp
+  fark ettim ve denylist'i yalnızca gerçekten kişisel dosyalara daralttım.
+- **Güvenlik header'ları + CSP**: tüm yanıtlara `X-Content-Type-Options`,
+  `X-Frame-Options: DENY`, `Referrer-Policy`, ve bir CSP eklendi. CSP
+  `script-src`'te `'unsafe-inline'` + `unpkg.com` (Leaflet) içeriyor —
+  proje build'siz vanilla JS olduğu ve birkaç sayfa-içi `<script>` bloğu
+  bulunduğu için kaçınılmaz bir bilinen sınırlama (yorum olarak
+  belgelendi); `connect-src`/`img-src`/`worker-src` gerçek kullanılan tüm
+  üçüncü taraf origin'leri (Overpass aynaları, Nominatim, ArcGIS, OSM/
+  ArcGIS tile sunucuları, `*.googleapis.com`/`*.firebaseio.com`) açıkça
+  beyaz listeye alındı.
+- **Rate limiting**: harici bağımlılık eklemeden basit bellek-içi sabit-
+  pencere sayaç (`/api/state` 60/dk, `/api/user-pois` 60/dk, `/api/overpass`
+  30/dk, `/api/pdf-text` 5/dk — dosya yükleme için güvenlik.md'nin önerdiği
+  daha sıkı limit), aşımda `Retry-After` header'lı 429.
+- **CSRF sertleştirmesi**: POST/PUT mutasyon uçlarında özel `X-Rapor-Client`
+  header'ı zorunlu kılındı (+ varsa Origin/Host eşleşmesi kontrolü). Sunucu
+  cross-origin'e CORS izni vermediği için bu header tarayıcıyı preflight'a
+  zorluyor ve kullanıcı çalışırken açık bir kötü niyetli sekmenin sessizce
+  bu sunucuya yazma isteği göndermesini (drive-by CSRF) engelliyor.
+  Overpass'ın kendi ayna sunucularına giden GEÇİCİ/ÜÇÜNCÜ TARAF isteklerine
+  bu header EKLENMEDİ (aksi halde onların CORS'u isteği reddedebilirdi).
+- **Input validation**: `/api/user-pois` artık lat/lng'yi Türkiye sınırları
+  içinde olacak şekilde (35-43 / 25-45) ve ismi kontrol karakterlerinden
+  temizleyerek doğruluyor; `/api/overpass` sorgu uzunluğu 20.000 karakterle
+  sınırlandı; `/api/pdf-text` artık ilk baytlardaki `%PDF-` imzasını
+  doğruluyor (istemcinin content-type beyanına güvenmiyor) ve dosya boyutu
+  limiti 25MB'a çekildi (güvenlik.md'nin doküman önerisiyle uyumlu).
+- **Hata yönetimi**: istemciye artık ham `error.message`/stack sızmıyor;
+  tüm hata yolları `console.error` ile sunucu tarafında zaman damgalı
+  loglanıp istemciye genel mesaj dönüyor.
+
+`app.js`: üç `/api/*` fetch çağrısına (`readPdfTextOnServer`,
+`saveUserPoiFromMap`, `saveUserMainArteryFromMap`) ve `fetchNearbyEndpoint`
+içindeki KENDİ `/api/overpass` proxy çağrısına (üçüncü taraf ayna
+sunucularına DEĞİL) `X-Rapor-Client` header'ı eklendi. `escapeHtml()`'e
+tek tırnak (`'` → `&#39;`) kaçışı eklendi (savunma derinliği; mevcut 137
+çağrı yeri zaten `"` kullanıyordu, kırılma riski yok).
+
+`.gitignore`'a `.env`/`.env.local`/`.env.*.local` eklendi (proje şu an
+secret kullanmıyor — Firebase apiKey zaten istemciye açık olması gereken
+public bir değer, güvenlik sınırı Firestore Rules'ta — ama güvenlik.md'nin
+1. kuralı ileriye dönük olarak istiyor).
+
+**Kapsam dışı bırakılanlar (mimari olarak uygulanamaz, güvenlik.md'de var
+ama bu projede karşılığı yok)**: SQL injection (SQL veritabanı yok),
+JWT/parola/hesap kilitleme (auth Firebase Authentication'a devredilmiş,
+kendi auth'umuz yok), LLM/prompt-injection/token bütçesi (uygulama içinde
+hiçbir LLM API çağrısı yok), Zod/Pydantic şema doğrulama kütüphaneleri
+(proje sıfır npm bağımlılığıyla çalışıyor; validation elle, aynı ilkeyle
+yazıldı).
+
+**Bilinçli olarak ERTELENEN (düzeltilmedi, güvenlik.md'nin isteyeceği ama
+mevcut mimariyi kırma riski taşıyan)**: `/api/*` uçları hâlâ auth'suz;
+`server.js` hâlâ `0.0.0.0`'da dinliyor (mobil-sunucu-baslat.bat özelliği
+kasıtlı). PIN/token tabanlı LAN erişim auth'u zaten `PROGRAM-DEGERLENDIRME-
+VE-YOL-HARITASI.md`'de P1 olarak not düşülmüş; bu turda CSRF sertleştirmesi
++ rate limit + validation ile "sürüş-geçişi" (drive-by) senaryosunu
+kapattım ama aynı Wi-Fi'daki başka bir cihazın doğrudan `curl` ile
+`/api/state`'e erişimini engellemiyor — bu, mevcut D7 (client-side auth
+gate, server.js her isteği koşulsuz sunuyor) ile aynı ruhta, dürüstçe
+açıklanmış bir sınırlama.
+
+Doğrulama: `node --check` (server.js, app.js), tam test paketi
+(`check-basic.js` + 4 parser testi + `test-bank-templates.js`) YEŞİL.
+Ayrıca canlı sunucuya karşı `curl` ile: sensitive-path denylist (403),
+path-traversal, CSRF header zorunluluğu (header'sız 403, header'lı 200),
+koordinat doğrulama (Türkiye dışı 400), rate limit (6. istekte 429 +
+Retry-After), PDF magic-byte kontrolü (sahte içerik 400, gerçek PDF —
+`test-inputs/adres.pdf` — 200 ve metin çıkarıldı) tek tek test edildi.
+Tarayıcıda: konsolda CSP ihlali YOK, Leaflet (unpkg) yüklendi, ArcGIS/OSM
+tile görselleri yüklendi, gerçek Firestore/Auth senkronu ("Bulut ile
+eşleşti.") çalışıyor durumda kaldı. Test sırasında `/api/user-pois`'e
+yanlışlıkla eklenen "test" kaydı `server-data/user-pois.json`'dan temizlendi.
+
+Ayrıca (bu turun kapsamına giren, ilgisiz ama check-basic.js'i bozan iki
+sürüm/kalite farkı düzeltildi): `check-basic.js`'in `app.js`/`styles.css`/
+`template-engine.js` sürüm-pin'leri gerçek `index.html` değerleriyle
+eşitlendi (`app.js?v=20260713-0300`'e ben de bump ettim); ayrıca başka bir
+oturumun "Deprem Derecesi" alanını `defaultValue: "1. Derece"`'den `""`'e
+ve seçenekleri betimleyici hale getirmesiyle bayatlamış tek bir assertion
+satırı, bu artık kasıtlı bir özellik değişikliği olduğu için kaldırıldı.
+
+Yedek: `backups/before-security-hardening_2026-07-13_02-45-00/` (server.js,
+app.js, index.html, .gitignore, tools/check-basic.js).
+
+## 0.0.106 — 2026-07-13 — P1 API Guvenligi ve Deployment Sertlestirmesi
+
+Onaylanan P1 kapsaminda su degisiklikler yapildi:
+
+- `server.js` Firebase Authentication ID tokenlarini Firebase'in resmi
+  sertifikalariyla dogruluyor. `/api/state`, `/api/user-pois`, `/api/overpass`
+  ve `/api/pdf-text` artik oturumsuz isteklere 401 donuyor.
+- `active-case.json` ve kullanici noktasi dosyalari artik Firebase UID'ye
+  gore `server-data/users/<uid>/` altinda ayriliyor.
+- Varsayilan Node host'u `127.0.0.1` oldu. Windows mobil baslatma dosyasi
+  `HOST=0.0.0.0` verdigi icin tablet/telefon akisi korunuyor.
+- `ecosystem.config.cjs` eklendi. PM2 deployment'i 5174 portunda localhost'a
+  bagli, yeniden baslatilabilir ve kalici bir konfigurasyon kullaniyor.
+- GitHub Actions deployment'i `pm2 startOrRestart ecosystem.config.cjs` ve
+  localhost health check kullanacak sekilde guncellendi.
+- Nginx reverse proxy ve Let's Encrypt ilk kurulum scripti eklendi:
+  `deploy/nginx/rapor-yazma.conf.template`, `deploy/ubuntu/setup-https.sh`.
+- API istemcileri Firebase ID tokenini `Authorization: Bearer` header'i ile
+  gonderiyor; `cloud/cloud-sync.js` icinden `getIdToken()` acildi.
+
+Dogrulama: Node syntax kontrolleri, temel kontrol, parser testleri, KML,
+Imar, EKB ve banka sablon testleri basarili. Yerel smoke testte statik kok
+200, token olmadan `/api/user-pois` 401 dondu.
+
+Graphify code-only harita guncellendi: 18.578 dugum, 41.896 baglanti,
+404 community. Dokuman/paper/image semantik guncellemesi API anahtari
+gerektirdigi icin bu turda code-only tarama kullanildi.
+
+Yedek: `backups/before-p1-security-deploy_2026-07-13_14-45-24/`.

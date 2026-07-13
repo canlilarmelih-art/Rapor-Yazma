@@ -15,39 +15,40 @@
   yuvarlatılmış köşe gibi ince ayrıntılar yalnızca tarayıcı görünümündedir.
 -->
 <style>
-  @page { size: 595.35pt 841.95pt; margin: 36pt 32pt; }
-  body { font-family: Verdana, Arial, sans-serif; font-size: 8.5pt; color: #333333; background: #ffffff; }
-  p { margin: 0 0 7pt; line-height: 1.4; }
+  @page { size: 595.35pt 841.95pt; margin: 28pt 24pt; }
+  body { font-family: Verdana, Arial, sans-serif; font-size: 6.5pt; color: #333333; background: #ffffff; }
+  p { margin: 0 0 5pt; line-height: 1.3; }
 
   /* --- INVEX üst şerit / marka --- */
-  .kt-topbar { font-size: 7pt; color: #6b7f78; padding: 2pt 0 6pt; border-bottom: 0.75pt solid #d7e8e0; }
-  .kt-brand { font-size: 17pt; font-weight: bold; color: #009b6b; margin: 8pt 0 2pt; }
-  .kt-brand span { color: #4d6b62; font-weight: normal; font-size: 12pt; }
-  .kt-caseline { font-size: 8pt; color: #33544a; margin: 2pt 0 10pt; }
+  .kt-topbar { font-size: 6pt; color: #6b7f78; padding: 2pt 0 5pt; border-bottom: 0.75pt solid #d7e8e0; }
+  .kt-brand { font-size: 13pt; font-weight: bold; color: #009b6b; margin: 6pt 0 2pt; }
+  .kt-brand span { color: #4d6b62; font-weight: normal; font-size: 9.5pt; }
+  .kt-caseline { font-size: 6.5pt; color: #33544a; margin: 2pt 0 7pt; }
   .kt-caseline strong { color: #0d6b4e; }
 
   /* --- yeşil sekme şeritleri --- */
-  .kt-nav { background: #e7f5ee; border: 0.75pt solid #bee0d2; padding: 5pt 8pt; margin: 0 0 8pt; border-radius: 4pt; }
-  .kt-tab { display: inline-block; background: #009b6b; color: #ffffff; font-weight: bold; font-size: 8pt; padding: 3pt 10pt; border: 0.75pt solid #007a55; border-radius: 8pt; margin-right: 4pt; }
-  .kt-tab-passive { display: inline-block; background: #ffffff; color: #009b6b; font-weight: bold; font-size: 8pt; padding: 3pt 10pt; border: 0.75pt solid #009b6b; border-radius: 8pt; margin-right: 4pt; }
+  .kt-nav { background: #e7f5ee; border: 0.75pt solid #bee0d2; padding: 4pt 6pt; margin: 0 0 6pt; border-radius: 4pt; }
+  .kt-tab { display: inline-block; background: #009b6b; color: #ffffff; font-weight: bold; font-size: 6.5pt; padding: 2pt 7pt; border: 0.75pt solid #007a55; border-radius: 8pt; margin-right: 3pt; }
+  .kt-tab-passive { display: inline-block; background: #ffffff; color: #009b6b; font-weight: bold; font-size: 6.5pt; padding: 2pt 7pt; border: 0.75pt solid #009b6b; border-radius: 8pt; margin-right: 3pt; }
 
   /* --- turuncu bölüm başlığı (İNVEX "TAŞINMAZ BİLGİLERİ" bandı) --- */
-  .kt-sec { background: #efefef; border-top: 0.75pt solid #dcdcdc; border-bottom: 0.75pt solid #dcdcdc; color: #e8820c; font-weight: bold; font-size: 9pt; letter-spacing: 0.4pt; padding: 4pt 8pt; margin: 14pt 0 6pt; }
-  .kt-subsec { color: #0d6b4e; font-weight: bold; font-size: 9pt; margin: 10pt 0 4pt; }
+  .kt-sec { background: #efefef; border-top: 0.75pt solid #dcdcdc; border-bottom: 0.75pt solid #dcdcdc; color: #e8820c; font-weight: bold; font-size: 7pt; letter-spacing: 0.4pt; padding: 3pt 6pt; margin: 10pt 0 5pt; }
+  .kt-subsec { color: #0d6b4e; font-weight: bold; font-size: 7pt; margin: 7pt 0 3pt; }
 
   /* --- etiket/değer form tablosu --- */
-  table.kt-form { border-collapse: collapse; width: 100%; margin: 4pt 0 10pt; }
-  table.kt-form td { padding: 3pt 6pt; vertical-align: top; }
+  table.kt-form { border-collapse: collapse; width: 100%; margin: 3pt 0 7pt; }
+  table.kt-form td { padding: 2.2pt 5pt; vertical-align: top; }
   table.kt-form td.l { width: 34%; text-align: right; font-weight: bold; color: #17493b; }
   table.kt-form td.v { background: #e9e9e9; border: 0.75pt solid #cfcfcf; border-radius: 3pt; }
 
   /* --- liste tabloları (malikler, belgeler, motor tabloları) --- */
-  .word-table, table.kt-list { border-collapse: collapse; width: 100%; margin: 4pt 0 10pt; border: 0.75pt solid #bee0d2; font-size: 8pt; }
-  .word-table th, .word-table td, table.kt-list th, table.kt-list td { border: 0.75pt solid #cfe4da; padding: 3pt 5pt; vertical-align: top; }
+  .word-table, table.kt-list { border-collapse: collapse; width: 100%; margin: 3pt 0 7pt; border: 0.75pt solid #bee0d2; font-size: 6.5pt; }
+  .word-table th, .word-table td, table.kt-list th, table.kt-list td { border: 0.75pt solid #cfe4da; padding: 2.2pt 4pt; vertical-align: top; }
   .word-table th, table.kt-list th { background: #e7f5ee; color: #17493b; font-weight: bold; text-align: left; }
+  .word-table tbody tr:nth-child(even) td, table.kt-list tbody tr:nth-child(even) td { background: #f4faf7; }
 
-  .kt-note { font-size: 7.5pt; color: #8a6d3b; }
-  .kt-btn { display: inline-block; background: #009b6b; color: #ffffff; font-weight: bold; font-size: 8.5pt; padding: 4pt 14pt; border-radius: 8pt; border: 0.75pt solid #007a55; }
+  .kt-note { font-size: 6pt; color: #8a6d3b; }
+  .kt-btn { display: inline-block; background: #009b6b; color: #ffffff; font-weight: bold; font-size: 7pt; padding: 3pt 10pt; border-radius: 8pt; border: 0.75pt solid #007a55; }
 </style>
 </head>
 <body>
@@ -262,16 +263,10 @@
 </div>
 
 <div class="kt-sec">EMSALLER</div>
-<div class="kt-subsec">Emsaller İle İlgili Diğer Açıklamalar</div>
+{{EMSAL_MATRISI}}
+
+<div class="kt-subsec">Emsal Açıklaması</div>
 {{EMSAL_PIYASA_ANALIZI}}
-{{EMSAL_TABLOSU}}
-<p>{{EMSAL_1}}</p>
-<p>{{EMSAL_2}}</p>
-<p>{{EMSAL_3}}</p>
-<p>{{EMSAL_4}}</p>
-<p>{{EMSAL_5}}</p>
-<p>{{EMSAL_6}}</p>
-<p>{{EMSAL_7}}</p>
 
 <div class="kt-sec">GDYS YARDIMCI BİLGİLER</div>
 <table class="kt-form">
