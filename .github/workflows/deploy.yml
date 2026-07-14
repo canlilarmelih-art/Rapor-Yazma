@@ -52,7 +52,7 @@ jobs:
           test -n "$DEPLOY_KNOWN_HOSTS"
           install -m 700 -d "$HOME/.ssh"
           if [ -n "$DEPLOY_SSH_KEY_B64" ]; then
-            printf '%s' "$DEPLOY_SSH_KEY_B64" | base64 --decode > "$HOME/.ssh/deploy_key"
+            printf '%s' "$DEPLOY_SSH_KEY_B64" | tr -d '[:space:]' | base64 --decode > "$HOME/.ssh/deploy_key"
           else
             printf '%s\n' "$DEPLOY_SSH_KEY" | tr -d '\r' > "$HOME/.ssh/deploy_key"
           fi
@@ -76,7 +76,7 @@ jobs:
             --exclude 'server-data/' \
             --exclude 'backups/' \
             --exclude 'node_modules/' \
-            -e "ssh -i $HOME/.ssh/deploy_key -p $DEPLOY_PORT -o BatchMode=yes -o StrictHostKeyChecking=yes" \
+            -e "ssh -i $HOME/.ssh/deploy_key -p $DEPLOY_PORT -o IdentitiesOnly=yes -o IdentityAgent=none -o BatchMode=yes -o StrictHostKeyChecking=yes" \
             ./ "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/"
 
       - name: Restart PM2 and check application
@@ -87,6 +87,7 @@ jobs:
           DEPLOY_PORT: ${{ secrets.DEPLOY_PORT || '22' }}
         run: |
           ssh -i "$HOME/.ssh/deploy_key" -p "$DEPLOY_PORT" \
+            -o IdentitiesOnly=yes -o IdentityAgent=none \
             -o BatchMode=yes -o StrictHostKeyChecking=yes \
             "$DEPLOY_USER@$DEPLOY_HOST" \
             "set -e; cd '$DEPLOY_PATH'; pm2 startOrRestart ecosystem.config.cjs --only rapor-app --update-env; pm2 save; curl -fsS http://127.0.0.1:5174/ >/dev/null"
