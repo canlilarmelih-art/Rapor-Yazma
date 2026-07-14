@@ -51,18 +51,15 @@ jobs:
           test -n "$DEPLOY_SSH_KEY" || test -n "$DEPLOY_SSH_KEY_B64"
           test -n "$DEPLOY_KNOWN_HOSTS"
           install -m 700 -d "$HOME/.ssh"
-          key_ok=0
           if [ -n "$DEPLOY_SSH_KEY" ]; then
-            printf '%s\n' "$DEPLOY_SSH_KEY" | tr -d '\r' > "$HOME/.ssh/deploy_key"
-            chmod 600 "$HOME/.ssh/deploy_key"
-            if ssh-keygen -y -f "$HOME/.ssh/deploy_key" >/dev/null 2>&1; then
-              key_ok=1
-            fi
+            printf '%s\n' "$DEPLOY_SSH_KEY" | tr -d '\r' > "$HOME/.ssh/deploy_key_plain"
+            chmod 600 "$HOME/.ssh/deploy_key_plain"
+            ssh-keygen -y -f "$HOME/.ssh/deploy_key_plain" >/dev/null 2>&1 || rm -f "$HOME/.ssh/deploy_key_plain"
           fi
-          if [ "$key_ok" -eq 0 ] && [ -n "$DEPLOY_SSH_KEY_B64" ]; then
-            printf '%s' "$DEPLOY_SSH_KEY_B64" | tr -d '[:space:]' | base64 --decode > "$HOME/.ssh/deploy_key"
-            chmod 600 "$HOME/.ssh/deploy_key"
-            ssh-keygen -y -f "$HOME/.ssh/deploy_key" >/dev/null
+          if [ -n "$DEPLOY_SSH_KEY_B64" ]; then
+            printf '%s' "$DEPLOY_SSH_KEY_B64" | tr -d '[:space:]' | base64 --decode > "$HOME/.ssh/deploy_key_b64"
+            chmod 600 "$HOME/.ssh/deploy_key_b64"
+            ssh-keygen -y -f "$HOME/.ssh/deploy_key_b64" >/dev/null 2>&1 || rm -f "$HOME/.ssh/deploy_key_b64"
           fi
           printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
           chmod 644 "$HOME/.ssh/known_hosts"
@@ -77,6 +74,19 @@ jobs:
           test -n "$DEPLOY_HOST"
           test -n "$DEPLOY_USER"
           test -n "$DEPLOY_PATH"
+          selected_key=""
+          for candidate in "$HOME/.ssh/deploy_key_plain" "$HOME/.ssh/deploy_key_b64"; do
+            if [ -f "$candidate" ] && ssh -i "$candidate" -p "$DEPLOY_PORT" \
+              -o IdentitiesOnly=yes -o IdentityAgent=none \
+              -o BatchMode=yes -o StrictHostKeyChecking=yes \
+              "$DEPLOY_USER@$DEPLOY_HOST" true >/dev/null 2>&1; then
+              selected_key="$candidate"
+              break
+            fi
+          done
+          test -n "$selected_key" || { echo "No deploy key is authorized on the server" >&2; exit 255; }
+          cp "$selected_key" "$HOME/.ssh/deploy_key"
+          chmod 600 "$HOME/.ssh/deploy_key"
           rsync -az --delete \
             --exclude '.git/' \
             --exclude 'server-data/' \
