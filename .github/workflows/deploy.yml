@@ -51,13 +51,19 @@ jobs:
           test -n "$DEPLOY_SSH_KEY" || test -n "$DEPLOY_SSH_KEY_B64"
           test -n "$DEPLOY_KNOWN_HOSTS"
           install -m 700 -d "$HOME/.ssh"
-          if [ -n "$DEPLOY_SSH_KEY_B64" ]; then
-            printf '%s' "$DEPLOY_SSH_KEY_B64" | tr -d '[:space:]' | base64 --decode > "$HOME/.ssh/deploy_key"
-          else
+          key_ok=0
+          if [ -n "$DEPLOY_SSH_KEY" ]; then
             printf '%s\n' "$DEPLOY_SSH_KEY" | tr -d '\r' > "$HOME/.ssh/deploy_key"
+            chmod 600 "$HOME/.ssh/deploy_key"
+            if ssh-keygen -y -f "$HOME/.ssh/deploy_key" >/dev/null 2>&1; then
+              key_ok=1
+            fi
           fi
-          chmod 600 "$HOME/.ssh/deploy_key"
-          ssh-keygen -y -f "$HOME/.ssh/deploy_key" >/dev/null
+          if [ "$key_ok" -eq 0 ] && [ -n "$DEPLOY_SSH_KEY_B64" ]; then
+            printf '%s' "$DEPLOY_SSH_KEY_B64" | tr -d '[:space:]' | base64 --decode > "$HOME/.ssh/deploy_key"
+            chmod 600 "$HOME/.ssh/deploy_key"
+            ssh-keygen -y -f "$HOME/.ssh/deploy_key" >/dev/null
+          fi
           printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
           chmod 644 "$HOME/.ssh/known_hosts"
 
