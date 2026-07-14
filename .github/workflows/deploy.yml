@@ -91,3 +91,16 @@ jobs:
             -o BatchMode=yes -o StrictHostKeyChecking=yes \
             "$DEPLOY_USER@$DEPLOY_HOST" \
             "set -e; cd '$DEPLOY_PATH'; pm2 startOrRestart ecosystem.config.cjs --only rapor-app --update-env; pm2 save; curl -fsS http://127.0.0.1:5174/ >/dev/null"
+
+      - name: Configure HTTPS and verify public proxy
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT || '22' }}
+        run: |
+          ssh -i "$HOME/.ssh/deploy_key" -p "$DEPLOY_PORT" \
+            -o IdentitiesOnly=yes -o IdentityAgent=none \
+            -o BatchMode=yes -o StrictHostKeyChecking=yes \
+            "$DEPLOY_USER@$DEPLOY_HOST" \
+            "set -e; cd '$DEPLOY_PATH'; sudo bash deploy/ubuntu/setup-https.sh experify.com.tr canlilar.melih@gmail.com; sudo systemctl is-active --quiet nginx; curl -fsS https://experify.com.tr/ >/dev/null"
