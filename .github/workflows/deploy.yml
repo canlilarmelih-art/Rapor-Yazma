@@ -47,8 +47,8 @@ jobs:
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
           DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
         run: |
-          test -n "$DEPLOY_SSH_KEY" || { echo "DEPLOY_SSH_KEY secret is empty" >&2; exit 1; }
-          test -n "$DEPLOY_KNOWN_HOSTS" || { echo "DEPLOY_KNOWN_HOSTS secret is empty" >&2; exit 1; }
+          test -n "$DEPLOY_SSH_KEY" || { echo "::error::DEPLOY_SSH_KEY secret is empty"; exit 1; }
+          test -n "$DEPLOY_KNOWN_HOSTS" || { echo "::error::DEPLOY_KNOWN_HOSTS secret is empty"; exit 1; }
           install -m 700 -d "$HOME/.ssh"
           printf '%s\n' "$DEPLOY_SSH_KEY" | tr -d '\r' | awk '
             /-----BEGIN OPENSSH PRIVATE KEY-----/ { inside=1 }
@@ -57,7 +57,7 @@ jobs:
           ' > "$HOME/.ssh/deploy_key"
           chmod 600 "$HOME/.ssh/deploy_key"
           if ! ssh-keygen -y -f "$HOME/.ssh/deploy_key" >/dev/null 2>&1; then
-            echo "DEPLOY_SSH_KEY is not a valid OpenSSH private key; update it with the full BEGIN/END block" >&2
+            echo "::error::DEPLOY_SSH_KEY is not a valid OpenSSH private key; update it with the full BEGIN/END block"
             exit 1
           fi
           printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
