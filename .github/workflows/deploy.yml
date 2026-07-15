@@ -57,9 +57,12 @@ jobs:
             ssh-keygen -y -f "$HOME/.ssh/deploy_key_plain" >/dev/null 2>&1 || rm -f "$HOME/.ssh/deploy_key_plain"
           fi
           if [ -n "$DEPLOY_SSH_KEY_B64" ]; then
-            printf '%s' "$DEPLOY_SSH_KEY_B64" | tr -d '[:space:]' | base64 --decode > "$HOME/.ssh/deploy_key_b64"
-            chmod 600 "$HOME/.ssh/deploy_key_b64"
-            ssh-keygen -y -f "$HOME/.ssh/deploy_key_b64" >/dev/null 2>&1 || rm -f "$HOME/.ssh/deploy_key_b64"
+            if printf '%s' "$DEPLOY_SSH_KEY_B64" | tr -d '[:space:]' | base64 --decode > "$HOME/.ssh/deploy_key_b64" 2>/dev/null; then
+              chmod 600 "$HOME/.ssh/deploy_key_b64"
+              ssh-keygen -y -f "$HOME/.ssh/deploy_key_b64" >/dev/null 2>&1 || rm -f "$HOME/.ssh/deploy_key_b64"
+            else
+              rm -f "$HOME/.ssh/deploy_key_b64"
+            fi
           fi
           printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
           chmod 644 "$HOME/.ssh/known_hosts"
