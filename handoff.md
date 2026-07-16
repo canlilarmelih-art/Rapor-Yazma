@@ -6,6 +6,19 @@ Bu belge, bir sonraki geliştirici/oturum için projeyi çalıştırma, doğrula
 oturumda yapılanları özetler.
 
 ---
+## 0.0.108 - 2026-07-16 - Rapor Kutuphanesi Auth Gecidi
+
+- `cloud/report-library.js` artik Firebase oturumu dogrulanmadan aktif rapor,
+  localStorage ve Taleplerim kutuphanesi islemlerini baslatmiyor.
+- Kimlik dogrulama tamamlandiginda `RaporCloudSync.onAuthChange` ile tek seferlik
+  baslatma yapiliyor; mevcut giris akisinin sonraki rapor islemleri korunuyor.
+- Ilgili script cache-buster'i `cloud/report-library.js?v=20260716-1825` olarak
+  guncellendi.
+- Yedek: `backups/before-report-library-auth-gate_2026-07-16_18-23-19`.
+- Dogrulama: `node --check` (report-library.js, app.js, server.js) ve
+  `tools/check-basic.js` basarili.
+
+---
 ## 0.0.107 - 2026-07-16 - GitHub Actions ve Google Cloud Deployment
 
 Bu hafta uygulamanin GitHub uzerinden otomatik dogrulama ve Ubuntu sunucuya

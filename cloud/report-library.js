@@ -723,6 +723,9 @@
   // ---------------------------------------------------------------
   // Başlatma
   // ---------------------------------------------------------------
+  let initialized = false;
+  let authListenerRegistered = false;
+
   function init() {
     if (!hasAppGlobals()) {
       console.warn("report-library: uygulama global'leri bulunamadı; modül pasif.");
@@ -730,6 +733,20 @@
     }
     // Bulut karşılaştırması için "gerçek" son bilinen zamanı, kendi
     // flush'ımız state.updatedAt'i tazelemeden ÖNCE yakalıyoruz.
+    if (initialized) return;
+
+    const cloudStatus = window.RaporCloudSync?.getStatus?.();
+    if (cloudStatus && !cloudStatus.signedIn) {
+      if (!authListenerRegistered) {
+        authListenerRegistered = true;
+        window.RaporCloudSync.onAuthChange(() => {
+          if (window.RaporCloudSync?.getStatus?.().signedIn) init();
+        });
+      }
+      return;
+    }
+    initialized = true;
+
     const preExistingUpdatedAt = state.reportId ? state.updatedAt : null;
     ensureActiveReportId();
     const localKnownUpdatedAt = preExistingUpdatedAt || state.updatedAt;
