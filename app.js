@@ -11457,19 +11457,6 @@ function appendBankTemplateExportBlock(panel, status) {
   panel.append(block);
 }
 
-function confirmExportWithMissingFields() {
-  const missing = getMissingRequiredFields();
-  if (!missing.length) return true;
-  const labels = missing
-    .slice(0, 10)
-    .map((item) => typeof item === "string" ? item : item.label || item.key || "Bilinmeyen alan")
-    .join("\n");
-  const remainder = missing.length > 10 ? `\n... ve ${missing.length - 10} alan daha` : "";
-  return window.confirm(
-    `Rapor çıktısı alınmadan önce ${missing.length} zorunlu alanın eksik olduğu görülüyor.\n\n${labels}${remainder}\n\nEksik alanlara rağmen devam edilsin mi?`
-  );
-}
-
 function showOutputExportStatus(status, text) {
   if (!status) return;
   status.textContent = text;

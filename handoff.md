@@ -6,6 +6,26 @@ Bu belge, bir sonraki geliştirici/oturum için projeyi çalıştırma, doğrula
 oturumda yapılanları özetler.
 
 ---
+## 0.0.112 - 2026-07-16 - app.js Modulerlesme Ilk Dilimi
+
+- Disa aktarma oncesi zorunlu alan kontrolu `src/exports/export-validation.js`
+  modulune tasindi.
+- `app.js` artik bu davranisin uygulama kodunu tasimiyor; modul global API
+  uzerinden mevcut dis aktarma butonlariyla uyumlu calisiyor.
+- Ilk modulerlesme dilimi sonrasinda `app.js`, `server.js` ve yeni modul syntax
+  kontrollerinden gecti.
+- Yedek: `backups/before-export-validation-module_2026-07-16_18-46-48`.
+
+---
+## 0.0.111 - 2026-07-16 - Graphify Odakli Kod Haritasi
+
+- Graphify code-only guncellemesi yapildi.
+- Son harita: `18.598` dugum, `42.205` baglanti.
+- `graphify-out/graph.json` ve `graphify-out/GRAPH_TREE.html` yeniden uretildi.
+- Bes kaynak dosyasi sifir AST dugumu uretti; bunlar veri/fixture veya desteklenmeyen
+  dosya tipleri oldugu icin harita disinda kaldi.
+
+---
 ## 0.0.110 - 2026-07-16 - Runtime Bagimliliklarinin Sabitlenmesi
 
 - `package.json` icine Node `>=22 <23` ve npm `>=10 <11` engine sozlesmesi eklendi.
