@@ -3,6 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "description": "Yerel rapor yazma programi icin gelistirme ve regresyon kontrolleri.",
+  "engines": {
+    "node": ">=22 <23",
+    "npm": ">=10 <11"
+  },
   "scripts": {
     "check": "node tools/check-basic.js",
     "test": "node tools/test-parsers.js && node tools/test-kml-parser-module.js && node tools/test-imar-normalizer-module.js && node tools/test-ekb-parser-module.js",

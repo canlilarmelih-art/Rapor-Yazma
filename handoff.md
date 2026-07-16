@@ -6,6 +6,18 @@ Bu belge, bir sonraki geliştirici/oturum için projeyi çalıştırma, doğrula
 oturumda yapılanları özetler.
 
 ---
+## 0.0.110 - 2026-07-16 - Runtime Bagimliliklarinin Sabitlenmesi
+
+- `package.json` icine Node `>=22 <23` ve npm `>=10 <11` engine sozlesmesi eklendi.
+- Bagimlilik kullanilmadigi icin minimal `package-lock.json` olusturuldu.
+- `.nvmrc` ile yerel/CI Node ana surumu `22` olarak sabitlendi.
+- GitHub Actions artik Node surumunu `.nvmrc` dosyasindan okuyor ve runtime
+  surumlerini deployment oncesi yazdirarak kontrol ediyor.
+- `tools/check-basic.js` yeni `app.js` cache-buster surumunu kontrol ediyor.
+- Dogrulama: package metadata, JavaScript syntax, temel kontrol ve diff kontrolu
+  basarili.
+
+---
 ## 0.0.109 - 2026-07-16 - Dis Aktarma Oncesi Eksik Alan Uyarisi
 
 - JSON, Word, PDF ve banka sablonu dis aktarma butonlarina ortak zorunlu alan
