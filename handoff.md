@@ -6,6 +6,49 @@ Bu belge, bir sonraki geliştirici/oturum için projeyi çalıştırma, doğrula
 oturumda yapılanları özetler.
 
 ---
+## 0.0.107 - 2026-07-16 - GitHub Actions ve Google Cloud Deployment
+
+Bu hafta uygulamanin GitHub uzerinden otomatik dogrulama ve Ubuntu sunucuya
+dagitim akisi calisir hale getirildi.
+
+- Yerel proje `canlilarmelih-art/Rapor-Yazma` GitHub deposunun `main` branch'ine
+  baglandi.
+- `.github/workflows/deploy.yml` ile her `git push origin main` sonrasinda test,
+  SSH baglantisi, rsync dosya aktarimi, PM2 yeniden baslatma ve localhost
+  saglik kontrolu otomatik calisir.
+- GitHub Actions secrets yapilandirildi: `DEPLOY_HOST`, `DEPLOY_USER`,
+  `DEPLOY_PATH`, `DEPLOY_PORT` ve `DEPLOY_SSH_KEY`.
+- SSH deploy anahtari sunucuda `~/.ssh/authorized_keys` dosyasina eklendi.
+- Sunucu bilgileri: IP `34.136.126.221`, kullanici `canlilar_melih`, uygulama
+  yolu `/home/canlilar_melih/proje/files-mentioned-by-the-user-rapor/app/`,
+  PM2 adi `rapor-app`, uygulama portu `5174`.
+- Google Cloud VPC firewall'da 80 ve 443 portlarini acan `allow-http-https`
+  kurali mevcut. Dogrudan test icin 5174 portu da acildi.
+- `experify.com.tr` DNS A kaydi `34.136.126.221` adresine yonlendirildi.
+- Nginx reverse proxy ve Let's Encrypt kurulumu tamamlandi; uygulama
+  `https://experify.com.tr` adresinden erisilebilir durumda.
+- Ilk dis erisim sorununun nedeni uygulamanin `127.0.0.1:5174` uzerinde
+  dinlemesiydi. PM2 `HOST=0.0.0.0` ile yeniden baslatilarak dis erisim saglandi.
+- Sudo parolasi gerektiren HTTPS adimlari GitHub Actions icinden kaldirildi;
+  HTTPS/Nginx islemleri sunucuda yetkili SSH oturumu ile yapilmalidir.
+
+Kalici deployment akisi:
+
+```text
+Kod degisikligi -> git push origin main -> GitHub Actions verify -> SSH/rsync
+-> PM2 restart -> health check
+```
+
+Kontrol komutlari: `pm2 status` ve `ss -ltnp | grep 5174`.
+
+Acik kalan teknik konu: GitHub Actions icinden Nginx veya Certbot icin sudo
+calistirilmasi parola gerektirdigi icin otomatik degildir. Nginx ve sertifika
+yenileme sunucu tarafinda systemd/Certbot timer ile izlenmelidir.
+
+Yedek/geri donus: Deployment workflow degisiklikleri GitHub commit gecmisinde
+saklanir.
+
+---
 ## 0.0.101 2026-07-13 Tema Secici
 
 - Ust menude `Apple` ve `Navy Blue` profilleri arasinda gecis yapilabilen tema secici eklendi.

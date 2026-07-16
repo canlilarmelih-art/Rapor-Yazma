@@ -92,4 +92,4 @@ jobs:
             -o IdentitiesOnly=yes -o IdentityAgent=none \
             -o BatchMode=yes -o StrictHostKeyChecking=yes \
             "$DEPLOY_USER@$DEPLOY_HOST" \
-            "set -e; cd '$DEPLOY_PATH'; pm2 startOrRestart ecosystem.config.cjs --only rapor-app --update-env; pm2 save; curl -fsS http://127.0.0.1:5174/ >/dev/null"
+            "set -e; cd '$DEPLOY_PATH'; RAPOR_HOST=0.0.0.0 RAPOR_PORT=5174 pm2 startOrRestart ecosystem.config.cjs --only rapor-app --update-env; pm2 save; curl -fsS http://127.0.0.1:5174/ >/dev/null"
