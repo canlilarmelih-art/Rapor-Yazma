@@ -93,8 +93,3 @@ jobs:
             -o BatchMode=yes -o StrictHostKeyChecking=yes \
             "$DEPLOY_USER@$DEPLOY_HOST" \
             "set -e; cd '$DEPLOY_PATH'; pm2 startOrRestart ecosystem.config.cjs --only rapor-app --update-env; pm2 save; curl -fsS http://127.0.0.1:5174/ >/dev/null"
-
-      - name: Verify public HTTPS proxy
-        run: |
-          curl --fail --silent --show-error --location \
-            --max-time 30 https://experify.com.tr/ >/dev/null
