@@ -11394,14 +11394,17 @@ function createOutputExportPanel() {
   `;
   const status = panel.querySelector("[data-output-export-status]");
   panel.querySelector("[data-export-json]").addEventListener("click", () => {
+    if (!confirmExportWithMissingFields()) return;
     exportReportJson();
     showOutputExportStatus(status, "JSON hazırlandı.");
   });
   panel.querySelector("[data-export-word]").addEventListener("click", async () => {
+    if (!confirmExportWithMissingFields()) return;
     await exportReportWord();
     showOutputExportStatus(status, "Word çıktısı hazırlandı.");
   });
   panel.querySelector("[data-export-pdf]").addEventListener("click", async () => {
+    if (!confirmExportWithMissingFields()) return;
     await exportReportPdf();
     showOutputExportStatus(status, "PDF penceresi açıldı.");
   });
@@ -11435,6 +11438,7 @@ function appendBankTemplateExportBlock(panel, status) {
   const defaultKey = window.RaporTemplates.defaultTemplateKeyForBank(state.fields.bank);
   if (defaultKey) select.value = defaultKey;
   block.querySelector("[data-export-template]").addEventListener("click", async () => {
+    if (!confirmExportWithMissingFields()) return;
     try {
       saveState();
       const result = await window.RaporTemplates.exportTemplate(select.value);
@@ -11451,6 +11455,19 @@ function appendBankTemplateExportBlock(panel, status) {
     }
   });
   panel.append(block);
+}
+
+function confirmExportWithMissingFields() {
+  const missing = getMissingRequiredFields();
+  if (!missing.length) return true;
+  const labels = missing
+    .slice(0, 10)
+    .map((item) => typeof item === "string" ? item : item.label || item.key || "Bilinmeyen alan")
+    .join("\n");
+  const remainder = missing.length > 10 ? `\n... ve ${missing.length - 10} alan daha` : "";
+  return window.confirm(
+    `Rapor çıktısı alınmadan önce ${missing.length} zorunlu alanın eksik olduğu görülüyor.\n\n${labels}${remainder}\n\nEksik alanlara rağmen devam edilsin mi?`
+  );
 }
 
 function showOutputExportStatus(status, text) {

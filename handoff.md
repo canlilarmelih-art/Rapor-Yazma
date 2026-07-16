@@ -6,6 +6,19 @@ Bu belge, bir sonraki geliştirici/oturum için projeyi çalıştırma, doğrula
 oturumda yapılanları özetler.
 
 ---
+## 0.0.109 - 2026-07-16 - Dis Aktarma Oncesi Eksik Alan Uyarisi
+
+- JSON, Word, PDF ve banka sablonu dis aktarma butonlarina ortak zorunlu alan
+  kontrolu eklendi.
+- Eksik zorunlu alan varsa kullaniciya eksik alanlar listelenerek devam etme
+  veya islemi iptal etme secenegi sunuluyor.
+- Eksik alan yoksa mevcut dis aktarma akisi degismeden devam ediyor.
+- `app.js` cache-buster'i `app.js?v=20260716-1831` olarak guncellendi.
+- Yedek: `backups/before-export-reminder_2026-07-16_18-31-05`.
+- Dogrulama: `node --check app.js`, `tools/check-basic.js` ve `git diff --check`
+  basarili.
+
+---
 ## 0.0.108 - 2026-07-16 - Rapor Kutuphanesi Auth Gecidi
 
 - `cloud/report-library.js` artik Firebase oturumu dogrulanmadan aktif rapor,
