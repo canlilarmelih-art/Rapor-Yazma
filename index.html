@@ -506,9 +506,13 @@
         }
       })();
     </script><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="styles.css?v=20260713-0200" />
+    <link rel="stylesheet" href="styles.css?v=20260717-1911" />
     <link rel="stylesheet" href="themes/navy-blue.css?v=20260713-0200" />
     <link rel="stylesheet" href="themes/apple.css?v=20260713-0200" />
+    <link rel="stylesheet" href="themes/glass.css?v=20260717-1830" />
+    <link rel="stylesheet" href="themes/aurora.css?v=20260717-1830" />
+    <link rel="stylesheet" href="themes/clay.css?v=20260717-1840" />
+    <link rel="stylesheet" href="themes/neumorphism.css?v=20260717-1840" />
   </head>
   <body data-app-theme="apple">
     <!--
@@ -530,7 +534,7 @@
     -->
     <div id="authGateOverlay" style="position:fixed;inset:0;z-index:99999;background:#111d3d;display:flex;align-items:center;justify-content:center;padding:20px;">
       <div id="authGateContent" style="position:relative;z-index:10;max-width:360px;width:100%;text-align:center;color:#f3f6fc;font-family:Inter,ui-sans-serif,system-ui,-apple-system,'Segoe UI',Arial,sans-serif;">
-        <p style="font-weight:800;font-size:15px;letter-spacing:.02em;">RAPOR YAZMA</p>
+        <p style="font-weight:800;font-size:15px;letter-spacing:.02em;">Experify - Yarı Otomatik Rapor Oluşturma</p>
         <p style="color:#b9c5d6;font-size:14px;">Kontrol ediliyor…</p>
       </div>
     </div>
@@ -559,6 +563,9 @@
         var scene = document.createElement("div");
         scene.className = "gate-scene";
         scene.innerHTML =
+          '<video class="gate-video" autoplay muted loop playsinline preload="auto">' +
+          '<source src="assets/gate-bg/gate-bg-video.mp4" type="video/mp4">' +
+          "</video>" +
           '<div class="gate-blueprint"></div>' +
           '<div class="gate-particles"></div>' +
           '<div class="gate-vignette"></div>' +
@@ -591,6 +598,11 @@
         }
 
         var reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        var gateVideo = scene.querySelector(".gate-video");
+        if (gateVideo && reduceMotion) {
+          gateVideo.pause();
+          gateVideo.removeAttribute("autoplay");
+        }
         if (!reduceMotion) {
           var blueprint = scene.querySelector(".gate-blueprint");
           var tx = 0, ty = 0, cx = 0, cy = 0;
@@ -648,6 +660,10 @@
               <select id="themeProfileSelect" aria-label="Tema">
                 <option value="apple">Apple</option>
                 <option value="navy-blue">Navy Blue</option>
+                <option value="glass">Glass</option>
+                <option value="aurora">Aurora</option>
+                <option value="clay">Clay</option>
+                <option value="neumorphism">Neumorphism</option>
               </select>
             </label>
             <button class="ghost-button" id="newCaseBtn" type="button">Yeni iş</button>
@@ -702,7 +718,7 @@
     <script src="src/land/minimum-parcel-sizes.js?v=20260711-0400"></script>
     <script src="src/value-factors/value-factors-rules.js?v=20260707-1050"></script>
     <script src="src/land/climate-earthquake-data.js?v=20260712-1720"></script>
-    <script src="app.js?v=20260716-1831"></script>
+    <script src="app.js?v=20260717-2020"></script>
     <script src="src/exports/export-validation.js?v=20260716-1845"></script>
     <!-- Banka şablonlarıyla dışa aktarma: app.js'ten SONRA yüklenmeli (global'leri çağrı anında kullanır). -->
     <script src="src/templates/template-engine.js?v=20260712-2300"></script>

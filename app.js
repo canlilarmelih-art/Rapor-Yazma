@@ -514,6 +514,12 @@ const sections = [
       { key: "landTopography", label: "Topografya / eğim", type: "select", options: ["", "Eğimsiz", "Az eğimli", "Çok eğimli"] },
       { key: "landRoadFrontage", label: "Kadastro/İmar Yoluna Cepheli mi?", type: "select", options: ["", "Evet", "Hayır"] },
       { key: "landAgricultureType", label: "Tarım Türü", type: "select", options: ["", "Sulu Tarım", "Kuru Tarım"] },
+      {
+        key: "landClassification",
+        label: "Arazi Sınıflandırması",
+        type: "select",
+        options: ["", "Mutlak Tarım Arazisi", "Dikili Tarım Arazisi", "Özel Ürün Arazisi", "Marjinal Tarım Arazisi", "Örtü Altı Tarım Arazisi"],
+      },
       { key: "landBoundaryElement", label: "Sınırları Belirleyici Unsur Var mı?", type: "select", options: ["", "Evet", "Hayır"] },
       { key: "landAgriculturalProduct", label: "Parsel üzerinde Zirai Ürün Var mı?", type: "select", options: ["", "Evet", "Hayır"] },
       { key: "landNote", label: "Arsa açıklaması", type: "textarea" },
@@ -616,6 +622,9 @@ const sections = [
       { key: "insuranceConstructionClass", label: "Sigortaya Esas Yapı Sınıfı", type: "text", readOnly: true },
       { key: "insuranceUnitCost", label: "Yapı Yaklaşık Birim Maliyeti", type: "text", readOnly: true },
       { key: "insuranceConstructionCostExplanation", label: "Sigortaya Esas Değer Açıklaması", type: "textarea", wide: true, readOnly: true },
+      { key: "ziraatLocationEnvironmentalExplanation", label: "Ziraat Bankası - Konumu ve Çevresel Özellikleri", type: "textarea", wide: true, hidden: true, readOnly: true },
+      { key: "ziraatDevelopmentAnalysisExplanation", label: "Ziraat Bankası - Bölgenin Gelişimine İlişkin Analiz", type: "textarea", wide: true, hidden: true, readOnly: true },
+      { key: "ziraatBuildingPatternExplanation", label: "Ziraat Bankası - Bölgedeki Yapılaşma Durumu", type: "textarea", wide: true, hidden: true, readOnly: true },
     ],
   },
   {
@@ -834,6 +843,7 @@ const documentTypeOptions = [
 
 const documentInstitutionStaticOptions = [
   "T.C. Çevre ve Şehircilik Bakanlığı",
+  "OSB Bölge Müdürlüğü",
 ];
 
 const projectSuitabilityOptions = [
@@ -1143,6 +1153,51 @@ function applyImarDerivedBusinessRules(targetState) {
   return changed;
 }
 
+function getReportCompletionStats(targetState = state) {
+  const fields = targetState?.fields || {};
+  const uploads = targetState?.uploads || {};
+  const definitions = (typeof sections !== "undefined" ? sections : [])
+    .flatMap((section) => section.fields || [])
+    .filter((field) => field?.key && !field.hidden && !field.computed && !field.readOnly && !field.autoFill);
+  const keys = new Map(definitions.map((field) => [field.key, field]));
+  const meaningful = (value) => {
+    if (Array.isArray(value)) return value.some((item) => meaningful(item));
+    if (value && typeof value === "object") return Object.keys(value).length > 0;
+    return String(value ?? "").trim().length > 0;
+  };
+  let filled = 0;
+  keys.forEach((definition, key) => {
+    const value = fields[key];
+    const defaultValue = definition.defaultValue;
+    const isUntouchedDefault = defaultValue !== undefined && String(value ?? "") === String(defaultValue);
+    if (meaningful(value) && !isUntouchedDefault) filled += 1;
+  });
+  ["takbis", "address", "imar", "ekb", "kml"].forEach((key) => {
+    if (meaningful(uploads[key])) filled += 1;
+  });
+  const total = Math.max(keys.size + 5, 1);
+  const percentage = (filled / total) * 100;
+  const hasCoreContent = [
+    fields.customerName,
+    fields.neighborhood,
+    fields.titleNeighborhood,
+    fields.blockNo,
+    fields.parcelNo,
+    fields.nearby,
+    uploads.takbis,
+    uploads.address,
+    uploads.imar,
+    uploads.ekb,
+    uploads.kml,
+  ].some(meaningful);
+  return {
+    filled,
+    total,
+    percentage,
+    meetsMinimum: hasCoreContent && (filled >= 5 || percentage >= 5),
+  };
+}
+
 function saveState() {
   applySystemDefaults(state);
   applyUserFieldDefaults(state);
@@ -1397,6 +1452,7 @@ function renderSection() {
     refreshBuildingCompletionFromCurrentFields();
     refreshInsuranceConstructionCostFromCurrentFields("buildingClass");
     refreshBuildingDepreciationFromCurrentFields();
+    refreshZiraatExplanationSectionsFromCurrentFields();
     refreshValuationMethodsExplanationFromCurrentFields();
   }
 
@@ -1452,6 +1508,9 @@ function renderSection() {
   }
 
   if (section.id === "address") {
+    if (isZiraatBankSelectedForPropertyTaxDeclaration()) {
+      body.append(createZiraatExplanationSectionsPanel());
+    }
     body.append(createAddressSourceSummary());
     body.append(createLocationMapTools());
   }
@@ -1694,6 +1753,7 @@ function createForm(section) {
       refreshClimateEarthquakeExplanationFromCurrentFields(field.key);
       refreshInsuranceConstructionCostFromCurrentFields(field.key);
       refreshBuildingDepreciationFromCurrentFields(field.key);
+      refreshZiraatExplanationSectionsFromCurrentFields(field.key);
       if (["legalUsageNature", "currentUsageNature", "projectInstitution"].includes(field.key)) {
         refreshValuationMethodExplanation();
       }
@@ -1743,6 +1803,7 @@ function createForm(section) {
       refreshClimateEarthquakeExplanationFromCurrentFields(field.key);
       refreshInsuranceConstructionCostFromCurrentFields(field.key);
       refreshBuildingDepreciationFromCurrentFields(field.key);
+      refreshZiraatExplanationSectionsFromCurrentFields(field.key);
       if (["legalUsageNature", "currentUsageNature", "projectInstitution"].includes(field.key)) {
         refreshValuationMethodExplanation();
       }
@@ -1913,6 +1974,144 @@ function applyClimateEarthquakeAutoFields(record) {
     control.value = state.fields.earthquakeZone || "";
   }
   if (control) markFieldSourceState(control, "earthquakeZone");
+}
+
+function getZiraatExplanationValues() {
+  const value = (...keys) => keys.map((key) => String(state.fields?.[key] || "").trim()).find(Boolean) || "";
+  return {
+    city: value("city", "titleCity"),
+    district: value("district", "titleDistrict"),
+    neighborhood: value("neighborhood", "titleNeighborhood"),
+    blockNo: value("blockNo", "titleBlockNo"),
+    parcelNo: value("parcelNo", "titleParcelNo"),
+    siteName: value("addressSiteName"),
+    blockName: value("addressBlockName", "titleBlockName"),
+    floor: value("addressFloor", "titleFloor"),
+    unitNo: value("unitNo", "titleUnitNo"),
+    nearby: value("nearby"),
+    mainArtery: value("mainArtery"),
+    infrastructureLevel: value("infrastructureLevel"),
+    developmentDensity: value("developmentDensity"),
+    socialNeeds: value("socialNeeds"),
+    regionBuildingAge: value("regionBuildingAge"),
+    incomeLevel: value("regionIncomeLevel"),
+    developmentSpeed: value("developmentSpeed"),
+    regionBuildOrder: value("regionBuildOrder"),
+    regionUsePurpose: value("regionUsePurpose"),
+    regionFloorRange: value("regionFloorRange"),
+    planningHarmony: value("planningPrincipleHarmony"),
+  };
+}
+
+function formatZiraatLocationSubject(values) {
+  const addressParts = [
+    values.city && `${values.city} ili`,
+    values.district && `${values.district} ilçesi`,
+    values.neighborhood && `${values.neighborhood} mahallesi`,
+    values.blockNo && `${values.blockNo} ada`,
+    values.parcelNo && `${values.parcelNo} parsel`,
+  ].filter(Boolean);
+  const unitParts = [
+    values.siteName,
+    values.blockName && `${values.blockName} Blok`,
+    values.floor && `${values.floor}. Kat`,
+    values.unitNo && `${values.unitNo} no.lu bağımsız bölüm`,
+  ].filter(Boolean);
+  if (!addressParts.length && !unitParts.length) return "Ekspertize konu taşınmaz";
+  return `Ekspertize konu taşınmaz, ${[...addressParts, ...unitParts].join(", ")} üzerinde konumludur`;
+}
+
+function buildZiraatLocationEnvironmentalExplanation() {
+  const values = getZiraatExplanationValues();
+  const subject = formatZiraatLocationSubject(values);
+  const sentences = [`${subject}.`];
+  if (values.nearby) sentences.push(`Konu taşınmaza yakın konumda bulunan bilinen yerler; ${values.nearby} olarak ifade edilebilir.`);
+  if (values.mainArtery) sentences.push(`Gayrimenkule ${values.mainArtery} güzergahında işleyen toplu taşıma araçları ve özel araç ile ulaşım mümkündür.`);
+  if (values.infrastructureLevel) sentences.push(`Bölgesel altyapı ihtiyacı (yol, elektrik, su, doğalgaz, kanalizasyon vb.) ${values.infrastructureLevel} derecede karşılanabilmektedir.`);
+  return normalizeReportDescriptionText(sentences.join(" "));
+}
+
+function buildZiraatDevelopmentAnalysisExplanation() {
+  const values = getZiraatExplanationValues();
+  const sentences = [];
+  if (values.developmentDensity) sentences.push(`Yapılaşmanın ${values.developmentDensity} yoğunlukta olduğu bölgede`);
+  else sentences.push("Yapılaşmanın bulunduğu bölgede");
+  if (values.socialNeeds) sentences[0] += `, sosyal yaşamın gerektirdiği alışveriş, sağlık ocağı, okul, market vb. sosyal ihtiyaçlar ${values.socialNeeds} mesafelerde karşılanabilmektedir.`;
+  else sentences[0] += ", sosyal yaşamın gerektirdiği ihtiyaçlar karşılanabilmektedir.";
+  if (values.regionBuildingAge) sentences.push(`Yapı stokunun genel yaşı ${values.regionBuildingAge} yıl aralığındadır.`);
+  if (values.incomeLevel) sentences.push(`Bölge, ${values.incomeLevel} gelir grubuna mensup kişilerin ikamet etmeyi tercih ettiği bir yerleşim karakterine sahiptir.`);
+  return normalizeReportDescriptionText(sentences.join(" "));
+}
+
+function buildZiraatBuildingPatternExplanation() {
+  const values = getZiraatExplanationValues();
+  const sentences = [];
+  if (values.regionBuildOrder) sentences.push(`Bölgede ağırlıklı olarak ${formatEnvironmentalList(values.regionBuildOrder)} nizamlı yapılaşma görülmektedir.`);
+  if (values.developmentSpeed) sentences.push(`Bölgedeki yapılaşma hızı ${values.developmentSpeed} seviyededir.`);
+  const purpose = values.regionUsePurpose ? `${values.regionUsePurpose} amaçlı` : "konut amaçlı";
+  const floors = values.regionFloorRange ? `zemin + ${values.regionFloorRange} katlı` : "zemin ve normal katlardan oluşan";
+  sentences.push(`Taşınmazın bulunduğu yakın çevrede genellikle ${floors} ve ${purpose} yapılaşma söz konusudur.`);
+  if (values.planningHarmony) sentences.push(`Bölgenin genel yapılaşma tarzı, planlılık ilkeleri ile ${values.planningHarmony}.`);
+  return normalizeReportDescriptionText(sentences.join(" "));
+}
+
+function refreshZiraatExplanationSectionsFromCurrentFields() {
+  const texts = {
+    ziraatLocationEnvironmentalExplanation: buildZiraatLocationEnvironmentalExplanation(),
+    ziraatDevelopmentAnalysisExplanation: buildZiraatDevelopmentAnalysisExplanation(),
+    ziraatBuildingPatternExplanation: buildZiraatBuildingPatternExplanation(),
+  };
+  Object.assign(state.fields, texts);
+  const panel = document.querySelector("[data-ziraat-explanation-sections]");
+  if (panel) panel.hidden = !isZiraatBankSelectedForPropertyTaxDeclaration();
+  Object.entries(texts).forEach(([key, text]) => {
+    const control = document.querySelector(`[data-field="${key}"]`);
+    if (control && control.value !== text) control.value = text;
+    const panelText = document.querySelector(`[data-ziraat-explanation-text="${key}"]`);
+    if (panelText) panelText.textContent = text || "Bu açıklama ilgili alanlar doldurulduğunda otomatik oluşur.";
+  });
+}
+
+function createZiraatExplanationSectionsPanel() {
+  refreshZiraatExplanationSectionsFromCurrentFields();
+  const panel = document.createElement("div");
+  panel.className = "ziraat-explanation-sections-panel";
+  panel.hidden = !isZiraatBankSelectedForPropertyTaxDeclaration();
+  panel.dataset.ziraatExplanationSections = "true";
+  const sections = [
+    ["Ziraat Bankası - Konumu ve Çevresel Özellikleri", "ziraatLocationEnvironmentalExplanation"],
+    ["Ziraat Bankası - Bölgenin Gelişimine İlişkin Analiz", "ziraatDevelopmentAnalysisExplanation"],
+    ["Ziraat Bankası - Bölgedeki Yapılaşma Durumu", "ziraatBuildingPatternExplanation"],
+  ];
+  sections.forEach(([titleText, key]) => {
+    const card = document.createElement("div");
+    card.className = "valuation-method-explanation-card ziraat-explanation-card";
+    const head = document.createElement("div");
+    head.className = "valuation-method-explanation-head";
+    const title = document.createElement("h4");
+    title.textContent = titleText;
+    const copyButton = document.createElement("button");
+    copyButton.type = "button";
+    copyButton.className = "valuation-method-copy-button";
+    copyButton.textContent = "Kopyala";
+    copyButton.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(state.fields[key] || "");
+        copyButton.textContent = "Kopyalandı";
+      } catch {
+        copyButton.textContent = "Kopyalanamadı";
+      }
+      setTimeout(() => { copyButton.textContent = "Kopyala"; }, 1500);
+    });
+    head.append(title, copyButton);
+    const text = document.createElement("p");
+    text.className = "valuation-method-explanation-text";
+    text.dataset.ziraatExplanationText = key;
+    text.textContent = state.fields[key] || "Bu açıklama ilgili alanlar doldurulduğunda otomatik oluşur.";
+    card.append(head, text);
+    panel.append(card);
+  });
+  return panel;
 }
 
 function buildClimateEarthquakeExplanation() {
@@ -8797,6 +8996,9 @@ function shouldHideField(sectionId, fieldKey) {
     return isMainPropertyGroundType(state.fields.groundType);
   }
   if (sectionId === "address") {
+    if (fieldKey === "environmentDescription") {
+      return isZiraatBankSelectedForPropertyTaxDeclaration();
+    }
     const environmentType = detectEnvironmentalRegionType(state.fields.environmentRegionType);
     const commercialEnvironmentKeys = ["commercialFunctionDensity", "commercialFirmType", "commercialFrontageRoadType", "commercialDevelopmentCompleted"];
     if (commercialEnvironmentKeys.includes(fieldKey)) {
@@ -12173,7 +12375,7 @@ function createLocationMapTools() {
     <div class="kml-actions">
       <button class="mini-button" type="button" data-kml-map>Haritayı güncelle</button>
       <button class="mini-button" type="button" data-kml-apply>Okunan değerleri tekrar uygula</button>
-      <button class="mini-button" type="button" data-map-export>HARİTAYI JPEG OLARAK KAYDET</button>
+      <button class="mini-button" type="button" data-map-export title="Haritayı JPG olarak kaydet" aria-label="Haritayı JPG olarak kaydet">JPG</button>
       <label class="export-control">
         <span>Boyut</span>
         <select data-map-export-ratio>
@@ -21348,13 +21550,29 @@ function renderLeafletKmlMap() {
 }
 
 function isLeafletReady() {
-  return Boolean(
+  const ready = Boolean(
     window.L
       && typeof window.L.map === "function"
       && typeof window.L.tileLayer === "function"
       && typeof window.L.polygon === "function"
       && typeof window.L.marker === "function",
   );
+  if (ready) configureLeafletMarkerIcon();
+  return ready;
+}
+
+let leafletMarkerIconConfigured = false;
+
+function configureLeafletMarkerIcon() {
+  if (leafletMarkerIconConfigured || !window.L?.divIcon || !window.L?.Marker?.prototype) return;
+  window.L.Marker.prototype.options.icon = window.L.divIcon({
+    className: "experify-map-marker",
+    html: "<span aria-hidden=\"true\"></span>",
+    iconSize: [26, 34],
+    iconAnchor: [13, 34],
+    popupAnchor: [0, -32],
+  });
+  leafletMarkerIconConfigured = true;
 }
 
 function renderSelectedNearbyMarkers() {
@@ -21593,7 +21811,7 @@ async function exportMapAsJpeg(triggerButton) {
     link.remove();
     if (triggerButton) {
       triggerButton.disabled = false;
-      triggerButton.textContent = originalButtonText || "HARITAYI JPEG OLARAK KAYDET";
+      triggerButton.textContent = originalButtonText || "JPG";
     }
     setMapExportStatus("JPEG kaydedildi.");
   } catch (error) {
@@ -21609,7 +21827,7 @@ async function exportMapAsJpeg(triggerButton) {
       fallbackLink.remove();
       if (triggerButton) {
         triggerButton.disabled = false;
-        triggerButton.textContent = originalButtonText || "HARITAYI JPEG OLARAK KAYDET";
+        triggerButton.textContent = originalButtonText || "JPG";
       }
       setMapExportStatus("Harita altligi izin vermedi; yedek JPEG kaydedildi.", true);
       return;
@@ -21617,7 +21835,7 @@ async function exportMapAsJpeg(triggerButton) {
       console.warn("Harita JPEG olarak kaydedilemedi.", fallbackError);
       if (triggerButton) {
         triggerButton.disabled = false;
-        triggerButton.textContent = originalButtonText || "HARITAYI JPEG OLARAK KAYDET";
+        triggerButton.textContent = originalButtonText || "JPG";
       }
       setMapExportStatus("JPEG kaydedilemedi. Haritayi yenileyip tekrar deneyin.", true);
     }
@@ -22909,6 +23127,27 @@ function createGabimDataSetPanel() {
   return panel;
 }
 
+// Mülkiyet (ownershipType) ve Yasal Kullanım Niteliği (legalUsageNature)
+// alanlarından GDYS'nin "Gabim Veri Seti" formunun gerçekte hangi grupları
+// gösterdiğini çıkarır. GDYS; Arsa/Tarla (bina yok) için Yapıya Özel
+// Bilgiler/Yapı Tür Bilgisi/Ek Bilgiler gruplarını hiç göstermez, Arazi
+// kullanım amacında ayrıca "Araziye Özel Bilgiler" grubu ekler, Konut
+// dışındaki bina türlerinde (İşyeri/Ofis/Ticari/Sanayi) "Yapı Tür Bilgisi"
+// ve genişletilmiş "Ek Bilgiler"/"Cephe ve Kat" alanlarını göstermez.
+function gabimPropertyProfile() {
+  const ownership = foldTurkish(gabimField("ownershipType"));
+  const usage = foldTurkish(gabimField("legalUsageNature"));
+  const noBuildingOwnership = ownership.includes("ARSA") || ownership.includes("TARLA");
+  const hasBuilding = ownership ? !noBuildingOwnership : true;
+  const isAgricultural = !hasBuilding && usage.includes("ARAZI");
+  const isResidential = hasBuilding && (!usage || usage.includes("KONUT"));
+  return { hasBuilding, isAgricultural, isResidential };
+}
+
+function gabimManagerText() {
+  return gabimSiteWithinText() === "Evet" ? "Var" : "Yok";
+}
+
 function buildGabimDataGroups() {
   syncValuationAreasFromUnitAreas();
   refreshValuationComputedFields();
@@ -22948,6 +23187,14 @@ function buildGabimDataGroups() {
       ],
     },
     {
+      title: "Araziye Özel Bilgiler",
+      rows: [
+        ["Tarım Türü", gabimField("landAgricultureType")],
+        ["Arazi Sınıflandırması", gabimField("landClassification")],
+        ["Kadastro Yoluna Cephesi Var mı?", gabimField("landRoadFrontage")],
+      ],
+    },
+    {
       title: "Yapıya Özel Bilgiler",
       rows: [
         ["Bağımsız Bölüm Numarası", gabimField("unitNo")],
@@ -22974,6 +23221,7 @@ function buildGabimDataGroups() {
     {
       title: "Ek Bilgiler",
       rows: [
+        ["Yönetici Var mı?", gabimManagerText()],
         ["Yüzme Havuzu Var mı?", gabimPoolText()],
         ["İlk Kez mi Satışa Konu Ediliyor?", gabimFirstSaleText()],
         ["Site İçerisinde mi?", gabimSiteWithinText()],
@@ -23004,6 +23252,7 @@ function buildGabimDataGroups() {
         ["Mutfak", unitCounts.mutfak],
         ["Balkon", unitCounts.balkon],
         ["Cepheler", gabimField("facades")],
+        ["Enerji Sınıfı", gabimField("ekbEnergyClass")],
       ],
     },
     {
@@ -23016,6 +23265,212 @@ function buildGabimDataGroups() {
       ],
     },
   ];
+}
+
+// buildGabimDataGroups() ekrandaki panel için HER ZAMAN tüm alanları
+// (üst küme) döner — kullanıcı ileride GDYS'ye elle veri girerken referans
+// olarak faydalı olsun diye hiçbir satır gizlenmez. GDYS'nin GERÇEK "Gabim
+// Veri Seti" formu ise gayrimenkul türüne göre (Arsa/Tarla, Konut, Diğer
+// Bina, Arazi) farklı grup/alan kümeleri gösterir — bkz. kullanıcının
+// paylaştığı 4 ekran görüntüsü. Rapor çıktısı (Word/HTML) GDYS'nin gerçek
+// şeklini birebir yansıtmalı; bu yüzden ekrandaki üst kümeyi türe göre
+// budayan ayrı bir filtre katmanı kullanılır — ekran panelini bozmadan.
+// Her grubun GDYS'nin gerçek "Gabim Veri Seti" formunda kaç sütunlu bir
+// ızgarada gösterildiği (bkz. kullanıcının paylaştığı ekran görüntüleri —
+// Arsa/Konut/Diğer Bina/Arazi). Grup burada yoksa varsayılan 3 kullanılır.
+// GABIM_SUBGROUPS'ta tanımlı gruplar bu tabloyu KULLANMAZ, kendi alt blok
+// sütun sayılarını taşır.
+const GABIM_GROUP_COLUMNS = {
+  "Genel Ek Bilgiler": 4,
+  "Tapu Bilgileri": 4,
+  "Tapuya Özel Bilgiler": 4,
+  "Araziye Özel Bilgiler": 3,
+  "Yapıya Özel Bilgiler": 3,
+  "Yapı Tür Bilgisi": 1,
+  "Ek Bilgiler": 3,
+};
+
+// GDYS'nin gerçek formunda "Bağımsız Bölüm / Taşınmaz Özellikleri" ve "BB
+// İçin İmar Bilgileri" grupları tek bir düz ızgara değil; soldaki küçük gri
+// kategori etiketiyle ayrılmış alt bloklardan oluşuyor (bkz. kullanıcının
+// paylaştığı ekran görüntüleri: "BB İçin Alanlar", "BB İçin Değerler",
+// "BB İçin Birim Değerler", "BB İçin Cephe ve Kat"). Her tanım:
+// - `title` varsa: solda kategori etiketiyle girintili satır.
+// - `indent: true` varsa: aynı kategorinin devamı, etiketsiz ama girintili.
+// - ikisi de yoksa: girintisiz, tam genişlik satır (ör. tek başına dropdown).
+const GABIM_SUBGROUPS = {
+  "Bağımsız Bölüm / Taşınmaz Özellikleri": [
+    { labels: ["Fiili Kullanım Amacı"], columns: 1 },
+    { title: "BB İçin Alanlar", labels: ["Yasal Brüt Kullanım Alanı (m²)", "Mevcut Brüt Kullanım Alanı (m²)"], columns: 2 },
+    { title: "BB İçin Değerler", labels: ["Yasal Kullanıma Esas Piyasa Değeri (TL)", "Mevcut Kullanıma Esas Piyasa Değeri (TL)"], columns: 2 },
+    { title: "BB İçin Birim Değerler", labels: ["Aylık Kira Birim Değeri (TL/m²)", "Arsa Birim Değeri (TL/m²)"], columns: 2 },
+    { title: "BB İçin Cephe ve Kat", labels: ["Site Adı"], columns: 1 },
+    { indent: true, labels: ["Oda", "Salon", "Banyo", "Mutfak", "Balkon"], columns: 5 },
+    { indent: true, labels: ["Cepheler", "Enerji Sınıfı"], columns: 2 },
+  ],
+  "BB İçin İmar Bilgileri": [
+    { labels: ["İmar Lejandı"], columns: 1 },
+    { labels: ["TAKS", "KAKS", "Hmax (m)"], columns: 3 },
+  ],
+};
+
+// GDYS'de açık gri gölgeli bir kart panelinde gösterilen gruplar (bkz.
+// kullanıcının paylaştığı 4 ekran görüntüsünün tamamında "Tapuya Özel
+// Bilgiler" bloğu bu şekilde).
+const GABIM_SHADED_GROUPS = new Set(["Tapuya Özel Bilgiler"]);
+
+function buildGabimExportGroups() {
+  const profile = gabimPropertyProfile();
+  const groups = buildGabimDataGroups();
+
+  const dropRowsByLabel = (rows, labels) => rows.filter(([label]) => !labels.includes(label));
+
+  return groups
+    .map((group) => {
+      if (group.title === "Genel Ek Bilgiler") {
+        const drop = profile.hasBuilding ? ["Ana Ulaşım Yoluna Cephesi Var mı?"] : ["İnşaat Kalitesi"];
+        return { ...group, rows: dropRowsByLabel(group.rows, drop) };
+      }
+      if (group.title === "Araziye Özel Bilgiler") {
+        return profile.isAgricultural ? group : null;
+      }
+      if (group.title === "Yapıya Özel Bilgiler") {
+        return profile.hasBuilding ? group : null;
+      }
+      if (group.title === "Yapı Tür Bilgisi") {
+        return profile.hasBuilding && profile.isResidential ? group : null;
+      }
+      if (group.title === "Ek Bilgiler") {
+        if (!profile.hasBuilding) return null;
+        if (profile.isResidential) return group;
+        return {
+          ...group,
+          rows: group.rows.filter(([label]) =>
+            ["Yönetici Var mı?", "Açık Otopark Var mı?", "Kapalı Otopark Var mı?", "Asansör Var mı?", "Güvenlik Var mı?"].includes(label)
+          ),
+        };
+      }
+      if (group.title === "Bağımsız Bölüm / Taşınmaz Özellikleri") {
+        let rows = dropRowsByLabel(group.rows, ["Zemin Kata İndirgenmiş Yasal Alan", "Zemin Kata İndirgenmiş Mevcut Alan"]);
+        const konutOnlyLabels = ["Site Adı", "Oda", "Salon", "Banyo", "Mutfak", "Balkon", "Cepheler"];
+        if (!profile.hasBuilding) {
+          rows = dropRowsByLabel(rows, [
+            "Aylık Kira Birim Değeri (TL/m²)",
+            "Arsa Birim Değeri (TL/m²)",
+            "Enerji Sınıfı",
+            ...konutOnlyLabels,
+          ]);
+        } else if (!profile.isResidential) {
+          rows = dropRowsByLabel(rows, konutOnlyLabels);
+        } else {
+          rows = dropRowsByLabel(rows, ["Enerji Sınıfı"]);
+        }
+        return { ...group, rows };
+      }
+      return group;
+    })
+    .filter(Boolean)
+    .filter((group) => group.rows.some(([, value]) => String(value ?? "").trim()))
+    .map((group) => {
+      const subgroupDefs = GABIM_SUBGROUPS[group.title];
+      if (!subgroupDefs) return { ...group, columns: GABIM_GROUP_COLUMNS[group.title] || 3 };
+      const rowsByLabel = new Map(group.rows);
+      const subgroups = subgroupDefs
+        .map((def) => ({
+          title: def.title,
+          indent: def.indent,
+          columns: def.columns,
+          rows: def.labels.filter((label) => rowsByLabel.has(label)).map((label) => [label, rowsByLabel.get(label)]),
+        }))
+        .filter((sub) => sub.rows.some(([, value]) => String(value ?? "").trim()));
+      return { ...group, subgroups };
+    });
+}
+
+// GDYS'nin gerçek "Gabim Veri Seti" formu satır-içi label:değer tablosu
+// DEĞİL — her alan "üstte küçük gri etiket, altında beyaz/gri çerçeveli
+// kutu" şeklinde, çok sütunlu bir ızgarada gösteriliyor; "Bağımsız Bölüm /
+// Taşınmaz Özellikleri" ve "BB İçin İmar Bilgileri" grupları ise soldaki
+// kategori etiketiyle ayrılmış alt bloklara bölünüyor, "Tapuya Özel
+// Bilgiler" açık gri bir kart panelinde gösteriliyor (bkz. kullanıcının
+// paylaştığı ekran görüntüleri: Arsa/Konut/Diğer Bina/Arazi). Kullanıcı
+// "satır ve sütun yerleşimi, renk paletleri birebir görsellerdeki gibi
+// olmalı" dedi — bu yüzden renkler burada uygulama temasından (Navy Blue/
+// Apple/Glass/Aurora/Clay/Neumorphism) BAĞIMSIZ, GDYS ekran görüntülerinden
+// alınan SABİT değerlerdir; hangi rapor teması aktif olursa olsun değişmez.
+function buildGabimDataSetWordHtml() {
+  const groups = buildGabimExportGroups();
+  if (!groups.length) return "";
+  const ink = "#111827";
+  const muted = "#6b7280";
+  const line = "#d1d5db";
+  const surface = "#ffffff";
+  const panelBg = "#f3f4f6";
+  const panelLine = "#e5e7eb";
+
+  const groupTitleStyle = `font-weight:700;font-size:8.5pt;color:${ink};border-top:1pt solid ${panelLine};padding:7pt 0 5pt;margin:0;`;
+  const subgroupLabelStyle = `font-size:6.5pt;font-weight:700;color:${muted};padding:3pt 6pt 0 0;width:70pt;vertical-align:top;`;
+  const labelStyle = `font-size:6pt;color:${muted};margin:0 0 1.5pt;line-height:1.2;`;
+  const boxStyle = `border:1pt solid ${line};border-radius:3pt;background:${surface};color:${ink};padding:3pt 5pt;font-size:7pt;line-height:1.3;min-height:11pt;`;
+  const cellStyle = `vertical-align:top;padding:2pt 6pt 6pt 0;`;
+
+  const fieldsTable = (rows, columns) => {
+    const rowsHtml = [];
+    for (let i = 0; i < rows.length; i += columns) {
+      const chunk = rows.slice(i, i + columns);
+      const tds = chunk
+        .map(
+          ([label, value]) =>
+            `<td style="${cellStyle}width:${Math.round(100 / columns)}%;">
+              <div style="${labelStyle}">${escapeHtml(label)}</div>
+              <div style="${boxStyle}">${escapeHtml(value ?? "") || "&nbsp;"}</div>
+            </td>`
+        )
+        .join("");
+      const padding = chunk.length < columns ? `<td colspan="${columns - chunk.length}"></td>` : "";
+      rowsHtml.push(`<tr>${tds}${padding}</tr>`);
+    }
+    return `<table style="border-collapse:collapse;width:100%;table-layout:fixed;"><tbody>${rowsHtml.join("")}</tbody></table>`;
+  };
+
+  const groupsHtml = groups
+    .map((group, groupIndex) => {
+      const topBorder = groupIndex === 0 ? "border-top:none;" : "";
+      const title = `<div style="${groupTitleStyle}${topBorder}">${escapeHtml(group.title)}</div>`;
+
+      let body;
+      if (group.subgroups) {
+        const subRowsHtml = group.subgroups
+          .map((sub) => {
+            if (sub.title) {
+              return `<tr>
+                <td style="${subgroupLabelStyle}">${escapeHtml(sub.title)}</td>
+                <td style="padding:2pt 0;">${fieldsTable(sub.rows, sub.columns)}</td>
+              </tr>`;
+            }
+            if (sub.indent) {
+              return `<tr>
+                <td style="${subgroupLabelStyle}"></td>
+                <td style="padding:2pt 0;">${fieldsTable(sub.rows, sub.columns)}</td>
+              </tr>`;
+            }
+            return `<tr><td colspan="2" style="padding:2pt 0;">${fieldsTable(sub.rows, sub.columns)}</td></tr>`;
+          })
+          .join("");
+        body = `<table style="border-collapse:collapse;width:100%;table-layout:fixed;margin:0 0 2pt;"><tbody>${subRowsHtml}</tbody></table>`;
+      } else {
+        body = `<div style="margin:0 0 2pt;">${fieldsTable(group.rows, group.columns)}</div>`;
+      }
+
+      if (GABIM_SHADED_GROUPS.has(group.title)) {
+        body = `<div style="background:${panelBg};border:1pt solid ${panelLine};border-radius:4pt;padding:6pt 8pt;">${body}</div>`;
+      }
+
+      return `${title}${body}`;
+    })
+    .join("");
+
+  return groupsHtml;
 }
 
 function buildGabimGeneralExtraInfoRows() {
@@ -23033,6 +23488,7 @@ function buildGabimGeneralExtraInfoRows() {
     ["Gayrimenkulün Satılabilirliği", gabimSaleabilityText()],
     ["Tercihli Kullanım Alanı mı?", gabimPreferredUseAreaText()],
     ["İnşaat Kalitesi", gabimConstructionQualityText()],
+    ["Ana Ulaşım Yoluna Cephesi Var mı?", gabimField("landRoadFrontage")],
   ];
 }
 
@@ -23430,6 +23886,24 @@ function collectGeneratedTextPlaceholders() {
       key: "environmental_agricultural_template",
       title: "Çevresel Özellikler - Tarımsal Alan Şablonu",
       value: buildEnvironmentalDescription("Tarımsal Alan", { usePlaceholderTokens: true }),
+    },
+    {
+      category: "Açıklamalar",
+      key: "ZIRAAT_KONUM_CEVRESEL",
+      title: "Ziraat Bankası - Konumu ve Çevresel Özellikleri",
+      value: state.fields.ziraatLocationEnvironmentalExplanation || buildZiraatLocationEnvironmentalExplanation(),
+    },
+    {
+      category: "Açıklamalar",
+      key: "ZIRAAT_BOLGE_GELISIMI",
+      title: "Ziraat Bankası - Bölgenin Gelişimine İlişkin Analiz",
+      value: state.fields.ziraatDevelopmentAnalysisExplanation || buildZiraatDevelopmentAnalysisExplanation(),
+    },
+    {
+      category: "Açıklamalar",
+      key: "ZIRAAT_YAPILASMA",
+      title: "Ziraat Bankası - Bölgedeki Yapılaşma Durumu",
+      value: state.fields.ziraatBuildingPatternExplanation || buildZiraatBuildingPatternExplanation(),
     },
     {
       category: "Takyidat",
@@ -26734,11 +27208,13 @@ document.querySelector("#saveBtn").addEventListener("click", () => {
 
 const themeProfileSelect = document.querySelector("#themeProfileSelect");
 if (themeProfileSelect) {
-  const savedTheme = localStorage.getItem("raporAppTheme") || document.body.dataset.appTheme || "apple";
+  const validThemeProfiles = new Set(["apple", "navy-blue", "glass", "aurora", "clay", "neumorphism"]);
+  const normalizeThemeProfile = (value) => (validThemeProfiles.has(value) ? value : "apple");
+  const savedTheme = normalizeThemeProfile(localStorage.getItem("raporAppTheme") || document.body.dataset.appTheme);
   document.body.dataset.appTheme = savedTheme;
   themeProfileSelect.value = savedTheme;
   themeProfileSelect.addEventListener("change", () => {
-    const nextTheme = themeProfileSelect.value === "navy-blue" ? "navy-blue" : "apple";
+    const nextTheme = normalizeThemeProfile(themeProfileSelect.value);
     document.body.dataset.appTheme = nextTheme;
     localStorage.setItem("raporAppTheme", nextTheme);
   });

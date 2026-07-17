@@ -6,6 +6,116 @@ Bu belge, bir sonraki geliştirici/oturum için projeyi çalıştırma, doğrula
 oturumda yapılanları özetler.
 
 ---
+## 0.0.136 - 2026-07-17 - GABİM VERİ SETİ Word çıktısı GDYS ile bire bir renk/ızgara uyumu
+
+Kullanıcı, GDYS'nin gerçek "Gabim Veri Seti" formunun 4 gayrimenkul türü
+(Arsa, Konut, Diğer Bina, Arazi) için yeni ekran görüntülerini paylaşıp banka
+şablonlarındaki `{{GABIM_VERI_SETI}}` çıktısının satır/sütun yerleşiminin ve
+renk paletinin görsellerdeki gibi **birebir** olmasını istedi. 0.0.107'de
+uygulanan ilk sürüm ızgara/kutu görünümüne geçmişti ama iki noktada
+görsellerden sapıyordu: (1) renkler GDYS'nin sabit renkleri yerine uygulama
+temasının (Navy Blue/Apple/Glass/...) token'larını kullanıyordu, (2)
+"Bağımsız Bölüm / Taşınmaz Özellikleri" ve "BB İçin İmar Bilgileri" düz tek
+ızgara olarak render ediliyordu; oysa GDYS'de bunlar soldaki küçük gri
+kategori etiketiyle ayrılmış alt bloklardan oluşuyor ("BB İçin Alanlar",
+"BB İçin Değerler", "BB İçin Birim Değerler", "BB İçin Cephe ve Kat") ve
+"Tapuya Özel Bilgiler" açık gri gölgeli bir kart panelinde gösteriliyor.
+
+`app.js`:
+- `GABIM_GROUP_COLUMNS`: "Tapu Bilgileri" ve "Tapuya Özel Bilgiler" 3'ten
+  4 sütuna çıkarıldı (görsellerdeki satır yoğunluğuna göre); "Bağımsız Bölüm
+  / Taşınmaz Özellikleri" ve "BB İçin İmar Bilgileri" bu tablodan çıkarılıp
+  yeni `GABIM_SUBGROUPS` tanımına taşındı.
+- Yeni `GABIM_SUBGROUPS`: yukarıdaki iki grup için alt blok tanımları (her
+  tanım `title` → solda kategori etiketli girintili satır, `indent: true` →
+  aynı kategorinin etiketsiz devamı, ikisi de yoksa → girintisiz tam
+  genişlik satır).
+- Yeni `GABIM_SHADED_GROUPS`: `Set(["Tapuya Özel Bilgiler"])` — bu grup açık
+  gri (`#f3f4f6`) kart paneli içinde render edilir.
+- `buildGabimExportGroups()`: `GABIM_SUBGROUPS`'ta tanımlı gruplar için
+  düz `rows`+`columns` yerine `subgroups` (etiket/girinti/kendi sütun
+  sayısıyla) üretir; boş kalan alt bloklar otomatik elenir.
+- `buildGabimDataSetWordHtml()`: renkler artık `getReportThemeToken(...)`
+  yerine GDYS ekran görüntülerinden alınan SABİT hex değerler (`ink
+  #111827`, `muted #6b7280`, `line #d1d5db`, `surface #ffffff`, panel
+  `#f3f4f6`/`#e5e7eb`) — hangi rapor teması (Navy Blue/Apple/Glass/Aurora/
+  Clay/Neumorphism) aktif olursa olsun GABİM tablosunun rengi değişmez.
+  Alt gruplu render için sol kategori etiketi hücresi (`subgroupLabelStyle`)
+  eklendi.
+
+Ekrandaki canlı Gabim paneli (`buildGabimDataGroups`, `.gabim-data-group`
+CSS'i) bilinçli olarak DEĞİŞMEDİ — kullanıcı GDYS'ye elle veri girerken
+referans olsun diye hâlâ tüm alanları düz liste gösteriyor. Sadece Word/PDF
+export'una giden `{{GABIM_VERI_SETI}}` çıktısı güncellendi.
+
+`index.html`: `app.js?v=20260717-2020`. `tools/check-basic.js` içindeki
+sabit sürüm kontrolü aynı değere güncellendi.
+
+Doğrulama: `node --check app.js`, `tools/check-basic.js`,
+`tools/test-bank-templates.js`, `tools/test-comparable-market-analysis.js`
+geçti. **Canlı tarayıcıda GÖRSEL doğrulama YAPILAMADI** — uygulamanın
+zorunlu giriş kapısı (bkz. 0.0.56 D7 kararı) bu ortamda gerçek Firebase
+kimlik bilgisi olmadığı için aşılamıyor; bu, projenin daha önceki
+oturumlarında da tekrarlanan bilinen bir sınırdır. Kullanıcının gerçek bir
+raporda Word/PDF çıktısı alıp GABİM VERİ SETİ bölümünü 4 görselle
+karşılaştırarak teyit etmesi gerekir.
+
+Ayrı yedek alınmadı (tek fonksiyon/tablo değişikliği; önceki
+`backups/before-library-cloud-meta-row_2026-07-17_19-11-29` yeterli taban).
+
+---
+## 0.0.135 - 2026-07-17 - Bulut saklama bilgisinin kompakt meta satiri
+
+Taleplerim kart ve liste gorunumlerinde `Son guncelleme` bilgisi ile bulut saklama
+rozetini ayni `library-card-meta` satirinda birlestirdim. `+30 gun` butonu artik
+bu satirin yaninda yer aliyor; rozet, buton ve tarih font/padding degerleri daha
+kompakt hale getirildi. Yedek:
+`backups/before-library-cloud-meta-row_2026-07-17_19-11-29/`.
+
+## 0.0.136 - 2026-07-17 - Talep karti basliklarinda tek satir duzeni
+
+Taleplerim kart ve liste gorunumlerinde rapor adi ile banka ve bilgi degerlerinin satir kirarak karti bozmasi engellendi. Rapor adi artik tek satirda ellipsis ile gosteriliyor; belge durum rozetleri gerektiğinde ikinci satira alinıyor. Banka ve diger bilgi degerleri tek satirli gorunumu koruyor.
+Yedek: `backups/before-library-card-single-line_2026-07-17_19-34-31/`.
+
+## 0.0.134 - 2026-07-17 - Ana Gayrimenkul ve Bağımsız Bölüm alt panel hizalaması
+
+7. Ana Gayrimenkul Özellikleri ve 8. Bağımsız Bölüm Özellikleri bölümlerindeki alt panellerde
+`Bina Yapı Tarzı`, `Asansör`, `Kullanım Durumu` ve benzeri alanlar panel kenarlarına yapışık
+görünüyordu. `.section-building .subsection` ve `.section-unit .subsection` için masaüstünde
+14px/16px, dar ekranlarda 12px/10px iç boşluk tanımlandı. Başlıklar, tablolar ve alan ızgaraları
+artık aynı iç hizayı takip ediyor. Yedek:
+`backups/before-building-unit-panel-padding_2026-07-17_18-17-07/`.
+
+## 0.0.114 - 2026-07-17 - Open Design Esintili Motion ve Gorsel Katman
+
+- Open Design reposu ayri bir calisma klasorune kuruldu:
+  `C:/Users/90551/Documents/Codex/open-design`.
+- Uygulamanin mevcut lacivert degerleme arayuzu korunarak `styles.css` icine
+  kontrollu bir ambient motion katmani eklendi: calisma alaninda cok hafif
+  hareketli grid/gradient arka plan, nav ve ust bar gecisleri, kart derinligi.
+- Giris ekranindaki blueprint sahnesi gelistirildi; cam yuzey etkisi, yumusak
+  sahne pulse hareketi ve buton hover derinligi eklendi.
+- `prefers-reduced-motion` kurali tum yeni hareketleri kapatir.
+- Masaustu (1280x900) ve mobil (390x844) tarayici dogrulamasinda giris ekrani
+  goruntulendi, yatay tasma olusmadi.
+- Yedek: `backups/before-open-design-visual-update_2026-07-17_08-02-50`.
+
+---
+## 0.0.113 - 2026-07-16 - gstack Aciklari ve Guvenlik Sertlestirmesi
+
+- Leaflet stil dosyasinin CSP tarafindan engellenmesi giderildi; `server.js`
+  icindeki `style-src` yalnizca bilinen `https://unpkg.com` kaynagini kabul eder.
+- GitHub Actions icindeki `actions/checkout` ve `actions/setup-node` kullanimlari
+  degismez commit SHA'larina sabitlendi.
+- `GITHUB-ACTIONS-DEPLOY.md`, production ortaminda `RAPOR_HOST=0.0.0.0`,
+  `RAPOR_PORT=5174` ve Nginx reverse proxy akisini aciklayacak sekilde guncellendi.
+- Asagidaki eski parser notu guncel durum degildir: `parseComparableNumber`
+  binlik nokta ayracli degerleri artik desteklemektedir.
+- Bu kayit sonraki oturumlar icin guncel durumdur; daha asagidaki tarihli notlar
+  kendi donemlerindeki degisikliklerin arsiv kaydidir.
+- Yedek: `backups/before-gstack-open-issues_2026-07-16_19-09-36`.
+
+---
 ## 0.0.112 - 2026-07-16 - app.js Modulerlesme Ilk Dilimi
 
 - Disa aktarma oncesi zorunlu alan kontrolu `src/exports/export-validation.js`
@@ -2468,8 +2578,8 @@ ile üretilir (ASCII anahtar → makrolarla birebir token, ör. `DEGERLENDIRME_S
 
 ## 4. Bilinen Notlar / Bekleyenler
 
-- `parseComparableNumber` binlik nokta ayracını ("2.000.000") doğru okumuyor; emsal fiyat
-  alanları düz rakam bekliyor. Önceden beri böyle; istenirse düzeltilebilir.
+- `[Cozuldu 2026-07-16]` `parseComparableNumber` binlik nokta ayracli
+  ("2.000.000") degerleri destekliyor; bu eski not arsiv amacli tutulmustur.
 - Mahalle veritabanı **yalnızca Bursa** (`server-data/bursa_manuel_duzeltilmis_ana_dosya.csv`).
   Bursa dışı adreslerde DB eşleşmesi olmaz → posta kodu adres PDF'inden gelir (yoksa boş).
 - `joinTurkishList` app.js'de 3 kez tanımlı (sonuncusu geçerli, `cleanupPlaceName` uygular);
@@ -3443,3 +3553,539 @@ Graphify code-only harita guncellendi: 18.578 dugum, 41.896 baglanti,
 gerektirdigi icin bu turda code-only tarama kullanildi.
 
 Yedek: `backups/before-p1-security-deploy_2026-07-13_14-45-24/`.
+
+## 0.0.107 2026-07-17 Gabim Veri Seti: Gayrimenkul Türüne Göre Koşullu Yapı (Claude oturumu)
+
+Kullanıcı GDYS'nin (Denge Değerleme Gayrimenkul Değerleme Yönetim Sistemi)
+gerçek "Gabim Veri Seti" formunun 4 farklı gayrimenkul türü için (Arsa,
+Konut, Diğer Bina, Arazi) ekran görüntüsünü paylaşıp banka şablonlarındaki
+Gabim Veri Seti bölümünün bu şekle uydurulmasını istedi. İnceleme:
+şablonlardaki `<h2>GABİM VERİ SETİ</h2>` bölümü (Türkçe İ karakteri yüzünden
+ilk taramada gözden kaçtı) sabit, türden bağımsız TEK bir alan listesi
+gösteriyordu — GDYS'nin gerçek formu ise Mülkiyet/Yasal Kullanım Niteliği'ne
+göre grup/alan kümesini değiştiriyor (ör. Arsa'da Yapıya Özel Bilgiler/Ek
+Bilgiler hiç yok; Arazi'de ayrıca "Araziye Özel Bilgiler" var; Konut'ta tam
+Cephe/Kat detayları var; diğer bina türlerinde (İşyeri/Ofis/Ticari/Sanayi)
+sade Ek Bilgiler + sadece Enerji Sınıfı var).
+
+Yapılanlar (`app.js`):
+- `landClassification` ("Arazi Sınıflandırması" — Mutlak/Dikili/Özel Ürün/
+  Marjinal/Örtü Altı Tarım Arazisi) alanı "Arsa Özellikleri" bölümüne eklendi
+  — GDYS'nin Arazi formunda var, uygulamada hiç yoktu.
+- `gabimPropertyProfile()`: `ownershipType` (Arsa/Tarla → bina yok) ve
+  `legalUsageNature` (Arazi/Konut) alanlarından `{hasBuilding, isAgricultural,
+  isResidential}` çıkarır.
+- `gabimManagerText()`: "Yönetici Var mı?" — site içindeyse Var sayılır.
+- `buildGabimDataGroups()` (ekran paneli — DEĞİŞMEDİ, hâlâ TÜM alanları
+  gösterir, kullanıcı GDYS'ye elle veri girerken referans olsun diye) ek
+  olarak yeni "Araziye Özel Bilgiler" grubu, "Yönetici Var mı?" ve "Enerji
+  Sınıfı" satırları, "Ana Ulaşım Yoluna Cephesi Var mı?" satırı kazandı —
+  bunlar sadece EKLEME, mevcut hiçbir satır kaldırılmadı.
+- `buildGabimExportGroups()` (YENİ, sadece rapor/Word çıktısı için): ekran
+  panelinin üst kümesini `gabimPropertyProfile()`'a göre budar — GDYS'nin 4
+  ekran görüntüsündeki gerçek grup/alan kümesini birebir üretir. Ayrıca tüm
+  satırları boş olan grupları (ör. hiç veri girilmemiş taslak raporlarda)
+  otomatik gizler.
+- `buildGabimDataSetWordHtml()` (YENİ): export gruplarını, diğer tablolarla
+  aynı ilkeyle (satır içi stil, `getReportThemeToken` ile seçili temaya göre
+  renk — Apple/Navy Blue) her grup için ayrı bir başlık + iki sütunlu
+  (etiket/değer) tablo olarak üretir. Başlık metnini KENDİSİ üretmez (her
+  banka şablonu kendi "GABİM VERİ SETİ" başlığını `<h2>`/`<div class="kt-sec">`
+  ile zaten sağlıyor — MALIKLER_TABLO ile aynı kural).
+
+`src/templates/template-engine.js`: `GABIMVERISETI: { h: () => safeCall
+("buildGabimDataSetWordHtml") }` eklendi.
+
+Şablonlar: 10 dosyadan raporun tamamını oluşturan 8'inde (isbankasi-masraf.html
+ve ziraat-ek-tablo.html hariç — bunlar masraf yazısı/ek tablo, Gabim bölümü
+hiç yok) eski sabit `<table class="meta">`/`<table class="kt-form">` alan
+listesi silinip yerine `{{GABIM_VERI_SETI}}` konuldu; başlık (`<h2>GABİM
+VERİ SETİ</h2>` veya Kuveyt Türk'te `<div class="kt-sec">`) korundu.
+
+`templates/PLACEHOLDER-REHBERI.md`: yeni "Gabim Veri Seti" bölümü — hangi
+türde hangi grupların göründüğünü ve ekran panelinin neden hâlâ tam liste
+gösterdiğini açıklıyor.
+
+`tools/test-bank-templates.js`: 8 şablonda `{{GABIM_VERI_SETI}}` varlığını
+ve eski sabit tablo formatına dönülmediğini, `GABIMVERISETI` motor
+kaydının ve `gabimPropertyProfile`/`buildGabimExportGroups`/
+`buildGabimDataSetWordHtml` fonksiyonlarının/`landClassification` alanının
+var olduğunu doğrulayan regresyon testleri eklendi.
+
+Doğrulama: `node --check` (app.js, template-engine.js, test-bank-templates.js),
+tam test paketi YEŞİL. Tarayıcıda canlı state manipülasyonuyla 4 senaryo
+(Arsa/Arsa, Arsa/Arazi, Dikey Kat İrtifakı/Konut, Müstakil Bina/İşyeri) tek
+tek `buildGabimExportGroups()` ile çalıştırıldı — grup listeleri 4 ekran
+görüntüsüyle eşleşti (Arsa: Genel Ek Bilgiler+Tapu Bilgileri+Tapuya Özel
+Bilgiler+Bağımsız Bölüm+İmar; Arazi: +Araziye Özel Bilgiler; Konut: +Yapıya
+Özel+Yapı Tür+tam Ek Bilgiler+Cephe/Kat detaylı Bağımsız Bölüm; Diğer Bina:
++Yapıya Özel+sade Ek Bilgiler+sadece Enerji Sınıflı Bağımsız Bölüm). Gerçek
+`templates/akbank.html` dosyası `fetch` ile çekilip `RaporTemplates.
+fillTemplate()`'den geçirildi — GABİM VERİ SETİ başlığının altında doğru
+üretilmiş, seçili temanın renklerini kullanan tablo HTML'i doğrulandı.
+Ekrandaki Gabim paneli (`activeSectionId = "gabimData"`) hatasız render
+oldu, 9 grup + 81 alan gösterdi (yeni Araziye Özel Bilgiler dahil). Konsol
+hatasız.
+
+Not: `Ana Ulaşım Yoluna Cephesi Var mı?` mevcut `landRoadFrontage` ("Kadastro/
+İmar Yoluna Cepheli mi?") alanına, `Yönetici Var mı?` site-içi durumuna eşlendi
+— GDYS'de ayrı/bağımsız alanlar olabilir; ekran görüntülerindeki tam etiket
+eşleşmesi teyit edilemedi, kullanıcı düzeltme isterse hızlı bir takip işi.
+
+Yedek: `backups/before-gabim-veri-seti-format_2026-07-17_06-47-49/`.
+
+## 0.0.115 - 2026-07-17 - Ziraat Bankası açıklama bölümleri
+
+Ziraat Bankası rapor akışına Açıklamalar bölümünde üç otomatik panel eklendi:
+
+- `Ziraat Bankası - Konumu ve Çevresel Özellikleri`
+- `Ziraat Bankası - Bölgenin Gelişimine İlişkin Analiz`
+- `Ziraat Bankası - Bölgedeki Yapılaşma Durumu`
+
+Paneller yalnızca Ziraat Bankası seçildiğinde görünür. Metinler; adres, yakın
+çevre, ana arter, altyapı, yapılaşma yoğunluğu, sosyal ihtiyaç mesafesi, yapı
+yaşı, gelir seviyesi, yapılaşma nizamı, yapılaşma hızı, kat aralığı ve planlama
+uyumu alanlarından otomatik üretilir. Alan değişikliklerinde açık panelin
+metni ve görünürlük durumu dinamik olarak güncellenir.
+
+Ziraat şablonuna şu placeholderlar eklendi:
+`{{ZIRAAT_KONUM_CEVRESEL}}`, `{{ZIRAAT_BOLGE_GELISIMI}}`,
+`{{ZIRAAT_YAPILASMA}}`. Placeholder rehberi güncellendi.
+
+Doğrulama: `node --check app.js`, `node --check src/templates/template-engine.js`,
+`tools/check-basic.js`, `tools/test-bank-templates.js` ve `git diff --check`
+başarılıdır.
+
+Yedek: `backups/before-ziraat-explanation-sections_2026-07-17_08-45-17/`.
+
+## 0.0.116 2026-07-17 Glass Tema Profili (Claude oturumu)
+
+Kullanıcı `C:\Users\90551\OneDrive\Masaüstü\claude\design_handoff_glass_theme\`
+klasöründe Claude Design ile hazırladığı bir tasarım handoff'u paylaşıp
+"tokens/theme-glass.css dosyasını sistemimize yükle" dedi. Bu klasör
+uygulamanın üçüncü, opt-in bir tema profili ("Glass" — buzlu cam/
+glassmorphism: yarı saydam yüzeyler, backdrop blur, arkada kayan renkli
+gradyan) için tam bir tasarım referansı içeriyordu (README.md +
+`tokens/theme-glass.css` + `tokens/colors.css` + `ui_kit/*.jsx` click-through
+prototip).
+
+Handoff'un kendi token adlandırması (`--brand`, `--accent`, `--warning`,
+`--danger`, genel `[data-theme="glass"]` seçicisi, var olmayan `.ds-surface`
+sınıfı) uygulamanın gerçek CSS değişken adları ve seçicileriyle (bkz.
+`themes/apple.css`/`navy-blue.css`: `body[data-app-theme="X"]`,
+`--green/--green-soft/--green-strong/--green-bright/--blue/--blue-soft/
+--amber/--amber-soft/--red`, gerçek yüzey sınıfları `.section-card`,
+`.assistant-panel`, `.panel-block`, `.status-strip article`, `.mobile-flow`,
+`.subsection`, `.table-shell`, `.sidebar`) BİREBİR EŞLEŞMİYORDU — sadece
+renk/blur/gölge DEĞERLERİ korunarak gerçek adlandırmaya uyarlandı (ör.
+handoff'un `--brand:var(--navy-700)`'ı → `--green:#213f77`; `--accent:
+var(--navy-600)`'ı → `--blue:#2d59ab`; genel `aside/article/.ds-surface`
+seçicileri → apple.css'in zaten kullandığı gerçek yüzey sınıf listesi).
+
+Yapılanlar:
+- `app/themes/glass.css` (YENİ): `body[data-app-theme="glass"]` kapsamında
+  tam token bloğu (bg/surface/ink/line/green/blue/amber/red/gold/shadow/ring),
+  arka planda üç radyal gradyanlı sabit `::before` katmanı, gerçek yüzey
+  sınıflarına + `table/th/input/select/textarea/button`'a `backdrop-filter:
+  blur(20px) saturate(180%)`, kenar çubuğuna (`.sidebar`) ayrı koyu-lacivert-
+  camsı gradyan + kenarlık, `input/select/textarea` için `!important`'lı
+  yarı saydam beyaz zemin (blur kuralını yenmek için — handoff'taki gibi).
+- `index.html`: `themes/glass.css` linki eklendi; `#themeProfileSelect`'e
+  üçüncü seçenek `<option value="glass">Glass</option>` eklendi.
+- `app.js`: tema seçim mantığı düzeltildi — eski kod `value === "navy-blue"
+  ? "navy-blue" : "apple"` şeklinde İKİLİ bir ternary idi ve "glass" seçilse
+  bile sessizce "apple"a zorlardı. `normalizeThemeProfile()` ile üç geçerli
+  değeri (`apple`/`navy-blue`/`glass`) tanıyan bir whitelist'e çevrildi.
+- `THEME-PROFILES.md`: Glass profili + kaynağı belgelendi. Ayrıca ÖNEMLİ bir
+  kapsam notu eklendi: bu üç profil sadece ANA ÇALIŞMA ALANINA
+  (`data-app-theme`) uygulanıyor — giriş ekranının (auth gate) kendi ayrı
+  açık/koyu geçişi (`data-gate-theme`, `data-gate-theme-btn`) var ve bu turda
+  DOKUNULMADI. Handoff'un README'si Glass'ı hem workspace hem auth gate için
+  tarif ediyordu ama ikisi kodda birbirinden bağımsız iki ayrı mekanizma;
+  gate'in ikili aç/kapa toggle'ını üçlü hale getirmek ayrı bir karar/iş
+  gerektirdiği için kapsam dışı bırakıldı — kullanıcı isterse ayrı istenebilir.
+
+Doğrulama: `node --check app.js`, tam test paketi (check-basic + 4 parser +
+test-bank-templates) YEŞİL. Tarayıcıda canlı test: select'te 3 seçenek de
+mevcut (`apple/navy-blue/glass`), "glass" seçilince `body[data-app-theme]`
+doğru güncelleniyor, gövde arka planı doğru gradyan, `.sidebar` doğru blur +
+gradyan, `.section-card` doğru blur + yarı saydam beyaz zemin gösteriyor;
+apple→navy-blue→glass ileri-geri geçişler ve localStorage kalıcılığı
+(`raporAppTheme`) sorunsuz; konsolda hata yok.
+
+Yedek: `backups/before-glass-theme_2026-07-17_10-24-00/`.
+
+## 0.0.117 - 2026-07-17 - Ziraat açıklamalarının Adres ve Konum'a taşınması
+
+- Banka alanında Ziraat Bankası seçiliyken Adres ve Konum bölümündeki standart
+  `Çevresel özellikler açıklaması` alanı gizlenir.
+- Bunun yerine `Ziraat Bankası - Konumu ve Çevresel Özellikleri`, `Ziraat
+  Bankası - Bölgenin Gelişimine İlişkin Analiz` ve `Ziraat Bankası - Bölgedeki
+  Yapılaşma Durumu` otomatik açıklama kartları Adres ve Konum bölümünde
+  gösterilir.
+- Ziraat dışındaki bankalarda mevcut çevresel açıklama alanı korunur; üç kart
+  açıklamalar bölümünde tekrar oluşturulmaz.
+
+Doğrulama: `node --check app.js`, `tools/check-basic.js`,
+`tools/test-bank-templates.js` ve `git diff --check` başarılı.
+
+Yedek: `backups/before-ziraat-address-environment-sections_2026-07-17_10-25-24/`.
+
+## 0.0.118 - 2026-07-17 - Taleplerim kartlarında konum özeti
+
+- Yerel ve bulut rapor kartlarında Konum bilgisine mahalle eklendi.
+- Ada/Parsel özeti artık `titleAdaParsel`/`adaParsel` bulunmadığında `blockNo`
+  ve `parcelNo` alanlarından otomatik oluşturuluyor.
+- Bulut özet payload'ına da mahalle ve ada/parsel alanları eklendi.
+
+Doğrulama: `cloud/report-library.js`, `cloud/cloud-sync.js` sözdizimi kontrolü,
+`tools/check-basic.js` ve `git diff --check` başarılı.
+
+## 0.0.120 - 2026-07-17 - Minimum içerik eşiği ve boş talep filtresi
+
+- Rapor kütüphanesine alınmadan önce düzenlenebilir alanlar ve yüklenen temel
+  belgeler üzerinden doluluk hesabı yapılır.
+- Toplam düzenlenebilir alanların en az `%5`'i veya en az 5 anlamlı veri dolu
+  değilse rapor yerel kütüphane indeksine yazılmaz.
+- Aynı eşik bulut senkron gönderiminde ve Taleplerim kartı listelemesinde de
+  uygulanır; eski boş yerel/bulut kartları otomatik gizlenir.
+- Boş kayıtlar filtrelenirken sekme sayaçları da yalnızca geçerli talepleri
+  sayar.
+
+Doğrulama: `app.js`, `cloud/report-library.js`, `cloud/cloud-sync.js` sözdizimi
+kontrolleri, `tools/check-basic.js` ve `git diff --check` başarılı.
+
+Yedek: `backups/before-library-minimum-content_2026-07-17_14-20-36/`.
+
+Yedek: `backups/before-library-location-summary_2026-07-17_10-53-56/`.
+
+## 0.0.119 - 2026-07-17 - Taleplerim belge durum kutucukları
+
+- Talep kartlarının üst kısmına beş küçük belge durum kutusu eklendi:
+  `T` (TAKBİS), `U` (Adres Kodu), `I` (İmar Durumu), `E` (Enerji Kimlik
+  Belgesi) ve `K` (KML / Konum).
+- Yüklenen belgeler yeşil, yüklenmeyenler kırmızı gösterilir; her kutuda
+  bölüm adı ve yüklenme durumu tooltip/erişilebilir etiket olarak bulunur.
+- Durumlar yalnızca boolean özet olarak tutulur; gerçek dosyalar bulut
+  senkron paketine eklenmez.
+- Eski yerel taslaklar kart çizimi sırasında blob içinden yeniden özetlenerek
+  yeni mahalle, ada/parsel ve belge durumlarını gösterebilir.
+
+Doğrulama: `cloud/report-library.js`, `cloud/cloud-sync.js` sözdizimi kontrolü,
+`tools/check-basic.js` ve `git diff --check` başarılı.
+## 0.0.121 - 2026-07-17 - Bos taslaklar icin siki cekirdek icerik filtresi
+
+- Varsayilan banka, il ve ilce alanlari tek basina rapor icerigi sayilmaz.
+- Yerel ve bulut kartlarinda musteri, mahalle, ada/parsel veya temel belge cekirdek icerik olarak aranir.
+- Bulut ozetlerine doluluk adedi ve yuzdesi eklenmis, eski ozetler de cekirdek icerik kontroluyle filtrelenmistir.
+
+Dogrulama: app.js, cloud/report-library.js ve cloud/cloud-sync.js syntax kontrolleri, tools/check-basic.js ve git diff --check basarilidir.
+
+Yedek: backups/before-library-minimum-content_2026-07-17_14-20-36/.
+## 0.0.122 - 2026-07-17 - Taleplerim liste görünümü
+
+- Taleplerim ekranına Kart/Liste görünüm seçici eklendi.
+- Liste görünümünde aynı rapor kartları tek satırlı, hızlı taranabilir bir düzende gösterilir; belge durumları, konum bilgileri ve işlem düğmeleri korunur.
+- Seçilen görünüm `rapor-library-view-mode` anahtarıyla cihazda saklanır ve mobil ekranda otomatik olarak dikey düzene uyarlanır.
+
+Doğrulama: `node --check cloud/report-library.js`, `tools/check-basic.js` ve `git diff --check` başarılı.
+
+## 0.0.123 2026-07-17 Giriş Ekranı Arka Planı: Statik Görsel Yerine Döngülü Video (Claude oturumu)
+
+Kullanıcı bir video linki (CloudFront CDN, `hf_...mp4`, ~2.4MB, 1280x720)
+paylaşıp "açılış ekranında arka plandaki görsel yerine yerleştir, loop
+şeklinde dönebilir" dedi. Video `app/assets/gate-bg/gate-bg-video.mp4`'e
+indirildi (mevcut `blueprint-background.png`/`-dark.png` ile aynı klasör,
+karşılaştırılabilir boyut — ek ağ yükü yok denecek kadar az).
+
+Yapılanlar:
+- `index.html`: gate-scene DOM'una `<video class="gate-video" autoplay muted
+  loop playsinline preload="auto">` eklendi (`.gate-blueprint`'ten önce, en
+  arkada). `prefers-reduced-motion: reduce` tercihi olan kullanıcılar için
+  video JS ile duraklatılıyor (mevcut `reduceMotion` kontrolüne eklendi —
+  zaten parçacık/parallax animasyonlarını kapatan aynı mantık).
+- `styles.css`: yeni `.gate-video` kuralı (`position:absolute; inset:-2%;
+  object-fit:cover; z-index:0`). `.gate-blueprint`'in `background-image`'inden
+  PNG katmanı (`url(...)`) kaldırıldı — yalnızca ince mavi/beyaz ızgara
+  çizgileri kaldı, artık videonun ÜZERİNDE teknik bir doku katmanı olarak
+  duruyor (koyu tema opaklık 0.34, açık tema 0.22→0.18 küçük ayarlamayla).
+  Video hem açık hem koyu gate temasında aynı — kullanıcı tek video verdi,
+  tema başına ayrı video yok; ızgara/vinyet renkleri temaya göre değişmeye
+  devam ediyor.
+- `styles.css`'te `#authGateOverlay .gate-blueprint`/`[data-gate-theme="light"]`
+  kurallarının ikisi de `background-size`'daki üçüncü ("cover", PNG'ye ait)
+  değeri kaldıracak şekilde güncellendi.
+
+Doğrulama: `node --check` gerek yok (CSS/HTML), `tools/check-basic.js` ve
+`tools/test-bank-templates.js` YEŞİL. Tarayıcıda canlı doğrulama: video
+elementi doğru kaynaktan yükleniyor (`readyState:4`, 1280x720), `paused:
+false`, `loop/muted/autoplay: true`, hata yok; `.gate-blueprint` artık
+`background-image`'inde `url(...)` İÇERMİYOR (yalnızca ızgara), doğru
+z-index sırasıyla videonun üzerinde görünüyor; `elementFromPoint` ile üstte
+`.gate-blueprint` olduğu (vinyet/parçacıklar da üstte kalmaya devam ediyor)
+doğrulandı. Açık/koyu tema geçişi test edilirken CSS `transition: opacity
+0.4s` yüzünden ardışık senkron testlerimde YANILTICI bir "hep 0.34" okuması
+aldım (her test kendi perturbation'ıyla geçişi sıfırlıyordu) — temiz bir
+sayfa yüklemesiyle (`localStorage` önceden "light" set edilip yeniden
+yüklenerek, hiç geçiş TETİKLENMEDEN) doğru değerin (0.18) uygulandığı
+kanıtlandı; gerçek kullanıcı deneyiminde bu bir sorun değil, sadece kendi
+test metodolojimin bir artefaktıydı.
+
+Cache-buster: `styles.css?v=20260717-1620` (index.html + check-basic.js pin
+birlikte güncellendi). `gate-bg-video.mp4` versiyonsuz referans edildi —
+mevcut PNG'lerle aynı konvansiyon (bu ikisi de hiç `?v=` almıyor).
+
+Not: Bu video yalnızca giriş ekranının (auth gate) arka planına eklendi;
+ana çalışma alanının Apple/Navy Blue/Glass tema sistemiyle (bkz. 0.0.116)
+ilgisi yok, ayrı bir mekanizma.
+
+Yedek alınmadı (küçük, kolay geri alınabilir bir değişiklik; git ile
+izlenebilir durumda).
+## 0.0.123 - 2026-07-17 - Talep kartlarÄ±ndan randevu rozetinin kaldÄ±rÄ±lmasÄ±
+
+- Taleplerim kartlarÄ±ndaki `Randevu: ...` gecikme ve kalan gÃ¼n rozeti kaldÄ±rÄ±ldÄ±.
+- Kart/liste gÃ¶rÃ¼nÃ¼mlerindeki diÄŸer durum, belge ve iÅŸlem alanlarÄ± korunuyor.
+
+DoÄŸrulama: `node --check cloud/report-library.js`, `tools/check-basic.js` ve
+`git diff --check` baÅŸarÄ±lÄ±.
+
+## 0.0.124 2026-07-17 Üç Yeni Tema Profili: Aurora, Clay, Neumorphism (Claude oturumu)
+
+Kullanıcı `C:\Users\90551\OneDrive\Masaüstü\claude\Experify Design System\`
+klasörünü paylaşıp "bu klasördeki 3 yeni oluşturulmuş temayı temalar
+bölümüne ekle" dedi. Bu klasör, önceki Glass tema handoff'unun (0.0.116)
+işaret ettiği tam "Experify Design System" projesiydi — `readme.md`'de
+"Altı tema profili" olarak Navy Blue/Apple/Glass'ın yanına 3 yeni "stil
+keşfi" tanımlıyordu: `tokens/theme-aurora.css`, `tokens/theme-clay.css`,
+`tokens/theme-neumorphism.css`.
+
+Aynı Glass yöntemi tekrarlandı: kaynak dosyaların `--brand/--accent/
+--warning/--danger` + genel `[data-theme]`/`aside/article/.ds-surface`
+sözlüğü, uygulamanın gerçek `body[data-app-theme="X"]` seçicisine ve gerçek
+değişken/sınıf adlarına (`--green/--blue/--amber/--red`, `.sidebar/
+.section-card/.assistant-panel/.panel-block/.status-strip article/
+.mobile-flow/.subsection/.table-shell`) birebir renk/gölge/blur DEĞERLERİ
+korunarak uyarlandı.
+
+Yapılanlar (`app/themes/` altında 3 YENİ dosya):
+- `aurora.css`: Lacivert+gold+teal 4 radyal "blob"un 18s'de yavaşça
+  döndüğü sabit bir arkaplan (`::before`, `blur(70px)`), üzerinde
+  neredeyse-opak beyaz (`rgba(255,255,255,.80-.92)`) + `blur(14px)
+  saturate(160%)` yüzeyler. Teal (`#1f9e8f`) etkileşim rengi olur.
+- `clay.css`: Pastel periwinkle taban (`#eceafd`/`#f6f5ff`), imza üçlü
+  gölge (dış gölge + 2 iç gölge — açık rim + koyu gölge), kenarlıksız,
+  büyük köşe yuvarlaklığı (18-34px), düğmeler `:active`'te 1px aşağı kayar.
+- `neumorphism.css`: Monokromatik "soft-UI" — yüzeyler sayfayla AYNI renkte
+  (`#e4e9f2`), yalnızca iki yönlü gölge çiftiyle (açık üst-sol/koyu alt-sağ)
+  kabartılmış; girdiler ters (inset) gölgeli "basılmış" görünür.
+- Clay ve Neumorphism ayrıca uygulamanın GERÇEKTEN tükettiği `--radius-s/
+  -m/-l` değişkenlerini de (`styles.css:31-33`) kendi kapsamları içinde
+  ezer — böylece köşe yuvarlaklığı stiller genelinde otomatik yayılır
+  (Glass/Aurora bu değişkenlere dokunmuyor, geometri Navy Blue/Apple ile
+  aynı kalıyor — tasarım dokümanının "Glass yalnızca renk/yüzey/blur/gölge
+  dokunur, geometriye asla" ilkesiyle tutarlı).
+- `index.html`: 3 yeni `<link rel="stylesheet">` + `#themeProfileSelect`'e
+  3 yeni `<option>` (Aurora/Clay/Neumorphism) eklendi.
+- `app.js`: `validThemeProfiles` whitelist'ine üç yeni değer eklendi (aksi
+  halde 0.0.116'daki `normalizeThemeProfile()` bunları tanımayıp sessizce
+  "apple"a düşürürdü).
+- `THEME-PROFILES.md`: üç yeni profil + kaynakları belgelendi.
+
+Doğrulama: `node --check app.js`, tam test paketi (check-basic + 4 parser +
+test-bank-templates) YEŞİL. Tarayıcıda TEMİZ sayfa yüklemeleriyle (her
+temayı `localStorage`'a önceden yazıp yeniden yükleyerek — CANLI/senkron
+switch testleri `transition: ...` yüzünden yanıltıcı ara-değer okumaları
+verdi, aynı 0.0.123'teki gate-teması testinde keşfedilen artefaktın
+aynısı) üç temanın da doğru uygulandığı kanıtlandı: Aurora
+(bg `#0b1430`, kart `rgba(255,255,255,.92)`), Clay (bg/girdi `#eceafd`,
+kart `#f6f5ff`, radius 26px, üçlü gölge), Neumorphism (bg/girdi/kart hepsi
+aynı `#e4e9f2`, iki yönlü dış gölge, radius 18px). Select değeri ve
+`body[data-app-theme]` her durumda doğru senkronize; konsolda hata yok.
+
+Cache-buster: `app.js?v=20260717-1700`, yeni tema dosyaları
+`?v=20260717-1700` ile linklendi (index.html + check-basic.js pin
+birlikte güncellendi).
+
+Not: Bu üç profil de (Glass gibi) yalnızca ana çalışma alanına
+uygulanıyor; giriş ekranına (auth gate) uygulanmadı.
+
+Yedek: `backups/before-three-new-themes_2026-07-17_16-55-50/`.
+## 0.0.124 - 2026-07-17 - Harita marker ve talep butonlarÄ± UX dÃ¼zeltmeleri
+
+- Leaflet varsayÄ±lan PNG marker yerine CSP uyumlu yerel CSS marker kullanÄ±yor; harita iÅŸaretÃ§ileri uzak gÃ¶rsel engeline takÄ±lmÄ±yor.
+- Taleplerim kart ve liste gÃ¶rÃ¼nÃ¼mlerindeki AÃ§, Kopyala, TamamlandÄ±, ArÅŸivle ve Sil dÃ¼ÄŸmeleri kompaktlaÅŸtÄ±rÄ±ldÄ±.
+- Liste gÃ¶rÃ¼mÃ¼nde iÅŸlem dÃ¼ÄŸmeleri tek satÄ±rda korunuyor; kart gÃ¶rÃ¼mÃ¼nde gereksiz yÃ¼kseklik azaltÄ±ldÄ±.
+
+DoÄŸrulama: `node --check app.js`, `node --check cloud/report-library.js`,
+`tools/check-basic.js` ve `git diff --check` baÅŸarÄ±lÄ±.
+## 0.0.125 - 2026-07-17 - Talep tamamlanma butonu metin sadeleÅŸtirmesi
+
+- Taslak kartlarÄ±ndaki `TamamlandÄ± Ä°ÅŸaretle` metni `TamamlandÄ±` olarak kÄ±saltÄ±ldÄ±.
+- TamamlanmÄ±ÅŸ raporlardaki `TaslaÄŸa Al` davranÄ±ÅŸÄ± korunuyor.
+
+DoÄŸrulama: `node --check cloud/report-library.js`, `tools/check-basic.js` ve
+`git diff --check` baÅŸarÄ±lÄ±.
+## 0.0.126 - 2026-07-17 - Harita dÄ±ÅŸa aktarma butonu metin sadeleÅŸtirmesi
+
+- `HARÄ°TAYI JPEG OLARAK KAYDET` butonu `JPG` olarak kÄ±saltÄ±ldÄ±.
+- DÃ¼ÄŸmenin `title` ve `aria-label` aÃ§Ä±klamalarÄ± korunarak kullanÄ±labilirlik sÃ¼rdÃ¼rÃ¼ldÃ¼.
+
+DoÄŸrulama: `node --check app.js`, `tools/check-basic.js` ve
+`git diff --check` baÅŸarÄ±lÄ±.
+
+## 0.0.127 2026-07-17 Clay/Neumorphism Sidebar Okunabilirlik Düzeltmesi (Claude oturumu)
+
+Kullanıcı "clay ve neomorfhsim de sol paneldeki yazılar beyaz olduğundan
+yazılar okunaklı değil. tüm temalarda fontlar okunaklı mı kontrol et" dedi.
+
+Kök neden: `styles.css`'in temel (`.sidebar`, `.brand p`, `.nav-button`,
+`.sync-panel p` vb.) kuralları sidebar'ı HER ZAMAN koyu zemin varsayarak
+alt öğelere DEĞİŞKEN KULLANMAYAN, sabit açık renkler veriyordu
+(`.brand p{color:#b9c5c1}`, `.nav-button{color:#dce6e2}`,
+`.sync-panel p{color:#c9d2cf}` — bkz. `styles.css:522-604`). Glass/Aurora
+temalarında sidebar'ı bilinçli olarak KOYU tuttuğum için sorun yoktu; ama
+Clay ve Neumorphism'de tüm yüzeyleri (sidebar dahil) açık/pastel yaptığım
+için bu sabit açık renkler artık açık zemin üzerinde okunaksız kalıyordu.
+`apple.css`'in kendi zamanında AYNI sorunu `.brand p`/`.nav-button`/
+`.nav-badge` için ayrı ayrı ezerek çözdüğünü fark ettim — aynı desen
+tekrarlandı.
+
+Yapılanlar (`themes/clay.css`, `themes/neumorphism.css`):
+- `.brand p`, `.sync-panel p` → `color: var(--muted)`.
+- `.nav-button` → `color: var(--ink)`; `:hover`/`.is-active` → okunaklı,
+  ayırt edici bir renk (Clay: `--green-strong` metin + `--green-soft` zemin;
+  Neumorphism: `--green` metin + inset gölge — temanın kendi "basılmış"
+  diline uygun).
+- `.nav-index`/`.sync-panel` arka planları da (eskiden `rgba(255,255,255,.1)`
+  — koyu zeminde görünür, açık zeminde görünmez) koyu-tonlu şeffaf
+  karşılıklarıyla değiştirildi.
+- `--muted` değerleri biraz KOYULAŞTIRILDI (Clay `#736fa0`→`#5f5a91`,
+  Neumorphism `#6a7794`→`#566079`) — WCAG kontrast hesabı ilk değerlerin
+  küçük metin için sınırda/yetersiz olduğunu gösterdi (4.31:1 ve 3.68:1,
+  AA eşiği 4.5:1); yeni değerler 5.78:1/5.15:1'e çıkarıyor. Bu değişken
+  sidebar dışında da (alt başlık metinleri vb.) kullanıldığından iyileştirme
+  her yerde faydalı, hiçbir yerde zarar vermiyor.
+
+Ayrı, bağımsız bir bulgu (kullanıcı fark etmeden önce kendim buldum): dört
+YENİ temanın da (Glass/Aurora/Clay/Neumorphism) yüzey-blur/gölge
+kurallarına `table`/`th`'i dahil etmiştim. Bu, ÖZEL koyu+beyaz satırların
+(`.malikler-total-row th` — TOPLAM satırı, `.comparable-valuation-summary-
+table th.is-accent-sale/rent`) kendi `background`'ını (`#1f2a32` vb.,
+`!important` yok) YÜKSEK ÖZGÜLLÜKLE (benim `body[data-app-theme="x"] th`
+seçicim onlarınkinden daha özgül) EZİYORDU — zemin açık yeşile dönüp beyaz
+yazı okunaksız kalırdı. Dört temadan da `table`/`th`'i kaldırdım; temel
+uygulamanın zaten var olan, tema-nötr `th{color:#42515b;background:#f0f3f1}`
+kuralı (veya Apple'ın kendi override'ı) devreye giriyor — hem her zaman
+okunaklı hem de özel toplam/vurgu satırlarını artık bozmuyor.
+
+Doğrulama: `tools/check-basic.js` + `tools/test-bank-templates.js` YEŞİL.
+Tarayıcıda TEMİZ sayfa yüklemeleriyle 4 yeni temanın hepsinde: sidebar
+zemin rengi doğru, `.brand p`/`.sync-panel p`/`.nav-button` (aktif VE
+pasif durum) rengi doğru hesaplandı (Node ile WCAG kontrast oranları da
+ayrıca doğrulandı — hepsi ≥4.3:1, çoğu ≥5:1). Sentetik bir
+`.malikler-total-row th` elemanı DOM'a eklenip 4 temanın hepsinde
+`rgb(31,42,50)` (koyu) zemin + beyaz yazı ile DOĞRU render edildiği
+kanıtlandı (önceden Clay/Neumorphism gibi açık temalarda bu satır da
+bozulmuş olacaktı — kullanıcı henüz bunu fark etmemişti). Konsolda hata yok.
+
+Cache-buster: `themes/glass.css?v=20260717-1830`, `themes/aurora.css?v=
+20260717-1830`, `themes/clay.css?v=20260717-1840`, `themes/neumorphism.css
+?v=20260717-1840` (index.html güncellendi).
+
+Yedek alınmadı (0.0.124'teki `backups/before-three-new-themes_2026-07-17_
+16-55-50/` yedeği zaten bu dosyaların ilk hallerini içeriyor; bu tur o
+işin doğrudan devamı/düzeltmesi).
+## 0.0.127 - 2026-07-17 - Malik tablosu Tapu Tarihi sÃ¼tunu geniÅŸletmesi
+
+- Malikler tablosunda Tapu Tarihi sÃ¼tunu minimum 120 px geniÅŸliÄŸe getirildi.
+- Tablo minimum geniÅŸliÄŸi 760 px olarak korunarak masaÃ¼stÃ¼nde dengeli, mobilde yatay kaydÄ±rmalÄ± okunabilir dÃ¼zen saÄŸlandÄ±.
+- Yevmiye sÃ¼tununa da sabit alan verilerek tarih alanÄ±nÄ±n sÄ±kÄ±ÅŸmasÄ± Ã¶nlendi.
+
+DoÄŸrulama: `node --check app.js`, `tools/check-basic.js` ve
+`git diff --check` baÅŸarÄ±lÄ±.
+## 0.0.128 - 2026-07-17 - Belge inceleme kurumlarÄ±na OSB seÃ§eneÄŸi
+
+- Belgeler ve Proje bÃ¶lÃ¼mÃ¼ndeki Ä°ncelenen Kurum aÃ§Ä±lÄ±r listesine `OSB BÃ¶lge MÃ¼dÃ¼rlÃ¼ÄŸÃ¼` eklendi.
+- Proje incelenen kurumlarÄ±nda mevcut olan aynÄ± seÃ§enek korunarak belge satÄ±rÄ± ile proje seÃ§imleri tutarlÄ± hale getirildi.
+
+DoÄŸrulama: `node --check app.js`, `tools/check-basic.js` ve
+`git diff --check` baÅŸarÄ±lÄ±.
+
+## 0.0.129 2026-07-17 Alt Bölüm Başlıkları ve Tablo Hücrelerinde Boşluk Artırımı (Claude oturumu)
+
+Kullanıcı "İncelenen Belgeler" ve "Ana Taşınmaz Teknik Bilgileri" alt bölüm
+başlıklarının ekran görüntülerini paylaşıp "iç tabloda çok kenara yapışık,
+tüm formatta bunun gibi kenara sıfır başlıklar var, alt tabloyu biraz
+büyüterek ya da başlıkları ayarlayarak daha güzel bir arayüz sağlayabiliriz"
+dedi.
+
+İnceleme: `.subsection h4 { margin: 0; }` ve `.subsection { gap: 12px; }`
+gerçekten sıfır kenar boşluğu kullanıyordu — bu, tek bir yerde değil,
+`.subsection` sınıfının kullanıldığı UYGULAMA GENELİNDEKİ (İncelenen
+Belgeler, Ana Taşınmaz Teknik Bilgileri, ve onlarca başka alt bölüm) her
+yerde aynı sıkışık görünüme yol açıyordu. Tablo hücreleri de (`th, td`)
+10px gibi standart ama görece dar bir dolgu kullanıyordu.
+
+Yapılanlar (`styles.css`, iki tek-satırlık, uygulama genelinde paylaşılan
+sınıf değeri):
+- `.subsection { gap: 12px }` → `gap: 16px` — başlık ile altındaki
+  içerik (tablo/form/grid) arasına biraz daha nefes payı.
+- `th, td { padding: 10px }` → `padding: 12px` — tüm tablo hücreleri
+  ("alt tablo") biraz daha ferah.
+
+Bu iki değişiklik `.subsection`/`th`/`td` kullanılan HER yerde otomatik
+uygulanır (kullanıcının "tüm formatta" ifadesiyle uyumlu) — ayrı ayrı
+onlarca alt bölümü tek tek düzeltmek yerine paylaşılan temel sınıflar
+düzeltildi.
+
+Doğrulama: `tools/check-basic.js` + tam test paketi YEŞİL. Tarayıcıda
+canlı ölçüm: "İncelenen Belgeler" alt bölümünde `subsectionGap: 16px`,
+`tdPadding: 12px` doğrulandı (öncekiler 12px/10px idi); ekran görüntüsüyle
+görsel olarak da başlık-tablo arası boşluğun arttığı teyit edildi. Konsolda
+hata yok, mevcut testler bozulmadı.
+
+Cache-buster: `styles.css?v=20260717-1730` (index.html + check-basic.js
+pin birlikte güncellendi).
+
+Yedek: `backups/before-subsection-spacing_2026-07-17_17-28-49/`.
+## 0.0.133 - 2026-07-17 - Alt panel başlıklarının dikey boşluğu
+
+Alt panel başlıkları üst kenara da yapışık görünmeye devam ettiği için ortak
+`.subsection-table-head` ve `.subsection-title-row` sınıflarına üst/alt iç boşluk
+eklendi. Başlıklar artık yatayda 10px, üstte 6px ve altta 4px içeriden başlar.
+Yedek: `backups/before-panel-heading-vertical-spacing_2026-07-17_18-09-31/`.
+
+## 0.0.132 - 2026-07-17 - Ana panel başlık hizalaması
+
+Ana Gayrimenkul, Bağımsız Bölüm ve Değerleme içindeki özel alt panellerin başlıkları
+tablo/panel sınırına yapışık görünüyordu. Bu panellerin ortak kullandığı
+`.subsection-title-row` sınıfına da 10px yatay iç boşluk eklendi. Böylece tablo
+başlıkları ve açıklama satırları tüm bölümlerde tutarlı biçimde içeriden başlar.
+Yedek: `backups/before-common-panel-heading-fix_2026-07-17_18-06-11/`.
+
+## 0.0.131 - 2026-07-17 - Alt tablo başlık hizalaması
+
+İncelenen Belgeler ve aynı ortak tablo yapısını kullanan alt tabloların başlıklarının
+tablo sınırına yapışık görünmesini önlemek için `.subsection-table-head` bileşenine
+10px yatay iç boşluk eklendi. Bu düzenleme masaüstü ve mobil görünümlerde ortak uygulanır.
+
+## 0.0.130 - 2026-07-17 - Saha Pro bölümünün kaldırılması
+
+Kullanıcı talebiyle 8. bölüm olarak eklenen Saha Pro tamamen kaldırıldı. Bölüm tanımı,
+iframe render kodu ve Saha Pro'ya özel CSS temizlendi; `saha-pro.html` dosyası da projeden
+çıkarıldı. İşlem öncesi yedek: `backups/before-remove-saha-pro_2026-07-17_17-52-04/`.
+
+## 0.0.129 - 2026-07-17 - Saha Pro bölüm entegrasyonu
+
+Kullanıcının paylaştığı `C:\Users\90551\OneDrive\Masaüstü\claude\saha çalışma\index.html`
+uygulama köküne `saha-pro.html` adıyla alındı. Ana uygulamanın global CSS ve JavaScript
+kodlarıyla çakışmayı önlemek için 7. Ana Gayrimenkul Özellikleri ile 8. Bağımsız Bölüm
+Özellikleri arasına `Saha Pro` başlığı eklendi ve içerik aynı kaynak üzerinden izole bir
+iframe çalışma alanı olarak gösterildi. Saha Pro'nun bağımsız PWA manifest/favicon
+referansları iframe içindeki gereksiz 404 isteklerini önlemek için kaldırıldı.
+
+`app.js` içinde `sahaPro` bölümü ve iframe oluşturma akışı, `styles.css` içinde masaüstü
+ve mobil yükseklikleri uyarlanan `.saha-pro-frame-wrap` / `.saha-pro-frame` stilleri eklendi.
+
+Doğrulama: `node --check app.js`, `node tools/check-basic.js`, `git diff --check` ve
+`http://127.0.0.1:5174/saha-pro.html` servis kontrolü başarılıdır.

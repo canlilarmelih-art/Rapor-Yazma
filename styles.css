@@ -1626,7 +1626,13 @@ td .free-lookup input {
 
 .subsection {
   display: grid;
-  gap: 12px;
+  gap: 16px;
+}
+
+/* 7 ve 8. bölümlerde alt paneller tablo sınırlarına yapışmamalı. */
+.section-building .subsection,
+.section-unit .subsection {
+  padding: 14px 16px 16px;
 }
 
 .subsection h4 {
@@ -2884,6 +2890,7 @@ td .free-lookup input {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  padding: 6px 10px 4px;
 }
 
 .table-shell {
@@ -3456,6 +3463,7 @@ table {
 
 .owners-table {
   table-layout: fixed;
+  min-width: 760px;
 }
 
 .owners-table th:nth-child(1),
@@ -3470,14 +3478,20 @@ table {
 
 .owners-table th:nth-child(3),
 .owners-table td:nth-child(3) {
-  width: 24%;
+  width: 22%;
 }
 
 .owners-table th:nth-child(4),
-.owners-table td:nth-child(4),
+.owners-table td:nth-child(4) {
+  width: 120px;
+  min-width: 120px;
+  white-space: nowrap;
+}
+
 .owners-table th:nth-child(5),
 .owners-table td:nth-child(5) {
-  width: 11%;
+  width: 90px;
+  min-width: 90px;
 }
 
 .owners-table th:nth-child(6),
@@ -3551,7 +3565,7 @@ table {
 
 th,
 td {
-  padding: 10px;
+  padding: 12px;
   border-bottom: 1px solid var(--line);
   text-align: left;
   vertical-align: top;
@@ -3869,6 +3883,7 @@ td textarea.table-textarea {
   justify-content: space-between;
   align-items: flex-start;
   gap: 16px;
+  padding: 6px 10px 4px;
 }
 
 .subsection-title-row h4,
@@ -4327,6 +4342,38 @@ td textarea.table-textarea {
   width: 100%;
   height: 100%;
   font: inherit;
+}
+
+/* Leaflet'in varsayilan PNG marker'i CSP nedeniyle dis CDN'den yuklenemez. */
+.experify-map-marker {
+  width: 26px !important;
+  height: 34px !important;
+  border: 0;
+  background: transparent;
+}
+
+.experify-map-marker::before {
+  content: "";
+  display: block;
+  width: 22px;
+  height: 22px;
+  margin: 1px 0 0 1px;
+  border: 3px solid #fff;
+  border-radius: 50% 50% 50% 0;
+  background: #2675d9;
+  box-shadow: 0 2px 6px rgba(15, 35, 65, 0.35);
+  transform: rotate(-45deg);
+}
+
+.experify-map-marker::after {
+  content: "";
+  position: absolute;
+  top: 9px;
+  left: 9px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #fff;
 }
 
 .static-map {
@@ -5551,6 +5598,68 @@ a:focus-visible,
   gap: 12px;
 }
 
+.library-view-mode {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface-muted);
+}
+
+.library-view-mode-button {
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 7px 10px;
+  cursor: pointer;
+}
+
+.library-view-mode-button.is-active {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow-1);
+}
+
+.library-cards-grid.is-list {
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.library-cards-grid.is-list .library-card {
+  grid-template-columns: minmax(180px, 1.05fr) minmax(360px, 2.8fr) auto;
+  align-items: center;
+  column-gap: 16px;
+  padding: 10px 12px;
+}
+
+.library-cards-grid.is-list .library-card-head {
+  grid-column: 1;
+  align-items: center;
+}
+
+.library-cards-grid.is-list .library-card-facts {
+  grid-column: 2;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  align-items: center;
+}
+
+.library-cards-grid.is-list .library-card-meta {
+  grid-column: 1;
+}
+
+.library-cards-grid.is-list .library-card-actions {
+  grid-column: 3;
+  grid-row: 1 / span 3;
+  margin-top: 0;
+  justify-content: flex-end;
+}
+
 .library-empty-state {
   grid-column: 1 / -1;
   color: var(--muted);
@@ -5578,6 +5687,7 @@ a:focus-visible,
   justify-content: space-between;
   align-items: flex-start;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .library-card-head h4 {
@@ -5602,6 +5712,37 @@ a:focus-visible,
   color: var(--amber);
 }
 
+.library-document-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
+.library-document-status-item {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border: 1px solid currentColor;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1;
+  cursor: help;
+}
+
+.library-document-status-item.is-uploaded {
+  background: var(--green-soft);
+  color: var(--green);
+}
+
+.library-document-status-item.is-missing {
+  background: #fdf0f0;
+  color: var(--red);
+}
+
 .library-card-facts {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -5624,8 +5765,24 @@ a:focus-visible,
 
 .library-card-updated {
   margin: 0;
-  font-size: 11px;
+  font-size: 10px;
   color: var(--muted);
+  white-space: nowrap;
+}
+
+.library-card-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  min-width: 0;
+}
+
+.library-card-sync {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  margin: 0;
 }
 
 .library-card-sync:empty {
@@ -5635,9 +5792,10 @@ a:focus-visible,
 .library-badge {
   display: inline-block;
   border-radius: 999px;
-  padding: 2px 9px;
-  font-size: 11px;
+  padding: 2px 7px;
+  font-size: 10px;
   font-weight: 700;
+  line-height: 1.2;
 }
 
 .library-badge-ok {
@@ -5658,8 +5816,31 @@ a:focus-visible,
 .library-card-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 4px;
   margin-top: 4px;
+}
+
+.library-card-actions .mini-button,
+.library-card-actions .primary-button {
+  min-height: 30px;
+  padding: 0 8px;
+  border-radius: 7px;
+  font-size: 11px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.library-cards-grid.is-list .library-card-actions {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.library-cards-grid.is-list .library-card-actions .mini-button,
+.library-cards-grid.is-list .library-card-actions .primary-button {
+  min-height: 28px;
+  padding: 0 6px;
+  font-size: 10px;
 }
 
 .library-danger-button {
@@ -5680,6 +5861,22 @@ a:focus-visible,
   .library-card-facts {
     grid-template-columns: 1fr;
   }
+
+  .library-cards-grid.is-list .library-card {
+    grid-template-columns: 1fr;
+  }
+
+  .library-cards-grid.is-list .library-card-head,
+  .library-cards-grid.is-list .library-card-facts,
+  .library-cards-grid.is-list .library-card-meta,
+  .library-cards-grid.is-list .library-card-actions {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .library-cards-grid.is-list .library-card-facts {
+    grid-template-columns: 1fr;
+  }
 }
 
 .library-extend-button {
@@ -5687,11 +5884,11 @@ a:focus-visible,
   border-radius: 999px;
   background: var(--surface-muted);
   color: var(--muted);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
-  padding: 2px 9px;
+  padding: 2px 7px;
   cursor: pointer;
-  margin-left: 4px;
+  margin-left: 2px;
 }
 
 .library-extend-button:hover {
@@ -5746,22 +5943,38 @@ a:focus-visible,
   color: var(--green);
 }
 
-.library-card-deadline {
-  margin: 0;
-}
-
 .library-badge-danger {
   background: #fdecec;
   color: var(--red);
 }
 
 .library-card-head {
-  justify-content: flex-start;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 6px 8px;
 }
 
 .library-card-head h4 {
-  flex: 1;
+  grid-column: 1;
+  grid-row: 1;
+  flex: none;
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.library-card-head > .library-active-pill {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.library-card-head > .library-document-status {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  justify-self: end;
+  margin-left: 0;
 }
 
 .library-card-badges {
@@ -5885,20 +6098,29 @@ a:focus-visible,
   transition: background 0.4s ease;
 }
 
+#authGateOverlay .gate-video {
+  position: absolute;
+  inset: -2%;
+  width: 104%;
+  height: 104%;
+  object-fit: cover;
+  z-index: 0;
+  pointer-events: none;
+}
+
 #authGateOverlay .gate-blueprint {
   position: absolute;
   inset: -6%;
   background-image: linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
-    url("assets/gate-bg/blueprint-background-dark.png");
-  background-size: 56px 56px, 56px 56px, cover;
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 56px 56px, 56px 56px;
   background-position: center;
   opacity: 0.34;
   filter: contrast(1.05) brightness(0.96);
   transform: scale(1.02);
   animation: gateBreathe 26s ease-in-out infinite;
   will-change: transform;
-  transition: background-image 0.4s ease, opacity 0.4s ease;
+  transition: opacity 0.4s ease;
 }
 
 #authGateOverlay[data-gate-theme="light"] .gate-scene {
@@ -5907,9 +6129,8 @@ a:focus-visible,
 
 #authGateOverlay[data-gate-theme="light"] .gate-blueprint {
   background-image: linear-gradient(rgba(11, 61, 117, 0.07) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(11, 61, 117, 0.07) 1px, transparent 1px),
-    url("assets/gate-bg/blueprint-background.png");
-  opacity: 0.22;
+    linear-gradient(90deg, rgba(11, 61, 117, 0.07) 1px, transparent 1px);
+  opacity: 0.18;
   filter: none;
 }
 
@@ -6007,6 +6228,120 @@ a:focus-visible,
   animation: gateRise 0.5s cubic-bezier(0.4, 0, 0.2, 1) both;
 }
 
+/* Open Design motion dili: yavas ambient drift, kontrollu derinlik ve
+   reduced-motion tercihini koruyan tek bir hareket katmani. */
+.workspace {
+  position: relative;
+  isolation: isolate;
+  background:
+    radial-gradient(900px 420px at 88% -8%, rgba(45, 89, 171, 0.10), transparent 68%),
+    radial-gradient(760px 360px at -12% 26%, rgba(215, 178, 106, 0.08), transparent 70%);
+}
+
+.workspace::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.46;
+  background-image:
+    linear-gradient(rgba(45, 89, 171, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(45, 89, 171, 0.035) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.8), transparent 62%);
+  animation: workspaceGridDrift 36s linear infinite;
+}
+
+.workspace > * {
+  position: relative;
+  z-index: 1;
+}
+
+.topbar {
+  transition: background-color var(--speed) var(--ease-out),
+    box-shadow var(--speed) var(--ease-out);
+}
+
+.topbar-actions > * {
+  transition: transform var(--speed-fast) var(--ease-out),
+    box-shadow var(--speed-fast) var(--ease-out),
+    border-color var(--speed-fast) var(--ease-out);
+}
+
+@media (hover: hover) {
+  .topbar-actions > *:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-1);
+  }
+
+  .nav-button {
+    transition: background-color var(--speed-fast) var(--ease-out),
+      color var(--speed-fast) var(--ease-out),
+      transform var(--speed-fast) var(--ease-out);
+  }
+
+  .nav-button:hover {
+    transform: translateX(2px);
+  }
+
+  .section-card {
+    transition: box-shadow var(--speed) var(--ease-out),
+      border-color var(--speed) var(--ease-out);
+  }
+
+  .section-card:hover {
+    border-color: rgba(58, 86, 145, 0.32);
+    box-shadow: var(--shadow-2);
+  }
+}
+
+#authGateOverlay .gate-scene {
+  background:
+    radial-gradient(760px 440px at 50% 46%, rgba(45, 89, 171, 0.24), transparent 72%),
+    linear-gradient(160deg, #0d1c3a, #060f22);
+  animation: gateScenePulse 18s ease-in-out infinite alternate;
+}
+
+#authGateContent .gate-card {
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  transition: box-shadow var(--speed) var(--ease-out),
+    transform var(--speed) var(--ease-out);
+}
+
+#authGateContent .gate-card .primary-button,
+#authGateContent .gate-card button[type="submit"] {
+  transition: transform var(--speed-fast) var(--ease-out),
+    box-shadow var(--speed-fast) var(--ease-out),
+    filter var(--speed-fast) var(--ease-out);
+}
+
+@media (hover: hover) {
+  #authGateContent .gate-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 28px 72px rgba(6, 15, 34, 0.52);
+  }
+
+  #authGateContent .gate-card .primary-button:hover,
+  #authGateContent .gate-card button[type="submit"]:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.05);
+    box-shadow: 0 10px 24px rgba(45, 89, 171, 0.28);
+  }
+}
+
+@keyframes workspaceGridDrift {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(44px, 22px, 0); }
+}
+
+@keyframes gateScenePulse {
+  from { background-position: 50% 46%, 0 0; }
+  to { background-position: 54% 42%, 0 0; }
+}
+
 @keyframes gateBreathe {
   0%, 100% {
     transform: scale(1.02) translate3d(0, 0, 0);
@@ -6044,9 +6379,22 @@ a:focus-visible,
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .workspace::before,
+  #authGateOverlay .gate-scene {
+    animation: none !important;
+  }
+
   #authGateOverlay .gate-blueprint,
   #authGateOverlay .gate-particle,
   #authGateContent .gate-card {
     animation: none !important;
+  }
+}
+
+/* 7 ve 8. bölümlerde mobilde de alt paneller kenarlara yapışmamalı. */
+@media (max-width: 1180px) {
+  .section-building .subsection,
+  .section-unit .subsection {
+    padding: 12px 10px 14px;
   }
 }
