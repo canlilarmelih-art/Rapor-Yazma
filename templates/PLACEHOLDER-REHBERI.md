@@ -195,6 +195,16 @@ verilerinizle doldurur ve Word ile açılabilen bir `.doc` dosyası indirir.
 | `{{DEGERLENDIRME_TABLOSU}}` | Değerleme özet tablosu (HTML tablo) * |
 | `{{DEGERLENDIRME_SEMASI}}` | Değerleme yöntemleri hesap açıklaması |
 | `{{DEGERLEME_YONTEMI_ACIKLAMASI}}` | Değerleme yöntemi seçimi açıklaması |
+| `{{SATIS_KABILIYETI_ACIKLAMASI}}` | Satış kabiliyeti açıklaması — yalnızca "Satılabilir" DIŞINDAKİ bir seçimde dolu gelir, satılabilir ise boştur * |
+| `{{KIRA_ACIKLAMASI}}` | Kira açıklaması (yasal/mevcut kira değerlerinden otomatik) * |
+| `{{EMLAK_BEYAN_DEGERI_ACIKLAMASI}}` | Emlak beyan değeri açıklaması — "Emlak Beyan Değeri" kutucuğu işaretliyse değer metni, işaretli değilse (yalnızca Ziraat Bankası şablonunda) "bilgi paylaşılmadı" metni, diğer bankalarda işaretsizken boştur * |
+| `{{KAT_BAZINDA_INDIRGENMIS_ALAN_TABLOSU}}` | Kat bazında indirgenmiş alan tablosu (yasal/mevcut, HTML tablo) * |
+
+Değerleme bölümünün önerilen sırası (bkz. `handoff.md`): Değerleme Yöntemi
+Açıklaması → Hisse Açıklaması (varsa) → Satış Kabiliyeti Açıklaması
+(satılabilir değilse) → Kira Açıklaması → Emlak Beyan Değeri Açıklaması →
+Değerleme Özet Tablosu → Kat Bazında İndirgenmiş Alan Tablosu → Değerleme
+Yöntemleri Hesap Açıklaması. Tüm banka şablonları bu sırayı kullanır.
 
 ### Ziraat Bankası açıklama bölümleri
 

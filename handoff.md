@@ -6,7 +6,270 @@ Bu belge, bir sonraki geliştirici/oturum için projeyi çalıştırma, doğrula
 oturumda yapılanları özetler.
 
 ---
-## 0.0.136 - 2026-07-17 - GABİM VERİ SETİ Word çıktısı GDYS ile bire bir renk/ızgara uyumu
+## 0.0.146 - 2026-07-18 - Değerleme bölümü: tüm şablonlarda ortak sıralama
+
+Kullanıcı, 7 bankayı yan yana karşılaştıran bir görsel paylaşıp Değerleme
+bölümündeki alt kısımların olması gereken sırasını belirtti ve bu sırayı
+TÜM banka şablonlarına uygulanmasını istedi:
+
+1. Değerleme Yöntemi Açıklaması
+2. Hisse Açıklaması (varsa)
+3. Satış Kabiliyeti Açıklaması (satılabilir değilse; satılabilirse boş)
+4. Kira Açıklaması
+5. Emlak Beyan Değeri Açıklaması (checkbox işaretliyse değer metni, değilse
+   — yalnızca Ziraat şablonunda — "bilgi paylaşılmadı" metni, diğerlerinde boş)
+6. Değerleme Özet Tablosu
+7. Kat Bazında İndirgenmiş Alan Tablosu
+8. Değerleme Yöntemleri Hesap Açıklaması
+
+### Eksik altyapı — 4 kalemin placeholder'ı yoktu
+
+Araştırma: (1) Değerleme Yöntemi Açıklaması → mevcut
+`{{DEGERLEME_YONTEMI_ACIKLAMASI}}`; (2) Hisse Açıklaması → mevcut
+`{{HISSE_ACIKLAMASI}}`; (6) Değerleme Özet Tablosu → mevcut
+`{{DEGERLENDIRME_TABLOSU}}`; (8) Hesap Açıklaması → mevcut
+`{{DEGERLENDIRME_SEMASI}}`. Ama (3) Satış Kabiliyeti, (4) Kira, (5) Emlak
+Beyan Değeri ve (7) Kat Bazında İndirgenmiş Alan Tablosu'nun `app.js`'te
+üretici fonksiyonu/ekran paneli VARDI ama hiçbir şablon placeholder'ına
+BAĞLANMAMIŞTI.
+
+`app.js`'e eklenen 3 yeni fonksiyon:
+- `buildValuationSaleabilityExplanationForExport()`: mevcut
+  `buildValuationSaleabilityExplanation()` HER durumda (satılabilir dahil)
+  bir cümle döndürüyordu; bu sarmalayıcı satılabilir durumda boş döner.
+- `buildPropertyTaxDeclarationExplanationForExport()`: ekrandaki
+  `refreshPropertyTaxDeclarationExplanation()` yalnızca DOM güncelliyordu,
+  değer döndürmüyordu; aynı birleştirme mantığını (checkbox+değer / Ziraat
+  fallback) saf fonksiyon olarak tekrar üretir.
+- `buildExplanationsFloorValuationWordTableHtml()`: ekrandaki
+  `createExplanationsFloorValuationTablePanel()` (DOM tablosu, "14 -
+  Açıklamalar" bölümünde) satır içi stille Word HTML tablosuna çevrilir —
+  aynı `buildExplanationsFloorValuationRows`/`getExplanationsFloorValuationMetrics`
+  hesap fonksiyonlarını kullanır, veri yoksa boş döner (tablo hiç görünmez).
+
+`src/templates/template-engine.js`'e 4 yeni placeholder:
+`SATISKABILIYETIACIKLAMASI`, `KIRAACIKLAMASI`, `EMLAKBEYANDEGERIACIKLAMASI`
+(hepsi `t:` — paragraf), `KATBAZINDAINDIRGENMISALANTABLOSU` (`h:` — ham HTML
+tablo).
+
+### Şablon değişikliği (8 dosyanın tamamı)
+
+`akbank`, `halkbank`, `isbankasi`, `vakifbank`, `vakifkatilim`, `yapikredi`,
+`kuveytturk`, `ziraat`: Değerleme bölümünün içeriği yukarıdaki 8 kalem
+sırasına göre yeniden düzenlendi. Bankaya özgü ek içerik (ör. yapikredi'nin
+"Değerleme ve Tefrişat"/"Olumlu-Olumsuz Faktörler" alt bölümleri, ziraat'in
+artık gereksiz kalan statik "rayiç değeri paylaşılmadı" cümlesi — bunun
+yerine artık `{{EMLAK_BEYAN_DEGERİ_ACIKLAMASI}}` dinamik olarak aynı metni
+üretiyor) korunmuş, yalnızca 8 kalemin göreli sırası ve konumu düzeltilmiş,
+eski tekrarlı `{{SALEABİLİTY_NOTE}}` satırları yerini yeni koşullu
+`{{SATIS_KABILIYETI_ACIKLAMASI}}`'a bırakmıştır.
+
+`templates/PLACEHOLDER-REHBERI.md`: yeni 4 placeholder + önerilen sıra notu
+eklendi.
+
+`index.html`: `app.js?v=20260718-0230`. `tools/check-basic.js` sabit sürüm
+kontrolü aynı değere güncellendi.
+
+Doğrulama: `node --check app.js`, `node --check src/templates/template-engine.js`,
+`tools/check-basic.js`, `tools/test-bank-templates.js`,
+`tools/test-comparable-market-analysis.js` geçti. 8 şablonun her birinde
+yeni 4 placeholder'ın tamamının bulunduğu ve `<div>`/`</div>` sayılarının
+dengeli kaldığı doğrulandı. **Canlı Word'de görsel doğrulama YAPILAMADI**
+(bkz. 0.0.56 D7, 0.0.142) — kullanıcının bir sonraki çıktıda 8 kalemin
+sırasını ve özellikle koşullu görünen/gizlenen kalemleri (hisse yoksa,
+satılabilirse, emlak beyanı işaretli değilken) teyit etmesi gerekir.
+
+Ayrı yedek alınmadı; önceki `backups/before-library-cloud-meta-row_2026-07-17_19-11-29`
+taban olarak yeterli.
+
+---
+## 0.0.145 - 2026-07-17 - Emsaller Word tablosu: alakasız arsa/konut satırları gizlenir
+
+Kullanıcı: "emsallerde gözükmeyen satırlar örnek konut emsallerinde imar
+lejantı yapılaşma nizamı vb template bölümünde belirtilmemeli."
+
+`buildComparableMatrixWordTableHtml()` (Emsaller Word çıktısı) mevcut alan
+listesini yalnızca `field.hidden` ile filtreliyordu; ekrandaki
+`getComparableDisplayFields(viewMode)`'un kullandığı arsa/konut-özel alan
+gizleme mantığı ("Tüm Emsaller" görünümünde ekranda hepsi görünür — bkz.
+0.0.62 — ama Word çıktısı raporun gerçek emsal bileşimine göre budanmalı)
+export'a hiç uygulanmıyordu. Sonuç: rapordaki emsallerin TAMAMI konut/yapı
+olsa bile "İmar Lejandı", "Yapılaşma Nizamı", "Emsal / KAKS", "Kat Adedi",
+"Hesaplanan Emsal" gibi arsaya özel satırlar (herhangi bir emsalde tesadüfen
+değer varsa) boş kutularla tabloya giriyordu; tersi durumda ("Oda Sayısı"
+gibi konuta özel alanlar) sadece arsa emsalleri olan bir raporda görünüyordu.
+
+Düzeltme: `buildComparableMatrixWordTableHtml()` artık raporun GERÇEK emsal
+satırlarına bakıyor — `isLandComparable(row)` ile hiç arsa/tarla emsali
+yoksa `comparableLandOnlyFieldKeys` alanlarını, hiç konut/yapı emsali yoksa
+`comparableResidentialOnlyFieldKeys` alanlarını baştan filtreden çıkarıyor.
+Karma bir raporda (hem arsa hem konut emsali varsa) her iki alan grubu da
+kalmaya devam ediyor — o durumda satırın kendisi zaten mevcut "en az bir
+emsalde değer var mı" filtresiyle korunuyor.
+
+Ekrandaki canlı Emsaller paneli (`getComparableDisplayFields`,
+`Tüm Emsaller`/`Konut`/`Arsa` görünüm seçici) DEĞİŞMEDİ — yalnızca Word
+export'una giden `{{EMSAL_MATRISI}}` tablosu etkilendi.
+
+Doğrulama: `node --check app.js`, `tools/check-basic.js`,
+`tools/test-bank-templates.js`, `tools/test-comparable-market-analysis.js`
+geçti. **Canlı Word'de görsel doğrulama YAPILAMADI** (bkz. 0.0.56 D7,
+0.0.142) — kullanıcının konut-only ve arsa-only birer örnek raporda
+Emsaller tablosunu kontrol etmesi gerekir.
+
+Ayrı yedek alınmadı; önceki `backups/before-library-cloud-meta-row_2026-07-17_19-11-29`
+taban olarak yeterli.
+
+---
+## 0.0.144 - 2026-07-17 - Şablon sayfa kenar boşlukları daraltıldı
+
+Kullanıcı: "template dosyalarında sağ ve sol girintileri daralt aynı
+şekilde üst ve alt girintileri de daralt." Ardından ilk daraltma (16pt/14pt)
+yetersiz bulunup "hepsini 10 mt yap" (mm sanıldı, sonra "10 pt yap hepsini"
+diye netleştirildi) talimatıyla tüm kenarlar TEK bir değere eşitlendi.
+
+Tüm 10 şablon dosyasındaki `@page { ... margin: ... }` kuralı, önceki farklı
+üst/alt-sağ/sol değerlerinden (30pt 26pt, kuveytturk 28pt 24pt, masraf
+yazısı 40pt 34pt, yatay ek tablo 24pt 22pt) çıkıp **dört kenarda da ortak
+`margin: 10pt;`** oldu (CSS'te tek değer = tüm kenarlar eşit).
+
+app.js'in kendi ürettiği genel Word dokümanının (banka şablonu
+kullanılmadığında) `@page`/`@page WordLandscape` kenar boşuklarına
+DOKUNULMADI — kullanıcı özellikle "template dosyalarında" dedi.
+
+Doğrulama: `node --check app.js`, `tools/check-basic.js`,
+`tools/test-bank-templates.js`, `tools/test-comparable-market-analysis.js`
+geçti. **Canlı Word'de görsel doğrulama YAPILAMADI** (bkz. 0.0.56 D7,
+0.0.142) — kullanıcının bir sonraki çıktıda kenar boşluklarını teyit
+etmesi gerekir.
+
+Ayrı yedek alınmadı; önceki `backups/before-library-cloud-meta-row_2026-07-17_19-11-29`
+taban olarak yeterli.
+
+---
+## 0.0.143 - 2026-07-17 - Sayfa başı kırılması düzeltmesi: her paragraf değil, yalnızca başlık
+
+Kullanıcı, 0.0.141'de eklenen sayfa başı davranışını canlı Word çıktısında
+kontrol edip: "başlıklar ayrı sayfada olacak, sen her bir paragrafı ayrı
+sayfaya koymuşsun. Kompakt bir template istiyorum, ne kadar az sayfa o
+kadar iyi" dedi.
+
+### Kök neden
+
+0.0.141'de `page-break-before: always` kuralı, bölümü saran
+`<div class="pg-section">...</div>` üzerine CSS SINIFI olarak konmuştu.
+CSS spesifikasyonuna göre `page-break-before` MİRAS ALINMAZ, ama Word'ün
+`.doc` HTML dönüştürücüsü bunu doğru uygulamıyor: div üzerindeki kuralı
+içindeki HER blok elemana (her `<p>`, her satır) da uyguluyor — sonuç
+olarak bölüm başlığı değil, bölümün İÇİNDEKİ HER PARAGRAF kendi sayfasında
+başlıyordu. Bu, Word'ün bilinen bir `.doc`/HTML içe aktarma kısıtıdır.
+
+### Düzeltme
+
+8 şablonun tamamında (`akbank`, `halkbank`, `isbankasi`, `kuveytturk`,
+`vakifbank`, `vakifkatilim`, `yapikredi`, `ziraat`):
+- `.pg-section { page-break-before: always; }` CSS kuralı KALDIRILDI.
+- Bunun yerine sayfa başı kırılması yalnızca ilgili bölümün BAŞLIK
+  etiketine (h2, veya kuveytturk'te `.kt-sec` div'i) satır içi
+  `style="page-break-before:always;"` olarak eklendi — tek bir elemana,
+  miras riski olmadan.
+- `.pg-section` div'i hâlâ duruyor ama artık yalnızca tek sayfaya sığdırma
+  amaçlı punto/hücre boşluğu sıkılaştırma kuralları için kullanılıyor
+  (page-break içermiyor).
+
+Sonuç: Değerleme, Emsaller, GDYS Yardımcı Bilgiler ve Gabim bölümlerinin
+her biri hâlâ kendi sayfasında BAŞLIYOR (yalnızca başlıkta bir kez), ama
+bölüm içindeki paragraflar artık gereksiz yere sayfa sayfa bölünmüyor —
+belge önceki haline göre çok daha az sayfa kullanıyor.
+
+Doğrulama: `node --check app.js`, `tools/check-basic.js`,
+`tools/test-bank-templates.js`, `tools/test-comparable-market-analysis.js`
+geçti. 8 şablonda `.pg-section` sınıfında artık `page-break-before` kuralı
+kalmadığı ve her şablonda tam olarak 4 satır içi
+`style="page-break-before:always;"` bulunduğu (ne fazla ne eksik)
+doğrulandı; `<div>`/`</div>` sayıları hâlâ dengeli. **Canlı Word'de görsel
+doğrulama yine YAPILAMADI** (bkz. 0.0.56 D7, 0.0.142) — kullanıcının bir
+sonraki Word çıktısında sayfa sayısının makul düştüğünü teyit etmesi
+gerekir.
+
+Ayrı yedek alınmadı; önceki `backups/before-library-cloud-meta-row_2026-07-17_19-11-29`
+taban olarak yeterli.
+
+---
+## 0.0.141 - 2026-07-17 - Değerleme/Emsaller/GDYS Yardımcı/Gabim: sayfa başı + tek sayfaya sığdırma
+
+Kullanıcı: "tüm template bölümlerinde bazı bölümler sayfa başından başlasın
+ve tek sayfaya sığsın, gerekirse puntoları ve hücre boşluklarını
+düşürebilirsin" — Değerleme Bölümü, Emsaller Bölümü, GDYS Yardımcı
+Bilgiler Bölümü, Gabim Bölümü için.
+
+Her banka şablonunda (8 dosya: akbank, halkbank, isbankasi, kuveytturk,
+vakifbank, vakifkatilim, yapikredi, ziraat) bu dört bölümün başlığı hangi
+metinse (bkz. şablon farklılıkları — ör. yapikredi'de "Gayrimenkul
+Değerleme", ziraat'te "7. DEĞERLEME") o başlıktan bir sonraki hedef
+başlığa kadarki içerik `<div class="pg-section">...</div>` ile sarıldı.
+Yeni `.pg-section` CSS kuralı (her şablonun kendi `<style>` bloğunda):
+- `page-break-before: always` — Word'de bu blok her zaman yeni sayfada başlar.
+- `table.meta`/`table.kt-form`/`.word-table` hücrelerinde daha sıkı
+  padding + küçük punto — yalnızca bu 4 bölüm için, dokümanın geri kalanı
+  etkilenmez.
+
+Statik şablon tabloları (GDYS Yardımcı Bilgiler) CSS ile sıkıştırılabildi;
+Emsaller/Değerleme/Gabim içeriği app.js'te SATIR İÇİ stille üretildiği için
+(CSS'ten etkilenmez) doğrudan orada küçültüldü:
+- `buildSimpleHtmlTable()`: yeni `options.compact` parametresi (yalnızca
+  Emsaller matrisi bunu `true` geçiyor — `buildComparableMatrixWordTableHtml()`)
+  — punto 7pt→5.5pt, hücre dolgusu 2.4pt 3pt→1pt 1.6pt.
+- `buildValuationSummaryWordTableHtml()` (Değerleme özet tablosu, tek
+  kullanım yeri Değerleme Bölümü): punto 9pt→7pt, hücre dolgusu 6pt
+  8pt→3pt 5pt.
+- `buildGabimDataSetWordHtml()` (bkz. 0.0.142/0.0.140): punto ve
+  boşluklar bir miktar daha sıkıldı (kutu 7pt→6.3pt, etiket 6pt→5.3pt vb.).
+
+Not: "tek sayfaya sığma" garantisi yoktur — çok sayıda emsal (7'ye kadar)
+veya uzun metinler girildiğinde bölüm yine de taşabilir; bu, kullanıcının
+"gerekirse" ifadesiyle kabul ettiği bir en-iyi-çaba (best-effort) sınırıdır,
+otomatik sayfa taşması/ölçekleme mantığı eklenmedi.
+
+`index.html`: `app.js?v=20260717-2110`. `tools/check-basic.js` sabit sürüm
+kontrolü aynı değere güncellendi.
+
+Doğrulama: `node --check app.js`, `tools/check-basic.js`,
+`tools/test-bank-templates.js`, `tools/test-comparable-market-analysis.js`
+geçti. 8 şablonda `<div>`/`</div>` sayıları eşit (dengeli) olarak
+doğrulandı. **Canlı tarayıcıda/Word'de görsel doğrulama YAPILAMADI** —
+zorunlu giriş kapısı bu ortamda aşılamıyor (bkz. 0.0.56 D7, 0.0.142'de de
+tekrarlanan bilinen sınır). Kullanıcının gerçek bir raporda Word çıktısı
+alıp 4 bölümün ayrı sayfada başladığını ve makul şekilde sığdığını teyit
+etmesi gerekir.
+
+Ayrı yedek alınmadı; önceki `backups/before-library-cloud-meta-row_2026-07-17_19-11-29`
+taban olarak yeterli.
+
+---
+## 0.0.140 - 2026-07-17 - Gabim değer kutuları: gömülü görünüm, açık gri arka plan
+
+Kullanıcı: "gabim template çıktısına baktım. başlık altına gelecek değerin
+yazıldığı kısım gömülü kutucuk olsun arka planı açık gri olsun."
+
+`buildGabimDataSetWordHtml()` içindeki değer kutusu stili:
+- Arka plan beyaz (`#ffffff`) yerine açık gri `#eceef1`.
+- Kenarlık `#d1d5db` → biraz daha belirgin `#c7cbd1`.
+- `box-shadow: inset 0 1pt 2pt rgba(17,24,39,0.12)` eklendi — "gömülü/içe
+  çökük" hissi. Word'ün `.doc` HTML render motoru `box-shadow`'u yok
+  sayar (zararsız); garanti edilen kısım gri arka plan + kenarlıktır,
+  tarayıcı/PDF önizlemede gömülü etkisi de görünür.
+
+Doğrulama: `node --check app.js`, `tools/check-basic.js`,
+`tools/test-bank-templates.js` geçti. Stil kurallarının aynısıyla ayrı bir
+statik HTML dosyası oluşturulup tarayıcıda görsel olarak denenmek
+istendi, ancak Browser bölmesi güvenlik politikası proje dışı bir
+localhost sunucusuna izin vermediği için bu yol da başarısız oldu; asıl
+uygulama içindeki görsel doğrulama zorunlu giriş kapısı yüzünden bu
+ortamda hâlâ mümkün değil (bkz. 0.0.56 D7, 0.0.142, 0.0.141).
+
+---
+## 0.0.142 - 2026-07-17 - GABİM VERİ SETİ Word çıktısı GDYS ile bire bir renk/ızgara uyumu
 
 Kullanıcı, GDYS'nin gerçek "Gabim Veri Seti" formunun 4 gayrimenkul türü
 (Arsa, Konut, Diğer Bina, Arazi) için yeni ekran görüntülerini paylaşıp banka
@@ -76,6 +339,36 @@ kompakt hale getirildi. Yedek:
 
 Taleplerim kart ve liste gorunumlerinde rapor adi ile banka ve bilgi degerlerinin satir kirarak karti bozmasi engellendi. Rapor adi artik tek satirda ellipsis ile gosteriliyor; belge durum rozetleri gerektiğinde ikinci satira alinıyor. Banka ve diger bilgi degerleri tek satirli gorunumu koruyor.
 Yedek: `backups/before-library-card-single-line_2026-07-17_19-34-31/`.
+
+## 0.0.137 - 2026-07-17 - Clay ve Neumorphism kontrast duzenlemesi
+
+Clay ve Neumorphism temalarinda sol paneldeki hardal renkli aciklama etiketleri koyu mora alindi. Bu iki temada panel ve dugme metinleri okunabilir koyu metin rengine sabitlendi; diger tema profilleri etkilenmedi.
+Yedek: `backups/before-clay-neu-contrast_2026-07-17_20-15-01/`.
+
+## 0.0.138 - 2026-07-17 - Neumorphism navy panel aciklamalari
+
+Neumorphism temasinda sol panel aciklama etiketleri koyu mor yerine navy blue olarak guncellendi. Clay temasindaki koyu mor vurgu korunuyor.
+Yedek: `backups/before-neu-navy-badge_2026-07-17_20-20-48/`.
+
+## 0.0.139 - 2026-07-17 - Aurora ana baslik kontrasti
+
+Aurora temasinda ust bolumdeki `Yeni Ekspertiz Raporu` basligi koyu `--ink` yerine `#dbe6ff` olarak ayarlandi. Tema CSS onbellek surumu yenilendi.
+Yedek: `backups/before-aurora-title-contrast_2026-07-17_21-45-27/`.
+
+## 0.0.140 - 2026-07-17 - Emsal kat basligi kisaltmasi
+
+Emsaller tablosundaki `Bulunduğu Kat / Mülkiyet` satir basligi `Bulunduğu Kat` olarak sadeleştirildi; emsal verisi ve kosullu gorunum kurallari degistirilmedi.
+Yedek: `backups/before-comparable-floor-label_2026-07-17_23-14-29/`.
+
+## 0.0.141 - 2026-07-17 - Emsal satir basliklari sadeleştirmesi
+
+Emsaller tablosundaki `Bulunduğu Yapı Yaşı`, `İmar Lejantı`, `Yapılaşma Nizamı` ve `Uzun Emsal Metni` başlıkları sırasıyla `Yapı Yaşı`, `Lejant`, `Nizamı` ve `Emsal Metni` olarak kısaltıldı. Veri anahtarları ve hesaplama akışı korunmuştur.
+Yedek: `backups/before-comparable-labels_2026-07-17_23-17-46/`.
+
+## 0.0.142 - 2026-07-18 - Konut emsallerinde arsa hesap satirlarinin gizlenmesi
+
+`Hesaplanan Emsal M2 Birim Değeri` ve `İndirgenmiş Hesaplanan Emsal M2 Birim Değeri` satirlari arsa/tarla alanina ozel olarak tanimlandi. Konut emsalleri gorunumunde ve yalnizca konut iceren rapor ciktilarinda bu satirlar artik gosterilmiyor; karma ve arsa/tarla gorunumunde korunuyor.
+Yedek: `backups/before-hide-calculated-emsal-residential_2026-07-18_01-11-30/`.
 
 ## 0.0.134 - 2026-07-17 - Ana Gayrimenkul ve Bağımsız Bölüm alt panel hizalaması
 

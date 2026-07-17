@@ -4827,6 +4827,94 @@ function formatExplanationsFloorMoney(value, suffix = "TL") {
   })} ${suffix}`;
 }
 
+// Word/banka şablonu export'u için "Kat Bazında İndirgenmiş Alan Tablosu"
+// (bkz. createExplanationsFloorValuationTablePanel() — ekrandaki DOM
+// versiyonu) satır içi stille HTML tabloya çevrilir. Bağımsız bölümde kat/
+// alan/indirgeme oranı girilmemişse boş döner (tablo şablonda hiç görünmez).
+function buildExplanationsFloorValuationWordTableHtml() {
+  const rows = getUnitFloorRows().filter((row) => hasExplanationsFloorValuationRowData(row));
+  if (!rows.length) return "";
+  const ink = getReportThemeToken("--ink", "#152238");
+  const line = getReportThemeToken("--line", "#dde3ef");
+  const blue = getReportThemeToken("--blue", "#3a5691");
+  const blueSoft = getReportThemeToken("--blue-soft", "#e4ebf8");
+  const surface = getReportThemeToken("--surface", "#ffffff");
+  const surfaceMuted = getReportThemeToken("--surface-muted", "#eef2fa");
+  const baseCell = `border:1pt solid ${line};padding:2.4pt 3pt;vertical-align:top;line-height:1.1;color:${ink};background:${surface};font-size:6.5pt;`;
+  const headerCell = `${baseCell}background:${surfaceMuted};color:${blue};font-weight:800;text-align:left;`;
+  const groupCell = `${baseCell}background:${blueSoft};color:${blue};font-weight:900;text-align:center;vertical-align:middle;`;
+  const totalCell = `${baseCell}background:${surfaceMuted};font-weight:800;`;
+
+  const buildSectionRows = (label, mode) => {
+    const detailRows = buildExplanationsFloorValuationRows(rows, mode);
+    const metrics = getExplanationsFloorValuationMetrics(detailRows, mode);
+    return detailRows
+      .map((row, index) => {
+        const rowCellStyle = row.isTotal ? totalCell : baseCell;
+        const tds = [];
+        if (index === 0) tds.push(`<td rowspan="${detailRows.length}" style="${groupCell}">${escapeHtml(label)}</td>`);
+        tds.push(
+          `<td style="${rowCellStyle}">${escapeHtml(row.label)}</td>`,
+          `<td style="${rowCellStyle}text-align:right;">${escapeHtml(formatExplanationsFloorArea(row.area))}</td>`,
+          `<td style="${rowCellStyle}text-align:right;">${escapeHtml(formatExplanationsFloorRate(row.rate))}</td>`,
+          `<td style="${rowCellStyle}text-align:right;font-weight:800;">${escapeHtml(formatExplanationsFloorArea(row.reducedArea))}</td>`
+        );
+        if (index === 0) {
+          tds.push(
+            `<td rowspan="${detailRows.length}" style="${totalCell}text-align:right;">${escapeHtml(formatExplanationsFloorMoney(metrics.marketUnitValue, "TL/m²"))}</td>`,
+            `<td rowspan="${detailRows.length}" style="${totalCell}text-align:right;">${escapeHtml(formatExplanationsFloorMoney(metrics.marketValue, "TL"))}</td>`,
+            `<td rowspan="${detailRows.length}" style="${totalCell}text-align:right;">${escapeHtml(formatExplanationsFloorMoney(metrics.rentUnitValue, "TL/m²"))}</td>`,
+            `<td rowspan="${detailRows.length}" style="${totalCell}text-align:right;">${escapeHtml(formatExplanationsFloorMoney(metrics.rentValue, "TL/ay"))}</td>`
+          );
+        }
+        return `<tr>${tds.join("")}</tr>`;
+      })
+      .join("");
+  };
+
+  const bodyHtml = buildSectionRows("YASAL ALANA GÖRE HESAPLAMA", "legal") + buildSectionRows("MEVCUT ALANA GÖRE HESAPLAMA", "current");
+  return `<table style="border-collapse:collapse;width:100%;table-layout:fixed;margin:5pt 0 9pt;">
+    <thead>
+      <tr><th colspan="9" style="${headerCell}text-align:center;">KONU TAŞINMAZIN KAT BAZINDA İNDİRGENMİŞ ALAN HESABI</th></tr>
+      <tr>
+        <th style="${headerCell}">Hesaplama</th>
+        <th style="${headerCell}">Kat / Alan Türü</th>
+        <th style="${headerCell}">Normal Alan (m²)</th>
+        <th style="${headerCell}">İndirgeme Oranı (%)</th>
+        <th style="${headerCell}">İndirgenmiş Alan (m²)</th>
+        <th style="${headerCell}">Piyasa m² Birim Değeri</th>
+        <th style="${headerCell}">Piyasa Değeri</th>
+        <th style="${headerCell}">Kira m² Birim</th>
+        <th style="${headerCell}">Piyasa Kira Değeri</th>
+      </tr>
+    </thead>
+    <tbody>${bodyHtml}</tbody>
+  </table>`;
+}
+
+// Kullanıcının belirttiği banka şablonu sırasına göre (bkz. handoff)
+// "Satılabilir değil ise Satış Kabiliyeti Açıklaması, satılabilir ise Boş"
+// — buildValuationSaleabilityExplanation() HER durumda (satılabilir dahil)
+// bir cümle döndürür; export için satılabilir durumda boş dönen bu sarmalayıcı
+// kullanılır.
+function buildValuationSaleabilityExplanationForExport() {
+  const saleability = saleabilityOptions.includes(state.fields.saleability) ? state.fields.saleability : "Satılabilir";
+  if (saleability === "Satılabilir") return "";
+  return buildValuationSaleabilityExplanation();
+}
+
+// "Emlak Beyan Değeri Açıklaması" — refreshPropertyTaxDeclarationExplanation()
+// ekrandaki paneli günceller ama değer döndürmez; export için aynı birleştirme
+// mantığını (checkbox işaretli + değer varsa değer metni, değilse — yalnızca
+// Ziraat Bankası şablonunda — "bilgi paylaşılmadı" metni) saf bir fonksiyon
+// olarak tekrar üretir.
+function buildPropertyTaxDeclarationExplanationForExport() {
+  return (
+    buildPropertyTaxDeclarationValueExplanation() ||
+    (shouldShowPropertyTaxUnavailableInValuation() ? buildPropertyTaxDeclarationUnavailableExplanation() : "")
+  );
+}
+
 function syncValuationAreasFromUnitAreas() {
   const totals = getValuationUnitAreaTotals();
   if (totals.legal) {
@@ -12048,7 +12136,20 @@ function formatStateRowsForWord(headers, rows) {
 function buildComparableMatrixWordTableHtml() {
   const rows = getComparableRows().filter((row) => Object.values(row || {}).some((value) => String(value || "").trim()));
   if (!rows.length) return "";
-  const fields = comparableFields.filter((field) => !field.hidden);
+  // Kullanıcı talebi: emsal listesinde arsa/tarla ile konut/yapı emsalleri
+  // birlikte gösterilir (bkz. 0.0.62 "Tüm Emsaller" kararı), ama Word
+  // çıktısındaki tablo bu raporun GERÇEK emsal bileşimine göre alakasız
+  // satırları içermemeli — ör. hiçbir emsal arsa/tarla değilse "İmar
+  // Lejandı"/"Yapılaşma Nizamı" gibi arsaya özel satırlar hiç görünmemeli,
+  // hiçbiri konut/yapı değilse Oda Sayısı gibi konuta özel satırlar da öyle.
+  const hasLandComparable = rows.some((row) => isLandComparable(row));
+  const hasResidentialComparable = rows.some((row) => !isLandComparable(row));
+  const fields = comparableFields.filter((field) => {
+    if (field.hidden) return false;
+    if (!hasLandComparable && comparableLandOnlyFieldKeys.has(field.key)) return false;
+    if (!hasResidentialComparable && comparableResidentialOnlyFieldKeys.has(field.key)) return false;
+    return true;
+  });
   const headers = ["Alan", ...rows.map((_, index) => `Emsal ${index + 1}`)];
   const bodyRows = fields
     .map((field) => [
@@ -12066,7 +12167,7 @@ function buildComparableMatrixWordTableHtml() {
     }
   }
   if (!bodyRows.length) return "";
-  return buildSimpleHtmlTable(headers, bodyRows, "is-matrix");
+  return buildSimpleHtmlTable(headers, bodyRows, "is-matrix", { compact: true });
 }
 
 function buildComparableDistanceWordMatrixRow(rows) {
@@ -12131,11 +12232,17 @@ function formatTextTableForWord(text) {
 // marka rengi (orn. Kuveyt Turk INVEX yesili) veri tablolarini etkilemez.
 // class niteligi geriye donuk uyumluluk icin korunur (harici .word-table
 // kurallari yalnizca burada belirtilmeyen ozellikler icin devreye girer).
-function buildSimpleHtmlTable(headers, rows, className = "") {
+function buildSimpleHtmlTable(headers, rows, className = "", options = {}) {
   const classNames = String(className || "").split(/\s+/).filter(Boolean);
   const isEmphasisFirstCol = classNames.includes("meta") || classNames.includes("is-matrix");
   const isSummaryLastRow = classNames.includes("is-summary");
   const isWide = headers.length > 6;
+  // Emsaller/Değerleme/GDYS Yardımcı/Gabim bölümleri kendi sayfasında
+  // başlayıp tek sayfaya sığmalı (kullanıcı talebi) — `options.compact`
+  // bu tabloları çağıran yerde (ör. Emsaller matrisi) daha küçük punto ve
+  // hücre boşluğuyla üretir; diğer çağrılar (Takyidat, İncelenen Belgeler
+  // vb.) etkilenmez.
+  const compact = Boolean(options.compact);
   const ink = getReportThemeToken("--ink", "#152238");
   const line = getReportThemeToken("--line", "#dde3ef");
   const blue = getReportThemeToken("--blue", "#3a5691");
@@ -12143,8 +12250,8 @@ function buildSimpleHtmlTable(headers, rows, className = "") {
   const surface = getReportThemeToken("--surface", "#ffffff");
   const surfaceMuted = getReportThemeToken("--surface-muted", "#eef2fa");
   const border = `border:1pt solid ${line};`;
-  const pad = isWide ? "padding:1.8pt 2.2pt;" : "padding:2.4pt 3pt;";
-  const baseCell = `${border}${pad}vertical-align:top;line-height:1.1;color:${ink};background:${surface};`;
+  const pad = compact ? "padding:1pt 1.6pt;" : isWide ? "padding:1.8pt 2.2pt;" : "padding:2.4pt 3pt;";
+  const baseCell = `${border}${pad}vertical-align:top;line-height:1.05;color:${ink};background:${surface};`;
   const headerCell = `${baseCell}background:${surfaceMuted};color:${blue};font-weight:800;text-align:left;`;
   const emphasisCell = `${baseCell}background:${blueSoft};color:${blue};font-weight:900;`;
   const summaryCell = `${baseCell}background:#1f2a32;color:#ffffff;font-weight:900;`;
@@ -12164,7 +12271,8 @@ function buildSimpleHtmlTable(headers, rows, className = "") {
       return `<td style="${cellStyle}">${formatWordCell(cell)}</td>`;
     }).join("")}</tr>`;
   }).join("");
-  return `<table class="${escapeHtml(classes.join(" "))}" style="border-collapse:collapse;width:100%;margin:5pt 0 9pt;table-layout:${isWide ? "auto" : "fixed"};font-size:${isWide ? "6pt" : "7pt"};">
+  const fontSize = compact ? "5.5pt" : isWide ? "6pt" : "7pt";
+  return `<table class="${escapeHtml(classes.join(" "))}" style="border-collapse:collapse;width:100%;margin:${compact ? "3pt 0 5pt" : "5pt 0 9pt"};table-layout:${isWide ? "auto" : "fixed"};font-size:${fontSize};">
     <thead>${theadHtml}</thead>
     <tbody>${bodyHtml}</tbody>
   </table>`;
@@ -12193,9 +12301,12 @@ function buildValuationSummaryWordTableHtml() {
   const green = getReportThemeToken("--green", "#213f77");
   const greenSoft = getReportThemeToken("--green-soft", "#dde7f6");
   const red = getReportThemeToken("--red", "#b23434");
-  const tableStyle = `border-collapse:collapse;width:100%;margin:5pt 0 9pt;table-layout:fixed;font-family:Arial,sans-serif;font-size:9pt;border:1pt solid ${line};`;
-  const cellBase = `border-bottom:1pt solid ${line};padding:6pt 8pt;text-align:left;vertical-align:middle;color:${ink};background:${surface};line-height:1.3;`;
-  const headerCell = `${cellBase}background:${surfaceMuted};color:${muted};font-size:8pt;font-weight:800;text-transform:uppercase;`;
+  // Değerleme Bölümü tek sayfaya sığmalı (kullanıcı talebi) — bu tablo
+  // yalnızca o bölümde kullanıldığı için punto/hücre boşluğu doğrudan
+  // burada sıkıştırılır.
+  const tableStyle = `border-collapse:collapse;width:100%;margin:3pt 0 5pt;table-layout:fixed;font-family:Arial,sans-serif;font-size:7pt;border:1pt solid ${line};`;
+  const cellBase = `border-bottom:1pt solid ${line};padding:3pt 5pt;text-align:left;vertical-align:middle;color:${ink};background:${surface};line-height:1.15;`;
+  const headerCell = `${cellBase}background:${surfaceMuted};color:${muted};font-size:6.5pt;font-weight:800;text-transform:uppercase;`;
   const groupColors = {
     market: [blueSoft, blue],
     land: [amberSoft, amber],
@@ -12205,11 +12316,11 @@ function buildValuationSummaryWordTableHtml() {
   };
   const body = buildValuationSummaryGroups().map((group) => {
     const [background, color] = groupColors[group.key] || [surfaceMuted, ink];
-    const groupStyle = `${cellBase}background:${background};color:${color};font-weight:800;font-size:8pt;text-transform:uppercase;letter-spacing:.04em;`;
+    const groupStyle = `${cellBase}background:${background};color:${color};font-weight:800;font-size:6.5pt;text-transform:uppercase;letter-spacing:.04em;`;
     const heading = `<tr><th colspan="3" style="${groupStyle}">${escapeHtml(group.title.toLocaleUpperCase("tr-TR"))}</th></tr>`;
     const rows = group.rows.map((row) => `<tr>
       <td style="${cellBase}font-weight:700;white-space:nowrap;">${escapeHtml(row.label)}</td>
-      <td style="${cellBase}color:${muted};font-size:8pt;">${escapeHtml(row.detail)}</td>
+      <td style="${cellBase}color:${muted};font-size:6.5pt;">${escapeHtml(row.detail)}</td>
       <td style="${cellBase}text-align:right;white-space:nowrap;font-weight:800;">${escapeHtml(row.value)}</td>
     </tr>`).join("");
     return heading + rows;
@@ -23403,16 +23514,23 @@ function buildGabimDataSetWordHtml() {
   if (!groups.length) return "";
   const ink = "#111827";
   const muted = "#6b7280";
-  const line = "#d1d5db";
-  const surface = "#ffffff";
+  const line = "#c7cbd1";
+  const boxBg = "#eceef1";
   const panelBg = "#f3f4f6";
   const panelLine = "#e5e7eb";
 
-  const groupTitleStyle = `font-weight:700;font-size:8.5pt;color:${ink};border-top:1pt solid ${panelLine};padding:7pt 0 5pt;margin:0;`;
-  const subgroupLabelStyle = `font-size:6.5pt;font-weight:700;color:${muted};padding:3pt 6pt 0 0;width:70pt;vertical-align:top;`;
-  const labelStyle = `font-size:6pt;color:${muted};margin:0 0 1.5pt;line-height:1.2;`;
-  const boxStyle = `border:1pt solid ${line};border-radius:3pt;background:${surface};color:${ink};padding:3pt 5pt;font-size:7pt;line-height:1.3;min-height:11pt;`;
-  const cellStyle = `vertical-align:top;padding:2pt 6pt 6pt 0;`;
+  // Gabim Bölümü kendi sayfasında başlayıp tek sayfaya sığmalı (kullanıcı
+  // talebi) — punto ve hücre boşlukları önceki sürüme göre bir miktar
+  // daha sıkı tutulur.
+  const groupTitleStyle = `font-weight:700;font-size:7.5pt;color:${ink};border-top:1pt solid ${panelLine};padding:5pt 0 3pt;margin:0;`;
+  const subgroupLabelStyle = `font-size:6pt;font-weight:700;color:${muted};padding:2pt 5pt 0 0;width:62pt;vertical-align:top;`;
+  const labelStyle = `font-size:5.3pt;color:${muted};margin:0 0 1pt;line-height:1.1;`;
+  // Kullanıcı talebi: değer kutusu "gömülü" (içe çökük) görünmeli, arka
+  // planı açık gri olmalı. box-shadow Word'ün .doc HTML render motorunda
+  // gösterilmez (zararsız şekilde yok sayılır) ama tarayıcı/PDF önizlemede
+  // gömülü hissi verir; asıl garanti edilen kısım gri arka plan + border.
+  const boxStyle = `border:1pt solid ${line};border-radius:3pt;background:${boxBg};color:${ink};padding:2pt 4pt;font-size:6.3pt;line-height:1.2;min-height:9pt;box-shadow:inset 0 1pt 2pt rgba(17,24,39,0.12);`;
+  const cellStyle = `vertical-align:top;padding:1.5pt 5pt 4pt 0;`;
 
   const fieldsTable = (rows, columns) => {
     const rowsHtml = [];
@@ -24320,11 +24438,11 @@ const comparableViewModeOptions = [
   { value: "land", label: "Arsa / Tarla Emsalleri" },
 ];
 const comparableResidentialOnlyFieldKeys = new Set(["c4", "c5", "c6", "c8", "c11", "c12", "c13", "c16", "calcRentUnitValue"]);
-const comparableLandOnlyFieldKeys = new Set(["c24", "c25", "c26", "c27", "c28", "c31"]);
+const comparableLandOnlyFieldKeys = new Set(["c24", "c25", "c26", "c27", "c28", "c29", "c31", "calcCalculatedEmsalUnitValue", "calcAdjustedCalculatedEmsalUnitValue"]);
 const comparableTarlaZoningFieldKeys = new Set(["c25", "c26", "c27", "c28", "c31"]);
 const comparableRoadFrontageOptions = ["Kadastro yola cephesiz", "Kadastro yola cepheli", "İmar yoluna cepheli", "Asfalt yola cepheli", "Açılmamış imar yoluna cepheli"];
 const comparableFields = [
-  { key: "c0", label: "İrtibat / Kaynak" },
+  { key: "c0", label: "İrtibat" },
   { key: "c1", label: "Telefon" },
   {
     key: "c23",
@@ -24354,13 +24472,13 @@ const comparableFields = [
   },
   {
     key: "c6",
-    label: "Bulunduğu Kat / Mülkiyet",
+    label: "Kat",
     type: "multiSelect",
     options: comparableFloorOptions,
   },
   {
     key: "c7",
-    label: "Emsal Konumu",
+    label: "Konumu",
     type: "select",
     options: ["Aynı bölge / site", "Aynı bölge / bina", "Aynı cadde / site", "Aynı cadde / bina", "Aynı sokak / site", "Aynı sokak / bina", "Aynı site", "Aynı site aynı blok", "Aynı bina"],
   },
@@ -24398,15 +24516,15 @@ const comparableFields = [
   { key: "c10", label: "Konum Karşılaştırma Sebebi", type: "textarea", wide: true },
   {
     key: "c11",
-    label: "Bulunduğu Yapı Yaşı",
+    label: "Yapı Yaşı",
     type: "select",
     options: ["Yeni", "1-2", "3-4", "5-6", "7-8", "8-9", "10-15", "15-20", "20-25", "25-30", "30-35", "35-40", "40 üzeri"],
   },
   { key: "c12", label: "Beyan Edilen Alan" },
   { key: "c13", label: "Düzeltilmiş Alan" },
   { key: "c24", label: "Yüzölçümü" },
-  { key: "c25", label: "İmar Lejantı", type: "select", options: imarLegendOptions.filter(Boolean), allowEmpty: false },
-  { key: "c26", label: "Yapılaşma Nizamı", type: "select", options: imarOrderOptions.filter(Boolean), allowEmpty: false },
+  { key: "c25", label: "Lejant", type: "select", options: imarLegendOptions.filter(Boolean), allowEmpty: false },
+  { key: "c26", label: "Nizamı", type: "select", options: imarOrderOptions.filter(Boolean), allowEmpty: false },
   { key: "c27", label: "Emsal / KAKS" },
   { key: "c28", label: "Kat Adedi", type: "select", options: imarFloorCountOptions.filter(Boolean), allowEmpty: false },
   { key: "c31", label: "Hesaplanan Emsal" },
@@ -24422,7 +24540,7 @@ const comparableFields = [
   { key: "c16", label: "Kira Değeri" },
   { key: "calcRentUnitValue", label: "Kira Birim Değer", computed: true },
   { key: "c17", label: "Açıklama / Düzeltme", type: "textarea", wide: true },
-  { key: "calcLongText", label: "Uzun Emsal Metni", computed: true, type: "textarea", wide: true },
+  { key: "calcLongText", label: "Emsal Metni", computed: true, type: "textarea", wide: true },
 ];
 
 function normalizeComparableNature(row = {}) {

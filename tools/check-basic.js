@@ -400,7 +400,7 @@ function main() {
       appJs.includes("comparableViewModeOptions") &&
       appJs.includes('label: "Arsa / Tarla Emsalleri"') &&
       appJs.includes('key: "c24", label: "Yüzölçümü"') &&
-      appJs.includes('key: "c26", label: "Yapılaşma Nizamı"') &&
+      appJs.includes('key: "c26", label: "Nizamı"') &&
       !appJs.includes("buildComparableLandPlanningComparisonText") &&
       appJs.includes('key: "c31", label: "Hesaplanan Emsal"') &&
       appJs.includes('key: "calcCalculatedEmsalUnitValue"') &&
@@ -525,7 +525,7 @@ function main() {
       indexHtml.includes("src/comparables/comparable-market-analysis.js") &&
       indexHtml.includes("src/value-factors/value-factors-rules.js") &&
       indexHtml.includes("styles.css?v=20260717-1911") &&
-      indexHtml.includes("app.js?v=20260717-2020") &&
+      indexHtml.includes("app.js?v=20260718-0155") &&
       indexHtml.includes("src/templates/template-engine.js?v=20260712-2300"),
     "Halkbank risk kodu scriptleri veya guncel app surumu index.html icinde bulunamadi."
   );

@@ -388,6 +388,10 @@
     DEGERLENDIRMETABLOSU: { h: () => safeCall("buildValuationSummaryWordTableHtml") || safeCall("formatTextTableForWord", safeCall("buildValuationSummaryText")) },
     DEGERLENDIRMESEMASI: { t: () => safeCall("buildValuationMethodsSchemeText") },
     DEGERLEMEYONTEMIACIKLAMASI: { t: () => safeCall("buildValuationMethodExplanation") },
+    SATISKABILIYETIACIKLAMASI: { t: () => safeCall("buildValuationSaleabilityExplanationForExport") },
+    KIRAACIKLAMASI: { t: () => safeCall("buildValuationRentExplanation") },
+    EMLAKBEYANDEGERIACIKLAMASI: { t: () => safeCall("buildPropertyTaxDeclarationExplanationForExport") },
+    KATBAZINDAINDIRGENMISALANTABLOSU: { h: () => safeCall("buildExplanationsFloorValuationWordTableHtml") },
 
     // --- Ziraat Bankası açıklama bölümleri ---
     ZIRAAT_KONUM_CEVRESEL: { t: () => safeCall("buildZiraatLocationEnvironmentalExplanation") },

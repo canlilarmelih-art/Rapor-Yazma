@@ -9,7 +9,7 @@
   templates/PLACEHOLDER-REHBERI.md dosyasına bakın. Serbestçe düzenleyebilirsiniz.
 -->
 <style>
-  @page { size: 595.35pt 841.95pt; margin: 30pt 26pt; }
+  @page { size: 595.35pt 841.95pt; margin: 10pt; }
   /* Renkler app/styles.css'teki gercek tema token'lariyla eslesir:
      --ink:#152238 --line:#dde3ef --blue:#3a5691 --blue-soft:#e4ebf8 */
   body { font-family: Arial, sans-serif; font-size: 7pt; color: #152238; background: #ffffff; }
@@ -24,6 +24,15 @@
   .word-table th, .word-table td { border: 1pt solid #dde3ef; padding: 2.4pt 3pt; vertical-align: top; }
   .word-table th { background: #e4ebf8; color: #3a5691; font-weight: 900; text-align: left; }
   .word-table tbody tr:nth-child(even) td { background: #f7f9f8; }
+
+  /* Değerleme/Emsaller/GDYS Yardımcı Bilgiler/Gabim bölümleri tek sayfaya
+     sığacak şekilde sıkıştırılır (kullanıcı talebi). Sayfa başı kırılması
+     .pg-section üzerinde DEĞİL, başlık etiketinde satır içi
+     style="page-break-before:always" ile uygulanır — Word'ün .doc HTML
+     motoru bunu div üzerine konursa içindeki HER PARAGRAFA miras
+     bırakıyordu (canlı testte görüldü). */
+  .pg-section h2 { margin-top: 0; }
+  .pg-section table.meta td, .pg-section .word-table td, .pg-section .word-table th { padding: 1pt 2pt; font-size: 6pt; }
 </style>
 </head>
 <body>
@@ -173,19 +182,29 @@
 <h3>Olumsuz Faktörler</h3>
 {{DEGERI_ETKILEYEN_OLUMSUZ_FAKTORLER}}
 
-<h2>Değerleme Sekmesi</h2>
+<div class="pg-section">
+<h2 style="page-break-before:always;">Değerleme Sekmesi</h2>
 <h3>Değerle İlgili Önemli Açıklamalar, Görüşler, Uyarılar (Değerleme Uzman Görüşü)</h3>
+{{DEGERLEME_YONTEMI_ACIKLAMASI}}
+{{HISSE_ACIKLAMASI}}
+{{SATIS_KABILIYETI_ACIKLAMASI}}
+{{KIRA_ACIKLAMASI}}
+{{EMLAK_BEYAN_DEGERI_ACIKLAMASI}}
 {{DEGERLENDIRME_TABLOSU}}
+{{KAT_BAZINDA_INDIRGENMIS_ALAN_TABLOSU}}
 {{DEGERLENDIRME_SEMASI}}
-{{SALEABİLİTY_NOTE}}
+</div>
 
-<h2>Emsaller Sekmesi</h2>
+<div class="pg-section">
+<h2 style="page-break-before:always;">Emsaller Sekmesi</h2>
 {{EMSAL_MATRISI}}
 
 <h3>Emsal Açıklaması</h3>
 {{EMSAL_PIYASA_ANALIZI}}
+</div>
 
-<h2>GDYS YARDIMCI BİLGİLER</h2>
+<div class="pg-section">
+<h2 style="page-break-before:always;">GDYS YARDIMCI BİLGİLER</h2>
 <table class="meta">
   <tr><td class="l">İL</td><td>{{CİTY}}</td></tr>
   <tr><td class="l">İLÇE</td><td>{{DİSTRİCT}}</td></tr>
@@ -219,9 +238,12 @@
   <tr><td class="l">EKSPER KANAATİ</td><td>{{SALEABİLİTY_NOTE}}</td></tr>
   <tr><td class="l">SATIŞ KABİLİYETİ AÇIKLAMA</td><td>{{SALEABİLİTY_NOTE}}</td></tr>
 </table>
+</div>
 
-<h2>GABİM VERİ SETİ</h2>
+<div class="pg-section">
+<h2 style="page-break-before:always;">GABİM VERİ SETİ</h2>
 {{GABIM_VERI_SETI}}
+</div>
 
 <h2>ÇALIŞMA KAĞIDI</h2>
 <table class="meta">

@@ -15,7 +15,7 @@
   yuvarlatılmış köşe gibi ince ayrıntılar yalnızca tarayıcı görünümündedir.
 -->
 <style>
-  @page { size: 595.35pt 841.95pt; margin: 28pt 24pt; }
+  @page { size: 595.35pt 841.95pt; margin: 10pt; }
   body { font-family: Verdana, Arial, sans-serif; font-size: 6.5pt; color: #333333; background: #ffffff; }
   p { margin: 0 0 5pt; line-height: 1.3; }
 
@@ -49,6 +49,15 @@
 
   .kt-note { font-size: 6pt; color: #8a6d3b; }
   .kt-btn { display: inline-block; background: #009b6b; color: #ffffff; font-weight: bold; font-size: 7pt; padding: 3pt 10pt; border-radius: 8pt; border: 0.75pt solid #007a55; }
+
+  /* Değerleme/Emsaller/GDYS Yardımcı Bilgiler/Gabim bölümleri tek sayfaya
+     sığacak şekilde sıkıştırılır (kullanıcı talebi). Sayfa başı kırılması
+     .pg-section üzerinde DEĞİL, başlık .kt-sec div'inde satır içi
+     style="page-break-before:always" ile uygulanır — Word'ün .doc HTML
+     motoru bunu dış sarmalayıcı div üzerine konursa içindeki HER
+     PARAGRAFA miras bırakıyordu (canlı testte görüldü). */
+  .pg-section .kt-sec { margin-top: 0; }
+  .pg-section table.kt-form td, .pg-section .word-table td, .pg-section .word-table th, .pg-section table.kt-list td, .pg-section table.kt-list th { padding: 1pt 2pt; font-size: 5.5pt; }
 </style>
 </head>
 <body>
@@ -251,24 +260,34 @@
   <span class="kt-tab-passive">Özellikler</span><span class="kt-tab">Değerleme</span><span class="kt-tab-passive">Emsaller</span>
 </div>
 
-<div class="kt-sec">DEĞERLEME — GENEL BİLGİLER (UZMAN GÖRÜŞÜ)</div>
+<div class="pg-section">
+<div class="kt-sec" style="page-break-before:always;">DEĞERLEME — GENEL BİLGİLER (UZMAN GÖRÜŞÜ)</div>
+{{DEGERLEME_YONTEMI_ACIKLAMASI}}
+{{HISSE_ACIKLAMASI}}
+{{SATIS_KABILIYETI_ACIKLAMASI}}
+{{KIRA_ACIKLAMASI}}
+{{EMLAK_BEYAN_DEGERI_ACIKLAMASI}}
 <div class="kt-subsec">Notlar / Düşünceler / Fiyatlandırma</div>
 {{DEGERLENDIRME_TABLOSU}}
+{{KAT_BAZINDA_INDIRGENMIS_ALAN_TABLOSU}}
 {{DEGERLENDIRME_SEMASI}}
-<p>*** {{SALEABİLİTY_NOTE}}</p>
 <p>*** Taşınmazın değerlemesi takyidatlardan bağımsız yapılmıştır.</p>
+</div>
 
 <div class="kt-nav">
   <span class="kt-tab-passive">Özellikler</span><span class="kt-tab-passive">Değerleme</span><span class="kt-tab">Emsaller</span>
 </div>
 
-<div class="kt-sec">EMSALLER</div>
+<div class="pg-section">
+<div class="kt-sec" style="page-break-before:always;">EMSALLER</div>
 {{EMSAL_MATRISI}}
 
 <div class="kt-subsec">Emsal Açıklaması</div>
 {{EMSAL_PIYASA_ANALIZI}}
+</div>
 
-<div class="kt-sec">GDYS YARDIMCI BİLGİLER</div>
+<div class="pg-section">
+<div class="kt-sec" style="page-break-before:always;">GDYS YARDIMCI BİLGİLER</div>
 <table class="kt-form">
   <tr><td class="l">İl:</td><td class="v">{{CİTY}}</td></tr>
   <tr><td class="l">İlçe:</td><td class="v">{{DİSTRİCT}}</td></tr>
@@ -301,9 +320,12 @@
   <tr><td class="l">Mevcut Kullanım Alanı:</td><td class="v">{{CURRENT_AREA}}</td></tr>
   <tr><td class="l">Eksper Kanaati / Satış Kabiliyeti:</td><td class="v">{{SALEABİLİTY_NOTE}}</td></tr>
 </table>
+</div>
 
-<div class="kt-sec">GABİM VERİ SETİ</div>
+<div class="pg-section">
+<div class="kt-sec" style="page-break-before:always;">GABİM VERİ SETİ</div>
 {{GABIM_VERI_SETI}}
+</div>
 
 <div class="kt-sec">ÇALIŞMA KAĞIDI</div>
 <table class="kt-form">
