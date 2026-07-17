@@ -30,6 +30,7 @@
   // kalıcıdır — kullanıcı rapor üzerinde çalışırken her yenilemede ekranın
   // önüne düşüp işini bölmez, yalnızca gerçekten yeni bir oturumda görünür.
   const DASHBOARD_SESSION_FLAG_KEY = "rapor-dashboard-shown-this-session";
+  const LIBRARY_VIEW_MODE_KEY = "rapor-library-view-mode";
 
   function hasAppGlobals() {
     try {
@@ -83,18 +84,69 @@
     return `RE-${year}-${random}`;
   }
 
-  function summarizeFields(fields = {}) {
+  function summarizeFields(fields = {}, uploads = {}) {
+    const completion = typeof getReportCompletionStats === "function"
+      ? getReportCompletionStats({ fields, uploads })
+      : { filled: 0, percentage: 0, meetsMinimum: false };
     return {
       caseName: String(fields.caseName || ""),
       customerName: String(fields.customerName || ""),
       bank: String(fields.bank || ""),
       city: String(fields.city || fields.titleCity || ""),
       district: String(fields.district || fields.titleDistrict || ""),
-      adaParsel: String(fields.titleAdaParsel || fields.adaParsel || ""),
+      neighborhood: String(fields.neighborhood || fields.titleNeighborhood || ""),
+      adaParsel: String(
+        fields.titleAdaParsel
+        || fields.adaParsel
+        || [fields.blockNo, fields.parcelNo].filter(Boolean).join(" / ")
+        || "",
+      ),
+      documentStatus: {
+        takbis: Boolean(uploads.takbis),
+        address: Boolean(uploads.address),
+        imar: Boolean(uploads.imar),
+        ekb: Boolean(uploads.ekb),
+        kml: Boolean(uploads.kml),
+      },
+      completionFilled: completion.filled,
+      completionPercentage: completion.percentage,
       propertyType: String(fields.legalUsageNature || fields.propertyKind || ""),
       // Dashboard'daki "Gün" geri sayımı için (bkz. formatDeadlineBadge).
       appointmentDate: String(fields.appointmentDate || ""),
     };
+  }
+
+  function isMinimumCompleteSummary(summary = {}) {
+    const hasCoreContent = [
+      summary.customerName,
+      summary.neighborhood,
+      summary.adaParsel,
+      ...Object.values(summary.documentStatus || {}).filter(Boolean),
+    ].some((value) => String(value || "").trim());
+    if (!hasCoreContent) return false;
+    if (Number(summary.completionFilled || 0) >= 5 || Number(summary.completionPercentage || 0) >= 5) {
+      return true;
+    }
+    const values = [
+      summary.caseName,
+      summary.customerName,
+      summary.bank,
+      summary.city,
+      summary.district,
+      summary.neighborhood,
+      summary.adaParsel,
+      summary.propertyType,
+      ...(Object.values(summary.documentStatus || {}).filter(Boolean)),
+    ].filter((value) => String(value || "").trim());
+    return values.length >= 5;
+  }
+
+  function isMinimumCompleteEntry(entry) {
+    const blob = readBlob(entry.reportId);
+    if (blob?.state && typeof getReportCompletionStats === "function") {
+      return getReportCompletionStats(blob.state).meetsMinimum;
+    }
+    return isMinimumCompleteSummary(entry.summary);
   }
 
   function buildBlobFromActiveState() {
@@ -126,10 +178,18 @@
     ensureActiveReportId();
     saveState();
     const id = state.reportId;
-    writeBlob(id, buildBlobFromActiveState());
-
     const index = readIndex();
     const existingIndex = index.findIndex((entry) => entry.reportId === id);
+    if (typeof getReportCompletionStats === "function" && !getReportCompletionStats(state).meetsMinimum) {
+      removeBlob(id);
+      if (existingIndex >= 0) {
+        index.splice(existingIndex, 1);
+        writeIndex(index);
+      }
+      return id;
+    }
+    writeBlob(id, buildBlobFromActiveState());
+
     const now = new Date().toISOString();
     const entry = {
       reportId: id,
@@ -139,7 +199,7 @@
       // "Taslak" | "Tamamlandı" — kullanıcı dashboard'dan elle işaretler
       // (bkz. toggleStatus); otomatik hesaplanmaz.
       status: existingIndex >= 0 ? (index[existingIndex].status || "draft") : "draft",
-      summary: summarizeFields(state.fields || {}),
+      summary: summarizeFields(state.fields || {}, state.uploads || {}),
     };
     if (existingIndex >= 0) index[existingIndex] = entry; else index.unshift(entry);
     writeIndex(index);
@@ -219,7 +279,7 @@
       updatedAt: cloned.state.updatedAt,
       archived: false,
       status: "draft",
-      summary: summarizeFields(cloned.state.fields || {}),
+      summary: summarizeFields(cloned.state.fields || {}, cloned.state.uploads || {}),
     });
     writeIndex(index);
 
@@ -287,6 +347,7 @@
   let showArchived = false;
   let searchQuery = "";
   let statusFilter = "all"; // "all" | "draft" | "completed"
+  let viewMode = localStorage.getItem(LIBRARY_VIEW_MODE_KEY) === "list" ? "list" : "cards";
   let cloudReportsCache = null; // { [reportId]: cloudDocData }
 
   function closeDashboard() {
@@ -386,12 +447,24 @@
     return haystack.includes(folded(query));
   }
 
+  function renderDocumentStatus(status = {}) {
+    const items = [
+      ["takbis", "T", "TAKBİS PDF"],
+      ["address", "U", "Adres Kodu PDF"],
+      ["imar", "I", "İmar Durumu"],
+      ["ekb", "E", "Enerji Kimlik Belgesi"],
+      ["kml", "K", "KML / Konum"],
+    ];
+    return `<span class="library-document-status" aria-label="Yüklenen belgeler">${items.map(([key, label, title]) => `
+      <span class="library-document-status-item ${status[key] ? "is-uploaded" : "is-missing"}" title="${title}: ${status[key] ? "Yüklendi" : "Yüklenmedi"}" aria-label="${title}: ${status[key] ? "Yüklendi" : "Yüklenmedi"}">${label}</span>`).join("")}</span>`;
+  }
+
   function cardHtml(entry) {
     const s = entry.summary || {};
     const isActive = entry.reportId === state.reportId;
     const isCompleted = entry.status === "completed";
     const safe = (value) => escapeHtml(String(value || "-"));
-    const deadlineBadge = formatDeadlineBadge(s.appointmentDate);
+    const documentStatus = renderDocumentStatus(s.documentStatus);
     return `
       <article class="library-card${isActive ? " is-active" : ""}" data-report-id="${escapeHtml(entry.reportId)}">
         <header class="library-card-head">
@@ -400,21 +473,23 @@
             <span class="library-status-pill ${isCompleted ? "is-completed" : "is-draft"}">${isCompleted ? "Tamamlandı" : "Taslak"}</span>
             ${isActive ? '<span class="library-active-pill">Şu an açık</span>' : ""}
           </span>
+          ${documentStatus}
         </header>
         <dl class="library-card-facts">
           <div><dt>Banka</dt><dd>${safe(s.bank)}</dd></div>
           <div><dt>Müşteri</dt><dd>${safe(s.customerName)}</dd></div>
-          <div><dt>Konum</dt><dd>${safe([s.city, s.district].filter(Boolean).join(" / "))}</dd></div>
+          <div><dt>Konum</dt><dd>${safe([s.city, s.district, s.neighborhood].filter(Boolean).join(" / "))}</dd></div>
           <div><dt>Ada/Parsel</dt><dd>${safe(s.adaParsel)}</dd></div>
           <div><dt>Tür</dt><dd>${safe(s.propertyType)}</dd></div>
         </dl>
-        ${deadlineBadge ? `<p class="library-card-deadline">${deadlineBadge}</p>` : ""}
-        <p class="library-card-updated">Son güncelleme: ${formatRelativeUpdatedAt(entry.updatedAt)}</p>
-        <p class="library-card-sync" data-sync-slot="${escapeHtml(entry.reportId)}"></p>
+        <div class="library-card-meta">
+          <p class="library-card-updated">Son güncelleme: ${formatRelativeUpdatedAt(entry.updatedAt)}</p>
+          <p class="library-card-sync" data-sync-slot="${escapeHtml(entry.reportId)}"></p>
+        </div>
         <div class="library-card-actions">
           <button type="button" class="mini-button" data-action="open" data-id="${escapeHtml(entry.reportId)}">Aç</button>
           <button type="button" class="mini-button" data-action="clone" data-id="${escapeHtml(entry.reportId)}">Kopyala</button>
-          <button type="button" class="mini-button" data-action="status" data-id="${escapeHtml(entry.reportId)}">${isCompleted ? "Taslağa Al" : "Tamamlandı İşaretle"}</button>
+          <button type="button" class="mini-button" data-action="status" data-id="${escapeHtml(entry.reportId)}">${isCompleted ? "Taslağa Al" : "Tamamlandı"}</button>
           <button type="button" class="mini-button" data-action="archive" data-id="${escapeHtml(entry.reportId)}">${entry.archived ? "Arşivden Çıkar" : "Arşivle"}</button>
           <button type="button" class="mini-button library-danger-button" data-action="delete" data-id="${escapeHtml(entry.reportId)}">Sil</button>
         </div>
@@ -424,15 +499,18 @@
   function cloudOnlyCardHtml(reportId, cloudData) {
     const s = cloudData.summary || {};
     const safe = (value) => escapeHtml(String(value || "-"));
+    const documentStatus = renderDocumentStatus(s.documentStatus);
     return `
       <article class="library-card library-card-cloud-only" data-report-id="${escapeHtml(reportId)}">
         <header class="library-card-head">
           <h4>${safe(s.caseName || "Adsız Rapor")}</h4>
           <span class="library-active-pill library-cloud-pill">Yalnızca bulutta</span>
+          ${documentStatus}
         </header>
         <dl class="library-card-facts">
           <div><dt>Banka</dt><dd>${safe(s.bank)}</dd></div>
-          <div><dt>Konum</dt><dd>${safe([s.city, s.district].filter(Boolean).join(" / "))}</dd></div>
+          <div><dt>Konum</dt><dd>${safe([s.city, s.district, s.neighborhood].filter(Boolean).join(" / "))}</dd></div>
+          <div><dt>Ada/Parsel</dt><dd>${safe(s.adaParsel)}</dd></div>
         </dl>
         <div class="library-card-actions">
           <button type="button" class="primary-button" data-action="fetch-cloud" data-id="${escapeHtml(reportId)}">Bu Cihaza Getir ve Aç</button>
@@ -483,14 +561,32 @@
     });
   }
 
+  function renderViewModeControl(overlay) {
+    const container = overlay.querySelector("#libraryViewMode");
+    if (!container) return;
+    container.innerHTML = `
+      <button type="button" class="library-view-mode-button${viewMode === "cards" ? " is-active" : ""}" data-view-mode="cards" title="Kart gorunumu" aria-label="Kart gorunumu">Kart</button>
+      <button type="button" class="library-view-mode-button${viewMode === "list" ? " is-active" : ""}" data-view-mode="list" title="Liste gorunumu" aria-label="Liste gorunumu">Liste</button>`;
+    container.querySelectorAll("[data-view-mode]").forEach((button) => {
+      button.addEventListener("click", () => {
+        viewMode = button.dataset.viewMode;
+        localStorage.setItem(LIBRARY_VIEW_MODE_KEY, viewMode);
+        renderDashboardBody();
+      });
+    });
+  }
+
   async function renderDashboardBody() {
     const overlay = document.querySelector("#libraryModalOverlay");
     if (!overlay) return;
     const grid = overlay.querySelector("#libraryCardsGrid");
     const index = readIndex();
-    renderStatusFilterChips(overlay, index);
-    const localIds = new Set(index.map((entry) => entry.reportId));
-    const visible = index
+    const eligibleIndex = index.filter(isMinimumCompleteEntry);
+    renderStatusFilterChips(overlay, eligibleIndex);
+    renderViewModeControl(overlay);
+    grid.classList.toggle("is-list", viewMode === "list");
+    const localIds = new Set(eligibleIndex.map((entry) => entry.reportId));
+    const visible = eligibleIndex
       .filter((entry) => showArchived || !entry.archived)
       .filter((entry) => statusFilter === "all" || (entry.status || "draft") === statusFilter)
       .filter((entry) => matchesSearch(entry, searchQuery))
@@ -500,12 +596,21 @@
     if (!visible.length) {
       html += `<p class="library-empty-state">Görüntülenecek talep yok. "+ Yeni Talep Oluştur" ile başlayın veya filtre/aramayı temizleyin.</p>`;
     } else {
-      html += visible.map(cardHtml).join("");
+      const hydratedVisible = visible.map((entry) => {
+        const blob = readBlob(entry.reportId);
+        if (!blob?.state) return entry;
+        return {
+          ...entry,
+          summary: summarizeFields(blob.state.fields || {}, blob.state.uploads || {}),
+        };
+      });
+      html += hydratedVisible.map(cardHtml).join("");
     }
 
     if (window.RaporCloudSync?.isConfigured() && window.RaporCloudSync.getStatus().signedIn && cloudReportsCache) {
       Object.keys(cloudReportsCache)
         .filter((id) => !localIds.has(id))
+        .filter((id) => isMinimumCompleteSummary(cloudReportsCache[id]?.summary))
         .forEach((id) => {
           html += cloudOnlyCardHtml(id, cloudReportsCache[id]);
         });
@@ -597,6 +702,7 @@
         <div class="library-modal-body">
           <div class="library-status-filter" id="libraryStatusFilter"></div>
           <div class="library-toolbar">
+            <div class="library-view-mode" id="libraryViewMode" role="group" aria-label="Talep gorunumu"></div>
             <input type="search" id="librarySearch" placeholder="Ara: müşteri, iş adı, il, ilçe, ada/parsel..." />
             <label class="toggle"><input type="checkbox" id="libraryShowArchived" /> Arşivlenenler</label>
             <button type="button" class="primary-button" id="libraryNewReportBtn">+ Yeni Talep Oluştur</button>
@@ -699,7 +805,7 @@
       updatedAt: blob.state.updatedAt,
       archived: false,
       status: "draft",
-      summary: summarizeFields(blob.state.fields),
+      summary: summarizeFields(blob.state.fields, blob.state.uploads || {}),
     });
     writeIndex(index);
     loadReportIntoActiveState(reportId);

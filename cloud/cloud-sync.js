@@ -75,12 +75,30 @@
 
   function buildSummary() {
     const f = state.fields || {};
+    const completion = typeof getReportCompletionStats === "function"
+      ? getReportCompletionStats(state)
+      : { filled: 0, percentage: 0 };
     return {
       caseName: String(f.caseName || ""),
       bank: String(f.bank || ""),
       city: String(f.city || f.titleCity || ""),
       district: String(f.district || f.titleDistrict || ""),
-      adaParsel: String(f.titleAdaParsel || f.adaParsel || ""),
+      neighborhood: String(f.neighborhood || f.titleNeighborhood || ""),
+      adaParsel: String(
+        f.titleAdaParsel
+        || f.adaParsel
+        || [f.blockNo, f.parcelNo].filter(Boolean).join(" / ")
+        || "",
+      ),
+      documentStatus: {
+        takbis: Boolean(state.uploads?.takbis),
+        address: Boolean(state.uploads?.address),
+        imar: Boolean(state.uploads?.imar),
+        ekb: Boolean(state.uploads?.ekb),
+        kml: Boolean(state.uploads?.kml),
+      },
+      completionFilled: completion.filled,
+      completionPercentage: completion.percentage,
       propertyType: String(f.propertyKind || f.legalUsageNature || ""),
     };
   }
@@ -146,6 +164,10 @@
   // ---------------------------------------------------------------
   async function pushReport({ force = false } = {}) {
     if (!cloud.user || !cloud.activeReportId || cloud.pushing) return false;
+    if (typeof getReportCompletionStats === "function" && !getReportCompletionStats(state).meetsMinimum) {
+      setStatus("ready", "Rapor kÃ¼tÃ¼phaneye alÄ±nmak iÃ§in henÃ¼z yeterince dolu deÄŸil.");
+      return false;
+    }
     cloud.pushing = true;
     setStatus("syncing", "Buluta gönderiliyor...");
     try {
@@ -639,14 +661,14 @@
 
   function renderGateBlocked(message) {
     setGateContent(`
-      <p style="font-weight:800;font-size:15px;letter-spacing:.02em;">RAPOR YAZMA</p>
+      <p style="font-weight:800;font-size:15px;letter-spacing:.02em;">Experify - Yarı Otomatik Rapor Oluşturma</p>
       <p style="color:#f3b0b0;font-size:14px;margin-top:10px;">${escapeHtmlSafe(message)}</p>
     `);
   }
 
   function renderGateOffline() {
     setGateContent(`
-      <p style="font-weight:800;font-size:15px;letter-spacing:.02em;">RAPOR YAZMA</p>
+      <p style="font-weight:800;font-size:15px;letter-spacing:.02em;">Experify - Yarı Otomatik Rapor Oluşturma</p>
       <p style="color:#b9c5d6;font-size:14px;margin-top:10px;">İnternet bağlantısı bulunamadı.
       Bu sistem yalnızca çevrimiçiyken kullanılabilir.</p>
       <p style="color:#8a99ad;font-size:12px;margin-top:6px;">Bağlantı gelince bu ekran otomatik kapanır.</p>
@@ -656,7 +678,7 @@
   function renderGateLogin(errorText = "") {
     setGateContent(`
       <div class="gate-card" style="background:#ffffff;border-radius:14px;padding:26px 22px;text-align:left;color:#152238;">
-        <p style="margin:0 0 4px;font-weight:800;font-size:15px;letter-spacing:.02em;color:#111d3d;">RAPOR YAZMA</p>
+        <p style="margin:0 0 4px;font-weight:800;font-size:15px;letter-spacing:.02em;color:#111d3d;">Experify - Yarı Otomatik Rapor Oluşturma</p>
         <p style="margin:0 0 18px;color:#5a6576;font-size:13px;">Devam etmek için giriş yapın. Belgeler ve ham
         belge metinleri buluta yüklenmez; yalnızca kendi hesabınızın raporlarını görürsünüz.</p>
         <label class="field"><span>E-posta</span>
