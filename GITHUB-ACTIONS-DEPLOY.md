@@ -20,18 +20,22 @@ Private key'i repository dosyasina koymayin. GitHub Actions bu degerleri secret 
 ## Ubuntu hazirligi
 
 Sunucuda uygulama klasoru ve PM2 uygulamasi bir kez hazir olmalidir. Yeni
-deployment akisi `ecosystem.config.cjs` ile PM2'yi yeniden baslatir ve Node
-sunucusunu yalnizca `127.0.0.1:5174` uzerinde dinletir:
+deployment akisi `ecosystem.config.cjs` ile PM2'yi yeniden baslatir. Uygulama
+yerel gelistirmede `127.0.0.1` adresine baglanir; production workflow ise
+Nginx'in reverse proxy olarak erisebilmesi icin `RAPOR_HOST=0.0.0.0` ve
+`RAPOR_PORT=5174` ortam degiskenlerini aktarir:
 
 ```bash
 cd /home/canlilar_melih/proje/files-mentioned-by-the-user-rapor/app
+RAPOR_HOST=0.0.0.0 RAPOR_PORT=5174 \
 pm2 startOrRestart ecosystem.config.cjs --only rapor-app --update-env
 pm2 save
 ```
 
 Workflow, aktarim sirasinda `server-data/` ve `backups/` klasorlerini korur.
 Her basarili deploy sonrasinda `rapor-app` yeniden baslatilir ve localhost
-uzerinden 5174 portu kontrol edilir.
+uzerinden 5174 portu kontrol edilir. 5174 portu public firewall'da acilmaz;
+dis erisim Nginx'in 80/443 reverse proxy katmanindan yapilir.
 
 ## Ilk HTTPS kurulumu
 

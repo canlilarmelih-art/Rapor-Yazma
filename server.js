@@ -116,7 +116,7 @@ const SECURITY_HEADERS = {
   "Content-Security-Policy": [
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline' https://unpkg.com",
-    "style-src 'self' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline' https://unpkg.com",
     "img-src 'self' data: blob: https://*.tile.openstreetmap.org https://*.arcgisonline.com",
     "font-src 'self' data:",
     "worker-src 'self' blob:",
