@@ -78,6 +78,17 @@ body[data-app-theme="neumorphism"] .nav-button.is-active {
   box-shadow: inset 3px 3px 7px var(--neu-dark), inset -3px -3px 7px var(--neu-light);
 }
 
+body[data-app-theme="neumorphism"] .nav-badge {
+  color: #1f3f76;
+  font-weight: 700;
+}
+
+body[data-app-theme="neumorphism"] .sidebar button,
+body[data-app-theme="neumorphism"] button,
+body[data-app-theme="neumorphism"] .primary-button {
+  color: var(--ink);
+}
+
 body[data-app-theme="neumorphism"] .nav-index {
   background: rgba(42, 58, 94, 0.08);
 }

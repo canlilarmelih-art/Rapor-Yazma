@@ -81,6 +81,17 @@ body[data-app-theme="clay"] .nav-button.is-active {
   color: var(--green-strong);
 }
 
+body[data-app-theme="clay"] .nav-badge {
+  color: #4c367e;
+  font-weight: 700;
+}
+
+body[data-app-theme="clay"] .sidebar button,
+body[data-app-theme="clay"] button,
+body[data-app-theme="clay"] .primary-button {
+  color: var(--ink);
+}
+
 body[data-app-theme="clay"] .nav-index {
   background: rgba(51, 48, 94, 0.08);
 }
