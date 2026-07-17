@@ -1,0 +1,122 @@
+/* Rapor Yazma - Claymorphism theme profile
+   Handoff kaynağı: Experify Design System/tokens/theme-clay.css.
+   Yumuşak, şişkin "kil" yüzeyler: büyük köşe yuvarlaklığı, pastel dolgu ve
+   imza üçlü gölge (dış gölge + iki iç gölge — sol üstte açık rim, sağ altta
+   renkli gölge) her öğeyi hamurdan basılmış gibi gösterir. Pastel lacivert/
+   periwinkle taban markayı korur. Bkz. glass.css'teki not: kaynak dosyanın
+   `--brand/--accent` + genel `aside/article/.ds-surface` seçicileri gerçek
+   `body[data-app-theme]` + gerçek değişken/sınıf adlarına uyarlandı. Ayrıca
+   uygulamanın GERÇEKTEN tükettiği `--radius-s/-m/-l` değişkenleri de burada
+   ezilir (bkz. styles.css:31-33) — böylece köşe yuvarlaklığı stiller
+   genelinde otomatik yayılır. */
+body[data-app-theme="clay"] {
+  --clay-bg: #eceafd;
+  --clay-surface: #f6f5ff;
+  --clay-shade: #c9c3f0;
+  --bg: var(--clay-bg);
+  --surface: var(--clay-surface);
+  --surface-muted: #e6e3fb;
+  --ink: #33305e;
+  --muted: #5f5a91;
+  --line: rgba(255, 255, 255, 0);
+  --green: #5b6ee0;
+  --green-soft: #e2e5fb;
+  --green-strong: #3f4bb5;
+  --green-bright: #6d7ff0;
+  --blue: #5b6ee0;
+  --blue-soft: #e2e5fb;
+  --amber: #c78a2a;
+  --amber-soft: #fbeecd;
+  --red: #e0637a;
+  --gold: #d7b26a;
+  --sidebar-ink: #33305e;
+  --radius-s: 20px;
+  --radius-m: 26px;
+  --radius-l: 34px;
+  --shadow: 6px 6px 16px var(--clay-shade), inset 3px 3px 6px rgba(255, 255, 255, 0.9), inset -4px -4px 8px var(--clay-shade);
+  --shadow-1: 4px 4px 12px var(--clay-shade), inset 2px 2px 5px rgba(255, 255, 255, 0.9), inset -3px -3px 6px var(--clay-shade);
+  --shadow-2: 8px 10px 22px var(--clay-shade), inset 4px 4px 8px rgba(255, 255, 255, 0.95), inset -5px -5px 10px var(--clay-shade);
+  --ring: 0 0 0 4px rgba(91, 110, 224, 0.3);
+  background: var(--clay-bg);
+}
+
+body[data-app-theme="clay"] .sidebar,
+body[data-app-theme="clay"] .section-card,
+body[data-app-theme="clay"] .assistant-panel,
+body[data-app-theme="clay"] .panel-block,
+body[data-app-theme="clay"] .status-strip article,
+body[data-app-theme="clay"] .mobile-flow,
+body[data-app-theme="clay"] .subsection,
+body[data-app-theme="clay"] .table-shell {
+  background: var(--clay-surface);
+  border: 0 !important;
+  border-radius: 26px;
+  box-shadow: 6px 6px 16px var(--clay-shade), inset 3px 3px 6px rgba(255, 255, 255, 0.9), inset -4px -4px 8px var(--clay-shade);
+}
+
+/* Sidebar bu temada AÇIK renk (--clay-surface) — uygulamanın temel
+   styles.css'i sidebar'ı hep KOYU zemin varsayarak .brand p/.nav-button/
+   .sync-panel p gibi alt öğelere sabit (değişken kullanmayan) açık renkler
+   veriyor (bkz. styles.css:522-604). Açık sidebar'da bu satırlar okunaksız
+   kalıyordu — kullanıcı 2026-07-17'de bunu bildirdi. Burada tek tek eziliyor
+   (apple.css'in .sidebar için yaptığı override'ların aynısı, farklı yön). */
+body[data-app-theme="clay"] .sidebar {
+  border-right: 0;
+  border-radius: 0 34px 34px 0;
+  color: var(--ink);
+}
+
+body[data-app-theme="clay"] .brand p,
+body[data-app-theme="clay"] .sync-panel p {
+  color: var(--muted);
+}
+
+body[data-app-theme="clay"] .nav-button {
+  color: var(--ink);
+}
+
+body[data-app-theme="clay"] .nav-button:hover,
+body[data-app-theme="clay"] .nav-button.is-active {
+  background: var(--green-soft);
+  color: var(--green-strong);
+}
+
+body[data-app-theme="clay"] .nav-index {
+  background: rgba(51, 48, 94, 0.08);
+}
+
+body[data-app-theme="clay"] .sync-panel {
+  background: rgba(51, 48, 94, 0.06);
+}
+
+body[data-app-theme="clay"] input,
+body[data-app-theme="clay"] select,
+body[data-app-theme="clay"] textarea {
+  background: var(--clay-bg) !important;
+  border: 0 !important;
+  border-radius: 18px;
+  color: var(--ink);
+  box-shadow: inset 4px 4px 8px var(--clay-shade), inset -4px -4px 8px rgba(255, 255, 255, 0.9) !important;
+}
+
+body[data-app-theme="clay"] button {
+  background: var(--clay-surface);
+  border: 0 !important;
+  border-radius: 20px;
+  box-shadow: 4px 4px 12px var(--clay-shade), inset 2px 2px 5px rgba(255, 255, 255, 0.9), inset -3px -3px 6px var(--clay-shade);
+}
+
+body[data-app-theme="clay"] button:active {
+  transform: translateY(1px);
+  box-shadow: inset 4px 4px 9px var(--clay-shade), inset -4px -4px 9px rgba(255, 255, 255, 0.9);
+}
+
+body[data-app-theme="clay"] .theme-profile-control select {
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: var(--clay-surface);
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 700;
+}

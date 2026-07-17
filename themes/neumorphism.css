@@ -1,0 +1,117 @@
+/* Rapor Yazma - Neumorphism theme profile
+   Handoff kaynağı: Experify Design System/tokens/theme-neumorphism.css.
+   Soft-UI / "soft-life" işleme. Monokromatik, düşük kontrast: yüzeyler
+   sayfayla AYNI renkte, yalnızca iki yönlü gölge çiftiyle (sol üstte açık
+   vurgu, sağ altta koyu gölge) kabartılmış görünür. Kenarlık yok. Lacivert
+   mürekkep + gold vurgu korunur. Bkz. glass.css'teki not: kaynak dosyanın
+   `--brand/--accent` + genel `aside/article/.ds-surface` seçicileri gerçek
+   `body[data-app-theme]` + gerçek değişken/sınıf adlarına uyarlandı;
+   uygulamanın gerçekten tükettiği `--radius-s/-m/-l` (bkz. styles.css:31-33)
+   de burada ezilir. */
+body[data-app-theme="neumorphism"] {
+  --neu-bg: #e4e9f2;
+  --neu-light: #ffffff;
+  --neu-dark: #c3ccdd;
+  --bg: var(--neu-bg);
+  --surface: var(--neu-bg);
+  --surface-muted: #dbe1ee;
+  --ink: #2a3a5e;
+  --muted: #566079;
+  --line: rgba(255, 255, 255, 0);
+  --green: #213f77;
+  --green-soft: #dbe1ee;
+  --green-strong: #172c56;
+  --green-bright: #2d59ab;
+  --blue: #2d59ab;
+  --blue-soft: #dbe1ee;
+  --amber: #9a6a16;
+  --amber-soft: #dbe1ee;
+  --red: #b23434;
+  --gold: #d7b26a;
+  --sidebar-ink: var(--neu-bg);
+  --radius-s: 14px;
+  --radius-m: 18px;
+  --radius-l: 24px;
+  --shadow: -8px -8px 18px var(--neu-light), 8px 8px 18px var(--neu-dark);
+  --shadow-1: -6px -6px 14px var(--neu-light), 6px 6px 14px var(--neu-dark);
+  --shadow-2: -10px -10px 24px var(--neu-light), 10px 10px 24px var(--neu-dark);
+  --ring: inset 3px 3px 7px var(--neu-dark), inset -3px -3px 7px var(--neu-light);
+  background: var(--neu-bg);
+}
+
+body[data-app-theme="neumorphism"] .sidebar,
+body[data-app-theme="neumorphism"] .section-card,
+body[data-app-theme="neumorphism"] .assistant-panel,
+body[data-app-theme="neumorphism"] .panel-block,
+body[data-app-theme="neumorphism"] .status-strip article,
+body[data-app-theme="neumorphism"] .mobile-flow,
+body[data-app-theme="neumorphism"] .subsection,
+body[data-app-theme="neumorphism"] .table-shell {
+  background: var(--neu-bg);
+  border: 0 !important;
+  box-shadow: -8px -8px 18px var(--neu-light), 8px 8px 18px var(--neu-dark);
+}
+
+/* Sidebar bu temada AÇIK renk (--neu-bg) — uygulamanın temel styles.css'i
+   sidebar'ı hep KOYU zemin varsayarak .brand p/.nav-button/.sync-panel p
+   gibi alt öğelere sabit (değişken kullanmayan) açık renkler veriyor (bkz.
+   styles.css:522-604). Açık sidebar'da bu satırlar okunaksız kalıyordu —
+   kullanıcı 2026-07-17'de bunu bildirdi (Clay'de de aynı sorun, aynı
+   düzeltme). */
+body[data-app-theme="neumorphism"] .sidebar {
+  border-right: 0;
+  color: var(--ink);
+}
+
+body[data-app-theme="neumorphism"] .brand p,
+body[data-app-theme="neumorphism"] .sync-panel p {
+  color: var(--muted);
+}
+
+body[data-app-theme="neumorphism"] .nav-button {
+  color: var(--ink);
+}
+
+body[data-app-theme="neumorphism"] .nav-button:hover,
+body[data-app-theme="neumorphism"] .nav-button.is-active {
+  color: var(--green);
+  box-shadow: inset 3px 3px 7px var(--neu-dark), inset -3px -3px 7px var(--neu-light);
+}
+
+body[data-app-theme="neumorphism"] .nav-index {
+  background: rgba(42, 58, 94, 0.08);
+}
+
+body[data-app-theme="neumorphism"] .sync-panel {
+  box-shadow: inset 2px 2px 5px var(--neu-dark), inset -2px -2px 5px var(--neu-light);
+}
+
+body[data-app-theme="neumorphism"] input,
+body[data-app-theme="neumorphism"] select,
+body[data-app-theme="neumorphism"] textarea {
+  background: var(--neu-bg) !important;
+  border: 0 !important;
+  color: var(--ink);
+  box-shadow: inset 3px 3px 7px var(--neu-dark), inset -3px -3px 7px var(--neu-light) !important;
+}
+
+body[data-app-theme="neumorphism"] button {
+  background: var(--neu-bg);
+  border: 0 !important;
+  box-shadow: -6px -6px 14px var(--neu-light), 6px 6px 14px var(--neu-dark);
+}
+
+body[data-app-theme="neumorphism"] button:active {
+  box-shadow: inset 4px 4px 9px var(--neu-dark), inset -4px -4px 9px var(--neu-light);
+}
+
+body[data-app-theme="neumorphism"] .theme-profile-control select {
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: var(--radius-s);
+  background: var(--neu-bg);
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 700;
+  box-shadow: -6px -6px 14px var(--neu-light), 6px 6px 14px var(--neu-dark);
+}

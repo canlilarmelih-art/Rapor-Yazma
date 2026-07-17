@@ -1,0 +1,118 @@
+/* Rapor Yazma - Glass theme profile
+   Handoff kaynağı: design_handoff_glass_theme/tokens/theme-glass.css.
+   Üçüncü, opt-in profil (Apple/Navy Blue yanına). Buzlu cam (glassmorphism):
+   yarı saydam yüzeyler, backdrop blur, arkada kayan renkli gradyan (blur'un
+   kırabileceği bir zemin olsun diye). Navy Blue'nun lacivert/gold marka
+   vurgularını korur ki jenerik bir "buzlu cam" değil, uygulamanın kendi
+   üçüncü teması gibi görünsün.
+
+   Not: Kaynak dosya `[data-theme="glass"]` + `aside/article/.ds-surface`
+   gibi genel seçiciler ve `--brand/--accent/--warning/--danger` gibi farklı
+   adlandırılmış tokenlar kullanıyordu (ayrı bir tasarım aracının kendi
+   sözlüğü). Bu dosya, gerçek uygulamanın seçici biçimine
+   (`body[data-app-theme="glass"]`) ve gerçek değişken adlarına
+   (`--green/--blue/--amber/--red` vb., bkz. apple.css/navy-blue.css) ve
+   gerçek yüzey sınıflarına (`.section-card`, `.assistant-panel` vb., bkz.
+   apple.css'in aynı listesi) birebir renk/blur/gölge DEĞERLERİ korunarak
+   uyarlanmıştır. */
+body[data-app-theme="glass"] {
+  --bg: linear-gradient(160deg, #eef2fb 0%, #e2ecfb 45%, #f7ecd9 100%);
+  --surface: rgba(255, 255, 255, 0.30);
+  --surface-muted: rgba(255, 255, 255, 0.18);
+  --ink: #16264a;
+  --muted: #3f5378;
+  --line: rgba(255, 255, 255, 0.55);
+  --green: #213f77;
+  --green-soft: rgba(255, 255, 255, 0.4);
+  --blue: #2d59ab;
+  --blue-soft: rgba(255, 255, 255, 0.4);
+  --amber: #8a6a26;
+  --amber-soft: rgba(246, 236, 214, 0.55);
+  --red: #b23434;
+  --green-strong: #172c56;
+  --green-bright: #2d59ab;
+  --gold: #d7b26a;
+  --sidebar-ink: rgba(17, 29, 61, 0.45);
+  --shadow: 0 20px 60px rgba(17, 29, 61, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  --shadow-1: 0 1px 2px rgba(17, 29, 61, 0.06), 0 8px 24px rgba(17, 29, 61, 0.10), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  --shadow-2: 0 12px 30px rgba(17, 29, 61, 0.16), 0 30px 70px rgba(17, 29, 61, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  --ring: 0 0 0 3px rgba(45, 89, 171, 0.3);
+  position: relative;
+  background: var(--bg);
+}
+
+/* Blur'un kırabileceği zemin: altın/lacivert/beyaz üç radyal gradyan. */
+body[data-app-theme="glass"]::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(640px circle at 12% 15%, rgba(215, 178, 106, 0.32), transparent 60%),
+    radial-gradient(720px circle at 88% 85%, rgba(45, 89, 171, 0.30), transparent 60%),
+    radial-gradient(500px circle at 60% 40%, rgba(255, 255, 255, 0.5), transparent 65%);
+}
+
+/* Uygulamanın gerçek "yüzey" (kart benzeri kapsayıcı) sınıfları — bkz.
+   apple.css'teki aynı liste. Buzlu cam efekti bunlara ve tablo/forma
+   uygulanır. */
+body[data-app-theme="glass"] .sidebar,
+body[data-app-theme="glass"] .section-card,
+body[data-app-theme="glass"] .assistant-panel,
+body[data-app-theme="glass"] .panel-block,
+body[data-app-theme="glass"] .status-strip article,
+body[data-app-theme="glass"] .mobile-flow,
+body[data-app-theme="glass"] .subsection,
+body[data-app-theme="glass"] .table-shell,
+body[data-app-theme="glass"] input,
+body[data-app-theme="glass"] select,
+body[data-app-theme="glass"] textarea,
+body[data-app-theme="glass"] button {
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+}
+
+body[data-app-theme="glass"] .section-card,
+body[data-app-theme="glass"] .assistant-panel,
+body[data-app-theme="glass"] .panel-block,
+body[data-app-theme="glass"] .status-strip article,
+body[data-app-theme="glass"] .mobile-flow,
+body[data-app-theme="glass"] .subsection,
+body[data-app-theme="glass"] .table-shell {
+  background: var(--surface);
+  border-color: var(--line);
+  box-shadow: var(--shadow-1);
+}
+
+/* Kenar çubuğu: kendi ayrı, koyu-lacivert-camsı işlemi. */
+body[data-app-theme="glass"] .sidebar {
+  background: linear-gradient(160deg, rgba(33, 63, 119, 0.55), rgba(17, 29, 61, 0.62));
+  border-right: 1px solid rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+  box-shadow: none;
+}
+
+body[data-app-theme="glass"] main {
+  position: relative;
+  z-index: 1;
+}
+
+body[data-app-theme="glass"] input,
+body[data-app-theme="glass"] select,
+body[data-app-theme="glass"] textarea {
+  background: rgba(255, 255, 255, 0.45) !important;
+  border-color: rgba(255, 255, 255, 0.6) !important;
+  color: var(--ink);
+}
+
+body[data-app-theme="glass"] .theme-profile-control select {
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.45);
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 700;
+}
