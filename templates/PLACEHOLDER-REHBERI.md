@@ -196,6 +196,15 @@ verilerinizle doldurur ve Word ile açılabilen bir `.doc` dosyası indirir.
 | `{{DEGERLENDIRME_SEMASI}}` | Değerleme yöntemleri hesap açıklaması |
 | `{{DEGERLEME_YONTEMI_ACIKLAMASI}}` | Değerleme yöntemi seçimi açıklaması |
 
+### Ziraat Bankası açıklama bölümleri
+
+Bu üç placeholder yalnızca Ziraat Bankası rapor şablonunda kullanılır. Metinler,
+Adres ve Konum ile çevresel/ana gayrimenkul alanlarından otomatik oluşturulur:
+
+| `{{ZIRAAT_KONUM_CEVRESEL}}` | Konumu ve çevresel özellikleri |
+| `{{ZIRAAT_BOLGE_GELISIMI}}` | Bölgenin gelişimine ilişkin analiz |
+| `{{ZIRAAT_YAPILASMA}}` | Bölgedeki yapılaşma durumu |
+
 ### Emsaller
 
 **Standart format (2026-07-13 itibarıyla tüm banka şablonlarında kullanılan format):**
@@ -214,6 +223,39 @@ otomatik doğrular).
 | `{{EMSAL_ARSA_PIYASA_DEGERI}}` | Arsa/tarla için "Hesaplanan Emsale Göre Piyasa Değeri" tablosu (yalnızca hesaplanabiliyorsa) * |
 | `{{EMSAL_TABLOSU}}` | *(eski format — yeni şablonlarda kullanmayın)* Emsal değerleme özet tablosu (No/Alan/Talep Edilen Değer...) * |
 | `{{EMSAL_1}}` ... `{{EMSAL_7}}` | *(eski format — yeni şablonlarda kullanmayın)* Emsal özet cümleleri * |
+
+### Gabim Veri Seti
+
+Rapor formatlarının en alt bölümündeki "Gabim Veri Seti" artık GDYS'nin
+gerçek formunu (gayrimenkul türüne göre farklı grup/alan gösteren form)
+birebir yansıtır — bkz. `app.js` içindeki `gabimPropertyProfile()` ve
+`buildGabimExportGroups()`. Gösterilen gruplar `Mülkiyet` (ownershipType)
+ve `Yasal Kullanım Niteliği` (legalUsageNature) alanlarından türetilir:
+
+- **Arsa/Tarla** (bina yok): sadece Genel Ek Bilgiler, Tapu Bilgileri,
+  Tapuya Özel Bilgiler, Bağımsız Bölüm/Taşınmaz Özellikleri (Birim
+  Değerler ve Cephe/Kat alanları olmadan).
+- **Arazi** (bina yok + Yasal Kullanım Niteliği = Arazi): yukarıdakine ek
+  olarak "Araziye Özel Bilgiler" (Tarım Türü, Arazi Sınıflandırması,
+  Kadastro Yoluna Cephesi).
+- **Konut** (bina var + Yasal Kullanım Niteliği = Konut): Yapıya Özel
+  Bilgiler, Yapı Tür Bilgisi, tam Ek Bilgiler, Bağımsız Bölüm bölümünde
+  Birim Değerler + tam Cephe ve Kat (Site Adı/Oda/Salon/Banyo/Mutfak/
+  Balkon/Cepheler).
+- **Diğer Bina** (bina var, Konut dışı — İşyeri/Ofis/Ticari Bina/Sanayi
+  Tesisi): Yapıya Özel Bilgiler + sadeleştirilmiş Ek Bilgiler (Yönetici/
+  Otopark/Asansör/Güvenlik), Bağımsız Bölüm bölümünde Birim Değerler +
+  sadece Enerji Sınıfı (Cephe/Kat detayları yok). Yapı Tür Bilgisi
+  gösterilmez.
+
+Ekrandaki "Gabim Veri Seti" paneli (uygulama içi, son bölüm) bilinçli
+olarak TÜM alanları göstermeye devam eder (kullanıcı GDYS'ye elle veri
+girerken referans olsun diye) — yalnızca rapor/Word çıktısı türe göre
+budanır.
+
+| Placeholder | İçerik |
+|---|---|
+| `{{GABIM_VERI_SETI}}` | Gayrimenkul türüne göre koşullu Gabim Veri Seti grupları (HTML) * |
 
 ### Halkbank'a özel
 

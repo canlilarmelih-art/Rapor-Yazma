@@ -253,6 +253,7 @@
     SAHIPLER: { fn: ownersListText },
     HISSELIMI: { fn: () => safeCall("gabimHasShareText") },
     MALIKLERTABLO: { h: () => safeCall("buildMaliklerTableWordHtml") },
+    GABIMVERISETI: { h: () => safeCall("buildGabimDataSetWordHtml") },
     HISSEACIKLAMASI: { f: ["shareExplanation"] },
     EKLENTI: { f: ["titleAttachment"] },
 
@@ -387,6 +388,11 @@
     DEGERLENDIRMETABLOSU: { h: () => safeCall("buildValuationSummaryWordTableHtml") || safeCall("formatTextTableForWord", safeCall("buildValuationSummaryText")) },
     DEGERLENDIRMESEMASI: { t: () => safeCall("buildValuationMethodsSchemeText") },
     DEGERLEMEYONTEMIACIKLAMASI: { t: () => safeCall("buildValuationMethodExplanation") },
+
+    // --- Ziraat Bankası açıklama bölümleri ---
+    ZIRAAT_KONUM_CEVRESEL: { t: () => safeCall("buildZiraatLocationEnvironmentalExplanation") },
+    ZIRAAT_BOLGE_GELISIMI: { t: () => safeCall("buildZiraatDevelopmentAnalysisExplanation") },
+    ZIRAAT_YAPILASMA: { t: () => safeCall("buildZiraatBuildingPatternExplanation") },
 
     // --- Emsaller ---
     EMSALTABLOSU: { h: () => safeCall("buildComparableValuationWordTableHtml") || safeCall("buildComparableMatrixWordTableHtml") },

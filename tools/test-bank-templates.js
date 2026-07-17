@@ -195,6 +195,35 @@ comparableTemplateFiles.forEach((file) => {
   }
 });
 
+// --- 2c) Gabim Veri Seti bölümü GDYS'nin gerçek, türe göre koşullu şeklini
+// yansıtmalı (kullanıcı 2026-07-17: 4 gayrimenkul türü ekran görüntüsü ile
+// karşılaştırma). Tüm tam rapor şablonlarında {{GABIM_VERI_SETI}} bloğu
+// olmalı; eski sabit (her zaman aynı alanları gösteren) düz tablo formatına
+// dönülmemiş olmalı.
+comparableTemplateFiles.forEach((file) => {
+  const text = fs.readFileSync(path.join(appDir, "templates", file), "utf8");
+  assert(text.includes("{{GABIM_VERI_SETI}}"), `${file}: GABIM_VERI_SETI placeholder'i bulunamadi.`);
+  assert(
+    !text.includes("KENTSEL DÖNÜŞÜM BÖLGESİNDE Mİ</td><td>{{URBAN_TRANSFORMATİON_AREA}}") &&
+    !text.includes("Kentsel Dönüşüm Bölgesinde mi:</td><td class=\"v\">{{URBAN_TRANSFORMATİON_AREA}}"),
+    `${file}: eski sabit (turden bagimsiz) Gabim Veri Seti duz tablosu hala mevcut.`
+  );
+});
+assert(
+  engineSource.includes('GABIMVERISETI: { h: () => safeCall("buildGabimDataSetWordHtml") }'),
+  "GABIMVERISETI placeholder'i template-engine.js icinde bulunamadi."
+);
+assert(
+  appSource.includes("function gabimPropertyProfile()") &&
+  appSource.includes("function buildGabimExportGroups()") &&
+  appSource.includes("function buildGabimDataSetWordHtml()"),
+  "Gabim Veri Seti icin turden bagimsiz olmayan (koşullu) uretici fonksiyonlar bulunamadi."
+);
+assert(
+  appSource.includes('"Araziye Özel Bilgiler"') && appSource.includes('key: "landClassification"'),
+  "Araziye Özel Bilgiler grubu veya Arazi Siniflandirmasi alani bulunamadi."
+);
+
 // --- 3) katlama eşdeğerlikleri ------------------------------------------
 assert(engine.foldTokenName("DIŞ.KAPI.NO") === engine.foldTokenName("dis_kapi_no"), "katlama: DIS.KAPI.NO != dis_kapi_no");
 assert(engine.foldTokenName("BÖLGE.YAP.KUL.AMACI") === "BOLGEYAPKULAMACI", "katlama: BOLGE.YAP.KUL.AMACI hatali");
