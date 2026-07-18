@@ -1,9 +1,224 @@
 # Rapor Yazma Programı — Handoff Notu
 
-Son güncelleme: 2026-07-11 (gece) · Servis edilen sürüm: **app.js?v=20260711-0012** (styles.css?v=20260711-0012, cloud/cloud-sync.js?v=20260709-2247, cloud/report-library.js?v=20260710-1626, halkbank-risk-rules.js?v=20260707-1812)
+Son güncelleme: 2026-07-18 · Servis edilen sürüm: **app.js?v=20260718-1540** (styles.css?v=20260718-1130, src/templates/template-engine.js?v=20260718-1510, cloud/cloud-sync.js?v=20260709-2247, cloud/report-library.js?v=20260710-1626, halkbank-risk-rules.js?v=20260707-1812)
 
 Bu belge, bir sonraki geliştirici/oturum için projeyi çalıştırma, doğrulama ve bu
 oturumda yapılanları özetler.
+
+---
+## 0.0.166 - 2026-07-18 - Word Dar sayfa düzeni section'a bağlandı
+
+- Kullanıcının indirdiği Kuveyt Türk `.doc` dosyası incelendi; Word kaydı içinde `@page WordSection1 { margin:36.0pt ... }` görülse de ilk export HTML'inde gövde açıkça bu section'a bağlı değildi.
+- Genel Word export ve tüm banka template'lerinde düz `@page` yerine `@page WordSection1` kullanıldı, `div.WordSection1 { page: WordSection1; }` eklendi ve body içeriği `<div class="WordSection1">...</div>` ile sarıldı.
+- Cache-buster: `app.js?v=20260718-1540`.
+
+### Doğrulama
+
+- `node --check app.js`
+- `node tools/test-bank-templates.js`
+- `node tools/check-basic.js`
+- `git diff --check`
+
+---
+## 0.0.165 - 2026-07-18 - Word Dar preset kenar boşluğu
+
+- Word'ün `Sayfa Düzeni > Kenar Boşlukları > Dar` preset'i 0.5 inch / 1.27 cm değerine karşılık geldiği için genel Word export ve tüm template `@page` margin değerleri `36pt` yapıldı.
+- Önceki `10pt` değeri daha dar olsa da Word tarafından `Dar` preset'i olarak algılanmadığı için kullanıcı kontrolünde sayfa yapısı `Normal` görünüyordu.
+- Cache-buster: `app.js?v=20260718-1530`.
+
+### Doğrulama
+
+- `node --check app.js`
+- `node tools/test-bank-templates.js`
+- `node tools/check-basic.js`
+- `git diff --check`
+
+---
+## 0.0.164 - 2026-07-18 - Word dar sayfa düzeni ve tablo arası boşluk
+
+- Genel Word export `@page` ve yatay `WordLandscape` sayfa kenar boşlukları önce 10 pt yapılarak daraltıldı; Word preset davranışı için 0.0.165'te 36 pt'e çekildi.
+- Üretilen Word tabloları ile banka template tablo stillerinde alt boşluk 12 pt'e sabitlendi; ardışık tablolar arasında daima yaklaşık bir satır boşluk kalır.
+- Cache-buster: `app.js?v=20260718-1520`.
+
+### Doğrulama
+
+- `node --check app.js`
+- `node tools/test-bank-templates.js`
+- `node tools/check-basic.js`
+- `git diff --check`
+
+---
+## 0.0.163 - 2026-07-18 - Kuveyt Türk değerleme tablo önü not ve statik uygunluk
+
+- Kuveyt Türk değerleme bölümünde `*** Taşınmazın değerlemesi takyidatlardan bağımsız yapılmıştır.` cümlesi tablolardan önceye alındı.
+- Aynı tablo önü bölgede alt başlık kullanmadan `{{STATIC_SUITABILITY_EXPLANATION_TEXT}}` açıklama placeholder'ı eklendi.
+- Banka template testine Kuveyt Türk özel sırası eklendi: takyidat notu, statik uygunluk açıklaması ve ardından değerleme tabloları.
+
+### Doğrulama
+
+- `node tools/test-bank-templates.js`
+
+---
+## 0.0.162 - 2026-07-18 - Değerleme bölümü hisse açıklaması ve tablo sırası
+
+- `{{HISSE_ACIKLAMASI}}` çıktısı `share-explanation` paragraf sınıfıyla üretilir; Word/template CSS tarafında 10 pt ve iki yana yaslı olacak şekilde sabitlendi.
+- Tam rapor banka şablonlarında değerleme bölümü ortak sırası testle kilitlendi: yöntem açıklaması, hisse açıklaması, satış kabiliyeti, kira, emlak beyanı, değerleme özet tablosu, kat bazında indirgenmiş alan tablosu, değerleme yöntemleri hesap açıklaması.
+- Cache-buster: `app.js?v=20260718-1510`, `src/templates/template-engine.js?v=20260718-1510`.
+
+### Doğrulama
+
+- `node --check app.js`
+- `node --check src/templates/template-engine.js`
+- `node tools/test-bank-templates.js`
+- `node tools/check-basic.js`
+- `git diff --check`
+
+---
+## 0.0.161 - 2026-07-18 - Kuveyt Türk ruhsata uygunluk altına proje/belge açıklamaları
+
+- Kuveyt Türk şablonunda `Gayrimenkulde Kaçak Yapılaşma / Ruhsata Uygunluk Açıklaması` başlığının altına yalnızca `{{PROJECT_REVİEW_DESCRİPTİON}}` eklendi; `{{PROJECT_CONFORMİTY}}` ve `{{REVİEWED_DOCUMENTS_DESCRİPTİON}}` bu bölümden kaldırıldı.
+- Şablon motoruna bu iki placeholder için alias eklendi; ilki proje inceleme/projeye uygunluk açıklamasına, ikincisi incelenen belgeler açıklamasına bağlanır.
+- Cache-buster: `src/templates/template-engine.js?v=20260718-1450`.
+
+### Doğrulama
+
+- `node --check src/templates/template-engine.js`
+- `node tools/test-bank-templates.js`
+- `node tools/check-basic.js`
+
+---
+## 0.0.160 - 2026-07-18 - EKB yok metninde randevu tarihi
+
+- `Enerji Kimlik Belgesi = Hayır` açıklamasında sabit `İnceleme tarihinde` yerine randevu tarihi yazdırılır.
+- EKB açıklaması için ortak tarih başlangıcı (`06.07.2026 tarihinde`) süresi geçmiş ve EKB yok varyantlarında birlikte kullanılır.
+- Mevcut taslaklarda eski `İnceleme tarihinde EKB sistemi...` metni randevu tarihli yeni metinle değiştirilir.
+- Cache-buster: `app.js?v=20260718-1440`.
+
+### Doğrulama
+
+- `node --check app.js`
+- `node tools/check-basic.js`
+- `node tools/test-bank-templates.js`
+- `git diff --check`
+
+---
+## 0.0.159 - 2026-07-18 - Süresi geçmiş EKB metninde randevu tarihi yazdırıldı
+
+- Süresi geçmiş EKB açıklamasında sabit `İnceleme tarihinde` başlangıcı kaldırıldı; yerine randevu tarihi yazılır: `06.07.2026 tarihinde ...`.
+- EKB tarihi cümlesi `veriliş tarihi 01.07.2015, geçerlilik tarihi 01.06.2025 olan Enerji Kimlik Belgesi` biçimine getirildi.
+- Eski `İnceleme tarihinde ... Enerji Kimlik Belgesi incelenmiştir` kalıbı yanında yeni randevu tarihli kalıp da mevcut taslak migration temizliği tarafından tanınır.
+- Cache-buster: `app.js?v=20260718-1430`.
+
+### Doğrulama
+
+- `node --check app.js`
+- `node tools/check-basic.js`
+- `node tools/test-bank-templates.js`
+- `git diff --check`
+
+---
+## 0.0.158 - 2026-07-18 - Süresi geçmiş EKB metninde randevu tarihi ve tarihli kelimesi
+
+- Süresi geçmiş EKB kontrolünde inceleme tarihi artık belediye inceleme tarihi yerine doğrudan randevu tarihi (`appointmentDate`) olarak alınır.
+- Süresi geçmiş EKB açıklamasında `veriliş tarihi 01.07.2015 tarihli,` biçimi `veriliş tarihi 01.07.2015,` olarak sadeleştirildi; geçerlilik tarihi de aynı sade biçimi kullanır.
+- Eski `tarihli` içeren EKB cümleleri mevcut taslak açılışında temizlenip yeni cümleyle değiştirilir.
+- Cache-buster: `app.js?v=20260718-1420`.
+
+### Doğrulama
+
+- `node --check app.js`
+- `node tools/check-basic.js`
+- `node tools/test-bank-templates.js`
+- `git diff --check`
+
+---
+## 0.0.157 - 2026-07-18 - EKB açıklaması incelenen belgeler metnine eklendi
+
+- `Enerji Kimlik Belgesi` alanı `Hayır` seçildiğinde EKB açıklaması artık "İnceleme tarihinde EKB sistemi, E Devlet, resmi kurumlar ve saha araştırması sonucunda taşınmaza ait Enerji Kimlik Belgesi bulunamamıştır." metnini üretir.
+- EKB son geçerlilik tarihi inceleme tarihinden önceyse eski kısa "dikkate alınmamıştır" metni yerine veriliş/geçerlilik tarihlerini içeren ve değerleme raporunda dikkate alınmadığını belirten yeni metin üretilir.
+- EKB açıklaması, Belgeler ve Proje bölümündeki `İncelenen Belgeler Açıklaması` metninin en altına eklenir.
+- Mevcut taslaklarda eski EKB cümlesi varsa açılışta yeni metinle değiştirilir.
+- Cache-buster: `app.js?v=20260718-1410`.
+
+### Doğrulama
+
+- `node --check app.js`
+- `node --check src/templates/template-engine.js`
+- `node tools/check-basic.js`
+- `node tools/test-bank-templates.js`
+
+---
+## 0.0.156 - 2026-07-18 - İncelenen belgeler açıklaması iki bölüme ayrıldı
+
+- Belgeler ve Proje bölümünde `Proje İnceleme ve Projeye Uygunluk Açıklaması` ayrı bir textarea olarak gösterilir.
+- `İncelenen Belgeler Açıklaması` artık yalnızca ruhsat, yapı kullanma izin belgesi, yapı kayıt belgesi vb. incelenen belge cümlelerini üretir; proje/parselasyon/projeye uygunluk paragrafı bu alandan çıkarıldı.
+- Banka şablonlarında proje uygunluk placeholder'ları yeni proje açıklamasına, `RUHSATVEISKANLAR2025` ise yalnızca belge açıklamasına bağlandı.
+- Eski taslaklarda birleşik kaydedilmiş açıklama açılışta ve JSON import sırasında ayrıştırılır; proje paragrafı yeni alana taşınır.
+- Cache-buster: `app.js?v=20260718-1350`, `src/templates/template-engine.js?v=20260718-1350`.
+
+### Doğrulama
+
+- `node --check app.js`
+- `node --check src/templates/template-engine.js`
+- `node tools/test-bank-templates.js`
+- `node tools/check-basic.js`
+
+---
+## 0.0.155 - 2026-07-18 - Takyidat açıklamasında HTML etiketlerinin görünmesi düzeltildi
+
+- `TAKBİS_SUMMARY`, `TAKYİDAT2025`, `TAKYİDATISBANK` ve `ENCUMBRANCE_SUMMARY_TEXT` alias'ları artık HTML üretilmiş metni tekrar HTML'e çevirmiyor.
+- Takyidat özeti ham metin olarak alınıyor ve `.encumbrance-summary` sınıfıyla yalnızca bir kez paragraf HTML'ine dönüştürülüyor. Böylece raporda `<p class="encumbrance-summary">` gibi etiketler görünür metin olarak çıkmayacak.
+- Şablon motoru sürümü `src/templates/template-engine.js?v=20260718-1233` olarak güncellendi.
+
+### Doğrulama
+
+- `node --check src/templates/template-engine.js`
+- `node tools/check-basic.js`
+- `node tools/test-bank-templates.js`
+- `git diff --check`
+
+---
+## 0.0.154 - 2026-07-18 - Kat dağılımı ve takyidat placeholder çıktısı
+
+- Kuveyt Türk şablonunda “Binanın Kat Dağılımı” satırı 6,5 pt olarak sabitlendi.
+- Takyidat placeholder'ları güncel `takbisSummary` alanını kullanacak şekilde düzeltildi; “Tapu Kaydı Değişikliği” bölümü dahil güncel açıklama şablona aktarılır.
+
+---
+## 0.0.153 - 2026-07-18 - Açık adres bina türü eki
+
+- Açık adres üretiminde site/apartman adları normalize edildi. `Yonca A` artık `Yonca A Sitesi`, `Atalay Apartmanı` ise `Atalay Apartmanı` olarak yazılır.
+- Bina türü eki eklenirken blok, kapı, kat, daire, il/ilçe ve UAVT kodu formatı korunur.
+
+---
+## 0.0.152 - 2026-07-18 - Kuveyt Türk şablonunda temel bilgi ve tapu aralığı düzeni
+
+- Kuveyt Türk şablonundaki uzman/firma bilgileri rapor çıktısında kurumsal sabit bilgi olarak gösterilmeyecek şekilde `-` ile sadeleştirildi.
+- İstenmeyen değerlendirme nedeni, değerlendirme konusu ve firma satırları şablondan kaldırıldı.
+- Malikler tablosu ile il/ilçe tapu bilgilerinin arasına tek satırlık görsel boşluk eklendi.
+
+---
+## 0.0.151 - 2026-07-18 - Rapor paragraf çıktıları: deprem, punto, hizalama ve m2 uyumu
+
+Bu oturumda yarım kalan rapor çıktı düzeltmeleri tamamlandı.
+
+### Yapılanlar
+
+- `EARTHQUAKE_ZONE` ve `DEPREM_DERECE` placeholder'ları doğrudan `earthquakeZone` alanına bağlandı. Adres ve Konum bölümünde seçilen deprem derecesi banka şablonlarında boş kalmayacak.
+- `TAKBİS_SUMMARY`, `TAKYIDAT2025`, `TAKYIDATISBANK` ve `ENCUMBRANCE_SUMMARY_TEXT` placeholder'ları ortak takyidat özetine bağlandı.
+- Takyidat açıklaması Word çıktısında `.encumbrance-summary` sınıfıyla 10 pt olarak üretiliyor.
+- Uygulamanın Word çıktı CSS'inde ve banka HTML şablonlarında paragraf hizası `justify` yapıldı.
+- Açıklama paragrafı çıktılarında `m²` otomatik olarak `m2` değerine normalize ediliyor; Halkbank şablonundaki sabit açıklama da güncellendi.
+- Cache busting için `app.js` ve `src/templates/template-engine.js` sürümleri `20260718-1230` olarak yenilendi.
+- Bu çalışma öncesi yedek: `backups/before-paragraph-format-and-earthquake-fix_2026-07-18_12-21-34/`.
+
+### Doğrulama
+
+- `node --check app.js`
+- `node --check src/templates/template-engine.js`
+- `node tools/check-basic.js`
+- `node tools/test-bank-templates.js`
+- `node tools/test-comparable-market-analysis.js`
+- `git diff --check`
 
 ---
 ## 0.0.150 - 2026-07-18 - iOS çökme 2. tur: kapı arkasındaki dev GPU katmanları

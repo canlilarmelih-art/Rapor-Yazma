@@ -525,8 +525,8 @@ function main() {
       indexHtml.includes("src/comparables/comparable-market-analysis.js") &&
       indexHtml.includes("src/value-factors/value-factors-rules.js") &&
       indexHtml.includes("styles.css?v=20260718-1130") &&
-      indexHtml.includes("app.js?v=20260718-0155") &&
-      indexHtml.includes("src/templates/template-engine.js?v=20260718-0330"),
+      indexHtml.includes("app.js?v=20260718-1540") &&
+      indexHtml.includes("src/templates/template-engine.js?v=20260718-1510"),
     "Halkbank risk kodu scriptleri veya guncel app surumu index.html icinde bulunamadi."
   );
   checkFileExists("src/risk/halkbank-risk-data.js");
@@ -551,6 +551,17 @@ function main() {
       readText("src/value-factors/value-factors-rules.js").includes("title-condominium") &&
       readText("src/value-factors/value-factors-rules.js").includes("document-occupancy-permit"),
     "Degeri Etkileyen Faktorler bolumu veya placeholder baglantilari bulunamadi."
+  );
+  assert(
+    appJs.includes("EKB sistemi, E Devlet, resmi kurumlar ve saha araştırması sonucunda taşınmaza ait Enerji Kimlik Belgesi bulunamamıştır") &&
+      appJs.includes("Enerji Kimlik Belgesinin son geçerlilik tarihi sona erdiği için değerleme raporunda dikkate alınmamıştır") &&
+      appJs.includes("dateParts.push(`veriliş tarihi ${issueDate}`)") &&
+      appJs.includes("const inspectionLead = inspectionDateText ? `${inspectionDateText} tarihinde` : \"İnceleme tarihinde\";") &&
+      appJs.includes("return `${inspectionLead} EKB sistemi, E Devlet, resmi kurumlar") &&
+      appJs.includes("olan` : \"\"") &&
+      appJs.includes("return state.fields.appointmentDate || \"\";") &&
+      appJs.includes("if (ekbExplanation) parts.push(ekbExplanation);"),
+    "EKB aciklamasi yeni Hayir/suresi gecmis metinleriyle incelenen belgeler aciklamasinin sonuna baglanmamis."
   );
   assert(
     appJs.includes("getPenaltyDecisionArchiveInstitutions") &&

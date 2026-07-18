@@ -485,6 +485,7 @@ const sections = [
       { key: "municipalityProjectNo", label: "Belediye Proje No", type: "text" },
       { key: "municipalityProjectType", label: "Belediye Proje Türü", type: "select", options: projectTypeOptions },
       { key: "projectConformity", label: "Projeye uygunluk", type: "textarea", critical: true },
+      { key: "projectReviewDescription", label: "Proje İnceleme ve Projeye Uygunluk Açıklaması", type: "textarea", wide: true },
       { key: "reviewedDocumentsDescription", label: "İncelenen Belgeler Açıklaması", type: "textarea", wide: true },
       { key: "hasEkb", label: "Enerji Kimlik Belgesi", type: "select", options: ["", "Evet", "Hayır"], wide: true },
       { key: "ekbDocumentNo", label: "EKB belge no", type: "text" },
@@ -4873,7 +4874,7 @@ function buildExplanationsFloorValuationWordTableHtml() {
   };
 
   const bodyHtml = buildSectionRows("YASAL ALANA GÖRE HESAPLAMA", "legal") + buildSectionRows("MEVCUT ALANA GÖRE HESAPLAMA", "current");
-  return `<table style="border-collapse:collapse;width:100%;table-layout:fixed;margin:5pt 0 9pt;">
+  return `<table style="border-collapse:collapse;width:100%;table-layout:fixed;margin:5pt 0 12pt;">
     <thead>
       <tr><th colspan="9" style="${headerCell}text-align:center;">KONU TAŞINMAZIN KAT BAZINDA İNDİRGENMİŞ ALAN HESABI</th></tr>
       <tr>
@@ -11633,6 +11634,7 @@ function restoreStateFromImportedJson(payload, fileName = "") {
   hydrateImportedAddressAdministrativeFields(state);
   applyImarDerivedBusinessRules(state);
   normalizeReportStateFields(state);
+  splitReviewedDocumentsDescriptionsIfNeeded();
   saveState();
   setSyncState("JSON yüklendi", "Taslak verileri bu cihaza aktarıldı.", "saved");
   // Faz 3: paket kökünde activeSectionId varsa (bkz. exportReportJson,
@@ -12012,8 +12014,8 @@ function buildWordReportHtml(options = {}) {
   <meta charset="utf-8">
   <title>${escapeHtml(title)}</title>
   <style>
-    @page { size: 595.35pt 841.95pt; margin: 30pt 26pt; }
-    @page WordLandscape { size: 841.95pt 595.35pt; mso-page-orientation: landscape; margin: 22pt 20pt; }
+    @page WordSection1 { size: 595.35pt 841.95pt; margin: 36pt; mso-header-margin:35.4pt; mso-footer-margin:35.4pt; mso-paper-source:0; }
+    @page WordLandscape { size: 841.95pt 595.35pt; mso-page-orientation: landscape; margin: 36pt; }
     v\\:* { behavior: url(#default#VML); }
     /* Renkler app/styles.css'teki gercek tema token'lariyla eslesir:
        --ink:#152238 --line:#dde3ef --blue:#3a5691 --blue-soft:#e4ebf8
@@ -12022,9 +12024,12 @@ function buildWordReportHtml(options = {}) {
     h1 { font-size: 14pt; margin: 0 0 8pt; color: ${reportInk}; font-weight: 900; }
     h2 { font-size: 10pt; margin: 13pt 0 6pt; border-bottom: 1.5pt solid ${reportGreen}; padding-bottom: 3pt; color: ${reportInk}; font-weight: 900; }
     h3 { font-size: 8.5pt; margin: 8pt 0 4pt; color: ${reportInk}; font-weight: 900; }
-    p { margin: 0 0 6pt; line-height: 1.3; }
+    p { margin: 0 0 6pt; line-height: 1.3; text-align: justify; }
+    .encumbrance-summary { font-size: 10pt; text-align: justify; }
+    .share-explanation { font-size: 10pt; text-align: justify; }
+    div.WordSection1 { page: WordSection1; }
     .word-landscape-section { page: WordLandscape; mso-page-orientation: landscape; page-break-before: always; page-break-after: always; }
-    .word-table { border-collapse: collapse; width: 100%; margin: 5pt 0 9pt; table-layout: fixed; border: 1pt solid ${reportLine}; font-size: 7pt; }
+    .word-table { border-collapse: collapse; width: 100%; margin: 5pt 0 12pt; table-layout: fixed; border: 1pt solid ${reportLine}; font-size: 7pt; }
     .word-table th,
     .word-table td { border: 1pt solid ${reportLine}; padding: 2.4pt 3pt; vertical-align: top; line-height: 1.1; }
     .word-table th { background: ${reportSurfaceMuted}; color: ${reportBlue}; font-weight: 900; text-align: left; }
@@ -12043,8 +12048,10 @@ function buildWordReportHtml(options = {}) {
   </style>
 </head>
 <body>
+  <div class="WordSection1">
   <h1>${escapeHtml(title)}</h1>
   ${sectionsHtml}
+  </div>
 </body>
 </html>`;
 }
@@ -12072,7 +12079,7 @@ function buildWordReportGeneratedTextsHtml() {
   if (!rows.length) return "";
   return `<h2>Açıklama Metinleri</h2>${rows.map((row) => `
     <h3>${escapeHtml(row[0])} - ${escapeHtml(row[1])}</h3>
-    ${formatWordParagraphs(row[2])}
+    ${formatWordParagraphs(row[2], /takyidat/i.test(`${row[0]} ${row[1]}`) ? "encumbrance-summary" : "")}
   `).join("")}`;
 }
 
@@ -12272,7 +12279,7 @@ function buildSimpleHtmlTable(headers, rows, className = "", options = {}) {
     }).join("")}</tr>`;
   }).join("");
   const fontSize = compact ? "5.5pt" : isWide ? "6pt" : "7pt";
-  return `<table class="${escapeHtml(classes.join(" "))}" style="border-collapse:collapse;width:100%;margin:${compact ? "3pt 0 5pt" : "5pt 0 9pt"};table-layout:${isWide ? "auto" : "fixed"};font-size:${fontSize};">
+  return `<table class="${escapeHtml(classes.join(" "))}" style="border-collapse:collapse;width:100%;margin:${compact ? "3pt 0 12pt" : "5pt 0 12pt"};table-layout:${isWide ? "auto" : "fixed"};font-size:${fontSize};">
     <thead>${theadHtml}</thead>
     <tbody>${bodyHtml}</tbody>
   </table>`;
@@ -12304,7 +12311,7 @@ function buildValuationSummaryWordTableHtml() {
   // Değerleme Bölümü tek sayfaya sığmalı (kullanıcı talebi) — bu tablo
   // yalnızca o bölümde kullanıldığı için punto/hücre boşluğu doğrudan
   // burada sıkıştırılır.
-  const tableStyle = `border-collapse:collapse;width:100%;margin:3pt 0 5pt;table-layout:fixed;font-family:Arial,sans-serif;font-size:7pt;border:1pt solid ${line};`;
+  const tableStyle = `border-collapse:collapse;width:100%;margin:3pt 0 12pt;table-layout:fixed;font-family:Arial,sans-serif;font-size:7pt;border:1pt solid ${line};`;
   const cellBase = `border-bottom:1pt solid ${line};padding:3pt 5pt;text-align:left;vertical-align:middle;color:${ink};background:${surface};line-height:1.15;`;
   const headerCell = `${cellBase}background:${surfaceMuted};color:${muted};font-size:6.5pt;font-weight:800;text-transform:uppercase;`;
   const groupColors = {
@@ -12344,9 +12351,14 @@ function formatWordCell(value) {
   return escapeHtml(value == null ? "" : value).replace(/\n/g, "<br>");
 }
 
-function formatWordParagraphs(value) {
-  const paragraphs = String(value || "").split(/\n{2,}|\n/).map((line) => line.trim()).filter(Boolean);
-  return paragraphs.map((line) => `<p>${escapeHtml(line)}</p>`).join("") || "<p>-</p>";
+function formatWordParagraphs(value, className = "") {
+  const paragraphs = String(value || "")
+    .replace(/m²/gi, "m2")
+    .split(/\n{2,}|\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const classAttribute = className ? ` class="${escapeHtml(className)}"` : "";
+  return paragraphs.map((line) => `<p${classAttribute}>${escapeHtml(line)}</p>`).join("") || "<p>-</p>";
 }
 
 function buildWordReportSketchesHtml(options = {}) {
@@ -15422,6 +15434,12 @@ function dateIsoToTr(value) {
 }
 
 function refreshReviewedDocumentsDescriptionFromCurrentRows() {
+  state.fields.projectReviewDescription = buildProjectReviewDescription();
+  const projectControl = document.querySelector('[data-field="projectReviewDescription"]');
+  if (projectControl) {
+    projectControl.value = state.fields.projectReviewDescription || "";
+    markFieldSourceState(projectControl, "projectReviewDescription", true);
+  }
   state.fields.reviewedDocumentsDescription = buildReviewedDocumentsDescription();
   const control = document.querySelector('[data-field="reviewedDocumentsDescription"]');
   if (control) {
@@ -15473,6 +15491,11 @@ function refreshReviewedDocumentsDescriptionFromCurrentFields(changedKey) {
     "municipalityProjectSuitabilitySimpleRepair",
     "mainRealEstateProjectSuitable",
     "mainRealEstateProjectSuitabilityNote",
+    "hasEkb",
+    "ekbDocumentNo",
+    "ekbIssueDate",
+    "ekbValidUntil",
+    "ekbEnergyClass",
   ];
   if (!watchedKeys.includes(changedKey)) return;
   if (changedKey === "projectInstitution") {
@@ -15867,9 +15890,9 @@ function buildMissingReviewedDocumentSentences(institutionValue = "") {
 
 function buildReviewedDocumentsDescription() {
   const rows = (state.tables.documents || []).map(normalizeReviewedDocumentRow).filter((row) => row.type);
-  const projectText = buildProjectReviewDescription();
+  const ekbExplanation = buildEkbExplanation();
   if (!rows.length) {
-    return normalizeReportDescriptionText([projectText, ...buildMissingReviewedDocumentSentences()].filter(Boolean).join("\n\n"));
+    return normalizeReportDescriptionText([...buildMissingReviewedDocumentSentences(), ekbExplanation].filter(Boolean).join("\n\n"));
   }
 
   const permitGroups = new Map();
@@ -15888,7 +15911,6 @@ function buildReviewedDocumentsDescription() {
   });
 
   const parts = [];
-  if (projectText) parts.push(projectText);
   if (permitGroups.size) {
     permitGroups.forEach((permitItems, prefix) => {
       parts.push(`${prefix} yer alan ${joinTurkishList(permitItems)} incelenmiştir.`);
@@ -15898,8 +15920,57 @@ function buildReviewedDocumentsDescription() {
     parts.push(`${prefix} yapılan incelemelerde taşınmaza ait yeni yapı ruhsatı bulunamamıştır.`);
   }
   parts.push(...(occupancyTexts.length ? occupancyTexts : [buildOccupancyPermitDocumentSentence({})]));
+  if (ekbExplanation) parts.push(ekbExplanation);
 
   return normalizeReportDescriptionText(parts.join("\n\n"));
+}
+
+function splitReviewedDocumentsDescriptionsIfNeeded() {
+  const generatedProjectText = buildProjectReviewDescription();
+  const ekbExplanation = buildEkbExplanation();
+  let changed = false;
+
+  if (generatedProjectText && !String(state.fields.projectReviewDescription || "").trim()) {
+    state.fields.projectReviewDescription = generatedProjectText;
+    changed = true;
+  }
+
+  const currentDocumentsText = normalizeReportDescriptionText(state.fields.reviewedDocumentsDescription || "").trim();
+  if (generatedProjectText && currentDocumentsText && currentDocumentsText.includes(generatedProjectText)) {
+    const nextDocumentsText = normalizeReportDescriptionText(
+      currentDocumentsText
+        .replace(generatedProjectText, "")
+        .replace(/^\s*[\r\n]+/, "")
+        .replace(/[\r\n]+\s*$/, "")
+    ) || buildReviewedDocumentsDescription();
+    if (nextDocumentsText !== state.fields.reviewedDocumentsDescription) {
+      state.fields.reviewedDocumentsDescription = nextDocumentsText;
+      changed = true;
+    }
+  } else if (currentDocumentsText && ekbExplanation && !currentDocumentsText.includes(ekbExplanation)) {
+    const withoutLegacyEkb = stripEkbExplanationFromReviewedDocumentsText(currentDocumentsText);
+    const nextDocumentsText = normalizeReportDescriptionText([withoutLegacyEkb, ekbExplanation].filter(Boolean).join("\n\n"));
+    if (nextDocumentsText !== state.fields.reviewedDocumentsDescription) {
+      state.fields.reviewedDocumentsDescription = nextDocumentsText;
+      changed = true;
+    }
+  } else if (!currentDocumentsText) {
+    const generatedDocumentsText = buildReviewedDocumentsDescription();
+    if (generatedDocumentsText) {
+      state.fields.reviewedDocumentsDescription = generatedDocumentsText;
+      changed = true;
+    }
+  }
+
+  return changed;
+}
+
+function stripEkbExplanationFromReviewedDocumentsText(value = "") {
+  return normalizeReportDescriptionText(value || "")
+    .replace(/Enerji Kimlik Belgesinin son geçerlilik tarihi sona erdiği için dikkate alınmamıştır\.?/gi, "")
+    .replace(/(?:İnceleme tarihinde|\d{2}\.\d{2}\.\d{4}\s+tarihinde) taşınmaza ait(?:\s+veriliş tarihi\s+\d{2}\.\d{2}\.\d{4}(?:\s+tarihli)?(?:,\s+geçerlilik tarihi\s+\d{2}\.\d{2}\.\d{4}(?:\s+tarihli)?)?)?(?:\s+olan)?\s+Enerji Kimlik Belgesi incelenmiştir\.\s*Enerji Kimlik Belgesinin son geçerlilik tarihi sona erdiği için değerleme raporunda dikkate alınmamıştır\.?/gi, "")
+    .replace(/(?:İnceleme tarihinde|\d{2}\.\d{2}\.\d{4}\s+tarihinde) EKB sistemi, E Devlet, resmi kurumlar ve saha araştırması sonucunda taşınmaza ait Enerji Kimlik Belgesi bulunamamıştır\.?/gi, "")
+    .trim();
 }
 
 function normalizeReviewedDocumentRow(row = {}) {
@@ -16318,23 +16389,34 @@ function refreshBuildingInspectionExplanationFromCurrentFields(changedKey = "") 
 }
 
 function getEkbInspectionDateIso() {
-  return state.fields.municipalityInspectionDate || state.fields.appointmentDate || "";
+  return state.fields.appointmentDate || "";
 }
 
 function buildEkbExplanation() {
-  if (normalizeYesNoChoice(state.fields.hasEkb) !== "Evet") return "";
+  const hasEkb = normalizeYesNoChoice(state.fields.hasEkb);
+  const inspectionDate = getEkbInspectionDateIso();
+  const inspectionDateIso = dateTrToIso(inspectionDate) || inspectionDate;
+  const inspectionDateText = dateIsoToTr(inspectionDateIso || inspectionDate);
+  const inspectionLead = inspectionDateText ? `${inspectionDateText} tarihinde` : "İnceleme tarihinde";
+  if (hasEkb === "Hayır") {
+    return `${inspectionLead} EKB sistemi, E Devlet, resmi kurumlar ve saha araştırması sonucunda taşınmaza ait Enerji Kimlik Belgesi bulunamamıştır.`;
+  }
+  if (hasEkb !== "Evet") return "";
 
   const validUntil = state.fields.ekbValidUntil || "";
-  const inspectionDate = getEkbInspectionDateIso();
   const validUntilIso = dateTrToIso(validUntil) || validUntil;
-  const inspectionDateIso = dateTrToIso(inspectionDate) || inspectionDate;
+  const issueDate = dateIsoToTr(state.fields.ekbIssueDate || "");
+  const validUntilText = dateIsoToTr(validUntilIso || validUntil);
   if (validUntilIso && inspectionDateIso && validUntilIso < inspectionDateIso) {
-    return "Enerji Kimlik Belgesinin son geçerlilik tarihi sona erdiği için dikkate alınmamıştır.";
+    const dateParts = [];
+    if (issueDate) dateParts.push(`veriliş tarihi ${issueDate}`);
+    if (validUntilText) dateParts.push(`geçerlilik tarihi ${validUntilText}`);
+    const certificateDateText = dateParts.length ? ` ${dateParts.join(", ")}` : "";
+    const certificateDateSuffix = certificateDateText ? `${certificateDateText} olan` : "";
+    return normalizeReportDescriptionText(`${inspectionLead} taşınmaza ait${certificateDateSuffix} Enerji Kimlik Belgesi incelenmiştir. Enerji Kimlik Belgesinin son geçerlilik tarihi sona erdiği için değerleme raporunda dikkate alınmamıştır.`);
   }
 
-  const issueDate = dateIsoToTr(state.fields.ekbIssueDate || "");
   const documentNo = normalizeReportTitleText(state.fields.ekbDocumentNo || "").trim();
-  const validUntilText = dateIsoToTr(validUntilIso || validUntil);
   const energyClass = normalizeReportTitleText(state.fields.ekbEnergyClass || "").trim();
   const certificateParts = [];
   if (issueDate) certificateParts.push(`${issueDate} tarih`);
@@ -16358,7 +16440,6 @@ function refreshEkbExplanationFromCurrentFields(changedKey = "") {
     "ekbIssueDate",
     "ekbValidUntil",
     "ekbEnergyClass",
-    "municipalityInspectionDate",
     "appointmentDate",
   ];
   if (changedKey && !watchedKeys.includes(changedKey)) return;
@@ -16368,6 +16449,7 @@ function refreshEkbExplanationFromCurrentFields(changedKey = "") {
   if (control && control.value !== state.fields.ekbExplanation) {
     control.value = state.fields.ekbExplanation || "";
   }
+  refreshReviewedDocumentsDescriptionFromCurrentRows();
 }
 
 function formatReviewedDocumentReference(row) {
@@ -16785,8 +16867,8 @@ function preserveReportSpecialWords(value) {
     ["kaks", "KAKS"],
     ["hmax", "Hmax"],
     ["tl", "TL"],
-    ["m²", "m²"],
-    ["m2", "m²"],
+    ["m²", "m2"],
+    ["m2", "m2"],
   ];
   let text = String(value || "");
   replacements.forEach(([from, to]) => {
@@ -17393,6 +17475,15 @@ function formatOpenAddressNeighborhood(value) {
   return /mahalle|mah\.?$/i.test(text) ? text : `${text} Mahallesi`;
 }
 
+function formatOpenAddressBuildingName(value) {
+  const text = String(value || "").trim().replace(/\s+/g, " ");
+  if (!text) return "";
+  if (/apartman/i.test(text)) return text.replace(/\s+apartman(?:ı|i)?$/i, "").trim() + " Apartmanı";
+  if (/site/i.test(text)) return text.replace(/\s+site(?:si)?$/i, "").trim() + " Sitesi";
+  // Adres kodu alanı türü ayrı vermediğinde bloklu adları site olarak adlandırırız.
+  return `${text} Sitesi`;
+}
+
 function buildOpenAddressText() {
   const get = (...keys) => {
     for (const key of keys) {
@@ -17417,7 +17508,7 @@ function buildOpenAddressText() {
   if (street) segments.push(street);
 
   const buildingParts = [];
-  if (siteName) buildingParts.push(siteName);
+  if (siteName) buildingParts.push(formatOpenAddressBuildingName(siteName));
   if (blockName) buildingParts.push(/blok/i.test(blockName) ? blockName : `${blockName} Blok`);
   if (outerDoor) buildingParts.push(`No: ${outerDoor}`);
   if (buildingParts.length) segments.push(buildingParts.join(" "));
@@ -17592,7 +17683,7 @@ function buildMaliklerTableWordHtml() {
     <td style="${totalCell}text-align:right;white-space:nowrap;">${escapeHtml(formatMaliklerShareValue(legalSum))}</td>
     <td style="${totalCell}text-align:right;white-space:nowrap;">${escapeHtml(formatMaliklerShareValue(currentSum))}</td>
   </tr>`;
-  return `<table class="word-table" style="border-collapse:collapse;width:100%;margin:5pt 0 9pt;table-layout:fixed;font-size:7pt;">
+  return `<table class="word-table" style="border-collapse:collapse;width:100%;margin:5pt 0 12pt;table-layout:fixed;font-size:7pt;">
     <thead>${theadHtml}</thead>
     <tbody>${bodyHtml}</tbody>
     <tfoot>${totalHtml}</tfoot>
@@ -24043,9 +24134,15 @@ function collectGeneratedTextPlaceholders() {
     },
     {
       category: "Belgeler ve Proje",
+      key: "project_review_text",
+      title: "Proje İnceleme ve Projeye Uygunluk Açıklaması",
+      value: state.fields.projectReviewDescription || buildProjectReviewDescription(),
+    },
+    {
+      category: "Belgeler ve Proje",
       key: "reviewed_documents_text",
       title: "İncelenen Belgeler Açıklaması",
-      value: buildReviewedDocumentsDescription(),
+      value: state.fields.reviewedDocumentsDescription || buildReviewedDocumentsDescription(),
     },
     {
       category: "Belgeler ve Proje",
@@ -27372,8 +27469,9 @@ fieldMode?.addEventListener("change", render);
 
 const initialImarRulesChanged = applyImarDerivedBusinessRules(state);
 const initialTextNormalizationChanged = normalizeReportStateFields(state);
+const initialReviewedDocumentsSplitChanged = splitReviewedDocumentsDescriptionsIfNeeded();
 const initialImarPlanDateChanged = refreshMissingImarPlanDateFromRawText();
-if (initialImarRulesChanged || initialTextNormalizationChanged || initialImarPlanDateChanged) {
+if (initialImarRulesChanged || initialTextNormalizationChanged || initialReviewedDocumentsSplitChanged || initialImarPlanDateChanged) {
   saveState();
 }
 

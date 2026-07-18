@@ -77,7 +77,10 @@ loader(
   stubSections,
   () => generatedKeys.map((key) => ({ reference: key, value: "ornek metin" })),
   stubEscapeHtml,
-  (text) => `<p>${stubEscapeHtml(text)}</p>`,
+  (text, paragraphClass) => {
+    const classAttr = paragraphClass ? ` class="${stubEscapeHtml(paragraphClass)}"` : "";
+    return `<p${classAttr}>${stubEscapeHtml(text)}</p>`;
+  },
   (iso) => {
     const m = String(iso || "").match(/^(\d{4})-(\d{2})-(\d{2})/);
     return m ? `${m[3]}.${m[2]}.${m[1]}` : "";
@@ -177,6 +180,34 @@ assert(engine.resolveToken("SOCİAL_FACİLİTİES").ok, "SOCIAL_FACILITIES (ek a
 assert(engine.resolveToken("UNİT_CONSTRUCTİON_LEVEL").ok, "UNIT_CONSTRUCTION_LEVEL cozumlenemedi.");
 assert(engine.resolveToken("BOYLE_BIR_AD_YOK").ok === false, "tanimsiz ad yanlislikla cozumlendi.");
 
+stubState.fields.projectReviewDescription = "Proje inceleme metni";
+stubState.fields.reviewedDocumentsDescription = "Belge inceleme metni";
+stubState.fields.projectConformity = "Ham proje notu";
+assert(
+  resolved("PROJEYEUYGUNLUK2025").includes("Proje inceleme metni") && !resolved("PROJEYEUYGUNLUK2025").includes("Belge inceleme metni"),
+  `PROJEYEUYGUNLUK2025 proje aciklamasindan gelmiyor: ${resolved("PROJEYEUYGUNLUK2025")}`
+);
+assert(
+  resolved("RUHSATVEISKANLAR2025").includes("Belge inceleme metni") && !resolved("RUHSATVEISKANLAR2025").includes("Proje inceleme metni"),
+  `RUHSATVEISKANLAR2025 belge aciklamasindan gelmiyor: ${resolved("RUHSATVEISKANLAR2025")}`
+);
+
+// Takyidat özeti HTML olarak yalnızca bir kez üretilmeli; aksi halde Word
+// çıktısında <p class="encumbrance-summary"> etiketleri görünür metne dönüşür.
+stubState.fields.takbisSummary = "Birinci takyidat satırı\nİkinci takyidat satırı";
+const takbisSummaryHtml = engine.resolveToken("TAKBİS_SUMMARY").html;
+assert(
+  takbisSummaryHtml.includes('<p class="encumbrance-summary">') && !takbisSummaryHtml.includes("&lt;p") && !takbisSummaryHtml.includes("<p class=\"encumbrance-summary\"><p"),
+  `TAKBİS_SUMMARY HTML iki kez işleniyor: ${takbisSummaryHtml}`
+);
+
+stubState.fields.shareExplanation = "Hisse açıklaması metni";
+const shareExplanationHtml = engine.resolveToken("HİSSE_AÇIKLAMASI").html;
+assert(
+  shareExplanationHtml.includes('class="share-explanation"') && shareExplanationHtml.includes("Hisse açıklaması metni"),
+  `HISSE_ACIKLAMASI 10 punto sinifiyla uretilmiyor: ${shareExplanationHtml}`
+);
+
 // --- 2b) Emsaller bölümü tek format kullanmalı (kullanıcı kararı 2026-07-13):
 // dinamik sütunlu emsal matrisi (EMSAL_MATRISI, kaç emsal varsa o kadar
 // sütun) + altında "Emsal Açıklaması" başlıklı EMSAL_PIYASA_ANALIZI metni.
@@ -184,6 +215,70 @@ assert(engine.resolveToken("BOYLE_BIR_AD_YOK").ok === false, "tanimsiz ad yanlis
 // şablonda kullanılmamalı (motor hâlâ çözer, sadece şablonlarda yasak).
 const comparableTemplateFiles = templateFiles.filter(
   (file) => !["isbankasi-masraf.html", "ziraat-ek-tablo.html"].includes(file)
+);
+const valuationSectionOrderTokens = [
+  "{{DEGERLEME_YONTEMI_ACIKLAMASI}}",
+  "{{HISSE_ACIKLAMASI}}",
+  "{{SATIS_KABILIYETI_ACIKLAMASI}}",
+  "{{KIRA_ACIKLAMASI}}",
+  "{{EMLAK_BEYAN_DEGERI_ACIKLAMASI}}",
+  "{{DEGERLENDIRME_TABLOSU}}",
+  "{{KAT_BAZINDA_INDIRGENMIS_ALAN_TABLOSU}}",
+  "{{DEGERLENDIRME_SEMASI}}",
+];
+comparableTemplateFiles.forEach((file) => {
+  const text = fs.readFileSync(path.join(appDir, "templates", file), "utf8");
+  let previousIndex = -1;
+  valuationSectionOrderTokens.forEach((token) => {
+    const index = text.indexOf(token);
+    assert(index >= 0, `${file}: degerleme bolumu tokeni bulunamadi: ${token}`);
+    assert(index > previousIndex, `${file}: ${token} gorseldeki degerleme sirasinda degil.`);
+    previousIndex = index;
+  });
+  assert(
+    text.includes(".share-explanation { font-size: 10pt; text-align: justify; }"),
+    `${file}: hisse aciklamasi 10 punto CSS kurali bulunamadi.`
+  );
+  assert(
+    text.includes("margin: 5pt 0 12pt") || text.includes("margin: 3pt 0 12pt"),
+    `${file}: tablo alt boslugu 12pt (bir satir) olarak ayarlanmamis.`
+  );
+  assert(
+    text.includes("@page WordSection1") &&
+    text.includes("margin: 36pt; mso-header-margin:35.4pt; mso-footer-margin:35.4pt; mso-paper-source:0;") &&
+    text.includes("div.WordSection1 { page: WordSection1; }") &&
+    text.includes('<div class="WordSection1">'),
+    `${file}: Word Dar sayfa duzeni WordSection1 bolumune baglanmamis.`
+  );
+});
+assert(
+  appSource.includes("@page WordSection1 { size: 595.35pt 841.95pt; margin: 36pt; mso-header-margin:35.4pt; mso-footer-margin:35.4pt; mso-paper-source:0; }") &&
+  appSource.includes("@page WordLandscape { size: 841.95pt 595.35pt; mso-page-orientation: landscape; margin: 36pt; }"),
+  "Word export sayfa duzeni Dar (36pt / 0.5 inch margin) degil."
+);
+assert(
+  appSource.includes("div.WordSection1 { page: WordSection1; }") &&
+  appSource.includes('<div class="WordSection1">'),
+  "Word export govdesi WordSection1 sayfa duzenine baglanmiyor."
+);
+assert(
+  appSource.includes('margin:${compact ? "3pt 0 12pt" : "5pt 0 12pt"}') &&
+  appSource.includes("margin:5pt 0 12pt;table-layout:fixed;font-size:7pt;") &&
+  appSource.includes("margin:3pt 0 12pt;table-layout:fixed"),
+  "Uretilen Word tablolarinda tablo arasi 12pt bosluk standardi korunmuyor."
+);
+const kuveytturkTemplate = fs.readFileSync(path.join(appDir, "templates", "kuveytturk.html"), "utf8");
+const kuveytturkNoteIndex = kuveytturkTemplate.indexOf("*** Taşınmazın değerlemesi takyidatlardan bağımsız yapılmıştır.");
+const kuveytturkStaticIndex = kuveytturkTemplate.indexOf("{{STATIC_SUITABILITY_EXPLANATION_TEXT}}");
+const kuveytturkValuationTableIndex = kuveytturkTemplate.indexOf("{{DEGERLENDIRME_TABLOSU}}");
+assert(
+  kuveytturkNoteIndex > -1 && kuveytturkStaticIndex > kuveytturkNoteIndex && kuveytturkValuationTableIndex > kuveytturkStaticIndex,
+  "kuveytturk.html: takyidattan bagimsiz degerleme notu ve statik uygunluk aciklamasi tablolardan once gelmiyor."
+);
+assert(
+  !kuveytturkTemplate.includes("Notlar / Düşünceler / Fiyatlandırma") &&
+  !kuveytturkTemplate.includes("<div class=\"kt-subsec\">Statik Uygunluk Açıklaması</div>"),
+  "kuveytturk.html: degerleme tablo onu not/statik uygunluk metinlerinde alt baslik kalmis."
 );
 comparableTemplateFiles.forEach((file) => {
   const text = fs.readFileSync(path.join(appDir, "templates", file), "utf8");

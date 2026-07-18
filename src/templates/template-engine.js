@@ -141,11 +141,11 @@
     }
   }
 
-  function textParagraphsHtml(text) {
-    const value = String(text || "").trim();
+  function textParagraphsHtml(text, className = "") {
+    const value = String(text || "").replace(/m²/gi, "m2").trim();
     if (!value) return "";
     try {
-      return formatWordParagraphs(value);
+      return formatWordParagraphs(value, className);
     } catch (error) {
       return escapeHtml(value).replace(/\n/g, "<br />");
     }
@@ -254,14 +254,14 @@
     HISSELIMI: { fn: () => safeCall("gabimHasShareText") },
     MALIKLERTABLO: { h: () => safeCall("buildMaliklerTableWordHtml") },
     GABIMVERISETI: { h: () => safeCall("buildGabimDataSetWordHtml") },
-    HISSEACIKLAMASI: { f: ["shareExplanation"] },
+    HISSEACIKLAMASI: { t: () => field("shareExplanation"), paragraphClass: "share-explanation" },
     EKLENTI: { f: ["titleAttachment"] },
 
     // --- Takyidat ---
     TAKYIDATTARIH: { d: ["takbisDate"] },
     TAKYIDATSAAT: { f: ["takbisTime"] },
-    TAKYIDAT2025: { t: () => safeCall("buildEncumbranceSummary") },
-    TAKYIDATISBANK: { t: () => safeCall("buildEncumbranceSummary") },
+    TAKYIDAT2025: { t: () => field("takbisSummary") || safeCall("buildEncumbranceSummary"), paragraphClass: "encumbrance-summary" },
+    TAKYIDATISBANK: { t: () => field("takbisSummary") || safeCall("buildEncumbranceSummary"), paragraphClass: "encumbrance-summary" },
     TAKYIDATTABLO: { h: () => safeCall("formatTextTableForWord", safeCall("buildTakyidatTableText")) },
     // `{{ENCUMBRANCE_SUMMARY_TEXT}}` (PLACEHOLDER-REHBERI.md'de belgeli,
     // 7 banka şablonunda kullanılıyor) hiçbir yerde kayıtlı DEĞİLDİ — ne app
@@ -269,7 +269,8 @@
     // şablonlarda sarı "⚠ AD" gösteriyordu. Gerçek alan `takbisSummary`
     // ("Takyidat açıklaması") — TAKBISSUMMARY adıyla zaten çözümleniyor,
     // burada eski adı da aynı değere bağlıyoruz.
-    ENCUMBRANCESUMMARYTEXT: { t: () => safeCall("buildEncumbranceSummary") },
+    TAKBISSUMMARY: { t: () => field("takbisSummary") || safeCall("buildEncumbranceSummary"), paragraphClass: "encumbrance-summary" },
+    ENCUMBRANCESUMMARYTEXT: { t: () => field("takbisSummary") || safeCall("buildEncumbranceSummary"), paragraphClass: "encumbrance-summary" },
 
     // --- İmar ---
     IMARPLANADI: { f: ["planName"] },
@@ -303,17 +304,19 @@
     CEZAINOTU: { t: () => field("penaltyDecisionExplanation") || safeCall("buildPenaltyDecisionExplanation") },
     STATIK2025SON: { t: () => field("staticSuitabilityExplanation") || safeCall("buildStaticSuitabilityExplanation") },
     YAPIDENETIMACIKLAMA: { t: () => field("buildingInspectionExplanation") || safeCall("buildBuildingInspectionExplanation") },
-    PROJEYEUYGUNLUK2025: { t: () => field("projectConformity") },
+    PROJEYEUYGUNLUK2025: { t: () => field("projectReviewDescription") || safeCall("buildProjectReviewDescription") || field("projectConformity") },
+    PROJECTREVIEWDESCRIPTION: { t: () => field("projectReviewDescription") || safeCall("buildProjectReviewDescription") || field("projectConformity") },
+    REVIEWEDDOCUMENTSDESCRIPTION: { t: () => field("reviewedDocumentsDescription") || safeCall("buildReviewedDocumentsDescription") },
     PROJEYEUYGUNMU2025: { f: ["projectDifference", "mainRealEstateProjectSuitable"] },
     MIMARIUYGUNLUK: { f: ["mainRealEstateProjectSuitable", "projectDifference"] },
     ANAGAYRUYG: { f: ["mainRealEstateProjectSuitable"] },
     ANAGAYRNOTU: { f: ["mainRealEstateProjectSuitabilityNote"] },
     PROJEKURUM2025: { f: ["projectInstitution", "documentReviewInstitution"] },
     ISKANVARMI: { fn: () => safeCall("gabimOccupancyPermitText") },
-    ISBANKMIMARIPROJE: { t: () => field("projectConformity") },
-    UYGACIKLAMA: { t: () => field("projectConformity") },
-    VAKIFMIMARIPROJE: { t: () => field("projectConformity") },
-    KONUMTEYIDI: { t: () => field("projectConformity") },
+    ISBANKMIMARIPROJE: { t: () => field("projectReviewDescription") || safeCall("buildProjectReviewDescription") || field("projectConformity") },
+    UYGACIKLAMA: { t: () => field("projectReviewDescription") || safeCall("buildProjectReviewDescription") || field("projectConformity") },
+    VAKIFMIMARIPROJE: { t: () => field("projectReviewDescription") || safeCall("buildProjectReviewDescription") || field("projectConformity") },
+    KONUMTEYIDI: { t: () => field("projectReviewDescription") || safeCall("buildProjectReviewDescription") || field("projectConformity") },
     EKBSINIF: { f: ["ekbEnergyClass"] },
     EKBBELGENO: { f: ["ekbDocumentNo"] },
     EKBVERILIS: { d: ["ekbIssueDate"] },
@@ -343,7 +346,8 @@
     OTOPARK: { f: ["carpark"] },
     SOSYALTESISLER: { fn: () => [field("socialFacilities"), field("siteFacilities")].filter(Boolean).join(", ") },
     ISINMASISTEMI: { f: ["unitHeatingType"] },
-    DEPREMDERECE: { f: ["earthquakeZone"] },
+    DEPREMDERECE: { fn: () => field("earthquakeZone") },
+    EARTHQUAKEZONE: { fn: () => field("earthquakeZone") },
     SEVIYEDURUMU: { f: ["unitConstructionLevel"], fallback: "Tamamlanmış (%100)" },
     INSASEVIYE: { f: ["unitConstructionLevel"], fallback: "Tamamlanmış (%100)" },
     YAPIMASAMASI: { f: ["unitConstructionLevel"], fallback: "Tamamlanmış (%100)" },
@@ -416,7 +420,7 @@
     HALKBANKRISKKODLARI: { t: () => safeCall("buildHalkbankRiskCodesText") },
     HALKBANKRISKKODLARITABLO: { h: () => safeCall("formatTextTableForWord", safeCall("buildHalkbankRiskCodesTableText")) },
     HALKBANKDEGERLEME: { t: () => field("saleabilityNote") || safeCall("buildValuationMethodExplanation") },
-    HALKBANKPROJEUYGUNLUK: { t: () => field("projectConformity") },
+    HALKBANKPROJEUYGUNLUK: { t: () => field("projectReviewDescription") || safeCall("buildProjectReviewDescription") || field("projectConformity") },
 
     // --- Ziraat ek tablo ---
     ZRTYASAL: { m: ["legalValue"] },
@@ -534,7 +538,7 @@
       if (spec.f) value = field(...spec.f);
       else if (spec.d) value = dateField(...spec.d);
       else if (spec.m) value = moneyField(...spec.m);
-      else if (spec.t) { value = textParagraphsHtml(spec.t()); isHtml = true; }
+      else if (spec.t) { value = textParagraphsHtml(spec.t(), spec.paragraphClass || ""); isHtml = true; }
       else if (spec.h) { value = String(spec.h() || ""); isHtml = true; }
       else if (spec.fn) value = String(spec.fn() || "");
       if (!value && spec.fallback) value = spec.fallback;

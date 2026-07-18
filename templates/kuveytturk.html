@@ -15,10 +15,13 @@
   yuvarlatılmış köşe gibi ince ayrıntılar yalnızca tarayıcı görünümündedir.
 -->
 <style>
-  @page { size: 595.35pt 841.95pt; margin: 10pt; }
+  @page WordSection1 { size: 595.35pt 841.95pt; margin: 36pt; mso-header-margin:35.4pt; mso-footer-margin:35.4pt; mso-paper-source:0; }
   body { font-family: Verdana, Arial, sans-serif; font-size: 6.5pt; color: #333333; background: #ffffff; }
-  p { margin: 0 0 10pt; line-height: 1.4; font-size: 10pt; }
+  p { margin: 0 0 10pt; line-height: 1.4; font-size: 10pt; text-align: justify; }
 
+  .encumbrance-summary { font-size: 10pt; text-align: justify; }
+  .share-explanation { font-size: 10pt; text-align: justify; }
+  div.WordSection1 { page: WordSection1; }
   /* --- INVEX üst şerit / marka --- */
   .kt-topbar { font-size: 6pt; color: #6b7f78; padding: 2pt 0 5pt; border-bottom: 0.75pt solid #d7e8e0; }
   .kt-brand { font-size: 13pt; font-weight: bold; color: #009b6b; margin: 6pt 0 2pt; }
@@ -40,6 +43,7 @@
   table.kt-form td { padding: 2.2pt 5pt; vertical-align: top; }
   table.kt-form td.l { width: 34%; text-align: right; font-weight: bold; color: #17493b; }
   table.kt-form td.v { background: #e9e9e9; border: 0.75pt solid #cfcfcf; border-radius: 3pt; }
+  .kt-floor-distribution-row .v, .kt-floor-distribution-row .v p { font-size: 6.5pt; }
 
   /* --- liste tabloları (malikler, belgeler, motor tabloları) --- */
   .word-table, table.kt-list { border-collapse: collapse; width: 100%; margin: 3pt 0 12pt; border: 0.75pt solid #bee0d2; font-size: 6.5pt; }
@@ -61,10 +65,11 @@
 </style>
 </head>
 <body>
+<div class="WordSection1">
 
-<div class="kt-topbar">:: GİRİŞ SAYFASI &nbsp;|&nbsp; UZMAN: mcanlilar@dengedegerleme.com (Denge Gayrimenkul Değerleme ve Danışmanlık A.Ş.)</div>
+<div class="kt-topbar">:: GİRİŞ SAYFASI &nbsp;|&nbsp; UZMAN: -</div>
 <div class="kt-brand">&#10064; KuveytTürk <span>| ekspertiz</span></div>
-<div class="kt-caseline"><strong>{{CASE_NAME}}</strong> &nbsp;|&nbsp; FİRMA: Denge Gayrimenkul Değerleme ve Danışmanlık A.Ş. &nbsp;|&nbsp; MÜŞTERİ: {{CUSTOMER_NAME}}</div>
+<div class="kt-caseline"><strong>{{CASE_NAME}}</strong> &nbsp;|&nbsp; FİRMA: - &nbsp;|&nbsp; MÜŞTERİ: {{CUSTOMER_NAME}}</div>
 
 <div class="kt-nav">
   <span class="kt-tab">Talep</span><span class="kt-tab-passive">Rapor</span><span class="kt-tab-passive">Fatura</span><span class="kt-tab-passive">Mobil İmza</span>
@@ -77,10 +82,7 @@
 <table class="kt-form">
   <tr><td class="l">Değerleme Tarihi:</td><td class="v">{{APPOİNTMENT_DATE}}</td></tr>
   <tr><td class="l">Talep Türü:</td><td class="v">GAYRİMENKUL DEĞERLEME</td></tr>
-  <tr><td class="l">Değerleme Nedeni:</td><td class="v">SADECE TEMİNAT (SATIŞ YOK)</td></tr>
-  <tr><td class="l">Değerleme Konusu:</td><td class="v">1 ADET {{TİTLE_QUALİTY}}</td></tr>
   <tr><td class="l">Müşteri/Ünvan:</td><td class="v">{{CUSTOMER_NAME}}</td></tr>
-  <tr><td class="l">Firma:</td><td class="v">Denge Gayrimenkul Değerleme ve Danışmanlık A.Ş.</td></tr>
 </table>
 
 <div class="kt-nav">
@@ -96,6 +98,8 @@
 
 <div class="kt-subsec">* Malikler</div>
 {{MALIKLER_TABLO}}
+
+<div aria-hidden="true" style="height:10pt;"></div>
 
 <table class="kt-form">
   <tr><td class="l">* İl:</td><td class="v">{{CİTY}}</td></tr>
@@ -164,7 +168,7 @@
   <tr><td class="l">İç Hacimler:</td><td class="v">{{KAT_BAZLI_İÇ_HACİMLER}}</td></tr>
   <tr><td class="l">Binadaki Toplam Bağımsız Bölüm Sayısı:</td><td class="v">{{TOTAL_UNİTS}}</td></tr>
   <tr><td class="l">* Binanın Toplam Kat Adedi:</td><td class="v">{{TOTAL_FLOORS}}</td></tr>
-  <tr><td class="l">Binanın Kat Dağılımı:</td><td class="v">{{MAİN_PROPERTY_FLOOR_COUNT_TEXT}}</td></tr>
+  <tr class="kt-floor-distribution-row"><td class="l">Binanın Kat Dağılımı:</td><td class="v">{{MAİN_PROPERTY_FLOOR_COUNT_TEXT}}</td></tr>
   <tr><td class="l">Bulunduğu Kat:</td><td class="v">{{TİTLE_FLOOR}}</td></tr>
   <tr><td class="l">* Yapı Kalitesi:</td><td class="v">{{UNİT_MATERİAL_QUALİTY}}</td></tr>
   <tr><td class="l">Isıtma Sistemi:</td><td class="v">{{UNİT_HEATİNG_TYPE}}</td></tr>
@@ -222,7 +226,7 @@
   <tr><td class="l">İskanı Varmı? (Yapı Kullanım İzin Belgesi):</td><td class="v">{{İSKAN_VAR_MI}}</td></tr>
 </table>
 <div class="kt-subsec">Gayrimenkulde Kaçak Yapılaşma / Ruhsata Uygunluk Açıklaması</div>
-{{PROJECT_CONFORMİTY}}
+{{PROJECT_REVİEW_DESCRİPTİON}}
 {{STATİC_SUİTABİLİTY_EXPLANATİON_TEXT}}
 {{PENALTY_DECİSİON_EXPLANATİON_TEXT}}
 
@@ -267,11 +271,11 @@
 {{SATIS_KABILIYETI_ACIKLAMASI}}
 {{KIRA_ACIKLAMASI}}
 {{EMLAK_BEYAN_DEGERI_ACIKLAMASI}}
-<div class="kt-subsec">Notlar / Düşünceler / Fiyatlandırma</div>
+<p>*** Taşınmazın değerlemesi takyidatlardan bağımsız yapılmıştır.</p>
+{{STATIC_SUITABILITY_EXPLANATION_TEXT}}
 {{DEGERLENDIRME_TABLOSU}}
 {{KAT_BAZINDA_INDIRGENMIS_ALAN_TABLOSU}}
 {{DEGERLENDIRME_SEMASI}}
-<p>*** Taşınmazın değerlemesi takyidatlardan bağımsız yapılmıştır.</p>
 </div>
 
 <div class="kt-nav">
@@ -342,5 +346,6 @@
 <p style="text-align:center;margin-top:14pt;"><span class="kt-btn">Rapor Üret</span></p>
 <p class="kt-topbar" style="border-top:0.75pt solid #d7e8e0;border-bottom:none;padding-top:6pt;">KUVEYTTÜRK - EKSPERTİZ (INVEX) &nbsp;|&nbsp; Bu şablon Rapor Yazma Programı tarafından doldurulmuştur.</p>
 
+</div>
 </body>
 </html>
