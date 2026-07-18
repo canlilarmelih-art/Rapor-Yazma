@@ -21704,7 +21704,7 @@ function renderLeafletKmlMap() {
     : [parsed.coordinates[0].lat, parsed.coordinates[0].lng]);
   const path = hasKmlGeometry ? parsed.coordinates.map((point) => [point.lat, point.lng]) : [];
 
-  leafletMap = leaflet.map(panel).setView(center, 16);
+  leafletMap = leaflet.map(panel, getLeafletInteractionOptions()).setView(center, 16);
 
   getLeafletTileLayer().addTo(leafletMap);
 
@@ -21718,7 +21718,7 @@ function renderLeafletKmlMap() {
     }).addTo(leafletMap);
   }
 
-  leafletSelectedMarker = leaflet.marker(center, { draggable: true })
+  leafletSelectedMarker = leaflet.marker(center, { draggable: !isCoarsePointerDevice() })
     .addTo(leafletMap)
     .bindPopup(`Seçili konum${parsed?.fields?.sheetNo ? `<br>Pafta: ${escapeHtml(parsed.fields.sheetNo)}` : ""}`);
 
@@ -21761,6 +21761,20 @@ function isLeafletReady() {
   );
   if (ready) configureLeafletMarkerIcon();
   return ready;
+}
+
+function isCoarsePointerDevice() {
+  try {
+    return Boolean(window.matchMedia && window.matchMedia("(hover: none), (pointer: coarse)").matches);
+  } catch (error) {
+    return false;
+  }
+}
+
+function getLeafletInteractionOptions() {
+  return isCoarsePointerDevice()
+    ? { dragging: false, tap: false, touchZoom: true, scrollWheelZoom: false }
+    : {};
 }
 
 let leafletMarkerIconConfigured = false;
@@ -24958,6 +24972,7 @@ function renderComparableLocationSketchMap(wrapper) {
   panel.innerHTML = "";
   const leaflet = window.L;
   const map = leaflet.map(panel, {
+    ...getLeafletInteractionOptions(),
     scrollWheelZoom: false,
   }).setView(subjectPoint, 15);
   wrapper._comparableSketchMap = map;
@@ -26641,7 +26656,7 @@ function renderComparableLocationMap(overlay, subjectPoint, selectedPoint, onPoi
     return;
   }
   const leaflet = window.L;
-  const map = leaflet.map(panel).setView(selectedPoint ? [selectedPoint.lat, selectedPoint.lng] : subjectPoint, 16);
+  const map = leaflet.map(panel, getLeafletInteractionOptions()).setView(selectedPoint ? [selectedPoint.lat, selectedPoint.lng] : subjectPoint, 16);
   getLeafletTileLayer().addTo(map);
 
   const coordinates = state.sourceValues.kml?.coordinates || [];
@@ -26665,7 +26680,7 @@ function renderComparableLocationMap(overlay, subjectPoint, selectedPoint, onPoi
   let marker = null;
   const setMarker = (lat, lng) => {
     if (!marker) {
-      marker = leaflet.marker([lat, lng], { draggable: true }).addTo(map);
+      marker = leaflet.marker([lat, lng], { draggable: !isCoarsePointerDevice() }).addTo(map);
       marker.on("dragend", (event) => {
         const point = event.target.getLatLng();
         onPointSelected(point.lat, point.lng);

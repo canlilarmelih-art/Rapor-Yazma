@@ -53,6 +53,9 @@ function main() {
   );
   assert(indexHtml.includes("Promise.try"), "pdf.js icin Promise.try guvencesi bulunamadi.");
   assert(indexHtml.includes("Uint8Array.fromBase64"), "pdf.js icin Uint8Array.fromBase64 guvencesi bulunamadi.");
+  assert(indexHtml.includes('overlay.setAttribute("data-ios-lite", "true")'), "iOS gate hafif mod isareti bulunamadi.");
+  assert(indexHtml.includes('for (var i = 0; !isIOS && i < 10; i++)'), "iOS gate parcacik uretimi kapatilmis gorunmuyor.");
+  assert(!indexHtml.includes('window.addEventListener("load", () =>'), "index.html icinde eski Safari icin riskli arrow load listener kalmis.");
 
   const appJs = readText("app.js");
   const stylesCss = readText("styles.css");
@@ -62,6 +65,16 @@ function main() {
       serverJs.includes('"Pragma": "no-cache"') &&
       serverJs.includes('"Expires": "0"'),
     "Statik dosyalar icin tarayici onbellegi kapatilmis gorunmuyor."
+  );
+  assert(stylesCss.includes('#authGateOverlay[data-ios-lite="true"] .gate-blueprint'), "iOS gate hafif mod CSS'i bulunamadi.");
+  assert(stylesCss.includes("touch-action: pan-y;"), "Mobil tek parmak dikey kaydirma touch-action guvencesi bulunamadi.");
+  assert(stylesCss.includes("touch-action: pan-x pan-y;"), "Mobil yatay tablo alanlari tek parmak pan guvencesi bulunamadi.");
+  assert(
+    appJs.includes("function getLeafletInteractionOptions()") &&
+      appJs.includes("dragging: false") &&
+      appJs.includes("tap: false") &&
+      appJs.includes("touchZoom: true"),
+    "Touch cihazlarda Leaflet tek parmak sayfa kaydirmasini serbest birakan ayarlar bulunamadi."
   );
   assert(
     appJs.includes('"T.C. Çevre ve Şehircilik Bakanlığı"'),
@@ -524,8 +537,8 @@ function main() {
       indexHtml.includes("src/risk/halkbank-risk-rules.js") &&
       indexHtml.includes("src/comparables/comparable-market-analysis.js") &&
       indexHtml.includes("src/value-factors/value-factors-rules.js") &&
-      indexHtml.includes("styles.css?v=20260718-1130") &&
-      indexHtml.includes("app.js?v=20260718-1540") &&
+      indexHtml.includes("styles.css?v=20260718-1150") &&
+      indexHtml.includes("app.js?v=20260718-1550") &&
       indexHtml.includes("src/templates/template-engine.js?v=20260718-1510"),
     "Halkbank risk kodu scriptleri veya guncel app surumu index.html icinde bulunamadi."
   );

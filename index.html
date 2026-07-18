@@ -506,7 +506,7 @@
         }
       })();
     </script><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="styles.css?v=20260718-1130" />
+    <link rel="stylesheet" href="styles.css?v=20260718-1150" />
     <link rel="stylesheet" href="themes/navy-blue.css?v=20260713-0200" />
     <link rel="stylesheet" href="themes/apple.css?v=20260713-0200" />
     <link rel="stylesheet" href="themes/glass.css?v=20260717-1830" />
@@ -549,6 +549,12 @@
         if (!overlay) return;
         var THEME_KEY = "rapor-gate-theme";
         var lightBtn, darkBtn;
+        var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent || "")
+          || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+        if (isIOS) {
+          overlay.setAttribute("data-ios-lite", "true");
+          document.documentElement.className += " ios-lite";
+        }
 
         function setGateTheme(theme) {
           overlay.setAttribute("data-gate-theme", theme);
@@ -563,9 +569,9 @@
         var scene = document.createElement("div");
         scene.className = "gate-scene";
         scene.innerHTML =
-          '<video class="gate-video" autoplay muted loop playsinline preload="metadata">' +
+          (isIOS ? "" : '<video class="gate-video" autoplay muted loop playsinline preload="metadata">' +
           '<source src="assets/gate-bg/gate-bg-video.mp4" type="video/mp4">' +
-          "</video>" +
+          "</video>") +
           '<div class="gate-blueprint"></div>' +
           '<div class="gate-particles"></div>' +
           '<div class="gate-vignette"></div>' +
@@ -586,7 +592,7 @@
         darkBtn.addEventListener("click", function () { setGateTheme("dark"); });
 
         var particlesHost = scene.querySelector(".gate-particles");
-        for (var i = 0; i < 10; i++) {
+        for (var i = 0; !isIOS && i < 10; i++) {
           var p = document.createElement("i");
           p.className = "gate-particle";
           p.style.left = Math.random() * 100 + "%";
@@ -764,7 +770,7 @@
     <script src="src/land/minimum-parcel-sizes.js?v=20260711-0400"></script>
     <script src="src/value-factors/value-factors-rules.js?v=20260707-1050"></script>
     <script src="src/land/climate-earthquake-data.js?v=20260712-1720"></script>
-    <script src="app.js?v=20260718-1540"></script>
+    <script src="app.js?v=20260718-1550"></script>
     <script src="src/exports/export-validation.js?v=20260716-1845"></script>
     <!-- Banka şablonlarıyla dışa aktarma: app.js'ten SONRA yüklenmeli (global'leri çağrı anında kullanır). -->
     <script src="src/templates/template-engine.js?v=20260718-1510"></script>
@@ -783,8 +789,8 @@
       // denenmez; iOS'ta "Ana Ekrana Ekle" ile kurulmanın depolama koruması
       // yine de manifest + meta etiketleri sayesinde çalışır (SW şart değildir).
       if ("serviceWorker" in navigator && window.isSecureContext) {
-        window.addEventListener("load", () => {
-          navigator.serviceWorker.register("service-worker.js?v=20260712-0142").catch((error) => {
+        window.addEventListener("load", function () {
+          navigator.serviceWorker.register("service-worker.js?v=20260712-0142").catch(function (error) {
             console.warn("Service worker kaydı yapılamadı:", error);
           });
         });

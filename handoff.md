@@ -1,9 +1,37 @@
 # Rapor Yazma Programı — Handoff Notu
 
-Son güncelleme: 2026-07-18 · Servis edilen sürüm: **app.js?v=20260718-1540** (styles.css?v=20260718-1130, src/templates/template-engine.js?v=20260718-1510, cloud/cloud-sync.js?v=20260709-2247, cloud/report-library.js?v=20260710-1626, halkbank-risk-rules.js?v=20260707-1812)
+Son güncelleme: 2026-07-18 · Servis edilen sürüm: **app.js?v=20260718-1550** (styles.css?v=20260718-1150, src/templates/template-engine.js?v=20260718-1510, cloud/cloud-sync.js?v=20260709-2247, cloud/report-library.js?v=20260710-1626, halkbank-risk-rules.js?v=20260707-1812)
 
 Bu belge, bir sonraki geliştirici/oturum için projeyi çalıştırma, doğrulama ve bu
 oturumda yapılanları özetler.
+
+---
+## 0.0.168 - 2026-07-18 - Android tek parmak sayfa gezinme
+
+- Mobil/touch cihazlarda ana içerik, workspace ve Leaflet konteynerleri `touch-action: pan-y` ile tek parmak dikey kaydırmaya açıldı.
+- Mobil yatay tablo sarmalayıcıları `touch-action: pan-x pan-y` kullanır; hem yatay tablo kaydırma hem sayfa dikey kaydırma tek parmakla çalışır.
+- Touch cihazlarda Leaflet haritalar `dragging:false`, `tap:false`, `touchZoom:true` ile açılır. Böylece harita tek parmak pan hareketini yutmaz; sayfa tek parmakla kayar, haritada konum seçme dokunmayla devam eder.
+- Cache-buster: `app.js?v=20260718-1550`, `styles.css?v=20260718-1150`.
+
+### Doğrulama
+
+- `node --check app.js`
+- `node tools/check-basic.js`
+- `git diff --check`
+
+---
+## 0.0.167 - 2026-07-18 - iOS giriş çökmesi için gate lite mode
+
+- iOS/iPadOS tespitinde giriş kapısı `data-ios-lite="true"` moduna geçer; video elementi DOM'a hiç eklenmez ve parçacıklar oluşturulmaz.
+- iOS CSS bloğunda gate blueprint/parçacık/video katmanları kapatıldı; yalnızca hafif statik degrade/vinyet bırakıldı. Amaç Safari'nin girişte klavye/video/tam ekran animasyon kaynaklı bellek baskısını daha erken kesmek.
+- Service worker kaydındaki arrow function'lar normal function sözdizimine çevrildi; eski WebKit parse riski azaltıldı.
+- Cache-buster: `styles.css?v=20260718-1140`.
+
+### Doğrulama
+
+- `node --check app.js`
+- `node tools/check-basic.js`
+- `git diff --check`
 
 ---
 ## 0.0.166 - 2026-07-18 - Word Dar sayfa düzeni section'a bağlandı

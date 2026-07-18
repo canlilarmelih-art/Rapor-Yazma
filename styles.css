@@ -405,6 +405,13 @@ body {
     Arial, sans-serif;
 }
 
+html,
+body,
+.app-shell,
+.workspace {
+  touch-action: pan-y;
+}
+
 button,
 input,
 select,
@@ -4342,6 +4349,7 @@ td textarea.table-textarea {
   width: 100%;
   height: 100%;
   font: inherit;
+  touch-action: pan-y;
 }
 
 /* Leaflet'in varsayilan PNG marker'i CSP nedeniyle dis CDN'den yuklenemez. */
@@ -4556,6 +4564,9 @@ td textarea.table-textarea {
     padding: 12px 12px 18px;
     max-width: 100vw;
     overflow-x: hidden;
+    overflow-y: visible;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
   }
 
   .topbar {
@@ -4811,6 +4822,7 @@ td textarea.table-textarea {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior-x: contain;
+    touch-action: pan-x pan-y;
   }
 
   .placeholder-table-wrap,
@@ -4820,6 +4832,7 @@ td textarea.table-textarea {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior-x: contain;
+    touch-action: pan-x pan-y;
   }
 
   table {
@@ -4877,6 +4890,7 @@ td textarea.table-textarea {
     backdrop-filter: blur(10px);
     overflow-x: auto;
     overscroll-behavior-x: contain;
+    touch-action: pan-x;
     padding: 8px 10px 10px;
     scroll-snap-type: x proximity;
     transform: translateZ(0);
@@ -6426,6 +6440,23 @@ a:focus-visible,
 
   #authGateOverlay .gate-particle {
     animation: none !important;
+  }
+
+  /* iOS'ta gate sahnesi tamamen hafif statik moda alınır: video elementi
+     DOM'da hiç oluşturulmaz, parçacıklar üretilmez; burada kalan tam ekran
+     dekoratif katmanları da kapatarak Safari'nin düşük bellek tavanına
+     yaklaşan giriş anı GPU yükünü azaltırız. */
+  #authGateOverlay[data-ios-lite="true"] .gate-blueprint,
+  #authGateOverlay[data-ios-lite="true"] .gate-particles,
+  #authGateOverlay[data-ios-lite="true"] .gate-particle,
+  #authGateOverlay[data-ios-lite="true"] .gate-video {
+    display: none !important;
+  }
+
+  #authGateOverlay[data-ios-lite="true"] .gate-vignette {
+    background:
+      radial-gradient(circle at 50% 40%, rgba(45, 89, 171, 0.14), transparent 58%),
+      linear-gradient(160deg, rgba(13, 28, 58, 0.96), rgba(6, 15, 34, 0.98)) !important;
   }
 }
 
