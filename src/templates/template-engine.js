@@ -263,6 +263,13 @@
     TAKYIDAT2025: { t: () => safeCall("buildEncumbranceSummary") },
     TAKYIDATISBANK: { t: () => safeCall("buildEncumbranceSummary") },
     TAKYIDATTABLO: { h: () => safeCall("formatTextTableForWord", safeCall("buildTakyidatTableText")) },
+    // `{{ENCUMBRANCE_SUMMARY_TEXT}}` (PLACEHOLDER-REHBERI.md'de belgeli,
+    // 7 banka şablonunda kullanılıyor) hiçbir yerde kayıtlı DEĞİLDİ — ne app
+    // alan anahtarı ("encumbranceSummaryText" yok) ne de bir alias olarak;
+    // şablonlarda sarı "⚠ AD" gösteriyordu. Gerçek alan `takbisSummary`
+    // ("Takyidat açıklaması") — TAKBISSUMMARY adıyla zaten çözümleniyor,
+    // burada eski adı da aynı değere bağlıyoruz.
+    ENCUMBRANCESUMMARYTEXT: { t: () => safeCall("buildEncumbranceSummary") },
 
     // --- İmar ---
     IMARPLANADI: { f: ["planName"] },
@@ -479,7 +486,7 @@
     "legalRentUnit", "currentRentUnit", "mainPropertyDescription",
     "actualUsePurpose", "propertyType", "titleDate",
     "mainRealEstateProjectSuitable", "mainRealEstateProjectSuitabilityNote",
-    "buildingEntranceDoor", "damageStatus",
+    "buildingEntranceDoor", "damageStatus", "unitFirstSaleStatus",
   ];
 
   let foldedFieldIndex = null;

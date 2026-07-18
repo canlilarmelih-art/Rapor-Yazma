@@ -6,6 +6,99 @@ Bu belge, bir sonraki geliştirici/oturum için projeyi çalıştırma, doğrula
 oturumda yapılanları özetler.
 
 ---
+## 0.0.148 - 2026-07-18 - Kuveyt Türk şablonu düzeltmeleri + kritik placeholder hatası
+
+Kullanıcı Kuveyt Türk şablon çıktısını inceleyip 9 maddelik düzeltme
+listesi verdi:
+
+1. Malikler Tablosu ile Tapu Bilgileri arası boşluk yok.
+2. Paragraf yazı boyutu 10 olmalı.
+3. Yapım Yılı boş geliyor — `{{BUİLDİNG_CONSTRUCTİON_YEAR}}` gelecek.
+4. Taşınmaz İlk Kez mi Satışa Konu — `{{UNİT_FİRST_SALE_STATUS}}` gelecek.
+5. Bağımsız bölüm özelliklerinde `{{UNİT_DECORATİVE_DESCRİPTİON_TEXT}}`
+   olmasın (zaten interior metninin içinde var).
+6. Takyidat Nasıl Görüldü — `{{TAKBİS_METHOD}}`.
+7. Takyidat Açıklaması daima `{{TAKBİS_SUMMARY}}`.
+8. Deprem Bölgesi — `{{EARTHQUAKE_ZONE}}`.
+9. Tüm tablo/paragraflar arasına boşluk bırak.
+
+### İnceleme sonucu
+
+Madde 3 ve 8 şablonda ZATEN doğruydu (`{{BUİLDİNG_CONSTRUCTİON_YEAR}}` ve
+`{{EARTHQUAKE_ZONE}}` her ikisi de doğru yerde) — değişiklik yapılmadı;
+kullanıcının gördüğü boşluk muhtemelen o raporda veri girilmemiş olmasından
+kaynaklanıyordu, şablon hatası değildi.
+
+**Kritik bulgu (madde 7 incelenirken ortaya çıktı):** `{{ENCUMBRANCE_SUMMARY_TEXT}}`
+placeholder'ı — `PLACEHOLDER-REHBERI.md`'de belgeli ve **7 banka
+şablonunda** ("Takyidat Açıklaması" paragrafı için) kullanılıyor —
+`src/templates/template-engine.js` içinde HİÇBİR YERDE kayıtlı değildi; ne
+bir app alan anahtarı (`encumbranceSummaryText` diye bir alan yok) ne bir
+alias olarak. Yani bu placeholder yıllardır/aylardır sarı "⚠ AD" uyarısı
+üretiyordu, gerçek Takyidat açıklaması hiç görünmüyordu. Gerçek alan
+`takbisSummary` ("Takyidat açıklaması", `buildEncumbranceSummary()` ile
+otomatik üretilir).
+
+Düzeltme (`src/templates/template-engine.js`): `ENCUMBRANCESUMMARYTEXT`
+alias'ı eklendi (`buildEncumbranceSummary()`'ye bağlı) — bu, `{{ENCUMBRANCE_SUMMARY_TEXT}}`
+kullanan TÜM şablonları (akbank, halkbank, isbankasi, vakifbank,
+vakifkatilim, ziraat — kuveytturk hariç, o artık `{{TAKBİS_SUMMARY}}`
+kullanıyor) geriye dönük düzeltir; bu 6 şablonun metni DEĞİŞTİRİLMEDİ,
+yalnızca artık gerçekten çalışıyor.
+
+Ayrıca `{{UNİT_FİRST_SALE_STATUS}}` da çözümlenmiyordu — alan
+(`unitFirstSaleStatus`) `sections[].fields[]` içinde değil, ayrı bir DOM
+paneliyle yönetiliyor; motorun placeholder çözümü yalnızca
+`sections[].fields[].key` + elle bakımı yapılan `EXTRA_FIELD_KEYS`
+listesine bakıyor. `unitFirstSaleStatus`, `EXTRA_FIELD_KEYS`'e eklendi.
+
+### `templates/kuveytturk.html` değişiklikleri
+
+- `<style>`: `p` kuralına `font-size:10pt; margin:0 0 10pt; line-height:1.4;`
+  (madde 2); `table.kt-form` ve `.word-table`/`table.kt-list` alt
+  boşlukları `7pt`'ten `12pt`'e çıkarıldı (madde 9 — bu, madde 1'i de
+  otomatik çözer çünkü `{{MALIKLER_TABLO}}` `.word-table` sınıfını kullanır).
+- "Taşınmaz İlk Kez mi Satışa Konu" satırı: sabit
+  `SIFIR TAŞINMAZ / 2. EL TAŞINMAZ` metni → `{{UNİT_FİRST_SALE_STATUS}}`.
+- Bağımsız bölüm açıklamasından tekrarlı `{{UNİT_DECORATİVE_DESCRİPTİON_TEXT}}`
+  satırı kaldırıldı.
+- "Takyidat Nasıl Görüldü" satırı: sabit `TAKBİS'TEN` metni →
+  `{{TAKBİS_METHOD}}`.
+- "Takyidat Açıklaması" için yeni bir `kt-subsec` başlığı + `{{TAKBİS_SUMMARY}}`
+  eklendi (eskiden çalışmayan `{{ENCUMBRANCE_SUMMARY_TEXT}}` yerine).
+
+`index.html`: `src/templates/template-engine.js?v=20260718-0330`.
+`tools/check-basic.js` içindeki sabit template-engine.js sürüm kontrolü
+aynı değere güncellendi.
+
+Doğrulama: `node --check app.js`, `node --check src/templates/template-engine.js`,
+`tools/check-basic.js`, `tools/test-bank-templates.js` (bu, gerçek şablon
+doldurma motorunu çalıştırıp TÜM placeholder'ların çözümlendiğini
+doğruluyor — `{{UNİT_FİRST_SALE_STATUS}}` düzeltilmeden önce bu test
+BAŞARISIZ oluyordu, düzeltmenin doğru olduğunu kanıtlıyor),
+`tools/test-comparable-market-analysis.js` geçti. **Canlı Word'de görsel
+doğrulama YAPILAMADI** (bkz. 0.0.56 D7, 0.0.142) — kullanıcının bir
+sonraki Kuveyt Türk çıktısında 9 maddeyi ve diğer 6 şablondaki artık
+çalışan Takyidat Açıklaması paragrafını teyit etmesi gerekir.
+
+Ayrı yedek alınmadı; önceki `backups/before-library-cloud-meta-row_2026-07-17_19-11-29`
+taban olarak yeterli.
+
+---
+## 0.0.147 - 2026-07-18 - Emsal konut görünümünde yol satırı ve başlık sadeleştirmesi
+
+Emsaller tablosunda kullanıcı arayüzü başlıkları kısaltıldı: `İrtibat / Kaynak`
+`İrtibat`, `Bulunduğu Kat` `Kat` ve `Emsal Konumu` `Konumu` oldu. `Yola Cephe
+Durumu` arsa/tarla emsalleri için korunurken konut/yapı emsalleri görünümünde
+gizlendi. Aynı filtre Word emsal tablosunda da arsa/tarla bileşeni bulunmadığı
+durumlarda uygulanır.
+
+Yedek: `backups/before-comparable-residential-road-labels_2026-07-18_01-51-25`
+
+Doğrulama: `node --check app.js`, `node tools/check-basic.js` ve `git diff
+--check` başarılıdır. Cache sürümü `app.js?v=20260718-0155` olarak yenilendi.
+
+---
 ## 0.0.146 - 2026-07-18 - Değerleme bölümü: tüm şablonlarda ortak sıralama
 
 Kullanıcı, 7 bankayı yan yana karşılaştıran bir görsel paylaşıp Değerleme

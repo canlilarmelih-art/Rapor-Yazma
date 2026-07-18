@@ -17,7 +17,7 @@
 <style>
   @page { size: 595.35pt 841.95pt; margin: 10pt; }
   body { font-family: Verdana, Arial, sans-serif; font-size: 6.5pt; color: #333333; background: #ffffff; }
-  p { margin: 0 0 5pt; line-height: 1.3; }
+  p { margin: 0 0 10pt; line-height: 1.4; font-size: 10pt; }
 
   /* --- INVEX üst şerit / marka --- */
   .kt-topbar { font-size: 6pt; color: #6b7f78; padding: 2pt 0 5pt; border-bottom: 0.75pt solid #d7e8e0; }
@@ -36,13 +36,13 @@
   .kt-subsec { color: #0d6b4e; font-weight: bold; font-size: 7pt; margin: 7pt 0 3pt; }
 
   /* --- etiket/değer form tablosu --- */
-  table.kt-form { border-collapse: collapse; width: 100%; margin: 3pt 0 7pt; }
+  table.kt-form { border-collapse: collapse; width: 100%; margin: 3pt 0 12pt; }
   table.kt-form td { padding: 2.2pt 5pt; vertical-align: top; }
   table.kt-form td.l { width: 34%; text-align: right; font-weight: bold; color: #17493b; }
   table.kt-form td.v { background: #e9e9e9; border: 0.75pt solid #cfcfcf; border-radius: 3pt; }
 
   /* --- liste tabloları (malikler, belgeler, motor tabloları) --- */
-  .word-table, table.kt-list { border-collapse: collapse; width: 100%; margin: 3pt 0 7pt; border: 0.75pt solid #bee0d2; font-size: 6.5pt; }
+  .word-table, table.kt-list { border-collapse: collapse; width: 100%; margin: 3pt 0 12pt; border: 0.75pt solid #bee0d2; font-size: 6.5pt; }
   .word-table th, .word-table td, table.kt-list th, table.kt-list td { border: 0.75pt solid #cfe4da; padding: 2.2pt 4pt; vertical-align: top; }
   .word-table th, table.kt-list th { background: #e7f5ee; color: #17493b; font-weight: bold; text-align: left; }
   .word-table tbody tr:nth-child(even) td, table.kt-list tbody tr:nth-child(even) td { background: #f4faf7; }
@@ -160,7 +160,7 @@
   <tr><td class="l">* Toplam Yasal Brüt Alan (m²):</td><td class="v">{{LEGAL_AREA}}</td></tr>
   <tr><td class="l">* Toplam Mevcut Brüt Alan (m²):</td><td class="v">{{CURRENT_AREA}}</td></tr>
   <tr><td class="l">* Yapım Yılı:</td><td class="v">{{BUİLDİNG_CONSTRUCTİON_YEAR}}</td></tr>
-  <tr><td class="l">Taşınmaz İlk Kez mi Satışa Konu:</td><td class="v">SIFIR TAŞINMAZ / 2. EL TAŞINMAZ</td></tr>
+  <tr><td class="l">Taşınmaz İlk Kez mi Satışa Konu:</td><td class="v">{{UNİT_FİRST_SALE_STATUS}}</td></tr>
   <tr><td class="l">İç Hacimler:</td><td class="v">{{KAT_BAZLI_İÇ_HACİMLER}}</td></tr>
   <tr><td class="l">Binadaki Toplam Bağımsız Bölüm Sayısı:</td><td class="v">{{TOTAL_UNİTS}}</td></tr>
   <tr><td class="l">* Binanın Toplam Kat Adedi:</td><td class="v">{{TOTAL_FLOORS}}</td></tr>
@@ -190,10 +190,11 @@
 <table class="kt-form">
   <tr><td class="l">Takyidat İnceleme Tarihi:</td><td class="v">{{TAKBİS_DATE}}</td></tr>
   <tr><td class="l">Takyidat Saati:</td><td class="v">{{TAKBİS_TİME}}</td></tr>
-  <tr><td class="l">Takyidat Nasıl Görüldü:</td><td class="v">TAKBİS'TEN</td></tr>
+  <tr><td class="l">Takyidat Nasıl Görüldü:</td><td class="v">{{TAKBİS_METHOD}}</td></tr>
 </table>
 {{TAKYIDAT_TABLO}}
-{{ENCUMBRANCE_SUMMARY_TEXT}}
+<div class="kt-subsec">Takyidat Açıklaması</div>
+{{TAKBİS_SUMMARY}}
 
 <div class="kt-sec">BÖLGE ÖZELLİKLERİ</div>
 <div class="kt-subsec">* Gayrimenkulün Konumu, Çevresel Özellikleri ve Yakın Çevresinin Yapılaşma Bilgileri</div>
@@ -207,7 +208,6 @@
 <div class="kt-subsec">Gayrimenkulün Tanımı / Binadaki Konumu</div>
 {{MAİN_PROPERTY_DESCRİPTİON_TEXT}}
 {{UNİT_İNTERİOR_DESCRİPTİON_TEXT}}
-{{UNİT_DECORATİVE_DESCRİPTİON_TEXT}}
 <table class="kt-form">
   <tr><td class="l">* Yapı Cinsi:</td><td class="v">{{BUİLDİNG_STYLE}}</td></tr>
   <tr><td class="l">Yapı Sınıfı ve Grubu:</td><td class="v">{{BUİLDİNG_CLASS}}</td></tr>
