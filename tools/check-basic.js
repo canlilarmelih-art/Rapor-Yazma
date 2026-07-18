@@ -524,7 +524,7 @@ function main() {
       indexHtml.includes("src/risk/halkbank-risk-rules.js") &&
       indexHtml.includes("src/comparables/comparable-market-analysis.js") &&
       indexHtml.includes("src/value-factors/value-factors-rules.js") &&
-      indexHtml.includes("styles.css?v=20260718-1040") &&
+      indexHtml.includes("styles.css?v=20260718-1130") &&
       indexHtml.includes("app.js?v=20260718-0155") &&
       indexHtml.includes("src/templates/template-engine.js?v=20260718-0330"),
     "Halkbank risk kodu scriptleri veya guncel app surumu index.html icinde bulunamadi."

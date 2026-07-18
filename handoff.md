@@ -6,6 +6,48 @@ Bu belge, bir sonraki geliştirici/oturum için projeyi çalıştırma, doğrula
 oturumda yapılanları özetler.
 
 ---
+## 0.0.150 - 2026-07-18 - iOS çökme 2. tur: kapı arkasındaki dev GPU katmanları
+
+0.0.149 deploy edildikten sonra kullanıcı iOS'ta tekrar test etti:
+**arka plan videosu artık ÇIKIYOR** (Range düzeltmesi doğrulandı ✓) ama
+form doldurulurken "birçok kez sorun oluştu" yeniden yüklemeleri sürüyor.
+
+### Kalan kök neden: kapının arkasında canlı duran dev katmanlar
+
+Giriş formunun kendisi masum (tuş başına JS işi yok — kontrol edildi).
+Sorun toplam bellek tavanı: auth kapısı yalnızca GÖRSEL bir örtü; app.js
+tüm rapor editörü DOM'unu kapının arkasına eksiksiz kuruyor. Üstüne:
+
+1. **`.workspace::before`** — `inset:0` olduğu için ekran değil İÇERİK
+   yüksekliğinde (binlerce px) bir elemandı; mask-image + sonsuz transform
+   animasyonu taşıdığından iOS bunun için ekran-genişliği × içerik-yüksekliği
+   boyutunda KALICI bir GPU katmanı tutuyordu. En büyük tekil bellek yükü
+   buydu. → iOS'ta (`@supports (-webkit-touch-callout: none)`) animasyon
+   kapatıldı; statik grid ebeveyniyle boyanıyor, katman gereksinimi kalktı.
+2. **`.gate-blueprint`** — `will-change: transform` + sonsuz `gateBreathe`
+   = bir kalıcı tam ekran katman daha → iOS'ta animasyon + will-change
+   kapatıldı. `.gate-particle` (10 adet) da iOS'ta durduruldu.
+3. **Video + klavye çakışması** — 0.0.149'da video oynamaya başlayınca
+   tam ekran decode belleği de eklendi. Dokunmatik cihazlarda
+   (`hover: none`) giriş alanına odaklanınca video duraklatılıp
+   `display:none` yapılıyor (decode katmanı serbest kalır, statik degrade
+   görünür); odak çıkınca kaldığı yerden devam ediyor (`index.html` gate
+   script, focusin/focusout).
+
+Masaüstü/Android görünümü değişmedi (tüm kısıtlar iOS/dokunmatik hedefli).
+
+Sürümler: `styles.css?v=20260718-1130` (index.html + check-basic
+güncellendi).
+
+Doğrulama: `check-basic`, banka şablon testi geçti. **iOS'ta gerçek cihaz
+doğrulaması yine YAPILAMADI** — deploy sonrası kullanıcı testi gerekiyor.
+Bu tur da yetmezse bir SONRAKİ adım (daha köklü): app.js'in dev DOM
+kurulumunu auth onayına ERTELEMEK (0.0.56'daki bilinen sınır listesinde
+zaten kayıtlı öneri) — kapı açıkken arkada hiçbir şey render edilmemiş
+olur; iOS bellek tavanına en kesin çözüm budur ama ayrı ve dikkatli bir
+iş gerektirir.
+
+---
 ## 0.0.149 - 2026-07-18 - iOS: giriş ekranı çökmesi ve arka plan videosunun görünmemesi
 
 Kullanıcı: Android ve Windows'ta sorunsuz; iOS cihazlarda giriş ekranında

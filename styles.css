@@ -6405,6 +6405,28 @@ a:focus-visible,
   #authGateOverlay .gate-scene {
     animation: none !important;
   }
+
+  /* Kapının ARKASINDA tüm uygulama DOM'u render edilmiş durumda ve
+     .workspace::before (inset:0 → içeriğin TAM yüksekliği, binlerce px)
+     mask-image + sonsuz transform animasyonu taşıyor — iOS bunun için
+     ekran-genişliği × içerik-yüksekliği boyutunda kalıcı bir GPU katmanı
+     tutmak zorunda kalıyordu. Klavye + video ile birleşince "sorun oluştu"
+     yeniden yüklemelerinin ana bellek yükü buydu. Animasyon durunca katman
+     gereksinimi kalkar, statik grid ebeveynle birlikte boyanır. */
+  .workspace::before {
+    animation: none !important;
+  }
+
+  /* Tam ekran gate-blueprint katmanı: will-change + sonsuz animasyon =
+     bir kalıcı katman daha. Particle'lar da (10 adet) küçük ama bedava. */
+  #authGateOverlay .gate-blueprint {
+    animation: none !important;
+    will-change: auto !important;
+  }
+
+  #authGateOverlay .gate-particle {
+    animation: none !important;
+  }
 }
 
 /* 7 ve 8. bölümlerde mobilde de alt paneller kenarlara yapışmamalı. */

@@ -506,7 +506,7 @@
         }
       })();
     </script><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="styles.css?v=20260718-1040" />
+    <link rel="stylesheet" href="styles.css?v=20260718-1130" />
     <link rel="stylesheet" href="themes/navy-blue.css?v=20260713-0200" />
     <link rel="stylesheet" href="themes/apple.css?v=20260713-0200" />
     <link rel="stylesheet" href="themes/glass.css?v=20260717-1830" />
@@ -617,6 +617,31 @@
           gateVideo.addEventListener("error", function () {
             if (gateVideo.parentNode) gateVideo.parentNode.removeChild(gateVideo);
           });
+          // Dokunmatik cihazlarda giriş alanına odaklanınca (klavye açıkken)
+          // videoyu duraklat ve gizle: iOS'ta klavye + tam ekran video decode
+          // birlikte bellek tavanını zorlayıp "sorun oluştu" yeniden
+          // yüklemelerine yol açıyordu. Odak çıkınca kaldığı yerden döner;
+          // video gizliyken arkadaki statik degrade sahneyi taşır.
+          var touchDevice = window.matchMedia && window.matchMedia("(hover: none)").matches;
+          if (touchDevice) {
+            overlay.addEventListener("focusin", function (e) {
+              if (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA")) {
+                gateVideo.pause();
+                gateVideo.style.display = "none";
+              }
+            });
+            overlay.addEventListener("focusout", function () {
+              setTimeout(function () {
+                var active = document.activeElement;
+                var stillTyping = active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA") && overlay.contains(active);
+                if (!stillTyping && gateVideo.parentNode) {
+                  gateVideo.style.display = "";
+                  var resume = gateVideo.play();
+                  if (resume && resume.catch) resume.catch(function () {});
+                }
+              }, 150);
+            });
+          }
         }
         // Parallax yalnızca gerçek imleçli (masaüstü) cihazlarda: dokunmatik
         // cihazlarda pointermove gelmediği için görsel katkısı sıfır ama
