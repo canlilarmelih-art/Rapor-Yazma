@@ -735,12 +735,46 @@ async function handleStatic(request, response) {
   try {
     const data = await fs.readFile(filePath);
     applySecurityHeaders(response);
-    response.writeHead(200, {
+    const baseHeaders = {
       "Content-Type": mimeTypes.get(path.extname(filePath).toLowerCase()) || "application/octet-stream",
       "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
       "Pragma": "no-cache",
       "Expires": "0",
-    });
+      // iOS Safari (AVFoundation) video oynatmadan önce `Range: bytes=0-1`
+      // sondası atar ve sunucu Range desteklemiyorsa (Accept-Ranges + 206)
+      // videoyu HİÇ oynatmaz — giriş ekranı arka plan videosunun iOS'ta
+      // görünmemesinin kök nedeni buydu. Chrome/Android 200 + tam gövdeyi
+      // tolere ettiği için sorun yalnızca iOS'ta görülüyordu.
+      "Accept-Ranges": "bytes",
+    };
+    const rangeHeader = String(request.headers.range || "");
+    const rangeMatch = rangeHeader.match(/^bytes=(\d*)-(\d*)$/);
+    if (rangeMatch && (rangeMatch[1] || rangeMatch[2])) {
+      const size = data.length;
+      let start = rangeMatch[1] ? Number.parseInt(rangeMatch[1], 10) : NaN;
+      let end = rangeMatch[2] ? Number.parseInt(rangeMatch[2], 10) : NaN;
+      if (Number.isNaN(start)) {
+        // "bytes=-500" biçimi: son N bayt.
+        start = Math.max(0, size - end);
+        end = size - 1;
+      } else if (Number.isNaN(end)) {
+        end = size - 1;
+      }
+      end = Math.min(end, size - 1);
+      if (start > end || start >= size) {
+        response.writeHead(416, { ...baseHeaders, "Content-Range": `bytes */${size}` });
+        response.end();
+        return;
+      }
+      response.writeHead(206, {
+        ...baseHeaders,
+        "Content-Range": `bytes ${start}-${end}/${size}`,
+        "Content-Length": end - start + 1,
+      });
+      response.end(data.subarray(start, end + 1));
+      return;
+    }
+    response.writeHead(200, baseHeaders);
     response.end(data);
   } catch (error) {
     applySecurityHeaders(response);

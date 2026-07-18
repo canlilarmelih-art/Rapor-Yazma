@@ -6305,8 +6305,11 @@ a:focus-visible,
 
 #authGateContent .gate-card {
   border: 1px solid rgba(255, 255, 255, 0.78);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
+  /* backdrop-filter buradan bilinçli kaldırıldı: kartın satır içi arka planı
+     zaten opak beyaz (#ffffff) olduğundan blur GÖRSEL olarak hiçbir şey
+     katmıyordu; iOS Safari'de ise arkasında video oynayan tam ekran katman
+     üzerinde backdrop-filter + klavye kombinasyonu bilinen bir bellek/çökme
+     kaynağı (giriş formu doldurulurken sayfanın yenilenmesi/çökmesi). */
   transition: box-shadow var(--speed) var(--ease-out),
     transform var(--speed) var(--ease-out);
 }
@@ -6387,6 +6390,19 @@ a:focus-visible,
   #authGateOverlay .gate-blueprint,
   #authGateOverlay .gate-particle,
   #authGateContent .gate-card {
+    animation: none !important;
+  }
+}
+
+/* iOS Safari (yalnızca): gateScenePulse tam ekran bir radial-gradient'in
+   background-position'ını anime ediyor — bu compositor'da DEĞİL, her karede
+   tüm ekranın yeniden boyanmasıyla çalışır. Video + klavye ile birleşince
+   giriş formu doldurulurken sayfanın çökmesine/yenilenmesine katkı veriyordu.
+   `-webkit-touch-callout` yalnızca iOS'ta desteklendiği için bu blok diğer
+   platformların görünümünü değiştirmez. gate-blueprint/gate-particle
+   animasyonları transform tabanlı (compositor dostu) olduğundan kalır. */
+@supports (-webkit-touch-callout: none) {
+  #authGateOverlay .gate-scene {
     animation: none !important;
   }
 }

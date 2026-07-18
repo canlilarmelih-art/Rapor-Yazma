@@ -6,6 +6,80 @@ Bu belge, bir sonraki geliştirici/oturum için projeyi çalıştırma, doğrula
 oturumda yapılanları özetler.
 
 ---
+## 0.0.149 - 2026-07-18 - iOS: giriş ekranı çökmesi ve arka plan videosunun görünmemesi
+
+Kullanıcı: Android ve Windows'ta sorunsuz; iOS cihazlarda giriş ekranında
+kullanıcı adı/şifre doldurulurken sayfa kendiliğinden yenileniyor veya
+çöküyor (temiz, hiç girilmemiş ikinci bir iOS cihazda da aynı — önbellek
+değil), ayrıca giriş ekranındaki arka plan videosu iOS'ta hiç çıkmıyor.
+
+### Kök neden 1 — video: sunucuda HTTP Range desteği yoktu
+
+iOS Safari (AVFoundation) bir videoyu oynatmadan önce `Range: bytes=0-1`
+sondası atar; sunucu `Accept-Ranges` + `206 Partial Content` ile yanıt
+vermezse videoyu HİÇ oynatmaz. `server.js`'in statik dosya servisi her
+isteğe koşulsuz `200` + tam gövde dönüyordu. Chrome/Android bunu tolere
+ettiği için sorun yalnızca iOS'ta görülüyordu. Ayrıca mp4'ün `moov` atomu
+dosyanın SONUNDA (faststart yok) — Range destekli sunucuda Safari sona
+seek edip moov'u okuyabilir, Range'siz sunucuda bu da ayrıca engeldi.
+
+Düzeltme (`server.js > handleStatic`): tüm statik yanıtlara
+`Accept-Ranges: bytes`; `Range: bytes=a-b`, `bytes=a-` ve `bytes=-N`
+biçimleri `206` + doğru `Content-Range`/`Content-Length` ile, geçersiz
+aralık `416` ile yanıtlanır.
+
+### Kök neden 2 — çökme: iOS bellek baskısı (jetsam) üçlemesi
+
+Yazarken çökme/yenilenme, iOS Safari'nin bellek baskısında sayfayı
+öldürmesidir. Giriş kapısında üç pahalı katman üst üste binmişti; klavye
+açılınca eklenen viewport resize fırtınasıyla birleşince sayfa ölüyordu:
+
+1. **Sonsuz rAF parallax döngüsü** (`index.html` gate script): her karede
+   `marginLeft/Top` yazarak LAYOUT tetikliyordu; dokunmatik cihazlarda
+   pointermove hiç gelmediği için görsel katkısı SIFIR ama maliyeti tamdı.
+   → Artık yalnızca `(hover:hover) and (pointer:fine)` cihazlarda başlıyor
+   (masaüstü davranışı birebir aynı).
+2. **`gateScenePulse`**: tam ekran radial-gradient'in `background-position`
+   animasyonu — compositor'da değil, her karede tam ekran repaint.
+   → `@supports (-webkit-touch-callout: none)` (yalnızca iOS'ta geçerli)
+   bloğuyla iOS'ta kapatıldı; diğer platformlar değişmedi.
+3. **`.gate-card` üzerinde `backdrop-filter: blur(18px)`**: kartın satır
+   içi arka planı zaten OPAK beyaz olduğundan blur görsel olarak hiçbir şey
+   katmıyordu; iOS'ta video üstünde backdrop-filter + klavye bilinen bir
+   çökme kaynağı. → Tüm platformlarda kaldırıldı (görsel fark yok).
+
+Video tarafında ek sağlamlaştırma (`index.html` gate script):
+- WebKit'in bilinen bug'ı: innerHTML ile eklenen `<video>`'nun `muted`
+  NİTELİĞİ `muted` ÖZELLİĞİNE yansımayabilir → sessiz-otomatik-oynatma
+  reddedilir. `muted`/`playsInline` artık programatik de atanıyor +
+  `play()` çağrısı (reddi sessizce yutulur).
+- `preload="auto"` → `preload="metadata"` (bellek).
+- Video `error` verirse element DOM'dan kaldırılır (arkadaki statik degrade
+  sahneyi taşır; iOS'un başarısız yükleme döngüsü bellek yemesin).
+
+### Doğrulama
+
+- Range: sunucu test portunda gerçek isteklerle uçtan uca doğrulandı —
+  `bytes=0-1` (iOS sondası) → `206`, orta aralık bayt-BİREBİR doğru
+  (kaynak dosyayla karşılaştırıldı), `bytes=-500` (sondaki moov okuması)
+  → son 500 bayt, geçersiz aralık → `416`, Range'siz istek → değişmemiş
+  `200`. `node --check server.js`, `check-basic`, banka şablon testi geçti.
+- Giriş ekranı canlı önizlemede kontrol edildi: video oynuyor
+  (readyState 4, 1280x720), konsol hatasız; `gateScenePulse` Chromium'da
+  hâlâ aktif (kapatma yalnızca iOS'u hedefliyor — doğru).
+- **iOS'ta gerçek cihaz doğrulaması YAPILAMADI** (bu ortamda iOS yok).
+  ÖNEMLİ: iOS kullanıcıları üretim sunucusuna (experify.com.tr)
+  bağlandığı için `server.js` düzeltmesi ancak commit + push + deploy
+  sonrası iOS'a ulaşır. Nginx reverse proxy Range başlıklarını varsayılan
+  olarak upstream'e geçirir; yine de canlıda ilk iOS denemesinde hem
+  videonun çıktığı hem de form doldururken çökmenin bittiği teyit
+  edilmelidir.
+
+Sürümler: `styles.css?v=20260718-1040` (index.html + check-basic
+güncellendi). `server.js` ve gate script (index.html) cache-buster
+gerektirmez (biri sunucu, diğeri HTML'in kendisi).
+
+---
 ## 0.0.148 - 2026-07-18 - Kuveyt Türk şablonu düzeltmeleri + kritik placeholder hatası
 
 Kullanıcı Kuveyt Türk şablon çıktısını inceleyip 9 maddelik düzeltme
