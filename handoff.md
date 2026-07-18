@@ -1,9 +1,23 @@
 # Rapor Yazma Programı — Handoff Notu
 
-Son güncelleme: 2026-07-18 · Servis edilen sürüm: **app.js?v=20260718-1550** (styles.css?v=20260718-1150, src/templates/template-engine.js?v=20260718-1510, cloud/cloud-sync.js?v=20260709-2247, cloud/report-library.js?v=20260710-1626, halkbank-risk-rules.js?v=20260707-1812)
+Son güncelleme: 2026-07-18 · Servis edilen sürüm: **app.js?v=20260718-1550** (styles.css?v=20260718-1160, src/templates/template-engine.js?v=20260718-1510, cloud/cloud-sync.js?v=20260709-2247, cloud/report-library.js?v=20260710-1626, halkbank-risk-rules.js?v=20260707-1812)
 
 Bu belge, bir sonraki geliştirici/oturum için projeyi çalıştırma, doğrulama ve bu
 oturumda yapılanları özetler.
+
+---
+## 0.0.169 - 2026-07-18 - Android kaydırma kilidi düzeltmesi
+
+- Android/WebView tarafında sayfa kaydırmasını tamamen kilitleyebilen global `touch-action` ve dikey `overscroll` kuralları kaldırıldı.
+- Ana sayfa, workspace, tablolar, alt navigasyon ve Leaflet konteynerleri dokunma hareketini tarayıcının doğal kaydırma davranışına bırakır.
+- Touch cihazlarda Leaflet haritalar için JS tarafındaki `dragging:false`, `tap:false`, `touchZoom:true` ayarları korunur; harita tek parmak hareketini sayfadan çalmaz.
+- Cache-buster: `app.js?v=20260718-1550`, `styles.css?v=20260718-1160`.
+
+### Doğrulama
+
+- `node --check app.js`
+- `node tools/check-basic.js`
+- `git diff --check`
 
 ---
 ## 0.0.168 - 2026-07-18 - Android tek parmak sayfa gezinme

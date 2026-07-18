@@ -67,8 +67,12 @@ function main() {
     "Statik dosyalar icin tarayici onbellegi kapatilmis gorunmuyor."
   );
   assert(stylesCss.includes('#authGateOverlay[data-ios-lite="true"] .gate-blueprint'), "iOS gate hafif mod CSS'i bulunamadi.");
-  assert(stylesCss.includes("touch-action: pan-y;"), "Mobil tek parmak dikey kaydirma touch-action guvencesi bulunamadi.");
-  assert(stylesCss.includes("touch-action: pan-x pan-y;"), "Mobil yatay tablo alanlari tek parmak pan guvencesi bulunamadi.");
+  assert(
+    !stylesCss.includes("html,\r\nbody,\r\n.app-shell,\r\n.workspace {\r\n  touch-action: pan-y;") &&
+      !stylesCss.includes("html,\nbody,\n.app-shell,\n.workspace {\n  touch-action: pan-y;") &&
+      !stylesCss.includes("overscroll-behavior-y: none;"),
+    "Mobil sayfa kaydirmasini kilitleyebilecek global touch/overscroll kurallari bulunuyor."
+  );
   assert(
     appJs.includes("function getLeafletInteractionOptions()") &&
       appJs.includes("dragging: false") &&
@@ -537,7 +541,7 @@ function main() {
       indexHtml.includes("src/risk/halkbank-risk-rules.js") &&
       indexHtml.includes("src/comparables/comparable-market-analysis.js") &&
       indexHtml.includes("src/value-factors/value-factors-rules.js") &&
-      indexHtml.includes("styles.css?v=20260718-1150") &&
+      indexHtml.includes("styles.css?v=20260718-1160") &&
       indexHtml.includes("app.js?v=20260718-1550") &&
       indexHtml.includes("src/templates/template-engine.js?v=20260718-1510"),
     "Halkbank risk kodu scriptleri veya guncel app surumu index.html icinde bulunamadi."
