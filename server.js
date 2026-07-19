@@ -1,7 +1,8 @@
 const http = require("http");
 const https = require("https");
 const fs = require("fs/promises");
-const { existsSync, readdirSync } = require("fs");
+const { createReadStream, existsSync, readdirSync } = require("fs");
+const readline = require("readline");
 const os = require("os");
 const path = require("path");
 const { spawn } = require("child_process");
@@ -15,7 +16,9 @@ const host = process.env.HOST || "127.0.0.1";
 const firebaseProjectId = String(process.env.RAPOR_FIREBASE_PROJECT_ID || "rapor-yazma-pro").trim();
 const firebaseIssuer = `https://securetoken.google.com/${firebaseProjectId}`;
 const firebaseCertsUrl = "https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com";
+const neighborhoodCsvFile = path.join(dataDir, "bursa_manuel_duzeltilmis_ana_dosya.csv");
 let firebaseCertCache = { certs: null, expiresAt: 0, pending: null };
+let neighborhoodRowsPromise = null;
 let lastBackupCheckDate = "";
 
 // Statik olarak ASLA sunulmayacak kök klasör/isimler — tam kaynak yedekleri
@@ -26,13 +29,15 @@ let lastBackupCheckDate = "";
 // dışarıya servis edilebiliyordu.
 const STATIC_DENYLIST = new Set(["backups", ".git", "node_modules", "graphify-out"]);
 
-// server-data/ klasörü hem KİŞİSEL veriyi (aktif dosya durumu, kullanıcı
-// noktaları, yüklenen PDF'ler) hem de app.js'in çalışırken statik olarak
-// çektiği PAYLAŞILAN referans veri setlerini (mahalle/adres CSV, JSON) bir
-// arada tutuyor. Bu yüzden tüm klasörü değil, yalnızca kişisel dosyaları
-// engelliyoruz — bkz. app.js:807-808 (localNeighborhoodDatabaseUrl,
-// legacyPlaceholderDefinitionsUrl).
-const SENSITIVE_SERVER_DATA_FILES = new Set(["active-case.json", "user-pois.json"]);
+// server-data/ klasörü hem KİŞİSEL veriyi hem de paylaşılan referans verilerini
+// içeriyor. Büyük mahalle CSV'si yalnızca kimlik doğrulamalı API tarafından
+// sunucu içinde okunur; tarayıcıya statik dosya olarak verilmez. Küçük legacy
+// placeholder JSON'u ise app.js tarafından doğrudan kullanılmaya devam eder.
+const SENSITIVE_SERVER_DATA_FILES = new Set([
+  "active-case.json",
+  "user-pois.json",
+  "bursa_manuel_duzeltilmis_ana_dosya.csv",
+]);
 
 function isSensitivePath(relativeSegments) {
   const first = relativeSegments[0];
@@ -60,6 +65,231 @@ function userStateFile(uid) {
 
 function userPoisFile(uid) {
   return path.join(userDataDirectory(uid), "user-pois.json");
+}
+
+function parseCsvLine(line) {
+  const cells = [];
+  let cell = "";
+  let inQuotes = false;
+  for (let index = 0; index < line.length; index += 1) {
+    const char = line[index];
+    const next = line[index + 1];
+    if (char === '"') {
+      if (inQuotes && next === '"') {
+        cell += '"';
+        index += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === "," && !inQuotes) {
+      cells.push(cell);
+      cell = "";
+    } else {
+      cell += char;
+    }
+  }
+  cells.push(cell);
+  return cells;
+}
+
+function cleanNeighborhoodText(value) {
+  let text = String(value || "").replace(/\s+/g, " ").trim();
+  let previous = "";
+  while (text && text !== previous) {
+    previous = text;
+    text = text
+      .replace(/\s+(mahallesi|mahalle|mah\.?|köyü|koyu|köy|koy)$/i, "")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+  return text;
+}
+
+function normalizeNeighborhoodPlaceKey(value) {
+  return String(value || "")
+    .toLocaleLowerCase("tr-TR")
+    .replace(/ç/g, "c")
+    .replace(/ğ/g, "g")
+    .replace(/[ıi]/g, "i")
+    .replace(/ö/g, "o")
+    .replace(/ş/g, "s")
+    .replace(/ü/g, "u")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function normalizeNeighborhoodKey(value) {
+  return normalizeNeighborhoodPlaceKey(cleanNeighborhoodText(value));
+}
+
+function parseNeighborhoodNumber(value) {
+  const number = Number.parseFloat(String(value || "").replace(",", "."));
+  return Number.isFinite(number) ? number : Number.NaN;
+}
+
+function normalizeNeighborhoodPostalCode(value) {
+  const digits = String(value || "").replace(/\D+/g, "");
+  if (digits.length === 4) return digits.padStart(5, "0");
+  if (digits.length === 5) return digits;
+  return String(value || "").trim();
+}
+
+function applyNeighborhoodCoordinateOverride(row) {
+  if (row.cityKey === "bursa" && row.districtKey === "gursu" && row.neighborhoodKey === "hasankoy") {
+    return { ...row, lat: 40.23761, lng: 29.19763 };
+  }
+  return row;
+}
+
+async function loadNeighborhoodRows() {
+  if (!neighborhoodRowsPromise) {
+    neighborhoodRowsPromise = (async () => {
+      const rows = [];
+      let headerIndexes = null;
+      const lines = readline.createInterface({
+        input: createReadStream(neighborhoodCsvFile, { encoding: "utf8" }),
+        crlfDelay: Infinity,
+      });
+
+      for await (const line of lines) {
+        if (!headerIndexes) {
+          const headers = parseCsvLine(line).map((header) => header.replace(/^\uFEFF/, "").trim());
+          headerIndexes = new Map(headers.map((header, index) => [header, index]));
+          continue;
+        }
+        if (!line.trim()) continue;
+
+        const cells = parseCsvLine(line);
+        const value = (header) => cells[headerIndexes.get(header)] || "";
+        const city = String(value("il")).replace(/\s+/g, " ").trim();
+        const district = String(value("ilçe")).replace(/\s+/g, " ").trim();
+        const neighborhood = cleanNeighborhoodText(value("Mahalle"));
+        const lat = parseNeighborhoodNumber(value("Final_Enlem") || value("Enlem") || value("OSM_Enlem"));
+        const lng = parseNeighborhoodNumber(value("Final_Boylam") || value("Boylam") || value("OSM_Boylam"));
+        if (!city || !district || !neighborhood || !Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+
+        rows.push(applyNeighborhoodCoordinateOverride({
+          city,
+          district,
+          neighborhood,
+          postalCode: normalizeNeighborhoodPostalCode(value("PK")),
+          lat,
+          lng,
+          cityKey: normalizeNeighborhoodPlaceKey(city),
+          districtKey: normalizeNeighborhoodPlaceKey(district),
+          neighborhoodKey: normalizeNeighborhoodKey(neighborhood),
+          cityCenterLat: parseNeighborhoodNumber(value("Il_Merkez_Enlem")),
+          cityCenterLng: parseNeighborhoodNumber(value("Il_Merkez_Boylam")),
+          cityCenterDistanceKm: parseNeighborhoodNumber(value("Il_Merkez_Mesafe_Km")),
+          cityCenterDirection: String(value("Il_Merkez_Yon")).trim(),
+          districtCenterLat: parseNeighborhoodNumber(value("Ilce_Merkez_Enlem")),
+          districtCenterLng: parseNeighborhoodNumber(value("Ilce_Merkez_Boylam")),
+          districtCenterDistanceKm: parseNeighborhoodNumber(value("Ilce_Merkez_Mesafe_Km")),
+          districtCenterDirection: String(value("Ilce_Merkez_Yon")).trim(),
+        }));
+      }
+      return rows;
+    })().catch((error) => {
+      neighborhoodRowsPromise = null;
+      throw error;
+    });
+  }
+  return neighborhoodRowsPromise;
+}
+
+function calculateNeighborhoodDistanceMeters(lat1, lng1, lat2, lng2) {
+  const earthRadius = 6371000;
+  const toRad = (value) => (Number(value) * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat / 2) ** 2
+    + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return earthRadius * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function filterNeighborhoodRowsByArea(rows, cityKey, districtKey) {
+  const districtRows = rows.filter((row) => {
+    if (cityKey && row.cityKey !== cityKey) return false;
+    if (districtKey && row.districtKey !== districtKey) return false;
+    return true;
+  });
+  if (districtRows.length) return districtRows;
+  const cityRows = rows.filter((row) => cityKey && row.cityKey === cityKey);
+  return cityRows.length ? cityRows : rows;
+}
+
+function neighborhoodKeyMatches(rowKey, targetKey) {
+  if (!rowKey || !targetKey) return false;
+  return rowKey === targetKey || rowKey.endsWith(` ${targetKey}`) || rowKey.includes(` ${targetKey} `);
+}
+
+function findNearestNeighborhoodRow(rows, lat, lng) {
+  let best = null;
+  let bestDistance = Number.POSITIVE_INFINITY;
+  rows.forEach((row) => {
+    const distance = calculateNeighborhoodDistanceMeters(lat, lng, row.lat, row.lng);
+    if (Number.isFinite(distance) && distance < bestDistance) {
+      best = row;
+      bestDistance = distance;
+    }
+  });
+  return best;
+}
+
+function queryNeighborhoodRows(rows, payload) {
+  const operation = String(payload?.operation || "");
+  const cityKey = normalizeNeighborhoodPlaceKey(payload?.city);
+  const districtKey = normalizeNeighborhoodPlaceKey(payload?.district);
+  const neighborhoodKey = normalizeNeighborhoodKey(payload?.neighborhood);
+
+  if (operation === "postal") {
+    if (!cityKey || !neighborhoodKey) return { match: null };
+    const match = rows.find((row) => row.cityKey === cityKey
+      && (!districtKey || row.districtKey === districtKey)
+      && row.neighborhoodKey === neighborhoodKey) || null;
+    return { match };
+  }
+
+  const lat = Number(payload?.lat);
+  const lng = Number(payload?.lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat < 35 || lat > 43 || lng < 25 || lng > 45) {
+    throw new Error("Koordinat eksik veya geçersiz.");
+  }
+
+  if (operation === "location") {
+    const areaRows = filterNeighborhoodRowsByArea(rows, cityKey, districtKey);
+    const nearest = findNearestNeighborhoodRow(areaRows, lat, lng);
+    const matchingRows = neighborhoodKey
+      ? rows.filter((row) => neighborhoodKeyMatches(row.neighborhoodKey, neighborhoodKey))
+      : [];
+    const bound = matchingRows.length
+      ? findNearestNeighborhoodRow(filterNeighborhoodRowsByArea(matchingRows, cityKey, districtKey), lat, lng)
+      : null;
+    return { nearest, bound };
+  }
+
+  if (operation === "nearby") {
+    const radius = Math.min(20000, Math.max(100, Number(payload?.radius) || 2000));
+    const limit = Math.min(100, Math.max(1, Math.round(Number(payload?.limit) || 45)));
+    const matches = rows
+      .map((row) => ({ row, distance: calculateNeighborhoodDistanceMeters(lat, lng, row.lat, row.lng) }))
+      .filter((item) => Number.isFinite(item.distance) && item.distance <= radius)
+      .sort((a, b) => a.distance - b.distance);
+    const seen = new Set();
+    const nearby = [];
+    for (const item of matches) {
+      const key = `${item.row.cityKey}|${item.row.districtKey}|${item.row.neighborhoodKey}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      nearby.push(item.row);
+      if (nearby.length >= limit) break;
+    }
+    return { nearby };
+  }
+
+  throw new Error("Mahalle sorgu türü desteklenmiyor.");
 }
 
 // Basit bellek-içi sabit-pencere rate limiter. Harici bağımlılık eklemeden
@@ -561,6 +791,34 @@ async function handleUserPoisApi(request, response, user) {
   sendJson(response, 405, { ok: false, error: "Bu işlem desteklenmiyor." });
 }
 
+async function handleNeighborhoodsApi(request, response) {
+  if (request.method !== "POST") {
+    sendJson(response, 405, { ok: false, error: "Bu işlem desteklenmiyor." });
+    return;
+  }
+
+  let payload;
+  try {
+    const body = await readBody(request, 32 * 1024);
+    payload = JSON.parse(body || "{}");
+  } catch (error) {
+    sendJson(response, error.isPayloadTooLarge ? 413 : 400, { ok: false, error: "Geçersiz mahalle sorgusu." });
+    return;
+  }
+
+  try {
+    const rows = await loadNeighborhoodRows();
+    const result = queryNeighborhoodRows(rows, payload);
+    sendJson(response, 200, { ok: true, ...result });
+  } catch (error) {
+    if (/geçersiz|desteklenmiyor/i.test(String(error?.message || ""))) {
+      sendJson(response, 400, { ok: false, error: error.message });
+      return;
+    }
+    throw error;
+  }
+}
+
 function normalizeUserPoiCategory(value) {
   return value === "user-artery" ? "user-artery" : "user";
 }
@@ -795,6 +1053,7 @@ const API_RATE_LIMITS = {
   "/api/state": { limit: 60, windowMs: 60 * 1000 },
   "/api/overpass": { limit: 30, windowMs: 60 * 1000 },
   "/api/user-pois": { limit: 60, windowMs: 60 * 1000 },
+  "/api/neighborhoods": { limit: 60, windowMs: 60 * 1000 },
   "/api/pdf-text": { limit: 5, windowMs: 60 * 1000 },
 };
 
@@ -846,6 +1105,10 @@ const server = http.createServer(async (request, response) => {
       await handleUserPoisApi(request, response, request.user);
       return;
     }
+    if (apiRoute === "/api/neighborhoods") {
+      await handleNeighborhoodsApi(request, response);
+      return;
+    }
     if (apiRoute === "/api/pdf-text") {
       await handlePdfTextApi(request, response);
       return;
@@ -857,7 +1120,17 @@ const server = http.createServer(async (request, response) => {
   }
 });
 
-server.listen(port, host, () => {
-  console.log(`Rapor Yazma yerel sunucu: http://localhost:${port}`);
-  createDailyBackupIfNeeded().catch((error) => console.warn("Backup skipped:", error.message));
-});
+if (require.main === module) {
+  server.listen(port, host, () => {
+    console.log(`Rapor Yazma yerel sunucu: http://localhost:${port}`);
+    createDailyBackupIfNeeded().catch((error) => console.warn("Backup skipped:", error.message));
+  });
+}
+
+module.exports = {
+  loadNeighborhoodRows,
+  normalizeNeighborhoodKey,
+  normalizeNeighborhoodPlaceKey,
+  parseCsvLine,
+  queryNeighborhoodRows,
+};

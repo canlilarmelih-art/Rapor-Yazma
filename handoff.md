@@ -1,9 +1,28 @@
 # Rapor Yazma Programı — Handoff Notu
 
-Son güncelleme: 2026-07-18 · Servis edilen sürüm: **app.js?v=20260718-1550** (styles.css?v=20260718-1160, src/templates/template-engine.js?v=20260718-1510, cloud/cloud-sync.js?v=20260709-2247, cloud/report-library.js?v=20260710-1626, halkbank-risk-rules.js?v=20260707-1812)
+Son güncelleme: 2026-07-19 · Servis edilen sürüm: **app.js?v=20260719-1145** (styles.css?v=20260718-1160, src/templates/template-engine.js?v=20260718-1510, cloud/cloud-sync.js?v=20260709-2247, cloud/report-library.js?v=20260710-1626, halkbank-risk-rules.js?v=20260707-1812)
 
 Bu belge, bir sonraki geliştirici/oturum için projeyi çalıştırma, doğrulama ve bu
 oturumda yapılanları özetler.
+
+---
+## 0.0.170 - 2026-07-19 - iOS açılış çökmesinde büyük veri ön yüklemesi kaldırıldı
+
+- Kök neden tarayıcı kaynak envanteriyle doğrulandı: giriş kapısı açıkken `warmUpDeferredResources()` çağrısı 46.09 MB büyüklüğündeki, 73.306 satırlık mahalle CSV dosyasını indirip tamamını JS nesnelerine dönüştürüyordu.
+- Bu işlem iOS Safari'de giriş ekranı ve klavye belleğine ek olarak yüzlerce MB geçici/kalıcı bellek baskısı oluşturabiliyordu.
+- Açılıştaki mahalle veritabanı ve PDF ön ısıtması kaldırıldı.
+- Mahalle CSV'sinin istemci ayrıştırıcısı tamamen kaldırıldı. Posta kodu, KML/konum ve yakın çevre sorguları artık kimlik doğrulamalı `/api/neighborhoods` rotasında çalışır; iOS cihaz yalnızca eşleşen küçük JSON sonucunu alır.
+- Sunucu 46 MB CSV'yi `createReadStream` + `readline` ile satır satır, yalnızca ilk sorguda okur ve sonucu sunucu belleğinde önbellekler. Böylece ham metin ve 73 bin kayıt iPhone/iPad belleğine hiçbir akışta taşınmaz.
+- Gerçek veri setiyle doğrulamada 72.489 geçerli kayıt 2,4 saniyede okundu; posta kodu, bağlı mahalle, en yakın mahalle ve 45 kayıtlık yakın çevre sorguları doğru sonuç verdi.
+- Regresyon kontrolü, büyük veritabanının istemciye veya başlangıç ön yüklemesine yeniden bağlanmasını engeller.
+- Cache-buster: `app.js?v=20260719-1145`.
+
+### Doğrulama
+
+- `node --check app.js`
+- `node --check server.js`
+- `node tools/check-basic.js`
+- Tarayıcı kaynak envanterinde ilk açılışta mahalle CSV isteği bulunmamalı.
 
 ---
 ## 0.0.169 - 2026-07-18 - Android kaydırma kilidi düzeltmesi
@@ -3328,10 +3347,11 @@ ile üretilir (ASCII anahtar → makrolarla birebir token, ör. `DEGERLENDIRME_S
    - **Adres PDF ham metninden il/ilçe çekiliyor** (`parseAddressLine`, "İL/İLÇE/MAHALLE/
      SOKAK" satırı) — birincil ve en sağlam çözüm.
    - Boşsa `titleCity`/`titleDistrict` (TAKBİS) yedeği.
-   - İl bilinmiyorsa `findLocalNeighborhoodByAddress` null döner (yanlış-il eşleşmesi yok).
+   - İl bilinmiyorsa sunucudaki `postal` sorgusu eşleşme döndürmez (yanlış-il eşleşmesi yok).
    - `processTakbisFile` de posta kodu lookup'ını yeniden tetikler (yükleme sırası fark etmez).
    - `processAddressFile`, force'lu düzeltmeyi `await` eder (yarış/sessiz hata yok).
-   - 48MB'lık Bursa mahalle CSV'si açılışta ön-yükleniyor (`warmUpDeferredResources`).
+   - Büyük mahalle CSV'si tarayıcıya indirilmez; sorgular kimlik doğrulamalı
+     `/api/neighborhoods` rotasında sunucu tarafında çalışır.
 
 ---
 
@@ -3339,8 +3359,8 @@ ile üretilir (ASCII anahtar → makrolarla birebir token, ör. `DEGERLENDIRME_S
 
 - `[Cozuldu 2026-07-16]` `parseComparableNumber` binlik nokta ayracli
   ("2.000.000") degerleri destekliyor; bu eski not arsiv amacli tutulmustur.
-- Mahalle veritabanı **yalnızca Bursa** (`server-data/bursa_manuel_duzeltilmis_ana_dosya.csv`).
-  Bursa dışı adreslerde DB eşleşmesi olmaz → posta kodu adres PDF'inden gelir (yoksa boş).
+- Mahalle veritabanının dosya adı eski Bursa çalışmasından kalmıştır; veri seti Türkiye
+  genelindeki il/ilçe/mahalle kayıtlarını içerir ve yalnızca sunucu tarafında okunur.
 - `joinTurkishList` app.js'de 3 kez tanımlı (sonuncusu geçerli, `cleanupPlaceName` uygular);
   yeni Türkçe liste birleştirmede buna güvenmeyin, inline yazın.
 - Word tarafındaki tablo placeholder'ları (`{{TAKYIDAT_TABLO}}`, `{{MALIKLER_TABLO}}`) makro

@@ -808,23 +808,11 @@ let leafletKmlLayer = null;
 let leafletSelectedMarker = null;
 let nearbyAutoFetchStarted = false;
 let nearbyRequestSerial = 0;
-let localNeighborhoodDatabasePromise = null;
-let localNeighborhoodRows = null;
 let legacyPlaceholderRows = [];
 let legacyPlaceholderRowsLoaded = false;
 let legacyPlaceholderRowsLoading = false;
 
-const localNeighborhoodDatabaseUrl = "server-data/bursa_manuel_duzeltilmis_ana_dosya.csv";
 const legacyPlaceholderDefinitionsUrl = "server-data/adlandirilmis_hucreler_listesi.json";
-const localNeighborhoodCoordinateOverrides = [
-  {
-    cityKey: "bursa",
-    districtKey: "gursu",
-    neighborhoodKey: "hasankoy",
-    lat: 40.23761,
-    lng: 29.19763,
-  },
-];
 
 const documentTypeOptions = [
   "Yapı Kullanım İzin Belgesi",
@@ -16640,7 +16628,7 @@ function parseAddressLine(addressRaw) {
   const parts = addressRaw.split("/").map((part) => part.trim()).filter(Boolean);
   // Adres kodu satırı "İL / İLÇE / MAHALLE(Sİ) / SOKAK (Sokak) / KAPINO" düzenindedir.
   // Yapı doğrulanırsa il/ilçe de çekilir; böylece posta kodu eşleşmesi TAKBİS'e
-  // bağımlı kalmadan doğru il ile yapılır (bkz. findLocalNeighborhoodByAddress).
+  // bağımlı kalmadan sunucu mahalle sorgusunda doğru il ile yapılır.
   const looksLikeFullAddress = parts.length >= 4
     && /mahalle/i.test(parts[2] || "")
     && /sokak|cadde|bulvar/i.test(parts[3] || "");
@@ -20259,22 +20247,28 @@ function dedupeAndSortNearbyPlaces(places) {
 }
 
 async function fetchLocalSettlementNearbyPlaces(lat, lng) {
-  const rows = await loadLocalNeighborhoodDatabase();
-  const places = rows
-    .map((row) => {
-      const distance = calculateDistanceMeters(lat, lng, row.lat, row.lng);
-      if (!Number.isFinite(distance) || distance > nearbySettlementFallbackRadiusMeters) return null;
-      return {
+  try {
+    const result = await fetchNeighborhoodLookup("nearby", {
+      lat,
+      lng,
+      radius: nearbySettlementFallbackRadiusMeters,
+      limit: nearbyResultLimit,
+    });
+    const places = (result.nearby || [])
+      .map((row) => normalizeNeighborhoodApiRow(row, lat, lng))
+      .filter(Boolean)
+      .map((row) => ({
         id: `local-settlement-${row.cityKey}-${row.districtKey}-${row.neighborhoodKey}`,
         category: "settlements",
         name: row.neighborhood,
         lat: row.lat,
         lng: row.lng,
-        distance,
-      };
-    })
-    .filter(Boolean);
-  return dedupeAndSortNearbyPlaces(places);
+        distance: row.distance,
+      }));
+    return dedupeAndSortNearbyPlaces(places);
+  } catch {
+    return [];
+  }
 }
 
 async function fetchAddressLookupForCurrentLocation(options = {}) {
@@ -20331,10 +20325,17 @@ function normalizeReverseGeocodeAddress(address) {
 async function applyLocalNeighborhoodForCurrentLocation(options = {}) {
   const point = getSelectedMapPoint();
   if (!point) return false;
-  const rows = await loadLocalNeighborhoodDatabase();
-  const bound = findLocalNeighborhoodFromKmlMetadata(state.sourceValues.kml, rows, point[0], point[1]);
-  const nearest = findNearestLocalNeighborhood(point[0], point[1], rows, state.sourceValues.kml);
+  const kml = state.sourceValues.kml;
+  const result = await fetchNeighborhoodLookup("location", {
+    lat: point[0],
+    lng: point[1],
+    city: kml?.fields?.city || state.fields.city || state.fields.titleCity || "",
+    district: kml?.fields?.district || state.fields.district || state.fields.titleDistrict || "",
+    neighborhood: kml?.parcelNeighborhood || "",
+  });
+  const nearest = normalizeNeighborhoodApiRow(result.nearest, point[0], point[1]);
   if (!nearest) return false;
+  const bound = normalizeNeighborhoodApiRow(result.bound, point[0], point[1], kml?.parcelNeighborhood || "");
 
   const fields = buildLocalNeighborhoodFields(nearest, bound);
   applyLocalNeighborhoodFields(fields, { ...options, skipKeys: ["city", "district", "neighborhood", "postalCode"] });
@@ -20342,21 +20343,74 @@ async function applyLocalNeighborhoodForCurrentLocation(options = {}) {
 }
 
 async function applyPostalCodeFromSelectedNeighborhood(options = {}) {
-  const rows = await loadLocalNeighborhoodDatabase();
   // Adres kodu PDF'i çoğu zaman il/ilçe içermediğinden, boşsa TAKBİS'ten (tapu il/
   // ilçe) yedeklenir. Aksi halde mahalle adı başka ildeki bir mahalleyle eşleşip
   // yanlış posta kodu gelebiliyordu (ör. Panayır → Balıkesir 10442, Soğanlı → 72502).
-  const match = findLocalNeighborhoodByAddress({
+  const result = await fetchNeighborhoodLookup("postal", {
     city: state.fields.city || state.fields.titleCity,
     district: state.fields.district || state.fields.titleDistrict,
     neighborhood: state.fields.neighborhood,
-  }, rows);
+  });
+  const match = normalizeNeighborhoodApiRow(result.match);
   if (!match?.postalCode) return false;
   const shouldForcePostalCode = !state.fields.postalCode || isFieldValueAppliedFromSource("postalCode");
   applyLocalNeighborhoodFields({
     postalCode: match.postalCode,
   }, { ...options, force: Boolean(options.force || shouldForcePostalCode) });
   return true;
+}
+
+async function fetchNeighborhoodLookup(operation, payload = {}) {
+  const response = await fetchRaporApi("/api/neighborhoods", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ operation, ...payload }),
+  }, nearbyRequestTimeoutMs);
+  let result = null;
+  try {
+    result = await response.json();
+  } catch {
+    result = null;
+  }
+  if (!response.ok || !result?.ok) {
+    throw new Error(result?.error || "Mahalle verisi sunucudan alınamadı.");
+  }
+  return result;
+}
+
+function normalizeNeighborhoodApiRow(row, lat = Number.NaN, lng = Number.NaN, neighborhoodOverride = "") {
+  if (!row || typeof row !== "object") return null;
+  const normalized = {
+    city: cleanupPlaceName(row.city),
+    district: cleanupPlaceName(row.district),
+    neighborhood: cleanNeighborhoodName(neighborhoodOverride || row.neighborhood),
+    postalCode: normalizePostalCodeValue(row.postalCode),
+    lat: parseCsvNumber(row.lat),
+    lng: parseCsvNumber(row.lng),
+    cityKey: normalizeLocalPlaceKey(row.cityKey || row.city),
+    districtKey: normalizeLocalPlaceKey(row.districtKey || row.district),
+    neighborhoodKey: normalizeLocalNeighborhoodKey(row.neighborhoodKey || row.neighborhood),
+    cityCenterLat: parseCsvNumber(row.cityCenterLat),
+    cityCenterLng: parseCsvNumber(row.cityCenterLng),
+    cityCenterDistanceKm: parseCsvNumber(row.cityCenterDistanceKm),
+    cityCenterDirection: cleanupPlaceName(row.cityCenterDirection),
+    districtCenterLat: parseCsvNumber(row.districtCenterLat),
+    districtCenterLng: parseCsvNumber(row.districtCenterLng),
+    districtCenterDistanceKm: parseCsvNumber(row.districtCenterDistanceKm),
+    districtCenterDirection: cleanupPlaceName(row.districtCenterDirection),
+  };
+  if (!normalized.city || !normalized.district || !normalized.neighborhood
+    || !Number.isFinite(normalized.lat) || !Number.isFinite(normalized.lng)) return null;
+  if (![lat, lng].every((value) => Number.isFinite(Number(value)))) return normalized;
+  return {
+    ...normalized,
+    distance: calculateDistanceMeters(lat, lng, normalized.lat, normalized.lng),
+    direction: calculateRelativeDirectionText(normalized.lat, normalized.lng, lat, lng),
+    cityCenterDistance: calculateDistanceMetersIfPossible(lat, lng, normalized.cityCenterLat, normalized.cityCenterLng),
+    cityCenterDirectionFromPoint: calculateRelativeDirectionText(normalized.cityCenterLat, normalized.cityCenterLng, lat, lng),
+    districtCenterDistance: calculateDistanceMetersIfPossible(lat, lng, normalized.districtCenterLat, normalized.districtCenterLng),
+    districtCenterDirectionFromPoint: calculateRelativeDirectionText(normalized.districtCenterLat, normalized.districtCenterLng, lat, lng),
+  };
 }
 
 function applyLocalNeighborhoodFields(fields, options = {}) {
@@ -20381,183 +20435,6 @@ function applyLocalNeighborhoodFields(fields, options = {}) {
     if (skipKeys.has(key)) return;
     setFieldFromSource("localNeighborhood", key, value, options);
   });
-}
-
-async function loadLocalNeighborhoodDatabase() {
-  if (localNeighborhoodRows) return localNeighborhoodRows;
-  if (!localNeighborhoodDatabasePromise) {
-    localNeighborhoodDatabasePromise = fetch(localNeighborhoodDatabaseUrl)
-      .then((response) => {
-        if (!response.ok) throw new Error("Mahalle veritabanı okunamadı.");
-        return response.text();
-      })
-      .then(parseLocalNeighborhoodCsv);
-  }
-  localNeighborhoodRows = await localNeighborhoodDatabasePromise;
-  return localNeighborhoodRows;
-}
-
-function parseLocalNeighborhoodCsv(text) {
-  const rows = parseCsvText(text);
-  if (rows.length < 2) return [];
-  const headers = rows[0].map((item) => item.replace(/^\uFEFF/, "").trim());
-  return rows.slice(1).map((cells) => {
-    const row = Object.fromEntries(headers.map((header, index) => [header, cells[index] || ""]));
-    const city = cleanupPlaceName(row.il);
-    const district = cleanupPlaceName(row["ilçe"]);
-    const neighborhood = cleanNeighborhoodName(row.Mahalle);
-    const lat = parseCsvNumber(row.Final_Enlem || row.Enlem || row.OSM_Enlem);
-    const lng = parseCsvNumber(row.Final_Boylam || row.Boylam || row.OSM_Boylam);
-    if (!city || !district || !neighborhood || !Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-    return applyLocalNeighborhoodCoordinateOverride({
-      city,
-      district,
-      neighborhood,
-      postalCode: normalizePostalCodeValue(row.PK),
-      lat,
-      lng,
-      cityKey: normalizeLocalPlaceKey(city),
-      districtKey: normalizeLocalPlaceKey(district),
-      neighborhoodKey: normalizeLocalNeighborhoodKey(neighborhood),
-      cityCenterLat: parseCsvNumber(row.Il_Merkez_Enlem),
-      cityCenterLng: parseCsvNumber(row.Il_Merkez_Boylam),
-      cityCenterDistanceKm: parseCsvNumber(row.Il_Merkez_Mesafe_Km),
-      cityCenterDirection: cleanupPlaceName(row.Il_Merkez_Yon),
-      districtCenterLat: parseCsvNumber(row.Ilce_Merkez_Enlem),
-      districtCenterLng: parseCsvNumber(row.Ilce_Merkez_Boylam),
-      districtCenterDistanceKm: parseCsvNumber(row.Ilce_Merkez_Mesafe_Km),
-      districtCenterDirection: cleanupPlaceName(row.Ilce_Merkez_Yon),
-    });
-  }).filter(Boolean);
-}
-
-function applyLocalNeighborhoodCoordinateOverride(row) {
-  const override = localNeighborhoodCoordinateOverrides.find((item) =>
-    item.cityKey === row.cityKey &&
-    item.districtKey === row.districtKey &&
-    item.neighborhoodKey === row.neighborhoodKey
-  );
-  if (!override) return row;
-  return {
-    ...row,
-    lat: override.lat,
-    lng: override.lng,
-  };
-}
-
-function parseCsvText(text) {
-  const rows = [];
-  let row = [];
-  let cell = "";
-  let inQuotes = false;
-  for (let index = 0; index < text.length; index += 1) {
-    const char = text[index];
-    const next = text[index + 1];
-    if (char === '"') {
-      if (inQuotes && next === '"') {
-        cell += '"';
-        index += 1;
-      } else {
-        inQuotes = !inQuotes;
-      }
-    } else if (char === "," && !inQuotes) {
-      row.push(cell);
-      cell = "";
-    } else if ((char === "\n" || char === "\r") && !inQuotes) {
-      if (char === "\r" && next === "\n") index += 1;
-      row.push(cell);
-      if (row.some((item) => item.trim())) rows.push(row);
-      row = [];
-      cell = "";
-    } else {
-      cell += char;
-    }
-  }
-  row.push(cell);
-  if (row.some((item) => item.trim())) rows.push(row);
-  return rows;
-}
-
-function findNearestLocalNeighborhood(lat, lng, rows, kml = null) {
-  let best = null;
-  const candidates = filterLocalNeighborhoodRowsByArea(rows, kml);
-  candidates.forEach((row) => {
-    const distance = calculateDistanceMeters(lat, lng, row.lat, row.lng);
-    if (!Number.isFinite(distance)) return;
-    if (!best || distance < best.distance) {
-      best = {
-        ...row,
-        distance,
-        direction: calculateRelativeDirectionText(row.lat, row.lng, lat, lng),
-        cityCenterDistance: calculateDistanceMetersIfPossible(lat, lng, row.cityCenterLat, row.cityCenterLng),
-        cityCenterDirectionFromPoint: calculateRelativeDirectionText(row.cityCenterLat, row.cityCenterLng, lat, lng),
-        districtCenterDistance: calculateDistanceMetersIfPossible(lat, lng, row.districtCenterLat, row.districtCenterLng),
-        districtCenterDirectionFromPoint: calculateRelativeDirectionText(row.districtCenterLat, row.districtCenterLng, lat, lng),
-      };
-    }
-  });
-  return best;
-}
-
-function findLocalNeighborhoodByAddress(address, rows) {
-  const cityKey = normalizeLocalPlaceKey(address.city);
-  const districtKey = normalizeLocalPlaceKey(address.district);
-  const neighborhoodKey = normalizeLocalNeighborhoodKey(address.neighborhood);
-  if (!neighborhoodKey) return null;
-  // İl bilinmiyorsa mahalle-adı-tek-başına eşleşmesi güvenilmez (aynı mahalle adı
-  // birden çok ilde olabilir → yanlış posta kodu). Bu yüzden il olmadan eşleşme yok.
-  if (!cityKey) return null;
-  const candidates = rows.filter((row) => {
-    if (row.cityKey !== cityKey) return false;
-    if (districtKey && row.districtKey !== districtKey) return false;
-    return row.neighborhoodKey === neighborhoodKey;
-  });
-  return candidates[0] || null;
-}
-
-function findLocalNeighborhoodFromKmlMetadata(kml, rows, lat, lng) {
-  const kmlNeighborhood = cleanNeighborhoodName(kml?.parcelNeighborhood || "");
-  const neighborhoodKey = normalizeLocalNeighborhoodKey(kmlNeighborhood);
-  if (!neighborhoodKey) return null;
-  const cityKey = normalizeLocalPlaceKey(kml?.fields?.city || state.fields.city || state.fields.titleCity || "");
-  const districtKey = normalizeLocalPlaceKey(kml?.fields?.district || state.fields.district || state.fields.titleDistrict || "");
-  const allCandidates = rows.filter((row) => localNeighborhoodKeyMatches(row.neighborhoodKey, neighborhoodKey));
-  const candidates = filterLocalNeighborhoodRowsByArea(allCandidates, kml, { cityKey, districtKey });
-  if (!candidates.length) return null;
-  const matched = candidates
-    .map((row) => ({
-      ...row,
-      distanceToPoint: calculateDistanceMeters(lat, lng, row.lat, row.lng),
-    }))
-    .sort((a, b) => a.distanceToPoint - b.distanceToPoint)[0];
-  return {
-    ...matched,
-    neighborhood: kmlNeighborhood,
-    distance: calculateDistanceMeters(lat, lng, matched.lat, matched.lng),
-    direction: calculateRelativeDirectionText(matched.lat, matched.lng, lat, lng),
-    cityCenterDistance: calculateDistanceMetersIfPossible(lat, lng, matched.cityCenterLat, matched.cityCenterLng),
-    cityCenterDirectionFromPoint: calculateRelativeDirectionText(matched.cityCenterLat, matched.cityCenterLng, lat, lng),
-    districtCenterDistance: calculateDistanceMetersIfPossible(lat, lng, matched.districtCenterLat, matched.districtCenterLng),
-    districtCenterDirectionFromPoint: calculateRelativeDirectionText(matched.districtCenterLat, matched.districtCenterLng, lat, lng),
-  };
-}
-
-function filterLocalNeighborhoodRowsByArea(rows, kml = null, areaKeys = {}) {
-  const cityKey = areaKeys.cityKey || normalizeLocalPlaceKey(kml?.fields?.city || state.fields.city || state.fields.titleCity || "");
-  const districtKey = areaKeys.districtKey || normalizeLocalPlaceKey(kml?.fields?.district || state.fields.district || state.fields.titleDistrict || "");
-  const districtRows = rows.filter((row) => {
-    if (cityKey && row.cityKey !== cityKey) return false;
-    if (districtKey && row.districtKey !== districtKey) return false;
-    return true;
-  });
-  if (districtRows.length) return districtRows;
-  const cityRows = rows.filter((row) => cityKey && row.cityKey === cityKey);
-  return cityRows.length ? cityRows : rows;
-}
-
-function localNeighborhoodKeyMatches(rowKey, targetKey) {
-  if (!rowKey || !targetKey) return false;
-  return rowKey === targetKey || rowKey.endsWith(` ${targetKey}`) || rowKey.includes(` ${targetKey} `);
 }
 
 function buildLocalNeighborhoodFields(row, boundRow = null) {
@@ -27493,19 +27370,3 @@ if (initialImarRulesChanged || initialTextNormalizationChanged || initialReviewe
 initSidebarCollapse();
 createNav();
 render();
-
-// İlk adres/TAKBİS yüklemesinde async kaynaklar soğuk olduğundan (mahalle
-// veritabanı ~48MB, pdf.js worker) türetilen değerler ilk seferde yanlış gelip
-// ikinci yüklemede düzeliyordu. Bu kaynakları açılışta ön-yükleyerek ilk
-// yüklemede hazır olmalarını sağlıyoruz.
-warmUpDeferredResources();
-
-function warmUpDeferredResources() {
-  // Posta kodu, mahalle veritabanından türetiliyor; erken yüklenmesi ilk adres
-  // PDF'inde doğru posta kodunun gelmesini sağlar.
-  loadLocalNeighborhoodDatabase().catch(() => {});
-  // pdf.js kütüphanesi/worker'ı erken hazırlansın (ilk TAKBİS okuması için).
-  if (window.pdfReady && typeof window.pdfReady.then === "function") {
-    window.pdfReady.catch(() => {});
-  }
-}

@@ -3,6 +3,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const root = path.resolve(__dirname, "..");
+const neighborhoodHelpers = require(path.join(root, "server.js"));
 
 function assert(condition, message) {
   if (!condition) {
@@ -79,6 +80,38 @@ function main() {
       appJs.includes("tap: false") &&
       appJs.includes("touchZoom: true"),
     "Touch cihazlarda Leaflet tek parmak sayfa kaydirmasini serbest birakan ayarlar bulunamadi."
+  );
+  assert(
+    !/^\s*warmUpDeferredResources\(\);\s*$/m.test(appJs) &&
+      !appJs.includes("loadLocalNeighborhoodDatabase") &&
+      !appJs.includes("bursa_manuel_duzeltilmis_ana_dosya.csv") &&
+      appJs.includes('fetchRaporApi("/api/neighborhoods"') &&
+      serverJs.includes('"/api/neighborhoods": { limit: 60') &&
+      serverJs.includes("createReadStream(neighborhoodCsvFile") &&
+      serverJs.includes("readline.createInterface") &&
+      serverJs.includes('"bursa_manuel_duzeltilmis_ana_dosya.csv",'),
+    "Buyuk mahalle veritabani telefona yuklenmemeli; sorgular sunucuda satir satir islenmelidir."
+  );
+  const neighborhoodFixture = [
+    { cityKey: "bursa", districtKey: "osmangazi", neighborhoodKey: "soganli", neighborhood: "SOĞANLI", postalCode: "16150", lat: 40.2, lng: 29.05 },
+    { cityKey: "bursa", districtKey: "nilufer", neighborhoodKey: "ihsaniye", neighborhood: "İHSANİYE", postalCode: "16130", lat: 40.22, lng: 28.98 },
+  ];
+  const postalMatch = neighborhoodHelpers.queryNeighborhoodRows(neighborhoodFixture, {
+    operation: "postal",
+    city: "Bursa",
+    district: "Osmangazi",
+    neighborhood: "Soğanlı Mahallesi",
+  });
+  const nearbyMatches = neighborhoodHelpers.queryNeighborhoodRows(neighborhoodFixture, {
+    operation: "nearby",
+    lat: 40.2,
+    lng: 29.05,
+    radius: 500,
+    limit: 5,
+  });
+  assert(
+    postalMatch.match?.postalCode === "16150" && nearbyMatches.nearby.length === 1,
+    "Sunucu mahalle sorgusu posta kodu veya yakin cevre eslesmesini korumuyor."
   );
   assert(
     appJs.includes('"T.C. Çevre ve Şehircilik Bakanlığı"'),
@@ -542,7 +575,7 @@ function main() {
       indexHtml.includes("src/comparables/comparable-market-analysis.js") &&
       indexHtml.includes("src/value-factors/value-factors-rules.js") &&
       indexHtml.includes("styles.css?v=20260718-1160") &&
-      indexHtml.includes("app.js?v=20260718-1550") &&
+      indexHtml.includes("app.js?v=20260719-1145") &&
       indexHtml.includes("src/templates/template-engine.js?v=20260718-1510"),
     "Halkbank risk kodu scriptleri veya guncel app surumu index.html icinde bulunamadi."
   );
