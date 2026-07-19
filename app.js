@@ -623,6 +623,7 @@ const sections = [
       { key: "insuranceConstructionClass", label: "Sigortaya Esas Yapı Sınıfı", type: "text", readOnly: true },
       { key: "insuranceUnitCost", label: "Yapı Yaklaşık Birim Maliyeti", type: "text", readOnly: true },
       { key: "insuranceConstructionCostExplanation", label: "Sigortaya Esas Değer Açıklaması", type: "textarea", wide: true, readOnly: true },
+      { key: "halkbankCentralBankExplanation", label: "Halkbank - Merkez Bankası Açıklaması", type: "textarea", wide: true },
       { key: "ziraatLocationEnvironmentalExplanation", label: "Ziraat Bankası - Konumu ve Çevresel Özellikleri", type: "textarea", wide: true, hidden: true, readOnly: true },
       { key: "ziraatDevelopmentAnalysisExplanation", label: "Ziraat Bankası - Bölgenin Gelişimine İlişkin Analiz", type: "textarea", wide: true, hidden: true, readOnly: true },
       { key: "ziraatBuildingPatternExplanation", label: "Ziraat Bankası - Bölgedeki Yapılaşma Durumu", type: "textarea", wide: true, hidden: true, readOnly: true },
@@ -11760,6 +11761,7 @@ function exportReportJson() {
 
 async function exportReportWord() {
   saveState();
+  ensureReportMapImagesForExport();
   const documentPackage = await buildWordReportDocumentPackage();
   downloadTextFile(`${buildExportBaseFileName()}.doc`, documentPackage.content, documentPackage.mimeType);
 }
@@ -11851,12 +11853,15 @@ async function buildWordReportDocumentPackage() {
 
 async function buildWordReportImageAssets() {
   const definitions = getWordSketchDefinitions();
-  const assets = [];
+  const savedAssets = await buildSavedReportImageAssets();
+  const savedKeys = new Set(savedAssets.map((asset) => asset.key));
+  const assets = [...savedAssets];
   for (const definition of definitions) {
+    if (savedKeys.has(definition.key)) continue;
     const dataUrl = await createSketchPngDataUrl(definition.items, definition.title);
     const base64 = String(dataUrl || "").split(",")[1] || "";
     if (base64) {
-      assets.push({ ...definition, dataUrl, base64 });
+      assets.push({ ...definition, dataUrl, base64, mimeType: "image/png" });
     }
   }
   return assets;
@@ -11879,7 +11884,7 @@ function buildWordMhtmlPackage(html, imageAssets = []) {
   imageAssets.forEach((asset) => {
     lines.push(
       `--${boundary}`,
-      "Content-Type: image/png",
+      `Content-Type: ${asset.mimeType || "image/png"}`,
       "Content-Transfer-Encoding: base64",
       `Content-Location: ${asset.location}`,
       "",
@@ -12367,7 +12372,7 @@ function buildWordSketchImageHtml(asset) {
   const imageSource = asset.src || asset.location;
   return `<h3>${escapeHtml(asset.title)}</h3>
     <div class="sketch">
-      <img src="${escapeHtml(imageSource)}" width="680" style="width:680pt;max-width:100%;border:1pt solid #94a3b8;" alt="${escapeHtml(asset.title)}">
+      <img src="${escapeHtml(imageSource)}" width="640" height="360" style="width:480pt;height:270pt;border:1pt solid #94a3b8;" alt="${escapeHtml(asset.title)}">
       ${buildPointSketchLegendTable(asset.items)}
     </div>`;
 }
@@ -12486,7 +12491,8 @@ function createLocationMapTools() {
     <div class="kml-actions">
       <button class="mini-button" type="button" data-kml-map>Haritayı güncelle</button>
       <button class="mini-button" type="button" data-kml-apply>Okunan değerleri tekrar uygula</button>
-      <button class="mini-button" type="button" data-map-export title="Haritayı JPG olarak kaydet" aria-label="Haritayı JPG olarak kaydet">JPG</button>
+      <button class="mini-button" type="button" data-map-save>${state.sourceValues?.reportImages?.location ? "HARİTA KAYDEDİLDİ" : "HARİTAYI KAYDET"}</button>
+      <button class="mini-button" type="button" data-map-export title="Haritayı JPG olarak indir" aria-label="Haritayı JPG olarak indir">JPG İNDİR</button>
       <label class="export-control">
         <span>Boyut</span>
         <select data-map-export-ratio>
@@ -12541,6 +12547,10 @@ function createLocationMapTools() {
 
   wrapper.querySelector("[data-map-export]").addEventListener("click", (event) => {
     exportMapAsJpeg(event.currentTarget);
+  });
+
+  wrapper.querySelector("[data-map-save]").addEventListener("click", (event) => {
+    saveLocationMapForReport(event.currentTarget);
   });
 
   wrapper.querySelector("[data-map-export-ratio]").addEventListener("change", (event) => {
@@ -21860,6 +21870,210 @@ function getLeafletTileLayer() {
   });
 }
 
+function getSavedReportImageConfigs() {
+  state.sourceValues.reportImages = state.sourceValues.reportImages || {};
+  return state.sourceValues.reportImages;
+}
+
+function getLocationMapViewportSnapshot() {
+  const leafletSize = leafletMap?.getSize?.();
+  if (Number(leafletSize?.x) > 0 && Number(leafletSize?.y) > 0) {
+    return { width: Number(leafletSize.x), height: Number(leafletSize.y) };
+  }
+  const panel = document.querySelector("#kmlMapPanel");
+  const rect = panel?.getBoundingClientRect?.();
+  if (Number(rect?.width) > 0 && Number(rect?.height) > 0) {
+    return { width: Number(rect.width), height: Number(rect.height) };
+  }
+  return { width: 1120, height: 630 };
+}
+
+function getLocationMapLabelScale(config, canvas) {
+  const viewport = config?.viewport || getLocationMapViewportSnapshot();
+  const widthScale = canvas.width / Math.max(1, Number(viewport.width) || 1120);
+  const heightScale = canvas.height / Math.max(1, Number(viewport.height) || 630);
+  return Math.max(0.8, Math.min(2.25, Math.min(widthScale, heightScale)));
+}
+
+function ensureReportMapImagesForExport() {
+  const configs = getSavedReportImageConfigs();
+  const missingLocation = !configs.location;
+  const missingComparables = !configs.comparables;
+  if (!missingLocation && !missingComparables) return { created: [], unavailable: [] };
+
+  let message = "";
+  if (missingLocation && missingComparables) {
+    message = "Konum ve emsal krokisi kaydedilmedi. Otomatik olarak kaydedilerek devam edilecektir.";
+  } else if (missingLocation) {
+    message = "Konum krokisi kaydedilmedi. Otomatik olarak kaydedilerek devam edilecektir.";
+  } else {
+    message = "Emsal krokisi kaydedilmedi. Otomatik olarak kaydedilerek devam edilecektir.";
+  }
+
+  const created = [];
+  const unavailable = [];
+  const size = getMapExportCanvasSize("16:9", 1200);
+  const selectedPoint = getSelectedMapPoint();
+  const parsed = state.sourceValues.kml;
+  if (missingLocation) {
+    if (selectedPoint || parsed?.coordinates?.length) {
+      const center = getExportMapCenter(selectedPoint, parsed);
+      configs.location = {
+        center,
+        zoom: getExportMapZoom(center, parsed, size.width, size.height),
+        mode: normalizeMapMode(state.settings.mapMode),
+        ratio: "16:9",
+        labels: state.settings.mapExportLabels !== false,
+        viewport: getLocationMapViewportSnapshot(),
+        savedAt: new Date().toISOString(),
+        automatic: true,
+      };
+      created.push("location");
+    } else {
+      unavailable.push("Konum krokisi");
+    }
+  }
+
+  if (missingComparables) {
+    const subjectPoint = getComparableSubjectPoint();
+    const comparablePoints = getComparableSketchPoints();
+    if (subjectPoint && comparablePoints.length) {
+      const center = getComparableSketchExportCenter(null, subjectPoint, comparablePoints, parsed);
+      configs.comparables = {
+        center,
+        zoom: getComparableSketchExportZoom(null, center, subjectPoint, comparablePoints, parsed, size.width, size.height),
+        mode: normalizeMapMode(state.settings.mapMode),
+        ratio: "16:9",
+        savedAt: new Date().toISOString(),
+        automatic: true,
+      };
+      created.push("comparables");
+    } else {
+      unavailable.push("Emsal krokisi");
+    }
+  }
+
+  if (unavailable.length) {
+    message += `\n\n${unavailable.join(" ve ")} için gerekli koordinat bilgileri bulunamadığından bu görsel oluşturulamadı.`;
+  }
+  window.alert(message);
+  if (created.length) saveState();
+  return { created, unavailable };
+}
+
+function saveLocationMapForReport(triggerButton) {
+  const selectedPoint = getSelectedMapPoint();
+  const parsed = state.sourceValues.kml;
+  if (!selectedPoint && !parsed?.coordinates?.length) {
+    window.alert("Haritayı rapora kaydetmek için önce KML veya koordinat bilgisi gerekiyor.");
+    return;
+  }
+  const center = getExportMapCenter(selectedPoint, parsed);
+  const size = getMapExportCanvasSize("16:9", 1200);
+  getSavedReportImageConfigs().location = {
+    center,
+    zoom: getExportMapZoom(center, parsed, size.width, size.height),
+    mode: normalizeMapMode(state.settings.mapMode),
+    ratio: "16:9",
+    labels: state.settings.mapExportLabels !== false,
+    viewport: getLocationMapViewportSnapshot(),
+    savedAt: new Date().toISOString(),
+  };
+  autosave();
+  if (triggerButton) triggerButton.textContent = "HARİTA KAYDEDİLDİ";
+  setMapExportStatus("Konum haritası Word çıktıları için kaydedildi.");
+}
+
+async function buildSavedReportImageAssets() {
+  const configs = state.sourceValues?.reportImages || {};
+  const assets = [];
+  if (configs.location) {
+    const asset = await buildSavedLocationMapAsset(configs.location);
+    if (asset) assets.push(asset);
+  }
+  if (configs.comparables) {
+    const asset = await buildSavedComparableSketchAsset(configs.comparables);
+    if (asset) assets.push(asset);
+  }
+  return assets;
+}
+
+async function buildSavedLocationMapAsset(config) {
+  const selectedPoint = getSelectedMapPoint();
+  const parsed = state.sourceValues.kml;
+  const center = Array.isArray(config.center) ? config.center : getExportMapCenter(selectedPoint, parsed);
+  const size = getMapExportCanvasSize("16:9", 1200);
+  const zoom = Number.isFinite(Number(config.zoom))
+    ? Number(config.zoom)
+    : getExportMapZoom(center, parsed, size.width, size.height);
+  const canvas = document.createElement("canvas");
+  canvas.width = size.width;
+  canvas.height = size.height;
+  const context = canvas.getContext("2d");
+  if (!context) return null;
+  const mode = normalizeMapMode(config.mode || state.settings.mapMode);
+  const topLeft = latLngToWorldPixel(center[0], center[1], zoom);
+  topLeft.x -= canvas.width / 2;
+  topLeft.y -= canvas.height / 2;
+  context.fillStyle = mode === "street" ? "#eef2ef" : "#d8e2df";
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  await drawExportTiles(context, canvas, topLeft, zoom, "base", mode);
+  await drawExportTiles(context, canvas, topLeft, zoom, "labels", mode);
+  drawExportKmlPolygon(context, parsed, topLeft, zoom);
+  const subjectPoint = selectedPoint || (parsed?.centroid ? [Number(parsed.centroid.lat), Number(parsed.centroid.lng)] : center);
+  drawExportLocationLeaderLabels(
+    context,
+    subjectPoint,
+    topLeft,
+    zoom,
+    config.labels !== false,
+    getLocationMapLabelScale(config, canvas),
+  );
+  return buildReportJpegAsset("location", "Konu Taşınmaz Konum Haritası", "report-location-map.jpg", canvas, [
+    { label: "Konu Taşınmaz", lat: subjectPoint[0], lng: subjectPoint[1], kind: "subject" },
+  ]);
+}
+
+async function buildSavedComparableSketchAsset(config) {
+  const subjectPoint = getComparableSubjectPoint();
+  const comparablePoints = getComparableSketchPoints();
+  const parsed = state.sourceValues.kml;
+  if (!subjectPoint && !comparablePoints.length) return null;
+  const size = getMapExportCanvasSize("16:9", 1200);
+  const center = Array.isArray(config.center)
+    ? config.center
+    : getComparableSketchExportCenter(null, subjectPoint, comparablePoints, parsed);
+  const zoom = Number.isFinite(Number(config.zoom))
+    ? Number(config.zoom)
+    : getComparableSketchExportZoom(null, center, subjectPoint, comparablePoints, parsed, size.width, size.height);
+  const canvas = document.createElement("canvas");
+  canvas.width = size.width;
+  canvas.height = size.height;
+  const context = canvas.getContext("2d");
+  if (!context) return null;
+  const mode = normalizeMapMode(config.mode || state.settings.mapMode);
+  const topLeft = latLngToWorldPixel(center[0], center[1], zoom);
+  topLeft.x -= canvas.width / 2;
+  topLeft.y -= canvas.height / 2;
+  context.fillStyle = mode === "street" ? "#eef2ef" : "#d8e2df";
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  await drawExportTiles(context, canvas, topLeft, zoom, "base", mode);
+  await drawExportTiles(context, canvas, topLeft, zoom, "labels", mode);
+  drawExportKmlPolygon(context, parsed, topLeft, zoom);
+  drawExportComparableSketch(context, subjectPoint, comparablePoints, topLeft, zoom);
+  const items = [
+    ...(subjectPoint ? [{ label: "Konu Taşınmaz", lat: subjectPoint[0], lng: subjectPoint[1], kind: "subject" }] : []),
+    ...comparablePoints.map((item) => ({ label: `Emsal ${item.index + 1}`, lat: item.point[0], lng: item.point[1], kind: "comparable" })),
+  ];
+  return buildReportJpegAsset("comparables", "Emsal Konum Krokisi", "report-comparable-sketch.jpg", canvas, items);
+}
+
+function buildReportJpegAsset(key, title, location, canvas, items) {
+  const dataUrl = canvas.toDataURL("image/jpeg", 0.82);
+  const base64 = String(dataUrl || "").split(",")[1] || "";
+  return base64 ? { key, title, location, dataUrl, base64, mimeType: "image/jpeg", items } : null;
+}
+
 async function exportMapAsJpeg(triggerButton) {
   const selectedPoint = getSelectedMapPoint();
   const parsed = state.sourceValues.kml;
@@ -21893,7 +22107,14 @@ async function exportMapAsJpeg(triggerButton) {
   await drawExportTiles(context, canvas, topLeft, zoom, "base");
   await drawExportTiles(context, canvas, topLeft, zoom, "labels");
   drawExportKmlPolygon(context, parsed, topLeft, zoom);
-  drawExportLocationLeaderLabels(context, subjectPoint, topLeft, zoom, state.settings.mapExportLabels !== false);
+  drawExportLocationLeaderLabels(
+    context,
+    subjectPoint,
+    topLeft,
+    zoom,
+    state.settings.mapExportLabels !== false,
+    getLocationMapLabelScale(null, canvas),
+  );
 
   try {
     const link = document.createElement("a");
@@ -21911,7 +22132,14 @@ async function exportMapAsJpeg(triggerButton) {
     try {
       drawExportFallbackBase(context, canvas);
       drawExportKmlPolygon(context, parsed, topLeft, zoom);
-      drawExportLocationLeaderLabels(context, subjectPoint, topLeft, zoom, state.settings.mapExportLabels !== false);
+      drawExportLocationLeaderLabels(
+        context,
+        subjectPoint,
+        topLeft,
+        zoom,
+        state.settings.mapExportLabels !== false,
+        getLocationMapLabelScale(null, canvas),
+      );
       const fallbackLink = document.createElement("a");
       fallbackLink.download = `harita-konu-tasinmaz-${new Date().toISOString().slice(0, 10)}.jpg`;
       fallbackLink.href = canvas.toDataURL("image/jpeg", 0.92);
@@ -21943,7 +22171,7 @@ function setMapExportStatus(message, isWarning = false) {
   status.classList.toggle("is-warning", Boolean(isWarning));
 }
 
-function getMapExportCanvasSize() {
+function getMapExportCanvasSize(ratio = state.settings.mapExportRatio, maxLongSide = 1600) {
   const sizes = {
     "1:1": [1400, 1400],
     "3:4": [1200, 1600],
@@ -21953,8 +22181,9 @@ function getMapExportCanvasSize() {
     "4:3": [1600, 1200],
     "16:9": [1600, 900],
   };
-  const [width, height] = sizes[state.settings.mapExportRatio] || sizes["4:3"];
-  return { width, height };
+  const [sourceWidth, sourceHeight] = sizes[ratio] || sizes["4:3"];
+  const scale = Math.min(1, Math.max(320, Number(maxLongSide) || 1600) / Math.max(sourceWidth, sourceHeight));
+  return { width: Math.round(sourceWidth * scale), height: Math.round(sourceHeight * scale) };
 }
 
 function drawExportFallbackBase(context, canvas) {
@@ -22015,7 +22244,7 @@ function getExportMapZoom(center, parsed, canvasWidth = 1600, canvasHeight = 120
   return 12;
 }
 
-async function drawExportTiles(context, canvas, topLeft, zoom, layerType = "base") {
+async function drawExportTiles(context, canvas, topLeft, zoom, layerType = "base", mapMode = state.settings.mapMode) {
   const tileSize = 256;
   const minTileX = Math.floor(topLeft.x / tileSize);
   const maxTileX = Math.floor((topLeft.x + canvas.width) / tileSize);
@@ -22025,7 +22254,7 @@ async function drawExportTiles(context, canvas, topLeft, zoom, layerType = "base
 
   for (let tileX = minTileX; tileX <= maxTileX; tileX += 1) {
     for (let tileY = minTileY; tileY <= maxTileY; tileY += 1) {
-      const urls = getExportTileUrls(tileX, tileY, zoom, layerType);
+      const urls = getExportTileUrls(tileX, tileY, zoom, layerType, mapMode);
       urls.forEach((url) => {
         jobs.push(loadTileImage(url).then((image) => {
         context.drawImage(
@@ -22043,18 +22272,18 @@ async function drawExportTiles(context, canvas, topLeft, zoom, layerType = "base
   await Promise.allSettled(jobs);
 }
 
-function getExportTileUrls(tileX, tileY, zoom, layerType = "base") {
+function getExportTileUrls(tileX, tileY, zoom, layerType = "base", mapMode = state.settings.mapMode) {
   const maxTile = 2 ** zoom;
   const wrappedX = ((tileX % maxTile) + maxTile) % maxTile;
   const y = Math.max(0, Math.min(maxTile - 1, tileY));
   if (layerType === "labels") {
-    if (normalizeMapMode(state.settings.mapMode) !== "hybrid") return [];
+    if (normalizeMapMode(mapMode) !== "hybrid") return [];
     return [
       `https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/${zoom}/${y}/${wrappedX}`,
       `https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/${zoom}/${y}/${wrappedX}`,
     ];
   }
-  if (normalizeMapMode(state.settings.mapMode) !== "street") {
+  if (normalizeMapMode(mapMode) !== "street") {
     return [`https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${zoom}/${y}/${wrappedX}`];
   }
   return [`https://a.tile.openstreetmap.org/${zoom}/${wrappedX}/${y}.png`];
@@ -22107,26 +22336,46 @@ function drawExportPlaces(context, topLeft, zoom) {
   });
 }
 
+function isExportPointVisible(pixel, canvas) {
+  return Boolean(
+    pixel &&
+      canvas &&
+      Number.isFinite(pixel.x) &&
+      Number.isFinite(pixel.y) &&
+      pixel.x >= 0 &&
+      pixel.y >= 0 &&
+      pixel.x <= canvas.width &&
+      pixel.y <= canvas.height
+  );
+}
+
 // Konum haritası JPEG export'unda konu taşınmaz + yakın çevre etiketlerini
 // çakışma-önleyen leader etiketleriyle çizer (emsal krokisiyle aynı mantık).
-function drawExportLocationLeaderLabels(context, subjectPoint, topLeft, zoom, includePlaces) {
+function drawExportLocationLeaderLabels(context, subjectPoint, topLeft, zoom, includePlaces, labelScale = 1.5) {
+  const scale = Math.max(0.8, Math.min(2.25, Number(labelScale) || 1.5));
   const anchors = [];
   if (subjectPoint && Number.isFinite(subjectPoint[0]) && Number.isFinite(subjectPoint[1])) {
     const pixel = projectExportPoint(subjectPoint[0], subjectPoint[1], topLeft, zoom);
-    context.font = "900 30px Arial";
+    const font = `800 ${Math.round(12 * scale)}px Arial`;
+    context.font = font;
     anchors.push({
       kind: "subject",
       x: pixel.x,
       y: pixel.y,
       text: "KONU TAŞINMAZ",
-      w: Math.min(context.measureText("KONU TAŞINMAZ").width + 40, 430),
-      h: 58,
-      font: "900 30px Arial",
+      w: Math.min(context.measureText("KONU TAŞINMAZ").width + 24 * scale, 240 * scale),
+      h: 26 * scale,
+      font,
       fill: "#c81e1e",
       textColor: "#ffffff",
       borderColor: "#ffffff",
       markerColor: "#c81e1e",
-      markerRadius: 12,
+      markerRadius: 7 * scale,
+      scale,
+      leaderWidth: 1.6 * scale,
+      borderWidth: 1.5 * scale,
+      cornerRadius: 7 * scale,
+      padX: 12 * scale,
     });
   }
   if (includePlaces) {
@@ -22134,21 +22383,28 @@ function drawExportLocationLeaderLabels(context, subjectPoint, topLeft, zoom, in
       .filter((place) => Number.isFinite(place.lat) && Number.isFinite(place.lng))
       .forEach((place) => {
         const pixel = projectExportPoint(place.lat, place.lng, topLeft, zoom);
+        if (!isExportPointVisible(pixel, context.canvas)) return;
         const color = place.category === "arteries" ? "#7f1212" : "#0f6b5d";
-        context.font = "700 22px Arial";
+        const font = `700 ${Math.round(11 * scale)}px Arial`;
+        context.font = font;
         anchors.push({
           kind: "comparable",
           x: pixel.x,
           y: pixel.y,
           text: place.name,
-          w: Math.min(context.measureText(place.name).width + 24, 420),
-          h: 42,
-          font: "700 22px Arial",
+          w: Math.min(context.measureText(place.name).width + 20 * scale, 240 * scale),
+          h: 22 * scale,
+          font,
           fill: "rgba(255, 255, 255, 0.94)",
           textColor: color,
           borderColor: color,
           markerColor: color,
-          markerRadius: 9,
+          markerRadius: 6 * scale,
+          scale,
+          leaderWidth: 1.6 * scale,
+          borderWidth: 1.5 * scale,
+          cornerRadius: 7 * scale,
+          padX: 10 * scale,
         });
       });
   }
@@ -24800,7 +25056,8 @@ function createComparableLocationSketchPanel() {
           ${getMapModeOptionsMarkup()}
         </select>
       </label>
-      <button class="mini-button" type="button" data-comparable-sketch-export>EMSAL KROKİSİNİ JPEG OLARAK KAYDET</button>
+      <button class="mini-button" type="button" data-comparable-sketch-save>${state.sourceValues?.reportImages?.comparables ? "KROKİ KAYDEDİLDİ" : "KROKİYİ KAYDET"}</button>
+      <button class="mini-button" type="button" data-comparable-sketch-export>JPG İNDİR</button>
       <label class="export-control">
         <span>Boyut</span>
         <select data-comparable-sketch-export-ratio>
@@ -24822,6 +25079,9 @@ function createComparableLocationSketchPanel() {
   });
   wrapper.querySelector("[data-comparable-sketch-export]").addEventListener("click", (event) => {
     exportComparableSketchAsJpeg(wrapper, event.currentTarget);
+  });
+  wrapper.querySelector("[data-comparable-sketch-save]").addEventListener("click", (event) => {
+    saveComparableSketchForReport(wrapper, event.currentTarget);
   });
   window.setTimeout(() => renderComparableLocationSketchMap(wrapper), 0);
   return wrapper;
@@ -24971,6 +25231,28 @@ function getComparableSketchPoints() {
     .filter((item) => Array.isArray(item.point));
 }
 
+function saveComparableSketchForReport(wrapper, triggerButton) {
+  const subjectPoint = getComparableSubjectPoint();
+  const comparablePoints = getComparableSketchPoints();
+  const parsed = state.sourceValues.kml;
+  if (!subjectPoint || !comparablePoints.length) {
+    window.alert("Krokiyi rapora kaydetmek için konu taşınmaz ve en az bir emsal konumu gerekiyor.");
+    return;
+  }
+  const center = getComparableSketchExportCenter(wrapper, subjectPoint, comparablePoints, parsed);
+  const size = getMapExportCanvasSize("16:9", 1200);
+  getSavedReportImageConfigs().comparables = {
+    center,
+    zoom: getComparableSketchExportZoom(wrapper, center, subjectPoint, comparablePoints, parsed, size.width, size.height),
+    mode: normalizeMapMode(state.settings.mapMode),
+    ratio: "16:9",
+    savedAt: new Date().toISOString(),
+  };
+  autosave();
+  if (triggerButton) triggerButton.textContent = "KROKİ KAYDEDİLDİ";
+  setComparableSketchExportStatus(wrapper, "Emsal krokisi Word çıktıları için kaydedildi.");
+}
+
 async function exportComparableSketchAsJpeg(wrapper, triggerButton) {
   const subjectPoint = getComparableSubjectPoint();
   const comparablePoints = getComparableSketchPoints();
@@ -25100,7 +25382,7 @@ function layoutSketchLabels(anchors, canvasWidth, canvasHeight) {
       dirY = Math.sin(angle);
       length = 1;
     }
-    const distance = 36 + a.h / 2;
+    const distance = 36 * (a.scale || 1) + a.h / 2;
     a.cx = a.x + (dirX / length) * distance;
     a.cy = a.y + (dirY / length) * distance;
   });
@@ -25154,17 +25436,18 @@ function layoutSketchLabels(anchors, canvasWidth, canvasHeight) {
 
 function drawSketchLeaderAndMarker(context, a) {
   if (!Number.isFinite(a.x) || !Number.isFinite(a.y)) return;
+  const scale = a.scale || 1;
   context.save();
   context.setLineDash([]);
   context.strokeStyle = a.markerColor;
-  context.lineWidth = a.kind === "subject" ? 4 : 3;
+  context.lineWidth = a.leaderWidth || (a.kind === "subject" ? 4 : 3) * scale;
   context.beginPath();
   context.moveTo(a.x, a.y);
   context.lineTo(a.cx, a.cy);
   context.stroke();
   context.beginPath();
   context.fillStyle = "#ffffff";
-  context.arc(a.x, a.y, a.markerRadius + 3, 0, Math.PI * 2);
+  context.arc(a.x, a.y, a.markerRadius + 3 * scale, 0, Math.PI * 2);
   context.fill();
   context.beginPath();
   context.fillStyle = a.markerColor;
@@ -25175,18 +25458,19 @@ function drawSketchLeaderAndMarker(context, a) {
 
 function drawSketchLabelBox(context, a) {
   if (!Number.isFinite(a.cx) || !Number.isFinite(a.cy)) return;
+  const scale = a.scale || 1;
   context.save();
   context.beginPath();
   context.fillStyle = a.fill;
   context.strokeStyle = a.borderColor;
-  context.lineWidth = a.kind === "subject" ? 5 : 2;
-  context.roundRect(a.lx, a.ly, a.w, a.h, a.kind === "subject" ? 12 : 10);
+  context.lineWidth = a.borderWidth || (a.kind === "subject" ? 5 : 2) * scale;
+  context.roundRect(a.lx, a.ly, a.w, a.h, a.cornerRadius || (a.kind === "subject" ? 12 : 10) * scale);
   context.fill();
   context.stroke();
   context.fillStyle = a.textColor;
   context.font = a.font;
   context.textBaseline = "middle";
-  const padX = a.kind === "subject" ? 20 : 12;
+  const padX = a.padX || (a.kind === "subject" ? 20 : 12) * scale;
   context.fillText(a.text, a.lx + padX, a.cy + 1, a.w - padX * 2);
   context.restore();
 }
@@ -27298,12 +27582,26 @@ function renderValidation() {
   });
 }
 
+function getCompactBankStatusLabel(bankName) {
+  const shortNames = {
+    "Akbank T.A.Ş.": "Akbank",
+    "Türkiye Halk Bankası A.Ş.": "Halkbank",
+    "Türkiye İş Bankası A.Ş.": "İş Bankası",
+    "Kuveyt Türk Katılım Bankası A.Ş.": "Kuveyt Türk",
+    "Türkiye Vakıflar Bankası T.A.O.": "VakıfBank",
+    "Vakıf Katılım Bankası A.Ş.": "Vakıf Katılım",
+    "Yapı ve Kredi Bankası A.Ş.": "Yapı Kredi",
+    "T.C. Ziraat Bankası A.Ş.": "Ziraat Bankası",
+  };
+  return shortNames[bankName] || bankName || "Seçilmedi";
+}
+
 function updateStatus() {
   const missing = getMissingRequiredFields();
   const title = state.fields.caseName || "Yeni Ekspertiz Raporu";
   caseTitle.textContent = title;
   caseCode.textContent = state.fields.caseName ? "Taslak kayıt" : "Taslak";
-  bankStatus.textContent = state.fields.bank || "Seçilmedi";
+  bankStatus.textContent = getCompactBankStatusLabel(state.fields.bank);
   missingCount.textContent = String(missing.length);
   lastSaved.textContent = state.updatedAt ? new Date(state.updatedAt).toLocaleString("tr-TR") : "Henüz yok";
 }
@@ -27314,20 +27612,49 @@ document.querySelector("#saveBtn").addEventListener("click", () => {
 });
 
 const themeProfileSelect = document.querySelector("#themeProfileSelect");
+const themeSettingsBtn = document.querySelector("#themeSettingsBtn");
+const themeSettingsPanel = document.querySelector("#themeSettingsPanel");
 if (themeProfileSelect) {
   const validThemeProfiles = new Set(["apple", "navy-blue", "glass", "aurora", "clay", "neumorphism"]);
   const normalizeThemeProfile = (value) => (validThemeProfiles.has(value) ? value : "apple");
-  const savedTheme = normalizeThemeProfile(localStorage.getItem("raporAppTheme") || document.body.dataset.appTheme);
-  document.body.dataset.appTheme = savedTheme;
-  themeProfileSelect.value = savedTheme;
+  const themeStorageKeyForCurrentUser = () => {
+    const email = String(window.RaporCloudSync?.getStatus?.().email || "").trim().toLocaleLowerCase("tr-TR");
+    return email ? `raporAppTheme:${email}` : "raporAppTheme";
+  };
+  const applyThemeForCurrentUser = () => {
+    const storageKey = themeStorageKeyForCurrentUser();
+    const savedTheme = normalizeThemeProfile(
+      localStorage.getItem(storageKey)
+      || (storageKey !== "raporAppTheme" ? localStorage.getItem("raporAppTheme") : "")
+      || document.body.dataset.appTheme,
+    );
+    document.body.dataset.appTheme = savedTheme;
+    themeProfileSelect.value = savedTheme;
+  };
+  const setThemeSettingsOpen = (isOpen) => {
+    if (!themeSettingsPanel || !themeSettingsBtn) return;
+    themeSettingsPanel.hidden = !isOpen;
+    themeSettingsBtn.setAttribute("aria-expanded", String(isOpen));
+  };
+
+  window.RaporThemeProfile = { applyForCurrentUser: applyThemeForCurrentUser };
+  applyThemeForCurrentUser();
   themeProfileSelect.addEventListener("change", () => {
     const nextTheme = normalizeThemeProfile(themeProfileSelect.value);
     document.body.dataset.appTheme = nextTheme;
-    localStorage.setItem("raporAppTheme", nextTheme);
+    localStorage.setItem(themeStorageKeyForCurrentUser(), nextTheme);
+  });
+  themeSettingsBtn?.addEventListener("click", () => setThemeSettingsOpen(themeSettingsPanel?.hidden));
+  document.addEventListener("click", (event) => {
+    if (themeSettingsPanel?.hidden || event.target.closest(".brand-mark-wrap")) return;
+    setThemeSettingsOpen(false);
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") setThemeSettingsOpen(false);
   });
 }
 
-document.querySelector("#newCaseBtn").addEventListener("click", () => {
+document.querySelector("#newCaseBtn")?.addEventListener("click", () => {
   // Faz 2 (cloud/report-library.js) yüklüyse mevcut rapor "Raporlarım"
   // kütüphanesine kaydedilir ve veri kaybı olmaz. YENİ raporun kendi
   // reportId'sini alması ve bulut senkronunun doğru belgeyi hedeflemesi

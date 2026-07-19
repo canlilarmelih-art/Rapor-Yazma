@@ -44,7 +44,7 @@ function listJavaScriptFiles(relativeDir) {
 function main() {
   ["index.html", "app.js", "styles.css", "server.js"].forEach(checkFileExists);
 
-  ["app.js", "server.js", ...listJavaScriptFiles("src")].forEach(runNodeSyntaxCheck);
+  ["app.js", "server.js", "cloud/cloud-sync.js", "cloud/report-library.js", ...listJavaScriptFiles("src")].forEach(runNodeSyntaxCheck);
 
   const indexHtml = readText("index.html");
   assert(indexHtml.includes("installCompatibilityFixes"), "index.html uyumluluk blogu bulunamadi.");
@@ -61,6 +61,59 @@ function main() {
   const appJs = readText("app.js");
   const stylesCss = readText("styles.css");
   const serverJs = readText("server.js");
+  const cloudSyncJs = readText("cloud/cloud-sync.js");
+  const reportLibraryJs = readText("cloud/report-library.js");
+  assert(
+    reportLibraryJs.includes("function openDashboardAfterAuthentication()") &&
+      reportLibraryJs.includes("openDashboardAfterAuthentication();") &&
+      !reportLibraryJs.includes("DASHBOARD_SESSION_FLAG_KEY") &&
+      !reportLibraryJs.includes("maybeAutoShowDashboardOnFreshSession"),
+    "Kullanici girisinden sonra Taleplerim ekranina yonlendirme korunmuyor."
+  );
+  assert(
+      reportLibraryJs.includes('actions.insertBefore(button, saveButton)') &&
+      reportLibraryJs.includes('id="librarySignOut"') &&
+      reportLibraryJs.includes('id="librarySignOutSlot"') &&
+      reportLibraryJs.includes("signOutAndClearLocalData") &&
+      cloudSyncJs.includes("async function signOutAndClearLocalData()") &&
+      !cloudSyncJs.includes('id="cloudSignOut"') &&
+      stylesCss.includes(".library-sign-out-button"),
+    "Taleplerim ana sayfa gecisi veya cikis dugmesi konumu korunmuyor."
+  );
+  assert(
+      reportLibraryJs.includes("function deriveDocumentStatus(status = {}, fields = {})") &&
+      reportLibraryJs.includes("cloudData.payload?.fields") &&
+      reportLibraryJs.includes('["Evet", "Hayır"].includes(String(fields.hasEkb || "").trim())') &&
+      reportLibraryJs.includes("Eksik Alan = ${missingCount}") &&
+      stylesCss.includes(".library-missing-fields"),
+    "Bulut belge durumlari veya eksik alan sayaci korunmuyor."
+  );
+  assert(
+    !indexHtml.includes("gate-theme-toggle") &&
+      !indexHtml.includes("rapor-gate-theme") &&
+      !stylesCss.includes(".gate-theme-toggle") &&
+      !stylesCss.includes('[data-gate-theme="light"]'),
+    "Giris kapisindaki gece/gunduz tema denetimi kaldirilmamis gorunuyor."
+  );
+  assert(
+    indexHtml.includes('id="themeSettingsBtn"') &&
+      indexHtml.includes('id="themeSettingsPanel"') &&
+      !indexHtml.includes('id="newCaseBtn"') &&
+      appJs.includes("themeStorageKeyForCurrentUser") &&
+      appJs.includes("window.RaporThemeProfile = { applyForCurrentUser: applyThemeForCurrentUser }") &&
+      cloudSyncJs.includes("window.RaporThemeProfile?.applyForCurrentUser?.();") &&
+      stylesCss.includes(".brand-settings-button") &&
+      stylesCss.includes(".theme-settings-panel"),
+    "Kullaniciya ozel tema ayarlari veya aktif is dosyasi duzeni korunmuyor."
+  );
+  assert(
+    appJs.includes("function getCompactBankStatusLabel(bankName)") &&
+      appJs.includes('"Kuveyt Türk Katılım Bankası A.Ş.": "Kuveyt Türk"') &&
+      appJs.includes("bankStatus.textContent = getCompactBankStatusLabel(state.fields.bank)") &&
+      stylesCss.includes("min-height: 54px;") &&
+      stylesCss.includes("font-size: 14px;"),
+    "Kompakt durum seridi veya banka kisaltmalari korunmuyor."
+  );
   assert(
     serverJs.includes('"Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate"') &&
       serverJs.includes('"Pragma": "no-cache"') &&
@@ -574,9 +627,11 @@ function main() {
       indexHtml.includes("src/risk/halkbank-risk-rules.js") &&
       indexHtml.includes("src/comparables/comparable-market-analysis.js") &&
       indexHtml.includes("src/value-factors/value-factors-rules.js") &&
-      indexHtml.includes("styles.css?v=20260718-1160") &&
-      indexHtml.includes("app.js?v=20260719-1145") &&
-      indexHtml.includes("src/templates/template-engine.js?v=20260718-1510"),
+      indexHtml.includes("styles.css?v=20260719-1530") &&
+      indexHtml.includes("app.js?v=20260719-2000") &&
+      indexHtml.includes("cloud/cloud-sync.js?v=20260719-1505") &&
+      indexHtml.includes("cloud/report-library.js?v=20260719-1530") &&
+      indexHtml.includes("src/templates/template-engine.js?v=20260719-2045"),
     "Halkbank risk kodu scriptleri veya guncel app surumu index.html icinde bulunamadi."
   );
   checkFileExists("src/risk/halkbank-risk-data.js");

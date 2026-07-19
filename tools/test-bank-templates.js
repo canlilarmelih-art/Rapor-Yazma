@@ -228,9 +228,12 @@ const valuationSectionOrderTokens = [
 ];
 comparableTemplateFiles.forEach((file) => {
   const text = fs.readFileSync(path.join(appDir, "templates", file), "utf8");
-  let previousIndex = -1;
-  valuationSectionOrderTokens.forEach((token) => {
-    const index = text.indexOf(token);
+  let previousIndex = text.indexOf("{{DEGERLEME_YONTEMI_ACIKLAMASI}}") - 1;
+  const expectedValuationTokens = file === "halkbank.html"
+    ? valuationSectionOrderTokens.filter((token) => token !== "{{KIRA_ACIKLAMASI}}")
+    : valuationSectionOrderTokens;
+  expectedValuationTokens.forEach((token) => {
+    const index = text.indexOf(token, previousIndex + 1);
     assert(index >= 0, `${file}: degerleme bolumu tokeni bulunamadi: ${token}`);
     assert(index > previousIndex, `${file}: ${token} gorseldeki degerleme sirasinda degil.`);
     previousIndex = index;
@@ -317,6 +320,213 @@ assert(
 assert(
   appSource.includes('"Araziye Özel Bilgiler"') && appSource.includes('key: "landClassification"'),
   "Araziye Özel Bilgiler grubu veya Arazi Siniflandirmasi alani bulunamadi."
+);
+
+// --- 2d) Halkbank INVEX ekran akisi -------------------------------------
+const halkbankTemplate = fs.readFileSync(path.join(appDir, "templates", "halkbank.html"), "utf8");
+[
+  "Konum ve Adres Bilgileri",
+  "Tapu Kaydı ve Tapu Bilgileri",
+  "İmar Bilgileri",
+  "İncelenen Belgeler ve Proje",
+  "Ruhsat Özellikleri ve Dosya İncelemeleri",
+  "Tapu Rapor Özellikleri",
+  "Değerleme Bilgileri",
+  "Emsal Listesi",
+].forEach((heading) => assert(halkbankTemplate.includes(heading), `halkbank.html: eksik INVEX bolumu: ${heading}`));
+[
+  "{{PROJECT_REVIEW_DESCRIPTION}}",
+  "{{REVIEWED_DOCUMENTS_DESCRIPTION}}",
+  "{{BUİLDİNG_FLOOR_SUMMARY_TEXT}}",
+  "{{VALUATİON_SALEABİLİTY_EXPLANATİON}}",
+  "{{KIRA_ACIKLAMASI}}",
+  "{{HALKBANK_DEGERLEME_DETAY_TABLO}}",
+  "{{HALKBANK_EMSAL_ARALIGI}}",
+].forEach((token) => assert(halkbankTemplate.includes(token), `halkbank.html: eksik Halkbank tokeni: ${token}`));
+const halkbankCount = (token) => (halkbankTemplate.match(new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g")) || []).length;
+const halkbankSection = (start, end) => halkbankTemplate.slice(halkbankTemplate.indexOf(start), halkbankTemplate.indexOf(end));
+assert(
+  halkbankTemplate.indexOf("{{MALIKLER_TABLO}}") < halkbankTemplate.indexOf("İL / İLÇE"),
+  "halkbank.html: Malikler tablosu tapu Il/Ilce bilgisinden once gelmiyor."
+);
+assert(
+  halkbankCount("{{PLANNING_NOTE_TEXT}}") === 1 &&
+    halkbankTemplate.indexOf("{{PLANNING_NOTE_TEXT}}") > halkbankTemplate.indexOf("8. Tapu Rapor Özellikleri"),
+  "halkbank.html: Imar aciklamasi ust bolumde tekrar ediyor."
+);
+assert(
+  halkbankCount("{{PROJECT_REVIEW_DESCRIPTION}}") === 1 &&
+    halkbankTemplate.indexOf("{{PROJECT_REVIEW_DESCRIPTION}}") > halkbankTemplate.indexOf("8. Tapu Rapor Özellikleri"),
+  "halkbank.html: Proje inceleme aciklamasi ust bolumde tekrar ediyor."
+);
+assert(
+  halkbankCount("{{REVIEWED_DOCUMENTS_DESCRIPTION}}") === 1 &&
+    halkbankTemplate.indexOf("{{REVIEWED_DOCUMENTS_DESCRIPTION}}") > halkbankTemplate.indexOf("8. Tapu Rapor Özellikleri"),
+  "halkbank.html: Incelenen Belgeler Aciklamasi ust bolumde tekrar ediyor."
+);
+assert(
+  !halkbankTemplate.includes("{{EKB_EXPLANATION_TEXT}}"),
+  "halkbank.html: EKB aciklamasi incelenen belgeler metnine ek olarak tekrar basiliyor."
+);
+assert(
+  !halkbankSection("6. Ruhsat Özellikleri", "7. Ana Gayrimenkul").match(/\{\{(?:PENALTY_DECISION_EXPLANATION_TEXT|STATIC_SUITABILITY_EXPLANATION_TEXT|BUILDING_INSPECTION_EXPLANATION_TEXT)\}\}/),
+  "halkbank.html: Ruhsat bolumunde alt tarafta bulunan aciklamalar tekrar ediyor."
+);
+assert(
+  !halkbankSection("7. Ana Gayrimenkul", "8. Tapu Rapor Özellikleri").match(/\{\{(?:MAIN_PROPERTY_DESCRIPTION_TEXT|UNIT_INTERIOR_DESCRIPTION_TEXT|UNIT_DECORATIVE_DESCRIPTION_TEXT)\}\}/) &&
+    halkbankCount("{{UNIT_INTERIOR_DESCRIPTION_TEXT}}") === 1 &&
+    halkbankCount("{{UNIT_DECORATIVE_DESCRIPTION_TEXT}}") === 0,
+  "halkbank.html: Gayrimenkul, ic ozellik veya tefrisat aciklamasi tekrar ediyor."
+);
+assert(
+  halkbankTemplate.includes("BİNA KAT DAĞILIMI ÖZETİ</td><td>{{BUİLDİNG_FLOOR_SUMMARY_TEXT}}"),
+  "halkbank.html: Bina kat dagilimi ozeti ayri satirda bulunamadi."
+);
+const halkbankImportantNote = halkbankSection("Önemli Not ve Sonuç Cümlesi", "İmar Bilgileri Açıklaması");
+assert(
+  halkbankImportantNote.indexOf("{{VALUATİON_SALEABİLİTY_EXPLANATİON}}") > halkbankImportantNote.indexOf("{{SALEABILITY_NOTE}}") &&
+    halkbankImportantNote.indexOf("{{KIRA_ACIKLAMASI}}") > halkbankImportantNote.indexOf("{{VALUATİON_SALEABİLİTY_EXPLANATİON}}"),
+  "halkbank.html: Satis kabiliyeti ve kira aciklamalari Onemli Not bolumunun sonunda degil."
+);
+assert(
+  halkbankSection("10. Değerleme Bilgileri", "11. Emsal Listesi").indexOf("{{KIRA_ACIKLAMASI}}") === -1,
+  "halkbank.html: kira aciklamasi 10. Degerleme Bilgileri bolumunde tekrar ediyor."
+);
+assert(
+  halkbankTemplate.includes("Merkez Bankası verilerinde herhangi bir sorun bulunmamaktadır.") &&
+    !halkbankTemplate.includes("{{HALKBANK_MERKEZ_BANKASI_ACIKLAMA}}"),
+  "halkbank.html: Merkez Bankasi aciklamasi istenen sabit cumle degil."
+);
+const halkbankComparableSection = halkbankSection("11. Emsal Listesi", "12. GDYS Yardımcı Bilgiler");
+assert(
+  halkbankComparableSection.indexOf("{{EMSAL_PIYASA_ANALIZI}}") < halkbankComparableSection.indexOf("{{COMPARABLE_SKETCH_SECTION}}") &&
+    halkbankComparableSection.indexOf("{{COMPARABLE_SKETCH_SECTION}}") < halkbankComparableSection.indexOf("{{HALKBANK_EMSAL_ARALIGI}}") &&
+    halkbankTemplate.includes('<h2 style="page-break-before:always;">11. Emsal Listesi</h2>'),
+  "halkbank.html: Emsal krokisi aciklamanin hemen altinda degil veya Emsaller yeni sayfada baslamiyor."
+);
+assert(
+  !halkbankTemplate.includes("{{HALKBANK_EMSAL_LISTESI_TABLO}}") &&
+    halkbankTemplate.includes("{{EMSAL_MATRISI}}"),
+  "halkbank.html: kaldirilmasi istenen ozel emsal listesi halen var veya ana matris eksik."
+);
+assert(
+  halkbankTemplate.includes("padding: 1.7pt 3pt") &&
+    halkbankTemplate.includes("padding: 1.55pt 2.8pt") &&
+    halkbankTemplate.includes("padding: 0.85pt 1.8pt"),
+  "halkbank.html: tablo kutularinin yuksekligi yuzde 30 azaltilmamis."
+);
+assert(
+  engineSource.includes("function halkbankValuationDetailsTableHtml()") &&
+    engineSource.includes("function halkbankComparableListTableHtml()") &&
+    engineSource.includes("function halkbankComparableRangeText()"),
+  "Halkbank degerleme/emsal ozel cikti ureticileri bulunamadi."
+);
+assert(
+  engineSource.includes("VALUATIONSALEABILITYEXPLANATION") &&
+    engineSource.includes('safeCall("buildValuationSaleabilityExplanationForExport")'),
+  "Halkbank valuation saleability placeholder aliasi bulunamadi."
+);
+assert(
+  appSource.includes('key: "halkbankCentralBankExplanation"'),
+  "Halkbank Merkez Bankasi aciklama alani bulunamadi."
+);
+
+// --- 2e) Konum haritasi ve emsal krokisi Word'e gomulmeli ----------------
+comparableTemplateFiles.forEach((file) => {
+  const text = fs.readFileSync(path.join(appDir, "templates", file), "utf8");
+  const locationTokens = text.match(/\{\{LOCATION_MAP_SECTION\}\}/g) || [];
+  const comparableTokens = text.match(/\{\{COMPARABLE_SKETCH_SECTION\}\}/g) || [];
+  assert(locationTokens.length === 1, `${file}: LOCATION_MAP_SECTION tam bir kez bulunmali.`);
+  assert(comparableTokens.length === 1, `${file}: COMPARABLE_SKETCH_SECTION tam bir kez bulunmali.`);
+  assert(!text.includes("{{REPORT_MAPS_SECTION}}"), `${file}: birlesik REPORT_MAPS_SECTION kullanilmamali.`);
+});
+const reportMapPlacementRules = {
+  "akbank.html": ["Konum Sekmesi", "Özellikler Sekmesi"],
+  "halkbank.html": ["1. Konum ve Adres Bilgileri", "2. Tapu Kaydı ve Tapu Bilgileri"],
+  "isbankasi.html": ["KONUM BİLGİLERİ", "ÖZELLİKLER SEKMESİ"],
+  "kuveytturk.html": ["GAYRİMENKULÜN AÇIK ADRESİ", "NİTELİĞİ"],
+  "vakifbank.html": ["HARİTA KONUM", "TAKYİDAT"],
+  "vakifkatilim.html": ["Tapu Sekmesi ve Konum", "Özellikler Sekmesi"],
+  "yapikredi.html": ["Adres Bilgileri", "Ana Gayrimenkul Site Özellikleri"],
+  "ziraat.html": ["2. GAYRİMENKUL TAPU BİLGİLERİ", "Malikler"],
+};
+Object.entries(reportMapPlacementRules).forEach(([file, [before, after]]) => {
+  const text = fs.readFileSync(path.join(appDir, "templates", file), "utf8");
+  const mapIndex = text.indexOf("{{LOCATION_MAP_SECTION}}");
+  assert(
+    text.indexOf(before) < mapIndex && mapIndex < text.indexOf(after, mapIndex),
+    `${file}: konum krokisi adres/konum verilerinin hemen ardinda degil.`
+  );
+});
+const comparableSketchNextSection = {
+  "akbank.html": "GDYS YARDIMCI BİLGİLER",
+  "halkbank.html": "12. GDYS Yardımcı Bilgiler",
+  "isbankasi.html": "GDYS YARDIMCI BİLGİLER",
+  "kuveytturk.html": "GDYS YARDIMCI BİLGİLER",
+  "vakifbank.html": "GDYS YARDIMCI BİLGİLER",
+  "vakifkatilim.html": "GDYS YARDIMCI BİLGİLER",
+  "yapikredi.html": "Takyidatlar",
+  "ziraat.html": "GDYS YARDIMCI BİLGİLER",
+};
+Object.entries(comparableSketchNextSection).forEach(([file, nextSection]) => {
+  const text = fs.readFileSync(path.join(appDir, "templates", file), "utf8");
+  const analysisIndex = text.indexOf("{{EMSAL_PIYASA_ANALIZI}}");
+  const sketchIndex = text.indexOf("{{COMPARABLE_SKETCH_SECTION}}");
+  assert(
+    analysisIndex < sketchIndex && sketchIndex < text.indexOf(nextSection, sketchIndex),
+    `${file}: emsal krokisi Emsaller bolumunun sonunda degil.`
+  );
+});
+assert(
+  appSource.includes("function saveLocationMapForReport(") &&
+    appSource.includes("function saveComparableSketchForReport(") &&
+    appSource.includes("async function buildSavedReportImageAssets("),
+  "Harita/kroki kaydetme veya Word gorsel varligi ureticileri bulunamadi."
+);
+assert(
+  engineSource.includes("LOCATIONMAPIMAGE") &&
+    engineSource.includes("COMPARABLESKETCHIMAGE") &&
+    engineSource.includes("LOCATIONMAPSECTION") &&
+    engineSource.includes("COMPARABLESKETCHSECTION") &&
+    engineSource.includes("REPORTMAPSSECTION") &&
+    engineSource.includes('safeCall("buildWordMhtmlPackage", html, reportImageAssetsCache)'),
+  "Banka sablonu gorsel placeholder veya MHTML gomulu gorsel baglantisi eksik."
+);
+assert(
+  appSource.includes('`Content-Type: ${asset.mimeType || "image/png"}`'),
+  "Word MHTML paketi JPEG/PNG varliklarinin MIME turunu korumuyor."
+);
+assert(
+  appSource.includes("function ensureReportMapImagesForExport()") &&
+    appSource.includes("Konum ve emsal krokisi kaydedilmedi. Otomatik olarak kaydedilerek devam edilecektir.") &&
+    appSource.includes("ensureReportMapImagesForExport();"),
+  "Word export oncesi eksik konum/emsal krokisi otomatik kayit uyarisi bulunamadi."
+);
+assert(
+  appSource.includes('getMapExportCanvasSize("16:9", 1200)') &&
+    appSource.includes('width="640" height="360" style="width:480pt;height:270pt;') &&
+    engineSource.includes('width="640" height="360" style="width:480pt;height:270pt;'),
+  "Word harita/kroki gorselleri sabit 16:9 geometriyle uretilmiyor."
+);
+assert(
+  appSource.includes("function getLocationMapViewportSnapshot()") &&
+    appSource.includes("function getLocationMapLabelScale(config, canvas)") &&
+    appSource.includes("viewport: getLocationMapViewportSnapshot()") &&
+    appSource.includes("getLocationMapLabelScale(config, canvas)") &&
+    appSource.includes("Math.round(12 * scale)") &&
+    appSource.includes("Math.round(11 * scale)"),
+  "Konum krokisi kayit anindaki viewport/zoom etiket olcegini Word ciktisina tasimiyor."
+);
+assert(
+  appSource.includes("function isExportPointVisible(pixel, canvas)") &&
+    appSource.includes("if (!isExportPointVisible(pixel, context.canvas)) return;"),
+  "Konum krokisi gorunmeyen POI verilerini viewport disinda filtrelemiyor."
+);
+assert(
+  engineSource.includes('class="report-map-figure" style="page-break-inside:avoid;break-inside:avoid;"') &&
+    engineSource.includes('page-break-after:avoid;break-after:avoid;') &&
+    !engineSource.includes('class="pg-section" style="page-break-before:always;">\n      <h2>KONUM VE EMSAL'),
+  "Kroki basligi ve gorseli Word'de ayni sayfada tutulmuyor."
 );
 
 // --- 3) katlama eşdeğerlikleri ------------------------------------------

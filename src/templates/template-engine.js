@@ -116,6 +116,96 @@
     return safeCall("buildSimpleHtmlTable", ["Belge Türü", "İncelenen Kurum", "Tarih", "No", "Kapsam"], rows);
   }
 
+  function halkbankValue(value, suffix = "") {
+    const text = String(value || "").trim();
+    return text ? `${text}${suffix}` : "";
+  }
+
+  function halkbankMoney(key) {
+    return moneyField(key);
+  }
+
+  function halkbankValuationDetailsTableHtml() {
+    const detailRows = [
+      ["Değerleme Türü", field("propertyType", "ownershipType")],
+      ["Arsa Birim m2 Değeri", halkbankMoney("landUnitValue")],
+      ["Arsa Payı Değeri", halkbankMoney("landValue")],
+      ["Arsa Alanı", halkbankValue(field("landArea"), " m2")],
+      ["Yapı Yasal Alanı", halkbankValue(field("legalBuildingValueArea", "legalValueArea", "legalArea"), " m2")],
+      ["Tamamlanmış Yapı Değeri (Yasal Alan)", halkbankMoney("legalBuildingValue")],
+      ["Yapı Yasal Birim m2 Değeri", halkbankMoney("legalBuildingUnitCost")],
+      ["Yapı Mevcut Alanı", halkbankValue(field("currentBuildingValueArea", "currentValueArea", "currentArea"), " m2")],
+      ["Tamamlanmış Yapı Değeri (Mevcut Alan)", halkbankMoney("currentBuildingValue")],
+      ["Yapı Mevcut Birim m2 Değeri", halkbankMoney("currentBuildingUnitCost")],
+      ["Yapı Şerefiye ve Çevre Düzeltme Değeri (Yasal)", halkbankMoney("legalPremiumValue")],
+      ["Yapı Şerefiye ve Çevre Düzeltme Değeri (Mevcut)", halkbankMoney("currentPremiumValue")],
+      ["İnşaat Seviyesi", field("unitConstructionLevel", "legalBuildingConstructionLevel")],
+      ["Aylık Kira", halkbankMoney("currentRent")],
+      ["Aylık Kira Birim m2 Değeri", halkbankMoney("currentRentUnit")],
+      ["Sigortaya Esas Birim m2 Değeri", halkbankMoney("insuranceUnitCost")],
+      ["Sigortaya Esas Değer", halkbankMoney("insuranceValue")],
+      ["Bilgi Amaçlı Değer", halkbankMoney("informationValue")],
+      ["Bilgi Amaçlı Birim m2 Değeri", halkbankMoney("informationValueUnit")],
+      ["Arsa Payı Değeri Sıfırlansın mı?", field("landValue") && parseValuationNumber(field("landValue")) === 0 ? "Evet" : "Hayır"],
+      ["Eksperin Kanaati", field("saleability") || "Satılabilir"],
+    ];
+    const resultRows = [
+      ["Taşınmazın Yasal Değeri", halkbankMoney("legalValue")],
+      ["Taşınmazın Mevcut Değeri", halkbankMoney("currentValue")],
+      ["Taşınmazın Birim m2 Değeri (Yasal)", halkbankMoney("legalValueUnit")],
+      ["Taşınmazın Birim m2 Değeri (Mevcut)", halkbankMoney("currentValueUnit")],
+    ];
+    const detail = safeCall("buildSimpleHtmlTable", ["Değerleme Bilgisi", "Değer"], detailRows, "meta");
+    const result = safeCall("buildSimpleHtmlTable", ["Taşınmazın Değeri", "Değer"], resultRows, "meta is-summary");
+    return [detail, result].filter(Boolean).join('<div class="table-spacer">&nbsp;</div>');
+  }
+
+  function halkbankComparableListTableHtml() {
+    const rows = Array.isArray(state.tables?.comparables) ? state.tables.comparables : [];
+    const filled = rows.filter((row) => Object.values(row || {}).some((value) => String(value || "").trim()));
+    if (!filled.length) return "";
+    const bodyRows = filled.map((row) => {
+      let metrics = {};
+      try { metrics = calculateComparableMetrics(row) || {}; } catch (error) { metrics = {}; }
+      const adjustments = [
+        Number.isFinite(metrics.featureAdjustment) ? `Özellik ${formatComparableSummarySignedPercent(metrics.featureAdjustment)}` : "",
+        Number.isFinite(metrics.locationAdjustment) ? `Konum ${formatComparableSummarySignedPercent(metrics.locationAdjustment)}` : "",
+      ].filter(Boolean).join(" / ");
+      return [
+        row.c23 || row.c4 || "",
+        row.c2 || "",
+        row.c14 || "",
+        row.c15 || "",
+        row.c24 || "-",
+        row.c13 || row.c12 || "-",
+        Number.isFinite(metrics.unitValue) ? formatComparableSummaryNumber(metrics.unitValue, { decimals: 2 }) : "",
+        adjustments,
+        Number.isFinite(metrics.adjustedUnitValue) ? formatComparableSummaryNumber(metrics.adjustedUnitValue, { decimals: 2 }) : "",
+      ];
+    });
+    return safeCall("buildSimpleHtmlTable", [
+      "Niteliği", "Durum", "İstenen Fiyat", "Pazarlıklı Fiyat", "Arsa Alanı", "Yapı Alanı", "Birim Fiyat", "Düzeltmeler", "Düzeltilmiş Birim Fiyat",
+    ], bodyRows, "is-summary", { compact: true });
+  }
+
+  function halkbankComparableRangeText() {
+    const rows = Array.isArray(state.tables?.comparables) ? state.tables.comparables : [];
+    const metrics = rows.map((row) => {
+      try { return calculateComparableMetrics(row) || {}; } catch (error) { return {}; }
+    });
+    const unitValues = metrics.map((item) => item.adjustedUnitValue).filter(Number.isFinite);
+    const saleValues = metrics.map((item) => item.saleValue).filter(Number.isFinite);
+    if (!unitValues.length && !saleValues.length) return "";
+    const lines = [];
+    if (unitValues.length) {
+      lines.push(`Emsal aralığı (birim fiyat): ${formatComparableSummaryNumber(Math.min(...unitValues), { decimals: 2 })} TL - ${formatComparableSummaryNumber(Math.max(...unitValues), { decimals: 2 })} TL`);
+    }
+    if (saleValues.length) {
+      lines.push(`Emsal aralığı (pazarlıklı fiyat): ${formatComparableSummaryMoney(Math.min(...saleValues))} TL - ${formatComparableSummaryMoney(Math.max(...saleValues))} TL`);
+    }
+    return textParagraphsHtml(lines.join("\n"));
+  }
+
   function firstPermitDocParts() {
     const rows = Array.isArray(state.tables?.documents) ? state.tables.documents : [];
     const hit = rows.find((row) => /ruhsat|kullanma|iskan|yap[ıi] kay[ıi]t/i.test(String(row?.c0 || "")));
@@ -149,6 +239,33 @@
     } catch (error) {
       return escapeHtml(value).replace(/\n/g, "<br />");
     }
+  }
+
+  let reportImageAssetsCache = [];
+
+  function reportImageHtml(key) {
+    const asset = reportImageAssetsCache.find((item) => item?.key === key);
+    if (!asset?.location) return "";
+    const title = escapeHtmlSafe(asset.title || "Rapor görseli");
+    return `<div style="margin:8pt 0 14pt;text-align:center;page-break-inside:avoid;">
+      <img src="${escapeHtmlSafe(asset.location)}" width="640" height="360" style="width:480pt;height:270pt;border:1pt solid #94a3b8;" alt="${title}">
+    </div>`;
+  }
+
+  function reportMapsSectionHtml() {
+    return `${reportMapSectionHtml("location", "Konu Taşınmaz Konum Haritası", "h2")}${reportMapSectionHtml("comparables", "Emsal Konum Krokisi", "h3")}`;
+  }
+
+  function reportMapSectionHtml(key, title, headingTag) {
+    const image = reportImageHtml(key);
+    if (!image) return "";
+    const tag = headingTag === "h2" ? "h2" : "h3";
+    return `<div class="pg-section report-maps-section">
+      <div class="report-map-figure" style="page-break-inside:avoid;break-inside:avoid;">
+        <${tag} style="page-break-after:avoid;break-after:avoid;">${title}</${tag}>
+        ${image}
+      </div>
+    </div>`;
   }
 
   function unitInteriorPlusDecorative() {
@@ -209,6 +326,14 @@
     MEVKII: { f: ["locationName"] },
     ADRES2025: { fn: () => safeCall("buildOpenAddressText") },
     ACIKADRES: { fn: () => safeCall("buildOpenAddressText") },
+    LOCATIONMAPIMAGE: { h: () => reportImageHtml("location") },
+    KONUMHARITASI: { h: () => reportImageHtml("location") },
+    COMPARABLESKETCHIMAGE: { h: () => reportImageHtml("comparables") },
+    EMSALKROKISI: { h: () => reportImageHtml("comparables") },
+    LOCATIONMAPSECTION: { h: () => reportMapSectionHtml("location", "Konu Taşınmaz Konum Haritası", "h2") },
+    COMPARABLESKETCHSECTION: { h: () => reportMapSectionHtml("comparables", "Emsal Konum Krokisi", "h3") },
+    REPORTMAPSSECTION: { h: reportMapsSectionHtml },
+    RAPORKROKILERI: { h: reportMapsSectionHtml },
 
     // --- Çevre / bölge ---
     ULASIMTARIFI: { t: () => field("transport") },
@@ -400,6 +525,7 @@
     DEGERLENDIRMESEMASI: { t: () => safeCall("buildValuationMethodsSchemeText") },
     DEGERLEMEYONTEMIACIKLAMASI: { t: () => safeCall("buildValuationMethodExplanation") },
     SATISKABILIYETIACIKLAMASI: { t: () => safeCall("buildValuationSaleabilityExplanationForExport") },
+    VALUATIONSALEABILITYEXPLANATION: { t: () => safeCall("buildValuationSaleabilityExplanationForExport") },
     KIRAACIKLAMASI: { t: () => safeCall("buildValuationRentExplanation") },
     EMLAKBEYANDEGERIACIKLAMASI: { t: () => safeCall("buildPropertyTaxDeclarationExplanationForExport") },
     KATBAZINDAINDIRGENMISALANTABLOSU: { h: () => safeCall("buildExplanationsFloorValuationWordTableHtml") },
@@ -421,6 +547,14 @@
     HALKBANKRISKKODLARITABLO: { h: () => safeCall("formatTextTableForWord", safeCall("buildHalkbankRiskCodesTableText")) },
     HALKBANKDEGERLEME: { t: () => field("saleabilityNote") || safeCall("buildValuationMethodExplanation") },
     HALKBANKPROJEUYGUNLUK: { t: () => field("projectReviewDescription") || safeCall("buildProjectReviewDescription") || field("projectConformity") },
+    HALKBANKDEGERLEMEDETAYTABLO: { h: halkbankValuationDetailsTableHtml },
+    HALKBANKEMSALLISTESITABLO: { h: halkbankComparableListTableHtml },
+    HALKBANKEMSALARALIGI: { h: halkbankComparableRangeText },
+    HALKBANKMERKEZBANKASIACIKLAMA: { t: () => field("halkbankCentralBankExplanation") },
+    HALKBANKILKSATISDURUMU: { fn: () => safeCall("gabimFirstSaleText") },
+    PENALTYDECISION: { f: ["penaltyDecision"] },
+    STATICSUITABILITY: { f: ["staticSuitability"] },
+    BUILDINGINSPECTIONCONTRACTACTIVE: { f: ["buildingInspectionContractActive"] },
 
     // --- Ziraat ek tablo ---
     ZRTYASAL: { m: ["legalValue"] },
@@ -601,10 +735,22 @@
     const response = await fetch(`${entry.file}?t=${Date.now()}`);
     if (!response.ok) throw new Error(`Şablon dosyası okunamadı: ${entry.file}`);
     const templateText = await response.text();
-    const { html, missing } = fillTemplate(templateText);
-    const fileName = `${safeCall("buildExportBaseFileName") || "rapor"}-${entry.key}.doc`;
-    safeCall("downloadTextFile", fileName, html, "application/msword;charset=utf-8");
-    return { fileName, missing, title: entry.title };
+    if (/\{\{\s*(?:REPORT_MAPS_SECTION|LOCATION_MAP_SECTION|COMPARABLE_SKETCH_SECTION|LOCATION_MAP_IMAGE|COMPARABLE_SKETCH_IMAGE)\s*\}\}/i.test(templateText)) {
+      safeCall("ensureReportMapImagesForExport");
+    }
+    const preparedAssets = await Promise.resolve(safeCall("buildSavedReportImageAssets"));
+    reportImageAssetsCache = Array.isArray(preparedAssets) ? preparedAssets : [];
+    try {
+      const { html, missing } = fillTemplate(templateText);
+      const fileName = `${safeCall("buildExportBaseFileName") || "rapor"}-${entry.key}.doc`;
+      const packaged = reportImageAssetsCache.length
+        ? safeCall("buildWordMhtmlPackage", html, reportImageAssetsCache)
+        : "";
+      safeCall("downloadTextFile", fileName, packaged || html, "application/msword;charset=utf-8");
+      return { fileName, missing, title: entry.title };
+    } finally {
+      reportImageAssetsCache = [];
+    }
   }
 
   window.RaporTemplates = {

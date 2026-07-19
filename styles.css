@@ -506,6 +506,59 @@ button {
   font-weight: 800;
 }
 
+.brand-mark-wrap {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.brand-settings-button {
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 2px solid var(--sidebar-ink);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.theme-settings-panel {
+  position: absolute;
+  top: 34px;
+  left: 34px;
+  z-index: 30;
+  width: 172px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: var(--shadow-2);
+}
+
+.theme-settings-panel[hidden] {
+  display: none;
+}
+
+.theme-settings-panel .theme-profile-control {
+  display: grid;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.theme-settings-panel .theme-profile-control select {
+  width: 100%;
+}
+
 .brand h1,
 .brand p,
 .topbar h2,
@@ -699,28 +752,30 @@ button {
 .status-strip {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-  margin: 20px 0 16px;
+  gap: 8px;
+  margin: 12px 0;
 }
 
 .status-strip article {
-  min-height: 78px;
+  min-height: 54px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  padding: 14px;
+  padding: 8px 10px;
   background: var(--surface);
 }
 
 .status-strip span {
   display: block;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 10px;
+  line-height: 1.2;
 }
 
 .status-strip strong {
   display: block;
-  margin-top: 8px;
-  font-size: 18px;
+  margin-top: 4px;
+  font-size: 14px;
+  line-height: 1.25;
 }
 
 .mobile-flow {
@@ -4575,7 +4630,7 @@ td textarea.table-textarea {
 
   .topbar-actions {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr);
     width: 100%;
     gap: 8px;
   }
@@ -4593,17 +4648,17 @@ td textarea.table-textarea {
   }
 
   .status-strip article {
-    min-height: 64px;
-    padding: 10px;
+    min-height: 50px;
+    padding: 8px;
   }
 
   .status-strip span {
-    font-size: 11px;
+    font-size: 10px;
   }
 
   .status-strip strong {
-    margin-top: 5px;
-    font-size: 15px;
+    margin-top: 4px;
+    font-size: 13px;
   }
 
   .placeholder-toolbar {
@@ -4948,7 +5003,7 @@ td textarea.table-textarea {
   }
 
   .topbar-actions {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: 1fr;
     display: grid;
   }
 
@@ -5742,6 +5797,13 @@ a:focus-visible,
   color: var(--red);
 }
 
+.library-missing-fields {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 .library-card-facts {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -6045,6 +6107,19 @@ a:focus-visible,
   white-space: nowrap;
 }
 
+.library-sign-out-button {
+  border-color: rgba(178, 52, 52, 0.35) !important;
+  background: #fdf0f0 !important;
+  color: var(--red) !important;
+}
+
+.library-sign-out-corner {
+  position: fixed;
+  right: 24px;
+  bottom: 20px;
+  z-index: 101;
+}
+
 .library-continue-button {
   white-space: nowrap;
 }
@@ -6066,6 +6141,11 @@ a:focus-visible,
   .library-account-strip {
     justify-content: space-between;
   }
+
+  .library-sign-out-corner {
+    right: 12px;
+    bottom: 12px;
+  }
 }
 
 .library-page .library-modal-body {
@@ -6076,7 +6156,7 @@ a:focus-visible,
    GİRİŞ KAPISI ARKA PLANI — "blueprint sahne" (2026-07-11)
    Kaynak: kullanıcının ayrı bir oturumda ui-ux-pro-max skill ile
    hazırlattığı giriş sayfası arka plan tasarımı (blueprint
-   illüstrasyon + açık/koyu tema anahtarı + parçacıklar).
+   illüstrasyon + parçacıklar).
    Yalnızca #authGateOverlay içine uygulanır; uygulamanın geri kalan
    teması / diğer ekranlar bundan ETKİLENMEZ (izole, kapıya özel).
    #authGateOverlay'ın satır içi (inline) arka plan rengi, bu CSS
@@ -6122,17 +6202,6 @@ a:focus-visible,
   transition: opacity 0.4s ease;
 }
 
-#authGateOverlay[data-gate-theme="light"] .gate-scene {
-  background: linear-gradient(160deg, #eef3f9, #f9fbfd);
-}
-
-#authGateOverlay[data-gate-theme="light"] .gate-blueprint {
-  background-image: linear-gradient(rgba(11, 61, 117, 0.07) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(11, 61, 117, 0.07) 1px, transparent 1px);
-  opacity: 0.18;
-  filter: none;
-}
-
 #authGateOverlay .gate-vignette {
   position: absolute;
   inset: 0;
@@ -6141,10 +6210,6 @@ a:focus-visible,
   pointer-events: none;
   z-index: 2;
   transition: background 0.4s ease;
-}
-
-#authGateOverlay[data-gate-theme="light"] .gate-vignette {
-  background: radial-gradient(circle at 50% 42%, transparent 40%, #eef3f9 128%);
 }
 
 #authGateOverlay .gate-particles {
@@ -6162,63 +6227,6 @@ a:focus-visible,
   background: #ffffff;
   animation: gateFloat var(--t, 8s) ease-in-out infinite alternate;
   opacity: var(--o, 0.2);
-}
-
-#authGateOverlay[data-gate-theme="light"] .gate-particle {
-  background: #06244c;
-}
-
-#authGateOverlay .gate-theme-toggle {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  z-index: 20;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  background: rgba(255, 255, 255, 0.06);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  transition: background 0.3s ease, border-color 0.3s ease;
-}
-
-#authGateOverlay[data-gate-theme="light"] .gate-theme-toggle {
-  border-color: rgba(6, 36, 76, 0.14);
-  background: rgba(255, 255, 255, 0.7);
-}
-
-#authGateOverlay .gate-theme-toggle button {
-  all: unset;
-  width: 26px;
-  height: 26px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  color: rgba(255, 255, 255, 0.6);
-  cursor: pointer;
-  transition: background 0.2s ease, color 0.2s ease;
-}
-
-#authGateOverlay[data-gate-theme="light"] .gate-theme-toggle button {
-  color: rgba(10, 37, 71, 0.55);
-}
-
-#authGateOverlay .gate-theme-toggle button[aria-pressed="true"] {
-  background: #ffffff;
-  color: #111d3d;
-}
-
-#authGateOverlay[data-gate-theme="light"] .gate-theme-toggle button[aria-pressed="true"] {
-  background: #06244c;
-  color: #f7fafd;
-}
-
-#authGateOverlay .gate-theme-toggle svg {
-  width: 14px;
-  height: 14px;
 }
 
 #authGateContent .gate-card {
@@ -6370,13 +6378,6 @@ a:focus-visible,
   to {
     opacity: 1;
     transform: translateY(0);
-  }
-}
-
-@media (max-width: 420px) {
-  #authGateOverlay .gate-theme-toggle {
-    top: 10px;
-    right: 10px;
   }
 }
 

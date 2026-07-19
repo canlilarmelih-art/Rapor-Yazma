@@ -506,7 +506,7 @@
         }
       })();
     </script><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="styles.css?v=20260718-1160" />
+    <link rel="stylesheet" href="styles.css?v=20260719-1530" />
     <link rel="stylesheet" href="themes/navy-blue.css?v=20260713-0200" />
     <link rel="stylesheet" href="themes/apple.css?v=20260713-0200" />
     <link rel="stylesheet" href="themes/glass.css?v=20260717-1830" />
@@ -539,32 +539,20 @@
       </div>
     </div>
     <script>
-      // Giriş kapısı arka plan sahnesi (blueprint illüstrasyon + açık/koyu tema
-      // anahtarı + parçacıklar). #authGateOverlay'in kendisi hâlâ satır içi
+      // Giriş kapısı arka plan sahnesi (blueprint illüstrasyon + parçacıklar).
+      // #authGateOverlay'in kendisi hâlâ satır içi
       // (inline) opak arkaplanla ilk boyamadan itibaren engelleyicidir; bu
       // script yalnızca üzerine binen görsel katmanı ekler, Firebase/cloud-sync
       // yüklenmesini beklemez.
       (function () {
         var overlay = document.getElementById("authGateOverlay");
         if (!overlay) return;
-        var THEME_KEY = "rapor-gate-theme";
-        var lightBtn, darkBtn;
         var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent || "")
           || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
         if (isIOS) {
           overlay.setAttribute("data-ios-lite", "true");
           document.documentElement.className += " ios-lite";
         }
-
-        function setGateTheme(theme) {
-          overlay.setAttribute("data-gate-theme", theme);
-          if (lightBtn) lightBtn.setAttribute("aria-pressed", String(theme === "light"));
-          if (darkBtn) darkBtn.setAttribute("aria-pressed", String(theme === "dark"));
-          try { localStorage.setItem(THEME_KEY, theme); } catch (e) {}
-        }
-
-        var saved = "dark";
-        try { saved = localStorage.getItem(THEME_KEY) || "dark"; } catch (e) {}
 
         var scene = document.createElement("div");
         scene.className = "gate-scene";
@@ -574,22 +562,8 @@
           "</video>") +
           '<div class="gate-blueprint"></div>' +
           '<div class="gate-particles"></div>' +
-          '<div class="gate-vignette"></div>' +
-          '<div class="gate-theme-toggle" role="group" aria-label="Tema seçimi">' +
-          '<button type="button" data-gate-theme-btn="light" aria-label="Açık tema" title="Açık tema">' +
-          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 2.5v2.5M12 19v2.5M4.2 4.2l1.8 1.8M18 18l1.8 1.8M2.5 12H5M19 12h2.5M4.2 19.8l1.8-1.8M18 6l1.8-1.8"/></svg>' +
-          "</button>" +
-          '<button type="button" data-gate-theme-btn="dark" aria-label="Koyu tema" title="Koyu tema">' +
-          '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5 8.5 8.5 0 1 0 20.5 14.5Z"/></svg>' +
-          "</button>" +
-          "</div>";
+          '<div class="gate-vignette"></div>';
         overlay.insertBefore(scene, overlay.firstChild);
-
-        lightBtn = scene.querySelector('[data-gate-theme-btn="light"]');
-        darkBtn = scene.querySelector('[data-gate-theme-btn="dark"]');
-        setGateTheme(saved);
-        lightBtn.addEventListener("click", function () { setGateTheme("light"); });
-        darkBtn.addEventListener("click", function () { setGateTheme("dark"); });
 
         var particlesHost = scene.querySelector(".gate-particles");
         for (var i = 0; !isIOS && i < 10; i++) {
@@ -679,7 +653,23 @@
           &lsaquo;
         </button>
         <div class="brand">
-          <div class="brand-mark">RY</div>
+          <div class="brand-mark-wrap">
+            <div class="brand-mark">RY</div>
+            <button class="brand-settings-button" id="themeSettingsBtn" type="button" aria-label="Tema ayarları" aria-expanded="false" aria-controls="themeSettingsPanel" title="Tema ayarları">&#9881;</button>
+            <div class="theme-settings-panel" id="themeSettingsPanel" hidden>
+              <label class="theme-profile-control" for="themeProfileSelect">
+                <span>Tema</span>
+                <select id="themeProfileSelect" aria-label="Tema">
+                  <option value="apple">Apple</option>
+                  <option value="navy-blue">Navy Blue</option>
+                  <option value="glass">Glass</option>
+                  <option value="aurora">Aurora</option>
+                  <option value="clay">Clay</option>
+                  <option value="neumorphism">Neumorphism</option>
+                </select>
+              </label>
+            </div>
+          </div>
           <div>
             <h1>Rapor Yazma</h1>
             <p>Mobil saha, masaüstü tamamlama</p>
@@ -708,17 +698,6 @@
             <h2 id="caseTitle">Yeni Ekspertiz Raporu</h2>
           </div>
           <div class="topbar-actions">
-            <label class="theme-profile-control" for="themeProfileSelect">
-              <select id="themeProfileSelect" aria-label="Tema">
-                <option value="apple">Apple</option>
-                <option value="navy-blue">Navy Blue</option>
-                <option value="glass">Glass</option>
-                <option value="aurora">Aurora</option>
-                <option value="clay">Clay</option>
-                <option value="neumorphism">Neumorphism</option>
-              </select>
-            </label>
-            <button class="ghost-button" id="newCaseBtn" type="button">Yeni iş</button>
             <button class="primary-button" id="saveBtn" type="button">Kaydet</button>
           </div>
         </header>
@@ -770,17 +749,17 @@
     <script src="src/land/minimum-parcel-sizes.js?v=20260711-0400"></script>
     <script src="src/value-factors/value-factors-rules.js?v=20260707-1050"></script>
     <script src="src/land/climate-earthquake-data.js?v=20260712-1720"></script>
-    <script src="app.js?v=20260719-1145"></script>
+    <script src="app.js?v=20260719-2000"></script>
     <script src="src/exports/export-validation.js?v=20260716-1845"></script>
     <!-- Banka şablonlarıyla dışa aktarma: app.js'ten SONRA yüklenmeli (global'leri çağrı anında kullanır). -->
-    <script src="src/templates/template-engine.js?v=20260718-1510"></script>
+    <script src="src/templates/template-engine.js?v=20260719-2045"></script>
     <!-- Bulut senkron (Faz 1): app.js'ten SONRA yüklenmeli; yapılandırma yoksa pasif kalır. -->
     <script src="vendor/firebase/firebase-app-compat.js?v=11.10.0"></script>
     <script src="vendor/firebase/firebase-auth-compat.js?v=11.10.0"></script>
     <script src="vendor/firebase/firebase-firestore-compat.js?v=11.10.0"></script>
     <script src="cloud/firebase-config.js?v=20260709-1854"></script>
-    <script src="cloud/cloud-sync.js?v=20260711-1539"></script>
-    <script src="cloud/report-library.js?v=20260716-1825"></script>
+    <script src="cloud/cloud-sync.js?v=20260719-1505"></script>
+    <script src="cloud/report-library.js?v=20260719-1530"></script>
     <script>
       // PWA (Faz 3): service worker YALNIZCA "güvenli bağlam"da (https: veya
       // localhost/127.0.0.1) kaydolabilir — tarayıcı kuralı budur, bizim

@@ -410,6 +410,15 @@
     document.querySelector("#cloudModalOverlay")?.remove();
   }
 
+  async function signOutAndClearLocalData() {
+    if (!cloud.auth) return false;
+    await cloud.auth.signOut();
+    purgeLocalReportData();
+    closeCloudModal();
+    window.location.reload();
+    return true;
+  }
+
   function modalShell(bodyHtml) {
     closeCloudModal();
     const overlay = document.createElement("div");
@@ -516,7 +525,6 @@
       <div class="cloud-modal-actions">
         <button type="button" class="primary-button" id="cloudPushNow">Bu Raporu Şimdi Gönder</button>
         <button type="button" class="ghost-button" id="cloudPullNow">Bu Raporu Buluttan Yenile</button>
-        <button type="button" class="ghost-button" id="cloudSignOut">Çıkış Yap</button>
       </div>`);
 
     overlay.querySelector("#cloudPushNow").addEventListener("click", async () => {
@@ -546,13 +554,6 @@
         document.querySelector("#libraryButton")?.click();
       });
       hintOverlay.querySelector("#cloudDismissHint").addEventListener("click", closeCloudModal);
-    });
-    overlay.querySelector("#cloudSignOut").addEventListener("click", async () => {
-      if (!window.confirm("Çıkış yapılacak ve bu cihazdaki yerel rapor verileri (bu cihaza özgü kopyalar) silinecek. Devam edilsin mi?")) return;
-      await cloud.auth.signOut();
-      purgeLocalReportData();
-      closeCloudModal();
-      window.location.reload();
     });
   }
 
@@ -765,6 +766,7 @@
   async function handleAuthState(user) {
     cloud.user = user || null;
     firstAuthCheckDone = true;
+    window.RaporThemeProfile?.applyForCurrentUser?.();
     if (!user) {
       cloud.knownRev = 0;
       cloud.lastPushedUpdatedAt = null;
@@ -828,6 +830,7 @@
     extendReportExpiry,
     getDailyPushCount,
     openCloudModal,
+    signOutAndClearLocalData,
     onAuthChange,
     getIdToken,
     getStatus: () => ({

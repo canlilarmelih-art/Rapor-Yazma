@@ -1,9 +1,138 @@
 # Rapor Yazma Programı — Handoff Notu
 
-Son güncelleme: 2026-07-19 · Servis edilen sürüm: **app.js?v=20260719-1145** (styles.css?v=20260718-1160, src/templates/template-engine.js?v=20260718-1510, cloud/cloud-sync.js?v=20260709-2247, cloud/report-library.js?v=20260710-1626, halkbank-risk-rules.js?v=20260707-1812)
+Son güncelleme: 2026-07-19 · Servis edilen sürüm: **app.js?v=20260719-2000** (styles.css?v=20260719-1530, src/templates/template-engine.js?v=20260719-2045, cloud/cloud-sync.js?v=20260719-1505, cloud/report-library.js?v=20260719-1530, halkbank-risk-rules.js?v=20260707-1812)
 
 Bu belge, bir sonraki geliştirici/oturum için projeyi çalıştırma, doğrulama ve bu
 oturumda yapılanları özetler.
+
+## 0.0.185 - 2026-07-19 - Halkbank açıklama tekrarları tamamlandı
+
+- İncelenen Belgeler açıklaması yalnız Tapu Rapor Özellikleri altında bırakıldı; üst bölümde yalnız veri tablosu korunur.
+- Bina kat dağılımı placeholder'ı `{{BUİLDİNG_FLOOR_SUMMARY_TEXT}}` olarak düzeltildi.
+- İç özellik metni dekoratif özellikleri zaten içerdiğinden ikinci `UNIT_DECORATIVE_DESCRIPTION_TEXT` çıktısı kaldırıldı.
+- Merkez Bankası açıklaması sabit metne çevrildi. Kira açıklaması Değerleme bölümünden çıkarılıp yalnız Önemli Not ve Sonuç Cümlesinde bırakıldı.
+- Emsal krokisi emsal açıklamasının hemen altına taşındı; Emsaller başlığının zorunlu yeni sayfa kuralı korundu.
+
+---
+
+## 0.0.184 - 2026-07-19 - Halkbank rapor akışı sadeleştirildi
+
+- Halkbank tablo hücrelerinin dikey dolguları yüzde 30 azaltıldı; Malikler tablosu tapu İl/İlçe bilgilerinden önceye taşındı.
+- Üst bölümlerde yinelenen imar, proje, ruhsat, ana gayrimenkul, iç özellik ve tefrişat açıklamaları kaldırıldı; alt açıklama bölümleri korundu.
+- Bina kat dağılımı özeti ayrı satıra alındı. Önemli Not ve Sonuç Cümlesinin sonuna satış kabiliyeti ile kira açıklamaları eklendi.
+- İncelenen belgeler metni EKB açıklamasını zaten içerdiği için doğrudan EKB placeholder tekrarları ve görselde işaretlenen Halkbank özel emsal listesi kaldırıldı.
+- Cache-buster: `src/templates/template-engine.js?v=20260719-2045`.
+
+---
+
+## 0.0.183 - 2026-07-19 - Konum ve emsal krokileri rapor akışında ayrıldı
+
+- Konum krokisi sekiz banka şablonunda adres/konum verilerinin altında kalır.
+- Emsal krokisi artık birleşik konum bloğundan çıkarılıp her şablonda Emsaller bölümünün en altına yerleştirilir.
+- Şablon motoruna `LOCATION_MAP_SECTION` ve `COMPARABLE_SKETCH_SECTION` alanları eklendi; eski birleşik alan yalnızca geriye dönük uyumluluk için korunur.
+- Cache-buster: `src/templates/template-engine.js?v=20260719-2015`.
+
+---
+
+## 0.0.182 - 2026-07-19 - Kroki viewport ve Word yerleşimi düzeltildi
+
+- Konum krokisi JPEG çıktısında yalnızca kaydedilen harita viewport'u içinde bulunan POI noktaları çizilir; ekran dışında kalan noktalar artık kenara sıkıştırılmış etiket olarak görünmez.
+- Konum ve emsal krokisi başlıkları kendi görselleriyle `page-break-inside:avoid` gruplarında tutulur; zorunlu yeni sayfa kaldırılmıştır.
+- Kroki bölümü sekiz tam banka şablonunda adres ve konum verilerinin hemen altına taşınmıştır.
+- Cache-buster: `app.js?v=20260719-2000`, `src/templates/template-engine.js?v=20260719-2000`.
+
+---
+
+---
+## 0.0.181 - 2026-07-19 - Konum krokisi etiketleri kaydedilen görünüme eşitlendi
+
+- Konum haritası kaydına Leaflet merkez/zoom değerlerinin yanında görünür harita panelinin piksel genişliği ve yüksekliği de eklenir.
+- Word/JPG konum krokisi etiketleri sabit `30px/22px` yerine ekrandaki `12px/11px` etiketlerden türetilir; çıktı canvası ile kaydedilen viewport arasındaki oran font, kutu, marker ve leader çizgilerine uygulanır.
+- Kaydetme anındaki 16:9 görünüm, merkez ve zoom değişmeden Word görseline taşınır. Emsal krokisinin mevcut başarılı çizim değerleri korunur.
+- Cache-buster: `app.js?v=20260719-1930`.
+
+---
+## 0.0.180 - 2026-07-19 - Word krokileri sabit 16:9 ve otomatik kayıt kontrollü
+
+- Kullanıcının ilettiği Kuveyt Türk Word çıktısında gömülü JPEG'in `1200x675` olduğu, ancak HTML görsel etiketinde yükseklik bulunmadığı için Word tarafından uzatıldığı tespit edildi.
+- Konum haritası ve emsal krokisi rapor görselleri daima `1200x675` canvas üzerinde üretilir; Word'de `640x360` piksel ve `480x270 pt` ölçüleri birlikte verilerek oran iki düzeyde sabitlenir.
+- Genel Word ve banka şablonu çıktılarından önce kroki kayıtları kontrol edilir. Eksikse kullanıcı bilgilendirilir; koordinatlar mevcutsa 16:9 görünüm ayarları otomatik kaydedilir ve çıktı üretimi devam eder.
+- Koordinat verisi bulunmayan görsel otomatik üretilemezse aynı uyarıda açıkça belirtilir; mevcut diğer krokiyle rapor üretimi sürer.
+- Cache-buster: `app.js?v=20260719-1910`, `src/templates/template-engine.js?v=20260719-1910`.
+
+---
+## 0.0.179 - 2026-07-19 - Konum haritası ve emsal krokisi Word'e gömüldü
+
+- Adres ve Konum bölümüne `Haritayı Kaydet`, Emsaller bölümüne `Krokiyi Kaydet` komutları eklendi. Kayıt; merkez, yakınlaştırma, görünüm tipi, oran ve etiket tercihini saklar, taslağa büyük base64 veri yazmaz.
+- Banka şablon motoruna `LOCATION_MAP_IMAGE`, `COMPARABLE_SKETCH_IMAGE` ve koşullu `REPORT_MAPS_SECTION` görsel alanları eklendi; sekiz tam banka raporu bu bölümü kullanır.
+- Banka Word çıktıları artık harita JPEG'lerini `multipart/related` MHTML içeriğine gerçek dosya parçaları olarak gömer. Word'ün desteklemediği canlı Leaflet/canvas veya kırılgan `data:image` kullanımı kaldırıldı.
+- Genel Word çıktısı da kaydedilmiş gerçek harita/kroki görüntülerini tercih eder; kayıt yoksa mevcut koordinat krokisi geriye dönük olarak korunur.
+- Cache-buster: `app.js?v=20260719-1830`, `src/templates/template-engine.js?v=20260719-1830`.
+
+---
+## 0.0.178 - 2026-07-19 - Halkbank rapor formatı INVEX ekranlarına uyarlandı
+
+- Halkbank Word şablonu dokuz referans görseldeki akışa göre; konum/adres, tapu, takyidat, imar, incelenen belgeler, ruhsat-dosya kontrolleri, gayrimenkul özellikleri, tapu rapor özellikleri, risk kodları, değerleme ve emsaller sırasıyla yeniden düzenlendi.
+- Proje inceleme, incelenen belgeler, EKB, cezai karar, statik uygunluk ve yapı denetim açıklamaları ayrı alanlar halinde rapora aktarılır.
+- HB8 ekranındaki değer kırılımları için Halkbank özel değerleme detay tablosu; HB9 ekranındaki dokuz sütunlu görünüm ve hesaplanan fiyat aralıkları için Halkbank özel emsal listesi üretildi.
+- Merkez Bankası açıklaması sabit yönlendirme metni olmaktan çıkarıldı; Açıklamalar bölümüne kullanıcı tarafından doldurulabilen `halkbankCentralBankExplanation` alanı eklendi.
+- Cache-buster: `app.js?v=20260719-1700`, `src/templates/template-engine.js?v=20260719-1700`.
+
+---
+## 0.0.177 - 2026-07-19 - Taleplerim çıkış komutu sağ alta taşındı
+
+- Taleplerim ekranındaki çıkış komutu hesap satırından ayrıldı.
+- `Çıkış Yap` düğmesi ekranın sağ alt köşesine sabitlenir; sayfa kaydırılsa da erişilebilir kalır.
+- Cache-buster: `styles.css?v=20260719-1530`, `cloud/report-library.js?v=20260719-1530`.
+
+---
+## 0.0.176 - 2026-07-19 - Taleplerim geçişi ve çıkış noktası düzeltildi
+
+- `Taleplerim` düğmesi kaldırılan `Yeni İş` düğmesine bağlı olmaktan çıkarıldı; aktif iş dosyası üst çubuğunda Kaydet düğmesinin önünde kalıcı olarak görünür.
+- Bulut hesabı penceresindeki `Çıkış Yap` düğmesi kaldırıldı.
+- Çıkış işlemi, Taleplerim ana sayfasındaki hesap satırına taşındı; mevcut yerel rapor temizleme ve oturum kapatma davranışı korunur.
+- Cache-buster: `styles.css?v=20260719-1505`, `cloud/cloud-sync.js?v=20260719-1505`, `cloud/report-library.js?v=20260719-1505`.
+
+---
+## 0.0.175 - 2026-07-19 - Aktif iş özeti sıkılaştırıldı
+
+- Aktif iş dosyasındaki dört kartlı durum şeridinin boşlukları, yüksekliği ve yazı boyutları küçültüldü.
+- Özet şeridindeki banka adı kısa adla gösterilir: örneğin Kuveyt Türk, Halkbank, Akbank, İş Bankası ve VakıfBank.
+- Resmi banka unvanı rapor verisinde, formda ve şablonlarda değişmeden korunur.
+- Cache-buster: `app.js?v=20260719-1442`, `styles.css?v=20260719-1442`.
+
+---
+## 0.0.174 - 2026-07-19 - Tema ayarları kullanıcı hesabına taşındı
+
+- Üst araç çubuğundaki tema seçicisi ve `Yeni İş` düğmesi kaldırıldı; aktif iş dosyasında yalnızca kaydet komutu kaldı.
+- Tema seçimi, RY işaretinin sağ altındaki küçük ayar düğmesinden açılır.
+- Tema tercihi giriş yapan kullanıcının e-posta anahtarıyla yerel olarak saklanır; giriş veya hesap değişiminde o kullanıcının tercihi otomatik uygulanır.
+- Cache-buster: `app.js?v=20260719-1424`, `styles.css?v=20260719-1410`, `cloud/cloud-sync.js?v=20260719-1410`.
+
+---
+## 0.0.173 - 2026-07-19 - Bulut belge rozetleri veri alanlarından doğrulanıyor
+
+- Buluttaki eski raporlarda dosya fiziksel olarak aktarılmasa bile, ilgili belgenin rapora aktardığı alanlar doluysa belge rozeti yeşil görünür.
+- TAKBİS, adres kodu, imar, EKB ve KML için ilgili rapor alanları ayrı ayrı değerlendirilir; mevcut `documentStatus` bilgisi korunur.
+- EKB alanında `Hayır` seçilmesi de geçerli inceleme sonucu kabul edilir ve eksik alan sayacına eklenmez.
+- Karttaki belge rozetlerinin yanında `Eksik Alan = x` sayacı gösterilir.
+- Cache-buster: `cloud/report-library.js?v=20260719-1336`.
+
+---
+## 0.0.172 - 2026-07-19 - Giriş sonrası varsayılan ekran Taleplerim oldu
+
+- `sessionStorage` ile yalnızca bir kez çalışan giriş ekranı otomasyonu kaldırıldı.
+- Kimlik doğrulama tamamlandığında kullanıcı doğrudan `Taleplerim` ekranına gider; buradan mevcut talebi seçebilir veya yeni talep oluşturabilir.
+- Kullanıcı zaten Taleplerim ekranındaysa tekrar açılmaz; açık raporla çalışırken yalnızca gerçek oturum açma eylemi yönlendirme yapar.
+- Cache-buster: `cloud/report-library.js?v=20260719-1214`.
+
+---
+## 0.0.171 - 2026-07-19 - Giriş ekranı tema anahtarı kaldırıldı
+
+- Giriş kapısındaki gece/gündüz tema anahtarı ve tema tercihini `localStorage`'da saklayan kod kaldırıldı.
+- Giriş ekranı sabit koyu görünümde kalır; uygulama içi tema profil seçicisi bu değişiklikten etkilenmez.
+- Anahtara ve açık tema varyantına özel CSS temizlendi.
+- Cache-buster: `styles.css?v=20260719-1203`.
 
 ---
 ## 0.0.170 - 2026-07-19 - iOS açılış çökmesinde büyük veri ön yüklemesi kaldırıldı
@@ -1563,7 +1692,8 @@ GERÇEKTEN yeni bir tarayıcı sekmesi/oturumu açıldığında bir kez gösteri
   `cloneReport`, `fetchCloudReportAndOpen` — geriye dönük uyumlu, eksikse
   "draft" varsayılır); yeni `toggleStatus`, `formatDeadlineBadge`,
   `computeStatusCounts`, `renderStatusFilterChips`,
-  `maybeAutoShowDashboardOnFreshSession` fonksiyonları; etiket metinleri
+  `openDashboardAfterAuthentication` fonksiyonu (önceki sessionStorage tabanlı
+  otomasyon 0.0.172'de bununla değiştirildi); etiket metinleri
   güncellendi.
 - **`styles.css`**: `.library-status-filter`/`.library-filter-chip`,
   `.library-status-pill` (`.is-draft`/`.is-completed`), `.library-badge-danger`,

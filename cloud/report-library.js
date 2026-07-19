@@ -24,12 +24,6 @@
   const BLOB_PREFIX = "rapor-library-report-";
   const BLOB_SCHEMA = "rapor-yazma-programi-state";
   const QUICK_LEGAL_USAGE_OPTIONS = ["", "Konut", "İşyeri", "Ofis", "Arsa", "Arazi", "Ticari Bina", "Sanayi Tesisi"];
-  // Faz 3.1: "Taleplerim" ekranı sistem açılışında bir kez otomatik gösterilir.
-  // sessionStorage kasıtlı seçildi (localStorage değil): sekme kapanınca
-  // sıfırlanır ama AYNI sekmede yapılan cache-buster Ctrl+F5 yenilemelerinde
-  // kalıcıdır — kullanıcı rapor üzerinde çalışırken her yenilemede ekranın
-  // önüne düşüp işini bölmez, yalnızca gerçekten yeni bir oturumda görünür.
-  const DASHBOARD_SESSION_FLAG_KEY = "rapor-dashboard-shown-this-session";
   const LIBRARY_VIEW_MODE_KEY = "rapor-library-view-mode";
 
   function hasAppGlobals() {
@@ -147,6 +141,33 @@
       return getReportCompletionStats(blob.state).meetsMinimum;
     }
     return isMinimumCompleteSummary(entry.summary);
+  }
+
+  function hasMeaningfulValue(value) {
+    if (Array.isArray(value)) return value.some(hasMeaningfulValue);
+    if (value && typeof value === "object") return Object.values(value).some(hasMeaningfulValue);
+    return String(value ?? "").trim().length > 0;
+  }
+
+  function deriveDocumentStatus(status = {}, fields = {}) {
+    // Dosyalar KVKK nedeniyle buluta gitmez. Buluttan geri gelen eski kayıtlarda
+    // belge bayrağı eksikse, belgenin rapora aktardığı alanlar durumu korur.
+    const hasAnyField = (keys) => keys.some((key) => hasMeaningfulValue(fields[key]));
+    return {
+      takbis: Boolean(status.takbis) || hasAnyField([
+        "titleAdaParsel", "titleNeighborhood", "titleOwnershipKind", "titlePropertyType", "takbisReportDate", "takbisDate",
+      ]),
+      address: Boolean(status.address) || hasAnyField([
+        "uavt", "addressRaw", "postalCode", "addressFloor", "outerDoor", "innerDoor",
+      ]),
+      imar: Boolean(status.imar) || hasAnyField([
+        "imarInfoInstitution", "planScale", "planDate", "planName", "taks", "kaks", "hmax", "floorCount",
+      ]),
+      ekb: Boolean(status.ekb) || ["Evet", "Hayır"].includes(String(fields.hasEkb || "").trim()) || hasAnyField([
+        "ekbDocumentNo", "ekbIssueDate", "ekbValidUntil", "ekbEnergyClass", "ekbEmissionClass",
+      ]),
+      kml: Boolean(status.kml) || (hasMeaningfulValue(fields.latitude) && hasMeaningfulValue(fields.longitude)),
+    };
   }
 
   function buildBlobFromActiveState() {
@@ -355,15 +376,16 @@
   }
 
   function injectLibraryButton() {
-    const newCaseBtn = document.querySelector("#newCaseBtn");
-    if (!newCaseBtn || document.querySelector("#libraryButton")) return;
+    const actions = document.querySelector(".topbar-actions");
+    const saveButton = document.querySelector("#saveBtn");
+    if (!actions || !saveButton || document.querySelector("#libraryButton")) return;
     const button = document.createElement("button");
     button.type = "button";
     button.id = "libraryButton";
     button.className = "ghost-button";
     button.textContent = "Taleplerim";
     button.addEventListener("click", openDashboard);
-    newCaseBtn.insertAdjacentElement("afterend", button);
+    actions.insertBefore(button, saveButton);
   }
 
   function formatRelativeUpdatedAt(iso) {
@@ -447,7 +469,7 @@
     return haystack.includes(folded(query));
   }
 
-  function renderDocumentStatus(status = {}) {
+  function renderDocumentStatus(status = {}, fields = {}) {
     const items = [
       ["takbis", "T", "TAKBİS PDF"],
       ["address", "U", "Adres Kodu PDF"],
@@ -455,8 +477,10 @@
       ["ekb", "E", "Enerji Kimlik Belgesi"],
       ["kml", "K", "KML / Konum"],
     ];
-    return `<span class="library-document-status" aria-label="Yüklenen belgeler">${items.map(([key, label, title]) => `
-      <span class="library-document-status-item ${status[key] ? "is-uploaded" : "is-missing"}" title="${title}: ${status[key] ? "Yüklendi" : "Yüklenmedi"}" aria-label="${title}: ${status[key] ? "Yüklendi" : "Yüklenmedi"}">${label}</span>`).join("")}</span>`;
+    const resolvedStatus = deriveDocumentStatus(status, fields);
+    const missingCount = items.filter(([key]) => !resolvedStatus[key]).length;
+    return `<span class="library-document-status" aria-label="Yüklenen belgeler, Eksik Alan = ${missingCount}">${items.map(([key, label, title]) => `
+      <span class="library-document-status-item ${resolvedStatus[key] ? "is-uploaded" : "is-missing"}" title="${title}: ${resolvedStatus[key] ? "Yüklendi" : "Yüklenmedi"}" aria-label="${title}: ${resolvedStatus[key] ? "Yüklendi" : "Yüklenmedi"}">${label}</span>`).join("")}<span class="library-missing-fields">Eksik Alan = ${missingCount}</span></span>`;
   }
 
   function cardHtml(entry) {
@@ -464,7 +488,7 @@
     const isActive = entry.reportId === state.reportId;
     const isCompleted = entry.status === "completed";
     const safe = (value) => escapeHtml(String(value || "-"));
-    const documentStatus = renderDocumentStatus(s.documentStatus);
+    const documentStatus = renderDocumentStatus(s.documentStatus, entry.fields);
     return `
       <article class="library-card${isActive ? " is-active" : ""}" data-report-id="${escapeHtml(entry.reportId)}">
         <header class="library-card-head">
@@ -499,7 +523,7 @@
   function cloudOnlyCardHtml(reportId, cloudData) {
     const s = cloudData.summary || {};
     const safe = (value) => escapeHtml(String(value || "-"));
-    const documentStatus = renderDocumentStatus(s.documentStatus);
+    const documentStatus = renderDocumentStatus(s.documentStatus, cloudData.payload?.fields);
     return `
       <article class="library-card library-card-cloud-only" data-report-id="${escapeHtml(reportId)}">
         <header class="library-card-head">
@@ -659,10 +683,20 @@
     const strip = document.querySelector("#libraryAccountStrip");
     if (!strip) return;
     strip.innerHTML = renderAccountStripHtml();
-    strip.querySelector("#libraryAccountAction")?.addEventListener("click", () => {
+    const signOutSlot = document.querySelector("#librarySignOutSlot");
+    if (signOutSlot) signOutSlot.innerHTML = renderSignOutCornerHtml();
+    bindAccountStripActions(document.querySelector("#libraryModalOverlay") || strip);
+    renderDashboardBody(); // bulut rozetleri de yeni oturuma göre tazelensin
+  }
+
+  function bindAccountStripActions(scope) {
+    scope.querySelector("#libraryAccountAction")?.addEventListener("click", () => {
       window.RaporCloudSync?.openCloudModal();
     });
-    renderDashboardBody(); // bulut rozetleri de yeni oturuma göre tazelensin
+    scope.querySelector("#librarySignOut")?.addEventListener("click", async () => {
+      if (!window.confirm("Çıkış yapılacak ve bu cihazdaki yerel rapor verileri silinecek. Devam edilsin mi?")) return;
+      await window.RaporCloudSync?.signOutAndClearLocalData?.();
+    });
   }
 
   function renderAccountStripHtml() {
@@ -677,8 +711,13 @@
         <button type="button" class="mini-button" id="libraryAccountAction">Giriş Yap</button>`;
     }
     return `
-      <span class="library-account-text">✅ ${escapeHtml(status.email || "Bulut hesabı")}</span>
-      <button type="button" class="mini-button" id="libraryAccountAction">Hesap</button>`;
+      <span class="library-account-text">✅ ${escapeHtml(status.email || "Bulut hesabı")}</span>`;
+  }
+
+  function renderSignOutCornerHtml() {
+    const status = window.RaporCloudSync?.getStatus?.();
+    if (!status?.signedIn) return "";
+    return `<button type="button" class="mini-button library-sign-out-button" id="librarySignOut">Çıkış Yap</button>`;
   }
 
   function openDashboard() {
@@ -710,12 +749,11 @@
           <div id="libraryNewReportPanel" hidden></div>
           <div id="libraryCardsGrid" class="library-cards-grid"></div>
         </div>
+        <div class="library-sign-out-corner" id="librarySignOutSlot">${renderSignOutCornerHtml()}</div>
       </div>`;
     document.body.append(overlay);
     overlay.querySelector("#libraryModalClose").addEventListener("click", closeDashboard);
-    overlay.querySelector("#libraryAccountAction")?.addEventListener("click", () => {
-      window.RaporCloudSync?.openCloudModal();
-    });
+    bindAccountStripActions(overlay);
 
     const searchInput = overlay.querySelector("#librarySearch");
     searchInput.value = searchQuery;
@@ -812,17 +850,8 @@
     closeDashboard();
   }
 
-  // Sistem ilk açıldığında (yeni tarayıcı sekmesi/oturumu) "Taleplerim"
-  // otomatik gösterilir. Aynı sekmede sonradan yapılan Ctrl+F5 yenilemeleri
-  // TEKRAR açmaz (sessionStorage bayrağı kalıcıdır) — kullanıcı bir rapor
-  // üzerinde çalışırken bölünmesin diye.
-  function maybeAutoShowDashboardOnFreshSession() {
-    try {
-      if (sessionStorage.getItem(DASHBOARD_SESSION_FLAG_KEY)) return;
-      sessionStorage.setItem(DASHBOARD_SESSION_FLAG_KEY, "1");
-    } catch {
-      return; // sessionStorage erişilemiyorsa (ör. gizli sekme kısıtı) sessizce atla
-    }
+  function openDashboardAfterAuthentication() {
+    if (document.querySelector("#libraryModalOverlay")) return;
     openDashboard();
   }
 
@@ -841,16 +870,20 @@
     // flush'ımız state.updatedAt'i tazelemeden ÖNCE yakalıyoruz.
     if (initialized) return;
 
-    const cloudStatus = window.RaporCloudSync?.getStatus?.();
-    if (cloudStatus && !cloudStatus.signedIn) {
-      if (!authListenerRegistered) {
-        authListenerRegistered = true;
-        window.RaporCloudSync.onAuthChange(() => {
-          if (window.RaporCloudSync?.getStatus?.().signedIn) init();
-        });
-      }
-      return;
+    if (!authListenerRegistered && window.RaporCloudSync?.onAuthChange) {
+      authListenerRegistered = true;
+      window.RaporCloudSync.onAuthChange(() => {
+        if (!window.RaporCloudSync?.getStatus?.().signedIn) return;
+        if (!initialized) {
+          init();
+          return;
+        }
+        openDashboardAfterAuthentication();
+      });
     }
+
+    const cloudStatus = window.RaporCloudSync?.getStatus?.();
+    if (cloudStatus && !cloudStatus.signedIn) return;
     initialized = true;
 
     const preExistingUpdatedAt = state.reportId ? state.updatedAt : null;
@@ -861,7 +894,7 @@
     injectLibraryButton();
     window.RaporCloudSync?.setActiveReportId(state.reportId, { localKnownUpdatedAt });
     window.RaporCloudSync?.onAuthChange(refreshAccountStrip);
-    maybeAutoShowDashboardOnFreshSession();
+    openDashboardAfterAuthentication();
   }
 
   // Test/teşhis için dışa açılan yüzey.
