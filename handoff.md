@@ -5,6 +5,39 @@ Son güncelleme: 2026-07-20 · Servis edilen sürüm: **app.js?v=20260720-1210**
 Bu belge, bir sonraki geliştirici/oturum için projeyi çalıştırma, doğrulama ve bu
 oturumda yapılanları özetler.
 
+## 0.0.191 - 2026-07-20 - Ziraat ek tablo KONUT/NİTELİKLİ düzeltmeleri (kullanıcı görseli)
+
+Kullanıcı ilk çıktının KONUT-İŞYERLERİ sayfasını inceleyip iki düzeltme
+istedi (ekran görüntülü):
+
+1. **GAYRİMENKUL SIRA NO** (B sütunu) uygulamadan doldurulmuyor; uzman
+   GDYS'den bakıp elle girer. Artık sabit **"Sistemden BKNZ"** metni gelir
+   (manifest'e girmez; B10=B3 formülüyle Mevcut tabloya da yansır). Aynı
+   sütun NİTELİKLİ GAYRİMENKUL'de de olduğundan oraya da uygulandı.
+2. **Belge sütunu** artık tek satırda (üst): **yapı kullanma izin belgesi
+   (iskan) VARSA yalnızca iskan; YOKSA en güncel (son) ruhsat**. İkinci
+   belge satırı (Yasal D4, Mevcut D11) kaldırıldı; D10=D3 formülü üst satır
+   belgesini Mevcut tabloya taşır.
+
+`src/exports/ziraat-ek-tablo-xlsx.js`: yeni `buildingDoc()` (iskan/ruhsat
+tespiti Türkçe-katlamalı — JS'in `/i` case-insensitive'i büyük Türkçe "İ"
+ile "i"yi eşleştirmediğinden `foldTr` ile karşılaştırılır; ruhsatlar arasında
+en güncel tarihli seçilir, dd.mm.yyyy ve yyyy-mm-dd desteklenir). Eski
+`permitDoc`/`ZRT_RUHSAT`/`ZRT_ISKAN` yerini aldı.
+Yapı Kayıt Belgesi ruhsat kabul edilmez; iskan ve ruhsat yoksa hücre boş kalır.
+
+`tools/build-ziraat-ek-tablo-xlsx.py`: `literal` (sabit metin) desteği +
+KONUT/NİTELİKLİ mapping güncellendi. Şablon+manifest yeniden üretildi
+(manifest 34 hücre). `index.html`: `ziraat-ek-tablo-xlsx.js?v=20260720-1620`.
+
+Doğrulama: `npm run verify` geçti; **canlı tarayıcıda** 4 senaryo:
+hem-ruhsat-hem-iskan→iskan, iki-ruhsat→en güncel, belge yok→boş, dd.mm.yyyy
+tarihli iskan→doğru; tam export'ta B3="Sistemden BKNZ", C3="DÜKKAN",
+D3=iskan belgesi, alan/değerler numeric (160/7000000/185/7500000), konsol
+temiz. Görseldeki hedef çıktıyla birebir eşleşti.
+Bu seçim kuralları ile B3/B10/D3/D10 şablon bağlantıları ayrıca otomatik
+regresyon testine eklendi.
+
 ## 0.0.190 - 2026-07-20 - Ziraat ek tablosu XLSX dışa aktarma (tarayıcı, kütüphanesiz)
 
 Kullanıcı, Ziraat Bankası raporu ekinde gönderilen gerçek Excel dosyasını

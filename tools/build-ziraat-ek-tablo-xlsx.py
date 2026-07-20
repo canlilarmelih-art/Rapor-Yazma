@@ -64,25 +64,28 @@ MAPPINGS = {
         "blank": ["B4", "C4", "D4", "E4", "F4", "G4", "H4", "K4", "F13", "G13"],
     },
     "KONUT-İŞYERLERİ": {
+        # GAYRİMENKUL SIRA NO: kullanıcı GDYS'den bakıp elle girer → sabit
+        # "Sistemden BKNZ" (manifest'e girmez, doldurulmaz). B10=B3 formülüyle
+        # Mevcut tabloya da yansır.
+        "literal": [("B3", "Sistemden BKNZ")],
         "fill": [
-            ("B3", "titlePropertyId", "text",   "{{TASINMAZ_ID}}"),
             ("C3", "titleQuality",    "text",   "{{GAYRIMENKUL_ADI}}"),
-            ("D3", "ZRT_RUHSAT",      "text",   "{{YAPI_RUHSATI}}"),
-            ("D4", "ZRT_ISKAN",       "text",   "{{ISKAN_BELGESI}}"),
+            # Belge tek satırda (üst): iskan varsa iskan, yoksa son ruhsat.
+            ("D3", "ZRT_BUILDING_DOC", "text",  "{{YAPI_BELGESI}}"),
             ("E3", "legalArea",       "number", "{{YASAL_ALAN}}"),
             ("G3", "legalValue",      "number", "{{YASAL_DEGER}}"),
             ("E10", "currentArea",    "number", "{{MEVCUT_ALAN}}"),
             ("G10", "currentValue",   "number", "{{MEVCUT_DEGER}}"),
-            ("D10", "ZRT_RUHSAT",     "text",   "{{YAPI_RUHSATI}}"),
-            ("D11", "ZRT_ISKAN",      "text",   "{{ISKAN_BELGESI}}"),
         ],
-        "blank": [],
+        # İkinci belge satırı (Yasal D4, Mevcut D11) kaldırıldı; D10=D3 formülü
+        # üst satır belgesini Mevcut tabloya taşır (dokunulmaz).
+        "blank": ["D4", "D11"],
         # F3 birim değer: kaynakta sabit sayı; formüle çeviriyoruz (=değer/alan).
         "formula": [("F3", "=IFERROR(G3/E3,0)")],
     },
     "NİTELİKLİ GAYRİMENKUL": {
+        "literal": [("B3", "Sistemden BKNZ")],
         "fill": [
-            ("B3", "titlePropertyId",    "text",   "{{TASINMAZ_ID}}"),
             ("C3", "mainPropertyQuality","text",   "{{ANA_GAYRIMENKUL}}"),
             ("G3", "landArea",           "number", "{{ARSA_ALANI}}"),
             ("I3", "legalValue",         "number", "{{YASAL_DEGER}}"),
@@ -90,7 +93,8 @@ MAPPINGS = {
             ("C4", "titleQuality",       "text",   "{{GAYRIMENKUL_ADI}}"),
             ("D4", "buildingClass",      "text",   "{{YAPI_SINIFI}}"),
             ("E4", "titleFloor",         "text",   "{{KAT}}"),
-            ("F4", "ZRT_RUHSAT",         "text",   "{{YAPI_RUHSATI}}"),
+            # Belge: iskan varsa iskan, yoksa son ruhsat (KONUT ile aynı kural).
+            ("F4", "ZRT_BUILDING_DOC",   "text",   "{{YAPI_BELGESI}}"),
             ("G4", "legalArea",          "number", "{{YAPI_ALANI}}"),
             ("I4", "currentValue",       "number", "{{MEVCUT_DEGER}}"),
             ("J4", "saleability",        "text",   "{{SATIS_KABILIYETI}}"),
@@ -118,6 +122,10 @@ def main():
 
         for coord, formula in spec.get("formula", []):
             ws[coord] = formula
+
+        # Sabit metin hücreleri (kullanıcının elle gireceği; manifest'e girmez).
+        for coord, text in spec.get("literal", []):
+            ws[coord] = text
 
         for coord, field, typ, token in spec["fill"]:
             cell = ws[coord]

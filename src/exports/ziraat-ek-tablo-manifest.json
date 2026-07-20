@@ -146,14 +146,6 @@
     {
       "sheetIndex": 3,
       "sheet": "KONUT-İŞYERLERİ",
-      "cell": "B3",
-      "field": "titlePropertyId",
-      "type": "text",
-      "token": "{{TASINMAZ_ID}}"
-    },
-    {
-      "sheetIndex": 3,
-      "sheet": "KONUT-İŞYERLERİ",
       "cell": "C3",
       "field": "titleQuality",
       "type": "text",
@@ -163,17 +155,9 @@
       "sheetIndex": 3,
       "sheet": "KONUT-İŞYERLERİ",
       "cell": "D3",
-      "field": "ZRT_RUHSAT",
+      "field": "ZRT_BUILDING_DOC",
       "type": "text",
-      "token": "{{YAPI_RUHSATI}}"
-    },
-    {
-      "sheetIndex": 3,
-      "sheet": "KONUT-İŞYERLERİ",
-      "cell": "D4",
-      "field": "ZRT_ISKAN",
-      "type": "text",
-      "token": "{{ISKAN_BELGESI}}"
+      "token": "{{YAPI_BELGESI}}"
     },
     {
       "sheetIndex": 3,
@@ -206,30 +190,6 @@
       "field": "currentValue",
       "type": "number",
       "token": "{{MEVCUT_DEGER}}"
-    },
-    {
-      "sheetIndex": 3,
-      "sheet": "KONUT-İŞYERLERİ",
-      "cell": "D10",
-      "field": "ZRT_RUHSAT",
-      "type": "text",
-      "token": "{{YAPI_RUHSATI}}"
-    },
-    {
-      "sheetIndex": 3,
-      "sheet": "KONUT-İŞYERLERİ",
-      "cell": "D11",
-      "field": "ZRT_ISKAN",
-      "type": "text",
-      "token": "{{ISKAN_BELGESI}}"
-    },
-    {
-      "sheetIndex": 4,
-      "sheet": "NİTELİKLİ GAYRİMENKUL",
-      "cell": "B3",
-      "field": "titlePropertyId",
-      "type": "text",
-      "token": "{{TASINMAZ_ID}}"
     },
     {
       "sheetIndex": 4,
@@ -291,9 +251,9 @@
       "sheetIndex": 4,
       "sheet": "NİTELİKLİ GAYRİMENKUL",
       "cell": "F4",
-      "field": "ZRT_RUHSAT",
+      "field": "ZRT_BUILDING_DOC",
       "type": "text",
-      "token": "{{YAPI_RUHSATI}}"
+      "token": "{{YAPI_BELGESI}}"
     },
     {
       "sheetIndex": 4,

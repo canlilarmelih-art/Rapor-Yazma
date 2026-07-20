@@ -49,20 +49,64 @@
     return Number.isFinite(n) ? n : 0;
   }
 
-  // İncelenen belgeler tablosundan ruhsat/iskan satırını "TÜR / TARİH / SAYI"
-  // biçiminde birleştirir. c0=tür, c2=tarih, c3=no (bkz. app.js documents).
-  function permitDoc(kind) {
+  function documentRows() {
     const s = appState();
-    const rows = Array.isArray(s?.tables?.documents) ? s.tables.documents : [];
-    const test =
-      kind === "iskan"
-        ? /iskan|kullanma|yap[ıi] kullan/i
-        : /ruhsat|yap[ıi] kay[ıi]t/i;
-    const hit = rows.find((row) => test.test(String(row?.c0 || "")));
-    if (!hit) return "";
-    const parts = [String(hit.c0 || "").trim(), String(hit.c2 || "").trim(), String(hit.c3 || "").trim()]
-      .filter(Boolean);
-    return parts.join(" / ");
+    return Array.isArray(s?.tables?.documents) ? s.tables.documents : [];
+  }
+
+  // Belge satırını "TÜR / TARİH / SAYI" biçiminde birleştirir
+  // (c0=tür, c2=tarih, c3=no; bkz. app.js documents tablosu).
+  function formatDoc(row) {
+    if (!row) return "";
+    return [String(row.c0 || "").trim(), String(row.c2 || "").trim(), String(row.c3 || "").trim()]
+      .filter(Boolean)
+      .join(" / ");
+  }
+
+  // dd.mm.yyyy veya yyyy-mm-dd → karşılaştırılabilir sayı (yyyymmdd).
+  function docDateKey(value) {
+    const s = String(value || "").trim();
+    let m = s.match(/(\d{1,2})[.\/](\d{1,2})[.\/](\d{4})/);
+    if (m) return Number(`${m[3]}${m[2].padStart(2, "0")}${m[1].padStart(2, "0")}`);
+    m = s.match(/(\d{4})-(\d{2})-(\d{2})/);
+    if (m) return Number(`${m[1]}${m[2]}${m[3]}`);
+    return 0;
+  }
+
+  // Türkçe-katlama: İ/ı/Ş/Ğ/Ü/Ö/Ç → ascii + küçük harf. JS'in /i case-insensitive
+  // eşleşmesi Türkçe İ (U+0130) ile "i"yi eşleştirmez; bu yüzden belge türü
+  // tespitinde katlanmış metin üzerinde includes ile bakarız.
+  function foldTr(value) {
+    return String(value || "")
+      .replace(/İ/g, "i").replace(/I/g, "i").replace(/ı/g, "i")
+      .replace(/Ş/g, "s").replace(/ş/g, "s")
+      .replace(/Ğ/g, "g").replace(/ğ/g, "g")
+      .replace(/Ü/g, "u").replace(/ü/g, "u")
+      .replace(/Ö/g, "o").replace(/ö/g, "o")
+      .replace(/Ç/g, "c").replace(/ç/g, "c")
+      .toLowerCase();
+  }
+
+  function isIskanDoc(c0) {
+    const f = foldTr(c0);
+    return f.includes("iskan") || f.includes("kullanim izin") || f.includes("kullanma izin") || f.includes("yapi kullan");
+  }
+
+  function isRuhsatDoc(c0) {
+    const f = foldTr(c0);
+    return f.includes("ruhsat");
+  }
+
+  // Kullanıcı kuralı: yapı kullanma izin belgesi (iskan) VARSA yalnızca onu;
+  // YOKSA en güncel (son) ruhsatı döndür.
+  function buildingDoc() {
+    const rows = documentRows();
+    const iskan = rows.find((row) => isIskanDoc(row?.c0));
+    if (iskan) return formatDoc(iskan);
+    const ruhsat = rows.filter((row) => isRuhsatDoc(row?.c0));
+    if (!ruhsat.length) return "";
+    const last = ruhsat.reduce((a, b) => (docDateKey(b.c2) >= docDateKey(a.c2) ? b : a));
+    return formatDoc(last);
   }
 
   function resolveCell(entry) {
@@ -70,8 +114,7 @@
     if (field === "saleability") {
       return fieldValue("saleability") || "SATILABİLİR";
     }
-    if (field === "ZRT_RUHSAT") return permitDoc("ruhsat");
-    if (field === "ZRT_ISKAN") return permitDoc("iskan");
+    if (field === "ZRT_BUILDING_DOC") return buildingDoc();
 
     if (entry.type === "number") {
       return toNumber(fieldValue(field));
@@ -103,5 +146,5 @@
     return { count: manifest.cells.length };
   }
 
-  window.RaporZiraatEkTablo = { export: exportXlsx, resolveCell, permitDoc };
+  window.RaporZiraatEkTablo = { export: exportXlsx, resolveCell, buildingDoc };
 })();

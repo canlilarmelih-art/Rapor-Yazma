@@ -62,9 +62,47 @@ const SAMPLE = {
   mainPropertyQuality: "KARGİR APARTMAN",
   buildingClass: "3-A",
   titleFloor: "ZEMİN",
-  ZRT_RUHSAT: "YAPI RUHSATI / 29.05.2012 / 301/12",
-  ZRT_ISKAN: "İSKAN / 29.01.2016 / 3516",
+  ZRT_BUILDING_DOC: "Yapı Kullanım İzin Belgesi / 29.01.2016 / 3516",
 };
+
+// --- Belge seçim kuralını gerçek tarayıcı modülüyle doğrula ---
+let state = { fields: {}, tables: { documents: [] } };
+const exportCode = fs.readFileSync(
+  path.join(appDir, "src", "exports", "ziraat-ek-tablo-xlsx.js"),
+  "utf8"
+);
+// eslint-disable-next-line no-eval
+eval(exportCode);
+const Z = global.window.RaporZiraatEkTablo;
+assert(Z && typeof Z.buildingDoc === "function", "RaporZiraatEkTablo.buildingDoc yüklenmedi.");
+
+function assertBuildingDoc(rows, expected, label) {
+  state.tables.documents = rows;
+  assert(Z.buildingDoc() === expected, `${label}: beklenen belge seçilmedi.`);
+}
+
+assertBuildingDoc(
+  [
+    { c0: "Yapı Ruhsatı", c2: "01.02.2024", c3: "24/10" },
+    { c0: "YAPI KULLANIM İZİN BELGESİ", c2: "15.06.2020", c3: "20/15" },
+  ],
+  "YAPI KULLANIM İZİN BELGESİ / 15.06.2020 / 20/15",
+  "İskan ruhsata öncelik vermeli"
+);
+assertBuildingDoc(
+  [
+    { c0: "Tadilat Ruhsatı", c2: "2023-08-10", c3: "23/8" },
+    { c0: "Yapı Ruhsatı", c2: "11.01.2025", c3: "25/1" },
+  ],
+  "Yapı Ruhsatı / 11.01.2025 / 25/1",
+  "İskan yoksa en güncel ruhsat seçilmeli"
+);
+assertBuildingDoc(
+  [{ c0: "Yapı Kayıt Belgesi", c2: "31.12.2025", c3: "YKB-1" }],
+  "",
+  "Yapı Kayıt Belgesi ruhsat sayılmamalı"
+);
+assertBuildingDoc([], "", "Belge yoksa sonuç boş olmalı");
 
 function toNumber(v) {
   const n = Number(String(v ?? "").replace(/\./g, "").replace(",", "."));
@@ -108,6 +146,18 @@ assert(/<c r="D3"[^>]*><v>3178<\/v><\/c>/.test(s1),
   "TARLA D3 (yüzölçüm) sayı olarak doldurulmadı.");
 assert(/<c r="B3"[^>]*t="inlineStr"><is><t>2626<\/t><\/is><\/c>/.test(s1),
   "TARLA B3 (ada) inlineStr olarak doldurulmadı.");
+
+const s3 = sheetTexts.get(3);
+assert(/<c r="B3"[^>]*t="inlineStr"><is><t>Sistemden BKNZ<\/t><\/is><\/c>/.test(s3),
+  "KONUT-İŞYERLERİ B3 sabit 'Sistemden BKNZ' değil.");
+assert(/<c r="B10"[^>]*><f>B3<\/f>/.test(s3),
+  "KONUT-İŞYERLERİ B10, B3 hücresine bağlı değil.");
+assert(/<c r="D3"[^>]*t="inlineStr"><is><t>Yapı Kullanım İzin Belgesi \/ 29\.01\.2016 \/ 3516<\/t><\/is><\/c>/.test(s3),
+  "KONUT-İŞYERLERİ D3 yapı belgesiyle doldurulmadı.");
+assert(/<c r="D10"[^>]*><f>D3<\/f>/.test(s3),
+  "KONUT-İŞYERLERİ D10, D3 hücresine bağlı değil.");
+assert(!manifest.cells.some((cell) => cell.sheetIndex === 3 && ["B3", "D4", "D10", "D11"].includes(cell.cell)),
+  "KONUT-İŞYERLERİ sabit/formül/boş bırakılacak hücreleri manifest tarafından eziliyor.");
 
 const outEntries = entries.map((e) => {
   const m = e.name.match(/^xl\/worksheets\/sheet(\d+)\.xml$/);
