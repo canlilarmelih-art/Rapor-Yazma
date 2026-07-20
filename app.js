@@ -12512,8 +12512,7 @@ function createLocationMapTools() {
     </div>
     <div class="map-panel-wrap">
       <label class="field compact-field map-mode-field map-mode-overlay">
-        <span>Harita görünümü</span>
-        <select data-map-mode>
+        <select data-map-mode aria-label="Harita görünümü">
           ${getMapModeOptionsMarkup()}
         </select>
       </label>
@@ -21611,9 +21610,11 @@ function renderLeafletKmlMap() {
   leafletKmlLayer = null;
   leafletSelectedMarker = null;
 
-  const center = selectedPoint || (parsed.centroid
+  const center = selectedPoint || (parsed?.centroid
     ? [Number(parsed.centroid.lat), Number(parsed.centroid.lng)]
-    : [parsed.coordinates[0].lat, parsed.coordinates[0].lng]);
+    : parsed?.coordinates?.[0]
+      ? [parsed.coordinates[0].lat, parsed.coordinates[0].lng]
+      : [Number(state.fields.latitude), Number(state.fields.longitude)]);
   const path = hasKmlGeometry ? parsed.coordinates.map((point) => [point.lat, point.lng]) : [];
 
   leafletMap = leaflet.map(panel, getLeafletInteractionOptions()).setView(center, 16);

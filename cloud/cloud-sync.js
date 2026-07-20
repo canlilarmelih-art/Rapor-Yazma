@@ -8,8 +8,8 @@
 // kullanır).
 //
 // Tasarım sözleşmesi: cloud/FAZ0-TASARIM.md
-//  - Beyaz liste: fields, tables, lookupOptions, updatedAt (sourceValues,
-//    uploads, settings, system ASLA buluta gitmez — KVKK D1).
+//  - Beyaz liste: fields, tables, lookupOptions, updatedAt ve sanitize edilmis
+//    harita durumu (ham belge/KML metni, uploads ve diger sourceValues gitmez).
 //  - Yol: users/{uid}/reports/{reportId} (yalnız sahibi erişir — D2).
 //  - expireAt = updatedAt + 30 gün; Firestore TTL siler (D3).
 //  - Yapılandırma yoksa (apiKey === "YAPISTIR") modül tamamen pasiftir (D6).
@@ -70,7 +70,49 @@
     CLOUD_WHITELIST.forEach((key) => {
       if (state[key] !== undefined) payload[key] = state[key];
     });
+    payload.mapState = buildCloudMapState();
     return JSON.parse(JSON.stringify(payload));
+  }
+
+  function buildCloudMapState() {
+    const source = state.sourceValues || {};
+    const kml = source.kml || {};
+    const coordinates = Array.isArray(kml.coordinates)
+      ? kml.coordinates
+        .map((point) => ({ lat: Number(point?.lat), lng: Number(point?.lng) }))
+        .filter((point) => Number.isFinite(point.lat) && Number.isFinite(point.lng))
+      : [];
+    const mapState = {
+      kml: coordinates.length || kml.centroid
+        ? {
+          centroid: kml.centroid
+            ? { lat: Number(kml.centroid.lat), lng: Number(kml.centroid.lng) }
+            : null,
+          coordinates,
+          fields: { sheetNo: String(kml.fields?.sheetNo || "") },
+        }
+        : null,
+      reportImages: source.reportImages || {},
+      nearbyPlaces: source.nearbyPlaces
+        ? {
+          places: Array.isArray(source.nearbyPlaces.places) ? source.nearbyPlaces.places : [],
+          selectedIds: Array.isArray(source.nearbyPlaces.selectedIds) ? source.nearbyPlaces.selectedIds : [],
+          center: source.nearbyPlaces.center || null,
+          radius: source.nearbyPlaces.radius || null,
+        }
+        : null,
+      userNearbyPlaces: source.userNearbyPlaces
+        ? {
+          places: Array.isArray(source.userNearbyPlaces.places) ? source.userNearbyPlaces.places : [],
+          selectedIds: Array.isArray(source.userNearbyPlaces.selectedIds) ? source.userNearbyPlaces.selectedIds : [],
+        }
+        : null,
+      settings: {
+        mapMode: state.settings?.mapMode || "hybrid",
+        mapExportRatio: state.settings?.mapExportRatio || "4:3",
+      },
+    };
+    return mapState;
   }
 
   function buildSummary() {
@@ -203,6 +245,7 @@
       if (key === "updatedAt") return;
       if (payload[key] !== undefined) state[key] = JSON.parse(JSON.stringify(payload[key]));
     });
+    applyCloudMapState(payload.mapState);
     saveState();
     // saveState updatedAt'i şimdiye çeker; yankı-gönderimi engelle.
     cloud.lastPushedUpdatedAt = state.updatedAt || null;
@@ -213,6 +256,16 @@
     } else {
       render();
     }
+  }
+
+  function applyCloudMapState(mapState) {
+    if (!mapState || typeof mapState !== "object") return;
+    state.sourceValues = state.sourceValues || {};
+    if (mapState.kml) state.sourceValues.kml = JSON.parse(JSON.stringify(mapState.kml));
+    if (mapState.reportImages) state.sourceValues.reportImages = JSON.parse(JSON.stringify(mapState.reportImages));
+    if (mapState.nearbyPlaces) state.sourceValues.nearbyPlaces = JSON.parse(JSON.stringify(mapState.nearbyPlaces));
+    if (mapState.userNearbyPlaces) state.sourceValues.userNearbyPlaces = JSON.parse(JSON.stringify(mapState.userNearbyPlaces));
+    state.settings = { ...(state.settings || {}), ...(mapState.settings || {}) };
   }
 
   async function pullReport(remoteData = null) {

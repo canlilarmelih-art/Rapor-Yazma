@@ -92,7 +92,12 @@ function main() {
       !locationMapToolsSource.includes("data-map-export-labels") &&
       locationMapToolsSource.includes('class="field compact-field map-mode-field map-mode-overlay"') &&
       stylesCss.includes(".map-panel-wrap") &&
-      stylesCss.includes(".map-mode-overlay"),
+      stylesCss.includes(".map-mode-overlay") &&
+      stylesCss.includes("width: min(100px, calc(100% - 76px));") &&
+      stylesCss.includes(".map-mode-overlay select") &&
+      stylesCss.includes("background: rgba(255, 255, 255, 0.5);") &&
+      stylesCss.includes(".user-poi-tools .compact-field input") &&
+      stylesCss.includes("border-color: #d2d4ee;"),
     "Harita ozet seridi veya harita araclarinin yeni yerlesimi korunmuyor."
   );
   assert(
@@ -127,12 +132,22 @@ function main() {
     "Taleplerim ana sayfa gecisi veya cikis dugmesi konumu korunmuyor."
   );
   assert(
-      reportLibraryJs.includes("function deriveDocumentStatus(status = {}, fields = {})") &&
+    reportLibraryJs.includes("function deriveDocumentStatus(status = {}, fields = {})") &&
       reportLibraryJs.includes("cloudData.payload?.fields") &&
       reportLibraryJs.includes('["Evet", "Hayır"].includes(String(fields.hasEkb || "").trim())') &&
       reportLibraryJs.includes("Eksik Alan = ${missingCount}") &&
       stylesCss.includes(".library-missing-fields"),
     "Bulut belge durumlari veya eksik alan sayaci korunmuyor."
+  );
+  assert(
+    cloudSyncJs.includes("function buildCloudMapState()") &&
+      cloudSyncJs.includes("payload.mapState = buildCloudMapState()") &&
+      cloudSyncJs.includes("function applyCloudMapState(mapState)") &&
+      reportLibraryJs.includes("sourceValues: {") &&
+      reportLibraryJs.includes("cloudData.payload.mapState?.kml") &&
+      appJs.includes("parsed?.centroid") &&
+      appJs.includes("parsed?.coordinates?.[0]"),
+    "Buluttan acilan raporlarda harita/kroki durumu korunmuyor."
   );
   assert(
     !indexHtml.includes("gate-theme-toggle") &&

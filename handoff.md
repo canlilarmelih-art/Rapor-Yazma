@@ -5136,3 +5136,10 @@ Doğrulama: `node --check app.js`, `node tools/check-basic.js`, `git diff --chec
 - Canlı tarayıcı doğrulaması: eski iki düğme görünmüyor, menüde 7 oran var; 4:3 seçimi sonrası `JPEG kaydedildi` durumu geldi, menü kapandı ve oran göstergesi korundu.
 - 390x844 mobil görünümde oran menüsü ekran içinde kaldı ve yatay taşma oluşmadı; konsol hatası yok.
 - `npm.cmd run verify`, banka şablon testi ve `git diff --check` başarılı.
+## 0.0.195 - Cloud map state preservation (2026-07-20)
+
+- Cloud sync now carries a sanitized `mapState` payload containing KML geometry, saved report sketch settings, map mode/ratio, and selected nearby/user POIs.
+- Raw KML text, uploaded documents, and unrelated `sourceValues` remain excluded from cloud storage.
+- Cloud-only report fetch restores the map state before rendering, so completed reports no longer show an empty map merely because the original KML file is unavailable.
+- Legacy cloud records without `mapState` fall back to saved latitude/longitude and render the base map and subject marker.
+- Added checks for cloud map-state round-trip and the no-KML Leaflet fallback.

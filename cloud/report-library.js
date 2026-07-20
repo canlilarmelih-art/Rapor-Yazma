@@ -834,6 +834,13 @@
         fields: cloudData.payload.fields || {},
         tables: cloudData.payload.tables || {},
         lookupOptions: cloudData.payload.lookupOptions || {},
+        sourceValues: {
+          kml: cloudData.payload.mapState?.kml || {},
+          reportImages: cloudData.payload.mapState?.reportImages || {},
+          nearbyPlaces: cloudData.payload.mapState?.nearbyPlaces || {},
+          userNearbyPlaces: cloudData.payload.mapState?.userNearbyPlaces || {},
+        },
+        settings: cloudData.payload.mapState?.settings || {},
         updatedAt: cloudData.payload.updatedAt || new Date().toISOString(),
       },
     };

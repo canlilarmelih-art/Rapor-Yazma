@@ -4429,6 +4429,10 @@ td textarea.table-textarea {
   max-width: none;
 }
 
+.user-poi-tools .compact-field input {
+  border-color: #d2d4ee;
+}
+
 .user-poi-statuses {
   display: flex;
   flex-wrap: wrap;
@@ -4500,18 +4504,21 @@ td textarea.table-textarea {
   top: 12px;
   right: 12px;
   z-index: 1001;
-  width: min(210px, calc(100% - 76px));
+  width: min(100px, calc(100% - 76px));
   min-width: 0;
-  padding: 8px;
+  padding: 6px;
   border: 1px solid rgba(21, 34, 56, 0.18);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.94);
+  background: rgba(255, 255, 255, 0.5);
   box-shadow: 0 4px 14px rgba(21, 34, 56, 0.14);
   backdrop-filter: blur(6px);
 }
 
-.map-mode-overlay > span {
-  font-size: 11px;
+.map-mode-overlay select {
+  min-height: 30px;
+  width: 100%;
+  padding: 5px 4px;
+  font-size: 10px;
 }
 
 .map-placeholder {
@@ -5053,6 +5060,7 @@ td textarea.table-textarea {
   .map-mode-overlay {
     top: 8px;
     right: 8px;
+    width: min(100px, calc(100% - 60px));
   }
 
   .user-poi-tools {
