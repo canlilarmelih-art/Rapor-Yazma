@@ -1216,11 +1216,12 @@ const autosave = debounce(() => {
 }, 450);
 
 const fetchAddressLookupDebounced = debounce(() => {
-  fetchAddressLookupForCurrentLocation({ silent: true }).then(() => {
+  fetchAddressLookupForCurrentLocation({ silent: true }).then((changed) => {
+    if (!changed) return;
+    syncRenderedAddressFields();
     autosave();
-    if (activeSectionId === "address") {
-      renderSection();
-    }
+    renderValidation();
+    updateStatus();
   });
 }, 900);
 
@@ -11674,6 +11675,15 @@ function hydrateImportedAddressAdministrativeFields(appState) {
   fillIfBlank("neighborhood", ["neighborhood", "titleNeighborhood"]);
 }
 
+function syncRenderedAddressFields() {
+  ["city", "district", "neighborhood", "postalCode"].forEach((key) => {
+    const control = document.querySelector(`[data-field="${key}"]`);
+    if (control && control.value !== String(state.fields[key] || "")) {
+      control.value = state.fields[key] || "";
+    }
+  });
+}
+
 function createOutputExportPanel() {
   const panel = document.createElement("div");
   panel.className = "subsection output-export-panel";
@@ -19689,19 +19699,17 @@ async function fetchNearbyPlacesForCurrentLocation(options = {}) {
     const environment = await fetchNearbyPlacesWithCoverage(lat, lng);
     if (requestId !== nearbyRequestSerial) return;
     const places = environment.places || [];
-    const previousSelected = new Set(state.sourceValues.nearbyPlaces?.selectedIds || []);
-    const validIds = new Set(places.map((place) => place.id));
     const scanCycle = options.rotate ? (state.sourceValues.nearbyPlaces?.scanCycle || 0) + 1 : state.sourceValues.nearbyPlaces?.scanCycle || 0;
-    const selectedIds = getAutoNearbySelectedIds(places, previousSelected, validIds, { rotate: options.rotate, scanCycle });
     state.sourceValues.nearbyPlaces = {
       places,
-      selectedIds,
+      selectedIds: [],
       scanCycle,
       center: { lat: Number(lat).toFixed(6), lng: Number(lng).toFixed(6) },
       radius: environment.radius || nearbyRadiusMeters,
       readAt: new Date().toISOString(),
       loading: false,
     };
+    state.sourceValues.nearbyPlaces.selectedIds = getNearestNearbySelectionIds(state.sourceValues.nearbyPlaces);
     state.uploadErrors = { ...(state.uploadErrors || {}), nearbyPlaces: "" };
     applyRegionAnalysisFields(environment.regionAnalysis);
     autoSelectMainArtery(places);
@@ -19769,6 +19777,14 @@ function getNearbySelectionDisplayPlaces(source = state.sourceValues.nearbyPlace
   return [...userPlaces, ...autoPlaces];
 }
 
+function getNearestNearbySelectionIds(source = state.sourceValues.nearbyPlaces || {}) {
+  return getNearbySelectionDisplayPlaces(source)
+    .filter((place) => Number.isFinite(Number(place.distance)))
+    .sort((a, b) => Number(a.distance) - Number(b.distance))
+    .slice(0, nearbyAutoLimit)
+    .map((place) => place.id);
+}
+
 function isSettlementLikeNearbyPlace(place) {
   const name = String(place?.name || "");
   return place?.category === "settlements" || /\b(?:mah\.?|mahallesi|mahalle|köyü|koyu|köy|koy)\b/i.test(name);
@@ -19779,7 +19795,7 @@ function refreshUserPoisForCurrentLocationOnce() {
   if (!point) return;
   const key = `${Number(point[0]).toFixed(4)},${Number(point[1]).toFixed(4)}`;
   if (state.sourceValues.userNearbyPlaces?.loadedFor === key || state.sourceValues.userNearbyPlaces?.loading) return;
-  refreshUserPoisFromServer({ loadedFor: key }).catch(() => {});
+  refreshUserPoisFromServer({ loadedFor: key, select: true }).catch(() => {});
 }
 
 async function refreshUserPoisFromServer(options = {}) {
@@ -19802,15 +19818,9 @@ async function refreshUserPoisFromServer(options = {}) {
       loading: false,
     };
     if (options.select) {
-      const selected = new Set(state.sourceValues.nearbyPlaces?.selectedIds || []);
-      places
-        .filter((place) => place.category !== "user" || isUserNearbyPlaceInAddressRadius(place))
-        .forEach((place) => selected.add(place.id));
       state.sourceValues.nearbyPlaces = {
         ...(state.sourceValues.nearbyPlaces || {}),
-        selectedIds: options.userOnly
-          ? places.filter((place) => place.category === "user" && isUserNearbyPlaceInAddressRadius(place)).map((place) => place.id)
-          : [...selected],
+        selectedIds: getNearestNearbySelectionIds(state.sourceValues.nearbyPlaces || {}),
       };
     }
     updateNearbyFieldFromSelection();
@@ -20310,6 +20320,12 @@ async function fetchAddressLookupForCurrentLocation(options = {}) {
   if (!point) return;
 
   const [lat, lng] = point;
+  const previousValues = {
+    city: state.fields.city || "",
+    district: state.fields.district || "",
+    neighborhood: state.fields.neighborhood || "",
+    postalCode: state.fields.postalCode || "",
+  };
   try {
     const response = await fetch(
       `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lng)}&zoom=18&addressdetails=1&accept-language=tr`,
@@ -20337,6 +20353,7 @@ async function fetchAddressLookupForCurrentLocation(options = {}) {
       setFieldFromSource("geoLookup", key, value, options);
     });
     state.uploadErrors = { ...(state.uploadErrors || {}), geoLookup: "" };
+    return Object.keys(previousValues).some((key) => previousValues[key] !== (state.fields[key] || ""));
   } catch (error) {
     if (!options.silent) {
       state.uploadErrors = {
@@ -20345,6 +20362,7 @@ async function fetchAddressLookupForCurrentLocation(options = {}) {
       };
     }
   }
+  return false;
 }
 
 function normalizeReverseGeocodeAddress(address) {
@@ -22553,8 +22571,8 @@ function updateSelectedCoordinates(lat, lng) {
   autosave();
   applyLocalNeighborhoodForCurrentLocation({ silent: true }).then((changed) => {
     if (!changed) return;
+    syncRenderedAddressFields();
     autosave();
-    if (activeSectionId === "address") renderSection();
     renderValidation();
     updateStatus();
   }).catch(() => {});

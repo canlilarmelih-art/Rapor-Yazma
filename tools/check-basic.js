@@ -64,6 +64,12 @@ function main() {
   const cloudSyncJs = readText("cloud/cloud-sync.js");
   const reportLibraryJs = readText("cloud/report-library.js");
   const accessControlJs = readText("src/auth/access-control.js");
+  assert(
+    indexHtml.includes('<title>Experify</title>') &&
+      indexHtml.includes('<h1>Experify</h1>') &&
+      indexHtml.includes('<p>Yarı Otomatik Rapor Oluşturma</p>'),
+    "Experify marka metinleri bulunamadi."
+  );
   const locationMapToolsSource = appJs.slice(
     appJs.indexOf("function createLocationMapTools()"),
     appJs.indexOf("function formatUploadErrorDetails"),
@@ -148,6 +154,14 @@ function main() {
       appJs.includes("parsed?.centroid") &&
       appJs.includes("parsed?.coordinates?.[0]"),
     "Buluttan acilan raporlarda harita/kroki durumu korunmuyor."
+  );
+  assert(
+    appJs.includes("function syncRenderedAddressFields()") &&
+      appJs.includes("return Object.keys(previousValues).some") &&
+      appJs.includes("function getNearestNearbySelectionIds") &&
+      appJs.includes("selectedIds: getNearestNearbySelectionIds") &&
+      cloudSyncJs.includes("hydrateImportedAddressAdministrativeFields(state)"),
+    "Adres yukleme, harita hareketi veya yakin cevre ilk uc secimi korunmuyor."
   );
   assert(
     !indexHtml.includes("gate-theme-toggle") &&
@@ -534,8 +548,10 @@ function main() {
       appJs.includes("function getUserNearbyPlaces()") &&
       appJs.includes("userNearbyRadiusMeters = 1000") &&
       appJs.includes("function isUserNearbyPlaceInAddressRadius") &&
-      appJs.includes('place.category === "user" && isUserNearbyPlaceInAddressRadius(place)') &&
       appJs.includes("return [...userPlaces, ...autoPlaces]") &&
+      appJs.includes("function getNearestNearbySelectionIds") &&
+      appJs.includes("selectedIds: getNearestNearbySelectionIds") &&
+      appJs.includes("slice(0, nearbyAutoLimit)") &&
       appJs.includes("nearbySettlementFallbackMinUsefulCount") &&
       appJs.includes("function isSettlementLikeNearbyPlace") &&
       appJs.includes('nonSettlementCandidates.length >= nearbySettlementFallbackMinUsefulCount') &&

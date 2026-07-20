@@ -246,6 +246,9 @@
       if (payload[key] !== undefined) state[key] = JSON.parse(JSON.stringify(payload[key]));
     });
     applyCloudMapState(payload.mapState);
+    if (typeof hydrateImportedAddressAdministrativeFields === "function") {
+      hydrateImportedAddressAdministrativeFields(state);
+    }
     saveState();
     // saveState updatedAt'i şimdiye çeker; yankı-gönderimi engelle.
     cloud.lastPushedUpdatedAt = state.updatedAt || null;

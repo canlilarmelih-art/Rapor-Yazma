@@ -5143,3 +5143,10 @@ Doğrulama: `node --check app.js`, `node tools/check-basic.js`, `git diff --chec
 - Cloud-only report fetch restores the map state before rendering, so completed reports no longer show an empty map merely because the original KML file is unavailable.
 - Legacy cloud records without `mapState` fall back to saved latitude/longitude and render the base map and subject marker.
 - Added checks for cloud map-state round-trip and the no-KML Leaflet fallback.
+
+## 0.0.196 - Address and nearby map stability (2026-07-20)
+
+- Local and cloud report hydration now restores city, district, neighborhood, and postal code values from the saved state and imported address metadata before the address section is rendered.
+- Reverse geocoding updates the visible address controls without rebuilding the whole address/map section; moving the selected map point no longer causes a full section refresh.
+- Nearby environment defaults to the three closest records from the combined nearby data and user POIs. Manual selection remains available after the default selection.
+- Verification: `npm run verify`, Node syntax checks, `git diff --check`, and Graphify update completed successfully.
