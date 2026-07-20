@@ -339,14 +339,14 @@ const SECURITY_HEADERS = {
   "X-Content-Type-Options": "nosniff",
   "X-Frame-Options": "DENY",
   "Referrer-Policy": "strict-origin-when-cross-origin",
-  // Uygulama build'siz vanilla JS: birkaç sayfa-içi <script> bloğu ve
-  // unpkg.com üzerinden yüklenen Leaflet var; bu yüzden 'unsafe-inline' ve
-  // unpkg.com script-src'te tutulmak zorunda (aksi halde sayfa çalışmaz).
+  // Uygulama build'siz vanilla JS: birkaç sayfa-içi <script> bloğu var; bu
+  // yüzden 'unsafe-inline' tutulur. Leaflet yerel vendor dosyalarından yüklenir,
+  // böylece harita deneyimi CDN/CSP erişimine bağlı kalmaz.
   // Yine de yabancı script/frame/obje kaynaklarını ve clickjacking'i engeller.
   "Content-Security-Policy": [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' https://unpkg.com",
-    "style-src 'self' 'unsafe-inline' https://unpkg.com",
+    "script-src 'self' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https://*.tile.openstreetmap.org https://*.arcgisonline.com",
     "font-src 'self' data:",
     "worker-src 'self' blob:",

@@ -505,22 +505,8 @@
           ReadableStream.prototype[Symbol.asyncIterator] = ReadableStream.prototype.values || readableStreamAsyncValues;
         }
       })();
-    </script><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" data-leaflet-stylesheet />
-    <script>
-      (function installLeafletCdnFallback() {
-        var stylesheet = document.querySelector("[data-leaflet-stylesheet]");
-        if (stylesheet) {
-          stylesheet.addEventListener("error", function () {
-            if (stylesheet.dataset.fallbackLoaded) return;
-            stylesheet.dataset.fallbackLoaded = "true";
-            var fallbackStylesheet = document.createElement("link");
-            fallbackStylesheet.rel = "stylesheet";
-            fallbackStylesheet.href = "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css";
-            document.head.appendChild(fallbackStylesheet);
-          }, { once: true });
-        }
-      })();
     </script>
+    <link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=1.9.4" />
     <link rel="stylesheet" href="styles.css?v=20260720-0215" />
     <link rel="stylesheet" href="themes/navy-blue.css?v=20260713-0200" />
     <link rel="stylesheet" href="themes/apple.css?v=20260713-0200" />
@@ -755,20 +741,7 @@
       </label>
     </template>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" data-leaflet-script></script>
-    <script>
-      (function installLeafletScriptFallback() {
-        var script = document.querySelector("[data-leaflet-script]");
-        if (!script) return;
-        script.addEventListener("error", function () {
-          if (window.L || script.dataset.fallbackLoaded) return;
-          script.dataset.fallbackLoaded = "true";
-          var fallbackScript = document.createElement("script");
-          fallbackScript.src = "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js";
-          document.head.appendChild(fallbackScript);
-        }, { once: true });
-      })();
-    </script>
+    <script src="vendor/leaflet/leaflet.js?v=1.9.4"></script>
     <script src="./vendor/pdfjs/pdf.worker.fake.js?v=20260620-1147"></script>
     <script src="./vendor/pdfjs/pdf.local.js?v=20260620-1147"></script>
     <script src="./vendor/tesseract/tesseract.min.js?v=20260620-1147"></script>

@@ -5,6 +5,27 @@ Son güncelleme: 2026-07-21 · Servis edilen sürüm: **app.js?v=20260721-0105**
 Bu belge, bir sonraki geliştirici/oturum için projeyi çalıştırma, doğrulama ve bu
 oturumda yapılanları özetler.
 
+## 0.0.203 - 2026-07-21 - Adres/Konum haritasında Leaflet CDN bağımlılığı kaldırıldı
+
+Canlı `experify.com.tr` adresinde Adres ve Konum haritası gerçek Leaflet haritası
+yerine çapraz çizgili statik fallback olarak görünüyordu. Yerelde doğru çalışmasının
+nedeni CDN'in yerel ortamda yüklenebilmesi; canlıda ise `unpkg.com` başarısız
+olduğunda jsDelivr fallback'i deneniyor, fakat CSP `cdn.jsdelivr.net` kaynağına
+izin vermediği için Leaflet hiç oluşmuyor ve `isLeafletReady()` false kalıyordu.
+
+Kalıcı çözüm olarak Leaflet 1.9.4 yerel vendor dosyalarına alındı:
+`vendor/leaflet/leaflet.css`, `vendor/leaflet/leaflet.js` ve marker görselleri.
+`index.html` artık Leaflet'i yalnızca `vendor/leaflet/...` üzerinden yükler;
+unpkg/jsDelivr fallback blokları kaldırıldı. `server.js` CSP'sindeki harici
+Leaflet script/style izinleri de temizlendi (`script-src/style-src` self +
+unsafe-inline). Harita tile görselleri için `img-src` izinleri korunur.
+
+`tools/check-basic.js` artık Leaflet'in yerel vendor'dan yüklendiğini, CDN
+referanslarının geri gelmediğini ve vendor dosyalarının mevcut olduğunu denetler.
+Doğrulama: `npm.cmd run verify` geçti. Canlıya çıktıktan sonra Node süreci /
+deployment yeniden başlatılmalı; aksi halde eski CSP header'ı servis edilmeye
+devam edebilir.
+
 ## 0.0.202 - 2026-07-21 - Ziraat ek tablo: 2 ondalık biçim, bitişik-nizam KAKS, NİTELİKLİ toplam formülleri
 
 Kullanıcının 5 maddelik düzeltmesi (`tools/build-ziraat-ek-tablo-xlsx.py`

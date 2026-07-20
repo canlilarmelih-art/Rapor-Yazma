@@ -709,6 +709,10 @@ function main() {
       indexHtml.includes("src/risk/halkbank-risk-rules.js") &&
       indexHtml.includes("src/comparables/comparable-market-analysis.js") &&
       indexHtml.includes("src/value-factors/value-factors-rules.js") &&
+      indexHtml.includes("vendor/leaflet/leaflet.css?v=1.9.4") &&
+      indexHtml.includes("vendor/leaflet/leaflet.js?v=1.9.4") &&
+      !indexHtml.includes("unpkg.com/leaflet") &&
+      !indexHtml.includes("cdn.jsdelivr.net/npm/leaflet") &&
       indexHtml.includes("styles.css?v=20260720-0215") &&
       indexHtml.includes("src/auth/access-control.js?v=20260719-2200") &&
       indexHtml.includes("app.js?v=20260721-0105") &&
@@ -721,6 +725,15 @@ function main() {
   checkFileExists("src/risk/halkbank-risk-rules.js");
   checkFileExists("src/comparables/comparable-market-analysis.js");
   checkFileExists("src/value-factors/value-factors-rules.js");
+  checkFileExists("vendor/leaflet/leaflet.css");
+  checkFileExists("vendor/leaflet/leaflet.js");
+  checkFileExists("vendor/leaflet/images/marker-icon.png");
+  assert(
+    serverJs.includes("\"script-src 'self' 'unsafe-inline'\"") &&
+      serverJs.includes("\"style-src 'self' 'unsafe-inline'\"") &&
+      !serverJs.includes("https://unpkg.com"),
+    "Leaflet yerel vendor'a alindigi halde CSP veya CDN referanslari temizlenmemis."
+  );
   assert(
     appJs.includes("createComparableMarketAnalysisPanel") &&
       appJs.includes("EMSAL_PIYASA_ANALIZI") &&
