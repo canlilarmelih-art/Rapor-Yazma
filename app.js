@@ -810,6 +810,7 @@ applyUserFieldDefaults(state);
 let leafletMap = null;
 let leafletKmlLayer = null;
 let leafletSelectedMarker = null;
+let leafletMapRetryTimer = null;
 let nearbyAutoFetchStarted = false;
 let nearbyRequestSerial = 0;
 let legacyPlaceholderRows = [];
@@ -21613,6 +21614,7 @@ function renderLeafletKmlMap() {
 
   if (!isLeafletReady()) {
     renderStaticKmlMap();
+    scheduleLeafletMapRetry();
     return;
   }
 
@@ -21680,6 +21682,25 @@ function renderLeafletKmlMap() {
     console.warn("Leaflet haritasi cizilemedi.", error);
     renderStaticKmlMap();
   }
+}
+
+function scheduleLeafletMapRetry() {
+  if (leafletMapRetryTimer || typeof window === "undefined") return;
+  let attempts = 0;
+  const retry = () => {
+    leafletMapRetryTimer = null;
+    const panel = document.querySelector("#kmlMapPanel");
+    if (!panel || panel.querySelector(".leaflet-container")) return;
+    if (isLeafletReady()) {
+      renderLeafletKmlMap();
+      return;
+    }
+    attempts += 1;
+    if (attempts < 20) {
+      leafletMapRetryTimer = window.setTimeout(retry, 250);
+    }
+  };
+  leafletMapRetryTimer = window.setTimeout(retry, 0);
 }
 
 function isLeafletReady() {
@@ -27774,3 +27795,7 @@ if (initialImarRulesChanged || initialTextNormalizationChanged || initialReviewe
 initSidebarCollapse();
 createNav();
 render();
+
+// Leaflet is loaded from a deferred external script and may finish after the
+// first render. Replace a temporary static fallback as soon as it is ready.
+window.addEventListener("load", scheduleLeafletMapRetry, { once: true });

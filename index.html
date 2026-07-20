@@ -505,7 +505,22 @@
           ReadableStream.prototype[Symbol.asyncIterator] = ReadableStream.prototype.values || readableStreamAsyncValues;
         }
       })();
-    </script><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    </script><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" data-leaflet-stylesheet />
+    <script>
+      (function installLeafletCdnFallback() {
+        var stylesheet = document.querySelector("[data-leaflet-stylesheet]");
+        if (stylesheet) {
+          stylesheet.addEventListener("error", function () {
+            if (stylesheet.dataset.fallbackLoaded) return;
+            stylesheet.dataset.fallbackLoaded = "true";
+            var fallbackStylesheet = document.createElement("link");
+            fallbackStylesheet.rel = "stylesheet";
+            fallbackStylesheet.href = "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css";
+            document.head.appendChild(fallbackStylesheet);
+          }, { once: true });
+        }
+      })();
+    </script>
     <link rel="stylesheet" href="styles.css?v=20260720-0215" />
     <link rel="stylesheet" href="themes/navy-blue.css?v=20260713-0200" />
     <link rel="stylesheet" href="themes/apple.css?v=20260713-0200" />
@@ -740,7 +755,20 @@
       </label>
     </template>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" data-leaflet-script></script>
+    <script>
+      (function installLeafletScriptFallback() {
+        var script = document.querySelector("[data-leaflet-script]");
+        if (!script) return;
+        script.addEventListener("error", function () {
+          if (window.L || script.dataset.fallbackLoaded) return;
+          script.dataset.fallbackLoaded = "true";
+          var fallbackScript = document.createElement("script");
+          fallbackScript.src = "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js";
+          document.head.appendChild(fallbackScript);
+        }, { once: true });
+      })();
+    </script>
     <script src="./vendor/pdfjs/pdf.worker.fake.js?v=20260620-1147"></script>
     <script src="./vendor/pdfjs/pdf.local.js?v=20260620-1147"></script>
     <script src="./vendor/tesseract/tesseract.min.js?v=20260620-1147"></script>
@@ -754,7 +782,7 @@
     <script src="src/value-factors/value-factors-rules.js?v=20260707-1050"></script>
     <script src="src/land/climate-earthquake-data.js?v=20260712-1720"></script>
     <script src="src/auth/access-control.js?v=20260719-2200"></script>
-    <script src="app.js?v=20260720-0200"></script>
+    <script src="app.js?v=20260720-0315"></script>
     <script src="src/exports/export-validation.js?v=20260716-1845"></script>
     <!-- Banka şablonlarıyla dışa aktarma: app.js'ten SONRA yüklenmeli (global'leri çağrı anında kullanır). -->
     <script src="src/templates/template-engine.js?v=20260719-2105"></script>

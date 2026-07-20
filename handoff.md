@@ -5150,3 +5150,9 @@ Doğrulama: `node --check app.js`, `node tools/check-basic.js`, `git diff --chec
 - Reverse geocoding updates the visible address controls without rebuilding the whole address/map section; moving the selected map point no longer causes a full section refresh.
 - Nearby environment defaults to the three closest records from the combined nearby data and user POIs. Manual selection remains available after the default selection.
 - Verification: `npm run verify`, Node syntax checks, `git diff --check`, and Graphify update completed successfully.
+
+## 0.0.197 - Leaflet map fallback recovery (2026-07-20)
+
+- If Leaflet loads after the first application render, the temporary static map is replaced automatically when the library becomes ready.
+- Added a jsDelivr fallback for Leaflet CSS and JavaScript when the primary unpkg CDN request fails.
+- This prevents cloud/local reports from remaining on the diagonal-line static fallback while the actual map library is available or becomes available shortly after load.
