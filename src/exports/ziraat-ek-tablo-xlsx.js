@@ -150,6 +150,17 @@
       const area = numberField("currentValueArea");
       return area > 0 ? numberField("currentValue") / area : 0;
     }
+    // KAKS / Emsal: yapı nizamı BİTİŞİK ise KAKS yerine kat adedi yazılır
+    // (kullanıcı kuralı). Bitişik nizamda emsal katsayısı yerine kat adedi
+    // esas alınır; diğer nizamlarda KAKS gelir.
+    if (field === "ZRT_KAKS_OR_FLOOR") {
+      const order = foldTr(fieldValue("order"));
+      if (order.includes("bitisik")) {
+        const floors = numberField("floorCount");
+        if (floors > 0) return floors;
+      }
+      return numberField("kaks");
+    }
     // Terk sonrası parsel alanı: app'te ayrı bir alan değil, yola terk
     // miktarından hesaplanır (bkz. getPostRoadSetbackParcelArea).
     if (field === "ZRT_POST_SETBACK_AREA") {

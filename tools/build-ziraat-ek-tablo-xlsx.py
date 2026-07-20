@@ -87,7 +87,9 @@ TOKEN_MAP = {
 # 0 dururlar; manifest üzerinden doldurulurlar.
 EXTRA_CELLS = {
     "ARSA": [
-        ("F3", "kaks", "number"),
+        # Kullanıcı kuralı: yapı nizamı BİTİŞİK ise KAKS yerine kat adedi yazılır
+        # (app'teki composeImarCalculatedEmsal mantığının aynısı).
+        ("F3", "ZRT_KAKS_OR_FLOOR", "number"),
         ("G3", "taks", "number"),
         ("H3", "hmax", "number"),
     ],
@@ -115,6 +117,26 @@ FORMULA_CACHE = {
 }
 
 
+# Kullanıcı isteği (2026-07-21): yüzölçümü, m² birim değeri, Hmax ve terk
+# sonrası parsel büyüklüğü hücrelerinde virgülden sonra 2 basamak gösterilmeli
+# (ör. 193 yerine 192,74). Sayı biçimi "#,##0.00" olarak zorlanır.
+TWO_DECIMAL_CELLS = {
+    "TARLA": ["D3", "E3", "D8", "D12", "E12", "D17"],  # yüzölçüm + m² birim değer + toplamlar
+    "ARSA": ["D3", "H3", "J3", "D8", "D12", "E12", "D17", "D21", "E21", "D26"],  # yüzölçüm, Hmax, terk sonrası, m² birim
+    "KONUT-İŞYERLERİ": ["E3", "F3", "E6", "E10", "F10", "E14"],  # alan + m² birim değer
+    "NİTELİKLİ GAYRİMENKUL": ["G3", "H3", "G4", "H4", "G9", "G13", "H13", "G14", "G18"],  # alan + birim değer + toplam
+}
+
+# Formül override'ları (kullanıcı isteği): NİTELİKLİ GAYRİMENKUL toplam
+# hücreleri, doğru satır aralığına işaret etmeli.
+FORMULA_OVERRIDES = {
+    "NİTELİKLİ GAYRİMENKUL": [
+        ("G9", "=SUM(G4:G8)"),    # =TOPLA(G4:G8)
+        ("G18", "=SUM(G14:G17)"),  # =TOPLA(G14:G17)
+    ],
+}
+
+
 def main():
     if not os.path.exists(SRC):
         raise SystemExit(f"Kaynak bulunamadi: {SRC}")
@@ -123,6 +145,18 @@ def main():
     sheet_order = wb.sheetnames
     manifest = []
     unknown = []
+
+    # Formül override'ları (toplam aralıkları vb.).
+    for sheet_name, overrides in FORMULA_OVERRIDES.items():
+        ws = wb[sheet_name]
+        for coord, formula in overrides:
+            ws[coord] = formula
+
+    # 2 ondalık basamak biçimi (yüzölçümü, m² birim değer, Hmax, terk sonrası).
+    for sheet_name, coords in TWO_DECIMAL_CELLS.items():
+        ws = wb[sheet_name]
+        for coord in coords:
+            ws[coord].number_format = "#,##0.00"
 
     for ws in wb.worksheets:
         sheet_index = sheet_order.index(ws.title) + 1  # sheet1.xml = 1

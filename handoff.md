@@ -5,6 +5,32 @@ Son güncelleme: 2026-07-21 · Servis edilen sürüm: **app.js?v=20260721-0105**
 Bu belge, bir sonraki geliştirici/oturum için projeyi çalıştırma, doğrulama ve bu
 oturumda yapılanları özetler.
 
+## 0.0.202 - 2026-07-21 - Ziraat ek tablo: 2 ondalık biçim, bitişik-nizam KAKS, NİTELİKLİ toplam formülleri
+
+Kullanıcının 5 maddelik düzeltmesi (`tools/build-ziraat-ek-tablo-xlsx.py`
+üzerinden, şablon yeniden üretildi):
+
+1-2-4. **2 ondalık gösterim** — yüzölçümü, m² birim değeri, Hmax ve terk
+   sonrası parsel büyüklüğü hücrelerinin sayı biçimi `#,##0` → `#,##0.00`
+   yapıldı (`TWO_DECIMAL_CELLS`), toplam satırları dahil. Artık 193 yerine
+   192,74 gösterilir. (Değer HAM sayı olarak yazılır; iki-basamak yalnızca
+   hücre biçimidir — Excel virgülle 192,74 gösterir.)
+
+3. **Bitişik nizam → kat adedi** — ARSA F3 (KAKS/Emsal) hücresi artık
+   `ZRT_KAKS_OR_FLOOR` çözümleyicisiyle doldurulur: yapı nizamı BİTİŞİK ise
+   `floorCount` (kat adedi), diğer nizamlarda `kaks`. (app'teki
+   composeImarCalculatedEmsal önceliğiyle uyumlu.)
+
+5. **NİTELİKLİ GAYRİMENKUL toplam formülleri** — `FORMULA_OVERRIDES` ile
+   G9 = `=SUM(G4:G8)` ve G18 = `=SUM(G14:G17)` olarak güncellendi (önceden
+   G3:G8 / G13:G17 idi; ARSA satırı toplama girmemeli).
+
+Manifest yine 57 hücre.
+
+Doğrulama: `npm run verify` geçti; **canlı tarayıcıda**: yüzölçümü 192,74
+(yuvarlanmadan), Hmax 9,5, terk 192,74; ARSA F3 ayrık nizamda 1,5 (KAKS) /
+bitişik nizamda 4 (kat adedi); konsol temiz.
+
 ## 0.0.201 - 2026-07-21 - Ziraat ek tablo şablonu kullanıcının placeholder dosyasından üretiliyor
 
 Kullanıcı, ek tabloyu Excel'de kendisi düzenleyip **placeholder'ları
