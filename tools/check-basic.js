@@ -159,9 +159,12 @@ function main() {
     appJs.includes("function syncRenderedAddressFields()") &&
       appJs.includes("return Object.keys(previousValues).some") &&
       appJs.includes("function getNearestNearbySelectionIds") &&
-      appJs.includes("selectedIds: getNearestNearbySelectionIds") &&
+      appJs.includes("state.sourceValues.nearbyPlaces.selectedIds = getNearestNearbySelectionIds") &&
       appJs.includes("function getMapLabelPlaces()") &&
-      appJs.includes("return getSelectedNearbyPlaces();") &&
+      appJs.includes("selectionCustomized: true") &&
+      appJs.includes("nearbySource.selectionCustomized") &&
+      appJs.includes("const selectedArteryId = String(state.fields.mainArteryId") &&
+      cloudSyncJs.includes("selectionCustomized: Boolean(source.nearbyPlaces.selectionCustomized)") &&
       cloudSyncJs.includes("hydrateImportedAddressAdministrativeFields(state)"),
     "Adres yukleme, harita hareketi veya yakin cevre ilk uc secimi korunmuyor."
   );
@@ -552,7 +555,7 @@ function main() {
       appJs.includes("function isUserNearbyPlaceInAddressRadius") &&
       appJs.includes("return [...userPlaces, ...autoPlaces]") &&
       appJs.includes("function getNearestNearbySelectionIds") &&
-      appJs.includes("selectedIds: getNearestNearbySelectionIds") &&
+      appJs.includes("state.sourceValues.nearbyPlaces.selectedIds = getNearestNearbySelectionIds") &&
       appJs.includes("slice(0, nearbyAutoLimit)") &&
       appJs.includes("nearbySettlementFallbackMinUsefulCount") &&
       appJs.includes("function isSettlementLikeNearbyPlace") &&
@@ -708,7 +711,7 @@ function main() {
       indexHtml.includes("src/value-factors/value-factors-rules.js") &&
       indexHtml.includes("styles.css?v=20260720-0215") &&
       indexHtml.includes("src/auth/access-control.js?v=20260719-2200") &&
-      indexHtml.includes("app.js?v=20260720-0430") &&
+      indexHtml.includes("app.js?v=20260720-1210") &&
       indexHtml.includes("cloud/cloud-sync.js?v=20260719-2200") &&
       indexHtml.includes("cloud/report-library.js?v=20260719-2200") &&
       indexHtml.includes("src/templates/template-engine.js?v=20260719-2105"),

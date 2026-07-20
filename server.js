@@ -487,6 +487,7 @@ const mimeTypes = new Map([
   [".webp", "image/webp"],
   [".svg", "image/svg+xml"],
   [".pdf", "application/pdf"],
+  [".xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"],
 ]);
 
 function sendJson(response, status, body) {

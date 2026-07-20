@@ -11766,6 +11766,41 @@ function appendBankTemplateExportBlock(panel, status) {
     }
   });
   panel.append(block);
+  appendZiraatEkTabloXlsxBlock(panel, status);
+}
+
+// Ziraat Bankası ek tablosu (4 sayfalı) XLSX olarak dışa aktarma. Doldurma
+// motoru (src/exports/xlsx-fill.js + ziraat-ek-tablo-xlsx.js) yüklenmemişse
+// blok hiç görünmez.
+function appendZiraatEkTabloXlsxBlock(panel, status) {
+  if (!window.RaporZiraatEkTablo) return;
+  const block = document.createElement("div");
+  block.className = "output-template-export";
+  block.innerHTML = `
+    <div class="subsection-title-row" style="margin-top:14px;">
+      <div>
+        <h4>Ziraat Ek Tablo (Excel)</h4>
+        <p>templates/ziraat-ek-tablo.xlsx şablonu (TARLA / ARSA / KONUT-İŞYERLERİ / NİTELİKLİ GAYRİMENKUL) rapor verisiyle doldurulup .xlsx olarak iner.</p>
+      </div>
+    </div>
+    <div class="output-export-actions">
+      <button type="button" class="primary-button" data-export-ziraat-xlsx>Ziraat ek tablosunu Excel indir</button>
+    </div>
+    <p class="subtle-text">Birincil gayrimenkulün ada/parsel/alan/değer bilgileri doldurulur; birden çok gayrimenkul için Excel'de sarı satırları çoğaltıp elle tamamlayın.</p>
+  `;
+  block.querySelector("[data-export-ziraat-xlsx]").addEventListener("click", async () => {
+    if (!confirmExportWithMissingFields()) return;
+    try {
+      saveState();
+      const result = await window.RaporZiraatEkTablo.export();
+      showOutputExportStatus(status, `Ziraat ek tablosu hazırlandı (${result.count} alan).`);
+    } catch (error) {
+      console.error("Ziraat ek tablo XLSX hatası:", error);
+      showOutputExportStatus(status, "Ek tablo hazırlanamadı.");
+      window.alert(`Ziraat ek tablosu hazırlanamadı: ${error?.message || error}`);
+    }
+  });
+  panel.append(block);
 }
 
 function showOutputExportStatus(status, text) {
@@ -19704,6 +19739,7 @@ async function fetchNearbyPlacesForCurrentLocation(options = {}) {
     state.sourceValues.nearbyPlaces = {
       places,
       selectedIds: [],
+      selectionCustomized: false,
       scanCycle,
       center: { lat: Number(lat).toFixed(6), lng: Number(lng).toFixed(6) },
       radius: environment.radius || nearbyRadiusMeters,
@@ -19819,9 +19855,15 @@ async function refreshUserPoisFromServer(options = {}) {
       loading: false,
     };
     if (options.select) {
+      const nearbySource = state.sourceValues.nearbyPlaces || {};
+      const hasLegacySelection = nearbySource.selectionCustomized === undefined
+        && Array.isArray(nearbySource.selectedIds)
+        && nearbySource.selectedIds.length > 0;
       state.sourceValues.nearbyPlaces = {
-        ...(state.sourceValues.nearbyPlaces || {}),
-        selectedIds: getNearestNearbySelectionIds(state.sourceValues.nearbyPlaces || {}),
+        ...nearbySource,
+        selectedIds: nearbySource.selectionCustomized || hasLegacySelection
+          ? [...(nearbySource.selectedIds || [])]
+          : getNearestNearbySelectionIds(nearbySource),
       };
     }
     updateNearbyFieldFromSelection();
@@ -19882,6 +19924,7 @@ async function saveUserPoiFromMap(input, statusElement) {
   state.sourceValues.nearbyPlaces = {
     ...(state.sourceValues.nearbyPlaces || {}),
     selectedIds: [...selected],
+    selectionCustomized: true,
   };
   updateNearbyFieldFromSelection();
   autosave();
@@ -21003,7 +21046,11 @@ function toggleNearbySelection(id, checked) {
   } else {
     selected.delete(id);
   }
-  state.sourceValues.nearbyPlaces = { ...source, selectedIds: [...selected] };
+  state.sourceValues.nearbyPlaces = {
+    ...source,
+    selectedIds: [...selected],
+    selectionCustomized: true,
+  };
   updateNearbyFieldFromSelection();
 }
 
@@ -21780,9 +21827,16 @@ function renderSelectedNearbyMarkers() {
 }
 
 function getMapLabelPlaces() {
-  // Krokilerde yalnÄ±zca kullanÄ±cÄ±nÄ±n seÃ§tiÄŸi yakÄ±n Ã§evre ve POI kayÄ±tlarÄ± gÃ¶sterilir.
-  // UlaÅŸÄ±m arterleri artÄ±k otomatik olarak etikete eklenmez.
-  return getSelectedNearbyPlaces();
+  const selectedPlaces = getSelectedNearbyPlaces();
+  const selectedArteryId = String(state.fields.mainArteryId || "");
+  const selectedArtery = selectedArteryId
+    ? getAllMainArteryPlacesWithUser(state.sourceValues.nearbyPlaces?.places || [])
+      .find((place) => place.id === selectedArteryId)
+    : null;
+  return [...new Map(
+    [...selectedPlaces, ...(selectedArtery ? [selectedArtery] : [])]
+      .map((place) => [place.id, place]),
+  ).values()];
 }
 
 function renderStaticKmlMap() {
@@ -22303,7 +22357,7 @@ function getExportMapZoom(center, parsed, canvasWidth = 1600, canvasHeight = 120
   if (leafletMap?.getZoom) return leafletMap.getZoom();
   const points = [
     ...(parsed?.coordinates || []).map((point) => [Number(point.lat), Number(point.lng)]),
-    ...getSelectedNearbyPlaces().map((place) => [place.lat, place.lng]),
+    ...getMapLabelPlaces().map((place) => [place.lat, place.lng]),
     center,
   ].filter(([lat, lng]) => Number.isFinite(lat) && Number.isFinite(lng));
   if (points.length < 2) return 16;

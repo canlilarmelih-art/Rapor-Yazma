@@ -1,9 +1,86 @@
 # Rapor Yazma Programı — Handoff Notu
 
-Son güncelleme: 2026-07-20 · Servis edilen sürüm: **app.js?v=20260719-2000** (styles.css?v=20260720-0215, src/templates/template-engine.js?v=20260719-2105, cloud/cloud-sync.js?v=20260719-1505, cloud/report-library.js?v=20260719-1530, halkbank-risk-rules.js?v=20260707-1812)
+Son güncelleme: 2026-07-20 · Servis edilen sürüm: **app.js?v=20260720-1210** (styles.css?v=20260720-0215, src/templates/template-engine.js?v=20260719-2105, cloud/cloud-sync.js?v=20260719-1505, cloud/report-library.js?v=20260719-1530, halkbank-risk-rules.js?v=20260707-1812)
 
 Bu belge, bir sonraki geliştirici/oturum için projeyi çalıştırma, doğrulama ve bu
 oturumda yapılanları özetler.
+
+## 0.0.190 - 2026-07-20 - Ziraat ek tablosu XLSX dışa aktarma (tarayıcı, kütüphanesiz)
+
+Kullanıcı, Ziraat Bankası raporu ekinde gönderilen gerçek Excel dosyasını
+(`202307141538532152.xlsx` — 4 sayfa: TARLA, ARSA, KONUT-İŞYERLERİ,
+NİTELİKLİ GAYRİMENKUL; her sayfada Yasal + Mevcut Durum tabloları,
+GENEL TOPLAM satırı, formüller, sarı giriş hücreleri) paylaşıp "template
+mantığında, çıktı türü xlsx olacak şekilde" bir şablon istedi. Kapsam:
+şablon + uygulamaya otomatik xlsx dışa aktarma.
+
+### Mimari (neden böyle)
+
+Uygulama build'siz vanilla JS; Word çıktısını da elle HTML üretiyor. XLSX
+için de **bağımlılıksız** yol seçildi: openpyxl ile hazırlanan STİLLİ/
+FORMÜLLÜ şablonu tarayıcıda **koordinat bazlı** doldurmak. Şablon
+STORED (sıkıştırmasız) zip olarak paketlenir; böylece tarayıcı inflate/
+deflate kütüphanesi OLMADAN zip'i okuyup yeniden yazabilir. Tüm stil/
+formül/birleştirme şablondan birebir korunur; yalnızca giriş hücrelerinin
+iç değeri (tip korunarak) değiştirilir.
+
+### Eklenen dosyalar
+
+- `templates/ziraat-ek-tablo.xlsx` — 4 sayfalı STORED şablon (kaynak yapının
+  birebir kopyası; birincil satırın sarı giriş hücrelerine token/0, sayı
+  hücrelerine token hover-yorumu; formüller/GENEL TOPLAM dokunulmadı).
+  **UYARI:** bu `.xlsx` STORED paketlenmelidir — Excel'de açıp "kaydet"
+  derseniz DEFLATE'e döner ve tarayıcı doldurma motoru okuyamaz. Yeniden
+  üretmek için `tools/build-ziraat-ek-tablo-xlsx.py` kullanın.
+- `src/exports/ziraat-ek-tablo-manifest.json` — {sheetIndex, cell, field,
+  type} eşlemesi (doldurma motoru bunu kullanır). 39 hücre.
+- `src/exports/xlsx-fill.js` — bağımlılıksız STORED-zip okuma/yazma + CRC32
+  + koordinat bazlı hücre doldurma (sayı → `<v>`, metin → inlineStr; stil
+  `s=` korunur). `window.RaporXlsxFill`.
+- `src/exports/ziraat-ek-tablo-xlsx.js` — alanları `state.fields`'ten çözer
+  (sayılar `parseValuationNumber` ile → Türkçe "3.178,50" → 3178.5),
+  ruhsat/iskan belgesini `documents` tablosundan birleştirir, indirir.
+  `window.RaporZiraatEkTablo.export()`.
+- `tools/build-ziraat-ek-tablo-xlsx.py` — şablon + manifest üreteci
+  (kaynak yolu argv[1] ile geçilebilir).
+- `tools/test-ziraat-ek-tablo-xlsx.js` — tarayıcısız regresyon: JS ile
+  doldurup zip'i yeniden yazar, tip/yapı doğrular (`npm test` zincirine
+  eklendi).
+
+### Değişen dosyalar
+
+- `index.html` — xlsx-fill.js + ziraat-ek-tablo-xlsx.js script'leri (app.js'ten
+  SONRA). `app.js?v=20260720-1210`.
+- `app.js` — "Banka ve Çıktı" bölümüne "Ziraat Ek Tablo (Excel)" bloğu +
+  "Ziraat ek tablosunu Excel indir" butonu (`appendZiraatEkTabloXlsxBlock`).
+- `server.js` — `.xlsx` MIME tipi eklendi (fetch zaten octet-stream ile de
+  çalışıyordu).
+- `package.json`, `tools/check-basic.js` — yeni test + sürüm.
+
+### Kapsam sınırı (birincil gayrimenkul)
+
+Ek tablo çok satırlı (çok parselli) olabilir; motor yalnızca BİRİNCİL
+gayrimenkulün satırını doldurur (app tek ana gayrimenkul + emsal modeli).
+Ek gayrimenkuller için kullanıcı Excel'de sarı satırları çoğaltıp elle
+tamamlar — kaynak dosyanın kendi mantığı ("SARI İLE BOYALI ALANLARA GİRİŞ
+YAPILMALIDIR").
+
+### Doğrulama
+
+- `npm run verify` (check-basic + tüm testler + yeni xlsx testi) geçti.
+- openpyxl round-trip: doldurulmuş çıktıda metin hücreleri string, sayı
+  hücreleri numeric (D3=3178, F3=3600000), formüller korunmuş (E3=F3/D3,
+  D8=SUM(...), KONUT F3=IFERROR(G3/E3,0)).
+- **Canlı tarayıcı uçtan uca**: her iki modül yüklendi, gerçek state +
+  gerçek `parseValuationNumber` ile 102KB'lık doğru MIME'li xlsx üretildi;
+  blob geri okunup Türkçe "3.178,50"→3178.5, "3.600.000"→3600000 numeric,
+  stiller korunmuş, 24 zip girişi + [Content_Types].xml doğrulandı; konsol
+  temiz; export butonu "Banka ve Çıktı" bölümünde göründü.
+- **LibreOffice ile formül recalc bu Windows ortamında YAPILAMADI** (soffice
+  yok). Formüller bankanın kendi (değişmemiş) formülleri ve numeric giriş
+  hücrelerine referans veriyor; Excel'de açılınca hesaplanır. Kullanıcının
+  ilk gerçek çıktıda GENEL TOPLAM/birim değer hesaplarını Excel'de teyit
+  etmesi önerilir.
 
 ## 0.0.189 - 2026-07-20 - Yeni Experify logosu uygulandı
 

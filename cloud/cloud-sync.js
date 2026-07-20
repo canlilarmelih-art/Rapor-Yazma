@@ -97,6 +97,7 @@
         ? {
           places: Array.isArray(source.nearbyPlaces.places) ? source.nearbyPlaces.places : [],
           selectedIds: Array.isArray(source.nearbyPlaces.selectedIds) ? source.nearbyPlaces.selectedIds : [],
+          selectionCustomized: Boolean(source.nearbyPlaces.selectionCustomized),
           center: source.nearbyPlaces.center || null,
           radius: source.nearbyPlaces.radius || null,
         }

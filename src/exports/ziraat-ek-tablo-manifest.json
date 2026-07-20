@@ -1,0 +1,323 @@
+{
+  "template": "templates/ziraat-ek-tablo.xlsx",
+  "sheets": [
+    "TARLA",
+    "ARSA",
+    "KONUT-İŞYERLERİ",
+    "NİTELİKLİ GAYRİMENKUL"
+  ],
+  "cells": [
+    {
+      "sheetIndex": 1,
+      "sheet": "TARLA",
+      "cell": "B3",
+      "field": "blockNo",
+      "type": "text",
+      "token": "{{ADA}}"
+    },
+    {
+      "sheetIndex": 1,
+      "sheet": "TARLA",
+      "cell": "C3",
+      "field": "parcelNo",
+      "type": "text",
+      "token": "{{PARSEL}}"
+    },
+    {
+      "sheetIndex": 1,
+      "sheet": "TARLA",
+      "cell": "D3",
+      "field": "landArea",
+      "type": "number",
+      "token": "{{YUZOLCUMU}}"
+    },
+    {
+      "sheetIndex": 1,
+      "sheet": "TARLA",
+      "cell": "F3",
+      "field": "legalValue",
+      "type": "number",
+      "token": "{{YASAL_DEGER}}"
+    },
+    {
+      "sheetIndex": 1,
+      "sheet": "TARLA",
+      "cell": "G3",
+      "field": "saleability",
+      "type": "text",
+      "token": "{{SATIS_KABILIYETI}}"
+    },
+    {
+      "sheetIndex": 1,
+      "sheet": "TARLA",
+      "cell": "F12",
+      "field": "currentValue",
+      "type": "number",
+      "token": "{{MEVCUT_DEGER}}"
+    },
+    {
+      "sheetIndex": 1,
+      "sheet": "TARLA",
+      "cell": "G12",
+      "field": "saleability",
+      "type": "text",
+      "token": "{{SATIS_KABILIYETI}}"
+    },
+    {
+      "sheetIndex": 2,
+      "sheet": "ARSA",
+      "cell": "B3",
+      "field": "blockNo",
+      "type": "text",
+      "token": "{{ADA}}"
+    },
+    {
+      "sheetIndex": 2,
+      "sheet": "ARSA",
+      "cell": "C3",
+      "field": "parcelNo",
+      "type": "text",
+      "token": "{{PARSEL}}"
+    },
+    {
+      "sheetIndex": 2,
+      "sheet": "ARSA",
+      "cell": "D3",
+      "field": "landArea",
+      "type": "number",
+      "token": "{{YUZOLCUMU}}"
+    },
+    {
+      "sheetIndex": 2,
+      "sheet": "ARSA",
+      "cell": "E3",
+      "field": "legend",
+      "type": "text",
+      "token": "{{YAPILASMA_FONKSIYONU}}"
+    },
+    {
+      "sheetIndex": 2,
+      "sheet": "ARSA",
+      "cell": "F3",
+      "field": "kaks",
+      "type": "number",
+      "token": "{{KAKS}}"
+    },
+    {
+      "sheetIndex": 2,
+      "sheet": "ARSA",
+      "cell": "G3",
+      "field": "taks",
+      "type": "number",
+      "token": "{{TAKS}}"
+    },
+    {
+      "sheetIndex": 2,
+      "sheet": "ARSA",
+      "cell": "H3",
+      "field": "hmax",
+      "type": "number",
+      "token": "{{HMAX}}"
+    },
+    {
+      "sheetIndex": 2,
+      "sheet": "ARSA",
+      "cell": "K3",
+      "field": "order",
+      "type": "text",
+      "token": "{{YAPI_NIZAMI}}"
+    },
+    {
+      "sheetIndex": 2,
+      "sheet": "ARSA",
+      "cell": "F12",
+      "field": "legalValue",
+      "type": "number",
+      "token": "{{YASAL_DEGER}}"
+    },
+    {
+      "sheetIndex": 2,
+      "sheet": "ARSA",
+      "cell": "G12",
+      "field": "saleability",
+      "type": "text",
+      "token": "{{SATIS_KABILIYETI}}"
+    },
+    {
+      "sheetIndex": 3,
+      "sheet": "KONUT-İŞYERLERİ",
+      "cell": "B3",
+      "field": "titlePropertyId",
+      "type": "text",
+      "token": "{{TASINMAZ_ID}}"
+    },
+    {
+      "sheetIndex": 3,
+      "sheet": "KONUT-İŞYERLERİ",
+      "cell": "C3",
+      "field": "titleQuality",
+      "type": "text",
+      "token": "{{GAYRIMENKUL_ADI}}"
+    },
+    {
+      "sheetIndex": 3,
+      "sheet": "KONUT-İŞYERLERİ",
+      "cell": "D3",
+      "field": "ZRT_RUHSAT",
+      "type": "text",
+      "token": "{{YAPI_RUHSATI}}"
+    },
+    {
+      "sheetIndex": 3,
+      "sheet": "KONUT-İŞYERLERİ",
+      "cell": "D4",
+      "field": "ZRT_ISKAN",
+      "type": "text",
+      "token": "{{ISKAN_BELGESI}}"
+    },
+    {
+      "sheetIndex": 3,
+      "sheet": "KONUT-İŞYERLERİ",
+      "cell": "E3",
+      "field": "legalArea",
+      "type": "number",
+      "token": "{{YASAL_ALAN}}"
+    },
+    {
+      "sheetIndex": 3,
+      "sheet": "KONUT-İŞYERLERİ",
+      "cell": "G3",
+      "field": "legalValue",
+      "type": "number",
+      "token": "{{YASAL_DEGER}}"
+    },
+    {
+      "sheetIndex": 3,
+      "sheet": "KONUT-İŞYERLERİ",
+      "cell": "E10",
+      "field": "currentArea",
+      "type": "number",
+      "token": "{{MEVCUT_ALAN}}"
+    },
+    {
+      "sheetIndex": 3,
+      "sheet": "KONUT-İŞYERLERİ",
+      "cell": "G10",
+      "field": "currentValue",
+      "type": "number",
+      "token": "{{MEVCUT_DEGER}}"
+    },
+    {
+      "sheetIndex": 3,
+      "sheet": "KONUT-İŞYERLERİ",
+      "cell": "D10",
+      "field": "ZRT_RUHSAT",
+      "type": "text",
+      "token": "{{YAPI_RUHSATI}}"
+    },
+    {
+      "sheetIndex": 3,
+      "sheet": "KONUT-İŞYERLERİ",
+      "cell": "D11",
+      "field": "ZRT_ISKAN",
+      "type": "text",
+      "token": "{{ISKAN_BELGESI}}"
+    },
+    {
+      "sheetIndex": 4,
+      "sheet": "NİTELİKLİ GAYRİMENKUL",
+      "cell": "B3",
+      "field": "titlePropertyId",
+      "type": "text",
+      "token": "{{TASINMAZ_ID}}"
+    },
+    {
+      "sheetIndex": 4,
+      "sheet": "NİTELİKLİ GAYRİMENKUL",
+      "cell": "C3",
+      "field": "mainPropertyQuality",
+      "type": "text",
+      "token": "{{ANA_GAYRIMENKUL}}"
+    },
+    {
+      "sheetIndex": 4,
+      "sheet": "NİTELİKLİ GAYRİMENKUL",
+      "cell": "G3",
+      "field": "landArea",
+      "type": "number",
+      "token": "{{ARSA_ALANI}}"
+    },
+    {
+      "sheetIndex": 4,
+      "sheet": "NİTELİKLİ GAYRİMENKUL",
+      "cell": "I3",
+      "field": "legalValue",
+      "type": "number",
+      "token": "{{YASAL_DEGER}}"
+    },
+    {
+      "sheetIndex": 4,
+      "sheet": "NİTELİKLİ GAYRİMENKUL",
+      "cell": "J3",
+      "field": "saleability",
+      "type": "text",
+      "token": "{{SATIS_KABILIYETI}}"
+    },
+    {
+      "sheetIndex": 4,
+      "sheet": "NİTELİKLİ GAYRİMENKUL",
+      "cell": "C4",
+      "field": "titleQuality",
+      "type": "text",
+      "token": "{{GAYRIMENKUL_ADI}}"
+    },
+    {
+      "sheetIndex": 4,
+      "sheet": "NİTELİKLİ GAYRİMENKUL",
+      "cell": "D4",
+      "field": "buildingClass",
+      "type": "text",
+      "token": "{{YAPI_SINIFI}}"
+    },
+    {
+      "sheetIndex": 4,
+      "sheet": "NİTELİKLİ GAYRİMENKUL",
+      "cell": "E4",
+      "field": "titleFloor",
+      "type": "text",
+      "token": "{{KAT}}"
+    },
+    {
+      "sheetIndex": 4,
+      "sheet": "NİTELİKLİ GAYRİMENKUL",
+      "cell": "F4",
+      "field": "ZRT_RUHSAT",
+      "type": "text",
+      "token": "{{YAPI_RUHSATI}}"
+    },
+    {
+      "sheetIndex": 4,
+      "sheet": "NİTELİKLİ GAYRİMENKUL",
+      "cell": "G4",
+      "field": "legalArea",
+      "type": "number",
+      "token": "{{YAPI_ALANI}}"
+    },
+    {
+      "sheetIndex": 4,
+      "sheet": "NİTELİKLİ GAYRİMENKUL",
+      "cell": "I4",
+      "field": "currentValue",
+      "type": "number",
+      "token": "{{MEVCUT_DEGER}}"
+    },
+    {
+      "sheetIndex": 4,
+      "sheet": "NİTELİKLİ GAYRİMENKUL",
+      "cell": "J4",
+      "field": "saleability",
+      "type": "text",
+      "token": "{{SATIS_KABILIYETI}}"
+    }
+  ]
+}

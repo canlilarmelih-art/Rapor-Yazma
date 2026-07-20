@@ -9,7 +9,7 @@
   },
   "scripts": {
     "check": "node tools/check-basic.js",
-    "test": "node tools/test-parsers.js && node tools/test-kml-parser-module.js && node tools/test-imar-normalizer-module.js && node tools/test-ekb-parser-module.js && node tools/test-access-control.js",
+    "test": "node tools/test-parsers.js && node tools/test-kml-parser-module.js && node tools/test-imar-normalizer-module.js && node tools/test-ekb-parser-module.js && node tools/test-access-control.js && node tools/test-ziraat-ek-tablo-xlsx.js",
     "verify": "npm run check && npm run test"
   }
 }
