@@ -2,155 +2,179 @@
 """
 Ziraat Bankası ek tablo xlsx şablonu üretici.
 
-Kaynak: kullanıcının paylaştığı gerçek Ziraat ek tablosu (4 sayfa).
-Çıktı:
-  templates/ziraat-ek-tablo.xlsx   — stilli, formüllü, STORED-zip şablon.
-                                      Sarı giriş hücrelerine token/0 konur.
-  src/exports/ziraat-ek-tablo-manifest.json
-                                    — {sheetIndex, sheet, cell, field, type, token}
-                                      listesi; tarayıcı doldurma motoru bunu kullanır.
+Kaynak: KULLANICININ placeholder'ları elle yerleştirdiği xlsx (spec dosyası).
+Bu script o dosyayı tarar, {{TOKEN}} içeren hücreleri bulur, TOKEN_MAP ile
+app alanlarına eşler ve şunları üretir:
 
-Not: Şablonun stil/formül/birleştirme yapısı KAYNAKTAN gelir (openpyxl load-in-place),
-biz yalnızca birincil satırın giriş hücrelerini token/0 yapar, ikincil örnek satırları
-boşaltırız. Formüllere DOKUNULMAZ.
+  templates/ziraat-ek-tablo.xlsx        — aynı dosya, STORED (sıkıştırmasız)
+                                          olarak yeniden paketlenmiş.
+  src/exports/ziraat-ek-tablo-manifest.json
+                                        — {sheetIndex, sheet, cell, token,
+                                          field, type} listesi; tarayıcıdaki
+                                          doldurma motoru bunu kullanır.
+
+ÖNEMLİ: Şablon STORED olmalıdır. Tarayıcı doldurma motoru (src/exports/
+xlsx-fill.js) inflate/deflate kütüphanesi kullanmaz; zip girişlerini ham
+okur. Excel'de açıp kaydederseniz dosya DEFLATE'e döner — bu script'i
+yeniden çalıştırıp STORED'a çevirin.
+
+Kullanım:
+    python tools/build-ziraat-ek-tablo-xlsx.py [kaynak.xlsx]
 """
 import json
 import os
+import re
 import sys
 import zipfile
+
 import openpyxl
 
-# Kaynak: Ziraat'in gerçek ek tablosu (4 sayfa). argv[1] ile geçilebilir.
-# Varsayılan, bu şablonun ilk üretildiği kaynak dosyadır (kişiseldir; başka
-# makinede kendi kaynağınızı argv ile verin). Şablon + manifest zaten repoda
-# olduğundan bu script yalnızca yeniden üretim/güncelleme için gerekir.
-SRC = sys.argv[1] if len(sys.argv) > 1 else (
-    r"C:\Users\90551\OneDrive\Masaüstü\OTOMASYON\TEMMUZ"
-    r"\ZRT-202607408 - OSMANGAZİ - SAKARYA - 1 ADET DÜKKAN\202307141538532152.xlsx"
-)
+DEFAULT_SRC = r"C:\Users\90551\OneDrive\Masaüstü\ziraat-ek-tablo.xlsx"
+SRC = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_SRC
 APP = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT_XLSX = os.path.join(APP, "templates", "ziraat-ek-tablo.xlsx")
 OUT_MANIFEST = os.path.join(APP, "src", "exports", "ziraat-ek-tablo-manifest.json")
 
-# Sayfa adları (kaynaktaki sıra) -> tarayıcıda sheet1.xml..sheet4.xml eşleşir.
-# (sheetName, [ (cell, field, type, token) ... ]) birincil satır eşlemeleri.
-# type: "number" | "text". Blanked = ikinci örnek satır (elle çoğaltılır).
-MAPPINGS = {
-    "TARLA": {
-        "fill": [
-            ("B3", "blockNo",     "text",   "{{ADA}}"),
-            ("C3", "parcelNo",    "text",   "{{PARSEL}}"),
-            ("D3", "landArea",    "number", "{{YUZOLCUMU}}"),
-            ("F3", "legalValue",  "number", "{{YASAL_DEGER}}"),
-            ("G3", "saleability", "text",   "{{SATIS_KABILIYETI}}"),
-            ("F12", "currentValue", "number", "{{MEVCUT_DEGER}}"),
-            ("G12", "saleability",  "text",   "{{SATIS_KABILIYETI}}"),
-        ],
-        "blank": ["B4", "C4", "D4", "F4", "G4", "F13", "G13"],
-    },
-    "ARSA": {
-        "fill": [
-            ("B3", "blockNo",   "text",   "{{ADA}}"),
-            ("C3", "parcelNo",  "text",   "{{PARSEL}}"),
-            ("D3", "landArea",  "number", "{{YUZOLCUMU}}"),
-            ("E3", "legend",    "text",   "{{YAPILASMA_FONKSIYONU}}"),
-            ("F3", "kaks",      "number", "{{KAKS}}"),
-            ("G3", "taks",      "number", "{{TAKS}}"),
-            ("H3", "hmax",      "number", "{{HMAX}}"),
-            ("K3", "order",     "text",   "{{YAPI_NIZAMI}}"),
-            ("F12", "legalValue",  "number", "{{YASAL_DEGER}}"),
-            ("G12", "saleability", "text",   "{{SATIS_KABILIYETI}}"),
-        ],
-        "blank": ["B4", "C4", "D4", "E4", "F4", "G4", "H4", "K4", "F13", "G13"],
-    },
-    "KONUT-İŞYERLERİ": {
-        # GAYRİMENKUL SIRA NO: kullanıcı GDYS'den bakıp elle girer → sabit
-        # "Sistemden BKNZ" (manifest'e girmez, doldurulmaz). B10=B3 formülüyle
-        # Mevcut tabloya da yansır.
-        "literal": [("B3", "Sistemden BKNZ")],
-        "fill": [
-            ("C3", "titleQuality",    "text",   "{{GAYRIMENKUL_ADI}}"),
-            # Belge tek satırda (üst): iskan varsa iskan, yoksa son ruhsat.
-            ("D3", "ZRT_BUILDING_DOC", "text",  "{{YAPI_BELGESI}}"),
-            ("E3", "legalArea",       "number", "{{YASAL_ALAN}}"),
-            ("G3", "legalValue",      "number", "{{YASAL_DEGER}}"),
-            ("E10", "currentArea",    "number", "{{MEVCUT_ALAN}}"),
-            ("G10", "currentValue",   "number", "{{MEVCUT_DEGER}}"),
-        ],
-        # İkinci belge satırı (Yasal D4, Mevcut D11) kaldırıldı; D10=D3 formülü
-        # üst satır belgesini Mevcut tabloya taşır (dokunulmaz).
-        "blank": ["D4", "D11"],
-        # F3 birim değer: kaynakta sabit sayı; formüle çeviriyoruz (=değer/alan).
-        "formula": [("F3", "=IFERROR(G3/E3,0)")],
-    },
-    "NİTELİKLİ GAYRİMENKUL": {
-        "literal": [("B3", "Sistemden BKNZ")],
-        "fill": [
-            ("C3", "mainPropertyQuality","text",   "{{ANA_GAYRIMENKUL}}"),
-            ("G3", "landArea",           "number", "{{ARSA_ALANI}}"),
-            ("I3", "legalValue",         "number", "{{YASAL_DEGER}}"),
-            ("J3", "saleability",        "text",   "{{SATIS_KABILIYETI}}"),
-            ("C4", "titleQuality",       "text",   "{{GAYRIMENKUL_ADI}}"),
-            ("D4", "buildingClass",      "text",   "{{YAPI_SINIFI}}"),
-            ("E4", "titleFloor",         "text",   "{{KAT}}"),
-            # Belge: iskan varsa iskan, yoksa son ruhsat (KONUT ile aynı kural).
-            ("F4", "ZRT_BUILDING_DOC",   "text",   "{{YAPI_BELGESI}}"),
-            ("G4", "legalArea",          "number", "{{YAPI_ALANI}}"),
-            ("I4", "currentValue",       "number", "{{MEVCUT_DEGER}}"),
-            ("J4", "saleability",        "text",   "{{SATIS_KABILIYETI}}"),
-        ],
-        "blank": ["A5", "B5", "C5", "D5", "E5", "F5", "G5", "I5", "J5",
-                  "A6", "B6", "C6", "D6", "E6", "F6", "G6", "I6", "J6",
-                  "G15", "I15", "G16", "I16"],
-    },
+TOKEN_RE = re.compile(r"\{\{([^}]+)\}\}")
+
+
+def fold(name):
+    """Türkçe-katlama + noktalama temizleme (template-engine foldTokenName ile aynı ruh)."""
+    out = str(name or "")
+    for a, b in (("İ", "I"), ("ı", "i"), ("Ç", "C"), ("ç", "c"), ("Ğ", "G"), ("ğ", "g"),
+                 ("Ö", "O"), ("ö", "o"), ("Ş", "S"), ("ş", "s"), ("Ü", "U"), ("ü", "u")):
+        out = out.replace(a, b)
+    return re.sub(r"[^A-Z0-9]+", "", out.upper())
+
+
+# TOKEN (katlanmış) -> (app alan anahtarı | özel çözümleyici, tip)
+# type: "number" → hücreye sayı yazılır (formüller çalışır)
+#       "text"   → hücreye metin yazılır
+TOKEN_MAP = {
+    # --- tapu / arsa ---
+    fold("ADA"): ("blockNo", "text"),
+    fold("PARSEL"): ("parcelNo", "text"),
+    fold("LAND_AREA"): ("landArea", "number"),
+    fold("POST_ROAD_SETBACK_PARCEL_AREA"): ("ZRT_POST_SETBACK_AREA", "number"),
+    # --- imar ---
+    fold("LEGEND"): ("legend", "text"),
+    fold("ORDER"): ("order", "text"),
+    fold("CALCULATED_EMSAL"): ("calculatedEmsal", "number"),
+    # --- gayrimenkul tanımı ---
+    fold("GAYRIMENKUL_ADI"): ("titleQuality", "text"),
+    fold("YAPI_SINIFI"): ("buildingClass", "text"),
+    fold("MAİN_PROPERTY_FLOOR_COUNT_TEXT"): ("mainPropertyFloorCountText", "text"),
+    # Belge: iskan varsa iskan, yoksa en güncel ruhsat (özel çözümleyici).
+    fold("YAPI_BELGESI"): ("ZRT_BUILDING_DOC", "text"),
+    # --- alanlar ---
+    fold("TOTAL_LEGAL_AREA"): ("legalValueArea", "number"),
+    fold("TOTAL_CURRENT_AREA"): ("currentValueArea", "number"),
+    # --- değerler ---
+    fold("LEGAL_VALUE"): ("legalValue", "number"),
+    fold("CURRENT_VALUE"): ("currentValue", "number"),
+    fold("LAND_VALUE"): ("landValue", "number"),
+    fold("LEGAL_BUİLDİNG_VALUE"): ("legalBuildingValue", "number"),
+    fold("CURRENT_BUİLDİNG_VALUE"): ("currentBuildingValue", "number"),
+    fold("LEGAL_PREMİUM_VALUE"): ("legalPremiumValue", "number"),
+    fold("CURRENT_PREMİUM_VALUE"): ("currentPremiumValue", "number"),
+    # --- diğer ---
+    fold("SALEABİLİTY"): ("saleability", "text"),
 }
 
-# Sayı hücrelerine 0 yerine token yazamayız (formül kırar). Bu yüzden:
-#  - text  giriş hücresi  -> görünür {{TOKEN}} (dokümantasyon; formül kırmaz)
-#  - number giriş hücresi  -> 0 (formül temiz çalışır); token cell comment olarak eklenir
-from openpyxl.comments import Comment
+
+# Kaynak dosyada {{TOKEN}} konulmamış ama uygulamanın doldurması istenen
+# hücreler (kullanıcı onayı 2026-07-21). Sayı hücreleri olduklarından şablonda
+# 0 dururlar; manifest üzerinden doldurulurlar.
+EXTRA_CELLS = {
+    "ARSA": [
+        ("F3", "kaks", "number"),
+        ("G3", "taks", "number"),
+        ("H3", "hmax", "number"),
+    ],
+    "KONUT-İŞYERLERİ": [
+        ("G3", "legalValue", "number"),
+        ("G10", "currentValue", "number"),
+    ],
+}
+
+# Formül hücrelerinin ÖNBELLEK (<v>) değerleri. openpyxl formülleri cache'siz
+# yazar; Excel açılışta hesaplar ama cache okuyan araçlar boş görür. Bu yüzden
+# doldurma sırasında formülü koruyup <v> önbelleğini de yazarız.
+# type: formulaText | formulaNumber, field: JS tarafındaki çözümleyici/alan.
+FORMULA_CACHE = {
+    "KONUT-İŞYERLERİ": [
+        ("C10", "titleQuality", "formulaText"),        # =C3
+        ("D10", "ZRT_BUILDING_DOC", "formulaText"),    # =D3
+        ("F3", "ZRT_LEGAL_UNIT_VALUE", "formulaNumber"),    # =IFERROR(G3/E3,0)
+        ("F10", "ZRT_CURRENT_UNIT_VALUE", "formulaNumber"), # =IFERROR(G10/E10,0)
+        ("E6", "legalValueArea", "formulaNumber"),     # =SUM(E3:E5)
+        ("G6", "legalValue", "formulaNumber"),         # =SUM(G3:G5)
+        ("E14", "currentValueArea", "formulaNumber"),  # =SUM(E10:E13)
+        ("G14", "currentValue", "formulaNumber"),      # =SUM(G10:G13)
+    ],
+}
 
 
 def main():
+    if not os.path.exists(SRC):
+        raise SystemExit(f"Kaynak bulunamadi: {SRC}")
+
     wb = openpyxl.load_workbook(SRC, data_only=False)
+    sheet_order = wb.sheetnames
     manifest = []
-    sheet_order = wb.sheetnames  # gerçek sıra
+    unknown = []
 
-    for sheet_name, spec in MAPPINGS.items():
+    for ws in wb.worksheets:
+        sheet_index = sheet_order.index(ws.title) + 1  # sheet1.xml = 1
+        for row in ws.iter_rows():
+            for cell in row:
+                if not isinstance(cell.value, str):
+                    continue
+                tokens = TOKEN_RE.findall(cell.value)
+                if not tokens:
+                    continue
+                if len(tokens) > 1:
+                    unknown.append(f"{ws.title}!{cell.coordinate}: tek hucrede birden fazla token ({tokens})")
+                    continue
+                token = tokens[0].strip()
+                spec = TOKEN_MAP.get(fold(token))
+                if not spec:
+                    unknown.append(f"{ws.title}!{cell.coordinate}: bilinmeyen token {{{{{token}}}}}")
+                    continue
+                field, typ = spec
+                manifest.append({
+                    "sheetIndex": sheet_index,
+                    "sheet": ws.title,
+                    "cell": cell.coordinate,
+                    "token": "{{" + token + "}}",
+                    "field": field,
+                    "type": typ,
+                })
+
+    if unknown:
+        raise SystemExit("Eslenemeyen token(lar):\n  " + "\n  ".join(unknown))
+
+    # Token'sız ama doldurulacak hücreler + formül önbellek girişleri.
+    for sheet_name, extras in EXTRA_CELLS.items():
+        idx = sheet_order.index(sheet_name) + 1
+        for coord, field, typ in extras:
+            manifest.append({"sheetIndex": idx, "sheet": sheet_name, "cell": coord,
+                             "token": "", "field": field, "type": typ})
+
+    for sheet_name, caches in FORMULA_CACHE.items():
         ws = wb[sheet_name]
-        sheet_index = sheet_order.index(sheet_name) + 1  # sheet1.xml = index 1
+        idx = sheet_order.index(sheet_name) + 1
+        for coord, field, typ in caches:
+            value = ws[coord].value
+            if not (isinstance(value, str) and value.startswith("=")):
+                raise SystemExit(f"{sheet_name}!{coord} formul degil ({value!r}); FORMULA_CACHE guncellenmeli.")
+            manifest.append({"sheetIndex": idx, "sheet": sheet_name, "cell": coord,
+                             "token": "", "field": field, "type": typ})
 
-        for coord, formula in spec.get("formula", []):
-            ws[coord] = formula
-
-        # Sabit metin hücreleri (kullanıcının elle gireceği; manifest'e girmez).
-        for coord, text in spec.get("literal", []):
-            ws[coord] = text
-
-        for coord, field, typ, token in spec["fill"]:
-            cell = ws[coord]
-            if typ == "text":
-                cell.value = token
-            else:
-                cell.value = 0
-                cell.comment = Comment(token, "Şablon")
-            manifest.append({
-                "sheetIndex": sheet_index,
-                "sheet": sheet_name,
-                "cell": coord,
-                "field": field,
-                "type": typ,
-                "token": token,
-            })
-
-        for coord in spec.get("blank", []):
-            ws[coord] = None
-
-    tmp = OUT_XLSX + ".deflate.xlsx"
+    tmp = OUT_XLSX + ".deflate.tmp"
     wb.save(tmp)
 
-    # STORED (sıkıştırmasız) yeniden paketle: tarayıcı inflate kütüphanesi olmadan
-    # zip içeriğini okuyabilsin diye.
+    # STORED (sıkıştırmasız) yeniden paketle → tarayıcı kütüphanesiz okuyabilsin.
     with zipfile.ZipFile(tmp, "r") as zin:
         names = zin.namelist()
         with zipfile.ZipFile(OUT_XLSX, "w", compression=zipfile.ZIP_STORED) as zout:
@@ -160,17 +184,24 @@ def main():
 
     os.makedirs(os.path.dirname(OUT_MANIFEST), exist_ok=True)
     with open(OUT_MANIFEST, "w", encoding="utf-8") as f:
-        json.dump({"template": "templates/ziraat-ek-tablo.xlsx",
-                   "sheets": sheet_order,
-                   "cells": manifest}, f, ensure_ascii=False, indent=2)
+        json.dump({
+            "template": "templates/ziraat-ek-tablo.xlsx",
+            "sheets": sheet_order,
+            "cells": manifest,
+        }, f, ensure_ascii=False, indent=2)
+
+    with zipfile.ZipFile(OUT_XLSX) as z:
+        comps = set(i.compress_type for i in z.infolist())
 
     print("OK ->", OUT_XLSX)
     print("OK ->", OUT_MANIFEST)
     print("manifest hucre sayisi:", len(manifest))
-    # dogrulama: STORED mi?
-    with zipfile.ZipFile(OUT_XLSX) as z:
-        comps = set(i.compress_type for i in z.infolist())
-        print("compress types (0=STORED):", comps)
+    print("compress types (0=STORED):", comps)
+    per_sheet = {}
+    for m in manifest:
+        per_sheet[m["sheet"]] = per_sheet.get(m["sheet"], 0) + 1
+    for s in sheet_order:
+        print(f"  {s}: {per_sheet.get(s, 0)} hucre")
 
 
 if __name__ == "__main__":

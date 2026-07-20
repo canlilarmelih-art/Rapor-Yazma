@@ -175,7 +175,14 @@
     const sMatch = attrs.match(/\ss="\d+"/);
     const sAttr = sMatch ? sMatch[0] : "";
     let cell;
-    if (type === "number") {
+    const formula = m[0].match(/<f(?:\s[^>]*)?>([\s\S]*?)<\/f>/)?.[1];
+    if (type === "formulaNumber" && formula != null) {
+      let num = value;
+      if (typeof num !== "number" || !isFinite(num)) num = 0;
+      cell = `<c r="${coord}"${sAttr}><f>${formula}</f><v>${num}</v></c>`;
+    } else if (type === "formulaText" && formula != null) {
+      cell = `<c r="${coord}"${sAttr} t="str"><f>${formula}</f><v>${xmlEscape(value)}</v></c>`;
+    } else if (type === "number") {
       let num = value;
       if (typeof num !== "number" || !isFinite(num)) num = 0;
       cell = `<c r="${coord}"${sAttr}><v>${num}</v></c>`;
@@ -185,6 +192,17 @@
       cell = `<c r="${coord}"${sAttr} t="inlineStr"><is><t${preserve}>${xmlEscape(raw)}</t></is></c>`;
     }
     return xml.replace(cellRe, cell);
+  }
+
+  function enableFullCalculation(xml) {
+    const flags = ' calcMode="auto" fullCalcOnLoad="1" forceFullCalc="1"';
+    if (/<calcPr\b[^>]*\/>/.test(xml)) {
+      return xml.replace(/<calcPr\b[^>]*\/>/, `<calcPr${flags}/>`);
+    }
+    if (/<calcPr\b[^>]*>/.test(xml)) {
+      return xml.replace(/<calcPr\b[^>]*>/, `<calcPr${flags}>`);
+    }
+    return xml.replace(/<\/workbook>/, `<calcPr${flags}/></workbook>`);
   }
 
   // --- Ana API -------------------------------------------------------
@@ -215,6 +233,9 @@
       const m = e.name.match(/^xl\/worksheets\/sheet(\d+)\.xml$/);
       if (m && sheetXml.has(Number(m[1]))) {
         return { name: e.name, bytes: enc.encode(sheetXml.get(Number(m[1])).text) };
+      }
+      if (e.name === "xl/workbook.xml") {
+        return { name: e.name, bytes: enc.encode(enableFullCalculation(dec.decode(e.bytes))) };
       }
       return e;
     });

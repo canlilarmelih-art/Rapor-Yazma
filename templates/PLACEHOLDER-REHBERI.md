@@ -131,6 +131,8 @@ verilerinizle doldurur ve Word ile açılabilen bir `.doc` dosyası indirir.
 | `{{FRONT_GARDEN}}` / `{{SİDE_GARDEN}}` | Ön / yan bahçe |
 | `{{TEVHİD_CONDİTİON}}` / `{{MİNİMUM_FRONTAGE_CONDİTİON}}` | Tevhid / minimum cephe şartı |
 | `{{ROAD_SETBACK}}` | Yola terk var mı |
+| `{{ROAD_SETBACK_AMOUNT}}` / `{{YOLA_TERK_MIKTARI}}` | Yola terk miktarı |
+| `{{POST_ROAD_SETBACK_PARCEL_AREA}}` / `{{TERK_SONRASI_PARSEL_ALANI}}` | Terk sonrası parsel alanı (yüzölçümü - yola terk miktarı; terk yoksa yüzölçümü) |
 | `{{FLOOR_COUNT}}` | İmar kat adedi |
 | `{{PLANNİNG_NOTE_TEXT}}` | İmar açıklaması |
 | `{{URBAN_TRANSFORMATİON_AREA}}` | Kentsel dönüşüm bölgesinde mi |
@@ -190,6 +192,12 @@ verilerinizle doldurur ve Word ile açılabilen bir `.doc` dosyası indirir.
 | `{{LEGAL_RENT_UNİT}}` / `{{CURRENT_RENT_UNİT}}` | Kira m² birim değerleri |
 | `{{LAND_UNİT_VALUE}}` | Arsa m² birim değeri |
 | `{{LEGAL_AREA}}` / `{{CURRENT_AREA}}` | Yasal / mevcut kullanım alanı |
+| `{{TOTAL_LEGAL_AREA}}` / `{{TOTAL_CURRENT_AREA}}` | Birden fazla kat girilmişse katların toplam yasal / mevcut alanı; tek katlı kayıtta ilgili alanı getirir |
+| `{{LEGAL_VALUE_AREA}}`, `{{LEGAL_VALUE_UNIT}}`, `{{CURRENT_VALUE_AREA}}`, `{{CURRENT_VALUE_UNIT}}` | Piyasa değeri tablosundaki alan ve m² birim değer kutucukları |
+| `{{LEGAL_BUILDING_VALUE_AREA}}`, `{{LEGAL_BUILDING_UNIT_COST}}`, `{{LEGAL_BUILDING_DEPRECIATION_RATE}}`, `{{LEGAL_BUILDING_CONSTRUCTION_LEVEL}}` | Yapı değeri tablosundaki yasal durum kutucukları; mevcut durum için aynı adların `CURRENT_...` karşılıkları kullanılır |
+| `{{INSURANCE_VALUE_AREA}}`, `{{INSURANCE_UNIT_COST}}`, `{{INSURANCE_VALUE}}` | Sigortaya esas değer kutucukları |
+| `{{LAND_VALUE}}`, `{{LEGAL_PREMIUM_VALUE}}`, `{{LEGAL_PREMIUM_RATE}}`, `{{CURRENT_PREMIUM_VALUE}}`, `{{CURRENT_PREMIUM_RATE}}` | Arsa değeri ve şerefiye kutucukları |
+| `{{PROPERTY_TAX_DECLARATION_VALUE}}` | Emlak beyan değeri kutucuğu |
 | `{{SALEABİLİTY_NOTE}}` | Satış kabiliyeti / eksper kanaati |
 | `{{VALUATİON_METHOD}}` | Değerleme yöntemi |
 | `{{DEGERI_ETKILEYEN_OLUMLU_FAKTORLER}}` | Olumlu faktörler |

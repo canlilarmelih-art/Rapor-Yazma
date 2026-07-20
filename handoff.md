@@ -1,9 +1,157 @@
 # Rapor Yazma Programı — Handoff Notu
 
-Son güncelleme: 2026-07-20 · Servis edilen sürüm: **app.js?v=20260720-1210** (styles.css?v=20260720-0215, src/templates/template-engine.js?v=20260719-2105, cloud/cloud-sync.js?v=20260719-1505, cloud/report-library.js?v=20260719-1530, halkbank-risk-rules.js?v=20260707-1812)
+Son güncelleme: 2026-07-21 · Servis edilen sürüm: **app.js?v=20260721-0105** (styles.css?v=20260720-0215, src/templates/template-engine.js?v=20260721-0045, cloud/cloud-sync.js?v=20260719-2200, cloud/report-library.js?v=20260719-2200, halkbank-risk-rules.js?v=20260707-1812)
 
 Bu belge, bir sonraki geliştirici/oturum için projeyi çalıştırma, doğrulama ve bu
 oturumda yapılanları özetler.
+
+## 0.0.201 - 2026-07-21 - Ziraat ek tablo şablonu kullanıcının placeholder dosyasından üretiliyor
+
+Kullanıcı, ek tabloyu Excel'de kendisi düzenleyip **placeholder'ları
+istediği hücrelere elle yerleştirdi** ve "şablonu buna göre güncelle" dedi.
+Bu dosya artık şablonun SPEC'i.
+
+### Yaklaşım değişikliği (builder)
+
+`tools/build-ziraat-ek-tablo-xlsx.py` artık elle yazılmış hücre eşlemesi
+tutmuyor; **kullanıcının dosyasını tarayıp `{{TOKEN}}` içeren hücreleri
+buluyor**, `TOKEN_MAP` ile app alanlarına eşliyor ve manifest'i otomatik
+üretiyor. Bilinmeyen token varsa build HATA verip durur (sessiz atlama yok).
+Kaynak yolu argv[1] ile geçilebilir (varsayılan: kullanıcının masaüstündeki
+`ziraat-ek-tablo.xlsx`).
+
+Kullanıcının yeni düzeni: ikinci örnek satırlar kaldırılmış; SIRA NO /
+GAYRİMENKUL SIRA NO sütunlarında sabit "Sistemden BKNZ"; NİTELİKLİ sayfası
+**ARSA + YAPI DEĞERİ + ŞEREFİYE VE ÇEVRE DÜZENLEMESİ** şeklinde 3 satırlık
+maliyet yaklaşımına çevrilmiş.
+
+### Eşlenen token'lar (TOKEN_MAP)
+
+ADA→blockNo, PARSEL→parcelNo, LAND_AREA→landArea,
+POST_ROAD_SETBACK_PARCEL_AREA→`getPostRoadSetbackParcelArea()`,
+LEGEND→legend, ORDER→order, CALCULATED_EMSAL→calculatedEmsal,
+GAYRIMENKUL_ADI→titleQuality, YAPI_SINIFI→buildingClass,
+MAİN_PROPERTY_FLOOR_COUNT_TEXT→mainPropertyFloorCountText,
+YAPI_BELGESI→`buildingDoc()` (iskan varsa iskan, yoksa en güncel ruhsat),
+TOTAL_LEGAL_AREA→legalValueArea (yedek legalArea),
+TOTAL_CURRENT_AREA→currentValueArea (yedek currentArea),
+LEGAL_VALUE/CURRENT_VALUE/LAND_VALUE/LEGAL_BUİLDİNG_VALUE/
+CURRENT_BUİLDİNG_VALUE/LEGAL_PREMİUM_VALUE/CURRENT_PREMİUM_VALUE →
+aynı adlı state alanları, SALEABİLİTY→saleability.
+
+### Token'sız doldurulan hücreler (kullanıcı onayı)
+
+Kullanıcının dosyasında placeholder KONULMAMIŞ ama 0 kaldığı için tabloyu
+boş bırakacak 5 hücre soruldu; "hepsini uygulama doldursun" denildi →
+`EXTRA_CELLS`: ARSA F3/G3/H3 = kaks/taks/hmax, KONUT G3/G10 =
+legalValue/currentValue.
+
+### Formül önbellekleri (Codex'in mekanizmasıyla uyum)
+
+Codex paralelde `formulaNumber`/`formulaText` tiplerini ve
+`enableFullCalculation()`'ı eklemişti (openpyxl formülleri cache'siz yazar;
+cache okuyan araçlar boş görür). Builder artık `FORMULA_CACHE` ile KONUT
+sayfasının formül hücrelerine önbellek girişleri üretiyor: C10(=C3),
+D10(=D3), F3/F10 (birim değer), E6/G6/E14/G14 (SUM). Birim değer
+çözümleyicileri, hücrenin gerçek formülüyle aynı alanları kullanacak
+şekilde `legalValueArea`/`currentValueArea` (yedekli) üzerinden hesaplar.
+
+Manifest: **57 hücre** (TARLA 7, ARSA 14, KONUT 14, NİTELİKLİ 22).
+
+### Doğrulama
+
+- `npm run verify` tamamı geçti (Codex'in genişlettiği xlsx testi dahil).
+- **Canlı tarayıcı uçtan uca**: Türkçe formatlı girdilerle (1,05 / 3.178,50
+  / 7.000.000) 57 hücre doğru dolduruldu; ARSA katsayıları, KONUT değerleri,
+  NİTELİKLİ yapı/şerefiye kırılımı doğru; formül önbellekleri doğru
+  (F3=43750=7.000.000/160, C10→DÜKKAN, D10→iskan belgesi, E6=160,
+  G14=7.500.000) ve `<f>` formülleri korunmuş; konsol temiz; 112 KB çıktı.
+
+### UYARI (sonraki oturum)
+
+`templates/ziraat-ek-tablo.xlsx` **STORED (sıkıştırmasız)** olmalıdır —
+tarayıcı doldurma motoru inflate kütüphanesi kullanmaz. Dosyayı Excel'de
+açıp kaydederseniz DEFLATE'e döner ve motor okuyamaz; builder'ı yeniden
+çalıştırın.
+
+## 0.0.200 - 2026-07-21 - Değerleme kutucuklarının placeholder kataloğu
+
+Değerleme bölümündeki özel tablo/kontrol kutucukları için placeholder satırları
+otomatik üretilir hale getirildi. `valuationMarketRows`,
+`incompleteConstructionMarketRows`, `valuationBuildingValueRows`,
+`valuationPremiumRows` ve gelir metriği satırlarından alan, m² birim değer,
+piyasa değeri, natamam değer, yapı değeri, yıpranma, inşaat seviyesi,
+şerefiye, kapitalizasyon ve amortisman placeholder'ları "Değerleme" kategorisi
+altında başlıklı görünür. Arsa değeri, sigortaya esas değer, satış kabiliyeti,
+değerleme metodu ve emlak beyan değeri kutuları da aynı katalog akışına eklendi.
+
+Şablon motoru bu anahtarları generated placeholder kaynağından çözer; örnekler:
+`{{LEGAL_VALUE_AREA}}`, `{{LEGAL_BUILDING_UNIT_COST}}`,
+`{{LEGAL_PREMIUM_RATE}}`, `{{PROPERTY_TAX_DECLARATION_VALUE}}`.
+`templates/PLACEHOLDER-REHBERI.md` ve banka şablon regresyon testi güncellendi.
+Cache-buster: `app.js?v=20260721-0105`. Doğrulama: `npm.cmd run verify` geçti.
+
+## 0.0.199 - 2026-07-21 - Yola terk miktarı ve terk sonrası parsel alanı placeholder'ları
+
+İmar placeholder'larına `{{ROAD_SETBACK_AMOUNT}}` / `{{YOLA_TERK_MIKTARI}}`
+ve `{{POST_ROAD_SETBACK_PARCEL_AREA}}` /
+`{{TERK_SONRASI_PARSEL_ALANI}}` eklendi. Terk sonrası parsel alanı,
+ana taşınmaz yüzölçümünden yola terk miktarı düşülerek hesaplanır; yola terk
+yoksa veya miktar girilmemişse yüzölçümü aynen döner.
+
+Placeholder ekranında iki değer de "İmar Durumu" altında görünür. Şablon motoru,
+Türkçe ve İngilizce token adlarını birlikte çözer. Cache-buster:
+`app.js?v=20260721-0045`, `src/templates/template-engine.js?v=20260721-0045`.
+Doğrulama: `npm.cmd run verify` geçti.
+
+## 0.0.198 - 2026-07-21 - Graphify indeksi ve geri dönüş yedeği
+
+Kod grafi artımlı olarak yenilendi: `graphify-out/graph.json` ve
+`graphify-out/GRAPH_REPORT.md` artık 18.905 düğüm, 42.435 ilişki ve 418 topluluk
+içeriyor. Graphify, büyük grafik için HTML görselleştirmeyi bilinçli olarak atladı;
+mevcut `GRAPH_TREE.html` değiştirilmedi.
+
+Güncelleme öncesindeki değişen kaynak dosyaları ile önceki graph çıktısı şu klasöre
+geri dönüş için kopyalandı:
+`backups/before-graphify-update_2026-07-21_00-24-30/`.
+
+## 0.0.194 - 2026-07-20 - Excel'de düzenlenen Ziraat şablonunun STORED onarımı
+
+Kullanıcının `templates/ziraat-ek-tablo.xlsx` dosyasında KONUT-İŞYERLERİ
+sayfasındaki D3 yapı belgesi hücresine "Metni Kaydır" uygulayıp Excel'de
+kaydetmesi, XLSX paketini standart DEFLATE (`method=8`) biçimine çevirdi.
+Tarayıcıdaki bağımlılıksız doldurma motoru STORED (`method=0`) beklediği için
+çıktı uyarıyla duruyordu. Çalışma kitabının içerik/stil/formülleri değiştirilmeden
+26 ZIP girdisi STORED olarak yeniden paketlendi.
+
+Doğrulama: D3 `wrap_text=True`, dikey hizalama `center`, D10 formülü `=D3`,
+tüm ZIP girdileri `method=0`. Regresyon testi Excel'in `inlineStr` ve
+`sharedStrings` metin saklama biçimlerini birlikte kabul ediyor ve D3 Metni
+Kaydır stilini ayrıca denetliyor. `npm run verify` geçti; canlı uygulamada Excel
+indirme düğmesi yeniden çalıştırıldığında uyarı ve yeni konsol hatası oluşmadı.
+
+## 0.0.193 - 2026-07-20 - Tüm rapor çıktılarında gg.aa.yyyy tarih standardı
+
+Rapor yüzeylerindeki tarihler tek çıkış standardında birleştirildi. Giriş
+alanları ve saklanan veriler HTML tarih kontrollerinin gerektirdiği ISO
+`yyyy-mm-dd` biçiminde kalır; Word/HTML banka şablonları, placeholder kataloğu,
+incelenen belgeler ve tapu tabloları, emsal satış zamanı alanları, Ziraat ek
+tablosu ile indirilen rapor/kroki dosya adları `gg.aa.yyyy` üretir.
+
+`dateIsoToTr` tek haneli gün/ay, ISO tarih-saat ve daha önce yerel yazılmış
+tarihleri güvenli biçimde normalize eder. Şablon motorunda tüm `type: "date"`
+alanlar otomatik biçimlenir; proje, belediye inceleme, tapu, EKB ve yapı bitiş
+tarihi takma adları ile tablo tarih sütunları ayrıca güvenceye alındı.
+`tools/test-bank-templates.js` artık `npm test` zincirinde çalışır ve ham ISO
+tarihin banka şablonuna sızmasını denetler. `npm run verify` geçti.
+
+## 0.0.192 - 2026-07-20 - Ziraat ek tablo satır ve tarih düzeni
+
+Ziraat ek tablosunun dört sayfasında kaynak satır yükseklikleri %100 artırıldı;
+başlık/veri satırı oranları korunarak tüm hücre metinleri dikey ortalandı.
+İncelenen yapı belgesinin tarihi, kaynak değer ISO (`yyyy-mm-dd`) gelse bile
+çıktıda `gg.aa.yyyy` biçiminde yazılır. Üretici betik, STORED XLSX şablonu,
+önbellek sürümü ve regresyon kontrolleri birlikte güncellendi.
 
 ## 0.0.191 - 2026-07-20 - Ziraat ek tablo KONUT/NİTELİKLİ düzeltmeleri (kullanıcı görseli)
 
@@ -83,7 +231,7 @@ iç değeri (tip korunarak) değiştirilir.
 ### Değişen dosyalar
 
 - `index.html` — xlsx-fill.js + ziraat-ek-tablo-xlsx.js script'leri (app.js'ten
-  SONRA). `app.js?v=20260720-1210`.
+  SONRA). `app.js?v=20260720-2230`.
 - `app.js` — "Banka ve Çıktı" bölümüne "Ziraat Ek Tablo (Excel)" bloğu +
   "Ziraat ek tablosunu Excel indir" butonu (`appendZiraatEkTabloXlsxBlock`).
 - `server.js` — `.xlsx` MIME tipi eklendi (fetch zaten octet-stream ile de
@@ -180,7 +328,7 @@ Ayrı yedek alınmadı; küçük, geri alınabilir bir görsel değişiklik.
 
 - `{{VALUATİON_SALEABİLİTY_EXPLANATİON}}` artık yalnız olumsuz seçimlerde metin üreten export sarmalayıcısı yerine her satış kabiliyeti seçimi için sonuç cümlesi üreten ana fonksiyona bağlanır.
 - `Satılabilir` seçiminde de Halkbank Önemli Not ve Sonuç Cümlesi bölümünde satış kabiliyeti açıklaması görünür.
-- Cache-buster: `src/templates/template-engine.js?v=20260719-2105`.
+- Cache-buster: `src/templates/template-engine.js?v=20260720-2230`.
 
 ---
 
@@ -5266,3 +5414,12 @@ Doğrulama: `node --check app.js`, `node tools/check-basic.js`, `git diff --chec
 - If Leaflet loads after the first application render, the temporary static map is replaced automatically when the library becomes ready.
 - Added a jsDelivr fallback for Leaflet CSS and JavaScript when the primary unpkg CDN request fails.
 - This prevents cloud/local reports from remaining on the diagonal-line static fallback while the actual map library is available or becomes available shortly after load.
+
+## 0.0.198 - Ziraat Ek Tablo ve Toplam Alan Placeholder'ları (2026-07-21)
+
+- Ziraat ek tablo XLSX dışa aktarımında formül hücrelerinin güncel önbellek değerleri de yazılır. Böylece yasal/mevcut birim değerler, toplamlar ve mevcut durum satırındaki belge/nitelik alanları `0`, `#SAYI/0!` veya ham `{{...}}` placeholder olarak görünmez.
+- XLSX çalışma kitabı açılışta otomatik/tam hesaplama moduna alınır; kullanıcı Excel'de ek satır çoğalttığında toplam formülleri yeniden hesaplanır.
+- `templates/ziraat-ek-tablo.xlsx` STORED ZIP biçiminde tutulur; D3 metin kaydırma, dikey ortalama ve iki kat satır yüksekliği korunur.
+- Yeni rapor placeholder'ları: `{{TOTAL_LEGAL_AREA}}` ve `{{TOTAL_CURRENT_AREA}}`. Türkçe eşdeğerleri `{{TOPLAM_YASAL_ALAN}}` ve `{{TOPLAM_MEVCUT_ALAN}}` da çözülür.
+- Bu placeholder'lar birden fazla bağımsız bölüm kat satırı varsa yasal/mevcut alanları toplar, tek katlı kayıtta ilgili alanı döndürür. Placeholder ekranı ve `templates/PLACEHOLDER-REHBERI.md` güncellendi.
+- Doğrulama: `npm.cmd run verify` geçti.

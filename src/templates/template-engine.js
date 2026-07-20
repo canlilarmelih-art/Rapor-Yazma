@@ -66,11 +66,17 @@
   function dateField(...keys) {
     const value = field(...keys);
     if (!value) return "";
+    return outputDate(value);
+  }
+
+  function outputDate(value) {
+    const raw = String(value ?? "").trim();
+    if (!raw) return "";
     try {
-      const formatted = dateIsoToTr(value);
-      return formatted || value;
+      const formatted = dateIsoToTr(raw);
+      return formatted || raw;
     } catch (error) {
-      return value;
+      return raw;
     }
   }
 
@@ -111,7 +117,7 @@
   function documentsTableHtml() {
     const rows = (Array.isArray(state.tables?.documents) ? state.tables.documents : [])
       .filter((row) => Object.values(row || {}).some((v) => String(v || "").trim()))
-      .map((row) => [row.c0 || "", row.c1 || "", row.c2 || "", row.c3 || "", row.c4 || ""]);
+      .map((row) => [row.c0 || "", row.c1 || "", outputDate(row.c2), row.c3 || "", row.c4 || ""]);
     if (!rows.length) return safeCall("buildReviewedDocumentsDescription");
     return safeCall("buildSimpleHtmlTable", ["Belge Türü", "İncelenen Kurum", "Tarih", "No", "Kapsam"], rows);
   }
@@ -209,7 +215,7 @@
   function firstPermitDocParts() {
     const rows = Array.isArray(state.tables?.documents) ? state.tables.documents : [];
     const hit = rows.find((row) => /ruhsat|kullanma|iskan|yap[ıi] kay[ıi]t/i.test(String(row?.c0 || "")));
-    return { type: String(hit?.c0 || "").trim(), date: String(hit?.c2 || "").trim(), no: String(hit?.c3 || "").trim() };
+    return { type: String(hit?.c0 || "").trim(), date: outputDate(hit?.c2), no: String(hit?.c3 || "").trim() };
   }
 
   function comparableLineText(index) {
@@ -290,8 +296,12 @@
     // Program alan token'larının tarih/para biçimli halleri: alan indeksi ham
     // değer döndürür; bu takma adlar öncelikli olduğundan biçimli çıktı verir.
     APPOINTMENTDATE: { d: ["appointmentDate"] },
+    MUNICIPALITYINSPECTIONDATE: { d: ["municipalityInspectionDate"] },
     PLANDATE: { d: ["planDate"] },
     TAKBISDATE: { d: ["takbisDate"] },
+    PROJECTDATE: { d: ["projectDate"] },
+    TITLEPROJECTDATE: { d: ["titleProjectDate"] },
+    MUNICIPALITYPROJECTDATE: { d: ["municipalityProjectDate"] },
     EKBISSUEDATE: { d: ["ekbIssueDate"] },
     EKBVALIDUNTIL: { d: ["ekbValidUntil"] },
     LEGALVALUE: { m: ["legalValue"] },
@@ -369,8 +379,8 @@
     TASINMAZID: { f: ["titlePropertyId"] },
     TAPUKAYIT: { f: ["titleRecordChange"] },
     TAPUKAYITNOTU: { f: ["titleRecordChangeNote", "titleRecordChangeExplanation"] },
-    TAPUTARIH: { fn: () => dateField("titleDate") || firstTitleRowCell("c3") },
-    TAPUTARIHI: { fn: () => dateField("titleDate") || firstTitleRowCell("c3") }, // {{TAPU_TARİHİ}}
+    TAPUTARIH: { fn: () => dateField("titleDate") || outputDate(firstTitleRowCell("c3")) },
+    TAPUTARIHI: { fn: () => dateField("titleDate") || outputDate(firstTitleRowCell("c3")) }, // {{TAPU_TARİHİ}}
     TAPUYEVMIYE: { fn: () => firstTitleRowCell("c4") },
     TAPUYEVMIYESI: { fn: () => firstTitleRowCell("c4") }, // {{TAPU_YEVMİYESİ}}
     EDINME: { fn: () => firstTitleRowCell("c2") },
@@ -412,6 +422,10 @@
     TEVHIDSARTI: { f: ["tevhidCondition"] },
     MINIMUMCEPHESARTI: { f: ["minimumFrontageCondition"] },
     YOLATERKVARMI: { f: ["roadSetback"] },
+    ROADSETBACKAMOUNT: { fn: () => safeCall("getRoadSetbackAmount") },
+    YOLATERKMIKTARI: { fn: () => safeCall("getRoadSetbackAmount") },
+    POSTROADSETBACKPARCELAREA: { fn: () => safeCall("getPostRoadSetbackParcelArea") },
+    TERKSONRASIPARSELALANI: { fn: () => safeCall("getPostRoadSetbackParcelArea") },
     KATADEDI: { f: ["floorCount"] },
     IMARDURUMUKISA: { t: () => field("planningNote") || safeCall("buildImarPlanningNote") },
     IMARDURUMU2025: { t: () => field("planningNote") || safeCall("buildImarPlanningNote") },
@@ -459,7 +473,7 @@
     MEVCUTYAPINIZAMI: { f: ["buildingOrder"] },
     YAPIYILI: { f: ["buildingConstructionYear"] },
     YAPIYASI: { f: ["buildingAge"] },
-    YAPIBITISTARIHI: { f: ["buildingCompletionDate"] },
+    YAPIBITISTARIHI: { d: ["buildingCompletionDate"] },
     ANAGYTOPLAMKATADEDI: { f: ["totalFloors"] },
     TOPLAMKAT: { f: ["totalFloors"] },
     YOLKOTUUSTUKATADEDI: { f: ["totalFloors"] },
@@ -515,6 +529,10 @@
     ARSABIRIMDEGERI: { f: ["landUnitValue"] },
     YASALKULLANIMALANI: { f: ["legalArea", "legalValueArea"] },
     MEVCUTKULLANIMALANI: { f: ["currentArea", "currentValueArea"] },
+    TOTALLEGALAREA: { fn: () => safeCall("getValuationUnitAreaTotals").legal },
+    TOTALCURRENTAREA: { fn: () => safeCall("getValuationUnitAreaTotals").current },
+    TOPLAMYASALALAN: { fn: () => safeCall("getValuationUnitAreaTotals").legal },
+    TOPLAMMEVCUTALAN: { fn: () => safeCall("getValuationUnitAreaTotals").current },
     DEGERLEME2025: { t: () => field("saleabilityNote") || safeCall("buildValuationMethodExplanation") },
     STKACIKLAMA2025: { t: () => field("saleabilityNote") },
     SATISACIKLAMA: { t: () => field("saleabilityNote") },
@@ -628,14 +646,17 @@
   ];
 
   let foldedFieldIndex = null;
+  let dateFieldKeys = null;
   function getFoldedFieldIndex() {
     if (foldedFieldIndex) return foldedFieldIndex;
     foldedFieldIndex = new Map();
+    dateFieldKeys = new Set();
     try {
       sections.forEach((section) => {
         (section.fields || []).forEach((f) => {
           const folded = foldTokenName(f.key);
           if (!foldedFieldIndex.has(folded)) foldedFieldIndex.set(folded, f.key);
+          if (f.type === "date") dateFieldKeys.add(f.key);
         });
       });
     } catch (error) { /* sections yoksa boş kalır */ }
@@ -682,7 +703,8 @@
     const fieldKey = getFoldedFieldIndex().get(folded);
     if (fieldKey) {
       // Çok satırlı alanlar (textarea) Word'de satır sonlarını korusun.
-      return { ok: true, html: escapeHtmlSafe(field(fieldKey)).replace(/\n/g, "<br />") };
+      const value = dateFieldKeys?.has(fieldKey) ? dateField(fieldKey) : field(fieldKey);
+      return { ok: true, html: escapeHtmlSafe(value).replace(/\n/g, "<br />") };
     }
 
     const generated = getGeneratedTextIndex();

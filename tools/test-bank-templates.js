@@ -33,13 +33,35 @@ const sectionsEnd = appSource.indexOf("\n];", sectionsStart);
 assert(sectionsStart > -1 && sectionsEnd > sectionsStart, "app.js icinde sections dizisi bulunamadi.");
 const sectionsSlice = appSource.slice(sectionsStart, sectionsEnd);
 const fieldKeys = [...sectionsSlice.matchAll(/key: "([A-Za-z0-9_]+)"/g)].map((m) => m[1]);
+const dateFieldKeys = new Set(
+  [...sectionsSlice.matchAll(/\{[^{}]*key: "([A-Za-z0-9_]+)"[^{}]*type: "date"[^{}]*\}/gs)].map((m) => m[1])
+);
+[
+  "appointmentDate", "municipalityInspectionDate", "takbisDate", "planDate",
+  "projectDate", "titleProjectDate", "municipalityProjectDate", "ekbIssueDate", "ekbValidUntil",
+].forEach((key) => dateFieldKeys.add(key));
 assert(fieldKeys.length > 100, `sections alan anahtari sayisi beklenenden az: ${fieldKeys.length}`);
 
 const genStart = appSource.indexOf("function collectGeneratedTextPlaceholders()");
 const genEnd = appSource.indexOf("\nfunction collectTablePlaceholders", genStart);
 assert(genStart > -1 && genEnd > genStart, "collectGeneratedTextPlaceholders bulunamadi.");
 const genSlice = appSource.slice(genStart, genEnd);
-const generatedKeys = [...genSlice.matchAll(/key: "([A-Za-z0-9_]+)"/g)].map((m) => m[1]);
+const valuationGenStart = appSource.indexOf("function getValuationFieldPlaceholderRows()");
+const valuationGenEnd = appSource.indexOf("\nconst valuationMethodOptions", valuationGenStart);
+assert(valuationGenStart > -1 && valuationGenEnd > valuationGenStart, "getValuationFieldPlaceholderRows bulunamadi.");
+const valuationGenSlice = appSource.slice(valuationGenStart, valuationGenEnd);
+const generatedKeys = [...new Set(
+  [
+    ...[genSlice, valuationGenSlice].flatMap((slice) => [...slice.matchAll(/key: "([A-Za-z0-9_]+)"/g)].map((m) => m[1])),
+    ...[...valuationGenSlice.matchAll(/add\("([A-Za-z0-9_]+)"/g)].map((m) => m[1]),
+    "legalValueArea",
+    "currentRentUnit",
+    "legalBuildingUnitCost",
+    "currentBuildingDepreciationRate",
+    "legalPremiumRate",
+    "propertyTaxDeclarationValue",
+  ]
+)];
 assert(generatedKeys.length >= 20, `olusturulan metin anahtari sayisi beklenenden az: ${generatedKeys.length}`);
 
 // --- motoru sanal ortamda yükle ----------------------------------------
@@ -58,7 +80,15 @@ const stubState = {
     documents: [{ c0: "Yapı Ruhsatı", c1: "Belediye", c2: "01.02.2020", c3: "55", c4: "Tam" }],
   },
 };
-const stubSections = [{ id: "test", fields: fieldKeys.map((key) => ({ key })) }];
+stubState.fields.municipalityInspectionDate = "2026-7-6";
+stubState.fields.projectDate = "1987-04-06";
+const genericDateTestKeys = [...dateFieldKeys].filter((key) => !Object.prototype.hasOwnProperty.call(stubState.fields, key));
+genericDateTestKeys.forEach((key) => { stubState.fields[key] = "2025-08-09"; });
+stubState.tables.title[0].c3 = "2024-03-05";
+stubState.tables.documents[0].c2 = "2020-02-01";
+const stubSections = [{ id: "test", fields: fieldKeys.map((key) => ({ key, type: dateFieldKeys.has(key) ? "date" : "text" })) }];
+
+globalThis.buildSimpleHtmlTable = (_headers, rows) => JSON.stringify(rows);
 
 function stubEscapeHtml(value) {
   return String(value ?? "")
@@ -82,8 +112,8 @@ loader(
     return `<p${classAttr}>${stubEscapeHtml(text)}</p>`;
   },
   (iso) => {
-    const m = String(iso || "").match(/^(\d{4})-(\d{2})-(\d{2})/);
-    return m ? `${m[3]}.${m[2]}.${m[1]}` : "";
+    const m = String(iso || "").match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    return m ? `${m[3].padStart(2, "0")}.${m[2].padStart(2, "0")}.${m[1]}` : String(iso || "");
   },
   (value) => Number.parseFloat(String(value).replace(/\./g, "").replace(",", ".")),
   (value) => new Intl.NumberFormat("tr-TR").format(value)
@@ -91,6 +121,39 @@ loader(
 
 const engine = sandboxWindow.RaporTemplates;
 assert(Boolean(engine), "window.RaporTemplates olusmadi.");
+
+[
+  "LEGAL_VALUE_AREA",
+  "CURRENT_RENT_UNIT",
+  "LEGAL_BUILDING_UNIT_COST",
+  "CURRENT_BUILDING_DEPRECIATION_RATE",
+  "LEGAL_PREMIUM_RATE",
+  "PROPERTY_TAX_DECLARATION_VALUE",
+].forEach((name) => {
+  assert(engine.resolveToken(name).ok, `${name} degerleme kutucugu placeholder'i cozumlenemedi.`);
+});
+
+globalThis.getValuationUnitAreaTotals = () => ({ legal: "185", current: "210" });
+assert(
+    engine.resolveToken("TOTAL_LEGAL_AREA").html === "185" &&
+    engine.resolveToken("TOTAL_CURRENT_AREA").html === "210" &&
+    engine.resolveToken("TOPLAM_YASAL_ALAN").html === "185" &&
+    engine.resolveToken("TOPLAM_MEVCUT_ALAN").html === "210",
+  "Toplam yasal/mevcut alan placeholderlari cozumlenemedi."
+);
+delete globalThis.getValuationUnitAreaTotals;
+
+globalThis.getRoadSetbackAmount = () => "25";
+globalThis.getPostRoadSetbackParcelArea = () => "975";
+assert(
+    engine.resolveToken("ROAD_SETBACK_AMOUNT").html === "25" &&
+    engine.resolveToken("YOLA_TERK_MIKTARI").html === "25" &&
+    engine.resolveToken("POST_ROAD_SETBACK_PARCEL_AREA").html === "975" &&
+    engine.resolveToken("TERK_SONRASI_PARSEL_ALANI").html === "975",
+  "Yola terk miktari / terk sonrasi parsel alani placeholderlari cozumlenemedi."
+);
+delete globalThis.getRoadSetbackAmount;
+delete globalThis.getPostRoadSetbackParcelArea;
 
 // --- 1) tüm şablon tokenları çözümlenmeli -------------------------------
 const templateFiles = fs.readdirSync(path.join(appDir, "templates")).filter((f) => f.endsWith(".html"));
@@ -166,10 +229,15 @@ function resolved(name) {
   const r = engine.resolveToken(name);
   return r.ok ? r.html : null;
 }
+genericDateTestKeys.forEach((key) => {
+  assert(resolved(key) === "09.08.2025", `${key} gun.ay.yil biciminde degil: ${resolved(key)}`);
+});
 assert(resolved("CİTY") === "Bursa", `CITY cozumu hatali: ${resolved("CİTY")}`);
 assert(resolved("SEHIR") === "Bursa", `eski ad tolerans katmani calismiyor (SEHIR): ${resolved("SEHIR")}`);
 assert(resolved("şehir") === "Bursa", "kucuk harf/Turkce katlama calismiyor (sehir).");
 assert(resolved("LEGAL_VALUE") === "5.400.000 TL", `LEGAL_VALUE para bicimi hatali: ${resolved("LEGAL_VALUE")}`);
+assert(resolved("PROJECT_DATE") === "06.04.1987", `PROJECT_DATE gun.ay.yil biciminde degil: ${resolved("PROJECT_DATE")}`);
+assert(resolved("MUNICIPALITY_INSPECTION_DATE") === "06.07.2026", `MUNICIPALITY_INSPECTION_DATE gun.ay.yil biciminde degil: ${resolved("MUNICIPALITY_INSPECTION_DATE")}`);
 assert(resolved("TAPU_TARİHİ") === "05.03.2024", `TAPU_TARIHI ilk malik satirindan gelmedi: ${resolved("TAPU_TARİHİ")}`);
 assert(resolved("TAPU_YEVMİYESİ") === "1234", `TAPU_YEVMIYESI hatali: ${resolved("TAPU_YEVMİYESİ")}`);
 assert(resolved("EDİNME_SEBEBİ") === "Satış", `EDINME_SEBEBI hatali: ${resolved("EDİNME_SEBEBİ")}`);
@@ -179,6 +247,12 @@ assert(engine.resolveToken("İSKAN_VAR_MI").ok, "ISKAN_VAR_MI cozumlenemedi.");
 assert(engine.resolveToken("SOCİAL_FACİLİTİES").ok, "SOCIAL_FACILITIES (ek alan indeksi) cozumlenemedi.");
 assert(engine.resolveToken("UNİT_CONSTRUCTİON_LEVEL").ok, "UNIT_CONSTRUCTION_LEVEL cozumlenemedi.");
 assert(engine.resolveToken("BOYLE_BIR_AD_YOK").ok === false, "tanimsiz ad yanlislikla cozumlendi.");
+
+assert(resolved("ZRTDATE") === "01.02.2020", `ZRTDATE gun.ay.yil biciminde degil: ${resolved("ZRTDATE")}`);
+assert(
+  resolved("INCELENENBELGELERTABLO").includes("01.02.2020") && !resolved("INCELENENBELGELERTABLO").includes("2020-02-01"),
+  `INCELENENBELGELERTABLO tarihi gun.ay.yil biciminde degil: ${resolved("INCELENENBELGELERTABLO")}`
+);
 
 stubState.fields.projectReviewDescription = "Proje inceleme metni";
 stubState.fields.reviewedDocumentsDescription = "Belge inceleme metni";

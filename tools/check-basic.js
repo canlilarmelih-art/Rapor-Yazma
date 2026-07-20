@@ -711,10 +711,10 @@ function main() {
       indexHtml.includes("src/value-factors/value-factors-rules.js") &&
       indexHtml.includes("styles.css?v=20260720-0215") &&
       indexHtml.includes("src/auth/access-control.js?v=20260719-2200") &&
-      indexHtml.includes("app.js?v=20260720-1210") &&
+      indexHtml.includes("app.js?v=20260721-0105") &&
       indexHtml.includes("cloud/cloud-sync.js?v=20260719-2200") &&
       indexHtml.includes("cloud/report-library.js?v=20260719-2200") &&
-      indexHtml.includes("src/templates/template-engine.js?v=20260719-2105"),
+      indexHtml.includes("src/templates/template-engine.js?v=20260721-0045"),
     "Halkbank risk kodu scriptleri veya guncel app surumu index.html icinde bulunamadi."
   );
   checkFileExists("src/risk/halkbank-risk-data.js");

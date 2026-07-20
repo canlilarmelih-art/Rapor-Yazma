@@ -34,6 +34,22 @@ assert(F && typeof F.readStoredZip === "function", "RaporXlsxFill yüklenmedi.")
 const dec = new TextDecoder("utf-8");
 const enc = new TextEncoder();
 
+function readSharedString(entries, index) {
+  const xml = dec.decode(entries.find((entry) => entry.name === "xl/sharedStrings.xml")?.bytes || new Uint8Array());
+  const items = xml.match(/<si\b[\s\S]*?<\/si>/g) || [];
+  return (items[Number(index)]?.match(/<t(?:\s[^>]*)?>([\s\S]*?)<\/t>/g) || [])
+    .map((part) => part.replace(/<[^>]+>/g, ""))
+    .join("");
+}
+
+function readCellText(sheetXml, coord, entries) {
+  const cell = sheetXml.match(new RegExp(`<c r="${coord}"[^>]*(?:/>|>[\\s\\S]*?</c>)`))?.[0] || "";
+  const inline = cell.match(/<t(?:\s[^>]*)?>([\s\S]*?)<\/t>/)?.[1];
+  if (inline != null) return inline;
+  const sharedIndex = cell.match(/<v>(\d+)<\/v>/)?.[1];
+  return /\bt="s"/.test(cell) && sharedIndex != null ? readSharedString(entries, sharedIndex) : "";
+}
+
 // --- Şablon + manifest ---
 const tplPath = path.join(appDir, "templates", "ziraat-ek-tablo.xlsx");
 assert(fs.existsSync(tplPath), "templates/ziraat-ek-tablo.xlsx bulunamadı.");
@@ -51,6 +67,18 @@ const SAMPLE = {
   currentValue: "3600000",
   legalArea: "91",
   currentArea: "91",
+  // Şablonda {{TOTAL_LEGAL_AREA}}/{{TOTAL_CURRENT_AREA}} bu alanlara bağlı
+  // (yedekleri legalArea/currentArea).
+  legalValueArea: "91",
+  currentValueArea: "91",
+  landValue: "2000000",
+  legalBuildingValue: "4500000",
+  currentBuildingValue: "4800000",
+  legalPremiumValue: "500000",
+  currentPremiumValue: "700000",
+  calculatedEmsal: "3337",
+  mainPropertyFloorCountText: "B+Z+3",
+  ZRT_POST_SETBACK_AREA: "3178",
   kaks: "1.05",
   taks: "0.35",
   hmax: "9.5",
@@ -84,7 +112,7 @@ function assertBuildingDoc(rows, expected, label) {
 assertBuildingDoc(
   [
     { c0: "Yapı Ruhsatı", c2: "01.02.2024", c3: "24/10" },
-    { c0: "YAPI KULLANIM İZİN BELGESİ", c2: "15.06.2020", c3: "20/15" },
+    { c0: "YAPI KULLANIM İZİN BELGESİ", c2: "2020-06-15", c3: "20/15" },
   ],
   "YAPI KULLANIM İZİN BELGESİ / 15.06.2020 / 20/15",
   "İskan ruhsata öncelik vermeli"
@@ -110,8 +138,10 @@ function toNumber(v) {
 }
 
 function resolve(entry) {
+  if (entry.field === "ZRT_LEGAL_UNIT_VALUE") return toNumber(SAMPLE.legalValue) / toNumber(SAMPLE.legalArea);
+  if (entry.field === "ZRT_CURRENT_UNIT_VALUE") return toNumber(SAMPLE.currentValue) / toNumber(SAMPLE.currentArea);
   const raw = SAMPLE[entry.field];
-  if (entry.type === "number") return toNumber(raw);
+  if (entry.type === "number" || entry.type === "formulaNumber") return toNumber(raw);
   return raw != null ? String(raw) : "";
 }
 
@@ -148,16 +178,41 @@ assert(/<c r="B3"[^>]*t="inlineStr"><is><t>2626<\/t><\/is><\/c>/.test(s1),
   "TARLA B3 (ada) inlineStr olarak doldurulmadı.");
 
 const s3 = sheetTexts.get(3);
-assert(/<c r="B3"[^>]*t="inlineStr"><is><t>Sistemden BKNZ<\/t><\/is><\/c>/.test(s3),
+assert(readCellText(s3, "B3", entries) === "Sistemden BKNZ",
   "KONUT-İŞYERLERİ B3 sabit 'Sistemden BKNZ' değil.");
 assert(/<c r="B10"[^>]*><f>B3<\/f>/.test(s3),
   "KONUT-İŞYERLERİ B10, B3 hücresine bağlı değil.");
 assert(/<c r="D3"[^>]*t="inlineStr"><is><t>Yapı Kullanım İzin Belgesi \/ 29\.01\.2016 \/ 3516<\/t><\/is><\/c>/.test(s3),
   "KONUT-İŞYERLERİ D3 yapı belgesiyle doldurulmadı.");
-assert(/<c r="D10"[^>]*><f>D3<\/f>/.test(s3),
-  "KONUT-İŞYERLERİ D10, D3 hücresine bağlı değil.");
-assert(!manifest.cells.some((cell) => cell.sheetIndex === 3 && ["B3", "D4", "D10", "D11"].includes(cell.cell)),
-  "KONUT-İŞYERLERİ sabit/formül/boş bırakılacak hücreleri manifest tarafından eziliyor.");
+assert(/<c r="C10"[^>]*t="str"><f>C3<\/f><v>DÜKKAN<\/v><\/c>/.test(s3),
+  "KONUT-İŞYERLERİ C10 formül sonucu güncellenmedi.");
+assert(/<c r="D10"[^>]*t="str"><f>D3<\/f><v>Yapı Kullanım İzin Belgesi \/ 29\.01\.2016 \/ 3516<\/v><\/c>/.test(s3),
+  "KONUT-İŞYERLERİ D10 formül sonucu güncellenmedi.");
+assert(/<c r="F3"[^>]*><f>IFERROR\(G3\/E3,0\)<\/f><v>39560\.43956043956<\/v><\/c>/.test(s3),
+  "KONUT-İŞYERLERİ F3 birim değer önbelleği güncellenmedi.");
+assert(/<c r="F10"[^>]*><f>IFERROR\(G10\/E10,0\)<\/f><v>39560\.43956043956<\/v><\/c>/.test(s3),
+  "KONUT-İŞYERLERİ F10 birim değer önbelleği güncellenmedi.");
+assert(/<c r="E6"[^>]*><f>SUM\(E3:E5\)<\/f><v>91<\/v><\/c>/.test(s3) &&
+       /<c r="G14"[^>]*><f>SUM\(G10:G13\)<\/f><v>3600000<\/v><\/c>/.test(s3),
+  "KONUT-İŞYERLERİ toplam önbellekleri güncellenmedi.");
+assert(manifest.cells.some((cell) => cell.sheetIndex === 3 && cell.cell === "D10" && cell.type === "formulaText"),
+  "KONUT-İŞYERLERİ D10 formül sonucu manifestte tanımlı değil.");
+
+for (const [sheetIndex, sheetText] of sheetTexts) {
+  const rowTags = sheetText.match(/<row\b[^>]*>/g) || [];
+  assert(rowTags.length > 0, `sheet${sheetIndex} satır bilgisi içermiyor.`);
+  assert(rowTags.every((tag) => /\bht="[^"]+"/.test(tag) && /\bcustomHeight="1"/.test(tag)),
+    `sheet${sheetIndex} satır yükseklikleri iki kat düzen için açıkça kaydedilmedi.`);
+}
+const stylesText = dec.decode(entries.find((entry) => entry.name === "xl/styles.xml")?.bytes || new Uint8Array());
+assert(/<alignment\b[^>]*vertical="center"/.test(stylesText),
+  "Şablon stillerinde dikey ortalama bulunamadı.");
+
+const d3StyleIndex = Number(s3.match(/<c r="D3"[^>]*\bs="(\d+)"/)?.[1]);
+const cellXfsBody = stylesText.match(/<cellXfs\b[^>]*>([\s\S]*?)<\/cellXfs>/)?.[1] || "";
+const cellXfs = cellXfsBody.match(/<xf\b(?:[^>]*\/>|[^>]*>[\s\S]*?<\/xf>)/g) || [];
+assert(Number.isInteger(d3StyleIndex) && /<alignment\b[^>]*wrapText="1"/.test(cellXfs[d3StyleIndex] || ""),
+  "KONUT-ISYERLERI D3 yapi belgesi hucresinde Metni Kaydir etkin degil.");
 
 const outEntries = entries.map((e) => {
   const m = e.name.match(/^xl\/worksheets\/sheet(\d+)\.xml$/);

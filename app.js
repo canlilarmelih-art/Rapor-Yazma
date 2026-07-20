@@ -995,9 +995,7 @@ function toISODate(date) {
 }
 
 function formatTRDate(isoDate) {
-  if (!isoDate) return "";
-  const [year, month, day] = isoDate.split("-");
-  return `${day}.${month}.${year}`;
+  return dateIsoToTr(isoDate);
 }
 
 function applyDefaultPlanningIssueValues(fields = {}) {
@@ -2711,6 +2709,82 @@ const valuationDefaultFields = {
   valuationMethod: "Emsal Karşılaştırma Yöntemi",
   saleability: "Satılabilir",
 };
+
+function getValuationFieldPlaceholderRows() {
+  const rows = [];
+  const seen = new Set();
+  const add = (key, title, options = {}) => {
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    rows.push({
+      category: "Değerleme",
+      key,
+      title,
+      value: state.fields[key],
+      type: options.type || "Değerleme Alanı",
+      source: options.source || "Değerleme Bölümü",
+    });
+  };
+
+  add("valuationMethod", "Değerleme Metodu");
+  add("saleability", "Satış Kabiliyeti");
+  add("saleabilityNote", "Satış Kabiliyeti Notu");
+
+  valuationMarketRows.forEach((row) => {
+    const label = row.label || "";
+    add(row.areaKey, `${label} - Alan`);
+    add(row.unitKey, `${label} - ${row.unitLabel || "M2 Birim Değeri"}`);
+    add(row.totalKey, label);
+    const metric = valuationIncomeMetricRows[row.totalKey];
+    if (metric) {
+      add(metric.capitalizationKey, `${label} - Kapitalizasyon Oranı`);
+      add(metric.amortizationKey, `${label} - Gayrimenkul Amortisman Süresi`);
+    }
+  });
+
+  Object.values(incompleteConstructionMarketRows).forEach((row) => {
+    const label = row.label || "";
+    add(row.areaKey, `${label} - Alan`);
+    add(row.unitKey, `${label} - M2 Birim Değeri`);
+    add(row.totalKey, label);
+  });
+
+  valuationBuildingValueRows.forEach((row) => {
+    const label = row.label || "";
+    add(row.areaKey, `${label} - Alan`);
+    add(row.unitKey, `${label} - Yapı Birim Değeri`);
+    add(row.depreciationKey, `${label} - Yıpranma Payı`);
+    add(row.levelKey, `${label} - İnşaat Seviyesi`);
+    add(row.totalKey, label);
+  });
+
+  add("insuranceValueArea", "Sigortaya Esas Değer - Alan");
+  add("insuranceUnitCost", "Sigortaya Esas Değer - Yapı Yaklaşık Birim Değeri");
+  add("insuranceValue", "Sigortaya Esas Değer");
+  add("share", "Arsa Değeri - Arsa Payı");
+  add("denominator", "Arsa Değeri - Arsa Payda");
+  add("landArea", "Arsa Değeri - Yüzölçüm");
+  add("landUnitValue", "Arsa Değeri - Arsa M2 Birim Değeri");
+  add("landValue", "Arsa Değeri");
+
+  valuationPremiumRows.forEach((row) => {
+    const label = row.label || "";
+    add(row.landKey, `${label} - Arsa Değeri`);
+    add(row.buildingKey, `${label} - Yapı Değeri`);
+    add(row.premiumKey, `${label} - Şerefiye Değeri`);
+    add(row.rateKey, `${label} - Şerefiye Yüzdesi`);
+  });
+
+  add("propertyTaxDeclarationEnabled", "Emlak Beyan Değeri - Kullanılsın mı?");
+  add("propertyTaxDeclarationValue", "Emlak Beyan Değeri");
+  add("propertyTaxDeclarationExplanation", "Emlak Beyan Değeri Açıklaması", { type: "Otomatik Açıklama" });
+  add("propertyTaxDeclarationUnavailableExplanation", "Emlak Beyan Değeri Alınamadı Açıklaması", { type: "Otomatik Açıklama" });
+  add("valuationMethodExplanation", "Değerleme Yöntemi Açıklaması", { type: "Otomatik Açıklama" });
+  add("valuationSaleabilityExplanation", "Satış Kabiliyeti Açıklaması", { type: "Otomatik Açıklama" });
+  add("valuationRentExplanation", "Kira Açıklaması", { type: "Otomatik Açıklama" });
+
+  return rows;
+}
 
 const valuationMethodOptions = [
   "Emsal Karşılaştırma Yöntemi",
@@ -4949,6 +5023,20 @@ function getValuationUnitAreaTotals() {
     legal: formatValuationArea(totalLegal || legalFallback),
     current: formatValuationArea(totalCurrent || currentFallback),
   };
+}
+
+function getRoadSetbackAmount() {
+  const amount = parseValuationNumber(state.fields.roadSetbackAmount);
+  return Number.isFinite(amount) && amount > 0 ? formatValuationArea(amount) : "";
+}
+
+function getPostRoadSetbackParcelArea() {
+  const landArea = parseValuationNumber(state.fields.landArea);
+  if (!Number.isFinite(landArea) || landArea <= 0) return "";
+
+  const hasRoadSetback = normalizeYesNoChoice(state.fields.roadSetback) === "Evet";
+  const setbackAmount = hasRoadSetback ? parseValuationNumberOrZero(state.fields.roadSetbackAmount) : 0;
+  return formatValuationArea(landArea - setbackAmount);
 }
 
 function parseValuationNumberOrZero(value) {
@@ -11882,12 +11970,12 @@ function downloadTextFile(fileName, content, mimeType) {
 }
 
 function buildExportBaseFileName() {
-  const parts = [
+  const textParts = [
     state.fields.caseName || "ekspertiz-raporu",
     state.fields.bank || "",
-    new Date().toISOString().slice(0, 10),
-  ].filter(Boolean);
-  return slugifyFileName(parts.join("-")) || "ekspertiz-raporu";
+  ].filter(Boolean).map(slugifyFileName).filter(Boolean);
+  const outputDate = dateIsoToTr(new Date().toISOString().slice(0, 10));
+  return [...textParts, outputDate].filter(Boolean).join("-") || "ekspertiz-raporu";
 }
 
 function slugifyFileName(value) {
@@ -12195,7 +12283,10 @@ function buildWordReportTablesHtml() {
 function formatStateRowsForWord(headers, rows) {
   return (Array.isArray(rows) ? rows : [])
     .filter((row) => Object.values(row || {}).some((value) => String(value || "").trim()))
-    .map((row) => headers.map((_, index) => row[`c${index}`] || ""));
+    .map((row) => headers.map((header, index) => {
+      const value = row[`c${index}`] || "";
+      return isOutputDateColumnLabel(header) ? dateIsoToTr(value) : value;
+    }));
 }
 
 function buildComparableMatrixWordTableHtml() {
@@ -12219,7 +12310,11 @@ function buildComparableMatrixWordTableHtml() {
   const bodyRows = fields
     .map((field) => [
       field.label,
-      ...rows.map((row, rowIndex) => (field.computed ? calculateComparableFieldValue(field.key, row, rowIndex) : row[field.key] || "")),
+      ...rows.map((row, rowIndex) => (
+        field.computed
+          ? calculateComparableFieldValue(field.key, row, rowIndex)
+          : formatOutputFieldValue(row[field.key] || "", field)
+      )),
     ])
     .filter((row) => row.slice(1).some((value) => String(value || "").trim()));
   const distanceRow = buildComparableDistanceWordMatrixRow(rows);
@@ -15497,8 +15592,29 @@ function dateTrToIso(value) {
 }
 
 function dateIsoToTr(value) {
-  const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  return match ? `${match[3]}.${match[2]}.${match[1]}` : value || "";
+  const text = String(value || "").trim();
+  if (!text) return "";
+
+  const isoMatch = text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[T\s].*)?$/);
+  if (isoMatch) {
+    return `${isoMatch[3].padStart(2, "0")}.${isoMatch[2].padStart(2, "0")}.${isoMatch[1]}`;
+  }
+
+  const localMatch = text.match(/^(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{4})$/);
+  if (localMatch) {
+    return `${localMatch[1].padStart(2, "0")}.${localMatch[2].padStart(2, "0")}.${localMatch[3]}`;
+  }
+
+  return text;
+}
+
+function isOutputDateColumnLabel(label = "") {
+  const folded = foldTurkish(label).replace(/[^A-Z0-9]+/g, " ").trim();
+  return folded.includes("TARIH") || folded === "SATIS ZAMANI";
+}
+
+function formatOutputFieldValue(value, fieldDefinition = {}) {
+  return fieldDefinition?.type === "date" ? dateIsoToTr(value) : value;
 }
 
 function refreshReviewedDocumentsDescriptionFromCurrentRows() {
@@ -16522,7 +16638,7 @@ function refreshEkbExplanationFromCurrentFields(changedKey = "") {
 
 function formatReviewedDocumentReference(row) {
   const scope = row.scope ? ` (${row.scope})` : "";
-  return `${row.date} tarih, ${row.no} sayılı ${row.type}${scope}`;
+  return `${dateIsoToTr(row.date)} tarih, ${row.no} sayılı ${row.type}${scope}`;
 }
 
 function normalizeReviewedDocumentScope(value) {
@@ -22245,7 +22361,7 @@ async function exportMapAsJpeg(triggerButton) {
 
   try {
     const link = document.createElement("a");
-    link.download = `harita-konu-tasinmaz-${new Date().toISOString().slice(0, 10)}.jpg`;
+    link.download = `harita-konu-tasinmaz-${dateIsoToTr(new Date().toISOString().slice(0, 10))}.jpg`;
     link.href = canvas.toDataURL("image/jpeg", 0.92);
     document.body.appendChild(link);
     link.click();
@@ -22268,7 +22384,7 @@ async function exportMapAsJpeg(triggerButton) {
         getLocationMapLabelScale(null, canvas),
       );
       const fallbackLink = document.createElement("a");
-      fallbackLink.download = `harita-konu-tasinmaz-${new Date().toISOString().slice(0, 10)}.jpg`;
+      fallbackLink.download = `harita-konu-tasinmaz-${dateIsoToTr(new Date().toISOString().slice(0, 10))}.jpg`;
       fallbackLink.href = canvas.toDataURL("image/jpeg", 0.92);
       document.body.appendChild(fallbackLink);
       fallbackLink.click();
@@ -24290,7 +24406,7 @@ function collectApplicationFieldPlaceholders() {
           title: field.label || field.key,
           type: field.hidden ? "Gizli Alan" : getPlaceholderFieldTypeLabel(field),
           source: "Uygulama Alanı",
-          value: formatPlaceholderValue(state.fields[field.key]),
+          value: formatPlaceholderValue(formatOutputFieldValue(state.fields[field.key], field)),
           reference: field.key,
         });
       });
@@ -24328,6 +24444,7 @@ function collectApplicationFieldPlaceholders() {
 
 function collectGeneratedTextPlaceholders() {
   const generatedRows = [
+    ...getValuationFieldPlaceholderRows(),
     {
       category: "Adres ve Konum",
       key: "transport_report_text",
@@ -24407,6 +24524,18 @@ function collectGeneratedTextPlaceholders() {
       value: buildImarCalculatedEmsal(),
     },
     {
+      category: "İmar Durumu",
+      key: "road_setback_amount",
+      title: "Yola Terk Miktarı",
+      value: getRoadSetbackAmount(),
+    },
+    {
+      category: "İmar Durumu",
+      key: "post_road_setback_parcel_area",
+      title: "Terk Sonrası Parsel Alanı",
+      value: getPostRoadSetbackParcelArea(),
+    },
+    {
       category: "Belgeler ve Proje",
       key: "project_review_text",
       title: "Proje İnceleme ve Projeye Uygunluk Açıklaması",
@@ -24483,6 +24612,18 @@ function collectGeneratedTextPlaceholders() {
       key: "unit_decorative_description_text",
       title: "Dekoratif Özellikler Açıklaması",
       value: composeUnitDecorativeDescription(),
+    },
+    {
+      category: "Bağımsız Bölüm Özellikleri",
+      key: "total_legal_area",
+      title: "Toplam Yasal Alan",
+      value: getValuationUnitAreaTotals().legal,
+    },
+    {
+      category: "Bağımsız Bölüm Özellikleri",
+      key: "total_current_area",
+      title: "Toplam Mevcut Alan",
+      value: getValuationUnitAreaTotals().current,
     },
     {
       category: "Değerleme",
@@ -24575,8 +24716,8 @@ function collectGeneratedTextPlaceholders() {
     category: row.category,
     token: makePlaceholderToken(row.key),
     title: row.title,
-    type: "Oluşturulan Metin",
-    source: "Otomatik Cümle",
+    type: row.type || "Oluşturulan Metin",
+    source: row.source || "Otomatik Cümle",
     value: formatPlaceholderValue(row.value),
     reference: row.key,
   }));
@@ -24592,7 +24733,7 @@ function getComparablePlaceholderDefinitions() {
       const token = `EMSAL_${rowIndex + 1}_${toPlaceholderName(field.label || field.key)}`;
       const value = field.computed
         ? calculateComparableFieldValue(field.key, row, rowIndex)
-        : row[field.key] || "";
+        : formatOutputFieldValue(row[field.key] || "", field);
       definitions.push({
         category: "Emsaller",
         key: token,
@@ -24612,12 +24753,17 @@ function getComparablePlaceholderValue(rowIndex = 0, fieldKey = "") {
   const row = rows[Number(rowIndex)] || {};
   const field = comparableFields.find((item) => item.key === fieldKey);
   if (!field) return "";
-  return field.computed ? calculateComparableFieldValue(field.key, row, Number(rowIndex)) : (row[field.key] || "");
+  return field.computed
+    ? calculateComparableFieldValue(field.key, row, Number(rowIndex))
+    : formatOutputFieldValue(row[field.key] || "", field);
 }
 
 function getTablePlaceholderValue(tableKey = "", rowIndex = 0, columnIndex = 0) {
   const tableRows = Array.isArray(state.tables?.[tableKey]) ? state.tables[tableKey] : [];
-  return tableRows[Number(rowIndex)]?.[`c${Number(columnIndex)}`] || "";
+  const value = tableRows[Number(rowIndex)]?.[`c${Number(columnIndex)}`] || "";
+  const section = sections.find((item) => item.table?.key === tableKey);
+  const column = section?.table?.columns?.[Number(columnIndex)] || "";
+  return isOutputDateColumnLabel(column) ? dateIsoToTr(value) : value;
 }
 
 function buildComparableCalculatedEmsalWordTableHtml() {
@@ -24675,7 +24821,9 @@ function collectTablePlaceholders() {
           title: `${formatTablePlaceholderTitle(key)} ${rowIndex + 1} - ${column}`,
           type: "Tablo Alanı",
           source: "Uygulama Tablosu",
-          value: formatPlaceholderValue(tableRow?.[fieldKey]),
+          value: formatPlaceholderValue(
+            isOutputDateColumnLabel(column) ? dateIsoToTr(tableRow?.[fieldKey]) : tableRow?.[fieldKey]
+          ),
           reference: `${key}[${rowIndex}].${fieldKey}`,
         });
       });
@@ -25416,7 +25564,7 @@ async function exportComparableSketchAsJpeg(wrapper, triggerButton) {
 
   try {
     const link = document.createElement("a");
-    link.download = `emsal-konum-krokisi-${new Date().toISOString().slice(0, 10)}.jpg`;
+    link.download = `emsal-konum-krokisi-${dateIsoToTr(new Date().toISOString().slice(0, 10))}.jpg`;
     link.href = canvas.toDataURL("image/jpeg", 0.92);
     document.body.appendChild(link);
     link.click();
@@ -25428,7 +25576,7 @@ async function exportComparableSketchAsJpeg(wrapper, triggerButton) {
       drawExportKmlPolygon(context, parsed, topLeft, zoom);
       drawExportComparableSketch(context, subjectPoint, comparablePoints, topLeft, zoom);
       const fallbackLink = document.createElement("a");
-      fallbackLink.download = `emsal-konum-krokisi-${new Date().toISOString().slice(0, 10)}.jpg`;
+      fallbackLink.download = `emsal-konum-krokisi-${dateIsoToTr(new Date().toISOString().slice(0, 10))}.jpg`;
       fallbackLink.href = canvas.toDataURL("image/jpeg", 0.92);
       document.body.appendChild(fallbackLink);
       fallbackLink.click();
