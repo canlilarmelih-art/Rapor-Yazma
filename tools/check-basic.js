@@ -715,7 +715,7 @@ function main() {
       !indexHtml.includes("cdn.jsdelivr.net/npm/leaflet") &&
       indexHtml.includes("styles.css?v=20260720-0215") &&
       indexHtml.includes("src/auth/access-control.js?v=20260719-2200") &&
-      indexHtml.includes("app.js?v=20260721-0105") &&
+      indexHtml.includes("app.js?v=20260721-0130") &&
       indexHtml.includes("cloud/cloud-sync.js?v=20260719-2200") &&
       indexHtml.includes("cloud/report-library.js?v=20260719-2200") &&
       indexHtml.includes("src/templates/template-engine.js?v=20260721-0045"),
@@ -850,6 +850,14 @@ function main() {
       appJs.includes("buildWordReportTablesHtml") &&
       appJs.includes("buildWordReportSketchesHtml"),
     "Banka ve Cikti bolumunde JSON/Word farkli kaydet veya Word tablo/kroki akisi bulunamadi."
+  );
+  assert(
+    appJs.includes("exportZiraatEkTabloWithBankTemplateIfNeeded") &&
+      appJs.includes('templateKey !== "ziraat"') &&
+      appJs.includes("window.RaporZiraatEkTablo.export") &&
+      !appJs.includes("appendZiraatEkTabloXlsxBlock") &&
+      !appJs.includes("data-export-ziraat-xlsx"),
+    "Ziraat ek tablo ayri buton yerine banka sablonuyla kaydet akisina baglanmamis gorunuyor."
   );
   assert(
     appJs.includes("shouldIncludeGeneratedTextInWord") &&

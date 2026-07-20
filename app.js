@@ -11824,12 +11824,12 @@ function appendBankTemplateExportBlock(panel, status) {
     <div class="subsection-title-row" style="margin-top:14px;">
       <div>
         <h4>Banka Şablonuyla Kaydet</h4>
-        <p>templates/ klasöründeki düzenlenebilir HTML şablonu doldurulur ve Word (.doc) olarak iner.</p>
+        <p>templates/ klasöründeki düzenlenebilir HTML şablonu doldurulur ve Word (.doc) olarak iner. Ziraat Bankası rapor formatında ek tablo Excel dosyası da otomatik indirilir.</p>
       </div>
     </div>
     <div class="output-export-actions">
       <select data-template-select class="text-input" style="max-width:320px;">${options}</select>
-      <button type="button" class="primary-button" data-export-template>Banka şablonuyla kaydet (Word)</button>
+      <button type="button" class="primary-button" data-export-template>Banka şablonuyla kaydet</button>
     </div>
     <p class="subtle-text">Placeholder adları için templates/PLACEHOLDER-REHBERI.md dosyasına bakın. Eşleşmeyen adlar çıktıda ⚠ ile işaretlenir.</p>
   `;
@@ -11840,55 +11840,38 @@ function appendBankTemplateExportBlock(panel, status) {
     if (!confirmExportWithMissingFields()) return;
     try {
       saveState();
-      const result = await window.RaporTemplates.exportTemplate(select.value);
+      const templateKey = select.value;
+      const result = await window.RaporTemplates.exportTemplate(templateKey);
+      const ziraatEkTabloResult = await exportZiraatEkTabloWithBankTemplateIfNeeded(templateKey);
       if (result.missing.length) {
-        showOutputExportStatus(status, `Hazırlandı; ${result.missing.length} placeholder eşleşmedi.`);
+        const suffix = ziraatEkTabloResult ? ` Ziraat ek tablosu da indirildi (${ziraatEkTabloResult.count} alan).` : "";
+        showOutputExportStatus(status, `Hazırlandı; ${result.missing.length} placeholder eşleşmedi.${suffix}`);
         window.alert(`Şablon hazırlandı ancak şu placeholder adları eşleşmedi (çıktıda ⚠ ile işaretli):\n\n${[...new Set(result.missing)].join("\n")}\n\nYazımı templates/PLACEHOLDER-REHBERI.md dosyasından kontrol edebilirsiniz.`);
       } else {
-        showOutputExportStatus(status, `${result.title} hazırlandı.`);
+        const suffix = ziraatEkTabloResult ? " Ziraat ek tablosu da indirildi." : "";
+        showOutputExportStatus(status, `${result.title} hazırlandı.${suffix}`);
       }
     } catch (error) {
       console.error("Şablon dışa aktarma hatası:", error);
-      showOutputExportStatus(status, "Şablon hazırlanamadı.");
+      const partialZiraatFailure = String(error?.message || "").startsWith("Word şablonu hazırlandı ancak");
+      showOutputExportStatus(status, partialZiraatFailure ? "Word hazırlandı; Ziraat ek tablosu hazırlanamadı." : "Şablon hazırlanamadı.");
       window.alert(`Şablon hazırlanamadı: ${error?.message || error}`);
     }
   });
   panel.append(block);
-  appendZiraatEkTabloXlsxBlock(panel, status);
 }
 
-// Ziraat Bankası ek tablosu (4 sayfalı) XLSX olarak dışa aktarma. Doldurma
-// motoru (src/exports/xlsx-fill.js + ziraat-ek-tablo-xlsx.js) yüklenmemişse
-// blok hiç görünmez.
-function appendZiraatEkTabloXlsxBlock(panel, status) {
-  if (!window.RaporZiraatEkTablo) return;
-  const block = document.createElement("div");
-  block.className = "output-template-export";
-  block.innerHTML = `
-    <div class="subsection-title-row" style="margin-top:14px;">
-      <div>
-        <h4>Ziraat Ek Tablo (Excel)</h4>
-        <p>templates/ziraat-ek-tablo.xlsx şablonu (TARLA / ARSA / KONUT-İŞYERLERİ / NİTELİKLİ GAYRİMENKUL) rapor verisiyle doldurulup .xlsx olarak iner.</p>
-      </div>
-    </div>
-    <div class="output-export-actions">
-      <button type="button" class="primary-button" data-export-ziraat-xlsx>Ziraat ek tablosunu Excel indir</button>
-    </div>
-    <p class="subtle-text">Birincil gayrimenkulün ada/parsel/alan/değer bilgileri doldurulur; birden çok gayrimenkul için Excel'de sarı satırları çoğaltıp elle tamamlayın.</p>
-  `;
-  block.querySelector("[data-export-ziraat-xlsx]").addEventListener("click", async () => {
-    if (!confirmExportWithMissingFields()) return;
-    try {
-      saveState();
-      const result = await window.RaporZiraatEkTablo.export();
-      showOutputExportStatus(status, `Ziraat ek tablosu hazırlandı (${result.count} alan).`);
-    } catch (error) {
-      console.error("Ziraat ek tablo XLSX hatası:", error);
-      showOutputExportStatus(status, "Ek tablo hazırlanamadı.");
-      window.alert(`Ziraat ek tablosu hazırlanamadı: ${error?.message || error}`);
-    }
-  });
-  panel.append(block);
+async function exportZiraatEkTabloWithBankTemplateIfNeeded(templateKey) {
+  if (templateKey !== "ziraat") return null;
+  if (!window.RaporZiraatEkTablo?.export) {
+    throw new Error("Ziraat ek tablo XLSX motoru yüklenmedi.");
+  }
+  try {
+    return await window.RaporZiraatEkTablo.export();
+  } catch (error) {
+    console.error("Ziraat ek tablo XLSX hatası:", error);
+    throw new Error(`Word şablonu hazırlandı ancak Ziraat ek tablosu hazırlanamadı: ${error?.message || error}`);
+  }
 }
 
 function showOutputExportStatus(status, text) {

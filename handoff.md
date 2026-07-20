@@ -1,6 +1,6 @@
 # Rapor Yazma Programı — Handoff Notu
 
-Son güncelleme: 2026-07-21 · Servis edilen sürüm: **app.js?v=20260721-0105** (styles.css?v=20260720-0215, src/templates/template-engine.js?v=20260721-0045, cloud/cloud-sync.js?v=20260719-2200, cloud/report-library.js?v=20260719-2200, halkbank-risk-rules.js?v=20260707-1812)
+Son güncelleme: 2026-07-21 · Servis edilen sürüm: **app.js?v=20260721-0130** (styles.css?v=20260720-0215, src/templates/template-engine.js?v=20260721-0045, cloud/cloud-sync.js?v=20260719-2200, cloud/report-library.js?v=20260719-2200, halkbank-risk-rules.js?v=20260707-1812)
 
 Bu belge, bir sonraki geliştirici/oturum için projeyi çalıştırma, doğrulama ve bu
 oturumda yapılanları özetler.
@@ -25,6 +25,21 @@ referanslarının geri gelmediğini ve vendor dosyalarının mevcut olduğunu de
 Doğrulama: `npm.cmd run verify` geçti. Canlıya çıktıktan sonra Node süreci /
 deployment yeniden başlatılmalı; aksi halde eski CSP header'ı servis edilmeye
 devam edebilir.
+
+## 0.0.204 - 2026-07-21 - Ziraat Word şablonu ile ek tablo Excel tek düğmede
+
+`Banka Şablonuyla Kaydet` bloğundaki ayrı "Ziraat Ek Tablo (Excel)" kartı ve
+butonu kaldırıldı. Artık kullanıcı şablon seçicisinde `Ziraat Bankası Rapor
+Formatı` (`templateKey === "ziraat"`) seçiliyken `Banka şablonuyla kaydet`
+düğmesine bastığında önce Word `.doc` şablonu iner, ardından
+`window.RaporZiraatEkTablo.export()` çağrılıp Ziraat ek tablo `.xlsx` dosyası
+otomatik indirilir. Diğer banka şablonlarında yalnız Word iner.
+
+Ek tablo motoru eksikse veya Excel üretimi hata verirse Word çıktısı hazırlandığı
+bilgisi korunur; hata mesajı yalnız ek tablonun hazırlanamadığını belirtir.
+`tools/check-basic.js` ayrı Ziraat Excel butonunun geri gelmemesini ve birleşik
+akışın korunmasını denetler. Cache-buster: `app.js?v=20260721-0130`.
+Doğrulama: `npm.cmd run verify` geçti.
 
 ## 0.0.202 - 2026-07-21 - Ziraat ek tablo: 2 ondalık biçim, bitişik-nizam KAKS, NİTELİKLİ toplam formülleri
 
