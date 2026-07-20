@@ -160,6 +160,8 @@ function main() {
       appJs.includes("return Object.keys(previousValues).some") &&
       appJs.includes("function getNearestNearbySelectionIds") &&
       appJs.includes("selectedIds: getNearestNearbySelectionIds") &&
+      appJs.includes("function getMapLabelPlaces()") &&
+      appJs.includes("return getSelectedNearbyPlaces();") &&
       cloudSyncJs.includes("hydrateImportedAddressAdministrativeFields(state)"),
     "Adres yukleme, harita hareketi veya yakin cevre ilk uc secimi korunmuyor."
   );

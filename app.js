@@ -21780,10 +21780,9 @@ function renderSelectedNearbyMarkers() {
 }
 
 function getMapLabelPlaces() {
-  const sourcePlaces = getAllNearbyPlacesWithUser(state.sourceValues.nearbyPlaces?.places || []);
-  const selected = getSelectedNearbyPlaces();
-  const arteries = getNearbyArteries(sourcePlaces).slice(0, 5);
-  return [...new Map([...arteries, ...selected].map((place) => [place.id, place])).values()];
+  // Krokilerde yalnÄ±zca kullanÄ±cÄ±nÄ±n seÃ§tiÄŸi yakÄ±n Ã§evre ve POI kayÄ±tlarÄ± gÃ¶sterilir.
+  // UlaÅŸÄ±m arterleri artÄ±k otomatik olarak etikete eklenmez.
+  return getSelectedNearbyPlaces();
 }
 
 function renderStaticKmlMap() {
