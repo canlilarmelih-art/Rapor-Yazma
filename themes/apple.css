@@ -38,12 +38,6 @@ body[data-app-theme="apple"] .sidebar {
   border-right: 0;
 }
 
-body[data-app-theme="apple"] .brand-mark {
-  background: #0066cc;
-  color: #ffffff;
-  border-radius: 9999px;
-}
-
 body[data-app-theme="apple"] .brand p,
 body[data-app-theme="apple"] .sync-panel p,
 body[data-app-theme="apple"] .nav-button,

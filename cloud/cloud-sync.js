@@ -510,8 +510,10 @@
 
   function renderAccountModal() {
     const expireText = `${RETENTION_DAYS} gün (son gönderimden itibaren; süre her gönderimde yenilenir)`;
+    const roleLabel = window.RaporAccessControl?.getRole?.() === "admin" ? "Yönetici" : "Kullanıcı";
     const overlay = modalShell(`
       <div class="cloud-status-row"><span>Hesap</span><strong>${cloud.user.email || "-"}</strong></div>
+      <div class="cloud-status-row"><span>Rol</span><strong>${roleLabel}</strong></div>
       <div class="cloud-status-row"><span>Açık Rapor</span><strong>${cloud.activeReportId || "-"}</strong></div>
       <div class="cloud-status-row"><span>Durum</span><strong id="cloudStatusLine">${cloud.lastSyncText || "-"}</strong></div>
       <div class="cloud-status-row"><span>Bulutta saklama</span><strong>${expireText}</strong></div>
@@ -662,6 +664,7 @@
 
   function renderGateBlocked(message) {
     setGateContent(`
+      <img src="icons/experify-mark-white.svg?v=20260720-0210" alt="" aria-hidden="true" width="40" height="40" style="display:block;margin:0 auto 10px;" />
       <p style="font-weight:800;font-size:15px;letter-spacing:.02em;">Experify - Yarı Otomatik Rapor Oluşturma</p>
       <p style="color:#f3b0b0;font-size:14px;margin-top:10px;">${escapeHtmlSafe(message)}</p>
     `);
@@ -669,6 +672,7 @@
 
   function renderGateOffline() {
     setGateContent(`
+      <img src="icons/experify-mark-white.svg?v=20260720-0210" alt="" aria-hidden="true" width="40" height="40" style="display:block;margin:0 auto 10px;" />
       <p style="font-weight:800;font-size:15px;letter-spacing:.02em;">Experify - Yarı Otomatik Rapor Oluşturma</p>
       <p style="color:#b9c5d6;font-size:14px;margin-top:10px;">İnternet bağlantısı bulunamadı.
       Bu sistem yalnızca çevrimiçiyken kullanılabilir.</p>
@@ -679,7 +683,8 @@
   function renderGateLogin(errorText = "") {
     setGateContent(`
       <div class="gate-card" style="background:#ffffff;border-radius:14px;padding:26px 22px;text-align:left;color:#152238;">
-        <p style="margin:0 0 4px;font-weight:800;font-size:15px;letter-spacing:.02em;color:#111d3d;">Experify - Yarı Otomatik Rapor Oluşturma</p>
+        <img src="icons/experify-mark-navy.svg?v=20260720-0210" alt="" aria-hidden="true" width="40" height="40" style="display:block;margin:0 auto 10px;" />
+        <p style="margin:0 0 4px;font-weight:800;font-size:15px;letter-spacing:.02em;color:#111d3d;text-align:center;">Experify - Yarı Otomatik Rapor Oluşturma</p>
         <p style="margin:0 0 18px;color:#5a6576;font-size:13px;">Devam etmek için giriş yapın. Belgeler ve ham
         belge metinleri buluta yüklenmez; yalnızca kendi hesabınızın raporlarını görürsünüz.</p>
         <label class="field"><span>E-posta</span>
@@ -766,6 +771,7 @@
   async function handleAuthState(user) {
     cloud.user = user || null;
     firstAuthCheckDone = true;
+    window.RaporAccessControl?.setCurrentUser?.(user?.email || "");
     window.RaporThemeProfile?.applyForCurrentUser?.();
     if (!user) {
       cloud.knownRev = 0;
@@ -840,6 +846,7 @@
       rev: cloud.knownRev,
       signedIn: Boolean(cloud.user),
       email: cloud.user?.email || null,
+      role: window.RaporAccessControl?.getRole?.() || "user",
     }),
   };
 

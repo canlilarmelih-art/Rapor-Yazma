@@ -1,9 +1,84 @@
 # Rapor Yazma Programı — Handoff Notu
 
-Son güncelleme: 2026-07-19 · Servis edilen sürüm: **app.js?v=20260719-2000** (styles.css?v=20260719-1530, src/templates/template-engine.js?v=20260719-2045, cloud/cloud-sync.js?v=20260719-1505, cloud/report-library.js?v=20260719-1530, halkbank-risk-rules.js?v=20260707-1812)
+Son güncelleme: 2026-07-20 · Servis edilen sürüm: **app.js?v=20260719-2000** (styles.css?v=20260720-0215, src/templates/template-engine.js?v=20260719-2105, cloud/cloud-sync.js?v=20260719-1505, cloud/report-library.js?v=20260719-1530, halkbank-risk-rules.js?v=20260707-1812)
 
 Bu belge, bir sonraki geliştirici/oturum için projeyi çalıştırma, doğrulama ve bu
 oturumda yapılanları özetler.
+
+## 0.0.189 - 2026-07-20 - Yeni Experify logosu uygulandı
+
+Kullanıcı önceki oturumda mevcut logodan ("RY" harfli altın rozet)
+memnun olmadığını belirtmişti (bkz. `PROJE-OZETI.md` "Açık Konu:
+Marka/Logo"). Bu oturumda kendi hazırladığı/hazırlattığı logo paketini
+(`Experify Logo - Serif E/` — lacivert #213f77/#16264a + altın #d7b26a,
+serif "E" harfi, halka + köşe vurguları) paylaşıp siteye uygulanmasını
+istedi.
+
+### Yapılanlar
+
+- Paketteki dosyalar `icons/` altına kopyalandı: `icon-192.png`,
+  `icon-512.png`, `apple-touch-icon.png` (PWA simgeleri, üzerine yazıldı)
+  + `experify-mark-navy.svg`, `experify-mark-white.svg`,
+  `experify-icon.svg`, `experify-lockup.svg` (yeni SVG'ler).
+- **Sidebar** (`index.html` `.brand-mark`): eski `RY` metin rozeti
+  kaldırıldı; artık iki `<img>` (beyaz + lacivert varyant) üst üste
+  duruyor, CSS ile tema bazlı görünürlük kontrol ediliyor.
+- **Giriş ekranı** (`cloud/cloud-sync.js` — `renderGateLogin`,
+  `renderGateBlocked`, `renderGateOffline` + `index.html`'deki ilk statik
+  "Kontrol ediliyor…" içeriği): "Experify" başlığının üstüne mark eklendi
+  — beyaz kart olan giriş formunda lacivert varyant, koyu overlay'de
+  (bloklanmış/çevrimdışı ekranlar) beyaz varyant.
+- **Tema bazlı kontrast**: 6 temanın sidebar arka planı incelendi — Navy
+  Blue/Apple/Glass/Aurora KOYU (beyaz mark), Clay/Neumorphism AÇIK
+  (lacivert mark) olduğu canlı önizlemede tek tek doğrulandı (Clay
+  incelemesi sırasında ilk CSS kuralımın yalnızca Neumorphism'i kapsadığı,
+  Clay'in de açık sidebar kullandığı fark edilip düzeltildi).
+- Eski rozet arka planları kaldırıldı: `styles.css`'teki gold degrade/
+  gölge kuralı ve `themes/apple.css`'teki mavi daire override'ı silindi
+  (yeni mark kendi halkasını taşıdığı için ayrı bir renkli arka plana
+  gerek yok).
+- `manifest.json`'a dokunulmadı — zaten `icons/icon-192.png`/`icon-512.png`
+  dosya adlarına işaret ediyordu, içerik güncellemesi yeterli.
+
+### Doğrulama
+
+- `node --check app.js`, `node --check cloud/cloud-sync.js`,
+  `tools/check-basic.js`, `tools/test-bank-templates.js`,
+  `tools/test-comparable-market-analysis.js` geçti.
+- Canlı önizlemede: giriş ekranı ekran görüntüsüyle doğrulandı (lacivert
+  mark beyaz kartta net görünüyor); sidebar'da 6 temanın TAMAMI tek tek
+  denendi (Navy Blue/Apple varsayılan görünüm, Clay, Neumorphism, Aurora)
+  — her birinde mark okunaklı, taşma/örtüşme yok. `icons/experify-mark-*.svg`
+  ağ isteklerinin `200 OK` döndüğü doğrulandı.
+- **Gerçek iOS/Android cihazda görsel teyit yapılmadı** — sonraki deploy
+  sonrası kullanıcı kontrolü faydalı olur (özellikle ana ekrana ekleme
+  sonrası PWA simgesi).
+
+Sürümler: `styles.css?v=20260720-0215`, ikon linkleri/mark görselleri
+`?v=20260720-0210`.
+
+Ayrı yedek alınmadı; küçük, geri alınabilir bir görsel değişiklik.
+
+## 0.0.188 - 2026-07-19 - Halkbank Word tablo satırları sıkılaştırıldı
+
+- Halkbank meta tablolarına Word uyumlu `20pt` minimum satır yüksekliği, dikey ortalama ve tek satır line-height kuralları eklendi.
+- Önceki yaklaşık `28–29pt` Word görünümüne göre kutu yüksekliği yüzde 30 civarında azaltılır; iki satırlı başlıklar gerektiğinde kesilmeden genişleyebilir.
+
+---
+
+## 0.0.187 - 2026-07-19 - Önemli Not satış kabiliyeti açıklaması düzeltildi
+
+- `{{VALUATİON_SALEABİLİTY_EXPLANATİON}}` artık yalnız olumsuz seçimlerde metin üreten export sarmalayıcısı yerine her satış kabiliyeti seçimi için sonuç cümlesi üreten ana fonksiyona bağlanır.
+- `Satılabilir` seçiminde de Halkbank Önemli Not ve Sonuç Cümlesi bölümünde satış kabiliyeti açıklaması görünür.
+- Cache-buster: `src/templates/template-engine.js?v=20260719-2105`.
+
+---
+
+## 0.0.186 - 2026-07-19 - Halkbank kat adedi placeholder düzeltmesi
+
+- Halkbank `BİNA KAT DAĞILIMI ÖZETİ` satırı `{{MAİN_PROPERTY_FLOOR_COUNT_TEXT}}` placeholder'ına bağlandı.
+
+---
 
 ## 0.0.185 - 2026-07-19 - Halkbank açıklama tekrarları tamamlandı
 
@@ -4998,3 +5073,66 @@ ve mobil yükseklikleri uyarlanan `.saha-pro-frame-wrap` / `.saha-pro-frame` sti
 
 Doğrulama: `node --check app.js`, `node tools/check-basic.js`, `git diff --check` ve
 `http://127.0.0.1:5174/saha-pro.html` servis kontrolü başarılıdır.
+
+## 0.0.189 - 2026-07-19 - Admin ve Kullanıcı Rolleri
+
+- Firebase oturum e-postasından rol üreten merkezi `src/auth/access-control.js` modülü eklendi.
+- `canlilar.melih@gmail.com` hesabı `admin`, diğer tüm hesaplar ve oturum açılmamış durum `user` olarak tanımlandı.
+- Teknik `Placeholder` ve `Gabim Veri Seti` bölümleri yalnızca yönetici hesabına görünür hale getirildi.
+- Bölüm ve form alanları için tekrar kullanılabilir `adminOnly: true` desteği eklendi. Rol değiştiğinde görünmeyen aktif bölümden güvenli biçimde çıkılıyor.
+- Rol görünürlüğü rapor dışa aktarma filtresinden ayrıldı; kullanıcı arayüzünde gizlenen bölümler rapor verisini eksiltmiyor.
+- Hesap penceresi ve Taleplerim üst alanında `Yönetici` / `Kullanıcı` rolü gösteriliyor.
+- Rol her Firebase oturum değişiminde yeniden hesaplanıyor; çıkışta yetki varsayılan `user` seviyesine düşüyor.
+- Cache sürümleri `20260719-2200` olarak güncellendi.
+- Doğrulama: `npm.cmd test`, `node tools/check-basic.js`, `node tools/test-bank-templates.js` ve `git diff --check` başarılı.
+
+## 0.0.190 - 2026-07-20 - Harita Araçlarının Sadeleştirilmesi
+
+- Harita ve Konum Seçimi içindeki koordinat sayısı, merkez, pafta ve seçili nokta rozetlerinden oluşan özet şeridi kaldırıldı.
+- `Önemli noktalar belirtilsin mi?` seçeneği bölüm başlığının sağ tarafına taşındı.
+- `Harita görünümü` seçicisi haritanın sağ üst köşesine, harita yeniden çizildiğinde kaybolmayacak ayrı bir katman olarak taşındı.
+- Masaüstü ve mobil yerleşimler için sabit, taşma yapmayan ölçüler eklendi.
+- Cache sürümleri `20260720-0010` olarak güncellendi.
+- Canlı tarayıcı doğrulaması: masaüstünde seçici haritanın sağ/üst kenarından 12 px içeride ve harita 16:9; 390x844 mobil görünümde yatay taşma yok; konsol hatası yok.
+- `npm.cmd run verify`, banka şablon testi ve `git diff --check` başarılı.
+
+## 0.0.192 - 2026-07-20 - Harita Etiketlerinin Zorunlu Olması
+
+- Konum haritasındaki `Önemli noktalar belirtilsin mi?` seçeneği arayüzden kaldırıldı.
+- Önemli nokta etiketleri doğrudan JPG indirme, manuel rapor haritası kaydı ve otomatik rapor haritası üretiminde daima açık hale getirildi.
+- Önceden `false` olarak kaydedilmiş eski tercihler ve harita yapılandırmaları artık etiketleri kapatamıyor.
+- Birleşik indirme düğmesinin metni `JPG İNDİR` yerine `JPG` olarak kısaltıldı.
+- Cache sürümleri `20260720-0200` olarak güncellendi.
+- Canlı tarayıcı doğrulaması: seçenek ve metni DOM'da yok, birleşik düğme `JPG`, oran göstergesi korunuyor; yatay taşma ve konsol hatası yok.
+- `npm.cmd run verify`, banka şablon testi ve `git diff --check` başarılı.
+
+## 0.0.193 - 2026-07-20 - Harita Kullanıcı Noktası Araçları
+
+- `KML yüklendikten sonra haritadan nihai konumu işaretleyebilirsiniz.` açıklaması kaldırıldı.
+- `Haritayı Kaydet` ve `JPG` oran menüsü, `Kullanıcı Önemli Noktası` girişinin hemen sağına taşındı.
+- Kullanıcı önemli noktası satırı yeni araçlara yer açacak şekilde daraltıldı; mobilde tek sütuna düşüyor.
+- Canlı tarayıcı doğrulaması: masaüstünde giriş alanı 353 px ve `Haritayı Kaydet`/`JPG` hemen sağında; mobilde kontroller tek sütunda ve yatay taşma yok; konsol hatası yok.
+- `npm.cmd run verify`, banka şablon testi ve `git diff --check` başarılı.
+
+## 0.0.194 - 2026-07-20 - Kullanıcı Noktası Satırının Sıkılaştırılması
+
+- Harita kaydetme düğmesi `Kroki Kaydet` / `Kroki Kaydedildi` olarak kısaltıldı.
+- `Kullanıcı Noktalarını Getir` dahil tüm ana kullanıcı noktası kontrolleri tek üst araç satırına alındı.
+- Harita ve kullanıcı noktası durum mesajları grid hücresi tüketmemesi için ayrı alt durum satırına taşındı.
+- Kullanıcı önemli noktası girişinin esnek minimum genişliği 150 px'e indirildi; mobil tek sütun davranışı korundu.
+- Durum mesajları ana araç grid'inden ayrıldığı için canlı masaüstü doğrulamasında altı kontrol aynı satırda kaldı; giriş alanı 168 px, düğme metni `Kroki Kaydet` ve yatay taşma yok.
+- 390x844 mobil doğrulamasında kontroller tek sütuna geçti; konsol hatası yok.
+- `npm.cmd run verify`, banka şablon testi ve `git diff --check` başarılı.
+
+## 0.0.191 - 2026-07-20 - JPG Boyut Menüsü
+
+- `Haritayı güncelle` ve `Okunan değerleri tekrar uygula` düğmeleri Harita ve Konum Seçimi araçlarından kaldırıldı.
+- Ayrı `Boyut` seçicisi kaldırılarak `JPG İNDİR` düğmesine gömülü açılır oran menüsüne dönüştürüldü.
+- Menü 1:1, 3:4, 4:3, 4:5, 5:4, 9:16 ve 16:9 seçeneklerini sunuyor; aktif oran düğmede gösteriliyor.
+- Oran seçildiğinde tercih kaydediliyor, menü kapanıyor ve JPG seçilen oranla doğrudan indiriliyor.
+- Menü dışına tıklama ve Escape tuşuyla kapatma davranışları eklendi.
+- JPG hazırlanıyor durumu sonrasında birleşik düğmenin oran göstergesini kaybetmemesi için düğme iç yapısı korunup geri yükleniyor.
+- Cache sürümleri `styles.css=20260720-0110`, `app.js=20260720-0120` olarak güncellendi.
+- Canlı tarayıcı doğrulaması: eski iki düğme görünmüyor, menüde 7 oran var; 4:3 seçimi sonrası `JPEG kaydedildi` durumu geldi, menü kapandı ve oran göstergesi korundu.
+- 390x844 mobil görünümde oran menüsü ekran içinde kaldı ve yatay taşma oluşmadı; konsol hatası yok.
+- `npm.cmd run verify`, banka şablon testi ve `git diff --check` başarılı.

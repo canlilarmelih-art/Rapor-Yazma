@@ -710,8 +710,10 @@
         <span class="library-account-text">🔒 Giriş yapılmadı — talepler yalnızca bu cihazda.</span>
         <button type="button" class="mini-button" id="libraryAccountAction">Giriş Yap</button>`;
     }
+    const roleLabel = status.role === "admin" ? "Yönetici" : "Kullanıcı";
     return `
-      <span class="library-account-text">✅ ${escapeHtml(status.email || "Bulut hesabı")}</span>`;
+      <span class="library-account-text">${escapeHtml(status.email || "Bulut hesabı")}</span>
+      <span class="library-role-badge" data-role="${escapeHtml(status.role || "user")}">${roleLabel}</span>`;
   }
 
   function renderSignOutCornerHtml() {

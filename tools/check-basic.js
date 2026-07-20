@@ -63,6 +63,52 @@ function main() {
   const serverJs = readText("server.js");
   const cloudSyncJs = readText("cloud/cloud-sync.js");
   const reportLibraryJs = readText("cloud/report-library.js");
+  const accessControlJs = readText("src/auth/access-control.js");
+  const locationMapToolsSource = appJs.slice(
+    appJs.indexOf("function createLocationMapTools()"),
+    appJs.indexOf("function formatUploadErrorDetails"),
+  );
+  assert(
+    !locationMapToolsSource.includes('<div class="kml-summary">') &&
+      !locationMapToolsSource.includes("data-kml-map") &&
+      !locationMapToolsSource.includes("data-kml-apply") &&
+      !locationMapToolsSource.includes("data-map-export-ratio>") &&
+      !locationMapToolsSource.includes("KML yüklendikten sonra haritadan nihai konumu işaretleyebilirsiniz.") &&
+      locationMapToolsSource.includes("data-map-export-menu") &&
+      locationMapToolsSource.includes("data-map-export-ratio-option") &&
+      locationMapToolsSource.includes("exportMapAsJpeg(mapExportMenuButton)") &&
+      locationMapToolsSource.includes('<div class="user-poi-tools">') &&
+      locationMapToolsSource.includes('<div class="user-poi-statuses">') &&
+      locationMapToolsSource.includes('"Kroki Kaydet"') &&
+      locationMapToolsSource.indexOf("data-map-save") > locationMapToolsSource.indexOf("data-user-poi-name") &&
+      locationMapToolsSource.indexOf("data-map-export-menu") > locationMapToolsSource.indexOf("data-user-poi-name") &&
+      locationMapToolsSource.indexOf("data-user-poi-refresh") > locationMapToolsSource.indexOf("data-map-export-menu") &&
+      !locationMapToolsSource.includes('<div class="kml-actions">') &&
+      appJs.includes("const originalButtonHtml = triggerButton?.innerHTML") &&
+      appJs.includes('triggerButton.innerHTML = originalButtonHtml || "JPG"') &&
+      locationMapToolsSource.includes("<span>JPG</span>") &&
+      !appJs.includes("mapExportLabels") &&
+      !locationMapToolsSource.includes("Önemli noktalar belirtilsin mi?") &&
+      !locationMapToolsSource.includes("data-map-export-labels") &&
+      locationMapToolsSource.includes('class="field compact-field map-mode-field map-mode-overlay"') &&
+      stylesCss.includes(".map-panel-wrap") &&
+      stylesCss.includes(".map-mode-overlay"),
+    "Harita ozet seridi veya harita araclarinin yeni yerlesimi korunmuyor."
+  );
+  assert(
+    accessControlJs.includes('const ADMIN_EMAIL = "canlilar.melih@gmail.com"') &&
+      accessControlJs.includes('return normalizeEmail(email) === ADMIN_EMAIL ? "admin" : "user"'),
+    "Admin ve kullanici rol cozumu korunmuyor."
+  );
+  assert(
+    appJs.includes('adminOnly: true') &&
+      appJs.includes("shouldHideSectionForAccess") &&
+      appJs.includes("window.RaporAccessControl") &&
+      cloudSyncJs.includes("RaporAccessControl?.setCurrentUser") &&
+      cloudSyncJs.includes('role: window.RaporAccessControl?.getRole?.() || "user"') &&
+      reportLibraryJs.includes("library-role-badge"),
+    "Rol tabanli ekran gorunurlugu veya oturum baglantisi korunmuyor."
+  );
   assert(
     reportLibraryJs.includes("function openDashboardAfterAuthentication()") &&
       reportLibraryJs.includes("openDashboardAfterAuthentication();") &&
@@ -627,11 +673,12 @@ function main() {
       indexHtml.includes("src/risk/halkbank-risk-rules.js") &&
       indexHtml.includes("src/comparables/comparable-market-analysis.js") &&
       indexHtml.includes("src/value-factors/value-factors-rules.js") &&
-      indexHtml.includes("styles.css?v=20260719-1530") &&
-      indexHtml.includes("app.js?v=20260719-2000") &&
-      indexHtml.includes("cloud/cloud-sync.js?v=20260719-1505") &&
-      indexHtml.includes("cloud/report-library.js?v=20260719-1530") &&
-      indexHtml.includes("src/templates/template-engine.js?v=20260719-2045"),
+      indexHtml.includes("styles.css?v=20260720-0215") &&
+      indexHtml.includes("src/auth/access-control.js?v=20260719-2200") &&
+      indexHtml.includes("app.js?v=20260720-0200") &&
+      indexHtml.includes("cloud/cloud-sync.js?v=20260719-2200") &&
+      indexHtml.includes("cloud/report-library.js?v=20260719-2200") &&
+      indexHtml.includes("src/templates/template-engine.js?v=20260719-2105"),
     "Halkbank risk kodu scriptleri veya guncel app surumu index.html icinde bulunamadi."
   );
   checkFileExists("src/risk/halkbank-risk-data.js");

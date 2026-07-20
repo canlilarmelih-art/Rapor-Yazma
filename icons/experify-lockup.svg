@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="440" height="130" viewBox="0 0 440 130">
+<g transform="translate(10,15)">
+<g stroke="#d7b26a" stroke-width="11" stroke-linecap="round"><path d="M25 25 L14 14"></path><path d="M75 25 L86 14"></path><path d="M25 75 L14 86"></path><path d="M75 75 L86 86"></path></g>
+<circle cx="50" cy="50" r="36" fill="none" stroke="#213f77" stroke-width="6"></circle>
+<circle cx="50" cy="50" r="27" fill="none" stroke="#d7b26a" stroke-width="2.5"></circle>
+<text x="50" y="50" font-family="Georgia,&#39;Times New Roman&#39;,serif" font-size="42" font-weight="700" fill="#213f77" text-anchor="middle" dominant-baseline="central">E</text>
+</g>
+<text x="140" y="65" font-family="-apple-system,&#39;Segoe UI&#39;,Inter,system-ui,sans-serif" font-size="42" font-weight="800" letter-spacing="-1" dominant-baseline="central"><tspan fill="#d7b26a">E</tspan><tspan fill="#213f77">xperi</tspan><tspan fill="#213f77" font-weight="500">fy</tspan></text>
+</svg>

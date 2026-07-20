@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 100 100">
+<g stroke="#d7b26a" stroke-width="11" stroke-linecap="round"><path d="M25 25 L14 14"></path><path d="M75 25 L86 14"></path><path d="M25 75 L14 86"></path><path d="M75 75 L86 86"></path></g>
+<circle cx="50" cy="50" r="36" fill="none" stroke="#ffffff" stroke-width="6"></circle>
+<circle cx="50" cy="50" r="27" fill="none" stroke="#d7b26a" stroke-width="2.5"></circle>
+<text x="50" y="50" font-family="Georgia,&#39;Times New Roman&#39;,serif" font-size="42" font-weight="700" fill="#ffffff" text-anchor="middle" dominant-baseline="central">E</text>
+</svg>

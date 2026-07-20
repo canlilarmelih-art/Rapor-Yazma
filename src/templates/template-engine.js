@@ -525,7 +525,7 @@
     DEGERLENDIRMESEMASI: { t: () => safeCall("buildValuationMethodsSchemeText") },
     DEGERLEMEYONTEMIACIKLAMASI: { t: () => safeCall("buildValuationMethodExplanation") },
     SATISKABILIYETIACIKLAMASI: { t: () => safeCall("buildValuationSaleabilityExplanationForExport") },
-    VALUATIONSALEABILITYEXPLANATION: { t: () => safeCall("buildValuationSaleabilityExplanationForExport") },
+    VALUATIONSALEABILITYEXPLANATION: { t: () => safeCall("buildValuationSaleabilityExplanation") },
     KIRAACIKLAMASI: { t: () => safeCall("buildValuationRentExplanation") },
     EMLAKBEYANDEGERIACIKLAMASI: { t: () => safeCall("buildPropertyTaxDeclarationExplanationForExport") },
     KATBAZINDAINDIRGENMISALANTABLOSU: { h: () => safeCall("buildExplanationsFloorValuationWordTableHtml") },

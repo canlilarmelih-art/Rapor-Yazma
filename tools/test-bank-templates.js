@@ -337,7 +337,7 @@ const halkbankTemplate = fs.readFileSync(path.join(appDir, "templates", "halkban
 [
   "{{PROJECT_REVIEW_DESCRIPTION}}",
   "{{REVIEWED_DOCUMENTS_DESCRIPTION}}",
-  "{{BUİLDİNG_FLOOR_SUMMARY_TEXT}}",
+  "{{MAİN_PROPERTY_FLOOR_COUNT_TEXT}}",
   "{{VALUATİON_SALEABİLİTY_EXPLANATİON}}",
   "{{KIRA_ACIKLAMASI}}",
   "{{HALKBANK_DEGERLEME_DETAY_TABLO}}",
@@ -379,7 +379,7 @@ assert(
   "halkbank.html: Gayrimenkul, ic ozellik veya tefrisat aciklamasi tekrar ediyor."
 );
 assert(
-  halkbankTemplate.includes("BİNA KAT DAĞILIMI ÖZETİ</td><td>{{BUİLDİNG_FLOOR_SUMMARY_TEXT}}"),
+  halkbankTemplate.includes("BİNA KAT DAĞILIMI ÖZETİ</td><td>{{MAİN_PROPERTY_FLOOR_COUNT_TEXT}}"),
   "halkbank.html: Bina kat dagilimi ozeti ayri satirda bulunamadi."
 );
 const halkbankImportantNote = halkbankSection("Önemli Not ve Sonuç Cümlesi", "İmar Bilgileri Açıklaması");
@@ -412,7 +412,10 @@ assert(
 assert(
   halkbankTemplate.includes("padding: 1.7pt 3pt") &&
     halkbankTemplate.includes("padding: 1.55pt 2.8pt") &&
-    halkbankTemplate.includes("padding: 0.85pt 1.8pt"),
+    halkbankTemplate.includes("padding: 0.85pt 1.8pt") &&
+    halkbankTemplate.includes("table.meta tr { height: 20pt; mso-height-source: userset; mso-height-rule: at-least; }") &&
+    halkbankTemplate.includes("table.meta td { height: 20pt;") &&
+    halkbankTemplate.includes("vertical-align: middle; line-height: 1;"),
   "halkbank.html: tablo kutularinin yuksekligi yuzde 30 azaltilmamis."
 );
 assert(
@@ -423,8 +426,15 @@ assert(
 );
 assert(
   engineSource.includes("VALUATIONSALEABILITYEXPLANATION") &&
-    engineSource.includes('safeCall("buildValuationSaleabilityExplanationForExport")'),
+    engineSource.includes('VALUATIONSALEABILITYEXPLANATION: { t: () => safeCall("buildValuationSaleabilityExplanation") }'),
   "Halkbank valuation saleability placeholder aliasi bulunamadi."
+);
+globalThis.buildValuationSaleabilityExplanation = () => "SATILABİLİR olduğu kanaatine varılmıştır.";
+const halkbankSaleabilityHtml = engine.resolveToken("VALUATİON_SALEABİLİTY_EXPLANATİON").html;
+delete globalThis.buildValuationSaleabilityExplanation;
+assert(
+  halkbankSaleabilityHtml.includes("SATILABİLİR olduğu kanaatine varılmıştır."),
+  "Halkbank Onemli Not satis kabiliyeti aciklamasi cozumlenirken bos kaliyor."
 );
 assert(
   appSource.includes('key: "halkbankCentralBankExplanation"'),

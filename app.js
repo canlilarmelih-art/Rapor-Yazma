@@ -592,6 +592,7 @@ const sections = [
     id: "placeholders",
     title: "Placeholder",
     badge: "Tanım",
+    adminOnly: true,
     description:
       "Rapor şablonunda kullanılacak alanlar, otomatik oluşturulan metinler ve eski Excel adlandırılmış hücre karşılıkları burada izlenir.",
     fields: [],
@@ -656,6 +657,7 @@ const sections = [
     id: "gabimData",
     title: "Gabim Veri Seti",
     badge: "Veri",
+    adminOnly: true,
     description:
       "GABİM veri seti formatında, sistemdeki tapu, yapı, bağımsız bölüm, değerleme ve imar bilgilerinden otomatik derlenen kontrol ekranıdır.",
     fields: [],
@@ -801,6 +803,7 @@ const encumbranceDeclarationTypeOptions = ["Beyan", "İrtifak"];
 const encumbranceAnnotationTypeOptions = ["Şerh", "Haciz", "İhtiyati Haciz", "Kamu Haczi", "İhtiyati Tedbir", "Tedbir"];
 let activeSectionId = sections[0].id;
 let state = loadState();
+let currentAccessEmail = "";
 normalizeAddressSourceState(state);
 applySystemDefaults(state);
 applyUserFieldDefaults(state);
@@ -882,7 +885,6 @@ function loadState() {
     settings: {
       mapMode: "hybrid",
       mapExportRatio: "4:3",
-      mapExportLabels: true,
       userDefaults: savedUserDefaults,
     },
     tables: {},
@@ -1315,7 +1317,15 @@ function clearLandOwnershipDependentData(value) {
   state.tables.unitFloors = [];
 }
 
-function shouldHideSection(sectionId) {
+function getCurrentAccessRole() {
+  return window.RaporAccessRoles?.getRoleForEmail?.(currentAccessEmail) || "user";
+}
+
+function isCurrentUserAdmin() {
+  return getCurrentAccessRole() === "admin";
+}
+
+function shouldHideSectionForOwnership(sectionId) {
   const ownershipType = normalizeOwnershipTypeForSectionVisibility(state.fields.ownershipType);
   if (["DIKEY KAT IRTIFAKI", "YATAY KAT IRTIFAKI"].includes(ownershipType)) {
     return sectionId === "land";
@@ -1324,6 +1334,15 @@ function shouldHideSection(sectionId) {
     return sectionId === "building" || sectionId === "unit";
   }
   return false;
+}
+
+function shouldHideSectionForAccess(sectionId) {
+  const section = sections.find((item) => item.id === sectionId);
+  return Boolean(section?.adminOnly && !isCurrentUserAdmin());
+}
+
+function shouldHideSection(sectionId) {
+  return shouldHideSectionForOwnership(sectionId) || shouldHideSectionForAccess(sectionId);
 }
 
 function getVisibleSections() {
@@ -1338,12 +1357,12 @@ function ensureActiveSectionVisible() {
 function shouldIncludeReportCategory(category) {
   const normalizedCategory = foldTurkish(category || "");
   const section = sections.find((item) => foldTurkish(item.title) === normalizedCategory);
-  return section ? !shouldHideSection(section.id) : true;
+  return section ? !shouldHideSectionForOwnership(section.id) : true;
 }
 
 function shouldIncludeReportTableKey(key) {
-  if (key === "buildingFloors") return !shouldHideSection("building");
-  if (key === "unitFloors") return !shouldHideSection("unit");
+  if (key === "buildingFloors") return !shouldHideSectionForOwnership("building");
+  if (key === "unitFloors") return !shouldHideSectionForOwnership("unit");
   return true;
 }
 
@@ -1546,7 +1565,7 @@ function createForm(section) {
   form.className = "form-grid";
 
   section.fields.forEach((field) => {
-    if (field.hidden || shouldHideField(section.id, field.key)) return;
+    if (field.hidden || (field.adminOnly && !isCurrentUserAdmin()) || shouldHideField(section.id, field.key)) return;
 
     if (section.id === "address" && ["latitude", "longitude"].includes(field.key)) {
       return;
@@ -12458,11 +12477,6 @@ function createLocationMapTools() {
   wrapper.className = "location-map-tools";
 
   const parsed = state.sourceValues.kml;
-  const uploadError = state.uploadErrors?.kml;
-  const conflictCount = Object.keys(state.sourceConflicts.kml || {}).length;
-  const coordinateCount = parsed?.coordinates?.length || 0;
-  const selectedLat = state.fields.latitude || parsed?.centroid?.lat || "40.1826";
-  const selectedLng = state.fields.longitude || parsed?.centroid?.lng || "29.0665";
   const latitudeValue = state.fields.latitude || parsed?.centroid?.lat || "";
   const longitudeValue = state.fields.longitude || parsed?.centroid?.lng || "";
 
@@ -12470,52 +12484,42 @@ function createLocationMapTools() {
     <div class="subsection-title-row">
       <div>
         <h4>Harita ve Konum Seçimi</h4>
-        <p>KML yüklendikten sonra haritadan nihai konumu işaretleyebilirsiniz.</p>
       </div>
-      <label class="field compact-field map-mode-field">
-        <span>Harita görünümü</span>
-        <select data-map-mode>
-          ${getMapModeOptionsMarkup()}
-        </select>
-      </label>
-      <span class="export-status" data-map-export-status aria-live="polite"></span>
-    </div>
-    <div class="kml-summary">
-      <span>${coordinateCount ? `${coordinateCount} koordinat okundu` : "KML verisi bekleniyor"}</span>
-      <span>${parsed?.centroid ? `Merkez: ${parsed.centroid.lat}, ${parsed.centroid.lng}` : "Merkez koordinat yok"}</span>
-      <span>${parsed?.fields?.sheetNo ? `Pafta: ${parsed.fields.sheetNo}` : "Pafta henüz okunmadı"}</span>
-      <span>Seçili nokta: ${escapeHtml(selectedLat)}, ${escapeHtml(selectedLng)}</span>
-      ${uploadError ? `<span class="warning-text">${escapeHtml(uploadError)}</span>` : ""}
-      ${conflictCount ? `<span class="warning-text">${conflictCount} alan kullanıcı değeri nedeniyle korunuyor</span>` : ""}
-    </div>
-    <div class="kml-actions">
-      <button class="mini-button" type="button" data-kml-map>Haritayı güncelle</button>
-      <button class="mini-button" type="button" data-kml-apply>Okunan değerleri tekrar uygula</button>
-      <button class="mini-button" type="button" data-map-save>${state.sourceValues?.reportImages?.location ? "HARİTA KAYDEDİLDİ" : "HARİTAYI KAYDET"}</button>
-      <button class="mini-button" type="button" data-map-export title="Haritayı JPG olarak indir" aria-label="Haritayı JPG olarak indir">JPG İNDİR</button>
-      <label class="export-control">
-        <span>Boyut</span>
-        <select data-map-export-ratio>
-          ${getMapExportRatioOptionsMarkup()}
-        </select>
-      </label>
-      <label class="export-check">
-        <input type="checkbox" data-map-export-labels ${state.settings.mapExportLabels === false ? "" : "checked"} />
-        <span>Önemli noktalar belirtilsin mi?</span>
-      </label>
     </div>
     <div class="user-poi-tools">
       <label class="field compact-field">
         <span>Kullanıcı Önemli Noktası</span>
         <input type="text" data-user-poi-name placeholder="Örn. Ali İhsan Dikmen İlkokulu" />
       </label>
+      <button class="mini-button" type="button" data-map-save>${state.sourceValues?.reportImages?.location ? "Kroki Kaydedildi" : "Kroki Kaydet"}</button>
+      <div class="map-export-menu">
+        <button class="mini-button map-export-trigger" type="button" data-map-export-menu
+          aria-haspopup="menu" aria-expanded="false">
+          <span>JPG</span>
+          <strong data-map-export-current-ratio>${escapeHtml(state.settings.mapExportRatio || "4:3")}</strong>
+        </button>
+        <div class="map-export-options" data-map-export-options role="menu" aria-label="JPG boyutu" hidden>
+          ${getMapExportRatioMenuMarkup()}
+        </div>
+      </div>
       <button class="mini-button" type="button" data-user-poi-save>Yakın Çevre Kaydet</button>
       <button class="mini-button" type="button" data-user-artery-save>Ulaşım Arteri Kaydet</button>
       <button class="mini-button" type="button" data-user-poi-refresh>Kullanıcı Noktalarını Getir</button>
+    </div>
+    <div class="user-poi-statuses">
+      <span class="export-status" data-map-export-status aria-live="polite"></span>
       <span class="export-status" data-user-poi-status aria-live="polite"></span>
     </div>
-    <div class="map-panel" id="kmlMapPanel">
-      <div class="map-placeholder" id="kmlMapPlaceholder">KML yüklendiğinde harita burada OpenStreetMap altlığıyla gösterilecek.</div>
+    <div class="map-panel-wrap">
+      <label class="field compact-field map-mode-field map-mode-overlay">
+        <span>Harita görünümü</span>
+        <select data-map-mode>
+          ${getMapModeOptionsMarkup()}
+        </select>
+      </label>
+      <div class="map-panel" id="kmlMapPanel">
+        <div class="map-placeholder" id="kmlMapPlaceholder">KML yüklendiğinde harita burada OpenStreetMap altlığıyla gösterilecek.</div>
+      </div>
     </div>
     <div class="map-coordinate-fields">
       <label class="field">
@@ -12535,32 +12539,53 @@ function createLocationMapTools() {
     renderLeafletKmlMap();
   });
 
-  wrapper.querySelector("[data-kml-map]").addEventListener("click", () => {
-    renderLeafletKmlMap();
+  const mapExportMenu = wrapper.querySelector(".map-export-menu");
+  const mapExportMenuButton = wrapper.querySelector("[data-map-export-menu]");
+  const mapExportOptions = wrapper.querySelector("[data-map-export-options]");
+  let mapExportOutsideClickListener = null;
+  const setMapExportMenuOpen = (isOpen) => {
+    mapExportOptions.hidden = !isOpen;
+    mapExportMenu.classList.toggle("is-open", isOpen);
+    mapExportMenuButton.setAttribute("aria-expanded", String(isOpen));
+    if (mapExportOutsideClickListener) {
+      document.removeEventListener("pointerdown", mapExportOutsideClickListener);
+      mapExportOutsideClickListener = null;
+    }
+    if (isOpen) {
+      mapExportOutsideClickListener = (event) => {
+        if (mapExportMenu.contains(event.target)) return;
+        setMapExportMenuOpen(false);
+      };
+      window.setTimeout(() => document.addEventListener("pointerdown", mapExportOutsideClickListener), 0);
+    }
+  };
+
+  mapExportMenuButton.addEventListener("click", () => {
+    setMapExportMenuOpen(mapExportOptions.hidden);
   });
 
-  wrapper.querySelector("[data-kml-apply]").addEventListener("click", () => {
-    applyKmlFieldsToReport({ force: true });
-    autosave();
-    render();
+  mapExportMenu.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    setMapExportMenuOpen(false);
+    mapExportMenuButton.focus();
   });
 
-  wrapper.querySelector("[data-map-export]").addEventListener("click", (event) => {
-    exportMapAsJpeg(event.currentTarget);
+  wrapper.querySelectorAll("[data-map-export-ratio-option]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const ratio = button.dataset.mapExportRatioOption;
+      state.settings.mapExportRatio = ratio;
+      mapExportMenuButton.querySelector("[data-map-export-current-ratio]").textContent = ratio;
+      mapExportOptions.querySelectorAll("[data-map-export-ratio-option]").forEach((option) => {
+        option.setAttribute("aria-checked", String(option === button));
+      });
+      autosave();
+      setMapExportMenuOpen(false);
+      exportMapAsJpeg(mapExportMenuButton);
+    });
   });
 
   wrapper.querySelector("[data-map-save]").addEventListener("click", (event) => {
     saveLocationMapForReport(event.currentTarget);
-  });
-
-  wrapper.querySelector("[data-map-export-ratio]").addEventListener("change", (event) => {
-    state.settings.mapExportRatio = event.target.value;
-    autosave();
-  });
-
-  wrapper.querySelector("[data-map-export-labels]").addEventListener("change", (event) => {
-    state.settings.mapExportLabels = event.target.checked;
-    autosave();
   });
 
   wrapper.querySelector("[data-user-poi-save]").addEventListener("click", async () => {
@@ -21835,6 +21860,15 @@ function getMapExportRatioOptionsMarkup(selected = state.settings.mapExportRatio
   ].map((ratio) => `<option value="${ratio}" ${value === ratio ? "selected" : ""}>${ratio}</option>`).join("");
 }
 
+function getMapExportRatioMenuMarkup(selected = state.settings.mapExportRatio) {
+  const value = selected || "4:3";
+  return ["1:1", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9"]
+    .map((ratio) => `
+      <button type="button" role="menuitemradio" aria-checked="${String(value === ratio)}"
+        data-map-export-ratio-option="${ratio}">${ratio}</button>`)
+    .join("");
+}
+
 function getLeafletTileLayer() {
   const mode = normalizeMapMode(state.settings.mapMode);
   const imageryLayer = window.L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
@@ -21923,7 +21957,7 @@ function ensureReportMapImagesForExport() {
         zoom: getExportMapZoom(center, parsed, size.width, size.height),
         mode: normalizeMapMode(state.settings.mapMode),
         ratio: "16:9",
-        labels: state.settings.mapExportLabels !== false,
+        labels: true,
         viewport: getLocationMapViewportSnapshot(),
         savedAt: new Date().toISOString(),
         automatic: true,
@@ -21975,12 +22009,12 @@ function saveLocationMapForReport(triggerButton) {
     zoom: getExportMapZoom(center, parsed, size.width, size.height),
     mode: normalizeMapMode(state.settings.mapMode),
     ratio: "16:9",
-    labels: state.settings.mapExportLabels !== false,
+    labels: true,
     viewport: getLocationMapViewportSnapshot(),
     savedAt: new Date().toISOString(),
   };
   autosave();
-  if (triggerButton) triggerButton.textContent = "HARİTA KAYDEDİLDİ";
+  if (triggerButton) triggerButton.textContent = "Kroki Kaydedildi";
   setMapExportStatus("Konum haritası Word çıktıları için kaydedildi.");
 }
 
@@ -22026,7 +22060,7 @@ async function buildSavedLocationMapAsset(config) {
     subjectPoint,
     topLeft,
     zoom,
-    config.labels !== false,
+    true,
     getLocationMapLabelScale(config, canvas),
   );
   return buildReportJpegAsset("location", "Konu Taşınmaz Konum Haritası", "report-location-map.jpg", canvas, [
@@ -22083,7 +22117,7 @@ async function exportMapAsJpeg(triggerButton) {
     return;
   }
 
-  const originalButtonText = triggerButton?.textContent;
+  const originalButtonHtml = triggerButton?.innerHTML;
   if (triggerButton) {
     triggerButton.disabled = true;
     triggerButton.textContent = "JPEG HAZIRLANIYOR...";
@@ -22112,7 +22146,7 @@ async function exportMapAsJpeg(triggerButton) {
     subjectPoint,
     topLeft,
     zoom,
-    state.settings.mapExportLabels !== false,
+    true,
     getLocationMapLabelScale(null, canvas),
   );
 
@@ -22125,7 +22159,7 @@ async function exportMapAsJpeg(triggerButton) {
     link.remove();
     if (triggerButton) {
       triggerButton.disabled = false;
-      triggerButton.textContent = originalButtonText || "JPG";
+      triggerButton.innerHTML = originalButtonHtml || "JPG";
     }
     setMapExportStatus("JPEG kaydedildi.");
   } catch (error) {
@@ -22137,7 +22171,7 @@ async function exportMapAsJpeg(triggerButton) {
         subjectPoint,
         topLeft,
         zoom,
-        state.settings.mapExportLabels !== false,
+        true,
         getLocationMapLabelScale(null, canvas),
       );
       const fallbackLink = document.createElement("a");
@@ -22148,7 +22182,7 @@ async function exportMapAsJpeg(triggerButton) {
       fallbackLink.remove();
       if (triggerButton) {
         triggerButton.disabled = false;
-        triggerButton.textContent = originalButtonText || "JPG";
+        triggerButton.innerHTML = originalButtonHtml || "JPG";
       }
       setMapExportStatus("Harita altligi izin vermedi; yedek JPEG kaydedildi.", true);
       return;
@@ -22156,7 +22190,7 @@ async function exportMapAsJpeg(triggerButton) {
       console.warn("Harita JPEG olarak kaydedilemedi.", fallbackError);
       if (triggerButton) {
         triggerButton.disabled = false;
-        triggerButton.textContent = originalButtonText || "JPG";
+        triggerButton.innerHTML = originalButtonHtml || "JPG";
       }
       setMapExportStatus("JPEG kaydedilemedi. Haritayi yenileyip tekrar deneyin.", true);
     }
@@ -27685,6 +27719,30 @@ document.querySelector("#newCaseBtn")?.addEventListener("click", () => {
 });
 
 fieldMode?.addEventListener("change", render);
+
+function setCurrentAccessUser(email) {
+  const normalizedEmail = window.RaporAccessRoles?.normalizeEmail?.(email) || "";
+  const previousEmail = currentAccessEmail;
+  const previousRole = getCurrentAccessRole();
+  currentAccessEmail = normalizedEmail;
+  const nextRole = getCurrentAccessRole();
+  document.body.dataset.userRole = nextRole;
+  if (previousEmail === currentAccessEmail && previousRole === nextRole) return;
+  ensureActiveSectionVisible();
+  render();
+  window.dispatchEvent(new CustomEvent("rapor-role-change", {
+    detail: { email: currentAccessEmail, role: nextRole },
+  }));
+}
+
+window.RaporAccessControl = {
+  setCurrentUser: setCurrentAccessUser,
+  getRole: getCurrentAccessRole,
+  getEmail: () => currentAccessEmail,
+  isAdmin: isCurrentUserAdmin,
+  canViewSection: (sectionId) => !shouldHideSectionForAccess(sectionId),
+};
+document.body.dataset.userRole = getCurrentAccessRole();
 
 const initialImarRulesChanged = applyImarDerivedBusinessRules(state);
 const initialTextNormalizationChanged = normalizeReportStateFields(state);
