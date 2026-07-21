@@ -95,6 +95,15 @@
   .pg-section .field-grid .fg-label { font-size: 5.6pt; }
   .pg-section .field-grid .fg-box { font-size: 6pt; padding: 1.5pt 2.5pt; }
   .table-block { margin-bottom: 16px; page-break-inside: avoid; break-inside: avoid; }
+  /* Word, hücre metnini kendi paragrafına dönüştürür ve aksi halde her satıra
+     varsayılan paragraf boşluğu ekler. Değerleme tabloları için bunu sıfırla. */
+  .ziraat-valuation-summary-table td p, .ziraat-valuation-summary-table th p,
+  .ziraat-floor-valuation-table td p, .ziraat-floor-valuation-table th p {
+    margin: 0 !important;
+    line-height: 6pt !important;
+    mso-line-height-rule: exactly;
+  }
+  .ziraat-valuation-summary-table tr, .ziraat-floor-valuation-table tr { height: 1pt; mso-height-source: auto; }
 </style>
 </head>
 <body>

@@ -583,11 +583,11 @@ const sections = [
     title: "Banka ve Çıktı",
     badge: "Üretim",
     description:
-      "Eksik alan kontrolü, banka özel ekler, Word şablonu ve rapor üretim kayıtları bu bölümde toplanır.",
+      "Eksik alan kontrolü, banka özel ekler ve Word şablonu ile dışa aktarma bu bölümde toplanır. İş Bankası masraf yazısı için rapora özgü masraf girişleri de burada yapılır.",
     fields: [
-      { key: "templateProfile", label: "Şablon profili", type: "text", critical: true },
-      { key: "outputFolder", label: "Çıktı klasörü", type: "text" },
-      { key: "reportNote", label: "Rapor üretim notu", type: "textarea" },
+      { key: "expenseTitleDeedCount", label: "Tapu Adedi", type: "number", defaultValue: "1" },
+      { key: "expenseMunicipalityFeeReceipt", label: "Belediye Masrafı (Makbuz Tutarı)", type: "number" },
+      { key: "expenseMunicipalityVatIncluded", label: "Makbuzda KDV Belirtilmiş mi?", type: "checkbox", checkedValue: "Evet", uncheckedValue: "Hayır", defaultValue: "Hayır", wide: true, note: "İşaretliyse girilen tutar KDV dahil kabul edilir (KDV hariç geriye hesaplanır). İşaretli değilse girilen tutar KDV hariç kabul edilir ve üzerine KDV eklenir." },
     ],
   },
   {
@@ -595,11 +595,9 @@ const sections = [
     title: "Masraf Bilgileri",
     badge: "Yıllık",
     description:
-      "İş Bankası masraf yazısında kullanılan ücret kalemleri. Değerleme Ücreti, gayrimenkul türü ve mevcut kullanım alanına göre aşağıdaki kademeli tarifeden otomatik seçilir (2026 RAPOR YAZMA PROGRAMI masraf tablosuyla birebir). Kademe tutarları ve sabit birim ücretler yıllık değişir, tüm kullanıcılar için ortaktır (bulutta saklanır) ve yalnızca admin tarafından güncellenebilir. Belediye Harcı ve tapu adedi ise rapora özgüdür, herkes girebilir.",
+      "İş Bankası masraf yazısında kullanılan ücret kalemleri. Değerleme Ücreti, gayrimenkul türü ve mevcut kullanım alanına göre aşağıdaki kademeli tarifeden otomatik seçilir (2026 RAPOR YAZMA PROGRAMI masraf tablosuyla birebir). Kademe tutarları ve sabit birim ücretler yıllık değişir, tüm kullanıcılar için ortaktır (bulutta saklanır) ve yalnızca admin tarafından güncellenebilir. Belediye Masrafı ve Tapu Adedi rapora özgüdür ve \"Banka ve Çıktı\" bölümünden girilir.",
     fields: [
       { key: "expenseAppraisalPropertyType", label: "Değerleme Ücreti Tarife Türü (En Büyük Alanlı Taşınmaz)", type: "select", options: ["", "Daire / Villa / Ofis", "Dükkan", "Depo", "Arsa / Tarım Alanı (İmarsız)", "Arsa (İmarlı)", "Akaryakıt İstasyonu"] },
-      { key: "expenseMunicipalityFeeExVat", label: "Belediye Harcı (KDV Hariç)", type: "number" },
-      { key: "expenseTitleDeedCount", label: "Tapu Adedi", type: "number", defaultValue: "1" },
 
       {
         key: "expenseBulkValuationMode",
@@ -664,6 +662,7 @@ const sections = [
       { key: "expenseTransportFeeIncVat", label: "Ulaşım Bedeli (KDV Dahil)", type: "number", hidden: true, readOnly: true },
       { key: "expenseTitleDeedFeeExVat", label: "Tapu Harcı (KDV Hariç, otomatik)", type: "number", hidden: true, readOnly: true },
       { key: "expenseTitleDeedFeeIncVat", label: "Tapu Harcı (KDV Dahil)", type: "number", hidden: true, readOnly: true },
+      { key: "expenseMunicipalityFeeExVat", label: "Belediye Harcı (KDV Hariç, otomatik)", type: "number", hidden: true, readOnly: true },
       { key: "expenseMunicipalityFeeIncVat", label: "Belediye Harcı (KDV Dahil)", type: "number", hidden: true, readOnly: true },
       { key: "expenseInfoCenterShareIncVat", label: "Gayrimenkul Bilgi Merkezi Payı (KDV Dahil)", type: "number", hidden: true, readOnly: true },
       { key: "expenseUnionShareIncVat", label: "Birlik Payı (KDV Dahil)", type: "number", hidden: true, readOnly: true },
@@ -961,7 +960,6 @@ function loadState() {
   const fallback = {
     fields: {
       caseName: "Yeni Ekspertiz Raporu",
-      templateProfile: "Banka seçimine göre otomatik belirlenecek",
     },
     uploads: {},
     sourceValues: {},
@@ -4404,6 +4402,19 @@ function buildValuationMethodsSchemeText() {
     .join("\n");
 }
 
+function buildValuationMethodsSchemeWordHtml() {
+  if (!hasValuationSchemeData()) return "";
+  const baseStyle = "font-family:Arial,sans-serif;font-size:6pt;line-height:1.15;margin:0 0 3pt;color:#111;";
+  const headingStyle = `${baseStyle}font-weight:700;text-decoration:underline;margin-top:3pt;`;
+  return `<div class="ziraat-valuation-methods" style="margin:0 0 12pt;">${buildValuationMethodsScheme()
+    .map((item) => {
+      if (item.kind === "blank") return '<div style="height:2pt;"></div>';
+      const style = item.kind === "heading" ? headingStyle : baseStyle;
+      return `<p style="${style}">${escapeHtml(item.text)}</p>`;
+    })
+    .join("")}</div>`;
+}
+
 function refreshValuationMethodsExplanationFromCurrentFields() {
   refreshValuationComputedFields();
   state.fields.valuationMethodsScheme = buildValuationMethodsSchemeText();
@@ -5043,10 +5054,12 @@ function buildExplanationsFloorValuationWordTableHtml() {
   // Ziraat ekranındaki kat bazlı hesap tablosunun okunaklı, açık mavi yüzeyini
   // Word çıktısında da koru. Hücrelerdeki ince ayraçlar kolonları ayırır;
   // dış çerçeve ise ekran görünümündeki gibi baskın değildir.
-  const baseCell = `border:0;border-bottom:.5pt solid ${line};padding:6pt 5pt;vertical-align:middle;line-height:1.12;color:${ink};background:${surface};font-family:Arial,sans-serif;font-size:8.5pt;`;
+  const baseCell = `border:0;border-bottom:.5pt solid ${line};padding:3pt 5pt;mso-padding-alt:3pt 5pt 3pt 5pt;vertical-align:middle;line-height:6pt;mso-line-height-rule:exactly;color:${ink};background:${surface};font-family:Arial,sans-serif;font-size:6pt;`;
   const headerCell = `${baseCell}background:${blueSoft};color:${blue};font-weight:700;text-align:center;`;
   const groupCell = `${baseCell}background:${blueSoft};color:${blue};font-weight:700;text-align:center;vertical-align:middle;`;
   const totalCell = `${baseCell}background:${surfaceMuted};font-weight:700;`;
+  const widths = ["15%", "16%", "8%", "8%", "10%", "12%", "10%", "11%", "10%"];
+  const dataCell = (style, index, extra = "") => `${style}width:${widths[index]};white-space:nowrap;${extra}`;
 
   const buildSectionRows = (label, mode) => {
     const detailRows = buildExplanationsFloorValuationRows(rows, mode);
@@ -5055,22 +5068,22 @@ function buildExplanationsFloorValuationWordTableHtml() {
       .map((row, index) => {
         const rowCellStyle = row.isTotal ? totalCell : baseCell;
         const tds = [];
-        if (index === 0) tds.push(`<td rowspan="${detailRows.length}" style="${groupCell}">${escapeHtml(label)}</td>`);
+        if (index === 0) tds.push(`<td rowspan="${detailRows.length}" style="${groupCell}width:${widths[0]};">${escapeHtml(label)}</td>`);
         tds.push(
-          `<td style="${rowCellStyle}">${escapeHtml(row.label)}</td>`,
-          `<td style="${rowCellStyle}text-align:right;">${escapeHtml(formatExplanationsFloorArea(row.area))}</td>`,
-          `<td style="${rowCellStyle}text-align:right;">${escapeHtml(formatExplanationsFloorRate(row.rate))}</td>`,
-          `<td style="${rowCellStyle}text-align:right;font-weight:800;">${escapeHtml(formatExplanationsFloorArea(row.reducedArea))}</td>`
+          `<td style="${dataCell(rowCellStyle, 1)}">${escapeHtml(row.label)}</td>`,
+          `<td style="${dataCell(rowCellStyle, 2, "text-align:right;")}">${escapeHtml(formatExplanationsFloorArea(row.area))}</td>`,
+          `<td style="${dataCell(rowCellStyle, 3, "text-align:right;")}">${escapeHtml(formatExplanationsFloorRate(row.rate))}</td>`,
+          `<td style="${dataCell(rowCellStyle, 4, "text-align:right;font-weight:800;")}">${escapeHtml(formatExplanationsFloorArea(row.reducedArea))}</td>`
         );
         if (index === 0) {
           tds.push(
-            `<td rowspan="${detailRows.length}" style="${totalCell}text-align:right;">${escapeHtml(formatExplanationsFloorMoney(metrics.marketUnitValue, "TL/m²"))}</td>`,
-            `<td rowspan="${detailRows.length}" style="${totalCell}text-align:right;">${escapeHtml(formatExplanationsFloorMoney(metrics.marketValue, "TL"))}</td>`,
-            `<td rowspan="${detailRows.length}" style="${totalCell}text-align:right;">${escapeHtml(formatExplanationsFloorMoney(metrics.rentUnitValue, "TL/m²"))}</td>`,
-            `<td rowspan="${detailRows.length}" style="${totalCell}text-align:right;">${escapeHtml(formatExplanationsFloorMoney(metrics.rentValue, "TL/ay"))}</td>`
+            `<td rowspan="${detailRows.length}" style="${dataCell(totalCell, 5, "text-align:right;")}">${escapeHtml(formatExplanationsFloorMoney(metrics.marketUnitValue, "TL/m²"))}</td>`,
+            `<td rowspan="${detailRows.length}" style="${dataCell(totalCell, 6, "text-align:right;")}">${escapeHtml(formatExplanationsFloorMoney(metrics.marketValue, "TL"))}</td>`,
+            `<td rowspan="${detailRows.length}" style="${dataCell(totalCell, 7, "text-align:right;")}">${escapeHtml(formatExplanationsFloorMoney(metrics.rentUnitValue, "TL/m²"))}</td>`,
+            `<td rowspan="${detailRows.length}" style="${dataCell(totalCell, 8, "text-align:right;")}">${escapeHtml(formatExplanationsFloorMoney(metrics.rentValue, "TL/ay"))}</td>`
           );
         }
-        return `<tr>${tds.join("")}</tr>`;
+        return `<tr style="height:1pt;mso-height-source:auto;">${tds.join("")}</tr>`;
       })
       .join("");
   };
@@ -5078,22 +5091,22 @@ function buildExplanationsFloorValuationWordTableHtml() {
   const bodyHtml = buildSectionRows("YASAL ALANA GÖRE HESAPLAMA", "legal") + buildSectionRows("MEVCUT ALANA GÖRE HESAPLAMA", "current");
   return `<table class="ziraat-floor-valuation-table" style="border-collapse:collapse;width:100%;table-layout:fixed;margin:5pt 0 12pt;font-family:Arial,sans-serif;">
     <colgroup>
-      <col style="width:10.5%;"><col style="width:14.5%;"><col style="width:8.5%;">
-      <col style="width:10%;"><col style="width:10.5%;"><col style="width:12.5%;">
-      <col style="width:10.5%;"><col style="width:10.5%;"><col style="width:12.5%;">
+      <col style="width:15%;"><col style="width:16%;"><col style="width:8%;">
+      <col style="width:8%;"><col style="width:10%;"><col style="width:12%;">
+      <col style="width:10%;"><col style="width:11%;"><col style="width:10%;">
     </colgroup>
     <thead>
       <tr><th colspan="9" style="${headerCell}text-align:center;">KONU TAŞINMAZIN KAT BAZINDA İNDİRGENMİŞ ALAN HESABI</th></tr>
       <tr>
-        <th style="${headerCell}">Hesaplama</th>
-        <th style="${headerCell}">Kat / Alan Türü</th>
-        <th style="${headerCell}">Normal Alan (m²)</th>
-        <th style="${headerCell}">İndirgeme Oranı (%)</th>
-        <th style="${headerCell}">İndirgenmiş Alan (m²)</th>
-        <th style="${headerCell}">Piyasa m² Birim Değeri</th>
-        <th style="${headerCell}">Piyasa Değeri</th>
-        <th style="${headerCell}">Kira m² Birim</th>
-        <th style="${headerCell}">Piyasa Kira Değeri</th>
+        <th style="${headerCell}width:${widths[0]};">Hesaplama</th>
+        <th style="${headerCell}width:${widths[1]};">Kat / Alan Türü</th>
+        <th style="${headerCell}width:${widths[2]};">Normal Alan (m²)</th>
+        <th style="${headerCell}width:${widths[3]};">İndirgeme Oranı (%)</th>
+        <th style="${headerCell}width:${widths[4]};">İndirgenmiş Alan (m²)</th>
+        <th style="${headerCell}width:${widths[5]};">Piyasa m² Birim Değeri</th>
+        <th style="${headerCell}width:${widths[6]};">Piyasa Değeri</th>
+        <th style="${headerCell}width:${widths[7]};">Kira m² Birim</th>
+        <th style="${headerCell}width:${widths[8]};">Piyasa Kira Değeri</th>
       </tr>
     </thead>
     <tbody>${bodyHtml}</tbody>
@@ -11360,6 +11373,7 @@ function createCheckboxControl(section, field) {
     refreshEnvironmentDescriptionFromCurrentFields(field.key);
     refreshReviewedDocumentsDescriptionFromCurrentFields(field.key);
     refreshEncumbranceSummaryFromCurrentFields(field.key);
+    refreshExpenseFeesFromCurrentFields(field.key);
     if (field.key === "usageNatureDifference") {
       refreshValuationMethodExplanation();
     }
@@ -12621,9 +12635,11 @@ function buildValuationSummaryWordTableHtml() {
   // Değerleme Bölümü tek sayfaya sığmalı (kullanıcı talebi) — bu tablo
   // yalnızca o bölümde kullanıldığı için punto/hücre boşluğu doğrudan
   // burada sıkıştırılır.
-  const tableStyle = `border-collapse:collapse;width:100%;margin:3pt 0 12pt;table-layout:fixed;font-family:Arial,sans-serif;font-size:8.5pt;`;
-  const cellBase = `border:0;border-bottom:.5pt solid ${line};padding:6pt 5pt;text-align:left;vertical-align:middle;color:${ink};background:${surface};line-height:1.15;`;
-  const headerCell = `${cellBase}background:${blueSoft};color:${blue};font-size:8.5pt;font-weight:700;text-transform:uppercase;`;
+  const tableStyle = `border-collapse:collapse;width:100%;margin:3pt 0 12pt;table-layout:fixed;font-family:Arial,sans-serif;font-size:6pt;`;
+  const cellBase = `border:0;border-bottom:.5pt solid ${line};padding:3pt 5pt;mso-padding-alt:3pt 5pt 3pt 5pt;text-align:left;vertical-align:middle;color:${ink};background:${surface};line-height:6pt;mso-line-height-rule:exactly;`;
+  const headerCell = `${cellBase}background:${blueSoft};color:${blue};font-size:6pt;font-weight:700;text-transform:uppercase;`;
+  const summaryWidths = ["24%", "56%", "20%"];
+  const summaryCell = (index, extra = "") => `${cellBase}width:${summaryWidths[index]};white-space:nowrap;${extra}`;
   const groupColors = {
     market: [blueSoft, blue],
     land: [amberSoft, amber],
@@ -12633,21 +12649,21 @@ function buildValuationSummaryWordTableHtml() {
   };
   const body = buildValuationSummaryGroups().map((group) => {
     const [background, color] = groupColors[group.key] || [surfaceMuted, ink];
-    const groupStyle = `${cellBase}background:${background};color:${color};font-weight:700;font-size:8.5pt;text-transform:uppercase;letter-spacing:.04em;`;
-    const heading = `<tr><th colspan="3" style="${groupStyle}">${escapeHtml(group.title.toLocaleUpperCase("tr-TR"))}</th></tr>`;
-    const rows = group.rows.map((row) => `<tr>
-      <td style="${cellBase}font-weight:700;white-space:nowrap;">${escapeHtml(row.label)}</td>
-      <td style="${cellBase}color:${muted};font-size:8.5pt;">${escapeHtml(row.detail)}</td>
-      <td style="${cellBase}text-align:right;white-space:nowrap;font-weight:800;">${escapeHtml(row.value)}</td>
+    const groupStyle = `${cellBase}background:${background};color:${color};font-weight:700;font-size:6pt;text-transform:uppercase;letter-spacing:.04em;`;
+    const heading = `<tr style="height:1pt;mso-height-source:auto;"><th colspan="3" style="${groupStyle}">${escapeHtml(group.title.toLocaleUpperCase("tr-TR"))}</th></tr>`;
+    const rows = group.rows.map((row) => `<tr style="height:1pt;mso-height-source:auto;">
+      <td style="${summaryCell(0, "font-weight:700;")}">${escapeHtml(row.label)}</td>
+      <td style="${summaryCell(1, `color:${muted};font-size:6pt;`)}">${escapeHtml(row.detail)}</td>
+      <td style="${summaryCell(2, "text-align:right;font-weight:800;")}">${escapeHtml(row.value)}</td>
     </tr>`).join("");
     return heading + rows;
   }).join("");
   return `<table class="valuation-summary-table ziraat-valuation-summary-table" style="${tableStyle}">
     <colgroup><col style="width:24%;"><col style="width:56%;"><col style="width:20%;"></colgroup>
-    <thead><tr>
-      <th style="${headerCell}">Kalem</th>
-      <th style="${headerCell}">Birim Değer / Oran</th>
-      <th style="${headerCell}text-align:right;">Tutar</th>
+    <thead><tr style="height:1pt;mso-height-source:auto;">
+      <th style="${headerCell}width:${summaryWidths[0]};">Kalem</th>
+      <th style="${headerCell}width:${summaryWidths[1]};">Birim Değer / Oran</th>
+      <th style="${headerCell}width:${summaryWidths[2]};text-align:right;">Tutar</th>
     </tr></thead>
     <tbody>${body}</tbody>
   </table>`;
@@ -17731,12 +17747,14 @@ const EXPENSE_BULK_MODE_DISCOUNT = {
   [EXPENSE_BULK_MODE_2]: 0.15,
 };
 
-// KDV-hariç → KDV-dahil eşleşmeleri (hesaplanan/gizli alanlar).
+// KDV-hariç → KDV-dahil eşleşmeleri (hesaplanan/gizli alanlar). Belediye
+// Harcı bu haritada YOK — makbuz tutarı KDV dahil/hariç olabildiğinden
+// (Makbuzda KDV Belirtilmiş mi? kutucuğu) recalculateExpenseFees içinde
+// ayrıca ele alınır.
 const EXPENSE_FEE_PAIR_MAP = {
   expenseAppraisalFeeExVat: "expenseAppraisalFeeIncVat",
   expenseTransportFeeExVat: "expenseTransportFeeIncVat",
   expenseTitleDeedFeeExVat: "expenseTitleDeedFeeIncVat",
-  expenseMunicipalityFeeExVat: "expenseMunicipalityFeeIncVat",
   expenseInfoCenterShareExVat: "expenseInfoCenterShareIncVat",
   expenseUnionShareExVat: "expenseUnionShareIncVat",
 };
@@ -17745,7 +17763,8 @@ const EXPENSE_FEE_PAIR_MAP = {
 const EXPENSE_FEE_WATCHED_KEYS = [
   ...EXPENSE_FEE_ADMIN_KEYS,
   "expenseAppraisalPropertyType",
-  "expenseMunicipalityFeeExVat",
+  "expenseMunicipalityFeeReceipt",
+  "expenseMunicipalityVatIncluded",
   "expenseTitleDeedCount",
   "expenseBulkValuationMode",
   "expenseBulkPropertyCount",
@@ -17806,6 +17825,24 @@ function recalculateExpenseFees() {
   state.fields.expenseTitleDeedFeeExVat = Number.isFinite(titleDeedFee) ? formatValuationMoney(titleDeedFee, { decimals: 2 }) : "";
 
   let total = 0;
+
+  // Belediye Harcı: kullanıcı makbuz tutarını girer ("Banka ve Çıktı"
+  // bölümü). "Makbuzda KDV Belirtilmiş mi?" işaretliyse girilen tutar
+  // KDV-DAHİL kabul edilir (hariç geriye hesaplanır); değilse KDV-hariç
+  // kabul edilip üzerine KDV eklenir.
+  const municipalityReceipt = parseValuationNumber(state.fields.expenseMunicipalityFeeReceipt);
+  if (Number.isFinite(municipalityReceipt) && municipalityReceipt > 0) {
+    const vatIncluded = String(state.fields.expenseMunicipalityVatIncluded || "").trim() === "Evet";
+    const municipalityExVat = vatIncluded ? municipalityReceipt / multiplier : municipalityReceipt;
+    const municipalityIncVat = vatIncluded ? municipalityReceipt : municipalityReceipt * multiplier;
+    state.fields.expenseMunicipalityFeeExVat = formatValuationMoney(municipalityExVat, { decimals: 2 });
+    state.fields.expenseMunicipalityFeeIncVat = formatValuationMoney(municipalityIncVat, { decimals: 2 });
+    total += municipalityIncVat;
+  } else {
+    state.fields.expenseMunicipalityFeeExVat = "";
+    state.fields.expenseMunicipalityFeeIncVat = "";
+  }
+
   Object.keys(EXPENSE_FEE_PAIR_MAP).forEach((baseKey) => {
     const incKey = EXPENSE_FEE_PAIR_MAP[baseKey];
     const base = parseValuationNumber(state.fields[baseKey]);

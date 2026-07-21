@@ -591,7 +591,7 @@
     OLUMLUFAKTOR: { t: () => safeCall("buildValueFactorsPositiveText") },
     OLUMSUZFAKTOR: { t: () => safeCall("buildValueFactorsNegativeText") },
     DEGERLENDIRMETABLOSU: { h: () => safeCall("buildValuationSummaryWordTableHtml") || safeCall("formatTextTableForWord", safeCall("buildValuationSummaryText")) },
-    DEGERLENDIRMESEMASI: { t: () => safeCall("buildValuationMethodsSchemeText") },
+    DEGERLENDIRMESEMASI: { h: () => safeCall("buildValuationMethodsSchemeWordHtml") || safeCall("buildValuationMethodsSchemeText") },
     DEGERLEMEYONTEMIACIKLAMASI: { t: () => safeCall("buildValuationMethodExplanation") },
     SATISKABILIYETIACIKLAMASI: { t: () => safeCall("buildValuationSaleabilityExplanationForExport") },
     VALUATIONSALEABILITYEXPLANATION: { t: () => safeCall("buildValuationSaleabilityExplanation") },
