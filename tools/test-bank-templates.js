@@ -521,6 +521,12 @@ assert(
   appSource.includes('key: "halkbankCentralBankExplanation"'),
   "Halkbank Merkez Bankasi aciklama alani bulunamadi."
 );
+assert(
+  appSource.includes('const alwaysUppercaseFieldKeys = new Set(["ekbDocumentNo"])') &&
+    appSource.includes("if (alwaysUppercaseFieldKeys.has(field.key))") &&
+    appSource.includes("event.target.value = toTitleFieldUppercase(event.target.value)"),
+  "EKB belge no alani daima buyuk harfe donusturulmuyor."
+);
 
 // --- 2e) Konum haritasi ve emsal krokisi Word'e gomulmeli ----------------
 comparableTemplateFiles.forEach((file) => {

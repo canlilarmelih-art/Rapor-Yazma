@@ -752,6 +752,7 @@ const titleTextUppercaseKeys = new Set(
     .filter((field) => !field.type || field.type === "text" || field.type === "textarea")
     .map((field) => field.key),
 );
+const alwaysUppercaseFieldKeys = new Set(["ekbDocumentNo"]);
 
 function toTitleFieldUppercase(value) {
   return String(value ?? "").toLocaleUpperCase("tr-TR");
@@ -1767,6 +1768,13 @@ function createForm(section) {
         state.fields[field.key] = upperValue;
       }
     }
+    if (alwaysUppercaseFieldKeys.has(field.key) && value) {
+      const upperValue = toTitleFieldUppercase(value);
+      if (upperValue !== value) {
+        value = upperValue;
+        state.fields[field.key] = upperValue;
+      }
+    }
     if (
       field.key === "takbisSummary"
       && (/Bila üzerinden alınan TA(KBİS|KBIS)/i.test(value) || /Beyanlar - Hak ve Mükellefiyetler Bölümü/i.test(value) || /\b(?:T|A)\.a\./.test(value))
@@ -1823,6 +1831,9 @@ function createForm(section) {
 
     control.addEventListener("input", (event) => {
       clearFieldSourceOwnership(field.key);
+      if (alwaysUppercaseFieldKeys.has(field.key)) {
+        event.target.value = toTitleFieldUppercase(event.target.value);
+      }
       state.fields[field.key] = event.target.value;
       if (["legalUsageNature", "usageNatureDifference"].includes(field.key)) {
         if (syncCurrentUsageNatureWithLegalNature()) clearFieldSourceOwnership("currentUsageNature");
@@ -17706,6 +17717,19 @@ const EXPENSE_FEE_WATCHED_KEYS = [
   "expenseBulkOtherPropertiesFeeSum",
 ];
 
+// Arsa/Tarım/Akaryakıt kategorilerinde tarife "brüt alan" = ana taşınmazın
+// PARSEL yüzölçümü (landArea); Daire/Villa/Ofis, Dükkan, Depo kategorilerinde
+// ise bağımsız bölümün mevcut kullanım alanı (currentArea) esas alınır.
+const EXPENSE_LAND_BASED_APPRAISAL_TYPES = new Set([
+  "Arsa / Tarım Alanı (İmarsız)",
+  "Arsa (İmarlı)",
+  "Akaryakıt İstasyonu",
+]);
+
+function getExpenseAppraisalAreaField(propertyType) {
+  return EXPENSE_LAND_BASED_APPRAISAL_TYPES.has(propertyType) ? "landArea" : "currentArea";
+}
+
 function lookupExpenseAppraisalFeeExVat(propertyType, area) {
   const tiers = EXPENSE_APPRAISAL_TIERS[propertyType];
   const numericArea = parseValuationNumber(area);
@@ -17719,7 +17743,8 @@ function recalculateExpenseFees() {
   const vatRate = parseValuationNumber(state.fields.expenseVatRatePercent);
   const multiplier = 1 + (Number.isFinite(vatRate) && vatRate >= 0 ? vatRate : 20) / 100;
 
-  let appraisalFee = lookupExpenseAppraisalFeeExVat(state.fields.expenseAppraisalPropertyType, state.fields.currentArea);
+  const appraisalAreaField = getExpenseAppraisalAreaField(state.fields.expenseAppraisalPropertyType);
+  let appraisalFee = lookupExpenseAppraisalFeeExVat(state.fields.expenseAppraisalPropertyType, state.fields[appraisalAreaField]);
 
   const bulkMode = state.fields.expenseBulkValuationMode;
   const bulkCount = parseValuationNumber(state.fields.expenseBulkPropertyCount);
@@ -17754,7 +17779,7 @@ function recalculateExpenseFees() {
 }
 
 function refreshExpenseFeesFromCurrentFields(changedKey) {
-  if (!EXPENSE_FEE_WATCHED_KEYS.includes(changedKey) && changedKey !== "currentArea") return;
+  if (!EXPENSE_FEE_WATCHED_KEYS.includes(changedKey) && changedKey !== "currentArea" && changedKey !== "landArea") return;
   recalculateExpenseFees();
   if (EXPENSE_FEE_ADMIN_KEYS.includes(changedKey) && isCurrentUserAdmin()) scheduleExpenseFeeCloudSave();
 }
