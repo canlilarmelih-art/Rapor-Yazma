@@ -643,6 +643,7 @@
     "actualUsePurpose", "propertyType", "titleDate",
     "mainRealEstateProjectSuitable", "mainRealEstateProjectSuitabilityNote",
     "buildingEntranceDoor", "damageStatus", "unitFirstSaleStatus",
+    "insuranceValue", "legalIncompleteValue", "currentIncompleteValue",
   ];
 
   let foldedFieldIndex = null;

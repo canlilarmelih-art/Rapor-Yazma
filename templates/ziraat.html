@@ -44,41 +44,51 @@
 
 <h1>ZİRAAT BANKASI ÖZET RAPOR KALIBI</h1>
 
-<h2>1. MERKEZ BANKASI VERİLERİ — GABİM BİLGİLERİ</h2>
+<div class="pg-section">
+<h2>GABİM VERİ SETİ</h2>
+{{GABIM_VERI_SETI}}
+</div>
+
+<h2 style="page-break-before:always;">1. MERKEZ BANKASI VERİLERİ — GABİM BİLGİLERİ</h2>
+<p><em>Bu tablonun sıralaması GDYS "Gayrimenkul Merkez Bankası Verileri" ekranıyla eşleşecek şekilde
+gruplanmıştır: önce imar/yapılaşma verileri, sonra nitelik/tapu bilgileri, sonra bina/donanım bilgileri.</em></p>
 <table class="meta">
-  <tr><td class="l">FİİLİ KULLANIM AMACI</td><td>{{CURRENT_USAGE_NATURE}}</td></tr>
   <tr><td class="l">TAPUNUN TÜRÜ</td><td>{{GROUND_TYPE}}</td></tr>
-  <tr><td class="l">İMAR LEJANDI</td><td>{{LEGEND}}</td></tr>
-  <tr><td class="l">DEPREM DERECESİ</td><td>{{EARTHQUAKE_ZONE}}</td></tr>
-  <tr><td class="l">KENTSEL DÖNÜŞÜM BÖLGESİ Mİ?</td><td>{{URBAN_TRANSFORMATİON_AREA}}</td></tr>
-  <tr><td class="l">TOPLAM B. BÖLÜM SAYISI</td><td>{{TOTAL_UNİTS}}</td></tr>
-  <tr><td class="l">SİTE İÇERİSİNDE Mİ</td><td>{{SİTE_İÇİNDE_Mİ}}</td></tr>
-  <tr><td class="l">ASANSÖR</td><td>{{ELEVATOR}}</td></tr>
-  <tr><td class="l">HESAPLANAN EMSAL</td><td>{{CALCULATED_EMSAL}}</td></tr>
-  <tr><td class="l">OTOPARK</td><td>{{CARPARK}}</td></tr>
-  <tr><td class="l">SOSYAL TESİSLER</td><td>{{SOCİAL_FACİLİTİES}}</td></tr>
-  <tr><td class="l">YAPI KULLANIM İZİN BELGESİ VAR MI</td><td>{{İSKAN_VAR_MI}}</td></tr>
-  <tr><td class="l">MALZEME KALİTESİ</td><td>{{UNİT_MATERİAL_QUALİTY}}</td></tr>
-  <tr><td class="l">YAPIM YILI</td><td>{{BUİLDİNG_CONSTRUCTİON_YEAR}}</td></tr>
-  <tr><td class="l">BİNA KAT SAYISI</td><td>{{TOTAL_FLOORS}}</td></tr>
-  <tr><td class="l">YAPI SINIFI</td><td>{{BUİLDİNG_CLASS}}</td></tr>
-  <tr><td class="l">BİNA YAPI TARZI</td><td>{{BUİLDİNG_STYLE}}</td></tr>
-  <tr><td class="l">ENERJİ KİMLİK BELGESİ</td><td>{{EKB_ENERGY_CLASS}}</td></tr>
-  <tr><td class="l">İNŞA SEVİYE</td><td>{{UNİT_CONSTRUCTİON_LEVEL}}</td></tr>
-  <tr><td class="l">İÇ HACİMLER</td><td>{{KAT_BAZLI_İÇ_HACİMLER}}</td></tr>
-  <tr><td class="l">CEPHE</td><td>{{FACADES}}</td></tr>
-  <tr><td class="l">ISINMA ŞEKLİ</td><td>{{UNİT_HEATİNG_TYPE}}</td></tr>
-  <tr><td class="l">PLAN ÖLÇEĞİ</td><td>{{PLAN_SCALE}}</td></tr>
+  <tr><td class="l">ENERJİ KİMLİK BELGESİ SINIFI</td><td>{{EKB_ENERGY_CLASS}}</td></tr>
+  <tr><td class="l">İMAR PLANI ÖLÇEĞİ</td><td>{{PLAN_SCALE}}</td></tr>
   <tr><td class="l">KAKS</td><td>{{KAKS}}</td></tr>
   <tr><td class="l">TAKS</td><td>{{TAKS}}</td></tr>
   <tr><td class="l">HMAX</td><td>{{HMAX}} metre</td></tr>
-  <tr><td class="l">ARSA ARAZİ M2 BİRİM DEĞERİ</td><td>{{LAND_UNİT_VALUE}}</td></tr>
+  <tr><td class="l">İMAR LEJANDI</td><td>{{LEGEND}}</td></tr>
+  <tr><td class="l">YAPIM YILI</td><td>{{BUİLDİNG_CONSTRUCTİON_YEAR}}</td></tr>
+  <tr><td class="l">HESAPLANAN EMSAL (m²)</td><td>{{CALCULATED_EMSAL}}</td></tr>
+  <tr><td class="l">ARSA-ARAZİ M² BİRİM DEĞERİ (TL/m²)</td><td>{{LAND_UNİT_VALUE}}</td></tr>
   <tr><td class="l">YAPI NİZAMI</td><td>{{ORDER}}</td></tr>
-  <tr><td class="l">ANA TAŞINMAZ NİTELİĞİ</td><td>{{MAİN_PROPERTY_QUALİTY}}</td></tr>
+  <tr><td class="l">DEPREME DAYANIKLILIK VE HASAR DURUMU</td><td>{{İSKAN_VAR_MI}}</td></tr>
+  <tr><td class="l">DEPREM DERECESİ</td><td>{{EARTHQUAKE_ZONE}}</td></tr>
+  <tr><td class="l">KENTSEL DÖNÜŞÜM BÖLGESİ Mİ?</td><td>{{URBAN_TRANSFORMATİON_AREA}}</td></tr>
+  <tr><td class="l">TAPU SENEDİNDEKİ ANA GAYRİMENKUL NİTELİĞİ</td><td>{{MAİN_PROPERTY_QUALİTY}}</td></tr>
+  <tr><td class="l">DEĞ. RAP. KONU GAYR. FİİLİ KULLANIM AMACI</td><td>{{CURRENT_USAGE_NATURE}}</td></tr>
   <tr><td class="l">TAPU BAĞIMSIZ BÖLÜM NİTELİĞİ</td><td>{{TİTLE_QUALİTY}}</td></tr>
-  <tr><td class="l">MEVCUT BAĞIMSIZ BÖLÜM NİTELİĞİ</td><td>{{CURRENT_USAGE_NATURE}}</td></tr>
-  <tr><td class="l">KİRA M2 BİRİM DEĞERİ</td><td>{{LEGAL_RENT_UNİT}}</td></tr>
+  <tr><td class="l">AYLIK KİRA M² BİRİM DEĞERİ</td><td>{{LEGAL_RENT_UNİT}}</td></tr>
+  <tr><td class="l">TOPLAM BAĞIMSIZ BÖLÜM SAYISI</td><td>{{TOTAL_UNİTS}}</td></tr>
+  <tr><td class="l">SİTE İÇERİSİNDE Mİ</td><td>{{SİTE_İÇİNDE_Mİ}}</td></tr>
+  <tr><td class="l">ASANSÖR VAR MI</td><td>{{ELEVATOR}}</td></tr>
+  <tr><td class="l">OTOPARK VAR MI</td><td>{{CARPARK}}</td></tr>
+  <tr><td class="l">SOSYAL TESİSLER</td><td>{{SOCİAL_FACİLİTİES}}</td></tr>
+  <tr><td class="l">YAPI KULLANMA İZİN BELGESİ VAR MI</td><td>{{İSKAN_VAR_MI}}</td></tr>
+  <tr><td class="l">MALZEME KALİTESİ</td><td>{{UNİT_MATERİAL_QUALİTY}}</td></tr>
+  <tr><td class="l">BİNA KAT SAYISI</td><td>{{TOTAL_FLOORS}}</td></tr>
+  <tr><td class="l">YAPI SINIFI VE GRUBU</td><td>{{BUİLDİNG_CLASS}}</td></tr>
+  <tr><td class="l">BİNA YAPI TARZI / CİNSİ</td><td>{{BUİLDİNG_STYLE}}</td></tr>
+  <tr><td class="l">İNŞAAT SEVİYESİ</td><td>{{UNİT_CONSTRUCTİON_LEVEL}}</td></tr>
+  <tr><td class="l">İÇ HACİMLER</td><td>{{KAT_BAZLI_İÇ_HACİMLER}}</td></tr>
+  <tr><td class="l">CEPHE</td><td>{{FACADES}}</td></tr>
+  <tr><td class="l">ISINMA ŞEKLİ</td><td>{{UNİT_HEATİNG_TYPE}}</td></tr>
 </table>
+<p><em>Genel çevre/piyasa göstergeleri (büyük yatırım projeleri, markalı konut yoğunluğu, yapılaşma/gelişme
+hızı vb.) ile detaylı bina/bağımsız bölüm alan kırılımı "GABİM VERİ SETİ" bölümünde GDYS ekranıyla birebir
+ızgara düzeninde ayrıca listelenmektedir.</em></p>
 
 <h2>2. GAYRİMENKUL TAPU BİLGİLERİ</h2>
 <p><em>Tapu kaydında kat "Zemin" ise sisteme "Z", "1.Normal" ise "1", "3.Normal ve Çatı Piyesli" ise "3, Ç"
@@ -226,6 +236,17 @@ satış kabiliyetini olumsuz etkileyecek bir duruma rastlanılmamıştır.
 {{DEGERLENDIRME_TABLOSU}}
 {{KAT_BAZINDA_INDIRGENMIS_ALAN_TABLOSU}}
 {{DEGERLENDIRME_SEMASI}}
+
+<h3>Değerleme Sonuçları</h3>
+<table class="meta">
+  <tr><td class="l">MEVCUT DURUM DEĞERİ</td><td>{{CURRENT_VALUE}}</td></tr>
+  <tr><td class="l">SİGORTAYA ESAS DEĞERİ</td><td>{{INSURANCE_VALUE}}</td></tr>
+  <tr><td class="l">YASAL KİRA DEĞERİ</td><td>{{LEGAL_RENT}}</td></tr>
+  <tr><td class="l">MEVCUT KİRA DEĞERİ</td><td>{{CURRENT_RENT}}</td></tr>
+  <tr><td class="l">YASAL DEĞERİ (Teminata Konu Varlığın Nihai Değeri)</td><td>{{LEGAL_VALUE}}</td></tr>
+  <tr><td class="l">NATAMAM YASAL DURUM DEĞERİ</td><td>{{LEGAL_INCOMPLETE_VALUE}}</td></tr>
+  <tr><td class="l">NATAMAM MEVCUT DURUM DEĞERİ</td><td>{{CURRENT_INCOMPLETE_VALUE}}</td></tr>
+</table>
 </div>
 
 <div class="pg-section">
@@ -271,11 +292,6 @@ satış kabiliyetini olumsuz etkileyecek bir duruma rastlanılmamıştır.
   <tr><td class="l">EKSPER KANAATİ</td><td>{{SALEABİLİTY_NOTE}}</td></tr>
   <tr><td class="l">SATIŞ KABİLİYETİ AÇIKLAMA</td><td>{{SALEABİLİTY_NOTE}}</td></tr>
 </table>
-</div>
-
-<div class="pg-section">
-<h2 style="page-break-before:always;">GABİM VERİ SETİ</h2>
-{{GABIM_VERI_SETI}}
 </div>
 
 <h2>ÇALIŞMA KAĞIDI</h2>
