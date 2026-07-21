@@ -5,6 +5,26 @@ Son güncelleme: 2026-07-21 · Servis edilen sürüm: **app.js?v=20260721-1530**
 Bu belge, bir sonraki geliştirici/oturum için projeyi çalıştırma, doğrulama ve bu
 oturumda yapılanları özetler.
 
+## 0.0.207 - 2026-07-21 - Ziraat Word şablonu sistem ekranı görünümüne uyarlandı
+
+`templates/ziraat.html`, Ziraat Ekspertiz Sistemi ekran görüntüleri (GABİM, tapu,
+gayrimenkul nitelik, inceleme, çevre ve değerleme ekranları) referans alınarak
+yeniden biçimlendirildi. Word `.doc` çıktısı artık lacivert kart görünümü yerine
+sistemdeki nötr gri panel başlıklarını, ince orta-gri çizgileri, keskin köşeli beyaz
+veri kutularını ve sık üç sütunlu form alanlarını kullanır. Sayfa kenarları da
+sistemin yoğun form düzenini yansıtacak şekilde daraltıldı.
+
+Veri alanları, placeholder sözleşmesi, bölüm sırası ve Ziraat ek tablo Excel
+indirme akışı değiştirilmedi. Şablon dosyası, export motoru tarafından
+`?t=Date.now()` ile alındığından ayrı bir uygulama cache-buster güncellemesi
+gerektirmez. `tools/test-bank-templates.js`, Ziraat'a özgü gri palet, keskin
+alan kutusu ve sayfa düzeni kurallarını da denetler.
+
+Doğrulama: `npm.cmd run verify` geçti. Tarayıcıyla ham şablonun tam sayfa önizlemesi
+incelendi; GABİM, tapu, nitelik ve değerleme bölümlerinde gri panel / form-grid
+yerleşimi korundu. Ham önizlemede görünen `{{...}}` ifadeleri beklenir; indirme
+anında rapor verileriyle çözülür.
+
 ## 0.0.206 - 2026-07-21 - Adres POİ mesafe/seçim kuralları ve kullanım amacı kalıcılığı
 
 Adres ve Konum bölümündeki otomatik ve kullanıcı POİ'leri ile ulaşım arterleri

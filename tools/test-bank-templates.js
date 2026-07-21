@@ -302,6 +302,7 @@ const valuationSectionOrderTokens = [
 ];
 comparableTemplateFiles.forEach((file) => {
   const text = fs.readFileSync(path.join(appDir, "templates", file), "utf8");
+  const isZiraatSystemTemplate = file === "ziraat.html";
   let previousIndex = text.indexOf("{{DEGERLEME_YONTEMI_ACIKLAMASI}}") - 1;
   const expectedValuationTokens = file === "halkbank.html"
     ? valuationSectionOrderTokens.filter((token) => token !== "{{KIRA_ACIKLAMASI}}")
@@ -313,19 +314,25 @@ comparableTemplateFiles.forEach((file) => {
     previousIndex = index;
   });
   assert(
-    text.includes(".share-explanation { font-size: 10pt; text-align: justify; }"),
-    `${file}: hisse aciklamasi 10 punto CSS kurali bulunamadi.`
+    isZiraatSystemTemplate
+      ? text.includes(".encumbrance-summary, .share-explanation { font-size: 7pt; text-align: left;")
+      : text.includes(".share-explanation { font-size: 10pt; text-align: justify; }"),
+    `${file}: hisse aciklamasi metin stili ilgili banka sablonu icin bulunamadi.`
   );
   assert(
-    text.includes("margin: 5pt 0 12pt") || text.includes("margin: 3pt 0 12pt"),
-    `${file}: tablo alt boslugu 12pt (bir satir) olarak ayarlanmamis.`
+    isZiraatSystemTemplate
+      ? text.includes("margin: 3pt 5pt 6pt")
+      : (text.includes("margin: 5pt 0 12pt") || text.includes("margin: 3pt 0 12pt")),
+    `${file}: tablo araligi ilgili banka sablonu icin ayarlanmamis.`
   );
   assert(
     text.includes("@page WordSection1") &&
-    text.includes("margin: 36pt; mso-header-margin:35.4pt; mso-footer-margin:35.4pt; mso-paper-source:0;") &&
+    (isZiraatSystemTemplate
+      ? text.includes("margin: 21pt; mso-header-margin:18pt; mso-footer-margin:18pt; mso-paper-source:0;")
+      : text.includes("margin: 36pt; mso-header-margin:35.4pt; mso-footer-margin:35.4pt; mso-paper-source:0;")) &&
     text.includes("div.WordSection1 { page: WordSection1; }") &&
     text.includes('<div class="WordSection1">'),
-    `${file}: Word Dar sayfa duzeni WordSection1 bolumune baglanmamis.`
+    `${file}: Word sayfa duzeni WordSection1 bolumune baglanmamis.`
   );
 });
 assert(
@@ -566,6 +573,15 @@ assert(
     appSource.includes("function saveComparableSketchForReport(") &&
     appSource.includes("async function buildSavedReportImageAssets("),
   "Harita/kroki kaydetme veya Word gorsel varligi ureticileri bulunamadi."
+);
+const ziraatTemplateSource = fs.readFileSync(path.join(appDir, "templates", "ziraat.html"), "utf8");
+assert(
+  ziraatTemplateSource.includes("#d9d9d9") &&
+    ziraatTemplateSource.includes("#9f9f9f") &&
+    ziraatTemplateSource.includes("border-radius: 0") &&
+    ziraatTemplateSource.includes("Ziraat Ekspertiz Sistemi referans paleti") &&
+    !ziraatTemplateSource.includes("background: #213f77"),
+  "Ziraat Word sablonu, referans sistemin gri panel ve keskin kenarli veri kutusu dilini korumuyor."
 );
 assert(
   engineSource.includes("LOCATIONMAPIMAGE") &&
