@@ -159,6 +159,22 @@ delete globalThis.getPostRoadSetbackParcelArea;
 const templateFiles = fs.readdirSync(path.join(appDir, "templates")).filter((f) => f.endsWith(".html"));
 assert(templateFiles.length >= 10, `templates/ altinda beklenen sablon sayisi yok: ${templateFiles.length}`);
 
+const tableBlockTokens = ["DEGERLENDIRME_TABLOSU", "KAT_BAZINDA_INDIRGENMIS_ALAN_TABLOSU", "DEGERLENDIRME_SEMASI"];
+templateFiles.forEach((file) => {
+  const text = fs.readFileSync(path.join(appDir, "templates", file), "utf8");
+  assert(
+    /\.table-block\s*\{[^}]*margin-bottom:\s*16px;[^}]*page-break-inside:\s*avoid;[^}]*break-inside:\s*avoid;/s.test(text),
+    `${file}: ortak table-block bosluk ve sayfa bolunmeme kurali bulunamadi.`
+  );
+  tableBlockTokens.forEach((token) => {
+    if (!text.includes(`{{${token}}}`)) return;
+    assert(
+      new RegExp(`<div class="table-block">\\s*\\{\\{${token}\\}\\}\\s*</div>`, "s").test(text),
+      `${file}: ${token} table-block kapsayicisina alinmamis.`
+    );
+  });
+});
+
 // Şablon dosyalarında eski Excel adları KULLANILMAMALI (kullanıcı kararı
 // 2026-07-12): motor eski adları hâlâ çözer (tolerans) ama bizim
 // dosyalarımız programın kendi placeholder adlarını içermeli.

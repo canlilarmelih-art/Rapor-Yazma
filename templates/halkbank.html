@@ -25,6 +25,7 @@
   .table-spacer { height: 10pt; font-size: 1pt; line-height: 10pt; }
   .pg-section h2 { margin-top: 0; }
   .pg-section table.meta td, .pg-section .word-table td, .pg-section .word-table th { padding: 0.85pt 1.8pt; font-size: 6.5pt; }
+  .table-block { margin-bottom: 16px; page-break-inside: avoid; break-inside: avoid; }
 </style>
 </head>
 <body>
@@ -162,10 +163,10 @@
 {{SATIS_KABILIYETI_ACIKLAMASI}}
 {{EMLAK_BEYAN_DEGERI_ACIKLAMASI}}
 <div class="table-spacer">&nbsp;</div>
-{{DEGERLENDIRME_TABLOSU}}
-{{KAT_BAZINDA_INDIRGENMIS_ALAN_TABLOSU}}
+<div class="table-block">{{DEGERLENDIRME_TABLOSU}}</div>
+<div class="table-block">{{KAT_BAZINDA_INDIRGENMIS_ALAN_TABLOSU}}</div>
 <h3>Değerleme Yöntemleri Hesap Açıklaması</h3>
-{{DEGERLENDIRME_SEMASI}}
+<div class="table-block">{{DEGERLENDIRME_SEMASI}}</div>
 {{HALKBANK_DEGERLEME_DETAY_TABLO}}
 </div>
 

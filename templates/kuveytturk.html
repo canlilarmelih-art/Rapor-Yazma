@@ -62,6 +62,7 @@
      PARAGRAFA miras bırakıyordu (canlı testte görüldü). */
   .pg-section .kt-sec { margin-top: 0; }
   .pg-section table.kt-form td, .pg-section .word-table td, .pg-section .word-table th, .pg-section table.kt-list td, .pg-section table.kt-list th { padding: 1pt 2pt; font-size: 5.5pt; }
+  .table-block { margin-bottom: 16px; page-break-inside: avoid; break-inside: avoid; }
 </style>
 </head>
 <body>
@@ -275,9 +276,9 @@
 {{EMLAK_BEYAN_DEGERI_ACIKLAMASI}}
 <p>*** Taşınmazın değerlemesi takyidatlardan bağımsız yapılmıştır.</p>
 {{STATIC_SUITABILITY_EXPLANATION_TEXT}}
-{{DEGERLENDIRME_TABLOSU}}
-{{KAT_BAZINDA_INDIRGENMIS_ALAN_TABLOSU}}
-{{DEGERLENDIRME_SEMASI}}
+<div class="table-block">{{DEGERLENDIRME_TABLOSU}}</div>
+<div class="table-block">{{KAT_BAZINDA_INDIRGENMIS_ALAN_TABLOSU}}</div>
+<div class="table-block">{{DEGERLENDIRME_SEMASI}}</div>
 </div>
 
 <div class="kt-nav">

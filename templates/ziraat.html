@@ -94,6 +94,7 @@
   .pg-section table.meta td, .pg-section .word-table td, .pg-section .word-table th { padding: 1.5pt 2.5pt; font-size: 6.3pt; }
   .pg-section .field-grid .fg-label { font-size: 5.6pt; }
   .pg-section .field-grid .fg-box { font-size: 6pt; padding: 1.5pt 2.5pt; }
+  .table-block { margin-bottom: 16px; page-break-inside: avoid; break-inside: avoid; }
 </style>
 </head>
 <body>
@@ -301,11 +302,17 @@
 </table>
 </div>
 
-{{DEGERLENDIRME_TABLOSU}}
+<div class="table-block">
+    {{DEGERLENDIRME_TABLOSU}}
+</div>
 
-{{KAT_BAZINDA_INDIRGENMIS_ALAN_TABLOSU}}
+<div class="table-block">
+    {{KAT_BAZINDA_INDIRGENMIS_ALAN_TABLOSU}}
+</div>
 
-{{DEGERLENDIRME_SEMASI}}
+<div class="table-block">
+    {{DEGERLENDIRME_SEMASI}}
+</div>
 
 <div class="pg-section">
 <h2 style="page-break-before:always;">EMSALLER</h2>
