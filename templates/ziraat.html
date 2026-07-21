@@ -15,8 +15,13 @@
      --ink:#152238 --line:#dde3ef --blue:#3a5691 --blue-soft:#e4ebf8 */
   body { font-family: Arial, sans-serif; font-size: 7pt; color: #152238; background: #ffffff; }
   h1 { font-size: 13pt; margin: 0 0 8pt; color: #152238; font-weight: 900; }
-  h2 { font-size: 10pt; margin: 12pt 0 6pt; border-bottom: 1.5pt solid #213f77; padding-bottom: 3pt; color: #152238; font-weight: 900; }
-  h3 { font-size: 8pt; margin: 8pt 0 4pt; color: #152238; font-weight: 900; }
+  /* Ziraat Ekspertiz Sisteminin kendi ekranlarındaki koyu panel başlığı
+     çubuklarıyla aynı biçimde (dolgulu, tam genişlik renkli çubuk) —
+     renk raporun kendi temasından (lacivert), sistemin kendi grisinden
+     değil. Kullanıcı: "template sisteme ne kadar çok benzerse kullanıcı
+     deneyimi o kadar pozitif olur" — biçim benzesin, renk temadan kalsın. */
+  h2 { font-size: 8.5pt; margin: 12pt 0 6pt; background: #213f77; color: #ffffff; padding: 4pt 6pt; border-radius: 2pt; font-weight: 900; }
+  h3 { font-size: 7pt; margin: 8pt 0 4pt; background: #e4ebf8; color: #3a5691; padding: 2.5pt 5pt; border-radius: 2pt; font-weight: 900; }
   p { margin: 0 0 6pt; line-height: 1.3; text-align: justify; }
   .encumbrance-summary { font-size: 10pt; text-align: justify; }
   .share-explanation { font-size: 10pt; text-align: justify; }
