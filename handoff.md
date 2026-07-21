@@ -5,6 +5,19 @@ Son güncelleme: 2026-07-21 · Servis edilen sürüm: **app.js?v=20260721-0130**
 Bu belge, bir sonraki geliştirici/oturum için projeyi çalıştırma, doğrulama ve bu
 oturumda yapılanları özetler.
 
+## 0.0.205 - 2026-07-21 - Leaflet global adı ve harita katmanı düzeltildi
+
+Canlı `experify.com.tr` sayfasında yerel Leaflet dosyası başarıyla indirilmesine
+rağmen paket başlangıcı standart `window.L` yerine yanlışlıkla `window.leaflet`
+globalini oluşturuyordu. Uygulama `window.L` beklediği için `isLeafletReady()`
+false kalıyor ve uydu/yol/hibrit katmanları hiç oluşturulmuyordu.
+
+`vendor/leaflet/leaflet.js` içindeki UMD global adı tekrar `L` yapıldı. Tarayıcı
+önbelleğindeki hatalı vendor dosyasını kesin olarak atlatmak için Leaflet CSS ve
+JS sorgu sürümleri `v=1.9.4-2` olarak yenilendi. `tools/check-basic.js`, vendor
+paketinin `window.L` globalini oluşturduğunu ve hatalı `window.leaflet` adının
+geri gelmediğini artık doğrudan denetler.
+
 ## 0.0.203 - 2026-07-21 - Adres/Konum haritasında Leaflet CDN bağımlılığı kaldırıldı
 
 Canlı `experify.com.tr` adresinde Adres ve Konum haritası gerçek Leaflet haritası

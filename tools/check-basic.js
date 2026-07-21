@@ -61,6 +61,7 @@ function main() {
   const appJs = readText("app.js");
   const stylesCss = readText("styles.css");
   const serverJs = readText("server.js");
+  const leafletJs = readText("vendor/leaflet/leaflet.js");
   const cloudSyncJs = readText("cloud/cloud-sync.js");
   const reportLibraryJs = readText("cloud/report-library.js");
   const accessControlJs = readText("src/auth/access-control.js");
@@ -709,8 +710,8 @@ function main() {
       indexHtml.includes("src/risk/halkbank-risk-rules.js") &&
       indexHtml.includes("src/comparables/comparable-market-analysis.js") &&
       indexHtml.includes("src/value-factors/value-factors-rules.js") &&
-      indexHtml.includes("vendor/leaflet/leaflet.css?v=1.9.4") &&
-      indexHtml.includes("vendor/leaflet/leaflet.js?v=1.9.4") &&
+      indexHtml.includes("vendor/leaflet/leaflet.css?v=1.9.4-2") &&
+      indexHtml.includes("vendor/leaflet/leaflet.js?v=1.9.4-2") &&
       !indexHtml.includes("unpkg.com/leaflet") &&
       !indexHtml.includes("cdn.jsdelivr.net/npm/leaflet") &&
       indexHtml.includes("styles.css?v=20260720-0215") &&
@@ -728,6 +729,10 @@ function main() {
   checkFileExists("vendor/leaflet/leaflet.css");
   checkFileExists("vendor/leaflet/leaflet.js");
   checkFileExists("vendor/leaflet/images/marker-icon.png");
+  assert(
+    leafletJs.includes(").L={})") && !leafletJs.includes(").leaflet={})"),
+    "Leaflet UMD paketi window.L globalini olusturmuyor."
+  );
   assert(
     serverJs.includes("\"script-src 'self' 'unsafe-inline'\"") &&
       serverJs.includes("\"style-src 'self' 'unsafe-inline'\"") &&
