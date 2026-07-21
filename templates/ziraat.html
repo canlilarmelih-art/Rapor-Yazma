@@ -113,7 +113,7 @@
   <hr class="ziraat-gabim-rule">
   <table class="ziraat-gabim-grid">
     <tr><td class="zg-label">Deprem Derecesi</td><td class="zg-value"><div>{{EARTHQUAKE_ZONE}}</div></td><td class="zg-label">Toplam Bağımsız Bölüm Sayısı</td><td class="zg-value"><div>{{TOTAL_UNITS}}</div></td></tr>
-    <tr><td class="zg-label">Zincir İşletme mi?</td><td class="zg-value"><div>&nbsp;</div></td><td class="zg-label">Üst Hakkı mı?</td><td class="zg-value"><div>&nbsp;</div></td></tr>
+    <tr><td class="zg-label">Zincir İşletme mi?</td><td class="zg-value"><div>Hayır</div></td><td class="zg-label">Üst Hakkı mı?</td><td class="zg-value"><div>Hayır</div></td></tr>
     <tr><td class="zg-label">Kentsel Dönüşüm Bölgesi</td><td class="zg-value"><div>{{URBAN_TRANSFORMATION_AREA}}</div></td><td class="zg-label">Site İçerisinde mi?</td><td class="zg-value"><div>{{SİTE_İÇİNDE_Mİ}}</div></td></tr>
     <tr><td class="zg-label">Güvenlik Var mı?</td><td class="zg-value"><div>{{GABIM_SECURITY}}</div></td><td class="zg-label">Asansör Var mı?</td><td class="zg-value"><div>{{GABIM_ELEVATOR}}</div></td></tr>
     <tr><td class="zg-label">Hesaplanan Emsal (m²)</td><td class="zg-value"><div>{{GABIM_CALCULATED_EMSAL}}</div></td><td class="zg-label">Ulaşım İmkanı</td><td class="zg-value"><div>{{GABIM_TRANSPORTATION}}</div></td></tr>
@@ -131,7 +131,7 @@
     <tr><td class="zg-label">Yapı Sınıfı ve Grubu</td><td class="zg-value"><div>{{BUİLDİNG_CLASS}}</div></td><td class="zg-label">Yapı Cinsi</td><td class="zg-value"><div>{{BUİLDİNG_STYLE}}</div></td></tr>
     <tr><td class="zg-label">Enerji Sınıfı</td><td class="zg-value"><div>{{EKB_ENERGY_CLASS}}</div></td><td class="zg-label">İnşaat Seviyesi</td><td class="zg-value"><div>{{UNİT_CONSTRUCTİON_LEVEL}}</div></td></tr>
     <tr><td class="zg-label">Konut Türü</td><td colspan="3" class="zg-value"><div>{{TİTLE_QUALİTY}}</div></td></tr>
-    <tr><td class="zg-label">Mutfak</td><td class="zg-value"><div>&nbsp;</div></td><td class="zg-label">Oda / Salon / Banyo / Balkon Sayısı</td><td class="zg-value"><div>{{ODA}} / {{SALON}} / {{BANYO}} / {{BALKON}}</div></td></tr>
+    <tr><td class="zg-label">Mutfak</td><td class="zg-value"><div>{{MUTFAK}}</div></td><td class="zg-label">Oda / Salon / Banyo / Balkon Sayısı</td><td class="zg-value"><div>{{ODA}} / {{SALON}} / {{BANYO}} / {{BALKON}}</div></td></tr>
     <tr><td class="zg-label">Cephe</td><td colspan="3" class="zg-value"><div>{{FACADES}}</div></td></tr>
     <tr><td class="zg-label">Isınma Sistem</td><td colspan="3" class="zg-value"><div>{{UNİT_HEATİNG_TYPE}}</div></td></tr>
   </table>
@@ -147,19 +147,19 @@
     <tr><td class="zg-label">İmar Lejandı</td><td class="zg-value"><div>{{LEGEND}}</div></td><td class="zg-label">HMAX</td><td class="zg-value"><div>{{HMAX}}</div></td></tr>
     <tr><td class="zg-label">Hesaplanan Emsal (m²)</td><td class="zg-value"><div>{{GABIM_CALCULATED_EMSAL}}</div></td><td class="zg-label">Yapım Yılı</td><td class="zg-value"><div>{{BUİLDİNG_CONSTRUCTİON_YEAR}}</div></td></tr>
     <tr><td class="zg-label">Terk Sonrası Parselin Yüzölçümü (m²)</td><td class="zg-value"><div>{{POST_ROAD_SETBACK_PARCEL_AREA}}</div></td><td class="zg-label">Arsa-Arazi Değeri (TL/m²)</td><td class="zg-value"><div>{{LAND_UNİT_VALUE}}</div></td></tr>
-    <tr><td class="zg-label">Yapı Nizamı</td><td class="zg-value"><div>{{ORDER}}</div></td><td class="zg-label">Yapı Nizamı Açıklama</td><td class="zg-value"><div>&nbsp;</div></td></tr>
-    <tr><td class="zg-label">Depreme Dayanıklılık ve Hasar Durumu</td><td class="zg-value"><div>&nbsp;</div></td><td class="zg-label">Deprem Derecesi</td><td class="zg-value"><div>{{EARTHQUAKE_ZONE}}</div></td></tr>
+    <tr><td class="zg-label">Yapı Nizamı</td><td class="zg-value"><div>{{ORDER}}</div></td><td class="zg-label">Yapı Nizamı Açıklama</td><td class="zg-value"><div>{{ORDER}} Nizam</div></td></tr>
+    <tr><td class="zg-label">Depreme Dayanıklılık ve Hasar Durumu</td><td class="zg-value"><div>Hasarsız</div></td><td class="zg-label">Deprem Derecesi</td><td class="zg-value"><div>{{EARTHQUAKE_ZONE}}</div></td></tr>
     <tr><td class="zg-label">Kentsel Dönüşüm Bölgesi</td><td class="zg-value"><div>{{URBAN_TRANSFORMATION_AREA}}</div></td><td class="zg-label">Genel Yapılaşma Hızı</td><td class="zg-value"><div>{{GABIM_DEVELOPMENT_SPEED}}</div></td></tr>
     <tr><td class="zg-label">Büyük Yatırım Projesi Olasılığı</td><td class="zg-value"><div>{{GABIM_MAJOR_INVESTMENT}}</div></td><td class="zg-label">Markalı Konut Proje Yoğunluğu</td><td class="zg-value"><div>{{GABIM_BRANDED_HOUSING}}</div></td></tr>
     <tr><td class="zg-label">Ticari Faaliyet Gelişme Hızı</td><td class="zg-value"><div>{{GABIM_COMMERCIAL_SPEED}}</div></td><td class="zg-label">Turizm Gelişme Potansiyeli</td><td class="zg-value"><div>{{GABIM_TOURISM_POTENTIAL}}</div></td></tr>
-    <tr><td class="zg-label">Tapu Senedindeki Ana Gayr. Niteliği</td><td class="zg-value"><div>{{MAİN_PROPERTY_QUALİTY}}</div></td><td class="zg-label">Tapu Senedindeki Gayr. Nitelik Açıklama</td><td class="zg-value"><div>&nbsp;</div></td></tr>
-    <tr><td class="zg-label">Değ. Rap. Konu Gayr. Fiili Kullanım Amacı</td><td class="zg-value"><div>{{CURRENT_USAGE_NATURE}}</div></td><td class="zg-label">Değ. Rap. Konu Gayr. Fiili Kullanım Açıklama</td><td class="zg-value"><div>&nbsp;</div></td></tr>
-    <tr><td class="zg-label">Fiili Kullanım Amacı</td><td class="zg-value"><div>{{CURRENT_USAGE_NATURE}}</div></td><td class="zg-label">Fiili Kullanım Amaç Açıklama</td><td class="zg-value"><div>&nbsp;</div></td></tr>
-    <tr><td class="zg-label">Fiili Kullanım Amacı</td><td class="zg-value"><div>{{CURRENT_USAGE_NATURE}}</div></td><td class="zg-label">Ulaşım İmkanı</td><td class="zg-value"><div>{{GABIM_TRANSPORTATION}}</div></td></tr>
+    <tr><td class="zg-label">Tapu Senedindeki Ana Gayr. Niteliği</td><td class="zg-value"><div>{{MAİN_PROPERTY_QUALİTY}}</div></td><td class="zg-label">Tapu Senedindeki Gayr. Nitelik Açıklama</td><td class="zg-value"><div>{{TİTLE_QUALİTY}}</div></td></tr>
+    <tr><td class="zg-label">Değ. Rap. Konu Gayr. Fiili Kullanım Amacı</td><td class="zg-value"><div>{{MAİN_PROPERTY_QUALİTY}}</div></td><td class="zg-label">Değ. Rap. Konu Gayr. Fiili Kullanım Açıklama</td><td class="zg-value"><div>{{TİTLE_QUALİTY}} olarak kullanılmaktadır.</div></td></tr>
+    <tr><td class="zg-label">Fiili Kullanım Amacı</td><td class="zg-value"><div>{{CURRENT_USAGE_NATURE}}</div></td><td class="zg-label">Fiili Kullanım Amaç Açıklama</td><td class="zg-value"><div>{{CURRENT_USAGE_NATURE}} olarak kullanılmaktadır.</div></td></tr>
+    <tr><td class="zg-label">Ulaşım İmkanı</td><td class="zg-value"><div>{{GABIM_TRANSPORTATION}}</div></td><td class="zg-label">&nbsp;</td><td class="zg-value"><div>&nbsp;</div></td></tr>
     <tr><td class="zg-label">AVM / Plaza vb. İçinde Olma Durumu</td><td class="zg-value"><div>&nbsp;</div></td><td class="zg-label">Reklam ve Tabela İmkanı</td><td class="zg-value"><div>&nbsp;</div></td></tr>
     <tr><td class="zg-label">Ana Cadde Üzerinde Olma Durumu</td><td class="zg-value"><div>&nbsp;</div></td><td class="zg-label">Yaya Trafiğinin Yoğunluğu</td><td class="zg-value"><div>&nbsp;</div></td></tr>
     <tr><td class="zg-label">Satış Durumu</td><td class="zg-value"><div>{{GABIM_SALEABILITY}}</div></td><td class="zg-label">Aylık Kira Değeri</td><td class="zg-value"><div>{{CURRENT_RENT}}</div></td></tr>
-    <tr><td class="zg-label">Zemine İndirgenmiş Alan (m²)</td><td class="zg-value"><div>&nbsp;</div></td><td class="zg-label">&nbsp;</td><td class="zg-value"><div>&nbsp;</div></td></tr>
+    <tr><td class="zg-label">İndirgenmiş Toplam Yasal Alan (m²)</td><td class="zg-value"><div>{{TOTAL_LEGAL_REDUCED_AREA}}</div></td><td class="zg-label">İndirgenmiş Toplam Mevcut Alan (m²)</td><td class="zg-value"><div>{{TOTAL_CURRENT_REDUCED_AREA}}</div></td></tr>
   </table>
 </div>
 

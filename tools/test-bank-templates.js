@@ -583,7 +583,14 @@ assert(
     ziraatTemplateSource.includes("Zincir İşletme mi?") &&
     ziraatTemplateSource.includes("Açık Otopark Var mı?") &&
     ziraatTemplateSource.includes("AVM / Plaza vb. İçinde Olma Durumu") &&
-    ziraatTemplateSource.includes("Zemine İndirgenmiş Alan (m²)"),
+    ziraatTemplateSource.includes("İndirgenmiş Toplam Yasal Alan (m²)") &&
+    ziraatTemplateSource.includes("{{TOTAL_LEGAL_REDUCED_AREA}}") &&
+    ziraatTemplateSource.includes("{{TOTAL_CURRENT_REDUCED_AREA}}") &&
+    ziraatTemplateSource.includes("{{ORDER}} Nizam") &&
+    ziraatTemplateSource.includes("<div>Hasarsız</div>") &&
+    ziraatTemplateSource.includes("{{TİTLE_QUALİTY}} olarak kullanılmaktadır.") &&
+    ziraatTemplateSource.includes("<div>Hayır</div>") &&
+    ziraatTemplateSource.includes("{{MUTFAK}}"),
   "Ziraat'in iki GABIM giriş bölümü, raporun başında banka ekranındaki kapsamlı form düzeninde yer almıyor."
 );
 assert(
@@ -697,7 +704,10 @@ assert(
   engineSource.includes("GABIMCALCULATEDEMSAL") &&
     engineSource.includes("GABIMTRANSPORTATION") &&
     engineSource.includes("GABIMSECURITY") &&
-    engineSource.includes("GABIMSALEABILITY"),
+    engineSource.includes("GABIMSALEABILITY") &&
+    engineSource.includes("TOTALLEGALREDUCEDAREA") &&
+    engineSource.includes("TOTALCURRENTREDUCEDAREA") &&
+    engineSource.includes("MUTFAK:"),
   "Ziraat GABIM ekranlarindaki secimli alanlarin placeholder baglantilari bulunamadi."
 );
 stubState.tables.documents.push({ c0: "Yapı Kullanma İzin Belgesi", c1: "Belediye", c2: "2021-06-15", c3: "19", c4: "Tam" });

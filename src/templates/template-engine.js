@@ -498,6 +498,8 @@
     GABIMPREFERREDUSE: { fn: () => safeCall("gabimPreferredUseAreaText") },
     GABIMCONSTRUCTIONQUALITY: { fn: () => safeCall("gabimConstructionQualityText") },
     GABIMSALEABILITY: { fn: () => safeCall("gabimSaleabilityText") },
+    TOTALLEGALREDUCEDAREA: { fn: () => safeCall("gabimTotalReducedAreaText", "legal") },
+    TOTALCURRENTREDUCEDAREA: { fn: () => safeCall("gabimTotalReducedAreaText", "current") },
 
     // --- Ana gayrimenkul / bağımsız bölüm ---
     ANAGAYRIMENKUL2025: { t: () => field("mainPropertyDescription") || safeCall("buildMainPropertyDescription") },
@@ -511,6 +513,7 @@
     BANYO: { fn: () => (safeCall("getGabimUnitInteriorCounts") || {}).banyo || "" },
     TUVALET: { fn: () => (safeCall("getGabimUnitInteriorCounts") || {}).tuvalet || "" },
     BALKON: { fn: () => (safeCall("getGabimUnitInteriorCounts") || {}).balkon || "" },
+    MUTFAK: { fn: () => (safeCall("getGabimUnitInteriorCounts") || {}).mutfak || "" },
     BINAYAPITARZI: { f: ["buildingStyle"] },
     YAPISINIFI: { f: ["buildingClass"] },
     MEVCUTYAPINIZAMI: { f: ["buildingOrder"] },

@@ -593,17 +593,47 @@ const sections = [
     title: "Masraf Bilgileri",
     badge: "Yıllık",
     description:
-      "İş Bankası masraf yazısında kullanılan ücret kalemleri (KDV hariç tutarlar). Bu değerler yıllık olarak değişir, tüm kullanıcılar için ortaktır (bulutta saklanır) ve yalnızca admin tarafından güncellenebilir; diğer kullanıcılar salt-okunur görür.",
+      "İş Bankası masraf yazısında kullanılan ücret kalemleri. Değerleme Ücreti, gayrimenkul türü ve mevcut kullanım alanına göre aşağıdaki kademeli tarifeden otomatik seçilir (2026 RAPOR YAZMA PROGRAMI masraf tablosuyla birebir). Kademe tutarları ve sabit birim ücretler yıllık değişir, tüm kullanıcılar için ortaktır (bulutta saklanır) ve yalnızca admin tarafından güncellenebilir. Belediye Harcı ve tapu adedi ise rapora özgüdür, herkes girebilir.",
     fields: [
-      { key: "expenseAppraisalFeeExVat", label: "Değerleme Ücreti (KDV Hariç)", type: "number", adminEditableOnly: true },
+      { key: "expenseAppraisalPropertyType", label: "Değerleme Ücreti Tarife Türü", type: "select", options: ["", "Daire / Villa / Ofis", "Dükkan", "Depo"] },
+      { key: "expenseMunicipalityFeeExVat", label: "Belediye Harcı (KDV Hariç)", type: "number" },
+      { key: "expenseTitleDeedCount", label: "Tapu Adedi", type: "number", defaultValue: "1" },
+
+      { key: "expenseAppraisalTierDaire1", label: "Daire/Villa/Ofis 1-149 m² (KDV Hariç)", type: "number", adminEditableOnly: true },
+      { key: "expenseAppraisalTierDaire2", label: "Daire/Villa/Ofis 150-250 m² (KDV Hariç)", type: "number", adminEditableOnly: true },
+      { key: "expenseAppraisalTierDaire3", label: "Daire/Villa/Ofis 251-500 m² (KDV Hariç)", type: "number", adminEditableOnly: true },
+      { key: "expenseAppraisalTierDaire4", label: "Daire/Villa/Ofis 501-1000 m² (KDV Hariç)", type: "number", adminEditableOnly: true },
+      { key: "expenseAppraisalTierDaire5", label: "Daire/Villa/Ofis 1001-5000 m² (KDV Hariç)", type: "number", adminEditableOnly: true },
+      { key: "expenseAppraisalTierDaire6", label: "Daire/Villa/Ofis 5001 m² ve üzeri (KDV Hariç)", type: "number", adminEditableOnly: true },
+
+      { key: "expenseAppraisalTierDukkan1", label: "Dükkan 1-100 m² (KDV Hariç)", type: "number", adminEditableOnly: true },
+      { key: "expenseAppraisalTierDukkan2", label: "Dükkan 101-500 m² (KDV Hariç)", type: "number", adminEditableOnly: true },
+      { key: "expenseAppraisalTierDukkan3", label: "Dükkan 501-2000 m² (KDV Hariç)", type: "number", adminEditableOnly: true },
+      { key: "expenseAppraisalTierDukkan4", label: "Dükkan 2001-5000 m² (KDV Hariç)", type: "number", adminEditableOnly: true },
+      { key: "expenseAppraisalTierDukkan5", label: "Dükkan 5001-10000 m² (KDV Hariç)", type: "number", adminEditableOnly: true },
+      { key: "expenseAppraisalTierDukkan6", label: "Dükkan 10001-20000 m² (KDV Hariç)", type: "number", adminEditableOnly: true },
+      { key: "expenseAppraisalTierDukkan7", label: "Dükkan 20001-50000 m² (KDV Hariç)", type: "number", adminEditableOnly: true },
+      { key: "expenseAppraisalTierDukkan8", label: "Dükkan 50001-100000 m² (KDV Hariç)", type: "number", adminEditableOnly: true },
+      { key: "expenseAppraisalTierDukkan9", label: "Dükkan 100001 m² ve üzeri (KDV Hariç)", type: "number", adminEditableOnly: true },
+
+      { key: "expenseAppraisalTierDepo1", label: "Depo 1-250 m² (KDV Hariç)", type: "number", adminEditableOnly: true },
+      { key: "expenseAppraisalTierDepo2", label: "Depo 251-500 m² (KDV Hariç)", type: "number", adminEditableOnly: true },
+      { key: "expenseAppraisalTierDepo3", label: "Depo 501-2000 m² (KDV Hariç)", type: "number", adminEditableOnly: true },
+      { key: "expenseAppraisalTierDepo4", label: "Depo 2001-10000 m² (KDV Hariç)", type: "number", adminEditableOnly: true },
+      { key: "expenseAppraisalTierDepo5", label: "Depo 10001-25000 m² (KDV Hariç)", type: "number", adminEditableOnly: true },
+      { key: "expenseAppraisalTierDepo6", label: "Depo 25001-100000 m² (KDV Hariç)", type: "number", adminEditableOnly: true },
+      { key: "expenseAppraisalTierDepo7", label: "Depo 100001 m² ve üzeri (KDV Hariç)", type: "number", adminEditableOnly: true },
+
       { key: "expenseTransportFeeExVat", label: "Ulaşım Bedeli (KDV Hariç)", type: "number", adminEditableOnly: true },
-      { key: "expenseTitleDeedFeeExVat", label: "Tapu Harcı (KDV Hariç)", type: "number", adminEditableOnly: true },
-      { key: "expenseMunicipalityFeeExVat", label: "Belediye Harcı (KDV Hariç)", type: "number", adminEditableOnly: true },
+      { key: "expenseTitleDeedUnitFeeExVat", label: "Tapu Harcı - Birim Tutar (KDV Hariç, tapu başına)", type: "number", adminEditableOnly: true },
       { key: "expenseInfoCenterShareExVat", label: "Gayrimenkul Bilgi Merkezi Payı (KDV Hariç)", type: "number", adminEditableOnly: true },
       { key: "expenseUnionShareExVat", label: "Birlik Payı (KDV Hariç)", type: "number", adminEditableOnly: true },
       { key: "expenseVatRatePercent", label: "KDV Oranı (%)", type: "number", adminEditableOnly: true },
+
+      { key: "expenseAppraisalFeeExVat", label: "Değerleme Ücreti (KDV Hariç, otomatik)", type: "number", hidden: true, readOnly: true },
       { key: "expenseAppraisalFeeIncVat", label: "Değerleme Ücreti (KDV Dahil)", type: "number", hidden: true, readOnly: true },
       { key: "expenseTransportFeeIncVat", label: "Ulaşım Bedeli (KDV Dahil)", type: "number", hidden: true, readOnly: true },
+      { key: "expenseTitleDeedFeeExVat", label: "Tapu Harcı (KDV Hariç, otomatik)", type: "number", hidden: true, readOnly: true },
       { key: "expenseTitleDeedFeeIncVat", label: "Tapu Harcı (KDV Dahil)", type: "number", hidden: true, readOnly: true },
       { key: "expenseMunicipalityFeeIncVat", label: "Belediye Harcı (KDV Dahil)", type: "number", hidden: true, readOnly: true },
       { key: "expenseInfoCenterShareIncVat", label: "Gayrimenkul Bilgi Merkezi Payı (KDV Dahil)", type: "number", hidden: true, readOnly: true },
@@ -17499,11 +17529,63 @@ function createEmptyEncumbranceRows() {
   return Array.from({ length: encumbranceEmptyRowCount }, () => ({}));
 }
 
-// İş Bankası masraf yazısı ücret kalemleri: 6 KDV-hariç tutar admin
-// tarafından girilir (bkz. "expenseFees" bölümü, adminEditableOnly), KDV
-// dahil değerler ve toplam buradan otomatik hesaplanır. Bu tutarlar tüm
-// kullanıcılar/raporlar için ortaktır (bulutta saklanır, kullanıcı talebi:
-// "yalnızca admin değiştirebilsin").
+// İş Bankası masraf yazısı ücret kalemleri. Kaynak: kullanıcının 2026 yılı
+// "RAPOR YAZMA PROGRAMI" Excel/VBA dosyasındaki "FATURA VE ÜCRETLENDİRME"
+// sayfası + DegerlemeUcreti() makrosu — Değerleme Ücreti tek bir sabit değil,
+// gayrimenkul türü (Daire/Villa/Ofis, Dükkan, Depo) × mevcut kullanım alanına
+// göre kademeli bir tarifeden seçiliyor; Excel'de Arsa/Arazi tabloları da var
+// ama makro bunları hiç kullanmıyor, bu yüzden burada da yalnızca bu 3 tür
+// desteklenir. Belediye Harcı Excel'de de admin sabiti DEĞİL, rapora özgü
+// elle girilen bir hücre (BELEDİYEHARÇ) — burada da per-report alan. Tapu
+// Harcı = birim tutar × tapu adedi (ISBANKTAPUADEDI).
+//
+// Kademe SINIRLARI sabit kod (yılda bir değişmez); yalnızca TL tutarları
+// admin tarafından "expenseFees" bölümünden (adminEditableOnly) güncellenir
+// ve tüm kullanıcılar/raporlar için ortaktır (bulutta saklanır).
+const EXPENSE_APPRAISAL_TIERS = {
+  "Daire / Villa / Ofis": [
+    { min: 1, max: 149, key: "expenseAppraisalTierDaire1" },
+    { min: 150, max: 250, key: "expenseAppraisalTierDaire2" },
+    { min: 251, max: 500, key: "expenseAppraisalTierDaire3" },
+    { min: 501, max: 1000, key: "expenseAppraisalTierDaire4" },
+    { min: 1001, max: 5000, key: "expenseAppraisalTierDaire5" },
+    { min: 5001, max: Infinity, key: "expenseAppraisalTierDaire6" },
+  ],
+  "Dükkan": [
+    { min: 1, max: 100, key: "expenseAppraisalTierDukkan1" },
+    { min: 101, max: 500, key: "expenseAppraisalTierDukkan2" },
+    { min: 501, max: 2000, key: "expenseAppraisalTierDukkan3" },
+    { min: 2001, max: 5000, key: "expenseAppraisalTierDukkan4" },
+    { min: 5001, max: 10000, key: "expenseAppraisalTierDukkan5" },
+    { min: 10001, max: 20000, key: "expenseAppraisalTierDukkan6" },
+    { min: 20001, max: 50000, key: "expenseAppraisalTierDukkan7" },
+    { min: 50001, max: 100000, key: "expenseAppraisalTierDukkan8" },
+    { min: 100001, max: Infinity, key: "expenseAppraisalTierDukkan9" },
+  ],
+  "Depo": [
+    { min: 1, max: 250, key: "expenseAppraisalTierDepo1" },
+    { min: 251, max: 500, key: "expenseAppraisalTierDepo2" },
+    { min: 501, max: 2000, key: "expenseAppraisalTierDepo3" },
+    { min: 2001, max: 10000, key: "expenseAppraisalTierDepo4" },
+    { min: 10001, max: 25000, key: "expenseAppraisalTierDepo5" },
+    { min: 25001, max: 100000, key: "expenseAppraisalTierDepo6" },
+    { min: 100001, max: Infinity, key: "expenseAppraisalTierDepo7" },
+  ],
+};
+
+// Admin tarafından yönetilen, bulutta ortak sabitler (tarife kademeleri +
+// birim ücretler + KDV oranı). Belediye Harcı ve tapu adedi burada YOK —
+// onlar rapora özgü, herkes girebilir.
+const EXPENSE_FEE_ADMIN_KEYS = [
+  ...Object.values(EXPENSE_APPRAISAL_TIERS).flatMap((tiers) => tiers.map((tier) => tier.key)),
+  "expenseTransportFeeExVat",
+  "expenseTitleDeedUnitFeeExVat",
+  "expenseInfoCenterShareExVat",
+  "expenseUnionShareExVat",
+  "expenseVatRatePercent",
+];
+
+// KDV-hariç → KDV-dahil eşleşmeleri (hesaplanan/gizli alanlar).
 const EXPENSE_FEE_PAIR_MAP = {
   expenseAppraisalFeeExVat: "expenseAppraisalFeeIncVat",
   expenseTransportFeeExVat: "expenseTransportFeeIncVat",
@@ -17512,14 +17594,40 @@ const EXPENSE_FEE_PAIR_MAP = {
   expenseInfoCenterShareExVat: "expenseInfoCenterShareIncVat",
   expenseUnionShareExVat: "expenseUnionShareIncVat",
 };
-const EXPENSE_FEE_BASE_KEYS = Object.keys(EXPENSE_FEE_PAIR_MAP);
-const EXPENSE_FEE_CLOUD_KEYS = [...EXPENSE_FEE_BASE_KEYS, "expenseVatRatePercent"];
+
+// Bir alan değiştiğinde yeniden hesaplama/senkron tetikleyen tüm anahtarlar.
+const EXPENSE_FEE_WATCHED_KEYS = [
+  ...EXPENSE_FEE_ADMIN_KEYS,
+  "expenseAppraisalPropertyType",
+  "expenseMunicipalityFeeExVat",
+  "expenseTitleDeedCount",
+];
+
+function lookupExpenseAppraisalFeeExVat(propertyType, area) {
+  const tiers = EXPENSE_APPRAISAL_TIERS[propertyType];
+  const numericArea = parseValuationNumber(area);
+  if (!tiers || !Number.isFinite(numericArea) || numericArea <= 0) return Number.NaN;
+  const tier = tiers.find((item) => numericArea >= item.min && numericArea <= item.max);
+  if (!tier) return Number.NaN;
+  return parseValuationNumber(state.fields[tier.key]);
+}
 
 function recalculateExpenseFees() {
   const vatRate = parseValuationNumber(state.fields.expenseVatRatePercent);
   const multiplier = 1 + (Number.isFinite(vatRate) && vatRate >= 0 ? vatRate : 20) / 100;
+
+  const appraisalFee = lookupExpenseAppraisalFeeExVat(state.fields.expenseAppraisalPropertyType, state.fields.currentArea);
+  state.fields.expenseAppraisalFeeExVat = Number.isFinite(appraisalFee) ? formatValuationMoney(appraisalFee, { decimals: 2 }) : "";
+
+  const titleDeedUnitFee = parseValuationNumber(state.fields.expenseTitleDeedUnitFeeExVat);
+  const titleDeedCount = parseValuationNumber(state.fields.expenseTitleDeedCount);
+  const titleDeedFee = Number.isFinite(titleDeedUnitFee) && Number.isFinite(titleDeedCount) && titleDeedCount > 0
+    ? titleDeedUnitFee * titleDeedCount
+    : Number.NaN;
+  state.fields.expenseTitleDeedFeeExVat = Number.isFinite(titleDeedFee) ? formatValuationMoney(titleDeedFee, { decimals: 2 }) : "";
+
   let total = 0;
-  EXPENSE_FEE_BASE_KEYS.forEach((baseKey) => {
+  Object.keys(EXPENSE_FEE_PAIR_MAP).forEach((baseKey) => {
     const incKey = EXPENSE_FEE_PAIR_MAP[baseKey];
     const base = parseValuationNumber(state.fields[baseKey]);
     if (Number.isFinite(base) && base > 0) {
@@ -17534,9 +17642,9 @@ function recalculateExpenseFees() {
 }
 
 function refreshExpenseFeesFromCurrentFields(changedKey) {
-  if (![...EXPENSE_FEE_BASE_KEYS, "expenseVatRatePercent"].includes(changedKey)) return;
+  if (!EXPENSE_FEE_WATCHED_KEYS.includes(changedKey) && changedKey !== "currentArea") return;
   recalculateExpenseFees();
-  if (isCurrentUserAdmin()) scheduleExpenseFeeCloudSave();
+  if (EXPENSE_FEE_ADMIN_KEYS.includes(changedKey) && isCurrentUserAdmin()) scheduleExpenseFeeCloudSave();
 }
 
 let expenseFeeCloudSaveTimer = null;
@@ -17544,7 +17652,7 @@ function scheduleExpenseFeeCloudSave() {
   clearTimeout(expenseFeeCloudSaveTimer);
   expenseFeeCloudSaveTimer = setTimeout(() => {
     const payload = {};
-    EXPENSE_FEE_CLOUD_KEYS.forEach((key) => { payload[key] = state.fields[key] || ""; });
+    EXPENSE_FEE_ADMIN_KEYS.forEach((key) => { payload[key] = state.fields[key] || ""; });
     window.RaporCloudSync?.saveExpenseFees?.(payload)?.catch?.((error) => {
       console.warn("Masraf bilgileri buluta kaydedilemedi:", error?.code || error);
     });
@@ -17556,7 +17664,7 @@ async function syncExpenseFeesFromCloud() {
     const remote = await window.RaporCloudSync?.loadExpenseFees?.();
     if (!remote) return;
     let changed = false;
-    EXPENSE_FEE_CLOUD_KEYS.forEach((key) => {
+    EXPENSE_FEE_ADMIN_KEYS.forEach((key) => {
       const value = remote[key];
       if (value !== undefined && state.fields[key] !== value) {
         state.fields[key] = value;
