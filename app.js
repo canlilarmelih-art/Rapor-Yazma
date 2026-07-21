@@ -5040,10 +5040,13 @@ function buildExplanationsFloorValuationWordTableHtml() {
   const blueSoft = getReportThemeToken("--blue-soft", "#e4ebf8");
   const surface = getReportThemeToken("--surface", "#ffffff");
   const surfaceMuted = getReportThemeToken("--surface-muted", "#eef2fa");
-  const baseCell = `border:1pt solid ${line};padding:2.4pt 3pt;vertical-align:top;line-height:1.1;color:${ink};background:${surface};font-size:6.5pt;`;
-  const headerCell = `${baseCell}background:${surfaceMuted};color:${blue};font-weight:800;text-align:left;`;
-  const groupCell = `${baseCell}background:${blueSoft};color:${blue};font-weight:900;text-align:center;vertical-align:middle;`;
-  const totalCell = `${baseCell}background:${surfaceMuted};font-weight:800;`;
+  // Ziraat ekranındaki kat bazlı hesap tablosunun okunaklı, açık mavi yüzeyini
+  // Word çıktısında da koru. Hücrelerdeki ince ayraçlar kolonları ayırır;
+  // dış çerçeve ise ekran görünümündeki gibi baskın değildir.
+  const baseCell = `border:0;border-bottom:.5pt solid ${line};padding:6pt 5pt;vertical-align:middle;line-height:1.12;color:${ink};background:${surface};font-family:Arial,sans-serif;font-size:8.5pt;`;
+  const headerCell = `${baseCell}background:${blueSoft};color:${blue};font-weight:700;text-align:center;`;
+  const groupCell = `${baseCell}background:${blueSoft};color:${blue};font-weight:700;text-align:center;vertical-align:middle;`;
+  const totalCell = `${baseCell}background:${surfaceMuted};font-weight:700;`;
 
   const buildSectionRows = (label, mode) => {
     const detailRows = buildExplanationsFloorValuationRows(rows, mode);
@@ -5073,7 +5076,12 @@ function buildExplanationsFloorValuationWordTableHtml() {
   };
 
   const bodyHtml = buildSectionRows("YASAL ALANA GÖRE HESAPLAMA", "legal") + buildSectionRows("MEVCUT ALANA GÖRE HESAPLAMA", "current");
-  return `<table style="border-collapse:collapse;width:100%;table-layout:fixed;margin:5pt 0 12pt;">
+  return `<table class="ziraat-floor-valuation-table" style="border-collapse:collapse;width:100%;table-layout:fixed;margin:5pt 0 12pt;font-family:Arial,sans-serif;">
+    <colgroup>
+      <col style="width:10.5%;"><col style="width:14.5%;"><col style="width:8.5%;">
+      <col style="width:10%;"><col style="width:10.5%;"><col style="width:12.5%;">
+      <col style="width:10.5%;"><col style="width:10.5%;"><col style="width:12.5%;">
+    </colgroup>
     <thead>
       <tr><th colspan="9" style="${headerCell}text-align:center;">KONU TAŞINMAZIN KAT BAZINDA İNDİRGENMİŞ ALAN HESABI</th></tr>
       <tr>
@@ -7623,6 +7631,11 @@ function syncUnitFloorSummaryFields(rows = getUnitFloorRows()) {
   state.fields.unitCurrentTerrace = first.currentTerrace || "";
   state.fields.unitTerraceReductionRate = first.terraceReductionRate || "100";
   state.fields.interiorFeatures = formatUnitFloorInteriorSummary(rows);
+  // currentArea gizli bir alan olduğundan standart form-input tetikleyicisi
+  // (refreshExpenseFeesFromCurrentFields) çalışmaz; İş Bankası masraf
+  // yazısındaki Değerleme Ücreti "Mevcut kullanım alanı"na (currentArea)
+  // göre kademeli tarifeden seçildiği için burada elle yeniden hesaplatılır.
+  recalculateExpenseFees();
 }
 
 function formatUnitFloorInteriorSummary(rows = []) {
@@ -12608,9 +12621,9 @@ function buildValuationSummaryWordTableHtml() {
   // Değerleme Bölümü tek sayfaya sığmalı (kullanıcı talebi) — bu tablo
   // yalnızca o bölümde kullanıldığı için punto/hücre boşluğu doğrudan
   // burada sıkıştırılır.
-  const tableStyle = `border-collapse:collapse;width:100%;margin:3pt 0 12pt;table-layout:fixed;font-family:Arial,sans-serif;font-size:7pt;border:1pt solid ${line};`;
-  const cellBase = `border-bottom:1pt solid ${line};padding:3pt 5pt;text-align:left;vertical-align:middle;color:${ink};background:${surface};line-height:1.15;`;
-  const headerCell = `${cellBase}background:${surfaceMuted};color:${muted};font-size:6.5pt;font-weight:800;text-transform:uppercase;`;
+  const tableStyle = `border-collapse:collapse;width:100%;margin:3pt 0 12pt;table-layout:fixed;font-family:Arial,sans-serif;font-size:8.5pt;`;
+  const cellBase = `border:0;border-bottom:.5pt solid ${line};padding:6pt 5pt;text-align:left;vertical-align:middle;color:${ink};background:${surface};line-height:1.15;`;
+  const headerCell = `${cellBase}background:${blueSoft};color:${blue};font-size:8.5pt;font-weight:700;text-transform:uppercase;`;
   const groupColors = {
     market: [blueSoft, blue],
     land: [amberSoft, amber],
@@ -12620,16 +12633,17 @@ function buildValuationSummaryWordTableHtml() {
   };
   const body = buildValuationSummaryGroups().map((group) => {
     const [background, color] = groupColors[group.key] || [surfaceMuted, ink];
-    const groupStyle = `${cellBase}background:${background};color:${color};font-weight:800;font-size:6.5pt;text-transform:uppercase;letter-spacing:.04em;`;
+    const groupStyle = `${cellBase}background:${background};color:${color};font-weight:700;font-size:8.5pt;text-transform:uppercase;letter-spacing:.04em;`;
     const heading = `<tr><th colspan="3" style="${groupStyle}">${escapeHtml(group.title.toLocaleUpperCase("tr-TR"))}</th></tr>`;
     const rows = group.rows.map((row) => `<tr>
       <td style="${cellBase}font-weight:700;white-space:nowrap;">${escapeHtml(row.label)}</td>
-      <td style="${cellBase}color:${muted};font-size:6.5pt;">${escapeHtml(row.detail)}</td>
+      <td style="${cellBase}color:${muted};font-size:8.5pt;">${escapeHtml(row.detail)}</td>
       <td style="${cellBase}text-align:right;white-space:nowrap;font-weight:800;">${escapeHtml(row.value)}</td>
     </tr>`).join("");
     return heading + rows;
   }).join("");
-  return `<table class="valuation-summary-table" style="${tableStyle}">
+  return `<table class="valuation-summary-table ziraat-valuation-summary-table" style="${tableStyle}">
+    <colgroup><col style="width:24%;"><col style="width:56%;"><col style="width:20%;"></colgroup>
     <thead><tr>
       <th style="${headerCell}">Kalem</th>
       <th style="${headerCell}">Birim Değer / Oran</th>
