@@ -576,7 +576,7 @@ assert(
 );
 const ziraatTemplateSource = fs.readFileSync(path.join(appDir, "templates", "ziraat.html"), "utf8");
 assert(
-  ziraatTemplateSource.indexOf("<h2 style=\"page-break-before:always;\">1. GAYRİMENKUL GABİM BİLGİLERİ</h2>") < ziraatTemplateSource.indexOf("<h2>2. GAYRİMENKUL MERKEZ BANKASI VERİLERİ</h2>") &&
+  ziraatTemplateSource.indexOf("<h2>1. GAYRİMENKUL GABİM BİLGİLERİ</h2>") < ziraatTemplateSource.indexOf("<h2>2. GAYRİMENKUL MERKEZ BANKASI VERİLERİ</h2>") &&
     ziraatTemplateSource.indexOf("<h2>2. GAYRİMENKUL MERKEZ BANKASI VERİLERİ</h2>") < ziraatTemplateSource.indexOf("<h2>2. GAYRİMENKUL TAPU BİLGİLERİ</h2>") &&
     ziraatTemplateSource.includes(".ziraat-gabim-screen") &&
     ziraatTemplateSource.includes("Talep Referansı") &&

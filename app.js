@@ -595,7 +595,7 @@ const sections = [
     description:
       "İş Bankası masraf yazısında kullanılan ücret kalemleri. Değerleme Ücreti, gayrimenkul türü ve mevcut kullanım alanına göre aşağıdaki kademeli tarifeden otomatik seçilir (2026 RAPOR YAZMA PROGRAMI masraf tablosuyla birebir). Kademe tutarları ve sabit birim ücretler yıllık değişir, tüm kullanıcılar için ortaktır (bulutta saklanır) ve yalnızca admin tarafından güncellenebilir. Belediye Harcı ve tapu adedi ise rapora özgüdür, herkes girebilir.",
     fields: [
-      { key: "expenseAppraisalPropertyType", label: "Değerleme Ücreti Tarife Türü", type: "select", options: ["", "Daire / Villa / Ofis", "Dükkan", "Depo"] },
+      { key: "expenseAppraisalPropertyType", label: "Değerleme Ücreti Tarife Türü", type: "select", options: ["", "Daire / Villa / Ofis", "Dükkan", "Depo", "Arsa / Tarım Alanı (İmarsız)", "Arsa (İmarlı)", "Akaryakıt İstasyonu"] },
       { key: "expenseMunicipalityFeeExVat", label: "Belediye Harcı (KDV Hariç)", type: "number" },
       { key: "expenseTitleDeedCount", label: "Tapu Adedi", type: "number", defaultValue: "1" },
 
@@ -623,6 +623,17 @@ const sections = [
       { key: "expenseAppraisalTierDepo5", label: "Depo 10001-25000 m² (KDV Hariç)", type: "number", adminEditableOnly: true },
       { key: "expenseAppraisalTierDepo6", label: "Depo 25001-100000 m² (KDV Hariç)", type: "number", adminEditableOnly: true },
       { key: "expenseAppraisalTierDepo7", label: "Depo 100001 m² ve üzeri (KDV Hariç)", type: "number", adminEditableOnly: true },
+
+      { key: "expenseAppraisalTierTarim1", label: "Arsa/Tarım Alanı (İmarsız) 1-20000 m² (KDV Hariç)", type: "number", adminEditableOnly: true },
+      { key: "expenseAppraisalTierTarim2", label: "Arsa/Tarım Alanı (İmarsız) 20001-100000 m² (KDV Hariç)", type: "number", adminEditableOnly: true },
+      { key: "expenseAppraisalTierTarim3", label: "Arsa/Tarım Alanı (İmarsız) 100001 m² ve üzeri (KDV Hariç)", type: "number", adminEditableOnly: true },
+
+      { key: "expenseAppraisalTierArsa1", label: "Arsa (İmarlı) 1-1000 m² (KDV Hariç)", type: "number", adminEditableOnly: true },
+      { key: "expenseAppraisalTierArsa2", label: "Arsa (İmarlı) 1001-5000 m² (KDV Hariç)", type: "number", adminEditableOnly: true },
+      { key: "expenseAppraisalTierArsa3", label: "Arsa (İmarlı) 5001-25000 m² (KDV Hariç)", type: "number", adminEditableOnly: true },
+      { key: "expenseAppraisalTierArsa4", label: "Arsa (İmarlı) 25001 m² ve üzeri (KDV Hariç)", type: "number", adminEditableOnly: true },
+
+      { key: "expenseAppraisalTierAkaryakit1", label: "Akaryakıt İstasyonu - Tamamı (KDV Hariç)", type: "number", adminEditableOnly: true },
 
       { key: "expenseTransportFeeExVat", label: "Ulaşım Bedeli (KDV Hariç)", type: "number", adminEditableOnly: true },
       { key: "expenseTitleDeedUnitFeeExVat", label: "Tapu Harcı - Birim Tutar (KDV Hariç, tapu başına)", type: "number", adminEditableOnly: true },
@@ -17531,18 +17542,23 @@ function createEmptyEncumbranceRows() {
 
 // İş Bankası masraf yazısı ücret kalemleri. Kaynak: kullanıcının 2026 yılı
 // "RAPOR YAZMA PROGRAMI" Excel/VBA dosyasındaki "FATURA VE ÜCRETLENDİRME"
-// sayfası + DegerlemeUcreti() makrosu — Değerleme Ücreti tek bir sabit değil,
-// gayrimenkul türü (Daire/Villa/Ofis, Dükkan, Depo) × mevcut kullanım alanına
-// göre kademeli bir tarifeden seçiliyor; Excel'de Arsa/Arazi tabloları da var
-// ama makro bunları hiç kullanmıyor, bu yüzden burada da yalnızca bu 3 tür
-// desteklenir. Belediye Harcı Excel'de de admin sabiti DEĞİL, rapora özgü
-// elle girilen bir hücre (BELEDİYEHARÇ) — burada da per-report alan. Tapu
-// Harcı = birim tutar × tapu adedi (ISBANKTAPUADEDI).
+// sayfası + DegerlemeUcreti() makrosu, ve resmi "2026 Yılı Gayrimenkul
+// Değerleme Asgari Ücret Tarifesi" tablosu (kullanıcının paylaştığı görsel).
+// Değerleme Ücreti tek bir sabit değil, gayrimenkul türü × brüt/mevcut alana
+// göre kademeli bir tarifeden seçiliyor. Tarifedeki 9 gruptan yalnız sayısal
+// (kademeli) ücret içerenler burada modellenmiştir — Toplu Değerleme (%20/
+// %15 indirimli çoklu taşınmaz kuralı), Yeniden Değerleme (%30/%50 indirim),
+// Proje/Hak/Fayda ve "Diğer" grupları "Belirlenmemiştir" veya ayrı iş kuralı
+// gerektirdiğinden (rapor sayısı, önceki rapor tarihi vb.) buraya dahil
+// edilmedi. Belediye Harcı admin sabiti DEĞİL, rapora özgü elle girilen bir
+// alan (Excel'de de böyle: BELEDİYEHARÇ hücresi). Tapu Harcı = birim tutar ×
+// tapu adedi (ISBANKTAPUADEDI).
 //
 // Kademe SINIRLARI sabit kod (yılda bir değişmez); yalnızca TL tutarları
 // admin tarafından "expenseFees" bölümünden (adminEditableOnly) güncellenir
 // ve tüm kullanıcılar/raporlar için ortaktır (bulutta saklanır).
 const EXPENSE_APPRAISAL_TIERS = {
+  // 2. GRUP — Konut, Ofis ve Bürolar (bağımsız bölüm niteliği kazanmış)
   "Daire / Villa / Ofis": [
     { min: 1, max: 149, key: "expenseAppraisalTierDaire1" },
     { min: 150, max: 250, key: "expenseAppraisalTierDaire2" },
@@ -17551,6 +17567,8 @@ const EXPENSE_APPRAISAL_TIERS = {
     { min: 1001, max: 5000, key: "expenseAppraisalTierDaire5" },
     { min: 5001, max: Infinity, key: "expenseAppraisalTierDaire6" },
   ],
+  // 5. GRUP — Hizmet Amaçlı Kullanılan Gayrimenkuller ve Alışveriş Merkezleri
+  // (Dükkan, plaza, iş merkezi, AVM, hastane, otel, okul vb.)
   "Dükkan": [
     { min: 1, max: 100, key: "expenseAppraisalTierDukkan1" },
     { min: 101, max: 500, key: "expenseAppraisalTierDukkan2" },
@@ -17562,6 +17580,8 @@ const EXPENSE_APPRAISAL_TIERS = {
     { min: 50001, max: 100000, key: "expenseAppraisalTierDukkan8" },
     { min: 100001, max: Infinity, key: "expenseAppraisalTierDukkan9" },
   ],
+  // 4. GRUP — Üretim, Depolama, Zirai ve Sınai Nitelikli Yapılar
+  // (İmalathane, atölye, depo, hangar, fabrika, sera vb.)
   "Depo": [
     { min: 1, max: 250, key: "expenseAppraisalTierDepo1" },
     { min: 251, max: 500, key: "expenseAppraisalTierDepo2" },
@@ -17570,6 +17590,25 @@ const EXPENSE_APPRAISAL_TIERS = {
     { min: 10001, max: 25000, key: "expenseAppraisalTierDepo5" },
     { min: 25001, max: 100000, key: "expenseAppraisalTierDepo6" },
     { min: 100001, max: Infinity, key: "expenseAppraisalTierDepo7" },
+  ],
+  // 1. GRUP — Arsalar ve Tarım Alanları (imarsız): bağ, bahçe, tarla,
+  // tarım alanı, özel orman vb.
+  "Arsa / Tarım Alanı (İmarsız)": [
+    { min: 1, max: 20000, key: "expenseAppraisalTierTarim1" },
+    { min: 20001, max: 100000, key: "expenseAppraisalTierTarim2" },
+    { min: 100001, max: Infinity, key: "expenseAppraisalTierTarim3" },
+  ],
+  // 1. GRUP — Arsalar (imarlı)
+  "Arsa (İmarlı)": [
+    { min: 1, max: 1000, key: "expenseAppraisalTierArsa1" },
+    { min: 1001, max: 5000, key: "expenseAppraisalTierArsa2" },
+    { min: 5001, max: 25000, key: "expenseAppraisalTierArsa3" },
+    { min: 25001, max: Infinity, key: "expenseAppraisalTierArsa4" },
+  ],
+  // 3. GRUP — Enerji ve Akaryakıt Tesisleri: Akaryakıt İstasyonu (tek tutar,
+  // "Tamamı" — alan aralığı yok, her alan aynı ücrete tabi)
+  "Akaryakıt İstasyonu": [
+    { min: 0, max: Infinity, key: "expenseAppraisalTierAkaryakit1" },
   ],
 };
 
