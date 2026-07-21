@@ -5,23 +5,28 @@
 <title>İş Bankası Masraf Yazısı</title>
 <!--
   İŞ BANKASI MASRAF/ÜCRET YAZISI ŞABLONU
+  Biçim (yazı tipi, punto, hizalama, kalınlık, kenar boşlukları) kullanıcının
+  gönderdiği "ISBANKASI_MASRAF_TEMPLATE.doc" dosyasından Word COM ile
+  ölçülerek birebir alınmıştır: Times New Roman 12pt; tarih sağa, gövde
+  paragrafı ve "Bilgi edinilmesi/Saygılarımızla" iki yana yaslı; TÜM ücret
+  satırları (Değerleme Ücreti .. Toplam Ücret) kalın; imza bloğu ve
+  "İlgili Makama," kalın DEĞİL; sayfa kenar boşluğu 70.85pt (2,5cm).
   Ücret kalemleri "Masraf Bilgileri" bölümündeki KDV-hariç tutarlardan
   otomatik doldurulur (KDV dahil değerler ve toplam otomatik hesaplanır).
   Bu tutarlar yıllık olarak değişir, tüm kullanıcılar için ortaktır
   (bulutta saklanır) ve yalnızca admin tarafından güncellenebilir.
 -->
 <style>
-  @page WordSection1 { size: 595.35pt 841.95pt; margin: 36pt; mso-header-margin:35.4pt; mso-footer-margin:35.4pt; mso-paper-source:0; }
-  body { font-family: Arial, sans-serif; font-size: 8pt; color: #152238; background: #ffffff; }
-  p { margin: 0 0 7pt; line-height: 1.35; text-align: justify; }
-  .encumbrance-summary { font-size: 10pt; text-align: justify; }
-  .share-explanation { font-size: 10pt; text-align: justify; }
+  @page WordSection1 { size: 595.35pt 841.95pt; margin: 70.85pt; mso-header-margin:35.4pt; mso-footer-margin:35.4pt; mso-paper-source:0; }
+  body { font-family: "Times New Roman", Times, serif; font-size: 12pt; color: #000000; background: #ffffff; }
+  p { margin: 0 0 12pt; line-height: 1.15; text-align: left; }
+  .encumbrance-summary { font-size: 12pt; text-align: justify; }
+  .share-explanation { font-size: 12pt; text-align: justify; }
   div.WordSection1 { page: WordSection1; }
   .right { text-align: right; }
-  .center { text-align: center; }
-  .fees { margin: 10pt 0; }
-  .fees p { margin: 0 0 4pt; }
-  .sign { margin-top: 22pt; }
+  .justify { text-align: justify; }
+  .fees p { font-weight: bold; margin: 0 0 12pt; }
+  .sign p { margin: 0 0 12pt; }
 </style>
 </head>
 <body>
@@ -29,33 +34,34 @@
 
 <p class="right">{{APPOİNTMENT_DATE}}</p>
 
-<p><strong>İlgili Makama,</strong></p>
+<p>İlgili Makama,</p>
 
-<p>{{CUSTOMER_NAME}} isimli müşteriye ait {{CİTY}} ili, {{DİSTRİCT}} ilçesi,
+<p class="justify">{{CUSTOMER_NAME}} isimli müşteriye ait {{CİTY}} ili, {{DİSTRİCT}} ilçesi,
 {{TİTLE_NEİGHBORHOOD}} Mahallesi, {{BLOCK_NO}} ada, {{PARCEL_NO}} parselde kayıtlı,
 {{TİTLE_QUALİTY}} vasıflı taşınmaza ait değerleme raporu {{APPOİNTMENT_DATE}}
-tarihinde firmamız tarafından hazırlanmıştır. Firmamıza ödenmiş olan değerleme
+Tarihinde firmamız tarafından hazırlanmıştır. Firmamıza ödenmiş olan değerleme
 ücretine ilişkin bilgiler aşağıda belirtilmiş olup söz konusu ücreti de
 kapsayan fatura ekte yer almaktadır.</p>
 
-<p>Bilgi edinilmesi rica olunur.</p>
-<p>Saygılarımızla,</p>
+<p class="justify">Bilgi edinilmesi rica olunur.</p>
+<p class="justify">Saygılarımızla,</p>
 
 <div class="fees">
-  <p>Değerleme Ücreti (TL): {{EXPENSE_APPRAISAL_FEE_EX_VAT}} TL + %{{EXPENSE_VAT_RATE_PERCENT}} KDV = {{EXPENSE_APPRAISAL_FEE_INC_VAT}} TL</p>
-  <p>Ulaşım Bedeli (TL): {{EXPENSE_TRANSPORT_FEE_EX_VAT}} TL + %{{EXPENSE_VAT_RATE_PERCENT}} KDV = {{EXPENSE_TRANSPORT_FEE_INC_VAT}} TL</p>
+  <p>Değerleme Ücreti (TL): {{EXPENSE_APPRAISAL_FEE_EX_VAT}} TL + % {{EXPENSE_VAT_RATE_PERCENT}} KDV = {{EXPENSE_APPRAISAL_FEE_INC_VAT}} TL</p>
+  <p>Ulaşım Bedeli (TL): {{EXPENSE_TRANSPORT_FEE_EX_VAT}} TL + % {{EXPENSE_VAT_RATE_PERCENT}} KDV = {{EXPENSE_TRANSPORT_FEE_INC_VAT}} TL</p>
   <p>Tapu Harcı (TL): {{EXPENSE_TITLE_DEED_FEE_EX_VAT}} TL + %{{EXPENSE_VAT_RATE_PERCENT}} KDV = {{EXPENSE_TITLE_DEED_FEE_INC_VAT}} TL</p>
   <p>Belediye Harcı (TL): {{EXPENSE_MUNICIPALITY_FEE_EX_VAT}} TL + %{{EXPENSE_VAT_RATE_PERCENT}} KDV = {{EXPENSE_MUNICIPALITY_FEE_INC_VAT}} TL</p>
   <p>Gayrimenkul Bilgi Merkezi Payı: {{EXPENSE_INFO_CENTER_SHARE_EX_VAT}} TL + %{{EXPENSE_VAT_RATE_PERCENT}} KDV = {{EXPENSE_INFO_CENTER_SHARE_INC_VAT}} TL</p>
   <p>Birlik Payı: {{EXPENSE_UNION_SHARE_EX_VAT}} TL + %{{EXPENSE_VAT_RATE_PERCENT}} KDV = {{EXPENSE_UNION_SHARE_INC_VAT}} TL</p>
-  <p><strong>Toplam Ücret (TL): {{EXPENSE_TOTAL_FEE_INC_VAT}} TL</strong></p>
+  <p>Toplam Ücret(TL): {{EXPENSE_TOTAL_FEE_INC_VAT}} TL</p>
 </div>
 
+<p>Firma Unvanı : Denge Gayrimenkul Değerleme Ve Danışmanlık A.Ş.</p>
+
 <div class="sign">
-  <p>Firma Unvanı: Denge Gayrimenkul Değerleme Ve Danışmanlık A.Ş.</p>
   <p>Firma Yetkilisi İmza</p>
   <p>Yönetim Kurulu Başkanı</p>
-  <p><strong>BAKİ BUDAKOĞLU</strong></p>
+  <p>BAKİ BUDAKOĞLU</p>
 </div>
 
 <p>Ek: Fatura fotokopisi</p>

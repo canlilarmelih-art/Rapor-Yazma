@@ -527,6 +527,16 @@ assert(
     appSource.includes("event.target.value = toTitleFieldUppercase(event.target.value)"),
   "EKB belge no alani daima buyuk harfe donusturulmuyor."
 );
+assert(
+  appSource.includes('function refreshUrgentSaleValues()') &&
+    appSource.includes('function getUrgentSaleValueText(mode)') &&
+    appSource.includes('roundComparableValuationValue(marketValue * 0.9, 50000)') &&
+    appSource.includes('state.fields.legalUrgentSaleValue = getUrgentSaleValueText("legal")') &&
+    appSource.includes('state.fields.currentUrgentSaleValue = getUrgentSaleValueText("current")') &&
+    engineSource.includes('LEGALURGENTSALEVALUE: { fn: () => safeCall("getUrgentSaleValueText", "legal") }') &&
+    engineSource.includes('CURRENTURGENTSALEVALUE: { fn: () => safeCall("getUrgentSaleValueText", "current") }'),
+  "Yasal/mevcut acil satis degerleri %10 indirim ve 50.000 TL yuvarlama kuralini korumuyor."
+);
 
 // --- 2e) Konum haritasi ve emsal krokisi Word'e gomulmeli ----------------
 comparableTemplateFiles.forEach((file) => {

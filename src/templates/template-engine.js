@@ -562,6 +562,8 @@
     // --- Değerleme ---
     YASALDURUMDEGERI: { m: ["legalValue"] },
     MEVCUTDURUMDEGERI: { m: ["currentValue"] },
+    LEGALURGENTSALEVALUE: { fn: () => safeCall("getUrgentSaleValueText", "legal") },
+    CURRENTURGENTSALEVALUE: { fn: () => safeCall("getUrgentSaleValueText", "current") },
     MEVCUTKIRA: { m: ["currentRent"] },
     YASALKIRA: { m: ["legalRent"] },
     YILLIKKIRAMEVCUT: {

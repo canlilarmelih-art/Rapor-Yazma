@@ -570,6 +570,8 @@ const sections = [
     fields: [
       { key: "legalValue", label: "Yasal Durum Değeri", type: "number", required: true, critical: true, hidden: true },
       { key: "currentValue", label: "Mevcut Durum Değeri", type: "number", required: true, critical: true, hidden: true },
+      { key: "legalUrgentSaleValue", label: "Yasal Acil Satış Değeri", type: "number", hidden: true },
+      { key: "currentUrgentSaleValue", label: "Mevcut Acil Satış Değeri", type: "number", hidden: true },
       { key: "currentRent", label: "Mevcut Kira Değeri", type: "number", hidden: true },
       { key: "legalRent", label: "Yasal Kira Değeri", type: "number", hidden: true },
       { key: "landUnitValue", label: "Arsa M2 Birim Değeri", type: "number", hidden: true },
@@ -2835,6 +2837,8 @@ function getValuationFieldPlaceholderRows() {
       add(metric.amortizationKey, `${label} - Gayrimenkul Amortisman Süresi`);
     }
   });
+  add("legalUrgentSaleValue", "Yasal Acil Satış Değeri", { type: "Otomatik Hesaplama" });
+  add("currentUrgentSaleValue", "Mevcut Acil Satış Değeri", { type: "Otomatik Hesaplama" });
 
   Object.values(incompleteConstructionMarketRows).forEach((row) => {
     const label = row.label || "";
@@ -4085,6 +4089,7 @@ function refreshValuationComputedFields() {
   valuationMarketRows.forEach((row) => {
     state.fields[row.unitKey] = calculateValuationUnitValue(state.fields[row.totalKey], state.fields[row.areaKey]);
   });
+  refreshUrgentSaleValues();
   refreshWorkplaceFloorCalculationTable();
   refreshValuationIncomeMetricFields();
   valuationBuildingValueRows.forEach((row) => {
@@ -4102,6 +4107,19 @@ function refreshValuationComputedFields() {
   refreshValuationRentExplanation();
   refreshValuationMethodExplanation();
   refreshValuationControls();
+}
+
+function refreshUrgentSaleValues() {
+  state.fields.legalUrgentSaleValue = getUrgentSaleValueText("legal");
+  state.fields.currentUrgentSaleValue = getUrgentSaleValueText("current");
+}
+
+function getUrgentSaleValueText(mode) {
+  const sourceValue = mode === "current" ? state.fields.currentValue : state.fields.legalValue;
+  const marketValue = parseValuationNumber(sourceValue);
+  if (!Number.isFinite(marketValue) || marketValue <= 0) return "";
+  const rounded = roundComparableValuationValue(marketValue * 0.9, 50000);
+  return Number.isFinite(rounded) ? formatValuationMoney(rounded) : "";
 }
 
 function syncLandOwnershipValuationDefaults() {
@@ -4508,6 +4526,7 @@ function buildValuationSummaryBuildingDetail(row) {
 }
 
 function buildValuationSummaryGroups() {
+  refreshUrgentSaleValues();
   const share = (state.fields.share || "").trim() || "-";
   const denominator = (state.fields.denominator || "").trim() || "-";
   return [
@@ -4517,6 +4536,8 @@ function buildValuationSummaryGroups() {
       rows: [
         { label: "Yasal Durum Değeri", detail: buildValuationSummaryAreaUnitDetail("legalValueArea", "legalValueUnit"), value: formatValuationSummaryMoney(state.fields.legalValue) },
         { label: "Mevcut Durum Değeri", detail: buildValuationSummaryAreaUnitDetail("currentValueArea", "currentValueUnit"), value: formatValuationSummaryMoney(state.fields.currentValue) },
+        { label: "Yasal Acil Satış Değeri", detail: "Yasal durum değerinden %10 indirim, 50.000 TL yuvarlama", value: formatValuationSummaryMoney(getUrgentSaleValueText("legal")) },
+        { label: "Mevcut Acil Satış Değeri", detail: "Mevcut durum değerinden %10 indirim, 50.000 TL yuvarlama", value: formatValuationSummaryMoney(getUrgentSaleValueText("current")) },
         { label: "Yasal Kira Değeri", detail: `${buildValuationSummaryAreaUnitDetail("legalRentArea", "legalRentUnit")} · Kap. ${formatValuationSummaryRate(state.fields.legalCapitalizationRate)}`, value: formatValuationSummaryMoney(state.fields.legalRent, "TL/ay") },
         { label: "Mevcut Kira Değeri", detail: `${buildValuationSummaryAreaUnitDetail("currentRentArea", "currentRentUnit")} · Kap. ${formatValuationSummaryRate(state.fields.currentCapitalizationRate)}`, value: formatValuationSummaryMoney(state.fields.currentRent, "TL/ay") },
       ],
