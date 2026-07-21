@@ -539,7 +539,7 @@ const reportMapPlacementRules = {
   "vakifbank.html": ["HARİTA KONUM", "TAKYİDAT"],
   "vakifkatilim.html": ["Tapu Sekmesi ve Konum", "Özellikler Sekmesi"],
   "yapikredi.html": ["Adres Bilgileri", "Ana Gayrimenkul Site Özellikleri"],
-  "ziraat.html": ["2. GAYRİMENKUL TAPU BİLGİLERİ", "MALİK BİLGİLERİ"],
+  "ziraat.html": ["MALİK BİLGİLERİ", "4. GAYRİMENKUL NİTELİK BİLGİLERİ"],
 };
 Object.entries(reportMapPlacementRules).forEach(([file, [before, after]]) => {
   const text = fs.readFileSync(path.join(appDir, "templates", file), "utf8");
@@ -586,8 +586,10 @@ assert(
     ziraatTemplateSource.includes("İndirgenmiş Toplam Yasal Alan (m²)") &&
     ziraatTemplateSource.includes("{{TOTAL_LEGAL_REDUCED_AREA}}") &&
     ziraatTemplateSource.includes("{{TOTAL_CURRENT_REDUCED_AREA}}") &&
+    ziraatTemplateSource.includes("Aylık Kira Değeri (TL/m²)</td><td class=\"zg-value\"><div>{{LEGAL_RENT_UNIT}}</div>") &&
     ziraatTemplateSource.includes("{{ORDER}} Nizam") &&
     ziraatTemplateSource.includes("<div>Hasarsız</div>") &&
+    ziraatTemplateSource.includes("Değ. Rap. Konu Gayr. Fiili Kullanım Amacı</td><td class=\"zg-value\"><div>{{CURRENT_USAGE_NATURE}}</div>") &&
     ziraatTemplateSource.includes("{{TİTLE_QUALİTY}} olarak kullanılmaktadır.") &&
     ziraatTemplateSource.includes("<div>Hayır</div>") &&
     ziraatTemplateSource.includes("{{MUTFAK}}"),
@@ -607,7 +609,7 @@ assert(
   "Ziraat Word sablonu, referans sistemin gri panel ve keskin kenarli veri kutusu dilini korumuyor."
 );
 const ziraatTapuSectionStart = ziraatTemplateSource.indexOf("<h2>2. GAYRİMENKUL TAPU BİLGİLERİ</h2>");
-const ziraatTapuSectionEnd = ziraatTemplateSource.indexOf("<h2>4. GAYRİMENKUL NİTELİK BİLGİLERİ</h2>");
+const ziraatTapuSectionEnd = ziraatTemplateSource.indexOf("<h2 style=\"page-break-before:always;\">4. GAYRİMENKUL NİTELİK BİLGİLERİ</h2>");
 const ziraatTapuSection = ziraatTemplateSource.slice(ziraatTapuSectionStart, ziraatTapuSectionEnd);
 assert(
   ziraatTapuSectionStart >= 0 &&
@@ -633,7 +635,7 @@ assert(
   engineSource.includes('SALEABILITY: { f: ["saleability"] }'),
   "Ziraat satis kabiliyeti secimi icin SALEABILITY placeholder aliasi bulunamadi."
 );
-const ziraatPropertySectionStart = ziraatTemplateSource.indexOf("<h2>4. GAYRİMENKUL NİTELİK BİLGİLERİ</h2>");
+const ziraatPropertySectionStart = ziraatTemplateSource.indexOf("<h2 style=\"page-break-before:always;\">4. GAYRİMENKUL NİTELİK BİLGİLERİ</h2>");
 const ziraatPropertySectionEnd = ziraatTemplateSource.indexOf("<h2>5. İNCELEMELER</h2>");
 const ziraatPropertySection = ziraatTemplateSource.slice(ziraatPropertySectionStart, ziraatPropertySectionEnd);
 assert(
@@ -692,6 +694,13 @@ assert(
   "Ziraat incelemeler bolumu proje/ruhsat aciklamalari ile iskan, belediye ve EKB alanlarini referans ekrandaki akista tutmuyor."
 );
 assert(
+  ziraatTemplateSource.indexOf("{{İNCELENEN_BELGELER_TABLO}}") > ziraatTemplateSource.indexOf("<h2>ÇALIŞMA KAĞIDI</h2>") &&
+    ziraatTemplateSource.indexOf("{{TAKYIDAT_TABLO}}") > ziraatTemplateSource.indexOf("{{İNCELENEN_BELGELER_TABLO}}") &&
+    !ziraatReviewsSection.includes("{{İNCELENEN_BELGELER_TABLO}}") &&
+    !ziraatReviewsSection.includes("{{TAKYIDAT_TABLO}}"),
+  "Ziraat takyidat ve incelenen belgeler tablolari Incelemeler bolumunden rapor sonuna tasinmamis."
+);
+assert(
   engineSource.includes("BUILDINGINSPECTIONEXPLANATIONTEXT") &&
     engineSource.includes("PENALTYDECISIONEXPLANATION") &&
     engineSource.includes("OCCUPANCYPERMITDATE") &&
@@ -743,8 +752,10 @@ assert(
 assert(
   appSource.includes('getMapExportCanvasSize("16:9", 1200)') &&
     appSource.includes('width="640" height="360" style="width:480pt;height:270pt;') &&
-    engineSource.includes('width="640" height="360" style="width:480pt;height:270pt;'),
-  "Word harita/kroki gorselleri sabit 16:9 geometriyle uretilmiyor."
+    engineSource.includes("const width = Math.round(480 * scale)") &&
+    engineSource.includes("const height = Math.round(270 * scale)") &&
+    engineSource.includes('key === "location" ? 0.7 : 1'),
+  "Word harita/kroki gorselleri 16:9 geometriyi veya konu tasinmaz haritasi icin %30 kucultmeyi korumuyor."
 );
 assert(
   appSource.includes("function getLocationMapViewportSnapshot()") &&

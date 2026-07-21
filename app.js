@@ -595,9 +595,25 @@ const sections = [
     description:
       "İş Bankası masraf yazısında kullanılan ücret kalemleri. Değerleme Ücreti, gayrimenkul türü ve mevcut kullanım alanına göre aşağıdaki kademeli tarifeden otomatik seçilir (2026 RAPOR YAZMA PROGRAMI masraf tablosuyla birebir). Kademe tutarları ve sabit birim ücretler yıllık değişir, tüm kullanıcılar için ortaktır (bulutta saklanır) ve yalnızca admin tarafından güncellenebilir. Belediye Harcı ve tapu adedi ise rapora özgüdür, herkes girebilir.",
     fields: [
-      { key: "expenseAppraisalPropertyType", label: "Değerleme Ücreti Tarife Türü", type: "select", options: ["", "Daire / Villa / Ofis", "Dükkan", "Depo", "Arsa / Tarım Alanı (İmarsız)", "Arsa (İmarlı)", "Akaryakıt İstasyonu"] },
+      { key: "expenseAppraisalPropertyType", label: "Değerleme Ücreti Tarife Türü (En Büyük Alanlı Taşınmaz)", type: "select", options: ["", "Daire / Villa / Ofis", "Dükkan", "Depo", "Arsa / Tarım Alanı (İmarsız)", "Arsa (İmarlı)", "Akaryakıt İstasyonu"] },
       { key: "expenseMunicipalityFeeExVat", label: "Belediye Harcı (KDV Hariç)", type: "number" },
       { key: "expenseTitleDeedCount", label: "Tapu Adedi", type: "number", defaultValue: "1" },
+
+      {
+        key: "expenseBulkValuationMode",
+        label: "Toplu Değerleme (6. Grup)",
+        type: "select",
+        options: [
+          "",
+          "Yok",
+          "1. Grup - Farklı Taşınmazlar (Aynı Mahalle/Köy)",
+          "2. Grup - Aynı Parsel Birden Fazla Bağımsız Bölüm",
+        ],
+        note: "Birden fazla taşınmaz tek raporda değerlendiriliyorsa seçin. En büyük alanlı taşınmaz yukarıdaki tarife türü/mevcut kullanım alanı ile tam ücret üzerinden hesaplanır; diğer taşınmazların KENDİ tarifelerindeki toplam ücretini aşağıya girin.",
+      },
+      { key: "expenseBulkPropertyCount", label: "Toplu Değerleme - Toplam Taşınmaz Adedi", type: "number" },
+      { key: "expenseBulkOtherPropertiesFeeSum", label: "Toplu Değerleme - Diğer Taşınmazların Kendi Tarifelerindeki Toplam Ücreti (KDV Hariç)", type: "number" },
+      { key: "expenseAppraisalBulkFlatFee201Plus", label: "Toplu Değerleme 2. Grup - 201 ve Üzeri Sabit Ücret (KDV Hariç)", type: "number", adminEditableOnly: true },
 
       { key: "expenseAppraisalTierDaire1", label: "Daire/Villa/Ofis 1-149 m² (KDV Hariç)", type: "number", adminEditableOnly: true },
       { key: "expenseAppraisalTierDaire2", label: "Daire/Villa/Ofis 150-250 m² (KDV Hariç)", type: "number", adminEditableOnly: true },
@@ -17612,6 +17628,39 @@ const EXPENSE_APPRAISAL_TIERS = {
   ],
 };
 
+// 2026 yılı başlangıç değerleri — kullanıcının "RAPOR YAZMA PROGRAMI"
+// Excel/VBA dosyası ve resmi "2026 Yılı Gayrimenkul Değerleme Asgari Ücret
+// Tarifesi" görselinden alınmıştır. Bu değerler bulutta HİÇ kayıt yoksa
+// (appSettings/expenseFees belgesi ilk kez oluşturuluyorsa) admin ilk
+// girişinde otomatik doldurulup buluta kaydedilir — kullanıcı talebi:
+// "bu bilgileri ilk seferinde sen doldur ve kaydet, 2027 yılına kadar
+// sabit kalacak". Belediye Harcı burada YOK (per-report, asla sabitlenmez).
+const EXPENSE_FEE_2026_DEFAULTS = {
+  expenseAppraisalTierDaire1: "16500", expenseAppraisalTierDaire2: "17622",
+  expenseAppraisalTierDaire3: "20217", expenseAppraisalTierDaire4: "23946",
+  expenseAppraisalTierDaire5: "35187", expenseAppraisalTierDaire6: "55569",
+  expenseAppraisalTierDukkan1: "17949", expenseAppraisalTierDukkan2: "20985",
+  expenseAppraisalTierDukkan3: "33039", expenseAppraisalTierDukkan4: "45207",
+  expenseAppraisalTierDukkan5: "58485", expenseAppraisalTierDukkan6: "98667",
+  expenseAppraisalTierDukkan7: "201195", expenseAppraisalTierDukkan8: "245568",
+  expenseAppraisalTierDukkan9: "267759",
+  expenseAppraisalTierDepo1: "16197", expenseAppraisalTierDepo2: "19878",
+  expenseAppraisalTierDepo3: "23598", expenseAppraisalTierDepo4: "31437",
+  expenseAppraisalTierDepo5: "58965", expenseAppraisalTierDepo6: "96492",
+  expenseAppraisalTierDepo7: "135393",
+  expenseAppraisalTierTarim1: "17568", expenseAppraisalTierTarim2: "20232",
+  expenseAppraisalTierTarim3: "24051",
+  expenseAppraisalTierArsa1: "22479", expenseAppraisalTierArsa2: "26925",
+  expenseAppraisalTierArsa3: "35772", expenseAppraisalTierArsa4: "42120",
+  expenseAppraisalTierAkaryakit1: "97821",
+  expenseTransportFeeExVat: "2645.06",
+  expenseTitleDeedUnitFeeExVat: "255.83",
+  expenseInfoCenterShareExVat: "176",
+  expenseUnionShareExVat: "125",
+  expenseVatRatePercent: "20",
+  expenseAppraisalBulkFlatFee201Plus: "511500",
+};
+
 // Admin tarafından yönetilen, bulutta ortak sabitler (tarife kademeleri +
 // birim ücretler + KDV oranı). Belediye Harcı ve tapu adedi burada YOK —
 // onlar rapora özgü, herkes girebilir.
@@ -17622,7 +17671,19 @@ const EXPENSE_FEE_ADMIN_KEYS = [
   "expenseInfoCenterShareExVat",
   "expenseUnionShareExVat",
   "expenseVatRatePercent",
+  "expenseAppraisalBulkFlatFee201Plus",
 ];
+
+// 6. GRUP — Toplu Değerleme: en büyük alanlı taşınmaz tam ücret alır,
+// diğerleri KENDİ tarifelerindeki ücretin bir yüzdesini alır (1. Grup %20,
+// 2. Grup %15). 2. Grup'ta 201 ve üzeri taşınmaz varsa sabit ücrete geçilir.
+const EXPENSE_BULK_MODE_1 = "1. Grup - Farklı Taşınmazlar (Aynı Mahalle/Köy)";
+const EXPENSE_BULK_MODE_2 = "2. Grup - Aynı Parsel Birden Fazla Bağımsız Bölüm";
+const EXPENSE_BULK_MODE_2_FLAT_THRESHOLD = 201;
+const EXPENSE_BULK_MODE_DISCOUNT = {
+  [EXPENSE_BULK_MODE_1]: 0.2,
+  [EXPENSE_BULK_MODE_2]: 0.15,
+};
 
 // KDV-hariç → KDV-dahil eşleşmeleri (hesaplanan/gizli alanlar).
 const EXPENSE_FEE_PAIR_MAP = {
@@ -17640,6 +17701,9 @@ const EXPENSE_FEE_WATCHED_KEYS = [
   "expenseAppraisalPropertyType",
   "expenseMunicipalityFeeExVat",
   "expenseTitleDeedCount",
+  "expenseBulkValuationMode",
+  "expenseBulkPropertyCount",
+  "expenseBulkOtherPropertiesFeeSum",
 ];
 
 function lookupExpenseAppraisalFeeExVat(propertyType, area) {
@@ -17655,7 +17719,16 @@ function recalculateExpenseFees() {
   const vatRate = parseValuationNumber(state.fields.expenseVatRatePercent);
   const multiplier = 1 + (Number.isFinite(vatRate) && vatRate >= 0 ? vatRate : 20) / 100;
 
-  const appraisalFee = lookupExpenseAppraisalFeeExVat(state.fields.expenseAppraisalPropertyType, state.fields.currentArea);
+  let appraisalFee = lookupExpenseAppraisalFeeExVat(state.fields.expenseAppraisalPropertyType, state.fields.currentArea);
+
+  const bulkMode = state.fields.expenseBulkValuationMode;
+  const bulkCount = parseValuationNumber(state.fields.expenseBulkPropertyCount);
+  const bulkOtherSum = parseValuationNumber(state.fields.expenseBulkOtherPropertiesFeeSum);
+  if (bulkMode === EXPENSE_BULK_MODE_2 && Number.isFinite(bulkCount) && bulkCount >= EXPENSE_BULK_MODE_2_FLAT_THRESHOLD) {
+    appraisalFee = parseValuationNumber(state.fields.expenseAppraisalBulkFlatFee201Plus);
+  } else if (EXPENSE_BULK_MODE_DISCOUNT[bulkMode] && Number.isFinite(appraisalFee) && Number.isFinite(bulkOtherSum) && bulkOtherSum > 0) {
+    appraisalFee += bulkOtherSum * EXPENSE_BULK_MODE_DISCOUNT[bulkMode];
+  }
   state.fields.expenseAppraisalFeeExVat = Number.isFinite(appraisalFee) ? formatValuationMoney(appraisalFee, { decimals: 2 }) : "";
 
   const titleDeedUnitFee = parseValuationNumber(state.fields.expenseTitleDeedUnitFeeExVat);
@@ -17701,7 +17774,19 @@ function scheduleExpenseFeeCloudSave() {
 async function syncExpenseFeesFromCloud() {
   try {
     const remote = await window.RaporCloudSync?.loadExpenseFees?.();
-    if (!remote) return;
+    if (!remote) {
+      // Bulutta hiç kayıt yok: admin ilk girişte 2026 varsayılanlarını
+      // otomatik doldurup buluta kaydeder (bir daha bu dal çalışmaz, çünkü
+      // bundan sonra remote her zaman dolu olur).
+      if (isCurrentUserAdmin()) {
+        Object.entries(EXPENSE_FEE_2026_DEFAULTS).forEach(([key, value]) => { state.fields[key] = value; });
+        recalculateExpenseFees();
+        saveState();
+        render();
+        scheduleExpenseFeeCloudSave();
+      }
+      return;
+    }
     let changed = false;
     EXPENSE_FEE_ADMIN_KEYS.forEach((key) => {
       const value = remote[key];

@@ -262,12 +262,14 @@
 
   let reportImageAssetsCache = [];
 
-  function reportImageHtml(key) {
+  function reportImageHtml(key, scale = 1) {
     const asset = reportImageAssetsCache.find((item) => item?.key === key);
     if (!asset?.location) return "";
     const title = escapeHtmlSafe(asset.title || "Rapor görseli");
+    const width = Math.round(480 * scale);
+    const height = Math.round(270 * scale);
     return `<div style="margin:8pt 0 14pt;text-align:center;page-break-inside:avoid;">
-      <img src="${escapeHtmlSafe(asset.location)}" width="640" height="360" style="width:480pt;height:270pt;border:1pt solid #94a3b8;" alt="${title}">
+      <img src="${escapeHtmlSafe(asset.location)}" width="640" height="360" style="width:${width}pt;height:${height}pt;border:1pt solid #94a3b8;" alt="${title}">
     </div>`;
   }
 
@@ -276,7 +278,7 @@
   }
 
   function reportMapSectionHtml(key, title, headingTag) {
-    const image = reportImageHtml(key);
+    const image = reportImageHtml(key, key === "location" ? 0.7 : 1);
     if (!image) return "";
     const tag = headingTag === "h2" ? "h2" : "h3";
     return `<div class="pg-section report-maps-section">

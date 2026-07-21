@@ -153,12 +153,12 @@
     <tr><td class="zg-label">Büyük Yatırım Projesi Olasılığı</td><td class="zg-value"><div>{{GABIM_MAJOR_INVESTMENT}}</div></td><td class="zg-label">Markalı Konut Proje Yoğunluğu</td><td class="zg-value"><div>{{GABIM_BRANDED_HOUSING}}</div></td></tr>
     <tr><td class="zg-label">Ticari Faaliyet Gelişme Hızı</td><td class="zg-value"><div>{{GABIM_COMMERCIAL_SPEED}}</div></td><td class="zg-label">Turizm Gelişme Potansiyeli</td><td class="zg-value"><div>{{GABIM_TOURISM_POTENTIAL}}</div></td></tr>
     <tr><td class="zg-label">Tapu Senedindeki Ana Gayr. Niteliği</td><td class="zg-value"><div>{{MAİN_PROPERTY_QUALİTY}}</div></td><td class="zg-label">Tapu Senedindeki Gayr. Nitelik Açıklama</td><td class="zg-value"><div>{{TİTLE_QUALİTY}}</div></td></tr>
-    <tr><td class="zg-label">Değ. Rap. Konu Gayr. Fiili Kullanım Amacı</td><td class="zg-value"><div>{{MAİN_PROPERTY_QUALİTY}}</div></td><td class="zg-label">Değ. Rap. Konu Gayr. Fiili Kullanım Açıklama</td><td class="zg-value"><div>{{TİTLE_QUALİTY}} olarak kullanılmaktadır.</div></td></tr>
+    <tr><td class="zg-label">Değ. Rap. Konu Gayr. Fiili Kullanım Amacı</td><td class="zg-value"><div>{{CURRENT_USAGE_NATURE}}</div></td><td class="zg-label">Değ. Rap. Konu Gayr. Fiili Kullanım Açıklama</td><td class="zg-value"><div>{{TİTLE_QUALİTY}} olarak kullanılmaktadır.</div></td></tr>
     <tr><td class="zg-label">Fiili Kullanım Amacı</td><td class="zg-value"><div>{{CURRENT_USAGE_NATURE}}</div></td><td class="zg-label">Fiili Kullanım Amaç Açıklama</td><td class="zg-value"><div>{{CURRENT_USAGE_NATURE}} olarak kullanılmaktadır.</div></td></tr>
     <tr><td class="zg-label">Ulaşım İmkanı</td><td class="zg-value"><div>{{GABIM_TRANSPORTATION}}</div></td><td class="zg-label">&nbsp;</td><td class="zg-value"><div>&nbsp;</div></td></tr>
     <tr><td class="zg-label">AVM / Plaza vb. İçinde Olma Durumu</td><td class="zg-value"><div>&nbsp;</div></td><td class="zg-label">Reklam ve Tabela İmkanı</td><td class="zg-value"><div>&nbsp;</div></td></tr>
     <tr><td class="zg-label">Ana Cadde Üzerinde Olma Durumu</td><td class="zg-value"><div>&nbsp;</div></td><td class="zg-label">Yaya Trafiğinin Yoğunluğu</td><td class="zg-value"><div>&nbsp;</div></td></tr>
-    <tr><td class="zg-label">Satış Durumu</td><td class="zg-value"><div>{{GABIM_SALEABILITY}}</div></td><td class="zg-label">Aylık Kira Değeri</td><td class="zg-value"><div>{{CURRENT_RENT}}</div></td></tr>
+    <tr><td class="zg-label">Aylık Kira Değeri (TL/m²)</td><td class="zg-value"><div>{{LEGAL_RENT_UNIT}}</div></td><td class="zg-label">Satış Durumu</td><td class="zg-value"><div>{{GABIM_SALEABILITY}}</div></td></tr>
     <tr><td class="zg-label">İndirgenmiş Toplam Yasal Alan (m²)</td><td class="zg-value"><div>{{TOTAL_LEGAL_REDUCED_AREA}}</div></td><td class="zg-label">İndirgenmiş Toplam Mevcut Alan (m²)</td><td class="zg-value"><div>{{TOTAL_CURRENT_REDUCED_AREA}}</div></td></tr>
   </table>
 </div>
@@ -185,11 +185,11 @@
   </table>
 </div>
 
-{{LOCATION_MAP_SECTION}}
-
 <div class="tapu-owner-panel"><h3>MALİK BİLGİLERİ</h3>{{MALIKLER_TABLO}}</div>
 
-<h2>4. GAYRİMENKUL NİTELİK BİLGİLERİ</h2>
+{{LOCATION_MAP_SECTION}}
+
+<h2 style="page-break-before:always;">4. GAYRİMENKUL NİTELİK BİLGİLERİ</h2>
 <div class="property-panel">
   <div class="property-subhead">Değerlendirilen Bağımsız Bölümün Bulunduğu Ana Gayrimenkulün Özellikleri</div>
   <div class="property-subhead">Yapıya Ait Bilgiler</div>
@@ -236,14 +236,12 @@
 
 <h2>5. İNCELEMELER</h2>
 <h3>Yasal Kısıtlamalar (Şerh, Rehin, Beyan, İpotek, Haciz ve Diğer Haklar)</h3>
-{{TAKYIDAT_TABLO}}
 {{ENCUMBRANCE_SUMMARY_TEXT}}
 
 <h3>Ruhsat, Mimari Proje ve Yasal İzinler — İmar Durumu</h3>
 {{PLANNİNG_NOTE_TEXT}}
 
 <h3>Proje, Yapı Ruhsatı, Yapı Kullanma İzin Belgesi</h3>
-{{İNCELENEN_BELGELER_TABLO}}
 {{PROJECT_REVIEW_DESCRIPTION}}
 {{REVIEWED_DOCUMENTS_DESCRIPTION}}
 {{BUILDING_INSPECTION_EXPLANATION_TEXT}}
@@ -342,7 +340,14 @@
   <tr><td style="width:33%;"><div class="fg-label">PLAN ONAY TARİHİ</div><div class="fg-box">{{PLAN_DATE}}</div></td><td style="width:33%;"><div class="fg-label">TAKS</div><div class="fg-box">{{TAKS}}</div></td><td style="width:33%;"><div class="fg-label">KAKS</div><div class="fg-box">{{KAKS}}</div></td></tr>
   <tr><td style="width:33%;"><div class="fg-label">HMAX</div><div class="fg-box">{{HMAX}}</div></td><td style="width:33%;"><div class="fg-label">ÖN/YAN BAHÇE</div><div class="fg-box">{{FRONT_GARDEN}} / {{SİDE_GARDEN}}</div></td><td colspan="1"></td></tr>
 </table>
+
+<div class="pg-section">
+<h2>EKLER: İNCELENEN BELGELER VE TAKYİDAT</h2>
+<h3>İncelenen Belgeler</h3>
 {{İNCELENEN_BELGELER_TABLO}}
+<h3>Takyidat</h3>
+{{TAKYIDAT_TABLO}}
+</div>
 
 </div>
 </body>
