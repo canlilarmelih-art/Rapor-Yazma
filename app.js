@@ -17717,14 +17717,17 @@ const EXPENSE_FEE_WATCHED_KEYS = [
   "expenseBulkOtherPropertiesFeeSum",
 ];
 
-// Arsa/Tarım/Akaryakıt kategorilerinde tarife "brüt alan" = ana taşınmazın
-// PARSEL yüzölçümü (landArea); Daire/Villa/Ofis, Dükkan, Depo kategorilerinde
-// ise bağımsız bölümün mevcut kullanım alanı (currentArea) esas alınır.
+// Arsa/Tarım kategorilerinde tarife "brüt alan" = ana taşınmazın PARSEL
+// yüzölçümü (landArea); Daire/Villa/Ofis, Dükkan, Depo kategorilerinde ise
+// bağımsız bölümün mevcut kullanım alanı (currentArea) esas alınır.
 const EXPENSE_LAND_BASED_APPRAISAL_TYPES = new Set([
   "Arsa / Tarım Alanı (İmarsız)",
   "Arsa (İmarlı)",
-  "Akaryakıt İstasyonu",
 ]);
+
+// Akaryakıt İstasyonu tarifesi "Tamamı" — tek sabit tutar, alan büyüklüğüne
+// bakılmaksızın uygulanır; bu yüzden alan şartı aranmaz.
+const EXPENSE_FLAT_APPRAISAL_TYPES = new Set(["Akaryakıt İstasyonu"]);
 
 function getExpenseAppraisalAreaField(propertyType) {
   return EXPENSE_LAND_BASED_APPRAISAL_TYPES.has(propertyType) ? "landArea" : "currentArea";
@@ -17732,8 +17735,12 @@ function getExpenseAppraisalAreaField(propertyType) {
 
 function lookupExpenseAppraisalFeeExVat(propertyType, area) {
   const tiers = EXPENSE_APPRAISAL_TIERS[propertyType];
+  if (!tiers) return Number.NaN;
+  if (EXPENSE_FLAT_APPRAISAL_TYPES.has(propertyType)) {
+    return parseValuationNumber(state.fields[tiers[0].key]);
+  }
   const numericArea = parseValuationNumber(area);
-  if (!tiers || !Number.isFinite(numericArea) || numericArea <= 0) return Number.NaN;
+  if (!Number.isFinite(numericArea) || numericArea <= 0) return Number.NaN;
   const tier = tiers.find((item) => numericArea >= item.min && numericArea <= item.max);
   if (!tier) return Number.NaN;
   return parseValuationNumber(state.fields[tier.key]);
