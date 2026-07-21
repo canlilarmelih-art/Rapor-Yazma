@@ -1,9 +1,30 @@
 # Rapor Yazma Programı — Handoff Notu
 
-Son güncelleme: 2026-07-21 · Servis edilen sürüm: **app.js?v=20260721-0130** (styles.css?v=20260720-0215, src/templates/template-engine.js?v=20260721-0045, cloud/cloud-sync.js?v=20260719-2200, cloud/report-library.js?v=20260719-2200, halkbank-risk-rules.js?v=20260707-1812)
+Son güncelleme: 2026-07-21 · Servis edilen sürüm: **app.js?v=20260721-1530** (styles.css?v=20260720-0215, src/templates/template-engine.js?v=20260721-0045, cloud/cloud-sync.js?v=20260719-2200, cloud/report-library.js?v=20260719-2200, halkbank-risk-rules.js?v=20260707-1812)
 
 Bu belge, bir sonraki geliştirici/oturum için projeyi çalıştırma, doğrulama ve bu
 oturumda yapılanları özetler.
+
+## 0.0.206 - 2026-07-21 - Adres POİ mesafe/seçim kuralları ve kullanım amacı kalıcılığı
+
+Adres ve Konum bölümündeki otomatik ve kullanıcı POİ'leri ile ulaşım arterleri
+artık tek bir 1000 m uygunluk kontrolünden geçer. Kullanıcı arterlerinde eksik
+olan mesafe filtresi eklendi; 1 km içinde arter yokken sınırsız mesafedeki en
+yakın arterin döndürülmesi kaldırıldı. Tarama ve kullanıcı POİ yükleme akışı
+artık otomatik seçim yapmaz. Kullanıcı noktaları listenin başında kalır ve
+harita yalnızca kullanıcının seçtiği POİ/arter markerlarını gösterir. Eski
+kayıtlardaki 1 km dışı arter kimliği ve kaynağın ürettiği bağlı alanlar temizlenir.
+
+`Bölge Yapılaşma Kul. Amacı` çoklu seçiminde, kendi metni virgül içeren
+seçeneklerin kayıt sonrası parçalanıp `Seçiniz` durumuna dönmesine neden olan
+ayrıştırma hatası giderildi. Ayrıştırıcı artık bilinen seçenekleri tam metin
+olarak ve geriye uyumlu biçimde tanır.
+
+Doğrulama: `npm.cmd run verify` geçti. Tarayıcı testinde `22086 m` arter kaydı
+listeden kalktı; yalnızca 395 m ve 771 m arterler kaldı. Başlangıç seçili POİ
+sayısı 0'dı; POİ seçildiğinde marker geldi, kaldırıldığında kayboldu. Virgüllü
+kullanım amacı seçimi kaydetme ve tam sayfa yeniden yükleme sonrası aynen korundu.
+Cache-buster: `app.js?v=20260721-1530`.
 
 ## 0.0.205 - 2026-07-21 - Leaflet global adı ve harita katmanı düzeltildi
 

@@ -703,7 +703,8 @@ const sourceGeneratedDefaultExcludedKeys = new Set([
 const nearbyRadiusMeters = 500;
 const nearbyExpandedRadiusMeters = 1000;
 const userNearbyRadiusMeters = 1000;
-const nearbyArteryFallbackRadiusMeters = 2000;
+const nearbySelectionRadiusMeters = userNearbyRadiusMeters;
+const nearbyArteryFallbackRadiusMeters = nearbySelectionRadiusMeters;
 const nearbySettlementFallbackRadiusMeters = 2000;
 const nearbyRequestTimeoutMs = 7000;
 const nearbyResultLimit = 45;
@@ -11104,8 +11105,9 @@ function createMultiCheckboxControl(field) {
   wrapper.classList.toggle("is-critical", Boolean(field.critical));
 
   const options = getFieldOptions(field);
-  let selected = getMultiCheckboxValues(field.key, field).filter((value) => !options.length || options.includes(value));
-  if (state.fields[field.key] && selected.length !== getMultiCheckboxValues(field.key, field).length) {
+  const effectiveField = { ...field, options };
+  let selected = getMultiCheckboxValues(field.key, effectiveField).filter((value) => !options.length || options.includes(value));
+  if (state.fields[field.key] && selected.length !== getMultiCheckboxValues(field.key, effectiveField).length) {
     state.fields[field.key] = formatMultiCheckboxValue(selected, field);
   }
   const summaryButton = document.createElement("button");
@@ -11254,11 +11256,39 @@ function normalizeRegionUsePurposeForEnvironment() {
 function getMultiCheckboxValues(key, field = {}) {
   const value = state.fields[key];
   if (Array.isArray(value)) return value;
+  const text = String(value || "").trim();
   const separator = field.rangeSummary ? /[,;-]/ : ",";
-  return normalizeMultiCheckboxValues(String(value || "")
-    .split(separator)
+  const optionValues = field.rangeSummary ? [] : parseStoredMultiCheckboxOptions(text, field.options || []);
+  return normalizeMultiCheckboxValues((optionValues.length ? optionValues : text.split(separator))
     .map((item) => item.trim())
     .filter(Boolean), field);
+}
+
+function parseStoredMultiCheckboxOptions(value, options = []) {
+  const text = String(value || "").trim();
+  const candidates = [...new Set(options.map((option) => String(option || "").trim()).filter(Boolean))]
+    .sort((a, b) => b.length - a.length);
+  if (!text || !candidates.length) return [];
+  if (candidates.includes(text)) return [text];
+
+  const memo = new Map();
+  const readFrom = (index) => {
+    if (index === text.length) return [];
+    if (memo.has(index)) return memo.get(index);
+    for (const option of candidates) {
+      if (!text.startsWith(option, index)) continue;
+      const optionEnd = index + option.length;
+      if (optionEnd === text.length) return [option];
+      const separatorMatch = text.slice(optionEnd).match(/^,\s*/);
+      if (!separatorMatch) continue;
+      const remaining = readFrom(optionEnd + separatorMatch[0].length);
+      if (remaining) return [option, ...remaining];
+    }
+    memo.set(index, null);
+    return null;
+  };
+
+  return readFrom(0) || [];
 }
 
 function normalizeMultiCheckboxValues(values, field = {}) {
@@ -11568,6 +11598,7 @@ function createMainArteryComposer(field) {
   const wrapper = document.createElement("div");
   wrapper.className = "artery-composer";
   const source = state.sourceValues.nearbyPlaces || {};
+  clearOutOfRangeMainArterySelection(source.places || []);
   const roads = getAllMainArteryPlacesWithUser(source.places || []);
   const selectedId = state.fields.mainArteryId || "";
   const selectedRoad = roads.find((road) => road.id === selectedId);
@@ -19845,10 +19876,9 @@ async function fetchNearbyPlacesForCurrentLocation(options = {}) {
       readAt: new Date().toISOString(),
       loading: false,
     };
-    state.sourceValues.nearbyPlaces.selectedIds = getNearestNearbySelectionIds(state.sourceValues.nearbyPlaces);
     state.uploadErrors = { ...(state.uploadErrors || {}), nearbyPlaces: "" };
     applyRegionAnalysisFields(environment.regionAnalysis);
-    autoSelectMainArtery(places);
+    clearOutOfRangeMainArterySelection(places);
     updateNearbyFieldFromSelection();
   } catch (error) {
     if (requestId !== nearbyRequestSerial) return;
@@ -19866,7 +19896,7 @@ async function fetchNearbyPlacesForCurrentLocation(options = {}) {
 function getAllNearbyPlacesWithUser(places = []) {
   const map = new Map();
   [...getUserNearbyPlaces(), ...places].forEach((place) => {
-    if (!place?.id) return;
+    if (!place?.id || !isNearbyPlaceInAddressRadius(place)) return;
     map.set(place.id, place);
   });
   return [...map.values()];
@@ -19880,45 +19910,43 @@ function getUserNearbyPlaces() {
 }
 
 function isUserNearbyPlaceInAddressRadius(place = {}) {
+  return isNearbyPlaceInAddressRadius(place);
+}
+
+function isNearbyPlaceInAddressRadius(place = {}) {
   const distance = Number(place.distance);
-  return Number.isFinite(distance) && distance <= userNearbyRadiusMeters;
+  return Number.isFinite(distance) && distance >= 0 && distance <= nearbySelectionRadiusMeters;
 }
 
 function getUserMainArteryPlaces() {
   return (state.sourceValues.userNearbyPlaces?.places || [])
     .filter((place) => place.category === "user-artery")
+    .filter((place) => isNearbyPlaceInAddressRadius(place))
     .sort((a, b) => a.distance - b.distance);
 }
 
 function getAllMainArteryPlacesWithUser(places = []) {
   const map = new Map();
   [...getUserMainArteryPlaces(), ...getNearbyArteries(places)].forEach((place) => {
-    if (!place?.id) return;
+    if (!place?.id || !isNearbyPlaceInAddressRadius(place)) return;
     map.set(place.id, place);
   });
-  return [...map.values()].sort((a, b) => a.distance - b.distance);
+  return [...map.values()];
 }
 
 function getNearbySelectionDisplayPlaces(source = state.sourceValues.nearbyPlaces || {}) {
   const allUserPlaces = getUserNearbyPlaces();
-  const usefulPlaceCount = [...allUserPlaces, ...(source.places || [])]
+  const autoSourcePlaces = (source.places || []).filter((place) => isNearbyPlaceInAddressRadius(place));
+  const usefulPlaceCount = [...allUserPlaces, ...autoSourcePlaces]
     .filter((place) => importantNearbyCategories.has(place.category) && !isSettlementLikeNearbyPlace(place))
     .length;
   const userPlaces = usefulPlaceCount >= nearbySettlementFallbackMinUsefulCount
     ? allUserPlaces.filter((place) => !isSettlementLikeNearbyPlace(place))
     : allUserPlaces;
   const userIds = new Set(userPlaces.map((place) => place.id));
-  const autoPlaces = getNearbyDisplayPlaces(source.places || [], source.scanCycle || 0)
+  const autoPlaces = getNearbyDisplayPlaces(autoSourcePlaces, source.scanCycle || 0)
     .filter((place) => !userIds.has(place.id));
   return [...userPlaces, ...autoPlaces];
-}
-
-function getNearestNearbySelectionIds(source = state.sourceValues.nearbyPlaces || {}) {
-  return getNearbySelectionDisplayPlaces(source)
-    .filter((place) => Number.isFinite(Number(place.distance)))
-    .sort((a, b) => Number(a.distance) - Number(b.distance))
-    .slice(0, nearbyAutoLimit)
-    .map((place) => place.id);
 }
 
 function isSettlementLikeNearbyPlace(place) {
@@ -19953,16 +19981,15 @@ async function refreshUserPoisFromServer(options = {}) {
       loadedFor: options.loadedFor || `${Number(point[0]).toFixed(4)},${Number(point[1]).toFixed(4)}`,
       loading: false,
     };
+    clearOutOfRangeMainArterySelection(state.sourceValues.nearbyPlaces?.places || []);
     if (options.select) {
       const nearbySource = state.sourceValues.nearbyPlaces || {};
-      const hasLegacySelection = nearbySource.selectionCustomized === undefined
-        && Array.isArray(nearbySource.selectedIds)
-        && nearbySource.selectedIds.length > 0;
+      const validIds = new Set(getNearbySelectionDisplayPlaces(nearbySource).map((place) => place.id));
       state.sourceValues.nearbyPlaces = {
         ...nearbySource,
-        selectedIds: nearbySource.selectionCustomized || hasLegacySelection
-          ? [...(nearbySource.selectedIds || [])]
-          : getNearestNearbySelectionIds(nearbySource),
+        selectedIds: nearbySource.selectionCustomized
+          ? (nearbySource.selectedIds || []).filter((id) => validIds.has(id))
+          : [],
       };
     }
     updateNearbyFieldFromSelection();
@@ -20018,13 +20045,6 @@ async function saveUserPoiFromMap(input, statusElement) {
   }
   if (input) input.value = "";
   await refreshUserPoisFromServer({ force: true });
-  const selected = new Set(state.sourceValues.nearbyPlaces?.selectedIds || []);
-  if (data.poi?.id) selected.add(data.poi.id);
-  state.sourceValues.nearbyPlaces = {
-    ...(state.sourceValues.nearbyPlaces || {}),
-    selectedIds: [...selected],
-    selectionCustomized: true,
-  };
   updateNearbyFieldFromSelection();
   autosave();
   if (statusElement) statusElement.textContent = "Kaydedildi.";
@@ -20055,14 +20075,6 @@ async function saveUserMainArteryFromMap(input, statusElement) {
   }
   if (input) input.value = "";
   await refreshUserPoisFromServer({ force: true });
-  const road = getUserMainArteryPlaces().find((place) => place.id === data.poi?.id);
-  if (road) {
-    state.fields.mainArteryId = road.id;
-    state.sourceValues.nearbyArtery = state.sourceValues.nearbyArtery || {};
-    setFieldFromSource("nearbyArtery", "mainArtery", road.name, { force: true });
-    updateTransportFromMainArtery(road, { force: true });
-    refreshEnvironmentDescriptionFromCurrentFields("mainArtery");
-  }
   autosave();
   if (statusElement) statusElement.textContent = "Ulaşım arteri kaydedildi.";
   renderSection();
@@ -21089,7 +21101,8 @@ function calculateDistanceMeters(lat1, lng1, lat2, lng2) {
 }
 
 function getNearbyDisplayPlaces(places, scanCycle = state.sourceValues.nearbyPlaces?.scanCycle || 0) {
-  let candidates = (places || [])
+  const eligiblePlaces = (places || []).filter((place) => isNearbyPlaceInAddressRadius(place));
+  let candidates = eligiblePlaces
     .filter((place) => importantNearbyCategories.has(place.category))
     .sort((a, b) => {
       const priorityDiff = (nearbyCategoryPriority[a.category] ?? 99) - (nearbyCategoryPriority[b.category] ?? 99);
@@ -21100,7 +21113,7 @@ function getNearbyDisplayPlaces(places, scanCycle = state.sourceValues.nearbyPla
     candidates = nonSettlementCandidates;
   }
   if (!candidates.length) {
-    candidates = (places || [])
+    candidates = eligiblePlaces
       .filter((place) => place.category !== "arteries")
       .sort((a, b) => {
         const priorityDiff = (nearbyCategoryPriority[a.category] ?? 99) - (nearbyCategoryPriority[b.category] ?? 99);
@@ -21108,7 +21121,7 @@ function getNearbyDisplayPlaces(places, scanCycle = state.sourceValues.nearbyPla
       });
   }
   if (!candidates.length) {
-    candidates = getNearbyArteries(places);
+    candidates = getNearbyArteries(eligiblePlaces);
   }
   if (candidates.length <= nearbyAutoLimit) return candidates;
   const start = (scanCycle * nearbyAutoLimit) % candidates.length;
@@ -21163,28 +21176,40 @@ function updateNearbyFieldFromSelection() {
 
 function getNearbyArteries(places) {
   const arteries = (places || [])
-    .filter((place) => place.category === "arteries")
+    .filter((place) => place.category === "arteries" && isNearbyPlaceInAddressRadius(place))
     .sort((a, b) => a.distance - b.distance);
   const withinRadius = arteries.filter((place) => place.distance <= 500);
   if (withinRadius.length >= mainArteryAutoLimit) return withinRadius;
   const withinExpanded = arteries.filter((place) => place.distance <= nearbyExpandedRadiusMeters);
-  return withinExpanded.length ? withinExpanded : arteries.slice(0, mainArteryAutoLimit);
+  return withinExpanded.slice(0, mainArteryAutoLimit);
 }
 
-function autoSelectMainArtery(places) {
-  const roads = getAllMainArteryPlacesWithUser(places);
-  if (!roads.length) return;
+function clearOutOfRangeMainArterySelection(places = []) {
   const currentId = state.fields.mainArteryId || "";
-  const stillValid = roads.some((road) => road.id === currentId);
-  if (currentId && stillValid) {
-    updateTransportFromMainArtery(roads.find((road) => road.id === currentId));
-    return;
-  }
+  if (!currentId) return false;
+  const selectedRoad = [
+    ...(state.sourceValues.userNearbyPlaces?.places || []),
+    ...(places || []),
+  ].find((road) => road?.id === currentId);
+  if (!selectedRoad || isNearbyPlaceInAddressRadius(selectedRoad)) return false;
 
-  const previousSourceValue = state.sourceValues.nearbyArtery?.applied?.mainArtery || "";
-  if (!state.fields.mainArtery || state.fields.mainArtery === previousSourceValue) {
-    selectMainArtery(roads[0].id, { auto: true });
+  state.fields.mainArteryId = "";
+  const arterySource = state.sourceValues.nearbyArtery || {};
+  const appliedArtery = arterySource.applied?.mainArtery || "";
+  if (state.fields.mainArtery === appliedArtery || state.fields.mainArtery === selectedRoad.name) {
+    state.fields.mainArtery = "";
+    arterySource.applied = { ...(arterySource.applied || {}), mainArtery: "" };
+    state.sourceValues.nearbyArtery = arterySource;
   }
+  const transportSource = state.sourceValues.nearbyTransport || {};
+  const appliedTransport = transportSource.applied?.transport || "";
+  if (appliedTransport && state.fields.transport === appliedTransport) {
+    state.fields.transport = "";
+    transportSource.applied = { ...(transportSource.applied || {}), transport: "" };
+    state.sourceValues.nearbyTransport = transportSource;
+  }
+  refreshEnvironmentDescriptionFromCurrentFields("mainArtery");
+  return true;
 }
 
 function selectMainArtery(id, options = {}) {

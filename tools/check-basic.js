@@ -159,15 +159,27 @@ function main() {
   assert(
     appJs.includes("function syncRenderedAddressFields()") &&
       appJs.includes("return Object.keys(previousValues).some") &&
-      appJs.includes("function getNearestNearbySelectionIds") &&
-      appJs.includes("state.sourceValues.nearbyPlaces.selectedIds = getNearestNearbySelectionIds") &&
+      appJs.includes("function isNearbyPlaceInAddressRadius") &&
+      appJs.includes("distance <= nearbySelectionRadiusMeters") &&
+      appJs.includes("clearOutOfRangeMainArterySelection") &&
+      !appJs.includes("function autoSelectMainArtery") &&
+      !appJs.includes("function getNearestNearbySelectionIds") &&
       appJs.includes("function getMapLabelPlaces()") &&
       appJs.includes("selectionCustomized: true") &&
       appJs.includes("nearbySource.selectionCustomized") &&
+      appJs.includes(": [],") &&
       appJs.includes("const selectedArteryId = String(state.fields.mainArteryId") &&
       cloudSyncJs.includes("selectionCustomized: Boolean(source.nearbyPlaces.selectionCustomized)") &&
       cloudSyncJs.includes("hydrateImportedAddressAdministrativeFields(state)"),
-    "Adres yukleme, harita hareketi veya yakin cevre ilk uc secimi korunmuyor."
+    "Adres yukleme, 1 km POI siniri veya secili olmayan harita noktasi kurali korunmuyor."
+  );
+  assert(
+    appJs.includes("function parseStoredMultiCheckboxOptions") &&
+      appJs.includes("if (candidates.includes(text)) return [text]") &&
+      appJs.includes("const separatorMatch = text.slice(optionEnd).match(/^,\\s*/)") &&
+      appJs.includes("const effectiveField = { ...field, options }") &&
+      appJs.includes("parseStoredMultiCheckboxOptions(text, field.options || [])"),
+    "Virgul iceren Bolge Yapilasma Kullanim Amaci seceneklerinin kayit sonrasi geri yuklenmesi korunmuyor."
   );
   assert(
     !indexHtml.includes("gate-theme-toggle") &&
@@ -554,10 +566,12 @@ function main() {
       appJs.includes("function getUserNearbyPlaces()") &&
       appJs.includes("userNearbyRadiusMeters = 1000") &&
       appJs.includes("function isUserNearbyPlaceInAddressRadius") &&
+      appJs.includes("function isNearbyPlaceInAddressRadius") &&
+      appJs.includes(".filter((place) => isNearbyPlaceInAddressRadius(place))") &&
+      appJs.includes("return withinExpanded.slice(0, mainArteryAutoLimit)") &&
       appJs.includes("return [...userPlaces, ...autoPlaces]") &&
-      appJs.includes("function getNearestNearbySelectionIds") &&
-      appJs.includes("state.sourceValues.nearbyPlaces.selectedIds = getNearestNearbySelectionIds") &&
-      appJs.includes("slice(0, nearbyAutoLimit)") &&
+      !appJs.includes("function getNearestNearbySelectionIds") &&
+      !appJs.includes("selectMainArtery(roads[0].id, { auto: true })") &&
       appJs.includes("nearbySettlementFallbackMinUsefulCount") &&
       appJs.includes("function isSettlementLikeNearbyPlace") &&
       appJs.includes('nonSettlementCandidates.length >= nearbySettlementFallbackMinUsefulCount') &&
@@ -716,7 +730,7 @@ function main() {
       !indexHtml.includes("cdn.jsdelivr.net/npm/leaflet") &&
       indexHtml.includes("styles.css?v=20260720-0215") &&
       indexHtml.includes("src/auth/access-control.js?v=20260719-2200") &&
-      indexHtml.includes("app.js?v=20260721-0130") &&
+      indexHtml.includes("app.js?v=20260721-1530") &&
       indexHtml.includes("cloud/cloud-sync.js?v=20260719-2200") &&
       indexHtml.includes("cloud/report-library.js?v=20260719-2200") &&
       indexHtml.includes("src/templates/template-engine.js?v=20260721-0045"),
