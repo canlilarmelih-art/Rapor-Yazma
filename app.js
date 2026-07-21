@@ -589,6 +589,29 @@ const sections = [
     ],
   },
   {
+    id: "expenseFees",
+    title: "Masraf Bilgileri",
+    badge: "Yıllık",
+    description:
+      "İş Bankası masraf yazısında kullanılan ücret kalemleri (KDV hariç tutarlar). Bu değerler yıllık olarak değişir, tüm kullanıcılar için ortaktır (bulutta saklanır) ve yalnızca admin tarafından güncellenebilir; diğer kullanıcılar salt-okunur görür.",
+    fields: [
+      { key: "expenseAppraisalFeeExVat", label: "Değerleme Ücreti (KDV Hariç)", type: "number", adminEditableOnly: true },
+      { key: "expenseTransportFeeExVat", label: "Ulaşım Bedeli (KDV Hariç)", type: "number", adminEditableOnly: true },
+      { key: "expenseTitleDeedFeeExVat", label: "Tapu Harcı (KDV Hariç)", type: "number", adminEditableOnly: true },
+      { key: "expenseMunicipalityFeeExVat", label: "Belediye Harcı (KDV Hariç)", type: "number", adminEditableOnly: true },
+      { key: "expenseInfoCenterShareExVat", label: "Gayrimenkul Bilgi Merkezi Payı (KDV Hariç)", type: "number", adminEditableOnly: true },
+      { key: "expenseUnionShareExVat", label: "Birlik Payı (KDV Hariç)", type: "number", adminEditableOnly: true },
+      { key: "expenseVatRatePercent", label: "KDV Oranı (%)", type: "number", adminEditableOnly: true },
+      { key: "expenseAppraisalFeeIncVat", label: "Değerleme Ücreti (KDV Dahil)", type: "number", hidden: true, readOnly: true },
+      { key: "expenseTransportFeeIncVat", label: "Ulaşım Bedeli (KDV Dahil)", type: "number", hidden: true, readOnly: true },
+      { key: "expenseTitleDeedFeeIncVat", label: "Tapu Harcı (KDV Dahil)", type: "number", hidden: true, readOnly: true },
+      { key: "expenseMunicipalityFeeIncVat", label: "Belediye Harcı (KDV Dahil)", type: "number", hidden: true, readOnly: true },
+      { key: "expenseInfoCenterShareIncVat", label: "Gayrimenkul Bilgi Merkezi Payı (KDV Dahil)", type: "number", hidden: true, readOnly: true },
+      { key: "expenseUnionShareIncVat", label: "Birlik Payı (KDV Dahil)", type: "number", hidden: true, readOnly: true },
+      { key: "expenseTotalFeeIncVat", label: "Toplam Ücret (KDV Dahil)", type: "number", hidden: true, readOnly: true },
+    ],
+  },
+  {
     id: "placeholders",
     title: "Placeholder",
     badge: "Tanım",
@@ -1753,6 +1776,7 @@ function createForm(section) {
       refreshEnvironmentDescriptionFromCurrentFields(field.key);
       refreshReviewedDocumentsDescriptionFromCurrentFields(field.key);
       refreshEncumbranceSummaryFromCurrentFields(field.key);
+      refreshExpenseFeesFromCurrentFields(field.key);
       refreshMainPropertyDescriptionFromCurrentFields(field.key);
       refreshShareExplanationFromCurrentFields(field.key);
       refreshPenaltyDecisionExplanationFromCurrentFields(field.key);
@@ -1803,6 +1827,7 @@ function createForm(section) {
       refreshEnvironmentDescriptionFromCurrentFields(field.key);
       refreshReviewedDocumentsDescriptionFromCurrentFields(field.key);
       refreshEncumbranceSummaryFromCurrentFields(field.key);
+      refreshExpenseFeesFromCurrentFields(field.key);
       refreshMainPropertyDescriptionFromCurrentFields(field.key);
       refreshShareExplanationFromCurrentFields(field.key);
       refreshPenaltyDecisionExplanationFromCurrentFields(field.key);
@@ -7577,12 +7602,12 @@ function updateUnitInteriorDescription(force = false) {
   if (activeTextarea) activeTextarea.value = text;
 }
 
-function composeUnitInteriorDescription() {
+function buildUnitInteriorDescriptionParts() {
   const rows = getUnitFloorRows()
     .map((row) => normalizeUnitFloorDescriptionRow(row))
     .filter((row) => row.floor || row.legalArea || row.currentArea || row.legalTerrace || row.currentTerrace || row.interiorText);
   const intro = composeUnitDescriptionIntro(rows);
-  if (!rows.length) return normalizeReportDescriptionText(intro);
+  if (!rows.length) return { intro, details: "" };
 
   let areaDescription = "";
   if (rows.length === 1) {
@@ -7615,7 +7640,23 @@ function composeUnitInteriorDescription() {
   const externalSentence = shouldUseExternalUnitInspectionText() ? composeExternalUnitInspectionSentence() : "";
   const decorativeDescription = getUnitDecorativeDescriptionForCombinedText();
   const shopFrontageDepthSentence = composeUnitShopFrontageDepthSentence();
-  return normalizeReportDescriptionText(joinNonEmptySentences([intro, areaDescription, shopFrontageDepthSentence, externalSentence, decorativeDescription]));
+  return {
+    intro,
+    details: joinNonEmptySentences([areaDescription, shopFrontageDepthSentence, externalSentence, decorativeDescription]),
+  };
+}
+
+function composeUnitInteriorDescription() {
+  const { intro, details } = buildUnitInteriorDescriptionParts();
+  return normalizeReportDescriptionText(joinNonEmptySentences([intro, details]));
+}
+
+function composeUnitInteriorDetailsDescription() {
+  return normalizeReportDescriptionText(buildUnitInteriorDescriptionParts().details);
+}
+
+function composeUnitDescriptionIntroForReport() {
+  return normalizeReportDescriptionText(buildUnitInteriorDescriptionParts().intro);
 }
 
 function getUnitDecorativeDescriptionForCombinedText() {
@@ -16194,6 +16235,7 @@ function canEditBuildingAgeManually() {
 
 function isFieldReadOnly(field = {}) {
   if (field.key === "buildingAge" && canEditBuildingAgeManually()) return false;
+  if (field.adminEditableOnly) return !isCurrentUserAdmin();
   return Boolean(field.readOnly);
 }
 
@@ -17455,6 +17497,80 @@ function createEmptyEncumbranceReportTables() {
 
 function createEmptyEncumbranceRows() {
   return Array.from({ length: encumbranceEmptyRowCount }, () => ({}));
+}
+
+// İş Bankası masraf yazısı ücret kalemleri: 6 KDV-hariç tutar admin
+// tarafından girilir (bkz. "expenseFees" bölümü, adminEditableOnly), KDV
+// dahil değerler ve toplam buradan otomatik hesaplanır. Bu tutarlar tüm
+// kullanıcılar/raporlar için ortaktır (bulutta saklanır, kullanıcı talebi:
+// "yalnızca admin değiştirebilsin").
+const EXPENSE_FEE_PAIR_MAP = {
+  expenseAppraisalFeeExVat: "expenseAppraisalFeeIncVat",
+  expenseTransportFeeExVat: "expenseTransportFeeIncVat",
+  expenseTitleDeedFeeExVat: "expenseTitleDeedFeeIncVat",
+  expenseMunicipalityFeeExVat: "expenseMunicipalityFeeIncVat",
+  expenseInfoCenterShareExVat: "expenseInfoCenterShareIncVat",
+  expenseUnionShareExVat: "expenseUnionShareIncVat",
+};
+const EXPENSE_FEE_BASE_KEYS = Object.keys(EXPENSE_FEE_PAIR_MAP);
+const EXPENSE_FEE_CLOUD_KEYS = [...EXPENSE_FEE_BASE_KEYS, "expenseVatRatePercent"];
+
+function recalculateExpenseFees() {
+  const vatRate = parseValuationNumber(state.fields.expenseVatRatePercent);
+  const multiplier = 1 + (Number.isFinite(vatRate) && vatRate >= 0 ? vatRate : 20) / 100;
+  let total = 0;
+  EXPENSE_FEE_BASE_KEYS.forEach((baseKey) => {
+    const incKey = EXPENSE_FEE_PAIR_MAP[baseKey];
+    const base = parseValuationNumber(state.fields[baseKey]);
+    if (Number.isFinite(base) && base > 0) {
+      const inclusive = base * multiplier;
+      state.fields[incKey] = formatValuationMoney(inclusive, { decimals: 2 });
+      total += inclusive;
+    } else {
+      state.fields[incKey] = "";
+    }
+  });
+  state.fields.expenseTotalFeeIncVat = total > 0 ? formatValuationMoney(total, { decimals: 2 }) : "";
+}
+
+function refreshExpenseFeesFromCurrentFields(changedKey) {
+  if (![...EXPENSE_FEE_BASE_KEYS, "expenseVatRatePercent"].includes(changedKey)) return;
+  recalculateExpenseFees();
+  if (isCurrentUserAdmin()) scheduleExpenseFeeCloudSave();
+}
+
+let expenseFeeCloudSaveTimer = null;
+function scheduleExpenseFeeCloudSave() {
+  clearTimeout(expenseFeeCloudSaveTimer);
+  expenseFeeCloudSaveTimer = setTimeout(() => {
+    const payload = {};
+    EXPENSE_FEE_CLOUD_KEYS.forEach((key) => { payload[key] = state.fields[key] || ""; });
+    window.RaporCloudSync?.saveExpenseFees?.(payload)?.catch?.((error) => {
+      console.warn("Masraf bilgileri buluta kaydedilemedi:", error?.code || error);
+    });
+  }, 800);
+}
+
+async function syncExpenseFeesFromCloud() {
+  try {
+    const remote = await window.RaporCloudSync?.loadExpenseFees?.();
+    if (!remote) return;
+    let changed = false;
+    EXPENSE_FEE_CLOUD_KEYS.forEach((key) => {
+      const value = remote[key];
+      if (value !== undefined && state.fields[key] !== value) {
+        state.fields[key] = value;
+        changed = true;
+      }
+    });
+    if (changed) {
+      recalculateExpenseFees();
+      saveState();
+      render();
+    }
+  } catch (error) {
+    console.warn("Masraf bilgileri buluttan alınamadı:", error?.code || error);
+  }
 }
 
 function refreshEncumbranceSummaryFromCurrentFields(changedKey) {
@@ -24356,17 +24472,20 @@ function gabimSecurityText() {
 
 function getGabimUnitInteriorCounts() {
   const summary = foldTurkish(formatUnitFloorInteriorSummary(getUnitFloorRows())).toLocaleLowerCase("tr");
-  const numberBefore = (word) => {
-    const match = summary.match(new RegExp(`\\b(\\d+)\\s*${word}\\b`, "i"));
-    if (match) return match[1];
-    return summary.includes(word) ? "1" : "";
+  const countMentions = (...words) => {
+    const total = words.reduce((sum, word) => {
+      const matches = [...summary.matchAll(new RegExp(`\\b(?:(\\d+)\\s*)?${word}\\b`, "gi"))];
+      return sum + matches.reduce((wordSum, match) => wordSum + Number(match[1] || 1), 0);
+    }, 0);
+    return total ? String(total) : "";
   };
   return {
-    salon: numberBefore("salon"),
-    oda: numberBefore("oda"),
-    banyo: numberBefore("banyo"),
-    mutfak: summary.includes("mutfak") ? "1" : "",
-    balkon: numberBefore("balkon"),
+    salon: countMentions("salon"),
+    oda: countMentions("oda"),
+    banyo: countMentions("banyo", "dus"),
+    tuvalet: countMentions("wc", "tuvalet"),
+    mutfak: countMentions("mutfak"),
+    balkon: countMentions("balkon", "teras"),
   };
 }
 
@@ -27976,6 +28095,7 @@ function setCurrentAccessUser(email) {
   currentAccessEmail = normalizedEmail;
   const nextRole = getCurrentAccessRole();
   document.body.dataset.userRole = nextRole;
+  if (currentAccessEmail) syncExpenseFeesFromCloud();
   if (previousEmail === currentAccessEmail && previousRole === nextRole) return;
   ensureActiveSectionVisible();
   render();

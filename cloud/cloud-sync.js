@@ -880,6 +880,33 @@
     window.addEventListener("offline", evaluateGate);
   }
 
+  // ---------------------------------------------------------------
+  // Ortak ayarlar (appSettings/{docId}) — tüm kullanıcılar okur, yalnızca
+  // admin yazar (Firestore kuralları bunu zorunlu kılar). İş Bankası masraf
+  // yazısı ücret kalemleri gibi yıllık/ortak değerler için kullanılır.
+  // ---------------------------------------------------------------
+  async function loadAppSetting(docId) {
+    if (!cloud.db || !cloud.user) return null;
+    try {
+      const snapshot = await cloud.db.collection("appSettings").doc(docId).get();
+      return snapshot.exists ? snapshot.data() : null;
+    } catch (error) {
+      console.warn(`cloud-sync: appSettings/${docId} okunamadı:`, error?.code || error);
+      return null;
+    }
+  }
+
+  async function saveAppSetting(docId, values) {
+    if (!cloud.db || !cloud.user) throw new Error("Bulut bağlantısı yok.");
+    await cloud.db.collection("appSettings").doc(docId).set(
+      { ...values, updatedAt: firebase.firestore.FieldValue.serverTimestamp() },
+      { merge: true }
+    );
+  }
+
+  const loadExpenseFees = () => loadAppSetting("expenseFees");
+  const saveExpenseFees = (values) => saveAppSetting("expenseFees", values);
+
   // report-library.js ve testler için dışa açılan yüzey.
   window.RaporCloudSync = {
     buildCloudReportPayload,
@@ -896,6 +923,8 @@
     signOutAndClearLocalData,
     onAuthChange,
     getIdToken,
+    loadExpenseFees,
+    saveExpenseFees,
     getStatus: () => ({
       kind: cloud.statusKind,
       text: cloud.lastSyncText,

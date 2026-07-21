@@ -539,7 +539,7 @@ const reportMapPlacementRules = {
   "vakifbank.html": ["HARİTA KONUM", "TAKYİDAT"],
   "vakifkatilim.html": ["Tapu Sekmesi ve Konum", "Özellikler Sekmesi"],
   "yapikredi.html": ["Adres Bilgileri", "Ana Gayrimenkul Site Özellikleri"],
-  "ziraat.html": ["2. GAYRİMENKUL TAPU BİLGİLERİ", "Malikler"],
+  "ziraat.html": ["2. GAYRİMENKUL TAPU BİLGİLERİ", "MALİK BİLGİLERİ"],
 };
 Object.entries(reportMapPlacementRules).forEach(([file, [before, after]]) => {
   const text = fs.readFileSync(path.join(appDir, "templates", file), "utf8");
@@ -576,12 +576,140 @@ assert(
 );
 const ziraatTemplateSource = fs.readFileSync(path.join(appDir, "templates", "ziraat.html"), "utf8");
 assert(
+  ziraatTemplateSource.indexOf("<h2 style=\"page-break-before:always;\">1. GAYRİMENKUL GABİM BİLGİLERİ</h2>") < ziraatTemplateSource.indexOf("<h2>2. GAYRİMENKUL MERKEZ BANKASI VERİLERİ</h2>") &&
+    ziraatTemplateSource.indexOf("<h2>2. GAYRİMENKUL MERKEZ BANKASI VERİLERİ</h2>") < ziraatTemplateSource.indexOf("<h2>2. GAYRİMENKUL TAPU BİLGİLERİ</h2>") &&
+    ziraatTemplateSource.includes(".ziraat-gabim-screen") &&
+    ziraatTemplateSource.includes("Talep Referansı") &&
+    ziraatTemplateSource.includes("Zincir İşletme mi?") &&
+    ziraatTemplateSource.includes("Açık Otopark Var mı?") &&
+    ziraatTemplateSource.includes("AVM / Plaza vb. İçinde Olma Durumu") &&
+    ziraatTemplateSource.includes("Zemine İndirgenmiş Alan (m²)"),
+  "Ziraat'in iki GABIM giriş bölümü, raporun başında banka ekranındaki kapsamlı form düzeninde yer almıyor."
+);
+assert(
+  ziraatTemplateSource.indexOf("<h2 style=\"page-break-before:always;\">ZİRAAT EKSPERTİZ SİSTEMİ YARDIMCI BİLGİLERİ</h2>") < ziraatTemplateSource.indexOf("<h2>GABİM VERİ SETİ</h2>") &&
+    ziraatTemplateSource.indexOf("<h2>GABİM VERİ SETİ</h2>") < ziraatTemplateSource.indexOf("<h2>ÇALIŞMA KAĞIDI</h2>"),
+  "Ziraat GABİM Veri Seti, Ziraat Ekspertiz Sistemi Yardımcı Bilgileri bölümünden sonra yer almıyor."
+);
+assert(
   ziraatTemplateSource.includes("#d9d9d9") &&
     ziraatTemplateSource.includes("#9f9f9f") &&
     ziraatTemplateSource.includes("border-radius: 0") &&
     ziraatTemplateSource.includes("Ziraat Ekspertiz Sistemi referans paleti") &&
     !ziraatTemplateSource.includes("background: #213f77"),
   "Ziraat Word sablonu, referans sistemin gri panel ve keskin kenarli veri kutusu dilini korumuyor."
+);
+const ziraatTapuSectionStart = ziraatTemplateSource.indexOf("<h2>2. GAYRİMENKUL TAPU BİLGİLERİ</h2>");
+const ziraatTapuSectionEnd = ziraatTemplateSource.indexOf("<h2>4. GAYRİMENKUL NİTELİK BİLGİLERİ</h2>");
+const ziraatTapuSection = ziraatTemplateSource.slice(ziraatTapuSectionStart, ziraatTapuSectionEnd);
+assert(
+  ziraatTapuSectionStart >= 0 &&
+    ziraatTapuSectionEnd > ziraatTapuSectionStart &&
+    ziraatTemplateSource.includes(".tapu-form") &&
+    ziraatTapuSection.includes('<table class="tapu-form">') &&
+    ziraatTapuSection.includes("PARSELİN YÜZ ÖLÇÜMÜ (m²)") &&
+    ziraatTapuSection.includes('KAT NO</td><td class="tapu-value"><div>&nbsp;</div>') &&
+    ziraatTapuSection.includes('BUCAĞI</td><td class="tapu-value"><div>&nbsp;</div>') &&
+    ziraatTapuSection.includes('SOKAĞI</td><td class="tapu-value"><div>&nbsp;</div>') &&
+    ziraatTapuSection.includes('DAİRE NO</td><td class="tapu-value"><div>{{INNER_DOOR}}</div>') &&
+    ziraatTapuSection.indexOf('MAHALLE</td><td class="tapu-value"><div>{{NEİGHBORHOOD}}</div>') < ziraatTapuSection.indexOf('KAT NO</td><td class="tapu-value"><div>{{TİTLE_FLOOR}}</div>') &&
+    ziraatTapuSection.indexOf('KAT NO</td><td class="tapu-value"><div>{{TİTLE_FLOOR}}</div>') < ziraatTapuSection.indexOf('BUCAĞI</td><td class="tapu-value"><div>&nbsp;</div>') &&
+    ziraatTapuSection.includes("<div class=\"tapu-owner-panel\"><h3>MALİK BİLGİLERİ</h3>{{MALIKLER_TABLO}}</div>") &&
+    !ziraatTapuSection.includes('<table class="field-grid">'),
+  "Ziraat tapu bolumu, referans ekrandaki iki bloklu etiket + veri kutusu yerlesimini korumuyor."
+);
+assert(
+  engineSource.includes('INNERDOOR: { f: ["innerDoor"] }'),
+  "Ziraat tapu Daire No icin INNER_DOOR placeholder aliasi bulunamadi."
+);
+assert(
+  engineSource.includes('SALEABILITY: { f: ["saleability"] }'),
+  "Ziraat satis kabiliyeti secimi icin SALEABILITY placeholder aliasi bulunamadi."
+);
+const ziraatPropertySectionStart = ziraatTemplateSource.indexOf("<h2>4. GAYRİMENKUL NİTELİK BİLGİLERİ</h2>");
+const ziraatPropertySectionEnd = ziraatTemplateSource.indexOf("<h2>5. İNCELEMELER</h2>");
+const ziraatPropertySection = ziraatTemplateSource.slice(ziraatPropertySectionStart, ziraatPropertySectionEnd);
+assert(
+  ziraatPropertySectionStart >= 0 &&
+    ziraatPropertySectionEnd > ziraatPropertySectionStart &&
+    ziraatPropertySection.includes("İnşaat Alanı (m²)</td><td class=\"pi-value\">&nbsp;</td>") &&
+    ziraatPropertySection.includes("{{BAGIMSIZBOLUM2025}}") &&
+    ziraatPropertySection.includes("{{UNIT_DESCRIPTION_INTRO}}") &&
+    ziraatPropertySection.indexOf("Birimler (Adet)") < ziraatPropertySection.indexOf("{{UNIT_DESCRIPTION_INTRO}}") &&
+    ziraatPropertySection.indexOf("{{UNIT_DESCRIPTION_INTRO}}") < ziraatPropertySection.indexOf("{{BAGIMSIZBOLUM2025}}") &&
+    !ziraatPropertySection.includes("{{KAT_BAZLI_İÇ_HACİMLER}}") &&
+    ziraatPropertySection.includes("{{SALON}}") &&
+    ziraatPropertySection.includes("{{ODA}}") &&
+    ziraatPropertySection.includes("{{BANYO}}") &&
+    ziraatPropertySection.includes("{{TUVALET}}") &&
+    ziraatPropertySection.includes("{{BALKON}}") &&
+    !ziraatPropertySection.includes("{{UNİT_İNTERİOR_DESCRİPTİON_TEXT}}") &&
+    !ziraatPropertySection.includes("{{UNİT_DECORATİVE_DESCRİPTİON_TEXT}}") &&
+    ziraatPropertySection.includes("{{SALEABILITY}}") &&
+    ziraatPropertySection.includes("{{VALUATİON_SALEABİLİTY_EXPLANATİON}}"),
+  "Ziraat nitelik bolumu, tekil insai aciklama, bos insaat alani veya satis kabiliyeti aciklamasini korumuyor."
+);
+assert(
+  engineSource.includes('BAGIMSIZBOLUM2025: { t: () => safeCall("composeUnitInteriorDetailsDescription") }') &&
+    engineSource.includes('UNITDESCRIPTIONINTRO: { t: () => safeCall("composeUnitDescriptionIntroForReport") }') &&
+    engineSource.includes('TUVALET: { fn: () => (safeCall("getGabimUnitInteriorCounts") || {}).tuvalet || "" }') &&
+    appSource.includes('banyo: countMentions("banyo", "dus")') &&
+    appSource.includes('balkon: countMentions("balkon", "teras")'),
+  "Ziraat insai metni ikinci dekoratif aciklamayi veya birim adet hesaplarini yeniden getiriyor."
+);
+globalThis.getGabimUnitInteriorCounts = () => ({ salon: "1", oda: "2", banyo: "2", tuvalet: "1", balkon: "3" });
+const ziraatUnitCountValues = ["SALON", "ODA", "BANYO", "TUVALET", "BALKON"].map((token) => engine.resolveToken(token).html);
+delete globalThis.getGabimUnitInteriorCounts;
+assert(
+  ziraatUnitCountValues.join("|") === "1|2|2|1|3",
+  "Ziraat birim adet placeholderlari otomatik hesaplanan degerleri cozumlemiyor."
+);
+const ziraatReviewsSectionStart = ziraatTemplateSource.indexOf("<h2>5. İNCELEMELER</h2>");
+const ziraatReviewsSectionEnd = ziraatTemplateSource.indexOf("<h2>6. GAYRİMENKUL DEĞERLEME</h2>");
+const ziraatReviewsSection = ziraatTemplateSource.slice(ziraatReviewsSectionStart, ziraatReviewsSectionEnd);
+assert(
+  ziraatReviewsSectionStart >= 0 &&
+    ziraatReviewsSectionEnd > ziraatReviewsSectionStart &&
+    ziraatReviewsSection.includes("{{PROJECT_REVIEW_DESCRIPTION}}") &&
+    ziraatReviewsSection.includes("{{REVIEWED_DOCUMENTS_DESCRIPTION}}") &&
+    ziraatReviewsSection.includes("{{BUILDING_INSPECTION_EXPLANATION_TEXT}}") &&
+    ziraatReviewsSection.includes("{{PENALTY_DECISION_EXPLANATION}}") &&
+    ziraatReviewsSection.includes("{{İSKAN_VAR_MI}}") &&
+    ziraatReviewsSection.includes("{{OCCUPANCY_PERMIT_DATE}}") &&
+    ziraatReviewsSection.includes("{{MUNICIPALITY_BOUNDARY_STATUS}}") &&
+    ziraatReviewsSection.includes("{{DOCUMENT_REVIEW_INSTITUTION}}") &&
+    ziraatReviewsSection.includes("{{EKB_STATUS}}") &&
+    ziraatReviewsSection.includes("{{EKB_DOCUMENT_NO}}") &&
+    ziraatReviewsSection.includes("{{EKB_ENERGY_CLASS}}") &&
+    !ziraatReviewsSection.includes("{{PROJECT_CONFORMİTY}}"),
+  "Ziraat incelemeler bolumu proje/ruhsat aciklamalari ile iskan, belediye ve EKB alanlarini referans ekrandaki akista tutmuyor."
+);
+assert(
+  engineSource.includes("BUILDINGINSPECTIONEXPLANATIONTEXT") &&
+    engineSource.includes("PENALTYDECISIONEXPLANATION") &&
+    engineSource.includes("OCCUPANCYPERMITDATE") &&
+    engineSource.includes("MUNICIPALITYBOUNDARYSTATUS") &&
+    engineSource.includes("DOCUMENTREVIEWINSTITUTION") &&
+    engineSource.includes("EKBSTATUS"),
+  "Ziraat incelemeler bolumu icin gereken placeholder aliaslari bulunamadi."
+);
+assert(
+  engineSource.includes("GABIMCALCULATEDEMSAL") &&
+    engineSource.includes("GABIMTRANSPORTATION") &&
+    engineSource.includes("GABIMSECURITY") &&
+    engineSource.includes("GABIMSALEABILITY"),
+  "Ziraat GABIM ekranlarindaki secimli alanlarin placeholder baglantilari bulunamadi."
+);
+stubState.tables.documents.push({ c0: "Yapı Kullanma İzin Belgesi", c1: "Belediye", c2: "2021-06-15", c3: "19", c4: "Tam" });
+stubState.fields.hasEkb = "Evet";
+const ziraatReviewFieldValues = [
+  engine.resolveToken("OCCUPANCY_PERMIT_DATE").html,
+  engine.resolveToken("EKB_STATUS").html,
+  engine.resolveToken("MUNICIPALITY_BOUNDARY_STATUS").html,
+];
+assert(
+  ziraatReviewFieldValues.join("|") === "15.06.2021|VAR|Evet",
+  `Ziraat incelemeler iskan tarihi, EKB durumu veya belediye siniri degeri cozumlenemiyor: ${ziraatReviewFieldValues.join("|")}`
 );
 assert(
   engineSource.includes("LOCATIONMAPIMAGE") &&

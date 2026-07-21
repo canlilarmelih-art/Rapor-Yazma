@@ -218,6 +218,19 @@
     return { type: String(hit?.c0 || "").trim(), date: outputDate(hit?.c2), no: String(hit?.c3 || "").trim() };
   }
 
+  function occupancyPermitDate() {
+    const rows = Array.isArray(state.tables?.documents) ? state.tables.documents : [];
+    const hit = rows.find((row) => /kullanma\s*[iİ]zin|iskan/i.test(String(row?.c0 || "")));
+    return outputDate(hit?.c2);
+  }
+
+  function ekbStatusText() {
+    const value = field("hasEkb").toLocaleLowerCase("tr-TR");
+    if (value === "evet") return "VAR";
+    if (value === "hayır" || value === "hayir") return "YOK";
+    return "";
+  }
+
   function comparableLineText(index) {
     try {
       const rows = getComparableValuationRows();
@@ -326,6 +339,7 @@
     DISKAPINO: { f: ["outerDoor"] },
     BBNO: { f: ["unitNo", "innerDoor"] },
     ICKAPINO: { f: ["innerDoor", "unitNo"] },
+    INNERDOOR: { f: ["innerDoor"] },
     KAT1: { f: ["addressFloor", "titleFloor"] },
     KAT2: { f: ["titleFloor", "addressFloor"] },
     TAPUKAT: { f: ["titleFloor"] },
@@ -446,12 +460,18 @@
     PROJEYEUYGUNLUK2025: { t: () => field("projectReviewDescription") || safeCall("buildProjectReviewDescription") || field("projectConformity") },
     PROJECTREVIEWDESCRIPTION: { t: () => field("projectReviewDescription") || safeCall("buildProjectReviewDescription") || field("projectConformity") },
     REVIEWEDDOCUMENTSDESCRIPTION: { t: () => field("reviewedDocumentsDescription") || safeCall("buildReviewedDocumentsDescription") },
+    BUILDINGINSPECTIONEXPLANATIONTEXT: { t: () => field("buildingInspectionExplanation") || safeCall("buildBuildingInspectionExplanation") },
+    PENALTYDECISIONEXPLANATION: { t: () => field("penaltyDecisionExplanation") || safeCall("buildPenaltyDecisionExplanation") },
     PROJEYEUYGUNMU2025: { f: ["projectDifference", "mainRealEstateProjectSuitable"] },
     MIMARIUYGUNLUK: { f: ["mainRealEstateProjectSuitable", "projectDifference"] },
     ANAGAYRUYG: { f: ["mainRealEstateProjectSuitable"] },
     ANAGAYRNOTU: { f: ["mainRealEstateProjectSuitabilityNote"] },
     PROJEKURUM2025: { f: ["projectInstitution", "documentReviewInstitution"] },
     ISKANVARMI: { fn: () => safeCall("gabimOccupancyPermitText") },
+    OCCUPANCYPERMITDATE: { fn: occupancyPermitDate },
+    MUNICIPALITYBOUNDARYSTATUS: { fn: () => field("district", "titleDistrict") ? "Evet" : "" },
+    DOCUMENTREVIEWINSTITUTION: { f: ["documentReviewInstitution", "projectInstitution"] },
+    EKBSTATUS: { fn: ekbStatusText },
     ISBANKMIMARIPROJE: { t: () => field("projectReviewDescription") || safeCall("buildProjectReviewDescription") || field("projectConformity") },
     UYGACIKLAMA: { t: () => field("projectReviewDescription") || safeCall("buildProjectReviewDescription") || field("projectConformity") },
     VAKIFMIMARIPROJE: { t: () => field("projectReviewDescription") || safeCall("buildProjectReviewDescription") || field("projectConformity") },
@@ -462,12 +482,35 @@
     EKBSON: { d: ["ekbValidUntil"] },
     EKBACIKLAMA: { t: () => field("ekbExplanation") || safeCall("buildEkbExplanation") },
 
+    // --- Ziraat GABIM ekran değerleri ---
+    GABIMCALCULATEDEMSAL: { fn: () => safeCall("gabimCalculatedEmsalText") },
+    GABIMTRANSPORTATION: { fn: () => safeCall("gabimTransportationLevelText") },
+    GABIMMAJORINVESTMENT: { fn: () => safeCall("gabimMajorInvestmentProjectText") },
+    GABIMBRANDEDHOUSING: { fn: () => safeCall("gabimBrandedHousingDensityText") },
+    GABIMDEVELOPMENTSPEED: { fn: () => safeCall("gabimDevelopmentSpeedText") },
+    GABIMCOMMERCIALSPEED: { fn: () => safeCall("gabimCommercialDevelopmentSpeedText") },
+    GABIMTOURISMPOTENTIAL: { fn: () => safeCall("gabimTourismPotentialText") },
+    GABIMSECURITY: { fn: () => safeCall("gabimSecurityText") },
+    GABIMELEVATOR: { fn: () => safeCall("gabimElevatorText") },
+    GABIMOPENCARPARK: { fn: () => safeCall("gabimCarparkText", "Açık") },
+    GABIMCLOSEDCARPARK: { fn: () => safeCall("gabimCarparkText", "Kapalı") },
+    GABIMPOOL: { fn: () => safeCall("gabimPoolText") },
+    GABIMPREFERREDUSE: { fn: () => safeCall("gabimPreferredUseAreaText") },
+    GABIMCONSTRUCTIONQUALITY: { fn: () => safeCall("gabimConstructionQualityText") },
+    GABIMSALEABILITY: { fn: () => safeCall("gabimSaleabilityText") },
+
     // --- Ana gayrimenkul / bağımsız bölüm ---
     ANAGAYRIMENKUL2025: { t: () => field("mainPropertyDescription") || safeCall("buildMainPropertyDescription") },
     ZIRAATANAGAYRIMENKULNORMAL: { t: () => field("mainPropertyDescription") || safeCall("buildMainPropertyDescription") },
     ZIRAATANAGYDIGER: { fn: () => "" },
-    BAGIMSIZBOLUM2025: { t: unitInteriorPlusDecorative },
+    BAGIMSIZBOLUM2025: { t: () => safeCall("composeUnitInteriorDetailsDescription") },
+    UNITDESCRIPTIONINTRO: { t: () => safeCall("composeUnitDescriptionIntroForReport") },
     KATBAZLIICHACIMLER: { fn: () => safeCall("formatUnitFloorInteriorSummary", safeCall("getUnitFloorRows")) },
+    SALON: { fn: () => (safeCall("getGabimUnitInteriorCounts") || {}).salon || "" },
+    ODA: { fn: () => (safeCall("getGabimUnitInteriorCounts") || {}).oda || "" },
+    BANYO: { fn: () => (safeCall("getGabimUnitInteriorCounts") || {}).banyo || "" },
+    TUVALET: { fn: () => (safeCall("getGabimUnitInteriorCounts") || {}).tuvalet || "" },
+    BALKON: { fn: () => (safeCall("getGabimUnitInteriorCounts") || {}).balkon || "" },
     BINAYAPITARZI: { f: ["buildingStyle"] },
     YAPISINIFI: { f: ["buildingClass"] },
     MEVCUTYAPINIZAMI: { f: ["buildingOrder"] },
@@ -536,6 +579,7 @@
     DEGERLEME2025: { t: () => field("saleabilityNote") || safeCall("buildValuationMethodExplanation") },
     STKACIKLAMA2025: { t: () => field("saleabilityNote") },
     SATISACIKLAMA: { t: () => field("saleabilityNote") },
+    SALEABILITY: { f: ["saleability"] },
     DEGERLEMEMETODU: { f: ["valuationMethod"] },
     OLUMLUFAKTOR: { t: () => safeCall("buildValueFactorsPositiveText") },
     OLUMSUZFAKTOR: { t: () => safeCall("buildValueFactorsNegativeText") },

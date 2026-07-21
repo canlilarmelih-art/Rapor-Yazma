@@ -5,9 +5,10 @@
 <title>İş Bankası Masraf Yazısı</title>
 <!--
   İŞ BANKASI MASRAF/ÜCRET YAZISI ŞABLONU
-  Ücret tutarları programda tutulmadığından noktalı alanlar (………) Word
-  çıktısında elle doldurulur. İsterseniz sabit tutarları buraya doğrudan
-  yazabilirsiniz — bu dosya serbestçe düzenlenebilir.
+  Ücret kalemleri "Masraf Bilgileri" bölümündeki KDV-hariç tutarlardan
+  otomatik doldurulur (KDV dahil değerler ve toplam otomatik hesaplanır).
+  Bu tutarlar yıllık olarak değişir, tüm kullanıcılar için ortaktır
+  (bulutta saklanır) ve yalnızca admin tarafından güncellenebilir.
 -->
 <style>
   @page WordSection1 { size: 595.35pt 841.95pt; margin: 36pt; mso-header-margin:35.4pt; mso-footer-margin:35.4pt; mso-paper-source:0; }
@@ -41,13 +42,13 @@ kapsayan fatura ekte yer almaktadır.</p>
 <p>Saygılarımızla,</p>
 
 <div class="fees">
-  <p>Değerleme Ücreti (TL): ……… TL + %20 KDV = ……… TL</p>
-  <p>Ulaşım Bedeli (TL): ……… TL + %20 KDV = ……… TL</p>
-  <p>Tapu Harcı (TL): ……… TL + %20 KDV = ……… TL</p>
-  <p>Belediye Harcı (TL): ……… TL + %20 KDV = ……… TL</p>
-  <p>Gayrimenkul Bilgi Merkezi Payı: ……… TL + %20 KDV = ……… TL</p>
-  <p>Birlik Payı: ……… TL + %20 KDV = ……… TL</p>
-  <p><strong>Toplam Ücret (TL): ……… TL</strong></p>
+  <p>Değerleme Ücreti (TL): {{EXPENSE_APPRAISAL_FEE_EX_VAT}} TL + %{{EXPENSE_VAT_RATE_PERCENT}} KDV = {{EXPENSE_APPRAISAL_FEE_INC_VAT}} TL</p>
+  <p>Ulaşım Bedeli (TL): {{EXPENSE_TRANSPORT_FEE_EX_VAT}} TL + %{{EXPENSE_VAT_RATE_PERCENT}} KDV = {{EXPENSE_TRANSPORT_FEE_INC_VAT}} TL</p>
+  <p>Tapu Harcı (TL): {{EXPENSE_TITLE_DEED_FEE_EX_VAT}} TL + %{{EXPENSE_VAT_RATE_PERCENT}} KDV = {{EXPENSE_TITLE_DEED_FEE_INC_VAT}} TL</p>
+  <p>Belediye Harcı (TL): {{EXPENSE_MUNICIPALITY_FEE_EX_VAT}} TL + %{{EXPENSE_VAT_RATE_PERCENT}} KDV = {{EXPENSE_MUNICIPALITY_FEE_INC_VAT}} TL</p>
+  <p>Gayrimenkul Bilgi Merkezi Payı: {{EXPENSE_INFO_CENTER_SHARE_EX_VAT}} TL + %{{EXPENSE_VAT_RATE_PERCENT}} KDV = {{EXPENSE_INFO_CENTER_SHARE_INC_VAT}} TL</p>
+  <p>Birlik Payı: {{EXPENSE_UNION_SHARE_EX_VAT}} TL + %{{EXPENSE_VAT_RATE_PERCENT}} KDV = {{EXPENSE_UNION_SHARE_INC_VAT}} TL</p>
+  <p><strong>Toplam Ücret (TL): {{EXPENSE_TOTAL_FEE_INC_VAT}} TL</strong></p>
 </div>
 
 <div class="sign">

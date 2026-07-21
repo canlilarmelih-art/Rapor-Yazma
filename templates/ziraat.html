@@ -37,6 +37,53 @@
   .field-grid .fg-label { font-size: 6.2pt; font-weight: 700; color: #000000; margin: 0 0 1pt; line-height: 1.08; }
   .field-grid .fg-box { border: 1pt solid #9f9f9f; border-radius: 0; background: #ffffff; color: #000000; padding: 2pt 3pt; font-size: 6.5pt; line-height: 1.15; min-height: 9pt; }
 
+  /* Ziraat'in iki GABIM giriş ekranı: yoğun iki kolonlu etiket ve veri kutusu düzeni. */
+  .ziraat-gabim-screen { border: 1pt solid #8f8f8f; background: #f7f7f7; margin: 3pt 2pt 7pt; padding: 4pt 6pt 6pt; }
+  .ziraat-gabim-tab { display: inline-block; min-width: 68pt; padding: 2pt 7pt; border: 1pt solid #8f8f8f; background: #e2e2e2; font-size: 6.5pt; text-align: center; margin: 0 0 4pt; }
+  .ziraat-gabim-note { margin: 0 0 5pt; color: #d40000; font-size: 6.5pt; font-style: italic; font-weight: 700; }
+  .ziraat-gabim-grid { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 6.4pt; }
+  .ziraat-gabim-grid td { padding: 1.5pt 2pt; vertical-align: middle; }
+  .ziraat-gabim-grid .zg-label { width: 18%; font-weight: 700; color: #000000; }
+  .ziraat-gabim-grid .zg-value { width: 32%; }
+  .ziraat-gabim-grid .zg-value div { min-height: 8.5pt; box-sizing: border-box; padding: 1.5pt 3pt; border: 1pt solid #9f9f9f; background: #ffffff; color: #000000; }
+  .ziraat-gabim-rule { border: 0; border-top: 1pt solid #8f8f8f; margin: 4pt 0; }
+
+  /* Tapu ekranı üçlü rapor grid'i değil, kaynak Ziraat ekranındaki iki bağımsız
+     "etiket + giriş kutusu" bloğudur. Dört hücreli tablo Word/MHTML'de bu
+     koordinatları sabit tutar. */
+  .tapu-panel { border: 1pt solid #9f9f9f; margin: 3pt 5pt 6pt; padding: 4pt 5pt 5pt; background: #f8f8f8; }
+  .tapu-form { border-collapse: collapse; width: 100%; table-layout: fixed; font-size: 6.5pt; }
+  .tapu-form td { padding: 1.5pt 2pt; vertical-align: middle; }
+  .tapu-form .tapu-label { width: 17%; font-weight: 700; color: #000000; text-align: left; }
+  .tapu-form .tapu-value { width: 25%; }
+  .tapu-form .tapu-value div { min-height: 8.5pt; padding: 1.5pt 3pt; border: 1pt solid #9f9f9f; background: #ffffff; color: #000000; }
+  .tapu-required-note { margin: 2pt 5pt 3pt; }
+  .tapu-owner-panel { border: 1pt solid #9f9f9f; margin: 5pt 5pt 6pt; padding: 3pt 4pt 4pt; }
+  .tapu-owner-panel h3 { margin: 0 0 3pt; }
+
+  /* Gayrimenkul nitelik ekranı, referanstaki iç içe bölüm başlıkları ve
+     açıklama alanlarıyla çizilir. */
+  .property-panel { border: 1pt solid #9f9f9f; margin: 3pt 5pt 6pt; padding: 4pt 5pt 5pt; background: #f8f8f8; }
+  .property-subhead { margin: 0 0 4pt; padding: 3pt 5pt; border: 1pt solid #a6a6a6; background: #e7e7e7; font-size: 7pt; font-weight: 400; }
+  .property-inline { border-collapse: collapse; width: 100%; table-layout: fixed; font-size: 6.5pt; }
+  .property-inline td { padding: 2pt 3pt; vertical-align: middle; }
+  .property-inline .pi-label { width: 10%; font-weight: 700; white-space: normal; }
+  .property-inline .pi-value { width: 15%; border: 1pt solid #9f9f9f; background: #ffffff; min-height: 8.5pt; padding: 1.5pt 3pt; }
+  .property-text { border: 1pt solid #9f9f9f; background: #ffffff; min-height: 28pt; padding: 3pt; line-height: 1.2; }
+  .property-text.tall { min-height: 62pt; }
+  .property-detail { border-collapse: collapse; width: 100%; table-layout: fixed; font-size: 6.5pt; }
+  .property-detail td { padding: 2pt 3pt; vertical-align: middle; }
+  .property-detail .pd-label { width: 16%; font-weight: 700; }
+  .property-detail .pd-value { width: 22%; border: 1pt solid #9f9f9f; background: #ffffff; min-height: 8.5pt; padding: 1.5pt 3pt; }
+  .property-detail .pd-note { border: 1pt solid #9f9f9f; background: #ffffff; min-height: 8.5pt; padding: 1.5pt 3pt; }
+  .factor-panel { border: 1pt solid #9f9f9f; margin: 3pt 5pt 6pt; padding: 4pt 5pt 5pt; }
+  .unit-panel { border: 1pt solid #9f9f9f; margin: 3pt 5pt 6pt; padding: 4pt 5pt 5pt; }
+  .unit-panel .property-text { margin-top: 3pt; }
+  .unit-counts { border-collapse: collapse; width: 100%; table-layout: fixed; font-size: 6.5pt; }
+  .unit-counts td { padding: 2pt 3pt; vertical-align: middle; }
+  .unit-counts .uc-label { width: 7%; font-weight: 700; }
+  .unit-counts .uc-value { width: 13%; border: 1pt solid #9f9f9f; background: #ffffff; min-height: 8.5pt; padding: 1.5pt 3pt; }
+
   /* Değerleme/Emsaller/Ziraat Ekspertiz Sistemi Yardımcı Bilgiler/Gabim bölümleri tek sayfaya
      sığacak şekilde sıkıştırılır (kullanıcı talebi). Sayfa başı kırılması
      .pg-section üzerinde DEĞİL, başlık etiketinde satır içi
@@ -54,77 +101,138 @@
 
 <h1>ZİRAAT BANKASI RAPOR FORMATI</h1>
 
-<div class="pg-section">
-<h2>GABİM VERİ SETİ</h2>
-{{GABIM_VERI_SETI}}
+<h2 style="page-break-before:always;">1. GAYRİMENKUL GABİM BİLGİLERİ</h2>
+<div class="ziraat-gabim-screen">
+  <div class="ziraat-gabim-tab">GABİM Bilgileri</div>
+  <p class="ziraat-gabim-note">* Gayrimenkul fiili kullanım amacına göre doldurulması gereken alanlar değişiklik göstermektedir.</p>
+  <table class="ziraat-gabim-grid">
+    <tr><td class="zg-label">Talep Referansı</td><td class="zg-value"><div>&nbsp;</div></td><td class="zg-label">Gayrimenkul</td><td class="zg-value"><div>{{BLOCK_NO}} Ada: {{PARCEL_NO}} Parsel</div></td></tr>
+    <tr><td class="zg-label">Fiili Kullanım Amacı</td><td class="zg-value"><div>{{CURRENT_USAGE_NATURE}}</div></td><td class="zg-label">Tapu Türü</td><td class="zg-value"><div>{{GROUND_TYPE}}</div></td></tr>
+    <tr><td class="zg-label">İmar Lejandı</td><td class="zg-value"><div>{{LEGEND}}</div></td><td class="zg-label">&nbsp;</td><td class="zg-value"><div>&nbsp;</div></td></tr>
+  </table>
+  <hr class="ziraat-gabim-rule">
+  <table class="ziraat-gabim-grid">
+    <tr><td class="zg-label">Deprem Derecesi</td><td class="zg-value"><div>{{EARTHQUAKE_ZONE}}</div></td><td class="zg-label">Toplam Bağımsız Bölüm Sayısı</td><td class="zg-value"><div>{{TOTAL_UNITS}}</div></td></tr>
+    <tr><td class="zg-label">Zincir İşletme mi?</td><td class="zg-value"><div>&nbsp;</div></td><td class="zg-label">Üst Hakkı mı?</td><td class="zg-value"><div>&nbsp;</div></td></tr>
+    <tr><td class="zg-label">Kentsel Dönüşüm Bölgesi</td><td class="zg-value"><div>{{URBAN_TRANSFORMATION_AREA}}</div></td><td class="zg-label">Site İçerisinde mi?</td><td class="zg-value"><div>{{SİTE_İÇİNDE_Mİ}}</div></td></tr>
+    <tr><td class="zg-label">Güvenlik Var mı?</td><td class="zg-value"><div>{{GABIM_SECURITY}}</div></td><td class="zg-label">Asansör Var mı?</td><td class="zg-value"><div>{{GABIM_ELEVATOR}}</div></td></tr>
+    <tr><td class="zg-label">Hesaplanan Emsal (m²)</td><td class="zg-value"><div>{{GABIM_CALCULATED_EMSAL}}</div></td><td class="zg-label">Ulaşım İmkanı</td><td class="zg-value"><div>{{GABIM_TRANSPORTATION}}</div></td></tr>
+    <tr><td class="zg-label">Çevresinde Büyük Yatırım Projeleri</td><td class="zg-value"><div>{{GABIM_MAJOR_INVESTMENT}}</div></td><td class="zg-label">Markalı Konut Projeleri Yoğunluğu</td><td class="zg-value"><div>{{GABIM_BRANDED_HOUSING}}</div></td></tr>
+    <tr><td class="zg-label">Çevrenin Genel Yapılaşma Hızı</td><td class="zg-value"><div>{{GABIM_DEVELOPMENT_SPEED}}</div></td><td class="zg-label">Ticari Alanların Gelişme Hızı</td><td class="zg-value"><div>{{GABIM_COMMERCIAL_SPEED}}</div></td></tr>
+    <tr><td class="zg-label">Çevrenin Turizm Gelişme Potansiyeli</td><td colspan="3" class="zg-value"><div>{{GABIM_TOURISM_POTENTIAL}}</div></td></tr>
+  </table>
+  <hr class="ziraat-gabim-rule">
+  <p class="ziraat-gabim-note">** Aşağıdaki alanlar ilgili gayrimenkul türünde veri varsa doldurulur.</p>
+  <table class="ziraat-gabim-grid">
+    <tr><td class="zg-label">Açık Otopark Var mı?</td><td class="zg-value"><div>{{GABIM_OPEN_CARPARK}}</div></td><td class="zg-label">Kapalı Otopark Var mı?</td><td class="zg-value"><div>{{GABIM_CLOSED_CARPARK}}</div></td></tr>
+    <tr><td class="zg-label">Yüzme Havuzu Var mı?</td><td class="zg-value"><div>{{GABIM_POOL}}</div></td><td class="zg-label">Tercihli Kullanım Alanı mı?</td><td class="zg-value"><div>{{GABIM_PREFERRED_USE}}</div></td></tr>
+    <tr><td class="zg-label">Yapı Kullanma İzin Belgesi Var mı?</td><td class="zg-value"><div>{{İSKAN_VAR_MI}}</div></td><td class="zg-label">İnşaat Kalitesi</td><td class="zg-value"><div>{{GABIM_CONSTRUCTION_QUALITY}}</div></td></tr>
+    <tr><td class="zg-label">Yapım Yılı</td><td class="zg-value"><div>{{BUİLDİNG_CONSTRUCTİON_YEAR}}</div></td><td class="zg-label">Yapı Kat Sayısı</td><td class="zg-value"><div>{{TOTAL_FLOORS}}</div></td></tr>
+    <tr><td class="zg-label">Yapı Sınıfı ve Grubu</td><td class="zg-value"><div>{{BUİLDİNG_CLASS}}</div></td><td class="zg-label">Yapı Cinsi</td><td class="zg-value"><div>{{BUİLDİNG_STYLE}}</div></td></tr>
+    <tr><td class="zg-label">Enerji Sınıfı</td><td class="zg-value"><div>{{EKB_ENERGY_CLASS}}</div></td><td class="zg-label">İnşaat Seviyesi</td><td class="zg-value"><div>{{UNİT_CONSTRUCTİON_LEVEL}}</div></td></tr>
+    <tr><td class="zg-label">Konut Türü</td><td colspan="3" class="zg-value"><div>{{TİTLE_QUALİTY}}</div></td></tr>
+    <tr><td class="zg-label">Mutfak</td><td class="zg-value"><div>&nbsp;</div></td><td class="zg-label">Oda / Salon / Banyo / Balkon Sayısı</td><td class="zg-value"><div>{{ODA}} / {{SALON}} / {{BANYO}} / {{BALKON}}</div></td></tr>
+    <tr><td class="zg-label">Cephe</td><td colspan="3" class="zg-value"><div>{{FACADES}}</div></td></tr>
+    <tr><td class="zg-label">Isınma Sistem</td><td colspan="3" class="zg-value"><div>{{UNİT_HEATİNG_TYPE}}</div></td></tr>
+  </table>
 </div>
 
-<h2 style="page-break-before:always;">1. MERKEZ BANKASI VERİLERİ — GABİM BİLGİLERİ</h2>
-<p><em>Bu tablonun sıralaması Ziraat Ekspertiz Sisteminin "Gayrimenkul Merkez Bankası Verileri" ekranıyla eşleşecek şekilde
-gruplanmıştır: önce imar/yapılaşma verileri, sonra nitelik/tapu bilgileri, sonra bina/donanım bilgileri.</em></p>
-<table class="field-grid">
-  <tr><td style="width:33%;"><div class="fg-label">TAPUNUN TÜRÜ</div><div class="fg-box">{{GROUND_TYPE}}</div></td><td style="width:33%;"><div class="fg-label">ENERJİ KİMLİK BELGESİ SINIFI</div><div class="fg-box">{{EKB_ENERGY_CLASS}}</div></td><td style="width:33%;"><div class="fg-label">İMAR PLANI ÖLÇEĞİ</div><div class="fg-box">{{PLAN_SCALE}}</div></td></tr>
-  <tr><td style="width:33%;"><div class="fg-label">KAKS</div><div class="fg-box">{{KAKS}}</div></td><td style="width:33%;"><div class="fg-label">TAKS</div><div class="fg-box">{{TAKS}}</div></td><td style="width:33%;"><div class="fg-label">HMAX</div><div class="fg-box">{{HMAX}} metre</div></td></tr>
-  <tr><td style="width:33%;"><div class="fg-label">İMAR LEJANDI</div><div class="fg-box">{{LEGEND}}</div></td><td style="width:33%;"><div class="fg-label">YAPIM YILI</div><div class="fg-box">{{BUİLDİNG_CONSTRUCTİON_YEAR}}</div></td><td style="width:33%;"><div class="fg-label">HESAPLANAN EMSAL (m²)</div><div class="fg-box">{{CALCULATED_EMSAL}}</div></td></tr>
-  <tr><td style="width:33%;"><div class="fg-label">ARSA-ARAZİ M² BİRİM DEĞERİ (TL/m²)</div><div class="fg-box">{{LAND_UNİT_VALUE}}</div></td><td style="width:33%;"><div class="fg-label">YAPI NİZAMI</div><div class="fg-box">{{ORDER}}</div></td><td style="width:33%;"><div class="fg-label">DEPREME DAYANIKLILIK VE HASAR DURUMU</div><div class="fg-box">{{İSKAN_VAR_MI}}</div></td></tr>
-  <tr><td style="width:33%;"><div class="fg-label">DEPREM DERECESİ</div><div class="fg-box">{{EARTHQUAKE_ZONE}}</div></td><td style="width:33%;"><div class="fg-label">KENTSEL DÖNÜŞÜM BÖLGESİ Mİ?</div><div class="fg-box">{{URBAN_TRANSFORMATİON_AREA}}</div></td><td style="width:33%;"><div class="fg-label">TAPU SENEDİNDEKİ ANA GAYRİMENKUL NİTELİĞİ</div><div class="fg-box">{{MAİN_PROPERTY_QUALİTY}}</div></td></tr>
-  <tr><td style="width:33%;"><div class="fg-label">DEĞ. RAP. KONU GAYR. FİİLİ KULLANIM AMACI</div><div class="fg-box">{{CURRENT_USAGE_NATURE}}</div></td><td style="width:33%;"><div class="fg-label">TAPU BAĞIMSIZ BÖLÜM NİTELİĞİ</div><div class="fg-box">{{TİTLE_QUALİTY}}</div></td><td style="width:33%;"><div class="fg-label">AYLIK KİRA M² BİRİM DEĞERİ</div><div class="fg-box">{{LEGAL_RENT_UNİT}}</div></td></tr>
-  <tr><td style="width:33%;"><div class="fg-label">TOPLAM BAĞIMSIZ BÖLÜM SAYISI</div><div class="fg-box">{{TOTAL_UNİTS}}</div></td><td style="width:33%;"><div class="fg-label">SİTE İÇERİSİNDE Mİ</div><div class="fg-box">{{SİTE_İÇİNDE_Mİ}}</div></td><td style="width:33%;"><div class="fg-label">ASANSÖR VAR MI</div><div class="fg-box">{{ELEVATOR}}</div></td></tr>
-  <tr><td style="width:33%;"><div class="fg-label">OTOPARK VAR MI</div><div class="fg-box">{{CARPARK}}</div></td><td style="width:33%;"><div class="fg-label">SOSYAL TESİSLER</div><div class="fg-box">{{SOCİAL_FACİLİTİES}}</div></td><td style="width:33%;"><div class="fg-label">YAPI KULLANMA İZİN BELGESİ VAR MI</div><div class="fg-box">{{İSKAN_VAR_MI}}</div></td></tr>
-  <tr><td style="width:33%;"><div class="fg-label">MALZEME KALİTESİ</div><div class="fg-box">{{UNİT_MATERİAL_QUALİTY}}</div></td><td style="width:33%;"><div class="fg-label">BİNA KAT SAYISI</div><div class="fg-box">{{TOTAL_FLOORS}}</div></td><td style="width:33%;"><div class="fg-label">YAPI SINIFI VE GRUBU</div><div class="fg-box">{{BUİLDİNG_CLASS}}</div></td></tr>
-  <tr><td style="width:33%;"><div class="fg-label">BİNA YAPI TARZI / CİNSİ</div><div class="fg-box">{{BUİLDİNG_STYLE}}</div></td><td style="width:33%;"><div class="fg-label">İNŞAAT SEVİYESİ</div><div class="fg-box">{{UNİT_CONSTRUCTİON_LEVEL}}</div></td><td style="width:33%;"><div class="fg-label">İÇ HACİMLER</div><div class="fg-box">{{KAT_BAZLI_İÇ_HACİMLER}}</div></td></tr>
-  <tr><td style="width:33%;"><div class="fg-label">CEPHE</div><div class="fg-box">{{FACADES}}</div></td><td style="width:33%;"><div class="fg-label">ISINMA ŞEKLİ</div><div class="fg-box">{{UNİT_HEATİNG_TYPE}}</div></td><td colspan="1"></td></tr>
-</table>
-<p><em>Genel çevre/piyasa göstergeleri (büyük yatırım projeleri, markalı konut yoğunluğu, yapılaşma/gelişme
-hızı vb.) ile detaylı bina/bağımsız bölüm alan kırılımı "GABİM VERİ SETİ" bölümünde Ziraat Ekspertiz Sistemi ekranıyla birebir
-ızgara düzeninde ayrıca listelenmektedir.</em></p>
+<h2>2. GAYRİMENKUL MERKEZ BANKASI VERİLERİ</h2>
+<div class="ziraat-gabim-screen">
+  <div class="ziraat-gabim-tab">GABİM Bilgileri</div>
+  <table class="ziraat-gabim-grid">
+    <tr><td class="zg-label">Tapu Türü</td><td class="zg-value"><div>{{GROUND_TYPE}}</div></td><td class="zg-label">Enerji Sınıfı</td><td class="zg-value"><div>{{EKB_ENERGY_CLASS}}</div></td></tr>
+    <tr><td class="zg-label">İmar Planı Ölçeği</td><td class="zg-value"><div>{{PLAN_SCALE}}</div></td><td class="zg-label">Tercihli Kullanıma Durumu</td><td class="zg-value"><div>{{GABIM_PREFERRED_USE}}</div></td></tr>
+    <tr><td class="zg-label">TAKS</td><td class="zg-value"><div>{{TAKS}}</div></td><td class="zg-label">KAKS</td><td class="zg-value"><div>{{KAKS}}</div></td></tr>
+    <tr><td class="zg-label">İmar Lejandı</td><td class="zg-value"><div>{{LEGEND}}</div></td><td class="zg-label">HMAX</td><td class="zg-value"><div>{{HMAX}}</div></td></tr>
+    <tr><td class="zg-label">Hesaplanan Emsal (m²)</td><td class="zg-value"><div>{{GABIM_CALCULATED_EMSAL}}</div></td><td class="zg-label">Yapım Yılı</td><td class="zg-value"><div>{{BUİLDİNG_CONSTRUCTİON_YEAR}}</div></td></tr>
+    <tr><td class="zg-label">Terk Sonrası Parselin Yüzölçümü (m²)</td><td class="zg-value"><div>{{POST_ROAD_SETBACK_PARCEL_AREA}}</div></td><td class="zg-label">Arsa-Arazi Değeri (TL/m²)</td><td class="zg-value"><div>{{LAND_UNİT_VALUE}}</div></td></tr>
+    <tr><td class="zg-label">Yapı Nizamı</td><td class="zg-value"><div>{{ORDER}}</div></td><td class="zg-label">Yapı Nizamı Açıklama</td><td class="zg-value"><div>&nbsp;</div></td></tr>
+    <tr><td class="zg-label">Depreme Dayanıklılık ve Hasar Durumu</td><td class="zg-value"><div>&nbsp;</div></td><td class="zg-label">Deprem Derecesi</td><td class="zg-value"><div>{{EARTHQUAKE_ZONE}}</div></td></tr>
+    <tr><td class="zg-label">Kentsel Dönüşüm Bölgesi</td><td class="zg-value"><div>{{URBAN_TRANSFORMATION_AREA}}</div></td><td class="zg-label">Genel Yapılaşma Hızı</td><td class="zg-value"><div>{{GABIM_DEVELOPMENT_SPEED}}</div></td></tr>
+    <tr><td class="zg-label">Büyük Yatırım Projesi Olasılığı</td><td class="zg-value"><div>{{GABIM_MAJOR_INVESTMENT}}</div></td><td class="zg-label">Markalı Konut Proje Yoğunluğu</td><td class="zg-value"><div>{{GABIM_BRANDED_HOUSING}}</div></td></tr>
+    <tr><td class="zg-label">Ticari Faaliyet Gelişme Hızı</td><td class="zg-value"><div>{{GABIM_COMMERCIAL_SPEED}}</div></td><td class="zg-label">Turizm Gelişme Potansiyeli</td><td class="zg-value"><div>{{GABIM_TOURISM_POTENTIAL}}</div></td></tr>
+    <tr><td class="zg-label">Tapu Senedindeki Ana Gayr. Niteliği</td><td class="zg-value"><div>{{MAİN_PROPERTY_QUALİTY}}</div></td><td class="zg-label">Tapu Senedindeki Gayr. Nitelik Açıklama</td><td class="zg-value"><div>&nbsp;</div></td></tr>
+    <tr><td class="zg-label">Değ. Rap. Konu Gayr. Fiili Kullanım Amacı</td><td class="zg-value"><div>{{CURRENT_USAGE_NATURE}}</div></td><td class="zg-label">Değ. Rap. Konu Gayr. Fiili Kullanım Açıklama</td><td class="zg-value"><div>&nbsp;</div></td></tr>
+    <tr><td class="zg-label">Fiili Kullanım Amacı</td><td class="zg-value"><div>{{CURRENT_USAGE_NATURE}}</div></td><td class="zg-label">Fiili Kullanım Amaç Açıklama</td><td class="zg-value"><div>&nbsp;</div></td></tr>
+    <tr><td class="zg-label">Fiili Kullanım Amacı</td><td class="zg-value"><div>{{CURRENT_USAGE_NATURE}}</div></td><td class="zg-label">Ulaşım İmkanı</td><td class="zg-value"><div>{{GABIM_TRANSPORTATION}}</div></td></tr>
+    <tr><td class="zg-label">AVM / Plaza vb. İçinde Olma Durumu</td><td class="zg-value"><div>&nbsp;</div></td><td class="zg-label">Reklam ve Tabela İmkanı</td><td class="zg-value"><div>&nbsp;</div></td></tr>
+    <tr><td class="zg-label">Ana Cadde Üzerinde Olma Durumu</td><td class="zg-value"><div>&nbsp;</div></td><td class="zg-label">Yaya Trafiğinin Yoğunluğu</td><td class="zg-value"><div>&nbsp;</div></td></tr>
+    <tr><td class="zg-label">Satış Durumu</td><td class="zg-value"><div>{{GABIM_SALEABILITY}}</div></td><td class="zg-label">Aylık Kira Değeri</td><td class="zg-value"><div>{{CURRENT_RENT}}</div></td></tr>
+    <tr><td class="zg-label">Zemine İndirgenmiş Alan (m²)</td><td class="zg-value"><div>&nbsp;</div></td><td class="zg-label">&nbsp;</td><td class="zg-value"><div>&nbsp;</div></td></tr>
+  </table>
+</div>
 
 <h2>2. GAYRİMENKUL TAPU BİLGİLERİ</h2>
-<p><em>Tapu kaydında kat "Zemin" ise sisteme "Z", "1.Normal" ise "1", "3.Normal ve Çatı Piyesli" ise "3, Ç"
-olarak girilmelidir. Koordinatlar sisteme virgüllü girilmelidir (örn. "41,008225, 28,978445").</em></p>
-<table class="field-grid">
-  <tr><td style="width:33%;"><div class="fg-label">İL</div><div class="fg-box">{{CİTY}}</div></td><td style="width:33%;"><div class="fg-label">İLÇE</div><div class="fg-box">{{DİSTRİCT}}</div></td><td style="width:33%;"><div class="fg-label">MAHALLE / KÖY</div><div class="fg-box">{{TİTLE_NEİGHBORHOOD}}</div></td></tr>
-  <tr><td style="width:33%;"><div class="fg-label">PARSELİN YÜZÖLÇÜMÜ</div><div class="fg-box">{{LAND_AREA}}</div></td><td style="width:33%;"><div class="fg-label">KAT</div><div class="fg-box">{{TİTLE_FLOOR}}</div></td><td style="width:33%;"><div class="fg-label">BLOK</div><div class="fg-box">{{TİTLE_BLOCK_NAME}}</div></td></tr>
-  <tr><td style="width:33%;"><div class="fg-label">BB.NO</div><div class="fg-box">{{UNİT_NO}}</div></td><td style="width:33%;"><div class="fg-label">ZEMİN NO</div><div class="fg-box">{{TİTLE_PROPERTY_ID}}</div></td><td style="width:33%;"><div class="fg-label">ARSA PAYI</div><div class="fg-box">{{SHARE}} / {{DENOMİNATOR}}</div></td></tr>
-  <tr><td style="width:33%;"><div class="fg-label">CİLT SAYFA</div><div class="fg-box">{{REGİSTRY_VOLUME}} / {{REGİSTRY_PAGE}}</div></td><td style="width:33%;"><div class="fg-label">BAĞIMSIZ BÖLÜM NİTELİĞİ</div><div class="fg-box">{{TİTLE_QUALİTY}}</div></td><td style="width:33%;"><div class="fg-label">ADA</div><div class="fg-box">{{BLOCK_NO}}</div></td></tr>
-  <tr><td style="width:33%;"><div class="fg-label">MEVKİİ</div><div class="fg-box">{{LOCATİON_NAME}}</div></td><td style="width:33%;"><div class="fg-label">PARSEL</div><div class="fg-box">{{PARCEL_NO}}</div></td><td style="width:33%;"><div class="fg-label">ANA GAYRİMENKUL NİTELİĞİ</div><div class="fg-box">{{MAİN_PROPERTY_QUALİTY}}</div></td></tr>
-  <tr><td style="width:33%;"><div class="fg-label">PAFTA</div><div class="fg-box">{{SHEET_NO}}</div></td><td style="width:33%;"><div class="fg-label">TAPU TESCİL TARİHİ</div><div class="fg-box">{{TAPU_TARİHİ}}</div></td><td style="width:33%;"><div class="fg-label">YEVMİYE NO</div><div class="fg-box">{{TAPU_YEVMİYESİ}}</div></td></tr>
-  <tr><td style="width:33%;"><div class="fg-label">MÜLKİYET DURUMU</div><div class="fg-box">{{GROUND_TYPE}}</div></td><td style="width:33%;"><div class="fg-label">FİİLİ KULLANIM AMACI</div><div class="fg-box">{{CURRENT_USAGE_NATURE}}</div></td><td style="width:33%;"><div class="fg-label">KULLANIM DURUMU</div><div class="fg-box">{{UNİT_USAGE_STATUS}}</div></td></tr>
-  <tr><td style="width:33%;"><div class="fg-label">ENLEM</div><div class="fg-box">{{LATİTUDE}}</div></td><td style="width:33%;"><div class="fg-label">BOYLAM</div><div class="fg-box">{{LONGİTUDE}}</div></td><td colspan="1"></td></tr>
-</table>
+<p class="tapu-required-note"><em>Kat No bilgisi olarak bodrum katları için "1B, 2B...", zemin kat için "Z", normal katlar için "1,2,3..." yazılmalıdır. Koordinatlar sisteme virgüllü girilmelidir (örn. "41,008225, 28,978445").</em></p>
+<div class="tapu-panel">
+  <table class="tapu-form">
+    <tr><td class="tapu-label">İL</td><td class="tapu-value"><div>{{CİTY}}</div></td><td class="tapu-label">PARSELİN YÜZ ÖLÇÜMÜ (m²)</td><td class="tapu-value"><div>{{LAND_AREA}}</div></td></tr>
+    <tr><td class="tapu-label">İLÇESİ</td><td class="tapu-value"><div>{{DİSTRİCT}}</div></td><td class="tapu-label">KAT NO</td><td class="tapu-value"><div>&nbsp;</div></td></tr>
+    <tr><td class="tapu-label">KÖY / MAHALLE</td><td class="tapu-value"><div>{{TİTLE_NEİGHBORHOOD}}</div></td><td class="tapu-label">BLOK NO</td><td class="tapu-value"><div>{{TİTLE_BLOCK_NAME}}</div></td></tr>
+    <tr><td class="tapu-label">MAHALLE</td><td class="tapu-value"><div>{{NEİGHBORHOOD}}</div></td><td class="tapu-label">B.B.NO</td><td class="tapu-value"><div>{{UNİT_NO}}</div></td></tr>
+    <tr><td class="tapu-label">KAT NO</td><td class="tapu-value"><div>{{TİTLE_FLOOR}}</div></td><td class="tapu-label">&nbsp;</td><td class="tapu-value"><div>&nbsp;</div></td></tr>
+    <tr><td class="tapu-label">BUCAĞI</td><td class="tapu-value"><div>&nbsp;</div></td><td class="tapu-label">DAİRE NO</td><td class="tapu-value"><div>{{INNER_DOOR}}</div></td></tr>
+    <tr><td class="tapu-label">SOKAĞI</td><td class="tapu-value"><div>&nbsp;</div></td><td class="tapu-label">ARSA PAYI</td><td class="tapu-value"><div>{{SHARE}} / {{DENOMİNATOR}}</div></td></tr>
+    <tr><td class="tapu-label">ZEMİN NO</td><td class="tapu-value"><div>{{TİTLE_PROPERTY_ID}}</div></td><td class="tapu-label">BAĞ. BÖL. NİTELİĞİ</td><td class="tapu-value"><div>{{TİTLE_QUALİTY}}</div></td></tr>
+    <tr><td class="tapu-label">CİLT</td><td class="tapu-value"><div>{{REGİSTRY_VOLUME}}</div></td><td class="tapu-label">MEVKİİ</td><td class="tapu-value"><div>{{LOCATİON_NAME}}</div></td></tr>
+    <tr><td class="tapu-label">SAYFA NO</td><td class="tapu-value"><div>{{REGİSTRY_PAGE}}</div></td><td class="tapu-label">ANA GAYR. NİTELİĞİ</td><td class="tapu-value"><div>{{MAİN_PROPERTY_QUALİTY}}</div></td></tr>
+    <tr><td class="tapu-label">ADA</td><td class="tapu-value"><div>{{BLOCK_NO}}</div></td><td class="tapu-label">TESCİL TARİHİ</td><td class="tapu-value"><div>{{TAPU_TARİHİ}}</div></td></tr>
+    <tr><td class="tapu-label">PARSEL</td><td class="tapu-value"><div>{{PARCEL_NO}}</div></td><td class="tapu-label">YEVMİYE NO</td><td class="tapu-value"><div>{{TAPU_YEVMİYESİ}}</div></td></tr>
+    <tr><td class="tapu-label">PAFTA</td><td class="tapu-value"><div>{{SHEET_NO}}</div></td><td class="tapu-label">MÜLKİYET DURUMU</td><td class="tapu-value"><div>{{GROUND_TYPE}}</div></td></tr>
+    <tr><td class="tapu-label">ENLEM</td><td class="tapu-value"><div>{{LATİTUDE}}</div></td><td class="tapu-label">BOYLAM</td><td class="tapu-value"><div>{{LONGİTUDE}}</div></td></tr>
+    <tr><td class="tapu-label">FİİLİ KULLANIM AMACI</td><td class="tapu-value"><div>{{CURRENT_USAGE_NATURE}}</div></td><td class="tapu-label">KULLANIM DURUMU</td><td class="tapu-value"><div>{{UNİT_USAGE_STATUS}}</div></td></tr>
+  </table>
+</div>
 
 {{LOCATION_MAP_SECTION}}
 
-<h3>Malikler</h3>
-{{MALIKLER_TABLO}}
+<div class="tapu-owner-panel"><h3>MALİK BİLGİLERİ</h3>{{MALIKLER_TABLO}}</div>
 
 <h2>4. GAYRİMENKUL NİTELİK BİLGİLERİ</h2>
-<h3>Değerlendirilen Bağımsız Bölümün Bulunduğu Ana Gayrimenkulün Özellikleri</h3>
-<table class="field-grid">
-  <tr><td style="width:33%;"><div class="fg-label">YAPIM YILI</div><div class="fg-box">{{BUİLDİNG_CONSTRUCTİON_YEAR}}</div></td><td style="width:33%;"><div class="fg-label">KAT ADEDİ</div><div class="fg-box">{{TOTAL_FLOORS}}</div></td><td style="width:33%;"><div class="fg-label">BAĞ. BÖL. ADEDİ</div><div class="fg-box">{{TOTAL_UNİTS}}</div></td></tr>
-  <tr><td style="width:33%;"><div class="fg-label">YAPI CİNSİ</div><div class="fg-box">{{BUİLDİNG_STYLE}}</div></td><td style="width:33%;"><div class="fg-label">İŞÇİLİK VE MALZEME</div><div class="fg-box">{{UNİT_MATERİAL_QUALİTY}}</div></td><td style="width:33%;"><div class="fg-label">YAPI SINIFI VE GRUBU</div><div class="fg-box">{{BUİLDİNG_CLASS}}</div></td></tr>
-  <tr><td style="width:33%;"><div class="fg-label">OTOPARK</div><div class="fg-box">{{CARPARK}}</div></td><td colspan="2"></td></tr>
-</table>
-<h3>Müştemilatı, Çevre Düzenlemeleri ve Diğer Özellikleri</h3>
-{{MAİN_PROPERTY_DESCRİPTİON_TEXT}}
+<div class="property-panel">
+  <div class="property-subhead">Değerlendirilen Bağımsız Bölümün Bulunduğu Ana Gayrimenkulün Özellikleri</div>
+  <div class="property-subhead">Yapıya Ait Bilgiler</div>
+  <table class="property-inline">
+    <tr>
+      <td class="pi-label">Yapım Yılı</td><td class="pi-value">{{BUİLDİNG_CONSTRUCTİON_YEAR}}</td>
+      <td class="pi-label">Kat Adedi</td><td class="pi-value">{{TOTAL_FLOORS}}</td>
+      <td class="pi-label">Bağ. Böl. Adedi</td><td class="pi-value">{{TOTAL_UNİTS}}</td>
+      <td class="pi-label">İnşaat Alanı (m²)</td><td class="pi-value">&nbsp;</td>
+    </tr>
+  </table>
+  <div class="property-subhead" style="margin-top:4pt;">Diğer / Açıklama</div>
+  <div class="property-text">{{MAİN_PROPERTY_DESCRİPTİON_TEXT}}</div>
+  <table class="property-detail" style="margin-top:4pt;">
+    <tr><td class="pd-label">Yapı Cinsi</td><td class="pd-value">{{BUİLDİNG_STYLE}}</td><td class="pd-label">Açıklama</td><td class="pd-note">&nbsp;</td></tr>
+    <tr><td class="pd-label">İşçilik ve Malzeme</td><td class="pd-value">{{UNİT_MATERİAL_QUALİTY}}</td><td class="pd-label">Açıklama</td><td class="pd-note">&nbsp;</td></tr>
+    <tr><td class="pd-label">Yapı Sınıfı ve Grubu</td><td class="pd-value">{{BUİLDİNG_CLASS}}</td><td class="pd-label">Açıklama</td><td class="pd-note">&nbsp;</td></tr>
+    <tr><td class="pd-label">Otopark</td><td class="pd-value">{{CARPARK}}</td><td class="pd-label">Açıklama</td><td class="pd-note">&nbsp;</td></tr>
+  </table>
+</div>
 
 <h2>Gayrimenkulün Değerine Etki Eden Faktörler</h2>
-<h3>Olumlu Faktörler</h3>
-{{DEGERI_ETKILEYEN_OLUMLU_FAKTORLER}}
-<h3>Olumsuz Faktörler</h3>
-{{DEGERI_ETKILEYEN_OLUMSUZ_FAKTORLER}}
+<div class="factor-panel"><div class="property-subhead">Olumlu Faktörler</div>{{DEGERI_ETKILEYEN_OLUMLU_FAKTORLER}}</div>
+<div class="factor-panel"><div class="property-subhead">Olumsuz Faktörler</div>{{DEGERI_ETKILEYEN_OLUMSUZ_FAKTORLER}}</div>
 
 <h2>Analizler ve Sonuçların Değerlendirilmesi ile Hesaplamalar</h2>
-<p>Değerleme konusu taşınmazın tapu kayıtları, belediye dosyası ve fiziki inceleme sonucunda
-satış kabiliyetini olumsuz etkileyecek bir duruma rastlanılmamıştır.
-<em>(Olumsuz durum varsa açıklaması yazılmalıdır.)</em></p>
+<div class="property-panel"><div class="property-text">Değerleme konusu taşınmazın tapu kayıtları, belediye dosyası ve fiziki inceleme sonucunda satış kabiliyetini olumsuz etkileyecek bir duruma rastlanılmamıştır. <em>(Olumsuz durum varsa açıklaması yazılmalıdır.)</em></div></div>
 
-<h3>Değerlendirilen Bağımsız Bölümün Özellikleri</h3>
-{{UNİT_İNTERİOR_DESCRİPTİON_TEXT}}
-{{UNİT_DECORATİVE_DESCRİPTİON_TEXT}}
+<h2>Değerlendirilen Bağımsız Bölümün Özellikleri</h2>
+<div class="unit-panel">
+  <div class="property-subhead">Birimler (Adet)</div>
+  <table class="unit-counts"><tr><td class="uc-label">Salon</td><td class="uc-value">{{SALON}}</td><td class="uc-label">Oda</td><td class="uc-value">{{ODA}}</td><td class="uc-label">Banyo</td><td class="uc-value">{{BANYO}}</td><td class="uc-label">Tuvalet</td><td class="uc-value">{{TUVALET}}</td><td class="uc-label">Balkon</td><td class="uc-value">{{BALKON}}</td></tr></table>
+  <table class="property-detail" style="margin-top:4pt;"><tr><td class="pd-label">Diğer / Açıklama</td><td colspan="3" class="pd-note">{{UNIT_DESCRIPTION_INTRO}}</td></tr></table>
+  <table class="property-detail" style="margin-top:4pt;">
+    <tr><td class="pd-label">Isıtma Sistemi</td><td class="pd-value">{{UNİT_HEATİNG_TYPE}}</td><td class="pd-label">İşçilik Malzeme</td><td class="pd-value">{{UNİT_MATERİAL_QUALİTY}}</td></tr>
+  </table>
+  <div class="property-subhead" style="margin-top:4pt;">Kullanım Alanı (brüt m²)</div>
+  <table class="property-inline"><tr><td class="pi-label">Mevcut</td><td class="pi-value">{{CURRENT_AREA}}</td><td class="pi-label">Yasal</td><td class="pi-value">{{LEGAL_AREA}}</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr></table>
+  <div class="property-subhead" style="margin-top:4pt;">İnşai Özellikleri (Tadilat İhtiyacı, Eksik İmalatlar vb.)</div>
+  <div class="property-text tall">{{BAGIMSIZBOLUM2025}}</div>
+</div>
 
-<h3>Eksperin Satışa İlişkin Kanaati</h3>
-{{SALEABİLİTY_NOTE}}
+<div class="property-panel"><table class="property-detail"><tr><td class="pd-label">Satış Kabiliyeti</td><td class="pd-value">{{SALEABILITY}}</td><td class="pd-label">Eksperin Satışa İlişkin Kanaati</td><td class="pd-note">{{VALUATİON_SALEABİLİTY_EXPLANATİON}}</td></tr></table></div>
 
 <h2>5. İNCELEMELER</h2>
 <h3>Yasal Kısıtlamalar (Şerh, Rehin, Beyan, İpotek, Haciz ve Diğer Haklar)</h3>
@@ -136,16 +244,18 @@ satış kabiliyetini olumsuz etkileyecek bir duruma rastlanılmamıştır.
 
 <h3>Proje, Yapı Ruhsatı, Yapı Kullanma İzin Belgesi</h3>
 {{İNCELENEN_BELGELER_TABLO}}
-{{PROJECT_CONFORMİTY}}
-{{REVİEWED_DOCUMENTS_TEXT}}
-{{PENALTY_DECİSİON_EXPLANATİON_TEXT}}
+{{PROJECT_REVIEW_DESCRIPTION}}
+{{REVIEWED_DOCUMENTS_DESCRIPTION}}
+{{BUILDING_INSPECTION_EXPLANATION_TEXT}}
+{{PENALTY_DECISION_EXPLANATION}}
 
 <table class="field-grid">
-  <tr><td style="width:33%;"><div class="fg-label">ENERJİ KİMLİK BELGESİ TÜRÜ</div><div class="fg-box">BEP-TR</div></td><td style="width:33%;"><div class="fg-label">KİMLİK BELGESİ ENERJİ SINIFI</div><div class="fg-box">{{EKB_ENERGY_CLASS}}</div></td><td style="width:33%;"><div class="fg-label">ENERJİ KİMLİK BELGESİ NUMARASI</div><div class="fg-box">{{EKB_DOCUMENT_NO}}</div></td></tr>
+  <tr><td style="width:33%;"><div class="fg-label">YAPI KULLANMA İZİN BELGESİ VAR MI?</div><div class="fg-box">{{İSKAN_VAR_MI}}</div></td><td style="width:33%;"><div class="fg-label">BELGE TARİHİ</div><div class="fg-box">{{OCCUPANCY_PERMIT_DATE}}</div></td><td style="width:33%;"><div class="fg-label">BELEDİYE SINIRLARI İÇİNDE Mİ?</div><div class="fg-box">{{MUNICIPALITY_BOUNDARY_STATUS}}</div></td></tr>
+  <tr><td style="width:33%;"><div class="fg-label">İNCELEME YAPILAN KURUMLAR</div><div class="fg-box">{{DOCUMENT_REVIEW_INSTITUTION}}</div></td><td style="width:33%;"><div class="fg-label">ENERJİ KİMLİK BELGESİ</div><div class="fg-box">{{EKB_STATUS}}</div></td><td style="width:33%;"><div class="fg-label">ENERJİ SINIFI</div><div class="fg-box">{{EKB_ENERGY_CLASS}}</div></td></tr>
+  <tr><td style="width:33%;"><div class="fg-label">EKB BELGE NO</div><div class="fg-box">{{EKB_DOCUMENT_NO}}</div></td><td colspan="2"></td></tr>
 </table>
 
 <h3>Mevcut-Yasal Durum Karşılaştırması ve Aykırı İmalatlar</h3>
-{{PROJECT_CONFORMİTY}}
 
 <table class="field-grid">
   <tr><td style="width:33%;"><div class="fg-label">PLAN ADI</div><div class="fg-box">{{PLAN_NAME}}</div></td><td style="width:33%;"><div class="fg-label">PLAN ÖLÇEĞİ</div><div class="fg-box">{{PLAN_SCALE}}</div></td><td style="width:33%;"><div class="fg-label">TAKS</div><div class="fg-box">{{TAKS}}</div></td></tr>
@@ -219,6 +329,11 @@ satış kabiliyetini olumsuz etkileyecek bir duruma rastlanılmamıştır.
   <tr><td style="width:33%;"><div class="fg-label">MEVCUT DURUM PİYASA DEĞERİ</div><div class="fg-box">{{CURRENT_VALUE}}</div></td><td style="width:33%;"><div class="fg-label">AYLIK MEVCUT KİRA BEDELİ</div><div class="fg-box">{{CURRENT_RENT}}</div></td><td style="width:33%;"><div class="fg-label">YASAL KULLANIM ALANI</div><div class="fg-box">{{LEGAL_AREA}}</div></td></tr>
   <tr><td style="width:33%;"><div class="fg-label">MEVCUT KULLANIM ALANI</div><div class="fg-box">{{CURRENT_AREA}}</div></td><td style="width:33%;"><div class="fg-label">EKSPER KANAATİ</div><div class="fg-box">{{SALEABİLİTY_NOTE}}</div></td><td style="width:33%;"><div class="fg-label">SATIŞ KABİLİYETİ AÇIKLAMA</div><div class="fg-box">{{SALEABİLİTY_NOTE}}</div></td></tr>
 </table>
+</div>
+
+<div class="pg-section">
+<h2>GABİM VERİ SETİ</h2>
+{{GABIM_VERI_SETI}}
 </div>
 
 <h2>ÇALIŞMA KAĞIDI</h2>
