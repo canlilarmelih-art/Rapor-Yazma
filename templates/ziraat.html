@@ -29,9 +29,9 @@
   .word-table th { background: #e4ebf8; color: #3a5691; font-weight: 900; text-align: left; }
   .word-table tbody tr:nth-child(even) td { background: #f7f9f8; }
 
-  /* GDYS'nin kendi ekranlarındaki gibi çok sütunlu, kutucuklu (üstte küçük
+  /* Ziraat Ekspertiz Sisteminin kendi ekranlarındaki gibi çok sütunlu, kutucuklu (üstte küçük
      etiket, altında değer kutusu) ızgara yerleşimi — GABİM VERİ SETİ
-     bölümünde kullanılan stille aynı mantık, ama GDYS'nin kırmızı/gri
+     bölümünde kullanılan stille aynı mantık, ama Ziraat Ekspertiz Sisteminin kırmızı/gri
      renkleri yerine bu raporun kendi teması (lacivert/açık mavi)
      kullanılır (kullanıcı talebi: "renkler rapor temasından"). Word'ün
      .doc HTML motoru CSS grid/flex desteklemediği için TABLE tabanlı
@@ -41,7 +41,7 @@
   .field-grid .fg-label { font-size: 5.3pt; font-weight: 700; color: #3a5691; margin: 0 0 1pt; line-height: 1.1; }
   .field-grid .fg-box { border: 1pt solid #dde3ef; border-radius: 3pt; background: #f7f9fc; color: #152238; padding: 2pt 4pt; font-size: 6.3pt; line-height: 1.2; min-height: 9pt; }
 
-  /* Değerleme/Emsaller/GDYS Yardımcı Bilgiler/Gabim bölümleri tek sayfaya
+  /* Değerleme/Emsaller/Ziraat Ekspertiz Sistemi Yardımcı Bilgiler/Gabim bölümleri tek sayfaya
      sığacak şekilde sıkıştırılır (kullanıcı talebi). Sayfa başı kırılması
      .pg-section üzerinde DEĞİL, başlık etiketinde satır içi
      style="page-break-before:always" ile uygulanır — Word'ün .doc HTML
@@ -64,7 +64,7 @@
 </div>
 
 <h2 style="page-break-before:always;">1. MERKEZ BANKASI VERİLERİ — GABİM BİLGİLERİ</h2>
-<p><em>Bu tablonun sıralaması GDYS "Gayrimenkul Merkez Bankası Verileri" ekranıyla eşleşecek şekilde
+<p><em>Bu tablonun sıralaması Ziraat Ekspertiz Sisteminin "Gayrimenkul Merkez Bankası Verileri" ekranıyla eşleşecek şekilde
 gruplanmıştır: önce imar/yapılaşma verileri, sonra nitelik/tapu bilgileri, sonra bina/donanım bilgileri.</em></p>
 <table class="field-grid">
   <tr><td style="width:33%;"><div class="fg-label">TAPUNUN TÜRÜ</div><div class="fg-box">{{GROUND_TYPE}}</div></td><td style="width:33%;"><div class="fg-label">ENERJİ KİMLİK BELGESİ SINIFI</div><div class="fg-box">{{EKB_ENERGY_CLASS}}</div></td><td style="width:33%;"><div class="fg-label">İMAR PLANI ÖLÇEĞİ</div><div class="fg-box">{{PLAN_SCALE}}</div></td></tr>
@@ -80,7 +80,7 @@ gruplanmıştır: önce imar/yapılaşma verileri, sonra nitelik/tapu bilgileri,
   <tr><td style="width:33%;"><div class="fg-label">CEPHE</div><div class="fg-box">{{FACADES}}</div></td><td style="width:33%;"><div class="fg-label">ISINMA ŞEKLİ</div><div class="fg-box">{{UNİT_HEATİNG_TYPE}}</div></td><td colspan="1"></td></tr>
 </table>
 <p><em>Genel çevre/piyasa göstergeleri (büyük yatırım projeleri, markalı konut yoğunluğu, yapılaşma/gelişme
-hızı vb.) ile detaylı bina/bağımsız bölüm alan kırılımı "GABİM VERİ SETİ" bölümünde GDYS ekranıyla birebir
+hızı vb.) ile detaylı bina/bağımsız bölüm alan kırılımı "GABİM VERİ SETİ" bölümünde Ziraat Ekspertiz Sistemi ekranıyla birebir
 ızgara düzeninde ayrıca listelenmektedir.</em></p>
 
 <h2>2. GAYRİMENKUL TAPU BİLGİLERİ</h2>
@@ -210,7 +210,7 @@ satış kabiliyetini olumsuz etkileyecek bir duruma rastlanılmamıştır.
 </div>
 
 <div class="pg-section">
-<h2 style="page-break-before:always;">GDYS YARDIMCI BİLGİLER</h2>
+<h2 style="page-break-before:always;">ZİRAAT EKSPERTİZ SİSTEMİ YARDIMCI BİLGİLERİ</h2>
 <table class="field-grid">
   <tr><td style="width:33%;"><div class="fg-label">İL</div><div class="fg-box">{{CİTY}}</div></td><td style="width:33%;"><div class="fg-label">İLÇE</div><div class="fg-box">{{DİSTRİCT}}</div></td><td style="width:33%;"><div class="fg-label">MAHALLE / KÖY</div><div class="fg-box">{{NEİGHBORHOOD}}</div></td></tr>
   <tr><td style="width:33%;"><div class="fg-label">SOKAK / CADDE</div><div class="fg-box">{{STREET}}</div></td><td style="width:33%;"><div class="fg-label">AÇIK ADRES</div><div class="fg-box">{{ACIK_ADRES}}</div></td><td style="width:33%;"><div class="fg-label">UAVT KODU</div><div class="fg-box">{{UAVT}}</div></td></tr>

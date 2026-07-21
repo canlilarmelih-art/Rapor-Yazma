@@ -550,7 +550,7 @@ const comparableSketchNextSection = {
   "vakifbank.html": "GDYS YARDIMCI BİLGİLER",
   "vakifkatilim.html": "GDYS YARDIMCI BİLGİLER",
   "yapikredi.html": "Takyidatlar",
-  "ziraat.html": "GDYS YARDIMCI BİLGİLER",
+  "ziraat.html": "ZİRAAT EKSPERTİZ SİSTEMİ YARDIMCI BİLGİLERİ",
 };
 Object.entries(comparableSketchNextSection).forEach(([file, nextSection]) => {
   const text = fs.readFileSync(path.join(appDir, "templates", file), "utf8");

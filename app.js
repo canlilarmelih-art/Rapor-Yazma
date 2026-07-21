@@ -12411,7 +12411,7 @@ function buildSimpleHtmlTable(headers, rows, className = "", options = {}) {
   const isEmphasisFirstCol = classNames.includes("meta") || classNames.includes("is-matrix");
   const isSummaryLastRow = classNames.includes("is-summary");
   const isWide = headers.length > 6;
-  // Emsaller/Değerleme/GDYS Yardımcı/Gabim bölümleri kendi sayfasında
+  // Emsaller/Değerleme/Ziraat Ekspertiz Sistemi Yardımcı/Gabim bölümleri kendi sayfasında
   // başlayıp tek sayfaya sığmalı (kullanıcı talebi) — `options.compact`
   // bu tabloları çağıran yerde (ör. Emsaller matrisi) daha küçük punto ve
   // hücre boşluğuyla üretir; diğer çağrılar (Takyidat, İncelenen Belgeler
@@ -23728,8 +23728,8 @@ function createGabimDataSetPanel() {
 }
 
 // Mülkiyet (ownershipType) ve Yasal Kullanım Niteliği (legalUsageNature)
-// alanlarından GDYS'nin "Gabim Veri Seti" formunun gerçekte hangi grupları
-// gösterdiğini çıkarır. GDYS; Arsa/Tarla (bina yok) için Yapıya Özel
+// alanlarından Ziraat Ekspertiz Sisteminin "Gabim Veri Seti" formunun gerçekte hangi grupları
+// gösterdiğini çıkarır. Ziraat Ekspertiz Sistemi; Arsa/Tarla (bina yok) için Yapıya Özel
 // Bilgiler/Yapı Tür Bilgisi/Ek Bilgiler gruplarını hiç göstermez, Arazi
 // kullanım amacında ayrıca "Araziye Özel Bilgiler" grubu ekler, Konut
 // dışındaki bina türlerinde (İşyeri/Ofis/Ticari/Sanayi) "Yapı Tür Bilgisi"
@@ -23868,14 +23868,14 @@ function buildGabimDataGroups() {
 }
 
 // buildGabimDataGroups() ekrandaki panel için HER ZAMAN tüm alanları
-// (üst küme) döner — kullanıcı ileride GDYS'ye elle veri girerken referans
-// olarak faydalı olsun diye hiçbir satır gizlenmez. GDYS'nin GERÇEK "Gabim
+// (üst küme) döner — kullanıcı ileride Ziraat Ekspertiz Sistemine elle veri girerken referans
+// olarak faydalı olsun diye hiçbir satır gizlenmez. Ziraat Ekspertiz Sisteminin GERÇEK "Gabim
 // Veri Seti" formu ise gayrimenkul türüne göre (Arsa/Tarla, Konut, Diğer
 // Bina, Arazi) farklı grup/alan kümeleri gösterir — bkz. kullanıcının
-// paylaştığı 4 ekran görüntüsü. Rapor çıktısı (Word/HTML) GDYS'nin gerçek
+// paylaştığı 4 ekran görüntüsü. Rapor çıktısı (Word/HTML) Ziraat Ekspertiz Sisteminin gerçek
 // şeklini birebir yansıtmalı; bu yüzden ekrandaki üst kümeyi türe göre
 // budayan ayrı bir filtre katmanı kullanılır — ekran panelini bozmadan.
-// Her grubun GDYS'nin gerçek "Gabim Veri Seti" formunda kaç sütunlu bir
+// Her grubun Ziraat Ekspertiz Sisteminin gerçek "Gabim Veri Seti" formunda kaç sütunlu bir
 // ızgarada gösterildiği (bkz. kullanıcının paylaştığı ekran görüntüleri —
 // Arsa/Konut/Diğer Bina/Arazi). Grup burada yoksa varsayılan 3 kullanılır.
 // GABIM_SUBGROUPS'ta tanımlı gruplar bu tabloyu KULLANMAZ, kendi alt blok
@@ -23890,7 +23890,7 @@ const GABIM_GROUP_COLUMNS = {
   "Ek Bilgiler": 3,
 };
 
-// GDYS'nin gerçek formunda "Bağımsız Bölüm / Taşınmaz Özellikleri" ve "BB
+// Ziraat Ekspertiz Sisteminin gerçek formunda "Bağımsız Bölüm / Taşınmaz Özellikleri" ve "BB
 // İçin İmar Bilgileri" grupları tek bir düz ızgara değil; soldaki küçük gri
 // kategori etiketiyle ayrılmış alt bloklardan oluşuyor (bkz. kullanıcının
 // paylaştığı ekran görüntüleri: "BB İçin Alanlar", "BB İçin Değerler",
@@ -23914,7 +23914,7 @@ const GABIM_SUBGROUPS = {
   ],
 };
 
-// GDYS'de açık gri gölgeli bir kart panelinde gösterilen gruplar (bkz.
+// Ziraat Ekspertiz Sisteminde açık gri gölgeli bir kart panelinde gösterilen gruplar (bkz.
 // kullanıcının paylaştığı 4 ekran görüntüsünün tamamında "Tapuya Özel
 // Bilgiler" bloğu bu şekilde).
 const GABIM_SHADED_GROUPS = new Set(["Tapuya Özel Bilgiler"]);
@@ -23987,7 +23987,7 @@ function buildGabimExportGroups() {
     });
 }
 
-// GDYS'nin gerçek "Gabim Veri Seti" formu satır-içi label:değer tablosu
+// Ziraat Ekspertiz Sisteminin gerçek "Gabim Veri Seti" formu satır-içi label:değer tablosu
 // DEĞİL — her alan "üstte küçük gri etiket, altında beyaz/gri çerçeveli
 // kutu" şeklinde, çok sütunlu bir ızgarada gösteriliyor; "Bağımsız Bölüm /
 // Taşınmaz Özellikleri" ve "BB İçin İmar Bilgileri" grupları ise soldaki
@@ -23996,7 +23996,7 @@ function buildGabimExportGroups() {
 // paylaştığı ekran görüntüleri: Arsa/Konut/Diğer Bina/Arazi). Kullanıcı
 // "satır ve sütun yerleşimi, renk paletleri birebir görsellerdeki gibi
 // olmalı" dedi — bu yüzden renkler burada uygulama temasından (Navy Blue/
-// Apple/Glass/Aurora/Clay/Neumorphism) BAĞIMSIZ, GDYS ekran görüntülerinden
+// Apple/Glass/Aurora/Clay/Neumorphism) BAĞIMSIZ, Ziraat Ekspertiz Sistemi ekran görüntülerinden
 // alınan SABİT değerlerdir; hangi rapor teması aktif olursa olsun değişmez.
 function buildGabimDataSetWordHtml() {
   const groups = buildGabimExportGroups();
