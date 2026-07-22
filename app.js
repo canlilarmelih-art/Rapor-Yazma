@@ -11831,6 +11831,19 @@ function createMainArteryComposer(field) {
   return wrapper;
 }
 
+function getUploadInputAccept(upload) {
+  const accept = String(upload?.accept || "").trim();
+  const isIos = /iPad|iPhone|iPod/i.test(navigator.userAgent || "")
+    || (navigator.platform === "MacIntel" && Number(navigator.maxTouchPoints) > 1);
+
+  // iOS Dosyalar seçicisi, bazı KML dosyalarını MIME kaydı bulunmadığında
+  // `.kml` uzantısı doğru olsa dahi seçilemez gösterir. KML için filtreyi
+  // kaldırıyoruz; seçimden sonra mevcut ayrıştırıcı dosyanın geçerliliğini
+  // yine denetler.
+  if (upload?.id === "kml" && isIos) return "";
+  return accept;
+}
+
 function createUploadGrid(uploads) {
   const grid = document.createElement("div");
   grid.className = "upload-grid";
@@ -11840,10 +11853,11 @@ function createUploadGrid(uploads) {
     card.className = "upload-card";
     const stored = state.uploads[upload.id];
     const uploadError = state.uploadErrors?.[upload.id] || "";
+    const accept = getUploadInputAccept(upload);
     card.innerHTML = `
       <strong>${upload.title}</strong>
       <p>${upload.hint}</p>
-      <input type="file" data-upload="${upload.id}" ${upload.accept ? `accept="${upload.accept}"` : ""} />
+      <input type="file" data-upload="${upload.id}" ${accept ? `accept="${accept}"` : ""} />
       <p>${stored ? `Seçilen dosya: ${stored}` : "Henüz dosya seçilmedi."}</p>
       ${uploadError ? `<p class="upload-error">${escapeHtml(uploadError)}</p>` : ""}
     `;
