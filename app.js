@@ -22750,37 +22750,41 @@ function getMapExportRatioMenuMarkup(selected = state.settings.mapExportRatio) {
 
 function getLeafletTileLayer() {
   const mode = normalizeMapMode(state.settings.mapMode);
+  // Ekran içi Leaflet karolarında `crossOrigin` kullanılmaz: iOS Safari,
+  // ArcGIS'in bazı yönlendirilmiş tile cevaplarını CORS hatasıyla boş
+  // gösterebiliyor. Dışa aktarılan canvas görselleri kendi CORS akışını
+  // `loadTileImage` içinde kullanmaya devam eder.
+  const streetLayer = window.L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution: "© OpenStreetMap",
+    maxZoom: 20,
+  });
   const imageryLayer = window.L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
     attribution: "Tiles © Esri",
     maxZoom: 20,
-    crossOrigin: true,
   });
+  // Yol katmanı Esri görüntüsü yüklenemediğinde altta hazır bulunur; böylece
+  // telefon bağlantısındaki geçici bir tile hatası haritayı gri bırakmaz.
+  const baseLayers = [streetLayer, imageryLayer];
   if (mode === "satellite") {
-    return imageryLayer;
+    return window.L.layerGroup(baseLayers);
   }
   if (mode === "hybrid") {
     return window.L.layerGroup([
-      imageryLayer,
+      ...baseLayers,
       window.L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}", {
         attribution: "Road labels © Esri",
         maxZoom: 20,
-        crossOrigin: true,
         opacity: 0.96,
       }),
       window.L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}", {
         attribution: "Place labels © Esri",
         maxZoom: 20,
-        crossOrigin: true,
         opacity: 0.96,
       }),
     ]);
   }
 
-  return window.L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    attribution: "© OpenStreetMap",
-    maxZoom: 20,
-    crossOrigin: true,
-  });
+  return streetLayer;
 }
 
 function getSavedReportImageConfigs() {
