@@ -18269,16 +18269,22 @@ function getExpenseAppraisalAreaField(propertyType) {
 // (İmarsız), Arsa → Arsa (İmarlı).
 function suggestExpenseAppraisalPropertyType() {
   // foldTurkish BÜYÜK harfe çevirir (örn. "İşyeri" -> "ISYERI") — karşılaştırmalar buna göre.
-  const ownership = foldTurkish(state.fields.ownershipType || "");
-  if (ownership === "ARSA") return "Arsa (İmarlı)";
-  if (ownership === "TARLA") return "Arsa / Tarım Alanı (İmarsız)";
-
+  // "Mevcut Kullanım Niteliği" HER ZAMAN önceliklidir — kullanıcı niteliği
+  // değiştirdiğinde tarife her seferinde güncellenmeli. "Mülkiyet" (ownershipType)
+  // yalnızca nitelik boşken (ör. rapor henüz doldurulmamışken) ve yalnızca
+  // Tarla için yedek sinyal olarak kullanılır ("Mevcut Kullanım Niteliği"nde
+  // Tarla seçeneği yok). ÖNCEKİ HATA: ownershipType Arsa/Tarla olduğunda
+  // nitelik degisiklikleri tamamen goz ardi ediliyordu.
   const usage = foldTurkish(state.fields.currentUsageNature || "");
   if (usage === "KONUT" || usage === "OFIS") return "Daire / Villa / Ofis";
   if (usage === "ISYERI" || usage === "TICARI BINA") return "Dükkan";
   if (usage === "SANAYI TESISI") return "Depo";
   if (usage === "ARAZI") return "Arsa / Tarım Alanı (İmarsız)";
   if (usage === "ARSA") return "Arsa (İmarlı)";
+
+  const ownership = foldTurkish(state.fields.ownershipType || "");
+  if (ownership === "ARSA") return "Arsa (İmarlı)";
+  if (ownership === "TARLA") return "Arsa / Tarım Alanı (İmarsız)";
   return "";
 }
 
