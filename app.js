@@ -603,13 +603,14 @@ const sections = [
         key: "expenseBulkValuationMode",
         label: "Toplu Değerleme (6. Grup)",
         type: "select",
+        defaultValue: "Yok",
         options: [
           "",
           "Yok",
           "1. Grup - Farklı Taşınmazlar (Aynı Mahalle/Köy)",
           "2. Grup - Aynı Parsel Birden Fazla Bağımsız Bölüm",
         ],
-        note: "Birden fazla taşınmaz tek raporda değerlendiriliyorsa seçin. En büyük alanlı taşınmaz yukarıdaki tarife türü/mevcut kullanım alanı ile tam ücret üzerinden hesaplanır; diğer taşınmazların KENDİ tarifelerindeki toplam ücretini aşağıya girin.",
+        note: "Sistem şu an toplu değerlemeyi kapsamıyor, bu yüzden varsayılan \"Yok\"tur. Birden fazla taşınmaz tek raporda değerlendiriliyorsa seçin. En büyük alanlı taşınmaz yukarıdaki tarife türü/mevcut kullanım alanı ile tam ücret üzerinden hesaplanır; diğer taşınmazların KENDİ tarifelerindeki toplam ücretini aşağıya girin.",
       },
       { key: "expenseBulkPropertyCount", label: "Toplu Değerleme - Toplam Taşınmaz Adedi", type: "number" },
       { key: "expenseBulkOtherPropertiesFeeSum", label: "Toplu Değerleme - Diğer Taşınmazların Kendi Tarifelerindeki Toplam Ücreti (KDV Hariç)", type: "number" },
@@ -1660,6 +1661,10 @@ function createForm(section) {
       return;
     }
 
+    if (section.id === "documents" && field.key === "projectReviewDescription") {
+      return;
+    }
+
     if (section.id === "documents" && field.key === "projectConformity") {
       form.append(createProjectSuitabilityControl());
       return;
@@ -1857,6 +1862,7 @@ function createForm(section) {
       refreshEnvironmentDescriptionFromCurrentFields(field.key);
       refreshReviewedDocumentsDescriptionFromCurrentFields(field.key);
       refreshEncumbranceSummaryFromCurrentFields(field.key);
+      refreshExpenseAppraisalPropertyTypeFromCurrentFields(field.key);
       refreshExpenseFeesFromCurrentFields(field.key);
       refreshMainPropertyDescriptionFromCurrentFields(field.key);
       refreshShareExplanationFromCurrentFields(field.key);
@@ -1911,6 +1917,7 @@ function createForm(section) {
       refreshEnvironmentDescriptionFromCurrentFields(field.key);
       refreshReviewedDocumentsDescriptionFromCurrentFields(field.key);
       refreshEncumbranceSummaryFromCurrentFields(field.key);
+      refreshExpenseAppraisalPropertyTypeFromCurrentFields(field.key);
       refreshExpenseFeesFromCurrentFields(field.key);
       refreshMainPropertyDescriptionFromCurrentFields(field.key);
       refreshShareExplanationFromCurrentFields(field.key);
@@ -9150,8 +9157,46 @@ function createProjectSuitabilityControl() {
       createMainRealEstateProjectSuitabilityControl(),
     );
   }
+  wrapper.append(createProjectReviewDescriptionField());
 
   return wrapper;
+}
+
+function createProjectReviewDescriptionField() {
+  const label = document.createElement("label");
+  label.className = "field field-wide has-field-copy";
+  const textarea = document.createElement("textarea");
+  const value = cleanProjectReviewDescriptionForCurrentSuitability(state.fields.projectReviewDescription || "");
+
+  if (value !== state.fields.projectReviewDescription) {
+    state.fields.projectReviewDescription = value;
+  }
+
+  textarea.value = value;
+  textarea.dataset.field = "projectReviewDescription";
+  markFieldSourceState(textarea, "projectReviewDescription");
+
+  const save = () => {
+    const cleanedValue = cleanProjectReviewDescriptionForCurrentSuitability(textarea.value);
+    textarea.value = cleanedValue;
+    state.fields.projectReviewDescription = cleanedValue;
+    refreshReviewedDocumentsDescriptionFromCurrentFields("projectReviewDescription");
+    autosave();
+    renderValidation();
+    updateStatus();
+  };
+
+  textarea.addEventListener("input", save);
+  textarea.addEventListener("blur", () => {
+    const normalizedValue = normalizeReportFieldValue("projectReviewDescription", textarea.value);
+    if (normalizedValue !== textarea.value) {
+      textarea.value = normalizedValue;
+    }
+    save();
+  });
+
+  label.append(createSpan("Proje İnceleme Açıklaması"), textarea, createFieldCopyButton());
+  return label;
 }
 
 function createProjectSuitabilityPanel(title, statusKey, noteKey, repairKey) {
@@ -9205,14 +9250,6 @@ function createProjectSuitabilityField(labelText, key, noteKey, repairKey) {
       state.fields[repairKey] = "Evet";
     }
     detailButton.hidden = !shouldOpenProjectSuitabilityDetail(state.fields[key]);
-    const explanationText = label.querySelector(".project-suitability-explanation > span:last-child");
-    if (explanationText) {
-      explanationText.textContent = buildProjectSuitabilityStatusSentence(
-        state.fields[key],
-        state.fields[noteKey],
-        state.fields[repairKey],
-      );
-    }
     refreshReviewedDocumentsDescriptionFromCurrentFields(key);
     autosave();
     renderValidation();
@@ -9223,13 +9260,7 @@ function createProjectSuitabilityField(labelText, key, noteKey, repairKey) {
   });
   detailButton.addEventListener("click", openDetail);
   control.append(select, detailButton);
-  const explanation = document.createElement("div");
-  explanation.className = "project-suitability-explanation";
-  explanation.append(
-    createSpan("Projeye Uygunluk Açıklaması"),
-    createSpan(buildProjectSuitabilityStatusSentence(state.fields[key], state.fields[noteKey], state.fields[repairKey])),
-  );
-  label.append(createSpan(labelText), control, explanation);
+  label.append(createSpan(labelText), control);
   return label;
 }
 
@@ -16090,7 +16121,7 @@ function formatOutputFieldValue(value, fieldDefinition = {}) {
 }
 
 function refreshReviewedDocumentsDescriptionFromCurrentRows() {
-  state.fields.projectReviewDescription = cleanProjectReviewDescriptionForCurrentSuitability(buildProjectReviewDescription());
+  state.fields.projectReviewDescription = buildProjectReviewExplanation();
   const projectControl = document.querySelector('[data-field="projectReviewDescription"]');
   if (projectControl) {
     projectControl.value = state.fields.projectReviewDescription || "";
@@ -16395,6 +16426,18 @@ function buildProjectReviewDescription() {
   );
 }
 
+function buildProjectReviewExplanation() {
+  return normalizeReportDescriptionText(
+    [
+      buildProjectReviewDescription(),
+      buildBuildingFootprintAndEntranceExplanation(),
+      buildProjectSuitabilityDescription(),
+    ]
+      .filter(Boolean)
+      .join("\n\n")
+  );
+}
+
 function buildProjectSuitabilityDescription() {
   const hasDifferentProjects = shouldUseProjectDifferenceComparison();
   const parts = [];
@@ -16462,7 +16505,7 @@ function buildProjectSuitabilityStatusSentence(statusValue, noteValue, repairVal
       sentence = `${lead}Ekspertize konu bağımsız bölüm kat, kattaki konum, alan ve mimari olarak projesine uygundur.`;
       break;
     case "BLOK BAZINDA KONUM OLARAK UYGUN DEGILDIR":
-      sentence = "";
+      sentence = `${lead}Ekspertize konu taşınmaz blok bazında projesine uygun değildir.`;
       break;
     case "MIMARI OLARAK UYGUN DEGILDIR":
       sentence = `${lead}Ekspertize konu bağımsız bölüm vaziyet planına göre blok bazında konum, kat, kattaki konum ve kullanım alanı olarak projesine uygun olup, mimari olarak projesine uygun değildir.`;
@@ -16526,6 +16569,10 @@ function buildProjectSuitabilityBuildingReferenceSentence(options = {}) {
   return sentences.length ? `${sentences.join(" ")} ` : "";
 }
 
+function buildBuildingFootprintAndEntranceExplanation() {
+  return buildProjectSuitabilityBuildingReferenceSentence().trim();
+}
+
 function formatProjectSuitabilityEntranceLevel(value) {
   const text = toLowerText(value || "");
   if (!text) return "";
@@ -16554,11 +16601,7 @@ function cleanProjectReviewDescriptionForCurrentSuitability(value = "") {
     ? [state.fields.titleProjectSuitabilityStatus, state.fields.municipalityProjectSuitabilityStatus]
     : [state.fields.projectSuitabilityStatus];
   const hasUndeterminedStatus = statuses.some(isProjectSuitabilityUndetermined);
-  const suitabilityText = normalizeReportDescriptionText(buildProjectSuitabilityDescription());
   let cleaned = String(value || "");
-  if (suitabilityText) {
-    cleaned = cleaned.replace(suitabilityText, "");
-  }
   if (hasUndeterminedStatus) {
     cleaned = stripProjectSuitabilityUndeterminedSentence(cleaned);
   }
@@ -16612,7 +16655,7 @@ function sanitizeUndeterminedProjectSuitabilityState() {
   }
 
   if (changed && !hasUndeterminedStatus) {
-    state.fields.projectReviewDescription = buildProjectReviewDescription();
+    state.fields.projectReviewDescription = buildProjectReviewExplanation();
   }
   return changed;
 }
@@ -16666,7 +16709,7 @@ function buildReviewedDocumentsDescription() {
 }
 
 function splitReviewedDocumentsDescriptionsIfNeeded() {
-  const generatedProjectText = buildProjectReviewDescription();
+  const generatedProjectText = buildProjectReviewExplanation();
   const ekbExplanation = buildEkbExplanation();
   let changed = false;
 
@@ -18214,6 +18257,46 @@ const EXPENSE_FLAT_APPRAISAL_TYPES = new Set(["Akaryakıt İstasyonu"]);
 
 function getExpenseAppraisalAreaField(propertyType) {
   return EXPENSE_LAND_BASED_APPRAISAL_TYPES.has(propertyType) ? "landArea" : "currentArea";
+}
+
+// "Mevcut Kullanım Niteliği" (currentUsageNature) ve "Mülkiyet" (ownershipType)
+// alanlarından Değerleme Ücreti Tarife Türü'nü otomatik önerir (kullanıcı
+// talebi). Mülkiyet Arsa/Tarla ise doğrudan arazi tarifesi seçilir (daha
+// spesifik/otoriter bilgi); aksi halde mevcut kullanım niteliğine bakılır:
+// Konut/Ofis → Daire/Villa/Ofis, İşyeri/Ticari Bina → Dükkan,
+// Sanayi Tesisi → Depo (resmi tarifede "Üretim, Depolama, Zirai ve Sınai
+// Nitelikli Yapılar" grubu sanayiyi de kapsar), Arazi → Arsa/Tarım Alanı
+// (İmarsız), Arsa → Arsa (İmarlı).
+function suggestExpenseAppraisalPropertyType() {
+  // foldTurkish BÜYÜK harfe çevirir (örn. "İşyeri" -> "ISYERI") — karşılaştırmalar buna göre.
+  const ownership = foldTurkish(state.fields.ownershipType || "");
+  if (ownership === "ARSA") return "Arsa (İmarlı)";
+  if (ownership === "TARLA") return "Arsa / Tarım Alanı (İmarsız)";
+
+  const usage = foldTurkish(state.fields.currentUsageNature || "");
+  if (usage === "KONUT" || usage === "OFIS") return "Daire / Villa / Ofis";
+  if (usage === "ISYERI" || usage === "TICARI BINA") return "Dükkan";
+  if (usage === "SANAYI TESISI") return "Depo";
+  if (usage === "ARAZI") return "Arsa / Tarım Alanı (İmarsız)";
+  if (usage === "ARSA") return "Arsa (İmarlı)";
+  return "";
+}
+
+// Kullanıcı Tarife Türü'nü elle değiştirirse otomatik öneri onu bir daha
+// ezmez (diğer "manual override" alanlarıyla aynı desen).
+function refreshExpenseAppraisalPropertyTypeFromCurrentFields(changedKey) {
+  if (changedKey === "expenseAppraisalPropertyType") {
+    state.fields.expenseAppraisalPropertyTypeManual = "Evet";
+    return;
+  }
+  if (!["currentUsageNature", "ownershipType"].includes(changedKey)) return;
+  if (state.fields.expenseAppraisalPropertyTypeManual === "Evet") return;
+  const suggestion = suggestExpenseAppraisalPropertyType();
+  if (suggestion && state.fields.expenseAppraisalPropertyType !== suggestion) {
+    state.fields.expenseAppraisalPropertyType = suggestion;
+    recalculateExpenseFees();
+    updateExpenseFeesSummaryPanel();
+  }
 }
 
 function lookupExpenseAppraisalFeeExVat(propertyType, area) {
@@ -25461,7 +25544,7 @@ function collectGeneratedTextPlaceholders() {
       category: "Belgeler ve Proje",
       key: "project_review_text",
       title: "Proje İnceleme ve Projeye Uygunluk Açıklaması",
-      value: state.fields.projectReviewDescription || buildProjectReviewDescription(),
+      value: state.fields.projectReviewDescription || buildProjectReviewExplanation(),
     },
     {
       category: "Belgeler ve Proje",
@@ -25510,6 +25593,12 @@ function collectGeneratedTextPlaceholders() {
       key: "main_property_description_text",
       title: "Ana Gayrimenkul Açıklaması",
       value: buildMainPropertyDescription(),
+    },
+    {
+      category: "Ana Gayrimenkul Özellikleri",
+      key: "building_footprint_and_entrance_explanation",
+      title: "Bina Oturumu ve Giriş Açıklaması",
+      value: buildBuildingFootprintAndEntranceExplanation(),
     },
     {
       category: "Ana Gayrimenkul Özellikleri",

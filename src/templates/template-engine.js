@@ -556,6 +556,7 @@
     PENCERE: { f: ["windows", "unitWindows"] },
     DISKAPI: { f: ["buildingEntranceDoor"] },
     ICKAPI: { f: ["unitInteriorDoors", "interiorDoors"] },
+    BINAOTURUMUVEGIRISACIKLAMASI: { t: () => safeCall("buildBuildingFootprintAndEntranceExplanation") },
 
     // --- Arsa ---
     ARSAACIKLAMA: { t: () => field("landNote") },

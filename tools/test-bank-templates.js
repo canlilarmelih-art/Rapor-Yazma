@@ -532,6 +532,17 @@ assert(
     engineSource.includes('VALUATIONSALEABILITYEXPLANATION: { t: () => safeCall("buildValuationSaleabilityExplanation") }'),
   "Halkbank valuation saleability placeholder aliasi bulunamadi."
 );
+assert(
+  engineSource.includes('BINAOTURUMUVEGIRISACIKLAMASI: { t: () => safeCall("buildBuildingFootprintAndEntranceExplanation") }'),
+  "Bina oturumu ve giris aciklamasi placeholder'i bulunamadi."
+);
+globalThis.buildBuildingFootprintAndEntranceExplanation = () => "Bina oturumu; vaziyet planında belirtilen bina girişi referansından tespit edilmiştir.";
+const buildingFootprintEntranceHtml = engine.resolveToken("BINA_OTURUMU_VE_GIRIS_ACIKLAMASI").html;
+delete globalThis.buildBuildingFootprintAndEntranceExplanation;
+assert(
+  buildingFootprintEntranceHtml.includes("Bina oturumu; vaziyet planında belirtilen bina girişi referansından tespit edilmiştir."),
+  "Bina oturumu ve giris aciklamasi placeholder'i cozumlenemedi."
+);
 globalThis.buildValuationSaleabilityExplanation = () => "SATILABİLİR olduğu kanaatine varılmıştır.";
 const halkbankSaleabilityHtml = engine.resolveToken("VALUATİON_SALEABİLİTY_EXPLANATİON").html;
 delete globalThis.buildValuationSaleabilityExplanation;

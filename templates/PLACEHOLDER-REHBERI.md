@@ -181,6 +181,7 @@ verilerinizle doldurur ve Word ile açılabilen bir `.doc` dosyası indirir.
 | `{{İÇİ_GÖRÜLDÜ_MÜ}}` | İçi görüldü mü (randevu türünden) * |
 | `{{SİTE_İÇİNDE_Mİ}}` | Site içerisinde mi * |
 | `{{BUİLDİNG_ENTRANCE_DOOR}}` | Bina giriş kapısı |
+| `{{BINA_OTURUMU_VE_GIRIS_ACIKLAMASI}}` | Bina oturumu referansı ile giriş kat/yön bilgisinden oluşturulan açıklama * |
 
 ### Değerleme
 

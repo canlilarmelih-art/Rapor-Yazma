@@ -1042,25 +1042,6 @@ body[data-app-theme="clay"] .brand-mark-icon-navy {
   grid-template-columns: 1fr;
 }
 
-.project-suitability-explanation {
-  display: grid;
-  gap: 4px;
-  margin-top: 8px;
-  padding: 9px 11px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--surface-muted);
-  color: var(--ink);
-  font-size: 13px;
-  line-height: 1.45;
-}
-
-.project-suitability-explanation > span:first-child {
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 700;
-}
-
 .project-suitability-note textarea {
   min-height: 46px;
   resize: vertical;
