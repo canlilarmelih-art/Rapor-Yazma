@@ -115,7 +115,8 @@
   }
 
   function documentsTableHtml() {
-    const entries = safeCall("getReviewedDocumentChronologicalEntries", state.tables?.documents);
+    const entries = safeCall("getReviewedDocumentTableEntries", state.tables?.documents)
+      || safeCall("getReviewedDocumentChronologicalEntries", state.tables?.documents);
     const rows = (Array.isArray(entries) ? entries.map((entry) => entry.row) : (Array.isArray(state.tables?.documents) ? state.tables.documents : []))
       .filter((row) => Object.values(row || {}).some((v) => String(v || "").trim()))
       .map((row) => [row.c0 || "", row.c1 || "", outputDate(row.c2), row.c3 || "", row.c4 || ""]);

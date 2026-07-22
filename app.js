@@ -667,6 +667,7 @@ const sections = [
       { key: "expenseMunicipalityFeeIncVat", label: "Belediye Harcı (KDV Dahil)", type: "number", hidden: true, readOnly: true },
       { key: "expenseInfoCenterShareIncVat", label: "Gayrimenkul Bilgi Merkezi Payı (KDV Dahil)", type: "number", hidden: true, readOnly: true },
       { key: "expenseUnionShareIncVat", label: "Birlik Payı (KDV Dahil)", type: "number", hidden: true, readOnly: true },
+      { key: "expenseTotalFeeExVat", label: "Toplam Ücret (KDV Hariç)", type: "number", hidden: true, readOnly: true },
       { key: "expenseTotalFeeIncVat", label: "Toplam Ücret (KDV Dahil)", type: "number", hidden: true, readOnly: true },
     ],
   },
@@ -12172,7 +12173,7 @@ function createExpenseFeesSummaryPanel() {
           <tr><td class="valuation-summary-label">Belediye Harcı</td><td class="valuation-summary-value-col" data-expense-summary-field="expenseMunicipalityFeeExVat"></td><td class="valuation-summary-value-col" data-expense-summary-field="expenseMunicipalityFeeIncVat"></td></tr>
           <tr><td class="valuation-summary-label">Gayrimenkul Bilgi Merkezi Payı</td><td class="valuation-summary-value-col" data-expense-summary-field="expenseInfoCenterShareExVat"></td><td class="valuation-summary-value-col" data-expense-summary-field="expenseInfoCenterShareIncVat"></td></tr>
           <tr><td class="valuation-summary-label">Birlik Payı</td><td class="valuation-summary-value-col" data-expense-summary-field="expenseUnionShareExVat"></td><td class="valuation-summary-value-col" data-expense-summary-field="expenseUnionShareIncVat"></td></tr>
-          <tr class="expense-fees-summary-total-row"><td class="valuation-summary-label">Toplam Ücret</td><td class="valuation-summary-value-col">—</td><td class="valuation-summary-value-col" data-expense-summary-field="expenseTotalFeeIncVat"></td></tr>
+          <tr class="expense-fees-summary-total-row"><td class="valuation-summary-label">Toplam Ücret</td><td class="valuation-summary-value-col" data-expense-summary-field="expenseTotalFeeExVat"></td><td class="valuation-summary-value-col" data-expense-summary-field="expenseTotalFeeIncVat"></td></tr>
         </tbody>
       </table>
     </div>
@@ -12612,7 +12613,7 @@ function buildWordReportTablesHtml() {
     parts.push(`<h3>Malikler Tablosu</h3>${maliklerTableHtml}`);
   }
   const regularTables = [
-    ["İncelenen Belgeler", ["Belge Türü", "İncelenen Kurum", "Tarih", "No", "Kapsam"], state.tables.documents],
+    ["İncelenen Belgeler", ["Belge Türü", "İncelenen Kurum", "Tarih", "No", "Kapsam"], getReviewedDocumentTableEntries().map(({ row }) => row)],
     ["Beyanlar", ["Tür", "Açıklama", "Tarih", "Yevmiye No"], state.tables.encumbranceDeclarations],
     ["Rehinler", ["Lehdar", "Derece", "Tutar", "Tarih", "Yevmiye"], state.tables.encumbranceMortgages],
     ["Şerhler", ["Tür", "Açıklama", "Tutar", "Tarih", "Yevmiye"], state.tables.encumbranceAnnotations],
@@ -12858,7 +12859,7 @@ function buildReviewedDocumentsWordTableHtml() {
     const match = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
     return match ? `${match[3]}.${match[2]}.${match[1]}` : text;
   };
-  const rows = getReviewedDocumentChronologicalEntries(state.tables?.documents)
+  const rows = getReviewedDocumentTableEntries(state.tables?.documents)
     .map(({ row }) => row)
     .filter((row) => Object.values(row || {}).some((value) => String(value || "").trim()))
     .map((row) => [row.c0 || "", row.c1 || "", formatDocumentDate(row.c2), row.c3 || "", row.c4 || ""]);
@@ -16782,6 +16783,63 @@ function getReviewedDocumentChronologicalEntries(rows = state.tables?.documents 
     });
 }
 
+function getArchitecturalProjectReviewedDocumentRows() {
+  if (normalizeYesNoChoice(state.fields.hasArchitecturalProject || "Evet") === "Hayır") return [];
+
+  const createProjectRow = (type, date, no, institution) => {
+    if (![type, date, no].some((value) => String(value || "").trim())) return null;
+    return {
+      c0: String(type || "Onaylı Mimari Projesi").trim(),
+      c1: String(institution || "").trim(),
+      c2: String(date || "").trim(),
+      c3: String(no || "").trim(),
+      c4: "Mimari Proje",
+    };
+  };
+
+  if (shouldUseProjectDifferenceComparison()) {
+    return [
+      createProjectRow(
+        state.fields.titleProjectType,
+        state.fields.titleProjectDate,
+        state.fields.titleProjectNo,
+        formatProjectReviewLocation("Webtapu"),
+      ),
+      createProjectRow(
+        state.fields.municipalityProjectType,
+        state.fields.municipalityProjectDate,
+        state.fields.municipalityProjectNo,
+        formatProjectReviewLocation("Belediye"),
+      ),
+    ].filter(Boolean);
+  }
+
+  return [createProjectRow(
+    state.fields.projectType,
+    state.fields.projectDate,
+    state.fields.projectNo,
+    normalizeDocumentInstitutionText(state.fields.documentReviewInstitution || buildProjectReviewInstitutionSummary()),
+  )].filter(Boolean);
+}
+
+function getReviewedDocumentTableEntries(rows = state.tables?.documents || []) {
+  const documentEntries = getReviewedDocumentChronologicalEntries(rows);
+  const projectEntries = getArchitecturalProjectReviewedDocumentRows().map((row, index) => ({
+    row,
+    index: documentEntries.length + index,
+    isArchitecturalProject: true,
+    date: parseReviewedDocumentDate(row.c2),
+  }));
+
+  return [...documentEntries, ...projectEntries]
+    .sort((left, right) => {
+      if (left.date && right.date && left.date !== right.date) return left.date.localeCompare(right.date);
+      if (left.date && !right.date) return -1;
+      if (!left.date && right.date) return 1;
+      return left.index - right.index;
+    });
+}
+
 function hasReviewedDocumentInfo() {
   return (state.tables.documents || [])
     .map(normalizeReviewedDocumentRow)
@@ -18346,6 +18404,10 @@ function recalculateExpenseFees() {
   const bankGroup = getExpenseBankGroup(state.fields.bank);
 
   let total = 0;
+  let totalExVat = 0;
+  // NOT: expenseAppraisalFeeExVat burada elle toplama eklenmez — aşağıdaki
+  // EXPENSE_FEE_PAIR_MAP döngüsü zaten bu anahtarı işliyor (INC-VAT toplamın
+  // hep yaptığı gibi). Burada da eklersek çift sayım olur.
 
   // TAPU HARCI: KDV-dahil toplam her grupta aynıdır → birim(KDV hariç) × KDV
   // oranı × adet (2026: 255,83 × 1,20 = 307 TL/tapu). Fark yalnız KDV
@@ -18359,6 +18421,7 @@ function recalculateExpenseFees() {
     state.fields.expenseTitleDeedFeeExVat = formatValuationMoney(titleDeedExVat, { decimals: 2 });
     state.fields.expenseTitleDeedFeeIncVat = formatValuationMoney(titleDeedIncVat, { decimals: 2 });
     total += titleDeedIncVat;
+    totalExVat += titleDeedExVat;
   } else {
     state.fields.expenseTitleDeedFeeExVat = "";
     state.fields.expenseTitleDeedFeeIncVat = "";
@@ -18388,6 +18451,7 @@ function recalculateExpenseFees() {
     state.fields.expenseMunicipalityFeeExVat = formatValuationMoney(municipalityExVat, { decimals: 2 });
     state.fields.expenseMunicipalityFeeIncVat = formatValuationMoney(municipalityIncVat, { decimals: 2 });
     total += municipalityIncVat;
+    totalExVat += municipalityExVat;
   } else {
     state.fields.expenseMunicipalityFeeExVat = "";
     state.fields.expenseMunicipalityFeeIncVat = "";
@@ -18400,11 +18464,13 @@ function recalculateExpenseFees() {
       const inclusive = base * multiplier;
       state.fields[incKey] = formatValuationMoney(inclusive, { decimals: 2 });
       total += inclusive;
+      totalExVat += base;
     } else {
       state.fields[incKey] = "";
     }
   });
   state.fields.expenseTotalFeeIncVat = total > 0 ? formatValuationMoney(total, { decimals: 2 }) : "";
+  state.fields.expenseTotalFeeExVat = totalExVat > 0 ? formatValuationMoney(totalExVat, { decimals: 2 }) : "";
 }
 
 function refreshExpenseFeesFromCurrentFields(changedKey) {
@@ -28268,9 +28334,9 @@ function createTable(section) {
   let annotationLienSummary = null;
 
   const tableEntries = isDocumentsTable
-    ? getReviewedDocumentChronologicalEntries(tableState)
+    ? getReviewedDocumentTableEntries(tableState)
     : tableState.map((row, index) => ({ row, index }));
-  tableEntries.forEach(({ row, index: rowIndex }) => {
+  tableEntries.forEach(({ row, index: rowIndex, isArchitecturalProject = false }) => {
     const tr = document.createElement("tr");
     section.table.columns.forEach((column, columnIndex) => {
       const key = `c${columnIndex}`;
@@ -28283,6 +28349,10 @@ function createTable(section) {
         input.className = "table-textarea table-textarea-description";
       }
       input.value = input.type === "date" ? toComparableDateInputValue(row[key] || "") : row[key] || "";
+      if (isArchitecturalProject) {
+        input.disabled = true;
+        input.classList.add("is-readonly");
+      }
       applyAnnotationAmountWarning(td, input, row, isAnnotationAmount);
       const handleTableCellChange = (event) => {
         row[key] = event.target.value;
@@ -28314,11 +28384,11 @@ function createTable(section) {
         }
         autosave();
       };
-      input.addEventListener("input", handleTableCellChange);
-      if (input.tagName === "SELECT") {
+      if (!isArchitecturalProject) input.addEventListener("input", handleTableCellChange);
+      if (!isArchitecturalProject && input.tagName === "SELECT") {
         input.addEventListener("change", handleTableCellChange);
       }
-      input.addEventListener("blur", () => {
+      if (!isArchitecturalProject) input.addEventListener("blur", () => {
         const formattedValue = normalizeReportTableValue(section, column, input.value);
         if (formattedValue === input.value) return;
         input.value = formattedValue;
@@ -28349,6 +28419,11 @@ function createTable(section) {
     if (hasDeleteColumn) {
       const td = document.createElement("td");
       td.className = "table-action-cell";
+      if (isArchitecturalProject) {
+        tr.append(td);
+        tbody.append(tr);
+        return;
+      }
       const deleteButton = document.createElement("button");
       deleteButton.type = "button";
       deleteButton.className = "row-delete-button";

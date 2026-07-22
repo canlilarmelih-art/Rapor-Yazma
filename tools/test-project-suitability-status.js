@@ -56,4 +56,37 @@ assert.match(appSource, /function createProjectReviewDescriptionField\(/);
 assert.match(appSource, /wrapper\.append\(createProjectReviewDescriptionField\(\)\)/);
 assert.doesNotMatch(appSource, /project-suitability-explanation/);
 
+const documentTableStart = appSource.indexOf("function getArchitecturalProjectReviewedDocumentRows");
+const documentTableEnd = appSource.indexOf("function hasReviewedDocumentInfo", documentTableStart);
+assert(documentTableStart >= 0 && documentTableEnd > documentTableStart, "Mimari proje belge satırı fonksiyonları bulunamadı.");
+const documentTableContext = {
+  state: {
+    fields: {
+      hasArchitecturalProject: "Evet",
+      projectType: "Onaylı Mimari Projesi",
+      projectDate: "2020-02-01",
+      projectNo: "55",
+      documentReviewInstitution: "Belediye",
+    },
+  },
+  normalizeYesNoChoice: (value) => String(value || "").trim(),
+  shouldUseProjectDifferenceComparison: () => false,
+  normalizeDocumentInstitutionText: (value) => String(value || "").trim(),
+  buildProjectReviewInstitutionSummary: () => "",
+  getReviewedDocumentChronologicalEntries: (rows) => (rows || []).map((row, index) => ({
+    row,
+    index,
+    date: String(row?.c2 || ""),
+  })),
+  parseReviewedDocumentDate: (value) => String(value || ""),
+};
+vm.runInNewContext(appSource.slice(documentTableStart, documentTableEnd), documentTableContext);
+const reviewedEntries = documentTableContext.getReviewedDocumentTableEntries([
+  { c0: "Yapı Ruhsatı", c1: "Belediye", c2: "2019-01-01", c3: "20", c4: "" },
+]);
+assert.equal(reviewedEntries.length, 2, "Mimari proje incelenen belgeler tablosuna eklenmedi.");
+assert.equal(reviewedEntries[1].row.c0, "Onaylı Mimari Projesi");
+assert.equal(reviewedEntries[1].row.c4, "Mimari Proje");
+assert.equal(reviewedEntries[1].isArchitecturalProject, true);
+
 console.log("project suitability status tests passed");
