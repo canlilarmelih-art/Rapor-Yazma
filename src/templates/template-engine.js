@@ -115,7 +115,8 @@
   }
 
   function documentsTableHtml() {
-    const rows = (Array.isArray(state.tables?.documents) ? state.tables.documents : [])
+    const entries = safeCall("getReviewedDocumentChronologicalEntries", state.tables?.documents);
+    const rows = (Array.isArray(entries) ? entries.map((entry) => entry.row) : (Array.isArray(state.tables?.documents) ? state.tables.documents : []))
       .filter((row) => Object.values(row || {}).some((v) => String(v || "").trim()))
       .map((row) => [row.c0 || "", row.c1 || "", outputDate(row.c2), row.c3 || "", row.c4 || ""]);
     if (!rows.length) return safeCall("buildReviewedDocumentsDescription");
@@ -595,6 +596,7 @@
     DEGERLENDIRMESEMASI: { h: () => safeCall("buildValuationMethodsSchemeWordHtml") || safeCall("buildValuationMethodsSchemeText") },
     DEGERLEMEYONTEMIACIKLAMASI: { t: () => safeCall("buildValuationMethodExplanation") },
     SATISKABILIYETIACIKLAMASI: { t: () => safeCall("buildValuationSaleabilityExplanationForExport") },
+    TARLABAHCEDEGERLEMERISKIACIKLAMASI: { t: () => safeCall("buildTarlaValuationRiskExplanation") },
     VALUATIONSALEABILITYEXPLANATION: { t: () => safeCall("buildValuationSaleabilityExplanation") },
     KIRAACIKLAMASI: { t: () => safeCall("buildValuationRentExplanation") },
     EMLAKBEYANDEGERIACIKLAMASI: { t: () => safeCall("buildPropertyTaxDeclarationExplanationForExport") },

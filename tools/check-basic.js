@@ -592,6 +592,17 @@ function main() {
       appJs.includes('state.fields[`${totalKey}ComparableAutoManual`] === "1"'),
     "Emsaller altindaki degerleme tablosu veya 50.000 TL yuvarlamali otomatik degerleme akisi bulunamadi."
   );
+  const landValuationDefaultsSource = appJs.slice(
+    appJs.indexOf("function syncLandOwnershipValuationDefaults()"),
+    appJs.indexOf("function syncBuildingValueDefaults()"),
+  );
+  assert(
+    landValuationDefaultsSource.includes('setAutoValuationField("legalValue", "legalValueComparableAuto", formattedValue)') &&
+      landValuationDefaultsSource.includes('setAutoValuationField("currentValue", "currentValueComparableAuto", formattedValue)') &&
+      !landValuationDefaultsSource.includes("state.fields.legalValue = formattedValue") &&
+      !landValuationDefaultsSource.includes("state.fields.currentValue = formattedValue"),
+    "Arazi piyasa degerinde kullanicinin manuel girdisi otomatik emsal degeriyle ezilmemeli."
+  );
   assert(
       appJs.includes('{ key: "c1", label: "Telefon" }') &&
       appJs.includes('key: "c23"') &&

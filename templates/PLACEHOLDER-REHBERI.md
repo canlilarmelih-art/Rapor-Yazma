@@ -207,6 +207,7 @@ verilerinizle doldurur ve Word ile açılabilen bir `.doc` dosyası indirir.
 | `{{DEGERLENDIRME_SEMASI}}` | Değerleme yöntemleri hesap açıklaması |
 | `{{DEGERLEME_YONTEMI_ACIKLAMASI}}` | Değerleme yöntemi seçimi açıklaması |
 | `{{SATIS_KABILIYETI_ACIKLAMASI}}` | Satış kabiliyeti açıklaması — yalnızca "Satılabilir" DIŞINDAKİ bir seçimde dolu gelir, satılabilir ise boştur * |
+| `{{TARLA_BAHCE_DEGERLEME_RISKI_ACIKLAMASI}}` | Tarla mülkiyet türünde zorunlu tarla/bahçe değerleme riski açıklaması; diğer türlerde boştur * |
 | `{{VALUATİON_SALEABİLİTY_EXPLANATİON}}` | Satış kabiliyeti açıklaması (Halkbank uyumlu İngilizce alan adı) * |
 | `{{KIRA_ACIKLAMASI}}` | Kira açıklaması (yasal/mevcut kira değerlerinden otomatik) * |
 | `{{EMLAK_BEYAN_DEGERI_ACIKLAMASI}}` | Emlak beyan değeri açıklaması — "Emlak Beyan Değeri" kutucuğu işaretliyse değer metni, işaretli değilse (yalnızca Ziraat Bankası şablonunda) "bilgi paylaşılmadı" metni, diğer bankalarda işaretsizken boştur * |

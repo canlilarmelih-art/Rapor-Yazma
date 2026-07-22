@@ -484,8 +484,8 @@ const sections = [
       { key: "municipalityProjectDate", label: "Belediye Proje Tarihi", type: "date" },
       { key: "municipalityProjectNo", label: "Belediye Proje No", type: "text" },
       { key: "municipalityProjectType", label: "Belediye Proje Türü", type: "select", options: projectTypeOptions },
+      { key: "projectReviewDescription", label: "Proje İnceleme Açıklaması", type: "textarea", wide: true },
       { key: "projectConformity", label: "Projeye uygunluk", type: "textarea", critical: true },
-      { key: "projectReviewDescription", label: "Proje İnceleme ve Projeye Uygunluk Açıklaması", type: "textarea", wide: true },
       { key: "reviewedDocumentsDescription", label: "İncelenen Belgeler Açıklaması", type: "textarea", wide: true },
       { key: "hasEkb", label: "Enerji Kimlik Belgesi", type: "select", options: ["", "Evet", "Hayır"], wide: true },
       { key: "ekbDocumentNo", label: "EKB belge no", type: "text" },
@@ -1790,6 +1790,13 @@ function createForm(section) {
       state.fields.landNote = buildLandDescription();
       value = state.fields.landNote;
     }
+    if (field.key === "projectReviewDescription") {
+      const cleanedValue = cleanProjectReviewDescriptionForCurrentSuitability(value);
+      if (cleanedValue !== value) {
+        value = cleanedValue;
+        state.fields.projectReviewDescription = cleanedValue;
+      }
+    }
     let control;
 
     if (field.type === "select") {
@@ -1834,7 +1841,13 @@ function createForm(section) {
       if (alwaysUppercaseFieldKeys.has(field.key)) {
         event.target.value = toTitleFieldUppercase(event.target.value);
       }
-      state.fields[field.key] = event.target.value;
+      const enteredValue = field.key === "projectReviewDescription"
+        ? cleanProjectReviewDescriptionForCurrentSuitability(event.target.value)
+        : event.target.value;
+      state.fields[field.key] = enteredValue;
+      if (enteredValue !== event.target.value) {
+        event.target.value = enteredValue;
+      }
       if (["legalUsageNature", "usageNatureDifference"].includes(field.key)) {
         if (syncCurrentUsageNatureWithLegalNature()) clearFieldSourceOwnership("currentUsageNature");
       }
@@ -1882,7 +1895,10 @@ function createForm(section) {
       }
     });
     control.addEventListener("blur", () => {
-      const formattedValue = normalizeReportFieldValue(field.key, control.value);
+      const normalizedValue = normalizeReportFieldValue(field.key, control.value);
+      const formattedValue = field.key === "projectReviewDescription"
+        ? cleanProjectReviewDescriptionForCurrentSuitability(normalizedValue)
+        : normalizedValue;
       if (formattedValue === control.value) return;
       control.value = formattedValue;
       state.fields[field.key] = formattedValue;
@@ -2441,11 +2457,11 @@ function getMinimumAgriculturalParcelLimit() {
   const district = foldTurkish(state.fields.titleDistrict || state.fields.district || "");
   const area = parseReportNumber(state.fields.landArea);
   const agricultureType = normalizeReportTitleText(state.fields.landAgricultureType || "");
-  const productChoice = normalizeYesNoChoice(state.fields.landAgriculturalProduct);
+  const classification = normalizeReportTitleText(state.fields.landClassification || "");
   const row = rows.find((item) => foldTurkish(item.city) === city && foldTurkish(item.district) === district);
-  if (!row || !Number.isFinite(area) || area <= 0 || !agricultureType || !productChoice) return null;
+  if (!row || !Number.isFinite(area) || area <= 0 || !agricultureType || !classification) return null;
 
-  const landKind = productChoice === "Evet"
+  const landKind = classification === "Dikili Tarım Arazisi"
     ? { label: "Dikili Arazi", key: "dikiliM2" }
     : agricultureType === "Sulu Tarım"
       ? { label: "Sulu Arazi", key: "suluM2" }
@@ -2454,7 +2470,15 @@ function getMinimumAgriculturalParcelLimit() {
         : null;
   const minimum = landKind ? Number(row[landKind.key]) : Number.NaN;
   if (!landKind || !Number.isFinite(minimum) || minimum <= 0) return null;
-  return { area, minimum, label: landKind.label, city: state.fields.titleCity || state.fields.city, district: state.fields.titleDistrict || state.fields.district };
+  return {
+    area,
+    minimum,
+    label: landKind.label,
+    classification,
+    agricultureType,
+    city: state.fields.titleCity || state.fields.city,
+    district: state.fields.titleDistrict || state.fields.district,
+  };
 }
 
 function buildLandMinimumParcelAssessmentSentence() {
@@ -2463,14 +2487,19 @@ function buildLandMinimumParcelAssessmentSentence() {
   const district = state.fields.titleDistrict || state.fields.district || "";
   const area = parseReportNumber(state.fields.landArea);
   const agricultureType = normalizeReportTitleText(state.fields.landAgricultureType || "");
-  const productChoice = normalizeYesNoChoice(state.fields.landAgriculturalProduct);
-  if (!city || !district || !Number.isFinite(area) || area <= 0 || !agricultureType || !productChoice) return "";
+  const classification = normalizeReportTitleText(state.fields.landClassification || "");
+  if (!city || !district || !Number.isFinite(area) || area <= 0 || !agricultureType) return "";
+  if (!classification) {
+    return `5403 sayılı Kanuna göre ${city}/${district} için minimum parsel kontrolü, Arazi Sınıflandırması bilgisi girilmediğinden yapılamamıştır.`;
+  }
   const assessment = getMinimumAgriculturalParcelLimit();
-  if (!assessment) return `5403 sayılı Kanuna göre ${city}/${district} için seçilen tarım türüne ait minimum parsel verisi bulunamadığından kontrol yapılamamıştır.`;
+  if (!assessment) {
+    return `5403 sayılı Kanuna göre ${city}/${district} için Arazi Sınıflandırması ${classification} ve Tarım Türü ${agricultureType} bilgilerine ait minimum parsel verisi bulunamadığından kontrol yapılamamıştır.`;
+  }
   const areaText = area.toLocaleString("tr-TR", { maximumFractionDigits: 2 });
   const minimumText = assessment.minimum.toLocaleString("tr-TR", { maximumFractionDigits: 2 });
   const result = area >= assessment.minimum ? "karşılamaktadır" : "karşılamamaktadır";
-  return `Parselin ${areaText} m² yüzölçümü, ${city}/${district} için ${assessment.label} bakımından 5403 sayılı Kanuna göre belirlenen ${minimumText} m² minimum parsel sınırını ${result}.`;
+  return `Parselin ${areaText} m² yüzölçümü; Arazi Sınıflandırması ${assessment.classification} ve Tarım Türü ${assessment.agricultureType} dikkate alındığında, ${city}/${district} için ${assessment.label} bakımından 5403 sayılı Kanuna göre belirlenen ${minimumText} m² minimum parsel sınırını ${result}.`;
 }
 
 function refreshLandMinimumParcelAssessment() {
@@ -2877,6 +2906,7 @@ function getValuationFieldPlaceholderRows() {
   add("propertyTaxDeclarationUnavailableExplanation", "Emlak Beyan Değeri Alınamadı Açıklaması", { type: "Otomatik Açıklama" });
   add("valuationMethodExplanation", "Değerleme Yöntemi Açıklaması", { type: "Otomatik Açıklama" });
   add("valuationSaleabilityExplanation", "Satış Kabiliyeti Açıklaması", { type: "Otomatik Açıklama" });
+  add("tarlaValuationRiskExplanation", "Tarla / Bahçe Değerleme Riski Açıklaması", { type: "Otomatik Açıklama" });
   add("valuationRentExplanation", "Kira Açıklaması", { type: "Otomatik Açıklama" });
 
   return rows;
@@ -2915,6 +2945,7 @@ function createValuationEditor() {
     createValuationMethodExplanationPanel(),
     ...(isSharedTitleOwnership() ? [createValuationShareExplanationPanel()] : []),
     createValuationSaleabilityExplanationPanel(),
+    ...(isTarlaOwnershipType() ? [createTarlaValuationRiskExplanationPanel()] : []),
     createValuationRentExplanationPanel(),
     createValuationPropertyTaxDeclarationExplanationPanel(),
     ...(shouldShowWorkplaceFloorCalculationTable() ? [createWorkplaceFloorCalculationTable()] : []),
@@ -3529,6 +3560,8 @@ function createValuationMinimumParcelAssessmentPanel() {
   return card;
 }
 
+const tarlaSaleabilityRiskExplanation = "Tarla / Bahçe vasıflı gayrimenkullerin herhangi bir sebeple satışa arz edilmesi halinde; tarım girdi maliyetlerinin çok yüksek olması nedeniyle cazip bir yatırım olarak görülmemesi, bu vasıftaki gayrimenkullerin alım satım piyasasının gelişmemiş olması, ancak aynı yerleşim biriminde yaşayan ya da bitişik komşu parsel maliklerince tercih edilmesi nedeniyle sınırlı tercih ve talebin söz konusu olması, bu tür gayrimenkullerin icra ve bunun gibi yollarla satışında ülkemizdeki örf - adet ve geleneklerden gelen nedenlerle kimsenin satışa iştirak etmemesi, bu vasıfta gayrimenkullerin doğal tesirlerden (kar-buz, don, dolu, haşerat, vb.) direk etkilenmesi, verimliliklerinin doğadaki gelişmelere bağlı olması, bahçe vasıflı gayrimenkuller üzerindeki ağaç vb. unsurların her türlü etki ve tehlikelere (tahrip edilme, hırsızlık, kesim, vb.) maruz kalmaları gibi olumsuz tüm faktörlerin dikkate alınması gerekmektedir.";
+
 function buildValuationSaleabilityExplanation() {
   const saleability = saleabilityOptions.includes(state.fields.saleability)
     ? state.fields.saleability
@@ -3577,6 +3610,41 @@ function createValuationSaleabilityExplanationPanel() {
   text.className = "valuation-method-explanation-text";
   text.dataset.valuationSaleabilityExplanationText = "true";
   text.textContent = state.fields.valuationSaleabilityExplanation || valuationSaleabilityExplanationFallback;
+  card.append(head, text);
+  return card;
+}
+
+function buildTarlaValuationRiskExplanation() {
+  return isTarlaOwnershipType() ? tarlaSaleabilityRiskExplanation : "";
+}
+
+function createTarlaValuationRiskExplanationPanel() {
+  const explanation = buildTarlaValuationRiskExplanation();
+  const card = document.createElement("div");
+  card.className = "valuation-method-explanation-card valuation-tarla-risk-explanation-card";
+  const head = document.createElement("div");
+  head.className = "valuation-method-explanation-head";
+  const title = document.createElement("h4");
+  title.textContent = "Tarla / Bahçe Değerleme Riski Açıklaması";
+  const copyButton = document.createElement("button");
+  copyButton.type = "button";
+  copyButton.className = "valuation-method-copy-button";
+  copyButton.textContent = "Kopyala";
+  copyButton.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(explanation);
+      copyButton.textContent = "Kopyalandı";
+    } catch {
+      copyButton.textContent = "Kopyalanamadı";
+    }
+    setTimeout(() => {
+      copyButton.textContent = "Kopyala";
+    }, 1500);
+  });
+  head.append(title, copyButton);
+  const text = document.createElement("p");
+  text.className = "valuation-method-explanation-text";
+  text.textContent = explanation;
   card.append(head, text);
   return card;
 }
@@ -4133,10 +4201,8 @@ function syncLandOwnershipValuationDefaults() {
     const arsaMarketValue = getComparableCalculatedEmsalValuationMetrics().marketValue;
     if (!Number.isFinite(arsaMarketValue) || arsaMarketValue <= 0) return;
     const formattedValue = formatValuationMoney(arsaMarketValue);
-    state.fields.legalValue = formattedValue;
-    state.fields.currentValue = formattedValue;
-    state.fields.legalValueComparableAuto = formattedValue;
-    state.fields.currentValueComparableAuto = formattedValue;
+    setAutoValuationField("legalValue", "legalValueComparableAuto", formattedValue);
+    setAutoValuationField("currentValue", "currentValueComparableAuto", formattedValue);
     return;
   }
   const landRows = getComparableValuationRows().filter((row) => row.landComparable);
@@ -4146,10 +4212,8 @@ function syncLandOwnershipValuationDefaults() {
   const roundedValue = roundComparableValuationValue(area * unitValue, comparableValuationRoundStep);
   if (!Number.isFinite(roundedValue)) return;
   const formattedValue = formatValuationMoney(roundedValue);
-  state.fields.legalValue = formattedValue;
-  state.fields.currentValue = formattedValue;
-  state.fields.legalValueComparableAuto = formattedValue;
-  state.fields.currentValueComparableAuto = formattedValue;
+  setAutoValuationField("legalValue", "legalValueComparableAuto", formattedValue);
+  setAutoValuationField("currentValue", "currentValueComparableAuto", formattedValue);
 }
 
 function syncBuildingValueDefaults() {
@@ -5114,10 +5178,7 @@ function buildExplanationsFloorValuationWordTableHtml() {
 }
 
 // Kullanıcının belirttiği banka şablonu sırasına göre (bkz. handoff)
-// "Satılabilir değil ise Satış Kabiliyeti Açıklaması, satılabilir ise Boş"
-// — buildValuationSaleabilityExplanation() HER durumda (satılabilir dahil)
-// bir cümle döndürür; export için satılabilir durumda boş dönen bu sarmalayıcı
-// kullanılır.
+// Satılabilir seçiminde standart şablonlar bu alanı boş bırakır.
 function buildValuationSaleabilityExplanationForExport() {
   const saleability = saleabilityOptions.includes(state.fields.saleability) ? state.fields.saleability : "Satılabilir";
   if (saleability === "Satılabilir") return "";
@@ -9055,6 +9116,9 @@ function createProjectDetailField(section, field) {
 }
 
 function createProjectSuitabilityControl() {
+  if (sanitizeUndeterminedProjectSuitabilityState()) {
+    autosave();
+  }
   const wrapper = document.createElement("div");
   wrapper.className = "project-suitability-grid field-wide";
   const hasDifferentProjects = shouldUseProjectDifferenceComparison();
@@ -9141,6 +9205,14 @@ function createProjectSuitabilityField(labelText, key, noteKey, repairKey) {
       state.fields[repairKey] = "Evet";
     }
     detailButton.hidden = !shouldOpenProjectSuitabilityDetail(state.fields[key]);
+    const explanationText = label.querySelector(".project-suitability-explanation > span:last-child");
+    if (explanationText) {
+      explanationText.textContent = buildProjectSuitabilityStatusSentence(
+        state.fields[key],
+        state.fields[noteKey],
+        state.fields[repairKey],
+      );
+    }
     refreshReviewedDocumentsDescriptionFromCurrentFields(key);
     autosave();
     renderValidation();
@@ -9151,7 +9223,13 @@ function createProjectSuitabilityField(labelText, key, noteKey, repairKey) {
   });
   detailButton.addEventListener("click", openDetail);
   control.append(select, detailButton);
-  label.append(createSpan(labelText), control);
+  const explanation = document.createElement("div");
+  explanation.className = "project-suitability-explanation";
+  explanation.append(
+    createSpan("Projeye Uygunluk Açıklaması"),
+    createSpan(buildProjectSuitabilityStatusSentence(state.fields[key], state.fields[noteKey], state.fields[repairKey])),
+  );
+  label.append(createSpan(labelText), control, explanation);
   return label;
 }
 
@@ -9170,7 +9248,11 @@ function isProjectSuitabilityOk(value) {
 
 function shouldShowProjectSuitabilityRepair(value) {
   const key = projectSuitabilityStatusKey(value);
-  return Boolean(key) && key !== "UYGUNDUR" && key !== "PROJEYE UYGUNLUK TESPIT EDILEMEMISTIR";
+  return [
+    "MIMARI OLARAK UYGUN DEGILDIR",
+    "KULLANIM ALANI OLARAK UYGUN DEGILDIR",
+    "KULLANIM ALANI VE MIMARI OLARAK UYGUN DEGILDIR",
+  ].includes(key);
 }
 
 function openProjectSuitabilityDetailModal(config, onSave = () => {}) {
@@ -9222,7 +9304,10 @@ function openProjectSuitabilityDetailModal(config, onSave = () => {}) {
   });
   overlay.querySelector("[data-project-suitability-save]").addEventListener("click", () => {
     state.fields[config.statusKey] = config.selectedStatus || state.fields[config.statusKey] || "";
-    state.fields[config.noteKey] = stripProjectSuitabilityRepairSentence(noteInput.value);
+    state.fields[config.noteKey] = cleanProjectSuitabilityNote(
+      state.fields[config.statusKey],
+      noteInput.value,
+    );
     state.fields[config.repairKey] = showRepair ? normalizeYesNoChoice(repairSelect.value) || "Evet" : "";
     refreshMainPropertyDescriptionFromCurrentFields(config.statusKey);
     refreshMainPropertyDescriptionFromCurrentFields(config.noteKey);
@@ -12016,8 +12101,66 @@ function createOutputExportPanel() {
     await exportReportPdf();
     showOutputExportStatus(status, "PDF penceresi açıldı.");
   });
+  panel.append(createExpenseFeesSummaryPanel());
   appendBankTemplateExportBlock(panel, status);
   return panel;
+}
+
+// Masraf yazısı ücret kalemlerinin (Rapor/Değerleme Ücreti, KDV oranları,
+// tapu/belediye harcı, GBM ve Birlik Payı, Toplam) canlı bir özetini
+// "Banka ve Çıktı" bölümünde gösterir — kullanıcı isbankasi-masraf.html
+// gibi bir şablon indirmeden önce tutarları burada görebilir. Değerler
+// seçili bankanın masraf grubuna (A/B/C/D) göre hesaplanır (bkz.
+// recalculateExpenseFees). Tapu Adedi / Belediye Masrafı / KDV kutucuğu
+// değiştikçe updateExpenseFeesSummaryPanel() ile canlı güncellenir.
+function createExpenseFeesSummaryPanel() {
+  recalculateExpenseFees();
+  const panel = document.createElement("div");
+  panel.className = "subsection expense-fees-summary-panel";
+  panel.dataset.expenseSummaryPanel = "true";
+  panel.innerHTML = `
+    <div class="subsection-title-row" style="margin-top:14px;">
+      <div>
+        <h4>Masraf Tablosu</h4>
+        <p>Değerleme (Rapor) Ücreti, KDV oranı ve diğer masraf kalemleri; seçili bankanın masraf kuralına göre otomatik hesaplanır. Tapu Adedi ve Belediye Masrafı yukarıda girilir.</p>
+      </div>
+    </div>
+    <div class="table-shell">
+      <table class="valuation-summary-table expense-fees-summary-table">
+        <thead>
+          <tr>
+            <th>Kalem</th>
+            <th class="valuation-summary-value-col">KDV Hariç</th>
+            <th class="valuation-summary-value-col">KDV Dahil</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="valuation-summary-label">Değerleme (Rapor) Ücreti</td><td class="valuation-summary-value-col" data-expense-summary-field="expenseAppraisalFeeExVat"></td><td class="valuation-summary-value-col" data-expense-summary-field="expenseAppraisalFeeIncVat"></td></tr>
+          <tr><td class="valuation-summary-label">Ulaşım Bedeli</td><td class="valuation-summary-value-col" data-expense-summary-field="expenseTransportFeeExVat"></td><td class="valuation-summary-value-col" data-expense-summary-field="expenseTransportFeeIncVat"></td></tr>
+          <tr><td class="valuation-summary-label">Tapu Harcı</td><td class="valuation-summary-value-col" data-expense-summary-field="expenseTitleDeedFeeExVat"></td><td class="valuation-summary-value-col" data-expense-summary-field="expenseTitleDeedFeeIncVat"></td></tr>
+          <tr><td class="valuation-summary-label">Belediye Harcı</td><td class="valuation-summary-value-col" data-expense-summary-field="expenseMunicipalityFeeExVat"></td><td class="valuation-summary-value-col" data-expense-summary-field="expenseMunicipalityFeeIncVat"></td></tr>
+          <tr><td class="valuation-summary-label">Gayrimenkul Bilgi Merkezi Payı</td><td class="valuation-summary-value-col" data-expense-summary-field="expenseInfoCenterShareExVat"></td><td class="valuation-summary-value-col" data-expense-summary-field="expenseInfoCenterShareIncVat"></td></tr>
+          <tr><td class="valuation-summary-label">Birlik Payı</td><td class="valuation-summary-value-col" data-expense-summary-field="expenseUnionShareExVat"></td><td class="valuation-summary-value-col" data-expense-summary-field="expenseUnionShareIncVat"></td></tr>
+          <tr class="expense-fees-summary-total-row"><td class="valuation-summary-label">Toplam Ücret</td><td class="valuation-summary-value-col">—</td><td class="valuation-summary-value-col" data-expense-summary-field="expenseTotalFeeIncVat"></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="subtle-text">KDV oranı ve tarife tutarları admin tarafından yıllık olarak güncellenir (Masraf Bilgileri bölümü).</p>
+  `;
+  updateExpenseFeesSummaryPanelIn(panel);
+  return panel;
+}
+
+function updateExpenseFeesSummaryPanelIn(scope) {
+  scope.querySelectorAll("[data-expense-summary-field]").forEach((cell) => {
+    const key = cell.dataset.expenseSummaryField;
+    const raw = String(state.fields[key] || "").trim();
+    cell.textContent = raw ? `${raw} TL` : "—";
+  });
+}
+
+function updateExpenseFeesSummaryPanel() {
+  document.querySelectorAll("[data-expense-summary-panel]").forEach((panel) => updateExpenseFeesSummaryPanelIn(panel));
 }
 
 // Banka şablonlarıyla dışa aktarma (templates/*.html + src/templates/template-engine.js).
@@ -12684,7 +12827,8 @@ function buildReviewedDocumentsWordTableHtml() {
     const match = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
     return match ? `${match[3]}.${match[2]}.${match[1]}` : text;
   };
-  const rows = (Array.isArray(state.tables?.documents) ? state.tables.documents : [])
+  const rows = getReviewedDocumentChronologicalEntries(state.tables?.documents)
+    .map(({ row }) => row)
     .filter((row) => Object.values(row || {}).some((value) => String(value || "").trim()))
     .map((row) => [row.c0 || "", row.c1 || "", formatDocumentDate(row.c2), row.c3 || "", row.c4 || ""]);
   if (!rows.length) return "";
@@ -15946,7 +16090,7 @@ function formatOutputFieldValue(value, fieldDefinition = {}) {
 }
 
 function refreshReviewedDocumentsDescriptionFromCurrentRows() {
-  state.fields.projectReviewDescription = buildProjectReviewDescription();
+  state.fields.projectReviewDescription = cleanProjectReviewDescriptionForCurrentSuitability(buildProjectReviewDescription());
   const projectControl = document.querySelector('[data-field="projectReviewDescription"]');
   if (projectControl) {
     projectControl.value = state.fields.projectReviewDescription || "";
@@ -16244,9 +16388,8 @@ function buildProjectReviewDescription() {
     }
   }
 
-  const suitabilityText = buildProjectSuitabilityDescription();
   return normalizeReportDescriptionText(
-    [locationLead, dateLead ? `${dateLead}${reviewItems.join(" ")}` : reviewItems.join(" "), oldAdaParcelNote, suitabilityText]
+    [locationLead, dateLead ? `${dateLead}${reviewItems.join(" ")}` : reviewItems.join(" "), oldAdaParcelNote]
       .filter(Boolean)
       .join("\n\n")
   );
@@ -16316,22 +16459,23 @@ function buildProjectSuitabilityStatusSentence(statusValue, noteValue, repairVal
   switch (statusKey) {
     case "":
     case "UYGUNDUR":
-      sentence = `${lead}${buildProjectSuitabilityBuildingReferenceSentence({ includeWhenPrefixed: !prefix })}ekspertize konu bağımsız bölüm kat, kattaki konum, alan ve mimari olarak projesine uygundur.`;
+      sentence = `${lead}Ekspertize konu bağımsız bölüm kat, kattaki konum, alan ve mimari olarak projesine uygundur.`;
       break;
     case "BLOK BAZINDA KONUM OLARAK UYGUN DEGILDIR":
-      sentence = `${lead}ekspertize konu taşınmaz vaziyet planına göre blok bazında konum olarak projesine uygun değildir.`;
+      sentence = "";
       break;
     case "MIMARI OLARAK UYGUN DEGILDIR":
-      sentence = `${lead}ekspertize konu bağımsız bölüm vaziyet planına göre blok bazında konum, kat, kattaki konum ve kullanım alanı olarak projesine uygundur; mimari olarak projesine uygun değildir.`;
+      sentence = `${lead}Ekspertize konu bağımsız bölüm vaziyet planına göre blok bazında konum, kat, kattaki konum ve kullanım alanı olarak projesine uygun olup, mimari olarak projesine uygun değildir.`;
       break;
     case "KULLANIM ALANI OLARAK UYGUN DEGILDIR":
-      sentence = `${lead}ekspertize konu bağımsız bölüm vaziyet planına göre blok bazında konum, kat, kattaki konum ve mimari olarak projesine uygun olup, kullanım alanı olarak projesine uygun değildir.`;
+      sentence = `${lead}Ekspertize konu bağımsız bölüm vaziyet planına göre blok bazında konum, kat, kattaki konum ve mimari olarak projesine uygun olup, kullanım alanı olarak projesine uygun değildir.`;
       break;
     case "KULLANIM ALANI VE MIMARI OLARAK UYGUN DEGILDIR":
-      sentence = `${lead}ekspertize konu bağımsız bölüm vaziyet planına göre blok bazında konum, kat ve kattaki konum olarak projesine uygundur; kullanım alanı ve mimari olarak projesine uygun değildir.`;
+      sentence = `${lead}Ekspertize konu bağımsız bölüm vaziyet planına göre blok bazında konum, kat ve kattaki konum olarak projesine uygun olup, kullanım alanı ve mimari olarak projesine uygun değildir.`;
       break;
+    case "PROJEYE UYGUNLUK TESPIT EDILMEMISTIR":
     case "PROJEYE UYGUNLUK TESPIT EDILEMEMISTIR":
-      sentence = `${lead}ekspertize konu taşınmazın incelemesi şube bilgisi dahilinde dışarıdan yapılmış olup mimari uygunluk tespit edilememiştir.`;
+      sentence = `${lead}Ekspertize konu bağımsız bölümün konum tespiti dışarıdan yapılmış olup kat, alan ve mimari olarak uygunluk tespit edilememiştir.`;
       break;
     case "TRAMPA":
       sentence = `${lead}ekspertize konu taşınmaz vaziyet planına göre blok bazında konum, kat, kattaki konum ve kullanım alanı olarak projesine uygun değildir.`;
@@ -16348,8 +16492,14 @@ function buildProjectSuitabilityStatusSentence(statusValue, noteValue, repairVal
   }
 
   const additions = [];
+  const acceptsConformityNote = [
+    "BLOK BAZINDA KONUM OLARAK UYGUN DEGILDIR",
+    "MIMARI OLARAK UYGUN DEGILDIR",
+    "KULLANIM ALANI OLARAK UYGUN DEGILDIR",
+    "KULLANIM ALANI VE MIMARI OLARAK UYGUN DEGILDIR",
+  ].includes(statusKey);
   const cleanNote = stripProjectSuitabilityRepairSentence(note);
-  if (cleanNote) additions.push(cleanNote);
+  if (acceptsConformityNote && cleanNote) additions.push(cleanNote);
   if (shouldShowProjectSuitabilityRepair(status) && repair) {
     additions.push(`Basit bir tadilat ile ${repair === "Evet" ? "düzeltilebilir" : "düzeltilemez"} niteliktedir.`);
   }
@@ -16391,6 +16541,82 @@ function stripProjectSuitabilityRepairSentence(value = "") {
     .trim();
 }
 
+function stripProjectSuitabilityUndeterminedSentence(value = "") {
+  return normalizeReportDescriptionText(value || "")
+    .replace(/Projeye\s+uygunluk\s+tespit\s+edil(?:e)?mem[iı][şs]t[iı]r\.?/gi, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+function cleanProjectReviewDescriptionForCurrentSuitability(value = "") {
+  const hasDifferentProjects = shouldUseProjectDifferenceComparison();
+  const statuses = hasDifferentProjects
+    ? [state.fields.titleProjectSuitabilityStatus, state.fields.municipalityProjectSuitabilityStatus]
+    : [state.fields.projectSuitabilityStatus];
+  const hasUndeterminedStatus = statuses.some(isProjectSuitabilityUndetermined);
+  const suitabilityText = normalizeReportDescriptionText(buildProjectSuitabilityDescription());
+  let cleaned = String(value || "");
+  if (suitabilityText) {
+    cleaned = cleaned.replace(suitabilityText, "");
+  }
+  if (hasUndeterminedStatus) {
+    cleaned = stripProjectSuitabilityUndeterminedSentence(cleaned);
+  }
+  return normalizeReportDescriptionText(cleaned);
+}
+
+function isProjectSuitabilityUndetermined(value) {
+  const statusKey = projectSuitabilityStatusKey(value);
+  return [
+    "PROJEYE UYGUNLUK TESPIT EDILMEMISTIR",
+    "PROJEYE UYGUNLUK TESPIT EDILEMEMISTIR",
+  ].includes(statusKey)
+    || /projeye\s+uygunluk\s+tespit\s+edil(?:e)?mem[iı][şs]t[iı]r\.?/i.test(String(value || ""));
+}
+
+function cleanProjectSuitabilityNote(statusValue, value = "") {
+  return isProjectSuitabilityUndetermined(statusValue)
+    ? stripProjectSuitabilityUndeterminedSentence(value)
+    : stripProjectSuitabilityRepairSentence(value);
+}
+
+function sanitizeUndeterminedProjectSuitabilityState() {
+  const hasDifferentProjects = shouldUseProjectDifferenceComparison();
+  const pairs = hasDifferentProjects
+    ? [
+      ["titleProjectSuitabilityStatus", "titleProjectSuitabilityNote"],
+      ["municipalityProjectSuitabilityStatus", "municipalityProjectSuitabilityNote"],
+    ]
+    : [["projectSuitabilityStatus", "projectConformity"]];
+  let changed = false;
+  let hasUndeterminedStatus = false;
+
+  pairs.forEach(([statusKey, noteKey]) => {
+    if (!isProjectSuitabilityUndetermined(state.fields[statusKey])) return;
+    hasUndeterminedStatus = true;
+    const cleaned = stripProjectSuitabilityUndeterminedSentence(state.fields[noteKey]);
+    if (cleaned === String(state.fields[noteKey] || "")) return;
+    state.fields[noteKey] = cleaned;
+    changed = true;
+  });
+
+  // Eski taslaklarda bu sabit cümle doğrudan üretilmiş açıklama alanına
+  // yazılmıştı. Not değişmemiş olsa bile, seçili durum tespit edilememişse
+  // rapora girecek kayıtlı metinden de çıkarılır.
+  if (hasUndeterminedStatus) {
+    const cleanedDescription = cleanProjectReviewDescriptionForCurrentSuitability(state.fields.projectReviewDescription);
+    if (cleanedDescription !== String(state.fields.projectReviewDescription || "")) {
+      state.fields.projectReviewDescription = cleanedDescription;
+      changed = true;
+    }
+  }
+
+  if (changed && !hasUndeterminedStatus) {
+    state.fields.projectReviewDescription = buildProjectReviewDescription();
+  }
+  return changed;
+}
+
 function buildMissingReviewedDocumentSentences(institutionValue = "") {
   const prefix = buildDocumentArchivePrefix(institutionValue);
   const occupancyPrefix = buildMissingOccupancyPermitArchivePrefix(institutionValue);
@@ -16401,7 +16627,9 @@ function buildMissingReviewedDocumentSentences(institutionValue = "") {
 }
 
 function buildReviewedDocumentsDescription() {
-  const rows = (state.tables.documents || []).map(normalizeReviewedDocumentRow).filter((row) => row.type);
+  const rows = getReviewedDocumentChronologicalEntries()
+    .map(({ row }) => normalizeReviewedDocumentRow(row))
+    .filter((row) => row.type);
   const ekbExplanation = buildEkbExplanation();
   if (!rows.length) {
     return normalizeReportDescriptionText([...buildMissingReviewedDocumentSentences(), ekbExplanation].filter(Boolean).join("\n\n"));
@@ -16494,6 +16722,21 @@ function normalizeReviewedDocumentRow(row = {}) {
     no: String(migrated.c3 || "").trim(),
     scope: normalizeReviewedDocumentScope(migrated.c4 || ""),
   };
+}
+
+function getReviewedDocumentChronologicalEntries(rows = state.tables?.documents || []) {
+  return (Array.isArray(rows) ? rows : [])
+    .map((row, index) => ({
+      row,
+      index,
+      date: parseReviewedDocumentDate(row?.c2),
+    }))
+    .sort((left, right) => {
+      if (left.date && right.date && left.date !== right.date) return left.date.localeCompare(right.date);
+      if (left.date && !right.date) return -1;
+      if (!left.date && right.date) return 1;
+      return left.index - right.index;
+    });
 }
 
 function hasReviewedDocumentInfo() {
@@ -18070,6 +18313,7 @@ function recalculateExpenseFees() {
 function refreshExpenseFeesFromCurrentFields(changedKey) {
   if (!EXPENSE_FEE_WATCHED_KEYS.includes(changedKey) && changedKey !== "currentArea" && changedKey !== "landArea") return;
   recalculateExpenseFees();
+  updateExpenseFeesSummaryPanel();
   if (EXPENSE_FEE_ADMIN_KEYS.includes(changedKey) && isCurrentUserAdmin()) scheduleExpenseFeeCloudSave();
 }
 
@@ -25795,6 +26039,25 @@ function createComparableViewModeControl() {
   return wrapper;
 }
 
+function areComparableRowLabelsVisible() {
+  return state.settings?.comparableRowLabelsVisible !== false;
+}
+
+function createComparableRowLabelsToggle() {
+  const button = document.createElement("button");
+  const visible = areComparableRowLabelsVisible();
+  button.type = "button";
+  button.className = "mini-button comparable-row-labels-toggle";
+  button.textContent = visible ? "Başlıkları gizle" : "Başlıkları göster";
+  button.setAttribute("aria-pressed", String(visible));
+  button.addEventListener("click", () => {
+    state.settings = { ...state.settings, comparableRowLabelsVisible: !visible };
+    autosave();
+    renderSection();
+  });
+  return button;
+}
+
 function getComparableFieldForRow(field, row) {
   if (!isLandComparable(row)) return field;
   if (field.key === "c7") return { ...field, options: comparableLandLocationOptions };
@@ -25851,11 +26114,12 @@ function createComparablesVerticalEditor(section) {
     autosave();
     renderSection();
   });
-  headingRow.append(createComparableViewModeControl(), addButton);
+  headingRow.append(createComparableViewModeControl(), createComparableRowLabelsToggle(), addButton);
 
   const rows = getComparableRows();
   const viewMode = getComparableViewMode();
   const visibleRows = getComparableRowsForView(rows, viewMode);
+  const showRowLabels = areComparableRowLabelsVisible();
 
   if (!rows.length) {
     const emptyLine = document.createElement("div");
@@ -25881,7 +26145,7 @@ function createComparablesVerticalEditor(section) {
   topScrollInner.className = "comparables-top-scroll-inner";
   topScroll.append(topScrollInner);
   const table = document.createElement("table");
-  table.className = "comparables-matrix-table";
+  table.className = `comparables-matrix-table${showRowLabels ? "" : " is-row-labels-hidden"}`;
 
   const thead = document.createElement("thead");
   const headerCells = visibleRows.map(({ index: rowIndex }, displayIndex) => `
@@ -25896,16 +26160,18 @@ function createComparablesVerticalEditor(section) {
       </div>
     </th>
   `).join("");
-  thead.innerHTML = `<tr><th class="comparables-row-label-cell">Sıra No</th>${headerCells}</tr>`;
+  thead.innerHTML = `<tr>${showRowLabels ? '<th class="comparables-row-label-cell">Sıra No</th>' : ""}${headerCells}</tr>`;
 
   const tbody = document.createElement("tbody");
   getComparableDisplayFields(viewMode).forEach((field) => {
     const tr = document.createElement("tr");
     if (field.key === "c10") tr.dataset.comparableReasonRow = "true";
-    const labelCell = document.createElement("th");
-    labelCell.className = "comparables-row-label-cell";
-    labelCell.textContent = formatUiHeading(field.label);
-    tr.append(labelCell);
+    if (showRowLabels) {
+      const labelCell = document.createElement("th");
+      labelCell.className = "comparables-row-label-cell";
+      labelCell.textContent = formatUiHeading(field.label);
+      tr.append(labelCell);
+    }
 
     visibleRows.forEach(({ row, index: rowIndex }) => {
       const td = document.createElement("td");
@@ -27898,7 +28164,10 @@ function createTable(section) {
   let ownerSummary = null;
   let annotationLienSummary = null;
 
-  tableState.forEach((row, rowIndex) => {
+  const tableEntries = isDocumentsTable
+    ? getReviewedDocumentChronologicalEntries(tableState)
+    : tableState.map((row, index) => ({ row, index }));
+  tableEntries.forEach(({ row, index: rowIndex }) => {
     const tr = document.createElement("tr");
     section.table.columns.forEach((column, columnIndex) => {
       const key = `c${columnIndex}`;
@@ -27969,6 +28238,7 @@ function createTable(section) {
           refreshReviewedDocumentsDescriptionFromCurrentRows();
         }
         autosave();
+        if (isDocumentsTable && key === "c2") renderSection();
       });
       td.append(input);
       tr.append(td);

@@ -1207,5 +1207,6 @@ module.exports = {
   normalizeNeighborhoodKey,
   normalizeNeighborhoodPlaceKey,
   parseCsvLine,
+  parseMapTileRequest,
   queryNeighborhoodRows,
 };
