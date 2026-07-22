@@ -678,6 +678,75 @@ function postFormToOverpass(endpoint, formBody) {
   });
 }
 
+const MAP_TILE_SOURCES = {
+  osm: "https://a.tile.openstreetmap.org/{z}/{x}/{y}.png",
+  imagery: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+  transport: "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}",
+  places: "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
+};
+
+function parseMapTileRequest(urlPath) {
+  const pathname = new URL(urlPath, `http://${host}:${port}`).pathname;
+  const match = pathname.match(/^\/map-tiles\/(osm|imagery|transport|places)\/(\d{1,2})\/(\d+)\/(\d+)$/);
+  if (!match) return null;
+  const [, source, zoomText, xText, yText] = match;
+  const zoom = Number(zoomText);
+  const x = Number(xText);
+  const y = Number(yText);
+  const limit = 2 ** zoom;
+  if (zoom > 20 || !Number.isInteger(x) || !Number.isInteger(y) || x < 0 || y < 0 || x >= limit || y >= limit) return null;
+  return { source, zoom, x, y };
+}
+
+function handleMapTile(response, tile) {
+  const endpoint = MAP_TILE_SOURCES[tile.source]
+    .replace("{z}", String(tile.zoom))
+    .replace("{x}", String(tile.x))
+    .replace("{y}", String(tile.y));
+
+  return new Promise((resolve) => {
+    const upstream = https.get(endpoint, {
+      headers: {
+        "User-Agent": "ExperifyMap/1.0",
+        Accept: "image/avif,image/webp,image/png,image/jpeg,*/*;q=0.8",
+      },
+      timeout: 10000,
+    }, (tileResponse) => {
+      const contentType = String(tileResponse.headers["content-type"] || "");
+      if (tileResponse.statusCode !== 200 || !contentType.startsWith("image/")) {
+        tileResponse.resume();
+        applySecurityHeaders(response);
+        response.writeHead(502, { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" });
+        response.end("Harita katmanı alınamadı.");
+        resolve();
+        return;
+      }
+
+      applySecurityHeaders(response);
+      response.writeHead(200, {
+        "Content-Type": contentType,
+        "Cache-Control": "public, max-age=86400, stale-while-revalidate=604800",
+      });
+      tileResponse.pipe(response);
+      tileResponse.on("end", resolve);
+      tileResponse.on("error", () => {
+        if (!response.writableEnded) response.end();
+        resolve();
+      });
+    });
+
+    upstream.on("timeout", () => upstream.destroy(new Error("Harita katmanı zaman aşımına uğradı.")));
+    upstream.on("error", () => {
+      if (!response.headersSent) {
+        applySecurityHeaders(response);
+        response.writeHead(502, { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" });
+      }
+      if (!response.writableEnded) response.end("Harita katmanı alınamadı.");
+      resolve();
+    });
+  });
+}
+
 async function handleOverpassApi(request, response) {
   if (request.method !== "POST") {
     sendJson(response, 405, { ok: false, error: "Bu işlem desteklenmiyor." });
@@ -1069,6 +1138,11 @@ const server = http.createServer(async (request, response) => {
   try {
     createDailyBackupIfNeeded().catch((error) => console.warn("Backup skipped:", error.message));
     const url = request.url || "/";
+    const mapTile = parseMapTileRequest(url);
+    if (mapTile) {
+      await handleMapTile(response, mapTile);
+      return;
+    }
     const apiRoute = matchApiRoute(url);
 
     if (apiRoute) {

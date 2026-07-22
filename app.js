@@ -22750,15 +22750,16 @@ function getMapExportRatioMenuMarkup(selected = state.settings.mapExportRatio) {
 
 function getLeafletTileLayer() {
   const mode = normalizeMapMode(state.settings.mapMode);
+  const mapTileUrl = (source) => `/map-tiles/${source}/{z}/{x}/{y}`;
   // Ekran içi Leaflet karolarında `crossOrigin` kullanılmaz: iOS Safari,
   // ArcGIS'in bazı yönlendirilmiş tile cevaplarını CORS hatasıyla boş
   // gösterebiliyor. Dışa aktarılan canvas görselleri kendi CORS akışını
   // `loadTileImage` içinde kullanmaya devam eder.
-  const streetLayer = window.L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  const streetLayer = window.L.tileLayer(mapTileUrl("osm"), {
     attribution: "© OpenStreetMap",
     maxZoom: 20,
   });
-  const imageryLayer = window.L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+  const imageryLayer = window.L.tileLayer(mapTileUrl("imagery"), {
     attribution: "Tiles © Esri",
     maxZoom: 20,
   });
@@ -22771,12 +22772,12 @@ function getLeafletTileLayer() {
   if (mode === "hybrid") {
     return window.L.layerGroup([
       ...baseLayers,
-      window.L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}", {
+      window.L.tileLayer(mapTileUrl("transport"), {
         attribution: "Road labels © Esri",
         maxZoom: 20,
         opacity: 0.96,
       }),
-      window.L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}", {
+      window.L.tileLayer(mapTileUrl("places"), {
         attribution: "Place labels © Esri",
         maxZoom: 20,
         opacity: 0.96,
