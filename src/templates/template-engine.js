@@ -119,7 +119,8 @@
       .filter((row) => Object.values(row || {}).some((v) => String(v || "").trim()))
       .map((row) => [row.c0 || "", row.c1 || "", outputDate(row.c2), row.c3 || "", row.c4 || ""]);
     if (!rows.length) return safeCall("buildReviewedDocumentsDescription");
-    return safeCall("buildSimpleHtmlTable", ["Belge Türü", "İncelenen Kurum", "Tarih", "No", "Kapsam"], rows);
+    return safeCall("buildReviewedDocumentsWordTableHtml")
+      || safeCall("buildSimpleHtmlTable", ["Belge Türü", "İncelenen Kurum", "Tarih", "No", "Kapsam"], rows);
   }
 
   function halkbankValue(value, suffix = "") {
@@ -413,7 +414,7 @@
     TAKYIDATSAAT: { f: ["takbisTime"] },
     TAKYIDAT2025: { t: () => field("takbisSummary") || safeCall("buildEncumbranceSummary"), paragraphClass: "encumbrance-summary" },
     TAKYIDATISBANK: { t: () => field("takbisSummary") || safeCall("buildEncumbranceSummary"), paragraphClass: "encumbrance-summary" },
-    TAKYIDATTABLO: { h: () => safeCall("formatTextTableForWord", safeCall("buildTakyidatTableText")) },
+    TAKYIDATTABLO: { h: () => safeCall("buildTakyidatWordTableHtml") || safeCall("formatTextTableForWord", safeCall("buildTakyidatTableText")) },
     // `{{ENCUMBRANCE_SUMMARY_TEXT}}` (PLACEHOLDER-REHBERI.md'de belgeli,
     // 7 banka şablonunda kullanılıyor) hiçbir yerde kayıtlı DEĞİLDİ — ne app
     // alan anahtarı ("encumbranceSummaryText" yok) ne de bir alias olarak;
@@ -606,6 +607,7 @@
 
     // --- Emsaller ---
     EMSALTABLOSU: { h: () => safeCall("buildComparableValuationWordTableHtml") || safeCall("buildComparableMatrixWordTableHtml") },
+    EMSALDEGERLEMETABLOSU: { h: () => safeCall("buildComparableValuationWordTableHtml") || safeCall("buildComparableMatrixWordTableHtml") },
     EMSALMATRISI: { h: () => safeCall("buildComparableMatrixWordTableHtml") },
     EMSAL_ARSA_PIYASA_DEGERI: { h: () => safeCall("buildComparableCalculatedEmsalWordTableHtml") },
     EMSALPIYASAANALIZI: { t: () => field("comparableMarketAnalysisText") || safeCall("buildComparableMarketAnalysisText") },

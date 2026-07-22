@@ -5083,7 +5083,7 @@ function buildExplanationsFloorValuationWordTableHtml() {
             `<td rowspan="${detailRows.length}" style="${dataCell(totalCell, 8, "text-align:right;")}">${escapeHtml(formatExplanationsFloorMoney(metrics.rentValue, "TL/ay"))}</td>`
           );
         }
-        return `<tr style="height:1pt;mso-height-source:auto;">${tds.join("")}</tr>`;
+        return `<tr height="19" style="height:0.5cm;mso-height-source:userset;mso-height-rule:exactly;">${tds.join("")}</tr>`;
       })
       .join("");
   };
@@ -9394,6 +9394,13 @@ function shouldHideField(sectionId, fieldKey) {
   if (sectionId === "documents" && isEkbFieldKey(fieldKey)) {
     return !shouldShowEkbFields();
   }
+  if (sectionId === "output" && fieldKey === "expenseMunicipalityVatIncluded") {
+    // "Makbuzda KDV Belirtilmiş mi?" yalnızca Grup A ve D bankalarda iş yapar
+    // (bkz. KURALLAR / recalculateExpenseFees). Grup B (her zaman KDV-dahil) ve
+    // Grup C (düz, KDV yok) bankalarda kutucuk anlamsız olduğundan gizlenir.
+    const group = getExpenseBankGroup(state.fields.bank);
+    return group !== "A" && group !== "D";
+  }
   return false;
 }
 
@@ -12522,7 +12529,76 @@ function buildComparableValuationWordTableHtml() {
   const headers = ["No", "Alan (m²)", "Talep Edilen Değer", "P. Payı", "Pazarlıklı Değer", "M² Birim", "İç Özellik Şerefiye", "Konum Şerefiye", "İnd. M² Birim", "Kira", "Kira Birim", "İnd. Kira Birim"];
   const bodyRows = rows.map((row) => formatComparableValuationWordRow(row));
   bodyRows.push(formatComparableValuationWordRow({ no: "ORTALAMA", ...calculateComparableValuationAverages(rows) }));
-  return wrapWordLandscapeSection("Emsal DeÄŸerleme Tablosu", buildSimpleHtmlTable(headers, bodyRows, "is-summary"));
+  const ink = getReportThemeToken("--ink", "#152238");
+  const line = getReportThemeToken("--line", "#dde3ef");
+  const blue = getReportThemeToken("--blue", "#3a5691");
+  const blueSoft = getReportThemeToken("--blue-soft", "#e4ebf8");
+  const surface = getReportThemeToken("--surface", "#ffffff");
+  const rowStyle = "height:0.5cm;mso-height-source:userset;mso-height-rule:exactly;";
+  const groupHeaderRowStyle = "height:0.55cm;mso-height-source:userset;mso-height-rule:exactly;";
+  const detailHeaderRowStyle = "height:0.8cm;mso-height-source:userset;mso-height-rule:exactly;";
+  const widths = ["9%", "6%", "12%", "6%", "12%", "8%", "7%", "6%", "10%", "6%", "8%", "10%"];
+  const baseCell = `border:0;border-bottom:.25pt solid #ccd6e4;padding:3pt 2pt;mso-padding-alt:3pt 2pt 3pt 2pt;vertical-align:middle;line-height:6pt;mso-line-height-rule:exactly;font-family:Arial,sans-serif;font-size:6pt;color:${ink};white-space:nowrap;`;
+  const headerStyle = `${baseCell}background:${blueSoft};color:${blue};font-weight:700;text-align:center;white-space:normal;`;
+  const blueHeaderStyle = `${headerStyle}background:#315fae;color:#ffffff;`;
+  const darkHeaderStyle = `${headerStyle}background:#23447d;color:#ffffff;`;
+  const bodyStyle = `${baseCell}background:#edf2f8;`;
+  const alternateBodyStyle = `${baseCell}background:#e6edf5;`;
+  const adjustedStyle = `${baseCell}background:#d5e1f4;color:#1e55a5;font-weight:700;`;
+  const premiumStyle = `${baseCell}background:#edf2f8;color:#e96f00;font-weight:700;`;
+  const alternatePremiumStyle = `${baseCell}background:#e6edf5;color:#e96f00;font-weight:700;`;
+  const averageStyle = `${baseCell}background:#24313f;color:#ffffff;font-weight:700;`;
+  const averageAdjustedStyle = `${baseCell}background:#315fae;color:#ffffff;font-weight:700;`;
+  const groupEdgeStyle = (index) => {
+    if (index === 0) return "border-left:1pt solid #1f2a32;border-right:1pt solid #1f2a32;";
+    if ([1, 5, 7, 8, 11].includes(index)) return "border-right:1pt solid #1f2a32;";
+    return "";
+  };
+  const headerCell = (text, index, extra = "") => `<th style="${headerStyle}width:${widths[index]};${groupEdgeStyle(index)}${extra}">${escapeHtml(text).replace(/\n/g, "<br>")}</th>`;
+  const table = `<table class="word-table is-wide comparable-valuation-word-table" style="border-collapse:collapse;width:100%;margin:0;table-layout:fixed;font-family:Arial,sans-serif;font-size:6pt;">
+    <colgroup>${widths.map((width) => `<col style="width:${width};">`).join("")}</colgroup>
+    <thead>
+      <tr height="21" style="${groupHeaderRowStyle}">
+        <th rowspan="2" style="${headerStyle}width:${widths[0]};${groupEdgeStyle(0)}">NO</th>
+        <th rowspan="2" style="${headerStyle}width:${widths[1]};${groupEdgeStyle(1)}">ALAN<br>m²</th>
+        <th colspan="4" style="${headerStyle}border-right:1pt solid #1f2a32;">SATIŞ / PİYASA DEĞERLEMESİ</th>
+        <th colspan="2" style="${headerStyle}color:#e96f00;border-right:1pt solid #1f2a32;">ŞEREFİYE</th>
+        <th rowspan="2" style="${blueHeaderStyle}width:${widths[8]};${groupEdgeStyle(8)}">İND. M² BİRİM<br>TL/m²</th>
+        <th colspan="3" style="${headerStyle}border-right:1pt solid #1f2a32;">KİRA DEĞERLEMESİ</th>
+      </tr>
+      <tr height="30" style="${detailHeaderRowStyle}">
+        ${headerCell("TALEP EDİLEN DEĞER", 2, "" )}
+        ${headerCell("P. PAYI", 3, "" )}
+        ${headerCell("PAZARLIKLI DEĞER", 4, "" )}
+        ${headerCell("M² BİRİM\nDEĞERİ", 5, "" )}
+        ${headerCell("İÇ ÖZELLİK", 6, "" )}
+        ${headerCell("KONUM", 7, "" )}
+        <th style="${headerStyle}width:${widths[9]};">KİRA<br>TL/ay</th>
+        <th style="${headerStyle}width:${widths[10]};">KİRA BİRİM<br>TL/m²</th>
+        <th style="${darkHeaderStyle}width:${widths[11]};">İND. KİRA BİRİM<br>TL/m²</th>
+      </tr>
+    </thead>
+    <tbody>${bodyRows.map((row, rowIndex) => {
+      const isAverage = rowIndex === bodyRows.length - 1;
+      const rowCellStyle = isAverage ? averageStyle : (rowIndex % 2 ? alternateBodyStyle : bodyStyle);
+      return `<tr height="19" style="${rowStyle}">${row.map((cell, cellIndex) => {
+        const style = isAverage
+          ? (cellIndex === 8 || cellIndex === 11 ? averageAdjustedStyle : averageStyle)
+          : (cellIndex === 8 || cellIndex === 11
+            ? adjustedStyle
+            : (cellIndex === 6 || cellIndex === 7 ? (rowIndex % 2 ? alternatePremiumStyle : premiumStyle) : rowCellStyle));
+        return `<td style="${style}width:${widths[cellIndex]};${groupEdgeStyle(cellIndex)}text-align:${cellIndex === 0 ? "center" : "right"};">${formatWordCell(cell)}</td>`;
+      }).join("")}</tr>`;
+    }).join("")}</tbody>
+  </table>`;
+  // Word .doc HTML içindeki div çerçevelerini parçalayabildiği için, başlık ve
+  // iç tabloyu tek hücreli bir dış tabloyla sarıyoruz. Böylece dört kenar da
+  // Word'de tek, kesintisiz bir çerçeve olarak kalır.
+  const frame = `<table role="presentation" style="border-collapse:collapse;width:100%;margin:3pt 0 12pt;border:2pt solid #1f2a32;">
+    <tr><td style="border-bottom:1.5pt solid #1f2a32;background:#e7e7e7;padding:3pt 5pt;font-family:Arial,sans-serif;font-size:7pt;color:#111;">Emsal Değerleme Tablosu</td></tr>
+    <tr><td style="padding:10pt 3pt 3pt;">${table}</td></tr>
+  </table>`;
+  return wrapWordLandscapeSection("", frame);
 }
 
 function formatComparableValuationWordRow(row) {
@@ -12554,6 +12630,70 @@ function formatTextTableForWord(text) {
     return pipeRows[0].length > 6 ? wrapWordLandscapeSection("", tableHtml) : tableHtml;
   }
   return buildSimpleHtmlTable(["Açıklama"], lines.map((line) => [line]));
+}
+
+// İncelenen belgeler ve takyidat, banka şablonlarının tamamında aynı sıkı
+// Word görünümünü korur. Satır yüksekliği Word'ün "0,5 cm / Tam" ayarıdır.
+function buildCompactReportWordTableHtml(headers, rows, options = {}) {
+  const columnWidths = Array.isArray(options.columnWidths) ? options.columnWidths : [];
+  const safeRows = (Array.isArray(rows) ? rows : []).filter((row) => Array.isArray(row));
+  const outer = "border:2pt solid #1f2a32;";
+  const inner = "border:0.5pt solid #b8c4d8;";
+  const base = `${inner}padding:3pt 2pt;mso-padding-alt:3pt 2pt 3pt 2pt;vertical-align:middle;font-family:Arial,sans-serif;font-size:6pt;line-height:6pt;mso-line-height-rule:exactly;color:#152238;`;
+  const header = `${base}background:#d7e0f1;color:#2756a4;font-weight:700;text-align:center;`;
+  const section = `${base}background:#e6edf8;color:#1f4e92;font-weight:700;`;
+  const plain = `${base}background:#f8fbff;`;
+  const zebra = `${base}background:#edf3fb;`;
+  const columnGroup = columnWidths.length
+    ? `<colgroup>${columnWidths.map((width) => `<col style="width:${escapeHtml(width)};">`).join("")}</colgroup>`
+    : "";
+  const headerHtml = `<tr height="21" style="height:0.55cm;mso-height-source:userset;mso-height-rule:exactly;">${headers.map((label) => `<th style="${header}">${escapeHtml(label)}</th>`).join("")}</tr>`;
+  const bodyHtml = safeRows.map((row, index) => {
+    const isSection = Boolean(row.__section);
+    if (isSection) {
+      return `<tr height="19" style="height:0.5cm;mso-height-source:userset;mso-height-rule:exactly;"><td colspan="${headers.length}" style="${section}">${formatWordCell(row[0])}</td></tr>`;
+    }
+    const cellStyle = index % 2 ? zebra : plain;
+    return `<tr height="19" style="height:0.5cm;mso-height-source:userset;mso-height-rule:exactly;">${headers.map((_, cellIndex) => `<td style="${cellStyle}">${formatWordCell(row[cellIndex])}</td>`).join("")}</tr>`;
+  }).join("");
+
+  return `<table class="word-table word-table-compact-report" style="border-collapse:collapse;width:100%;margin:6pt 0 12pt;table-layout:fixed;${outer}">
+    ${columnGroup}
+    <thead>${headerHtml}</thead>
+    <tbody>${bodyHtml}</tbody>
+  </table>`;
+}
+
+function buildReviewedDocumentsWordTableHtml() {
+  const formatDocumentDate = (value) => {
+    const text = String(value || "").trim();
+    const match = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    return match ? `${match[3]}.${match[2]}.${match[1]}` : text;
+  };
+  const rows = (Array.isArray(state.tables?.documents) ? state.tables.documents : [])
+    .filter((row) => Object.values(row || {}).some((value) => String(value || "").trim()))
+    .map((row) => [row.c0 || "", row.c1 || "", formatDocumentDate(row.c2), row.c3 || "", row.c4 || ""]);
+  if (!rows.length) return "";
+  return buildCompactReportWordTableHtml(
+    ["Belge Türü", "İncelenen Kurum", "Tarih", "No", "Kapsam"],
+    rows,
+    { columnWidths: ["18%", "27%", "12%", "12%", "31%"] },
+  );
+}
+
+function buildTakyidatWordTableHtml() {
+  const rows = buildTakyidatTableGroups().flatMap((group) => {
+    const items = group.items.length ? group.items : ["Herhangi bir kayıt bulunmamaktadır."];
+    return [
+      Object.assign([group.title], { __section: true }),
+      ...items.map((item, index) => [index + 1, item]),
+    ];
+  });
+  return buildCompactReportWordTableHtml(
+    ["No", "Açıklama"],
+    rows,
+    { columnWidths: ["8%", "92%"] },
+  );
 }
 
 // Tum uretilen tablolar (banka sablonlarina {{...}} ile enjekte edilenler
@@ -12650,8 +12790,8 @@ function buildValuationSummaryWordTableHtml() {
   const body = buildValuationSummaryGroups().map((group) => {
     const [background, color] = groupColors[group.key] || [surfaceMuted, ink];
     const groupStyle = `${cellBase}background:${background};color:${color};font-weight:700;font-size:6pt;text-transform:uppercase;letter-spacing:.04em;`;
-    const heading = `<tr style="height:1pt;mso-height-source:auto;"><th colspan="3" style="${groupStyle}">${escapeHtml(group.title.toLocaleUpperCase("tr-TR"))}</th></tr>`;
-    const rows = group.rows.map((row) => `<tr style="height:1pt;mso-height-source:auto;">
+    const heading = `<tr height="19" style="height:0.5cm;mso-height-source:userset;mso-height-rule:exactly;"><th colspan="3" style="${groupStyle}">${escapeHtml(group.title.toLocaleUpperCase("tr-TR"))}</th></tr>`;
+    const rows = group.rows.map((row) => `<tr height="19" style="height:0.5cm;mso-height-source:userset;mso-height-rule:exactly;">
       <td style="${summaryCell(0, "font-weight:700;")}">${escapeHtml(row.label)}</td>
       <td style="${summaryCell(1, `color:${muted};font-size:6pt;`)}">${escapeHtml(row.detail)}</td>
       <td style="${summaryCell(2, "text-align:right;font-weight:800;")}">${escapeHtml(row.value)}</td>
@@ -12660,7 +12800,7 @@ function buildValuationSummaryWordTableHtml() {
   }).join("");
   return `<table class="valuation-summary-table ziraat-valuation-summary-table" style="${tableStyle}">
     <colgroup><col style="width:24%;"><col style="width:56%;"><col style="width:20%;"></colgroup>
-    <thead><tr style="height:1pt;mso-height-source:auto;">
+    <thead><tr height="19" style="height:0.5cm;mso-height-source:userset;mso-height-rule:exactly;">
       <th style="${headerCell}width:${summaryWidths[0]};">Kalem</th>
       <th style="${headerCell}width:${summaryWidths[1]};">Birim Değer / Oran</th>
       <th style="${headerCell}width:${summaryWidths[2]};text-align:right;">Tutar</th>
@@ -17723,6 +17863,38 @@ const EXPENSE_FEE_2026_DEFAULTS = {
   expenseAppraisalBulkFlatFee201Plus: "511500",
 };
 
+// Banka → masraf grubu (A/B/C/D). Kaynak: kullanıcının
+// "Fatura_Masraf_Otomasyon_Sablon.xlsm" dosyasındaki KURALLAR sayfası +
+// Module1/Module2 VBA makroları. Gruplar tapu ve belediye harcının KDV
+// muamelesini belirler (bkz. recalculateExpenseFees). Listede olmayan banka
+// → Grup A (Excel'deki varsayılan). Grup A bankaların çoğunlukta olması ve
+// varsayılan olması nedeniyle yalnız B/C/D bankaları burada sıralanır.
+const EXPENSE_BANK_GROUP_MAP = {
+  // Grup B: makbuz tutarı her zaman KDV-DAHİL kabul edilir (checkbox yok sayılır)
+  "TURKIYE IS BANKASI A.S.": "B",
+  "FIBABANKA A.S.": "B",
+  "ALTERNATIFBANK A.S.": "B",
+  // Grup C: belediye makbuz tutarı düz girilir (KDV ayrıştırılmaz); tapu KDV-dahil
+  "YAPI VE KREDI BANKASI A.S.": "C",
+  "T.C. ZIRAAT BANKASI A.S.": "C",
+  "TURKIYE CUMHURIYETI ZIRAAT BANKASI A.S.": "C",
+  // Grup D: belediye checkbox'a bağlı; tapu KDV-dahil
+  "EMLAK KATILIM BANKASI A.S.": "D",
+};
+
+function normalizeExpenseBankName(name) {
+  return String(name || "")
+    .toLocaleUpperCase("tr-TR")
+    .replace(/İ/g, "I").replace(/I/g, "I").replace(/Ş/g, "S").replace(/Ğ/g, "G")
+    .replace(/Ü/g, "U").replace(/Ö/g, "O").replace(/Ç/g, "C")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function getExpenseBankGroup(bankName) {
+  return EXPENSE_BANK_GROUP_MAP[normalizeExpenseBankName(bankName)] || "A";
+}
+
 // Admin tarafından yönetilen, bulutta ortak sabitler (tarife kademeleri +
 // birim ücretler + KDV oranı). Belediye Harcı ve tapu adedi burada YOK —
 // onlar rapora özgü, herkes girebilir.
@@ -17747,14 +17919,13 @@ const EXPENSE_BULK_MODE_DISCOUNT = {
   [EXPENSE_BULK_MODE_2]: 0.15,
 };
 
-// KDV-hariç → KDV-dahil eşleşmeleri (hesaplanan/gizli alanlar). Belediye
-// Harcı bu haritada YOK — makbuz tutarı KDV dahil/hariç olabildiğinden
-// (Makbuzda KDV Belirtilmiş mi? kutucuğu) recalculateExpenseFees içinde
-// ayrıca ele alınır.
+// KDV-hariç → KDV-dahil eşleşmeleri (sabit oranlı basit kalemler). Belediye
+// ve Tapu Harcı bu haritada YOK — ikisinin de KDV muamelesi bankanın
+// grubuna (A/B/C/D) göre değiştiğinden recalculateExpenseFees içinde ayrıca
+// ele alınır.
 const EXPENSE_FEE_PAIR_MAP = {
   expenseAppraisalFeeExVat: "expenseAppraisalFeeIncVat",
   expenseTransportFeeExVat: "expenseTransportFeeIncVat",
-  expenseTitleDeedFeeExVat: "expenseTitleDeedFeeIncVat",
   expenseInfoCenterShareExVat: "expenseInfoCenterShareIncVat",
   expenseUnionShareExVat: "expenseUnionShareIncVat",
 };
@@ -17762,6 +17933,7 @@ const EXPENSE_FEE_PAIR_MAP = {
 // Bir alan değiştiğinde yeniden hesaplama/senkron tetikleyen tüm anahtarlar.
 const EXPENSE_FEE_WATCHED_KEYS = [
   ...EXPENSE_FEE_ADMIN_KEYS,
+  "bank",
   "expenseAppraisalPropertyType",
   "expenseMunicipalityFeeReceipt",
   "expenseMunicipalityVatIncluded",
@@ -17817,24 +17989,48 @@ function recalculateExpenseFees() {
   }
   state.fields.expenseAppraisalFeeExVat = Number.isFinite(appraisalFee) ? formatValuationMoney(appraisalFee, { decimals: 2 }) : "";
 
-  const titleDeedUnitFee = parseValuationNumber(state.fields.expenseTitleDeedUnitFeeExVat);
-  const titleDeedCount = parseValuationNumber(state.fields.expenseTitleDeedCount);
-  const titleDeedFee = Number.isFinite(titleDeedUnitFee) && Number.isFinite(titleDeedCount) && titleDeedCount > 0
-    ? titleDeedUnitFee * titleDeedCount
-    : Number.NaN;
-  state.fields.expenseTitleDeedFeeExVat = Number.isFinite(titleDeedFee) ? formatValuationMoney(titleDeedFee, { decimals: 2 }) : "";
+  const bankGroup = getExpenseBankGroup(state.fields.bank);
 
   let total = 0;
 
-  // Belediye Harcı: kullanıcı makbuz tutarını girer ("Banka ve Çıktı"
-  // bölümü). "Makbuzda KDV Belirtilmiş mi?" işaretliyse girilen tutar
-  // KDV-DAHİL kabul edilir (hariç geriye hesaplanır); değilse KDV-hariç
-  // kabul edilip üzerine KDV eklenir.
+  // TAPU HARCI: KDV-dahil toplam her grupta aynıdır → birim(KDV hariç) × KDV
+  // oranı × adet (2026: 255,83 × 1,20 = 307 TL/tapu). Fark yalnız KDV
+  // kırılımında: A,B gruplarında 307 içinden ayrıştırılır (hariç 255,83 +
+  // KDV 51,17); C,D gruplarında düz gösterilir (hariç = 307, KDV = 0).
+  const titleDeedUnitFee = parseValuationNumber(state.fields.expenseTitleDeedUnitFeeExVat);
+  const titleDeedCount = parseValuationNumber(state.fields.expenseTitleDeedCount);
+  if (Number.isFinite(titleDeedUnitFee) && titleDeedUnitFee > 0 && Number.isFinite(titleDeedCount) && titleDeedCount > 0) {
+    const titleDeedIncVat = titleDeedUnitFee * multiplier * titleDeedCount;
+    const titleDeedExVat = (bankGroup === "C" || bankGroup === "D") ? titleDeedIncVat : titleDeedIncVat / multiplier;
+    state.fields.expenseTitleDeedFeeExVat = formatValuationMoney(titleDeedExVat, { decimals: 2 });
+    state.fields.expenseTitleDeedFeeIncVat = formatValuationMoney(titleDeedIncVat, { decimals: 2 });
+    total += titleDeedIncVat;
+  } else {
+    state.fields.expenseTitleDeedFeeExVat = "";
+    state.fields.expenseTitleDeedFeeIncVat = "";
+  }
+
+  // BELEDİYE HARCI: kullanıcı makbuz tutarını girer. KDV muamelesi gruba göre:
+  //  A, D → "Makbuzda KDV Belirtilmiş mi?" kutucuğuna bağlı: işaretliyse tutar
+  //         KDV-DAHİL (hariç = tutar/oran); işaretsizse KDV-HARİÇ (dahil =
+  //         tutar × oran).
+  //  B    → her zaman KDV-DAHİL kabul edilir (kutucuk yok sayılır).
+  //  C    → düz: tutar aynen (hariç = dahil = tutar, KDV = 0).
   const municipalityReceipt = parseValuationNumber(state.fields.expenseMunicipalityFeeReceipt);
   if (Number.isFinite(municipalityReceipt) && municipalityReceipt > 0) {
-    const vatIncluded = String(state.fields.expenseMunicipalityVatIncluded || "").trim() === "Evet";
-    const municipalityExVat = vatIncluded ? municipalityReceipt / multiplier : municipalityReceipt;
-    const municipalityIncVat = vatIncluded ? municipalityReceipt : municipalityReceipt * multiplier;
+    let municipalityExVat;
+    let municipalityIncVat;
+    if (bankGroup === "C") {
+      municipalityExVat = municipalityReceipt;
+      municipalityIncVat = municipalityReceipt;
+    } else if (bankGroup === "B") {
+      municipalityExVat = municipalityReceipt / multiplier;
+      municipalityIncVat = municipalityReceipt;
+    } else {
+      const vatIncluded = String(state.fields.expenseMunicipalityVatIncluded || "").trim() === "Evet";
+      municipalityExVat = vatIncluded ? municipalityReceipt / multiplier : municipalityReceipt;
+      municipalityIncVat = vatIncluded ? municipalityReceipt : municipalityReceipt * multiplier;
+    }
     state.fields.expenseMunicipalityFeeExVat = formatValuationMoney(municipalityExVat, { decimals: 2 });
     state.fields.expenseMunicipalityFeeIncVat = formatValuationMoney(municipalityIncVat, { decimals: 2 });
     total += municipalityIncVat;

@@ -159,7 +159,7 @@ delete globalThis.getPostRoadSetbackParcelArea;
 const templateFiles = fs.readdirSync(path.join(appDir, "templates")).filter((f) => f.endsWith(".html"));
 assert(templateFiles.length >= 10, `templates/ altinda beklenen sablon sayisi yok: ${templateFiles.length}`);
 
-const tableBlockTokens = ["DEGERLENDIRME_TABLOSU", "KAT_BAZINDA_INDIRGENMIS_ALAN_TABLOSU", "DEGERLENDIRME_SEMASI"];
+const tableBlockTokens = ["DEGERLENDIRME_TABLOSU", "KAT_BAZINDA_INDIRGENMIS_ALAN_TABLOSU", "DEGERLENDIRME_SEMASI", "EMSAL_DEGERLEME_TABLOSU"];
 templateFiles.forEach((file) => {
   const text = fs.readFileSync(path.join(appDir, "templates", file), "utf8");
   assert(
@@ -302,7 +302,8 @@ assert(
 // dinamik sütunlu emsal matrisi (EMSAL_MATRISI, kaç emsal varsa o kadar
 // sütun) + altında "Emsal Açıklaması" başlıklı EMSAL_PIYASA_ANALIZI metni.
 // Eski EMSAL_TABLOSU / EMSAL_1../EMSAL_7 paragraf listesi artık HİÇBİR
-// şablonda kullanılmamalı (motor hâlâ çözer, sadece şablonlarda yasak).
+// şablonda kullanılmamalı; Emsal Değerleme Tablosu için ayrı ve açık adla
+// EMSAL_DEGERLEME_TABLOSU kullanılır.
 const comparableTemplateFiles = templateFiles.filter(
   (file) => !["isbankasi-masraf.html", "ziraat-ek-tablo.html"].includes(file)
 );
@@ -385,6 +386,10 @@ comparableTemplateFiles.forEach((file) => {
   assert(text.includes("{{EMSAL_MATRISI}}"), `${file}: EMSAL_MATRISI (dinamik sutunlu emsal matrisi) bulunamadi.`);
   assert(text.includes("Emsal Açıklaması"), `${file}: "Emsal Açıklaması" basligi bulunamadi.`);
   assert(!text.includes("{{EMSAL_TABLOSU}}"), `${file}: eski EMSAL_TABLOSU hala kullanimda (tek format kuralina aykiri).`);
+  assert(text.includes("{{EMSAL_DEGERLEME_TABLOSU}}"), `${file}: Emsal Degerleme Tablosu placeholder'i bulunamadi.`);
+  const valuationTableIndex = text.lastIndexOf("{{EMSAL_DEGERLEME_TABLOSU}}");
+  const lastComparableSectionContent = Math.max(text.lastIndexOf("{{EMSAL_MATRISI}}"), text.lastIndexOf("{{COMPARABLE_SKETCH_SECTION}}"));
+  assert(valuationTableIndex > lastComparableSectionContent, `${file}: Emsal Degerleme Tablosu emsaller bolumunun sonunda degil.`);
   for (let i = 1; i <= 7; i += 1) {
     assert(!text.includes(`{{EMSAL_${i}}}`), `${file}: eski EMSAL_${i} paragraf placeholder'i hala kullanimda.`);
   }
