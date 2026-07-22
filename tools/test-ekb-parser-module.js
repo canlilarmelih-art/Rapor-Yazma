@@ -1,4 +1,6 @@
 const { parseEkbFields } = require("../src/parsers/ekb-parser");
+const fs = require("node:fs");
+const path = require("node:path");
 
 function assert(condition, message) {
   if (!condition) {
@@ -44,6 +46,16 @@ function main() {
   assertEqual(tenYearParsed.ekbValidUntil, "2036-03-06", "10 yıl kuralı geçerlilik tarihi");
   assertEqual(tenYearParsed.ekbEnergyClass, "B", "Grafik enerji sınıfı");
   assertEqual(tenYearParsed.ekbEmissionClass, "C", "Grafik emisyon sınıfı");
+
+  const appSource = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
+  assert(
+    appSource.includes('const documentNo = toTitleFieldUppercase(state.fields.ekbDocumentNo || "").trim();'),
+    "EKB açıklamasında belge no büyük harfe dönüştürülmüyor."
+  );
+  assert(
+    appSource.includes('enerji performans sınıfı ${energyClass} sınıfıdır.'),
+    "EKB enerji sınıfı açıklaması tırnaksız sınıf formatında oluşturulmuyor."
+  );
 
   console.log("EKB parser modul testi tamam.");
 }

@@ -17215,7 +17215,7 @@ function buildEkbExplanation() {
     return normalizeReportDescriptionText(`${inspectionLead} taşınmaza ait${certificateDateSuffix} Enerji Kimlik Belgesi incelenmiştir. Enerji Kimlik Belgesinin son geçerlilik tarihi sona erdiği için değerleme raporunda dikkate alınmamıştır.`);
   }
 
-  const documentNo = normalizeReportTitleText(state.fields.ekbDocumentNo || "").trim();
+  const documentNo = toTitleFieldUppercase(state.fields.ekbDocumentNo || "").trim();
   const energyClass = normalizeReportTitleText(state.fields.ekbEnergyClass || "").trim();
   const certificateParts = [];
   if (issueDate) certificateParts.push(`${issueDate} tarih`);
@@ -17227,7 +17227,7 @@ function buildEkbExplanation() {
     : "Enerji Kimlik Belgesi";
   const sentences = [`Konu taşınmazın yer aldığı binaya ait ${certificateLead} bulunmaktadır.`];
   if (energyClass) {
-    sentences.push(`Belgeye göre taşınmazın yer aldığı binanın enerji performans sınıfı “${energyClass}” kategorisindedir.`);
+    sentences.push(`Belgeye göre taşınmazın yer aldığı binanın enerji performans sınıfı ${energyClass} sınıfıdır.`);
   }
   return normalizeReportDescriptionText(sentences.join(" "));
 }
@@ -18284,12 +18284,20 @@ function suggestExpenseAppraisalPropertyType() {
 
 // Kullanıcı Tarife Türü'nü elle değiştirirse otomatik öneri onu bir daha
 // ezmez (diğer "manual override" alanlarıyla aynı desen).
+// İzlenen anahtarlar: "currentUsageNature" doğrudan değişebilir AMA
+// çoğu raporda gizlidir (usageNatureDifference "Hayır" iken) — bu durumda
+// kullanıcı "Yasal Kullanım Niteliği"ni (legalUsageNature) değiştirir ve
+// syncCurrentUsageNatureWithLegalNature() currentUsageNature'ı SESSİZCE
+// (kendi input olayı fırlatmadan) senkronize eder. Bu yüzden legalUsageNature
+// ve usageNatureDifference de tetikleyici olarak izlenir.
+const EXPENSE_APPRAISAL_PROPERTY_TYPE_WATCHED_KEYS = ["currentUsageNature", "legalUsageNature", "usageNatureDifference", "ownershipType"];
+
 function refreshExpenseAppraisalPropertyTypeFromCurrentFields(changedKey) {
   if (changedKey === "expenseAppraisalPropertyType") {
     state.fields.expenseAppraisalPropertyTypeManual = "Evet";
     return;
   }
-  if (!["currentUsageNature", "ownershipType"].includes(changedKey)) return;
+  if (!EXPENSE_APPRAISAL_PROPERTY_TYPE_WATCHED_KEYS.includes(changedKey)) return;
   if (state.fields.expenseAppraisalPropertyTypeManual === "Evet") return;
   const suggestion = suggestExpenseAppraisalPropertyType();
   if (suggestion && state.fields.expenseAppraisalPropertyType !== suggestion) {
