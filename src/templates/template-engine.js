@@ -570,6 +570,7 @@
 
     // --- Arsa ---
     ARSAACIKLAMA: { t: () => field("landNote") },
+    LANDNOTE: { f: ["landNote"] },
     MINIMUMPARSEL: { t: () => field("landMinimumParcelAssessment") },
 
     // --- Değerleme ---
