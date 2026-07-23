@@ -555,7 +555,7 @@ assert(
   "Halkbank Merkez Bankasi aciklama alani bulunamadi."
 );
 assert(
-  appSource.includes('const alwaysUppercaseFieldKeys = new Set(["ekbDocumentNo"])') &&
+  appSource.includes('const alwaysUppercaseFieldKeys = new Set(["caseName", "ekbDocumentNo"])') &&
     appSource.includes("if (alwaysUppercaseFieldKeys.has(field.key))") &&
     appSource.includes("event.target.value = toTitleFieldUppercase(event.target.value)"),
   "EKB belge no alani daima buyuk harfe donusturulmuyor."
