@@ -607,9 +607,12 @@ function main() {
       appJs.includes('{ key: "c1", label: "Telefon" }') &&
       appJs.includes('key: "c23"') &&
       appJs.includes('label: "Emsal Niteliği"') &&
-      appJs.includes('const comparableNatureOptions = ["Konut", "Dükkan", "Tarla", "Arsa", "Müstakil Bina"]') &&
+      appJs.includes('const comparableNatureOptions = ["Konut", "Dükkan", "Tarla", "Meyve Bahçesi", "Arsa", "Müstakil Bina"]') &&
+      appJs.includes('const comparableAgriculturalNatureKeys = new Set(["tarla", "meyve bahcesi"])') &&
+      appJs.includes('return foldTurkish(raw).toLowerCase();') &&
+      appJs.includes('function isAgriculturalComparable(row = {})') &&
       appJs.includes("comparableViewModeOptions") &&
-      appJs.includes('label: "Arsa / Tarla Emsalleri"') &&
+      appJs.includes('label: "Arsa / Tarla / Meyve Bahçesi Emsalleri"') &&
       appJs.includes('key: "c24", label: "Yüzölçümü"') &&
       appJs.includes('key: "c26", label: "Nizamı"') &&
       !appJs.includes("buildComparableLandPlanningComparisonText") &&
@@ -645,7 +648,7 @@ function main() {
       appJs.includes('calculatedEmsalUnitValue * (1 + locationAdjustment)') &&
       appJs.includes("buildComparableLandLongText") &&
       appJs.includes('if (viewMode === "all") return true') &&
-      !appJs.includes('options: ["", "Konut", "Dükkan", "Tarla", "Arsa", "Müstakil Bina"]') &&
+      !appJs.includes('options: ["", "Konut", "Dükkan", "Tarla", "Meyve Bahçesi", "Arsa", "Müstakil Bina"]') &&
       appJs.indexOf('label: "Telefon"') < appJs.indexOf('label: "Emsal Niteliği"') &&
       appJs.indexOf('label: "Emsal Niteliği"') < appJs.indexOf('label: "Emsal Durumu"'),
     "Emsaller matrisinde Emsal Niteligi ve arsa/tarla dinamik gorunumu bulunamadi."

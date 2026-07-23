@@ -413,7 +413,7 @@ const sections = [
     fields: [
       { key: "takbisDate", label: "Takyidat tarihi", type: "date", critical: true, layoutClass: "encumbrance-date-field" },
       { key: "takbisTime", label: "Takyidat saati", type: "time", critical: true, layoutClass: "encumbrance-time-field" },
-      { key: "takbisMethod", label: "Kayıt Kaynağı", type: "select", options: ["", "Webtapu Sistemi", "Tapu Müdürlüğü", "E-Devlet"], defaultValue: "Webtapu Sistemi", layoutClass: "encumbrance-method-field" },
+      { key: "takbisMethod", label: "Kayıt Kaynağı", type: "select", options: ["", "Webtapu Sistemi", "Tapu Müdürlüğü", "E-Devlet", "Tapu Kaydı Alınmamıştır."], defaultValue: "Webtapu Sistemi", layoutClass: "encumbrance-method-field" },
       { key: "takbisSummary", label: "Takyidat açıklaması", type: "textarea", wide: true, layoutClass: "encumbrance-summary-field" },
     ],
     table: {
@@ -1372,6 +1372,15 @@ function isArsaOwnershipType(value = state.fields.ownershipType) {
   return normalizeOwnershipTypeForSectionVisibility(value) === "ARSA";
 }
 
+function isLandProjectReview() {
+  const ownershipType = normalizeOwnershipTypeForSectionVisibility(state.fields.ownershipType);
+  if (["ARSA", "TARLA"].includes(ownershipType)) return true;
+
+  const usageNature = foldTurkish(state.fields.legalUsageNature || "").replace(/\s+/g, " ").trim();
+  const titleQuality = foldTurkish(state.fields.titleQuality || "").replace(/\s+/g, " ").trim();
+  return [usageNature, titleQuality].some((value) => ["ARSA", "TARLA", "ARAZI"].includes(value));
+}
+
 function clearLandOwnershipDependentData(value) {
   if (!isLandOwnershipType(value)) return;
 
@@ -1663,6 +1672,9 @@ function createForm(section) {
     }
 
     if (section.id === "documents" && field.key === "projectReviewDescription") {
+      if (!shouldShowArchitecturalProjectFields()) {
+        form.append(createProjectReviewDescriptionField());
+      }
       return;
     }
 
@@ -1903,7 +1915,7 @@ function createForm(section) {
         refreshEnvironmentDescriptionFromCurrentFields("regionUsePurpose");
         renderSection();
       }
-      if (section.id === "documents" && field.key === "hasEkb") renderSection();
+      if (section.id === "documents" && ["hasArchitecturalProject", "hasEkb"].includes(field.key)) renderSection();
       if (section.id === "documents" && ["projectInstitution", "projectDifference"].includes(field.key)) renderSection();
       if (section.id === "documents" && field.key === "projectRegisteredInCadastre") renderSection();
       if (section.id === "address" && ["city", "district", "neighborhood"].includes(field.key)) {
@@ -9176,7 +9188,11 @@ function createProjectReviewDescriptionField() {
   const label = document.createElement("label");
   label.className = "field field-wide has-field-copy";
   const textarea = document.createElement("textarea");
-  const value = cleanProjectReviewDescriptionForCurrentSuitability(state.fields.projectReviewDescription || "");
+  const generatedFallback = !shouldShowArchitecturalProjectFields() ? buildProjectReviewExplanation() : "";
+  const useLandProjectReview = !shouldShowArchitecturalProjectFields() && isLandProjectReview();
+  const value = cleanProjectReviewDescriptionForCurrentSuitability(
+    useLandProjectReview ? generatedFallback : (state.fields.projectReviewDescription || generatedFallback)
+  );
 
   if (value !== state.fields.projectReviewDescription) {
     state.fields.projectReviewDescription = value;
@@ -10898,6 +10914,13 @@ function createAppointmentTypeControl(field) {
     if (nextValue !== "Kısıtlı inceleme") {
       state.fields.restrictedInspectionNote = "";
     }
+    if (nextValue === "Dışarıdan ekspertiz") {
+      clearFieldSourceOwnership("projectSuitabilityStatus");
+      state.fields.projectSuitabilityStatus = "projeye uygunluk tespit edilmemiştir.";
+      state.fields.projectConformity = "";
+      state.fields.projectSuitabilitySimpleRepair = "";
+      refreshReviewedDocumentsDescriptionFromCurrentFields("projectSuitabilityStatus");
+    }
 
     summary.textContent = formatAppointmentTypeSummary(nextValue);
     summary.hidden = !shouldShowDetail;
@@ -10905,7 +10928,7 @@ function createAppointmentTypeControl(field) {
     autosave();
     renderValidation();
     updateStatus();
-    if (activeSectionId === "unit") {
+    if (["unit", "comparables"].includes(activeSectionId)) {
       renderSection();
     }
 
@@ -16234,6 +16257,7 @@ function refreshReviewedDocumentsDescriptionFromCurrentFields(changedKey) {
     "cadastralFootprintMatches",
     "cadastralCorrectionFloorCount",
     "projectInstitution",
+    "takbisMethod",
     "projectDifference",
     "projectType",
     "projectDate",
@@ -16387,6 +16411,12 @@ function formatOldAdaParcelProjectNote() {
 
 function buildNoArchitecturalProjectDescription() {
   const district = getProjectReviewDistrictText() || "İlgili";
+  if (isLandProjectReview()) {
+    const quality = normalizeReportTitleText(
+      state.fields.titleQuality || state.fields.legalUsageNature || state.fields.mainPropertyQuality || "Arsa"
+    ).trim() || "Arsa";
+    return `Ekspertize konu taşınmaz ${quality} niteliğinde olup, ${district} Belediyesinde yapılan incelemelerde taşınmaza ait ruhsat ve mimari proje bulunmamaktadır.`;
+  }
   const paragraphs = [
     `${district} Belediyesi ve Webtapu Portalında yapılan incelemelerde ekspertize konu taşınmaza ait mimari proje bulunamamıştır.`,
   ];
@@ -16426,6 +16456,9 @@ function buildSingleInstitutionCondominiumProjectDescription(institution, projec
   const folded = foldTurkish(institution || "");
   if (folded.includes("BELEDIYE") && !folded.includes("WEBTAPU")) {
     const reviewedAt = formatProjectReviewLocation("Belediye");
+    if (state.fields.takbisMethod === "Tapu Kaydı Alınmamıştır.") {
+      return `${dateLead}${reviewedAt} ekspertize konu taşınmaza ait ${projectReference} incelenmiştir. TAKBİS belgesi alınmadığından taşınmaza ait tapu projesi incelenememiştir.`;
+    }
     const missingPlace = district ? `Webtapu Portalında ve ${district} Tapu Müdürlüğünde` : "Webtapu Portalında ve Tapu Müdürlüğünde";
     return `${dateLead}${reviewedAt} ekspertize konu taşınmaza ait ${projectReference} incelenmiştir. ${missingPlace} taşınmazın yer aldığı binaya ait mimari proje bulunamamıştır.`;
   }
@@ -16507,6 +16540,9 @@ function buildProjectReviewDescription() {
 }
 
 function buildProjectReviewExplanation() {
+  if (!shouldShowArchitecturalProjectFields() && isLandProjectReview()) {
+    return buildProjectReviewDescription();
+  }
   return normalizeReportDescriptionText(
     [
       buildProjectReviewDescription(),
@@ -18621,6 +18657,10 @@ function refreshEncumbranceSummaryFromCurrentData() {
 }
 
 function buildEncumbranceSummary() {
+  if (state.fields.takbisMethod === "Tapu Kaydı Alınmamıştır.") {
+    return "Talep tarihi itibarıyla konu taşınmaza ilişkin TAKBİS belgesi temin edilememiş olup, değerleme çalışması takyidat kayıtlarından bağımsız olarak gerçekleştirilmiştir.";
+  }
+
   const hasRows = encumbranceReportTables.some((table) => getFilledEncumbranceRows(table.key).length);
   const hasTitleChange = Boolean(normalizeYesNoChoice(state.fields.titleRecordChange));
   if (!hasRows && !state.fields.takbisDate && !state.fields.takbisMethod && !hasTitleChange) return "";
@@ -20354,7 +20394,13 @@ function buildImarPlanningNote(fields = {}) {
       ? ` ${data.legend} alanında yer almakta olup`
       : " imar planı kapsamında değerlendirilmekte olup";
     const conditions = composeImarConditionList(data);
-    mainText += conditions.length ? `, ${conditions.join(", ")} yapılaşma koşullarına sahiptir.` : ".";
+    if (conditions.length) {
+      mainText += `, ${conditions.join(", ")} yapılaşma koşullarına sahiptir.`;
+    } else if (isAgriculturalPlanningLegend(data.legend)) {
+      mainText += ", Plansız Alanlar Tip İmar Yönetmeliğine tabidir.";
+    } else {
+      mainText += ".";
+    }
     parts.push(mainText);
 
     const shouldIncludeRoadSetbackText = (data.roadSetback === "Hayır" && isThousandScalePlan(data.planScale))
@@ -20373,6 +20419,11 @@ function buildImarPlanningNote(fields = {}) {
   parts.push(...composeImarPlanningStatusParagraphs(data));
 
   return normalizeReportDescriptionText(parts.filter(Boolean).join("\n\n"));
+}
+
+function isAgriculturalPlanningLegend(value = "") {
+  const legend = foldTurkish(normalizeReportTitleText(value || ""));
+  return legend.includes("TARLA") || legend.includes("TARIM");
 }
 
 function buildImarCalculatedEmsal(fields = {}) {
@@ -26118,13 +26169,14 @@ const comparableFloorOptions = [
   "Çatı Dubleks",
   "Teras kat",
 ];
-const comparableNatureOptions = ["Konut", "Dükkan", "Tarla", "Arsa", "Müstakil Bina"];
-const comparableLandNatureKeys = new Set(["arsa", "tarla"]);
+const comparableNatureOptions = ["Konut", "Dükkan", "Tarla", "Meyve Bahçesi", "Arsa", "Müstakil Bina"];
+const comparableLandNatureKeys = new Set(["arsa", "tarla", "meyve bahcesi"]);
+const comparableAgriculturalNatureKeys = new Set(["tarla", "meyve bahcesi"]);
 const comparableLandLocationOptions = ["Aynı bölge", "Aynı sokak", "Aynı cadde"];
 const comparableViewModeOptions = [
   { value: "all", label: "Tüm Emsaller" },
   { value: "residential", label: "Konut / Yapı Emsalleri" },
-  { value: "land", label: "Arsa / Tarla Emsalleri" },
+  { value: "land", label: "Arsa / Tarla / Meyve Bahçesi Emsalleri" },
 ];
 const comparableResidentialOnlyFieldKeys = new Set(["c4", "c5", "c6", "c8", "c11", "c12", "c13", "c16", "calcRentUnitValue"]);
 const comparableLandOnlyFieldKeys = new Set(["c24", "c25", "c26", "c27", "c28", "c29", "c31", "calcCalculatedEmsalUnitValue", "calcAdjustedCalculatedEmsalUnitValue"]);
@@ -26234,11 +26286,15 @@ const comparableFields = [
 
 function normalizeComparableNature(row = {}) {
   const raw = String(row.c23 || "Konut").trim();
-  return foldTurkish(raw).toLocaleLowerCase("tr-TR");
+  return foldTurkish(raw).toLowerCase();
 }
 
 function isLandComparable(row = {}) {
   return comparableLandNatureKeys.has(normalizeComparableNature(row));
+}
+
+function isAgriculturalComparable(row = {}) {
+  return comparableAgriculturalNatureKeys.has(normalizeComparableNature(row));
 }
 
 function getComparableViewMode() {
@@ -26309,7 +26365,7 @@ function createComparableRowLabelsToggle() {
 function getComparableFieldForRow(field, row) {
   if (!isLandComparable(row)) return field;
   if (field.key === "c7") return { ...field, options: comparableLandLocationOptions };
-  if (normalizeComparableNature(row) === "tarla" && comparableTarlaZoningFieldKeys.has(field.key)) {
+  if (isAgriculturalComparable(row) && comparableTarlaZoningFieldKeys.has(field.key)) {
     return { ...field, allowEmpty: true, options: field.type === "select" ? ["", ...(field.options || [])] : field.options };
   }
   return field;
@@ -27026,7 +27082,7 @@ function getComparableRows() {
   }
   rows = rows.map(migrateComparableRow);
   rows.forEach((row) => {
-    if (normalizeComparableNature(row) === "tarla") {
+    if (isAgriculturalComparable(row)) {
       comparableTarlaZoningFieldKeys.forEach((key) => {
         row[key] = "";
       });
@@ -27770,7 +27826,15 @@ function buildComparableLongText(row, rowIndex, metrics) {
   const correctedArea = formatComparableArea(row.c13 || row.c12, "m2");
   const statusText = getComparableStatusText(row, metrics);
   const positionText = buildComparablePositionComparisonText(row);
+  const isExternalAppraisal = isExternalAppointmentType(state.fields.appointmentType);
   const featureText = buildComparableFeatureComparisonText(row).replace(/^Emsal,\s*/i, "");
+  const comparisonText = isExternalAppraisal
+    ? positionText
+      ? `Emsal konu taşınmaz ile ${positionText.replace(/taşınmaza göre\s*/i, "")} yer almakta olup, ${featureText}`
+      : `Emsalin ${featureText}`
+    : positionText || featureText
+      ? `Emsal, ${[positionText, featureText].filter(Boolean).join(" ve ")}.`
+      : "";
   const bargainRentText = buildComparableBargainAndRentText(row, metrics);
   const calculationText = buildComparableCalculationText(row, metrics);
   const extraText = formatComparableExtraNote(row.c17);
@@ -27784,7 +27848,7 @@ function buildComparableLongText(row, rowIndex, metrics) {
     row.c5 ? `, ${row.c5} planında` : "",
     row.c4 ? ` ${row.c4}` : "",
     statusText ? ` ${statusText}` : "",
-    positionText || featureText ? ` Emsal, ${[positionText, featureText].filter(Boolean).join(" ve ")}.` : "",
+    comparisonText ? ` ${comparisonText}` : "",
     bargainRentText ? ` ${bargainRentText}` : "",
     extraText ? ` ${extraText}` : "",
     calculationText,
@@ -27969,6 +28033,15 @@ function buildComparablePositionComparisonText(row) {
 function buildComparableFeatureComparisonText(row) {
   const sign = String(row.c8 || "").trim();
   const percent = parseComparablePercent(row.c21);
+  if (isExternalAppointmentType(state.fields.appointmentType)) {
+    if (sign === "+") {
+      return `iç özellikleri ${percent > 0.25 ? "lüks" : "bakımlı"} seviyededir.`;
+    }
+    if (sign === "-") {
+      return `iç özellikleri ${percent > 0.25 ? "çok vasat" : "vasat"} seviyededir.`;
+    }
+    return "iç özellikleri orta seviyededir.";
+  }
   if (!Number.isFinite(percent) || percent === 0 || sign === "0") return "Emsal, konu taşınmaza göre benzer iç özelliklere sahiptir.";
   if (sign === "+") return `Emsal, konu taşınmaza göre ${percent > 0.25 ? "çok daha iyi" : "daha iyi"} iç özelliklere sahiptir.`;
   if (sign === "-") return `Emsal, konu taşınmaza göre ${percent > 0.25 ? "çok daha vasat" : "daha vasat"} iç özelliklere sahiptir.`;
