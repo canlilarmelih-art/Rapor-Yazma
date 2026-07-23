@@ -12145,6 +12145,35 @@ function createOutputExportPanel() {
 // seçili bankanın masraf grubuna (A/B/C/D) göre hesaplanır (bkz.
 // recalculateExpenseFees). Tapu Adedi / Belediye Masrafı / KDV kutucuğu
 // değiştikçe updateExpenseFeesSummaryPanel() ile canlı güncellenir.
+// Seçili bankanın masraf grubuna (A/B/C/D) göre, Tapu Adedi ve Belediye
+// Masrafı alanlarının NASIL doldurulacağını anlatan kullanıcıya-yönelik
+// metin. Kullanıcı talebi: "hangi banka formatında belediye ve tapu
+// masrafını nasıl gireceğine dair yönlendirme var mı" — yoktu, eklendi.
+// Kaynak: Fatura_Masraf_Otomasyon_Sablon.xlsm Module1/Module2 VBA mantığı
+// (bkz. recalculateExpenseFees).
+const EXPENSE_BANK_GROUP_GUIDANCE = {
+  A: {
+    tapu: "Tapu Harcı birim tutarını (KDV hariç) sistem otomatik olarak 2026 tarifesinden alır; siz yalnızca tapu adedini girin.",
+    belediye: "Makbuzda KDV ayrıca belirtilmişse yukarıdaki kutucuğu işaretleyip makbuzdaki tutarı aynen girin (sistem KDV'yi ayıklar, örn. 1.000 TL → 833,33 TL + %20 KDV = 1.000 TL). Makbuzda KDV belirtilmemişse kutucuğu boş bırakın, makbuzdaki toplam tutarı girin (sistem üzerine %20 KDV ekler, örn. 1.000 TL → 1.000 TL + %20 KDV = 1.200 TL).",
+  },
+  B: {
+    tapu: "Tapu Harcı birim tutarını (KDV hariç) sistem otomatik olarak 2026 tarifesinden alır; siz yalnızca tapu adedini girin.",
+    belediye: "Bu bankada makbuz tutarı HER ZAMAN KDV dahil kabul edilir — kutucuk bu bankada görünmez/devre dışıdır. Makbuzdaki toplam tutarı aynen girin, sistem KDV'yi otomatik ayıklar (örn. 1.000 TL → 833,33 TL + %20 KDV = 1.000 TL).",
+  },
+  C: {
+    tapu: "Tapu Harcı KDV ayrıştırmasız, düz gösterilir; siz yalnızca tapu adedini girin.",
+    belediye: "Bu bankada belediye harcına KDV eklenmez/ayrıştırılmaz — kutucuk bu bankada görünmez/devre dışıdır. Makbuzdaki tutarı aynen girin, sistem üzerine KDV eklemez (örn. 850 TL → 850 TL, KDV yok).",
+  },
+  D: {
+    tapu: "Tapu Harcı KDV dahil tutar olarak sisteme girilir; siz yalnızca tapu adedini girin.",
+    belediye: "Makbuzda KDV ayrıca belirtilmişse yukarıdaki kutucuğu işaretleyip makbuzdaki tutarı aynen girin (sistem KDV'yi ayıklar). Makbuzda KDV belirtilmemişse kutucuğu boş bırakın, makbuzdaki toplam tutarı girin (sistem üzerine %20 KDV ekler).",
+  },
+};
+
+function getExpenseBankGroupGuidance(bankGroup) {
+  return EXPENSE_BANK_GROUP_GUIDANCE[bankGroup] || EXPENSE_BANK_GROUP_GUIDANCE.A;
+}
+
 function createExpenseFeesSummaryPanel() {
   recalculateExpenseFees();
   const panel = document.createElement("div");
@@ -12156,6 +12185,10 @@ function createExpenseFeesSummaryPanel() {
         <h4>Masraf Tablosu</h4>
         <p>Değerleme (Rapor) Ücreti, KDV oranı ve diğer masraf kalemleri; seçili bankanın masraf kuralına göre otomatik hesaplanır. Tapu Adedi ve Belediye Masrafı yukarıda girilir.</p>
       </div>
+    </div>
+    <div class="expense-fees-guidance" data-expense-guidance-box>
+      <p class="subtle-text"><strong>Tapu Adedi:</strong> <span data-expense-guidance="tapu"></span></p>
+      <p class="subtle-text"><strong>Belediye Masrafı:</strong> <span data-expense-guidance="belediye"></span></p>
     </div>
     <div class="table-shell">
       <table class="valuation-summary-table expense-fees-summary-table">
@@ -12188,6 +12221,10 @@ function updateExpenseFeesSummaryPanelIn(scope) {
     const key = cell.dataset.expenseSummaryField;
     const raw = String(state.fields[key] || "").trim();
     cell.textContent = raw ? `${raw} TL` : "—";
+  });
+  const guidance = getExpenseBankGroupGuidance(getExpenseBankGroup(state.fields.bank));
+  scope.querySelectorAll("[data-expense-guidance]").forEach((el) => {
+    el.textContent = guidance[el.dataset.expenseGuidance] || "";
   });
 }
 
