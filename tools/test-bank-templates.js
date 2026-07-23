@@ -309,6 +309,7 @@ const comparableTemplateFiles = templateFiles.filter(
 );
 const valuationSectionOrderTokens = [
   "{{DEGERLEME_YONTEMI_ACIKLAMASI}}",
+  "{{BUILDING_INSPECTION_TERMINATION_EXPLANATION_TEXT}}",
   "{{HISSE_ACIKLAMASI}}",
   "{{SATIS_KABILIYETI_ACIKLAMASI}}",
   "{{TARLA_BAHCE_DEGERLEME_RISKI_ACIKLAMASI}}",
@@ -751,6 +752,8 @@ assert(
 );
 assert(
   engineSource.includes("BUILDINGINSPECTIONEXPLANATIONTEXT") &&
+    engineSource.includes("BUILDINGINSPECTIONTERMINATIONEXPLANATIONTEXT") &&
+    appSource.includes("function buildBuildingInspectionTerminationExplanation()") &&
     engineSource.includes("PENALTYDECISIONEXPLANATION") &&
     engineSource.includes("OCCUPANCYPERMITDATE") &&
     engineSource.includes("MUNICIPALITYBOUNDARYSTATUS") &&

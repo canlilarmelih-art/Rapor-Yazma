@@ -17341,6 +17341,19 @@ function buildBuildingInspectionExplanation() {
   return "";
 }
 
+function buildBuildingInspectionTerminationExplanation() {
+  if (String(state.fields.buildingInspectionContractActive || "").trim() !== "Hayır (Fesihli)") return "";
+  const date = dateIsoToTr(state.fields.municipalityInspectionDate || state.fields.appointmentDate || "");
+  const district = normalizeReportTitleText(state.fields.titleDistrict || state.fields.district || "").trim();
+  const municipality = district ? `${district} Belediyesinden` : "ilgili belediyeden";
+  const terminationDate = dateIsoToTr(state.fields.buildingInspectionTerminationDate || "");
+  const level = state.fields.buildingInspectionTerminationLevel || "";
+  const dateText = date ? `${date} tarihinde ` : "";
+  return normalizeReportDescriptionText(
+    `${dateText}${municipality} alınan sözlü bilgiye göre taşınmazın yer aldığı binanın yapı denetim sözleşmesinin${terminationDate ? ` ${terminationDate} tarihinde` : ""} feshedildiği${level ? ` ve yapı denetim fesih seviyesinin ${level} olduğu` : ""} bilgisine ulaşılmıştır.`
+  );
+}
+
 function refreshBuildingInspectionExplanationFromCurrentFields(changedKey = "") {
   const watchedKeys = [
     "buildingInspectionContractActive",
@@ -25785,6 +25798,12 @@ function collectGeneratedTextPlaceholders() {
       key: "building_inspection_explanation_text",
       title: "Yapı Denetim Açıklaması",
       value: state.fields.buildingInspectionExplanation || buildBuildingInspectionExplanation(),
+    },
+    {
+      category: "Değerleme",
+      key: "building_inspection_termination_explanation_text",
+      title: "Yapı Denetim Fesih Açıklaması",
+      value: buildBuildingInspectionTerminationExplanation(),
     },
     {
       category: "Ana Gayrimenkul Özellikleri",
