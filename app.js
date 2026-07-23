@@ -755,7 +755,7 @@ const titleTextUppercaseKeys = new Set(
     .filter((field) => !field.type || field.type === "text" || field.type === "textarea")
     .map((field) => field.key),
 );
-const alwaysUppercaseFieldKeys = new Set(["ekbDocumentNo"]);
+const alwaysUppercaseFieldKeys = new Set(["caseName", "ekbDocumentNo"]);
 
 function toTitleFieldUppercase(value) {
   return String(value ?? "").toLocaleUpperCase("tr-TR");
@@ -12186,10 +12186,6 @@ function createExpenseFeesSummaryPanel() {
         <p>Değerleme (Rapor) Ücreti, KDV oranı ve diğer masraf kalemleri; seçili bankanın masraf kuralına göre otomatik hesaplanır. Tapu Adedi ve Belediye Masrafı yukarıda girilir.</p>
       </div>
     </div>
-    <div class="expense-fees-guidance" data-expense-guidance-box>
-      <p class="subtle-text"><strong>Tapu Adedi:</strong> <span data-expense-guidance="tapu"></span></p>
-      <p class="subtle-text"><strong>Belediye Masrafı:</strong> <span data-expense-guidance="belediye"></span></p>
-    </div>
     <div class="table-shell">
       <table class="valuation-summary-table expense-fees-summary-table">
         <thead>
@@ -12207,6 +12203,8 @@ function createExpenseFeesSummaryPanel() {
           <tr><td class="valuation-summary-label">Gayrimenkul Bilgi Merkezi Payı</td><td class="valuation-summary-value-col" data-expense-summary-field="expenseInfoCenterShareExVat"></td><td class="valuation-summary-value-col" data-expense-summary-field="expenseInfoCenterShareIncVat"></td></tr>
           <tr><td class="valuation-summary-label">Birlik Payı</td><td class="valuation-summary-value-col" data-expense-summary-field="expenseUnionShareExVat"></td><td class="valuation-summary-value-col" data-expense-summary-field="expenseUnionShareIncVat"></td></tr>
           <tr class="expense-fees-summary-total-row"><td class="valuation-summary-label">Toplam Ücret</td><td class="valuation-summary-value-col" data-expense-summary-field="expenseTotalFeeExVat"></td><td class="valuation-summary-value-col" data-expense-summary-field="expenseTotalFeeIncVat"></td></tr>
+          <tr class="expense-fees-guidance-row"><td class="valuation-summary-label">Tapu Adedi</td><td colspan="2" data-expense-guidance="tapu"></td></tr>
+          <tr class="expense-fees-guidance-row"><td class="valuation-summary-label">Belediye Masrafı</td><td colspan="2" data-expense-guidance="belediye"></td></tr>
         </tbody>
       </table>
     </div>

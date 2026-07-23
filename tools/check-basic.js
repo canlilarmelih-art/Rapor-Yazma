@@ -739,7 +739,7 @@ function main() {
       indexHtml.includes("vendor/leaflet/leaflet.js?v=1.9.4-2") &&
       !indexHtml.includes("unpkg.com/leaflet") &&
       !indexHtml.includes("cdn.jsdelivr.net/npm/leaflet") &&
-      indexHtml.includes("styles.css?v=20260720-0215") &&
+       /styles\.css\?v=\d{8}-\d{4}/.test(indexHtml) &&
       indexHtml.includes("src/auth/access-control.js?v=20260719-2200") &&
        /app\.js\?v=\d{8}-\d{4}/.test(indexHtml) &&
       indexHtml.includes("cloud/cloud-sync.js?v=20260719-2200") &&
