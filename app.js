@@ -12475,7 +12475,7 @@ function appendBankTemplateExportBlock(panel, status) {
 }
 
 async function exportZiraatEkTabloWithBankTemplateIfNeeded(templateKey) {
-  if (templateKey !== "ziraat") return null;
+  if (templateKey !== "ziraat" && templateKey !== "ziraat-arsa-arazi") return null;
   if (!window.RaporZiraatEkTablo?.export) {
     throw new Error("Ziraat ek tablo XLSX motoru yüklenmedi.");
   }
@@ -25696,6 +25696,41 @@ function gabimFirstSaleText() {
 
 function gabimSecurityText() {
   return foldTurkish(gabimField("socialFacilities")).includes("OZEL GUVENLIK") ? "Evet" : "Hayır";
+}
+
+// --- Ziraat GABIM ekranı: Arsa/Arazi'ye özgü alanlar ---
+function gabimLandSlopeText() {
+  const value = foldTurkish(gabimField("landTopography"));
+  if (value.includes("COK EGIMLI")) return "Dik Eğimli";
+  if (value.includes("AZ EGIMLI")) return "Az Eğimli";
+  if (value.includes("EGIMSIZ")) return "Eğim Yok";
+  return gabimSelect();
+}
+
+function gabimRoadFrontageText() {
+  const value = normalizeYesNoChoice(gabimField("landRoadFrontage"));
+  if (value === "Evet") return "Kadastral Yola Cepheli";
+  if (value === "Hayır") return "Kadastral Yola Cepheli Değil";
+  return gabimSelect();
+}
+
+function gabimAgricultureTypeText() {
+  return gabimField("landAgricultureType") || gabimSelect();
+}
+
+function gabimLandClassificationText() {
+  return gabimField("landClassification") || gabimSelect();
+}
+
+function gabimArableLandText() {
+  const suitability = foldTurkish(gabimField("agriculturalSuitability"));
+  if (suitability.includes("UYGUN DEGIL")) return "Hayır";
+  if (suitability.includes("UYGUN")) return "Evet";
+  return "Evet";
+}
+
+function gabimArableSoilText() {
+  return gabimArableLandText() === "Hayır" ? "Tarıma Elverişli Olmayan Toprak" : "Tarıma Elverişli Toprak";
 }
 
 function getGabimUnitInteriorCounts() {

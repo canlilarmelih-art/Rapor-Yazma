@@ -321,7 +321,7 @@ const valuationSectionOrderTokens = [
 ];
 comparableTemplateFiles.forEach((file) => {
   const text = fs.readFileSync(path.join(appDir, "templates", file), "utf8");
-  const isZiraatSystemTemplate = file === "ziraat.html";
+  const isZiraatSystemTemplate = file === "ziraat.html" || file === "ziraat-arsa-arazi.html";
   let previousIndex = text.indexOf("{{DEGERLEME_YONTEMI_ACIKLAMASI}}") - 1;
   const expectedValuationTokens = file === "halkbank.html"
     ? valuationSectionOrderTokens.filter((token) => token !== "{{KIRA_ACIKLAMASI}}")

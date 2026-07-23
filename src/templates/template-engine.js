@@ -38,6 +38,7 @@
     { key: "vakifkatilim", file: "templates/vakifkatilim.html", title: "Vakıf Katılım Rapor Formatı", bank: "Vakıf Katılım Bankası A.Ş." },
     { key: "yapikredi", file: "templates/yapikredi.html", title: "Yapı Kredi Rapor Formatı", bank: "Yapı ve Kredi Bankası A.Ş." },
     { key: "ziraat", file: "templates/ziraat.html", title: "Ziraat Bankası Rapor Formatı", bank: "T.C. Ziraat Bankası A.Ş." },
+    { key: "ziraat-arsa-arazi", file: "templates/ziraat-arsa-arazi.html", title: "Ziraat Bankası Rapor Formatı (Arsa/Arazi)", bank: "" },
     { key: "ziraat-ek-tablo", file: "templates/ziraat-ek-tablo.html", title: "Ziraat Ek Tablo", bank: "" },
   ];
 
@@ -504,6 +505,13 @@
     GABIMPREFERREDUSE: { fn: () => safeCall("gabimPreferredUseAreaText") },
     GABIMCONSTRUCTIONQUALITY: { fn: () => safeCall("gabimConstructionQualityText") },
     GABIMSALEABILITY: { fn: () => safeCall("gabimSaleabilityText") },
+    GABIMINDUSTRIALIZATIONSPEED: { fn: () => safeCall("gabimIndustrializationSpeedText") },
+    GABIMLANDSLOPE: { fn: () => safeCall("gabimLandSlopeText") },
+    GABIMROADFRONTAGE: { fn: () => safeCall("gabimRoadFrontageText") },
+    GABIMAGRICULTURETYPE: { fn: () => safeCall("gabimAgricultureTypeText") },
+    GABIMLANDCLASSIFICATION: { fn: () => safeCall("gabimLandClassificationText") },
+    GABIMARABLELAND: { fn: () => safeCall("gabimArableLandText") },
+    GABIMARABLESOIL: { fn: () => safeCall("gabimArableSoilText") },
     TOTALLEGALREDUCEDAREA: { fn: () => safeCall("gabimTotalReducedAreaText", "legal") },
     TOTALCURRENTREDUCEDAREA: { fn: () => safeCall("gabimTotalReducedAreaText", "current") },
 
