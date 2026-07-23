@@ -252,6 +252,26 @@ function queryNeighborhoodRows(rows, payload) {
     return { match };
   }
 
+  if (operation === "choices") {
+    const level = String(payload?.level || "");
+    let values = [];
+    if (level === "city") {
+      values = rows.map((row) => row.city);
+    } else if (level === "district") {
+      values = cityKey ? rows.filter((row) => row.cityKey === cityKey).map((row) => row.district) : [];
+    } else if (level === "neighborhood") {
+      values = cityKey && districtKey
+        ? rows.filter((row) => row.cityKey === cityKey && row.districtKey === districtKey).map((row) => row.neighborhood)
+        : [];
+    } else {
+      throw new Error("Mahalle seçim türü desteklenmiyor.");
+    }
+    return {
+      choices: [...new Set(values.map((value) => String(value || "").trim()).filter(Boolean))]
+        .sort((left, right) => left.localeCompare(right, "tr")),
+    };
+  }
+
   const lat = Number(payload?.lat);
   const lng = Number(payload?.lng);
   if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat < 35 || lat > 43 || lng < 25 || lng > 45) {

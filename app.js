@@ -376,10 +376,10 @@ const sections = [
       },
       { key: "titleRecordChange", label: "Tapu kaydı değişikliği var mı?", type: "titleRecordChange" },
       { key: "titlePropertyId", label: "Taşınmaz kimlik no", type: "text" },
-      { key: "groundType", label: "Zemin tipi", type: "text" },
-      { key: "titleCity", label: "Tapu il", type: "text" },
-      { key: "titleDistrict", label: "Tapu ilçe", type: "text" },
-      { key: "titleNeighborhood", label: "Tapu mahalle", type: "text" },
+      { key: "groundType", label: "Zemin tipi", type: "select", options: ["", "KatMulkiyeti", "KatIrtifaki", "AnaTasinmaz"] },
+      { key: "titleCity", label: "Tapu il", type: "select" },
+      { key: "titleDistrict", label: "Tapu ilçe", type: "select" },
+      { key: "titleNeighborhood", label: "Tapu mahalle", type: "select" },
       { key: "locationName", label: "Mevkii", type: "text" },
       { key: "blockNo", label: "Ada", type: "text", required: true, critical: true },
       { key: "parcelNo", label: "Parsel", type: "text", required: true, critical: true },
@@ -1818,6 +1818,9 @@ function createForm(section) {
         control.append(item);
       });
       control.value = value;
+      if (section.id === "title" && ["titleCity", "titleDistrict", "titleNeighborhood"].includes(field.key)) {
+        queueMicrotask(() => populateTitleLocationSelect(control, field.key));
+      }
     } else if (field.type === "textarea") {
       control = document.createElement("textarea");
       control.value = value;
@@ -1851,6 +1854,12 @@ function createForm(section) {
         ? cleanProjectReviewDescriptionForCurrentSuitability(event.target.value)
         : event.target.value;
       state.fields[field.key] = enteredValue;
+      if (section.id === "title" && field.key === "titleCity") {
+        state.fields.titleDistrict = "";
+        state.fields.titleNeighborhood = "";
+      } else if (section.id === "title" && field.key === "titleDistrict") {
+        state.fields.titleNeighborhood = "";
+      }
       if (enteredValue !== event.target.value) {
         event.target.value = enteredValue;
       }
@@ -1888,7 +1897,7 @@ function createForm(section) {
       if (section.id === "case" && field.key === "ownershipType") render();
       if (section.id === "case" && field.key === "legalUsageNature") renderSection();
       if (section.id === "case" && ["legalUsageNature", "ownershipType"].includes(field.key) && activeSectionId === "land") renderSection();
-      if (section.id === "title" && field.key === "groundType") renderSection();
+      if (section.id === "title" && ["groundType", "titleCity", "titleDistrict"].includes(field.key)) renderSection();
       if (section.id === "address" && field.key === "environmentRegionType") {
         normalizeRegionUsePurposeForEnvironment();
         refreshEnvironmentDescriptionFromCurrentFields("regionUsePurpose");
@@ -9698,6 +9707,41 @@ function createLookupDatalist(id, values) {
     datalist.append(option);
   });
   return datalist;
+}
+
+async function populateTitleLocationSelect(control, key) {
+  const levelByKey = {
+    titleCity: "city",
+    titleDistrict: "district",
+    titleNeighborhood: "neighborhood",
+  };
+  const level = levelByKey[key];
+  if (!level || !control?.isConnected) return;
+
+  try {
+    const result = await fetchNeighborhoodLookup("choices", {
+      level,
+      city: state.fields.titleCity || "",
+      district: state.fields.titleDistrict || "",
+    });
+    if (!control.isConnected) return;
+    const currentValue = String(state.fields[key] || "").trim();
+    const values = [...new Set([currentValue, ...(result.choices || [])].filter(Boolean))];
+    control.replaceChildren();
+    const empty = document.createElement("option");
+    empty.value = "";
+    empty.textContent = "Seçiniz";
+    control.append(empty);
+    values.forEach((value) => {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = value;
+      control.append(option);
+    });
+    control.value = currentValue;
+  } catch {
+    // Kimliği doğrulanmış mahalle kaynağı geçici olarak erişilemezse mevcut değer korunur.
+  }
 }
 
 function markFieldSourceState(control, key, isStaticAutoFill = false) {
