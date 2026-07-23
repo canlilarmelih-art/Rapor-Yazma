@@ -1157,6 +1157,72 @@ function syncCurrentUsageNatureWithLegalNature(targetState = state) {
   return true;
 }
 
+const agriculturalUsageNatureOptions = [
+  "Tarla",
+  "Meyve Bahçesi",
+  "Bağ",
+  "Zeytinlik",
+  "Armut Bahçesi",
+  "Şeftali Bahçesi",
+  "Kayısı Bahçesi",
+  "Erik Bahçesi",
+  "Ayva Bahçesi",
+  "Kiraz Bahçesi",
+  "Kivi Bahçesi",
+];
+
+function shouldOpenAgriculturalUsageNatureModal(key, value) {
+  return ["legalUsageNature", "currentUsageNature"].includes(key) && value === "Arazi";
+}
+
+function openAgriculturalUsageNatureModal(key, onSave = () => {}) {
+  document.querySelector(".modal-overlay")?.remove();
+  const selectedValue = agriculturalUsageNatureOptions.includes(state.fields[key]) ? state.fields[key] : "Tarla";
+  const label = key === "legalUsageNature" ? "Yasal Kullanım Niteliği" : "Mevcut Kullanım Niteliği";
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.innerHTML = `
+    <div class="modal-card modal-card-wide agricultural-usage-nature-modal" role="dialog" aria-modal="true" aria-labelledby="agriculturalUsageNatureModalTitle">
+      <div class="modal-head">
+        <h3 id="agriculturalUsageNatureModalTitle">${escapeHtml(label)}</h3>
+        <button class="modal-close" type="button" aria-label="Kapat">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-choice-list" data-agricultural-usage-choices></div>
+      </div>
+      <div class="modal-actions">
+        <button class="secondary-button" type="button" data-modal-cancel>Vazgeç</button>
+        <button class="primary-button" type="button" data-modal-save>Kaydet</button>
+      </div>
+    </div>
+  `;
+  const choices = overlay.querySelector("[data-agricultural-usage-choices]");
+  agriculturalUsageNatureOptions.forEach((option) => {
+    const item = document.createElement("label");
+    item.className = "modal-choice-item";
+    item.innerHTML = `<input type="radio" name="agriculturalUsageNature" value="${escapeHtml(option)}"> <span>${escapeHtml(option)}</span>`;
+    const input = item.querySelector("input");
+    input.checked = option === selectedValue;
+    choices.append(item);
+  });
+  const close = () => overlay.remove();
+  overlay.querySelector(".modal-close").addEventListener("click", close);
+  overlay.querySelector("[data-modal-cancel]").addEventListener("click", close);
+  overlay.querySelector("[data-modal-save]").addEventListener("click", () => {
+    const selected = overlay.querySelector("input[name='agriculturalUsageNature']:checked")?.value || "Tarla";
+    state.fields[key] = selected;
+    clearFieldSourceOwnership(key);
+    if (key === "legalUsageNature" && state.fields.usageNatureDifference !== "Evet") {
+      state.fields.currentUsageNature = selected;
+      clearFieldSourceOwnership("currentUsageNature");
+    }
+    close();
+    onSave();
+  });
+  document.body.append(overlay);
+  overlay.querySelector("input:checked")?.focus();
+}
+
 function syncEkbPresenceField(targetState) {
   const hasUploadedEkb = Boolean(targetState.uploads?.ekb || targetState.sourceValues?.ekb?.rawText);
   if (hasUploadedEkb) {
@@ -1906,6 +1972,15 @@ function createForm(section) {
       autosave();
       renderValidation();
       updateStatus();
+      if (section.id === "case" && shouldOpenAgriculturalUsageNatureModal(field.key, enteredValue)) {
+        openAgriculturalUsageNatureModal(field.key, () => {
+          refreshValuationMethodExplanation();
+          autosave();
+          renderValidation();
+          updateStatus();
+          renderSection();
+        });
+      }
       if (section.id === "case" && field.key === "ownershipType") render();
       if (section.id === "case" && field.key === "legalUsageNature") renderSection();
       if (section.id === "case" && ["legalUsageNature", "ownershipType"].includes(field.key) && activeSectionId === "land") renderSection();
@@ -1922,6 +1997,24 @@ function createForm(section) {
         applyPostalCodeFromNeighborhoodDebounced();
       }
     });
+    if (section.id === "case" && ["legalUsageNature", "currentUsageNature"].includes(field.key)) {
+      control.addEventListener("change", () => {
+        if (!shouldOpenAgriculturalUsageNatureModal(field.key, control.value)) return;
+        if (document.querySelector(".agricultural-usage-nature-modal")) return;
+        clearFieldSourceOwnership(field.key);
+        state.fields[field.key] = control.value;
+        if (field.key === "legalUsageNature" && syncCurrentUsageNatureWithLegalNature()) {
+          clearFieldSourceOwnership("currentUsageNature");
+        }
+        openAgriculturalUsageNatureModal(field.key, () => {
+          refreshValuationMethodExplanation();
+          autosave();
+          renderValidation();
+          updateStatus();
+          renderSection();
+        });
+      });
+    }
     control.addEventListener("blur", () => {
       const normalizedValue = normalizeReportFieldValue(field.key, control.value);
       const formattedValue = field.key === "projectReviewDescription"
@@ -3458,7 +3551,28 @@ function getExternalAppraisalReasonText() {
   return reason;
 }
 
+function isAgriculturalUsageNature(value) {
+  return agriculturalUsageNatureOptions.includes(String(value || "").trim());
+}
+
+function buildAgriculturalUsageNatureDifferenceText() {
+  const legalNature = String(state.fields.legalUsageNature || "").trim();
+  const currentNature = String(state.fields.currentUsageNature || "").trim();
+  if (
+    state.fields.usageNatureDifference !== "Evet" ||
+    legalNature !== "Tarla" ||
+    !isAgriculturalUsageNature(legalNature) ||
+    !isAgriculturalUsageNature(currentNature) ||
+    legalNature === currentNature
+  ) {
+    return "";
+  }
+  return `Değerlemeye konu taşınmaz ${legalNature} nitelikli olup mevcut durumda ${currentNature} niteliklidir. Değerleme esnasında yasal durum değeri olarak ham toprak değeri, mevcut durum değeri olarak ise ham toprak + ağaç değeri takdir edilmiştir.`;
+}
+
 function buildValuationUsageNatureDifferenceText() {
+  const agriculturalDifference = buildAgriculturalUsageNatureDifferenceText();
+  if (agriculturalDifference) return agriculturalDifference;
   if (state.fields.usageNatureDifference !== "Evet") return "";
   const legalNature = state.fields.legalUsageNature || "yasal kullanım";
   const currentNature = state.fields.currentUsageNature || "mevcut kullanım";
@@ -4173,6 +4287,15 @@ function isBuildingValueVisibilityField(key) {
 function markValuationManualField(key) {
   if (!["legalValue", "currentValue", "legalRent", "currentRent"].includes(key)) return;
   state.fields[`${key}ComparableAutoManual`] = "1";
+  if (isLandOwnershipType() && ["legalValue", "currentValue"].includes(key)) {
+    state.fields[`${key}UserDefined`] = "1";
+  }
+}
+
+function hasUserDefinedLandMarketValue(key) {
+  return isLandOwnershipType() &&
+    ["legalValue", "currentValue"].includes(key) &&
+    state.fields[`${key}UserDefined`] === "1";
 }
 
 function refreshValuationComputedFields() {
@@ -4273,6 +4396,10 @@ function syncBuildingValueDefaults() {
 }
 
 function setAutoValuationField(key, autoKey, nextValue) {
+  if (hasUserDefinedLandMarketValue(key)) {
+    state.fields[autoKey] = nextValue || "";
+    return;
+  }
   const currentValue = String(state.fields[key] || "").trim();
   const previousAutoValue = String(state.fields[autoKey] || "").trim();
   if (!currentValue || currentValue === previousAutoValue) {
@@ -16413,7 +16540,7 @@ function buildNoArchitecturalProjectDescription() {
   const district = getProjectReviewDistrictText() || "İlgili";
   if (isLandProjectReview()) {
     const quality = normalizeReportTitleText(
-      state.fields.titleQuality || state.fields.legalUsageNature || state.fields.mainPropertyQuality || "Arsa"
+      state.fields.mainPropertyQuality || state.fields.titleQuality || state.fields.legalUsageNature || "Arsa"
     ).trim() || "Arsa";
     return `Ekspertize konu taşınmaz ${quality} niteliğinde olup, ${district} Belediyesinde yapılan incelemelerde taşınmaza ait ruhsat ve mimari proje bulunmamaktadır.`;
   }
@@ -27716,7 +27843,7 @@ function syncComparableValuationMarketValues() {
 }
 
 function syncComparableValuationMarketValue(totalKey, areaKey, unitValue, roundStep = comparableValuationRoundStep) {
-  if (state.fields[`${totalKey}ComparableAutoManual`] === "1") return;
+  if (state.fields[`${totalKey}ComparableAutoManual`] === "1" || hasUserDefinedLandMarketValue(totalKey)) return;
   const area = parseValuationNumber(state.fields[areaKey]);
   if (!Number.isFinite(area) || area <= 0) return;
   const roundedValue = roundComparableValuationValue(area * unitValue, roundStep);

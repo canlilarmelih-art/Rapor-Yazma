@@ -704,7 +704,7 @@ function main() {
     "Degerleme bolumunde Emlak Beyan Degeri checkboxli paneli bulunamadi."
   );
   assert(
-    appJs.includes("state.fields.mainPropertyQuality || state.fields.titleQuality || \"Arsa\"") &&
+      appJs.includes("state.fields.mainPropertyQuality || state.fields.titleQuality || state.fields.legalUsageNature || \"Arsa\"") &&
       appJs.includes("function shouldHideLandAgricultureControls") &&
       appJs.includes('ownershipType === "MUSTAKIL BINA"') &&
       appJs.includes('["landAgricultureType", "landAgriculturalProduct"].includes(fieldKey)') &&

@@ -12,10 +12,11 @@ function sourceBetween(startMarker, endMarker) {
   return appSource.slice(start, end);
 }
 
+const manualOverrideSource = sourceBetween("function hasUserDefinedLandMarketValue", "function refreshValuationComputedFields");
 const setAutoSource = sourceBetween("function setAutoValuationField", "function calculateBuildingValuationValue");
 const landDefaultsSource = sourceBetween("function syncLandOwnershipValuationDefaults", "function syncBuildingValueDefaults");
 
-function runLandSync({ tarla, legalValue, currentValue, previousAuto, nextValue }) {
+function runLandSync({ tarla, legalValue, currentValue, previousAuto, nextValue, userDefined = false }) {
   const context = {
     state: {
       fields: {
@@ -24,6 +25,8 @@ function runLandSync({ tarla, legalValue, currentValue, previousAuto, nextValue 
         currentValue,
         legalValueComparableAuto: previousAuto,
         currentValueComparableAuto: previousAuto,
+        legalValueUserDefined: userDefined ? "1" : "",
+        currentValueUserDefined: userDefined ? "1" : "",
       },
     },
     isLandOwnershipType: () => true,
@@ -37,7 +40,7 @@ function runLandSync({ tarla, legalValue, currentValue, previousAuto, nextValue 
     roundComparableValuationValue: (value) => value,
     comparableValuationRoundStep: 50000,
   };
-  vm.runInNewContext(`${setAutoSource}\n${landDefaultsSource}\nsyncLandOwnershipValuationDefaults();`, context);
+  vm.runInNewContext(`${manualOverrideSource}\n${setAutoSource}\n${landDefaultsSource}\nsyncLandOwnershipValuationDefaults();`, context);
   return context.state.fields;
 }
 
@@ -63,6 +66,19 @@ function runLandSync({ tarla, legalValue, currentValue, previousAuto, nextValue 
   });
   assert.equal(refreshed.legalValue, "1000000");
   assert.equal(refreshed.currentValue, "1000000");
+
+  const locked = runLandSync({
+    tarla,
+    legalValue: "900000",
+    currentValue: "900000",
+    previousAuto: "900000",
+    nextValue: 1000000,
+    userDefined: true,
+  });
+  assert.equal(locked.legalValue, "900000");
+  assert.equal(locked.currentValue, "900000");
+  assert.equal(locked.legalValueComparableAuto, "1000000");
+  assert.equal(locked.currentValueComparableAuto, "1000000");
 });
 
 console.log("land valuation manual override tests passed");

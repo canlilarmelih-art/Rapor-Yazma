@@ -1383,6 +1383,61 @@ td .free-lookup input {
   width: min(780px, 100%);
 }
 
+.agricultural-usage-nature-modal {
+  width: min(680px, 100%);
+}
+
+.agricultural-usage-nature-modal .modal-body {
+  padding-top: 18px;
+}
+
+.modal-choice-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.modal-choice-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface-muted);
+  color: var(--ink);
+  cursor: pointer;
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+.modal-choice-item:hover {
+  border-color: var(--green);
+  background: var(--green-soft);
+}
+
+.modal-choice-item:has(input:checked) {
+  border-color: var(--green);
+  background: var(--green-soft);
+  box-shadow: inset 0 0 0 1px var(--green);
+  color: var(--green-strong);
+}
+
+.modal-choice-item input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  flex: 0 0 auto;
+  accent-color: var(--green);
+}
+
+@media (max-width: 620px) {
+  .modal-choice-list {
+    grid-template-columns: 1fr;
+  }
+}
+
 .modal-head {
   display: flex;
   justify-content: space-between;
