@@ -38,7 +38,10 @@
     { key: "vakifkatilim", file: "templates/vakifkatilim.html", title: "Vakıf Katılım Rapor Formatı", bank: "Vakıf Katılım Bankası A.Ş." },
     { key: "yapikredi", file: "templates/yapikredi.html", title: "Yapı Kredi Rapor Formatı", bank: "Yapı ve Kredi Bankası A.Ş." },
     { key: "ziraat", file: "templates/ziraat.html", title: "Ziraat Bankası Rapor Formatı", bank: "T.C. Ziraat Bankası A.Ş." },
-    { key: "ziraat-arsa-arazi", file: "templates/ziraat-arsa-arazi.html", title: "Ziraat Bankası Rapor Formatı (Arsa/Arazi)", bank: "" },
+    // ownershipType (Mülkiyet) Arsa/Tarla ise otomatik olarak bu varyanta yönlendirilir
+    // (bkz. resolveBankTemplateKeyForExport / appendBankTemplateExportBlock). Karışıklığı
+    // önlemek için açılır listede AYRI bir seçenek olarak GÖSTERİLMEZ.
+    { key: "ziraat-arsa-arazi", file: "templates/ziraat-arsa-arazi.html", title: "Ziraat Bankası Rapor Formatı (Arsa/Arazi)", bank: "T.C. Ziraat Bankası A.Ş.", variant: "arsa-arazi", hiddenFromList: true },
     { key: "ziraat-ek-tablo", file: "templates/ziraat-ek-tablo.html", title: "Ziraat Ek Tablo", bank: "" },
   ];
 
@@ -814,9 +817,25 @@
     return TEMPLATE_REGISTRY.map((entry) => ({ ...entry }));
   }
 
-  function defaultTemplateKeyForBank(bankName) {
-    const hit = TEMPLATE_REGISTRY.find((entry) => entry.bank && entry.bank === String(bankName || "").trim());
-    return hit ? hit.key : "";
+  function defaultTemplateKeyForBank(bankName, isLandOwnership = false) {
+    const bank = String(bankName || "").trim();
+    const matches = TEMPLATE_REGISTRY.filter((entry) => entry.bank && entry.bank === bank);
+    if (!matches.length) return "";
+    if (matches.length > 1) {
+      const preferred = matches.find((entry) => Boolean(entry.variant === "arsa-arazi") === Boolean(isLandOwnership));
+      if (preferred) return preferred.key;
+    }
+    return matches[0].key;
+  }
+
+  // Mülkiyet (ownershipType) Arsa/Tarla ise banka için "arsa-arazi" varyantı
+  // varsa o kullanılır; aksi halde seçilen anahtar aynen döner. Açılır listede
+  // (hiddenFromList) yalnızca tek seçenek gösterildiği için asıl indirmede
+  // doğru dosyaya yönlendirmek için bu fonksiyon kullanılır.
+  function resolveTemplateKeyForExport(templateKey, isLandOwnership = false) {
+    const entry = TEMPLATE_REGISTRY.find((item) => item.key === templateKey);
+    if (!entry || !entry.bank) return templateKey;
+    return defaultTemplateKeyForBank(entry.bank, isLandOwnership) || templateKey;
   }
 
   async function exportTemplate(templateKey) {
@@ -846,6 +865,7 @@
   window.RaporTemplates = {
     listTemplates,
     defaultTemplateKeyForBank,
+    resolveTemplateKeyForExport,
     exportTemplate,
     fillTemplate,
     resolveToken,

@@ -12431,6 +12431,7 @@ function appendBankTemplateExportBlock(panel, status) {
   const block = document.createElement("div");
   block.className = "output-template-export";
   const options = window.RaporTemplates.listTemplates()
+    .filter((entry) => !entry.hiddenFromList)
     .map((entry) => `<option value="${escapeHtml(entry.key)}">${escapeHtml(entry.title)}</option>`)
     .join("");
   block.innerHTML = `
@@ -12447,13 +12448,16 @@ function appendBankTemplateExportBlock(panel, status) {
     <p class="subtle-text">Placeholder adları için templates/PLACEHOLDER-REHBERI.md dosyasına bakın. Eşleşmeyen adlar çıktıda ⚠ ile işaretlenir.</p>
   `;
   const select = block.querySelector("[data-template-select]");
-  const defaultKey = window.RaporTemplates.defaultTemplateKeyForBank(state.fields.bank);
+  const defaultKey = window.RaporTemplates.defaultTemplateKeyForBank(state.fields.bank, isLandOwnershipType());
   if (defaultKey) select.value = defaultKey;
   block.querySelector("[data-export-template]").addEventListener("click", async () => {
     if (!confirmExportWithMissingFields()) return;
     try {
       saveState();
-      const templateKey = select.value;
+      // Mülkiyet (ownershipType) Arsa/Tarla ise, dropdown'da gösterilmeyen
+      // "arsa-arazi" varyantına sessizce yönlendirilir (kullanıcı deneyimini
+      // sadeleştirmek için banka basina tek secenek gosterilir).
+      const templateKey = window.RaporTemplates.resolveTemplateKeyForExport(select.value, isLandOwnershipType());
       const result = await window.RaporTemplates.exportTemplate(templateKey);
       const ziraatEkTabloResult = await exportZiraatEkTabloWithBankTemplateIfNeeded(templateKey);
       if (result.missing.length) {
