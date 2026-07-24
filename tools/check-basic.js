@@ -931,6 +931,14 @@ function main() {
       appJs.includes("image/png"),
     "Word ciktisinda kroki gorsellerini gomulu PNG/MHTML olarak ureten akis bulunamadi."
   );
+  assert(
+    appJs.includes("createBuildingInspectionExplanationPreview") &&
+      appJs.includes("Yapı Denetim Açıklaması") &&
+      appJs.includes('if (section.id === "documents")') &&
+      appJs.includes("body.append(createDocumentDecisionControls())") &&
+      appJs.includes("hasReviewedOccupancyPermitDocument()"),
+    "Yapi denetim aciklamasi belge ve proje ekraninda iskan kosuluyla gosterilmiyor."
+  );
 
   console.log("Temel kontrol tamam: dosyalar, JavaScript sozdizimi ve iOS PDF uyumluluk blogu saglam.");
 }

@@ -1696,7 +1696,7 @@ function renderSection() {
     body.append(createTakbisTitleSummary());
   }
 
-  if (section.id === "documents" && shouldShowArchitecturalProjectFields()) {
+  if (section.id === "documents") {
     body.append(createDocumentDecisionControls());
   }
 
@@ -11839,7 +11839,7 @@ function createDocumentDecisionControls() {
       options: ["", "Evet", "Hayır (Fesihli)"],
       onChange: (nextValue) => {
         if (nextValue === "Hayır (Fesihli)") {
-          openBuildingInspectionTerminationModal();
+          openBuildingInspectionTerminationModal(() => renderSection());
         } else {
           state.fields.buildingInspectionTerminationDate = "";
           state.fields.buildingInspectionTerminationLevel = "";
@@ -11858,7 +11858,21 @@ function createDocumentDecisionControls() {
   } else {
     state.fields.buildingInspectionProgressLevel = "";
   }
+  wrapper.append(createBuildingInspectionExplanationPreview());
   return wrapper;
+}
+
+function createBuildingInspectionExplanationPreview() {
+  const label = document.createElement("label");
+  label.className = "field field-wide document-decision-explanation";
+  label.append(createSpan("Yapı Denetim Açıklaması"));
+
+  const textarea = document.createElement("textarea");
+  textarea.rows = 3;
+  textarea.readOnly = true;
+  textarea.value = state.fields.buildingInspectionExplanation || buildBuildingInspectionExplanation();
+  label.append(textarea);
+  return label;
 }
 
 function createDocumentDecisionSelect(field) {
@@ -23450,10 +23464,9 @@ function getMapExportRatioMenuMarkup(selected = state.settings.mapExportRatio) {
 function getLeafletTileLayer() {
   const mode = normalizeMapMode(state.settings.mapMode);
   const mapTileUrl = (source) => `/map-tiles/${source}/{z}/{x}/{y}`;
-  // Ekran içi Leaflet karolarında `crossOrigin` kullanılmaz: iOS Safari,
-  // ArcGIS'in bazı yönlendirilmiş tile cevaplarını CORS hatasıyla boş
-  // gösterebiliyor. Dışa aktarılan canvas görselleri kendi CORS akışını
-  // `loadTileImage` içinde kullanmaya devam eder.
+  // Hem ekran hem kroki üretimi aynı origin proxy'sini kullanır. Böylece
+  // iOS/CORS kaynaklı tile kayıpları ile Word/JPEG krokilerindeki boş altlık
+  // sorunu tek noktadan giderilir.
   const streetLayer = window.L.tileLayer(mapTileUrl("osm"), {
     attribution: "© OpenStreetMap",
     maxZoom: 20,
@@ -23896,14 +23909,14 @@ function getExportTileUrls(tileX, tileY, zoom, layerType = "base", mapMode = sta
   if (layerType === "labels") {
     if (normalizeMapMode(mapMode) !== "hybrid") return [];
     return [
-      `https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/${zoom}/${y}/${wrappedX}`,
-      `https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/${zoom}/${y}/${wrappedX}`,
+      `/map-tiles/transport/${zoom}/${wrappedX}/${y}`,
+      `/map-tiles/places/${zoom}/${wrappedX}/${y}`,
     ];
   }
   if (normalizeMapMode(mapMode) !== "street") {
-    return [`https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${zoom}/${y}/${wrappedX}`];
+    return [`/map-tiles/imagery/${zoom}/${wrappedX}/${y}`];
   }
-  return [`https://a.tile.openstreetmap.org/${zoom}/${wrappedX}/${y}.png`];
+  return [`/map-tiles/osm/${zoom}/${wrappedX}/${y}`];
 }
 
 function loadTileImage(url) {
@@ -23912,7 +23925,6 @@ function loadTileImage(url) {
     const timer = window.setTimeout(() => {
       reject(new Error("Harita altligi zaman asimina ugradi."));
     }, 4500);
-    image.crossOrigin = "anonymous";
     image.onload = () => {
       window.clearTimeout(timer);
       resolve(image);

@@ -4168,6 +4168,15 @@ td textarea.table-textarea {
   font-size: 15px;
 }
 
+.document-decision-explanation {
+  grid-column: 1 / -1;
+}
+
+.document-decision-explanation textarea {
+  min-height: 86px;
+  resize: vertical;
+}
+
 .source-chip-row {
   display: flex;
   flex-wrap: wrap;
