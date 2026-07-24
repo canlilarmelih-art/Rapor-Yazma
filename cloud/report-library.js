@@ -24,6 +24,7 @@
   const BLOB_PREFIX = "rapor-library-report-";
   const BLOB_SCHEMA = "rapor-yazma-programi-state";
   const QUICK_LEGAL_USAGE_OPTIONS = ["", "Konut", "İşyeri", "Ofis", "Arsa", "Arazi", "Ticari Bina", "Sanayi Tesisi"];
+  const QUICK_APPOINTMENT_TYPE_OPTIONS = ["", "İçi görülmüştür", "Dışarıdan ekspertiz", "Kısıtlı inceleme"];
   const LIBRARY_VIEW_MODE_KEY = "rapor-library-view-mode";
 
   function hasAppGlobals() {
@@ -655,6 +656,9 @@
     const usageOptions = QUICK_LEGAL_USAGE_OPTIONS
       .map((opt) => `<option value="${escapeHtml(opt)}">${escapeHtml(opt || "Seçiniz")}</option>`)
       .join("");
+    const appointmentTypeOptions = QUICK_APPOINTMENT_TYPE_OPTIONS
+      .map((opt) => `<option value="${escapeHtml(opt)}">${escapeHtml(opt || "Seçiniz")}</option>`)
+      .join("");
     return `
       <div class="library-new-report-form">
         <label class="field"><span>Banka</span>
@@ -666,8 +670,8 @@
         <label class="field field-wide"><span>İş Adı *</span>
           <input type="text" id="libraryNewCaseName" placeholder="Örn. Yeni Ekspertiz Raporu" />
         </label>
-        <label class="field"><span>İl</span>
-          <input type="text" id="libraryNewCity" />
+        <label class="field"><span>Randevu Türü</span>
+          <select id="libraryNewAppointmentType">${appointmentTypeOptions}</select>
         </label>
         <label class="field"><span>Yasal Kullanım Niteliği</span>
           <select id="libraryNewUsage">${usageOptions}</select>
@@ -794,7 +798,7 @@
             caseName,
             bank: newPanel.querySelector("#libraryNewBank").value,
             customerName: newPanel.querySelector("#libraryNewCustomer").value.trim(),
-            city: newPanel.querySelector("#libraryNewCity").value.trim(),
+            appointmentType: newPanel.querySelector("#libraryNewAppointmentType").value,
             legalUsageNature: newPanel.querySelector("#libraryNewUsage").value,
           });
         });
