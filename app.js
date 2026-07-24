@@ -1438,6 +1438,15 @@ function isArsaOwnershipType(value = state.fields.ownershipType) {
   return normalizeOwnershipTypeForSectionVisibility(value) === "ARSA";
 }
 
+// Banka sablonu (konut/isyeri vs arsa/arazi) otomatik secimi icin: Mülkiyet
+// (ownershipType) Arsa/Tarla ise, VEYA kullanıcı yalnızca Mevcut Kullanım
+// Niteliğini (currentUsageNature) Arsa/Arazi olarak doldurup Mülkiyet'i hiç
+// değiştirmediyse de arsa/arazi formatı seçilsin.
+function isLandPropertyForBankTemplate() {
+  if (isLandOwnershipType()) return true;
+  return ["ARAZI", "ARSA"].includes(foldTurkish(state.fields.currentUsageNature || ""));
+}
+
 function isLandProjectReview() {
   const ownershipType = normalizeOwnershipTypeForSectionVisibility(state.fields.ownershipType);
   if (["ARSA", "TARLA"].includes(ownershipType)) return true;
@@ -12448,16 +12457,17 @@ function appendBankTemplateExportBlock(panel, status) {
     <p class="subtle-text">Placeholder adları için templates/PLACEHOLDER-REHBERI.md dosyasına bakın. Eşleşmeyen adlar çıktıda ⚠ ile işaretlenir.</p>
   `;
   const select = block.querySelector("[data-template-select]");
-  const defaultKey = window.RaporTemplates.defaultTemplateKeyForBank(state.fields.bank, isLandOwnershipType());
+  const defaultKey = window.RaporTemplates.defaultTemplateKeyForBank(state.fields.bank, isLandPropertyForBankTemplate());
   if (defaultKey) select.value = defaultKey;
   block.querySelector("[data-export-template]").addEventListener("click", async () => {
     if (!confirmExportWithMissingFields()) return;
     try {
       saveState();
-      // Mülkiyet (ownershipType) Arsa/Tarla ise, dropdown'da gösterilmeyen
-      // "arsa-arazi" varyantına sessizce yönlendirilir (kullanıcı deneyimini
-      // sadeleştirmek için banka basina tek secenek gosterilir).
-      const templateKey = window.RaporTemplates.resolveTemplateKeyForExport(select.value, isLandOwnershipType());
+      // Mülkiyet (ownershipType) Arsa/Tarla ise VEYA Mevcut Kullanım Niteliği
+      // Arsa/Arazi ise, dropdown'da gösterilmeyen "arsa-arazi" varyantına
+      // sessizce yönlendirilir (kullanıcı deneyimini sadeleştirmek için banka
+      // basina tek secenek gosterilir).
+      const templateKey = window.RaporTemplates.resolveTemplateKeyForExport(select.value, isLandPropertyForBankTemplate());
       const result = await window.RaporTemplates.exportTemplate(templateKey);
       const ziraatEkTabloResult = await exportZiraatEkTabloWithBankTemplateIfNeeded(templateKey);
       if (result.missing.length) {
