@@ -12377,7 +12377,15 @@ function getExpenseBankGroupGuidance(bankGroup) {
   return EXPENSE_BANK_GROUP_GUIDANCE[bankGroup] || EXPENSE_BANK_GROUP_GUIDANCE.A;
 }
 
+let expenseFeeCloudSyncSelfHealAttempted = false;
 function createExpenseFeesSummaryPanel() {
+  // Yeni bir taslak (Yeni İş) açıldığında admin masraf sabitleri (KDV oranı,
+  // birim ücretler, tarife tablosu) state'ten kaybolabilir; buluttan tekrar
+  // çekilmezse bu panel her zaman boş görünür. Bir kez yeniden dener.
+  if (!expenseFeeCloudSyncSelfHealAttempted && !state.fields.expenseVatRatePercent && !state.fields.expenseTransportFeeExVat) {
+    expenseFeeCloudSyncSelfHealAttempted = true;
+    syncExpenseFeesFromCloud();
+  }
   recalculateExpenseFees();
   const panel = document.createElement("div");
   panel.className = "subsection expense-fees-summary-panel";
@@ -29430,6 +29438,10 @@ document.querySelector("#newCaseBtn")?.addEventListener("click", () => {
   activeSectionId = sections[0].id;
   saveState();
   render();
+  // Yeni raporun state'i sifirdan yuklendigi icin admin masraf sabitleri
+  // (Masraf Bilgileri bolumu) de kaybolur; buluttan yeniden cekilmezse
+  // Masraf Tablosu bos gorunur.
+  syncExpenseFeesFromCloud();
 });
 
 fieldMode?.addEventListener("change", render);

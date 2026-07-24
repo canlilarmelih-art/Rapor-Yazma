@@ -746,7 +746,7 @@ function main() {
       indexHtml.includes("src/auth/access-control.js?v=20260719-2200") &&
        /app\.js\?v=\d{8}-\d{4}/.test(indexHtml) &&
       indexHtml.includes("cloud/cloud-sync.js?v=20260719-2200") &&
-      indexHtml.includes("cloud/report-library.js?v=20260719-2200") &&
+       /cloud\/report-library\.js\?v=\d{8}-\d{4}/.test(indexHtml) &&
        /src\/templates\/template-engine\.js\?v=\d{8}-\d{4}/.test(indexHtml),
     "Halkbank risk kodu scriptleri veya guncel app surumu index.html icinde bulunamadi."
   );

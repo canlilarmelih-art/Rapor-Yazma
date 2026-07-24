@@ -254,6 +254,10 @@
     flushActiveToLibrary();
     window.RaporCloudSync?.setActiveReportId(state.reportId, { localKnownUpdatedAt: state.updatedAt });
     render();
+    // Yeni raporun state'i sifirdan yuklendigi icin admin masraf sabitleri
+    // (Masraf Bilgileri bolumu) de kaybolur; buluttan yeniden cekilmezse
+    // Masraf Tablosu bos gorunur (kullanici oturum acikken "Yeni Is" actiginda).
+    if (typeof syncExpenseFeesFromCloud === "function") syncExpenseFeesFromCloud();
   }
 
   function openReportById(id) {
