@@ -12352,7 +12352,40 @@ function createOutputExportPanel() {
   });
   panel.append(createExpenseFeesSummaryPanel());
   appendBankTemplateExportBlock(panel, status);
+  appendTablesXlsxExportBlock(panel, status);
   return panel;
+}
+
+// Rapor genelindeki tüm tabloları (Malikler, Beyanlar/Şerhler/İpotekler,
+// İncelenen Belgeler, Emsaller) tek bir Excel dosyası olarak indirir.
+// Motor yüklenmemişse blok hiç görünmez.
+function appendTablesXlsxExportBlock(panel, status) {
+  if (!window.RaporReportTablesXlsx) return;
+  const block = document.createElement("div");
+  block.className = "output-template-export";
+  block.innerHTML = `
+    <div class="subsection-title-row" style="margin-top:14px;">
+      <div>
+        <h4>Tüm Tabloları Excel Olarak İndir</h4>
+        <p>Malikler, Takyidat (Beyan/Şerh/İpotek), İncelenen Belgeler ve Emsal tablolarının tamamı, her biri ayrı sayfada olacak şekilde tek bir .xlsx dosyasına aktarılır.</p>
+      </div>
+    </div>
+    <div class="output-export-actions">
+      <button type="button" class="secondary-button" data-export-tables-xlsx>Tüm Tabloları Excel Olarak İndir</button>
+    </div>
+  `;
+  block.querySelector("[data-export-tables-xlsx]").addEventListener("click", () => {
+    try {
+      saveState();
+      const result = window.RaporReportTablesXlsx.exportAllTables();
+      showOutputExportStatus(status, `${result.sheetCount} sayfa, ${result.rowCount} satır indirildi.`);
+    } catch (error) {
+      console.error("Tüm tablolar Excel dışa aktarma hatası:", error);
+      showOutputExportStatus(status, "Excel dosyası hazırlanamadı.");
+      window.alert(`Excel dosyası hazırlanamadı: ${error?.message || error}`);
+    }
+  });
+  panel.append(block);
 }
 
 // Masraf yazısı ücret kalemlerinin (Rapor/Değerleme Ücreti, KDV oranları,
