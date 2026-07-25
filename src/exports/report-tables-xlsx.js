@@ -254,8 +254,34 @@
 
   // html içindeki TÜM <table> bloklarını sırayla ayrıştırıp satırları
   // (aralarında bir boş satırla) tek bir ızgarada birleştirir.
+  // Bazı üretici fonksiyonlar (ör. buildComparableValuationWordTableHtml)
+  // gerçek veri tablosunu Word'de tek çerçeveli görünsün diye dekoratif bir
+  // "role=presentation" DIŞ tabloya gömer (<table><tr><td>BAŞLIK</td></tr>
+  // <tr><td><table>...GERÇEK VERİ...</table></td></tr></table>). Basit,
+  // iç içeliği bilmeyen bir regex bu durumda dış ve iç tabloların <tr>
+  // satırlarını birbirine karıştırır (kullanıcının bildirdiği "kayma").
+  // Bu yüzden yalnızca EN İÇTEKİ (başka tablo barındırmayan) <table>
+  // bloklarını, derinlik takip ederek buluruz.
+  function findInnermostTableBlocks(html) {
+    const tagRe = /<table\b[^>]*>|<\/table>/gi;
+    const openStack = [];
+    const blocks = [];
+    let match;
+    while ((match = tagRe.exec(html))) {
+      if (/^<table\b/i.test(match[0])) {
+        openStack.push(match.index);
+      } else {
+        const start = openStack.pop();
+        if (start === undefined) continue;
+        const end = match.index + match[0].length;
+        blocks.push({ start, end, html: html.slice(start, end) });
+      }
+    }
+    return blocks.filter((block) => !blocks.some((other) => other !== block && other.start > block.start && other.end < block.end));
+  }
+
   function parseHtmlTables(html) {
-    const tableBlocks = [...String(html || "").matchAll(/<table[^>]*>([\s\S]*?)<\/table>/gi)].map((m) => m[0]);
+    const tableBlocks = findInnermostTableBlocks(String(html || "")).map((b) => b.html);
     if (!tableBlocks.length) return null;
     let grid = [];
     let merges = [];

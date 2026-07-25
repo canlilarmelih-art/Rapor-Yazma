@@ -121,6 +121,43 @@ assert(Math.abs((parsed.rowHeights[0] || 0) - 14.17325) < 0.01, `satir yukseklig
 assert(parsed.grid[2].find((c) => c.col === 1)?.text === "2. Bölüm & Ek", "HTML entity (&amp;) dogru cozulmemis.");
 assert(parsed.grid[0][0].bold === true && parsed.grid[0][0].bg === "#e4ebf8", "Baslik hucresi kalin/dolgu bilgisi kaybolmus.");
 
+// --- 1b) Iç içe (nested) tablo regresyon testi ----------------------------
+// buildComparableValuationWordTableHtml() gercek veri tablosunu dekoratif
+// bir disari "role=presentation" cerceve tablosuna gomer. Bu, kullanicinin
+// bildirdigi "Emsal Degerleme Tablosunda kayma var" hatasinin kok nedeniydi:
+// ic ice tabloyu bilmeyen bir ayristirici, dis cercevenin baslik satirini ve
+// ic tablonun satirlarini TEK bir izgaraya karistirir.
+const framedHtml = `<table role="presentation" style="border-collapse:collapse;">
+<tr><td style="background:#e7e7e7;">Emsal Değerleme Tablosu</td></tr>
+<tr><td>
+  <table class="word-table is-wide" style="border-collapse:collapse;">
+    <colgroup><col style="width:9%;"><col style="width:6%;"><col style="width:12%;"></colgroup>
+    <thead>
+      <tr><th rowspan="2" style="background:#e4ebf8;font-weight:700;">NO</th><th rowspan="2" style="background:#e4ebf8;font-weight:700;">ALAN</th><th style="background:#e4ebf8;font-weight:700;">SATIŞ</th></tr>
+      <tr><th style="background:#e4ebf8;font-weight:700;">TALEP EDİLEN</th></tr>
+    </thead>
+    <tbody>
+      <tr><td style="text-align:center;">E1</td><td style="text-align:right;">120,00</td><td style="text-align:right;">1.000.000</td></tr>
+    </tbody>
+  </table>
+</td></tr>
+</table>`;
+const framedParsed = ReportTablesXlsx.parseHtmlTables(framedHtml);
+assert(Boolean(framedParsed), "Ic ice tablo ayristirilamadi.");
+assert(framedParsed.grid.length === 3, `Ic ice tabloda satir sayisi beklenmedik (dis cerceve satirlari sizmis olabilir): ${framedParsed.grid.length}`);
+assert(
+  framedParsed.grid[0].map((c) => c.text).join("|") === "NO|ALAN|SATIŞ",
+  `Ic ice tabloda ilk baslik satiri yanlis (dis cerceve karismis olabilir): ${JSON.stringify(framedParsed.grid[0].map((c) => c.text))}`
+);
+assert(
+  framedParsed.grid[1].find((c) => c.text === "TALEP EDİLEN")?.col === 2,
+  `"TALEP EDİLEN" SATIŞ sutununun (col 2) altina hizalanmamis — KAYMA regresyonu: ${JSON.stringify(framedParsed.grid[1])}`
+);
+assert(
+  framedParsed.grid[2].find((c) => c.text === "E1")?.col === 0,
+  `Veri satiri (E1) NO sutununun (col 0) altina hizalanmamis: ${JSON.stringify(framedParsed.grid[2])}`
+);
+
 // --- 2) Tam disa aktarma calistir -----------------------------------------
 const result = ReportTablesXlsx.exportAllTables();
 assert(result.fileName === "test-raporu-tum-tablolar.xlsx", `dosya adi beklenmedik: ${result.fileName}`);
