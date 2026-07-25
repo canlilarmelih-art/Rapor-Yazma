@@ -159,17 +159,22 @@ assert(
 );
 
 // --- 2) Tam disa aktarma calistir -----------------------------------------
+// Kullanici talebi: Takyidat alt tablolari (Beyanlar/Serhler/Ipotekler) TEK
+// sayfada alt alta; Degerleme ve Emsal tablolari da TEK sayfada alt alta.
 const result = ReportTablesXlsx.exportAllTables();
 assert(result.fileName === "test-raporu-tum-tablolar.xlsx", `dosya adi beklenmedik: ${result.fileName}`);
 assert(capturedBlob && capturedBlob.blob, "downloadBlob cagirilmadi veya blob eksik.");
-// Genel Bilgiler + Malikler + Serhler + Emsaller + Masraf Tablosu (documents/Beyanlar/Ipotekler bos, GENERATED_TABLE_DEFS bu ortamda yuklu degil)
+// Genel Bilgiler + Malikler (ayri) + Takyidat (Beyanlar/Serhler/Ipotekler birlesik)
+// + Masraf Tablosu + Degerleme ve Emsaller (Emsal Kayitlari birlesik; digerleri
+// bu Node ortaminda buildXxxWordHtml fonksiyonlari tanimli olmadigi icin bos gecilir)
 assert(result.sheetNames.includes("Genel Bilgiler"), "Genel Bilgiler sayfasi yok.");
 assert(result.sheetNames.includes("Malikler"), "Malikler sayfasi yok.");
-assert(result.sheetNames.includes("Şerhler"), "Şerhler sayfasi yok.");
-assert(result.sheetNames.includes("Emsal kayıtları"), "Emsal kayitlari sayfasi yok.");
+assert(result.sheetNames.includes("Takyidat"), "Birlesik Takyidat sayfasi yok.");
 assert(result.sheetNames.includes("Masraf Tablosu"), "Masraf Tablosu sayfasi yok.");
+assert(result.sheetNames.includes("Değerleme ve Emsaller"), "Birlesik Degerleme ve Emsaller sayfasi yok.");
+assert(!result.sheetNames.includes("Şerhler"), "Şerhler artik ayri bir sayfa olmamali (Takyidat'a tasindi).");
+assert(!result.sheetNames.includes("Emsal kayıtları"), "Emsal kayitlari artik ayri bir sayfa olmamali (Değerleme ve Emsaller'e tasindi).");
 assert(!result.sheetNames.includes("İncelenen belgeler"), "Tamamen bos 'İncelenen belgeler' tablosu icin sayfa olusturulmamali.");
-assert(!result.sheetNames.includes("İpotekler"), "Tamamen bos 'İpotekler' tablosu icin sayfa olusturulmamali.");
 
 async function verifyBlob() {
   const buf = await capturedBlob.blob.arrayBuffer();
@@ -204,11 +209,18 @@ async function verifyBlob() {
   assert(maliklerXml.includes("<t>Ali Veli</t>"), "Malikler satiri (Ali Veli) eksik.");
   assert((maliklerXml.match(/<row /g) || []).length === 2, "Malikler sayfasinda bos satir dahil edilmis olabilir (2 satir bekleniyordu).");
 
-  const serhlerXml = sheetXmlByName.get("Şerhler");
-  assert(serhlerXml.includes("<t>Haciz</t>") && serhlerXml.includes("<t>Test Açıklama</t>"), "Şerhler satiri eksik.");
+  // Takyidat: yalnizca doldurulan "Şerhler" grubu (Beyanlar/Ipotekler bu
+  // testte bos) baslik satiriyla birlikte gorunmeli, tablolar alt alta olmali.
+  const takyidatXml = sheetXmlByName.get("Takyidat");
+  assert(takyidatXml.includes("<t>Şerhler</t>"), "Takyidat sayfasinda 'Şerhler' alt tablo basligi eksik.");
+  assert(takyidatXml.includes("<t>Haciz</t>") && takyidatXml.includes("<t>Test Açıklama</t>"), "Takyidat sayfasinda Şerhler satiri eksik.");
+  assert(!takyidatXml.includes("<t>Beyanlar - Hak ve Mükellefiyetler</t>"), "Bos 'Beyanlar' alt tablosu icin baslik satiri eklenmemeli.");
 
-  const emsalXml = sheetXmlByName.get("Emsal kayıtları");
-  assert(emsalXml.includes("<t>sahibinden.com</t>"), "Emsal satiri eksik.");
+  // Değerleme ve Emsaller: "Emsal Kayıtları" alt tablo basligiyla birlikte
+  // gorunmeli (bu Node test ortaminda tek dolu olan alt tablo budur).
+  const combinedXml = sheetXmlByName.get("Değerleme ve Emsaller");
+  assert(combinedXml.includes("<t>Emsal Kayıtları</t>"), "Değerleme ve Emsaller sayfasinda 'Emsal Kayıtları' alt tablo basligi eksik.");
+  assert(combinedXml.includes("<t>sahibinden.com</t>"), "Değerleme ve Emsaller sayfasinda emsal satiri eksik.");
 
   const genelXml = sheetXmlByName.get("Genel Bilgiler");
   assert(genelXml.includes("<t>Test Ekspertiz Raporu</t>") && genelXml.includes("<t>İş Adı</t>"), "Genel Bilgiler sayfasinda is adi eksik.");

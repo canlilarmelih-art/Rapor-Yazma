@@ -317,12 +317,52 @@
     return Math.max(8, Math.min(60, maxLen * 1.1 + 2));
   }
 
-  function buildSheetXmlFromGrid(styleRegistry, headerRow, dataRows, options = {}) {
-    // Basit (düz) tablo: headerRow: string[]|null, dataRows: string[][]
+  // Basit (düz) baslik+satir tablosunu ortak {grid,merges,rowHeights,colCount}
+  // hucre-izgarasi bicimine cevirir (parseHtmlTables cikisiyla ayni bicim) —
+  // boylece hem tek basina bir sayfa olarak hem de combineNamedGrids ile baska
+  // tablolarla "alt alta" birlestirilerek kullanilabilir.
+  function rawGridToCellGrid(headerRow, dataRows) {
     const grid = [];
     if (headerRow) grid.push(headerRow.map((text, col) => ({ text, col, bold: true, bg: "#D9D9D9", align: null })));
     dataRows.forEach((row) => grid.push(row.map((text, col) => ({ text, col, bold: false, bg: null, align: null }))));
-    return buildSheetXmlFromCellGrid(styleRegistry, { grid, merges: [], rowHeights: [], colCount: headerRow ? headerRow.length : (dataRows[0] || []).length, colWidthsPercent: null }, options);
+    return { grid, merges: [], rowHeights: [], colCount: headerRow ? headerRow.length : (dataRows[0] || []).length, colWidthsPercent: null };
+  }
+
+  function buildSheetXmlFromGrid(styleRegistry, headerRow, dataRows, options = {}) {
+    return buildSheetXmlFromCellGrid(styleRegistry, rawGridToCellGrid(headerRow, dataRows), options);
+  }
+
+  // Birden çok adlı tabloyu ("Beyanlar", "Şerhler", "İpotekler" gibi) TEK bir
+  // sayfada alt alta birleştirir; her alt tablonun önüne kalın bir başlık
+  // satırı eklenir, hücre birleşimleri (merge) ve satır yükseklikleri, satır
+  // ofsetine göre kaydırılarak korunur.
+  function combineNamedGrids(namedGrids) {
+    const filled = namedGrids.filter((named) => named.cellGrid && named.cellGrid.grid.length);
+    if (!filled.length) return null;
+    const grid = [];
+    const merges = [];
+    const rowHeights = [];
+    let colCount = 0;
+    filled.forEach((named, index) => {
+      if (index > 0) {
+        grid.push([]);
+        rowHeights.push(null);
+      }
+      grid.push([{ col: 0, text: named.title, bold: true, bg: "#C7D2E8", align: null }]);
+      rowHeights.push(null);
+      const offset = grid.length;
+      named.cellGrid.grid.forEach((row, i) => {
+        grid[offset + i] = row;
+        rowHeights[offset + i] = named.cellGrid.rowHeights[i] || null;
+      });
+      named.cellGrid.merges.forEach((m) => merges.push({ r1: m.r1 + offset, c1: m.c1, r2: m.r2 + offset, c2: m.c2 }));
+      colCount = Math.max(colCount, named.cellGrid.colCount);
+    });
+    // Farklı alt tablolar genelde çok farklı sütun genişliği ihtiyacı
+    // duyduğundan (ör. 3 sütunlu Değerlendirme Tablosu ile 12 sütunlu Emsal
+    // Değerleme Tablosu aynı sayfada), yüzde bazlı genişlik yerine tüm
+    // sayfadaki gerçek içerik uzunluğuna göre otomatik genişlik kullanılır.
+    return { grid, merges, rowHeights, colCount, colWidthsPercent: null };
   }
 
   function buildSheetXmlFromCellGrid(styleRegistry, parsed, options = {}) {
@@ -493,14 +533,23 @@
     return sheetXml;
   }
 
-  // Sistem tarafından üretilen (Word çıktısıyla aynı) tablolar: her biri bir
-  // app.js fonksiyonunu çağırıp döndürdüğü HTML'i ayrıştırır.
-  const GENERATED_TABLE_DEFS = [
-    { title: "Değerlendirme Tablosu", fn: "buildValuationSummaryWordTableHtml" },
-    { title: "Kat Bazında İndirgenmiş Alan Tablosu", fn: "buildExplanationsFloorValuationWordTableHtml" },
-    { title: "Emsal Matrisi", fn: "buildComparableMatrixWordTableHtml" },
-    { title: "Emsal Değerleme Tablosu", fn: "buildComparableValuationWordTableHtml" },
-  ];
+  // Kullanıcı talebi: Takyidat alt tabloları (Beyanlar/Şerhler/İpotekler) TEK
+  // sayfada alt alta olsun; Değerleme ve Emsal tabloları da TEK sayfada alt
+  // alta olsun (hücre birleşimleri korunarak).
+  const TAKYIDAT_KEYS = ["encumbranceDeclarations", "encumbranceAnnotations", "encumbranceMortgages"];
+
+  function rawGridCellGridFor(def) {
+    const tableState = (typeof state !== "undefined" && state.tables && state.tables[def.key]) || [];
+    const filledRows = tableState.filter(isRowFilled);
+    if (!filledRows.length) return null;
+    const rows = filledRows.map((row) => def.columns.map((_, columnIndex) => row[`c${columnIndex}`] || ""));
+    return rawGridToCellGrid(def.columns, rows);
+  }
+
+  function generatedCellGridFor(fnName) {
+    const html = safeCall(fnName);
+    return html ? parseHtmlTables(html) : null;
+  }
 
   function buildSheetsFromCurrentState() {
     const styleRegistry = createStyleRegistry();
@@ -515,31 +564,40 @@
       });
     }
 
-    collectRawGridDefs().forEach((def) => {
-      const tableState = (typeof state !== "undefined" && state.tables && state.tables[def.key]) || [];
-      const filledRows = tableState.filter(isRowFilled);
-      if (!filledRows.length) return;
-      const rows = filledRows.map((row) => def.columns.map((_, columnIndex) => row[`c${columnIndex}`] || ""));
-      sheets.push({
-        name: sanitizeSheetName(def.title, usedNames),
-        sheetXml: buildSheetXmlFromGrid(styleRegistry, def.columns, rows),
-      });
+    const rawGridDefs = collectRawGridDefs();
+    const takyidatDefs = rawGridDefs.filter((def) => TAKYIDAT_KEYS.includes(def.key));
+    const otherRawDefs = rawGridDefs.filter((def) => !TAKYIDAT_KEYS.includes(def.key) && def.key !== "comparables");
+    const comparablesDef = rawGridDefs.find((def) => def.key === "comparables");
+
+    otherRawDefs.forEach((def) => {
+      const cellGrid = rawGridCellGridFor(def);
+      if (!cellGrid) return;
+      sheets.push({ name: sanitizeSheetName(def.title, usedNames), sheetXml: buildSheetXmlFromCellGrid(styleRegistry, cellGrid) });
     });
+
+    const takyidatCombined = combineNamedGrids(
+      takyidatDefs.map((def) => ({ title: def.title, cellGrid: rawGridCellGridFor(def) }))
+    );
+    if (takyidatCombined) {
+      sheets.push({ name: sanitizeSheetName("Takyidat", usedNames), sheetXml: buildSheetXmlFromCellGrid(styleRegistry, takyidatCombined) });
+    }
 
     const expenseSheetXml = buildExpenseFeesSheet(styleRegistry);
     if (expenseSheetXml) {
       sheets.push({ name: sanitizeSheetName("Masraf Tablosu", usedNames), sheetXml: expenseSheetXml });
     }
 
-    GENERATED_TABLE_DEFS.forEach((def) => {
-      const html = safeCall(def.fn);
-      const parsed = html ? parseHtmlTables(html) : null;
-      if (!parsed) return;
-      sheets.push({
-        name: sanitizeSheetName(def.title, usedNames),
-        sheetXml: buildSheetXmlFromCellGrid(styleRegistry, parsed),
-      });
-    });
+    const valuationAndComparableNamedGrids = [
+      { title: "Değerlendirme Tablosu", cellGrid: generatedCellGridFor("buildValuationSummaryWordTableHtml") },
+      { title: "Kat Bazında İndirgenmiş Alan Tablosu", cellGrid: generatedCellGridFor("buildExplanationsFloorValuationWordTableHtml") },
+      { title: "Emsal Kayıtları", cellGrid: comparablesDef ? rawGridCellGridFor(comparablesDef) : null },
+      { title: "Emsal Matrisi", cellGrid: generatedCellGridFor("buildComparableMatrixWordTableHtml") },
+      { title: "Emsal Değerleme Tablosu", cellGrid: generatedCellGridFor("buildComparableValuationWordTableHtml") },
+    ];
+    const valuationAndComparableCombined = combineNamedGrids(valuationAndComparableNamedGrids);
+    if (valuationAndComparableCombined) {
+      sheets.push({ name: sanitizeSheetName("Değerleme ve Emsaller", usedNames), sheetXml: buildSheetXmlFromCellGrid(styleRegistry, valuationAndComparableCombined) });
+    }
 
     return { sheets, stylesXml: styleRegistry.buildStylesXml() };
   }
