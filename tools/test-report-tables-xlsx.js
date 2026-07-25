@@ -5,11 +5,20 @@
 
   src/exports/xlsx-fill.js (zip/crc32) ve src/exports/report-tables-xlsx.js
   modüllerini Node'da minimal window/document/state/sections stub'larıyla
-  çalıştırır. exportAllTables()'in ürettiği .xlsx blob'unu tekrar
-  readStoredZip ile açıp: workbook.xml'deki sayfa sayısının beklenenle
-  eştiğini, her sayfa XML'inin geçerli OOXML olduğunu ve girilen tablo
-  verilerinin (Malikler/Şerhler/Emsaller) doğru sayfada, doğru hücrelerde
-  çıktığını doğrular.
+  çalıştırır ve şunları doğrular:
+   1) Ham grid tabloları (Malikler/Şerhler/Emsaller) doğru sayfada, boş
+      tablolar/satırlar dahil edilmeden çıkar.
+   2) Masraf Tablosu state.fields'ten doğru satırlarla kurulur.
+   3) parseHtmlTables() gerçek üretici fonksiyonlarınkine benzer bir HTML
+      parçasında colspan/rowspan'i doğru birleştirilmiş hücrelere (merge)
+      çevirir, satır yüksekliğini (cm->pt) ve dolgu/kalın stilini doğru
+      ayrıştırır.
+   4) Üretilen hücre referanslarının (r="A1" gibi) HER ZAMAN sütun harfi
+      içerdiğini doğrular (regresyon: sütun indeksi unutulursa r="1" gibi
+      geçersiz referanslar üretilir).
+   5) Nihai .xlsx blob'u readStoredZip ile geri okunduğunda gecerli bir
+      OOXML paketi oldugunu (workbook.xml sayfa sayisi = worksheet dosya
+      sayisi, styles.xml var) dogrular.
 */
 
 const fs = require("fs");
@@ -46,13 +55,17 @@ global.state = {
     blockNo: "10",
     parcelNo: "5",
     appointmentType: "İçi görülmüştür",
+    expenseAppraisalFeeExVat: "16.500,00",
+    expenseAppraisalFeeIncVat: "19.800,00",
+    expenseTotalFeeExVat: "20.603,06",
+    expenseTotalFeeIncVat: "24.492,27",
   },
   tables: {
     title: [
       { c0: "Ali Veli", c1: "1/1", c2: "Satış", c3: "01.01.2026", c4: "123" },
       {}, // bos satir dahil edilmemeli
     ],
-    documents: [],
+    documents: [], // tamamen bos tablo: sayfa hic olusmamali
     encumbranceAnnotations: [
       { c0: "Haciz", c1: "Test Açıklama", c2: "5000", c3: "01.02.2026", c4: "456" },
     ],
@@ -74,43 +87,67 @@ global.encumbranceReportTables = [
 ];
 global.encumbranceReportColumns = ["Tür", "Açıklama", "Tarih", "Yevmiye No"];
 global.buildExportBaseFileName = () => "test-raporu";
+global.recalculateExpenseFees = () => {};
 
 const reportTablesSrc = fs.readFileSync(path.join(appDir, "src", "exports", "report-tables-xlsx.js"), "utf8");
 // eslint-disable-next-line no-eval
 eval(reportTablesSrc);
 const ReportTablesXlsx = global.window.RaporReportTablesXlsx;
 assert(ReportTablesXlsx && typeof ReportTablesXlsx.exportAllTables === "function", "RaporReportTablesXlsx yuklenmedi.");
+assert(typeof ReportTablesXlsx.parseHtmlTables === "function", "parseHtmlTables disa acilmadi.");
 
+// --- 1) colspan/rowspan + stil ayristirma birim testi -------------------
+const sampleHtml = `<table>
+<colgroup><col style="width:20%;"><col style="width:30%;"><col style="width:25%;"><col style="width:25%;"></colgroup>
+<thead><tr height="19" style="height:0.5cm;"><th style="background:#e4ebf8;font-weight:700;" colspan="4">BAŞLIK</th></tr></thead>
+<tbody>
+<tr><td rowspan="2" style="background:#e4ebf8;font-weight:700;">Zemin Kat</td><td style="">1. Bölüm</td><td style="text-align:right;">120,50</td><td style="text-align:right;font-weight:800;">115,00</td></tr>
+<tr><td style="">2. Bölüm &amp; Ek</td><td style="text-align:right;">80,00</td><td style="text-align:right;font-weight:800;">75,00</td></tr>
+</tbody>
+</table>`;
+const parsed = ReportTablesXlsx.parseHtmlTables(sampleHtml);
+assert(Boolean(parsed), "parseHtmlTables ornek HTML'i ayristiramadi.");
+assert(parsed.colCount === 4, `colCount beklenmedik: ${parsed.colCount}`);
+assert(parsed.merges.length === 2, `merge sayisi beklenmedik: ${parsed.merges.length}`);
+assert(
+  parsed.merges.some((m) => m.r1 === 0 && m.c1 === 0 && m.r2 === 0 && m.c2 === 3),
+  "colspan=4 baslik birlesimi bulunamadi."
+);
+assert(
+  parsed.merges.some((m) => m.r1 === 1 && m.c1 === 0 && m.r2 === 2 && m.c2 === 0),
+  "rowspan=2 birlesimi bulunamadi."
+);
+assert(Math.abs((parsed.rowHeights[0] || 0) - 14.17325) < 0.01, `satir yuksekligi (0.5cm) dogru cm->pt cevrilmemis: ${parsed.rowHeights[0]}`);
+assert(parsed.grid[2].find((c) => c.col === 1)?.text === "2. Bölüm & Ek", "HTML entity (&amp;) dogru cozulmemis.");
+assert(parsed.grid[0][0].bold === true && parsed.grid[0][0].bg === "#e4ebf8", "Baslik hucresi kalin/dolgu bilgisi kaybolmus.");
+
+// --- 2) Tam disa aktarma calistir -----------------------------------------
 const result = ReportTablesXlsx.exportAllTables();
 assert(result.fileName === "test-raporu-tum-tablolar.xlsx", `dosya adi beklenmedik: ${result.fileName}`);
-// Genel Bilgiler + Malikler + Beyanlar(bos, atlanir mi?) + Serhler + Ipotekler(bos) + Incelenen belgeler(bos) + Emsaller
-assert(result.sheetCount === 7, `sayfa sayisi beklenmedik: ${result.sheetCount}`);
 assert(capturedBlob && capturedBlob.blob, "downloadBlob cagirilmadi veya blob eksik.");
+// Genel Bilgiler + Malikler + Serhler + Emsaller + Masraf Tablosu (documents/Beyanlar/Ipotekler bos, GENERATED_TABLE_DEFS bu ortamda yuklu degil)
+assert(result.sheetNames.includes("Genel Bilgiler"), "Genel Bilgiler sayfasi yok.");
+assert(result.sheetNames.includes("Malikler"), "Malikler sayfasi yok.");
+assert(result.sheetNames.includes("Şerhler"), "Şerhler sayfasi yok.");
+assert(result.sheetNames.includes("Emsal kayıtları"), "Emsal kayitlari sayfasi yok.");
+assert(result.sheetNames.includes("Masraf Tablosu"), "Masraf Tablosu sayfasi yok.");
+assert(!result.sheetNames.includes("İncelenen belgeler"), "Tamamen bos 'İncelenen belgeler' tablosu icin sayfa olusturulmamali.");
+assert(!result.sheetNames.includes("İpotekler"), "Tamamen bos 'İpotekler' tablosu icin sayfa olusturulmamali.");
 
 async function verifyBlob() {
   const buf = await capturedBlob.blob.arrayBuffer();
   const entries = XlsxFill.readStoredZip(buf);
   const dec = new TextDecoder("utf-8");
 
-  const requiredEntries = [
-    "[Content_Types].xml",
-    "_rels/.rels",
-    "xl/workbook.xml",
-    "xl/_rels/workbook.xml.rels",
-    "xl/worksheets/sheet1.xml",
-  ];
-  requiredEntries.forEach((name) => {
+  ["[Content_Types].xml", "_rels/.rels", "xl/workbook.xml", "xl/_rels/workbook.xml.rels", "xl/styles.xml", "xl/worksheets/sheet1.xml"].forEach((name) => {
     assert(entries.some((entry) => entry.name === name), `zip girisi eksik: ${name}`);
   });
 
   const workbookXml = dec.decode(entries.find((entry) => entry.name === "xl/workbook.xml").bytes);
   const sheetNames = [...workbookXml.matchAll(/<sheet name="([^"]*)"/g)].map((m) => m[1]);
-  assert(sheetNames.includes("Genel Bilgiler"), "Genel Bilgiler sayfasi workbook.xml'de yok.");
-  assert(sheetNames.includes("Malikler"), "Malikler sayfasi workbook.xml'de yok.");
-  assert(sheetNames.includes("Şerhler"), "Şerhler sayfasi workbook.xml'de yok.");
-  assert(sheetNames.includes("Emsal kayıtları"), "Emsal kayitlari sayfasi workbook.xml'de yok.");
-  assert(sheetNames.length === entries.filter((e) => /^xl\/worksheets\/sheet\d+\.xml$/.test(e.name)).length,
-    "workbook.xml sayfa sayisi ile worksheet dosya sayisi eslesmiyor.");
+  const worksheetFileCount = entries.filter((e) => /^xl\/worksheets\/sheet\d+\.xml$/.test(e.name)).length;
+  assert(sheetNames.length === worksheetFileCount, "workbook.xml sayfa sayisi ile worksheet dosya sayisi eslesmiyor.");
+  assert(sheetNames.length === result.sheetNames.length, "workbook.xml sayfa listesi exportAllTables sonucuyla eslesmiyor.");
 
   const sheetXmlByName = new Map();
   sheetNames.forEach((name, index) => {
@@ -118,10 +155,17 @@ async function verifyBlob() {
     sheetXmlByName.set(name, dec.decode(sheetEntry.bytes));
   });
 
+  // Regresyon: her <c> referansi bir sutun harfi ICERMELI (r="A1" gibi),
+  // yalnizca satir numarasi degil (r="1" gibi — .col unutulursa olusan hata).
+  sheetXmlByName.forEach((xml, name) => {
+    const badRefs = [...xml.matchAll(/<c r="(\d+)"/g)];
+    assert(badRefs.length === 0, `${name} sayfasinda sutun harfi olmayan hucre referansi var: ${badRefs.map((m) => m[0]).join(", ")}`);
+  });
+
   const maliklerXml = sheetXmlByName.get("Malikler");
-  assert(maliklerXml.includes("<t>Malik</t>"), "Malikler basligi eksik.");
+  assert(maliklerXml.includes('<c r="A1"') && maliklerXml.includes("<t>Malik</t>"), "Malikler basligi eksik/yanlis hucrede.");
   assert(maliklerXml.includes("<t>Ali Veli</t>"), "Malikler satiri (Ali Veli) eksik.");
-  assert((maliklerXml.match(/<row /g) || []).length === 2, "Malikler sayfasinda bos satir dahil edilmis olabilir (2 satir bekleniyordu: baslik+1 dolu satir).");
+  assert((maliklerXml.match(/<row /g) || []).length === 2, "Malikler sayfasinda bos satir dahil edilmis olabilir (2 satir bekleniyordu).");
 
   const serhlerXml = sheetXmlByName.get("Şerhler");
   assert(serhlerXml.includes("<t>Haciz</t>") && serhlerXml.includes("<t>Test Açıklama</t>"), "Şerhler satiri eksik.");
@@ -132,8 +176,9 @@ async function verifyBlob() {
   const genelXml = sheetXmlByName.get("Genel Bilgiler");
   assert(genelXml.includes("<t>Test Ekspertiz Raporu</t>") && genelXml.includes("<t>İş Adı</t>"), "Genel Bilgiler sayfasinda is adi eksik.");
 
-  const ipotekEntry = [...sheetXmlByName.entries()].find(([name]) => name === "İpotekler");
-  assert(ipotekEntry && !/<row r="2"/.test(ipotekEntry[1]), "Bos Ipotekler sayfasinda beklenmedik veri satiri var.");
+  const masrafXml = sheetXmlByName.get("Masraf Tablosu");
+  assert(masrafXml.includes("<t>Değerleme (Rapor) Ücreti</t>") && masrafXml.includes("<t>16.500,00 TL</t>"), "Masraf Tablosunda Degerleme Ucreti satiri eksik.");
+  assert(masrafXml.includes("<t>Toplam Ücret</t>") && masrafXml.includes("<t>20.603,06 TL</t>"), "Masraf Tablosunda Toplam Ucret satiri eksik.");
 
   if (failures.length) {
     console.error("Tum tablolar Excel disa aktarma testi BASARISIZ:");

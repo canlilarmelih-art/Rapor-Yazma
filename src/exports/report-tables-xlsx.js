@@ -1,16 +1,25 @@
 "use strict";
 
 /* =====================================================================
-   RAPOR TABLOLARI — TEK EXCEL DOSYASI OLARAK DIŞA AKTARMA (2026-07-24)
+   RAPOR TABLOLARI — TEK EXCEL DOSYASI OLARAK DIŞA AKTARMA (2026-07-25)
 
-   Amaç: Raporun farklı bölümlerinde (Malikler, Takyidat/Beyan/Şerh/İpotek,
-   İncelenen Belgeler, Emsaller) doldurulan tüm tablo verilerini TEK bir
-   .xlsx dosyasında, her biri ayrı sayfada olacak şekilde indirmek.
+   Amaç: Raporun her yerinde hazırlanan TÜM tabloları (kullanıcının
+   doldurduğu Malikler/Takyidat/İncelenen Belgeler/Emsaller grid'leri
+   VE sistemin ürettiği Değerlendirme/Emsal/Kat Bazı/Masraf tabloları)
+   tek bir .xlsx dosyasında, her biri ayrı sayfada, Word çıktısındaki
+   BİREBİR biçimlendirmeyle (dolgu rengi, kalın/normal yazı, hizalama,
+   satır yüksekliği, sütun genişliği) indirir.
+
+   Ham grid tabloları (state.tables) doğrudan okunur. Sistem tarafından
+   üretilen tablolar için app.js'in Word çıktısında da kullandığı AYNI
+   HTML üretici fonksiyonlar (buildValuationSummaryWordTableHtml vb.)
+   çağrılır ve satır-içi style="..." bilgisi (background/font-weight/
+   text-align/colspan/rowspan) ayrıştırılıp gerçek OOXML hücre stiline
+   çevrilir — böylece görünüm raporla birebir eşleşir.
 
    Şablon doldurma değil, SIFIRDAN minimal geçerli bir OOXML .xlsx üretir;
-   xlsx-fill.js'teki writeStoredZip/crc32 birimlerini yeniden kullanır (yeni
-   bağımlılık eklemeden). Tüm hücreler t="inlineStr" ile yazılır — bu yüzden
-   sharedStrings.xml/styles.xml gerekmez, dosya minimal ve bağımsız kalır.
+   xlsx-fill.js'teki writeStoredZip/crc32 birimlerini yeniden kullanır
+   (yeni bağımlılık eklemeden).
 
    Bu dosya app.js VE xlsx-fill.js'ten SONRA yüklenir; global
    window.RaporReportTablesXlsx sağlar.
@@ -24,6 +33,17 @@
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;");
+  }
+
+  function htmlEntityDecode(text) {
+    return String(text ?? "")
+      .replace(/&nbsp;/gi, " ")
+      .replace(/&amp;/gi, "&")
+      .replace(/&lt;/gi, "<")
+      .replace(/&gt;/gi, ">")
+      .replace(/&quot;/gi, '"')
+      .replace(/&#39;/gi, "'")
+      .replace(/&apos;/gi, "'");
   }
 
   function columnLetter(index) {
@@ -52,24 +72,269 @@
     return candidate;
   }
 
-  // rows: string[][] (ilk satır başlık kabul edilmez, ayrı verilir)
-  function buildSheetXml(header, rows) {
-    const allRows = header ? [header, ...rows] : rows;
-    const rowsXml = allRows
-      .map((row, rowIndex) => {
+  // --- Stil kaydı: font/dolgu/kenarlık/hücre-stili kombinasyonlarını
+  // yalnızca gerçekten kullanıldıkları kadar (tekrarsız) biriktirir. ------
+  function createStyleRegistry() {
+    const fonts = [{ bold: false, color: null }]; // 0: varsayılan
+    const fills = [{ type: "none" }, { type: "gray125" }]; // 0/1: OOXML zorunlu ayrılmış girişler
+    const borders = [{ thin: false }, { thin: true }]; // 0: kenarlıksız, 1: ince tüm kenarlar
+    const xfs = [{ fontId: 0, fillId: 0, borderId: 0, halign: null }]; // 0: Normal
+    const fontIndex = new Map([["false|", 0]]);
+    const fillIndex = new Map([["none", 0]]);
+    const xfIndex = new Map([["0|0|0|", 0]]);
+
+    function getFontId(bold, colorHex) {
+      const key = `${bold}|${colorHex || ""}`;
+      if (fontIndex.has(key)) return fontIndex.get(key);
+      const id = fonts.length;
+      fonts.push({ bold, color: colorHex || null });
+      fontIndex.set(key, id);
+      return id;
+    }
+
+    function getFillId(colorHex) {
+      if (!colorHex) return 0;
+      const key = colorHex.toUpperCase();
+      if (fillIndex.has(key)) return fillIndex.get(key);
+      const id = fills.length;
+      fills.push({ type: "solid", color: key });
+      fillIndex.set(key, id);
+      return id;
+    }
+
+    function getBorderId(withBorder) {
+      return withBorder ? 1 : 0;
+    }
+
+    function getXfId({ bold = false, bg = null, align = null, color = null, withBorder = true }) {
+      const fontId = getFontId(bold, color);
+      const fillId = getFillId(bg);
+      const borderId = getBorderId(withBorder);
+      const key = `${fontId}|${fillId}|${borderId}|${align || ""}`;
+      if (xfIndex.has(key)) return xfIndex.get(key);
+      const id = xfs.length;
+      xfs.push({ fontId, fillId, borderId, halign: align || null });
+      xfIndex.set(key, id);
+      return id;
+    }
+
+    function buildStylesXml() {
+      const fontsXml = fonts
+        .map((f) => `<font><sz val="10"/><name val="Calibri"/>${f.bold ? "<b/>" : ""}${f.color ? `<color rgb="FF${f.color.replace("#", "").toUpperCase()}"/>` : ""}</font>`)
+        .join("");
+      const fillsXml = fills
+        .map((f) => {
+          if (f.type === "none") return `<fill><patternFill patternType="none"/></fill>`;
+          if (f.type === "gray125") return `<fill><patternFill patternType="gray125"/></fill>`;
+          return `<fill><patternFill patternType="solid"><fgColor rgb="FF${f.color.replace("#", "").toUpperCase()}"/><bgColor indexed="64"/></patternFill></fill>`;
+        })
+        .join("");
+      const thin = `<left style="thin"><color rgb="FFB0B0B0"/></left><right style="thin"><color rgb="FFB0B0B0"/></right><top style="thin"><color rgb="FFB0B0B0"/></top><bottom style="thin"><color rgb="FFB0B0B0"/></bottom>`;
+      const bordersXml = borders.map((b) => (b.thin ? `<border>${thin}</border>` : `<border><left/><right/><top/><bottom/></border>`)).join("");
+      const xfsXml = xfs
+        .map((xf) => {
+          const alignXml = xf.halign ? `<alignment horizontal="${xf.halign}" vertical="center" wrapText="1"/>` : `<alignment vertical="center" wrapText="1"/>`;
+          return `<xf numFmtId="0" fontId="${xf.fontId}" fillId="${xf.fillId}" borderId="${xf.borderId}" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">${alignXml}</xf>`;
+        })
+        .join("");
+      return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="${fonts.length}">${fontsXml}</fonts><fills count="${fills.length}">${fillsXml}</fills><borders count="${borders.length}">${bordersXml}</borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="${xfs.length}">${xfsXml}</cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;
+    }
+
+    return { getXfId, buildStylesXml };
+  }
+
+  // --- HTML tablo -> hücre ızgarası ayrıştırıcı --------------------------
+  // Not: bu üretici fonksiyonların hücre içeriği yalnızca escapeHtml + <br>
+  // içerir (iç içe etiket yok); bu yüzden basit bir <br> -> \n dönüşümü +
+  // etiket temizliği yeterlidir.
+  function cellTextFromInnerHtml(innerHtml) {
+    return htmlEntityDecode(
+      String(innerHtml || "")
+        .replace(/<br\s*\/?>/gi, "\n")
+        .replace(/<[^>]+>/g, "")
+    ).trim();
+  }
+
+  // İnline style dizgilerinde aynı özellik (ör. "background:") birden fazla
+  // kez geçebilir (bir baz stil + üzerine yazan bir "vurgu" stili birleştirmesi);
+  // CSS'te olduğu gibi SONUNCU bildirim geçerlidir. Bu yüzden ilk değil son
+  // eşleşme alınır.
+  function lastMatch(style, pattern) {
+    const matches = [...style.matchAll(pattern)];
+    return matches.length ? matches[matches.length - 1][1] : null;
+  }
+
+  function parseStyleAttr(styleAttr) {
+    const style = String(styleAttr || "");
+    const bg = lastMatch(style, /background(?:-color)?:\s*(#[0-9a-fA-F]{3,8})/g);
+    const weight = lastMatch(style, /font-weight:\s*(\d+)/g);
+    const align = lastMatch(style, /text-align:\s*(left|right|center)/g);
+    const color = lastMatch(style, /(?<!background-)(?<!background)color:\s*(#[0-9a-fA-F]{3,8})/g);
+    return {
+      bg: bg || null,
+      bold: weight ? Number(weight) >= 700 : false,
+      align: align || null,
+      color: color || null,
+    };
+  }
+
+  function ptFromHeightStyle(styleAttr, heightAttr) {
+    const style = String(styleAttr || "");
+    const cmMatch = style.match(/height:\s*([\d.]+)cm/);
+    if (cmMatch) return Number(cmMatch[1]) * 28.3465;
+    const ptMatch = style.match(/height:\s*([\d.]+)pt/);
+    if (ptMatch) return Number(ptMatch[1]);
+    if (heightAttr) {
+      const n = Number(heightAttr);
+      if (Number.isFinite(n) && n > 0) return n;
+    }
+    return null;
+  }
+
+  // Tek bir <table>...</table> parçasını satır/sütun ızgarasına çevirir.
+  // colspan/rowspan'i standart "kaplanmış sütun" algoritmasıyla ele alır.
+  function parseSingleTableHtml(tableHtml) {
+    const colgroupMatch = tableHtml.match(/<colgroup>([\s\S]*?)<\/colgroup>/i);
+    let colWidthsPercent = null;
+    if (colgroupMatch) {
+      colWidthsPercent = [...colgroupMatch[1].matchAll(/width:\s*([\d.]+)%/g)].map((m) => Number(m[1]));
+      if (!colWidthsPercent.length) colWidthsPercent = null;
+    }
+
+    const trMatches = [...tableHtml.matchAll(/<tr([^>]*)>([\s\S]*?)<\/tr>/gi)];
+    const occupancy = []; // occupancy[col] = kalan blok satır sayısı
+    const grid = []; // grid[rowIndex] = [{col, text, bold, bg, align, header}]
+    const merges = []; // {r1,c1,r2,c2}
+    const rowHeights = [];
+    let maxCol = colWidthsPercent ? colWidthsPercent.length : 0;
+
+    trMatches.forEach((trMatch, rowIndex) => {
+      const trAttrs = trMatch[1] || "";
+      const trStyle = trAttrs.match(/style="([^"]*)"/)?.[1] || "";
+      const trHeightAttr = trAttrs.match(/\sheight="([^"]*)"/)?.[1] || "";
+      rowHeights[rowIndex] = ptFromHeightStyle(trStyle, trHeightAttr);
+
+      const cellMatches = [...trMatch[2].matchAll(/<(t[hd])([^>]*)>([\s\S]*?)<\/\1>/gi)];
+      const rowCells = [];
+      let col = 0;
+      cellMatches.forEach((cellMatch) => {
+        const tag = cellMatch[1].toLowerCase();
+        const attrs = cellMatch[2] || "";
+        const inner = cellMatch[3] || "";
+        while (occupancy[col] > 0) col += 1;
+        const colspan = Number(attrs.match(/colspan="(\d+)"/)?.[1] || 1);
+        const rowspan = Number(attrs.match(/rowspan="(\d+)"/)?.[1] || 1);
+        const styleAttr = attrs.match(/style="([^"]*)"/)?.[1] || "";
+        const parsed = parseStyleAttr(styleAttr);
+        rowCells.push({
+          col,
+          text: cellTextFromInnerHtml(inner),
+          bold: parsed.bold || tag === "th",
+          bg: parsed.bg,
+          align: parsed.align,
+          color: parsed.color,
+        });
+        if (rowspan > 1 || colspan > 1) {
+          merges.push({ r1: rowIndex, c1: col, r2: rowIndex + rowspan - 1, c2: col + colspan - 1 });
+        }
+        for (let c = col; c < col + colspan; c++) {
+          occupancy[c] = Math.max(occupancy[c] || 0, rowspan);
+        }
+        col += colspan;
+        maxCol = Math.max(maxCol, col);
+      });
+      grid[rowIndex] = rowCells;
+      for (let c = 0; c < occupancy.length; c++) {
+        if (occupancy[c] > 0) occupancy[c] -= 1;
+      }
+    });
+
+    return { grid, merges, rowHeights, colCount: maxCol, colWidthsPercent };
+  }
+
+  // html içindeki TÜM <table> bloklarını sırayla ayrıştırıp satırları
+  // (aralarında bir boş satırla) tek bir ızgarada birleştirir.
+  function parseHtmlTables(html) {
+    const tableBlocks = [...String(html || "").matchAll(/<table[^>]*>([\s\S]*?)<\/table>/gi)].map((m) => m[0]);
+    if (!tableBlocks.length) return null;
+    let grid = [];
+    let merges = [];
+    let rowHeights = [];
+    let colCount = 0;
+    let colWidthsPercent = null;
+    tableBlocks.forEach((tableHtml, blockIndex) => {
+      const parsed = parseSingleTableHtml(tableHtml);
+      if (!parsed.grid.length) return;
+      if (blockIndex > 0) {
+        grid.push([]); // tablolar arası bir boş satır
+        rowHeights.push(null);
+      }
+      const offset = grid.length;
+      parsed.grid.forEach((row, index) => {
+        grid[offset + index] = row;
+        rowHeights[offset + index] = parsed.rowHeights[index] || null;
+      });
+      parsed.merges.forEach((m) => merges.push({ r1: m.r1 + offset, c1: m.c1, r2: m.r2 + offset, c2: m.c2 }));
+      colCount = Math.max(colCount, parsed.colCount);
+      if (!colWidthsPercent && parsed.colWidthsPercent) colWidthsPercent = parsed.colWidthsPercent;
+    });
+    if (!grid.length) return null;
+    return { grid, merges, rowHeights, colCount, colWidthsPercent };
+  }
+
+  // --- OOXML üretimi ------------------------------------------------------
+  function widthFromPercent(percent) {
+    return Math.max(8, Math.min(60, 8 + (percent / 100) * 52));
+  }
+
+  function widthFromContent(maxLen) {
+    return Math.max(8, Math.min(60, maxLen * 1.1 + 2));
+  }
+
+  function buildSheetXmlFromGrid(styleRegistry, headerRow, dataRows, options = {}) {
+    // Basit (düz) tablo: headerRow: string[]|null, dataRows: string[][]
+    const grid = [];
+    if (headerRow) grid.push(headerRow.map((text, col) => ({ text, col, bold: true, bg: "#D9D9D9", align: null })));
+    dataRows.forEach((row) => grid.push(row.map((text, col) => ({ text, col, bold: false, bg: null, align: null }))));
+    return buildSheetXmlFromCellGrid(styleRegistry, { grid, merges: [], rowHeights: [], colCount: headerRow ? headerRow.length : (dataRows[0] || []).length, colWidthsPercent: null }, options);
+  }
+
+  function buildSheetXmlFromCellGrid(styleRegistry, parsed, options = {}) {
+    const { grid, merges, rowHeights, colCount } = parsed;
+    const contentWidths = Array.from({ length: colCount }, () => 0);
+    const rowsXml = grid
+      .map((rowCells, rowIndex) => {
         const r = rowIndex + 1;
-        const cells = row
-          .map((value, colIndex) => {
-            const raw = String(value ?? "");
-            if (!raw) return "";
-            const preserve = /^\s|\s$/.test(raw) ? ' xml:space="preserve"' : "";
-            return `<c r="${columnLetter(colIndex)}${r}" t="inlineStr"><is><t${preserve}>${xmlEscape(raw)}</t></is></c>`;
+        const cellsXml = rowCells
+          .map((cell) => {
+            const text = String(cell.text ?? "");
+            contentWidths[cell.col] = Math.max(contentWidths[cell.col] || 0, text.length);
+            if (!text) return "";
+            const xf = styleRegistry.getXfId({ bold: cell.bold, bg: cell.bg, align: cell.align, color: cell.color, withBorder: options.withBorder !== false });
+            const preserve = /^\s|\s$/.test(text) ? ' xml:space="preserve"' : "";
+            return `<c r="${columnLetter(cell.col)}${r}" s="${xf}" t="inlineStr"><is><t${preserve}>${xmlEscape(text)}</t></is></c>`;
           })
           .join("");
-        return `<row r="${r}">${cells}</row>`;
+        const heightPt = rowHeights[rowIndex];
+        const heightAttr = heightPt ? ` ht="${heightPt.toFixed(2)}" customHeight="1"` : "";
+        return `<row r="${r}"${heightAttr}>${cellsXml}</row>`;
       })
       .join("");
-    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>${rowsXml}</sheetData></worksheet>`;
+
+    const colWidths = parsed.colWidthsPercent
+      ? parsed.colWidthsPercent.map((p) => widthFromPercent(p))
+      : contentWidths.map((len) => widthFromContent(len || 8));
+    const colsXml = colWidths.length
+      ? `<cols>${colWidths.map((w, index) => `<col min="${index + 1}" max="${index + 1}" width="${w.toFixed(2)}" customWidth="1"/>`).join("")}</cols>`
+      : "";
+
+    const mergesXml = merges.length
+      ? `<mergeCells count="${merges.length}">${merges
+          .map((m) => `<mergeCell ref="${columnLetter(m.c1)}${m.r1 + 1}:${columnLetter(m.c2)}${m.r2 + 1}"/>`)
+          .join("")}</mergeCells>`
+      : "";
+
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">${colsXml}<sheetData>${rowsXml}</sheetData>${mergesXml}</worksheet>`;
   }
 
   function buildWorkbookXml(sheetNames) {
@@ -83,28 +348,29 @@
     const rels = Array.from({ length: count }, (_, index) =>
       `<Relationship Id="rId${index + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${index + 1}.xml"/>`
     ).join("");
-    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${rels}</Relationships>`;
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${rels}<Relationship Id="rId${count + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`;
   }
 
   function buildContentTypesXml(count) {
     const overrides = Array.from({ length: count }, (_, index) =>
       `<Override PartName="/xl/worksheets/sheet${index + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`
     ).join("");
-    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>${overrides}</Types>`;
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>${overrides}</Types>`;
   }
 
   const ROOT_RELS_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`;
 
-  // sheets: [{ name, header: string[], rows: string[][] }]
-  function buildWorkbookBlob(sheets) {
+  // sheets: [{ name, sheetXml }]
+  function buildWorkbookBlob(sheets, stylesXml) {
     const entries = [
       { name: "[Content_Types].xml", bytes: enc.encode(buildContentTypesXml(sheets.length)) },
       { name: "_rels/.rels", bytes: enc.encode(ROOT_RELS_XML) },
       { name: "xl/workbook.xml", bytes: enc.encode(buildWorkbookXml(sheets.map((s) => s.name))) },
       { name: "xl/_rels/workbook.xml.rels", bytes: enc.encode(buildWorkbookRelsXml(sheets.length)) },
+      { name: "xl/styles.xml", bytes: enc.encode(stylesXml) },
       ...sheets.map((sheet, index) => ({
         name: `xl/worksheets/sheet${index + 1}.xml`,
-        bytes: enc.encode(buildSheetXml(sheet.header, sheet.rows)),
+        bytes: enc.encode(sheet.sheetXml),
       })),
     ];
     const zipped = window.RaporXlsxFill.writeStoredZip(entries);
@@ -114,7 +380,7 @@
   }
 
   // --- Rapor tablolarını app.js global'lerinden topla --------------------
-  function collectTableDefs() {
+  function collectRawGridDefs() {
     const defs = [];
     const allSections = typeof sections !== "undefined" ? sections : [];
     allSections.forEach((section) => {
@@ -130,6 +396,10 @@
     return defs;
   }
 
+  function isRowFilled(row) {
+    return Object.values(row || {}).some((value) => String(value ?? "").trim());
+  }
+
   function buildCoverSheetRows() {
     const fields = typeof state !== "undefined" ? state.fields || {} : {};
     const rows = [
@@ -143,33 +413,127 @@
     return rows.filter((row) => row[1]);
   }
 
-  function isRowFilled(row) {
-    return Object.values(row || {}).some((value) => String(value ?? "").trim());
+  function safeCall(fnName) {
+    try {
+      const fn = window[fnName];
+      return typeof fn === "function" ? fn() : "";
+    } catch (error) {
+      console.warn(`Tüm tablolar Excel: ${fnName} çağrısı başarısız`, error);
+      return "";
+    }
   }
 
-  function buildSheetsFromCurrentState() {
-    const usedNames = new Set();
-    const sheets = [
-      { name: sanitizeSheetName("Genel Bilgiler", usedNames), header: ["Alan", "Değer"], rows: buildCoverSheetRows() },
+  // Masraf Tablosu'nu (Banka ve Çıktı bölümündeki canlı özetle aynı satırlar)
+  // doğrudan state.fields'ten kurar — HTML üretici bir fonksiyonu olmadığı
+  // için ayrı ele alınır.
+  function buildExpenseFeesSheet(styleRegistry) {
+    if (typeof recalculateExpenseFees === "function") {
+      try { recalculateExpenseFees(); } catch (error) { /* alan eksikse sessiz geç */ }
+    }
+    const fields = typeof state !== "undefined" ? state.fields || {} : {};
+    const items = [
+      ["Değerleme (Rapor) Ücreti", "expenseAppraisalFeeExVat", "expenseAppraisalFeeIncVat"],
+      ["Ulaşım Bedeli", "expenseTransportFeeExVat", "expenseTransportFeeIncVat"],
+      ["Tapu Harcı", "expenseTitleDeedFeeExVat", "expenseTitleDeedFeeIncVat"],
+      ["Belediye Harcı", "expenseMunicipalityFeeExVat", "expenseMunicipalityFeeIncVat"],
+      ["Gayrimenkul Bilgi Merkezi Payı", "expenseInfoCenterShareExVat", "expenseInfoCenterShareIncVat"],
+      ["Birlik Payı", "expenseUnionShareExVat", "expenseUnionShareIncVat"],
     ];
-    collectTableDefs().forEach((def) => {
+    const hasAnyValue = items.some(([, exKey, incKey]) => fields[exKey] || fields[incKey]) || fields.expenseTotalFeeExVat || fields.expenseTotalFeeIncVat;
+    if (!hasAnyValue) return null;
+
+    const money = (value) => (value ? `${value} TL` : "");
+    const grid = [
+      [
+        { text: "Kalem", bold: true, bg: "#D9D9D9" },
+        { text: "KDV Hariç", bold: true, bg: "#D9D9D9", align: "right" },
+        { text: "KDV Dahil", bold: true, bg: "#D9D9D9", align: "right" },
+      ],
+    ];
+    items.forEach(([label, exKey, incKey]) => {
+      grid.push([
+        { text: label, bold: false, bg: null },
+        { text: money(fields[exKey]), bold: false, bg: null, align: "right" },
+        { text: money(fields[incKey]), bold: false, bg: null, align: "right" },
+      ]);
+    });
+    grid.push([
+      { text: "Toplam Ücret", bold: true, bg: "#F6ECD6" },
+      { text: money(fields.expenseTotalFeeExVat), bold: true, bg: "#F6ECD6", align: "right" },
+      { text: money(fields.expenseTotalFeeIncVat), bold: true, bg: "#F6ECD6", align: "right" },
+    ]);
+    grid.forEach((row) => row.forEach((cell, colIndex) => { cell.col = colIndex; }));
+    const sheetXml = buildSheetXmlFromCellGrid(styleRegistry, { grid, merges: [], rowHeights: [], colCount: 3, colWidthsPercent: [40, 30, 30] });
+    return sheetXml;
+  }
+
+  // Sistem tarafından üretilen (Word çıktısıyla aynı) tablolar: her biri bir
+  // app.js fonksiyonunu çağırıp döndürdüğü HTML'i ayrıştırır.
+  const GENERATED_TABLE_DEFS = [
+    { title: "Değerlendirme Tablosu", fn: "buildValuationSummaryWordTableHtml" },
+    { title: "Kat Bazında İndirgenmiş Alan Tablosu", fn: "buildExplanationsFloorValuationWordTableHtml" },
+    { title: "Emsal Matrisi", fn: "buildComparableMatrixWordTableHtml" },
+    { title: "Emsal Değerleme Tablosu", fn: "buildComparableValuationWordTableHtml" },
+  ];
+
+  function buildSheetsFromCurrentState() {
+    const styleRegistry = createStyleRegistry();
+    const usedNames = new Set();
+    const sheets = [];
+
+    const coverRows = buildCoverSheetRows();
+    if (coverRows.length) {
+      sheets.push({
+        name: sanitizeSheetName("Genel Bilgiler", usedNames),
+        sheetXml: buildSheetXmlFromGrid(styleRegistry, ["Alan", "Değer"], coverRows),
+      });
+    }
+
+    collectRawGridDefs().forEach((def) => {
       const tableState = (typeof state !== "undefined" && state.tables && state.tables[def.key]) || [];
       const filledRows = tableState.filter(isRowFilled);
+      if (!filledRows.length) return;
       const rows = filledRows.map((row) => def.columns.map((_, columnIndex) => row[`c${columnIndex}`] || ""));
-      sheets.push({ name: sanitizeSheetName(def.title, usedNames), header: def.columns, rows });
+      sheets.push({
+        name: sanitizeSheetName(def.title, usedNames),
+        sheetXml: buildSheetXmlFromGrid(styleRegistry, def.columns, rows),
+      });
     });
-    return sheets;
+
+    const expenseSheetXml = buildExpenseFeesSheet(styleRegistry);
+    if (expenseSheetXml) {
+      sheets.push({ name: sanitizeSheetName("Masraf Tablosu", usedNames), sheetXml: expenseSheetXml });
+    }
+
+    GENERATED_TABLE_DEFS.forEach((def) => {
+      const html = safeCall(def.fn);
+      const parsed = html ? parseHtmlTables(html) : null;
+      if (!parsed) return;
+      sheets.push({
+        name: sanitizeSheetName(def.title, usedNames),
+        sheetXml: buildSheetXmlFromCellGrid(styleRegistry, parsed),
+      });
+    });
+
+    return { sheets, stylesXml: styleRegistry.buildStylesXml() };
   }
 
   function exportAllTables() {
-    const sheets = buildSheetsFromCurrentState();
-    const blob = buildWorkbookBlob(sheets);
+    const { sheets, stylesXml } = buildSheetsFromCurrentState();
+    if (!sheets.length) throw new Error("Dışa aktarılacak dolu tablo bulunamadı.");
+    const blob = buildWorkbookBlob(sheets, stylesXml);
     const baseName = (typeof buildExportBaseFileName === "function" && buildExportBaseFileName()) || "rapor";
     const fileName = `${baseName}-tum-tablolar.xlsx`;
     window.RaporXlsxFill.downloadBlob(fileName, blob);
-    const rowCount = sheets.reduce((sum, sheet) => sum + sheet.rows.length, 0);
-    return { fileName, sheetCount: sheets.length, rowCount };
+    return { fileName, sheetCount: sheets.length, sheetNames: sheets.map((s) => s.name) };
   }
 
-  window.RaporReportTablesXlsx = { exportAllTables };
+  window.RaporReportTablesXlsx = {
+    exportAllTables,
+    // Test/diagnostik için düşük seviye API'ler:
+    parseHtmlTables,
+    createStyleRegistry,
+    buildSheetXmlFromGrid,
+    buildSheetXmlFromCellGrid,
+  };
 })();
