@@ -184,6 +184,19 @@ const fineGridSheetXml = ReportTablesXlsx.buildSheetXmlFromCellGrid(fineGridStyl
 const fineGridColWidths = [...(fineGridSheetXml.match(/<cols>[\s\S]*?<\/cols>/)?.[0] || "").matchAll(/width="([\d.]+)"/g)].map((m) => Number(m[1]));
 assert(Math.max(...fineGridColWidths) < 20, `Uzun metin tek bir ince sütuna yığılmış olabilir (maks genişlik: ${Math.max(...fineGridColWidths)}).`);
 
+// --- 1d) Sutun genisligi ust siniri regresyon testi -----------------------
+// Kullanici geri bildirimi: ilk surumde bazi sutunlar asiri genisti (ornegin
+// uzun bir "Emsal Metni" paragrafi bir sutunu ~58 birime kadar genisletiyordu).
+// wrapText acik oldugu icin genislik yerine metin sarilmali; ust sinir dar
+// tutulmali (bkz. widthFromContent/widthFromPercent).
+const longParagraph = "Ekspertize konu taşınmazla aynı binada, ara katta yer alan, 125 m2 olarak beyan edilen, 120 m2 olduğu düşünülen, 3+1 planında daire 4.850.000 TL bedelle satılıktır. Emsal, benzer konumda ve konu taşınmaza göre benzer iç özelliklere sahiptir. Pazarlık payı vardır.";
+const longTextHtml = `<table><tbody><tr><td>Emsal Metni</td><td>${longParagraph}</td><td>x</td><td>y</td><td>z</td></tr></tbody></table>`;
+const longTextCombined = ReportTablesXlsx.combineNamedGrids([{ title: "Emsal Matrisi", cellGrid: ReportTablesXlsx.parseHtmlTables(longTextHtml) }]);
+const longTextRegistry = ReportTablesXlsx.createStyleRegistry();
+const longTextSheetXml = ReportTablesXlsx.buildSheetXmlFromCellGrid(longTextRegistry, longTextCombined);
+const longTextWidths = [...(longTextSheetXml.match(/<cols>[\s\S]*?<\/cols>/)?.[0] || "").matchAll(/width="([\d.]+)"/g)].map((m) => Number(m[1]));
+assert(Math.max(...longTextWidths) <= 22, `Uzun paragraf metni sutun genisligini asiri artirmis (maks: ${Math.max(...longTextWidths)}, beklenen <= 22).`);
+
 // --- 2) Tam disa aktarma calistir -----------------------------------------
 // Kullanici talebi: Takyidat alt tablolari (Beyanlar/Serhler/Ipotekler) TEK
 // sayfada alt alta; Degerleme ve Emsal tablolari da TEK sayfada alt alta.

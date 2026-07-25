@@ -310,12 +310,17 @@
   }
 
   // --- OOXML üretimi ------------------------------------------------------
+  // Üst sınır bilinçli olarak DAR tutulur: hücrelerde wrapText açık (bkz.
+  // createStyleRegistry.buildStylesXml alignment), bu yüzden uzun metinler
+  // sütunu genişletmek yerine hücre içinde birden çok satıra sarılır. Aksi
+  // halde tek bir uzun paragraf (ör. Emsal Metni) tüm sütunu — özellikle
+  // ince sütun ızgarasında birçok sütunu — aşırı genişletirdi.
   function widthFromPercent(percent) {
-    return Math.max(8, Math.min(60, 8 + (percent / 100) * 52));
+    return Math.max(8, Math.min(24, 8 + (percent / 100) * 16));
   }
 
   function widthFromContent(maxLen) {
-    return Math.max(8, Math.min(60, maxLen * 1.1 + 2));
+    return Math.max(8, Math.min(22, maxLen * 0.9 + 2));
   }
 
   // Basit (düz) baslik+satir tablosunu ortak {grid,merges,rowHeights,colCount}
