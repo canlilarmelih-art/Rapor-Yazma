@@ -228,6 +228,7 @@
         const parsed = parseStyleAttr(styleAttr);
         rowCells.push({
           col,
+          colspan,
           text: cellTextFromInnerHtml(inner),
           bold: parsed.bold || tag === "th",
           bg: parsed.bg,
@@ -323,8 +324,8 @@
   // tablolarla "alt alta" birlestirilerek kullanilabilir.
   function rawGridToCellGrid(headerRow, dataRows) {
     const grid = [];
-    if (headerRow) grid.push(headerRow.map((text, col) => ({ text, col, bold: true, bg: "#D9D9D9", align: null })));
-    dataRows.forEach((row) => grid.push(row.map((text, col) => ({ text, col, bold: false, bg: null, align: null }))));
+    if (headerRow) grid.push(headerRow.map((text, col) => ({ text, col, colspan: 1, bold: true, bg: "#D9D9D9", align: null })));
+    dataRows.forEach((row) => grid.push(row.map((text, col) => ({ text, col, colspan: 1, bold: false, bg: null, align: null }))));
     return { grid, merges: [], rowHeights: [], colCount: headerRow ? headerRow.length : (dataRows[0] || []).length, colWidthsPercent: null };
   }
 
@@ -336,13 +337,71 @@
   // sayfada alt alta birleştirir; her alt tablonun önüne kalın bir başlık
   // satırı eklenir, hücre birleşimleri (merge) ve satır yükseklikleri, satır
   // ofsetine göre kaydırılarak korunur.
+  // Alt tablolar çok farklı sütun sayısına/genişliğine ihtiyaç duyabilir
+  // (ör. 3 sütunlu Değerlendirme Tablosu ile 12 sütunlu Emsal Değerleme
+  // Tablosu aynı sayfada). Excel'de TÜM satırlar aynı sütun genişliğini
+  // paylaştığından, az sütunlu bir tablo geniş sütunlar dayatıp diğer
+  // tabloyu sıkıştırırdı. Kullanıcı talebi: "üstte genişlik gerektiren
+  // hücreyi böl, altta gereken genişliği yakala" — yani ortak İNCE bir
+  // sütun ızgarası kurup, her tablonun her sütununu bu ızgarada kendi
+  // göreli genişliğine (colWidthsPercent, yoksa eşit pay) göre birden çok
+  // ince sütuna karşılık gelecek şekilde BİRLEŞTİRİLMİŞ (merge) hücre
+  // olarak yerleştiriyoruz. Böylece ince sütunlar dar kalır, her tablo
+  // kendi hücrelerini gerektiği kadar ince sütunu birleştirerek "geniş"
+  // gösterir.
+  const COMBINED_SHEET_FINE_COLUMNS = 60; // 3,4,5,6,10,12,15,20,30,60'a tam bölünür
+
+  function remapCellGridToFineColumns(cellGrid, fineCols) {
+    const { grid, merges, rowHeights, colCount, colWidthsPercent } = cellGrid;
+    if (!colCount) return cellGrid;
+    const weights = colWidthsPercent && colWidthsPercent.length === colCount
+      ? colWidthsPercent
+      : Array.from({ length: colCount }, () => 100 / colCount);
+    const totalWeight = weights.reduce((sum, w) => sum + w, 0) || 1;
+    const boundaries = [0];
+    let cumulative = 0;
+    for (let i = 0; i < colCount; i++) {
+      cumulative += weights[i];
+      let next = Math.round((cumulative / totalWeight) * fineCols);
+      if (next <= boundaries[i]) next = boundaries[i] + 1;
+      boundaries.push(next);
+    }
+    if (boundaries[colCount] > fineCols) boundaries[colCount] = fineCols;
+
+    // Zaten colspan/rowspan ile birleşik olan hücrelerin merge kaydı
+    // aşağıda (mevcut merges listesi üzerinden) yeniden hesaplanır; aynı
+    // hücre için ikinci kez merge eklememek üzere işaretlenir.
+    const existingMergeKeys = new Set(merges.map((m) => `${m.r1}:${m.c1}`));
+    const newMerges = merges.map((m) => ({
+      r1: m.r1,
+      r2: m.r2,
+      c1: boundaries[m.c1],
+      c2: boundaries[m.c2 + 1] - 1,
+    }));
+
+    const newGrid = grid.map((row, rowIndex) =>
+      row.map((cell) => {
+        const span = cell.colspan || 1;
+        const fineStart = boundaries[cell.col];
+        const fineEnd = boundaries[cell.col + span] - 1;
+        if (fineEnd > fineStart && !existingMergeKeys.has(`${rowIndex}:${cell.col}`)) {
+          newMerges.push({ r1: rowIndex, c1: fineStart, r2: rowIndex, c2: fineEnd });
+        }
+        // colspan artik BU (ince) izgaradaki gercek yayilimi yansitir —
+        // genislik hesaplarken tek bir ince sutuna yigilmamasi icin.
+        return { ...cell, col: fineStart, colspan: fineEnd - fineStart + 1 };
+      })
+    );
+
+    return { grid: newGrid, merges: newMerges, rowHeights, colCount: fineCols, colWidthsPercent: null };
+  }
+
   function combineNamedGrids(namedGrids) {
     const filled = namedGrids.filter((named) => named.cellGrid && named.cellGrid.grid.length);
     if (!filled.length) return null;
     const grid = [];
     const merges = [];
     const rowHeights = [];
-    let colCount = 0;
     filled.forEach((named, index) => {
       if (index > 0) {
         grid.push([]);
@@ -351,18 +410,14 @@
       grid.push([{ col: 0, text: named.title, bold: true, bg: "#C7D2E8", align: null }]);
       rowHeights.push(null);
       const offset = grid.length;
-      named.cellGrid.grid.forEach((row, i) => {
+      const remapped = remapCellGridToFineColumns(named.cellGrid, COMBINED_SHEET_FINE_COLUMNS);
+      remapped.grid.forEach((row, i) => {
         grid[offset + i] = row;
-        rowHeights[offset + i] = named.cellGrid.rowHeights[i] || null;
+        rowHeights[offset + i] = remapped.rowHeights[i] || null;
       });
-      named.cellGrid.merges.forEach((m) => merges.push({ r1: m.r1 + offset, c1: m.c1, r2: m.r2 + offset, c2: m.c2 }));
-      colCount = Math.max(colCount, named.cellGrid.colCount);
+      remapped.merges.forEach((m) => merges.push({ r1: m.r1 + offset, c1: m.c1, r2: m.r2 + offset, c2: m.c2 }));
     });
-    // Farklı alt tablolar genelde çok farklı sütun genişliği ihtiyacı
-    // duyduğundan (ör. 3 sütunlu Değerlendirme Tablosu ile 12 sütunlu Emsal
-    // Değerleme Tablosu aynı sayfada), yüzde bazlı genişlik yerine tüm
-    // sayfadaki gerçek içerik uzunluğuna göre otomatik genişlik kullanılır.
-    return { grid, merges, rowHeights, colCount, colWidthsPercent: null };
+    return { grid, merges, rowHeights, colCount: COMBINED_SHEET_FINE_COLUMNS, colWidthsPercent: null };
   }
 
   function buildSheetXmlFromCellGrid(styleRegistry, parsed, options = {}) {
@@ -374,7 +429,16 @@
         const cellsXml = rowCells
           .map((cell) => {
             const text = String(cell.text ?? "");
-            contentWidths[cell.col] = Math.max(contentWidths[cell.col] || 0, text.length);
+            // Birden çok (ince) sütunu birleştiren bir hücrenin metin uzunluğu
+            // TEK bir sütuna yığılmamalı — aksi halde o sütun tek başına geniş
+            // kalıp aynı sayfadaki diğer (dar) tablonun kazanımını sıfırlardı.
+            // Bu yüzden gereken genişlik, hücrenin kapladığı tüm sütunlara
+            // orantılı olarak dağıtılır.
+            const span = Math.max(1, cell.colspan || 1);
+            const perColumnLen = text.length / span;
+            for (let c = cell.col; c < cell.col + span; c++) {
+              contentWidths[c] = Math.max(contentWidths[c] || 0, perColumnLen);
+            }
             if (!text) return "";
             const xf = styleRegistry.getXfId({ bold: cell.bold, bg: cell.bg, align: cell.align, color: cell.color, withBorder: options.withBorder !== false });
             const preserve = /^\s|\s$/.test(text) ? ' xml:space="preserve"' : "";
@@ -619,5 +683,8 @@
     createStyleRegistry,
     buildSheetXmlFromGrid,
     buildSheetXmlFromCellGrid,
+    combineNamedGrids,
+    remapCellGridToFineColumns,
+    COMBINED_SHEET_FINE_COLUMNS,
   };
 })();

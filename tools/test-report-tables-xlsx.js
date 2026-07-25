@@ -158,6 +158,32 @@ assert(
   `Veri satiri (E1) NO sutununun (col 0) altina hizalanmamis: ${JSON.stringify(framedParsed.grid[2])}`
 );
 
+// --- 1c) Ince sutun izgarasi (birlesik sayfa genislik) birim testi --------
+// Kullanici talebi: birlesik sayfalarda genislik gerektiren (az sutunlu,
+// geniş yuzdeli) bir tablo, ayni sayfadaki dar/cok-sutunlu baska bir tablo
+// icin gereken genisligi bozmasin — bunun icin ortak ince bir sutun
+// izgarasi kurulup her tablo kendi sutununu bu izgarada birden fazla ince
+// sutunu birlestirerek (merge) temsil eder.
+const wideTableHtml = `<table><colgroup><col style="width:24%;"><col style="width:56%;"><col style="width:20%;"></colgroup>
+<tbody><tr><td style="font-weight:700;">Kalem</td><td>Çok uzun bir açıklama metni buraya gelir</td><td style="text-align:right;">1.234.567,89</td></tr></tbody></table>`;
+const narrowTableHtml = `<table><tbody><tr>${Array.from({ length: 12 }, (_, i) => `<td>C${i}</td>`).join("")}</tr></tbody></table>`;
+const combinedFineGrid = ReportTablesXlsx.combineNamedGrids([
+  { title: "Geniş Tablo", cellGrid: ReportTablesXlsx.parseHtmlTables(wideTableHtml) },
+  { title: "Dar Tablo", cellGrid: ReportTablesXlsx.parseHtmlTables(narrowTableHtml) },
+]);
+assert(combinedFineGrid.colCount === ReportTablesXlsx.COMBINED_SHEET_FINE_COLUMNS, `Birleşik sayfa ince sütun sayısı beklenmedik: ${combinedFineGrid.colCount}`);
+const wideRow = combinedFineGrid.grid[1]; // 0: baslik satiri, 1: veri satiri
+assert(wideRow.length === 3, `Geniş tablo satırında 3 hücre bekleniyordu: ${wideRow.length}`);
+assert(wideRow[0].col === 0 && wideRow[1].col === wideRow[0].col + wideRow[0].colspan, "Geniş tablo hücreleri ince ızgarada art arda dizilmemiş.");
+assert(wideRow.reduce((sum, c) => sum + c.colspan, 0) === ReportTablesXlsx.COMBINED_SHEET_FINE_COLUMNS, "Geniş tablonun 3 sütunu toplamda tüm ince ızgarayı kaplamıyor.");
+const narrowRow = combinedFineGrid.grid[4]; // 2: bos satir, 3: 2. tablo basligi, 4: veri satiri
+assert(narrowRow.length === 12 && narrowRow.every((c) => c.colspan === ReportTablesXlsx.COMBINED_SHEET_FINE_COLUMNS / 12), "Dar tablonun 12 eşit sütunu ince ızgarada eşit dağılmamış.");
+// Genislik hesaplaninca uzun metin TEK bir ince sutuna yigilmamali (spread edilmeli).
+const fineGridStyleRegistry = ReportTablesXlsx.createStyleRegistry();
+const fineGridSheetXml = ReportTablesXlsx.buildSheetXmlFromCellGrid(fineGridStyleRegistry, combinedFineGrid);
+const fineGridColWidths = [...(fineGridSheetXml.match(/<cols>[\s\S]*?<\/cols>/)?.[0] || "").matchAll(/width="([\d.]+)"/g)].map((m) => Number(m[1]));
+assert(Math.max(...fineGridColWidths) < 20, `Uzun metin tek bir ince sütuna yığılmış olabilir (maks genişlik: ${Math.max(...fineGridColWidths)}).`);
+
 // --- 2) Tam disa aktarma calistir -----------------------------------------
 // Kullanici talebi: Takyidat alt tablolari (Beyanlar/Serhler/Ipotekler) TEK
 // sayfada alt alta; Degerleme ve Emsal tablolari da TEK sayfada alt alta.
