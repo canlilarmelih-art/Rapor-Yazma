@@ -354,7 +354,17 @@
   // olarak yerleştiriyoruz. Böylece ince sütunlar dar kalır, her tablo
   // kendi hücrelerini gerektiği kadar ince sütunu birleştirerek "geniş"
   // gösterir.
-  const COMBINED_SHEET_FINE_COLUMNS = 60; // 3,4,5,6,10,12,15,20,30,60'a tam bölünür
+  //
+  // Kullanıcı talebi (2026-07-25): "kompakt bir yapı olmalı ... 100 adet
+  // sütun olsun ... absürt hücre genişliği olmasın". Bu yüzden birleşik
+  // sayfalarda 100 ince sütun kullanılır ve HER ince sütun SABİT, dar bir
+  // genişliğe sahiptir — içerik uzunluğuna göre genişlik hesabı YAPILMAZ.
+  // Bir hücrenin görünen genişliği yalnızca kaç ince sütunu birleştirdiğine
+  // bağlıdır; böylece tek bir hücrenin metni hiçbir sütunu tek başına
+  // şişiremez ve sayfanın toplam genişliği her zaman öngörülebilir kalır
+  // (100 × 1.8 ≈ 180 karakter).
+  const COMBINED_SHEET_FINE_COLUMNS = 100;
+  const COMBINED_SHEET_FINE_COLUMN_WIDTH = 1.8;
 
   function remapCellGridToFineColumns(cellGrid, fineCols) {
     const { grid, merges, rowHeights, colCount, colWidthsPercent } = cellGrid;
@@ -412,7 +422,10 @@
         grid.push([]);
         rowHeights.push(null);
       }
-      grid.push([{ col: 0, text: named.title, bold: true, bg: "#C7D2E8", align: null }]);
+      // Alt tablo başlığı tüm ince ızgara boyunca birleştirilir; aksi halde
+      // tek bir dar (1.8 birimlik) sütuna sıkışıp okunamaz görünürdü.
+      grid.push([{ col: 0, colspan: COMBINED_SHEET_FINE_COLUMNS, text: named.title, bold: true, bg: "#C7D2E8", align: null }]);
+      merges.push({ r1: grid.length - 1, c1: 0, r2: grid.length - 1, c2: COMBINED_SHEET_FINE_COLUMNS - 1 });
       rowHeights.push(null);
       const offset = grid.length;
       const remapped = remapCellGridToFineColumns(named.cellGrid, COMBINED_SHEET_FINE_COLUMNS);
@@ -456,9 +469,15 @@
       })
       .join("");
 
-    const colWidths = parsed.colWidthsPercent
-      ? parsed.colWidthsPercent.map((p) => widthFromPercent(p))
-      : contentWidths.map((len) => widthFromContent(len || 8));
+    // options.uniformColumnWidth verildiğinde (birleşik sayfalar) TÜM sütunlar
+    // aynı sabit dar genişliği alır; hücrelerin görünen genişliği yalnızca
+    // birleştirdikleri ince sütun sayısından gelir. Böylece hiçbir sütun
+    // içeriğe bağlı olarak absürt derecede genişlemez.
+    const colWidths = Number.isFinite(options.uniformColumnWidth)
+      ? Array.from({ length: colCount }, () => options.uniformColumnWidth)
+      : parsed.colWidthsPercent
+        ? parsed.colWidthsPercent.map((p) => widthFromPercent(p))
+        : contentWidths.map((len) => widthFromContent(len || 8));
     const colsXml = colWidths.length
       ? `<cols>${colWidths.map((w, index) => `<col min="${index + 1}" max="${index + 1}" width="${w.toFixed(2)}" customWidth="1"/>`).join("")}</cols>`
       : "";
@@ -648,7 +667,7 @@
       takyidatDefs.map((def) => ({ title: def.title, cellGrid: rawGridCellGridFor(def) }))
     );
     if (takyidatCombined) {
-      sheets.push({ name: sanitizeSheetName("Takyidat", usedNames), sheetXml: buildSheetXmlFromCellGrid(styleRegistry, takyidatCombined) });
+      sheets.push({ name: sanitizeSheetName("Takyidat", usedNames), sheetXml: buildSheetXmlFromCellGrid(styleRegistry, takyidatCombined, { uniformColumnWidth: COMBINED_SHEET_FINE_COLUMN_WIDTH }) });
     }
 
     const expenseSheetXml = buildExpenseFeesSheet(styleRegistry);
@@ -665,7 +684,7 @@
     ];
     const valuationAndComparableCombined = combineNamedGrids(valuationAndComparableNamedGrids);
     if (valuationAndComparableCombined) {
-      sheets.push({ name: sanitizeSheetName("Değerleme ve Emsaller", usedNames), sheetXml: buildSheetXmlFromCellGrid(styleRegistry, valuationAndComparableCombined) });
+      sheets.push({ name: sanitizeSheetName("Değerleme ve Emsaller", usedNames), sheetXml: buildSheetXmlFromCellGrid(styleRegistry, valuationAndComparableCombined, { uniformColumnWidth: COMBINED_SHEET_FINE_COLUMN_WIDTH }) });
     }
 
     return { sheets, stylesXml: styleRegistry.buildStylesXml() };
@@ -691,5 +710,6 @@
     combineNamedGrids,
     remapCellGridToFineColumns,
     COMBINED_SHEET_FINE_COLUMNS,
+    COMBINED_SHEET_FINE_COLUMN_WIDTH,
   };
 })();

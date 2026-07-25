@@ -177,25 +177,52 @@ assert(wideRow.length === 3, `Geniş tablo satırında 3 hücre bekleniyordu: ${
 assert(wideRow[0].col === 0 && wideRow[1].col === wideRow[0].col + wideRow[0].colspan, "Geniş tablo hücreleri ince ızgarada art arda dizilmemiş.");
 assert(wideRow.reduce((sum, c) => sum + c.colspan, 0) === ReportTablesXlsx.COMBINED_SHEET_FINE_COLUMNS, "Geniş tablonun 3 sütunu toplamda tüm ince ızgarayı kaplamıyor.");
 const narrowRow = combinedFineGrid.grid[4]; // 2: bos satir, 3: 2. tablo basligi, 4: veri satiri
-assert(narrowRow.length === 12 && narrowRow.every((c) => c.colspan === ReportTablesXlsx.COMBINED_SHEET_FINE_COLUMNS / 12), "Dar tablonun 12 eşit sütunu ince ızgarada eşit dağılmamış.");
-// Genislik hesaplaninca uzun metin TEK bir ince sutuna yigilmamali (spread edilmeli).
-const fineGridStyleRegistry = ReportTablesXlsx.createStyleRegistry();
-const fineGridSheetXml = ReportTablesXlsx.buildSheetXmlFromCellGrid(fineGridStyleRegistry, combinedFineGrid);
-const fineGridColWidths = [...(fineGridSheetXml.match(/<cols>[\s\S]*?<\/cols>/)?.[0] || "").matchAll(/width="([\d.]+)"/g)].map((m) => Number(m[1]));
-assert(Math.max(...fineGridColWidths) < 20, `Uzun metin tek bir ince sütuna yığılmış olabilir (maks genişlik: ${Math.max(...fineGridColWidths)}).`);
+assert(narrowRow.length === 12, `Dar tablonun 12 sütunu korunmamış: ${narrowRow.length}`);
+// Ince izgara sutun sayisi 12'ye tam bolunmeyebilir (100/12), bu yuzden
+// sutunlar en fazla 1 ince sutun farkla ESIT DAGILMIS olmali ve toplamda
+// tum izgarayi kaplamali.
+const narrowSpans = narrowRow.map((c) => c.colspan);
+assert(Math.max(...narrowSpans) - Math.min(...narrowSpans) <= 1, `Dar tablonun sütunları ince ızgarada dengesiz dağılmış: ${JSON.stringify(narrowSpans)}`);
+assert(narrowSpans.reduce((a, b) => a + b, 0) === ReportTablesXlsx.COMBINED_SHEET_FINE_COLUMNS, "Dar tablonun sütunları toplamda tüm ince ızgarayı kaplamıyor.");
+// Alt tablo baslik satiri TUM ince izgara boyunca birlestirilmis olmali
+// (yoksa tek bir 1.8 birimlik dar sutuna sikisip okunamaz gorunur).
+assert(
+  combinedFineGrid.merges.some((m) => m.r1 === 0 && m.c1 === 0 && m.c2 === ReportTablesXlsx.COMBINED_SHEET_FINE_COLUMNS - 1),
+  "Alt tablo başlık satırı tüm ince ızgara boyunca birleştirilmemiş."
+);
 
-// --- 1d) Sutun genisligi ust siniri regresyon testi -----------------------
-// Kullanici geri bildirimi: ilk surumde bazi sutunlar asiri genisti (ornegin
-// uzun bir "Emsal Metni" paragrafi bir sutunu ~58 birime kadar genisletiyordu).
-// wrapText acik oldugu icin genislik yerine metin sarilmali; ust sinir dar
-// tutulmali (bkz. widthFromContent/widthFromPercent).
+// --- 1d) Kompakt sabit sutun genisligi regresyon testi --------------------
+// Kullanici geri bildirimi: "kompakt bir yapi olmali ... absurt hucre
+// genisligi olmasin". Birlesik sayfalarda icerik-tabanli genislik hesabi
+// KULLANILMAZ; her ince sutun SABIT dar genislige sahiptir, hucrenin gorunen
+// genisligi yalnizca birlestirdigi ince sutun sayisindan gelir. Uzun bir
+// paragraf (Emsal Metni) hicbir sutunu tek basina sismemelidir.
+const fineGridStyleRegistry = ReportTablesXlsx.createStyleRegistry();
+const fineGridSheetXml = ReportTablesXlsx.buildSheetXmlFromCellGrid(fineGridStyleRegistry, combinedFineGrid, {
+  uniformColumnWidth: ReportTablesXlsx.COMBINED_SHEET_FINE_COLUMN_WIDTH,
+});
+const fineGridColWidths = [...(fineGridSheetXml.match(/<cols>[\s\S]*?<\/cols>/)?.[0] || "").matchAll(/width="([\d.]+)"/g)].map((m) => Number(m[1]));
+assert(fineGridColWidths.length === ReportTablesXlsx.COMBINED_SHEET_FINE_COLUMNS, `Birleşik sayfada ${ReportTablesXlsx.COMBINED_SHEET_FINE_COLUMNS} sütun genişliği bekleniyordu: ${fineGridColWidths.length}`);
+assert(
+  fineGridColWidths.every((w) => Math.abs(w - ReportTablesXlsx.COMBINED_SHEET_FINE_COLUMN_WIDTH) < 0.01),
+  `Birleşik sayfada tüm ince sütunlar sabit ${ReportTablesXlsx.COMBINED_SHEET_FINE_COLUMN_WIDTH} genişlikte olmalı (bulunan maks: ${Math.max(...fineGridColWidths)}).`
+);
+
 const longParagraph = "Ekspertize konu taşınmazla aynı binada, ara katta yer alan, 125 m2 olarak beyan edilen, 120 m2 olduğu düşünülen, 3+1 planında daire 4.850.000 TL bedelle satılıktır. Emsal, benzer konumda ve konu taşınmaza göre benzer iç özelliklere sahiptir. Pazarlık payı vardır.";
 const longTextHtml = `<table><tbody><tr><td>Emsal Metni</td><td>${longParagraph}</td><td>x</td><td>y</td><td>z</td></tr></tbody></table>`;
 const longTextCombined = ReportTablesXlsx.combineNamedGrids([{ title: "Emsal Matrisi", cellGrid: ReportTablesXlsx.parseHtmlTables(longTextHtml) }]);
 const longTextRegistry = ReportTablesXlsx.createStyleRegistry();
-const longTextSheetXml = ReportTablesXlsx.buildSheetXmlFromCellGrid(longTextRegistry, longTextCombined);
+const longTextSheetXml = ReportTablesXlsx.buildSheetXmlFromCellGrid(longTextRegistry, longTextCombined, {
+  uniformColumnWidth: ReportTablesXlsx.COMBINED_SHEET_FINE_COLUMN_WIDTH,
+});
 const longTextWidths = [...(longTextSheetXml.match(/<cols>[\s\S]*?<\/cols>/)?.[0] || "").matchAll(/width="([\d.]+)"/g)].map((m) => Number(m[1]));
-assert(Math.max(...longTextWidths) <= 22, `Uzun paragraf metni sutun genisligini asiri artirmis (maks: ${Math.max(...longTextWidths)}, beklenen <= 22).`);
+assert(
+  Math.max(...longTextWidths) <= ReportTablesXlsx.COMBINED_SHEET_FINE_COLUMN_WIDTH + 0.01,
+  `Uzun paragraf metni bir sütunu şişirmiş (maks: ${Math.max(...longTextWidths)}, beklenen <= ${ReportTablesXlsx.COMBINED_SHEET_FINE_COLUMN_WIDTH}).`
+);
+// Sayfanin TOPLAM genisligi de kompakt kalmali (ekrana/sayfaya sigsin).
+const longTextTotalWidth = longTextWidths.reduce((a, b) => a + b, 0);
+assert(longTextTotalWidth <= 200, `Birleşik sayfanın toplam genişliği kompakt değil: ${longTextTotalWidth}`);
 
 // --- 2) Tam disa aktarma calistir -----------------------------------------
 // Kullanici talebi: Takyidat alt tablolari (Beyanlar/Serhler/Ipotekler) TEK
