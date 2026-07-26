@@ -646,10 +646,27 @@
     return text;
   }
 
+  // "İncelenen belgeler" tablosu ekranda/Word çıktısında
+  // getReviewedDocumentChronologicalEntries (app.js) ile tarihe göre eskiden
+  // yeniye sıralanıyor; Excel'e ham grid sırasıyla düşüyordu. Aynı kanonik
+  // sıralama fonksiyonu burada da kullanılarak tek kaynaktan tutarlılık
+  // sağlanır (tarihsiz satırlar orijinal sırasıyla en sona düşer).
+  function sortDocumentRowsChronologically(rows) {
+    if (typeof window === "undefined" || typeof window.getReviewedDocumentChronologicalEntries !== "function") {
+      return rows;
+    }
+    try {
+      return window.getReviewedDocumentChronologicalEntries(rows).map((entry) => entry.row);
+    } catch (error) {
+      return rows;
+    }
+  }
+
   function rawGridCellGridFor(def) {
     const tableState = (typeof state !== "undefined" && state.tables && state.tables[def.key]) || [];
-    const filledRows = tableState.filter(isRowFilled);
+    let filledRows = tableState.filter(isRowFilled);
     if (!filledRows.length) return null;
+    if (def.key === "documents") filledRows = sortDocumentRowsChronologically(filledRows);
     const rows = filledRows.map((row) => def.columns.map((_, columnIndex) => toTrDate(row[`c${columnIndex}`] || "")));
     return rawGridToCellGrid(def.columns, rows);
   }

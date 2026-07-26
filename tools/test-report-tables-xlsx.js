@@ -66,10 +66,13 @@ global.state = {
       {}, // bos satir dahil edilmemeli
     ],
     // Belge tarihleri ISO saklanir; Excel'e gun.ay.yil olarak yazilmali.
+    // Sira kasitli olarak KARISIK: eskiden-yeniye siralama regresyonunu
+    // yakalamak icin en yeni tarih ILK sirada.
     documents: [
+      { c0: "İsim Değişikliği", c1: "Yıldırım Belediyesi", c2: "27.03.2023", c3: "750/04", c4: "" },
       { c0: "Yeni Yapı Ruhsatı", c1: "Yıldırım Belediyesi", c2: "1994-07-15", c3: "653/09", c4: "Tam" },
       { c0: "Tadilat Ruhsatı", c1: "Yıldırım Belediyesi", c2: "2020-1-5", c3: "697/19", c4: "" },
-      { c0: "İsim Değişikliği", c1: "Yıldırım Belediyesi", c2: "27.03.2023", c3: "750/04", c4: "" },
+      { c0: "Tarihsiz Belge", c1: "Yıldırım Belediyesi", c2: "", c3: "999/00", c4: "" },
     ],
     // Tamamen bos tablo: sayfa hic olusmamali
     encumbranceDeclarations: [],
@@ -95,6 +98,30 @@ global.encumbranceReportTables = [
 global.encumbranceReportColumns = ["Tür", "Açıklama", "Tarih", "Yevmiye No"];
 global.buildExportBaseFileName = () => "test-raporu";
 global.recalculateExpenseFees = () => {};
+// app.js'teki getReviewedDocumentChronologicalEntries'in (satir 17082-17095)
+// birebir ayni davranisini tasiyan yerel kopyasi: tarihe gore eskiden
+// yeniye siralar, tarihsiz satirlar orijinal sirasiyla en sona duser.
+global.window.getReviewedDocumentChronologicalEntries = (rows = []) => {
+  const parseDate = (value) => {
+    const text = String(value || "").trim();
+    if (!text) return "";
+    if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(text)) {
+      const [y, m, d] = text.split("-");
+      return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+    }
+    const local = text.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);
+    if (local) return `${local[3]}-${local[2].padStart(2, "0")}-${local[1].padStart(2, "0")}`;
+    return "";
+  };
+  return (Array.isArray(rows) ? rows : [])
+    .map((row, index) => ({ row, index, date: parseDate(row?.c2) }))
+    .sort((left, right) => {
+      if (left.date && right.date && left.date !== right.date) return left.date.localeCompare(right.date);
+      if (left.date && !right.date) return -1;
+      if (!left.date && right.date) return 1;
+      return left.index - right.index;
+    });
+};
 
 const reportTablesSrc = fs.readFileSync(path.join(appDir, "src", "exports", "report-tables-xlsx.js"), "utf8");
 // eslint-disable-next-line no-eval
@@ -306,6 +333,16 @@ async function verifyBlob() {
   assert(belgelerXml.includes("<t>27.03.2023</t>"), "Zaten gun.ay.yil olan tarih korunmamis.");
   assert(belgelerXml.includes("<t>653/09</t>") && belgelerXml.includes("<t>750/04</t>"), "Belge no (653/09) tarih sanilip bozulmus.");
   assert(belgelerXml.includes("<t>Yeni Yapı Ruhsatı</t>"), "Belge turu hucresi eksik.");
+
+  // Kullanici talebi: "incelenen belgeler bölümünde belgeler tarihe göre
+  // sıralanmalı eskiden yeniye". Fixture kasitli karisik sirada (2023 ilk,
+  // 1994 ikinci, 2020 ucuncu, tarihsiz son) - Excel'de eskiden yeniye
+  // (1994 -> 2020 -> 2023) cikmali, tarihsiz satir en sonda kalmali.
+  const belgeTuruSirasi = [...belgelerXml.matchAll(/<t>(Yeni Yapı Ruhsatı|Tadilat Ruhsatı|İsim Değişikliği|Tarihsiz Belge)<\/t>/g)].map((m) => m[1]);
+  assert(
+    belgeTuruSirasi.join(",") === "Yeni Yapı Ruhsatı,Tadilat Ruhsatı,İsim Değişikliği,Tarihsiz Belge",
+    `Belgeler eskiden yeniye siralanmamis: ${belgeTuruSirasi.join(",")}`
+  );
   // Hisse "1/1" gibi degerler de tarih sanilmamali
   const maliklerDateSafe = sheetXmlByName.get("Malikler");
   assert(maliklerDateSafe.includes("<t>1/1</t>"), "Hisse (1/1) degeri bozulmus.");
