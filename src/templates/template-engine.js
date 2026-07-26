@@ -226,9 +226,13 @@
   }
 
   function occupancyPermitDate() {
+    const completion = safeCall("calculateBuildingCompletionFromReviewedDocuments");
+    if (completion?.source === "occupancy" && completion.displayDate) {
+      return completion.displayDate;
+    }
     const rows = Array.isArray(state.tables?.documents) ? state.tables.documents : [];
-    const hit = rows.find((row) => /kullanma\s*[iİ]zin|iskan/i.test(String(row?.c0 || "")));
-    return outputDate(hit?.c2);
+    const hit = rows.find((row) => /kullanma\s*[iİ]zin|iskan/i.test(String(row?.c0 || row?.type || "")));
+    return outputDate(hit?.c2 || hit?.date || hit?.documentDate);
   }
 
   function ekbStatusText() {

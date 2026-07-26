@@ -5,6 +5,96 @@ Son güncelleme: 2026-07-21 · Servis edilen sürüm: **app.js?v=20260721-1530**
 Bu belge, bir sonraki geliştirici/oturum için projeyi çalıştırma, doğrulama ve bu
 oturumda yapılanları özetler.
 
+## 0.0.213 - 2026-07-27 - Arsa özellikleri seçimleri kritik alan oldu
+
+Arsa/Arazi şablonlarında Arsa Özellikleri bölümündeki görünür tüm açılır seçimler
+eksik kritik alan kontrolüne bağlandı. Bu kural şemadan dinamik üretildiği için
+geometri, topografya, yol cephesi, tarım türü, arazi sınıflandırması, sınır
+unsuru ve zirai ürün seçimleri ile ileride eklenecek görünür seçimler otomatik
+kapsanır. Konut ve işyeri raporları bu alanlardan eksik uyarısı almaz.
+
+Değişiklik öncesi yedek:
+`backups/before-land-selection-critical-fields_2026-07-27_01-51-03`. Grafik
+indeksi yenilenmedi. Cache sürümü: `app.js?v=20260727-1130`.
+
+## 0.0.212 - 2026-07-27 - Arsa/arazi birim değer istisnası
+
+Arsa/arazi şablonlarında gizlenen `Arsa M2 Birim Değeri`, bu raporlarda piyasa
+m² birim değerinin karşılığı olduğundan eksik kritik alan sayacından çıkarıldı.
+Konut ve işyeri raporlarında alan görünür ve kritik olmaya devam eder.
+
+Değişiklik öncesi yedek:
+`backups/before-land-unit-value-critical-exemption_2026-07-27_01-43-58`.
+Graf indeksi yenilenmedi. Cache sürümü: `app.js?v=20260727-1115`.
+
+## 0.0.211 - 2026-07-27 - Arsa/arazi raporlarında kritik alan istisnası
+
+Arsa, tarla ve arazi şablonunu kullanan kayıtlarda `Yasal Kira Değeri`, `Mevcut
+Kira Değeri`, `Cezai Karar Var mı?`, `Statik Uygunluk` ve `Sözleşme Aktif mi?`
+artık eksik kritik alan sayacında gösterilmez. Arsa m² birim değeri, yasal/mevcut
+piyasa değeri ve arazi raporuna anlamlı diğer kontroller kritik kalır.
+
+Değişiklik öncesi yedek:
+`backups/before-land-critical-field-exemptions_2026-07-27_01-41-49`. Grafik
+indeksi yenilenmedi. Cache sürümü: `app.js?v=20260727-1100`.
+
+## 0.0.210 - 2026-07-27 - Mimari proje satırının eksiksiz gösterimi
+
+İncelenen Belgeler tablosuna eklenen salt-okunur mimari proje satırında artık
+`Belge Türü` ve `Kapsam`, seçilmiş Tapu/Belediye Proje Türü; `İncelenen Kurum`
+ise proje inceleme kurumları olarak gösterilir. Otomatik kurum
+değeri seçenek listesinde yoksa yalnızca görüntülenen satıra eklenerek boş
+görünmesi önlenir. Proje satırı yine kullanıcı belge kayıtlarından ayrı ve
+tarih sırasına dahil biçimde kalır.
+
+Değişiklik öncesi yedek:
+`backups/before-architectural-project-document-row_2026-07-27_01-20-58`.
+Graf indeksi yenilenmedi. Cache sürümü: `app.js?v=20260727-1045`.
+
+## 0.0.209 - 2026-07-27 - Eksik kritik alanlara doğrudan erişim
+
+Üst durum şeridindeki `Eksik kritik alan` kartı artık tıklanabilir. Kart, eksik
+alanları bölüm adlarıyla birlikte küçük bir pencerede listeler; listedeki her
+satır ilgili bölümü açar, alanı ekran ortasına getirir ve odağı doğrudan
+kontrole taşır. Kroki, belge kararları ve emsal sayısı gibi özel kontroller için
+de doğru form yüzeyi hedeflenir. Eksik yoksa pencere açık bir tamamlanma mesajı
+gösterir.
+
+Değişiklik öncesi yedek: `backups/before-missing-critical-navigation_2026-07-27_01-08-43`.
+Graf indeksi kullanıldı ancak kullanıcı tercihine uygun olarak yenilenmedi.
+Cache sürümleri `app.js?v=20260727-1030` ve `styles.css?v=20260727-1030` olarak
+güncellendi. Doğrulama: `npm.cmd run verify` ve `git diff --check` başarılı.
+
+## 0.0.208 - 2026-07-27 - Eksik kritik alan matrisi ve 3B kod grafi güncellemesi
+
+Üst durum çubuğundaki `Eksik kritik alan` sayacı artık yalnızca şema üzerinde
+`required` işaretli alanları saymaz. `app.js` içindeki merkezi kritik alan
+matrisi; randevu türü, kaydedilmiş kroki, tapu/mülkiyet alanları, imar bilgileri,
+EKB ve belge kararları, en az dört emsal, değerleme tutarları ile banka/çıktı
+masraf alanlarını birlikte denetler.
+
+- Tapu bölümünde eski ada, eski parsel ve eklenti hariç tüm istenen alanlar
+  kontrol edilir.
+- Zemin tipi Kat Mülkiyeti veya Kat İrtifakı değilse bağımsız bölüm niteliği ve
+  bağımsız bölüm no eksik sayılmaz.
+- İskan belgesi incelenmişse gizlenen Yapı Denetim Sözleşme Aktif mi? alanı
+  eksik sayılmaz.
+- Cezai Karar Var mı?, Statik Uygunluk ve görünür olduğu durumda Sözleşme Aktif
+  mi? alanları hem sayaçta hem formda kritik/eksik olarak görünür.
+- Kroki kaydı `reportImages.location` üzerinden, emsal adedi ise boş olmayan
+  emsal satırları üzerinden doğrulanır.
+
+`app.js?v=20260727-1000` ile tarayıcı önbelleği yenilendi. `npm.cmd run verify`
+ve `git diff --check` başarıyla tamamlandı.
+
+Kod grafi, mevcut kurulu Graphify komutuyla artımlı olarak güncellendi:
+`graphify-out/graph.json` ve `GRAPH_REPORT.md` artık 21.561 düğüm, 47.590 ilişki
+ve 468 topluluk içerir. `tools/build-neural-map-data.js` yeniden çalıştırıldı;
+`codebase-map/graph-core.json` 3B harita için 1.600 düğüm ve 5.424 bağlantı
+içeren güncel projeksiyondur. Graphify'nin sıfır düğüm üreten altı kaynak dosya
+uyarısı indekslemenin dışında tutuldu; uygulama kaynak grafi sağlam olarak
+yenilendi.
+
 ## 0.0.207 - 2026-07-21 - Ziraat Word şablonu sistem ekranı görünümüne uyarlandı
 
 `templates/ziraat.html`, Ziraat Ekspertiz Sistemi ekran görüntüleri (GABİM, tapu,

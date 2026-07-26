@@ -141,6 +141,14 @@ assert(
     engine.resolveToken("TOPLAM_MEVCUT_ALAN").html === "210",
   "Toplam yasal/mevcut alan placeholderlari cozumlenemedi."
 );
+const ziraatTemplateForTotalAreaCheck = fs.readFileSync(path.join(appDir, "templates", "ziraat.html"), "utf8");
+assert(
+  ziraatTemplateForTotalAreaCheck.includes("Toplam Mevcut Alan") &&
+    ziraatTemplateForTotalAreaCheck.includes("{{TOTAL_CURRENT_AREA}}") &&
+    ziraatTemplateForTotalAreaCheck.includes("Toplam Yasal Alan") &&
+    ziraatTemplateForTotalAreaCheck.includes("{{TOTAL_LEGAL_AREA}}"),
+  "Ziraat bagimsiz bolum kullanim alani satiri toplam alanlari gostermiyor."
+);
 delete globalThis.getValuationUnitAreaTotals;
 
 globalThis.getRoadSetbackAmount = () => "25";
@@ -782,6 +790,13 @@ assert(
   ziraatReviewFieldValues.join("|") === "15.06.2021|VAR|Evet",
   `Ziraat incelemeler iskan tarihi, EKB durumu veya belediye siniri degeri cozumlenemiyor: ${ziraatReviewFieldValues.join("|")}`
 );
+const ziraatOccupancyDocuments = stubState.tables.documents;
+stubState.tables.documents = [{ type: "Yapı Kullanma İzin Belgesi", date: "2024-02-03" }];
+assert(
+  engine.resolveToken("OCCUPANCY_PERMIT_DATE").html === "03.02.2024",
+  "Yapi kullanma izin belgesi tarihi normalize belge satirindan cozumlenemiyor."
+);
+stubState.tables.documents = ziraatOccupancyDocuments;
 assert(
   engineSource.includes("LOCATIONMAPIMAGE") &&
     engineSource.includes("COMPARABLESKETCHIMAGE") &&

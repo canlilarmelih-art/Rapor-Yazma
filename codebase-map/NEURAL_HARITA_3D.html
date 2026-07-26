@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="dark">
+    <title>Experify | 3B Neural Harita</title>
+    <style>
+      :root { color-scheme: dark; --ink: #071428; --panel: rgba(8, 22, 43, .86); --line: rgba(147, 196, 255, .2); --soft: #98a9c6; --text: #f4f7fd; --accent: #56b6ff; }
+      * { box-sizing: border-box; }
+      body { margin: 0; min-width: 320px; min-height: 100vh; overflow: hidden; color: var(--text); font-family: Inter, "Segoe UI", Arial, sans-serif; background: #06101f; }
+      #viewport { position: fixed; inset: 0; }
+      #viewport canvas { display: block; width: 100%; height: 100%; }
+      .panel { position: fixed; z-index: 2; border: 1px solid var(--line); background: var(--panel); box-shadow: 0 20px 54px rgba(0, 0, 0, .32); backdrop-filter: blur(12px); }
+      #toolbar { top: 20px; left: 20px; width: min(340px, calc(100vw - 40px)); padding: 16px; border-radius: 8px; }
+      h1 { margin: 0; font-size: 16px; letter-spacing: 0; }
+      .eyebrow { margin: 0 0 5px; color: #85b9ee; font-size: 10px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; }
+      .summary { margin: 8px 0 14px; color: var(--soft); font-size: 12px; line-height: 1.4; }
+      label { display: block; margin: 10px 0 4px; color: #b4c4df; font-size: 11px; font-weight: 700; }
+      input, select, button { width: 100%; min-height: 34px; border: 1px solid rgba(166, 202, 244, .28); border-radius: 5px; color: var(--text); font: inherit; }
+      input, select { padding: 0 10px; background: rgba(255, 255, 255, .07); font-size: 12px; }
+      button { padding: 0 12px; cursor: pointer; background: #164c85; font-size: 12px; font-weight: 800; }
+      button:hover { background: #2165aa; }
+      .control-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+      #scope { accent-color: var(--accent); }
+      .range-row { display: grid; grid-template-columns: 1fr 42px; gap: 9px; align-items: center; }
+      #scopeOutput { color: #8fcaff; font-size: 12px; font-weight: 800; text-align: right; }
+      .legend { display: flex; flex-wrap: wrap; gap: 6px 10px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); color: #c7d3e7; font-size: 10px; }
+      .legend i { display: inline-block; width: 8px; height: 8px; margin-right: 4px; border-radius: 50%; vertical-align: 0; }
+      .compact-toggle { display: none; margin-top: 10px; }
+      #detail { right: 20px; bottom: 20px; width: min(360px, calc(100vw - 40px)); min-height: 128px; padding: 15px 16px; border-radius: 8px; }
+      #detail h2 { margin: 0 0 9px; color: #9fcaff; font-size: 13px; overflow-wrap: anywhere; }
+      #detail p { margin: 5px 0; color: #d8e2f3; font-size: 12px; line-height: 1.35; overflow-wrap: anywhere; }
+      #detail .muted { color: var(--soft); }
+      #hover { position: fixed; z-index: 4; display: none; padding: 6px 8px; max-width: 250px; border: 1px solid rgba(116, 183, 255, .5); border-radius: 4px; background: rgba(3, 12, 27, .94); color: #f5f8ff; font-size: 11px; pointer-events: none; }
+      #hint { left: 20px; bottom: 20px; padding: 9px 12px; border-radius: 5px; color: #aec3df; font-size: 11px; }
+      #status { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; padding: 24px; color: #d7e7fb; text-align: center; background: #06101f; font-size: 14px; }
+      #status[hidden] { display: none; }
+      @media (max-width: 700px) { #toolbar { top: 10px; left: 10px; width: calc(100vw - 20px); padding: 12px; } #detail { right: 10px; bottom: 10px; width: calc(100vw - 20px); min-height: 96px; } #hint { display: none; } .summary { margin-bottom: 8px; } label { margin-top: 7px; } .compact-toggle { display: block; } #toolbar.is-compact .map-controls { display: none; } }
+    </style>
+  </head>
+  <body>
+    <main id="viewport" aria-label="Codebase 3 boyutlu neural harita"></main>
+    <section id="toolbar" class="panel" aria-label="Harita kontrolleri">
+      <p class="eyebrow">Experify codebase-memory</p>
+      <h1>3B Neural Harita</h1>
+      <p id="summary" class="summary">Graf verisi yukleniyor...</p>
+      <button id="toggleControls" class="compact-toggle" type="button" aria-expanded="false">Kontrolleri ac</button>
+      <div class="map-controls">
+        <label for="search">Dugum ara</label>
+        <input id="search" type="search" placeholder="Fonksiyon, dosya veya tanim ara">
+        <div class="control-row">
+          <div><label for="source">Dosya kumesi</label><select id="source"><option value="">Tum kaynaklar</option></select></div>
+          <div><label for="reset">Kamera</label><button id="reset" type="button">Merkeze don</button></div>
+        </div>
+        <label for="scope">Gorunen ag kapsami</label>
+        <div class="range-row"><input id="scope" type="range" min="150" max="1600" step="50" value="650"><output id="scopeOutput" for="scope">650</output></div>
+        <div id="legend" class="legend" aria-label="Kume lejandi"></div>
+      </div>
+    </section>
+    <aside id="detail" class="panel" aria-live="polite"><h2>Bir dugum secin</h2><p class="muted">Dugum ayrintisi ve dogrudan baglantilari burada gorunur.</p></aside>
+    <p id="hint" class="panel">Surukle: dondur &nbsp; Tekerlek: yaklas/uzaklas &nbsp; Dugume tikla: baglantilari vurgula</p>
+    <div id="hover"></div>
+    <div id="status">3B neural harita hazirlaniyor...</div>
+    <script type="module">
+      import * as THREE from "./three.module.js";
+
+      const palette = [0x56b6ff, 0x7ee0b6, 0xffb86b, 0xd58cff, 0x55d0d5, 0xff8599, 0xb9d76e, 0x91a7ff, 0xe6c96f, 0x68d6ed, 0xd7a7f2, 0x82c59e];
+      const viewport = document.querySelector("#viewport");
+      const status = document.querySelector("#status");
+      const summary = document.querySelector("#summary");
+      const search = document.querySelector("#search");
+      const sourceSelect = document.querySelector("#source");
+      const scope = document.querySelector("#scope");
+      const scopeOutput = document.querySelector("#scopeOutput");
+      const detail = document.querySelector("#detail");
+      const hover = document.querySelector("#hover");
+      const legend = document.querySelector("#legend");
+      const toolbar = document.querySelector("#toolbar");
+      const toggleControls = document.querySelector("#toggleControls");
+      let graph;
+      let models = [];
+      let links = [];
+      let nodeMesh;
+      let edgeLines;
+      let edgeColors;
+      let selectedId = null;
+      let hoveredId = null;
+      let visibleLimit = 650;
+      const positions = new Map();
+      const neighbors = new Map();
+      const indexById = new Map();
+      const raycaster = new THREE.Raycaster();
+      const pointer = new THREE.Vector2();
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x06101f);
+      scene.fog = new THREE.FogExp2(0x06101f, 0.00125);
+      const camera = new THREE.PerspectiveCamera(52, 1, 1, 2800);
+      const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      viewport.appendChild(renderer.domElement);
+      const world = new THREE.Group();
+      scene.add(world);
+      const target = new THREE.Vector3();
+      const orbit = { yaw: -0.55, pitch: 0.32, distance: 560, dragging: false, x: 0, y: 0, startX: 0, startY: 0 };
+
+      function hash(value) {
+        let output = 2166136261;
+        for (const character of String(value)) output = Math.imul(output ^ character.charCodeAt(0), 16777619);
+        return output >>> 0;
+      }
+
+      function unit(seed) { return (hash(seed) % 100000) / 100000; }
+
+      function updateCamera() {
+        const cosPitch = Math.cos(orbit.pitch);
+        camera.position.set(
+          target.x + orbit.distance * cosPitch * Math.sin(orbit.yaw),
+          target.y + orbit.distance * Math.sin(orbit.pitch),
+          target.z + orbit.distance * cosPitch * Math.cos(orbit.yaw)
+        );
+        camera.lookAt(target);
+      }
+
+      function nodePosition(node, index, communityCount) {
+        const community = Math.max(0, node.community || 0);
+        const clusterAngle = (community / Math.max(1, communityCount)) * Math.PI * 2;
+        const clusterRadius = 175 + (community % 5) * 22;
+        const center = new THREE.Vector3(Math.cos(clusterAngle) * clusterRadius, ((community % 7) - 3) * 48, Math.sin(clusterAngle) * clusterRadius);
+        const spread = 18 + Math.sqrt(Math.max(1, node.degree)) * 7 + unit(`${node.id}:spread`) * 46;
+        const angle = unit(`${node.id}:angle`) * Math.PI * 2;
+        const elevation = unit(`${node.id}:elevation`) * 2 - 1;
+        const radial = Math.sqrt(Math.max(0, 1 - elevation * elevation));
+        return center.add(new THREE.Vector3(Math.cos(angle) * radial * spread, elevation * spread, Math.sin(angle) * radial * spread));
+      }
+
+      function colorFor(node) { return palette[Math.abs(Number(node.community) || 0) % palette.length]; }
+
+      function updateNodeColors() {
+        const query = search.value.trim().toLocaleLowerCase("tr-TR");
+        const source = sourceSelect.value;
+        const selectedNeighbors = selectedId ? neighbors.get(selectedId) || new Set() : null;
+        let visible = 0;
+        models.forEach((node, index) => {
+          const inScope = index < visibleLimit;
+          const matchesSearch = !query || `${node.label} ${node.sourceFile} ${node.communityName}`.toLocaleLowerCase("tr-TR").includes(query);
+          const matchesSource = !source || node.sourceFile === source;
+          const related = !selectedNeighbors || node.id === selectedId || selectedNeighbors.has(node.id);
+          const isVisible = inScope && matchesSearch && matchesSource;
+          if (isVisible) visible += 1;
+          const base = new THREE.Color(colorFor(node));
+          if (!isVisible) base.multiplyScalar(0.035);
+          else if (!related) base.multiplyScalar(0.14);
+          else if (node.id === selectedId) base.lerp(new THREE.Color(0xffffff), 0.54);
+          nodeMesh.setColorAt(index, base);
+        });
+        nodeMesh.instanceColor.needsUpdate = true;
+        summary.textContent = `${visible.toLocaleString("tr-TR")} gorunen dugum | ${links.length.toLocaleString("tr-TR")} baglanti | ${new Set(models.map((node) => node.community)).size} kume`;
+        updateEdgeColors(query, source);
+      }
+
+      function updateEdgeColors(query, source) {
+        if (!edgeColors) return;
+        links.forEach((link, index) => {
+          const sourceNode = models[indexById.get(link.source)];
+          const targetNode = models[indexById.get(link.target)];
+          const indexVisible = indexById.get(link.source) < visibleLimit && indexById.get(link.target) < visibleLimit;
+          const matchesQuery = !query || `${sourceNode.label} ${targetNode.label}`.toLocaleLowerCase("tr-TR").includes(query);
+          const matchesSource = !source || sourceNode.sourceFile === source || targetNode.sourceFile === source;
+          const selected = selectedId && (link.source === selectedId || link.target === selectedId);
+          const intensity = indexVisible && matchesQuery && matchesSource ? (selected ? 1 : selectedId ? 0.1 : 0.34) : 0.012;
+          const color = new THREE.Color(selected ? 0xa8dcff : 0x4f94c9).multiplyScalar(intensity);
+          edgeColors.setXYZ(index * 2, color.r, color.g, color.b);
+          edgeColors.setXYZ(index * 2 + 1, color.r, color.g, color.b);
+        });
+        edgeColors.needsUpdate = true;
+      }
+
+      function showDetail(node) {
+        const direct = neighbors.get(node.id)?.size || 0;
+        detail.innerHTML = `<h2>${escapeHtml(node.label)}</h2><p><strong>Dosya:</strong> ${escapeHtml(node.sourceFile || "Bilinmiyor")}</p><p><strong>Konum:</strong> ${escapeHtml(node.sourceLocation || "-")} &nbsp; <strong>Kume:</strong> ${escapeHtml(node.communityName || "Proje")}</p><p class="muted">${direct.toLocaleString("tr-TR")} dogrudan baglanti | derece ${node.degree.toLocaleString("tr-TR")}</p>`;
+      }
+
+      function escapeHtml(value) { return String(value).replace(/[&<>'"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[char]); }
+
+      function selectNode(id) {
+        selectedId = selectedId === id ? null : id;
+        if (selectedId) {
+          const node = models[indexById.get(selectedId)];
+          showDetail(node);
+          const destination = positions.get(selectedId);
+          target.lerp(destination, 0.62);
+          orbit.distance = Math.max(180, Math.min(orbit.distance, 360));
+        } else {
+          detail.innerHTML = "<h2>Bir dugum secin</h2><p class=\"muted\">Dugum ayrintisi ve dogrudan baglantilari burada gorunur.</p>";
+        }
+        updateNodeColors();
+      }
+
+      function makeGraph(data) {
+        graph = data;
+        models = data.nodes.slice().sort((left, right) => right.degree - left.degree || left.label.localeCompare(right.label, "tr"));
+        links = data.links.filter((link) => models.some((node) => node.id === link.source) && models.some((node) => node.id === link.target));
+        models.forEach((node, index) => indexById.set(node.id, index));
+        links = links.filter((link) => indexById.has(link.source) && indexById.has(link.target));
+        const communities = new Set(models.map((node) => node.community));
+        models.forEach((node, index) => positions.set(node.id, nodePosition(node, index, communities.size)));
+        links.forEach((link) => {
+          if (!neighbors.has(link.source)) neighbors.set(link.source, new Set());
+          if (!neighbors.has(link.target)) neighbors.set(link.target, new Set());
+          neighbors.get(link.source).add(link.target);
+          neighbors.get(link.target).add(link.source);
+        });
+        const sources = [...new Set(models.map((node) => node.sourceFile).filter(Boolean))].sort((left, right) => left.localeCompare(right, "tr"));
+        sources.forEach((source) => sourceSelect.add(new Option(source, source)));
+        const topCommunities = [...communities].slice(0, palette.length);
+        topCommunities.forEach((community, index) => {
+          const example = models.find((node) => node.community === community);
+          const entry = document.createElement("span");
+          entry.innerHTML = `<i style="background:#${colorFor(example).toString(16).padStart(6, "0")}"></i>${escapeHtml(String(example?.communityName || "Kume").slice(0, 18))}`;
+          legend.appendChild(entry);
+        });
+        scope.max = String(models.length);
+        scope.value = String(Math.min(650, models.length));
+        visibleLimit = Number(scope.value);
+        scopeOutput.value = scope.value;
+        const geometry = new THREE.IcosahedronGeometry(1, 2);
+        const material = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.96 });
+        nodeMesh = new THREE.InstancedMesh(geometry, material, models.length);
+        const matrix = new THREE.Matrix4();
+        models.forEach((node, index) => {
+          const position = positions.get(node.id);
+          const size = 1.5 + Math.min(5.2, Math.sqrt(node.degree + 1) * 0.56);
+          matrix.compose(position, new THREE.Quaternion(), new THREE.Vector3(size, size, size));
+          nodeMesh.setMatrixAt(index, matrix);
+        });
+        nodeMesh.instanceMatrix.needsUpdate = true;
+        world.add(nodeMesh);
+        const edgePositions = new Float32Array(links.length * 6);
+        const edgeColorData = new Float32Array(links.length * 6);
+        links.forEach((link, index) => {
+          const left = positions.get(link.source);
+          const right = positions.get(link.target);
+          edgePositions.set([left.x, left.y, left.z, right.x, right.y, right.z], index * 6);
+        });
+        const edgeGeometry = new THREE.BufferGeometry();
+        edgeGeometry.setAttribute("position", new THREE.BufferAttribute(edgePositions, 3));
+        edgeColors = new THREE.BufferAttribute(edgeColorData, 3);
+        edgeGeometry.setAttribute("color", edgeColors);
+        edgeLines = new THREE.LineSegments(edgeGeometry, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.84 }));
+        world.add(edgeLines);
+        updateNodeColors();
+      }
+
+      function resize() { const width = window.innerWidth; const height = window.innerHeight; camera.aspect = width / height; camera.updateProjectionMatrix(); renderer.setSize(width, height); }
+      function render() { requestAnimationFrame(render); world.rotation.y += selectedId ? 0.0001 : 0.00042; updateCamera(); renderer.render(scene, camera); }
+      function pick(event, select) {
+        const rect = renderer.domElement.getBoundingClientRect();
+        pointer.set(((event.clientX - rect.left) / rect.width) * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1);
+        raycaster.setFromCamera(pointer, camera);
+        const hit = nodeMesh ? raycaster.intersectObject(nodeMesh)[0] : null;
+        const node = hit ? models[hit.instanceId] : null;
+        if (node) {
+          hoveredId = node.id;
+          hover.textContent = `${node.label} | ${node.sourceFile}`;
+          hover.style.display = "block";
+          hover.style.left = `${Math.min(window.innerWidth - 255, event.clientX + 12)}px`;
+          hover.style.top = `${Math.min(window.innerHeight - 35, event.clientY + 12)}px`;
+          if (select) selectNode(node.id);
+        } else { hoveredId = null; hover.style.display = "none"; }
+      }
+
+      renderer.domElement.addEventListener("pointerdown", (event) => { orbit.dragging = true; orbit.x = event.clientX; orbit.y = event.clientY; orbit.startX = event.clientX; orbit.startY = event.clientY; renderer.domElement.setPointerCapture(event.pointerId); });
+      renderer.domElement.addEventListener("pointermove", (event) => { if (orbit.dragging) { orbit.yaw -= (event.clientX - orbit.x) * 0.006; orbit.pitch = THREE.MathUtils.clamp(orbit.pitch + (event.clientY - orbit.y) * 0.006, -1.2, 1.2); orbit.x = event.clientX; orbit.y = event.clientY; } else pick(event, false); });
+      renderer.domElement.addEventListener("pointerup", (event) => { const moved = Math.abs(event.clientX - orbit.startX) + Math.abs(event.clientY - orbit.startY); orbit.dragging = false; if (moved < 6) pick(event, true); });
+      renderer.domElement.addEventListener("pointerleave", () => { hover.style.display = "none"; });
+      renderer.domElement.addEventListener("wheel", (event) => { event.preventDefault(); orbit.distance = THREE.MathUtils.clamp(orbit.distance + event.deltaY * 0.45, 110, 1300); }, { passive: false });
+      search.addEventListener("input", updateNodeColors);
+      sourceSelect.addEventListener("change", updateNodeColors);
+      scope.addEventListener("input", () => { visibleLimit = Number(scope.value); scopeOutput.value = scope.value; updateNodeColors(); });
+      document.querySelector("#reset").addEventListener("click", () => { selectedId = null; target.set(0, 0, 0); orbit.yaw = -0.55; orbit.pitch = 0.32; orbit.distance = 560; updateNodeColors(); detail.innerHTML = "<h2>Bir dugum secin</h2><p class=\"muted\">Dugum ayrintisi ve dogrudan baglantilari burada gorunur.</p>"; });
+      if (window.matchMedia("(max-width: 700px)").matches) toolbar.classList.add("is-compact");
+      toggleControls.addEventListener("click", () => { const compact = toolbar.classList.toggle("is-compact"); toggleControls.textContent = compact ? "Kontrolleri ac" : "Kontrolleri kapat"; toggleControls.setAttribute("aria-expanded", String(!compact)); });
+      window.addEventListener("resize", resize);
+      resize();
+      updateCamera();
+      fetch("./graph-core.json", { cache: "no-store" })
+        .then((response) => { if (!response.ok) throw new Error(`Veri dosyasi yuklenemedi (${response.status}).`); return response.json(); })
+        .then((data) => { makeGraph(data); status.hidden = true; render(); })
+        .catch((error) => { status.textContent = `Harita baslatilamadi: ${error.message} Bu sayfayi uygulama sunucusundan acin.`; console.error(error); });
+    </script>
+  </body>
+</html>

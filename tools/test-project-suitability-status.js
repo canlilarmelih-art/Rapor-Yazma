@@ -88,7 +88,7 @@ const reviewedEntries = documentTableContext.getReviewedDocumentTableEntries([
 ]);
 assert.equal(reviewedEntries.length, 2, "Mimari proje incelenen belgeler tablosuna eklenmedi.");
 assert.equal(reviewedEntries[1].row.c0, "Onaylı Mimari Projesi");
-assert.equal(reviewedEntries[1].row.c4, "Mimari Proje");
+assert.equal(reviewedEntries[1].row.c4, "Onaylı Mimari Projesi");
 assert.equal(reviewedEntries[1].isArchitecturalProject, true);
 
 console.log("project suitability status tests passed");

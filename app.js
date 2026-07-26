@@ -948,6 +948,7 @@ const caseTitle = document.querySelector("#caseTitle");
 const caseCode = document.querySelector("#caseCode");
 const bankStatus = document.querySelector("#bankStatus");
 const missingCount = document.querySelector("#missingCount");
+const missingCriticalTrigger = document.querySelector("#missingCriticalTrigger");
 const lastSaved = document.querySelector("#lastSaved");
 const syncLabel = document.querySelector("#syncLabel");
 const syncDetail = document.querySelector("#syncDetail");
@@ -1845,8 +1846,9 @@ function createForm(section) {
     const label = document.createElement("label");
     label.className = "field";
     if (field.layoutClass) label.classList.add(field.layoutClass);
-    label.classList.toggle("is-required", Boolean(field.required));
-    label.classList.toggle("is-critical", Boolean(field.critical));
+    const isCompletionCritical = isCompletionCriticalField(section.id, field.key);
+    label.classList.toggle("is-required", Boolean(field.required) || isCompletionCritical);
+    label.classList.toggle("is-critical", Boolean(field.critical) || isCompletionCritical);
     label.classList.toggle("field-wide", Boolean(field.wide));
 
     const effectiveDefaultValue = getEffectiveDefaultValueForField(field);
@@ -2077,7 +2079,7 @@ function createForm(section) {
       label.append(createPlanningNoteRefreshActions());
     }
     if (field.note) label.append(createHint(field.note));
-    label.classList.toggle("is-missing", field.required && !value);
+    label.classList.toggle("is-missing", (field.required || isCompletionCritical) && !hasCompletionValue(value));
     form.append(label);
   });
 
@@ -11363,6 +11365,9 @@ const titleRecordChangeOptions = [
 function createTitleRecordChangeControl(field) {
   const label = document.createElement("label");
   label.className = "field field-wide";
+  label.classList.toggle("is-required", isCompletionCriticalField("title", field.key));
+  label.classList.toggle("is-critical", isCompletionCriticalField("title", field.key));
+  label.classList.toggle("is-missing", isCompletionCriticalField("title", field.key) && !hasCompletionValue(state.fields[field.key]));
 
   const control = document.createElement("div");
   control.className = "title-record-change-control";
@@ -11508,8 +11513,9 @@ function createConditionalYesNoControl(field) {
   const label = document.createElement("label");
   label.className = "field";
   if (field.layoutClass) label.classList.add(field.layoutClass);
-  label.classList.toggle("is-required", Boolean(field.required));
+  label.classList.toggle("is-required", Boolean(field.required || field.critical));
   label.classList.toggle("is-critical", Boolean(field.critical));
+  label.classList.toggle("is-missing", Boolean(field.required || field.critical) && !hasCompletionValue(state.fields[field.key]));
   label.classList.toggle("field-wide", Boolean(field.wide));
 
   const control = document.createElement("div");
@@ -11800,6 +11806,7 @@ function createDocumentDecisionControls() {
       key: "penaltyDecision",
       label: "Cezai Karar Var mı?",
       type: "conditionalYesNo",
+      critical: true,
       detailWhen: "Evet",
       detailKey: "penaltyNote",
       detailLabel: "Cezai karar açıklama",
@@ -11811,6 +11818,7 @@ function createDocumentDecisionControls() {
       key: "staticSuitability",
       label: "Statik Uygunluk",
       type: "conditionalYesNo",
+      critical: true,
       detailWhen: "Hayır",
       detailKey: "staticSuitabilityNote",
       detailLabel: "Statik uygunluk açıklama",
@@ -11837,6 +11845,7 @@ function createDocumentDecisionControls() {
       key: "buildingInspectionContractActive",
       label: "Sözleşme Aktif mi?",
       options: ["", "Evet", "Hayır (Fesihli)"],
+      critical: true,
       onChange: (nextValue) => {
         if (nextValue === "Hayır (Fesihli)") {
           openBuildingInspectionTerminationModal(() => renderSection());
@@ -11878,6 +11887,9 @@ function createBuildingInspectionExplanationPreview() {
 function createDocumentDecisionSelect(field) {
   const label = document.createElement("label");
   label.className = "field";
+  label.classList.toggle("is-required", Boolean(field.required || field.critical));
+  label.classList.toggle("is-critical", Boolean(field.critical));
+  label.classList.toggle("is-missing", Boolean(field.required || field.critical) && !hasCompletionValue(state.fields[field.key]));
 
   const select = document.createElement("select");
   select.dataset.field = field.key;
@@ -17097,14 +17109,14 @@ function getReviewedDocumentChronologicalEntries(rows = state.tables?.documents 
 function getArchitecturalProjectReviewedDocumentRows() {
   if (normalizeYesNoChoice(state.fields.hasArchitecturalProject || "Evet") === "Hayır") return [];
 
-  const createProjectRow = (type, date, no, institution) => {
-    if (![type, date, no].some((value) => String(value || "").trim())) return null;
+  const createProjectRow = (projectType, date, no, institution) => {
+    if (![projectType, date, no].some((value) => String(value || "").trim())) return null;
     return {
-      c0: String(type || "Onaylı Mimari Projesi").trim(),
+      c0: String(projectType || "Onaylı Mimari Projesi").trim(),
       c1: String(institution || "").trim(),
       c2: String(date || "").trim(),
       c3: String(no || "").trim(),
-      c4: "Mimari Proje",
+      c4: String(projectType || "Mimari Proje").trim(),
     };
   };
 
@@ -17114,13 +17126,13 @@ function getArchitecturalProjectReviewedDocumentRows() {
         state.fields.titleProjectType,
         state.fields.titleProjectDate,
         state.fields.titleProjectNo,
-        formatProjectReviewLocation("Webtapu"),
+        formatProjectInstitutionForSummary("Webtapu"),
       ),
       createProjectRow(
         state.fields.municipalityProjectType,
         state.fields.municipalityProjectDate,
         state.fields.municipalityProjectNo,
-        formatProjectReviewLocation("Belediye"),
+        formatProjectInstitutionForSummary("Belediye"),
       ),
     ].filter(Boolean);
   }
@@ -26427,6 +26439,9 @@ const comparableViewModeOptions = [
   { value: "land", label: "Arsa / Tarla / Meyve Bahçesi Emsalleri" },
 ];
 const comparableResidentialOnlyFieldKeys = new Set(["c4", "c5", "c6", "c8", "c11", "c12", "c13", "c16", "calcRentUnitValue"]);
+// m2/değer alanları: giriş kutusundan çıkarken (blur) tr-TR binler+ondalık
+// ayracıyla gösterilir (bkz. formatComparableNumericInputValue).
+const comparableNumericInputFieldKeys = new Set(["c12", "c13", "c24", "c14", "c15", "c16"]);
 const comparableLandOnlyFieldKeys = new Set(["c24", "c25", "c26", "c27", "c28", "c29", "c31", "calcCalculatedEmsalUnitValue", "calcAdjustedCalculatedEmsalUnitValue"]);
 const comparableTarlaZoningFieldKeys = new Set(["c25", "c26", "c27", "c28", "c31"]);
 const comparableRoadFrontageOptions = ["Kadastro yola cephesiz", "Kadastro yola cepheli", "İmar yoluna cepheli", "Asfalt yola cepheli", "Açılmamış imar yoluna cepheli"];
@@ -27449,7 +27464,9 @@ function createComparableMatrixCell(section, field, row, rowIndex) {
   control.addEventListener("blur", () => {
     if (control.tagName === "SELECT" || field.type === "date") return;
     if (field.key === "c10") return;
-    const formattedValue = normalizeReportTableValue(section, field.label, control.value);
+    const formattedValue = comparableNumericInputFieldKeys.has(field.key)
+      ? formatComparableNumericInputValue(control.value)
+      : normalizeReportTableValue(section, field.label, control.value);
     if (formattedValue === control.value) return;
     control.value = formattedValue;
     row[field.key] = formattedValue;
@@ -28041,6 +28058,22 @@ function parseComparablePercent(value) {
   const number = parseComparableNumber(value);
   if (!Number.isFinite(number)) return Number.NaN;
   return number > 1 ? number / 100 : number;
+}
+
+// Emsal matrisindeki m2/değer alanları (c12/c13/c24/c14/c15/c16) ham "4000000"
+// gibi giriliyordu; kullanıcı talebi geregi diğer para/alan alanlarıyla
+// (bkz. normalizeValuationInputValue) aynı tr-TR binler+ondalık ayracı ile
+// gösterilir: 4.000.000 / 3.542,24. Birim (m²/TL) eklenmez — sütun başlığı
+// zaten birimi belirtiyor.
+function formatComparableNumericInputValue(value) {
+  const text = String(value ?? "").trim();
+  if (!text) return "";
+  const number = parseComparableNumber(text);
+  if (!Number.isFinite(number)) return text;
+  return number.toLocaleString("tr-TR", {
+    minimumFractionDigits: Number.isInteger(number) ? 0 : 2,
+    maximumFractionDigits: 2,
+  });
 }
 
 function formatComparableMoney(value, suffix = " TL") {
@@ -28749,6 +28782,13 @@ function createTable(section) {
         input.className = "table-textarea table-textarea-description";
       }
       input.value = input.type === "date" ? toComparableDateInputValue(row[key] || "") : row[key] || "";
+      if (input.tagName === "SELECT" && row[key] && !Array.from(input.options).some((option) => option.value === row[key])) {
+        const generatedOption = document.createElement("option");
+        generatedOption.value = row[key];
+        generatedOption.textContent = row[key];
+        input.append(generatedOption);
+        input.value = row[key];
+      }
       if (isArchitecturalProject) {
         input.disabled = true;
         input.classList.add("is-readonly");
@@ -29355,12 +29395,235 @@ function renderDocuments() {
   });
 }
 
+const completionCriticalFields = {
+  case: ["appointmentType"],
+  title: [
+    "titleOwnershipKind",
+    "titleRecordChange",
+    "titlePropertyId",
+    "groundType",
+    "titleCity",
+    "titleDistrict",
+    "titleNeighborhood",
+    "locationName",
+    "blockNo",
+    "parcelNo",
+    "sheetNo",
+    "landArea",
+    "titleQuality",
+    "titleBlockName",
+    "titleFloor",
+    "unitNo",
+    "share",
+    "denominator",
+    "registryVolume",
+    "registryPage",
+    "mainPropertyQuality",
+  ],
+  planning: ["imarInfoInstitution", "planScale", "planName", "legend"],
+  documents: ["hasEkb"],
+  land: [],
+  valuation: ["legalValue", "currentValue", "legalRent", "currentRent", "landUnitValue"],
+  output: ["expenseTitleDeedCount", "expenseMunicipalityFeeReceipt"],
+};
+
+function hasCompletionValue(value) {
+  if (Array.isArray(value)) return value.length > 0;
+  return String(value ?? "").trim().length > 0;
+}
+
+const missingCriticalTargetOverrides = {
+  "Adres ve Konum|Kroki Kaydet": { sectionId: "address", selector: "[data-map-save]" },
+  "Belgeler ve Proje|Cezai Karar Var mı?": { sectionId: "documents", selector: '[data-field="penaltyDecision"]' },
+  "Belgeler ve Proje|Statik Uygunluk": { sectionId: "documents", selector: '[data-field="staticSuitability"]' },
+  "Belgeler ve Proje|Sözleşme Aktif mi?": { sectionId: "documents", selector: '[data-field="buildingInspectionContractActive"]' },
+  "Emsaller|En az 4 emsal girilmeli": { sectionId: "comparables", selector: "[data-comparable-field]" },
+};
+
+function getMissingCriticalEntries() {
+  return getMissingRequiredFields().map((entry) => {
+    const separator = entry.indexOf(": ");
+    const sectionTitle = separator >= 0 ? entry.slice(0, separator) : "";
+    const label = separator >= 0 ? entry.slice(separator + 2) : entry;
+    const override = missingCriticalTargetOverrides[`${sectionTitle}|${label}`];
+    if (override) return { entry, sectionTitle, label, ...override };
+
+    const section = sections.find((item) => item.title === sectionTitle);
+    const field = section?.fields.find((item) => item.label === label);
+    return {
+      entry,
+      sectionTitle,
+      label,
+      sectionId: section?.id || activeSectionId,
+      selector: field ? `[data-field="${field.key}"]` : "",
+    };
+  });
+}
+
+function focusMissingCriticalEntry(entry) {
+  document.querySelector(".modal-overlay")?.remove();
+  setActiveSection(entry.sectionId);
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      const control = entry.selector ? document.querySelector(entry.selector) : null;
+      const target = control?.closest(".field, .subsection, .section-card") || control || document.querySelector(".section-card");
+      target?.scrollIntoView({ behavior: "smooth", block: "center" });
+      if (control instanceof HTMLElement) {
+        control.focus({ preventScroll: true });
+      }
+    });
+  });
+}
+
+function openMissingCriticalFieldsModal() {
+  document.querySelector(".modal-overlay")?.remove();
+
+  const entries = getMissingCriticalEntries();
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay missing-critical-overlay";
+
+  const card = document.createElement("section");
+  card.className = "modal-card missing-critical-modal";
+  card.setAttribute("role", "dialog");
+  card.setAttribute("aria-modal", "true");
+  card.setAttribute("aria-labelledby", "missingCriticalModalTitle");
+
+  const head = document.createElement("div");
+  head.className = "modal-head";
+  const title = document.createElement("h3");
+  title.id = "missingCriticalModalTitle";
+  title.textContent = entries.length ? `Eksik kritik alanlar (${entries.length})` : "Eksik kritik alan yok";
+  const closeButton = document.createElement("button");
+  closeButton.type = "button";
+  closeButton.className = "modal-close";
+  closeButton.setAttribute("aria-label", "Kapat");
+  closeButton.textContent = "×";
+  const closeModal = () => {
+    overlay.remove();
+    document.removeEventListener("keydown", closeWithEscape);
+  };
+  const closeWithEscape = (event) => {
+    if (event.key === "Escape") closeModal();
+  };
+  closeButton.addEventListener("click", closeModal);
+  head.append(title, closeButton);
+
+  const body = document.createElement("div");
+  body.className = "modal-body missing-critical-modal-body";
+  if (!entries.length) {
+    const message = document.createElement("p");
+    message.className = "missing-critical-empty";
+    message.textContent = "Bu raporda eksik kritik alan bulunmuyor.";
+    body.append(message);
+  } else {
+    const intro = document.createElement("p");
+    intro.className = "missing-critical-intro";
+    intro.textContent = "Bir alana tıklayarak doğrudan ilgili bölüme gidebilirsiniz.";
+    const list = document.createElement("div");
+    list.className = "missing-critical-list";
+    entries.forEach((entry) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "missing-critical-item";
+      const section = document.createElement("span");
+      section.className = "missing-critical-section";
+      section.textContent = entry.sectionTitle;
+      const label = document.createElement("strong");
+      label.textContent = entry.label;
+      button.append(section, label);
+      button.addEventListener("click", () => focusMissingCriticalEntry(entry));
+      list.append(button);
+    });
+    body.append(intro, list);
+  }
+
+  card.append(head, body);
+  overlay.append(card);
+  overlay.addEventListener("click", (event) => {
+    if (event.target === overlay) closeModal();
+  });
+  document.addEventListener("keydown", closeWithEscape);
+  document.body.append(overlay);
+  closeButton.focus();
+}
+
+function isIndependentSectionGroundType(value = state.fields.groundType) {
+  const groundType = foldTurkish(value).replace(/[^A-Z]/g, "");
+  return groundType === "KATMULKIYETI" || groundType === "KATIRTIFAKI";
+}
+
+function isCompletionCriticalField(sectionId, fieldKey) {
+  const keys = getCompletionCriticalFieldKeys(sectionId);
+  if (!keys.includes(fieldKey)) return false;
+  if (sectionId === "land") return isLandPropertyForBankTemplate();
+  if (sectionId === "valuation" && isLandPropertyForBankTemplate() && ["legalRent", "currentRent", "landUnitValue"].includes(fieldKey)) {
+    return false;
+  }
+  if (sectionId === "title" && ["titleQuality", "unitNo"].includes(fieldKey)) {
+    return isIndependentSectionGroundType();
+  }
+  return true;
+}
+
+function getCompletionCriticalFieldKeys(sectionId) {
+  const keys = completionCriticalFields[sectionId] || [];
+  if (sectionId !== "land") return keys;
+  const landChoiceKeys = getSectionFieldDefinitions("land")
+    .filter((field) => field.type === "select" && !field.hidden)
+    .map((field) => field.key);
+  return [...new Set([...keys, ...landChoiceKeys])];
+}
+
+function getSectionFieldDefinitions(sectionId) {
+  return sections.find((section) => section.id === sectionId)?.fields || [];
+}
+
+function isRequiredFieldExemptFromCompletion(sectionId, fieldKey) {
+  return sectionId === "title"
+    && ["titleQuality", "unitNo"].includes(fieldKey)
+    && !isIndependentSectionGroundType();
+}
+
+function getSectionField(sectionId, fieldKey) {
+  return sections.find((section) => section.id === sectionId)?.fields.find((field) => field.key === fieldKey);
+}
+
 function getMissingRequiredFields() {
-  return getVisibleSections().flatMap((section) =>
+  const missing = [];
+  const addMissing = (sectionTitle, label, isMissing) => {
+    const entry = `${sectionTitle}: ${label}`;
+    if (isMissing && !missing.includes(entry)) missing.push(entry);
+  };
+
+  getVisibleSections().forEach((section) => {
     section.fields
-      .filter((field) => field.required && !state.fields[field.key])
-      .map((field) => `${section.title}: ${field.label}`),
-  );
+      .filter((field) => field.required && !field.hidden && !shouldHideField(section.id, field.key) && !isRequiredFieldExemptFromCompletion(section.id, field.key))
+      .forEach((field) => addMissing(section.title, field.label, !hasCompletionValue(state.fields[field.key])));
+  });
+
+  Object.keys(completionCriticalFields).forEach((sectionId) => {
+    const section = sections.find((item) => item.id === sectionId);
+    if (!section || shouldHideSection(sectionId)) return;
+    getCompletionCriticalFieldKeys(sectionId).forEach((fieldKey) => {
+      const field = getSectionField(sectionId, fieldKey);
+      if (!field || !isCompletionCriticalField(sectionId, fieldKey) || shouldHideField(sectionId, fieldKey)) return;
+      addMissing(section.title, field.label, !hasCompletionValue(state.fields[fieldKey]));
+    });
+  });
+
+  addMissing("Adres ve Konum", "Kroki Kaydet", !state.sourceValues?.reportImages?.location);
+  if (!isLandPropertyForBankTemplate()) {
+    addMissing("Belgeler ve Proje", "Cezai Karar Var mı?", !hasCompletionValue(state.fields.penaltyDecision));
+    addMissing("Belgeler ve Proje", "Statik Uygunluk", !hasCompletionValue(state.fields.staticSuitability));
+    if (!hasReviewedOccupancyPermitDocument()) {
+      addMissing("Belgeler ve Proje", "Sözleşme Aktif mi?", !hasCompletionValue(state.fields.buildingInspectionContractActive));
+    }
+  }
+
+  const completedComparableCount = getComparableRows().filter((row) => !isComparableRowEmpty(row)).length;
+  addMissing("Emsaller", "En az 4 emsal girilmeli", completedComparableCount < 4);
+
+  return missing;
 }
 
 function renderValidation() {
@@ -29406,6 +29669,8 @@ function updateStatus() {
   missingCount.textContent = String(missing.length);
   lastSaved.textContent = state.updatedAt ? new Date(state.updatedAt).toLocaleString("tr-TR") : "Henüz yok";
 }
+
+missingCriticalTrigger?.addEventListener("click", openMissingCriticalFieldsModal);
 
 document.querySelector("#saveBtn").addEventListener("click", () => {
   saveState();

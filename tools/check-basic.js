@@ -66,6 +66,38 @@ function main() {
   const reportLibraryJs = readText("cloud/report-library.js");
   const accessControlJs = readText("src/auth/access-control.js");
   assert(
+    indexHtml.includes('id="missingCriticalTrigger"') &&
+      appJs.includes("function openMissingCriticalFieldsModal") &&
+      appJs.includes("function focusMissingCriticalEntry") &&
+      appJs.includes("getMissingCriticalEntries()") &&
+      stylesCss.includes(".missing-critical-item"),
+    "Eksik kritik alan listesi ve alan odaklama akisi bulunamadi."
+  );
+  assert(
+    appJs.includes('c0: String(projectType || "Onaylı Mimari Projesi").trim()') &&
+      appJs.includes('c4: String(projectType || "Mimari Proje").trim()') &&
+      appJs.includes('formatProjectInstitutionForSummary("Webtapu")') &&
+      appJs.includes('formatProjectInstitutionForSummary("Belediye")') &&
+      appJs.includes('generatedOption.value = row[key]'),
+    "Mimari proje satirinin belge turu, kurum veya kapsam alanlari gorunur tutulmuyor."
+  );
+  assert(
+      appJs.includes("const completionCriticalFields") &&
+      appJs.includes('land: []') &&
+      appJs.includes('function getCompletionCriticalFieldKeys(sectionId)') &&
+      appJs.includes('field.type === "select" && !field.hidden') &&
+      appJs.includes('if (sectionId === "land") return isLandPropertyForBankTemplate()') &&
+      appJs.includes('addMissing("Adres ve Konum", "Kroki Kaydet"') &&
+      appJs.includes('addMissing("Emsaller", "En az 4 emsal girilmeli"') &&
+      appJs.includes("function isIndependentSectionGroundType") &&
+      appJs.includes('isLandPropertyForBankTemplate() && ["legalRent", "currentRent", "landUnitValue"].includes(fieldKey)') &&
+      appJs.includes("if (!isLandPropertyForBankTemplate())") &&
+      appJs.includes("function hasReviewedOccupancyPermitDocument()") &&
+      appJs.includes('key: "buildingInspectionContractActive"') &&
+      appJs.includes("critical: true"),
+    "Eksik kritik alan matrisi, kroki, emsal veya zemin tipi/iskan istisnasi korunmuyor."
+  );
+  assert(
     indexHtml.includes('<title>Experify</title>') &&
       indexHtml.includes('<h1>Experify</h1>') &&
       indexHtml.includes('<p>Yarı Otomatik Rapor Oluşturma</p>'),

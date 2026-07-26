@@ -780,12 +780,31 @@ body[data-app-theme="clay"] .brand-mark-icon-navy {
   margin: 12px 0;
 }
 
-.status-strip article {
+.status-strip article,
+.status-strip .status-card {
   min-height: 54px;
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 8px 10px;
   background: var(--surface);
+}
+
+.status-strip .status-card-button {
+  width: 100%;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.status-strip .status-card-button:hover {
+  border-color: var(--green);
+  box-shadow: 0 4px 12px rgba(24, 128, 88, 0.12);
+}
+
+.status-strip .status-card-button:focus-visible {
+  outline: 3px solid rgba(46, 112, 197, 0.32);
+  outline-offset: 2px;
 }
 
 .status-strip span {
@@ -4876,7 +4895,8 @@ td textarea.table-textarea {
     margin: 10px 0 12px;
   }
 
-  .status-strip article {
+  .status-strip article,
+  .status-strip .status-card {
     min-height: 50px;
     padding: 8px;
   }
@@ -5545,7 +5565,8 @@ a:focus-visible,
 }
 
 /* — Durum şeridi kartları — */
-.status-strip article {
+.status-strip article,
+.status-strip .status-card {
   position: relative;
   overflow: hidden;
   border-radius: var(--radius-m);
@@ -5555,7 +5576,8 @@ a:focus-visible,
     box-shadow var(--speed-fast) var(--ease-out);
 }
 
-.status-strip article::before {
+.status-strip article::before,
+.status-strip .status-card::before {
   content: "";
   position: absolute;
   left: 0;
@@ -5567,10 +5589,67 @@ a:focus-visible,
 }
 
 @media (hover: hover) {
-  .status-strip article:hover {
+  .status-strip article:hover,
+  .status-strip .status-card:hover {
     transform: translateY(-2px);
     box-shadow: var(--shadow-2);
   }
+}
+
+.missing-critical-modal {
+  width: min(520px, 100%);
+}
+
+.missing-critical-modal-body {
+  display: grid;
+  gap: 12px;
+}
+
+.missing-critical-intro,
+.missing-critical-empty {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.missing-critical-list {
+  display: grid;
+  gap: 8px;
+  max-height: min(56vh, 430px);
+  overflow: auto;
+  padding-right: 3px;
+}
+
+.missing-critical-item {
+  display: grid;
+  gap: 3px;
+  width: 100%;
+  min-height: 58px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface-muted);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--speed-fast) var(--ease-out), background var(--speed-fast) var(--ease-out);
+}
+
+.missing-critical-item:hover {
+  border-color: var(--green);
+  background: var(--green-soft);
+}
+
+.missing-critical-item:focus-visible {
+  outline: 3px solid rgba(39, 144, 103, 0.24);
+  outline-offset: 2px;
+}
+
+.missing-critical-section {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
 }
 
 /* — Alt bileşen yüzeyleri — */
