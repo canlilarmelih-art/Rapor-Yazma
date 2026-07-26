@@ -65,7 +65,14 @@ global.state = {
       { c0: "Ali Veli", c1: "1/1", c2: "Satış", c3: "01.01.2026", c4: "123" },
       {}, // bos satir dahil edilmemeli
     ],
-    documents: [], // tamamen bos tablo: sayfa hic olusmamali
+    // Belge tarihleri ISO saklanir; Excel'e gun.ay.yil olarak yazilmali.
+    documents: [
+      { c0: "Yeni Yapı Ruhsatı", c1: "Yıldırım Belediyesi", c2: "1994-07-15", c3: "653/09", c4: "Tam" },
+      { c0: "Tadilat Ruhsatı", c1: "Yıldırım Belediyesi", c2: "2020-1-5", c3: "697/19", c4: "" },
+      { c0: "İsim Değişikliği", c1: "Yıldırım Belediyesi", c2: "27.03.2023", c3: "750/04", c4: "" },
+    ],
+    // Tamamen bos tablo: sayfa hic olusmamali
+    encumbranceDeclarations: [],
     encumbranceAnnotations: [
       { c0: "Haciz", c1: "Test Açıklama", c2: "5000", c3: "01.02.2026", c4: "456" },
     ],
@@ -240,7 +247,8 @@ assert(result.sheetNames.includes("Masraf Tablosu"), "Masraf Tablosu sayfasi yok
 assert(result.sheetNames.includes("Değerleme ve Emsaller"), "Birlesik Degerleme ve Emsaller sayfasi yok.");
 assert(!result.sheetNames.includes("Şerhler"), "Şerhler artik ayri bir sayfa olmamali (Takyidat'a tasindi).");
 assert(!result.sheetNames.includes("Emsal kayıtları"), "Emsal kayitlari artik ayri bir sayfa olmamali (Değerleme ve Emsaller'e tasindi).");
-assert(!result.sheetNames.includes("İncelenen belgeler"), "Tamamen bos 'İncelenen belgeler' tablosu icin sayfa olusturulmamali.");
+assert(result.sheetNames.includes("İncelenen belgeler"), "Dolu 'İncelenen belgeler' tablosu icin sayfa olusmali.");
+assert(!result.sheetNames.includes("Beyanlar - Hak ve Mükellefiyetler"), "Tamamen bos 'Beyanlar' tablosu icin sayfa olusturulmamali.");
 
 async function verifyBlob() {
   const buf = await capturedBlob.blob.arrayBuffer();
@@ -287,6 +295,21 @@ async function verifyBlob() {
   const combinedXml = sheetXmlByName.get("Değerleme ve Emsaller");
   assert(combinedXml.includes("<t>Emsal Kayıtları</t>"), "Değerleme ve Emsaller sayfasinda 'Emsal Kayıtları' alt tablo basligi eksik.");
   assert(combinedXml.includes("<t>sahibinden.com</t>"), "Değerleme ve Emsaller sayfasinda emsal satiri eksik.");
+
+  // --- Belge tarihi bicimi (kullanici bildirimi) -------------------------
+  // "İncelenen belgeler" sayfasinda tarih ISO (1994-07-15) olarak geliyordu;
+  // gun.ay.yil olmali. Tarih OLMAYAN hucreler bozulmamali.
+  const belgelerXml = sheetXmlByName.get("İncelenen belgeler");
+  assert(belgelerXml.includes("<t>15.07.1994</t>"), "ISO tarih (1994-07-15) gun.ay.yil'a cevrilmemis.");
+  assert(!/<t>\d{4}-\d{2}-\d{2}<\/t>/.test(belgelerXml), "Sayfada hala ISO bicimli tarih var.");
+  assert(belgelerXml.includes("<t>05.01.2020</t>"), "Tek haneli ISO tarih (2020-1-5) sifir dolgulu cevrilmemis.");
+  assert(belgelerXml.includes("<t>27.03.2023</t>"), "Zaten gun.ay.yil olan tarih korunmamis.");
+  assert(belgelerXml.includes("<t>653/09</t>") && belgelerXml.includes("<t>750/04</t>"), "Belge no (653/09) tarih sanilip bozulmus.");
+  assert(belgelerXml.includes("<t>Yeni Yapı Ruhsatı</t>"), "Belge turu hucresi eksik.");
+  // Hisse "1/1" gibi degerler de tarih sanilmamali
+  const maliklerDateSafe = sheetXmlByName.get("Malikler");
+  assert(maliklerDateSafe.includes("<t>1/1</t>"), "Hisse (1/1) degeri bozulmus.");
+  assert(maliklerDateSafe.includes("<t>01.01.2026</t>"), "Malikler tapu tarihi korunmamis.");
 
   const genelXml = sheetXmlByName.get("Genel Bilgiler");
   assert(genelXml.includes("<t>Test Ekspertiz Raporu</t>") && genelXml.includes("<t>İş Adı</t>"), "Genel Bilgiler sayfasinda is adi eksik.");

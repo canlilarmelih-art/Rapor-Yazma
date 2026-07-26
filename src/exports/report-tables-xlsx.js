@@ -626,11 +626,31 @@
   // alta olsun (hücre birleşimleri korunarak).
   const TAKYIDAT_KEYS = ["encumbranceDeclarations", "encumbranceAnnotations", "encumbranceMortgages"];
 
+  // Tarih hücrelerini gün.ay.yıl'a çevirir. "İncelenen belgeler" tablosu
+  // tarihleri ISO (1994-07-15) olarak saklıyor; ham grid doğrudan okunduğu
+  // için Excel'e de ISO olarak düşüyordu. app.js'teki dateIsoToTr aynı işi
+  // yapar (ISO ve g/a/Y biçimlerini normalize eder, TARİH OLMAYAN değeri
+  // aynen döndürür) — yüklüyse o kullanılır, değilse aynı davranış yerelde.
+  // Desenler baştan sona sabitli olduğundan "1/1" (hisse) veya "653/09"
+  // (belge no) gibi değerler etkilenmez.
+  function toTrDate(value) {
+    const text = String(value ?? "").trim();
+    if (!text) return "";
+    if (typeof window !== "undefined" && typeof window.dateIsoToTr === "function") {
+      try { return window.dateIsoToTr(text); } catch (error) { /* yedeğe düş */ }
+    }
+    const iso = text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[T\s].*)?$/);
+    if (iso) return `${iso[3].padStart(2, "0")}.${iso[2].padStart(2, "0")}.${iso[1]}`;
+    const local = text.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);
+    if (local) return `${local[1].padStart(2, "0")}.${local[2].padStart(2, "0")}.${local[3]}`;
+    return text;
+  }
+
   function rawGridCellGridFor(def) {
     const tableState = (typeof state !== "undefined" && state.tables && state.tables[def.key]) || [];
     const filledRows = tableState.filter(isRowFilled);
     if (!filledRows.length) return null;
-    const rows = filledRows.map((row) => def.columns.map((_, columnIndex) => row[`c${columnIndex}`] || ""));
+    const rows = filledRows.map((row) => def.columns.map((_, columnIndex) => toTrDate(row[`c${columnIndex}`] || "")));
     return rawGridToCellGrid(def.columns, rows);
   }
 
