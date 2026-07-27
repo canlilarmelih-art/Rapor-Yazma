@@ -231,14 +231,14 @@
   <div class="vk-body">
     <h3>Niteliği</h3>
     <table class="vk-form">
-      <tr><td class="vk-label"><span class="vk-req">*</span> Taşınmazın Mahallindeki Niteliği</td><td class="vk-value"><div>{{MAİN_PROPERTY_QUALİTY}}</div></td><td class="vk-label"><span class="vk-req">*</span> Hali Hazırda Kullanım Durumu</td><td class="vk-value"><div>{{UNİT_USAGE_STATUS}}</div></td></tr>
+      <tr><td class="vk-label"><span class="vk-req">*</span> Taşınmazın Mahallindeki Niteliği</td><td class="vk-value"><div>{{CURRENT_USAGE_NATURE}}</div></td><td class="vk-label"><span class="vk-req">*</span> Hali Hazırda Kullanım Durumu</td><td class="vk-value"><div>{{UNİT_USAGE_STATUS}}</div></td></tr>
       <tr><td class="vk-label"><span class="vk-req">*</span> Fiili Kullanım Amacı</td><td class="vk-value"><div>{{CURRENT_USAGE_NATURE}}</div></td><td class="vk-label">Yasal / Fiili Kullanım Türü Farkı</td><td class="vk-value"><div>{{USAGE_NATURE_DİFFERENCE}}</div></td></tr>
     </table>
 
     <h3>Bağımsız Bölümün Bilgileri</h3>
     <table class="vk-form">
-      <tr><td class="vk-label"><span class="vk-req">*</span> Konut Tipi</td><td class="vk-value"><div>{{TİTLE_QUALİTY}}</div></td><td class="vk-label"><span class="vk-req">*</span> Mevcut Brüt İnşaat Alanı (m²)</td><td class="vk-value"><div>{{CURRENT_AREA}}</div></td></tr>
-      <tr><td class="vk-label"><span class="vk-req">*</span> Yasal Brüt İnşaat Alanı (m²)</td><td class="vk-value"><div>{{LEGAL_AREA}}</div></td><td class="vk-label"><span class="vk-req">*</span> Yapım Yılı</td><td class="vk-value"><div>{{BUİLDİNG_CONSTRUCTİON_YEAR}}</div></td></tr>
+      <tr><td class="vk-label"><span class="vk-req">*</span> Konut Tipi</td><td class="vk-value"><div>{{TİTLE_QUALİTY}}</div></td><td class="vk-label"><span class="vk-req">*</span> Mevcut Brüt İnşaat Alanı (m²)</td><td class="vk-value"><div>{{CURRENT_BUİLDİNG_VALUE_AREA}}</div></td></tr>
+      <tr><td class="vk-label"><span class="vk-req">*</span> Yasal Brüt İnşaat Alanı (m²)</td><td class="vk-value"><div>{{LEGAL_BUİLDİNG_VALUE_AREA}}</div></td><td class="vk-label"><span class="vk-req">*</span> Yapım Yılı</td><td class="vk-value"><div>{{BUİLDİNG_CONSTRUCTİON_YEAR}}</div></td></tr>
       <tr><td class="vk-label"><span class="vk-req">*</span> Yapı Kalitesi</td><td class="vk-value"><div>{{UNİT_MATERİAL_QUALİTY}}</div></td><td class="vk-label">Bakımlı mı, Tadilat İhtiyacı Var mı?</td><td class="vk-value"><div>{{UNİT_MATERİAL_QUALİTY}}</div></td></tr>
       <tr><td class="vk-label"><span class="vk-req">*</span> Isıtma Sistemi</td><td class="vk-value"><div>{{UNİT_HEATİNG_TYPE}}</div></td><td class="vk-label"><span class="vk-req">*</span> Manzara Durumu</td><td class="vk-value"><div>{{UNİT_VİEW_STATUS}}</div></td></tr>
       <tr><td class="vk-label"><span class="vk-req">*</span> Cephe Özellikleri</td><td class="vk-value"><div>{{FACADES}}</div></td><td class="vk-label"><span class="vk-req">*</span> Yapının Toplam Kat Adedi (Bodrum hariç)</td><td class="vk-value"><div>{{TOTAL_FLOORS}}</div></td></tr>
@@ -291,7 +291,6 @@
     </table>
     <p><strong><span class="vk-req">*</span> Ana Gayrimenkulun Tanımı:</strong></p>
     {{MAİN_PROPERTY_DESCRİPTİON_TEXT}}
-    {{BUİLDİNG_FLOOR_SUMMARY_TEXT}}
     <p class="vk-note">Binanın Deprem Dayanıklılığı, Deprem Ön İncelemesi ve Gözlemsel Hasar Durumu: Hasarsız olarak işaretlenir.</p>
 
     <h3>Bağımsız Bölümün Bilgileri — Gayrimenkulun Tanımı, Binadaki Konumu</h3>
@@ -327,7 +326,6 @@
     {{PROJECT_REVIEW_DESCRIPTION}}
     {{REVİEWED_DOCUMENTS_TEXT}}
     {{PROJECT_CONFORMİTY}}
-    {{BUILDING_INSPECTION_EXPLANATION_TEXT}}
     {{STATIC_SUITABILITY_EXPLANATION_TEXT}}
     {{PENALTY_DECISION_EXPLANATION}}
     <table class="vk-form">
@@ -356,7 +354,7 @@
     <p><strong>Varsa Risk Yaratacak Unsurlar:</strong></p>
     <p>Herhangi bir risk unsuru bulunmamaktadır. <em>(VAR İSE AÇIKLANMALIDIR.)</em></p>
     <table class="vk-form">
-      <tr><td class="vk-label"><span class="vk-req">*</span> Bölgede Güvenlik Problemi Var mı?</td><td class="vk-value"><div>{{GABIM_SECURITY}}</div></td><td class="vk-label">Site İçerisinde mi?</td><td class="vk-value"><div>{{SİTE_İÇİNDE_Mİ}}</div></td></tr>
+      <tr><td class="vk-label"><span class="vk-req">*</span> Bölgede Güvenlik Problemi Var mı?</td><td class="vk-value"><div>{{REGION_SECURITY_ISSUE}}</div></td><td class="vk-label">Site İçerisinde mi?</td><td class="vk-value"><div>{{SİTE_İÇİNDE_Mİ}}</div></td></tr>
     </table>
     <div class="vk-btn">Kaydet</div>
   </div>

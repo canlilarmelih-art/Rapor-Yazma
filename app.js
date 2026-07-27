@@ -229,6 +229,16 @@ const sections = [
         options: ["", "Konut Bölgesi", "Ticaret Bölgesi", "Sanayi Bölgesi", "Tarımsal Alan"],
         wide: true,
       },
+      // Banka ekranlarındaki "Bölgede Güvenlik Problemi Var mı?" sorusu.
+      // gabimSecurityText() ile KARIŞTIRILMAMALI: o, sitede özel güvenlik
+      // HİZMETİ olup olmadığını söyler; bu ise bölgenin güvenlik sorunudur.
+      {
+        key: "regionSecurityIssue",
+        label: "Bölgede Güvenlik Problemi Var Mı?",
+        type: "select",
+        defaultValue: "Hayır",
+        options: ["Evet", "Hayır"],
+      },
       {
         key: "agriculturalActivityDensity",
         label: "Tarımsal faaliyet yoğunluğu",

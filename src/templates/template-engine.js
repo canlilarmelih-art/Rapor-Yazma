@@ -726,6 +726,10 @@
     "mainRealEstateProjectSuitable", "mainRealEstateProjectSuitabilityNote",
     "buildingEntranceDoor", "damageStatus", "unitFirstSaleStatus",
     "insuranceValue", "legalIncompleteValue", "currentIncompleteValue",
+    // Yapı (bina) değer satırlarının alan anahtarları: sections içinde değil,
+    // değerleme satırlarında areaKey olarak tanımlı olduğu için buraya elle
+    // eklenir — aksi halde {{LEGAL_BUILDING_VALUE_AREA}} çözümlenmez.
+    "legalBuildingValueArea", "currentBuildingValueArea",
   ];
 
   let foldedFieldIndex = null;
