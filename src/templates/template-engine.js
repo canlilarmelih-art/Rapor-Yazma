@@ -568,6 +568,14 @@
     DAHAONCESATIS: { fn: () => (safeCall("gabimFirstSaleText") === "Evet" ? "HAYIR" : "EVET") },
     SITEICERISINDEMIYERALIYOR: { fn: () => safeCall("gabimSiteWithinText") },
     SITEICINDEMI: { fn: () => safeCall("gabimSiteWithinText") }, // {{SİTE_İÇİNDE_Mİ}}
+    // Vakıf Katılım "İncelenen Belgeler" ekranının üç belge sütunu: iskan,
+    // EN YENİ yapı ruhsatı ve tasdikli mimari proje (tarih + belge no).
+    LATESTBUILDINGPERMITDATE: { fn: () => safeCall("getLatestBuildingPermitDateText") },
+    LATESTBUILDINGPERMITNO: { fn: () => safeCall("getLatestBuildingPermitNoText") },
+    OCCUPANCYPERMITNO: { fn: () => safeCall("getOccupancyPermitNoText") },
+    ARCHITECTURALPROJECTDATE: { fn: () => safeCall("getArchitecturalProjectDateText") },
+    ARCHITECTURALPROJECTNO: { fn: () => safeCall("getArchitecturalProjectNoText") },
+    BUILDINGUSAGETYPES: { fn: () => safeCall("getBuildingUsageTypesText") },
     YASALKATDAGILIM2025: { fn: () => safeCall("buildBuildingFloorMacroSummary") },
     MEVCUTKATDAGILIMI2025: { fn: () => safeCall("buildBuildingFloorMacroSummary") },
     PENCERE: { f: ["windows", "unitWindows"] },

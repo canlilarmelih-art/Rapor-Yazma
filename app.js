@@ -17354,6 +17354,66 @@ function isOccupancyPermitDocument(type) {
   return isBuildingCompletionOccupancyDocument(type);
 }
 
+// Vakıf Katılım "İncelenen Belgeler" ekranı üç ayrı belge sütunu ister:
+// yapı kullanma izin belgesi (iskan), EN YENİ yapı ruhsatı ve tasdikli
+// mimari proje. Belgeler state.tables.documents'ta tutulur;
+// getReviewedDocumentChronologicalEntries eskiden yeniye sıraladığı için
+// listenin SONU en yeni kayıttır.
+function findReviewedDocumentRowBy(predicate, { newest = true } = {}) {
+  const matches = getReviewedDocumentChronologicalEntries()
+    .filter((entry) => predicate(String(entry.row?.c0 || "")));
+  if (!matches.length) return null;
+  return (newest ? matches[matches.length - 1] : matches[0]).row;
+}
+
+function getLatestBuildingPermitDocumentRow() {
+  return findReviewedDocumentRowBy((type) => isPermitLikeDocument(type) && !isOccupancyPermitDocument(type));
+}
+
+function getOccupancyPermitDocumentRow() {
+  return findReviewedDocumentRowBy((type) => isOccupancyPermitDocument(type));
+}
+
+function getArchitecturalProjectDocumentRow() {
+  return findReviewedDocumentRowBy((type) => /PROJE/.test(foldTurkish(type)));
+}
+
+// Şablon yer tutucuları için tarih (gün.ay.yıl) ve belge no okuyucuları.
+function reviewedDocumentDateText(row) {
+  return row ? dateIsoToTr(String(row.c2 || "").trim()) : "";
+}
+
+function reviewedDocumentNoText(row) {
+  return row ? String(row.c3 || "").trim() : "";
+}
+
+// "Kullanım Türü" sütunu: blokta hangi nitelikler var? Kat dağılımı
+// tablosundaki (state.tables.buildingFloors) daire/dükkan/ofis/depo adetleri
+// toplanır. Yalnızca daire varsa "Mesken"; dükkan veya ofis de varsa
+// "Mesken ve İşyeri" biçiminde birleşik yazılır (kullanıcı talimatı).
+function getBuildingUsageTypesText() {
+  const rows = Array.isArray(state.tables?.buildingFloors) ? state.tables.buildingFloors : [];
+  const totals = { residential: 0, shop: 0, office: 0, storage: 0 };
+  rows.forEach((row) => {
+    Object.keys(totals).forEach((key) => {
+      totals[key] += parseBuildingFloorCount(row?.[key]) || 0;
+    });
+  });
+  const labels = [];
+  if (totals.residential) labels.push("Mesken");
+  if (totals.shop || totals.office) labels.push("İşyeri");
+  if (totals.storage) labels.push("Depo");
+  if (!labels.length) return "";
+  if (labels.length === 1) return labels[0];
+  return `${labels.slice(0, -1).join(", ")} ve ${labels[labels.length - 1]}`;
+}
+
+function getLatestBuildingPermitDateText() { return reviewedDocumentDateText(getLatestBuildingPermitDocumentRow()); }
+function getLatestBuildingPermitNoText() { return reviewedDocumentNoText(getLatestBuildingPermitDocumentRow()); }
+function getOccupancyPermitNoText() { return reviewedDocumentNoText(getOccupancyPermitDocumentRow()); }
+function getArchitecturalProjectDateText() { return reviewedDocumentDateText(getArchitecturalProjectDocumentRow()); }
+function getArchitecturalProjectNoText() { return reviewedDocumentNoText(getArchitecturalProjectDocumentRow()); }
+
 function buildOccupancyPermitDocumentSentence(row) {
   const prefix = buildMissingOccupancyPermitArchivePrefix(row.institution);
   if (!row.date || !row.no) {
@@ -20364,7 +20424,6 @@ function resetTakbisTitleDerivedFields() {
     "titleCity",
     "titleDistrict",
     "titleNeighborhood",
-    "locationName",
     "blockNo",
     "parcelNo",
     "titleBlockName",
@@ -25740,8 +25799,16 @@ function gabimTotalReducedAreaText(mode = "legal") {
   return formatUnitReducedAreaValue(calculateReducedUnitFloorTotal(rows, mode));
 }
 
+// "Site içerisinde mi?" yalnızca GERÇEKTEN site ise Evet olmalı. Apartman adı
+// (addressSiteName) tek başına site anlamına gelmez — tek bloklu bir apartmanın
+// da adı vardır. Ölçüt, ana gayrimenkul metinlerinde kullanılan kanonik kuralla
+// aynıdır (bkz. getMainPropertyStructureContext): blok adı VARSA ya da blok
+// adedi girilmiş ve "Tek" değilse site sayılır.
 function gabimSiteWithinText() {
-  return gabimField("addressSiteName", "titleBlockName") ? "Evet" : "Seçiniz";
+  const blockCountText = gabimField("buildingBlockCount");
+  const isSite = Boolean(gabimField("titleBlockName"))
+    || Boolean(blockCountText && blockCountText.toLocaleLowerCase("tr-TR") !== "tek");
+  return isSite ? "Evet" : "Hayır";
 }
 
 function gabimCarparkText(keyword) {
@@ -29405,13 +29472,11 @@ const completionCriticalFields = {
     "titleCity",
     "titleDistrict",
     "titleNeighborhood",
-    "locationName",
     "blockNo",
     "parcelNo",
     "sheetNo",
     "landArea",
     "titleQuality",
-    "titleBlockName",
     "titleFloor",
     "unitNo",
     "share",

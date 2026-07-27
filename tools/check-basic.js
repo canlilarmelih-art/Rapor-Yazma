@@ -83,6 +83,8 @@ function main() {
   );
   assert(
       appJs.includes("const completionCriticalFields") &&
+      !appJs.slice(appJs.indexOf("const completionCriticalFields"), appJs.indexOf("function hasCompletionValue")).includes('"locationName"') &&
+      !appJs.slice(appJs.indexOf("const completionCriticalFields"), appJs.indexOf("function hasCompletionValue")).includes('"titleBlockName"') &&
       appJs.includes('land: []') &&
       appJs.includes('function getCompletionCriticalFieldKeys(sectionId)') &&
       appJs.includes('field.type === "select" && !field.hidden') &&

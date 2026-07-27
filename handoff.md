@@ -5,6 +5,16 @@ Son güncelleme: 2026-07-21 · Servis edilen sürüm: **app.js?v=20260721-1530**
 Bu belge, bir sonraki geliştirici/oturum için projeyi çalıştırma, doğrulama ve bu
 oturumda yapılanları özetler.
 
+## 0.0.214 - 2026-07-27 - Mevkii ve blok kritik alan istisnası
+
+Tapu ve Mülkiyet bölümündeki `Mevkii` ile `Blok` alanları merkezi kritik alan
+matrisinden çıkarıldı. Bilgiler formda ve rapor çıktısında korunur, ancak boş
+olmaları artık üst durum şeridindeki eksik kritik alan sayacını artırmaz.
+
+Değişiklik öncesi yedek:
+`backups/before-title-mevki-block-critical-exemption_2026-07-27_02-41-05`.
+Graf indeksi yenilenmedi. Cache sürümü: `app.js?v=20260727-1145`.
+
 ## 0.0.213 - 2026-07-27 - Arsa özellikleri seçimleri kritik alan oldu
 
 Arsa/Arazi şablonlarında Arsa Özellikleri bölümündeki görünür tüm açılır seçimler

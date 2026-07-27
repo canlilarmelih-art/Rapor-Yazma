@@ -595,7 +595,7 @@ const reportMapPlacementRules = {
   "isbankasi.html": ["KONUM BİLGİLERİ", "ÖZELLİKLER SEKMESİ"],
   "kuveytturk.html": ["GAYRİMENKULÜN AÇIK ADRESİ", "NİTELİĞİ"],
   "vakifbank.html": ["HARİTA KONUM", "TAKYİDAT"],
-  "vakifkatilim.html": ["Tapu Sekmesi ve Konum", "Özellikler Sekmesi"],
+  "vakifkatilim.html": ["3. TALEP SEKMESİ — KONUM", "4. RAPOR SEKMESİ"],
   "yapikredi.html": ["Adres Bilgileri", "Ana Gayrimenkul Site Özellikleri"],
   "ziraat.html": ["MALİK BİLGİLERİ", "4. GAYRİMENKUL NİTELİK BİLGİLERİ"],
 };
