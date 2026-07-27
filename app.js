@@ -17366,11 +17366,17 @@ function isOccupancyPermitDocument(type) {
 
 // Vakıf Katılım "İncelenen Belgeler" ekranı üç ayrı belge sütunu ister:
 // yapı kullanma izin belgesi (iskan), EN YENİ yapı ruhsatı ve tasdikli
-// mimari proje. Belgeler state.tables.documents'ta tutulur;
-// getReviewedDocumentChronologicalEntries eskiden yeniye sıraladığı için
-// listenin SONU en yeni kayıttır.
+// mimari proje.
+//
+// Kaynak olarak getReviewedDocumentTableEntries() kullanılır — düz
+// state.tables.documents DEĞİL. Sebebi: mimari proje satırı kullanıcı
+// tarafından girilmez, getArchitecturalProjectReviewedDocumentRows()
+// tarafından tapu/belediye proje alanlarından ÜRETİLİR ve yalnızca bu
+// birleşik listede yer alır. Yalnızca documents okunduğunda "Tasdikli
+// Mimari Projesi" sütunu boş kalıyordu (kullanıcı bildirimi).
+// Liste eskiden yeniye sıralı olduğu için SON eşleşme en yeni kayıttır.
 function findReviewedDocumentRowBy(predicate, { newest = true } = {}) {
-  const matches = getReviewedDocumentChronologicalEntries()
+  const matches = getReviewedDocumentTableEntries()
     .filter((entry) => predicate(String(entry.row?.c0 || "")));
   if (!matches.length) return null;
   return (newest ? matches[matches.length - 1] : matches[0]).row;

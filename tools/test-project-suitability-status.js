@@ -91,4 +91,68 @@ assert.equal(reviewedEntries[1].row.c0, "Onaylı Mimari Projesi");
 assert.equal(reviewedEntries[1].row.c4, "Onaylı Mimari Projesi");
 assert.equal(reviewedEntries[1].isArchitecturalProject, true);
 
+// --- Vakıf Katılım "İncelenen Belgeler" üç belge sütunu ---------------------
+// Regresyon: "Tasdikli Mimari Projesi" sütunu boş geliyordu, çünkü arama
+// yalnızca state.tables.documents üzerinde yapılıyordu; mimari proje satırı
+// ise ÜRETİLEN bir satır ve sadece getReviewedDocumentTableEntries()
+// birleşik listesinde yer alıyor.
+const docColumnStart = appSource.indexOf("function isPermitLikeDocument");
+const docColumnEnd = appSource.indexOf("function buildOccupancyPermitDocumentSentence", docColumnStart);
+assert(docColumnStart >= 0 && docColumnEnd > docColumnStart, "Belge sutunu yardimcilari bulunamadi.");
+const foldTr = (value) => String(value || "").toLocaleUpperCase("tr-TR")
+  .replaceAll("İ", "I").replaceAll("Ş", "S").replaceAll("Ğ", "G")
+  .replaceAll("Ü", "U").replaceAll("Ö", "O").replaceAll("Ç", "C");
+// Kullanıcının bildirdiği gerçek senaryo: üç ruhsat + üretilen proje satırı.
+const combinedDocumentRows = [
+  { c0: "Yeni Yapı Ruhsatı", c1: "Yıldırım Belediyesi", c2: "21.07.2017", c3: "653/09", c4: "" },
+  { c0: "Tadilat Ruhsatı", c1: "Yıldırım Belediyesi", c2: "24.01.2020", c3: "697/19", c4: "" },
+  { c0: "Kat İrtifakı Projesi", c1: "Webtapu Portalı ve Yıldırım Belediyesi", c2: "24.01.2020", c3: "697/19", c4: "Kat İrtifakı Projesi" },
+  { c0: "İsim Değişikliği Ruhsatı", c1: "Yıldırım Belediyesi", c2: "27.03.2023", c3: "750/04", c4: "" },
+];
+const docColumnContext = {
+  state: { tables: { buildingFloors: [{ residential: "20", shop: "1", office: "", storage: "" }] } },
+  foldTurkish: foldTr,
+  isBuildingCompletionOccupancyDocument: (type) => /YAPI\s*KULLANMA/.test(foldTr(type)),
+  dateIsoToTr: (value) => {
+    const iso = String(value || "").match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+    return iso ? `${iso[3].padStart(2, "0")}.${iso[2].padStart(2, "0")}.${iso[1]}` : String(value || "");
+  },
+  parseBuildingFloorCount: (value) => Number.parseInt(String(value || "0"), 10) || 0,
+  // Birleşik liste: eskiden yeniye sıralı (gerçek fonksiyonun sözleşmesi).
+  getReviewedDocumentTableEntries: () => combinedDocumentRows.map((row, index) => ({ row, index })),
+  // Bilerek yalnızca KULLANICI satırlarını döndürür (üretilen proje satırı yok).
+  // Arama bu kaynağa geri dönerse mimari proje sütunu boşalır ve aşağıdaki
+  // assert patlar — regresyonun tekrar sızmasını engeller.
+  getReviewedDocumentChronologicalEntries: () => combinedDocumentRows
+    .filter((row) => !/PROJE/.test(foldTr(row.c0)))
+    .map((row, index) => ({ row, index })),
+};
+vm.runInNewContext(appSource.slice(docColumnStart, docColumnEnd), docColumnContext);
+
+assert.equal(
+  docColumnContext.getArchitecturalProjectDateText(),
+  "24.01.2020",
+  "Tasdikli Mimari Projesi tarihi bulunamadi (uretilen proje satiri atlanmis)."
+);
+assert.equal(
+  docColumnContext.getArchitecturalProjectNoText(),
+  "697/19",
+  "Tasdikli Mimari Projesi belge no bulunamadi."
+);
+// "En yeni" ruhsat: proje satiri ruhsat sayilmamali, iskan da ruhsat degil.
+assert.equal(
+  docColumnContext.getLatestBuildingPermitDateText(),
+  "27.03.2023",
+  "En yeni yapi ruhsati tarihi yanlis."
+);
+assert.equal(docColumnContext.getLatestBuildingPermitNoText(), "750/04", "En yeni yapi ruhsati no yanlis.");
+// İskan belgesi listede yok → boş kalmalı (uydurma değer üretmemeli).
+assert.equal(docColumnContext.getOccupancyPermitNoText(), "", "Iskan belgesi yokken bos donmeli.");
+// Kullanım Türü: blokta daire + dükkan var → "Mesken ve İşyeri".
+assert.equal(
+  docColumnContext.getBuildingUsageTypesText(),
+  "Mesken ve İşyeri",
+  "Blok kullanim turu daire+dukkan icin 'Mesken ve İşyeri' olmali."
+);
+
 console.log("project suitability status tests passed");
