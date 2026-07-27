@@ -115,6 +115,8 @@ const docColumnContext = {
     tables: { buildingFloors: [{ residential: "20", shop: "1", office: "", storage: "" }] },
   },
   buildDefaultDocumentReviewInstitution: () => "Nilüfer Belediyesi",
+  // Proje inceleme kurumu olarak Belediye + Webtapu birlikte secilmis durum.
+  buildProjectReviewInstitutionSummary: () => "Webtapu Portalı ve Yıldırım Belediyesi",
   parseValuationNumber: (value) => {
     const n = Number.parseFloat(String(value || "").replace(/\./g, "").replace(",", "."));
     return Number.isFinite(n) ? n : Number.NaN;
@@ -163,17 +165,18 @@ assert.equal(
   "Blok kullanim turu daire+dukkan icin 'Mesken ve İşyeri' olmali."
 );
 
-// "İncelendiği Kurum" yalnızca BELEDİYE olmalı: belge satırındaki birleşik
-// kurumdan ("Webtapu Portalı ve X Belediyesi") belediye parçası ayıklanır.
-assert.equal(
-  docColumnContext.getArchitecturalProjectInstitutionText(),
-  "Yıldırım Belediyesi",
-  "Mimari proje kurumu birlesik kurumdan belediyeye indirgenmemis."
-);
+// İskan ve yapı ruhsatı sütunları İncelenen Belgeler tablosundaki kendi
+// satırlarından gelir ve yalnızca BELEDİYE'ye indirgenir.
 assert.equal(
   docColumnContext.getLatestBuildingPermitInstitutionText(),
   "Yıldırım Belediyesi",
   "En yeni ruhsat kurumu belediye olmali."
+);
+// Mimari proje sütunu indirgenmez: Belediye + Webtapu secildiyse IKISI de gelir.
+assert.equal(
+  docColumnContext.getArchitecturalProjectInstitutionText(),
+  "Webtapu Portalı ve Yıldırım Belediyesi",
+  "Mimari proje kurumu proje inceleme kurumundan gelmeli ve indirgenmemeli."
 );
 // Kurum hic yoksa / yalnizca Webtapu ise ilceden varsayilan belediye uretilir.
 assert.equal(

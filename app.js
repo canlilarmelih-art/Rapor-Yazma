@@ -17424,9 +17424,20 @@ function reviewedDocumentInstitutionText(row) {
   return municipalityOnlyInstitution(row ? row.c1 : "");
 }
 
+// Yapı kullanma izin belgesi (iskan) ve yapı ruhsatı sütunları İncelenen
+// Belgeler tablosundaki kendi satırlarından gelir ve belediyeye indirgenir.
 function getOccupancyPermitInstitutionText() { return reviewedDocumentInstitutionText(getOccupancyPermitDocumentRow()); }
 function getLatestBuildingPermitInstitutionText() { return reviewedDocumentInstitutionText(getLatestBuildingPermitDocumentRow()); }
-function getArchitecturalProjectInstitutionText() { return reviewedDocumentInstitutionText(getArchitecturalProjectDocumentRow()); }
+
+// Mimari proje sütunu FARKLI: kurum indirgenmez, proje inceleme kurumu olarak
+// hangileri seçildiyse hepsi yazılır (Belediye + Webtapu seçiliyse ikisi de).
+// buildProjectReviewInstitutionSummary bu birleşimi zaten üretiyor.
+function getArchitecturalProjectInstitutionText() {
+  const summary = String(buildProjectReviewInstitutionSummary() || "").trim();
+  if (summary) return summary;
+  const row = getArchitecturalProjectDocumentRow();
+  return row ? String(row.c1 || "").trim() : "";
+}
 
 // "Kullanım Türü" sütunu: blokta hangi nitelikler var? Kat dağılımı
 // tablosundaki (state.tables.buildingFloors) daire/dükkan/ofis/depo adetleri
