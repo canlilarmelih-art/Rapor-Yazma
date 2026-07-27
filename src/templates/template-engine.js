@@ -575,6 +575,10 @@
     OCCUPANCYPERMITNO: { fn: () => safeCall("getOccupancyPermitNoText") },
     ARCHITECTURALPROJECTDATE: { fn: () => safeCall("getArchitecturalProjectDateText") },
     ARCHITECTURALPROJECTNO: { fn: () => safeCall("getArchitecturalProjectNoText") },
+    // İncelendiği kurum: her sütun kendi belge satırından, yalnızca belediye.
+    OCCUPANCYPERMITINSTITUTION: { fn: () => safeCall("getOccupancyPermitInstitutionText") },
+    LATESTBUILDINGPERMITINSTITUTION: { fn: () => safeCall("getLatestBuildingPermitInstitutionText") },
+    ARCHITECTURALPROJECTINSTITUTION: { fn: () => safeCall("getArchitecturalProjectInstitutionText") },
     BUILDINGUSAGETYPES: { fn: () => safeCall("getBuildingUsageTypesText") },
     // İnşaa seviyesi %100 ise boş döner (natamam satırları anlamsız olur).
     INCOMPLETECONSTRUCTIONLEVEL: { fn: () => safeCall("getIncompleteConstructionLevelText") },

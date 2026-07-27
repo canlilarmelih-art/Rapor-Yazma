@@ -312,7 +312,10 @@
       </tr>
       <tr><td class="dl">Tarihi</td><td>{{OCCUPANCY_PERMIT_DATE}}</td><td>{{LATEST_BUILDING_PERMIT_DATE}}</td><td>{{ARCHITECTURAL_PROJECT_DATE}}</td></tr>
       <tr><td class="dl">Sayısı (No)</td><td>{{OCCUPANCY_PERMIT_NO}}</td><td>{{LATEST_BUILDING_PERMIT_NO}}</td><td>{{ARCHITECTURAL_PROJECT_NO}}</td></tr>
-      <tr><td class="dl">İncelendiği Kurum</td><td>{{DOCUMENT_REVIEW_INSTITUTION}}</td><td>{{DOCUMENT_REVIEW_INSTITUTION}}</td><td>{{DOCUMENT_REVIEW_INSTITUTION}}</td></tr>
+      <!-- İncelendiği Kurum: her sütun kendi belge satırından alınır ve
+           yalnızca BELEDİYE yazılır ("Webtapu Portalı ve ..." birleşik
+           kurumdan belediye parçası ayıklanır) — kullanıcı talimatı. -->
+      <tr><td class="dl">İncelendiği Kurum</td><td>{{OCCUPANCY_PERMIT_INSTITUTION}}</td><td>{{LATEST_BUILDING_PERMIT_INSTITUTION}}</td><td>{{ARCHITECTURAL_PROJECT_INSTITUTION}}</td></tr>
       <!-- Kullanım Alanı (Brüt): kullanıcı talimatı "boş geç". -->
       <tr><td class="dl">Kullanım Alanı (Brüt)</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
       <!-- Kullanım Türü: blokta yalnızca mesken varsa "Mesken"; dükkan vb. de
@@ -323,13 +326,17 @@
     </table>
     {{İNCELENEN_BELGELER_TABLO}}
     <p><strong>İncelenen Diğer Belgeler ve Yapılan Araştırmalar:</strong></p>
+    <!-- PROJECT_CONFORMİTY burada DEĞİL: aykırılık cümlesi zaten
+         PROJECT_REVIEW_DESCRIPTION içindeki uygunluk anlatısında geçiyordu ve
+         paragraf tekrarlanıyordu (kullanıcı bildirimi). Aykırılık varsa aynı
+         metin aşağıdaki "Farklar" kutucuğunda gösterilir. -->
     {{PROJECT_REVIEW_DESCRIPTION}}
     {{REVİEWED_DOCUMENTS_TEXT}}
-    {{PROJECT_CONFORMİTY}}
     {{STATIC_SUITABILITY_EXPLANATION_TEXT}}
     {{PENALTY_DECISION_EXPLANATION}}
     <table class="vk-form">
       <tr><td class="vk-label"><span class="vk-req">*</span> İncelenen Belgelere Göre Mevcut Durum İle Yasal Durum Arasında Fark Var mı?</td><td class="vk-value"><div>{{PROJECT_DİFFERENCE}}</div></td><td class="vk-label"><span class="vk-req">*</span> Parselin Yeri Doğru Olarak Tespit Edildi mi?</td><td class="vk-value"><div>EVET</div></td></tr>
+      <tr><td class="vk-label">İncelenen Belgelere Göre Mevcut Durum İle Yasal Durum Arasındaki Farklar</td><td colspan="3" class="vk-value-wide"><div>{{PROJECT_CONFORMİTY}}</div></td></tr>
     </table>
 
     <h3>İmar Durumu</h3>

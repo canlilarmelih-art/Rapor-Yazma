@@ -17403,6 +17403,31 @@ function reviewedDocumentNoText(row) {
   return row ? String(row.c3 || "").trim() : "";
 }
 
+// "İncelendiği Kurum" sütunu yalnızca BELEDİYE olmalı (kullanıcı talimatı).
+// Belge satırının kurumu "Webtapu Portalı ve X Belediyesi" gibi birleşik
+// olabiliyor; bu durumda sadece belediye parçası alınır. Kurum hiç yoksa ya
+// da yalnızca Webtapu ise ilçeden varsayılan belediye adı üretilir.
+function municipalityOnlyInstitution(value) {
+  const text = String(value || "").trim();
+  if (!text) return buildDefaultDocumentReviewInstitution();
+  const municipality = text
+    .split(/\s+ve\s+/i)
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .find((part) => foldTurkish(part).includes("BELEDIYE"));
+  if (municipality) return municipality;
+  if (foldTurkish(text).includes("WEBTAPU")) return buildDefaultDocumentReviewInstitution();
+  return text;
+}
+
+function reviewedDocumentInstitutionText(row) {
+  return municipalityOnlyInstitution(row ? row.c1 : "");
+}
+
+function getOccupancyPermitInstitutionText() { return reviewedDocumentInstitutionText(getOccupancyPermitDocumentRow()); }
+function getLatestBuildingPermitInstitutionText() { return reviewedDocumentInstitutionText(getLatestBuildingPermitDocumentRow()); }
+function getArchitecturalProjectInstitutionText() { return reviewedDocumentInstitutionText(getArchitecturalProjectDocumentRow()); }
+
 // "Kullanım Türü" sütunu: blokta hangi nitelikler var? Kat dağılımı
 // tablosundaki (state.tables.buildingFloors) daire/dükkan/ofis/depo adetleri
 // toplanır. Yalnızca daire varsa "Mesken"; dükkan veya ofis de varsa

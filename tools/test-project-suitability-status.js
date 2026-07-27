@@ -114,6 +114,7 @@ const docColumnContext = {
     fields: {},
     tables: { buildingFloors: [{ residential: "20", shop: "1", office: "", storage: "" }] },
   },
+  buildDefaultDocumentReviewInstitution: () => "Nilüfer Belediyesi",
   parseValuationNumber: (value) => {
     const n = Number.parseFloat(String(value || "").replace(/\./g, "").replace(",", "."));
     return Number.isFinite(n) ? n : Number.NaN;
@@ -160,6 +161,31 @@ assert.equal(
   docColumnContext.getBuildingUsageTypesText(),
   "Mesken ve İşyeri",
   "Blok kullanim turu daire+dukkan icin 'Mesken ve İşyeri' olmali."
+);
+
+// "İncelendiği Kurum" yalnızca BELEDİYE olmalı: belge satırındaki birleşik
+// kurumdan ("Webtapu Portalı ve X Belediyesi") belediye parçası ayıklanır.
+assert.equal(
+  docColumnContext.getArchitecturalProjectInstitutionText(),
+  "Yıldırım Belediyesi",
+  "Mimari proje kurumu birlesik kurumdan belediyeye indirgenmemis."
+);
+assert.equal(
+  docColumnContext.getLatestBuildingPermitInstitutionText(),
+  "Yıldırım Belediyesi",
+  "En yeni ruhsat kurumu belediye olmali."
+);
+// Kurum hic yoksa / yalnizca Webtapu ise ilceden varsayilan belediye uretilir.
+assert.equal(
+  docColumnContext.municipalityOnlyInstitution("Webtapu Portalı"),
+  "Nilüfer Belediyesi",
+  "Yalnizca Webtapu iken varsayilan belediye uretilmeli."
+);
+assert.equal(docColumnContext.municipalityOnlyInstitution(""), "Nilüfer Belediyesi", "Bos kurumda varsayilan uretilmeli.");
+assert.equal(
+  docColumnContext.municipalityOnlyInstitution("Nilüfer Belediyesi"),
+  "Nilüfer Belediyesi",
+  "Zaten belediye olan kurum bozulmamali."
 );
 
 // İnşaa seviyesi %100 (ya da boş) ise Değerler ekranındaki natamam satırının
