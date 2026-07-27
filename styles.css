@@ -967,6 +967,45 @@ body[data-app-theme="clay"] .brand-mark-icon-navy {
   grid-row: 2;
 }
 
+.encumbrance-summary-mode-control {
+  display: inline-grid;
+  grid-template-columns: repeat(2, minmax(68px, auto));
+  justify-self: end;
+  width: fit-content;
+  margin-top: 2px;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface-muted);
+}
+
+.encumbrance-summary-mode-control[hidden] {
+  display: none;
+}
+
+.encumbrance-summary-mode-control button {
+  min-height: 30px;
+  padding: 4px 12px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.encumbrance-summary-mode-control button.is-active {
+  background: var(--blue);
+  color: #fff;
+}
+
+.encumbrance-summary-mode-control button:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 1px;
+}
+
 .section-encumbrance .form-grid {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
@@ -1927,6 +1966,51 @@ td .free-lookup input {
 
 .takyidat-table-panel {
   margin-top: 18px;
+}
+
+.encumbrance-count-panel {
+  margin-top: 18px;
+}
+
+.encumbrance-count-panel > h4 {
+  margin: 0 0 10px;
+}
+
+.encumbrance-count-table-shell {
+  overflow-x: auto;
+}
+
+.encumbrance-count-table {
+  width: 100%;
+  min-width: 620px;
+  border-collapse: collapse;
+  table-layout: fixed;
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.encumbrance-count-table th,
+.encumbrance-count-table td {
+  width: 25%;
+  border: 1px solid var(--line);
+  padding: 9px 10px;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.encumbrance-count-table th {
+  background: var(--surface-muted);
+  color: var(--blue);
+  font-size: 11.5px;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.encumbrance-count-table td {
+  background: var(--surface);
+  font-size: 16px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
 }
 
 .takyidat-table-shell {
@@ -3779,29 +3863,60 @@ td textarea.table-textarea {
 
 .table-encumbranceAnnotations {
   table-layout: fixed;
-  min-width: 980px;
+  min-width: 760px;
 }
 
 .table-encumbranceAnnotations th:nth-child(1),
 .table-encumbranceAnnotations td:nth-child(1) {
-  width: 18%;
+  width: 12%;
 }
 
 .table-encumbranceAnnotations th:nth-child(2),
 .table-encumbranceAnnotations td:nth-child(2) {
-  width: 38%;
+  width: 28%;
 }
 
 .table-encumbranceAnnotations th:nth-child(3),
 .table-encumbranceAnnotations td:nth-child(3) {
-  width: 17%;
+  width: 13%;
 }
 
 .table-encumbranceAnnotations th:nth-child(4),
-.table-encumbranceAnnotations td:nth-child(4),
+.table-encumbranceAnnotations td:nth-child(4) {
+  width: 11%;
+}
+
 .table-encumbranceAnnotations th:nth-child(5),
 .table-encumbranceAnnotations td:nth-child(5) {
-  width: 13.5%;
+  width: 9%;
+}
+
+.table-encumbranceAnnotations th:nth-child(6),
+.table-encumbranceAnnotations td:nth-child(6) {
+  position: sticky;
+  right: 44px;
+  z-index: 2;
+  width: 21%;
+  min-width: 140px;
+  box-shadow: -1px 0 0 var(--line);
+}
+
+.table-encumbranceAnnotations th:nth-child(6) {
+  background: #e9eff5;
+}
+
+.table-encumbranceAnnotations td:nth-child(6) {
+  background: var(--surface);
+}
+
+.table-encumbranceAnnotations th:nth-child(7),
+.table-encumbranceAnnotations td:nth-child(7) {
+  position: sticky;
+  right: 0;
+  z-index: 3;
+  width: 44px;
+  min-width: 44px;
+  background: var(--surface);
 }
 
 .table-encumbranceAnnotations td.cell-warning {

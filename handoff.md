@@ -1,9 +1,212 @@
 # Rapor Yazma Programı — Handoff Notu
 
-Son güncelleme: 2026-07-21 · Servis edilen sürüm: **app.js?v=20260721-1530** (styles.css?v=20260720-0215, src/templates/template-engine.js?v=20260721-0045, cloud/cloud-sync.js?v=20260719-2200, cloud/report-library.js?v=20260719-2200, halkbank-risk-rules.js?v=20260707-1812)
+Son güncelleme: 2026-07-28 · Servis edilen sürüm: **app.js?v=20260728-0125** (styles.css?v=20260728-0132, src/templates/template-engine.js?v=20260728-0138, cloud/cloud-sync.js?v=20260719-2200, cloud/report-library.js?v=20260719-2200, halkbank-risk-rules.js?v=20260707-1812)
 
 Bu belge, bir sonraki geliştirici/oturum için projeyi çalıştırma, doğrulama ve bu
 oturumda yapılanları özetler.
+
+## 0.0.226 - 2026-07-28 - Toplu teslim ve 3B kod sinir haritası güncellemesi
+
+Son gönderimden sonra biriken uygulama, template motoru, değer faktörü kuralları,
+stil, doğrulama ve regresyon testi değişiklikleri birlikte teslim kapsamına alındı.
+Yeni takyidat sayım/özet ve çok hisseli TAKBİS malik payı senaryoları bağımsız
+regresyon testleriyle korunuyor.
+
+Değişiklik öncesi yedek:
+`backups/before-final-commit-and-3d-graph-update_2026-07-28_01-52-02`.
+Graphify indeksi güncellendi: `graphify-out/graph.json` artık 21.671 düğüm,
+47.774 ilişki ve 428 topluluk içeriyor. `tools/build-neural-map-data.js` yeniden
+çalıştırıldı; `codebase-map/graph-core.json` 3B harita için 1.600 düğüm ve 5.416
+bağlantı içeren güncel projeksiyona dönüştürüldü.
+
+## 0.0.225 - 2026-07-28 - Template çıktısında seçili Takyidat Özet/Detay modu
+
+Template motorundaki `TAKYIDAT2025`, `TAKYIDATISBANK`, `TAKBISSUMMARY` ve
+`ENCUMBRANCESUMMARYTEXT` placeholder'ları, önce kaydedilmiş `takbisSummary`
+değerini okumak yerine öncelikle `buildEncumbranceSummary()` üreticisini çağırır.
+Bu üretici `encumbranceSummaryMode` seçimini dikkate aldığı için kullanıcı
+`Özet` seçtiğinde en fazla 2000 karakterlik toplulaştırılmış açıklama, `Detay`
+seçtiğinde ise bütün takyidatların yer aldığı sınırsız metin banka template
+dosyasına yazılır. Üretici bulunamazsa eski alan değeri yedek kaynak olarak
+korunur.
+
+Regresyon testi dört placeholder'ın da canlı seçili-mod üreticisine bağlı
+olduğunu denetler. Değişiklik öncesi yedek:
+`backups/before-template-encumbrance-mode-binding_2026-07-28_01-36-01`.
+Graf indeksi kullanıcı talimatı gereği yenilenmedi.
+Template motoru cache sürümü:
+`src/templates/template-engine.js?v=20260728-0138`.
+
+## 0.0.224 - 2026-07-28 - Takyidat açıklaması Özet/Detay görünümü
+
+`Takyidat Açıklaması` alanına koşullu `Özet / Detay` segment kontrolü eklendi.
+Eski mantıkla bütün kayıtları içeren tam açıklama 2000 karakteri aşmıyorsa kontrol
+hiç gösterilmez ve açıklama ayrıntılı haliyle kalır. Tam metin 2000 karakteri
+aşıyorsa `Özet`, şerhleri tür ve adet bazında toplulaştıran en fazla 2000
+karakterlik metni; `Detay` ise karakter kısıtlaması uygulamadan bütün takyidatları
+eski sıralama mantığıyla gösterir.
+
+Seçili görünüm `encumbranceSummaryMode` alanında saklanır ve hem ekrandaki
+`takbisSummary` alanını hem rapor placeholder çıktısını aynı kaynaktan besler.
+Kayıtlar 2000 karakterin altına düştüğünde görünüm otomatik olarak özete sıfırlanır
+ve kontrol gizlenir. Regresyon testine kısa metin, uzun özet ve uzun detay seçimleri
+eklendi.
+
+Değişiklik öncesi yedek:
+`backups/before-encumbrance-summary-toggle_2026-07-28_01-25-37`.
+Graf indeksi kullanıcı talimatı gereği yenilenmedi.
+İlk görsel kontrolde aktif segmentin tanımsız `--navy` değişkeni nedeniyle beyaz
+zeminde kaldığı görüldü; aktif renk mevcut `--blue` tasarım değişkenine bağlandı.
+Bu düzeltme öncesi ek yedek:
+`backups/before-encumbrance-toggle-color-fix_2026-07-28_01-31-55`.
+Cache sürümleri: `app.js?v=20260728-0125`, `styles.css?v=20260728-0132`.
+
+## 0.0.223 - 2026-07-28 - Takyidat sayısal verileri ve 2000 karakterlik özet
+
+Açıklamalar bölümüne dört sütunlu `Takyidat Sayısal Verileri` tablosu eklendi.
+Tablo, TAKBİS verisini Beyanlar, Rehinler (İpotekler), Şerhler ve İrtifaklar
+olarak ayırıp her bölümün kayıt adedini canlı gösterir.
+
+Toplam takyidat kaydı 15'i aştığında Beyan, İpotek ve İrtifak kayıtları
+ayrıntılı bırakılır; Şerhler ise `icrai haciz`, `kamu haczi`, `ihtiyati haciz`
+ve `diğer tür şerh` olarak sayısal biçimde özetlenir. Açıklama 2000 karakteri
+aşmaz, kayıt satırının ortasında kesilmez ve bütün şerhlerin rapor ekindeki
+ayrıntılı takyidat tablosunda sunulduğu belirtilir. Eski kaydedilmiş uzun
+açıklamalar Takyidat veya Açıklamalar bölümü açıldığında güncel kurala göre
+yeniden üretilir.
+
+Gerçek 39 kayıtlı TAKBİS belgesiyle canlı testte sayaçlar `1 Beyan`, `0 Rehin`,
+`11 Şerh`, `27 İrtifak`; özet ise `9 icrai haciz`, `1 kamu haczi`,
+`1 ihtiyati haciz` ve toplam `1907` karakter olarak doğrulandı.
+
+Yeni regresyon testi: `tools/test-encumbrance-count-summary.js`.
+`npm.cmd run verify` ve `git diff --check` başarılı.
+
+Değişiklik öncesi yedek:
+`backups/before-encumbrance-count-summary_2026-07-28_01-00-57`.
+Graf indeksi kullanıcı talimatı gereği yenilenmedi.
+Cache sürümleri: `app.js?v=20260728-0110`, `styles.css?v=20260728-0100`.
+
+## 0.0.222 - 2026-07-28 - Hissedar pay paydası satır taşması
+
+Çok hisseli TAKBİS belgelerinde malik payı `1/132` iken, sayfa başında yan
+sütunda devam eden `9` değeri düz metin yedeği tarafından paydaya eklenerek
+`1/1329` üretiliyordu. Koordinatlı PDF satırları bulunduğunda riskli düz metin
+devam araması kapatıldı. Gerçek payda devamı yalnızca kesir hücresiyle aynı x
+aralığında olduğunda kabul edilir; aynı sütundaki sayfa taşmaları desteklenir.
+
+`tools/test-takbis-owner-share.js` regresyon testi eklendi ve ana test zincirine
+bağlandı. Test hem yan sütundaki sayının dışlanmasını hem de aynı sütundaki
+gerçek payda devamının korunmasını denetler.
+
+Gerçek belge testinde `Canan Aksu`, `Ahmet Ertuğrul Kanak` ve
+`Kamil Erdoğan Kanak` hisseleri ayrı ayrı `1/132` olarak doğrulandı.
+
+Değişiklik öncesi yedek:
+`backups/before-owner-share-denominator-fix_2026-07-28_00-44-56`.
+Graf indeksi yenilenmedi. Cache sürümü: `app.js?v=20260728-0050`.
+
+## 0.0.221 - 2026-07-27 - Takyidat açıklamasında kısıtlı malik
+
+Takyidat Açıklaması ve aynı biçimlendiricileri kullanan rapor metinlerinde,
+malik bazlı her kaydın sonuna `(Kısıtlı Malik: Malik Adı)` ibaresi eklendi.
+Beyan/Hak ve Mükellefiyetlerde `c4`, Şerh ve İpoteklerde `c5` alanı kullanılır.
+Kısıtlı malik alanı boş olan kayıtlarda parantezli ibare hiç üretilmez.
+
+Gerçek çok hisseli TAKBİS belgesiyle canlı testte 37 malik bazlı kaydın
+tamamında ek oluştu; `Tülin Utuğluer` ve `Binnur Ünlükahraman` örnekleri
+doğrulandı, boş malik etiketi oluşmadı.
+
+Değişiklik öncesi yedek:
+`backups/before-encumbrance-summary-restricted-owner_2026-07-27_20-08-55`.
+Graf indeksi yenilenmedi. Cache sürümü: `app.js?v=20260727-2135`.
+
+## 0.0.220 - 2026-07-27 - Şerhlerde kısıtlı malik görünürlüğü
+
+Şerhler tablosunun eski beş sütuna göre tanımlanmış `980px` genişlik ve sütun
+oranları altıncı `Kısıtlı Malik` sütununu dar ekranlarda sağ tarafta görünmez
+bırakıyordu. Tablo altı veri sütunu ve silme düğmesine göre yeniden
+oranlandı; minimum genişlik `760px` yapıldı. `Kısıtlı Malik` ile silme sütunu
+yatay kaydırmada sağda sabitlenerek hem masaüstünde hem dar görünümde erişilir
+hale getirildi.
+
+Canlı doğrulama 1026x912 görünümde gerçek çok hisseli TAKBİS belgesiyle
+yapıldı. `Kısıtlı Malik` başlığı görünür alan içinde kaldı ve ilk şerh
+satırında `Tülin Utuğluer` görüntülendi.
+
+Değişiklik öncesi yedek:
+`backups/before-restricted-owner-column-visibility_2026-07-27_19-50-39`.
+Graf indeksi yenilenmedi. Cache sürümü: `styles.css?v=20260727-1955`.
+
+## 0.0.219 - 2026-07-27 - Takyidatlarda kısıtlı malik
+
+Çok hisseli TAKBİS belgelerindeki hissedar bazlı takyidatlar için Beyanlar,
+Şerhler ve İpotekler tablolarına `Kısıtlı Malik` sütunu eklendi. PDF'deki
+`Kısıtlı Malik` kolonu koordinat bazlı ayrıştırılır; kayıt bir malikle
+sınırlandırılmamışsa hücre boş bırakılır. Malik adı, satır kaymalarının ad
+içinde boşluk oluşturmasını önlemek için TAKBİS malik listesiyle güvenli ve
+tam eşleşme üzerinden doğrulanır. Aynı tür ve yevmiye numarasına sahip farklı
+kısıtlı malik kayıtları artık tekilleştirme sırasında birbirine karışmaz.
+Sütunlar uygulama tablolarına ve Word rapor tablolarına da aktarıldı.
+
+Gerçek belge testi:
+`TKB_20260727180326029218.pdf` içe aktarıldı; malik bazlı irtifak ve haciz
+kayıtları ayrı satırlarda korundu, `Tülin Utuğluer` adının ilk harfi ile
+`Binnur Ünlükahraman` adındaki satır kayması düzeltildi ve maliksiz kayıtların
+boş kaldığı doğrulandı.
+
+Değişiklik öncesi yedek:
+`backups/before-encumbrance-restricted-owner-column_2026-07-27_19-14-49`.
+Graf indeksi kullanıcı talebi doğrultusunda yenilenmedi. Cache sürümü:
+`app.js?v=20260727-2125`.
+
+## 0.0.218 - 2026-07-27 - Eşit yasal/mevcut değerlerde birleşik satır
+
+Yasal ve mevcut durum değerinin aynı olduğu hesaplarda, Değerleme bölümündeki
+Yapı Değeri ve Şerefiye Bölümü tabloları tekrar eden iki
+satır yerine sırasıyla `Yasal ve Mevcut Yapı Değeri` ile `Yasal ve Mevcut
+Şerefiye` etiketli tek satır gösterir. Aynı kural Değerleme Özeti için de
+uygulanır. Durum değerleri farklıysa yasal/mevcut satırları ayrı gösterilmeye
+devam eder.
+
+Değişiklik öncesi yedek:
+`backups/before-combined-legal-current-valuation-rows_2026-07-27_18-39-24`.
+Graf indeksi yenilenmedi. Cache sürümü: `app.js?v=20260727-2010`.
+
+## 0.0.217 - 2026-07-27 - İç kapı ve mutfak tezgahı seçenekleri
+
+Bağımsız Bölüm Özellikleri bölümündeki `İç Kapılar` seçimine `Ahşap Panel` ve
+`Akrilik` eklendi. `Mutfak Tezgahı` seçimindeki birleşik `Çimstone / Kuvars`
+ifadesi iki ayrı seçenek olan `Çimstone` ve `Kuvars` olarak ayrıldı. Aynı
+seçenekler eski ve detaylı form tanımlarında da eşitlendi.
+
+Değişiklik öncesi yedek:
+`backups/before-interior-door-countertop-options_2026-07-27_18-31-59`.
+Graf indeksi yenilenmedi. Cache sürümü: `app.js?v=20260727-1930`.
+
+## 0.0.216 - 2026-07-27 - Yapı yaşı manuel ezme onayı
+
+Ana Taşınmaz Teknik Bilgileri içindeki `Yapı Yaşı` artık otomatik hesaplanan
+değeri koruyarak kullanıcı tarafından düzenlenebilir. Yapı kullanma izin belgesi
+veya ruhsat tarihi mevcutsa, hesaplanan yaştan farklı bir değer girildiğinde
+kaynak tarihini belirten onay penceresi açılır. Kullanıcı onay verirse manuel
+değer sonraki otomatik yenilemelerde korunur; hesaplanan değere dönülürse otomatik
+hesaplama tekrar etkinleşir.
+
+Değişiklik öncesi yedek:
+`backups/before-building-age-manual-override_2026-07-27_18-22-32`.
+Graf indeksi yenilenmedi. Cache sürümü: `app.js?v=20260727-1900`.
+
+## 0.0.215 - 2026-07-27 - Plancılık ilkeleri uyumu kaldırıldı
+
+Adres ve Konum bölümündeki `Plancılık İlkeleri ile Uyumu` seçimi kaldırıldı.
+İlgili alan artık çevresel analiz varsayımına, çevresel açıklama paragraflarına
+ve olumlu/olumsuz değer faktörü listelerine veri sağlamaz. Eski taslaklarda
+kalan değerler korunur ancak rapor çıktısında kullanılmaz.
+
+Değişiklik öncesi yedek:
+`backups/before-remove-planning-principles-compatibility_2026-07-27_18-06-45`.
+Graf indeksi yenilenmedi. Cache sürümü: `app.js?v=20260727-1845`.
 
 ## 0.0.214 - 2026-07-27 - Mevkii ve blok kritik alan istisnası
 

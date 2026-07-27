@@ -65,6 +65,14 @@ function main() {
   const cloudSyncJs = readText("cloud/cloud-sync.js");
   const reportLibraryJs = readText("cloud/report-library.js");
   const accessControlJs = readText("src/auth/access-control.js");
+  const valueFactorsRulesJs = readText("src/value-factors/value-factors-rules.js");
+  assert(
+    !appJs.includes('key: "planningPrincipleHarmony"') &&
+      !appJs.includes('planningPrincipleHarmony: "uyumludur"') &&
+      !valueFactorsRulesJs.includes("planning-compatible") &&
+      !valueFactorsRulesJs.includes("planning-incompatible"),
+    "Plancılık ilkeleri uyumu alanı veya değer faktörü kuralı kaldırılmamış."
+  );
   assert(
     indexHtml.includes('id="missingCriticalTrigger"') &&
       appJs.includes("function openMissingCriticalFieldsModal") &&
@@ -410,6 +418,12 @@ function main() {
       appJs.includes("Sigortaya Esas Değer") &&
       appJs.includes("Şerefiye Bölümü"),
     "Degerleme bolumu gorseldeki temel basliklari icermiyor."
+  );
+  assert(
+    appJs.includes("function getLegalCurrentDisplayRows") &&
+      appJs.includes('getLegalCurrentDisplayRows(valuationBuildingValueRows, "Yasal ve Mevcut Yapı Değeri")') &&
+      appJs.includes('getLegalCurrentDisplayRows(valuationPremiumRows, "Yasal ve Mevcut Şerefiye")'),
+    "Eşit yasal/mevcut değerler için birleşik yapı ve şerefiye satırları bulunamadi."
   );
   assert(
     appJs.includes("function syncValuationAreasFromUnitAreas()") &&
@@ -871,6 +885,13 @@ function main() {
       appJs.includes('unitFirstSaleStatus') &&
       appJs.includes('if (quality.includes("LUKS")) return "Lüks"') &&
       appJs.includes("canEditBuildingAgeManually") &&
+      appJs.includes("function commitBuildingAgeOverride") &&
+      appJs.includes("function openBuildingAgeOverrideModal") &&
+      appJs.includes("buildingAgeManualOverride") &&
+      appJs.includes("Yapı kullanma izin belgesi tarihi") &&
+      appJs.includes("Son ruhsat tarihi") &&
+      appJs.includes('"Ahşap Panel", "Akrilik"') &&
+      appJs.includes('const unitKitchenCounterOptions = ["", "Çimstone", "Kuvars"') &&
       appJs.includes("hasReviewedDocumentInfo") &&
       appJs.includes('field.key === "buildingAge" && canEditBuildingAgeManually()') &&
       appJs.includes("Bağımsız Bölüm / Taşınmaz Özellikleri") &&
@@ -972,6 +993,23 @@ function main() {
       appJs.includes("body.append(createDocumentDecisionControls())") &&
       appJs.includes("hasReviewedOccupancyPermitDocument()"),
     "Yapi denetim aciklamasi belge ve proje ekraninda iskan kosuluyla gosterilmiyor."
+  );
+
+  assert(
+    appJs.includes("restrictedOwner") &&
+      appJs.includes("restrictedOwnerEnd") &&
+      appJs.includes("reconcileTakbisRestrictedOwners") &&
+      appJs.includes("normalizeTakbisOwnerMatchKey") &&
+      appJs.includes('record.restrictedOwner || ""') &&
+      appJs.includes("K\u0131s\u0131tl\u0131 Malik") &&
+      appJs.includes("formatEncumbranceRestrictedOwner") &&
+      appJs.includes("(K\u0131s\u0131tl\u0131 Malik: ${restrictedOwner})") &&
+      appJs.includes("hasStructuredCoordinates") &&
+      appJs.includes("isSameOrNextPage") &&
+      stylesCss.includes(".table-encumbranceAnnotations th:nth-child(6)") &&
+      stylesCss.includes("position: sticky") &&
+      stylesCss.includes("right: 44px"),
+    "TAKBIS takyidat kayitlarinda kisitli malik okuma, eslestirme veya tablo sutunu bulunamadi."
   );
 
   console.log("Temel kontrol tamam: dosyalar, JavaScript sozdizimi ve iOS PDF uyumluluk blogu saglam.");

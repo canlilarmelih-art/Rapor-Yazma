@@ -330,12 +330,6 @@ const sections = [
         defaultValue: "",
       },
       {
-        key: "planningPrincipleHarmony",
-        label: "Plancılık ilkeleri ile uyumu",
-        type: "select",
-        options: ["", "uyumludur", "kısmen uyumludur", "uyumlu değildir"],
-      },
-      {
         key: "commercialFunctionDensity",
         label: "Ticari fonksiyon yoğunluğu",
         type: "select",
@@ -842,17 +836,16 @@ const encumbranceReportTables = [
   },
   {
     key: "encumbranceAnnotations",
-    columns: ["Şerh Türü", "Açıklama", "Tarih", "Yevmiye No"],
     title: "Şerhler",
-    columns: ["\u015eerh T\u00fcr\u00fc", "A\u00e7\u0131klama", "Haciz Tutar\u0131", "Tarih", "Yevmiye No"],
+    columns: ["\u015eerh T\u00fcr\u00fc", "A\u00e7\u0131klama", "Haciz Tutar\u0131", "Tarih", "Yevmiye No", "K\u0131s\u0131tl\u0131 Malik"],
   },
   {
     key: "encumbranceMortgages",
     title: "İpotekler",
-    columns: ["İpotek Lehdarı", "İpotek Derecesi", "İpotek Tutarı", "Tarih", "Yevmiye No"],
+    columns: ["İpotek Lehdarı", "İpotek Derecesi", "İpotek Tutarı", "Tarih", "Yevmiye No", "Kısıtlı Malik"],
   },
 ];
-const encumbranceReportColumns = ["Tür", "Açıklama", "Tarih", "Yevmiye No"];
+const encumbranceReportColumns = ["Tür", "Açıklama", "Tarih", "Yevmiye No", "Kısıtlı Malik"];
 const encumbranceEmptyRowCount = 3;
 const mortgageCreditorBankNames = [
   "Türkiye Halk Bankası A.Ş.",
@@ -1631,6 +1624,7 @@ function renderSection() {
   }
 
   if (section.id === "explanations") {
+    refreshEncumbranceSummaryFromCurrentData();
     refreshLandMinimumParcelAssessment();
     refreshShareExplanationFromCurrentFields("titleOwnershipKind");
     refreshPenaltyDecisionExplanationFromCurrentFields("penaltyDecision");
@@ -1642,6 +1636,10 @@ function renderSection() {
     refreshBuildingDepreciationFromCurrentFields();
     refreshZiraatExplanationSectionsFromCurrentFields();
     refreshValuationMethodsExplanationFromCurrentFields();
+  }
+
+  if (section.id === "encumbrance") {
+    refreshEncumbranceSummaryFromCurrentData();
   }
 
   if (section.id === "documents" && section.table) {
@@ -1659,6 +1657,7 @@ function renderSection() {
 
   if (section.id === "explanations") {
     body.append(createOpenAddressPanel());
+    body.append(createEncumbranceCountSummaryPanel());
     body.append(createTakyidatTablePanel());
     body.append(createMaliklerTablePanel());
     body.append(createInsuranceConstructionCostPanel());
@@ -2081,6 +2080,9 @@ function createForm(section) {
     });
 
     label.append(createSpan(getFieldDisplayLabel(section.id, field)), control);
+    if (field.key === "takbisSummary") {
+      label.append(createEncumbranceSummaryModeControl());
+    }
     if (field.type === "textarea") {
       label.classList.add("has-field-copy");
       label.append(createFieldCopyButton());
@@ -2261,7 +2263,6 @@ function getZiraatExplanationValues() {
     regionBuildOrder: value("regionBuildOrder"),
     regionUsePurpose: value("regionUsePurpose"),
     regionFloorRange: value("regionFloorRange"),
-    planningHarmony: value("planningPrincipleHarmony"),
   };
 }
 
@@ -2313,7 +2314,6 @@ function buildZiraatBuildingPatternExplanation() {
   const purpose = values.regionUsePurpose ? `${values.regionUsePurpose} amaçlı` : "konut amaçlı";
   const floors = values.regionFloorRange ? `zemin + ${values.regionFloorRange} katlı` : "zemin ve normal katlardan oluşan";
   sentences.push(`Taşınmazın bulunduğu yakın çevrede genellikle ${floors} ve ${purpose} yapılaşma söz konusudur.`);
-  if (values.planningHarmony) sentences.push(`Bölgenin genel yapılaşma tarzı, planlılık ilkeleri ile ${values.planningHarmony}.`);
   return normalizeReportDescriptionText(sentences.join(" "));
 }
 
@@ -3437,7 +3437,7 @@ function createValuationBuildingValueTable() {
     </thead>
   `;
   const tbody = document.createElement("tbody");
-  valuationBuildingValueRows.forEach((row) => {
+  getLegalCurrentDisplayRows(valuationBuildingValueRows, "Yasal ve Mevcut Yapı Değeri").forEach((row) => {
     const tr = document.createElement("tr");
     tr.append(
       createValuationLabelCell(row.label),
@@ -4123,7 +4123,7 @@ function createValuationPremiumTable() {
     </thead>
   `;
   const tbody = document.createElement("tbody");
-  valuationPremiumRows.forEach((row) => {
+  getLegalCurrentDisplayRows(valuationPremiumRows, "Yasal ve Mevcut Şerefiye").forEach((row) => {
     const premiumValue = parseValuationNumber(state.fields[row.premiumKey]);
     const isNegative = Number.isFinite(premiumValue) && premiumValue < 0;
     const tr = document.createElement("tr");
@@ -4553,6 +4553,14 @@ function valuationLegalCurrentDiffers() {
   return areaDiff || valueDiff;
 }
 
+function getLegalCurrentDisplayRows(rows, combinedLabel) {
+  const legalValue = parseValuationNumber(state.fields.legalValue);
+  const currentValue = parseValuationNumber(state.fields.currentValue);
+  const valuesMatch = Number.isFinite(legalValue) && Number.isFinite(currentValue) && Math.abs(legalValue - currentValue) <= 0.0001;
+  if (!valuesMatch) return rows;
+  return [{ ...rows[0], label: combinedLabel }];
+}
+
 function hasValuationSchemeData() {
   const legalValue = parseValuationNumber(state.fields.legalValue);
   return Number.isFinite(legalValue) && legalValue > 0;
@@ -4804,15 +4812,16 @@ function buildValuationSummaryGroups() {
     {
       key: "building",
       title: "Yapı Değeri",
-      rows: [
-        { label: "Yasal Yapı Değeri", detail: buildValuationSummaryBuildingDetail(valuationBuildingValueRows[0]), value: formatValuationSummaryMoney(state.fields.legalBuildingValue) },
-        { label: "Mevcut Yapı Değeri", detail: buildValuationSummaryBuildingDetail(valuationBuildingValueRows[1]), value: formatValuationSummaryMoney(state.fields.currentBuildingValue) },
-      ],
+      rows: getLegalCurrentDisplayRows(valuationBuildingValueRows, "Yasal ve Mevcut Yapı Değeri").map((row) => ({
+        label: row.label,
+        detail: buildValuationSummaryBuildingDetail(row),
+        value: formatValuationSummaryMoney(state.fields[row.totalKey]),
+      })),
     },
     {
       key: "premium",
       title: "Şerefiye Bölümü",
-      rows: valuationPremiumRows.map((row) => ({
+      rows: getLegalCurrentDisplayRows(valuationPremiumRows, "Yasal ve Mevcut Şerefiye").map((row) => ({
         label: row.label,
         detail: `Piyasa − Arsa − Yapı · Oran ${formatValuationSummaryRate(state.fields[row.rateKey])}`,
         value: formatValuationSummaryMoney(state.fields[row.premiumKey]),
@@ -5590,7 +5599,6 @@ const environmentDescriptionAutoRefreshFields = new Set([
   "developmentDensity",
   "socialNeeds",
   "regionUsePurpose",
-  "planningPrincipleHarmony",
   "agriculturalActivityDensity",
   "agriculturalActivityTypes",
   "agriculturalSuitability",
@@ -5838,7 +5846,6 @@ function buildEnvironmentalDescription(regionType = state.fields?.environmentReg
     incomeLevel: readEnvironmentalField("regionIncomeLevel", "BÖLGE.GELİR.SEVİYESİ", { usePlaceholderTokens }),
     mainArtery: readEnvironmentalField("mainArtery", "ULAŞIMANAARTERİ", { usePlaceholderTokens }),
     nearby: readEnvironmentalField("nearby", "YAKIN_CEVRESI", { usePlaceholderTokens }),
-    planningHarmony: readEnvironmentalField("planningPrincipleHarmony", "PLANCILIK", { usePlaceholderTokens }),
     infrastructureLevel: readEnvironmentalField("infrastructureLevel", "ALTYAPI", { usePlaceholderTokens }),
     mainArteryProximity: readEnvironmentalField("mainArteryProximity", "ANA_ARTER_MESAFESİ", { usePlaceholderTokens, fallbackKeys: [], fallbackToToken: false }) || "yakın",
     commercialFunctionDensity: readEnvironmentalField("commercialFunctionDensity", "TİCARİ.FONKSİYON.YOĞUNLUĞU", { usePlaceholderTokens, fallbackKeys: [], fallbackToToken: false }) || "Yoğun",
@@ -5898,7 +5905,7 @@ function buildEnvironmentalDescription(regionType = state.fields?.environmentReg
         ageSentence +
         `Bölgedeki üretim ve servis kullanımlarının gerektirdiği ulaşım, altyapı ve teknik ihtiyaçlar ${values.infrastructureLevel} derecede karşılanabilmektedir. ` +
         `Toplu taşıma ve servis güzergâhında yer alan ${values.mainArtery} yakınında bulunması, taşınmaza ulaşım ve ticari/üretim faaliyetleri açısından avantaj sağlamaktadır. ` +
-        `Konu taşınmaza yakın konumda bulunan bilinen yerler; ${values.nearby} olarak ifade edilebilir. Bölgenin genel yapılaşma tarzı, plancılık ilkeleri ile ${values.planningHarmony}.`
+        `Konu taşınmaza yakın konumda bulunan bilinen yerler; ${values.nearby} olarak ifade edilebilir.`
     );
   }
 
@@ -5911,7 +5918,7 @@ function buildEnvironmentalDescription(regionType = state.fields?.environmentReg
         commercialFunctionSentence +
         `Sosyal yaşamın gerektirdiği market benzeri ticari birimler ve sağlık ocağı, okul, çocuk parkı gibi ihtiyaçlar ${values.socialNeeds} mesafeden karşılanabilmektedir. ` +
         `Toplu taşıma güzergâhında yer alan ${values.mainArtery} yakınında bulunması, taşınmaza ulaşım açısından önemli bir avantaj sağlamaktadır. ` +
-        `Bölgenin genel yapılaşma tarzı, plancılık ilkeleri ile ${values.planningHarmony}. Bölgesel alt yapı ihtiyacı ${values.infrastructureLevel} derecede karşılanabilmektedir.`
+        `Bölgesel alt yapı ihtiyacı ${values.infrastructureLevel} derecede karşılanabilmektedir.`
     );
   }
 
@@ -5923,7 +5930,7 @@ function buildEnvironmentalDescription(regionType = state.fields?.environmentReg
       `Bölge, ${values.incomeLevel} gelir grubuna mensup kişilerin ikamet etmeyi tercih ettiği bir yerleşim karakterine sahiptir. ` +
       `Ayrıca toplu taşıma güzergâhında yer alan ${values.mainArtery} yakınında bulunması, taşınmaza ulaşım açısından önemli bir avantaj sağlamaktadır. ` +
       `Konu taşınmaza yakın konumda bulunan bilinen yerler; ${values.nearby} olarak ifade edilebilir. ` +
-      `Bölgenin genel yapılaşma tarzı, plancılık ilkeleri ile ${values.planningHarmony}. Bölgesel alt yapı ihtiyacı (yol, elektrik, su, doğalgaz, kanalizasyon vb.) ${values.infrastructureLevel} derecede karşılanabilmektedir.`
+      `Bölgesel alt yapı ihtiyacı (yol, elektrik, su, doğalgaz, kanalizasyon vb.) ${values.infrastructureLevel} derecede karşılanabilmektedir.`
   );
 }
 
@@ -6316,33 +6323,88 @@ function createBuildingReadOnlyField(labelText, key) {
   label.className = "field";
   const input = document.createElement("input");
   input.dataset.field = key;
-  const isManualBuildingAge = key === "buildingAge" && canEditBuildingAgeManually();
-  if (!isManualBuildingAge) {
+  const isBuildingAge = key === "buildingAge";
+  if (!isBuildingAge) {
     input.readOnly = true;
     input.classList.add("is-readonly");
   }
   input.value = state.fields[key] || "";
-  if (isManualBuildingAge) {
+  if (isBuildingAge) {
     input.placeholder = "Örn. 25 yıl";
-    input.addEventListener("input", (event) => {
-      state.fields[key] = event.target.value;
-      refreshBuildingDepreciationFromCurrentFields("buildingAge");
-      autosave();
-      renderValidation();
-      updateStatus();
-    });
-    input.addEventListener("blur", () => {
-      const formattedValue = normalizeReportFieldValue(key, input.value);
-      input.value = formattedValue;
-      state.fields[key] = formattedValue;
-      refreshBuildingDepreciationFromCurrentFields("buildingAge");
-      autosave();
-      renderValidation();
-      updateStatus();
-    });
+    input.addEventListener("blur", () => commitBuildingAgeOverride(input));
   }
   label.append(createSpan(labelText), input);
   return label;
+}
+
+function commitBuildingAgeOverride(input) {
+  const proposedAge = normalizeReportFieldValue("buildingAge", input.value);
+  const completion = calculateBuildingCompletionFromReviewedDocuments();
+  const calculatedAge = calculateBuildingAgeText(completion.isoDate);
+  const previousAge = state.fields.buildingAge || calculatedAge;
+
+  if (!proposedAge) {
+    input.value = previousAge;
+    return;
+  }
+
+  const apply = () => {
+    state.fields.buildingAge = proposedAge;
+    state.fields.buildingAgeManualOverride = Boolean(completion.isoDate && proposedAge !== calculatedAge) || !completion.isoDate;
+    input.value = proposedAge;
+    refreshBuildingDepreciationFromCurrentFields("buildingAge");
+    autosave();
+    renderValidation();
+    updateStatus();
+  };
+
+  if (!completion.isoDate || proposedAge === calculatedAge) {
+    apply();
+    return;
+  }
+
+  openBuildingAgeOverrideModal(completion, proposedAge, () => {
+    input.value = previousAge;
+  }, apply);
+}
+
+function openBuildingAgeOverrideModal(completion, proposedAge, onCancel, onConfirm) {
+  document.querySelector(".modal-overlay")?.remove();
+  const dateLabel = completion.source === "occupancy" ? "Yapı kullanma izin belgesi tarihi" : "Son ruhsat tarihi";
+  const sourceDate = completion.source === "occupancy" ? completion.displayDate : completion.permitDate;
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.innerHTML = `
+    <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="buildingAgeOverrideModalTitle">
+      <div class="modal-head">
+        <h3 id="buildingAgeOverrideModalTitle">Yapı Yaşı Değişikliği</h3>
+        <button class="modal-close" type="button" aria-label="Kapat">×</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-lead">${escapeHtml(`${dateLabel} ${sourceDate || "belirsiz"} olduğundan yapı yaşı otomatik olarak ${calculateBuildingAgeText(completion.isoDate)} hesaplanmıştır.`)}</p>
+        <p>Yapı yaşını ${escapeHtml(proposedAge)} olarak değiştirmek istediğinizden emin misiniz?</p>
+      </div>
+      <div class="modal-actions">
+        <button class="secondary-button" type="button" data-building-age-cancel>Vazgeç</button>
+        <button class="primary-button" type="button" data-building-age-confirm>Evet</button>
+      </div>
+    </section>
+  `;
+  document.body.append(overlay);
+
+  const close = (cancelled = false) => {
+    overlay.remove();
+    if (cancelled) onCancel?.();
+  };
+  overlay.querySelector(".modal-close").addEventListener("click", () => close(true));
+  overlay.querySelector("[data-building-age-cancel]").addEventListener("click", () => close(true));
+  overlay.querySelector("[data-building-age-confirm]").addEventListener("click", () => {
+    overlay.remove();
+    onConfirm?.();
+  });
+  overlay.addEventListener("click", (event) => {
+    if (event.target === overlay) close(true);
+  });
 }
 
 function createBuildingSocialFacilitiesControl() {
@@ -7560,9 +7622,9 @@ const commercialUnitInteriorValidationOptions = [
 const unitDecorativeFields = [
   { key: "unitWindows", label: "Pencereler", options: ["", "PVC", "Alüminyum", "Ahşap", "Çelik", "Isıcamlı", "Yok"] },
   { key: "unitExteriorDoor", label: "Dış Kapı", options: ["", "Çelik", "Ahşap", "Lake", "Camlı Alüminyum", "Demir Doğrama", "Yok"] },
-  { key: "unitInteriorDoors", label: "İç Kapılar", options: ["", "Lake", "Amerikan Panel", "Ahşap", "PVC", "Yok"] },
+  { key: "unitInteriorDoors", label: "İç Kapılar", options: ["", "Lake", "Amerikan Panel", "Ahşap", "Ahşap Panel", "Akrilik", "PVC", "Laminat", "Melamin", "Yok"] },
   { key: "unitKitchenCabinet", label: "Mutfak Dolabı", options: ["", "Akrilik", "Lake", "Membran", "MDF Lam", "Yok"] },
-  { key: "unitKitchenCounter", label: "Mutfak Tezgahı", options: ["", "Çimston", "Granit", "Mermer", "Laminat", "Yok"] },
+  { key: "unitKitchenCounter", label: "Mutfak Tezgahı", options: ["", "Çimstone", "Kuvars", "Granit", "Mermer", "Porselen", "Akrilik / Corian", "Laminat", "Mermerit", "Paslanmaz Çelik", "Yok"] },
   { key: "unitSalonFloor", label: "Salon Zemin", options: ["", "Laminant Parke", "Seramik", "Mermer", "Ahşap Parke", "Şap"] },
   { key: "unitSalonWall", label: "Salon Duvar", options: ["", "Alçı Sıva Üzeri Saten Boya", "Plastik Boya", "Duvar Kağıdı", "Sıvasız"] },
   { key: "unitRoomFloor", label: "Oda Zemin", options: ["", "Laminant Parke", "Seramik", "Mermer", "Ahşap Parke", "Şap"] },
@@ -7580,7 +7642,7 @@ const unitDecorativeFields = [
 const unitFloorMaterialOptions = ["", "Laminant Parke", "Seramik", "Fayans", "Lamine Parke", "Ahşap Parke", "Mermer", "Granit", "Porselen Karo", "PVC / Vinil", "Epoksi", "Beton", "Şap"];
 const unitWallMaterialOptions = ["", "Alçı Sıva Üzeri Saten Boya", "Plastik Boya", "Seramik", "Fayans", "Duvar Kağıdı", "Ahşap Kaplama", "Dekoratif Taş Kaplama", "Sıvalı", "Sıvasız"];
 const unitKitchenCabinetOptions = ["", "MDF Lam", "Lake", "Membran", "Akrilik", "High Gloss", "Laminat", "Ahşap", "Suntalam", "Yok"];
-const unitKitchenCounterOptions = ["", "Çimstone / Kuvars", "Granit", "Mermer", "Porselen", "Akrilik / Corian", "Laminat", "Mermerit", "Paslanmaz Çelik", "Yok"];
+const unitKitchenCounterOptions = ["", "Çimstone", "Kuvars", "Granit", "Mermer", "Porselen", "Akrilik / Corian", "Laminat", "Mermerit", "Paslanmaz Çelik", "Yok"];
 const unitBathroomFixtureOptions = ["", "Lavabo", "Klozet", "Hilton Lavabo", "Duşakabin", "Duş Teknesi", "Asma Klozet", "Küvet", "Alaturka Tuvalet", "Banyo Dolabı", "Yok"];
 const unitMaterialQualityOptions = ["", "Lüks", "Kaliteli", "Orta", "Vasat (Kısmi Tadilat İhtiyacı)", "Kötü (Kapsamlı Tadilat İhtiyacı)"];
 const unitDecorativeGroups = [
@@ -7589,7 +7651,7 @@ const unitDecorativeGroups = [
     fields: [
       { key: "unitWindows", label: "Pencereler", options: ["", "PVC", "Isıcamlı PVC", "Alüminyum", "Isıcamlı Alüminyum", "Ahşap", "Demir Doğrama", "Yok"] },
       { key: "unitExteriorDoor", label: "Dış Kapı", options: ["", "Çelik", "Ahşap Kaplama Çelik", "Camlı Alüminyum", "Demir Doğrama", "Ferforje", "Ahşap", "Yok"] },
-      { key: "unitInteriorDoors", label: "İç Kapılar", options: ["", "Lake", "Amerikan Panel", "Ahşap", "PVC", "Laminat", "Melamin", "Yok"] },
+      { key: "unitInteriorDoors", label: "İç Kapılar", options: ["", "Lake", "Amerikan Panel", "Ahşap", "Ahşap Panel", "Akrilik", "PVC", "Laminat", "Melamin", "Yok"] },
       { key: "unitKitchenCabinet", label: "Mutfak Dolabı", options: unitKitchenCabinetOptions },
       { key: "unitKitchenCounter", label: "Mutfak Tezgahı", options: unitKitchenCounterOptions },
       { key: "unitMaterialQuality", label: "Malzeme ve İşçilik Kalitesi", options: unitMaterialQualityOptions },
@@ -7632,7 +7694,7 @@ const unitWallFloorRows = [
 const unitGeneralDecorativeFields = [
   { key: "unitWindows", label: "Pencereler", options: ["", "PVC", "Isıcamlı PVC", "Alüminyum", "Isıcamlı Alüminyum", "Ahşap", "Demir Doğrama", "Yok"] },
   { key: "unitExteriorDoor", label: "Dış Kapı", options: ["", "Çelik", "Ahşap Kaplama Çelik", "Camlı Alüminyum", "Demir Doğrama", "Ferforje", "Ahşap", "Yok"] },
-  { key: "unitInteriorDoors", label: "İç Kapılar", options: ["", "Lake", "Amerikan Panel", "Ahşap", "PVC", "Laminat", "Melamin", "Yok"] },
+  { key: "unitInteriorDoors", label: "İç Kapılar", options: ["", "Lake", "Amerikan Panel", "Ahşap", "Ahşap Panel", "Akrilik", "PVC", "Laminat", "Melamin", "Yok"] },
   { key: "unitKitchenCabinet", label: "Mutfak Dolabı", options: unitKitchenCabinetOptions },
   { key: "unitKitchenCounter", label: "Mutfak Tezgahı", options: unitKitchenCounterOptions },
   { key: "unitMaterialQuality", label: "Malzeme ve İşçilik Kalitesi", options: unitMaterialQualityOptions },
@@ -9656,7 +9718,6 @@ function shouldHideField(sectionId, fieldKey) {
       "regionBuildingAge",
       "socialNeeds",
       "regionUsePurpose",
-      "planningPrincipleHarmony",
     ];
     if (environmentType === "Tarımsal Alan" && hiddenForAgriculturalEnvironmentKeys.includes(fieldKey)) {
       return true;
@@ -12939,9 +13000,9 @@ function buildWordReportTablesHtml() {
   }
   const regularTables = [
     ["İncelenen Belgeler", ["Belge Türü", "İncelenen Kurum", "Tarih", "No", "Kapsam"], getReviewedDocumentTableEntries().map(({ row }) => row)],
-    ["Beyanlar", ["Tür", "Açıklama", "Tarih", "Yevmiye No"], state.tables.encumbranceDeclarations],
-    ["Rehinler", ["Lehdar", "Derece", "Tutar", "Tarih", "Yevmiye"], state.tables.encumbranceMortgages],
-    ["Şerhler", ["Tür", "Açıklama", "Tutar", "Tarih", "Yevmiye"], state.tables.encumbranceAnnotations],
+    ["Beyanlar", ["Tür", "Açıklama", "Tarih", "Yevmiye No", "Kısıtlı Malik"], state.tables.encumbranceDeclarations],
+    ["Rehinler", ["Lehdar", "Derece", "Tutar", "Tarih", "Yevmiye", "Kısıtlı Malik"], state.tables.encumbranceMortgages],
+    ["Şerhler", ["Tür", "Açıklama", "Tutar", "Tarih", "Yevmiye", "Kısıtlı Malik"], state.tables.encumbranceAnnotations],
   ];
   regularTables.forEach(([title, headers, rows]) => {
     const tableRows = formatStateRowsForWord(headers, rows);
@@ -14061,6 +14122,8 @@ async function readTakbisPdf(file) {
     throw new Error("TAKBİS tapu kayıt bilgisi okunamadı. Farklı PDF düzeni olabilir.");
   }
 
+  encumbrances = reconcileTakbisRestrictedOwners(encumbrances, owners);
+
   return {
     titleRaw,
     fields,
@@ -14698,15 +14761,18 @@ function parseTakbisEncumbranceRows(rows, sectionKey, pageWidth = 842) {
     const scope = recordScope.entries.slice(0, 35);
     const descriptionParts = [];
     const dateParts = [];
+    const restrictedOwnerParts = [];
 
     scope.forEach((entry, scopeIndex) => {
       const descriptionText = getTakbisEncumbranceScopeDescription(entry, scopeIndex === 0);
       if (descriptionText) descriptionParts.push(descriptionText);
       if (entry.cells.dateJournal) dateParts.push(entry.cells.dateJournal);
+      if (entry.cells.restrictedOwner) restrictedOwnerParts.push(entry.cells.restrictedOwner);
     });
 
     let description = stripTakbisEncumbranceLeadingTypeNoise(cleanTakbisEncumbranceText(descriptionParts.join(" ")));
     let dateInfo = extractTakbisEncumbranceDateInfo(dateParts.join(" "));
+    const restrictedOwner = cleanTakbisEncumbranceText(restrictedOwnerParts.join(" "));
 
     if (!description) {
       description = extractTakbisEncumbranceDescriptionFromScope(scope, recordScope.type);
@@ -14722,6 +14788,7 @@ function parseTakbisEncumbranceRows(rows, sectionKey, pageWidth = 842) {
       description,
       date: dateInfo.date,
       journalNo: dateInfo.journalNo,
+      restrictedOwner,
       rawText: cleanTakbisEncumbranceText(scope.map((entry) => entry.row?.text || "").join(" ")),
     };
   }).filter((record) => record.type || record.description || record.date || record.journalNo);
@@ -14901,14 +14968,17 @@ function inferTakbisEncumbranceLayout(rows, pageWidth = 842) {
   const typeX = firstX(/S\/B\/I|SERH|BEYAN|IRTIFAK/) ?? pageWidth * 0.11;
   const descX = firstX(/ACIKLAMA/) ?? pageWidth * 0.36;
   const restrictedOwnerX = firstX(/KISITLI|HISSE/);
-  const malikX = firstX(/MALIK|LEHTAR/) ?? pageWidth * 0.53;
+  const malikX = firstX(/MALIK\/LEHTAR|LEHTAR/) ?? pageWidth * 0.53;
   const tesisX = firstX(/TESIS|TERKIN/) ?? pageWidth * 0.78;
 
   const typeEnd = clampNumber((typeX + descX) / 2, pageWidth * 0.12, pageWidth * 0.26);
   const descBoundaryX = restrictedOwnerX && restrictedOwnerX > descX ? restrictedOwnerX : malikX;
   const descEnd = clampNumber(descBoundaryX - 14, pageWidth * 0.38, pageWidth * 0.62);
+  const restrictedOwnerEnd = restrictedOwnerX && malikX > restrictedOwnerX
+    ? clampNumber((restrictedOwnerX + malikX) / 2, pageWidth * 0.42, pageWidth * 0.68)
+    : null;
   const dateStart = clampNumber(tesisX - 12, pageWidth * 0.72, pageWidth * 0.88);
-  return { typeEnd, descEnd, dateStart };
+  return { typeEnd, descEnd, restrictedOwnerEnd, dateStart };
 }
 
 function clampNumber(value, min, max) {
@@ -14916,7 +14986,7 @@ function clampNumber(value, min, max) {
 }
 
 function splitTakbisEncumbranceCells(row, layout) {
-  const cells = { type: "", description: "", dateJournal: "" };
+  const cells = { type: "", description: "", restrictedOwner: "", dateJournal: "" };
   (row.items || []).forEach((item) => {
     const text = cleanTakbisEncumbranceText(item.str);
     if (!text) return;
@@ -14926,6 +14996,8 @@ function splitTakbisEncumbranceCells(row, layout) {
       cells.dateJournal = `${cells.dateJournal} ${text}`.trim();
     } else if (item.x < layout.descEnd) {
       cells.description = `${cells.description} ${text}`.trim();
+    } else if (layout.restrictedOwnerEnd && item.x < layout.restrictedOwnerEnd) {
+      cells.restrictedOwner = `${cells.restrictedOwner} ${text}`.trim();
     }
   });
   return cells;
@@ -15088,9 +15160,10 @@ function dedupeTakbisEncumbrances(records) {
   const seen = new Set();
   return (records || []).filter((record) => {
     const type = foldTurkish(record.type || "");
+    const restrictedOwner = normalizeTakbisOwnerMatchKey(record.restrictedOwner);
     const key = record.journalNo
-      ? `${type}|${record.journalNo}`
-      : `${type}|${foldTurkish(record.description || "")}`;
+      ? `${type}|${record.journalNo}|${restrictedOwner}`
+      : `${type}|${foldTurkish(record.description || "")}|${restrictedOwner}`;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -15103,6 +15176,26 @@ function parseTakbisOwners(rows) {
   const rowOwners = parseTakbisOwnersFromRows(sourceRows);
   if (rowOwners.length) return rowOwners;
   return parseTakbisOwnersFromText(sourceRows.map((row) => row.text || "").join(" "));
+}
+
+function normalizeTakbisOwnerMatchKey(value) {
+  return foldTurkish(value || "").replace(/[^A-Z0-9]/g, "");
+}
+
+function reconcileTakbisRestrictedOwners(encumbrances, owners) {
+  const ownerNamesByKey = new Map(
+    (owners || [])
+      .map((owner) => cleanTakbisOwnerDisplayName(owner?.name || ""))
+      .filter(Boolean)
+      .map((name) => [normalizeTakbisOwnerMatchKey(name), name]),
+  );
+
+  return (encumbrances || []).map((record) => {
+    const restrictedOwner = cleanTakbisOwnerDisplayName(record?.restrictedOwner || "");
+    if (!restrictedOwner) return { ...record, restrictedOwner: "" };
+    const canonicalName = ownerNamesByKey.get(normalizeTakbisOwnerMatchKey(restrictedOwner));
+    return { ...record, restrictedOwner: canonicalName || restrictedOwner };
+  });
 }
 
 function parseTakbisOwnersFromRows(rows) {
@@ -15174,6 +15267,7 @@ function parseTakbisOwnerRows(rows) {
 function findTakbisFractionFromOwnerRows(rows) {
   const rowList = rows || [];
   const ownerText = cleanTakbisValue(rowList.map((row) => row?.text || "").join(" "));
+  const hasStructuredCoordinates = rowList.some((row) => (row?.items || []).length > 0);
   for (let rowIndex = 0; rowIndex < rowList.length; rowIndex += 1) {
     const row = rowList[rowIndex];
     const items = row?.items || [];
@@ -15184,7 +15278,7 @@ function findTakbisFractionFromOwnerRows(rows) {
       let denominator = match[2];
       let original = match[0];
       const continuation = findWrappedDenominatorPart(rowList, rowIndex + 1, item.x, item.page);
-      const textContinuation = continuation
+      const textContinuation = continuation || hasStructuredCoordinates
         ? null
         : findWrappedDenominatorPartInText(ownerText.slice(ownerText.indexOf(match[0]) + match[0].length), match[1], denominator);
       if (continuation) {
@@ -15203,7 +15297,12 @@ function findTakbisFractionFromOwnerRows(rows) {
 function findWrappedDenominatorPart(rows, startIndex, fractionX, page) {
   for (let index = startIndex; index < Math.min(rows.length, startIndex + 3); index += 1) {
     const row = rows[index];
-    if (!row || row.page !== page || /^\s*\d{8,10}\s*\(\s*SN\s*:\s*\d+\s*\)/i.test(row.text || "")) return null;
+    if (!row || /^\s*\d{8,10}\s*\(\s*SN\s*:\s*\d+\s*\)/i.test(row.text || "")) return null;
+    const sourcePage = Number(page);
+    const rowPage = Number(row.page);
+    const isSameOrNextPage = row.page === page
+      || (Number.isFinite(sourcePage) && Number.isFinite(rowPage) && rowPage === sourcePage + 1);
+    if (!isSameOrNextPage) return null;
     if (/^\s*\d+\s*\/\s*\d+\s*$/.test(row.text || "")) continue;
     // Devam rakamı kesir hücresinin yatay aralığında kalır: soldaki komşu kolon
     // (El Birliği No sarması) elenir, adaylar arasında kesre en yakın x seçilir.
@@ -15275,7 +15374,7 @@ function cleanTakbisOwnerNameFragment(value, acquisitionText = "") {
   return removeTakbisAcquisitionTokens(text)
     .replace(/\([^)]*\)/g, " ")
     .replace(/\s+[A-ZÇĞİÖŞÜa-zçğıöşü]+\s+(?:Oğlu|Oglu|Kızı|Kizi)\b.*$/iu, " ")
-    .replace(/\b[VT]\b/gi, " ")
+    .replace(/(^|\s)[VT](?=\s|$)/gi, "$1")
     .replace(/\s*[-–—]\s*/g, " ")
     .replace(/\s+\d{3,}\s*$/g, " ")
     .replace(/\s+/g, " ")
@@ -15393,7 +15492,7 @@ function cleanTakbisOwnerDisplayName(value) {
     .replace(/\([^)]*\)/g, " ")
     .replace(/\s+[A-ZÇĞİÖŞÜa-zçğıöşü]+\s+(?:Oğlu|Oglu|Kızı|Kizi)\b.*$/iu, " ")
     .replace(/\b\d+(?:[.,]\d+)?\b/g, " ")
-    .replace(/\b[VT]\b/gi, " ")
+    .replace(/(^|\s)[VT](?=\s|$)/gi, "$1")
     .replace(/\s*[-–—]\s*/g, " ")
     .replace(/\s+\d{3,}\s*$/g, " ")
     .replace(/\s+/g, " ")
@@ -17185,7 +17284,11 @@ function hasReviewedDocumentInfo() {
 }
 
 function canEditBuildingAgeManually() {
-  return !hasReviewedDocumentInfo() && normalizeYesNoChoice(state.fields.hasArchitecturalProject || "Evet") === "Hayır";
+  return true;
+}
+
+function hasManualBuildingAgeOverride() {
+  return state.fields.buildingAgeManualOverride === true;
 }
 
 function isFieldReadOnly(field = {}) {
@@ -17199,7 +17302,7 @@ function refreshBuildingCompletionFromCurrentFields() {
   const previousBuildingAge = state.fields.buildingAge || "";
   state.fields.buildingCompletionDate = result.displayDate;
   state.fields.buildingConstructionYear = calculateConstructionYearText(result.isoDate);
-  state.fields.buildingAge = canEditBuildingAgeManually() ? previousBuildingAge : calculateBuildingAgeText(result.isoDate);
+  state.fields.buildingAge = hasManualBuildingAgeOverride() ? previousBuildingAge : calculateBuildingAgeText(result.isoDate);
   state.fields.buildingCompletionExplanation = buildBuildingCompletionExplanation(result);
   refreshUnitFirstSaleStatusFromCurrentFields();
   refreshBuildingDepreciationFromCurrentFields();
@@ -18541,6 +18644,7 @@ function applyTakbisEncumbrancesToTable(encumbrances) {
     c1: record.description || "",
     c2: record.date || "",
     c3: record.journalNo || "",
+    c4: record.restrictedOwner || "",
   }));
   state.tables.encumbrance = encumbranceRows.length
     ? encumbranceRows
@@ -18558,6 +18662,7 @@ function applyTakbisEncumbrancesToTable(encumbrances) {
           c1: record.description || "",
           c2: record.date || "",
           c3: record.journalNo || "",
+          c4: record.restrictedOwner || "",
         });
   });
 
@@ -18996,60 +19101,224 @@ function refreshEncumbranceSummaryFromCurrentFields(changedKey) {
 }
 
 function refreshEncumbranceSummaryFromCurrentData() {
-  const summary = buildEncumbranceSummary();
+  const variants = buildEncumbranceSummaryVariants();
+  if (!variants.exceedsLimit) {
+    state.fields.encumbranceSummaryMode = "summary";
+  }
+  const summary = selectEncumbranceSummaryVariant(
+    variants,
+    state.fields.encumbranceSummaryMode,
+  );
   state.fields.takbisSummary = summary;
   const control = document.querySelector('[data-field="takbisSummary"]');
   if (control && control.value !== summary) {
     control.value = summary;
     markFieldSourceState(control, "takbisSummary", true);
   }
+  syncEncumbranceSummaryModeControl(variants);
 }
 
-function buildEncumbranceSummary() {
+function createEncumbranceSummaryModeControl() {
+  const variants = buildEncumbranceSummaryVariants();
+  const group = document.createElement("div");
+  group.className = "encumbrance-summary-mode-control";
+  group.hidden = !variants.exceedsLimit;
+  group.setAttribute("role", "group");
+  group.setAttribute("aria-label", "Takyidat açıklaması görünümü");
+
+  [
+    ["summary", "Özet"],
+    ["detail", "Detay"],
+  ].forEach(([mode, label]) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.dataset.encumbranceSummaryMode = mode;
+    button.textContent = label;
+    button.addEventListener("click", () => {
+      state.fields.encumbranceSummaryMode = mode;
+      refreshEncumbranceSummaryFromCurrentData();
+      autosave();
+      renderValidation();
+      updateStatus();
+    });
+    group.append(button);
+  });
+
+  syncEncumbranceSummaryModeControl(variants, group);
+  return group;
+}
+
+function syncEncumbranceSummaryModeControl(
+  variants = buildEncumbranceSummaryVariants(),
+  root = document,
+) {
+  const groups = root.matches?.(".encumbrance-summary-mode-control")
+    ? [root]
+    : [...root.querySelectorAll(".encumbrance-summary-mode-control")];
+  const selectedMode = variants.exceedsLimit && state.fields.encumbranceSummaryMode === "detail"
+    ? "detail"
+    : "summary";
+  groups.forEach((group) => {
+    group.hidden = !variants.exceedsLimit;
+    group.querySelectorAll("[data-encumbrance-summary-mode]").forEach((button) => {
+      const isSelected = button.dataset.encumbranceSummaryMode === selectedMode;
+      button.classList.toggle("is-active", isSelected);
+      button.setAttribute("aria-pressed", String(isSelected));
+    });
+  });
+}
+
+function selectEncumbranceSummaryVariant(variants, requestedMode = "summary") {
+  if (!variants?.exceedsLimit) return variants?.detail || "";
+  return requestedMode === "detail" ? variants.detail : variants.summary;
+}
+
+function buildEncumbranceSummary(mode = state.fields.encumbranceSummaryMode) {
+  return selectEncumbranceSummaryVariant(buildEncumbranceSummaryVariants(), mode);
+}
+
+function buildEncumbranceSummaryVariants() {
   if (state.fields.takbisMethod === "Tapu Kaydı Alınmamıştır.") {
-    return "Talep tarihi itibarıyla konu taşınmaza ilişkin TAKBİS belgesi temin edilememiş olup, değerleme çalışması takyidat kayıtlarından bağımsız olarak gerçekleştirilmiştir.";
+    const detail = "Talep tarihi itibarıyla konu taşınmaza ilişkin TAKBİS belgesi temin edilememiş olup, değerleme çalışması takyidat kayıtlarından bağımsız olarak gerçekleştirilmiştir.";
+    return { detail, summary: detail, exceedsLimit: false };
   }
 
   const hasRows = encumbranceReportTables.some((table) => getFilledEncumbranceRows(table.key).length);
   const hasTitleChange = Boolean(normalizeYesNoChoice(state.fields.titleRecordChange));
-  if (!hasRows && !state.fields.takbisDate && !state.fields.takbisMethod && !hasTitleChange) return "";
+  if (!hasRows && !state.fields.takbisDate && !state.fields.takbisMethod && !hasTitleChange) {
+    return { detail: "", summary: "", exceedsLimit: false };
+  }
 
   const date = encumbranceDateOrBila(state.fields.takbisDate);
   const method = encumbranceTextOrBila(state.fields.takbisMethod || "Webtapu Sistemi");
   const declarationRows = getFilledEncumbranceRows("encumbranceDeclarations");
-  const parts = [
+  const declarationRowsWithoutRights = declarationRows.filter((row) => !isEncumbranceRightOrLiabilityRow(row));
+  const easementRows = declarationRows.filter(isEncumbranceRightOrLiabilityRow);
+  const mortgageRows = getFilledEncumbranceRows("encumbranceMortgages");
+  const annotationRows = getFilledEncumbranceRows("encumbranceAnnotations");
+  const detailedAnnotationSection = buildEncumbranceSectionParagraph(
+    "Şerhler Bölümü",
+    annotationRows,
+    formatEncumbranceAnnotationRow,
+  );
+  const commonParts = [
     `${date} tarihinde ${method} üzerinden alınan TAKBİS belgesine göre, konu taşınmaz üzerinde aşağıdaki takyidatlar bulunmaktadır.`,
     buildEncumbranceSectionParagraph(
       "Beyanlar Bölümü",
-      declarationRows.filter((row) => !isEncumbranceRightOrLiabilityRow(row)),
+      declarationRowsWithoutRights,
       (row) => formatEncumbranceDeclarationRow(row, { addIsbankManagementPlanNote: true }),
     ),
     buildEncumbranceSectionParagraph(
       "Hak ve Mükellefiyetler Bölümü",
-      declarationRows.filter(isEncumbranceRightOrLiabilityRow),
+      easementRows,
       formatEncumbranceDeclarationRow,
     ),
     buildEncumbranceSectionParagraph(
       "İpotekler Bölümü",
-      getFilledEncumbranceRows("encumbranceMortgages"),
+      mortgageRows,
       formatEncumbranceMortgageRow,
-    ),
-    buildEncumbranceSectionParagraph(
-      "Şerhler Bölümü",
-      getFilledEncumbranceRows("encumbranceAnnotations"),
-      formatEncumbranceAnnotationRow,
     ),
   ];
 
   const titleChangeParagraph = buildEncumbranceTitleRecordChangeParagraph(date, method);
-  if (titleChangeParagraph) parts.push(titleChangeParagraph);
+  const detail = normalizeEncumbranceSummaryText(
+    [...commonParts, detailedAnnotationSection, titleChangeParagraph]
+      .filter(Boolean)
+      .join("\n\n"),
+  );
+  const exceedsLimit = detail.length > 2000;
+  if (!exceedsLimit) {
+    return { detail, summary: detail, exceedsLimit: false };
+  }
 
-  return normalizeEncumbranceSummaryText(parts.filter(Boolean).join("\n\n"));
+  const condensedAnnotationSection = annotationRows.length
+    ? `Şerhler Bölümü:\n${buildCondensedAnnotationSummary(annotationRows)}`
+    : "";
+  const condensedText = normalizeEncumbranceSummaryText(
+    [...commonParts, condensedAnnotationSection, titleChangeParagraph]
+      .filter(Boolean)
+      .join("\n\n"),
+  );
+  const requiredTail = [condensedAnnotationSection, titleChangeParagraph]
+    .filter(Boolean)
+    .join("\n\n");
+  const summary = limitEncumbranceSummaryCharacters(condensedText, 2000, requiredTail);
+  return { detail, summary, exceedsLimit: true };
 }
 
 function normalizeEncumbranceSummaryText(value) {
   return normalizeReportDescriptionText(value)
     .replace(/\b(A\.Ş\.|T\.A\.O\.|T\.A\.Ş\.|Ltd\. Şti\.)\s+Lehine\b/g, "$1 lehine");
+}
+
+function getEncumbranceNumericCounts(rows = {}) {
+  const declarationRows = Array.isArray(rows.declarationRows)
+    ? rows.declarationRows
+    : getFilledEncumbranceRows("encumbranceDeclarations");
+  const mortgageRows = Array.isArray(rows.mortgageRows)
+    ? rows.mortgageRows
+    : getFilledEncumbranceRows("encumbranceMortgages");
+  const annotationRows = Array.isArray(rows.annotationRows)
+    ? rows.annotationRows
+    : getFilledEncumbranceRows("encumbranceAnnotations");
+  const easements = declarationRows.filter(isEncumbranceRightOrLiabilityRow).length;
+  const declarations = declarationRows.length - easements;
+  const mortgages = mortgageRows.length;
+  const annotations = annotationRows.length;
+  return {
+    declarations,
+    mortgages,
+    annotations,
+    easements,
+    total: declarations + mortgages + annotations + easements,
+  };
+}
+
+function classifyEncumbranceAnnotation(row) {
+  const text = foldTurkish([row?.c0, row?.c1].filter(Boolean).join(" "));
+  if (/\bIHTIYATI\s+HACIZ/.test(text)) return "precautionary";
+  if (/\bKAMU\s+HACZI|\bKAMU\s+HACIZ/.test(text)) return "public";
+  if (/\bICRAI\s+HACIZ|\bICRA\s+HACZI|\bICRA\s+HACIZ/.test(text)) return "enforcement";
+  return "other";
+}
+
+function buildCondensedAnnotationSummary(rows = []) {
+  const counts = {
+    enforcement: 0,
+    public: 0,
+    precautionary: 0,
+    other: 0,
+  };
+  rows.forEach((row) => {
+    counts[classifyEncumbranceAnnotation(row)] += 1;
+  });
+  const phrases = [
+    counts.enforcement ? `${counts.enforcement} adet icrai haciz` : "",
+    counts.public ? `${counts.public} adet kamu haczi` : "",
+    counts.precautionary ? `${counts.precautionary} adet ihtiyati haciz` : "",
+    counts.other ? `${counts.other} adet diğer tür şerh` : "",
+  ].filter(Boolean);
+  const list = phrases.length > 1
+    ? `${phrases.slice(0, -1).join(", ")} ve ${phrases.at(-1)}`
+    : phrases[0] || "herhangi bir şerh";
+  return `Taşınmaz üzerinde şerh türüne göre ${list} kaydı bulunmaktadır. Şerh kayıtları karakter kısıtlaması sebebiyle rapor ekinde tablo olarak tarafınıza sunulmuştur.`;
+}
+
+function limitEncumbranceSummaryCharacters(value, maxLength = 2000, requiredTail = "") {
+  const text = String(value || "").trim();
+  if (text.length <= maxLength) return text;
+  const normalizedTail = String(requiredTail || "").trim();
+  const fallbackNotice = "Karakter kısıtlaması sebebiyle devam eden takyidat kayıtları rapor ekinde tablo olarak tarafınıza sunulmuştur.";
+  const suffix = `\n\n${normalizedTail || fallbackNotice}`;
+  const tailIndex = normalizedTail ? text.lastIndexOf(normalizedTail) : -1;
+  const bodySource = tailIndex >= 0 ? text.slice(0, tailIndex).trim() : text;
+  const available = Math.max(0, maxLength - suffix.length);
+  const candidate = bodySource.slice(0, available);
+  const lineEnd = candidate.lastIndexOf("\n");
+  const sentenceEnd = Math.max(candidate.lastIndexOf("."), candidate.lastIndexOf(";"));
+  const safeEnd = lineEnd > 0 ? lineEnd : sentenceEnd + 1;
+  const body = candidate.slice(0, safeEnd > available * 0.65 ? safeEnd : available).trim();
+  return `${body}${suffix}`.slice(0, maxLength);
 }
 
 // ==========================================================
@@ -19095,6 +19364,42 @@ function buildTakyidatTableGroups() {
 
 function hasTakyidatTableData() {
   return buildTakyidatTableGroups().some((group) => group.items.length);
+}
+
+function createEncumbranceCountSummaryPanel() {
+  const counts = getEncumbranceNumericCounts();
+  const panel = document.createElement("div");
+  panel.className = "subsection encumbrance-count-panel";
+
+  const title = document.createElement("h4");
+  title.textContent = "Takyidat Sayısal Verileri";
+  panel.append(title);
+
+  const shell = document.createElement("div");
+  shell.className = "table-shell encumbrance-count-table-shell";
+  const table = document.createElement("table");
+  table.className = "encumbrance-count-table";
+  table.innerHTML = `
+    <thead>
+      <tr>
+        <th>Beyanlar Bölümü</th>
+        <th>Rehinler (İpotekler) Bölümü</th>
+        <th>Şerhler Bölümü</th>
+        <th>İrtifaklar Bölümü</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>${counts.declarations}</td>
+        <td>${counts.mortgages}</td>
+        <td>${counts.annotations}</td>
+        <td>${counts.easements}</td>
+      </tr>
+    </tbody>
+  `;
+  shell.append(table);
+  panel.append(shell);
+  return panel;
 }
 
 function buildTakyidatTableText() {
@@ -19578,6 +19883,11 @@ function getIsbankManagementPlanNote() {
   return "(Yönetim planı, ana taşınmazın yönetim tarzını, kullanma maksat ve şeklini, yönetici ve denetçilerin alacakları ücreti ve yönetime ait diğer hususları ve bütün kat maliklerini bağlayan sözleşme hükmündeki bir belgedir. Söz konusu beyan, taşınmazın satışını ve/veya taşınmaz üzerinde ipotek tesisi edilmesini kısıtlayıcı bir faktör oluşturmamaktadır.)";
 }
 
+function formatEncumbranceRestrictedOwner(row, columnIndex) {
+  const restrictedOwner = encumbranceCleanText(row?.[`c${columnIndex}`]);
+  return restrictedOwner ? ` (Kısıtlı Malik: ${restrictedOwner})` : "";
+}
+
 function formatEncumbranceDeclarationRow(row, options = {}) {
   const type = encumbranceCleanText(row.c0);
   const description = encumbranceCleanText(row.c1);
@@ -19590,7 +19900,7 @@ function formatEncumbranceDeclarationRow(row, options = {}) {
     && hasManagementPlanStatement([type, description].join(" "))
     ? ` ${getIsbankManagementPlanNote()}`
     : "";
-  return `${mainText} (Tarih: ${encumbranceDateOrBila(row.c2)}, Yevmiye No: ${encumbranceTextOrBila(row.c3)})${note}`;
+  return `${mainText} (Tarih: ${encumbranceDateOrBila(row.c2)}, Yevmiye No: ${encumbranceTextOrBila(row.c3)})${formatEncumbranceRestrictedOwner(row, 4)}${note}`;
 }
 
 function formatEncumbranceAnnotationRow(row) {
@@ -19603,14 +19913,14 @@ function formatEncumbranceAnnotationRow(row) {
   detailParts.push(`Yevmiye No: ${encumbranceTextOrBila(row.c4)}`);
   const mainText = [type, description].filter(Boolean).join(type && description ? ": " : "");
   if (!mainText) return "";
-  return `${mainText} (${detailParts.join(", ")})`;
+  return `${mainText} (${detailParts.join(", ")})${formatEncumbranceRestrictedOwner(row, 5)}`;
 }
 
 function formatEncumbranceMortgageRow(row) {
   const creditor = normalizeMortgageCreditorDisplay(row.c0) || "Bila";
   const degree = formatEncumbranceMortgageDegree(row.c1);
   const amount = formatEncumbranceMoney(row.c2);
-  return `${creditor} lehine ${degree} ${amount} tutarında ipotek kaydı bulunmaktadır. (Tarih: ${encumbranceDateOrBila(row.c3)}, Yevmiye No: ${encumbranceTextOrBila(row.c4)})`;
+  return `${creditor} lehine ${degree} ${amount} tutarında ipotek kaydı bulunmaktadır. (Tarih: ${encumbranceDateOrBila(row.c3)}, Yevmiye No: ${encumbranceTextOrBila(row.c4)})${formatEncumbranceRestrictedOwner(row, 5)}`;
 }
 
 function buildEncumbranceTitleRecordChangeParagraph(date, method) {
@@ -19695,6 +20005,7 @@ function parseTakbisAnnotationRecord(record) {
     c2: lienAmount,
     c3: record?.date || "",
     c4: record?.journalNo || "",
+    c5: record?.restrictedOwner || "",
     __amountSource: amountSource,
     __requiresLienAmount: shouldReadAmount ? "1" : "",
     __amountMissing: shouldReadAmount && !lienAmount ? "1" : "",
@@ -20283,6 +20594,7 @@ function parseTakbisMortgageRecord(record) {
     c2: amountInfo.text,
     c3: record?.date || fallbackDateInfo.date || "",
     c4: record?.journalNo || fallbackDateInfo.journalNo || "",
+    c5: record?.restrictedOwner || "",
   };
 }
 
@@ -22370,7 +22682,6 @@ function analyzeRegionElements(elements, places) {
       developmentDensity: inferDevelopmentDensity(medianLevel, counts),
       socialNeeds: inferSocialNeeds(amenityScore),
       regionUsePurpose: inferRegionUsePurpose(landuses, counts),
-      planningPrincipleHarmony: "uyumludur",
     },
     metrics: {
       medianLevel: medianLevel || "",
@@ -22877,7 +23188,6 @@ function resetKmlDerivedFields() {
     "developmentDensity",
     "socialNeeds",
     "regionUsePurpose",
-    "planningPrincipleHarmony",
     "environmentRegionType",
     "agriculturalActivityDensity",
     "agriculturalActivityTypes",

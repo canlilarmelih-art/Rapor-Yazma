@@ -66,6 +66,20 @@ assert(generatedKeys.length >= 20, `olusturulan metin anahtari sayisi beklenende
 
 // --- motoru sanal ortamda yükle ----------------------------------------
 const engineSource = fs.readFileSync(path.join(appDir, "src", "templates", "template-engine.js"), "utf8");
+[
+  "TAKYIDAT2025",
+  "TAKYIDATISBANK",
+  "TAKBISSUMMARY",
+  "ENCUMBRANCESUMMARYTEXT",
+].forEach((placeholderKey) => {
+  const bindingPattern = new RegExp(
+    `${placeholderKey}: \\\\{ t: \\\\(\\\\) => safeCall\\\\(\"buildEncumbranceSummary\"\\\\) \\\\|\\\\| field\\\\(\"takbisSummary\"\\\\)`,
+  );
+  assert(
+    bindingPattern.test(engineSource),
+    `${placeholderKey} kullanicinin Ozet/Detay secimini canli ureticiden almiyor.`,
+  );
+});
 
 const sandboxWindow = {};
 const stubState = {
@@ -121,6 +135,33 @@ loader(
 
 const engine = sandboxWindow.RaporTemplates;
 assert(Boolean(engine), "window.RaporTemplates olusmadi.");
+
+stubState.fields.takbisSummary = "eski kaydedilmis takyidat metni";
+let selectedEncumbranceMode = "summary";
+globalThis.buildEncumbranceSummary = () => (
+  selectedEncumbranceMode === "detail"
+    ? "DETAY: tum takyidat kayitlari"
+    : "OZET: 2000 karakter sinirli takyidat metni"
+);
+const encumbranceModeTemplate = [
+  "{{TAKYIDAT2025}}",
+  "{{TAKYIDATISBANK}}",
+  "{{TAKBISSUMMARY}}",
+  "{{ENCUMBRANCESUMMARYTEXT}}",
+].join("|");
+const summaryModeOutput = engine.fillTemplate(encumbranceModeTemplate).html;
+assert(
+  (summaryModeOutput.match(/OZET: 2000 karakter sinirli takyidat metni/g) || []).length === 4,
+  "Ozet secimi tum takyidat placeholder'larina aktarilmadi.",
+);
+assert(!summaryModeOutput.includes("eski kaydedilmis"), "Template eski takyidat alanini kullandi.");
+selectedEncumbranceMode = "detail";
+const detailModeOutput = engine.fillTemplate(encumbranceModeTemplate).html;
+assert(
+  (detailModeOutput.match(/DETAY: tum takyidat kayitlari/g) || []).length === 4,
+  "Detay secimi tum takyidat placeholder'larina aktarilmadi.",
+);
+delete globalThis.buildEncumbranceSummary;
 
 [
   "LEGAL_VALUE_AREA",

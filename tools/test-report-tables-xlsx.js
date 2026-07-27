@@ -91,11 +91,11 @@ global.sections = [
   { id: "comparables", table: { title: "Emsal kayıtları", columns: ["Kaynak", "Konum", "Alan", "Fiyat", "Düzeltme"] } },
 ];
 global.encumbranceReportTables = [
-  { key: "encumbranceDeclarations", title: "Beyanlar - Hak ve Mükellefiyetler", columns: ["Tür", "Açıklama", "Tarih", "Yevmiye No"] },
-  { key: "encumbranceAnnotations", title: "Şerhler", columns: ["Şerh Türü", "Açıklama", "Haciz Tutarı", "Tarih", "Yevmiye No"] },
-  { key: "encumbranceMortgages", title: "İpotekler", columns: ["İpotek Lehdarı", "İpotek Derecesi", "İpotek Tutarı", "Tarih", "Yevmiye No"] },
+  { key: "encumbranceDeclarations", title: "Beyanlar - Hak ve Mükellefiyetler", columns: ["Tür", "Açıklama", "Tarih", "Yevmiye No", "Kısıtlı Malik"] },
+  { key: "encumbranceAnnotations", title: "Şerhler", columns: ["Şerh Türü", "Açıklama", "Haciz Tutarı", "Tarih", "Yevmiye No", "Kısıtlı Malik"] },
+  { key: "encumbranceMortgages", title: "İpotekler", columns: ["İpotek Lehdarı", "İpotek Derecesi", "İpotek Tutarı", "Tarih", "Yevmiye No", "Kısıtlı Malik"] },
 ];
-global.encumbranceReportColumns = ["Tür", "Açıklama", "Tarih", "Yevmiye No"];
+global.encumbranceReportColumns = ["Tür", "Açıklama", "Tarih", "Yevmiye No", "Kısıtlı Malik"];
 global.buildExportBaseFileName = () => "test-raporu";
 global.recalculateExpenseFees = () => {};
 // app.js'teki getReviewedDocumentChronologicalEntries'in (satir 17082-17095)

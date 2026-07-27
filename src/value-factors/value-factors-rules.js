@@ -51,9 +51,6 @@
     if (isHighIncome(fields.regionIncomeLevel)) add("positive", "location-income-high", "Bölgenin sosyo-ekonomik düzeyinin yüksek seviyede olması", "regionIncomeLevel", "Bölge Gelir Seviyesi");
     if (isLowIncome(fields.regionIncomeLevel)) add("negative", "location-income-low", "Bölgenin sosyo-ekonomik düzeyinin düşük seviyede olması", "regionIncomeLevel", "Bölge Gelir Seviyesi");
 
-    if (fold(fields.planningPrincipleHarmony).includes("UYUMLUDUR")) add("positive", "planning-compatible", "Bölgenin plancılık ilkeleri ile uyumlu olması", "planningPrincipleHarmony", "Plancılık Uyumu");
-    if (fold(fields.planningPrincipleHarmony).includes("UYUMLU DEGIL")) add("negative", "planning-incompatible", "Bölgenin plancılık ilkeleri ile uyumlu olmaması", "planningPrincipleHarmony", "Plancılık Uyumu");
-
     if (!shouldSuppressLandFactors(fields)) {
       if (isYes(fields.landRoadFrontage)) add("positive", "land-road-frontage", "Kadastro/imar yoluna cepheli olması", "landRoadFrontage", "Yola Cephe");
       if (isNo(fields.landRoadFrontage)) add("negative", "land-no-road-frontage", "Kadastro/imar yoluna cephesinin bulunmaması", "landRoadFrontage", "Yola Cephe");

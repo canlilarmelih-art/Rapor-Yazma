@@ -422,8 +422,8 @@
     // --- Takyidat ---
     TAKYIDATTARIH: { d: ["takbisDate"] },
     TAKYIDATSAAT: { f: ["takbisTime"] },
-    TAKYIDAT2025: { t: () => field("takbisSummary") || safeCall("buildEncumbranceSummary"), paragraphClass: "encumbrance-summary" },
-    TAKYIDATISBANK: { t: () => field("takbisSummary") || safeCall("buildEncumbranceSummary"), paragraphClass: "encumbrance-summary" },
+    TAKYIDAT2025: { t: () => safeCall("buildEncumbranceSummary") || field("takbisSummary"), paragraphClass: "encumbrance-summary" },
+    TAKYIDATISBANK: { t: () => safeCall("buildEncumbranceSummary") || field("takbisSummary"), paragraphClass: "encumbrance-summary" },
     TAKYIDATTABLO: { h: () => safeCall("buildTakyidatWordTableHtml") || safeCall("formatTextTableForWord", safeCall("buildTakyidatTableText")) },
     // `{{ENCUMBRANCE_SUMMARY_TEXT}}` (PLACEHOLDER-REHBERI.md'de belgeli,
     // 7 banka şablonunda kullanılıyor) hiçbir yerde kayıtlı DEĞİLDİ — ne app
@@ -431,8 +431,8 @@
     // şablonlarda sarı "⚠ AD" gösteriyordu. Gerçek alan `takbisSummary`
     // ("Takyidat açıklaması") — TAKBISSUMMARY adıyla zaten çözümleniyor,
     // burada eski adı da aynı değere bağlıyoruz.
-    TAKBISSUMMARY: { t: () => field("takbisSummary") || safeCall("buildEncumbranceSummary"), paragraphClass: "encumbrance-summary" },
-    ENCUMBRANCESUMMARYTEXT: { t: () => field("takbisSummary") || safeCall("buildEncumbranceSummary"), paragraphClass: "encumbrance-summary" },
+    TAKBISSUMMARY: { t: () => safeCall("buildEncumbranceSummary") || field("takbisSummary"), paragraphClass: "encumbrance-summary" },
+    ENCUMBRANCESUMMARYTEXT: { t: () => safeCall("buildEncumbranceSummary") || field("takbisSummary"), paragraphClass: "encumbrance-summary" },
 
     // --- İmar ---
     IMARPLANADI: { f: ["planName"] },
