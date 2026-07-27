@@ -7993,9 +7993,14 @@ function buildUnitInteriorDescriptionParts() {
   const externalSentence = shouldUseExternalUnitInspectionText() ? composeExternalUnitInspectionSentence() : "";
   const decorativeDescription = getUnitDecorativeDescriptionForCombinedText();
   const shopFrontageDepthSentence = composeUnitShopFrontageDepthSentence();
+  const areaDetails = joinNonEmptySentences([areaDescription, shopFrontageDepthSentence, externalSentence]);
+  // Dekoratif Özellikler Açıklaması YENİ PARAGRAFTA başlar (kullanıcı talebi):
+  // alan/iç hacim anlatısıyla aynı paragrafta birleşiyordu. Tek "\n" yeterli —
+  // normalizeReportWhitespace boş satırları zaten eliyor, formatWordParagraphs
+  // ise her satır sonunu ayrı <p> yapıyor.
   return {
     intro,
-    details: joinNonEmptySentences([areaDescription, shopFrontageDepthSentence, externalSentence, decorativeDescription]),
+    details: [areaDetails, String(decorativeDescription || "").trim()].filter(Boolean).join("\n"),
   };
 }
 
