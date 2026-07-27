@@ -412,17 +412,19 @@
       <tr class="vk-adjust"><td colspan="4">Yasal Durum Değeri Düzeltme:</td><td>&nbsp;</td></tr>
       <tr>
         <td class="vl">YASAL DURUM DEĞERİ<div class="vsub">(Taşınmaz inşa seviyeli ise tamamlanması halindeki yasal durum değerini giriniz)</div></td>
-        <td>&nbsp;</td><td class="vn">{{LEGAL_RENT_UNIT}}</td><td class="vn">{{LEGAL_AREA}}</td><td class="vn">{{LEGAL_VALUE}}</td>
+        <td>&nbsp;</td><td class="vn">{{LEGAL_VALUE_UNIT}}</td><td class="vn">{{LEGAL_BUILDING_VALUE_AREA}}</td><td class="vn">{{LEGAL_VALUE}}</td>
       </tr>
       <tr class="vk-adjust"><td colspan="4">Mevcut Durum Değeri Düzeltme:</td><td>&nbsp;</td></tr>
       <tr>
         <td class="vl">MEVCUT DURUM DEĞERİ<div class="vsub">(Taşınmaz inşa seviyeli ise tamamlanması halindeki mevcut durum değerini giriniz)</div></td>
-        <td>&nbsp;</td><td class="vn">&nbsp;</td><td class="vn">{{CURRENT_AREA}}</td><td class="vn">{{CURRENT_VALUE}}</td>
+        <td>&nbsp;</td><td class="vn">{{CURRENT_VALUE_UNIT}}</td><td class="vn">{{CURRENT_BUILDING_VALUE_AREA}}</td><td class="vn">{{CURRENT_VALUE}}</td>
       </tr>
-      <tr><td class="vl">SİGORTA DEĞERİ</td><td>&nbsp;</td><td class="vn">&nbsp;</td><td class="vn">{{LEGAL_AREA}}</td><td class="vn">{{INSURANCE_VALUE}}</td></tr>
+      <!-- Sigorta birim değeri, yapı sınıfına göre hesaplanan yapı yaklaşık
+           birim maliyetidir (insuranceUnitCost); alan mevcut yapı alanıdır. -->
+      <tr><td class="vl">SİGORTA DEĞERİ</td><td>&nbsp;</td><td class="vn">{{INSURANCE_UNIT_COST}}</td><td class="vn">{{CURRENT_BUILDING_VALUE_AREA}}</td><td class="vn">{{INSURANCE_VALUE}}</td></tr>
       <tr>
         <td class="vl">NATAMAM YASAL DURUM DEĞERİ<div class="vsub">(Taşınmazın inşa halindeki yasal durum değerini giriniz)</div></td>
-        <td colspan="3">İnşaa Seviyesi: {{UNİT_CONSTRUCTİON_LEVEL}} %</td><td class="vn">{{LEGAL_INCOMPLETE_VALUE}}</td>
+        <td colspan="3">{{INCOMPLETE_CONSTRUCTION_LEVEL}}</td><td class="vn">{{LEGAL_INCOMPLETE_VALUE}}</td>
       </tr>
       <tr>
         <td class="vl">NATAMAM MEVCUT DURUM DEĞERİ<div class="vsub">(Taşınmazın inşa halindeki mevcut durum değerini giriniz)</div></td>

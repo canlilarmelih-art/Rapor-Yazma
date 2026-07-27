@@ -17424,6 +17424,17 @@ function getBuildingUsageTypesText() {
   return `${labels.slice(0, -1).join(", ")} ve ${labels[labels.length - 1]}`;
 }
 
+// Değerler ekranindaki "İnşaa Seviyesi" hücresi: yapı %100 tamamlanmışsa
+// natamam satırları anlamsız olduğu için hücre BOŞ bırakılır (kullanıcı
+// talimatı). Yalnızca gerçekten inşa halindeyken (< %100) yazılır.
+function getIncompleteConstructionLevelText() {
+  const raw = String(state.fields?.unitConstructionLevel ?? "").trim();
+  if (!raw) return "";
+  const level = parseValuationNumber(raw);
+  if (Number.isFinite(level) && level >= 100) return "";
+  return `İnşaa Seviyesi: ${raw} %`;
+}
+
 function getLatestBuildingPermitDateText() { return reviewedDocumentDateText(getLatestBuildingPermitDocumentRow()); }
 function getLatestBuildingPermitNoText() { return reviewedDocumentNoText(getLatestBuildingPermitDocumentRow()); }
 function getOccupancyPermitNoText() { return reviewedDocumentNoText(getOccupancyPermitDocumentRow()); }

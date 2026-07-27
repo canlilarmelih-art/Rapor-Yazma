@@ -576,6 +576,8 @@
     ARCHITECTURALPROJECTDATE: { fn: () => safeCall("getArchitecturalProjectDateText") },
     ARCHITECTURALPROJECTNO: { fn: () => safeCall("getArchitecturalProjectNoText") },
     BUILDINGUSAGETYPES: { fn: () => safeCall("getBuildingUsageTypesText") },
+    // İnşaa seviyesi %100 ise boş döner (natamam satırları anlamsız olur).
+    INCOMPLETECONSTRUCTIONLEVEL: { fn: () => safeCall("getIncompleteConstructionLevelText") },
     YASALKATDAGILIM2025: { fn: () => safeCall("buildBuildingFloorMacroSummary") },
     MEVCUTKATDAGILIMI2025: { fn: () => safeCall("buildBuildingFloorMacroSummary") },
     PENCERE: { f: ["windows", "unitWindows"] },
@@ -730,6 +732,9 @@
     // değerleme satırlarında areaKey olarak tanımlı olduğu için buraya elle
     // eklenir — aksi halde {{LEGAL_BUILDING_VALUE_AREA}} çözümlenmez.
     "legalBuildingValueArea", "currentBuildingValueArea",
+    // Yasal/mevcut m² birim değerleri ve sigortaya esas alan: aynı şekilde
+    // değerleme satırlarında unitKey/areaKey olarak tanımlı.
+    "legalValueUnit", "currentValueUnit", "insuranceValueArea",
   ];
 
   let foldedFieldIndex = null;

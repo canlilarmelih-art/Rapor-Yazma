@@ -110,7 +110,14 @@ const combinedDocumentRows = [
   { c0: "İsim Değişikliği Ruhsatı", c1: "Yıldırım Belediyesi", c2: "27.03.2023", c3: "750/04", c4: "" },
 ];
 const docColumnContext = {
-  state: { tables: { buildingFloors: [{ residential: "20", shop: "1", office: "", storage: "" }] } },
+  state: {
+    fields: {},
+    tables: { buildingFloors: [{ residential: "20", shop: "1", office: "", storage: "" }] },
+  },
+  parseValuationNumber: (value) => {
+    const n = Number.parseFloat(String(value || "").replace(/\./g, "").replace(",", "."));
+    return Number.isFinite(n) ? n : Number.NaN;
+  },
   foldTurkish: foldTr,
   isBuildingCompletionOccupancyDocument: (type) => /YAPI\s*KULLANMA/.test(foldTr(type)),
   dateIsoToTr: (value) => {
@@ -153,6 +160,24 @@ assert.equal(
   docColumnContext.getBuildingUsageTypesText(),
   "Mesken ve İşyeri",
   "Blok kullanim turu daire+dukkan icin 'Mesken ve İşyeri' olmali."
+);
+
+// İnşaa seviyesi %100 (ya da boş) ise Değerler ekranındaki natamam satırının
+// "İnşaa Seviyesi" hücresi BOŞ kalmalı; yalnızca gerçekten inşa halindeyken
+// yazılmalı (kullanıcı talimatı: "İNŞ SEVİYE %100 İSE BOŞ BIRAK").
+docColumnContext.state.fields.unitConstructionLevel = "100";
+assert.equal(
+  docColumnContext.getIncompleteConstructionLevelText(),
+  "",
+  "Insaa seviyesi %100 iken hucre bos kalmali."
+);
+docColumnContext.state.fields.unitConstructionLevel = "";
+assert.equal(docColumnContext.getIncompleteConstructionLevelText(), "", "Deger girilmemisken bos kalmali.");
+docColumnContext.state.fields.unitConstructionLevel = "75";
+assert.equal(
+  docColumnContext.getIncompleteConstructionLevelText(),
+  "İnşaa Seviyesi: 75 %",
+  "Insa halindeyken (%75) seviye yazilmali."
 );
 
 console.log("project suitability status tests passed");
