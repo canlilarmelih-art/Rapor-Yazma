@@ -18416,6 +18416,13 @@ function normalizeReportStateFields(targetState) {
     // sütun eşleştirip select/multiSelect değerlerini (ör. "1. normal kat" → "1. Normal
     // Kat") bozar ve kat/mülkiyet seçimlerini silinmiş gibi gösterirdi; bu yüzden atlanır.
     if (tableKey === "comparables") return;
+    // unitFloors satırları da c0/c1... değil ADLANDIRILMIŞ anahtarlar kullanır
+    // (floor, interiors, note...) ve kendi section.id'si yoktur. section bulunamadığı
+    // için column="" olur ve normalizeReportTableValue varsayılan dala (başlık
+    // büyütme) düşer — "İç Hacimler" seçici kutusundaki "WC" değeri her autosave'de
+    // "Wc"ye çevrilip <option value="WC"> ile eşleşmeyince sekme değişince seçim
+    // boş görünüyordu (kullanıcı bildirimi). Bu tablo da atlanır.
+    if (tableKey === "unitFloors") return;
     const section = sections.find((item) => item.id === tableKey);
     rows.forEach((row) => {
       if (!row || typeof row !== "object") return;
