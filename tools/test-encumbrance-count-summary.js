@@ -7,7 +7,7 @@ const vm = require("node:vm");
 
 const appSource = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
 const helperStart = appSource.indexOf("function getEncumbranceNumericCounts");
-const helperEnd = appSource.indexOf("// ==========================================================\n//  Takyidat Tablosu", helperStart);
+const helperEnd = appSource.indexOf("function buildTakyidatTableGroups", helperStart);
 assert(helperStart >= 0 && helperEnd > helperStart, "Takyidat sayım yardımcıları bulunamadı.");
 
 const foldTurkish = (value) => String(value || "")

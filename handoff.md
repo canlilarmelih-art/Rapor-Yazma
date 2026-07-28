@@ -5,6 +5,19 @@ Son güncelleme: 2026-07-28 · Servis edilen sürüm: **app.js?v=20260728-0300**
 Bu belge, bir sonraki geliştirici/oturum için projeyi çalıştırma, doğrulama ve bu
 oturumda yapılanları özetler.
 
+## 0.0.230 - 2026-07-28 - Takyidat testi CRLF dayanıklılığı
+
+`tools/test-encumbrance-count-summary.js` içindeki yardımcı kod dilimi, yorum
+başlığını yalnızca `LF` satır sonuyla aradığı için `app.js` Windows `CRLF` biçimine
+dönüştüğünde yanlış biçimde “Takyidat sayım yardımcıları bulunamadı” hatası
+veriyordu. Dilimin bitişi artık yorum metni yerine gerçek
+`buildTakyidatTableGroups` fonksiyon tanımıyla belirlenir. Böylece test satır sonu
+biçiminden ve yorum değişikliklerinden bağımsızdır.
+
+Kırılan hedef test ve tam `npm.cmd run verify` zinciri aynı HEAD üzerinde geçti.
+Değişiklik öncesi yedek:
+`backups/before-encumbrance-test-crlf-fix_2026-07-28_18-37-31`.
+
 ## 0.0.229 - 2026-07-28 - Proje kurumu OSB adlandırması
 
 `Belgeler ve Proje > Proje İncelenen Kurum` alanındaki `OSB Bölge Müdürlüğü`
