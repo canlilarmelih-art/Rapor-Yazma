@@ -21,6 +21,7 @@ const foldTurkish = (value) => String(value || "")
 
 const context = {
   foldTurkish,
+  normalizeEncumbranceSummaryText: (value) => String(value || "").trim(),
   getFilledEncumbranceRows: () => [],
   isEncumbranceRightOrLiabilityRow: (row) => /HAK|MUKELLEFIYET|IRTIFAK|INTIFA|SUKNA|OTURMA|UST HAKKI|GECIT HAKKI|KAYNAK HAKKI|DAIMI HAK/
     .test(foldTurkish([row?.c0, row?.c1].filter(Boolean).join(" "))),
@@ -72,6 +73,29 @@ const lineLimited = context.limitEncumbranceSummaryCharacters(`${completeLines}\
 const beforeTail = lineLimited.split("\n\nŞerhler Bölümü:")[0];
 assert.match(beforeTail, /\)$/, "Yoğun özet bir takyidat kaydının ortasında kesilmemeli.");
 
+const adaptiveSummary = context.buildAdaptiveEncumbranceSummary({
+  intro: "TAKBİS belgesine göre takyidatlar aşağıdadır.",
+  sections: [
+    {
+      detail: `Şerhler Bölümü:\n${"Uzun şerh kaydı. ".repeat(85)}`,
+      summary: "Şerhler Bölümü:\nTaşınmaz üzerinde 32 adet şerh kaydı bulunmaktadır.",
+    },
+    {
+      detail: `Hak ve Mükellefiyetler Bölümü:\n${"Uzun irtifak hakkı kaydı. ".repeat(70)}`,
+      summary: "Hak ve Mükellefiyetler Bölümü:\nTaşınmaz üzerinde 18 adet hak ve mükellefiyet kaydı bulunmaktadır.",
+    },
+    {
+      detail: "Beyanlar Bölümü:\nYönetim planı kaydı aynen korunmalıdır.",
+      summary: "Beyanlar Bölümü:\n1 adet beyan kaydı bulunmaktadır.",
+    },
+  ],
+  maxLength: 500,
+});
+assert(adaptiveSummary.length <= 500, "Uyarlamalı takyidat özeti karakter sınırını aşmamalı.");
+assert.match(adaptiveSummary, /32 adet şerh kaydı/);
+assert.match(adaptiveSummary, /18 adet hak ve mükellefiyet kaydı/);
+assert.match(adaptiveSummary, /Yönetim planı kaydı aynen korunmalıdır/);
+
 assert.equal(
   context.selectEncumbranceSummaryVariant(
     { detail: "kısa detay", summary: "kısa özet", exceedsLimit: false },
@@ -96,6 +120,8 @@ assert.equal(
 
 assert.match(appSource, /const exceedsLimit = detail\.length > 2000/);
 assert.match(appSource, /buildCondensedAnnotationSummary\(annotationRows\)/);
+assert.match(appSource, /buildAdaptiveEncumbranceSummary\(\{/);
+assert.match(appSource, /right\.detailLength - left\.detailLength/);
 assert.match(appSource, /dataEncumbranceSummaryMode|data-encumbrance-summary-mode/);
 assert.match(appSource, /group\.hidden = !variants\.exceedsLimit/);
 assert.match(appSource, /body\.append\(createEncumbranceCountSummaryPanel\(\)\)/);

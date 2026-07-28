@@ -1686,6 +1686,16 @@ td .free-lookup input {
   display: none;
 }
 
+.imar-institution-dropdown .inline-checkbox-list {
+  grid-template-columns: 1fr;
+}
+
+.imar-osb-institution-modal .field small {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
 .comparable-multi-checkbox {
   min-width: 0;
 }

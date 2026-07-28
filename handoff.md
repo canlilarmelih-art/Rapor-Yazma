@@ -1,9 +1,68 @@
 # Rapor Yazma Programı — Handoff Notu
 
-Son güncelleme: 2026-07-28 · Servis edilen sürüm: **app.js?v=20260728-0125** (styles.css?v=20260728-0132, src/templates/template-engine.js?v=20260728-0138, cloud/cloud-sync.js?v=20260719-2200, cloud/report-library.js?v=20260719-2200, halkbank-risk-rules.js?v=20260707-1812)
+Son güncelleme: 2026-07-28 · Servis edilen sürüm: **app.js?v=20260728-0300** (styles.css?v=20260728-0300, src/templates/template-engine.js?v=20260728-0138, cloud/cloud-sync.js?v=20260719-2200, cloud/report-library.js?v=20260719-2200, halkbank-risk-rules.js?v=20260707-1812)
 
 Bu belge, bir sonraki geliştirici/oturum için projeyi çalıştırma, doğrulama ve bu
 oturumda yapılanları özetler.
+
+## 0.0.229 - 2026-07-28 - Proje kurumu OSB adlandırması
+
+`Belgeler ve Proje > Proje İncelenen Kurum` alanındaki `OSB Bölge Müdürlüğü`
+seçeneği, imar kurumu alanıyla aynı ad giriş penceresine bağlandı. Kullanıcı yalnızca
+OSB adını yazar; örneğin `Hasanağa`, `Hasanağa Organize Sanayi Bölge Müdürlüğü`
+olarak kaydedilir. Tam kurum adı yeniden çizimlerde seçenek listesinden düşmez,
+kurum denetimlerinde OSB olarak tanınır ve proje inceleme açıklaması ile incelenen
+belge kayıtlarında kısaltılmadan kullanılır.
+
+`tools/test-imar-institution-control.js` proje kurumu OSB akışını, tam adın
+korunmasını ve kurum özetini de doğrulayacak şekilde genişletildi.
+`npm.cmd run verify`, `node --check app.js` ve `git diff --check` geçti.
+Değişiklik öncesi yedek:
+`backups/before-project-institution-osb-popup_2026-07-28_02-56-24`.
+Cache sürümleri `app.js?v=20260728-0300` ve `styles.css?v=20260728-0300`
+olarak güncellendi.
+
+## 0.0.228 - 2026-07-28 - İmar bilgi kurumu çoklu seçimi
+
+İmar Durumu bölümündeki `Bilgi Alınan Kurum` alanı, Proje İncelenen Kurum
+mantığına yakın çoklu seçim kontrolüne dönüştürüldü. Tapu ilçe ve il verilerine
+göre `(İlçe) Belediyesi` ile 30 büyükşehirde `(İl) Büyükşehir Belediyesi`,
+diğer illerde `(İl) İl Özel İdaresi` seçenekleri dinamik oluşturulur. PDF'den
+otomatik gelen kurum metni seçenek kümesinde olmasa da korunur ve kullanıcı
+isterse diğer kurumlarla birlikte seçebilir.
+
+`OSB Bölge Müdürlüğü` seçildiğinde yalnızca OSB adını isteyen küçük bir pencere
+açılır; örneğin `Hasanağa`, `Hasanağa Organize Sanayi Bölge Müdürlüğü` olarak
+kaydedilir. Çoklu kurumlar imar açıklamasında `... Belediyesi ve ...
+Belediyesinden alınan bilgiye göre` biçiminde birleştirilir. Büyükşehir listesi
+kullanıcının ileteceği nihai resmi listeyle daha sonra kolayca güncellenebilir.
+
+Yeni `tools/test-imar-institution-control.js` testi; büyükşehir/il özel idaresi
+ayrımını, PDF değerinin korunmasını, OSB adlandırmasını ve açıklama metnini
+doğrular. `npm.cmd run verify`, `node --check app.js` ve `git diff --check`
+geçti. Değişiklik öncesi yedek:
+`backups/before-imar-institution-multiselect_2026-07-28_02-31-09`.
+Cache sürümleri `app.js?v=20260728-0231` ve `styles.css?v=20260728-0231`
+olarak güncellendi.
+
+## 0.0.227 - 2026-07-28 - Takyidat özetinde sıralı bölüm daraltma
+
+Takyidat özetinin 2000 karaktere sığmadığı durumda yalnızca Şerhler Bölümü'nü
+özetleyip kalan metni doğrudan kesen davranış kaldırıldı. Beyanlar, Hak ve
+Mükellefiyetler, İpotekler ve Şerhler bölümleri ayrıntılı metin uzunluğuna göre
+sıralanır. En uzun bölüm özetlendikten sonra sınır hâlâ aşılıyorsa ikinci, gerekirse
+sonraki en uzun bölüm de adet bazında özetlenir. Böylece özellikle yoğun irtifak
+hakları sessizce metinden kaybolmaz; özetlenen bölümün kayıt adedi ve rapor eki
+bilgisi korunur.
+Hak ve Mükellefiyetler özeti, tekrar oluşturan “irtifak hakkı” ifadesi olmadan
+“N adet hak ve mükellefiyet kaydı bulunmaktadır” biçiminde yazılır.
+
+Regresyon testine aynı anda uzun Şerhler ve Hak ve Mükellefiyetler bölümleri
+eklendi. Test, iki bölümün de gerektiğinde özetlendiğini ve kısa Beyanlar
+Bölümü'nün aynen kaldığını doğrular. Değişiklik öncesi yedek:
+`backups/before-adaptive-encumbrance-summary_2026-07-28_02-09-36`.
+Cache sürümü `app.js?v=20260728-0218` olarak güncellendi. `npm.cmd run verify`,
+JavaScript sözdizimi ve `git diff --check` doğrulamaları geçti.
 
 ## 0.0.226 - 2026-07-28 - Toplu teslim ve 3B kod sinir haritası güncellemesi
 

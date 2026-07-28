@@ -433,7 +433,7 @@ const sections = [
     description:
       "Plan bilgileri, yapılaşma koşulları, terk/tevhid ve imar yorumları bankalara göre rapor metnine bağlanır.",
     fields: [
-      { key: "imarInfoInstitution", label: "Bilgi alınan kurum", type: "text", critical: true },
+      { key: "imarInfoInstitution", label: "Bilgi alınan kurum", type: "multiCheckbox", critical: true, autoFill: true },
       { key: "planScale", label: "Plan ölçeği", type: "select", options: imarPlanScaleOptions, critical: true },
       { key: "planDate", label: "Plan tarihi", type: "date" },
       { key: "planName", label: "İmar plan adı", type: "text", required: true, critical: true },
@@ -927,6 +927,41 @@ const documentInstitutionStaticOptions = [
   "T.C. Çevre ve Şehircilik Bakanlığı",
   "OSB Bölge Müdürlüğü",
 ];
+
+const metropolitanProvinceNames = new Set([
+  "Adana",
+  "Ankara",
+  "Antalya",
+  "Aydın",
+  "Balıkesir",
+  "Bursa",
+  "Denizli",
+  "Diyarbakır",
+  "Erzurum",
+  "Eskişehir",
+  "Gaziantep",
+  "Hatay",
+  "İstanbul",
+  "İzmir",
+  "Kahramanmaraş",
+  "Kayseri",
+  "Kocaeli",
+  "Konya",
+  "Malatya",
+  "Manisa",
+  "Mardin",
+  "Mersin",
+  "Muğla",
+  "Ordu",
+  "Sakarya",
+  "Samsun",
+  "Şanlıurfa",
+  "Tekirdağ",
+  "Trabzon",
+  "Van",
+].map((name) => foldTurkish(name)));
+
+const imarOsbInstitutionOption = "OSB Bölge Müdürlüğü";
 
 const projectSuitabilityOptions = [
   "",
@@ -1843,7 +1878,9 @@ function createForm(section) {
     }
 
     if (field.type === "multiCheckbox") {
-      form.append(createMultiCheckboxControl(field));
+      form.append(field.key === "imarInfoInstitution"
+        ? createImarInstitutionControl(field)
+        : createMultiCheckboxControl(field));
       return;
     }
 
@@ -11681,6 +11718,19 @@ function createMultiCheckboxControl(field) {
   summaryButton.setAttribute("aria-expanded", "false");
   summaryButton.textContent = formatMultiCheckboxSummary(selected, field);
 
+  const persistMultiSelection = (values) => {
+    values = normalizeMultiCheckboxValues(values, field);
+    clearFieldSourceOwnership(field.key);
+    state.fields[field.key] = formatMultiCheckboxValue(values, field);
+    summaryButton.textContent = formatMultiCheckboxSummary(values, field);
+    refreshEnvironmentDescriptionFromCurrentFields(field.key);
+    refreshReviewedDocumentsDescriptionFromCurrentFields(field.key);
+    autosave();
+    renderValidation();
+    updateStatus();
+    return values;
+  };
+
   const list = document.createElement("div");
   list.className = "inline-checkbox-list";
   list.hidden = true;
@@ -11697,19 +11747,25 @@ function createMultiCheckboxControl(field) {
 
   list.querySelectorAll("input[type='checkbox']").forEach((input) => {
     input.addEventListener("change", () => {
+      if (field.key === "projectInstitution" && input.value === imarOsbInstitutionOption && input.checked) {
+        input.checked = false;
+        setOpen(false);
+        openImarOsbInstitutionModal((institutionName) => {
+          selected = persistMultiSelection([
+            ...selected.filter((value) => value !== imarOsbInstitutionOption),
+            institutionName,
+          ]);
+          renderSection();
+        });
+        return;
+      }
+
       let values = [...list.querySelectorAll("input[type='checkbox']:checked")].map((checkbox) => checkbox.value);
       if (field.maxSelections && values.length > field.maxSelections) {
         input.checked = false;
         values = values.filter((value) => value !== input.value);
       }
-      values = normalizeMultiCheckboxValues(values, field);
-      state.fields[field.key] = formatMultiCheckboxValue(values, field);
-      summaryButton.textContent = formatMultiCheckboxSummary(values, field);
-      refreshEnvironmentDescriptionFromCurrentFields(field.key);
-      refreshReviewedDocumentsDescriptionFromCurrentFields(field.key);
-      autosave();
-      renderValidation();
-      updateStatus();
+      selected = persistMultiSelection(values);
       if (field.key === "projectInstitution") {
         renderSection();
       }
@@ -11752,6 +11808,190 @@ function createMultiCheckboxControl(field) {
 
   wrapper.append(createSpan(field.label), summaryButton, list);
   return wrapper;
+}
+
+function createImarInstitutionControl(field) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "field multi-checkbox-dropdown imar-institution-dropdown";
+  wrapper.classList.toggle("field-wide", Boolean(field.wide));
+  wrapper.classList.toggle("is-critical", Boolean(field.critical));
+
+  let selected = getImarInstitutionValues();
+  const options = getImarInstitutionOptions(selected);
+  const summaryButton = document.createElement("button");
+  summaryButton.type = "button";
+  summaryButton.className = "multi-checkbox-summary";
+  summaryButton.dataset.field = field.key;
+  summaryButton.setAttribute("aria-expanded", "false");
+  summaryButton.textContent = formatImarInstitutionSummary(selected);
+  markFieldSourceState(summaryButton, field.key, field.autoFill);
+
+  const list = document.createElement("div");
+  list.className = "inline-checkbox-list";
+  list.hidden = true;
+
+  options.forEach((option) => {
+    const item = document.createElement("label");
+    item.className = "checkbox-row";
+    item.innerHTML = `
+      <input type="checkbox" value="${escapeHtml(option)}" ${selected.includes(option) ? "checked" : ""}>
+      <span>${escapeHtml(option)}</span>
+    `;
+    list.append(item);
+  });
+
+  const persistSelection = (values) => {
+    selected = normalizeMultiCheckboxValues(values);
+    clearFieldSourceOwnership(field.key);
+    state.fields[field.key] = formatMultiCheckboxValue(selected);
+    summaryButton.textContent = formatImarInstitutionSummary(selected);
+    refreshPlanningNoteFromCurrentFields(field.key);
+    autosave();
+    renderValidation();
+    updateStatus();
+  };
+
+  list.querySelectorAll("input[type='checkbox']").forEach((input) => {
+    input.addEventListener("change", () => {
+      if (input.value === imarOsbInstitutionOption && input.checked) {
+        input.checked = false;
+        setOpen(false);
+        openImarOsbInstitutionModal((institutionName) => {
+          persistSelection([...selected, institutionName]);
+          renderSection();
+        });
+        return;
+      }
+
+      const values = [...list.querySelectorAll("input[type='checkbox']:checked")]
+        .map((checkbox) => checkbox.value)
+        .filter((value) => value !== imarOsbInstitutionOption);
+      setOpen(false);
+      persistSelection(values);
+      renderSection();
+    });
+  });
+
+  let outsideClickListener = null;
+  const setOpen = (isOpen) => {
+    list.hidden = !isOpen;
+    wrapper.classList.toggle("is-open", isOpen);
+    summaryButton.setAttribute("aria-expanded", String(isOpen));
+
+    if (outsideClickListener) {
+      document.removeEventListener("pointerdown", outsideClickListener);
+      outsideClickListener = null;
+    }
+
+    if (isOpen) {
+      outsideClickListener = (event) => {
+        if (!wrapper.contains(event.target)) setOpen(false);
+      };
+      const currentOutsideClickListener = outsideClickListener;
+      setTimeout(() => {
+        if (outsideClickListener === currentOutsideClickListener) {
+          document.addEventListener("pointerdown", currentOutsideClickListener);
+        }
+      }, 0);
+    }
+  };
+
+  summaryButton.addEventListener("click", () => {
+    setOpen(list.hidden);
+  });
+  list.addEventListener("pointerdown", (event) => {
+    event.stopPropagation();
+  });
+
+  wrapper.append(createSpan(field.label), summaryButton, list);
+  return wrapper;
+}
+
+function getImarInstitutionValues(value = state.fields.imarInfoInstitution) {
+  if (Array.isArray(value)) return normalizeMultiCheckboxValues(value);
+  return normalizeMultiCheckboxValues(String(value || "")
+    .split(/\s*,\s*/)
+    .map((item) => item.trim())
+    .filter(Boolean));
+}
+
+function getImarInstitutionOptions(selectedValues = getImarInstitutionValues()) {
+  const city = normalizeReportTitleText(state.fields.titleCity || state.fields.city || "").trim();
+  const district = normalizeReportTitleText(state.fields.titleDistrict || state.fields.district || "").trim();
+  const regionalInstitution = city
+    ? `${city} ${isMetropolitanProvince(city) ? "Büyükşehir Belediyesi" : "İl Özel İdaresi"}`
+    : "";
+  const suggested = [
+    district ? `${district} Belediyesi` : "",
+    regionalInstitution,
+    imarOsbInstitutionOption,
+  ];
+  return [...new Set([...suggested, ...selectedValues].map((value) => String(value || "").trim()).filter(Boolean))];
+}
+
+function isMetropolitanProvince(value) {
+  return metropolitanProvinceNames.has(foldTurkish(value));
+}
+
+function formatImarInstitutionSummary(values = getImarInstitutionValues()) {
+  return values.length ? values.join(", ") : "Seçiniz";
+}
+
+function formatImarOsbInstitutionName(value) {
+  const cleanName = normalizeReportTitleText(String(value || "")
+    .replace(/\s+(?:Organize Sanayi|OSB)\s+Bölge Müdürlüğü\s*$/i, "")
+    .trim());
+  return cleanName ? `${cleanName} Organize Sanayi Bölge Müdürlüğü` : "";
+}
+
+function openImarOsbInstitutionModal(onSave = () => {}) {
+  document.querySelector(".modal-overlay")?.remove();
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.innerHTML = `
+    <div class="modal-card imar-osb-institution-modal" role="dialog" aria-modal="true" aria-labelledby="imarOsbInstitutionModalTitle">
+      <div class="modal-head">
+        <h3 id="imarOsbInstitutionModalTitle">OSB Bölge Müdürlüğü</h3>
+        <button class="modal-close" type="button" aria-label="Kapat" title="Kapat">×</button>
+      </div>
+      <div class="modal-body">
+        <label class="field">
+          <span>OSB adını yazınız</span>
+          <input type="text" data-osb-name autocomplete="off" placeholder="Örn. Hasanağa">
+          <small>Yalnızca OSB adını girin. Kurum adı otomatik tamamlanacaktır.</small>
+        </label>
+      </div>
+      <div class="modal-actions">
+        <button class="secondary-button" type="button" data-modal-cancel>Vazgeç</button>
+        <button class="primary-button" type="button" data-modal-save>Kaydet</button>
+      </div>
+    </div>
+  `;
+  const input = overlay.querySelector("[data-osb-name]");
+  const close = () => overlay.remove();
+  const save = () => {
+    const institutionName = formatImarOsbInstitutionName(input.value);
+    if (!institutionName) {
+      input.setCustomValidity("OSB adını yazınız.");
+      input.reportValidity();
+      return;
+    }
+    input.setCustomValidity("");
+    close();
+    onSave(institutionName);
+  };
+  overlay.querySelector(".modal-close").addEventListener("click", close);
+  overlay.querySelector("[data-modal-cancel]").addEventListener("click", close);
+  overlay.querySelector("[data-modal-save]").addEventListener("click", save);
+  input.addEventListener("input", () => input.setCustomValidity(""));
+  input.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      save();
+    }
+  });
+  document.body.append(overlay);
+  input.focus();
 }
 
 function createCheckboxControl(section, field) {
@@ -11805,6 +12045,12 @@ function createCheckboxControl(section, field) {
 }
 
 function getFieldOptions(field = {}) {
+  if (field.key === "imarInfoInstitution") {
+    return getImarInstitutionOptions();
+  }
+  if (field.key === "projectInstitution") {
+    return [...new Set([...(field.options || []), ...getSelectedProjectInstitutions()])];
+  }
   if (field.key === "regionUsePurpose" && detectEnvironmentalRegionType(state.fields.environmentRegionType) === "Sanayi Bölgesi") {
     return industrialRegionUsePurposeOptions;
   }
@@ -16643,7 +16889,15 @@ function getSelectedProjectInstitutions() {
 
 function projectInstitutionIncludes(keyword) {
   const foldedKeyword = foldTurkish(keyword);
+  if (foldedKeyword.includes("OSB") || foldedKeyword.includes("ORGANIZE SANAYI")) {
+    return getSelectedProjectInstitutions().some(isOsbInstitutionValue);
+  }
   return getSelectedProjectInstitutions().some((institution) => foldTurkish(institution).includes(foldedKeyword));
+}
+
+function isOsbInstitutionValue(value) {
+  const folded = foldTurkish(value);
+  return folded.includes("OSB") || folded.includes("ORGANIZE SANAYI BOLGE MUDURLUGU");
 }
 
 function buildProjectReviewInstitutionSummary() {
@@ -16659,7 +16913,9 @@ function formatProjectInstitutionForSummary(institution, district = getProjectRe
   const folded = foldTurkish(clean);
   if (folded.includes("WEBTAPU")) return "Webtapu Portalı";
   if (folded.includes("BELEDIYE")) return district ? `${district} Belediyesi` : "Belediye";
-  if (folded.includes("OSB")) return "OSB Bölge Müdürlüğü";
+  if (isOsbInstitutionValue(clean)) {
+    return folded === foldTurkish(imarOsbInstitutionOption) ? imarOsbInstitutionOption : clean;
+  }
   if (folded.includes("OZEL IDARE")) return "İl Özel İdaresi";
   if (folded.includes("BUYUKSEHIR")) return "Büyükşehir Belediyesi";
   if (folded.includes("ANITLAR")) return "Anıtlar Kurulu";
@@ -19196,33 +19452,63 @@ function buildEncumbranceSummaryVariants() {
   const easementRows = declarationRows.filter(isEncumbranceRightOrLiabilityRow);
   const mortgageRows = getFilledEncumbranceRows("encumbranceMortgages");
   const annotationRows = getFilledEncumbranceRows("encumbranceAnnotations");
-  const detailedAnnotationSection = buildEncumbranceSectionParagraph(
-    "Şerhler Bölümü",
-    annotationRows,
-    formatEncumbranceAnnotationRow,
-  );
-  const commonParts = [
-    `${date} tarihinde ${method} üzerinden alınan TAKBİS belgesine göre, konu taşınmaz üzerinde aşağıdaki takyidatlar bulunmaktadır.`,
-    buildEncumbranceSectionParagraph(
+  const intro = `${date} tarihinde ${method} üzerinden alınan TAKBİS belgesine göre, konu taşınmaz üzerinde aşağıdaki takyidatlar bulunmaktadır.`;
+  const sections = [
+    {
+      key: "declarations",
+      detail: buildEncumbranceSectionParagraph(
       "Beyanlar Bölümü",
       declarationRowsWithoutRights,
       (row) => formatEncumbranceDeclarationRow(row, { addIsbankManagementPlanNote: true }),
-    ),
-    buildEncumbranceSectionParagraph(
-      "Hak ve Mükellefiyetler Bölümü",
-      easementRows,
-      formatEncumbranceDeclarationRow,
-    ),
-    buildEncumbranceSectionParagraph(
-      "İpotekler Bölümü",
-      mortgageRows,
-      formatEncumbranceMortgageRow,
-    ),
+      ),
+      summary: buildCondensedEncumbranceSectionSummary(
+        "Beyanlar Bölümü",
+        declarationRowsWithoutRights.length,
+        "beyan",
+      ),
+    },
+    {
+      key: "easements",
+      detail: buildEncumbranceSectionParagraph(
+        "Hak ve Mükellefiyetler Bölümü",
+        easementRows,
+        formatEncumbranceDeclarationRow,
+      ),
+      summary: buildCondensedEncumbranceSectionSummary(
+        "Hak ve Mükellefiyetler Bölümü",
+        easementRows.length,
+        "hak ve mükellefiyet",
+      ),
+    },
+    {
+      key: "mortgages",
+      detail: buildEncumbranceSectionParagraph(
+        "İpotekler Bölümü",
+        mortgageRows,
+        formatEncumbranceMortgageRow,
+      ),
+      summary: buildCondensedEncumbranceSectionSummary(
+        "İpotekler Bölümü",
+        mortgageRows.length,
+        "ipotek",
+      ),
+    },
+    {
+      key: "annotations",
+      detail: buildEncumbranceSectionParagraph(
+        "Şerhler Bölümü",
+        annotationRows,
+        formatEncumbranceAnnotationRow,
+      ),
+      summary: annotationRows.length
+        ? `Şerhler Bölümü:\n${buildCondensedAnnotationSummary(annotationRows)}`
+        : buildEncumbranceSectionParagraph("Şerhler Bölümü", [], formatEncumbranceAnnotationRow),
+    },
   ];
 
   const titleChangeParagraph = buildEncumbranceTitleRecordChangeParagraph(date, method);
   const detail = normalizeEncumbranceSummaryText(
-    [...commonParts, detailedAnnotationSection, titleChangeParagraph]
+    [intro, ...sections.map((section) => section.detail), titleChangeParagraph]
       .filter(Boolean)
       .join("\n\n"),
   );
@@ -19231,18 +19517,12 @@ function buildEncumbranceSummaryVariants() {
     return { detail, summary: detail, exceedsLimit: false };
   }
 
-  const condensedAnnotationSection = annotationRows.length
-    ? `Şerhler Bölümü:\n${buildCondensedAnnotationSummary(annotationRows)}`
-    : "";
-  const condensedText = normalizeEncumbranceSummaryText(
-    [...commonParts, condensedAnnotationSection, titleChangeParagraph]
-      .filter(Boolean)
-      .join("\n\n"),
-  );
-  const requiredTail = [condensedAnnotationSection, titleChangeParagraph]
-    .filter(Boolean)
-    .join("\n\n");
-  const summary = limitEncumbranceSummaryCharacters(condensedText, 2000, requiredTail);
+  const summary = buildAdaptiveEncumbranceSummary({
+    intro,
+    sections,
+    tail: titleChangeParagraph,
+    maxLength: 2000,
+  });
   return { detail, summary, exceedsLimit: true };
 }
 
@@ -19302,6 +19582,52 @@ function buildCondensedAnnotationSummary(rows = []) {
     ? `${phrases.slice(0, -1).join(", ")} ve ${phrases.at(-1)}`
     : phrases[0] || "herhangi bir şerh";
   return `Taşınmaz üzerinde şerh türüne göre ${list} kaydı bulunmaktadır. Şerh kayıtları karakter kısıtlaması sebebiyle rapor ekinde tablo olarak tarafınıza sunulmuştur.`;
+}
+
+function buildCondensedEncumbranceSectionSummary(title, count, recordLabel) {
+  if (!count) return `${title}:\nHerhangi bir kayıt bulunmamaktadır.`;
+  return `${title}:\nTaşınmaz üzerinde ${count} adet ${recordLabel} kaydı bulunmaktadır. Bu bölümdeki kayıtlar karakter kısıtlaması sebebiyle rapor ekinde tablo olarak tarafınıza sunulmuştur.`;
+}
+
+function buildAdaptiveEncumbranceSummary({
+  intro = "",
+  sections = [],
+  tail = "",
+  maxLength = 2000,
+} = {}) {
+  const workingSections = sections.map((section) => ({
+    detail: String(section?.detail || "").trim(),
+    summary: String(section?.summary || section?.detail || "").trim(),
+    condensed: false,
+  }));
+  const compose = () => normalizeEncumbranceSummaryText(
+    [intro, ...workingSections.map((section) => (section.condensed ? section.summary : section.detail)), tail]
+      .filter(Boolean)
+      .join("\n\n"),
+  );
+  let result = compose();
+  if (result.length <= maxLength) return result;
+
+  const condensationOrder = workingSections
+    .map((section, index) => ({
+      index,
+      detailLength: section.detail.length,
+      saving: section.detail.length - section.summary.length,
+    }))
+    .filter((item) => item.saving > 0)
+    .sort((left, right) => right.detailLength - left.detailLength || right.saving - left.saving);
+
+  for (const item of condensationOrder) {
+    workingSections[item.index].condensed = true;
+    result = compose();
+    if (result.length <= maxLength) return result;
+  }
+
+  const requiredSections = workingSections
+    .map((section) => section.summary)
+    .filter(Boolean);
+  const requiredTail = [...requiredSections, tail].filter(Boolean).join("\n\n");
+  return limitEncumbranceSummaryCharacters(result, maxLength, requiredTail);
 }
 
 function limitEncumbranceSummaryCharacters(value, maxLength = 2000, requiredTail = "") {
@@ -21110,7 +21436,10 @@ function composeImarInfoSourcePrefix(data) {
 }
 
 function formatImarInstitutionSource(value) {
-  const institution = normalizeReportTitleText(value || "").trim();
+  const institution = getImarInstitutionValues(value)
+    .map((item) => normalizeReportTitleText(item).trim())
+    .filter(Boolean)
+    .join(" ve ");
   if (!institution) return "";
   if (/Belediyesi$/i.test(institution)) return institution.replace(/Belediyesi$/i, "Belediyesinden");
   if (/Müdürlüğü$/i.test(institution)) return institution.replace(/Müdürlüğü$/i, "Müdürlüğünden");
