@@ -15,6 +15,7 @@ const imarLegendOptions = [
   "Akaryakıt ve LPG İstasyonu",
   "Eğitim Tesis",
   "Sağlık Tesis",
+  "Turizm Tesis",
   "Belediye Hizmet",
   "Resmi Kurum",
   "Dini Tesis",
