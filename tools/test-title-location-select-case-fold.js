@@ -29,6 +29,14 @@ const foldStart = appSource.indexOf("function foldTurkish(");
 const foldEnd = appSource.indexOf("\n}", foldStart) + 2;
 assert(foldStart >= 0, "foldTurkish fonksiyonu bulunamadi.");
 
+const cleanupPlaceStart = appSource.indexOf("function cleanupPlaceName(");
+const cleanupPlaceEnd = appSource.indexOf("\n}", cleanupPlaceStart) + 2;
+const stripSuffixStart = appSource.indexOf("function stripNeighborhoodSuffix(");
+const stripSuffixEnd = appSource.indexOf("\n}", stripSuffixStart) + 2;
+const foldPlaceStart = appSource.indexOf("function foldPlaceNameForMatch(");
+const foldPlaceEnd = appSource.indexOf("\n}", foldPlaceStart) + 2;
+assert(cleanupPlaceStart >= 0 && stripSuffixStart >= 0 && foldPlaceStart >= 0, "Mahalle eki temizleme yardimcilari bulunamadi.");
+
 // Minimal DOM stub: yalnizca <select>/<option> icin gereken kadar.
 function createSelectStub() {
   const options = [];
@@ -58,6 +66,9 @@ async function runScenario({ storedValue, choices }) {
   };
   vm.createContext(context);
   vm.runInContext(appSource.slice(foldStart, foldEnd), context);
+  vm.runInContext(appSource.slice(cleanupPlaceStart, cleanupPlaceEnd), context);
+  vm.runInContext(appSource.slice(stripSuffixStart, stripSuffixEnd), context);
+  vm.runInContext(appSource.slice(foldPlaceStart, foldPlaceEnd), context);
   vm.runInContext(appSource.slice(start, end), context);
   await context.populateLocationSelect(control, "titleNeighborhood", "neighborhood", "titleCity", "titleDistrict");
   return {

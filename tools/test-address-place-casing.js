@@ -27,6 +27,14 @@ const titleCaseStart = appSource.indexOf("function toTitleCaseTr(");
 const titleCaseEnd = appSource.indexOf("\n}", titleCaseStart) + 2;
 assert(foldStart >= 0 && titleCaseStart >= 0, "foldTurkish veya toTitleCaseTr bulunamadi.");
 
+const cleanupPlaceStart = appSource.indexOf("function cleanupPlaceName(");
+const cleanupPlaceEnd = appSource.indexOf("\n}", cleanupPlaceStart) + 2;
+const stripSuffixStart = appSource.indexOf("function stripNeighborhoodSuffix(");
+const stripSuffixEnd = appSource.indexOf("\n}", stripSuffixStart) + 2;
+const foldPlaceStart = appSource.indexOf("function foldPlaceNameForMatch(");
+const foldPlaceEnd = appSource.indexOf("\n}", foldPlaceStart) + 2;
+assert(cleanupPlaceStart >= 0 && stripSuffixStart >= 0 && foldPlaceStart >= 0, "Mahalle eki temizleme yardimcilari bulunamadi.");
+
 function run(fieldsBefore, match) {
   const applied = [];
   const context = {
@@ -39,6 +47,9 @@ function run(fieldsBefore, match) {
   vm.createContext(context);
   vm.runInContext(appSource.slice(foldStart, foldEnd), context);
   vm.runInContext(appSource.slice(titleCaseStart, titleCaseEnd), context);
+  vm.runInContext(appSource.slice(cleanupPlaceStart, cleanupPlaceEnd), context);
+  vm.runInContext(appSource.slice(stripSuffixStart, stripSuffixEnd), context);
+  vm.runInContext(appSource.slice(foldPlaceStart, foldPlaceEnd), context);
   vm.runInContext(appSource.slice(start, end), context);
   const changed = context.applyAdministrativePlaceCasingFromMatch(match, { silent: true });
   return { changed, fields: context.state.fields, applied };
@@ -81,5 +92,16 @@ const r4 = run(
   { city: "Yalova", district: "Armutlu", neighborhood: "Karşıyaka" },
 );
 assert.equal(r4.fields.neighborhood, "BAYIR", "Farkli mahalle DB eslesenine zorla degistirilmemeli.");
+
+// 5) UAVT PDF'i mahalleyi EKLİ verir ("Hacıseyfettin Mahallesi"), idari
+//    veritabani (normalizeNeighborhoodApiRow -> cleanNeighborhoodName) EKSİZ
+//    ve Baş Harf Büyük dondurur ("Hacıseyfettin"). Ek atilmadan yapilan
+//    karsilastirma bu eslesmeyi kaciriyordu (kullanici bildirimi).
+const r5 = run(
+  { city: "YALOVA", district: "ARMUTLU", neighborhood: "Hacıseyfettin Mahallesi" },
+  { city: "Yalova", district: "Armutlu", neighborhood: "Hacıseyfettin" },
+);
+assert.equal(r5.changed, true, "Ekli mahalle degeri eslesip duzeltilmeli.");
+assert.equal(r5.fields.neighborhood, "Hacıseyfettin", `Ek atilip Bas Harf Buyuk yazilisa cevrilmeli: ${JSON.stringify(r5.fields.neighborhood)}`);
 
 console.log("Adres yer adi harf buyuklugu duzeltme testi tamam.");

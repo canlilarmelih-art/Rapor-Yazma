@@ -46,6 +46,14 @@ const titleCaseStart = appSource.indexOf("function toTitleCaseTr(");
 const titleCaseEnd = appSource.indexOf("\n}", titleCaseStart) + 2;
 assert(foldStart >= 0 && titleCaseStart >= 0, "foldTurkish/toTitleCaseTr bulunamadi.");
 
+const cleanupPlaceStart = appSource.indexOf("function cleanupPlaceName(");
+const cleanupPlaceEnd = appSource.indexOf("\n}", cleanupPlaceStart) + 2;
+const stripSuffixStart = appSource.indexOf("function stripNeighborhoodSuffix(");
+const stripSuffixEnd = appSource.indexOf("\n}", stripSuffixStart) + 2;
+const foldPlaceStart = appSource.indexOf("function foldPlaceNameForMatch(");
+const foldPlaceEnd = appSource.indexOf("\n}", foldPlaceStart) + 2;
+assert(cleanupPlaceStart >= 0 && stripSuffixStart >= 0 && foldPlaceStart >= 0, "Mahalle eki temizleme yardimcilari bulunamadi.");
+
 function createSelectStub() {
   const options = [];
   const select = {
@@ -71,6 +79,9 @@ async function runScenario({ storedValue, choices }) {
   vm.createContext(context);
   vm.runInContext(appSource.slice(foldStart, foldEnd), context);
   vm.runInContext(appSource.slice(titleCaseStart, titleCaseEnd), context);
+  vm.runInContext(appSource.slice(cleanupPlaceStart, cleanupPlaceEnd), context);
+  vm.runInContext(appSource.slice(stripSuffixStart, stripSuffixEnd), context);
+  vm.runInContext(appSource.slice(foldPlaceStart, foldPlaceEnd), context);
   vm.runInContext(appSource.slice(start, end) + appSource.slice(tailStart, tailEnd), context);
   await context.populateAddressLocationSelect(control, "neighborhood");
   return {
@@ -99,6 +110,20 @@ const dbChoicesUpper = ["50. YIL", "BAYIR", "KARŞIYAKA", "YALI MAH (FISTIKLI K�
 
   const unmatched = await runScenario({ storedValue: "Uydurma Mahalle", choices: dbChoicesUpper });
   assert.equal(unmatched.selected, "Uydurma Mahalle", "Eslesmeyen UAVT degeri degismeden korunmali.");
+
+  // Kullanici bildirimi: UAVT PDF'i mahalleyi EKLİ verir ("Hacıseyfettin
+  // Mahallesi"), idari veritabani EKSİZ tutar ("HACISEYFETTİN"). Ek
+  // atilmadan yapilan foldTurkish karsilastirmasi eslesmeyi kaciriyordu.
+  const suffixed = await runScenario({
+    storedValue: "Hacıseyfettin Mahallesi",
+    choices: ["HACISEYFETTİN", "BAYIR"],
+  });
+  assert.equal(
+    suffixed.selected,
+    "Hacıseyfettin",
+    `"Hacıseyfettin Mahallesi" -> acilir listeden "Hacıseyfettin" secilmeli: ${JSON.stringify(suffixed)}`
+  );
+  assert.equal(suffixed.stateValue, "Hacıseyfettin", "state.fields de ek atilmis Bas Harf Buyuk yazilisa guncellenmeli.");
 
   console.log("Adres ve Konum acilir liste testi tamam.");
 })().catch((error) => {

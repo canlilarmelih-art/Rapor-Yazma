@@ -10061,7 +10061,7 @@ async function populateLocationSelect(control, key, level, cityKey, districtKey,
     const choices = [...new Set((result.choices || []).map(casing).filter(Boolean))];
     const rawValue = String(state.fields[key] || "").trim();
     const matchedChoice = rawValue
-      ? choices.find((choice) => foldTurkish(choice) === foldTurkish(rawValue))
+      ? choices.find((choice) => foldPlaceNameForMatch(choice, level) === foldPlaceNameForMatch(rawValue, level))
       : "";
     const currentValue = matchedChoice || rawValue;
     if (matchedChoice && matchedChoice !== rawValue) {
@@ -22882,14 +22882,17 @@ function applyAdministrativePlaceCasingFromMatch(match, options = {}) {
   if (!match) return false;
   const corrections = {};
   [
-    ["city", match.city],
-    ["district", match.district],
-    ["neighborhood", match.neighborhood],
-  ].forEach(([key, matchValue]) => {
+    ["city", match.city, "city"],
+    ["district", match.district, "district"],
+    ["neighborhood", match.neighborhood, "neighborhood"],
+  ].forEach(([key, matchValue, level]) => {
     const current = String(state.fields[key] || "").trim();
     if (!current || !matchValue) return;
-    if (foldTurkish(current) !== foldTurkish(matchValue)) return;
-    const titleCased = toTitleCaseTr(current);
+    if (foldPlaceNameForMatch(current, level) !== foldPlaceNameForMatch(matchValue, level)) return;
+    // Mahallede ek (Mahallesi/Mah./Köyü...) varsa temizlenip Baş Harf Büyük
+    // yazılışa çevrilir: "Hacıseyfettin Mahallesi" -> "Hacıseyfettin".
+    const sourceText = level === "neighborhood" ? stripNeighborhoodSuffix(current) : current;
+    const titleCased = toTitleCaseTr(sourceText);
     if (titleCased !== current) corrections[key] = titleCased;
   });
   if (!Object.keys(corrections).length) return false;
@@ -23006,6 +23009,18 @@ function stripNeighborhoodSuffix(value) {
       .trim();
   }
   return text;
+}
+
+// İl/İlçe/Mahalle eşleşmelerinde (populateLocationSelect,
+// applyAdministrativePlaceCasingFromMatch) kullanılan ortak karşılaştırma
+// anahtarı. UAVT PDF'i mahalleyi genelde "Hacıseyfettin Mahallesi" gibi
+// EKLİ verirken idari veritabanı "Hacıseyfettin" (eksiz) tutar; yalnızca
+// harf büyüklüğü/aksan farkına bakan foldTurkish bu durumda eşleşmeyi
+// KAÇIRIYORDU (kullanıcı bildirimi). Mahalle seviyesinde önce ek
+// (mahallesi/mah./köyü...) atılır, sonra foldTurkish uygulanır.
+function foldPlaceNameForMatch(value, level) {
+  const text = level === "neighborhood" ? stripNeighborhoodSuffix(value) : value;
+  return foldTurkish(text);
 }
 
 function normalizeLocalNeighborhoodKey(value) {
