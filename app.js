@@ -198,6 +198,7 @@ const sections = [
       { key: "street", label: "Sokak / cadde", type: "text", critical: true },
       { key: "addressSiteName", label: "Site / Apartman", type: "text" },
       { key: "addressBlockName", label: "Blok", type: "text" },
+      { key: "addressEntrance", label: "Giriş", type: "text" },
       { key: "outerDoor", label: "Dış kapı no", type: "text", critical: true },
       { key: "addressFloor", label: "Kat", type: "text" },
       { key: "innerDoor", label: "İç kapı no", type: "text" },
@@ -394,6 +395,7 @@ const sections = [
       { key: "landArea", label: "Ana taşınmaz yüzölçümü", type: "text" },
       { key: "titleQuality", label: "Bağımsız Bölüm Niteliği", type: "text", required: true, critical: true },
       { key: "titleBlockName", label: "Blok", type: "text" },
+      { key: "titleEntrance", label: "Giriş", type: "text" },
       { key: "titleFloor", label: "Tapu katı", type: "text", critical: true },
       { key: "unitNo", label: "Bağımsız Bölüm No", type: "text", required: true, critical: true },
       { key: "share", label: "Arsa payı", type: "text" },
@@ -7846,6 +7848,7 @@ function shouldShowUnitReductionFields() {
 function createUnitAreaInteriorPanel() {
   const panel = createUnitSubsection("Katlar, Alanlar ve İç Hacimler", "Bağımsız bölüm birden fazla kattan oluşuyorsa her katı ayrı satır olarak ekleyiniz.");
   migrateLegacyUnitFloorFields();
+  ensureUnitFloorRowExists();
   const toolbar = document.createElement("div");
   toolbar.className = "unit-floor-toolbar";
   const addButton = document.createElement("button");
@@ -7861,6 +7864,14 @@ function createUnitAreaInteriorPanel() {
   toolbar.append(addButton);
   panel.append(toolbar, createUnitFloorInteriorRows());
   return panel;
+}
+
+// "Katlar, Alanlar ve İç Hacimler" boş listeyle başlamamalı (kullanıcı
+// talebi): hiç kat yoksa otomatik olarak bir boş satır eklenir, kullanıcı
+// "Kat ekle"ye basmadan doğrudan doldurmaya başlayabilir.
+function ensureUnitFloorRowExists() {
+  if (getUnitFloorRows().length) return;
+  setUnitFloorRows([createEmptyUnitFloorRow()]);
 }
 
 function migrateLegacyUnitFloorFields() {
@@ -9273,7 +9284,10 @@ function attachUnitFieldEvents(control, key) {
 
 function createUnitFacadeControl() {
   const label = document.createElement("div");
-  label.className = "field unit-facade-field";
+  // field-wide: unit-general-grid 3 sütunlu; tek sütuna sıkışınca 4 yön
+  // kutucuğu (Kuzey/Güney/Doğu/Batı) daralan tarayıcıda üst üste biniyordu
+  // (kullanıcı ekran görüntüsü). Tam satır genişliği alması sağlanır.
+  label.className = "field field-wide unit-facade-field";
   const selected = new Set(getMultiCheckboxValues("facades"));
   const list = document.createElement("div");
   list.className = "unit-inline-checkboxes";
@@ -14878,6 +14892,7 @@ function mapTakbisTitleToReportFields(tapu, rows = []) {
     blockNo: tapu.Ada || "",
     parcelNo: tapu.Parsel || "",
     titleBlockName: blockInfo.blockName,
+    titleEntrance: blockInfo.entrance,
     titleFloor: blockInfo.floor,
     unitNo: blockInfo.unitNo,
     share: share[0],
@@ -14915,9 +14930,14 @@ function parseTakbisBlockFloorUnit(value) {
     parts.find((part) => /(?:normal|kat|zemin|bodrum|asma|teras|\d+\.?\s*(?:normal|kat)?)/i.test(part)) ||
     (parts.length >= 2 ? parts[parts.length - 2] : "")
   );
+  // TAKBİS "Blok/Kat/Giriş/BBNo" biçiminde 4. alan Giriş harfidir (ör. "G").
+  // Yapısal (4 alanlı) biçim dışında güvenilir şekilde ayırt edilemediği için
+  // yalnızca hasStructuredSlots durumunda okunur.
+  const entrance = hasStructuredSlots ? cleanSlot(2) : "";
   return {
     blockName,
     floor,
+    entrance,
     unitNo: parts.length ? parts[parts.length - 1] : "",
   };
 }
@@ -18830,8 +18850,9 @@ function applyTakbisTitleFieldsToReport(options = {}) {
 
 function syncAddressBlockFromTakbis(options = {}) {
   const block = cleanTakbisValue(state.sourceValues.takbis?.fields?.titleBlockName || "");
-  if (!block) return;
-  setFieldFromSource("takbis", "addressBlockName", block, options);
+  if (block) setFieldFromSource("takbis", "addressBlockName", block, options);
+  const entrance = cleanTakbisValue(state.sourceValues.takbis?.fields?.titleEntrance || "");
+  if (entrance) setFieldFromSource("takbis", "addressEntrance", entrance, options);
 }
 
 function applyTakbisOwnersToTable(owners) {
@@ -21161,6 +21182,7 @@ function resetTakbisTitleDerivedFields() {
     "blockNo",
     "parcelNo",
     "titleBlockName",
+    "titleEntrance",
     "titleFloor",
     "unitNo",
     "share",
@@ -21647,6 +21669,7 @@ function resetAddressDerivedFields() {
     "postalCode",
     "addressSiteName",
     "addressBlockName",
+    "addressEntrance",
     "blockName",
     "addressRaw",
   ].forEach((key) => {
