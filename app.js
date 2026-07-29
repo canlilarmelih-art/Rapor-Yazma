@@ -10036,8 +10036,22 @@ async function populateTitleLocationSelect(control, key) {
       district: state.fields.titleDistrict || "",
     });
     if (!control.isConnected) return;
-    const currentValue = String(state.fields[key] || "").trim();
-    const values = [...new Set([currentValue, ...(result.choices || [])].filter(Boolean))];
+    const choices = result.choices || [];
+    const rawValue = String(state.fields[key] || "").trim();
+    // TAKBİS'ten gelen deger (ör. "Karşıyaka") listedeki bir secenekle
+    // (ör. "KARŞIYAKA") yalnızca harf büyüklüğü/aksan farkıyla eşleşebilir.
+    // Ham karşılaştırma bunu ayrı bir secenek olarak görüp listeye ikinci
+    // kez ekliyordu (kullanıcı ekran görüntüsü). foldTurkish ile eşleşen
+    // varsa listedeki kanonik yazım kullanılır; yoksa deger aynen eklenir.
+    const matchedChoice = rawValue
+      ? choices.find((choice) => foldTurkish(choice) === foldTurkish(rawValue))
+      : "";
+    const currentValue = matchedChoice || rawValue;
+    if (matchedChoice && matchedChoice !== rawValue) {
+      state.fields[key] = matchedChoice;
+      autosave();
+    }
+    const values = [...new Set([currentValue, ...choices].filter(Boolean))];
     control.replaceChildren();
     const empty = document.createElement("option");
     empty.value = "";
