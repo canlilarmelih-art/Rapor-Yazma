@@ -1061,9 +1061,10 @@ body[data-app-theme="clay"] .brand-mark-icon-navy {
   align-items: start;
 }
 
-.old-block-parcel-field {
-  grid-column: 1 / -1;
-}
+/* Eski Ada / Eski Parsel TEK sütunda (normal bir form alanının genişliğinde)
+   kalır; garden-setbacks-field'in aksine grid-column: 1/-1 İLE FULL-ROW
+   yapılmaz. .split-field-pair'den gelen 2 sütunlu iç grid, bu tek sütun
+   genişliğini ikiye böler — her hücre normal hücre genişliğinin %50'si olur. */
 
 .garden-setbacks-field .inline-road-setback-field {
   display: grid;
