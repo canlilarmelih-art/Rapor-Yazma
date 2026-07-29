@@ -8615,16 +8615,28 @@ function createUnitFloorRowTextarea(index, key, labelText) {
   return label;
 }
 
+// Depolanan bir değer, listedeki seçeneklerden biriyle harf büyüklüğü/boşluk
+// farkıyla eşleşiyorsa (ör. eski bir hata yüzünden "WC" -> "Wc" olmuş kayıtlı
+// veriler) kanonik seçenek metnini döndürür; tam eşleşme yoksa değeri aynen
+// bırakır (select bulamayınca boş görünür, veri kaybolmaz).
+function resolveUnitInteriorOptionValue(value, options) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  if (options.includes(text)) return text;
+  const folded = foldTurkish(text).toLocaleLowerCase("tr-TR");
+  return options.find((option) => foldTurkish(option).toLocaleLowerCase("tr-TR") === folded) || text;
+}
+
 function createUnitFloorInteriorPicker(index) {
   const label = document.createElement("div");
   label.className = "field field-wide unit-floor-interior-picker";
+  const options = getUnitInteriorValidationOptions();
   const selected = String(getUnitFloorRows()[index]?.interiors || "")
     .split(",")
-    .map((item) => item.trim())
+    .map((item) => resolveUnitInteriorOptionValue(item, options))
     .filter(Boolean);
   const list = document.createElement("div");
   list.className = "unit-interior-validation-list";
-  const options = getUnitInteriorValidationOptions();
   Array.from({ length: 10 }, (_, selectIndex) => {
     const select = document.createElement("select");
     select.dataset.unitInteriorSelect = String(selectIndex);
@@ -8648,6 +8660,14 @@ function createUnitFloorInteriorPicker(index) {
     list.append(select);
   });
   label.append(createSpan("İç Hacimler"), list);
+  // Kayıtlı deger kanonik yaziliştan farkliysa (ör. "Wc"), goruntulenen
+  // kanonik degerle state'i hemen senkronlar — boylece bir dahaki
+  // render'da da dogru gorunur ve olası tarihsel bozulma kendini onarir.
+  const canonicalJoined = selected.join(", ");
+  const storedInteriors = getUnitFloorRows()[index]?.interiors || "";
+  if (canonicalJoined && canonicalJoined !== storedInteriors) {
+    updateUnitFloorRow(index, "interiors", canonicalJoined);
+  }
   return label;
 }
 
