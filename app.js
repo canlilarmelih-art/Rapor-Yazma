@@ -22835,11 +22835,38 @@ async function applyPostalCodeFromSelectedNeighborhood(options = {}) {
     neighborhood: state.fields.neighborhood,
   });
   const match = normalizeNeighborhoodApiRow(result.match);
-  if (!match?.postalCode) return false;
+  const casingChanged = applyAdministrativePlaceCasingFromMatch(match, options);
+  if (!match?.postalCode) return casingChanged;
   const shouldForcePostalCode = !state.fields.postalCode || isFieldValueAppliedFromSource("postalCode");
   applyLocalNeighborhoodFields({
     postalCode: match.postalCode,
   }, { ...options, force: Boolean(options.force || shouldForcePostalCode) });
+  return true;
+}
+
+// Tapu il/ilçe/mahalle açılır listelerindeki (populateTitleLocationSelect)
+// aynı mantık: il/ilçe/mahalle idari veritabanındaki BİR SATIRLA (yalnızca
+// harf büyüklüğü/aksan farkıyla) eşleşiyorsa "Baş Harf Büyük" (title case)
+// yazılışa düzeltilir — burada Tapu'daki gibi TÜMÜ BÜYÜK değil, çünkü bu
+// alanlar Adres ve Konum'da serbest metin, açılır liste değil. Eşleşme
+// bulunamazsa (ör. UAVT PDF'indeki mahalle adı veritabanında yoksa) hiçbir
+// şey değiştirilmez; UAVT'ten gelen değer olduğu gibi korunur.
+function applyAdministrativePlaceCasingFromMatch(match, options = {}) {
+  if (!match) return false;
+  const corrections = {};
+  [
+    ["city", match.city],
+    ["district", match.district],
+    ["neighborhood", match.neighborhood],
+  ].forEach(([key, matchValue]) => {
+    const current = String(state.fields[key] || "").trim();
+    if (!current || !matchValue) return;
+    if (foldTurkish(current) !== foldTurkish(matchValue)) return;
+    const titleCased = toTitleCaseTr(current);
+    if (titleCased !== current) corrections[key] = titleCased;
+  });
+  if (!Object.keys(corrections).length) return false;
+  applyLocalNeighborhoodFields(corrections, { ...options, force: true });
   return true;
 }
 
