@@ -214,13 +214,6 @@ const sections = [
       { key: "cityCenterDistance", label: "İl merkezine mesafe", type: "text" },
       { key: "addressRaw", label: "Adres kodu ham metni", type: "textarea", hidden: true },
       { key: "mainArtery", label: "Ulaşım ana arteri", type: "artery" },
-      {
-        key: "mainArteryProximity",
-        label: "Ana arter mesafesi",
-        type: "select",
-        defaultValue: "yakın",
-        options: ["", "yakın", "orta yakın", "uzak"],
-      },
       { key: "transport", label: "Ulaşım tarifi", type: "textarea" },
       { key: "nearby", label: "Yakın çevresi", type: "textarea" },
       {
@@ -231,15 +224,12 @@ const sections = [
         options: ["", "Konut Bölgesi", "Ticaret Bölgesi", "Sanayi Bölgesi", "Tarımsal Alan"],
         wide: true,
       },
-      // Banka ekranlarındaki "Bölgede Güvenlik Problemi Var mı?" sorusu.
-      // gabimSecurityText() ile KARIŞTIRILMAMALI: o, sitede özel güvenlik
-      // HİZMETİ olup olmadığını söyler; bu ise bölgenin güvenlik sorunudur.
       {
-        key: "regionSecurityIssue",
-        label: "Bölgede Güvenlik Problemi Var Mı?",
+        key: "mainArteryProximity",
+        label: "Ana arter mesafesi",
         type: "select",
-        defaultValue: "Hayır",
-        options: ["Evet", "Hayır"],
+        defaultValue: "yakın",
+        options: ["", "yakın", "orta yakın", "uzak"],
       },
       {
         key: "agriculturalActivityDensity",
@@ -330,6 +320,16 @@ const sections = [
           "5. Derece - Çok Düşük",
         ],
         defaultValue: "",
+      },
+      // Banka ekranlarındaki "Bölgede Güvenlik Problemi Var mı?" sorusu.
+      // gabimSecurityText() ile KARIŞTIRILMAMALI: o, sitede özel güvenlik
+      // HİZMETİ olup olmadığını söyler; bu ise bölgenin güvenlik sorunudur.
+      {
+        key: "regionSecurityIssue",
+        label: "Bölgede Güvenlik Problemi Var Mı?",
+        type: "select",
+        defaultValue: "Hayır",
+        options: ["Evet", "Hayır"],
       },
       {
         key: "commercialFunctionDensity",
@@ -1867,6 +1867,15 @@ function createForm(section) {
     }
 
     if (section.id === "planning" && field.key === "roadSetback") {
+      return;
+    }
+
+    if (section.id === "title" && field.key === "oldBlockNo") {
+      form.append(createOldBlockParcelPairControl());
+      return;
+    }
+
+    if (section.id === "title" && field.key === "oldParcelNo") {
       return;
     }
 
@@ -11437,6 +11446,20 @@ function createGardenSetbacksPairControl() {
     roadField.classList.add("inline-road-setback-field");
     wrapper.append(roadField);
   }
+  return wrapper;
+}
+
+// Eski Ada ve Eski Parsel yan yana iki bagimsiz form-grid hucresi olarak
+// dururken diger alanlar eklenip/cikarilinca kolayca birbirinden ayrilabiliyordu
+// (kullanici talebi: tek bir genis alanda birlikte kalsin, o alan kendi
+// icinde ikiye bolunsun). createGardenSetbacksPairControl ile ayni desen.
+function createOldBlockParcelPairControl() {
+  const wrapper = document.createElement("div");
+  wrapper.className = "field split-field-pair old-block-parcel-field";
+  wrapper.append(
+    createInlineTextField({ key: "oldBlockNo", label: "Eski Ada" }),
+    createInlineTextField({ key: "oldParcelNo", label: "Eski Parsel" }),
+  );
   return wrapper;
 }
 

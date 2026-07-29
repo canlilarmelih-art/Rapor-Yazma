@@ -1061,6 +1061,10 @@ body[data-app-theme="clay"] .brand-mark-icon-navy {
   align-items: start;
 }
 
+.old-block-parcel-field {
+  grid-column: 1 / -1;
+}
+
 .garden-setbacks-field .inline-road-setback-field {
   display: grid;
   gap: 7px;
