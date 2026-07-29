@@ -7,9 +7,12 @@
   ekran görüntüsünde "Karşıyaka" listede İKİ KEZ (biri fazladan enjekte
   edilmiş, biri gerçek KARŞIYAKA seçeneği) görünüyordu.
 
-  populateTitleLocationSelect() gerçek app.js kaynağından, gerçek DOM
-  (jsdom benzeri minimal stub) ile izole çalıştırılır; fetchNeighborhoodLookup
-  stub'lanır.
+  populateLocationSelect() (Tapu ve Adres ve Konum açılır listelerinin
+  paylaştığı ortak fonksiyon) gerçek app.js kaynağından, gerçek DOM (jsdom
+  benzeri minimal stub) ile izole çalıştırılır; fetchNeighborhoodLookup
+  stub'lanır. Bu test Tapu tarafını (casing yok, TÜMÜ BÜYÜK karşılaştırma)
+  kapsar; Adres ve Konum'un Baş Harf Büyük dönüşümü ayrı testte
+  (test-address-place-casing.js) doğrulanır.
 */
 
 const assert = require("node:assert/strict");
@@ -18,9 +21,9 @@ const path = require("node:path");
 const vm = require("node:vm");
 
 const appSource = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
-const start = appSource.indexOf("async function populateTitleLocationSelect");
-const end = appSource.indexOf("function markFieldSourceState", start);
-assert(start >= 0 && end > start, "populateTitleLocationSelect fonksiyonu bulunamadi.");
+const start = appSource.indexOf("async function populateLocationSelect");
+const end = appSource.indexOf("function populateTitleLocationSelect", start);
+assert(start >= 0 && end > start, "populateLocationSelect fonksiyonu bulunamadi.");
 
 const foldStart = appSource.indexOf("function foldTurkish(");
 const foldEnd = appSource.indexOf("\n}", foldStart) + 2;
@@ -56,7 +59,7 @@ async function runScenario({ storedValue, choices }) {
   vm.createContext(context);
   vm.runInContext(appSource.slice(foldStart, foldEnd), context);
   vm.runInContext(appSource.slice(start, end), context);
-  await context.populateTitleLocationSelect(control, "titleNeighborhood");
+  await context.populateLocationSelect(control, "titleNeighborhood", "neighborhood", "titleCity", "titleDistrict");
   return {
     optionValues: control.options.map((o) => o.value),
     selected: control.value,

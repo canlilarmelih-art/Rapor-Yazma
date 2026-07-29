@@ -192,9 +192,15 @@ const sections = [
     description:
       "İdari adres, koordinat, ulaşım tarifi ve yakın çevre bilgileri raporun konum omurgasını oluşturur.",
     fields: [
-      { key: "city", label: "İl", type: "text", required: true, critical: true },
-      { key: "district", label: "İlçe", type: "text", required: true, critical: true },
-      { key: "neighborhood", label: "İdari mahalle", type: "text", required: true, critical: true },
+      // Tapu il/ilçe/mahalle (titleCity/titleDistrict/titleNeighborhood) ile
+      // aynı desen: gerçek açılır liste, idari veritabanından canlı doldurulur
+      // (bkz. populateAddressLocationSelect). UAVT PDF'inden gelen deger
+      // listedeki bir seçenekle sadece harf büyüklüğü farkıyla eşleşiyorsa
+      // Baş Harf Büyük yazılışa düzeltilir; eşleşmiyorsa liste dışı deger
+      // olarak korunur (kaybolmaz).
+      { key: "city", label: "İl", type: "select", required: true, critical: true },
+      { key: "district", label: "İlçe", type: "select", required: true, critical: true },
+      { key: "neighborhood", label: "İdari mahalle", type: "select", required: true, critical: true },
       { key: "street", label: "Sokak / cadde", type: "text", critical: true },
       { key: "addressSiteName", label: "Site / Apartman", type: "text" },
       { key: "addressBlockName", label: "Blok", type: "text" },
@@ -1968,6 +1974,9 @@ function createForm(section) {
       if (section.id === "title" && ["titleCity", "titleDistrict", "titleNeighborhood"].includes(field.key)) {
         queueMicrotask(() => populateTitleLocationSelect(control, field.key));
       }
+      if (section.id === "address" && ["city", "district", "neighborhood"].includes(field.key)) {
+        queueMicrotask(() => populateAddressLocationSelect(control, field.key));
+      }
     } else if (field.type === "textarea") {
       control = document.createElement("textarea");
       control.value = value;
@@ -1976,7 +1985,7 @@ function createForm(section) {
       control.type = field.type;
       control.value = value;
       const lookupValues = getLookupValuesForField(field.key);
-      if (lookupValues.length || field.lookup || ["city", "district", "neighborhood", "postalCode"].includes(field.key)) {
+      if (lookupValues.length || field.lookup || field.key === "postalCode") {
         const listId = `lookup-${field.key}`;
         control.setAttribute("list", listId);
         control.autocomplete = "off";
@@ -2006,6 +2015,11 @@ function createForm(section) {
         state.fields.titleNeighborhood = "";
       } else if (section.id === "title" && field.key === "titleDistrict") {
         state.fields.titleNeighborhood = "";
+      } else if (section.id === "address" && field.key === "city") {
+        state.fields.district = "";
+        state.fields.neighborhood = "";
+      } else if (section.id === "address" && field.key === "district") {
+        state.fields.neighborhood = "";
       }
       if (enteredValue !== event.target.value) {
         event.target.value = enteredValue;
@@ -2054,6 +2068,7 @@ function createForm(section) {
       if (section.id === "case" && field.key === "legalUsageNature") renderSection();
       if (section.id === "case" && ["legalUsageNature", "ownershipType"].includes(field.key) && activeSectionId === "land") renderSection();
       if (section.id === "title" && ["groundType", "titleCity", "titleDistrict"].includes(field.key)) renderSection();
+      if (section.id === "address" && ["city", "district"].includes(field.key)) renderSection();
       if (section.id === "address" && field.key === "environmentRegionType") {
         normalizeRegionUsePurposeForEnvironment();
         refreshEnvironmentDescriptionFromCurrentFields("regionUsePurpose");
@@ -10020,29 +10035,31 @@ function createLookupDatalist(id, values) {
   return datalist;
 }
 
-async function populateTitleLocationSelect(control, key) {
-  const levelByKey = {
-    titleCity: "city",
-    titleDistrict: "district",
-    titleNeighborhood: "neighborhood",
-  };
-  const level = levelByKey[key];
+// Il/Ilce/Mahalle açılır listelerini idari veritabanından canlı doldurur.
+// Tapu (titleCity/titleDistrict/titleNeighborhood) ve Adres ve Konum
+// (city/district/neighborhood) aynı desende ama iki farkla:
+//   - Tapu sütununda hangi il/ilçenin seçildiğine göre filtrelenir (kendi
+//     alanları), Adres sütunu da KENDİ alanlarına göre filtrelenir.
+//   - Tapu'daki seçenekler veritabanının kendi yazılışıyla (TÜMÜ BÜYÜK)
+//     gösterilir; Adres'te ise `casing` seçeneğiyle (ör. Baş Harf Büyük)
+//     yeniden yazılabilir.
+// PDF'ten (TAKBİS/UAVT) gelen deger listedeki bir seçenekle yalnızca harf
+// büyüklüğü/aksan farkıyla eşleşiyorsa (foldTurkish) kanonik/yeniden
+// yazılmış seçenek kullanılır; eşleşme yoksa deger AYNEN korunur (liste
+// dışı ek bir seçenek olarak eklenir, kaybolmaz).
+async function populateLocationSelect(control, key, level, cityKey, districtKey, options = {}) {
   if (!level || !control?.isConnected) return;
+  const casing = options.casing || ((value) => value);
 
   try {
     const result = await fetchNeighborhoodLookup("choices", {
       level,
-      city: state.fields.titleCity || "",
-      district: state.fields.titleDistrict || "",
+      city: state.fields[cityKey] || "",
+      district: state.fields[districtKey] || "",
     });
     if (!control.isConnected) return;
-    const choices = result.choices || [];
+    const choices = [...new Set((result.choices || []).map(casing).filter(Boolean))];
     const rawValue = String(state.fields[key] || "").trim();
-    // TAKBİS'ten gelen deger (ör. "Karşıyaka") listedeki bir secenekle
-    // (ör. "KARŞIYAKA") yalnızca harf büyüklüğü/aksan farkıyla eşleşebilir.
-    // Ham karşılaştırma bunu ayrı bir secenek olarak görüp listeye ikinci
-    // kez ekliyordu (kullanıcı ekran görüntüsü). foldTurkish ile eşleşen
-    // varsa listedeki kanonik yazım kullanılır; yoksa deger aynen eklenir.
     const matchedChoice = rawValue
       ? choices.find((choice) => foldTurkish(choice) === foldTurkish(rawValue))
       : "";
@@ -10067,6 +10084,16 @@ async function populateTitleLocationSelect(control, key) {
   } catch {
     // Kimliği doğrulanmış mahalle kaynağı geçici olarak erişilemezse mevcut değer korunur.
   }
+}
+
+function populateTitleLocationSelect(control, key) {
+  const levelByKey = { titleCity: "city", titleDistrict: "district", titleNeighborhood: "neighborhood" };
+  return populateLocationSelect(control, key, levelByKey[key], "titleCity", "titleDistrict");
+}
+
+function populateAddressLocationSelect(control, key) {
+  const levelByKey = { city: "city", district: "district", neighborhood: "neighborhood" };
+  return populateLocationSelect(control, key, levelByKey[key], "city", "district", { casing: toTitleCaseTr });
 }
 
 function markFieldSourceState(control, key, isStaticAutoFill = false) {
