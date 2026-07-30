@@ -755,7 +755,7 @@ function main() {
       appJs.includes("state.fields.mainPropertyQuality || state.fields.titleQuality || state.fields.legalUsageNature || \"Arsa\"") &&
       appJs.includes("function shouldHideLandAgricultureControls") &&
       appJs.includes('ownershipType === "MUSTAKIL BINA"') &&
-      appJs.includes('["landAgricultureType", "landAgriculturalProduct"].includes(fieldKey)') &&
+      appJs.includes('["landAgricultureType", "landAgriculturalProduct", "landClassification"].includes(fieldKey)') &&
       appJs.includes("if (shouldHideLandAgricultureControls()) return \"\";"),
     "Arsa aciklamasinda ana tasinmaz niteligi onceligi veya tarim alanlari gizleme kurali bulunamadi."
   );

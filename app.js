@@ -9784,7 +9784,10 @@ function shouldHideField(sectionId, fieldKey) {
     }
   }
   if (sectionId === "land") {
-    if (["landAgricultureType", "landAgriculturalProduct"].includes(fieldKey)) {
+    // Arazi Sınıflandırması (5403 sayılı Kanun'a göre tarım arazisi türü)
+    // Tarım Türü/Zirai Ürün ile aynı kapsamdadır: yalnızca Arazi/Tarla
+    // raporlarında anlamlıdır, Müstakil Bina ve Arsa raporlarında gösterilmez.
+    if (["landAgricultureType", "landAgriculturalProduct", "landClassification"].includes(fieldKey)) {
       return shouldHideLandAgricultureControls();
     }
   }
