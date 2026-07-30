@@ -1,9 +1,162 @@
 # Rapor Yazma Programı — Handoff Notu
 
-Son güncelleme: 2026-07-28 · Servis edilen sürüm: **app.js?v=20260728-0300** (styles.css?v=20260728-0300, src/templates/template-engine.js?v=20260728-0138, cloud/cloud-sync.js?v=20260719-2200, cloud/report-library.js?v=20260719-2200, halkbank-risk-rules.js?v=20260707-1812)
+Son güncelleme: 2026-07-28 · Servis edilen sürüm: **app.js?v=20260728-1645** (styles.css?v=20260728-1345, src/templates/template-engine.js?v=20260728-0138, cloud/cloud-sync.js?v=20260719-2200, cloud/report-library.js?v=20260724-1330, halkbank-risk-rules.js?v=20260707-1812)
 
 Bu belge, bir sonraki geliştirici/oturum için projeyi çalıştırma, doğrulama ve bu
 oturumda yapılanları özetler.
+
+## 0.0.239 - 2026-07-28 - Mahalle ekiyle (Hacıseyfettin Mahallesi) açılır liste eşleşmesi
+
+UAVT PDF'i mahalle adını ekli verir ("Hacıseyfettin Mahallesi"), idari
+veritabanı eksiz tutar ("HACISEYFETTİN"). Mevcut harf büyüklüğü/aksan-duyarsız
+eşleşme (`foldTurkish`) bu ek farkını gözetmediği için eşleşme kaçırılıyor,
+Adres ve Konum ile Tapu açılır listelerinde otomatik seçim yapılamıyordu.
+
+Yeni `foldPlaceNameForMatch(value, level)`: mahalle seviyesinde karşılaştırmadan
+önce mevcut `stripNeighborhoodSuffix` (mahallesi/mah./köyü eklerini atan
+fonksiyon) uygulanır. Hem `populateLocationSelect` (Tapu ve Adres açılır
+listelerinin ortak gövdesi) hem `applyAdministrativePlaceCasingFromMatch`
+güncellendi.
+
+`npm run verify` (27 test) geçti; ilgili üç test dosyasına
+"Hacıseyfettin Mahallesi" → "Hacıseyfettin" senaryosu eklendi, ek atma
+kaldırılınca testlerin düştüğü kanıtlandı. Tarayıcıda elle doğrulandı.
+Yedek klasörü oluşturulmadı; gerekirse commit hash ile geri alınabilir:
+`1ad5eb6`. Cache sürümü: `app.js?v=20260728-1645`.
+
+## 0.0.238 - 2026-07-28 - Adres ve Konum'da İl/İlçe/İdari mahalle gerçek açılır liste
+
+`city`/`district`/`neighborhood` (Adres ve Konum) serbest metin + zayıf
+`datalist` önerisiydi; kullanıcı gerçek bir açılır liste olmadığını bildirdi.
+Alan tanımları `type: "select"`e çevrildi (Tapu'daki `titleCity`/
+`titleDistrict`/`titleNeighborhood` ile aynı desen). Ortak
+`populateLocationSelect(control, key, level, cityKey, districtKey, options)`
+çıkarıldı; Tapu tarafı seçenekleri veritabanının kendi yazılışıyla (TÜMÜ
+BÜYÜK) gösterir, Adres tarafı `casing: toTitleCaseTr` ile Baş Harf Büyük
+yazılışa çevirir. İl değişince İlçe+Mahalle, İlçe değişince Mahalle
+temizlenip bölüm yeniden render edilir.
+
+`npm run verify` geçti; `tools/test-address-location-select.js` eklendi
+(select tipini text'e geri alınca testin düştüğü kanıtlandı). Tarayıcıda
+gerçek DOM'da SELECT etiketi ve doğru Baş Harf Büyük seçenekler doğrulandı.
+Yedek klasörü oluşturulmadı; commit hash: `3fb827e`. Cache sürümü:
+`app.js?v=20260728-1600`.
+
+## 0.0.237 - 2026-07-28 - Adres ve Konum'da yer adı Baş Harf Büyük düzeltmesi
+
+Tapu il/ilçe/mahalle açılır listelerindeki aynı mantık Adres ve Konum'un
+(o sırada hâlâ serbest metin olan) İl/İlçe/İdari mahalle alanlarına
+uygulandı. Yeni `applyAdministrativePlaceCasingFromMatch()`, posta kodu
+için zaten yapılan idari veritabanı sorgusunun sonucunu yeniden kullanır:
+bir satırla yalnızca harf büyüklüğü/aksan farkıyla eşleşiyorsa Baş Harf
+Büyük yazılışa düzeltir; eşleşme yoksa UAVT'ten gelen değer aynen korunur.
+
+`npm run verify` geçti; `tools/test-address-place-casing.js` eklendi.
+Tarayıcıda YALOVA/ARMUTLU/KARŞIYAKA → Yalova/Armutlu/Karşıyaka ve
+eşleşmeyen "UYDURMA MAHALLE"nin değişmeden kaldığı doğrulandı. Yedek
+klasörü oluşturulmadı; commit hash: `a70698b`. Cache sürümü:
+`app.js?v=20260728-1500`.
+
+## 0.0.236 - 2026-07-28 - Tapu il/ilçe/mahalle seçimlerinde TAKBİS değeri fazladan seçenek olmasın
+
+`populateTitleLocationSelect()`, TAKBİS'ten gelen değeri ("Karşıyaka")
+listedeki seçenekle ("KARŞIYAKA") tam (case-sensitive) string eşitliğiyle
+karşılaştırıyordu. Harf büyüklüğü farkında `Set` dedup çalışmıyor, TAKBİS
+değeri listeye fazladan bir seçenek olarak ekleniyor ve seçili görünüyordu
+(kullanıcı ekran görüntüsü: "Karşıyaka" listede iki kez).
+
+`foldTurkish` ile eşleşen varsa listedeki kanonik yazılış kullanılır;
+`state.fields` de bu yazılışa güncellenip autosave tetiklenir. Listede
+karşılığı olmayan gerçekten yeni bir değer değişmeden korunur.
+
+`npm run verify` geçti; `tools/test-title-location-select-case-fold.js`
+eklendi (eşleme kaldırılınca testin düştüğü kanıtlandı: actual 2 / expected
+1). Yedek klasörü oluşturulmadı; commit hash: `64a3c72`. Cache sürümü:
+`app.js?v=20260728-1415`.
+
+## 0.0.235 - 2026-07-28 - Eski Ada/Parsel çifti tek sütun genişliğinde, hücreler %50
+
+Bir önceki adımda Eski Ada/Eski Parsel çifti `garden-setbacks-field` ile
+aynı desenle (`grid-column: 1/-1`) TAM SATIR genişliğinde yapılmıştı.
+Kullanıcı düzeltti: tek sütunda (normal bir alanın genişliğinde) kalsın,
+o sütun kendi içinde iki eşit hücreye (%50/%50) bölünsün.
+`.old-block-parcel-field`den `grid-column: 1/-1` kaldırıldı.
+
+Tarayıcıda ölçüldü: çiftin toplam genişliği normal bir alanla aynı
+(424px), her hücre tam yarısı (207px). `npm run verify` geçti. Yedek
+klasörü oluşturulmadı; commit hash: `9f4e1f7`. Cache sürümü:
+`styles.css?v=20260728-1345`.
+
+## 0.0.234 - 2026-07-28 - Adres ve Konum alan sırası + Eski Ada/Parsel birleşik kutu
+
+"Bölgede Güvenlik Problemi Var Mı?" alanı Deprem derecesi alanının hemen
+ardına, eski yerine (Çevresel özellik bölge türünden sonra) "Ana arter
+mesafesi" (`mainArteryProximity`) taşındı. Tapu ve Mülkiyet'te "Eski Ada"
+ve "Eski Parsel" önceden iki bağımsız form-grid hücresiydi; yeni
+`createOldBlockParcelPairControl()` (`createGardenSetbacksPairControl`
+ile aynı desen) tek satırda birleştirdi.
+
+Not: Bu istek ilk yorumda yanlışlıkla Vakıf Katılım Word şablonuna
+uygulanmıştı (kullanıcı "sistemdeki sıralamayı kastediyorum" diye
+düzeltti); o şablon değişikliği `git revert` ile geri alındı (commit
+`28e0f2f`, geri alınan: `75be10a`) ve gerçek istek canlı forma uygulandı.
+
+`npm run verify` geçti; tarayıcıda alan sırası ve birleşik kutunun form
+render'ında doğru göründüğü doğrulandı. Yedek klasörü oluşturulmadı;
+commit hash: `bd5ee63`. Cache sürümü: `app.js?v=20260728-1330`.
+
+## 0.0.233 - 2026-07-28 - Cephe kutucukları + Kat/Alan varsayılan satırı + TAKBİS Giriş alanı
+
+Üç ayrı düzeltme: (1) "Gayrimenkulün Cepheli Olduğu Yönler" kutucukları
+3 sütunlu `unit-general-grid`de tek sütuna sıkışıp daralan tarayıcıda
+üst üste biniyordu; `unit-facade-field`e `field-wide` eklendi. (2) "Katlar,
+Alanlar ve İç Hacimler" bölümü boş listeyle başlıyordu; yeni
+`ensureUnitFloorRowExists()` sayfa her açıldığında (ve son kat
+silindiğinde) otomatik bir boş kat satırı ekler. (3) TAKBİS
+"Blok/Kat/Giriş/BBNo" alanının 3. slotu (Giriş harfi, ör. "G") sessizce
+atılıyordu; Adres ve Konum + Tapu ve Mülkiyet'e Blok'tan sonra "Giriş"
+alanı eklendi, `parseTakbisBlockFloorUnit` artık bu alanı da döndürüyor.
+
+`npm run verify` geçti; `tools/test-takbis-block-entrance.js` eklendi
+(gerçek TAKBİS örneği "1./9/G/40" ile). Tarayıcıda üç düzeltme de elle
+doğrulandı. Yedek klasörü oluşturulmadı; commit hash: `b0887bf`. Cache
+sürümü: `app.js?v=20260728-1230`.
+
+## 0.0.232 - 2026-07-28 - WC seçimi: önceki-fix'le kaydedilmiş bozuk veri kendi kendini onarsın
+
+Bir önceki düzeltme (0.0.231) yalnızca YENİ bozulmayı engelliyordu.
+Kullanıcının o düzeltmeden önce kaydedilmiş raporunda `interiors` alanı
+zaten "Wc" olarak kayıtlıydı ve düzeltme sonrası bile `<option
+value="WC">` ile eşleşmiyordu. Yeni `resolveUnitInteriorOptionValue()`
+harf büyüklüğü/Türkçe karakter farkını tolere edip kanonik seçeneği
+bulur; picker artık kayıtlı değer kanonikten farklıysa state'i de anında
+senkronlar (kendi kendini onarma).
+
+`npm run verify` geçti; `tools/test-unit-interior-self-heal.js` eklendi
+(tolere edilmiş eşleşme kaldırılınca testin düştüğü kanıtlandı). Tarayıcıda
+hem önceden bozulmuş kayıtlı verinin kendini onardığı hem yeni seçimin
+kalıcı kaldığı doğrulandı. Yedek klasörü oluşturulmadı; commit hash:
+`999c35c`. Cache sürümü: `app.js?v=20260728-1130`.
+
+## 0.0.231 - 2026-07-28 - Bağımsız Bölüm İç Hacimler'de WC seçimi sekme değişince silinme hatası
+
+`normalizeReportStateFields()` her autosave döngüsünde (~450ms)
+`state.tables` içindeki TÜM dizileri hücre bazında normalize ediyordu.
+`unitFloors` satırları (`floor`/`interiors`/`note` gibi ADLANDIRILMIŞ
+anahtarlar, `c0`/`c1`... değil) için eşleşen bir `section.id` bulunamıyor,
+fonksiyon varsayılan "başlık büyütme" dalına düşüp "İç Hacimler" seçici
+kutusundaki "WC" değerini "Wc"ye çeviriyordu; bu değer `<option
+value="WC">` ile artık eşleşmediğinden sekme değiştirilip geri
+dönüldüğünde seçim boş görünüyordu (kullanıcı bildirimi).
+
+Mevcut "comparables" atlama deseniyle aynı şekilde `unitFloors` da
+döngüde açıkça atlanıyor.
+
+`npm run verify` geçti; `tools/test-unit-floors-normalization-skip.js`
+eklendi (atlama kaldırılınca testin düştüğü kanıtlandı: actual 'Salon,
+Wc, Mutfak'). Tarayıcıda autosave döngüsü + sekme değişimi sonrası WC
+seçiminin kalıcı kaldığı doğrulandı. Yedek klasörü oluşturulmadı; commit
+hash: `6db6932`. Cache sürümü: `app.js?v=20260728-1030`.
 
 ## 0.0.230 - 2026-07-28 - Takyidat testi CRLF dayanıklılığı
 
