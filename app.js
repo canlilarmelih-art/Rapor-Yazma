@@ -9789,12 +9789,13 @@ function shouldHideField(sectionId, fieldKey) {
     }
   }
   if (sectionId === "title") {
-    // Zemin tipi Ana Taşınmaz ise bağımsız bölüme özgü alanlar anlamsızdır
-    // (Ana Taşınmaz'ın kendisi paylı bir bağımsız bölüm değildir). Giriş
-    // (titleEntrance) eklendiğinde bu listeye eklenmeyi unutulmuştu; Arsa
-    // Payı/Payda da aynı mantıkla buraya dahil edilir.
+    // Zemin tipi Ana Taşınmaz ise VEYA Mülkiyet "Yatay Kat İrtifakı"/"Dikey
+    // Kat İrtifakı" değilse (Müstakil Bina/Arsa/Tarla/seçilmemiş) bağımsız
+    // bölüme özgü alanlar anlamsızdır — Ana Taşınmaz'ın kendisi ve kat
+    // irtifakı dışındaki mülkiyet türleri paylı bir bağımsız bölüm değildir.
     if (!["titleQuality", "titleBlockName", "titleEntrance", "titleFloor", "unitNo", "share", "denominator"].includes(fieldKey)) return false;
-    return isMainPropertyGroundType(state.fields.groundType);
+    if (isMainPropertyGroundType(state.fields.groundType)) return true;
+    return !isCondominiumOwnershipType();
   }
   if (sectionId === "address") {
     if (fieldKey === "environmentDescription") {
