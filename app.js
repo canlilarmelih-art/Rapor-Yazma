@@ -6247,6 +6247,18 @@ const buildingSocialFacilityOptions = [
   "Site Yönetimi",
 ];
 
+// "Ortak Ve Eklentiler" hücresine kullanıcı nasıl yazarsa yazsın (BÜYÜK
+// HARF, Baş Harfleri Büyük, karışık vb.) tüm kelimeler küçük harfle
+// başlasın istendiğinden metin tamamen küçük harfe çevrilir (kullanıcı
+// talebi). Diğer rapor metinlerindeki cümle-başı büyütme kuralı
+// (normalizeReportDescriptionText) burada BİLEREK uygulanmaz.
+function normalizeLowercaseFreeText(value) {
+  return String(value || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLocaleLowerCase("tr");
+}
+
 const buildingFloorUnitColumns = [
   { key: "common", label: "Ortak Ve Eklentiler", freeText: true },
   { key: "residential", label: "Daire", numeric: true },
@@ -6815,7 +6827,18 @@ function createBuildingFloorRowsTable() {
         input.step = "1";
         input.inputMode = "numeric";
       }
-      input.value = row[column.key] || "";
+      if (column.freeText) {
+        // Daha önce büyük/karışık harfle kaydedilmiş satırları da sessizce
+        // düzeltir (kendi kendine iyileşme) — kullanıcı tekrar dokunmasa
+        // bile hücre küçük harfle görünür.
+        const formattedExisting = normalizeLowercaseFreeText(row[column.key] || "");
+        if (formattedExisting !== (row[column.key] || "")) {
+          row[column.key] = formattedExisting;
+        }
+        input.value = formattedExisting;
+      } else {
+        input.value = row[column.key] || "";
+      }
       input.addEventListener("input", (event) => {
         row[column.key] = column.numeric
           ? normalizeNonNegativeInteger(event.target.value)
@@ -6827,7 +6850,7 @@ function createBuildingFloorRowsTable() {
       });
       input.addEventListener("blur", () => {
         if (!column.freeText) return;
-        const formattedValue = normalizeReportDescriptionText(input.value);
+        const formattedValue = normalizeLowercaseFreeText(input.value);
         input.value = formattedValue;
         row[column.key] = formattedValue;
         autosave();
