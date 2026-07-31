@@ -1,9 +1,37 @@
 # Rapor Yazma Programı — Handoff Notu
 
-Son güncelleme: 2026-07-31 · Servis edilen sürüm: **app.js?v=20260731-1314** (styles.css?v=20260728-1345, src/templates/template-engine.js?v=20260728-0138, cloud/cloud-sync.js?v=20260719-2200, cloud/report-library.js?v=20260724-1330, halkbank-risk-rules.js?v=20260707-1812)
+Son güncelleme: 2026-07-31 · Servis edilen sürüm: **app.js?v=20260731-1344** (styles.css?v=20260731-1344, src/templates/template-engine.js?v=20260728-0138, cloud/cloud-sync.js?v=20260719-2200, cloud/report-library.js?v=20260724-1330, halkbank-risk-rules.js?v=20260707-1812)
 
 Bu belge, bir sonraki geliştirici/oturum için projeyi çalıştırma, doğrulama ve bu
 oturumda yapılanları özetler.
+
+## 0.0.242 - 2026-07-31 - Belge ekle butonu fark edilmiyordu + Mimari Proje varken belge girilmemesi eksik alan sayılsın
+
+Kullanıcı bildirimi: "İncelenen Belgeler" bölümünde tablo boşken sadece küçük,
+soluk bir "Belge ekle" butonu görünüyordu; kullanıcılar bu kısmı sayfa
+genelinde fark etmeden atlıyordu.
+
+- `createTable()` içinde belgeler tablosu boşken (hiç satır yokken) artık
+  kesikli mavi çerçeveli, ortalanmış bir "boş durum" kutusu gösteriliyor:
+  📄 ikonu, açıklayıcı metin ve ortalanmış "Belge ekle" butonu
+  (`.documents-table-empty-state`, `styles.css`). Tabloya en az bir satır
+  eklendiğinde eski küçük buton + tablo görünümüne dönülüyor (davranış
+  değişmedi).
+- Ek talep: "Mimari Proje Var Mı?" kutusu işaretliyken (`hasArchitecturalProject`,
+  varsayılan işaretli) ve İncelenen Belgeler tablosuna hiç gerçek belge
+  girilmemişse (satır yok VEYA satır var ama Belge Türü boş) bu artık
+  "Eksik kritik alan" listesinde "Belgeler ve Proje: İncelenen Belgeler
+  (en az 1 belge girilmeli)" olarak görünüyor. Yeni `hasAnyReviewedDocumentEntered()`
+  yardımcı fonksiyonu ve `getMissingRequiredFields()`'e eklenen kontrol ile.
+  Eksik alan listesindeki bu satıra tıklanınca doğrudan "Belge ekle"
+  butonuna (`[data-documents-add-button]`) odaklanılıyor
+  (`missingCriticalTargetOverrides`).
+- Yeni testler: `tools/test-documents-missing-critical-field.js` (işaretli/
+  işaretsiz, boş/dolu/yarım-dolu satır senaryolarını izole doğrular; kural
+  kaldırıldığında testin gerçekten başarısız olduğu doğrulandı).
+- Doğrulama: `npm run verify` (32 test) geçti; gerçek tarayıcıda boş durum
+  kutusu, eksik-alan listesi ve buton hedefleme manuel olarak doğrulandı.
+- Geri alma: `git revert <bu commit hash>`.
 
 ## 0.0.241 - 2026-07-31 - 13.07.2001 öncesi yapı ruhsatlarında yapı denetim kanunu kapsam dışı açıklaması
 

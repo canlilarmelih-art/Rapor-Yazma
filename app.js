@@ -18125,6 +18125,15 @@ function hasReviewedOccupancyPermitDocument() {
     .some((row) => isOccupancyPermitDocument(row.type));
 }
 
+// "İncelenen Belgeler" tablosuna en az bir gerçek satır (Belge Türü seçili)
+// girilip girilmediğini kontrol eder. Satır eklenmiş ama Belge Türü boş
+// bırakılmışsa yine "belge girilmemiş" sayılır.
+function hasAnyReviewedDocumentEntered() {
+  return (state.tables.documents || [])
+    .map(normalizeReviewedDocumentRow)
+    .some((row) => String(row.type || "").trim());
+}
+
 // 4708 sayılı Yapı Denetimi Hakkında Kanun'un yürürlük/yayım tarihi. Yeni
 // yapı ruhsatı bu tarihten önce alınmış taşınmazlar (yapı kullanma izin
 // belgesi bulunmasa dahi) yapı denetim kanunu kapsamı dışında kalır —
@@ -29913,6 +29922,7 @@ function createTable(section) {
   addButton.type = "button";
   addButton.className = "mini-button";
   addButton.textContent = getTableAddButtonText(section.id, isOwnersTable);
+  if (isDocumentsTable) addButton.dataset.documentsAddButton = "true";
   addButton.addEventListener("click", () => {
     state.tables[section.id].push(isDocumentsTable ? createEmptyReviewedDocumentRow() : {});
     if (isOwnersTable) {
@@ -29944,10 +29954,26 @@ function createTable(section) {
     }
     if (annotationLienSummary) wrapper.append(annotationLienSummary);
   } else if (isDocumentsTable) {
-    headingRow.append(addButton);
     wrapper.append(headingRow);
     if (tableState.length) {
+      headingRow.append(addButton);
       wrapper.append(shell);
+    } else {
+      // Tablo boşken sadece küçük bir buton başlığın yanında kayboluyor ve
+      // kullanıcılar bu bölümü fark etmeden atlıyor (kullanıcı bildirimi).
+      // Bunun yerine tüm dikkati üzerine çeken, kesikli çerçeveli belirgin
+      // bir "boş durum" kutusu gösterilir; buton bu kutunun içinde ortalanır.
+      const emptyState = document.createElement("div");
+      emptyState.className = "documents-table-empty-state";
+      const icon = document.createElement("span");
+      icon.className = "documents-table-empty-state-icon";
+      icon.textContent = "📄";
+      icon.setAttribute("aria-hidden", "true");
+      const message = document.createElement("p");
+      message.className = "documents-table-empty-state-text";
+      message.textContent = "Henüz belge eklenmedi. İncelenen ruhsat, iskan veya proje belgelerini eklemek için aşağıdaki butonu kullanın.";
+      emptyState.append(icon, message, addButton);
+      wrapper.append(emptyState);
     }
   } else {
     wrapper.append(headingRow, shell);
@@ -30437,6 +30463,7 @@ const missingCriticalTargetOverrides = {
   "Belgeler ve Proje|Cezai Karar Var mı?": { sectionId: "documents", selector: '[data-field="penaltyDecision"]' },
   "Belgeler ve Proje|Statik Uygunluk": { sectionId: "documents", selector: '[data-field="staticSuitability"]' },
   "Belgeler ve Proje|Sözleşme Aktif mi?": { sectionId: "documents", selector: '[data-field="buildingInspectionContractActive"]' },
+  "Belgeler ve Proje|İncelenen Belgeler (en az 1 belge girilmeli)": { sectionId: "documents", selector: "[data-documents-add-button]" },
   "Emsaller|En az 4 emsal girilmeli": { sectionId: "comparables", selector: "[data-comparable-field]" },
 };
 
@@ -30617,6 +30644,13 @@ function getMissingRequiredFields() {
     addMissing("Belgeler ve Proje", "Statik Uygunluk", !hasCompletionValue(state.fields.staticSuitability));
     if (!hasReviewedOccupancyPermitDocument()) {
       addMissing("Belgeler ve Proje", "Sözleşme Aktif mi?", !hasCompletionValue(state.fields.buildingInspectionContractActive));
+    }
+    // Mimari Proje Var mı? işaretliyken (varsayılan: işaretli) İncelenen
+    // Belgeler tablosuna hiç belge girilmemişse eksik kritik alan olarak
+    // bildirilsin (kullanıcı talebi).
+    const hasArchitecturalProjectChecked = normalizeYesNoChoice(state.fields.hasArchitecturalProject || "Evet") !== "Hayır";
+    if (hasArchitecturalProjectChecked) {
+      addMissing("Belgeler ve Proje", "İncelenen Belgeler (en az 1 belge girilmeli)", !hasAnyReviewedDocumentEntered());
     }
   }
 
