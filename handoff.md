@@ -1,9 +1,36 @@
 # Rapor Yazma Programı — Handoff Notu
 
-Son güncelleme: 2026-07-31 · Servis edilen sürüm: **app.js?v=20260731-1254** (styles.css?v=20260728-1345, src/templates/template-engine.js?v=20260728-0138, cloud/cloud-sync.js?v=20260719-2200, cloud/report-library.js?v=20260724-1330, halkbank-risk-rules.js?v=20260707-1812)
+Son güncelleme: 2026-07-31 · Servis edilen sürüm: **app.js?v=20260731-1314** (styles.css?v=20260728-1345, src/templates/template-engine.js?v=20260728-0138, cloud/cloud-sync.js?v=20260719-2200, cloud/report-library.js?v=20260724-1330, halkbank-risk-rules.js?v=20260707-1812)
 
 Bu belge, bir sonraki geliştirici/oturum için projeyi çalıştırma, doğrulama ve bu
 oturumda yapılanları özetler.
+
+## 0.0.241 - 2026-07-31 - 13.07.2001 öncesi yapı ruhsatlarında yapı denetim kanunu kapsam dışı açıklaması
+
+Kullanıcı talebi: Yapı Denetim Açıklaması, yapı kullanma izin belgesi yoksa
+zaten gösteriliyordu, ancak Türkiye'de yapı denetim sözleşmesi zorunluluğu
+13.07.2001 tarihli 4708 sayılı Kanun ile geldiği için bu tarihten ÖNCE yapı
+ruhsatı alınmış taşınmazlarda sözleşme durumu sorusu anlamsız — bu durumda
+doğrudan kanun kapsamı dışında olduğunu belirten bir cümle üretilmeli.
+
+- Yeni `buildBuildingInspectionLawExemptionExplanation()`: taşınmazın en
+  güncel yapı ruhsatı satırının tarihini (`getLatestBuildingPermitDocumentRow`)
+  `13.07.2001`  (`BUILDING_INSPECTION_LAW_EFFECTIVE_ISO_DATE`) ile karşılaştırır;
+  ruhsat tarihi bu tarihten kesin olarak önceyse şu cümleyi üretir: "Ekspertize
+  konu taşınmazın yeni yapı ruhsat tarihi XX.XX.XXXX olup, 13.07.2001 tarih ve
+  4708 sayılı Yapı Denetimi Hakkında Kanun'un kapsamı dışında kalmaktadır."
+- `buildBuildingInspectionExplanation()` bu cümleyi, yapı kullanma izin belgesi
+  kontrolünden hemen sonra ve sözleşme-durumu (Evet/Hayır Fesihli) kontrolünden
+  ÖNCE değerlendirir — kanun kapsamı dışı ise sözleşme sorusu tamamen atlanır.
+- Ruhsat tarihi 13.07.2001 veya sonrası ise (kanun kapsamında), ya da yapı
+  kullanma izin belgesi zaten mevcutsa, davranış değişmedi.
+- Yeni test: `tools/test-building-inspection-law-exemption.js` (kanun-öncesi/
+  sonrası/sınır tarihi ve iskan-var senaryolarını izole doğrular; fonksiyon
+  kaldırıldığında testin gerçekten başarısız olduğu doğrulandı).
+- Doğrulama: `npm run verify` (31 test) geçti; gerçek tarayıcıda üç senaryo
+  (1998 ruhsat/iskansız, 2015 ruhsat/aktif sözleşme, iskan var) manuel olarak
+  doğrulandı.
+- Geri alma: `git revert <bu commit hash>`.
 
 ## 0.0.240 - 2026-07-31 - Emsaller matrisinde Tab tuşu sütun içinde ilerlesin
 

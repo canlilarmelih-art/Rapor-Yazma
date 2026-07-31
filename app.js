@@ -18125,8 +18125,26 @@ function hasReviewedOccupancyPermitDocument() {
     .some((row) => isOccupancyPermitDocument(row.type));
 }
 
+// 4708 sayılı Yapı Denetimi Hakkında Kanun'un yürürlük/yayım tarihi. Yeni
+// yapı ruhsatı bu tarihten önce alınmış taşınmazlar (yapı kullanma izin
+// belgesi bulunmasa dahi) yapı denetim kanunu kapsamı dışında kalır —
+// kullanıcı talimatı.
+const BUILDING_INSPECTION_LAW_EFFECTIVE_ISO_DATE = "2001-07-13";
+
+function buildBuildingInspectionLawExemptionExplanation() {
+  const permitRow = getLatestBuildingPermitDocumentRow();
+  const permitDateIso = permitRow ? parseReviewedDocumentDate(permitRow.c2) : "";
+  if (!permitDateIso || permitDateIso >= BUILDING_INSPECTION_LAW_EFFECTIVE_ISO_DATE) return "";
+  const permitDateText = dateIsoToTr(permitDateIso);
+  return normalizeReportDescriptionText(
+    `Ekspertize konu taşınmazın yeni yapı ruhsat tarihi ${permitDateText} olup, 13.07.2001 tarih ve 4708 sayılı Yapı Denetimi Hakkında Kanun'un kapsamı dışında kalmaktadır.`
+  );
+}
+
 function buildBuildingInspectionExplanation() {
   if (hasReviewedOccupancyPermitDocument()) return "";
+  const lawExemptionExplanation = buildBuildingInspectionLawExemptionExplanation();
+  if (lawExemptionExplanation) return lawExemptionExplanation;
   const status = String(state.fields.buildingInspectionContractActive || "").trim();
   if (!status) return "";
   const date = dateIsoToTr(state.fields.municipalityInspectionDate || state.fields.appointmentDate || "");
