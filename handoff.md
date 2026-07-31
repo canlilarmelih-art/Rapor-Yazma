@@ -1,9 +1,31 @@
 # Rapor Yazma Programı — Handoff Notu
 
-Son güncelleme: 2026-07-31 · Servis edilen sürüm: **app.js?v=20260731-1852** (styles.css?v=20260731-1344, src/templates/template-engine.js?v=20260728-0138, cloud/cloud-sync.js?v=20260719-2200, cloud/report-library.js?v=20260724-1330, halkbank-risk-rules.js?v=20260707-1812)
+Son güncelleme: 2026-07-31 · Servis edilen sürüm: **app.js?v=20260731-2029** (styles.css?v=20260731-2029, src/templates/template-engine.js?v=20260728-0138, cloud/cloud-sync.js?v=20260719-2200, cloud/report-library.js?v=20260724-1330, halkbank-risk-rules.js?v=20260707-1812)
 
 Bu belge, bir sonraki geliştirici/oturum için projeyi çalıştırma, doğrulama ve bu
 oturumda yapılanları özetler.
+
+## 0.0.247 - 2026-07-31 - Emsaller Konumu hücresindeki taşma: harita ikonu + sütun çerçeveleri
+
+Kullanıcı bildirimi: "Harita" metnine kısaltılmasına rağmen Konumu
+hücresinde (blok seçimi + buton + "X m güneyinde" metni) yine taşma
+oluyordu.
+
+- `createComparableMatrixCell()`: `c7` (Konumu) hücresindeki harita butonu
+  artık metin yerine küçük bir konum-pini SVG ikonu gösteriyor
+  (`title`/`aria-label="Haritadan seç"` erişilebilirlik için korunuyor).
+  `.comparable-map-button` CSS'i 34px genişlikte, ortalanmış ikon butonuna
+  dönüştürüldü — blok seçimine çok daha fazla yer kalıyor, "X m güneyinde"
+  satırı artık sarmıyor/taşmıyor.
+- Ek olarak: Emsaller tablosu satır-bazlı (row-major) olduğundan sütunlar
+  (her bir emsal) görsel olarak ayırt edilmiyordu. `.comparables-matrix-table`
+  hücrelerine (sabit "Sıra No" etiket sütunu hariç) dikey `border-left`/
+  `border-right` eklendi — her emsal sütunu artık ince çizgilerle
+  çerçevelenmiş görünüyor.
+- Doğrulama: `npm run verify` (35 test, ilgisiz) geçti; gerçek tarayıcıda
+  ikon butonu ve sütun çerçeveleri ekran görüntüsüyle doğrulandı,
+  "X m güneyinde" metninin artık taşmadığı görüldü.
+- Geri alma: `git revert <bu commit hash>`.
 
 ## 0.0.246 - 2026-07-31 - Emsaller "Haritadan seç" butonu "Harita" olarak kısaltıldı
 

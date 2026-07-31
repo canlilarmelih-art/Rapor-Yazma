@@ -3308,6 +3308,18 @@ td .free-lookup input {
   vertical-align: top;
 }
 
+/* Her emsal sütununu dikey çizgilerle çerçeveye alır — sütunlar arasındaki
+   ayrım, satır bazlı (row-major) tabloda okumayı kolaylaştırır. */
+.comparables-matrix-table th:not(.comparables-row-label-cell),
+.comparables-matrix-table td:not(.comparables-row-label-cell) {
+  border-left: 1px solid var(--line);
+}
+
+.comparables-matrix-table th:last-child,
+.comparables-matrix-table td:last-child {
+  border-right: 1px solid var(--line);
+}
+
 .comparables-row-label-cell {
   position: sticky;
   left: 0;
@@ -3399,6 +3411,12 @@ td .free-lookup input {
 
 .comparable-map-button {
   justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  min-width: 34px;
+  padding: 0;
 }
 
 .comparable-location-map {
