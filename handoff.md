@@ -1,9 +1,35 @@
 # Rapor Yazma Programı — Handoff Notu
 
-Son güncelleme: 2026-07-28 · Servis edilen sürüm: **app.js?v=20260728-1645** (styles.css?v=20260728-1345, src/templates/template-engine.js?v=20260728-0138, cloud/cloud-sync.js?v=20260719-2200, cloud/report-library.js?v=20260724-1330, halkbank-risk-rules.js?v=20260707-1812)
+Son güncelleme: 2026-07-31 · Servis edilen sürüm: **app.js?v=20260731-1254** (styles.css?v=20260728-1345, src/templates/template-engine.js?v=20260728-0138, cloud/cloud-sync.js?v=20260719-2200, cloud/report-library.js?v=20260724-1330, halkbank-risk-rules.js?v=20260707-1812)
 
 Bu belge, bir sonraki geliştirici/oturum için projeyi çalıştırma, doğrulama ve bu
 oturumda yapılanları özetler.
+
+## 0.0.240 - 2026-07-31 - Emsaller matrisinde Tab tuşu sütun içinde ilerlesin
+
+Kullanıcı bildirimi: Emsaller bölümünde Tab tuşuna basınca odak, aynı emsalin
+bir sonraki alanına değil sağdaki bir sonraki emsale (yan sütuna) geçiyordu.
+Kök neden: Emsaller matrisi satır-bazlı (row-major) bir `<table>` — dış döngü
+alanlar (`<tr>`), iç döngü emsaller (`<td>`) olduğundan tarayıcının doğal Tab
+sırası her zaman sağa (bir sonraki emsale) gider.
+
+- Yeni `attachComparableColumnTabNavigation(shell, visibleRows)` fonksiyonu
+  `.comparables-matrix-shell` üzerinde `keydown` ile Tab tuşunu yakalar; odağı
+  önce aynı emsal sütunu içinde aşağı/yukarı taşır, sütun sonuna/başına
+  gelindiğinde bir sonraki/önceki emsalin ilk/son alanına geçer, ilk/son
+  emsalin sınırında tablo dışına doğal çıkışı tarayıcıya bırakır.
+- `percentControl` (İç Özellik/Konum Şerefiye), multiSelect `summaryButton`
+  (Kat alanı) ve `c7` harita butonu daha önce `data-comparable-row`/
+  `data-comparable-field` işaretlerine sahip değildi; bu kontrol tipleri de
+  yeni gezinme mantığına dahil edilmek üzere işaretlendi.
+- `createComparablesVerticalEditor` içinde `updateComparableReasonRowsVisibility(shell)`
+  çağrısından hemen sonra `attachComparableColumnTabNavigation(shell, visibleRows)` bağlandı.
+- Yeni test: `tools/test-comparable-tab-navigation.js` (sahte DOM shell ile
+  ileri/geri Tab ve sütun sınırı geçişlerini izole doğrular; fonksiyon
+  kaldırıldığında testin gerçekten başarısız olduğu doğrulandı).
+- Doğrulama: `npm run verify` (30 test) geçti; ayrıca gerçek tarayıcıda Tab/
+  Shift+Tab ve sütun sınırı geçişi manuel olarak doğrulandı.
+- Geri alma: `git revert <bu commit hash>`.
 
 ## 0.0.239 - 2026-07-28 - Mahalle ekiyle (Hacıseyfettin Mahallesi) açılır liste eşleşmesi
 

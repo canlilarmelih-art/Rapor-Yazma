@@ -27564,6 +27564,44 @@ function createComparableRowLabelsToggle() {
   return button;
 }
 
+function attachComparableColumnTabNavigation(shell, visibleRows) {
+  const columnOrder = visibleRows.map(({ index }) => String(index));
+  const isUsableTabStop = (el) => {
+    if (!el || el.disabled) return false;
+    if (typeof el.focus !== "function") return false;
+    return el.offsetParent !== null;
+  };
+  const stopsForColumn = (rowKey) => [...shell.querySelectorAll(`[data-comparable-row="${rowKey}"]`)].filter(isUsableTabStop);
+
+  shell.addEventListener("keydown", (event) => {
+    if (event.key !== "Tab") return;
+    const target = event.target;
+    const rowKey = target?.dataset?.comparableRow;
+    if (rowKey === undefined) return;
+    const columnPos = columnOrder.indexOf(rowKey);
+    if (columnPos === -1) return;
+
+    const stops = stopsForColumn(rowKey);
+    const currentIndex = stops.indexOf(target);
+    if (currentIndex === -1) return;
+    const forward = !event.shiftKey;
+    const nextIndex = currentIndex + (forward ? 1 : -1);
+    if (nextIndex >= 0 && nextIndex < stops.length) {
+      event.preventDefault();
+      stops[nextIndex].focus();
+      return;
+    }
+
+    // Sütun sonuna/başına gelindi: bir sonraki/önceki emsal sütununa geç.
+    const nextColumnPos = columnPos + (forward ? 1 : -1);
+    if (nextColumnPos < 0 || nextColumnPos >= columnOrder.length) return; // tablo dışına çıkışı tarayıcıya bırak
+    const nextStops = stopsForColumn(columnOrder[nextColumnPos]);
+    if (!nextStops.length) return;
+    event.preventDefault();
+    (forward ? nextStops[0] : nextStops[nextStops.length - 1]).focus();
+  });
+}
+
 function getComparableFieldForRow(field, row) {
   if (!isLandComparable(row)) return field;
   if (field.key === "c7") return { ...field, options: comparableLandLocationOptions };
@@ -27701,6 +27739,7 @@ function createComparablesVerticalEditor(section) {
     topScrollInner.style.width = `${table.scrollWidth}px`;
   });
   updateComparableReasonRowsVisibility(shell);
+  attachComparableColumnTabNavigation(shell, visibleRows);
   shell.querySelectorAll("[data-comparable-delete]").forEach((button) => {
     button.addEventListener("click", () => {
       const rowIndex = Number(button.dataset.comparableDelete);
@@ -28422,6 +28461,8 @@ function createComparableMatrixCell(section, field, row, rowIndex) {
       options: comparablePercentOptions,
     });
     percentControl.value = row[field.percentKey] || "";
+    percentControl.dataset.comparableRow = String(rowIndex);
+    percentControl.dataset.comparableField = field.percentKey;
     percentControl.addEventListener("input", (event) => {
       row[field.percentKey] = event.target.value;
       autosave();
@@ -28443,6 +28484,8 @@ function createComparableMatrixCell(section, field, row, rowIndex) {
     mapButton.type = "button";
     mapButton.className = "mini-button comparable-map-button";
     mapButton.textContent = "Haritadan seç";
+    mapButton.dataset.comparableRow = String(rowIndex);
+    mapButton.dataset.comparableField = "c7map";
     mapButton.addEventListener("click", () => {
       openComparableLocationModal(row, rowIndex, () => {
         autosave();
@@ -28467,6 +28510,8 @@ function createComparableMultiSelectControl(field, row, rowIndex) {
   summaryButton.type = "button";
   summaryButton.className = "multi-checkbox-summary";
   summaryButton.setAttribute("aria-expanded", "false");
+  summaryButton.dataset.comparableRow = String(rowIndex);
+  summaryButton.dataset.comparableField = field.key;
   summaryButton.textContent = selected.length ? selected.join(", ") : "Seçiniz";
 
   const list = document.createElement("div");
