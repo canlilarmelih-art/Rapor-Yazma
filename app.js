@@ -28549,7 +28549,7 @@ function createComparableMatrixCell(section, field, row, rowIndex) {
     const mapButton = document.createElement("button");
     mapButton.type = "button";
     mapButton.className = "mini-button comparable-map-button";
-    mapButton.textContent = "Haritadan seç";
+    mapButton.textContent = "Harita";
     mapButton.dataset.comparableRow = String(rowIndex);
     mapButton.dataset.comparableField = "c7map";
     mapButton.addEventListener("click", () => {

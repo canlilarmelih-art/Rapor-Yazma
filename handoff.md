@@ -1,9 +1,21 @@
 # Rapor Yazma Programı — Handoff Notu
 
-Son güncelleme: 2026-07-31 · Servis edilen sürüm: **app.js?v=20260731-1818** (styles.css?v=20260731-1344, src/templates/template-engine.js?v=20260728-0138, cloud/cloud-sync.js?v=20260719-2200, cloud/report-library.js?v=20260724-1330, halkbank-risk-rules.js?v=20260707-1812)
+Son güncelleme: 2026-07-31 · Servis edilen sürüm: **app.js?v=20260731-1852** (styles.css?v=20260731-1344, src/templates/template-engine.js?v=20260728-0138, cloud/cloud-sync.js?v=20260719-2200, cloud/report-library.js?v=20260724-1330, halkbank-risk-rules.js?v=20260707-1812)
 
 Bu belge, bir sonraki geliştirici/oturum için projeyi çalıştırma, doğrulama ve bu
 oturumda yapılanları özetler.
+
+## 0.0.246 - 2026-07-31 - Emsaller "Haritadan seç" butonu "Harita" olarak kısaltıldı
+
+Kullanıcı talebi: Emsaller matrisindeki konum hücresinde yer alan
+"Haritadan seç" butonu daha kısa olsun.
+
+- `createComparableMatrixCell()` içindeki `c7` (konum) hücresinin harita
+  butonu metni "Haritadan seç" → "Harita" olarak değiştirildi. Buton
+  işlevi (haritadan konum seçme modalını açması) değişmedi.
+- Doğrulama: `npm run verify` (35 test, ilgisiz) geçti; gerçek tarayıcıda
+  buton metninin "Harita" olduğu doğrulandı.
+- Geri alma: `git revert <bu commit hash>`.
 
 ## 0.0.245 - 2026-07-31 - Bağımsız Bölüm Özellikleri açıklaması "taşınmazın" tekrarından arındırıldı
 
