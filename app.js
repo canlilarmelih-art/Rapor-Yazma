@@ -12265,6 +12265,18 @@ function createDocumentDecisionControls() {
     return wrapper;
   }
 
+  if (isBuildingInspectionLawExempt()) {
+    // 13.07.2001 öncesi yapı ruhsatında sözleşme durumu/hakediş seviyesi
+    // sorusu anlamsızlaşır; hücreler gizlenir, yalnızca kanun kapsamı dışı
+    // olduğunu belirten açıklama gösterilir (kullanıcı talebi).
+    state.fields.buildingInspectionContractActive = "";
+    state.fields.buildingInspectionProgressLevel = "";
+    state.fields.buildingInspectionTerminationDate = "";
+    state.fields.buildingInspectionTerminationLevel = "";
+    wrapper.append(createBuildingInspectionExplanationPreview());
+    return wrapper;
+  }
+
   const contractTitle = document.createElement("h4");
   contractTitle.className = "document-decision-title";
   contractTitle.textContent = "Yapı Denetim Sözleşme Durumu";
@@ -18140,11 +18152,16 @@ function hasAnyReviewedDocumentEntered() {
 // kullanıcı talimatı.
 const BUILDING_INSPECTION_LAW_EFFECTIVE_ISO_DATE = "2001-07-13";
 
-function buildBuildingInspectionLawExemptionExplanation() {
+function isBuildingInspectionLawExempt() {
   const permitRow = getLatestBuildingPermitDocumentRow();
   const permitDateIso = permitRow ? parseReviewedDocumentDate(permitRow.c2) : "";
-  if (!permitDateIso || permitDateIso >= BUILDING_INSPECTION_LAW_EFFECTIVE_ISO_DATE) return "";
-  const permitDateText = dateIsoToTr(permitDateIso);
+  return Boolean(permitDateIso) && permitDateIso < BUILDING_INSPECTION_LAW_EFFECTIVE_ISO_DATE;
+}
+
+function buildBuildingInspectionLawExemptionExplanation() {
+  if (!isBuildingInspectionLawExempt()) return "";
+  const permitRow = getLatestBuildingPermitDocumentRow();
+  const permitDateText = dateIsoToTr(parseReviewedDocumentDate(permitRow.c2));
   return normalizeReportDescriptionText(
     `Ekspertize konu taşınmazın yeni yapı ruhsat tarihi ${permitDateText} olup, 13.07.2001 tarih ve 4708 sayılı Yapı Denetimi Hakkında Kanun'un kapsamı dışında kalmaktadır.`
   );
@@ -30642,7 +30659,7 @@ function getMissingRequiredFields() {
   if (!isLandPropertyForBankTemplate()) {
     addMissing("Belgeler ve Proje", "Cezai Karar Var mı?", !hasCompletionValue(state.fields.penaltyDecision));
     addMissing("Belgeler ve Proje", "Statik Uygunluk", !hasCompletionValue(state.fields.staticSuitability));
-    if (!hasReviewedOccupancyPermitDocument()) {
+    if (!hasReviewedOccupancyPermitDocument() && !isBuildingInspectionLawExempt()) {
       addMissing("Belgeler ve Proje", "Sözleşme Aktif mi?", !hasCompletionValue(state.fields.buildingInspectionContractActive));
     }
     // Mimari Proje Var mı? işaretliyken (varsayılan: işaretli) İncelenen

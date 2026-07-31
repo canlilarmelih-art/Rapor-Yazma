@@ -1,9 +1,35 @@
 # Rapor Yazma Programı — Handoff Notu
 
-Son güncelleme: 2026-07-31 · Servis edilen sürüm: **app.js?v=20260731-1344** (styles.css?v=20260731-1344, src/templates/template-engine.js?v=20260728-0138, cloud/cloud-sync.js?v=20260719-2200, cloud/report-library.js?v=20260724-1330, halkbank-risk-rules.js?v=20260707-1812)
+Son güncelleme: 2026-07-31 · Servis edilen sürüm: **app.js?v=20260731-1355** (styles.css?v=20260731-1344, src/templates/template-engine.js?v=20260728-0138, cloud/cloud-sync.js?v=20260719-2200, cloud/report-library.js?v=20260724-1330, halkbank-risk-rules.js?v=20260707-1812)
 
 Bu belge, bir sonraki geliştirici/oturum için projeyi çalıştırma, doğrulama ve bu
 oturumda yapılanları özetler.
+
+## 0.0.243 - 2026-07-31 - 13.07.2001 öncesi ruhsatta Sözleşme Aktif mi?/Hakediş Seviyesi hücreleri gizlensin
+
+0.0.241'deki kanun kapsamı dışı açıklamasına ek: yeni yapı ruhsat tarihi
+13.07.2001'den önce ise sözleşme durumu sorusunun kendisi de anlamsızlaşıyor.
+
+- Yeni `isBuildingInspectionLawExempt()`: `buildBuildingInspectionLawExemptionExplanation()`
+  içindeki tarih karşılaştırmasını boolean olarak dışa çıkarır (kod
+  tekrarını önlemek için ikisi de aynı mantığı paylaşır).
+- `createDocumentDecisionControls()`: kanun kapsamı dışıyken "Sözleşme
+  Aktif mi?" ve "Yapı Denetim Hakediş Seviyesi" select hücreleri hiç DOM'a
+  eklenmiyor; yalnızca kanun kapsamı dışı açıklaması gösteriliyor. Daha
+  önce seçili kalmış olabilecek `buildingInspectionContractActive`/
+  `buildingInspectionProgressLevel`/fesih alanları da temizleniyor.
+- `getMissingRequiredFields()`: kanun kapsamı dışıyken "Sözleşme Aktif mi?"
+  artık eksik kritik alan olarak bildirilmiyor (hücre zaten gizli).
+- Yeni test: `tools/test-building-inspection-law-exempt-fields-hidden.js`
+  (kanun öncesi/sonrası/sözleşme Evet-boş kombinasyonlarını, sahte DOM ile
+  gerçek `createDocumentDecisionControls()` çalıştırarak izole doğrular;
+  kural kaldırıldığında testin gerçekten başarısız olduğu doğrulandı).
+  Mevcut `tools/test-documents-missing-critical-field.js` yeni
+  `isBuildingInspectionLawExempt` stub'ı ile güncellendi.
+- Doğrulama: `npm run verify` (33 test) geçti; gerçek tarayıcıda eski
+  ruhsat tarihiyle hücrelerin kaybolduğu ve açıklamanın doğru göründüğü
+  ekran görüntüsüyle doğrulandı.
+- Geri alma: `git revert <bu commit hash>`.
 
 ## 0.0.242 - 2026-07-31 - Belge ekle butonu fark edilmiyordu + Mimari Proje varken belge girilmemesi eksik alan sayılsın
 

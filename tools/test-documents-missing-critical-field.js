@@ -57,6 +57,9 @@ function runScenario({ documents = [], hasArchitecturalProject = "Evet" }) {
     completionCriticalFields: {},
     isLandPropertyForBankTemplate: () => false,
     hasReviewedOccupancyPermitDocument: () => false,
+    // 13.07.2001 öncesi ruhsat kanun kapsam dışı testi ayrı bir dosyada
+    // (test-building-inspection-law-exemption.js); burada sabit false.
+    isBuildingInspectionLawExempt: () => false,
     getComparableRows: () => [],
     isComparableRowEmpty: () => true,
     // hasAnyReviewedDocumentEntered'in tek bagimliligi normalizeReviewedDocumentRow;
