@@ -2959,6 +2959,11 @@ const valuationMarketRows = [
   { label: "Mevcut Kira Değeri", areaKey: "currentRentArea", unitKey: "currentRentUnit", totalKey: "currentRent", unitLabel: "M2 Birim Değeri" },
 ];
 
+const valuationUrgentSaleRows = [
+  { label: "Yasal Acil Satış Değeri", marketKey: "legalValue", totalKey: "legalUrgentSaleValue" },
+  { label: "Mevcut Acil Satış Değeri", marketKey: "currentValue", totalKey: "currentUrgentSaleValue" },
+];
+
 const incompleteConstructionMarketRows = {
   legalValue: {
     label: "Natamam Yasal Durum Değeri",
@@ -3159,6 +3164,7 @@ function createValuationEditor() {
     ...(isArsaOwnershipType() ? [createComparableCalculatedEmsalValuationPanel()] : []),
     ...(isTarlaOwnershipType() ? [createValuationMinimumParcelAssessmentPanel()] : []),
     createValuationMarketTable(),
+    createValuationUrgentSaleTable(),
     ...landOwnershipPanels,
     createPropertyTaxDeclarationValuePanel(),
   );
@@ -3202,6 +3208,37 @@ function createValuationMarketTable() {
     tbody.append(tr);
     const incompleteRow = createIncompleteConstructionMarketRow(row.totalKey);
     if (incompleteRow) tbody.append(incompleteRow);
+  });
+  table.append(tbody);
+  panel.append(createValuationTableWrap(table));
+  return panel;
+}
+
+function createValuationUrgentSaleTable() {
+  const panel = createValuationPanel(
+    "Acil Satış Değeri",
+    "Yasal ve mevcut durum değerinden %10 indirim uygulanıp 50.000 TL'ye yuvarlanarak otomatik hesaplanır."
+  );
+  const table = document.createElement("table");
+  table.className = "valuation-table valuation-urgent-sale-table";
+  table.innerHTML = `
+    <thead>
+      <tr>
+        <th></th>
+        <th>Piyasa Değeri</th>
+        <th>Acil Satış Değeri</th>
+      </tr>
+    </thead>
+  `;
+  const tbody = document.createElement("tbody");
+  getLegalCurrentDisplayRows(valuationUrgentSaleRows, "Yasal ve Mevcut Acil Satış Değeri").forEach((row) => {
+    const tr = document.createElement("tr");
+    tr.append(
+      createValuationLabelCell(row.label),
+      createValuationInputCell(row.marketKey, "Piyasa Değeri", { suffix: "TL", readOnly: true }),
+      createValuationInputCell(row.totalKey, "Acil Satış Değeri", { suffix: "TL", readOnly: true }),
+    );
+    tbody.append(tr);
   });
   table.append(tbody);
   panel.append(createValuationTableWrap(table));

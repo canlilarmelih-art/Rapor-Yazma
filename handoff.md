@@ -1,9 +1,41 @@
 # Rapor Yazma Programı — Handoff Notu
 
-Son güncelleme: 2026-07-31 · Servis edilen sürüm: **app.js?v=20260731-2029** (styles.css?v=20260731-2029, src/templates/template-engine.js?v=20260728-0138, cloud/cloud-sync.js?v=20260719-2200, cloud/report-library.js?v=20260724-1330, halkbank-risk-rules.js?v=20260707-1812)
+Son güncelleme: 2026-07-31 · Servis edilen sürüm: **app.js?v=20260731-2257** (styles.css?v=20260731-2029, src/templates/template-engine.js?v=20260728-0138, cloud/cloud-sync.js?v=20260719-2200, cloud/report-library.js?v=20260724-1330, halkbank-risk-rules.js?v=20260707-1812)
 
 Bu belge, bir sonraki geliştirici/oturum için projeyi çalıştırma, doğrulama ve bu
 oturumda yapılanları özetler.
+
+## 0.0.248 - 2026-07-31 - Değerleme bölümüne Acil Satış Değeri hesaplama paneli eklendi
+
+Kullanıcı talebi: "Yasal Acil ve Mevcut Acil Değeri hesaplama kısmı eksik,
+Yasal ve Mevcut Durum Değeri hesaplamadaki gibi olmalı." `legalUrgentSaleValue`/
+`currentUrgentSaleValue` alanları zaten otomatik hesaplanıyordu
+(`getUrgentSaleValueText`: durum değerinden %10 indirim, 50.000 TL'ye
+yuvarlama) ama Değerleme bölümünde görünür/hesaplama paneli YOKTU — değer
+yalnızca salt okunur bir özet listesinde (`buildValuationSummaryGroups`)
+görünüyordu.
+
+- Yeni `valuationUrgentSaleRows` dizisi ve `createValuationUrgentSaleTable()`
+  paneli: mevcut "Piyasa Değeri" panelinin (Yasal/Mevcut Durum Değeri
+  hesaplama tablosu) aynı görsel/işlevsel desenini izler — `createValuationPanel`
+  + tablo + salt okunur hücreler; Yasal ve Mevcut değer eşitse
+  `getLegalCurrentDisplayRows` ile (mevcut Şerefiye/Yapı Değeri
+  panellerindeki gibi) tek birleşik satıra iner.
+- `createValuationEditor()` içinde `createValuationMarketTable()`'dan hemen
+  sonra eklendi; tüm mülkiyet tipleri (konut ve arsa/arazi) için görünür.
+- Sütun başlığı "Piyasa Değeri" olarak seçildi (ilk taslakta "Durum
+  Değeri" idi, ama `check-basic.js`'in Şerefiye Bölümü'nden kaldırılan eski
+  "Durum Değeri" sütununu tespit eden regresyon koruması yanlışlıkla bu yeni
+  panele de tetikleniyordu — string çakışmasını önlemek için isim
+  değiştirildi, davranış aynı).
+- Yeni test: `tools/test-valuation-urgent-sale-panel.js` (doğru
+  hesaplama/salt-okunurluk, Yasal=Mevcut birleşme davranışı VE
+  `createValuationEditor()`'ın paneli gerçekten çağırdığını doğrular; kablolama
+  kaldırıldığında testin gerçekten başarısız olduğu doğrulandı).
+- Doğrulama: `npm run verify` (36 test) geçti; gerçek tarayıcıda panel,
+  doğru hesaplama ve Yasal=Mevcut birleşme davranışı ekran görüntüsüyle
+  doğrulandı; arsa mülkiyet tipinde de panelin göründüğü kontrol edildi.
+- Geri alma: `git revert <bu commit hash>`.
 
 ## 0.0.247 - 2026-07-31 - Emsaller Konumu hücresindeki taşma: harita ikonu + sütun çerçeveleri
 
