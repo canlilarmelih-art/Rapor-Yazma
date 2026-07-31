@@ -9007,8 +9007,7 @@ function composeUnitHeatingSentence() {
   const heating = toLowerText(state.fields.unitHeatingType);
   if (!heating) return "";
   const mounted = normalizeYesNoChoice(state.fields.unitHeatingMounted || "Evet") !== "Hayır";
-  const base = `Taşınmazda ısınma ihtiyacı ${heating} ile sağlanacak şekilde tesisat bulunmaktadır.`;
-  return mounted ? `${base} Halihazırda ısıtma sistemi monte edilmiştir.` : `${base} Halihazırda ısıtma sistemi monte edilmemiştir.`;
+  return `Isınma ihtiyacı ${heating} ile karşılanacak şekilde tesisatlandırılmış olup, ısıtma sistemi halihazırda monte edil${mounted ? "miştir" : "memiştir"}.`;
 }
 
 function composeUnitConstructionLevelSentence() {
@@ -9093,15 +9092,15 @@ function composeDoorsWindowsSentence() {
   const windowMissing = isNotInstalledDecorative(windows);
   const parts = [];
   const missingParts = [];
-  if (exteriorDoor && !exteriorMissing) parts.push(`dış kapısı ${formatDoorWindowMaterial(exteriorDoor)} kapı`);
+  if (exteriorDoor && !exteriorMissing) parts.push(`dış kapı ${formatDoorWindowMaterial(exteriorDoor)}`);
   if (exteriorMissing) missingParts.push("dış kapı");
-  if (interiorDoors && !interiorMissing) parts.push(`iç kapıları ${formatDoorWindowMaterial(interiorDoors)} kapı`);
+  if (interiorDoors && !interiorMissing) parts.push(`iç kapılar ${formatDoorWindowMaterial(interiorDoors)}`);
   if (interiorMissing) missingParts.push("iç kapı");
-  if (windows && !windowMissing) parts.push(`pencereleri ${formatDoorWindowMaterial(windows)} doğramadır`);
+  if (windows && !windowMissing) parts.push(`pencereler ${formatDoorWindowMaterial(windows)} doğramadır`);
   if (windowMissing) missingParts.push("pencere");
   const sentences = [];
-  if (parts.length) sentences.push(`Taşınmazın ${formatTurkishList(parts)}.`);
-  if (missingParts.length) sentences.push(`Taşınmazda ${formatTurkishList(missingParts)} montajı henüz yapılmamıştır.`);
+  if (parts.length) sentences.push(`${capitalizeSentence(formatTurkishList(parts))}.`);
+  if (missingParts.length) sentences.push(`${formatTurkishList(missingParts)} montajı henüz yapılmamıştır.`);
   return sentences.join(" ");
 }
 
@@ -9112,20 +9111,20 @@ function composeKitchenCabinetCounterSentence() {
   const counterMissing = isNotInstalledDecorative(counter);
   if (!cabinet && !counter) return "";
   if (cabinetMissing && counterMissing) return "Mutfak dolabı ve tezgahının montajı henüz yapılmamıştır.";
-  if (!cabinetMissing && counterMissing) return `Mutfak dolapları ${ensureCabinetText(cabinet)} olup, mutfak tezgahının montajı henüz yapılmamıştır.`;
-  if (cabinetMissing && !counterMissing) return `Mutfak tezgahı ${toLowerText(counter)} olup, mutfak dolabı montajı henüz yapılmamıştır.`;
-  return `Mutfak dolapları ${ensureCabinetText(cabinet)} olup, mutfak tezgahı ${toLowerText(counter)} olarak düzenlenmiştir.`;
+  if (!cabinetMissing && counterMissing) return `Mutfak dolapları ${ensureCabinetText(cabinet)} olup, tezgahının montajı henüz yapılmamıştır.`;
+  if (cabinetMissing && !counterMissing) return `Mutfak tezgahı ${toLowerText(counter)} olup, dolabı montajı henüz yapılmamıştır.`;
+  return `Mutfak dolapları ${ensureCabinetText(cabinet)} olup, tezgahı ${toLowerText(counter)} olarak düzenlenmiştir.`;
 }
 
 function composeMaterialQualitySentence() {
   const quality = state.fields.unitMaterialQuality || "";
   const folded = foldTurkish(quality);
   if (!quality) return "";
-  if (folded.includes("LUKS")) return "Taşınmazın iç özellikleri lüks seviyede olup, tadilat ihtiyacı bulunmamaktadır.";
-  if (folded.includes("KALITELI")) return "Taşınmazın iç özellikleri kaliteli seviyede olup, tadilat ihtiyacı bulunmamaktadır.";
-  if (folded === "ORTA") return "Taşınmazın iç özellikleri standart seviyede olup, tadilat ihtiyacı bulunmamaktadır.";
-  if (folded.includes("VASAT")) return "Taşınmazın iç özellikleri vasat seviyede olup, kısmi tadilat ihtiyacı bulunmaktadır.";
-  if (folded.includes("KOTU")) return "Taşınmazın iç özellikleri kötü seviyede olup, kapsamlı tadilat ihtiyacı bulunmaktadır.";
+  if (folded.includes("LUKS")) return "İç mekân özellikleri lüks seviyede olup, tadilat ihtiyacı bulunmamaktadır.";
+  if (folded.includes("KALITELI")) return "İç mekân özellikleri kaliteli seviyede olup, tadilat ihtiyacı bulunmamaktadır.";
+  if (folded === "ORTA") return "İç mekân özellikleri standart seviyede olup, tadilat ihtiyacı bulunmamaktadır.";
+  if (folded.includes("VASAT")) return "İç mekân özellikleri vasat seviyede olup, kısmi tadilat ihtiyacı bulunmaktadır.";
+  if (folded.includes("KOTU")) return "İç mekân özellikleri kötü seviyede olup, kapsamlı tadilat ihtiyacı bulunmaktadır.";
   return "";
 }
 

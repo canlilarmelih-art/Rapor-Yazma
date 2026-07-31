@@ -1,9 +1,39 @@
 # Rapor Yazma Programı — Handoff Notu
 
-Son güncelleme: 2026-07-31 · Servis edilen sürüm: **app.js?v=20260731-1559** (styles.css?v=20260731-1344, src/templates/template-engine.js?v=20260728-0138, cloud/cloud-sync.js?v=20260719-2200, cloud/report-library.js?v=20260724-1330, halkbank-risk-rules.js?v=20260707-1812)
+Son güncelleme: 2026-07-31 · Servis edilen sürüm: **app.js?v=20260731-1818** (styles.css?v=20260731-1344, src/templates/template-engine.js?v=20260728-0138, cloud/cloud-sync.js?v=20260719-2200, cloud/report-library.js?v=20260724-1330, halkbank-risk-rules.js?v=20260707-1812)
 
 Bu belge, bir sonraki geliştirici/oturum için projeyi çalıştırma, doğrulama ve bu
 oturumda yapılanları özetler.
+
+## 0.0.245 - 2026-07-31 - Bağımsız Bölüm Özellikleri açıklaması "taşınmazın" tekrarından arındırıldı
+
+Kullanıcı bildirimi: otomatik üretilen açıklamada ("Banyo bölümünde... Taşınmazın
+dış kapısı... Taşınmazın iç özellikleri... Taşınmazda ısınma ihtiyacı...")
+"taşınmazın/taşınmazda" kelimesi çok tekrar ediyordu. Önce örnek metin
+kullanıcıya gönderildi, onaylandıktan sonra uygulandı.
+
+- `composeDoorsWindowsSentence()`: "Taşınmazın dış kapısı çelik kapı, iç
+  kapıları lake kapı..." → "Dış kapı çelik, iç kapılar lake, pencereler PVC
+  doğramadır." (özne kaldırıldı, "kapı" tekrarı sadeleştirildi).
+- `composeKitchenCabinetCounterSentence()`: "mutfak tezgahı"/"mutfak dolabı"
+  tekrarları "tezgahı"/"dolabı" olarak sadeleştirildi (cümle zaten "Mutfak
+  dolapları..." ile başlıyor).
+- `composeMaterialQualitySentence()`: "Taşınmazın iç özellikleri..." → "İç
+  mekân özellikleri...".
+- `composeUnitHeatingSentence()`: iki ayrı cümle ("Taşınmazda ısınma
+  ihtiyacı... tesisat bulunmaktadır. Halihazırda ısıtma sistemi monte
+  edilmiştir.") tek akıcı cümlede birleştirildi: "Isınma ihtiyacı ... ile
+  karşılanacak şekilde tesisatlandırılmış olup, ısıtma sistemi halihazırda
+  monte edilmiştir."
+- Diğer bölümlerdeki metinler (Banyo vitrifiye cümlesi, manzara, inşaat
+  seviyesi vb.) değişmedi.
+- Yeni test: `tools/test-unit-interior-fluent-wording.js` (kullanıcının
+  onayladığı örnek çıktıyla birebir eşleşmeyi VE hiçbir cümlenin
+  "Taşınmazın/Taşınmazda" ile başlamadığını doğrular; kural kaldırıldığında
+  testin gerçekten başarısız olduğu doğrulandı).
+- Doğrulama: `npm run verify` (35 test) geçti; gerçek tarayıcıda üretilen
+  metin, kullanıcının onayladığı örnekle birebir eşleşti.
+- Geri alma: `git revert <bu commit hash>`.
 
 ## 0.0.244 - 2026-07-31 - "Ortak Ve Eklentiler" hücresi her zaman küçük harfle başlasın
 

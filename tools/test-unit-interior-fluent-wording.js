@@ -1,0 +1,123 @@
+"use strict";
+
+/*
+  Kullanici talebi: Bağımsız Bölüm Özellikleri bölümündeki otomatik üretilen
+  açıklamada "taşınmazın" kelimesi çok tekrar ediyordu (kapı/pencere, iç
+  özellikler, ısınma cümlelerinin her biri ayrı ayrı "Taşınmazın"/
+  "Taşınmazda" ile başlıyordu). Kullanıcıya önce örnek metin gönderildi,
+  onaylandıktan sonra composeDoorsWindowsSentence(), composeKitchenCabinetCounterSentence(),
+  composeMaterialQualitySentence() ve composeUnitHeatingSentence()
+  fonksiyonlarındaki sabit metinler daha akıcı bir üsluba (tekrarsız,
+  bölüm başlıklarından öznenin zaten belli olduğu) güncellendi.
+
+  Bu dört fonksiyon gercek app.js kaynagindan izole calistirilir; ortak
+  bagimliliklari (toLowerText, formatTurkishList, formatDoorWindowMaterial,
+  vb.) bu testin kapsami disi oldugundan basit stub'larla degistirilir —
+  odak, ureilen cumlelerin "Taşınmazın/Taşınmazda" ile BAŞLAMAMASI ve
+  kullanicinin onayladigi ornek cikti ile birebir eslesmesidir.
+*/
+
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+const vm = require("node:vm");
+
+const appSource = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
+
+function sliceFn(startMarker) {
+  const start = appSource.indexOf(startMarker);
+  assert(start >= 0, `Bulunamadi: ${startMarker}`);
+  const end = appSource.indexOf("\n}", start) + 2;
+  return appSource.slice(start, end);
+}
+
+const foldTurkishSrc = sliceFn("function foldTurkish(");
+const capitalizeSentenceSrc = sliceFn("function capitalizeSentence(");
+const composeDoorsWindowsSentenceSrc = sliceFn("function composeDoorsWindowsSentence(");
+const composeKitchenCabinetCounterSentenceSrc = sliceFn("function composeKitchenCabinetCounterSentence(");
+const composeMaterialQualitySentenceSrc = sliceFn("function composeMaterialQualitySentence(");
+const composeUnitHeatingSentenceSrc = sliceFn("function composeUnitHeatingSentence(");
+
+function createContext(fields) {
+  const context = {
+    state: { fields },
+    toLowerText: (value) => String(value || "").toLocaleLowerCase("tr"),
+    formatTurkishList: (arr) => (arr.length <= 1 ? arr[0] || "" : `${arr.slice(0, -1).join(", ")} ve ${arr[arr.length - 1]}`),
+    formatDoorWindowMaterial: (value) => (
+      String(value || "").toLocaleUpperCase("tr") === "PVC" ? "PVC" : String(value || "").toLocaleLowerCase("tr")
+    ),
+    isNotInstalledDecorative: (value) => /^(yok)$/i.test(String(value || "").trim()),
+    ensureCabinetText: (value) => `${String(value || "").toLocaleLowerCase("tr")} dolap`,
+    normalizeYesNoChoice: (value) => (value === "Evet" ? "Evet" : "Hayır"),
+  };
+  vm.createContext(context);
+  vm.runInContext(foldTurkishSrc, context);
+  vm.runInContext(capitalizeSentenceSrc, context);
+  vm.runInContext(composeDoorsWindowsSentenceSrc, context);
+  vm.runInContext(composeKitchenCabinetCounterSentenceSrc, context);
+  vm.runInContext(composeMaterialQualitySentenceSrc, context);
+  vm.runInContext(composeUnitHeatingSentenceSrc, context);
+  return context;
+}
+
+const context = createContext({
+  unitExteriorDoor: "çelik",
+  unitInteriorDoors: "lake",
+  unitWindows: "PVC",
+  unitKitchenCabinet: "akrilik",
+  unitKitchenCounter: "çimstone / kuvars",
+  unitMaterialQuality: "Kaliteli",
+  unitHeatingType: "yerden ısıtma doğalgaz kombi",
+  unitHeatingMounted: "Evet",
+});
+
+// 1) Kullanicinin onayladigi ornekle BIREBIR eslesme.
+assert.equal(
+  context.composeDoorsWindowsSentence(),
+  "Dış kapı çelik, iç kapılar lake ve pencereler PVC doğramadır.",
+  "Kapı/pencere cümlesi onaylanan örnekle eşleşmiyor."
+);
+assert.equal(
+  context.composeKitchenCabinetCounterSentence(),
+  "Mutfak dolapları akrilik dolap olup, tezgahı çimstone / kuvars olarak düzenlenmiştir.",
+  "Mutfak cümlesi onaylanan örnekle eşleşmiyor."
+);
+assert.equal(
+  context.composeMaterialQualitySentence(),
+  "İç mekân özellikleri kaliteli seviyede olup, tadilat ihtiyacı bulunmamaktadır.",
+  "İç mekân kalite cümlesi onaylanan örnekle eşleşmiyor."
+);
+assert.equal(
+  context.composeUnitHeatingSentence(),
+  "Isınma ihtiyacı yerden ısıtma doğalgaz kombi ile karşılanacak şekilde tesisatlandırılmış olup, ısıtma sistemi halihazırda monte edilmiştir.",
+  "Isınma cümlesi onaylanan örnekle eşleşmiyor."
+);
+
+// 2) Genel kural: hicbir cumle "Taşınmazın"/"Taşınmazda" ile BAŞLAMAMALI
+//    (tekrar eden ozne kaldirildi — kullanici sikayeti buydu).
+[
+  context.composeDoorsWindowsSentence(),
+  context.composeKitchenCabinetCounterSentence(),
+  context.composeMaterialQualitySentence(),
+  context.composeUnitHeatingSentence(),
+].forEach((sentence) => {
+  assert.doesNotMatch(
+    sentence,
+    /^Taşınmazın |^Taşınmazda /,
+    `Cümle "Taşınmazın/Taşınmazda" ile başlamamalı: "${sentence}"`
+  );
+});
+
+// 3) Isıtma sistemi monte EDİLMEMİŞSE dogru ek kullanilmali (regresyon:
+//    string birleştirme sırasında "memiştir"/"miştir" eki karışabilir).
+const notMountedContext = createContext({
+  unitHeatingType: "kombi doğalgaz",
+  unitHeatingMounted: "Hayır",
+});
+assert.match(
+  notMountedContext.composeUnitHeatingSentence(),
+  /monte edilmemiştir\.$/,
+  "Isıtma sistemi monte edilmemişken cümle 'monte edilmemiştir.' ile bitmeli."
+);
+
+console.log("Bagimsiz bolum ic ozellikleri akici anlatim testi tamam.");
