@@ -13490,6 +13490,7 @@ function buildComparableMatrixWordTableHtml() {
   const fields = comparableFields.filter((field) => {
     if (field.hidden) return false;
     if (!showWorkplaceFields && comparableWorkplaceOnlyFieldKeys.has(field.key)) return false;
+    if (showWorkplaceFields && comparableHiddenForWorkplaceFieldKeys.has(field.key)) return false;
     if (!hasLandComparable && comparableLandOnlyFieldKeys.has(field.key)) return false;
     if (!hasResidentialComparable && comparableResidentialOnlyFieldKeys.has(field.key)) return false;
     return true;
@@ -27502,6 +27503,10 @@ const comparableLandOnlyFieldKeys = new Set(["c24", "c25", "c26", "c27", "c28", 
 // Konu taşınmaz işyeri/ofis/ticari bina değilse (konut dahil) bu alanlar
 // Emsaller tablosunda gösterilmez — kullanıcı talebi (bkz. isWorkplaceLikeUsageNature).
 const comparableWorkplaceOnlyFieldKeys = new Set(["workplaceFloors", "calcWorkplaceReducedArea"]);
+// Konu taşınmaz işyeri/ofis/ticari bina ise (Oda Sayısı işyeri/dükkan için
+// anlamsız) bu alanlar Emsaller tablosunda ve açıklamada gösterilmez —
+// kullanıcı talebi.
+const comparableHiddenForWorkplaceFieldKeys = new Set(["c5"]);
 const comparableTarlaZoningFieldKeys = new Set(["c25", "c26", "c27", "c28", "c31"]);
 const comparableRoadFrontageOptions = ["Kadastro yola cephesiz", "Kadastro yola cepheli", "İmar yoluna cepheli", "Asfalt yola cepheli", "Açılmamış imar yoluna cepheli"];
 const comparableFields = [
@@ -27645,6 +27650,7 @@ function getComparableDisplayFields(viewMode) {
   return comparableFields.filter((field) => {
     if (field.hidden) return false;
     if (!showWorkplaceFields && comparableWorkplaceOnlyFieldKeys.has(field.key)) return false;
+    if (showWorkplaceFields && comparableHiddenForWorkplaceFieldKeys.has(field.key)) return false;
     if (viewMode === "all") return true;
     if (viewMode === "land") return !comparableResidentialOnlyFieldKeys.has(field.key);
     return !comparableLandOnlyFieldKeys.has(field.key);
@@ -29364,6 +29370,9 @@ function buildComparableLongText(row, rowIndex, metrics) {
   const floor = workplaceFloorAreaPhrase ? "" : buildComparableFloorPhrase(row.c6);
   const declaredArea = workplaceFloorAreaPhrase ? "" : formatComparableArea(row.c12, "m2");
   const correctedArea = workplaceFloorAreaPhrase ? "" : formatComparableArea(row.c13 || row.c12, "m2");
+  // Oda Sayısı (c5) işyeri/ofis/ticari raporlarda anlamsız — açıklamadan
+  // da kaldırılır (kullanıcı talebi).
+  const roomCountText = isWorkplaceLikeUsageNature() ? "" : row.c5;
   const statusText = getComparableStatusText(row, metrics);
   const positionText = buildComparablePositionComparisonText(row);
   const isExternalAppraisal = isExternalAppointmentType(state.fields.appointmentType);
@@ -29386,7 +29395,7 @@ function buildComparableLongText(row, rowIndex, metrics) {
     workplaceFloorAreaPhrase ? `, ${workplaceFloorAreaPhrase}` : (floor ? `, ${floor}` : ""),
     declaredArea ? `, ${declaredArea} olarak beyan edilen` : "",
     correctedArea ? `, ${correctedArea} olduğu düşünülen` : "",
-    row.c5 ? `, ${row.c5} planında` : "",
+    roomCountText ? `, ${roomCountText} planında` : "",
     row.c4 ? ` ${row.c4}` : "",
     statusText ? ` ${statusText}` : "",
     comparisonText ? ` ${comparisonText}` : "",

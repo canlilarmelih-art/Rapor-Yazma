@@ -48,6 +48,8 @@ const parseComparableWorkplaceReductionRateSrc = sliceFn("function parseComparab
 const buildComparableWorkplaceFloorAreaPhraseSrc = sliceFn("function buildComparableWorkplaceFloorAreaPhrase(");
 const buildComparableWorkplaceFloorReductionExplanationSrc = sliceFn("function buildComparableWorkplaceFloorReductionExplanation(");
 const buildComparableFloorPhraseSrc = sliceFn("function buildComparableFloorPhrase(");
+const foldTurkishSrc = sliceFn("function foldTurkish(");
+const isWorkplaceLikeUsageNatureSrc = sliceFn("function isWorkplaceLikeUsageNature(");
 const buildComparableLongTextSrc = sliceFn("function buildComparableLongText(");
 
 // --- 1) buildComparableWorkplaceFloorAreaPhrase — saf fonksiyon testi ---
@@ -175,6 +177,8 @@ function createLongTextContext(fields = {}) {
   vm.runInContext(buildComparableWorkplaceFloorAreaPhraseSrc, context);
   vm.runInContext(buildComparableWorkplaceFloorReductionExplanationSrc, context);
   vm.runInContext(buildComparableFloorPhraseSrc, context);
+  vm.runInContext(foldTurkishSrc, context);
+  vm.runInContext(isWorkplaceLikeUsageNatureSrc, context);
   vm.runInContext(buildComparableLongTextSrc, context);
   return context;
 }
@@ -224,6 +228,23 @@ function createLongTextContext(fields = {}) {
   const row = { c0: "Yaren Hanım", c2: "Satılık", c4: "daire", c5: "3+1", c6: "Çatı Dubleks", c12: "155", c13: "130" };
   const text = context.buildComparableLongText(row, 2, {});
   assert.match(text, /çatı dubleks katta yer alan/, `workplaceFloors yokken eski kat ifadesi korunmalı: "${text}"`);
+}
+
+// 2d) Kullanıcı talebi: konu taşınmaz işyeri/ofis/ticari ise Oda Sayısı
+//     (c5) açıklamadan da KALDIRILMALI, konut'ta AYNEN kalmalı.
+{
+  const isyeriContext = createLongTextContext({ legalUsageNature: "İşyeri" });
+  const isyeriRow = {
+    c0: "Duygu Hanım", c2: "Satılık", c4: "işyeri", c5: "Dükkan", c6: "Zemin kat",
+    workplaceFloors: [{ floor: "Zemin kat", area: "100", rate: "100%" }],
+  };
+  const isyeriText = isyeriContext.buildComparableLongText(isyeriRow, 0, { workplaceReducedArea: 100 });
+  assert.doesNotMatch(isyeriText, /Dükkan planında/, `İşyeri raporunda Oda Sayısı (c5) açıklamadan kalkmalı: "${isyeriText}"`);
+
+  const konutContext = createLongTextContext({ legalUsageNature: "Konut" });
+  const konutRow = { c0: "Recep Bey", c2: "Satılık", c4: "daire", c5: "3+1", c6: "Ara kat", c12: "143", c13: "125" };
+  const konutText = konutContext.buildComparableLongText(konutRow, 1, {});
+  assert.match(konutText, /3\+1 planında daire/, `Konut raporunda Oda Sayısı açıklamada kalmalı: "${konutText}"`);
 }
 
 console.log("Emsaller kat bazinda aciklama (dukkana/katlara gore) testi tamam.");

@@ -1,9 +1,38 @@
 # Rapor Yazma Programı — Handoff Notu
 
-Son güncelleme: 2026-08-01 · Servis edilen sürüm: **app.js?v=20260801-1218** (styles.css?v=20260801-1149, src/templates/template-engine.js?v=20260728-0138, cloud/cloud-sync.js?v=20260719-2200, cloud/report-library.js?v=20260724-1330, halkbank-risk-rules.js?v=20260707-1812)
+Son güncelleme: 2026-08-01 · Servis edilen sürüm: **app.js?v=20260801-1234** (styles.css?v=20260801-1149, src/templates/template-engine.js?v=20260728-0138, cloud/cloud-sync.js?v=20260719-2200, cloud/report-library.js?v=20260724-1330, halkbank-risk-rules.js?v=20260707-1812)
 
 Bu belge, bir sonraki geliştirici/oturum için projeyi çalıştırma, doğrulama ve bu
 oturumda yapılanları özetler.
+
+## 0.0.255 - 2026-08-01 - İşyeri emsallerinde Oda Sayısı satırı kaldırıldı (matris + açıklama)
+
+Kullanıcı talebi: "işyeri emsallerinden oda sayısı satırını kaldıralım
+açıklama bölümünden de kaldıralım" — Oda Sayısı (c5) konut için anlamlı,
+işyeri/ofis/ticari bina için anlamsız (dükkan/ofis "3+1" gibi oda
+sayısıyla tanımlanmaz).
+
+- Yeni `comparableHiddenForWorkplaceFieldKeys` Set'i (`["c5"]`):
+  `getComparableDisplayFields()` ve Word export filtresinde
+  (`buildComparableMatrixWordTableHtml`) `isWorkplaceLikeUsageNature()`
+  true iken bu alanlar gizlenir — mevcut `comparableWorkplaceOnlyFieldKeys`
+  desenin TERSİ (o sadece işyeride GÖSTERİR, bu sadece işyeride GİZLER).
+- `buildComparableLongText()`: yeni `roomCountText` değişkeni
+  (`isWorkplaceLikeUsageNature() ? "" : row.c5`) — işyeri/ofis/ticari
+  raporlarda "X planında" cümle parçası (örn. "Dükkan planında") artık
+  hiç eklenmiyor; konut'ta davranış DEĞİŞMEDİ.
+- Yeni testler: `tools/test-comparable-workplace-room-count-hidden.js`
+  (matris görünürlüğü — işyeri/ofis/ticari'de gizli, konut'ta görünür,
+  arazi görünümünde zaten gizli davranış korunuyor) ve
+  `test-comparable-workplace-floor-description.js`'e eklenen yeni senaryo
+  (açıklamadan kalkması); her iki kural kaldırıldığında ilgili testlerin
+  gerçekten başarısız olduğu doğrulandı.
+- Doğrulama: `npm run verify` (41 test) geçti; gerçek tarayıcıda hem
+  matriste hem açıklamada (işyeri: "...olarak beyan edilen işyeri
+  1.150.000 TL..." — "Dükkan planında" yok; konut: "...3+1 planında
+  daire..." — değişmedi) doğrulandı.
+- Geri alma: `git revert <bu commit hash>` veya yedek klasöründen
+  `backups/before-comparable-workplace-floor-reduction_2026-08-01_11-23-32/`.
 
 ## 0.0.254 - 2026-08-01 - Kat bazında alan ifadesi "toplamlı" biçime çevrildi
 
