@@ -1,9 +1,35 @@
 # Rapor Yazma Programı — Handoff Notu
 
-Son güncelleme: 2026-07-31 · Servis edilen sürüm: **app.js?v=20260731-2257** (styles.css?v=20260731-2029, src/templates/template-engine.js?v=20260728-0138, cloud/cloud-sync.js?v=20260719-2200, cloud/report-library.js?v=20260724-1330, halkbank-risk-rules.js?v=20260707-1812)
+Son güncelleme: 2026-08-01 · Servis edilen sürüm: **app.js?v=20260801-1037** (styles.css?v=20260731-2029, src/templates/template-engine.js?v=20260728-0138, cloud/cloud-sync.js?v=20260719-2200, cloud/report-library.js?v=20260724-1330, halkbank-risk-rules.js?v=20260707-1812)
 
 Bu belge, bir sonraki geliştirici/oturum için projeyi çalıştırma, doğrulama ve bu
 oturumda yapılanları özetler.
+
+## 0.0.249 - 2026-08-01 - Değerleme Özet Tablosu: Acil Satış Değeri detay hücresi gerçek hesaplamayı göstersin
+
+Kullanıcı bildirimi: "Değerleme Özet Tablosu"nda Yasal/Mevcut Acil Satış
+Değeri satırlarının "Birim Değer / Oran" hücresi yanlış hesaplanıyor. Kontrol
+edildi: değerler (5.400.000 / 5.850.000) formülle (%10 indirim, 50.000 TL
+yuvarlama) matematiksel olarak tutarlıydı — asıl sorun, bu hücrenin diğer
+satırlar gibi ("115 m² × 52.173,91 TL/m²") gerçek sayıları değil, sabit bir
+açıklama cümlesi ("Yasal durum değerinden %10 indirim, 50.000 TL yuvarlama")
+göstermesiydi.
+
+- Yeni `buildValuationSummaryUrgentSaleDetail(sourceKey)`: sabit cümle yerine
+  gerçek kaynak değeri ve oranı gösterir, örn. "6.000.000 TL × %90".
+- `buildValuationSummaryGroups()`'taki Yasal/Mevcut Acil Satış Değeri
+  satırları bu yeni fonksiyona bağlandı.
+- Hesaplama mantığının kendisi (`getUrgentSaleValueText`: %10 indirim,
+  50.000 TL yuvarlama) DEĞİŞMEDİ — yalnızca özet tablosundaki detay metni
+  düzeltildi.
+- Yeni test: `tools/test-valuation-urgent-sale-summary-detail.js` (gerçek
+  hesaplama detayının döndüğünü, sabit cümlenin artık kullanılmadığını ve
+  boş/sıfır kaynak değerde "—" döndüğünü doğrular; kural kaldırıldığında
+  testin gerçekten başarısız olduğu doğrulandı).
+- Doğrulama: `npm run verify` (37 test) geçti; gerçek tarayıcıda Değerleme
+  Özet Tablosu'nda satırların artık "6.000.000 TL × %90" formatında
+  göründüğü ekran görüntüsüyle doğrulandı.
+- Geri alma: `git revert <bu commit hash>`.
 
 ## 0.0.248 - 2026-07-31 - Değerleme bölümüne Acil Satış Değeri hesaplama paneli eklendi
 

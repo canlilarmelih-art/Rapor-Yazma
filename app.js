@@ -4874,6 +4874,15 @@ function buildValuationSummaryAreaUnitDetail(areaKey, unitKey) {
   return areaStr || unitStr || "—";
 }
 
+// Acil Satış Değeri özet satırı için hesaplama detayı: diğer satırlarda
+// olduğu gibi ("115 m² × 52.173,91 TL/m²") sabit bir açıklama cümlesi
+// yerine gerçek kaynak değer ve oranı gösterir (kullanıcı talebi).
+function buildValuationSummaryUrgentSaleDetail(sourceKey) {
+  const sourceValue = parseValuationNumber(state.fields[sourceKey]);
+  if (!Number.isFinite(sourceValue) || sourceValue <= 0) return "—";
+  return `${formatSchemeNumber(state.fields[sourceKey], 0)} TL × %90`;
+}
+
 function buildValuationSummaryBuildingDetail(row) {
   const area = parseValuationNumber(state.fields[row.areaKey]);
   const unit = parseValuationNumber(state.fields[row.unitKey]);
@@ -4897,8 +4906,8 @@ function buildValuationSummaryGroups() {
       rows: [
         { label: "Yasal Durum Değeri", detail: buildValuationSummaryAreaUnitDetail("legalValueArea", "legalValueUnit"), value: formatValuationSummaryMoney(state.fields.legalValue) },
         { label: "Mevcut Durum Değeri", detail: buildValuationSummaryAreaUnitDetail("currentValueArea", "currentValueUnit"), value: formatValuationSummaryMoney(state.fields.currentValue) },
-        { label: "Yasal Acil Satış Değeri", detail: "Yasal durum değerinden %10 indirim, 50.000 TL yuvarlama", value: formatValuationSummaryMoney(getUrgentSaleValueText("legal")) },
-        { label: "Mevcut Acil Satış Değeri", detail: "Mevcut durum değerinden %10 indirim, 50.000 TL yuvarlama", value: formatValuationSummaryMoney(getUrgentSaleValueText("current")) },
+        { label: "Yasal Acil Satış Değeri", detail: buildValuationSummaryUrgentSaleDetail("legalValue"), value: formatValuationSummaryMoney(getUrgentSaleValueText("legal")) },
+        { label: "Mevcut Acil Satış Değeri", detail: buildValuationSummaryUrgentSaleDetail("currentValue"), value: formatValuationSummaryMoney(getUrgentSaleValueText("current")) },
         { label: "Yasal Kira Değeri", detail: `${buildValuationSummaryAreaUnitDetail("legalRentArea", "legalRentUnit")} · Kap. ${formatValuationSummaryRate(state.fields.legalCapitalizationRate)}`, value: formatValuationSummaryMoney(state.fields.legalRent, "TL/ay") },
         { label: "Mevcut Kira Değeri", detail: `${buildValuationSummaryAreaUnitDetail("currentRentArea", "currentRentUnit")} · Kap. ${formatValuationSummaryRate(state.fields.currentCapitalizationRate)}`, value: formatValuationSummaryMoney(state.fields.currentRent, "TL/ay") },
       ],
