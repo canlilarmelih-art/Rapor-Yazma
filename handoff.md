@@ -1,5 +1,10 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.267 - 2026-08-01 - İş Bankası AFAD bağlantısı düzeltildi
+
+- İş Bankası şablonundaki deprem tehlike haritası bağlantısı `https://tdth.afad.gov.tr/TDTH/main.xhtml` olarak düzeltildi.
+- Yedek: `backups/before-fix-isbank-afad-link_2026-08-01_19-15-24`.
+
 ## 0.0.266 - 2026-08-01 - İş Bankası minimum değerleme yöntemi kontrolü
 
 - Türkiye İş Bankası A.Ş. seçiliyken Değerleme Metodu alanında iki yöntem seçilmemişse `Değerleme: En az 2 adet Değerleme Metodu seçilmelidir.` kaydı eksik kritik alanlara eklenir.
