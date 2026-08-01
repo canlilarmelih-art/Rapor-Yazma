@@ -13498,11 +13498,12 @@ function buildComparableMatrixWordTableHtml() {
   const bodyRows = fields
     .map((field) => [
       field.label,
-      ...rows.map((row, rowIndex) => (
-        field.computed
+      ...rows.map((row, rowIndex) => {
+        if (field.key === "workplaceFloors") return formatComparableWorkplaceFloorsSummary(row);
+        return field.computed
           ? calculateComparableFieldValue(field.key, row, rowIndex)
-          : formatOutputFieldValue(row[field.key] || "", field)
-      )),
+          : formatOutputFieldValue(row[field.key] || "", field);
+      }),
     ])
     .filter((row) => row.slice(1).some((value) => String(value || "").trim()));
   const distanceRow = buildComparableDistanceWordMatrixRow(rows);
@@ -27265,9 +27266,11 @@ function getComparablePlaceholderDefinitions() {
     const row = rows[rowIndex] || {};
     comparableFields.forEach((field) => {
       const token = `EMSAL_${rowIndex + 1}_${toPlaceholderName(field.label || field.key)}`;
-      const value = field.computed
-        ? calculateComparableFieldValue(field.key, row, rowIndex)
-        : formatOutputFieldValue(row[field.key] || "", field);
+      const value = field.key === "workplaceFloors"
+        ? formatComparableWorkplaceFloorsSummary(row)
+        : field.computed
+          ? calculateComparableFieldValue(field.key, row, rowIndex)
+          : formatOutputFieldValue(row[field.key] || "", field);
       definitions.push({
         category: "Emsaller",
         key: token,
@@ -27498,7 +27501,7 @@ const comparableNumericInputFieldKeys = new Set(["c12", "c13", "c24", "c14", "c1
 const comparableLandOnlyFieldKeys = new Set(["c24", "c25", "c26", "c27", "c28", "c29", "c31", "calcCalculatedEmsalUnitValue", "calcAdjustedCalculatedEmsalUnitValue"]);
 // Konu taşınmaz işyeri/ofis/ticari bina değilse (konut dahil) bu alanlar
 // Emsaller tablosunda gösterilmez — kullanıcı talebi (bkz. isWorkplaceLikeUsageNature).
-const comparableWorkplaceOnlyFieldKeys = new Set(["c32", "calcWorkplaceReducedArea"]);
+const comparableWorkplaceOnlyFieldKeys = new Set(["workplaceFloors", "calcWorkplaceReducedArea"]);
 const comparableTarlaZoningFieldKeys = new Set(["c25", "c26", "c27", "c28", "c31"]);
 const comparableRoadFrontageOptions = ["Kadastro yola cephesiz", "Kadastro yola cepheli", "İmar yoluna cepheli", "Asfalt yola cepheli", "Açılmamış imar yoluna cepheli"];
 const comparableFields = [
@@ -27583,10 +27586,9 @@ const comparableFields = [
   { key: "c12", label: "Beyan Edilen Alan" },
   { key: "c13", label: "Düzeltilmiş Alan" },
   {
-    key: "c32",
-    label: "Kat Bazında İndirgeme Oranı",
-    type: "select",
-    options: comparablePercentOptions,
+    key: "workplaceFloors",
+    label: "Kat Bazında Alan / İndirgeme Oranı",
+    type: "workplaceFloorBreakdown",
   },
   { key: "calcWorkplaceReducedArea", label: "Toplam İndirgenmiş Alan", computed: true },
   { key: "c24", label: "Yüzölçümü" },
@@ -28443,9 +28445,14 @@ function cloneComparableRow(row) {
   const clone = {};
   comparableFields.forEach((field) => {
     if (field.computed) return;
-    if (Object.prototype.hasOwnProperty.call(row, field.key)) {
-      clone[field.key] = row[field.key];
+    if (!Object.prototype.hasOwnProperty.call(row, field.key)) return;
+    if (field.key === "workplaceFloors") {
+      // Dizi referansı paylaşılırsa "Kopyala" ile oluşan yeni satırda kat
+      // alan/oranı düzenlemesi orijinal satırı da değiştirir — derin kopya.
+      clone.workplaceFloors = Array.isArray(row.workplaceFloors) ? row.workplaceFloors.map((entry) => ({ ...entry })) : [];
+      return;
     }
+    clone[field.key] = row[field.key];
   });
   clone._comparablesVersion = 2;
   return clone;
@@ -28485,7 +28492,12 @@ function trimEmptyDefaultComparableRows(rows) {
 function isComparableRowEmpty(row = {}) {
   return comparableFields
     .filter((field) => !field.computed)
-    .every((field) => !String(row[field.key] || "").trim());
+    .every((field) => {
+      if (field.key === "workplaceFloors") {
+        return !Array.isArray(row.workplaceFloors) || row.workplaceFloors.every((entry) => !String(entry?.area || "").trim());
+      }
+      return !String(row[field.key] || "").trim();
+    });
 }
 
 function migrateComparableRow(row = {}) {
@@ -28520,6 +28532,10 @@ function createComparableMatrixCell(section, field, row, rowIndex) {
   }
   if (field.type === "multiSelect") {
     cell.append(createComparableMultiSelectControl(field, row, rowIndex));
+    return cell;
+  }
+  if (field.type === "workplaceFloorBreakdown") {
+    cell.append(createComparableWorkplaceFloorBreakdown(row, rowIndex));
     return cell;
   }
   const control = createComparableFieldControl(field);
@@ -28673,6 +28689,10 @@ function createComparableMultiSelectControl(field, row, rowIndex) {
     summaryButton.textContent = values.length ? values.join(", ") : "Seçiniz";
     autosave();
     refreshComparableComputedCells(targetRow, rowIndex);
+    // Kat seçimi değişince alttaki kat bazında alan/indirgeme oranı
+    // listesinin satırları da senkronize olmalı (bkz.
+    // syncComparableWorkplaceFloors) — bu, tam yeniden render gerektirir.
+    if (field.key === "c6") renderSection();
   };
 
   list.querySelectorAll("input[type='checkbox']").forEach((input) => {
@@ -28718,6 +28738,83 @@ function getComparableMultiValues(value, options = []) {
     .split(",")
     .map((item) => item.trim())
     .filter((item) => item && allowed.has(item));
+}
+
+// "Kat" (c6, çoklu seçim) alanında seçili her kat için row.workplaceFloors
+// dizisinde bir {floor, area, rate} girdisi bulunmasını sağlar — yeni
+// seçilen katlar için boş girdi eklenir, seçimi kaldırılan katların
+// girdisi silinir, kalan katların önceden girilmiş alan/oranı KORUNUR.
+function syncComparableWorkplaceFloors(row) {
+  const selectedFloors = getComparableMultiValues(row.c6, comparableFloorOptions);
+  const existingByFloor = new Map(
+    (Array.isArray(row.workplaceFloors) ? row.workplaceFloors : []).map((entry) => [entry.floor, entry])
+  );
+  row.workplaceFloors = selectedFloors.map((floor) => existingByFloor.get(floor) || { floor, area: "", rate: "" });
+  return row.workplaceFloors;
+}
+
+function createComparableWorkplaceFloorBreakdown(row, rowIndex) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "comparable-workplace-floor-breakdown";
+  const floors = syncComparableWorkplaceFloors(row);
+
+  if (!floors.length) {
+    const hint = document.createElement("p");
+    hint.className = "comparable-workplace-floor-hint";
+    hint.textContent = "Önce \"Kat\" alanından seçim yapınız.";
+    wrapper.append(hint);
+    return wrapper;
+  }
+
+  const commit = () => {
+    row.workplaceFloors = floors;
+    autosave();
+    refreshComparableComputedCells(row, rowIndex);
+  };
+
+  floors.forEach((entry) => {
+    const floorRow = document.createElement("div");
+    floorRow.className = "comparable-workplace-floor-row";
+
+    const label = document.createElement("span");
+    label.className = "comparable-workplace-floor-name";
+    label.textContent = entry.floor;
+
+    const areaInput = document.createElement("input");
+    areaInput.type = "text";
+    areaInput.inputMode = "decimal";
+    areaInput.placeholder = "m²";
+    areaInput.value = entry.area || "";
+    areaInput.addEventListener("input", (event) => {
+      entry.area = event.target.value;
+      commit();
+    });
+    areaInput.addEventListener("blur", () => {
+      const formatted = formatComparableNumericInputValue(areaInput.value);
+      areaInput.value = formatted;
+      entry.area = formatted;
+      commit();
+    });
+
+    const rateSelect = document.createElement("select");
+    comparablePercentOptions.forEach((option) => {
+      const item = document.createElement("option");
+      item.value = option;
+      item.textContent = option;
+      rateSelect.append(item);
+    });
+    rateSelect.value = entry.rate && comparablePercentOptions.includes(entry.rate) ? entry.rate : "100%";
+    entry.rate = rateSelect.value;
+    rateSelect.addEventListener("change", (event) => {
+      entry.rate = event.target.value;
+      commit();
+    });
+
+    floorRow.append(label, areaInput, rateSelect);
+    wrapper.append(floorRow);
+  });
+
+  return wrapper;
 }
 
 function updateComparableReasonRowsVisibility(scope = document) {
@@ -29112,6 +29209,16 @@ function calculateComparableFieldValue(key, row, rowIndex = 0) {
 // %100 (indirgeme yok) varsayılır — bu sayede alan boş bırakıldığında
 // geriye dönük davranış (Düzeltilmiş/Beyan Edilen Alanın doğrudan
 // kullanılması) AYNEN korunur (kullanıcı talebi).
+// Kat bazında alan/oran girdilerini Word/placeholder çıktısı için okunabilir
+// tek satıra çevirir, örn. "Zemin kat: 100 m² (%100), Asma kat: 50 m² (%30)".
+function formatComparableWorkplaceFloorsSummary(row) {
+  const floors = Array.isArray(row?.workplaceFloors) ? row.workplaceFloors : [];
+  return floors
+    .filter((entry) => String(entry?.area || "").trim())
+    .map((entry) => `${entry.floor}: ${entry.area} m² (${entry.rate || "100%"})`)
+    .join(", ");
+}
+
 function parseComparableWorkplaceReductionRate(value) {
   const text = String(value || "").replace("%", "").trim();
   if (!text) return 1;
@@ -29127,8 +29234,17 @@ function calculateComparableMetrics(row) {
   const bargainPrice = parseComparableNumber(row.c15);
   if (landComparable) syncComparableLandBuildableArea(row);
   const rawArea = parseComparableNumber(row.c13 || row.c12);
-  const workplaceReductionRate = parseComparableWorkplaceReductionRate(row.c32);
-  const workplaceReducedArea = Number.isFinite(rawArea) ? rawArea * workplaceReductionRate : Number.NaN;
+  // Kat (c6) seçiliyse alan MUTLAKA kat bazında girilir (her kat kendi
+  // alanı × kendi indirgeme oranıyla toplanır); hiç kat seçilmemişse eski
+  // davranışa (Düzeltilmiş/Beyan Edilen Alan) geri dönülür — kullanıcı talebi.
+  const workplaceFloors = landComparable ? [] : syncComparableWorkplaceFloors(row);
+  const workplaceReducedArea = workplaceFloors.length
+    ? workplaceFloors.reduce((sum, entry) => {
+        const area = parseComparableNumber(entry.area);
+        const rate = parseComparableWorkplaceReductionRate(entry.rate);
+        return sum + (Number.isFinite(area) ? area * rate : 0);
+      }, 0)
+    : rawArea;
   const adjustedArea = landComparable ? parseComparableNumber(row.c24) : workplaceReducedArea;
   const calculatedEmsalArea = landComparable ? parseComparableNumber(row.c31) : Number.NaN;
   const rent = landComparable ? Number.NaN : parseComparableNumber(row.c16);

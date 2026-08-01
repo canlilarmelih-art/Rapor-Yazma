@@ -1,9 +1,63 @@
 # Rapor Yazma Programı — Handoff Notu
 
-Son güncelleme: 2026-08-01 · Servis edilen sürüm: **app.js?v=20260801-1133** (styles.css?v=20260731-2029, src/templates/template-engine.js?v=20260728-0138, cloud/cloud-sync.js?v=20260719-2200, cloud/report-library.js?v=20260724-1330, halkbank-risk-rules.js?v=20260707-1812)
+Son güncelleme: 2026-08-01 · Servis edilen sürüm: **app.js?v=20260801-1149** (styles.css?v=20260801-1149, src/templates/template-engine.js?v=20260728-0138, cloud/cloud-sync.js?v=20260719-2200, cloud/report-library.js?v=20260724-1330, halkbank-risk-rules.js?v=20260707-1812)
 
 Bu belge, bir sonraki geliştirici/oturum için projeyi çalıştırma, doğrulama ve bu
 oturumda yapılanları özetler.
+
+## 0.0.251 - 2026-08-01 - Emsaller kat bazında indirgeme: TEK orandan KAT-BAZLI listeye geçiş
+
+0.0.250'de eklenen tekli "Kat Bazında İndirgeme Oranı" (c32) alanı, kullanıcının
+ek talebi üzerine ÇOK KATLI emsalleri desteklemek için kaldırılıp yerine
+kat-bazlı bir liste getirildi: "Kat" (c6) alanında birden fazla kat
+seçildiğinde (örn. "Zemin kat, Asma kat"), her kat için AYRI bir alan (m²)
+ve indirgeme oranı (%) satırı otomatik türer — konu taşınmazın kendi
+"Katlar, Alanlar ve İç Hacimler" tablosuna benzer mantık.
+
+- Veri modeli: `row.workplaceFloors = [{floor, area, rate}, ...]` — yeni
+  `syncComparableWorkplaceFloors(row)` bunu `c6`'daki seçili katlarla
+  senkron tutar (yeni kat → boş girdi eklenir, kaldırılan kat → girdisi
+  silinir, kalanların girdisi KORUNUR).
+- `comparableFields`'taki `c32` select alanı kaldırıldı; yerine
+  `{ key: "workplaceFloors", type: "workplaceFloorBreakdown" }` geldi.
+  Yeni `createComparableWorkplaceFloorBreakdown()` bu tipi
+  `createComparableMatrixCell()` içinde özel olarak render eder (her kat
+  için kat adı + alan input + oran select).
+- "Kat" (c6) çoklu seçimi değiştiğinde artık `renderSection()` tetikleniyor
+  (`createComparableMultiSelectControl`'de `field.key === "c6"` özel durumu)
+  — böylece alttaki kat listesi hemen senkronize olur.
+- `calculateComparableMetrics()`: kat SEÇİLİYSE toplam indirgenmiş alan artık
+  `Σ(kat alanı × kat oranı)` — kullanıcının açık tercihi gereği alan
+  boş/eksik bırakılırsa Düzeltilmiş/Beyan Edilen Alan'a SESSİZCE geri
+  DÖNÜLMEZ, hesap boş/NaN kalır. Kat HİÇ seçilmemişse eski davranış
+  (Düzeltilmiş/Beyan Edilen Alan) aynen korunur.
+- Word/export tablosu (`buildComparableMatrixWordTableHtml`) ve placeholder
+  kataloğu (`getComparablePlaceholderDefinitions`) için yeni
+  `formatComparableWorkplaceFloorsSummary()`: kat listesini okunabilir tek
+  satıra çevirir, örn. "Zemin kat: 100 m² (100%), Asma kat: 50 m² (30%)"
+  (önceki tasarımda bu alanlar array olarak sızıp "[object Object]" üretme
+  riski taşıyordu — export/placeholder yollarında ayrıca ele alındı).
+- `cloneComparableRow`/`isComparableRowEmpty` yeni `workplaceFloors`
+  dizisini (referans paylaşmadan derin kopya; boşluk kontrolü array-aware)
+  doğru işleyecek şekilde güncellendi.
+- `parseComparableWorkplaceReductionRate` geliştirme sırasında bulunan bir
+  hata da düzeltildi: "%0" seçilince yanlışlıkla %100'e düşüyordu
+  (`number <= 0` → `number < 0`, sıfır artık geçerli bir oran).
+- Görünürlük kuralı DEĞİŞMEDİ: hâlâ yalnızca konu taşınmaz işyeri/ofis/
+  ticari bina ise (konut hariç) görünür.
+- Test dosyası (`tools/test-comparable-workplace-floor-reduction.js`)
+  baştan yazıldı: kat senkronizasyonu (ekleme/çıkarma/koruma), %0 edge-case,
+  çok katlı örnek senaryo (100 m² %100 + 50 m² %30 = 115 m²), kat seçili
+  ama alan boşken hesabın SESSİZCE eski değere dönmediği, kat hiç
+  seçilmemişken eski davranışın korunduğu ve arazi emsalinde etkisiz
+  olduğu senaryolarını doğrular; kural kaldırıldığında testin gerçekten
+  başarısız olduğu doğrulandı.
+- Doğrulama: `npm run verify` (38 test) geçti; gerçek tarayıcıda kat
+  seçimiyle liste satırlarının otomatik türediği, alan/oran girildiğinde
+  Toplam İndirgenmiş Alan'ın (115 m²) ve M2 Birim Değer'in (10.000 TL/m²)
+  doğru hesaplandığı ekran görüntüsüyle doğrulandı.
+- Geri alma: `git revert <bu commit hash>` veya yedek klasöründen
+  `backups/before-comparable-workplace-floor-reduction_2026-08-01_11-23-32/`.
 
 ## 0.0.250 - 2026-08-01 - Emsaller bölümüne işyeri/ofis/ticari bina için Kat Bazında İndirgeme eklendi
 

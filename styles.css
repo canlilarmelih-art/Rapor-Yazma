@@ -3409,6 +3409,33 @@ td .free-lookup input {
   grid-column: 1 / -1;
 }
 
+.comparable-workplace-floor-breakdown {
+  display: grid;
+  gap: 6px;
+}
+
+.comparable-workplace-floor-row {
+  display: grid;
+  grid-template-columns: minmax(70px, 1fr) minmax(56px, 0.7fr) minmax(64px, 0.7fr);
+  gap: 4px;
+  align-items: center;
+}
+
+.comparable-workplace-floor-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.comparable-workplace-floor-hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
 .comparable-map-button {
   justify-self: start;
   display: inline-flex;
