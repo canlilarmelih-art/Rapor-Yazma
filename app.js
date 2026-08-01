@@ -1005,6 +1005,8 @@ const fieldMode = document.querySelector("#fieldMode");
 const appShell = document.querySelector("#appShell");
 const sidebarCollapseBtn = document.querySelector("#sidebarCollapseBtn");
 const sidebarOpenBtn = document.querySelector("#sidebarOpenBtn");
+const sahaProToolBtn = document.querySelector("#sahaProToolBtn");
+sahaProToolBtn?.addEventListener("click", () => window.open("saha-pro.html", "_blank", "noopener"));
 
 function loadState() {
   const savedUserDefaults = loadUserDefaults();

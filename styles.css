@@ -650,6 +650,12 @@ body[data-app-theme="clay"] .brand-mark-icon-navy {
   font-size: 12px;
 }
 
+.sidebar-tool-button {
+  margin: 2px 0 4px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  cursor: pointer;
+}
+
 .sync-panel {
   margin-top: auto;
   padding: 14px;

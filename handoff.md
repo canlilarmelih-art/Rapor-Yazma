@@ -1,5 +1,13 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.283 - 2026-08-02 - Saha Pro aracı sol panelden yeni sekmede açılıyor
+
+- Kullanıcının paylaştığı `C:\Users\90551\OneDrive\Masaüstü\claude\saha çalışma\index.html` (canvas tabanlı kroki/işaretleme aracı) uygulama köküne `saha-pro.html` adıyla eklendi; PWA'ya özgü `manifest.json`/favicon/service-worker referansları (gereksiz 404/uyarı kaynağı, bu bağlamda gerek yok) temizlendi.
+- Bu, 0.0.129'daki iframe denemesinden (sonradan 0.0.130'da kaldırılmıştı) FARKLI bir yaklaşım: artık ayrı bir rapor bölümü/iframe DEĞİL, sol panelde `sectionNav`'ın hemen altında sabit duran bağımsız bir "Saha Pro" düğmesi (`#sahaProToolBtn`) — tıklanınca `saha-pro.html`'i `window.open(..., "_blank", "noopener")` ile YENİ SEKMEDE açıyor. Ana uygulamanın CSS/JS'iyle hiçbir çakışma riski yok (ayrı doküman); saha aracı `localStorage` kullanmadığından ana uygulamanın rapor verisiyle de çakışmıyor.
+- Kullanıcının önceki denemesi ("sol panele ekledim ama çalışmadı") muhtemelen dosyaya doğrudan `file:///C:/Users/...` yolundan bağlanmaya çalıştığı için başarısız olmuştu — tarayıcılar `http(s)` sayfalarından yerel dosya sistemine link/iframe vermeyi güvenlik gereği engeller. Artık dosya kendi sunucumuzdan (`http://.../saha-pro.html`) servis edildiği için bu kısıtlama ortadan kalktı.
+- Canlı doğrulama: `http://localhost:5173/saha-pro.html` doğrudan (200 OK, konsol hatası yok, araç tam render) ve düğmeye tıklayınca `saha-pro.html`'e GET isteği (200 OK) gittiği ağ sekmesinden doğrulandı.
+- Yedek gerekmedi (yeni, izole ek özellik — mevcut hiçbir dosya/davranış değiştirilmedi); geri alma: bu commit'i `git revert` ile geri al (ayrıca `saha-pro.html`'i silmek gerekir, revert tek başına dosya eklemeyi de geri alır).
+
 ## 0.0.282 - 2026-08-02 - Emsal telefon numarası İş Bankası/Kuveyt Türk'te 10 haneye normalize edilir
 
 - Emsaller matrisindeki "Telefon" (c1) alanına kullanıcı serbest formatta girebiliyor ("05321111212", "0 (532) 111 12 12", "5321111212" — en fazla 17 karakter, boşluk/parantez dahil). Bu bankalar sadece 10 haneli (başında 0 olmadan) format kabul ediyor.
