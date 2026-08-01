@@ -13563,6 +13563,7 @@ function buildComparableMatrixWordTableHtml() {
       field.label,
       ...rows.map((row, rowIndex) => {
         if (field.key === "workplaceFloors") return formatComparableWorkplaceFloorsSummary(row);
+        if (field.key === "c1") return formatComparablePhoneForOutput(row.c1);
         return field.computed
           ? calculateComparableFieldValue(field.key, row, rowIndex)
           : formatOutputFieldValue(row[field.key] || "", field);
@@ -29765,8 +29766,32 @@ function buildComparableFeatureComparisonText(row) {
   return "Emsal, konu taşınmaza göre benzer iç özelliklere sahiptir.";
 }
 
+// İş Bankası ve Kuveyt Türk raporlarında emsal telefon numarası tam 10
+// haneli (başında 0 olmadan, boşluk/parantez/tire olmadan) girilmelidir —
+// kullanıcı emsal matrisine "05321111212" / "0 (532) 111 12 12" /
+// "5321111212" gibi serbest formatta girebilir, çıktıya basılırken bu iki
+// banka için otomatik 10 haneye normalize edilir (kullanıcı talebi).
+function shouldNormalizeComparablePhoneForBank() {
+  const bank = foldTurkish(state.fields.bank || "");
+  return bank.includes("IS BANKASI") || bank.includes("TURKIYE IS BANKASI") || bank.includes("KUVEYT TURK");
+}
+
+function normalizeComparablePhoneForBank(value) {
+  let digits = String(value || "").replace(/\D+/g, "");
+  if (digits.length === 12 && digits.startsWith("90")) digits = digits.slice(2);
+  if (digits.length === 11 && digits.startsWith("0")) digits = digits.slice(1);
+  return digits;
+}
+
+function formatComparablePhoneForOutput(value) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  return shouldNormalizeComparablePhoneForBank() ? normalizeComparablePhoneForBank(text) : text;
+}
+
 function buildComparableContactLine(row) {
-  return `(İrtibat Kişisi ve Telefon No: ${[row.c0, row.c1].filter(Boolean).join(" / ") || "-"})`;
+  const phone = formatComparablePhoneForOutput(row.c1);
+  return `(İrtibat Kişisi ve Telefon No: ${[row.c0, phone].filter(Boolean).join(" / ") || "-"})`;
 }
 
 function buildComparableSubjectStatement(row, metrics) {

@@ -1,5 +1,12 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.282 - 2026-08-02 - Emsal telefon numarası İş Bankası/Kuveyt Türk'te 10 haneye normalize edilir
+
+- Emsaller matrisindeki "Telefon" (c1) alanına kullanıcı serbest formatta girebiliyor ("05321111212", "0 (532) 111 12 12", "5321111212" — en fazla 17 karakter, boşluk/parantez dahil). Bu bankalar sadece 10 haneli (başında 0 olmadan) format kabul ediyor.
+- Yeni `formatComparablePhoneForOutput(value)` / `normalizeComparablePhoneForBank(value)` / `shouldNormalizeComparablePhoneForBank()` fonksiyonları eklendi: rakam-dışı tüm karakterler temizlenir, sonuç 11 haneyse baştaki "0" atılır, 12 haneyse ve "90" ile başlıyorsa ülke kodu atılır — sonuç 10 hane olur.
+- Bu normalizasyon SADECE rapor çıktısına basılırken uygulanır (emsal matrisindeki ham giriş DEĞİŞMEZ) ve sadece İş Bankası ile Kuveyt Türk için: (1) `buildComparableContactLine` — comparable açıklama cümlesindeki "(İrtibat Kişisi ve Telefon No: ...)"; (2) `buildComparableMatrixWordTableHtml` — {{EMSAL_DEGERLEME_TABLOSU}} Word tablosundaki Telefon satırı. Diğer bankalarda telefon ham haliyle basılmaya devam eder.
+- Yedek gerekmedi (küçük, izole özellik); geri alma: bu commit'i `git revert` ile geri al.
+
 ## 0.0.281 - 2026-08-02 - Ziraat koordinatlarinda virgullu V2 placeholderlari
 
 - `{{ENLEM_V2}}` ve `{{BOYLAM_V2}}` eklendi. Kaynak koordinatlari degistirmeden yalnizca ondalik ayiracini noktadan virgule cevirir: `40.179213` -> `40,179213`.
