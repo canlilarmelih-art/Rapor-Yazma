@@ -1,9 +1,39 @@
 # Rapor Yazma Programı — Handoff Notu
 
-Son güncelleme: 2026-08-01 · Servis edilen sürüm: **app.js?v=20260801-1159** (styles.css?v=20260801-1149, src/templates/template-engine.js?v=20260728-0138, cloud/cloud-sync.js?v=20260719-2200, cloud/report-library.js?v=20260724-1330, halkbank-risk-rules.js?v=20260707-1812)
+Son güncelleme: 2026-08-01 · Servis edilen sürüm: **app.js?v=20260801-1209** (styles.css?v=20260801-1149, src/templates/template-engine.js?v=20260728-0138, cloud/cloud-sync.js?v=20260719-2200, cloud/report-library.js?v=20260724-1330, halkbank-risk-rules.js?v=20260707-1812)
 
 Bu belge, bir sonraki geliştirici/oturum için projeyi çalıştırma, doğrulama ve bu
 oturumda yapılanları özetler.
+
+## 0.0.253 - 2026-08-01 - Emsal açıklamasına kat bazında indirgeme mantığını anlatan cümle eklendi
+
+Kullanıcı talebi: Kira cümlesinden hemen sonra kat bazında indirgeme
+mantığını açıkça anlatan bir cümle gelmeli, örn: "Kat bazında indirgenmiş
+alan zemin kat etkili alan olarak belirlenmiş olup asma kat %30 oranında
+indirgenerek etkili alan 115 m2 olarak hesaplanmıştır."
+
+- Yeni `buildComparableWorkplaceFloorReductionExplanation(row, metrics)`:
+  `workplaceFloors`'ı oranına göre ikiye ayırır — %100 (indirgemesiz) katlar
+  "X etkili alan olarak belirlenmiş olup", %100'den düşük katlar "Y %Z
+  oranında indirgenerek" ifadesiyle anlatılır; cümle
+  `metrics.workplaceReducedArea` (zaten hesaplanan toplam indirgenmiş alan)
+  ile "etkili alan N m2 olarak hesaplanmıştır." diye biter. Hiç baz kat
+  yoksa (tüm katlar indirgenmiş) veya hiç indirgeme yoksa (tüm katlar
+  %100) ilgili yarı otomatik olarak atlanır.
+- `buildComparableLongText()`: bu cümle `bargainRentText` (kira/pazarlık
+  cümlesi) hemen sonrasına, `extraText`/hesaplama metninden ÖNCE eklendi.
+- Alan girilmiş kat yoksa (`workplaceFloors` boş/yok) fonksiyon boş döner,
+  cümle hiç eklenmez — eski davranış korunur.
+- `tools/test-comparable-workplace-floor-description.js` genişletildi: yeni
+  saf fonksiyon testleri (kullanıcının birebir örneği, indirgemesiz, tümü
+  indirgenmiş, veri yok senaryoları) + `buildComparableLongText` kablolama
+  testi artık cümlenin KİRA CÜMLESİNDEN SONRA geldiğini konum bazlı
+  doğruluyor; kural kaldırıldığında testin gerçekten başarısız olduğu
+  doğrulandı.
+- Doğrulama: `npm run verify` (39 test) geçti; gerçek tarayıcıda üretilen
+  tam metin kullanıcının verdiği örnek cümleyle birebir eşleşti.
+- Geri alma: `git revert <bu commit hash>` veya yedek klasöründen
+  `backups/before-comparable-workplace-floor-reduction_2026-08-01_11-23-32/`.
 
 ## 0.0.252 - 2026-08-01 - Emsal açıklaması artık dükkana ve katlara göre düzenleniyor
 

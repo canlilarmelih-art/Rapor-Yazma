@@ -29376,6 +29376,7 @@ function buildComparableLongText(row, rowIndex, metrics) {
       ? `Emsal, ${[positionText, featureText].filter(Boolean).join(" ve ")}.`
       : "";
   const bargainRentText = buildComparableBargainAndRentText(row, metrics);
+  const workplaceFloorReductionExplanation = buildComparableWorkplaceFloorReductionExplanation(row, metrics);
   const calculationText = buildComparableCalculationText(row, metrics);
   const extraText = formatComparableExtraNote(row.c17);
   const sentence = [
@@ -29390,6 +29391,7 @@ function buildComparableLongText(row, rowIndex, metrics) {
     statusText ? ` ${statusText}` : "",
     comparisonText ? ` ${comparisonText}` : "",
     bargainRentText ? ` ${bargainRentText}` : "",
+    workplaceFloorReductionExplanation ? ` ${workplaceFloorReductionExplanation}` : "",
     extraText ? ` ${extraText}` : "",
     calculationText,
   ].join("");
@@ -29703,6 +29705,30 @@ function buildComparableWorkplaceFloorAreaPhrase(row) {
     .map((entry) => `${normalizeComparableFloorName(entry.floor)} katta ${formatComparableArea(entry.area, "m2")}`);
   if (!parts.length) return "";
   return `${joinComparableTurkishList(parts)} olarak beyan edilen`;
+}
+
+// Kat bazında indirgeme mantığını ayrı bir cümlede açıklar, örn: "Kat
+// bazında indirgenmiş alan zemin kat etkili alan olarak belirlenmiş olup
+// asma kat %30 oranında indirgenerek etkili alan 115 m2 olarak
+// hesaplanmıştır." (kullanıcı talebi — kira cümlesinden hemen sonra).
+// Hiçbir katta alan girilmemişse boş döner.
+function buildComparableWorkplaceFloorReductionExplanation(row, metrics) {
+  const floors = (Array.isArray(row?.workplaceFloors) ? row.workplaceFloors : [])
+    .filter((entry) => String(entry?.area || "").trim());
+  if (!floors.length) return "";
+  const withRate = floors.map((entry) => ({
+    label: `${normalizeComparableFloorName(entry.floor)} kat`,
+    rate: parseComparableWorkplaceReductionRate(entry.rate),
+  }));
+  const baselineLabels = withRate.filter((entry) => entry.rate >= 1).map((entry) => entry.label);
+  const reducedLabels = withRate
+    .filter((entry) => entry.rate < 1)
+    .map((entry) => `${entry.label} %${Math.round(entry.rate * 100)}`);
+  const totalArea = formatComparableArea(metrics?.workplaceReducedArea, "m2");
+  if (!totalArea) return "";
+  const baselinePhrase = baselineLabels.length ? `${joinComparableTurkishList(baselineLabels)} etkili alan olarak belirlenmiş olup ` : "";
+  const reducedPhrase = reducedLabels.length ? `${joinComparableTurkishList(reducedLabels)} oranında indirgenerek ` : "";
+  return `Kat bazında indirgenmiş alan ${baselinePhrase}${reducedPhrase}etkili alan ${totalArea} olarak hesaplanmıştır.`;
 }
 
 function normalizeComparableFloorName(value) {

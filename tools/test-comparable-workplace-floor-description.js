@@ -44,7 +44,9 @@ const normalizeComparableFloorNameSrc = sliceFn("function normalizeComparableFlo
 const joinComparableTurkishListSrc = sliceFn("function joinComparableTurkishList(");
 const formatComparableAreaSrc = sliceFn("function formatComparableArea(");
 const parseComparableNumberSrc = sliceFn("function parseComparableNumber(");
+const parseComparableWorkplaceReductionRateSrc = sliceFn("function parseComparableWorkplaceReductionRate(");
 const buildComparableWorkplaceFloorAreaPhraseSrc = sliceFn("function buildComparableWorkplaceFloorAreaPhrase(");
+const buildComparableWorkplaceFloorReductionExplanationSrc = sliceFn("function buildComparableWorkplaceFloorReductionExplanation(");
 const buildComparableFloorPhraseSrc = sliceFn("function buildComparableFloorPhrase(");
 const buildComparableLongTextSrc = sliceFn("function buildComparableLongText(");
 
@@ -79,6 +81,57 @@ const buildComparableLongTextSrc = sliceFn("function buildComparableLongText(");
   assert.equal(noFloors, "", "workplaceFloors hiç yokken ifade boş dönmeli.");
 }
 
+// --- 1b) buildComparableWorkplaceFloorReductionExplanation — saf fonksiyon testi ---
+{
+  const context = {};
+  vm.createContext(context);
+  vm.runInContext(parseComparableNumberSrc, context);
+  vm.runInContext(normalizeComparableFloorNameSrc, context);
+  vm.runInContext(joinComparableTurkishListSrc, context);
+  vm.runInContext(formatComparableAreaSrc, context);
+  vm.runInContext(parseComparableWorkplaceReductionRateSrc, context);
+  vm.runInContext(buildComparableWorkplaceFloorReductionExplanationSrc, context);
+
+  // Kullanıcının verdiği örnek: zemin kat %100 (baz), asma kat %30 indirgenmiş.
+  const row = {
+    workplaceFloors: [
+      { floor: "Zemin kat", area: "100", rate: "100%" },
+      { floor: "Asma kat", area: "50", rate: "30%" },
+    ],
+  };
+  const explanation = context.buildComparableWorkplaceFloorReductionExplanation(row, { workplaceReducedArea: 115 });
+  assert.equal(
+    explanation,
+    "Kat bazında indirgenmiş alan zemin kat etkili alan olarak belirlenmiş olup asma kat %30 oranında indirgenerek etkili alan 115 m2 olarak hesaplanmıştır.",
+    `Açıklama kullanıcının verdiği örnekle birebir eşleşmeli: "${explanation}"`
+  );
+
+  // Hiç indirgeme yoksa (tüm katlar %100): sadece baz alan cümlesi kurulmalı.
+  const noReduction = context.buildComparableWorkplaceFloorReductionExplanation(
+    { workplaceFloors: [{ floor: "Zemin kat", area: "100", rate: "100%" }] },
+    { workplaceReducedArea: 100 }
+  );
+  assert.equal(
+    noReduction,
+    "Kat bazında indirgenmiş alan zemin kat etkili alan olarak belirlenmiş olup etkili alan 100 m2 olarak hesaplanmıştır.",
+    `İndirgeme yokken sadece baz cümlesi kurulmalı: "${noReduction}"`
+  );
+
+  // Tüm katlar indirgenmiş (hiç %100 baz yoksa): baz ibaresi atlanmalı.
+  const allReduced = context.buildComparableWorkplaceFloorReductionExplanation(
+    { workplaceFloors: [{ floor: "Bodrum kat", area: "40", rate: "50%" }] },
+    { workplaceReducedArea: 20 }
+  );
+  assert.equal(
+    allReduced,
+    "Kat bazında indirgenmiş alan bodrum kat %50 oranında indirgenerek etkili alan 20 m2 olarak hesaplanmıştır.",
+    `Baz kat yokken sadece indirgeme ibaresi kurulmalı: "${allReduced}"`
+  );
+
+  // Hiç kat/alan yoksa boş dönmeli.
+  assert.equal(context.buildComparableWorkplaceFloorReductionExplanation({}, {}), "", "Kat verisi yokken boş dönmeli.");
+}
+
 // --- 2) buildComparableLongText — kablolama entegrasyon testi ------------
 function createLongTextContext(fields = {}) {
   const context = {
@@ -94,7 +147,7 @@ function createLongTextContext(fields = {}) {
     buildComparablePositionComparisonText: () => "",
     isExternalAppointmentType: () => false,
     buildComparableFeatureComparisonText: () => "",
-    buildComparableBargainAndRentText: () => "",
+    buildComparableBargainAndRentText: () => "KİRA_CÜMLESİ.",
     buildComparableCalculationText: () => "",
     formatComparableExtraNote: () => "",
     normalizeComparableText: (value) => value,
@@ -104,7 +157,9 @@ function createLongTextContext(fields = {}) {
   vm.runInContext(normalizeComparableFloorNameSrc, context);
   vm.runInContext(joinComparableTurkishListSrc, context);
   vm.runInContext(formatComparableAreaSrc, context);
+  vm.runInContext(parseComparableWorkplaceReductionRateSrc, context);
   vm.runInContext(buildComparableWorkplaceFloorAreaPhraseSrc, context);
+  vm.runInContext(buildComparableWorkplaceFloorReductionExplanationSrc, context);
   vm.runInContext(buildComparableFloorPhraseSrc, context);
   vm.runInContext(buildComparableLongTextSrc, context);
   return context;
@@ -122,10 +177,15 @@ function createLongTextContext(fields = {}) {
       { floor: "Asma kat", area: "50", rate: "30%" },
     ],
   };
-  const text = context.buildComparableLongText(row, 0, {});
+  const text = context.buildComparableLongText(row, 0, { workplaceReducedArea: 115 });
   assert.match(text, /zemin katta 100 m2 ve asma katta 50 m2 olarak beyan edilen/, `Kat bazlı alan ifadesi metinde olmalı: "${text}"`);
   assert.doesNotMatch(text, /katta yer alan/, `Eski tek-kat ifadesi ("katta yer alan") artık kullanılmamalı: "${text}"`);
   assert.doesNotMatch(text, /150 m2 olarak beyan edilen/, `Eski düz Beyan Edilen Alan (c12) cümlesi bastırılmalı: "${text}"`);
+  // Kullanıcı talebi: kat bazında indirgeme açıklama cümlesi KİRA CÜMLESİNDEN SONRA gelmeli.
+  const rentIndex = text.indexOf("KİRA_CÜMLESİ.");
+  const explanationIndex = text.indexOf("Kat bazında indirgenmiş alan zemin kat etkili alan olarak belirlenmiş olup asma kat %30 oranında indirgenerek etkili alan 115 m2 olarak hesaplanmıştır.");
+  assert.ok(rentIndex >= 0, `Kira cümlesi metinde bulunmalı: "${text}"`);
+  assert.ok(explanationIndex > rentIndex, `Kat bazında indirgeme açıklaması kira cümlesinden SONRA gelmeli: "${text}"`);
 }
 
 // 2b) Kat seçili ama TÜM alanlar boşsa: eski davranışa (c6 kat ifadesi +
