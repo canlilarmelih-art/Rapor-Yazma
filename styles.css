@@ -3660,6 +3660,8 @@ td .free-lookup input {
 .comparable-summary-floor-areas-cell {
   min-width: 70px;
   white-space: normal;
+  vertical-align: top !important;
+  padding: 0 !important;
 }
 
 .comparable-summary-floor-area-line {

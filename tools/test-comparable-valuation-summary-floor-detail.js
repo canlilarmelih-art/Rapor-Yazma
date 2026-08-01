@@ -111,11 +111,14 @@ function lineDiv(text) {
     `ALAN alt sütunu ham kat alanları + indirgenmiş toplam içermeli: "${areaCol}"`
   );
 
+  // Boş toplam satırı &nbsp; ile doldurulur (tüm alt sütunların içerik
+  // yüksekliği eşit kalsın diye — aksi halde tablo hücresinin dikey
+  // ortalaması satırları birbirinden kaydırır).
   const rateCol = context.formatComparableWorkplaceFloorColumn(row, "rate");
   assert.equal(
     rateCol,
-    lineDiv("%100") + lineDiv("%30") + lineDiv(""),
-    `İND. ORANI alt sütunu her katın oranı + boş toplam satırı içermeli: "${rateCol}"`
+    lineDiv("%100") + lineDiv("%30") + lineDiv("&nbsp;"),
+    `İND. ORANI alt sütunu her katın oranı + &nbsp; ile dolu toplam satırı içermeli: "${rateCol}"`
   );
 
   const empty = context.formatComparableWorkplaceFloorColumn({ area: 150, workplaceEffectiveArea: 150, workplaceFloors: [] }, "floor");

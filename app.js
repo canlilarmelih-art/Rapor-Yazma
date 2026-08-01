@@ -29270,7 +29270,11 @@ function formatComparableWorkplaceFloorColumn(row, key) {
         ? `${row.workplaceEffectiveArea.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} m²`
         : "";
   const lines = [...floors.map((entry) => formatComparableWorkplaceFloorColumnLine(entry, key)), totalLine];
-  return lines.map((line) => `<div class="comparable-summary-floor-area-line">${escapeHtml(line)}</div>`).join("");
+  // Boş satır (ör. İND. ORANI'nın toplam satırı) &nbsp; ile doldurulur; aksi
+  // halde içerik yüksekliği diğer alt sütunlardan az olur ve tablo hücresinin
+  // dikey ortalaması satırları birbirinden kaydırır (kullanıcının bildirdiği
+  // hizalama sorunu).
+  return lines.map((line) => `<div class="comparable-summary-floor-area-line">${line ? escapeHtml(line) : "&nbsp;"}</div>`).join("");
 }
 
 function formatComparableSummaryNumber(value, options = {}) {

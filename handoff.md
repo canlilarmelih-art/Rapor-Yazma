@@ -1,5 +1,12 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.278 - 2026-08-01 - KAT ALANLARI alt sütunlarının hücre hizalaması düzeltildi
+
+- Kullanıcı ekran görüntüsüyle bildirdi: İND. ORANI alt sütunundaki %100/%30 değerleri, KAT ve ALAN alt sütunlarındaki satırlarla aynı hizada değildi (dikey olarak farklı konumda görünüyordu).
+- Neden: tablo hücreleri `vertical-align: middle` kullanıyordu; İND. ORANI'nın toplam satırı boş metin içerdiğinden içerik yüksekliği diğer alt sütunlardan azdı, bu da dikey ortalamanın satırları birbirinden kaydırmasına yol açıyordu.
+- Çözüm: `.comparable-summary-floor-areas-cell` için `vertical-align: top` zorlandı; boş toplam satırı artık `&nbsp;` ile dolduruluyor, böylece her alt sütunun içerik yüksekliği eşit kalıyor ve satırlar tam hizalı.
+- Yedek gerekmedi (0.0.274'ün görsel düzeltmesi); geri alma: bu commit'i `git revert` ile geri al.
+
 ## 0.0.275 - 2026-08-01 - KAT ALANLARI satırlarında çerçeve yerine ayırıcı çizgi
 
 - Kat alanları alt sütunlarındaki (KAT/ALAN/İND. ORANI) her satırın etrafındaki kutu çerçevesi kaldırıldı; bunun yerine satırlar arasında ince bir alt çizgi (border-bottom) kullanılıyor, son satırda çizgi yok.
