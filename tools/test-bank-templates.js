@@ -673,6 +673,43 @@ assert(
     appSource.includes("async function buildSavedReportImageAssets("),
   "Harita/kroki kaydetme veya Word gorsel varligi ureticileri bulunamadi."
 );
+const isbankTemplateSource = fs.readFileSync(path.join(appDir, "templates", "isbankasi.html"), "utf8");
+const isbankSectionHeadings = [
+  "1. TAPU BİLGİLERİ",
+  "2. KONUM BİLGİLERİ",
+  "3. ÖZELLİKLER SEKMESİ",
+  "4. DEĞERLEME SEKMESİ",
+  "5. EMSALLER SEKMESİ",
+  "GDYS YARDIMCI BİLGİLER",
+  "GABİM VERİ SETİ",
+];
+assert(
+  isbankTemplateSource.includes("İŞ BANKASI GAYRİMENKUL DEĞERLEME RAPORU") &&
+    isbankSectionHeadings.every((heading) => isbankTemplateSource.includes(heading)) &&
+    isbankSectionHeadings.every((heading, index) => index === 0 ||
+      isbankTemplateSource.indexOf(isbankSectionHeadings[index - 1]) < isbankTemplateSource.indexOf(heading)),
+  "Is Bankasi sablonu banka ekranlarindaki tam rapor bolumlerini dogru sirada korumuyor."
+);
+assert(
+  isbankTemplateSource.includes("#173d5c") &&
+    isbankTemplateSource.includes("#2d89c5") &&
+    isbankTemplateSource.includes("table.meta td.l") &&
+    isbankTemplateSource.includes("table.meta td.v") &&
+    isbankTemplateSource.includes("table.meta tr { height: 18pt;") &&
+    isbankTemplateSource.includes('class="section-cell" colspan="4"'),
+  "Is Bankasi sablonu referans ekranlardaki lacivert/mavi, yogun dort hucreli form dilini korumuyor."
+);
+[
+  "Takyidat Bilgileri",
+  "İmar Durumu Bilgileri",
+  "İncelenen Belgeler",
+  "Yapının Genel Özellikleri",
+  "Bağımsız Bölüm Özellikleri",
+  "Çevresel Özellikler",
+  "Değere Etki Eden Faktörler",
+].forEach((heading) => {
+  assert(isbankTemplateSource.includes(heading), `Is Bankasi sablonunda '${heading}' bolumu bulunamadi.`);
+});
 const ziraatTemplateSource = fs.readFileSync(path.join(appDir, "templates", "ziraat.html"), "utf8");
 assert(
   ziraatTemplateSource.indexOf("<h2>1. GAYRİMENKUL GABİM BİLGİLERİ</h2>") < ziraatTemplateSource.indexOf("<h2>2. GAYRİMENKUL MERKEZ BANKASI VERİLERİ</h2>") &&

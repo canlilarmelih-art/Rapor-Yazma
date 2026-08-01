@@ -5,6 +5,41 @@ Son güncelleme: 2026-08-01 · Servis edilen sürüm: **app.js?v=20260801-1315**
 Bu belge, bir sonraki geliştirici/oturum için projeyi çalıştırma, doğrulama ve bu
 oturumda yapılanları özetler.
 
+## 0.0.257 - 2026-08-01 - İş Bankası tam rapor şablonu banka ekranlarına göre yeniden hazırlandı
+
+Kullanıcının ilettiği `İŞ BANKASI.rar` içindeki 16 adet İş Bankası rapor
+hazırlama ekranı tek tek incelendi; eski kısa/özet `isbankasi.html` şablonu,
+banka ekranlarının bilgi mimarisi ve önceki banka şablonu kuralları esas
+alınarak tam rapor biçiminde yeniden oluşturuldu.
+
+- Şablon sırası: Tapu Bilgileri → Konum Bilgileri ve konum haritası →
+  Özellikler (takyidat, imar, belgeler/proje, yapı, bağımsız bölüm, çevre,
+  değer faktörleri) → Değerleme → Emsaller ve emsal krokisi → GDYS → GABİM →
+  Çalışma Kağıdı.
+- İş Bankası ekranlarındaki beyaz/açık gri zemin, lacivert başlık, parlak mavi
+  alan etiketi, ince gri kenarlık ve yoğun iki sütunlu form dili Word'e uygun
+  dört hücreli tablolara aktarıldı. A4 sayfa, Arial 7 punto, 18 pt asgari satır
+  yüksekliği ve 16 px tablo aralığı korundu.
+- Haritalar, malik/takyidat/incelenen belgeler, değerleme, kat bazında alan ve
+  emsal tabloları mevcut dinamik üreticilere bağlandı; mükerrer konum/emsal
+  krokisi üretilmiyor.
+- İş Bankası ekranında ayrı görünen özel güvenlik, açık/kapalı otopark,
+  açık/kapalı havuz, deprem bölgesi, ulaşım, yapılaşma hızı, büyük yatırım ve
+  markalı konut yoğunluğu alanları da forma eklendi.
+- Sistemde ayrı bir veri karşılığı bulunmayan **İmar Plan Türü**, **Kentsel
+  Ölçekte Tanınmışlık**, **Ana Cadde Üzerinde mi?**, **Açık Yüzme Havuzu** ve
+  **Kapalı Yüzme Havuzu** hücreleri veri uydurulmaması için boş bırakıldı.
+- `tools/test-bank-templates.js` İş Bankası bölüm sırası, başlık kapsamı,
+  renkler ve dört hücreli yoğun form yapısı için regresyon kontrolleriyle
+  genişletildi.
+- `isbankasi-masraf.html` ayrı masraf şablonu olduğu için değiştirilmedi.
+- Tarayıcı doğrulaması: 794×1123 A4 görünümünde ilk başlık üst boşluk olmadan
+  başladı; yatay taşma ve çözülmemiş placeholder bulunmadı; 21 tablo ile uzun
+  açıklama, değerleme ve emsal blokları görsel olarak kontrol edildi.
+- Doğrulama: `npm.cmd run verify` geçti; `node tools/test-bank-templates.js`
+  geçti; `git diff --check` temiz (yalnızca mevcut LF/CRLF uyarısı).
+- Yedek: `backups/before-isbank-template_2026-08-01_14-51-20/`.
+
 ## 0.0.256 - 2026-08-01 - Emsal Değerleme Tablosu'na kat bazlı alan detayı eklendi
 
 Kullanıcı talebi: "Emsaller tablosu kat bazında girilen emsalleri gösterir
