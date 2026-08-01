@@ -60,6 +60,9 @@ const buildComparableLongTextSrc = sliceFn("function buildComparableLongText(");
   vm.runInContext(formatComparableAreaSrc, context);
   vm.runInContext(buildComparableWorkplaceFloorAreaPhraseSrc, context);
 
+  // Kullanıcı talebi: birden fazla kat girildiğinde "X katı ... Y katı ...
+  // olmak üzere toplam Z olacak şekilde" biçiminde toplamlı ifade kurulmalı
+  // (eski "X katta ... ve Y katta ... olarak beyan edilen" ifadesi DEĞİL).
   const twoFloor = context.buildComparableWorkplaceFloorAreaPhrase({
     workplaceFloors: [
       { floor: "Zemin kat", area: "100", rate: "100%" },
@@ -68,8 +71,19 @@ const buildComparableLongTextSrc = sliceFn("function buildComparableLongText(");
   });
   assert.equal(
     twoFloor,
-    "zemin katta 100 m2 ve asma katta 50 m2 olarak beyan edilen",
-    `İki katlı ifade beklenenle eşleşmeli: "${twoFloor}"`
+    "zemin katı 100 m2 asma katı 50 m2 olmak üzere toplam 150 m2 olacak şekilde",
+    `İki katlı toplamlı ifade beklenenle eşleşmeli: "${twoFloor}"`
+  );
+
+  // Tek kat girilmişse eski tekil ifade ("X katta Y m2 olarak beyan
+  // edilen") korunmalı — "toplam" kavramı tek kat için anlamsız.
+  const oneFloor = context.buildComparableWorkplaceFloorAreaPhrase({
+    workplaceFloors: [{ floor: "Zemin kat", area: "150", rate: "100%" }],
+  });
+  assert.equal(
+    oneFloor,
+    "zemin katta 150 m2 olarak beyan edilen",
+    `Tek katlı eski ifade korunmalı: "${oneFloor}"`
   );
 
   const areaBlank = context.buildComparableWorkplaceFloorAreaPhrase({
@@ -178,7 +192,7 @@ function createLongTextContext(fields = {}) {
     ],
   };
   const text = context.buildComparableLongText(row, 0, { workplaceReducedArea: 115 });
-  assert.match(text, /zemin katta 100 m2 ve asma katta 50 m2 olarak beyan edilen/, `Kat bazlı alan ifadesi metinde olmalı: "${text}"`);
+  assert.match(text, /zemin katı 100 m2 asma katı 50 m2 olmak üzere toplam 150 m2 olacak şekilde/, `Kat bazlı toplamlı alan ifadesi metinde olmalı: "${text}"`);
   assert.doesNotMatch(text, /katta yer alan/, `Eski tek-kat ifadesi ("katta yer alan") artık kullanılmamalı: "${text}"`);
   assert.doesNotMatch(text, /150 m2 olarak beyan edilen/, `Eski düz Beyan Edilen Alan (c12) cümlesi bastırılmalı: "${text}"`);
   // Kullanıcı talebi: kat bazında indirgeme açıklama cümlesi KİRA CÜMLESİNDEN SONRA gelmeli.

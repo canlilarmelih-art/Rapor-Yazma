@@ -1,9 +1,35 @@
 # Rapor Yazma Programı — Handoff Notu
 
-Son güncelleme: 2026-08-01 · Servis edilen sürüm: **app.js?v=20260801-1209** (styles.css?v=20260801-1149, src/templates/template-engine.js?v=20260728-0138, cloud/cloud-sync.js?v=20260719-2200, cloud/report-library.js?v=20260724-1330, halkbank-risk-rules.js?v=20260707-1812)
+Son güncelleme: 2026-08-01 · Servis edilen sürüm: **app.js?v=20260801-1218** (styles.css?v=20260801-1149, src/templates/template-engine.js?v=20260728-0138, cloud/cloud-sync.js?v=20260719-2200, cloud/report-library.js?v=20260724-1330, halkbank-risk-rules.js?v=20260707-1812)
 
 Bu belge, bir sonraki geliştirici/oturum için projeyi çalıştırma, doğrulama ve bu
 oturumda yapılanları özetler.
+
+## 0.0.254 - 2026-08-01 - Kat bazında alan ifadesi "toplamlı" biçime çevrildi
+
+Kullanıcı talebi: "zemin katta 100 m2 ve asma katta 50 m2" yerine "zemin
+katı 100 m2 asma katı 50 m2 olmak üzere toplam 150 m2 olacak şekilde"
+biçiminde düzenlenmeli.
+
+- `buildComparableWorkplaceFloorAreaPhrase()`: BİRDEN FAZLA kat girilmişse
+  artık her katı "X katı Y m2" biçiminde (possessif, "ve" bağlacı olmadan)
+  art arda sıralayıp sonuna "olmak üzere toplam {ham alan toplamı} olacak
+  şekilde" ekliyor. TEK kat girilmişse eski ifade ("X katta Y m2 olarak
+  beyan edilen") DEĞİŞMEDEN korunuyor — "toplam" kavramı tek kat için
+  anlamsız.
+- Buradaki "toplam" HAM (indirgenmemiş) alanların toplamı — kat bazında
+  indirgeme sonrası "etkili alan"ı anlatan ayrı cümle (0.0.253) zaten var
+  ve değişmedi.
+- `tools/test-comparable-workplace-floor-description.js` güncellendi: yeni
+  toplamlı ifade birebir doğrulanıyor, tek-kat eski ifadenin korunduğu ayrı
+  bir senaryoyla test ediliyor; kural kaldırıldığında testin gerçekten
+  başarısız olduğu doğrulandı.
+- Doğrulama: `npm run verify` (39 test) geçti; gerçek tarayıcıda hem çok
+  katlı ("zemin katı 100 m2 asma katı 50 m2 olmak üzere toplam 150 m2
+  olacak şekilde") hem tek katlı ("zemin katta 150 m2 olarak beyan edilen")
+  senaryolar doğrulandı.
+- Geri alma: `git revert <bu commit hash>` veya yedek klasöründen
+  `backups/before-comparable-workplace-floor-reduction_2026-08-01_11-23-32/`.
 
 ## 0.0.253 - 2026-08-01 - Emsal açıklamasına kat bazında indirgeme mantığını anlatan cümle eklendi
 

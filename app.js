@@ -29694,17 +29694,26 @@ function buildComparableFloorPhrase(value) {
 }
 
 // Kat bazında alan/indirgeme (workplaceFloors) girilmişse her katın kendi
-// alanını ayrı ayrı belirten bir ifade üretir, örn. "zemin katta 100 m2,
-// asma katta 50 m2 olarak beyan edilen". Hiçbir katta alan girilmemişse
-// boş döner — çağıran yer eski (tek kat + Beyan Edilen Alan) davranışa
-// geri döner.
+// alanını ayrı ayrı belirten bir ifade üretir. Tek kat girilmişse eski
+// tekil ifade ("zemin katta 100 m2 olarak beyan edilen") korunur; birden
+// fazla kat girilmişse "zemin katı 100 m2 asma katı 50 m2 olmak üzere
+// toplam 150 m2 olacak şekilde" biçiminde toplamlı ifade kurulur
+// (kullanıcı talebi). Hiçbir katta alan girilmemişse boş döner — çağıran
+// yer eski (tek kat + Beyan Edilen Alan) davranışa geri döner.
 function buildComparableWorkplaceFloorAreaPhrase(row) {
   const floors = Array.isArray(row?.workplaceFloors) ? row.workplaceFloors : [];
-  const parts = floors
-    .filter((entry) => String(entry?.area || "").trim())
-    .map((entry) => `${normalizeComparableFloorName(entry.floor)} katta ${formatComparableArea(entry.area, "m2")}`);
-  if (!parts.length) return "";
-  return `${joinComparableTurkishList(parts)} olarak beyan edilen`;
+  const filled = floors.filter((entry) => String(entry?.area || "").trim());
+  if (!filled.length) return "";
+  if (filled.length === 1) {
+    const entry = filled[0];
+    return `${normalizeComparableFloorName(entry.floor)} katta ${formatComparableArea(entry.area, "m2")} olarak beyan edilen`;
+  }
+  const parts = filled.map((entry) => `${normalizeComparableFloorName(entry.floor)} katı ${formatComparableArea(entry.area, "m2")}`);
+  const totalArea = filled.reduce((sum, entry) => {
+    const area = parseComparableNumber(entry.area);
+    return sum + (Number.isFinite(area) ? area : 0);
+  }, 0);
+  return `${parts.join(" ")} olmak üzere toplam ${formatComparableArea(totalArea, "m2")} olacak şekilde`;
 }
 
 // Kat bazında indirgeme mantığını ayrı bir cümlede açıklar, örn: "Kat
