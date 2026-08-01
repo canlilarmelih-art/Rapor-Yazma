@@ -1,9 +1,58 @@
 # Rapor Yazma Programı — Handoff Notu
 
-Son güncelleme: 2026-08-01 · Servis edilen sürüm: **app.js?v=20260801-1037** (styles.css?v=20260731-2029, src/templates/template-engine.js?v=20260728-0138, cloud/cloud-sync.js?v=20260719-2200, cloud/report-library.js?v=20260724-1330, halkbank-risk-rules.js?v=20260707-1812)
+Son güncelleme: 2026-08-01 · Servis edilen sürüm: **app.js?v=20260801-1133** (styles.css?v=20260731-2029, src/templates/template-engine.js?v=20260728-0138, cloud/cloud-sync.js?v=20260719-2200, cloud/report-library.js?v=20260724-1330, halkbank-risk-rules.js?v=20260707-1812)
 
 Bu belge, bir sonraki geliştirici/oturum için projeyi çalıştırma, doğrulama ve bu
 oturumda yapılanları özetler.
+
+## 0.0.250 - 2026-08-01 - Emsaller bölümüne işyeri/ofis/ticari bina için Kat Bazında İndirgeme eklendi
+
+Kullanıcı talebi: İşyeri emsallerinde hangi kat, kaç m², kat bazında
+indirgeme oranı ve toplam indirgenmiş alanın belirtilmesi isteniyordu — Ana
+Gayrimenkul bölümündeki "Kat Bazında Hesaplama Tablosu" ile aynı genel
+mantıkla. Önce kod tabanı analiz edildi (araştırma ajanı ile), sonra
+kullanıcıyla plan netleştirildi (2 açık soru: görünürlük kuralı ve
+Düzeltilmiş Alan'ın yerini alıp almayacağı), kodlamadan önce
+`backups/before-comparable-workplace-floor-reduction_2026-08-01_11-23-32/`
+altına yedek alındı.
+
+- Yeni alanlar (`comparableFields`): `c32` "Kat Bazında İndirgeme Oranı"
+  (select, `comparablePercentOptions` — %0-%100, 5'er artan) ve
+  `calcWorkplaceReducedArea` "Toplam İndirgenmiş Alan" (computed, salt
+  okunur, TL yerine "m²" birimiyle).
+- Yeni `comparableWorkplaceOnlyFieldKeys` Set'i + `getComparableDisplayFields()`
+  ve Word/export tablosu filtresinde (`buildComparableMatrixWordTableHtml`)
+  kullanımı: bu iki alan yalnızca konu
+  taşınmaz **işyeri/ofis/ticari bina** ise görünür — **konut hariç**
+  (kullanıcının seçtiği tasarım kararı; Ana Gayrimenkul'deki kat indirgeme
+  alanları konut için de görünürken, Emsaller'deki bu yeni alanlar için
+  kapsam bilinçli olarak daraltıldı).
+- Yeni `isWorkplaceLikeUsageNature(value)`: `legalUsageNature` foldTurkish
+  edilip `["OFIS", "ISYERI", "TICARI BINA"]` ile karşılaştırılır.
+- Yeni `parseComparableWorkplaceReductionRate(value)`: "%80"/"80" gibi
+  metni orana çevirir; boş/geçersizse **%100** (indirgeme yok) döner —
+  bu sayede alan hiç doldurulmazsa emsalin hesabı **eskisiyle birebir aynı**
+  kalır (geriye dönük uyumluluk).
+- `calculateComparableMetrics()`: `adjustedArea` (arazi emsalleri hariç)
+  artık `Düzeltilmiş Alan (c13) || Beyan Edilen Alan (c12)` değerinin
+  doğrudan kendisi değil, bu değerin `c32` oranıyla çarpılmış hali
+  (`workplaceReducedArea`) — emsalin m² birim değeri ve kira birim değeri
+  hesabına da otomatik yansır. Arazi emsallerinde (`isLandComparable`)
+  etkisi yok, `Yüzölçümü (c24)` kullanılmaya devam ediyor.
+- Yeni test: `tools/test-comparable-workplace-floor-reduction.js` (oran
+  ayrıştırma edge-case'leri — `%0` dahil —, görünürlük kuralı, hesaplama
+  entegrasyonu, geriye dönük uyumluluk ve arazi emsalinde etkisizlik
+  senaryolarını izole doğrular; kural kaldırıldığında testin gerçekten
+  başarısız olduğu doğrulandı). Geliştirme sırasında `%0` seçildiğinde
+  yanlışlıkla %100'e geri düştüğü fark edildi ve
+  `parseComparableWorkplaceReductionRate` düzeltildi (`number <= 0` →
+  `number < 0`, sıfır artık geçerli bir oran).
+- Doğrulama: `npm run verify` (38 test) geçti; gerçek tarayıcıda konut/işyeri
+  görünürlük ayrımı, gerçek hesaplama (150 m² × %80 = 120 m², birim değer
+  25.000 TL/m²) ve boş oranla geriye dönük uyumluluk ekran görüntüsüyle
+  doğrulandı.
+- Geri alma: `git revert <bu commit hash>` veya yedek klasöründen
+  `backups/before-comparable-workplace-floor-reduction_2026-08-01_11-23-32/`.
 
 ## 0.0.249 - 2026-08-01 - Değerleme Özet Tablosu: Acil Satış Değeri detay hücresi gerçek hesaplamayı göstersin
 

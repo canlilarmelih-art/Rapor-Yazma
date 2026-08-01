@@ -13486,8 +13486,10 @@ function buildComparableMatrixWordTableHtml() {
   // hiçbiri konut/yapı değilse Oda Sayısı gibi konuta özel satırlar da öyle.
   const hasLandComparable = rows.some((row) => isLandComparable(row));
   const hasResidentialComparable = rows.some((row) => !isLandComparable(row));
+  const showWorkplaceFields = isWorkplaceLikeUsageNature();
   const fields = comparableFields.filter((field) => {
     if (field.hidden) return false;
+    if (!showWorkplaceFields && comparableWorkplaceOnlyFieldKeys.has(field.key)) return false;
     if (!hasLandComparable && comparableLandOnlyFieldKeys.has(field.key)) return false;
     if (!hasResidentialComparable && comparableResidentialOnlyFieldKeys.has(field.key)) return false;
     return true;
@@ -27494,6 +27496,9 @@ const comparableResidentialOnlyFieldKeys = new Set(["c4", "c5", "c6", "c8", "c11
 // ayracıyla gösterilir (bkz. formatComparableNumericInputValue).
 const comparableNumericInputFieldKeys = new Set(["c12", "c13", "c24", "c14", "c15", "c16"]);
 const comparableLandOnlyFieldKeys = new Set(["c24", "c25", "c26", "c27", "c28", "c29", "c31", "calcCalculatedEmsalUnitValue", "calcAdjustedCalculatedEmsalUnitValue"]);
+// Konu taşınmaz işyeri/ofis/ticari bina değilse (konut dahil) bu alanlar
+// Emsaller tablosunda gösterilmez — kullanıcı talebi (bkz. isWorkplaceLikeUsageNature).
+const comparableWorkplaceOnlyFieldKeys = new Set(["c32", "calcWorkplaceReducedArea"]);
 const comparableTarlaZoningFieldKeys = new Set(["c25", "c26", "c27", "c28", "c31"]);
 const comparableRoadFrontageOptions = ["Kadastro yola cephesiz", "Kadastro yola cepheli", "İmar yoluna cepheli", "Asfalt yola cepheli", "Açılmamış imar yoluna cepheli"];
 const comparableFields = [
@@ -27577,6 +27582,13 @@ const comparableFields = [
   },
   { key: "c12", label: "Beyan Edilen Alan" },
   { key: "c13", label: "Düzeltilmiş Alan" },
+  {
+    key: "c32",
+    label: "Kat Bazında İndirgeme Oranı",
+    type: "select",
+    options: comparablePercentOptions,
+  },
+  { key: "calcWorkplaceReducedArea", label: "Toplam İndirgenmiş Alan", computed: true },
   { key: "c24", label: "Yüzölçümü" },
   { key: "c25", label: "Lejant", type: "select", options: imarLegendOptions.filter(Boolean), allowEmpty: false },
   { key: "c26", label: "Nizamı", type: "select", options: imarOrderOptions.filter(Boolean), allowEmpty: false },
@@ -27627,12 +27639,23 @@ function getComparableRowsForView(rows, viewMode) {
 }
 
 function getComparableDisplayFields(viewMode) {
+  const showWorkplaceFields = isWorkplaceLikeUsageNature();
   return comparableFields.filter((field) => {
     if (field.hidden) return false;
+    if (!showWorkplaceFields && comparableWorkplaceOnlyFieldKeys.has(field.key)) return false;
     if (viewMode === "all") return true;
     if (viewMode === "land") return !comparableResidentialOnlyFieldKeys.has(field.key);
     return !comparableLandOnlyFieldKeys.has(field.key);
   });
+}
+
+// Emsaller'de Kat Bazında İndirgeme Oranı/Toplam İndirgenmiş Alan alanları
+// yalnızca konu taşınmaz işyeri/ofis/ticari bina ise gösterilir (konut hariç
+// — kullanıcı talebi; Ana Gayrimenkul'deki kat indirgeme tablosundan farklı
+// olarak konut kapsanmaz, bkz. shouldShowUnitReductionFields).
+function isWorkplaceLikeUsageNature(value = state.fields.legalUsageNature) {
+  const normalized = foldTurkish(value || "").replace(/\s+/g, " ").trim();
+  return ["OFIS", "ISYERI", "TICARI BINA"].includes(normalized);
 }
 
 function createComparableViewModeControl() {
@@ -29080,8 +29103,21 @@ function calculateComparableFieldValue(key, row, rowIndex = 0) {
   if (key === "calcCalculatedEmsalUnitValue") return formatComparableMoney(metrics.calculatedEmsalUnitValue, " TL/m²");
   if (key === "calcAdjustedCalculatedEmsalUnitValue") return formatComparableMoney(metrics.adjustedCalculatedEmsalUnitValue, " TL/m²");
   if (key === "calcRentUnitValue") return formatComparableMoney(metrics.rentUnitValue, " TL/m²/ay");
+  if (key === "calcWorkplaceReducedArea") return formatComparableMoney(metrics.workplaceReducedArea, " m²");
   if (key === "calcLongText") return buildComparableLongText(row, rowIndex, metrics);
   return "";
+}
+
+// Kat Bazında İndirgeme Oranı (c32) metnini orana çevirir. Boş/geçersizse
+// %100 (indirgeme yok) varsayılır — bu sayede alan boş bırakıldığında
+// geriye dönük davranış (Düzeltilmiş/Beyan Edilen Alanın doğrudan
+// kullanılması) AYNEN korunur (kullanıcı talebi).
+function parseComparableWorkplaceReductionRate(value) {
+  const text = String(value || "").replace("%", "").trim();
+  if (!text) return 1;
+  const number = parseComparableNumber(text);
+  if (!Number.isFinite(number) || number < 0) return 1;
+  return number > 1 ? number / 100 : number;
 }
 
 function calculateComparableMetrics(row) {
@@ -29090,7 +29126,10 @@ function calculateComparableMetrics(row) {
   const askingPrice = parseComparableNumber(row.c14);
   const bargainPrice = parseComparableNumber(row.c15);
   if (landComparable) syncComparableLandBuildableArea(row);
-  const adjustedArea = landComparable ? parseComparableNumber(row.c24) : parseComparableNumber(row.c13 || row.c12);
+  const rawArea = parseComparableNumber(row.c13 || row.c12);
+  const workplaceReductionRate = parseComparableWorkplaceReductionRate(row.c32);
+  const workplaceReducedArea = Number.isFinite(rawArea) ? rawArea * workplaceReductionRate : Number.NaN;
+  const adjustedArea = landComparable ? parseComparableNumber(row.c24) : workplaceReducedArea;
   const calculatedEmsalArea = landComparable ? parseComparableNumber(row.c31) : Number.NaN;
   const rent = landComparable ? Number.NaN : parseComparableNumber(row.c16);
   const featureAdjustment = landComparable ? 0 : calculateComparableAdjustment(row.c8, row.c21);
@@ -29114,6 +29153,7 @@ function calculateComparableMetrics(row) {
     bargainPrice,
     saleValue,
     adjustedArea,
+    workplaceReducedArea,
     calculatedEmsalArea,
     rent,
     featureAdjustment,
