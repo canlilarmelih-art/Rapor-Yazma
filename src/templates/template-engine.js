@@ -242,6 +242,23 @@
     return "";
   }
 
+  function planTypeText() {
+    const scale = field("planScale").replace(/\s/g, "");
+    if (scale === "1/1000" || scale === "1/1.000") return "Uygulama İmar Planı";
+    if (scale === "1/5000" || scale === "1/5.000") return "Nazım İmar Planı";
+    if (["1/25000", "1/25.000", "1/100000", "1/100.000"].includes(scale)) return "Çevre Düzeni Planı";
+    return "";
+  }
+
+  function socialFacilityStatus(name) {
+    const expected = foldTokenName(name);
+    const values = field("socialFacilities")
+      .split(/[,;|]/)
+      .map((value) => foldTokenName(value))
+      .filter(Boolean);
+    return values.includes(expected) ? "Evet" : "Hayır";
+  }
+
   function comparableLineText(index) {
     try {
       const rows = getComparableValuationRows();
@@ -424,6 +441,7 @@
     TAKYIDATSAAT: { f: ["takbisTime"] },
     TAKYIDAT2025: { t: () => safeCall("buildEncumbranceSummary") || field("takbisSummary"), paragraphClass: "encumbrance-summary" },
     TAKYIDATISBANK: { t: () => safeCall("buildEncumbranceSummary") || field("takbisSummary"), paragraphClass: "encumbrance-summary" },
+    ISBANKENCUMBRANCEEXPLANATION: { t: () => safeCall("buildIsbankEncumbranceExplanation") },
     TAKYIDATTABLO: { h: () => safeCall("buildTakyidatWordTableHtml") || safeCall("formatTextTableForWord", safeCall("buildTakyidatTableText")) },
     // `{{ENCUMBRANCE_SUMMARY_TEXT}}` (PLACEHOLDER-REHBERI.md'de belgeli,
     // 7 banka şablonunda kullanılıyor) hiçbir yerde kayıtlı DEĞİLDİ — ne app
@@ -437,6 +455,7 @@
     // --- İmar ---
     IMARPLANADI: { f: ["planName"] },
     PLANOLCEGI: { f: ["planScale"] },
+    PLANTYPE: { fn: planTypeText },
     IMARTARIHI: { d: ["planDate"] },
     IMARLEJANT: { f: ["legend"] },
     IMARNIZAM: { f: ["order"] },
@@ -495,6 +514,8 @@
     EKBVERILIS: { d: ["ekbIssueDate"] },
     EKBSON: { d: ["ekbValidUntil"] },
     EKBACIKLAMA: { t: () => field("ekbExplanation") || safeCall("buildEkbExplanation") },
+    OPENPOOL: { fn: () => socialFacilityStatus("Açık Yüzme Havuzu") },
+    CLOSEDPOOL: { fn: () => socialFacilityStatus("Kapalı Yüzme Havuzu") },
 
     // --- Ziraat GABIM ekran değerleri ---
     GABIMCALCULATEDEMSAL: { fn: () => safeCall("gabimCalculatedEmsalText") },
@@ -541,9 +562,11 @@
     YAPIYILI: { f: ["buildingConstructionYear"] },
     YAPIYASI: { f: ["buildingAge"] },
     YAPIBITISTARIHI: { d: ["buildingCompletionDate"] },
+    MAINPROPERTYFLOORCOUNTTEXT: { fn: () => safeCall("refreshMainPropertyFloorCountTextFromCounts") },
     ANAGYTOPLAMKATADEDI: { f: ["totalFloors"] },
     TOPLAMKAT: { f: ["totalFloors"] },
-    YOLKOTUUSTUKATADEDI: { f: ["totalFloors"] },
+    YOLKOTUALTIKATADEDI: { fn: () => safeCall("getBuildingBasementFloorCount") },
+    YOLKOTUUSTUKATADEDI: { fn: () => safeCall("getBuildingAboveRoadFloorCount") },
     TOPLAMBB: { f: ["totalUnits"] },
     ANAGY: { fn: () => safeCall("buildBuildingFloorMacroSummary") },
     ELEVATOR: { f: ["elevator"] },
@@ -570,6 +593,7 @@
     SITEICINDEMI: { fn: () => safeCall("gabimSiteWithinText") }, // {{SİTE_İÇİNDE_Mİ}}
     // Vakıf Katılım "İncelenen Belgeler" ekranının üç belge sütunu: iskan,
     // EN YENİ yapı ruhsatı ve tasdikli mimari proje (tarih + belge no).
+    LATESTBUILDINGPERMITSTATUS: { fn: () => safeCall("getLatestBuildingPermitStatus") },
     LATESTBUILDINGPERMITDATE: { fn: () => safeCall("getLatestBuildingPermitDateText") },
     LATESTBUILDINGPERMITNO: { fn: () => safeCall("getLatestBuildingPermitNoText") },
     OCCUPANCYPERMITNO: { fn: () => safeCall("getOccupancyPermitNoText") },
@@ -614,6 +638,8 @@
     ARSABIRIMDEGERI: { f: ["landUnitValue"] },
     YASALKULLANIMALANI: { f: ["legalArea", "legalValueArea"] },
     MEVCUTKULLANIMALANI: { f: ["currentArea", "currentValueArea"] },
+    LEGALNETAREA: { fn: () => safeCall("getValuationUnitNetAreaTotals").legal },
+    CURRENTNETAREA: { fn: () => safeCall("getValuationUnitNetAreaTotals").current },
     TOTALLEGALAREA: { fn: () => safeCall("getValuationUnitAreaTotals").legal },
     TOTALCURRENTAREA: { fn: () => safeCall("getValuationUnitAreaTotals").current },
     TOPLAMYASALALAN: { fn: () => safeCall("getValuationUnitAreaTotals").legal },
@@ -659,6 +685,10 @@
     HALKBANKMERKEZBANKASIACIKLAMA: { t: () => field("halkbankCentralBankExplanation") },
     HALKBANKILKSATISDURUMU: { fn: () => safeCall("gabimFirstSaleText") },
     PENALTYDECISION: { f: ["penaltyDecision"] },
+    PENALTYDECISIONSTATUS: { fn: () => safeCall("getPenaltyDecisionStatus") },
+    PROJECTSUITABILITYSTATUS: { fn: () => safeCall("getProjectSuitabilityDifferenceStatus") },
+    PROJECTCONFORMITY: { f: ["projectConformity"] },
+    HASARCHITECTURALPROJECT: { f: ["hasArchitecturalProject"] },
     STATICSUITABILITY: { f: ["staticSuitability"] },
     BUILDINGINSPECTIONCONTRACTACTIVE: { f: ["buildingInspectionContractActive"] },
 
@@ -725,7 +755,7 @@
   const EXTRA_FIELD_KEYS = [
     "elevator", "carpark", "socialFacilities", "siteFacilities",
     "unitHeatingType", "totalFloors", "totalUnits", "unitMaterialQuality",
-    "facades", "unitViewStatus", "unitUsageStatus", "unitConstructionLevel",
+    "facades", "unitViewStatus", "unitUsageStatus", "unitConstructionLevel", "pga475",
     "buildingStyle", "buildingOrder", "buildingClass", "valuationMethod",
     "legalRentUnit", "currentRentUnit", "mainPropertyDescription",
     "actualUsePurpose", "propertyType", "titleDate",

@@ -45,10 +45,10 @@ const getMissingRequiredFieldsEnd = appSource.indexOf("\n}", getMissingRequiredF
 assert(getMissingRequiredFieldsStart >= 0, "getMissingRequiredFields fonksiyonu bulunamadi.");
 const getMissingRequiredFieldsSrc = appSource.slice(getMissingRequiredFieldsStart, getMissingRequiredFieldsEnd);
 
-function runScenario({ documents = [], hasArchitecturalProject = "Evet" }) {
+function runScenario({ documents = [], hasArchitecturalProject = "Evet", bank = "", valuationMethod = "" }) {
   const context = {
     state: {
-      fields: { hasArchitecturalProject },
+      fields: { hasArchitecturalProject, bank, valuationMethod },
       tables: { documents },
       sourceValues: {},
     },
@@ -113,6 +113,26 @@ const DOCUMENTS_MISSING_ENTRY = "Belgeler ve Proje: İncelenen Belgeler (en az 1
     hasArchitecturalProject: "Evet",
   });
   assert.ok(missing.includes(DOCUMENTS_MISSING_ENTRY), `Boş satır gerçek belge sayılmamalı: ${JSON.stringify(missing)}`);
+}
+
+const ISBANK_VALUATION_METHODS_ENTRY = "Değerleme: En az 2 adet Değerleme Metodu seçilmelidir.";
+
+// İş Bankası raporları en az iki değerleme yöntemi gerektirir.
+{
+  const missing = runScenario({
+    bank: "Türkiye İş Bankası A.Ş.",
+    valuationMethod: "Emsal Karşılaştırma Yöntemi",
+  });
+  assert.ok(missing.includes(ISBANK_VALUATION_METHODS_ENTRY), `İş Bankası için tek yöntem eksik olmalı: ${JSON.stringify(missing)}`);
+}
+
+// İş Bankası için iki yöntem seçildiğinde uyarı kalkmalıdır.
+{
+  const missing = runScenario({
+    bank: "Türkiye İş Bankası A.Ş.",
+    valuationMethod: "Emsal Karşılaştırma Yöntemi, Maliyet Yöntemi",
+  });
+  assert.ok(!missing.includes(ISBANK_VALUATION_METHODS_ENTRY), `İki yöntem seçildiğinde uyarı kalkmalı: ${JSON.stringify(missing)}`);
 }
 
 console.log("Mimari Proje + belge girilmemiş eksik kritik alan testi tamam.");

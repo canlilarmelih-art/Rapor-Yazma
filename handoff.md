@@ -1,9 +1,85 @@
 # Rapor Yazma Programı — Handoff Notu
 
-Son güncelleme: 2026-08-01 · Servis edilen sürüm: **app.js?v=20260801-1315** (styles.css?v=20260801-1315, src/templates/template-engine.js?v=20260728-0138, cloud/cloud-sync.js?v=20260719-2200, cloud/report-library.js?v=20260724-1330, halkbank-risk-rules.js?v=20260707-1812)
+## 0.0.266 - 2026-08-01 - İş Bankası minimum değerleme yöntemi kontrolü
+
+- Türkiye İş Bankası A.Ş. seçiliyken Değerleme Metodu alanında iki yöntem seçilmemişse `Değerleme: En az 2 adet Değerleme Metodu seçilmelidir.` kaydı eksik kritik alanlara eklenir.
+- Rapor çıktısı öncesi ortak eksik alan doğrulaması aynı kaydı uyarı penceresinde de gösterir; kullanıcı uyarıyı görmeden çıktıya devam edemez.
+- Yedek: `backups/before-isbank-minimum-valuation-methods_2026-08-01_18-49-39`.
+
+- Test paketi sırasında tespit edilen İş Bankası emsal bölümü regresyonu da düzeltildi: `{{EMSAL_DEGERLEME_TABLOSU}}`, emsal matrisi, açıklaması ve krokilerinden sonra şablona geri eklendi. Yedek: `backups/before-isbank-comparable-valuation-table_2026-08-01_18-54-29`.
+
+- İş Bankası ekranında aynı emsal değerleme tablosu zaten üstte yer aldığı için ikinci `{{EMSAL_DEGERLEME_TABLOSU}}` kaldırıldı. Şablon regresyon testi, İş Bankası'nı bu ek tablo zorunluluğundan istisna tutar. Yedek: `backups/before-remove-isbank-duplicate-comparable-table_2026-08-01_19-02-43`.
+
+Son güncelleme: 2026-08-01 · Servis edilen sürüm: **app.js?v=20260801-1855** (styles.css?v=20260801-1315, src/templates/template-engine.js?v=20260801-1855, cloud/cloud-sync.js?v=20260719-2200, cloud/report-library.js?v=20260724-1330, halkbank-risk-rules.js?v=20260707-1812)
 
 Bu belge, bir sonraki geliştirici/oturum için projeyi çalıştırma, doğrulama ve bu
 oturumda yapılanları özetler.
+
+## 0.0.265 - 2026-08-01 - İş Bankası kat dağılımı placeholder eşlemesi düzeltildi
+
+- İş Bankası şablonundaki çözümlenmeyen `{{BUILDING_FLOOR_SUMMARY_TEXT}}` yerine istenen `{{MAIN_PROPERTY_FLOOR_COUNT_TEXT}}` kullanıldı.
+- Şablon motoruna bu placeholder için `mainPropertyFloorCountText` değerini kat sayımı üzerinden gerektiğinde otomatik oluşturan alias eklendi.
+- Yedek: `backups/before-main-property-floor-placeholder_2026-08-01_18-39-19`.
+
+## 0.0.264 - 2026-08-01 - İş Bankası incelenen belgeler akışı tamamlandı
+
+- İncelenen Belgeler tablosundan sonra Yapı Kullanma İzin Belgesi ve Yapı Ruhsatı için ayrı iki sütunlu alanlar eklendi: var/yok, veren kurum, veriliş amacı, tarih ve belge numarası.
+- Kat dağılımından otomatik hesaplanan yol kotu altı kat sayısı ile zemin ve normal katların toplamı olan yol kotu üstü kat sayısı, toplam kat ve toplam bağımsız bölüm sayısı rapora bağlandı.
+- Projeye uygunluk durumu uygunsa `YOK`, diğer durumlarda `VAR`; cezai karar seçimi Evet ise `VAR`, Hayır ise `YOK` olarak rapora yazılır. Varsa açıklama alanında proje uygunluk açıklaması kullanılır.
+- Proje inceleme ve incelenen belgeler metinleri `İncelenen Diğer Belgeler ve Yapılan Araştırmalar` başlığı altında toplandı.
+- Yedek: `backups/before-isbank-reviewed-documents-layout_2026-08-01_18-24-48`.
+
+## 0.0.263 - 2026-08-01 - İş Bankası bağımsız bölüm alan ve kat akışı düzeltildi
+
+- Bağımsız Bölüm Genel Özellikleri tablosunda net kullanım alanları ilk satıra alındı; yasal ve mevcut brüt alanlar ikinci satırda tutuldu.
+- İç hacimlerin hemen ardına yapının halihazır kullanıma göre toplam kat sayısı, bağımsız bölüm sayısı ve kat dağılımı eklendi.
+- Bağımsız Bölümün Diğer Özellikleri başlığı ile proje inceleme/bina oturumu metinleri, İç Mekan Özellikleri açıklamalarının altına taşındı.
+- Regresyon testi alan sırasını, kat bilgisinin iç hacimlerden sonra olmasını ve diğer özelliklerin iç mekan bloğundan sonra gelmesini denetler.
+- Yedek: `backups/before-isbank-area-floor-order_2026-08-01_17-59-10`.
+
+## 0.0.262 - 2026-08-01 - İş Bankası TAKBİS inceleme açıklaması eklendi
+
+- Yeni otomatik metin/placeholder: `{{ISBANK_ENCUMBRANCE_EXPLANATION}}`.
+- Metin TAKBİS tarih ve saatinden üretilir: `TKGM (TAKBİS) kayıtlarında incelemeler [tarih] tarihinde saat [saat]'de gerçekleştirilmiştir.` Saat bilgisi yoksa yalnızca tarih kullanılır.
+- Açıklamalar ekranına `Takyidat Açıklama (İş Bankası)` adıyla eklendi; İş Bankası şablonunda Tapu Kayıtları ve Kısıtlar açıklamasının üstünde gösterilir.
+- Yedek: `backups/before-isbank-takbis-explanation_2026-08-01_17-53-21`.
+
+## 0.0.261 - 2026-08-01 - İş Bankası takyidat, net alan ve PGA akışı güncellendi
+
+- İş Bankası şablonunda `TAKYİDAT_TABLOSU` artık `3. ÖZELLİKLER SEKMESİ`nin ilk verisidir. Tapu sekmesinden kaldırıldı; ardından gelen `Tapu Kayıtları ve Kısıtlar` bölümü sadece kullanım/tarih/saat metası ile kullanıcı seçimine bağlı takyidat açıklamasını içerir.
+- Takyidat açıklamasının giriş cümlesi, TAKBİS alınma tarihinin yanında mevcutsa saati de yazar.
+- Yasal ve mevcut net kullanım alanları manuel giriş değildir. Brüt alanların `1,15`e bölünüp tam sayıya yuvarlanmasıyla hesaplanır; şablon bu alanları ilgili brüt alanların yanında gösterir.
+- İmar plan türü plan ölçeğinden otomatik türetilir: `1/1.000` Uygulama İmar Planı, `1/5.000` Nazım İmar Planı, `1/25.000` ve `1/100.000` Çevre Düzeni Planı.
+- Yapının Genel Özellikleri'ne açık/kapalı yüzme havuzu için sosyal tesis seçimine bağlı Evet/Hayır, yapının kat sayısı ve bağımsız bölüm sayısı eklendi; kat dağılımı hücresi kaldırıldı.
+- Yapı genel açıklamasından sonra PGA 475 anlatımı, AFAD bağlantısı, enlem/boylam kutusu ve bilgilendirme notu eklendi. PGA 475 değeri Ana Taşınmaz Teknik Bilgileri alanından girilir.
+- Proje inceleme ve bina oturumu/giriş açıklamaları `Bağımsız Bölümün Diğer Özellikleri` altında toplandı.
+- Yedek: `backups/before-isbank-takyidat-area-pga_2026-08-01_17-38-47`.
+
+## 0.0.260 - 2026-08-01 - İş Bankası Özellikler sekmesi bağımsız bölüm verileri tamamlandı
+
+- `templates/isbankasi.html` içindeki `3. ÖZELLİKLER SEKMESİ` artık imar bilgisiyle başlamaz. Banka ekranındaki sırayı izleyen `Bağımsız Bölüm Genel Özellikleri` tablosu önce gelir.
+- Bu başlangıç tablosuna yasal/mevcut nitelik, kullanım durumu, kaçıncı el, enerji kimlik belgesi durumu, enerji performans sınıfı ve belge numarası, yasal/mevcut brüt alan, yasal/mevcut net alan, kat, cephe, manzara, iç hacimler, ısıtma sistemi, malzeme-işçilik kalitesi ve inşaat seviyesi bağlandı.
+- Net alanlar sistemde önceden ayrı alan olarak bulunmadığından Bağımsız Bölüm Genel Bilgileri ekranına `Yasal Net Kullanım Alanı (m²)` ve `Mevcut Net Kullanım Alanı (m²)` kullanıcı girişleri eklendi; İş Bankası şablonundaki karşılıkları `{{LEGAL_NET_AREA}}` ve `{{CURRENT_NET_AREA}}`dır.
+- Aynı verileri ikinci kez yazan eski Bağımsız Bölüm Özellikleri tablosu kaldırıldı; iç mekan açıklamaları kendi başlığında korunuyor.
+- Cache sürümleri `app.js=20260801-1715` ve `template-engine.js=20260801-1715` olarak güncellendi.
+- Regresyon testi, İş Bankası Özellikler sekmesinde alan/EKB/ısıtma/işçilik bilgilerinin imar bilgisinden önce ve ekran sırasıyla bulunmasını denetler.
+- Yedek: `backups/before-isbank-properties-layout_2026-08-01_17-00-18`.
+
+## 0.0.259 - 2026-08-01 - İş Bankası Tapu ve Özellikler sekmesi akışı ayrıştırıldı
+
+- `templates/isbankasi.html` içinde banka ekranlarındaki akışa uygun olarak `1. TAPU SEKMESİ`, `2. KONUM BİLGİLERİ` ve `3. ÖZELLİKLER SEKMESİ` sırası korundu; Tapu bölümü artık Özelliklerden önce açık ve bağımsız bir bölüm.
+- Tapu sekmesine malik bilgilerinin ardından `Tapu Kayıtları ve Kısıtlar` alt başlığı eklendi: fiili kullanım niteliği, kullanım durumu, tapu kayıt değişikliği, takyidat tarihi/saati, takyidat tablosu ve kullanıcı seçimine göre özet/detay takyidat metni burada bulunur.
+- Özellikler sekmesi artık doğrudan `İmar Durumu Bilgileri` ile başlar; yapı, bağımsız bölüm ve çevre detaylarının banka ekranındaki özellik akışı korunur.
+- `tools/test-bank-templates.js` bölüm ve takyidat yerleşimini geriye dönük kontrol eder.
+- Yedek: `backups/before-isbank-tapu-tab-layout_2026-08-01_17-00-18`.
+
+## 0.0.258 - 2026-08-01 - İş Bankası tapu bilgileri sırası banka ekranına göre düzeltildi
+
+- `templates/isbankasi.html` içindeki `1. TAPU BİLGİLERİ` bloğu İş Bankası ekranındaki akışa göre yeniden dizildi.
+- Sıra artık `Tapunun Türü`, `İl/İlçe`, `Mahalle/Köy`, `Mevki/Bucak`, `Yüzölçümü`, `Pafta`, `Ada`, `Parsel`, ana taşınmaz vasfı, bağımsız bölüm niteliği, blok/kat/BB/iç kapı, arsa payı/payda, eklenti, yevmiye, cilt/sahife, edinme sebebi, UAVT ve taşınmaz zemin ID şeklinde ilerliyor.
+- Sistem karşılığı olmayan banka alanları ham placeholder bırakmayacak şekilde boş hücre olarak tutuldu.
+- `tools/test-bank-templates.js` içine İş Bankası tapu placeholder sırası regresyon kontrolü eklendi.
+- Yedek: `backups/before-isbank-tapu-order_2026-08-01_16-35-35`.
 
 ## 0.0.257 - 2026-08-01 - İş Bankası tam rapor şablonu banka ekranlarına göre yeniden hazırlandı
 

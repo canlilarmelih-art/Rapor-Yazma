@@ -432,7 +432,7 @@ assert(
   !kuveytturkTemplate.includes("<div class=\"kt-subsec\">Statik Uygunluk Açıklaması</div>"),
   "kuveytturk.html: degerleme tablo onu not/statik uygunluk metinlerinde alt baslik kalmis."
 );
-comparableTemplateFiles.forEach((file) => {
+comparableTemplateFiles.filter((file) => file !== "isbankasi.html").forEach((file) => {
   const text = fs.readFileSync(path.join(appDir, "templates", file), "utf8");
   assert(text.includes("{{EMSAL_MATRISI}}"), `${file}: EMSAL_MATRISI (dinamik sutunlu emsal matrisi) bulunamadi.`);
   assert(text.includes("Emsal Açıklaması"), `${file}: "Emsal Açıklaması" basligi bulunamadi.`);
@@ -675,7 +675,7 @@ assert(
 );
 const isbankTemplateSource = fs.readFileSync(path.join(appDir, "templates", "isbankasi.html"), "utf8");
 const isbankSectionHeadings = [
-  "1. TAPU BİLGİLERİ",
+  "1. TAPU SEKMESİ",
   "2. KONUM BİLGİLERİ",
   "3. ÖZELLİKLER SEKMESİ",
   "4. DEĞERLEME SEKMESİ",
@@ -699,17 +699,149 @@ assert(
     isbankTemplateSource.includes('class="section-cell" colspan="4"'),
   "Is Bankasi sablonu referans ekranlardaki lacivert/mavi, yogun dort hucreli form dilini korumuyor."
 );
+const isbankTapuSection = isbankTemplateSource.slice(
+  isbankTemplateSource.indexOf("1. TAPU S"),
+  isbankTemplateSource.indexOf("2. KONUM B")
+);
 [
-  "Takyidat Bilgileri",
+  "{{GROUND_TYPE}}",
+  "{{TITLE_CITY}}",
+  "{{TITLE_DISTRICT}}",
+  "{{TITLE_NEIGHBORHOOD}}",
+  "{{LOCATION_NAME}}",
+  "{{LAND_AREA}}",
+  "{{SHEET_NO}}",
+  "{{BLOCK_NO}}",
+  "{{PARCEL_NO}}",
+  "{{MAIN_PROPERTY_QUALITY}}",
+  "{{TITLE_QUALITY}}",
+  "{{TITLE_BLOCK_NAME}}",
+  "{{TITLE_FLOOR}}",
+  "{{UNIT_NO}}",
+  "{{INNER_DOOR}}",
+  "{{SHARE}}",
+  "{{DENOMINATOR}}",
+  "{{EKLENTİ}}",
+  "{{TAPU_TARİHİ}}",
+  "{{TAPU_YEVMİYESİ}}",
+  "{{REGISTRY_VOLUME}}",
+  "{{REGISTRY_PAGE}}",
+  "{{EDİNME_SEBEBİ}}",
+  "{{UAVT}}",
+  "{{TITLE_PROPERTY_ID}}",
+].reduce((previousIndex, marker) => {
+  const currentIndex = isbankTapuSection.indexOf(marker);
+  assert(currentIndex > previousIndex, `Is Bankasi tapu sirasi banka ekranina uymuyor: ${marker}`);
+  return currentIndex;
+}, -1);
+assert(
+  !isbankTapuSection.includes("{{TAKYIDAT_TABLO}}") &&
+    !isbankTapuSection.includes("Tapu Kayıtları ve Kısıtlar"),
+  "Is Bankasi Tapu sekmesinde takyidat tablosu veya takyidat kisitlari metasi kalmamalidir."
+);
+[
+  "Bağımsız Bölüm Genel Özellikleri",
   "İmar Durumu Bilgileri",
   "İncelenen Belgeler",
   "Yapının Genel Özellikleri",
-  "Bağımsız Bölüm Özellikleri",
   "Çevresel Özellikler",
   "Değere Etki Eden Faktörler",
 ].forEach((heading) => {
   assert(isbankTemplateSource.includes(heading), `Is Bankasi sablonunda '${heading}' bolumu bulunamadi.`);
 });
+const isbankPropertiesSection = isbankTemplateSource.slice(
+  isbankTemplateSource.indexOf("3. ÖZELLİKLER SEKMESİ"),
+  isbankTemplateSource.indexOf("4. DEĞERLEME SEKMESİ")
+);
+assert(
+  isbankPropertiesSection.indexOf("{{TAKYIDAT_TABLO}}") < isbankPropertiesSection.indexOf("Tapu Kayıtları ve Kısıtlar") &&
+    isbankPropertiesSection.indexOf("Tapu Kayıtları ve Kısıtlar") < isbankPropertiesSection.indexOf("Bağımsız Bölüm Genel Özellikleri"),
+  "Is Bankasi Ozellikler sekmesinde ilk veri takyidat tablosu, ardindan takyidat metasi gelmelidir."
+);
+assert(
+  isbankPropertiesSection.includes("{{ISBANK_ENCUMBRANCE_EXPLANATION}}") &&
+    appSource.includes("function buildIsbankEncumbranceExplanation()") &&
+    engineSource.includes("ISBANKENCUMBRANCEEXPLANATION"),
+  "Is Bankasi TAKBIS inceleme tarihi/saat aciklamasi kaydedilmemis."
+);
+[
+  "{{UNIT_FIRST_SALE_STATUS}}",
+  "{{EKBSTATUS}}",
+  "{{LEGAL_NET_AREA}}",
+  "{{CURRENT_NET_AREA}}",
+  "{{LEGAL_AREA}}",
+  "{{CURRENT_AREA}}",
+  "{{CEPHELER}}",
+  "{{MANZARA}}",
+  "{{ISINMASISTEMI}}",
+  "{{MALZEMEVEISCILIK}}",
+].reduce((previousIndex, marker) => {
+  const currentIndex = isbankPropertiesSection.indexOf(marker);
+  assert(currentIndex > previousIndex, `Is Bankasi ozellikler sekmesinde '${marker}' ekran sirasinda degil.`);
+  return currentIndex;
+}, -1);
+assert(
+  isbankPropertiesSection.indexOf("Bağımsız Bölüm Genel Özellikleri") < isbankPropertiesSection.indexOf("İmar Durumu Bilgileri"),
+  "Is Bankasi bagimsiz bolum alanlari ve EKB bilgisi imar bilgisinden once gelmiyor."
+);
+[
+  "{{PLAN_TYPE}}",
+  "{{TOTAL_FLOORS}}",
+  "{{TOTAL_UNITS}}",
+  "{{OPEN_POOL}}",
+  "{{CLOSED_POOL}}",
+  "{{PROJECT_REVIEW_DESCRIPTION}}",
+  "{{BINAOTURUMUVEGIRISACIKLAMASI}}",
+  "{{PGA_475}}",
+  "th.afad.gov.tr/TDTH/main.xhtml",
+  "{{LATITUDE}} / Boylam: {{LONGITUDE}}",
+].forEach((marker) => {
+  assert(isbankPropertiesSection.includes(marker), `Is Bankasi Ozellikler sekmesinde '${marker}' bulunamadi.`);
+});
+assert(
+  isbankPropertiesSection.indexOf("{{LEGAL_NET_AREA}}") < isbankPropertiesSection.indexOf("{{LEGAL_AREA}}") &&
+    isbankPropertiesSection.indexOf("{{CURRENT_NET_AREA}}") < isbankPropertiesSection.indexOf("{{CURRENT_AREA}}"),
+  "Is Bankasi net kullanim alanlari brut alanlarin ustunde yer almalidir."
+);
+assert(
+  isbankPropertiesSection.indexOf("{{KAT_BAZLI_İÇ_HACİMLER}}") < isbankPropertiesSection.indexOf("{{TOTAL_FLOORS}}") &&
+    isbankPropertiesSection.includes("{{MAIN_PROPERTY_FLOOR_COUNT_TEXT}}") &&
+    engineSource.includes('MAINPROPERTYFLOORCOUNTTEXT: { fn: () => safeCall("refreshMainPropertyFloorCountTextFromCounts") }') &&
+    isbankPropertiesSection.indexOf("İç Mekan Özellikleri") < isbankPropertiesSection.indexOf("Bağımsız Bölümün Diğer Özellikleri"),
+  "Is Bankasi kat bilgileri ic hacimlerden sonra ve diger ozellikler ic mekanin altinda olmali."
+);
+[
+  "{{LATEST_BUILDING_PERMIT_STATUS}}",
+  "{{OCCUPANCY_PERMIT_INSTITUTION}}",
+  "{{LATEST_BUILDING_PERMIT_INSTITUTION}}",
+  "{{OCCUPANCY_PERMIT_DATE}}",
+  "{{LATEST_BUILDING_PERMIT_DATE}}",
+  "{{OCCUPANCY_PERMIT_NO}}",
+  "{{LATEST_BUILDING_PERMIT_NO}}",
+  "{{YOL_KOTU_ALTI_KAT_ADEDI}}",
+  "{{YOL_KOTU_USTU_KAT_ADEDI}}",
+  "{{TOPLAM_KAT}}",
+  "{{TOTAL_UNITS}}",
+  "{{PROJECT_SUITABILITY_STATUS}}",
+  "{{PENALTY_DECISION_STATUS}}",
+  "{{PROJECT_REVIEW_DESCRIPTION}}",
+  "{{REVIEWED_DOCUMENTS_DESCRIPTION}}",
+].forEach((marker) => {
+  assert(isbankPropertiesSection.includes(marker), `Is Bankasi incelenen belgeler bolumunde '${marker}' bulunamadi.`);
+});
+assert(
+  isbankPropertiesSection.indexOf("İncelenen Diğer Belgeler ve Yapılan Araştırmalar") < isbankPropertiesSection.indexOf("Yapı Denetim Açıklaması") &&
+    appSource.includes("function getBuildingBasementFloorCount()") &&
+    appSource.includes("function getBuildingAboveRoadFloorCount()") &&
+    appSource.includes("function getProjectSuitabilityDifferenceStatus()") &&
+    appSource.includes("function getPenaltyDecisionStatus()") &&
+    appSource.includes("function getLatestBuildingPermitStatus()") &&
+    engineSource.includes("LATESTBUILDINGPERMITSTATUS") &&
+    engineSource.includes("YOLKOTUALTIKATADEDI") &&
+    engineSource.includes("PROJECTSUITABILITYSTATUS") &&
+    engineSource.includes("PENALTYDECISIONSTATUS"),
+  "Is Bankasi incelenen belgeler durum ve kat sayisi hesaplari baglanmamis."
+);
 const ziraatTemplateSource = fs.readFileSync(path.join(appDir, "templates", "ziraat.html"), "utf8");
 assert(
   ziraatTemplateSource.indexOf("<h2>1. GAYRİMENKUL GABİM BİLGİLERİ</h2>") < ziraatTemplateSource.indexOf("<h2>2. GAYRİMENKUL MERKEZ BANKASI VERİLERİ</h2>") &&

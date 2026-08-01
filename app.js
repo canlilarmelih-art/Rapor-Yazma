@@ -5518,6 +5518,18 @@ function getValuationUnitAreaTotals() {
   };
 }
 
+function getValuationUnitNetAreaTotals() {
+  const gross = getValuationUnitAreaTotals();
+  const calculate = (value) => {
+    const numericValue = parseValuationNumberOrZero(value);
+    return numericValue > 0 ? formatValuationArea(Math.round(numericValue / 1.15)) : "";
+  };
+  return {
+    legal: calculate(gross.legal),
+    current: calculate(gross.current),
+  };
+}
+
 function getRoadSetbackAmount() {
   const amount = parseValuationNumber(state.fields.roadSetbackAmount);
   return Number.isFinite(amount) && amount > 0 ? formatValuationArea(amount) : "";
@@ -6386,6 +6398,7 @@ function createBuildingTechnicalOptionsPanel() {
     createBuildingSelectField("Bina Yapı Tarzı", "buildingStyle", buildingStructureStyleOptions),
     createBuildingSelectField("Mevcut Yapı Nizamı", "buildingOrder", buildingOrderOptions),
     createBuildingSelectField("Yapı Sınıfı", "buildingClass", buildingClassOptions),
+    createBuildingTextField("PGA 475 Değeri", "pga475"),
     createBuildingReadOnlyField("Yapı Yaşı", "buildingAge"),
     createBuildingBlockCountControl(),
     createBuildingSelectField("Otopark", "carpark", buildingCarparkOptions),
@@ -6455,6 +6468,25 @@ function createBuildingReadOnlyField(labelText, key) {
     input.placeholder = "Örn. 25 yıl";
     input.addEventListener("blur", () => commitBuildingAgeOverride(input));
   }
+  label.append(createSpan(labelText), input);
+  return label;
+}
+
+function createBuildingTextField(labelText, key) {
+  const label = document.createElement("label");
+  label.className = "field";
+  const input = document.createElement("input");
+  input.type = "text";
+  input.dataset.field = key;
+  input.value = state.fields[key] || "";
+  markFieldSourceState(input, key);
+  input.addEventListener("input", (event) => {
+    clearFieldSourceOwnership(key);
+    state.fields[key] = event.target.value;
+    autosave();
+    renderValidation();
+    updateStatus();
+  });
   label.append(createSpan(labelText), input);
   return label;
 }
@@ -6773,6 +6805,35 @@ function getBuildingFloorCounts() {
     result[field.key] = normalizeNonNegativeInteger(counts[field.key]);
     return result;
   }, {});
+}
+
+function getBuildingBasementFloorCount() {
+  return getBuildingFloorCounts().basement || "";
+}
+
+function getBuildingAboveRoadFloorCount() {
+  const counts = getBuildingFloorCounts();
+  const ground = Number.parseInt(counts.ground || "0", 10) || 0;
+  const normal = Number.parseInt(counts.normal || "0", 10) || 0;
+  const total = ground + normal;
+  return total ? String(total) : "";
+}
+
+function getProjectSuitabilityDifferenceStatus() {
+  if (shouldUseProjectDifferenceComparison()) {
+    const titleSuitable = isProjectSuitabilityOk(state.fields.titleProjectSuitabilityStatus);
+    const municipalitySuitable = isProjectSuitabilityOk(state.fields.municipalityProjectSuitabilityStatus);
+    return titleSuitable && municipalitySuitable ? "YOK" : "VAR";
+  }
+  return isProjectSuitabilityOk(state.fields.projectSuitabilityStatus) ? "YOK" : "VAR";
+}
+
+function getPenaltyDecisionStatus() {
+  return normalizeYesNoChoice(state.fields.penaltyDecision) === "Evet" ? "VAR" : "YOK";
+}
+
+function getLatestBuildingPermitStatus() {
+  return getLatestBuildingPermitDocumentRow() ? "VAR" : "YOK";
 }
 
 function normalizeNonNegativeInteger(value) {
@@ -19670,6 +19731,14 @@ function buildEncumbranceSummary(mode = state.fields.encumbranceSummaryMode) {
   return selectEncumbranceSummaryVariant(buildEncumbranceSummaryVariants(), mode);
 }
 
+function buildIsbankEncumbranceExplanation() {
+  const date = encumbranceDateOrBila(state.fields.takbisDate);
+  const time = String(state.fields.takbisTime || "").trim();
+  if (!date || date === "Bila") return "";
+  const reviewedAt = time ? `${date} tarihinde saat ${time}'de` : `${date} tarihinde`;
+  return `TKGM (TAKBİS) kayıtlarında incelemeler ${reviewedAt} gerçekleştirilmiştir.`;
+}
+
 function buildEncumbranceSummaryVariants() {
   if (state.fields.takbisMethod === "Tapu Kaydı Alınmamıştır.") {
     const detail = "Talep tarihi itibarıyla konu taşınmaza ilişkin TAKBİS belgesi temin edilememiş olup, değerleme çalışması takyidat kayıtlarından bağımsız olarak gerçekleştirilmiştir.";
@@ -19683,13 +19752,15 @@ function buildEncumbranceSummaryVariants() {
   }
 
   const date = encumbranceDateOrBila(state.fields.takbisDate);
+  const time = String(state.fields.takbisTime || "").trim();
   const method = encumbranceTextOrBila(state.fields.takbisMethod || "Webtapu Sistemi");
   const declarationRows = getFilledEncumbranceRows("encumbranceDeclarations");
   const declarationRowsWithoutRights = declarationRows.filter((row) => !isEncumbranceRightOrLiabilityRow(row));
   const easementRows = declarationRows.filter(isEncumbranceRightOrLiabilityRow);
   const mortgageRows = getFilledEncumbranceRows("encumbranceMortgages");
   const annotationRows = getFilledEncumbranceRows("encumbranceAnnotations");
-  const intro = `${date} tarihinde ${method} üzerinden alınan TAKBİS belgesine göre, konu taşınmaz üzerinde aşağıdaki takyidatlar bulunmaktadır.`;
+  const receivedAt = time ? `${date} tarihinde saat ${time}` : `${date} tarihinde`;
+  const intro = `${receivedAt} ${method} üzerinden alınan TAKBİS belgesine göre, konu taşınmaz üzerinde aşağıdaki takyidatlar bulunmaktadır.`;
   const sections = [
     {
       key: "declarations",
@@ -27036,6 +27107,12 @@ function collectGeneratedTextPlaceholders() {
       value: buildEncumbranceSummary(),
     },
     {
+      category: "Açıklamalar",
+      key: "isbank_encumbrance_explanation",
+      title: "Takyidat Açıklama (İş Bankası)",
+      value: buildIsbankEncumbranceExplanation(),
+    },
+    {
       category: "İmar Durumu",
       key: "planning_note_text",
       title: "İmar Açıklaması",
@@ -30973,6 +31050,20 @@ function getMissingRequiredFields() {
 
   const completedComparableCount = getComparableRows().filter((row) => !isComparableRowEmpty(row)).length;
   addMissing("Emsaller", "En az 4 emsal girilmeli", completedComparableCount < 4);
+
+  const selectedValuationMethodCount = String(state.fields.valuationMethod || "")
+    .split(",")
+    .map((method) => method.trim())
+    .filter(Boolean)
+    .length;
+  const isIsbankReport = typeof isIsbankSelectedForReport === "function"
+    ? isIsbankSelectedForReport()
+    : /(?:İş|Is) Bankası/i.test(String(state.fields.bank || ""));
+  addMissing(
+    "Değerleme",
+    "En az 2 adet Değerleme Metodu seçilmelidir.",
+    isIsbankReport && selectedValuationMethodCount < 2,
+  );
 
   return missing;
 }
