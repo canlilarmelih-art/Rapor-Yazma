@@ -3651,13 +3651,21 @@ td .free-lookup input {
   font-weight: 700;
 }
 
-.comparable-summary-floor-detail {
-  display: block;
-  margin-top: 2px;
-  font-size: 10px;
+.comparable-summary-floor-detail-row td {
+  padding-top: 2px;
+  padding-bottom: 2px;
+  padding-left: 28px;
+  font-size: 11px;
   font-weight: 400;
   color: var(--muted);
-  white-space: normal;
+  background: rgba(238, 242, 239, 0.6);
+  border-top: none;
+  text-align: left;
+}
+
+.comparable-summary-floor-detail-total td {
+  font-weight: 600;
+  color: var(--text, #1f2a24);
 }
 
 /* Body rows */

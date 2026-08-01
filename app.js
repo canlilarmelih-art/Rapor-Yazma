@@ -29129,6 +29129,9 @@ function createComparableValuationSummaryTable() {
       `;
     }
     tbody.append(tr);
+    if (!landMode) {
+      createComparableWorkplaceFloorDetailRows(row, 12).forEach((detailRow) => tbody.append(detailRow));
+    }
   });
   const average = calculateComparableValuationAverages(rows);
   const averageRow = document.createElement("tr");
@@ -29175,7 +29178,7 @@ function getComparableValuationRows() {
         no: `E${index + 1}`,
         landComparable: isLandComparable(row),
         area: metrics.adjustedArea,
-        workplaceFloorsSummary: formatComparableWorkplaceFloorsSummary(row),
+        workplaceFloors: Array.isArray(row.workplaceFloors) ? row.workplaceFloors : [],
         calculatedEmsalArea: metrics.calculatedEmsalArea,
         askingPrice: metrics.askingPrice,
         negotiationRate: metrics.negotiationRate,
@@ -29218,14 +29221,44 @@ function calculateComparableValuationAverages(rows = getComparableValuationRows(
   };
 }
 
-// Emsal Değerleme Tablosu'ndaki ALAN hücresi: kat bazında alan/indirgeme
-// girilmişse (bkz. workplaceFloors) toplam alanın altında küçük bir kat
-// detayı satırı gösterir, örn. "Zemin kat: 100 m² (100%), Asma kat: 50 m²
-// (30%)" (kullanıcı talebi).
 function formatComparableSummaryAreaCell(row) {
-  const areaText = formatComparableSummaryNumber(row.area, { decimals: 2 });
-  if (!row.workplaceFloorsSummary) return areaText;
-  return `${areaText}<span class="comparable-summary-floor-detail">${escapeHtml(row.workplaceFloorsSummary)}</span>`;
+  return formatComparableSummaryNumber(row.area, { decimals: 2 });
+}
+
+// Emsal Değerleme Tablosu'nda kat bazında alan/indirgeme girilmişse
+// (bkz. workplaceFloors) her kat için ayrı bir satır + bir toplam satırı
+// eklenir, örn. "Zemin Kat 100 m² (%100)", "Asma Kat 50 m² (%30)",
+// "Toplam Etkili Alan = 115 m²" (kullanıcı talebi).
+function formatComparableWorkplaceFloorDetailLabel(entry) {
+  const name = normalizeComparableFloorName(entry.floor);
+  const title = name ? name.charAt(0).toLocaleUpperCase("tr-TR") + name.slice(1) : "Kat";
+  const areaNumber = parseComparableNumber(entry.area);
+  const areaText = Number.isFinite(areaNumber)
+    ? areaNumber.toLocaleString("tr-TR", { maximumFractionDigits: 2 })
+    : String(entry.area || "").trim();
+  const rateText = String(entry.rate || "100%").replace("%", "").trim() || "100";
+  return `${title} Kat ${areaText} m² (%${rateText})`;
+}
+
+function createComparableWorkplaceFloorDetailRows(row, columnCount) {
+  const floors = (Array.isArray(row.workplaceFloors) ? row.workplaceFloors : []).filter((entry) =>
+    String(entry?.area || "").trim()
+  );
+  if (!floors.length) return [];
+  const rows = floors.map((entry) => {
+    const tr = document.createElement("tr");
+    tr.className = "comparable-summary-floor-detail-row";
+    tr.innerHTML = `<td colspan="${columnCount}">${escapeHtml(formatComparableWorkplaceFloorDetailLabel(entry))}</td>`;
+    return tr;
+  });
+  const totalRow = document.createElement("tr");
+  totalRow.className = "comparable-summary-floor-detail-row comparable-summary-floor-detail-total";
+  const totalAreaText = Number.isFinite(row.area)
+    ? row.area.toLocaleString("tr-TR", { maximumFractionDigits: 2 })
+    : "";
+  totalRow.innerHTML = `<td colspan="${columnCount}">Toplam Etkili Alan = ${totalAreaText} m²</td>`;
+  rows.push(totalRow);
+  return rows;
 }
 
 function formatComparableSummaryNumber(value, options = {}) {

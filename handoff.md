@@ -1,5 +1,12 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.268 - 2026-08-01 - Emsal Değerleme Tablosu kat detayı ayrı satırlara alındı
+
+- "Emsal Değerleme Tablosu"nda (ekran özet paneli) kat bazında alan/indirgeme girilen emsallerde ALAN hücresinin altındaki küçük yazı yerine, her kat için ayrı bir tablo satırı + bir toplam satırı eklendi: `Zemin Kat 100 m² (%100)`, `Asma Kat 50 m² (%30)`, `Toplam Etkili Alan = 115 m²`.
+- `formatComparableSummaryAreaCell` sadeleştirildi (artık sadece toplam alanı döner); yeni `formatComparableWorkplaceFloorDetailLabel` ve `createComparableWorkplaceFloorDetailRows` fonksiyonları eklendi. `getComparableValuationRows()` artık `workplaceFloorsSummary` yerine ham `workplaceFloors` dizisini taşır.
+- Word/rapor çıktısındaki emsal tablosu (`buildComparableMatrixWordTableHtml`) bu değişiklikten etkilenmedi, zaten kat detayını gösteriyordu.
+- Geri alma: `git revert` ile bu commit; önceki davranış (ALAN hücresi altında küçük özet satırı) geri gelir.
+
 ## 0.0.267 - 2026-08-01 - İş Bankası AFAD bağlantısı düzeltildi
 
 - İş Bankası şablonundaki deprem tehlike haritası bağlantısı `https://tdth.afad.gov.tr/TDTH/main.xhtml` olarak düzeltildi.
@@ -15,7 +22,7 @@
 
 - İş Bankası ekranında aynı emsal değerleme tablosu zaten üstte yer aldığı için ikinci `{{EMSAL_DEGERLEME_TABLOSU}}` kaldırıldı. Şablon regresyon testi, İş Bankası'nı bu ek tablo zorunluluğundan istisna tutar. Yedek: `backups/before-remove-isbank-duplicate-comparable-table_2026-08-01_19-02-43`.
 
-Son güncelleme: 2026-08-01 · Servis edilen sürüm: **app.js?v=20260801-1855** (styles.css?v=20260801-1315, src/templates/template-engine.js?v=20260801-1855, cloud/cloud-sync.js?v=20260719-2200, cloud/report-library.js?v=20260724-1330, halkbank-risk-rules.js?v=20260707-1812)
+Son güncelleme: 2026-08-01 · Servis edilen sürüm: **app.js?v=20260801-1930** (styles.css?v=20260801-1930, src/templates/template-engine.js?v=20260801-1855, cloud/cloud-sync.js?v=20260719-2200, cloud/report-library.js?v=20260724-1330, halkbank-risk-rules.js?v=20260707-1812)
 
 Bu belge, bir sonraki geliştirici/oturum için projeyi çalıştırma, doğrulama ve bu
 oturumda yapılanları özetler.
