@@ -377,6 +377,10 @@
     POSTAKODU: { f: ["postalCode"] },
     ENLEM: { f: ["latitude"] },
     BOYLAM: { f: ["longitude"] },
+    // Ziraat sistemi koordinatların ondalık ayıracını virgül ister.
+    // V2 tokenları kaynak alanları değiştirmez; yalnızca şablon çıktısını dönüştürür.
+    ENLEMV2: { fn: () => field("latitude").replace(/\./g, ",") },
+    BOYLAMV2: { fn: () => field("longitude").replace(/\./g, ",") },
     MEVKII: { f: ["locationName"] },
     ADRES2025: { fn: () => safeCall("buildOpenAddressText") },
     ACIKADRES: { fn: () => safeCall("buildOpenAddressText") },

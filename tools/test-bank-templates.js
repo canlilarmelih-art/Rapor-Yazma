@@ -873,6 +873,18 @@ assert(
   "Is Bankasi incelenen belgeler durum ve kat sayisi hesaplari baglanmamis."
 );
 const ziraatTemplateSource = fs.readFileSync(path.join(appDir, "templates", "ziraat.html"), "utf8");
+const ziraatLandTemplateSource = fs.readFileSync(path.join(appDir, "templates", "ziraat-arsa-arazi.html"), "utf8");
+stubState.fields.latitude = "40.179213";
+stubState.fields.longitude = "29.116076";
+assert(
+  engine.resolveToken("ENLEM_V2").html === "40,179213" &&
+    engine.resolveToken("BOYLAM_V2").html === "29,116076" &&
+    ziraatTemplateSource.includes("{{ENLEM_V2}}") &&
+    ziraatTemplateSource.includes("{{BOYLAM_V2}}") &&
+    ziraatLandTemplateSource.includes("{{ENLEM_V2}}") &&
+    ziraatLandTemplateSource.includes("{{BOYLAM_V2}}"),
+  "Ziraat koordinatlari virgullu ENLEM_V2 ve BOYLAM_V2 placeholderlariyla uretilmiyor."
+);
 assert(
   ziraatTemplateSource.indexOf("<h2>1. GAYRİMENKUL GABİM BİLGİLERİ</h2>") < ziraatTemplateSource.indexOf("<h2>2. GAYRİMENKUL MERKEZ BANKASI VERİLERİ</h2>") &&
     ziraatTemplateSource.indexOf("<h2>2. GAYRİMENKUL MERKEZ BANKASI VERİLERİ</h2>") < ziraatTemplateSource.indexOf("<h2>2. GAYRİMENKUL TAPU BİLGİLERİ</h2>") &&

@@ -1,5 +1,11 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.281 - 2026-08-02 - Ziraat koordinatlarinda virgullu V2 placeholderlari
+
+- `{{ENLEM_V2}}` ve `{{BOYLAM_V2}}` eklendi. Kaynak koordinatlari degistirmeden yalnizca ondalik ayiracini noktadan virgule cevirir: `40.179213` -> `40,179213`.
+- Ziraat konut ve arsa/arazi sablonlarindaki enlem/boylam hucreleri bu V2 tokenlarini kullanir.
+- Yedek: `backups/before-ziraat-comma-coordinates_2026-08-02_00-41-13`.
+
 ## 0.0.280 - 2026-08-02 - Konut raporlarında Emsal Değerleme Tablosu'ndan KAT ALANLARI gizlendi
 
 - "KAT ALANLARI" sütun grubu (KAT/ALAN/İND. ORANI) artık sadece işyeri benzeri raporlarda (İşyeri/Ofis/Ticari Bina — `isWorkplaceLikeUsageNature()`) gösteriliyor; konut raporlarında bu 3 sütun hem başlıktan hem satırlardan tamamen kaldırılıyor (bu sütunlar konutta zaten hiç doldurulmuyordu).
