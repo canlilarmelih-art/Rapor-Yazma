@@ -29381,10 +29381,16 @@ function calculateComparableMetrics(row) {
   const bargainPrice = parseComparableNumber(row.c15);
   if (landComparable) syncComparableLandBuildableArea(row);
   const rawArea = parseComparableNumber(row.c13 || row.c12);
-  // Kat (c6) seçiliyse alan MUTLAKA kat bazında girilir (her kat kendi
-  // alanı × kendi indirgeme oranıyla toplanır); hiç kat seçilmemişse eski
-  // davranışa (Düzeltilmiş/Beyan Edilen Alan) geri dönülür — kullanıcı talebi.
-  const workplaceFloors = landComparable ? [] : syncComparableWorkplaceFloors(row);
+  // Kat bazında alan/indirgeme SADECE işyeri benzeri raporlarda (İşyeri,
+  // Ofis, Ticari Bina) uygulanır — bu davranış zaten UI'da bu durumda
+  // gösteriliyor. "Kat" (c6) alanı konut emsallerinde de mevcut olduğundan
+  // bu kontrol olmazsa syncComparableWorkplaceFloors boş "area" alanlı
+  // satırlar üretir ve adjustedArea 0'a düşerek M² birim değer
+  // hesaplanamaz hale gelir (bkz. kullanıcı bildirdiği regresyon — konut
+  // emsalleri). İşyeri türü raporlarda ise kat seçiliyken alan boş
+  // bırakılırsa (kasıtlı olarak) hesap yine bozuk kalır — kullanıcı
+  // verileri tamamlamaya zorlanır.
+  const workplaceFloors = landComparable || !isWorkplaceLikeUsageNature() ? [] : syncComparableWorkplaceFloors(row);
   const workplaceReducedArea = workplaceFloors.length
     ? workplaceFloors.reduce((sum, entry) => {
         const area = parseComparableNumber(entry.area);

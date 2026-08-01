@@ -141,8 +141,11 @@ function createContext(fields = {}) {
 }
 
 // --- 4) Örnek senaryo: Zemin kat 100 m² %100, Asma kat 50 m² %30 ---------
+// Kat bazlı indirgeme sadece işyeri benzeri raporlarda (state.fields.
+// legalUsageNature) devreye girer; bu yüzden context'e legalUsageNature
+// "İşyeri" verilir (bkz. senaryo 8 — konut regresyon testi).
 {
-  const context = createContext();
+  const context = createContext({ legalUsageNature: "İşyeri" });
   const row = {
     c23: "Konut",
     c2: "Satılık",
@@ -180,7 +183,7 @@ function createContext(fields = {}) {
 //    (Düzeltilmiş/Beyan Edilen Alan'a SESSİZCE geri dönülmemeli — kullanıcının
 //    açık tercihi: "kat seçiliyse alan mutlaka kat bazında girilsin"). ------
 {
-  const context = createContext();
+  const context = createContext({ legalUsageNature: "İşyeri" });
   const row = {
     c23: "Konut",
     c2: "Satılık",
@@ -194,6 +197,30 @@ function createContext(fields = {}) {
   const metrics = context.calculateComparableMetrics(row);
   assert.equal(metrics.workplaceReducedArea, 0, "Kat seçili ama alan boşken toplam indirgenmiş alan 0 olmalı (150'ye geri dönmemeli).");
   assert.ok(!Number.isFinite(metrics.unitValue), "Alan boşken m² birim değer hesaplanamaz (NaN/boş) olmalı.");
+}
+
+// --- 8) REGRESYON: gerçek konut raporunda (legalUsageNature ayarlanmamış/
+//    "Konut") "Kat" (c6) alanı seçili olsa bile — konut UI'sinde kat bazlı
+//    alan/indirgeme girişi hiç gösterilmediğinden workplaceFloors'un alanı
+//    hep boş kalır — hesap eskisi gibi Düzeltilmiş/Beyan Edilen Alan'a
+//    (c12/c13) göre çalışmaya devam etmeli; M² birim değer NaN/boş
+//    KALMAMALI. Kullanıcının bildirdiği regresyon: "emsalleri güncelledik
+//    ama konut emsallerinde hiç bir m2 birim değeri otomatik
+//    hesaplanmıyor". ------------------------------------------------------
+{
+  const context = createContext(); // legalUsageNature verilmedi (konut raporu)
+  const row = { c23: "Konut", c2: "Satılık", c6: "3. Normal kat", c12: "150", c13: "", c14: "3.000.000", c15: "" };
+  const metrics = context.calculateComparableMetrics(row);
+  assert.equal(
+    metrics.adjustedArea,
+    150,
+    `Konut raporunda kat seçili olsa da ham alan (150) kullanılmalı: ${metrics.adjustedArea}`
+  );
+  assert.equal(
+    metrics.unitValue,
+    20000,
+    `Konut emsalinde M² birim değer otomatik hesaplanmalı (3.000.000 / 150 = 20.000): ${metrics.unitValue}`
+  );
 }
 
 // --- 7) Arazi emsalinde bu mekanizma DEVREYE GİRMEMELİ, Yüzölçümü (c24) kullanılmalı ---

@@ -152,6 +152,8 @@ function lineDiv(text) {
   const getComparableMultiValuesSrc = sliceFn("function getComparableMultiValues(");
   const syncComparableWorkplaceFloorsSrc = sliceFn("function syncComparableWorkplaceFloors(");
   const getComparableValuationRowsSrc = sliceFn("function getComparableValuationRows(");
+  const foldTurkishForNatureSrc = sliceFn("function foldTurkish(");
+  const isWorkplaceLikeUsageNatureSrc = sliceFn("function isWorkplaceLikeUsageNature(");
 
   function sliceArray(startMarker) {
     const start = appSource.indexOf(startMarker);
@@ -172,12 +174,19 @@ function lineDiv(text) {
     { c23: "Konut", c2: "Satılık", c6: "", c12: "150", c13: "", c14: "3.000.000", c15: "" },
   ];
   const context = {
+    // Kat bazlı indirgeme sadece işyeri benzeri raporlarda uygulanır (bkz.
+    // test-comparable-workplace-floor-reduction.js senaryo 8 — konut
+    // regresyon testi); E1 satırının kat verisi kullanılabilsin diye burada
+    // İşyeri seçilir.
+    state: { fields: { legalUsageNature: "İşyeri" } },
     isLandComparable: (row) => ["arsa", "tarla", "meyve bahcesi"].includes(String(row?.c23 || "").toLocaleLowerCase("tr")),
     syncComparableLandBuildableArea: () => {},
     getComparableRows: () => rows,
   };
   vm.createContext(context);
   vm.runInContext(comparableFloorOptionsArraySrc, context);
+  vm.runInContext(foldTurkishForNatureSrc, context);
+  vm.runInContext(isWorkplaceLikeUsageNatureSrc, context);
   vm.runInContext(getComparableMultiValuesSrc, context);
   vm.runInContext(syncComparableWorkplaceFloorsSrc, context);
   vm.runInContext(parseComparableNumberSrc, context);

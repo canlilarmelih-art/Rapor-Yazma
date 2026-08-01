@@ -1,5 +1,13 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.279 - 2026-08-02 - REGRESYON DÜZELTİLDİ: Konut emsallerinde M² birim değer hesaplanmıyordu
+
+- Kullanıcı bildirdi: "emsalleri güncelledik ama konut emsallerinde hiç bir m2 birim değeri otomatik hesaplanmıyor".
+- Neden: kat bazlı alan/indirgeme mekanizması (0.0.26x serisi) `calculateComparableMetrics` içinde HER satırda (nature'dan bağımsız) `syncComparableWorkplaceFloors(row)` çağırıyordu. "Kat" (c6) alanı konut emsallerinde de mevcut olduğundan, kat seçili bir konut satırında bu fonksiyon alanı boş kat kayıtları üretiyordu; bu kayıtlar indirgenmiş alan hesabına dahil edilince toplam 0'a düşüyor, `adjustedArea` 0 olduğundan M² birim değer (calcUnitValue) NaN/boş kalıyordu.
+- Çözüm: kat bazlı alan/indirgeme artık SADECE `state.fields.legalUsageNature` işyeri benzeri (İşyeri/Ofis/Ticari Bina — `isWorkplaceLikeUsageNature()`) olduğunda devreye giriyor; konut raporlarında eski davranışa (Düzeltilmiş/Beyan Edilen Alan, c12/c13) geri dönülüyor. İşyeri raporlarında kat seçiliyken alan boş bırakılırsa hesap kasıtlı olarak yine boş kalır (0.0.26x'teki tasarım korunmuştur).
+- `tools/test-comparable-workplace-floor-reduction.js`e bu regresyonu doğrudan yakalayan yeni bir senaryo (8) eklendi; ilgili diğer test dosyaları (`test-comparable-valuation-summary-floor-detail.js`) `state.fields.legalUsageNature` context'ini artık açıkça set ediyor.
+- Yedek gerekmedi (acil regresyon düzeltmesi); geri alma: bu commit'i `git revert` ile geri al.
+
 ## 0.0.278 - 2026-08-01 - KAT ALANLARI alt sütunlarının hücre hizalaması düzeltildi
 
 - Kullanıcı ekran görüntüsüyle bildirdi: İND. ORANI alt sütunundaki %100/%30 değerleri, KAT ve ALAN alt sütunlarındaki satırlarla aynı hizada değildi (dikey olarak farklı konumda görünüyordu).
