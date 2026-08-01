@@ -29356,9 +29356,14 @@ function buildComparableLongText(row, rowIndex, metrics) {
   const contactLine = buildComparableContactLine(row);
   const location = buildComparableLocationLocative(row.c7);
   const age = buildComparableBuildingAgePhrase(row);
-  const floor = buildComparableFloorPhrase(row.c6);
-  const declaredArea = formatComparableArea(row.c12, "m2");
-  const correctedArea = formatComparableArea(row.c13 || row.c12, "m2");
+  // Kat bazında alan/indirgeme girilmişse (bkz. workplaceFloors) açıklama
+  // her katın kendi alanını ayrı ayrı belirtir; girilmemişse eski davranış
+  // (tek kat ibaresi + Beyan Edilen/Düzeltilmiş Alan) aynen korunur
+  // (kullanıcı talebi: "dükkana ve katlara göre bu açıklama düzenlenmeli").
+  const workplaceFloorAreaPhrase = buildComparableWorkplaceFloorAreaPhrase(row);
+  const floor = workplaceFloorAreaPhrase ? "" : buildComparableFloorPhrase(row.c6);
+  const declaredArea = workplaceFloorAreaPhrase ? "" : formatComparableArea(row.c12, "m2");
+  const correctedArea = workplaceFloorAreaPhrase ? "" : formatComparableArea(row.c13 || row.c12, "m2");
   const statusText = getComparableStatusText(row, metrics);
   const positionText = buildComparablePositionComparisonText(row);
   const isExternalAppraisal = isExternalAppointmentType(state.fields.appointmentType);
@@ -29377,7 +29382,7 @@ function buildComparableLongText(row, rowIndex, metrics) {
     "Ekspertize konu taşınmazla ",
     location,
     age ? `, ${age}` : "",
-    floor ? `, ${floor}` : "",
+    workplaceFloorAreaPhrase ? `, ${workplaceFloorAreaPhrase}` : (floor ? `, ${floor}` : ""),
     declaredArea ? `, ${declaredArea} olarak beyan edilen` : "",
     correctedArea ? `, ${correctedArea} olduğu düşünülen` : "",
     row.c5 ? `, ${row.c5} planında` : "",
@@ -29684,6 +29689,20 @@ function buildComparableFloorPhrase(value) {
     .filter(Boolean);
   if (!parts.length) return "";
   return `${joinComparableTurkishList([...new Set(parts)])} katta yer alan`;
+}
+
+// Kat bazında alan/indirgeme (workplaceFloors) girilmişse her katın kendi
+// alanını ayrı ayrı belirten bir ifade üretir, örn. "zemin katta 100 m2,
+// asma katta 50 m2 olarak beyan edilen". Hiçbir katta alan girilmemişse
+// boş döner — çağıran yer eski (tek kat + Beyan Edilen Alan) davranışa
+// geri döner.
+function buildComparableWorkplaceFloorAreaPhrase(row) {
+  const floors = Array.isArray(row?.workplaceFloors) ? row.workplaceFloors : [];
+  const parts = floors
+    .filter((entry) => String(entry?.area || "").trim())
+    .map((entry) => `${normalizeComparableFloorName(entry.floor)} katta ${formatComparableArea(entry.area, "m2")}`);
+  if (!parts.length) return "";
+  return `${joinComparableTurkishList(parts)} olarak beyan edilen`;
 }
 
 function normalizeComparableFloorName(value) {

@@ -1,9 +1,40 @@
 # Rapor Yazma Programı — Handoff Notu
 
-Son güncelleme: 2026-08-01 · Servis edilen sürüm: **app.js?v=20260801-1149** (styles.css?v=20260801-1149, src/templates/template-engine.js?v=20260728-0138, cloud/cloud-sync.js?v=20260719-2200, cloud/report-library.js?v=20260724-1330, halkbank-risk-rules.js?v=20260707-1812)
+Son güncelleme: 2026-08-01 · Servis edilen sürüm: **app.js?v=20260801-1159** (styles.css?v=20260801-1149, src/templates/template-engine.js?v=20260728-0138, cloud/cloud-sync.js?v=20260719-2200, cloud/report-library.js?v=20260724-1330, halkbank-risk-rules.js?v=20260707-1812)
 
 Bu belge, bir sonraki geliştirici/oturum için projeyi çalıştırma, doğrulama ve bu
 oturumda yapılanları özetler.
+
+## 0.0.252 - 2026-08-01 - Emsal açıklaması artık dükkana ve katlara göre düzenleniyor
+
+Kullanıcı bildirimi: 0.0.251'de kat bazında alan/indirgeme eklendi ama
+otomatik üretilen emsal açıklaması (calcLongText) hâlâ eski tek-kat/düz-alan
+cümlesini kullanıyordu — kat bazlı veriyi yansıtmıyordu.
+
+- Yeni `buildComparableWorkplaceFloorAreaPhrase(row)`: `workplaceFloors`
+  içinde alanı dolu olan HER kat için ayrı bir ifade üretir, örn. "zemin
+  katta 100 m2 ve asma katta 50 m2 olarak beyan edilen".
+- `buildComparableLongText()`: bu ifade varsa eski `floor` (Kat ibaresi) +
+  `declaredArea`/`correctedArea` (Beyan Edilen/Düzeltilmiş Alan) parçaları
+  BASTIRILIR (çift bilgi olmasın diye) ve yeni ifade onların yerine
+  cümleye girer. Kat seçili ama alanlar boşsa veya `workplaceFloors` hiç
+  yoksa (eski kayıtlar) davranış AYNEN eskisi gibi kalır.
+- Hesaplama metni (`buildComparableCalculationText`, "İndirgenmiş m2 Birim
+  Değeri: ... / 115 m2 = ...") zaten `metrics.adjustedArea` kullandığından
+  ek değişiklik gerekmedi — otomatik doğru toplamı gösteriyordu.
+- Yeni test: `tools/test-comparable-workplace-floor-description.js` (saf
+  ifade üretimi + `buildComparableLongText` kablolama entegrasyonu — kat
+  bazlı/tek-kat/hiç-workplaceFloors-yok üç senaryoyu izole doğrular; kural
+  kaldırıldığında testin gerçekten başarısız olduğu ve tam olarak
+  kullanıcının bildirdiği "açıklama değişmemiş" belirtisini ürettiği
+  doğrulandı).
+- Doğrulama: `npm run verify` (39 test) geçti; gerçek tarayıcıda örnek
+  senaryo ("Ekspertize konu taşınmazla aynı bölgede... zemin katta 100 m2
+  ve asma katta 50 m2 olarak beyan edilen... / 115 m2 = 10.000 TL/m2")
+  doğrulandı, eski davranışın (kat detayı girilmemiş emsallerde) bozulmadığı
+  kontrol edildi.
+- Geri alma: `git revert <bu commit hash>` veya yedek klasöründen
+  `backups/before-comparable-workplace-floor-reduction_2026-08-01_11-23-32/`.
 
 ## 0.0.251 - 2026-08-01 - Emsaller kat bazında indirgeme: TEK orandan KAT-BAZLI listeye geçiş
 
