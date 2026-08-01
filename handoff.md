@@ -1,5 +1,12 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.272 - 2026-08-01 - Emsal Değerleme Tablosu: ayrı "KAT ALANLARI" sütunu
+
+- 0.0.270'te ALAN sütununun altına eklenen kat detay satırları kaldırıldı; onun yerine ALAN sütununun hemen yanına ayrı bir "KAT ALANLARI" sütunu eklendi.
+- Kat bazında alan/indirgeme girilen emsallerde bu sütunun hücresinde her kat kendi satırında (çerçeveli, sağa yaslı) gösterilir, en altta da toplam satırı yer alır: `Zemin Kat 100 m² (%100)`, `Asma Kat 50 m² (%30)`, `Toplam Etkili Alan = 115 m²`.
+- `createComparableWorkplaceFloorDetailRows` kaldırıldı; yerine `formatComparableWorkplaceFloorAreasColumn` eklendi (hücre içi çok satırlı HTML üretir, HTML-escape dahil). Arazi (land) modundaki tablo bu sütunu içermez (arazi emsallerinde kat kavramı yok).
+- Yedek gerekmedi (0.0.268/0.0.270'in devamı, aynı özelliğin düzenlemesi); geri alma: bu commit'i `git revert` ile geri al.
+
 ## 0.0.270 - 2026-08-01 - Emsal kat detayı: ALAN sütunu altında, çerçeveli, sağa yaslı
 
 - 0.0.268'de eklenen kat detay satırları, NO sütununun altında değil ALAN sütununun altında hizalanacak şekilde düzeltildi (ilk hücre boş bırakılır, metin ikinci hücreden başlar).

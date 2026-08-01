@@ -10,18 +10,23 @@
   gosteriyordu (onceki oturumda eklenmisti), degisiklik gerekmedi.
 
   Sonraki kullanici talebi ("hücre içinde kat kat var ise emsalde o kadar
-  satır + 1 satır açalım. Zemin Kat 100 m2 (%100), Asma Kat 50 m2 (%30)
-  Toplam Etkili Alan = 115 m2 şeklinde") ile ALAN hücresindeki küçük span
-  yerine, her kat icin ayri bir tablo satiri + bir toplam satiri eklendi
-  (createComparableWorkplaceFloorDetailRows). ALAN hücresi artik sadece
-  toplam sayiyi gosterir (formatComparableSummaryAreaCell sadelestirildi).
+  satır + 1 satır açalım...") ile once ALAN hucresi altina ayri satirlar
+  eklendi (createComparableWorkplaceFloorDetailRows) — sonra kullanici bunu
+  da degistirdi: "alan sütunun yanına kat alanları sütünü aç 3 satırı oraya
+  koy". Son haliyle ALAN sütununun YANINA ayrı bir "KAT ALANLARI" sütunu
+  eklendi; kat detayi artik ayri tablo satirlari degil, bu yeni sutunun
+  HUCRESI icinde alt alta satirlar (formatComparableWorkplaceFloorAreasColumn)
+  olarak gosteriliyor. ALAN hücresi sadece toplam sayiyi gosterir
+  (formatComparableSummaryAreaCell sadelestirildi).
 
-  Bu test iki katmani izole dogrular:
+  Bu test uc katmani izole dogrular:
   1) formatComparableWorkplaceFloorDetailLabel — saf fonksiyon, her kat
      icin "Zemin Kat 100 m² (%100)" formatinda etiket uretir.
-  2) getComparableValuationRows() — her satirin workplaceFloors alaninin
+  2) formatComparableWorkplaceFloorAreasColumn — KAT ALANLARI hucresinin
+     HTML icerigini uretir (her kat + toplam satiri, HTML-escape dahil).
+  3) getComparableValuationRows() — her satirin workplaceFloors alaninin
      dolu/bos oldugunu gercek calculateComparableMetrics zinciriyle
-     dogrular (bu alan artik detay satirlarini olusturmak icin kullanilir).
+     dogrular (bu alan KAT ALANLARI sutununu olusturmak icin kullanilir).
 */
 
 const assert = require("node:assert/strict");
@@ -38,9 +43,11 @@ function sliceFn(startMarker) {
   return appSource.slice(start, end);
 }
 
+const escapeHtmlSrc = sliceFn("function escapeHtml(");
 const normalizeComparableFloorNameSrc = sliceFn("function normalizeComparableFloorName(");
 const parseComparableNumberSrc = sliceFn("function parseComparableNumber(");
 const formatComparableWorkplaceFloorDetailLabelSrc = sliceFn("function formatComparableWorkplaceFloorDetailLabel(");
+const formatComparableWorkplaceFloorAreasColumnSrc = sliceFn("function formatComparableWorkplaceFloorAreasColumn(");
 const formatComparableSummaryAreaCellSrc = sliceFn("function formatComparableSummaryAreaCell(");
 const formatComparableSummaryNumberSrc = sliceFn("function formatComparableSummaryNumber(");
 
@@ -63,7 +70,43 @@ const formatComparableSummaryNumberSrc = sliceFn("function formatComparableSumma
   assert.equal(noRate, "1. normal Kat 80 m² (%100)", `Oran boşken varsayılan %100 olmalı: "${noRate}"`);
 }
 
-// --- 2) formatComparableSummaryAreaCell — artik sadece toplam sayi ------
+// --- 2) formatComparableWorkplaceFloorAreasColumn — KAT ALANLARI hücresi
+{
+  const context = {};
+  vm.createContext(context);
+  vm.runInContext(escapeHtmlSrc, context);
+  vm.runInContext(normalizeComparableFloorNameSrc, context);
+  vm.runInContext(parseComparableNumberSrc, context);
+  vm.runInContext(formatComparableWorkplaceFloorDetailLabelSrc, context);
+  vm.runInContext(formatComparableWorkplaceFloorAreasColumnSrc, context);
+
+  const html = context.formatComparableWorkplaceFloorAreasColumn({
+    area: 115,
+    workplaceFloors: [
+      { floor: "Zemin kat", area: "100", rate: "100%" },
+      { floor: "Asma kat", area: "50", rate: "30%" },
+    ],
+  });
+  assert.equal(
+    html,
+    '<div class="comparable-summary-floor-area-line">Zemin Kat 100 m² (%100)</div>' +
+      '<div class="comparable-summary-floor-area-line">Asma Kat 50 m² (%30)</div>' +
+      '<div class="comparable-summary-floor-area-line">Toplam Etkili Alan = 115 m²</div>',
+    `KAT ALANLARI hücresi 3 satır (2 kat + toplam) içermeli: "${html}"`
+  );
+
+  const empty = context.formatComparableWorkplaceFloorAreasColumn({ area: 150, workplaceFloors: [] });
+  assert.equal(empty, "", `Kat detayı yokken KAT ALANLARI hücresi boş olmalı: "${empty}"`);
+
+  // HTML-escape: kat adı/oran metninde özel karakter olsa güvenli kaçırılmalı.
+  const escaped = context.formatComparableWorkplaceFloorAreasColumn({
+    area: 10,
+    workplaceFloors: [{ floor: "<script>alert(1)</script>", area: "10", rate: "100%" }],
+  });
+  assert.doesNotMatch(escaped, /<script>/, `KAT ALANLARI hücresi HTML-escape edilmeli (XSS riski): "${escaped}"`);
+}
+
+// --- 3) formatComparableSummaryAreaCell — artik sadece toplam sayi ------
 {
   const context = {};
   vm.createContext(context);
@@ -74,7 +117,7 @@ const formatComparableSummaryNumberSrc = sliceFn("function formatComparableSumma
   assert.equal(text, "115,00", `ALAN hücresi artık sadece toplam sayı olmalı (kat detayı ayrı satırlarda): "${text}"`);
 }
 
-// --- 3) getComparableValuationRows — kablolama entegrasyon testi --------
+// --- 4) getComparableValuationRows — kablolama entegrasyon testi --------
 {
   const calculateComparableMetricsSrc = sliceFn("function calculateComparableMetrics(");
   const calculateComparableAdjustmentSrc = sliceFn("function calculateComparableAdjustment(");

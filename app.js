@@ -29049,6 +29049,7 @@ function createComparableValuationSummaryTable() {
       <tr class="comparable-summary-group-row">
         <th rowspan="2" class="is-sticky">NO</th>
         <th rowspan="2">ALAN<span>m²</span></th>
+        <th rowspan="2">KAT ALANLARI<span>m² / %</span></th>
         <th colspan="4" class="is-group-sale">SATIŞ / PİYASA DEĞERLEMESİ</th>
         <th colspan="2" class="is-group-merit">ŞEREFİYE</th>
         <th rowspan="2" class="is-accent is-accent-sale">İND. M² BİRİM<span>TL/m²</span></th>
@@ -29092,7 +29093,7 @@ function createComparableValuationSummaryTable() {
   const tbody = document.createElement("tbody");
   if (!rows.length) {
     const emptyRow = document.createElement("tr");
-    emptyRow.innerHTML = `<td colspan="12" class="comparable-summary-empty">Hesaplanabilir emsal bulunamadı.</td>`;
+    emptyRow.innerHTML = `<td colspan="13" class="comparable-summary-empty">Hesaplanabilir emsal bulunamadı.</td>`;
     tbody.append(emptyRow);
     table.append(tbody);
     return table;
@@ -29102,6 +29103,7 @@ function createComparableValuationSummaryTable() {
     tr.innerHTML = `
       <th class="is-sticky comparable-summary-row-no">${escapeHtml(row.no)}</th>
       <td>${formatComparableSummaryAreaCell(row)}</td>
+      <td class="comparable-summary-floor-areas-cell">${formatComparableWorkplaceFloorAreasColumn(row)}</td>
       <td>${formatComparableSummaryMoney(row.askingPrice)}</td>
       <td>${formatComparableSummaryPercent(row.negotiationRate)}</td>
       <td>${formatComparableSummaryMoney(row.saleValue)}</td>
@@ -29129,9 +29131,6 @@ function createComparableValuationSummaryTable() {
       `;
     }
     tbody.append(tr);
-    if (!landMode) {
-      createComparableWorkplaceFloorDetailRows(row, 12).forEach((detailRow) => tbody.append(detailRow));
-    }
   });
   const average = calculateComparableValuationAverages(rows);
   const averageRow = document.createElement("tr");
@@ -29139,6 +29138,7 @@ function createComparableValuationSummaryTable() {
   averageRow.innerHTML = `
     <th class="is-sticky">ORTALAMA</th>
     <td>${formatComparableSummaryNumber(average.area, { decimals: 2 })}</td>
+    <td></td>
     <td>${formatComparableSummaryMoney(average.askingPrice)}</td>
     <td>${formatComparableSummaryPercent(average.negotiationRate)}</td>
     <td>${formatComparableSummaryMoney(average.saleValue)}</td>
@@ -29225,10 +29225,11 @@ function formatComparableSummaryAreaCell(row) {
   return formatComparableSummaryNumber(row.area, { decimals: 2 });
 }
 
-// Emsal Değerleme Tablosu'nda kat bazında alan/indirgeme girilmişse
-// (bkz. workplaceFloors) her kat için ayrı bir satır + bir toplam satırı
-// eklenir, örn. "Zemin Kat 100 m² (%100)", "Asma Kat 50 m² (%30)",
-// "Toplam Etkili Alan = 115 m²" (kullanıcı talebi).
+// Emsal Değerleme Tablosu'nda ALAN sütununun yanında ayrı bir "KAT
+// ALANLARI" sütunu bulunur; kat bazında alan/indirgeme girilmişse (bkz.
+// workplaceFloors) bu sütun hücresinde her kat kendi satırında, örn.
+// "Zemin Kat 100 m² (%100)", "Asma Kat 50 m² (%30)", en altta da
+// "Toplam Etkili Alan = 115 m²" gösterilir (kullanıcı talebi).
 function formatComparableWorkplaceFloorDetailLabel(entry) {
   const name = normalizeComparableFloorName(entry.floor);
   const title = name ? name.charAt(0).toLocaleUpperCase("tr-TR") + name.slice(1) : "Kat";
@@ -29240,29 +29241,17 @@ function formatComparableWorkplaceFloorDetailLabel(entry) {
   return `${title} Kat ${areaText} m² (%${rateText})`;
 }
 
-function createComparableWorkplaceFloorDetailRows(row, columnCount) {
+function formatComparableWorkplaceFloorAreasColumn(row) {
   const floors = (Array.isArray(row.workplaceFloors) ? row.workplaceFloors : []).filter((entry) =>
     String(entry?.area || "").trim()
   );
-  if (!floors.length) return [];
-  // ALAN sütununun altında hizalanır (NO sütununun altında değil): ilk
-  // hücre (NO) boş bırakılır, metin ikinci hücreden (ALAN) başlayarak
-  // kalan sütunlara yayılır.
-  const remainingColumns = Math.max(1, columnCount - 1);
-  const rows = floors.map((entry) => {
-    const tr = document.createElement("tr");
-    tr.className = "comparable-summary-floor-detail-row";
-    tr.innerHTML = `<th class="is-sticky"></th><td colspan="${remainingColumns}">${escapeHtml(formatComparableWorkplaceFloorDetailLabel(entry))}</td>`;
-    return tr;
-  });
-  const totalRow = document.createElement("tr");
-  totalRow.className = "comparable-summary-floor-detail-row comparable-summary-floor-detail-total";
-  const totalAreaText = Number.isFinite(row.area)
-    ? row.area.toLocaleString("tr-TR", { maximumFractionDigits: 2 })
-    : "";
-  totalRow.innerHTML = `<th class="is-sticky"></th><td colspan="${remainingColumns}">Toplam Etkili Alan = ${totalAreaText} m²</td>`;
-  rows.push(totalRow);
-  return rows;
+  if (!floors.length) return "";
+  const totalAreaText = Number.isFinite(row.area) ? row.area.toLocaleString("tr-TR", { maximumFractionDigits: 2 }) : "";
+  const lines = [
+    ...floors.map((entry) => formatComparableWorkplaceFloorDetailLabel(entry)),
+    `Toplam Etkili Alan = ${totalAreaText} m²`,
+  ];
+  return lines.map((line) => `<div class="comparable-summary-floor-area-line">${escapeHtml(line)}</div>`).join("");
 }
 
 function formatComparableSummaryNumber(value, options = {}) {

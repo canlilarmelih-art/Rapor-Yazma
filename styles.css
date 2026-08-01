@@ -3651,19 +3651,26 @@ td .free-lookup input {
   font-weight: 700;
 }
 
-.comparable-summary-floor-detail-row th {
-  border: none;
-  background: transparent;
+.comparable-summary-floor-areas-cell {
+  min-width: 140px;
+  white-space: normal;
 }
 
-.comparable-summary-floor-detail-row td {
-  padding: 3px 10px;
+.comparable-summary-floor-area-line {
+  padding: 2px 6px;
+  margin-bottom: 2px;
   font-size: 11px;
   font-weight: 400;
   color: var(--muted);
   background: rgba(238, 242, 239, 0.6);
   border: 1px solid var(--line);
   text-align: right;
+}
+
+.comparable-summary-floor-area-line:last-child {
+  margin-bottom: 0;
+  font-weight: 600;
+  color: var(--ink);
 }
 
 .comparable-summary-floor-detail-total td {
