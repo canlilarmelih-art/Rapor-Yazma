@@ -29048,21 +29048,27 @@ function createComparableValuationSummaryTable() {
   table.className = "comparable-valuation-summary-table";
   const rows = getComparableValuationRows();
   const landMode = rows.length > 0 && rows.every((row) => row.landComparable);
+  // KAT ALANLARI sütun grubu sadece işyeri benzeri raporlarda (İşyeri/
+  // Ofis/Ticari Bina) anlamlı; konut raporlarında bu sütunlar hiç
+  // doldurulmadığından tabloda gösterilmez (kullanıcı talebi).
+  const showFloorColumns = isWorkplaceLikeUsageNature();
+  const floorGroupHeaderHtml = showFloorColumns ? `<th colspan="3" class="is-group-floor">KAT ALANLARI</th>` : "";
+  const floorSubHeaderHtml = showFloorColumns
+    ? `<th class="is-group-floor">KAT</th><th class="is-group-floor">ALAN<span>m²</span></th><th class="is-group-floor">İND. ORANI<span>%</span></th>`
+    : "";
   table.innerHTML = `
     <thead>
       <tr class="comparable-summary-group-row">
         <th rowspan="2" class="is-sticky">NO</th>
         <th rowspan="2">ALAN<span>m²</span></th>
-        <th colspan="3" class="is-group-floor">KAT ALANLARI</th>
+        ${floorGroupHeaderHtml}
         <th colspan="4" class="is-group-sale">SATIŞ / PİYASA DEĞERLEMESİ</th>
         <th colspan="2" class="is-group-merit">ŞEREFİYE</th>
         <th rowspan="2" class="is-accent is-accent-sale">İND. M² BİRİM<span>TL/m²</span></th>
         <th colspan="3" class="is-group-rent">KİRA DEĞERLEMESİ</th>
       </tr>
       <tr class="comparable-summary-sub-row">
-        <th class="is-group-floor">KAT</th>
-        <th class="is-group-floor">ALAN<span>m²</span></th>
-        <th class="is-group-floor">İND. ORANI<span>%</span></th>
+        ${floorSubHeaderHtml}
         <th class="is-group-sale">TALEP EDİLEN DEĞER<span>TL</span></th>
         <th class="is-group-sale">P. PAYI</th>
         <th class="is-group-sale">PAZARLIKLI DEĞER<span>TL</span></th>
@@ -29100,19 +29106,23 @@ function createComparableValuationSummaryTable() {
   const tbody = document.createElement("tbody");
   if (!rows.length) {
     const emptyRow = document.createElement("tr");
-    emptyRow.innerHTML = `<td colspan="15" class="comparable-summary-empty">Hesaplanabilir emsal bulunamadı.</td>`;
+    emptyRow.innerHTML = `<td colspan="${showFloorColumns ? 15 : 12}" class="comparable-summary-empty">Hesaplanabilir emsal bulunamadı.</td>`;
     tbody.append(emptyRow);
     table.append(tbody);
     return table;
   }
+  const floorCellsHtml = (row) =>
+    showFloorColumns
+      ? `<td class="comparable-summary-floor-areas-cell">${formatComparableWorkplaceFloorColumn(row, "floor")}</td>
+      <td class="comparable-summary-floor-areas-cell">${formatComparableWorkplaceFloorColumn(row, "area")}</td>
+      <td class="comparable-summary-floor-areas-cell">${formatComparableWorkplaceFloorColumn(row, "rate")}</td>`
+      : "";
   rows.forEach((row) => {
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <th class="is-sticky comparable-summary-row-no">${escapeHtml(row.no)}</th>
       <td>${formatComparableSummaryAreaCell(row)}</td>
-      <td class="comparable-summary-floor-areas-cell">${formatComparableWorkplaceFloorColumn(row, "floor")}</td>
-      <td class="comparable-summary-floor-areas-cell">${formatComparableWorkplaceFloorColumn(row, "area")}</td>
-      <td class="comparable-summary-floor-areas-cell">${formatComparableWorkplaceFloorColumn(row, "rate")}</td>
+      ${floorCellsHtml(row)}
       <td>${formatComparableSummaryMoney(row.askingPrice)}</td>
       <td>${formatComparableSummaryPercent(row.negotiationRate)}</td>
       <td>${formatComparableSummaryMoney(row.saleValue)}</td>
@@ -29147,9 +29157,7 @@ function createComparableValuationSummaryTable() {
   averageRow.innerHTML = `
     <th class="is-sticky">ORTALAMA</th>
     <td>${formatComparableSummaryNumber(average.area, { decimals: 2 })}</td>
-    <td></td>
-    <td></td>
-    <td></td>
+    ${showFloorColumns ? "<td></td><td></td><td></td>" : ""}
     <td>${formatComparableSummaryMoney(average.askingPrice)}</td>
     <td>${formatComparableSummaryPercent(average.negotiationRate)}</td>
     <td>${formatComparableSummaryMoney(average.saleValue)}</td>

@@ -1,5 +1,12 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.280 - 2026-08-02 - Konut raporlarında Emsal Değerleme Tablosu'ndan KAT ALANLARI gizlendi
+
+- "KAT ALANLARI" sütun grubu (KAT/ALAN/İND. ORANI) artık sadece işyeri benzeri raporlarda (İşyeri/Ofis/Ticari Bina — `isWorkplaceLikeUsageNature()`) gösteriliyor; konut raporlarında bu 3 sütun hem başlıktan hem satırlardan tamamen kaldırılıyor (bu sütunlar konutta zaten hiç doldurulmuyordu).
+- `createComparableValuationSummaryTable()` içine `showFloorColumns` bayrağı eklendi; grup/alt başlık, veri satırı ve ORTALAMA satırındaki kat hücreleri buna göre koşullu üretiliyor. Boş-tablo mesajının `colspan`i de (15/12) buna göre ayarlanıyor.
+- Arazi (land) modundaki tablo bu değişiklikten etkilenmedi (zaten tamamen farklı bir başlık/satır şablonu kullanıyor).
+- Yedek gerekmedi (0.0.274'ün görünürlük düzeltmesi); geri alma: bu commit'i `git revert` ile geri al.
+
 ## 0.0.279 - 2026-08-02 - REGRESYON DÜZELTİLDİ: Konut emsallerinde M² birim değer hesaplanmıyordu
 
 - Kullanıcı bildirdi: "emsalleri güncelledik ama konut emsallerinde hiç bir m2 birim değeri otomatik hesaplanmıyor".
