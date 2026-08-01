@@ -1,5 +1,11 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.275 - 2026-08-01 - KAT ALANLARI satırlarında çerçeve yerine ayırıcı çizgi
+
+- Kat alanları alt sütunlarındaki (KAT/ALAN/İND. ORANI) her satırın etrafındaki kutu çerçevesi kaldırıldı; bunun yerine satırlar arasında ince bir alt çizgi (border-bottom) kullanılıyor, son satırda çizgi yok.
+- Sadece CSS değişikliği (`.comparable-summary-floor-area-line`); JS/veri mantığı değişmedi.
+- Yedek gerekmedi (0.0.272/0.0.274'ün görsel devamı); geri alma: bu commit'i `git revert` ile geri al.
+
 ## 0.0.274 - 2026-08-01 - KAT ALANLARI 3 alt sütuna bölündü (Kat / Alan / İnd. Oranı)
 
 - Emsal Değerleme Tablosu'ndaki "KAT ALANLARI" tek birleşik hücre yerine "SATIŞ / PİYASA DEĞERLEMESİ" gibi bir grup başlığı (colspan=3) oldu; altında KAT, ALAN, İND. ORANI adında 3 ayrı alt sütun var.

@@ -3663,18 +3663,16 @@ td .free-lookup input {
 }
 
 .comparable-summary-floor-area-line {
-  padding: 2px 6px;
-  margin-bottom: 2px;
+  padding: 3px 6px;
   font-size: 11px;
   font-weight: 400;
   color: var(--muted);
-  background: rgba(238, 242, 239, 0.6);
-  border: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
   text-align: right;
 }
 
 .comparable-summary-floor-area-line:last-child {
-  margin-bottom: 0;
+  border-bottom: none;
   font-weight: 600;
   color: var(--ink);
 }
