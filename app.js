@@ -708,6 +708,7 @@ const sections = [
         options: ["", "A", "B", "C", "D", "E", "F", "G"],
       },
       { key: "ekbExplanation", label: "EKB Açıklaması", type: "textarea", wide: true },
+      { key: "ekbRawText", label: "EKB Okuma Ham Verisi", type: "textarea", wide: true, readOnly: true },
       { key: "penaltyDecisionExplanation", label: "Cezai Karar Açıklaması", type: "textarea", wide: true },
       { key: "staticSuitabilityExplanation", label: "Statik Uygunluk Açıklaması", type: "textarea", wide: true },
       { key: "buildingInspectionExplanation", label: "Yapı Denetim Açıklaması", type: "textarea", wide: true, readOnly: true },
@@ -13712,7 +13713,10 @@ function buildCompactReportWordTableHtml(headers, rows, options = {}) {
   const safeRows = (Array.isArray(rows) ? rows : []).filter((row) => Array.isArray(row));
   const outer = "border:2pt solid #1f2a32;";
   const inner = "border:0.5pt solid #b8c4d8;";
-  const base = `${inner}padding:3pt 2pt;mso-padding-alt:3pt 2pt 3pt 2pt;vertical-align:middle;font-family:Arial,sans-serif;font-size:6pt;line-height:6pt;mso-line-height-rule:exactly;color:#152238;`;
+  // Word'de satir yuksekligi, hem sabit yukseklik hem de "exactly" kuralinda
+  // metni kirpabiliyor. Tum kompakt rapor tablolarini %20 gevsetip en az
+  // belirtilen yukseklikte kalacak sekilde uretiriz.
+  const base = `${inner}padding:3.6pt 2.4pt;mso-padding-alt:3.6pt 2.4pt 3.6pt 2.4pt;vertical-align:middle;font-family:Arial,sans-serif;font-size:6pt;line-height:7.2pt;mso-line-height-rule:at-least;color:#152238;`;
   const header = `${base}background:#d7e0f1;color:#2756a4;font-weight:700;text-align:center;`;
   const section = `${base}background:#e6edf8;color:#1f4e92;font-weight:700;`;
   const plain = `${base}background:#f8fbff;`;
@@ -13720,14 +13724,14 @@ function buildCompactReportWordTableHtml(headers, rows, options = {}) {
   const columnGroup = columnWidths.length
     ? `<colgroup>${columnWidths.map((width) => `<col style="width:${escapeHtml(width)};">`).join("")}</colgroup>`
     : "";
-  const headerHtml = `<tr height="21" style="height:0.55cm;mso-height-source:userset;mso-height-rule:exactly;">${headers.map((label) => `<th style="${header}">${escapeHtml(label)}</th>`).join("")}</tr>`;
+  const headerHtml = `<tr height="25" style="height:0.66cm;mso-height-source:userset;mso-height-rule:at-least;">${headers.map((label) => `<th style="${header}">${escapeHtml(label)}</th>`).join("")}</tr>`;
   const bodyHtml = safeRows.map((row, index) => {
     const isSection = Boolean(row.__section);
     if (isSection) {
-      return `<tr height="19" style="height:0.5cm;mso-height-source:userset;mso-height-rule:exactly;"><td colspan="${headers.length}" style="${section}">${formatWordCell(row[0])}</td></tr>`;
+      return `<tr height="23" style="height:0.6cm;mso-height-source:userset;mso-height-rule:at-least;"><td colspan="${headers.length}" style="${section}">${formatWordCell(row[0])}</td></tr>`;
     }
     const cellStyle = index % 2 ? zebra : plain;
-    return `<tr height="19" style="height:0.5cm;mso-height-source:userset;mso-height-rule:exactly;">${headers.map((_, cellIndex) => `<td style="${cellStyle}">${formatWordCell(row[cellIndex])}</td>`).join("")}</tr>`;
+    return `<tr height="23" style="height:0.6cm;mso-height-source:userset;mso-height-rule:at-least;">${headers.map((_, cellIndex) => `<td style="${cellStyle}">${formatWordCell(row[cellIndex])}</td>`).join("")}</tr>`;
   }).join("");
 
   return `<table class="word-table word-table-compact-report" style="border-collapse:collapse;width:100%;margin:6pt 0 12pt;table-layout:fixed;${outer}">
@@ -14313,6 +14317,7 @@ async function processEkbFile(file) {
     fileName: file.name,
     applied: {},
   };
+  state.fields.ekbRawText = text;
   applyEkbFieldsToReport({ force: true });
 }
 
@@ -21494,6 +21499,7 @@ function resetEkbDerivedFields() {
     "ekbEnergyClass",
     "ekbEmissionClass",
     "ekbExplanation",
+    "ekbRawText",
   ].forEach((key) => {
     state.fields[key] = "";
   });
@@ -26542,25 +26548,23 @@ function buildGabimExportGroups() {
 function buildGabimDataSetWordHtml() {
   const groups = buildGabimExportGroups();
   if (!groups.length) return "";
-  const ink = "#111827";
-  const muted = "#6b7280";
-  const line = "#c7cbd1";
-  const boxBg = "#eceef1";
-  const panelBg = "#f3f4f6";
-  const panelLine = "#e5e7eb";
+  const ink = "#383838";
+  const muted = "#666666";
+  const line = "#d6d6d6";
+  const boxBg = "#ffffff";
+  const panelBg = "#fafafa";
+  const panelLine = "#dedede";
 
   // Gabim Bölümü kendi sayfasında başlayıp tek sayfaya sığmalı (kullanıcı
   // talebi) — punto ve hücre boşlukları önceki sürüme göre bir miktar
   // daha sıkı tutulur.
-  const groupTitleStyle = `font-weight:700;font-size:7.5pt;color:${ink};border-top:1pt solid ${panelLine};padding:5pt 0 3pt;margin:0;`;
-  const subgroupLabelStyle = `font-size:6pt;font-weight:700;color:${muted};padding:2pt 5pt 0 0;width:62pt;vertical-align:top;`;
-  const labelStyle = `font-size:5.3pt;color:${muted};margin:0 0 1pt;line-height:1.1;`;
-  // Kullanıcı talebi: değer kutusu "gömülü" (içe çökük) görünmeli, arka
-  // planı açık gri olmalı. box-shadow Word'ün .doc HTML render motorunda
-  // gösterilmez (zararsız şekilde yok sayılır) ama tarayıcı/PDF önizlemede
-  // gömülü hissi verir; asıl garanti edilen kısım gri arka plan + border.
-  const boxStyle = `border:1pt solid ${line};border-radius:3pt;background:${boxBg};color:${ink};padding:2pt 4pt;font-size:6.3pt;line-height:1.2;min-height:9pt;box-shadow:inset 0 1pt 2pt rgba(17,24,39,0.12);`;
-  const cellStyle = `vertical-align:top;padding:1.5pt 5pt 4pt 0;`;
+  const groupTitleStyle = `font-weight:700;font-size:7pt;color:${ink};border:1pt solid ${panelLine};border-left:3pt solid #e86c49;background:#f2f2f2;padding:3pt 5pt;margin:5pt 0 3pt;`;
+  const subgroupLabelStyle = `font-size:6pt;font-weight:700;color:${muted};padding:3pt 5pt 0 0;width:68pt;vertical-align:top;`;
+  const labelStyle = `font-size:5.5pt;font-weight:700;color:${muted};margin:0 0 1pt;line-height:1.1;`;
+  // GDYS form dilindeki gibi değerler beyaz kutuda, ince gri çerçeveyle
+  // gösterilir. Keskin köşeli yapı Word'ün HTML motorunda da korunur.
+  const boxStyle = `border:1pt solid ${line};background:${boxBg};color:${ink};padding:2.5pt 4pt;font-size:6.3pt;line-height:1.15;min-height:9pt;`;
+  const cellStyle = `vertical-align:top;padding:2pt 5pt 4pt 0;`;
 
   const fieldsTable = (rows, columns) => {
     const rowsHtml = [];
@@ -26618,7 +26622,7 @@ function buildGabimDataSetWordHtml() {
     })
     .join("");
 
-  return groupsHtml;
+  return `<div class="gdys-gabim-sheet">${groupsHtml}</div>`;
 }
 
 function buildGabimGeneralExtraInfoRows() {

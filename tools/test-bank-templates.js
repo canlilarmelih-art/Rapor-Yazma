@@ -28,6 +28,15 @@ function assert(condition, message) {
 // --- app.js kaynağından gerçek anahtarları çıkar -----------------------
 const appSource = fs.readFileSync(path.join(appDir, "app.js"), "utf8");
 
+assert(
+  appSource.includes('height:0.6cm;mso-height-source:userset;mso-height-rule:at-least;'),
+  "Kompakt rapor tablolarinin govde satir yuksekligi %20 artirilmis en az 0,60 cm olmali.",
+);
+assert(
+  appSource.includes('height:0.66cm;mso-height-source:userset;mso-height-rule:at-least;'),
+  "Kompakt rapor tablolarinin baslik satir yuksekligi %20 artirilmis en az 0,66 cm olmali.",
+);
+
 const sectionsStart = appSource.indexOf("const sections = [");
 const sectionsEnd = appSource.indexOf("\n];", sectionsStart);
 assert(sectionsStart > -1 && sectionsEnd > sectionsStart, "app.js icinde sections dizisi bulunamadi.");
@@ -135,6 +144,27 @@ loader(
 
 const engine = sandboxWindow.RaporTemplates;
 assert(Boolean(engine), "window.RaporTemplates olusmadi.");
+
+const gdysPresentationOutput = engine.fillTemplate([
+  "<html><head><style>body{color:#000;}</style></head><body>",
+  "<h2>GDYS YARDIMCI BİLGİLER</h2><table><tr><td class=\"l\">İL</td><td>{{CITY}}</td></tr></table>",
+  "<h2>GABİM VERİ SETİ</h2>{{GABIM_VERI_SETI}}",
+  "<h2>ÇALIŞMA KAĞIDI</h2><table><tr><td>Plan</td></tr></table>",
+  "</body></html>",
+].join("")).html;
+assert(
+  (gdysPresentationOutput.match(/data-gdys-section="true"/g) || []).length === 3,
+  "GDYS ortak bölüm başlıkları dışa aktarımda işaretlenmedi.",
+);
+assert(
+  gdysPresentationOutput.includes("data-gdys-template-presentation=\"true\"") &&
+    gdysPresentationOutput.includes(".gdys-gabim-sheet"),
+  "GDYS ortak görünüm stilleri şablon çıktısına eklenmedi.",
+);
+assert(
+  appSource.includes('return `<div class="gdys-gabim-sheet">${groupsHtml}</div>`;'),
+  "Ortak GABİM veri seti GDYS form sarmalayıcısıyla üretilmiyor.",
+);
 
 stubState.fields.takbisSummary = "eski kaydedilmis takyidat metni";
 let selectedEncumbranceMode = "summary";

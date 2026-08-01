@@ -7,6 +7,20 @@
 - Çözüm: `.comparable-summary-floor-areas-cell` için `vertical-align: top` zorlandı; boş toplam satırı artık `&nbsp;` ile dolduruluyor, böylece her alt sütunun içerik yüksekliği eşit kalıyor ve satırlar tam hizalı.
 - Yedek gerekmedi (0.0.274'ün görsel düzeltmesi); geri alma: bu commit'i `git revert` ile geri al.
 
+## 0.0.277 - 2026-08-01 - EKB grafik oranından enerji sınıfı
+
+- EKB PDF metninde enerji/emisyon sınıfı harfi bulunamadığında, grafik bantlarının yanındaki oran okunarak sınıf otomatik tespit edilir.
+- Sırasıyla ilk oran enerji performans sınıfına, ikinci oran sera gazı emisyon sınıfına bağlanır; örneğin `80 - 99 88` satırı `C` sınıfını üretir.
+- Etiketli sınıf harfi içeren EKB'lerde mevcut doğrudan okuma önceliklidir; grafik oranı yalnızca eksik verinin geri kazanımı için kullanılır.
+- Yedek: `backups/before-ekb-graph-class-fallback_2026-08-01_23-31-25`.
+
+## 0.0.276 - 2026-08-01 - EKB okuma ham verisi
+
+- Açıklamalar bölümünde EKB Açıklamasının hemen altına salt okunur `EKB Okuma Ham Verisi` alanı eklendi.
+- EKB PDF metin katmanından okunan ham içerik yükleme anında bu alana da aktarılır; kullanıcı ayrıştırıcının hangi metni gördüğünü doğrudan inceleyip kopyalayabilir.
+- Yeni bir EKB yüklenirken önceki ham veri de türetilmiş EKB alanlarıyla birlikte temizlenir.
+- Yedek: `backups/before-ekb-raw-explanation_2026-08-01_23-17-57`.
+
 ## 0.0.275 - 2026-08-01 - KAT ALANLARI satırlarında çerçeve yerine ayırıcı çizgi
 
 - Kat alanları alt sütunlarındaki (KAT/ALAN/İND. ORANI) her satırın etrafındaki kutu çerçevesi kaldırıldı; bunun yerine satırlar arasında ince bir alt çizgi (border-bottom) kullanılıyor, son satırda çizgi yok.
@@ -34,11 +48,25 @@
 - `createComparableWorkplaceFloorDetailRows` kaldırıldı; yerine `formatComparableWorkplaceFloorAreasColumn` eklendi (hücre içi çok satırlı HTML üretir, HTML-escape dahil). Arazi (land) modundaki tablo bu sütunu içermez (arazi emsallerinde kat kavramı yok).
 - Yedek gerekmedi (0.0.268/0.0.270'in devamı, aynı özelliğin düzenlemesi); geri alma: bu commit'i `git revert` ile geri al.
 
+## 0.0.271 - 2026-08-01 - İncelenen belgeler ve takyidat tablo satırları
+
+- Ortak kompakt Word tablo üreticisinde başlık satır yüksekliği %20 artırılarak `0,66 cm`, gövde ve bölüm satırları ise `0,60 cm` yapıldı.
+- Word'ün `exactly` satır yüksekliği sebebiyle metni kesmesini önlemek için satırlar `at-least` kuralıyla üretilir; uzun açıklamalarda satır gerektiğinde büyür.
+- Bu kural İncelenen Belgeler ve Takyidat tablolarının yanı sıra aynı ortak üreticiyi kullanan rapor tablolarına uygulanır.
+- Yedek: `backups/before-word-table-row-height_2026-08-01_19-40-43`.
+
 ## 0.0.270 - 2026-08-01 - Emsal kat detayı: ALAN sütunu altında, çerçeveli, sağa yaslı
 
 - 0.0.268'de eklenen kat detay satırları, NO sütununun altında değil ALAN sütununun altında hizalanacak şekilde düzeltildi (ilk hücre boş bırakılır, metin ikinci hücreden başlar).
 - Her kat detay satırı artık kendi hücresi içinde çerçeveli (border) ve sağa yaslı gösteriliyor.
 - Yedek gerekmedi (aynı özelliğin küçük bir düzeltmesi); geri alma: bu commit'i `git revert` ile geri al.
+
+## 0.0.269 - 2026-08-01 - GDYS yardımcı şablon görünümü
+
+- Tüm banka raporlarında bulunan ortak `GDYS Yardımcı Bilgiler`, `GABİM Veri Seti` ve `Çalışma Kağıdı` blokları GDYS ekranlarındaki açık zemin, ince gri çerçeve, antrasit bölüm başlığı ve turuncu vurgu çizgisiyle dışa aktarılır.
+- Bankaya özel GABİM alanları ve raporun diğer banka temaları değiştirilmedi; yalnızca şablon sonundaki ortak GABİM veri seti form grupları GDYS biçimine taşındı.
+- Ortak `{{GABIM_VERI_SETI}}` çıktısındaki grup başlıkları ve değer kutuları, Word uyumlu keskin köşeli gri form alanları olarak yeniden düzenlendi.
+- Yedek: `backups/before-gdys-template-presentation_2026-08-01_19-28-51`.
 
 ## 0.0.268 - 2026-08-01 - Emsal Değerleme Tablosu kat detayı ayrı satırlara alındı
 
@@ -62,7 +90,7 @@
 
 - İş Bankası ekranında aynı emsal değerleme tablosu zaten üstte yer aldığı için ikinci `{{EMSAL_DEGERLEME_TABLOSU}}` kaldırıldı. Şablon regresyon testi, İş Bankası'nı bu ek tablo zorunluluğundan istisna tutar. Yedek: `backups/before-remove-isbank-duplicate-comparable-table_2026-08-01_19-02-43`.
 
-Son güncelleme: 2026-08-01 · Servis edilen sürüm: **app.js?v=20260801-1930** (styles.css?v=20260801-1930, src/templates/template-engine.js?v=20260801-1855, cloud/cloud-sync.js?v=20260719-2200, cloud/report-library.js?v=20260724-1330, halkbank-risk-rules.js?v=20260707-1812)
+Son güncelleme: 2026-08-01 · Servis edilen sürüm: **app.js?v=20260801-2355** (styles.css?v=20260801-1930, src/templates/template-engine.js?v=20260801-1855, cloud/cloud-sync.js?v=20260719-2200, cloud/report-library.js?v=20260724-1330, halkbank-risk-rules.js?v=20260707-1812)
 
 Bu belge, bir sonraki geliştirici/oturum için projeyi çalıştırma, doğrulama ve bu
 oturumda yapılanları özetler.

@@ -141,7 +141,47 @@
         line.match(/\b\d{1,3}(?:\.\d{3})+,\d+\s+([A-G])\s*$/i);
       if (graphMatch) matches.push(graphMatch[1].toUpperCase());
     });
-    return matches[occurrenceIndex] || matches[0] || "";
+    // İkinci grafik yoksa ilk grafiği tekrar kullanma. Sol grafik enerji,
+    // sağ grafik sera gazı emisyon sınıfıdır; ilk sonucu emisyona kopyalamak
+    // yanlış bir sınıf üretiyordu.
+    return matches[occurrenceIndex] || "";
+  }
+
+  function findGraphClassFromRatio(lines, occurrenceIndex = 0) {
+    const matches = [];
+    const rangePattern = /(\d+(?:[.,]\d+)?)\s*[-–]\s*(\d+(?:[.,]\d+)?)/g;
+    const numberPattern = /\d+(?:[.,]\d+)?/g;
+
+    lines.forEach((line) => {
+      const ranges = Array.from(line.matchAll(rangePattern));
+      ranges.forEach((range, rangeIndex) => {
+        const lower = Number.parseFloat(range[1].replace(",", "."));
+        const upper = Number.parseFloat(range[2].replace(",", "."));
+        if (!Number.isFinite(lower) || !Number.isFinite(upper)) return;
+
+        const afterRangeIndex = (range.index || 0) + range[0].length;
+        const nextRangeIndex = rangeIndex < ranges.length - 1 ? ranges[rangeIndex + 1].index : line.length;
+        const ratioText = line.slice(afterRangeIndex, nextRangeIndex);
+        const ratio = Array.from(ratioText.matchAll(numberPattern))
+          .map((match) => Number.parseFloat(match[0].replace(",", ".")))
+          // Yan yana yazılmış iki grafik aralığı ("0 - 39 0 - 39") oran
+          // değildir. Sadece bant sınırından farklı olan ek değer ölçümdür.
+          .find((value) => Number.isFinite(value)
+            && value !== lower
+            && value !== upper);
+        if (!Number.isFinite(ratio)) return;
+
+        // EKB grafiğinde sınıf harfi görünmese bile aralıklar sabittir.
+        // Aralığın yanında yer alan oran hangi bantta ise o sınıf seçilir.
+        const classMatch = [
+          [0, 39, "A"], [40, 79, "B"], [80, 99, "C"], [100, 119, "D"],
+          [120, 139, "E"], [140, 174, "F"], [175, Infinity, "G"],
+        ].find(([min, max]) => ratio >= min && ratio <= max);
+        if (classMatch) matches.push(classMatch[2]);
+      });
+    });
+
+    return matches[occurrenceIndex] || "";
   }
 
   function extractEkbClasses(lines, text) {
@@ -151,8 +191,14 @@
     if (!energyClass) {
       energyClass = findGraphClass(lines, 0);
     }
+    if (!energyClass) {
+      energyClass = findGraphClassFromRatio(lines, 0);
+    }
     if (!emissionClass) {
       emissionClass = findGraphClass(lines, 1);
+    }
+    if (!emissionClass) {
+      emissionClass = findGraphClassFromRatio(lines, 1);
     }
     if (!emissionClass && energyClass && /SERA|EMISYON/i.test(foldTurkish(text))) {
       emissionClass = findGraphClass(lines, 1) || "";

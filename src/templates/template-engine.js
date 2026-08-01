@@ -849,6 +849,71 @@
     }
   }
 
+  // GDYS'nin ortak çalışma sayfası dilini yalnızca bu üç yardımcı bölüme
+  // uygular. Bankaya özgü şablon gövdeleri ve GABİM alanları değişmeden kalır.
+  function applyGdysTemplatePresentation(templateText) {
+    const source = String(templateText || "");
+    if (!/(?:GABIM_VERI_SETI|GDYS\s+YARDIMCI|ÇALIŞMA\s+KAĞIDI)/i.test(source)) return source;
+
+    const styles = `
+<style data-gdys-template-presentation="true">
+  [data-gdys-section] {
+    display: block;
+    margin: 12pt 0 5pt !important;
+    padding: 4pt 7pt !important;
+    border: 1pt solid #545454 !important;
+    border-bottom: 3pt solid #e86c49 !important;
+    background: #4b4b4b !important;
+    color: #ffffff !important;
+    font-family: Arial, sans-serif !important;
+    font-size: 8pt !important;
+    font-weight: 700 !important;
+    line-height: 1.1 !important;
+  }
+  [data-gdys-section] + table {
+    width: 100% !important;
+    margin: 0 0 10pt !important;
+    border-collapse: collapse !important;
+    border: 1pt solid #d8d8d8 !important;
+    background: #ffffff !important;
+    font-family: Arial, sans-serif !important;
+    font-size: 6.5pt !important;
+  }
+  [data-gdys-section] + table td,
+  [data-gdys-section] + table th {
+    border: 1pt solid #e0e0e0 !important;
+    padding: 3pt 4pt !important;
+    background: #ffffff !important;
+    color: #383838 !important;
+    vertical-align: top !important;
+    line-height: 1.15 !important;
+  }
+  [data-gdys-section] + table td.l,
+  [data-gdys-section] + table th {
+    background: #f2f2f2 !important;
+    color: #4b4b4b !important;
+    font-weight: 700 !important;
+  }
+  .gdys-gabim-sheet {
+    margin: 0 0 10pt;
+    padding: 7pt 8pt 5pt;
+    border: 1pt solid #d8d8d8;
+    background: #ffffff;
+    font-family: Arial, sans-serif;
+  }
+</style>`;
+
+    const withStyles = source.replace(/<\/head\s*>/i, `${styles}\n</head>`);
+    return withStyles.replace(
+      /(<(?:h2|div)\b[^>]*)(>[^<]*(?:GDYS\s+YARDIMCI|GABİM\s+VERİ\s+SETİ|GABIM\s+VERI\s+SETI|ÇALIŞMA\s+KAĞIDI)[^<]*<\/(?:h2|div)>)/gi,
+      (match, opening, content) => (
+        /data-gdys-section=/i.test(opening)
+          ? `${opening}${content}`
+          : `${opening} data-gdys-section="true"${content}`
+      ),
+    );
+  }
+
   // Şablon metnindeki tüm {{...}} işaretlerini doldurur. HTML yorumları
   // (<!-- ... -->) önce ÇIKARILIR: hem şablon içi notlar Word çıktısına
   // sızmaz hem de yorumlarda örnek olarak yazılan {{...}} ifadeleri
@@ -857,7 +922,7 @@
     generatedTextCache = null; // her dolumda güncel değerler
     foldedFieldIndex = null;
     const missing = [];
-    const withoutComments = String(templateText || "").replace(/<!--[\s\S]*?-->/g, "");
+    const withoutComments = applyGdysTemplatePresentation(templateText).replace(/<!--[\s\S]*?-->/g, "");
     const html = withoutComments.replace(/\{\{([^{}]+)\}\}/g, (match, name) => {
       const trimmed = String(name || "").trim();
       const resolved = resolveToken(trimmed);
