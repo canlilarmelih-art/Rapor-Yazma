@@ -29245,10 +29245,14 @@ function createComparableWorkplaceFloorDetailRows(row, columnCount) {
     String(entry?.area || "").trim()
   );
   if (!floors.length) return [];
+  // ALAN sütununun altında hizalanır (NO sütununun altında değil): ilk
+  // hücre (NO) boş bırakılır, metin ikinci hücreden (ALAN) başlayarak
+  // kalan sütunlara yayılır.
+  const remainingColumns = Math.max(1, columnCount - 1);
   const rows = floors.map((entry) => {
     const tr = document.createElement("tr");
     tr.className = "comparable-summary-floor-detail-row";
-    tr.innerHTML = `<td colspan="${columnCount}">${escapeHtml(formatComparableWorkplaceFloorDetailLabel(entry))}</td>`;
+    tr.innerHTML = `<th class="is-sticky"></th><td colspan="${remainingColumns}">${escapeHtml(formatComparableWorkplaceFloorDetailLabel(entry))}</td>`;
     return tr;
   });
   const totalRow = document.createElement("tr");
@@ -29256,7 +29260,7 @@ function createComparableWorkplaceFloorDetailRows(row, columnCount) {
   const totalAreaText = Number.isFinite(row.area)
     ? row.area.toLocaleString("tr-TR", { maximumFractionDigits: 2 })
     : "";
-  totalRow.innerHTML = `<td colspan="${columnCount}">Toplam Etkili Alan = ${totalAreaText} m²</td>`;
+  totalRow.innerHTML = `<th class="is-sticky"></th><td colspan="${remainingColumns}">Toplam Etkili Alan = ${totalAreaText} m²</td>`;
   rows.push(totalRow);
   return rows;
 }

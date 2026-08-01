@@ -1,5 +1,11 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.270 - 2026-08-01 - Emsal kat detayı: ALAN sütunu altında, çerçeveli, sağa yaslı
+
+- 0.0.268'de eklenen kat detay satırları, NO sütununun altında değil ALAN sütununun altında hizalanacak şekilde düzeltildi (ilk hücre boş bırakılır, metin ikinci hücreden başlar).
+- Her kat detay satırı artık kendi hücresi içinde çerçeveli (border) ve sağa yaslı gösteriliyor.
+- Yedek gerekmedi (aynı özelliğin küçük bir düzeltmesi); geri alma: bu commit'i `git revert` ile geri al.
+
 ## 0.0.268 - 2026-08-01 - Emsal Değerleme Tablosu kat detayı ayrı satırlara alındı
 
 - "Emsal Değerleme Tablosu"nda (ekran özet paneli) kat bazında alan/indirgeme girilen emsallerde ALAN hücresinin altındaki küçük yazı yerine, her kat için ayrı bir tablo satırı + bir toplam satırı eklendi: `Zemin Kat 100 m² (%100)`, `Asma Kat 50 m² (%30)`, `Toplam Etkili Alan = 115 m²`.
