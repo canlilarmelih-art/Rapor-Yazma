@@ -1,5 +1,12 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.274 - 2026-08-01 - KAT ALANLARI 3 alt sütuna bölündü (Kat / Alan / İnd. Oranı)
+
+- Emsal Değerleme Tablosu'ndaki "KAT ALANLARI" tek birleşik hücre yerine "SATIŞ / PİYASA DEĞERLEMESİ" gibi bir grup başlığı (colspan=3) oldu; altında KAT, ALAN, İND. ORANI adında 3 ayrı alt sütun var.
+- Her alt sütunun hücresinde ilgili değer kat başına satır satır, en altta da toplam satırı gösteriliyor: KAT sütununda "Zemin Kat / Asma Kat / Toplam", ALAN sütununda "100 m² / 50 m² / 115 m²" (son satır indirgenmiş toplam), İND. ORANI sütununda "%100 / %30 / (boş)".
+- `formatComparableWorkplaceFloorDetailLabel` + `formatComparableWorkplaceFloorAreasColumn` (birleşik tek satır) kaldırıldı; yerine `formatComparableWorkplaceFloorColumn(row, key)` geldi (key: "floor"/"area"/"rate").
+- Yedek gerekmedi (0.0.268/0.0.270/0.0.272/0.0.273'ün devamı, aynı özelliğin düzenlemesi); geri alma: bu commit'i `git revert` ile geri al.
+
 ## 0.0.273 - 2026-08-01 - Emsal ALAN sütunu: ham toplam alan, hesaplama indirgenmiş alanda
 
 - Kat bazında girilen emsallerde ALAN sütunu artık indirgeme UYGULANMADAN toplam alanı gösterir (ör. Zemin 100 m² + Asma 50 m² = 150 m²).

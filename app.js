@@ -29049,13 +29049,16 @@ function createComparableValuationSummaryTable() {
       <tr class="comparable-summary-group-row">
         <th rowspan="2" class="is-sticky">NO</th>
         <th rowspan="2">ALAN<span>m²</span></th>
-        <th rowspan="2">KAT ALANLARI<span>m² / %</span></th>
+        <th colspan="3" class="is-group-floor">KAT ALANLARI</th>
         <th colspan="4" class="is-group-sale">SATIŞ / PİYASA DEĞERLEMESİ</th>
         <th colspan="2" class="is-group-merit">ŞEREFİYE</th>
         <th rowspan="2" class="is-accent is-accent-sale">İND. M² BİRİM<span>TL/m²</span></th>
         <th colspan="3" class="is-group-rent">KİRA DEĞERLEMESİ</th>
       </tr>
       <tr class="comparable-summary-sub-row">
+        <th class="is-group-floor">KAT</th>
+        <th class="is-group-floor">ALAN<span>m²</span></th>
+        <th class="is-group-floor">İND. ORANI<span>%</span></th>
         <th class="is-group-sale">TALEP EDİLEN DEĞER<span>TL</span></th>
         <th class="is-group-sale">P. PAYI</th>
         <th class="is-group-sale">PAZARLIKLI DEĞER<span>TL</span></th>
@@ -29093,7 +29096,7 @@ function createComparableValuationSummaryTable() {
   const tbody = document.createElement("tbody");
   if (!rows.length) {
     const emptyRow = document.createElement("tr");
-    emptyRow.innerHTML = `<td colspan="13" class="comparable-summary-empty">Hesaplanabilir emsal bulunamadı.</td>`;
+    emptyRow.innerHTML = `<td colspan="15" class="comparable-summary-empty">Hesaplanabilir emsal bulunamadı.</td>`;
     tbody.append(emptyRow);
     table.append(tbody);
     return table;
@@ -29103,7 +29106,9 @@ function createComparableValuationSummaryTable() {
     tr.innerHTML = `
       <th class="is-sticky comparable-summary-row-no">${escapeHtml(row.no)}</th>
       <td>${formatComparableSummaryAreaCell(row)}</td>
-      <td class="comparable-summary-floor-areas-cell">${formatComparableWorkplaceFloorAreasColumn(row)}</td>
+      <td class="comparable-summary-floor-areas-cell">${formatComparableWorkplaceFloorColumn(row, "floor")}</td>
+      <td class="comparable-summary-floor-areas-cell">${formatComparableWorkplaceFloorColumn(row, "area")}</td>
+      <td class="comparable-summary-floor-areas-cell">${formatComparableWorkplaceFloorColumn(row, "rate")}</td>
       <td>${formatComparableSummaryMoney(row.askingPrice)}</td>
       <td>${formatComparableSummaryPercent(row.negotiationRate)}</td>
       <td>${formatComparableSummaryMoney(row.saleValue)}</td>
@@ -29138,6 +29143,8 @@ function createComparableValuationSummaryTable() {
   averageRow.innerHTML = `
     <th class="is-sticky">ORTALAMA</th>
     <td>${formatComparableSummaryNumber(average.area, { decimals: 2 })}</td>
+    <td></td>
+    <td></td>
     <td></td>
     <td>${formatComparableSummaryMoney(average.askingPrice)}</td>
     <td>${formatComparableSummaryPercent(average.negotiationRate)}</td>
@@ -29230,34 +29237,39 @@ function formatComparableSummaryAreaCell(row) {
   return formatComparableSummaryNumber(row.area, { decimals: 2 });
 }
 
-// Emsal Değerleme Tablosu'nda ALAN sütununun yanında ayrı bir "KAT
-// ALANLARI" sütunu bulunur; kat bazında alan/indirgeme girilmişse (bkz.
-// workplaceFloors) bu sütun hücresinde her kat kendi satırında, örn.
-// "Zemin Kat 100 m² (%100)", "Asma Kat 50 m² (%30)", en altta da
-// "Toplam Etkili Alan = 115 m²" gösterilir (kullanıcı talebi).
-function formatComparableWorkplaceFloorDetailLabel(entry) {
-  const name = normalizeComparableFloorName(entry.floor);
-  const title = name ? name.charAt(0).toLocaleUpperCase("tr-TR") + name.slice(1) : "Kat";
-  const areaNumber = parseComparableNumber(entry.area);
-  const areaText = Number.isFinite(areaNumber)
-    ? areaNumber.toLocaleString("tr-TR", { maximumFractionDigits: 2 })
-    : String(entry.area || "").trim();
+// Emsal Değerleme Tablosu'nda ALAN sütununun yanında "KAT ALANLARI" grup
+// başlığı altında 3 alt sütun bulunur: KAT, ALAN, İND. ORANI. Kat bazında
+// alan/indirgeme girilmişse (bkz. workplaceFloors) her alt sütunun
+// hücresinde kendi değeri satır satır, en altta da toplam satırı
+// gösterilir (kullanıcı talebi): "Zemin Kat" / "100 m²" / "%100",
+// "Asma Kat" / "50 m²" / "%30", "Toplam" / "115 m²" / "".
+function formatComparableWorkplaceFloorColumnLine(entry, key) {
+  if (key === "floor") {
+    const name = normalizeComparableFloorName(entry.floor);
+    return name ? `${name.charAt(0).toLocaleUpperCase("tr-TR")}${name.slice(1)} Kat` : "Kat";
+  }
+  if (key === "area") {
+    const areaNumber = parseComparableNumber(entry.area);
+    return Number.isFinite(areaNumber)
+      ? `${areaNumber.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} m²`
+      : String(entry.area || "").trim();
+  }
   const rateText = String(entry.rate || "100%").replace("%", "").trim() || "100";
-  return `${title} Kat ${areaText} m² (%${rateText})`;
+  return `%${rateText}`;
 }
 
-function formatComparableWorkplaceFloorAreasColumn(row) {
+function formatComparableWorkplaceFloorColumn(row, key) {
   const floors = (Array.isArray(row.workplaceFloors) ? row.workplaceFloors : []).filter((entry) =>
     String(entry?.area || "").trim()
   );
   if (!floors.length) return "";
-  const totalAreaText = Number.isFinite(row.workplaceEffectiveArea)
-    ? row.workplaceEffectiveArea.toLocaleString("tr-TR", { maximumFractionDigits: 2 })
-    : "";
-  const lines = [
-    ...floors.map((entry) => formatComparableWorkplaceFloorDetailLabel(entry)),
-    `Toplam Etkili Alan = ${totalAreaText} m²`,
-  ];
+  const totalLine =
+    key === "floor"
+      ? "Toplam"
+      : key === "area" && Number.isFinite(row.workplaceEffectiveArea)
+        ? `${row.workplaceEffectiveArea.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} m²`
+        : "";
+  const lines = [...floors.map((entry) => formatComparableWorkplaceFloorColumnLine(entry, key)), totalLine];
   return lines.map((line) => `<div class="comparable-summary-floor-area-line">${escapeHtml(line)}</div>`).join("");
 }
 

@@ -3610,9 +3610,15 @@ td .free-lookup input {
   color: var(--green);
 }
 
+.comparable-valuation-summary-table th.is-group-floor {
+  background: var(--surface-muted);
+  color: var(--ink);
+}
+
 .comparable-summary-sub-row th.is-group-sale,
 .comparable-summary-sub-row th.is-group-merit,
-.comparable-summary-sub-row th.is-group-rent {
+.comparable-summary-sub-row th.is-group-rent,
+.comparable-summary-sub-row th.is-group-floor {
   color: var(--muted);
 }
 
@@ -3652,7 +3658,7 @@ td .free-lookup input {
 }
 
 .comparable-summary-floor-areas-cell {
-  min-width: 140px;
+  min-width: 70px;
   white-space: normal;
 }
 
