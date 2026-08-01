@@ -1,9 +1,38 @@
 # Rapor Yazma Programı — Handoff Notu
 
-Son güncelleme: 2026-08-01 · Servis edilen sürüm: **app.js?v=20260801-1234** (styles.css?v=20260801-1149, src/templates/template-engine.js?v=20260728-0138, cloud/cloud-sync.js?v=20260719-2200, cloud/report-library.js?v=20260724-1330, halkbank-risk-rules.js?v=20260707-1812)
+Son güncelleme: 2026-08-01 · Servis edilen sürüm: **app.js?v=20260801-1315** (styles.css?v=20260801-1315, src/templates/template-engine.js?v=20260728-0138, cloud/cloud-sync.js?v=20260719-2200, cloud/report-library.js?v=20260724-1330, halkbank-risk-rules.js?v=20260707-1812)
 
 Bu belge, bir sonraki geliştirici/oturum için projeyi çalıştırma, doğrulama ve bu
 oturumda yapılanları özetler.
+
+## 0.0.256 - 2026-08-01 - Emsal Değerleme Tablosu'na kat bazlı alan detayı eklendi
+
+Kullanıcı talebi: "Emsaller tablosu kat bazında girilen emsalleri gösterir
+şekilde düzenleme planı" — önce araştırma yapıldı, iki kapsam netleşti:
+
+1. **Emsal Değerleme Tablosu (ekran özeti)** — ALAN hücresi sadece toplam
+   sayıyı (örn. 115,00) gösteriyordu, hangi katın kaç m² olduğunu
+   göstermiyordu. **Bu güncellemede eklendi.**
+2. **Word/rapor çıktısı** — kontrol edildi, `buildComparableMatrixWordTableHtml()`
+   zaten "Kat Bazında Alan / İndirgeme Oranı" satırını gösteriyordu (0.0.250
+   sırasında otomatik gelmişti). **Ek değişiklik gerekmedi.**
+
+- Yeni `formatComparableSummaryAreaCell(row)`: ALAN sayısının altına,
+  `row.workplaceFloorsSummary` doluysa küçük gri bir kat-detay satırı ekler
+  (örn. "Zemin kat: 100 m² (100%), Asma kat: 50 m² (30%)"), HTML-escape
+  ile. Detay yoksa (kat bazlı veri girilmemiş emsal) sadece sayı görünür.
+- `getComparableValuationRows()`: her satıra `workplaceFloorsSummary:
+  formatComparableWorkplaceFloorsSummary(row)` eklendi.
+- Yeni CSS `.comparable-summary-floor-detail` (10px, muted, blok).
+- Yeni test: `tools/test-comparable-valuation-summary-floor-detail.js`
+  (saf HTML üretimi + XSS-escape + `getComparableValuationRows` kablolama
+  entegrasyonu; kural kaldırıldığında testin gerçekten başarısız olduğu
+  doğrulandı).
+- Doğrulama: `npm run verify` (42 test) geçti; gerçek tarayıcıda E1
+  satırında kat detayının doğru göründüğü, ORTALAMA satırının etkilenmediği
+  ekran görüntüsüyle doğrulandı.
+- Geri alma: `git revert <bu commit hash>` veya yedek klasöründen
+  `backups/before-comparable-workplace-floor-reduction_2026-08-01_11-23-32/`.
 
 ## 0.0.255 - 2026-08-01 - İşyeri emsallerinde Oda Sayısı satırı kaldırıldı (matris + açıklama)
 

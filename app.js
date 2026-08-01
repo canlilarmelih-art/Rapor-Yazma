@@ -29024,7 +29024,7 @@ function createComparableValuationSummaryTable() {
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <th class="is-sticky comparable-summary-row-no">${escapeHtml(row.no)}</th>
-      <td>${formatComparableSummaryNumber(row.area, { decimals: 2 })}</td>
+      <td>${formatComparableSummaryAreaCell(row)}</td>
       <td>${formatComparableSummaryMoney(row.askingPrice)}</td>
       <td>${formatComparableSummaryPercent(row.negotiationRate)}</td>
       <td>${formatComparableSummaryMoney(row.saleValue)}</td>
@@ -29098,6 +29098,7 @@ function getComparableValuationRows() {
         no: `E${index + 1}`,
         landComparable: isLandComparable(row),
         area: metrics.adjustedArea,
+        workplaceFloorsSummary: formatComparableWorkplaceFloorsSummary(row),
         calculatedEmsalArea: metrics.calculatedEmsalArea,
         askingPrice: metrics.askingPrice,
         negotiationRate: metrics.negotiationRate,
@@ -29138,6 +29139,16 @@ function calculateComparableValuationAverages(rows = getComparableValuationRows(
     rentUnitValue: averageOf("rentUnitValue"),
     adjustedRentUnitValue: averageOf("adjustedRentUnitValue"),
   };
+}
+
+// Emsal Değerleme Tablosu'ndaki ALAN hücresi: kat bazında alan/indirgeme
+// girilmişse (bkz. workplaceFloors) toplam alanın altında küçük bir kat
+// detayı satırı gösterir, örn. "Zemin kat: 100 m² (100%), Asma kat: 50 m²
+// (30%)" (kullanıcı talebi).
+function formatComparableSummaryAreaCell(row) {
+  const areaText = formatComparableSummaryNumber(row.area, { decimals: 2 });
+  if (!row.workplaceFloorsSummary) return areaText;
+  return `${areaText}<span class="comparable-summary-floor-detail">${escapeHtml(row.workplaceFloorsSummary)}</span>`;
 }
 
 function formatComparableSummaryNumber(value, options = {}) {

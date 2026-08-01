@@ -3651,6 +3651,15 @@ td .free-lookup input {
   font-weight: 700;
 }
 
+.comparable-summary-floor-detail {
+  display: block;
+  margin-top: 2px;
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--muted);
+  white-space: normal;
+}
+
 /* Body rows */
 .comparable-valuation-summary-table tbody tr:nth-child(even) td {
   background: rgba(238, 242, 239, 0.45);
