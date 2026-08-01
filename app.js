@@ -29174,10 +29174,15 @@ function getComparableValuationRows() {
   return getComparableRows()
     .map((row, index) => {
       const metrics = calculateComparableMetrics(row);
+      const landComparable = isLandComparable(row);
       return {
         no: `E${index + 1}`,
-        landComparable: isLandComparable(row),
-        area: metrics.adjustedArea,
+        landComparable,
+        // ALAN sütunu toplam (indirgeme UYGULANMADAN) emsal alanını gösterir;
+        // hesaplamalarda kullanılan indirgenmiş alan workplaceEffectiveArea'da
+        // ayrıca taşınır (kullanıcı talebi).
+        area: landComparable ? metrics.adjustedArea : metrics.workplaceTotalArea,
+        workplaceEffectiveArea: metrics.adjustedArea,
         workplaceFloors: Array.isArray(row.workplaceFloors) ? row.workplaceFloors : [],
         calculatedEmsalArea: metrics.calculatedEmsalArea,
         askingPrice: metrics.askingPrice,
@@ -29246,7 +29251,9 @@ function formatComparableWorkplaceFloorAreasColumn(row) {
     String(entry?.area || "").trim()
   );
   if (!floors.length) return "";
-  const totalAreaText = Number.isFinite(row.area) ? row.area.toLocaleString("tr-TR", { maximumFractionDigits: 2 }) : "";
+  const totalAreaText = Number.isFinite(row.workplaceEffectiveArea)
+    ? row.workplaceEffectiveArea.toLocaleString("tr-TR", { maximumFractionDigits: 2 })
+    : "";
   const lines = [
     ...floors.map((entry) => formatComparableWorkplaceFloorDetailLabel(entry)),
     `Toplam Etkili Alan = ${totalAreaText} m²`,
@@ -29365,6 +29372,16 @@ function calculateComparableMetrics(row) {
         return sum + (Number.isFinite(area) ? area * rate : 0);
       }, 0)
     : rawArea;
+  // ALAN sütununda gösterilecek toplam emsal alanı (indirgeme UYGULANMADAN,
+  // ör. Zemin kat 100 m² + Asma kat 50 m² = 150 m²) — kullanıcı talebi:
+  // hesaplamalar yine de indirgenmiş alan (workplaceReducedArea) üzerinden
+  // yapılmaya devam eder, bu alan yalnızca gösterim içindir.
+  const workplaceTotalArea = workplaceFloors.length
+    ? workplaceFloors.reduce((sum, entry) => {
+        const area = parseComparableNumber(entry.area);
+        return sum + (Number.isFinite(area) ? area : 0);
+      }, 0)
+    : rawArea;
   const adjustedArea = landComparable ? parseComparableNumber(row.c24) : workplaceReducedArea;
   const calculatedEmsalArea = landComparable ? parseComparableNumber(row.c31) : Number.NaN;
   const rent = landComparable ? Number.NaN : parseComparableNumber(row.c16);
@@ -29390,6 +29407,7 @@ function calculateComparableMetrics(row) {
     saleValue,
     adjustedArea,
     workplaceReducedArea,
+    workplaceTotalArea,
     calculatedEmsalArea,
     rent,
     featureAdjustment,

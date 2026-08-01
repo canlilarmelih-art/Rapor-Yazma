@@ -19,14 +19,30 @@
   olarak gosteriliyor. ALAN hücresi sadece toplam sayiyi gosterir
   (formatComparableSummaryAreaCell sadelestirildi).
 
-  Bu test uc katmani izole dogrular:
+  En son kullanici talebi ("alan kısmında toplam emsal alanı yazsin örnek
+  150 m2 ama hesaplamaları tamamı indirgenmiş alan üzerinden yapılmaya
+  devam etsin"): ALAN sütunu artik indirgenMEMİŞ toplam alani gosterir
+  (Zemin 100 + Asma 50 = 150 m²); tum hesaplamalar (birim deger, kira
+  birim vb.) yine de indirgenmis alan (workplaceReducedArea/adjustedArea)
+  uzerinden yapilir — sadece GORUNUM degisti. calculateComparableMetrics'e
+  yeni `workplaceTotalArea` alani eklendi; getComparableValuationRows()
+  `row.area`i (goruntu, ham toplam) `row.workplaceEffectiveArea`den
+  (hesaplama, indirgenmis) ayirdi. KAT ALANLARI sutunundaki "Toplam Etkili
+  Alan" satiri hala indirgenmis alani gosterir (workplaceEffectiveArea).
+
+  Bu test dort katmani izole dogrular:
   1) formatComparableWorkplaceFloorDetailLabel — saf fonksiyon, her kat
      icin "Zemin Kat 100 m² (%100)" formatinda etiket uretir.
   2) formatComparableWorkplaceFloorAreasColumn — KAT ALANLARI hucresinin
-     HTML icerigini uretir (her kat + toplam satiri, HTML-escape dahil).
-  3) getComparableValuationRows() — her satirin workplaceFloors alaninin
-     dolu/bos oldugunu gercek calculateComparableMetrics zinciriyle
-     dogrular (bu alan KAT ALANLARI sutununu olusturmak icin kullanilir).
+     HTML icerigini uretir (her kat + indirgenmis toplam satiri,
+     HTML-escape dahil); bu satir row.area (ham) degil
+     row.workplaceEffectiveArea (indirgenmis) kullanir.
+  3) getComparableValuationRows() — E1 icin row.area'nin ham toplam (150),
+     row.workplaceEffectiveArea'nin indirgenmis toplam (115) oldugunu ve
+     hesaplama alanlarinin (unitValue, adjustedUnitValue) hala indirgenmis
+     alan uzerinden hesaplandigini gercek calculateComparableMetrics
+     zinciriyle dogrular.
+  4) formatComparableSummaryAreaCell — sade toplam sayi bicimleyicisi.
 */
 
 const assert = require("node:assert/strict");
@@ -80,8 +96,11 @@ const formatComparableSummaryNumberSrc = sliceFn("function formatComparableSumma
   vm.runInContext(formatComparableWorkplaceFloorDetailLabelSrc, context);
   vm.runInContext(formatComparableWorkplaceFloorAreasColumnSrc, context);
 
+  // row.area (150, ham toplam) DEĞİL, row.workplaceEffectiveArea (115,
+  // indirgenmiş) "Toplam Etkili Alan" satırında kullanılmalı.
   const html = context.formatComparableWorkplaceFloorAreasColumn({
-    area: 115,
+    area: 150,
+    workplaceEffectiveArea: 115,
     workplaceFloors: [
       { floor: "Zemin kat", area: "100", rate: "100%" },
       { floor: "Asma kat", area: "50", rate: "30%" },
@@ -92,15 +111,16 @@ const formatComparableSummaryNumberSrc = sliceFn("function formatComparableSumma
     '<div class="comparable-summary-floor-area-line">Zemin Kat 100 m² (%100)</div>' +
       '<div class="comparable-summary-floor-area-line">Asma Kat 50 m² (%30)</div>' +
       '<div class="comparable-summary-floor-area-line">Toplam Etkili Alan = 115 m²</div>',
-    `KAT ALANLARI hücresi 3 satır (2 kat + toplam) içermeli: "${html}"`
+    `KAT ALANLARI hücresi 3 satır (2 kat + indirgenmiş toplam) içermeli: "${html}"`
   );
 
-  const empty = context.formatComparableWorkplaceFloorAreasColumn({ area: 150, workplaceFloors: [] });
+  const empty = context.formatComparableWorkplaceFloorAreasColumn({ area: 150, workplaceEffectiveArea: 150, workplaceFloors: [] });
   assert.equal(empty, "", `Kat detayı yokken KAT ALANLARI hücresi boş olmalı: "${empty}"`);
 
   // HTML-escape: kat adı/oran metninde özel karakter olsa güvenli kaçırılmalı.
   const escaped = context.formatComparableWorkplaceFloorAreasColumn({
     area: 10,
+    workplaceEffectiveArea: 10,
     workplaceFloors: [{ floor: "<script>alert(1)</script>", area: "10", rate: "100%" }],
   });
   assert.doesNotMatch(escaped, /<script>/, `KAT ALANLARI hücresi HTML-escape edilmeli (XSS riski): "${escaped}"`);
@@ -168,11 +188,34 @@ const formatComparableSummaryNumberSrc = sliceFn("function formatComparableSumma
     "Zemin kat:100:100%|Asma kat:50:30%",
     `E1 kat listesi dolu olmalı: ${JSON.stringify(valuationRows[0].workplaceFloors)}`
   );
-  assert.equal(valuationRows[0].area, 115, `E1 alanı indirgenmiş toplam (115) olmalı: ${valuationRows[0].area}`);
+  // ALAN sütunu (row.area) ham toplam (100+50=150) göstermeli; hesaplamada
+  // kullanılan indirgenmiş alan (100×%100 + 50×%30 = 115) ayrı bir alanda
+  // (workplaceEffectiveArea) taşınmalı — kullanıcı talebi.
+  assert.equal(valuationRows[0].area, 150, `E1 ALAN sütunu ham toplam (150) olmalı: ${valuationRows[0].area}`);
+  assert.equal(
+    valuationRows[0].workplaceEffectiveArea,
+    115,
+    `E1 hesaplama alanı indirgenmiş toplam (115) olmalı: ${valuationRows[0].workplaceEffectiveArea}`
+  );
+  // Hesaplamalar (unitValue = saleValue / indirgenmişAlan) hâlâ indirgenmiş
+  // alan üzerinden yapılmalı: 1.150.000 / 115 = 10.000, ham alan (150)
+  // üzerinden hesaplansaydı 7.666,67 çıkardı.
+  assert.equal(
+    Math.round(valuationRows[0].unitValue),
+    10000,
+    `E1 birim değeri indirgenmiş alan (115) üzerinden hesaplanmalı: ${valuationRows[0].unitValue}`
+  );
   assert.equal(
     valuationRows[1].workplaceFloors.length,
     0,
     `E2 (kat detayı girilmemiş) için kat listesi boş olmalı: ${JSON.stringify(valuationRows[1].workplaceFloors)}`
+  );
+  // E2 kat detayı girilmemiş: ALAN ve hesaplama alanı aynı (150) olmalı.
+  assert.equal(valuationRows[1].area, 150, `E2 ALAN sütunu (kat detayı yok) 150 olmalı: ${valuationRows[1].area}`);
+  assert.equal(
+    valuationRows[1].workplaceEffectiveArea,
+    150,
+    `E2 hesaplama alanı (kat detayı yok) da 150 olmalı: ${valuationRows[1].workplaceEffectiveArea}`
   );
 }
 

@@ -1,5 +1,12 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.273 - 2026-08-01 - Emsal ALAN sütunu: ham toplam alan, hesaplama indirgenmiş alanda
+
+- Kat bazında girilen emsallerde ALAN sütunu artık indirgeme UYGULANMADAN toplam alanı gösterir (ör. Zemin 100 m² + Asma 50 m² = 150 m²).
+- Tüm hesaplamalar (M² Birim, İnd. M² Birim, Kira Birim vb.) değişmedi; hâlâ indirgenmiş alan (ör. 115 m²) üzerinden yapılıyor — sadece ALAN sütununun GÖRÜNÜMÜ değişti.
+- `calculateComparableMetrics`e `workplaceTotalArea` (ham toplam) eklendi; `getComparableValuationRows()` `row.area`i (gösterim) `row.workplaceEffectiveArea`den (hesaplama, indirgenmiş) ayırdı. KAT ALANLARI sütunundaki "Toplam Etkili Alan" satırı hâlâ indirgenmiş alanı gösterir.
+- Yedek gerekmedi (0.0.268/0.0.270/0.0.272'nin devamı, aynı özelliğin düzenlemesi); geri alma: bu commit'i `git revert` ile geri al.
+
 ## 0.0.272 - 2026-08-01 - Emsal Değerleme Tablosu: ayrı "KAT ALANLARI" sütunu
 
 - 0.0.270'te ALAN sütununun altına eklenen kat detay satırları kaldırıldı; onun yerine ALAN sütununun hemen yanına ayrı bir "KAT ALANLARI" sütunu eklendi.
