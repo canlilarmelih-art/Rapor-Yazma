@@ -1,5 +1,13 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.288 - 2026-08-02 - Güvenilir cihaz limiti: yönetici sınırsız, diğerleri 3
+
+- Kullanıcı talebi: "yönetici için bir daha 30 günde bir eposta iste cihaz olarak sınırsız cihaz sayısı. diğer kullanıcılar için maksimum 3 cihaz".
+- `server.js` artık `src/auth/access-control.js`'i (client/server ORTAK kaynak, zaten CommonJS export destekliyordu) `require` ediyor — "kim yönetici" tanımı tek yerde, kopya mantık yok.
+- `markDeviceTrusted(uid, email)` — yönetici (`ADMIN_EMAIL`) için cihaz sayısı sınırsız; diğer tüm kullanıcılar için yeni bir cihaz güven kazanmadan önce, zaten 3 güvenilir cihazı varsa EN ESKİSİ (süresi önce dolacak olan) çıkarılır. 30 günlük süre değişmedi, sadece cihaz SAYISI sınırlandı.
+- `tools/test-mfa-flow.js`'e 5. bölüm eklendi: yönetici için 5 cihazın hiçbiri çıkarılmadığı, normal kullanıcı için 4. cihaz eklenince en eskisinin (1.) çıkarılıp son 3'ün kaldığı, ve bir kullanıcının limitinin BAŞKA bir kullanıcıyı (izolasyon) etkilemediği doğrulanıyor; regresyonu yakaladığı kanıtlandı (eviction bilerek devre dışı bırakılıp test kırıldı, düzeltilip geri geçti).
+- Yedek gerekmedi (0.0.286'nın devamı, küçük bir politika düzenlemesi); geri alma: bu commit'i `git revert` ile geri al.
+
 ## 0.0.287 - 2026-08-02 - RESEND_API_KEY GitHub Secret'a eklendi — MFA aktif
 
 - Kullanıcı Resend'de `experify.com.tr` domain'ini doğruladı (DKIM/SPF/DMARC yeşil) ve `RESEND_API_KEY`'i GitHub Actions repository secret olarak ekledi.

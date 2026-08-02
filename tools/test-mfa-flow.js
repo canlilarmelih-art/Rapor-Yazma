@@ -9,7 +9,14 @@
   deploy'lar mevcut girisi BOZMAMALI) — bu testin 1. bolumu tam olarak bunu
   dogrular.
 
-  Bu test uc katmani izole dogrular:
+  Sonraki kullanici talebi ("yönetici için ... sınırsız cihaz sayısı. diğer
+  kullanıcılar için maksimum 3 cihaz"): markDeviceTrusted artik email
+  parametresi de aliyor; src/auth/access-control.js'deki (client/server ORTAK
+  kaynak) isAdminEmail() ile yonetici mi diye bakiyor. Yonetici DEGILSE ve
+  zaten 3 guvenilir cihazi varsa, yeni cihaz eklenmeden once EN ESKISI
+  (once suresi dolacak olan) cikariliyor; yonetici icin boyle bir sinir yok.
+
+  Bu test bes katmani izole dogrular:
   1) isMfaConfigured() — RESEND_API_KEY yoksa false, varsa true (modul
      process.env'i yukleme ANINDA okudugu icin require.cache temizlenip
      yeniden yuklenerek iki durum da test edilir).
@@ -20,6 +27,9 @@
   4) setTrustCookie — HttpOnly + SameSite=Lax her zaman; Secure sadece
      gercek (localhost olmayan) host'ta (bkz. test-static-auth-gate.js'deki
      ayni kural, oturum cerezi icin zaten dogrulanmisti).
+  5) Cihaz sinirlamasi — yonetici (ADMIN_EMAIL) icin sinirsiz, diger
+     kullanicilar icin 3 cihazda EN ESKISI cikarilarak sinirlanir; BASKA bir
+     kullanicinin cihazlari bundan ETKILENMEZ (izolasyon).
 */
 
 const assert = require("node:assert/strict");
@@ -98,6 +108,43 @@ const server = requireServerWithEnv("re_test_1234567890");
     server.setTrustCookie({ headers: { host: "localhost" } }, fakeResponse, id, expiresAt);
     const [, localCookie] = setHeaderCalls[setHeaderCalls.length - 1];
     assert.doesNotMatch(localCookie, /Secure/, "localhost'ta Secure bayragi OLMAMALI (yerel test edilebilsin diye).");
+
+    // --- 5) Cihaz sinirlamasi: yonetici sinirsiz, digerleri 3 ile sinirli ---
+    function trustedCountFor(uid) {
+      return Array.from(server.trustedDevices.values()).filter((entry) => entry.uid === uid).length;
+    }
+
+    // Yonetici: 5 cihaz eklensin, HICBIRI cikarilmamali.
+    const adminUid = "uid-admin-1";
+    const adminEmail = server.accessRoles.ADMIN_EMAIL;
+    assert.equal(server.accessRoles.isAdminEmail(adminEmail), true, "Test sabiti gercekten admin e-postasi olmali.");
+    const adminDeviceIds = [];
+    for (let i = 0; i < 5; i += 1) {
+      const device = server.markDeviceTrusted(adminUid, adminEmail);
+      adminDeviceIds.push(device.id);
+    }
+    assert.equal(trustedCountFor(adminUid), 5, "Yonetici icin 5 cihazin HEPSI guvenilir kalmali (sinirsiz).");
+    for (const id of adminDeviceIds) {
+      assert.ok(server.trustedDevices.has(id), `Yoneticinin ${id} cihazi cikarilmamali.`);
+    }
+
+    // Normal kullanici: 4 cihaz eklensin, sadece SON 3'u kalmali (ilki cikar).
+    const normalUid = "uid-normal-1";
+    const normalEmail = "baska.kullanici@example.com";
+    assert.equal(server.accessRoles.isAdminEmail(normalEmail), false, "Test sabiti gercekten admin OLMAYAN bir e-posta olmali.");
+    const normalDeviceIds = [];
+    for (let i = 0; i < 4; i += 1) {
+      const device = server.markDeviceTrusted(normalUid, normalEmail);
+      normalDeviceIds.push(device.id);
+    }
+    assert.equal(trustedCountFor(normalUid), 3, "Normal kullanici icin en fazla 3 cihaz guvenilir kalmali.");
+    assert.ok(!server.trustedDevices.has(normalDeviceIds[0]), "En ESKI (ilk eklenen) cihaz cikarilmis olmali.");
+    assert.ok(server.trustedDevices.has(normalDeviceIds[1]), "2. cihaz hala guvenilir olmali.");
+    assert.ok(server.trustedDevices.has(normalDeviceIds[2]), "3. cihaz hala guvenilir olmali.");
+    assert.ok(server.trustedDevices.has(normalDeviceIds[3]), "4. (en yeni) cihaz guvenilir olmali.");
+
+    // Izolasyon: normal kullanicinin cihaz sinirlamasi YONETICININ cihazlarini ETKILEMEMELI.
+    assert.equal(trustedCountFor(adminUid), 5, "Baska bir kullanicinin cihaz sinirlamasi yoneticinin cihazlarini etkilememeli.");
 
     console.log("Eposta MFA (guvenilir cihaz standardi) testi tamam.");
   })();

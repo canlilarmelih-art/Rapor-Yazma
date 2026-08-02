@@ -7,6 +7,10 @@ const os = require("os");
 const path = require("path");
 const { spawn } = require("child_process");
 const crypto = require("crypto");
+// Yönetici/kullanıcı rolü tek kaynaktan (src/auth/access-control.js zaten
+// CommonJS export'u destekliyor) — istemci ve sunucu AYNI "kim admin"
+// tanımını kullanır, kopya mantık yazılmaz.
+const accessRoles = require("./src/auth/access-control.js");
 
 const appDir = __dirname;
 const dataDir = path.join(appDir, "server-data");
@@ -59,6 +63,12 @@ const trustedDevicesFile = path.join(dataDir, "trusted-devices.json");
 const trustedDevices = new Map(); // deviceId -> { uid, expiresAt }
 const TRUST_COOKIE_NAME = "rapor_2fa_trust";
 const TRUST_TTL_MS = 30 * 24 * 60 * 60 * 1000; // standart: 30 gun (Google/GitHub/Microsoft ile ayni)
+// Kullanici talebi: "yönetici için ... sınırsız cihaz sayısı. diğer
+// kullanıcılar için maksimum 3 cihaz". Yönetici (ADMIN_EMAIL) icin cihaz
+// sayisi sinirsizdir; diger tum kullanicilar icin bir cihaz 30 gunluk
+// guven kazandiginda, eger o kullanicinin zaten 3 guvenilir cihazi varsa
+// EN ESKI (once suresi dolacak olan) cihaz cikarilir.
+const MAX_TRUSTED_DEVICES_PER_USER = 3;
 const mfaCodes = new Map(); // uid -> { code, expiresAt, attempts, email }
 const mfaCodeRequestLog = new Map(); // uid -> { windowStart, count }
 let trustedDevicesLoaded = false;
@@ -706,7 +716,22 @@ async function isRequestFromTrustedDevice(request, uid) {
   return true;
 }
 
-function markDeviceTrusted(uid) {
+function evictOldestTrustedDevicesForUser(uid, keepUnder) {
+  const entries = Array.from(trustedDevices.entries())
+    .filter(([, entry]) => entry.uid === uid)
+    .sort((a, b) => Number(a[1].expiresAt) - Number(b[1].expiresAt)); // en eski (once dolacak) once
+  while (entries.length >= keepUnder) {
+    const [oldestId] = entries.shift();
+    trustedDevices.delete(oldestId);
+  }
+}
+
+function markDeviceTrusted(uid, email) {
+  // Yonetici sinirsiz cihaz; diger tum kullanicilar icin 3 cihaz sinirini
+  // asmamak adina yeni cihaz eklenmeden once en eskisi cikarilir.
+  if (!accessRoles.isAdminEmail(email)) {
+    evictOldestTrustedDevicesForUser(uid, MAX_TRUSTED_DEVICES_PER_USER);
+  }
   const id = crypto.randomBytes(32).toString("hex");
   const expiresAt = Date.now() + TRUST_TTL_MS;
   trustedDevices.set(id, { uid, expiresAt });
@@ -1421,7 +1446,7 @@ async function handleSessionApi(request, response, url, user) {
     mfaCodes.delete(user.uid);
     const { id: sessionId, expiresAt: sessionExpiresAt } = createSession(user.uid, user.email);
     setSessionCookie(request, response, sessionId, sessionExpiresAt);
-    const { id: trustId, expiresAt: trustExpiresAt } = markDeviceTrusted(user.uid);
+    const { id: trustId, expiresAt: trustExpiresAt } = markDeviceTrusted(user.uid, user.email);
     setTrustCookie(request, response, trustId, trustExpiresAt);
     sendJson(response, 200, { ok: true });
     return;
@@ -1648,4 +1673,6 @@ module.exports = {
   trustedDevices,
   mfaCodes,
   buildMfaEmailHtml,
+  MAX_TRUSTED_DEVICES_PER_USER,
+  accessRoles,
 };
