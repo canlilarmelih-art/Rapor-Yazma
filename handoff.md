@@ -1,5 +1,11 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.287 - 2026-08-02 - RESEND_API_KEY GitHub Secret'a eklendi — MFA aktif
+
+- Kullanıcı Resend'de `experify.com.tr` domain'ini doğruladı (DKIM/SPF/DMARC yeşil) ve `RESEND_API_KEY`'i GitHub Actions repository secret olarak ekledi.
+- Bu commit, sadece PM2'nin yeni secret'ı `--update-env` ile alması için deploy'u tetiklemek amacıyla push edildi (kod değişikliği yok). Deploy sonrası `isMfaConfigured()` artık `true` dönmeli — ilk girişte e-posta kodu istenmeye başlar.
+- Doğrulama: deploy sonrası gerçek bir giriş denemesiyle e-posta kodu akışının uçtan uca çalıştığı kontrol edilecek.
+
 ## 0.0.286 - 2026-08-02 - E-posta ile 2FA (güvenilir cihaz standardı, 30 gün)
 
 - Kullanıcı talebi: "eposta ile devam edelim ancak her girişte kod istemesin bunu bir standarda bağlayalım" — SMS/WhatsApp'ın gerçek bir ücretsiz kotası olmadığı (telekom iletim ücreti kaçınılmaz) belirlendikten sonra e-posta bazlı tek kullanımlık kod + Google/GitHub/Microsoft'un kullandığı "güvenilir cihaz" standardına karar verildi.
