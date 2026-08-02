@@ -1,5 +1,13 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.289 - 2026-08-02 - Bağımlılık güvenlik açığı taraması (Dependabot)
+
+- Kullanıcı talebi: daha önceki güvenlik raporundaki "bağımlılık tarama yok" açığı için Dependabot eklendi.
+- `.github/dependabot.yml`: `npm` ekosistemi (root `package.json` — şu an tek devDependency `terser`) VE `github-actions` ekosistemi (deploy.yml'deki SHA-sabitlenmiş actions/checkout, actions/setup-node) haftalık taranacak; bilinen bir CVE bulunursa otomatik PR açılır.
+- `npm audit` şu an **0 açık** raporluyor.
+- **Kullanıcı için manuel adım:** Repo public olduğundan Dependabot alerts genelde otomatik açık olur, ama GitHub → repo → **Settings → Security → Code security and analysis** sayfasından "Dependabot alerts" ve "Dependabot security updates"in gerçekten açık olduğunu bir kez kontrol etmeniz iyi olur (ben repo ayarlarını değiştiremiyorum, sadece kod/config ekleyebiliyorum).
+- Yedek gerekmedi (sadece CI config dosyası, uygulama koduna dokunmuyor); geri alma: bu commit'i `git revert` ile geri al.
+
 ## 0.0.288 - 2026-08-02 - Güvenilir cihaz limiti: yönetici sınırsız, diğerleri 3
 
 - Kullanıcı talebi: "yönetici için bir daha 30 günde bir eposta iste cihaz olarak sınırsız cihaz sayısı. diğer kullanıcılar için maksimum 3 cihaz".

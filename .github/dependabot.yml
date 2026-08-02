@@ -1,0 +1,26 @@
+version: 2
+updates:
+  # Proje "sıfır çalışma zamanı bağımlılığı" ile çalışır — package.json'da
+  # sadece devDependencies var (ör. terser, deploy-öncesi minify için, bkz.
+  # tools/minify-for-deploy.js). Bu blok, npm audit'in bildirdiği bilinen
+  # güvenlik açıklarını (CVE) otomatik yakalayıp PR açar.
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+
+  # .github/workflows/deploy.yml içindeki actions/checkout, actions/setup-node
+  # gibi eylemler commit SHA'sına sabitlenmiş (tedarik zinciri güvenliği için
+  # iyi pratik); bu blok bu sabitlemelerin güvenlik yamalarıyla güncel
+  # kalmasını sağlar.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "github-actions"
