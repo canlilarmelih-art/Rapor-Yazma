@@ -36,6 +36,38 @@ const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000; // kullanıcı seçimi: 7 gün
 let sessionsLoaded = false;
 let sessionsSaveTimer = null;
 
+// E-posta ile 2 Faktörlü Doğrulama (MFA) — kullanıcı talebi: "her girişte kod
+// istemesin, standarda bağlayalım". Google/GitHub/Microsoft'un hepsinin
+// kullandığı "güvenilir cihaz" standardı uygulanır: bir cihaz koddan
+// GEÇTİKTEN sonra 30 gün boyunca tekrar sorulmaz; farklı bir cihaz/tarayıcı
+// veya 30 gün sonrasında kod yeniden istenir. E-posta gönderimi Resend'in
+// basit HTTPS API'siyle yapılır (npm bağımlılığı eklenmez — proje "sıfır
+// çalışma zamanı bağımlılığı" prensibini korur, bkz. tools/minify-for-deploy.js
+// üstündeki not).
+//
+// RESEND_API_KEY ortam değişkeni AYARLANMAMIŞSA (kullanıcı henüz Resend
+// hesabı/domain doğrulamasını tamamlamadıysa) MFA tamamen DEVRE DIŞI kalır —
+// mevcut giriş akışı hiç değişmez. Bu, kullanıcı Resend kurulumunu
+// tamamlamadan yapılan deploy'ların canlı girişi BOZMAMASI için bilinçli bir
+// tasarım kararıdır.
+const RESEND_API_KEY = String(process.env.RESEND_API_KEY || "").trim();
+const RESEND_FROM_EMAIL = String(process.env.RESEND_FROM_EMAIL || "Experify <giris@experify.com.tr>").trim();
+const MFA_CODE_TTL_MS = 10 * 60 * 1000; // kod 10 dakika gecerli
+const MFA_CODE_MAX_ATTEMPTS = 5; // 5 yanlis denemeden sonra kod gecersiz olur
+const MFA_CODE_REQUEST_LIMIT_PER_HOUR = 5; // kullanici basina, e-posta bombalamayi onler
+const trustedDevicesFile = path.join(dataDir, "trusted-devices.json");
+const trustedDevices = new Map(); // deviceId -> { uid, expiresAt }
+const TRUST_COOKIE_NAME = "rapor_2fa_trust";
+const TRUST_TTL_MS = 30 * 24 * 60 * 60 * 1000; // standart: 30 gun (Google/GitHub/Microsoft ile ayni)
+const mfaCodes = new Map(); // uid -> { code, expiresAt, attempts, email }
+const mfaCodeRequestLog = new Map(); // uid -> { windowStart, count }
+let trustedDevicesLoaded = false;
+let trustedDevicesSaveTimer = null;
+
+function isMfaConfigured() {
+  return Boolean(RESEND_API_KEY);
+}
+
 // login.html'in kendisini ve giriş yapabilmesi için ihtiyaç duyduğu Firebase
 // SDK / yapılandırma / ikon dosyalarını session ÇEREZİ OLMADAN da sunar.
 // Buradaki HİÇBİR dosya iş mantığı (formüller, banka tabloları, şablonlar)
@@ -66,6 +98,7 @@ const SENSITIVE_SERVER_DATA_FILES = new Set([
   "user-pois.json",
   "bursa_manuel_duzeltilmis_ana_dosya.csv",
   "sessions.json",
+  "trusted-devices.json",
 ]);
 
 function isSensitivePath(relativeSegments) {
@@ -606,18 +639,136 @@ function isLocalHost(request) {
   return hostHeader === "localhost" || hostHeader === "127.0.0.1" || hostHeader === "::1";
 }
 
-function setSessionCookie(request, response, id, expiresAt) {
-  const maxAgeSeconds = Math.max(0, Math.floor((expiresAt - Date.now()) / 1000));
+// NOT: response.setHeader("Set-Cookie", ...) İKİNCİ kez çağrılırsa BİRİNCİYİ
+// SESSİZCE EZER (Node.js davranışı) — bir yanıtta hem oturum hem güvenilir
+// cihaz çerezi AYNI ANDA verilmesi gerektiğinden (bkz. verifyMfaCode),
+// appendHeader kullanılır; bu birden fazla Set-Cookie başlığını doğru
+// şekilde biriktirir.
+function appendCookie(request, response, name, value, maxAgeSeconds) {
   const secureFlag = isLocalHost(request) ? "" : " Secure;";
-  response.setHeader(
-    "Set-Cookie",
-    `${SESSION_COOKIE_NAME}=${id}; Path=/; HttpOnly;${secureFlag} SameSite=Lax; Max-Age=${maxAgeSeconds}`,
-  );
+  response.appendHeader("Set-Cookie", `${name}=${value}; Path=/; HttpOnly;${secureFlag} SameSite=Lax; Max-Age=${maxAgeSeconds}`);
+}
+
+function setSessionCookie(request, response, id, expiresAt) {
+  appendCookie(request, response, SESSION_COOKIE_NAME, id, Math.max(0, Math.floor((expiresAt - Date.now()) / 1000)));
 }
 
 function clearSessionCookie(request, response) {
-  const secureFlag = isLocalHost(request) ? "" : " Secure;";
-  response.setHeader("Set-Cookie", `${SESSION_COOKIE_NAME}=; Path=/; HttpOnly;${secureFlag} SameSite=Lax; Max-Age=0`);
+  appendCookie(request, response, SESSION_COOKIE_NAME, "", 0);
+}
+
+function setTrustCookie(request, response, id, expiresAt) {
+  appendCookie(request, response, TRUST_COOKIE_NAME, id, Math.max(0, Math.floor((expiresAt - Date.now()) / 1000)));
+}
+
+async function loadTrustedDevicesOnce() {
+  if (trustedDevicesLoaded) return;
+  trustedDevicesLoaded = true;
+  try {
+    const raw = await fs.readFile(trustedDevicesFile, "utf8");
+    const parsed = JSON.parse(raw);
+    const now = Date.now();
+    if (parsed && typeof parsed === "object") {
+      for (const [id, entry] of Object.entries(parsed)) {
+        if (entry && Number(entry.expiresAt) > now) trustedDevices.set(id, entry);
+      }
+    }
+  } catch (error) {
+    if (error.code !== "ENOENT") logServerError("Güvenilir cihaz dosyası okunamadı", error);
+  }
+}
+
+function saveTrustedDevicesSoon() {
+  if (trustedDevicesSaveTimer) return;
+  trustedDevicesSaveTimer = setTimeout(async () => {
+    trustedDevicesSaveTimer = null;
+    try {
+      await fs.mkdir(dataDir, { recursive: true });
+      await fs.writeFile(trustedDevicesFile, JSON.stringify(Object.fromEntries(trustedDevices)), "utf8");
+    } catch (error) {
+      logServerError("Güvenilir cihaz dosyası yazılamadı", error);
+    }
+  }, 200);
+  trustedDevicesSaveTimer.unref?.();
+}
+
+async function isRequestFromTrustedDevice(request, uid) {
+  await loadTrustedDevicesOnce();
+  const id = parseCookieHeader(request)[TRUST_COOKIE_NAME];
+  if (!id) return false;
+  const entry = trustedDevices.get(id);
+  if (!entry || entry.uid !== uid) return false;
+  if (Number(entry.expiresAt) <= Date.now()) {
+    trustedDevices.delete(id);
+    saveTrustedDevicesSoon();
+    return false;
+  }
+  return true;
+}
+
+function markDeviceTrusted(uid) {
+  const id = crypto.randomBytes(32).toString("hex");
+  const expiresAt = Date.now() + TRUST_TTL_MS;
+  trustedDevices.set(id, { uid, expiresAt });
+  saveTrustedDevicesSoon();
+  return { id, expiresAt };
+}
+
+function generateMfaCode() {
+  // 000000-999999 arasi 6 haneli, basindaki sifirlar korunur (padStart).
+  return String(crypto.randomInt(0, 1000000)).padStart(6, "0");
+}
+
+function buildMfaEmailHtml(code) {
+  return `<!doctype html><html lang="tr"><body style="margin:0;padding:24px;background:#f2f4f8;font-family:Arial,sans-serif;">
+    <div style="max-width:420px;margin:0 auto;background:#ffffff;border-radius:12px;padding:28px 24px;">
+      <p style="margin:0 0 4px;font-weight:800;font-size:15px;color:#111d3d;">Experify Giriş Kodu</p>
+      <p style="margin:0 0 20px;color:#5a6576;font-size:13px;">Yeni bir cihazdan/tarayıcıdan giriş isteği alındı. Devam etmek için aşağıdaki kodu girin.</p>
+      <p style="margin:0 0 20px;font-size:32px;font-weight:800;letter-spacing:0.12em;color:#213f77;text-align:center;">${code}</p>
+      <p style="margin:0 0 6px;color:#5a6576;font-size:12px;">Bu kod 10 dakika içinde geçerliliğini yitirir.</p>
+      <p style="margin:0;color:#8a99ad;font-size:12px;">Bu isteği siz yapmadıysanız bu e-postayı yok sayabilirsiniz; hesabınızda herhangi bir değişiklik yapılmadı.</p>
+    </div>
+  </body></html>`;
+}
+
+function sendEmailViaResend(toEmail, code) {
+  return new Promise((resolve, reject) => {
+    const payload = JSON.stringify({
+      from: RESEND_FROM_EMAIL,
+      to: [toEmail],
+      subject: "Experify Giriş Kodu",
+      html: buildMfaEmailHtml(code),
+    });
+    const request = https.request(
+      {
+        method: "POST",
+        hostname: "api.resend.com",
+        path: "/emails",
+        timeout: 10000,
+        headers: {
+          Authorization: `Bearer ${RESEND_API_KEY}`,
+          "Content-Type": "application/json",
+          "Content-Length": Buffer.byteLength(payload),
+        },
+      },
+      (response) => {
+        let body = "";
+        response.setEncoding("utf8");
+        response.on("data", (chunk) => { body += chunk; });
+        response.on("end", () => {
+          if (response.statusCode && response.statusCode >= 200 && response.statusCode < 300) {
+            resolve();
+          } else {
+            reject(new Error(`Resend API ${response.statusCode}: ${body.slice(0, 300)}`));
+          }
+        });
+      },
+    );
+    request.on("timeout", () => request.destroy(new Error("Resend API zaman aşımına uğradı.")));
+    request.on("error", reject);
+    request.write(payload);
+    request.end();
+  });
 }
 
 const mimeTypes = new Map([
@@ -1183,20 +1334,99 @@ async function handlePdfTextApi(request, response) {
 
 // login.html'de Firebase ile giriş yapıldıktan sonra çağrılır: geçerli bir
 // Firebase ID token'ı (genel /api/* Bearer kontrolüyle zaten doğrulanmış
-// olur) HttpOnly bir oturum çerezine bağlar. /api/session/logout ise aynı
-// çerezi sunucu tarafında da iptal eder (yalnızca istemcide Firebase'den
-// çıkmak yetmez — statik dosya kapısı bu çerezi kontrol eder).
+// olur) HttpOnly bir oturum çerezine bağlar. RESEND_API_KEY ayarlıysa (MFA
+// aktifse) ve bu cihaz güvenilir değilse, oturum çerezi HENÜZ verilmez —
+// önce e-posta kodu doğrulanmalı (bkz. /api/session/request-code ve
+// /api/session/verify-code). /api/session/logout ise oturum çerezini
+// sunucu tarafında da iptal eder (güvenilir cihaz durumuna dokunmaz —
+// standart pratik: çıkış yapmak cihaz güvenini SIFIRLAMAZ).
 async function handleSessionApi(request, response, url, user) {
   if (request.method !== "POST") {
     sendJson(response, 405, { ok: false, error: "Bu işlem desteklenmiyor." });
     return;
   }
+
   if (url === "/api/session") {
+    if (isMfaConfigured() && !(await isRequestFromTrustedDevice(request, user.uid))) {
+      sendJson(response, 200, { ok: true, requiresMfa: true });
+      return;
+    }
     const { id, expiresAt } = createSession(user.uid, user.email);
     setSessionCookie(request, response, id, expiresAt);
+    sendJson(response, 200, { ok: true, requiresMfa: false });
+    return;
+  }
+
+  if (url === "/api/session/request-code") {
+    if (!isMfaConfigured()) {
+      sendJson(response, 400, { ok: false, error: "MFA yapılandırılmamış." });
+      return;
+    }
+    if (!user.email) {
+      sendJson(response, 400, { ok: false, error: "Hesapta e-posta adresi bulunamadı." });
+      return;
+    }
+    const now = Date.now();
+    const log = mfaCodeRequestLog.get(user.uid);
+    if (!log || now - log.windowStart >= 60 * 60 * 1000) {
+      mfaCodeRequestLog.set(user.uid, { windowStart: now, count: 1 });
+    } else if (log.count >= MFA_CODE_REQUEST_LIMIT_PER_HOUR) {
+      sendJson(response, 429, { ok: false, error: "Çok fazla kod isteği. Lütfen bir süre sonra tekrar deneyin." });
+      return;
+    } else {
+      log.count += 1;
+    }
+    const code = generateMfaCode();
+    mfaCodes.set(user.uid, { code, expiresAt: now + MFA_CODE_TTL_MS, attempts: 0, email: user.email });
+    try {
+      await sendEmailViaResend(user.email, code);
+    } catch (error) {
+      logServerError("MFA kodu e-postası gönderilemedi", error);
+      sendJson(response, 502, { ok: false, error: "Kod e-postası gönderilemedi. Lütfen tekrar deneyin." });
+      return;
+    }
     sendJson(response, 200, { ok: true });
     return;
   }
+
+  if (url === "/api/session/verify-code") {
+    if (!isMfaConfigured()) {
+      sendJson(response, 400, { ok: false, error: "MFA yapılandırılmamış." });
+      return;
+    }
+    let body;
+    try {
+      body = JSON.parse((await readBody(request, 2048)) || "{}");
+    } catch {
+      sendJson(response, 400, { ok: false, error: "Geçersiz istek." });
+      return;
+    }
+    const submittedCode = String(body?.code || "").trim();
+    const entry = mfaCodes.get(user.uid);
+    if (!entry || Number(entry.expiresAt) <= Date.now()) {
+      mfaCodes.delete(user.uid);
+      sendJson(response, 400, { ok: false, error: "Kodun süresi doldu. Yeni kod isteyin." });
+      return;
+    }
+    if (entry.attempts >= MFA_CODE_MAX_ATTEMPTS) {
+      mfaCodes.delete(user.uid);
+      sendJson(response, 400, { ok: false, error: "Çok fazla yanlış deneme. Yeni kod isteyin." });
+      return;
+    }
+    if (!submittedCode || submittedCode !== entry.code) {
+      entry.attempts += 1;
+      sendJson(response, 400, { ok: false, error: "Kod hatalı." });
+      return;
+    }
+    mfaCodes.delete(user.uid);
+    const { id: sessionId, expiresAt: sessionExpiresAt } = createSession(user.uid, user.email);
+    setSessionCookie(request, response, sessionId, sessionExpiresAt);
+    const { id: trustId, expiresAt: trustExpiresAt } = markDeviceTrusted(user.uid);
+    setTrustCookie(request, response, trustId, trustExpiresAt);
+    sendJson(response, 200, { ok: true });
+    return;
+  }
+
   if (url === "/api/session/logout") {
     const session = await getSessionFromRequest(request);
     if (session) destroySession(session.id);
@@ -1204,6 +1434,7 @@ async function handleSessionApi(request, response, url, user) {
     sendJson(response, 200, { ok: true });
     return;
   }
+
   sendJson(response, 404, { ok: false, error: "Bulunamadı." });
 }
 
@@ -1409,4 +1640,12 @@ module.exports = {
   clearSessionCookie,
   parseCookieHeader,
   sessions,
+  isMfaConfigured,
+  generateMfaCode,
+  markDeviceTrusted,
+  isRequestFromTrustedDevice,
+  setTrustCookie,
+  trustedDevices,
+  mfaCodes,
+  buildMfaEmailHtml,
 };

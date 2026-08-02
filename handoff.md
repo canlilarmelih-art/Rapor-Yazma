@@ -1,5 +1,16 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.286 - 2026-08-02 - E-posta ile 2FA (güvenilir cihaz standardı, 30 gün)
+
+- Kullanıcı talebi: "eposta ile devam edelim ancak her girişte kod istemesin bunu bir standarda bağlayalım" — SMS/WhatsApp'ın gerçek bir ücretsiz kotası olmadığı (telekom iletim ücreti kaçınılmaz) belirlendikten sonra e-posta bazlı tek kullanımlık kod + Google/GitHub/Microsoft'un kullandığı "güvenilir cihaz" standardına karar verildi.
+- **Akış:** login.html'de Firebase ile giriş başarılı olunca `POST /api/session` çağrılır; MFA aktifse (`RESEND_API_KEY` ayarlıysa) VE bu cihaz güvenilir değilse, oturum çerezi HENÜZ verilmez, `{requiresMfa:true}` döner. login.html ikinci adıma geçer: `POST /api/session/request-code` ile 6 haneli kod üretilip Resend API'siyle (basit HTTPS isteği, npm bağımlılığı yok) e-postayla gönderilir (10 dakika geçerli, 5 yanlış denemede iptal, kullanıcı başına saatte 5 istekle sınırlı — e-posta bombalama önlenir). Kod doğrulanınca (`POST /api/session/verify-code`) hem oturum çerezi hem de **30 gün** geçerli ayrı bir "güvenilir cihaz" çerezi (`rapor_2fa_trust`, HttpOnly) verilir; aynı tarayıcıdan sonraki girişlerde kod tekrar sorulmaz.
+- **KRİTİK güvenlik/süreklilik kararı:** `RESEND_API_KEY` ortam değişkeni ayarlanmadığı sürece (`isMfaConfigured()` false) MFA tamamen devre dışı kalır — mevcut giriş akışı hiç değişmez. Kullanıcı bu akşam Resend hesabı/domain doğrulamasını tamamlayıp GitHub'a `RESEND_API_KEY` secret'ını eklediğinde otomatik aktifleşecek; ekleyene kadar bu commit canlıda hiçbir davranışı değiştirmez.
+- Çıkış Yap (`signOutAndClearLocalData`) güvenilir cihaz durumuna DOKUNMAZ (standart pratik: oturumdan çıkmak cihaz güvenini sıfırlamaz).
+- `server.js`'e `RESEND_API_KEY`/`RESEND_FROM_EMAIL` `.github/workflows/deploy.yml` → `ecosystem.config.cjs` üzerinden GitHub Secrets'tan geçirilecek şekilde bağlandı (secret tanımlı değilse boş string, hata vermez).
+- **Yan not:** `response.setHeader("Set-Cookie", ...)` ikinci kez çağrılırsa birinciyi sessizce EZER — bir yanıtta hem oturum hem güvenilir cihaz çerezi aynı anda verilmesi gerektiğinden tüm çerez ayarlama kodu `response.appendHeader` kullanacak şekilde düzeltildi (0.0.284'teki `setSessionCookie`/`clearSessionCookie` dahil).
+- Yeni `tools/test-mfa-flow.js`: `isMfaConfigured()`'ın `RESEND_API_KEY` yokken/varken doğru davrandığını (require.cache temizleyip modülü iki kez yükleyerek), `generateMfaCode()`'ın her zaman 6 haneli olduğunu, güvenilir cihaz yaşam döngüsünü (işaretle/doğrula/yanlış-uid-reddet/sahte-cerez-reddet) ve çerez header biçimini izole doğrular; regresyonu yakaladığı kanıtlandı (`isMfaConfigured` kasıtlı `true` yapılıp test kırıldı, düzeltilip geri geçti).
+- Yedek gerekmedi (yeni, opt-in bir özellik; RESEND_API_KEY olmadan sıfır etkisi var); geri alma: bu commit'i `git revert` ile geri al.
+
 ## 0.0.285 - 2026-08-02 - Kaynak kodu koruması 2. katman: deploy-öncesi minify
 
 - 0.0.284'te eklenen login kapısının üzerine ikinci katman: giriş yapmış bir kullanıcı `app.js`'i indirse bile artık okunabilir/yorumlu kaynağı değil, minified (küçültülmüş, yorumsuz, tek satır) halini görür.

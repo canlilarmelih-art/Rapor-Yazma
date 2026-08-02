@@ -108,9 +108,14 @@ jobs:
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
           DEPLOY_PORT: ${{ secrets.DEPLOY_PORT || '22' }}
+          # E-posta 2FA (bkz. server.js isMfaConfigured / ecosystem.config.cjs):
+          # bu secret GitHub'da TANIMLI DEĞİLSE boş string olur, MFA otomatik
+          # devre dışı kalır — mevcut secret'lar tamamlanmadan bu adım deploy'u
+          # BOZMAZ (secrets.RESEND_API_KEY boşsa GitHub Actions hata vermez).
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
         run: |
           ssh -i "$HOME/.ssh/deploy_key" -p "$DEPLOY_PORT" \
             -o IdentitiesOnly=yes -o IdentityAgent=none \
             -o BatchMode=yes -o StrictHostKeyChecking=yes \
             "$DEPLOY_USER@$DEPLOY_HOST" \
-            "set -e; cd '$DEPLOY_PATH'; RAPOR_HOST=0.0.0.0 RAPOR_PORT=5174 pm2 startOrRestart ecosystem.config.cjs --only rapor-app --update-env; pm2 save; curl -fsS http://127.0.0.1:5174/ >/dev/null"
+            "set -e; cd '$DEPLOY_PATH'; RAPOR_HOST=0.0.0.0 RAPOR_PORT=5174 RESEND_API_KEY='$RESEND_API_KEY' pm2 startOrRestart ecosystem.config.cjs --only rapor-app --update-env; pm2 save; curl -fsS http://127.0.0.1:5174/ >/dev/null"

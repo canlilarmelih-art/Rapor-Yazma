@@ -98,7 +98,7 @@ const server = require(path.join(root, "server.js"));
     {
       const { id: id2, expiresAt: expiresAt2 } = server.createSession("uid-test-2", null);
       let setHeaderCalls = [];
-      const fakeResponse = { setHeader: (key, value) => setHeaderCalls.push([key, value]) };
+      const fakeResponse = { appendHeader: (key, value) => setHeaderCalls.push([key, value]) };
       server.setSessionCookie({ headers: { host: "experify.com.tr" } }, fakeResponse, id2, expiresAt2);
       const [, prodCookie] = setHeaderCalls[setHeaderCalls.length - 1];
       assert.match(prodCookie, /HttpOnly/, "Cerez HttpOnly olmali (XSS ile calinamasin).");
