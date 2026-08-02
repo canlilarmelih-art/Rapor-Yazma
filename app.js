@@ -1007,6 +1007,8 @@ const sidebarCollapseBtn = document.querySelector("#sidebarCollapseBtn");
 const sidebarOpenBtn = document.querySelector("#sidebarOpenBtn");
 const sahaProToolBtn = document.querySelector("#sahaProToolBtn");
 sahaProToolBtn?.addEventListener("click", () => window.open("saha-pro.html", "_blank", "noopener"));
+const adminUsersToolBtn = document.querySelector("#adminUsersToolBtn");
+adminUsersToolBtn?.addEventListener("click", () => window.open("admin-users.html", "_blank", "noopener"));
 
 function loadState() {
   const savedUserDefaults = loadUserDefaults();

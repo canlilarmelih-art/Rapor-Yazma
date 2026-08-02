@@ -116,6 +116,19 @@
       }
       .resend-link:disabled { color: #8a99ad; cursor: default; text-decoration: none; }
       .hidden { display: none; }
+      .switch-link {
+        display: block;
+        margin-top: 16px;
+        text-align: center;
+        font-size: 12px;
+        color: #2d59ab;
+        background: none;
+        border: none;
+        cursor: pointer;
+        text-decoration: underline;
+        width: 100%;
+      }
+      .pending-icon { font-size: 32px; text-align: center; margin: 4px 0 10px; }
     </style>
   </head>
   <body>
@@ -135,6 +148,24 @@
         </label>
         <p id="loginError" class="error"></p>
         <button type="submit" class="submit" id="loginSubmit">Giriş Yap</button>
+        <button type="button" class="switch-link" id="showSignUp">Hesabınız yok mu? Hesap oluşturun</button>
+      </form>
+      <form id="signUpForm" class="hidden">
+        <label class="field"><span>E-posta</span>
+          <input type="email" id="signUpEmail" autocomplete="username" inputmode="email" autocapitalize="off" autocorrect="off" spellcheck="false" required />
+        </label>
+        <label class="field"><span>Şifre (en az 6 karakter)</span>
+          <span class="password-wrap">
+            <input type="password" id="signUpPassword" autocomplete="new-password" minlength="6" autocapitalize="off" autocorrect="off" spellcheck="false" required />
+            <button type="button" id="signUpTogglePassword" title="Şifreyi göster/gizle">👁</button>
+          </span>
+        </label>
+        <label class="field"><span>Şifre (tekrar)</span>
+          <input type="password" id="signUpPasswordConfirm" autocomplete="new-password" minlength="6" autocapitalize="off" autocorrect="off" spellcheck="false" required />
+        </label>
+        <p id="signUpError" class="error"></p>
+        <button type="submit" class="submit" id="signUpSubmit">Hesap Oluştur</button>
+        <button type="button" class="switch-link" id="showLogin">Zaten hesabınız var mı? Giriş yapın</button>
       </form>
       <form id="mfaForm" class="hidden">
         <label class="field"><span>E-postanıza gönderilen 6 haneli kod</span>
@@ -144,6 +175,11 @@
         <button type="submit" class="submit" id="mfaSubmit">Kodu Doğrula</button>
         <button type="button" class="resend-link" id="mfaResend">Kodu tekrar gönder</button>
       </form>
+      <div id="pendingView" class="hidden">
+        <p class="pending-icon" aria-hidden="true">⏳</p>
+        <p class="hint" id="pendingText">Hesabınız oluşturuldu. Giriş yapabilmeniz için yöneticinin onaylaması gerekiyor.</p>
+        <button type="button" class="submit" id="pendingBackButton">Giriş Ekranına Dön</button>
+      </div>
     </div>
 
     <script src="vendor/firebase/firebase-app-compat.js?v=11.10.0"></script>
@@ -163,7 +199,45 @@
         var mfaError = document.getElementById("mfaError");
         var mfaSubmit = document.getElementById("mfaSubmit");
         var mfaResend = document.getElementById("mfaResend");
+        var signUpForm = document.getElementById("signUpForm");
+        var signUpEmailInput = document.getElementById("signUpEmail");
+        var signUpPasswordInput = document.getElementById("signUpPassword");
+        var signUpPasswordConfirmInput = document.getElementById("signUpPasswordConfirm");
+        var signUpError = document.getElementById("signUpError");
+        var signUpSubmit = document.getElementById("signUpSubmit");
+        var pendingView = document.getElementById("pendingView");
+        var pendingText = document.getElementById("pendingText");
         var pendingIdToken = null;
+
+        function showOnly(view) {
+          [form, signUpForm, mfaForm, pendingView].forEach(function (el) {
+            el.classList.toggle("hidden", el !== view);
+          });
+        }
+
+        document.getElementById("showSignUp").addEventListener("click", function () {
+          errorLine.textContent = "";
+          signUpError.textContent = "";
+          hint.textContent = "Yeni hesabınızı oluşturun. Giriş yapabilmeniz için yöneticinin onaylaması gerekir.";
+          showOnly(signUpForm);
+        });
+        document.getElementById("showLogin").addEventListener("click", function () {
+          signUpError.textContent = "";
+          hint.textContent = "Devam etmek için giriş yapın. Belgeler ve ham belge metinleri buluta yüklenmez; yalnızca kendi hesabınızın raporlarını görürsünüz.";
+          showOnly(form);
+        });
+        document.getElementById("pendingBackButton").addEventListener("click", function () {
+          hint.textContent = "Devam etmek için giriş yapın. Belgeler ve ham belge metinleri buluta yüklenmez; yalnızca kendi hesabınızın raporlarını görürsünüz.";
+          showOnly(form);
+        });
+        document.getElementById("signUpTogglePassword").addEventListener("click", function () {
+          signUpPasswordInput.type = signUpPasswordInput.type === "password" ? "text" : "password";
+        });
+
+        function showPendingApproval(message) {
+          pendingText.textContent = message;
+          showOnly(pendingView);
+        }
 
         if (typeof firebase === "undefined" || !firebase.initializeApp || typeof RAPOR_FIREBASE_CONFIG === "undefined"
           || RAPOR_FIREBASE_CONFIG.apiKey === "YAPISTIR") {
@@ -246,6 +320,12 @@
             });
             if (!response.ok) throw new Error("session-failed");
             var result = await response.json();
+            if (result && result.pendingApproval) {
+              submitButton.disabled = false;
+              submitButton.textContent = "Giriş Yap";
+              showPendingApproval("Hesabınız henüz onaylanmadı. Giriş yapabilmeniz için yöneticinin onaylaması gerekiyor.");
+              return;
+            }
             if (result && result.requiresMfa) {
               submitButton.disabled = false;
               submitButton.textContent = "Giriş Yap";
@@ -285,6 +365,10 @@
               mfaSubmit.textContent = "Kodu Doğrula";
               return;
             }
+            if (result.pendingApproval) {
+              showPendingApproval("Hesabınız henüz onaylanmadı. Giriş yapabilmeniz için yöneticinin onaylaması gerekiyor.");
+              return;
+            }
             window.location.replace(safeNextPath());
           } catch (error) {
             mfaError.textContent = "Bağlantı kurulamadı. İnternetinizi kontrol edin.";
@@ -300,6 +384,44 @@
             await requestMfaCode();
           } catch (error) {
             mfaError.textContent = "Kod gönderilemedi.";
+          }
+        });
+
+        signUpForm.addEventListener("submit", async function (event) {
+          event.preventDefault();
+          signUpError.textContent = "";
+          if (signUpPasswordInput.value !== signUpPasswordConfirmInput.value) {
+            signUpError.textContent = "Şifreler eşleşmiyor.";
+            return;
+          }
+          signUpSubmit.disabled = true;
+          signUpSubmit.textContent = "Hesap oluşturuluyor...";
+          try {
+            var credential = await auth.createUserWithEmailAndPassword(signUpEmailInput.value.trim(), signUpPasswordInput.value);
+            var token = await credential.user.getIdToken();
+            await fetch("/api/register-pending", {
+              method: "POST",
+              headers: { Authorization: "Bearer " + token, "X-Rapor-Client": "1" },
+            });
+            localStorage.setItem("rapor-cloud-email", signUpEmailInput.value.trim());
+            await auth.signOut();
+            showPendingApproval("Hesabınız oluşturuldu. Giriş yapabilmeniz için yöneticinin onaylaması gerekiyor.");
+          } catch (error) {
+            var code = String(error && error.code || "");
+            if (code.includes("email-already-in-use")) {
+              signUpError.textContent = "Bu e-posta adresi zaten kayıtlı. Giriş yapmayı deneyin.";
+            } else if (code.includes("weak-password")) {
+              signUpError.textContent = "Şifre çok zayıf, en az 6 karakter kullanın.";
+            } else if (code.includes("invalid-email")) {
+              signUpError.textContent = "Geçerli bir e-posta adresi girin.";
+            } else if (code.includes("network")) {
+              signUpError.textContent = "Bağlantı kurulamadı. İnternetinizi kontrol edin.";
+            } else {
+              signUpError.textContent = "Hesap oluşturulamadı. Lütfen tekrar deneyin.";
+            }
+          } finally {
+            signUpSubmit.disabled = false;
+            signUpSubmit.textContent = "Hesap Oluştur";
           }
         });
       })();

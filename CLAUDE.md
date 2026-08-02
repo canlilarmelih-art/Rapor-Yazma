@@ -62,6 +62,18 @@ listesine de ekle (unutulursa `tools/test-minify-deploy-coverage.js`
 "view source" artık okunabilir kod göstermez; hata ayıklama için yerel
 sunucuyu (`npm run` yok, doğrudan `node server.js`) kullan.
 
+## Kullanıcı kaydı + admin onayı (0.0.290, 2026-08-02)
+
+login.html'de herkes hesap oluşturabilir ama `server.js`'deki
+`isUserApproved()` onaylamadan (`approved-users.json`) `/api/session` oturum
+çerezi vermez — yönetici (`ADMIN_EMAIL`) hariç. Onay panelı `admin-users.html`
+(`GET /api/pending-users`, `POST /api/approve-user`/`reject-user`, hepsi
+`requireAdmin()` ile korunuyor). Yeni bir statik dosya eklerken olduğu gibi,
+bu akışa dokunan bir değişiklik yaparsan `tools/test-user-approval-flow.js`'i
+çalıştır — özellikle "miras/grandfather klozu" (approved-users.json ilk kez
+oluşurken mevcut oturumlu kullanıcıları otomatik onaylama) davranışını
+BOZMA, aksi halde gerçek bir deploy'da aktif kullanıcılar kilitlenebilir.
+
 ## Bu depoda paralel oturum uyarısı
 
 Aynı çalışma dizininde başka bir ajan (Codex) da düzenleme yapabiliyor.

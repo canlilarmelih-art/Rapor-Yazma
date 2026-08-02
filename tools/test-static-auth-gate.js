@@ -54,6 +54,7 @@ const server = require(path.join(root, "server.js"));
     "app.js",
     "styles.css",
     "saha-pro.html",
+    "admin-users.html",
     "cloud/cloud-sync.js",
     "cloud/report-library.js",
     "src/comparables/comparable-market-analysis.js",

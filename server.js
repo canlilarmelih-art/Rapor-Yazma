@@ -74,6 +74,21 @@ const mfaCodeRequestLog = new Map(); // uid -> { windowStart, count }
 let trustedDevicesLoaded = false;
 let trustedDevicesSaveTimer = null;
 
+// Kullanıcı onay akışı — kullanıcı talebi: "admin only olmayacak herkes
+// oluşturabilecek ancak ben admin onay vermeden sisteme giriş yapamayacak".
+// login.html'de HERKES kendi hesabını oluşturabilir (Firebase client SDK,
+// createUserWithEmailAndPassword — genel API anahtarıyla çalışır, ek yetki
+// gerekmez); ama hesap oluşturmak GİRİŞ YAPMAK anlamına gelmez —
+// isUserApproved() false döndüğü sürece /api/session oturum çerezi
+// VERMEZ. Yönetici (ADMIN_EMAIL) her zaman otomatik onaylıdır (aksi halde
+// kimse kimseyi onaylayamaz — "kim onaylayacak" sorununu önler).
+const pendingUsersFile = path.join(dataDir, "pending-users.json");
+const approvedUsersFile = path.join(dataDir, "approved-users.json");
+const pendingUsers = new Map(); // uid -> { email, requestedAt }
+const approvedUsers = new Set(); // uid
+let approvalStateLoaded = false;
+let approvalStateSaveTimer = null;
+
 function isMfaConfigured() {
   return Boolean(RESEND_API_KEY);
 }
@@ -109,6 +124,8 @@ const SENSITIVE_SERVER_DATA_FILES = new Set([
   "bursa_manuel_duzeltilmis_ana_dosya.csv",
   "sessions.json",
   "trusted-devices.json",
+  "pending-users.json",
+  "approved-users.json",
 ]);
 
 function isSensitivePath(relativeSegments) {
@@ -737,6 +754,96 @@ function markDeviceTrusted(uid, email) {
   trustedDevices.set(id, { uid, expiresAt });
   saveTrustedDevicesSoon();
   return { id, expiresAt };
+}
+
+// İlk yükleme: approved-users.json HİÇ YOKSA (bu özelliğin ilk devreye
+// girdiği an), o ana kadar en az bir kez oturum açmış (sessions.json) veya
+// güvenilir cihazı olan (trusted-devices.json) her uid otomatik onaylı
+// sayılır — aksi halde bu özelliğin devreye girdiği gün, halihazırda
+// hesabı olup kullanan herkes aniden kilitlenir. BUNDAN SONRA oluşturulan
+// yeni hesaplar bu listede olmadığından normal şekilde onay bekler.
+async function loadApprovalStateOnce() {
+  if (approvalStateLoaded) return;
+  approvalStateLoaded = true;
+  let approvedFileExisted = true;
+  try {
+    const raw = await fs.readFile(approvedUsersFile, "utf8");
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) parsed.forEach((uid) => approvedUsers.add(uid));
+  } catch (error) {
+    if (error.code !== "ENOENT") logServerError("Onaylı kullanıcı dosyası okunamadı", error);
+    else approvedFileExisted = false;
+  }
+  try {
+    const raw = await fs.readFile(pendingUsersFile, "utf8");
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === "object") {
+      for (const [uid, entry] of Object.entries(parsed)) pendingUsers.set(uid, entry);
+    }
+  } catch (error) {
+    if (error.code !== "ENOENT") logServerError("Bekleyen kullanıcı dosyası okunamadı", error);
+  }
+  if (!approvedFileExisted) {
+    await loadSessionsOnce();
+    await loadTrustedDevicesOnce();
+    const grandfatheredUids = new Set([
+      ...Array.from(sessions.values()).map((entry) => entry.uid),
+      ...Array.from(trustedDevices.values()).map((entry) => entry.uid),
+    ]);
+    if (grandfatheredUids.size) {
+      grandfatheredUids.forEach((uid) => approvedUsers.add(uid));
+      saveApprovalStateSoon();
+    }
+  }
+}
+
+function saveApprovalStateSoon() {
+  if (approvalStateSaveTimer) return;
+  approvalStateSaveTimer = setTimeout(async () => {
+    approvalStateSaveTimer = null;
+    try {
+      await fs.mkdir(dataDir, { recursive: true });
+      await Promise.all([
+        fs.writeFile(approvedUsersFile, JSON.stringify(Array.from(approvedUsers)), "utf8"),
+        fs.writeFile(pendingUsersFile, JSON.stringify(Object.fromEntries(pendingUsers)), "utf8"),
+      ]);
+    } catch (error) {
+      logServerError("Kullanıcı onay dosyaları yazılamadı", error);
+    }
+  }, 200);
+  approvalStateSaveTimer.unref?.();
+}
+
+async function isUserApproved(uid, email) {
+  if (accessRoles.isAdminEmail(email)) return true;
+  await loadApprovalStateOnce();
+  return approvedUsers.has(uid);
+}
+
+async function registerPendingUser(uid, email) {
+  await loadApprovalStateOnce();
+  if (approvedUsers.has(uid)) return;
+  if (!pendingUsers.has(uid)) {
+    pendingUsers.set(uid, { email: email || null, requestedAt: new Date().toISOString() });
+    saveApprovalStateSoon();
+  }
+}
+
+async function approveUser(uid) {
+  await loadApprovalStateOnce();
+  approvedUsers.add(uid);
+  pendingUsers.delete(uid);
+  saveApprovalStateSoon();
+}
+
+async function rejectPendingUser(uid) {
+  await loadApprovalStateOnce();
+  if (pendingUsers.delete(uid)) saveApprovalStateSoon();
+}
+
+async function listPendingUsers() {
+  await loadApprovalStateOnce();
+  return Array.from(pendingUsers.entries()).map(([uid, entry]) => ({ uid, email: entry.email, requestedAt: entry.requestedAt }));
 }
 
 function generateMfaCode() {
@@ -1371,6 +1478,14 @@ async function handleSessionApi(request, response, url, user) {
     return;
   }
 
+  // Onay kapısı: /api/session/logout HARİÇ tüm giriş adımları (oturum
+  // kurma, MFA kodu isteme/doğrulama) onaylanmamış bir hesap için burada
+  // durur — hesap oluşturmak giriş izni vermez (kullanıcı talebi).
+  if (url !== "/api/session/logout" && !(await isUserApproved(user.uid, user.email))) {
+    sendJson(response, 200, { ok: true, pendingApproval: true });
+    return;
+  }
+
   if (url === "/api/session") {
     if (isMfaConfigured() && !(await isRequestFromTrustedDevice(request, user.uid))) {
       sendJson(response, 200, { ok: true, requiresMfa: true });
@@ -1461,6 +1576,79 @@ async function handleSessionApi(request, response, url, user) {
   }
 
   sendJson(response, 404, { ok: false, error: "Bulunamadı." });
+}
+
+// login.html'de Firebase createUserWithEmailAndPassword ile hesap
+// oluşturulduktan HEMEN sonra çağrılır — kullanıcının KENDİ taze ID
+// token'ıyla (sahte bir uid için başkası adına kayıt açılamaz) kendini
+// "onay bekliyor" listesine ekler. Zaten onaylıysa (ör. yönetici) no-op.
+async function handleRegisterPendingApi(request, response, user) {
+  if (request.method !== "POST") {
+    sendJson(response, 405, { ok: false, error: "Bu işlem desteklenmiyor." });
+    return;
+  }
+  await registerPendingUser(user.uid, user.email);
+  sendJson(response, 200, { ok: true });
+}
+
+function requireAdmin(response, user) {
+  if (accessRoles.isAdminEmail(user.email)) return true;
+  sendJson(response, 403, { ok: false, error: "Bu işlem için yönetici yetkisi gerekir." });
+  return false;
+}
+
+async function handlePendingUsersListApi(request, response, user) {
+  if (request.method !== "GET") {
+    sendJson(response, 405, { ok: false, error: "Bu işlem desteklenmiyor." });
+    return;
+  }
+  if (!requireAdmin(response, user)) return;
+  const pending = await listPendingUsers();
+  sendJson(response, 200, { ok: true, pending });
+}
+
+async function handleApproveUserApi(request, response, user) {
+  if (request.method !== "POST") {
+    sendJson(response, 405, { ok: false, error: "Bu işlem desteklenmiyor." });
+    return;
+  }
+  if (!requireAdmin(response, user)) return;
+  let body;
+  try {
+    body = JSON.parse((await readBody(request, 2048)) || "{}");
+  } catch {
+    sendJson(response, 400, { ok: false, error: "Geçersiz istek." });
+    return;
+  }
+  const targetUid = String(body?.uid || "").trim();
+  if (!targetUid) {
+    sendJson(response, 400, { ok: false, error: "Kullanıcı kimliği eksik." });
+    return;
+  }
+  await approveUser(targetUid);
+  sendJson(response, 200, { ok: true });
+}
+
+async function handleRejectUserApi(request, response, user) {
+  if (request.method !== "POST") {
+    sendJson(response, 405, { ok: false, error: "Bu işlem desteklenmiyor." });
+    return;
+  }
+  if (!requireAdmin(response, user)) return;
+  let body;
+  try {
+    body = JSON.parse((await readBody(request, 2048)) || "{}");
+  } catch {
+    sendJson(response, 400, { ok: false, error: "Geçersiz istek." });
+    return;
+  }
+  const targetUid = String(body?.uid || "").trim();
+  if (!targetUid) {
+    sendJson(response, 400, { ok: false, error: "Kullanıcı kimliği eksik." });
+    return;
+  }
+  await rejectPendingUser(targetUid);
+  sendJson(response, 200, { ok: true });
 }
 
 function resolveStaticPath(urlPath) {
@@ -1569,6 +1757,10 @@ const API_RATE_LIMITS = {
   "/api/neighborhoods": { limit: 60, windowMs: 60 * 1000 },
   "/api/pdf-text": { limit: 5, windowMs: 60 * 1000 },
   "/api/session": { limit: 20, windowMs: 60 * 1000 },
+  "/api/register-pending": { limit: 10, windowMs: 60 * 1000 },
+  "/api/pending-users": { limit: 60, windowMs: 60 * 1000 },
+  "/api/approve-user": { limit: 30, windowMs: 60 * 1000 },
+  "/api/reject-user": { limit: 30, windowMs: 60 * 1000 },
 };
 
 function matchApiRoute(url) {
@@ -1636,6 +1828,22 @@ const server = http.createServer(async (request, response) => {
       await handleSessionApi(request, response, url, request.user);
       return;
     }
+    if (apiRoute === "/api/register-pending") {
+      await handleRegisterPendingApi(request, response, request.user);
+      return;
+    }
+    if (apiRoute === "/api/pending-users") {
+      await handlePendingUsersListApi(request, response, request.user);
+      return;
+    }
+    if (apiRoute === "/api/approve-user") {
+      await handleApproveUserApi(request, response, request.user);
+      return;
+    }
+    if (apiRoute === "/api/reject-user") {
+      await handleRejectUserApi(request, response, request.user);
+      return;
+    }
     await handleStatic(request, response);
   } catch (error) {
     logServerError(`İstek işlenirken hata (${request.method} ${request.url})`, error);
@@ -1675,4 +1883,12 @@ module.exports = {
   buildMfaEmailHtml,
   MAX_TRUSTED_DEVICES_PER_USER,
   accessRoles,
+  isUserApproved,
+  registerPendingUser,
+  approveUser,
+  rejectPendingUser,
+  listPendingUsers,
+  requireAdmin,
+  pendingUsers,
+  approvedUsers,
 };

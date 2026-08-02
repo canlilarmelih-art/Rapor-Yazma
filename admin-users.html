@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#111d3d" />
+    <title>Kullanıcı Onayları — Experify</title>
+    <link rel="icon" href="icons/icon-192.png?v=20260720-0210" type="image/png" />
+    <style>
+      :root { color-scheme: dark; }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        padding: 32px 20px;
+        background: #111d3d;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+        color: #f3f6fc;
+      }
+      .wrap { max-width: 560px; margin: 0 auto; }
+      .header { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
+      .header img { display: block; }
+      .header h1 { margin: 0; font-size: 16px; font-weight: 800; letter-spacing: 0.02em; }
+      .card {
+        background: #ffffff;
+        color: #152238;
+        border-radius: 14px;
+        padding: 20px 20px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+      }
+      .status { font-size: 13px; color: #5a6576; margin: 0 0 16px; }
+      .status.error { color: #b23434; font-weight: 600; }
+      .row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 12px 0;
+        border-bottom: 1px solid #eef1f6;
+      }
+      .row:last-child { border-bottom: none; }
+      .row .info { min-width: 0; }
+      .row .email { font-weight: 700; font-size: 14px; color: #152238; overflow-wrap: anywhere; }
+      .row .meta { font-size: 11px; color: #8a99ad; margin-top: 2px; }
+      .row .actions { display: flex; gap: 6px; flex-shrink: 0; }
+      .row button {
+        border: none;
+        border-radius: 6px;
+        padding: 7px 12px;
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      .approve-btn { background: #1c7a3f; color: #fff; }
+      .reject-btn { background: #eef1f6; color: #b23434; }
+      button:disabled { opacity: 0.5; cursor: default; }
+      .empty { text-align: center; color: #8a99ad; font-size: 13px; padding: 20px 0; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="header">
+        <img src="icons/experify-mark-white.svg?v=20260720-0210" alt="" aria-hidden="true" width="28" height="28" />
+        <h1>Kullanıcı Onayları</h1>
+      </div>
+      <div class="card">
+        <p class="status" id="status">Yükleniyor...</p>
+        <div id="list"></div>
+      </div>
+    </div>
+
+    <script src="vendor/firebase/firebase-app-compat.js?v=11.10.0"></script>
+    <script src="vendor/firebase/firebase-auth-compat.js?v=11.10.0"></script>
+    <script src="cloud/firebase-config.js?v=20260709-1854"></script>
+    <script>
+      (function () {
+        var statusLine = document.getElementById("status");
+        var list = document.getElementById("list");
+
+        if (typeof firebase === "undefined" || !firebase.initializeApp || typeof RAPOR_FIREBASE_CONFIG === "undefined") {
+          statusLine.textContent = "Yapılandırma eksik.";
+          statusLine.className = "status error";
+          return;
+        }
+
+        firebase.initializeApp(RAPOR_FIREBASE_CONFIG);
+        var auth = firebase.auth();
+
+        async function apiCall(path, options) {
+          var user = auth.currentUser;
+          if (!user) throw new Error("no-user");
+          var token = await user.getIdToken();
+          var headers = Object.assign({ Authorization: "Bearer " + token, "X-Rapor-Client": "1" }, (options && options.headers) || {});
+          var response = await fetch(path, Object.assign({}, options, { headers: headers }));
+          var body = await response.json().catch(function () { return {}; });
+          if (!response.ok || !body.ok) throw new Error(body.error || ("http-" + response.status));
+          return body;
+        }
+
+        function formatDate(iso) {
+          try {
+            return new Date(iso).toLocaleString("tr-TR");
+          } catch (error) {
+            return iso || "";
+          }
+        }
+
+        function renderList(pending) {
+          list.innerHTML = "";
+          if (!pending.length) {
+            var empty = document.createElement("p");
+            empty.className = "empty";
+            empty.textContent = "Onay bekleyen kullanıcı yok.";
+            list.append(empty);
+            return;
+          }
+          pending.forEach(function (entry) {
+            var row = document.createElement("div");
+            row.className = "row";
+            row.innerHTML =
+              '<div class="info"><div class="email"></div><div class="meta"></div></div>' +
+              '<div class="actions"><button type="button" class="approve-btn">Onayla</button><button type="button" class="reject-btn">Reddet</button></div>';
+            row.querySelector(".email").textContent = entry.email || "(e-posta yok)";
+            row.querySelector(".meta").textContent = "İstek: " + formatDate(entry.requestedAt);
+            var approveBtn = row.querySelector(".approve-btn");
+            var rejectBtn = row.querySelector(".reject-btn");
+            approveBtn.addEventListener("click", function () {
+              approveBtn.disabled = true;
+              rejectBtn.disabled = true;
+              apiCall("/api/approve-user", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ uid: entry.uid }) })
+                .then(loadPending)
+                .catch(function () {
+                  statusLine.textContent = "Onaylanamadı, tekrar deneyin.";
+                  statusLine.className = "status error";
+                  approveBtn.disabled = false;
+                  rejectBtn.disabled = false;
+                });
+            });
+            rejectBtn.addEventListener("click", function () {
+              if (!window.confirm("Bu kullanıcı isteğini reddetmek istediğinize emin misiniz?")) return;
+              approveBtn.disabled = true;
+              rejectBtn.disabled = true;
+              apiCall("/api/reject-user", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ uid: entry.uid }) })
+                .then(loadPending)
+                .catch(function () {
+                  statusLine.textContent = "Reddedilemedi, tekrar deneyin.";
+                  statusLine.className = "status error";
+                  approveBtn.disabled = false;
+                  rejectBtn.disabled = false;
+                });
+            });
+            list.append(row);
+          });
+        }
+
+        function loadPending() {
+          statusLine.textContent = "Yükleniyor...";
+          statusLine.className = "status";
+          return apiCall("/api/pending-users", { method: "GET" })
+            .then(function (body) {
+              statusLine.textContent = body.pending.length + " onay bekleyen kullanıcı.";
+              renderList(body.pending);
+            })
+            .catch(function (error) {
+              if (String(error && error.message) === "yönetici yetkisi gerekir" || String(error && error.message).indexOf("yönetici") >= 0) {
+                statusLine.textContent = "Bu sayfayı görüntülemek için yönetici yetkisi gerekir.";
+              } else {
+                statusLine.textContent = "Liste alınamadı: " + (error && error.message ? error.message : "bilinmeyen hata");
+              }
+              statusLine.className = "status error";
+            });
+        }
+
+        auth.onAuthStateChanged(function (user) {
+          if (!user) {
+            statusLine.textContent = "Giriş yapmanız gerekiyor.";
+            statusLine.className = "status error";
+            window.location.replace("/login.html?next=" + encodeURIComponent("/admin-users.html"));
+            return;
+          }
+          loadPending();
+        });
+      })();
+    </script>
+  </body>
+</html>

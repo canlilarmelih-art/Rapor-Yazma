@@ -1,5 +1,17 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.290 - 2026-08-02 - Kullanıcı kaydı + admin onayı olmadan giriş yok
+
+- Kullanıcı talebi: "kullanıcı oluştur ekleyelim admin onayı olmadan kullanıcı olusturlmasın" → netleşti: "admin only olmayacak herkes oluşturabilecek ancak ben admin onay vermeden sisteme giriş yapamayacak".
+- **login.html**: yeni "Hesap Oluştur" sekmesi — herkes Firebase `createUserWithEmailAndPassword` ile kendi hesabını oluşturabilir (genel API anahtarıyla çalışır, ek yetki gerekmez). Hesap oluşturmak GİRİŞ YAPMAK anlamına gelmiyor: hesap oluşturulur oluşturulmaz `/api/register-pending` çağrılır, kullanıcı "onay bekliyor" ekranına düşer.
+- **server.js**: `isUserApproved(uid, email)` — yönetici (`ADMIN_EMAIL`) her zaman otomatik onaylı (aksi halde kimse kimseyi onaylayamaz); diğer herkes `approved-users.json`'da olmadıkça onaysız. `/api/session`, `/api/session/request-code`, `/api/session/verify-code` (logout HARİÇ) bu kontrolden geçmeden çalışmaz — onaysızsa `{pendingApproval:true}` döner, oturum çerezi verilmez.
+- Yeni admin-only API'ler: `GET /api/pending-users` (bekleyen listesi), `POST /api/approve-user`, `POST /api/reject-user` — hepsi `requireAdmin()` ile 403'e düşer (yönetici değilse).
+- Yeni **admin-users.html**: yönetici için basit onay paneli (bekleyenleri listeler, Onayla/Reddet düğmeleri). Sol panele (sadece yönetici hesabına, `body[data-user-role="admin"]` CSS kuralıyla) "Kullanıcı Onayları" düğmesi eklendi — Saha Pro düğmesiyle aynı desende yeni sekmede açılır.
+- **KRİTİK süreklilik kararı ("mevcut kullanıcılar kilitlenmesin"):** `approved-users.json` İLK KEZ oluşturulduğu an, o ana kadar `sessions.json`/`trusted-devices.json`'da görülen (yani daha önce en az bir kez giriş yapmış) her uid otomatik onaylı sayılır (miras/"grandfather" klozu) — kullanıcı zaten şu an sadece kendi hesabının aktif olduğunu doğruladı, ama bu koruma yine de eklendi.
+- Yeni `tools/test-user-approval-flow.js`: tam onay yaşam döngüsü (kayıt → bekliyor → onayla/reddet), zaten onaylı kullanıcı için register no-op, `requireAdmin` yönetici/yönetici-olmayan davranışı, ve miras klozunun gerçekten çalıştığı izole doğrulanıyor; regresyonu yakaladığı kanıtlandı. `tools/test-static-auth-gate.js`'e `admin-users.html`'in korumalı olduğu doğrulaması eklendi.
+- Cache-buster'lar `20260802-0300`'e yükseltildi (app.js/styles.css/index.html değişti).
+- Yedek gerekmedi (yeni, opt-in bir güvenlik katmanı; mevcut tek kullanıcı — yönetici — hiç etkilenmiyor); geri alma: bu commit'i `git revert` ile geri al.
+
 ## 0.0.289 - 2026-08-02 - Bağımlılık güvenlik açığı taraması (Dependabot)
 
 - Kullanıcı talebi: daha önceki güvenlik raporundaki "bağımlılık tarama yok" açığı için Dependabot eklendi.
