@@ -48,6 +48,20 @@ kök HTML dosyası veya login öncesi erişilmesi gereken bir varlık eklerken
 `isPublicStaticFile`'ı güncellemeyi unutma; aksi halde 401/302 alır. Testi:
 `tools/test-static-auth-gate.js`.
 
+## Deploy-öncesi minify (0.0.285, 2026-08-02)
+
+`app.js`, `cloud/cloud-sync.js`, `cloud/report-library.js` ve `src/**`
+altındaki dosyalar deploy sırasında `.github/workflows/deploy.yml`'de
+`tools/minify-for-deploy.js` ile küçültülür (sadece CI'ın geçici
+checkout'unda — repodaki kaynak asla minified commit edilmez). Yeni bir
+`src/**/*.js` dosyası eklersen `minify-for-deploy.js`'deki `TARGET_FILES`
+listesine de ekle (unutulursa `tools/test-minify-deploy-coverage.js`
+`npm run verify`'de yakalar). Terser ayarlarını (`mangle.toplevel: false`,
+`compress.toplevel: false`) DEĞİŞTİRME — `template-engine.js`'in
+`globalThis[fnName]` ile yaptığı 147 dinamik çağrı bunlara bağlı. Canlıda
+"view source" artık okunabilir kod göstermez; hata ayıklama için yerel
+sunucuyu (`npm run` yok, doğrudan `node server.js`) kullan.
+
 ## Bu depoda paralel oturum uyarısı
 
 Aynı çalışma dizininde başka bir ajan (Codex) da düzenleme yapabiliyor.

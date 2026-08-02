@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.285 - 2026-08-02 - Kaynak kodu koruması 2. katman: deploy-öncesi minify
+
+- 0.0.284'te eklenen login kapısının üzerine ikinci katman: giriş yapmış bir kullanıcı `app.js`'i indirse bile artık okunabilir/yorumlu kaynağı değil, minified (küçültülmüş, yorumsuz, tek satır) halini görür.
+- Yeni `tools/minify-for-deploy.js` — `terser` (devDependency, sadece build-time; çalışma zamanı hâlâ sıfır bağımlılık) ile `app.js`, `cloud/cloud-sync.js`, `cloud/report-library.js` ve `src/**` altındaki 16 dosyayı kucultur. `.github/workflows/deploy.yml`'e rsync'ten ÖNCE çalışan bir adım eklendi; bu SADECE CI'ın geçici checkout kopyasında çalışır — repodaki dosyalar asla minified commit edilmez, geliştirme deneyimi etkilenmez.
+- **Kritik güvenlik ayarı:** `mangle.toplevel: false` ve `compress.toplevel: false` — çünkü `src/templates/template-engine.js` içindeki `safeCall()` 147 kez `globalThis[fnName]` ile app.js fonksiyonlarını İSİM STRING'İYLE dinamik çağırıyor; üst düzey isimler değiştirilir/silinirse bu çağrılar sessizce kırılır. Bu ayarlarla test edildi: `window.RaporTemplates` (listTemplates/fillTemplate/exportTemplate vb.) ve `globalThis['buildGabimDataSetWordHtml']` gibi dinamik referanslar minify sonrası hâlâ doğru çalışıyor (gerçek tarayıcıda canlı doğrulandı).
+- Her dosya minify sonrası `node --check` ile anında doğrulanır; bozuk çıktı olursa deploy job'ı rsync'e hiç gelmeden başarısız olur.
+- Yeni `tools/test-minify-deploy-coverage.js`: TARGET_FILES listesinin gerçek dosyalarla senkron olduğunu (yeni bir src dosyası eklenip listeye eklenmezse yakalar), kritik `toplevel:false` ayarlarının kodda durduğunu, ve deploy.yml'in minify adımını rsync'ten ÖNCE çağırdığını doğrular.
+- Yedek gerekmedi (yeni, izole bir güvenlik katmanı, sadece CI pipeline'ı etkiler); geri alma: bu commit'i `git revert` ile geri al.
+
 ## 0.0.284 - 2026-08-02 - ÖNEMLİ: Kaynak kodu artık login olmadan indirilemez (server-side oturum kapısı)
 
 - Kullanıcı riski açıkça belirtti: "bu kadar çaba gösteriyoruz bu kadar risk çok önemli bu kopyalanamamalı". Daha önce `app.js`, `index.html`, `styles.css`, `cloud/cloud-sync.js` gibi TÜM istemci kaynak kodu, giriş yapmadan (hatta hiç hesabı olmayan biri tarafından bile) URL'yi bilen HERKESE koşulsuz statik dosya olarak servis ediliyordu — sayfadaki `#authGateOverlay` yalnızca GÖRSEL bir kapıydı, kodun tarayıcıya inmesini engellemiyordu (bu boşluk index.html'de zaten yorum satırıyla not edilmişti).

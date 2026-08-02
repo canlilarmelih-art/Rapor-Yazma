@@ -47,6 +47,22 @@ jobs:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .nvmrc
+
+      # Kaynak kodu korumasi: bu adim yalnizca bu GECICI (ephemeral) CI
+      # checkout'unda calisir ve app.js/cloud/src altindaki istemci
+      # dosyalarini KUCULTULMUS haliyle UZERINE YAZAR — repodaki gercek
+      # dosyalar (okunabilir kaynak) hicbir zaman degismez, yalnizca
+      # sunucuya rsync'lenen bu gecici kopya minified olur. Detay/guvenlik
+      # kurallari icin bkz. tools/minify-for-deploy.js basindaki yorum.
+      - name: Minify client JS for deploy (source-protection)
+        run: |
+          npm ci
+          node tools/minify-for-deploy.js
+
       - name: Prepare SSH
         env:
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
