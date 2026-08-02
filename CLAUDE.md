@@ -38,6 +38,16 @@ büyük değişiklikten sonra `index_repository` ile yenile.
 - Deploy GitHub Actions ile experify.com.tr'ye gider; `verify` job'ı kırmızıysa
   `deploy` hiç çalışmaz.
 
+## Statik dosya oturum kapısı (0.0.284, 2026-08-02)
+
+Kaynak kodu koruması için `server.js` artık `login.html` ve birkaç genel
+varlık (Firebase SDK, `cloud/firebase-config.js`, `manifest.json`,
+`icons/*` — bkz. `isPublicStaticFile`) DIŞINDA hiçbir statik dosyayı
+oturum çerezi (`rapor_session`, HttpOnly, 7 gün) olmadan sunmuyor. Yeni bir
+kök HTML dosyası veya login öncesi erişilmesi gereken bir varlık eklerken
+`isPublicStaticFile`'ı güncellemeyi unutma; aksi halde 401/302 alır. Testi:
+`tools/test-static-auth-gate.js`.
+
 ## Bu depoda paralel oturum uyarısı
 
 Aynı çalışma dizininde başka bir ajan (Codex) da düzenleme yapabiliyor.

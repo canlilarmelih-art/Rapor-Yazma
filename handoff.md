@@ -1,5 +1,17 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.284 - 2026-08-02 - ÖNEMLİ: Kaynak kodu artık login olmadan indirilemez (server-side oturum kapısı)
+
+- Kullanıcı riski açıkça belirtti: "bu kadar çaba gösteriyoruz bu kadar risk çok önemli bu kopyalanamamalı". Daha önce `app.js`, `index.html`, `styles.css`, `cloud/cloud-sync.js` gibi TÜM istemci kaynak kodu, giriş yapmadan (hatta hiç hesabı olmayan biri tarafından bile) URL'yi bilen HERKESE koşulsuz statik dosya olarak servis ediliyordu — sayfadaki `#authGateOverlay` yalnızca GÖRSEL bir kapıydı, kodun tarayıcıya inmesini engellemiyordu (bu boşluk index.html'de zaten yorum satırıyla not edilmişti).
+- Yeni ayrı, küçük bir **`login.html`** eklendi (yalnızca giriş formu; `app.js`'in iş mantığını içermez). Firebase ile giriş başarılı olunca ID token `POST /api/session`'a gönderiliyor; sunucu bunu doğrulayıp (mevcut `authenticateRequest` ile) HttpOnly + SameSite=Lax bir `rapor_session` çerezi veriyor (üretimde `Secure` de eklenir; localhost'ta test edilebilsin diye eklenmez). Kullanıcı seçimiyle **7 gün** geçerli.
+- `server.js`'deki `handleStatic`, bu çerez yokken `login.html` ve birkaç genel varlık (Firebase SDK, `cloud/firebase-config.js`, `manifest.json`, `icons/*`) DIŞINDA hiçbir dosyayı sunmuyor: HTML istekleri `login.html`'e yönlendiriliyor (302), diğerleri (app.js, styles.css, cloud-sync.js, saha-pro.html vb.) 401 dönüyor.
+- Oturumlar `server-data/sessions.json`'a kalıcı yazılır (deploy'da `pm2 restart` oturumu silmesin diye — `server-data/` deploy rsync'inde zaten hariç tutuluyor, dolayısıyla korunuyor).
+- "Çıkış Yap" (`signOutAndClearLocalData`, `cloud/cloud-sync.js`) artık Firebase'den çıkmadan ÖNCE `POST /api/session/logout` çağırıp sunucu çerezini de iptal ediyor — yalnızca istemci tarafı çıkış yetersizdi.
+- Yeni `tools/test-static-auth-gate.js`: `isPublicStaticFile` allowlist'ini (login.html/vendor/firebase/manifest/icons EVET, app.js/index.html/styles.css/cloud-sync.js/saha-pro.html HAYIR) ve oturum yaşam döngüsünü (oluştur/doğrula/sahte reddet/çıkışta iptal, cookie header biçimi) izole doğrular.
+- `tools/check-basic.js`'deki `cloud/cloud-sync.js?v=20260719-2200` sabit-sürüm kontrolü, kardeş kontroller gibi versiyon-agnostik regex'e çevrildi (cloud-sync.js'in cache-buster'ı bu değişiklikle bumped edildiği için sabit string artık geçersizdi).
+- **Bilinen davranış değişikliği:** Deploy sonrası açık sekmesi olan/yeniden yükleyen/yeni sekme açan herkes `login.html`'e yönlendirilip tekrar giriş yapmak zorunda kalacak (mevcut Firebase hesabıyla, yeni kayıt gerekmez); zaten açık kalan sekmeler (sayfa yeniden yüklenmediği sürece) kod zaten yüklü olduğundan etkilenmez.
+- Yedek gerekmedi (yeni, izole bir güvenlik katmanı); geri alma: bu commit'i `git revert` ile geri al — ama bu, kaynak kodu koruma amacını da geri alır.
+
 ## 0.0.283 - 2026-08-02 - Saha Pro aracı sol panelden yeni sekmede açılıyor
 
 - Kullanıcının paylaştığı `C:\Users\90551\OneDrive\Masaüstü\claude\saha çalışma\index.html` (canvas tabanlı kroki/işaretleme aracı) uygulama köküne `saha-pro.html` adıyla eklendi; PWA'ya özgü `manifest.json`/favicon/service-worker referansları (gereksiz 404/uyarı kaynağı, bu bağlamda gerek yok) temizlendi.

@@ -469,6 +469,22 @@
 
   async function signOutAndClearLocalData() {
     if (!cloud.auth) return false;
+    // Sunucu tarafındaki statik dosya erişim çerezini de iptal et — yalnızca
+    // istemcide Firebase'den çıkmak yetmez, çerez varlığını sürdürürse aynı
+    // tarayıcıdan app.js vb. yeniden login olmadan indirilmeye devam eder.
+    // Token'ı Firebase'den çıkmadan ÖNCE almak gerekir (çıkıştan sonra
+    // getIdToken() başarısız olur).
+    try {
+      const token = await getIdToken();
+      if (token) {
+        await fetch("/api/session/logout", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}`, "X-Rapor-Client": "1" },
+        });
+      }
+    } catch (error) {
+      console.warn("Sunucu oturum çerezi iptal edilemedi:", error);
+    }
     await cloud.auth.signOut();
     purgeLocalReportData();
     closeCloudModal();

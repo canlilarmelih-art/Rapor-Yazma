@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#111d3d" />
+    <title>Giriş — Experify</title>
+    <link rel="icon" href="icons/icon-192.png?v=20260720-0210" type="image/png" />
+    <style>
+      :root { color-scheme: dark; }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        background: #111d3d;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+        color: #f3f6fc;
+      }
+      .card {
+        width: 100%;
+        max-width: 360px;
+        background: #ffffff;
+        color: #152238;
+        border-radius: 14px;
+        padding: 26px 22px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+      }
+      .card img { display: block; margin: 0 auto 10px; }
+      .card h1 {
+        margin: 0 0 4px;
+        font-size: 15px;
+        font-weight: 800;
+        letter-spacing: 0.02em;
+        color: #111d3d;
+        text-align: center;
+      }
+      .card p.hint {
+        margin: 0 0 18px;
+        color: #5a6576;
+        font-size: 13px;
+        line-height: 1.4;
+        text-align: center;
+      }
+      .field { display: block; margin-top: 12px; font-size: 13px; font-weight: 600; color: #152238; }
+      .field span { display: block; margin-bottom: 4px; }
+      .field input {
+        width: 100%;
+        padding: 10px 12px;
+        border-radius: 8px;
+        border: 1px solid #dde3ef;
+        font-size: 15px;
+        font-weight: 400;
+        color: #152238;
+        background: #f8fafc;
+      }
+      .field input:focus { outline: 2px solid #2d59ab; outline-offset: 1px; }
+      .password-wrap { position: relative; display: flex; }
+      .password-wrap input { flex: 1; padding-right: 40px; }
+      .password-wrap button {
+        position: absolute;
+        right: 4px;
+        top: 50%;
+        transform: translateY(-50%);
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        font-size: 16px;
+        padding: 6px;
+      }
+      .error {
+        min-height: 16px;
+        margin: 8px 0 0;
+        font-size: 12px;
+        color: #b23434;
+        font-weight: 600;
+      }
+      .submit {
+        width: 100%;
+        margin-top: 14px;
+        padding: 12px;
+        border: none;
+        border-radius: 8px;
+        background: #213f77;
+        color: #ffffff;
+        font-size: 14px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      .submit:disabled { opacity: 0.6; cursor: default; }
+      .config-warning {
+        color: #b23434;
+        font-size: 13px;
+        text-align: center;
+        margin: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <img src="icons/experify-mark-navy.svg?v=20260720-0210" alt="" aria-hidden="true" width="40" height="40" />
+      <h1>Experify - Yarı Otomatik Rapor Oluşturma</h1>
+      <p class="hint">Devam etmek için giriş yapın. Belgeler ve ham belge metinleri buluta yüklenmez; yalnızca kendi hesabınızın raporlarını görürsünüz.</p>
+      <form id="loginForm">
+        <label class="field"><span>E-posta</span>
+          <input type="email" id="loginEmail" autocomplete="username" inputmode="email" autocapitalize="off" autocorrect="off" spellcheck="false" required />
+        </label>
+        <label class="field"><span>Şifre</span>
+          <span class="password-wrap">
+            <input type="password" id="loginPassword" autocomplete="current-password" autocapitalize="off" autocorrect="off" spellcheck="false" required />
+            <button type="button" id="loginTogglePassword" title="Şifreyi göster/gizle">👁</button>
+          </span>
+        </label>
+        <p id="loginError" class="error"></p>
+        <button type="submit" class="submit" id="loginSubmit">Giriş Yap</button>
+      </form>
+    </div>
+
+    <script src="vendor/firebase/firebase-app-compat.js?v=11.10.0"></script>
+    <script src="vendor/firebase/firebase-auth-compat.js?v=11.10.0"></script>
+    <script src="cloud/firebase-config.js?v=20260709-1854"></script>
+    <script>
+      (function () {
+        var card = document.querySelector(".card");
+        var form = document.getElementById("loginForm");
+        var emailInput = document.getElementById("loginEmail");
+        var passwordInput = document.getElementById("loginPassword");
+        var errorLine = document.getElementById("loginError");
+        var submitButton = document.getElementById("loginSubmit");
+
+        if (typeof firebase === "undefined" || !firebase.initializeApp || typeof RAPOR_FIREBASE_CONFIG === "undefined"
+          || RAPOR_FIREBASE_CONFIG.apiKey === "YAPISTIR") {
+          form.style.display = "none";
+          var warning = document.createElement("p");
+          warning.className = "config-warning";
+          warning.textContent = "Bulut/giriş yapılandırması eksik. cloud/KURULUM.md dosyasına bakın.";
+          card.append(warning);
+          return;
+        }
+
+        firebase.initializeApp(RAPOR_FIREBASE_CONFIG);
+        var auth = firebase.auth();
+
+        emailInput.value = localStorage.getItem("rapor-cloud-email") || "";
+
+        document.getElementById("loginTogglePassword").addEventListener("click", function () {
+          passwordInput.type = passwordInput.type === "password" ? "text" : "password";
+        });
+
+        function safeNextPath() {
+          var params = new URLSearchParams(window.location.search);
+          var next = params.get("next") || "";
+          // Açık yönlendirme (open redirect) önlemi: yalnızca uygulamanın
+          // KENDİ köküne göreli, tek "/" ile başlayan yollara izin verilir.
+          if (next.startsWith("/") && !next.startsWith("//") && !next.includes("\\")) return next;
+          return "/index.html";
+        }
+
+        form.addEventListener("submit", async function (event) {
+          event.preventDefault();
+          errorLine.textContent = "";
+          submitButton.disabled = true;
+          submitButton.textContent = "Giriş yapılıyor...";
+          try {
+            var credential = await auth.signInWithEmailAndPassword(emailInput.value.trim(), passwordInput.value);
+            localStorage.setItem("rapor-cloud-email", emailInput.value.trim());
+            var token = await credential.user.getIdToken();
+            var response = await fetch("/api/session", {
+              method: "POST",
+              headers: { Authorization: "Bearer " + token, "X-Rapor-Client": "1" },
+            });
+            if (!response.ok) throw new Error("session-failed");
+            window.location.replace(safeNextPath());
+          } catch (error) {
+            var network = String(error && error.code || "").includes("network");
+            errorLine.textContent = network
+              ? "Bağlantı kurulamadı. İnternetinizi kontrol edin."
+              : "E-posta adresi veya şifre hatalı.";
+            submitButton.disabled = false;
+            submitButton.textContent = "Giriş Yap";
+          }
+        });
+      })();
+    </script>
+  </body>
+</html>

@@ -21,6 +21,34 @@ let firebaseCertCache = { certs: null, expiresAt: 0, pending: null };
 let neighborhoodRowsPromise = null;
 let lastBackupCheckDate = "";
 
+// Statik dosya erişim kapısı (kod koruması): daha önce app.js/index.html gibi
+// istemci kaynak kodu HERKESE, giriş yapmadan indirilebiliyordu — sayfa
+// içindeki #authGateOverlay yalnızca GÖRSEL bir kapıydı, kodun tarayıcıya
+// inmesini engellemiyordu. Artık login.html'de Firebase ile giriş yapılınca
+// sunucu, doğrulanmış kimliği bu HttpOnly oturum çerezine bağlıyor; çerez
+// olmadan (login.html ve birkaç genel varlık DIŞINDA) hiçbir statik dosya
+// sunulmuyor. Süreç yeniden başlatıldığında (deploy) oturumların düşmemesi
+// için server-data/sessions.json'a kalıcı olarak yazılır.
+const sessionsFile = path.join(dataDir, "sessions.json");
+const sessions = new Map(); // sessionId -> { uid, email, expiresAt }
+const SESSION_COOKIE_NAME = "rapor_session";
+const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000; // kullanıcı seçimi: 7 gün
+let sessionsLoaded = false;
+let sessionsSaveTimer = null;
+
+// login.html'in kendisini ve giriş yapabilmesi için ihtiyaç duyduğu Firebase
+// SDK / yapılandırma / ikon dosyalarını session ÇEREZİ OLMADAN da sunar.
+// Buradaki HİÇBİR dosya iş mantığı (formüller, banka tabloları, şablonlar)
+// içermez — sadece genel Firebase istemci SDK'sı ve marka ikonlarıdır.
+function isPublicStaticFile(relativePath) {
+  if (relativePath === "login.html") return true;
+  if (relativePath === "manifest.json") return true;
+  if (relativePath.startsWith("icons/")) return true;
+  if (relativePath.startsWith("vendor/firebase/")) return true;
+  if (relativePath === "cloud/firebase-config.js") return true;
+  return false;
+}
+
 // Statik olarak ASLA sunulmayacak kök klasör/isimler — tam kaynak yedekleri
 // (backups) ve versiyon geçmişi (.git) istemcinin talep edebileceği bir dosya
 // adı DEĞİLDİR. Eskiden tek kontrol `resolved.startsWith(root)` idi; bu appDir
@@ -37,6 +65,7 @@ const SENSITIVE_SERVER_DATA_FILES = new Set([
   "active-case.json",
   "user-pois.json",
   "bursa_manuel_duzeltilmis_ana_dosya.csv",
+  "sessions.json",
 ]);
 
 function isSensitivePath(relativeSegments) {
@@ -493,6 +522,102 @@ function sendUnauthorized(response) {
     "WWW-Authenticate": "Bearer",
   });
   response.end(JSON.stringify({ ok: false, error: "Oturum doğrulanamadı." }));
+}
+
+async function loadSessionsOnce() {
+  if (sessionsLoaded) return;
+  sessionsLoaded = true;
+  try {
+    const raw = await fs.readFile(sessionsFile, "utf8");
+    const parsed = JSON.parse(raw);
+    const now = Date.now();
+    if (parsed && typeof parsed === "object") {
+      for (const [id, entry] of Object.entries(parsed)) {
+        if (entry && Number(entry.expiresAt) > now) sessions.set(id, entry);
+      }
+    }
+  } catch (error) {
+    if (error.code !== "ENOENT") logServerError("Oturum dosyası okunamadı", error);
+  }
+}
+
+function saveSessionsSoon() {
+  if (sessionsSaveTimer) return;
+  sessionsSaveTimer = setTimeout(async () => {
+    sessionsSaveTimer = null;
+    try {
+      await fs.mkdir(dataDir, { recursive: true });
+      await fs.writeFile(sessionsFile, JSON.stringify(Object.fromEntries(sessions)), "utf8");
+    } catch (error) {
+      logServerError("Oturum dosyası yazılamadı", error);
+    }
+  }, 200);
+  sessionsSaveTimer.unref?.();
+}
+
+function createSession(uid, email) {
+  const id = crypto.randomBytes(32).toString("hex");
+  const expiresAt = Date.now() + SESSION_TTL_MS;
+  sessions.set(id, { uid, email: email || null, expiresAt });
+  saveSessionsSoon();
+  return { id, expiresAt };
+}
+
+function destroySession(id) {
+  if (id && sessions.delete(id)) saveSessionsSoon();
+}
+
+function parseCookieHeader(request) {
+  const header = String(request.headers.cookie || "");
+  const cookies = {};
+  header.split(";").forEach((part) => {
+    const eq = part.indexOf("=");
+    if (eq < 0) return;
+    const key = part.slice(0, eq).trim();
+    if (!key) return;
+    try {
+      cookies[key] = decodeURIComponent(part.slice(eq + 1).trim());
+    } catch {
+      cookies[key] = part.slice(eq + 1).trim();
+    }
+  });
+  return cookies;
+}
+
+async function getSessionFromRequest(request) {
+  await loadSessionsOnce();
+  const id = parseCookieHeader(request)[SESSION_COOKIE_NAME];
+  if (!id) return null;
+  const entry = sessions.get(id);
+  if (!entry) return null;
+  if (Number(entry.expiresAt) <= Date.now()) {
+    sessions.delete(id);
+    saveSessionsSoon();
+    return null;
+  }
+  return { id, uid: entry.uid, email: entry.email };
+}
+
+// Yerelde (127.0.0.1/localhost) http üzerinden test edilebilsin diye
+// `Secure` bayrağı yalnızca gerçek (https) host'larda eklenir — aksi halde
+// tarayıcı çerezi http'de asla kaydetmez ve yerel giriş testi imkansız olur.
+function isLocalHost(request) {
+  const hostHeader = String(request.headers.host || "").split(":")[0];
+  return hostHeader === "localhost" || hostHeader === "127.0.0.1" || hostHeader === "::1";
+}
+
+function setSessionCookie(request, response, id, expiresAt) {
+  const maxAgeSeconds = Math.max(0, Math.floor((expiresAt - Date.now()) / 1000));
+  const secureFlag = isLocalHost(request) ? "" : " Secure;";
+  response.setHeader(
+    "Set-Cookie",
+    `${SESSION_COOKIE_NAME}=${id}; Path=/; HttpOnly;${secureFlag} SameSite=Lax; Max-Age=${maxAgeSeconds}`,
+  );
+}
+
+function clearSessionCookie(request, response) {
+  const secureFlag = isLocalHost(request) ? "" : " Secure;";
+  response.setHeader("Set-Cookie", `${SESSION_COOKIE_NAME}=; Path=/; HttpOnly;${secureFlag} SameSite=Lax; Max-Age=0`);
 }
 
 const mimeTypes = new Map([
@@ -1056,6 +1181,32 @@ async function handlePdfTextApi(request, response) {
   }
 }
 
+// login.html'de Firebase ile giriş yapıldıktan sonra çağrılır: geçerli bir
+// Firebase ID token'ı (genel /api/* Bearer kontrolüyle zaten doğrulanmış
+// olur) HttpOnly bir oturum çerezine bağlar. /api/session/logout ise aynı
+// çerezi sunucu tarafında da iptal eder (yalnızca istemcide Firebase'den
+// çıkmak yetmez — statik dosya kapısı bu çerezi kontrol eder).
+async function handleSessionApi(request, response, url, user) {
+  if (request.method !== "POST") {
+    sendJson(response, 405, { ok: false, error: "Bu işlem desteklenmiyor." });
+    return;
+  }
+  if (url === "/api/session") {
+    const { id, expiresAt } = createSession(user.uid, user.email);
+    setSessionCookie(request, response, id, expiresAt);
+    sendJson(response, 200, { ok: true });
+    return;
+  }
+  if (url === "/api/session/logout") {
+    const session = await getSessionFromRequest(request);
+    if (session) destroySession(session.id);
+    clearSessionCookie(request, response);
+    sendJson(response, 200, { ok: true });
+    return;
+  }
+  sendJson(response, 404, { ok: false, error: "Bulunamadı." });
+}
+
 function resolveStaticPath(urlPath) {
   const pathname = decodeURIComponent(new URL(urlPath, `http://${host}:${port}`).pathname);
   const requested = pathname === "/" ? "/index.html" : pathname;
@@ -1079,6 +1230,22 @@ async function handleStatic(request, response) {
     response.writeHead(403, { "Content-Type": "text/plain; charset=utf-8" });
     response.end("Erişim reddedildi.");
     return;
+  }
+  const relativePath = path.relative(path.resolve(appDir), filePath).replace(/\\/g, "/");
+  if (!isPublicStaticFile(relativePath)) {
+    const session = await getSessionFromRequest(request);
+    if (!session) {
+      applySecurityHeaders(response);
+      if (relativePath.toLowerCase().endsWith(".html")) {
+        const nextParam = encodeURIComponent(`/${relativePath}`);
+        response.writeHead(302, { Location: `/login.html?next=${nextParam}`, "Cache-Control": "no-store" });
+        response.end();
+      } else {
+        response.writeHead(401, { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" });
+        response.end("Giriş gerekli.");
+      }
+      return;
+    }
   }
   try {
     const data = await fs.readFile(filePath);
@@ -1145,6 +1312,7 @@ const API_RATE_LIMITS = {
   "/api/user-pois": { limit: 60, windowMs: 60 * 1000 },
   "/api/neighborhoods": { limit: 60, windowMs: 60 * 1000 },
   "/api/pdf-text": { limit: 5, windowMs: 60 * 1000 },
+  "/api/session": { limit: 20, windowMs: 60 * 1000 },
 };
 
 function matchApiRoute(url) {
@@ -1208,6 +1376,10 @@ const server = http.createServer(async (request, response) => {
       await handlePdfTextApi(request, response);
       return;
     }
+    if (apiRoute === "/api/session") {
+      await handleSessionApi(request, response, url, request.user);
+      return;
+    }
     await handleStatic(request, response);
   } catch (error) {
     logServerError(`İstek işlenirken hata (${request.method} ${request.url})`, error);
@@ -1229,4 +1401,12 @@ module.exports = {
   parseCsvLine,
   parseMapTileRequest,
   queryNeighborhoodRows,
+  isPublicStaticFile,
+  createSession,
+  destroySession,
+  getSessionFromRequest,
+  setSessionCookie,
+  clearSessionCookie,
+  parseCookieHeader,
+  sessions,
 };
