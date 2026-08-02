@@ -1,5 +1,17 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.292 - 2026-08-02 - Kayıt formuna zorunlu profil alanları (ad soyad/telefon/çalışma türü)
+
+- Kullanıcı talebi: "kullanıcı oluşturma ekranında ad soyad email ve telefon numarası zorunlu olsun. Çalışma Türü Kadrolu, Çözüm Ortağı Bağımsız, Lisanslı Değerleme Şirketi olsun. Kadrolu ve Lisanslı Değerleme Şirketi seçildiğinde değerleme şirket listesi açılır liste penceresi olsun. bu kısım zorunlu olmasın". Netleştirme: "Değerleme Şirketi" alanı açılır liste değil, ZORUNLU OLMAYAN serbest metin kutusu olarak eklendi (kullanıcı, sabit bir şirket listesi yerine bunu seçti).
+- **login.html** "Hesap Oluştur" formu: `Ad Soyad` (metin, `required`), `Telefon Numarası` (`type=tel`, `required`), `Çalışma Türü` (select, `required`; seçenekler: Kadrolu / Çözüm Ortağı / Bağımsız / Lisanslı Değerleme Şirketi) eklendi. `Çalışma Türü` "Kadrolu" veya "Lisanslı Değerleme Şirketi" olduğunda `Değerleme Şirketi` serbest metin alanı görünür hale geliyor (`updateCompanyFieldVisibility`) — bu alan ZORUNLU DEĞİL, diğer çalışma türlerinde tamamen gizli ve gönderilmiyor.
+- **server.js**: `registerPendingUser(uid, email, profile)` üçüncü bir `profile` parametresi alıyor artık; `sanitizeRegistrationProfile()` ile kırpılıp (`fullName` 120, `phone` 40, `company` 160 karakter sınırı) `workType` yeni `WORK_TYPE_OPTIONS` listesindeki dört değerden biri değilse `null`'a düşürülüyor (savunma amaçlı — asıl zorunluluk `login.html`'in `required` alanlarıyla sağlanıyor). `approveUser` bu profil alanlarını `pendingUsers`'dan `approvedUsers`'a taşıyor; `listPendingUsers`/`listApprovedUsers` artık `fullName`/`phone`/`workType`/`company` de döndürüyor.
+- `POST /api/register-pending` artık JSON gövde okuyor (`{fullName, phone, workType, company}`), önceden hiç body okumuyordu.
+- **admin-users.html**: hem "onay bekleyenler" hem "onaylı kullanıcılar" satırları artık ad soyad (varsa) + e-posta başlığı ve telefon/çalışma türü/şirket bilgisini meta satırında gösteriyor (`formatProfileMeta`).
+- `tools/test-user-approval-flow.js`'e 6. bölüm eklendi: profil alanlarının kırpılıp saklandığı, onay sonrası korunduğu ve bilinmeyen bir çalışma türünün sessizce reddedildiği izole doğrulanıyor.
+- Cache-buster gerekmedi (`login.html`/`admin-users.html` `index.html` üzerinden `?v=` ile YÜKLENMİYOR, doğrudan ayrı sayfa olarak açılıyor).
+- Canlı tarayıcı doğrulaması: yerel sunucuda "Hesap Oluştur" formu açıldı, `Çalışma Türü` "Kadrolu" seçilince "Değerleme Şirketi" alanı belirdi, "Bağımsız" seçilince tekrar gizlendi.
+- `npm run verify` tamamı geçti.
+
 ## 0.0.291 - 2026-08-02 - Üçüncü erişim katmanı: ayrıcalıklı kullanıcı (açıklamalar/masraf/okuma sonucu gizleme)
 
 - Kullanıcı talebi: "şimdi normal kullanıcılar sistemdeki kutucuklar hariç tüm açıklama paragraflarını pdf okuma sonuçlarını sol panelde yer alan açıklamalar ve masraf bölümünü göremeyecek şekilde ayarla admin olarak. yetki verdiğim kullanıcılar bu kısımları görebilsin." İki netleştirme sorusu ile kapsam onaylandı: yalnızca "Okuma Sonucu" ÖNİZLEME paneli gizlensin (alttaki otomatik dolan alanlar kalsın), yetki yönetimi mevcut "Kullanıcı Onayları" panelinden yapılsın.

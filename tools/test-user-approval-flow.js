@@ -184,6 +184,51 @@ const originalFiles = backupAndClearTestFiles();
       assert.equal(approved.find((row) => row.uid === uid)?.privileged, false, "Liste de geri alınan ayrıcalığı yansıtmalı.");
     }
 
+    // --- 6) Kayıt profil alanları (ad soyad/telefon/çalışma türü/şirket) ---
+    {
+      backupAndClearTestFiles();
+      const server = freshServer();
+
+      const uid = "uid-profile-test-1";
+      const email = "profil.testi@example.com";
+      await server.registerPendingUser(uid, email, {
+        fullName: "  Ayşe Yılmaz  ",
+        phone: "+90 555 111 22 33",
+        workType: "Kadrolu",
+        company: "Denge Değerleme",
+      });
+      let pending = await server.listPendingUsers();
+      let pendingEntry = pending.find((row) => row.uid === uid);
+      assert.equal(pendingEntry?.fullName, "Ayşe Yılmaz", "Ad soyad baştaki/sondaki boşluklar kırpılarak saklanmalı.");
+      assert.equal(pendingEntry?.phone, "+90 555 111 22 33", "Telefon numarası saklanmalı.");
+      assert.equal(pendingEntry?.workType, "Kadrolu", "Çalışma türü saklanmalı.");
+      assert.equal(pendingEntry?.company, "Denge Değerleme", "Şirket adı saklanmalı.");
+
+      await server.approveUser(uid);
+      const approved = await server.listApprovedUsers();
+      const approvedEntry = approved.find((row) => row.uid === uid);
+      assert.equal(approvedEntry?.fullName, "Ayşe Yılmaz", "Onaydan sonra profil bilgileri kaybolmamalı.");
+      assert.equal(approvedEntry?.phone, "+90 555 111 22 33");
+      assert.equal(approvedEntry?.workType, "Kadrolu");
+      assert.equal(approvedEntry?.company, "Denge Değerleme");
+
+      // Bilinmeyen/geçersiz bir çalışma türü sessizce reddedilip null olmalı
+      // (sunucu tarafı savunma — asıl doğrulama login.html'in select'i ile).
+      const uid2 = "uid-profile-test-2";
+      await server.registerPendingUser(uid2, "diger@example.com", { workType: "Uydurma Tür" });
+      pending = await server.listPendingUsers();
+      pendingEntry = pending.find((row) => row.uid === uid2);
+      assert.equal(pendingEntry?.workType, null, "Bilinmeyen çalışma türü kabul edilmemeli.");
+
+      assert.ok(
+        server.WORK_TYPE_OPTIONS.includes("Kadrolu") &&
+          server.WORK_TYPE_OPTIONS.includes("Çözüm Ortağı") &&
+          server.WORK_TYPE_OPTIONS.includes("Bağımsız") &&
+          server.WORK_TYPE_OPTIONS.includes("Lisanslı Değerleme Şirketi"),
+        "WORK_TYPE_OPTIONS kullanıcının istediği dört seçeneği içermeli.",
+      );
+    }
+
     console.log("Kullanıcı onay akışı (kayıt + admin onayı) testi tamam.");
   } finally {
     restoreTestFiles(originalFiles);

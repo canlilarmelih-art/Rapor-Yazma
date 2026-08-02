@@ -854,19 +854,55 @@ async function isUserPrivileged(uid, email) {
   return privilegedUsers.has(uid);
 }
 
-async function registerPendingUser(uid, email) {
+// Kayıt formu (login.html) profil alanları — kullanıcı talebi: "kullanıcı
+// oluşturma ekranında ad soyad email ve telefon numarası zorunlu olsun.
+// Çalışma Türü Kadrolu, Çözüm Ortağı, Bağımsız, Lisanslı Değerleme Şirketi
+// olsun". Sunucu tarafında da kaba bir doğrulama yapılır (uzunluk sınırı,
+// bilinen çalışma türü) — asıl zorunluluk login.html'in `required` alanları
+// ile sağlanır, burası savunma amaçlıdır.
+const WORK_TYPE_OPTIONS = ["Kadrolu", "Çözüm Ortağı", "Bağımsız", "Lisanslı Değerleme Şirketi"];
+
+function sanitizeProfileField(value, maxLength) {
+  const trimmed = String(value ?? "").trim();
+  return trimmed ? trimmed.slice(0, maxLength) : null;
+}
+
+function sanitizeRegistrationProfile(profile) {
+  const workType = sanitizeProfileField(profile?.workType, 60);
+  return {
+    fullName: sanitizeProfileField(profile?.fullName, 120),
+    phone: sanitizeProfileField(profile?.phone, 40),
+    workType: WORK_TYPE_OPTIONS.includes(workType) ? workType : null,
+    company: sanitizeProfileField(profile?.company, 160),
+  };
+}
+
+async function registerPendingUser(uid, email, profile) {
   await loadApprovalStateOnce();
   if (approvedUsers.has(uid)) return;
   if (!pendingUsers.has(uid)) {
-    pendingUsers.set(uid, { email: email || null, requestedAt: new Date().toISOString() });
+    pendingUsers.set(uid, {
+      email: email || null,
+      requestedAt: new Date().toISOString(),
+      ...sanitizeRegistrationProfile(profile),
+    });
     saveApprovalStateSoon();
   }
 }
 
 async function approveUser(uid) {
   await loadApprovalStateOnce();
-  const email = pendingUsers.get(uid)?.email ?? approvedUsers.get(uid)?.email ?? null;
-  approvedUsers.set(uid, { email, approvedAt: new Date().toISOString() });
+  const pendingEntry = pendingUsers.get(uid);
+  const previousApproved = approvedUsers.get(uid);
+  const email = pendingEntry?.email ?? previousApproved?.email ?? null;
+  approvedUsers.set(uid, {
+    email,
+    approvedAt: new Date().toISOString(),
+    fullName: pendingEntry?.fullName ?? previousApproved?.fullName ?? null,
+    phone: pendingEntry?.phone ?? previousApproved?.phone ?? null,
+    workType: pendingEntry?.workType ?? previousApproved?.workType ?? null,
+    company: pendingEntry?.company ?? previousApproved?.company ?? null,
+  });
   pendingUsers.delete(uid);
   saveApprovalStateSoon();
 }
@@ -878,7 +914,15 @@ async function rejectPendingUser(uid) {
 
 async function listPendingUsers() {
   await loadApprovalStateOnce();
-  return Array.from(pendingUsers.entries()).map(([uid, entry]) => ({ uid, email: entry.email, requestedAt: entry.requestedAt }));
+  return Array.from(pendingUsers.entries()).map(([uid, entry]) => ({
+    uid,
+    email: entry.email,
+    requestedAt: entry.requestedAt,
+    fullName: entry.fullName ?? null,
+    phone: entry.phone ?? null,
+    workType: entry.workType ?? null,
+    company: entry.company ?? null,
+  }));
 }
 
 async function listApprovedUsers() {
@@ -889,6 +933,10 @@ async function listApprovedUsers() {
       uid,
       email: entry.email,
       approvedAt: entry.approvedAt,
+      fullName: entry.fullName ?? null,
+      phone: entry.phone ?? null,
+      workType: entry.workType ?? null,
+      company: entry.company ?? null,
       privileged: privilegedUsers.has(uid),
     }));
 }
@@ -1645,7 +1693,19 @@ async function handleRegisterPendingApi(request, response, user) {
     sendJson(response, 405, { ok: false, error: "Bu işlem desteklenmiyor." });
     return;
   }
-  await registerPendingUser(user.uid, user.email);
+  let body;
+  try {
+    body = JSON.parse((await readBody(request, 4096)) || "{}");
+  } catch {
+    sendJson(response, 400, { ok: false, error: "Geçersiz istek." });
+    return;
+  }
+  await registerPendingUser(user.uid, user.email, {
+    fullName: body?.fullName,
+    phone: body?.phone,
+    workType: body?.workType,
+    company: body?.company,
+  });
   sendJson(response, 200, { ok: true });
 }
 
@@ -2032,6 +2092,7 @@ module.exports = {
   accessRoles,
   isUserApproved,
   isUserPrivileged,
+  WORK_TYPE_OPTIONS,
   registerPendingUser,
   approveUser,
   rejectPendingUser,

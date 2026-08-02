@@ -118,6 +118,14 @@
           }
         }
 
+        function formatProfileMeta(entry, dateLabel, dateValue) {
+          var parts = [dateLabel + ": " + formatDate(dateValue)];
+          if (entry.phone) parts.push("Tel: " + entry.phone);
+          if (entry.workType) parts.push(entry.workType);
+          if (entry.company) parts.push(entry.company);
+          return parts.join(" · ");
+        }
+
         function renderList(pending) {
           list.innerHTML = "";
           if (!pending.length) {
@@ -133,8 +141,10 @@
             row.innerHTML =
               '<div class="info"><div class="email"></div><div class="meta"></div></div>' +
               '<div class="actions"><button type="button" class="approve-btn">Onayla</button><button type="button" class="reject-btn">Reddet</button></div>';
-            row.querySelector(".email").textContent = entry.email || "(e-posta yok)";
-            row.querySelector(".meta").textContent = "İstek: " + formatDate(entry.requestedAt);
+            row.querySelector(".email").textContent = entry.fullName
+              ? entry.fullName + " (" + (entry.email || "e-posta yok") + ")"
+              : (entry.email || "(e-posta yok)");
+            row.querySelector(".meta").textContent = formatProfileMeta(entry, "İstek", entry.requestedAt);
             var approveBtn = row.querySelector(".approve-btn");
             var rejectBtn = row.querySelector(".reject-btn");
             approveBtn.addEventListener("click", function () {
@@ -201,8 +211,10 @@
             row.innerHTML =
               '<div class="info"><div class="email"></div><div class="meta"></div></div>' +
               '<div class="actions"><button type="button" class="privilege-btn"></button></div>';
-            row.querySelector(".email").textContent = entry.email || "(e-posta yok)";
-            row.querySelector(".meta").textContent = "Onay: " + formatDate(entry.approvedAt);
+            row.querySelector(".email").textContent = entry.fullName
+              ? entry.fullName + " (" + (entry.email || "e-posta yok") + ")"
+              : (entry.email || "(e-posta yok)");
+            row.querySelector(".meta").textContent = formatProfileMeta(entry, "Onay", entry.approvedAt);
             var toggleBtn = row.querySelector(".privilege-btn");
             function paintToggle() {
               toggleBtn.textContent = entry.privileged ? "Yetkili ✓" : "Yetki ver";

@@ -57,7 +57,17 @@
         color: #152238;
         background: #f8fafc;
       }
-      .field input:focus { outline: 2px solid #2d59ab; outline-offset: 1px; }
+      .field input:focus, .field select:focus { outline: 2px solid #2d59ab; outline-offset: 1px; }
+      .field select {
+        width: 100%;
+        padding: 10px 12px;
+        border-radius: 8px;
+        border: 1px solid #dde3ef;
+        font-size: 15px;
+        font-weight: 400;
+        color: #152238;
+        background: #f8fafc;
+      }
       .password-wrap { position: relative; display: flex; }
       .password-wrap input { flex: 1; padding-right: 40px; }
       .password-wrap button {
@@ -151,8 +161,26 @@
         <button type="button" class="switch-link" id="showSignUp">Hesabınız yok mu? Hesap oluşturun</button>
       </form>
       <form id="signUpForm" class="hidden">
+        <label class="field"><span>Ad Soyad</span>
+          <input type="text" id="signUpFullName" autocomplete="name" required />
+        </label>
         <label class="field"><span>E-posta</span>
           <input type="email" id="signUpEmail" autocomplete="username" inputmode="email" autocapitalize="off" autocorrect="off" spellcheck="false" required />
+        </label>
+        <label class="field"><span>Telefon Numarası</span>
+          <input type="tel" id="signUpPhone" autocomplete="tel" inputmode="tel" required />
+        </label>
+        <label class="field"><span>Çalışma Türü</span>
+          <select id="signUpWorkType" required>
+            <option value="">Seçiniz</option>
+            <option value="Kadrolu">Kadrolu</option>
+            <option value="Çözüm Ortağı">Çözüm Ortağı</option>
+            <option value="Bağımsız">Bağımsız</option>
+            <option value="Lisanslı Değerleme Şirketi">Lisanslı Değerleme Şirketi</option>
+          </select>
+        </label>
+        <label class="field hidden" id="signUpCompanyField"><span>Değerleme Şirketi</span>
+          <input type="text" id="signUpCompany" autocomplete="organization" />
         </label>
         <label class="field"><span>Şifre (en az 6 karakter)</span>
           <span class="password-wrap">
@@ -200,7 +228,12 @@
         var mfaSubmit = document.getElementById("mfaSubmit");
         var mfaResend = document.getElementById("mfaResend");
         var signUpForm = document.getElementById("signUpForm");
+        var signUpFullNameInput = document.getElementById("signUpFullName");
         var signUpEmailInput = document.getElementById("signUpEmail");
+        var signUpPhoneInput = document.getElementById("signUpPhone");
+        var signUpWorkTypeInput = document.getElementById("signUpWorkType");
+        var signUpCompanyField = document.getElementById("signUpCompanyField");
+        var signUpCompanyInput = document.getElementById("signUpCompany");
         var signUpPasswordInput = document.getElementById("signUpPassword");
         var signUpPasswordConfirmInput = document.getElementById("signUpPasswordConfirm");
         var signUpError = document.getElementById("signUpError");
@@ -233,6 +266,16 @@
         document.getElementById("signUpTogglePassword").addEventListener("click", function () {
           signUpPasswordInput.type = signUpPasswordInput.type === "password" ? "text" : "password";
         });
+
+        // "Kadrolu" veya "Lisanslı Değerleme Şirketi" seçilince şirket adı
+        // sorulur — bu alan ZORUNLU DEĞİL, yalnızca ilgili durumlarda görünür.
+        var COMPANY_FIELD_WORK_TYPES = ["Kadrolu", "Lisanslı Değerleme Şirketi"];
+        function updateCompanyFieldVisibility() {
+          var shouldShow = COMPANY_FIELD_WORK_TYPES.indexOf(signUpWorkTypeInput.value) !== -1;
+          signUpCompanyField.classList.toggle("hidden", !shouldShow);
+          if (!shouldShow) signUpCompanyInput.value = "";
+        }
+        signUpWorkTypeInput.addEventListener("change", updateCompanyFieldVisibility);
 
         function showPendingApproval(message) {
           pendingText.textContent = message;
@@ -401,7 +444,17 @@
             var token = await credential.user.getIdToken();
             await fetch("/api/register-pending", {
               method: "POST",
-              headers: { Authorization: "Bearer " + token, "X-Rapor-Client": "1" },
+              headers: {
+                Authorization: "Bearer " + token,
+                "X-Rapor-Client": "1",
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                fullName: signUpFullNameInput.value.trim(),
+                phone: signUpPhoneInput.value.trim(),
+                workType: signUpWorkTypeInput.value,
+                company: signUpCompanyInput.value.trim(),
+              }),
             });
             localStorage.setItem("rapor-cloud-email", signUpEmailInput.value.trim());
             await auth.signOut();
