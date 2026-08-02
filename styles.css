@@ -656,16 +656,6 @@ body[data-app-theme="clay"] .brand-mark-icon-navy {
   cursor: pointer;
 }
 
-/* Kullanıcı onayları düğmesi sadece yönetici hesabına görünür (bkz.
-   app.js document.body.dataset.userRole = "admin"/"user"). */
-.admin-only-button {
-  display: none;
-}
-
-body[data-user-role="admin"] .admin-only-button {
-  display: grid;
-}
-
 .sync-panel {
   margin-top: auto;
   padding: 14px;

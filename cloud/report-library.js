@@ -701,6 +701,9 @@
     scope.querySelector("#libraryAccountAction")?.addEventListener("click", () => {
       window.RaporCloudSync?.openCloudModal();
     });
+    scope.querySelector("#libraryAdminUsersButton")?.addEventListener("click", () => {
+      window.open("admin-users.html", "_blank", "noopener");
+    });
     scope.querySelector("#librarySignOut")?.addEventListener("click", async () => {
       if (!window.confirm("Çıkış yapılacak ve bu cihazdaki yerel rapor verileri silinecek. Devam edilsin mi?")) return;
       await window.RaporCloudSync?.signOutAndClearLocalData?.();
@@ -719,9 +722,16 @@
         <button type="button" class="mini-button" id="libraryAccountAction">Giriş Yap</button>`;
     }
     const roleLabel = status.role === "admin" ? "Yönetici" : "Kullanıcı";
+    // Kullanıcı talebi: "admin panelini taleplerim bölümüne alalım... rapor
+    // yazma içinde olması bence mantıksız" — yönetici-onay paneli artık
+    // rapor yazma ekranının kenar çubuğunda değil, burada (Taleplerim) açılıyor.
+    const adminButton = status.role === "admin"
+      ? `<button type="button" class="mini-button" id="libraryAdminUsersButton">Kullanıcı Onayları</button>`
+      : "";
     return `
       <span class="library-account-text">${escapeHtml(status.email || "Bulut hesabı")}</span>
-      <span class="library-role-badge" data-role="${escapeHtml(status.role || "user")}">${roleLabel}</span>`;
+      <span class="library-role-badge" data-role="${escapeHtml(status.role || "user")}">${roleLabel}</span>
+      ${adminButton}`;
   }
 
   function renderSignOutCornerHtml() {
