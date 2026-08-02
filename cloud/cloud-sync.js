@@ -841,6 +841,30 @@
     }
   }
 
+  // Yönetici dışı bir kullanıcının "açıklamalar"/"masraf" bölümlerini ve
+  // PDF okuma sonucu önizleme panellerini görüp göremeyeceği admin-users.html
+  // panelinden verilen ayrıcalığa bağlıdır — bu, statik e-posta karşılaştırması
+  // DEĞİL, sunucudaki dinamik privilegedUsers listesidir; bu yüzden her girişte
+  // /api/my-role'den taze sorgulanır.
+  async function applySensitiveRoleFromServer() {
+    try {
+      const token = await getIdToken();
+      if (!token) {
+        window.RaporAccessControl?.setCanViewSensitive?.(false);
+        return;
+      }
+      const response = await fetch("/api/my-role", {
+        headers: { Authorization: `Bearer ${token}`, "X-Rapor-Client": "1" },
+      });
+      const result = await response.json().catch(() => null);
+      const role = result?.ok ? result.role : "user";
+      window.RaporAccessControl?.setCanViewSensitive?.(role === "admin" || role === "privileged");
+    } catch (error) {
+      console.warn("Kullanıcı yetki seviyesi sorgulanamadı:", error);
+      window.RaporAccessControl?.setCanViewSensitive?.(false);
+    }
+  }
+
   async function handleAuthState(user) {
     cloud.user = user || null;
     firstAuthCheckDone = true;
@@ -849,11 +873,13 @@
     if (!user) {
       cloud.knownRev = 0;
       cloud.lastPushedUpdatedAt = null;
+      window.RaporAccessControl?.setCanViewSensitive?.(false);
       setStatus("off", "Bulut senkronu kapalı (giriş yapılmadı).");
       notifyAuthChangeListeners();
       evaluateGate();
       return;
     }
+    applySensitiveRoleFromServer();
     if (cloud.activeReportId) {
       await checkForNewerOnOpen();
     } else {

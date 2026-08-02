@@ -53,8 +53,12 @@
       }
       .approve-btn { background: #1c7a3f; color: #fff; }
       .reject-btn { background: #eef1f6; color: #b23434; }
+      .privilege-btn { background: #eef1f6; color: #152238; }
+      .privilege-btn.is-on { background: #1c3d7a; color: #fff; }
       button:disabled { opacity: 0.5; cursor: default; }
       .empty { text-align: center; color: #8a99ad; font-size: 13px; padding: 20px 0; }
+      .section-title { margin: 28px 0 10px; font-size: 13px; font-weight: 800; letter-spacing: 0.02em; color: #f3f6fc; }
+      .section-hint { margin: -4px 0 10px; font-size: 12px; color: #b6c0d6; }
     </style>
   </head>
   <body>
@@ -67,6 +71,13 @@
         <p class="status" id="status">Yükleniyor...</p>
         <div id="list"></div>
       </div>
+
+      <p class="section-title">Ayrıcalıklı Erişim</p>
+      <p class="section-hint">Açıklamalar/Masraf bölümlerini ve PDF okuma sonucu önizlemelerini görebilecek onaylı kullanıcıları buradan işaretleyin.</p>
+      <div class="card">
+        <p class="status" id="approvedStatus">Yükleniyor...</p>
+        <div id="approvedList"></div>
+      </div>
     </div>
 
     <script src="vendor/firebase/firebase-app-compat.js?v=11.10.0"></script>
@@ -76,6 +87,8 @@
       (function () {
         var statusLine = document.getElementById("status");
         var list = document.getElementById("list");
+        var approvedStatusLine = document.getElementById("approvedStatus");
+        var approvedList = document.getElementById("approvedList");
 
         if (typeof firebase === "undefined" || !firebase.initializeApp || typeof RAPOR_FIREBASE_CONFIG === "undefined") {
           statusLine.textContent = "Yapılandırma eksik.";
@@ -128,7 +141,9 @@
               approveBtn.disabled = true;
               rejectBtn.disabled = true;
               apiCall("/api/approve-user", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ uid: entry.uid }) })
-                .then(loadPending)
+                .then(function () {
+                  return Promise.all([loadPending(), loadApproved()]);
+                })
                 .catch(function () {
                   statusLine.textContent = "Onaylanamadı, tekrar deneyin.";
                   statusLine.className = "status error";
@@ -171,6 +186,62 @@
             });
         }
 
+        function renderApprovedList(approved) {
+          approvedList.innerHTML = "";
+          if (!approved.length) {
+            var empty = document.createElement("p");
+            empty.className = "empty";
+            empty.textContent = "Onaylı kullanıcı yok.";
+            approvedList.append(empty);
+            return;
+          }
+          approved.forEach(function (entry) {
+            var row = document.createElement("div");
+            row.className = "row";
+            row.innerHTML =
+              '<div class="info"><div class="email"></div><div class="meta"></div></div>' +
+              '<div class="actions"><button type="button" class="privilege-btn"></button></div>';
+            row.querySelector(".email").textContent = entry.email || "(e-posta yok)";
+            row.querySelector(".meta").textContent = "Onay: " + formatDate(entry.approvedAt);
+            var toggleBtn = row.querySelector(".privilege-btn");
+            function paintToggle() {
+              toggleBtn.textContent = entry.privileged ? "Yetkili ✓" : "Yetki ver";
+              toggleBtn.classList.toggle("is-on", Boolean(entry.privileged));
+            }
+            paintToggle();
+            toggleBtn.addEventListener("click", function () {
+              toggleBtn.disabled = true;
+              var nextPath = entry.privileged ? "/api/revoke-privilege" : "/api/grant-privilege";
+              apiCall(nextPath, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ uid: entry.uid }) })
+                .then(function () {
+                  entry.privileged = !entry.privileged;
+                  paintToggle();
+                  toggleBtn.disabled = false;
+                })
+                .catch(function () {
+                  approvedStatusLine.textContent = "Güncellenemedi, tekrar deneyin.";
+                  approvedStatusLine.className = "status error";
+                  toggleBtn.disabled = false;
+                });
+            });
+            approvedList.append(row);
+          });
+        }
+
+        function loadApproved() {
+          approvedStatusLine.textContent = "Yükleniyor...";
+          approvedStatusLine.className = "status";
+          return apiCall("/api/approved-users", { method: "GET" })
+            .then(function (body) {
+              approvedStatusLine.textContent = body.approved.length + " onaylı kullanıcı.";
+              renderApprovedList(body.approved);
+            })
+            .catch(function (error) {
+              approvedStatusLine.textContent = "Liste alınamadı: " + (error && error.message ? error.message : "bilinmeyen hata");
+              approvedStatusLine.className = "status error";
+            });
+        }
+
         auth.onAuthStateChanged(function (user) {
           if (!user) {
             statusLine.textContent = "Giriş yapmanız gerekiyor.";
@@ -179,6 +250,7 @@
             return;
           }
           loadPending();
+          loadApproved();
         });
       })();
     </script>

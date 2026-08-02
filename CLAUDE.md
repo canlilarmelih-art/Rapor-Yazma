@@ -74,6 +74,25 @@ bu akışa dokunan bir değişiklik yaparsan `tools/test-user-approval-flow.js`'
 oluşurken mevcut oturumlu kullanıcıları otomatik onaylama) davranışını
 BOZMA, aksi halde gerçek bir deploy'da aktif kullanıcılar kilitlenebilir.
 
+## Üçüncü erişim katmanı: ayrıcalıklı (privileged) kullanıcı (0.0.291, 2026-08-02)
+
+Onaylı (approved) olmak ile "ayrıcalıklı" olmak FARKLI kavramlardır. Normal
+kullanıcılar `app.js`'deki `sensitiveOnly: true` işaretli bölümleri
+("Açıklamalar", "Masraf Bilgileri") ve alanları (dağınık ~10 açıklama
+textarea'sı) VE dört "Okuma Sonucu" önizleme panelini (Adres/TAKBİS/İmar/
+Takyidat ham verisi — `render()` içindeki `canViewSensitiveContent()`
+kontrolleriyle) göremez; alttaki otomatik dolan GERÇEK alanlar (kutucuklar)
+gizlenmez. Yönetici her zaman görebilir; diğer kullanıcılara
+`admin-users.html`'deki "Ayrıcalıklı Erişim" panelinden (`POST
+/api/grant-privilege`/`revoke-privilege`, `GET /api/approved-users`, hepsi
+`requireAdmin()`) tek tek yetki verilir. İstemci tarafı bunu statik e-posta
+karşılaştırmasıyla BİLEMEZ (dinamik sunucu listesi) — bu yüzden
+`cloud/cloud-sync.js` her girişte `GET /api/my-role`'i sorgulayıp
+`window.RaporAccessControl.setCanViewSensitive(...)` çağırır. Yeni bir
+açıklama/otomatik-metin alanı eklerken benzer şekilde gizlenmesi gerekiyorsa
+o alana `sensitiveOnly: true` ekle (adminOnly ile aynı desen). Test:
+`tools/test-user-approval-flow.js` (bölüm 5).
+
 ## Bu depoda paralel oturum uyarısı
 
 Aynı çalışma dizininde başka bir ajan (Codex) da düzenleme yapabiliyor.

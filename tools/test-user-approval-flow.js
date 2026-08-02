@@ -42,7 +42,7 @@ const path = require("node:path");
 const root = path.resolve(__dirname, "..");
 const serverPath = path.join(root, "server.js");
 const dataDir = path.join(root, "server-data");
-const testFiles = ["sessions.json", "trusted-devices.json", "pending-users.json", "approved-users.json"];
+const testFiles = ["sessions.json", "trusted-devices.json", "pending-users.json", "approved-users.json", "privileged-users.json"];
 
 function backupAndClearTestFiles() {
   const backups = {};
@@ -152,6 +152,36 @@ const originalFiles = backupAndClearTestFiles();
 
       assert.equal(existingApproved, true, "Özellik devreye girmeden ÖNCE zaten oturum açmış/cihazı güvenilir bir kullanıcı OTOMATİK onaylı sayılmalı (kilitlenmemeli).");
       assert.equal(newApproved, false, "Daha önce hiç görülmemiş YENİ bir kayıt otomatik onaylı sayılmamalı.");
+    }
+
+    // --- 5) Ayrıcalık (privileged) katmanı ve onaylı kullanıcı listesi -----
+    {
+      backupAndClearTestFiles();
+      const server = freshServer();
+      const adminEmail = server.accessRoles.ADMIN_EMAIL;
+
+      assert.equal(await server.isUserPrivileged("uid-admin", adminEmail), true, "Yönetici her zaman ayrıcalıklı sayılmalı.");
+
+      const uid = "uid-privilege-test-1";
+      const email = "ayricalik.testi@example.com";
+      await server.registerPendingUser(uid, email);
+      assert.equal(await server.isUserPrivileged(uid, email), false, "Onaylanmamış kullanıcı ayrıcalıklı olamaz.");
+      await server.approveUser(uid);
+      assert.equal(await server.isUserPrivileged(uid, email), false, "Onaylı ama ayrıcalık verilmemiş kullanıcı hâlâ ayrıcalıksız olmalı.");
+
+      await server.grantPrivilege(uid);
+      assert.equal(await server.isUserPrivileged(uid, email), true, "Ayrıcalık verildikten sonra true dönmeli.");
+
+      let approved = await server.listApprovedUsers();
+      const entry = approved.find((row) => row.uid === uid);
+      assert.ok(entry, "Onaylı kullanıcılar listesinde bu uid bulunmalı.");
+      assert.equal(entry.email, email, "Onay sırasında kaydedilen e-posta listede görünmeli.");
+      assert.equal(entry.privileged, true, "Liste, ayrıcalık durumunu da içermeli.");
+
+      await server.revokePrivilege(uid);
+      assert.equal(await server.isUserPrivileged(uid, email), false, "Ayrıcalık geri alındıktan sonra false dönmeli.");
+      approved = await server.listApprovedUsers();
+      assert.equal(approved.find((row) => row.uid === uid)?.privileged, false, "Liste de geri alınan ayrıcalığı yansıtmalı.");
     }
 
     console.log("Kullanıcı onay akışı (kayıt + admin onayı) testi tamam.");

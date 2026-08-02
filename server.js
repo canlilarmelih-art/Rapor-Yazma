@@ -84,8 +84,15 @@ let trustedDevicesSaveTimer = null;
 // kimse kimseyi onaylayamaz — "kim onaylayacak" sorununu önler).
 const pendingUsersFile = path.join(dataDir, "pending-users.json");
 const approvedUsersFile = path.join(dataDir, "approved-users.json");
+// Ayrıcalıklı (privileged) kullanıcılar — kullanıcı talebi: "yetki verdiğim
+// kullanıcılar bu kısımları görebilsin". Yönetici (ADMIN_EMAIL) her zaman
+// ayrıcalıklıdır; bunun dışındaki kullanıcılar admin-users.html panelinden
+// tek tek işaretlenir. Onaylı olmak (approvedUsers) ile ayrıcalıklı olmak
+// (privilegedUsers) BAĞIMSIZ iki kavramdır — ayrıcalık, onaydan SONRA verilir.
+const privilegedUsersFile = path.join(dataDir, "privileged-users.json");
 const pendingUsers = new Map(); // uid -> { email, requestedAt }
-const approvedUsers = new Set(); // uid
+const approvedUsers = new Map(); // uid -> { email, approvedAt }
+const privilegedUsers = new Set(); // uid
 let approvalStateLoaded = false;
 let approvalStateSaveTimer = null;
 
@@ -126,6 +133,7 @@ const SENSITIVE_SERVER_DATA_FILES = new Set([
   "trusted-devices.json",
   "pending-users.json",
   "approved-users.json",
+  "privileged-users.json",
 ]);
 
 function isSensitivePath(relativeSegments) {
@@ -769,7 +777,15 @@ async function loadApprovalStateOnce() {
   try {
     const raw = await fs.readFile(approvedUsersFile, "utf8");
     const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed)) parsed.forEach((uid) => approvedUsers.add(uid));
+    if (Array.isArray(parsed)) {
+      // Eski format (0.0.290): sadece uid dizisi. Geriye dönük uyumluluk için
+      // e-posta/approvedAt bilgisi olmadan Map'e taşınır.
+      parsed.forEach((uid) => approvedUsers.set(uid, { email: null, approvedAt: null }));
+    } else if (parsed && typeof parsed === "object") {
+      for (const [uid, entry] of Object.entries(parsed)) {
+        approvedUsers.set(uid, { email: entry?.email ?? null, approvedAt: entry?.approvedAt ?? null });
+      }
+    }
   } catch (error) {
     if (error.code !== "ENOENT") logServerError("Onaylı kullanıcı dosyası okunamadı", error);
     else approvedFileExisted = false;
@@ -783,6 +799,13 @@ async function loadApprovalStateOnce() {
   } catch (error) {
     if (error.code !== "ENOENT") logServerError("Bekleyen kullanıcı dosyası okunamadı", error);
   }
+  try {
+    const raw = await fs.readFile(privilegedUsersFile, "utf8");
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) parsed.forEach((uid) => privilegedUsers.add(uid));
+  } catch (error) {
+    if (error.code !== "ENOENT") logServerError("Ayrıcalıklı kullanıcı dosyası okunamadı", error);
+  }
   if (!approvedFileExisted) {
     await loadSessionsOnce();
     await loadTrustedDevicesOnce();
@@ -791,7 +814,8 @@ async function loadApprovalStateOnce() {
       ...Array.from(trustedDevices.values()).map((entry) => entry.uid),
     ]);
     if (grandfatheredUids.size) {
-      grandfatheredUids.forEach((uid) => approvedUsers.add(uid));
+      const approvedAt = new Date().toISOString();
+      grandfatheredUids.forEach((uid) => approvedUsers.set(uid, { email: null, approvedAt }));
       saveApprovalStateSoon();
     }
   }
@@ -804,8 +828,9 @@ function saveApprovalStateSoon() {
     try {
       await fs.mkdir(dataDir, { recursive: true });
       await Promise.all([
-        fs.writeFile(approvedUsersFile, JSON.stringify(Array.from(approvedUsers)), "utf8"),
+        fs.writeFile(approvedUsersFile, JSON.stringify(Object.fromEntries(approvedUsers)), "utf8"),
         fs.writeFile(pendingUsersFile, JSON.stringify(Object.fromEntries(pendingUsers)), "utf8"),
+        fs.writeFile(privilegedUsersFile, JSON.stringify(Array.from(privilegedUsers)), "utf8"),
       ]);
     } catch (error) {
       logServerError("Kullanıcı onay dosyaları yazılamadı", error);
@@ -820,6 +845,15 @@ async function isUserApproved(uid, email) {
   return approvedUsers.has(uid);
 }
 
+// Üçüncü erişim katmanı — kullanıcı talebi: "normal kullanıcılar ...
+// açıklamalar ve masraf bölümünü göremeyecek ... yetki verdiğim kullanıcılar
+// bu kısımları görebilsin". Yönetici her zaman ayrıcalıklıdır.
+async function isUserPrivileged(uid, email) {
+  if (accessRoles.isAdminEmail(email)) return true;
+  await loadApprovalStateOnce();
+  return privilegedUsers.has(uid);
+}
+
 async function registerPendingUser(uid, email) {
   await loadApprovalStateOnce();
   if (approvedUsers.has(uid)) return;
@@ -831,7 +865,8 @@ async function registerPendingUser(uid, email) {
 
 async function approveUser(uid) {
   await loadApprovalStateOnce();
-  approvedUsers.add(uid);
+  const email = pendingUsers.get(uid)?.email ?? approvedUsers.get(uid)?.email ?? null;
+  approvedUsers.set(uid, { email, approvedAt: new Date().toISOString() });
   pendingUsers.delete(uid);
   saveApprovalStateSoon();
 }
@@ -844,6 +879,29 @@ async function rejectPendingUser(uid) {
 async function listPendingUsers() {
   await loadApprovalStateOnce();
   return Array.from(pendingUsers.entries()).map(([uid, entry]) => ({ uid, email: entry.email, requestedAt: entry.requestedAt }));
+}
+
+async function listApprovedUsers() {
+  await loadApprovalStateOnce();
+  return Array.from(approvedUsers.entries())
+    .filter(([uid]) => !accessRoles.isAdminEmail(approvedUsers.get(uid)?.email))
+    .map(([uid, entry]) => ({
+      uid,
+      email: entry.email,
+      approvedAt: entry.approvedAt,
+      privileged: privilegedUsers.has(uid),
+    }));
+}
+
+async function grantPrivilege(uid) {
+  await loadApprovalStateOnce();
+  privilegedUsers.add(uid);
+  saveApprovalStateSoon();
+}
+
+async function revokePrivilege(uid) {
+  await loadApprovalStateOnce();
+  if (privilegedUsers.delete(uid)) saveApprovalStateSoon();
 }
 
 function generateMfaCode() {
@@ -1651,6 +1709,75 @@ async function handleRejectUserApi(request, response, user) {
   sendJson(response, 200, { ok: true });
 }
 
+async function handleApprovedUsersListApi(request, response, user) {
+  if (request.method !== "GET") {
+    sendJson(response, 405, { ok: false, error: "Bu işlem desteklenmiyor." });
+    return;
+  }
+  if (!requireAdmin(response, user)) return;
+  const approved = await listApprovedUsers();
+  sendJson(response, 200, { ok: true, approved });
+}
+
+async function handleGrantPrivilegeApi(request, response, user) {
+  if (request.method !== "POST") {
+    sendJson(response, 405, { ok: false, error: "Bu işlem desteklenmiyor." });
+    return;
+  }
+  if (!requireAdmin(response, user)) return;
+  let body;
+  try {
+    body = JSON.parse((await readBody(request, 2048)) || "{}");
+  } catch {
+    sendJson(response, 400, { ok: false, error: "Geçersiz istek." });
+    return;
+  }
+  const targetUid = String(body?.uid || "").trim();
+  if (!targetUid) {
+    sendJson(response, 400, { ok: false, error: "Kullanıcı kimliği eksik." });
+    return;
+  }
+  await grantPrivilege(targetUid);
+  sendJson(response, 200, { ok: true });
+}
+
+async function handleRevokePrivilegeApi(request, response, user) {
+  if (request.method !== "POST") {
+    sendJson(response, 405, { ok: false, error: "Bu işlem desteklenmiyor." });
+    return;
+  }
+  if (!requireAdmin(response, user)) return;
+  let body;
+  try {
+    body = JSON.parse((await readBody(request, 2048)) || "{}");
+  } catch {
+    sendJson(response, 400, { ok: false, error: "Geçersiz istek." });
+    return;
+  }
+  const targetUid = String(body?.uid || "").trim();
+  if (!targetUid) {
+    sendJson(response, 400, { ok: false, error: "Kullanıcı kimliği eksik." });
+    return;
+  }
+  await revokePrivilege(targetUid);
+  sendJson(response, 200, { ok: true });
+}
+
+// Herhangi bir kimlik doğrulanmış kullanıcı kendi rolünü sorgulayabilir —
+// app.js/cloud-sync.js bunu tek seferlik çağırıp "explanations"/"expenseFees"
+// bölümlerini ve PDF okuma sonucu panellerini normal kullanıcılardan gizlemek
+// için kullanır (bkz. sensitiveOnly alanı).
+async function handleMyRoleApi(request, response, user) {
+  if (request.method !== "GET") {
+    sendJson(response, 405, { ok: false, error: "Bu işlem desteklenmiyor." });
+    return;
+  }
+  let role = "user";
+  if (accessRoles.isAdminEmail(user.email)) role = "admin";
+  else if (await isUserPrivileged(user.uid, user.email)) role = "privileged";
+  sendJson(response, 200, { ok: true, role });
+}
+
 function resolveStaticPath(urlPath) {
   const pathname = decodeURIComponent(new URL(urlPath, `http://${host}:${port}`).pathname);
   const requested = pathname === "/" ? "/index.html" : pathname;
@@ -1761,6 +1888,10 @@ const API_RATE_LIMITS = {
   "/api/pending-users": { limit: 60, windowMs: 60 * 1000 },
   "/api/approve-user": { limit: 30, windowMs: 60 * 1000 },
   "/api/reject-user": { limit: 30, windowMs: 60 * 1000 },
+  "/api/approved-users": { limit: 60, windowMs: 60 * 1000 },
+  "/api/grant-privilege": { limit: 30, windowMs: 60 * 1000 },
+  "/api/revoke-privilege": { limit: 30, windowMs: 60 * 1000 },
+  "/api/my-role": { limit: 60, windowMs: 60 * 1000 },
 };
 
 function matchApiRoute(url) {
@@ -1844,6 +1975,22 @@ const server = http.createServer(async (request, response) => {
       await handleRejectUserApi(request, response, request.user);
       return;
     }
+    if (apiRoute === "/api/approved-users") {
+      await handleApprovedUsersListApi(request, response, request.user);
+      return;
+    }
+    if (apiRoute === "/api/grant-privilege") {
+      await handleGrantPrivilegeApi(request, response, request.user);
+      return;
+    }
+    if (apiRoute === "/api/revoke-privilege") {
+      await handleRevokePrivilegeApi(request, response, request.user);
+      return;
+    }
+    if (apiRoute === "/api/my-role") {
+      await handleMyRoleApi(request, response, request.user);
+      return;
+    }
     await handleStatic(request, response);
   } catch (error) {
     logServerError(`İstek işlenirken hata (${request.method} ${request.url})`, error);
@@ -1884,11 +2031,16 @@ module.exports = {
   MAX_TRUSTED_DEVICES_PER_USER,
   accessRoles,
   isUserApproved,
+  isUserPrivileged,
   registerPendingUser,
   approveUser,
   rejectPendingUser,
   listPendingUsers,
+  listApprovedUsers,
+  grantPrivilege,
+  revokePrivilege,
   requireAdmin,
   pendingUsers,
   approvedUsers,
+  privilegedUsers,
 };

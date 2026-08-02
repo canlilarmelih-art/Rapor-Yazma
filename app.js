@@ -220,8 +220,8 @@ const sections = [
       { key: "cityCenterDistance", label: "İl merkezine mesafe", type: "text" },
       { key: "addressRaw", label: "Adres kodu ham metni", type: "textarea", hidden: true },
       { key: "mainArtery", label: "Ulaşım ana arteri", type: "artery" },
-      { key: "transport", label: "Ulaşım tarifi", type: "textarea" },
-      { key: "nearby", label: "Yakın çevresi", type: "textarea" },
+      { key: "transport", label: "Ulaşım tarifi", type: "textarea", sensitiveOnly: true },
+      { key: "nearby", label: "Yakın çevresi", type: "textarea", sensitiveOnly: true },
       {
         key: "environmentRegionType",
         label: "Çevresel özellik bölge türü",
@@ -427,7 +427,7 @@ const sections = [
       { key: "takbisDate", label: "Takyidat tarihi", type: "date", critical: true, layoutClass: "encumbrance-date-field" },
       { key: "takbisTime", label: "Takyidat saati", type: "time", critical: true, layoutClass: "encumbrance-time-field" },
       { key: "takbisMethod", label: "Kayıt Kaynağı", type: "select", options: ["", "Webtapu Sistemi", "Tapu Müdürlüğü", "E-Devlet", "Tapu Kaydı Alınmamıştır."], defaultValue: "Webtapu Sistemi", layoutClass: "encumbrance-method-field" },
-      { key: "takbisSummary", label: "Takyidat açıklaması", type: "textarea", wide: true, layoutClass: "encumbrance-summary-field" },
+      { key: "takbisSummary", label: "Takyidat açıklaması", type: "textarea", wide: true, layoutClass: "encumbrance-summary-field", sensitiveOnly: true },
     ],
     table: {
       title: "Rapora girecek takyidat kayıtları",
@@ -463,8 +463,8 @@ const sections = [
       { key: "article18Applied", label: "18. Madde uygulaması yapılmış mı?", type: "conditionalYesNo", detailWhen: "Hayır", detailKey: "article18AppliedNote" },
       { key: "urbanTransformationArea", label: "Kentsel dönüşüm bölgesinde yer alıyor mu?", type: "conditionalYesNo", detailWhen: "Evet", detailKey: "urbanTransformationAreaNote" },
       { key: "licenseObstacle", label: "Ruhsatı almaya engel bir durum bulunuyor mu?", type: "conditionalYesNo", detailWhen: "Evet", detailKey: "licenseObstacleNote" },
-      { key: "planRestrictionNote", label: "Plan Özel Notu / Kısıtlama Açıklama", type: "textarea" },
-      { key: "planningNote", label: "İmar açıklaması", type: "textarea" },
+      { key: "planRestrictionNote", label: "Plan Özel Notu / Kısıtlama Açıklama", type: "textarea", sensitiveOnly: true },
+      { key: "planningNote", label: "İmar açıklaması", type: "textarea", sensitiveOnly: true },
     ],
   },
   {
@@ -497,9 +497,9 @@ const sections = [
       { key: "municipalityProjectDate", label: "Belediye Proje Tarihi", type: "date" },
       { key: "municipalityProjectNo", label: "Belediye Proje No", type: "text" },
       { key: "municipalityProjectType", label: "Belediye Proje Türü", type: "select", options: projectTypeOptions },
-      { key: "projectReviewDescription", label: "Proje İnceleme Açıklaması", type: "textarea", wide: true },
-      { key: "projectConformity", label: "Projeye uygunluk", type: "textarea", critical: true },
-      { key: "reviewedDocumentsDescription", label: "İncelenen Belgeler Açıklaması", type: "textarea", wide: true },
+      { key: "projectReviewDescription", label: "Proje İnceleme Açıklaması", type: "textarea", wide: true, sensitiveOnly: true },
+      { key: "projectConformity", label: "Projeye uygunluk", type: "textarea", critical: true, sensitiveOnly: true },
+      { key: "reviewedDocumentsDescription", label: "İncelenen Belgeler Açıklaması", type: "textarea", wide: true, sensitiveOnly: true },
       { key: "hasEkb", label: "Enerji Kimlik Belgesi", type: "select", options: ["", "Evet", "Hayır"], wide: true },
       { key: "ekbDocumentNo", label: "EKB belge no", type: "text" },
       { key: "ekbIssueDate", label: "EKB veriliş tarihi", type: "date" },
@@ -536,7 +536,7 @@ const sections = [
       },
       { key: "landBoundaryElement", label: "Sınırları Belirleyici Unsur Var mı?", type: "select", options: ["", "Evet", "Hayır"] },
       { key: "landAgriculturalProduct", label: "Parsel üzerinde Zirai Ürün Var mı?", type: "select", options: ["", "Evet", "Hayır"] },
-      { key: "landNote", label: "Arsa açıklaması", type: "textarea" },
+      { key: "landNote", label: "Arsa açıklaması", type: "textarea", sensitiveOnly: true },
       { key: "landClimateEarthquakeExplanation", label: "İklim ve Deprem Bilgileri", type: "textarea", hidden: true },
     ],
   },
@@ -606,6 +606,7 @@ const sections = [
   {
     id: "expenseFees",
     title: "Masraf Bilgileri",
+    sensitiveOnly: true,
     badge: "Yıllık",
     description:
       "İş Bankası masraf yazısında kullanılan ücret kalemleri. Değerleme Ücreti, gayrimenkul türü ve mevcut kullanım alanına göre aşağıdaki kademeli tarifeden otomatik seçilir (2026 RAPOR YAZMA PROGRAMI masraf tablosuyla birebir). Kademe tutarları ve sabit birim ücretler yıllık değişir, tüm kullanıcılar için ortaktır (bulutta saklanır) ve yalnızca admin tarafından güncellenebilir. Belediye Masrafı ve Tapu Adedi rapora özgüdür ve \"Banka ve Çıktı\" bölümünden girilir.",
@@ -696,6 +697,7 @@ const sections = [
   {
     id: "explanations",
     title: "Açıklamalar",
+    sensitiveOnly: true,
     badge: "Açıklama",
     description:
       "Rapor genelinde seçilen koşullara göre kullanılacak ek açıklama metinleri burada toplanır. Hisseli mülkiyet, imar, takyidat, belge ve benzeri özel durum açıklamaları bu bölümden yönetilir.",
@@ -902,6 +904,12 @@ const encumbranceAnnotationTypeOptions = ["Şerh", "Haciz", "İhtiyati Haciz", "
 let activeSectionId = sections[0].id;
 let state = loadState();
 let currentAccessEmail = "";
+// Yönetici dışında, sunucudaki privilegedUsers listesine admin tarafından
+// eklenmiş kullanıcılar için true olur (bkz. /api/my-role,
+// cloud/cloud-sync.js). Statik e-posta karşılaştırmasıyla belirlenemez —
+// dinamik bir sunucu listesidir, bu yüzden isCurrentUserAdmin gibi anlık
+// hesaplanamaz; setCurrentAccessSensitive ile dışarıdan set edilir.
+let currentCanViewSensitive = false;
 normalizeAddressSourceState(state);
 applySystemDefaults(state);
 applyUserFieldDefaults(state);
@@ -1546,6 +1554,14 @@ function isCurrentUserAdmin() {
   return getCurrentAccessRole() === "admin";
 }
 
+// Kullanıcı talebi: "normal kullanıcılar ... açıklamalar ve masraf
+// bölümünü göremeyecek ... yetki verdiğim kullanıcılar bu kısımları
+// görebilsin" — yönetici HER ZAMAN görebilir, ayrıca admin-users.html'den
+// ayrıcalık verilmiş kullanıcılar da görebilir.
+function canViewSensitiveContent() {
+  return isCurrentUserAdmin() || currentCanViewSensitive;
+}
+
 function shouldHideSectionForOwnership(sectionId) {
   const ownershipType = normalizeOwnershipTypeForSectionVisibility(state.fields.ownershipType);
   if (["DIKEY KAT IRTIFAKI", "YATAY KAT IRTIFAKI"].includes(ownershipType)) {
@@ -1559,7 +1575,9 @@ function shouldHideSectionForOwnership(sectionId) {
 
 function shouldHideSectionForAccess(sectionId) {
   const section = sections.find((item) => item.id === sectionId);
-  return Boolean(section?.adminOnly && !isCurrentUserAdmin());
+  if (section?.adminOnly && !isCurrentUserAdmin()) return true;
+  if (section?.sensitiveOnly && !canViewSensitiveContent()) return true;
+  return false;
 }
 
 function shouldHideSection(sectionId) {
@@ -1747,12 +1765,15 @@ function renderSection() {
     if (isZiraatBankSelectedForPropertyTaxDeclaration()) {
       body.append(createZiraatExplanationSectionsPanel());
     }
-    body.append(createAddressSourceSummary());
+    // Kullanıcı talebi: normal kullanıcılar "Okuma Sonucu" önizleme
+    // panellerini görmesin (alttaki otomatik dolan alanlar görünmeye devam
+    // eder — yalnızca bu ham/okuma önizleme paneli gizlenir).
+    if (canViewSensitiveContent()) body.append(createAddressSourceSummary());
     body.append(createLocationMapTools());
   }
 
   if (section.id === "title") {
-    body.append(createTakbisTitleSummary());
+    if (canViewSensitiveContent()) body.append(createTakbisTitleSummary());
   }
 
   if (section.id === "documents") {
@@ -1760,7 +1781,7 @@ function renderSection() {
   }
 
   if (section.id === "planning") {
-    body.append(createImarSourceSummary());
+    if (canViewSensitiveContent()) body.append(createImarSourceSummary());
   }
 
   if (section.id === "building") {
@@ -1772,7 +1793,7 @@ function renderSection() {
   }
 
   if (section.id === "encumbrance") {
-    body.append(createTakbisEncumbranceSourceSummary());
+    if (canViewSensitiveContent()) body.append(createTakbisEncumbranceSourceSummary());
     body.append(createEncumbranceReportTables());
   } else if (section.id === "comparables") {
     body.append(createComparablesVerticalEditor(section));
@@ -1792,7 +1813,12 @@ function createForm(section) {
   form.className = "form-grid";
 
   section.fields.forEach((field) => {
-    if (field.hidden || (field.adminOnly && !isCurrentUserAdmin()) || shouldHideField(section.id, field.key)) return;
+    if (
+      field.hidden ||
+      (field.adminOnly && !isCurrentUserAdmin()) ||
+      (field.sensitiveOnly && !canViewSensitiveContent()) ||
+      shouldHideField(section.id, field.key)
+    ) return;
 
     if (section.id === "address" && ["latitude", "longitude"].includes(field.key)) {
       return;
@@ -31321,12 +31347,24 @@ function setCurrentAccessUser(email) {
   }));
 }
 
+// /api/my-role sonucu geldiğinde cloud-sync.js tarafından çağrılır — admin
+// dışı kullanıcı için sunucu "privileged" dediyse görünürlük yeniden hesaplanır.
+function setCurrentAccessSensitive(canView) {
+  const next = Boolean(canView);
+  if (currentCanViewSensitive === next) return;
+  currentCanViewSensitive = next;
+  ensureActiveSectionVisible();
+  render();
+}
+
 window.RaporAccessControl = {
   setCurrentUser: setCurrentAccessUser,
   getRole: getCurrentAccessRole,
   getEmail: () => currentAccessEmail,
   isAdmin: isCurrentUserAdmin,
   canViewSection: (sectionId) => !shouldHideSectionForAccess(sectionId),
+  setCanViewSensitive: setCurrentAccessSensitive,
+  canViewSensitive: canViewSensitiveContent,
 };
 document.body.dataset.userRole = getCurrentAccessRole();
 
