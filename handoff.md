@@ -1,5 +1,23 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.294 - 2026-08-03 - Değerleme Şirketi artık gerçek açılır liste (TDÜB listesi)
+
+- Kullanıcı, TDÜB (tdub.org.tr) tüzel kişi üye listesinden derlenmiş bir Excel dosyası paylaştı: "işlem bitti ise ekteki listeyi değerleme firması çoktan seçmen kısmında kullanabilirsin".
+- `login.html`: "Değerleme Şirketi" serbest metin kutusu, 146 lisanslı değerleme şirketini içeren gerçek bir `<select>` açılır listesine dönüştürüldü (`VALUATION_COMPANY_OPTIONS`, dosyadan tekilleştirilip alfabetik sıralanmış). Listede olmayan bir şirket için son seçenek olan "Diğer (listede yok)" seçilince ayrı, serbest metin bir "Şirket Adı" alanı beliriyor — bu güvenlik ağı kullanıcı istememişti ama listenin (TDÜB'e üye/lisanslı) her "Kadrolu" çalışanı kapsamayabileceği düşünülerek eklendi.
+- Sunucu tarafı zaten serbest metin kabul ediyordu (`sanitizeRegistrationProfile` → `company` alanı, 160 karakter sınırı) — hiçbir server.js değişikliği gerekmedi, yalnızca `login.html`'in gönderdiği değer değişti.
+- Canlı tarayıcı doğrulaması: yerel sunucuda "Lisanslı Değerleme Şirketi" seçilince 146 şirket + "Diğer" seçeneğiyle açılır liste geldi; "Diğer" seçilince "Şirket Adı" serbest metin alanı belirdi.
+- `npm run verify` tamamı geçti.
+
+## 0.0.293 - 2026-08-03 - Yönetici paneli sidebar'dan Taleplerim'e taşındı
+
+- Kullanıcı talebi: "admin panelini taleplerim bölümüne alalım. ayrıca kullanıcı onaylarınıda taleplerim bölümüne alalım. rapor yazma içinde olması bence mantıksız." Rapor yazma ekranının kenar çubuğunda bulunan tek yönetici düğmesi ("Kullanıcı Onayları", admin-users.html'i açan) kaldırıldı; hesap/oturum yönetimiyle ilgili olduğu için "Taleplerim" (`cloud/report-library.js` `openDashboard()`) ekranına taşındı.
+- **index.html**: sidebar'daki `#adminUsersToolBtn` düğmesi tamamen kaldırıldı.
+- **app.js**: bu düğmenin `querySelector`/click-listener kurulumu kaldırıldı.
+- **styles.css**: yalnızca bu düğme için var olan `.admin-only-button` / `body[data-user-role="admin"] .admin-only-button` kuralları (artık kullanılmıyor) kaldırıldı.
+- **cloud/report-library.js**: `renderAccountStripHtml()` içinde, yönetici oturumundaysa (`status.role === "admin"`) hesap şeridine "Kullanıcı Onayları" mini-düğmesi ekleniyor; `bindAccountStripActions()` bu düğmeye tıklanınca `admin-users.html`'i yeni sekmede açıyor. Görünürlük zaten var olan `.library-role-badge`/rol mantığıyla aynı `RaporAccessControl.getRole()` kaynağını kullanıyor — ayrı bir yetki kontrolü icat edilmedi.
+- `tools/test-static-auth-gate.js` etkilenmedi (admin-users.html hâlâ oturum çerezi gerektiren korumalı bir dosya; sadece ona giden düğmenin YERİ değişti).
+- `npm run verify` tamamı geçti; `node --check` ile `app.js`/`cloud/report-library.js` doğrulandı.
+
 ## 0.0.292 - 2026-08-02 - Kayıt formuna zorunlu profil alanları (ad soyad/telefon/çalışma türü)
 
 - Kullanıcı talebi: "kullanıcı oluşturma ekranında ad soyad email ve telefon numarası zorunlu olsun. Çalışma Türü Kadrolu, Çözüm Ortağı Bağımsız, Lisanslı Değerleme Şirketi olsun. Kadrolu ve Lisanslı Değerleme Şirketi seçildiğinde değerleme şirket listesi açılır liste penceresi olsun. bu kısım zorunlu olmasın". Netleştirme: "Değerleme Şirketi" alanı açılır liste değil, ZORUNLU OLMAYAN serbest metin kutusu olarak eklendi (kullanıcı, sabit bir şirket listesi yerine bunu seçti).

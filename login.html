@@ -180,7 +180,12 @@
           </select>
         </label>
         <label class="field hidden" id="signUpCompanyField"><span>Değerleme Şirketi</span>
-          <input type="text" id="signUpCompany" autocomplete="organization" />
+          <select id="signUpCompany">
+            <option value="">Seçiniz</option>
+          </select>
+        </label>
+        <label class="field hidden" id="signUpCompanyOtherField"><span>Şirket Adı</span>
+          <input type="text" id="signUpCompanyOther" autocomplete="organization" placeholder="Listede yoksa şirket adını yazın" />
         </label>
         <label class="field"><span>Şifre (en az 6 karakter)</span>
           <span class="password-wrap">
@@ -227,6 +232,161 @@
         var mfaError = document.getElementById("mfaError");
         var mfaSubmit = document.getElementById("mfaSubmit");
         var mfaResend = document.getElementById("mfaResend");
+        // TDÜB (tdub.org.tr) tüzel kişi üye listesinden derlenmiş lisanslı
+        // değerleme şirketleri — kullanıcı talebi üzerine "Değerleme Şirketi"
+        // artık serbest metin değil, gerçek bir açılır liste. Listede olmayan
+        // bir şirket için "Diğer (listede yok)" seçilip ayrı bir metin
+        // kutusuna serbestçe yazılabilir (aşağıdaki OTHER_COMPANY_VALUE).
+        var VALUATION_COMPANY_OPTIONS = [
+          "1A GRUP GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "24 TAŞINMAZ DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "360 TAŞINMAZ DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "4A DANIŞMANLIK VE GAYRİMENKUL DEĞERLEME A.Ş.",
+          "A GAYRİMENKUL DEĞERLEME A.Ş.",
+          "ABAK GAYRİMENKUL DEĞERLEME VE MÜŞAVİRLİK A.Ş.",
+          "ACAR TAŞINMAZ DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "ACE GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "ADEN GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "ADMER GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "ADİL TAŞINMAZ DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "AGD ANADOLU GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "AKADEMİ GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "AKTİF GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "ALAN TAŞINMAZ DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "ALESTA KURUMSAL GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "ALFA ANADOLU TAŞINMAZ DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "ANALİZ TAŞINMAZ DEĞERLEME VE DANIŞMANLIK A.Ş",
+          "ANAYAPI GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "ANGORA TAŞINMAZ DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "ANKA GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "ANREVA KURUMSAL GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "ANTALYA TAŞINMAZ DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "ARCHİ DANIŞMANLIK VE GAYRİMENKUL DEĞERLEME A.Ş.",
+          "AREA GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "ARGE GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "ARI GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "ARIKAN TAŞINMAZ DEĞERLEME A.Ş.",
+          "ARMA TAŞINMAZ DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "ARVES GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "ARZ TAŞINMAZ DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "ASAL GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "ASYA TAŞINMAZ DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "ATAK GAYRİMENKUL DEĞERLEME A.Ş.",
+          "ATLANTİS TAŞINMAZ DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "ATLAS GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "AVRUPA GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "AÇI KURUMSAL GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "BİLGE GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "BİLGİ GAYRİMENKUL DEĞERLEME A.Ş.",
+          "CLS KURUMSAL GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "CİTY KURUMSAL GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "D TAŞINMAZ DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "DEMİR GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "DENGE GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "DETAY TAŞINMAZ DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "DEĞER GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "DONATI GAYRİMENKUL DEĞERLEME A.Ş.",
+          "DORA GAYRİMENKUL DEĞERLEME A.Ş.",
+          "DÖNÜŞÜM GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "DÜNYA GRUP GAYRİMENKUL DEĞERLEME DANIŞMANLIK A.Ş.",
+          "DÜZEY GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "EGE TAŞINMAZ DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "EKOL GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "EKSEN GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "EKSPER GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "EKSPERTUR GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "EKİP TAŞINMAZ DEĞERLEME A.Ş.",
+          "ELMA GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "ELİT GAYRİMENKUL DEĞERLEME A.Ş.",
+          "EMEK TAŞINMAZ DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "EMSAL GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "EPOS GAYRİMENKUL DANIŞMANLIK VE DEĞERLEME A.Ş.",
+          "ETKİN GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "ETİK GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "EVA GAYRİMENKUL DEĞERLEME DANIŞMANLIK A.Ş.",
+          "FOCUS GLOBAL GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "FORM GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "GALATA TAŞINMAZ DEĞERLEME VE DANIŞMANLIK HİZMETLERİ A.Ş.",
+          "GEDAŞ GAYRİMENKUL DEĞERLEME A.Ş.",
+          "GERÇEK GAYRİMENKUL DEĞERLEME A.Ş.",
+          "GOLD GAYRİMENKUL DEĞERLEME EKSPERTİZ VE DANIŞMANLIK A.Ş.",
+          "GORDİON TAŞINMAZ DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "GİRİŞİM GAYRİMENKUL DEĞERLEME A.Ş.",
+          "HARMONİ GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "KALE TAŞINMAZ DEĞERLEME VE DANIŞMANLIKA.Ş.",
+          "KALME KURUMSAL GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "KARAT TAŞINMAZ DEĞERLEME A.Ş.",
+          "KARE GAYRİMENKUL DEĞERLEME A.Ş.",
+          "KARŞIYAKA GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "KENT KURUMSAL GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "KFB GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "KOZA GAYRİMENKUL DEĞERLEME A.Ş.",
+          "KUZEY KURUMSAL GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "LAL GAYRİMENKUL DEĞERLEME VE MÜŞAVİRLİK A.Ş.",
+          "LODOS GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "LOTUS GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "LİDER GAYRİMENKUL DEĞERLEME A.Ş.",
+          "LİMAN TAŞINMAZ DEĞERLEME A.Ş.",
+          "LİMİT GAYRİMENKUL DEĞERLEME HİZMETLERİ A.Ş.",
+          "MAHAL GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "MAKRO GAYRİMENKUL DEĞERLEME A.Ş.",
+          "MAVİ GAYRİMENKUL DEĞERLEME A.Ş.",
+          "METROPOL GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "METRİK GAYRİMENKUL DEĞERLEME DANIŞMANLIK A.Ş.",
+          "MÜLK KURUMSAL GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "NET KURUMSAL GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "NOKTA TAŞINMAZ DEĞERLEME A.Ş.",
+          "NOVA TAŞINMAZ DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "ODE GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "OGA GRUP GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "PLATFORM GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "PRİM E GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "PİRAMİT GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK  A.Ş.",
+          "RASYONEL GRUP TAŞINMAZ DEĞERLEME A.Ş.",
+          "REEL GAYRİMENKUL DEĞERLEME A.Ş.",
+          "REFERANS GRUP GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "REHBER GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "RM RİTİM GAYRİMENKUL DEĞERLEME A.Ş.",
+          "ROTA TAŞINMAZ DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "SEAK GAYRİMENKUL DEĞERLEME A.Ş.",
+          "SENTEZ GAYRİMENKUL DEĞERLEME A.Ş.",
+          "SMART KURUMSAL GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "SOM KURUMSAL GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK HİZMETLERİ TİCARET A.Ş.",
+          "SÜMER GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "TAKSİM KURUMSAL GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "TALYA GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "TEKNİK GAYRİMENKUL DEĞERLEME A.Ş.",
+          "TEPE TAŞINMAZ DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "TER RA GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "TOTAL KURUMSAL GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "TSKB GAYRİMENKUL DEĞERLEME A.Ş.",
+          "TUVEO KURUMSAL GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "ULUSAL GAYRİMENKUL DEĞERLEME A.Ş.",
+          "UZMAN GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "VAKIF GAYRİMENKUL DEĞERLEME A.Ş.",
+          "VARLIK TAŞINMAZ DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "VERA GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "VİZYON TAŞINMAZ DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "YATIRIM GAYRİMENKUL DEĞERLEME A.Ş.",
+          "YEDİTEPE GRUP GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "YETKİN GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "ZEUGMA GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "ZİRVE GAYRİMENKUL DEĞERLEME A.Ş.",
+          "ÇINAR TAŞINMAZ DEĞERLEME VE MÜŞAVİRLİK A.Ş.",
+          "ÇİZGİ GAYRİMENKUL DEĞERLEME A.Ş.",
+          "ÖZEN TAŞINMAZ DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "ÖZTÜRK GAYRİMENKUL DEĞERLEME A.Ş.",
+          "İDEAL GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "İMZA TAŞINMAZ DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "İNCİ KURUMSAL GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK ANONİM ŞİRKETİ",
+          "İNDEKS GD GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK HİZMETLERİ A.Ş.",
+          "İNTERNORM GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "İNVEST GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "İSTANBUL GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+          "İSTEM GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş.",
+        ];
+        var OTHER_COMPANY_VALUE = "__diger__";
+
         var signUpForm = document.getElementById("signUpForm");
         var signUpFullNameInput = document.getElementById("signUpFullName");
         var signUpEmailInput = document.getElementById("signUpEmail");
@@ -234,6 +394,8 @@
         var signUpWorkTypeInput = document.getElementById("signUpWorkType");
         var signUpCompanyField = document.getElementById("signUpCompanyField");
         var signUpCompanyInput = document.getElementById("signUpCompany");
+        var signUpCompanyOtherField = document.getElementById("signUpCompanyOtherField");
+        var signUpCompanyOtherInput = document.getElementById("signUpCompanyOther");
         var signUpPasswordInput = document.getElementById("signUpPassword");
         var signUpPasswordConfirmInput = document.getElementById("signUpPasswordConfirm");
         var signUpError = document.getElementById("signUpError");
@@ -241,6 +403,23 @@
         var pendingView = document.getElementById("pendingView");
         var pendingText = document.getElementById("pendingText");
         var pendingIdToken = null;
+
+        VALUATION_COMPANY_OPTIONS.forEach(function (name) {
+          var option = document.createElement("option");
+          option.value = name;
+          option.textContent = name;
+          signUpCompanyInput.append(option);
+        });
+        var otherOption = document.createElement("option");
+        otherOption.value = OTHER_COMPANY_VALUE;
+        otherOption.textContent = "Diğer (listede yok)";
+        signUpCompanyInput.append(otherOption);
+
+        signUpCompanyInput.addEventListener("change", function () {
+          var showOther = signUpCompanyInput.value === OTHER_COMPANY_VALUE;
+          signUpCompanyOtherField.classList.toggle("hidden", !showOther);
+          if (!showOther) signUpCompanyOtherInput.value = "";
+        });
 
         function showOnly(view) {
           [form, signUpForm, mfaForm, pendingView].forEach(function (el) {
@@ -273,7 +452,11 @@
         function updateCompanyFieldVisibility() {
           var shouldShow = COMPANY_FIELD_WORK_TYPES.indexOf(signUpWorkTypeInput.value) !== -1;
           signUpCompanyField.classList.toggle("hidden", !shouldShow);
-          if (!shouldShow) signUpCompanyInput.value = "";
+          if (!shouldShow) {
+            signUpCompanyInput.value = "";
+            signUpCompanyOtherField.classList.add("hidden");
+            signUpCompanyOtherInput.value = "";
+          }
         }
         signUpWorkTypeInput.addEventListener("change", updateCompanyFieldVisibility);
 
@@ -440,6 +623,9 @@
           signUpSubmit.disabled = true;
           signUpSubmit.textContent = "Hesap oluşturuluyor...";
           try {
+            var resolvedCompany = signUpCompanyInput.value === OTHER_COMPANY_VALUE
+              ? signUpCompanyOtherInput.value.trim()
+              : signUpCompanyInput.value;
             var credential = await auth.createUserWithEmailAndPassword(signUpEmailInput.value.trim(), signUpPasswordInput.value);
             var token = await credential.user.getIdToken();
             await fetch("/api/register-pending", {
@@ -453,7 +639,7 @@
                 fullName: signUpFullNameInput.value.trim(),
                 phone: signUpPhoneInput.value.trim(),
                 workType: signUpWorkTypeInput.value,
-                company: signUpCompanyInput.value.trim(),
+                company: resolvedCompany,
               }),
             });
             localStorage.setItem("rapor-cloud-email", signUpEmailInput.value.trim());
