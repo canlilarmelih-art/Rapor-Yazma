@@ -220,8 +220,8 @@ const sections = [
       { key: "cityCenterDistance", label: "İl merkezine mesafe", type: "text" },
       { key: "addressRaw", label: "Adres kodu ham metni", type: "textarea", hidden: true },
       { key: "mainArtery", label: "Ulaşım ana arteri", type: "artery" },
-      { key: "transport", label: "Ulaşım tarifi", type: "textarea", sensitiveOnly: true },
-      { key: "nearby", label: "Yakın çevresi", type: "textarea", sensitiveOnly: true },
+      { key: "transport", label: "Ulaşım tarifi", type: "textarea" },
+      { key: "nearby", label: "Yakın çevresi", type: "textarea" },
       {
         key: "environmentRegionType",
         label: "Çevresel özellik bölge türü",
@@ -370,6 +370,7 @@ const sections = [
         label: "Çevresel özellikler açıklaması",
         type: "textarea",
         wide: true,
+        sensitiveOnly: true,
       },
     ],
   },
@@ -1560,6 +1561,17 @@ function canViewSensitiveContent() {
   return isCurrentUserAdmin() || currentCanViewSensitive;
 }
 
+// Kullanıcı talebi: "Sol panel Halkbank Risk Kodları yalnızca Halkbank
+// raporlarında gözüksün kalan diğer raporlarda gizle".
+function isHalkbankSelectedForReport() {
+  const bank = foldTurkish(state.fields.bank || "");
+  return bank.includes("HALK BANKASI") || bank.includes("HALKBANK");
+}
+
+function shouldHideSectionForBank(sectionId) {
+  return sectionId === "halkbankRisk" && !isHalkbankSelectedForReport();
+}
+
 function shouldHideSectionForOwnership(sectionId) {
   const ownershipType = normalizeOwnershipTypeForSectionVisibility(state.fields.ownershipType);
   if (["DIKEY KAT IRTIFAKI", "YATAY KAT IRTIFAKI"].includes(ownershipType)) {
@@ -1579,7 +1591,7 @@ function shouldHideSectionForAccess(sectionId) {
 }
 
 function shouldHideSection(sectionId) {
-  return shouldHideSectionForOwnership(sectionId) || shouldHideSectionForAccess(sectionId);
+  return shouldHideSectionForOwnership(sectionId) || shouldHideSectionForAccess(sectionId) || shouldHideSectionForBank(sectionId);
 }
 
 function getVisibleSections() {
@@ -3181,17 +3193,40 @@ function createValuationEditor() {
       createValuationLandTable(),
       createValuationPremiumTable(),
     ];
+  // Kullanıcı talebi: "Değerleme bölümünde Değerleme Yöntemi Açıklaması
+  // Satış Kabiliyeti Açıklaması Kira Açıklaması Emlak Beyan Değeri Açıklaması
+  // ve diğer tüm açıklamaları gizle" — bu otomatik metin panelleri normal
+  // kullanıcılardan gizlenir; altlarındaki gerçek değer tabloları (Piyasa
+  // Değeri, Acil Satış, Emlak Beyan Değeri kutucuğu vb.) ETKİLENMEZ, state
+  // hesaplamaları (refresh* çağrıları panel fonksiyonlarının içinde) yine
+  // her zaman çalışır.
+  let explanationPanels;
+  if (canViewSensitiveContent()) {
+    explanationPanels = [
+      createValuationMethodExplanationPanel(),
+      ...(isSharedTitleOwnership() ? [createValuationShareExplanationPanel()] : []),
+      createValuationSaleabilityExplanationPanel(),
+      ...(isTarlaOwnershipType() ? [createTarlaValuationRiskExplanationPanel()] : []),
+      createValuationRentExplanationPanel(),
+      createValuationPropertyTaxDeclarationExplanationPanel(),
+      ...(isTarlaOwnershipType() ? [createValuationMinimumParcelAssessmentPanel()] : []),
+    ];
+  } else {
+    // Panel gizli olsa da rapor çıktısının bozulmaması için state
+    // hesaplamaları (valuationMethodExplanation, valuationSaleabilityExplanation,
+    // valuationRentExplanation, propertyTaxDeclarationExplanation) yine yapılır.
+    refreshValuationMethodExplanation();
+    refreshValuationSaleabilityExplanation();
+    refreshValuationRentExplanation();
+    refreshPropertyTaxDeclarationExplanation();
+    if (isTarlaOwnershipType()) refreshLandMinimumParcelAssessment();
+    explanationPanels = [];
+  }
   wrapper.append(
     createValuationTopControls(),
-    createValuationMethodExplanationPanel(),
-    ...(isSharedTitleOwnership() ? [createValuationShareExplanationPanel()] : []),
-    createValuationSaleabilityExplanationPanel(),
-    ...(isTarlaOwnershipType() ? [createTarlaValuationRiskExplanationPanel()] : []),
-    createValuationRentExplanationPanel(),
-    createValuationPropertyTaxDeclarationExplanationPanel(),
+    ...explanationPanels,
     ...(shouldShowWorkplaceFloorCalculationTable() ? [createWorkplaceFloorCalculationTable()] : []),
     ...(isArsaOwnershipType() ? [createComparableCalculatedEmsalValuationPanel()] : []),
-    ...(isTarlaOwnershipType() ? [createValuationMinimumParcelAssessmentPanel()] : []),
     createValuationMarketTable(),
     createValuationUrgentSaleTable(),
     ...landOwnershipPanels,
@@ -7050,6 +7085,16 @@ function parseBuildingFloorCount(value) {
 }
 
 function createMainPropertyDescriptionPanel() {
+  // Kullanıcı talebi: "Ana gayrimenkul kısmında Ana Gayrimenkul Açıklaması
+  // ve Ana Gayrimenkul Kat Adedi bölümlerini gizle" — normal kullanıcılar bu
+  // paneli görmesin. Rapor çıktısının bozulmaması için state hesaplaması
+  // (mainPropertyDescription/mainPropertyFloorCountText) GÖRÜNÜRLÜKTEN
+  // BAĞIMSIZ olarak yine de yapılır; yalnızca DOM'a eklenmesi atlanır.
+  const nextDescription = state.fields.mainPropertyDescription || buildMainPropertyDescription();
+  state.fields.mainPropertyDescription = nextDescription;
+  refreshMainPropertyFloorCountTextFromCounts();
+  if (!canViewSensitiveContent()) return document.createDocumentFragment();
+
   const panel = document.createElement("div");
   panel.className = "subsection is-detail building-description-panel";
   panel.innerHTML = `
@@ -7065,8 +7110,6 @@ function createMainPropertyDescriptionPanel() {
   const textarea = document.createElement("textarea");
   textarea.dataset.field = "mainPropertyDescription";
   textarea.rows = 8;
-  const nextDescription = state.fields.mainPropertyDescription || buildMainPropertyDescription();
-  state.fields.mainPropertyDescription = nextDescription;
   textarea.value = nextDescription;
   textarea.addEventListener("input", (event) => {
     state.fields.mainPropertyDescription = event.target.value;
@@ -7938,7 +7981,15 @@ function createUnitFeaturesEditor() {
   if (!shouldHideUnitDecorativePanel()) {
     panels.push(createUnitDecorativePanel());
   }
-  panels.push(createUnitInteriorDescriptionField());
+  // Kullanıcı talebi: "Bağımsız bölüm kısmında Bağımsız Bölüm İç Hacimler
+  // Açıklaması kısmını gizle" — normal kullanıcılar bu paneli görmesin.
+  // updateUnitInteriorDescription() state hesaplamasını görünürlükten
+  // bağımsız yine de tetiklemek için doğrudan çağrılır.
+  if (canViewSensitiveContent()) {
+    panels.push(createUnitInteriorDescriptionField());
+  } else {
+    updateUnitInteriorDescription();
+  }
   wrapper.append(...panels);
   return wrapper;
 }
@@ -12471,6 +12522,9 @@ function createDocumentDecisionControls() {
 }
 
 function createBuildingInspectionExplanationPreview() {
+  // Kullanıcı talebi: "Belgeler ve proje kısmında Yapı Denetim Açıklaması
+  // bölümünü gizle" — normal kullanıcılar bu önizlemeyi görmesin.
+  if (!canViewSensitiveContent()) return document.createDocumentFragment();
   const label = document.createElement("label");
   label.className = "field field-wide document-decision-explanation";
   label.append(createSpan("Yapı Denetim Açıklaması"));
@@ -26058,7 +26112,11 @@ function createValueFactorsPanel() {
   panel.append(createValueFactorsSummary(result));
   panel.append(createValueFactorsGroup("Olumlu Özellikler", "positive", result.positive));
   panel.append(createValueFactorsGroup("Olumsuz Özellikler", "negative", result.negative));
-  panel.append(createValueFactorsReportTextBox(result));
+  // Kullanıcı talebi: "Değere etki eden faktörlerde Rapor Metni kısmını
+  // gizle" — state.fields.valueFactorsReportText yukarıdaki
+  // refreshValueFactorsFromCurrentState() ile zaten hesaplandı, yalnızca
+  // görünürlük atlanıyor.
+  if (canViewSensitiveContent()) panel.append(createValueFactorsReportTextBox(result));
   return panel;
 }
 

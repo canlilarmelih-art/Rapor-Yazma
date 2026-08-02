@@ -107,6 +107,11 @@ function runScenario({ documents = [], contractActive = "" }) {
     // bir <div> ile temsil edilir, dataset.field icermez (taramaya girmez).
     createConditionalYesNoControl: () => makeElementStub("div"),
     refreshBuildingInspectionExplanationFromCurrentFields: () => {},
+    // Bu testin kapsami: kanun-kapsam-disi hucre gizleme mantigi.
+    // Ayricalikli-kullanici gorunurlugu (sensitiveOnly) ayri bir testte
+    // (test-user-approval-flow.js) kapsanir; burada her zaman gorunur kabul
+    // edilir ki bu testin senaryolari etkilenmesin.
+    canViewSensitiveContent: () => true,
     autosave: () => {},
     renderValidation: () => {},
     updateStatus: () => {},

@@ -1,5 +1,21 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.295 - 2026-08-03 - sensitiveOnly görünürlük düzeltmeleri (test kullanıcı geri bildirimi)
+
+- Kullanıcı test hesabıyla giriş yapıp normal-kullanıcı görünümünü bizzat kontrol etti, 8 maddelik bir düzeltme listesi verdi (0.0.293/0.0.294'teki `sensitiveOnly` geçişinin yan etkileri + yeni bir banka-bazlı görünürlük isteği). Tümü uygulandı:
+  1. **Bug düzeltmesi**: "Ulaşım ana arteri", "Yakın çevre seçimi", "Ulaşım Tarifi" yanlışlıkla gizlenmişti — `transport`/`nearby` alanlarına önceki oturumda eklenen `sensitiveOnly: true` KALDIRILDI. Kök neden: `createTransportNearbyComposer()` bu üç aracı TEK PARÇA render ediyor; `transport` alanına `sensitiveOnly` koymak render döngüsündeki erken `return`'ü tetikleyip mainArtery/nearby-seçim aracını da birlikte götürüyordu.
+  2. "Çevresel Özellikler Açıklaması" (`environmentDescription`) alanına `sensitiveOnly: true` eklendi.
+  3. "Belgeler ve Proje"'deki Yapı Denetim Açıklaması ÖNİZLEMESİ (`createBuildingInspectionExplanationPreview`, "Açıklamalar" bölümündeki ayrı `buildingInspectionExplanation` alanından FARKLI, kanun-kapsamı-dışı senaryosunda ayrıca render edilen bir kopya) `canViewSensitiveContent()` ile gizlendi.
+  4. "Ana Gayrimenkul Açıklaması" + "Ana Gayrimenkul Kat Adedi" (`createMainPropertyDescriptionPanel`) gizlendi — state hesaplaması (`mainPropertyDescription`/`mainPropertyFloorCountText`) görünürlükten BAĞIMSIZ olarak yine çalışır (rapor çıktısı bozulmasın diye).
+  5. "Bağımsız Bölüm İç Hacimler Açıklaması" (`createUnitInteriorDescriptionField`) gizlendi; `updateUnitInteriorDescription()` state güncellemesi yine tetiklenir.
+  6. "Değerleme" bölümündeki tüm otomatik açıklama panelleri (Değerleme Yöntemi, Hisse, Satış Kabiliyeti, Tarla Riski, Kira, Emlak Beyan Değeri, 5403 Minimum Parsel) `canViewSensitiveContent()` ile gizlendi — altındaki GERÇEK değer tabloları (Piyasa Değeri, Acil Satış, Emlak Beyan Değeri kutucuğu vb.) ETKİLENMEDİ; ilgili `refresh*Explanation()` fonksiyonları görünürlükten bağımsız yine çağrılır.
+  7. "Değere Etki Eden Faktörler" bölümünde yalnızca "Rapor Metni" kutusu (`createValueFactorsReportTextBox`) gizlendi; Olumlu/Olumsuz Özellikler listeleri ve state hesaplaması etkilenmedi.
+  8. **Yeni kural (sensitiveOnly'den bağımsız)**: "Halkbank Risk Kodları" sol panel bölümü artık yalnızca seçili banka Halkbank ise görünüyor — yeni `isHalkbankSelectedForReport()`/`shouldHideSectionForBank()`, mevcut `shouldHideSectionForOwnership`/`shouldHideSectionForAccess` ile aynı `shouldHideSection()` kompozisyonuna eklendi.
+- Yeni `tools/test-sensitive-visibility-refinements.js`: (a) `transport`/`nearby` alan tanımlarının `sensitiveOnly` İÇERMEDİĞİNİ, `environmentDescription`'ın İÇERDİĞİNİ metin taramasıyla doğrular (regresyon koruması); (b) `isHalkbankSelectedForReport`/`shouldHideSectionForBank`'ı gerçek app.js kaynağından izole çalıştırıp Halkbank/İş Bankası/boş banka senaryolarını ve diğer bölümlerin ETKİLENMEDİĞİNİ doğrular. `npm run test` zincirine eklendi.
+- `tools/test-building-inspection-law-exempt-fields-hidden.js` bu değişiklikle kırıldı (izole vm bağlamında `canViewSensitiveContent` tanımsızdı) — context'e `canViewSensitiveContent: () => true` eklenerek düzeltildi (bu test kanun-kapsamı-dışı hücre gizleme mantığını test ediyor, ayrıcalık görünürlüğünü değil).
+- Cache-buster `app.js?v=20260803-0200`'e yükseltildi.
+- `npm run verify` tamamı geçti (43 test). Gerçek Firebase oturumu olmadan tam tarayıcı doğrulaması yapılamadı (login.html Firebase kimlik doğrulaması gerektiriyor) — kullanıcının kendi test hesabıyla canlıda doğrulaması gerekiyor.
+
 ## 0.0.294 - 2026-08-03 - Değerleme Şirketi artık gerçek açılır liste (TDÜB listesi)
 
 - Kullanıcı, TDÜB (tdub.org.tr) tüzel kişi üye listesinden derlenmiş bir Excel dosyası paylaştı: "işlem bitti ise ekteki listeyi değerleme firması çoktan seçmen kısmında kullanabilirsin".
