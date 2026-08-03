@@ -29,7 +29,13 @@
   // --------------------------------------------------------------
   const TEMPLATE_REGISTRY = [
     { key: "akbank", file: "templates/akbank.html", title: "Akbank Rapor Formatı", bank: "Akbank T.A.Ş." },
-    { key: "emlakkatilim", file: "templates/emlakkatilim.html", title: "Emlak Katılım Rapor Formatı", bank: "Emlak Katılım Bankası A.Ş." },
+    // Kullanıcı talebi (2026-08-03): "word formatını bozmamalıydın logolar
+    // sayfa yapısı çerçeveler... word olarak tutabilirsin" — bu şablon HTML
+    // DEĞİL, kullanıcının bize sunduğu gerçek .docx dosyası (format: "docx").
+    // exportTemplate() bu bayrağı görünce sunucunun HTML-render API'sini
+    // ATLAYIP /api/report-template-docx'ten ham baytları çeker ve
+    // src/exports/docx-fill.js ile yerelde doldurur.
+    { key: "emlakkatilim", file: "templates/emlakkatilim.docx", format: "docx", title: "Emlak Katılım Rapor Formatı", bank: "Emlak Katılım Bankası A.Ş." },
     { key: "halkbank", file: "templates/halkbank.html", title: "Halkbank Rapor Formatı", bank: "Türkiye Halk Bankası A.Ş." },
     { key: "isbankasi", file: "templates/isbankasi.html", title: "İş Bankası Rapor Formatı", bank: "Türkiye İş Bankası A.Ş." },
     { key: "isbankasi-masraf", file: "templates/isbankasi-masraf.html", title: "İş Bankası Masraf Yazısı", bank: "" },
@@ -1040,6 +1046,7 @@
     const download = options.download !== false;
     const entry = TEMPLATE_REGISTRY.find((item) => item.key === templateKey);
     if (!entry) throw new Error(`Şablon bulunamadı: ${templateKey}`);
+    if (entry.format === "docx") return exportDocxTemplate(entry, { download });
     const tokenResponse = await fetchProtectedTemplateApi(`/api/report-template-tokens?key=${encodeURIComponent(entry.key)}`);
     const tokenPayload = await tokenResponse.json().catch(() => null);
     if (!tokenResponse.ok || !Array.isArray(tokenPayload?.tokens)) {
@@ -1085,6 +1092,41 @@
     } finally {
       reportImageAssetsCache = [];
     }
+  }
+
+  // Gerçek .docx şablonlar (format: "docx") için exportTemplate()'in ayrı
+  // dalı: sunucunun HTML-render API'sini ("/api/report-template-render")
+  // hiç kullanmaz — ham .docx baytları "/api/report-template-docx"'ten
+  // çekilir, hangi {{TOKEN}}'ların şablonda geçtiği İSTEMCİDE
+  // (window.RaporDocxFill.collectTokens) bulunur, değerler mevcut
+  // resolveTemplateTokenValues() ile hesaplanır ve doldurma yerelde
+  // (window.RaporDocxFill.fillTemplate) yapılır — belge asla metne
+  // çevrilmediği için logo/çerçeve/sayfa düzeni bozulmaz.
+  async function exportDocxTemplate(entry, { download }) {
+    if (!window.RaporDocxFill) throw new Error("DOCX doldurma motoru yüklenmedi (docx-fill.js).");
+    const docxResponse = await fetchProtectedTemplateApi(`/api/report-template-docx?key=${encodeURIComponent(entry.key)}`);
+    if (!docxResponse.ok) {
+      const errorPayload = await docxResponse.json().catch(() => null);
+      throw new Error(errorPayload?.error || "Sablon indirilemedi.");
+    }
+    const arrayBuffer = await docxResponse.arrayBuffer();
+    const zipEntries = window.RaporDocxFill.readStoredZip(arrayBuffer);
+    const docEntry = zipEntries.find((item) => item.name === "word/document.xml");
+    if (!docEntry) throw new Error("DOCX şablonunda word/document.xml bulunamadı.");
+    const tokens = window.RaporDocxFill.collectTokens(new TextDecoder("utf-8").decode(docEntry.bytes));
+    const { values, missing } = resolveTemplateTokenValues(tokens);
+    const filled = window.RaporDocxFill.fillTemplate(arrayBuffer, values);
+    const fileName = `${safeCall("buildExportBaseFileName") || "rapor"}-${entry.key}.docx`;
+    if (download && window.RaporXlsxFill?.downloadBlob) window.RaporXlsxFill.downloadBlob(fileName, filled.blob);
+    return {
+      fileName,
+      missing: [...missing, ...filled.missing],
+      title: entry.title,
+      bytes: filled.bytes,
+      isBinary: true,
+      mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      valuationVerification: null,
+    };
   }
 
   // Çözümleyiciler üretimde global API'ye verilmez. Yalnızca Node regresyon

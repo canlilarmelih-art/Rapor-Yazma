@@ -35,6 +35,7 @@ const TARGET_FILES = [
   "cloud/report-library.js",
   "src/auth/access-control.js",
   "src/comparables/comparable-market-analysis.js",
+  "src/exports/docx-fill.js",
   "src/exports/export-validation.js",
   "src/exports/report-tables-xlsx.js",
   "src/exports/xlsx-fill.js",

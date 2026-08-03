@@ -19,7 +19,7 @@ const backupDir = path.join(appDir, "backups");
 // sunucu icinde okunur ve onayli kullanicinin cozulmus alanlariyla doldurulur.
 const PRIVATE_REPORT_TEMPLATES = Object.freeze({
   akbank: "akbank.html",
-  emlakkatilim: "emlakkatilim.html",
+  emlakkatilim: "emlakkatilim.docx",
   halkbank: "halkbank.html",
   isbankasi: "isbankasi.html",
   "isbankasi-masraf": "isbankasi-masraf.html",
@@ -2438,6 +2438,21 @@ async function readPrivateTemplate(templateKey) {
   }
 }
 
+// Gerçek .docx şablonlar (ör. Emlak Katılım) — kullanıcının bankaya sunduğu
+// orijinal Word dosyasının logo/çerçeve/sayfa düzeni BOZULMADAN korunması
+// için HTML'e çevrilmez; ham baytlar olarak servis edilir, doldurma
+// (placeholder → değer) tamamen istemcide (src/exports/docx-fill.js) yapılır
+// — templates/*.html gibi HTTP ile statik verilmez, yalnızca bu API ile.
+async function readPrivateTemplateBinary(templateKey) {
+  const filePath = privateTemplatePathForKey(templateKey);
+  if (!filePath || !filePath.toLowerCase().endsWith(".docx")) return null;
+  try {
+    return await fs.readFile(filePath);
+  } catch {
+    return null;
+  }
+}
+
 async function requireApprovedReportUser(response, user) {
   if (await isUserApproved(user.uid, user.email)) return true;
   sendJson(response, 403, { ok: false, error: "Rapor sablonu islemleri icin onayli kullanici hesabi gerekir." });
@@ -2457,6 +2472,33 @@ async function handleReportTemplateTokensApi(request, response, user, url) {
     return;
   }
   sendJson(response, 200, { ok: true, tokens: collectTemplateTokens(templateText) });
+}
+
+// Kullanıcı talebi (2026-08-03): "word formatını bozmamalıydın... emlak
+// katılım... template dosyasını word olarak tutabilirsin" — Emlak Katılım
+// gibi gerçek .docx şablonlar HTML'e çevrilip sunucuda metin olarak
+// render edilmez (word/document.xml içindeki {{TOKEN}} yer tutucuları
+// ham bayt düzeyinde korunmalı ki logo/çerçeve/sayfa düzeni bozulmasın).
+// Bu endpoint yalnızca ham .docx baytlarını (onaylı kullanıcıya) verir;
+// doldurma tamamen istemcide (src/exports/docx-fill.js) yapılır.
+async function handleReportTemplateDocxApi(request, response, user, url) {
+  if (request.method !== "GET") {
+    sendJson(response, 405, { ok: false, error: "Bu islem desteklenmiyor." });
+    return;
+  }
+  if (!(await requireApprovedReportUser(response, user))) return;
+  const templateKey = String(new URL(url, `http://${host}:${port}`).searchParams.get("key") || "").trim();
+  const templateBytes = await readPrivateTemplateBinary(templateKey);
+  if (!templateBytes) {
+    sendJson(response, 404, { ok: false, error: "Sablon bulunamadi." });
+    return;
+  }
+  response.writeHead(200, {
+    "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "Content-Length": templateBytes.length,
+    "Cache-Control": "no-store",
+  });
+  response.end(templateBytes);
 }
 
 async function handleReportTemplateRenderApi(request, response, user) {
@@ -2656,6 +2698,7 @@ const API_RATE_LIMITS = {
   "/api/export-authorization": { limit: 12, windowMs: 60 * 1000 },
   "/api/report-template-tokens": { limit: 60, windowMs: 60 * 1000 },
   "/api/report-template-render": { limit: 12, windowMs: 60 * 1000 },
+  "/api/report-template-docx": { limit: 12, windowMs: 60 * 1000 },
   "/api/login-events": { limit: 30, windowMs: 60 * 1000 },
   "/api/user-stats": { limit: 30, windowMs: 60 * 1000 },
 };
@@ -2777,6 +2820,10 @@ const server = http.createServer(async (request, response) => {
       await handleReportTemplateRenderApi(request, response, request.user);
       return;
     }
+    if (apiRoute === "/api/report-template-docx") {
+      await handleReportTemplateDocxApi(request, response, request.user, url);
+      return;
+    }
     if (apiRoute === "/api/login-events") {
       await handleLoginEventsApi(request, response, request.user);
       return;
@@ -2829,6 +2876,8 @@ module.exports = {
   applyServerProtectedPlaceholderTokens,
   handleReportTemplateTokensApi,
   handleReportTemplateRenderApi,
+  handleReportTemplateDocxApi,
+  readPrivateTemplateBinary,
   generateMfaCode,
   markDeviceTrusted,
   isRequestFromTrustedDevice,

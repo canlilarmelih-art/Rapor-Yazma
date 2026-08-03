@@ -13258,7 +13258,10 @@ async function buildBankTemplateZipBundle(templateKey, options = {}) {
   const templateResult = await window.RaporTemplates.exportTemplate(templateKey, { download: false });
 
   const entries = [
-    { name: templateResult.fileName, bytes: textToUint8Array(templateResult.content) },
+    {
+      name: templateResult.fileName,
+      bytes: templateResult.isBinary ? templateResult.bytes : textToUint8Array(templateResult.content),
+    },
   ];
 
   const jsonPayload = buildReportJsonExportPayload();

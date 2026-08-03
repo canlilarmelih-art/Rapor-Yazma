@@ -161,6 +161,41 @@ takyidat/ipotek lehdarı seçimi için, çok daha uzun) ile KARIŞTIRILMASIN.
 `tools/test-server-template-rendering.js` artık her `TEMPLATE_REGISTRY`
 anahtarının sunucuda gerçek bir dosyaya karşılık geldiğini doğruluyor.
 
+## Gerçek .docx banka şablonu: Emlak Katılım (0.0.313, 2026-08-03)
+
+Kullanıcı "word formatını bozmamalıydın logolar sayfa yapısı çerçeveler...
+template dosyasını word olarak tutabilirsin" dedi — HTML'e çevirip render
+eden mevcut motorun (`templates/*.html` + `template-engine.js` fillTemplate)
+DIŞINDA, `templates/emlakkatilim.docx` GERÇEK bir Word dosyası olarak
+tutuluyor (TEMPLATE_REGISTRY'de `format: "docx"`). Kullanıcının sunduğu
+orijinal .docx'e {{TOKEN}} yer tutucuları doğrudan `word/document.xml`
+içine (Word'ün run'lara bölme sorunundan kaçınmak için önce
+`merge_runs.py` ile birleştirilip) elle yerleştirildi; belge STORED
+(sıkıştırmasız) zip olarak paketlendi ki xlsx-fill.js'teki gibi
+bağımlılıksız okunabilsin. **Şu an yalnızca kapak özet tablosundaki ~15
+alan (adres, müşteri, değerler) doldurulu; tapu detay tablosu, çevre
+analizi, kira kabiliyeti, emsal kartları, sonuç imza bloğu ve ekler
+BİLİNÇLİ OLARAK BOŞ bırakıldı** (orijinal belgenin kendi elle-tamamlama
+tasarımıyla tutarlı — devam ekleme yapılacaksa aynı teknik: `templates/`
+kopyasını unzip et, `word/document.xml`'de hedef etiketin hemen
+ardındaki `\xa0` (boş) run'ı bul, `{{TOKEN}}` ile değiştir, STORED
+zip olarak yeniden paketle).
+
+Akış HTML şablonlarından TAMAMEN FARKLI: `exportTemplate()` (template-
+engine.js) `format: "docx"` görünce sunucunun HTML-render API'sini
+(`/api/report-template-render`) ATLAR — yeni `GET
+/api/report-template-docx?key=...` (server.js, `handleReportTemplateDocxApi`
++ `readPrivateTemplateBinary`, yalnızca onaylı kullanıcı) ham baytları
+verir, `src/exports/docx-fill.js` (yeni, xlsx-fill.js'in STORED-zip
+okuma/yazma tekniğinin bağımsız kopyası) `{{TOKEN}}`'ları
+`resolveTemplateTokenValues()`'un (mevcut, HTML şablonlarla PAYLAŞILAN)
+ürettiği değerlerle YERELDE doldurur — sunucu-taraflı "korumalı"
+değer-imzalama akışına (`applyServerProtectedPlaceholderTokens`) HİÇ
+GİRMEZ (tıpkı Excel dışa aktarımların da bu akışı atlaması gibi —
+mevcut bir mimari emsal). `PRIVATE_REPORT_TEMPLATES`'te dosya adı
+`.docx` uzantılı olursa bu ayrı yol otomatik devreye girer.
+Test: `tools/test-docx-fill.js`.
+
 ## Bu depoda paralel oturum uyarısı
 
 Aynı çalışma dizininde başka bir ajan (Codex) da düzenleme yapabiliyor.
