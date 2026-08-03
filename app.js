@@ -12988,14 +12988,12 @@ function createOutputExportPanel() {
     <div class="subsection-title-row">
       <div>
         <h4>Farklı Kaydet</h4>
-        <p>Rapor taslağını JSON olarak saklayabilirsiniz.</p>
       </div>
       <span class="export-status" data-output-export-status aria-live="polite"></span>
     </div>
     <div class="output-export-actions">
       <button type="button" class="secondary-button" data-export-json>JSON olarak farklı kaydet</button>
     </div>
-    <p class="subtle-text">JSON dosyası 1-Dosya bölümünden tekrar yüklendiğinde tüm alanlar ve tablolar geri gelir.</p>
   `;
   const status = panel.querySelector("[data-output-export-status]");
   panel.querySelector("[data-export-json]").addEventListener("click", () => {
@@ -13020,7 +13018,6 @@ function appendTablesXlsxExportBlock(panel, status) {
     <div class="subsection-title-row" style="margin-top:14px;">
       <div>
         <h4>Tüm Tabloları Excel Olarak İndir</h4>
-        <p>Malikler, Takyidat (Beyan/Şerh/İpotek), İncelenen Belgeler ve Emsal tablolarının tamamı, her biri ayrı sayfada olacak şekilde tek bir .xlsx dosyasına aktarılır.</p>
       </div>
     </div>
     <div class="output-export-actions">
@@ -13119,7 +13116,6 @@ function createExpenseFeesSummaryPanel() {
         </tbody>
       </table>
     </div>
-    <p class="subtle-text">KDV oranı ve tarife tutarları admin tarafından yıllık olarak güncellenir (Masraf Bilgileri bölümü).</p>
   `;
   updateExpenseFeesSummaryPanelIn(panel);
   return panel;
@@ -13155,14 +13151,12 @@ function appendBankTemplateExportBlock(panel, status) {
     <div class="subsection-title-row" style="margin-top:14px;">
       <div>
         <h4>Banka Şablonuyla Kaydet</h4>
-        <p>templates/ klasöründeki düzenlenebilir HTML şablonu doldurulur; Word (.doc) çıktısı, rapor JSON taslağı, dolu tablolar (Excel) ve varsa Ziraat ek tablosu TEK bir .zip dosyası olarak iner.</p>
       </div>
     </div>
     <div class="output-export-actions">
       <select data-template-select class="text-input" style="max-width:320px;">${options}</select>
       <button type="button" class="primary-button" data-export-template>Banka şablonuyla kaydet (.zip)</button>
     </div>
-    <p class="subtle-text">Placeholder adları için templates/PLACEHOLDER-REHBERI.md dosyasına bakın. Eşleşmeyen adlar çıktıda ⚠ ile işaretlenir.</p>
   `;
   const select = block.querySelector("[data-template-select]");
   const defaultKey = window.RaporTemplates.defaultTemplateKeyForBank(state.fields.bank, isLandPropertyForBankTemplate());

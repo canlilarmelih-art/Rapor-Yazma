@@ -1,5 +1,19 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.297 - 2026-08-03 - Banka ve Çıktı bölümündeki açıklama metinleri kaldırıldı
+
+- Kullanıcı, "Banka ve Çıktı" ekranının bir ekran görüntüsünü kırmızı "GİZLE" kutucuklarıyla işaretleyip paylaştı — altı ayrı yerdeki gri açıklama/ipucu paragrafını hedef alıyordu.
+- **app.js**: aşağıdaki `<p>` açıklama metinleri kaldırıldı; başlıklar (`<h4>`), düğmeler, açılır listeler ve tablolar AYNEN kaldı (yalnızca metin temizliği, işlevsellik değişmedi):
+  1. "Farklı Kaydet" → "Rapor taslağını JSON olarak saklayabilirsiniz."
+  2. "Farklı Kaydet" altlığı → "JSON dosyası 1-Dosya bölümünden tekrar yüklendiğinde tüm alanlar ve tablolar geri gelir."
+  3. Masraf Tablosu altlığı → "KDV oranı ve tarife tutarları admin tarafından yıllık olarak güncellenir (Masraf Bilgileri bölümü)."
+  4. "Banka Şablonuyla Kaydet" → "templates/ klasöründeki düzenlenebilir HTML şablonu doldurulur; Word (.doc) çıktısı, rapor JSON taslağı, dolu tablolar (Excel) ve varsa Ziraat ek tablosu TEK bir .zip dosyası olarak iner."
+  5. "Banka Şablonuyla Kaydet" altlığı → "Placeholder adları için templates/PLACEHOLDER-REHBERI.md dosyasına bakın. Eşleşmeyen adlar çıktıda ⚠ ile işaretlenir."
+  6. "Tüm Tabloları Excel Olarak İndir" → "Malikler, Takyidat (Beyan/Şerh/İpotek), İncelenen Belgeler ve Emsal tablolarının tamamı, her biri ayrı sayfada olacak şekilde tek bir .xlsx dosyasına aktarılır."
+- Bu, önceki `sensitiveOnly` (ayrıcalıklı kullanıcı) mekanizmasından BAĞIMSIZ — tüm kullanıcılar için (admin dahil) kalıcı metin sadeleştirmesi; erişim kontrolü eklenmedi.
+- `npm run verify` tamamı geçti (44 test, yeni test gerekmedi — mevcut testler bu açıklama metinlerini doğrulamıyordu).
+- Cache-buster `app.js?v=20260803-0400`'e yükseltildi.
+
 ## 0.0.296 - 2026-08-03 - "Word/PDF olarak kaydet" kaldırıldı; Banka Şablonuyla Kaydet artık tek ZIP
 
 - Kullanıcı, Kuveyt Türk raporu için ürettiği bir .doc dosyası paylaştı: "banka ve çıktı bölümünde word ve pdf olarak kaydettiğimizde bu şekilde anlamsız bir çıktı oluşuyor. bu kısımları kaldıralım. banka ve çıktı kısmındaki açıklamaları da kaldıralım. excel tablo indirme json dosyası ve rapor word formatı Banka Şablonu ile kaydet butonu tıklandığında otomatik zip yada rar içinde insin."
