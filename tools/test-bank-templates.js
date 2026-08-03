@@ -434,16 +434,6 @@ comparableTemplateFiles.forEach((file) => {
   );
 });
 assert(
-  appSource.includes("@page WordSection1 { size: 595.35pt 841.95pt; margin: 36pt; mso-header-margin:35.4pt; mso-footer-margin:35.4pt; mso-paper-source:0; }") &&
-  appSource.includes("@page WordLandscape { size: 841.95pt 595.35pt; mso-page-orientation: landscape; margin: 36pt; }"),
-  "Word export sayfa duzeni Dar (36pt / 0.5 inch margin) degil."
-);
-assert(
-  appSource.includes("div.WordSection1 { page: WordSection1; }") &&
-  appSource.includes('<div class="WordSection1">'),
-  "Word export govdesi WordSection1 sayfa duzenine baglanmiyor."
-);
-assert(
   appSource.includes('margin:${compact ? "3pt 0 12pt" : "5pt 0 12pt"}') &&
   appSource.includes("margin:5pt 0 12pt;table-layout:fixed;font-size:7pt;") &&
   appSource.includes("margin:3pt 0 12pt;table-layout:fixed"),
@@ -1065,12 +1055,12 @@ assert(
 assert(
   appSource.includes("function ensureReportMapImagesForExport()") &&
     appSource.includes("Konum ve emsal krokisi kaydedilmedi. Otomatik olarak kaydedilerek devam edilecektir.") &&
-    appSource.includes("ensureReportMapImagesForExport();"),
-  "Word export oncesi eksik konum/emsal krokisi otomatik kayit uyarisi bulunamadi."
+    engineSource.includes('safeCall("ensureReportMapImagesForExport")'),
+  "Banka sablonu Word export oncesi eksik konum/emsal krokisi otomatik kayit uyarisi bulunamadi."
 );
 assert(
   appSource.includes('getMapExportCanvasSize("16:9", 1200)') &&
-    appSource.includes('width="640" height="360" style="width:480pt;height:270pt;') &&
+    engineSource.includes('width="640" height="360" style="width:${width}pt;height:${height}pt;') &&
     engineSource.includes("const width = Math.round(480 * scale)") &&
     engineSource.includes("const height = Math.round(270 * scale)") &&
     engineSource.includes('key === "location" ? 0.7 : 1'),

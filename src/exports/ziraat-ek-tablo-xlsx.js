@@ -193,12 +193,15 @@
     return `${base}-ek-tablo.xlsx`;
   }
 
-  async function exportXlsx() {
+  // options.download = false: blob'u indirmeden döner — zip paketleme
+  // (Banka Şablonuyla Kaydet) için kullanılır.
+  async function exportXlsx(options = {}) {
     if (!window.RaporXlsxFill) throw new Error("XLSX doldurma motoru yüklenmedi (xlsx-fill.js).");
     const manifest = await loadManifest();
     const blob = await window.RaporXlsxFill.fillTemplate(TEMPLATE_URL, manifest, resolveCell);
-    window.RaporXlsxFill.downloadBlob(buildFileName(), blob);
-    return { count: manifest.cells.length };
+    const fileName = buildFileName();
+    if (options.download !== false) window.RaporXlsxFill.downloadBlob(fileName, blob);
+    return { count: manifest.cells.length, blob, fileName };
   }
 
   window.RaporZiraatEkTablo = { export: exportXlsx, resolveCell, buildingDoc };

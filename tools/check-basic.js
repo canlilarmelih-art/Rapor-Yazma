@@ -927,17 +927,21 @@ function main() {
       appJs.includes('card.innerHTML = `<div class="section-body"></div>`;'),
     "Bolum ust basliklari kaldirilmis gorunmuyor."
   );
+  // Kullanici talebi: "Word olarak farkli kaydet"/"PDF olarak kaydet"
+  // genel (banka sablonu DISI) cikti butonlari kaldirildi — bu ikili
+  // her rapor Word/PDF olarak kaydedildiginde "Emsal Karsilastirma
+  // Matrisi" gibi HTML tablolari kacis karakterli ham metin olarak
+  // basiyordu ("Acikla Metinleri" bolumu). Asil resmi cikti "Banka
+  // Sablonuyla Kaydet" (appendBankTemplateExportBlock) uzerinden gelir.
   assert(
     appJs.includes("createOutputExportPanel") &&
       appJs.includes("exportReportJson") &&
-      appJs.includes("exportReportWord") &&
-      appJs.includes("exportReportPdf") &&
-      appJs.includes("data-export-pdf") &&
-      appJs.includes("openPdfPrintWindow") &&
-      appJs.includes("buildWordReportHtml") &&
-      appJs.includes("buildWordReportTablesHtml") &&
-      appJs.includes("buildWordReportSketchesHtml"),
-    "Banka ve Cikti bolumunde JSON/Word farkli kaydet veya Word tablo/kroki akisi bulunamadi."
+      appJs.includes("data-export-json") &&
+      !appJs.includes("data-export-word") &&
+      !appJs.includes("data-export-pdf") &&
+      !appJs.includes("function exportReportWord") &&
+      !appJs.includes("function exportReportPdf"),
+    "Banka ve Cikti bolumunde JSON farkli kaydet akisi bulunamadi veya kaldirilan Word/PDF butonlari geri gelmis."
   );
   assert(
     appJs.includes("exportZiraatEkTabloWithBankTemplateIfNeeded") &&
@@ -946,12 +950,6 @@ function main() {
       !appJs.includes("appendZiraatEkTabloXlsxBlock") &&
       !appJs.includes("data-export-ziraat-xlsx"),
     "Ziraat ek tablo ayri buton yerine banka sablonuyla kaydet akisina baglanmamis gorunuyor."
-  );
-  assert(
-    appJs.includes("shouldIncludeGeneratedTextInWord") &&
-      appJs.includes("_template") &&
-      appJs.includes("Şablonu"),
-    "Word ciktisinda placeholder/sablon aciklama metinlerini suzen kural bulunamadi."
   );
   assert(
     appJs.includes("shouldHideSection") &&
@@ -964,27 +962,18 @@ function main() {
     "Gayrimenkul turune gore arsa/ana gayrimenkul/bagimsiz bolum gorunurluk kurallari bulunamadi."
   );
   assert(
-    appJs.includes("@page WordLandscape") &&
-      appJs.includes("word-table") &&
+    appJs.includes("word-table") &&
       appJs.includes("wrapWordLandscapeSection") &&
       appJs.includes("buildComparableMatrixWordTableHtml") &&
       appJs.includes("buildComparableDistanceWordMatrixRow") &&
       appJs.includes("Taşınmaza Olan Mesafesi"),
-    "Word ciktisi icin yatay sayfa ve sistem tasarimina yakin tablo duzeni bulunamadi."
-  );
-  assert(
-    appJs.includes("buildPointSketchVml") &&
-      appJs.includes("urn:schemas-microsoft-com:vml") &&
-      appJs.includes("sketch-vml") &&
-      appJs.includes("font-size: 7pt"),
-    "Word ciktisi icin kucuk tablo fontu veya Word uyumlu VML kroki uretimi bulunamadi."
+    "Banka sablonu Word ciktisi icin emsal matrisi/tablo duzeni bulunamadi."
   );
   assert(
     appJs.includes("buildWordMhtmlPackage") &&
-      appJs.includes("createSketchPngDataUrl") &&
       appJs.includes("Content-Location:") &&
       appJs.includes("image/png"),
-    "Word ciktisinda kroki gorsellerini gomulu PNG/MHTML olarak ureten akis bulunamadi."
+    "Banka sablonu Word ciktisinda gorselleri gomulu MHTML olarak ureten akis bulunamadi."
   );
   assert(
     appJs.includes("createBuildingInspectionExplanationPreview") &&

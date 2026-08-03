@@ -962,7 +962,12 @@
     return defaultTemplateKeyForBank(entry.bank, isLandOwnership) || templateKey;
   }
 
-  async function exportTemplate(templateKey) {
+  // options.download = false: dosyayı otomatik indirmek yerine içeriği
+  // ({content, mimeType}) döner — "Banka Şablonuyla Kaydet" tıklandığında
+  // JSON + Excel + Word'ü tek bir zip'te toplamak için kullanılır (kullanıcı
+  // talebi: "otomatik zip yada rar içinde insin").
+  async function exportTemplate(templateKey, options = {}) {
+    const download = options.download !== false;
     const entry = TEMPLATE_REGISTRY.find((item) => item.key === templateKey);
     if (!entry) throw new Error(`Şablon bulunamadı: ${templateKey}`);
     const response = await fetch(`${entry.file}?t=${Date.now()}`);
@@ -976,11 +981,13 @@
     try {
       const { html, missing } = fillTemplate(templateText);
       const fileName = `${safeCall("buildExportBaseFileName") || "rapor"}-${entry.key}.doc`;
+      const mimeType = "application/msword;charset=utf-8";
       const packaged = reportImageAssetsCache.length
         ? safeCall("buildWordMhtmlPackage", html, reportImageAssetsCache)
         : "";
-      safeCall("downloadTextFile", fileName, packaged || html, "application/msword;charset=utf-8");
-      return { fileName, missing, title: entry.title };
+      const content = packaged || html;
+      if (download) safeCall("downloadTextFile", fileName, content, mimeType);
+      return { fileName, missing, title: entry.title, content, mimeType };
     } finally {
       reportImageAssetsCache = [];
     }

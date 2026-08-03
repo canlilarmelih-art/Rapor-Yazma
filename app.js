@@ -12988,32 +12988,20 @@ function createOutputExportPanel() {
     <div class="subsection-title-row">
       <div>
         <h4>Farklı Kaydet</h4>
-        <p>Rapor taslağını JSON olarak saklayabilir veya Word ile açılabilir rapor çıktısı üretebilirsiniz.</p>
+        <p>Rapor taslağını JSON olarak saklayabilirsiniz.</p>
       </div>
       <span class="export-status" data-output-export-status aria-live="polite"></span>
     </div>
     <div class="output-export-actions">
       <button type="button" class="secondary-button" data-export-json>JSON olarak farklı kaydet</button>
-      <button type="button" class="primary-button" data-export-word>Word olarak farklı kaydet</button>
-      <button type="button" class="secondary-button" data-export-pdf>PDF olarak kaydet</button>
     </div>
-    <p class="subtle-text">JSON dosyası 1-Dosya bölümünden tekrar yüklendiğinde tüm alanlar ve tablolar geri gelir. Word çıktısı tabloları ve açıklama metinlerini tablo düzeni korunarak üretir; kroki verileri rapora eklenir.</p>
+    <p class="subtle-text">JSON dosyası 1-Dosya bölümünden tekrar yüklendiğinde tüm alanlar ve tablolar geri gelir.</p>
   `;
   const status = panel.querySelector("[data-output-export-status]");
   panel.querySelector("[data-export-json]").addEventListener("click", () => {
     if (!confirmExportWithMissingFields()) return;
     exportReportJson();
     showOutputExportStatus(status, "JSON hazırlandı.");
-  });
-  panel.querySelector("[data-export-word]").addEventListener("click", async () => {
-    if (!confirmExportWithMissingFields()) return;
-    await exportReportWord();
-    showOutputExportStatus(status, "Word çıktısı hazırlandı.");
-  });
-  panel.querySelector("[data-export-pdf]").addEventListener("click", async () => {
-    if (!confirmExportWithMissingFields()) return;
-    await exportReportPdf();
-    showOutputExportStatus(status, "PDF penceresi açıldı.");
   });
   panel.append(createExpenseFeesSummaryPanel());
   appendBankTemplateExportBlock(panel, status);
@@ -13167,12 +13155,12 @@ function appendBankTemplateExportBlock(panel, status) {
     <div class="subsection-title-row" style="margin-top:14px;">
       <div>
         <h4>Banka Şablonuyla Kaydet</h4>
-        <p>templates/ klasöründeki düzenlenebilir HTML şablonu doldurulur ve Word (.doc) olarak iner. Ziraat Bankası rapor formatında ek tablo Excel dosyası da otomatik indirilir.</p>
+        <p>templates/ klasöründeki düzenlenebilir HTML şablonu doldurulur; Word (.doc) çıktısı, rapor JSON taslağı, dolu tablolar (Excel) ve varsa Ziraat ek tablosu TEK bir .zip dosyası olarak iner.</p>
       </div>
     </div>
     <div class="output-export-actions">
       <select data-template-select class="text-input" style="max-width:320px;">${options}</select>
-      <button type="button" class="primary-button" data-export-template>Banka şablonuyla kaydet</button>
+      <button type="button" class="primary-button" data-export-template>Banka şablonuyla kaydet (.zip)</button>
     </div>
     <p class="subtle-text">Placeholder adları için templates/PLACEHOLDER-REHBERI.md dosyasına bakın. Eşleşmeyen adlar çıktıda ⚠ ile işaretlenir.</p>
   `;
@@ -13188,37 +13176,104 @@ function appendBankTemplateExportBlock(panel, status) {
       // sessizce yönlendirilir (kullanıcı deneyimini sadeleştirmek için banka
       // basina tek secenek gosterilir).
       const templateKey = window.RaporTemplates.resolveTemplateKeyForExport(select.value, isLandPropertyForBankTemplate());
-      const result = await window.RaporTemplates.exportTemplate(templateKey);
-      const ziraatEkTabloResult = await exportZiraatEkTabloWithBankTemplateIfNeeded(templateKey);
+      const result = await buildBankTemplateZipBundle(templateKey);
+      const suffix = result.ziraatFailed
+        ? " (Ziraat ek tablosu pakete eklenemedi.)"
+        : (result.ziraatCount != null ? ` Ziraat ek tablosu da pakete eklendi (${result.ziraatCount} alan).` : "");
       if (result.missing.length) {
-        const suffix = ziraatEkTabloResult ? ` Ziraat ek tablosu da indirildi (${ziraatEkTabloResult.count} alan).` : "";
-        showOutputExportStatus(status, `Hazırlandı; ${result.missing.length} placeholder eşleşmedi.${suffix}`);
-        window.alert(`Şablon hazırlandı ancak şu placeholder adları eşleşmedi (çıktıda ⚠ ile işaretli):\n\n${[...new Set(result.missing)].join("\n")}\n\nYazımı templates/PLACEHOLDER-REHBERI.md dosyasından kontrol edebilirsiniz.`);
+        showOutputExportStatus(status, `Paket hazırlandı; ${result.missing.length} placeholder eşleşmedi.${suffix}`);
+        window.alert(`Paket hazırlandı ancak şu placeholder adları eşleşmedi (Word çıktısında ⚠ ile işaretli):\n\n${[...new Set(result.missing)].join("\n")}\n\nYazımı templates/PLACEHOLDER-REHBERI.md dosyasından kontrol edebilirsiniz.`);
       } else {
-        const suffix = ziraatEkTabloResult ? " Ziraat ek tablosu da indirildi." : "";
-        showOutputExportStatus(status, `${result.title} hazırlandı.${suffix}`);
+        showOutputExportStatus(status, `${result.title} paketi (.zip) hazırlandı.${suffix}`);
       }
     } catch (error) {
-      console.error("Şablon dışa aktarma hatası:", error);
-      const partialZiraatFailure = String(error?.message || "").startsWith("Word şablonu hazırlandı ancak");
-      showOutputExportStatus(status, partialZiraatFailure ? "Word hazırlandı; Ziraat ek tablosu hazırlanamadı." : "Şablon hazırlanamadı.");
-      window.alert(`Şablon hazırlanamadı: ${error?.message || error}`);
+      console.error("Şablon paketleme hatası:", error);
+      showOutputExportStatus(status, "Paket hazırlanamadı.");
+      window.alert(`Paket hazırlanamadı: ${error?.message || error}`);
     }
   });
   panel.append(block);
 }
 
-async function exportZiraatEkTabloWithBankTemplateIfNeeded(templateKey) {
+async function exportZiraatEkTabloWithBankTemplateIfNeeded(templateKey, options = {}) {
   if (templateKey !== "ziraat" && templateKey !== "ziraat-arsa-arazi") return null;
   if (!window.RaporZiraatEkTablo?.export) {
     throw new Error("Ziraat ek tablo XLSX motoru yüklenmedi.");
   }
   try {
-    return await window.RaporZiraatEkTablo.export();
+    return await window.RaporZiraatEkTablo.export(options);
   } catch (error) {
     console.error("Ziraat ek tablo XLSX hatası:", error);
     throw new Error(`Word şablonu hazırlandı ancak Ziraat ek tablosu hazırlanamadı: ${error?.message || error}`);
   }
+}
+
+function textToUint8Array(text) {
+  return new TextEncoder().encode(String(text ?? ""));
+}
+
+async function blobToUint8Array(blob) {
+  return new Uint8Array(await blob.arrayBuffer());
+}
+
+// Kullanıcı talebi: "excel tablo indirme json dosyası ve rapor word formatı
+// Banka Şablonu ile kaydet butonu tıklandığında otomatik zip yada rar
+// içinde insin" — Word şablonu, JSON taslağı, Tüm Tablolar Excel dosyası
+// (doluysa) ve Ziraat ek tablosu (varsa) STORED bir .zip'te TEK dosya
+// olarak iner (bkz. window.RaporXlsxFill.writeStoredZip — .xlsx üretimi
+// için zaten var olan bağımlılıksız ZIP yazıcı burada da yeniden kullanılır).
+async function buildBankTemplateZipBundle(templateKey) {
+  // Word şablonu asıl talep edilen çıktı olduğundan burada başarısız olursa
+  // zip HİÇ oluşturulmaz (mevcut davranış). Ziraat ek tablosu VE Tüm
+  // Tablolar Excel'i ise ikincil eklerdir — biri başarısız olursa paketin
+  // geri kalanı yine de indirilsin diye ayrı ayrı try/catch içine alınır.
+  const templateResult = await window.RaporTemplates.exportTemplate(templateKey, { download: false });
+
+  const entries = [
+    { name: templateResult.fileName, bytes: textToUint8Array(templateResult.content) },
+  ];
+
+  const jsonPayload = buildReportJsonExportPayload();
+  entries.push({ name: jsonPayload.fileName, bytes: textToUint8Array(jsonPayload.content) });
+
+  if (window.RaporReportTablesXlsx?.exportAllTables) {
+    try {
+      const xlsxResult = window.RaporReportTablesXlsx.exportAllTables({ download: false });
+      entries.push({ name: xlsxResult.fileName, bytes: await blobToUint8Array(xlsxResult.blob) });
+    } catch (error) {
+      // Dolu tablo yoksa (ör. hiç emsal/malik/takyidat girilmemiş) sessizce
+      // atlanır — zip'in geri kalanı yine de hazırlanır.
+      console.warn("Tüm Tablolar Excel paketlenemedi, zip'e eklenmeden devam edildi:", error);
+    }
+  }
+
+  let ziraatResult = null;
+  let ziraatFailed = false;
+  try {
+    ziraatResult = await exportZiraatEkTabloWithBankTemplateIfNeeded(templateKey, { download: false });
+  } catch (error) {
+    console.warn("Ziraat ek tablosu paketlenemedi, zip'in geri kalanı yine de hazırlanıyor:", error);
+    ziraatFailed = true;
+  }
+  if (ziraatResult?.blob) {
+    entries.push({ name: ziraatResult.fileName, bytes: await blobToUint8Array(ziraatResult.blob) });
+  }
+
+  if (!window.RaporXlsxFill?.writeStoredZip) {
+    throw new Error("Zip paketleme motoru yüklenmedi (xlsx-fill.js).");
+  }
+  const zipBytes = window.RaporXlsxFill.writeStoredZip(entries);
+  const zipBlob = new Blob([zipBytes], { type: "application/zip" });
+  const zipFileName = `${buildExportBaseFileName()}-${templateKey}-paket.zip`;
+  window.RaporXlsxFill.downloadBlob(zipFileName, zipBlob);
+
+  return {
+    zipFileName,
+    missing: templateResult.missing,
+    title: templateResult.title,
+    ziraatCount: ziraatResult?.count ?? null,
+    ziraatFailed,
+  };
 }
 
 function showOutputExportStatus(status, text) {
@@ -13229,8 +13284,7 @@ function showOutputExportStatus(status, text) {
   }, 1800);
 }
 
-function exportReportJson() {
-  saveState();
+function buildReportJsonExportPayload() {
   const payload = {
     schema: "rapor-yazma-programi-state",
     schemaVersion: 1,
@@ -13239,52 +13293,17 @@ function exportReportJson() {
     activeSectionId,
     state,
   };
-  downloadTextFile(`${buildExportBaseFileName()}.json`, JSON.stringify(payload, null, 2), "application/json;charset=utf-8");
+  return {
+    fileName: `${buildExportBaseFileName()}.json`,
+    content: JSON.stringify(payload, null, 2),
+    mimeType: "application/json;charset=utf-8",
+  };
 }
 
-async function exportReportWord() {
+function exportReportJson() {
   saveState();
-  ensureReportMapImagesForExport();
-  const documentPackage = await buildWordReportDocumentPackage();
-  downloadTextFile(`${buildExportBaseFileName()}.doc`, documentPackage.content, documentPackage.mimeType);
-}
-
-async function exportReportPdf() {
-  saveState();
-  const imageAssets = (await buildWordReportImageAssets()).map((asset) => ({
-    ...asset,
-    src: asset.dataUrl || asset.location,
-  }));
-  const html = buildPdfReportHtml({ imageAssets });
-  openPdfPrintWindow(html);
-}
-
-function buildPdfReportHtml(options = {}) {
-  const html = buildWordReportHtml(options);
-  return html.replace(
-    "</style>",
-    `
-    @media print {
-      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      .word-landscape-section { page-break-before: always; page-break-after: always; }
-    }
-    </style>`
-  );
-}
-
-function openPdfPrintWindow(html) {
-  const printWindow = window.open("", "_blank");
-  if (!printWindow) {
-    downloadTextFile(`${buildExportBaseFileName()}-pdf.html`, html, "text/html;charset=utf-8");
-    return;
-  }
-  printWindow.document.open();
-  printWindow.document.write(html);
-  printWindow.document.close();
-  printWindow.focus();
-  printWindow.setTimeout(() => {
-    printWindow.print();
-  }, 500);
+  const { fileName, content, mimeType } = buildReportJsonExportPayload();
+  downloadTextFile(fileName, content, mimeType);
 }
 
 function downloadTextFile(fileName, content, mimeType) {
@@ -13322,34 +13341,6 @@ function slugifyFileName(value) {
     .slice(0, 120);
 }
 
-async function buildWordReportDocumentPackage() {
-  const imageAssets = await buildWordReportImageAssets();
-  const html = buildWordReportHtml({ imageAssets });
-  if (!imageAssets.length) {
-    return { content: html, mimeType: "application/msword;charset=utf-8" };
-  }
-  return {
-    content: buildWordMhtmlPackage(html, imageAssets),
-    mimeType: "application/msword;charset=utf-8",
-  };
-}
-
-async function buildWordReportImageAssets() {
-  const definitions = getWordSketchDefinitions();
-  const savedAssets = await buildSavedReportImageAssets();
-  const savedKeys = new Set(savedAssets.map((asset) => asset.key));
-  const assets = [...savedAssets];
-  for (const definition of definitions) {
-    if (savedKeys.has(definition.key)) continue;
-    const dataUrl = await createSketchPngDataUrl(definition.items, definition.title);
-    const base64 = String(dataUrl || "").split(",")[1] || "";
-    if (base64) {
-      assets.push({ ...definition, dataUrl, base64, mimeType: "image/png" });
-    }
-  }
-  return assets;
-}
-
 function buildWordMhtmlPackage(html, imageAssets = []) {
   const boundary = `----=_RaporYazma_${Date.now().toString(36)}`;
   const lines = [
@@ -13383,241 +13374,6 @@ function toBase64Utf8(value) {
   return btoa(unescape(encodeURIComponent(String(value || ""))));
 }
 
-function getWordSketchDefinitions() {
-  const definitions = [];
-  const subjectPoint = getComparableSubjectPoint();
-  if (subjectPoint) {
-    definitions.push({
-      key: "location",
-      title: "Konu Taşınmaz Krokisi",
-      location: "word-sketch-location.png",
-      items: [{ label: "Konu Taşınmaz", lat: subjectPoint[0], lng: subjectPoint[1], kind: "subject" }],
-    });
-  }
-  const comparableItems = [];
-  if (subjectPoint) comparableItems.push({ label: "Konu Taşınmaz", lat: subjectPoint[0], lng: subjectPoint[1], kind: "subject" });
-  getComparableRows().forEach((row, index) => {
-    const lat = Number.parseFloat(String(row.c18 || "").replace(",", "."));
-    const lng = Number.parseFloat(String(row.c19 || "").replace(",", "."));
-    if (Number.isFinite(lat) && Number.isFinite(lng)) {
-      comparableItems.push({ label: `Emsal ${index + 1}`, lat, lng, kind: "comparable" });
-    }
-  });
-  if (comparableItems.length >= 2) {
-    definitions.push({
-      key: "comparables",
-      title: "Emsal Konum Krokisi",
-      location: "word-sketch-comparables.png",
-      items: comparableItems,
-    });
-  }
-  return definitions;
-}
-
-async function createSketchPngDataUrl(items, title) {
-  const width = 1200;
-  const height = 700;
-  const pad = 92;
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-  const context = canvas.getContext("2d");
-  if (!context) return "";
-  drawWordSketchCanvas(context, items, title, width, height, pad);
-  return canvas.toDataURL("image/png");
-}
-
-function drawWordSketchCanvas(context, items, title, width, height, pad) {
-  const lats = items.map((item) => Number(item.lat));
-  const lngs = items.map((item) => Number(item.lng));
-  const minLat = Math.min(...lats);
-  const maxLat = Math.max(...lats);
-  const minLng = Math.min(...lngs);
-  const maxLng = Math.max(...lngs);
-  const latSpan = Math.max(maxLat - minLat, 0.0005);
-  const lngSpan = Math.max(maxLng - minLng, 0.0005);
-  context.fillStyle = "#f7faf8";
-  context.fillRect(0, 0, width, height);
-  context.strokeStyle = "#cbd5d1";
-  context.lineWidth = 3;
-  context.strokeRect(8, 8, width - 16, height - 16);
-  context.fillStyle = "#12202a";
-  context.font = "900 30px Arial";
-  context.fillText(title, pad, 58);
-  context.strokeStyle = "#d8e1de";
-  context.lineWidth = 2;
-  context.beginPath();
-  context.moveTo(pad, height / 2);
-  context.lineTo(width - pad, height / 2);
-  context.moveTo(width / 2, pad);
-  context.lineTo(width / 2, height - pad);
-  context.stroke();
-  items.forEach((item) => {
-    const x = pad + ((Number(item.lng) - minLng) / lngSpan) * (width - pad * 2);
-    const y = height - pad - ((Number(item.lat) - minLat) / latSpan) * (height - pad * 2);
-    const isSubject = item.kind === "subject";
-    const color = isSubject ? "#b91c1c" : "#0f766e";
-    context.fillStyle = color;
-    context.beginPath();
-    context.arc(x, y, isSubject ? 15 : 12, 0, Math.PI * 2);
-    context.fill();
-    context.font = "900 22px Arial";
-    context.textAlign = "center";
-    context.fillText(item.label, x, y - 24 < 78 ? y + 42 : y - 24);
-  });
-  context.textAlign = "left";
-}
-
-function buildWordReportHtml(options = {}) {
-  const title = state.fields.caseName || "Ekspertiz Raporu";
-  const sectionsHtml = [
-    buildWordReportSummaryHtml(),
-    buildWordReportGeneratedTextsHtml(),
-    buildWordReportTablesHtml(),
-    buildWordReportSketchesHtml(options),
-  ].filter(Boolean).join("\n");
-  const reportInk = getReportThemeToken("--ink", "#152238");
-  const reportLine = getReportThemeToken("--line", "#dde3ef");
-  const reportBlue = getReportThemeToken("--blue", "#3a5691");
-  const reportBlueSoft = getReportThemeToken("--blue-soft", "#e4ebf8");
-  const reportSurface = getReportThemeToken("--surface", "#ffffff");
-  const reportSurfaceMuted = getReportThemeToken("--surface-muted", "#eef2fa");
-  const reportMuted = getReportThemeToken("--muted", "#5a6576");
-  const reportGreen = getReportThemeToken("--green", "#213f77");
-  return `<!DOCTYPE html>
-<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:v="urn:schemas-microsoft-com:vml">
-<head>
-  <meta charset="utf-8">
-  <title>${escapeHtml(title)}</title>
-  <style>
-    @page WordSection1 { size: 595.35pt 841.95pt; margin: 36pt; mso-header-margin:35.4pt; mso-footer-margin:35.4pt; mso-paper-source:0; }
-    @page WordLandscape { size: 841.95pt 595.35pt; mso-page-orientation: landscape; margin: 36pt; }
-    v\\:* { behavior: url(#default#VML); }
-    /* Renkler app/styles.css'teki gercek tema token'lariyla eslesir:
-       --ink:#152238 --line:#dde3ef --blue:#3a5691 --blue-soft:#e4ebf8
-       (bkz. .malikler-table / .takyidat-table ekran ici stilleri). */
-    body { font-family: Arial, sans-serif; font-size: 7pt; color: ${reportInk}; background: ${reportSurface}; }
-    h1 { font-size: 14pt; margin: 0 0 8pt; color: ${reportInk}; font-weight: 900; }
-    h2 { font-size: 10pt; margin: 13pt 0 6pt; border-bottom: 1.5pt solid ${reportGreen}; padding-bottom: 3pt; color: ${reportInk}; font-weight: 900; }
-    h3 { font-size: 8.5pt; margin: 8pt 0 4pt; color: ${reportInk}; font-weight: 900; }
-    p { margin: 0 0 6pt; line-height: 1.3; text-align: justify; }
-    .encumbrance-summary { font-size: 10pt; text-align: justify; }
-    .share-explanation { font-size: 10pt; text-align: justify; }
-    div.WordSection1 { page: WordSection1; }
-    .word-landscape-section { page: WordLandscape; mso-page-orientation: landscape; page-break-before: always; page-break-after: always; }
-    .word-table { border-collapse: collapse; width: 100%; margin: 5pt 0 12pt; table-layout: fixed; border: 1pt solid ${reportLine}; font-size: 7pt; }
-    .word-table th,
-    .word-table td { border: 1pt solid ${reportLine}; padding: 2.4pt 3pt; vertical-align: top; line-height: 1.1; }
-    .word-table th { background: ${reportSurfaceMuted}; color: ${reportBlue}; font-weight: 900; text-align: left; }
-    .word-table tbody tr:nth-child(even) td { background: ${reportSurfaceMuted}; }
-    .word-table.is-wide { font-size: 6pt; table-layout: auto; }
-    .word-table.is-wide th,
-    .word-table.is-wide td { padding: 1.8pt 2.2pt; line-height: 1.05; }
-    .word-table.is-matrix th:first-child,
-    .word-table.is-matrix td:first-child,
-    .word-table.meta td:first-child { width: 26%; font-weight: 900; background: ${reportBlueSoft}; color: ${reportBlue}; }
-    .word-table.is-summary tbody tr:last-child td { font-weight: 900; background: #1f2a32; color: #ffffff; }
-    .placeholder-title { background: ${reportSurfaceMuted}; font-weight: bold; }
-    .sketch { margin: 6pt 0 12pt; text-align: center; }
-    .sketch-vml { width: 100%; text-align: center; }
-    .sketch-note { font-size: 6pt; color: ${reportMuted}; text-align: left; margin-top: 3pt; }
-  </style>
-</head>
-<body>
-  <div class="WordSection1">
-  <h1>${escapeHtml(title)}</h1>
-  ${sectionsHtml}
-  </div>
-</body>
-</html>`;
-}
-
-function buildWordReportSummaryHtml() {
-  const rows = [
-    ["Banka", state.fields.bank],
-    ["Müşteri / Talep Eden", state.fields.customerName],
-    ["İş Adı", state.fields.caseName],
-    ["Taşınmaz", [state.fields.titleCity || state.fields.city, state.fields.titleDistrict || state.fields.district, state.fields.titleNeighborhood || state.fields.neighborhood].filter(Boolean).join(" / ")],
-    ["Ada / Parsel", [state.fields.blockNo, state.fields.parcelNo].filter(Boolean).join(" / ")],
-    ["Bağımsız Bölüm", [state.fields.titleBlockName, state.fields.titleFloor, state.fields.unitNo].filter(Boolean).join(" / ")],
-    ["Yasal Durum Değeri", formatSchemeNumber(state.fields.legalValue) ? `${formatSchemeNumber(state.fields.legalValue)} TL` : ""],
-    ["Mevcut Durum Değeri", formatSchemeNumber(state.fields.currentValue) ? `${formatSchemeNumber(state.fields.currentValue)} TL` : ""],
-  ].filter((row) => String(row[1] || "").trim());
-  if (!rows.length) return "";
-  return `<h2>Rapor Özeti</h2>${buildSimpleHtmlTable(["Alan", "Değer"], rows, "meta")}`;
-}
-
-function buildWordReportGeneratedTextsHtml() {
-  const rows = collectGeneratedTextPlaceholders()
-    .filter(shouldIncludeGeneratedTextInWord)
-    .filter((row) => String(row.value || "").trim())
-    .map((row) => [row.category, row.title, row.value]);
-  if (!rows.length) return "";
-  return `<h2>Açıklama Metinleri</h2>${rows.map((row) => `
-    <h3>${escapeHtml(row[0])} - ${escapeHtml(row[1])}</h3>
-    ${formatWordParagraphs(row[2], /takyidat/i.test(`${row[0]} ${row[1]}`) ? "encumbrance-summary" : "")}
-  `).join("")}`;
-}
-
-function shouldIncludeGeneratedTextInWord(row = {}) {
-  const key = String(row.key || "").trim().toLocaleLowerCase("tr-TR");
-  const title = String(row.title || "").trim().toLocaleLowerCase("tr-TR");
-  const value = String(row.value || "");
-  if (!value.trim()) return false;
-  if (key.endsWith("_template") || title.includes("şablonu")) return false;
-  if (/\{\{[^}]+\}\}/.test(value)) return false;
-  return true;
-}
-
-function buildWordReportTablesHtml() {
-  const parts = [];
-  const maliklerTableHtml = buildMaliklerTableWordHtml();
-  if (maliklerTableHtml) {
-    parts.push(`<h3>Malikler Tablosu</h3>${maliklerTableHtml}`);
-  }
-  const regularTables = [
-    ["İncelenen Belgeler", ["Belge Türü", "İncelenen Kurum", "Tarih", "No", "Kapsam"], getReviewedDocumentTableEntries().map(({ row }) => row)],
-    ["Beyanlar", ["Tür", "Açıklama", "Tarih", "Yevmiye No", "Kısıtlı Malik"], state.tables.encumbranceDeclarations],
-    ["Rehinler", ["Lehdar", "Derece", "Tutar", "Tarih", "Yevmiye", "Kısıtlı Malik"], state.tables.encumbranceMortgages],
-    ["Şerhler", ["Tür", "Açıklama", "Tutar", "Tarih", "Yevmiye", "Kısıtlı Malik"], state.tables.encumbranceAnnotations],
-  ];
-  regularTables.forEach(([title, headers, rows]) => {
-    const tableRows = formatStateRowsForWord(headers, rows);
-    if (tableRows.length) {
-      const tableHtml = buildSimpleHtmlTable(headers, tableRows);
-      parts.push(headers.length > 6 ? wrapWordLandscapeSection(title, tableHtml) : `<h3>${escapeHtml(title)}</h3>${tableHtml}`);
-    }
-  });
-  const comparableMatrixHtml = buildComparableMatrixWordTableHtml();
-  if (comparableMatrixHtml) {
-    parts.push(wrapWordLandscapeSection("Emsaller", comparableMatrixHtml));
-  }
-  const valuationSummaryText = buildValuationSummaryText();
-  if (valuationSummaryText) {
-    parts.push(`<h3>Değerleme Özet Tablosu</h3>${formatTextTableForWord(valuationSummaryText)}`);
-  }
-  const comparableValuationHtml = buildComparableValuationWordTableHtml();
-  if (comparableValuationHtml) {
-    parts.push(`<h3>Emsal Değerleme Tablosu</h3>${comparableValuationHtml}`);
-  }
-  const generatedTables = [
-    ["Takyidat Tablosu", buildTakyidatTableText()],
-    ["Halkbank Risk Kodları Tablosu", buildHalkbankRiskCodesTableText()],
-  ].filter((row) => String(row[1] || "").trim());
-  generatedTables.forEach(([title, text]) => {
-    parts.push(`<h3>${escapeHtml(title)}</h3>${formatTextTableForWord(text)}`);
-  });
-  return parts.length ? `<h2>Tablolar</h2>${parts.join("\n")}` : "";
-}
-
-function formatStateRowsForWord(headers, rows) {
-  return (Array.isArray(rows) ? rows : [])
-    .filter((row) => Object.values(row || {}).some((value) => String(value || "").trim()))
-    .map((row) => headers.map((header, index) => {
-      const value = row[`c${index}`] || "";
-      return isOutputDateColumnLabel(header) ? dateIsoToTr(value) : value;
-    }));
-}
 
 function buildComparableMatrixWordTableHtml() {
   const rows = getComparableRows().filter((row) => Object.values(row || {}).some((value) => String(value || "").trim()));
@@ -13773,20 +13529,6 @@ function formatComparableValuationWordRow(row) {
     formatComparableSummaryNumber(row.rentUnitValue, { decimals: 2 }),
     formatComparableSummaryNumber(row.adjustedRentUnitValue, { decimals: 2 }),
   ];
-}
-
-function formatTextTableForWord(text) {
-  if (String(text || "").trim() === String(buildValuationSummaryText() || "").trim()) {
-    return buildValuationSummaryWordTableHtml();
-  }
-  const lines = String(text || "").split(/\n+/).map((line) => line.trim()).filter(Boolean);
-  if (!lines.length) return "";
-  const pipeRows = lines.filter((line) => line.includes("|")).map((line) => line.split("|").map((cell) => cell.trim()));
-  if (pipeRows.length >= 2) {
-    const tableHtml = buildSimpleHtmlTable(pipeRows[0], pipeRows.slice(1));
-    return pipeRows[0].length > 6 ? wrapWordLandscapeSection("", tableHtml) : tableHtml;
-  }
-  return buildSimpleHtmlTable(["Açıklama"], lines.map((line) => [line]));
 }
 
 // İncelenen belgeler ve takyidat, banka şablonlarının tamamında aynı sıkı
@@ -13987,105 +13729,6 @@ function formatWordParagraphs(value, className = "") {
     .filter(Boolean);
   const classAttribute = className ? ` class="${escapeHtml(className)}"` : "";
   return paragraphs.map((line) => `<p${classAttribute}>${escapeHtml(line)}</p>`).join("") || "<p>-</p>";
-}
-
-function buildWordReportSketchesHtml(options = {}) {
-  const parts = [];
-  const imageAssets = Array.isArray(options.imageAssets) ? options.imageAssets : [];
-  if (imageAssets.length) {
-    const imageParts = imageAssets.map((asset) => buildWordSketchImageHtml(asset));
-    return `<h2>Krokiler</h2>${imageParts.join("\n")}`;
-  }
-  const locationSketch = buildLocationSketchSvgMarkup();
-  if (locationSketch) parts.push(`<h3>Konu Taşınmaz Krokisi</h3><div class="sketch">${locationSketch}</div>`);
-  const comparableSketch = buildComparableSketchSvgMarkup();
-  if (comparableSketch) parts.push(`<h3>Emsal Konum Krokisi</h3><div class="sketch">${comparableSketch}</div>`);
-  return parts.length ? `<h2>Krokiler</h2>${parts.join("\n")}` : "";
-}
-
-function buildWordSketchImageHtml(asset) {
-  const imageSource = asset.src || asset.location;
-  return `<h3>${escapeHtml(asset.title)}</h3>
-    <div class="sketch">
-      <img src="${escapeHtml(imageSource)}" width="640" height="360" style="width:480pt;height:270pt;border:1pt solid #94a3b8;" alt="${escapeHtml(asset.title)}">
-      ${buildPointSketchLegendTable(asset.items)}
-    </div>`;
-}
-
-function buildLocationSketchSvgMarkup() {
-  const point = getComparableSubjectPoint();
-  if (!point) return "";
-  return buildPointSketchSvg([
-    { label: "Konu Taşınmaz", lat: point[0], lng: point[1], kind: "subject" },
-  ]);
-}
-
-function buildComparableSketchSvgMarkup() {
-  const subjectPoint = getComparableSubjectPoint();
-  const items = [];
-  if (subjectPoint) items.push({ label: "Konu Taşınmaz", lat: subjectPoint[0], lng: subjectPoint[1], kind: "subject" });
-  getComparableRows().forEach((row, index) => {
-    const lat = Number.parseFloat(String(row.c18 || "").replace(",", "."));
-    const lng = Number.parseFloat(String(row.c19 || "").replace(",", "."));
-    if (Number.isFinite(lat) && Number.isFinite(lng)) {
-      items.push({ label: `Emsal ${index + 1}`, lat, lng, kind: "comparable" });
-    }
-  });
-  return items.length >= 2 ? buildPointSketchSvg(items) : "";
-}
-
-function buildPointSketchSvg(items) {
-  const lats = items.map((item) => item.lat);
-  const lngs = items.map((item) => item.lng);
-  const minLat = Math.min(...lats);
-  const maxLat = Math.max(...lats);
-  const minLng = Math.min(...lngs);
-  const maxLng = Math.max(...lngs);
-  const width = 720;
-  const height = 420;
-  const pad = 54;
-  const latSpan = Math.max(maxLat - minLat, 0.0005);
-  const lngSpan = Math.max(maxLng - minLng, 0.0005);
-  const points = items.map((item) => ({
-    ...item,
-    x: pad + ((item.lng - minLng) / lngSpan) * (width - pad * 2),
-    y: height - pad - ((item.lat - minLat) / latSpan) * (height - pad * 2),
-  }));
-  return `${buildPointSketchVml(points, width, height, pad)}${buildPointSketchLegendTable(points)}`;
-}
-
-function buildPointSketchVml(points, width, height, pad) {
-  const middleX = width / 2;
-  const middleY = height / 2;
-  return `<div class="sketch-vml">
-    <v:group coordorigin="0,0" coordsize="${width},${height}" style="width:${width}pt;height:${height}pt;">
-      <v:rect style="position:absolute;left:0;top:0;width:${width};height:${height}" fillcolor="#f8fafc" strokecolor="#94a3b8" strokeweight="1pt"/>
-      <v:line from="${pad},${middleY}" to="${width - pad},${middleY}" strokecolor="#d1d5db" strokeweight="1.5pt"/>
-      <v:line from="${middleX},${pad}" to="${middleX},${height - pad}" strokecolor="#d1d5db" strokeweight="1.5pt"/>
-      ${points.map((point) => {
-        const color = point.kind === "subject" ? "#dc2626" : "#0f766e";
-        const size = point.kind === "subject" ? 18 : 14;
-        const left = Math.max(2, point.x - size / 2);
-        const top = Math.max(2, point.y - size / 2);
-        const labelWidth = Math.min(150, Math.max(72, String(point.label || "").length * 8));
-        const labelLeft = Math.max(4, Math.min(width - labelWidth - 4, point.x - labelWidth / 2));
-        const labelTop = point.y - 30 < 8 ? point.y + 16 : point.y - 30;
-        return `<v:oval style="position:absolute;left:${left.toFixed(1)};top:${top.toFixed(1)};width:${size};height:${size}" fillcolor="${color}" stroked="f"/>
-        <v:shape style="position:absolute;left:${labelLeft.toFixed(1)};top:${labelTop.toFixed(1)};width:${labelWidth};height:18" stroked="f" filled="f">
-          <v:textbox inset="0,0,0,0"><div style="font-family:Arial;font-size:8pt;font-weight:900;color:${color};text-align:center;">${escapeHtml(point.label)}</div></v:textbox>
-        </v:shape>`;
-      }).join("")}
-    </v:group>
-  </div>`;
-}
-
-function buildPointSketchLegendTable(points) {
-  const rows = points.map((point) => [
-    point.label,
-    Number(point.lat).toLocaleString("tr-TR", { maximumFractionDigits: 6 }),
-    Number(point.lng).toLocaleString("tr-TR", { maximumFractionDigits: 6 }),
-  ]);
-  return `<div class="sketch-note">Kroki Word uyumlu VML çizim olarak oluşturulmuştur.</div>${buildSimpleHtmlTable(["Nokta", "Enlem", "Boylam"], rows, "is-sketch-legend")}`;
 }
 
 function createLocationMapTools() {

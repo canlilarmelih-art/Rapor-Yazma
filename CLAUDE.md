@@ -93,6 +93,28 @@ açıklama/otomatik-metin alanı eklerken benzer şekilde gizlenmesi gerekiyorsa
 o alana `sensitiveOnly: true` ekle (adminOnly ile aynı desen). Test:
 `tools/test-user-approval-flow.js` (bölüm 5).
 
+## Banka Şablonuyla Kaydet artık tek ZIP (0.0.296, 2026-08-03)
+
+Genel (banka şablonu DIŞI) "Word olarak farklı kaydet"/"PDF olarak kaydet"
+düğmeleri KALICI OLARAK KALDIRILDI — `collectGeneratedTextPlaceholders()`'daki
+HTML tablo üreten girdileri (emsal matrisi/tablosu) düz-metin varsayan
+`formatWordParagraphs()`'tan geçirip kaçış karakterli ham HTML basıyordu.
+Geri getirme: yapma — asıl çıktı zaten `appendBankTemplateExportBlock()`
+("Banka Şablonuyla Kaydet") üzerinden geliyor. Bu düğme artık Word (.doc) +
+JSON taslağı + dolu tablolar Excel'i + (varsa) Ziraat ek tablosunu TEK bir
+`.zip` dosyasında indiriyor (`buildBankTemplateZipBundle()`, app.js) —
+paketleme `window.RaporXlsxFill.writeStoredZip` (zaten `.xlsx` üretimi için
+var olan bağımlılıksız STORED-zip yazıcı) ile yapılır, yeni kütüphane
+eklenmedi. `exportTemplate`/`exportAllTables`/`exportXlsx` üçü de artık
+`{download:false}` seçeneğiyle indirmeden `{fileName, content/blob, ...}`
+döndürebiliyor. **UYARI**: `formatWordParagraphs`, `buildWordMhtmlPackage`,
+`buildComparableMatrixWordTableHtml` gibi bazı fonksiyonlar hem silinen genel
+export'ta HEM DE gerçek banka şablonu boru hattında (template-engine.js'in
+`safeCall("fnAdı")` dinamik çağrılarında) kullanılıyordu — bu tür bir
+fonksiyonu silmeden önce MUTLAKA `grep -rn "fnAdı" src/ templates/` ile
+dinamik referans kontrolü yap (bkz. yukarıdaki "147 dinamik çağrı" uyarısı).
+Test: `tools/test-bank-template-zip-bundle.js`.
+
 ## Bu depoda paralel oturum uyarısı
 
 Aynı çalışma dizininde başka bir ajan (Codex) da düzenleme yapabiliyor.

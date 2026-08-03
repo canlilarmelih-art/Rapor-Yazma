@@ -727,14 +727,16 @@
     return { sheets, stylesXml: styleRegistry.buildStylesXml() };
   }
 
-  function exportAllTables() {
+  // options.download = false: blob'u indirmeden döner — zip paketleme
+  // (Banka Şablonuyla Kaydet) için kullanılır.
+  function exportAllTables(options = {}) {
     const { sheets, stylesXml } = buildSheetsFromCurrentState();
     if (!sheets.length) throw new Error("Dışa aktarılacak dolu tablo bulunamadı.");
     const blob = buildWorkbookBlob(sheets, stylesXml);
     const baseName = (typeof buildExportBaseFileName === "function" && buildExportBaseFileName()) || "rapor";
     const fileName = `${baseName}-tum-tablolar.xlsx`;
-    window.RaporXlsxFill.downloadBlob(fileName, blob);
-    return { fileName, sheetCount: sheets.length, sheetNames: sheets.map((s) => s.name) };
+    if (options.download !== false) window.RaporXlsxFill.downloadBlob(fileName, blob);
+    return { fileName, sheetCount: sheets.length, sheetNames: sheets.map((s) => s.name), blob };
   }
 
   window.RaporReportTablesXlsx = {
