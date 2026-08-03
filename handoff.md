@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.312 - 2026-08-03 - "Paket hazırlanamadı: Şablon bulunamadı" (Emlak Katılım export hotfix)
+
+- Kullanıcı ekran görüntüsüyle bildirdi: Banka alanından "Emlak Katılım Bankası A.Ş." seçilip "Banka şablonuyla kaydet (.zip)" tıklandığında "Paket hazırlanamadı: Şablon bulunamadı." hatası çıkıyor (önceki 0.0.311 düzeltmesinden SONRA da devam etti).
+- Kök neden: banka şablonu render'ı artık **sunucu tarafında** (korumalı, imzalı) yapılıyor (bkz. `handleReportTemplateRenderApi`/`readPrivateTemplate`, paralel oturumun "export authorization" özelliği) ve bu akış `src/templates/template-engine.js`'teki istemci `TEMPLATE_REGISTRY`'den TAMAMEN AYRI, kendi `server.js`'teki `PRIVATE_REPORT_TEMPLATES` sabit sözlüğünü kullanıyor. `emlakkatilim` yalnızca istemci listesine eklenmişti — sunucu tarafında böyle bir anahtar tanımlı olmadığından `privateTemplatePathForKey("emlakkatilim")` boş dönüyor, `readPrivateTemplate` `null` dönüyor, `handleReportTemplateRenderApi` 404 "Sablon bulunamadi" veriyordu.
+- **server.js**: `PRIVATE_REPORT_TEMPLATES` sözlüğüne `emlakkatilim: "emlakkatilim.html"` eklendi.
+- **UYARI (gelecekteki yeni banka şablonları için)**: yeni bir `templates/*.html` eklerken SADECE `template-engine.js`'teki `TEMPLATE_REGISTRY`'ye eklemek YETMEZ — `server.js`'teki `PRIVATE_REPORT_TEMPLATES`'e de aynı anahtar/dosya adıyla eklenmesi ZORUNLU, aksi halde export "Şablon bulunamadı" ile başarısız olur. Bu iki liste elle senkron tutuluyor.
+- Yeni koruma: `tools/test-server-template-rendering.js`'e eklenen kontrol, `template-engine.js`'teki TEMPLATE_REGISTRY'deki HER anahtarın `server.privateTemplatePathForKey()` ile sunucuda gerçek bir dosyaya karşılık geldiğini doğruluyor — bundan sonra bu iki liste birbirinden kopar kopmaz `npm run verify` kırılacak.
+- `npm run verify` tamamı geçti (55 test).
+
 ## 0.0.311 - 2026-08-03 - Emlak Katılım "Banka" açılır listesinde yoktu (hotfix)
 
 - Kullanıcı talebi: "Banka Şablonuyla Kaydet kısmında emlak katılım gözükmüyor."

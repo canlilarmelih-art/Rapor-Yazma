@@ -144,6 +144,23 @@ kırılır (bilerek). `sendEmailViaResend` artık genel (`toEmail, subject, html
 — yeni bir e-posta türü eklerken bu imzayı kullan, MFA'ya özel eski hali
 GERİ GETİRME.
 
+## Yeni banka şablonu eklerken: İKİ ayrı registry var (0.0.312, 2026-08-03)
+
+Yeni bir `templates/*.html` eklerken SADECE `src/templates/template-engine.js`
+içindeki `TEMPLATE_REGISTRY`'ye eklemek YETMEZ. Banka şablonu render'ı artık
+sunucu tarafında (imzalı/korumalı, `handleReportTemplateRenderApi`) yapılıyor
+ve bu akış `server.js`'teki TAMAMEN AYRI `PRIVATE_REPORT_TEMPLATES`
+sözlüğünü kullanıyor — ikisi elle senkron tutulmalı, biri unutulursa export
+"Paket hazırlanamadı: Şablon bulunamadı" hatasıyla sessizce başarısız olur
+(dropdown'da şablon GÖRÜNÜR ama export ÇALIŞMAZ, çünkü dropdown istemci
+listesinden dolar). Ayrıca raporun "Banka" seçim listesi (`caseBankOptions`,
+app.js) da AYRI bir üçüncü liste — `mortgageCreditorBankNames` (yalnızca
+takyidat/ipotek lehdarı seçimi için, çok daha uzun) ile KARIŞTIRILMASIN.
+Üç listenin hepsi güncellenmeli: `caseBankOptions` (app.js), `TEMPLATE_REGISTRY`
+(template-engine.js), `PRIVATE_REPORT_TEMPLATES` (server.js). Test:
+`tools/test-server-template-rendering.js` artık her `TEMPLATE_REGISTRY`
+anahtarının sunucuda gerçek bir dosyaya karşılık geldiğini doğruluyor.
+
 ## Bu depoda paralel oturum uyarısı
 
 Aynı çalışma dizininde başka bir ajan (Codex) da düzenleme yapabiliyor.

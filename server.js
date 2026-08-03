@@ -19,6 +19,7 @@ const backupDir = path.join(appDir, "backups");
 // sunucu icinde okunur ve onayli kullanicinin cozulmus alanlariyla doldurulur.
 const PRIVATE_REPORT_TEMPLATES = Object.freeze({
   akbank: "akbank.html",
+  emlakkatilim: "emlakkatilim.html",
   halkbank: "halkbank.html",
   isbankasi: "isbankasi.html",
   "isbankasi-masraf": "isbankasi-masraf.html",

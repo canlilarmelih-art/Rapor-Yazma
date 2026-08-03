@@ -73,4 +73,22 @@ assert.ok(engineSource.includes("protectedPlaceholderInput: buildServerProtected
   );
 });
 
+// Kullanıcı bildirimi (2026-08-03): "emlakkatilim" istemci TEMPLATE_REGISTRY'sine
+// eklendi ama sunucunun AYRI PRIVATE_REPORT_TEMPLATES listesine eklenmediği
+// için "Banka Şablonuyla Kaydet" tıklandığında "Sablon bulunamadi" hatası
+// verdi — iki liste birbirinden habersiz, elle senkron tutuluyor. Bu test her
+// istemci şablon anahtarının sunucuda da GERÇEK bir dosyaya karşılık geldiğini
+// doğrulayarak bu sınıftaki hatanın tekrarını engeller.
+const registryStart = engineSource.indexOf("const TEMPLATE_REGISTRY = [");
+const registryEnd = engineSource.indexOf("\n  ];", registryStart);
+assert(registryStart >= 0 && registryEnd > registryStart, "TEMPLATE_REGISTRY bulunamadi.");
+const registrySlice = engineSource.slice(registryStart, registryEnd);
+const clientTemplateKeys = [...registrySlice.matchAll(/key:\s*"([a-z0-9-]+)"/g)].map((m) => m[1]);
+assert(clientTemplateKeys.length >= 10, `Istemci sablon anahtari sayisi beklenenden az: ${clientTemplateKeys.length}`);
+clientTemplateKeys.forEach((key) => {
+  const filePath = server.privateTemplatePathForKey(key);
+  assert(filePath, `"${key}" istemci TEMPLATE_REGISTRY'de var ama sunucunun PRIVATE_REPORT_TEMPLATES listesinde yok (server.js).`);
+  assert(fs.existsSync(filePath), `"${key}" icin sunucu sablon yolu diskte yok: ${filePath}`);
+});
+
 console.log("Sunucu tarafli banka sablonu cozumleme testi tamam.");
