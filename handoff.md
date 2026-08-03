@@ -7012,3 +7012,17 @@ Doğrulama: `node --check app.js`, `node tools/check-basic.js`, `git diff --chec
 - USD/TRY ve EUR/TRY artık ayrı kartlarda; alış ve satış değerleri ayrı etiketlerle, TCMB veri tarihi de kendi bilgi alanında sunulur.
 - Mobil yerleşimde kartlar dikey akışa geçer; okunabilirlik için başlık ve tarih alanları ayrı kalır.
 - Cache-buster: `app.js?v=20260803-1015`.
+
+## 0.0.302 - 2026-08-03 - Resmi Cikti Yetkilendirmesi
+
+- Banka sablonuyla olusturulan ZIP paketi artik yalnizca onayli, oturum acmis kullanici icin sunucunun imzaladigi dogrulama sertifikasiyla hazirlanir.
+- Sertifika rapor kimligi, sablon tipi, zaman damgasi, anonim hesap parmak izi ve taslak ozetini icerir; imza anahtari yalnizca `server-data` altinda tutulur ve tarayiciya servis edilmez.
+- Form doldurma, taslak calisma ve onizleme yerelde ayni hizda kalir. Ag baglantisi yalnizca resmi banka paketi olusturulurken gerekir.
+- Yeni `/api/export-authorization` uc noktasi kimlik dogrulamasi, onayli kullanici kontrolu, CSRF kontrolu ve rota bazli hiz limiti ile korunur.
+
+## 0.0.303 - 2026-08-03 - Sunucu Tarafli Sablon Cozumleme
+
+- Banka sablonlarinin ham HTML dosyalari artik `/templates/...` altindan HTTP ile servis edilmez.
+- Onayli kullanici, sunucudan sadece kullanilacak placeholder adlarini alir; alanlar tarayicida hesaplanir ve sablon metni sunucuda doldurulur.
+- Yeni `/api/report-template-tokens` ve `/api/report-template-render` uclari oturum, kullanici onayi, CSRF ve hiz limiti ile korunur.
+- Bu ilk gecis bankaya ozel sablon govdesini tarayicidan kaldirir. Sonraki asamada kritik degerleme hesaplari da sunucuda yeniden hesaplanacak; istemci yalnizca form ve onizleme katmani olarak kalacaktir.

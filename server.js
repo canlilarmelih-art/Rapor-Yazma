@@ -15,6 +15,22 @@ const accessRoles = require("./src/auth/access-control.js");
 const appDir = __dirname;
 const dataDir = path.join(appDir, "server-data");
 const backupDir = path.join(appDir, "backups");
+// Banka rapor sablonlari HTTP ile statik olarak verilmez. Sablon metni sadece
+// sunucu icinde okunur ve onayli kullanicinin cozulmus alanlariyla doldurulur.
+const PRIVATE_REPORT_TEMPLATES = Object.freeze({
+  akbank: "akbank.html",
+  halkbank: "halkbank.html",
+  isbankasi: "isbankasi.html",
+  "isbankasi-masraf": "isbankasi-masraf.html",
+  kuveytturk: "kuveytturk.html",
+  vakifbank: "vakifbank.html",
+  vakifkatilim: "vakifkatilim.html",
+  yapikredi: "yapikredi.html",
+  ziraat: "ziraat.html",
+  "ziraat-arsa-arazi": "ziraat-arsa-arazi.html",
+  "ziraat-ek-tablo": "ziraat-ek-tablo.html",
+});
+const privateTemplateDir = path.join(appDir, "templates");
 const port = Number(process.env.PORT || 5173);
 const host = process.env.HOST || "127.0.0.1";
 const firebaseProjectId = String(process.env.RAPOR_FIREBASE_PROJECT_ID || "rapor-yazma-pro").trim();
@@ -119,6 +135,12 @@ const ACTIVITY_EVENTS_MAX = 20000;
 let activityEventsLoaded = false;
 let activityEventsSaveTimer = null;
 
+// Resmi banka paketi, oturum açmış/onaylı kullanıcı için sunucunun imzaladığı
+// bir sertifika ile birlikte üretilir. Anahtar tarayıcıya hiç gitmez; ilk
+// çalışmada server-data içinde oluşturulur ve statik erişime kapalıdır.
+const exportSigningKeyFile = path.join(dataDir, "export-signing-key.txt");
+let exportSigningKeyPromise = null;
+
 function isMfaConfigured() {
   return Boolean(RESEND_API_KEY);
 }
@@ -182,6 +204,24 @@ function userDataDirectory(uid) {
 
 function userStateFile(uid) {
   return path.join(userDataDirectory(uid), "active-case.json");
+}
+
+async function getExportSigningKey() {
+  if (!exportSigningKeyPromise) {
+    exportSigningKeyPromise = (async () => {
+      try {
+        const existing = (await fs.readFile(exportSigningKeyFile, "utf8")).trim();
+        if (/^[a-f0-9]{64,}$/i.test(existing)) return existing;
+      } catch (error) {
+        if (error.code !== "ENOENT") throw error;
+      }
+      const generated = crypto.randomBytes(48).toString("hex");
+      await fs.mkdir(dataDir, { recursive: true });
+      await fs.writeFile(exportSigningKeyFile, generated, { encoding: "utf8", mode: 0o600 });
+      return generated;
+    })();
+  }
+  return exportSigningKeyPromise;
 }
 
 function userPoisFile(uid) {
@@ -2103,6 +2143,138 @@ async function handleReportEventApi(request, response, user) {
   sendJson(response, 200, { ok: true });
 }
 
+async function handleExportAuthorizationApi(request, response, user) {
+  if (request.method !== "POST") {
+    sendJson(response, 405, { ok: false, error: "Bu işlem desteklenmiyor." });
+    return;
+  }
+  if (!(await isUserApproved(user.uid, user.email))) {
+    sendJson(response, 403, { ok: false, error: "Resmi rapor çıktısı için onaylı kullanıcı hesabı gerekir." });
+    return;
+  }
+
+  let body;
+  try {
+    body = JSON.parse((await readBody(request, 4096)) || "{}");
+  } catch {
+    sendJson(response, 400, { ok: false, error: "Geçersiz istek." });
+    return;
+  }
+
+  const reportId = String(body?.reportId || "").trim().slice(0, 64);
+  const templateKey = String(body?.templateKey || "").trim().slice(0, 80);
+  const stateDigest = String(body?.stateDigest || "").trim().toLowerCase();
+  if (!reportId || !templateKey || !/^[a-f0-9]{64}$/.test(stateDigest)) {
+    sendJson(response, 400, { ok: false, error: "Rapor doğrulama verisi eksik veya geçersiz." });
+    return;
+  }
+
+  const issuedAt = new Date().toISOString();
+  const accountFingerprint = crypto.createHash("sha256").update(user.uid).digest("hex").slice(0, 16);
+  const certificate = { version: 1, reportId, templateKey, issuedAt, accountFingerprint, stateDigest };
+  const canonical = Object.values(certificate).join("|");
+  certificate.signature = crypto.createHmac("sha256", await getExportSigningKey()).update(canonical).digest("base64url");
+
+  await logActivityEvent("report-export-authorized", user.uid, user.email, {
+    reportId,
+    ip: clientKeyFor(request),
+    userAgent: request.headers["user-agent"],
+  });
+  sendJson(response, 200, { ok: true, certificate });
+}
+
+function privateTemplatePathForKey(templateKey) {
+  const fileName = PRIVATE_REPORT_TEMPLATES[String(templateKey || "")];
+  return fileName ? path.join(privateTemplateDir, fileName) : "";
+}
+
+function collectTemplateTokens(templateText) {
+  const tokens = new Set();
+  String(templateText || "").replace(/<!--[\s\S]*?-->/g, "").replace(/\{\{([^{}]+)\}\}/g, (match, rawName) => {
+    const name = String(rawName || "").trim();
+    if (name) tokens.add(name);
+    return match;
+  });
+  return [...tokens];
+}
+
+function renderPrivateTemplate(templateText, tokenValues) {
+  const values = tokenValues && typeof tokenValues === "object" ? tokenValues : {};
+  return String(templateText || "")
+    .replace(/<!--[\s\S]*?-->/g, "")
+    .replace(/\{\{([^{}]+)\}\}/g, (match, rawName) => {
+      const name = String(rawName || "").trim();
+      return Object.prototype.hasOwnProperty.call(values, name) ? String(values[name] ?? "") : match;
+    });
+}
+
+async function readPrivateTemplate(templateKey) {
+  const filePath = privateTemplatePathForKey(templateKey);
+  if (!filePath) return null;
+  try {
+    return await fs.readFile(filePath, "utf8");
+  } catch {
+    return null;
+  }
+}
+
+async function requireApprovedReportUser(response, user) {
+  if (await isUserApproved(user.uid, user.email)) return true;
+  sendJson(response, 403, { ok: false, error: "Rapor sablonu islemleri icin onayli kullanici hesabi gerekir." });
+  return false;
+}
+
+async function handleReportTemplateTokensApi(request, response, user, url) {
+  if (request.method !== "GET") {
+    sendJson(response, 405, { ok: false, error: "Bu islem desteklenmiyor." });
+    return;
+  }
+  if (!(await requireApprovedReportUser(response, user))) return;
+  const templateKey = String(new URL(url, `http://${host}:${port}`).searchParams.get("key") || "").trim();
+  const templateText = await readPrivateTemplate(templateKey);
+  if (!templateText) {
+    sendJson(response, 404, { ok: false, error: "Sablon bulunamadi." });
+    return;
+  }
+  sendJson(response, 200, { ok: true, tokens: collectTemplateTokens(templateText) });
+}
+
+async function handleReportTemplateRenderApi(request, response, user) {
+  if (request.method !== "POST") {
+    sendJson(response, 405, { ok: false, error: "Bu islem desteklenmiyor." });
+    return;
+  }
+  if (!(await requireApprovedReportUser(response, user))) return;
+  let body;
+  try {
+    body = JSON.parse((await readBody(request, 25 * 1024 * 1024)) || "{}");
+  } catch {
+    sendJson(response, 400, { ok: false, error: "Sablon verisi gecersiz." });
+    return;
+  }
+  const templateKey = String(body?.templateKey || "").trim();
+  const templateText = await readPrivateTemplate(templateKey);
+  const tokenValues = body?.tokenValues;
+  if (!templateText || !tokenValues || typeof tokenValues !== "object" || Array.isArray(tokenValues)) {
+    sendJson(response, 400, { ok: false, error: "Sablon veya alan verisi gecersiz." });
+    return;
+  }
+  const allowedTokens = new Set(collectTemplateTokens(templateText));
+  const acceptedValues = {};
+  let totalLength = 0;
+  for (const [rawName, rawValue] of Object.entries(tokenValues)) {
+    const name = String(rawName || "").trim();
+    const value = String(rawValue ?? "");
+    totalLength += value.length;
+    if (allowedTokens.has(name) && value.length <= 2 * 1024 * 1024) acceptedValues[name] = value;
+  }
+  if (totalLength > 20 * 1024 * 1024) {
+    sendJson(response, 413, { ok: false, error: "Rapor alanlari izin verilen boyutu asiyor." });
+    return;
+  }
+  sendJson(response, 200, { ok: true, content: renderPrivateTemplate(templateText, acceptedValues) });
+}
+
 async function handleLoginEventsApi(request, response, user) {
   if (request.method !== "GET") {
     sendJson(response, 405, { ok: false, error: "Bu işlem desteklenmiyor." });
@@ -2148,6 +2320,12 @@ async function handleStatic(request, response) {
     return;
   }
   const relativePath = path.relative(path.resolve(appDir), filePath).replace(/\\/g, "/");
+  if (relativePath.startsWith("templates/")) {
+    applySecurityHeaders(response);
+    response.writeHead(404, { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" });
+    response.end("Sablonlar dogrudan indirilemez.");
+    return;
+  }
   if (!isPublicStaticFile(relativePath)) {
     const session = await getSessionFromRequest(request);
     if (!session) {
@@ -2239,6 +2417,9 @@ const API_RATE_LIMITS = {
   "/api/revoke-privilege": { limit: 30, windowMs: 60 * 1000 },
   "/api/my-role": { limit: 60, windowMs: 60 * 1000 },
   "/api/report-event": { limit: 60, windowMs: 60 * 1000 },
+  "/api/export-authorization": { limit: 12, windowMs: 60 * 1000 },
+  "/api/report-template-tokens": { limit: 60, windowMs: 60 * 1000 },
+  "/api/report-template-render": { limit: 12, windowMs: 60 * 1000 },
   "/api/login-events": { limit: 30, windowMs: 60 * 1000 },
   "/api/user-stats": { limit: 30, windowMs: 60 * 1000 },
 };
@@ -2348,6 +2529,18 @@ const server = http.createServer(async (request, response) => {
       await handleReportEventApi(request, response, request.user);
       return;
     }
+    if (apiRoute === "/api/export-authorization") {
+      await handleExportAuthorizationApi(request, response, request.user);
+      return;
+    }
+    if (apiRoute === "/api/report-template-tokens") {
+      await handleReportTemplateTokensApi(request, response, request.user, url);
+      return;
+    }
+    if (apiRoute === "/api/report-template-render") {
+      await handleReportTemplateRenderApi(request, response, request.user);
+      return;
+    }
     if (apiRoute === "/api/login-events") {
       await handleLoginEventsApi(request, response, request.user);
       return;
@@ -2386,6 +2579,13 @@ module.exports = {
   parseCookieHeader,
   sessions,
   isMfaConfigured,
+  getExportSigningKey,
+  handleExportAuthorizationApi,
+  privateTemplatePathForKey,
+  collectTemplateTokens,
+  renderPrivateTemplate,
+  handleReportTemplateTokensApi,
+  handleReportTemplateRenderApi,
   generateMfaCode,
   markDeviceTrusted,
   isRequestFromTrustedDevice,

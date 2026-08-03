@@ -89,16 +89,18 @@ function check(cond, msg) {
     "ziraat-ek-tablo-xlsx.js exportXlsx() {download:false} secenegini desteklemiyor.",
   );
   check(
-    appJs.includes("async function buildBankTemplateZipBundle(templateKey)") &&
+    appJs.includes("async function buildBankTemplateZipBundle(templateKey, options = {})") &&
       appJs.includes("window.RaporTemplates.exportTemplate(templateKey, { download: false })") &&
       appJs.includes("window.RaporReportTablesXlsx.exportAllTables({ download: false })") &&
       appJs.includes("exportZiraatEkTabloWithBankTemplateIfNeeded(templateKey, { download: false })") &&
-      appJs.includes("window.RaporXlsxFill.writeStoredZip(entries)"),
+      appJs.includes("window.RaporXlsxFill.writeStoredZip(entries)") &&
+      appJs.includes('name: "experify-rapor-dogrulama.json"'),
     "buildBankTemplateZipBundle() JSON+Excel+Word(+Ziraat) parcalarini tek zip'te toplamiyor.",
   );
   check(
     appJs.includes("block.querySelector(\"[data-export-template]\").addEventListener") &&
-      appJs.includes("const result = await buildBankTemplateZipBundle(templateKey);"),
+      appJs.includes("const exportCertificate = await createOfficialExportCertificate(templateKey);") &&
+      appJs.includes("const result = await buildBankTemplateZipBundle(templateKey, { exportCertificate });"),
     "\"Banka Şablonuyla Kaydet\" dugmesi zip paketleme akisina baglanmamis.",
   );
   // Kullanıcı talebi: "Word olarak farklı kaydet"/"PDF olarak kaydet"

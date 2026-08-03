@@ -13155,7 +13155,8 @@ function appendBankTemplateExportBlock(panel) {
       // sessizce yönlendirilir (kullanıcı deneyimini sadeleştirmek için banka
       // basina tek secenek gosterilir).
       const templateKey = window.RaporTemplates.resolveTemplateKeyForExport(select.value, isLandPropertyForBankTemplate());
-      const result = await buildBankTemplateZipBundle(templateKey);
+      const exportCertificate = await createOfficialExportCertificate(templateKey);
+      const result = await buildBankTemplateZipBundle(templateKey, { exportCertificate });
       pingReportEvent("exported", state.reportId);
       const suffix = result.ziraatFailed
         ? " (Ziraat ek tablosu pakete eklenemedi.)"
@@ -13196,13 +13197,34 @@ async function blobToUint8Array(blob) {
   return new Uint8Array(await blob.arrayBuffer());
 }
 
+async function sha256Text(text) {
+  if (!globalThis.crypto?.subtle) throw new Error("Tarayıcı rapor doğrulaması için gerekli kripto desteğini sunmuyor.");
+  const bytes = new TextEncoder().encode(text);
+  const digest = await globalThis.crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest), (value) => value.toString(16).padStart(2, "0")).join("");
+}
+
+async function createOfficialExportCertificate(templateKey) {
+  const stateDigest = await sha256Text(JSON.stringify(state));
+  const response = await fetchRaporApi("/api/export-authorization", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ reportId: state.reportId, templateKey, stateDigest }),
+  }, 15000);
+  const payload = await response.json().catch(() => null);
+  if (!response.ok || !payload?.certificate) {
+    throw new Error(payload?.error || "Resmi çıktı yetkilendirmesi alınamadı.");
+  }
+  return payload.certificate;
+}
+
 // Kullanıcı talebi: "excel tablo indirme json dosyası ve rapor word formatı
 // Banka Şablonu ile kaydet butonu tıklandığında otomatik zip yada rar
 // içinde insin" — Word şablonu, JSON taslağı, Tüm Tablolar Excel dosyası
 // (doluysa) ve Ziraat ek tablosu (varsa) STORED bir .zip'te TEK dosya
 // olarak iner (bkz. window.RaporXlsxFill.writeStoredZip — .xlsx üretimi
 // için zaten var olan bağımlılıksız ZIP yazıcı burada da yeniden kullanılır).
-async function buildBankTemplateZipBundle(templateKey) {
+async function buildBankTemplateZipBundle(templateKey, options = {}) {
   // Word şablonu asıl talep edilen çıktı olduğundan burada başarısız olursa
   // zip HİÇ oluşturulmaz (mevcut davranış). Ziraat ek tablosu VE Tüm
   // Tablolar Excel'i ise ikincil eklerdir — biri başarısız olursa paketin
@@ -13215,6 +13237,12 @@ async function buildBankTemplateZipBundle(templateKey) {
 
   const jsonPayload = buildReportJsonExportPayload();
   entries.push({ name: jsonPayload.fileName, bytes: textToUint8Array(jsonPayload.content) });
+  if (options.exportCertificate) {
+    entries.push({
+      name: "experify-rapor-dogrulama.json",
+      bytes: textToUint8Array(JSON.stringify(options.exportCertificate, null, 2)),
+    });
+  }
 
   if (window.RaporReportTablesXlsx?.exportAllTables) {
     try {

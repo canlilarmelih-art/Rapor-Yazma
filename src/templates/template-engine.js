@@ -104,6 +104,16 @@
     return "";
   }
 
+  async function fetchProtectedTemplateApi(url, options = {}) {
+    const getIdToken = window.RaporCloudSync?.getIdToken;
+    const idToken = typeof getIdToken === "function" ? await getIdToken() : null;
+    if (!idToken) throw new Error("Rapor sablonu icin oturum dogrulamasi gerekli.");
+    const headers = new Headers(options.headers || {});
+    headers.set("Authorization", `Bearer ${idToken}`);
+    headers.set("X-Rapor-Client", "1");
+    return fetch(url, { ...options, headers, credentials: "same-origin" });
+  }
+
   function firstTitleRowCell(cellKey) {
     const rows = Array.isArray(state.tables?.title) ? state.tables.title : [];
     const filled = rows.find((row) => Object.values(row || {}).some((v) => String(v || "").trim()));
@@ -937,6 +947,25 @@
     return { html, missing };
   }
 
+  function resolveTemplateTokenValues(tokenNames) {
+    generatedTextCache = null;
+    foldedFieldIndex = null;
+    const missing = [];
+    const values = {};
+    for (const rawName of [...new Set(Array.isArray(tokenNames) ? tokenNames : [])]) {
+      const name = String(rawName || "").trim();
+      if (!name) continue;
+      const resolved = resolveToken(name);
+      if (!resolved.ok) {
+        missing.push(name);
+        values[name] = `<span style="color:#d97706;font-weight:700">&#9888; ${escapeHtmlSafe(name)}</span>`;
+      } else {
+        values[name] = resolved.html;
+      }
+    }
+    return { values, missing };
+  }
+
   function listTemplates() {
     return TEMPLATE_REGISTRY.map((entry) => ({ ...entry }));
   }
@@ -970,16 +999,28 @@
     const download = options.download !== false;
     const entry = TEMPLATE_REGISTRY.find((item) => item.key === templateKey);
     if (!entry) throw new Error(`Şablon bulunamadı: ${templateKey}`);
-    const response = await fetch(`${entry.file}?t=${Date.now()}`);
-    if (!response.ok) throw new Error(`Şablon dosyası okunamadı: ${entry.file}`);
-    const templateText = await response.text();
-    if (/\{\{\s*(?:REPORT_MAPS_SECTION|LOCATION_MAP_SECTION|COMPARABLE_SKETCH_SECTION|LOCATION_MAP_IMAGE|COMPARABLE_SKETCH_IMAGE)\s*\}\}/i.test(templateText)) {
+    const tokenResponse = await fetchProtectedTemplateApi(`/api/report-template-tokens?key=${encodeURIComponent(entry.key)}`);
+    const tokenPayload = await tokenResponse.json().catch(() => null);
+    if (!tokenResponse.ok || !Array.isArray(tokenPayload?.tokens)) {
+      throw new Error(tokenPayload?.error || "Sablon alanlari sunucudan alinamadi.");
+    }
+    if (tokenPayload.tokens.some((name) => /^(?:REPORT_MAPS_SECTION|LOCATION_MAP_SECTION|COMPARABLE_SKETCH_SECTION|LOCATION_MAP_IMAGE|COMPARABLE_SKETCH_IMAGE)$/i.test(name))) {
       safeCall("ensureReportMapImagesForExport");
     }
     const preparedAssets = await Promise.resolve(safeCall("buildSavedReportImageAssets"));
     reportImageAssetsCache = Array.isArray(preparedAssets) ? preparedAssets : [];
     try {
-      const { html, missing } = fillTemplate(templateText);
+      const { values, missing } = resolveTemplateTokenValues(tokenPayload.tokens);
+      const renderResponse = await fetchProtectedTemplateApi("/api/report-template-render", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ templateKey: entry.key, tokenValues: values }),
+      });
+      const renderPayload = await renderResponse.json().catch(() => null);
+      if (!renderResponse.ok || typeof renderPayload?.content !== "string") {
+        throw new Error(renderPayload?.error || "Sablon sunucuda olusturulamadi.");
+      }
+      const html = applyGdysTemplatePresentation(renderPayload.content);
       const fileName = `${safeCall("buildExportBaseFileName") || "rapor"}-${entry.key}.doc`;
       const mimeType = "application/msword;charset=utf-8";
       const packaged = reportImageAssetsCache.length
@@ -999,6 +1040,7 @@
     resolveTemplateKeyForExport,
     exportTemplate,
     fillTemplate,
+    resolveTemplateTokenValues,
     resolveToken,
     foldTokenName,
     register(entry) {
