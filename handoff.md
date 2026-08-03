@@ -1,5 +1,13 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.306 - 2026-08-03 - "PGA 475 Değeri" alanı kaldırıldı
+
+- Kullanıcı talebi: "ana taşınmaz bölümünde yer alan PGA 475 Değeri kısmını kaldır. bu değer e devlet üzerinden alınıyor. buna gerek yok. rapor şablonlarında gerekli yönlendirmeyi yapıyorum."
+- **app.js**: "Ana Taşınmaz Teknik Bilgileri" panelindeki `PGA 475 Değeri` (`pga475`) metin alanı kaldırıldı; artık başka hiçbir yerde kullanılmayan `createBuildingTextField()` yardımcı fonksiyonu da silindi.
+- **Kasıtlı olarak DOKUNULMADI**: `templates/isbankasi.html`'deki `{{PGA_475}}` placeholder'ı ve `src/templates/template-engine.js`'in `EXTRA_FIELD_KEYS` listesindeki `"pga475"` girdisi — kullanıcı şablon tarafındaki yönlendirmeyi kendisi yapacağını belirtti. Placeholder çözümleme altyapısı sağlam kaldığından `{{PGA_475}}` hâlâ (boş) çözümleniyor, "eşleşmeyen placeholder" uyarısı ÇIKMAZ; kullanıcı şablonu düzenlediğinde bu token'ı isterse kaldırabilir/değiştirebilir.
+- Cache-buster `app.js?v=20260803-1400`'e yükseltildi.
+- `npm run verify` tamamı geçti (51 test) — `tools/test-bank-templates.js`'in `{{PGA_475}}` çözümleme kontrolü de dahil, hiçbir test bozulmadı.
+
 ## 0.0.305 - 2026-08-03 - Yeni kullanıcı kaydında admine e-posta bildirimi
 
 - Kullanıcı talebi: "yeni bir kullanıcı hesap oluşturma isteğinde bulunduğunda admine mail gelsin böylelikle gözden kaçırmam."

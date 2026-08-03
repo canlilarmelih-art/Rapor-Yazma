@@ -6487,7 +6487,6 @@ function createBuildingTechnicalOptionsPanel() {
     createBuildingSelectField("Bina Yapı Tarzı", "buildingStyle", buildingStructureStyleOptions),
     createBuildingSelectField("Mevcut Yapı Nizamı", "buildingOrder", buildingOrderOptions),
     createBuildingSelectField("Yapı Sınıfı", "buildingClass", buildingClassOptions),
-    createBuildingTextField("PGA 475 Değeri", "pga475"),
     createBuildingReadOnlyField("Yapı Yaşı", "buildingAge"),
     createBuildingBlockCountControl(),
     createBuildingSelectField("Otopark", "carpark", buildingCarparkOptions),
@@ -6557,25 +6556,6 @@ function createBuildingReadOnlyField(labelText, key) {
     input.placeholder = "Örn. 25 yıl";
     input.addEventListener("blur", () => commitBuildingAgeOverride(input));
   }
-  label.append(createSpan(labelText), input);
-  return label;
-}
-
-function createBuildingTextField(labelText, key) {
-  const label = document.createElement("label");
-  label.className = "field";
-  const input = document.createElement("input");
-  input.type = "text";
-  input.dataset.field = key;
-  input.value = state.fields[key] || "";
-  markFieldSourceState(input, key);
-  input.addEventListener("input", (event) => {
-    clearFieldSourceOwnership(key);
-    state.fields[key] = event.target.value;
-    autosave();
-    renderValidation();
-    updateStatus();
-  });
   label.append(createSpan(labelText), input);
   return label;
 }
