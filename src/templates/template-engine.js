@@ -29,6 +29,7 @@
   // --------------------------------------------------------------
   const TEMPLATE_REGISTRY = [
     { key: "akbank", file: "templates/akbank.html", title: "Akbank Rapor Formatı", bank: "Akbank T.A.Ş." },
+    { key: "emlakkatilim", file: "templates/emlakkatilim.html", title: "Emlak Katılım Rapor Formatı", bank: "Emlak Katılım Bankası A.Ş." },
     { key: "halkbank", file: "templates/halkbank.html", title: "Halkbank Rapor Formatı", bank: "Türkiye Halk Bankası A.Ş." },
     { key: "isbankasi", file: "templates/isbankasi.html", title: "İş Bankası Rapor Formatı", bank: "Türkiye İş Bankası A.Ş." },
     { key: "isbankasi-masraf", file: "templates/isbankasi-masraf.html", title: "İş Bankası Masraf Yazısı", bank: "" },
@@ -408,6 +409,7 @@
     ULASIMANAARTERI: { f: ["mainArtery"] },
     ALTYAPI: { f: ["infrastructureLevel"] },
     YAPILASMA: { f: ["developmentDensity"] },
+    CEVRESELGELISMEHIZI: { f: ["developmentSpeed"] },
     SOSYALIHTIYAC: { f: ["socialNeeds"] },
     BOLGEGELIRSEVIYESI: { f: ["regionIncomeLevel"] },
     BOLGEYAPKULAMACI: { f: ["regionUsePurpose"] },
@@ -533,6 +535,10 @@
     FIILENKULLANILIYORMU: { fn: () => safeCall("getUnitActivelyUsedStatusText") },
     YASALEKLENTIDEPOVARMI: { fn: () => (field("titleAttachment") ? "Evet" : "Hayır") },
     RISKLIYAPIMI: { t: () => "Hayır" },
+
+    // --- Emlak Katılım "5.5. Kira Kabiliyeti" ---
+    DAIREICINDEKIRACI: { fn: () => safeCall("getUnitTenantPresenceText") },
+    KIRACININKONTRATI: { fn: () => safeCall("getUnitTenantContractStatusText") },
     ISBANKMIMARIPROJE: { t: () => field("projectReviewDescription") || safeCall("buildProjectReviewDescription") || field("projectConformity") },
     UYGACIKLAMA: { t: () => field("projectReviewDescription") || safeCall("buildProjectReviewDescription") || field("projectConformity") },
     VAKIFMIMARIPROJE: { t: () => field("projectReviewDescription") || safeCall("buildProjectReviewDescription") || field("projectConformity") },

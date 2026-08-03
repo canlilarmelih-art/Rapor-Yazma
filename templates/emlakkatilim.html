@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word">
+<head>
+<meta charset="utf-8">
+<title>Emlak Katılım Rapor Formatı</title>
+<!--
+  EMLAK KATILIM BANKASI GAYRİMENKUL DEĞERLEME RAPORU
+  Kullanıcının bankaya sunulan gerçek Word raporundan (DENGE GAYRİMENKUL
+  DEĞERLEME VE DANIŞMANLIK A.Ş. formatı) birebir uyarlanmıştır — bölüm
+  sırası/başlıkları kaynak Word dosyasıyla aynı tutulmuştur (kullanıcı
+  talebi: "sayfa yapısı attığım worddeki gibi birebir aynı kalacak").
+  {{PLACEHOLDER}} alanları dışa aktarmada programdaki verilerle doldurulur;
+  sistemde karşılığı olmayan alanlar (Rapor No, Müşteri No, Talep Tarihi,
+  Raporu Hazırlayan Değerleme Uzmanı adı/SPK no) BİLİNÇLİ OLARAK BOŞ
+  bırakılmıştır — kullanıcı talebi: bunlar elle doldurulacak.
+-->
+<style>
+  @page WordSection1 { size: 595.35pt 841.95pt; margin: 36pt; mso-header-margin:35.4pt; mso-footer-margin:35.4pt; mso-paper-source:0; }
+  /* Üretilen tablolar (EMSAL_MATRISI, MALIKLER_TABLO vb.) uygulamanın sabit
+     tema tonlarını (--ink:#152238 --line:#dde3ef --blue:#3a5691
+     --blue-soft:#e4ebf8) kullanıyor; elle yazılan tablolar da aynı paleti
+     kullanır ki tek belgede iki farklı görünüm oluşmasın (bkz. diğer
+     şablonlardaki aynı kural). */
+  body { margin: 0; font-family: Arial, sans-serif; font-size: 7pt; color: #152238; background: #ffffff; }
+  div.WordSection1 { page: WordSection1; }
+  h1 { margin: 0; padding: 7pt 9pt; border: 1pt solid #dde3ef; background: #e4ebf8; color: #152238; font-size: 13pt; font-weight: 900; }
+  .report-kicker { margin: 0 0 8pt; padding: 3pt 9pt; border: 1pt solid #dde3ef; border-top: 0; color: #3a5691; font-size: 7pt; font-weight: 700; }
+  h2 { margin: 12pt 0 5pt; padding: 4pt 6pt; border: 1pt solid #dde3ef; background: #e4ebf8; color: #152238; font-size: 9pt; font-weight: 900; }
+  h3 { margin: 7pt 0 3pt; padding: 2.5pt 4pt; border-left: 3pt solid #3a5691; background: #f6f7f8; color: #3a5691; font-size: 7.5pt; font-weight: 900; }
+  p { margin: 0 0 6pt; line-height: 1.25; text-align: justify; }
+  p em { color: #d00000; font-style: italic; font-weight: 700; }
+  .encumbrance-summary { font-size: 7pt; text-align: left; border: 1pt solid #dde3ef; padding: 3pt; margin: 3pt 0 5pt; }
+  .share-explanation { font-size: 10pt; text-align: justify; }
+  .subtle { color: #5a6576; font-size: 6.5pt; }
+  .page-start { page-break-before: always; }
+  .keep { page-break-inside: avoid; break-inside: avoid; }
+
+  table.meta { width: 100%; margin: 5pt 0 12pt; border-collapse: collapse; border: 1pt solid #dde3ef; table-layout: fixed; font-size: 7pt; }
+  table.meta tr { height: 18pt; mso-height-source: userset; mso-height-rule: at-least; }
+  table.meta td { height: 18pt; padding: 1.7pt 3pt; border: 1pt solid #dde3ef; vertical-align: middle; line-height: 1.05; }
+  table.meta td p { margin: 0; line-height: 1.05; }
+  table.meta td.l { width: 22%; background: #e4ebf8; color: #3a5691; font-weight: 900; }
+  table.meta td.v { width: 28%; background: #fafafa; color: #152238; }
+  table.meta td.section-cell { padding: 3pt 4pt; background: #dde3ef; color: #152238; font-weight: 900; }
+
+  .word-table { width: 100%; margin: 5pt 0 12pt; border-collapse: collapse; border: 1pt solid #dde3ef; font-size: 7pt; }
+  .word-table th, .word-table td { padding: 1.7pt 3pt; border: 1pt solid #dde3ef; vertical-align: top; }
+  .word-table th { background: #e4ebf8; color: #3a5691; font-weight: 900; text-align: left; }
+  .word-table tbody tr:nth-child(even) td { background: #f6f7f8; }
+
+  .narrative { margin: 5pt 0 12pt; padding: 5pt 6pt; border: 1pt solid #dde3ef; background: #f8f8f8; }
+  .narrative p:last-child { margin-bottom: 0; }
+  .pg-section h2 { margin-top: 0; }
+  .pg-section table.meta td, .pg-section .word-table td, .pg-section .word-table th { padding: 1pt 2pt; font-size: 6pt; }
+  .table-block { margin-bottom: 16px; page-break-inside: avoid; break-inside: avoid; }
+  .table-spacer { margin: 0; padding: 0; height: 12pt; line-height: 12pt; font-size: 1pt; mso-line-height-rule: exactly; }
+
+  .ek-list { width: 100%; border-collapse: collapse; margin: 5pt 0 12pt; font-size: 7pt; }
+  .ek-list td { padding: 2pt 4pt; border: 1pt solid #dde3ef; }
+  .signature-table { width: 100%; border-collapse: collapse; margin: 8pt 0 12pt; font-size: 7pt; }
+  .signature-table th, .signature-table td { border: 1pt solid #dde3ef; padding: 4pt 6pt; text-align: center; vertical-align: top; }
+  .signature-table th { background: #e4ebf8; color: #3a5691; font-weight: 900; }
+</style>
+</head>
+<body>
+<div class="WordSection1">
+
+<h1>EMLAK KATILIM BANKASI GAYRİMENKUL DEĞERLEME RAPORU</h1>
+<div class="report-kicker">DEĞERLEME RAPORU ÖZET TABLO</div>
+
+<table class="meta keep">
+  <tr><td class="l">MÜŞTERİ ADI / MÜŞTERİ NO</td><td class="v">{{CUSTOMER_NAME}}</td><td class="l">RAPOR NO</td><td class="v">&nbsp;</td></tr>
+  <tr><td class="l">TALEP TARİHİ</td><td class="v">&nbsp;</td><td class="l">RAPOR TARİHİ</td><td class="v">{{RAPORTARIHI}}</td></tr>
+  <tr><td class="l">RAPORUN KONUSU</td><td class="v" colspan="3">1 Adet {{TITLE_QUALITY}}</td></tr>
+  <tr><td class="section-cell" colspan="4">Gayrimenkulün Adresi</td></tr>
+  <tr><td class="l">İl</td><td class="v">{{CITY}}</td><td class="l">Sokak</td><td class="v">{{STREET}}</td></tr>
+  <tr><td class="l">İlçe</td><td class="v">{{DISTRICT}}</td><td class="l">Bina No</td><td class="v">{{OUTER_DOOR}}</td></tr>
+  <tr><td class="l">Mahalle</td><td class="v">{{NEIGHBORHOOD}}</td><td class="l">Apartman Adı</td><td class="v">{{ADDRESS_SITE_NAME}}</td></tr>
+  <tr><td class="l">Cadde</td><td class="v">{{STREET}}</td><td class="l">Kat</td><td class="v">{{ADDRESS_FLOOR}}</td></tr>
+  <tr><td class="l">Daire No</td><td class="v">{{UNIT_NO}}</td><td class="l">Adres Kodu</td><td class="v">&nbsp;</td></tr>
+  <tr><td class="l">Koordinatları</td><td class="v">{{LATITUDE}}, {{LONGITUDE}}</td><td class="l">Posta Kodu</td><td class="v">{{POSTAL_CODE}}</td></tr>
+  <tr><td class="section-cell" colspan="4">Taşınmazın Değeri</td></tr>
+  <tr><td class="l">Mevcut Durum Değeri</td><td class="v">{{CURRENT_VALUE}}</td><td class="l">Acil Satış Değeri <span class="subtle">(Mevcut Durum Değeri'nin %10 altı)</span></td><td class="v">{{CURRENT_URGENT_SALE_VALUE}}</td></tr>
+  <tr><td class="l">Satış Kabiliyeti</td><td class="v" colspan="3">{{SALEABILITY}}</td></tr>
+  <tr><td class="l">Uzman Yorumu</td><td class="v" colspan="3">{{SALEABİLİTY_NOTE}}</td></tr>
+  <tr><td class="section-cell" colspan="4">Tapu Malik Bilgileri</td></tr>
+</table>
+{{MALIKLER_TABLO}}
+<table class="meta keep">
+  <tr><td class="section-cell" colspan="4">Tapu Takyidat Bilgileri</td></tr>
+  <tr><td class="l">Uzman Yorumu</td><td class="v" colspan="3">{{ENCUMBRANCE_SUMMARY_TEXT}}</td></tr>
+</table>
+<table class="meta keep">
+  <tr><td class="l">İli</td><td class="v">{{CITY}}</td><td class="l">Taşınmaz ID</td><td class="v">{{TITLE_PROPERTY_ID}}</td><td class="l">Mahalle</td><td class="v">{{NEIGHBORHOOD}}</td></tr>
+  <tr><td class="l">İlçesi</td><td class="v">{{DISTRICT}}</td><td class="l">Yüz Ölçümü</td><td class="v">{{LAND_AREA}} m²</td><td class="l">Cadde/Sokak</td><td class="v">{{STREET}}</td></tr>
+  <tr><td class="l">Mahalle/Köy</td><td class="v">{{NEIGHBORHOOD}}</td><td class="l">Blok/Giriş/Kat</td><td class="v">{{TITLE_BLOCK_NAME}} / {{ADDRESS_FLOOR}}</td><td class="l">Bina No</td><td class="v">{{OUTER_DOOR}}</td></tr>
+  <tr><td class="l">Mevkii</td><td class="v">{{LOCATION_NAME}}</td><td class="l">Bağ. Bölüm</td><td class="v">{{UNIT_NO}}</td><td class="l">Mevcut Kullanım</td><td class="v">{{CURRENT_USAGE_NATURE}}</td></tr>
+  <tr><td class="l">Tapu Türü</td><td class="v">{{GROUND_TYPE}}</td><td class="l">B.B. Nitelik</td><td class="v">{{TITLE_QUALITY}}</td><td class="l">Bina Yaşı</td><td class="v">{{BUILDING_AGE}}</td></tr>
+  <tr><td class="l">Ana Gayr. Niteliği</td><td class="v">{{MAIN_PROPERTY_QUALITY}}</td><td class="l">Cilt</td><td class="v">{{REGISTRY_VOLUME}}</td><td class="l">Toplam Bağ. Böl. Sayısı</td><td class="v">{{TOTAL_UNITS}}</td></tr>
+  <tr><td class="l">Pafta</td><td class="v">{{SHEET_NO}}</td><td class="l">Sayfa</td><td class="v">{{REGISTRY_PAGE}}</td><td class="l">Cephe Sayısı</td><td class="v">{{FACADES}}</td></tr>
+  <tr><td class="l">Ada</td><td class="v">{{BLOCK_NO}}</td><td class="l">Arsa Payı</td><td class="v">{{SHARE}} / {{DENOMINATOR}}</td><td class="l">Ortak Alanlar</td><td class="v">{{SOCIAL_FACILITIES}}</td></tr>
+  <tr><td class="l">Parsel</td><td class="v">{{PARCEL_NO}}</td><td class="l">Malik</td><td class="v">{{EDİNME_SEBEBİ}}</td><td class="l">Kat Sayısı (Bodrum Dahil)</td><td class="v">{{TOTAL_FLOORS}}</td></tr>
+  <tr><td class="l">Taşınmaz Tipi</td><td class="v">{{OWNERSHIP_TYPE}}</td><td class="l">Dairenin Alanı m²</td><td class="v">{{CURRENT_AREA}}</td><td class="l">İskân Durumu</td><td class="v">{{İSKAN_VAR_MI}}</td></tr>
+  <tr><td class="l">Projesinde Oda Planlaması</td><td class="v" colspan="5">Salon {{SALON}} / Oda {{ODA}} / Banyo {{BANYO}} / Wc {{TUVALET}} / Balkon {{BALKON}}</td></tr>
+  <tr><td class="l">Yerinde Oda Planlaması</td><td class="v" colspan="5">Salon {{SALON}} / Oda {{ODA}} / Banyo {{BANYO}} / Wc {{TUVALET}} / Balkon {{BALKON}}</td></tr>
+</table>
+
+<table class="meta keep">
+  <tr><td class="l">GAYRİMENKUL DEĞERLEME RAPORUNUN SUNULDUĞU MERCİ</td><td class="v" colspan="3">GENEL MÜDÜRLÜK — BARBAROS MAH. BEGONYA SK. NİDAKULE KUZEY ATAŞEHİR NO:3 İÇ KAPI NO:170-171-174-175 ATAŞEHİR / İSTANBUL</td></tr>
+  <tr><td class="l">GAYRİMENKUL DEĞERLEME RAPORUNU HAZIRLAYAN</td><td class="v" colspan="3">DENGE GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş. — TUGAY YOLU CAD. NO:20 OFİSİM İSTANBUL B BLOK K:6 OFİS NO:33 MALTEPE / İSTANBUL</td></tr>
+  <tr><td class="l">DEĞERLEME UZMANI</td><td class="v">Adı Soyadı: &nbsp;</td><td class="l">DEĞERLEME FİRMASI SORUMLU DEĞERLEME UZMANI</td><td class="v">Adı Soyadı: Baki BUDAKOĞLU</td></tr>
+</table>
+<p class="subtle">UYARI: Değerleme kuruluşunun yazılı onayı olmaksızın herhangi bir şekilde raporun tamamen veya kısmen yayınlanması, raporun veya raporda yer alan değerleme rakamlarının ya da değerleme faaliyetinde bulunan personelin adlarının veya mesleki niteliklerinin referans verilmesi yasaktır.</p>
+
+<h2 class="page-start">BAĞLAYICI VE SINIRLAYICI KOŞULLAR</h2>
+<div class="narrative">
+  <p>Bu raporda sunulan bilgiler ve ifadeler gerçek ve doğrudur.</p>
+  <p>Raporda belirtilen analizler, fikirler ve sonuçlar sadece belirtilen varsayımlar ve şartlarla kısıtlıdır ve bunlar bizim kişisel, tarafsız ve önyargısız profesyonel analizlerimiz, fikirlerimiz ve sonuçlarımızdır.</p>
+  <p>Bu raporun konusu olan mülke güncel ve geleceğe dönük hiçbir çıkarımız yoktur (veya belirtilen biçimde vardır) ve işin içindeki taraflarla hiçbir kişisel ilgimiz yoktur.</p>
+  <p>Bu raporun konusu olan mülke veya bu görevle ilgili taraflara karşı hiçbir önyargımız yoktur.</p>
+  <p>Bu görevle ilgili olarak durumumuz önceden saptanmış sonuçların geliştirilmesi ve bildirilmesine bağlı değildir.</p>
+  <p>Bu görevin tamamlanması için aldığımız/alacağımız ücret, önceden saptanmış bir değer veya değerin müşterinin amaçlarını gözeten yönünün geliştirilip rapor edilmesi, değer takdirinin miktarı, öngörülen bir sonucun elde edilmesi veya bu değerlemenin tasarlanan kullanımıyla doğrudan ilgili sonraki bir olayın meydana gelmesine bağlı değildir.</p>
+  <p>Değerleme ahlaki kural ve performans standartlarına göre gerçekleştirilmiştir.</p>
+  <p>Değerleme uzmanı mesleki eğitim şartlarına haiz olup, değerlemesi yapılan mülkün yeri ve türü konusunda daha önceden deneyimi vardır.</p>
+  <p>Bu raporun konusu olan mülkün gerekli resmî kurumlarındaki durumuna bakılmış ve yerinde şahsen görülüp incelenmiştir.</p>
+  <p>Raporda belirtilenlerin haricinde hiç kimsenin bu raporun hazırlanmasında mesleki bir yardımda bulunmadığını beyan ederiz.</p>
+  <p>Değerleme uzmanı değer biçilen mülkü ya da ona ilişkin mülkiyet hakkını etkileyen yasal konulardan sorumlu olmayacaktır. Değerleme uzmanı mülkiyet hakkının iyi ve pazarlanabilir olduğunu varsayar ve bu nedenle de mülkiyet hakkı ile ilgili herhangi bir görüş bildirmez. Söz konusu mülke sorumlu bir mülkiyet altında bulunduğu esasına dayanılarak değer biçilir.</p>
+</div>
+
+<h1 class="page-start">TAŞINMAZ DEĞERLEME RAPORU</h1>
+
+<h2>1. Gayrimenkul İle İlgili Bilgiler</h2>
+<h3>1.1. Tapu Bilgileri</h3>
+<table class="meta">
+  <tr><td class="section-cell" colspan="4">Ana Gayrimenkul Bilgileri</td></tr>
+  <tr><td class="l">Taşınmaz Tipi</td><td class="v">{{OWNERSHIP_TYPE}}</td><td class="l">Pafta</td><td class="v">{{SHEET_NO}}</td></tr>
+  <tr><td class="l">Taşınmaz ID</td><td class="v">{{TITLE_PROPERTY_ID}}</td><td class="l">Ada</td><td class="v">{{BLOCK_NO}}</td></tr>
+  <tr><td class="l">B.B. Tipi</td><td class="v">{{TITLE_QUALITY}}</td><td class="l">Parsel</td><td class="v">{{PARCEL_NO}}</td></tr>
+  <tr><td class="l">İli</td><td class="v">{{CITY}}</td><td class="l">Vasfı</td><td class="v">{{MAIN_PROPERTY_QUALITY}}</td></tr>
+  <tr><td class="l">İlçesi</td><td class="v">{{DISTRICT}}</td><td class="l">Yüzölçümü</td><td class="v">{{LAND_AREA}} m²</td></tr>
+  <tr><td class="l">Mahalle</td><td class="v">{{NEIGHBORHOOD}}</td><td class="l">Cilt No</td><td class="v">{{REGISTRY_VOLUME}}</td></tr>
+  <tr><td class="l">Köy</td><td class="v">&nbsp;</td><td class="l">Sayfa No</td><td class="v">{{REGISTRY_PAGE}}</td></tr>
+  <tr><td class="l">Mevkii</td><td class="v">{{LOCATION_NAME}}</td><td class="l">Tarih/Yevmiye</td><td class="v">{{TAPU_TARİHİ}} / {{TAPU_YEVMİYESİ}}</td></tr>
+  <tr><td class="section-cell" colspan="4">Bağımsız Bölüm Bilgileri</td></tr>
+  <tr><td class="l">B.B. Nitelik</td><td class="v">{{TITLE_QUALITY}}</td><td class="l">Blok/Giriş/Kat</td><td class="v">{{TITLE_BLOCK_NAME}} / {{ADDRESS_FLOOR}}</td></tr>
+  <tr><td class="l">Arsa Payı</td><td class="v">{{SHARE}} / {{DENOMINATOR}}</td><td class="l">Bağ. Bölüm No</td><td class="v">{{UNIT_NO}}</td></tr>
+  <tr><td class="l">Malik</td><td class="v">{{EDİNME_SEBEBİ}}</td><td class="l">Hisse Oranı</td><td class="v">{{SHARE}} / {{DENOMINATOR}}</td></tr>
+</table>
+<h3>Malikler</h3>
+{{MALIKLER_TABLO}}
+
+<h3>1.2. Takyidat Bilgileri Ve Uzman Yorumu</h3>
+<table class="meta">
+  <tr><td class="section-cell" colspan="2">Tapu Takyidat Bilgileri</td></tr>
+  <tr><td class="l">Şerhler Kısmında</td><td class="v">&nbsp;</td></tr>
+  <tr><td class="l">Rehinler Kısmında</td><td class="v">&nbsp;</td></tr>
+  <tr><td class="l">İrtifaklar Kısmında</td><td class="v">&nbsp;</td></tr>
+  <tr><td class="l">Eklenti Bilgisi</td><td class="v">{{EKLENTI}}</td></tr>
+</table>
+<p><strong>Uzman Yorumu:</strong></p>
+{{ENCUMBRANCE_SUMMARY_TEXT}}
+<p>Tapu Müdürlüğü kaydı (Takbis) ile tarafımıza iletilen tapu senedi arasında farklılığa rastlanılmamıştır.</p>
+
+<h3>1.3. Mevcut İmar Durum Bilgileri</h3>
+{{PLANNİNG_NOTE_TEXT}}
+
+<h3>1.4. Tapu Sicil Müdürlüğü İnceleme Bilgileri ve Uzman Yorumu</h3>
+{{PROJECT_REVIEW_DESCRIPTION}}
+{{REVİEWED_DOCUMENTS_TEXT}}
+
+<h3>1.5. Belediye İnceleme Bilgileri Ve Uzman Yorumu</h3>
+{{REVİEWED_DOCUMENTS_DESCRIPTION}}
+{{PENALTY_DECISION_EXPLANATION}}
+{{EKB_EXPLANATION_TEXT}}
+
+<h2 class="page-start">2. Gayrimenkulün Konumu – Özellikleri Ve Çevresi</h2>
+<h3>2.1. Gayrimenkulün Çevre Analizi</h3>
+<table class="meta">
+  <tr><td class="l">Konum</td><td class="v" colspan="3">Kent</td></tr>
+  <tr><td class="l">Yapılaşma Yoğunluğu</td><td class="v" colspan="3">{{YAPILASMA}}</td></tr>
+  <tr><td class="l">Çevresel Gelişme Hızı</td><td class="v" colspan="3">{{CEVRESELGELISMEHIZI}}</td></tr>
+  <tr><td class="l">Deprem Bölgesi</td><td class="v" colspan="3">{{EARTHQUAKE_ZONE}}</td></tr>
+  <tr><td class="l">Yapılaşma Türü</td><td class="v" colspan="3">{{BOLGEYAPKULAMACI}}</td></tr>
+</table>
+
+<h3>2.2. Ana Gayrimenkulün Tanımı</h3>
+{{MAİN_PROPERTY_DESCRİPTİON_TEXT}}
+
+<h3>2.3. Bağımsız Bölümün Tanımı (Dairenin Genel Durumu)</h3>
+{{UNİT_İNTERİOR_DESCRİPTİON_TEXT}}
+
+<h3>2.4. Gayrimenkulün Değerini Etkileyen Faktörler</h3>
+<table class="word-table">
+  <tr><th>OLUMLU FAKTÖRLER</th><th>OLUMSUZ FAKTÖRLER</th></tr>
+  <tr><td>{{DEGERI_ETKILEYEN_OLUMLU_FAKTORLER}}</td><td>{{DEGERI_ETKILEYEN_OLUMSUZ_FAKTORLER}}</td></tr>
+</table>
+
+<h2 class="page-start">4. Taşınmazın Konum Krokisi Ve Emsal Taşınmazlar</h2>
+{{LOCATION_MAP_SECTION}}
+<h3>Emsal Listesi</h3>
+{{EMSAL_MATRISI}}
+<h3>Emsal Açıklaması</h3>
+{{EMSAL_PIYASA_ANALIZI}}
+{{COMPARABLE_SKETCH_SECTION}}
+<p class="table-spacer">&nbsp;</p>
+<div class="table-block">{{EMSAL_DEGERLEME_TABLOSU}}</div>
+
+<h2 class="page-start">5. Değerleme</h2>
+<h3>5.1. Değerleme İşlemini Olumsuz Etkileyen Faktörler</h3>
+<p>Değerleme işlemini olumsuz etkileyen herhangi bir faktör bulunmamaktadır. <em>(VARSA AÇIKLANMALIDIR.)</em></p>
+
+<h3>5.2. Değerlemede Kullanılan Varsayımlar</h3>
+<p>Konu gayrimenkulün değerlemesinde emsal karşılaştırma yaklaşımı kullanılmıştır. Konu taşınmazın değerlendirmesinde civardaki alım satım rayiç değerleri ve günümüz ekonomik koşulları, taşınmazın konumu, yaşı, fiziki özellikleri, emsallerdeki pazarlık payları, arz/talep dengesi gibi dışsal etkenler dikkate alınmıştır.</p>
+
+<h3>5.3. Gayrimenkulün Değerlemesinde Kullanılan Yöntemler</h3>
+{{DEGERLEME_YONTEMI_ACIKLAMASI}}
+{{BUILDING_INSPECTION_TERMINATION_EXPLANATION_TEXT}}
+{{HISSE_ACIKLAMASI}}
+
+<h3>5.4. Satış Kabiliyeti ve Uzman Yorumu</h3>
+<table class="meta">
+  <tr><td class="l">Satış Kabiliyeti</td><td class="v" colspan="3">{{SALEABILITY}}</td></tr>
+</table>
+{{SATIS_KABILIYETI_ACIKLAMASI}}
+{{VALUATİON_SALEABİLİTY_EXPLANATİON}}
+{{TARLA_BAHCE_DEGERLEME_RISKI_ACIKLAMASI}}
+<p class="subtle">DUBLEKS İSE: Yasal ve mevcut durum değerinde, normal kat için birim fiyat, çatı katı için ayrı birim fiyat takdir edilmelidir. Teras hacmi yasal ve mevcut alana dahil edilmeyip değerlemede şerefiye olarak dikkate alınır.</p>
+
+<h3>5.5. Kira Kabiliyeti</h3>
+<table class="meta">
+  <tr><td class="l">Daire İçinde Kiracı</td><td class="v">{{DAIREICINDEKIRACI}}</td><td class="l">Kira Değeri</td><td class="v">&nbsp;</td></tr>
+  <tr><td class="l">Kiracının Kontratı</td><td class="v">{{KIRACININKONTRATI}}</td><td class="l">Apartman Aidatı</td><td class="v">&nbsp;</td></tr>
+  <tr><td class="l">Kontrat Başlangıç Tarihi</td><td class="v" colspan="3">&nbsp;</td></tr>
+</table>
+{{KIRA_ACIKLAMASI}}
+{{EMLAK_BEYAN_DEGERI_ACIKLAMASI}}
+<div class="table-block">{{DEGERLENDIRME_TABLOSU}}</div>
+<div class="table-block">{{KAT_BAZINDA_INDIRGENMIS_ALAN_TABLOSU}}</div>
+<h3>Emsal Karşılaştırma Yöntemine Göre Değer Analizi</h3>
+<div class="table-block">{{DEGERLENDIRME_SEMASI}}</div>
+
+<h2 class="page-start">6. Değerleme Uzmanının Görüşü</h2>
+{{VALUATİON_SALEABİLİTY_EXPLANATİON}}
+
+<h2 class="page-start">7. Sonuç</h2>
+<table class="meta">
+  <tr><td class="l">Mevcut Durum Değeri</td><td class="v">{{CURRENT_VALUE}}</td></tr>
+  <tr><td class="l">Mevcut Durum Acil Satış Değeri</td><td class="v">{{CURRENT_URGENT_SALE_VALUE}}</td></tr>
+  <tr><td class="l">Kira Değeri (Ay)</td><td class="v">{{CURRENT_RENT}}</td></tr>
+</table>
+<h3>Raporu Hazırlayanlar</h3>
+<table class="signature-table">
+  <tr><th>Raporu Hazırlayan Değerleme Uzmanı</th><th>Raporu Kontrol Eden</th><th>Raporu Onaylayan</th></tr>
+  <tr>
+    <td>Adı Soyadı: &nbsp;<br>SPK Lisans No: &nbsp;<br>e-imza</td>
+    <td>Adı Soyadı: Baki Budakoğlu<br>SPK Lisans No: 400159<br>e-imza</td>
+    <td>Adı Soyadı: Baki Budakoğlu<br>SPK Lisans No: 400159<br>e-imza</td>
+  </tr>
+</table>
+
+<h2 class="page-start">GABİM VERİ SETİ</h2>
+{{GABIM_VERI_SETI}}
+
+<h2 class="page-start">8. Ekler</h2>
+<table class="ek-list">
+  <tr><td>1. Fotoğraflar</td></tr>
+  <tr><td>2. TKGM Parsel Sorgu Sistemi Görüntüsü, U.A.V.T</td></tr>
+  <tr><td>3. Proje Fotoğrafları</td></tr>
+  <tr><td>4. Tapu/TAKBİS Belgesi</td></tr>
+  <tr><td>5. Diğer Ekler</td></tr>
+</table>
+
+<h3>Notlar</h3>
+<div class="narrative">
+  <p>Tespit edilen bu değer peşin satışa yönelik adil piyasa değeridir.</p>
+  <p>Taşınmazın tapu kaydı üzerinde bulunan takyidatlar değerlemede dikkate alınmamıştır.</p>
+  <p>İş bu değerleme raporu taşınmazlarla ilgili herhangi bir hukuksal sorun bulunmadığı kabulüne dayalıdır.</p>
+  <p>İşbu rapor, tek orijinal nüsha olarak düzenlenmiş olup kopyaların kullanımları halinde ortaya çıkabilecek sonuçlardan eksper ve şirketimiz sorumlu değildir.</p>
+  <p>Satış ve kiralama sürecinin kısa ile orta vadede gerçekleşebileceği öngörülmüştür.</p>
+  <p>Bu değerleme raporu, İstem Sahibinin talebine istinaden, özel rapor formatında hazırlanmış olup, Sermaye Piyasası Kurulu (SPK) faaliyetlerinde, Türkiye sınırlarında faaliyet gösteren bankaların kredi teminat işlemlerinde kullanılamaz, devlet kurumlarına ibraz edilemez ve mahkemelerde kanıt niteliği taşımaz. Aksi kullanımları halinde ortaya çıkabilecek sonuçlardan değerleme uzmanları ve şirketimiz sorumlu değildir.</p>
+  <p>Değerlere KDV dâhil değildir.</p>
+  <p>Değerleme raporu, şirketimiz ve değerleme uzmanlarının ehliyetleri ve bilgi birikimleri doğrultusunda raporun yapıldığı tarih itibari ile elde edilen bilgi, belge ve mevcut piyasa koşullarına göre azami dikkat ve özenle hazırlanmıştır.</p>
+  <p>İşbu rapor, değerlemeye konu taşınmazın resmi kurum ve/veya benzer kuruluşlardan temin edilebilen sicil, dokümantasyon ve arşiv kayıtlarındaki bilgi ve belgeler doğrultusunda tanzim edilmiştir.</p>
+  <p>Bu resmi kurum ve kuruluşlardan temin edilemeyen belgelere istinaden oluşabilecek değişimler sonucunda rapor etkilenebilir.</p>
+  <p>Raporumuz, yapıldığı tarih itibarı ile elde edilebilen geçerli bilgi, belge ve piyasa koşullarının yansımasıdır.</p>
+  <p>Bu rapor, satıcı ve/veya alıcı ve/veya diğer ilgilileri akdi yükümlülüklerini yerine getirmekten muaf kılmayacaktır.</p>
+</div>
+
+</div>
+</body>
+</html>

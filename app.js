@@ -18135,6 +18135,22 @@ function getUnitActivelyUsedStatusText() {
   return isVacant ? "Hayır" : "Evet";
 }
 
+// Kullanıcı talebi (Emlak Katılım şablonu, "5.5. Kira Kabiliyeti"):
+// "eğer kullanım durumu kiracı değil ise cevap hayır, kontrat tarihi aidat
+// ve kira değeri kısımlarını boş bırak" — kullanım durumu Kiracı DEĞİLSE
+// hem "Daire İçinde Kiracı" hem "Kiracının Kontratı" VAR/YOK sorularının
+// ikisi de "YOK" olur; Kiracı İSE kiracı varlığı "VAR" olur ama kontrat
+// bilgisi sistemde tutulmadığından boş bırakılır (elle doldurulur).
+function isUnitTenantOccupied() {
+  return state.fields.unitUsageStatus === "Kiracı";
+}
+function getUnitTenantPresenceText() {
+  return isUnitTenantOccupied() ? "VAR" : "YOK";
+}
+function getUnitTenantContractStatusText() {
+  return isUnitTenantOccupied() ? "" : "YOK";
+}
+
 const PROJECT_SUITABILITY_AREA_MISMATCH_KEYS = [
   "KULLANIM ALANI OLARAK UYGUN DEGILDIR",
   "KULLANIM ALANI VE MIMARI OLARAK UYGUN DEGILDIR",
