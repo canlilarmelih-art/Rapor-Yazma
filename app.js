@@ -16049,14 +16049,64 @@ function formatTcmbDate(value) {
   return match ? `${match[1]}.${match[2]}.${match[3]}` : String(value || "").trim();
 }
 
+function setTcmbRateStatus(message) {
+  if (!tcmbRateContent) return;
+  const status = document.createElement("span");
+  status.className = "tcmb-rate-status";
+  status.textContent = message;
+  tcmbRateContent.replaceChildren(status);
+}
+
+function createTcmbQuote(label, value) {
+  const quote = document.createElement("div");
+  quote.className = "tcmb-rate-quote";
+  const quoteLabel = document.createElement("span");
+  quoteLabel.textContent = label;
+  const quoteValue = document.createElement("strong");
+  quoteValue.textContent = formatTcmbRate(value);
+  quote.append(quoteLabel, quoteValue);
+  return quote;
+}
+
+function createTcmbCurrencyCard(code, currency) {
+  const card = document.createElement("section");
+  card.className = "tcmb-currency-card";
+  const heading = document.createElement("strong");
+  heading.className = "tcmb-currency-code";
+  heading.textContent = `${code} / TRY`;
+  card.append(
+    heading,
+    createTcmbQuote("Alış", currency?.buying),
+    createTcmbQuote("Satış", currency?.selling),
+  );
+  return card;
+}
+
+function renderTcmbRates(payload) {
+  if (!tcmbRateContent) return;
+  const currencies = document.createElement("div");
+  currencies.className = "tcmb-rate-currencies";
+  currencies.append(
+    createTcmbCurrencyCard("USD", payload.usd),
+    createTcmbCurrencyCard("EUR", payload.eur),
+  );
+  const meta = document.createElement("div");
+  meta.className = "tcmb-rate-meta";
+  const metaLabel = document.createElement("span");
+  metaLabel.textContent = payload.stale ? "Son başarılı veri" : "TCMB tarihi";
+  const metaDate = document.createElement("strong");
+  metaDate.textContent = formatTcmbDate(payload.date) || "-";
+  meta.append(metaLabel, metaDate);
+  tcmbRateContent.replaceChildren(currencies, meta);
+}
+
 async function refreshTcmbRates() {
   if (!tcmbRateContent) return;
   try {
     const response = await fetchRaporApi("/api/tcmb-rates");
     const payload = await response.json();
     if (!response.ok || !payload?.ok) throw new Error(payload?.error || "TCMB kurlari alinamadi.");
-    const freshness = payload.stale ? "Son basarili veri" : "TCMB tarihi";
-    tcmbRateContent.textContent = `USD/TRY Alis: ${formatTcmbRate(payload.usd?.buying)} | Satis: ${formatTcmbRate(payload.usd?.selling)}     EUR/TRY Alis: ${formatTcmbRate(payload.eur?.buying)} | Satis: ${formatTcmbRate(payload.eur?.selling)}     (${freshness}: ${formatTcmbDate(payload.date) || "-"})`;
+    renderTcmbRates(payload);
     tcmbRateStrip?.classList.toggle("is-unavailable", Boolean(payload.stale));
     tcmbRateRetryCount = 0;
   } catch (error) {
@@ -16067,10 +16117,10 @@ async function refreshTcmbRates() {
     const shouldRetry = tcmbRateRetryCount < 6;
     if (shouldRetry) {
       tcmbRateRetryCount += 1;
-      tcmbRateContent.textContent = "TCMB kurlari baglanti hazirlanirken yeniden deneniyor...";
+      setTcmbRateStatus("TCMB kurları bağlantı hazırlanırken yeniden deneniyor...");
       window.setTimeout(refreshTcmbRates, 2500);
     } else {
-      tcmbRateContent.textContent = "TCMB kurlari su an alinamadi.";
+      setTcmbRateStatus("TCMB kurları şu an alınamadı.");
     }
     tcmbRateStrip?.classList.add("is-unavailable");
   }

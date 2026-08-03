@@ -6992,3 +6992,9 @@ Doğrulama: `node --check app.js`, `node tools/check-basic.js`, `git diff --chec
 
 - Kur bandının ilk isteği Firebase kimlik belirteci hazır olmadan çalışırsa, istemci 1,2 saniye ilk bekleme sonrasında 2,5 saniye aralıkla en fazla altı kez tekrar dener.
 - Böylece uygulama açılış sırası nedeniyle bandın kalıcı olarak "TCMB kurları şu an alınamadı" durumunda kalması önlenir.
+## 0.0.301 - 2026-08-03 - TCMB kur bandı bilgi hiyerarşisi
+
+- TCMB canlı kur verisinin kaynağı ve yenileme davranışı değişmeden, üst durum alanındaki tek satırlı metin kart temelli bir görünümle yenilendi.
+- USD/TRY ve EUR/TRY artık ayrı kartlarda; alış ve satış değerleri ayrı etiketlerle, TCMB veri tarihi de kendi bilgi alanında sunulur.
+- Mobil yerleşimde kartlar dikey akışa geçer; okunabilirlik için başlık ve tarih alanları ayrı kalır.
+- Cache-buster: `app.js?v=20260803-1015`.

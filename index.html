@@ -733,8 +733,13 @@
         </section>
 
         <section class="tcmb-rate-strip" id="tcmbRateStrip" aria-live="polite" aria-label="TCMB güncel döviz kurları">
-          <strong>TCMB Güncel Döviz Kurları</strong>
-          <span id="tcmbRateContent">Kurlar yükleniyor...</span>
+          <div class="tcmb-rate-heading">
+            <span class="tcmb-rate-kicker">Piyasa verisi</span>
+            <strong>TCMB Güncel Döviz Kurları</strong>
+          </div>
+          <div class="tcmb-rate-content" id="tcmbRateContent">
+            <span class="tcmb-rate-status">Kurlar yükleniyor...</span>
+          </div>
         </section>
 
         <section class="content-grid">
@@ -766,7 +771,7 @@
     <script src="src/value-factors/value-factors-rules.js?v=20260707-1050"></script>
     <script src="src/land/climate-earthquake-data.js?v=20260712-1720"></script>
     <script src="src/auth/access-control.js?v=20260719-2200"></script>
-    <script src="app.js?v=20260803-0600"></script>
+    <script src="app.js?v=20260803-1015"></script>
     <script src="src/exports/export-validation.js?v=20260716-1845"></script>
     <!-- Banka şablonlarıyla dışa aktarma: app.js'ten SONRA yüklenmeli (global'leri çağrı anında kullanır). -->
     <script src="src/templates/template-engine.js?v=20260803-0300"></script>
