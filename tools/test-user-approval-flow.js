@@ -230,6 +230,31 @@ const originalFiles = backupAndClearTestFiles();
     }
 
     console.log("Kullanıcı onay akışı (kayıt + admin onayı) testi tamam.");
+    // --- 7) Hesap profili ve aktif/pasif/silme yaşam döngüsü ------------
+    {
+      backupAndClearTestFiles();
+      const server = freshServer();
+      const uid = "uid-account-lifecycle-1";
+      const email = "hesap.yasam@example.com";
+      await server.registerPendingUser(uid, email, { fullName: "Eski Ad", phone: "111" });
+      await server.approveUser(uid);
+      await server.grantPrivilege(uid);
+
+      const updated = await server.updateOwnUserProfile(uid, "yeni.eposta@example.com", { fullName: "Yeni Ad", phone: "222" });
+      assert.equal(updated?.email, "yeni.eposta@example.com");
+      assert.equal(updated?.fullName, "Yeni Ad");
+      assert.equal(updated?.phone, "222");
+
+      await server.setManagedUserStatus(uid, "suspended");
+      assert.equal(await server.isUserApproved(uid, "yeni.eposta@example.com"), false, "Pasife alınan kullanıcı uygulamaya erişememeli.");
+      assert.equal(await server.isUserPrivileged(uid, "yeni.eposta@example.com"), false, "Pasife alınan kullanıcının ayrıcalığı kaldırılmalı.");
+      assert.equal((await server.listApprovedUsers()).find((row) => row.uid === uid)?.status, "suspended");
+
+      await server.setManagedUserStatus(uid, "active");
+      assert.equal(await server.isUserApproved(uid, "yeni.eposta@example.com"), true, "Tekrar aktife alınan kullanıcı erişebilmelidir.");
+      assert.equal(await server.deleteManagedUser(uid), true, "Yönetici kullanıcıyı sistem erişiminden silebilmelidir.");
+      assert.equal(await server.isUserApproved(uid, "yeni.eposta@example.com"), false, "Silinen kullanıcı onaylı listede kalmamalıdır.");
+    }
   } finally {
     restoreTestFiles(originalFiles);
   }

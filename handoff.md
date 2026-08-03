@@ -7174,3 +7174,12 @@ Doğrulama: `node --check app.js`, `node tools/check-basic.js`, `git diff --chec
 - `projeye uygunluk tespit edilmemistir` seceneginde, rapora yalnizca kullanicinin detay penceresinde girdigi aciklama yaziliyor.
 - Sunucu imzali dogrulama nesnesi, bu aktarimda hangi placeholderlarin sunucu tarafindan otoriter olarak uretildigini de tasiyor.
 - Cache-buster: `template-engine.js?v=20260803-1555`.
+
+## 0.0.307 - 2026-08-04 - Hesap Yaşam Döngüsü ve Şifre İşlemleri
+
+- Bulut hesap penceresine ad soyad, e-posta ve telefon güncelleme alanları eklendi. E-posta değişikliği yalnızca mevcut şifre ile yeniden doğrulanarak yapılır; telefon ve profil bilgileri sunucudaki onaylı kullanıcı kaydına yazılır.
+- Kullanıcı hesabı penceresinden mevcut şifresini doğrulayarak şifresini değiştirebilir veya hesabını silebilir. Hesap silme uygulama erişimini, sunucu oturumlarını ve güvenilir cihaz kayıtlarını kaldırır; istemci Firebase hesabını da silmeyi dener.
+- Giriş ekranına hesap varlığını açıklamayan `Şifremi unuttum` akışı eklendi. Girilen adres kayıtlıysa Firebase sıfırlama e-postası gönderir; hata mesajı kullanıcı/e-posta keşfine izin vermez.
+- Yönetici kullanıcı ekranı, onaylı hesapları aktif/pasif yapma ve sistem erişiminden kaldırma kontrollerini içerir. Pasife alınan hesapların sunucu oturumları, güvenilir cihazları ve ayrıcalıklı görünürlüğü kaldırılır; tekrar aktifleştirilebilir.
+- Kullanıcı onay akışı testi profil güncelleme, pasife alma, tekrar aktifleştirme ve silme senaryolarını kapsayacak şekilde genişletildi.
+- Cache-buster: `styles.css?v=20260804-0017`, `cloud/cloud-sync.js?v=20260804-0017`.

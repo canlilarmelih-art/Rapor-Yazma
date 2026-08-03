@@ -88,6 +88,13 @@
         color: #b23434;
         font-weight: 600;
       }
+      .success {
+        margin: 8px 0 0;
+        min-height: 18px;
+        color: #16764a;
+        font-size: 13px;
+        font-weight: 700;
+      }
       .submit {
         width: 100%;
         margin-top: 14px;
@@ -157,6 +164,7 @@
           </span>
         </label>
         <p id="loginError" class="error"></p>
+        <button type="button" class="switch-link" id="forgotPassword">Şifremi unuttum</button>
         <button type="submit" class="submit" id="loginSubmit">Giriş Yap</button>
         <button type="button" class="switch-link" id="showSignUp">Hesabınız yok mu? Hesap oluşturun</button>
       </form>
@@ -482,6 +490,23 @@
 
         document.getElementById("loginTogglePassword").addEventListener("click", function () {
           passwordInput.type = passwordInput.type === "password" ? "text" : "password";
+        });
+        document.getElementById("forgotPassword").addEventListener("click", async function () {
+          var email = emailInput.value.trim();
+          if (!email) {
+            errorLine.className = "error";
+            errorLine.textContent = "Şifre sıfırlama bağlantısı için e-posta adresinizi girin.";
+            emailInput.focus();
+            return;
+          }
+          errorLine.textContent = "";
+          try {
+            await auth.sendPasswordResetEmail(email);
+          } catch (error) {
+            // Hesap keşfini önlemek için Firebase hatası kullanıcıya aktarılmaz.
+          }
+          errorLine.className = "success";
+          errorLine.textContent = "E-posta adresi kayıtlıysa şifre sıfırlama bağlantısı gönderildi.";
         });
 
         function safeNextPath() {

@@ -581,6 +581,29 @@
     });
   }
 
+  async function accountApi(path, options = {}) {
+    const token = await getIdToken(true);
+    if (!token) throw new Error("oturum bulunamadı");
+    const response = await fetch(path, {
+      ...options,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "X-Rapor-Client": "1",
+        ...(options.headers || {}),
+      },
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok || !body.ok) throw new Error(body.error || "İşlem tamamlanamadı.");
+    return body;
+  }
+
+  async function reauthenticateCurrentUser(password) {
+    const email = cloud.user?.email;
+    if (!email || !password) throw new Error("Mevcut şifrenizi girin.");
+    const credential = firebase.auth.EmailAuthProvider.credential(email, password);
+    await cloud.user.reauthenticateWithCredential(credential);
+  }
+
   function renderAccountModal() {
     const expireText = `${RETENTION_DAYS} gün (son gönderimden itibaren; süre her gönderimde yenilenir)`;
     const roleLabel = window.RaporAccessControl?.getRole?.() === "admin" ? "Yönetici" : "Kullanıcı";
@@ -597,10 +620,118 @@
       diğer cihazlarda oluşturduğunuz raporlar orada "Yalnızca bulutta" olarak görünür.</p>
       <p class="cloud-muted">Kalıcı arşiv için raporu cihazınıza kaydedin: JSON geri yüklenebilir tam
       yedektir; Word/PDF yalnızca çıktıdır (12 - Banka ve Çıktı bölümü).</p>
+      <section class="cloud-account-section">
+        <h4>Hesap Bilgileri</h4>
+        <label class="field"><span>Ad Soyad</span><input type="text" id="accountFullName" autocomplete="name" /></label>
+        <label class="field"><span>E-posta</span><input type="email" id="accountEmail" autocomplete="email" inputmode="email" autocapitalize="off" /></label>
+        <label class="field"><span>Telefon</span><input type="tel" id="accountPhone" autocomplete="tel" inputmode="tel" /></label>
+        <p class="cloud-error" id="accountProfileError"></p>
+        <button type="button" class="ghost-button" id="accountSaveProfile">Bilgileri Kaydet</button>
+      </section>
+      <section class="cloud-account-section">
+        <h4>Şifre</h4>
+        <button type="button" class="ghost-button" id="accountTogglePassword">Şifremi Değiştir</button>
+        <div id="accountPasswordPanel" hidden>
+          <label class="field"><span>Mevcut Şifre</span><input type="password" id="accountCurrentPassword" autocomplete="current-password" /></label>
+          <label class="field"><span>Yeni Şifre</span><input type="password" id="accountNewPassword" autocomplete="new-password" minlength="6" /></label>
+          <label class="field"><span>Yeni Şifre (Tekrar)</span><input type="password" id="accountNewPasswordConfirm" autocomplete="new-password" minlength="6" /></label>
+          <p class="cloud-error" id="accountPasswordError"></p>
+          <button type="button" class="primary-button" id="accountSavePassword">Şifreyi Güncelle</button>
+        </div>
+      </section>
+      <section class="cloud-account-section cloud-account-danger">
+        <h4>Hesabı Sil</h4>
+        <p class="cloud-muted">Hesabınızın sistem erişimi ve bu cihaza ait bulut oturumu kaldırılır. Bu işlem geri alınamaz.</p>
+        <button type="button" class="ghost-button" id="accountDelete">Hesabımı Sil</button>
+      </section>
       <div class="cloud-modal-actions">
         <button type="button" class="primary-button" id="cloudPushNow">Bu Raporu Şimdi Gönder</button>
         <button type="button" class="ghost-button" id="cloudPullNow">Bu Raporu Buluttan Yenile</button>
       </div>`);
+
+    const fullNameInput = overlay.querySelector("#accountFullName");
+    const emailInput = overlay.querySelector("#accountEmail");
+    const phoneInput = overlay.querySelector("#accountPhone");
+    const profileError = overlay.querySelector("#accountProfileError");
+    const profileSaveButton = overlay.querySelector("#accountSaveProfile");
+    emailInput.value = cloud.user.email || "";
+
+    accountApi("/api/account-profile")
+      .then((result) => {
+        const profile = result.profile || {};
+        fullNameInput.value = profile.fullName || "";
+        phoneInput.value = profile.phone || "";
+        emailInput.value = profile.email || cloud.user.email || "";
+      })
+      .catch(() => { profileError.textContent = "Hesap bilgileri yüklenemedi. Yeniden deneyin."; });
+
+    profileSaveButton.addEventListener("click", async () => {
+      profileError.className = "cloud-error";
+      profileError.textContent = "";
+      const nextEmail = emailInput.value.trim();
+      if (!nextEmail) { profileError.textContent = "E-posta adresi zorunludur."; return; }
+      profileSaveButton.disabled = true;
+      try {
+        if (nextEmail.toLowerCase() !== String(cloud.user.email || "").toLowerCase()) {
+          const currentPassword = window.prompt("E-posta adresini değiştirmek için mevcut şifrenizi girin:");
+          if (currentPassword === null) return;
+          await reauthenticateCurrentUser(currentPassword);
+          await cloud.user.updateEmail(nextEmail);
+          localStorage.setItem("rapor-cloud-email", nextEmail);
+        }
+        await accountApi("/api/account-profile", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fullName: fullNameInput.value.trim(), phone: phoneInput.value.trim() }),
+        });
+        profileError.className = "cloud-success";
+        profileError.textContent = "Hesap bilgileriniz güncellendi.";
+      } catch (error) {
+        profileError.textContent = String(error?.message || "Hesap bilgileri güncellenemedi.");
+      } finally {
+        profileSaveButton.disabled = false;
+      }
+    });
+
+    const passwordPanel = overlay.querySelector("#accountPasswordPanel");
+    overlay.querySelector("#accountTogglePassword").addEventListener("click", () => { passwordPanel.hidden = !passwordPanel.hidden; });
+    overlay.querySelector("#accountSavePassword").addEventListener("click", async () => {
+      const errorLine = overlay.querySelector("#accountPasswordError");
+      const currentPassword = overlay.querySelector("#accountCurrentPassword").value;
+      const newPassword = overlay.querySelector("#accountNewPassword").value;
+      const newPasswordConfirm = overlay.querySelector("#accountNewPasswordConfirm").value;
+      errorLine.className = "cloud-error";
+      errorLine.textContent = "";
+      if (newPassword.length < 6) { errorLine.textContent = "Yeni şifre en az 6 karakter olmalıdır."; return; }
+      if (newPassword !== newPasswordConfirm) { errorLine.textContent = "Yeni şifreler eşleşmiyor."; return; }
+      try {
+        await reauthenticateCurrentUser(currentPassword);
+        await cloud.user.updatePassword(newPassword);
+        errorLine.className = "cloud-success";
+        errorLine.textContent = "Şifreniz güncellendi.";
+        overlay.querySelector("#accountCurrentPassword").value = "";
+        overlay.querySelector("#accountNewPassword").value = "";
+        overlay.querySelector("#accountNewPasswordConfirm").value = "";
+      } catch (error) {
+        errorLine.textContent = "Şifre güncellenemedi. Mevcut şifrenizi kontrol edin.";
+      }
+    });
+
+    overlay.querySelector("#accountDelete").addEventListener("click", async () => {
+      if (!window.confirm("Hesabınızı kalıcı olarak silmek istediğinize emin misiniz? Bu işlem geri alınamaz.")) return;
+      const currentPassword = window.prompt("Hesabınızı silmek için mevcut şifrenizi girin:");
+      if (currentPassword === null) return;
+      try {
+        await reauthenticateCurrentUser(currentPassword);
+        await accountApi("/api/account-delete", { method: "POST" });
+        try { await cloud.user.delete(); } catch (error) { console.warn("Firebase hesabı silinemedi:", error); }
+        await cloud.auth.signOut();
+        purgeLocalReportData();
+        window.location.replace("/login.html?deleted=1");
+      } catch (error) {
+        window.alert("Hesabınız silinemedi. Mevcut şifrenizi kontrol edip yeniden deneyin.");
+      }
+    });
 
     overlay.querySelector("#cloudPushNow").addEventListener("click", async () => {
       await pushReport();

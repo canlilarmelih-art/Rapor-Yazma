@@ -55,6 +55,9 @@
       .reject-btn { background: #eef1f6; color: #b23434; }
       .privilege-btn { background: #eef1f6; color: #152238; }
       .privilege-btn.is-on { background: #1c3d7a; color: #fff; }
+      .status-btn { background: #fff2d8; color: #8a5a00; }
+      .status-btn.is-suspended { background: #1c7a3f; color: #fff; }
+      .delete-btn { background: #fbe7e7; color: #b23434; }
       button:disabled { opacity: 0.5; cursor: default; }
       .empty { text-align: center; color: #8a99ad; font-size: 13px; padding: 20px 0; }
       .section-title { margin: 28px 0 10px; font-size: 13px; font-weight: 800; letter-spacing: 0.02em; color: #f3f6fc; }
@@ -237,15 +240,21 @@
             row.className = "row";
             row.innerHTML =
               '<div class="info"><div class="email"></div><div class="meta"></div></div>' +
-              '<div class="actions"><button type="button" class="privilege-btn"></button></div>';
+              '<div class="actions"><button type="button" class="privilege-btn"></button><button type="button" class="status-btn"></button><button type="button" class="delete-btn">Sil</button></div>';
             row.querySelector(".email").textContent = entry.fullName
               ? entry.fullName + " (" + (entry.email || "e-posta yok") + ")"
               : (entry.email || "(e-posta yok)");
             row.querySelector(".meta").textContent = formatProfileMeta(entry, "Onay", entry.approvedAt);
+            row.querySelector(".meta").textContent += " | " + (entry.status === "suspended" ? "Pasif" : "Aktif");
             var toggleBtn = row.querySelector(".privilege-btn");
+            var statusBtn = row.querySelector(".status-btn");
+            var deleteBtn = row.querySelector(".delete-btn");
             function paintToggle() {
               toggleBtn.textContent = entry.privileged ? "Yetkili ✓" : "Yetki ver";
               toggleBtn.classList.toggle("is-on", Boolean(entry.privileged));
+              toggleBtn.disabled = entry.status === "suspended";
+              statusBtn.textContent = entry.status === "suspended" ? "Aktife al" : "Pasife al";
+              statusBtn.classList.toggle("is-suspended", entry.status === "suspended");
             }
             paintToggle();
             toggleBtn.addEventListener("click", function () {
@@ -261,6 +270,29 @@
                   approvedStatusLine.textContent = "Güncellenemedi, tekrar deneyin.";
                   approvedStatusLine.className = "status error";
                   toggleBtn.disabled = false;
+                });
+            });
+            statusBtn.addEventListener("click", function () {
+              var nextStatus = entry.status === "suspended" ? "active" : "suspended";
+              if (!window.confirm((entry.email || "Bu kullanıcı") + " için " + (nextStatus === "suspended" ? "pasife alma" : "aktife alma") + " işlemi yapılsın mı?")) return;
+              statusBtn.disabled = true;
+              apiCall("/api/admin-user-status", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ uid: entry.uid, status: nextStatus }) })
+                .then(function () { return loadApproved(); })
+                .catch(function () {
+                  approvedStatusLine.textContent = "Kullanıcı durumu güncellenemedi.";
+                  approvedStatusLine.className = "status error";
+                  statusBtn.disabled = false;
+                });
+            });
+            deleteBtn.addEventListener("click", function () {
+              if (!window.confirm((entry.email || "Bu kullanıcı") + " sistem erişiminden kalıcı olarak kaldırılacak. Devam edilsin mi?")) return;
+              deleteBtn.disabled = true;
+              apiCall("/api/admin-user-delete", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ uid: entry.uid }) })
+                .then(function () { return loadApproved(); })
+                .catch(function () {
+                  approvedStatusLine.textContent = "Kullanıcı silinemedi.";
+                  approvedStatusLine.className = "status error";
+                  deleteBtn.disabled = false;
                 });
             });
             approvedList.append(row);

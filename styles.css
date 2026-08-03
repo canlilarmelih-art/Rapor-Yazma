@@ -6318,6 +6318,47 @@ a:focus-visible,
   font-weight: 700;
 }
 
+.cloud-modal .cloud-success {
+  margin: 0;
+  min-height: 18px;
+  color: #16764a;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.cloud-account-section {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-soft);
+}
+
+.cloud-account-section h4 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.cloud-account-section .field {
+  gap: 5px;
+}
+
+.cloud-account-section[hidden],
+.cloud-account-section > [hidden] {
+  display: none;
+}
+
+.cloud-account-danger {
+  border-color: rgba(190, 50, 50, 0.35);
+  background: rgba(255, 247, 247, 0.8);
+}
+
+.cloud-account-danger #accountDelete {
+  color: #b23434;
+  border-color: rgba(190, 50, 50, 0.4);
+}
+
 .cloud-password-wrap {
   position: relative;
   display: block;

@@ -848,7 +848,16 @@ async function loadApprovalStateOnce() {
       parsed.forEach((uid) => approvedUsers.set(uid, { email: null, approvedAt: null }));
     } else if (parsed && typeof parsed === "object") {
       for (const [uid, entry] of Object.entries(parsed)) {
-        approvedUsers.set(uid, { email: entry?.email ?? null, approvedAt: entry?.approvedAt ?? null });
+        approvedUsers.set(uid, {
+          email: entry?.email ?? null,
+          approvedAt: entry?.approvedAt ?? null,
+          status: entry?.status === "suspended" ? "suspended" : "active",
+          fullName: entry?.fullName ?? null,
+          phone: entry?.phone ?? null,
+          workType: entry?.workType ?? null,
+          company: entry?.company ?? null,
+          updatedAt: entry?.updatedAt ?? null,
+        });
       }
     }
   } catch (error) {
@@ -907,7 +916,11 @@ function saveApprovalStateSoon() {
 async function isUserApproved(uid, email) {
   if (accessRoles.isAdminEmail(email)) return true;
   await loadApprovalStateOnce();
-  return approvedUsers.has(uid);
+  const entry = approvedUsers.get(uid);
+  // Eski kayitlarda status alani yoktur; bunlar geriye donuk uyumluluk icin
+  // aktif kabul edilir. Yalnizca yoneticinin acikca pasife aldigi hesaplar
+  // uygulama oturumu ve korumali cikti alamaz.
+  return Boolean(entry) && entry.status !== "suspended";
 }
 
 // Üçüncü erişim katmanı — kullanıcı talebi: "normal kullanıcılar ...
@@ -916,7 +929,7 @@ async function isUserApproved(uid, email) {
 async function isUserPrivileged(uid, email) {
   if (accessRoles.isAdminEmail(email)) return true;
   await loadApprovalStateOnce();
-  return privilegedUsers.has(uid);
+  return approvedUserStatus(approvedUsers.get(uid)) === "active" && privilegedUsers.has(uid);
 }
 
 // Kayıt formu (login.html) profil alanları — kullanıcı talebi: "kullanıcı
@@ -969,6 +982,7 @@ async function approveUser(uid) {
   approvedUsers.set(uid, {
     email,
     approvedAt: new Date().toISOString(),
+    status: "active",
     fullName: pendingEntry?.fullName ?? previousApproved?.fullName ?? null,
     phone: pendingEntry?.phone ?? previousApproved?.phone ?? null,
     workType: pendingEntry?.workType ?? previousApproved?.workType ?? null,
@@ -976,6 +990,71 @@ async function approveUser(uid) {
   });
   pendingUsers.delete(uid);
   saveApprovalStateSoon();
+}
+
+function approvedUserStatus(entry) {
+  return entry?.status === "suspended" ? "suspended" : "active";
+}
+
+async function updateOwnUserProfile(uid, email, profile) {
+  await loadApprovalStateOnce();
+  const current = approvedUsers.get(uid);
+  if (!current) return null;
+  const safe = sanitizeRegistrationProfile(profile);
+  const next = {
+    ...current,
+    // E-posta Firebase kimlik belirtecinden gelir; istemci girdiğine guvenilmez.
+    email: sanitizeProfileField(email, 320) || current.email || null,
+    fullName: Object.hasOwn(profile || {}, "fullName") ? safe.fullName : current.fullName ?? null,
+    phone: Object.hasOwn(profile || {}, "phone") ? safe.phone : current.phone ?? null,
+    workType: Object.hasOwn(profile || {}, "workType") ? safe.workType : current.workType ?? null,
+    company: Object.hasOwn(profile || {}, "company") ? safe.company : current.company ?? null,
+    updatedAt: new Date().toISOString(),
+  };
+  approvedUsers.set(uid, next);
+  saveApprovalStateSoon();
+  return next;
+}
+
+async function setManagedUserStatus(uid, status) {
+  await loadApprovalStateOnce();
+  const current = approvedUsers.get(uid);
+  if (!current) return null;
+  const nextStatus = status === "suspended" ? "suspended" : "active";
+  approvedUsers.set(uid, { ...current, status: nextStatus, updatedAt: new Date().toISOString() });
+  if (nextStatus === "suspended") privilegedUsers.delete(uid);
+  saveApprovalStateSoon();
+  return approvedUsers.get(uid);
+}
+
+async function revokeUserSessionsAndTrustedDevices(uid) {
+  await loadSessionsOnce();
+  await loadTrustedDevicesOnce();
+  let sessionsChanged = false;
+  let trustedChanged = false;
+  for (const [id, entry] of sessions.entries()) {
+    if (entry?.uid === uid) {
+      sessions.delete(id);
+      sessionsChanged = true;
+    }
+  }
+  for (const [id, entry] of trustedDevices.entries()) {
+    if (entry?.uid === uid) {
+      trustedDevices.delete(id);
+      trustedChanged = true;
+    }
+  }
+  if (sessionsChanged) saveSessionsSoon();
+  if (trustedChanged) saveTrustedDevicesSoon();
+}
+
+async function deleteManagedUser(uid) {
+  await loadApprovalStateOnce();
+  const existed = approvedUsers.delete(uid) || pendingUsers.delete(uid);
+  privilegedUsers.delete(uid);
+  if (existed) saveApprovalStateSoon();
+  await revokeUserSessionsAndTrustedDevices(uid);
+  return existed;
 }
 
 async function rejectPendingUser(uid) {
@@ -1008,6 +1087,7 @@ async function listApprovedUsers() {
       phone: entry.phone ?? null,
       workType: entry.workType ?? null,
       company: entry.company ?? null,
+      status: approvedUserStatus(entry),
       privileged: privilegedUsers.has(uid),
     }));
 }
@@ -2161,6 +2241,121 @@ async function handleRevokePrivilegeApi(request, response, user) {
 // app.js/cloud-sync.js bunu tek seferlik çağırıp "explanations"/"expenseFees"
 // bölümlerini ve PDF okuma sonucu panellerini normal kullanıcılardan gizlemek
 // için kullanır (bkz. sensitiveOnly alanı).
+async function handleAccountProfileApi(request, response, user) {
+  if (request.method === "GET") {
+    await loadApprovalStateOnce();
+    const entry = approvedUsers.get(user.uid);
+    sendJson(response, 200, {
+      ok: true,
+      profile: entry ? {
+        email: user.email || entry.email || null,
+        fullName: entry.fullName ?? null,
+        phone: entry.phone ?? null,
+        workType: entry.workType ?? null,
+        company: entry.company ?? null,
+        status: approvedUserStatus(entry),
+      } : null,
+    });
+    return;
+  }
+  if (request.method !== "PUT") {
+    sendJson(response, 405, { ok: false, error: "Bu islem desteklenmiyor." });
+    return;
+  }
+  let body;
+  try {
+    body = JSON.parse((await readBody(request, 4096)) || "{}");
+  } catch {
+    sendJson(response, 400, { ok: false, error: "Gecersiz istek." });
+    return;
+  }
+  const profile = await updateOwnUserProfile(user.uid, user.email, body);
+  if (!profile) {
+    sendJson(response, 403, { ok: false, error: "Bu hesap icin profil guncellenemedi." });
+    return;
+  }
+  sendJson(response, 200, { ok: true, profile: {
+    email: profile.email,
+    fullName: profile.fullName,
+    phone: profile.phone,
+    workType: profile.workType,
+    company: profile.company,
+    status: approvedUserStatus(profile),
+  } });
+}
+
+async function handleDeleteOwnAccountApi(request, response, user) {
+  if (request.method !== "POST") {
+    sendJson(response, 405, { ok: false, error: "Bu islem desteklenmiyor." });
+    return;
+  }
+  if (accessRoles.isAdminEmail(user.email)) {
+    sendJson(response, 400, { ok: false, error: "Yonetici hesabi bu ekrandan silinemez." });
+    return;
+  }
+  await deleteManagedUser(user.uid);
+  await logActivityEvent("account-deleted", user.uid, user.email, { ip: clientKeyFor(request), userAgent: request.headers["user-agent"] });
+  sendJson(response, 200, { ok: true });
+}
+
+async function handleManagedUserStatusApi(request, response, user) {
+  if (request.method !== "POST") {
+    sendJson(response, 405, { ok: false, error: "Bu islem desteklenmiyor." });
+    return;
+  }
+  if (!requireAdmin(response, user)) return;
+  let body;
+  try {
+    body = JSON.parse((await readBody(request, 2048)) || "{}");
+  } catch {
+    sendJson(response, 400, { ok: false, error: "Gecersiz istek." });
+    return;
+  }
+  const targetUid = String(body?.uid || "").trim();
+  const status = body?.status === "suspended" ? "suspended" : (body?.status === "active" ? "active" : "");
+  if (!targetUid || !status) {
+    sendJson(response, 400, { ok: false, error: "Kullanici veya durum eksik." });
+    return;
+  }
+  const entry = await setManagedUserStatus(targetUid, status);
+  if (!entry) {
+    sendJson(response, 404, { ok: false, error: "Kullanici bulunamadi." });
+    return;
+  }
+  if (status === "suspended") await revokeUserSessionsAndTrustedDevices(targetUid);
+  await logActivityEvent(status === "suspended" ? "account-suspended" : "account-activated", targetUid, entry.email, { ip: clientKeyFor(request), userAgent: request.headers["user-agent"] });
+  sendJson(response, 200, { ok: true, status });
+}
+
+async function handleDeleteManagedUserApi(request, response, user) {
+  if (request.method !== "POST") {
+    sendJson(response, 405, { ok: false, error: "Bu islem desteklenmiyor." });
+    return;
+  }
+  if (!requireAdmin(response, user)) return;
+  let body;
+  try {
+    body = JSON.parse((await readBody(request, 2048)) || "{}");
+  } catch {
+    sendJson(response, 400, { ok: false, error: "Gecersiz istek." });
+    return;
+  }
+  const targetUid = String(body?.uid || "").trim();
+  if (!targetUid) {
+    sendJson(response, 400, { ok: false, error: "Kullanici kimligi eksik." });
+    return;
+  }
+  await loadApprovalStateOnce();
+  const entry = approvedUsers.get(targetUid) || pendingUsers.get(targetUid);
+  if (!entry || accessRoles.isAdminEmail(entry.email)) {
+    sendJson(response, 400, { ok: false, error: "Bu kullanici silinemez." });
+    return;
+  }
+  await deleteManagedUser(targetUid);
+  await logActivityEvent("account-deleted-by-admin", targetUid, entry.email, { ip: clientKeyFor(request), userAgent: request.headers["user-agent"] });
+  sendJson(response, 200, { ok: true });
+}
+
 async function handleMyRoleApi(request, response, user) {
   if (request.method !== "GET") {
     sendJson(response, 405, { ok: false, error: "Bu işlem desteklenmiyor." });
@@ -2693,6 +2888,10 @@ const API_RATE_LIMITS = {
   "/api/approved-users": { limit: 60, windowMs: 60 * 1000 },
   "/api/grant-privilege": { limit: 30, windowMs: 60 * 1000 },
   "/api/revoke-privilege": { limit: 30, windowMs: 60 * 1000 },
+  "/api/account-profile": { limit: 30, windowMs: 60 * 1000 },
+  "/api/account-delete": { limit: 5, windowMs: 60 * 1000 },
+  "/api/admin-user-status": { limit: 30, windowMs: 60 * 1000 },
+  "/api/admin-user-delete": { limit: 15, windowMs: 60 * 1000 },
   "/api/my-role": { limit: 60, windowMs: 60 * 1000 },
   "/api/report-event": { limit: 60, windowMs: 60 * 1000 },
   "/api/export-authorization": { limit: 12, windowMs: 60 * 1000 },
@@ -2800,6 +2999,22 @@ const server = http.createServer(async (request, response) => {
       await handleRevokePrivilegeApi(request, response, request.user);
       return;
     }
+    if (apiRoute === "/api/account-profile") {
+      await handleAccountProfileApi(request, response, request.user);
+      return;
+    }
+    if (apiRoute === "/api/account-delete") {
+      await handleDeleteOwnAccountApi(request, response, request.user);
+      return;
+    }
+    if (apiRoute === "/api/admin-user-status") {
+      await handleManagedUserStatusApi(request, response, request.user);
+      return;
+    }
+    if (apiRoute === "/api/admin-user-delete") {
+      await handleDeleteManagedUserApi(request, response, request.user);
+      return;
+    }
     if (apiRoute === "/api/my-role") {
       await handleMyRoleApi(request, response, request.user);
       return;
@@ -2889,9 +3104,14 @@ module.exports = {
   accessRoles,
   isUserApproved,
   isUserPrivileged,
+  approvedUserStatus,
   WORK_TYPE_OPTIONS,
   registerPendingUser,
   approveUser,
+  updateOwnUserProfile,
+  setManagedUserStatus,
+  revokeUserSessionsAndTrustedDevices,
+  deleteManagedUser,
   rejectPendingUser,
   listPendingUsers,
   listApprovedUsers,
