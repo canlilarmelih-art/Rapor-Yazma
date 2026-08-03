@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.311 - 2026-08-03 - Emlak Katılım "Banka" açılır listesinde yoktu (hotfix)
+
+- Kullanıcı talebi: "Banka Şablonuyla Kaydet kısmında emlak katılım gözükmüyor."
+- Kök neden: bir önceki commit'te (0.0.310) `templates/emlakkatilim.html` ve `TEMPLATE_REGISTRY` girdisi eklenmişti (export açılır listesi `window.RaporTemplates.listTemplates()`'ten dinamik okunuyor, bu doğruydu) — AMA "Dosya ve Rapor" ekranındaki asıl **"Banka" (case) seçim listesi** (`caseBankOptions`, app.js:53) "Emlak Katılım Bankası A.Ş."yi hiç içermiyordu. Kullanıcı raporun bankasını "Emlak Katılım" olarak seçemediği için `defaultTemplateKeyForBank()` otomatik eşleştirmesi hiç tetiklenmiyordu — canlıda kontrol edilirken (`experify.com.tr`, app.js?v=20260803-1730 doğrulandı, deploy sorunu yoktu) bu net görüldü.
+- **DİKKAT — iki AYRI banka listesi var, karıştırılmasın**: `caseBankOptions` (app.js:53, raporun "Banka" alanı) ile `mortgageCreditorBankNames` (app.js:863, yalnızca takyidat/ipotek lehdarı seçimi için, çok daha uzun genel banka listesi) tamamen farklı amaçlara hizmet ediyor — "Emlak Katılım Bankası A.Ş." `mortgageCreditorBankNames`'te zaten vardı, bu yanıltıcı oldu (ilk taramada oraya bakıp "zaten var" sanıldı).
+- **app.js**: `caseBankOptions`'a `"Emlak Katılım Bankası A.Ş."` eklendi.
+- Cache-buster `app.js?v=20260803-1745`.
+- `npm run verify` tamamı geçti (55 test).
+
 ## 0.0.310 - 2026-08-03 - Yeni banka şablonu: Emlak Katılım
 
 - Kullanıcı talebi: kullanıcının bankaya sunduğu gerçek bir Word raporunu (DENGE GAYRİMENKUL DEĞERLEME VE DANIŞMANLIK A.Ş. tarafından hazırlanmış, "Emlak Katılım Bankası" formatı) ekledi ve "bu formatı incele ve bizim templatimize çevir... ilgili placeholderları sayfada ilgili kısımlara yerleştir. sayfa yapısı attığım worddeki gibi birebir aynı kalacak" dedi.
