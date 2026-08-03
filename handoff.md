@@ -1,5 +1,17 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.299 - 2026-08-03 - "Farklı Kaydet" (JSON) ve "Tüm Tabloları Excel Olarak İndir" ayrı düğmeleri kaldırıldı
+
+- Kullanıcı, "Banka ve Çıktı" ekranının bir önceki ekran görüntüsünde kırmızı kutularla işaretlediği "Farklı Kaydet" ve "Tüm Tabloları Excel Olarak İndir" bloklarının HÂLÂ durduğunu, bu sefer BAŞLIK+DÜĞME dahil tamamının kaldırılmasını istedi ("görseldeki kısımlar halen duruyor bunları da gizle").
+- Gerekçe: 0.0.296'dan beri "Banka Şablonuyla Kaydet" zaten Word+JSON+Excel(+Ziraat) dördünü TEK bir .zip'te üretiyor (`buildBankTemplateZipBundle`) — bu iki ayrı düğme artık tekrarcıydı.
+- **app.js**: `createOutputExportPanel()`'den "Farklı Kaydet" (JSON) bloğu tamamen kaldırıldı; `appendTablesXlsxExportBlock()` fonksiyonu ("Tüm Tabloları Excel Olarak İndir") ve çağrısı tamamen silindi. Artık kullanılmayan `exportReportJson()` (yalnızca bu düğmenin tıklama işleyicisinden çağrılıyordu) da silindi.
+- **ÖNEMLİ — silinmeyenler**: `buildReportJsonExportPayload()` ve `window.RaporReportTablesXlsx.exportAllTables()` KORUNDU — zip paketleme akışı (`buildBankTemplateZipBundle`) bu ikisini hâlâ `{download:false}` ile doğrudan çağırıyor; düğmeler kalksa da alttaki dışa aktarma mantığı sağlam.
+- Panelin üstündeki durum mesajı `<span data-output-export-status>` artık "Banka Şablonuyla Kaydet" bloğunun kendi başlık satırına taşındı (`appendBankTemplateExportBlock` artık `status` parametresi almıyor, kendi DOM'undan buluyor) — önceki panel artık boş bir başlık satırı bırakmıyor.
+- `tools/check-basic.js`'deki ilgili regresyon guard'ı güncellendi: artık `data-export-json`/`data-export-tables-xlsx`'in YOK olduğunu, ama `buildReportJsonExportPayload`/`buildBankTemplateZipBundle`'ın hâlâ VAR olduğunu doğruluyor.
+- `npm run verify` tamamı geçti (44 test).
+- Cache-buster `app.js?v=20260803-0500`'e yükseltildi.
+- **Paralel oturum notu**: bu commit sırasında aynı çalışma dizininde başka bir oturum `index.html`/`server.js`/`styles.css`'e TCMB döviz kuru özelliği (bkz. handoff.md'nin daha eski bir bölümündeki "0.0.298 - TCMB Güncel Döviz Kurları" girdisi) ekliyordu; yalnızca kendi `app.js`/`tools/check-basic.js` değişiklikleri VE `index.html`'deki tek satırlık cache-buster satırı stage'lendi, diğer dosyalar/satırlar dokunulmadan bırakıldı.
+
 ## 0.0.297 - 2026-08-03 - Banka ve Çıktı bölümündeki açıklama metinleri kaldırıldı
 
 - Kullanıcı, "Banka ve Çıktı" ekranının bir ekran görüntüsünü kırmızı "GİZLE" kutucuklarıyla işaretleyip paylaştı — altı ayrı yerdeki gri açıklama/ipucu paragrafını hedef alıyordu.

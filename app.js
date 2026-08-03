@@ -12943,7 +12943,7 @@ function restoreStateFromImportedJson(payload, fileName = "") {
   splitReviewedDocumentsDescriptionsIfNeeded();
   saveState();
   setSyncState("JSON yüklendi", "Taslak verileri bu cihaza aktarıldı.", "saved");
-  // Faz 3: paket kökünde activeSectionId varsa (bkz. exportReportJson,
+  // Faz 3: paket kökünde activeSectionId varsa (bkz. buildReportJsonExportPayload,
   // cloud/report-library.js), kullanıcı diğer cihazda kaldığı bölümden devam
   // eder; yoksa (eski dosyalar / dış kaynak) her zamanki gibi 1. bölümden başlar.
   const requestedSectionId = typeof payload?.activeSectionId === "string" ? payload.activeSectionId : "";
@@ -12981,61 +12981,19 @@ function syncRenderedAddressFields() {
   });
 }
 
+// Kullanıcı talebi: "Farklı Kaydet" (JSON) ve "Tüm Tabloları Excel Olarak
+// İndir" ayrı düğmeleri kaldırıldı — "Banka Şablonuyla Kaydet" artık bu
+// ikisini (Word ile birlikte) zaten tek bir .zip'te üretiyor
+// (bkz. buildBankTemplateZipBundle), bu yüzden ayrı düğmeler tekrarcı hale
+// geldi. Alttaki dışa aktarma fonksiyonları (buildReportJsonExportPayload,
+// window.RaporReportTablesXlsx.exportAllTables) SİLİNMEDİ — zip paketleme
+// akışı onları hâlâ {download:false} ile doğrudan çağırıyor.
 function createOutputExportPanel() {
   const panel = document.createElement("div");
   panel.className = "subsection output-export-panel";
-  panel.innerHTML = `
-    <div class="subsection-title-row">
-      <div>
-        <h4>Farklı Kaydet</h4>
-      </div>
-      <span class="export-status" data-output-export-status aria-live="polite"></span>
-    </div>
-    <div class="output-export-actions">
-      <button type="button" class="secondary-button" data-export-json>JSON olarak farklı kaydet</button>
-    </div>
-  `;
-  const status = panel.querySelector("[data-output-export-status]");
-  panel.querySelector("[data-export-json]").addEventListener("click", () => {
-    if (!confirmExportWithMissingFields()) return;
-    exportReportJson();
-    showOutputExportStatus(status, "JSON hazırlandı.");
-  });
   panel.append(createExpenseFeesSummaryPanel());
-  appendBankTemplateExportBlock(panel, status);
-  appendTablesXlsxExportBlock(panel, status);
+  appendBankTemplateExportBlock(panel);
   return panel;
-}
-
-// Rapor genelindeki tüm tabloları (Malikler, Beyanlar/Şerhler/İpotekler,
-// İncelenen Belgeler, Emsaller) tek bir Excel dosyası olarak indirir.
-// Motor yüklenmemişse blok hiç görünmez.
-function appendTablesXlsxExportBlock(panel, status) {
-  if (!window.RaporReportTablesXlsx) return;
-  const block = document.createElement("div");
-  block.className = "output-template-export";
-  block.innerHTML = `
-    <div class="subsection-title-row" style="margin-top:14px;">
-      <div>
-        <h4>Tüm Tabloları Excel Olarak İndir</h4>
-      </div>
-    </div>
-    <div class="output-export-actions">
-      <button type="button" class="secondary-button" data-export-tables-xlsx>Tüm Tabloları Excel Olarak İndir</button>
-    </div>
-  `;
-  block.querySelector("[data-export-tables-xlsx]").addEventListener("click", () => {
-    try {
-      saveState();
-      const result = window.RaporReportTablesXlsx.exportAllTables();
-      showOutputExportStatus(status, `${result.sheetCount} sayfa, ${result.rowCount} satır indirildi.`);
-    } catch (error) {
-      console.error("Tüm tablolar Excel dışa aktarma hatası:", error);
-      showOutputExportStatus(status, "Excel dosyası hazırlanamadı.");
-      window.alert(`Excel dosyası hazırlanamadı: ${error?.message || error}`);
-    }
-  });
-  panel.append(block);
 }
 
 // Masraf yazısı ücret kalemlerinin (Rapor/Değerleme Ücreti, KDV oranları,
@@ -13139,7 +13097,7 @@ function updateExpenseFeesSummaryPanel() {
 
 // Banka şablonlarıyla dışa aktarma (templates/*.html + src/templates/template-engine.js).
 // Motor yüklenmemişse blok hiç görünmez; app.js tek başına da çalışmaya devam eder.
-function appendBankTemplateExportBlock(panel, status) {
+function appendBankTemplateExportBlock(panel) {
   if (!window.RaporTemplates) return;
   const block = document.createElement("div");
   block.className = "output-template-export";
@@ -13152,6 +13110,7 @@ function appendBankTemplateExportBlock(panel, status) {
       <div>
         <h4>Banka Şablonuyla Kaydet</h4>
       </div>
+      <span class="export-status" data-output-export-status aria-live="polite"></span>
     </div>
     <div class="output-export-actions">
       <select data-template-select class="text-input" style="max-width:320px;">${options}</select>
@@ -13159,6 +13118,7 @@ function appendBankTemplateExportBlock(panel, status) {
     </div>
   `;
   const select = block.querySelector("[data-template-select]");
+  const status = block.querySelector("[data-output-export-status]");
   const defaultKey = window.RaporTemplates.defaultTemplateKeyForBank(state.fields.bank, isLandPropertyForBankTemplate());
   if (defaultKey) select.value = defaultKey;
   block.querySelector("[data-export-template]").addEventListener("click", async () => {
@@ -13292,12 +13252,6 @@ function buildReportJsonExportPayload() {
     content: JSON.stringify(payload, null, 2),
     mimeType: "application/json;charset=utf-8",
   };
-}
-
-function exportReportJson() {
-  saveState();
-  const { fileName, content, mimeType } = buildReportJsonExportPayload();
-  downloadTextFile(fileName, content, mimeType);
 }
 
 function downloadTextFile(fileName, content, mimeType) {

@@ -933,15 +933,25 @@ function main() {
   // Matrisi" gibi HTML tablolari kacis karakterli ham metin olarak
   // basiyordu ("Acikla Metinleri" bolumu). Asil resmi cikti "Banka
   // Sablonuyla Kaydet" (appendBankTemplateExportBlock) uzerinden gelir.
+  // Kullanici talebi: ayri "Farkli Kaydet" (JSON) ve "Tum Tablolari Excel
+  // Olarak Indir" dugmeleri de kaldirildi — "Banka Sablonuyla Kaydet"
+  // zaten Word+JSON+Excel(+Ziraat) ikisini tek zip'te uretiyor, ayri
+  // dugmeler tekrarci hale gelmisti. Alttaki export fonksiyonlari
+  // (buildReportJsonExportPayload, window.RaporReportTablesXlsx) SILINMEDI
+  // — zip akisi onlari dogrudan {download:false} ile cagiriyor.
   assert(
     appJs.includes("createOutputExportPanel") &&
-      appJs.includes("exportReportJson") &&
-      appJs.includes("data-export-json") &&
+      appJs.includes("buildReportJsonExportPayload") &&
+      appJs.includes("buildBankTemplateZipBundle") &&
+      !appJs.includes("data-export-json") &&
+      !appJs.includes("data-export-tables-xlsx") &&
       !appJs.includes("data-export-word") &&
       !appJs.includes("data-export-pdf") &&
+      !appJs.includes("function exportReportJson") &&
+      !appJs.includes("function appendTablesXlsxExportBlock") &&
       !appJs.includes("function exportReportWord") &&
       !appJs.includes("function exportReportPdf"),
-    "Banka ve Cikti bolumunde JSON farkli kaydet akisi bulunamadi veya kaldirilan Word/PDF butonlari geri gelmis."
+    "Banka ve Cikti bolumunde ayri JSON/Excel dugmeleri kaldirilmamis veya zip akisinin ihtiyac duydugu fonksiyonlar yanlislikla silinmis."
   );
   assert(
     appJs.includes("exportZiraatEkTabloWithBankTemplateIfNeeded") &&
