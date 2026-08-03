@@ -161,6 +161,27 @@ takyidat/ipotek lehdarı seçimi için, çok daha uzun) ile KARIŞTIRILMASIN.
 `tools/test-server-template-rendering.js` artık her `TEMPLATE_REGISTRY`
 anahtarının sunucuda gerçek bir dosyaya karşılık geldiğini doğruluyor.
 
+## templates/emlakkatilim.docx'i Word'de düzenledikten sonra (0.0.315, 2026-08-04)
+
+`templates/emlakkatilim.docx` (aşağıdaki bölüme bakın) MUTLAKA STORED
+(sıkıştırmasız) zip olarak paketli kalmalı — `src/exports/docx-fill.js`'in
+`readStoredZip`'i bağımlılıksız çalışmak için DEFLATE girişte kasıtlı
+hata fırlatır. Microsoft Word bir .docx'i HER kaydettiğinde zip'i
+otomatik olarak DEFLATE ile yeniden paketler (STORED bilgisini korumaz).
+Yani: kullanıcı ya da başka biri bu dosyayı Word'de açıp kaydederse,
+commit'lemeden ÖNCE mutlaka STORED'a yeniden paketlenmeli, yoksa hem
+`npm run verify` (`tools/test-docx-fill.js`) kırılır hem de canlıda
+export "Şablon sıkıştırmasız paketlenmeli" hatası verir:
+```python
+import zipfile
+with zipfile.ZipFile("templates/emlakkatilim.docx") as zf:
+    names = zf.namelist(); data = {n: zf.read(n) for n in names}
+with zipfile.ZipFile("templates/emlakkatilim.docx", "w", compression=zipfile.ZIP_STORED) as zo:
+    for n in names: zo.writestr(n, data[n])
+```
+İçerik/placeholder'lar birebir korunur, yalnızca sıkıştırma yöntemi
+değişir. Değişiklikten sonra `node tools/test-docx-fill.js` ile doğrula.
+
 ## Gerçek .docx banka şablonu: Emlak Katılım (0.0.313, 2026-08-03)
 
 Kullanıcı "word formatını bozmamalıydın logolar sayfa yapısı çerçeveler...

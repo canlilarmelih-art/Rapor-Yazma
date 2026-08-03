@@ -1,5 +1,13 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.315 - 2026-08-04 - Emlak Katılım .docx: kullanıcının Word'de yaptığı düzenlemeler + STORED yeniden paketleme
+
+- Kullanıcı talebi: "emlak katılım şablonunda bazı düzenlemeler yaptım onları push et" — kullanıcı `templates/emlakkatilim.docx`'i Microsoft Word'de açıp elle düzenlemiş (yeni {{BLOCK_NO}}, {{CARPARK}}, {{LEGAL_USAGE_NATURE}}, {{TOTAL_CURRENT_AREA}}, {{TOTAL_FLOORS}}, {{UAVT}} placeholder'ları eklenmiş — 1.1 Tapu Bilgileri tablosuna daha fazla alan bağlanmış).
+- **Sorun**: Word bir .docx'i her kaydettiğinde zip'i yeniden DEFLATE (sıkıştırmalı) paketler — bizim `docx-fill.js`/`xlsx-fill.js` motorumuz ise bağımlılıksız çalışmak için yalnızca STORED (sıkıştırmasız) zip okuyabiliyor, `readStoredZip` DEFLATE girişte kasıtlı olarak hata fırlatıyor ("Şablon sıkıştırmasız paketlenmeli"). Kullanıcının kaydettiği dosya bu yüzden `tools/test-docx-fill.js`'i kırdı.
+- **Çözüm**: dosya Python `zipfile` ile TÜM girişleri (26'sı DEFLATE, birkaçı zaten STORED) okunup `ZIP_STORED` ile yeniden paketlendi — içerik/placeholder'lar BİREBİR korunarak yalnızca sıkıştırma yöntemi değiştirildi. Yeni token'ların tümü `resolveToken()` ile `ok:true` döndüğü doğrulandı (test ortamında).
+- **UYARI (gelecekte)**: `templates/emlakkatilim.docx` Word'de düzenlenip kaydedildiğinde HER SEFERİNDE bu STORED-yeniden-paketleme adımı gerekir — aksi halde `npm run verify` (`test-docx-fill.js`) kırılır VE canlıda export "Şablon sıkıştırmasız paketlenmeli" hatası verir. (`python -c "import zipfile; ..."` ile ZIP_STORED yeniden yazımı, bkz. bu commit.)
+- `npm run verify` tamamı geçti (56 test).
+
 ## 0.0.314 - 2026-08-04 - Emlak Katılım .docx: kapsam genişletildi (Çevre Analizi/Kira Kabiliyeti bold-seçim, Emsal kartları, Malikler, Olumlu/Olumsuz Faktörler)
 
 - Kullanıcı talebi: "tabikide otomatik doldur. ikilemde kaldığın kısımda bana sor" — 0.0.313'te yalnızca kapak özet tablosu doluyordu; kullanıcı geri kalan bölümlerin de otomatikleştirilmesini istedi.
