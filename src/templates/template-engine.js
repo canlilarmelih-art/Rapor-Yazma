@@ -24,8 +24,7 @@
    ===================================================================== */
 (function () {
   // --------------------------------------------------------------
-  // Şablon kayıt defteri: kullanıcı templates/ içine yeni bir .html
-  // koyup buraya (veya window.RaporTemplates.register ile) ekleyebilir.
+  // Şablon kayıt defteri yalnızca kaynak koddan yönetilir.
   // bank: state.fields.bank değeriyle eşleşirse varsayılan seçilir.
   // --------------------------------------------------------------
   const TEMPLATE_REGISTRY = [
@@ -966,6 +965,13 @@
     return { values, missing };
   }
 
+  function buildServerValuationInput() {
+    return {
+      legalValue: state.fields?.legalValue ?? "",
+      currentValue: state.fields?.currentValue ?? "",
+    };
+  }
+
   function listTemplates() {
     return TEMPLATE_REGISTRY.map((entry) => ({ ...entry }));
   }
@@ -1014,7 +1020,11 @@
       const renderResponse = await fetchProtectedTemplateApi("/api/report-template-render", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ templateKey: entry.key, tokenValues: values }),
+        body: JSON.stringify({
+          templateKey: entry.key,
+          tokenValues: values,
+          valuationInput: buildServerValuationInput(),
+        }),
       });
       const renderPayload = await renderResponse.json().catch(() => null);
       if (!renderResponse.ok || typeof renderPayload?.content !== "string") {
@@ -1028,25 +1038,30 @@
         : "";
       const content = packaged || html;
       if (download) safeCall("downloadTextFile", fileName, content, mimeType);
-      return { fileName, missing, title: entry.title, content, mimeType };
+      return {
+        fileName,
+        missing,
+        title: entry.title,
+        content,
+        mimeType,
+        valuationVerification: renderPayload.valuationVerification || null,
+      };
     } finally {
       reportImageAssetsCache = [];
     }
   }
+
+  // Çözümleyiciler üretimde global API'ye verilmez. Yalnızca Node regresyon
+  // testleri, tarayıcıya hiç ulaşmayan bu yardımcıları açabilir.
+  const testOnlyApi = globalThis?.process?.env?.NODE_ENV === "test"
+    ? { fillTemplate, resolveTemplateTokenValues, resolveToken, foldTokenName }
+    : {};
 
   window.RaporTemplates = {
     listTemplates,
     defaultTemplateKeyForBank,
     resolveTemplateKeyForExport,
     exportTemplate,
-    fillTemplate,
-    resolveTemplateTokenValues,
-    resolveToken,
-    foldTokenName,
-    register(entry) {
-      if (entry && entry.key && entry.file) TEMPLATE_REGISTRY.push(entry);
-    },
-    // Test/denetim için: bilinen tüm takma adların katlanmış listesi
-    _knownAliases: () => Object.keys(LEGACY_ALIASES),
+    ...testOnlyApi,
   };
 })();

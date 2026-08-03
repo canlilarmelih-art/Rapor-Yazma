@@ -2208,6 +2208,79 @@ function renderPrivateTemplate(templateText, tokenValues) {
     });
 }
 
+function normalizeServerTemplateTokenName(value) {
+  return String(value || "")
+    .replace(/[İIıi]/g, "I")
+    .replace(/[Çç]/g, "C")
+    .replace(/[Ğğ]/g, "G")
+    .replace(/[Öö]/g, "O")
+    .replace(/[Şş]/g, "S")
+    .replace(/[Üü]/g, "U")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, "");
+}
+
+function parseServerValuationNumber(value) {
+  let text = String(value ?? "").trim().replace(/\s+/g, "");
+  if (!text) return Number.NaN;
+  text = text.replace(/[^0-9,.-]/g, "");
+  const lastComma = text.lastIndexOf(",");
+  const lastDot = text.lastIndexOf(".");
+  if (lastComma !== -1 && lastDot !== -1) {
+    text = lastComma > lastDot ? text.replace(/\./g, "").replace(",", ".") : text.replace(/,/g, "");
+  } else if (lastComma !== -1) {
+    const decimals = text.length - lastComma - 1;
+    text = decimals === 3 && text.indexOf(",") === lastComma ? text.replace(/,/g, "") : text.replace(",", ".");
+  } else if ((text.match(/\./g) || []).length > 1) {
+    text = text.replace(/\./g, "");
+  }
+  const parsed = Number(text);
+  return Number.isFinite(parsed) && parsed > 0 && parsed <= 1e15 ? parsed : Number.NaN;
+}
+
+function formatServerValuationMoney(value) {
+  return Number.isFinite(value) && value > 0
+    ? `${Math.round(value).toLocaleString("tr-TR")} TL`
+    : "";
+}
+
+function calculateServerDerivedValuation(valuationInput) {
+  const legalValue = parseServerValuationNumber(valuationInput?.legalValue);
+  const currentValue = parseServerValuationNumber(valuationInput?.currentValue);
+  const urgent = (value) => Number.isFinite(value) ? Math.round((value * 0.9) / 50000) * 50000 : Number.NaN;
+  return {
+    version: 1,
+    rule: "market-value-x-0.90-rounded-to-50000",
+    legalUrgentSaleValue: formatServerValuationMoney(urgent(legalValue)),
+    currentUrgentSaleValue: formatServerValuationMoney(urgent(currentValue)),
+  };
+}
+
+function applyServerDerivedValuationTokens(tokenValues, valuationInput) {
+  const derived = calculateServerDerivedValuation(valuationInput);
+  const overrides = new Map([
+    ["LEGALURGENTSALEVALUE", derived.legalUrgentSaleValue],
+    ["YASALACILSATISDEGERI", derived.legalUrgentSaleValue],
+    ["CURRENTURGENTSALEVALUE", derived.currentUrgentSaleValue],
+    ["MEVCUTACILSATISDEGERI", derived.currentUrgentSaleValue],
+  ]);
+  for (const key of Object.keys(tokenValues)) {
+    const value = overrides.get(normalizeServerTemplateTokenName(key));
+    if (value !== undefined) tokenValues[key] = value;
+  }
+  return derived;
+}
+
+async function createDerivedValuationVerification(user, templateKey, derived) {
+  const issuedAt = new Date().toISOString();
+  const accountFingerprint = crypto.createHash("sha256").update(user.uid).digest("hex").slice(0, 16);
+  const verification = { version: 1, templateKey, issuedAt, accountFingerprint, derived };
+  verification.signature = crypto.createHmac("sha256", await getExportSigningKey())
+    .update(JSON.stringify(verification))
+    .digest("base64url");
+  return verification;
+}
+
 async function readPrivateTemplate(templateKey) {
   const filePath = privateTemplatePathForKey(templateKey);
   if (!filePath) return null;
@@ -2272,7 +2345,20 @@ async function handleReportTemplateRenderApi(request, response, user) {
     sendJson(response, 413, { ok: false, error: "Rapor alanlari izin verilen boyutu asiyor." });
     return;
   }
-  sendJson(response, 200, { ok: true, content: renderPrivateTemplate(templateText, acceptedValues) });
+  // Kullanici piyasa degerini uzman takdiriyle girer; ondan tureyen acil satis
+  // degerleri ise resmi cikti icin yalnizca sunucunun kuralindan gelir.
+  const derivedValuation = applyServerDerivedValuationTokens(acceptedValues, body?.valuationInput);
+  const valuationVerification = await createDerivedValuationVerification(user, templateKey, derivedValuation);
+  await logActivityEvent("report-derived-valuation-rendered", user.uid, user.email, {
+    templateKey,
+    legalUrgentSaleValue: derivedValuation.legalUrgentSaleValue || null,
+    currentUrgentSaleValue: derivedValuation.currentUrgentSaleValue || null,
+  });
+  sendJson(response, 200, {
+    ok: true,
+    content: renderPrivateTemplate(templateText, acceptedValues),
+    valuationVerification,
+  });
 }
 
 async function handleLoginEventsApi(request, response, user) {
@@ -2584,6 +2670,10 @@ module.exports = {
   privateTemplatePathForKey,
   collectTemplateTokens,
   renderPrivateTemplate,
+  normalizeServerTemplateTokenName,
+  parseServerValuationNumber,
+  calculateServerDerivedValuation,
+  applyServerDerivedValuationTokens,
   handleReportTemplateTokensApi,
   handleReportTemplateRenderApi,
   generateMfaCode,

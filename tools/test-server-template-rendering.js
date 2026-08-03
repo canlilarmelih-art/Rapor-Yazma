@@ -20,6 +20,13 @@ const rendered = server.renderPrivateTemplate("<!-- gizli -->{{CITY}} / {{EMPTY}
   EMPTY: "",
 });
 assert.equal(rendered, "Bursa /  / {{MISSING}}", "Sunucu sablon cozumlemesi alanlari veya eksik token'i bozdu.");
+const derived = server.calculateServerDerivedValuation({ legalValue: "2.900.000", currentValue: "3.120.000" });
+assert.equal(derived.legalUrgentSaleValue, "2.600.000 TL", "Yasal acil satis degeri sunucu kuraliyla uretilmedi.");
+assert.equal(derived.currentUrgentSaleValue, "2.800.000 TL", "Mevcut acil satis degeri sunucu kuraliyla uretilmedi.");
+const overridden = { LEGAL_URGENT_SALE_VALUE: "yanlis", CURRENT_URGENT_SALE_VALUE: "yanlis" };
+server.applyServerDerivedValuationTokens(overridden, { legalValue: "2.900.000", currentValue: "3.120.000" });
+assert.equal(overridden.LEGAL_URGENT_SALE_VALUE, "2.600.000 TL", "Sunucu turetilmis yasal degeri token'a zorlamadi.");
+assert.equal(overridden.CURRENT_URGENT_SALE_VALUE, "2.800.000 TL", "Sunucu turetilmis mevcut degeri token'a zorlamadi.");
 assert.equal(typeof server.handleReportTemplateTokensApi, "function", "Sablon token API'si disa aktarilmamis.");
 assert.equal(typeof server.handleReportTemplateRenderApi, "function", "Sunucu sablon render API'si disa aktarilmamis.");
 assert.ok(
@@ -27,5 +34,18 @@ assert.ok(
     engineSource.includes("Authorization", engineSource.indexOf("async function fetchProtectedTemplateApi")),
   "Sablon motoru sunucu API'sine Firebase yetkilendirmesiyle baglanmiyor.",
 );
+[
+  "fillTemplate,",
+  "resolveTemplateTokenValues,",
+  "resolveToken,",
+  "foldTokenName,",
+  "_knownAliases:",
+].forEach((publicDebugMember) => {
+  assert.equal(
+    engineSource.includes(`window.RaporTemplates = {\n    ${publicDebugMember}`),
+    false,
+    `Placeholder cozumleme/debug yuzeyi istemci API'sine acik olmamali: ${publicDebugMember}`,
+  );
+});
 
 console.log("Sunucu tarafli banka sablonu cozumleme testi tamam.");

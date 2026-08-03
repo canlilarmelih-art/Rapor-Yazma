@@ -91,6 +91,7 @@ const engineSource = fs.readFileSync(path.join(appDir, "src", "templates", "temp
 });
 
 const sandboxWindow = {};
+process.env.NODE_ENV = "test";
 const stubState = {
   fields: {
     city: "Bursa",

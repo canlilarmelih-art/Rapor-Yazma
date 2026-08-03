@@ -7026,3 +7026,16 @@ Doğrulama: `node --check app.js`, `node tools/check-basic.js`, `git diff --chec
 - Onayli kullanici, sunucudan sadece kullanilacak placeholder adlarini alir; alanlar tarayicida hesaplanir ve sablon metni sunucuda doldurulur.
 - Yeni `/api/report-template-tokens` ve `/api/report-template-render` uclari oturum, kullanici onayi, CSRF ve hiz limiti ile korunur.
 - Bu ilk gecis bankaya ozel sablon govdesini tarayicidan kaldirir. Sonraki asamada kritik degerleme hesaplari da sunucuda yeniden hesaplanacak; istemci yalnizca form ve onizleme katmani olarak kalacaktir.
+
+## 0.0.304 - 2026-08-03 - Sunucu Tarafli Turetilmis Degerleme Kontrolu
+
+- Banka sablonu olusturulurken yasal ve mevcut acil satis degerleri artik tarayicidan kabul edilmez.
+- Sunucu, uzmanin girdigi yasal/mevcut piyasa degerlerini kaynak alir; `%10 indirim` ve `50.000 TL` yuvarlama kuralini kendisi uygular.
+- Bu turetilmis degerler, sunucu imzali `experify-degerleme-dogrulama.json` olarak resmi ZIP paketine eklenir.
+- Formdaki anlik hesaplar ve kaydetme davranisi yerelde kaldigi icin kullanici deneyimine ag gecikmesi eklenmez; yalnizca zaten var olan banka sablonu olusturma istegi bu kontrolden gecer.
+
+## 0.0.305 - 2026-08-03 - Placeholder Cozumleme Yuzeyi Sertlestirmesi
+
+- Placeholder katalog ekrani zaten yalnizca yoneticiye aciktir; istemcideki `RaporTemplates` global API'sinden token cozumleme, tum takma adlari listeleme ve dinamik sablon kaydetme/debug metotlari kaldirildi.
+- Canli surumde bu dosya zaten minify edilir; disariya yalnizca sablon secimi ve korumali sunucu render istegini baslatmak icin gereken dar API kalir.
+- Formdaki alan girisleri, otomatik kayit ve anlik hesaplar degismedi. Sonraki adim, yuksek degerli placeholder/metin kurallarinin parca parca sunucu tarafinda otoriter olarak cozumlenmesidir.

@@ -13243,6 +13243,12 @@ async function buildBankTemplateZipBundle(templateKey, options = {}) {
       bytes: textToUint8Array(JSON.stringify(options.exportCertificate, null, 2)),
     });
   }
+  if (templateResult.valuationVerification) {
+    entries.push({
+      name: "experify-degerleme-dogrulama.json",
+      bytes: textToUint8Array(JSON.stringify(templateResult.valuationVerification, null, 2)),
+    });
+  }
 
   if (window.RaporReportTablesXlsx?.exportAllTables) {
     try {
