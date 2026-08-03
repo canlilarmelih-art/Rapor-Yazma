@@ -29838,26 +29838,32 @@ function buildComparableFeatureComparisonText(row) {
 }
 
 // İş Bankası ve Kuveyt Türk raporlarında emsal telefon numarası tam 10
-// haneli (başında 0 olmadan, boşluk/parantez/tire olmadan) girilmelidir —
-// kullanıcı emsal matrisine "05321111212" / "0 (532) 111 12 12" /
-// "5321111212" gibi serbest formatta girebilir, çıktıya basılırken bu iki
-// banka için otomatik 10 haneye normalize edilir (kullanıcı talebi).
-function shouldNormalizeComparablePhoneForBank() {
+// haneli (başında 0 olmadan, boşluk/parantez/tire olmadan); Halkbank
+// raporlarında ise tam 11 haneli (başında 0 İLE, boşluk/parantez/tire
+// olmadan) girilmelidir — kullanıcı emsal matrisine "05321111212" /
+// "0 (532) 111 12 12" / "5321111212" gibi serbest formatta girebilir,
+// çıktıya basılırken bu bankalar için otomatik normalize edilir
+// (kullanıcı talebi).
+function getComparablePhoneNormalizationDigitsForBank() {
   const bank = foldTurkish(state.fields.bank || "");
-  return bank.includes("IS BANKASI") || bank.includes("TURKIYE IS BANKASI") || bank.includes("KUVEYT TURK");
+  if (bank.includes("IS BANKASI") || bank.includes("TURKIYE IS BANKASI") || bank.includes("KUVEYT TURK")) return 10;
+  if (isHalkbankSelectedForReport()) return 11;
+  return 0;
 }
 
-function normalizeComparablePhoneForBank(value) {
+function normalizeComparablePhoneForBank(value, targetDigitCount) {
   let digits = String(value || "").replace(/\D+/g, "");
   if (digits.length === 12 && digits.startsWith("90")) digits = digits.slice(2);
-  if (digits.length === 11 && digits.startsWith("0")) digits = digits.slice(1);
+  if (targetDigitCount === 10 && digits.length === 11 && digits.startsWith("0")) digits = digits.slice(1);
+  if (targetDigitCount === 11 && digits.length === 10 && !digits.startsWith("0")) digits = `0${digits}`;
   return digits;
 }
 
 function formatComparablePhoneForOutput(value) {
   const text = String(value || "").trim();
   if (!text) return "";
-  return shouldNormalizeComparablePhoneForBank() ? normalizeComparablePhoneForBank(text) : text;
+  const targetDigitCount = getComparablePhoneNormalizationDigitsForBank();
+  return targetDigitCount ? normalizeComparablePhoneForBank(text, targetDigitCount) : text;
 }
 
 function buildComparableContactLine(row) {

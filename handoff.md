@@ -1,5 +1,13 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.309 - 2026-08-03 - Halkbank emsal telefonu artık 11 haneli (boşluksuz)
+
+- Kullanıcı talebi: "05358474084 kullanıcı emsal telefon numarasına ne şekilde yazarsa yazsın halkbank emsal telefon numarası 11 haneli olarak arada boşluk yada parantez olmadan çıkmalı."
+- **app.js**: Daha önce yalnızca İş Bankası ve Kuveyt Türk için vardı (emsal telefonu 10 haneye, başında 0 OLMADAN normalize). `shouldNormalizeComparablePhoneForBank()` → `getComparablePhoneNormalizationDigitsForBank()` olarak genelleştirildi (banka adına göre hedef hane sayısı: İş Bankası/Kuveyt Türk -> 10, Halkbank -> 11, diğerleri -> 0/kapalı, mevcut `isHalkbankSelectedForReport()` yeniden kullanıldı). `normalizeComparablePhoneForBank(value)` → `normalizeComparablePhoneForBank(value, targetDigitCount)`: hedef 11 ise ve numara 10 haneyse başına "0" eklenir; hedef 10 ise ve numara 11 haneyse baştaki "0" atılır. `formatComparablePhoneForOutput()` bu yeni fonksiyonları kullanır, davranışı değişmedi (tek çağıran).
+- `tools/test-comparable-phone-bank-normalization.js` yeniden yazıldı: yeniden adlandırılan fonksiyonları + Halkbank'ın 11 haneli (başında 0 ile) normalize edildiğini, diğer bankaların hâlâ etkilenmediğini doğrular.
+- Cache-buster `app.js?v=20260803-1645`.
+- `npm run verify` tamamı geçti (55 test).
+
 ## 0.0.308 - 2026-08-03 - Halkbank "Ruhsat Özellikleri" 4 satırdan 21 satıra çıktı
 
 - Kullanıcı talebi (ekran görüntüsüyle): "halkbank bu bölüm bu kadar seçenek varken bizde sadece 3 satır veri var bunu düzeltelim" — Halkbank'ın kendi sistemindeki "Ruhsat Özellikleri ve Dosya İncelemelerine Ait Bilgiler" ekranında ~21 alan var, bizim `templates/halkbank.html`'de yalnızca 4 satır vardı.
