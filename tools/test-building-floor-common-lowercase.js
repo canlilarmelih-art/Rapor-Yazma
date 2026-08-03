@@ -68,6 +68,7 @@ function makeElementStub(tag) {
     min: "",
     step: "",
     inputMode: "",
+    dataset: {},
     children: [],
     _listeners: {},
     append(...nodes) {

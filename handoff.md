@@ -1,5 +1,15 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.307 - 2026-08-03 - Kat Satırları tablosunda Tab tuşu artık aşağı iner
+
+- Kullanıcı talebi: "ana taşınmaz katları kaydet dedikten sonra çıkan listede TAB tuşu yine sağa geçiyor. burada da emsallerde olduğu gibi taba basıldığında alt hücreye geçmesini istiyorum."
+- **app.js**: "Ana Taşınmaz Teknik Bilgileri" → kat adedi girilip Kaydet'e basıldıktan sonra oluşan "Kat Satırları" tablosu (`createBuildingFloorRowsTable()`) satır-bazlı (row-major) bir `<table>`: dış döngü katlar (`<tr>`), iç döngü birim türü sütunları (`<td>`) — bu yüzden tarayıcının doğal Tab sırası aynı sütunda aşağı değil, sağdaki bir sonraki sütuna atlıyordu. Emsaller'deki `attachComparableColumnTabNavigation` ile AYNI mantıkla (ayrı, kendi kendine yeten bir fonksiyon olarak — mevcut testin narrow-slice extraction'ını bozmamak için paylaşımlı bir yardımcıya refactor edilmedi) yeni `attachBuildingFloorColumnTabNavigation(shell)` eklendi: her girdiye `data-building-floor-row`/`data-building-floor-column` atanır, Tab tuşu `keydown` ile yakalanıp odak önce aynı sütunda (birim türü) aşağı/yukarı, sütun sınırında bir sonraki/önceki sütunun ilk/son katına yönlendirilir.
+- `createBuildingFloorRowsTable()` artık tabloyu `shell`e ekledikten hemen sonra `attachBuildingFloorColumnTabNavigation(shell)` çağırıyor.
+- Mevcut `tools/test-building-floor-common-lowercase.js`'deki DOM stub'ına (`makeElementStub`) eksik olan `dataset: {}` alanı eklendi — yeni `input.dataset.buildingFloorRow/...Column` atamaları olmadan bu test `TypeError: Cannot set properties of undefined` ile kırılıyordu.
+- Yeni `tools/test-building-floor-tab-navigation.js`: `attachComparableColumnTabNavigation` testiyle aynı VM-izolasyon + stub-shell deseniyle, aynı sütunda ileri/geri Tab, sütun sınırında bir sonraki/önceki sütuna geçiş ve tablo dışına normal çıkışın engellenmeMEsi senaryolarını doğrular. `package.json`'daki `test` zincirine eklendi.
+- Cache-buster `app.js?v=20260803-1500`'e yükseltildi.
+- `npm run verify` tamamı geçti (53 test).
+
 ## 0.0.306 - 2026-08-03 - "PGA 475 Değeri" alanı kaldırıldı
 
 - Kullanıcı talebi: "ana taşınmaz bölümünde yer alan PGA 475 Değeri kısmını kaldır. bu değer e devlet üzerinden alınıyor. buna gerek yok. rapor şablonlarında gerekli yönlendirmeyi yapıyorum."

@@ -6988,7 +6988,7 @@ function createBuildingFloorRowsTable() {
     </tr>
   `;
   const tbody = document.createElement("tbody");
-  rows.forEach((row) => {
+  rows.forEach((row, rowIndex) => {
     const tr = document.createElement("tr");
     const nameCell = document.createElement("td");
     nameCell.textContent = row.floorName || "";
@@ -6998,6 +6998,12 @@ function createBuildingFloorRowsTable() {
       const td = document.createElement("td");
       const input = document.createElement("input");
       input.type = column.numeric ? "number" : "text";
+      // Kullanıcı talebi: "ana taşınmaz katları ... TAB tuşuna basıldığında
+      // alt hücreye geçmesini istiyorum" (Emsaller'deki gibi) — bkz.
+      // attachBuildingFloorColumnTabNavigation, bu iki data-attribute'u
+      // sütun/satır kimliği olarak kullanır.
+      input.dataset.buildingFloorRow = String(rowIndex);
+      input.dataset.buildingFloorColumn = column.key;
       if (column.numeric) {
         input.min = "0";
         input.step = "1";
@@ -7039,12 +7045,51 @@ function createBuildingFloorRowsTable() {
 
   table.append(thead, tbody);
   shell.append(table);
+  attachBuildingFloorColumnTabNavigation(shell);
   panel.append(heading, shell);
   const summary = document.createElement("div");
   summary.className = "building-floor-summary";
   panel.append(summary);
   updateBuildingFloorSummary(panel);
   return panel;
+}
+
+function attachBuildingFloorColumnTabNavigation(shell) {
+  const columnOrder = buildingFloorUnitColumns.map((column) => column.key);
+  const isUsableTabStop = (el) => {
+    if (!el || el.disabled) return false;
+    if (typeof el.focus !== "function") return false;
+    return el.offsetParent !== null;
+  };
+  const stopsForColumn = (columnKey) =>
+    [...shell.querySelectorAll(`[data-building-floor-column="${columnKey}"]`)].filter(isUsableTabStop);
+
+  shell.addEventListener("keydown", (event) => {
+    if (event.key !== "Tab") return;
+    const target = event.target;
+    const columnKey = target?.dataset?.buildingFloorColumn;
+    if (columnKey === undefined) return;
+    const columnPos = columnOrder.indexOf(columnKey);
+    if (columnPos === -1) return;
+
+    const stops = stopsForColumn(columnKey);
+    const currentIndex = stops.indexOf(target);
+    if (currentIndex === -1) return;
+    const forward = !event.shiftKey;
+    const nextIndex = currentIndex + (forward ? 1 : -1);
+    if (nextIndex >= 0 && nextIndex < stops.length) {
+      event.preventDefault();
+      stops[nextIndex].focus();
+      return;
+    }
+
+    const nextColumnPos = columnPos + (forward ? 1 : -1);
+    if (nextColumnPos < 0 || nextColumnPos >= columnOrder.length) return;
+    const nextStops = stopsForColumn(columnOrder[nextColumnPos]);
+    if (!nextStops.length) return;
+    event.preventDefault();
+    (forward ? nextStops[0] : nextStops[nextStops.length - 1]).focus();
+  });
 }
 
 function updateBuildingFloorTotals() {
