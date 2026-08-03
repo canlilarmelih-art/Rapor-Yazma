@@ -2079,6 +2079,65 @@ td .free-lookup input {
   white-space: pre-line;
 }
 
+.foreign-currency-valuation-panel {
+  display: grid;
+  gap: 10px;
+  border-color: color-mix(in srgb, var(--blue) 34%, var(--line));
+  background: linear-gradient(135deg, #f8fbff, var(--surface));
+}
+
+.foreign-currency-valuation-panel h3 {
+  margin: 0;
+}
+
+.foreign-currency-valuation-panel .subtle-text {
+  margin: -4px 0 0;
+}
+
+.foreign-currency-valuation-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  font-size: 12px;
+}
+
+.foreign-currency-valuation-table th,
+.foreign-currency-valuation-table td {
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--line);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.foreign-currency-valuation-table th:first-child,
+.foreign-currency-valuation-table td:first-child {
+  text-align: left;
+}
+
+.foreign-currency-valuation-table th {
+  background: var(--blue-soft);
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.foreign-currency-valuation-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.foreign-currency-valuation-table tbody tr:nth-child(even) td {
+  background: color-mix(in srgb, var(--blue-soft) 34%, var(--surface));
+}
+
+.foreign-currency-valuation-explanation {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
 .valuation-method-copy-button {
   flex: none;
   font-size: 11px;

@@ -1,5 +1,19 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.304 - 2026-08-03 - TCMB tekil kur placeholderlari
+
+- TCMB'nin USD/EUR icin hem alis hem satis kurlari artik tek basina sablonlarda kullanilabilir: `{{USD_BUYING_RATE}}`, `{{USD_SELLING_RATE}}`, `{{EUR_BUYING_RATE}}`, `{{EUR_SELLING_RATE}}`.
+- Kur placeholderlari `tr-TR` biciminde dort ondalikla (ornek: `47,9100`) uretilir. TCMB verisi gecici olarak yoksa bos doner; eski kur degeri saklanip rapora yazilmaz.
+- Cache-buster `app.js?v=20260803-1215` oldu. Yedek: `backups/before-tcmb-rate-placeholders_2026-08-03_11-57-26`.
+
+## 0.0.303 - 2026-08-03 - TCMB doviz bazli degerleme
+
+- TCMB guncel **alis** kurlari ile Yasal Durum Degeri, Mevcut Durum Degeri, Yasal Acil Satis Degeri ve Mevcut Acil Satis Degeri icin USD/EUR karsiliklari eklendi. Donusum TL deger / ilgili TCMB alis kuru olarak yapilir; kur bilgisi yoksa yaniltici/eski rakam uretilmez.
+- Aciklamalar bolumune "Doviz Bazli Degerleme" paneli eklendi. Panel, dort TL degeri ile USD/EUR karsiliklarini tablo halinde; altinda da kullanilan tarih ve kurlari belirten otomatik aciklama metnini gosterir.
+- Yeni placeholderlar: `{{LEGAL_VALUE_USD}}`, `{{LEGAL_VALUE_EUR}}`, `{{CURRENT_VALUE_USD}}`, `{{CURRENT_VALUE_EUR}}`, `{{LEGAL_URGENT_SALE_VALUE_USD}}`, `{{LEGAL_URGENT_SALE_VALUE_EUR}}`, `{{CURRENT_URGENT_SALE_VALUE_USD}}`, `{{CURRENT_URGENT_SALE_VALUE_EUR}}`, `{{FOREIGN_CURRENCY_VALUATION_EXPLANATION}}`.
+- TCMB verisi ya da degerleme tutarlari yenilendiginde hesap ve aciklama yeniden uretilir. Cache-buster: `app.js?v=20260803-1200`.
+- Yeni `tools/test-foreign-currency-valuation.js`, sekiz degerin kur bazli hesabini, aciklama metnini ve kur yokken bos donus davranisini kapsar. `npm run verify` gecti.
+
 ## 0.0.300 - 2026-08-03 - Admin dashboard: kullanıcı istatistikleri + giriş/çıkış geçmişi
 
 - Kullanıcı talebi: "kullanıcı verilerini kullanıcı kayıtlarını ve kullanıcının loglarını yani tüm erişime sahip olabileceğim bir dashboard istiyorum. kullanıcı istatistikleri vb. verileri görmek ve analiz edebilmek için." AskUserQuestion ile 3 nokta netleştirildi: (1) rapor İÇERİĞİ değil, yalnızca "kaç rapor oluşturdu" + "ne kadar sürede tamamladı" istatistikleri, (2) loglar = giriş/çıkış geçmişi, (3) mevcut admin-users.html paneline eklensin.

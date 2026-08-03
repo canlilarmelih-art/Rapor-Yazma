@@ -1010,6 +1010,7 @@ const lastSaved = document.querySelector("#lastSaved");
 const tcmbRateStrip = document.querySelector("#tcmbRateStrip");
 const tcmbRateContent = document.querySelector("#tcmbRateContent");
 let tcmbRateRetryCount = 0;
+let tcmbRatePayload = null;
 const syncLabel = document.querySelector("#syncLabel");
 const syncDetail = document.querySelector("#syncDetail");
 const syncDot = document.querySelector("#syncDot");
@@ -1716,6 +1717,7 @@ function renderSection() {
     refreshBuildingDepreciationFromCurrentFields();
     refreshZiraatExplanationSectionsFromCurrentFields();
     refreshValuationMethodsExplanationFromCurrentFields();
+    refreshForeignCurrencyValuationExplanation();
   }
 
   if (section.id === "encumbrance") {
@@ -1743,6 +1745,7 @@ function renderSection() {
     body.append(createInsuranceConstructionCostPanel());
     body.append(createBuildingDepreciationRatePanel());
     body.append(createValuationSummaryPanel());
+    body.append(createForeignCurrencyValuationPanel());
     body.append(createExplanationsPropertyTaxDeclarationPanel());
     const incompleteConstructionValuePanel = createIncompleteConstructionValuePanel();
     if (incompleteConstructionValuePanel) body.append(incompleteConstructionValuePanel);
@@ -3099,7 +3102,7 @@ function getValuationFieldPlaceholderRows() {
       category: "Değerleme",
       key,
       title,
-      value: state.fields[key],
+      value: Object.prototype.hasOwnProperty.call(options, "value") ? options.value : state.fields[key],
       type: options.type || "Değerleme Alanı",
       source: options.source || "Değerleme Bölümü",
     });
@@ -3122,6 +3125,20 @@ function getValuationFieldPlaceholderRows() {
   });
   add("legalUrgentSaleValue", "Yasal Acil Satış Değeri", { type: "Otomatik Hesaplama" });
   add("currentUrgentSaleValue", "Mevcut Acil Satış Değeri", { type: "Otomatik Hesaplama" });
+  getTcmbRatePlaceholderRows().forEach((row) => {
+    add(row.key, row.title, {
+      value: row.value,
+      type: "TCMB Güncel Döviz Kuru",
+      source: "TCMB Güncel Döviz Kurları",
+    });
+  });
+  getForeignCurrencyValuationRows().forEach((row) => {
+    add(row.key, row.title, {
+      value: row.value,
+      type: "TCMB Alış Kuru Hesaplaması",
+      source: "TCMB Güncel Döviz Kurları",
+    });
+  });
 
   Object.values(incompleteConstructionMarketRows).forEach((row) => {
     const label = row.label || "";
@@ -3164,6 +3181,10 @@ function getValuationFieldPlaceholderRows() {
   add("valuationSaleabilityExplanation", "Satış Kabiliyeti Açıklaması", { type: "Otomatik Açıklama" });
   add("tarlaValuationRiskExplanation", "Tarla / Bahçe Değerleme Riski Açıklaması", { type: "Otomatik Açıklama" });
   add("valuationRentExplanation", "Kira Açıklaması", { type: "Otomatik Açıklama" });
+  add("foreignCurrencyValuationExplanation", "Döviz Bazlı Değerleme Açıklaması", {
+    type: "Otomatik Açıklama",
+    value: buildForeignCurrencyValuationExplanation(),
+  });
 
   return rows;
 }
@@ -4513,6 +4534,7 @@ function refreshValuationComputedFields() {
   refreshValuationSaleabilityExplanation();
   refreshValuationRentExplanation();
   refreshValuationMethodExplanation();
+  refreshForeignCurrencyValuationExplanation();
   refreshValuationControls();
 }
 
@@ -16049,6 +16071,131 @@ function formatTcmbDate(value) {
   return match ? `${match[1]}.${match[2]}.${match[3]}` : String(value || "").trim();
 }
 
+const foreignCurrencyValuationDefinitions = [
+  { valueKey: "legalValue", label: "Yasal Durum Değeri", code: "USD", key: "legalValueUsd", title: "Yasal Durum Değeri - USD" },
+  { valueKey: "legalValue", label: "Yasal Durum Değeri", code: "EUR", key: "legalValueEur", title: "Yasal Durum Değeri - EUR" },
+  { valueKey: "currentValue", label: "Mevcut Durum Değeri", code: "USD", key: "currentValueUsd", title: "Mevcut Durum Değeri - USD" },
+  { valueKey: "currentValue", label: "Mevcut Durum Değeri", code: "EUR", key: "currentValueEur", title: "Mevcut Durum Değeri - EUR" },
+  { valueKey: "legalUrgentSaleValue", label: "Yasal Acil Satış Değeri", code: "USD", key: "legalUrgentSaleValueUsd", title: "Yasal Acil Satış Değeri - USD" },
+  { valueKey: "legalUrgentSaleValue", label: "Yasal Acil Satış Değeri", code: "EUR", key: "legalUrgentSaleValueEur", title: "Yasal Acil Satış Değeri - EUR" },
+  { valueKey: "currentUrgentSaleValue", label: "Mevcut Acil Satış Değeri", code: "USD", key: "currentUrgentSaleValueUsd", title: "Mevcut Acil Satış Değeri - USD" },
+  { valueKey: "currentUrgentSaleValue", label: "Mevcut Acil Satış Değeri", code: "EUR", key: "currentUrgentSaleValueEur", title: "Mevcut Acil Satış Değeri - EUR" },
+];
+
+const tcmbRatePlaceholderDefinitions = [
+  { code: "USD", rateKey: "buying", key: "usdBuyingRate", title: "USD Alış Kuru" },
+  { code: "USD", rateKey: "selling", key: "usdSellingRate", title: "USD Satış Kuru" },
+  { code: "EUR", rateKey: "buying", key: "eurBuyingRate", title: "EUR Alış Kuru" },
+  { code: "EUR", rateKey: "selling", key: "eurSellingRate", title: "EUR Satış Kuru" },
+];
+
+function getTcmbRatePlaceholderRows() {
+  return tcmbRatePlaceholderDefinitions.map((definition) => {
+    const currency = tcmbRatePayload?.[definition.code.toLowerCase()];
+    const rate = Number(currency?.[definition.rateKey]);
+    return {
+      ...definition,
+      value: Number.isFinite(rate) && rate > 0 ? formatTcmbRate(rate) : "",
+    };
+  });
+}
+
+function getTcmbBuyingRate(code) {
+  const currency = tcmbRatePayload?.[String(code || "").toLowerCase()];
+  const rate = Number(currency?.buying);
+  return Number.isFinite(rate) && rate > 0 ? rate : null;
+}
+
+function formatForeignCurrencyValuation(value, code) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric) || numeric <= 0) return "";
+  return `${numeric.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${code}`;
+}
+
+function getForeignCurrencyValuationRows() {
+  return foreignCurrencyValuationDefinitions.map((definition) => {
+    const tlValue = parseValuationNumber(state.fields[definition.valueKey]);
+    const buyingRate = getTcmbBuyingRate(definition.code);
+    const convertedValue = Number.isFinite(tlValue) && buyingRate ? tlValue / buyingRate : null;
+    return {
+      ...definition,
+      buyingRate,
+      tlValue,
+      value: formatForeignCurrencyValuation(convertedValue, definition.code),
+    };
+  });
+}
+
+function buildForeignCurrencyValuationExplanation() {
+  const usdRate = getTcmbBuyingRate("USD");
+  const eurRate = getTcmbBuyingRate("EUR");
+  if (!usdRate || !eurRate) return "";
+  const rows = getForeignCurrencyValuationRows();
+  const date = formatTcmbDate(tcmbRatePayload?.date);
+  const amounts = ["legalValue", "currentValue", "legalUrgentSaleValue", "currentUrgentSaleValue"].map((valueKey) => {
+    const valueRows = rows.filter((row) => row.valueKey === valueKey);
+    const first = valueRows[0];
+    if (!first?.value) return "";
+    const usd = valueRows.find((row) => row.code === "USD")?.value || "-";
+    const eur = valueRows.find((row) => row.code === "EUR")?.value || "-";
+    return `${first.label}: ${formatValuationMoney(first.tlValue)} TL karşılığı ${usd} ve ${eur}`;
+  }).filter(Boolean);
+  if (!amounts.length) return "";
+  const rateText = `USD alış kuru ${formatTcmbRate(usdRate)} TL, EUR alış kuru ${formatTcmbRate(eurRate)} TL`;
+  return `TCMB${date ? ` ${date} tarihli` : ""} döviz alış kurları esas alınarak ${amounts.join("; ")}. Hesaplamada ${rateText} olarak dikkate alınmıştır.`;
+}
+
+function refreshForeignCurrencyValuationExplanation() {
+  const explanation = buildForeignCurrencyValuationExplanation();
+  state.fields.foreignCurrencyValuationExplanation = explanation;
+  const text = document.querySelector("[data-foreign-currency-valuation-explanation-text]");
+  if (text) text.textContent = explanation || "TCMB alış kurları alındığında döviz bazlı değerler otomatik hesaplanacaktır.";
+}
+
+function createForeignCurrencyValuationPanel() {
+  refreshForeignCurrencyValuationExplanation();
+  const panel = document.createElement("section");
+  panel.className = "subsection foreign-currency-valuation-panel";
+  const heading = document.createElement("h3");
+  heading.textContent = "Döviz Bazlı Değerleme";
+  const note = document.createElement("p");
+  note.className = "subtle-text";
+  note.textContent = tcmbRatePayload
+    ? `TCMB ${formatTcmbDate(tcmbRatePayload.date) || "güncel"} alış kurları üzerinden hesaplanır.`
+    : "TCMB alış kurları alındığında döviz bazlı değerler otomatik hesaplanacaktır.";
+  panel.append(heading, note);
+
+  const table = document.createElement("table");
+  table.className = "foreign-currency-valuation-table";
+  table.innerHTML = "<thead><tr><th>Değer</th><th>TL</th><th>USD</th><th>EUR</th></tr></thead>";
+  const tbody = document.createElement("tbody");
+  const rows = getForeignCurrencyValuationRows();
+  ["legalValue", "currentValue", "legalUrgentSaleValue", "currentUrgentSaleValue"].forEach((valueKey) => {
+    const pair = rows.filter((row) => row.valueKey === valueKey);
+    const first = pair[0];
+    if (!first) return;
+    const tr = document.createElement("tr");
+    [
+      first.label,
+      first.tlValue ? `${formatValuationMoney(first.tlValue)} TL` : "-",
+      pair.find((row) => row.code === "USD")?.value || "-",
+      pair.find((row) => row.code === "EUR")?.value || "-",
+    ].forEach((value) => {
+      const cell = document.createElement("td");
+      cell.textContent = value;
+      tr.append(cell);
+    });
+    tbody.append(tr);
+  });
+  table.append(tbody);
+  const explanation = document.createElement("p");
+  explanation.className = "foreign-currency-valuation-explanation";
+  explanation.dataset.foreignCurrencyValuationExplanationText = "true";
+  explanation.textContent = state.fields.foreignCurrencyValuationExplanation || "TCMB alış kurları alındığında döviz bazlı değerler otomatik hesaplanacaktır.";
+  panel.append(table, explanation);
+  return panel;
+}
+
 function setTcmbRateStatus(message) {
   if (!tcmbRateContent) return;
   const status = document.createElement("span");
@@ -16106,7 +16253,9 @@ async function refreshTcmbRates() {
     const response = await fetchRaporApi("/api/tcmb-rates");
     const payload = await response.json();
     if (!response.ok || !payload?.ok) throw new Error(payload?.error || "TCMB kurlari alinamadi.");
+    tcmbRatePayload = payload;
     renderTcmbRates(payload);
+    refreshForeignCurrencyValuationExplanation();
     tcmbRateStrip?.classList.toggle("is-unavailable", Boolean(payload.stale));
     tcmbRateRetryCount = 0;
   } catch (error) {
@@ -26830,6 +26979,12 @@ function collectApplicationFieldPlaceholders() {
 function collectGeneratedTextPlaceholders() {
   const generatedRows = [
     ...getValuationFieldPlaceholderRows(),
+    {
+      category: "Açıklamalar",
+      key: "foreign_currency_valuation_explanation",
+      title: "Döviz Bazlı Değerleme Açıklaması",
+      value: buildForeignCurrencyValuationExplanation(),
+    },
     {
       category: "Adres ve Konum",
       key: "transport_report_text",
