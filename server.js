@@ -2271,10 +2271,98 @@ function applyServerDerivedValuationTokens(tokenValues, valuationInput) {
   return derived;
 }
 
-async function createDerivedValuationVerification(user, templateKey, derived) {
+function serverTemplateRuleText(value) {
+  return String(value ?? "").replace(/\s+/g, " ").trim();
+}
+
+function serverTemplateRuleLower(value) {
+  return serverTemplateRuleText(value).toLocaleLowerCase("tr-TR");
+}
+
+function buildServerBuildingFootprintAndEntranceExplanation(input) {
+  const footprintReference = serverTemplateRuleLower(input?.buildingFootprintReference);
+  const entranceLevel = serverTemplateRuleLower(input?.buildingEntranceLevel);
+  const entranceDirection = serverTemplateRuleLower(input?.buildingEntranceDirection);
+  const sentences = [];
+
+  if (footprintReference) {
+    sentences.push(`Bina oturumu; vaziyet planında belirtilen ${footprintReference} referansından tespit edilmiştir.`);
+  }
+  if (entranceLevel && entranceDirection) {
+    const level = entranceLevel.includes("kat") ? `${entranceLevel}ından` : `${entranceLevel} katından`;
+    sentences.push(`Bina girişi, projesine göre binanın ${level} ve yapının ${entranceDirection} cephesinden sağlanmaktadır.`);
+  } else if (entranceLevel) {
+    const level = entranceLevel.includes("kat") ? `${entranceLevel}ından` : `${entranceLevel} katından`;
+    sentences.push(`Bina girişi, projesine göre binanın ${level} sağlanmaktadır.`);
+  } else if (entranceDirection) {
+    sentences.push(`Bina girişi, projesine göre yapının ${entranceDirection} cephesinden sağlanmaktadır.`);
+  }
+  return sentences.join(" ");
+}
+
+function buildServerProjectSuitabilityDescription(input) {
+  const status = serverTemplateRuleText(input?.projectSuitabilityStatus);
+  const statusKey = normalizeServerTemplateTokenName(status);
+  const note = serverTemplateRuleText(input?.projectConformity);
+  const simpleRepair = normalizeServerTemplateTokenName(input?.projectSuitabilitySimpleRepair) === "EVET";
+  const repairEligible = new Set([
+    "MIMARIOLARAKUYGUNDEGILDIR",
+    "KULLANIMALANIOLARAKUYGUNDEGILDIR",
+    "KULLANIMALANIVEMIMARIOLARAKUYGUNDEGILDIR",
+  ]);
+  const sentences = [];
+
+  switch (statusKey) {
+    case "":
+    case "UYGUNDUR":
+      sentences.push("Ekspertize konu bağımsız bölüm kat, kattaki konum, alan ve mimari olarak projesine uygundur.");
+      break;
+    case "BLOKBAZINDAKONUMOLARAKUYGUNDEGILDIR":
+      sentences.push("Ekspertize konu taşınmaz blok bazında projesine uygun değildir.");
+      break;
+    case "MIMARIOLARAKUYGUNDEGILDIR":
+      sentences.push("Ekspertize konu bağımsız bölüm vaziyet planına göre blok bazında konum, kat, kattaki konum ve kullanım alanı olarak projesine uygun olup, mimari olarak projesine uygun değildir.");
+      break;
+    case "KULLANIMALANIOLARAKUYGUNDEGILDIR":
+      sentences.push("Ekspertize konu bağımsız bölüm vaziyet planına göre blok bazında konum, kat, kattaki konum ve mimari olarak projesine uygun olup, kullanım alanı olarak projesine uygun değildir.");
+      break;
+    case "KULLANIMALANIVEMIMARIOLARAKUYGUNDEGILDIR":
+      sentences.push("Ekspertize konu bağımsız bölüm vaziyet planına göre blok bazında konum, kat ve kattaki konum olarak projesine uygun olup, kullanım alanı ve mimari olarak projesine uygun değildir.");
+      break;
+    case "PROJEYEUYGUNLUKTESPITEDILMEMISTIR":
+    case "PROJEYEUYGUNLUKTESPITEDILEMEMISTIR":
+      return note || "Ekspertize konu bağımsız bölümün konum tespiti dışarıdan yapılmış olup kat, alan ve mimari olarak uygunluk tespit edilememiştir.";
+    default:
+      return status;
+  }
+  if (statusKey !== "UYGUNDUR" && note) sentences.push(note);
+  if (repairEligible.has(statusKey) && simpleRepair) sentences.push("Basit bir tadilat ile düzeltilebilir niteliktedir.");
+  return sentences.join(" ");
+}
+
+function applyServerProtectedPlaceholderTokens(tokenValues, protectedPlaceholderInput) {
+  const buildingExplanation = buildServerBuildingFootprintAndEntranceExplanation(protectedPlaceholderInput);
+  const projectSuitabilityExplanation = buildServerProjectSuitabilityDescription(protectedPlaceholderInput);
+  const overrides = new Map([
+    ["BINAOTURUMUVEGIRISACIKLAMASI", buildingExplanation],
+    ["BUILDINGFOOTPRINTANDENTRANCEEXPLANATION", buildingExplanation],
+    ["PROJEUYGUNLUKACIKLAMASI", projectSuitabilityExplanation],
+    ["PROJECTSUITABILITYDESCRIPTION", projectSuitabilityExplanation],
+  ]);
+  const protectedTokens = [];
+  for (const key of Object.keys(tokenValues)) {
+    const folded = normalizeServerTemplateTokenName(key);
+    if (!overrides.has(folded)) continue;
+    tokenValues[key] = overrides.get(folded);
+    protectedTokens.push(key);
+  }
+  return { version: 1, protectedTokens };
+}
+
+async function createDerivedValuationVerification(user, templateKey, derived, protectedResolution = {}) {
   const issuedAt = new Date().toISOString();
   const accountFingerprint = crypto.createHash("sha256").update(user.uid).digest("hex").slice(0, 16);
-  const verification = { version: 1, templateKey, issuedAt, accountFingerprint, derived };
+  const verification = { version: 2, templateKey, issuedAt, accountFingerprint, derived, protectedResolution };
   verification.signature = crypto.createHmac("sha256", await getExportSigningKey())
     .update(JSON.stringify(verification))
     .digest("base64url");
@@ -2348,7 +2436,10 @@ async function handleReportTemplateRenderApi(request, response, user) {
   // Kullanici piyasa degerini uzman takdiriyle girer; ondan tureyen acil satis
   // degerleri ise resmi cikti icin yalnizca sunucunun kuralindan gelir.
   const derivedValuation = applyServerDerivedValuationTokens(acceptedValues, body?.valuationInput);
-  const valuationVerification = await createDerivedValuationVerification(user, templateKey, derivedValuation);
+  // Form yazimi sirasinda istek yapilmaz. Bu kurallar yalnizca zaten var olan
+  // rapor olusturma isteginde sunucunun ham alanlardan tekrar hesaplanir.
+  const protectedResolution = applyServerProtectedPlaceholderTokens(acceptedValues, body?.protectedPlaceholderInput);
+  const valuationVerification = await createDerivedValuationVerification(user, templateKey, derivedValuation, protectedResolution);
   await logActivityEvent("report-derived-valuation-rendered", user.uid, user.email, {
     templateKey,
     legalUrgentSaleValue: derivedValuation.legalUrgentSaleValue || null,
@@ -2674,6 +2765,9 @@ module.exports = {
   parseServerValuationNumber,
   calculateServerDerivedValuation,
   applyServerDerivedValuationTokens,
+  buildServerBuildingFootprintAndEntranceExplanation,
+  buildServerProjectSuitabilityDescription,
+  applyServerProtectedPlaceholderTokens,
   handleReportTemplateTokensApi,
   handleReportTemplateRenderApi,
   generateMfaCode,

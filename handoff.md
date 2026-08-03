@@ -7039,3 +7039,11 @@ Doğrulama: `node --check app.js`, `node tools/check-basic.js`, `git diff --chec
 - Placeholder katalog ekrani zaten yalnizca yoneticiye aciktir; istemcideki `RaporTemplates` global API'sinden token cozumleme, tum takma adlari listeleme ve dinamik sablon kaydetme/debug metotlari kaldirildi.
 - Canli surumde bu dosya zaten minify edilir; disariya yalnizca sablon secimi ve korumali sunucu render istegini baslatmak icin gereken dar API kalir.
 - Formdaki alan girisleri, otomatik kayit ve anlik hesaplar degismedi. Sonraki adim, yuksek degerli placeholder/metin kurallarinin parca parca sunucu tarafinda otoriter olarak cozumlenmesidir.
+
+## 0.0.306 - 2026-08-03 - Otoriter Placeholder Kural Dilimi
+
+- Form doldururken, otomatik kaydederken veya ekranlar arasinda gezinirken yeni bir ag istegi eklenmedi.
+- Yalnizca var olan banka sablonu olusturma isteginde; bina oturumu/giris aciklamasi ile proje uygunluk aciklamasi sunucuda ham alanlardan tekrar uretiliyor ve istemciden gelen metnin uzerine yaziliyor.
+- `projeye uygunluk tespit edilmemistir` seceneginde, rapora yalnizca kullanicinin detay penceresinde girdigi aciklama yaziliyor.
+- Sunucu imzali dogrulama nesnesi, bu aktarimda hangi placeholderlarin sunucu tarafindan otoriter olarak uretildigini de tasiyor.
+- Cache-buster: `template-engine.js?v=20260803-1555`.

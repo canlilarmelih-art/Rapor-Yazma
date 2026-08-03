@@ -972,6 +972,20 @@
     };
   }
 
+  // Bu küçük ham alan paketi sadece banka şablonu oluşturulurken gönderilir.
+  // Form etkileşimleri, otomatik kayıt ve önizleme tamamen yerelde kalır.
+  function buildServerProtectedPlaceholderInput() {
+    const fields = state.fields || {};
+    return {
+      buildingFootprintReference: fields.buildingFootprintReference ?? "",
+      buildingEntranceLevel: fields.buildingEntranceLevel ?? "",
+      buildingEntranceDirection: fields.buildingEntranceDirection ?? "",
+      projectSuitabilityStatus: fields.projectSuitabilityStatus ?? "",
+      projectConformity: fields.projectConformity ?? "",
+      projectSuitabilitySimpleRepair: fields.projectSuitabilitySimpleRepair ?? "",
+    };
+  }
+
   function listTemplates() {
     return TEMPLATE_REGISTRY.map((entry) => ({ ...entry }));
   }
@@ -1024,6 +1038,7 @@
           templateKey: entry.key,
           tokenValues: values,
           valuationInput: buildServerValuationInput(),
+          protectedPlaceholderInput: buildServerProtectedPlaceholderInput(),
         }),
       });
       const renderPayload = await renderResponse.json().catch(() => null);
