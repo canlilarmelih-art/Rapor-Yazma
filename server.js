@@ -96,6 +96,22 @@ const privilegedUsers = new Set(); // uid
 let approvalStateLoaded = false;
 let approvalStateSaveTimer = null;
 
+// Etkinlik günlüğü — kullanıcı talebi: "kullanıcı verilerini kullanıcı
+// kayıtlarını ve kullanıcının loglarını ... tüm erişime sahip olabileceğim
+// bir dashboard istiyorum ... kaç adet rapor oluşturdu, bir raporu ne
+// kadar sürede oluşturdu gibi istatistiki verileri görmek istiyorum".
+// Giriş/çıkış (login/logout) ve rapor oluşturma/dışa aktarma (created/
+// exported) olaylarını sınırlı boyutlu, kalıcı bir günlükte tutar.
+// Rapor İÇERİĞİ ASLA loglanmaz — yalnızca opaque reportId (RE-YYYY-XXXXXX,
+// kimlik bilgisi içermez). Admin dashboard (admin-users.html) bunu okuyup
+// "kaç rapor oluşturdu" / "ortalama tamamlama süresi" gibi istatistikleri
+// hesaplar (bkz. computeUserReportStats).
+const activityEventsFile = path.join(dataDir, "activity-events.json");
+const activityEvents = []; // { type, uid, email, reportId, at, ip, userAgent }
+const ACTIVITY_EVENTS_MAX = 20000;
+let activityEventsLoaded = false;
+let activityEventsSaveTimer = null;
+
 function isMfaConfigured() {
   return Boolean(RESEND_API_KEY);
 }
@@ -134,6 +150,7 @@ const SENSITIVE_SERVER_DATA_FILES = new Set([
   "pending-users.json",
   "approved-users.json",
   "privileged-users.json",
+  "activity-events.json",
 ]);
 
 function isSensitivePath(relativeSegments) {
@@ -952,6 +969,116 @@ async function revokePrivilege(uid) {
   if (privilegedUsers.delete(uid)) saveApprovalStateSoon();
 }
 
+async function loadActivityEventsOnce() {
+  if (activityEventsLoaded) return;
+  activityEventsLoaded = true;
+  try {
+    const raw = await fs.readFile(activityEventsFile, "utf8");
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) activityEvents.push(...parsed);
+  } catch (error) {
+    if (error.code !== "ENOENT") logServerError("Etkinlik günlüğü okunamadı", error);
+  }
+}
+
+function saveActivityEventsSoon() {
+  if (activityEventsSaveTimer) return;
+  activityEventsSaveTimer = setTimeout(async () => {
+    activityEventsSaveTimer = null;
+    try {
+      await fs.mkdir(dataDir, { recursive: true });
+      await fs.writeFile(activityEventsFile, JSON.stringify(activityEvents), "utf8");
+    } catch (error) {
+      logServerError("Etkinlik günlüğü yazılamadı", error);
+    }
+  }, 200);
+  activityEventsSaveTimer.unref?.();
+}
+
+async function logActivityEvent(type, uid, email, extra = {}) {
+  await loadActivityEventsOnce();
+  activityEvents.push({
+    type,
+    uid: uid || null,
+    email: email || null,
+    reportId: extra.reportId || null,
+    at: new Date().toISOString(),
+    ip: extra.ip || null,
+    userAgent: extra.userAgent || null,
+  });
+  if (activityEvents.length > ACTIVITY_EVENTS_MAX) {
+    activityEvents.splice(0, activityEvents.length - ACTIVITY_EVENTS_MAX);
+  }
+  saveActivityEventsSoon();
+}
+
+async function listLoginEvents(limit = 500) {
+  await loadActivityEventsOnce();
+  return activityEvents
+    .filter((event) => event.type === "login" || event.type === "logout")
+    .slice(-limit)
+    .reverse();
+}
+
+// "Kaç rapor oluşturdu" / "bir raporu ne kadar sürede tamamladı"
+// istatistikleri — rapor İÇERİĞİNE hiç bakmadan, yalnızca "report-created"
+// ve "report-exported" olay çiftlerinin zaman damgalarından hesaplanır.
+// Süre = aynı reportId için İLK "created" ile İLK "exported" arasındaki fark
+// (ilk dışa aktarma "tamamlandı" için makul bir vekil gösterge).
+async function computeUserReportStats() {
+  await loadApprovalStateOnce();
+  await loadActivityEventsOnce();
+  const byUid = new Map(); // uid -> { email, createdAt: Map(reportId->at), exportedAt: Map(reportId->at) }
+  const ensure = (uid, email) => {
+    if (!byUid.has(uid)) {
+      byUid.set(uid, { email: email || null, createdAt: new Map(), exportedAt: new Map() });
+    }
+    const entry = byUid.get(uid);
+    if (email && !entry.email) entry.email = email;
+    return entry;
+  };
+  activityEvents.forEach((event) => {
+    if (!event.uid || !event.reportId) return;
+    if (event.type !== "report-created" && event.type !== "report-exported") return;
+    const entry = ensure(event.uid, event.email);
+    const bucket = event.type === "report-created" ? entry.createdAt : entry.exportedAt;
+    if (!bucket.has(event.reportId)) bucket.set(event.reportId, event.at);
+  });
+  const results = [];
+  for (const [uid, entry] of byUid.entries()) {
+    const durations = [];
+    let lastCreatedAt = null;
+    let lastExportedAt = null;
+    entry.createdAt.forEach((createdAt, reportId) => {
+      if (!lastCreatedAt || createdAt > lastCreatedAt) lastCreatedAt = createdAt;
+      const exportedAt = entry.exportedAt.get(reportId);
+      if (exportedAt) {
+        const durationMs = new Date(exportedAt).getTime() - new Date(createdAt).getTime();
+        if (Number.isFinite(durationMs) && durationMs >= 0) durations.push(durationMs);
+      }
+    });
+    entry.exportedAt.forEach((exportedAt) => {
+      if (!lastExportedAt || exportedAt > lastExportedAt) lastExportedAt = exportedAt;
+    });
+    const avgDurationMs = durations.length
+      ? Math.round(durations.reduce((sum, value) => sum + value, 0) / durations.length)
+      : null;
+    results.push({
+      uid,
+      email: entry.email || approvedUsers.get(uid)?.email || null,
+      reportsCreated: entry.createdAt.size,
+      reportsExported: durations.length,
+      avgDurationMs,
+      minDurationMs: durations.length ? Math.min(...durations) : null,
+      maxDurationMs: durations.length ? Math.max(...durations) : null,
+      lastCreatedAt,
+      lastExportedAt,
+    });
+  }
+  results.sort((a, b) => (b.reportsCreated || 0) - (a.reportsCreated || 0));
+  return results;
+}
+
 function generateMfaCode() {
   // 000000-999999 arasi 6 haneli, basindaki sifirlar korunur (padStart).
   return String(crypto.randomInt(0, 1000000)).padStart(6, "0");
@@ -1599,6 +1726,7 @@ async function handleSessionApi(request, response, url, user) {
     }
     const { id, expiresAt } = createSession(user.uid, user.email);
     setSessionCookie(request, response, id, expiresAt);
+    logActivityEvent("login", user.uid, user.email, { ip: clientKeyFor(request), userAgent: request.headers["user-agent"] });
     sendJson(response, 200, { ok: true, requiresMfa: false });
     return;
   }
@@ -1669,13 +1797,17 @@ async function handleSessionApi(request, response, url, user) {
     setSessionCookie(request, response, sessionId, sessionExpiresAt);
     const { id: trustId, expiresAt: trustExpiresAt } = markDeviceTrusted(user.uid, user.email);
     setTrustCookie(request, response, trustId, trustExpiresAt);
+    logActivityEvent("login", user.uid, user.email, { ip: clientKeyFor(request), userAgent: request.headers["user-agent"] });
     sendJson(response, 200, { ok: true });
     return;
   }
 
   if (url === "/api/session/logout") {
     const session = await getSessionFromRequest(request);
-    if (session) destroySession(session.id);
+    if (session) {
+      destroySession(session.id);
+      logActivityEvent("logout", session.uid, session.email, { ip: clientKeyFor(request), userAgent: request.headers["user-agent"] });
+    }
     clearSessionCookie(request, response);
     sendJson(response, 200, { ok: true });
     return;
@@ -1838,6 +1970,56 @@ async function handleMyRoleApi(request, response, user) {
   sendJson(response, 200, { ok: true, role });
 }
 
+// login.html/app.js'ten çağrılır — "kaç rapor oluşturdu / ne kadar sürede
+// tamamladı" istatistikleri için yalnızca reportId (opaque, içerik yok) ve
+// olay türünü (created/exported) loglar. uid/email İSTEMCİDEN GÜVENİLMEZ,
+// authenticateRequest'in doğruladığı `user`'dan alınır.
+async function handleReportEventApi(request, response, user) {
+  if (request.method !== "POST") {
+    sendJson(response, 405, { ok: false, error: "Bu işlem desteklenmiyor." });
+    return;
+  }
+  let body;
+  try {
+    body = JSON.parse((await readBody(request, 2048)) || "{}");
+  } catch {
+    sendJson(response, 400, { ok: false, error: "Geçersiz istek." });
+    return;
+  }
+  const type = body?.type === "exported" ? "report-exported" : (body?.type === "created" ? "report-created" : null);
+  if (!type) {
+    sendJson(response, 400, { ok: false, error: "Geçersiz olay türü." });
+    return;
+  }
+  const reportId = String(body?.reportId || "").trim().slice(0, 64);
+  if (!reportId) {
+    sendJson(response, 400, { ok: false, error: "reportId eksik." });
+    return;
+  }
+  await logActivityEvent(type, user.uid, user.email, { reportId });
+  sendJson(response, 200, { ok: true });
+}
+
+async function handleLoginEventsApi(request, response, user) {
+  if (request.method !== "GET") {
+    sendJson(response, 405, { ok: false, error: "Bu işlem desteklenmiyor." });
+    return;
+  }
+  if (!requireAdmin(response, user)) return;
+  const events = await listLoginEvents(500);
+  sendJson(response, 200, { ok: true, events });
+}
+
+async function handleUserStatsApi(request, response, user) {
+  if (request.method !== "GET") {
+    sendJson(response, 405, { ok: false, error: "Bu işlem desteklenmiyor." });
+    return;
+  }
+  if (!requireAdmin(response, user)) return;
+  const stats = await computeUserReportStats();
+  sendJson(response, 200, { ok: true, stats });
+}
+
 function resolveStaticPath(urlPath) {
   const pathname = decodeURIComponent(new URL(urlPath, `http://${host}:${port}`).pathname);
   const requested = pathname === "/" ? "/index.html" : pathname;
@@ -1952,6 +2134,9 @@ const API_RATE_LIMITS = {
   "/api/grant-privilege": { limit: 30, windowMs: 60 * 1000 },
   "/api/revoke-privilege": { limit: 30, windowMs: 60 * 1000 },
   "/api/my-role": { limit: 60, windowMs: 60 * 1000 },
+  "/api/report-event": { limit: 60, windowMs: 60 * 1000 },
+  "/api/login-events": { limit: 30, windowMs: 60 * 1000 },
+  "/api/user-stats": { limit: 30, windowMs: 60 * 1000 },
 };
 
 function matchApiRoute(url) {
@@ -2051,6 +2236,18 @@ const server = http.createServer(async (request, response) => {
       await handleMyRoleApi(request, response, request.user);
       return;
     }
+    if (apiRoute === "/api/report-event") {
+      await handleReportEventApi(request, response, request.user);
+      return;
+    }
+    if (apiRoute === "/api/login-events") {
+      await handleLoginEventsApi(request, response, request.user);
+      return;
+    }
+    if (apiRoute === "/api/user-stats") {
+      await handleUserStatsApi(request, response, request.user);
+      return;
+    }
     await handleStatic(request, response);
   } catch (error) {
     logServerError(`İstek işlenirken hata (${request.method} ${request.url})`, error);
@@ -2104,4 +2301,8 @@ module.exports = {
   pendingUsers,
   approvedUsers,
   privilegedUsers,
+  logActivityEvent,
+  listLoginEvents,
+  computeUserReportStats,
+  activityEvents,
 };

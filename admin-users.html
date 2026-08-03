@@ -59,6 +59,15 @@
       .empty { text-align: center; color: #8a99ad; font-size: 13px; padding: 20px 0; }
       .section-title { margin: 28px 0 10px; font-size: 13px; font-weight: 800; letter-spacing: 0.02em; color: #f3f6fc; }
       .section-hint { margin: -4px 0 10px; font-size: 12px; color: #b6c0d6; }
+      .data-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+      .data-table th, .data-table td { text-align: left; padding: 8px 6px; border-bottom: 1px solid #eef1f6; overflow-wrap: anywhere; }
+      .data-table th { color: #8a99ad; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.02em; }
+      .data-table tr:last-child td { border-bottom: none; }
+      .data-table .num { text-align: right; white-space: nowrap; }
+      .event-badge { display: inline-block; border-radius: 5px; padding: 2px 7px; font-size: 11px; font-weight: 700; }
+      .event-badge.login { background: #dff3e6; color: #1c7a3f; }
+      .event-badge.logout { background: #f6ecd6; color: #9a6a16; }
+      .table-scroll { overflow-x: auto; }
     </style>
   </head>
   <body>
@@ -78,6 +87,20 @@
         <p class="status" id="approvedStatus">Yükleniyor...</p>
         <div id="approvedList"></div>
       </div>
+
+      <p class="section-title">Kullanıcı İstatistikleri</p>
+      <p class="section-hint">Her kullanıcının kaç rapor oluşturduğu ve bir raporu (oluşturmadan ilk dışa aktarmaya kadar) ortalama ne kadar sürede tamamladığı — rapor İÇERİĞİ burada yer almaz.</p>
+      <div class="card">
+        <p class="status" id="statsStatus">Yükleniyor...</p>
+        <div class="table-scroll"><table class="data-table" id="statsTable"></table></div>
+      </div>
+
+      <p class="section-title">Giriş / Çıkış Geçmişi</p>
+      <p class="section-hint">Son 500 giriş/çıkış olayı — kim, ne zaman, hangi cihaz/IP'den.</p>
+      <div class="card">
+        <p class="status" id="eventsStatus">Yükleniyor...</p>
+        <div class="table-scroll"><table class="data-table" id="eventsTable"></table></div>
+      </div>
     </div>
 
     <script src="vendor/firebase/firebase-app-compat.js?v=11.10.0"></script>
@@ -89,6 +112,10 @@
         var list = document.getElementById("list");
         var approvedStatusLine = document.getElementById("approvedStatus");
         var approvedList = document.getElementById("approvedList");
+        var statsStatusLine = document.getElementById("statsStatus");
+        var statsTable = document.getElementById("statsTable");
+        var eventsStatusLine = document.getElementById("eventsStatus");
+        var eventsTable = document.getElementById("eventsTable");
 
         if (typeof firebase === "undefined" || !firebase.initializeApp || typeof RAPOR_FIREBASE_CONFIG === "undefined") {
           statusLine.textContent = "Yapılandırma eksik.";
@@ -254,6 +281,94 @@
             });
         }
 
+        function formatDuration(ms) {
+          if (ms == null || !Number.isFinite(ms)) return "—";
+          var totalMinutes = Math.round(ms / 60000);
+          if (totalMinutes < 1) return "<1 dk";
+          if (totalMinutes < 60) return totalMinutes + " dk";
+          var hours = Math.floor(totalMinutes / 60);
+          var minutes = totalMinutes % 60;
+          if (hours < 24) return hours + " sa " + minutes + " dk";
+          var days = Math.floor(hours / 24);
+          var remHours = hours % 24;
+          return days + " gün " + remHours + " sa";
+        }
+
+        function renderStatsTable(stats) {
+          if (!stats.length) {
+            statsTable.innerHTML = '<tr><td class="empty">Henüz veri yok.</td></tr>';
+            return;
+          }
+          var rows = stats.map(function (row) {
+            return "<tr>"
+              + "<td>" + escapeHtmlLocal(row.email || row.uid) + "</td>"
+              + '<td class="num">' + row.reportsCreated + "</td>"
+              + '<td class="num">' + row.reportsExported + "</td>"
+              + '<td class="num">' + formatDuration(row.avgDurationMs) + "</td>"
+              + "<td>" + formatDate(row.lastCreatedAt) + "</td>"
+              + "</tr>";
+          }).join("");
+          statsTable.innerHTML =
+            "<thead><tr><th>Kullanıcı</th><th>Oluşturulan</th><th>Dışa Aktarılan</th><th>Ort. Süre</th><th>Son Rapor</th></tr></thead>"
+            + "<tbody>" + rows + "</tbody>";
+        }
+
+        function loadStats() {
+          statsStatusLine.textContent = "Yükleniyor...";
+          statsStatusLine.className = "status";
+          return apiCall("/api/user-stats", { method: "GET" })
+            .then(function (body) {
+              statsStatusLine.textContent = body.stats.length + " kullanıcı için istatistik.";
+              renderStatsTable(body.stats);
+            })
+            .catch(function (error) {
+              statsStatusLine.textContent = "İstatistikler alınamadı: " + (error && error.message ? error.message : "bilinmeyen hata");
+              statsStatusLine.className = "status error";
+            });
+        }
+
+        function escapeHtmlLocal(value) {
+          var div = document.createElement("div");
+          div.textContent = String(value == null ? "" : value);
+          return div.innerHTML;
+        }
+
+        function renderEventsTable(events) {
+          if (!events.length) {
+            eventsTable.innerHTML = '<tr><td class="empty">Henüz kayıt yok.</td></tr>';
+            return;
+          }
+          var rows = events.map(function (event) {
+            var badgeClass = event.type === "login" ? "login" : "logout";
+            var badgeLabel = event.type === "login" ? "Giriş" : "Çıkış";
+            var userAgent = String(event.userAgent || "").slice(0, 60);
+            return "<tr>"
+              + "<td>" + escapeHtmlLocal(event.email || event.uid || "-") + "</td>"
+              + '<td><span class="event-badge ' + badgeClass + '">' + badgeLabel + "</span></td>"
+              + "<td>" + formatDate(event.at) + "</td>"
+              + "<td>" + escapeHtmlLocal(event.ip || "-") + "</td>"
+              + "<td>" + escapeHtmlLocal(userAgent) + "</td>"
+              + "</tr>";
+          }).join("");
+          eventsTable.innerHTML =
+            "<thead><tr><th>Kullanıcı</th><th>Olay</th><th>Zaman</th><th>IP</th><th>Cihaz</th></tr></thead>"
+            + "<tbody>" + rows + "</tbody>";
+        }
+
+        function loadLoginEvents() {
+          eventsStatusLine.textContent = "Yükleniyor...";
+          eventsStatusLine.className = "status";
+          return apiCall("/api/login-events", { method: "GET" })
+            .then(function (body) {
+              eventsStatusLine.textContent = body.events.length + " olay (en yeni önce).";
+              renderEventsTable(body.events);
+            })
+            .catch(function (error) {
+              eventsStatusLine.textContent = "Geçmiş alınamadı: " + (error && error.message ? error.message : "bilinmeyen hata");
+              eventsStatusLine.className = "status error";
+            });
+        }
+
         auth.onAuthStateChanged(function (user) {
           if (!user) {
             statusLine.textContent = "Giriş yapmanız gerekiyor.";
@@ -263,6 +378,8 @@
           }
           loadPending();
           loadApproved();
+          loadStats();
+          loadLoginEvents();
         });
       })();
     </script>

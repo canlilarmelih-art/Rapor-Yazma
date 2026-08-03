@@ -115,6 +115,23 @@ fonksiyonu silmeden önce MUTLAKA `grep -rn "fnAdı" src/ templates/` ile
 dinamik referans kontrolü yap (bkz. yukarıdaki "147 dinamik çağrı" uyarısı).
 Test: `tools/test-bank-template-zip-bundle.js`.
 
+## Admin dashboard: etkinlik günlüğü (0.0.300, 2026-08-03)
+
+Kullanıcı verileri/istatistikleri için Firestore güvenlik kurallarını (bkz.
+`cloud/firestore.rules`, `users/{uid}/reports` yalnızca `isOwner`) ASLA
+gevşetme — rapor İÇERİĞİNİ admin'e açar (Firestore field-level güvenlik
+yok). Bunun yerine `server.js`'deki `server-data/activity-events.json`
+etkinlik günlüğünü kullan: `logActivityEvent(type, uid, email, extra)` ile
+`login`/`logout` (otomatik) veya `report-created`/`report-exported`
+(istemciden `POST /api/report-event`, `app.js`'teki `pingReportEvent`)
+kaydeder — yalnızca opaque `reportId`, ASLA rapor verisi. `GET
+/api/user-stats` (`computeUserReportStats()`) ve `GET /api/login-events`
+(`requireAdmin()` korumalı) `admin-users.html`'in "Kullanıcı İstatistikleri"
+ve "Giriş / Çıkış Geçmişi" kartlarını besler. Yeni bir "kullanıcı ne yaptı"
+sorusu gelirse bu günlüğe yeni bir `extra`/olay türü eklemek, Firestore
+kurallarını gevşetmekten HER ZAMAN tercih edilmeli. Test:
+`tools/test-activity-dashboard.js`.
+
 ## Bu depoda paralel oturum uyarısı
 
 Aynı çalışma dizininde başka bir ajan (Codex) da düzenleme yapabiliyor.

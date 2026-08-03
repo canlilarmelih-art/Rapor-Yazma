@@ -13131,6 +13131,7 @@ function appendBankTemplateExportBlock(panel) {
       // basina tek secenek gosterilir).
       const templateKey = window.RaporTemplates.resolveTemplateKeyForExport(select.value, isLandPropertyForBankTemplate());
       const result = await buildBankTemplateZipBundle(templateKey);
+      pingReportEvent("exported", state.reportId);
       const suffix = result.ziraatFailed
         ? " (Ziraat ek tablosu pakete eklenemedi.)"
         : (result.ziraatCount != null ? ` Ziraat ek tablosu da pakete eklendi (${result.ziraatCount} alan).` : "");
@@ -16016,6 +16017,21 @@ async function fetchRaporApi(input, init = {}, timeoutMs = 0) {
   headers.set("X-Rapor-Client", "1");
   const requestInit = { ...init, headers };
   return timeoutMs > 0 ? fetchWithTimeout(input, timeoutMs, requestInit) : fetch(input, requestInit);
+}
+
+// Admin dashboard'daki "kaç rapor oluşturdu / ne kadar sürede tamamladı"
+// istatistikleri için sunucuya sessiz bir olay bildirimi gönderir (kullanıcı
+// talebi: "kullanıcı istatistikleri ... görmek ve analiz edebilmek için").
+// Rapor İÇERİĞİ ASLA gönderilmez — yalnızca opaque reportId. Bulut oturumu
+// yoksa (ör. yalnızca bu cihazda çalışılıyor) sessizce atlanır; bu olay
+// kaydı normal kullanım akışını ASLA bloklamamalı/bozmamalı.
+function pingReportEvent(type, reportId) {
+  if (!reportId || !window.RaporCloudSync?.getStatus?.()?.signedIn) return;
+  fetchRaporApi("/api/report-event", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ type, reportId }),
+  }).catch(() => {});
 }
 
 async function readPdfTextOnServer(file) {

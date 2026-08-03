@@ -277,6 +277,11 @@
   function createNewReport(quickFields) {
     flushActiveToLibrary();
     resetToFreshEmptyReport(quickFields);
+    // Admin dashboard "kaç rapor oluşturdu" istatistiği (bkz. app.js
+    // pingReportEvent) — yalnızca GERÇEK yeni talep oluşturma anında
+    // tetiklenir; resetToFreshEmptyReport'un silme-sonrası düşme senaryosu
+    // (deleteReport içindeki ikinci çağrı) bunu tetiklemez.
+    if (typeof pingReportEvent === "function") pingReportEvent("created", state.reportId);
     closeDashboard();
   }
 
