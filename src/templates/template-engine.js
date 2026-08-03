@@ -518,6 +518,21 @@
     MUNICIPALITYBOUNDARYSTATUS: { fn: () => field("district", "titleDistrict") ? "Evet" : "" },
     DOCUMENTREVIEWINSTITUTION: { f: ["documentReviewInstitution", "projectInstitution"] },
     EKBSTATUS: { fn: ekbStatusText },
+
+    // --- Halkbank "Ruhsat Özellikleri ve Dosya İncelemeleri" (bankanın kendi
+    // sistemindeki ~21 alanla eşleşecek şekilde genişletildi, kullanıcı
+    // talebi: "bizde sadece 3 satır veri var bunu düzeltelim") ---
+    RUHSATVARMI: { fn: () => safeCall("getReviewedBuildingPermitAvailabilityText") },
+    RUHSATIPTALIVARMI: { t: () => "Yok" },
+    TADILATRUHSATTARIHI: { fn: () => safeCall("getLatestRenovationPermitDateText") },
+    KATIRTIFAKIPROJEINCELENDIMI: { fn: () => safeCall("getKatIrtifakiProjectReviewedText") },
+    YERINDEOLCUMYAPILDIMI: { fn: () => (field("appointmentType") === "İçi görülmüştür" ? "Evet" : "Hayır") },
+    KIRASOZLESMESIVARMI: { fn: () => safeCall("getUnitLeaseAgreementStatusText") },
+    KONUTASINMAZALANUYGUNMU: { fn: () => safeCall("getUnitProjectSuitabilityAreaMatchText") },
+    KONUTASINMAZKONUMUYGUNMU: { fn: () => safeCall("getUnitProjectSuitabilityLocationMatchText") },
+    FIILENKULLANILIYORMU: { fn: () => safeCall("getUnitActivelyUsedStatusText") },
+    YASALEKLENTIDEPOVARMI: { fn: () => (field("titleAttachment") ? "Evet" : "Hayır") },
+    RISKLIYAPIMI: { t: () => "Hayır" },
     ISBANKMIMARIPROJE: { t: () => field("projectReviewDescription") || safeCall("buildProjectReviewDescription") || field("projectConformity") },
     UYGACIKLAMA: { t: () => field("projectReviewDescription") || safeCall("buildProjectReviewDescription") || field("projectConformity") },
     VAKIFMIMARIPROJE: { t: () => field("projectReviewDescription") || safeCall("buildProjectReviewDescription") || field("projectConformity") },

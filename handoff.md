@@ -1,5 +1,27 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.308 - 2026-08-03 - Halkbank "Ruhsat Özellikleri" 4 satırdan 21 satıra çıktı
+
+- Kullanıcı talebi (ekran görüntüsüyle): "halkbank bu bölüm bu kadar seçenek varken bizde sadece 3 satır veri var bunu düzeltelim" — Halkbank'ın kendi sistemindeki "Ruhsat Özellikleri ve Dosya İncelemelerine Ait Bilgiler" ekranında ~21 alan var, bizim `templates/halkbank.html`'de yalnızca 4 satır vardı.
+- Önce bir Explore ajanıyla 21 alanın her biri için app.js'te zaten karşılığı olup olmadığı araştırıldı: 6 tanesi zaten placeholder olarak TANIMLI ama halkbank.html'de hiç KULLANILMAMIŞ (Yapım Yılı, Ruhsat Tarihi, Y.Kul.İz.Bel.Tarihi, Ana Taşınmaz Proje Uygunluğu, İçi Görüldü mü, Eklenti); geri kalan ~10'u gerçekten eksikti. Kullanıcıya kapsam soruldu ("sadece mevcutları ekle" mi, "tam kapsam" mı) — kullanıcı **tam kapsamı** seçti ve eksik alanların çoğu için MEVCUT verilerden türetme kuralını kendisi belirtti (yeni bir manuel giriş alanı EKLENMEDİ):
+  - **Ruhsat Var mı?**: İncelenen Belgeler tablosunda en az 1 ruhsat satırı varsa "Var" (`getReviewedBuildingPermitAvailabilityText()`, mevcut `getLatestBuildingPermitDocumentRow()` zincirini kullanır).
+  - **Ruhsat İptali Var mı?**: her zaman "Yok" (veri kaynağı yok, kullanıcı: "ruhsat iptali default yok").
+  - **Tad. Ruhsat Tarihi**: "Yeni Yapı Ruhsatı" DIŞINDA başka bir ruhsat satırı varsa o satırın tarihi (`getLatestRenovationPermitDateText()`).
+  - **Kat İrtifakına Esas Proje İncelendi mi?**: incelenen proje türlerinden (tapu/belediye/tekil) biri "Kat İrtifakı Projesi" ise Evet (`getKatIrtifakiProjectReviewedText()`).
+  - **Yerinde Ölçüm Yapıldı mı?**: randevu türü "İçi görülmüştür" ise Evet (mevcut `appointmentType` alanı, İçi Görüldü mü ile aynı mantık).
+  - **Kira Sözleşmesi Var mı?**: bağımsız bölüm Kullanım Durumu "Kiracı" ise Evet (`getUnitLeaseAgreementStatusText()`).
+  - **Fiilen Kullanılıyor mu?**: Kullanım Durumu "Boş (Hiç Kullanılmamış)"/"Boş (Kullanılmış)" ise Hayır, diğerlerinde (Mal Sahibi/Kiracı/İşgalci) Evet (`getUnitActivelyUsedStatusText()`).
+  - **Riskli Yapı mı?**: her zaman "Hayır" (veri kaynağı yok, kullanıcı: "Riskli yapı mı default hayır").
+  - **Konu Taşınmaz Alan/Konum Olarak Projesine Uygun mu?**: mevcut bağımsız bölüm `projectSuitabilityStatus` (veya tapu/belediye ayrı ise ikisi) alanındaki durum anahtarından türetildi (`getUnitProjectSuitabilityAreaMatchText()`/`getUnitProjectSuitabilityLocationMatchText()`, "KULLANIM ALANI.../BLOK BAZINDA KONUM..." durum anahtarlarına bakar).
+  - **Dosyasında Dava/Tutanak Var mı?** ve **Ana/Konu Taşınmaz Üzerinde Yıkım Kararı Var mı?** (3 ayrı Halkbank sorusu): mevcut tek `penaltyDecision` alanı zaten bu üçünü birlikte kapsayan açıklama üretiyor (`buildPenaltyDecisionExplanation`) — ayrı alanlara BÖLÜNMEDİ, aynı alan üçüne de bağlandı (diğer banka şablonlarını etkilememesi için).
+  - **Ana Taşınmaz Alan/Konum Olarak Projesine Uygun mu?**: mevcut bundled `mainRealEstateProjectSuitable` alanı (`ANAGAYRUYG` placeholder'ı) ikisine de bağlandı.
+- **app.js**: `getReviewedBuildingPermitAvailabilityText`, `getLatestRenovationPermitDocumentRow`/`DateText`, `isKatIrtifakiProjectReviewed`/`getKatIrtifakiProjectReviewedText`, `getUnitLeaseAgreementStatusText`, `getUnitActivelyUsedStatusText`, `getActiveProjectSuitabilityStatusValues`, `getUnitProjectSuitabilityAreaMatchText`/`LocationMatchText` (+ `PROJECT_SUITABILITY_AREA_MISMATCH_KEYS`/`..._LOCATION_MISMATCH_KEYS`) eklendi — `getLatestBuildingPermitDateText` gibi mevcut yardımcıların yanına (18095 civarı).
+- **src/templates/template-engine.js**: `RUHSATVARMI`, `RUHSATIPTALIVARMI`, `TADILATRUHSATTARIHI`, `KATIRTIFAKIPROJEINCELENDIMI`, `YERINDEOLCUMYAPILDIMI`, `KIRASOZLESMESIVARMI`, `KONUTASINMAZALANUYGUNMU`, `KONUTASINMAZKONUMUYGUNMU`, `FIILENKULLANILIYORMU`, `YASALEKLENTIDEPOVARMI`, `RISKLIYAPIMI` placeholder'ları eklendi.
+- **templates/halkbank.html**: "6. Ruhsat Özellikleri ve Dosya İncelemeleri" 4 satırdan 21 satıra çıktı (yukarıdaki yeni placeholder'lar + zaten tanımlı ama kullanılmayan `{{BUILDING_CONSTRUCTION_YEAR}}`, `{{LATESTBUILDINGPERMITDATE}}`, `{{OCCUPANCYPERMITDATE}}`, `{{ANAGAYRUYG}}`, `{{ICIGORULDUMU}}` + mevcut `{{PENALTY_DECISION}}`/`{{STATIC_SUITABILITY}}`/`{{BUILDING_INSPECTION_CONTRACT_ACTIVE}}`/`{{EKB_ENERGY_CLASS}}`). **DİKKAT**: `{{YAPIYILI}}` DEĞİL `{{BUILDING_CONSTRUCTION_YEAR}}` kullanıldı — `YAPIYILI` `tools/test-bank-templates.js`'in `FORBIDDEN_LEGACY_TOKENS` listesinde (eski Excel şablon adı), yeni şablon metninde asla yazılmamalı.
+- Yeni `tools/test-halkbank-ruhsat-fields.js`: bağımsız türetme fonksiyonlarını (Kat İrtifakı, Kira Sözleşmesi, Fiilen Kullanılıyor) gerçek app.js kaynağından izole VM'de çalıştırıp doğrular; derin bağımlılıklı fonksiyonların (Ruhsat Var mı, Tad. Ruhsat Tarihi, Konu Taşınmaz Alan/Konum Uygunluk) hâlâ var olduğunu ve template-engine.js'in bunları doğru isimle `safeCall` ettiğini yapısal olarak doğrular; `RUHSATIPTALIVARMI`/`RISKLIYAPIMI` sabit değerlerini de kontrol eder. `package.json`'daki `test` zincirine eklendi.
+- Cache-buster `app.js?v=20260803-1620` ve `src/templates/template-engine.js?v=20260803-1620`'ye yükseltildi.
+- `npm run verify` tamamı geçti (55 test).
+
 ## 0.0.307 - 2026-08-03 - Kat Satırları tablosunda Tab tuşu artık aşağı iner
 
 - Kullanıcı talebi: "ana taşınmaz katları kaydet dedikten sonra çıkan listede TAB tuşu yine sağa geçiyor. burada da emsallerde olduğu gibi taba basıldığında alt hücreye geçmesini istiyorum."

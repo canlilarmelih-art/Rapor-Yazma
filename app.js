@@ -18094,6 +18094,78 @@ function getOccupancyPermitNoText() { return reviewedDocumentNoText(getOccupancy
 function getArchitecturalProjectDateText() { return reviewedDocumentDateText(getArchitecturalProjectDocumentRow()); }
 function getArchitecturalProjectNoText() { return reviewedDocumentNoText(getArchitecturalProjectDocumentRow()); }
 
+// Kullanıcı talebi: Halkbank'ın kendi sistemindeki "Ruhsat Özellikleri ve
+// Dosya İncelemeleri" ekranında ~21 alan varken bizim şablonumuzda yalnızca
+// 4 satır vardı. Aşağıdaki yardımcılar, kullanıcının belirttiği türetme
+// kurallarına göre bu eksik alanları MEVCUT verilerden (İncelenen Belgeler
+// tablosu, proje türü, randevu türü, bağımsız bölüm kullanım durumu, proje
+// uygunluk durumu) hesaplar — yeni bir manuel giriş alanı EKLENMEDİ.
+function getReviewedBuildingPermitAvailabilityText() {
+  return getLatestBuildingPermitDocumentRow() ? "Var" : "Yok";
+}
+
+function getLatestRenovationPermitDocumentRow() {
+  return findReviewedDocumentRowBy(
+    (type) =>
+      isPermitLikeDocument(type) &&
+      !isOccupancyPermitDocument(type) &&
+      !/YENI\s*YAPI\s*RUHSATI/.test(foldTurkish(type))
+  );
+}
+function getLatestRenovationPermitDateText() {
+  return reviewedDocumentDateText(getLatestRenovationPermitDocumentRow());
+}
+
+function isKatIrtifakiProjectReviewed() {
+  return [state.fields.projectType, state.fields.titleProjectType, state.fields.municipalityProjectType].includes(
+    "Kat İrtifakı Projesi"
+  );
+}
+function getKatIrtifakiProjectReviewedText() {
+  return isKatIrtifakiProjectReviewed() ? "Evet" : "Hayır";
+}
+
+function getUnitLeaseAgreementStatusText() {
+  return state.fields.unitUsageStatus === "Kiracı" ? "Evet" : "Hayır";
+}
+
+function getUnitActivelyUsedStatusText() {
+  const status = state.fields.unitUsageStatus || "";
+  const isVacant = status === "Boş (Hiç Kullanılmamış)" || status === "Boş (Kullanılmış)";
+  return isVacant ? "Hayır" : "Evet";
+}
+
+const PROJECT_SUITABILITY_AREA_MISMATCH_KEYS = [
+  "KULLANIM ALANI OLARAK UYGUN DEGILDIR",
+  "KULLANIM ALANI VE MIMARI OLARAK UYGUN DEGILDIR",
+  "TRAMPA",
+];
+const PROJECT_SUITABILITY_LOCATION_MISMATCH_KEYS = [
+  "BLOK BAZINDA KONUM OLARAK UYGUN DEGILDIR",
+  "TRAMPA",
+  "TRAMPA VE AYNA SIMETRISI",
+];
+
+function getActiveProjectSuitabilityStatusValues() {
+  return shouldUseProjectDifferenceComparison()
+    ? [state.fields.titleProjectSuitabilityStatus, state.fields.municipalityProjectSuitabilityStatus]
+    : [state.fields.projectSuitabilityStatus];
+}
+
+function getUnitProjectSuitabilityAreaMatchText() {
+  const mismatch = getActiveProjectSuitabilityStatusValues().some((value) =>
+    PROJECT_SUITABILITY_AREA_MISMATCH_KEYS.includes(projectSuitabilityStatusKey(value))
+  );
+  return mismatch ? "Hayır" : "Evet";
+}
+
+function getUnitProjectSuitabilityLocationMatchText() {
+  const mismatch = getActiveProjectSuitabilityStatusValues().some((value) =>
+    PROJECT_SUITABILITY_LOCATION_MISMATCH_KEYS.includes(projectSuitabilityStatusKey(value))
+  );
+  return mismatch ? "Hayır" : "Evet";
+}
+
 function buildOccupancyPermitDocumentSentence(row) {
   const prefix = buildMissingOccupancyPermitArchivePrefix(row.institution);
   if (!row.date || !row.no) {
