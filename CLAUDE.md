@@ -132,6 +132,18 @@ sorusu gelirse bu günlüğe yeni bir `extra`/olay türü eklemek, Firestore
 kurallarını gevşetmekten HER ZAMAN tercih edilmeli. Test:
 `tools/test-activity-dashboard.js`.
 
+## Yeni kullanıcı e-posta bildirimi (0.0.305, 2026-08-03)
+
+Yeni bir hesap "onay bekliyor" durumuna düştüğünde (`handleRegisterPendingApi`)
+admine (`accessRoles.ADMIN_EMAIL`) otomatik e-posta gider — MEVCUT MFA/Resend
+altyapısı (`RESEND_API_KEY`) yeniden kullanılır, yeni bir env var/secret YOK.
+`registerPendingUser()` artık bir **boolean döner** (gerçekten yeni bir
+bekleyen kayıt mı?) — bildirim kararı buna bağlı; bu dönüş değerinin
+anlamını değiştirecek bir refactor yaparsan `tools/test-new-user-notification.js`
+kırılır (bilerek). `sendEmailViaResend` artık genel (`toEmail, subject, html`)
+— yeni bir e-posta türü eklerken bu imzayı kullan, MFA'ya özel eski hali
+GERİ GETİRME.
+
 ## Bu depoda paralel oturum uyarısı
 
 Aynı çalışma dizininde başka bir ajan (Codex) da düzenleme yapabiliyor.

@@ -941,9 +941,13 @@ function sanitizeRegistrationProfile(profile) {
   };
 }
 
+// Dönüş değeri: bu çağrı GERÇEKTEN yeni bir bekleyen kayıt oluşturduysa
+// true (çağıran, örn. handleRegisterPendingApi, bunu admin bildirim
+// e-postası göndermek için kullanır — zaten onaylı/zaten bekleyen bir
+// kullanıcı tekrar "kayıt olsa" bile e-posta TEKRARLANMAMALI).
 async function registerPendingUser(uid, email, profile) {
   await loadApprovalStateOnce();
-  if (approvedUsers.has(uid)) return;
+  if (approvedUsers.has(uid)) return false;
   if (!pendingUsers.has(uid)) {
     pendingUsers.set(uid, {
       email: email || null,
@@ -951,7 +955,9 @@ async function registerPendingUser(uid, email, profile) {
       ...sanitizeRegistrationProfile(profile),
     });
     saveApprovalStateSoon();
+    return true;
   }
+  return false;
 }
 
 async function approveUser(uid) {
@@ -1131,6 +1137,41 @@ function generateMfaCode() {
   return String(crypto.randomInt(0, 1000000)).padStart(6, "0");
 }
 
+function escapeEmailHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+// Kullanıcı talebi: "yeni bir kullanıcı hesap oluşturma isteğinde
+// bulunduğunda admine mail gelsin böylelikle gözden kaçırmam" — yeni bir
+// "onay bekliyor" kaydı oluşturulduğunda (handleRegisterPendingApi) admine
+// gönderilir. Profil alanları (fullName/phone/workType/company) kullanıcı
+// girdisi olduğundan HTML kaçışlaması ZORUNLU (e-posta gövdesine enjeksiyon
+// riski).
+function buildNewUserNotificationEmailHtml(profile) {
+  const rows = [
+    ["E-posta", profile.email],
+    ["Ad Soyad", profile.fullName],
+    ["Telefon", profile.phone],
+    ["Çalışma Türü", profile.workType],
+    ["Şirket", profile.company],
+  ]
+    .filter(([, value]) => value)
+    .map(([label, value]) => `<tr><td style="padding:4px 10px 4px 0;color:#5a6576;font-size:13px;white-space:nowrap;">${escapeEmailHtml(label)}</td><td style="padding:4px 0;color:#152238;font-size:13px;font-weight:700;">${escapeEmailHtml(value)}</td></tr>`)
+    .join("");
+  return `<!doctype html><html lang="tr"><body style="margin:0;padding:24px;background:#f2f4f8;font-family:Arial,sans-serif;">
+    <div style="max-width:460px;margin:0 auto;background:#ffffff;border-radius:12px;padding:28px 24px;">
+      <p style="margin:0 0 4px;font-weight:800;font-size:15px;color:#111d3d;">Yeni Kullanıcı Onayı Bekliyor</p>
+      <p style="margin:0 0 18px;color:#5a6576;font-size:13px;">Experify'de yeni bir hesap oluşturuldu ve girişe izin verilmeden önce onayınızı bekliyor.</p>
+      <table style="border-collapse:collapse;width:100%;margin:0 0 20px;">${rows}</table>
+      <a href="https://experify.com.tr/admin-users.html" style="display:inline-block;background:#213f77;color:#ffffff;text-decoration:none;font-weight:700;font-size:13px;padding:10px 18px;border-radius:8px;">Kullanıcı Onayları'nı Aç</a>
+    </div>
+  </body></html>`;
+}
+
 function buildMfaEmailHtml(code) {
   return `<!doctype html><html lang="tr"><body style="margin:0;padding:24px;background:#f2f4f8;font-family:Arial,sans-serif;">
     <div style="max-width:420px;margin:0 auto;background:#ffffff;border-radius:12px;padding:28px 24px;">
@@ -1143,13 +1184,13 @@ function buildMfaEmailHtml(code) {
   </body></html>`;
 }
 
-function sendEmailViaResend(toEmail, code) {
+function sendEmailViaResend(toEmail, subject, html) {
   return new Promise((resolve, reject) => {
     const payload = JSON.stringify({
       from: RESEND_FROM_EMAIL,
       to: [toEmail],
-      subject: "Experify Giriş Kodu",
-      html: buildMfaEmailHtml(code),
+      subject,
+      html,
     });
     const request = https.request(
       {
@@ -1896,7 +1937,7 @@ async function handleSessionApi(request, response, url, user) {
     const code = generateMfaCode();
     mfaCodes.set(user.uid, { code, expiresAt: now + MFA_CODE_TTL_MS, attempts: 0, email: user.email });
     try {
-      await sendEmailViaResend(user.email, code);
+      await sendEmailViaResend(user.email, "Experify Giriş Kodu", buildMfaEmailHtml(code));
     } catch (error) {
       logServerError("MFA kodu e-postası gönderilemedi", error);
       sendJson(response, 502, { ok: false, error: "Kod e-postası gönderilemedi. Lütfen tekrar deneyin." });
@@ -1975,12 +2016,29 @@ async function handleRegisterPendingApi(request, response, user) {
     sendJson(response, 400, { ok: false, error: "Geçersiz istek." });
     return;
   }
-  await registerPendingUser(user.uid, user.email, {
+  const profile = {
     fullName: body?.fullName,
     phone: body?.phone,
     workType: body?.workType,
     company: body?.company,
-  });
+  };
+  const isNewlyPending = await registerPendingUser(user.uid, user.email, profile);
+  // E-posta gönderimi başarısız olsa bile kayıt akışı ASLA bloklanmaz/
+  // bozulmaz (kullanıcı yine "onay bekliyor" ekranını görür) — yalnızca
+  // sunucu logunda hata kalır. RESEND_API_KEY yoksa (isMfaConfigured false)
+  // bu adım tamamen sessizce atlanır (MFA'daki "opsiyonel env var" deseniyle
+  // aynı — bkz. CLAUDE.md).
+  if (isNewlyPending && isMfaConfigured() && accessRoles.ADMIN_EMAIL) {
+    try {
+      await sendEmailViaResend(
+        accessRoles.ADMIN_EMAIL,
+        "Experify — Yeni Kullanıcı Onayı Bekliyor",
+        buildNewUserNotificationEmailHtml({ email: user.email, ...sanitizeRegistrationProfile(profile) }),
+      );
+    } catch (error) {
+      logServerError("Yeni kullanıcı bildirim e-postası gönderilemedi", error);
+    }
+  }
   sendJson(response, 200, { ok: true });
 }
 
@@ -2799,4 +2857,6 @@ module.exports = {
   listLoginEvents,
   computeUserReportStats,
   activityEvents,
+  buildNewUserNotificationEmailHtml,
+  sendEmailViaResend,
 };

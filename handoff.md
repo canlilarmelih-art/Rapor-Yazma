@@ -1,5 +1,16 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.305 - 2026-08-03 - Yeni kullanıcı kaydında admine e-posta bildirimi
+
+- Kullanıcı talebi: "yeni bir kullanıcı hesap oluşturma isteğinde bulunduğunda admine mail gelsin böylelikle gözden kaçırmam."
+- **server.js**: mevcut MFA e-posta altyapısı (Resend) yeniden kullanıldı — yeni özel bir servis/anahtar eklenmedi. `sendEmailViaResend(toEmail, code)` → `sendEmailViaResend(toEmail, subject, html)` olarak genelleştirildi (tek çağıran, MFA kod isteği, güncellendi). Yeni `buildNewUserNotificationEmailHtml(profile)`: e-posta, ad soyad, telefon, çalışma türü, şirket (yalnızca DOLU alanlar gösterilir) + "Kullanıcı Onayları'nı Aç" düğmesi (admin-users.html linki); tüm alanlar `escapeEmailHtml` ile kaçışlanır (kullanıcı girdisi HTML enjeksiyonuna karşı).
+- `registerPendingUser(uid, email, profile)` artık bir **boolean döner**: yalnızca GERÇEKTEN yeni bir bekleyen kayıt oluşturulduysa `true` (zaten bekleyen/zaten onaylı bir uid için `false`) — `handleRegisterPendingApi` bunu "bildirim gönderilsin mi?" kararı için kullanır, aynı kullanıcı tekrar "kayıt olsa" bile e-posta TEKRARLANMAZ.
+- Bildirim `isMfaConfigured()` (yani `RESEND_API_KEY` var mı) ile aynı "opsiyonel env var" desenine bağlı — anahtar yoksa özellik tamamen sessizce devre dışı kalır, mevcut kayıt akışını BOZMAZ. E-posta gönderimi try/catch içinde; başarısız olsa da kullanıcı normal "onay bekliyor" ekranını görmeye devam eder, yalnızca sunucu logunda hata kalır.
+- Alıcı: `accessRoles.ADMIN_EMAIL` (src/auth/access-control.js, client/server ortak kaynak — ayrı bir env var/ayar eklenmedi).
+- Yeni `tools/test-new-user-notification.js`: `registerPendingUser`'ın dönüş değerinin (ilk kayıt/tekrar kayıt/onaylı kullanıcı/reddedilip-tekrar-kayıt senaryoları) doğru bildirim kararına karşılık geldiğini, ve `buildNewUserNotificationEmailHtml`'in XSS kaçışlamasını + boş alanları hiç göstermediğini izole doğrular. Gerçek Resend API çağrısı (https.request) hiçbir testte tetiklenmiyor (mevcut test-mfa-flow.js ile aynı desen).
+- Deploy altyapısında (ecosystem.config.cjs, .github/workflows/deploy.yml) `RESEND_API_KEY`/`RESEND_FROM_EMAIL` zaten mevcuttu — yeni bir ortam değişkeni/secret eklenmedi.
+- `npm run verify` tamamı geçti (51 test).
+
 ## 0.0.304 - 2026-08-03 - TCMB tekil kur placeholderlari
 
 - TCMB'nin USD/EUR icin hem alis hem satis kurlari artik tek basina sablonlarda kullanilabilir: `{{USD_BUYING_RATE}}`, `{{USD_SELLING_RATE}}`, `{{EUR_BUYING_RATE}}`, `{{EUR_SELLING_RATE}}`.
