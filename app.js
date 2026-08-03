@@ -1007,6 +1007,9 @@ const bankStatus = document.querySelector("#bankStatus");
 const missingCount = document.querySelector("#missingCount");
 const missingCriticalTrigger = document.querySelector("#missingCriticalTrigger");
 const lastSaved = document.querySelector("#lastSaved");
+const tcmbRateStrip = document.querySelector("#tcmbRateStrip");
+const tcmbRateContent = document.querySelector("#tcmbRateContent");
+let tcmbRateRetryCount = 0;
 const syncLabel = document.querySelector("#syncLabel");
 const syncDetail = document.querySelector("#syncDetail");
 const syncDot = document.querySelector("#syncDot");
@@ -16034,6 +16037,45 @@ function pingReportEvent(type, reportId) {
   }).catch(() => {});
 }
 
+function formatTcmbRate(value) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric)
+    ? numeric.toLocaleString("tr-TR", { minimumFractionDigits: 4, maximumFractionDigits: 4 })
+    : "-";
+}
+
+function formatTcmbDate(value) {
+  const match = String(value || "").match(/^(\d{2})[./-](\d{2})[./-](\d{4})$/);
+  return match ? `${match[1]}.${match[2]}.${match[3]}` : String(value || "").trim();
+}
+
+async function refreshTcmbRates() {
+  if (!tcmbRateContent) return;
+  try {
+    const response = await fetchRaporApi("/api/tcmb-rates");
+    const payload = await response.json();
+    if (!response.ok || !payload?.ok) throw new Error(payload?.error || "TCMB kurlari alinamadi.");
+    const freshness = payload.stale ? "Son basarili veri" : "TCMB tarihi";
+    tcmbRateContent.textContent = `USD/TRY Alis: ${formatTcmbRate(payload.usd?.buying)} | Satis: ${formatTcmbRate(payload.usd?.selling)}     EUR/TRY Alis: ${formatTcmbRate(payload.eur?.buying)} | Satis: ${formatTcmbRate(payload.eur?.selling)}     (${freshness}: ${formatTcmbDate(payload.date) || "-"})`;
+    tcmbRateStrip?.classList.toggle("is-unavailable", Boolean(payload.stale));
+    tcmbRateRetryCount = 0;
+  } catch (error) {
+    // app.js, cloud-sync.js'den once yuklenir. Ilk anda Firebase ID token'i
+    // henuz hazir olmayabilir; bu teknik baslangic sirasi kur bandini kalici
+    // hataya dusurmemeli. Kisa ve sinirli tekrarlar token hazir oldugunda
+    // otomatik olarak ayni istegi tamamlar.
+    const shouldRetry = tcmbRateRetryCount < 6;
+    if (shouldRetry) {
+      tcmbRateRetryCount += 1;
+      tcmbRateContent.textContent = "TCMB kurlari baglanti hazirlanirken yeniden deneniyor...";
+      window.setTimeout(refreshTcmbRates, 2500);
+    } else {
+      tcmbRateContent.textContent = "TCMB kurlari su an alinamadi.";
+    }
+    tcmbRateStrip?.classList.add("is-unavailable");
+  }
+}
+
 async function readPdfTextOnServer(file) {
   const response = await fetchRaporApi("/api/pdf-text", {
     method: "POST",
@@ -31042,6 +31084,12 @@ if (initialImarRulesChanged || initialTextNormalizationChanged || initialReviewe
 initSidebarCollapse();
 createNav();
 render();
+
+window.addEventListener("load", () => {
+  // Cloud sync token'inin olusmasi icin kisa bir pay birakilir.
+  window.setTimeout(refreshTcmbRates, 1200);
+  window.setInterval(refreshTcmbRates, 30 * 60 * 1000);
+}, { once: true });
 
 // Leaflet is loaded from a deferred external script and may finish after the
 // first render. Replace a temporary static fallback as soon as it is ready.

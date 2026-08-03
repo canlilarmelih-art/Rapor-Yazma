@@ -827,6 +827,34 @@ body[data-app-theme="clay"] .brand-mark-icon-navy {
   line-height: 1.25;
 }
 
+.tcmb-rate-strip {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin: -2px 0 12px;
+  min-height: 38px;
+  padding: 8px 12px;
+  border: 1px solid rgba(46, 112, 197, 0.35);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.tcmb-rate-strip strong {
+  color: var(--blue, #2e70c5);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.tcmb-rate-strip span {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.tcmb-rate-strip.is-unavailable { border-color: var(--line); }
+
 .mobile-flow {
   display: flex;
   justify-content: space-between;
@@ -5155,6 +5183,12 @@ td textarea.table-textarea {
   .status-strip strong {
     margin-top: 4px;
     font-size: 13px;
+  }
+
+  .tcmb-rate-strip {
+    gap: 5px 10px;
+    margin-bottom: 10px;
+    font-size: 11px;
   }
 
   .placeholder-toolbar {

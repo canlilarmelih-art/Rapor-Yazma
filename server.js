@@ -24,6 +24,13 @@ const neighborhoodCsvFile = path.join(dataDir, "bursa_manuel_duzeltilmis_ana_dos
 let firebaseCertCache = { certs: null, expiresAt: 0, pending: null };
 let neighborhoodRowsPromise = null;
 let lastBackupCheckDate = "";
+// TCMB gunluk gosterge kurlari: ayni anda tum kullanicilar icin tek kaynaktan
+// okunur. Kisa bellek hem TCMB'yi gereksiz sorgulamayi onler hem de anlik servis
+// kesintisinde son basarili kurun ekranda kalmasini saglar.
+const TCMB_RATES_URL = "https://www.tcmb.gov.tr/kurlar/today.xml";
+const TCMB_CACHE_TTL_MS = 10 * 60 * 1000;
+const TCMB_STALE_TTL_MS = 36 * 60 * 60 * 1000;
+let tcmbRatesCache = { payload: null, fetchedAt: 0, pending: null };
 
 // Statik dosya erişim kapısı (kod koruması): daha önce app.js/index.html gibi
 // istemci kaynak kodu HERKESE, giriş yapmadan indirilebiliyordu — sayfa
@@ -1462,6 +1469,102 @@ async function handleOverpassApi(request, response) {
   sendJson(response, 502, { ok: false, error: "Yakın çevre servisine ulaşılamadı." });
 }
 
+function fetchHttpsText(endpoint, timeoutMs = 12000) {
+  return new Promise((resolve, reject) => {
+    const target = new URL(endpoint);
+    const upstream = https.get({
+      hostname: target.hostname,
+      path: `${target.pathname}${target.search}`,
+      port: target.port || 443,
+      timeout: timeoutMs,
+      headers: {
+        Accept: "application/xml,text/xml;q=0.9,*/*;q=0.1",
+        "User-Agent": "Experify/1.0 TCMB currency client",
+      },
+    }, (upstreamResponse) => {
+      let body = "";
+      upstreamResponse.setEncoding("utf8");
+      upstreamResponse.on("data", (chunk) => { body += chunk; });
+      upstreamResponse.on("end", () => {
+        const statusCode = upstreamResponse.statusCode || 500;
+        if (statusCode < 200 || statusCode >= 300) {
+          reject(new Error(`TCMB ${statusCode}`));
+          return;
+        }
+        resolve(body);
+      });
+    });
+    upstream.on("timeout", () => upstream.destroy(new Error("TCMB zaman asimina ugradi.")));
+    upstream.on("error", reject);
+  });
+}
+
+function xmlTagText(xml, tagName) {
+  const match = String(xml || "").match(new RegExp(`<${tagName}>([\\s\\S]*?)</${tagName}>`, "i"));
+  return match ? match[1].trim() : "";
+}
+
+function parseTcmbCurrency(xml, code) {
+  const currencyMatch = String(xml || "").match(new RegExp(`<Currency\\b[^>]*\\bKod="${code}"[^>]*>([\\s\\S]*?)</Currency>`, "i"));
+  if (!currencyMatch) return null;
+  const currencyXml = currencyMatch[1];
+  const buying = Number(xmlTagText(currencyXml, "ForexBuying").replace(",", "."));
+  const selling = Number(xmlTagText(currencyXml, "ForexSelling").replace(",", "."));
+  if (!Number.isFinite(buying) || !Number.isFinite(selling)) return null;
+  return { buying, selling };
+}
+
+function parseTcmbRates(xml) {
+  const date = String(xml || "").match(/<Tarih_Date\b[^>]*\bTarih="([^"]+)"/i)?.[1]
+    || String(xml || "").match(/<Tarih_Date\b[^>]*\bDate="([^"]+)"/i)?.[1]
+    || "";
+  const usd = parseTcmbCurrency(xml, "USD");
+  const eur = parseTcmbCurrency(xml, "EUR");
+  if (!usd || !eur) throw new Error("TCMB USD veya EUR kuru bulunamadi.");
+  return { source: "TCMB", date, usd, eur };
+}
+
+async function getTcmbRates() {
+  const now = Date.now();
+  if (tcmbRatesCache.payload && now - tcmbRatesCache.fetchedAt < TCMB_CACHE_TTL_MS) {
+    return { ...tcmbRatesCache.payload, cached: true, stale: false };
+  }
+  if (!tcmbRatesCache.pending) {
+    tcmbRatesCache.pending = fetchHttpsText(TCMB_RATES_URL)
+      .then((xml) => {
+        const payload = parseTcmbRates(xml);
+        tcmbRatesCache = { payload, fetchedAt: Date.now(), pending: null };
+        return payload;
+      })
+      .catch((error) => {
+        tcmbRatesCache.pending = null;
+        throw error;
+      });
+  }
+  try {
+    return { ...(await tcmbRatesCache.pending), cached: false, stale: false };
+  } catch (error) {
+    if (tcmbRatesCache.payload && now - tcmbRatesCache.fetchedAt < TCMB_STALE_TTL_MS) {
+      return { ...tcmbRatesCache.payload, cached: true, stale: true };
+    }
+    throw error;
+  }
+}
+
+async function handleTcmbRatesApi(request, response) {
+  if (request.method !== "GET") {
+    sendJson(response, 405, { ok: false, error: "Bu islem desteklenmiyor." });
+    return;
+  }
+  try {
+    const rates = await getTcmbRates();
+    sendJson(response, 200, { ok: true, ...rates, fetchedAt: new Date(tcmbRatesCache.fetchedAt).toISOString() });
+  } catch (error) {
+    logServerError("TCMB kur servisi hatasi", error);
+    sendJson(response, 502, { ok: false, error: "TCMB guncel kurlarina ulasilamadi." });
+  }
+}
+
 async function readUserPois(uid) {
   const poisFile = userPoisFile(uid);
   try {
@@ -2124,6 +2227,7 @@ const API_RATE_LIMITS = {
   "/api/overpass": { limit: 30, windowMs: 60 * 1000 },
   "/api/user-pois": { limit: 60, windowMs: 60 * 1000 },
   "/api/neighborhoods": { limit: 60, windowMs: 60 * 1000 },
+  "/api/tcmb-rates": { limit: 30, windowMs: 60 * 1000 },
   "/api/pdf-text": { limit: 5, windowMs: 60 * 1000 },
   "/api/session": { limit: 20, windowMs: 60 * 1000 },
   "/api/register-pending": { limit: 10, windowMs: 60 * 1000 },
@@ -2194,6 +2298,10 @@ const server = http.createServer(async (request, response) => {
     }
     if (apiRoute === "/api/neighborhoods") {
       await handleNeighborhoodsApi(request, response);
+      return;
+    }
+    if (apiRoute === "/api/tcmb-rates") {
+      await handleTcmbRatesApi(request, response);
       return;
     }
     if (apiRoute === "/api/pdf-text") {
@@ -2298,6 +2406,8 @@ module.exports = {
   grantPrivilege,
   revokePrivilege,
   requireAdmin,
+  parseTcmbCurrency,
+  parseTcmbRates,
   pendingUsers,
   approvedUsers,
   privilegedUsers,

@@ -6981,3 +6981,14 @@ Doğrulama: `node --check app.js`, `node tools/check-basic.js`, `git diff --chec
 - Yeni rapor placeholder'ları: `{{TOTAL_LEGAL_AREA}}` ve `{{TOTAL_CURRENT_AREA}}`. Türkçe eşdeğerleri `{{TOPLAM_YASAL_ALAN}}` ve `{{TOPLAM_MEVCUT_ALAN}}` da çözülür.
 - Bu placeholder'lar birden fazla bağımsız bölüm kat satırı varsa yasal/mevcut alanları toplar, tek katlı kayıtta ilgili alanı döndürür. Placeholder ekranı ve `templates/PLACEHOLDER-REHBERI.md` güncellendi.
 - Doğrulama: `npm.cmd run verify` geçti.
+## 0.0.298 - TCMB Güncel Döviz Kurları (2026-08-03)
+
+- Uygulama üst durum alanına TCMB kaynaklı USD/TRY ve EUR/TRY alış-satış kur bandı eklendi.
+- Yeni kimlik doğrulamalı `/api/tcmb-rates` uç noktası, TCMB'nin resmi `today.xml` verisini sunucu tarafında okuyarak tarayıcı CORS bağımlılığını kaldırır.
+- Veri 10 dakika önbelleklenir; TCMB geçici olarak erişilemezse son başarılı değer 36 saate kadar "Son başarılı veri" etiketiyle gösterilir.
+- Kaynak gününü XML içindeki TCMB tarihinden gösterir; istemcinin cihaz saatiyle karıştırılmaz.
+
+## 0.0.299 - TCMB Oturum Hazırlık Tekrarı (2026-08-03)
+
+- Kur bandının ilk isteği Firebase kimlik belirteci hazır olmadan çalışırsa, istemci 1,2 saniye ilk bekleme sonrasında 2,5 saniye aralıkla en fazla altı kez tekrar dener.
+- Böylece uygulama açılış sırası nedeniyle bandın kalıcı olarak "TCMB kurları şu an alınamadı" durumunda kalması önlenir.
