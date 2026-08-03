@@ -29548,6 +29548,110 @@ function calculateComparableMetrics(row) {
   };
 }
 
+// Emlak Katılım .docx şablonu ("4. Taşınmazın Konum Krokisi Ve Emsal
+// Taşınmazlar" — Emsal 1/2/3 sabit kartları) için: belgede sabit 3 emsal
+// kartı yeri var (dinamik satır çoğaltma değil), bu yüzden emsal
+// dizisinden İNDEKSLİ erişim yeterli — 0/1/2. index karşılığı yoksa
+// (o kadar emsal girilmemişse) boş döner, kart Word'de bomboş kalır.
+function getComparableCardEntries() {
+  return getComparableRows().filter((row) => Object.values(row || {}).some((value) => String(value || "").trim()));
+}
+
+function getComparableCardData(index) {
+  const row = getComparableCardEntries()[index];
+  if (!row) return null;
+  return { row, metrics: calculateComparableMetrics(row) };
+}
+
+function getComparableCardContactText(index) {
+  const data = getComparableCardData(index);
+  if (!data) return "";
+  const phone = formatComparablePhoneForOutput(data.row.c1);
+  return [data.row.c0, phone].filter(Boolean).join(" / ");
+}
+
+function getComparableCardDescriptionText(index) {
+  const data = getComparableCardData(index);
+  return data ? buildComparableSubjectStatement(data.row, data.metrics) : "";
+}
+
+function getComparableCardAreaText(index) {
+  const data = getComparableCardData(index);
+  return data ? formatComparableArea(data.metrics.adjustedArea) : "";
+}
+
+function getComparableCardSaleValueText(index) {
+  const data = getComparableCardData(index);
+  return data ? formatComparableMoney(data.metrics.saleValue) : "";
+}
+
+function getComparableCardUnitValueText(index) {
+  const data = getComparableCardData(index);
+  return data ? formatComparableMoney(data.metrics.adjustedUnitValue, " TL/m2") : "";
+}
+
+// Emlak Katılım .docx şablonu — "2.1. Gayrimenkulün Çevre Analizi" ve
+// "5.5. Kira Kabiliyeti" bölümlerindeki seçenekler Word'de AYRI hücrelerde
+// duruyor (bir hücrenin içine yazılan tek bir metin değil); kullanıcı
+// talebi: doğru seçeneği KOYU (bold) yap. Bizim alanlarımızın ölçeği
+// belgedeki seçeneklerle HER ZAMAN birebir örtüşmüyor (ör. developmentDensity
+// "düşük/orta/yüksek" 3'lü ölçek, belge "%25'in altında/%25-75/%75'ten
+// fazla" 3'lü ölçek) — sıralı (ordinal) eşleme yapılır, YAKLAŞIKTIR.
+// regionUsePurpose çoklu seçim/serbest metin olduğundan anahtar kelime
+// eşleşmesiyle (konut/işyeri-ticaret/sanayi) yaklaşık eşlenir.
+function getEmlakKatilimBoldFlags() {
+  const density = String(state.fields.developmentDensity || "");
+  const speed = String(state.fields.developmentSpeed || "");
+  const earthquake = String(state.fields.earthquakeZone || "");
+  const earthquakeDegreeMatch = earthquake.match(/^(\d)\./);
+  const earthquakeDegree = earthquakeDegreeMatch ? earthquakeDegreeMatch[1] : "";
+  const purpose = foldTurkish(String(state.fields.regionUsePurpose || "")).toLocaleLowerCase("tr");
+  const hasKonut = purpose.includes("konut") || purpose.includes("villa") || purpose.includes("yazlik");
+  const hasIsyeri = purpose.includes("isyeri") || purpose.includes("ticaret") || purpose.includes("ofis");
+  const hasSanayi = purpose.includes("sanayi");
+  const tenantOccupied = isUnitTenantOccupied();
+
+  return {
+    YOGUNLUK_75USTU: density === "yüksek",
+    YOGUNLUK_25_75: density === "orta",
+    YOGUNLUK_25ALTI: density === "düşük",
+    HIZ_HIZLI: speed === "yüksek",
+    HIZ_SABIT: speed === "orta",
+    HIZ_YAVAS: speed === "düşük",
+    DEPREM_1: earthquakeDegree === "1",
+    DEPREM_2: earthquakeDegree === "2",
+    DEPREM_3: earthquakeDegree === "3",
+    DEPREM_4: earthquakeDegree === "4",
+    DEPREM_5: earthquakeDegree === "5",
+    TUR_SANAYI: hasSanayi,
+    TUR_KARMA: hasKonut && hasIsyeri && !hasSanayi,
+    TUR_KONUT: hasKonut && !hasIsyeri && !hasSanayi,
+    TUR_TICARET: hasIsyeri && !hasKonut && !hasSanayi,
+    TUR_TURIZM: false,
+    TUR_DIGER: !hasKonut && !hasIsyeri && !hasSanayi,
+    KIRACI_VAR: tenantOccupied,
+    KIRACI_YOK: !tenantOccupied,
+    KONTRAT_VAR: false,
+    KONTRAT_YOK: !tenantOccupied,
+  };
+}
+
+function getComparableCard1ContactText() { return getComparableCardContactText(0); }
+function getComparableCard1DescriptionText() { return getComparableCardDescriptionText(0); }
+function getComparableCard1AreaText() { return getComparableCardAreaText(0); }
+function getComparableCard1SaleValueText() { return getComparableCardSaleValueText(0); }
+function getComparableCard1UnitValueText() { return getComparableCardUnitValueText(0); }
+function getComparableCard2ContactText() { return getComparableCardContactText(1); }
+function getComparableCard2DescriptionText() { return getComparableCardDescriptionText(1); }
+function getComparableCard2AreaText() { return getComparableCardAreaText(1); }
+function getComparableCard2SaleValueText() { return getComparableCardSaleValueText(1); }
+function getComparableCard2UnitValueText() { return getComparableCardUnitValueText(1); }
+function getComparableCard3ContactText() { return getComparableCardContactText(2); }
+function getComparableCard3DescriptionText() { return getComparableCardDescriptionText(2); }
+function getComparableCard3AreaText() { return getComparableCardAreaText(2); }
+function getComparableCard3SaleValueText() { return getComparableCardSaleValueText(2); }
+function getComparableCard3UnitValueText() { return getComparableCardUnitValueText(2); }
+
 function calculateComparableAdjustment(direction, percentValue) {
   const percent = parseComparablePercent(percentValue);
   const sign = String(direction || "").trim();

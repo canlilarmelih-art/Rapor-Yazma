@@ -179,21 +179,47 @@
     const tokens = new Set();
     xmlText.replace(/\{\{([^{}]+)\}\}/g, (match, name) => {
       const trimmed = String(name || "").trim();
-      if (trimmed) tokens.add(trimmed);
+      // {{BOLD:AD}} isaretleri gercek deger placeholder'i DEGIL — ayri bir
+      // mekanizma (applyBoldMarkers) tarafindan islenir, resolveTemplateTokenValues
+      // icin normal "token" sayilmamali (aksi halde hep "missing" cikardi).
+      if (trimmed && !trimmed.startsWith("BOLD:")) tokens.add(trimmed);
       return match;
     });
     return [...tokens];
   }
 
+  // "2.1 Çevre Analizi"/"5.5 Kira Kabiliyeti" gibi Word'de AYRI hücrelerde
+  // duran çoktan-seçmeli alanlar için: şablon hazırlanırken her seçenek
+  // metninin BAŞINA {{BOLD:AD}} işareti kondu (bkz. templates/emlakkatilim.docx
+  // hazırlık notları, CLAUDE.md). Burada boldFlags[AD] true olan işaretli
+  // run'ın <w:rPr>'ına <w:b/><w:bCs/> eklenir (yoksa oluşturulur), işaret
+  // metinden SİLİNİR — false/tanımsız olanlarda yalnızca işaret silinir,
+  // biçim değişmez.
+  function applyBoldMarkers(xmlText, boldFlags) {
+    const flags = boldFlags || {};
+    const runPattern = /<w:r>((?:(?!<w:r>|<\/w:r>)[\s\S])*?)<w:t([^>]*)>\{\{BOLD:([A-Za-z0-9_]+)\}\}([^<]*)<\/w:t>((?:(?!<w:r>|<\/w:r>)[\s\S])*?)<\/w:r>/g;
+    return xmlText.replace(runPattern, (match, beforeT, tAttrs, name, text, afterT) => {
+      let before = beforeT;
+      if (flags[name]) {
+        before = /<w:rPr>/.test(before)
+          ? before.replace(/<w:rPr>/, "<w:rPr><w:b/><w:bCs/>")
+          : `<w:rPr><w:b/><w:bCs/></w:rPr>${before}`;
+      }
+      return `<w:r>${before}<w:t${tAttrs}>${text}</w:t>${afterT}</w:r>`;
+    });
+  }
+
   // --- Ana API ---------------------------------------------------------
   // arrayBuffer: STORED .docx şablonu (fetch edilmiş ham bayt)
   // values: { TOKEN: htmlValue } — window.RaporTemplates.resolveTemplateTokenValues() çıktısı
-  function fillTemplate(arrayBuffer, values) {
+  // boldFlags: { AD: boolean } — çoktan-seçmeli alanlarda hangi {{BOLD:AD}}
+  // işaretli seçeneğin kalınlaştırılacağı (bkz. applyBoldMarkers)
+  function fillTemplate(arrayBuffer, values, boldFlags) {
     const entries = readStoredZip(arrayBuffer);
     const docEntry = entries.find((e) => e.name === "word/document.xml");
     if (!docEntry) throw new Error("DOCX şablonunda word/document.xml bulunamadı.");
 
-    let xmlText = dec.decode(docEntry.bytes);
+    let xmlText = applyBoldMarkers(dec.decode(docEntry.bytes), boldFlags);
     const tokens = collectTokens(xmlText);
     const missing = [];
 
@@ -223,6 +249,7 @@
   window.RaporDocxFill = {
     fillTemplate,
     collectTokens,
+    applyBoldMarkers,
     htmlValueToXmlText,
     crc32,
     readStoredZip,

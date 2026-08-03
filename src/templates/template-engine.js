@@ -545,6 +545,25 @@
     // --- Emlak Katılım "5.5. Kira Kabiliyeti" ---
     DAIREICINDEKIRACI: { fn: () => safeCall("getUnitTenantPresenceText") },
     KIRACININKONTRATI: { fn: () => safeCall("getUnitTenantContractStatusText") },
+
+    // --- Emlak Katılım "4. Taşınmazın Konum Krokisi Ve Emsal Taşınmazlar"
+    // (Word belgesindeki SABİT 3 emsal kartı — dinamik satır çoğaltma değil,
+    // emsal listesinden 0/1/2. index doğrudan bu kartlara eşlenir) ---
+    EMSAL1ILGILIKISIVETEL: { fn: () => safeCall("getComparableCard1ContactText") },
+    EMSAL1ACIKLAMASI: { fn: () => safeCall("getComparableCard1DescriptionText") },
+    EMSAL1INDIRGENMISKULLANIMALANI: { fn: () => safeCall("getComparableCard1AreaText") },
+    EMSAL1INDIRGENMISSATISFIYATI: { fn: () => safeCall("getComparableCard1SaleValueText") },
+    EMSAL1INDIRGENMISBIRIMFIYAT: { fn: () => safeCall("getComparableCard1UnitValueText") },
+    EMSAL2ILGILIKISIVETEL: { fn: () => safeCall("getComparableCard2ContactText") },
+    EMSAL2ACIKLAMASI: { fn: () => safeCall("getComparableCard2DescriptionText") },
+    EMSAL2INDIRGENMISKULLANIMALANI: { fn: () => safeCall("getComparableCard2AreaText") },
+    EMSAL2INDIRGENMISSATISFIYATI: { fn: () => safeCall("getComparableCard2SaleValueText") },
+    EMSAL2INDIRGENMISBIRIMFIYAT: { fn: () => safeCall("getComparableCard2UnitValueText") },
+    EMSAL3ILGILIKISIVETEL: { fn: () => safeCall("getComparableCard3ContactText") },
+    EMSAL3ACIKLAMASI: { fn: () => safeCall("getComparableCard3DescriptionText") },
+    EMSAL3INDIRGENMISKULLANIMALANI: { fn: () => safeCall("getComparableCard3AreaText") },
+    EMSAL3INDIRGENMISSATISFIYATI: { fn: () => safeCall("getComparableCard3SaleValueText") },
+    EMSAL3INDIRGENMISBIRIMFIYAT: { fn: () => safeCall("getComparableCard3UnitValueText") },
     ISBANKMIMARIPROJE: { t: () => field("projectReviewDescription") || safeCall("buildProjectReviewDescription") || field("projectConformity") },
     UYGACIKLAMA: { t: () => field("projectReviewDescription") || safeCall("buildProjectReviewDescription") || field("projectConformity") },
     VAKIFMIMARIPROJE: { t: () => field("projectReviewDescription") || safeCall("buildProjectReviewDescription") || field("projectConformity") },
@@ -1115,7 +1134,8 @@
     if (!docEntry) throw new Error("DOCX şablonunda word/document.xml bulunamadı.");
     const tokens = window.RaporDocxFill.collectTokens(new TextDecoder("utf-8").decode(docEntry.bytes));
     const { values, missing } = resolveTemplateTokenValues(tokens);
-    const filled = window.RaporDocxFill.fillTemplate(arrayBuffer, values);
+    const boldFlags = safeCall("getEmlakKatilimBoldFlags") || {};
+    const filled = window.RaporDocxFill.fillTemplate(arrayBuffer, values, boldFlags);
     const fileName = `${safeCall("buildExportBaseFileName") || "rapor"}-${entry.key}.docx`;
     if (download && window.RaporXlsxFill?.downloadBlob) window.RaporXlsxFill.downloadBlob(fileName, filled.blob);
     return {

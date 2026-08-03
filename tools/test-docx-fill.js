@@ -116,6 +116,40 @@ assert.ok(DocxFill && typeof DocxFill.fillTemplate === "function", "RaporDocxFil
   );
 }
 
+// --- 3b) applyBoldMarkers — coktan-secmeli alanlarda dogru secenegi
+// kalinlastirma (kullanici talebi: "Doğru seçeneği KOYU (bold) yap") -------
+{
+  const runFor = (name, text) =>
+    `<w:r><w:rPr><w:color w:val="000000"/></w:rPr><w:t>{{BOLD:${name}}}${text}</w:t></w:r>`;
+  const documentXml =
+    "<w:document><w:body><w:p>" +
+    runFor("KENT", "Kent") +
+    runFor("KENT_DISI", "Kent Dışı") +
+    runFor("KIRSAL", "Kırsal") +
+    "</w:p></w:body></w:document>";
+
+  const boldTrue = DocxFill.applyBoldMarkers(documentXml, { KENT_DISI: true });
+  check(!/\{\{BOLD:/.test(boldTrue), `applyBoldMarkers isaretleri tamamen silmedi: ${boldTrue}`);
+  check(
+    /<w:rPr><w:b\/><w:bCs\/><w:color[^>]*\/><\/w:rPr><w:t>Kent Dışı<\/w:t>/.test(boldTrue),
+    `"Kent Dışı" run'ina <w:b/> eklenmedi: ${boldTrue}`
+  );
+  check(
+    /<w:rPr><w:color[^>]*\/><\/w:rPr><w:t>Kent<\/w:t>/.test(boldTrue),
+    `Secilmeyen "Kent" run'ina yanlislikla <w:b/> eklenmis: ${boldTrue}`
+  );
+
+  const boldNone = DocxFill.applyBoldMarkers(documentXml, {});
+  check(!/<w:b\/>/.test(boldNone), `Hicbir bayrak true degilken hicbir run kalinlasmamali: ${boldNone}`);
+  check(!/\{\{BOLD:/.test(boldNone), "Bayrak bos olsa da isaretler silinmeli.");
+
+  // collectTokens {{BOLD:...}} isaretlerini normal token saymamali —
+  // aksi halde resolveTemplateTokenValues bunlari hep "missing" sayardi.
+  const tokensWithBold = DocxFill.collectTokens(documentXml + "<w:t>{{CITY}}</w:t>");
+  check(tokensWithBold.includes("CITY"), "collectTokens normal token'i kacirdi.");
+  check(!tokensWithBold.some((t) => t.startsWith("BOLD:")), `collectTokens {{BOLD:...}} isaretlerini normal token saymis: ${JSON.stringify(tokensWithBold)}`);
+}
+
 // --- 4) Gerçek şablon dosyası — yapısal sağlık kontrolü -------------------
 {
   const templatePath = path.join(appDir, "templates", "emlakkatilim.docx");
@@ -127,9 +161,17 @@ assert.ok(DocxFill && typeof DocxFill.fillTemplate === "function", "RaporDocxFil
   check(Boolean(docEntry), "emlakkatilim.docx icinde word/document.xml bulunamadi.");
   const docText = new TextDecoder("utf-8").decode(docEntry.bytes);
   const tokens = DocxFill.collectTokens(docText);
-  check(tokens.length >= 10, `emlakkatilim.docx icinde beklenenden az {{TOKEN}} bulundu: ${tokens.length}`);
+  check(tokens.length >= 30, `emlakkatilim.docx icinde beklenenden az {{TOKEN}} bulundu: ${tokens.length}`);
   check(tokens.includes("CITY"), "emlakkatilim.docx icinde {{CITY}} bulunamadi.");
   check(tokens.includes("CURRENT_VALUE"), "emlakkatilim.docx icinde {{CURRENT_VALUE}} bulunamadi.");
+  check(tokens.includes("EMSAL1ACIKLAMASI"), "emlakkatilim.docx icinde {{EMSAL1ACIKLAMASI}} bulunamadi.");
+  check(tokens.includes("SAHIPLER"), "emlakkatilim.docx icinde {{SAHIPLER}} bulunamadi.");
+  check(!tokens.some((t) => t.startsWith("BOLD:")), "collectTokens gercek sablonda da {{BOLD:...}} isaretlerini normal token saymamali.");
+  // Coktan-secmeli alanlar (Cevre Analizi/Kira Kabiliyeti) icin {{BOLD:AD}}
+  // isaretleri sablonda gercekten var mi (applyBoldMarkers'in isleyecegi
+  // ham malzeme) — yoksa bold-secim ozelligi sessizce devre disi kalir.
+  const boldMarkerCount = (docText.match(/\{\{BOLD:[A-Za-z0-9_]+\}\}/g) || []).length;
+  check(boldMarkerCount >= 15, `emlakkatilim.docx icinde beklenenden az {{BOLD:...}} isareti bulundu: ${boldMarkerCount}`);
   // Belge orijinal Word raporundaki metin degil, HALA orijinal yapida
   // olmali (logo/cerceve/sayfa duzeni icin sorumlu diger XML parcalari
   // dokunulmadan kalmis olmali) — orijinal ile ayni giris sayisi.

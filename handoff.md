@@ -1,5 +1,28 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.314 - 2026-08-04 - Emlak Katılım .docx: kapsam genişletildi (Çevre Analizi/Kira Kabiliyeti bold-seçim, Emsal kartları, Malikler, Olumlu/Olumsuz Faktörler)
+
+- Kullanıcı talebi: "tabikide otomatik doldur. ikilemde kaldığın kısımda bana sor" — 0.0.313'te yalnızca kapak özet tablosu doluyordu; kullanıcı geri kalan bölümlerin de otomatikleştirilmesini istedi.
+- Üç net dilemma soruldu, kullanıcı cevapladı: (1) "2.1 Çevre Analizi"/"5.5 Kira Kabiliyeti" gibi Word'de AYRI hücrelerde duran çoktan-seçmeli alanlar (Kent/Kent Dışı/Kırsal, VAR/YOK) için → **doğru seçeneği KOYU (bold) yap**; (2) "2.4 Olumlu/Olumsuz Faktörler" hücreleri TAMAMEN BOŞ (hiç `<w:t>` yok, yeni run eklemek gerekiyor) → **dene**; (3) Malikler tablosu/Emsal 1-2-3 kartları/Ekler değişken sayıda veri gerektiriyor → **dene**.
+- **Doldurulan yeni bölümler** (templates/emlakkatilim.docx üzerinde, word/document.xml'e elle {{TOKEN}} yerleştirme + `merge_runs.py` ile aynı teknik):
+  - 1.3 İmar paragrafı → `{{PLANNING_NOTE_TEXT}}`
+  - 1.5 Belediye İnceleme Uzman Yorumu → `{{REVIEWED_DOCUMENTS_DESCRIPTION}} {{PENALTY_DECISION_EXPLANATION}} {{EKB_EXPLANATION_TEXT}}`
+  - 2.2 Ana Gayrimenkulün Tanımı → `{{MAIN_PROPERTY_DESCRIPTION_TEXT}}`
+  - 2.3 Bağımsız Bölümün Tanımı → `{{UNIT_INTERIOR_DESCRIPTION_TEXT}}`
+  - 2.4 Olumlu/Olumsuz Faktörler → boş hücrelere YENİ run eklendi: `{{DEGERI_ETKILEYEN_OLUMLU_FAKTORLER}}`/`{{DEGERI_ETKILEYEN_OLUMSUZ_FAKTORLER}}`
+  - 5.4 Satış Kabiliyeti Uzman Yorumu + 6. Değerleme Uzmanının Görüşü → `{{VALUATION_SALEABILITY_EXPLANATION}}` (iki yerde de aynı)
+  - 7. Sonuç → `{{CURRENT_VALUE}}`/`{{CURRENT_URGENT_SALE_VALUE}}`/`{{CURRENT_RENT}}`
+  - Tapu Malik Bilgileri (kapak + 1.1) → `{{SAHIPLER}}` (mevcut `ownersListText()`, zaten `{{SAHIPLER}}` olarak tanımlıydı)
+  - Emsal 1/2/3 kartları (İlgili Kişi ve Tel/Emsalin Açıklaması/İndirgenmiş Kullanım Alanı-Satış Fiyatı-Birim Fiyat) → **belge SABİT 3 kart içeriyor (dinamik satır çoğaltma değil)**, bu yüzden emsal listesinden 0/1/2. indekse doğrudan eşlendi — 4. emsal ve sonrası bu şablonda yer bulamaz (belgenin kendi sabit tasarımı).
+- **Bold-seçim mekanizması** (yeni, ilk kez kullanılan teknik): `templates/emlakkatilim.docx` hazırlanırken her çoktan-seçmeli seçeneğin metninin BAŞINA `{{BOLD:AD}}` işareti kondu (21 adet: Yapılaşma Yoğunluğu×3, Çevresel Gelişme Hızı×3, Deprem Bölgesi×5, Yapılaşma Türü×6, Daire İçinde Kiracı VAR/YOK, Kiracının Kontratı VAR/YOK). "Konum: Kent" ve "Kira Kabiliyeti: VAR" HER ZAMAN sabit olduğundan (kullanıcı kararı, önceki oturum) bunlara işaret yerine DOĞRUDAN `<w:b/>` eklendi (runtime hesaplama gerekmiyor).
+  - **src/exports/docx-fill.js**: yeni `applyBoldMarkers(xmlText, boldFlags)` — `{{BOLD:AD}}` işaretli run'ın `<w:rPr>`'ına `boldFlags[AD]` true ise `<w:b/><w:bCs/>` ekler (yoksa oluşturur), işareti METİNDEN SİLER (false olsa da silinir, yalnızca format değişmez). `fillTemplate()` artık üçüncü parametre (`boldFlags`) alıyor, önce bold işlemeyi sonra normal `{{TOKEN}}` doldurmayı yapıyor. `collectTokens()` artık `{{BOLD:...}}` işaretlerini normal token SAYMIYOR (aksi halde hep "missing" çıkardı).
+  - **app.js**: yeni `getEmlakKatilimBoldFlags()` — `developmentDensity`/`developmentSpeed` (bizim alanlarımız "düşük/orta/yüksek" 3'lü ölçek, belge "%25 altı/%25-75/%75 üstü" ve "Yavaş/Sabit/Hızlı" 3'lü ölçek) **sıralı (ordinal) YAKLAŞIK eşlenir**; `earthquakeZone` ("1. Derece - Çok Yüksek" vb.) baştaki rakam çıkarılarak KESİN eşlenir; `regionUsePurpose` (çoklu seçim/serbest metin) anahtar kelime (konut/işyeri-ticaret/sanayi) ile YAKLAŞIK eşlenir — **bu üç alan yaklaşık/sıralı eşleme olduğundan gerçek raporlarda gözden geçirilmeli**, kesin veri değildir.
+  - **src/templates/template-engine.js**: `exportDocxTemplate()` artık `safeCall("getEmlakKatilimBoldFlags")`'ı `fillTemplate()`'e üçüncü parametre olarak geçiyor.
+- **Otomatikleştirilmeyen tek kısım: "8. Ekler" (Fotoğraflar, TKGM Görüntüsü, Proje Fotoğrafları, Tapu/TAKBİS Belgesi)** — bunlar metin/veri alanı DEĞİL, gerçek fotoğraf/görsel EKLEME işi; `{{TOKEN}}` metin yer değiştirmeyle görsel gömülemez (docx'e resim gömmek `word/media/` + ilişki dosyaları eklemek gerektirir, kapsam dışı bırakıldı). Bölüm başlıkları orijinal belgedeki gibi kalıyor, fotoğraflar elle eklenecek.
+- Yeni `tools/test-docx-fill.js` bölümleri: `applyBoldMarkers` (doğru run'a `<w:b/>` eklendiğini, yanlış run'a eklenmediğini, işaretlerin her durumda silindiğini, `collectTokens`'ın `{{BOLD:...}}`'u normal token saymadığını) + gerçek şablonda en az 30 token ve en az 15 `{{BOLD:...}}` işareti bulunduğunu doğruluyor.
+- Cache-buster `app.js?v=20260804-0030`, `src/templates/template-engine.js?v=20260804-0030`, `src/exports/docx-fill.js?v=20260804-0030`.
+- `npm run verify` tamamı geçti (56 test).
+
 ## 0.0.313 - 2026-08-03 - Emlak Katılım artık GERÇEK .docx şablon (HTML'e çevrilmiyor)
 
 - Kullanıcı talebi: "beni tamamen yanlış anlamışsın word formatını bozmamalıydın logolar sayfa yapısı çerçeveler emlak katılım tasarruf finansman template dosyasını word olarak tutabilirsin." — 0.0.310'da yapılan HTML dönüşümü (templates/emlakkatilim.html) kullanıcının gerçek Word raporunu uygulamanın kendi genel mavi temasıyla yeniden çizmişti; logo, çerçeve, orijinal sayfa düzeni kayboldu.

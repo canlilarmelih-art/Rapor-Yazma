@@ -172,14 +172,31 @@ orijinal .docx'e {{TOKEN}} yer tutucuları doğrudan `word/document.xml`
 içine (Word'ün run'lara bölme sorunundan kaçınmak için önce
 `merge_runs.py` ile birleştirilip) elle yerleştirildi; belge STORED
 (sıkıştırmasız) zip olarak paketlendi ki xlsx-fill.js'teki gibi
-bağımlılıksız okunabilsin. **Şu an yalnızca kapak özet tablosundaki ~15
-alan (adres, müşteri, değerler) doldurulu; tapu detay tablosu, çevre
-analizi, kira kabiliyeti, emsal kartları, sonuç imza bloğu ve ekler
-BİLİNÇLİ OLARAK BOŞ bırakıldı** (orijinal belgenin kendi elle-tamamlama
-tasarımıyla tutarlı — devam ekleme yapılacaksa aynı teknik: `templates/`
-kopyasını unzip et, `word/document.xml`'de hedef etiketin hemen
-ardındaki `\xa0` (boş) run'ı bul, `{{TOKEN}}` ile değiştir, STORED
-zip olarak yeniden paketle).
+bağımlılıksız okunabilsin. 0.0.314'te kapsam genişletildi: kapak tablosu +
+imar/tanım paragrafları + olumlu-olumsuz faktörler + Emsal 1/2/3 sabit
+kartları (belge dinamik satır çoğaltma DEĞİL, sabit 3 kart içeriyor —
+emsal listesinden 0/1/2. index doğrudan eşlenir, 4.+ emsal şablona
+sığmaz) + malikler (`{{SAHIPLER}}`) + sonuç değerleri doldu. **"8. Ekler"
+(fotoğraf başlıkları) BİLİNÇLİ OLARAK BOŞ** — bu metin/veri değil, gerçek
+görsel gömme işi (`word/media/` + ilişki dosyaları gerektirir), kapsam
+dışı. Devam eklemesi gerekirse teknik: `templates/` kopyasını unzip et,
+`word/document.xml`'de hedef etiketin hemen ardındaki `\xa0` (boş) run'ı
+bul, `{{TOKEN}}` ile değiştir (tamamen boş hücrede run bile yoksa yeni
+`<w:r><w:t>` eklemek gerekir — bkz. Olumlu/Olumsuz Faktörler örneği,
+handoff 0.0.314), STORED zip olarak yeniden paketle.
+
+**Bold-seçim mekanizması** (Word'de AYRI hücrelerde duran çoktan-seçmeli
+alanlar — ör. "Kent | Kent Dışı | Kırsal" — için "doğru seçeneği KOYU
+yap" kullanıcı talebiyle eklendi): şablon metninde her seçeneğin BAŞINA
+`{{BOLD:AD}}` işareti konur (hazırlık aşamasında, elle). `docx-fill.js`'in
+`applyBoldMarkers(xmlText, boldFlags)`'ı `boldFlags[AD]` true olan
+işaretli run'a `<w:b/><w:bCs/>` ekler, işareti HER ZAMAN siler.
+`collectTokens()` `{{BOLD:...}}`'u normal `{{TOKEN}}` SAYMAZ (aksi halde
+`resolveTemplateTokenValues` hep "missing" derdi). `boldFlags` app.js'teki
+`getEmlakKatilimBoldFlags()`'ten gelir — bazı alanlar (developmentDensity/
+developmentSpeed) bizim 3'lü ölçeğimizle ("düşük/orta/yüksek") belgenin
+3'lü ölçeği ("%25 altı/%25-75/%75 üstü") arasında SIRALI/YAKLAŞIK eşleme
+yapar, KESİN değildir — gerçek raporlarda gözden geçirilmeli.
 
 Akış HTML şablonlarından TAMAMEN FARKLI: `exportTemplate()` (template-
 engine.js) `format: "docx"` görünce sunucunun HTML-render API'sini
