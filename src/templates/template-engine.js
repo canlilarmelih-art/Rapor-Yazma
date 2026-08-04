@@ -901,12 +901,32 @@
     return generatedTextCache;
   }
 
+  // LEGACY_ALIASES nesnesindeki bazı anahtarlar alt çizgi içeriyor (ör.
+  // "EMSAL2_TELEFON", "TABLE_..._MALIK", "ZIRAAT_KONUM_CEVRESEL") — ama
+  // resolveToken çağıranı foldTokenName() ile HER ZAMAN alt çizgisiz/
+  // noktalamasız arıyor (bkz. dosya başındaki "Türkçe-katlanmış, noktalama
+  // duyarsız" sözü). Nesneyi doğrudan `LEGACY_ALIASES[folded]` ile aramak bu
+  // yüzden alt çizgili anahtarlarla HİÇBİR ZAMAN eşleşmiyordu (örn. kullanıcı
+  // şablonuna doğru yazdığı {{EMSAL_2_TELEFON}} "⚠ EMSAL_2_TELEFON" olarak
+  // boş kalıyordu). Bu katlanmış indeks aradaki köprü: anahtarları da
+  // foldTokenName() ile normalize edip arar.
+  let foldedLegacyAliasIndex = null;
+  function getFoldedLegacyAliasIndex() {
+    if (foldedLegacyAliasIndex) return foldedLegacyAliasIndex;
+    foldedLegacyAliasIndex = new Map();
+    Object.keys(LEGACY_ALIASES).forEach((key) => {
+      const folded = foldTokenName(key);
+      if (folded && !foldedLegacyAliasIndex.has(folded)) foldedLegacyAliasIndex.set(folded, LEGACY_ALIASES[key]);
+    });
+    return foldedLegacyAliasIndex;
+  }
+
   // Dönüş: { ok: true, html: "..." } | { ok: false }  (ok=false → eşleşme yok)
   function resolveToken(rawName) {
     const folded = foldTokenName(rawName);
     if (!folded) return { ok: false };
 
-    const spec = LEGACY_ALIASES[folded];
+    const spec = getFoldedLegacyAliasIndex().get(folded);
     if (spec) {
       let value = "";
       let isHtml = false;

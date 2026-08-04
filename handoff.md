@@ -1,5 +1,15 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.328 - 2026-08-04 - KRİTİK DÜZELTME: alt çizgili placeholder adları (EMSAL_2_TELEFON vb.) hiç çözülemiyordu
+
+- Kullanıcı gerçek bir dışa aktarım dosyasında ("...emlakkatilim.docx") Emsal 2/3/4 kartlarının boş kaldığını, "placeholder'lar doğru olmasına rağmen" bildirdi. İncelemede: `⚠ EMSAL_2_TELEFON` gibi "eksik" işaretleriyle karşılaşıldı.
+- **Kök neden (0.0.313'ten beri var olan, bu segmentte bulunan eski bir mimari kusur)**: `template-engine.js`'in `resolveToken()`'ı gelen ham token adını `foldTokenName()` ile HER ZAMAN alt çizgisiz/noktalamasız hale getirip (`"Türkçe-katlanmış, noktalama duyarsız"` — dosya başındaki mimari not) `LEGACY_ALIASES[folded]` ile DOĞRUDAN arıyordu. Ama `LEGACY_ALIASES` nesnesinin bazı anahtarları (döngüyle üretilen `EMSAL${i}_${token}` — Emsal 1-7 için ~30 alan × 7 = 210 anahtar —, `TABLE_${key}_${row}_${col}}`, ve dört statik anahtar: `ZIRAAT_KONUM_CEVRESEL`/`ZIRAAT_BOLGE_GELISIMI`/`ZIRAAT_YAPILASMA`/`EMSAL_ARSA_PIYASA_DEGERI`) ALT ÇİZGİ İÇERİYOR — nesnenin kendi anahtarı hiçbir zaman `foldTokenName`'in ürettiği alt-çizgisiz biçimle birebir eşleşmiyordu (object literal exact-key erişimi, katlama değil). Yani kullanıcı `{{EMSAL_2_TELEFON}}` yazsa da `{{EMSAL2_TELEFON}}` yazsa da bu aile ASLA çözülemiyordu.
+- **Düzeltme**: yeni `getFoldedLegacyAliasIndex()` — `LEGACY_ALIASES`'in TÜM anahtarlarını `foldTokenName` ile normalize edip bir `Map`'te (memoized) tutuyor; `resolveToken` artık `LEGACY_ALIASES[folded]` yerine bu katlanmış indeksten arıyor. Fold-çakışması kontrolü yapıldı (Node script ile statik + döngüyle üretilen tüm anahtarlar), hiçbir çakışma bulunmadı.
+- **Etki**: yalnızca Emlak Katılım'ın Emsal 2-7 kartları değil, `TABLE_...` (genel veri tablosu hücreleri) ve dört Ziraat alanı da artık ilk kez doğru çözülüyor — daha önce SESSİZCE hiç çalışmamış, hiçbir kullanıcı şikayeti bu ana kadar bu kadar spesifik olmamıştı.
+- Yeni `tools/test-legacy-alias-underscore-folding.js`: `{{EMSAL_2_TELEFON}}`/`{{EMSAL2_TELEFON}}` her ikisinin de doğru satırın (`comparables[1]`) `c1` değerini döndürdüğünü, `{{ZIRAAT_KONUM_CEVRESEL}}`'in çözüldüğünü, gerçekten var olmayan bir token'ın hâlâ "missing" döndüğünü (yanlış pozitif yok) doğruluyor. `package.json` zincirine eklendi.
+- Cache-buster `src/templates/template-engine.js?v=20260804-0600`.
+- `npm run verify` tamamı geçti (67 test).
+
 ## 0.0.327 - 2026-08-04 - templates/emlakkatilim.docx yeniden STORED paketlendi (kullanıcının Word düzenlemesi sonrası)
 
 - Kullanıcı: "emlak katılım formatında düzeltme yaptım push et" — dosya yine Word'de kaydedilmiş (DEFLATE'e dönmüş), standart STORED yeniden paketleme uygulandı.
