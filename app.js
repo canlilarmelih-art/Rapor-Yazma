@@ -20365,6 +20365,16 @@ function getMaliklerOwnerRows() {
   return (state.tables.title || []).filter((row) => String(row?.c0 || "").trim());
 }
 
+// template-engine.js'in kendi (yerel/kapsam-içi) firstTitleRowCell()'inin
+// app.js karşılığı — {{TAPU_TARİHİ}}/{{TAPU_YEVMİYESİ}} gibi ilk dolu tapu
+// satırından okunan alanların "Placeholder" ekranı kataloğunda GERÇEK
+// dışa aktarım değeriyle tutarlı görünmesi için (kullanıcı bildirimi:
+// "placeholder bölümünde gözükmüyor").
+function getFirstFilledTitleRow() {
+  const rows = Array.isArray(state.tables?.title) ? state.tables.title : [];
+  return rows.find((row) => Object.values(row || {}).some((value) => String(value || "").trim())) || null;
+}
+
 function parseOwnerShareComponent(value) {
   const number = Number.parseFloat(String(value || "").replace(/\s/g, "").replace(",", "."));
   return Number.isFinite(number) ? number : Number.NaN;
@@ -27568,6 +27578,18 @@ function collectGeneratedTextPlaceholders() {
       key: "MALIKLER_TABLO",
       title: "Malikler Tablosu",
       value: buildMaliklerTableText(),
+    },
+    {
+      category: "Tapu ve Mülkiyet",
+      key: "TAPUTARIHI",
+      title: "Tapu Tarihi",
+      value: dateIsoToTr(state.fields.titleDate) || state.fields.titleDate || dateIsoToTr(getFirstFilledTitleRow()?.c3 || "") || "",
+    },
+    {
+      category: "Tapu ve Mülkiyet",
+      key: "TAPUYEVMIYESI",
+      title: "Tapu Yevmiye No",
+      value: String(getFirstFilledTitleRow()?.c4 || "").trim(),
     },
     {
       category: "Adres ve Konum",

@@ -1,5 +1,12 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.323 - 2026-08-04 - {{TAPU_TARİHİ}}/{{TAPU_YEVMİYESİ}} uygulama içi "Placeholder" listesine eklendi
+
+- Kullanıcı: "Tapu tarihi ve tapu yevmiye no için placeholder yok mu sistemde" → doğrulandı, `{{TAPU_TARİHİ}}`/`{{TAPU_YEVMİYESİ}}` zaten vardı (template-engine.js, `TAPUTARIHI`/`TAPUYEVMIYESI`). Kullanıcı: "placeholder bölümünde gözükmüyor ancak" — 0.0.319'daki AYNI kök neden: `collectGeneratedTextPlaceholders()` kataloğu bu ikisini de içermiyordu.
+- **app.js**: yeni `getFirstFilledTitleRow()` (template-engine.js'in kendi kapsam-içi `firstTitleRowCell()`'inin app.js karşılığı — ilk dolu tapu/malik satırını bulur) + iki yeni katalog satırı (`Tapu ve Mülkiyet` kategorisi, `TAPUTARIHI`/`TAPUYEVMIYESI`) — GERÇEK dışa aktarım değeriyle tutarlı görüntülenir. `PLACEHOLDER-REHBERI.md`'de bu ikisi zaten belgeliydi, değişiklik gerekmedi.
+- Cache-buster `app.js?v=20260804-0415`.
+- `npm run verify` tamamı geçti (61 test).
+
 ## 0.0.322 - 2026-08-04 - Takyidat açıklama giriş cümlesi ayrı placeholder ({{TAKYIDATACIKLAMAGIRISCUMLESI}})
 
 - Kullanıcı talebi: "03.08.2026 tarihinde saat 17:32 Webtapu Sistemi üzerinden alınan TAKBİS belgesine göre, konu taşınmaz üzerinde aşağıdaki takyidatlar bulunmaktadır. takyidatlar bölümünde yer alan bu açıklama bölümünü de ayrı bir placeholder olarak ekleyelim."
