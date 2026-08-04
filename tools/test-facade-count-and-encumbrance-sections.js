@@ -96,6 +96,40 @@ function sliceFn(startMarker, { toMarker } = {}) {
   console.log("Takyidat bolum placeholder'lari (Beyanlar/Hak ve Mukellefiyetler/Rehinler/Serhler) kablolama testi tamam.");
 }
 
+// --- 2b) Kullanici talebi (2026-08-04): "beyanlar bölümü gibi başlık
+// olması [degil] direkt ilk kayıttan başlasın" — bu 4 fonksiyon ARTIK
+// buildEncumbranceSectionParagraph'in ekledigi "Bölümü Adı:\n" basligini
+// KULLANMAMALI, dogrudan joinEncumbranceRows/buildCondensedAnnotationSummary
+// ile satirlari birlestirmeli (derin bagimlilik zinciri yuzunden tam
+// calisma-zamani izolasyonu yerine kaynak duzeyinde dogrulama) -----------
+{
+  function extractFnBody(fnName) {
+    const start = appSource.indexOf(`function ${fnName}(`);
+    assert(start >= 0, `${fnName} bulunamadi.`);
+    const end = appSource.indexOf("\n}", start) + 2;
+    return appSource.slice(start, end);
+  }
+
+  [
+    ["getEncumbranceDeclarationsSectionText", "Beyanlar Bölümü"],
+    ["getEncumbranceEasementsSectionText", "Hak ve Mükellefiyetler Bölümü"],
+    ["getEncumbranceMortgagesSectionText", "Rehinler Bölümü"],
+    ["getEncumbranceAnnotationsSectionText", "Şerhler Bölümü"],
+  ].forEach(([fnName, staleTitle]) => {
+    const body = extractFnBody(fnName);
+    assert(
+      !body.includes("buildEncumbranceSectionParagraph("),
+      `${fnName} hala buildEncumbranceSectionParagraph kullaniyor — "${staleTitle}:" basligi geri gelmis olabilir.`
+    );
+    assert(
+      !body.includes(`${staleTitle}:`),
+      `${fnName} icinde hala "${staleTitle}:" baslik dizesi var.`
+    );
+  });
+
+  console.log("Takyidat bolum metinleri artik 'Bölümü:' basligi eklemiyor (dogrudan ilk kayittan basliyor) testi tamam.");
+}
+
 // --- 3) Yapı Kullanma İzin Belgesi Var mı alias'i -------------------------
 {
   assert(

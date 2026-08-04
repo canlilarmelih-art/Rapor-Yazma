@@ -1,5 +1,13 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.321 - 2026-08-04 - Takyidat bölüm placeholder'ları artık "Bölümü:" başlığı eklemiyor
+
+- Kullanıcı talebi: "bu yeni oluşturduğumuz beyanlar rehinler şerhler hak ve mükellefiyetler bölümünde beyanlar bölümü gibi başlık olması [değil] direkt ilk kayıttan başlasın" — örnek çıktı verdi: "Yönetim Planı : 17/06/2025(...) (Tarih: 29.07.2025, Yevmiye No: 48244)\nDiğer (konusu: ...) ... (Kısıtlı Malik: Tevfik Tozluyurt)" — yani "Beyanlar Bölümü:" gibi bir satır BAŞTA OLMAMALI, doğrudan ilk kaydın metniyle başlamalı (şablon hücresi zaten kendi etiketini taşıyor).
+- **app.js**: 0.0.317'de eklenen 4 fonksiyon (`getEncumbranceDeclarationsSectionText`/`...EasementsSectionText`/`...MortgagesSectionText`/`...AnnotationsSectionText`) artık `buildEncumbranceSectionParagraph()`'ı (başlık ekleyen ortak fonksiyon, `buildEncumbranceSummaryVariants()`'ın birleşik özetinde hâlâ kullanılıyor, ORAYA DOKUNULMADI) ÇAĞIRMIYOR — yeni küçük `joinEncumbranceRows(rows, formatter)` yardımcı fonksiyonu satırları başlıksız birleştiriyor (kayıt yoksa "Herhangi bir kayıt bulunmamaktadır." döner, aynı eski davranış).
+- `tools/test-facade-count-and-encumbrance-sections.js`'e kaynak-düzeyinde regresyon koruması eklendi: bu 4 fonksiyonun artık `buildEncumbranceSectionParagraph(` çağırmadığını VE "Beyanlar Bölümü:" gibi başlık dizelerini içermediğini doğruluyor.
+- Cache-buster `app.js?v=20260804-0330`.
+- `npm run verify` tamamı geçti (60 test).
+
 ## 0.0.320 - 2026-08-04 - "Diğer" iç hacim adedi placeholder'ı ({{DIGER}})
 
 - Kullanıcı talebi: "bu gruplandırmalar harici iç hacimleri diğer kategorisi olarak placeholder oluştur. örnek antre çamaşırlık" (+ "kiler var 3 olacak") — 0.0.318'deki altı grubun (Salon/Oda/Mutfak/Banyo/Wc/Balkon) HİÇBİRİNE uymayan iç hacim kalemlerinin (antre, hol, kiler, çamaşırlık, depo, sığınak vb.) toplam adedi.
