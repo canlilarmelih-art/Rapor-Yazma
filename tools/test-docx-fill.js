@@ -179,6 +179,24 @@ assert.ok(DocxFill && typeof DocxFill.fillTemplate === "function", "RaporDocxFil
     entries.some((e) => e.name.startsWith("word/media/") || e.name === "word/header1.xml" || e.name === "word/footer1.xml"),
     "emlakkatilim.docx icinde beklenen destek dosyalari (media/header/footer) eksik gorunuyor — orijinal yapi bozulmus olabilir."
   );
+
+  // --- 5) Word'un run bolme sorunu — {{TOKEN}} ayni <w:t> icinde butun
+  // olmali (2026-08-04): kullanici Word'de elle yeni {{EMSAL_2_TELEFON}} gibi
+  // token'lar yazinca Word bunlari (ozellikle rakam/alt cizgi sinirlarinda)
+  // birden fazla <w:r>'a bolebiliyor. collectTokens ham XML metnini regex'le
+  // taradigi icin bu durumda token adinin icine XML etiketleri karisiyor
+  // (ornek: "EMSAL_</w:t></w:r><w:r>...<w:t>2</w:t>...") ve cikti "⚠" ile
+  // bozuk XML olarak goruntuleniyor. Sablon dosyasi artik bu tur bolunmus
+  // run'lar icermemeli — {{ ve }} sayilari esit VE hicbir token adi XML
+  // etiket karakteri icermemeli.
+  const openCount = (docText.match(/\{\{/g) || []).length;
+  const closeCount = (docText.match(/\}\}/g) || []).length;
+  check(openCount === closeCount, `emlakkatilim.docx icinde {{ ve }} sayilari esit degil (${openCount} vs ${closeCount}) — bir token Word tarafindan run'lara bolunmus olabilir.`);
+  const brokenTokens = tokens.filter((t) => /[<>\/]/.test(t));
+  check(brokenTokens.length === 0, `emlakkatilim.docx icinde XML etiketi iceren bozuk token(lar) bulundu (Word run bolme sorunu): ${JSON.stringify(brokenTokens.slice(0, 3))}`);
+  ["EMSAL_1_TELEFON", "EMSAL_2_TELEFON", "EMSAL_3_TELEFON", "EMSAL_4_TELEFON"].forEach((name) => {
+    check(tokens.includes(name), `emlakkatilim.docx icinde {{${name}}} bulunamadi (beklenen kullanici alani).`);
+  });
 }
 
 if (failures.length) {

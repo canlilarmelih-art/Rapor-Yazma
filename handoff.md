@@ -1,5 +1,15 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.329 - 2026-08-04 - templates/emlakkatilim.docx: Word'ün böldüğü {{TOKEN}} run'ları birleştirildi
+
+- 0.0.328'deki LEGACY_ALIASES düzeltmesi deploy edildikten sonra kullanıcı hâlâ aynı sorunu bildirdi — dışa aktarılan Word dosyasında Emsal 2/3 kartlarında `<w:t>`, `</w:r>` gibi ÇIPLAK XML etiketleri metin olarak görünüyordu (ekran görüntüsü + uygulamanın "eksik alanlar" uyarı diyaloğu).
+- **Gerçek kök neden (0.0.328'den FARKLI, ek bir sorun)**: kullanıcı bu yeni `{{EMSAL_2_TELEFON}}`/`{{EMSAL_2_EMSAL_DURUMU}}` gibi token'ları Word'de ELLE yazarken, Word bunları (özellikle rakam/alt çizgi sınırlarında, imla denetimi/otomatik düzeltme yüzünden) BİRDEN FAZLA `<w:r>` run'ına bölmüş — örn. `{{EMSAL_` bir run'da, `2` başka bir run'da, `_EMSAL_DURUMU}}` üçüncü bir run'da. `docx-fill.js`'in `collectTokens()`'ı ham `word/document.xml` metnini regex'le taradığı için (`{{` ile `}}` arasında `<`/`>` fark etmeksizin her şeyi "token adı" sayıyor) bu durumda token adının İÇİNE run'lar arası XML etiketleri karışıyor, bu "isim" hiçbir alias'la eşleşmediği için "eksik" sayılıp `⚠ <o bozuk isim>` metni belgeye GERİ YAZILIYOR — ekranda görülen ham XML çorbası bu.
+- 0.0.313'te şablon ilk hazırlanırken bu sorunu önlemek için `merge_runs.py` (tüm belgeyi baştan run-birleştirme) kullanılmıştı, ama kullanıcı SONRADAN Word'de elle yeni token yazdıkça bu koruma o yeni metinler için geçerli değil.
+- **Düzeltme**: yeni tek-seferlik `merge_split_tokens.py` betiği (scratchpad, repoya eklenmedi — CLAUDE.md'deki STORED-repack script'i gibi ihtiyaç oldukça tekrar çalıştırılacak bir bakım aracı) `word/document.xml`'i tarayıp `{{` açılıp aynı `<w:t>` içinde `}}` ile kapanmayan her run grubunu bulup, o grubun TÜM metnini İLK run'ın `<w:t>`'sinde birleştirip diğer run'ları siliyor (biçimlendirme farkları önemsiz — token dolum sırasında zaten tamamen silinip gerçek veriyle değişecek). 25 run grubu birleştirildi; birleştirme sonrası `{{`/`}}` sayıları eşitlendi (184/184), hiçbir token adında XML karakteri kalmadı, `EMSAL_1..4_TELEFON`/`EMSAL_1..4_EMSAL_DURUMU` (kullanıcı 4. bir emsal kartı için de alan eklemiş — `getComparablePlaceholderValue`'nun 1-7 index desteği zaten bunu kapsıyor, kod değişikliği gerekmedi) artık temiz, tek-run token'lar.
+- Sahte değerlerle tam `fillTemplate()` simülasyonu: 79 token'ın TAMAMI (missing: []) başarıyla çözüldü.
+- `tools/test-docx-fill.js`'e kalıcı regresyon koruması eklendi (bölüm 5): `{{`/`}}` sayı eşitliği + hiçbir token adının `<`/`>`/`/` içermediği + `EMSAL_1..4_TELEFON` varlığı kontrolü — Word bu tür bir bölünmeye YENİDEN sebep olursa `npm run verify` artık bunu SESSİZCE değil, açık bir hatayla yakalayacak.
+- `node tools/test-docx-fill.js` ve tam `npm run verify` (67 test) geçti.
+
 ## 0.0.328 - 2026-08-04 - KRİTİK DÜZELTME: alt çizgili placeholder adları (EMSAL_2_TELEFON vb.) hiç çözülemiyordu
 
 - Kullanıcı gerçek bir dışa aktarım dosyasında ("...emlakkatilim.docx") Emsal 2/3/4 kartlarının boş kaldığını, "placeholder'lar doğru olmasına rağmen" bildirdi. İncelemede: `⚠ EMSAL_2_TELEFON` gibi "eksik" işaretleriyle karşılaşıldı.
