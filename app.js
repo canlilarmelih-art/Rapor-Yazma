@@ -29803,6 +29803,18 @@ function getComparableCardUnitValueText(index) {
   return data ? formatComparableMoney(data.metrics.adjustedUnitValue, " TL/m2") : "";
 }
 
+// Kullanıcı talebi: irtibat kişisi/telefon ile emsal açıklamasını TEK bir
+// placeholder'da birleştir, örnek çıktı: "(İrtibat Kişisi ve Telefon No:
+// Raif Bey / 0 (546) 582 19 29)\n\nEkspertize konu taşınmaz satılık olup, ..."
+function getComparableCardFullText(index) {
+  const data = getComparableCardData(index);
+  if (!data) return "";
+  const contact = getComparableCardContactText(index);
+  const description = getComparableCardDescriptionText(index);
+  const contactLine = contact ? `(İrtibat Kişisi ve Telefon No: ${contact})` : "";
+  return [contactLine, description].filter(Boolean).join("\n\n");
+}
+
 // Emlak Katılım .docx şablonu — "2.1. Gayrimenkulün Çevre Analizi" ve
 // "5.5. Kira Kabiliyeti" bölümlerindeki seçenekler Word'de AYRI hücrelerde
 // duruyor (bir hücrenin içine yazılan tek bir metin değil); kullanıcı
@@ -29864,6 +29876,9 @@ function getComparableCard3DescriptionText() { return getComparableCardDescripti
 function getComparableCard3AreaText() { return getComparableCardAreaText(2); }
 function getComparableCard3SaleValueText() { return getComparableCardSaleValueText(2); }
 function getComparableCard3UnitValueText() { return getComparableCardUnitValueText(2); }
+function getComparableCard1FullText() { return getComparableCardFullText(0); }
+function getComparableCard2FullText() { return getComparableCardFullText(1); }
+function getComparableCard3FullText() { return getComparableCardFullText(2); }
 
 function calculateComparableAdjustment(direction, percentValue) {
   const percent = parseComparablePercent(percentValue);

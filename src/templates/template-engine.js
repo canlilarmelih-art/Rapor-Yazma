@@ -587,6 +587,15 @@
     EMSAL3INDIRGENMISKULLANIMALANI: { fn: () => safeCall("getComparableCard3AreaText") },
     EMSAL3INDIRGENMISSATISFIYATI: { fn: () => safeCall("getComparableCard3SaleValueText") },
     EMSAL3INDIRGENMISBIRIMFIYAT: { fn: () => safeCall("getComparableCard3UnitValueText") },
+    // Kullanıcı talebi: irtibat kişisi/telefon + açıklama TEK metinde
+    // birleşik ({{EMSAL_1_EMSAL_METNİ}}) ve irtibat bilgisi OLMADAN sadece
+    // açıklama ({{EMSAL_1_ACIKLAMA_METNI}}, EMSAL1ACIKLAMASI ile aynı veri).
+    EMSAL1EMSALMETNI: { fn: () => safeCall("getComparableCard1FullText") },
+    EMSAL1ACIKLAMAMETNI: { fn: () => safeCall("getComparableCard1DescriptionText") },
+    EMSAL2EMSALMETNI: { fn: () => safeCall("getComparableCard2FullText") },
+    EMSAL2ACIKLAMAMETNI: { fn: () => safeCall("getComparableCard2DescriptionText") },
+    EMSAL3EMSALMETNI: { fn: () => safeCall("getComparableCard3FullText") },
+    EMSAL3ACIKLAMAMETNI: { fn: () => safeCall("getComparableCard3DescriptionText") },
     ISBANKMIMARIPROJE: { t: () => field("projectReviewDescription") || safeCall("buildProjectReviewDescription") || field("projectConformity") },
     UYGACIKLAMA: { t: () => field("projectReviewDescription") || safeCall("buildProjectReviewDescription") || field("projectConformity") },
     VAKIFMIMARIPROJE: { t: () => field("projectReviewDescription") || safeCall("buildProjectReviewDescription") || field("projectConformity") },

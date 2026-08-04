@@ -1,5 +1,16 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.326 - 2026-08-04 - Emsal 1/2/3 için "irtibat + açıklama" birleşik metin placeholder'ı
+
+- Kullanıcı talebi: `{{EMSAL_1_EMSAL_METNİ}}` → "(İrtibat Kişisi ve Telefon No: Raif Bey / 0 (546) 582 19 29)\n\nEkspertize konu taşınmaz satılık olup, 90 m2 olarak beyan edilmiş, ..." — irtibat kişisi/telefon (parantez içinde, üstte) ile emsal açıklama metni (boş satırla ayrılmış, altta) TEK placeholder'da birleşsin; ayrıca AYNI şey irtibat bilgisi OLMADAN (yalnızca açıklama) da istendi, tüm emsallerde (1/2/3).
+- **app.js**: yeni `getComparableCardFullText(index)` — mevcut `getComparableCardContactText`/`getComparableCardDescriptionText`'i (0.0.313'ten beri var, EMSAL1ACIKLAMASI/EMSAL1İLGİLİKİŞİVETEL'i besliyorlardı) birleştirir; irtibat boşsa parantez satırını atlar, sadece açıklama döner. Üç index-bağlı sarmalayıcı: `getComparableCard1FullText()`/`2`/`3`.
+- **template-engine.js**: yeni `EMSAL1EMSALMETNI`/`EMSAL2EMSALMETNI`/`EMSAL3EMSALMETNI` (birleşik) ve `EMSAL1ACIKLAMAMETNI`/`EMSAL2ACIKLAMAMETNI`/`EMSAL3ACIKLAMAMETNI` (yalnızca açıklama — mevcut `EMSALxACIKLAMASI` ile AYNI veri, kullanıcının yeni alt-çizgili adlandırma tarzıyla tutarlı ek alias). `foldTokenName` alt çizgi/Türkçe İ farklarını zaten normalize ettiği için `{{EMSAL_1_EMSAL_METNİ}}` şablon yazımı `EMSAL1EMSALMETNI` anahtarına eşleşiyor.
+- Yeni `tools/test-comparable-card-full-text.js`: birleşik metin formatını (kullanıcının kendi örneğiyle birebir), irtibat-yokken-yalnızca-açıklama davranışını, sarmalayıcı fonksiyonların varlığını ve template-engine.js kablolamasını doğruluyor; `package.json` test zincirine eklendi.
+- Bu placeholder'lar (önceki EMSAL1ACIKLAMASI ailesi gibi) uygulama içi genel "Placeholder" referans listesine/PLACEHOLDER-REHBERI.md'ye eklenmedi — yalnızca emlakkatilim.docx'in sabit 3 emsal kartı bağlamında kullanılıyorlar, önceki kardeşleriyle aynı desen.
+- Cache-buster `app.js?v=20260804-0530`, `src/templates/template-engine.js?v=20260804-0530`.
+- `npm run verify` tamamı geçti (66 test).
+- **Hâlâ açık soru** (0.0.325'te de belirtildi): şablonda `{{EMSAL_1_TELEFON}}` ve `{{EMSAL_1_EMSAL_DURUMU}}` adında iki token var, henüz backing fonksiyonu yok — kullanıcıya sorulacak.
+
 ## 0.0.325 - 2026-08-04 - templates/emlakkatilim.docx yeniden STORED paketlendi (kullanıcının Word düzenlemesi sonrası)
 
 - Kullanıcı `templates/emlakkatilim.docx`'i Word'de tekrar açıp düzenlemiş (bkz. CLAUDE.md "templates/emlakkatilim.docx'i Word'de düzenledikten sonra" — Word HER kaydetmede zip'i DEFLATE'e çeviriyor, STORED bozuluyor). `npm run verify` `tools/test-docx-fill.js`'de "DOCX şablonu STORED değil" hatasıyla kırıldı. Standart Python `zipfile.ZIP_STORED` yeniden paketleme uygulandı, içerik bayt-bayt korunarak.
