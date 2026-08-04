@@ -134,6 +134,19 @@
       .join(", ");
   }
 
+  // {{HİSSE_PAYI}} — Emlak Katılım kapak tablosunda "Malik: {{SAHIPLER}}"
+  // satırının hemen altında AYRI bir "Hisse Oranı" satırı — ownersListText()
+  // isim+hisseyi BİRLEŞTİRİYOR ("Ali Veli (1/2)"), bu ise yalnızca hisse
+  // oranlarını (malik tablosundaki c1 sütunu) virgülle birleştirir.
+  function ownersShareListText() {
+    const rows = Array.isArray(state.tables?.title) ? state.tables.title : [];
+    return rows
+      .filter((row) => String(row?.c0 || "").trim())
+      .map((row) => row.c1 || "")
+      .filter(Boolean)
+      .join(", ");
+  }
+
   function documentsTableHtml() {
     const entries = safeCall("getReviewedDocumentTableEntries", state.tables?.documents)
       || safeCall("getReviewedDocumentChronologicalEntries", state.tables?.documents);
@@ -451,6 +464,7 @@
     EDINME: { fn: () => firstTitleRowCell("c2") },
     EDINMESEBEBI: { fn: () => firstTitleRowCell("c2") }, // {{EDİNME_SEBEBİ}}
     SAHIPLER: { fn: ownersListText },
+    HISSEPAYI: { fn: ownersShareListText }, // {{HİSSE_PAYI}}
     HISSELIMI: { fn: () => safeCall("gabimHasShareText") },
     MALIKLERTABLO: { h: () => safeCall("buildMaliklerTableWordHtml") },
     GABIMVERISETI: { h: () => safeCall("buildGabimDataSetWordHtml") },
@@ -596,6 +610,16 @@
     EMSAL2ACIKLAMAMETNI: { fn: () => safeCall("getComparableCard2DescriptionText") },
     EMSAL3EMSALMETNI: { fn: () => safeCall("getComparableCard3FullText") },
     EMSAL3ACIKLAMAMETNI: { fn: () => safeCall("getComparableCard3DescriptionText") },
+    // Kullanıcı şablona 4. bir emsal kartı da eklemiş (getComparablePlaceholderValue
+    // zaten 1-7 index destekliyor) — getComparableCardFullText/DescriptionText
+    // index parametresi aldığından 4. kart için ayrı sarmalayıcıya gerek yok.
+    EMSAL4EMSALMETNI: { fn: () => safeCall("getComparableCardFullText", 3) },
+    EMSAL4ACIKLAMAMETNI: { fn: () => safeCall("getComparableCardDescriptionText", 3) },
+    EMSAL4ACIKLAMASI: { fn: () => safeCall("getComparableCardDescriptionText", 3) },
+    EMSAL4ILGILIKISIVETEL: { fn: () => safeCall("getComparableCardContactText", 3) },
+    EMSAL4INDIRGENMISKULLANIMALANI: { fn: () => safeCall("getComparableCardAreaText", 3) },
+    EMSAL4INDIRGENMISSATISFIYATI: { fn: () => safeCall("getComparableCardSaleValueText", 3) },
+    EMSAL4INDIRGENMISBIRIMFIYAT: { fn: () => safeCall("getComparableCardUnitValueText", 3) },
     ISBANKMIMARIPROJE: { t: () => field("projectReviewDescription") || safeCall("buildProjectReviewDescription") || field("projectConformity") },
     UYGACIKLAMA: { t: () => field("projectReviewDescription") || safeCall("buildProjectReviewDescription") || field("projectConformity") },
     VAKIFMIMARIPROJE: { t: () => field("projectReviewDescription") || safeCall("buildProjectReviewDescription") || field("projectConformity") },

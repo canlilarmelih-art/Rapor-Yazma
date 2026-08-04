@@ -35,6 +35,10 @@ const stubState = {
       {},
       { c0: "Raif Emlak", c1: "05465821929" },
     ],
+    title: [
+      { c0: "Ali Veli", c1: "1/2" },
+      { c0: "Ayşe Veli", c1: "1/2" },
+    ],
   },
 };
 const stubSections = [{ id: "test", fields: [{ key: "city", type: "text" }] }];
@@ -99,6 +103,19 @@ assert.ok(engine, "window.RaporTemplates olusmadi.");
 {
   const missing = engine.resolveToken("BOYLE_BIR_TOKEN_YOK");
   assert.equal(missing.ok, false, "Gercekten var olmayan bir token yanlislikla 'ok' donmemeli.");
+}
+
+// --- 4) {{HİSSE_PAYI}} — kapak tablosunda "Malik: {{SAHIPLER}}" satirinin
+// altindaki ayri "Hisse Orani" satiri; SAHIPLER isim+hisseyi birlestirirken
+// ({{SAHIPLER}} = "Ali Veli (1/2), Ayşe Veli (1/2)") bu yalnizca hisse
+// oranlarini virgulle birlestirmeli. -----------------------------------
+{
+  const sahipler = engine.resolveToken("SAHIPLER");
+  assert.equal(sahipler.html, "Ali Veli (1/2), Ayşe Veli (1/2)", "SAHIPLER isim+hisse birlesik gelmeli (regresyon).");
+
+  const hissePayi = engine.resolveToken("HISSE_PAYI");
+  assert.ok(hissePayi.ok, "{{HİSSE_PAYI}} cozulebilmeli.");
+  assert.equal(hissePayi.html, "1/2, 1/2", "HİSSE_PAYI yalnizca hisse oranlarini virgulle birlestirmeli.");
 }
 
 console.log("LEGACY_ALIASES alt cizgili anahtar katlama (fold) duzeltmesi testi tamam.");

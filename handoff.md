@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.330 - 2026-08-04 - {{HİSSE_PAYI}} ve Emsal 4 kartının açıklama/detay alanları eklendi
+
+- Kullanıcı 0.0.329'daki run-birleştirme düzeltmesinden sonra uygulamanın "eksik placeholder" uyarı diyaloğunda iki kalan ad gördü: `HİSSE_PAYI` ve `EMSAL_4_ACIKLAMA_METNİ`. İkisi de daha önce hiç desteklenmemiş YENİ alanlardı (0.0.328'in genel `EMSAL${i}_${token}` alias ailesi yalnızca TELEFON/EMSAL_DURUMU gibi eski alanları kapsıyordu; HİSSE_PAYI hiç yoktu, ACIKLAMA_METNİ ailesi de yalnızca kart 1-3 için elle eklenmişti — 0.0.326).
+- **template-engine.js**: yeni `ownersShareListText()` — kapak tablosundaki "Malik: {{SAHIPLER}}" satırının ("Ali Veli (1/2), Ayşe Veli (1/2)" gibi isim+hisse birleşik) hemen altındaki AYRI "Hisse Oranı" satırı için, malik tablosunun yalnızca hisse (c1) sütununu virgülle birleştirir ("1/2, 1/2"). `HISSEPAYI: { fn: ownersShareListText }` eklendi.
+- Emsal 4 kartı için (kullanıcı şablona elle 4. bir kart eklemiş — `getComparablePlaceholderValue`'nun 1-7 index desteği TELEFON/EMSAL_DURUMU ailesini zaten kapsıyordu ama "birleşik metin/açıklama/irtibat/alan/fiyat" ailesi kart 1-3'e özel sabit sarmalayıcı fonksiyonlarla yazılmıştı) yedi yeni alias eklendi: `EMSAL4EMSALMETNI`/`EMSAL4ACIKLAMAMETNI`/`EMSAL4ACIKLAMASI`/`EMSAL4ILGILIKISIVETEL`/`EMSAL4INDIRGENMISKULLANIMALANI`/`EMSAL4INDIRGENMISSATISFIYATI`/`EMSAL4INDIRGENMISBIRIMFIYAT` — hepsi doğrudan `safeCall("getComparableCardXText", 3)` ile mevcut index-parametreli fonksiyonları çağırıyor, kart 1-3'teki gibi ayrı sarmalayıcı fonksiyona GEREK YOK (o sarmalayıcılar sadece kart 1-3 için tarihsel nedenlerle vardı).
+- `tools/test-comparable-card-full-text.js`'e Emsal 4 kablolama bölümü, `tools/test-legacy-alias-underscore-folding.js`'e HİSSE_PAYI (gerçek `stubState.tables.title` verisiyle "1/2, 1/2" bekleyen) bölümü eklendi.
+- Cache-buster `src/templates/template-engine.js?v=20260804-0630`.
+- `npm run verify` tamamı geçti (67 test).
+
 ## 0.0.329 - 2026-08-04 - templates/emlakkatilim.docx: Word'ün böldüğü {{TOKEN}} run'ları birleştirildi
 
 - 0.0.328'deki LEGACY_ALIASES düzeltmesi deploy edildikten sonra kullanıcı hâlâ aynı sorunu bildirdi — dışa aktarılan Word dosyasında Emsal 2/3 kartlarında `<w:t>`, `</w:r>` gibi ÇIPLAK XML etiketleri metin olarak görünüyordu (ekran görüntüsü + uygulamanın "eksik alanlar" uyarı diyaloğu).

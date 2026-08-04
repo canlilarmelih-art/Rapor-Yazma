@@ -93,3 +93,24 @@ function sliceFn(startMarker) {
   });
   console.log("Emsal birlesik/aciklama metni placeholder kablolama testi tamam.");
 }
+
+// --- 4) Emsal 4 karti (kullanici sablona 4. bir kart eklemis) — index
+// parametreli fonksiyonlar dogrudan safeCall ile cagriliyor, ayri
+// sarmalayici fonksiyona gerek yok -------------------------------------
+{
+  [
+    ["EMSAL4EMSALMETNI", "getComparableCardFullText", "3"],
+    ["EMSAL4ACIKLAMAMETNI", "getComparableCardDescriptionText", "3"],
+    ["EMSAL4ACIKLAMASI", "getComparableCardDescriptionText", "3"],
+    ["EMSAL4ILGILIKISIVETEL", "getComparableCardContactText", "3"],
+    ["EMSAL4INDIRGENMISKULLANIMALANI", "getComparableCardAreaText", "3"],
+    ["EMSAL4INDIRGENMISSATISFIYATI", "getComparableCardSaleValueText", "3"],
+    ["EMSAL4INDIRGENMISBIRIMFIYAT", "getComparableCardUnitValueText", "3"],
+  ].forEach(([placeholder, fnName, indexArg]) => {
+    assert(
+      engineSource.includes(`${placeholder}: { fn: () => safeCall("${fnName}", ${indexArg}) }`),
+      `template-engine.js: ${placeholder} placeholder'i ${fnName}(${indexArg}) ile safeCall etmiyor.`
+    );
+  });
+  console.log("Emsal 4 karti placeholder kablolama testi tamam.");
+}
