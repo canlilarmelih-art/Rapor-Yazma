@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.320 - 2026-08-04 - "Diğer" iç hacim adedi placeholder'ı ({{DIGER}})
+
+- Kullanıcı talebi: "bu gruplandırmalar harici iç hacimleri diğer kategorisi olarak placeholder oluştur. örnek antre çamaşırlık" (+ "kiler var 3 olacak") — 0.0.318'deki altı grubun (Salon/Oda/Mutfak/Banyo/Wc/Balkon) HİÇBİRİNE uymayan iç hacim kalemlerinin (antre, hol, kiler, çamaşırlık, depo, sığınak vb.) toplam adedi.
+- **app.js**: yeni `getUnitInteriorOtherCount()` — `getUnitFloorRows()`'taki TÜM satırların `interiors` metnini `parseUnitInteriorItem()` ile (mevcut, `buildUnitInteriorTextForRow`'un da kullandığı) tek tek kalemlere ayırır, adı bilinen 6 grup önekiyle (`salon`/`oda`/`mutfak`/`banyo`/`dus`/`wc`/`tuvalet`/`balkon`/`teras`/`veranda`, yeni `isKnownUnitInteriorGroupName()` yardımcı fonksiyonu ve `UNIT_INTERIOR_KNOWN_GROUP_PREFIXES` listesiyle) BAŞLAMAYAN kalemlerin adetlerini toplar. `getGabimUnitInteriorCounts()`'un kelime-arama tekniğinden FARKLI (kalem-bazlı ayrıştırma) — çünkü "bilinmeyen her şey" için kelime arama tekniği uygun değil, önce TÜM kalemlerin ne olduğunu bilmek gerekiyor.
+- Yeni placeholder: `{{DIGER}}` (uygulama içi "Placeholder" listesine ve `PLACEHOLDER-REHBERI.md`'ye de eklendi).
+- `tools/test-unit-interior-group-counts.js` genişletildi: "1 Antre, 1 Çamaşırlık, 1 Kiler" → 3 Diğer; bilinen 6 grup dışında hiçbir şey girilmemişse boş döndüğü; Salon/Oda gibi bilinen kalemlerin Diğer'e karışmadığı doğrulandı.
+- Cache-buster `app.js?v=20260804-0300` ve `src/templates/template-engine.js?v=20260804-0300`.
+- `npm run verify` tamamı geçti (59 test).
+
 ## 0.0.319 - 2026-08-04 - Yeni placeholder'lar uygulama içi "Placeholder" listesine ve rehbere eklendi
 
 - Kullanıcı bildirimi: "placeholder kısmına baktım ama yeni placeholderları göremedim" — 0.0.317/0.0.318'de eklenen `{{CEPHESAYISI}}`, `{{BEYANLARBOLUMU}}`, `{{HAKVEMUKELLEFIYETLERBOLUMU}}`, `{{REHINLERBOLUMU}}`, `{{SERHLERBOLUMU}}`, `{{YAPIKULLANMAIZINBELGESIVARMI}}`, `{{ICHACIMGRUPSAYIMI}}` placeholder'ları `src/templates/template-engine.js`'te ÇÖZÜMLENEBİLİR durumdaydı ama uygulama içi "Placeholder" ekranındaki (`admin-users.html` DEĞİL, rapor ekranındaki "Placeholder" sekmesi) listede GÖRÜNMÜYORDU.

@@ -34,12 +34,28 @@ function sliceFn(startMarker) {
   return appSource.slice(start, end);
 }
 
+function sliceRange(startMarker, endMarker) {
+  const start = appSource.indexOf(startMarker);
+  assert(start >= 0, `Bulunamadi: ${startMarker}`);
+  const end = appSource.indexOf(endMarker, start);
+  assert(end > start, `Bitis bulunamadi: ${endMarker}`);
+  return appSource.slice(start, appSource.indexOf("\n}", end) + 2);
+}
+
 const src = [
   sliceFn("function foldTurkish("),
   sliceFn("function getUnitFloorRows("),
   sliceFn("function formatUnitFloorInteriorSummary("),
+  sliceFn("function escapeRegExp("),
+  sliceFn("function normalizeReportWhitespace("),
+  sliceFn("function toTitleCaseTr("),
+  sliceFn("function preserveReportSpecialWords("),
+  sliceFn("function normalizeReportTitleText("),
+  sliceFn("function parseUnitInteriorItem("),
+  sliceFn("function normalizeUnitInteriorName("),
   sliceFn("function getGabimUnitInteriorCounts("),
   sliceFn("function getUnitInteriorGroupSummaryText("),
+  sliceRange("const UNIT_INTERIOR_KNOWN_GROUP_PREFIXES", "function getUnitInteriorOtherCount("),
 ].join("\n");
 
 function runWithFloors(rows) {
@@ -104,12 +120,44 @@ function runWithFloors(rows) {
   assert.equal(ctx.getUnitInteriorGroupSummaryText(), "", "Veri yokken bos metin donmeli.");
 }
 
-// --- 6) template-engine.js kablolaması ------------------------------------
+// --- 6) Diğer grubu: kullanıcı talebi "bu gruplandırmalar harici iç
+// hacimleri diğer kategorisi olarak placeholder oluştur. örnek antre
+// çamaşırlık" — altı gruba uymayan kalemler toplanır, gruba uyanlar
+// (Salon/Oda/Mutfak/Banyo/Wc/Balkon) HARİÇ tutulur -------------------------
+{
+  const ctx = runWithFloors([{ floor: "Zemin Kat", interiors: "1 Antre, 1 Çamaşırlık, 1 Kiler, 1 Salon, 2 Oda" }]);
+  assert.equal(
+    ctx.getUnitInteriorOtherCount(),
+    "3",
+    `Antre + Çamaşırlık + Kiler toplamda 3 "Diğer" sayilmali, gelen: ${ctx.getUnitInteriorOtherCount()}`
+  );
+  const counts = ctx.getGabimUnitInteriorCounts();
+  assert.equal(counts.salon, "1", "Salon, Diger'e karismamali.");
+  assert.equal(counts.oda, "2", "Oda, Diger'e karismamali.");
+}
+{
+  const ctx = runWithFloors([{ floor: "Zemin Kat", interiors: "1 Salon, 2 Oda, 1 Banyo, 1 Wc, 1 Balkon, 1 Mutfak" }]);
+  assert.equal(
+    ctx.getUnitInteriorOtherCount(),
+    "",
+    "Yalnizca bilinen 6 grup girilmisse Diger bos donmeli."
+  );
+}
+{
+  const ctx = runWithFloors([]);
+  assert.equal(ctx.getUnitInteriorOtherCount(), "", "Veri yokken Diger de bos donmeli.");
+}
+
+// --- 7) template-engine.js kablolaması ------------------------------------
 {
   const engineSource = fs.readFileSync(path.join(appDir, "src", "templates", "template-engine.js"), "utf8");
   assert(
     engineSource.includes('ICHACIMGRUPSAYIMI: { fn: () => safeCall("getUnitInteriorGroupSummaryText") }'),
     "ICHACIMGRUPSAYIMI placeholder'i getUnitInteriorGroupSummaryText'e baglanmamis."
+  );
+  assert(
+    engineSource.includes('DIGER: { fn: () => safeCall("getUnitInteriorOtherCount") }'),
+    "DIGER placeholder'i getUnitInteriorOtherCount'a baglanmamis."
   );
 }
 

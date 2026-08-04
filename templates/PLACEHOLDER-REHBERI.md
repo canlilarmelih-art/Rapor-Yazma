@@ -183,6 +183,7 @@ verilerinizle doldurur ve Word ile açılabilen bir `.doc` dosyası indirir.
 | `{{SALON}}` / `{{ODA}}` / `{{MUTFAK}}` | Salon / oda / mutfak adedi (iç hacimlerden otomatik sayılır) * |
 | `{{BANYO}}` / `{{TUVALET}}` / `{{BALKON}}` | Banyo (duş + ebeveyn banyosu dahil) / wc / balkon (teras + veranda dahil) adedi * |
 | `{{ICHACIMGRUPSAYIMI}}` | Yukarıdaki altı grubu tek metinde birleştirir (ör. "Salon 1 Oda 4 Banyo 2 Wc 1 Balkon 3") * |
+| `{{DIGER}}` | Yukarıdaki altı gruba uymayan iç hacimlerin (antre, hol, kiler, çamaşırlık, depo vb.) toplam adedi * |
 | `{{UNİT_USAGE_STATUS}}` | Kullanım durumu |
 | `{{UNİT_CONSTRUCTİON_LEVEL}}` | İnşaat seviyesi (boşsa "Tamamlanmış (%100)") * |
 | `{{EARTHQUAKE_ZONE}}` | Deprem derecesi |

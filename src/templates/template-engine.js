@@ -631,6 +631,7 @@
     BALKON: { fn: () => (safeCall("getGabimUnitInteriorCounts") || {}).balkon || "" },
     MUTFAK: { fn: () => (safeCall("getGabimUnitInteriorCounts") || {}).mutfak || "" },
     ICHACIMGRUPSAYIMI: { fn: () => safeCall("getUnitInteriorGroupSummaryText") },
+    DIGER: { fn: () => safeCall("getUnitInteriorOtherCount") },
     BINAYAPITARZI: { f: ["buildingStyle"] },
     YAPISINIFI: { f: ["buildingClass"] },
     MEVCUTYAPINIZAMI: { f: ["buildingOrder"] },

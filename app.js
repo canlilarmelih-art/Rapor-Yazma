@@ -27121,6 +27121,37 @@ function getUnitInteriorGroupSummaryText() {
     .join(" ");
 }
 
+const UNIT_INTERIOR_KNOWN_GROUP_PREFIXES = ["salon", "oda", "mutfak", "banyo", "dus", "wc", "tuvalet", "balkon", "teras", "veranda"];
+
+function isKnownUnitInteriorGroupName(name) {
+  const folded = foldTurkish(name || "").toLocaleLowerCase("tr");
+  return UNIT_INTERIOR_KNOWN_GROUP_PREFIXES.some((prefix) => folded.startsWith(prefix));
+}
+
+// Kullanıcı talebi: "bu gruplandırmalar harici iç hacimleri diğer kategorisi
+// olarak placeholder oluştur. örnek antre çamaşırlık" — Salon/Oda/Mutfak/
+// Banyo/Wc/Balkon gruplarının HİÇBİRİNE uymayan iç hacim kalemlerinin
+// (antre, hol, kiler, çamaşırlık, depo, sığınak, vb.) toplam adedini döner.
+function getUnitInteriorOtherCount() {
+  const totals = new Map();
+  getUnitFloorRows().forEach((row) => {
+    String(row.interiors || "")
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .forEach((item) => {
+        const parsed = parseUnitInteriorItem(item);
+        if (!parsed.name) return;
+        totals.set(parsed.name, (totals.get(parsed.name) || 0) + parsed.count);
+      });
+  });
+  let other = 0;
+  totals.forEach((count, name) => {
+    if (!isKnownUnitInteriorGroupName(name)) other += count;
+  });
+  return other ? String(other) : "";
+}
+
 function ensureLegacyPlaceholderRowsLoaded() {
   if (legacyPlaceholderRowsLoaded || legacyPlaceholderRowsLoading) return;
   legacyPlaceholderRowsLoading = true;
@@ -27449,6 +27480,12 @@ function collectGeneratedTextPlaceholders() {
       key: "ICHACIMGRUPSAYIMI",
       title: "İç Hacim Grup Sayımı (Salon/Oda/Mutfak/Banyo/Wc/Balkon)",
       value: getUnitInteriorGroupSummaryText(),
+    },
+    {
+      category: "Bağımsız Bölüm Özellikleri",
+      key: "DIGER",
+      title: "Diğer İç Hacim Adedi (antre, hol, kiler, çamaşırlık, depo vb.)",
+      value: getUnitInteriorOtherCount(),
     },
     {
       category: "Değerleme",
