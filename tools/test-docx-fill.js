@@ -155,6 +155,44 @@ assert.ok(DocxFill && typeof DocxFill.fillTemplate === "function", "RaporDocxFil
   check(openR === closeR && openR === 1, `<w:r> dengesi/sayisi bozulmus (acilis:${openR}, kapanis:${closeR}) — yeni satirlar yanlislikla yeni <w:r> acmis olabilir.`);
 }
 
+// --- 3a2) Kullanici talebi (2026-08-04): "aynı satır atlama özelliğini
+// olumlu ve olumsuz faktörlerde de sağla" — DEGERI_ETKILEYEN_OLUMLU/
+// OLUMSUZ_FAKTORLER (ve OLUMLU_FAKTÖR/OLUMSUZ_FAKTÖR) formatValueFactorsList
+// tarafindan TEK "\n" (HTML <p>/<br/> DEGIL, duz metin) ile birlestiriliyor;
+// template-engine.js'in textParagraphsHtml/formatWordParagraphs'i bunu
+// <p>...</p> HTML'ine cevirip resolveToken'a veriyor — yani ayni
+// htmlValueToXmlText yolundan geciyor, EK KOD DEGISIKLIGI GEREKMEDI. Bu
+// test ucdan uca (duz "\n" metin -> formatWordParagraphs -> htmlValueToXmlText)
+// zincirinin gercekten satir sonu urettigini dogrular. ---------------------
+{
+  const appSource2 = fs.readFileSync(path.join(appDir, "app.js"), "utf8");
+  function sliceAppFn(marker) {
+    const start = appSource2.indexOf(marker);
+    assert(start >= 0, `app.js icinde bulunamadi: ${marker}`);
+    const end = appSource2.indexOf("\n}", start) + 2;
+    return appSource2.slice(start, end);
+  }
+  const vm = require("node:vm");
+  const context = {};
+  vm.createContext(context);
+  vm.runInContext(sliceAppFn("function formatWordParagraphs("), context);
+  vm.runInContext(sliceAppFn("function escapeHtml("), context);
+
+  function textParagraphsHtml(text) {
+    const value = String(text || "").replace(/m²/gi, "m2").trim();
+    if (!value) return "";
+    return context.formatWordParagraphs(value, "");
+  }
+
+  const plainFactorsText = "Ana caddeye cepheli olması\nToplu taşımaya yakın olması\nSite içerisinde güvenlikli olması";
+  const html = textParagraphsHtml(plainFactorsText);
+  check(html === "<p>Ana caddeye cepheli olması</p><p>Toplu taşımaya yakın olması</p><p>Site içerisinde güvenlikli olması</p>", `formatWordParagraphs beklenen <p> yapisini uretmedi: ${html}`);
+  const xml = DocxFill.htmlValueToXmlText(html);
+  check((xml.match(/<w:br\/>/g) || []).length === 2, `Uc faktor satiri icin tam 2 <w:br/> beklenirdi: ${xml}`);
+  check(!xml.includes("olması Toplu"), `Faktorler hala boslukla birlesmis: ${xml}`);
+  console.log("Olumlu/Olumsuz Faktorler satir atlama (formatWordParagraphs -> htmlValueToXmlText) testi tamam.");
+}
+
 // --- 3b) applyBoldMarkers — coktan-secmeli alanlarda dogru secenegi
 // kalinlastirma (kullanici talebi: "Doğru seçeneği KOYU (bold) yap") -------
 {

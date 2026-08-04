@@ -1,5 +1,13 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.333 - 2026-08-04 - Onaylandı: Olumlu/Olumsuz Faktörler de aynı satır atlama düzeltmesinden faydalanıyor (kod değişikliği gerekmedi)
+
+- Kullanıcı: "aynı satır atlama özelliğini olumlu ve olumsuz faktörlerde de sağla."
+- İnceleme: `{{DEGERI_ETKILEYEN_OLUMLU_FAKTORLER}}`/`OLUMSUZ` (ve `{{OLUMLU_FAKTÖR}}`/`{{OLUMSUZ_FAKTÖR}}`) `formatValueFactorsList()`'in `"\n"` ile birleştirdiği metni kullanıyor; bu metin `template-engine.js`'in `textParagraphsHtml()`/`formatWordParagraphs()`'ü ile `<p>...</p>` HTML'ine çevrilip AYNI `htmlValueToXmlText()` yolundan geçiyor — yani 0.0.332'deki satır-atlama düzeltmesi bu alanları da OTOMATİK olarak kapsıyor, ek kod değişikliği gerekmedi.
+- Uçtan uca doğrulandı: `formatWordParagraphs("Ana caddeye cepheli olması\nToplu taşımaya yakın olması\nSite içerisinde güvenlikli olması")` → `<p>...</p><p>...</p><p>...</p>` → `htmlValueToXmlText` → 2× `<w:br/>`, hiçbir kayıt boşlukla birleşmemiş.
+- `tools/test-docx-fill.js`'e bu zinciri kalıcı olarak doğrulayan bir test eklendi (kod değişmese de davranış gelecekte sessizce bozulmasın diye).
+- `npm run verify` tamamı geçti (68 test, kod değişikliği yok — yalnızca test eklendi).
+
 ## 0.0.332 - 2026-08-04 - Takyidat kayıtları artık gerçek satır sonuyla ayrılıyor; Mevcut Değer/Acil Satış Değeri yanına TL eklendi
 
 - Kullanıcı: "yasal ve mevcut acil değeri yanına TL ekle beyanlar şerhler rehinler hak ve mükellefiyetler bölümünde yer alan her kayıt yeni bir satırdan başlamalı."
