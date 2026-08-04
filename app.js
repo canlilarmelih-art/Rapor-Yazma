@@ -29783,9 +29783,26 @@ function getComparableCardContactText(index) {
   return [data.row.c0, phone].filter(Boolean).join(" / ");
 }
 
+// Kullanici talebi: "Emsalin Açıklaması bölümünde sürekli ekspertize konu
+// taşınmaz satılık olup diyor. oysa ki sadece 1. emsal konu taşınmaz
+// diğerlerinin açıklaması farklı olmalı ayrıca irtibat numarası ve
+// telefon numarası yazmamalı" — eskiden HER karta, satırın gerçek
+// durumundan (c2) bağımsız olarak sabit buildComparableSubjectStatement
+// ("Ekspertize konu taşınmaz satılık olup...") çağrılıyordu. Artık
+// buildComparableLongText (calcLongText/UZUN_EMSAL_METNI'nin de kullandığı,
+// satırın c2 durumuna göre Genel/Konu Taşınmaz/standart karşılaştırma
+// metnini seçen fonksiyon) kullanılıyor VE tüm varyantların baştaki
+// "(İrtibat Kişisi ve Telefon No: ...)" satırı çıkarılıyor.
+function stripComparableContactLine(text) {
+  // Telefon numaralari kendi ic parantezleri icerebildigi icin ([^)]* yerine
+  // ic parantezlere toleransli, ilk ")\n\n" e kadar giden non-greedy eslesme.
+  return String(text || "").replace(/^\(İrtibat Kişisi ve Telefon No:[\s\S]*?\)\n\n/, "");
+}
+
 function getComparableCardDescriptionText(index) {
   const data = getComparableCardData(index);
-  return data ? buildComparableSubjectStatement(data.row, data.metrics) : "";
+  if (!data) return "";
+  return stripComparableContactLine(buildComparableLongText(data.row, index, data.metrics));
 }
 
 function getComparableCardAreaText(index) {

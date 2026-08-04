@@ -1,5 +1,15 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.331 - 2026-08-04 - Emsalin Açıklaması: sabit "konu taşınmaz" metni yerine duruma göre metin, irtibat bilgisi kaldırıldı
+
+- Kullanıcı: "Emsalin Açıklaması bölümünde sürekli ekspertize konu taşınmaz satılık olup diyor. oysa ki sadece 1. emsal konu taşınmaz diğerlerinin açıklaması farklı olmalı ayrıca irtibat numarası ve telefon numarası yazmamalı."
+- **Kök neden**: `getComparableCardDescriptionText(index)` (EMSAL1-4ACIKLAMASI/ACIKLAMAMETNI'yi besleyen fonksiyon) satırın gerçek durumundan (c2 — Satılık/Genel/Konu Taşınmaz vb.) BAĞIMSIZ olarak HER ZAMAN `buildComparableSubjectStatement()`'ı ("Ekspertize konu taşınmaz satılık olup...") çağırıyordu — oysa bu fonksiyon yalnızca satırın durumu GERÇEKTEN "Konu Taşınmaz" olarak işaretliyse doğru metindir. Zaten var olan `buildComparableLongText()` (aynı `calcLongText`/`{{EMSAL_N_UZUN_EMSAL_METNI}}`'nin kullandığı, c2 durumuna göre Genel/Konu Taşınmaz/standart karşılaştırma metnini seçen dispatcher) doğru fonksiyondu ama `getComparableCardDescriptionText` bunu hiç çağırmıyordu.
+- **app.js**: `getComparableCardDescriptionText` artık `buildComparableLongText(data.row, index, data.metrics)` çağırıyor (durum-bazlı doğru metin) VE yeni `stripComparableContactLine(text)` ile sonuçtaki `"(İrtibat Kişisi ve Telefon No: ...)\n\n"` önekini kaldırıyor (kullanıcının "irtibat/telefon yazmamalı" talebi — bu önek `buildComparableSubjectStatement`/`buildComparableLongText`/`buildComparableLandLongText`'in HEPSİNDE ortak, tek noktadan temizleniyor). Telefon numarası kendi iç parantezi içerebildiği için (`0 (546) 582 19 29`) regex `[^)]*` yerine ilk `")\n\n"` dizisine kadar non-greedy eşleşme kullanıldı.
+- Yan etki: `getComparableCardFullText` (EMSAL_N_EMSAL_METNİ, irtibat+açıklama birleşik varyant) artık YANLIŞLIKLA çift irtibat satırı EKLEMİYOR — açıklama artık temiz geldiği için tek irtibat satırı doğru şekilde ekleniyor.
+- `tools/test-comparable-card-full-text.js`'e kaynak-düzeyinde doğru fonksiyon çağrısı kontrolü + `stripComparableContactLine`'ın izole VM testi eklendi (Halkbank Ruhsat testindeki gibi derin bağımlılık zinciri yüzünden `getComparableCardDescriptionText`'in tamamı izole edilemiyor).
+- Cache-buster `app.js?v=20260804-0700`.
+- `npm run verify` tamamı geçti (68 test).
+
 ## 0.0.330 - 2026-08-04 - {{HİSSE_PAYI}} ve Emsal 4 kartının açıklama/detay alanları eklendi
 
 - Kullanıcı 0.0.329'daki run-birleştirme düzeltmesinden sonra uygulamanın "eksik placeholder" uyarı diyaloğunda iki kalan ad gördü: `HİSSE_PAYI` ve `EMSAL_4_ACIKLAMA_METNİ`. İkisi de daha önce hiç desteklenmemiş YENİ alanlardı (0.0.328'in genel `EMSAL${i}_${token}` alias ailesi yalnızca TELEFON/EMSAL_DURUMU gibi eski alanları kapsıyordu; HİSSE_PAYI hiç yoktu, ACIKLAMA_METNİ ailesi de yalnızca kart 1-3 için elle eklenmişti — 0.0.326).

@@ -114,3 +114,47 @@ function sliceFn(startMarker) {
   });
   console.log("Emsal 4 karti placeholder kablolama testi tamam.");
 }
+
+// --- 5) Kullanici talebi (2026-08-04): "Emsalin Açıklaması bölümünde
+// sürekli ekspertize konu taşınmaz satılık olup diyor... sadece 1. emsal
+// konu taşınmaz diğerlerinin açıklaması farklı olmalı ayrıca irtibat
+// numarası ve telefon numarası yazmamalı" — getComparableCardDescriptionText
+// artik HER zaman buildComparableSubjectStatement (sabit "Ekspertize konu
+// taşınmaz satılık olup...") DEGIL, satirin c2 durumuna gore
+// Genel/Konu-Taşınmaz/standart karsilastirma metnini secen
+// buildComparableLongText'i cagirmali VE sonucu stripComparableContactLine
+// ile irtibat satirindan arindirmali. Bagimlilik zinciri (buildComparableLongText
+// -> buildComparableLandLongText/GeneralStatement/SubjectStatement -> onlarca
+// yardimci fonksiyon) tam VM izolasyonu icin asiri karmasik oldugundan
+// (Halkbank Ruhsat testindeki "derin bagimlilik" desenin ayni) kaynak
+// duzeyinde dogru fonksiyonu cagirdigi VE stripComparableContactLine
+// uyguladigi dogrulanir. -------------------------------------------------
+{
+  assert(
+    /function getComparableCardDescriptionText\(index\) \{[\s\S]*?stripComparableContactLine\(buildComparableLongText\(data\.row, index, data\.metrics\)\)/.test(appSource),
+    "getComparableCardDescriptionText artik buildComparableLongText + stripComparableContactLine kullanmiyor (regresyon: sabit 'Ekspertize konu taşınmaz satılık olup' donebilir veya irtibat bilgisi kalabilir)."
+  );
+  assert(
+    !/function getComparableCardDescriptionText\(index\) \{[\s\S]*?buildComparableSubjectStatement\(data\.row, data\.metrics\)/.test(appSource),
+    "getComparableCardDescriptionText hala kosulsuz buildComparableSubjectStatement cagiriyor (durum/c2'ye gore ayrisim kaybolmus olabilir)."
+  );
+
+  // stripComparableContactLine mantigini dogrudan izole test et.
+  const src = sliceFn("function stripComparableContactLine(");
+  const context = {};
+  vm.createContext(context);
+  vm.runInContext(src, context);
+  assert.equal(
+    context.stripComparableContactLine("(İrtibat Kişisi ve Telefon No: Raif Bey / 0 (546) 582 19 29)\n\nMetin buraya."),
+    "Metin buraya.",
+    "Irtibat satiri + bos satir kaldirilmali."
+  );
+  assert.equal(
+    context.stripComparableContactLine("Irtibat satiri olmayan duz metin."),
+    "Irtibat satiri olmayan duz metin.",
+    "Irtibat satiri yoksa metin degismeden donmeli."
+  );
+  assert.equal(context.stripComparableContactLine(""), "", "Bos girdi bos donmeli.");
+
+  console.log("Emsal aciklamasi: durum-bazli metin + irtibat satiri arindirma testi tamam.");
+}
