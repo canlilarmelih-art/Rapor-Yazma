@@ -228,17 +228,154 @@
     });
   }
 
+  // Kullanıcı talebi (2026-08-04): "emsal krokisi çıkmıyor word'de" —
+  // {{EMSAL_KROKISI}} HTML şablonlarda gerçek bir <img> üretiyordu (bkz.
+  // reportImageHtml("comparables")), ama docx yolunda hem bu görsel varlık
+  // hiç hazırlanmıyordu (exportDocxTemplate ensureReportMapImagesForExport/
+  // buildSavedReportImageAssets'i hiç çağırmıyordu) HEM DE htmlValueToXmlText
+  // zaten TÜM HTML etiketlerini (dolayısıyla <img>'i) düz metne çevirirken
+  // siliyordu — .docx'e GERÇEK bir görsel gömmek text-substitution ile
+  // MÜMKÜN DEĞİL, word/media/ + ilişki (rels) + <w:drawing> XML'i gerekiyor
+  // (bkz. CLAUDE.md "8. Ekler ... kapsam dışı" notu — bu segment o notu
+  // Emsal Krokisi için kaldırıyor).
+  const IMAGE_TOKEN_ASSET_KEYS = { EMSAL_KROKISI: "comparables" };
+
+  // Basit JPEG SOF (Start Of Frame) ayrıştırıcı — yalnızca genişlik/
+  // yükseklik piksel boyutlarını okur, resmi decode etmez (bağımlılıksız).
+  function getJpegPixelSize(bytes) {
+    if (!(bytes[0] === 0xff && bytes[1] === 0xd8)) return null;
+    let offset = 2;
+    while (offset + 9 < bytes.length) {
+      if (bytes[offset] !== 0xff) { offset += 1; continue; }
+      const marker = bytes[offset + 1];
+      if (marker === 0xd8 || marker === 0xd9) { offset += 2; continue; }
+      if (marker >= 0xd0 && marker <= 0xd7) { offset += 2; continue; }
+      const length = (bytes[offset + 2] << 8) | bytes[offset + 3];
+      const isSof = marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc;
+      if (isSof) {
+        const height = (bytes[offset + 5] << 8) | bytes[offset + 6];
+        const width = (bytes[offset + 7] << 8) | bytes[offset + 8];
+        return { width, height };
+      }
+      offset += 2 + length;
+    }
+    return null;
+  }
+
+  function base64ToBytes(base64) {
+    const binary = atob(String(base64 || ""));
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+    return bytes;
+  }
+
+  // Sablon hucresinin (emlakkatilim.docx'te Emsal Krokisi hucresi
+  // trHeight="4629" twip ~ 3.21in) makul sigdirma sinirlari — resim bu
+  // kutuya EN-BOY ORANI KORUNARAK sigdirilir (contain).
+  const IMAGE_MAX_WIDTH_EMU = 5760000; // ~6.29 in
+  const IMAGE_MAX_HEIGHT_EMU = 2939415; // ~3.21 in
+
+  function computeImageEmuSize(pixelSize) {
+    const width = pixelSize?.width;
+    const height = pixelSize?.height;
+    if (!width || !height) return { cx: IMAGE_MAX_WIDTH_EMU, cy: Math.round((IMAGE_MAX_WIDTH_EMU * 9) / 16) };
+    const aspect = width / height;
+    let cx = IMAGE_MAX_WIDTH_EMU;
+    let cy = Math.round(cx / aspect);
+    if (cy > IMAGE_MAX_HEIGHT_EMU) {
+      cy = IMAGE_MAX_HEIGHT_EMU;
+      cx = Math.round(cy * aspect);
+    }
+    return { cx, cy };
+  }
+
+  function extensionForMimeType(mimeType) {
+    if (/png/i.test(mimeType || "")) return "png";
+    return "jpeg";
+  }
+
+  function buildDrawingXml(relId, title, cx, cy) {
+    const safeTitle = String(title || "Rapor görseli").replace(/[<>&"']/g, (ch) => (
+      { "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;", "'": "&apos;" }[ch]
+    ));
+    const uid = 1000000000 + (relId % 900000000);
+    return `<w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="${cx}" cy="${cy}"/><wp:effectExtent l="0" t="0" r="0" b="0"/><wp:docPr id="${uid}" name="Resim ${relId}" descr="${safeTitle}"/><wp:cNvGraphicFramePr><a:graphicFrameLocks xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" noChangeAspect="1"/></wp:cNvGraphicFramePr><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="${uid}" name="Resim ${relId}" descr="${safeTitle}"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="rId${relId}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing>`;
+  }
+
+  // xmlText icindeki {{EMSAL_KROKISI}} gibi gorsel-turu token'lari, elde
+  // mevcut resim varliklariyla (imageAssets — buildSavedReportImageAssets()
+  // ciktisi) gercek <w:drawing>'e gomer. entries GUNCELLENMIS listeyi
+  // (yeni word/media/imageN.* + guncellenmis word/_rels/document.xml.rels)
+  // dondurur. Karsiligi olmayan resim token'lari DOKUNULMADAN birakilir
+  // (normal metin-token dongusu onlari "missing" olarak raporlar).
+  function embedImageAssets(xmlText, entries, imageAssets) {
+    const assetsByKey = new Map((Array.isArray(imageAssets) ? imageAssets : []).map((a) => [a.key, a]));
+    let nextEntries = entries.slice();
+    let text = xmlText;
+    let embeddedAny = false;
+
+    Object.keys(IMAGE_TOKEN_ASSET_KEYS).forEach((token) => {
+      const pattern = new RegExp(`\\{\\{${token}\\}\\}`, "g");
+      if (!pattern.test(text)) return;
+      const asset = assetsByKey.get(IMAGE_TOKEN_ASSET_KEYS[token]);
+      if (!asset?.base64) return;
+
+      const relsEntry = nextEntries.find((e) => e.name === "word/_rels/document.xml.rels");
+      if (!relsEntry) return; // rels dosyasi yoksa (beklenmedik sablon) gorsel gomulmez, token metin olarak "missing" kalir
+      const relsXml = dec.decode(relsEntry.bytes);
+      const existingRelIds = [...relsXml.matchAll(/Id="rId(\d+)"/g)].map((m) => Number(m[1]));
+      const relId = (existingRelIds.length ? Math.max(...existingRelIds) : 0) + 1;
+
+      const existingMediaIndices = nextEntries
+        .map((e) => e.name.match(/^word\/media\/image(\d+)\./))
+        .filter(Boolean)
+        .map((m) => Number(m[1]));
+      const mediaIndex = (existingMediaIndices.length ? Math.max(...existingMediaIndices) : 0) + 1;
+      const extension = extensionForMimeType(asset.mimeType);
+      const mediaName = `word/media/image${mediaIndex}.${extension}`;
+
+      const imageBytes = base64ToBytes(asset.base64);
+      const pixelSize = extension === "jpeg" ? getJpegPixelSize(imageBytes) : null;
+      const { cx, cy } = computeImageEmuSize(pixelSize);
+
+      const updatedRelsXml = relsXml.replace(
+        "</Relationships>",
+        `<Relationship Id="rId${relId}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/image${mediaIndex}.${extension}"/></Relationships>`
+      );
+
+      text = text.replace(pattern, buildDrawingXml(relId, asset.title, cx, cy));
+
+      nextEntries = nextEntries
+        .map((e) => (e === relsEntry ? { name: e.name, bytes: enc.encode(updatedRelsXml) } : e))
+        .concat([{ name: mediaName, bytes: imageBytes }]);
+      embeddedAny = true;
+    });
+
+    return { xmlText: text, entries: nextEntries, embeddedAny };
+  }
+
   // --- Ana API ---------------------------------------------------------
   // arrayBuffer: STORED .docx şablonu (fetch edilmiş ham bayt)
   // values: { TOKEN: htmlValue } — window.RaporTemplates.resolveTemplateTokenValues() çıktısı
   // boldFlags: { AD: boolean } — çoktan-seçmeli alanlarda hangi {{BOLD:AD}}
   // işaretli seçeneğin kalınlaştırılacağı (bkz. applyBoldMarkers)
-  function fillTemplate(arrayBuffer, values, boldFlags) {
-    const entries = readStoredZip(arrayBuffer);
-    const docEntry = entries.find((e) => e.name === "word/document.xml");
+  // imageAssets: [{key, title, base64, mimeType}] — buildSavedReportImageAssets()
+  // çıktısı; IMAGE_TOKEN_ASSET_KEYS'teki token'lar (ör. {{EMSAL_KROKISI}})
+  // gerçek <w:drawing> olarak gömülür (bkz. embedImageAssets).
+  function fillTemplate(arrayBuffer, values, boldFlags, imageAssets) {
+    let entries = readStoredZip(arrayBuffer);
+    let docEntry = entries.find((e) => e.name === "word/document.xml");
     if (!docEntry) throw new Error("DOCX şablonunda word/document.xml bulunamadı.");
 
     let xmlText = applyBoldMarkers(dec.decode(docEntry.bytes), boldFlags);
+
+    const imageResult = embedImageAssets(xmlText, entries, imageAssets);
+    xmlText = imageResult.xmlText;
+    if (imageResult.embeddedAny) {
+      entries = imageResult.entries;
+      docEntry = entries.find((e) => e.name === "word/document.xml");
+    }
+
     const tokens = collectTokens(xmlText);
     const missing = [];
 
@@ -273,5 +410,8 @@
     crc32,
     readStoredZip,
     writeStoredZip,
+    embedImageAssets,
+    getJpegPixelSize,
+    computeImageEmuSize,
   };
 })();

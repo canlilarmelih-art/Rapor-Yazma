@@ -1214,12 +1214,29 @@
     const tokens = window.RaporDocxFill.collectTokens(new TextDecoder("utf-8").decode(docEntry.bytes));
     const { values, missing } = resolveTemplateTokenValues(tokens);
     const boldFlags = safeCall("getEmlakKatilimBoldFlags") || {};
-    const filled = window.RaporDocxFill.fillTemplate(arrayBuffer, values, boldFlags);
+    // Kullanıcı talebi: "emsal krokisi çıkmıyor word'de" — HTML yolundaki
+    // exportTemplate() gibi, gerçek {{EMSAL_KROKISI}} vb. görsel token'lar
+    // varsa önce görsel (kaydedilmemişse otomatik oluşturulan) varlıklar
+    // hazırlanır; fillTemplate bunları gerçek <w:drawing> olarak gömer.
+    let imageAssets = [];
+    if (tokens.includes("EMSAL_KROKISI")) {
+      safeCall("ensureReportMapImagesForExport");
+      imageAssets = (await Promise.resolve(safeCall("buildSavedReportImageAssets"))) || [];
+    }
+    const filled = window.RaporDocxFill.fillTemplate(arrayBuffer, values, boldFlags, imageAssets);
     const fileName = `${safeCall("buildExportBaseFileName") || "rapor"}-${entry.key}.docx`;
     if (download && window.RaporXlsxFill?.downloadBlob) window.RaporXlsxFill.downloadBlob(fileName, filled.blob);
+    // {{EMSAL_KROKISI}} resolveTemplateTokenValues() icin her zaman "missing"
+    // gorunur (o normal metin token'i degil, gorsel gomme icin ayri bir
+    // yoldan islenir) — gercekten gomulduyse (imageAssets icinde varlik
+    // hazirlandiysa) yanlislikla "eksik alan" olarak raporlanmasin.
+    const embeddedImageKeys = new Set(imageAssets.map((a) => a.key));
+    const filteredMissing = missing.filter((name) => (
+      !(name === "EMSAL_KROKISI" && embeddedImageKeys.has("comparables"))
+    ));
     return {
       fileName,
-      missing: [...missing, ...filled.missing],
+      missing: [...filteredMissing, ...filled.missing],
       title: entry.title,
       bytes: filled.bytes,
       isBinary: true,
