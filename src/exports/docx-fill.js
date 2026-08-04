@@ -155,24 +155,43 @@
   // indir (çoklu <w:r>/<w:p> bölme karmaşıklığından kaçınmak için — orijinal
   // Word belgesindeki tek-paragraflık boş alanlarla tutarlı), kalan
   // etiketleri at, sonra XML için kaçışla.
+  // Kullanici talebi (2026-08-04): "beyanlar şerhler rehinler hak ve
+  // mükellefiyetler bölümünde yer alan her kayıt yeni bir satırdan
+  // başlamalı" — eskiden <br/>/<p> sinirlari TEK BIR BOSLUGA duzlestirilip
+  // butun kayitlar ayni satirda birlesiyordu. Artik bu sinirlar gercek bir
+  // Word satir sonuna (<w:br/>) donusuyor. <w:t> icine DOGRUDAN <w:br/>
+  // konulamaz (OOXML semasinda gecersiz) — bu yuzden once benzersiz, hicbir
+  // gercek metinde gecmeyecek bir isaretle (BREAK_MARKER) yer tutuluyor,
+  // XML kacislama TAMAMLANDIKTAN SONRA bu isaret gercek
+  // "</w:t><w:br/><w:t xml:space=\"preserve\">" dizisiyle degistiriliyor —
+  // boylece {{TOKEN}} orijinal <w:t>...</w:t> icinde tek basina oldugu
+  // surece sonuc hala gecerli OOXML (ayni <w:r> icinde birden fazla
+  // <w:t>/<w:br/> kardes eleman semaya uygun).
+  const BREAK_MARKER = "WORDBREAK";
+
   function htmlValueToXmlText(html) {
     const text = String(html ?? "")
-      .replace(/<br\s*\/?>/gi, " ")
-      .replace(/<\/p>\s*<p[^>]*>/gi, " ")
+      .replace(/<br\s*\/?>/gi, BREAK_MARKER)
+      .replace(/<\/p>\s*<p[^>]*>/gi, BREAK_MARKER)
       .replace(/<[^>]+>/g, "")
       .replace(/&amp;/g, "&")
       .replace(/&lt;/g, "<")
       .replace(/&gt;/g, ">")
       .replace(/&quot;/g, '"')
       .replace(/&#39;/g, "'")
-      .replace(/\s+/g, " ")
+      .replace(/[ \t\r\n\f\v]+/g, " ")
       .trim();
-    return text
+    const escaped = text
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&apos;");
+    return escaped
+      .split(BREAK_MARKER)
+      .map((segment) => segment.trim())
+      .filter(Boolean)
+      .join('</w:t><w:br/><w:t xml:space="preserve">');
   }
 
   function collectTokens(xmlText) {

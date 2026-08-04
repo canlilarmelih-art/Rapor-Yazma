@@ -64,16 +64,22 @@ assert.ok(DocxFill && typeof DocxFill.fillTemplate === "function", "RaporDocxFil
 }
 
 // --- 2) htmlValueToXmlText ---------------------------------------------
+// Kullanici talebi (2026-08-04): "beyanlar şerhler rehinler hak ve
+// mükellefiyetler bölümünde yer alan her kayıt yeni bir satırdan
+// başlamalı" — <p>/<br/> sinirlari artik BOSLUGA degil, gercek Word
+// satir sonuna (</w:t><w:br/><w:t xml:space="preserve">) donusuyor.
 {
+  const BR = '</w:t><w:br/><w:t xml:space="preserve">';
   const cases = [
     ["Bursa", "Bursa"],
     ["Ka&ccedil;", "Ka&amp;ccedil;"], // gercek entity degil, ama & tek basina XML icin kacislanmali
     ["A &amp; B", "A &amp; B"],
-    ["<p>Birinci cumle.</p><p>Ikinci cumle.</p>", "Birinci cumle. Ikinci cumle."],
-    ["Satir 1<br />Satir 2", "Satir 1 Satir 2"],
+    ["<p>Birinci cumle.</p><p>Ikinci cumle.</p>", `Birinci cumle.${BR}Ikinci cumle.`],
+    ["Satir 1<br />Satir 2", `Satir 1${BR}Satir 2`],
     ["  fazla   boşluk  ", "fazla boşluk"],
     ["<span style=\"color:red\">Kırmızı</span>", "Kırmızı"],
     ["3.100.000 TL", "3.100.000 TL"],
+    ["Satır 1<br/><br/>Satır 2", `Satır 1${BR}Satır 2`], // ust uste <br/> tek satir sonuna sikismali (bos <w:t></w:t> olmamali)
   ];
   cases.forEach(([input, expected]) => {
     const result = DocxFill.htmlValueToXmlText(input);
@@ -114,6 +120,39 @@ assert.ok(DocxFill && typeof DocxFill.fillTemplate === "function", "RaporDocxFil
     filledDoc.startsWith('<?xml version="1.0"?>') && filledDoc.includes("<w:document>") && filledDoc.includes("</w:document>"),
     "Dolu belgenin XML govdesi/yapisi bozulmus."
   );
+}
+
+// --- 3a) fillTemplate — cok kayitli deger (Beyanlar/Serhler/Rehinler/Hak ve
+// Mukellefiyetler gibi) gercek Word satir sonuyla (<w:br/>) dolmali, tek
+// hucre icinde bosluklarla birlesmemeli; sonuc hala gecerli/dengelenmis
+// <w:t>/<w:r> yapisinda olmali -------------------------------------------
+{
+  const enc = new TextEncoder();
+  const documentXml =
+    '<?xml version="1.0"?><w:document><w:body>' +
+    '<w:tbl><w:tr><w:tc><w:p><w:r><w:rPr><w:color w:val="FFFFFF"/></w:rPr><w:t>{{BEYANLARBOLUMU}}</w:t></w:r></w:p></w:tc></w:tr></w:tbl>' +
+    "</w:body></w:document>";
+  const entries = [
+    { name: "[Content_Types].xml", bytes: enc.encode("<Types/>") },
+    { name: "word/document.xml", bytes: enc.encode(documentXml) },
+  ];
+  const arrayBuffer = DocxFill.writeStoredZip(entries).buffer;
+  const values = { BEYANLARBOLUMU: "<p>Birinci kayıt.</p><p>İkinci kayıt.</p><p>Üçüncü kayıt.</p>" };
+  const result = DocxFill.fillTemplate(arrayBuffer, values);
+  const readBack = DocxFill.readStoredZip(result.bytes.buffer);
+  const filledDoc = new TextDecoder("utf-8").decode(readBack.find((e) => e.name === "word/document.xml").bytes);
+
+  check(!/Birinci kayıt\. \S/.test(filledDoc.replace(/<[^>]+>/g, "")), "Kayitlar hala tek satirda boslukla birlesmis olabilir.");
+  check((filledDoc.match(/<w:br\/>/g) || []).length === 2, `Uc kayit icin tam 2 <w:br/> beklenirdi: ${filledDoc}`);
+  check(
+    filledDoc.includes('<w:t>Birinci kayıt.</w:t><w:br/><w:t xml:space="preserve">İkinci kayıt.</w:t><w:br/><w:t xml:space="preserve">Üçüncü kayıt.</w:t>'),
+    `Kayitlar arasi gercek Word satir sonu (<w:br/>) olusmamis: ${filledDoc}`
+  );
+  // <w:r> acilis/kapanis sayisi degismemeli — yeni <w:t>'ler AYNI <w:r>
+  // icinde kardes eleman olarak eklenmis olmali (yeni <w:r> AÇILMAMALI).
+  const openR = (filledDoc.match(/<w:r>/g) || []).length;
+  const closeR = (filledDoc.match(/<\/w:r>/g) || []).length;
+  check(openR === closeR && openR === 1, `<w:r> dengesi/sayisi bozulmus (acilis:${openR}, kapanis:${closeR}) — yeni satirlar yanlislikla yeni <w:r> acmis olabilir.`);
 }
 
 // --- 3b) applyBoldMarkers — coktan-secmeli alanlarda dogru secenegi
@@ -197,6 +236,19 @@ assert.ok(DocxFill && typeof DocxFill.fillTemplate === "function", "RaporDocxFil
   ["EMSAL_1_TELEFON", "EMSAL_2_TELEFON", "EMSAL_3_TELEFON", "EMSAL_4_TELEFON"].forEach((name) => {
     check(tokens.includes(name), `emlakkatilim.docx icinde {{${name}}} bulunamadi (beklenen kullanici alani).`);
   });
+
+  // --- 6) Kullanici talebi (2026-08-04): "yasal ve mevcut acil değeri
+  // yanına TL ekle" — CURRENT_VALUE ve CURRENT_URGENT_SALE_VALUE bare sayi
+  // olarak geliyordu (formatValuationMoney "TL" eklemiyor — o alan diger
+  // bircok yerde de (USD/EUR donusum, tablo hucreleri) kullanilan PAYLASILAN
+  // bir state alani oldugundan degeri degil, SADECE bu sablonun statik XML
+  // metnini degistirdik). Her token'in HEMEN ardindan statik " TL" gelmeli.
+  const currentValueCount = (docText.match(/\{\{CURRENT_VALUE\}\}/g) || []).length;
+  const currentValueWithTlCount = (docText.match(/\{\{CURRENT_VALUE\}\} TL/g) || []).length;
+  check(currentValueCount > 0 && currentValueCount === currentValueWithTlCount, `emlakkatilim.docx icindeki {{CURRENT_VALUE}} geçişlerinin (${currentValueCount}) hepsinin ardından " TL" gelmiyor (${currentValueWithTlCount}).`);
+  const urgentValueCount = (docText.match(/\{\{CURRENT_URGENT_SALE_VALUE\}\}/g) || []).length;
+  const urgentValueWithTlCount = (docText.match(/\{\{CURRENT_URGENT_SALE_VALUE\}\} TL/g) || []).length;
+  check(urgentValueCount > 0 && urgentValueCount === urgentValueWithTlCount, `emlakkatilim.docx icindeki {{CURRENT_URGENT_SALE_VALUE}} geçişlerinin (${urgentValueCount}) hepsinin ardından " TL" gelmiyor (${urgentValueWithTlCount}).`);
 }
 
 if (failures.length) {

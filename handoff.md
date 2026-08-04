@@ -1,5 +1,15 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.332 - 2026-08-04 - Takyidat kayıtları artık gerçek satır sonuyla ayrılıyor; Mevcut Değer/Acil Satış Değeri yanına TL eklendi
+
+- Kullanıcı: "yasal ve mevcut acil değeri yanına TL ekle beyanlar şerhler rehinler hak ve mükellefiyetler bölümünde yer alan her kayıt yeni bir satırdan başlamalı."
+- **1) Satır sonu sorunu — kök neden**: `docx-fill.js`'in `htmlValueToXmlText()`'i `<p>`/`<br/>` sınırlarını her zaman TEK BİR BOŞLUĞA düzleştiriyordu (Word tablo hücreleri için "her şeyi tek akan paragrafta göster" varsayımıyla yazılmıştı) — bu yüzden `joinEncumbranceRows()`'un `"\n"` ile ayırdığı Beyanlar/Şerhler/Rehinler/Hak ve Mükellefiyetler kayıtları hep aynı satırda birleşiyordu. **Düzeltme**: `<p>`/`<br/>` sınırları artık gerçek bir Word satır sonuna (`<w:br/>`) dönüşüyor. `<w:t>` içine doğrudan `<w:br/>` konulamadığı (OOXML şemasında geçersiz) için önce benzersiz bir işaretle (`BREAK_MARKER`) yer tutulup, XML kaçışlama TAMAMLANDIKTAN SONRA gerçek `</w:t><w:br/><w:t xml:space="preserve">` dizisiyle değiştiriliyor — sonuç hâlâ geçerli OOXML (aynı `<w:r>` içinde birden fazla `<w:t>`/`<w:br/>` kardeş eleman şemaya uygun). Bu değişiklik `htmlValueToXmlText`'i kullanan TÜM docx token'larını etkiliyor (yalnızca 4 takyidat bölümünü değil) — genel olarak doğru davranış (çok satırlı/çok cümlelik değerler artık tek satırda boşlukla değil, gerçek satırlarla geliyor).
+- **2) TL eki**: `{{CURRENT_VALUE}}`/`{{CURRENT_URGENT_SALE_VALUE}}`'nin arkasındaki değer (`formatValuationMoney`) hiçbir zaman "TL" eklemiyordu — bu state alanı USD/EUR dönüşümü ve diğer birçok yerde de PAYLAŞILDIĞI için değeri değiştirmek yerine, YALNIZCA `templates/emlakkatilim.docx`'in ham XML'inde bu iki token'ın HER geçtiği yere (6× CURRENT_VALUE, 3× CURRENT_URGENT_SALE_VALUE) statik `" TL"` metni eklendi — şablon-özel, paylaşılan kodu etkilemiyor.
+- `tools/test-docx-fill.js`'e: (a) `htmlValueToXmlText`'in `<p>`/`<br/>` → `<w:br/>` dönüşümü, üst üste `<br/>`'lerin boş `<w:t>` üretmediği, ve sentetik bir tabloda çok kayıtlı değerin (`<w:r>` sayısı BOZULMADAN) gerçek satır sonlarıyla dolduğu; (b) gerçek şablonda `{{CURRENT_VALUE}}`/`{{CURRENT_URGENT_SALE_VALUE}}`'nin HER geçişinin ardından `" TL"` geldiği testleri eklendi.
+- Uçtan uca simülasyon: sahte "Birinci/İkinci/Üçüncü kayıt" BEYANLARBOLUMU değeriyle dolum → 2 adet `<w:br/>` (3 kayıt = 2 ayraç) doğru üretildi; CURRENT_VALUE/CURRENT_URGENT_SALE_VALUE'nin 6+3 geçişinin hepsi "TL" ile bitti; 79 token'ın hiçbiri "missing" kalmadı.
+- Cache-buster `src/exports/docx-fill.js?v=20260804-0730`.
+- `npm run verify` tamamı geçti (68 test).
+
 ## 0.0.331 - 2026-08-04 - Emsalin Açıklaması: sabit "konu taşınmaz" metni yerine duruma göre metin, irtibat bilgisi kaldırıldı
 
 - Kullanıcı: "Emsalin Açıklaması bölümünde sürekli ekspertize konu taşınmaz satılık olup diyor. oysa ki sadece 1. emsal konu taşınmaz diğerlerinin açıklaması farklı olmalı ayrıca irtibat numarası ve telefon numarası yazmamalı."
