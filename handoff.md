@@ -1,5 +1,12 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.316 - 2026-08-04 - Emlak Katılım .docx: {{SHARE}} (Arsa Payı) eklendi + STORED yeniden paketleme
+
+- Kullanıcı talebi: "son emlak katılım template güncellemesi yaptım push eder misin" — kullanıcı şablonu yine Word'de düzenlemiş, tek fark: yeni `{{SHARE}}` (Arsa Payı) placeholder'ı eklenmiş (72 → 73 token, başka hiçbir şey silinmemiş/değişmemiş — zip giriş listesi birebir aynı).
+- Word yine dosyayı DEFLATE ile kaydetmiş; 0.0.315'teki gibi Python `zipfile.ZIP_STORED` ile içerik korunarak yeniden paketlendi (bkz. CLAUDE.md — bu adım Word'de her düzenlemeden sonra gerekiyor).
+- `{{SHARE}}` `resolveToken()` ile `ok:true` doğrulandı.
+- `npm run verify` tamamı geçti (56 test).
+
 ## 0.0.315 - 2026-08-04 - Emlak Katılım .docx: kullanıcının Word'de yaptığı düzenlemeler + STORED yeniden paketleme
 
 - Kullanıcı talebi: "emlak katılım şablonunda bazı düzenlemeler yaptım onları push et" — kullanıcı `templates/emlakkatilim.docx`'i Microsoft Word'de açıp elle düzenlemiş (yeni {{BLOCK_NO}}, {{CARPARK}}, {{LEGAL_USAGE_NATURE}}, {{TOTAL_CURRENT_AREA}}, {{TOTAL_FLOORS}}, {{UAVT}} placeholder'ları eklenmiş — 1.1 Tapu Bilgileri tablosuna daha fazla alan bağlanmış).
