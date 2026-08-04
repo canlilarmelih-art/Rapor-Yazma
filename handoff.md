@@ -1,5 +1,12 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.339 - 2026-08-05 - DÜZELTME: 0.0.338'de yanlışlıkla geri eklenen "TL" eki kaldırıldı
+
+- Kullanıcı: "benim sildiklerimi niye ekliyorsun benim sildiklerimi sil." — 0.0.338'de kullanıcının Word'de bilerek sildiği `{{CURRENT_VALUE}}`/`{{CURRENT_URGENT_SALE_VALUE}}` sonrası `" TL"` ekini, "Word'ün yan etkisi olabilir" varsayımıyla YANLIŞLIKLA geri eklemiştim — kullanıcının bilinçli düzenlemesini görmezden gelip üzerine yazmak yanlıştı.
+- `" TL"` eki tekrar kaldırıldı (9 geçişin hepsinden). `tools/test-docx-fill.js`'deki bunu zorunlu kılan bölüm 6 tamamen SİLİNDİ — artık bu davranışı "doğru" sayıp yeniden dayatan bir test kalmadı.
+- **Ders**: kullanıcının şablonda yaptığı bir değişikliği "muhtemelen istemeden olmuş" diye varsayıp geri almadan önce SORULMALI, özellikle önceki bir oturumda ELLE eklenen bir özellik söz konusuysa.
+- `node tools/test-docx-fill.js` geçti.
+
 ## 0.0.338 - 2026-08-05 - templates/emlakkatilim.docx yeniden STORED paketlendi (Word kilidi kalktıktan sonra)
 
 - Kullanıcı Word'ü kapattı, dosya artık yazılabilir durumda — standart STORED yeniden paketleme uygulandı.

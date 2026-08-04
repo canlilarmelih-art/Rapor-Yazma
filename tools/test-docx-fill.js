@@ -274,19 +274,6 @@ assert.ok(DocxFill && typeof DocxFill.fillTemplate === "function", "RaporDocxFil
   ["EMSAL_1_TELEFON", "EMSAL_2_TELEFON", "EMSAL_3_TELEFON", "EMSAL_4_TELEFON"].forEach((name) => {
     check(tokens.includes(name), `emlakkatilim.docx icinde {{${name}}} bulunamadi (beklenen kullanici alani).`);
   });
-
-  // --- 6) Kullanici talebi (2026-08-04): "yasal ve mevcut acil değeri
-  // yanına TL ekle" — CURRENT_VALUE ve CURRENT_URGENT_SALE_VALUE bare sayi
-  // olarak geliyordu (formatValuationMoney "TL" eklemiyor — o alan diger
-  // bircok yerde de (USD/EUR donusum, tablo hucreleri) kullanilan PAYLASILAN
-  // bir state alani oldugundan degeri degil, SADECE bu sablonun statik XML
-  // metnini degistirdik). Her token'in HEMEN ardindan statik " TL" gelmeli.
-  const currentValueCount = (docText.match(/\{\{CURRENT_VALUE\}\}/g) || []).length;
-  const currentValueWithTlCount = (docText.match(/\{\{CURRENT_VALUE\}\} TL/g) || []).length;
-  check(currentValueCount > 0 && currentValueCount === currentValueWithTlCount, `emlakkatilim.docx icindeki {{CURRENT_VALUE}} geçişlerinin (${currentValueCount}) hepsinin ardından " TL" gelmiyor (${currentValueWithTlCount}).`);
-  const urgentValueCount = (docText.match(/\{\{CURRENT_URGENT_SALE_VALUE\}\}/g) || []).length;
-  const urgentValueWithTlCount = (docText.match(/\{\{CURRENT_URGENT_SALE_VALUE\}\} TL/g) || []).length;
-  check(urgentValueCount > 0 && urgentValueCount === urgentValueWithTlCount, `emlakkatilim.docx icindeki {{CURRENT_URGENT_SALE_VALUE}} geçişlerinin (${urgentValueCount}) hepsinin ardından " TL" gelmiyor (${urgentValueWithTlCount}).`);
 }
 
 if (failures.length) {
