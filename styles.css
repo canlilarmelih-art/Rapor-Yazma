@@ -4004,6 +4004,19 @@ td .free-lookup input {
   box-shadow: 0 1px 5px rgba(120, 12, 12, 0.4);
 }
 
+/* Kullanıcı talebi: "kullanıcı emsal haritası üzerinden etiketleri
+   istediği yere sürüklese" — sürüklenebilir etiketlerde pointer-events
+   AÇIK (varsayılan .sketch-leader-label-inner bunu kapatıyor, ipucu
+   olmadan tıklanamaz/sürüklenemez kalırdı) + sürüklenebilir imleç. */
+.sketch-leader-label.is-draggable .sketch-leader-label-inner {
+  pointer-events: auto;
+  cursor: grab;
+}
+
+.sketch-leader-label.is-draggable .sketch-leader-label-inner:active {
+  cursor: grabbing;
+}
+
 .encumbrance-report-groups {
   display: grid;
   gap: 18px;

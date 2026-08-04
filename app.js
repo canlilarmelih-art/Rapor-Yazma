@@ -28366,6 +28366,7 @@ function createComparableLocationSketchPanel() {
       </label>
       <button class="mini-button" type="button" data-comparable-sketch-save>${state.sourceValues?.reportImages?.comparables ? "KROKİ KAYDEDİLDİ" : "KROKİYİ KAYDET"}</button>
       <button class="mini-button" type="button" data-comparable-sketch-export>JPG İNDİR</button>
+      <button class="mini-button" type="button" data-comparable-sketch-reset-labels>Etiketleri Sıfırla</button>
       <label class="export-control">
         <span>Boyut</span>
         <select data-comparable-sketch-export-ratio>
@@ -28374,6 +28375,7 @@ function createComparableLocationSketchPanel() {
       </label>
       <span class="export-status" data-comparable-sketch-export-status aria-live="polite"></span>
     </div>
+    <p class="subtle-text">Etiketleri (Konu Taşınmaz/Emsal yazılarını) haritada sürükleyerek istediğiniz yere taşıyabilirsiniz — noktaların kendisi yerinde kalır, yalnızca yazı konumu değişir. Kaydettiğiniz krokide ve dışa aktarımlarda bu yerleşim kullanılır.</p>
     <div class="comparable-location-sketch-map" data-comparable-location-sketch-map></div>
   `;
   wrapper.querySelector("[data-comparable-sketch-map-mode]").addEventListener("change", (event) => {
@@ -28391,8 +28393,36 @@ function createComparableLocationSketchPanel() {
   wrapper.querySelector("[data-comparable-sketch-save]").addEventListener("click", (event) => {
     saveComparableSketchForReport(wrapper, event.currentTarget);
   });
+  wrapper.querySelector("[data-comparable-sketch-reset-labels]").addEventListener("click", () => {
+    resetComparableSketchLabelOverrides();
+    renderComparableLocationSketchMap(wrapper);
+  });
   window.setTimeout(() => renderComparableLocationSketchMap(wrapper), 0);
   return wrapper;
+}
+
+// Kullanıcı talebi: "kullanıcı emsal haritası üzerinden etiketleri istediği
+// yere sürüklese ancak emsal ve konu taşınmaz noktaları aynı kalacak" —
+// etiketin (metin kutusunun) kullanıcı tarafından elle bırakıldığı konum,
+// {{lat,lng}} olarak id'ye (subject / comparable-<index>) göre saklanır.
+// Nokta/marker'ın kendisi HER ZAMAN gerçek koordinattan (subjectPoint/
+// comparablePoints) gelir — burada değişmez.
+function getComparableSketchLabelOverride(id) {
+  const stored = state.sourceValues?.comparableSketchLabelOverrides?.[id];
+  if (!stored || !Number.isFinite(Number(stored.lat)) || !Number.isFinite(Number(stored.lng))) return null;
+  return { lat: Number(stored.lat), lng: Number(stored.lng) };
+}
+
+function setComparableSketchLabelOverride(id, latlng) {
+  if (!id || !latlng) return;
+  state.sourceValues.comparableSketchLabelOverrides = state.sourceValues.comparableSketchLabelOverrides || {};
+  state.sourceValues.comparableSketchLabelOverrides[id] = { lat: Number(latlng.lat), lng: Number(latlng.lng) };
+  autosave();
+}
+
+function resetComparableSketchLabelOverrides() {
+  state.sourceValues.comparableSketchLabelOverrides = {};
+  autosave();
 }
 
 function renderComparableLocationSketchMap(wrapper) {
@@ -28436,7 +28466,11 @@ function renderComparableLocationSketchMap(wrapper) {
 
   const boundsPoints = [subjectPoint];
   leaflet.marker(subjectPoint).addTo(map);
-  const labelEntries = [{ kind: "subject", latlng: subjectPoint, text: "KONU TAŞINMAZ" }];
+  // id: getComparableSketchLabelOverride/setComparableSketchLabelOverride'in
+  // anahtarı — kullanıcı bu etiketi sürükleyip bıraktığında konumu bu id
+  // altında kalıcı olarak saklanır (nokta/marker'ın kendisi HER ZAMAN
+  // subjectPoint/item.point'ten gelir, değişmez).
+  const labelEntries = [{ id: "subject", kind: "subject", latlng: subjectPoint, text: "KONU TAŞINMAZ" }];
 
   comparablePoints.forEach((item) => {
     boundsPoints.push(item.point);
@@ -28453,7 +28487,7 @@ function renderComparableLocationSketchMap(wrapper) {
       fillColor: "#14b8a6",
       fillOpacity: 0.95,
     }).addTo(map);
-    labelEntries.push({ kind: "comparable", latlng: item.point, text: `Emsal ${item.index + 1}` });
+    labelEntries.push({ id: `comparable-${item.index}`, kind: "comparable", latlng: item.point, text: `Emsal ${item.index + 1}` });
   });
 
   if (!comparablePoints.length) {
@@ -28472,7 +28506,11 @@ function renderComparableLocationSketchMap(wrapper) {
       maxZoom: 17,
     });
   }
-  renderMapLeaderLabels(map, leaflet, labelEntries);
+  renderMapLeaderLabels(map, leaflet, labelEntries, {
+    draggable: true,
+    getLabelOverride: getComparableSketchLabelOverride,
+    onLabelDragEnd: setComparableSketchLabelOverride,
+  });
   window.setTimeout(() => map.invalidateSize(), 0);
 }
 
@@ -28486,8 +28524,15 @@ function measureSketchLabelWidth(text, font) {
 // Ekran haritasında etiketleri, kendi marker'larından kaydırılmış divIcon'lar
 // olarak çizer ve leader çizgisiyle bağlar; çakışma-önleyen yerleşim (layoutSketchLabels)
 // yakın konumlarda üst üste binmeyi engeller. Zoom/pan'de yeniden hesaplanır.
-// entries: [{ kind:'subject'|<diğer>, latlng, text, color? }]
-function renderMapLeaderLabels(map, leaflet, entries) {
+// entries: [{ id?, kind:'subject'|<diğer>, latlng, text, color? }]
+// options.draggable: true ise etiketler elle sürüklenebilir (NOKTA/marker
+// SABİT kalır, yalnızca etiket metninin konumu değişir — kullanıcı talebi:
+// "emsal ve konu taşınmaz noktaları aynı kalacak. kullanıcı düzenlemesine
+// göre görsel oluşsa"). options.getLabelOverride(id) daha önce kullanıcının
+// elle bıraktığı bir konum varsa {lat,lng} döner (varsa o anchor otomatik
+// yerleşimden HARİÇ tutulur, kullanıcının seçimi korunur).
+// options.onLabelDragEnd(id, {lat,lng}) sürükleme bittiğinde çağrılır.
+function renderMapLeaderLabels(map, leaflet, entries, options = {}) {
   if (!entries.length) return { relayout: () => {}, layer: null };
   const layer = leaflet.layerGroup().addTo(map);
   const relayout = () => {
@@ -28498,7 +28543,10 @@ function renderMapLeaderLabels(map, leaflet, entries) {
       const isSubject = entry.kind === "subject";
       const font = isSubject ? "800 12px Arial" : "700 11px Arial";
       const point = map.latLngToContainerPoint(entry.latlng);
+      const override = entry.id ? options.getLabelOverride?.(entry.id) : null;
+      const overridePoint = override ? map.latLngToContainerPoint([override.lat, override.lng]) : null;
       return {
+        id: entry.id,
         kind: isSubject ? "subject" : "place",
         latlng: entry.latlng,
         text: entry.text,
@@ -28507,25 +28555,49 @@ function renderMapLeaderLabels(map, leaflet, entries) {
         w: Math.min(measureSketchLabelWidth(entry.text, font) + (isSubject ? 24 : 20), 240),
         h: isSubject ? 26 : 22,
         markerColor: isSubject ? "#c81e1e" : (entry.color || "#0f766e"),
+        manualCx: overridePoint?.x,
+        manualCy: overridePoint?.y,
       };
     });
-    layoutSketchLabels(anchors, size.x, size.y);
+    // Kullanıcının elle konumlandırdığı etiketler otomatik yerleşimden
+    // HARİÇ tutulur (kendi seçimleri korunur); yalnızca konumlandırılmamış
+    // olanlar çakışma-önleyen otomatik algoritmadan geçer.
+    const autoAnchors = anchors.filter((a) => !Number.isFinite(a.manualCx));
+    if (autoAnchors.length) layoutSketchLabels(autoAnchors, size.x, size.y);
+    anchors.forEach((a) => {
+      if (Number.isFinite(a.manualCx)) { a.cx = a.manualCx; a.cy = a.manualCy; }
+    });
     anchors.forEach((a) => {
       const labelLatLng = map.containerPointToLatLng([a.cx, a.cy]);
-      leaflet.polyline([a.latlng, labelLatLng], {
+      const line = leaflet.polyline([a.latlng, labelLatLng], {
         color: a.markerColor,
         weight: 1.6,
         opacity: 0.9,
       }).addTo(layer);
       const isSubject = a.kind === "subject";
       const styleAttr = isSubject ? "" : ` style="border-color:${a.markerColor};color:${a.markerColor}"`;
+      const draggable = Boolean(options.draggable && a.id);
       const icon = leaflet.divIcon({
-        className: `sketch-leader-label${isSubject ? " is-subject" : ""}`,
+        className: `sketch-leader-label${isSubject ? " is-subject" : ""}${draggable ? " is-draggable" : ""}`,
         html: `<span class="sketch-leader-label-inner"${styleAttr}>${escapeHtml(a.text)}</span>`,
         iconSize: [0, 0],
         iconAnchor: [0, 0],
       });
-      leaflet.marker(labelLatLng, { icon, interactive: false, keyboard: false }).addTo(layer);
+      const marker = leaflet.marker(labelLatLng, {
+        icon,
+        interactive: draggable,
+        keyboard: false,
+        draggable,
+      }).addTo(layer);
+      if (draggable) {
+        marker.on("drag", () => {
+          line.setLatLngs([a.latlng, marker.getLatLng()]);
+        });
+        marker.on("dragend", () => {
+          const newLatLng = marker.getLatLng();
+          options.onLabelDragEnd?.(a.id, { lat: newLatLng.lat, lng: newLatLng.lng });
+        });
+      }
     });
   };
   relayout();
@@ -28941,6 +29013,7 @@ function drawExportComparableSketch(context, subjectPoint, comparablePoints, top
     const escapeDirX = subjectAnchorPixel.x - compCenter.x;
     const escapeDirY = subjectAnchorPixel.y - compCenter.y;
     anchors.push({
+      id: "subject",
       kind: "subject",
       x: subjectAnchorPixel.x,
       y: subjectAnchorPixel.y,
@@ -28964,6 +29037,7 @@ function drawExportComparableSketch(context, subjectPoint, comparablePoints, top
     const text = `Emsal ${item.index + 1}`;
     context.font = "700 22px Arial";
     anchors.push({
+      id: `comparable-${item.index}`,
       kind: "comparable",
       x: pixel.x,
       y: pixel.y,
@@ -28979,11 +29053,35 @@ function drawExportComparableSketch(context, subjectPoint, comparablePoints, top
     });
   });
 
+  // Kullanıcı talebi: "kullanıcı emsal haritası üzerinden etiketleri
+  // istediği yere sürüklese ... kullanıcı düzenlemesine göre görsel
+  // oluşsa" — ekrandaki interaktif haritada (renderComparableLocationSketchMap)
+  // elle bırakılmış bir etiket konumu varsa (getComparableSketchLabelOverride)
+  // dışa aktarılan görsel de AYNI konumu kullanır; o anchor otomatik
+  // çakışma-önleyen yerleşimden HARİÇ tutulur (kullanıcının seçimi asla
+  // otomatik algoritma tarafından değiştirilmez). Nokta/marker'ın kendisi
+  // (a.x/a.y, leader çizgisinin başladığı yer) HER ZAMAN gerçek koordinat.
+  anchors.forEach((a) => {
+    const override = a.id ? getComparableSketchLabelOverride(a.id) : null;
+    if (!override) return;
+    const overridePixel = projectExportPoint(override.lat, override.lng, topLeft, zoom);
+    a.cx = overridePixel.x;
+    a.cy = overridePixel.y;
+    a.manualOverride = true;
+  });
+  const autoAnchors = anchors.filter((a) => !a.manualOverride);
   // subjectPixel (gerçek koordinat) anchor listesinde YOK artık (anchor
   // KML sınırına — subjectAnchorPixel'e — bağlı); bu yüzden ayrıca
   // "sert nokta" olarak geçiliyor ki hiçbir etiket onu da örtmesin.
   const extraHardPoints = [subjectPixel].filter(Boolean);
-  layoutSketchLabels(anchors, context.canvas.width, context.canvas.height, extraHardPoints);
+  if (autoAnchors.length) layoutSketchLabels(autoAnchors, context.canvas.width, context.canvas.height, extraHardPoints);
+  anchors.forEach((a) => {
+    if (!a.manualOverride) return;
+    a.cx = Math.max(a.w / 2 + 6, Math.min(a.cx, context.canvas.width - a.w / 2 - 6));
+    a.cy = Math.max(a.h / 2 + 6, Math.min(a.cy, context.canvas.height - a.h / 2 - 6));
+    a.lx = a.cx - a.w / 2;
+    a.ly = a.cy - a.h / 2;
+  });
   anchors.forEach((a) => drawSketchLeaderAndMarker(context, a));
   anchors.forEach((a) => drawSketchLabelBox(context, a));
 }

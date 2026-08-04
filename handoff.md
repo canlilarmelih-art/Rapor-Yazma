@@ -1,5 +1,18 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.340 - 2026-08-05 - Emsal Konum Krokisi: etiketler haritada elle sürüklenebiliyor (nokta sabit kalır)
+
+- Kullanıcı önerisi: "kullanıcı emsal haritası üzerinden etiketleri istediği yere sürüklese ancak emsal ve konu taşınmaz noktaları aynı kalacak. kullanıcı düzenlemesine göre görsel oluşsa nasıl olur?"
+- **app.js — canlı harita (`renderComparableLocationSketchMap`)**: etiket render fonksiyonu `renderMapLeaderLabels` artık isteğe bağlı `options.draggable`/`options.getLabelOverride`/`options.onLabelDragEnd` alıyor. Etiketler (Konu Taşınmaz/Emsal N divIcon'ları) artık gerçek, sürüklenebilir Leaflet marker'ları — `drag` olayında bağlı leader çizgisi gerçek zamanlı takip ediyor, `dragend`'de yeni {lat,lng} kaydediliyor. **Nokta/marker'ın kendisi (circleMarker/subject marker) HİÇBİR ZAMAN sürüklenebilir değil** — yalnızca etiket metni taşınıyor.
+- Yeni `getComparableSketchLabelOverride(id)`/`setComparableSketchLabelOverride(id, latlng)`/`resetComparableSketchLabelOverrides()` — `state.sourceValues.comparableSketchLabelOverrides[id]` altında `{lat,lng}` saklar (`id`: `"subject"` veya `"comparable-<index>"`). Bir etiket için kayıtlı konum varsa o etiket **otomatik çakışma-önleyen yerleşimden (`layoutSketchLabels`) TAMAMEN HARİÇ tutulur** — kullanıcının seçimi algoritma tarafından asla değiştirilmez; kayıtsız etiketler eskisi gibi otomatik yerleşir.
+- **Dışa aktarım (`drawExportComparableSketch`, JPEG indirme + 0.0.334'teki `.docx` görsel gömme YOLU İKİSİ DE)**: aynı override'ları okuyup ekrandaki KROKİYLE BİREBİR AYNI yerleşimi üretir — kullanıcı haritada nasıl düzenlediyse dışa aktarılan görsel de öyle çıkar.
+- Panel'e "Etiketleri Sıfırla" düğmesi eklendi (tüm elle taşınmış etiketleri otomatik yerleşime döndürür).
+- **cloud/cloud-sync.js + cloud/report-library.js**: `comparableSketchLabelOverrides` `buildCloudMapState`/`applyCloudMapState`/report-library restore akışına eklendi — `nearbyPlaces`/`reportImages` ile AYNI desen, cihazlar arası senkronize.
+- **styles.css**: `.sketch-leader-label.is-draggable` — sürüklenebilir etiketlerde `pointer-events: auto` (varsayılan `.sketch-leader-label-inner` bunu kapatıyordu, aksi halde tıklanamaz kalırdı) + `cursor: grab`/`grabbing`.
+- `tools/test-comparable-sketch-label-placement.js`'e iki yeni bölüm: override kaydetme/okuma/sıfırlama temel davranışı, ve `drawExportComparableSketch`'in kullanıcının bıraktığı konumu BİREBİR kullandığını (noktanın kendisi etkilenmeden) doğrulayan uçtan uca test.
+- Cache-buster `app.js?v=20260805-0200`, `styles.css?v=20260805-0200`, `cloud/cloud-sync.js?v=20260805-0200`, `cloud/report-library.js?v=20260805-0200`.
+- `npm run verify` tamamı geçti.
+
 ## 0.0.339 - 2026-08-05 - DÜZELTME: 0.0.338'de yanlışlıkla geri eklenen "TL" eki kaldırıldı
 
 - Kullanıcı: "benim sildiklerimi niye ekliyorsun benim sildiklerimi sil." — 0.0.338'de kullanıcının Word'de bilerek sildiği `{{CURRENT_VALUE}}`/`{{CURRENT_URGENT_SALE_VALUE}}` sonrası `" TL"` ekini, "Word'ün yan etkisi olabilir" varsayımıyla YANLIŞLIKLA geri eklemiştim — kullanıcının bilinçli düzenlemesini görmezden gelip üzerine yazmak yanlıştı.

@@ -66,11 +66,17 @@ const src = [
   sliceFn("function layoutSketchLabels("),
   sliceFn("function drawSketchLeaderAndMarker("),
   sliceFn("function drawSketchLabelBox("),
+  sliceFn("function getComparableSketchLabelOverride("),
+  sliceFn("function setComparableSketchLabelOverride("),
+  sliceFn("function resetComparableSketchLabelOverrides("),
   sliceFn("function drawExportComparableSketch("),
 ].join("\n");
 
-function newContext() {
-  const context = {};
+function newContext(initialState) {
+  const context = {
+    state: initialState || { sourceValues: {} },
+    autosave: () => {},
+  };
   vm.createContext(context);
   vm.runInContext(src, context);
   return context;
@@ -232,6 +238,95 @@ function rectContainsPoint(a, p) {
   assert(ctx.__calls.fillText.includes("KONU TAŞINMAZ"), "KONU TAŞINMAZ metni cizilmemis.");
 
   console.log("drawExportComparableSketch uctan uca (cakismasiz, konu tasinmaz uzakta) testi tamam.");
+}
+
+// --- 5) Kullanici talebi (2026-08-05): "kullanıcı emsal haritası
+// üzerinden etiketleri istediği yere sürüklese ancak emsal ve konu
+// taşınmaz noktaları aynı kalacak. kullanıcı düzenlemesine göre görsel
+// oluşsa" — getComparableSketchLabelOverride/set/reset temel davranisi -
+{
+  // Not: dönen nesneler vm.Context içinde oluştuğu için assert.deepEqual
+  // (cross-realm prototip farkı yüzünden) yanlış pozitif "eşit değil"
+  // verir — bu yüzden alanlar tek tek (JSON ile normalize edilerek)
+  // karşılaştırılıyor.
+  const context = newContext({ sourceValues: {} });
+  assert.equal(context.getComparableSketchLabelOverride("subject"), null, "Kayit yokken null donmeli.");
+
+  context.setComparableSketchLabelOverride("subject", { lat: 41.01, lng: 29.02 });
+  const stored = JSON.parse(JSON.stringify(context.getComparableSketchLabelOverride("subject")));
+  assert.deepEqual(stored, { lat: 41.01, lng: 29.02 }, "Kaydedilen konum geri okunmadi.");
+
+  context.setComparableSketchLabelOverride("comparable-0", { lat: 41.02, lng: 29.03 });
+  assert.deepEqual(JSON.parse(JSON.stringify(context.getComparableSketchLabelOverride("comparable-0"))), { lat: 41.02, lng: 29.03 });
+  assert.deepEqual(JSON.parse(JSON.stringify(context.getComparableSketchLabelOverride("subject"))), { lat: 41.01, lng: 29.02 }, "Farkli id'ler birbirini ezmemeli.");
+
+  context.resetComparableSketchLabelOverrides();
+  assert.equal(context.getComparableSketchLabelOverride("subject"), null, "Sifirlama sonrasi kayit kalmamali.");
+  assert.equal(context.getComparableSketchLabelOverride("comparable-0"), null, "Sifirlama TUM id'leri temizlemeli.");
+
+  console.log("Emsal krokisi etiket konumu kaydetme/okuma/sifirlama testi tamam.");
+}
+
+// --- 6) drawExportComparableSketch — kullanicinin elle bıraktığı etiket
+// konumu (override) dışa aktarılan görselde AYNEN kullanılmalı; NOKTANIN
+// KENDİSİ (leader çizgisinin başladığı yer) HER ZAMAN gerçek koordinat
+// olarak kalmalı, otomatik yerleşim o etikete DOKUNMAMALI --------------
+{
+  const zoom = 18;
+  const subjectPoint = [41.005, 29.005];
+  const comparablePoints = [
+    { index: 0, point: [41.0051, 29.0051] },
+    { index: 1, point: [41.004, 29.007] },
+  ];
+  const parsed = { coordinates: [
+    { lat: 41.0055, lng: 29.0045 },
+    { lat: 41.0055, lng: 29.0055 },
+    { lat: 41.0045, lng: 29.0055 },
+    { lat: 41.0045, lng: 29.0045 },
+  ]};
+
+  const overrideLatLng = { lat: 41.0048, lng: 29.0053 }; // kullanicinin "Emsal 1" etiketini surukleyip biraktigi yer (canvas icinde)
+  const context = newContext({ sourceValues: { comparableSketchLabelOverrides: { "comparable-0": overrideLatLng } } });
+  const ctx = makeFakeContext(660, 360);
+  const centerPixel = context.latLngToWorldPixel(subjectPoint[0], subjectPoint[1], zoom);
+  const topLeft = { x: centerPixel.x - ctx.canvas.width / 2, y: centerPixel.y - ctx.canvas.height / 2 };
+
+  let anchorsRef = null;
+  const originalLayout = context.layoutSketchLabels;
+  context.layoutSketchLabels = (anchors, w, h, hardPoints) => {
+    const result = originalLayout(anchors, w, h, hardPoints);
+    return result;
+  };
+  const originalDraw = context.drawSketchLeaderAndMarker;
+  context.drawSketchLeaderAndMarker = (c, a) => {
+    if (!anchorsRef) anchorsRef = [];
+    anchorsRef.push(a);
+    return originalDraw(c, a);
+  };
+
+  context.drawExportComparableSketch(ctx, subjectPoint, comparablePoints, topLeft, zoom, parsed);
+
+  const overriddenAnchor = anchorsRef.find((a) => a.id === "comparable-0");
+  assert(overriddenAnchor, "comparable-0 anchor'i bulunamadi.");
+  const expectedPixel = context.projectExportPoint(overrideLatLng.lat, overrideLatLng.lng, topLeft, zoom);
+  assert(Math.abs(overriddenAnchor.cx - expectedPixel.x) < 0.01, `Etiket konumu kullanicinin biraktigi yerde degil (cx=${overriddenAnchor.cx}, beklenen=${expectedPixel.x}).`);
+  assert(Math.abs(overriddenAnchor.cy - expectedPixel.y) < 0.01, `Etiket konumu kullanicinin biraktigi yerde degil (cy=${overriddenAnchor.cy}, beklenen=${expectedPixel.y}).`);
+
+  // Noktanin kendisi (a.x/a.y — leader'in basladigi yer) HALA gercek
+  // koordinat (comparablePoints[0].point), override'dan ETKİLENMEMİŞ.
+  const realPointPixel = context.projectExportPoint(comparablePoints[0].point[0], comparablePoints[0].point[1], topLeft, zoom);
+  assert(Math.abs(overriddenAnchor.x - realPointPixel.x) < 0.01, "Nokta (marker) konumu override'dan etkilenmis olmamali.");
+  assert(Math.abs(overriddenAnchor.y - realPointPixel.y) < 0.01, "Nokta (marker) konumu override'dan etkilenmis olmamali.");
+
+  // Override'i OLMAYAN diger etiketler (subject, comparable-1) hala
+  // normal otomatik yerlesimden geciyor ve hicbirini kapsamiyor.
+  for (let i = 0; i < anchorsRef.length; i += 1) {
+    for (let j = i + 1; j < anchorsRef.length; j += 1) {
+      assert(!rectsOverlap(anchorsRef[i], anchorsRef[j]), `Override sonrasi etiketler ${i}/${j} ust uste: ${JSON.stringify([anchorsRef[i], anchorsRef[j]])}`);
+    }
+  }
+
+  console.log("drawExportComparableSketch: kullanici tarafindan suruklenen etiket konumu (override) dogru kullaniliyor testi tamam.");
 }
 
 console.log("Emsal krokisi etiket yerlesimi (ust uste binme onleme) testi tamam.");

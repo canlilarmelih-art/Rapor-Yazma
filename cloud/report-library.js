@@ -862,6 +862,7 @@
           reportImages: cloudData.payload.mapState?.reportImages || {},
           nearbyPlaces: cloudData.payload.mapState?.nearbyPlaces || {},
           userNearbyPlaces: cloudData.payload.mapState?.userNearbyPlaces || {},
+          comparableSketchLabelOverrides: cloudData.payload.mapState?.comparableSketchLabelOverrides || {},
         },
         settings: cloudData.payload.mapState?.settings || {},
         updatedAt: cloudData.payload.updatedAt || new Date().toISOString(),

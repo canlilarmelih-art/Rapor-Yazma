@@ -108,6 +108,10 @@
           selectedIds: Array.isArray(source.userNearbyPlaces.selectedIds) ? source.userNearbyPlaces.selectedIds : [],
         }
         : null,
+      // Kullanıcı talebi: "emsal haritası üzerinden etiketleri istediği
+      // yere sürüklese" — Emsal Konum Krokisi'nde elle taşınan etiket
+      // konumları (id -> {lat,lng}), noktaların kendisi değil.
+      comparableSketchLabelOverrides: source.comparableSketchLabelOverrides || {},
       settings: {
         mapMode: state.settings?.mapMode || "hybrid",
         mapExportRatio: state.settings?.mapExportRatio || "4:3",
@@ -269,6 +273,7 @@
     if (mapState.reportImages) state.sourceValues.reportImages = JSON.parse(JSON.stringify(mapState.reportImages));
     if (mapState.nearbyPlaces) state.sourceValues.nearbyPlaces = JSON.parse(JSON.stringify(mapState.nearbyPlaces));
     if (mapState.userNearbyPlaces) state.sourceValues.userNearbyPlaces = JSON.parse(JSON.stringify(mapState.userNearbyPlaces));
+    if (mapState.comparableSketchLabelOverrides) state.sourceValues.comparableSketchLabelOverrides = JSON.parse(JSON.stringify(mapState.comparableSketchLabelOverrides));
     state.settings = { ...(state.settings || {}), ...(mapState.settings || {}) };
   }
 
