@@ -119,6 +119,7 @@ verilerinizle doldurur ve Word ile açılabilen bir `.doc` dosyası indirir.
 | `{{TAKBİS_DATE}}` / `{{TAKBİS_TİME}}` | Takyidat tarih / saat |
 | `{{ENCUMBRANCE_SUMMARY_TEXT}}` | Takyidat paragrafı |
 | `{{TAKYIDAT_TABLO}}` | Takyidat tablosu (HTML tablo) |
+| `{{TAKYIDATACIKLAMAGIRISCUMLESI}}` | Takyidat açıklamasının giriş cümlesi (ör. "03.08.2026 tarihinde saat 17:32 Webtapu Sistemi üzerinden alınan TAKBİS belgesine göre, konu taşınmaz üzerinde aşağıdaki takyidatlar bulunmaktadır.") |
 | `{{BEYANLARBOLUMU}}` | Takyidat - Beyanlar Bölümü metni |
 | `{{HAKVEMUKELLEFIYETLERBOLUMU}}` | Takyidat - Hak ve Mükellefiyetler Bölümü metni |
 | `{{REHINLERBOLUMU}}` | Takyidat - Rehinler (İpotekler) Bölümü metni |

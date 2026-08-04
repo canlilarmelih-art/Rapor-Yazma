@@ -19833,6 +19833,29 @@ function buildIsbankEncumbranceExplanation() {
   return `TKGM (TAKBİS) kayıtlarında incelemeler ${reviewedAt} gerçekleştirilmiştir.`;
 }
 
+// Kullanıcı talebi: "03.08.2026 tarihinde saat 17:32 Webtapu Sistemi
+// üzerinden alınan TAKBİS belgesine göre, konu taşınmaz üzerinde aşağıdaki
+// takyidatlar bulunmaktadır. takyidatlar bölümünde yer alan bu açıklama
+// bölümünü de ayrı bir placeholder olarak ekleyelim" — daha önce yalnızca
+// buildEncumbranceSummaryVariants() İÇİNDE (birleşik özetin ilk cümlesi
+// olarak) üretiliyordu; artık ayrı bir fonksiyona çıkarıldı ki hem orada
+// hem yeni placeholder'da AYNI kaynak kullanılsın.
+function buildEncumbranceIntroSentence() {
+  const date = encumbranceDateOrBila(state.fields.takbisDate);
+  const time = String(state.fields.takbisTime || "").trim();
+  const method = encumbranceTextOrBila(state.fields.takbisMethod || "Webtapu Sistemi");
+  const receivedAt = time ? `${date} tarihinde saat ${time}` : `${date} tarihinde`;
+  return `${receivedAt} ${method} üzerinden alınan TAKBİS belgesine göre, konu taşınmaz üzerinde aşağıdaki takyidatlar bulunmaktadır.`;
+}
+
+function getEncumbranceIntroSentenceForPlaceholder() {
+  if (state.fields.takbisMethod === "Tapu Kaydı Alınmamıştır.") return "";
+  const hasRows = encumbranceReportTables.some((table) => getFilledEncumbranceRows(table.key).length);
+  const hasTitleChange = Boolean(normalizeYesNoChoice(state.fields.titleRecordChange));
+  if (!hasRows && !state.fields.takbisDate && !state.fields.takbisMethod && !hasTitleChange) return "";
+  return buildEncumbranceIntroSentence();
+}
+
 function buildEncumbranceSummaryVariants() {
   if (state.fields.takbisMethod === "Tapu Kaydı Alınmamıştır.") {
     const detail = "Talep tarihi itibarıyla konu taşınmaza ilişkin TAKBİS belgesi temin edilememiş olup, değerleme çalışması takyidat kayıtlarından bağımsız olarak gerçekleştirilmiştir.";
@@ -19846,15 +19869,13 @@ function buildEncumbranceSummaryVariants() {
   }
 
   const date = encumbranceDateOrBila(state.fields.takbisDate);
-  const time = String(state.fields.takbisTime || "").trim();
   const method = encumbranceTextOrBila(state.fields.takbisMethod || "Webtapu Sistemi");
   const declarationRows = getFilledEncumbranceRows("encumbranceDeclarations");
   const declarationRowsWithoutRights = declarationRows.filter((row) => !isEncumbranceRightOrLiabilityRow(row));
   const easementRows = declarationRows.filter(isEncumbranceRightOrLiabilityRow);
   const mortgageRows = getFilledEncumbranceRows("encumbranceMortgages");
   const annotationRows = getFilledEncumbranceRows("encumbranceAnnotations");
-  const receivedAt = time ? `${date} tarihinde saat ${time}` : `${date} tarihinde`;
-  const intro = `${receivedAt} ${method} üzerinden alınan TAKBİS belgesine göre, konu taşınmaz üzerinde aşağıdaki takyidatlar bulunmaktadır.`;
+  const intro = buildEncumbranceIntroSentence();
   const sections = [
     {
       key: "declarations",
@@ -27312,6 +27333,12 @@ function collectGeneratedTextPlaceholders() {
       key: "encumbrance_summary_text",
       title: "Takyidat Paragrafı",
       value: buildEncumbranceSummary(),
+    },
+    {
+      category: "Takyidat",
+      key: "TAKYIDATACIKLAMAGIRISCUMLESI",
+      title: "Takyidat Açıklama Giriş Cümlesi",
+      value: getEncumbranceIntroSentenceForPlaceholder(),
     },
     {
       category: "Takyidat",

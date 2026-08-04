@@ -473,6 +473,14 @@
     TAKBISSUMMARY: { t: () => safeCall("buildEncumbranceSummary") || field("takbisSummary"), paragraphClass: "encumbrance-summary" },
     ENCUMBRANCESUMMARYTEXT: { t: () => safeCall("buildEncumbranceSummary") || field("takbisSummary"), paragraphClass: "encumbrance-summary" },
 
+    // Kullanıcı talebi: "03.08.2026 tarihinde saat 17:32 Webtapu Sistemi
+    // üzerinden alınan TAKBİS belgesine göre, konu taşınmaz üzerinde
+    // aşağıdaki takyidatlar bulunmaktadır. ... bu açıklama bölümünü de ayrı
+    // bir placeholder olarak ekleyelim" — ENCUMBRANCESUMMARYTEXT'in (ve
+    // Beyanlar/Rehinler/Şerhler/Hak-Mükellefiyetler bölümlerinin) İLK
+    // CÜMLESİ, tek başına.
+    TAKYIDATACIKLAMAGIRISCUMLESI: { t: () => safeCall("getEncumbranceIntroSentenceForPlaceholder") },
+
     // Kullanıcı talebi: "takyidatlar bölümünde beyanlar bölümü rehinler
     // bölümü şerhler bölümü hak ve mükellefiyetler bölümü olarak her bir
     // bölüme placeholder oluştur." — ENCUMBRANCESUMMARYTEXT'in tek parça

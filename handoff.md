@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.322 - 2026-08-04 - Takyidat açıklama giriş cümlesi ayrı placeholder ({{TAKYIDATACIKLAMAGIRISCUMLESI}})
+
+- Kullanıcı talebi: "03.08.2026 tarihinde saat 17:32 Webtapu Sistemi üzerinden alınan TAKBİS belgesine göre, konu taşınmaz üzerinde aşağıdaki takyidatlar bulunmaktadır. takyidatlar bölümünde yer alan bu açıklama bölümünü de ayrı bir placeholder olarak ekleyelim."
+- Bu cümle daha önce yalnızca `buildEncumbranceSummaryVariants()` İÇİNDE (birleşik takyidat özetinin ilk cümlesi olarak, `{{ENCUMBRANCE_SUMMARY_TEXT}}`'in parçası) üretiliyordu. **app.js**: cümle üretimi `buildEncumbranceIntroSentence()` (tarih/saat/yöntem alanlarından cümleyi kurar) ve `getEncumbranceIntroSentenceForPlaceholder()` (`buildEncumbranceSummaryVariants()`'taki AYNI erken-dönüş korumalarını — "Tapu Kaydı Alınmamıştır." ve "hiç veri yok" — tekrarlayıp uygunsa boş döner) olarak İKİ ayrı fonksiyona çıkarıldı; `buildEncumbranceSummaryVariants()` artık kendi `intro` değişkenini `buildEncumbranceIntroSentence()`'ı çağırarak alıyor — davranış birebir aynı kaldı, yalnızca kaynak paylaşılıyor.
+- Yeni placeholder: `{{TAKYIDATACIKLAMAGIRISCUMLESI}}` (uygulama içi "Placeholder" listesine ve `PLACEHOLDER-REHBERI.md`'ye de eklendi).
+- Yeni `tools/test-encumbrance-intro-sentence.js`: kullanıcının kendi örnek cümlesini birebir doğrular; saat girilmemişse/tarih-yöntem boşsa doğru "Bila"/varsayılan davranışı; iki erken-dönüş korumasının (`Tapu Kaydı Alınmamıştır.` / hiç veri yok) boş döndürdüğünü kontrol eder.
+- Cache-buster `app.js?v=20260804-0400` ve `src/templates/template-engine.js?v=20260804-0400`.
+- `npm run verify` tamamı geçti (61 test).
+
 ## 0.0.321 - 2026-08-04 - Takyidat bölüm placeholder'ları artık "Bölümü:" başlığı eklemiyor
 
 - Kullanıcı talebi: "bu yeni oluşturduğumuz beyanlar rehinler şerhler hak ve mükellefiyetler bölümünde beyanlar bölümü gibi başlık olması [değil] direkt ilk kayıttan başlasın" — örnek çıktı verdi: "Yönetim Planı : 17/06/2025(...) (Tarih: 29.07.2025, Yevmiye No: 48244)\nDiğer (konusu: ...) ... (Kısıtlı Malik: Tevfik Tozluyurt)" — yani "Beyanlar Bölümü:" gibi bir satır BAŞTA OLMAMALI, doğrudan ilk kaydın metniyle başlamalı (şablon hücresi zaten kendi etiketini taşıyor).
