@@ -28675,14 +28675,23 @@ function getComparableSketchExportPoints(subjectPoint, comparablePoints, parsed)
 // küme merkezinden dışa doğru itilir, ardından birbirleriyle ve marker'larla
 // çakışmayacak şekilde ayrıştırılır. Böylece yakın konumlarda etiketler üst üste
 // binmez; her etiket kendi marker'ına leader çizgisiyle bağlanır.
-function layoutSketchLabels(anchors, canvasWidth, canvasHeight) {
+// hardPoints: anchor'ların KENDİ noktalarına EK OLARAK hiçbir etiket
+// kutusunun üstüne binmemesi gereken ekstra "sert" noktalar (ör. konu
+// taşınmazın gerçek koordinatı, etiket artık KML sınırına bağlansa bile).
+// Kullanıcı talebi: "Konu taşınmaz ve Emsal yazıları ... noktalarının hiç
+// bir şekilde üstüne gelmemeli" — anchor-anchor (birbirini örtme) VE
+// anchor-nokta (bir markerı örtme) çakışmaları AYNI yinelemeli döngüde
+// birlikte çözülür (ayrı, sıralı bir "son düzeltme" geçişi öncekini
+// bozabildiği için — 2026-08-05 kullanıcı geri bildirimi: iki etiket
+// üst üste binmişti çünkü ayrı geçiş anchor-anchor ayrımını bozuyordu).
+function layoutSketchLabels(anchors, canvasWidth, canvasHeight, hardPoints = []) {
   const count = anchors.length;
   if (!count) return anchors;
   const centerX = anchors.reduce((sum, a) => sum + a.x, 0) / count;
   const centerY = anchors.reduce((sum, a) => sum + a.y, 0) / count;
   anchors.forEach((a, index) => {
-    let dirX = a.x - centerX;
-    let dirY = a.y - centerY;
+    let dirX = Number.isFinite(a.dirX) ? a.dirX : a.x - centerX;
+    let dirY = Number.isFinite(a.dirY) ? a.dirY : a.y - centerY;
     let length = Math.hypot(dirX, dirY);
     if (length < 1) {
       const angle = (index / count) * Math.PI * 2 - Math.PI / 2;
@@ -28690,52 +28699,113 @@ function layoutSketchLabels(anchors, canvasWidth, canvasHeight) {
       dirY = Math.sin(angle);
       length = 1;
     }
-    const distance = 36 * (a.scale || 1) + a.h / 2;
+    const baseDistance = Number.isFinite(a.pushDistance) ? a.pushDistance : 36 * (a.scale || 1);
+    const distance = baseDistance + a.h / 2;
     a.cx = a.x + (dirX / length) * distance;
     a.cy = a.y + (dirY / length) * distance;
   });
-  for (let iteration = 0; iteration < 160; iteration += 1) {
-    let moved = false;
+
+  const allHardPoints = [
+    ...anchors.map((a) => ({ x: a.x, y: a.y })),
+    ...hardPoints,
+  ].filter((p) => p && Number.isFinite(p.x) && Number.isFinite(p.y));
+
+  // Kullanıcı geri bildirimi (2026-08-05): "emsal 1 ve 2 üstüste binmiş" —
+  // önceki "her yinelemede TÜM çakışmaları aynı anda hafifçe it" yaklaşımı
+  // salınıma (bir kısıtı çözerken başka birini bozma) düşüp bazı
+  // düzenlerde YARIM çözümde takılabiliyordu. Artık HER SEFERİNDE tek bir
+  // çakışmayı (anchor-anchor veya anchor-nokta) TAMAMEN/kesin olarak
+  // çözüp bir sonrakine geçen basit ama GARANTİLİ yakınsayan bir döngü
+  // kullanılıyor — bir düzeltme asla bir öncekini yarım bırakmaz.
+  function findWorstOverlap() {
     for (let i = 0; i < count; i += 1) {
+      const a = anchors[i];
       for (let j = i + 1; j < count; j += 1) {
-        const a = anchors[i];
         const b = anchors[j];
         const dx = a.cx - b.cx;
         const dy = a.cy - b.cy;
-        const overlapX = (a.w + b.w) / 2 + 8 - Math.abs(dx);
-        const overlapY = (a.h + b.h) / 2 + 6 - Math.abs(dy);
-        if (overlapX > 0 && overlapY > 0) {
-          if (overlapX < overlapY) {
-            const push = (dx >= 0 ? 1 : -1) * (overlapX / 2 + 0.5);
-            a.cx += push;
-            b.cx -= push;
-          } else {
-            const push = (dy >= 0 ? 1 : -1) * (overlapY / 2 + 0.5);
-            a.cy += push;
-            b.cy -= push;
-          }
-          moved = true;
-        }
+        const overlapX = (a.w + b.w) / 2 + 10 - Math.abs(dx);
+        const overlapY = (a.h + b.h) / 2 + 8 - Math.abs(dy);
+        if (overlapX > 0 && overlapY > 0) return { kind: "anchor", i, j, dx, dy, overlapX, overlapY };
       }
-      for (let k = 0; k < count; k += 1) {
-        const a = anchors[i];
-        const marker = anchors[k];
-        const dx = a.cx - marker.x;
-        const dy = a.cy - marker.y;
-        const dist = Math.hypot(dx, dy);
-        const minDist = a.h / 2 + 14;
-        if (dist < minDist && dist > 0.01) {
-          a.cx += (dx / dist) * (minDist - dist);
-          a.cy += (dy / dist) * (minDist - dist);
-          moved = true;
+      const halfW = a.w / 2 + 10;
+      const halfH = a.h / 2 + 8;
+      for (let k = 0; k < allHardPoints.length; k += 1) {
+        const p = allHardPoints[k];
+        const dx = a.cx - p.x;
+        const dy = a.cy - p.y;
+        if (Math.abs(dx) < halfW && Math.abs(dy) < halfH) {
+          return { kind: "point", i, dx, dy, overlapX: halfW - Math.abs(dx), overlapY: halfH - Math.abs(dy) };
         }
       }
     }
-    if (!moved) break;
+    return null;
   }
-  anchors.forEach((a) => {
+
+  // Kanvas kenarına yaslanan bir kutu, çakışma çözüldükten SONRA tek
+  // seferlik kenar kırpma (clamp) ile geri itilirse çözülmüş çakışma
+  // sessizce YENİDEN oluşabiliyordu (iki kutu aynı kenara yaslanıp
+  // birbirine değebiliyordu). Bu yüzden kenar sınırı da her itmeden
+  // hemen sonra uygulanan bir kısıt — findWorstOverlap HER ZAMAN zaten
+  // kenara-kırpılmış konumlar üzerinden karar veriyor.
+  function clampAnchor(a) {
     a.cx = Math.max(a.w / 2 + 6, Math.min(a.cx, canvasWidth - a.w / 2 - 6));
     a.cy = Math.max(a.h / 2 + 6, Math.min(a.cy, canvasHeight - a.h / 2 - 6));
+  }
+  anchors.forEach(clampAnchor);
+
+  let guard = 0;
+  let noProgressStreak = 0;
+  let conflict = findWorstOverlap();
+  while (conflict && guard < 4000) {
+    guard += 1;
+    let progressed = false;
+    if (conflict.kind === "anchor") {
+      const a = anchors[conflict.i];
+      const b = anchors[conflict.j];
+      const applyAxis = (useX) => {
+        const beforeAx = a.cx, beforeAy = a.cy, beforeBx = b.cx, beforeBy = b.cy;
+        if (useX) {
+          const push = (conflict.dx >= 0 ? 1 : -1) * (conflict.overlapX / 2 + 1);
+          a.cx += push;
+          b.cx -= push;
+        } else {
+          const push = (conflict.dy >= 0 ? 1 : -1) * (conflict.overlapY / 2 + 1);
+          a.cy += push;
+          b.cy -= push;
+        }
+        clampAnchor(a);
+        clampAnchor(b);
+        return a.cx !== beforeAx || a.cy !== beforeAy || b.cx !== beforeBx || b.cy !== beforeBy;
+      };
+      progressed = applyAxis(conflict.overlapX < conflict.overlapY);
+      // Tercih edilen eksen kanvas kenarına kilitlenmişse (clamp itmeyi
+      // tamamen yuttuysa) diğer ekseni dene — kullanıcı geri bildirimi
+      // (2026-08-05): kenara yaslı bir etiket aynı çakışmada SONSUZ
+      // döngüye girip hiç ilerleme kaydetmeden 4000 turu tüketebiliyordu.
+      if (!progressed) progressed = applyAxis(!(conflict.overlapX < conflict.overlapY));
+    } else {
+      const a = anchors[conflict.i];
+      const applyAxis = (useX) => {
+        const beforeX = a.cx, beforeY = a.cy;
+        if (useX) a.cx += (conflict.dx >= 0 ? 1 : -1) * (conflict.overlapX + 1);
+        else a.cy += (conflict.dy >= 0 ? 1 : -1) * (conflict.overlapY + 1);
+        clampAnchor(a);
+        return a.cx !== beforeX || a.cy !== beforeY;
+      };
+      progressed = applyAxis(conflict.overlapX < conflict.overlapY);
+      if (!progressed) progressed = applyAxis(!(conflict.overlapX < conflict.overlapY));
+    }
+    // Ne tercih edilen ne de alternatif eksen ilerleme sağlamıyorsa
+    // (kutu kanvasın hiçbir yönünde kaçacak yeri yoksa) art arda
+    // birkaç kez bunu görürsek sonsuz döngüde takılmak yerine en iyi
+    // çaba ile döngüden çık — gerçekten yer olmayan patolojik durumlar
+    // için bir güvenlik supabı, normal akışta tetiklenmez.
+    noProgressStreak = progressed ? 0 : noProgressStreak + 1;
+    if (noProgressStreak > 8) break;
+    conflict = findWorstOverlap();
+  }
+  anchors.forEach((a) => {
     a.lx = a.cx - a.w / 2;
     a.ly = a.cy - a.h / 2;
   });
@@ -28822,47 +28892,6 @@ function pickKmlBoundaryAnchorPixel(parsed, topLeft, zoom, awayFromPoint) {
   return best;
 }
 
-// Etiket kutucuklarının (dikdörtgen, sadece merkeze olan mesafe değil TAM
-// GENİŞLİK/YÜKSEKLİK dahil) hiçbir "sert" noktayı (konu taşınmaz + tüm
-// emsal noktaları) örtmediğini garanti eden son düzeltme geçişi — kullanıcı
-// talebi: "Konu Taşınmaz ve Emsal yazıları ... noktalarının hiçbir şekilde
-// üstüne gelmemeli." layoutSketchLabels'teki mevcut min-mesafe kontrolü
-// yalnızca YÜKSEKLİĞE dayalı dairesel bir yaklaşımdı — geniş (ör. 360px)
-// "KONU TAŞINMAZ" kutusu bu yüzden yandaki noktaları örtebiliyordu.
-function enforceSketchLabelClearance(anchors, hardPoints, canvasWidth, canvasHeight) {
-  const points = (hardPoints || []).filter((p) => p && Number.isFinite(p.x) && Number.isFinite(p.y));
-  if (!points.length) return;
-  const pad = 12;
-  for (let iteration = 0; iteration < 80; iteration += 1) {
-    let moved = false;
-    anchors.forEach((a) => {
-      const halfW = a.w / 2 + pad;
-      const halfH = a.h / 2 + pad;
-      points.forEach((p) => {
-        const dx = a.cx - p.x;
-        const dy = a.cy - p.y;
-        if (Math.abs(dx) < halfW && Math.abs(dy) < halfH) {
-          const overlapX = halfW - Math.abs(dx);
-          const overlapY = halfH - Math.abs(dy);
-          if (overlapX < overlapY) {
-            a.cx += (dx >= 0 ? 1 : -1) * (overlapX + 1);
-          } else {
-            a.cy += (dy >= 0 ? 1 : -1) * (overlapY + 1);
-          }
-          moved = true;
-        }
-      });
-    });
-    if (!moved) break;
-  }
-  anchors.forEach((a) => {
-    a.cx = Math.max(a.w / 2 + 6, Math.min(a.cx, canvasWidth - a.w / 2 - 6));
-    a.cy = Math.max(a.h / 2 + 6, Math.min(a.cy, canvasHeight - a.h / 2 - 6));
-    a.lx = a.cx - a.w / 2;
-    a.ly = a.cy - a.h / 2;
-  });
-}
-
 function drawExportComparableSketch(context, subjectPoint, comparablePoints, topLeft, zoom, parsed) {
   const subjectPixel = subjectPoint ? projectExportPoint(subjectPoint[0], subjectPoint[1], topLeft, zoom) : null;
   const comps = comparablePoints.map((item) => ({
@@ -28904,6 +28933,13 @@ function drawExportComparableSketch(context, subjectPoint, comparablePoints, top
     // yok. KML yoksa (eski davranış) doğrudan koordinat noktasına bağlanır.
     subjectAnchorPixel = pickKmlBoundaryAnchorPixel(parsed, topLeft, zoom, compCenter) || subjectPixel;
     context.font = "900 26px Arial";
+    // Kullanıcı talebi (2026-08-05): "konu taşınmaz daha uzağa, emsal
+    // yazılarının olmadığı bir kısma konumlanmalıydı" — kaçış yönü genel
+    // ağırlık merkezine göre DEĞİL, doğrudan emsal kümesinin merkezinden
+    // (compCenter) UZAĞA doğru zorlanır, ve başlangıç itme mesafesi
+    // (pushDistance) diğer etiketlerden çok daha büyük tutulur.
+    const escapeDirX = subjectAnchorPixel.x - compCenter.x;
+    const escapeDirY = subjectAnchorPixel.y - compCenter.y;
     anchors.push({
       kind: "subject",
       x: subjectAnchorPixel.x,
@@ -28919,6 +28955,9 @@ function drawExportComparableSketch(context, subjectPoint, comparablePoints, top
       leaderColor: "#c81e1e",
       leaderDashed: true,
       markerRadius: 8,
+      dirX: escapeDirX,
+      dirY: escapeDirY,
+      pushDistance: 130,
     });
   }
   comps.forEach(({ item, pixel }) => {
@@ -28940,11 +28979,11 @@ function drawExportComparableSketch(context, subjectPoint, comparablePoints, top
     });
   });
 
-  layoutSketchLabels(anchors, context.canvas.width, context.canvas.height);
-  // Son garanti geçişi: hiçbir etiket kutusu konu taşınmaz veya emsal
-  // noktalarının (asıl koordinat + sınır bağlantı noktası) üstüne gelmesin.
-  const hardPoints = [subjectPixel, subjectAnchorPixel, ...comps.map((c) => c.pixel)];
-  enforceSketchLabelClearance(anchors, hardPoints, context.canvas.width, context.canvas.height);
+  // subjectPixel (gerçek koordinat) anchor listesinde YOK artık (anchor
+  // KML sınırına — subjectAnchorPixel'e — bağlı); bu yüzden ayrıca
+  // "sert nokta" olarak geçiliyor ki hiçbir etiket onu da örtmesin.
+  const extraHardPoints = [subjectPixel].filter(Boolean);
+  layoutSketchLabels(anchors, context.canvas.width, context.canvas.height, extraHardPoints);
   anchors.forEach((a) => drawSketchLeaderAndMarker(context, a));
   anchors.forEach((a) => drawSketchLabelBox(context, a));
 }

@@ -1,5 +1,21 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.337 - 2026-08-05 - Emsal krokisi etiket çakışması kesin çözüldü (önceki düzeltme yetersizdi)
+
+- Kullanıcı, 0.0.336'nın ekran görüntüsüne tepkiyle: "emsal 1 ve 2 üstüste binmiş ayrıca konu taşınmaz daha uzağa emsal yazılarının olmadığı bir kısma konumlanmalıydı."
+- **Kök neden 1 (etiket-etiket çakışması)**: 0.0.336'daki `enforceSketchLabelClearance` AYRI, `layoutSketchLabels`'tan SONRA çalışan bir geçişti — bir etiketi bir NOKTADAN uzaklaştırırken, `layoutSketchLabels`'ın az önce çözdüğü etiket-etiket ayrımını sessizce bozabiliyordu (iki bağımsız geçiş birbirinin işini geri alabiliyordu).
+- **Kök neden 2 (kenara-kilitlenme sonsuz döngüsü — bu segmentte GERÇEK bir raporla test edilirken bulundu)**: ilk birleştirilmiş çözüm bile bazı durumlarda hâlâ başarısız oluyordu — bir etiket kanvasın kenarına (`clampAnchor`) yaslandığında, çözücü hep "daha az itme gerektiren" ekseni (X veya Y) seçiyordu; o eksen kenara kilitliyse itme HİÇBİR ETKİ yaratmıyordu ama kod bunu fark etmeyip aynı çözülemeyen çakışmayı 4000 yinelemede de değiştirmeden tekrarlıyordu.
+- **app.js**: 
+  - `layoutSketchLabels` artık `enforceSketchLabelClearance`'ı TAMAMEN İÇİNE ALIYOR — "en kötü tek çakışmayı bul, TAMAMEN çöz, tekrar bul" döngüsü (anchor-anchor VE anchor-nokta AYNI fonksiyonda, `enforceSketchLabelClearance` KALDIRILDI).
+  - Her itmeden HEMEN SONRA `clampAnchor` uygulanıyor (eskiden tek seferlik son adımdı) — kenara yaslı durumları döngü İÇİNDE, kararları etkileyecek şekilde yakalıyor.
+  - Tercih edilen eksen (X veya Y) kenara kilitlenip HİÇBİR ilerleme sağlamazsa artık OTOMATİK olarak DİĞER eksene geçiliyor (`applyAxis` iki kez denenir).
+  - Ne tercih edilen ne alternatif eksen ilerleme sağlamazsa (kutu için kanvasta gerçekten yer yoksa) `noProgressStreak > 8` güvenlik supabıyla en iyi çaba ile döngüden çıkılıyor — sonsuz döngü riski tamamen kapatıldı.
+  - "KONU TAŞINMAZ" etiketi artık emsal kümesinin merkezinden (`compCenter`) AÇIKÇA uzağa kaçacak yön (`dirX`/`dirY`) VE çok daha büyük bir başlangıç itme mesafesi (`pushDistance: 130`, eskiden ~36) ile başlıyor — "konu taşınmaz daha uzağa ... konumlanmalıydı" talebine yanıt.
+- `tools/test-comparable-sketch-label-placement.js` yeniden yazıldı: gerçekçi (canvas merkezi doğru hesaplanmış) uçtan uca senaryo + çok yakın iki marker (Emsal 1/2 senaryosu) + **kenara-kilitlenme sonsuz döngüsünü birebir yeniden üreten özel bir regresyon testi** eklendi.
+- **NOT**: bu turda ayrıca `templates/emlakkatilim.docx`'in Word'de DEFLATE olarak yeniden kaydedildiği görüldü (`git diff --stat` ile teyit edildi) ama dosya şu an Microsoft Word tarafından açık/kilitli olduğu için standart STORED yeniden paketleme uygulanamadı — `npm run verify` bu yüzden `test-docx-fill.js` adımında (bu segmentin değişiklikleriyle İLGİSİZ) kırılıyor. Word kapatıldıktan sonra CLAUDE.md'deki standart prosedürle tekrar paketlenmesi gerekiyor; bu commit'e templates/emlakkatilim.docx dahil EDİLMEDİ (bilinçli olarak).
+- Cache-buster `app.js?v=20260805-0130`.
+- `npm run check` + ilgili tüm test dosyaları (docx-fill hariç, yukarıdaki nedenle) tek tek çalıştırılıp geçti; `npm run verify`'in tamamı yalnızca docx kilidi kalktıktan sonra doğrulanabilecek.
+
 ## 0.0.336 - 2026-08-05 - Emsal konum krokisi: "KONU TAŞINMAZ" etiketi artık KML sınırına kesikli kırmızı okla bağlanıyor, hiçbir etiket noktaların üstüne gelmiyor
 
 - Kullanıcı, ekran görüntüsüyle: "EMSAL konum krokisi anlaşılır değil. konu taşınmaz yazısı çok büyük haritada taşınmazın konumunu kaplıyor... Kml sınırlarına kesik çizgili kırmızı ok ile konu taşınmaz yazısı bağlansın. Emsaller mavi çizgi ile bağlanmaya devam etsin... Konu taşınmaz ve Emsal yazıları ... noktalarının hiç bir şekilde üstüne gelmemeli."
