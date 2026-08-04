@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.317 - 2026-08-04 - Yeni genel placeholder'lar: Cephe Sayısı, Takyidat alt bölümleri, Yapı Kullanma İzin Belgesi Var mı
+
+- Kullanıcı talebi 1: "Gayrimenkulün Cepheli Olduğu Yönler bölümünde kaç cephe seçildi ise cephe sayısı olarak placeholder oluştur." — yeni `{{CEPHESAYISI}}`, `state.fields.facades`'teki (checkbox'lardan gelen, virgülle ayrılmış) seçili yön sayısını döner. **app.js**: `getFacadeCountText()` (`getMultiCheckboxValues("facades").length`, `formatUnitFacadePhrase`'in hemen altına eklendi).
+- Kullanıcı talebi 2: "takyidatlar bölümünde beyanlar bölümü rehinler bölümü şerhler bölümü hak ve mükellefiyetler bölümü olarak her bir bölüme placeholder oluştur." — yeni `{{BEYANLARBOLUMU}}`, `{{HAKVEMUKELLEFIYETLERBOLUMU}}`, `{{REHINLERBOLUMU}}`, `{{SERHLERBOLUMU}}`. Mevcut `buildEncumbranceSummaryVariants()`'ın (tek parça özet üreten) İÇİNDEKİ dört bölümle AYNI kaynak fonksiyonları (`getFilledEncumbranceRows`, `isEncumbranceRightOrLiabilityRow`, `buildEncumbranceSectionParagraph`, `formatEncumbrance*Row`) tek tek çağıran 4 yeni **app.js** fonksiyonu (`getEncumbranceDeclarationsSectionText`/`...EasementsSectionText`/`...MortgagesSectionText`/`...AnnotationsSectionText`) eklendi — davranış birleşik özetle birebir tutarlı. "Rehinler Bölümü" kullanıcı terimi tapudaki "İpotekler" (`encumbranceMortgages`) tablosuna karşılık geliyor (rehin hakkının tapu sicilindeki karşılığı ipotektir) — bu şekilde eşlendi.
+- Kullanıcı talebi 3: "Yapı kullanma izin belgesi var mı placeholder ekleyelim. incelenen belgelerde yapı kullanma izin belgesi eklendi ise Var eklenmedi ise Yok" — bu mantık zaten `gabimOccupancyPermitText()` ile MEVCUTTU (`{{ISKANVARMI}}`), yeni `{{YAPIKULLANMAIZINBELGESIVARMI}}` aynı kaynağa bağlı, daha açık isimli bir alias.
+- Yeni `tools/test-facade-count-and-encumbrance-sections.js`: `getFacadeCountText`'i gerçek kaynaktan izole VM'de çalıştırıp doğrular (0/1/2/4 cephe + tekrar eden seçimde dedup); takyidat bölüm fonksiyonlarının varlığını ve `template-engine.js`'in doğru `safeCall` ile bağlandığını (derin bağımlılık nedeniyle Halkbank Ruhsat testindeki gibi yapısal doğrulama) kontrol eder; `YAPIKULLANMAIZINBELGESIVARMI`/`ISKANVARMI` alias eşlemesini doğrular.
+- Cache-buster `app.js?v=20260804-0130` ve `src/templates/template-engine.js?v=20260804-0130`.
+- `npm run verify` tamamı geçti (58 test).
+
 ## 0.0.316 - 2026-08-04 - Emlak Katılım .docx: {{SHARE}} (Arsa Payı) eklendi + STORED yeniden paketleme
 
 - Kullanıcı talebi: "son emlak katılım template güncellemesi yaptım push eder misin" — kullanıcı şablonu yine Word'de düzenlemiş, tek fark: yeni `{{SHARE}}` (Arsa Payı) placeholder'ı eklenmiş (72 → 73 token, başka hiçbir şey silinmemiş/değişmemiş — zip giriş listesi birebir aynı).

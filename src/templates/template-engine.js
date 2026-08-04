@@ -473,6 +473,16 @@
     TAKBISSUMMARY: { t: () => safeCall("buildEncumbranceSummary") || field("takbisSummary"), paragraphClass: "encumbrance-summary" },
     ENCUMBRANCESUMMARYTEXT: { t: () => safeCall("buildEncumbranceSummary") || field("takbisSummary"), paragraphClass: "encumbrance-summary" },
 
+    // Kullanıcı talebi: "takyidatlar bölümünde beyanlar bölümü rehinler
+    // bölümü şerhler bölümü hak ve mükellefiyetler bölümü olarak her bir
+    // bölüme placeholder oluştur." — ENCUMBRANCESUMMARYTEXT'in tek parça
+    // özetinden farklı olarak, bu dördü şablonda AYRI hücre/satırlara
+    // yerleştirilebilsin diye tek tek bölüm metnini döner.
+    BEYANLARBOLUMU: { t: () => safeCall("getEncumbranceDeclarationsSectionText"), paragraphClass: "encumbrance-summary" },
+    HAKVEMUKELLEFIYETLERBOLUMU: { t: () => safeCall("getEncumbranceEasementsSectionText"), paragraphClass: "encumbrance-summary" },
+    REHINLERBOLUMU: { t: () => safeCall("getEncumbranceMortgagesSectionText"), paragraphClass: "encumbrance-summary" },
+    SERHLERBOLUMU: { t: () => safeCall("getEncumbranceAnnotationsSectionText"), paragraphClass: "encumbrance-summary" },
+
     // --- İmar ---
     IMARPLANADI: { f: ["planName"] },
     PLANOLCEGI: { f: ["planScale"] },
@@ -522,6 +532,11 @@
     ANAGAYRNOTU: { f: ["mainRealEstateProjectSuitabilityNote"] },
     PROJEKURUM2025: { f: ["projectInstitution", "documentReviewInstitution"] },
     ISKANVARMI: { fn: () => safeCall("gabimOccupancyPermitText") },
+    // Kullanıcı talebi: "Yapı kullanma izin belgesi var mı placeholder
+    // ekleyelim. incelenen belgelerde yapı kullanma izin belgesi eklendi
+    // ise Var eklenmedi ise Yok" — ISKANVARMI ile AYNI kaynak (gabimOccupancyPermitText),
+    // yalnızca daha açık isimli bir alias.
+    YAPIKULLANMAIZINBELGESIVARMI: { fn: () => safeCall("gabimOccupancyPermitText") },
     OCCUPANCYPERMITDATE: { fn: occupancyPermitDate },
     MUNICIPALITYBOUNDARYSTATUS: { fn: () => field("district", "titleDistrict") ? "Evet" : "" },
     DOCUMENTREVIEWINSTITUTION: { f: ["documentReviewInstitution", "projectInstitution"] },
@@ -644,6 +659,7 @@
     MANZARA: { f: ["unitViewStatus"] },
     CEPHELER: { f: ["facades"] },
     CEPHECUMLE: { f: ["facades"] },
+    CEPHESAYISI: { fn: () => safeCall("getFacadeCountText") },
     BBKULLANIMDURUMU: { f: ["unitUsageStatus"] },
     ISBANKKULLANIMDURUMU: { f: ["unitUsageStatus"] },
     ICIGORULDUMU: { fn: () => (field("appointmentType") === "İçi görülmüştür" ? "EVET" : "HAYIR") },

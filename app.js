@@ -8519,6 +8519,13 @@ function formatUnitFacadePhrase(value) {
   return facades.length ? `(${formatTurkishList(facades)} cepheli)` : "";
 }
 
+// Kullanıcı talebi: "Gayrimenkulün Cepheli Olduğu Yönler bölümünde kaç
+// cephe seçildi ise cephe sayısı olarak placeholder oluştur."
+function getFacadeCountText() {
+  const count = getMultiCheckboxValues("facades").length;
+  return count ? String(count) : "";
+}
+
 function formatUnitNaturePhrase() {
   const nature = state.fields.titleQuality || state.fields.legalUsageNature || state.fields.currentUsageNature || "";
   const text = toLowerText(nature);
@@ -20642,6 +20649,42 @@ function formatEncumbranceMortgageRow(row) {
   const degree = formatEncumbranceMortgageDegree(row.c1);
   const amount = formatEncumbranceMoney(row.c2);
   return `${creditor} lehine ${degree} ${amount} tutarında ipotek kaydı bulunmaktadır. (Tarih: ${encumbranceDateOrBila(row.c3)}, Yevmiye No: ${encumbranceTextOrBila(row.c4)})${formatEncumbranceRestrictedOwner(row, 5)}`;
+}
+
+// Kullanıcı talebi: "takyidatlar bölümünde beyanlar bölümü rehinler bölümü
+// şerhler bölümü hak ve mükellefiyetler bölümü olarak her bir bölüme
+// placeholder oluştur." — buildEncumbranceSummaryVariants() içindeki dört
+// bölümün AYNI kaynak fonksiyonlarını (getFilledEncumbranceRows,
+// isEncumbranceRightOrLiabilityRow, buildEncumbranceSectionParagraph,
+// formatEncumbrance*Row) tek tek çağırarak her birini AYRI bir metin
+// olarak döner — davranış birleşik özetle birebir tutarlı kalır.
+function getEncumbranceDeclarationsSectionText() {
+  const rows = getFilledEncumbranceRows("encumbranceDeclarations").filter((row) => !isEncumbranceRightOrLiabilityRow(row));
+  return buildEncumbranceSectionParagraph(
+    "Beyanlar Bölümü",
+    rows,
+    (row) => formatEncumbranceDeclarationRow(row, { addIsbankManagementPlanNote: true }),
+  );
+}
+
+function getEncumbranceEasementsSectionText() {
+  const rows = getFilledEncumbranceRows("encumbranceDeclarations").filter(isEncumbranceRightOrLiabilityRow);
+  return buildEncumbranceSectionParagraph("Hak ve Mükellefiyetler Bölümü", rows, formatEncumbranceDeclarationRow);
+}
+
+// Kullanıcının "Rehinler Bölümü" dediği kısım tapuda "İpotekler" tablosuna
+// (encumbranceMortgages) karşılık gelir — ipotek, gayrimenkul hukukunda
+// rehin hakkının tapu sicilindeki karşılığıdır.
+function getEncumbranceMortgagesSectionText() {
+  const rows = getFilledEncumbranceRows("encumbranceMortgages");
+  return buildEncumbranceSectionParagraph("Rehinler Bölümü", rows, formatEncumbranceMortgageRow);
+}
+
+function getEncumbranceAnnotationsSectionText() {
+  const rows = getFilledEncumbranceRows("encumbranceAnnotations");
+  return rows.length
+    ? `Şerhler Bölümü:\n${buildCondensedAnnotationSummary(rows)}`
+    : buildEncumbranceSectionParagraph("Şerhler Bölümü", [], formatEncumbranceAnnotationRow);
 }
 
 function buildEncumbranceTitleRecordChangeParagraph(date, method) {
