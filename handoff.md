@@ -1,5 +1,15 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.318 - 2026-08-04 - İç Hacim Grup Sayımı placeholder'ı (Salon/Oda/Mutfak/Banyo/Wc/Balkon)
+
+- Kullanıcı talebi: "şimdi iç hacimlerde konut için iç hacimleri gruplandıracağız. 1. grup: salon, 2. Grup Odalar, 3. Grup Mutfak, 4. Grup Banyo (duş ve ebeveyn banyosu dahil wc hariç) 5. grup wc 6. grup balkon (Teras ve verandalar dahil) bunları sayısal olarak kaç adet var ise placeholder mantığında grupla örnek salon 1 oda 4 banyo 2 wc 1 balkon 3 gibi."
+- Bu gruplama zaten `getGabimUnitInteriorCounts()` ile MEVCUTTU (SALON/ODA/BANYO/TUVALET/MUTFAK/BALKON placeholder'larını besliyor) — iki eksik giderildi: (1) balkon grubuna "veranda" eklendi (önceden yalnızca balkon+teras), (2) kelime sınırı `\b...\b` → `\b...\w*` yapıldı ki "Ebeveyn Banyosu" gibi Türkçe ek almış serbest metin de "banyo" olarak sayılsın — **geriye dönük uyumlu**, yalnızca EK eşleşme yakalar, mevcut davranışı bozmaz (bkz. `tools/test-bank-templates.js`'teki güncellenen kaynak-string doğrulaması).
+- Yeni **app.js**: `getUnitInteriorGroupSummaryText()` — altı grubu `getGabimUnitInteriorCounts()`'tan tek bir "Etiket Adet" metninde birleştirir (`"Salon 1 Oda 4 Mutfak 1 Banyo 2 Wc 1 Balkon 3"` gibi), adedi 0 olan gruplar atlanır.
+- Yeni placeholder: `{{ICHACIMGRUPSAYIMI}}`.
+- Yeni `tools/test-unit-interior-group-counts.js`: kullanıcının kendi örneğini birebir doğrular; "Duş"+"Ebeveyn Banyosu"nun Banyo grubuna dahil ama Wc'nin AYRI kaldığını; "Teras"+"Veranda"+"Balkon"un Balkon grubunda toplandığını; birden fazla kat satırının toplandığını; veri yokken boş döndüğünü kontrol eder.
+- Cache-buster `app.js?v=20260804-0200` ve `src/templates/template-engine.js?v=20260804-0200`.
+- `npm run verify` tamamı geçti (59 test).
+
 ## 0.0.317 - 2026-08-04 - Yeni genel placeholder'lar: Cephe Sayısı, Takyidat alt bölümleri, Yapı Kullanma İzin Belgesi Var mı
 
 - Kullanıcı talebi 1: "Gayrimenkulün Cepheli Olduğu Yönler bölümünde kaç cephe seçildi ise cephe sayısı olarak placeholder oluştur." — yeni `{{CEPHESAYISI}}`, `state.fields.facades`'teki (checkbox'lardan gelen, virgülle ayrılmış) seçili yön sayısını döner. **app.js**: `getFacadeCountText()` (`getMultiCheckboxValues("facades").length`, `formatUnitFacadePhrase`'in hemen altına eklendi).

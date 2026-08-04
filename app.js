@@ -27075,7 +27075,12 @@ function getGabimUnitInteriorCounts() {
   const summary = foldTurkish(formatUnitFloorInteriorSummary(getUnitFloorRows())).toLocaleLowerCase("tr");
   const countMentions = (...words) => {
     const total = words.reduce((sum, word) => {
-      const matches = [...summary.matchAll(new RegExp(`\\b(?:(\\d+)\\s*)?${word}\\b`, "gi"))];
+      // Sondaki \b KASITLI OLARAK \w* ile değiştirildi: Türkçe ek alan
+      // serbest metinler ("Ebeveyn Banyosu", "Balkonu", "Terası" gibi)
+      // yalnızca tam "banyo"/"balkon" kelimesiyle eşleşmiyordu — bu daha
+      // kapsayıcı hali GERİYE DÖNÜK UYUMLU (yalnızca EK eşleşme yakalar,
+      // hiçbir mevcut eşleşmeyi kaybetmez).
+      const matches = [...summary.matchAll(new RegExp(`\\b(?:(\\d+)\\s*)?${word}\\w*`, "gi"))];
       return sum + matches.reduce((wordSum, match) => wordSum + Number(match[1] || 1), 0);
     }, 0);
     return total ? String(total) : "";
@@ -27083,11 +27088,37 @@ function getGabimUnitInteriorCounts() {
   return {
     salon: countMentions("salon"),
     oda: countMentions("oda"),
+    // "duş ve ebeveyn banyosu dahil wc hariç" (kullanıcı talebi) — "ebeveyn
+    // banyosu" zaten "banyo" ön ekiyle (\w* sayesinde) eşleşir, ayrı kelime
+    // eklemeye gerek yok.
     banyo: countMentions("banyo", "dus"),
     tuvalet: countMentions("wc", "tuvalet"),
     mutfak: countMentions("mutfak"),
-    balkon: countMentions("balkon", "teras"),
+    // "balkon (Teras ve verandalar dahil)" (kullanıcı talebi)
+    balkon: countMentions("balkon", "teras", "veranda"),
   };
+}
+
+// Kullanıcı talebi: "iç hacimlerde konut için iç hacimleri gruplandıracağız...
+// bunları sayısal olarak kaç adet var ise placeholder mantığında grupla
+// örnek salon 1 oda 4 banyo 2 wc 1 balkon 3 gibi" — yukarıdaki
+// getGabimUnitInteriorCounts()'un (zaten SALON/ODA/BANYO/TUVALET/MUTFAK/
+// BALKON placeholder'larını besleyen) altı grubunu TEK bir metinde
+// "Etiket Adet" ikilileri olarak birleştirir; adedi 0/boş olan gruplar
+// atlanır.
+function getUnitInteriorGroupSummaryText() {
+  const counts = getGabimUnitInteriorCounts();
+  return [
+    ["Salon", counts.salon],
+    ["Oda", counts.oda],
+    ["Mutfak", counts.mutfak],
+    ["Banyo", counts.banyo],
+    ["Wc", counts.tuvalet],
+    ["Balkon", counts.balkon],
+  ]
+    .filter(([, count]) => count)
+    .map(([label, count]) => `${label} ${count}`)
+    .join(" ");
 }
 
 function ensureLegacyPlaceholderRowsLoaded() {

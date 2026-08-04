@@ -964,7 +964,7 @@ assert(
     engineSource.includes('UNITDESCRIPTIONINTRO: { t: () => safeCall("composeUnitDescriptionIntroForReport") }') &&
     engineSource.includes('TUVALET: { fn: () => (safeCall("getGabimUnitInteriorCounts") || {}).tuvalet || "" }') &&
     appSource.includes('banyo: countMentions("banyo", "dus")') &&
-    appSource.includes('balkon: countMentions("balkon", "teras")'),
+    appSource.includes('balkon: countMentions("balkon", "teras", "veranda")'),
   "Ziraat insai metni ikinci dekoratif aciklamayi veya birim adet hesaplarini yeniden getiriyor."
 );
 globalThis.getGabimUnitInteriorCounts = () => ({ salon: "1", oda: "2", banyo: "2", tuvalet: "1", balkon: "3" });

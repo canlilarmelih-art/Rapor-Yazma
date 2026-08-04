@@ -630,6 +630,7 @@
     TUVALET: { fn: () => (safeCall("getGabimUnitInteriorCounts") || {}).tuvalet || "" },
     BALKON: { fn: () => (safeCall("getGabimUnitInteriorCounts") || {}).balkon || "" },
     MUTFAK: { fn: () => (safeCall("getGabimUnitInteriorCounts") || {}).mutfak || "" },
+    ICHACIMGRUPSAYIMI: { fn: () => safeCall("getUnitInteriorGroupSummaryText") },
     BINAYAPITARZI: { f: ["buildingStyle"] },
     YAPISINIFI: { f: ["buildingClass"] },
     MEVCUTYAPINIZAMI: { f: ["buildingOrder"] },
