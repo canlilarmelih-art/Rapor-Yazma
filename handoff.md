@@ -1,5 +1,21 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.325 - 2026-08-04 - templates/emlakkatilim.docx yeniden STORED paketlendi (kullanıcının Word düzenlemesi sonrası)
+
+- Kullanıcı `templates/emlakkatilim.docx`'i Word'de tekrar açıp düzenlemiş (bkz. CLAUDE.md "templates/emlakkatilim.docx'i Word'de düzenledikten sonra" — Word HER kaydetmede zip'i DEFLATE'e çeviriyor, STORED bozuluyor). `npm run verify` `tools/test-docx-fill.js`'de "DOCX şablonu STORED değil" hatasıyla kırıldı. Standart Python `zipfile.ZIP_STORED` yeniden paketleme uygulandı, içerik bayt-bayt korunarak.
+- Token karşılaştırması (eski STORED kopya vs. kullanıcının yeni Word kaydı): kullanıcı 16 Emsal 1/2/3 detay placeholder'ını (`EMSAL1ACIKLAMASI`, `EMSAL1İLGİLİKİŞİVETEL`, `EMSAL1İNDİRGENMİŞ...` vb.) şablondan ÇIKARMIŞ, yerine bu segmentte oluşturulan yeni placeholder'ları (BEYANLARBOLUMU, CEPHESAYISI, DIGER, HAKVEMUKELLEFIYETLERBOLUMU, REHINLERBOLUMU, SERHLERBOLUMU, TAKYIDATACIKLAMAGIRISCUMLESI, YAPIKULLANMAIZINBELGESIVARMI, SALON/ODA/BANYO/TUVALET/BALKON, EMSAL_KROKISI) şablona YERLEŞTİRMİŞ — beklenen/istenen değişiklik. `tools/test-docx-fill.js`'deki sabit `{{EMSAL1ACIKLAMASI}}` varlık kontrolü artık şablonda olmayan bir token'ı arıyordu → `{{SALON}}` kontrolüne güncellendi.
+- **DİKKAT — kullanıcıya sorulacak açık soru**: şablonda ayrıca iki TANINMAYAN yeni token bulundu: `{{EMSAL_1_EMSAL_DURUMU}}` ve `{{EMSAL_1_TELEFON}}` — bunlar ne app.js'te ne template-engine.js'te karşılığı olan isimler (muhtemelen kullanıcının elle yazdığı, henüz backing fonksiyonu olmayan yeni alanlar). Şu an dışa aktarımda "eksik/missing" olarak işaretlenecekler. Kullanıcıya sorulmalı: bunlar için yeni placeholder mı istiyor (örn. mevcut `EMSAL1ILGILIKISIVETEL`'in yerine mi geçecek), yoksa yazım hatası mı.
+- `node tools/test-docx-fill.js` ve tam `npm run verify` (65 test) geçti.
+
+## 0.0.324 - 2026-08-04 - Değeri Etkileyen Olumlu/Olumsuz Faktörler artık numaralandırılmıyor
+
+- Kullanıcı talebi: "değeri etkileyen olumlu ve olumsuz faktörlerde çıktı 1. 2. 3. olarak numaralandırılarak geliyor. bunun yerine hiç bir numaralandırma yada * yada - yerine her bir faktör bir satır diğer faktör alt satırdan başlasın."
+- **app.js**: `formatValueFactorsList(items)` artık `"${index+1}. "` numaralandırması eklemeden, her `item.text`'i kendi satırında `\n` ile birleştiriyor — `{{OLUMLU_FAKTÖR}}`/`{{OLUMSUZ_FAKTÖR}}` ve katalog-only `DEGERI_ETKILEYEN_OLUMLU_FAKTORLER`/`OLUMSUZ` placeholder'larının hepsi bu fonksiyonu kullandığı için hepsi etkilendi.
+- **src/value-factors/value-factors-rules.js**: `formatFactorGroup(title, rows)` aynı şekilde numaralandırmayı kaldırdı (grup başlığı "Olumlu Özellikler"/"Olumsuz Özellikler" iki grubu ayırt etmek için kaldı — bu birleşik "Rapor Metni" UI önizlemesini besliyor).
+- Yeni `tools/test-value-factors-list-format.js` (app.js `formatValueFactorsList` için izole test) + `tools/test-value-factors-rules.js`'e regresyon assertion'ları eklendi — bu ikinci dosya daha önce `package.json`'un `test` zincirine hiç bağlı DEĞİLDİ, bu segmentte bağlandı (önceden var olan, kullanıcı kaynaklı olmayan bir eksiklik).
+- Cache-buster `app.js?v=20260804-0500`, `src/value-factors/value-factors-rules.js?v=20260804-0500`.
+- `npm run verify` tamamı geçti (65 test, yukarıdaki docx düzeltmesiyle birlikte).
+
 ## 0.0.323 - 2026-08-04 - {{TAPU_TARİHİ}}/{{TAPU_YEVMİYESİ}} uygulama içi "Placeholder" listesine eklendi
 
 - Kullanıcı: "Tapu tarihi ve tapu yevmiye no için placeholder yok mu sistemde" → doğrulandı, `{{TAPU_TARİHİ}}`/`{{TAPU_YEVMİYESİ}}` zaten vardı (template-engine.js, `TAPUTARIHI`/`TAPUYEVMIYESI`). Kullanıcı: "placeholder bölümünde gözükmüyor ancak" — 0.0.319'daki AYNI kök neden: `collectGeneratedTextPlaceholders()` kataloğu bu ikisini de içermiyordu.

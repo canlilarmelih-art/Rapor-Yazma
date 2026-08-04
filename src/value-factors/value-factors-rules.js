@@ -120,8 +120,13 @@
     ].filter(Boolean).join("\n\n");
   }
 
+  // Kullanıcı talebi: "değeri etkileyen olumlu ve olumsuz faktörlerde
+  // çıktı 1. 2. 3. olarak numaralandırılarak geliyor... her bir faktör
+  // bir satır diğer faktör alt satırdan başlasın" — numaralandırma
+  // KALDIRILDI (grup başlığı "Olumlu Özellikler"/"Olumsuz Özellikler" bu
+  // birleşik önizlemede iki grubu ayırt etmek için kalıyor).
   function formatFactorGroup(title, rows) {
-    const lines = (rows || []).map((item, index) => `${index + 1}. ${item.text}`);
+    const lines = (rows || []).map((item) => item.text);
     return `${title}\n${lines.length ? lines.join("\n") : "Kayıt bulunmamaktadır."}`;
   }
 

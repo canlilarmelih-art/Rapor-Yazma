@@ -26422,8 +26422,13 @@ function buildValueFactorsReportText() {
   return globalThis.ValueFactorsRules.formatValueFactorsText(result);
 }
 
+// Kullanıcı talebi: "değeri etkileyen olumlu ve olumsuz faktörlerde çıktı
+// 1. 2. 3. olarak numaralandırılarak geliyor. bunun yerine hiç bir
+// numaralandırma yada * yada - ... her bir faktör bir satır diğer faktör
+// alt satırdan başlasın" — numaralandırma/işaret KALDIRILDI, her madde
+// kendi satırında düz metin.
 function formatValueFactorsList(items = []) {
-  return items.map((item, index) => `${index + 1}. ${item.text}`).join("\n");
+  return items.map((item) => item.text).join("\n");
 }
 
 function createGabimDataSetPanel() {

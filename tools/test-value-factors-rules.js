@@ -263,6 +263,15 @@ function main() {
   assert(text.includes("Olumlu Özellikler"), "Metinde olumlu baslik olmali");
   assert(text.includes("Olumsuz Özellikler"), "Metinde olumsuz baslik olmali");
 
+  // Kullanıcı talebi: "değeri etkileyen olumlu ve olumsuz faktörlerde
+  // çıktı 1. 2. 3. olarak numaralandırılarak geliyor. bunun yerine hiç
+  // bir numaralandırma yada * yada - ... her bir faktör bir satır diğer
+  // faktör alt satırdan başlasın" — numaralandırma/işaretleme KALKMALI.
+  assert(!/^\d+\.\s/m.test(text), `Metinde hala numaralandirma (ör. "1. ") var: ${text}`);
+  assert(!/^[*\-]\s/m.test(text), `Metinde hala madde isareti (* veya -) var: ${text}`);
+  assert(text.includes("Köşe konumlu olması"), "Manuel olumlu faktor metni numarasiz gelmeli");
+  assert(text.includes("Ana cadde gürültüsüne maruz kalması"), "Manuel olumsuz faktor metni numarasiz gelmeli");
+
   console.log("Değeri etkileyen faktörler testi tamam.");
 }
 

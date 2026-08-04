@@ -164,7 +164,7 @@ assert.ok(DocxFill && typeof DocxFill.fillTemplate === "function", "RaporDocxFil
   check(tokens.length >= 30, `emlakkatilim.docx icinde beklenenden az {{TOKEN}} bulundu: ${tokens.length}`);
   check(tokens.includes("CITY"), "emlakkatilim.docx icinde {{CITY}} bulunamadi.");
   check(tokens.includes("CURRENT_VALUE"), "emlakkatilim.docx icinde {{CURRENT_VALUE}} bulunamadi.");
-  check(tokens.includes("EMSAL1ACIKLAMASI"), "emlakkatilim.docx icinde {{EMSAL1ACIKLAMASI}} bulunamadi.");
+  check(tokens.includes("SALON"), "emlakkatilim.docx icinde {{SALON}} bulunamadi.");
   check(tokens.includes("SAHIPLER"), "emlakkatilim.docx icinde {{SAHIPLER}} bulunamadi.");
   check(!tokens.some((t) => t.startsWith("BOLD:")), "collectTokens gercek sablonda da {{BOLD:...}} isaretlerini normal token saymamali.");
   // Coktan-secmeli alanlar (Cevre Analizi/Kira Kabiliyeti) icin {{BOLD:AD}}
