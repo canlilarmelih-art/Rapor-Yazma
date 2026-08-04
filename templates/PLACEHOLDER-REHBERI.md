@@ -119,6 +119,10 @@ verilerinizle doldurur ve Word ile açılabilen bir `.doc` dosyası indirir.
 | `{{TAKBİS_DATE}}` / `{{TAKBİS_TİME}}` | Takyidat tarih / saat |
 | `{{ENCUMBRANCE_SUMMARY_TEXT}}` | Takyidat paragrafı |
 | `{{TAKYIDAT_TABLO}}` | Takyidat tablosu (HTML tablo) |
+| `{{BEYANLARBOLUMU}}` | Takyidat - Beyanlar Bölümü metni |
+| `{{HAKVEMUKELLEFIYETLERBOLUMU}}` | Takyidat - Hak ve Mükellefiyetler Bölümü metni |
+| `{{REHINLERBOLUMU}}` | Takyidat - Rehinler (İpotekler) Bölümü metni |
+| `{{SERHLERBOLUMU}}` | Takyidat - Şerhler Bölümü metni |
 
 ### İmar
 
@@ -152,7 +156,7 @@ verilerinizle doldurur ve Word ile açılabilen bir `.doc` dosyası indirir.
 | `{{PENALTY_DECİSİON_EXPLANATİON_TEXT}}` | Cezai karar açıklaması |
 | `{{STATİC_SUİTABİLİTY_EXPLANATİON_TEXT}}` | Statik uygunluk açıklaması |
 | `{{BUİLDİNG_İNSPECTİON_EXPLANATİON_TEXT}}` | Yapı denetim açıklaması |
-| `{{İSKAN_VAR_MI}}` | Yapı kullanma izin belgesi var mı * |
+| `{{İSKAN_VAR_MI}}` / `{{YAPIKULLANMAIZINBELGESIVARMI}}` | Yapı kullanma izin belgesi var mı (aynı kaynak, iki isim) * |
 | `{{EKB_ENERGY_CLASS}}` / `{{EKB_DOCUMENT_NO}}` | EKB sınıfı / belge no |
 | `{{EKB_ISSUE_DATE}}` / `{{EKB_VALİD_UNTİL}}` | EKB veriliş / geçerlilik tarihi |
 
@@ -175,6 +179,10 @@ verilerinizle doldurur ve Word ile açılabilen bir `.doc` dosyası indirir.
 | `{{UNİT_HEATİNG_TYPE}}` | Isınma sistemi |
 | `{{UNİT_MATERİAL_QUALİTY}}` | Malzeme ve işçilik kalitesi |
 | `{{UNİT_VİEW_STATUS}}` / `{{FACADES}}` | Manzara / cepheler |
+| `{{CEPHESAYISI}}` | Seçili cephe (yön) sayısı * |
+| `{{SALON}}` / `{{ODA}}` / `{{MUTFAK}}` | Salon / oda / mutfak adedi (iç hacimlerden otomatik sayılır) * |
+| `{{BANYO}}` / `{{TUVALET}}` / `{{BALKON}}` | Banyo (duş + ebeveyn banyosu dahil) / wc / balkon (teras + veranda dahil) adedi * |
+| `{{ICHACIMGRUPSAYIMI}}` | Yukarıdaki altı grubu tek metinde birleştirir (ör. "Salon 1 Oda 4 Banyo 2 Wc 1 Balkon 3") * |
 | `{{UNİT_USAGE_STATUS}}` | Kullanım durumu |
 | `{{UNİT_CONSTRUCTİON_LEVEL}}` | İnşaat seviyesi (boşsa "Tamamlanmış (%100)") * |
 | `{{EARTHQUAKE_ZONE}}` | Deprem derecesi |

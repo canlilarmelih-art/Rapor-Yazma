@@ -27277,6 +27277,30 @@ function collectGeneratedTextPlaceholders() {
       value: buildEncumbranceSummary(),
     },
     {
+      category: "Takyidat",
+      key: "BEYANLARBOLUMU",
+      title: "Takyidat - Beyanlar Bölümü",
+      value: getEncumbranceDeclarationsSectionText(),
+    },
+    {
+      category: "Takyidat",
+      key: "HAKVEMUKELLEFIYETLERBOLUMU",
+      title: "Takyidat - Hak ve Mükellefiyetler Bölümü",
+      value: getEncumbranceEasementsSectionText(),
+    },
+    {
+      category: "Takyidat",
+      key: "REHINLERBOLUMU",
+      title: "Takyidat - Rehinler (İpotekler) Bölümü",
+      value: getEncumbranceMortgagesSectionText(),
+    },
+    {
+      category: "Takyidat",
+      key: "SERHLERBOLUMU",
+      title: "Takyidat - Şerhler Bölümü",
+      value: getEncumbranceAnnotationsSectionText(),
+    },
+    {
       category: "Açıklamalar",
       key: "isbank_encumbrance_explanation",
       title: "Takyidat Açıklama (İş Bankası)",
@@ -27343,6 +27367,12 @@ function collectGeneratedTextPlaceholders() {
       value: state.fields.buildingInspectionExplanation || buildBuildingInspectionExplanation(),
     },
     {
+      category: "Belgeler ve Proje",
+      key: "YAPIKULLANMAIZINBELGESIVARMI",
+      title: "Yapı Kullanma İzin Belgesi Var mı",
+      value: gabimOccupancyPermitText(),
+    },
+    {
       category: "Değerleme",
       key: "building_inspection_termination_explanation_text",
       title: "Yapı Denetim Fesih Açıklaması",
@@ -27407,6 +27437,18 @@ function collectGeneratedTextPlaceholders() {
       key: "total_current_area",
       title: "Toplam Mevcut Alan",
       value: getValuationUnitAreaTotals().current,
+    },
+    {
+      category: "Bağımsız Bölüm Özellikleri",
+      key: "CEPHESAYISI",
+      title: "Cephe Sayısı",
+      value: getFacadeCountText(),
+    },
+    {
+      category: "Bağımsız Bölüm Özellikleri",
+      key: "ICHACIMGRUPSAYIMI",
+      title: "İç Hacim Grup Sayımı (Salon/Oda/Mutfak/Banyo/Wc/Balkon)",
+      value: getUnitInteriorGroupSummaryText(),
     },
     {
       category: "Değerleme",

@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.319 - 2026-08-04 - Yeni placeholder'lar uygulama içi "Placeholder" listesine ve rehbere eklendi
+
+- Kullanıcı bildirimi: "placeholder kısmına baktım ama yeni placeholderları göremedim" — 0.0.317/0.0.318'de eklenen `{{CEPHESAYISI}}`, `{{BEYANLARBOLUMU}}`, `{{HAKVEMUKELLEFIYETLERBOLUMU}}`, `{{REHINLERBOLUMU}}`, `{{SERHLERBOLUMU}}`, `{{YAPIKULLANMAIZINBELGESIVARMI}}`, `{{ICHACIMGRUPSAYIMI}}` placeholder'ları `src/templates/template-engine.js`'te ÇÖZÜMLENEBİLİR durumdaydı ama uygulama içi "Placeholder" ekranındaki (`admin-users.html` DEĞİL, rapor ekranındaki "Placeholder" sekmesi) listede GÖRÜNMÜYORDU.
+- **Kök neden**: o liste `template-engine.js`'in placeholder haritasından OTOMATİK türemiyor — `app.js`'teki `collectGeneratedTextPlaceholders()` içinde AYRI, elle bakımı yapılan bir katalog (`{category, key, title, value}` satırları). SALON/ODA/BANYO/TUVALET/MUTFAK/BALKON gibi ÖNCEDEN VAR OLAN "gabim" tabanlı placeholder'lar da bu kataloğa hiç eklenmemişti — yalnızca benim yenilerim değil.
+- **app.js**: 7 yeni katalog satırı eklendi (`Takyidat` kategorisine 4 takyidat bölümü, `Belgeler ve Proje`'ye `YAPIKULLANMAIZINBELGESIVARMI`, `Bağımsız Bölüm Özellikleri`'ne `CEPHESAYISI` ve `ICHACIMGRUPSAYIMI`) — artık "Placeholder" ekranında görünürler.
+- **templates/PLACEHOLDER-REHBERI.md**: aynı 7 yeni placeholder + önceden hiç belgelenmemiş `{{SALON}}`/`{{ODA}}`/`{{MUTFAK}}`/`{{BANYO}}`/`{{TUVALET}}`/`{{BALKON}}` de eklendi.
+- Cache-buster `app.js?v=20260804-0230`.
+- `npm run verify` tamamı geçti (59 test).
+
 ## 0.0.318 - 2026-08-04 - İç Hacim Grup Sayımı placeholder'ı (Salon/Oda/Mutfak/Banyo/Wc/Balkon)
 
 - Kullanıcı talebi: "şimdi iç hacimlerde konut için iç hacimleri gruplandıracağız. 1. grup: salon, 2. Grup Odalar, 3. Grup Mutfak, 4. Grup Banyo (duş ve ebeveyn banyosu dahil wc hariç) 5. grup wc 6. grup balkon (Teras ve verandalar dahil) bunları sayısal olarak kaç adet var ise placeholder mantığında grupla örnek salon 1 oda 4 banyo 2 wc 1 balkon 3 gibi."
