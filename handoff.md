@@ -1,5 +1,11 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.327 - 2026-08-04 - templates/emlakkatilim.docx yeniden STORED paketlendi (kullanıcının Word düzenlemesi sonrası)
+
+- Kullanıcı: "emlak katılım formatında düzeltme yaptım push et" — dosya yine Word'de kaydedilmiş (DEFLATE'e dönmüş), standart STORED yeniden paketleme uygulandı.
+- Token diff'i (önceki commit ile karşılaştırma): tek fark, Emsal 1 kartındaki `{{EMSAL_1_EMSAL_METNİ}}` (irtibat+açıklama birleşik, 0.0.326'da eklendi) yerine `{{EMSAL_1_ACIKLAMA_METNİ}}` (yalnızca açıklama) konmuş — kullanıcı bilinçli olarak irtibat bilgisini o karttan kaldırmış, ikisi de zaten desteklenen token'lar. Zip giriş listesi (media/header/footer) DEĞİŞMEMİŞ, token sayısı aynı (105).
+- `node tools/test-docx-fill.js` ve tam `npm run verify` (66 test) geçti.
+
 ## 0.0.326 - 2026-08-04 - Emsal 1/2/3 için "irtibat + açıklama" birleşik metin placeholder'ı
 
 - Kullanıcı talebi: `{{EMSAL_1_EMSAL_METNİ}}` → "(İrtibat Kişisi ve Telefon No: Raif Bey / 0 (546) 582 19 29)\n\nEkspertize konu taşınmaz satılık olup, 90 m2 olarak beyan edilmiş, ..." — irtibat kişisi/telefon (parantez içinde, üstte) ile emsal açıklama metni (boş satırla ayrılmış, altta) TEK placeholder'da birleşsin; ayrıca AYNI şey irtibat bilgisi OLMADAN (yalnızca açıklama) da istendi, tüm emsallerde (1/2/3).
