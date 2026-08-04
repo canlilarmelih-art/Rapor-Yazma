@@ -24529,7 +24529,7 @@ function renderLeafletKmlMap() {
       : [Number(state.fields.latitude), Number(state.fields.longitude)]);
   const path = hasKmlGeometry ? parsed.coordinates.map((point) => [point.lat, point.lng]) : [];
 
-  leafletMap = leaflet.map(panel, getLeafletInteractionOptions()).setView(center, 16);
+  leafletMap = leaflet.map(panel, getLeafletInteractionOptions({ forceDraggable: true })).setView(center, 16);
 
   getLeafletTileLayer().addTo(leafletMap);
 
@@ -24615,10 +24615,18 @@ function isCoarsePointerDevice() {
   }
 }
 
-function getLeafletInteractionOptions() {
-  return isCoarsePointerDevice()
+function getLeafletInteractionOptions(options = {}) {
+  const base = isCoarsePointerDevice()
     ? { dragging: false, tap: false, touchZoom: true, scrollWheelZoom: false }
     : {};
+  // Kullanıcı talebi (2026-08-05): "adres ve konum haritası ve emsal
+  // haritasında serbest gezinemiyorum" — dokunmatik cihazlarda haritanın
+  // tek parmak kaydırmayı yutup sayfa kaymasını engellemesini önlemek
+  // için eklenen dragging:false koruması (0.0.168) BU İKİ harita için
+  // kullanıcının açık isteğiyle geri açılıyor; diğer haritalardaki
+  // (ör. emsal nokta seçme overlay'i) mobil koruma DOKUNULMADAN kalıyor.
+  if (options.forceDraggable) return { ...base, dragging: true };
+  return base;
 }
 
 let leafletMarkerIconConfigured = false;
@@ -28447,7 +28455,7 @@ function renderComparableLocationSketchMap(wrapper) {
   panel.innerHTML = "";
   const leaflet = window.L;
   const map = leaflet.map(panel, {
-    ...getLeafletInteractionOptions(),
+    ...getLeafletInteractionOptions({ forceDraggable: true }),
     scrollWheelZoom: false,
   }).setView(subjectPoint, 15);
   wrapper._comparableSketchMap = map;

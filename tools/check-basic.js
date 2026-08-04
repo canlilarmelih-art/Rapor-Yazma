@@ -263,7 +263,7 @@ function main() {
     "Mobil sayfa kaydirmasini kilitleyebilecek global touch/overscroll kurallari bulunuyor."
   );
   assert(
-    appJs.includes("function getLeafletInteractionOptions()") &&
+    appJs.includes("function getLeafletInteractionOptions(options = {})") &&
       appJs.includes("dragging: false") &&
       appJs.includes("tap: false") &&
       appJs.includes("touchZoom: true"),

@@ -1,5 +1,16 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.341 - 2026-08-05 - Adres/Konum ve Emsal Konum Krokisi haritalarında serbest sürükleyerek gezinme geri açıldı
+
+- Kullanıcı: "adres ve konum haritası ve emsal haritasında serbest gezinemiyorum. bunun sebebi ne?"
+- **Kök neden**: 0.0.168'de (2026-07-18, "Android tek parmak sayfa gezinme") dokunmatik/kaba işaretçili cihazlarda (`isCoarsePointerDevice()` — `(hover: none), (pointer: coarse)` medya sorgusu) Leaflet haritalarının tek parmak dikey kaydırmayı "yutup" sayfanın kaymasını engellemesini önlemek için `getLeafletInteractionOptions()` bilinçli olarak `dragging: false` döndürüyordu — bu, dokunmatik ekranlı ama fare/touchpad ile kullanılan cihazlarda da (ör. dönüştürülebilir dizüstü) YANLIŞ tetiklenip haritada sürüklemeyi tamamen kapatabiliyordu.
+- Kullanıcıya soruldu: genel davranışı mı değiştirelim yoksa yalnızca bu iki haritada mı açalım — **"yalnızca bu iki haritada aç"** seçildi.
+- **app.js**: `getLeafletInteractionOptions()` artık isteğe bağlı `{ forceDraggable: true }` alıyor — verilirse kaba işaretçi tespit edilse bile `dragging: true` döner, diğer kısıtlamalar (`tap: false`, `touchZoom: true`, `scrollWheelZoom: false`) DOKUNULMADAN kalır. Bu seçenek yalnızca **Adres ve Konum haritası** (`renderLeafletKmlMap`) ve **Emsal Konum Krokisi haritası** (`renderComparableLocationSketchMap`) için verildi — emsal SATIRI için nokta seçme overlay'i (`renderComparableLocationMap`) BİLEREK dokunulmadan bırakıldı, oradaki mobil tek-parmak-sayfa-kaydırma koruması aynen devam ediyor.
+- `tools/check-basic.js`'teki `getLeafletInteractionOptions()` imza kontrolü (`function getLeafletInteractionOptions()`) yeni parametreye (`options = {}`) göre güncellendi.
+- Yeni `tools/test-leaflet-map-drag-override.js`: eski davranışın (argümansız çağrıda kaba işaretçide hâlâ `dragging:false`) korunduğunu, `forceDraggable:true` ile kaba işaretçi tespit edilse bile `dragging:true` döndüğünü (diğer kısıtlamalar korunarak), ve kaynak düzeyinde YALNIZCA doğru iki haritanın bu seçeneği kullandığını (üçüncü harita — nokta seçme overlay'i — dokunulmamış) doğruluyor.
+- Cache-buster `app.js?v=20260805-0230`.
+- `npm run verify` tamamı geçti.
+
 ## 0.0.340 - 2026-08-05 - Emsal Konum Krokisi: etiketler haritada elle sürüklenebiliyor (nokta sabit kalır)
 
 - Kullanıcı önerisi: "kullanıcı emsal haritası üzerinden etiketleri istediği yere sürüklese ancak emsal ve konu taşınmaz noktaları aynı kalacak. kullanıcı düzenlemesine göre görsel oluşsa nasıl olur?"
