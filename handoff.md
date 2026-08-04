@@ -1,5 +1,19 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.336 - 2026-08-05 - Emsal konum krokisi: "KONU TAŞINMAZ" etiketi artık KML sınırına kesikli kırmızı okla bağlanıyor, hiçbir etiket noktaların üstüne gelmiyor
+
+- Kullanıcı, ekran görüntüsüyle: "EMSAL konum krokisi anlaşılır değil. konu taşınmaz yazısı çok büyük haritada taşınmazın konumunu kaplıyor... Kml sınırlarına kesik çizgili kırmızı ok ile konu taşınmaz yazısı bağlansın. Emsaller mavi çizgi ile bağlanmaya devam etsin... Konu taşınmaz ve Emsal yazıları ... noktalarının hiç bir şekilde üstüne gelmemeli."
+- **Kök neden**: `drawExportComparableSketch()`'in eski `layoutSketchLabels()`'ı, etiketleri BİRBİRİNDEN ve kendi noktalarından ayırmak için yalnızca DAİRESEL, YÜKSEKLİĞE dayalı bir minimum mesafe kontrolü yapıyordu — geniş (430px) "KONU TAŞINMAZ" kutusunun GENİŞLİĞİ bu kontrole hiç dahil değildi, bu yüzden kutu yandaki noktaları/işaretleri rahatça örtebiliyordu (ekran görüntüsündeki tam olay).
+- **app.js**: 
+  - Yeni `pickKmlBoundaryAnchorPixel(parsed, topLeft, zoom, awayFromPoint)` — KML sınır poligonunun, emsal kümesinin merkezinden (`awayFromPoint`) EN UZAK köşesini seçer; "KONU TAŞINMAZ" etiketi artık konu taşınmazın tam koordinatına değil bu köşeye bağlanıyor (KML alanı zaten `drawExportKmlPolygon` ile kırmızı dolgulu çizildiğinden ayrı bir "nokta" işaretine gerek yok).
+  - `drawSketchLeaderAndMarker()` artık `leaderDashed: true` işaretli anchor'lar için (yalnızca "subject"/Konu Taşınmaz) kesikli kırmızı çizgi + gerçek bir OK BAŞI çiziyor (eskiden düz çizgi + dolu daire idi). Emsal bağlantı çizgileri (konu taşınmaz → her emsal) rengi mavi'ye çevrildi (`rgba(37, 99, 235, ...)`, eskiden teal/`rgba(15,118,110,...)`) — "mavi çizgi ile bağlanmaya devam etsin" talebine uyumlu, bağlantı MANTIĞI değişmedi.
+  - Yeni `enforceSketchLabelClearance(anchors, hardPoints, canvasWidth, canvasHeight)` — mevcut `layoutSketchLabels()`'tan SONRA çalışan son bir garanti geçişi: her etiketin TAM dikdörtgen alanını (genişlik dahil) TÜM "sert" noktalara (konu taşınmazın hem gerçek koordinatı hem KML bağlantı noktası + tüm emsal koordinatları) karşı kontrol edip üst üste binme varsa iteratif olarak iter.
+  - "KONU TAŞINMAZ" kutusu küçültüldü (font 30px→26px, max genişlik 430px→360px) — hem daha az yer kaplıyor hem kullanıcının "çok büyük" şikayetine cevap.
+- Yeni `tools/test-comparable-sketch-label-placement.js`: en-uzak-köşe seçimini, etiket-nokta çakışma önlemeyi (worst-case: etiket tam noktanın üzerinde başlatılıp temizlendiği doğrulanıyor), ve gerçek `drawExportComparableSketch()` çağrısının (sahte canvas context ile) hatasız çalıştığını + kesikli çizgi/ok kullanıldığını doğruluyor.
+- Bu değişiklik hem HTML/JPEG dışa aktarımı hem de 0.0.334'te eklenen `.docx` görsel gömme (`{{EMSAL_KROKISI}}`) için AYNI çizim fonksiyonunu paylaştığından, düzeltme HER İKİ çıktı türünü de otomatik kapsıyor.
+- Cache-buster `app.js?v=20260805-0100`.
+- `npm run verify` tamamı geçti.
+
 ## 0.0.335 - 2026-08-04 - Yakın çevre seçimi rapora tekrar girildiğinde artık kayboluyor değil korunuyor
 
 - Kullanıcı: "yeni bir işte adres ve konumda yakın çevre seçiliyor. daha sonra talepten çıkıldığında tekrar girildiğinde seçili yakın çevrenin seçili olmadığı görülüyor."

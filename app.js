@@ -25036,7 +25036,7 @@ async function buildSavedComparableSketchAsset(config) {
   await drawExportTiles(context, canvas, topLeft, zoom, "base", mode);
   await drawExportTiles(context, canvas, topLeft, zoom, "labels", mode);
   drawExportKmlPolygon(context, parsed, topLeft, zoom);
-  drawExportComparableSketch(context, subjectPoint, comparablePoints, topLeft, zoom);
+  drawExportComparableSketch(context, subjectPoint, comparablePoints, topLeft, zoom, parsed);
   const items = [
     ...(subjectPoint ? [{ label: "Konu Taşınmaz", lat: subjectPoint[0], lng: subjectPoint[1], kind: "subject" }] : []),
     ...comparablePoints.map((item) => ({ label: `Emsal ${item.index + 1}`, lat: item.point[0], lng: item.point[1], kind: "comparable" })),
@@ -28593,7 +28593,7 @@ async function exportComparableSketchAsJpeg(wrapper, triggerButton) {
   await drawExportTiles(context, canvas, topLeft, zoom, "base");
   await drawExportTiles(context, canvas, topLeft, zoom, "labels");
   drawExportKmlPolygon(context, parsed, topLeft, zoom);
-  drawExportComparableSketch(context, subjectPoint, comparablePoints, topLeft, zoom);
+  drawExportComparableSketch(context, subjectPoint, comparablePoints, topLeft, zoom, parsed);
 
   try {
     const link = document.createElement("a");
@@ -28607,7 +28607,7 @@ async function exportComparableSketchAsJpeg(wrapper, triggerButton) {
     try {
       drawExportFallbackBase(context, canvas);
       drawExportKmlPolygon(context, parsed, topLeft, zoom);
-      drawExportComparableSketch(context, subjectPoint, comparablePoints, topLeft, zoom);
+      drawExportComparableSketch(context, subjectPoint, comparablePoints, topLeft, zoom, parsed);
       const fallbackLink = document.createElement("a");
       fallbackLink.download = `emsal-konum-krokisi-${dateIsoToTr(new Date().toISOString().slice(0, 10))}.jpg`;
       fallbackLink.href = canvas.toDataURL("image/jpeg", 0.92);
@@ -28746,13 +28746,32 @@ function drawSketchLeaderAndMarker(context, a) {
   if (!Number.isFinite(a.x) || !Number.isFinite(a.y)) return;
   const scale = a.scale || 1;
   context.save();
-  context.setLineDash([]);
-  context.strokeStyle = a.markerColor;
+  context.setLineDash(a.leaderDashed ? [14, 10] : []);
+  context.strokeStyle = a.leaderColor || a.markerColor;
   context.lineWidth = a.leaderWidth || (a.kind === "subject" ? 4 : 3) * scale;
   context.beginPath();
   context.moveTo(a.x, a.y);
   context.lineTo(a.cx, a.cy);
   context.stroke();
+
+  if (a.leaderDashed) {
+    // Kesikli OK ucu — etiketten sınıra doğru çizilen çizginin sınır
+    // ucunda (a.x, a.y) bir ok başı (kullanıcı talebi: "kesik çizgili
+    // kırmızı ok ile konu taşınmaz yazısı bağlansın").
+    context.setLineDash([]);
+    const angle = Math.atan2(a.y - a.cy, a.x - a.cx);
+    const headLength = 14 * scale;
+    context.beginPath();
+    context.moveTo(a.x, a.y);
+    context.lineTo(a.x - headLength * Math.cos(angle - Math.PI / 7), a.y - headLength * Math.sin(angle - Math.PI / 7));
+    context.lineTo(a.x - headLength * Math.cos(angle + Math.PI / 7), a.y - headLength * Math.sin(angle + Math.PI / 7));
+    context.closePath();
+    context.fillStyle = a.leaderColor || a.markerColor;
+    context.fill();
+    context.restore();
+    return;
+  }
+
   context.beginPath();
   context.fillStyle = "#ffffff";
   context.arc(a.x, a.y, a.markerRadius + 3 * scale, 0, Math.PI * 2);
@@ -28783,18 +28802,79 @@ function drawSketchLabelBox(context, a) {
   context.restore();
 }
 
-function drawExportComparableSketch(context, subjectPoint, comparablePoints, topLeft, zoom) {
+// KML sınırının, verilen noktadan (genelde emsal kümesinin merkezi) EN UZAK
+// köşesini döner — "Konu Taşınmaz" etiketini emsal kalabalığından uzağa,
+// açık alana yönlendirmek için kullanılır (bkz. drawExportComparableSketch).
+function pickKmlBoundaryAnchorPixel(parsed, topLeft, zoom, awayFromPoint) {
+  const coordinates = Array.isArray(parsed?.coordinates) ? parsed.coordinates : [];
+  if (!coordinates.length) return null;
+  const pixels = coordinates
+    .map((point) => projectExportPoint(Number(point.lat), Number(point.lng), topLeft, zoom))
+    .filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y));
+  if (!pixels.length) return null;
+  if (!awayFromPoint) return pixels[0];
+  let best = pixels[0];
+  let bestDist = -Infinity;
+  pixels.forEach((p) => {
+    const d = Math.hypot(p.x - awayFromPoint.x, p.y - awayFromPoint.y);
+    if (d > bestDist) { bestDist = d; best = p; }
+  });
+  return best;
+}
+
+// Etiket kutucuklarının (dikdörtgen, sadece merkeze olan mesafe değil TAM
+// GENİŞLİK/YÜKSEKLİK dahil) hiçbir "sert" noktayı (konu taşınmaz + tüm
+// emsal noktaları) örtmediğini garanti eden son düzeltme geçişi — kullanıcı
+// talebi: "Konu Taşınmaz ve Emsal yazıları ... noktalarının hiçbir şekilde
+// üstüne gelmemeli." layoutSketchLabels'teki mevcut min-mesafe kontrolü
+// yalnızca YÜKSEKLİĞE dayalı dairesel bir yaklaşımdı — geniş (ör. 360px)
+// "KONU TAŞINMAZ" kutusu bu yüzden yandaki noktaları örtebiliyordu.
+function enforceSketchLabelClearance(anchors, hardPoints, canvasWidth, canvasHeight) {
+  const points = (hardPoints || []).filter((p) => p && Number.isFinite(p.x) && Number.isFinite(p.y));
+  if (!points.length) return;
+  const pad = 12;
+  for (let iteration = 0; iteration < 80; iteration += 1) {
+    let moved = false;
+    anchors.forEach((a) => {
+      const halfW = a.w / 2 + pad;
+      const halfH = a.h / 2 + pad;
+      points.forEach((p) => {
+        const dx = a.cx - p.x;
+        const dy = a.cy - p.y;
+        if (Math.abs(dx) < halfW && Math.abs(dy) < halfH) {
+          const overlapX = halfW - Math.abs(dx);
+          const overlapY = halfH - Math.abs(dy);
+          if (overlapX < overlapY) {
+            a.cx += (dx >= 0 ? 1 : -1) * (overlapX + 1);
+          } else {
+            a.cy += (dy >= 0 ? 1 : -1) * (overlapY + 1);
+          }
+          moved = true;
+        }
+      });
+    });
+    if (!moved) break;
+  }
+  anchors.forEach((a) => {
+    a.cx = Math.max(a.w / 2 + 6, Math.min(a.cx, canvasWidth - a.w / 2 - 6));
+    a.cy = Math.max(a.h / 2 + 6, Math.min(a.cy, canvasHeight - a.h / 2 - 6));
+    a.lx = a.cx - a.w / 2;
+    a.ly = a.cy - a.h / 2;
+  });
+}
+
+function drawExportComparableSketch(context, subjectPoint, comparablePoints, topLeft, zoom, parsed) {
   const subjectPixel = subjectPoint ? projectExportPoint(subjectPoint[0], subjectPoint[1], topLeft, zoom) : null;
   const comps = comparablePoints.map((item) => ({
     item,
     pixel: projectExportPoint(item.point[0], item.point[1], topLeft, zoom),
   }));
 
-  // Konu taşınmaz → emsal kesikli bağlantı çizgileri
+  // Konu taşınmaz → emsal kesikli bağlantı çizgileri (mavi) — DEĞİŞMEDİ.
   if (subjectPixel) {
     comps.forEach(({ pixel }) => {
       context.save();
-      context.strokeStyle = "rgba(15, 118, 110, 0.72)";
+      context.strokeStyle = "rgba(37, 99, 235, 0.78)";
       context.lineWidth = 4;
       context.setLineDash([14, 12]);
       context.beginPath();
@@ -28805,23 +28885,40 @@ function drawExportComparableSketch(context, subjectPoint, comparablePoints, top
     });
   }
 
+  const compCenter = comps.length
+    ? {
+      x: comps.reduce((sum, c) => sum + c.pixel.x, 0) / comps.length,
+      y: comps.reduce((sum, c) => sum + c.pixel.y, 0) / comps.length,
+    }
+    : { x: context.canvas.width / 2, y: context.canvas.height / 2 };
+
   // Etiket anchor'ları
   const anchors = [];
+  let subjectAnchorPixel = null;
   if (subjectPixel) {
-    context.font = "900 30px Arial";
+    // Kullanıcı talebi: "Kml sınırlarına kesik çizgili kırmızı ok ile konu
+    // taşınmaz yazısı bağlansın" — devasa kutu artık noktanın TAM ÜSTÜNDE
+    // değil, KML sınırının (emsal kümesinden en uzak) bir köşesine kesikli
+    // kırmızı OK ile bağlanıyor; sınır poligonu zaten kırmızı dolgulu
+    // çizildiğinden (drawExportKmlPolygon) ayrı bir nokta işaretine gerek
+    // yok. KML yoksa (eski davranış) doğrudan koordinat noktasına bağlanır.
+    subjectAnchorPixel = pickKmlBoundaryAnchorPixel(parsed, topLeft, zoom, compCenter) || subjectPixel;
+    context.font = "900 26px Arial";
     anchors.push({
       kind: "subject",
-      x: subjectPixel.x,
-      y: subjectPixel.y,
+      x: subjectAnchorPixel.x,
+      y: subjectAnchorPixel.y,
       text: "KONU TAŞINMAZ",
-      w: Math.min(context.measureText("KONU TAŞINMAZ").width + 40, 430),
-      h: 58,
-      font: "900 30px Arial",
+      w: Math.min(context.measureText("KONU TAŞINMAZ").width + 36, 360),
+      h: 50,
+      font: "900 26px Arial",
       fill: "#c81e1e",
       textColor: "#ffffff",
       borderColor: "#ffffff",
       markerColor: "#c81e1e",
-      markerRadius: 12,
+      leaderColor: "#c81e1e",
+      leaderDashed: true,
+      markerRadius: 8,
     });
   }
   comps.forEach(({ item, pixel }) => {
@@ -28844,6 +28941,10 @@ function drawExportComparableSketch(context, subjectPoint, comparablePoints, top
   });
 
   layoutSketchLabels(anchors, context.canvas.width, context.canvas.height);
+  // Son garanti geçişi: hiçbir etiket kutusu konu taşınmaz veya emsal
+  // noktalarının (asıl koordinat + sınır bağlantı noktası) üstüne gelmesin.
+  const hardPoints = [subjectPixel, subjectAnchorPixel, ...comps.map((c) => c.pixel)];
+  enforceSketchLabelClearance(anchors, hardPoints, context.canvas.width, context.canvas.height);
   anchors.forEach((a) => drawSketchLeaderAndMarker(context, a));
   anchors.forEach((a) => drawSketchLabelBox(context, a));
 }
