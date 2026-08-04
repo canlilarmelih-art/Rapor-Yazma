@@ -22749,7 +22749,22 @@ async function saveUserMainArteryFromMap(input, statusElement) {
 function maybeAutoFetchNearbyPlaces() {
   const hasKmlPoint = Boolean(state.sourceValues.kml?.centroid || getSelectedMapPoint());
   const source = state.sourceValues.nearbyPlaces;
-  const hasEnoughNearbyData = source?.readAt && hasRequiredNearbyCoverage(source.places || []);
+  // Kullanıcı talebi: "yakın çevre seçiliyor, talepten çıkıldığında tekrar
+  // girildiğinde seçili yakın çevrenin seçili olmadığı görülüyor" — kök
+  // neden: `hasRequiredNearbyCoverage` eşiği (en az `nearbyAutoLimit`
+  // öğe + `mainArteryAutoLimit` arter) karşılanmayan bölgelerde (ör. az
+  // POI'li kırsal/yeni yerleşim) HER sayfa yüklemesinde/rapor tekrar
+  // açılışında (nearbyAutoFetchStarted modül-kapsamlı bir bayrak olduğu
+  // için sayfa yenilenince sıfırlanıyor) bu fonksiyon sessizce yeniden
+  // tarama başlatıyordu — `fetchNearbyPlacesForCurrentLocation` HER
+  // taramada `selectedIds`'i KOŞULSUZ boşaltıyor, yani kullanıcının elle
+  // seçtiği öğeler (`selectionCustomized: true`) sessizce siliniyordu.
+  // Kullanıcı zaten seçim yaptıysa (selectionCustomized) kapsam eşiği
+  // karşılanmasa bile OTOMATİK yeniden taramayı ATLA — mevcut seçim
+  // korunsun; kullanıcı isterse "Çevreyi tara" düğmesiyle elle
+  // yenileyebilir (o akış hâlâ eskisi gibi sıfırlar, bilinçli bir eylem).
+  const hasEnoughNearbyData = source?.readAt
+    && (source.selectionCustomized || hasRequiredNearbyCoverage(source.places || []));
   if (!hasKmlPoint || hasEnoughNearbyData || source?.loading || nearbyAutoFetchStarted) return;
 
   nearbyAutoFetchStarted = true;

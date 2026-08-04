@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.335 - 2026-08-04 - Yakın çevre seçimi rapora tekrar girildiğinde artık kayboluyor değil korunuyor
+
+- Kullanıcı: "yeni bir işte adres ve konumda yakın çevre seçiliyor. daha sonra talepten çıkıldığında tekrar girildiğinde seçili yakın çevrenin seçili olmadığı görülüyor."
+- **Kök neden**: `maybeAutoFetchNearbyPlaces()` (her `render()` çağrısında/sayfa açılışında tetiklenir) `hasRequiredNearbyCoverage()` eşiğini (en az 4 ana arter + 6 yakın nokta) karşılamayan raporlarda (az POI'li kırsal/yeni bölgeler yaygın örnek) — `nearbyAutoFetchStarted` modül-kapsamlı bayrağı sayfa her yenilendiğinde `false`'a döndüğü için — HER seferinde sessizce yeniden tarama başlatıyordu. `fetchNearbyPlacesForCurrentLocation()` ise her taramada `selectedIds`'i KOŞULSUZ boşaltıyor — yani kullanıcının elle seçip (`toggleNearbySelection` → `selectionCustomized: true`) kaydettiği seçimler, "talepten çıkıp tekrar girme" sırasında (muhtemel sayfa yenilemesiyle) sessizce siliniyordu.
+- **app.js**: `maybeAutoFetchNearbyPlaces()`'teki `hasEnoughNearbyData` kontrolü artık `source.selectionCustomized || hasRequiredNearbyCoverage(...)` — kullanıcı zaten seçim yaptıysa kapsam eşiği karşılanmasa bile otomatik yeniden tarama ATLANIR, mevcut seçim korunur. "Çevreyi tara" düğmesiyle ELLE yenileme akışı (kullanıcının bilinçli eylemi) DOKUNULMADAN aynı şekilde sıfırlamaya devam ediyor.
+- Yeni `tools/test-nearby-selection-persistence.js`: seçim yapılmışken kapsam yetersiz olsa da tarama başlamadığını, seçim yokken kapsam yetersizse eski davranışın (tarama başlar) korunduğunu, kapsam zaten yeterliyse hiçbir durumda taramanın başlamadığını, konum noktası yokken hiçbir durumda taramanın başlamadığını doğruluyor.
+- Cache-buster `app.js?v=20260804-0830`.
+- `npm run verify` tamamı geçti.
+
 ## 0.0.334 - 2026-08-04 - {{EMSAL_KROKISI}} artık .docx'e GERÇEK görsel olarak gömülüyor
 
 - Kullanıcı: "emsal krokisi çıkmıyor word'de."
