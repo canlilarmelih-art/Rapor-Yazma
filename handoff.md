@@ -1,5 +1,12 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.338 - 2026-08-05 - templates/emlakkatilim.docx yeniden STORED paketlendi (Word kilidi kalktıktan sonra)
+
+- Kullanıcı Word'ü kapattı, dosya artık yazılabilir durumda — standart STORED yeniden paketleme uygulandı.
+- Token diff'i (önceki commit ile): tek YENİ token `{{BUILDING_INSPECTION_EXPLANATION}}` — bu zaten var olan bir uygulama alanı (`buildingInspectionExplanation`, "Yapı Denetim Açıklaması") olduğundan genel alan-anahtarı eşlemesiyle otomatik çözülüyor, ek kod gerekmedi. Hiçbir token kaybolmadı.
+- **Beklenmedik yan etki**: kullanıcının Word'de kaydetmesi, 0.0.332'de eklenen `{{CURRENT_VALUE}}`/`{{CURRENT_URGENT_SALE_VALUE}}`'nin arkasındaki statik `" TL"` metnini TÜM 6+3 geçişten sildi (kullanıcının bilerek yaptığı bir değişiklik değil gibi görünüyor — Word'ün kaydetme sürecinin bir yan etkisi olabilir). `test-docx-fill.js`'in 0.0.332'de eklenen regresyon testi bunu HEMEN yakaladı (`npm run verify` kırıldı). `" TL"` eki yeniden uygulandı.
+- `node tools/test-docx-fill.js` ve tam `npm run verify` (69 test) geçti.
+
 ## 0.0.337 - 2026-08-05 - Emsal krokisi etiket çakışması kesin çözüldü (önceki düzeltme yetersizdi)
 
 - Kullanıcı, 0.0.336'nın ekran görüntüsüne tepkiyle: "emsal 1 ve 2 üstüste binmiş ayrıca konu taşınmaz daha uzağa emsal yazılarının olmadığı bir kısma konumlanmalıydı."
