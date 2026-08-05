@@ -27297,6 +27297,18 @@ function collectApplicationFieldPlaceholders() {
   return rows;
 }
 
+// "_BÜYÜK" katalog satırları (Placeholder referans ekranı önizlemesi) için
+// yardımcılar — template-engine.js'teki LEGACY_ALIASES'teki AYNI adlı
+// girdilerle (toTrUpper/malikNamesText) birebir aynı hesaplamayı yapar.
+function toTrUpperForPlaceholderPreview(value) {
+  return String(value || "").toLocaleUpperCase("tr-TR");
+}
+
+function getMalikNamesForPlaceholderPreview() {
+  const rows = Array.isArray(state.tables?.title) ? state.tables.title : [];
+  return rows.map((row) => String(row?.c0 || "").trim()).filter(Boolean).join(", ");
+}
+
 function collectGeneratedTextPlaceholders() {
   const generatedRows = [
     ...getValuationFieldPlaceholderRows(),
@@ -27625,6 +27637,53 @@ function collectGeneratedTextPlaceholders() {
       title: "Açık Adres",
       value: buildOpenAddressText(),
     },
+    // Kullanıcı talebi (2026-08-05): "il, ilçe İdari Mahalle Site/Apartman
+    // Blok Kat Dış Kapı No Cadde/Sokak ... tek placeholder olarak
+    // tablolarda kullanılırken daima tamamı büyükharf olarak export
+    // edilsin" — Adres ve Konum bölümü (8 alan). Bu alanlar SERBEST metin/
+    // seçim olarak GİRİLDİĞİ (kullanıcının yazdığı) biçimde saklanır —
+    // düz {{CITY}} vb. token'lar cümle içi kullanım için AYNEN kalır, bu
+    // "_BÜYÜK" katalog satırları template-engine.js'teki AYNI adlı
+    // LEGACY_ALIASES girdileriyle (CITY_BUYUK vb.) birebir aynı hesaplamayı
+    // gösterir.
+    { category: "Adres ve Konum", key: "CITY_BUYUK", title: "İl (Büyük Harf)", value: toTrUpperForPlaceholderPreview(state.fields.city) },
+    { category: "Adres ve Konum", key: "DISTRICT_BUYUK", title: "İlçe (Büyük Harf)", value: toTrUpperForPlaceholderPreview(state.fields.district) },
+    { category: "Adres ve Konum", key: "NEIGHBORHOOD_BUYUK", title: "İdari Mahalle (Büyük Harf)", value: toTrUpperForPlaceholderPreview(state.fields.neighborhood) },
+    { category: "Adres ve Konum", key: "ADDRESS_SITE_NAME_BUYUK", title: "Site / Apartman (Büyük Harf)", value: toTrUpperForPlaceholderPreview(state.fields.addressSiteName) },
+    { category: "Adres ve Konum", key: "ADDRESS_BLOCK_NAME_BUYUK", title: "Blok (Büyük Harf)", value: toTrUpperForPlaceholderPreview(state.fields.addressBlockName) },
+    { category: "Adres ve Konum", key: "ADDRESS_FLOOR_BUYUK", title: "Kat (Büyük Harf)", value: toTrUpperForPlaceholderPreview(state.fields.addressFloor) },
+    { category: "Adres ve Konum", key: "OUTER_DOOR_BUYUK", title: "Dış Kapı No (Büyük Harf)", value: toTrUpperForPlaceholderPreview(state.fields.outerDoor) },
+    { category: "Adres ve Konum", key: "STREET_BUYUK", title: "Cadde / Sokak (Büyük Harf)", value: toTrUpperForPlaceholderPreview(state.fields.street) },
+    // Tapu ve Mülkiyet bölümü (10 alan) — bu metin alanları zaten GİRİŞ
+    // ANINDA büyük harfe zorlanıp öyle saklanıyor (bkz. titleTextUppercaseKeys,
+    // yukarıda ~satır 771), yani düz {{TITLE_QUALITY}} vb. token'lar ZATEN
+    // büyük harf — "_BÜYÜK" satırları Adres bölümüyle adlandırma tutarlılığı
+    // için var. "_DÜZGÜN" satırları ise cümle içi (Türkçe dilbilgisine
+    // uygun) kullanım için normalizeReportTitleText ile düzeltilmiş halini
+    // gösterir.
+    { category: "Tapu ve Mülkiyet", key: "TITLE_CITY_BUYUK", title: "Tapu İl (Büyük Harf)", value: toTrUpperForPlaceholderPreview(state.fields.titleCity) },
+    { category: "Tapu ve Mülkiyet", key: "TITLE_DISTRICT_BUYUK", title: "Tapu İlçe (Büyük Harf)", value: toTrUpperForPlaceholderPreview(state.fields.titleDistrict) },
+    { category: "Tapu ve Mülkiyet", key: "TITLE_NEIGHBORHOOD_BUYUK", title: "Tapu Mahalle (Büyük Harf)", value: toTrUpperForPlaceholderPreview(state.fields.titleNeighborhood) },
+    { category: "Tapu ve Mülkiyet", key: "LOCATION_NAME_BUYUK", title: "Mevkii (Büyük Harf)", value: toTrUpperForPlaceholderPreview(state.fields.locationName) },
+    { category: "Tapu ve Mülkiyet", key: "SHEET_NO_BUYUK", title: "Pafta (Büyük Harf)", value: toTrUpperForPlaceholderPreview(state.fields.sheetNo) },
+    { category: "Tapu ve Mülkiyet", key: "TITLE_QUALITY_BUYUK", title: "Bağımsız Bölüm Niteliği (Büyük Harf)", value: toTrUpperForPlaceholderPreview(state.fields.titleQuality) },
+    { category: "Tapu ve Mülkiyet", key: "TITLE_BLOCK_NAME_BUYUK", title: "Tapu Blok (Büyük Harf)", value: toTrUpperForPlaceholderPreview(state.fields.titleBlockName) },
+    { category: "Tapu ve Mülkiyet", key: "TITLE_FLOOR_BUYUK", title: "Tapu Katı (Büyük Harf)", value: toTrUpperForPlaceholderPreview(state.fields.titleFloor) },
+    { category: "Tapu ve Mülkiyet", key: "MAIN_PROPERTY_QUALITY_BUYUK", title: "Ana Taşınmaz Niteliği (Büyük Harf)", value: toTrUpperForPlaceholderPreview(state.fields.mainPropertyQuality) },
+    { category: "Tapu ve Mülkiyet", key: "TITLE_ATTACHMENT_BUYUK", title: "Eklenti (Büyük Harf)", value: toTrUpperForPlaceholderPreview(state.fields.titleAttachment) },
+    { category: "Tapu ve Mülkiyet", key: "MALIK_BUYUK", title: "Malik (Büyük Harf)", value: toTrUpperForPlaceholderPreview(getMalikNamesForPlaceholderPreview()) },
+    { category: "Tapu ve Mülkiyet", key: "MALIKLER_BUYUK", title: "Malikler (Büyük Harf)", value: toTrUpperForPlaceholderPreview(getMalikNamesForPlaceholderPreview()) },
+    { category: "Tapu ve Mülkiyet", key: "EDINME_SEBEBI_BUYUK", title: "Edinme Sebebi (Büyük Harf)", value: toTrUpperForPlaceholderPreview(getFirstFilledTitleRow()?.c2) },
+    { category: "Tapu ve Mülkiyet", key: "TITLE_CITY_DUZGUN", title: "Tapu İl (Cümle İçi)", value: normalizeReportTitleText(state.fields.titleCity || "") },
+    { category: "Tapu ve Mülkiyet", key: "TITLE_DISTRICT_DUZGUN", title: "Tapu İlçe (Cümle İçi)", value: normalizeReportTitleText(state.fields.titleDistrict || "") },
+    { category: "Tapu ve Mülkiyet", key: "TITLE_NEIGHBORHOOD_DUZGUN", title: "Tapu Mahalle (Cümle İçi)", value: normalizeReportTitleText(state.fields.titleNeighborhood || "") },
+    { category: "Tapu ve Mülkiyet", key: "LOCATION_NAME_DUZGUN", title: "Mevkii (Cümle İçi)", value: normalizeReportTitleText(state.fields.locationName || "") },
+    { category: "Tapu ve Mülkiyet", key: "SHEET_NO_DUZGUN", title: "Pafta (Cümle İçi)", value: normalizeReportTitleText(state.fields.sheetNo || "") },
+    { category: "Tapu ve Mülkiyet", key: "TITLE_QUALITY_DUZGUN", title: "Bağımsız Bölüm Niteliği (Cümle İçi)", value: normalizeReportTitleText(state.fields.titleQuality || "") },
+    { category: "Tapu ve Mülkiyet", key: "TITLE_BLOCK_NAME_DUZGUN", title: "Tapu Blok (Cümle İçi)", value: normalizeReportTitleText(state.fields.titleBlockName || "") },
+    { category: "Tapu ve Mülkiyet", key: "TITLE_FLOOR_DUZGUN", title: "Tapu Katı (Cümle İçi)", value: normalizeReportTitleText(state.fields.titleFloor || "") },
+    { category: "Tapu ve Mülkiyet", key: "MAIN_PROPERTY_QUALITY_DUZGUN", title: "Ana Taşınmaz Niteliği (Cümle İçi)", value: normalizeReportTitleText(state.fields.mainPropertyQuality || "") },
+    { category: "Tapu ve Mülkiyet", key: "TITLE_ATTACHMENT_DUZGUN", title: "Eklenti (Cümle İçi)", value: normalizeReportTitleText(state.fields.titleAttachment || "") },
     {
       category: "Halkbank Risk Kodları",
       key: "HALKBANK_RISK_KODLARI",

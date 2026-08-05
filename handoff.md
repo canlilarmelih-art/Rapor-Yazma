@@ -1,5 +1,19 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.342 - 2026-08-05 - Adres/Tapu alanları için tablo-güvenli "_BÜYÜK" ve cümle-güvenli "_DÜZGÜN" placeholder aileleri
+
+- Kullanıcı: "adres ve konum bölümünde bulunan il, ilçe İdari Mahalle Site/Apartman Blok Kat Dış Kapı No Cadde/Sokak ... ile Tapu ve mülkiyet bölümünde bulunan il ilçe tapu mahalle mevkii pafta bağımsız bölüm niteliği blok tapu katı ana taşınmaz niteliği eklenti, malik yada malikler edinme sebebi ... tek placeholder olarak tablolarda kullanılırken daima tamamı büyükharf olarak export edilsin. ancak paragraflarda cümle içinde kullanımlarda türkçe dilbilgisi kurallarına uygun olarak kullanılsın."
+- **Keşif — iki bölüm FARKLI davranıyordu**: Adres ve Konum bölümündeki 8 alan (city, district, neighborhood, addressSiteName, addressBlockName, addressFloor, outerDoor, street) kullanıcının girdiği/seçtiği biçimde (proper-case) saklanır. Ama Tapu ve Mülkiyet bölümündeki 10 metin alanı (titleCity, titleDistrict, titleNeighborhood, locationName, sheetNo, titleQuality, titleBlockName, titleFloor, mainPropertyQuality, titleAttachment) app.js'teki **mevcut** `titleTextUppercaseKeys` mekanizmasıyla GİRİŞ ANINDA zaten büyük harfe zorlanıp öyle saklanıyor (form görünümü + kopyala/yapıştır için, 0.0.x öncesi bir tasarım). Yani düz `{{TITLE_QUALITY}}` gibi token'lar tabloda ZATEN doğruydu ama cümle içinde kullanılsa "MESKEN" diye haykırırdı.
+- **src/templates/template-engine.js**: 
+  - Adres bölümü — 8 yeni `_BÜYÜK` LEGACY_ALIASES (`CITY_BUYUK`, `DISTRICT_BUYUK`, ...): `toTrUpper(field(...))` ile Türkçe büyük harfe (İ/ı dahil) çevirir. Düz token'lar (`{{CITY}}` vb.) DOKUNULMADI.
+  - Tapu bölümü — 10 yeni `_BÜYÜK` (adlandırma tutarlılığı için, teknik olarak zaten büyük harf olan değeri tekrar büyütür, zararsız) + **10 yeni `_DÜZGÜN`** (`safeCall("normalizeReportTitleText", field(...))` — app.js'in KENDİ anlatı cümlelerinin kullandığı Baş Harfleri Büyük Türkçe biçimlendirmesiyle) — asıl eksik olan buydu, cümle içi güvenli kullanım için.
+  - Malik/Malikler — yeni `malikNamesText()` (SAHIPLER'den farklı: yalnızca isim(ler), hisse olmadan) + `MALIK_BUYUK`/`MALIKLER_BUYUK`.
+  - Edinme Sebebi — `EDINME_SEBEBI_BUYUK` (mevcut `EDINMESEBEBI` ile aynı kaynak — `firstTitleRowCell("c2")` — büyük harfli).
+- **app.js**: `collectGeneratedTextPlaceholders()` katalogına 31 yeni satır eklendi (`toTrUpperForPlaceholderPreview`/`getMalikNamesForPlaceholderPreview` yardımcılarıyla) — bu projede tekrar eden bir kusur (fn-tabanlı token'lar bu katalogda elle listelenmezse "Placeholder" referans ekranında hiç görünmüyor, bkz. 0.0.319/0.0.323) burada baştan önlendi.
+- Yeni `tools/test-uppercase-table-placeholders.js`: 18 `_BÜYÜK` token'ın (gerçek app.js `titleTextUppercaseKeys` davranışını yansıtan büyük-harf stub verisiyle) doğru çözüldüğünü, Malik/Edinme Sebebi büyük harf varyantlarını, düz Adres token'larının HALA zorlanmadığını, düz Tapu token'larının (zaten büyük harf) davranışının DEĞİŞMEDİĞİNİ, 10 `_DÜZGÜN` token'ın gerçek `normalizeReportTitleText` (app.js'ten dinamik yüklenmiş) ile doğru düzeltildiğini, ve 31 token'ın hepsinin Placeholder referans kataloğunda satırı olduğunu doğruluyor.
+- Cache-buster `app.js?v=20260805-0300`, `src/templates/template-engine.js?v=20260805-0300`.
+- `npm run verify` tamamı geçti.
+
 ## 0.0.341 - 2026-08-05 - Adres/Konum ve Emsal Konum Krokisi haritalarında serbest sürükleyerek gezinme geri açıldı
 
 - Kullanıcı: "adres ve konum haritası ve emsal haritasında serbest gezinemiyorum. bunun sebebi ne?"

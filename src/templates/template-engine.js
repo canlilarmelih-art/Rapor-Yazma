@@ -147,6 +147,27 @@
       .join(", ");
   }
 
+  // {{MALİK_BÜYÜK}}/{{MALİKLER_BÜYÜK}} — SAHIPLER'in aksine (isim+hisse
+  // birleşik: "Ali Veli (1/2)"), yalnızca malik AD(LAR)ını döner — tablo
+  // hücresinde tek başına büyük harfle kullanmaya uygun.
+  function malikNamesText() {
+    const rows = Array.isArray(state.tables?.title) ? state.tables.title : [];
+    return rows.map((row) => String(row?.c0 || "").trim()).filter(Boolean).join(", ");
+  }
+
+  // Kullanıcı talebi (2026-08-05): "il, ilçe ... bölümleri ... tek
+  // placeholder olarak tablolarda kullanılırken daima tamamı büyükharf
+  // olarak export edilsin. ancak paragraflarda cümle içinde kullanımlarda
+  // türkçe dilbilgisi kurallarına uygun olarak kullanılsın." — mevcut
+  // {{CITY}}/{{TITLE_QUALITY}} vb. token'lar (paragraf/cümle içi kullanım
+  // için) kullanıcının GİRDİĞİ biçimiyle (Baş Harf Büyük vb.) AYNEN kalır;
+  // bu yardımcı, aynı değerin AYRI bir "_BÜYÜK" token ailesiyle (yalnızca
+  // tablo hücrelerinde tek başına kullanılmak üzere) Türkçe kurallarına
+  // uygun (İ/ı harfleri dahil) büyük harfe çevrilmiş halini üretir.
+  function toTrUpper(value) {
+    return String(value || "").toLocaleUpperCase("tr-TR");
+  }
+
   function documentsTableHtml() {
     const entries = safeCall("getReviewedDocumentTableEntries", state.tables?.documents)
       || safeCall("getReviewedDocumentChronologicalEntries", state.tables?.documents);
@@ -466,6 +487,68 @@
     SAHIPLER: { fn: ownersListText },
     HISSEPAYI: { fn: ownersShareListText }, // {{HİSSE_PAYI}}
     HISSELIMI: { fn: () => safeCall("gabimHasShareText") },
+
+    // --- "_BÜYÜK" (büyük harf) aile: kullanıcı talebi (2026-08-05) —
+    // "il, ilçe İdari Mahalle Site/Apartman Blok Kat Dış Kapı No Cadde/
+    // Sokak ... il ilçe tapu mahalle mevkii pafta bağımsız bölüm niteliği
+    // blok tapu katı ana taşınmaz niteliği eklenti, malik yada malikler
+    // edinme sebebi ... tek placeholder olarak tablolarda kullanılırken
+    // daima tamamı büyükharf olarak export edilsin. ancak paragraflarda
+    // cümle içinde kullanımlarda türkçe dilbilgisi kurallarına uygun
+    // olarak kullanılsın." — mevcut {{CITY}}/{{TAPU_NITELIK_BB}} vb.
+    // token'lar (cümle içi kullanım için) kullanıcının girdiği biçimiyle
+    // AYNEN kalır; bu AYRI "_BÜYÜK" aile SADECE tablo hücrelerinde tek
+    // başına kullanılmak üzere, aynı veriyi Türkçe büyük harfe (İ/ı dahil)
+    // çevirir. Adres ve Tapu bölümlerindeki "İl/İlçe/Blok" gibi AYNI
+    // isimli ama FARKLI alanlar (city vs titleCity, addressBlockName vs
+    // titleBlockName) kasıtlı olarak AYRI token'lar — birbirine fallback
+    // YAPILMAZ, kullanıcı hangi bölümün değerini istiyorsa onu alır.
+    CITY_BUYUK: { fn: () => toTrUpper(field("city")) },
+    DISTRICT_BUYUK: { fn: () => toTrUpper(field("district")) },
+    NEIGHBORHOOD_BUYUK: { fn: () => toTrUpper(field("neighborhood")) },
+    ADDRESS_SITE_NAME_BUYUK: { fn: () => toTrUpper(field("addressSiteName")) },
+    ADDRESS_BLOCK_NAME_BUYUK: { fn: () => toTrUpper(field("addressBlockName")) },
+    ADDRESS_FLOOR_BUYUK: { fn: () => toTrUpper(field("addressFloor")) },
+    OUTER_DOOR_BUYUK: { fn: () => toTrUpper(field("outerDoor")) },
+    STREET_BUYUK: { fn: () => toTrUpper(field("street")) },
+    TITLE_CITY_BUYUK: { fn: () => toTrUpper(field("titleCity")) },
+    TITLE_DISTRICT_BUYUK: { fn: () => toTrUpper(field("titleDistrict")) },
+    TITLE_NEIGHBORHOOD_BUYUK: { fn: () => toTrUpper(field("titleNeighborhood")) },
+    LOCATION_NAME_BUYUK: { fn: () => toTrUpper(field("locationName")) }, // {{MEVKİİ_BÜYÜK}}
+    SHEET_NO_BUYUK: { fn: () => toTrUpper(field("sheetNo")) }, // {{PAFTA_BÜYÜK}}
+    TITLE_QUALITY_BUYUK: { fn: () => toTrUpper(field("titleQuality")) }, // {{BAĞIMSIZ_BÖLÜM_NİTELİĞİ_BÜYÜK}}
+    TITLE_BLOCK_NAME_BUYUK: { fn: () => toTrUpper(field("titleBlockName")) },
+    TITLE_FLOOR_BUYUK: { fn: () => toTrUpper(field("titleFloor")) }, // {{TAPU_KATI_BÜYÜK}}
+    MAIN_PROPERTY_QUALITY_BUYUK: { fn: () => toTrUpper(field("mainPropertyQuality")) }, // {{ANA_TAŞINMAZ_NİTELİĞİ_BÜYÜK}}
+    TITLE_ATTACHMENT_BUYUK: { fn: () => toTrUpper(field("titleAttachment")) }, // {{EKLENTİ_BÜYÜK}}
+    MALIK_BUYUK: { fn: () => toTrUpper(malikNamesText()) },
+    MALIKLER_BUYUK: { fn: () => toTrUpper(malikNamesText()) },
+    EDINME_SEBEBI_BUYUK: { fn: () => toTrUpper(firstTitleRowCell("c2")) },
+
+    // --- "_DÜZGÜN" (cümle içi kullanıma uygun) aile — Tapu ve Mülkiyet
+    // bölümündeki metin alanları (titleQuality, titleBlockName, ...)
+    // GİRİŞ ANINDA zaten tamamı büyük harfe zorlanıp öyle saklanıyor
+    // (bkz. app.js "titleTextUppercaseKeys" — form görünümü/kopyala-
+    // yapıştır için). Yani bu 10 alanın DÜZ token'ı (ör. {{TITLE_QUALITY}},
+    // {{TAPU_NITELIK_BB}}) ZATEN tablo kullanımı için doğru (büyük harf) —
+    // yukarıdaki "_BÜYÜK" ekleri bu yüzden bu alanlarda teknik olarak
+    // gereksiz (zaten büyük harf) ama Adres bölümüyle aynı adlandırma
+    // tutarlılığı için eklendi. Asıl eksik olan, kullanıcının belirttiği
+    // "paragraflarda cümle içinde ... türkçe dilbilgisi kurallarına uygun"
+    // gereksinimi: düz token doğrudan bir cümlede kullanılırsa "MESKEN"
+    // gibi haykırarak çıkardı. Bu "_DÜZGÜN" ailesi app.js'in KENDİ anlatı
+    // cümlelerinin de kullandığı normalizeReportTitleText (Baş Harfleri
+    // Büyük Türkçe başlık biçimi) ile düzeltilmiş halini döner.
+    TITLE_CITY_DUZGUN: { fn: () => safeCall("normalizeReportTitleText", field("titleCity")) },
+    TITLE_DISTRICT_DUZGUN: { fn: () => safeCall("normalizeReportTitleText", field("titleDistrict")) },
+    TITLE_NEIGHBORHOOD_DUZGUN: { fn: () => safeCall("normalizeReportTitleText", field("titleNeighborhood")) },
+    LOCATION_NAME_DUZGUN: { fn: () => safeCall("normalizeReportTitleText", field("locationName")) },
+    SHEET_NO_DUZGUN: { fn: () => safeCall("normalizeReportTitleText", field("sheetNo")) },
+    TITLE_QUALITY_DUZGUN: { fn: () => safeCall("normalizeReportTitleText", field("titleQuality")) },
+    TITLE_BLOCK_NAME_DUZGUN: { fn: () => safeCall("normalizeReportTitleText", field("titleBlockName")) },
+    TITLE_FLOOR_DUZGUN: { fn: () => safeCall("normalizeReportTitleText", field("titleFloor")) },
+    MAIN_PROPERTY_QUALITY_DUZGUN: { fn: () => safeCall("normalizeReportTitleText", field("mainPropertyQuality")) },
+    TITLE_ATTACHMENT_DUZGUN: { fn: () => safeCall("normalizeReportTitleText", field("titleAttachment")) },
     MALIKLERTABLO: { h: () => safeCall("buildMaliklerTableWordHtml") },
     GABIMVERISETI: { h: () => safeCall("buildGabimDataSetWordHtml") },
     HISSEACIKLAMASI: { t: () => field("shareExplanation"), paragraphClass: "share-explanation" },
