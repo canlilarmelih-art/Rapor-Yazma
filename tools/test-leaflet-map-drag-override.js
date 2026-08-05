@@ -5,12 +5,14 @@
   gezinemiyorum. bunun sebebi ne?" — kok neden: 0.0.168'de dokunmatik
   cihazlarda haritanin tek parmak sayfa kaydirmayi "yutmasini" engellemek
   icin getLeafletInteractionOptions() dragging:false donuyordu (isCoarsePointerDevice()
-  true ise). Bu koruma HALA gecerli (diger haritalar icin), ama kullanici
-  "yalnizca bu iki haritada ac" secince Adres/Konum haritasi
+  true ise). Bu koruma HALA gecerli (kalan diger haritalar icin), ama
+  kullanici once "yalnizca bu iki haritada ac" secip Adres/Konum haritasi
   (renderLeafletKmlMap) ve Emsal Konum Krokisi haritasi
   (renderComparableLocationSketchMap) icin acikca dragging:true'ya
-  zorlayan bir forceDraggable secenegi eklendi; renderComparableLocationMap
-  (emsal nokta secme overlay'i) DOKUNULMADI, mobil koruma orada devam ediyor.
+  zorlayan bir forceDraggable secenegi eklendi; SONRA "serbest gezinme
+  emsallerde konum secme harita kisminda da olmali" deyip
+  renderComparableLocationMap (emsal nokta secme overlay'i) icin de AYNI
+  forceDraggable acildi — artik UC haritanin UCU de serbest surukleniyor.
 */
 
 const assert = require("node:assert/strict");
@@ -62,9 +64,9 @@ function sliceFn(startMarker) {
   console.log("getLeafletInteractionOptions forceDraggable testi tamam.");
 }
 
-// --- 2) Kaynak-duzeyinde kablolama: yalnizca iki harita forceDraggable
-// kullanmali (Adres/Konum + Emsal Konum Krokisi), emsal nokta secme
-// overlay'i (renderComparableLocationMap) DOKUNULMAMIS olmali. -----------
+// --- 2) Kaynak-duzeyinde kablolama: UC harita da forceDraggable
+// kullanmali (Adres/Konum, Emsal Konum Krokisi, Emsal nokta secme
+// overlay'i). -------------------------------------------------------------
 {
   const kmlMapFnBody = sliceFn("function renderLeafletKmlMap(");
   assert(
@@ -80,11 +82,11 @@ function sliceFn(startMarker) {
 
   const pickerMapFnBody = sliceFn("function renderComparableLocationMap(");
   assert(
-    /leaflet\.map\(panel, getLeafletInteractionOptions\(\)\)/.test(pickerMapFnBody),
-    "renderComparableLocationMap (emsal nokta secme overlay'i) yanlislikla degistirilmis olabilir — mobil koruma orada AYNEN kalmali."
+    /leaflet\.map\(panel, getLeafletInteractionOptions\(\{ forceDraggable: true \}\)\)/.test(pickerMapFnBody),
+    "renderComparableLocationMap (emsal nokta secme overlay'i) artik forceDraggable:true kullanmiyor."
   );
 
-  console.log("Harita surukleme override kablolamasi (yalnizca 2 harita) testi tamam.");
+  console.log("Harita surukleme override kablolamasi (uc haritanin ucu de) testi tamam.");
 }
 
 console.log("Leaflet harita surukleme override testi tamam.");

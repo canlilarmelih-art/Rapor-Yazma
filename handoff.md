@@ -1,5 +1,13 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.344 - 2026-08-05 - Üçüncü harita (emsal nokta seçme) da serbest sürüklenebiliyor
+
+- Kullanıcı: "serbest gezinme emsallerde konum seçme harita kısmında da olmalı" — 0.0.341'de kullanıcı bilerek yalnızca Adres/Konum ve Emsal Konum Krokisi haritalarında `forceDraggable` açmayı seçmişti (üçüncü harita — `renderComparableLocationMap`, emsal satırı için nokta seçme overlay'i — bilinçli olarak dokunulmamıştı); şimdi kullanıcı bunu da istiyor.
+- **app.js**: `renderComparableLocationMap()`'teki `leaflet.map(panel, getLeafletInteractionOptions())` çağrısı da `{ forceDraggable: true }` alıyor — artık üç haritanın üçü de dokunmatik-cihaz tespitinden bağımsız serbest sürüklenebiliyor.
+- `tools/test-leaflet-map-drag-override.js` güncellendi: eskiden "üçüncü harita DOKUNULMAMIŞ olmalı" diye doğrulayan bölüm artık "üç haritanın üçü de forceDraggable kullanmalı" diye doğruluyor.
+- Cache-buster `app.js?v=20260805-0345`.
+- `npm run verify` tamamı geçti.
+
 ## 0.0.343 - 2026-08-05 - Büyük/küçük harf kuralı TÜM banka şablonlarına (9 HTML + emlakkatilim.docx) uygulandı, kural kalıcı belgelendi
 
 - Kullanıcı: "tamam bu mantığa göre tüm html ve word template dosyalarını güncelle tek kullanılan tablo içinde kullanılanlar büyük harf diğer paragraf ve cümle içinde kullanılanlar dil bilgisi kurallarına uygun olarak gelsin. tüm templatelere bu kuralı uygula. bu kuralı kalıcı hale getir. yeni template oluştururken bu kurala dikkate ederek oluşturalım."

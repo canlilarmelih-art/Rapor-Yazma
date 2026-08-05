@@ -30923,7 +30923,7 @@ function renderComparableLocationMap(overlay, subjectPoint, selectedPoint, onPoi
     return;
   }
   const leaflet = window.L;
-  const map = leaflet.map(panel, getLeafletInteractionOptions()).setView(selectedPoint ? [selectedPoint.lat, selectedPoint.lng] : subjectPoint, 16);
+  const map = leaflet.map(panel, getLeafletInteractionOptions({ forceDraggable: true })).setView(selectedPoint ? [selectedPoint.lat, selectedPoint.lng] : subjectPoint, 16);
   getLeafletTileLayer().addTo(map);
 
   const coordinates = state.sourceValues.kml?.coordinates || [];
