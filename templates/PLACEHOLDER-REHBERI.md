@@ -21,6 +21,27 @@ verilerinizle doldurur ve Word ile açılabilen bir `.doc` dosyası indirir.
 - Bir placeholder **tanımlıysa ama raporda değeri boşsa** çıktıda boş kalır.
   **Tanımsız bir ad** yazarsanız çıktıda sarı `⚠ AD` işareti görünür ve
   dışa aktarma sonunda uyarı listelenir.
+- **BÜYÜK/KÜÇÜK HARF KURALI (2026-08-05, kalıcı kural — yeni şablon
+  oluştururken de uygulanır)**: aşağıda "★" işaretli alanlar (İl, İlçe,
+  İdari/Tapu Mahalle, Site/Apartman, Blok, Kat, Dış Kapı No, Cadde/Sokak,
+  Mevkii, Pafta, Bağımsız Bölüm Niteliği, Ana Taşınmaz Niteliği, Eklenti,
+  Malik(ler), Edinme Sebebi) için İKİ ayrı placeholder ailesi var:
+  - **Tek başına bir tablo hücresinde** kullanıyorsanız `..._BÜYÜK` ekli
+    olanı seçin (ör. `{{CITY_BÜYÜK}}`, `{{TITLE_QUALITY_BÜYÜK}}`) — değer
+    HER ZAMAN tamamen büyük harfle (Türkçe İ/ı dahil) gelir.
+  - **Bir cümlenin/paragrafın içine gömüyorsanız** (ör. "...1 Adet
+    {{TİTLE_QUALİTY_DÜZGÜN}} nitelikli taşınmazın...") düz adı VEYA
+    (Tapu bölümü alanları için) `..._DÜZGÜN` ekli olanı kullanın — bu
+    ikisi Türkçe dilbilgisine uygun (Baş Harfleri Büyük) gelir, ASLA
+    tamamen büyük harfle haykırmaz.
+  - Neden iki aile var: Adres bölümü alanları (İl, İlçe, İdari Mahalle,
+    Site/Apartman, Blok, Kat, Dış Kapı No, Cadde/Sokak) siz nasıl
+    girdiyseniz öyle saklanır — düz adı zaten cümle-güvenlidir, `_BÜYÜK`
+    eki AYRICA gerekir. Tapu bölümü alanları (Tapu İl/İlçe/Mahalle,
+    Mevkii, Pafta, Bağımsız Bölüm Niteliği, Blok, Tapu Katı, Ana Taşınmaz
+    Niteliği, Eklenti) programda GİRİŞ ANINDA otomatik büyük harfe
+    çevrilip öyle saklanır — düz adı zaten tablo-güvenlidir (büyük harf),
+    cümle içinde kullanmak için `_DÜZGÜN` eki gerekir.
 - Eski Excel programınızın adları (`{{SEHIR}}`, `{{ADRES2025}}` vb.) de
   tolerans amaçlı hâlâ çözümlenir; ancak şablonlarda ve yeni eklemelerde
   programın adlarını kullanın.
@@ -60,18 +81,27 @@ verilerinizle doldurur ve Word ile açılabilen bir `.doc` dosyası indirir.
 
 | Placeholder | İçerik |
 |---|---|
-| `{{CİTY}}` / `{{DİSTRİCT}}` | İl / ilçe |
-| `{{TİTLE_NEİGHBORHOOD}}` | Tapu mahallesi |
-| `{{NEİGHBORHOOD}}` | İdari (adres) mahallesi |
-| `{{STREET}}` | Sokak / cadde |
-| `{{ADDRESS_SİTE_NAME}}` | Site / apartman adı |
-| `{{ADDRESS_BLOCK_NAME}}` / `{{TİTLE_BLOCK_NAME}}` | Blok (adres / tapu) |
-| `{{OUTER_DOOR}}` / `{{İNNER_DOOR}}` | Dış / iç kapı no |
-| `{{ADDRESS_FLOOR}}` / `{{TİTLE_FLOOR}}` | Kat (adres / tapu) |
+| `{{CİTY}}` / `{{DİSTRİCT}}` | İl / ilçe (cümle içi kullanım — zaten Baş Harf Büyük) ★ |
+| `{{CİTY_BÜYÜK}}` / `{{DİSTRİCT_BÜYÜK}}` | İl / ilçe (TABLO hücresi — her zaman büyük harf) ★ |
+| `{{TİTLE_NEİGHBORHOOD}}` | Tapu mahallesi (cümle içi — zaten büyük harf saklanır, cümlede `{{TİTLE_NEİGHBORHOOD_DÜZGÜN}}` kullanın) ★ |
+| `{{TİTLE_NEİGHBORHOOD_BÜYÜK}}` | Tapu mahallesi (TABLO hücresi) ★ |
+| `{{NEİGHBORHOOD}}` | İdari (adres) mahallesi (cümle içi — zaten Baş Harf Büyük) ★ |
+| `{{NEİGHBORHOOD_BÜYÜK}}` | İdari (adres) mahallesi (TABLO hücresi) ★ |
+| `{{STREET}}` / `{{STREET_BÜYÜK}}` | Sokak / cadde (cümle içi / TABLO hücresi) ★ |
+| `{{ADDRESS_SİTE_NAME}}` / `{{ADDRESS_SİTE_NAME_BÜYÜK}}` | Site / apartman adı (cümle içi / TABLO hücresi) ★ |
+| `{{ADDRESS_BLOCK_NAME}}` / `{{ADDRESS_BLOCK_NAME_BÜYÜK}}` | Blok — adres (cümle içi / TABLO hücresi) ★ |
+| `{{TİTLE_BLOCK_NAME}}` | Blok — tapu (cümle içi — zaten büyük harf saklanır, cümlede `{{TİTLE_BLOCK_NAME_DÜZGÜN}}` kullanın) ★ |
+| `{{TİTLE_BLOCK_NAME_BÜYÜK}}` | Blok — tapu (TABLO hücresi) ★ |
+| `{{OUTER_DOOR}}` / `{{OUTER_DOOR_BÜYÜK}}` | Dış kapı no (cümle içi / TABLO hücresi) ★ |
+| `{{İNNER_DOOR}}` | İç kapı no |
+| `{{ADDRESS_FLOOR}}` / `{{ADDRESS_FLOOR_BÜYÜK}}` | Kat — adres (cümle içi / TABLO hücresi) ★ |
+| `{{TİTLE_FLOOR}}` | Kat — tapu (cümle içi — zaten büyük harf saklanır, cümlede `{{TİTLE_FLOOR_DÜZGÜN}}` kullanın) ★ |
+| `{{TİTLE_FLOOR_BÜYÜK}}` | Kat — tapu (TABLO hücresi) ★ |
 | `{{UAVT}}` | UAVT adres kodu |
 | `{{POSTAL_CODE}}` | Posta kodu |
 | `{{LATİTUDE}}` / `{{LONGİTUDE}}` | Koordinatlar |
-| `{{LOCATİON_NAME}}` | Mevkii |
+| `{{LOCATİON_NAME}}` | Mevkii (cümle içi — zaten büyük harf saklanır, cümlede `{{LOCATİON_NAME_DÜZGÜN}}` kullanın) ★ |
+| `{{LOCATİON_NAME_BÜYÜK}}` | Mevkii (TABLO hücresi) ★ |
 | `{{ACIK_ADRES}}` | Açık adres (otomatik birleştirilmiş) |
 | `{{LOCATION_MAP_IMAGE}}` | “Haritayı Kaydet” ile seçilen konu taşınmaz haritası |
 | `{{COMPARABLE_SKETCH_IMAGE}}` | “Krokiyi Kaydet” ile seçilen emsal konum krokisi |
@@ -95,10 +125,13 @@ verilerinizle doldurur ve Word ile açılabilen bir `.doc` dosyası indirir.
 | Placeholder | İçerik |
 |---|---|
 | `{{GROUND_TYPE}}` | Tapu türü / zemin tipi |
-| `{{MAİN_PROPERTY_QUALİTY}}` | Ana taşınmaz niteliği |
-| `{{TİTLE_QUALİTY}}` | B.B. tapudaki nitelik |
+| `{{MAİN_PROPERTY_QUALİTY}}` | Ana taşınmaz niteliği (cümle içi — zaten büyük harf saklanır, cümlede `{{MAİN_PROPERTY_QUALİTY_DÜZGÜN}}` kullanın) ★ |
+| `{{MAİN_PROPERTY_QUALİTY_BÜYÜK}}` | Ana taşınmaz niteliği (TABLO hücresi) ★ |
+| `{{TİTLE_QUALİTY}}` | B.B. tapudaki nitelik (cümle içi — zaten büyük harf saklanır, cümlede `{{TİTLE_QUALİTY_DÜZGÜN}}` kullanın) ★ |
+| `{{TİTLE_QUALİTY_BÜYÜK}}` | B.B. tapudaki nitelik (TABLO hücresi) ★ |
 | `{{CURRENT_USAGE_NATURE}}` | Mevcut/fiili kullanım niteliği |
 | `{{BLOCK_NO}}` / `{{PARCEL_NO}}` / `{{SHEET_NO}}` | Ada / parsel / pafta |
+| `{{SHEET_NO_BÜYÜK}}` | Pafta (TABLO hücresi — Pafta zaten büyük harf saklanır, cümlede `{{SHEET_NO_DÜZGÜN}}` kullanın) ★ |
 | `{{OLD_BLOCK_NO}}` / `{{OLD_PARCEL_NO}}` | Eski ada / parsel |
 | `{{LAND_AREA}}` | Parsel yüzölçümü |
 | `{{SHARE}}` / `{{DENOMİNATOR}}` | Arsa payı / paydası |
@@ -107,7 +140,12 @@ verilerinizle doldurur ve Word ile açılabilen bir `.doc` dosyası indirir.
 | `{{TİTLE_RECORD_CHANGE}}` | Tapu kaydı değişikliği var mı |
 | `{{TAPU_TARİHİ}}` | İlk malikin tapu tarihi * |
 | `{{TAPU_YEVMİYESİ}}` | İlk malikin yevmiye no'su * |
-| `{{EDİNME_SEBEBİ}}` | İlk malikin edinme sebebi * |
+| `{{EDİNME_SEBEBİ}}` | İlk malikin edinme sebebi (cümle içi) * |
+| `{{EDİNME_SEBEBİ_BÜYÜK}}` | İlk malikin edinme sebebi (TABLO hücresi) * ★ |
+| `{{SAHİPLER}}` / `{{SAHİPLER_BÜYÜK}}` | Tüm malikler, isim+hisse birleşik ("Ali Veli (1/2)") — cümle içi / TABLO hücresi ★ |
+| `{{MALİK_BÜYÜK}}` / `{{MALİKLER_BÜYÜK}}` | Tüm malikler, YALNIZCA isim(ler) (hissesiz), TABLO hücresi ★ |
+| `{{TİTLE_ATTACHMENT}}` | Eklenti (cümle içi — zaten büyük harf saklanır, cümlede `{{TİTLE_ATTACHMENT_DÜZGÜN}}` kullanın) ★ |
+| `{{TİTLE_ATTACHMENT_BÜYÜK}}` | Eklenti (TABLO hücresi) ★ |
 | `{{MALIKLER_TABLO}}` | Malikler tablosu (HTML tablo) |
 | `{{HİSSELİ_Mİ}}` | Hisseli mi (Evet/Hayır) * |
 | `{{SHARE_EXPLANATİON}}` | Hisse açıklaması |

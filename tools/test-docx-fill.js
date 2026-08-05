@@ -239,10 +239,13 @@ assert.ok(DocxFill && typeof DocxFill.fillTemplate === "function", "RaporDocxFil
   const docText = new TextDecoder("utf-8").decode(docEntry.bytes);
   const tokens = DocxFill.collectTokens(docText);
   check(tokens.length >= 30, `emlakkatilim.docx icinde beklenenden az {{TOKEN}} bulundu: ${tokens.length}`);
-  check(tokens.includes("CITY"), "emlakkatilim.docx icinde {{CITY}} bulunamadi.");
+  // 2026-08-05: kullanici talebi ile tablo hucresi placeholder'lari (Adres
+  // bolumu + Malik) "_BUYUK" varyantlarina cevrildi (bkz. handoff) — CITY/
+  // SAHIPLER artik CITY_BUYUK/SAHIPLER_BUYUK olarak geciyor.
+  check(tokens.includes("CITY_BUYUK"), "emlakkatilim.docx icinde {{CITY_BUYUK}} bulunamadi.");
   check(tokens.includes("CURRENT_VALUE"), "emlakkatilim.docx icinde {{CURRENT_VALUE}} bulunamadi.");
   check(tokens.includes("SALON"), "emlakkatilim.docx icinde {{SALON}} bulunamadi.");
-  check(tokens.includes("SAHIPLER"), "emlakkatilim.docx icinde {{SAHIPLER}} bulunamadi.");
+  check(tokens.includes("SAHIPLER_BUYUK"), "emlakkatilim.docx icinde {{SAHIPLER_BUYUK}} bulunamadi.");
   check(!tokens.some((t) => t.startsWith("BOLD:")), "collectTokens gercek sablonda da {{BOLD:...}} isaretlerini normal token saymamali.");
   // Coktan-secmeli alanlar (Cevre Analizi/Kira Kabiliyeti) icin {{BOLD:AD}}
   // isaretleri sablonda gercekten var mi (applyBoldMarkers'in isleyecegi

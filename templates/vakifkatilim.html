@@ -144,7 +144,7 @@
         <th>İl</th><th>İlçe</th><th>Mahalle / Köy</th><th>Pafta</th><th>Ada</th><th>Parsel</th><th>Blok</th><th>BB No</th><th>Arsa Pay / Payda</th>
       </tr>
       <tr>
-        <td>{{CİTY}}</td><td>{{DİSTRİCT}}</td><td>{{TİTLE_NEİGHBORHOOD}}</td><td>{{SHEET_NO}}</td><td>{{BLOCK_NO}}</td><td>{{PARCEL_NO}}</td><td>{{TİTLE_BLOCK_NAME}}</td><td>{{UNİT_NO}}</td><td>{{SHARE}} / {{DENOMİNATOR}}</td>
+        <td>{{CİTY_BUYUK}}</td><td>{{DİSTRİCT_BUYUK}}</td><td>{{TİTLE_NEİGHBORHOOD}}</td><td>{{SHEET_NO}}</td><td>{{BLOCK_NO}}</td><td>{{PARCEL_NO}}</td><td>{{TİTLE_BLOCK_NAME}}</td><td>{{UNİT_NO}}</td><td>{{SHARE}} / {{DENOMİNATOR}}</td>
       </tr>
     </table>
     <h3>Tapu Açıklaması</h3>
@@ -178,7 +178,7 @@
     {{MALIKLER_TABLO}}
     <hr class="vk-rule">
     <table class="vk-form">
-      <tr><td class="vk-label"><span class="vk-req">*</span> İl</td><td class="vk-value"><div>{{CİTY}}</div></td><td class="vk-label"><span class="vk-req">*</span> İlçe</td><td class="vk-value"><div>{{DİSTRİCT}}</div></td></tr>
+      <tr><td class="vk-label"><span class="vk-req">*</span> İl</td><td class="vk-value"><div>{{CİTY_BUYUK}}</div></td><td class="vk-label"><span class="vk-req">*</span> İlçe</td><td class="vk-value"><div>{{DİSTRİCT_BUYUK}}</div></td></tr>
       <tr><td class="vk-label">Bucak</td><td class="vk-value"><div>&nbsp;</div></td><td class="vk-label">Mahalle / Köy</td><td class="vk-value"><div>{{TİTLE_NEİGHBORHOOD}}</div></td></tr>
       <tr><td class="vk-label">Mevkii</td><td class="vk-value"><div>{{LOCATİON_NAME}}</div></td><td class="vk-label">Zemin No</td><td class="vk-value"><div>{{TİTLE_PROPERTY_ID}}</div></td></tr>
       <tr><td class="vk-label"><span class="vk-req">*</span> Pafta</td><td class="vk-value"><div>{{SHEET_NO}}</div></td><td class="vk-label"><span class="vk-req">*</span> Ada</td><td class="vk-value"><div>{{BLOCK_NO}}</div></td></tr>
@@ -206,12 +206,12 @@
   <div class="vk-body">
     <h3>Gayrimenkulün Açık Adresi</h3>
     <table class="vk-form">
-      <tr><td class="vk-label">(Banka) İl</td><td class="vk-value"><div>{{CİTY}}</div></td><td class="vk-label">İlçe</td><td class="vk-value"><div>{{DİSTRİCT}}</div></td></tr>
-      <tr><td class="vk-label">Mahalle / Köy</td><td class="vk-value"><div>{{NEİGHBORHOOD}}</div></td><td class="vk-label">Semt</td><td class="vk-value"><div>&nbsp;</div></td></tr>
-      <tr><td class="vk-label">Bulvar / Cadde</td><td class="vk-value"><div>{{STREET}}</div></td><td class="vk-label">Sokak</td><td class="vk-value"><div>{{STREET}}</div></td></tr>
-      <tr><td class="vk-label">Site / Lojman / Plaza Adı</td><td class="vk-value"><div>{{ADDRESS_SİTE_NAME}}</div></td><td class="vk-label">Bina Kapı No</td><td class="vk-value"><div>{{OUTER_DOOR}}</div></td></tr>
-      <tr><td class="vk-label">Apartman Adı</td><td class="vk-value"><div>{{ADDRESS_SİTE_NAME}}</div></td><td class="vk-label">Blok / Giriş</td><td class="vk-value"><div>{{ADDRESS_BLOCK_NAME}}</div></td></tr>
-      <tr><td class="vk-label">Kat No</td><td class="vk-value"><div>{{ADDRESS_FLOOR}}</div></td><td class="vk-label">Bağ. Böl. İç Kapı No <span class="vk-hint">(Mahallindeki Daire Numarası)</span></td><td class="vk-value"><div>{{INNER_DOOR}}</div></td></tr>
+      <tr><td class="vk-label">(Banka) İl</td><td class="vk-value"><div>{{CİTY_BUYUK}}</div></td><td class="vk-label">İlçe</td><td class="vk-value"><div>{{DİSTRİCT_BUYUK}}</div></td></tr>
+      <tr><td class="vk-label">Mahalle / Köy</td><td class="vk-value"><div>{{NEİGHBORHOOD_BUYUK}}</div></td><td class="vk-label">Semt</td><td class="vk-value"><div>&nbsp;</div></td></tr>
+      <tr><td class="vk-label">Bulvar / Cadde</td><td class="vk-value"><div>{{STREET_BUYUK}}</div></td><td class="vk-label">Sokak</td><td class="vk-value"><div>{{STREET_BUYUK}}</div></td></tr>
+      <tr><td class="vk-label">Site / Lojman / Plaza Adı</td><td class="vk-value"><div>{{ADDRESS_SİTE_NAME_BUYUK}}</div></td><td class="vk-label">Bina Kapı No</td><td class="vk-value"><div>{{OUTER_DOOR_BUYUK}}</div></td></tr>
+      <tr><td class="vk-label">Apartman Adı</td><td class="vk-value"><div>{{ADDRESS_SİTE_NAME_BUYUK}}</div></td><td class="vk-label">Blok / Giriş</td><td class="vk-value"><div>{{ADDRESS_BLOCK_NAME_BUYUK}}</div></td></tr>
+      <tr><td class="vk-label">Kat No</td><td class="vk-value"><div>{{ADDRESS_FLOOR_BUYUK}}</div></td><td class="vk-label">Bağ. Böl. İç Kapı No <span class="vk-hint">(Mahallindeki Daire Numarası)</span></td><td class="vk-value"><div>{{INNER_DOOR}}</div></td></tr>
       <tr><td class="vk-label">Posta Kodu</td><td class="vk-value"><div>{{POSTAL_CODE}}</div></td><td class="vk-label">Köy veya Kırsal Mahallede Mi?</td><td class="vk-value"><div>{{MUNICIPALITY_BOUNDARY_STATUS}}</div></td></tr>
       <tr><td class="vk-label">Enlem (K)</td><td class="vk-value"><div>{{LATİTUDE}}</div></td><td class="vk-label">Boylam (D)</td><td class="vk-value"><div>{{LONGİTUDE}}</div></td></tr>
       <tr><td class="vk-label">Açık Adres</td><td colspan="3" class="vk-value-wide"><div>{{ACIK_ADRES}}</div></td></tr>
@@ -473,10 +473,10 @@
 <div class="pg-section">
 <h2 style="page-break-before:always;">GDYS YARDIMCI BİLGİLER</h2>
 <table class="meta">
-  <tr><td class="l">İL</td><td>{{CİTY}}</td></tr>
-  <tr><td class="l">İLÇE</td><td>{{DİSTRİCT}}</td></tr>
-  <tr><td class="l">MAHALLE / KÖY</td><td>{{NEİGHBORHOOD}}</td></tr>
-  <tr><td class="l">SOKAK / CADDE</td><td>{{STREET}}</td></tr>
+  <tr><td class="l">İL</td><td>{{CİTY_BUYUK}}</td></tr>
+  <tr><td class="l">İLÇE</td><td>{{DİSTRİCT_BUYUK}}</td></tr>
+  <tr><td class="l">MAHALLE / KÖY</td><td>{{NEİGHBORHOOD_BUYUK}}</td></tr>
+  <tr><td class="l">SOKAK / CADDE</td><td>{{STREET_BUYUK}}</td></tr>
   <tr><td class="l">AÇIK ADRES</td><td>{{ACIK_ADRES}}</td></tr>
   <tr><td class="l">UAVT KODU</td><td>{{UAVT}}</td></tr>
   <tr><td class="l">BİNA YAPI TARZI</td><td>{{BUİLDİNG_STYLE}}</td></tr>
@@ -491,9 +491,9 @@
   <tr><td class="l">OTOPARK</td><td>{{CARPARK}}</td></tr>
   <tr><td class="l">ASANSÖR</td><td>{{ELEVATOR}}</td></tr>
   <tr><td class="l">SOSYAL TESİSLER</td><td>{{SOCİAL_FACİLİTİES}}</td></tr>
-  <tr><td class="l">SİTE / APARTMAN ADI</td><td>{{ADDRESS_SİTE_NAME}}</td></tr>
+  <tr><td class="l">SİTE / APARTMAN ADI</td><td>{{ADDRESS_SİTE_NAME_BUYUK}}</td></tr>
   <tr><td class="l">BULUNDUĞU KAT</td><td>{{TİTLE_FLOOR}}</td></tr>
-  <tr><td class="l">BİNA DIŞ KAPI NO</td><td>{{OUTER_DOOR}}</td></tr>
+  <tr><td class="l">BİNA DIŞ KAPI NO</td><td>{{OUTER_DOOR_BUYUK}}</td></tr>
   <tr><td class="l">İÇ KAPI NO</td><td>{{UNİT_NO}}</td></tr>
   <tr><td class="l">İÇ HACİMLER</td><td>{{KAT_BAZLI_İÇ_HACİMLER}}</td></tr>
   <tr><td class="l">ENERJİ SINIFI</td><td>{{EKB_ENERGY_CLASS}}</td></tr>

@@ -9,7 +9,7 @@
   programdaki verilerle doldurulur. Kullanılabilir tüm placeholder adları
   için templates/PLACEHOLDER-REHBERI.md dosyasına bakın.
   Büyük/küçük harf ve Türkçe karakter farkları önemsizdir:
-  {{CİTY}} = {{sehir}} = {{ŞEHİR}}.
+  {{CİTY_BUYUK}} = {{sehir}} = {{ŞEHİR}}.
 -->
 <style>
   @page WordSection1 { size: 595.35pt 841.95pt; margin: 36pt; mso-header-margin:35.4pt; mso-footer-margin:35.4pt; mso-paper-source:0; }
@@ -65,8 +65,8 @@
 {{MALIKLER_TABLO}}
 
 <table class="meta">
-  <tr><td class="l">İL</td><td>{{CİTY}}</td></tr>
-  <tr><td class="l">İLÇE</td><td>{{DİSTRİCT}}</td></tr>
+  <tr><td class="l">İL</td><td>{{CİTY_BUYUK}}</td></tr>
+  <tr><td class="l">İLÇE</td><td>{{DİSTRİCT_BUYUK}}</td></tr>
   <tr><td class="l">MAHALLE / KÖY</td><td>{{TİTLE_NEİGHBORHOOD}}</td></tr>
   <tr><td class="l">MEVKİİ</td><td>{{LOCATİON_NAME}}</td></tr>
   <tr><td class="l">PAFTA</td><td>{{SHEET_NO}}</td></tr>
@@ -87,12 +87,12 @@
 <h2>Konum Sekmesi</h2>
 <table class="meta">
   <tr><td class="l">GAYRİMENKULÜN AÇIK ADRESİ</td><td>{{ACIK_ADRES}}</td></tr>
-  <tr><td class="l">İL</td><td>{{CİTY}}</td></tr>
-  <tr><td class="l">İLÇE</td><td>{{DİSTRİCT}}</td></tr>
-  <tr><td class="l">MAHALLE / KÖY</td><td>{{NEİGHBORHOOD}}</td></tr>
-  <tr><td class="l">SOKAK / CADDE</td><td>{{STREET}}</td></tr>
-  <tr><td class="l">SİTE / APARTMAN</td><td>{{ADDRESS_SİTE_NAME}}</td></tr>
-  <tr><td class="l">BİNA KAPI NO</td><td>{{OUTER_DOOR}}</td></tr>
+  <tr><td class="l">İL</td><td>{{CİTY_BUYUK}}</td></tr>
+  <tr><td class="l">İLÇE</td><td>{{DİSTRİCT_BUYUK}}</td></tr>
+  <tr><td class="l">MAHALLE / KÖY</td><td>{{NEİGHBORHOOD_BUYUK}}</td></tr>
+  <tr><td class="l">SOKAK / CADDE</td><td>{{STREET_BUYUK}}</td></tr>
+  <tr><td class="l">SİTE / APARTMAN</td><td>{{ADDRESS_SİTE_NAME_BUYUK}}</td></tr>
+  <tr><td class="l">BİNA KAPI NO</td><td>{{OUTER_DOOR_BUYUK}}</td></tr>
   <tr><td class="l">BLOK</td><td>{{TİTLE_BLOCK_NAME}}</td></tr>
   <tr><td class="l">KAT</td><td>{{TİTLE_FLOOR}}</td></tr>
   <tr><td class="l">BB.NO</td><td>{{UNİT_NO}}</td></tr>
@@ -206,10 +206,10 @@
 <div class="pg-section">
 <h2 style="page-break-before:always;">GDYS YARDIMCI BİLGİLER</h2>
 <table class="meta">
-  <tr><td class="l">İL</td><td>{{CİTY}}</td></tr>
-  <tr><td class="l">İLÇE</td><td>{{DİSTRİCT}}</td></tr>
-  <tr><td class="l">MAHALLE / KÖY</td><td>{{NEİGHBORHOOD}}</td></tr>
-  <tr><td class="l">SOKAK / CADDE</td><td>{{STREET}}</td></tr>
+  <tr><td class="l">İL</td><td>{{CİTY_BUYUK}}</td></tr>
+  <tr><td class="l">İLÇE</td><td>{{DİSTRİCT_BUYUK}}</td></tr>
+  <tr><td class="l">MAHALLE / KÖY</td><td>{{NEİGHBORHOOD_BUYUK}}</td></tr>
+  <tr><td class="l">SOKAK / CADDE</td><td>{{STREET_BUYUK}}</td></tr>
   <tr><td class="l">AÇIK ADRES</td><td>{{ACIK_ADRES}}</td></tr>
   <tr><td class="l">UAVT KODU</td><td>{{UAVT}}</td></tr>
   <tr><td class="l">BİNA YAPI TARZI</td><td>{{BUİLDİNG_STYLE}}</td></tr>
@@ -224,9 +224,9 @@
   <tr><td class="l">OTOPARK</td><td>{{CARPARK}}</td></tr>
   <tr><td class="l">ASANSÖR</td><td>{{ELEVATOR}}</td></tr>
   <tr><td class="l">SOSYAL TESİSLER</td><td>{{SOCİAL_FACİLİTİES}}</td></tr>
-  <tr><td class="l">SİTE / APARTMAN ADI</td><td>{{ADDRESS_SİTE_NAME}}</td></tr>
+  <tr><td class="l">SİTE / APARTMAN ADI</td><td>{{ADDRESS_SİTE_NAME_BUYUK}}</td></tr>
   <tr><td class="l">BULUNDUĞU KAT</td><td>{{TİTLE_FLOOR}}</td></tr>
-  <tr><td class="l">BİNA DIŞ KAPI NO</td><td>{{OUTER_DOOR}}</td></tr>
+  <tr><td class="l">BİNA DIŞ KAPI NO</td><td>{{OUTER_DOOR_BUYUK}}</td></tr>
   <tr><td class="l">İÇ KAPI NO</td><td>{{UNİT_NO}}</td></tr>
   <tr><td class="l">İÇ HACİMLER</td><td>{{KAT_BAZLI_İÇ_HACİMLER}}</td></tr>
   <tr><td class="l">ENERJİ SINIFI</td><td>{{EKB_ENERGY_CLASS}}</td></tr>

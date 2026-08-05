@@ -1,5 +1,20 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.343 - 2026-08-05 - Büyük/küçük harf kuralı TÜM banka şablonlarına (9 HTML + emlakkatilim.docx) uygulandı, kural kalıcı belgelendi
+
+- Kullanıcı: "tamam bu mantığa göre tüm html ve word template dosyalarını güncelle tek kullanılan tablo içinde kullanılanlar büyük harf diğer paragraf ve cümle içinde kullanılanlar dil bilgisi kurallarına uygun olarak gelsin. tüm templatelere bu kuralı uygula. bu kuralı kalıcı hale getir. yeni template oluştururken bu kurala dikkate ederek oluşturalım."
+- **Kapsamlı denetim** (Python ile, tüm `templates/*.html` + `emlakkatilim.docx`'in `word/document.xml`'i, foldTokenName eşdeğerli eşleme): 0.0.342'de tanımlanan 18+2 alanın (Adres 8, Tapu 10, Malik, Edinme Sebebi) TÜM gerçek geçişleri tek tek context'iyle incelendi. Sonuç: **Adres bölümü alanlarının TAMAMI (~70 geçiş) tablo hücresi (`<td>`/`<div class="...value">`) içinde** — hiçbir sentence/paragraf kullanımı yok. **Tapu bölümü alanları da neredeyse tamamı tablo hücresi** — yalnızca 3 GERÇEK cümle-içi kullanım bulundu: `vakifbank.html`'de "1 Adet {{TİTLE_QUALİTY}} Nitelikli Taşınmazın..." ve `ziraat.html`/`ziraat-arsa-arazi.html`'de "{{TİTLE_QUALİTY}} olarak kullanılmaktadır."
+- **Uygulanan değişiklik** (9 HTML dosyası: akbank, halkbank, isbankasi, kuveytturk, vakifbank, vakifkatilim, yapikredi, ziraat, ziraat-arsa-arazi — isbankasi-masraf ve ziraat-ek-tablo'da bu alanlar hiç geçmiyor, dokunulmadı):
+  - Adres bölümü alanlarının (city/district/neighborhood/street/addressSiteName/addressBlockName/addressFloor/outerDoor) TÜM tablo-hücresi geçişleri `_BÜYÜK` eklentili hallerine çevrildi (~70 geçiş).
+  - Tapu bölümü alanları (zaten büyük harf saklandığından) tablo hücrelerinde OLDUĞU GİBİ bırakıldı — yalnızca yukarıdaki 3 cümle-içi geçiş hedeflenmiş şekilde `_DÜZGÜN`'e çevrildi.
+  - `{{EDİNME_SEBEBİ}}` (isbankasi.html, vakifbank.html, tümü tablo) → `{{EDİNME_SEBEBİ_BÜYÜK}}`.
+- **templates/emlakkatilim.docx**: aynı denetim → TÜM geçişler (185 token) tablo hücresi, sentence kullanım YOK. Adres alanları (CİTY×3, DİSTRİCT×3, STREET×3, NEİGHBORHOOD×1, ADDRESS_SİTE_NAME×1, ADDRESS_FLOOR×1, OUTER_DOOR×2) `_BÜYÜK`'e çevrildi; Tapu alanları (zaten büyük harf) dokunulmadı. `{{SAHIPLER}}` (Malik hücresi, ×3) → yeni `{{SAHIPLER_BUYUK}}` (isim+hisse birleşik, büyük harf — `MALIK_BUYUK`'tan FARKLI, o yalnızca isim verir). STORED zip olarak yeniden paketlendi.
+- **src/templates/template-engine.js**: yeni `SAHIPLER_BUYUK: { fn: () => toTrUpper(ownersListText()) }`.
+- **Test düzeltmeleri**: `tools/test-bank-templates.js`'teki isbankasi Tapu sıra kontrolü ve ziraat cümle-içi kontrolü yeni token adlarına güncellendi; `tools/test-docx-fill.js`'in gerçek şablon sağlık kontrolü `{{CITY}}`/`{{SAHIPLER}}` yerine `{{CITY_BUYUK}}`/`{{SAHIPLER_BUYUK}}` arıyor artık. `tools/test-uppercase-table-placeholders.js`'e SAHIPLER_BUYUK testi + katalog kapsam kontrolüne eklendi.
+- **Kalıcı belgeleme**: `templates/PLACEHOLDER-REHBERI.md`'ye "BÜYÜK/KÜÇÜK HARF KURALI" bölümü + ilgili tüm satırlara `_BÜYÜK`/`_DÜZGÜN` eşleri eklendi; `CLAUDE.md`'ye kalıcı bir kural bölümü eklendi ("yeni bir banka şablonu oluştururken veya var olanı düzenlerken UYULMALI") — gelecekteki oturumlar (Codex dahil) bu kuralı otomatik takip edecek.
+- Cache-buster `app.js?v=20260805-0330`, `src/templates/template-engine.js?v=20260805-0330`.
+- `npm run verify` tamamı geçti (69 test dosyası).
+
 ## 0.0.342 - 2026-08-05 - Adres/Tapu alanları için tablo-güvenli "_BÜYÜK" ve cümle-güvenli "_DÜZGÜN" placeholder aileleri
 
 - Kullanıcı: "adres ve konum bölümünde bulunan il, ilçe İdari Mahalle Site/Apartman Blok Kat Dış Kapı No Cadde/Sokak ... ile Tapu ve mülkiyet bölümünde bulunan il ilçe tapu mahalle mevkii pafta bağımsız bölüm niteliği blok tapu katı ana taşınmaz niteliği eklenti, malik yada malikler edinme sebebi ... tek placeholder olarak tablolarda kullanılırken daima tamamı büyükharf olarak export edilsin. ancak paragraflarda cümle içinde kullanımlarda türkçe dilbilgisi kurallarına uygun olarak kullanılsın."

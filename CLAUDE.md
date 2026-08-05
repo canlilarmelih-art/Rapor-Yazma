@@ -234,6 +234,42 @@ mevcut bir mimari emsal). `PRIVATE_REPORT_TEMPLATES`'te dosya adı
 `.docx` uzantılı olursa bu ayrı yol otomatik devreye girer.
 Test: `tools/test-docx-fill.js`.
 
+## Şablonlarda büyük harf kuralı: "_BÜYÜK" (tablo) vs "_DÜZGÜN" (cümle) (0.0.342, 2026-08-05)
+
+**KALICI KURAL — yeni bir banka şablonu (.html veya .docx) oluştururken
+veya var olanı düzenlerken UYULMALI.** İl, İlçe, İdari/Tapu Mahalle,
+Site/Apartman, Blok (adres/tapu), Kat (adres/tapu), Dış Kapı No,
+Cadde/Sokak, Mevkii, Pafta, Bağımsız Bölüm Niteliği, Ana Taşınmaz
+Niteliği, Eklenti, Malik(ler), Edinme Sebebi alanlarının HER BİRİ için
+`src/templates/template-engine.js`'te İKİ LEGACY_ALIASES ailesi var:
+
+- `..._BUYUK` (ör. `CITY_BUYUK`, `TITLE_QUALITY_BUYUK`) → placeholder
+  **tek başına bir tablo hücresinde** kullanılıyorsa BUNU seç, değer HER
+  ZAMAN Türkçe büyük harfle (İ/ı dahil, `toTrUpper`/`String.toLocaleUpperCase("tr-TR")`)
+  gelir.
+- Düz ad (ör. `{{CITY}}`) VEYA (yalnızca Tapu bölümü alanları için)
+  `..._DUZGUN` (ör. `TITLE_QUALITY_DUZGUN`, `normalizeReportTitleText`
+  ile Baş Harfleri Büyük) → placeholder **bir cümle/paragrafın içine
+  gömülüyorsa** BUNU seç.
+
+Neden iki farklı davranış: Adres bölümü alanları (city, district,
+neighborhood, addressSiteName, addressBlockName, addressFloor, outerDoor,
+street) kullanıcının girdiği biçimde saklanır — düz ad zaten cümle-
+güvenli, `_BUYUK` eki AYRICA eklendi. Tapu bölümü alanları (titleCity,
+titleDistrict, titleNeighborhood, locationName, sheetNo, titleQuality,
+titleBlockName, titleFloor, mainPropertyQuality, titleAttachment)
+`app.js`'teki `titleTextUppercaseKeys` mekanizmasıyla GİRİŞ ANINDA büyük
+harfe zorlanıp öyle saklanır — düz ad zaten tablo-güvenli (büyük harf),
+cümle içi kullanım için `_DUZGUN` şart. Malik(ler) için `{{SAHIPLER_BUYUK}}`
+(isim+hisse birleşik) / `{{MALIK_BUYUK}}`/`{{MALIKLER_BUYUK}}` (yalnızca
+isim) var. Tam liste ve hangi alanın hangi aileye ait olduğu:
+`templates/PLACEHOLDER-REHBERI.md` ("BÜYÜK/KÜÇÜK HARF KURALI" bölümü).
+Yeni bir fn-tabanlı placeholder eklerken (bu veya benzer bir alan için)
+`app.js`'teki `collectGeneratedTextPlaceholders()` katalogına da satır
+eklemeyi UNUTMA (aksi halde "Placeholder" referans ekranında görünmez —
+bu projede tekrar eden bilinen bir kusur, bkz. 0.0.319/0.0.323).
+Test: `tools/test-uppercase-table-placeholders.js`.
+
 ## Bu depoda paralel oturum uyarısı
 
 Aynı çalışma dizininde başka bir ajan (Codex) da düzenleme yapabiliyor.

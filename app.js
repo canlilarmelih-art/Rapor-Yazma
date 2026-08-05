@@ -27309,6 +27309,16 @@ function getMalikNamesForPlaceholderPreview() {
   return rows.map((row) => String(row?.c0 || "").trim()).filter(Boolean).join(", ");
 }
 
+// template-engine.js'teki ownersListText() ile ayni (isim+hisse birlesik,
+// SAHIPLER'i besleyen) — SAHIPLER_BUYUK katalog onizlemesi icin.
+function getOwnersListForPlaceholderPreview() {
+  const rows = Array.isArray(state.tables?.title) ? state.tables.title : [];
+  return rows
+    .filter((row) => String(row?.c0 || "").trim())
+    .map((row) => (row.c1 ? `${row.c0} (${row.c1})` : row.c0))
+    .join(", ");
+}
+
 function collectGeneratedTextPlaceholders() {
   const generatedRows = [
     ...getValuationFieldPlaceholderRows(),
@@ -27673,6 +27683,7 @@ function collectGeneratedTextPlaceholders() {
     { category: "Tapu ve Mülkiyet", key: "TITLE_ATTACHMENT_BUYUK", title: "Eklenti (Büyük Harf)", value: toTrUpperForPlaceholderPreview(state.fields.titleAttachment) },
     { category: "Tapu ve Mülkiyet", key: "MALIK_BUYUK", title: "Malik (Büyük Harf)", value: toTrUpperForPlaceholderPreview(getMalikNamesForPlaceholderPreview()) },
     { category: "Tapu ve Mülkiyet", key: "MALIKLER_BUYUK", title: "Malikler (Büyük Harf)", value: toTrUpperForPlaceholderPreview(getMalikNamesForPlaceholderPreview()) },
+    { category: "Tapu ve Mülkiyet", key: "SAHIPLER_BUYUK", title: "Sahipler / Malik (İsim+Hisse, Büyük Harf)", value: toTrUpperForPlaceholderPreview(getOwnersListForPlaceholderPreview()) },
     { category: "Tapu ve Mülkiyet", key: "EDINME_SEBEBI_BUYUK", title: "Edinme Sebebi (Büyük Harf)", value: toTrUpperForPlaceholderPreview(getFirstFilledTitleRow()?.c2) },
     { category: "Tapu ve Mülkiyet", key: "TITLE_CITY_DUZGUN", title: "Tapu İl (Cümle İçi)", value: normalizeReportTitleText(state.fields.titleCity || "") },
     { category: "Tapu ve Mülkiyet", key: "TITLE_DISTRICT_DUZGUN", title: "Tapu İlçe (Cümle İçi)", value: normalizeReportTitleText(state.fields.titleDistrict || "") },

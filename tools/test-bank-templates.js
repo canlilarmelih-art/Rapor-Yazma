@@ -747,7 +747,7 @@ const isbankTapuSection = isbankTemplateSource.slice(
   "{{TAPU_YEVMİYESİ}}",
   "{{REGISTRY_VOLUME}}",
   "{{REGISTRY_PAGE}}",
-  "{{EDİNME_SEBEBİ}}",
+  "{{EDİNME_SEBEBİ_BUYUK}}",
   "{{UAVT}}",
   "{{TITLE_PROPERTY_ID}}",
 ].reduce((previousIndex, marker) => {
@@ -891,7 +891,7 @@ assert(
     ziraatTemplateSource.includes("{{ORDER}} Nizam") &&
     ziraatTemplateSource.includes("<div>Hasarsız</div>") &&
     ziraatTemplateSource.includes("Değ. Rap. Konu Gayr. Fiili Kullanım Amacı</td><td class=\"zg-value\"><div>{{CURRENT_USAGE_NATURE}}</div>") &&
-    ziraatTemplateSource.includes("{{TİTLE_QUALİTY}} olarak kullanılmaktadır.") &&
+    ziraatTemplateSource.includes("{{TİTLE_QUALİTY_DÜZGÜN}} olarak kullanılmaktadır.") &&
     ziraatTemplateSource.includes("<div>Hayır</div>") &&
     ziraatTemplateSource.includes("{{MUTFAK}}"),
   "Ziraat'in iki GABIM giriş bölümü, raporun başında banka ekranındaki kapsamlı form düzeninde yer almıyor."

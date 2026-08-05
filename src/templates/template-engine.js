@@ -523,6 +523,10 @@
     TITLE_ATTACHMENT_BUYUK: { fn: () => toTrUpper(field("titleAttachment")) }, // {{EKLENTİ_BÜYÜK}}
     MALIK_BUYUK: { fn: () => toTrUpper(malikNamesText()) },
     MALIKLER_BUYUK: { fn: () => toTrUpper(malikNamesText()) },
+    // emlakkatilim.docx'in kapak tablosundaki "Malik" hücresi mevcut
+    // {{SAHIPLER}} (isim+hisse birleşik, ör. "Ali Veli (1/2)") kullanıyor —
+    // tablo kuralı için AYNI verinin büyük harfli hali.
+    SAHIPLER_BUYUK: { fn: () => toTrUpper(ownersListText()) },
     EDINME_SEBEBI_BUYUK: { fn: () => toTrUpper(firstTitleRowCell("c2")) },
 
     // --- "_DÜZGÜN" (cümle içi kullanıma uygun) aile — Tapu ve Mülkiyet

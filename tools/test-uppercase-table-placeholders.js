@@ -178,6 +178,12 @@ assert.ok(engine, "window.RaporTemplates olusmadi.");
   const edinme = engine.resolveToken("EDINME_SEBEBI_BUYUK");
   assert.equal(edinme.html, "SATIŞ", `EDINME_SEBEBI_BUYUK yanlis: ${edinme.html}`);
 
+  // emlakkatilim.docx kapak tablosunun "Malik" hucresi SAHIPLER'i
+  // (isim+hisse birlesik, ör. "Ali Veli (1/2)") kullaniyor — ayni verinin
+  // buyuk harfli hali.
+  const sahiplerBuyuk = engine.resolveToken("SAHIPLER_BUYUK");
+  assert.equal(sahiplerBuyuk.html, "ALİ VELİ (1/2), İNCİ ŞAHİN (1/2)", `SAHIPLER_BUYUK yanlis: ${sahiplerBuyuk.html}`);
+
   console.log("Malik/Malikler ve Edinme Sebebi buyuk harf token'lari testi tamam.");
 }
 
@@ -245,7 +251,7 @@ assert.ok(engine, "window.RaporTemplates olusmadi.");
     "ADDRESS_BLOCK_NAME_BUYUK", "ADDRESS_FLOOR_BUYUK", "OUTER_DOOR_BUYUK", "STREET_BUYUK",
     "TITLE_CITY_BUYUK", "TITLE_DISTRICT_BUYUK", "TITLE_NEIGHBORHOOD_BUYUK", "LOCATION_NAME_BUYUK",
     "SHEET_NO_BUYUK", "TITLE_QUALITY_BUYUK", "TITLE_BLOCK_NAME_BUYUK", "TITLE_FLOOR_BUYUK",
-    "MAIN_PROPERTY_QUALITY_BUYUK", "TITLE_ATTACHMENT_BUYUK", "MALIK_BUYUK", "MALIKLER_BUYUK",
+    "MAIN_PROPERTY_QUALITY_BUYUK", "TITLE_ATTACHMENT_BUYUK", "MALIK_BUYUK", "MALIKLER_BUYUK", "SAHIPLER_BUYUK",
     "EDINME_SEBEBI_BUYUK",
     "TITLE_CITY_DUZGUN", "TITLE_DISTRICT_DUZGUN", "TITLE_NEIGHBORHOOD_DUZGUN", "LOCATION_NAME_DUZGUN",
     "SHEET_NO_DUZGUN", "TITLE_QUALITY_DUZGUN", "TITLE_BLOCK_NAME_DUZGUN", "TITLE_FLOOR_DUZGUN",

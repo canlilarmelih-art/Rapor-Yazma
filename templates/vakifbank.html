@@ -46,7 +46,7 @@
 <p>Sisteme giriş: https://ekspertiz.vakifbank.com.tr/index.php</p>
 
 <h2>Temel Bilgiler Sekmesi — Değerleme Konusu</h2>
-<p>1 Adet {{TİTLE_QUALİTY}} Nitelikli Taşınmazın Teminat Amaçlı Değer Tespiti</p>
+<p>1 Adet {{TİTLE_QUALİTY_DÜZGÜN}} Nitelikli Taşınmazın Teminat Amaçlı Değer Tespiti</p>
 
 <h2>Tapu Kaydı Sekmesi — TAPU AÇIKLAMASI</h2>
 <table class="meta">
@@ -60,8 +60,8 @@
 {{MALIKLER_TABLO}}
 
 <table class="meta">
-  <tr><td class="l">İL</td><td>{{CİTY}}</td></tr>
-  <tr><td class="l">İLÇE</td><td>{{DİSTRİCT}}</td></tr>
+  <tr><td class="l">İL</td><td>{{CİTY_BUYUK}}</td></tr>
+  <tr><td class="l">İLÇE</td><td>{{DİSTRİCT_BUYUK}}</td></tr>
   <tr><td class="l">MAHALLE / KÖY</td><td>{{TİTLE_NEİGHBORHOOD}}</td></tr>
   <tr><td class="l">MEVKİİ</td><td>{{LOCATİON_NAME}}</td></tr>
   <tr><td class="l">PAFTA</td><td>{{SHEET_NO}}</td></tr>
@@ -76,7 +76,7 @@
   <tr><td class="l">BB.NO</td><td>{{UNİT_NO}}</td></tr>
   <tr><td class="l">ARSA PAYI</td><td>{{SHARE}} / {{DENOMİNATOR}}</td></tr>
   <tr><td class="l">TAPU TARİHİ</td><td>{{TAPU_TARİHİ}}</td></tr>
-  <tr><td class="l">EDİNME SEBEBİ</td><td>{{EDİNME_SEBEBİ}}</td></tr>
+  <tr><td class="l">EDİNME SEBEBİ</td><td>{{EDİNME_SEBEBİ_BUYUK}}</td></tr>
   <tr><td class="l">TAŞINMAZ İLK KEZ Mİ SATIŞA KONU</td><td>SIFIR TAŞINMAZ / İKİNCİ EL TAŞINMAZ</td></tr>
 </table>
 
@@ -84,15 +84,15 @@
 <table class="meta">
   <tr><td class="l">ADRES KODU</td><td>{{UAVT}}</td></tr>
   <tr><td class="l">GAYRİMENKULÜN AÇIK ADRESİ</td><td>{{ACIK_ADRES}}</td></tr>
-  <tr><td class="l">İL</td><td>{{CİTY}}</td></tr>
-  <tr><td class="l">İLÇE</td><td>{{DİSTRİCT}}</td></tr>
-  <tr><td class="l">MAHALLE / KÖY</td><td>{{NEİGHBORHOOD}}</td></tr>
+  <tr><td class="l">İL</td><td>{{CİTY_BUYUK}}</td></tr>
+  <tr><td class="l">İLÇE</td><td>{{DİSTRİCT_BUYUK}}</td></tr>
+  <tr><td class="l">MAHALLE / KÖY</td><td>{{NEİGHBORHOOD_BUYUK}}</td></tr>
   <tr><td class="l">BİNA ADA</td><td>{{BLOCK_NO}}</td></tr>
   <tr><td class="l">BİNA PARSEL</td><td>{{PARCEL_NO}}</td></tr>
-  <tr><td class="l">BİNA KAPI NO</td><td>{{OUTER_DOOR}}</td></tr>
-  <tr><td class="l">SİTE / APARTMAN</td><td>{{ADDRESS_SİTE_NAME}}</td></tr>
+  <tr><td class="l">BİNA KAPI NO</td><td>{{OUTER_DOOR_BUYUK}}</td></tr>
+  <tr><td class="l">SİTE / APARTMAN</td><td>{{ADDRESS_SİTE_NAME_BUYUK}}</td></tr>
   <tr><td class="l">BİNA KAT SAYISI</td><td>{{TOTAL_FLOORS}}</td></tr>
-  <tr><td class="l">SOKAK / CADDE</td><td>{{STREET}}</td></tr>
+  <tr><td class="l">SOKAK / CADDE</td><td>{{STREET_BUYUK}}</td></tr>
   <tr><td class="l">KAPI NO</td><td>{{UNİT_NO}}</td></tr>
   <tr><td class="l">KAT</td><td>{{TİTLE_FLOOR}}</td></tr>
 </table>
@@ -105,8 +105,8 @@
   <tr><td class="l">VERİLİŞ TARİHİ</td><td>{{EKB_ISSUE_DATE}}</td></tr>
   <tr><td class="l">GEÇERLİLİK TARİHİ</td><td>{{EKB_VALİD_UNTİL}}</td></tr>
   <tr><td class="l">PERFORMANS SINIFI</td><td>{{EKB_ENERGY_CLASS}}</td></tr>
-  <tr><td class="l">BEPTR İL</td><td>{{CİTY}}</td></tr>
-  <tr><td class="l">BEPTR İLÇE</td><td>{{DİSTRİCT}}</td></tr>
+  <tr><td class="l">BEPTR İL</td><td>{{CİTY_BUYUK}}</td></tr>
+  <tr><td class="l">BEPTR İLÇE</td><td>{{DİSTRİCT_BUYUK}}</td></tr>
 </table>
 
 <h2>HARİTA KONUM</h2>
@@ -219,10 +219,10 @@
 <div class="pg-section">
 <h2 style="page-break-before:always;">GDYS YARDIMCI BİLGİLER</h2>
 <table class="meta">
-  <tr><td class="l">İL</td><td>{{CİTY}}</td></tr>
-  <tr><td class="l">İLÇE</td><td>{{DİSTRİCT}}</td></tr>
-  <tr><td class="l">MAHALLE / KÖY</td><td>{{NEİGHBORHOOD}}</td></tr>
-  <tr><td class="l">SOKAK / CADDE</td><td>{{STREET}}</td></tr>
+  <tr><td class="l">İL</td><td>{{CİTY_BUYUK}}</td></tr>
+  <tr><td class="l">İLÇE</td><td>{{DİSTRİCT_BUYUK}}</td></tr>
+  <tr><td class="l">MAHALLE / KÖY</td><td>{{NEİGHBORHOOD_BUYUK}}</td></tr>
+  <tr><td class="l">SOKAK / CADDE</td><td>{{STREET_BUYUK}}</td></tr>
   <tr><td class="l">AÇIK ADRES</td><td>{{ACIK_ADRES}}</td></tr>
   <tr><td class="l">UAVT KODU</td><td>{{UAVT}}</td></tr>
   <tr><td class="l">BİNA YAPI TARZI</td><td>{{BUİLDİNG_STYLE}}</td></tr>
@@ -237,9 +237,9 @@
   <tr><td class="l">OTOPARK</td><td>{{CARPARK}}</td></tr>
   <tr><td class="l">ASANSÖR</td><td>{{ELEVATOR}}</td></tr>
   <tr><td class="l">SOSYAL TESİSLER</td><td>{{SOCİAL_FACİLİTİES}}</td></tr>
-  <tr><td class="l">SİTE / APARTMAN ADI</td><td>{{ADDRESS_SİTE_NAME}}</td></tr>
+  <tr><td class="l">SİTE / APARTMAN ADI</td><td>{{ADDRESS_SİTE_NAME_BUYUK}}</td></tr>
   <tr><td class="l">BULUNDUĞU KAT</td><td>{{TİTLE_FLOOR}}</td></tr>
-  <tr><td class="l">BİNA DIŞ KAPI NO</td><td>{{OUTER_DOOR}}</td></tr>
+  <tr><td class="l">BİNA DIŞ KAPI NO</td><td>{{OUTER_DOOR_BUYUK}}</td></tr>
   <tr><td class="l">İÇ KAPI NO</td><td>{{UNİT_NO}}</td></tr>
   <tr><td class="l">İÇ HACİMLER</td><td>{{KAT_BAZLI_İÇ_HACİMLER}}</td></tr>
   <tr><td class="l">ENERJİ SINIFI</td><td>{{EKB_ENERGY_CLASS}}</td></tr>
