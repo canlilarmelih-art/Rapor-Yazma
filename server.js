@@ -2793,7 +2793,14 @@ async function handleStatic(request, response) {
     return;
   }
   const relativePath = path.relative(path.resolve(appDir), filePath).replace(/\\/g, "/");
-  if (relativePath.startsWith("templates/")) {
+  // Not: bu blok yalnizca gercekten proprietary (metni/tasarimi kopyalanabilir)
+  // banka rapor sablonlarini (HTML/DOCX) korur — onlar sadece /api/report-template-*
+  // uzerinden servis edilir. .xlsx sablonlari (orn. templates/ziraat-ek-tablo.xlsx)
+  // ise icerik acisindan hassas olmayan, tamamen istemci tarafinda doldurulan bos
+  // bicimlendirme kabuklaridir; asagidaki normal oturum-auth kapisindan gecmeye
+  // devam ederler. Bu istisna olmadan ziraat-ek-tablo-xlsx.js'nin dogrudan fetch()
+  // cagrisi 404 alip "Ek Tablo" zip paketinden sessizce dusuyordu (2026-08-05).
+  if (relativePath.startsWith("templates/") && !relativePath.toLowerCase().endsWith(".xlsx")) {
     applySecurityHeaders(response);
     response.writeHead(404, { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" });
     response.end("Sablonlar dogrudan indirilemez.");
@@ -3129,4 +3136,7 @@ module.exports = {
   activityEvents,
   buildNewUserNotificationEmailHtml,
   sendEmailViaResend,
+  handleStatic,
+  resolveStaticPath,
+  server,
 };

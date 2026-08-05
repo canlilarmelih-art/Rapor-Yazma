@@ -1,5 +1,15 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.346 - 2026-08-05 - Ziraat Ek Tablo XLSX artık "Banka Şablonuyla Kaydet" ZIP paketine giriyor
+
+- Kullanıcı: "Ziraat bankasında ek tablo zip paketi içinde olmalıydı. ancak şu an yok. sadece hesaplama tablolarının bulunduğu excel var."
+- **Kök neden**: `3741c66` ("feat: render bank templates through protected server API", 2026-08-03) commit'i, gerçekten hassas (kopyalanabilir metin/tasarım içeren) banka rapor şablonlarını (`templates/*.html`, `templates/emlakkatilim.docx`) korumak için `server.js` → `handleStatic()` içine `templates/` altındaki HER şeyi koşulsuz 404'leyen bir blok ekledi. Ancak `src/exports/ziraat-ek-tablo-xlsx.js`, `templates/ziraat-ek-tablo.xlsx` dosyasını DOĞRUDAN `fetch()` ile çekiyor (bu mekanizma `3741c66`'dan ÖNCE kurulmuştu, ayrı commit'lerde: `463d8e6`, `40ac23f`, `59001dd`, `a22eabe`, `b26eda1`) — bu şablon HTML/DOCX gibi hassas değil, tamamen istemci tarafında doldurulan boş bir biçimlendirme kabuğu. Blok bu meşru fetch'i de kapsayınca `RaporXlsxFill.fillTemplate()` 404 metnini xlsx gibi parse etmeye çalışıp hata fırlatıyordu; `exportZiraatEkTabloWithBankTemplateIfNeeded()` bunu try/catch'te yutup `ziraatFailed=true` set ediyor ve Ek Tablo, kullanıcıya belirgin bir uyarı olmadan ZIP'ten sessizce düşüyordu.
+- **server.js**: `handleStatic()`'teki `templates/` bloğuna dar bir istisna eklendi — `.xlsx` uzantılı dosyalar artık bu bloğa takılmıyor, normal oturum-auth akışına (`isPublicStaticFile` → giriş kontrolü) düşüyor. HTML/DOCX (gerçekten hassas şablonlar) hâlâ aynı şekilde 404 ile engelleniyor — istisna yalnızca `.xlsx`'e özel, gevşetme genişletilmedi.
+- `handleStatic`, `resolveStaticPath` ve `server` (http.Server örneği) artık test edilebilmesi için `module.exports`'a eklendi.
+- **Yeni test**: `tools/test-ziraat-ek-tablo-static-access.js` — gerçek bir HTTP sunucusu (ephemeral port) üzerinden `templates/ziraat-ek-tablo.xlsx`'in artık blok-özel 404 gövdesini almadığını, buna karşın `templates/isbank.html` ve `templates/emlakkatilim.docx`'in hâlâ engellendiğini doğruluyor.
+- Bu değişiklik yalnızca `server.js` (sunucu tarafı) — istemci JS dosyası değişmedi, `index.html` cache-buster bump gerekmedi.
+- `npm run verify` tamamı geçti (yeni test dahil).
+
 ## 0.0.345 - 2026-08-05 - Emsal Konum Krokisi haritasında fare tekerleği ile yakınlaştırma açıldı
 
 - Kullanıcı: "dikkatimi çeken haritalar ile ilgili 1 konu var mouse tekerleği ile zoom in ve zoom out yapamıyorum."
