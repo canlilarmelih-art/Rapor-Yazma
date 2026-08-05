@@ -76,9 +76,14 @@ function sliceFn(startMarker) {
 
   const sketchMapFnBody = sliceFn("function renderComparableLocationSketchMap(");
   assert(
-    sketchMapFnBody.includes("...getLeafletInteractionOptions({ forceDraggable: true })"),
+    /leaflet\.map\(panel, getLeafletInteractionOptions\(\{ forceDraggable: true \}\)\)/.test(sketchMapFnBody),
     "renderComparableLocationSketchMap artik forceDraggable:true kullanmiyor."
   );
+  // Kullanici talebi (2026-08-05): "mouse tekerleği ile zoom in ve zoom
+  // out yapamıyorum" — bu haritada eskiden scrollWheelZoom:false SABİT
+  // olarak zorlaniyordu (masaustunde bile), fare tekerlegi ile yakinlastirma
+  // engelleniyordu. Artik hic gecmiyor, Leaflet varsayilanini (true) kullaniyor.
+  assert(!sketchMapFnBody.includes("scrollWheelZoom"), "renderComparableLocationSketchMap hala scrollWheelZoom'u sabitliyor olabilir (fare tekerlegi yakinlastirma calismaz).");
 
   const pickerMapFnBody = sliceFn("function renderComparableLocationMap(");
   assert(

@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.345 - 2026-08-05 - Emsal Konum Krokisi haritasında fare tekerleği ile yakınlaştırma açıldı
+
+- Kullanıcı: "dikkatimi çeken haritalar ile ilgili 1 konu var mouse tekerleği ile zoom in ve zoom out yapamıyorum."
+- **Kök neden**: `renderComparableLocationSketchMap()` (Emsal Konum Krokisi haritası) harita oluşturulurken `scrollWheelZoom: false`'u masaüstünde bile SABİT olarak zorluyordu — dokunmatik-cihaz tespitinden bağımsız, hep kapalıydı. Diğer iki harita (Adres/Konum, Emsal nokta seçme) bu sabit değeri hiç kullanmıyordu, onlarda zaten Leaflet'in varsayılanı (`true`) geçerliydi.
+- **app.js**: bu sabit `scrollWheelZoom: false` kaldırıldı — artık üç harita da aynı şekilde davranıyor (masaüstünde fare tekerleğiyle serbest yakınlaştırma, dokunmatik cihazlarda hâlâ `isCoarsePointerDevice()` koruması geçerli — sayfa kaydırmasını yutmasın diye).
+- `tools/test-leaflet-map-drag-override.js`'e bu haritanın artık `scrollWheelZoom`'u hiç sabitlemediğini doğrulayan bir regresyon kontrolü eklendi.
+- Cache-buster `app.js?v=20260805-0400`.
+- `npm run verify` tamamı geçti.
+
 ## 0.0.344 - 2026-08-05 - Üçüncü harita (emsal nokta seçme) da serbest sürüklenebiliyor
 
 - Kullanıcı: "serbest gezinme emsallerde konum seçme harita kısmında da olmalı" — 0.0.341'de kullanıcı bilerek yalnızca Adres/Konum ve Emsal Konum Krokisi haritalarında `forceDraggable` açmayı seçmişti (üçüncü harita — `renderComparableLocationMap`, emsal satırı için nokta seçme overlay'i — bilinçli olarak dokunulmamıştı); şimdi kullanıcı bunu da istiyor.

@@ -28524,10 +28524,7 @@ function renderComparableLocationSketchMap(wrapper) {
   }
   panel.innerHTML = "";
   const leaflet = window.L;
-  const map = leaflet.map(panel, {
-    ...getLeafletInteractionOptions({ forceDraggable: true }),
-    scrollWheelZoom: false,
-  }).setView(subjectPoint, 15);
+  const map = leaflet.map(panel, getLeafletInteractionOptions({ forceDraggable: true })).setView(subjectPoint, 15);
   wrapper._comparableSketchMap = map;
   getLeafletTileLayer().addTo(map);
 
