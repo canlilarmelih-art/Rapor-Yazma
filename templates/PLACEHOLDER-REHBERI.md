@@ -125,6 +125,7 @@ verilerinizle doldurur ve Word ile açılabilen bir `.doc` dosyası indirir.
 | Placeholder | İçerik |
 |---|---|
 | `{{GROUND_TYPE}}` | Tapu türü / zemin tipi |
+| `{{RESİDENCE_TYPE}}` | Konut niteliği — Mülkiyet (`titleOwnershipKind`) Dikey/Yatay Kat İrtifakı ise "Apartman Dairesi", aksi halde "Müstakil Bina" |
 | `{{MAİN_PROPERTY_QUALİTY}}` | Ana taşınmaz niteliği (cümle içi — zaten büyük harf saklanır, cümlede `{{MAİN_PROPERTY_QUALİTY_DÜZGÜN}}` kullanın) ★ |
 | `{{MAİN_PROPERTY_QUALİTY_BÜYÜK}}` | Ana taşınmaz niteliği (TABLO hücresi) ★ |
 | `{{TİTLE_QUALİTY}}` | B.B. tapudaki nitelik (cümle içi — zaten büyük harf saklanır, cümlede `{{TİTLE_QUALİTY_DÜZGÜN}}` kullanın) ★ |

@@ -4552,6 +4552,17 @@ function getUrgentSaleValueText(mode) {
   return Number.isFinite(rounded) ? formatValuationMoney(rounded) : "";
 }
 
+// Kullanıcı talebi (Yapı Kredi şablonu düzeltme listesi): "UAVT den sonra
+// Konut Niteliği (Dikey yada yatay kat irtifakı seçili ise Apartman
+// Dairesi, değilse Müstakil bina)". titleOwnershipKind alanının
+// ["", "Dikey Kat İrtifakı", "Yatay Kat İrtifakı", "Müstakil Bina", "Arsa",
+// "Tarla"] seçeneklerinden Dikey/Yatay Kat İrtifakı ise "Apartman Dairesi",
+// aksi halde (Müstakil Bina/Arsa/Tarla/seçilmemiş) "Müstakil Bina" döner.
+function getResidenceTypeText() {
+  const kind = state.fields.titleOwnershipKind || "";
+  return kind === "Dikey Kat İrtifakı" || kind === "Yatay Kat İrtifakı" ? "Apartman Dairesi" : "Müstakil Bina";
+}
+
 function syncLandOwnershipValuationDefaults() {
   if (!isLandOwnershipType()) return;
   const area = parseValuationNumber(state.fields.landArea);
@@ -27703,6 +27714,10 @@ function collectGeneratedTextPlaceholders() {
     { category: "Tapu ve Mülkiyet", key: "TITLE_BLOCK_NAME_BUYUK", title: "Tapu Blok (Büyük Harf)", value: toTrUpperForPlaceholderPreview(state.fields.titleBlockName) },
     { category: "Tapu ve Mülkiyet", key: "TITLE_FLOOR_BUYUK", title: "Tapu Katı (Büyük Harf)", value: toTrUpperForPlaceholderPreview(state.fields.titleFloor) },
     { category: "Tapu ve Mülkiyet", key: "MAIN_PROPERTY_QUALITY_BUYUK", title: "Ana Taşınmaz Niteliği (Büyük Harf)", value: toTrUpperForPlaceholderPreview(state.fields.mainPropertyQuality) },
+    // Kullanıcı talebi (Yapı Kredi şablonu düzeltme listesi, 2026-08-06):
+    // Mülkiyet (titleOwnershipKind) Dikey/Yatay Kat İrtifakı ise "Apartman
+    // Dairesi", aksi halde "Müstakil Bina".
+    { category: "Tapu ve Mülkiyet", key: "RESIDENCE_TYPE", title: "Konut Niteliği (Apartman Dairesi / Müstakil Bina)", value: getResidenceTypeText() },
     { category: "Tapu ve Mülkiyet", key: "TITLE_ATTACHMENT_BUYUK", title: "Eklenti (Büyük Harf)", value: toTrUpperForPlaceholderPreview(state.fields.titleAttachment) },
     { category: "Tapu ve Mülkiyet", key: "MALIK_BUYUK", title: "Malik (Büyük Harf)", value: toTrUpperForPlaceholderPreview(getMalikNamesForPlaceholderPreview()) },
     { category: "Tapu ve Mülkiyet", key: "MALIKLER_BUYUK", title: "Malikler (Büyük Harf)", value: toTrUpperForPlaceholderPreview(getMalikNamesForPlaceholderPreview()) },

@@ -828,6 +828,10 @@
     MEVCUTDURUMDEGERI: { m: ["currentValue"] },
     LEGALURGENTSALEVALUE: { fn: () => safeCall("getUrgentSaleValueText", "legal") },
     CURRENTURGENTSALEVALUE: { fn: () => safeCall("getUrgentSaleValueText", "current") },
+    // Kullanıcı talebi (Yapı Kredi şablonu düzeltme listesi, 2026-08-06):
+    // "UAVT den sonra Konut Niteliği (Dikey yada yatay kat irtifakı seçili
+    // ise Apartman Dairesi, değilse Müstakil bina)".
+    RESIDENCETYPE: { fn: () => safeCall("getResidenceTypeText") },
     MEVCUTKIRA: { m: ["currentRent"] },
     YASALKIRA: { m: ["legalRent"] },
     YILLIKKIRAMEVCUT: {

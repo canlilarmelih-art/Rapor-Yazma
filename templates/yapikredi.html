@@ -120,13 +120,15 @@
   <tr><td class="l">YÜZÖLÇÜMÜ</td><td>{{LAND_AREA}}</td></tr>
   <tr><td class="l">ARSA PAYI</td><td>{{SHARE}} / {{DENOMİNATOR}}</td></tr>
   <tr><td class="l">KAT</td><td>{{TİTLE_FLOOR}}</td></tr>
+  <tr><td class="l">İÇ KAPI NO</td><td>{{UNİT_NO}}</td></tr>
   <tr><td class="l">TAPU KAYDI DEĞİŞİKLİĞİ VAR MI</td><td>{{TİTLE_RECORD_CHANGE}}</td></tr>
   <tr><td class="l">VAR İSE AÇIKLAMASI</td><td>-</td></tr>
   <tr><td class="l">TAPU TÜRÜ</td><td>{{GROUND_TYPE}}</td></tr>
   <tr><td class="l">ANA GM NİTELİĞİ</td><td>{{MAİN_PROPERTY_QUALİTY}}</td></tr>
   <tr><td class="l">TAŞINMAZ ID</td><td>{{TİTLE_PROPERTY_ID}}</td></tr>
+  <tr><td class="l">TAPU SENEDİNDEKİ BAĞIMSIZ BÖLÜM NİTELİĞİ</td><td>{{TİTLE_QUALİTY}}</td></tr>
   <tr><td class="l">UAVT</td><td>{{UAVT}}</td></tr>
-  <tr><td class="l">KONUT NİTELİĞİ</td><td>APARTMAN DAİRESİ / MÜSTAKİL BİNA</td></tr>
+  <tr><td class="l">KONUT NİTELİĞİ</td><td>{{RESİDENCE_TYPE}}</td></tr>
   <tr><td class="l">TAŞINMAZ İLK KEZ Mİ SATIŞA KONU</td><td>1. EL / 2. EL</td></tr>
   <tr><td class="l">KULLANIM DURUMU</td><td>{{UNİT_USAGE_STATUS}}</td></tr>
 </table>
@@ -138,8 +140,11 @@
 <table class="meta">
   <tr><td class="l">BLOK BİNA TAMAMLANMA ORANI</td><td>{{UNİT_CONSTRUCTİON_LEVEL}}</td></tr>
   <tr><td class="l">İÇ HACİMLER</td><td>{{KAT_BAZLI_İÇ_HACİMLER}}</td></tr>
+  <tr><td class="l">CEPHE</td><td>{{CEPHELER}}</td></tr>
   <tr><td class="l">YASAL KULLANIM ALANI</td><td>{{LEGAL_AREA}} m²</td></tr>
   <tr><td class="l">MEVCUT KULLANIM ALANI</td><td>{{CURRENT_AREA}} m²</td></tr>
+  <tr><td class="l">ZEMİNE İNDİRGENMİŞ ALAN (YASAL)</td><td>{{TOTAL_LEGAL_REDUCED_AREA}} m²</td></tr>
+  <tr><td class="l">ZEMİNE İNDİRGENMİŞ ALAN (MEVCUT)</td><td>{{TOTAL_CURRENT_REDUCED_AREA}} m²</td></tr>
 </table>
 
 <h2>Taşınmazın Diğer Özellikleri</h2>
@@ -164,13 +169,17 @@
 
 <div class="pg-section">
 <h2 style="page-break-before:always;">Gayrimenkul Değerleme</h2>
+<h3>Arsa / Yapı / Yeniden İnşa Maliyeti Hesap Detayı</h3>
+<div class="table-block">{{DEGERLENDIRME_TABLOSU}}</div>
 <table class="meta">
   <tr><td class="l">YASAL DURUM İÇİN TAKDİR EDİLEN DEĞER</td><td>{{LEGAL_VALUE}}</td></tr>
   <tr><td class="l">MEVCUT DURUM İÇİN TAKDİR EDİLEN DEĞER</td><td>{{CURRENT_VALUE}}</td></tr>
   <tr><td class="l">YAKLAŞIK KİRA DEĞERİ (YILLIK)</td><td>{{CURRENT_RENT}} x 12 AY = {{YILLIK_KİRA_MEVCUT}}</td></tr>
-  <tr><td class="l">EKSPERİN KANAATİ</td><td>{{SALEABİLİTY_NOTE}}</td></tr>
-  <tr><td class="l">EKSPERTİZ KANAATİ AÇIKLAMASI</td><td>{{SALEABİLİTY_NOTE}}</td></tr>
+  <tr><td class="l">EKSPERİN KANAATİ</td><td>{{SALEABİLİTY}}</td></tr>
+  <tr><td class="l">EKSPERTİZ KANAATİ AÇIKLAMASI</td><td>{{VALUATİON_SALEABİLİTY_EXPLANATİON}}</td></tr>
   <tr><td class="l">AYLIK KİRA BİRİM DEĞERİ</td><td>{{CURRENT_RENT_UNİT}}</td></tr>
+  <tr><td class="l">YASAL ACİL SATIŞ DEĞERİ</td><td>{{LEGAL_URGENT_SALE_VALUE}}</td></tr>
+  <tr><td class="l">MEVCUT ACİL SATIŞ DEĞERİ</td><td>{{CURRENT_URGENT_SALE_VALUE}}</td></tr>
 </table>
 {{DEGERLEME_YONTEMI_ACIKLAMASI}}
 {{BUILDING_INSPECTION_TERMINATION_EXPLANATION_TEXT}}

@@ -1,5 +1,21 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.349 - 2026-08-06 - Yapı Kredi şablonu: bankanın kendi ekspertiz sistemine göre 8 düzeltme
+
+- Kullanıcı, Yapı Kredi Ekspertiz Sistemi'nin (bankanın kendi web formu) 5 ekran görüntüsünü paylaştı — 4'ü form ekranları, 5'i "YAPI KREDİ DÜZELTİLMESİ GEREKENLER" başlıklı bir Excel checklist'i. `templates/yapikredi.html` bu 8 maddeye göre güncellendi:
+  1. **Tapu Bilgileri**: "Kat" satırından sonra **"İç Kapı No"** eklendi (`{{UNİT_NO}}` — GDYS bölümünde zaten aynı eşleme kullanılıyordu).
+  2. **Tapu Bilgileri**: "Taşınmaz ID"den sonra **"Tapu Senedindeki Bağımsız Bölüm Niteliği"** eklendi (`{{TİTLE_QUALİTY}}`, "B.B. Tapudaki Nitelik" satırıyla aynı değer, farklı konumda tekrar).
+  3. **Tapu Bilgileri**: "UAVT"den sonraki "Konut Niteliği" satırı artık sabit `"APARTMAN DAİRESİ / MÜSTAKİL BİNA"` metni DEĞİL — yeni **`{{RESİDENCE_TYPE}}`** placeholder'ı: Mülkiyet (`titleOwnershipKind`) "Dikey Kat İrtifakı" veya "Yatay Kat İrtifakı" ise "Apartman Dairesi", aksi halde "Müstakil Bina". Yeni `getResidenceTypeText()` (app.js) + `RESIDENCETYPE` LEGACY_ALIASES girdisi (template-engine.js) + `collectGeneratedTextPlaceholders()` katalog satırı + `templates/PLACEHOLDER-REHBERI.md`'ye eklendi.
+  4. **Taşınmazın Özellikleri**: "İç Hacimler"den sonra **"Cephe"** eklendi (`{{CEPHELER}}` — isbankasi.html'de aynı kullanım var).
+  5. **Taşınmazın Özellikleri**: "Mevcut Kullanım Alanı"ndan sonra **"Zemine İndirgenmiş Alan"** (Yasal + Mevcut, `{{TOTAL_LEGAL_REDUCED_AREA}}` / `{{TOTAL_CURRENT_REDUCED_AREA}}` — ziraat.html'de aynı kullanım var) eklendi.
+  6. **Gayrimenkul Değerleme**: "EKSPERİN KANAATİ" hücresi yanlışlıkla `{{SALEABİLİTY_NOTE}}` kullanıyordu (bu değer genelde BOŞ kalır) — doğrusu **`{{SALEABİLİTY}}`** (halkbank.html'deki kullanımla aynı).
+  7. **Gayrimenkul Değerleme**: "EKSPERTİZ KANAATİ AÇIKLAMASI" hücresi de AYNI (yanlış) `{{SALEABİLİTY_NOTE}}`'u tekrarlıyordu — doğrusu **`{{VALUATİON_SALEABİLİTY_EXPLANATİON}}`**.
+  8. **Gayrimenkul Değerleme**: "Aylık Kira Birim Değeri"nden sonra **"Yasal Acil Satış Değeri"** ve **"Mevcut Acil Satış Değeri"** eklendi (`{{LEGAL_URGENT_SALE_VALUE}}` / `{{CURRENT_URGENT_SALE_VALUE}}` — isbankasi.html/ziraat.html'de aynı kullanım var).
+  9. (Checklist'te ayrı madde) "Gayrimenkul Değerleme" başlığından HEMEN sonra yeni bir **"Arsa / Yapı / Yeniden İnşa Maliyeti Hesap Detayı"** alt başlığı + Değerleme Özet Tablosu (`{{DEGERLENDIRME_TABLOSU}}`) eklendi. Bu token'ın "Değerleme Yöntemleri ve Açıklamalar" bölümündeki ESKİ konumu BİLİNÇLİ OLARAK KORUNDU (silinmedi, tekrarlandı) — `tools/test-bank-templates.js`'in TÜM banka şablonlarında bu token'ın `DEGERLEME_YONTEMI_ACIKLAMASI`'ndan sonra gelmesini zorunlu kılan cross-template sıra testini bozmamak için.
+- **Yeni test**: `tools/test-yapikredi-template-fixes.js` — 8 maddenin her birinin şablonda doğru sırada/token'la var olduğunu VE `getResidenceTypeText()`'in Dikey/Yatay Kat İrtifakı → Apartman Dairesi, diğer tüm durumlar → Müstakil Bina döndürdüğünü doğruluyor.
+- Cache-buster `app.js?v=20260806-1900`, `src/templates/template-engine.js?v=20260806-1900`.
+- `npm run verify` tamamı geçti (yeni test dahil).
+
 ## 0.0.348 - 2026-08-06 - Admin panelinde "Rapor Listesi" (kullanıcı+banka+adres özeti)
 
 - Kullanıcı: "sistem içerisinde oluşturulan her raporun ana başlıklarını liste halinde görmek istiyorum. oluşturan kullanıcı banka" → netleştirme sonrası: "il ilçe mahalle ada parsel var ise blok bağımsız bölüm no gayrimenkul niteliği rapor numarası".
