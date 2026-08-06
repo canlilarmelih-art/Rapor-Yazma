@@ -85,7 +85,13 @@ const originalFiles = backupAndClearTestFiles();
 
       const loginEvent = events[1];
       const keys = Object.keys(loginEvent).sort();
-      assert.deepEqual(keys, ["at", "email", "ip", "reportId", "type", "uid", "userAgent"], `Loglanan olay yalnizca beklenen alanlari icermeli (rapor icerigi SIZMAMALI): ${keys.join(",")}`);
+      // 0.0.348: "summary" (REPORT_SUMMARY_FIELDS whitelist'ine sikistirilmis,
+      // KULLANICI ONAYLI dar bir istisna) ve "templateKey" eklendi — ikisi de
+      // burada "login" olayinda extra verilmedigi icin null olmali (asagida
+      // ayrica dogrulaniyor), tam rapor icerigi HALA SIZMIYOR.
+      assert.deepEqual(keys, ["at", "email", "ip", "reportId", "summary", "templateKey", "type", "uid", "userAgent"], `Loglanan olay yalnizca beklenen alanlari icermeli (rapor icerigi SIZMAMALI): ${keys.join(",")}`);
+      assert.equal(loginEvent.summary, null, "summary verilmediyse null olmali.");
+      assert.equal(loginEvent.templateKey, null, "templateKey verilmediyse null olmali.");
       assert.equal(loginEvent.email, "a@example.com");
       assert.equal(loginEvent.ip, "1.1.1.1");
       assert.equal(loginEvent.userAgent, "TestAgent/1");

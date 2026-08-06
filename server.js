@@ -1129,6 +1129,30 @@ function saveActivityEventsSoon() {
   activityEventsSaveTimer.unref?.();
 }
 
+// Kullanıcı talebi: "sistem içerisinde oluşturulan her raporun ana
+// başlıklarını liste halinde görmek istiyorum. oluşturan kullanıcı banka
+// il ilçe mahalle ada parsel var ise blok bağımsız bölüm no gayrimenkul
+// niteliği rapor numarası" — admin, TÜM kullanıcıların raporlarının bir
+// özetini görebilsin istiyor. Bu, mevcut "rapor İÇERİĞİ asla loglanmaz"
+// kuralına BİLİNÇLİ, DAR bir istisna: yalnızca aşağıdaki 9 alanın (tüm
+// rapor verisinin küçük bir alt kümesi) özeti, kullanıcı tarafından
+// ONAYLANDIKTAN sonra eklendi. `resolveTemplateTokenValues` gibi rapor
+// içeriğinin TAMAMINI kapsayan bir akışa ASLA bağlanma; yalnızca bu
+// whitelist'i genişletmeden önce kullanıcıya tekrar sor.
+const REPORT_SUMMARY_FIELDS = ["city", "district", "neighborhood", "blockNo", "parcelNo", "titleBlockName", "unitNo", "titleQuality", "bank"];
+
+function sanitizeReportSummary(raw) {
+  if (!raw || typeof raw !== "object") return null;
+  const summary = {};
+  let hasValue = false;
+  for (const key of REPORT_SUMMARY_FIELDS) {
+    const value = sanitizeProfileField(raw[key], 120);
+    if (value) hasValue = true;
+    summary[key] = value;
+  }
+  return hasValue ? summary : null;
+}
+
 async function logActivityEvent(type, uid, email, extra = {}) {
   await loadActivityEventsOnce();
   activityEvents.push({
@@ -1139,6 +1163,8 @@ async function logActivityEvent(type, uid, email, extra = {}) {
     at: new Date().toISOString(),
     ip: extra.ip || null,
     userAgent: extra.userAgent || null,
+    summary: sanitizeReportSummary(extra.summary),
+    templateKey: sanitizeProfileField(extra.templateKey, 80),
   });
   if (activityEvents.length > ACTIVITY_EVENTS_MAX) {
     activityEvents.splice(0, activityEvents.length - ACTIVITY_EVENTS_MAX);
@@ -1210,6 +1236,55 @@ async function computeUserReportStats() {
     });
   }
   results.sort((a, b) => (b.reportsCreated || 0) - (a.reportsCreated || 0));
+  return results;
+}
+
+// Kullanıcı talebi: "sistem içerisinde oluşturulan her raporun ana
+// başlıklarını liste halinde görmek istiyorum. oluşturan kullanıcı banka
+// il ilçe mahalle ada parsel var ise blok bağımsız bölüm no gayrimenkul
+// niteliği rapor numarası" — yalnızca admin panelinde, tek satırda bir
+// rapor için: kimin oluşturduğu, hangi banka şablonuyla dışa aktarıldığı,
+// ve REPORT_SUMMARY_FIELDS whitelist'indeki adres/tapu özeti. Aynı
+// reportId için birden çok olay (created/exported/export-authorized)
+// olabilir; en SON gelen (en dolu) summary alanları kazanır — rapor
+// zamanla dolduruldukça özet de tazelenir. reportId (RE-YYYY-XXXXXX
+// formatında) zaten kullanıcının "rapor numarası" dediği şey.
+async function computeReportListForAdmin() {
+  await loadActivityEventsOnce();
+  const byReportId = new Map(); // reportId -> { uid, email, templateKey, summary, createdAt, lastExportedAt, lastEventAt }
+  activityEvents.forEach((event) => {
+    if (!event.reportId) return;
+    if (!["report-created", "report-exported", "report-export-authorized"].includes(event.type)) return;
+    if (!byReportId.has(event.reportId)) {
+      byReportId.set(event.reportId, {
+        reportId: event.reportId,
+        uid: event.uid || null,
+        email: event.email || null,
+        templateKey: null,
+        summary: {},
+        createdAt: null,
+        lastExportedAt: null,
+        lastEventAt: null,
+      });
+    }
+    const entry = byReportId.get(event.reportId);
+    if (event.email && !entry.email) entry.email = event.email;
+    if (event.uid && !entry.uid) entry.uid = event.uid;
+    if (event.templateKey) entry.templateKey = event.templateKey;
+    if (event.summary) {
+      for (const key of REPORT_SUMMARY_FIELDS) {
+        if (event.summary[key]) entry.summary[key] = event.summary[key];
+      }
+    }
+    if (event.type === "report-created" && (!entry.createdAt || event.at < entry.createdAt)) entry.createdAt = event.at;
+    if (event.type === "report-exported" && (!entry.lastExportedAt || event.at > entry.lastExportedAt)) entry.lastExportedAt = event.at;
+    if (!entry.lastEventAt || event.at > entry.lastEventAt) entry.lastEventAt = event.at;
+  });
+  const results = Array.from(byReportId.values()).map((entry) => ({
+    ...entry,
+    email: entry.email || approvedUsers.get(entry.uid)?.email || null,
+  }));
+  results.sort((a, b) => String(b.lastEventAt || "").localeCompare(String(a.lastEventAt || "")));
   return results;
 }
 
@@ -2393,9 +2468,11 @@ async function handleMyRoleApi(request, response, user) {
 }
 
 // login.html/app.js'ten çağrılır — "kaç rapor oluşturdu / ne kadar sürede
-// tamamladı" istatistikleri için yalnızca reportId (opaque, içerik yok) ve
-// olay türünü (created/exported) loglar. uid/email İSTEMCİDEN GÜVENİLMEZ,
-// authenticateRequest'in doğruladığı `user`'dan alınır.
+// tamamladı" istatistikleri için reportId (opaque) ve olay türünü
+// (created/exported) loglar. Ayrıca (0.0.348, admin "rapor listesi"
+// talebi) opsiyonel, DAR bir whitelist'e (REPORT_SUMMARY_FIELDS) sıkıştırılmış
+// bir `summary` alabilir — rapor içeriğinin TAMAMI değil. uid/email
+// İSTEMCİDEN GÜVENİLMEZ, authenticateRequest'in doğruladığı `user`'dan alınır.
 async function handleReportEventApi(request, response, user) {
   if (request.method !== "POST") {
     sendJson(response, 405, { ok: false, error: "Bu işlem desteklenmiyor." });
@@ -2418,7 +2495,7 @@ async function handleReportEventApi(request, response, user) {
     sendJson(response, 400, { ok: false, error: "reportId eksik." });
     return;
   }
-  await logActivityEvent(type, user.uid, user.email, { reportId });
+  await logActivityEvent(type, user.uid, user.email, { reportId, summary: body?.summary });
   sendJson(response, 200, { ok: true });
 }
 
@@ -2456,6 +2533,7 @@ async function handleExportAuthorizationApi(request, response, user) {
 
   await logActivityEvent("report-export-authorized", user.uid, user.email, {
     reportId,
+    templateKey,
     ip: clientKeyFor(request),
     userAgent: request.headers["user-agent"],
   });
@@ -2793,6 +2871,16 @@ async function handleUserStatsApi(request, response, user) {
   sendJson(response, 200, { ok: true, stats });
 }
 
+async function handleReportListApi(request, response, user) {
+  if (request.method !== "GET") {
+    sendJson(response, 405, { ok: false, error: "Bu işlem desteklenmiyor." });
+    return;
+  }
+  if (!requireAdmin(response, user)) return;
+  const reports = await computeReportListForAdmin();
+  sendJson(response, 200, { ok: true, reports });
+}
+
 function resolveStaticPath(urlPath) {
   const pathname = decodeURIComponent(new URL(urlPath, `http://${host}:${port}`).pathname);
   const requested = pathname === "/" ? "/index.html" : pathname;
@@ -2932,6 +3020,7 @@ const API_RATE_LIMITS = {
   "/api/report-template-docx": { limit: 12, windowMs: 60 * 1000 },
   "/api/login-events": { limit: 30, windowMs: 60 * 1000 },
   "/api/user-stats": { limit: 30, windowMs: 60 * 1000 },
+  "/api/report-list": { limit: 30, windowMs: 60 * 1000 },
 };
 
 function matchApiRoute(url) {
@@ -3079,6 +3168,10 @@ const server = http.createServer(async (request, response) => {
       await handleUserStatsApi(request, response, request.user);
       return;
     }
+    if (apiRoute === "/api/report-list") {
+      await handleReportListApi(request, response, request.user);
+      return;
+    }
     await handleStatic(request, response);
   } catch (error) {
     logServerError(`İstek işlenirken hata (${request.method} ${request.url})`, error);
@@ -3162,6 +3255,10 @@ module.exports = {
   buildNewUserNotificationEmailHtml,
   sendEmailViaResend,
   stripEmailHtmlToText,
+  sanitizeReportSummary,
+  computeReportListForAdmin,
+  handleReportListApi,
+  REPORT_SUMMARY_FIELDS,
   handleStatic,
   resolveStaticPath,
   server,

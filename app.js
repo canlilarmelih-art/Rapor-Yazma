@@ -13190,7 +13190,7 @@ function appendBankTemplateExportBlock(panel) {
       const templateKey = window.RaporTemplates.resolveTemplateKeyForExport(select.value, isLandPropertyForBankTemplate());
       const exportCertificate = await createOfficialExportCertificate(templateKey);
       const result = await buildBankTemplateZipBundle(templateKey, { exportCertificate });
-      pingReportEvent("exported", state.reportId);
+      pingReportEvent("exported", state.reportId, buildReportSummaryForPing());
       const suffix = result.ziraatFailed
         ? " (Ziraat ek tablosu pakete eklenemedi.)"
         : (result.ziraatCount != null ? ` Ziraat ek tablosu da pakete eklendi (${result.ziraatCount} alan).` : "");
@@ -16117,16 +16117,39 @@ async function fetchRaporApi(input, init = {}, timeoutMs = 0) {
 // Admin dashboard'daki "kaç rapor oluşturdu / ne kadar sürede tamamladı"
 // istatistikleri için sunucuya sessiz bir olay bildirimi gönderir (kullanıcı
 // talebi: "kullanıcı istatistikleri ... görmek ve analiz edebilmek için").
-// Rapor İÇERİĞİ ASLA gönderilmez — yalnızca opaque reportId. Bulut oturumu
-// yoksa (ör. yalnızca bu cihazda çalışılıyor) sessizce atlanır; bu olay
-// kaydı normal kullanım akışını ASLA bloklamamalı/bozmamalı.
-function pingReportEvent(type, reportId) {
+// Rapor İÇERİĞİ ASLA gönderilmez — yalnızca opaque reportId, ve (0.0.348,
+// kullanıcının AÇIKÇA onayladığı DAR bir istisna: "sistem içerisinde
+// oluşturulan her raporun ana başlıklarını liste halinde görmek istiyorum")
+// opsiyonel bir `summary` — bkz. buildReportSummaryForPing(), yalnızca
+// server.js'teki REPORT_SUMMARY_FIELDS whitelist'iyle sınırlı 9 alan.
+// Bulut oturumu yoksa (ör. yalnızca bu cihazda çalışılıyor) sessizce
+// atlanır; bu olay kaydı normal kullanım akışını ASLA bloklamamalı/bozmamalı.
+function pingReportEvent(type, reportId, summary) {
   if (!reportId || !window.RaporCloudSync?.getStatus?.()?.signedIn) return;
   fetchRaporApi("/api/report-event", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ type, reportId }),
+    body: JSON.stringify(summary ? { type, reportId, summary } : { type, reportId }),
   }).catch(() => {});
+}
+
+// Admin "rapor listesi" özeti için gönderilecek 9 alanı state.fields'tan
+// derler. server.js'teki REPORT_SUMMARY_FIELDS ile BİREBİR aynı anahtar
+// adları kullanılmalı (city/district/neighborhood/blockNo/parcelNo/
+// titleBlockName/unitNo/titleQuality/bank) — biri değişirse diğeri de
+// güncellenmeli.
+function buildReportSummaryForPing() {
+  return {
+    city: state.fields?.city || "",
+    district: state.fields?.district || "",
+    neighborhood: state.fields?.neighborhood || "",
+    blockNo: state.fields?.blockNo || "",
+    parcelNo: state.fields?.parcelNo || "",
+    titleBlockName: state.fields?.titleBlockName || "",
+    unitNo: state.fields?.unitNo || "",
+    titleQuality: state.fields?.titleQuality || "",
+    bank: state.fields?.bank || "",
+  };
 }
 
 function formatTcmbRate(value) {

@@ -104,6 +104,13 @@
         <p class="status" id="eventsStatus">Yükleniyor...</p>
         <div class="table-scroll"><table class="data-table" id="eventsTable"></table></div>
       </div>
+
+      <p class="section-title">Rapor Listesi</p>
+      <p class="section-hint">Sistemde oluşturulan/dışa aktarılan her raporun ana başlıkları — oluşturan kullanıcı, banka, il/ilçe/mahalle, ada/parsel, blok/bağımsız bölüm no, gayrimenkul niteliği, rapor numarası. Raporun DİĞER içeriği (metinler, tablolar, dosyalar) burada YER ALMAZ.</p>
+      <div class="card">
+        <p class="status" id="reportsStatus">Yükleniyor...</p>
+        <div class="table-scroll"><table class="data-table" id="reportsTable"></table></div>
+      </div>
     </div>
 
     <script src="vendor/firebase/firebase-app-compat.js?v=11.10.0"></script>
@@ -119,6 +126,8 @@
         var statsTable = document.getElementById("statsTable");
         var eventsStatusLine = document.getElementById("eventsStatus");
         var eventsTable = document.getElementById("eventsTable");
+        var reportsStatusLine = document.getElementById("reportsStatus");
+        var reportsTable = document.getElementById("reportsTable");
 
         if (typeof firebase === "undefined" || !firebase.initializeApp || typeof RAPOR_FIREBASE_CONFIG === "undefined") {
           statusLine.textContent = "Yapılandırma eksik.";
@@ -401,6 +410,48 @@
             });
         }
 
+        function renderReportsTable(reports) {
+          if (!reports.length) {
+            reportsTable.innerHTML = '<tr><td class="empty">Henüz kayıt yok.</td></tr>';
+            return;
+          }
+          var rows = reports.map(function (entry) {
+            var s = entry.summary || {};
+            var location = [s.city, s.district, s.neighborhood].filter(Boolean).join(" / ") || "-";
+            var parcel = [s.blockNo, s.parcelNo].filter(Boolean).join(" / ") || "-";
+            var unit = [s.titleBlockName, s.unitNo].filter(Boolean).join(" / ") || "-";
+            var bank = s.bank || entry.templateKey || "-";
+            return "<tr>"
+              + "<td>" + escapeHtmlLocal(entry.reportId || "-") + "</td>"
+              + "<td>" + escapeHtmlLocal(entry.email || entry.uid || "-") + "</td>"
+              + "<td>" + escapeHtmlLocal(bank) + "</td>"
+              + "<td>" + escapeHtmlLocal(location) + "</td>"
+              + "<td>" + escapeHtmlLocal(parcel) + "</td>"
+              + "<td>" + escapeHtmlLocal(unit) + "</td>"
+              + "<td>" + escapeHtmlLocal(s.titleQuality || "-") + "</td>"
+              + "<td>" + formatDate(entry.createdAt) + "</td>"
+              + "<td>" + formatDate(entry.lastExportedAt) + "</td>"
+              + "</tr>";
+          }).join("");
+          reportsTable.innerHTML =
+            "<thead><tr><th>Rapor No</th><th>Oluşturan</th><th>Banka</th><th>İl/İlçe/Mahalle</th><th>Ada/Parsel</th><th>Blok/BB No</th><th>Nitelik</th><th>Oluşturuldu</th><th>Son Dışa Aktarma</th></tr></thead>"
+            + "<tbody>" + rows + "</tbody>";
+        }
+
+        function loadReports() {
+          reportsStatusLine.textContent = "Yükleniyor...";
+          reportsStatusLine.className = "status";
+          return apiCall("/api/report-list", { method: "GET" })
+            .then(function (body) {
+              reportsStatusLine.textContent = body.reports.length + " rapor (en son etkinlik önce).";
+              renderReportsTable(body.reports);
+            })
+            .catch(function (error) {
+              reportsStatusLine.textContent = "Rapor listesi alınamadı: " + (error && error.message ? error.message : "bilinmeyen hata");
+              reportsStatusLine.className = "status error";
+            });
+        }
+
         auth.onAuthStateChanged(function (user) {
           if (!user) {
             statusLine.textContent = "Giriş yapmanız gerekiyor.";
@@ -412,6 +463,7 @@
           loadApproved();
           loadStats();
           loadLoginEvents();
+          loadReports();
         });
       })();
     </script>

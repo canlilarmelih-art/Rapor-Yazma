@@ -1,5 +1,24 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.348 - 2026-08-06 - Admin panelinde "Rapor Listesi" (kullanıcı+banka+adres özeti)
+
+- Kullanıcı: "sistem içerisinde oluşturulan her raporun ana başlıklarını liste halinde görmek istiyorum. oluşturan kullanıcı banka" → netleştirme sonrası: "il ilçe mahalle ada parsel var ise blok bağımsız bölüm no gayrimenkul niteliği rapor numarası".
+- **Mimari çekişme, kullanıcıyla açıkça konuşuldu**: Mevcut kural (0.0.300) "rapor İÇERİĞİ asla sunucuya/admin'e loglanmaz" idi. İstenen alanlar (il/ilçe/mahalle/ada/parsel/blok/BB no/nitelik) TAM OLARAK rapor içeriği. `AskUserQuestion` ile onay alındı: bu alanların DAR bir whitelist'i (`REPORT_SUMMARY_FIELDS`), kullanıcının BİLEREK onayladığı bir istisna olarak eklendi — tüm rapor içeriği DEĞİL, yalnızca bu 9 alan; ve yalnızca admin görebiliyor (kullanıcı seçimi).
+- **server.js**:
+  - `REPORT_SUMMARY_FIELDS = ["city","district","neighborhood","blockNo","parcelNo","titleBlockName","unitNo","titleQuality","bank"]`.
+  - `sanitizeReportSummary(raw)` — whitelist DIŞINDAKİ hiçbir alanı ASLA kabul etmez, her alanı trim + 120 karakterle sınırlar, tümü boşsa `null` döner.
+  - `logActivityEvent` artık pushladığı olaya `summary` (sanitize edilmiş) ve `templateKey` (banka şablonu anahtarı, `handleExportAuthorizationApi`'den) ekliyor.
+  - `handleReportEventApi` artık `body.summary`'yi kabul edip `logActivityEvent`'e geçiriyor.
+  - Yeni `computeReportListForAdmin()` — `activityEvents`'i `reportId` bazında gruplayıp (created/exported/export-authorized olaylarından) TEK satır üretiyor: en son gelen summary alanları kazanıyor, en-yeni-etkinlik-önce sıralı.
+  - Yeni `GET /api/report-list` (`handleReportListApi`, `requireAdmin` korumalı) bu listeyi döner.
+  - `reportId` (RE-YYYY-XXXXXX formatı) zaten kullanıcının "rapor numarası" dediği şey — yeni bir alan eklenmedi.
+- **app.js**: `pingReportEvent(type, reportId, summary)` artık opsiyonel 3. parametre alıyor; yeni `buildReportSummaryForPing()` state.fields'tan 9 alanı derliyor; "Banka Şablonuyla Kaydet" export akışında (`pingReportEvent("exported", ...)`) artık bu özet de gönderiliyor (rapor en dolu haldeyken — "created" pingi'nde DEĞİŞTİRİLMEDİ, o an adres genelde boş).
+- **admin-users.html**: yeni "Rapor Listesi" kartı — Rapor No / Oluşturan / Banka / İl-İlçe-Mahalle / Ada-Parsel / Blok-BB No / Nitelik / Oluşturuldu / Son Dışa Aktarma sütunları, `GET /api/report-list`'ten dolduruluyor.
+- **Test düzeltmesi**: `tools/test-activity-dashboard.js`'teki logActivityEvent alan-kümesi assertion'ı yeni `summary`/`templateKey` alanlarını içerecek şekilde güncellendi (ikisi de extra verilmediğinde `null` kalıyor, tam içerik hâlâ sızmıyor).
+- **Yeni test**: `tools/test-report-list-summary.js` — `sanitizeReportSummary` (whitelist dışı alan reddi, trim/uzunluk, tümü-boş→null), `computeReportListForAdmin` (çoklu-olay birleştirme, kullanıcı izolasyonu, sıralama), `handleReportListApi` (admin-olmayana 403).
+- Cache-buster `app.js?v=20260806-1830`.
+- `npm run verify` tamamı geçti (yeni test dahil).
+
 ## 0.0.347 - 2026-08-05 - MFA/bildirim e-postalarına düz-metin (plain-text) alternatifi eklendi
 
 - Kullanıcı: "ilk gerçek kullanıcımız sisteme kayıt oldu. ancak eposta doğrulama kodu spam a düştü bunu düzeltebilir miyiz?"

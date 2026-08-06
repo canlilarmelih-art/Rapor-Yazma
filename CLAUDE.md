@@ -270,6 +270,25 @@ eklemeyi UNUTMA (aksi halde "Placeholder" referans ekranında görünmez —
 bu projede tekrar eden bilinen bir kusur, bkz. 0.0.319/0.0.323).
 Test: `tools/test-uppercase-table-placeholders.js`.
 
+## "Rapor İÇERİĞİ asla loglanmaz" kuralına DAR, KULLANICI ONAYLI istisna (0.0.348, 2026-08-06)
+
+0.0.300'deki "Firestore güvenlik kurallarını ASLA gevşetme, rapor İÇERİĞİNİ
+admin'e açar" kuralı GENEL İLKE olarak hâlâ geçerli — ama kullanıcı
+`admin-users.html`'de "sistem içerisinde oluşturulan her raporun ana
+başlıklarını (il/ilçe/mahalle/ada/parsel/blok/BB no/nitelik/banka/oluşturan
+kullanıcı) liste halinde görmek istiyorum" dedi ve `AskUserQuestion` ile
+açıkça onayladı: bu TEK, DAR whitelist için (`server.js`'teki
+`REPORT_SUMMARY_FIELDS`, 9 alan) bir istisna var — `sanitizeReportSummary()`
+bu 9 alan DIŞINDA HİÇBİR ŞEYİ kabul etmez. Yeni bir "admin şunu da görsün"
+isteği gelirse: (a) bu whitelist'e YENİ bir alan eklemeden önce kullanıcıya
+TEKRAR sor (her genişletme ayrı bir gizlilik kararı), (b) tüm rapor
+içeriğini kapsayan genel bir "içerik logla" mekanizmasına ASLA dönüştürme.
+Akış: `app.js`'teki `buildReportSummaryForPing()` → `pingReportEvent(type,
+reportId, summary)` → `POST /api/report-event` → `logActivityEvent`'in
+`summary` alanı → `computeReportListForAdmin()` → `GET /api/report-list`
+(`requireAdmin` korumalı) → `admin-users.html` "Rapor Listesi" kartı.
+Test: `tools/test-report-list-summary.js`.
+
 ## Bu depoda paralel oturum uyarısı
 
 Aynı çalışma dizininde başka bir ajan (Codex) da düzenleme yapabiliyor.
