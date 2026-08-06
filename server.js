@@ -1265,13 +1265,38 @@ function buildMfaEmailHtml(code) {
   </body></html>`;
 }
 
-function sendEmailViaResend(toEmail, subject, html) {
+// Kullanici raporu: "eposta doğrulama kodu spam a düştü" — Resend'de
+// domain SPF/DKIM/DMARC doğrulanmış olsa bile yalnızca HTML gövdeli
+// (düz-metin alternatifi olmayan) e-postalar bazı spam filtrelerinde
+// (özellikle kurumsal/Outlook tarafında) ceza puanı alır. Bu fonksiyon
+// gönderilen HTML'den basit bir düz-metin alternatifi türetir; çağıran
+// isterse kendi metnini de verebilir (opsiyonel 4. parametre).
+function stripEmailHtmlToText(html) {
+  return String(html ?? "")
+    .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|div|tr|table|h[1-6])>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .replace(/[ \t]{2,}/g, " ")
+    .trim();
+}
+
+function sendEmailViaResend(toEmail, subject, html, text) {
   return new Promise((resolve, reject) => {
     const payload = JSON.stringify({
       from: RESEND_FROM_EMAIL,
       to: [toEmail],
       subject,
       html,
+      text: text || stripEmailHtmlToText(html),
     });
     const request = https.request(
       {
@@ -3136,6 +3161,7 @@ module.exports = {
   activityEvents,
   buildNewUserNotificationEmailHtml,
   sendEmailViaResend,
+  stripEmailHtmlToText,
   handleStatic,
   resolveStaticPath,
   server,

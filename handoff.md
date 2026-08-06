@@ -1,5 +1,15 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.347 - 2026-08-05 - MFA/bildirim e-postalarına düz-metin (plain-text) alternatifi eklendi
+
+- Kullanıcı: "ilk gerçek kullanıcımız sisteme kayıt oldu. ancak eposta doğrulama kodu spam a düştü bunu düzeltebilir miyiz?"
+- **Teşhis**: Resend panelinde `experify.com.tr` domaininin DKIM/SPF/DMARC kayıtlarının hepsi "Verified" çıktı (kullanıcı ekran görüntüsüyle doğruladı) — yani kimlik doğrulama/DNS sorunu DEĞİL. Kalan bilinen etken: e-postalar yalnızca HTML gövdeli gönderiliyordu, düz-metin (`text/plain`) alternatifi yoktu; bu bazı spam filtrelerinde (özellikle kurumsal/Outlook) ceza puanı sayılıyor. Ayrıca yeni bir gönderici domaininin ilk e-postalarının büyük sağlayıcılarda (Gmail/Outlook) "ısınma" (warm-up) süresi boyunca spam'e düşmesi normal bir davranış — bu, kod veya DNS ile anında çözülemeyecek, kullanıcıların "Spam değil" işaretlemesiyle zamanla düzelen bir itibar sürecidir; kullanıcıya bu ayrım açıkça anlatıldı.
+- **server.js**: yeni `stripEmailHtmlToText(html)` — `<style>`/`<script>` içeriğini atar, `<br>`/blok-etiketleri satır sonuna çevirir, `&nbsp;`/`&amp;`/`&lt;`/`&gt;`/`&quot;` çözer, fazla boşluk/satırı sıkıştırır. `sendEmailViaResend(toEmail, subject, html, text)` artık opsiyonel 4. parametre (`text`) alıyor — verilmezse HTML'den otomatik türetiliyor; Resend API payload'ına `text` alanı eklendi (MFA kodu ve yeni-kullanıcı-bildirimi e-postalarının ikisi de bu ortak fonksiyonu kullandığından otomatik olarak kapsandı, ayrı bir değişiklik gerekmedi).
+- `handleStatic`, `resolveStaticPath`, `server` gibi `stripEmailHtmlToText` de test edilebilmesi için `module.exports`'a eklendi.
+- **Yeni test**: `tools/test-email-plaintext-alternative.js` — `stripEmailHtmlToText`'in HTML'i doğru temizlediğini VE `sendEmailViaResend`'in artık Resend'e giden payload'a `text` alanı eklediğini (gerçek ağ isteği yapmadan `https.request`'i geçici sahteleyerek) doğruluyor.
+- Bu değişiklik yalnızca `server.js` (sunucu tarafı) — istemci JS dosyası değişmedi, `index.html` cache-buster bump gerekmedi.
+- `npm run verify` tamamı geçti (yeni test dahil).
+
 ## 0.0.346 - 2026-08-05 - Ziraat Ek Tablo XLSX artık "Banka Şablonuyla Kaydet" ZIP paketine giriyor
 
 - Kullanıcı: "Ziraat bankasında ek tablo zip paketi içinde olmalıydı. ancak şu an yok. sadece hesaplama tablolarının bulunduğu excel var."
