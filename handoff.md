@@ -1,5 +1,17 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.357 - 2026-08-08 - Cümle varyantı: kod entegrasyonu (pilot grup) + seçim altyapısı
+
+- Kullanıcı kararı (bkz. `docs/cumle-envanteri.md`, "Varyant Seçim Mekanizması"): **rapor bazında sabit-tohumlu** (aynı rapor her zaman aynı metni üretir, farklı raporlar çoğu cümlede farklı varyanta düşer), **cümle bazında bağımsız seçim** (rapor tek bir üslup seçmiyor, her cümle kendi anahtarıyla ayrı seçim yapıyor), **manuel override YOK**.
+- **Yeni çekirdek altyapı** (`app.js`, `saveState()`'ten hemen önce): `getVariantSelectionSeedId()` (öncelik `state.reportId`, yoksa tembel üretilen `state.variantSeed`), `hashVariantSeedText()` (FNV-1a benzeri, ortam-bağımsız, kriptografik OLMAYAN hash), `selectVariant(sentenceKey, variantCount)` (deterministik indeks — `variantCount<=1` ise her zaman 0/orijinal).
+- **Pilot grup — 6 fonksiyon** varyant döndürecek şekilde güncellendi (docs/cumle-envanteri.md'deki metinler koda taşındı): `buildShareExplanation()` (Bölüm 2), `composeMaterialQualitySentence()` (Bölüm 5), `buildValuationSaleabilityExplanation()` (Bölüm 6), `buildBuildingCompletionExplanation()` (Bölüm 4), `buildEncumbranceIntroSentence()` (Bölüm 8), ve `src/comparables/comparable-market-analysis.js`'teki `buildComparableMarketAnalysisText()`/`buildLandComparableMarketAnalysisText()` (Bölüm 7 — modül state'e erişemediğinden `input.selectVariant` olarak enjekte edilir; enjekte edilmezse — mevcut testlerle geriye dönük uyum için — her zaman orijinal metin döner).
+- **Yeni test**: `tools/test-variant-selection.js` — çekirdek altyapıyı (determinizm, cümle/rapor bazında farklılaşma, `variantSeed` tembel üretimi/kararlılığı) ve 6 pilot fonksiyonu uçtan uca doğrular; ayrıca comparables modülüne `selectVariant` enjekte edilmezse geriye dönük uyumu (orijinal metin) doğrular.
+- **Mevcut 3 test dosyası** (`test-encumbrance-intro-sentence.js`, `test-tarla-saleability-explanation.js`, `test-unit-interior-fluent-wording.js`) — bu fonksiyonların TAM METNİYLE eşleşme bekliyordu; `selectVariant: () => 0` mock'u eklenerek orijinal metni test etmeye devam ediyorlar (varyant seçiminin kendisi artık `test-variant-selection.js`'in sorumluluğunda).
+- **Kapsam BİLİNÇLİ OLARAK sınırlı tutuldu** — bu bir pilot: envanterdeki onlarca fonksiyonun geri kalanı henüz koda taşınmadı, sonraki turlarda bölüm bölüm devam edilecek.
+- Değişiklik `app.js`/`src/comparables/comparable-market-analysis.js` içerdiğinden `index.html`'deki cache-buster'lar (`app.js`, `comparable-market-analysis.js`) `20260808-0009`'a yükseltildi.
+- Kod değişikliğinden ÖNCE yerel yedek alındı: `backups/before-variant-selection-code-integration_2026-08-07_23-57-22/`.
+- `npm run verify` tamamı geçti (yeni test dahil, 173 satır çıktı, hata yok).
+
 ## 0.0.356 - 2026-08-07 - Admin paneli: Tekrarlanan Ada/Parsel Tespiti (BDDK 2-uzman riski)
 
 - Kullanıcı: "BDDK'nın 10 M TL üstü raporlarda 2 ayrı değerleme uzmanına iş yönlendirme zorunluluğu var ... sistemimizden yapılan raporlarda aynı ada parsel, ya da aynı ada parsel blok bağımsız bölüm nu yapılıyor ise bunun tespit edilmesi gerekiyor" — otomatik cümle kalıpları birebir aynı çıkabileceğinden, banka karşılaştırmasında bu kullanıcıların bloklanmasına yol açabilir. Açıkça belirtildi: KVKK ihlali değil, mülk sahibi/rapor içeriği ile ilgisi yok, yalnızca ada/parsel/blok/BB no karşılaştırması.

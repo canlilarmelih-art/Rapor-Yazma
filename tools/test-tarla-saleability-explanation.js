@@ -31,6 +31,10 @@ function evaluate({ tarla, saleability = "Satılabilir" }) {
     saleabilityOptions: ["Satılabilir", "Zayıf"],
     isTarlaOwnershipType: () => tarla,
     normalizeReportDescriptionText: (value) => value.trim(),
+    // selectVariant burada BİLEREK her zaman 0 (orijinal metin) döner — bu
+    // test tarla/tarla-disi dallanmasini dogruluyor, varyant SEÇİMİ ayrı
+    // olarak tools/test-variant-selection.js'te test ediliyor.
+    selectVariant: () => 0,
   };
   vm.runInNewContext(`${saleabilitySource}\n${tarlaRiskSource}\n${exportSource}`, context);
   return {

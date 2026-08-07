@@ -57,7 +57,10 @@ const src = [
 ].join("\n");
 
 function run(fields, tables = {}) {
-  const context = { state: { fields, tables } };
+  // selectVariant burada BİLEREK her zaman 0 (orijinal metin) döner — bu
+  // test alan/tarih/yöntem BİRLEŞTİRME mantığını doğruluyor, varyant
+  // SEÇİMİ ayrı olarak tools/test-variant-selection.js'te test ediliyor.
+  const context = { state: { fields, tables }, selectVariant: () => 0 };
   vm.createContext(context);
   vm.runInContext(src, context);
   return context;

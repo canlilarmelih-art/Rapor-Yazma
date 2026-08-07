@@ -31,10 +31,25 @@ function sliceFn(startMarker) {
   return appSource.slice(start, end);
 }
 
+function sliceRange(startMarker, endMarker) {
+  const start = appSource.indexOf(startMarker);
+  assert(start >= 0, `Bulunamadi: ${startMarker}`);
+  const end = appSource.indexOf(endMarker, start);
+  assert(end > start, `Bulunamadi (bitis): ${endMarker}`);
+  return appSource.slice(start, end);
+}
+
 const foldTurkishSrc = sliceFn("function foldTurkish(");
 const capitalizeSentenceSrc = sliceFn("function capitalizeSentence(");
 const composeDoorsWindowsSentenceSrc = sliceFn("function composeDoorsWindowsSentence(");
 const composeKitchenCabinetCounterSentenceSrc = sliceFn("function composeKitchenCabinetCounterSentence(");
+// composeMaterialQualitySentence artik varyant secimi icin ayri bir
+// `const materialQualitySentenceVariants` sozlugune bagli — o da birlikte
+// yuklenmeli (bkz. docs/cumle-envanteri.md, Bolum 5).
+const materialQualitySentenceVariantsSrc = sliceRange(
+  "const materialQualitySentenceVariants = {",
+  "function composeMaterialQualitySentence("
+);
 const composeMaterialQualitySentenceSrc = sliceFn("function composeMaterialQualitySentence(");
 const composeUnitHeatingSentenceSrc = sliceFn("function composeUnitHeatingSentence(");
 
@@ -49,12 +64,17 @@ function createContext(fields) {
     isNotInstalledDecorative: (value) => /^(yok)$/i.test(String(value || "").trim()),
     ensureCabinetText: (value) => `${String(value || "").toLocaleLowerCase("tr")} dolap`,
     normalizeYesNoChoice: (value) => (value === "Evet" ? "Evet" : "Hayır"),
+    // selectVariant burada BİLEREK her zaman 0 (orijinal metin) döner — bu
+    // test cümle YAPISINI (özne tekrarı yok) doğruluyor, varyant SEÇİMİ
+    // ayrı olarak tools/test-variant-selection.js'te test ediliyor.
+    selectVariant: () => 0,
   };
   vm.createContext(context);
   vm.runInContext(foldTurkishSrc, context);
   vm.runInContext(capitalizeSentenceSrc, context);
   vm.runInContext(composeDoorsWindowsSentenceSrc, context);
   vm.runInContext(composeKitchenCabinetCounterSentenceSrc, context);
+  vm.runInContext(materialQualitySentenceVariantsSrc, context);
   vm.runInContext(composeMaterialQualitySentenceSrc, context);
   vm.runInContext(composeUnitHeatingSentenceSrc, context);
   return context;

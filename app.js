@@ -1414,6 +1414,53 @@ function getReportCompletionStats(targetState = state) {
   };
 }
 
+// Cümle/paragraf VARYANT SEÇİM mekanizması (bkz. docs/cumle-envanteri.md,
+// "Varyant Seçim Mekanizması" bölümü, kullanıcı kararı 2026-08-07):
+// - Rapor bazında sabit-tohumlu: aynı rapor her zaman aynı metni üretir
+//   (kararlı), farklı raporlar (farklı kullanıcı/taşınmaz) çoğu cümlede
+//   farklı varyanta düşer — bu, farklı uzmanların aynı taşınmaz için
+//   hazırladığı raporların birebir aynı çıkmasını önlemenin KÖK ÇÖZÜMÜ
+//   (bkz. admin panelindeki "Tekrarlanan Ada/Parsel Tespiti" kartı, 0.0.356).
+// - Cümle bazında bağımsız: rapor tek bir "üslup" seçmiyor, her cümle kendi
+//   anahtarıyla ayrı seçim yapıyor.
+// - Manuel override YOK — tamamen otomatik/deterministik.
+// reportId henüz atanmamışsa (cloud/report-library.js henüz ilk kaydı
+// yapmadıysa) state.variantSeed'e düşülür — ilk kez burada, ihtiyaç anında,
+// tembel olarak üretilir ve state'e yazılır (autosave zaten kısa süre
+// içinde localStorage'a kalıcı hale getirir; saveState() burada BİLEREK
+// çağrılmıyor ki metin üretimi saf bir işlem olarak kalsın).
+function getVariantSelectionSeedId() {
+  if (state.reportId) return state.reportId;
+  if (!state.variantSeed) {
+    state.variantSeed = `VS-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  }
+  return state.variantSeed;
+}
+
+// FNV-1a benzeri basit, ortam-bağımsız (kriptografik OLMAYAN) string hash'i.
+// Yalnızca "hangi varyant" sorusuna deterministik bir cevap üretmek için
+// kullanılır — güvenlik amaçlı DEĞİLDİR.
+function hashVariantSeedText(text) {
+  let hash = 2166136261;
+  const value = String(text || "");
+  for (let i = 0; i < value.length; i++) {
+    hash ^= value.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+// sentenceKey: çağrı yerinde BENZERSİZ bir anahtar (ör. fonksiyon adı,
+// gerekirse alt-durum etiketiyle birlikte — bkz. docs/cumle-envanteri.md).
+// variantCount: o cümle için toplam seçenek sayısı (orijinal dahil — ör.
+// orijinal + V1 + V2 için 3). 0 döner = orijinal metin kullanılır.
+function selectVariant(sentenceKey, variantCount) {
+  if (!Number.isInteger(variantCount) || variantCount <= 1) return 0;
+  const seed = getVariantSelectionSeedId();
+  const hash = hashVariantSeedText(`${seed}::${sentenceKey}`);
+  return hash % variantCount;
+}
+
 function saveState() {
   applySystemDefaults(state);
   applyUserFieldDefaults(state);
@@ -3926,12 +3973,21 @@ function createValuationMinimumParcelAssessmentPanel() {
 
 const tarlaSaleabilityRiskExplanation = "Tarla / Bahçe vasıflı gayrimenkullerin herhangi bir sebeple satışa arz edilmesi halinde; tarım girdi maliyetlerinin çok yüksek olması nedeniyle cazip bir yatırım olarak görülmemesi, bu vasıftaki gayrimenkullerin alım satım piyasasının gelişmemiş olması, ancak aynı yerleşim biriminde yaşayan ya da bitişik komşu parsel maliklerince tercih edilmesi nedeniyle sınırlı tercih ve talebin söz konusu olması, bu tür gayrimenkullerin icra ve bunun gibi yollarla satışında ülkemizdeki örf - adet ve geleneklerden gelen nedenlerle kimsenin satışa iştirak etmemesi, bu vasıfta gayrimenkullerin doğal tesirlerden (kar-buz, don, dolu, haşerat, vb.) direk etkilenmesi, verimliliklerinin doğadaki gelişmelere bağlı olması, bahçe vasıflı gayrimenkuller üzerindeki ağaç vb. unsurların her türlü etki ve tehlikelere (tahrip edilme, hırsızlık, kesim, vb.) maruz kalmaları gibi olumsuz tüm faktörlerin dikkate alınması gerekmektedir.";
 
+// Varyantlar docs/cumle-envanteri.md Bölüm 6'da belgelendi ("Satılabilir"
+// en sık görülen durum — HER raporun büyük çoğunluğunda birebir aynı çıkıyordu).
+const valuationSaleabilityExplanationVariants = [
+  "Değerlemeye konu taşınmaz yukarıdaki özellikleri sebebiyle tercih edilmektedir. Konumu, ulaşım imkânları ve diğer özellikleri dikkate alındığında SATILABİLİR olduğu kanaatine varılmıştır.",
+  "Söz konusu gayrimenkul yukarıda belirtilen özellikleri nedeniyle tercih edilen bir taşınmaz niteliğindedir. Konumu, ulaşım olanakları ve diğer nitelikleri birlikte değerlendirildiğinde SATILABİLİR olduğu görüş ve kanaatine varılmıştır.",
+  "Rapor konusu mülk, sahip olduğu yukarıdaki özellikler nedeniyle talep gören bir gayrimenkul niteliğindedir. Konumu, ulaşım imkânları ve diğer nitelikleri birlikte ele alındığında SATILABİLİR nitelikte olduğu değerlendirilmiştir.",
+];
+
 function buildValuationSaleabilityExplanation() {
   const saleability = saleabilityOptions.includes(state.fields.saleability)
     ? state.fields.saleability
     : "Satılabilir";
   if (saleability === "Satılabilir") {
-    return "Değerlemeye konu taşınmaz yukarıdaki özellikleri sebebiyle tercih edilmektedir. Konumu, ulaşım imkânları ve diğer özellikleri dikkate alındığında SATILABİLİR olduğu kanaatine varılmıştır.";
+    const variantIndex = selectVariant("buildValuationSaleabilityExplanation", valuationSaleabilityExplanationVariants.length);
+    return valuationSaleabilityExplanationVariants[variantIndex];
   }
   const userNote = normalizeReportDescriptionText(state.fields.saleabilityNote || "");
   const conclusion = `Bu sebeple taşınmazın satış kabiliyetinin ${saleability} olacağı görüş ve kanaatindeyiz.`;
@@ -9382,16 +9438,45 @@ function composeKitchenCabinetCounterSentence() {
   return `Mutfak dolapları ${ensureCabinetText(cabinet)} olup, tezgahı ${toLowerText(counter)} olarak düzenlenmiştir.`;
 }
 
+// Varyantlar docs/cumle-envanteri.md Bölüm 5'te belgelendi (bu grubun EN
+// yüksek öncelikli kalıbı — hiç değişken içermiyor, HER raporda çıkıyor).
+const materialQualitySentenceVariants = {
+  LUKS: [
+    "İç mekân özellikleri lüks seviyede olup, tadilat ihtiyacı bulunmamaktadır.",
+    "İç mekân nitelikleri lüks düzeyde olup, herhangi bir tadilat ihtiyacı bulunmamaktadır.",
+  ],
+  KALITELI: [
+    "İç mekân özellikleri kaliteli seviyede olup, tadilat ihtiyacı bulunmamaktadır.",
+    "İç mekân nitelikleri kaliteli düzeyde olup, tadilat ihtiyacı taşımamaktadır.",
+  ],
+  ORTA: [
+    "İç mekân özellikleri standart seviyede olup, tadilat ihtiyacı bulunmamaktadır.",
+    "İç mekân nitelikleri standart düzeyde olup, tadilat gerektirmemektedir.",
+  ],
+  VASAT: [
+    "İç mekân özellikleri vasat seviyede olup, kısmi tadilat ihtiyacı bulunmaktadır.",
+    "İç mekân nitelikleri vasat düzeyde olup, kısmi tadilat gerekmektedir.",
+  ],
+  KOTU: [
+    "İç mekân özellikleri kötü seviyede olup, kapsamlı tadilat ihtiyacı bulunmaktadır.",
+    "İç mekân nitelikleri kötü düzeyde olup, kapsamlı tadilat ihtiyacı bulunmaktadır.",
+  ],
+};
+
 function composeMaterialQualitySentence() {
   const quality = state.fields.unitMaterialQuality || "";
   const folded = foldTurkish(quality);
   if (!quality) return "";
-  if (folded.includes("LUKS")) return "İç mekân özellikleri lüks seviyede olup, tadilat ihtiyacı bulunmamaktadır.";
-  if (folded.includes("KALITELI")) return "İç mekân özellikleri kaliteli seviyede olup, tadilat ihtiyacı bulunmamaktadır.";
-  if (folded === "ORTA") return "İç mekân özellikleri standart seviyede olup, tadilat ihtiyacı bulunmamaktadır.";
-  if (folded.includes("VASAT")) return "İç mekân özellikleri vasat seviyede olup, kısmi tadilat ihtiyacı bulunmaktadır.";
-  if (folded.includes("KOTU")) return "İç mekân özellikleri kötü seviyede olup, kapsamlı tadilat ihtiyacı bulunmaktadır.";
-  return "";
+  let key = "";
+  if (folded.includes("LUKS")) key = "LUKS";
+  else if (folded.includes("KALITELI")) key = "KALITELI";
+  else if (folded === "ORTA") key = "ORTA";
+  else if (folded.includes("VASAT")) key = "VASAT";
+  else if (folded.includes("KOTU")) key = "KOTU";
+  if (!key) return "";
+  const variants = materialQualitySentenceVariants[key];
+  const variantIndex = selectVariant(`composeMaterialQualitySentence:${key}`, variants.length);
+  return variants[variantIndex];
 }
 
 function hasUnitBalconyOrTerrace() {
@@ -17963,15 +18048,29 @@ function calculateConstructionYearText(completionIsoDate) {
   return match ? match[1] : "";
 }
 
+// Varyantlar docs/cumle-envanteri.md Bölüm 4'te belgelendi (HER raporda
+// çıkan bir açıklama — iskan var/yok/tarih tespit edilemedi 3 alt-durumu).
 function buildBuildingCompletionExplanation(result = calculateBuildingCompletionFromReviewedDocuments()) {
   if (!result.isoDate) {
-    return "İncelenen belgeler içerisinde yapı kullanma izin belgesi/iskan veya ruhsat tarihi tespit edilemediğinden yapı bitiş tarihi belirsizdir.";
+    const variants = [
+      "İncelenen belgeler içerisinde yapı kullanma izin belgesi/iskan veya ruhsat tarihi tespit edilemediğinden yapı bitiş tarihi belirsizdir.",
+      "İncelenen belgeler içerisinde yapı kullanma izin belgesi/iskan veya ruhsat tarihine rastlanmadığından yapı bitiş tarihi belirsiz kalmıştır.",
+    ];
+    return variants[selectVariant("buildBuildingCompletionExplanation:no-date", variants.length)];
   }
   const ageText = calculateBuildingAgeText(result.isoDate);
   if (result.source === "occupancy") {
-    return `İncelenen belgeler içerisinde yer alan ${result.documentType} tarihine göre yapı bitiş tarihi ${result.displayDate} olarak alınmıştır.${ageText ? ` Buna göre yapı yaşı ${ageText} olarak hesaplanmıştır.` : ""}`;
+    const variants = [
+      `İncelenen belgeler içerisinde yer alan ${result.documentType} tarihine göre yapı bitiş tarihi ${result.displayDate} olarak alınmıştır.${ageText ? ` Buna göre yapı yaşı ${ageText} olarak hesaplanmıştır.` : ""}`,
+      `İncelenen belgeler arasında yer alan ${result.documentType} tarihi esas alındığında yapı bitiş tarihinin ${result.displayDate} olduğu belirlenmiştir.${ageText ? ` Bu doğrultuda yapı yaşı ${ageText} olarak hesaplanmıştır.` : ""}`,
+    ];
+    return variants[selectVariant("buildBuildingCompletionExplanation:occupancy", variants.length)];
   }
-  return `İncelenen belgeler içerisinde yapı kullanma izin belgesi/iskan bulunmadığından, en son ruhsat tarihi olan ${result.permitDate} tarihine 2 yıl eklenerek yapı bitiş tarihi ${result.displayDate} olarak alınmıştır.${ageText ? ` Buna göre yapı yaşı ${ageText} olarak hesaplanmıştır.` : ""}`;
+  const variants = [
+    `İncelenen belgeler içerisinde yapı kullanma izin belgesi/iskan bulunmadığından, en son ruhsat tarihi olan ${result.permitDate} tarihine 2 yıl eklenerek yapı bitiş tarihi ${result.displayDate} olarak alınmıştır.${ageText ? ` Buna göre yapı yaşı ${ageText} olarak hesaplanmıştır.` : ""}`,
+    `İncelenen belgeler arasında yapı kullanma izin belgesi/iskan bulunmadığından, mevcut en son ruhsat tarihi olan ${result.permitDate} üzerine 2 yıl eklenmek suretiyle yapı bitiş tarihi ${result.displayDate} olarak kabul edilmiştir.${ageText ? ` Buna göre yapı yaşı ${ageText} olarak hesaplanmıştır.` : ""}`,
+  ];
+  return variants[selectVariant("buildBuildingCompletionExplanation:permit-plus-2y", variants.length)];
 }
 
 function normalizeReviewedDocumentStorageRow(row = {}) {
@@ -19295,8 +19394,17 @@ function refreshTitleOwnershipKindFromOwners() {
   refreshShareExplanationFromCurrentFields("titleOwnershipKind");
 }
 
+// Varyantlar docs/cumle-envanteri.md Bölüm 2'de belgelendi (BDDK riski
+// açısından en yüksek öncelikli aday — hisseli olan HER raporda çıkıyor).
+const shareExplanationVariants = [
+  "Değerleme konusu taşınmaz hisseli olup, TAŞINMAZIN TÜM HİSSELERİNİN (AÇIKTA HİSSE KALMAYACAK ŞEKİLDE) İPOTEK ALTINA ALINMASI ŞARTIYLA uzman kanaati SATILABİLİR olarak takdir edilmiştir.",
+  "Değerlemeye konu gayrimenkul hisseli mülkiyete tabi olup, GAYRİMENKULÜN TÜM HİSSELERİNİN (AÇIKTA HİSSE BIRAKILMAKSIZIN) İPOTEK ALTINA ALINMASI KOŞULUYLA uzman kanaatimizce SATILABİLİR nitelikte olduğu değerlendirilmiştir.",
+  "Söz konusu mülk hisseli tapu kaydına sahip olup, TÜM HİSSELERİN (AÇIKTA HİSSE KALMAKSIZIN) İPOTEK KAPSAMINA ALINMASI ŞARTIYLA taşınmazın SATILABİLİR olduğu kanaatine varılmıştır.",
+];
+
 function buildShareExplanation() {
-  return "Değerleme konusu taşınmaz hisseli olup, TAŞINMAZIN TÜM HİSSELERİNİN (AÇIKTA HİSSE KALMAYACAK ŞEKİLDE) İPOTEK ALTINA ALINMASI ŞARTIYLA uzman kanaati SATILABİLİR olarak takdir edilmiştir.";
+  const variantIndex = selectVariant("buildShareExplanation", shareExplanationVariants.length);
+  return shareExplanationVariants[variantIndex];
 }
 
 function refreshShareExplanationFromCurrentFields(changedKey = "") {
@@ -19906,12 +20014,19 @@ function buildIsbankEncumbranceExplanation() {
 // buildEncumbranceSummaryVariants() İÇİNDE (birleşik özetin ilk cümlesi
 // olarak) üretiliyordu; artık ayrı bir fonksiyona çıkarıldı ki hem orada
 // hem yeni placeholder'da AYNI kaynak kullanılsın.
+// Varyantlar docs/cumle-envanteri.md Bölüm 8'de belgelendi (TAKBİS
+// alınabildiyse HER raporda birebir aynı çıkan giriş cümlesi).
 function buildEncumbranceIntroSentence() {
   const date = encumbranceDateOrBila(state.fields.takbisDate);
   const time = String(state.fields.takbisTime || "").trim();
   const method = encumbranceTextOrBila(state.fields.takbisMethod || "Webtapu Sistemi");
   const receivedAt = time ? `${date} tarihinde saat ${time}` : `${date} tarihinde`;
-  return `${receivedAt} ${method} üzerinden alınan TAKBİS belgesine göre, konu taşınmaz üzerinde aşağıdaki takyidatlar bulunmaktadır.`;
+  const variants = [
+    `${receivedAt} ${method} üzerinden alınan TAKBİS belgesine göre, konu taşınmaz üzerinde aşağıdaki takyidatlar bulunmaktadır.`,
+    `${receivedAt} ${method} aracılığıyla temin edilen TAKBİS belgesine göre, ekspertize konu taşınmaz üzerinde aşağıda belirtilen takyidatlar tespit edilmiştir.`,
+    `${method} üzerinden ${receivedAt} alınan TAKBİS kaydına göre, söz konusu taşınmaz üzerinde aşağıdaki takyidat kalemleri bulunmaktadır.`,
+  ];
+  return variants[selectVariant("buildEncumbranceIntroSentence", variants.length)];
 }
 
 function getEncumbranceIntroSentenceForPlaceholder() {
@@ -28492,6 +28607,7 @@ function buildComparableMarketAnalysisText() {
   const text = globalThis.ComparableMarketAnalysis.buildComparableMarketAnalysisText({
     fields: state.fields || {},
     rows: getComparableRows(),
+    selectVariant,
   });
   state.fields.comparableMarketAnalysisText = text;
   return text;

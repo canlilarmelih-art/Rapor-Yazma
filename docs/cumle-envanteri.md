@@ -371,10 +371,22 @@ yapılacak bir şey yok; envanter tamamlığı için işaretlendi.*
   - Bölüm 8/9/10'da da bilinçli olarak varyantlanmayan veri-ağırlıklı
     fonksiyonlar hariç (gerekçeleri ilgili bölümlerde belirtildi) envanter
     tamamlanmış durumda.
-- **Envanter aşaması tamamlandı.** Kalan tek büyük adım artık KOD
-  entegrasyonu: (1) varyant SEÇİM mekanizması tasarımı (kullanıcıya sabit /
-  rapor bazlı rastgele / elle seçim — kullanıcı onayı bekleniyor), (2)
-  `app.js`/`src/comparables/comparable-market-analysis.js`'teki ilgili
-  fonksiyonların varyant döndürecek şekilde güncellenmesi, (3) her
-  değişiklikte `npm run verify` + cache-buster + `handoff.md` kaydı
-  standart disiplini.
+- **Envanter aşaması tamamlandı.** Varyant SEÇİM mekanizması KARARLAŞTIRILDI
+  (yukarıdaki "Varyant Seçim Mekanizması" bölümü) ve **KOD ENTEGRASYONU
+  BAŞLADI** (0.0.357, 2026-08-08):
+  - Çekirdek altyapı yazıldı: `getVariantSelectionSeedId()` /
+    `hashVariantSeedText()` / `selectVariant(sentenceKey, variantCount)`
+    (`app.js`, `saveState()`'ten hemen önce).
+  - **Pilot grup — 6 fonksiyon** koda taşındı: `buildShareExplanation()`
+    (Bölüm 2), `composeMaterialQualitySentence()` (Bölüm 5),
+    `buildValuationSaleabilityExplanation()` (Bölüm 6),
+    `buildBuildingCompletionExplanation()` (Bölüm 4),
+    `buildEncumbranceIntroSentence()` (Bölüm 8), ve
+    `buildComparableMarketAnalysisText()`/`buildLandComparableMarketAnalysisText()`
+    (Bölüm 7 — `src/comparables/comparable-market-analysis.js`, `input.selectVariant`
+    olarak enjekte edilir).
+  - Test: `tools/test-variant-selection.js` (`npm run verify`'e eklendi).
+  - **Kalan ~onlarca fonksiyon henüz koda taşınmadı** — bu bilinçli olarak
+    küçük, doğrulanabilir bir pilot olarak tutuldu. Sonraki adım: kalan
+    fonksiyonları bölüm bölüm (docs/cumle-envanteri.md'deki sıraya göre)
+    koda taşımaya devam etmek — kullanıcı onayı/yönlendirmesiyle.
