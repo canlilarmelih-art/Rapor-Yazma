@@ -38,13 +38,13 @@ doldurduğu placeholder'lar DEĞİŞMEYECEK.
 - [x] 1. Adres, Konum ve Çevre Özellikleri
 - [x] 2. Tapu ve Mülkiyet
 - [x] 3. İmar Durumu (en yüksek öncelikli kalıplar; proje uygunluğunun kalan ~8 alt-durumu devam ediyor)
-- [ ] 4. Ana Gayrimenkul / Bina Özellikleri
-- [ ] 5. Bağımsız Bölüm İç Özellikleri
-- [x] 6. Değerleme (Değer Tespiti, Satış Kabiliyeti, Kira, Hisse) — en yüksek öncelikli kalıplar; `buildTarlaValuationRiskExplanation` uzun paragrafı ve birkaç düşük-sıklıklı koşullu metin devam ediyor
+- [x] 4. Ana Gayrimenkul / Bina Özellikleri (en yüksek öncelikli kalıplar tamamlandı)
+- [x] 5. Bağımsız Bölüm İç Özellikleri (alan/iç hacim ailesi tamamlandı; dekoratif zemin-duvar cümle grubu — `composeMainRoomDecorativeSentence` ve komşuları — sonraki turda)
+- [x] 6. Değerleme (Değer Tespiti, Satış Kabiliyeti, Kira, Hisse) — en yüksek öncelikli kalıplar VE `buildTarlaValuationRiskExplanation` uzun paragrafı tamamlandı; birkaç düşük-sıklıklı koşullu metin devam ediyor
 - [x] 7. Emsaller — en yüksek öncelikli (Emsal Piyasa Analizi paragrafları) tamamlandı; per-kart karşılaştırma/hesaplama cümleleri kısmen devam ediyor
-- [ ] 8. Takyidat
-- [ ] 9. Ziraat/Arsa-Arazi'ye özel metinler
-- [ ] 10. GDYS/GABİM'e özel metinler
+- [x] 8. Takyidat (giriş cümleleri tamamlandı; tablo-satırı formatter'ları bilinçli olarak varyantlanmadı — veri, üslup değil)
+- [x] 9. Ziraat/Arsa-Arazi'ye özel metinler (tamamlandı; en kritik metin zaten Bölüm 6'ya taşınmıştı)
+- [x] 10. GDYS/GABİM'e özel metinler (bilinçli olarak varyantlanmıyor — sınıflandırma etiketi üretiyor, serbest cümle değil)
 
 ---
 
@@ -109,6 +109,58 @@ Ruhsat Engeli) TEK bir ortak kalıba sahip olduğundan grup olarak ele alındı.
 
 ---
 
+## 4. Ana Gayrimenkul / Bina Özellikleri
+
+*Bu bölüm iki farklı "giriş" cümlesi ailesine ayrılıyor: dikey mülkiyet
+(`buildMainPropertyDescription`, normal apartman/bina) ve yatay kat irtifakı
+(`buildHorizontalMainPropertyDescription`, site/villa). Her iki aile de aynı
+alt cümle bileşenlerini (`buildMainPropertyOpeningSentence`,
+`buildMainPropertyProjectSentence` vb.) `joinNonEmptySentences` ile birleştirir
+— bu yüzden varyant çalışması alt fonksiyon bazında yapıldı, üst fonksiyonlara
+dokunulmadı.*
+
+| Fonksiyon | Ne Üretiyor | Örnek Sabit Kalıp | Varyant |
+|---|---|---|---|
+| `buildMainPropertyOpeningSentence()` | **⭐ Ana taşınmaz açılış cümlesi** — bina/site, ada/parsel, nizam/yapı tarzı, yapı sınıfı, blok sayısını tek cümlede birleştirir; her dikey mülkiyet raporunda çıkar | "Ekspertize konu taşınmazın yer aldığı {bina/site}, {ada} ada {parsel} no.lu parsel üzerinde, {nizam} nizam, {yapı tarzı} yapı tarzında (yapı sınıfı {sınıf}) {blok sayısı} blok olarak inşa edilmiştir." | **V1:** "Değerlemeye konu gayrimenkulün bulunduğu {bina/site}, {ada} ada {parsel} no.lu parsel üzerinde, {nizam} nizamda, {yapı tarzı} yapı tarzıyla (yapı sınıfı {sınıf}) {blok sayısı} blok halinde inşa edilmiştir." **V2:** "Söz konusu taşınmazın yer aldığı {bina/site}, {ada} ada {parsel} no.lu parsel üzerinde, {nizam} nizama uygun, {yapı tarzı} yapı tarzında (yapı sınıfı {sınıf}) {blok sayısı} blok şeklinde yapılandırılmıştır." |
+| `buildMainPropertyProjectSentence()` | Ana taşınmazın mimari projeyle uyum durumu | "Ana taşınmazın incelenen mimari projesi ile mahallinde yapılan incelemelere göre uyumlu olduğu değerlendirilmiştir." | **V1:** "Gayrimenkulün incelenen mimari projesi ile yerinde gerçekleştirilen tespitlere göre uyum içinde olduğu görülmüştür." **V1 (farklılık var):** "...mimari projesi ile ... arasında farklılık bulunduğu değerlendirilmiştir; {not}." → "...mimari projesiyle ... arasında uyumsuzluk tespit edilmiştir; {not}." |
+| `buildMainPropertyFloorSentence()` | Ana taşınmazın toplam kat kompozisyonu | "Ana taşınmaz {kompozisyon} olmak üzere toplam {n} katlı olarak inşa edilmiştir." + kat dağılımı özeti | **V1:** "Ana taşınmaz {kompozisyon} şeklinde olmak üzere toplam {n} kattan meydana gelmektedir." |
+| `buildMainPropertyBlockPositionSentence()` | Site/çok bloklu yapılarda blok konumu | "Ekspertize konu taşınmazın yer aldığı {blok} parselin {yön} cephesinde yer almaktadır." | **V1:** "Değerlemeye konu gayrimenkulün bulunduğu {blok}, parselin {yön} cephesinde konumlanmaktadır." |
+| `buildMainPropertyEntranceSentence()` / `buildBuildingEntranceDoorSentence()` | Bina girişi yönü/seviyesi + giriş kapısı malzemesi | "Bina girişi {yön} yönünden {seviye} sağlanmaktadır." + "Bina girişi {malzeme}dır." | **V1:** "Binaya giriş {yön} yönü ile {seviye} üzerinden sağlanmaktadır." + "Bina giriş kapısı {malzeme} niteliğindedir." |
+| `buildMainPropertyPhysicalSentence()` | Dış cephe/merdiven/iç duvar malzemeleri | "{malzemeler} vaziyettedir." | **V1:** "{malzemeler} durumundadır." |
+| `buildMainPropertyAmenitySentence()` / `buildBuildingCarparkElevatorSentences()` | Asansör/otopark/ısınma/sosyal tesis cümleleri | "Taşınmazın yer aldığı {bina/blok}da {asansör} bulunmaktadır." + "{Bina/Site} genelinde {otopark} imkanı bulunmaktadır." + "Isınma {sistem} sistemi ile sağlanmaktadır." | **V1:** "Taşınmazın konumlandığı {bina/blok} dahilinde {asansör} mevcuttur." + "{Bina/Site} genelinde {otopark} imkânından yararlanılabilmektedir." + "Isınma ihtiyacı {sistem} sistemiyle karşılanmaktadır." |
+| `buildHorizontalMainPropertySiteSentence()` / `buildHorizontalMainPropertyFloorSentence()` / `buildHorizontalMainPropertyAmenitySentence()` | Yatay kat irtifakı (site) ailesinin giriş/kat/imkan cümleleri — yukarıdaki dikey ailenin site-özel karşılığı | "Değerlemeye konu bağımsız bölümün yer aldığı ana taşınmaz, yatay kat irtifakı tesis edilmiş site niteliğindedir. ... Site genelinde toplam {n} adet bağımsız bölüm bulunmaktadır." | **V1:** "Değerlemeye konu bağımsız bölümün bulunduğu ana taşınmaz, yatay kat irtifakına tabi bir site niteliği taşımaktadır. ... Site genelinde toplam {n} adet bağımsız bölüm yer almaktadır." *(Kat/imkan cümleleri için yukarıdaki dikey ailenin karşılık gelen V1'leri aynı mantıkla uygulanır.)* |
+| `buildBuildingCompletionExplanation()` | **⭐ Yapı bitiş tarihi/yaşı açıklaması** — iskan varsa veya ruhsat+2 yıl varsayımıyla, HER raporda çıkan bir cümle | (iskan var) "İncelenen belgeler içerisinde yer alan {belge türü} tarihine göre yapı bitiş tarihi {tarih} olarak alınmıştır. Buna göre yapı yaşı {yaş} olarak hesaplanmıştır." (iskan yok) "İncelenen belgeler içerisinde yapı kullanma izin belgesi/iskan bulunmadığından, en son ruhsat tarihi olan {tarih} tarihine 2 yıl eklenerek yapı bitiş tarihi {tarih2} olarak alınmıştır. ..." | **V1 (iskan var):** "İncelenen belgeler arasında yer alan {belge türü} tarihi esas alındığında yapı bitiş tarihinin {tarih} olduğu belirlenmiştir. Bu doğrultuda yapı yaşı {yaş} olarak hesaplanmıştır." **V1 (iskan yok):** "İncelenen belgeler arasında yapı kullanma izin belgesi/iskan bulunmadığından, mevcut en son ruhsat tarihi olan {tarih} üzerine 2 yıl eklenmek suretiyle yapı bitiş tarihi {tarih2} olarak kabul edilmiştir. ..." **V1 (tarih tespit edilemedi):** "İncelenen belgeler içerisinde yapı kullanma izin belgesi/iskan veya ruhsat tarihine rastlanmadığından yapı bitiş tarihi belirsiz kalmıştır." |
+| `buildBuildingInspectionExplanation()` / `buildBuildingInspectionLawExemptionExplanation()` / `buildBuildingInspectionTerminationExplanation()` | Yapı denetim sözleşmesi durumu (aktif/feshedilmiş/kanun kapsamı dışı) | "{tarih} {belediye} alınan sözlü bilgiye göre taşınmazın yer aldığı binanın yapı denetim sözleşmesinin aktif olduğu ... bilgisine ulaşılmıştır." (feshedilmiş için aynı kalıp "feshedildiği" ile) | **V1:** "{tarih} {belediye} edinilen sözlü bilgiye göre, taşınmazın bulunduğu binanın yapı denetim sözleşmesinin aktif durumda olduğu ... bilgisine erişilmiştir." **V1 (kanun kapsamı dışı):** "Ekspertize konu taşınmazın yeni yapı ruhsat tarihi {tarih} olup, 13.07.2001 tarih ve 4708 sayılı Yapı Denetimi Hakkında Kanun'un kapsamı dışında kalmaktadır." → "...söz konusu Kanun'un uygulama alanının dışında bulunmaktadır." |
+| `buildProjectSuitabilityBuildingReferenceSentence()` | *(Bkz. Bölüm 3 — İmar Durumu, `buildBuildingFootprintAndEntranceExplanation` ile birlikte zaten varyantlandı.)* | — | ✅ Bölüm 3'te tamamlandı. |
+
+---
+
+## 5. Bağımsız Bölüm İç Özellikleri
+
+*Bu bölüm iki katmanlı: (1) alan/kat/hacim anlatısı
+(`buildUnitInteriorDescriptionParts` ve onun tek-kat/çok-kat alt fonksiyonları)
+— `{{BAĞIMSIZ.BÖLÜM.AÇIKLAMASI}}` ailesinin kaynağı, HER raporda çıkar; (2)
+dekoratif/malzeme özellikleri (`composeUnitDecorativeDescription` altındaki
+zemin/duvar/kapı-pencere/mutfak/banyo cümleleri). Giriş cümlesi
+(`composeUnitDescriptionIntro`) de dikey/yatay mülkiyete göre iki ayrı
+fonksiyona ayrılıyor — Bölüm 4'teki desenle aynı.*
+
+| Fonksiyon | Ne Üretiyor | Örnek Sabit Kalıp | Varyant |
+|---|---|---|---|
+| `composeVerticalUnitDescriptionIntro()` | **⭐ Bağımsız bölüm giriş cümlesi** (dikey mülkiyet) — kat, giriş yönü, konum, cephe, BB no, nitelik bilgisini tek cümlede toplar | "Ekspertize konu taşınmaz, incelenen onaylı mimari projesine göre, {kat bilgisi}, {giriş yönü}, {konum}, {cephe}, {BB no}, {nitelik}." | **V1:** "Değerlemeye konu bağımsız bölüm, incelenen onaylı mimari projesine göre, {kat bilgisi}, {giriş yönü}, {konum}, {cephe}, {BB no}, {nitelik}." **V2:** "Söz konusu taşınmaz, onaylı mimari projeye göre, {kat bilgisi}, {giriş yönü}, {konum}, {cephe}, {BB no}, {nitelik}." |
+| `composeHorizontalUnitDescriptionIntro()` / `composeUnitLandSharePhrase()` | Giriş cümlesinin yatay kat irtifakı (site/villa) karşılığı — arsa payı + kat kompozisyonu | "Ekspertize konu taşınmaz ({pay}) {alan} arsa payına sahiptir. Taşınmaz projesine göre {kompozisyon} olmak üzere toplam {n} kattan oluşmaktadır." | **V1:** "Değerlemeye konu bağımsız bölüm ({pay}) {alan} arsa payına sahiptir. Taşınmaz projesine göre {kompozisyon} şeklinde olmak üzere toplam {n} kattan meydana gelmektedir." |
+| `composeSingleUnitFloorInteriorParagraph()` | **⭐⭐ Tek katlı bağımsız bölümün alan+iç hacim cümlesi** — en sık görülen durum (daire/ofis), HER raporda çıkar | "Taşınmaz projesine ve mevcut duruma göre {alan} kullanım alanına sahip olup, {hacimler} hacimlerinden oluşmaktadır." | **V1:** "Taşınmaz, projesine ve mevcut durumuna göre {alan} kullanım alanına sahip olup {hacimler} hacimlerinden meydana gelmektedir." **V2:** "Gayrimenkul projesine ve yerinde tespit edilen mevcut duruma göre {alan} kullanım alanına sahiptir; {hacimler} hacimlerinden oluşmaktadır." |
+| `composeMultiUnitFloorInteriorSentence()` / `composeUnitTotalAreaTerraceSentence()` | Çok katlı (dubleks/tripleks) bağımsız bölümlerde kat-kat alan cümlesi + toplam alan/teras özeti | "{kat} projesine ve mevcut duruma göre {alan} kullanım alanına sahip olup, projesine göre {hacimler} iç hacimlerinden oluşmaktadır." + "Taşınmaz projesine ve mevcut duruma göre toplam {alan}na sahiptir." | **V1:** "{kat}, projesine ve mevcut durumuna göre {alan} kullanım alanına sahip olup, {hacimler} iç hacimlerinden meydana gelmektedir." + "Taşınmaz, projesine ve mevcut durumuna göre toplamda {alan} kullanım alanına sahiptir." |
+| `composeUnitTerraceSentence()` / `composeUnitTerraceTotalClause()` | Teras alanı cümlesi + "değer artırıcı faktör" notu — **not cümlesi tamamen sabit** | "Taşınmazın {alan} yasal ve mevcut teras alanı bulunmaktadır. Teras alanları kullanım alanına dahil edilmemiş olup, değer arttırıcı faktör olarak değerlemede dikkate alınmıştır." | **V1:** "Taşınmazın {alan} yasal ve mevcut teras alanı mevcuttur. Teras alanları kullanım alanı hesabına dahil edilmemiş, ancak değeri artırıcı bir unsur olarak değerlendirmede göz önünde bulundurulmuştur." |
+| `composeExternalUnitInspectionSentence()` | Dışarıdan ekspertiz yapıldığında eklenen sabit cümle — **tamamen sabit** | "Yer görme işlemi şube bilgisi dahilinde dışarıdan yapılmış olup mimari uygunluk tespit edilememiş ve iç hacimlerin malzeme ve işçilik kalitesi standart olarak varsayılmıştır." | **V1:** "Yerinde inceleme, şube bilgisi doğrultusunda dışarıdan gerçekleştirilmiş olup mimari uygunluk tespiti yapılamamış, iç hacimlerin malzeme ve işçilik niteliği standart kabul edilmiştir." |
+| `composeUnitShopFrontageDepthSentence()` | İşyerlerinde cephe/derinlik ölçüm cümlesi | "Taşınmazın dükkan cephe uzunluğu {x} metre, dükkan derinliği ise {y} metre olarak ölçümlenmiştir." | **V1:** "Taşınmazın dükkân cephe genişliği {x} metre, derinliği ise {y} metre olarak tespit edilmiştir." |
+| `composeMainRoomDecorativeSentence()` / `composeSingleAreaDecorativeSentence()` (salon/oda/antre-hol/mutfak/ıslak hacim/balkon zemin-duvar) | **⭐ Dekoratif özellikler paragrafının çekirdeği** — her raporda 3-6 kez tekrarlanan zemin/duvar kaplama cümle kalıbı | (tipik desen) "{Mekan(lar)}da zemin {malzeme}, duvarlar ise {malzeme} kaplıdır." (fonksiyonun tam metnini görmek için `composeSingleAreaDecorativeSentence`/`composeMainRoomDecorativeSentence` kaynağına bakılmalı — henüz tam okunmadı) | Sonraki turda ele alınacak — bu grup (+`composeBathroomFixtureSentence`, `composeDoorsWindowsSentence`, `composeKitchenCabinetCounterSentence`, `composeMaterialQualitySentence`) yüksek tekrar riski taşıdığından öncelikli, ama fonksiyonlar henüz detaylı okunup varyantlanmadı. |
+| `composeUnitViewSentence()` | Manzara şerefiyesi cümlesi | "{Manzara}na sahip olan taşınmaz bu yönüyle manzara şerefiyesine sahiptir." | **V1:** "{Manzara}na sahip olması, taşınmaza manzara şerefiyesi kazandırmaktadır." |
+| `composeUnitHeatingSentence()` | Isınma sistemi + tesisat durumu | "Isınma ihtiyacı {sistem} ile karşılanacak şekilde tesisatlandırılmış olup, ısıtma sistemi halihazırda monte edilmiştir/edilmemiştir." | **V1:** "Isınma ihtiyacının {sistem} ile karşılanması planlanmış olup, ısıtma tesisatı hâlihazırda kurulmuştur/kurulmamıştır." |
+| `composeUnitConstructionLevelSentence()` | İnşaat seviyesi %100 altındaysa eklenen pursantaj cümlesi | "Taşınmazın bazı inşaat işleri eksik vaziyette olup, yerinde yapılan incelemeler ve düzenlenen pursantaj tablosuna göre taşınmazın inşaat seviyesi {%} mertebesinde olduğu tespit edilmiştir." | **V1:** "Taşınmazda bazı inşaat imalatlarının eksik olduğu görülmüş olup, yerinde yapılan tespitler ve düzenlenen pursantaj tablosu doğrultusunda inşaat seviyesinin {%} mertebesinde olduğu belirlenmiştir." |
+
+---
+
 ## 6. Değerleme (Değer Tespiti, Satış Kabiliyeti, Kira, Hisse)
 
 *BDDK riski açısından **en kritik bölüm** — bu paragraflar hemen hemen HER
@@ -126,7 +178,7 @@ en az değişkenli (dolayısıyla en tekrarlanabilir) metinler bunlar.*
 | `buildPropertyTaxDeclarationValueExplanation()` | Emlak beyan değeri açıklaması (değer varsa) | "{tarih öneki}{belediye} Emlak Servisinden alınan bilgiye göre değerlemeye konu taşınmazın {yıl} Yılı Emlak Beyan Değeri {tutar} TL'dir." | **V1:** "{tarih öneki}{belediye} Emlak Servisinden edinilen bilgiye göre, söz konusu gayrimenkulün {yıl} yılına ait emlak beyan değeri {tutar} TL olarak tespit edilmiştir." |
 | `buildPropertyTaxDeclarationUnavailableExplanation()` | Emlak beyan değeri alınamadıysa — **neredeyse tamamen sabit**, çok sık görülür | "{belediye} Emlak Servisinde yapılan incelemelerde taşınmaza ait rayiç bedel hakkında bilgilerin malik dışındaki 3. Kişilere verilmediği beyan edilmiştir." | **V1:** "{belediye} Emlak Servisi nezdinde yapılan araştırmada, taşınmazın rayiç bedeline ilişkin bilgilerin malik dışındaki üçüncü kişilerle paylaşılmadığı belirtilmiştir." **V2:** "{belediye} Emlak Servisinden yapılan sorgulamada, gayrimenkulün rayiç değerine dair bilgilerin yalnızca malike açıklandığı, üçüncü kişilere verilmediği ifade edilmiştir." |
 | `buildInsuranceConstructionCostExplanation()` | Sigortaya esas yapı birim maliyeti açıklaması | "Ana gayrimenkul yapı sınıfı {sınıf} olarak seçildiğinden sigortaya esas yapı yaklaşık birim maliyeti {tutar} olarak alınmıştır." | **V1:** "Ana gayrimenkulün yapı sınıfı {sınıf} olarak belirlendiğinden, sigortaya esas yaklaşık birim inşaat maliyeti {tutar} olarak dikkate alınmıştır." |
-| `buildTarlaValuationRiskExplanation()` (→ `tarlaSaleabilityRiskExplanation` sabiti) | Tarla/Bahçe vasıflı taşınmazlar için **çok uzun, tamamen sabit** risk paragrafı (tarım girdi maliyeti, sınırlı talep, örf-adet, doğal etkiler vb.) | (~150 kelimelik tek paragraf, hiç değişken yok) | **Henüz yazılmadı** — uzunluğu nedeniyle ayrı, odaklı bir turda tam bir alternatif paragraf yazılacak. Tarla/bahçe raporu görece az olsa da, bu metin TAMAMEN SABİT olduğundan (hiç değişken yok) yüksek öncelikli. |
+| `buildTarlaValuationRiskExplanation()` (→ `tarlaSaleabilityRiskExplanation` sabiti) | Tarla/Bahçe vasıflı taşınmazlar için **çok uzun, tamamen sabit** risk paragrafı (tarım girdi maliyeti, sınırlı talep, örf-adet, doğal etkiler vb.) | "Tarla / Bahçe vasıflı gayrimenkullerin herhangi bir sebeple satışa arz edilmesi halinde; tarım girdi maliyetlerinin çok yüksek olması nedeniyle cazip bir yatırım olarak görülmemesi, bu vasıftaki gayrimenkullerin alım satım piyasasının gelişmemiş olması, ancak aynı yerleşim biriminde yaşayan ya da bitişik komşu parsel maliklerince tercih edilmesi nedeniyle sınırlı tercih ve talebin söz konusu olması, bu tür gayrimenkullerin icra ve bunun gibi yollarla satışında ülkemizdeki örf - adet ve geleneklerden gelen nedenlerle kimsenin satışa iştirak etmemesi, bu vasıfta gayrimenkullerin doğal tesirlerden (kar-buz, don, dolu, haşerat, vb.) direk etkilenmesi, verimliliklerinin doğadaki gelişmelere bağlı olması, bahçe vasıflı gayrimenkuller üzerindeki ağaç vb. unsurların her türlü etki ve tehlikelere (tahrip edilme, hırsızlık, kesim, vb.) maruz kalmaları gibi olumsuz tüm faktörlerin dikkate alınması gerekmektedir." | **V1:** "Tarla / Bahçe niteliğindeki gayrimenkullerin herhangi bir nedenle satışa çıkarılması durumunda; tarımsal girdi maliyetlerinin oldukça yüksek olması sebebiyle cazip bir yatırım aracı olarak değerlendirilmemesi, bu nitelikteki taşınmazlara yönelik alım-satım piyasasının yeterince gelişmemiş olması, buna karşın aynı yerleşim yerinde ikamet eden ya da komşu parsel maliklerince tercih edilmesi nedeniyle talebin sınırlı kalması, bu tür taşınmazların icra yoluyla veya benzer yöntemlerle satışında ülkemizdeki örf, adet ve geleneksel yaklaşımlar nedeniyle satışa katılımın düşük olması, söz konusu taşınmazların doğal etkenlerden (kar-buz, don, dolu, haşere vb.) doğrudan etkilenmesi, verim düzeyinin doğa koşullarındaki değişimlere bağlı olması, bahçe vasıflı taşınmazlar üzerinde bulunan ağaç ve benzeri unsurların tahribat, hırsızlık, kesim gibi çeşitli risklere açık olması gibi olumsuz etkenlerin tamamının göz önünde bulundurulması gerekmektedir." *(Anlam ve kapsam birebir korunmuştur; hiç değişken içermediğinden yalnızca tam ifade değişimi ile varyantlanmıştır.)* |
 | `buildShareExplanation()` | *(Bkz. Bölüm 2 — Tapu ve Mülkiyet, zaten varyantlandı.)* | — | ✅ Bölüm 2'de tamamlandı. |
 | `buildForeignCurrencyValuationExplanation()` | Döviz bazlı değer karşılıkları | "TCMB {tarih} tarihli döviz alış kurları esas alınarak {değer}: {tutar} TL karşılığı {usd} ve {eur}; ... Hesaplamada USD alış kuru {…}, EUR alış kuru {…} olarak dikkate alınmıştır." | **Varyantlanmıyor (bilinçli):** kur/tutar listesi — veri ağırlıklı, üslup değişikliği anlamsız (`composeImarConditionList` ile aynı gerekçe). |
 
@@ -155,6 +207,61 @@ dosyasında, `app.js`'in DIŞINDA) tam paragraf varyantıyla yazıldı.*
 
 ---
 
+## 8. Takyidat
+
+*Takyidat (TAKBİS) bölümünün metinleri iki türde: (1) sabit "giriş"
+cümleleri — HER raporda birebir aynı çıkar, en yüksek öncelikli; (2) tablo
+satırlarını cümleye döken formatter fonksiyonları (`formatEncumbranceX`) —
+bunlar veri-ağırlıklı (kişi/tutar/tarih listesi okunur hale getiriyor),
+Bölüm 3'teki `composeImarConditionList` ile aynı gerekçeyle düşük öncelikli.*
+
+| Fonksiyon | Ne Üretiyor | Örnek Sabit Kalıp | Varyant |
+|---|---|---|---|
+| `buildEncumbranceIntroSentence()` | **⭐⭐ Takyidat bölümü giriş cümlesi** — `{{TAKYIDAT_GİRİŞ_CÜMLESİ}}` kaynağı ve `buildEncumbranceSummaryVariants()`'in ilk cümlesi, HER raporda (TAKBİS alınabildiyse) birebir aynı çıkar | "{tarih} tarihinde saat {saat} {yöntem} üzerinden alınan TAKBİS belgesine göre, konu taşınmaz üzerinde aşağıdaki takyidatlar bulunmaktadır." | **V1:** "{tarih} tarihinde saat {saat} {yöntem} aracılığıyla temin edilen TAKBİS belgesine göre, ekspertize konu taşınmaz üzerinde aşağıda belirtilen takyidatlar tespit edilmiştir." **V2:** "{yöntem} üzerinden {tarih} tarihinde, saat {saat}'de alınan TAKBİS kaydına göre, söz konusu taşınmaz üzerinde aşağıdaki takyidat kalemleri bulunmaktadır." |
+| `buildEncumbranceSummaryVariants()` (TAKBİS alınamadıysa dönen `detail`) | TAKBİS temin edilemediğinde eklenen sabit açıklama | "Talep tarihi itibarıyla konu taşınmaza ilişkin TAKBİS belgesi temin edilememiş olup, değerleme çalışması takyidat kayıtlarından bağımsız olarak gerçekleştirilmiştir." | **V1:** "Talep tarihi itibarıyla söz konusu taşınmaza ait TAKBİS belgesine ulaşılamamış olup, değerleme çalışması takyidat kayıtları dikkate alınmaksızın yürütülmüştür." |
+| `buildIsbankEncumbranceExplanation()` | İş Bankası şablonuna özel, TAKBİS inceleme tarihini bildiren tek cümle | "TKGM (TAKBİS) kayıtlarında incelemeler {tarih} tarihinde gerçekleştirilmiştir." | **V1:** "TKGM (TAKBİS) kayıtları üzerinde yapılan incelemeler {tarih} tarihinde tamamlanmıştır." |
+| `buildEncumbranceTitleRecordChangeParagraph()` | *(Bkz. Bölüm 2 — Tapu ve Mülkiyet, zaten varyantlandı.)* | — | ✅ Bölüm 2'de tamamlandı. |
+| `formatEncumbranceDeclarationRow()` / `formatEncumbranceMortgageRow()` / `buildEncumbranceSectionParagraph()` / `buildCondensedEncumbranceSectionSummary()` | Beyanlar/Hak ve Mükellefiyetler/İpotekler/Şerhler bölümlerinin tablo satırlarını cümleye çeviren formatter'lar — kişi adı, tutar, tarih, kurum gibi VERİYİ okunur cümleye döker | (veri-ağırlıklı, satır başına değişir) | **Varyantlanmıyor (bilinçli, Bölüm 3'teki `composeImarConditionList` ile aynı gerekçe):** bu fonksiyonlar TAKBİS'ten gelen ham veriyi (ipotek lehdarı, tutar, tarih vb.) okunur hale getiriyor — üslup çeşitliliği burada anlamsız, hatta hukuki/mali bir kaydı yanlış aktarma riski taşır. |
+
+---
+
+## 9. Ziraat/Arsa-Arazi'ye Özel Metinler
+
+*Bu bölümdeki üç fonksiyon Ziraat Bankası şablonuna özel, konum/çevre ve
+yapılaşma bilgisini Bölüm 1'dekinden daha kısa/öz bir formatta üretir.
+`buildZiraatLocationEnvironmentalExplanation` zaten Bölüm 1'de varyantlandı;
+burada yalnızca geri kalan iki fonksiyon ele alındı. Tarla/Bahçe'ye özel
+en yüksek öncelikli metin (`buildTarlaValuationRiskExplanation`) Bölüm
+6'da (Değerleme) tamamlandı — BDDK riski taşıyan asıl metin orasıydı.*
+
+| Fonksiyon | Ne Üretiyor | Örnek Sabit Kalıp | Varyant |
+|---|---|---|---|
+| `buildZiraatLocationEnvironmentalExplanation()` | *(Bkz. Bölüm 1 — Adres/Konum/Çevre, zaten varyantlandı.)* | — | ✅ Bölüm 1'de tamamlandı. |
+| `buildTarlaValuationRiskExplanation()` | *(Bkz. Bölüm 6 — Değerleme, zaten varyantlandı.)* | — | ✅ Bölüm 6'da tamamlandı. |
+| `buildZiraatDevelopmentAnalysisExplanation()` | Bölgenin sosyal ihtiyaç mesafesi + yapı yaşı + gelir düzeyi cümlesi | "Yapılaşmanın {yoğunluk} yoğunlukta olduğu bölgede, sosyal yaşamın gerektirdiği alışveriş, sağlık ocağı, okul, market vb. sosyal ihtiyaçlar {mesafe} mesafelerde karşılanabilmektedir. Yapı stokunun genel yaşı {aralık} yıl aralığındadır. Bölge, {gelir grubu} gelir grubuna mensup kişilerin ikamet etmeyi tercih ettiği bir yerleşim karakterine sahiptir." | **V1:** "Yapılaşmanın {yoğunluk} yoğunlukta olduğu bölgede, günlük yaşamın gerektirdiği alışveriş, sağlık ocağı, okul, market gibi sosyal ihtiyaçlara {mesafe} mesafeden erişilebilmektedir. Bölgedeki yapı stokunun yaş aralığı {aralık} yıl civarındadır. Bölge, {gelir grubu} gelir düzeyine sahip kişilerin yerleşim tercihinde bulunduğu bir karaktere sahiptir." |
+| `buildZiraatBuildingPatternExplanation()` | Bölgenin yapılaşma nizamı + hızı + yakın çevre kat/kullanım amacı | "Bölgede ağırlıklı olarak {nizam} nizamlı yapılaşma görülmektedir. Bölgedeki yapılaşma hızı {hız} seviyededir. Taşınmazın bulunduğu yakın çevrede genellikle {kat} katlı ve {amaç} amaçlı yapılaşma söz konusudur." | **V1:** "Bölge genelinde çoğunlukla {nizam} nizamda bir yapılaşma dokusu bulunmaktadır. Bölgenin yapılaşma temposu {hız} olarak değerlendirilmektedir. Gayrimenkulün yakın çevresinde ağırlıklı olarak {kat} katlı, {amaç} amaçlı bir yapılaşma söz konusudur." *(Bu fonksiyon `buildZiraatLocationEnvironmentalExplanation`'ın Bölüm 1'deki V1'i ile aynı desende yazıldı — iki fonksiyon aynı ekranda birlikte kullanıldığından tutarlı üslup korunmalı.)* |
+
+---
+
+## 10. GDYS/GABİM'e Özel Metinler
+
+*Bu bölüm BİLİNÇLİ OLARAK varyantlanmıyor — GABİM veri seti paneli
+(`gabimTransportationLevelText`, `gabimMajorInvestmentProjectText`,
+`gabimBrandedHousingDensityText`, `gabimDevelopmentSpeedText`,
+`gabimIndustrializationSpeedText`, `gabimTourismPotentialText`,
+`gabimConstructionQualityText`, `gabimSaleabilityText` vb. — `app.js`
+26523-27210 civarı, 40+ fonksiyon) serbest-metin CÜMLE üretmiyor; her
+fonksiyon "Yüksek/Orta/Düşük", "Var/Yok" gibi SABİT, kısa bir SINIFLANDIRMA
+ETİKETİ döndürüyor (GDYS'nin beklediği standart veri seti formatı). Bu
+etiketler zaten sabit bir kelime kümesinden seçiliyor — "eş anlamlısı"
+yazmak hem anlamsız (etiketler zaten standart terim) hem de GDYS'nin
+otomatik işlediği bir veri formatını bozma riski taşır (Bölüm 3'teki
+`composeImarConditionList` ve Bölüm 6'daki `buildForeignCurrencyValuationExplanation`
+ile aynı "veri, üslup değil" gerekçesi). Varyant çalışması için bu bölümde
+yapılacak bir şey yok; envanter tamamlığı için işaretlendi.*
+
+---
+
 ## Durum ve Sıradaki Adım
 
 - **Varyant metinleri şu an İÇERİK olarak var, KOD olarak YOK.** Yukarıdaki V1/V2 sütunları
@@ -164,14 +271,25 @@ dosyasında, `app.js`'in DIŞINDA) tam paragraf varyantıyla yazıldı.*
   ayarlayalım varyant seçimini") — hangi rapor hangi varyantı alacak (kullanıcıya
   sabit / rapor bazlı rastgele / elle seçim) sorusu henüz cevaplanmadı, bu yüzden
   kod entegrasyonu başlamadı.
-- **Sıradaki adım (netleşecek):** ya (a) mevcut 5 bölümdeki eksik varyantları
-  (özellikle `buildProjectSuitabilityStatusSentence`'ın kalan ~8 alt-durumu,
-  `buildTarlaValuationRiskExplanation`'ın uzun tarla/bahçe risk paragrafı,
-  `buildEnvironmentalDescription`'ın kalan alt cümleleri, Emsaller'de
-  `buildLandComparableMarketAnalysisText`, `buildComparableLongText`'in tam
-  kompozit varyantı, `buildComparablePositionComparisonText` ve henüz
-  okunmamış 4 fonksiyon: `buildComparableCalculationText`/
-  `buildComparableSaleDateText`/`buildComparableLocationText`/
-  `buildComparableWorkplaceFloorReductionExplanation`) tamamlamaya devam,
-  ya da (b) yeni bölümlere (Ana Gayrimenkul, Bağımsız Bölüm, Takyidat...)
-  geçmek — kullanıcı onayı bekleniyor.
+- **Tüm 10 bölüm artık en az bir geçişten geçti** (bkz. yukarıdaki checklist)
+  — envanterin İSKELETİ tamamlandı. Ama birçok bölümde AÇIKÇA "sonraki
+  turda" olarak işaretlenmiş eksik alt-fonksiyonlar var; bunlar
+  tamamlanmadan envanter %100 kapsamlı sayılamaz:
+  - Bölüm 3 (İmar Durumu): `buildProjectSuitabilityStatusSentence`'ın kalan
+    ~8 alt-durumu.
+  - Bölüm 1: `buildEnvironmentalDescription`'ın kalan alt cümleleri
+    (yapılaşma nizamı/hızı, bina yaşı, altyapı vb.).
+  - Bölüm 5 (Bağımsız Bölüm): `composeMainRoomDecorativeSentence` ve
+    komşu dekoratif zemin/duvar/kapı-pencere/mutfak/banyo fonksiyon grubu
+    — yüksek tekrar riski taşıyor ama henüz detaylı okunmadı.
+  - Bölüm 7 (Emsaller): `buildLandComparableMarketAnalysisText`,
+    `buildComparableLongText`'in tam kompozit varyantı,
+    `buildComparablePositionComparisonText` ve henüz okunmamış 4 fonksiyon
+    (`buildComparableCalculationText`/`buildComparableSaleDateText`/
+    `buildComparableLocationText`/`buildComparableWorkplaceFloorReductionExplanation`).
+  - Bölüm 6 (Değerleme): birkaç düşük-sıklıklı koşullu metin
+    (`buildValuationExternalAppraisalText`, `buildValuationUsageNatureDifferenceText`,
+    `buildValuationConstructionLevelRiskText`).
+- **Sıradaki adım:** kullanıcı onayına bağlı — ya yukarıdaki "sonraki tur"
+  listesini tek tek tamamlamak, ya da doğrudan KOD entegrasyonuna (varyant
+  seçim mekanizması + `app.js`'te varyant döndüren fonksiyonlar) geçmek.
