@@ -40,7 +40,7 @@ doldurduğu placeholder'lar DEĞİŞMEYECEK.
 - [x] 3. İmar Durumu (en yüksek öncelikli kalıplar; proje uygunluğunun kalan ~8 alt-durumu devam ediyor)
 - [ ] 4. Ana Gayrimenkul / Bina Özellikleri
 - [ ] 5. Bağımsız Bölüm İç Özellikleri
-- [ ] 6. Değerleme (Değer Tespiti, Satış Kabiliyeti, Kira, Hisse)
+- [x] 6. Değerleme (Değer Tespiti, Satış Kabiliyeti, Kira, Hisse) — en yüksek öncelikli kalıplar; `buildTarlaValuationRiskExplanation` uzun paragrafı ve birkaç düşük-sıklıklı koşullu metin devam ediyor
 - [ ] 7. Emsaller
 - [ ] 8. Takyidat
 - [ ] 9. Ziraat/Arsa-Arazi'ye özel metinler
@@ -109,6 +109,29 @@ Ruhsat Engeli) TEK bir ortak kalıba sahip olduğundan grup olarak ele alındı.
 
 ---
 
+## 6. Değerleme (Değer Tespiti, Satış Kabiliyeti, Kira, Hisse)
+
+*BDDK riski açısından **en kritik bölüm** — bu paragraflar hemen hemen HER
+raporda, en görünür yerde (Değerleme Sekmesi/Sonuç Detayı) çıkıyor ve genellikle
+en az değişkenli (dolayısıyla en tekrarlanabilir) metinler bunlar.*
+
+| Fonksiyon | Ne Üretiyor | Örnek Sabit Kalıp | Varyant |
+|---|---|---|---|
+| `buildValuationMethodExplanation()` | **⭐⭐ Değerleme Yöntemi Açıklaması** — `{{DEGERLEME_YONTEMI_ACIKLAMASI}}` kaynağı, hemen hemen HER raporda birebir aynı çıkan bir giriş paragrafı | "Konu gayrimenkulün değerlemesinde {yöntem} yaklaşım(lar)ı kullanılmıştır. Konumuz taşınmazın değerlendirmesinde civardaki alım satım rayiç değerleri ve günümüz ekonomik koşulları, taşınmazın konumu, yaşı, fiziki özellikleri, emsallerdeki pazarlık payları, arz/talep dengesi gibi dışsal etkenler dikkate alınmıştır." | **V1:** "Değerlemeye konu gayrimenkulün değer tespitinde {yöntem} yaklaşım(lar)ı esas alınmıştır. Söz konusu taşınmazın değerlendirilmesinde bölgedeki alım-satım rayiç bedelleri ile güncel ekonomik koşullar, taşınmazın konumu, yaşı, fiziksel nitelikleri, emsallerdeki pazarlık payları ve arz-talep dengesi gibi dışsal faktörler göz önünde bulundurulmuştur." **V2:** "Rapor konusu mülkün değerlemesinde {yöntem} yaklaşım(lar)ı uygulanmıştır. Mülkün değerlendirilme sürecinde civar alım-satım rayiçleri ve mevcut ekonomik konjonktür, taşınmazın konumu, yaşı, fiziki durumu, emsallerdeki pazarlık marjları ve arz-talep dengesi gibi harici unsurlar dikkate alınmıştır." |
+| `buildValuationExternalAppraisalText()` | Dışarıdan ekspertiz yapıldıysa eklenen ek paragraf | "{sebep} sebebi ile dışarıdan ekspertiz yapılmış, taşınmazın alan ve mimari açıdan proje ile uygunluğu kontrol edilememiş olup proje ile uygun olduğu kabul edilmiştir. ..." | Sonraki turda ele alınacak (koşullu, daha az sık görülür). |
+| `buildValuationUsageNatureDifferenceText()` / `buildAgriculturalUsageNatureDifferenceText()` | Yasal/mevcut kullanım niteliği farklıysa eklenen açıklama | "Ekspertize konu taşınmaz Tapu Kayıtlarına göre \"{yasal}\" Nitelikli olup, Mevcut Kullanımı \"{mevcut}\" nitelikli olduğu gözlemlenmiştir." + (fark oranına göre 2 farklı devam cümlesi) | Sonraki turda ele alınacak. |
+| `buildValuationConstructionLevelRiskText()` | İnşaat seviyesi %100 altındaysa eklenen risk paragrafı | "Konu taşınmaz hali hazırda %{seviye} inşaat seviyeli olup, ... inşaatın herhangi bir nedenle tamamlanamama riski bulunmaktadır." | Sonraki turda ele alınacak. |
+| `buildValuationSaleabilityExplanation()` | **⭐⭐ Satış Kabiliyeti Açıklaması** — en sık görülen ("Satılabilir") durumu TAMAMEN SABİT | "Değerlemeye konu taşınmaz yukarıdaki özellikleri sebebiyle tercih edilmektedir. Konumu, ulaşım imkânları ve diğer özellikleri dikkate alındığında SATILABİLİR olduğu kanaatine varılmıştır." | **V1:** "Söz konusu gayrimenkul yukarıda belirtilen özellikleri nedeniyle tercih edilen bir taşınmaz niteliğindedir. Konumu, ulaşım olanakları ve diğer nitelikleri birlikte değerlendirildiğinde SATILABİLİR olduğu görüş ve kanaatine varılmıştır." **V2:** "Rapor konusu mülk, sahip olduğu yukarıdaki özellikler nedeniyle talep gören bir gayrimenkul niteliğindedir. Konumu, ulaşım imkânları ve diğer nitelikleri birlikte ele alındığında SATILABİLİR nitelikte olduğu değerlendirilmiştir." |
+| `buildValuationRentExplanation()` | Kira değeri açıklaması — `{{KIRA_ACIKLAMASI}}` kaynağı | "Ekspertize konu taşınmazın yasal ve mevcut kira değerinin {tutar} TL/ay olacağı görüş ve kanaatindeyiz." (yasal=mevcut durumunda) | **V1:** "Değerlemeye konu gayrimenkulün yasal ve mevcut kira bedelinin {tutar} TL/ay olacağı kanaatine varılmıştır." **V1 (yasal≠mevcut):** "...yasal kira bedelinin {X} TL/ay, mevcut kira bedelinin ise {Y} TL/ay olacağı değerlendirilmiştir." |
+| `buildPropertyTaxDeclarationValueExplanation()` | Emlak beyan değeri açıklaması (değer varsa) | "{tarih öneki}{belediye} Emlak Servisinden alınan bilgiye göre değerlemeye konu taşınmazın {yıl} Yılı Emlak Beyan Değeri {tutar} TL'dir." | **V1:** "{tarih öneki}{belediye} Emlak Servisinden edinilen bilgiye göre, söz konusu gayrimenkulün {yıl} yılına ait emlak beyan değeri {tutar} TL olarak tespit edilmiştir." |
+| `buildPropertyTaxDeclarationUnavailableExplanation()` | Emlak beyan değeri alınamadıysa — **neredeyse tamamen sabit**, çok sık görülür | "{belediye} Emlak Servisinde yapılan incelemelerde taşınmaza ait rayiç bedel hakkında bilgilerin malik dışındaki 3. Kişilere verilmediği beyan edilmiştir." | **V1:** "{belediye} Emlak Servisi nezdinde yapılan araştırmada, taşınmazın rayiç bedeline ilişkin bilgilerin malik dışındaki üçüncü kişilerle paylaşılmadığı belirtilmiştir." **V2:** "{belediye} Emlak Servisinden yapılan sorgulamada, gayrimenkulün rayiç değerine dair bilgilerin yalnızca malike açıklandığı, üçüncü kişilere verilmediği ifade edilmiştir." |
+| `buildInsuranceConstructionCostExplanation()` | Sigortaya esas yapı birim maliyeti açıklaması | "Ana gayrimenkul yapı sınıfı {sınıf} olarak seçildiğinden sigortaya esas yapı yaklaşık birim maliyeti {tutar} olarak alınmıştır." | **V1:** "Ana gayrimenkulün yapı sınıfı {sınıf} olarak belirlendiğinden, sigortaya esas yaklaşık birim inşaat maliyeti {tutar} olarak dikkate alınmıştır." |
+| `buildTarlaValuationRiskExplanation()` (→ `tarlaSaleabilityRiskExplanation` sabiti) | Tarla/Bahçe vasıflı taşınmazlar için **çok uzun, tamamen sabit** risk paragrafı (tarım girdi maliyeti, sınırlı talep, örf-adet, doğal etkiler vb.) | (~150 kelimelik tek paragraf, hiç değişken yok) | **Henüz yazılmadı** — uzunluğu nedeniyle ayrı, odaklı bir turda tam bir alternatif paragraf yazılacak. Tarla/bahçe raporu görece az olsa da, bu metin TAMAMEN SABİT olduğundan (hiç değişken yok) yüksek öncelikli. |
+| `buildShareExplanation()` | *(Bkz. Bölüm 2 — Tapu ve Mülkiyet, zaten varyantlandı.)* | — | ✅ Bölüm 2'de tamamlandı. |
+| `buildForeignCurrencyValuationExplanation()` | Döviz bazlı değer karşılıkları | "TCMB {tarih} tarihli döviz alış kurları esas alınarak {değer}: {tutar} TL karşılığı {usd} ve {eur}; ... Hesaplamada USD alış kuru {…}, EUR alış kuru {…} olarak dikkate alınmıştır." | **Varyantlanmıyor (bilinçli):** kur/tutar listesi — veri ağırlıklı, üslup değişikliği anlamsız (`composeImarConditionList` ile aynı gerekçe). |
+
+---
+
 ## Durum ve Sıradaki Adım
 
 - **Varyant metinleri şu an İÇERİK olarak var, KOD olarak YOK.** Yukarıdaki V1/V2 sütunları
@@ -118,9 +141,9 @@ Ruhsat Engeli) TEK bir ortak kalıba sahip olduğundan grup olarak ele alındı.
   ayarlayalım varyant seçimini") — hangi rapor hangi varyantı alacak (kullanıcıya
   sabit / rapor bazlı rastgele / elle seçim) sorusu henüz cevaplanmadı, bu yüzden
   kod entegrasyonu başlamadı.
-- **Sıradaki adım (netleşecek):** ya (a) mevcut 3 bölümdeki eksik varyantları
+- **Sıradaki adım (netleşecek):** ya (a) mevcut 4 bölümdeki eksik varyantları
   (özellikle `buildProjectSuitabilityStatusSentence`'ın kalan ~8 alt-durumu,
+  `buildTarlaValuationRiskExplanation`'ın uzun tarla/bahçe risk paragrafı,
   `buildEnvironmentalDescription`'ın kalan alt cümleleri) tamamlamaya devam,
-  ya da (b) yeni bölümlere (Ana Gayrimenkul, Bağımsız Bölüm, **Değerleme** —
-  BDDK riski açısından en kritik bölüm, Emsaller, Takyidat...) geçmek —
-  kullanıcı onayı bekleniyor.
+  ya da (b) yeni bölümlere (Ana Gayrimenkul, Bağımsız Bölüm, Emsaller,
+  Takyidat...) geçmek — kullanıcı onayı bekleniyor.
