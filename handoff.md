@@ -1,5 +1,17 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.356 - 2026-08-07 - Admin paneli: Tekrarlanan Ada/Parsel Tespiti (BDDK 2-uzman riski)
+
+- Kullanıcı: "BDDK'nın 10 M TL üstü raporlarda 2 ayrı değerleme uzmanına iş yönlendirme zorunluluğu var ... sistemimizden yapılan raporlarda aynı ada parsel, ya da aynı ada parsel blok bağımsız bölüm nu yapılıyor ise bunun tespit edilmesi gerekiyor" — otomatik cümle kalıpları birebir aynı çıkabileceğinden, banka karşılaştırmasında bu kullanıcıların bloklanmasına yol açabilir. Açıkça belirtildi: KVKK ihlali değil, mülk sahibi/rapor içeriği ile ilgisi yok, yalnızca ada/parsel/blok/BB no karşılaştırması.
+- **Yeni "Tekrarlanan Ada/Parsel Tespiti" kartı** (admin-users.html, "Rapor Listesi"nden hemen önce) — TAMAMEN istemci tarafında, zaten yüklenmiş Rapor Listesi özetinden (ada/parsel/blok/BB no zaten 0.0.348'de toplanıyordu) hesaplanır, yeni bir API/veri toplama YOK:
+  - **"Aynı birim" katmanı** (ada+parsel+blok+BB no tam eşleşme) — en yüksek risk.
+  - **"Aynı bina" katmanı** (yalnızca ada+parsel eşleşme, farklı blok/BB no) — hâlâ risk (Ana Gayrimenkul paragrafları aynı çıkar), ayrı gösterilir; "aynı birim" katmanında zaten TAM olarak görünen gruplar burada TEKRAR gösterilmez (gürültü önleme).
+  - Her grup **"FARKLI KULLANICI"** (kırmızı, kritik) veya **"AYNI KULLANICI"** (amber, bilgilendirme) olarak etiketlenir — asıl BDDK riski farklı kullanıcılar arasında olduğundan bu ayrım önde.
+- **Yeni test**: `tools/test-admin-duplicate-parcel-detection.js` — admin-users.html'in inline script'inden `groupReportsByKey`/`toDuplicateGroupList`/`detectDuplicateParcels` fonksiyonlarını doğrudan çıkarıp (`vm`) 6 senaryoyu doğrular: aynı birim farklı kullanıcı, aynı ada/parsel farklı birim, katmanlar-arası gereksiz tekrar önleme, aynı kullanıcının kendi iç tekrarı (kritik değil), eksik ada/parsel verisi (crash yok), tekil ada/parsel (grup oluşturmaz).
+- Tarayıcıda (yerel önizleme, sentetik veri enjekte edilerek) elle görsel olarak doğrulandı — kırmızı/amber ayrımı ve grup içerikleri doğru render ediliyor.
+- Bu değişiklik yalnızca `admin-users.html` — `server.js` değişmedi (mevcut `/api/report-list` verisi yeterliydi), `index.html` cache-buster bump gerekmedi.
+- `npm run verify` tamamı geçti (yeni test dahil).
+
 ## 0.0.355 - 2026-08-07 - Admin paneli Faz 3: kullanıcı detay görünümü + sistem sağlığı kartı
 
 - Kullanıcı: "3. fazdan devam edelim" — netleştirme sonrası: kullanıcı detay görünümü (evet), sistem sağlığı kartı ("basit/gerçekçi olan"), ikinci admin/yedek erişim (hayır, şimdilik atlandı).

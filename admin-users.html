@@ -161,6 +161,17 @@
       .modal-section { margin-top: 16px; }
       .modal-section h3 { margin: 0 0 6px; font-size: 12px; font-weight: 800; color: #3a5691; text-transform: uppercase; letter-spacing: 0.02em; }
       .modal-section .empty { padding: 6px 0; text-align: left; }
+      .dup-group { border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; }
+      .dup-group:last-child { margin-bottom: 0; }
+      .dup-group.critical { background: #fbe7e7; border: 1px solid #f0b8b8; }
+      .dup-group.info { background: #fff2d8; border: 1px solid #f0dcaa; }
+      .dup-group-title { font-weight: 800; font-size: 13px; color: #152238; margin-bottom: 2px; }
+      .dup-group-tag { display: inline-block; border-radius: 999px; padding: 1px 8px; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.02em; margin-left: 6px; vertical-align: middle; }
+      .dup-group.critical .dup-group-tag { background: #b23434; color: #fff; }
+      .dup-group.info .dup-group-tag { background: #8a5a00; color: #fff; }
+      .dup-group-sub { font-size: 11px; color: #5a6576; margin-bottom: 8px; }
+      .dup-report-row { font-size: 12px; padding: 4px 0; border-top: 1px solid rgba(0,0,0,0.08); }
+      .dup-report-row:first-of-type { border-top: none; }
     </style>
   </head>
   <body>
@@ -224,6 +235,13 @@
         <button type="button" class="more-btn" id="adminActionsMoreBtn" hidden>Daha fazla göster</button>
       </div>
 
+      <p class="section-title">Tekrarlanan Ada/Parsel Tespiti</p>
+      <p class="section-hint">BDDK'nın 10 M TL üstü raporlarda 2 ayrı değerleme uzmanına iş yönlendirme zorunluluğu nedeniyle: aynı ada/parsel (ve varsa aynı blok/bağımsız bölüm no) birden fazla raporda kullanılmışsa, otomatik oluşan cümle kalıpları BİREBİR aynı çıkabilir — banka karşılaştırmasında bu, uzmanların bilgi paylaştığı izlenimi verip sistem kullanıcılarının bloklanmasına yol açabilir. Yalnızca ada/parsel/blok/BB no karşılaştırılır; mülk sahibi/rapor içeriği ile ilgisi YOKTUR.</p>
+      <div class="card">
+        <p class="status" id="duplicatesStatus">Yükleniyor...</p>
+        <div id="duplicatesList"></div>
+      </div>
+
       <p class="section-title">Rapor Listesi</p>
       <p class="section-hint">Sistemde oluşturulan/dışa aktarılan her raporun ana başlıkları — oluşturan kullanıcı, banka, il/ilçe/mahalle, ada/parsel, blok/bağımsız bölüm no, gayrimenkul niteliği, rapor numarası. Raporun DİĞER içeriği (metinler, tablolar, dosyalar) burada YER ALMAZ.</p>
       <div class="card">
@@ -281,6 +299,8 @@
         var userDetailBackdrop = document.getElementById("userDetailBackdrop");
         var userDetailContent = document.getElementById("userDetailContent");
         var userDetailCloseBtn = document.getElementById("userDetailCloseBtn");
+        var duplicatesStatusLine = document.getElementById("duplicatesStatus");
+        var duplicatesList = document.getElementById("duplicatesList");
 
         // Kullanıcı talebi (admin paneli eleştirel değerlendirme, Faz 1,
         // 2026-08-07): "sayfalama/arama yok, 200+ kayıtta panel kullanılamaz
@@ -1021,14 +1041,116 @@
           },
         });
 
+        // Kullanıcı talebi (BDDK 2-uzman-zorunluluğu risk tespiti,
+        // 2026-08-07): "aynı ada parsel, ya da aynı ada parsel blok
+        // bağımsız bölüm nu yapılıyor ise bunun tespit edilmesi
+        // gerekiyor" — otomatik oluşan cümle kalıpları birebir aynı
+        // çıkabilir, bu da bankanın uzmanların bilgi paylaştığı
+        // şüphesiyle sistem kullanıcılarını bloklamasına yol açabilir.
+        // Yalnızca ada/parsel/blok/BB no karşılaştırılır — mülk sahibi
+        // veya rapor İÇERİĞİ ile hiç ilgisi YOKTUR, zaten yüklenmiş
+        // "Rapor Listesi" özetinden istemci tarafında hesaplanır.
+        function groupReportsByKey(reports, keyFn) {
+          var groups = {};
+          reports.forEach(function (entry) {
+            var key = keyFn(entry);
+            if (!key) return;
+            (groups[key] = groups[key] || []).push(entry);
+          });
+          return groups;
+        }
+
+        function toDuplicateGroupList(groups, requireUnitDiversity) {
+          return Object.keys(groups)
+            .map(function (key) { return groups[key]; })
+            .filter(function (list) { return list.length > 1; })
+            .filter(function (list) {
+              if (!requireUnitDiversity) return true;
+              // "Aynı bina" katmanında, zaten "aynı birim" katmanında tam
+              // olarak gösterilecek gruplari TEKRAR gostermemek icin: tum
+              // uyeler AYNI blok+BB no'ya sahipse bu grubu atla (o zaten
+              // fullUnit listesinde var).
+              var unitKeys = {};
+              list.forEach(function (entry) {
+                var sm = entry.summary || {};
+                unitKeys[(sm.titleBlockName || "") + "|" + (sm.unitNo || "")] = true;
+              });
+              return Object.keys(unitKeys).length > 1;
+            })
+            .map(function (list) {
+              var uids = {};
+              list.forEach(function (entry) { uids[entry.uid || entry.email || ""] = true; });
+              return { reports: list, distinctUserCount: Object.keys(uids).length };
+            })
+            .sort(function (a, b) { return (b.distinctUserCount - a.distinctUserCount) || (b.reports.length - a.reports.length); });
+        }
+
+        function detectDuplicateParcels(reports) {
+          var byFullUnit = groupReportsByKey(reports, function (entry) {
+            var s = entry.summary || {};
+            if (!s.blockNo || !s.parcelNo || (!s.titleBlockName && !s.unitNo)) return null;
+            return (s.blockNo + "|" + s.parcelNo + "|" + (s.titleBlockName || "") + "|" + (s.unitNo || "")).toLocaleLowerCase("tr");
+          });
+          var byAdaParsel = groupReportsByKey(reports, function (entry) {
+            var s = entry.summary || {};
+            if (!s.blockNo || !s.parcelNo) return null;
+            return (s.blockNo + "|" + s.parcelNo).toLocaleLowerCase("tr");
+          });
+          return {
+            fullUnit: toDuplicateGroupList(byFullUnit, false),
+            adaParsel: toDuplicateGroupList(byAdaParsel, true),
+          };
+        }
+
+        function renderDuplicateGroup(group, tierLabel) {
+          var s0 = group.reports[0].summary || {};
+          var isCritical = group.distinctUserCount > 1;
+          var title = [s0.city, s0.district, s0.neighborhood].filter(Boolean).join(" / ") + " — Ada " + (s0.blockNo || "-") + " Parsel " + (s0.parcelNo || "-");
+          var rows = group.reports.map(function (entry) {
+            var s = entry.summary || {};
+            var unit = [s.titleBlockName, s.unitNo].filter(Boolean).join(" / Blok-BB ") || "-";
+            return '<div class="dup-report-row">' + escapeHtmlLocal(entry.reportId || "-") + " — " + escapeHtmlLocal(entry.email || entry.uid || "-") + " — " + escapeHtmlLocal(unit) + " — " + escapeHtmlLocal(formatDate(entry.createdAt)) + "</div>";
+          }).join("");
+          return '<div class="dup-group ' + (isCritical ? "critical" : "info") + '">'
+            + '<div class="dup-group-title">' + escapeHtmlLocal(title) + '<span class="dup-group-tag">' + (isCritical ? "FARKLI KULLANICI" : "AYNI KULLANICI") + "</span></div>"
+            + '<div class="dup-group-sub">' + tierLabel + " — " + group.reports.length + " rapor</div>"
+            + rows
+            + "</div>";
+        }
+
+        function renderDuplicates(reports) {
+          var detected = detectDuplicateParcels(reports);
+          var totalGroups = detected.fullUnit.length + detected.adaParsel.length;
+          if (!totalGroups) {
+            duplicatesStatusLine.textContent = "Tekrarlanan ada/parsel tespit edilmedi.";
+            duplicatesStatusLine.className = "status";
+            duplicatesList.innerHTML = '<p class="empty">Tekrar bulunamadı.</p>';
+            return;
+          }
+          var criticalCount = detected.fullUnit.concat(detected.adaParsel).filter(function (g) { return g.distinctUserCount > 1; }).length;
+          duplicatesStatusLine.textContent = totalGroups + " tekrarlanan ada/parsel grubu bulundu"
+            + (criticalCount ? " (" + criticalCount + " tanesi FARKLI kullanıcılar arasında — dikkat!)" : " (hepsi aynı kullanıcı içinde)") + ".";
+          duplicatesStatusLine.className = criticalCount ? "status error" : "status";
+          duplicatesList.innerHTML =
+            detected.fullUnit.map(function (g) { return renderDuplicateGroup(g, "Aynı ada/parsel/blok/BB no (aynı birim)"); }).join("")
+            + detected.adaParsel.map(function (g) { return renderDuplicateGroup(g, "Aynı ada/parsel (farklı blok/BB no)"); }).join("");
+        }
+
         function loadReports() {
           reportsStatusLine.textContent = "Yükleniyor...";
           reportsStatusLine.className = "status";
+          duplicatesStatusLine.textContent = "Yükleniyor...";
+          duplicatesStatusLine.className = "status";
           return apiCall("/api/report-list", { method: "GET" })
-            .then(function (body) { reportsController.load(body.reports); })
+            .then(function (body) {
+              reportsController.load(body.reports);
+              renderDuplicates(body.reports);
+            })
             .catch(function (error) {
               reportsStatusLine.textContent = "Rapor listesi alınamadı: " + (error && error.message ? error.message : "bilinmeyen hata");
               reportsStatusLine.className = "status error";
+              duplicatesStatusLine.textContent = "Tekrar tespiti yapılamadı.";
+              duplicatesStatusLine.className = "status error";
             });
         }
 
