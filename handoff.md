@@ -1,5 +1,16 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.355 - 2026-08-07 - Admin paneli Faz 3: kullanıcı detay görünümü + sistem sağlığı kartı
+
+- Kullanıcı: "3. fazdan devam edelim" — netleştirme sonrası: kullanıcı detay görünümü (evet), sistem sağlığı kartı ("basit/gerçekçi olan"), ikinci admin/yedek erişim (hayır, şimdilik atlandı).
+- **Kullanıcı detay görünümü**: "Onaylı Kullanıcılar" listesindeki her satıra bir "Detay" butonu eklendi — tıklanınca ZATEN YÜKLENMİŞ 4 veri kaynağını (istatistik/giriş-çıkış geçmişi/admin işlemleri/rapor listesi) uid/email'e göre filtreleyip TEK bir modalde gösteriyor. Yeni bir API/istek GEREKMEDİ.
+- **Sistem sağlığı kartı**: yeni `GET /api/system-health` (`computeSystemHealth()`, `requireAdmin` korumalı) — sunucu çalışma süresi, onaylı/bekleyen kullanıcı sayısı, aktif oturum sayısı, `activity-events.json` kayıt sayısı/boyutu, `uploads/` klasör boyutu/dosya sayısı (yeni bir izleme sistemi kurulmadı, zaten var olan veriden), MFA yapılandırma durumu, son yedekleme zamanı.
+- **Bulunan gerçek bug (görsel testte yakalandı)**: "Son Yedekleme" ilk halde `backups/` klasöründeki isimleri ALFABETİK sıralıyordu — ama bu depodaki gerçek yedek klasörleri çoğunlukla `before-<açıklama>_TARİH` formatında elle adlandırılmış, yani alfabetik sıralama YANLIŞ "en son"u seçiyordu (ör. "before-ziraat..." tarih olarak daha eski olsa bile alfabetik "before-word..."dan sonra geliyor). Artık klasörlerin GERÇEK dosya sistemi değişiklik zamanına (`mtime`) göre sıralanıyor; yeni `latestBackupAt` alanı gerçek bir tarih döndürüyor (kart artık okunabilir bir tarih gösteriyor, kriptik klasör adı değil).
+- **Yeni test**: `tools/test-system-health.js` — `computeDirectorySize` (iç içe klasörler, MAX_SCAN_ENTRIES aşımı, var olmayan klasör), `computeSystemHealth` (tüm alanlar dolduruluyor), **mtime-bazlı `latestBackup` regresyon testi** (alfabetik olarak SONRA gelen ama mtime olarak ESKİ bir klasörün YANLIŞLIKLA seçilmediğini doğrular — gerçek `backups/` klasörüne geçici test klasörleri ekleyip `finally` ile temizler), `handleSystemHealthApi` (admin-olmayana 403).
+- `npm run verify` tamamı geçti; admin-users.html tarayıcıda (yerel önizleme, sunucu yeniden başlatılarak) elle kontrol edildi — konsol hatası yok, sağlık kartı doğru render ediliyor, modal açılıp kapanıyor (Kapat butonu doğrulandı).
+- Bu değişiklik `server.js` + `admin-users.html` — istemci JS dosyası (`app.js`/`src/**`) değişmedi, `index.html` cache-buster bump gerekmedi.
+- Faz 3'ün "ikinci admin/yedek erişim mekanizması" maddesi kullanıcı tarafından bilinçli olarak ERTELENDİ (gerçek bir güvenlik/iş kararı, şu an ihtiyaç yok).
+
 ## 0.0.354 - 2026-08-07 - Admin paneli Faz 2: rozet, toplu onay/red, CSV dışa aktarma
 
 - Kullanıcı: "2. fazdan devam edelim" — plandaki 3 madde uygulandı, hepsi `admin-users.html` içinde (sunucu tarafı değişmedi):

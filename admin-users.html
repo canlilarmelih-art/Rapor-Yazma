@@ -130,6 +130,37 @@
       .bulk-approve-btn { background: #1c7a3f; color: #fff; border: none; border-radius: 6px; padding: 6px 12px; font-size: 12px; font-weight: 700; cursor: pointer; }
       .bulk-reject-btn { background: #eef1f6; color: #b23434; border: none; border-radius: 6px; padding: 6px 12px; font-size: 12px; font-weight: 700; cursor: pointer; }
       .row-checkbox { margin-right: 8px; flex-shrink: 0; }
+      .health-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+      .health-tile { background: #f7f9fc; border-radius: 10px; padding: 10px 12px; }
+      .health-tile .health-label { font-size: 11px; color: #8a99ad; font-weight: 700; text-transform: uppercase; letter-spacing: 0.02em; }
+      .health-tile .health-value { font-size: 16px; font-weight: 800; color: #152238; margin-top: 4px; }
+      .health-tile.warn .health-value { color: #b23434; }
+      .detail-btn { background: #eef1f6; color: #1c3d7a; border: none; border-radius: 6px; padding: 7px 12px; font-size: 12px; font-weight: 700; cursor: pointer; }
+      .modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(10, 16, 33, 0.65);
+        display: flex;
+        align-items: flex-start;
+        justify-content: center;
+        padding: 40px 16px;
+        overflow-y: auto;
+        z-index: 1000;
+      }
+      .modal-card {
+        background: #fff;
+        color: #152238;
+        border-radius: 14px;
+        padding: 22px;
+        max-width: 620px;
+        width: 100%;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+      }
+      .modal-card h2 { margin: 0 0 4px; font-size: 16px; font-weight: 800; }
+      .modal-close-btn { float: right; background: #eef1f6; color: #152238; border: none; border-radius: 6px; padding: 6px 10px; font-size: 12px; font-weight: 700; cursor: pointer; }
+      .modal-section { margin-top: 16px; }
+      .modal-section h3 { margin: 0 0 6px; font-size: 12px; font-weight: 800; color: #3a5691; text-transform: uppercase; letter-spacing: 0.02em; }
+      .modal-section .empty { padding: 6px 0; text-align: left; }
     </style>
   </head>
   <body>
@@ -139,6 +170,14 @@
         <h1>Kullanıcı Onayları</h1>
         <span class="badge" id="pendingBadge" hidden>0</span>
       </div>
+
+      <p class="section-title">Sistem Sağlığı</p>
+      <p class="section-hint">Sunucu çalışma süresi, veri dosyası boyutları, kullanıcı/oturum sayıları — yeni bir izleme sistemi kurmadan, zaten var olan veriden.</p>
+      <div class="card">
+        <p class="status" id="healthStatus">Yükleniyor...</p>
+        <div class="health-grid" id="healthGrid"></div>
+      </div>
+
       <div class="card">
         <p class="status" id="status">Yükleniyor...</p>
         <div class="bulk-toolbar" id="bulkToolbar" hidden>
@@ -196,6 +235,13 @@
       </div>
     </div>
 
+    <div class="modal-backdrop" id="userDetailBackdrop" hidden>
+      <div class="modal-card">
+        <button type="button" class="modal-close-btn" id="userDetailCloseBtn">Kapat</button>
+        <div id="userDetailContent"></div>
+      </div>
+    </div>
+
     <script src="vendor/firebase/firebase-app-compat.js?v=11.10.0"></script>
     <script src="vendor/firebase/firebase-auth-compat.js?v=11.10.0"></script>
     <script src="cloud/firebase-config.js?v=20260709-1854"></script>
@@ -230,6 +276,11 @@
         var reportsMoreBtn = document.getElementById("reportsMoreBtn");
         var reportsCsvBtn = document.getElementById("reportsCsvBtn");
         var baseTitle = document.title;
+        var healthStatusLine = document.getElementById("healthStatus");
+        var healthGrid = document.getElementById("healthGrid");
+        var userDetailBackdrop = document.getElementById("userDetailBackdrop");
+        var userDetailContent = document.getElementById("userDetailContent");
+        var userDetailCloseBtn = document.getElementById("userDetailCloseBtn");
 
         // Kullanıcı talebi (admin paneli eleştirel değerlendirme, Faz 1,
         // 2026-08-07): "sayfalama/arama yok, 200+ kayıtta panel kullanılamaz
@@ -442,12 +493,13 @@
             row.className = "row";
             row.innerHTML =
               '<div class="info"><div class="email"></div><div class="meta"></div></div>' +
-              '<div class="actions"><button type="button" class="privilege-btn"></button><button type="button" class="status-btn"></button><button type="button" class="delete-btn">Sil</button></div>';
+              '<div class="actions"><button type="button" class="detail-btn">Detay</button><button type="button" class="privilege-btn"></button><button type="button" class="status-btn"></button><button type="button" class="delete-btn">Sil</button></div>';
             row.querySelector(".email").textContent = entry.fullName
               ? entry.fullName + " (" + (entry.email || "e-posta yok") + ")"
               : (entry.email || "(e-posta yok)");
             row.querySelector(".meta").textContent = formatProfileMeta(entry, "Onay", entry.approvedAt);
             row.querySelector(".meta").textContent += " | " + (entry.status === "suspended" ? "Pasif" : "Aktif");
+            row.querySelector(".detail-btn").addEventListener("click", function () { openUserDetail(entry); });
             var toggleBtn = row.querySelector(".privilege-btn");
             var statusBtn = row.querySelector(".status-btn");
             var deleteBtn = row.querySelector(".delete-btn");
@@ -634,6 +686,132 @@
           URL.revokeObjectURL(url);
         }
 
+        // Kullanıcı talebi (admin paneli Faz 3, "Basit/gerçekçi olan" sağlık
+        // kartı): yeni bir izleme sistemi kurmadan, GET /api/system-health'in
+        // döndürdüğü zaten-var-olan veriden basit bir özet.
+        function formatBytes(bytes) {
+          if (!Number.isFinite(bytes) || bytes < 0) return "—";
+          if (bytes < 1024) return bytes + " B";
+          if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+          return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+        }
+
+        function formatUptime(seconds) {
+          if (!Number.isFinite(seconds)) return "—";
+          var days = Math.floor(seconds / 86400);
+          var hours = Math.floor((seconds % 86400) / 3600);
+          var minutes = Math.floor((seconds % 3600) / 60);
+          if (days > 0) return days + " gün " + hours + " sa";
+          if (hours > 0) return hours + " sa " + minutes + " dk";
+          return minutes + " dk";
+        }
+
+        function renderHealthGrid(health) {
+          var tiles = [
+            { label: "Sunucu Çalışma Süresi", value: formatUptime(health.uptimeSeconds) },
+            { label: "Onaylı Kullanıcı", value: String(health.approvedUsersCount) },
+            { label: "Onay Bekleyen", value: String(health.pendingUsersCount), warn: health.pendingUsersCount > 0 },
+            { label: "Aktif Oturum", value: String(health.sessionsCount) },
+            { label: "Etkinlik Kaydı", value: String(health.activityEventsCount) + " (" + formatBytes(health.activityEventsFileSizeBytes) + ")" },
+            { label: "Yüklenen Dosyalar", value: String(health.uploadsFileCount) + (health.uploadsScanTruncated ? "+" : "") + " (" + formatBytes(health.uploadsSizeBytes) + ")" },
+            { label: "E-posta Doğrulama (MFA)", value: health.mfaConfigured ? "Yapılandırılmış" : "Yapılandırılmamış", warn: !health.mfaConfigured },
+            { label: "Son Yedekleme", value: health.latestBackupAt ? formatDate(health.latestBackupAt) : "Yok", warn: !health.latestBackupAt },
+          ];
+          healthGrid.innerHTML = tiles.map(function (tile) {
+            return '<div class="health-tile' + (tile.warn ? " warn" : "") + '">'
+              + '<div class="health-label">' + escapeHtmlLocal(tile.label) + "</div>"
+              + '<div class="health-value">' + escapeHtmlLocal(tile.value) + "</div>"
+              + "</div>";
+          }).join("");
+        }
+
+        function loadHealth() {
+          healthStatusLine.textContent = "Yükleniyor...";
+          healthStatusLine.className = "status";
+          return apiCall("/api/system-health", { method: "GET" })
+            .then(function (body) {
+              healthStatusLine.textContent = "Son güncelleme: " + formatDate(new Date().toISOString());
+              renderHealthGrid(body.health);
+            })
+            .catch(function (error) {
+              healthStatusLine.textContent = "Sistem sağlığı alınamadı: " + (error && error.message ? error.message : "bilinmeyen hata");
+              healthStatusLine.className = "status error";
+            });
+        }
+
+        // Kullanıcı talebi (admin paneli Faz 3): kullanıcı detay görünümü —
+        // "Onaylı Kullanıcılar" listesindeki "Detay" butonuna tıklanınca,
+        // ZATEN YÜKLENMİŞ 4 veri kaynağını (istatistik/giriş-çıkış/admin
+        // işlemleri/rapor listesi) uid/email'e göre filtreleyip TEK bir
+        // modalde gösterir — yeni bir API/istek GEREKMEZ.
+        function filterByUidOrEmail(list, uid, email) {
+          return list.filter(function (row) {
+            return (uid && (row.uid === uid)) || (email && row.email === email);
+          });
+        }
+
+        function openUserDetail(entry) {
+          var stats = statsAllRows.filter(function (row) { return row.uid === entry.uid || row.email === entry.email; })[0] || null;
+          var events = filterByUidOrEmail(eventsController.getAll(), entry.uid, entry.email);
+          var adminActions = filterByUidOrEmail(adminActionsController.getAll(), entry.uid, entry.email);
+          var reports = filterByUidOrEmail(reportsController.getAll(), entry.uid, entry.email);
+
+          var html = "";
+          html += "<h2>" + escapeHtmlLocal(entry.fullName || entry.email || entry.uid) + "</h2>";
+          html += '<p class="status">' + escapeHtmlLocal(entry.email || "e-posta yok") + " · " + (entry.status === "suspended" ? "Pasif" : "Aktif") + (entry.privileged ? " · Yetkili" : "") + "</p>";
+
+          html += '<div class="modal-section"><h3>Profil</h3>';
+          html += formatProfileMeta(entry, "Onay", entry.approvedAt) || "Bilgi yok.";
+          html += "</div>";
+
+          html += '<div class="modal-section"><h3>İstatistik</h3>';
+          html += stats
+            ? (stats.reportsCreated + " rapor oluşturuldu, " + stats.reportsExported + " dışa aktarıldı, ort. süre " + formatDuration(stats.avgDurationMs))
+            : '<p class="empty">Veri yok.</p>';
+          html += "</div>";
+
+          html += '<div class="modal-section"><h3>Giriş / Çıkış Geçmişi (' + events.length + ")</h3>";
+          html += events.length
+            ? events.slice(0, 20).map(function (event) {
+                return "<div>" + (event.type === "login" ? "Giriş" : "Çıkış") + " — " + escapeHtmlLocal(formatDate(event.at)) + " — " + escapeHtmlLocal(event.ip || "-") + "</div>";
+              }).join("")
+            : '<p class="empty">Kayıt yok.</p>';
+          html += "</div>";
+
+          html += '<div class="modal-section"><h3>Admin İşlemleri (' + adminActions.length + ")</h3>";
+          html += adminActions.length
+            ? adminActions.slice(0, 20).map(function (event) {
+                return "<div>" + escapeHtmlLocal(ADMIN_ACTION_LABELS[event.type] || event.type) + " — " + escapeHtmlLocal(formatDate(event.at)) + " — yapan: " + escapeHtmlLocal(event.actorEmail || event.actorUid || "-") + "</div>";
+              }).join("")
+            : '<p class="empty">Kayıt yok.</p>';
+          html += "</div>";
+
+          html += '<div class="modal-section"><h3>Raporları (' + reports.length + ")</h3>";
+          html += reports.length
+            ? reports.slice(0, 20).map(function (report) {
+                var s = report.summary || {};
+                var loc = [s.city, s.district, s.neighborhood].filter(Boolean).join(" / ") || "-";
+                return "<div>" + escapeHtmlLocal(report.reportId || "-") + " — " + escapeHtmlLocal(loc) + " — " + escapeHtmlLocal(formatDate(report.createdAt)) + "</div>";
+              }).join("")
+            : '<p class="empty">Kayıt yok.</p>';
+          html += "</div>";
+
+          userDetailContent.innerHTML = html;
+          userDetailBackdrop.hidden = false;
+        }
+
+        function closeUserDetail() {
+          userDetailBackdrop.hidden = true;
+        }
+
+        userDetailCloseBtn.addEventListener("click", closeUserDetail);
+        userDetailBackdrop.addEventListener("click", function (event) {
+          if (event.target === userDetailBackdrop) closeUserDetail();
+        });
+        document.addEventListener("keydown", function (event) {
+          if (event.key === "Escape" && !userDetailBackdrop.hidden) closeUserDetail();
+        });
+
         // Kullanıcı talebi (admin paneli Faz 1): arama + "Daha fazla göster"
         // sayfalama — sunucudan gelen TÜM diziyi bellekte tutup filtrelenmiş
         // sonucun yalnızca ilk `visibleCount` satırını render eder. Her
@@ -675,6 +853,9 @@
             // CSV disa aktarma icin: sayfalamadan BAGIMSIZ, aramaya uyan
             // TUM satirlar (yalnizca o an ekranda gorunen degil).
             getFiltered: currentFiltered,
+            // Kullanıcı detay modalı icin: aramadan/sayfalamadan BAGIMSIZ,
+            // sunucudan gelen TUM diziyi doner.
+            getAll: function () { return state.all; },
           };
         }
 
@@ -881,6 +1062,7 @@
             window.location.replace("/login.html?next=" + encodeURIComponent("/admin-users.html"));
             return;
           }
+          loadHealth();
           loadPending();
           loadApproved();
           loadStats();

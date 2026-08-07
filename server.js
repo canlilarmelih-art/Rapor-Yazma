@@ -1511,6 +1511,98 @@ async function copyIfExists(name, targetDir) {
   }
 }
 
+// Kullanıcı talebi (admin paneli Faz 3, "Basit/gerçekçi olan" sağlık
+// kartı, 2026-08-07): yeni bir izleme altyapısı KURMADAN, zaten var olan
+// veriden (bellekteki Map'ler, dosya boyutları, process.uptime) basit bir
+// sistem özeti üretir. Uploads klasörü derin/patalojik olabileceğinden
+// dosya sayısı bir üst sınırla (MAX_SCAN_ENTRIES) sınırlanır — aşılırsa
+// "en az" olarak işaretlenir, tarama durur (sonsuz/çok yavaş tarama riski
+// yok).
+const SYSTEM_HEALTH_MAX_SCAN_ENTRIES = 5000;
+
+async function computeDirectorySize(rootDir) {
+  const result = { bytes: 0, fileCount: 0, truncated: false };
+  async function walk(dir) {
+    if (result.truncated) return;
+    let entries;
+    try {
+      entries = await fs.readdir(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      if (result.fileCount >= SYSTEM_HEALTH_MAX_SCAN_ENTRIES) {
+        result.truncated = true;
+        return;
+      }
+      const entryPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        await walk(entryPath);
+      } else if (entry.isFile()) {
+        try {
+          const stat = await fs.stat(entryPath);
+          result.bytes += stat.size;
+          result.fileCount += 1;
+        } catch {
+          /* dosya tarama sırasında silinmiş olabilir, atla */
+        }
+      }
+    }
+  }
+  await walk(rootDir);
+  return result;
+}
+
+async function computeSystemHealth() {
+  await loadActivityEventsOnce();
+  await loadApprovalStateOnce();
+  await loadSessionsOnce();
+
+  const activityEventsPath = path.join(dataDir, "activity-events.json");
+  const uploadsDir = path.join(dataDir, "uploads");
+
+  const [activityEventsStat, uploadsSize, backupEntries] = await Promise.all([
+    fs.stat(activityEventsPath).catch(() => null),
+    computeDirectorySize(uploadsDir),
+    fs.readdir(backupDir, { withFileTypes: true }).catch(() => []),
+  ]);
+
+  // NOT: yedek klasor adlari her zaman "YYYY-MM-DD_HH-MM-SS" formatinda
+  // DEGIL — bu depoda cogu "before-<aciklama>_YYYY-MM-DD_HH-MM-SS" gibi
+  // elle/baska bir araçla olusturulmus adlar tasiyor. Isim bazli alfabetik
+  // siralama bu yuzden YANLIS "en son"u seçebiliyordu (ör. "before-ziraat..."
+  // "before-word..."dan alfabetik SONRA gelir ama tarih olarak ONCE
+  // olabilir). Bunun yerine klasorun GERCEK dosya sistemi degisiklik
+  // zamanina (mtime) gore siralanir.
+  const backupDirs = backupEntries.filter((entry) => entry.isDirectory());
+  const backupStats = await Promise.all(
+    backupDirs.map((entry) =>
+      fs.stat(path.join(backupDir, entry.name)).then(
+        (stat) => ({ name: entry.name, mtime: stat.mtime.toISOString() }),
+        () => null,
+      ),
+    ),
+  );
+  const latestBackupEntry = backupStats
+    .filter(Boolean)
+    .sort((a, b) => b.mtime.localeCompare(a.mtime))[0] || null;
+
+  return {
+    uptimeSeconds: Math.round(process.uptime()),
+    activityEventsCount: activityEvents.length,
+    activityEventsFileSizeBytes: activityEventsStat ? activityEventsStat.size : 0,
+    uploadsSizeBytes: uploadsSize.bytes,
+    uploadsFileCount: uploadsSize.fileCount,
+    uploadsScanTruncated: uploadsSize.truncated,
+    mfaConfigured: isMfaConfigured(),
+    approvedUsersCount: approvedUsers.size,
+    pendingUsersCount: pendingUsers.size,
+    sessionsCount: sessions.size,
+    latestBackup: latestBackupEntry ? latestBackupEntry.name : null,
+    latestBackupAt: latestBackupEntry ? latestBackupEntry.mtime : null,
+  };
+}
+
 async function createDailyBackupIfNeeded() {
   const today = new Date().toISOString().slice(0, 10);
   if (lastBackupCheckDate === today) return;
@@ -2940,6 +3032,17 @@ async function handleAdminActionEventsApi(request, response, user) {
   sendJson(response, 200, { ok: true, events });
 }
 
+// Kullanıcı talebi (admin paneli Faz 3): sistem sağlığı kartı.
+async function handleSystemHealthApi(request, response, user) {
+  if (request.method !== "GET") {
+    sendJson(response, 405, { ok: false, error: "Bu işlem desteklenmiyor." });
+    return;
+  }
+  if (!requireAdmin(response, user)) return;
+  const health = await computeSystemHealth();
+  sendJson(response, 200, { ok: true, health });
+}
+
 async function handleUserStatsApi(request, response, user) {
   if (request.method !== "GET") {
     sendJson(response, 405, { ok: false, error: "Bu işlem desteklenmiyor." });
@@ -3099,6 +3202,7 @@ const API_RATE_LIMITS = {
   "/api/report-template-docx": { limit: 12, windowMs: 60 * 1000 },
   "/api/login-events": { limit: 30, windowMs: 60 * 1000 },
   "/api/admin-action-events": { limit: 30, windowMs: 60 * 1000 },
+  "/api/system-health": { limit: 20, windowMs: 60 * 1000 },
   "/api/user-stats": { limit: 30, windowMs: 60 * 1000 },
   "/api/report-list": { limit: 30, windowMs: 60 * 1000 },
 };
@@ -3248,6 +3352,10 @@ const server = http.createServer(async (request, response) => {
       await handleAdminActionEventsApi(request, response, request.user);
       return;
     }
+    if (apiRoute === "/api/system-health") {
+      await handleSystemHealthApi(request, response, request.user);
+      return;
+    }
     if (apiRoute === "/api/user-stats") {
       await handleUserStatsApi(request, response, request.user);
       return;
@@ -3344,6 +3452,9 @@ module.exports = {
   handleReportListApi,
   listAdminActionEvents,
   handleAdminActionEventsApi,
+  computeDirectorySize,
+  computeSystemHealth,
+  handleSystemHealthApi,
   handleApproveUserApi,
   handleRejectUserApi,
   handleGrantPrivilegeApi,
