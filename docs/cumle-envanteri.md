@@ -41,7 +41,7 @@ doldurduğu placeholder'lar DEĞİŞMEYECEK.
 - [ ] 4. Ana Gayrimenkul / Bina Özellikleri
 - [ ] 5. Bağımsız Bölüm İç Özellikleri
 - [x] 6. Değerleme (Değer Tespiti, Satış Kabiliyeti, Kira, Hisse) — en yüksek öncelikli kalıplar; `buildTarlaValuationRiskExplanation` uzun paragrafı ve birkaç düşük-sıklıklı koşullu metin devam ediyor
-- [ ] 7. Emsaller
+- [x] 7. Emsaller — en yüksek öncelikli (Emsal Piyasa Analizi paragrafları) tamamlandı; per-kart karşılaştırma/hesaplama cümleleri kısmen devam ediyor
 - [ ] 8. Takyidat
 - [ ] 9. Ziraat/Arsa-Arazi'ye özel metinler
 - [ ] 10. GDYS/GABİM'e özel metinler
@@ -132,6 +132,29 @@ en az değişkenli (dolayısıyla en tekrarlanabilir) metinler bunlar.*
 
 ---
 
+## 7. Emsaller
+
+*Bu bölüm İmar Durumu kadar (belki daha da) büyük — 30+ fonksiyon. Emsal Açıklaması
+(`{{EMSAL_PIYASA_ANALIZI}}`) ve her emsal kartının tam metni raporun EN UZUN
+serbest-metin bölümlerinden; aynı taşınmaz için aynı yakın emsaller kullanılırsa
+bu paragraflar da neredeyse birebir aynı çıkar — bu yüzden Değerleme kadar
+kritik. En yüksek öncelikliler (`src/comparables/comparable-market-analysis.js`
+dosyasında, `app.js`'in DIŞINDA) tam paragraf varyantıyla yazıldı.*
+
+| Fonksiyon | Ne Üretiyor | Örnek Sabit Kalıp | Varyant |
+|---|---|---|---|
+| `buildComparableMarketAnalysisText()` (→ `ComparableMarketAnalysis.buildComparableMarketAnalysisText`, `src/comparables/comparable-market-analysis.js`) | **⭐⭐⭐ Emsal Piyasa Analizi** — `{{EMSAL_PIYASA_ANALIZI}}` kaynağı, 2-3 uzun paragraf, raporun en uzun serbest metinlerinden biri, HER konut/işyeri raporunda çıkar | **P1:** "Değerleme konusu taşınmazın konumlu olduğu {mahalle/sokak} yürütülen saha çalışmaları kapsamında; taşınmaz ile benzer imar koşullarına, yapı kalitesine ve fonksiyonel özelliklere sahip toplam {sayı} adet emsal veri değerlendirmeye dahil edilmiştir. ... Bu doğrultuda, değerleme tablosunda yer alan emsal alanları, teknik olarak netleştirilmiş ve indirgenmiş proje alanları üzerinden değerlendirmeye esas alınmıştır." **P2:** "Bölgede yapılan detaylı piyasa araştırmaları, yerel gayrimenkul danışmanları ile gerçekleştirilen görüşmeler ve toplanan verilerin değerlendirilmesi sonucunda; emsallerin konum, kat, cephe, manzarası ve iç mekan işçilik kalitesi gibi birim değerini doğrudan etkileyen kriterleri {yön} yönde uyumlandırılarak konu taşınmazın nihai birim değer takdirinde karşılaştırma tablosu olarak kullanılmıştır." **P3 (koşullu):** "Yapılan düzeltmeler sonucunda, emsallerin konu taşınmaza indirgenmiş birim değerlerinin {min} TL/m² ile {max} TL/m² aralığında dengelendiği görülmüştür. ... taşınmazın nihai birim değeri ... {değer} TL/m² olarak takdir edilmiştir." | **V1 (P1):** "Değerlemeye konu gayrimenkulün bulunduğu {mahalle/sokak} gerçekleştirilen yerinde incelemeler kapsamında; taşınmazla benzer imar durumuna, yapı niteliğine ve kullanım özelliklerine sahip toplam {sayı} adet emsal veri değerlendirmeye alınmıştır. ... Buna göre, değerleme tablosundaki emsal alanları, teknik olarak sadeleştirilmiş ve indirgenmiş proje alanları üzerinden değerlendirmeye dahil edilmiştir." **V1 (P2):** "Bölgede gerçekleştirilen kapsamlı piyasa incelemeleri, yerel emlak danışmanlarıyla yapılan görüşmeler ve elde edilen verilerin analiz edilmesi neticesinde; emsallerin konum, kat, cephe, manzara ve iç mekân işçilik kalitesi gibi birim değeri doğrudan etkileyen unsurları {yön} yönde dengelenerek gayrimenkulün nihai birim değer tespitinde karşılaştırma tablosu şeklinde kullanılmıştır." **V1 (P3):** "Uygulanan düzeltmeler neticesinde, emsallerin taşınmaza indirgenmiş birim değerlerinin {min} TL/m² - {max} TL/m² bandında yoğunlaştığı görülmüştür. ... gayrimenkulün nihai birim değeri ... {değer} TL/m² olarak takdir edilmiştir." |
+| `buildLandComparableMarketAnalysisText()` | Aynı fonksiyonun Arsa/Tarla varyantı (arsa/tarla emsalleri için) | Yukarıdakine çok benzer, "yüzölçümü" vurgulu versiyon | Yukarıdaki V1 mantığı bu varyanta da uygulanacak (sonraki turda). |
+| `buildComparableLongText()` | Her emsal kartının tam açıklama cümlesi (konum, yaş, kat/alan, karşılaştırma, pazarlık/kira, hesaplama) — rapor başına 3-4 kez tekrarlanan bir kalıp | Sabit açılış: "Ekspertize konu taşınmazla {konum}, {yaş}, {kat/alan bilgisi} ... {karşılaştırma cümlesi} {pazarlık/kira} {hesaplama}" | **V1 (yalnızca açılış):** "Değerlemeye konu gayrimenkulle {konum}, {yaş}, {kat/alan bilgisi} ..." *(Bu fonksiyon çok parçalı/birleştirmeli olduğundan tam varyant — alt fonksiyonlarla birlikte — sonraki turda tamamlanacak.)* |
+| `buildComparableSubjectStatement()` | "Konu Taşınmaz" statüsündeki emsal kartı açıklaması | "Ekspertize konu taşınmaz satılık olup, {alan} olarak beyan edilmiş, {düzeltilmiş alan} olduğu bilinmektedir. {fiyat cümlesi} {pazarlık cümlesi}" | **V1:** "Değerlemeye konu gayrimenkul satışa sunulmuş olup, {alan} olarak beyan edilmiş, {düzeltilmiş alan} olduğu tespit edilmiştir. {fiyat cümlesi} {pazarlık cümlesi}" |
+| `buildComparableGeneralStatement()` | "Genel" statüsündeki emsal kartı açıklaması (sözlü bilgi kaynaklı) | "{kaynak}den alınan sözlü bilgiye göre bölgede yer alan benzer özellikteki gayrimenkullerin m2 birim değerinin {aralık} civarında olabileceği bilgisi alınmıştır." | **V1:** "{kaynak}den edinilen sözlü bilgiye göre, bölgedeki benzer nitelikli gayrimenkullerin m² birim değerinin {aralık} arasında değişebileceği bilgisine ulaşılmıştır." |
+| `buildComparablePositionComparisonText()` | Emsalin konu taşınmaza göre konum karşılaştırması | "{sebep}taşınmaza göre {çok daha iyi/daha iyi/çok daha vasat/daha vasat} konumda" / "benzer konumda" | Sonraki turda ele alınacak — `buildComparableFeatureComparisonText` ile birlikte cümle içine gömülü olduğundan entegrasyon dikkat gerektiriyor. |
+| `buildComparableFeatureComparisonText()` | Emsalin konu taşınmaza göre iç özellik karşılaştırması | "Emsal, konu taşınmaza göre {çok daha iyi/daha iyi/çok daha vasat/daha vasat/benzer} iç özelliklere sahiptir." | **V1:** "Emsal, değerlemeye konu gayrimenkule kıyasla {…} iç özelliklere sahiptir." |
+| `buildComparableBargainAndRentText()` | Pazarlık payı / kira değeri cümlesi | "Pazarlık payı vardır/yoktur." + (varsa) "Pazarlık payının yaklaşık %{oran}{, kira değerinin {tutar} olacağı} düşünülmektedir." | **V1:** "Emsalde pazarlık payı bulunmaktadır/bulunmamaktadır." + "Pazarlık payının yaklaşık %{oran}{, kira bedelinin ise {tutar} olacağı} değerlendirilmektedir." |
+| `buildComparableCalculationText()` / `buildComparableSaleDateText()` / `buildComparableLocationText()` / `buildComparableWorkplaceFloorReductionExplanation()` | Hesaplama, satış tarihi, konum, kat indirgeme cümleleri (işyeri emsalleri) | — | Sonraki turda ele alınacak (henüz detaylı okunmadı). |
+
+---
+
 ## Durum ve Sıradaki Adım
 
 - **Varyant metinleri şu an İÇERİK olarak var, KOD olarak YOK.** Yukarıdaki V1/V2 sütunları
@@ -141,9 +164,14 @@ en az değişkenli (dolayısıyla en tekrarlanabilir) metinler bunlar.*
   ayarlayalım varyant seçimini") — hangi rapor hangi varyantı alacak (kullanıcıya
   sabit / rapor bazlı rastgele / elle seçim) sorusu henüz cevaplanmadı, bu yüzden
   kod entegrasyonu başlamadı.
-- **Sıradaki adım (netleşecek):** ya (a) mevcut 4 bölümdeki eksik varyantları
+- **Sıradaki adım (netleşecek):** ya (a) mevcut 5 bölümdeki eksik varyantları
   (özellikle `buildProjectSuitabilityStatusSentence`'ın kalan ~8 alt-durumu,
   `buildTarlaValuationRiskExplanation`'ın uzun tarla/bahçe risk paragrafı,
-  `buildEnvironmentalDescription`'ın kalan alt cümleleri) tamamlamaya devam,
-  ya da (b) yeni bölümlere (Ana Gayrimenkul, Bağımsız Bölüm, Emsaller,
-  Takyidat...) geçmek — kullanıcı onayı bekleniyor.
+  `buildEnvironmentalDescription`'ın kalan alt cümleleri, Emsaller'de
+  `buildLandComparableMarketAnalysisText`, `buildComparableLongText`'in tam
+  kompozit varyantı, `buildComparablePositionComparisonText` ve henüz
+  okunmamış 4 fonksiyon: `buildComparableCalculationText`/
+  `buildComparableSaleDateText`/`buildComparableLocationText`/
+  `buildComparableWorkplaceFloorReductionExplanation`) tamamlamaya devam,
+  ya da (b) yeni bölümlere (Ana Gayrimenkul, Bağımsız Bölüm, Takyidat...)
+  geçmek — kullanıcı onayı bekleniyor.
