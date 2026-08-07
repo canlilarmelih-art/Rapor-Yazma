@@ -1,5 +1,13 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.352 - 2026-08-07 - Akbank şablonu Vakıfbank'takiyle aynı kurallara göre düzenlendi + çapraz hata düzeltmesi
+
+- Kullanıcı: "Akbank rapor formatını mevcut template düzenleme kurallarımıza göre düzenleyelim" — aynı Ekspertiz sistemi ekran görüntüleri (Tapu/Adres/Takyidat-Teknik Analiz/Rapor-Özellikler/Rapor-Değerleme) paylaşıldı. 0.0.350/0.0.351'de Vakıfbank için kurulan TÜM kurallar ve bulunan gerçek placeholder'lar `templates/akbank.html`'e uygulandı (hiçbiri yeni değil, hepsi zaten var olan/doğrulanmış token'lar): Tapu tablosuna Eski Ada-Parsel/Yevmiye No/Cilt-Sayfa/Giriş/Eklentisi/Tapu Tarihi/Edinme Sebebi; Konum/Çevre'ye Güvenlik/Yapılaşma Hızı/Mülk Değeri Değişimi; Ana Gayrimenkul'e Karma Yapı/Mesken Kullanım/Deprem Dayanıklılığı/Deprem Derecesi/2960 Sayılı Kanun/Kültür Varlığı; İmar/Ruhsat'a İmar Planı Onay Tarihi/Hesaplanan Emsal/Tevhit Şartı/Terk Var mı; Bağımsız Bölüm bilgilerine Pencere/İç Kapı + Oda/Salon/Mutfak/Banyo/WC/Balkon sayıları; Değerleme Sekmesi'ne Genel İnşaat Seviyesi; Emsaller artık Değerleme Sekmesi'nden önce.
+- **Çapraz hata düzeltmesi (bonus bulgu)**: Bu turda incelerken "TAŞINMAZ SATIŞ BİLGİSİ" / "TAŞINMAZ İLK KEZ Mİ SATIŞA KONU" satırlarının **hem akbank.html hem vakifbank.html'de** sabit `SIFIR TAŞINMAZ / İKİNCİ EL TAŞINMAZ` metni kullandığı fark edildi — halbuki gerçek bir placeholder (`{{UNİT_FİRST_SALE_STATUS}}`, `unitFirstSaleStatus` alanından) zaten vardı ve kuveytturk.html/vakifkatilim.html'de doğru kullanılıyordu. İkisi de düzeltildi.
+- **Yeni test**: `tools/test-akbank-template-fixes.js` — akbank.html'deki tüm yeni satırları VE vakifbank.html'deki çapraz hata düzeltmesini doğruluyor.
+- Bu değişiklik yalnızca `templates/akbank.html` + `templates/vakifbank.html` (statik şablon dosyaları, sadece zaten var olan placeholder'lar kullanıldı) — istemci JS dosyası değişmedi, cache-buster bump gerekmedi.
+- `npm run verify` tamamı geçti (yeni test dahil).
+
 ## 0.0.351 - 2026-08-07 - Vakıfbank şablonu: 8 ek alan (bir kısmı yeni mantık/alan gerektirdi)
 
 - 0.0.350'de "karşılığı yok" diye işaretlenen 13 alandan kullanıcı 8'ini seçip her biri için kural verdi. Uygulandı:

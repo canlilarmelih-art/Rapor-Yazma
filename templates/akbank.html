@@ -72,11 +72,18 @@
   <tr><td class="l">PAFTA</td><td>{{SHEET_NO}}</td></tr>
   <tr><td class="l">ADA</td><td>{{BLOCK_NO}}</td></tr>
   <tr><td class="l">PARSEL</td><td>{{PARCEL_NO}}</td></tr>
+  <tr><td class="l">ESKİ ADA - PARSEL</td><td>{{OLD_BLOCK_NO}} - {{OLD_PARCEL_NO}}</td></tr>
+  <tr><td class="l">YEVMİYE NO</td><td>{{TAPU_YEVMİYESİ}}</td></tr>
+  <tr><td class="l">CİLT SAYFA</td><td>{{REGİSTRY_VOLUME}} / {{REGİSTRY_PAGE}}</td></tr>
   <tr><td class="l">B. B. TAPUDAKİ NİTELİK</td><td>{{TİTLE_QUALİTY}}</td></tr>
   <tr><td class="l">BLOK</td><td>{{TİTLE_BLOCK_NAME}}</td></tr>
   <tr><td class="l">KAT</td><td>{{TİTLE_FLOOR}}</td></tr>
+  <tr><td class="l">GİRİŞ</td><td>{{TİTLE_ENTRANCE}}</td></tr>
   <tr><td class="l">BB.NO</td><td>{{UNİT_NO}}</td></tr>
   <tr><td class="l">ARSA PAYI</td><td>{{SHARE}} / {{DENOMİNATOR}}</td></tr>
+  <tr><td class="l">EKLENTİSİ</td><td>{{TİTLE_ATTACHMENT_BUYUK}}</td></tr>
+  <tr><td class="l">TAPU TARİHİ</td><td>{{TAPU_TARİHİ}}</td></tr>
+  <tr><td class="l">EDİNME SEBEBİ</td><td>{{EDİNME_SEBEBİ_BUYUK}}</td></tr>
   <tr><td class="l">YASAL/MEVCUT KULLANIM TÜRÜ ARASINDA FARK VAR MI</td><td>{{USAGE_NATURE_DİFFERENCE}}</td></tr>
   <tr><td class="l">ADRES KODU</td><td>{{UAVT}}</td></tr>
   <tr><td class="l">TAŞINMAZ ID</td><td>{{TİTLE_PROPERTY_ID}}</td></tr>
@@ -110,7 +117,7 @@
   <tr><td class="l">BİNADAKİ BAĞIMSIZ BÖLÜM SAYISI</td><td>{{TOTAL_UNİTS}}</td></tr>
   <tr><td class="l">BİNA KAT SAYISI</td><td>{{TOTAL_FLOORS}}</td></tr>
   <tr><td class="l">İÇ HACİMLER</td><td>{{KAT_BAZLI_İÇ_HACİMLER}}</td></tr>
-  <tr><td class="l">TAŞINMAZ SATIŞ BİLGİSİ</td><td>SIFIR TAŞINMAZ / İKİNCİ EL TAŞINMAZ</td></tr>
+  <tr><td class="l">TAŞINMAZ SATIŞ BİLGİSİ</td><td>{{UNİT_FİRST_SALE_STATUS}}</td></tr>
   <tr><td class="l">YASAL KULLANIM ALANI</td><td>{{LEGAL_AREA}} m²</td></tr>
   <tr><td class="l">MEVCUT KULLANIM ALANI</td><td>{{CURRENT_AREA}} m²</td></tr>
 </table>
@@ -126,6 +133,14 @@
   <tr><td class="l">YAPI CİNSİ</td><td>{{BUİLDİNG_STYLE}}</td></tr>
   <tr><td class="l">ASANSÖR</td><td>{{ELEVATOR}}</td></tr>
   <tr><td class="l">ISINMA SİSTEMİ</td><td>{{UNİT_HEATİNG_TYPE}}</td></tr>
+  <tr><td class="l">PENCERE DOĞRAMALARI</td><td>{{PENCERE}}</td></tr>
+  <tr><td class="l">İÇ KAPI</td><td>{{İÇKAPI}}</td></tr>
+  <tr><td class="l">ODA SAYISI</td><td>{{ODA}}</td></tr>
+  <tr><td class="l">SALON SAYISI</td><td>{{SALON}}</td></tr>
+  <tr><td class="l">MUTFAK SAYISI</td><td>{{MUTFAK}}</td></tr>
+  <tr><td class="l">BANYO SAYISI</td><td>{{BANYO}}</td></tr>
+  <tr><td class="l">WC SAYISI</td><td>{{TUVALET}}</td></tr>
+  <tr><td class="l">BALKON SAYISI</td><td>{{BALKON}}</td></tr>
 </table>
 
 <h2>İncelenen Belgeler</h2>
@@ -158,15 +173,34 @@
 <h2>Gayrimenkulün Konumu, Ulaşımı ve Çevre Bilgileri</h2>
 {{ENVIRONMENTAL_FEATURES_TEXT}}
 {{TRANSPORT_REPORT_TEXT}}
+<table class="meta">
+  <tr><td class="l">BÖLGEDE GÜVENLİK PROBLEMİ VAR MI?</td><td>{{REGİON_SECURİTY_İSSUE}}</td></tr>
+  <tr><td class="l">YAPILAŞMA HIZI</td><td>{{DEVELOPMENT_SPEED}}</td></tr>
+  <tr><td class="l">MÜLK DEĞERİ DEĞİŞİMİ</td><td>{{PROPERTY_VALUE_TREND}}</td></tr>
+</table>
 
 <h2>Ana Gayrimenkulün Fiziksel Özellikleri</h2>
 {{MAİN_PROPERTY_DESCRİPTİON_TEXT}}
+<table class="meta">
+  <tr><td class="l">KARMA YAPI VAR MI?</td><td>{{MİXED_USE_BUİLDİNG}}</td></tr>
+  <tr><td class="l">MESKEN KULLANIM DURUMU</td><td>{{RESİDENTİAL_USAGE_PRESENT}}</td></tr>
+  <tr><td class="l">BİNANIN DEPREM DAYANIKLILIĞI, GÖZLEMSEL HASAR DURUMU</td><td>Hasarsız</td></tr>
+  <tr><td class="l">DEPREM DERECESİ</td><td>{{EARTHQUAKE_ZONE}}</td></tr>
+  <tr><td class="l">2960 SAYILI BOĞAZİÇİ KANUNU KAPSAMINDA MI?</td><td>Hayır</td></tr>
+  <tr><td class="l">KÜLTÜR VARLIĞI / TARİHİ ESER Mİ?</td><td>Hayır</td></tr>
+</table>
 
 <h2>Gayrimenkulun Çap, İskan, Ruhsat, Onaylı Proje vb. Bilgileri</h2>
 {{PROJECT_CONFORMİTY}}
 {{REVİEWED_DOCUMENTS_TEXT}}
 {{PENALTY_DECİSİON_EXPLANATİON_TEXT}}
 {{PLANNİNG_NOTE_TEXT}}
+<table class="meta">
+  <tr><td class="l">İMAR PLANI ONAY TARİHİ</td><td>{{PLAN_DATE}}</td></tr>
+  <tr><td class="l">HESAPLANAN EMSAL</td><td>{{CALCULATED_EMSAL}}</td></tr>
+  <tr><td class="l">TEVHİT ŞARTI VAR MI?</td><td>{{TEVHİD_CONDİTİON}}</td></tr>
+  <tr><td class="l">TERK VAR MI?</td><td>{{ROAD_SETBACK}}</td></tr>
+</table>
 
 <h2>GAYRİMENKULÜN DEĞERİNE ETKİ EDEN FAKTÖRLER</h2>
 <h3>Olumlu Faktörler</h3>
@@ -178,7 +212,21 @@
 <p>Mimari proje, iç ve dış mekan görselleri, ruhsat belgesi, Yapı Kullanma İzin Belgesi, Takbis belgesi, İmar Durum Belgesi, harita ve kroki, adres kodu, EKB.</p>
 
 <div class="pg-section">
+<h2 style="page-break-before:always;">Emsaller</h2>
+{{EMSAL_MATRISI}}
+
+<h3>Emsal Açıklaması</h3>
+{{EMSAL_PIYASA_ANALIZI}}
+{{COMPARABLE_SKETCH_SECTION}}
+<p style="margin:0;padding:0;height:12pt;line-height:12pt;font-size:1pt;mso-line-height-rule:exactly;">&nbsp;</p>
+<div class="table-block">{{EMSAL_DEGERLEME_TABLOSU}}</div>
+</div>
+
+<div class="pg-section">
 <h2 style="page-break-before:always;">DEĞERLEME SEKMESİ</h2>
+<table class="meta">
+  <tr><td class="l">GENEL İNŞAAT SEVİYESİ</td><td>{{UNİT_CONSTRUCTİON_LEVEL}}</td></tr>
+</table>
 {{DEGERLEME_YONTEMI_ACIKLAMASI}}
 {{BUILDING_INSPECTION_TERMINATION_EXPLANATION_TEXT}}
 {{HISSE_ACIKLAMASI}}
@@ -190,17 +238,6 @@
 <div class="table-block">{{DEGERLENDIRME_TABLOSU}}</div>
 <div class="table-block">{{KAT_BAZINDA_INDIRGENMIS_ALAN_TABLOSU}}</div>
 <div class="table-block">{{DEGERLENDIRME_SEMASI}}</div>
-</div>
-
-<div class="pg-section">
-<h2 style="page-break-before:always;">Emsaller</h2>
-{{EMSAL_MATRISI}}
-
-<h3>Emsal Açıklaması</h3>
-{{EMSAL_PIYASA_ANALIZI}}
-{{COMPARABLE_SKETCH_SECTION}}
-<p style="margin:0;padding:0;height:12pt;line-height:12pt;font-size:1pt;mso-line-height-rule:exactly;">&nbsp;</p>
-<div class="table-block">{{EMSAL_DEGERLEME_TABLOSU}}</div>
 </div>
 
 <div class="pg-section">
