@@ -37,7 +37,7 @@ doldurduğu placeholder'lar DEĞİŞMEYECEK.
 
 - [x] 1. Adres, Konum ve Çevre Özellikleri
 - [x] 2. Tapu ve Mülkiyet
-- [ ] 3. İmar Durumu
+- [x] 3. İmar Durumu (en yüksek öncelikli kalıplar; proje uygunluğunun kalan ~8 alt-durumu devam ediyor)
 - [ ] 4. Ana Gayrimenkul / Bina Özellikleri
 - [ ] 5. Bağımsız Bölüm İç Özellikleri
 - [ ] 6. Değerleme (Değer Tespiti, Satış Kabiliyeti, Kira, Hisse)
@@ -90,7 +90,22 @@ placeholder'larına düz veri olarak akıyor). Bu yüzden envantere alınmadı.
 
 ## 3. İmar Durumu
 
-*(Henüz doldurulmadı — kullanıcı talebi: "önce varyantları oluşturalım daha sonra ayarlayalım varyant seçimini", bu yüzden şu an yeni bölüm eklemek yerine 1-2. bölümlerdeki varyantları derinleştirmeye/tamamlamaya öncelik veriliyor.)*
+*Not: bu bölüm 1-2. bölümlerden çok daha büyük (~20 gerçek cümle/paragraf üreten
+fonksiyon) — en yüksek öncelikli/en sık görülen kalıplara varyant yazıldı, geri
+kalan durum-paragrafı ailesi (`composeImarPlanningStatusParagraphs` altındaki
+5 alt-durum: Minimum Cephe Şartı, 18. Madde, Tevhid Şartı, Kentsel Dönüşüm,
+Ruhsat Engeli) TEK bir ortak kalıba sahip olduğundan grup olarak ele alındı.*
+
+| Fonksiyon | Ne Üretiyor | Örnek Sabit Kalıp | Varyant |
+|---|---|---|---|
+| `buildImarPlanningNote()` | **⭐ Ana İmar Durumu Açıklaması paragrafı** — `{{PLANNING_NOTE_TEXT}}` kaynağı, raporun en çok görülen/en riskli paragraflarından biri | "{kaynak önsözü}yer aldığı parsel, {plan tarihi} tarihli {plan ölçeği} ölçekli {plan adı} kapsamında {lejant} alanında yer almakta olup, {koşullar} yapılaşma koşullarına sahiptir." | **V1:** "{kaynak önsözü}bulunduğu parsel, {plan tarihi} tarihli {plan ölçeği} ölçekli {plan adı} çerçevesinde {lejant} alanı içerisinde kalmakta olup, {koşullar} yapılaşma şartlarını taşımaktadır." **V2:** "{kaynak önsözü}üzerinde yer aldığı parsel, {plan tarihi} tarihli {plan ölçeği} ölçekli {plan adı} uyarınca {lejant} alanında değerlendirilmekte olup, {koşullar} yapılaşma koşulları geçerlidir." |
+| `composeImarInfoSourcePrefix()` | Yukarıdaki paragrafın kaynak-kurum önsözü | "{tarih} tarihinde {kurum} alınan bilgiye göre konu taşınmazın " | **V1:** "{tarih} tarihinde {kurum} edinilen bilgiye göre söz konusu taşınmazın " **V2:** "{kurum} {tarih} tarihinde temin edilen bilgiye göre ekspertize konu gayrimenkulün " |
+| `composeImarConditionList()` / `formatImarFloorCount()` / `formatImarMeasurement()` / `formatImarDecimal()` | Yapılaşma koşulları listesi (nizam/kat/Hmax/TAKS/KAKS/bahçe mesafeleri) — `{Etiket}: {Değer}` formatında veri listesi | "{nizam} nizam, {kat} kat, Hmax: {…}, TAKS: {…}, KAKS/Emsal: {…}, Ön Bahçe: {…}, ..." | **Varyantlanmıyor (bilinçli):** bu sayısal/etiketli bir VERİ listesi (imar hakları), üslup değil — aynı parsel için farklı kelime kullanmak yanıltıcı/tutarsız olur, imar mevzuatı terimleri (TAKS/KAKS/Hmax) zaten standart. |
+| `composeImarRoadSetbackSentence()` | Yola/parka terk cümlesi | (Terk var) "Taşınmazın yer aldığı parselin yola/parka{miktar} terki bulunmaktadır. Söz konusu terkin yapıya etkisi bulunmaktadır/bulunmamaktadır." (Terk yok) "Taşınmazın Yola/Parka terki bulunmamaktadır." | **V1 (var):** "Gayrimenkulün konumlandığı parselden yola/parka{miktar} terk ayrılmıştır. Bu terkin yapı üzerinde etkisi bulunmaktadır/bulunmamaktadır." **V1 (yok):** "Gayrimenkulün yer aldığı parselden yola/parka herhangi bir terk ayrılmamıştır." |
+| `composeImarPlanningStatusParagraphs()` + `composeImarStatusParagraph()` (grup: Minimum Cephe Şartı, 18. Madde Uygulaması, Tevhid Şartı, Kentsel Dönüşüm, Ruhsat Engeli) | Her biri "{Başlık}: {koşul cümlesi}" formatında, koşul cümlesi hep aynı fiil çiftlerinden biri | "bulunmaktadır." / "bulunmamaktadır." / "yapılmıştır." / "yapılmamıştır." / "yer almaktadır." / "yer almamaktadır." | **Genel dönüşüm kuralı (V1):** bulunmaktadır→mevcuttur · bulunmamaktadır→söz konusu değildir · yapılmıştır→uygulanmıştır · yapılmamıştır→uygulanmamıştır · yer almaktadır→kapsamında bulunmaktadır · yer almamaktadır→kapsamı dışındadır — bu 5 alt-durumun hepsine aynı fiil-değişim tablosu uygulanır. |
+| `buildProjectSuitabilityDescription()` + `buildProjectSuitabilityStatusSentence()` | **⭐ "Onaylı Projesine Uygunluk" paragrafı** — 10+ farklı durum (uygun/blok bazında uygun değil/mimari uygun değil/kullanım alanı uygun değil/trampa/ayna simetrisi vb.), her biri sabit cümle | En sık görülen ("UYGUNDUR"): "{lead}Ekspertize konu bağımsız bölüm kat, kattaki konum, alan ve mimari olarak projesine uygundur." İkinci en sık ("KULLANIM ALANI UYGUN DEĞİL"): "...kullanım alanı olarak projesine uygun değildir." | **V1 (uygun):** "{lead}Değerlemeye konu bağımsız bölüm; kat, kattaki konumu, alanı ve mimarisi itibarıyla onaylı projesine uygun bulunmuştur." **V2 (uygun):** "{lead}Söz konusu bağımsız bölümün kat, konum, alan ve mimari özellikleri onaylı projeyle uyumludur." **V1 (kullanım alanı uygun değil):** "{lead}Değerlemeye konu bağımsız bölüm vaziyet planı esas alındığında blok, kat ve mimari açıdan projesiyle örtüşmekte, ancak kullanım alanı bakımından projeden farklılık göstermektedir." *(Kalan ~8 durum için aynı desende varyant yazımı devam edecek.)* |
+| `buildProjectSuitabilityBuildingReferenceSentence()` / `buildBuildingFootprintAndEntranceExplanation()` | Bina oturumu ve giriş açıklaması — **korumalı (server-side) placeholder**, `BINA_OTURUMU_VE_GIRIS_ACIKLAMASI` | "Bina oturumu; vaziyet planında belirtilen {referans} referansından tespit edilmiştir. Bina girişi, projesine göre binanın {seviye} ve yapının {yön} cephesinden sağlanmaktadır." | **V1:** "Bina oturumu, vaziyet planında yer alan {referans} referans alınarak belirlenmiştir. Bina girişi, onaylı projeye göre binanın {seviye} ile yapının {yön} cephesi üzerinden sağlanmaktadır." *(Bu placeholder sunucu tarafında YENİDEN ÜRETİLİYOR — bkz. `applyServerProtectedPlaceholderTokens`; varyant kodu YAZILIRSA server.js tarafında da uygulanmalı.)* |
+| `buildStaticSuitabilityExplanation()` | Statik proje uygunluğu açıklaması | "Taşınmazın {kurum} dosyasında bulunan statik proje incelenmiştir. Statik proje, mimari proje ve mahal durum ile uyumludur/uyumlu değildir." | **V1:** "Gayrimenkule ait {kurum} dosyasındaki statik proje incelenmiş olup, statik projenin mimari proje ve yerinde tespit edilen mahal durumu ile uyumlu olduğu/olmadığı görülmüştür." |
 
 ---
 
@@ -103,8 +118,9 @@ placeholder'larına düz veri olarak akıyor). Bu yüzden envantere alınmadı.
   ayarlayalım varyant seçimini") — hangi rapor hangi varyantı alacak (kullanıcıya
   sabit / rapor bazlı rastgele / elle seçim) sorusu henüz cevaplanmadı, bu yüzden
   kod entegrasyonu başlamadı.
-- **Sıradaki adım (netleşecek):** ya (a) mevcut 2 bölümdeki eksik varyantları
-  (özellikle `buildEnvironmentalDescription`'ın kalan alt cümleleri,
-  `buildTransportDirectionText`) tamamlamaya devam, ya da (b) yeni bölümlere
-  (İmar, Ana Gayrimenkul, Bağımsız Bölüm, Değerleme...) geçmek — kullanıcı
-  onayı bekleniyor.
+- **Sıradaki adım (netleşecek):** ya (a) mevcut 3 bölümdeki eksik varyantları
+  (özellikle `buildProjectSuitabilityStatusSentence`'ın kalan ~8 alt-durumu,
+  `buildEnvironmentalDescription`'ın kalan alt cümleleri) tamamlamaya devam,
+  ya da (b) yeni bölümlere (Ana Gayrimenkul, Bağımsız Bölüm, **Değerleme** —
+  BDDK riski açısından en kritik bölüm, Emsaller, Takyidat...) geçmek —
+  kullanıcı onayı bekleniyor.
