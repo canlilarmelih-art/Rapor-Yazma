@@ -73,8 +73,10 @@
   <tr><td class="l">B. B. TAPUDAKİ NİTELİK</td><td>{{TİTLE_QUALİTY}}</td></tr>
   <tr><td class="l">BLOK</td><td>{{TİTLE_BLOCK_NAME}}</td></tr>
   <tr><td class="l">KAT</td><td>{{TİTLE_FLOOR}}</td></tr>
+  <tr><td class="l">GİRİŞ</td><td>{{TİTLE_ENTRANCE}}</td></tr>
   <tr><td class="l">BB.NO</td><td>{{UNİT_NO}}</td></tr>
   <tr><td class="l">ARSA PAYI</td><td>{{SHARE}} / {{DENOMİNATOR}}</td></tr>
+  <tr><td class="l">EKLENTİSİ</td><td>{{TİTLE_ATTACHMENT_BUYUK}}</td></tr>
   <tr><td class="l">TAPU TARİHİ</td><td>{{TAPU_TARİHİ}}</td></tr>
   <tr><td class="l">EDİNME SEBEBİ</td><td>{{EDİNME_SEBEBİ_BUYUK}}</td></tr>
   <tr><td class="l">TAŞINMAZ İLK KEZ Mİ SATIŞA KONU</td><td>SIFIR TAŞINMAZ / İKİNCİ EL TAŞINMAZ</td></tr>
@@ -136,7 +138,6 @@
   <tr><td class="l">TOPLAM B. BÖLÜM SAYISI</td><td>{{TOTAL_UNİTS}}</td></tr>
   <tr><td class="l">BULUNDUĞU KAT</td><td>{{TİTLE_FLOOR}}</td></tr>
   <tr><td class="l">YAPI KALİTESİ</td><td>{{UNİT_MATERİAL_QUALİTY}}</td></tr>
-  <tr><td class="l">BAKIMLI MI, TADİLAT İHTİYACI VAR MI?</td><td>{{UNİT_MATERİAL_QUALİTY}}</td></tr>
   <tr><td class="l">MANZARA</td><td>{{UNİT_VİEW_STATUS}}</td></tr>
 </table>
 
@@ -148,11 +149,14 @@
 
 <table class="meta">
   <tr><td class="l">PLAN ÖLÇEĞİ</td><td>{{PLAN_SCALE}}</td></tr>
+  <tr><td class="l">İMAR PLANI ONAY TARİHİ</td><td>{{PLAN_DATE}}</td></tr>
   <tr><td class="l">LEJANT</td><td>{{LEGEND}}</td></tr>
   <tr><td class="l">TAKS</td><td>{{TAKS}}</td></tr>
   <tr><td class="l">KAKS / EMSAL</td><td>{{KAKS}}</td></tr>
   <tr><td class="l">HMAX</td><td>{{HMAX}}</td></tr>
   <tr><td class="l">HESAPLANAN EMSAL</td><td>{{CALCULATED_EMSAL}}</td></tr>
+  <tr><td class="l">TEVHİT ŞARTI VAR MI?</td><td>{{TEVHİD_CONDİTİON}}</td></tr>
+  <tr><td class="l">TERK VAR MI?</td><td>{{ROAD_SETBACK}}</td></tr>
 </table>
 
 <h3>İmar Durumu Açıklama</h3>
@@ -191,7 +195,21 @@
 {{DEGERI_ETKILEYEN_OLUMSUZ_FAKTORLER}}
 
 <div class="pg-section">
+<h2 style="page-break-before:always;">Emsaller Sekmesi</h2>
+{{EMSAL_MATRISI}}
+
+<h3>Emsal Açıklaması</h3>
+{{EMSAL_PIYASA_ANALIZI}}
+{{COMPARABLE_SKETCH_SECTION}}
+<p style="margin:0;padding:0;height:12pt;line-height:12pt;font-size:1pt;mso-line-height-rule:exactly;">&nbsp;</p>
+<div class="table-block">{{EMSAL_DEGERLEME_TABLOSU}}</div>
+</div>
+
+<div class="pg-section">
 <h2 style="page-break-before:always;">Değerleme Sekmesi</h2>
+<table class="meta">
+  <tr><td class="l">GENEL İNŞAAT SEVİYESİ</td><td>{{UNİT_CONSTRUCTİON_LEVEL}}</td></tr>
+</table>
 <h3>Değerle İlgili Önemli Açıklamalar, Görüşler, Uyarılar (Değerleme Uzman Görüşü)</h3>
 {{DEGERLEME_YONTEMI_ACIKLAMASI}}
 {{BUILDING_INSPECTION_TERMINATION_EXPLANATION_TEXT}}
@@ -203,17 +221,6 @@
 <div class="table-block">{{DEGERLENDIRME_TABLOSU}}</div>
 <div class="table-block">{{KAT_BAZINDA_INDIRGENMIS_ALAN_TABLOSU}}</div>
 <div class="table-block">{{DEGERLENDIRME_SEMASI}}</div>
-</div>
-
-<div class="pg-section">
-<h2 style="page-break-before:always;">Emsaller Sekmesi</h2>
-{{EMSAL_MATRISI}}
-
-<h3>Emsal Açıklaması</h3>
-{{EMSAL_PIYASA_ANALIZI}}
-{{COMPARABLE_SKETCH_SECTION}}
-<p style="margin:0;padding:0;height:12pt;line-height:12pt;font-size:1pt;mso-line-height-rule:exactly;">&nbsp;</p>
-<div class="table-block">{{EMSAL_DEGERLEME_TABLOSU}}</div>
 </div>
 
 <div class="pg-section">

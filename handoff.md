@@ -1,5 +1,19 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.350 - 2026-08-07 - Vakıfbank şablonu: bankanın kendi ekspertiz sistemine göre düzenleme
+
+- Kullanıcı, Vakıfbank Ekspertiz Sistemi'nin (bankanın kendi web formu) 7 ekran görüntüsünü paylaştı (Tapu/Adres/Takyidat-Teknik Analiz/Rapor-Özellikler/Rapor-Değerleme sekmeleri) + açık talimat: "emsaller kısmını değerleme bölümünden önce eklemeyi unutma".
+- **templates/vakifbank.html** güncellendi:
+  1. **"Emsaller Sekmesi" artık "Değerleme Sekmesi"nden ÖNCE geliyor** (açık talimat).
+  2. Tapu Kaydı tablosuna **"Giriş"** (`{{TİTLE_ENTRANCE}}`) ve **"Eklentisi"** (`{{TİTLE_ATTACHMENT_BUYUK}}`) satırları eklendi — bankanın ekranı bu iki alanı gösteriyordu, uygulamada karşılığı (titleEntrance/titleAttachment) vardı ama şablonda hiç kullanılmıyordu.
+  3. İmar tablosuna **"İmar Planı Onay Tarihi"** (`{{PLAN_DATE}}`), **"Tevhit Şartı Var mı?"** (`{{TEVHİD_CONDİTİON}}`) ve **"Terk Var mı?"** (`{{ROAD_SETBACK}}`) satırları eklendi.
+  4. Değerleme Sekmesi'ne **"Genel İnşaat Seviyesi"** (`{{UNİT_CONSTRUCTİON_LEVEL}}`) satırı eklendi (bankanın "Genel İnşaat Seviyesi %" alanıyla eşleşir; bu değer GDYS bölümünde zaten "TAMAMLANMA ORANI" olarak kullanılıyordu).
+  5. **Hata düzeltmesi**: "BAKIMLI MI, TADİLAT İHTİYACI VAR MI?" satırı silindi — hemen üstündeki "YAPI KALİTESİ" satırıyla AYNI `{{UNİT_MATERİAL_QUALİTY}}` token'ını tekrarlıyordu (uygulamada ayrı bir "tadilat ihtiyacı" alanı yok), kafa karıştırıcı bir tekrardı.
+- **Bilinçli olarak EKLENMEYEN alanlar**: Bankanın ekranında görülen bazı alanların (Karma Yapı, Mesken Kullanım Durumu, Kullanıma Hazır Aynı Cins Boş Gayrimenkul Oranı, Yapılaşma/Yenileme Hızı, Arz/Talep, Bölge Satış Hızı, Mülk Değeri Değişimi, Bölgede Güvenlik/Asayiş, 2960 Sayılı Boğaziçi Kanunu, Kültür Varlığı, Pencere/Kapı Doğramaları, Deprem Dayanıklılığı/Derecesi, Oda/Salon/Mutfak/Banyo/WC/Balkon sayısı ayrı satırlar) uygulamada karşılığı YOK (kod tabanında arandı, bulunamadı) — bunlar için placeholder UYDURULMADI, kullanıcıya ayrıca soruldu (yeni alan/mantık eklenmesi mi isteniyor, yoksa atlansın mı).
+- **Yeni test**: `tools/test-vakifbank-template-fixes.js` — sıra değişikliğini, yeni satırların doğru token'larla var olduğunu, tekrar eden satırın silindiğini VE kullanılan tüm yeni token'ların app.js'te gerçek bir field karşılığı olduğunu (uydurma placeholder olmadığını) doğruluyor.
+- Bu değişiklik yalnızca `templates/vakifbank.html` (statik şablon dosyası) — istemci JS dosyası değişmedi, `index.html` cache-buster bump gerekmedi.
+- `npm run verify` tamamı geçti (yeni test dahil).
+
 ## 0.0.349 - 2026-08-06 - Yapı Kredi şablonu: bankanın kendi ekspertiz sistemine göre 8 düzeltme
 
 - Kullanıcı, Yapı Kredi Ekspertiz Sistemi'nin (bankanın kendi web formu) 5 ekran görüntüsünü paylaştı — 4'ü form ekranları, 5'i "YAPI KREDİ DÜZELTİLMESİ GEREKENLER" başlıklı bir Excel checklist'i. `templates/yapikredi.html` bu 8 maddeye göre güncellendi:
