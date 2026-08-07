@@ -809,6 +809,9 @@
     LATESTBUILDINGPERMITINSTITUTION: { fn: () => safeCall("getLatestBuildingPermitInstitutionText") },
     ARCHITECTURALPROJECTINSTITUTION: { fn: () => safeCall("getArchitecturalProjectInstitutionText") },
     BUILDINGUSAGETYPES: { fn: () => safeCall("getBuildingUsageTypesText") },
+    // Kullanıcı talebi (Vakıfbank şablonu ek alanlar, 2026-08-07).
+    RESIDENTIALUSAGEPRESENT: { fn: () => safeCall("getResidentialUsagePresentText") },
+    MIXEDUSEBUILDING: { fn: () => safeCall("getMixedUseBuildingText") },
     // İnşaa seviyesi %100 ise boş döner (natamam satırları anlamsız olur).
     INCOMPLETECONSTRUCTIONLEVEL: { fn: () => safeCall("getIncompleteConstructionLevelText") },
     YASALKATDAGILIM2025: { fn: () => safeCall("buildBuildingFloorMacroSummary") },

@@ -338,6 +338,16 @@ const sections = [
         defaultValue: "Hayır",
         options: ["Evet", "Hayır"],
       },
+      // Kullanıcı talebi (Vakıfbank şablonu ek alanlar, 2026-08-07): "Mülk
+      // Değeri Değişimi (Artıyor/Azalıyor/Sabit) yeni bölüm eklen
+      // seçenekler aynı olsun" — bankanın ekranındaki karşılığı için yeni
+      // bir alan (önceden uygulamada karşılığı yoktu).
+      {
+        key: "propertyValueTrend",
+        label: "Mülk Değeri Değişimi",
+        type: "select",
+        options: ["", "Artıyor", "Azalıyor", "Sabit"],
+      },
       {
         key: "commercialFunctionDensity",
         label: "Ticari fonksiyon yoğunluğu",
@@ -18120,6 +18130,28 @@ function getBuildingUsageTypesText() {
   if (!labels.length) return "";
   if (labels.length === 1) return labels[0];
   return `${labels.slice(0, -1).join(", ")} ve ${labels[labels.length - 1]}`;
+}
+
+// Kullanıcı talebi (Vakıfbank şablonu ek alanlar, 2026-08-07): "Mesken
+// Kullanım Durumu (Ana gayrimenkulde mesken kullanımı var mı?) eğer ana
+// gayrimenkulde yer alan katlardan herhangi birinde en az 1 daire var ise
+// Evet" — getBuildingUsageTypesText() ile AYNI kaynak veriyi (state.tables.
+// buildingFloors) kullanır, ama açıklayıcı metin yerine Evet/Hayır döner.
+function getResidentialUsagePresentText() {
+  const rows = Array.isArray(state.tables?.buildingFloors) ? state.tables.buildingFloors : [];
+  const totalResidential = rows.reduce((sum, row) => sum + (parseBuildingFloorCount(row?.residential) || 0), 0);
+  return totalResidential > 0 ? "Evet" : "Hayır";
+}
+
+// Kullanıcı talebi: "Karma Yapı Var mı? (Evet/Hayır) Bölge Yapılaşma Kul.
+// Amacı zemin ve normal kat konut ise hayır diğer seçenekler evet" —
+// regionUsePurpose (çoklu seçim) SADECE "zemin ve normal katları konut"
+// tek başına seçiliyse "Hayır", başka HERHANGİ bir seçim (tek başına veya
+// birlikte) varsa "Evet"; hiç seçim yoksa boş (henüz cevaplanmamış).
+function getMixedUseBuildingText() {
+  const selected = getMultiCheckboxValues("regionUsePurpose", { options: regionUsePurposeOptions });
+  if (!selected.length) return "";
+  return selected.length === 1 && selected[0] === "zemin ve normal katları konut" ? "Hayır" : "Evet";
 }
 
 // Değerler ekranindaki "İnşaa Seviyesi" hücresi: yapı %100 tamamlanmışsa

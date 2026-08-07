@@ -1,5 +1,25 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.351 - 2026-08-07 - Vakıfbank şablonu: 8 ek alan (bir kısmı yeni mantık/alan gerektirdi)
+
+- 0.0.350'de "karşılığı yok" diye işaretlenen 13 alandan kullanıcı 8'ini seçip her biri için kural verdi. Uygulandı:
+  1. **Bölgede Güvenlik Problemi Var Mı?** → var olan `regionSecurityIssue` alanı (`{{REGİON_SECURİTY_İSSUE}}`).
+  2. **Yapılaşma Hızı** → var olan `developmentSpeed` alanı (`{{DEVELOPMENT_SPEED}}`).
+  3. **Karma Yapı Var mı?** → **yeni** `getMixedUseBuildingText()` (app.js): `regionUsePurpose` (çoklu seçim) SADECE "zemin ve normal katları konut" ise "Hayır", başka herhangi bir seçim/kombinasyon "Evet".
+  4. **Mülk Değeri Değişimi** → **yeni alan**: `propertyValueTrend` (select, `["", "Artıyor", "Azalıyor", "Sabit"]`) — uygulamada önceden hiç karşılığı yoktu.
+  5. **Mesken Kullanım Durumu** → **yeni** `getResidentialUsagePresentText()`: `state.tables.buildingFloors`'daki (Ana Gayrimenkul Kat Satırları) TÜM satırların `residential` (daire) sayıları toplanır, >0 ise "Evet".
+  6. **2960 Sayılı Boğaziçi Kanunu Kapsamında mı?** → sabit **"Hayır"** metni (kullanıcı talimatı, alan yok).
+  7. **Kültür Varlığı / Tarihi Eser mi?** → sabit **"Hayır"** metni.
+  8. **Deprem Dayanıklılığı/Gözlemsel Hasar Durumu** → sabit **"Hasarsız"** (ziraat.html'deki aynı örüntüye uygun) + **Deprem Derecesi** → var olan `earthquakeZone` alanı (`{{EARTHQUAKE_ZONE}}`).
+  9. **Pencere Doğramaları / Kapı Doğramaları** → zaten var olan `{{PENCERE}}` ve `{{İÇKAPI}}` (ICKAPI) alias'ları kullanıldı — Dış Kapı zaten "Ana Gayrimenkul Tanımı" tablosunda `{{BUİLDİNG_ENTRANCE_DOOR}}` ile gösterildiğinden tekrar eklenmedi.
+  10. **Oda/Salon/Mutfak/Banyo/WC/Balkon sayıları** → zaten var olan `{{ODA}}`/`{{SALON}}`/`{{MUTFAK}}`/`{{BANYO}}`/`{{TUVALET}}`/`{{BALKON}}` (`getGabimUnitInteriorCounts`) kullanıldı.
+- **app.js**: yeni `propertyValueTrend` alanı (regionSecurityIssue'nun hemen yanına eklendi), yeni `getResidentialUsagePresentText()` ve `getMixedUseBuildingText()` fonksiyonları.
+- **src/templates/template-engine.js**: yeni `RESIDENTIALUSAGEPRESENT`/`MIXEDUSEBUILDING` LEGACY_ALIASES girdileri.
+- **templates/vakifbank.html**: "Gayrimenkulün Konum ve Çevre Özellikleri" bölümüne yeni bir meta tablo (Güvenlik/Yapılaşma Hızı/Mülk Değeri Değişimi), "Ana Gayrimenkul Tanımı" tablosuna 6 yeni satır (Karma Yapı/Mesken Kullanım/Deprem Dayanıklılığı/Deprem Derecesi/2960 Sayılı Kanun/Kültür Varlığı), "Gayrimenkulün İç Mekan Özellikleri" bölümüne yeni bir meta tablo (Pencere/İç Kapı/Oda/Salon/Mutfak/Banyo/WC/Balkon).
+- **Yeni test**: `tools/test-vakifbank-extra-fields.js` — yeni fonksiyonların (izole `vm` ile) doğru sonucu döndürdüğünü, yeni alanın şemasını, yeni alias kablolamasını VE şablondaki tüm yeni satırların doğru token'larla var olduğunu doğruluyor.
+- Cache-buster `app.js?v=20260807-1620`, `src/templates/template-engine.js?v=20260807-1620`.
+- `npm run verify` tamamı geçti (yeni test dahil).
+
 ## 0.0.350 - 2026-08-07 - Vakıfbank şablonu: bankanın kendi ekspertiz sistemine göre düzenleme
 
 - Kullanıcı, Vakıfbank Ekspertiz Sistemi'nin (bankanın kendi web formu) 7 ekran görüntüsünü paylaştı (Tapu/Adres/Takyidat-Teknik Analiz/Rapor-Özellikler/Rapor-Değerleme sekmeleri) + açık talimat: "emsaller kısmını değerleme bölümünden önce eklemeyi unutma".
