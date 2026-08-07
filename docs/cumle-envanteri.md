@@ -11,10 +11,10 @@ Tespiti" kartı, 0.0.356 — bu envanter o riskin **kök çözümü**: tespit ye
 fonksiyonun ürettiği sabit cümle kalıbını/kalıplarını gösterir. "Varyant" sütunu
 alternatif ifadeleri içerir (V1/V2 gibi) — bunlar şu an yalnızca METİN olarak
 bu dosyada duruyor, `app.js`'te henüz KODA dönüştürülmedi (bkz. "Durum ve
-Sıradaki Adım" bölümü).
+Sıradaki Adım" bölümü). Varyant SEÇİM mekanizması (hangi rapor hangi varyantı
+alacak) KARARLAŞTIRILDI — bkz. "Varyant Seçim Mekanizması" bölümü.
 
-**İlerleme:** Bu dosya bölüm bölüm dolduruluyor. Şu an tamamlanan bölümler
-aşağıda işaretli; kalanlar için onay bekleniyor.
+**İlerleme:** Envanterin 10 bölümünün tamamı dolduruldu (bkz. checklist).
 
 ## Varyant Stratejisi (kullanıcı notu, 2026-08-07)
 
@@ -34,6 +34,45 @@ birbirinin yerine geçebilir):
 Bir sonraki aşamada her fonksiyon için bu tarz eş anlamlı/yeniden-kurgulanmış
 2-3 alternatif cümle üretilip "Varyant" sütununa eklenecek; raporun anlamı ve
 doldurduğu placeholder'lar DEĞİŞMEYECEK.
+
+## Varyant Seçim Mekanizması (karar, 2026-08-07)
+
+Envanter (metin yazma) tamamlandıktan sonra kullanıcıyla birlikte netleştirildi
+— henüz KOD yazılmadı, bu yalnızca tasarım kararı:
+
+- **Rapor bazında sabit-tohumlu (deterministik seed):** her raporun kendi
+  `reportId`'sinden türetilen bir değer, o raporun TÜM varyant seçimlerini
+  belirler. Aynı rapor her açıldığında/export edildiğinde/yeniden
+  render edildiğinde AYNI metni üretir (kararlı, kafa karıştırmaz) — ama
+  farklı raporlar (farklı kullanıcı ya da farklı taşınmaz için) neredeyse
+  her zaman farklı varyantlara düşer. Bu, "kullanıcıya sabit" modelinin
+  (iki farklı appraiser'a şans eseri aynı varyant düşerse riski çözmeme)
+  ve "seed'siz rastgele" modelinin (her render'da metin değişir, kafa
+  karıştırır) sorunlarını birlikte çözer.
+- **Seçim granularitesi: cümle bazında bağımsız.** Rapor tek bir "üslup"
+  (hep V1 ya da hep V2) seçmiyor — HER cümle kendi anahtarından (reportId +
+  o cümlenin/fonksiyonun kendine özgü anahtarı) bağımsız olarak hangi
+  varyantı kullanacağını belirliyor. Gerekçe: yalnızca 2 varyant (orijinal +
+  V1) olan bir cümlede rapor-bazında-tek-üslup modelinde iki raporun
+  TAMAMEN aynı çıkma ihtimali %50 kalır; cümle-bazında-bağımsız modelde bu
+  ihtimal cümle sayısı arttıkça katlanarak düşer (50 varyantlı cümlede
+  hepsi aynı varyanta düşme ihtimali pratikte sıfırdır). Rapor içi tutarlılık
+  sorun değil çünkü her cümlenin hangi varyantı olursa olsun anlamı ve
+  resmi üslubu aynı kalıyor (bkz. Varyant Stratejisi yukarıda).
+- **Manuel override YOK** — kullanıcı hiçbir cümle için elle varyant
+  seçmeyecek, tamamen otomatik/deterministik. Bilinçli bir karar: 50+
+  varyantlı cümle için elle seçim UI'si gereksiz karmaşıklık olurdu ve
+  asıl amaç (raporların birbirinden ayrışması) manuel müdahale olmadan
+  zaten sağlanıyor.
+- **Taslak algoritma (uygulama aşamasında netleşecek):** `selectVariant(reportId,
+  sentenceKey, variantCount)` — `reportId + "::" + sentenceKey` string'inin
+  basit, ortam-bağımsız bir hash'i (ör. FNV-1a benzeri, kriptografik olmak
+  zorunda değil) alınır, `hash % variantCount` sonucu hangi varyantın
+  (0 = orijinal, 1 = V1, 2 = V2, ...) kullanılacağını belirler. `sentenceKey`
+  her çağrı yerinde benzersiz olmalı (ör. fonksiyon adı + gerekirse alt-durum
+  etiketi) — aynı fonksiyonun farklı çağrılarının (ör. Webtapu/Belediye proje
+  karşılaştırmasında iki ayrı `buildProjectSuitabilityStatusSentence` çağrısı
+  gibi) birbirinden bağımsız seçim yapabilmesi için.
 
 - [x] 1. Adres, Konum ve Çevre Özellikleri (TAM — `buildEnvironmentalDescription`'ın 4 bölge branşı ve tüm ortak alt cümleleri dahil)
 - [x] 2. Tapu ve Mülkiyet
@@ -305,10 +344,11 @@ yapılacak bir şey yok; envanter tamamlığı için işaretlendi.*
 - **Varyant metinleri şu an İÇERİK olarak var, KOD olarak YOK.** Yukarıdaki V1/V2 sütunları
   yalnızca bu markdown dosyasında — `app.js` içinde henüz hiçbir fonksiyon
   değiştirilmedi, varyant döndüren kod yazılmadı.
-- **Varyant SEÇİM mekanizması bilinçli olarak ERTELENDİ** (kullanıcı: "daha sonra
-  ayarlayalım varyant seçimini") — hangi rapor hangi varyantı alacak (kullanıcıya
-  sabit / rapor bazlı rastgele / elle seçim) sorusu henüz cevaplanmadı, bu yüzden
-  kod entegrasyonu başlamadı.
+- **Varyant SEÇİM mekanizması artık KARARLAŞTIRILDI** (bkz. yukarıdaki
+  "Varyant Seçim Mekanizması" bölümü) — rapor bazında sabit-tohumlu
+  (`reportId`'den türetilen deterministik hash), cümle bazında bağımsız
+  seçim, manuel override yok. Tasarım netleşti ama **kod henüz yazılmadı**
+  — kullanıcı onayı bekleyen tek şey artık kod entegrasyonuna geçiş zamanı.
 - **Tüm 10 bölüm artık TAM sayılabilir** (bkz. yukarıdaki checklist — hepsi
   işaretli, ve daha önce "sonraki turda" olarak bırakılan TÜM alt-fonksiyonlar
   tamamlandı):
