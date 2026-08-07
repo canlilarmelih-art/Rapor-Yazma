@@ -9,6 +9,12 @@
     <style>
       :root { color-scheme: dark; }
       * { box-sizing: border-box; }
+      /* Bug (Faz 2): .badge/.more-btn/.bulk-toolbar gibi kurallar kendi
+         "display" degerlerini tanimliyor — bu, tarayicinin varsayilan
+         [hidden]{display:none} kuralini AYNI ozgunlukte (author > UA
+         cascade) EZIYOR, "hidden" niteligi etkisiz kaliyordu. Global
+         override ile duzeltildi. */
+      [hidden] { display: none !important; }
       body {
         margin: 0;
         min-height: 100vh;
@@ -97,6 +103,33 @@
         cursor: pointer;
       }
       .more-btn:hover { background: #e4ebf8; }
+      .badge {
+        display: inline-block;
+        background: #b23434;
+        color: #fff;
+        border-radius: 999px;
+        padding: 2px 9px;
+        font-size: 12px;
+        font-weight: 800;
+        line-height: 1.4;
+      }
+      .card-toolbar { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; flex-wrap: wrap; }
+      .csv-btn {
+        border: 1px solid #dde3ef;
+        border-radius: 8px;
+        background: #eef1f6;
+        color: #152238;
+        font-size: 12px;
+        font-weight: 700;
+        padding: 6px 12px;
+        cursor: pointer;
+      }
+      .csv-btn:hover { background: #e4ebf8; }
+      .bulk-toolbar { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; flex-wrap: wrap; }
+      .bulk-toolbar label { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #5a6576; }
+      .bulk-approve-btn { background: #1c7a3f; color: #fff; border: none; border-radius: 6px; padding: 6px 12px; font-size: 12px; font-weight: 700; cursor: pointer; }
+      .bulk-reject-btn { background: #eef1f6; color: #b23434; border: none; border-radius: 6px; padding: 6px 12px; font-size: 12px; font-weight: 700; cursor: pointer; }
+      .row-checkbox { margin-right: 8px; flex-shrink: 0; }
     </style>
   </head>
   <body>
@@ -104,9 +137,15 @@
       <div class="header">
         <img src="icons/experify-mark-white.svg?v=20260720-0210" alt="" aria-hidden="true" width="28" height="28" />
         <h1>Kullanıcı Onayları</h1>
+        <span class="badge" id="pendingBadge" hidden>0</span>
       </div>
       <div class="card">
         <p class="status" id="status">Yükleniyor...</p>
+        <div class="bulk-toolbar" id="bulkToolbar" hidden>
+          <label><input type="checkbox" id="selectAllPending" /> Tümünü seç</label>
+          <button type="button" class="bulk-approve-btn" id="bulkApproveBtn" disabled>Seçilenleri Onayla</button>
+          <button type="button" class="bulk-reject-btn" id="bulkRejectBtn" disabled>Seçilenleri Reddet</button>
+        </div>
         <div id="list"></div>
       </div>
 
@@ -121,6 +160,7 @@
       <p class="section-title">Kullanıcı İstatistikleri</p>
       <p class="section-hint">Her kullanıcının kaç rapor oluşturduğu ve bir raporu (oluşturmadan ilk dışa aktarmaya kadar) ortalama ne kadar sürede tamamladığı — rapor İÇERİĞİ burada yer almaz.</p>
       <div class="card">
+        <div class="card-toolbar"><button type="button" class="csv-btn" id="statsCsvBtn">CSV İndir</button></div>
         <p class="status" id="statsStatus">Yükleniyor...</p>
         <div class="table-scroll"><table class="data-table" id="statsTable"></table></div>
       </div>
@@ -128,6 +168,7 @@
       <p class="section-title">Giriş / Çıkış Geçmişi</p>
       <p class="section-hint">Son 500 giriş/çıkış olayı — kim, ne zaman, hangi cihaz/IP'den.</p>
       <div class="card">
+        <div class="card-toolbar"><button type="button" class="csv-btn" id="eventsCsvBtn">CSV İndir</button></div>
         <p class="status" id="eventsStatus">Yükleniyor...</p>
         <input type="search" class="search-box" id="eventsSearch" placeholder="E-posta, IP veya cihaz ara..." />
         <div class="table-scroll"><table class="data-table" id="eventsTable"></table></div>
@@ -137,6 +178,7 @@
       <p class="section-title">Admin İşlem Geçmişi</p>
       <p class="section-hint">Onay/red, yetki verme-alma, askıya alma-aktifleştirme, silme — kim, kime, ne zaman.</p>
       <div class="card">
+        <div class="card-toolbar"><button type="button" class="csv-btn" id="adminActionsCsvBtn">CSV İndir</button></div>
         <p class="status" id="adminActionsStatus">Yükleniyor...</p>
         <input type="search" class="search-box" id="adminActionsSearch" placeholder="Yapan veya hedef kullanıcı ara..." />
         <div class="table-scroll"><table class="data-table" id="adminActionsTable"></table></div>
@@ -146,6 +188,7 @@
       <p class="section-title">Rapor Listesi</p>
       <p class="section-hint">Sistemde oluşturulan/dışa aktarılan her raporun ana başlıkları — oluşturan kullanıcı, banka, il/ilçe/mahalle, ada/parsel, blok/bağımsız bölüm no, gayrimenkul niteliği, rapor numarası. Raporun DİĞER içeriği (metinler, tablolar, dosyalar) burada YER ALMAZ.</p>
       <div class="card">
+        <div class="card-toolbar"><button type="button" class="csv-btn" id="reportsCsvBtn">CSV İndir</button></div>
         <p class="status" id="reportsStatus">Yükleniyor...</p>
         <input type="search" class="search-box" id="reportsSearch" placeholder="Kullanıcı, banka, il/ilçe/mahalle ara..." />
         <div class="table-scroll"><table class="data-table" id="reportsTable"></table></div>
@@ -160,23 +203,33 @@
       (function () {
         var statusLine = document.getElementById("status");
         var list = document.getElementById("list");
+        var pendingBadge = document.getElementById("pendingBadge");
+        var bulkToolbar = document.getElementById("bulkToolbar");
+        var selectAllPending = document.getElementById("selectAllPending");
+        var bulkApproveBtn = document.getElementById("bulkApproveBtn");
+        var bulkRejectBtn = document.getElementById("bulkRejectBtn");
         var approvedStatusLine = document.getElementById("approvedStatus");
         var approvedList = document.getElementById("approvedList");
         var approvedSearch = document.getElementById("approvedSearch");
         var statsStatusLine = document.getElementById("statsStatus");
         var statsTable = document.getElementById("statsTable");
+        var statsCsvBtn = document.getElementById("statsCsvBtn");
         var eventsStatusLine = document.getElementById("eventsStatus");
         var eventsTable = document.getElementById("eventsTable");
         var eventsSearch = document.getElementById("eventsSearch");
         var eventsMoreBtn = document.getElementById("eventsMoreBtn");
+        var eventsCsvBtn = document.getElementById("eventsCsvBtn");
         var adminActionsStatusLine = document.getElementById("adminActionsStatus");
         var adminActionsTable = document.getElementById("adminActionsTable");
         var adminActionsSearch = document.getElementById("adminActionsSearch");
         var adminActionsMoreBtn = document.getElementById("adminActionsMoreBtn");
+        var adminActionsCsvBtn = document.getElementById("adminActionsCsvBtn");
         var reportsStatusLine = document.getElementById("reportsStatus");
         var reportsTable = document.getElementById("reportsTable");
         var reportsSearch = document.getElementById("reportsSearch");
         var reportsMoreBtn = document.getElementById("reportsMoreBtn");
+        var reportsCsvBtn = document.getElementById("reportsCsvBtn");
+        var baseTitle = document.title;
 
         // Kullanıcı talebi (admin paneli eleştirel değerlendirme, Faz 1,
         // 2026-08-07): "sayfalama/arama yok, 200+ kayıtta panel kullanılamaz
@@ -221,13 +274,33 @@
           return parts.join(" · ");
         }
 
+        // Kullanıcı talebi (admin paneli Faz 2, 2026-08-07): toplu onay/red
+        // — her satıra bir onay kutusu, "Tümünü seç" + iki toplu buton.
+        // Seçim durumu uid bazlı bir Set'te tutulur (yeniden render sonrası
+        // da hayatta kalır).
+        var pendingSelected = new Set();
+
+        function updateBulkToolbarState() {
+          var count = pendingSelected.size;
+          bulkApproveBtn.disabled = count === 0;
+          bulkRejectBtn.disabled = count === 0;
+          bulkApproveBtn.textContent = count > 0 ? "Seçilenleri Onayla (" + count + ")" : "Seçilenleri Onayla";
+          bulkRejectBtn.textContent = count > 0 ? "Seçilenleri Reddet (" + count + ")" : "Seçilenleri Reddet";
+        }
+
         function renderList(pending) {
           list.innerHTML = "";
+          // Artik listede olmayan (onaylanmis/reddedilmis) uid'leri secim
+          // kumesinden temizle.
+          var presentUids = new Set(pending.map(function (entry) { return entry.uid; }));
+          pendingSelected.forEach(function (uid) { if (!presentUids.has(uid)) pendingSelected.delete(uid); });
+
           if (!pending.length) {
             var empty = document.createElement("p");
             empty.className = "empty";
             empty.textContent = "Onay bekleyen kullanıcı yok.";
             list.append(empty);
+            updateBulkToolbarState();
             return;
           }
           pending.forEach(function (entry) {
@@ -236,6 +309,17 @@
             row.innerHTML =
               '<div class="info"><div class="email"></div><div class="meta"></div></div>' +
               '<div class="actions"><button type="button" class="approve-btn">Onayla</button><button type="button" class="reject-btn">Reddet</button></div>';
+            var checkbox = document.createElement("input");
+            checkbox.type = "checkbox";
+            checkbox.className = "row-checkbox";
+            checkbox.checked = pendingSelected.has(entry.uid);
+            checkbox.addEventListener("change", function () {
+              if (checkbox.checked) pendingSelected.add(entry.uid);
+              else pendingSelected.delete(entry.uid);
+              selectAllPending.checked = pendingSelected.size === pending.length;
+              updateBulkToolbarState();
+            });
+            row.insertBefore(checkbox, row.firstChild);
             row.querySelector(".email").textContent = entry.fullName
               ? entry.fullName + " (" + (entry.email || "e-posta yok") + ")"
               : (entry.email || "(e-posta yok)");
@@ -271,7 +355,54 @@
             });
             list.append(row);
           });
+          selectAllPending.checked = pendingSelected.size === pending.length;
+          updateBulkToolbarState();
         }
+
+        selectAllPending.addEventListener("change", function () {
+          var checkboxes = list.querySelectorAll(".row-checkbox");
+          checkboxes.forEach(function (checkbox, index) {
+            checkbox.checked = selectAllPending.checked;
+            checkbox.dispatchEvent(new Event("change"));
+          });
+        });
+
+        // Toplu onay/red: secilen tum uid'ler icin sirayla (rate-limit'i
+        // asmamak icin PARALEL degil ARDIŞIK) API cagrisi yapar, en sonda
+        // TEK bir yeniden yukleme yapar.
+        function runBulkAction(apiPath, confirmMessage) {
+          var uids = Array.from(pendingSelected);
+          if (!uids.length) return;
+          if (confirmMessage && !window.confirm(confirmMessage)) return;
+          bulkApproveBtn.disabled = true;
+          bulkRejectBtn.disabled = true;
+          var failed = [];
+          var chain = Promise.resolve();
+          uids.forEach(function (uid) {
+            chain = chain.then(function () {
+              return apiCall(apiPath, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ uid: uid }) })
+                .catch(function () { failed.push(uid); });
+            });
+          });
+          chain.then(function () {
+            pendingSelected.clear();
+            var tasks = [loadPending(), loadAdminActions()];
+            if (apiPath === "/api/approve-user") tasks.push(loadApproved());
+            return Promise.all(tasks);
+          }).then(function () {
+            if (failed.length) {
+              statusLine.textContent = failed.length + " kullanıcı işlenemedi, tekrar deneyin.";
+              statusLine.className = "status error";
+            }
+          });
+        }
+
+        bulkApproveBtn.addEventListener("click", function () {
+          runBulkAction("/api/approve-user", null);
+        });
+        bulkRejectBtn.addEventListener("click", function () {
+          runBulkAction("/api/reject-user", "Seçilen " + pendingSelected.size + " kullanıcı isteği reddedilecek. Devam edilsin mi?");
+        });
 
         function loadPending() {
           statusLine.textContent = "Yükleniyor...";
@@ -279,6 +410,12 @@
           return apiCall("/api/pending-users", { method: "GET" })
             .then(function (body) {
               statusLine.textContent = body.pending.length + " onay bekleyen kullanıcı.";
+              // Kullanıcı talebi (admin paneli Faz 2): "yeni bekleyen kullanıcı
+              // var" rozeti — sekme başlığı + kart başlığında sayı.
+              pendingBadge.hidden = body.pending.length === 0;
+              pendingBadge.textContent = String(body.pending.length);
+              document.title = body.pending.length > 0 ? "(" + body.pending.length + ") " + baseTitle : baseTitle;
+              bulkToolbar.hidden = body.pending.length === 0;
               renderList(body.pending);
             })
             .catch(function (error) {
@@ -430,11 +567,14 @@
             + "<tbody>" + rows + "</tbody>";
         }
 
+        var statsAllRows = [];
+
         function loadStats() {
           statsStatusLine.textContent = "Yükleniyor...";
           statsStatusLine.className = "status";
           return apiCall("/api/user-stats", { method: "GET" })
             .then(function (body) {
+              statsAllRows = body.stats;
               statsStatusLine.textContent = body.stats.length + " kullanıcı için istatistik.";
               renderStatsTable(body.stats);
             })
@@ -444,10 +584,54 @@
             });
         }
 
+        statsCsvBtn.addEventListener("click", function () {
+          downloadCsv(
+            "kullanici-istatistikleri.csv",
+            ["Kullanıcı", "Oluşturulan", "Dışa Aktarılan", "Ort. Süre (dk)", "Son Rapor"],
+            statsAllRows.map(function (row) {
+              return [
+                row.email || row.uid,
+                row.reportsCreated,
+                row.reportsExported,
+                row.avgDurationMs == null ? "" : Math.round(row.avgDurationMs / 60000),
+                formatDate(row.lastCreatedAt),
+              ];
+            })
+          );
+        });
+
         function escapeHtmlLocal(value) {
           var div = document.createElement("div");
           div.textContent = String(value == null ? "" : value);
           return div.innerHTML;
+        }
+
+        // Kullanıcı talebi (admin paneli Faz 2, 2026-08-07): "CSV dışa
+        // aktarma" — tamamen istemci tarafında, zaten yüklenmiş diziden
+        // (arama uygulanmışsa FİLTRELENMİŞ hali, sayfalamadan bağımsız TÜM
+        // eşleşen satırlar) bir CSV Blob üretip indirir. Excel'in Türkçe
+        // karakterleri doğru göstermesi için UTF-8 BOM eklenir.
+        function csvEscapeCell(value) {
+          var text = String(value == null ? "" : value);
+          if (/[",\n;]/.test(text)) return '"' + text.replace(/"/g, '""') + '"';
+          return text;
+        }
+
+        function downloadCsv(filename, headers, rows) {
+          var lines = [headers.map(csvEscapeCell).join(",")];
+          rows.forEach(function (row) {
+            lines.push(row.map(csvEscapeCell).join(","));
+          });
+          var csvText = "﻿" + lines.join("\r\n");
+          var blob = new Blob([csvText], { type: "text/csv;charset=utf-8;" });
+          var url = URL.createObjectURL(blob);
+          var link = document.createElement("a");
+          link.href = url;
+          link.download = filename;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
         }
 
         // Kullanıcı talebi (admin paneli Faz 1): arama + "Daha fazla göster"
@@ -456,15 +640,19 @@
         // liste (events/adminActions/reports) aynı deseni kullanır.
         function makeListController(options) {
           var state = { all: [], visibleCount: PAGE_SIZE };
-          function apply() {
+          function currentFiltered() {
             var query = (options.searchInput.value || "").trim().toLocaleLowerCase("tr");
-            var filtered = query
+            return query
               ? state.all.filter(function (row) { return options.matchQuery(row, query); })
               : state.all;
+          }
+          function apply() {
+            var query = (options.searchInput.value || "").trim();
+            var filtered = currentFiltered();
             var visible = filtered.slice(0, state.visibleCount);
             options.render(visible);
             var countText = query
-              ? filtered.length + " / " + state.all.length + " " + options.label + " (arama: \"" + options.searchInput.value.trim() + "\")"
+              ? filtered.length + " / " + state.all.length + " " + options.label + " (arama: \"" + query + "\")"
               : state.all.length + " " + options.label;
             options.statusLine.textContent = countText + (visible.length < filtered.length ? " — ilk " + visible.length + " gösteriliyor." : ".");
             options.statusLine.className = "status";
@@ -484,6 +672,9 @@
               state.visibleCount = PAGE_SIZE;
               apply();
             },
+            // CSV disa aktarma icin: sayfalamadan BAGIMSIZ, aramaya uyan
+            // TUM satirlar (yalnizca o an ekranda gorunen degil).
+            getFiltered: currentFiltered,
           };
         }
 
@@ -531,6 +722,16 @@
               eventsStatusLine.className = "status error";
             });
         }
+
+        eventsCsvBtn.addEventListener("click", function () {
+          downloadCsv(
+            "giris-cikis-gecmisi.csv",
+            ["Kullanıcı", "Olay", "Zaman", "IP", "Cihaz"],
+            eventsController.getFiltered().map(function (event) {
+              return [event.email || event.uid || "", event.type === "login" ? "Giriş" : "Çıkış", formatDate(event.at), event.ip || "", event.userAgent || ""];
+            })
+          );
+        });
 
         // Kullanıcı talebi (admin paneli eleştirel değerlendirme): "onay/red/
         // yetki/askıya alma/silme işlemlerinin hiçbiri loglanmıyor, hangi
@@ -588,6 +789,16 @@
             });
         }
 
+        adminActionsCsvBtn.addEventListener("click", function () {
+          downloadCsv(
+            "admin-islem-gecmisi.csv",
+            ["İşlem", "Yapan", "Hedef Kullanıcı", "Zaman"],
+            adminActionsController.getFiltered().map(function (event) {
+              return [ADMIN_ACTION_LABELS[event.type] || event.type, event.actorEmail || event.actorUid || "", event.email || event.uid || "", formatDate(event.at)];
+            })
+          );
+        });
+
         function renderReportsTable(reports) {
           if (!reports.length) {
             reportsTable.innerHTML = '<tr><td class="empty">Kayıt bulunamadı.</td></tr>';
@@ -639,6 +850,29 @@
               reportsStatusLine.className = "status error";
             });
         }
+
+        reportsCsvBtn.addEventListener("click", function () {
+          downloadCsv(
+            "rapor-listesi.csv",
+            ["Rapor No", "Oluşturan", "Banka", "İl", "İlçe", "Mahalle", "Ada/Parsel", "Blok/BB No", "Nitelik", "Oluşturuldu", "Son Dışa Aktarma"],
+            reportsController.getFiltered().map(function (entry) {
+              var s = entry.summary || {};
+              return [
+                entry.reportId || "",
+                entry.email || entry.uid || "",
+                s.bank || entry.templateKey || "",
+                s.city || "",
+                s.district || "",
+                s.neighborhood || "",
+                [s.blockNo, s.parcelNo].filter(Boolean).join(" / "),
+                [s.titleBlockName, s.unitNo].filter(Boolean).join(" / "),
+                s.titleQuality || "",
+                formatDate(entry.createdAt),
+                formatDate(entry.lastExportedAt),
+              ];
+            })
+          );
+        });
 
         auth.onAuthStateChanged(function (user) {
           if (!user) {

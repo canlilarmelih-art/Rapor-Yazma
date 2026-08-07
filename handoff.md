@@ -1,5 +1,15 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.354 - 2026-08-07 - Admin paneli Faz 2: rozet, toplu onay/red, CSV dışa aktarma
+
+- Kullanıcı: "2. fazdan devam edelim" — plandaki 3 madde uygulandı, hepsi `admin-users.html` içinde (sunucu tarafı değişmedi):
+  1. **"Yeni bekleyen kullanıcı var" rozeti**: "Kullanıcı Onayları" başlığının yanında kırmızı sayı rozeti + sekme başlığında `(N) Kullanıcı Onayları — Experify` — admin panele bakmadan haberi olsun diye.
+  2. **Toplu onay/red**: her bekleyen kullanıcı satırına onay kutusu, "Tümünü seç" + "Seçilenleri Onayla"/"Seçilenleri Reddet" butonları. İstekler ardışık (rate-limit'i aşmamak için paralel DEĞİL) gönderiliyor, sonda tek bir yeniden yükleme yapılıyor.
+  3. **CSV dışa aktarma**: Kullanıcı İstatistikleri, Giriş/Çıkış Geçmişi, Admin İşlem Geçmişi, Rapor Listesi kartlarına "CSV İndir" butonu — tamamen istemci tarafında (Blob + UTF-8 BOM, Excel'de Türkçe karakterler bozulmasın diye), arama uygulanmışsa FİLTRELENMİŞ (sayfalamadan bağımsız TÜM eşleşen) satırları indiriyor.
+- **Bulunan gerçek bug (görsel testte yakalandı)**: `.badge`/`.more-btn`/`.bulk-toolbar` gibi CSS kuralları kendi `display` değerlerini tanımlıyordu — bu, tarayıcının varsayılan `[hidden]{display:none}` kuralını AYNI özgünlükte (author CSS > user-agent CSS cascade kuralı) eziyordu, yani `hidden` niteliği bu öğelerde TAMAMEN ETKİSİZ kalıyordu (rozet "0" iken bile görünüyordu, "Daha fazla göster" butonu 0 satırda bile görünüyordu — bu son ikisi aslında Faz 1'den beri vardı, bu turda fark edildi). Global `[hidden] { display: none !important; }` kuralıyla düzeltildi.
+- Bu değişiklik yalnızca `admin-users.html` (istemci JS/CSS, tek dosya) — `server.js` değişmedi, `index.html` cache-buster bump gerekmedi.
+- `npm run verify` tamamı geçti; admin-users.html tarayıcıda (yerel önizleme) elle kontrol edildi — konsol hatası yok, `hidden` düzeltmesi sonrası rozet/toolbar/buton görünürlüğü doğru, CSV indirme (boş veriyle) hatasız çalışıyor.
+
 ## 0.0.353 - 2026-08-07 - Admin paneli Faz 1: eksik denetim izi + arama/sayfalama
 
 - Kullanıcı: "mevcut programımızda admin paneli nasıl eleştirel göz ile değerlendir... admin panelinin geliştirilmesi ile ilgili plan hazırlayalım" — kod okunarak (SQL kullanılmadığı, tüm veri `server-data/*.json` dosyalarında tutulduğu da bu incelemede doğrulandı) somut bir eleştiri + fazlı plan sunuldu, kullanıcı "1. fazdan başlayalım" dedi.
