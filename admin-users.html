@@ -71,6 +71,32 @@
       .event-badge.login { background: #dff3e6; color: #1c7a3f; }
       .event-badge.logout { background: #f6ecd6; color: #9a6a16; }
       .table-scroll { overflow-x: auto; }
+      .search-box {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 8px 10px;
+        margin: 0 0 12px;
+        border: 1px solid #dde3ef;
+        border-radius: 8px;
+        font-size: 13px;
+        font-family: inherit;
+        color: #152238;
+      }
+      .search-box:focus { outline: 2px solid #1c3d7a; outline-offset: -1px; }
+      .more-btn {
+        display: block;
+        width: 100%;
+        margin-top: 10px;
+        padding: 8px 12px;
+        border: 1px solid #dde3ef;
+        border-radius: 8px;
+        background: #eef1f6;
+        color: #152238;
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      .more-btn:hover { background: #e4ebf8; }
     </style>
   </head>
   <body>
@@ -88,6 +114,7 @@
       <p class="section-hint">Açıklamalar/Masraf bölümlerini ve PDF okuma sonucu önizlemelerini görebilecek onaylı kullanıcıları buradan işaretleyin.</p>
       <div class="card">
         <p class="status" id="approvedStatus">Yükleniyor...</p>
+        <input type="search" class="search-box" id="approvedSearch" placeholder="E-posta veya isim ara..." />
         <div id="approvedList"></div>
       </div>
 
@@ -102,14 +129,27 @@
       <p class="section-hint">Son 500 giriş/çıkış olayı — kim, ne zaman, hangi cihaz/IP'den.</p>
       <div class="card">
         <p class="status" id="eventsStatus">Yükleniyor...</p>
+        <input type="search" class="search-box" id="eventsSearch" placeholder="E-posta, IP veya cihaz ara..." />
         <div class="table-scroll"><table class="data-table" id="eventsTable"></table></div>
+        <button type="button" class="more-btn" id="eventsMoreBtn" hidden>Daha fazla göster</button>
+      </div>
+
+      <p class="section-title">Admin İşlem Geçmişi</p>
+      <p class="section-hint">Onay/red, yetki verme-alma, askıya alma-aktifleştirme, silme — kim, kime, ne zaman.</p>
+      <div class="card">
+        <p class="status" id="adminActionsStatus">Yükleniyor...</p>
+        <input type="search" class="search-box" id="adminActionsSearch" placeholder="Yapan veya hedef kullanıcı ara..." />
+        <div class="table-scroll"><table class="data-table" id="adminActionsTable"></table></div>
+        <button type="button" class="more-btn" id="adminActionsMoreBtn" hidden>Daha fazla göster</button>
       </div>
 
       <p class="section-title">Rapor Listesi</p>
       <p class="section-hint">Sistemde oluşturulan/dışa aktarılan her raporun ana başlıkları — oluşturan kullanıcı, banka, il/ilçe/mahalle, ada/parsel, blok/bağımsız bölüm no, gayrimenkul niteliği, rapor numarası. Raporun DİĞER içeriği (metinler, tablolar, dosyalar) burada YER ALMAZ.</p>
       <div class="card">
         <p class="status" id="reportsStatus">Yükleniyor...</p>
+        <input type="search" class="search-box" id="reportsSearch" placeholder="Kullanıcı, banka, il/ilçe/mahalle ara..." />
         <div class="table-scroll"><table class="data-table" id="reportsTable"></table></div>
+        <button type="button" class="more-btn" id="reportsMoreBtn" hidden>Daha fazla göster</button>
       </div>
     </div>
 
@@ -122,12 +162,28 @@
         var list = document.getElementById("list");
         var approvedStatusLine = document.getElementById("approvedStatus");
         var approvedList = document.getElementById("approvedList");
+        var approvedSearch = document.getElementById("approvedSearch");
         var statsStatusLine = document.getElementById("statsStatus");
         var statsTable = document.getElementById("statsTable");
         var eventsStatusLine = document.getElementById("eventsStatus");
         var eventsTable = document.getElementById("eventsTable");
+        var eventsSearch = document.getElementById("eventsSearch");
+        var eventsMoreBtn = document.getElementById("eventsMoreBtn");
+        var adminActionsStatusLine = document.getElementById("adminActionsStatus");
+        var adminActionsTable = document.getElementById("adminActionsTable");
+        var adminActionsSearch = document.getElementById("adminActionsSearch");
+        var adminActionsMoreBtn = document.getElementById("adminActionsMoreBtn");
         var reportsStatusLine = document.getElementById("reportsStatus");
         var reportsTable = document.getElementById("reportsTable");
+        var reportsSearch = document.getElementById("reportsSearch");
+        var reportsMoreBtn = document.getElementById("reportsMoreBtn");
+
+        // Kullanıcı talebi (admin paneli eleştirel değerlendirme, Faz 1,
+        // 2026-08-07): "sayfalama/arama yok, 200+ kayıtta panel kullanılamaz
+        // hale gelir" tespiti — arama kutusu + "Daha fazla göster" ile
+        // istemci-tarafı sayfalama. Sunucu her zaman TÜM (son 500) kaydı
+        // döner, burada sadece gösterim kısıtlanır (basit, ek API gerekmez).
+        var PAGE_SIZE = 50;
 
         if (typeof firebase === "undefined" || !firebase.initializeApp || typeof RAPOR_FIREBASE_CONFIG === "undefined") {
           statusLine.textContent = "Yapılandırma eksik.";
@@ -191,7 +247,7 @@
               rejectBtn.disabled = true;
               apiCall("/api/approve-user", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ uid: entry.uid }) })
                 .then(function () {
-                  return Promise.all([loadPending(), loadApproved()]);
+                  return Promise.all([loadPending(), loadApproved(), loadAdminActions()]);
                 })
                 .catch(function () {
                   statusLine.textContent = "Onaylanamadı, tekrar deneyin.";
@@ -205,7 +261,7 @@
               approveBtn.disabled = true;
               rejectBtn.disabled = true;
               apiCall("/api/reject-user", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ uid: entry.uid }) })
-                .then(loadPending)
+                .then(function () { return Promise.all([loadPending(), loadAdminActions()]); })
                 .catch(function () {
                   statusLine.textContent = "Reddedilemedi, tekrar deneyin.";
                   statusLine.className = "status error";
@@ -274,6 +330,7 @@
                   entry.privileged = !entry.privileged;
                   paintToggle();
                   toggleBtn.disabled = false;
+                  loadAdminActions();
                 })
                 .catch(function () {
                   approvedStatusLine.textContent = "Güncellenemedi, tekrar deneyin.";
@@ -286,7 +343,7 @@
               if (!window.confirm((entry.email || "Bu kullanıcı") + " için " + (nextStatus === "suspended" ? "pasife alma" : "aktife alma") + " işlemi yapılsın mı?")) return;
               statusBtn.disabled = true;
               apiCall("/api/admin-user-status", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ uid: entry.uid, status: nextStatus }) })
-                .then(function () { return loadApproved(); })
+                .then(function () { return Promise.all([loadApproved(), loadAdminActions()]); })
                 .catch(function () {
                   approvedStatusLine.textContent = "Kullanıcı durumu güncellenemedi.";
                   approvedStatusLine.className = "status error";
@@ -297,7 +354,7 @@
               if (!window.confirm((entry.email || "Bu kullanıcı") + " sistem erişiminden kalıcı olarak kaldırılacak. Devam edilsin mi?")) return;
               deleteBtn.disabled = true;
               apiCall("/api/admin-user-delete", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ uid: entry.uid }) })
-                .then(function () { return loadApproved(); })
+                .then(function () { return Promise.all([loadApproved(), loadAdminActions()]); })
                 .catch(function () {
                   approvedStatusLine.textContent = "Kullanıcı silinemedi.";
                   approvedStatusLine.className = "status error";
@@ -308,13 +365,32 @@
           });
         }
 
+        var approvedAllUsers = [];
+
+        function matchesApprovedSearch(entry, query) {
+          if (!query) return true;
+          var haystack = ((entry.email || "") + " " + (entry.fullName || "") + " " + (entry.company || "")).toLocaleLowerCase("tr");
+          return haystack.indexOf(query) >= 0;
+        }
+
+        function renderFilteredApproved() {
+          var query = (approvedSearch.value || "").trim().toLocaleLowerCase("tr");
+          var filtered = approvedAllUsers.filter(function (entry) { return matchesApprovedSearch(entry, query); });
+          approvedStatusLine.textContent = query
+            ? filtered.length + " / " + approvedAllUsers.length + " onaylı kullanıcı (arama: \"" + approvedSearch.value.trim() + "\")."
+            : filtered.length + " onaylı kullanıcı.";
+          renderApprovedList(filtered);
+        }
+
+        approvedSearch.addEventListener("input", renderFilteredApproved);
+
         function loadApproved() {
           approvedStatusLine.textContent = "Yükleniyor...";
           approvedStatusLine.className = "status";
           return apiCall("/api/approved-users", { method: "GET" })
             .then(function (body) {
-              approvedStatusLine.textContent = body.approved.length + " onaylı kullanıcı.";
-              renderApprovedList(body.approved);
+              approvedAllUsers = body.approved;
+              renderFilteredApproved();
             })
             .catch(function (error) {
               approvedStatusLine.textContent = "Liste alınamadı: " + (error && error.message ? error.message : "bilinmeyen hata");
@@ -374,9 +450,46 @@
           return div.innerHTML;
         }
 
+        // Kullanıcı talebi (admin paneli Faz 1): arama + "Daha fazla göster"
+        // sayfalama — sunucudan gelen TÜM diziyi bellekte tutup filtrelenmiş
+        // sonucun yalnızca ilk `visibleCount` satırını render eder. Her
+        // liste (events/adminActions/reports) aynı deseni kullanır.
+        function makeListController(options) {
+          var state = { all: [], visibleCount: PAGE_SIZE };
+          function apply() {
+            var query = (options.searchInput.value || "").trim().toLocaleLowerCase("tr");
+            var filtered = query
+              ? state.all.filter(function (row) { return options.matchQuery(row, query); })
+              : state.all;
+            var visible = filtered.slice(0, state.visibleCount);
+            options.render(visible);
+            var countText = query
+              ? filtered.length + " / " + state.all.length + " " + options.label + " (arama: \"" + options.searchInput.value.trim() + "\")"
+              : state.all.length + " " + options.label;
+            options.statusLine.textContent = countText + (visible.length < filtered.length ? " — ilk " + visible.length + " gösteriliyor." : ".");
+            options.statusLine.className = "status";
+            options.moreBtn.hidden = visible.length >= filtered.length;
+          }
+          options.searchInput.addEventListener("input", function () {
+            state.visibleCount = PAGE_SIZE;
+            apply();
+          });
+          options.moreBtn.addEventListener("click", function () {
+            state.visibleCount += PAGE_SIZE;
+            apply();
+          });
+          return {
+            load: function (fetchedRows) {
+              state.all = fetchedRows;
+              state.visibleCount = PAGE_SIZE;
+              apply();
+            },
+          };
+        }
+
         function renderEventsTable(events) {
           if (!events.length) {
-            eventsTable.innerHTML = '<tr><td class="empty">Henüz kayıt yok.</td></tr>';
+            eventsTable.innerHTML = '<tr><td class="empty">Kayıt bulunamadı.</td></tr>';
             return;
           }
           var rows = events.map(function (event) {
@@ -396,23 +509,88 @@
             + "<tbody>" + rows + "</tbody>";
         }
 
+        var eventsController = makeListController({
+          searchInput: eventsSearch,
+          moreBtn: eventsMoreBtn,
+          statusLine: eventsStatusLine,
+          render: renderEventsTable,
+          label: "olay (en yeni önce)",
+          matchQuery: function (event, query) {
+            var haystack = ((event.email || event.uid || "") + " " + (event.ip || "") + " " + (event.userAgent || "")).toLocaleLowerCase("tr");
+            return haystack.indexOf(query) >= 0;
+          },
+        });
+
         function loadLoginEvents() {
           eventsStatusLine.textContent = "Yükleniyor...";
           eventsStatusLine.className = "status";
           return apiCall("/api/login-events", { method: "GET" })
-            .then(function (body) {
-              eventsStatusLine.textContent = body.events.length + " olay (en yeni önce).";
-              renderEventsTable(body.events);
-            })
+            .then(function (body) { eventsController.load(body.events); })
             .catch(function (error) {
               eventsStatusLine.textContent = "Geçmiş alınamadı: " + (error && error.message ? error.message : "bilinmeyen hata");
               eventsStatusLine.className = "status error";
             });
         }
 
+        // Kullanıcı talebi (admin paneli eleştirel değerlendirme): "onay/red/
+        // yetki/askıya alma/silme işlemlerinin hiçbiri loglanmıyor, hangi
+        // adminin yaptığı da kaydedilmiyor" tespiti — server.js artık bu
+        // olayları actorUid/actorEmail ile birlikte kaydediyor, burada
+        // "kim, kime, ne yaptı" şeklinde listeleniyor.
+        var ADMIN_ACTION_LABELS = {
+          "user-approved": "Kullanıcı onaylandı",
+          "user-rejected": "Kullanıcı reddedildi",
+          "privilege-granted": "Yetki verildi",
+          "privilege-revoked": "Yetki alındı",
+          "account-suspended": "Hesap askıya alındı",
+          "account-activated": "Hesap aktifleştirildi",
+          "account-deleted-by-admin": "Hesap silindi",
+        };
+
+        function renderAdminActionsTable(events) {
+          if (!events.length) {
+            adminActionsTable.innerHTML = '<tr><td class="empty">Kayıt bulunamadı.</td></tr>';
+            return;
+          }
+          var rows = events.map(function (event) {
+            return "<tr>"
+              + "<td>" + escapeHtmlLocal(ADMIN_ACTION_LABELS[event.type] || event.type) + "</td>"
+              + "<td>" + escapeHtmlLocal(event.actorEmail || event.actorUid || "-") + "</td>"
+              + "<td>" + escapeHtmlLocal(event.email || event.uid || "-") + "</td>"
+              + "<td>" + formatDate(event.at) + "</td>"
+              + "</tr>";
+          }).join("");
+          adminActionsTable.innerHTML =
+            "<thead><tr><th>İşlem</th><th>Yapan</th><th>Hedef Kullanıcı</th><th>Zaman</th></tr></thead>"
+            + "<tbody>" + rows + "</tbody>";
+        }
+
+        var adminActionsController = makeListController({
+          searchInput: adminActionsSearch,
+          moreBtn: adminActionsMoreBtn,
+          statusLine: adminActionsStatusLine,
+          render: renderAdminActionsTable,
+          label: "admin işlemi (en yeni önce)",
+          matchQuery: function (event, query) {
+            var haystack = ((event.actorEmail || event.actorUid || "") + " " + (event.email || event.uid || "") + " " + (ADMIN_ACTION_LABELS[event.type] || event.type)).toLocaleLowerCase("tr");
+            return haystack.indexOf(query) >= 0;
+          },
+        });
+
+        function loadAdminActions() {
+          adminActionsStatusLine.textContent = "Yükleniyor...";
+          adminActionsStatusLine.className = "status";
+          return apiCall("/api/admin-action-events", { method: "GET" })
+            .then(function (body) { adminActionsController.load(body.events); })
+            .catch(function (error) {
+              adminActionsStatusLine.textContent = "Geçmiş alınamadı: " + (error && error.message ? error.message : "bilinmeyen hata");
+              adminActionsStatusLine.className = "status error";
+            });
+        }
+
         function renderReportsTable(reports) {
           if (!reports.length) {
-            reportsTable.innerHTML = '<tr><td class="empty">Henüz kayıt yok.</td></tr>';
+            reportsTable.innerHTML = '<tr><td class="empty">Kayıt bulunamadı.</td></tr>';
             return;
           }
           var rows = reports.map(function (entry) {
@@ -438,14 +616,24 @@
             + "<tbody>" + rows + "</tbody>";
         }
 
+        var reportsController = makeListController({
+          searchInput: reportsSearch,
+          moreBtn: reportsMoreBtn,
+          statusLine: reportsStatusLine,
+          render: renderReportsTable,
+          label: "rapor (en son etkinlik önce)",
+          matchQuery: function (entry, query) {
+            var s = entry.summary || {};
+            var haystack = ((entry.email || entry.uid || "") + " " + (entry.reportId || "") + " " + (s.bank || entry.templateKey || "") + " " + (s.city || "") + " " + (s.district || "") + " " + (s.neighborhood || "")).toLocaleLowerCase("tr");
+            return haystack.indexOf(query) >= 0;
+          },
+        });
+
         function loadReports() {
           reportsStatusLine.textContent = "Yükleniyor...";
           reportsStatusLine.className = "status";
           return apiCall("/api/report-list", { method: "GET" })
-            .then(function (body) {
-              reportsStatusLine.textContent = body.reports.length + " rapor (en son etkinlik önce).";
-              renderReportsTable(body.reports);
-            })
+            .then(function (body) { reportsController.load(body.reports); })
             .catch(function (error) {
               reportsStatusLine.textContent = "Rapor listesi alınamadı: " + (error && error.message ? error.message : "bilinmeyen hata");
               reportsStatusLine.className = "status error";
@@ -463,6 +651,7 @@
           loadApproved();
           loadStats();
           loadLoginEvents();
+          loadAdminActions();
           loadReports();
         });
       })();

@@ -1165,6 +1165,12 @@ async function logActivityEvent(type, uid, email, extra = {}) {
     userAgent: extra.userAgent || null,
     summary: sanitizeReportSummary(extra.summary),
     templateKey: sanitizeProfileField(extra.templateKey, 80),
+    // Kullanıcı talebi (admin paneli eleştirel değerlendirme, Faz 1,
+    // 2026-08-07): admin işlemlerinin (onay/red/yetki/askıya alma/silme)
+    // KİMİN yaptığını da kaydet — önceden yalnızca HEDEF kullanıcının
+    // uid/email'i tutuluyordu, işlemi yapan admin hiç görünmüyordu.
+    actorUid: sanitizeProfileField(extra.actorUid, 200),
+    actorEmail: sanitizeProfileField(extra.actorEmail, 320),
   });
   if (activityEvents.length > ACTIVITY_EVENTS_MAX) {
     activityEvents.splice(0, activityEvents.length - ACTIVITY_EVENTS_MAX);
@@ -1176,6 +1182,28 @@ async function listLoginEvents(limit = 500) {
   await loadActivityEventsOnce();
   return activityEvents
     .filter((event) => event.type === "login" || event.type === "logout")
+    .slice(-limit)
+    .reverse();
+}
+
+// Kullanıcı talebi (admin paneli eleştirel değerlendirme, Faz 1): admin
+// tarafından yapılan kullanıcı-yönetimi işlemlerinin (onay/red/yetki
+// verme-alma/askıya alma-aktifleştirme/silme) TAMAMI için tek bir denetim
+// listesi — kim, kime, ne zaman, ne yaptı.
+const ADMIN_ACTION_EVENT_TYPES = [
+  "user-approved",
+  "user-rejected",
+  "privilege-granted",
+  "privilege-revoked",
+  "account-suspended",
+  "account-activated",
+  "account-deleted-by-admin",
+];
+
+async function listAdminActionEvents(limit = 500) {
+  await loadActivityEventsOnce();
+  return activityEvents
+    .filter((event) => ADMIN_ACTION_EVENT_TYPES.includes(event.type))
     .slice(-limit)
     .reverse();
 }
@@ -2258,6 +2286,13 @@ async function handleApproveUserApi(request, response, user) {
     return;
   }
   await approveUser(targetUid);
+  await loadApprovalStateOnce();
+  await logActivityEvent("user-approved", targetUid, approvedUsers.get(targetUid)?.email || null, {
+    actorUid: user.uid,
+    actorEmail: user.email,
+    ip: clientKeyFor(request),
+    userAgent: request.headers["user-agent"],
+  });
   sendJson(response, 200, { ok: true });
 }
 
@@ -2279,7 +2314,15 @@ async function handleRejectUserApi(request, response, user) {
     sendJson(response, 400, { ok: false, error: "Kullanıcı kimliği eksik." });
     return;
   }
+  await loadApprovalStateOnce();
+  const targetEmail = pendingUsers.get(targetUid)?.email || null;
   await rejectPendingUser(targetUid);
+  await logActivityEvent("user-rejected", targetUid, targetEmail, {
+    actorUid: user.uid,
+    actorEmail: user.email,
+    ip: clientKeyFor(request),
+    userAgent: request.headers["user-agent"],
+  });
   sendJson(response, 200, { ok: true });
 }
 
@@ -2312,6 +2355,13 @@ async function handleGrantPrivilegeApi(request, response, user) {
     return;
   }
   await grantPrivilege(targetUid);
+  await loadApprovalStateOnce();
+  await logActivityEvent("privilege-granted", targetUid, approvedUsers.get(targetUid)?.email || null, {
+    actorUid: user.uid,
+    actorEmail: user.email,
+    ip: clientKeyFor(request),
+    userAgent: request.headers["user-agent"],
+  });
   sendJson(response, 200, { ok: true });
 }
 
@@ -2334,6 +2384,13 @@ async function handleRevokePrivilegeApi(request, response, user) {
     return;
   }
   await revokePrivilege(targetUid);
+  await loadApprovalStateOnce();
+  await logActivityEvent("privilege-revoked", targetUid, approvedUsers.get(targetUid)?.email || null, {
+    actorUid: user.uid,
+    actorEmail: user.email,
+    ip: clientKeyFor(request),
+    userAgent: request.headers["user-agent"],
+  });
   sendJson(response, 200, { ok: true });
 }
 
@@ -2423,7 +2480,12 @@ async function handleManagedUserStatusApi(request, response, user) {
     return;
   }
   if (status === "suspended") await revokeUserSessionsAndTrustedDevices(targetUid);
-  await logActivityEvent(status === "suspended" ? "account-suspended" : "account-activated", targetUid, entry.email, { ip: clientKeyFor(request), userAgent: request.headers["user-agent"] });
+  await logActivityEvent(status === "suspended" ? "account-suspended" : "account-activated", targetUid, entry.email, {
+    actorUid: user.uid,
+    actorEmail: user.email,
+    ip: clientKeyFor(request),
+    userAgent: request.headers["user-agent"],
+  });
   sendJson(response, 200, { ok: true, status });
 }
 
@@ -2452,7 +2514,12 @@ async function handleDeleteManagedUserApi(request, response, user) {
     return;
   }
   await deleteManagedUser(targetUid);
-  await logActivityEvent("account-deleted-by-admin", targetUid, entry.email, { ip: clientKeyFor(request), userAgent: request.headers["user-agent"] });
+  await logActivityEvent("account-deleted-by-admin", targetUid, entry.email, {
+    actorUid: user.uid,
+    actorEmail: user.email,
+    ip: clientKeyFor(request),
+    userAgent: request.headers["user-agent"],
+  });
   sendJson(response, 200, { ok: true });
 }
 
@@ -2861,6 +2928,18 @@ async function handleLoginEventsApi(request, response, user) {
   sendJson(response, 200, { ok: true, events });
 }
 
+// Kullanıcı talebi (admin paneli eleştirel değerlendirme, Faz 1): admin
+// işlem geçmişi (onay/red/yetki/askıya alma/silme) — kim, kime, ne zaman.
+async function handleAdminActionEventsApi(request, response, user) {
+  if (request.method !== "GET") {
+    sendJson(response, 405, { ok: false, error: "Bu işlem desteklenmiyor." });
+    return;
+  }
+  if (!requireAdmin(response, user)) return;
+  const events = await listAdminActionEvents(500);
+  sendJson(response, 200, { ok: true, events });
+}
+
 async function handleUserStatsApi(request, response, user) {
   if (request.method !== "GET") {
     sendJson(response, 405, { ok: false, error: "Bu işlem desteklenmiyor." });
@@ -3019,6 +3098,7 @@ const API_RATE_LIMITS = {
   "/api/report-template-render": { limit: 12, windowMs: 60 * 1000 },
   "/api/report-template-docx": { limit: 12, windowMs: 60 * 1000 },
   "/api/login-events": { limit: 30, windowMs: 60 * 1000 },
+  "/api/admin-action-events": { limit: 30, windowMs: 60 * 1000 },
   "/api/user-stats": { limit: 30, windowMs: 60 * 1000 },
   "/api/report-list": { limit: 30, windowMs: 60 * 1000 },
 };
@@ -3164,6 +3244,10 @@ const server = http.createServer(async (request, response) => {
       await handleLoginEventsApi(request, response, request.user);
       return;
     }
+    if (apiRoute === "/api/admin-action-events") {
+      await handleAdminActionEventsApi(request, response, request.user);
+      return;
+    }
     if (apiRoute === "/api/user-stats") {
       await handleUserStatsApi(request, response, request.user);
       return;
@@ -3258,6 +3342,15 @@ module.exports = {
   sanitizeReportSummary,
   computeReportListForAdmin,
   handleReportListApi,
+  listAdminActionEvents,
+  handleAdminActionEventsApi,
+  handleApproveUserApi,
+  handleRejectUserApi,
+  handleGrantPrivilegeApi,
+  handleRevokePrivilegeApi,
+  handleManagedUserStatusApi,
+  handleDeleteManagedUserApi,
+  ADMIN_ACTION_EVENT_TYPES,
   REPORT_SUMMARY_FIELDS,
   handleStatic,
   resolveStaticPath,

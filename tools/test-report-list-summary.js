@@ -130,13 +130,18 @@ const originalFiles = backupAndClearTestFiles();
           bank: "Ziraat Bankası",
         },
       });
+      // Kullanici B: farkli bir rapor, henuz export edilmemis (summary yok).
+      // NOT: B'nin tek olayi burada, A'nin SON olayindan (export-authorized)
+      // ONCE pushlaniyor — boylece A'nin son etkinliginin gercekten daha
+      // yeni (wall-clock) oldugu milisaniye rastlantisina BAGLI OLMADAN
+      // garanti edilir (once bu iki cagri ayni anda/milisaniyede
+      // calisirsa sıralama testi rastgele kirilabiliyordu).
+      await server.logActivityEvent("report-created", "uid-b", "b@example.com", { reportId: "RE-2026-BBBBBB" });
+
       await server.logActivityEvent("report-export-authorized", "uid-a", "a@example.com", {
         reportId: "RE-2026-AAAAAA",
         templateKey: "ziraat",
       });
-
-      // Kullanici B: farkli bir rapor, henuz export edilmemis (summary yok).
-      await server.logActivityEvent("report-created", "uid-b", "b@example.com", { reportId: "RE-2026-BBBBBB" });
 
       const reports = await server.computeReportListForAdmin();
       assert.equal(reports.length, 2, `Iki farkli reportId icin iki satir olmali: ${JSON.stringify(reports)}`);
