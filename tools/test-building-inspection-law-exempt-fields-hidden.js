@@ -117,6 +117,11 @@ function runScenario({ documents = [], contractActive = "" }) {
     updateStatus: () => {},
     renderSection: () => {},
     hasCompletionValue: (value) => String(value ?? "").trim().length > 0,
+    // selectVariant burada BİLEREK her zaman 0 (orijinal metin) döner — bu
+    // test alan gizleme mantığını doğruluyor, varyant SEÇİMİ ayrı olarak
+    // tools/test-variant-selection.js'te test ediliyor.
+    selectVariant: () => 0,
+    registerVariantGroup: () => {},
   };
   vm.createContext(context);
   vm.runInContext(foldSrc, context);

@@ -7732,6 +7732,12 @@ function buildHorizontalMainPropertyDescription(values) {
   return paragraphs.join("\n\n");
 }
 
+const horizontalSiteVariants = [
+  (order, usePhrase, totalText) => `Değerlemeye konu bağımsız bölümün yer aldığı ana taşınmaz, yatay kat irtifakı tesis edilmiş site niteliğindedir. Parsel üzerinde ${order} inşa edilmiş ${usePhrase} blokları bulunmakta olup, her bir bağımsız bölüm site bütünlüğü içerisinde müstakil kullanım alanına sahip olacak şekilde düzenlenmiştir.${totalText}`,
+  (order, usePhrase, totalText) => `Değerlemeye konu bağımsız bölümün bulunduğu ana taşınmaz, yatay kat irtifakına tabi bir site niteliği taşımaktadır. Parsel üzerinde ${order} inşa edilmiş ${usePhrase} blokları yer almakta olup, her bir bağımsız bölüm site bütünlüğü içerisinde müstakil kullanım alanına sahip olacak şekilde düzenlenmiştir.${totalText.replace("bulunmaktadır", "yer almaktadır")}`,
+];
+registerVariantGroup("buildHorizontalMainPropertySiteSentence", "Yatay Kat İrtifakı — Site Cümlesi (Ana Gayrimenkul)", horizontalSiteVariants.length);
+
 function buildHorizontalMainPropertySiteSentence(values) {
   const order = values.buildingOrder ? `${toLowerText(values.buildingOrder)} nizamda` : "site bütünlüğünde";
   const usePhrase = detectHorizontalBlockUsePhrase();
@@ -7739,7 +7745,8 @@ function buildHorizontalMainPropertySiteSentence(values) {
   const totalText = totalUnits
     ? ` Site genelinde toplam ${totalUnits.toLocaleString("tr-TR")} adet bağımsız bölüm bulunmaktadır.`
     : "";
-  return `Değerlemeye konu bağımsız bölümün yer aldığı ana taşınmaz, yatay kat irtifakı tesis edilmiş site niteliğindedir. Parsel üzerinde ${order} inşa edilmiş ${usePhrase} blokları bulunmakta olup, her bir bağımsız bölüm site bütünlüğü içerisinde müstakil kullanım alanına sahip olacak şekilde düzenlenmiştir.${totalText}`;
+  const variantIndex = selectVariant("buildHorizontalMainPropertySiteSentence", horizontalSiteVariants.length);
+  return horizontalSiteVariants[variantIndex](order, usePhrase, totalText);
 }
 
 function detectHorizontalBlockUsePhrase() {
@@ -7757,23 +7764,44 @@ function detectHorizontalBlockUsePhrase() {
   return "villa/konut";
 }
 
+const horizontalFloorVariants = [
+  (comp, floorText) => `Her bir blok ${comp}${floorText} oluşmaktadır.`,
+  (comp, floorText) => `Her bir blok ${comp}${floorText} meydana gelmektedir.`,
+];
+registerVariantGroup("buildHorizontalMainPropertyFloorSentence", "Yatay Kat İrtifakı — Blok Kat Kompozisyonu (Ana Gayrimenkul)", horizontalFloorVariants.length);
+
 function buildHorizontalMainPropertyFloorSentence(values) {
   if (!values.floorComposition) return "";
   const floorText = values.totalFloors ? ` olmak üzere toplam ${values.totalFloors} kattan` : "";
-  return `Her bir blok ${values.floorComposition}${floorText} oluşmaktadır.`;
+  const variantIndex = selectVariant("buildHorizontalMainPropertyFloorSentence", horizontalFloorVariants.length);
+  return horizontalFloorVariants[variantIndex](values.floorComposition, floorText);
 }
+
+const horizontalCarparkHasVariants = ["Site genelinde ${carpark} imkanı bulunmaktadır.", "Site genelinde ${carpark} imkânından yararlanılabilmektedir."];
+const horizontalCarparkNoVariants = ["Site genelinde otopark imkanı bulunmamaktadır.", "Site genelinde otopark imkânı sunulmamaktadır."];
+const horizontalSocialVariants = [
+  (list) => `Taşınmaz ${list} gibi sosyal imkanların bulunduğu bir sitede yer almaktadır.`,
+  (list) => `Taşınmaz, ${list} gibi sosyal olanakların bulunduğu bir sitede konumlanmaktadır.`,
+];
+registerVariantGroup("buildHorizontalMainPropertyAmenitySentence:carparkHas", "Yatay Kat İrtifakı — Otopark Var (Ana Gayrimenkul)", horizontalCarparkHasVariants.length);
+registerVariantGroup("buildHorizontalMainPropertyAmenitySentence:carparkNo", "Yatay Kat İrtifakı — Otopark Yok (Ana Gayrimenkul)", horizontalCarparkNoVariants.length);
+registerVariantGroup("buildHorizontalMainPropertyAmenitySentence:social", "Yatay Kat İrtifakı — Sosyal İmkanlar (Ana Gayrimenkul)", horizontalSocialVariants.length);
 
 function buildHorizontalMainPropertyAmenitySentence(values) {
   const sentences = [];
   const carpark = toLowerText(values.carpark);
   const social = String(values.socialFacilities || "").trim();
   if (carpark && carpark !== "yok") {
-    sentences.push(`Site genelinde ${carpark} imkanı bulunmaktadır.`);
+    const variantIndex = selectVariant("buildHorizontalMainPropertyAmenitySentence:carparkHas", horizontalCarparkHasVariants.length);
+    sentences.push(horizontalCarparkHasVariants[variantIndex].replace("${carpark}", carpark));
   } else if (carpark === "yok") {
-    sentences.push("Site genelinde otopark imkanı bulunmamaktadır.");
+    const variantIndex = selectVariant("buildHorizontalMainPropertyAmenitySentence:carparkNo", horizontalCarparkNoVariants.length);
+    sentences.push(horizontalCarparkNoVariants[variantIndex]);
   }
   if (social && social.toLocaleLowerCase("tr-TR") !== "yok") {
-    sentences.push(`Taşınmaz ${formatTurkishList(social.split(/\s*,\s*/).filter(Boolean).map(toLowerText))} gibi sosyal imkanların bulunduğu bir sitede yer almaktadır.`);
+    const list = formatTurkishList(social.split(/\s*,\s*/).filter(Boolean).map(toLowerText));
+    const variantIndex = selectVariant("buildHorizontalMainPropertyAmenitySentence:social", horizontalSocialVariants.length);
+    sentences.push(horizontalSocialVariants[variantIndex](list));
   }
   return sentences.join(" ");
 }
@@ -7785,6 +7813,15 @@ function readMainPropertyField(primaryKey, token, options = {}) {
   if (value) return value;
   return options.fallbackToToken ? `{{${token}}}` : "";
 }
+
+// Varyantlar docs/cumle-envanteri.md Bölüm 4'te belgelendi.
+const mainPropertyOpeningVariants = [
+  { lead: "Ekspertize konu taşınmazın yer aldığı", tail: "inşa edilmiştir" },
+  { lead: "Değerlemeye konu gayrimenkulün bulunduğu", tail: "inşa edilmiştir" },
+  { lead: "Söz konusu taşınmazın yer aldığı", tail: "yapılandırılmıştır" },
+  { lead: "Rapor konusu gayrimenkulün bulunduğu", tail: "inşa edilmiştir" },
+];
+registerVariantGroup("buildMainPropertyOpeningSentence", "Ana Taşınmaz Açılış Cümlesi (Ana Gayrimenkul)", mainPropertyOpeningVariants.length);
 
 function buildMainPropertyOpeningSentence(values) {
   const blockCountText = String(values.blockCount || "").trim();
@@ -7803,8 +7840,21 @@ function buildMainPropertyOpeningSentence(values) {
   const classPhrase = values.buildingClass ? ` (yapı sınıfı ${values.buildingClass})` : "";
   const ownershipPhrase = shouldMentionMainPropertyOwnership(values.ownershipType) ? " yatay kat irtifak türünde" : "";
   const blockPhrase = blockCountText ? ` ${context.blockCountLower === "tek" ? "tek blok" : `${blockCountText} blok`} olarak` : "";
-  return `Ekspertize konu taşınmazın yer aldığı ${structureName}${parcelPhrase}${technicalPhrase}${classPhrase}${ownershipPhrase}${blockPhrase} inşa edilmiştir.`;
+  const variant = mainPropertyOpeningVariants[selectVariant("buildMainPropertyOpeningSentence", mainPropertyOpeningVariants.length)];
+  return `${variant.lead} ${structureName}${parcelPhrase}${technicalPhrase}${classPhrase}${ownershipPhrase}${blockPhrase} ${variant.tail}.`;
 }
+
+const mainPropertyProjectOkVariants = [
+  (inspectionPhrase) => `ana taşınmazın incelenen mimari projesi ile ${inspectionPhrase} uyumlu olduğu değerlendirilmiştir.`,
+  (inspectionPhrase) => `gayrimenkulün incelenen mimari projesi ile ${inspectionPhrase} uyum içinde olduğu görülmüştür.`,
+  (inspectionPhrase) => `ana gayrimenkulün onaylı projesi ile ${inspectionPhrase} uyum içinde olduğu değerlendirilmiştir.`,
+];
+const mainPropertyProjectMismatchVariants = [
+  (inspectionPhrase, note) => `ana taşınmazın incelenen mimari projesi ile ${inspectionPhrase} farklılık bulunduğu değerlendirilmiştir${note ? `; ${note}` : ""}.`,
+  (inspectionPhrase, note) => `gayrimenkulün mimari projesi ile ${inspectionPhrase} uyumsuzluk tespit edilmiştir${note ? `; ${note}` : ""}.`,
+];
+registerVariantGroup("buildMainPropertyProjectSentence:evet", "Ana Taşınmaz Proje Uyumu — Uyumlu (Ana Gayrimenkul)", mainPropertyProjectOkVariants.length);
+registerVariantGroup("buildMainPropertyProjectSentence:hayir", "Ana Taşınmaz Proje Uyumu — Uyumsuz (Ana Gayrimenkul)", mainPropertyProjectMismatchVariants.length);
 
 function buildMainPropertyProjectSentence(values) {
   const appointment = foldTurkish(values.appointmentType || "");
@@ -7818,20 +7868,41 @@ function buildMainPropertyProjectSentence(values) {
     ? "kısıtlı inceleme kapsamında yapılan tespitler itibarıyla"
     : "mahallinde yapılan incelemelere göre";
   if (isSuitable) {
-    return `${limitedPrefix}ana taşınmazın incelenen mimari projesi ile ${inspectionPhrase} uyumlu olduğu değerlendirilmiştir.`;
+    const variantIndex = selectVariant("buildMainPropertyProjectSentence:evet", mainPropertyProjectOkVariants.length);
+    return `${limitedPrefix}${mainPropertyProjectOkVariants[variantIndex](inspectionPhrase)}`;
   }
   const note = normalizeReportDescriptionText(values.projectNote || "");
-  return `${limitedPrefix}ana taşınmazın incelenen mimari projesi ile ${inspectionPhrase} farklılık bulunduğu değerlendirilmiştir${note ? `; ${note}` : ""}.`;
+  const variantIndex = selectVariant("buildMainPropertyProjectSentence:hayir", mainPropertyProjectMismatchVariants.length);
+  return `${limitedPrefix}${mainPropertyProjectMismatchVariants[variantIndex](inspectionPhrase, note)}`;
 }
+
+const mainPropertyFloorVariants = [
+  (comp, totalFloors) => `Ana taşınmaz ${comp}${totalFloors ? ` olmak üzere toplam ${totalFloors} katlı` : ""} olarak inşa edilmiştir.`,
+  (comp, totalFloors) => `Ana taşınmaz ${comp}${totalFloors ? ` şeklinde olmak üzere toplam ${totalFloors} kattan meydana gelmektedir` : ""}.`,
+];
+registerVariantGroup("buildMainPropertyFloorSentence", "Ana Taşınmaz Kat Kompozisyonu (Ana Gayrimenkul)", mainPropertyFloorVariants.length);
 
 function buildMainPropertyFloorSentence(values) {
   const parts = [];
   if (values.floorComposition) {
-    parts.push(`Ana taşınmaz ${values.floorComposition}${values.totalFloors ? ` olmak üzere toplam ${values.totalFloors} katlı` : ""} olarak inşa edilmiştir.`);
+    const variantIndex = selectVariant("buildMainPropertyFloorSentence", mainPropertyFloorVariants.length);
+    parts.push(mainPropertyFloorVariants[variantIndex](values.floorComposition, values.totalFloors));
   }
   if (values.floorSummary) parts.push(values.floorSummary);
   return parts.join(" ");
 }
+
+const mainPropertyBlockPositionKnownVariants = [
+  (blockLabel, position) => `Ekspertize konu taşınmazın yer aldığı ${blockLabel} parselin ${position} cephesinde yer almaktadır.`,
+  (blockLabel, position) => `Değerlemeye konu gayrimenkulün bulunduğu ${blockLabel}, parselin ${position} cephesinde konumlanmaktadır.`,
+  (blockLabel, position) => `Söz konusu taşınmazın yer aldığı ${blockLabel}, parselin ${position} cephesinde bulunmaktadır.`,
+];
+const mainPropertyBlockPositionUnknownVariants = [
+  (blockLabel) => `Ekspertize konu taşınmazın yer aldığı ${blockLabel} için parsel üzerindeki blok konumu belirtilmemiştir.`,
+  (blockLabel) => `Söz konusu taşınmazın yer aldığı ${blockLabel} için parseldeki blok konumu belirtilmemiştir.`,
+];
+registerVariantGroup("buildMainPropertyBlockPositionSentence:known", "Ana Taşınmaz Blok Konumu — belirtilmiş (Ana Gayrimenkul)", mainPropertyBlockPositionKnownVariants.length);
+registerVariantGroup("buildMainPropertyBlockPositionSentence:unknown", "Ana Taşınmaz Blok Konumu — belirtilmemiş (Ana Gayrimenkul)", mainPropertyBlockPositionUnknownVariants.length);
 
 function buildMainPropertyBlockPositionSentence(values) {
   const blockCount = String(values.blockCount || "").trim();
@@ -7841,9 +7912,11 @@ function buildMainPropertyBlockPositionSentence(values) {
       ? (/\bblok\b/i.test(context.titleBlockName) ? context.titleBlockName : `${context.titleBlockName} Blok`)
       : "blok";
     if (values.blockPosition) {
-      return `Ekspertize konu taşınmazın yer aldığı ${blockLabel} parselin ${toLowerText(values.blockPosition)} cephesinde yer almaktadır.`;
+      const variantIndex = selectVariant("buildMainPropertyBlockPositionSentence:known", mainPropertyBlockPositionKnownVariants.length);
+      return mainPropertyBlockPositionKnownVariants[variantIndex](blockLabel, toLowerText(values.blockPosition));
     }
-    return `Ekspertize konu taşınmazın yer aldığı ${blockLabel} için parsel üzerindeki blok konumu belirtilmemiştir.`;
+    const variantIndex = selectVariant("buildMainPropertyBlockPositionSentence:unknown", mainPropertyBlockPositionUnknownVariants.length);
+    return mainPropertyBlockPositionUnknownVariants[variantIndex](blockLabel);
   }
   return "";
 }
@@ -7884,12 +7957,17 @@ function buildBuildingEntranceDoorSentence(door) {
   return `Bina giriş kapısı ${text} şeklindedir.`;
 }
 
+const mainPropertyPhysicalTailVariants = ["vaziyettedir", "durumundadır"];
+registerVariantGroup("buildMainPropertyPhysicalSentence", "Dış Cephe/Merdiven/İç Duvar Malzemeleri (Ana Gayrimenkul)", mainPropertyPhysicalTailVariants.length);
+
 function buildMainPropertyPhysicalSentence(values) {
   const parts = [];
   if (values.exteriorCladding) parts.push(`dış cephesi ${toLowerText(values.exteriorCladding)}`);
   if (values.stairLanding) parts.push(`merdiven basamakları ve sahanlıkları ${toLowerText(values.stairLanding)}`);
   if (values.interiorWalls) parts.push(`apartman iç duvarları ${toLowerText(values.interiorWalls)}`);
-  return parts.length ? `${formatTurkishList(parts)} vaziyettedir.` : "";
+  if (!parts.length) return "";
+  const tail = mainPropertyPhysicalTailVariants[selectVariant("buildMainPropertyPhysicalSentence", mainPropertyPhysicalTailVariants.length)];
+  return `${formatTurkishList(parts)} ${tail}.`;
 }
 
 function buildMainPropertyAmenitySentence(values) {
@@ -7922,6 +8000,38 @@ function shouldMentionMainPropertyOwnership(ownershipType) {
   return folded.includes("YATAY") && folded.includes("KAT") && folded.includes("IRTIFAK");
 }
 
+// Varyantlar docs/cumle-envanteri.md Bölüm 4'te belgelendi.
+const elevatorHasVariants = [
+  (place, elevator) => `Taşınmazın yer aldığı ${place} ${elevator} bulunmaktadır.`,
+  (place, elevator) => `Taşınmazın konumlandığı ${place} dahilinde ${elevator} mevcuttur.`,
+];
+const elevatorNoVariants = [
+  (place) => `Taşınmazın yer aldığı ${place} asansör bulunmamaktadır.`,
+  (place) => `Taşınmazın konumlandığı ${place} dahilinde asansör mevcut değildir.`,
+];
+const elevatorPendingVariants = [
+  (place) => `Taşınmazın yer aldığı ${place} asansör montajı henüz yapılmamıştır.`,
+  (place) => `Taşınmazın konumlandığı ${place} dahilinde asansör montajı henüz tamamlanmamıştır.`,
+];
+const carparkHasVariants = [
+  (structureName, carpark) => `${structureName} genelinde ${carpark} imkanı bulunmaktadır.`,
+  (structureName, carpark) => `${structureName} genelinde ${carpark} imkânından yararlanılabilmektedir.`,
+];
+const carparkNoVariants = [
+  (locative) => `${capitalizeTurkishSentence(`${locative} otopark imkanı bulunmamaktadır`)}.`,
+  (locative) => `${capitalizeTurkishSentence(`${locative} otopark imkânı sunulmamaktadır`)}.`,
+];
+const heatingVariants = [
+  (heating) => `Isınma ${heating} sistemi ile sağlanmaktadır.`,
+  (heating) => `Isınma ihtiyacı ${heating} sistemiyle karşılanmaktadır.`,
+];
+registerVariantGroup("buildBuildingCarparkElevatorSentences:elevatorHas", "Asansör Var (Ana Gayrimenkul)", elevatorHasVariants.length);
+registerVariantGroup("buildBuildingCarparkElevatorSentences:elevatorNo", "Asansör Yok (Ana Gayrimenkul)", elevatorNoVariants.length);
+registerVariantGroup("buildBuildingCarparkElevatorSentences:elevatorPending", "Asansör Montajı Bekliyor (Ana Gayrimenkul)", elevatorPendingVariants.length);
+registerVariantGroup("buildBuildingCarparkElevatorSentences:carparkHas", "Otopark Var (Ana Gayrimenkul)", carparkHasVariants.length);
+registerVariantGroup("buildBuildingCarparkElevatorSentences:carparkNo", "Otopark Yok (Ana Gayrimenkul)", carparkNoVariants.length);
+registerVariantGroup("buildBuildingCarparkElevatorSentences:heating", "Isınma Sistemi (Ana Gayrimenkul)", heatingVariants.length);
+
 function buildBuildingCarparkElevatorSentences(values, context) {
   const carpark = toLowerText(values.carpark);
   const elevator = toLowerText(values.elevator);
@@ -7932,22 +8042,24 @@ function buildBuildingCarparkElevatorSentences(values, context) {
   const sentences = [];
 
   if (hasElevator) {
-    sentences.push(`Taşınmazın yer aldığı ${context.unitPlace} ${elevator} bulunmaktadır.`);
+    sentences.push(elevatorHasVariants[selectVariant("buildBuildingCarparkElevatorSentences:elevatorHas", elevatorHasVariants.length)](context.unitPlace, elevator));
   } else if (elevator === "yok") {
-    sentences.push(`Taşınmazın yer aldığı ${context.unitPlace} asansör bulunmamaktadır.`);
+    sentences.push(elevatorNoVariants[selectVariant("buildBuildingCarparkElevatorSentences:elevatorNo", elevatorNoVariants.length)](context.unitPlace));
   } else if (elevatorPending) {
-    sentences.push(`Taşınmazın yer aldığı ${context.unitPlace} asansör montajı henüz yapılmamıştır.`);
+    sentences.push(elevatorPendingVariants[selectVariant("buildBuildingCarparkElevatorSentences:elevatorPending", elevatorPendingVariants.length)](context.unitPlace));
   }
+
+  const heatingSentence = () => heatingVariants[selectVariant("buildBuildingCarparkElevatorSentences:heating", heatingVariants.length)](heating);
 
   if (hasCarpark) {
     const structureName = context.isSite ? "Site" : "Bina";
-    sentences.push(`${structureName} genelinde ${carpark} imkanı bulunmaktadır.`);
-    if (heating) sentences.push(`Isınma ${heating} sistemi ile sağlanmaktadır.`);
+    sentences.push(carparkHasVariants[selectVariant("buildBuildingCarparkElevatorSentences:carparkHas", carparkHasVariants.length)](structureName, carpark));
+    if (heating) sentences.push(heatingSentence());
   } else if (carpark === "yok") {
-    sentences.push(`${capitalizeTurkishSentence(`${context.siteOrBuildingLocative} otopark imkanı bulunmamaktadır`)}.`);
-    if (heating) sentences.push(`Isınma ${heating} sistemi ile sağlanmaktadır.`);
+    sentences.push(carparkNoVariants[selectVariant("buildBuildingCarparkElevatorSentences:carparkNo", carparkNoVariants.length)](context.siteOrBuildingLocative));
+    if (heating) sentences.push(heatingSentence());
   } else if (heating) {
-    sentences.push(`Isınma ${heating} sistemi ile sağlanmaktadır.`);
+    sentences.push(heatingSentence());
   }
 
   return sentences;
@@ -18942,14 +19054,32 @@ function isBuildingInspectionLawExempt() {
   return Boolean(permitDateIso) && permitDateIso < BUILDING_INSPECTION_LAW_EFFECTIVE_ISO_DATE;
 }
 
+const buildingInspectionLawExemptVariants = [
+  (permitDateText) => `Ekspertize konu taşınmazın yeni yapı ruhsat tarihi ${permitDateText} olup, 13.07.2001 tarih ve 4708 sayılı Yapı Denetimi Hakkında Kanun'un kapsamı dışında kalmaktadır.`,
+  (permitDateText) => `Söz konusu taşınmazın yeni yapı ruhsat tarihi ${permitDateText} olup, 13.07.2001 tarih ve 4708 sayılı Yapı Denetimi Hakkında Kanun kapsamına girmemektedir.`,
+  (permitDateText) => `Rapor konusu gayrimenkulün yeni yapı ruhsatı ${permitDateText} tarihli olup, 4708 sayılı Yapı Denetimi Hakkında Kanun'un kapsamı dışında bulunmaktadır.`,
+  (permitDateText) => `Mülkün yeni yapı ruhsat tarihi ${permitDateText} olup, 13.07.2001 tarih ve 4708 sayılı Kanun'un uygulama alanına girmemektedir.`,
+];
+registerVariantGroup("buildBuildingInspectionLawExemptionExplanation", "Yapı Denetim Kanunu Kapsamı Dışı (Ana Gayrimenkul)", buildingInspectionLawExemptVariants.length);
+
 function buildBuildingInspectionLawExemptionExplanation() {
   if (!isBuildingInspectionLawExempt()) return "";
   const permitRow = getLatestBuildingPermitDocumentRow();
   const permitDateText = dateIsoToTr(parseReviewedDocumentDate(permitRow.c2));
-  return normalizeReportDescriptionText(
-    `Ekspertize konu taşınmazın yeni yapı ruhsat tarihi ${permitDateText} olup, 13.07.2001 tarih ve 4708 sayılı Yapı Denetimi Hakkında Kanun'un kapsamı dışında kalmaktadır.`
-  );
+  const variantIndex = selectVariant("buildBuildingInspectionLawExemptionExplanation", buildingInspectionLawExemptVariants.length);
+  return normalizeReportDescriptionText(buildingInspectionLawExemptVariants[variantIndex](permitDateText));
 }
+
+const buildingInspectionActiveVariants = [
+  (dateText, municipality, level) => `${dateText}${municipality} alınan sözlü bilgiye göre taşınmazın yer aldığı binanın yapı denetim sözleşmesinin aktif olduğu${level ? ` ve yapı denetim hakediş seviyesinin ${level} olduğu` : ""} bilgisine ulaşılmıştır.`,
+  (dateText, municipality, level) => `${dateText}${municipality} edinilen sözlü bilgiye göre, taşınmazın bulunduğu binanın yapı denetim sözleşmesinin aktif durumda olduğu${level ? ` ve yapı denetim hakediş seviyesinin ${level} olduğu` : ""} bilgisine erişilmiştir.`,
+];
+const buildingInspectionTerminatedVariants = [
+  (dateText, municipality, terminationDate, level) => `${dateText}${municipality} alınan sözlü bilgiye göre taşınmazın yer aldığı binanın yapı denetim sözleşmesinin${terminationDate ? ` ${terminationDate} tarihinde` : ""} feshedildiği${level ? ` ve yapı denetim fesih seviyesinin ${level} olduğu` : ""} bilgisine ulaşılmıştır.`,
+  (dateText, municipality, terminationDate, level) => `${dateText}${municipality} edinilen sözlü bilgiye göre, taşınmazın bulunduğu binanın yapı denetim sözleşmesinin${terminationDate ? ` ${terminationDate} tarihinde` : ""} feshedildiği${level ? ` ve yapı denetim fesih seviyesinin ${level} olduğu` : ""} bilgisine erişilmiştir.`,
+];
+registerVariantGroup("buildBuildingInspectionExplanation:active", "Yapı Denetim Sözleşmesi — Aktif (Ana Gayrimenkul)", buildingInspectionActiveVariants.length);
+registerVariantGroup("buildBuildingInspectionExplanation:terminated", "Yapı Denetim Sözleşmesi — Feshedilmiş (Ana Gayrimenkul)", buildingInspectionTerminatedVariants.length);
 
 function buildBuildingInspectionExplanation() {
   if (hasReviewedOccupancyPermitDocument()) return "";
@@ -18963,16 +19093,14 @@ function buildBuildingInspectionExplanation() {
   const dateText = date ? `${date} tarihinde ` : "";
   if (status === "Evet") {
     const level = state.fields.buildingInspectionProgressLevel || "";
-    return normalizeReportDescriptionText(
-      `${dateText}${municipality} alınan sözlü bilgiye göre taşınmazın yer aldığı binanın yapı denetim sözleşmesinin aktif olduğu${level ? ` ve yapı denetim hakediş seviyesinin ${level} olduğu` : ""} bilgisine ulaşılmıştır.`
-    );
+    const variantIndex = selectVariant("buildBuildingInspectionExplanation:active", buildingInspectionActiveVariants.length);
+    return normalizeReportDescriptionText(buildingInspectionActiveVariants[variantIndex](dateText, municipality, level));
   }
   if (status === "Hayır (Fesihli)") {
     const terminationDate = dateIsoToTr(state.fields.buildingInspectionTerminationDate || "");
     const level = state.fields.buildingInspectionTerminationLevel || "";
-    return normalizeReportDescriptionText(
-      `${dateText}${municipality} alınan sözlü bilgiye göre taşınmazın yer aldığı binanın yapı denetim sözleşmesinin${terminationDate ? ` ${terminationDate} tarihinde` : ""} feshedildiği${level ? ` ve yapı denetim fesih seviyesinin ${level} olduğu` : ""} bilgisine ulaşılmıştır.`
-    );
+    const variantIndex = selectVariant("buildBuildingInspectionExplanation:terminated", buildingInspectionTerminatedVariants.length);
+    return normalizeReportDescriptionText(buildingInspectionTerminatedVariants[variantIndex](dateText, municipality, terminationDate, level));
   }
   return "";
 }
@@ -18985,9 +19113,11 @@ function buildBuildingInspectionTerminationExplanation() {
   const terminationDate = dateIsoToTr(state.fields.buildingInspectionTerminationDate || "");
   const level = state.fields.buildingInspectionTerminationLevel || "";
   const dateText = date ? `${date} tarihinde ` : "";
-  return normalizeReportDescriptionText(
-    `${dateText}${municipality} alınan sözlü bilgiye göre taşınmazın yer aldığı binanın yapı denetim sözleşmesinin${terminationDate ? ` ${terminationDate} tarihinde` : ""} feshedildiği${level ? ` ve yapı denetim fesih seviyesinin ${level} olduğu` : ""} bilgisine ulaşılmıştır.`
-  );
+  // Ayni "feshedilmis" varyant havuzunu buildBuildingInspectionExplanation
+  // ile PAYLAŞIR (ayni anahtar) — bu iki fonksiyon ayni bilgiyi farkli
+  // placeholder'lar icin uretir, tutarli olmasi icin ayni secim kullanilir.
+  const variantIndex = selectVariant("buildBuildingInspectionExplanation:terminated", buildingInspectionTerminatedVariants.length);
+  return normalizeReportDescriptionText(buildingInspectionTerminatedVariants[variantIndex](dateText, municipality, terminationDate, level));
 }
 
 function refreshBuildingInspectionExplanationFromCurrentFields(changedKey = "") {

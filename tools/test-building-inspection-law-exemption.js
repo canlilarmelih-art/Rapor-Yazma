@@ -78,6 +78,11 @@ function runScenario({ documents = [], occupancyPermit = false, contractStatus =
     getArchitecturalProjectReviewedDocumentRows: () => [],
     normalizeReviewedDocumentRow: (row) => ({ type: occupancyPermit ? "Yapı Kullanma İzin Belgesi" : String(row?.c0 || "") }),
     hasReviewedOccupancyPermitDocument: () => occupancyPermit,
+    // selectVariant burada BİLEREK her zaman 0 (orijinal metin) döner — bu
+    // test dallanma mantığını doğruluyor, varyant SEÇİMİ ayrı olarak
+    // tools/test-variant-selection.js'te test ediliyor.
+    selectVariant: () => 0,
+    registerVariantGroup: () => {},
   };
   vm.createContext(context);
   vm.runInContext(foldSrc, context);

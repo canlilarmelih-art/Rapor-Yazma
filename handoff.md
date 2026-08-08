@@ -1,5 +1,13 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.361 - 2026-08-08 - Cümle varyantı: Bölüm 4 (Ana Gayrimenkul) tamamı koda taşındı (93 grup)
+
+- `buildMainPropertyOpeningSentence`, `buildMainPropertyProjectSentence` (uyumlu/uyumsuz), `buildMainPropertyFloorSentence`, `buildMainPropertyBlockPositionSentence` (belirtilmiş/belirtilmemiş), `buildMainPropertyPhysicalSentence`, `buildBuildingCarparkElevatorSentences` (asansör var/yok/bekliyor, otopark var/yok, ısınma), `buildHorizontalMainPropertySiteSentence`/`...FloorSentence`/`...AmenitySentence` (yatay kat irtifakı ailesi), `buildBuildingInspectionExplanation` (aktif/feshedilmiş), `buildBuildingInspectionLawExemptionExplanation`, `buildBuildingInspectionTerminationExplanation` (aynı "feshedilmiş" varyant havuzunu paylaşır) koda taşındı.
+- `VARIANT_REGISTRY` artık **93 grup**.
+- 2 mevcut test dosyası (`test-building-inspection-law-exemption.js`, `test-building-inspection-law-exempt-fields-hidden.js`) `selectVariant: () => 0` + `registerVariantGroup: () => {}` mock'larıyla güncellendi.
+- Kod değişikliğinden önce yerel yedek alındı: `backups/before-variant-section4-code_2026-08-08_11-35-13/`.
+- `index.html` cache-buster'ı `20260808-1135`'e yükseltildi. `npm run verify` tamamı geçti.
+
 ## 0.0.360 - 2026-08-08 - Cümle varyantı: Bölüm 3 (İmar Durumu) büyük ölçüde koda taşındı (72 grup)
 
 - `composeImarInfoSourcePrefix()` (3 alt-durum), `composeImarRoadSetbackSentence()` (terk var/yok), `composeImarPlanningStatusParagraphs()`'ın "genel fiil-dönüşüm stili" (5 alt-durumun HEPSİNE aynı stil bir kez seçilip uygulanıyor — rapor içi tutarlılık için), `buildProjectSuitabilityStatusSentence()`'ın TÜM 9 durum dalı + tadilat notu, `buildProjectSuitabilityDescription()`'ın Webtapu/Belediye "her ikisi uygun" özeti, `buildStaticSuitabilityExplanation()` (uyumlu/uyumsuz) koda taşındı.
