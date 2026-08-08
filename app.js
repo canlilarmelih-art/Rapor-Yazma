@@ -1593,26 +1593,47 @@ function applyBulkVariantOverrideForSection(sectionId, desiredIndex) {
 // alanlarını zorla yeniden üretir. Gated fonksiyonlara (Set.has(changedKey)
 // ile kontrol edenler) kendi izleme listelerinden GEÇERLİ bir anahtar
 // veriliyor ki "" (boş) varsayılanla sessizce atlanmasınlar.
+// Kullanıcı bildirimi (2026-08-09): bu fonksiyon eklendikten sonra ("varyant
+// düğmeleri artık ekrandaki metni anında güncelliyor" düzeltmesi) BAZI
+// kullanıcılarda TÜM varyant düğmeleri (hatta önceden çalışan Ziraat paneli
+// bile) hiçbir şeyi güncellemez oldu — muhtemel neden: aşağıdaki
+// çağrılardan biri belirli bir rapor durumunda (ör. boş/kısmi doldurulmuş
+// alanlar) hata fırlatıyor, bu da senkron çağrı zincirini KESİYOR ve bu
+// fonksiyonu çağıran düğme handler'ındaki SONRAKİ render() adımı HİÇ
+// ÇALIŞMIYOR — yani override state'te doğru şekilde kaydediliyor ama ekran
+// asla yenilenmiyor (Ziraat paneli gibi ÖNCEDEN her render()'da kendiliğinden
+// tazelenen paneller de dahil, çünkü render() adımının kendisi engelleniyor).
+// Her çağrı ayrı try/catch ile izole edildi ki BİRİNİN patlaması DİĞERLERİNİ
+// ve en kritik olarak render()'ı engellemesin.
 function refreshAllVariantDependentExplanationFields() {
-  refreshEncumbranceSummaryFromCurrentData();
-  refreshLandMinimumParcelAssessment();
-  refreshShareExplanationFromCurrentFields("titleOwnershipKind");
-  refreshPenaltyDecisionExplanationFromCurrentFields("penaltyDecision");
-  refreshStaticSuitabilityExplanationFromCurrentFields("staticSuitability");
-  refreshBuildingInspectionExplanationFromCurrentFields();
-  refreshEkbExplanationFromCurrentFields("hasEkb");
-  refreshBuildingCompletionFromCurrentFields();
-  refreshInsuranceConstructionCostFromCurrentFields("buildingClass");
-  refreshBuildingDepreciationFromCurrentFields();
-  refreshZiraatExplanationSectionsFromCurrentFields();
-  refreshValuationMethodsExplanationFromCurrentFields();
-  refreshForeignCurrencyValuationExplanation();
-  refreshEnvironmentDescriptionFromCurrentFields("environmentRegionType");
-  refreshMainPropertyDescriptionFromCurrentFields("appointmentType");
-  refreshValuationMethodExplanation();
-  refreshValuationSaleabilityExplanation();
-  refreshValuationRentExplanation();
-  refreshPropertyTaxDeclarationExplanation();
+  const refreshers = [
+    () => refreshEncumbranceSummaryFromCurrentData(),
+    () => refreshLandMinimumParcelAssessment(),
+    () => refreshShareExplanationFromCurrentFields("titleOwnershipKind"),
+    () => refreshPenaltyDecisionExplanationFromCurrentFields("penaltyDecision"),
+    () => refreshStaticSuitabilityExplanationFromCurrentFields("staticSuitability"),
+    () => refreshBuildingInspectionExplanationFromCurrentFields(),
+    () => refreshEkbExplanationFromCurrentFields("hasEkb"),
+    () => refreshBuildingCompletionFromCurrentFields(),
+    () => refreshInsuranceConstructionCostFromCurrentFields("buildingClass"),
+    () => refreshBuildingDepreciationFromCurrentFields(),
+    () => refreshZiraatExplanationSectionsFromCurrentFields(),
+    () => refreshValuationMethodsExplanationFromCurrentFields(),
+    () => refreshForeignCurrencyValuationExplanation(),
+    () => refreshEnvironmentDescriptionFromCurrentFields("environmentRegionType"),
+    () => refreshMainPropertyDescriptionFromCurrentFields("appointmentType"),
+    () => refreshValuationMethodExplanation(),
+    () => refreshValuationSaleabilityExplanation(),
+    () => refreshValuationRentExplanation(),
+    () => refreshPropertyTaxDeclarationExplanation(),
+  ];
+  refreshers.forEach((refresher) => {
+    try {
+      refresher();
+    } catch (error) {
+      console.error("refreshAllVariantDependentExplanationFields: bir yenileyici hata verdi, digerleri devam ediyor.", error);
+    }
+  });
 }
 
 function saveState() {

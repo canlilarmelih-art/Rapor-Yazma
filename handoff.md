@@ -1,5 +1,15 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.379 - 2026-08-09 - Varyant yenileme zincirindeki tek bir hata artık TÜM ekran güncellemesini engellemiyor
+
+- Kullanıcı bildirimi (0.0.378 sonrası da devam ediyor): topbar'daki genel "Varyant Kontrolü" panelinden bile tek bir gruba V2 basıldığında hiçbir şey değişmiyor — bölüm-bazlı düğmelere özgü bir sorun değil, TÜM varyant düğmeleri etkileniyor.
+- **Bulunan olası kök neden (regresyon)**: 0.0.376'da eklenen `refreshAllVariantDependentExplanationFields()`, override uygulandıktan hemen sonra render()'dan ÖNCE 19 farklı yenileyici fonksiyonu SIRAYLA çağırıyordu. Bunlardan BİRİ belirli bir rapor durumunda (ör. kısmen doldurulmuş alanlar) hata fırlatırsa, senkron çağrı zinciri KESİLİYOR ve handler'daki SONRAKİ `render()` adımı HİÇ ÇALIŞMIYORDU — yani override state'e doğru kaydediliyordu ama ekran hiçbir zaman yenilenmiyordu. Bu, Ziraat paneli gibi ÖNCEDEN (0.0.376'dan önce) her `render()`'da kendiliğinden tazelenen panelleri de etkiliyordu, çünkü artık `render()`'ın kendisi hiç çalışmıyordu — 0.0.376 aslında bu paneller için bir REGRESYONA yol açmış olabilir.
+- Düzeltme: `refreshAllVariantDependentExplanationFields()`'teki 19 çağrının HER BİRİ artık ayrı bir `try/catch` ile izole edildi — biri hata verirse konsola loglanır (`console.error`), diğerleri ve en kritik olarak sonraki `render()` adımı ETKİLENMEDEN devam eder.
+- Hangi spesifik çağrının hata verdiği canlı ortamda (admin girişi gerektirdiğinden) doğrulanamadı — bu düzeltme sorunu SEMPTOM seviyesinde (ekran güncellemesinin asla engellenmemesi) kalıcı olarak çözüyor; ilerde ihtiyaç olursa artık tarayıcı konsolunda hangi yenileyicinin hata verdiği görülebilir.
+- `VARIANT_REGISTRY` değişmedi (**174 grup** — davranışsal/dayanıklılık düzeltmesi).
+- Kod değişikliğinden önce yerel yedek alındı: `backups/before-variant-refresh-error-isolation_*`.
+- `index.html` cache-buster'ı `20260809-0200`'e yükseltildi. `npm run verify` tamamı geçti.
+
 ## 0.0.378 - 2026-08-09 - Ziraat Bankası açıklama grupları "Adres ve Konum" sekmesine taşındı
 
 - Kullanıcı bildirimi: "versiyonlara tıkladığımda adres ve konum kısmında yer alan bölümler değişmiyor" — netleştirmede "Ziraat Bankası - Konumu ve Çevresel Özellikleri / Bölgedeki Yapılaşma Durumu / Bölgenin Gelişimine İlişkin Analiz" olduğu ortaya çıktı.
