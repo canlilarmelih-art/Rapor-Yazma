@@ -2939,16 +2939,28 @@ const serverProjectSuitabilityRepairVariants = [
   (repair) => `Basit onarımla ${repair === "Evet" ? "düzeltilmesi mümkündür" : "düzeltilmesi mümkün değildir"}.`,
 ];
 
-function buildServerProjectSuitabilityDescription(input) {
-  const status = serverTemplateRuleText(input?.projectSuitabilityStatus);
+// İstemcideki normalizeYesNoChoice(value) ile BİREBİR AYNI: "Evet"/"Hayır"
+// dönüyor, tanınmayan değerde "" döner.
+function normalizeYesNoChoiceServer(value) {
+  const folded = foldTurkishServer(String(value || "").trim());
+  if (/^(EVET|VAR|YES|TRUE|1)$/.test(folded)) return "Evet";
+  if (/^(HAYIR|YOK|NO|FALSE|0)$/.test(folded)) return "Hayır";
+  return "";
+}
+
+// İstemcideki buildProjectSuitabilityStatusSentence(statusValue, noteValue,
+// repairValue, prefix) ile BİREBİR AYNI mantık — tek bir durum/not/tadilat
+// üçlüsünü, verilen önekle (prefix) birlikte tek bir cümleye çevirir. Hem tek
+// (dual-project olmayan) durumda HEM de Webtapu/Belediye ayrı ayrı dallarında
+// (farklı prefix ile, ama AYNI sentenceKey ile — bkz. çağıranlar) kullanılır.
+function buildServerProjectSuitabilityStatusSentence(statusValue, noteValue, repairValue, prefix, seed, overrides) {
+  const status = serverTemplateRuleText(statusValue);
   // İstemcideki projectSuitabilityStatusKey(value) = foldTurkish(...).replace(/\./g, "").trim()
   // ile BİREBİR AYNI (boşluklar KORUNUR — sözlük anahtarları boşluklu).
   const statusKey = foldTurkishServer(status).replace(/\./g, "").trim();
-  const note = serverTemplateRuleText(input?.projectConformity);
-  // İstemcideki normalizeYesNoChoice(value) ile BİREBİR AYNI: "Evet"/"Hayır"
-  // dönüyor, tanınmayan değerde "" (repair notu hiç eklenmez).
-  const repairFolded = foldTurkishServer(String(input?.projectSuitabilitySimpleRepair || "").trim());
-  const repair = /^(EVET|VAR|YES|TRUE|1)$/.test(repairFolded) ? "Evet" : /^(HAYIR|YOK|NO|FALSE|0)$/.test(repairFolded) ? "Hayır" : "";
+  const note = serverTemplateRuleText(noteValue);
+  const repair = normalizeYesNoChoiceServer(repairValue);
+  const lead = prefix ? `${prefix} ` : "";
   // İstemcideki shouldShowProjectSuitabilityRepair(value) ile BİREBİR AYNI.
   const repairEligible = new Set([
     "MIMARI OLARAK UYGUN DEGILDIR",
@@ -2964,28 +2976,148 @@ function buildServerProjectSuitabilityDescription(input) {
     "KULLANIM ALANI OLARAK UYGUN DEGILDIR",
     "KULLANIM ALANI VE MIMARI OLARAK UYGUN DEGILDIR",
   ]);
-  const seed = String(input?.variantSeed || "").trim();
-  const overrides = input?.variantOverrides && typeof input.variantOverrides === "object" ? input.variantOverrides : null;
 
   if (statusKey === "PROJEYE UYGUNLUK TESPIT EDILMEMISTIR" || statusKey === "PROJEYE UYGUNLUK TESPIT EDILEMEMISTIR") {
     if (note) return note;
     const variants = serverProjectSuitabilityStatusVariants["PROJEYE UYGUNLUK TESPIT EDILMEMISTIR"];
     const index = selectVariantServer(seed, overrides, "buildProjectSuitabilityStatusSentence:PROJEYE UYGUNLUK TESPIT EDILMEMISTIR", variants.length);
-    return variants[index]("");
+    return variants[index](lead);
   }
 
   let registryKey = statusKey || "UYGUNDUR";
   const variants = serverProjectSuitabilityStatusVariants[registryKey];
-  if (!variants) return status;
+  if (!variants) return `${lead}${status}`;
 
   const variantIndex = selectVariantServer(seed, overrides, `buildProjectSuitabilityStatusSentence:${registryKey}`, variants.length);
-  const sentences = [variants[variantIndex]("")];
+  const sentences = [variants[variantIndex](lead)];
   if (acceptsConformityNote.has(registryKey) && note) sentences.push(note);
   if (repairEligible.has(registryKey) && repair) {
     const repairIndex = selectVariantServer(seed, overrides, "buildProjectSuitabilityStatusSentence:repair", serverProjectSuitabilityRepairVariants.length);
     sentences.push(serverProjectSuitabilityRepairVariants[repairIndex](repair));
   }
   return sentences.join(" ");
+}
+
+// İstemcideki isProjectSuitabilityOk(value) ile BİREBİR AYNI.
+function isProjectSuitabilityOkServer(value) {
+  const key = foldTurkishServer(serverTemplateRuleText(value)).replace(/\./g, "").trim();
+  return !key || key === "UYGUNDUR";
+}
+
+// Basit Türkçe başlık-harf büyütme (yalnızca ilçe adı gibi kısa, 1-3 kelimelik
+// metinler için — istemcideki normalizeReportTitleText()'in tam kapsamlı
+// (özel kelime koruma, "ve/ile" gibi bağlaçları küçük tutma vb.) davranışının
+// SADELEŞTİRİLMİŞ bir yaklaşımı; bu fonksiyonun tek kullanım yeri ilçe adını
+// "{İlçe} Belediyesinde" kalıbına yerleştirmek olduğundan bu yeterlidir).
+function titleCaseTrServerSimple(value) {
+  return String(value || "")
+    .trim()
+    .toLocaleLowerCase("tr")
+    .split(/\s+/)
+    .map((word) => (word ? word.charAt(0).toLocaleUpperCase("tr") + word.slice(1) : word))
+    .join(" ");
+}
+
+// İstemcideki shouldShowArchitecturalProjectFields/isOwnershipProjectDifferenceComparable/
+// getSelectedProjectInstitutions/shouldShowProjectDifferenceField/
+// shouldUseProjectDifferenceComparison zinciriyle BİREBİR AYNI (bkz. app.js).
+function serverShouldUseProjectDifferenceComparison(input) {
+  if (normalizeYesNoChoiceServer(input?.projectDifference) !== "Evet") return false;
+  const showsArchitecturalFields = (String(input?.hasArchitecturalProject || "").trim() || "Evet") === "Evet";
+  if (!showsArchitecturalFields) return false;
+  const ownershipFolded = foldTurkishServer(serverTemplateRuleText(input?.ownershipType));
+  const isComparable = !["MUSTAKIL BINA", "ARSA", "TARLA"].some((keyword) => ownershipFolded.includes(keyword));
+  if (!isComparable) return false;
+  const seen = new Set();
+  const institutions = String(input?.projectInstitution || "")
+    .split(",")
+    .map((item) => titleCaseTrServerSimple(item).trim())
+    .filter((value) => value && !/^seçiniz$/i.test(value))
+    .filter((value) => {
+      const key = foldTurkishServer(value);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  return institutions.length !== 1;
+}
+
+// İstemcideki buildProjectSuitabilityDescription()'ın "her ikisi de uygun"
+// (Webtapu/Belediye) dalıyla BİREBİR AYNI metin havuzu.
+const serverProjectSuitabilityBothOkVariants = [
+  (municipalityText) => `Webtapu Portalında incelenen mimari proje ve ${municipalityText} incelenen proje karşılaştırıldığında taşınmazın konumunu ve alanını etkileyen herhangi bir farklılık bulunmamaktadır. Taşınmaz incelenen her iki projeye de uygun olarak inşa edilmiştir.`,
+  (municipalityText) => `Webtapu Portalında incelenen mimari proje ile ${municipalityText} incelenen proje karşılaştırıldığında, taşınmazın konumu ve alanını etkileyen bir farklılığa rastlanmamıştır. Taşınmaz, incelenen her iki projeye de uygun şekilde inşa edilmiştir.`,
+  (municipalityText) => `Webtapu Portalında incelenen mimari proje ile ${municipalityText} incelenen proje karşılaştırıldığında, taşınmazın konumu ve alanını etkileyen bir farka rastlanmamıştır. Gayrimenkul, incelenen her iki projeye de uygun şekilde inşa edilmiştir.`,
+  (municipalityText) => `Webtapu Portalı'ndaki mimari proje ile ${municipalityText} incelenen proje karşılaştırıldığında, taşınmazın konum ve alanını etkileyecek bir uyumsuzluk tespit edilmemiştir. Mülk, her iki projeye de uygun olarak inşa edilmiştir.`,
+  (municipalityText) => `Webtapu Portalında yer alan mimari proje ile ${municipalityText} incelenen proje kıyaslandığında, taşınmazın konumu ve alanı bakımından farklılık bulunmamıştır. Söz konusu gayrimenkul, incelenen her iki proje ile de uyumlu şekilde inşa edilmiştir.`,
+];
+
+// İstemcideki buildProjectSuitabilityDescription() ile BİREBİR AYNI mantık
+// (Webtapu/Belediye ayrı proje karşılaştırması dahil — daha önce burada
+// eksikti, bkz. handoff.md 0.0.369). PROJECT_SUITABILITY_DESCRIPTION/
+// PROJEUYGUNLUKACIKLAMASI korumalı placeholder'ının kaynağıdır.
+function buildServerProjectSuitabilityDescription(input) {
+  const seed = String(input?.variantSeed || "").trim();
+  const overrides = input?.variantOverrides && typeof input.variantOverrides === "object" ? input.variantOverrides : null;
+  const parts = [];
+
+  if (serverShouldUseProjectDifferenceComparison(input)) {
+    const titleOk = isProjectSuitabilityOkServer(input?.titleProjectSuitabilityStatus);
+    const municipalityOk = isProjectSuitabilityOkServer(input?.municipalityProjectSuitabilityStatus);
+    if (titleOk && municipalityOk) {
+      const district = titleCaseTrServerSimple(serverTemplateRuleText(input?.titleDistrict) || serverTemplateRuleText(input?.district));
+      const municipalityText = district ? `${district} Belediyesinde` : "Belediye arşivinde";
+      const variantIndex = selectVariantServer(
+        seed,
+        overrides,
+        "buildProjectSuitabilityDescription:bothOk",
+        serverProjectSuitabilityBothOkVariants.length
+      );
+      parts.push(serverProjectSuitabilityBothOkVariants[variantIndex](municipalityText));
+    } else {
+      const titleSentence = buildServerProjectSuitabilityStatusSentence(
+        input?.titleProjectSuitabilityStatus,
+        input?.titleProjectSuitabilityNote,
+        input?.titleProjectSuitabilitySimpleRepair,
+        "Webtapu Portalında incelenen mimari proje yönünden",
+        seed,
+        overrides
+      );
+      const municipalitySentence = buildServerProjectSuitabilityStatusSentence(
+        input?.municipalityProjectSuitabilityStatus,
+        input?.municipalityProjectSuitabilityNote,
+        input?.municipalityProjectSuitabilitySimpleRepair,
+        "Belediye arşivinde incelenen mimari proje yönünden",
+        seed,
+        overrides
+      );
+      if (titleSentence) parts.push(titleSentence);
+      if (municipalitySentence) parts.push(municipalitySentence);
+      if (!parts.length) {
+        parts.push(
+          "Webtapu Portalında ve belediye arşivinde incelenen mimari projeler arasında vaziyet planı ve kat planı bazında taşınmazın konumunu ve kullanım alanını etkileyen bir farklılık bulunmamaktadır."
+        );
+      }
+    }
+  } else {
+    const statusSentence = buildServerProjectSuitabilityStatusSentence(
+      input?.projectSuitabilityStatus,
+      input?.projectConformity,
+      input?.projectSuitabilitySimpleRepair,
+      "",
+      seed,
+      overrides
+    );
+    if (statusSentence) parts.push(statusSentence);
+  }
+
+  const mainProjectSuitable = normalizeYesNoChoiceServer(input?.mainRealEstateProjectSuitable || "Evet");
+  if (mainProjectSuitable === "Hayır") {
+    const note = serverTemplateRuleText(input?.mainRealEstateProjectSuitabilityNote);
+    parts.push(`Ana gayrimenkul projesine uygunluk yönünden ${note || "uyumsuzluk tespit edilmiştir."}`);
+  }
+
+  return parts.join(" ");
 }
 
 function applyServerProtectedPlaceholderTokens(tokenValues, protectedPlaceholderInput) {

@@ -1210,6 +1210,26 @@
       projectSuitabilityStatus: fields.projectSuitabilityStatus ?? "",
       projectConformity: fields.projectConformity ?? "",
       projectSuitabilitySimpleRepair: fields.projectSuitabilitySimpleRepair ?? "",
+      // Webtapu/Belediye "farklı proje" (dual-project) dalı için gerekli ham
+      // alanlar — sunucunun shouldUseProjectDifferenceComparison() zincirini
+      // (hasArchitecturalProject/ownershipType/projectInstitution/projectDifference)
+      // ve iki ayrı durum/not/tadilat üçlüsünü yeniden üretebilmesi için
+      // eklendi (bkz. handoff.md 0.0.369/0.0.370 — daha önce bu dal server.js'te
+      // hiç implemente edilmemişti).
+      hasArchitecturalProject: fields.hasArchitecturalProject ?? "",
+      ownershipType: fields.ownershipType ?? "",
+      projectInstitution: fields.projectInstitution ?? "",
+      projectDifference: fields.projectDifference ?? "",
+      titleDistrict: fields.titleDistrict ?? "",
+      district: fields.district ?? "",
+      titleProjectSuitabilityStatus: fields.titleProjectSuitabilityStatus ?? "",
+      titleProjectSuitabilityNote: fields.titleProjectSuitabilityNote ?? "",
+      titleProjectSuitabilitySimpleRepair: fields.titleProjectSuitabilitySimpleRepair ?? "",
+      municipalityProjectSuitabilityStatus: fields.municipalityProjectSuitabilityStatus ?? "",
+      municipalityProjectSuitabilityNote: fields.municipalityProjectSuitabilityNote ?? "",
+      municipalityProjectSuitabilitySimpleRepair: fields.municipalityProjectSuitabilitySimpleRepair ?? "",
+      mainRealEstateProjectSuitable: fields.mainRealEstateProjectSuitable ?? "",
+      mainRealEstateProjectSuitabilityNote: fields.mainRealEstateProjectSuitabilityNote ?? "",
       variantSeed: state.reportId || "",
       variantOverrides: fields.variantOverrides && typeof fields.variantOverrides === "object" ? fields.variantOverrides : {},
     };

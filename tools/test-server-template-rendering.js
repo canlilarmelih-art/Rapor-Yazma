@@ -219,6 +219,156 @@ clientTemplateKeys.forEach((key) => {
   );
 
   console.log("Sunucu/istemci cumle-varyanti senkronu testi tamam.");
+
+  // --- Webtapu/Belediye "farkli proje" (dual-project) dali senkronu --------
+  // Bu dal daha once server.js'te HIC implemente edilmemisti (bkz. handoff.md
+  // 0.0.369) — simdi eklendi (0.0.370). Gercek istemci kaynagindan
+  // buildProjectSuitabilityDescription()'i (tum bagimliliklariyla) calistirip
+  // sunucunun buildServerProjectSuitabilityDescription()'i ile karsilastirir.
+  {
+    function sliceFn3(marker) {
+      const s = appSource.indexOf(marker);
+      assert(s >= 0, `Bulunamadi: ${marker}`);
+      const e = appSource.indexOf("\n}", s) + 2;
+      return appSource.slice(s, e);
+    }
+    const escapeRegExpSrc = sliceFn3("function escapeRegExp(");
+    const toTitleCaseTrSrc = sliceFn3("function toTitleCaseTr(");
+    const normalizeReportWhitespaceSrc = sliceFn3("function normalizeReportWhitespace(");
+    const preserveReportSpecialWordsSrc = sliceFn3("function preserveReportSpecialWords(");
+    const normalizeReportProperPhrasesSrc = sliceFn3("function normalizeReportProperPhrases(");
+    const normalizeReportTitleTextSrc = sliceFn3("function normalizeReportTitleText(");
+    const shouldShowArchitecturalProjectFieldsSrc = sliceFn3("function shouldShowArchitecturalProjectFields(");
+    const getOwnershipTypeTextSrc = sliceFn3("function getOwnershipTypeText(");
+    const isOwnershipProjectDifferenceComparableSrc = sliceFn3("function isOwnershipProjectDifferenceComparable(");
+    const shouldShowProjectDifferenceFieldSrc = sliceFn3("function shouldShowProjectDifferenceField(");
+    const shouldUseProjectDifferenceComparisonSrc = sliceFn3("function shouldUseProjectDifferenceComparison(");
+    const getSelectedProjectInstitutionsSrc = sliceFn3("function getSelectedProjectInstitutions(");
+    const projectSuitabilityStatusKeySrc = sliceFn3("function projectSuitabilityStatusKey(");
+    const isProjectSuitabilityOkSrc = sliceFn3("function isProjectSuitabilityOk(");
+    const buildProjectSuitabilityDescriptionSrc = sliceFn3("function buildProjectSuitabilityDescription(");
+
+    function runClientDescription(reportId, fields) {
+      const context = {
+        state: { reportId, fields: { ownershipType: "Kat İrtifakı", hasArchitecturalProject: "Evet", ...fields } },
+        normalizeReportDescriptionText: (value) => String(value || "").replace(/\s+/g, " ").trim(),
+        normalizeYesNoChoice: (value) => {
+          const folded = String(value || "").trim().toLocaleUpperCase("tr-TR")
+            .replaceAll("İ", "I").replaceAll("Ş", "S").replaceAll("Ğ", "G")
+            .replaceAll("Ü", "U").replaceAll("Ö", "O").replaceAll("Ç", "C");
+          if (/^(EVET|VAR|YES|TRUE|1)$/.test(folded)) return "Evet";
+          if (/^(HAYIR|YOK|NO|FALSE|0)$/.test(folded)) return "Hayır";
+          return "";
+        },
+        stripProjectSuitabilityRepairSentence: (value) => String(value || "").trim(),
+        shouldShowProjectSuitabilityRepair: (value) => {
+          const key = String(value || "").trim().toLocaleUpperCase("tr-TR").replaceAll(".", "")
+            .replaceAll("İ", "I").replaceAll("Ş", "S").replaceAll("Ğ", "G")
+            .replaceAll("Ü", "U").replaceAll("Ö", "O").replaceAll("Ç", "C");
+          return [
+            "MIMARI OLARAK UYGUN DEGILDIR",
+            "KULLANIM ALANI OLARAK UYGUN DEGILDIR",
+            "KULLANIM ALANI VE MIMARI OLARAK UYGUN DEGILDIR",
+          ].includes(key);
+        },
+        registerVariantGroup: () => {},
+      };
+      vmModule.runInNewContext(foldSrc, context);
+      vmModule.runInNewContext(escapeRegExpSrc, context);
+      vmModule.runInNewContext(toTitleCaseTrSrc, context);
+      vmModule.runInNewContext(normalizeReportWhitespaceSrc, context);
+      vmModule.runInNewContext(preserveReportSpecialWordsSrc, context);
+      vmModule.runInNewContext(normalizeReportProperPhrasesSrc, context);
+      vmModule.runInNewContext(normalizeReportTitleTextSrc, context);
+      vmModule.runInNewContext(shouldShowArchitecturalProjectFieldsSrc, context);
+      vmModule.runInNewContext(getOwnershipTypeTextSrc, context);
+      vmModule.runInNewContext(isOwnershipProjectDifferenceComparableSrc, context);
+      vmModule.runInNewContext(getSelectedProjectInstitutionsSrc, context);
+      vmModule.runInNewContext(shouldShowProjectDifferenceFieldSrc, context);
+      vmModule.runInNewContext(shouldUseProjectDifferenceComparisonSrc, context);
+      vmModule.runInNewContext(projectSuitabilityStatusKeySrc, context);
+      vmModule.runInNewContext(isProjectSuitabilityOkSrc, context);
+      vmModule.runInNewContext(hashSrc, context);
+      vmModule.runInNewContext(getVariantSelectionSeedIdSrc, context);
+      vmModule.runInNewContext(getAutoVariantIndexSrc, context);
+      vmModule.runInNewContext(selectVariantSrc, context);
+      vmModule.runInNewContext(variantsAndFnSrc, context);
+      vmModule.runInNewContext(buildProjectSuitabilityDescriptionSrc, context);
+      return context.buildProjectSuitabilityDescription();
+    }
+
+    const dualScenarios = [
+      {
+        reportId: "RE-2026-100001",
+        fields: {
+          projectDifference: "Evet",
+          projectInstitution: "Webtapu Portalı, Nilüfer Belediyesi",
+          titleDistrict: "nilüfer",
+          titleProjectSuitabilityStatus: "uygundur.",
+          municipalityProjectSuitabilityStatus: "uygundur.",
+        },
+      },
+      {
+        reportId: "RE-2026-100002",
+        fields: {
+          projectDifference: "Evet",
+          projectInstitution: "Webtapu Portalı, Osmangazi Belediyesi",
+          titleProjectSuitabilityStatus: "mimari olarak uygun değildir.",
+          titleProjectSuitabilityNote: "Balkona katılım vardır.",
+          titleProjectSuitabilitySimpleRepair: "Evet",
+          municipalityProjectSuitabilityStatus: "uygundur.",
+        },
+      },
+      {
+        reportId: "RE-2026-100003",
+        fields: {
+          projectDifference: "Evet",
+          projectInstitution: "Webtapu Portalı, Yıldırım Belediyesi",
+          titleProjectSuitabilityStatus: "",
+          municipalityProjectSuitabilityStatus: "",
+        },
+      },
+      {
+        reportId: "RE-2026-100004",
+        fields: {
+          projectDifference: "Evet",
+          projectInstitution: "Webtapu Portalı, Osmangazi Belediyesi",
+          titleProjectSuitabilityStatus: "kullanım alanı olarak uygun değildir.",
+          municipalityProjectSuitabilityStatus: "trampa",
+          mainRealEstateProjectSuitable: "Hayır",
+          mainRealEstateProjectSuitabilityNote: "Balkon ilavesi tespit edilmiştir.",
+        },
+      },
+    ];
+    dualScenarios.forEach(({ reportId, fields }) => {
+      const clientText = runClientDescription(reportId, fields);
+      const serverInput = {
+        variantSeed: reportId,
+        hasArchitecturalProject: fields.hasArchitecturalProject ?? "Evet",
+        ownershipType: fields.ownershipType ?? "Kat İrtifakı",
+        projectInstitution: fields.projectInstitution ?? "",
+        projectDifference: fields.projectDifference ?? "",
+        titleDistrict: fields.titleDistrict ?? "",
+        district: fields.district ?? "",
+        titleProjectSuitabilityStatus: fields.titleProjectSuitabilityStatus ?? "",
+        titleProjectSuitabilityNote: fields.titleProjectSuitabilityNote ?? "",
+        titleProjectSuitabilitySimpleRepair: fields.titleProjectSuitabilitySimpleRepair ?? "",
+        municipalityProjectSuitabilityStatus: fields.municipalityProjectSuitabilityStatus ?? "",
+        municipalityProjectSuitabilityNote: fields.municipalityProjectSuitabilityNote ?? "",
+        municipalityProjectSuitabilitySimpleRepair: fields.municipalityProjectSuitabilitySimpleRepair ?? "",
+        mainRealEstateProjectSuitable: fields.mainRealEstateProjectSuitable ?? "",
+        mainRealEstateProjectSuitabilityNote: fields.mainRealEstateProjectSuitabilityNote ?? "",
+      };
+      const serverText = server.buildServerProjectSuitabilityDescription(serverInput);
+      assert.equal(
+        serverText,
+        clientText,
+        `Sunucu ve istemci dual-project varyant secimi uyusmuyor (reportId=${reportId}): sunucu="${serverText}" istemci="${clientText}"`
+      );
+    });
+
+    console.log("Sunucu/istemci dual-project (Webtapu/Belediye) senkronu testi tamam.");
+  }
 }
 
 console.log("Sunucu tarafli banka sablonu cozumleme testi tamam.");
