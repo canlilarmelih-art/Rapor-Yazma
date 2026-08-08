@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.366 - 2026-08-08 - Cümle varyantı: Bölüm 3'te ertelenen buildImarPlanningNote() ana gövdesi koda taşındı (162 grup)
+
+- `buildImarPlanningNote()` — daha önce (0.0.360) plan iptali/plan-koşulları birleştirme mantığının karmaşıklığı nedeniyle bilinçli ertelenmişti. Bu turda 7 sabit bağlaç/kalıp ifade varyantlandı: plan iptali ana cümlesi, plan iptali öncesi koşullar cümlesi, parsel girişi ifadesi, lejant bağlacı, lejantsız bağlaç, yapılaşma koşulları kuyruğu, Plansız Alanlar Tip İmar Yönetmeliği kuyruğu. Koşul listesinin kendisi (`composeImarConditionList`) ve tarih/kurum verisi öncekiyle aynı "veri, üslup değil" gerekçesiyle DEĞİŞTİRİLMEDİ.
+- `VARIANT_REGISTRY` artık **162 grup**.
+- Ek test değişikliği gerekmedi (`test-variant-selection.js`'in sayaç/anahtar sanity taraması dışında bu fonksiyonu extract eden bir test yok).
+- Kod değişikliğinden önce yerel yedek alındı: `backups/before-variant-imar-planning-note_*`.
+- `index.html` cache-buster'ı `20260808-1250`'ye yükseltildi. `npm run verify` tamamı geçti.
+- **Kalan ertelenmiş iş**: `buildProjectSuitabilityBuildingReferenceSentence()`/`buildBuildingFootprintAndEntranceExplanation()` (server.js `applyServerProtectedPlaceholderTokens` senkronu gerektiriyor — ayrı bir tur); Bölüm 4/5'teki düşük seviyeli paylaşılan clause fonksiyonları.
+
 ## 0.0.365 - 2026-08-08 - Cümle varyantı: Bölüm 8 (Takyidat) tamamlandı, Bölüm 9 zaten tamdı (155 grup) — envanterin TÜM bölümleri artık koda taşındı
 
 - Koda taşınanlar: `buildIsbankEncumbranceExplanation` (İş Bankası TAKBİS inceleme tarihi cümlesi), `buildEncumbranceSummaryVariants()`'ın "TAKBİS temin edilemedi" sabit açıklaması. `buildEncumbranceIntroSentence` ve `buildEncumbranceTitleRecordChangeParagraph` zaten önceki pilot/Bölüm 2'de tamamlanmıştı; `formatEncumbranceDeclarationRow`/`formatEncumbranceMortgageRow`/`buildEncumbranceSectionParagraph`/`buildCondensedEncumbranceSectionSummary` doküman gereği bilinçli olarak varyantlanmadı (veri-ağırlıklı formatter'lar).

@@ -22807,6 +22807,38 @@ function normalizeImarLegendForReport(value) {
   return text.replace(/\s+Alanı\s*$/i, "");
 }
 
+// Varyantlar docs/cumle-envanteri.md Bölüm 3'te belgelendi (buildImarPlanningNote
+// ana paragraf gövdesi — daha önce plan iptali/plan-koşulları birleştirme
+// mantığının karmaşıklığı nedeniyle ertelenmişti; burada yalnızca sabit
+// bağlaç/kalıp ifadeler varyantlanıyor, koşul listesi (composeImarConditionList)
+// ve tarih/kurum verisi öncekiyle aynı gerekçeyle DEĞİŞMİYOR).
+const imarPlanCancelledVariants = [
+  "yer aldığı imar planında iptal/yürütmeyi durdurma kararı bulunmaktadır.",
+  "yer aldığı imar planı hakkında iptal/yürütmeyi durdurma kararı verilmiştir.",
+];
+const imarPlanCancelledConditionsVariants = [
+  (conditions) => `Belediyeden alınan bilgiye göre plan iptali öncesindeki yapılaşma koşullarının ${conditions} şeklinde olduğu bilgisi alınmıştır.`,
+  (conditions) => `Belediyeden edinilen bilgiye göre, plan iptalinden önceki yapılaşma koşullarının ${conditions} şeklinde olduğu tespit edilmiştir.`,
+];
+const imarPlanParcelLeadVariants = ["yer aldığı parsel", "içinde bulunduğu parsel"];
+const imarPlanLegendClauseVariants = [
+  (legend) => ` ${legend} alanında yer almakta olup`,
+  (legend) => ` ${legend} alanı kapsamında bulunmakta olup`,
+];
+const imarPlanNoLegendClauseVariants = [" imar planı kapsamında değerlendirilmekte olup", " imar planı sınırları içerisinde değerlendirilmekte olup"];
+const imarPlanConditionsTailVariants = [
+  (conditions) => `, ${conditions} yapılaşma koşullarına sahiptir.`,
+  (conditions) => `, ${conditions} yapılaşma koşullarını haizdir.`,
+];
+const imarPlanAgriculturalTailVariants = [", Plansız Alanlar Tip İmar Yönetmeliğine tabidir.", ", Plansız Alanlar Tip İmar Yönetmeliği hükümlerine tabidir."];
+registerVariantGroup("buildImarPlanningNote:cancelled", "İmar Planı İptali — Ana Cümle (İmar Durumu)", imarPlanCancelledVariants.length);
+registerVariantGroup("buildImarPlanningNote:cancelledConditions", "İmar Planı İptali — Önceki Koşullar (İmar Durumu)", imarPlanCancelledConditionsVariants.length);
+registerVariantGroup("buildImarPlanningNote:parcelLead", "İmar Planı Notu — Parsel Girişi (İmar Durumu)", imarPlanParcelLeadVariants.length);
+registerVariantGroup("buildImarPlanningNote:legendClause", "İmar Planı Notu — Lejant Bağlacı (İmar Durumu)", imarPlanLegendClauseVariants.length);
+registerVariantGroup("buildImarPlanningNote:noLegendClause", "İmar Planı Notu — Lejantsız Bağlaç (İmar Durumu)", imarPlanNoLegendClauseVariants.length);
+registerVariantGroup("buildImarPlanningNote:conditionsTail", "İmar Planı Notu — Yapılaşma Koşulları Kuyruğu (İmar Durumu)", imarPlanConditionsTailVariants.length);
+registerVariantGroup("buildImarPlanningNote:agriculturalTail", "İmar Planı Notu — Plansız Alanlar Kuyruğu (İmar Durumu)", imarPlanAgriculturalTailVariants.length);
+
 function buildImarPlanningNote(fields = {}) {
   const current = state.fields || {};
   const data = {
@@ -22874,12 +22906,12 @@ function buildImarPlanningNote(fields = {}) {
   const sourcePrefix = composeImarInfoSourcePrefix(data);
 
   if (planCancelled) {
-    let cancelledText = `${sourcePrefix || "Konu taşınmazın "}yer aldığı imar planında iptal/yürütmeyi durdurma kararı bulunmaktadır.`;
+    let cancelledText = `${sourcePrefix || "Konu taşınmazın "}${imarPlanCancelledVariants[selectVariant("buildImarPlanningNote:cancelled", imarPlanCancelledVariants.length)]}`;
     if (data.planCancellationStayNote) cancelledText += ` (${data.planCancellationStayNote})`;
     if (data.planRestrictionNote) cancelledText += ` ${data.planRestrictionNote}`;
     const conditions = composeImarConditionList(data);
     if (conditions.length) {
-      cancelledText += ` Belediyeden alınan bilgiye göre plan iptali öncesindeki yapılaşma koşullarının ${conditions.join(", ")} şeklinde olduğu bilgisi alınmıştır.`;
+      cancelledText += ` ${imarPlanCancelledConditionsVariants[selectVariant("buildImarPlanningNote:cancelledConditions", imarPlanCancelledConditionsVariants.length)](conditions.join(", "))}`;
     }
     parts.push(cancelledText);
   } else {
@@ -22888,16 +22920,16 @@ function buildImarPlanningNote(fields = {}) {
     if (data.planScale) introBits.push(`${data.planScale} ölçekli`);
     if (data.planName) introBits.push(data.planName);
 
-    let mainText = `${sourcePrefix || "Konu taşınmazın "}yer aldığı parsel`;
+    let mainText = `${sourcePrefix || "Konu taşınmazın "}${imarPlanParcelLeadVariants[selectVariant("buildImarPlanningNote:parcelLead", imarPlanParcelLeadVariants.length)]}`;
     if (introBits.length) mainText += `, ${introBits.join(" ")} kapsamında`;
     mainText += data.legend
-      ? ` ${data.legend} alanında yer almakta olup`
-      : " imar planı kapsamında değerlendirilmekte olup";
+      ? imarPlanLegendClauseVariants[selectVariant("buildImarPlanningNote:legendClause", imarPlanLegendClauseVariants.length)](data.legend)
+      : imarPlanNoLegendClauseVariants[selectVariant("buildImarPlanningNote:noLegendClause", imarPlanNoLegendClauseVariants.length)];
     const conditions = composeImarConditionList(data);
     if (conditions.length) {
-      mainText += `, ${conditions.join(", ")} yapılaşma koşullarına sahiptir.`;
+      mainText += imarPlanConditionsTailVariants[selectVariant("buildImarPlanningNote:conditionsTail", imarPlanConditionsTailVariants.length)](conditions.join(", "));
     } else if (isAgriculturalPlanningLegend(data.legend)) {
-      mainText += ", Plansız Alanlar Tip İmar Yönetmeliğine tabidir.";
+      mainText += imarPlanAgriculturalTailVariants[selectVariant("buildImarPlanningNote:agriculturalTail", imarPlanAgriculturalTailVariants.length)];
     } else {
       mainText += ".";
     }
