@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.360 - 2026-08-08 - Cümle varyantı: Bölüm 3 (İmar Durumu) büyük ölçüde koda taşındı (72 grup)
+
+- `composeImarInfoSourcePrefix()` (3 alt-durum), `composeImarRoadSetbackSentence()` (terk var/yok), `composeImarPlanningStatusParagraphs()`'ın "genel fiil-dönüşüm stili" (5 alt-durumun HEPSİNE aynı stil bir kez seçilip uygulanıyor — rapor içi tutarlılık için), `buildProjectSuitabilityStatusSentence()`'ın TÜM 9 durum dalı + tadilat notu, `buildProjectSuitabilityDescription()`'ın Webtapu/Belediye "her ikisi uygun" özeti, `buildStaticSuitabilityExplanation()` (uyumlu/uyumsuz) koda taşındı.
+- **Bilinçli olarak ERTELENDİ**: `buildImarPlanningNote()`'un ana paragraf gövdesi (plan iptali/plan-koşulları birleştirme mantığı dokümanda varsayılandan çok daha karmaşık çıktı — güvenli refactor için ayrı bir tur gerekiyor) ve `buildProjectSuitabilityBuildingReferenceSentence()`/`buildBuildingFootprintAndEntranceExplanation()` (sunucu tarafında `applyServerProtectedPlaceholderTokens` ile YENİDEN ÜRETİLEN korumalı bir placeholder — varyant kodu yazılırsa server.js'te de eşleştirilmesi gerekiyor, ayrı bir tur).
+- `VARIANT_REGISTRY` artık **72 grup**.
+- `tools/test-project-suitability-status.js` güncellendi (extraction aralığı artık yeni `projectSuitabilityStatusVariants` sabitini de kapsıyor; `selectVariant: () => 0` + `registerVariantGroup: () => {}` mock'ları eklendi).
+- Kod değişikliğinden önce yerel yedek alındı: `backups/before-variant-section3-code_2026-08-08_11-28-30/`.
+- `index.html` cache-buster'ı `20260808-1128`'e yükseltildi. `npm run verify` tamamı geçti.
+
 ## 0.0.359 - 2026-08-08 - Cümle varyantı: Bölüm 1-2 tam koda taşındı (55 grup)
 
 - Kullanıcı talebi: "kalan fonksiyonları da koda taşımaya devam edelim" — `docs/cumle-envanteri.md`'deki envanterin geri kalanını koda taşıma çalışması başladı.

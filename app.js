@@ -17844,9 +17844,14 @@ function buildProjectSuitabilityDescription() {
     if (titleOk && municipalityOk) {
       const district = normalizeReportTitleText(state.fields.titleDistrict || state.fields.district || "").trim();
       const municipalityText = district ? `${district} Belediyesinde` : "Belediye arşivinde";
-      parts.push(
-        `Webtapu Portalında incelenen mimari proje ve ${municipalityText} incelenen proje karşılaştırıldığında taşınmazın konumunu ve alanını etkileyen herhangi bir farklılık bulunmamaktadır. Taşınmaz incelenen her iki projeye de uygun olarak inşa edilmiştir.`
-      );
+      const bothOkVariants = [
+        `Webtapu Portalında incelenen mimari proje ve ${municipalityText} incelenen proje karşılaştırıldığında taşınmazın konumunu ve alanını etkileyen herhangi bir farklılık bulunmamaktadır. Taşınmaz incelenen her iki projeye de uygun olarak inşa edilmiştir.`,
+        `Webtapu Portalında incelenen mimari proje ile ${municipalityText} incelenen proje karşılaştırıldığında, taşınmazın konumu ve alanını etkileyen bir farklılığa rastlanmamıştır. Taşınmaz, incelenen her iki projeye de uygun şekilde inşa edilmiştir.`,
+        `Webtapu Portalında incelenen mimari proje ile ${municipalityText} incelenen proje karşılaştırıldığında, taşınmazın konumu ve alanını etkileyen bir farka rastlanmamıştır. Gayrimenkul, incelenen her iki projeye de uygun şekilde inşa edilmiştir.`,
+        `Webtapu Portalı'ndaki mimari proje ile ${municipalityText} incelenen proje karşılaştırıldığında, taşınmazın konum ve alanını etkileyecek bir uyumsuzluk tespit edilmemiştir. Mülk, her iki projeye de uygun olarak inşa edilmiştir.`,
+        `Webtapu Portalında yer alan mimari proje ile ${municipalityText} incelenen proje kıyaslandığında, taşınmazın konumu ve alanı bakımından farklılık bulunmamıştır. Söz konusu gayrimenkul, incelenen her iki proje ile de uyumlu şekilde inşa edilmiştir.`,
+      ];
+      parts.push(bothOkVariants[selectVariant("buildProjectSuitabilityDescription:bothOk", bothOkVariants.length)]);
     } else {
       const titleSentence = buildProjectSuitabilityStatusSentence(
         state.fields.titleProjectSuitabilityStatus,
@@ -17886,6 +17891,85 @@ function buildProjectSuitabilityDescription() {
 
   return normalizeReportDescriptionText(parts.join(" "));
 }
+registerVariantGroup("buildProjectSuitabilityDescription:bothOk", "Onaylı Projesine Uygunluk — Webtapu/Belediye her ikisi uygun (İmar Durumu)", 5);
+
+// Varyantlar docs/cumle-envanteri.md Bölüm 3'te belgelendi — 9 durum dalının
+// TÜMÜ (UYGUNDUR dahil) + tadilat notu.
+const projectSuitabilityStatusVariants = {
+  UYGUNDUR: [
+    (lead) => `${lead}Ekspertize konu bağımsız bölüm kat, kattaki konum, alan ve mimari olarak projesine uygundur.`,
+    (lead) => `${lead}Değerlemeye konu bağımsız bölüm; kat, kattaki konumu, alanı ve mimarisi itibarıyla onaylı projesine uygun bulunmuştur.`,
+    (lead) => `${lead}Söz konusu bağımsız bölümün kat, konum, alan ve mimari özellikleri onaylı projeyle uyumludur.`,
+    (lead) => `${lead}Değerlemeye konu bağımsız bölüm kat, konumu, alanı ve mimarisi bakımından onaylı projeye uygun bulunmuştur.`,
+    (lead) => `${lead}Söz konusu bağımsız bölüm; kat, kattaki konum, alan ve mimari özellikleri itibarıyla projesine uygun olduğu tespit edilmiştir.`,
+  ],
+  "BLOK BAZINDA KONUM OLARAK UYGUN DEGILDIR": [
+    (lead) => `${lead}Ekspertize konu taşınmaz blok bazında projesine uygun değildir.`,
+    (lead) => `${lead}Değerlemeye konu gayrimenkul, blok bazında incelendiğinde projesine uygun bulunmamıştır.`,
+    (lead) => `${lead}Söz konusu taşınmaz blok bazında incelendiğinde projesiyle uyumsuz bulunmuştur.`,
+    (lead) => `${lead}Rapor konusu gayrimenkul, blok bazında projesine uygun olmadığı tespit edilmiştir.`,
+    (lead) => `${lead}Mülk, blok konumu itibarıyla onaylı projeyle örtüşmemektedir.`,
+  ],
+  "MIMARI OLARAK UYGUN DEGILDIR": [
+    (lead) => `${lead}Ekspertize konu bağımsız bölüm vaziyet planına göre blok bazında konum, kat, kattaki konum ve kullanım alanı olarak projesine uygun olup, mimari olarak projesine uygun değildir.`,
+    (lead) => `${lead}Değerlemeye konu bağımsız bölüm, vaziyet planı esas alındığında blok, kat, kattaki konum ve kullanım alanı bakımından projesiyle uyumlu olup, yalnızca mimari açıdan projesine uygun bulunmamıştır.`,
+    (lead) => `${lead}Söz konusu bağımsız bölüm, vaziyet planına göre blok, kat, kattaki konum ve kullanım alanı bakımından projesine uygun olup, yalnızca mimari yönden farklılık göstermektedir.`,
+    (lead) => `${lead}Rapor konusu bağımsız bölüm blok, kat, konum ve kullanım alanı itibarıyla projeyle örtüşmekte, mimari açıdan uygunsuzluk tespit edilmiştir.`,
+    (lead) => `${lead}Mülk; blok, kat, konum ve kullanım alanı bakımından projesine uygun olmakla birlikte, mimari yönden uyumsuzluk bulunmaktadır.`,
+  ],
+  "KULLANIM ALANI OLARAK UYGUN DEGILDIR": [
+    (lead) => `${lead}Ekspertize konu bağımsız bölüm vaziyet planına göre blok bazında konum, kat, kattaki konum ve mimari olarak projesine uygun olup, kullanım alanı olarak projesine uygun değildir.`,
+    (lead) => `${lead}Değerlemeye konu bağımsız bölüm vaziyet planı esas alındığında blok, kat ve mimari açıdan projesiyle örtüşmekte, ancak kullanım alanı bakımından projeden farklılık göstermektedir.`,
+    (lead) => `${lead}Söz konusu bağımsız bölüm blok, kat ve mimari açıdan projesiyle uyumlu olup, kullanım alanı bakımından farklılık göstermektedir.`,
+    (lead) => `${lead}Rapor konusu bağımsız bölüm; blok, kat, konum ve mimari özellikleri itibarıyla projeye uygun olup, kullanım alanında uyumsuzluk tespit edilmiştir.`,
+    (lead) => `${lead}Mülk blok, kat ve mimari bakımdan projesiyle örtüşmekte, kullanım alanı açısından farklılık taşımaktadır.`,
+  ],
+  "KULLANIM ALANI VE MIMARI OLARAK UYGUN DEGILDIR": [
+    (lead) => `${lead}Ekspertize konu bağımsız bölüm vaziyet planına göre blok bazında konum, kat ve kattaki konum olarak projesine uygun olup, kullanım alanı ve mimari olarak projesine uygun değildir.`,
+    (lead) => `${lead}Değerlemeye konu bağımsız bölüm, vaziyet planına göre blok, kat ve kattaki konum bakımından projesine uygun olmakla birlikte, kullanım alanı ve mimari açıdan projeyle uyumsuzluk göstermektedir.`,
+    (lead) => `${lead}Söz konusu bağımsız bölüm blok, kat ve konum bakımından projesine uygun olup, kullanım alanı ve mimari açıdan farklılık göstermektedir.`,
+    (lead) => `${lead}Rapor konusu bağımsız bölüm; blok, kat ve kattaki konum itibarıyla projeyle uyumlu olup, kullanım alanı ile mimari yönden uygunsuzluk tespit edilmiştir.`,
+    (lead) => `${lead}Mülk, blok, kat ve konum bakımından projesine uygun olmakla birlikte, kullanım alanı ve mimari açıdan uyumsuzluk taşımaktadır.`,
+  ],
+  "PROJEYE UYGUNLUK TESPIT EDILMEMISTIR": [
+    (lead) => `${lead}Ekspertize konu bağımsız bölümün konum tespiti dışarıdan yapılmış olup kat, alan ve mimari olarak uygunluk tespit edilememiştir.`,
+    (lead) => `${lead}Değerlemeye konu bağımsız bölümün konum tespiti dışarıdan gerçekleştirilmiş olup, kat, alan ve mimari açıdan projeye uygunluk belirlenememiştir.`,
+    (lead) => `${lead}Söz konusu bağımsız bölümün konumu dışarıdan tespit edilmiş olup, kat, alan ve mimari uygunluk belirlenememiştir.`,
+    (lead) => `${lead}Rapor konusu bağımsız bölümün yeri dışarıdan incelenmiş, kat, alan ve mimari açıdan uygunluk tespiti yapılamamıştır.`,
+    (lead) => `${lead}Mülkün konumu dışarıdan değerlendirilmiş olup, kat, alan ve mimari uygunluğu belirlenememiştir.`,
+  ],
+  TRAMPA: [
+    (lead) => `${lead}ekspertize konu taşınmaz vaziyet planına göre blok bazında konum, kat, kattaki konum ve kullanım alanı olarak projesine uygun değildir.`,
+    (lead) => `${lead}değerlemeye konu taşınmaz, vaziyet planına göre blok bazında konum, kat, kattaki konum ve kullanım alanı bakımından projesine uygun değildir.`,
+    (lead) => `${lead}söz konusu taşınmaz vaziyet planına göre blok, kat, konum ve kullanım alanı bakımından projesine uygun değildir.`,
+    (lead) => `${lead}rapor konusu gayrimenkul vaziyet planına göre blok, kat, konum ve kullanım alanı yönünden projeyle uyumsuzdur.`,
+    (lead) => `${lead}mülk, vaziyet planı esas alındığında blok, kat, konum ve kullanım alanı bakımından projesine aykırıdır.`,
+  ],
+  "TRAMPA VE AYNA SIMETRISI": [
+    (lead) => `${lead}ekspertize konu taşınmaz kattaki konum olarak projesine uygun değildir.`,
+    (lead) => `${lead}değerlemeye konu taşınmaz, kattaki konumu itibarıyla projesine uygun bulunmamıştır.`,
+    (lead) => `${lead}söz konusu taşınmaz kattaki konumu bakımından projesine uygun değildir.`,
+    (lead) => `${lead}rapor konusu gayrimenkul, kattaki konumu itibarıyla projeyle örtüşmemektedir.`,
+    (lead) => `${lead}mülk, kattaki konumu açısından onaylı projeye aykırıdır.`,
+  ],
+  "AYNA SIMETRISI (KONUM ETKILENMIYOR)": [
+    (lead) => `${lead}yapılan ruhsata aykırı imalat taşınmazın konumunu etkilememektedir.`,
+    (lead) => `${lead}gerçekleştirilen ruhsata aykırı imalatın taşınmazın konumu üzerinde herhangi bir etkisi bulunmamaktadır.`,
+    (lead) => `${lead}gerçekleştirilen ruhsata aykırı imalatın taşınmazın konumuna herhangi bir etkisi yoktur.`,
+    (lead) => `${lead}yapılan ruhsata aykırı imalat, gayrimenkulün konumunu değiştirmemektedir.`,
+    (lead) => `${lead}söz konusu ruhsata aykırı imalat, mülkün konumu üzerinde etki oluşturmamaktadır.`,
+  ],
+};
+Object.keys(projectSuitabilityStatusVariants).forEach((key) => {
+  registerVariantGroup(`buildProjectSuitabilityStatusSentence:${key}`, `Onaylı Projesine Uygunluk — ${key} (İmar Durumu)`, projectSuitabilityStatusVariants[key].length);
+});
+const projectSuitabilityRepairVariants = [
+  (repair) => `Basit bir tadilat ile ${repair === "Evet" ? "düzeltilebilir" : "düzeltilemez"} niteliktedir.`,
+  (repair) => `Basit bir tadilat uygulanarak ${repair === "Evet" ? "düzeltilebilir" : "düzeltilemez"} durumdadır.`,
+  (repair) => `Küçük çaplı bir tadilat ile ${repair === "Evet" ? "giderilebilir" : "giderilemez"} durumdadır.`,
+  (repair) => `Basit onarımla ${repair === "Evet" ? "düzeltilmesi mümkündür" : "düzeltilmesi mümkün değildir"}.`,
+];
+registerVariantGroup("buildProjectSuitabilityStatusSentence:repair", "Onaylı Projesine Uygunluk — Tadilat Notu (İmar Durumu)", projectSuitabilityRepairVariants.length);
 
 function buildProjectSuitabilityStatusSentence(statusValue, noteValue, repairValue, prefix = "") {
   const status = normalizeReportDescriptionText(statusValue || "").trim();
@@ -17895,39 +17979,15 @@ function buildProjectSuitabilityStatusSentence(statusValue, noteValue, repairVal
   const lead = prefix ? `${prefix} ` : "";
   let sentence = "";
 
-  switch (statusKey) {
-    case "":
-    case "UYGUNDUR":
-      sentence = `${lead}Ekspertize konu bağımsız bölüm kat, kattaki konum, alan ve mimari olarak projesine uygundur.`;
-      break;
-    case "BLOK BAZINDA KONUM OLARAK UYGUN DEGILDIR":
-      sentence = `${lead}Ekspertize konu taşınmaz blok bazında projesine uygun değildir.`;
-      break;
-    case "MIMARI OLARAK UYGUN DEGILDIR":
-      sentence = `${lead}Ekspertize konu bağımsız bölüm vaziyet planına göre blok bazında konum, kat, kattaki konum ve kullanım alanı olarak projesine uygun olup, mimari olarak projesine uygun değildir.`;
-      break;
-    case "KULLANIM ALANI OLARAK UYGUN DEGILDIR":
-      sentence = `${lead}Ekspertize konu bağımsız bölüm vaziyet planına göre blok bazında konum, kat, kattaki konum ve mimari olarak projesine uygun olup, kullanım alanı olarak projesine uygun değildir.`;
-      break;
-    case "KULLANIM ALANI VE MIMARI OLARAK UYGUN DEGILDIR":
-      sentence = `${lead}Ekspertize konu bağımsız bölüm vaziyet planına göre blok bazında konum, kat ve kattaki konum olarak projesine uygun olup, kullanım alanı ve mimari olarak projesine uygun değildir.`;
-      break;
-    case "PROJEYE UYGUNLUK TESPIT EDILMEMISTIR":
-    case "PROJEYE UYGUNLUK TESPIT EDILEMEMISTIR":
-      sentence = `${lead}Ekspertize konu bağımsız bölümün konum tespiti dışarıdan yapılmış olup kat, alan ve mimari olarak uygunluk tespit edilememiştir.`;
-      break;
-    case "TRAMPA":
-      sentence = `${lead}ekspertize konu taşınmaz vaziyet planına göre blok bazında konum, kat, kattaki konum ve kullanım alanı olarak projesine uygun değildir.`;
-      break;
-    case "TRAMPA VE AYNA SIMETRISI":
-      sentence = `${lead}ekspertize konu taşınmaz kattaki konum olarak projesine uygun değildir.`;
-      break;
-    case "AYNA SIMETRISI (KONUM ETKILENMIYOR)":
-      sentence = `${lead}yapılan ruhsata aykırı imalat taşınmazın konumunu etkilememektedir.`;
-      break;
-    default:
-      sentence = `${lead}${status}`;
-      break;
+  let registryKey = statusKey;
+  if (registryKey === "") registryKey = "UYGUNDUR";
+  if (registryKey === "PROJEYE UYGUNLUK TESPIT EDILEMEMISTIR") registryKey = "PROJEYE UYGUNLUK TESPIT EDILMEMISTIR";
+  const variantBuilders = projectSuitabilityStatusVariants[registryKey];
+  if (variantBuilders) {
+    const variantIndex = selectVariant(`buildProjectSuitabilityStatusSentence:${registryKey}`, variantBuilders.length);
+    sentence = variantBuilders[variantIndex](lead);
+  } else {
+    sentence = `${lead}${status}`;
   }
 
   const additions = [];
@@ -17940,7 +18000,8 @@ function buildProjectSuitabilityStatusSentence(statusValue, noteValue, repairVal
   const cleanNote = stripProjectSuitabilityRepairSentence(note);
   if (acceptsConformityNote && cleanNote) additions.push(cleanNote);
   if (shouldShowProjectSuitabilityRepair(status) && repair) {
-    additions.push(`Basit bir tadilat ile ${repair === "Evet" ? "düzeltilebilir" : "düzeltilemez"} niteliktedir.`);
+    const repairIndex = selectVariant("buildProjectSuitabilityStatusSentence:repair", projectSuitabilityRepairVariants.length);
+    additions.push(projectSuitabilityRepairVariants[repairIndex](repair));
   }
   return normalizeReportDescriptionText([sentence, ...additions].filter(Boolean).join(" "));
 }
@@ -18790,6 +18851,24 @@ function refreshPenaltyDecisionExplanationFromCurrentFields(changedKey = "") {
   }
 }
 
+// Varyantlar docs/cumle-envanteri.md Bölüm 3'te belgelendi.
+const staticSuitabilityOkVariants = [
+  (fileText) => `Taşınmazın ${fileText} bulunan statik proje incelenmiştir. Statik proje, mimari proje ve mahal durum ile uyumludur.`,
+  (fileText) => `Gayrimenkule ait ${fileText} bulunan statik proje incelenmiş olup, statik projenin mimari proje ve yerinde tespit edilen mahal durumu ile uyumlu olduğu görülmüştür.`,
+  (fileText) => `${fileText} yer alan statik proje incelenmiş, mimari proje ve mahal durumu ile uyumlu olduğu belirlenmiştir.`,
+  (fileText) => `Taşınmazın ${fileText} bulunan statik projesi incelenmiş olup, mimari proje ve yerinde tespit edilen mahal durumuyla uyumluluğu saptanmıştır.`,
+  (fileText) => `Gayrimenkulün ${fileText} bulunan statik projesi değerlendirilmiş, mimari proje ve mahal durumuyla uyumlu olduğu görülmüştür.`,
+];
+const staticSuitabilityNotOkVariants = [
+  (fileText) => `Taşınmazın ${fileText} bulunan statik proje incelenmiştir. Statik proje, mimari proje ve mahal durum ile uyumlu değildir.`,
+  (fileText) => `Gayrimenkule ait ${fileText} bulunan statik proje incelenmiş olup, statik projenin mimari proje ve yerinde tespit edilen mahal durumu ile uyumlu olmadığı görülmüştür.`,
+  (fileText) => `${fileText} yer alan statik proje incelenmiş, mimari proje ve mahal durumu ile uyumsuz olduğu belirlenmiştir.`,
+  (fileText) => `Taşınmazın ${fileText} bulunan statik projesi incelenmiş olup, mimari proje ve yerinde tespit edilen mahal durumuyla uyumsuzluğu saptanmıştır.`,
+  (fileText) => `Gayrimenkulün ${fileText} bulunan statik projesi değerlendirilmiş, mimari proje ve mahal durumuyla uyumsuz olduğu görülmüştür.`,
+];
+registerVariantGroup("buildStaticSuitabilityExplanation:evet", "Statik Proje Uygunluğu — Uyumlu (İmar Durumu)", staticSuitabilityOkVariants.length);
+registerVariantGroup("buildStaticSuitabilityExplanation:hayir", "Statik Proje Uygunluğu — Uyumsuz (İmar Durumu)", staticSuitabilityNotOkVariants.length);
+
 function buildStaticSuitabilityExplanation() {
   const decision = normalizeYesNoChoice(state.fields.staticSuitability);
   if (!["Evet", "Hayır"].includes(decision)) return "";
@@ -18798,13 +18877,13 @@ function buildStaticSuitabilityExplanation() {
   );
   const fileText = institution ? `${institution} dosyasında` : "ilgili kurum dosyasında";
   if (decision === "Evet") {
-    return normalizeReportDescriptionText(
-      `Taşınmazın ${fileText} bulunan statik proje incelenmiştir. Statik proje, mimari proje ve mahal durum ile uyumludur.`
-    );
+    const variantIndex = selectVariant("buildStaticSuitabilityExplanation:evet", staticSuitabilityOkVariants.length);
+    return normalizeReportDescriptionText(staticSuitabilityOkVariants[variantIndex](fileText));
   }
   const note = normalizeReportDescriptionText(state.fields.staticSuitabilityNote || "").trim();
+  const variantIndex = selectVariant("buildStaticSuitabilityExplanation:hayir", staticSuitabilityNotOkVariants.length);
   return normalizeReportDescriptionText(
-    `Taşınmazın ${fileText} bulunan statik proje incelenmiştir. Statik proje, mimari proje ve mahal durum ile uyumlu değildir.${note ? ` ${note}` : ""}`
+    `${staticSuitabilityNotOkVariants[variantIndex](fileText)}${note ? ` ${note}` : ""}`
   );
 }
 
@@ -22431,14 +22510,40 @@ function firstFilled(...values) {
   return values.find((value) => String(value || "").trim()) || "";
 }
 
+// Varyantlar docs/cumle-envanteri.md Bölüm 3'te belgelendi.
 function composeImarInfoSourcePrefix(data) {
   const date = data.inspectionDate ? dateIsoToTr(data.inspectionDate) : "";
   const institution = formatImarInstitutionSource(data.infoInstitution);
-  if (date && institution) return `${date} tarihinde ${institution} alınan bilgiye göre konu taşınmazın `;
-  if (date) return `${date} tarihinde alınan bilgiye göre konu taşınmazın `;
-  if (institution) return `${institution} alınan bilgiye göre konu taşınmazın `;
+  if (date && institution) {
+    const variants = [
+      `${date} tarihinde ${institution} alınan bilgiye göre konu taşınmazın `,
+      `${date} tarihinde ${institution} edinilen bilgiye göre söz konusu taşınmazın `,
+      `${institution} ${date} tarihinde temin edilen bilgiye göre ekspertize konu gayrimenkulün `,
+      `${institution} ${date} tarihinde alınan bilgiye göre söz konusu taşınmazın `,
+    ];
+    return variants[selectVariant("composeImarInfoSourcePrefix:both", variants.length)];
+  }
+  if (date) {
+    const variants = [
+      `${date} tarihinde alınan bilgiye göre konu taşınmazın `,
+      `${date} tarihinde edinilen bilgiye göre söz konusu taşınmazın `,
+      `${date} tarihinde temin edilen bilgiye göre ekspertize konu gayrimenkulün `,
+    ];
+    return variants[selectVariant("composeImarInfoSourcePrefix:dateOnly", variants.length)];
+  }
+  if (institution) {
+    const variants = [
+      `${institution} alınan bilgiye göre konu taşınmazın `,
+      `${institution} edinilen bilgiye göre söz konusu taşınmazın `,
+      `${institution} temin edilen bilgiye göre ekspertize konu gayrimenkulün `,
+    ];
+    return variants[selectVariant("composeImarInfoSourcePrefix:institutionOnly", variants.length)];
+  }
   return "";
 }
+registerVariantGroup("composeImarInfoSourcePrefix:both", "İmar Bilgi Kaynağı Önsözü — tarih+kurum (İmar Durumu)", 4);
+registerVariantGroup("composeImarInfoSourcePrefix:dateOnly", "İmar Bilgi Kaynağı Önsözü — yalnız tarih (İmar Durumu)", 3);
+registerVariantGroup("composeImarInfoSourcePrefix:institutionOnly", "İmar Bilgi Kaynağı Önsözü — yalnız kurum (İmar Durumu)", 3);
 
 function formatImarInstitutionSource(value) {
   const institution = getImarInstitutionValues(value)
@@ -22490,22 +22595,49 @@ function formatImarDecimal(value) {
   return number.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+// Varyantlar docs/cumle-envanteri.md Bölüm 3'te belgelendi.
 function composeImarRoadSetbackSentence(data) {
   if (data.roadSetback === "Evet") {
     const amount = data.roadSetbackAmount ? ` yaklaşık ${formatImarSquareMeter(data.roadSetbackAmount)}` : "";
+    const impactYesVariants = [" Söz konusu terkin yapıya etkisi bulunmaktadır.", " Bu terkin yapı üzerinde etkisi bulunmaktadır."];
+    const impactNoVariants = [" Söz konusu terkin yapıya etkisi bulunmamaktadır.", " Bu terkin yapı üzerinde etkisi bulunmamaktadır."];
     const impact = data.roadSetbackBuildingImpact === "Evet"
-      ? " Söz konusu terkin yapıya etkisi bulunmaktadır."
+      ? impactYesVariants[selectVariant("composeImarRoadSetbackSentence:impact:evet", impactYesVariants.length)]
       : data.roadSetbackBuildingImpact === "Hayır"
-        ? " Söz konusu terkin yapıya etkisi bulunmamaktadır."
+        ? impactNoVariants[selectVariant("composeImarRoadSetbackSentence:impact:hayir", impactNoVariants.length)]
         : "";
-    return `Taşınmazın yer aldığı parselin yola/parka${amount} terki bulunmaktadır.${impact}`;
+    const variants = [
+      `Taşınmazın yer aldığı parselin yola/parka${amount} terki bulunmaktadır.`,
+      `Gayrimenkulün konumlandığı parselden yola/parka${amount} terk ayrılmıştır.`,
+      `Söz konusu parselden yola/parka${amount} terk ayrılmıştır.`,
+      `Parselin yola/parka${amount} terki bulunmaktadır.`,
+    ];
+    return `${variants[selectVariant("composeImarRoadSetbackSentence:var", variants.length)]}${impact}`;
   }
   if (data.roadSetback === "Hayır") {
-    if (isThousandScalePlan(data.planScale)) return "Taşınmazın Yola/Parka terki bulunmamaktadır.";
-    return "Taşınmazın yer aldığı parselin yola/parka terki bulunmamaktadır.";
+    if (isThousandScalePlan(data.planScale)) {
+      const variants = [
+        "Taşınmazın Yola/Parka terki bulunmamaktadır.",
+        "Gayrimenkulün yola/parka terki bulunmamaktadır.",
+        "Söz konusu taşınmazın yola/parka herhangi bir terki bulunmamaktadır.",
+      ];
+      return variants[selectVariant("composeImarRoadSetbackSentence:yok:1000", variants.length)];
+    }
+    const variants = [
+      "Taşınmazın yer aldığı parselin yola/parka terki bulunmamaktadır.",
+      "Gayrimenkulün yer aldığı parselden yola/parka herhangi bir terk ayrılmamıştır.",
+      "Söz konusu parselden yola/parka herhangi bir terk söz konusu değildir.",
+      "Taşınmazın bulunduğu parselde yola/parka terke rastlanmamıştır.",
+    ];
+    return variants[selectVariant("composeImarRoadSetbackSentence:yok:parsel", variants.length)];
   }
   return "";
 }
+registerVariantGroup("composeImarRoadSetbackSentence:var", "Yola/Parka Terk — terk var (İmar Durumu)", 4);
+registerVariantGroup("composeImarRoadSetbackSentence:impact:evet", "Yola/Parka Terk — yapıya etkisi var (İmar Durumu)", 2);
+registerVariantGroup("composeImarRoadSetbackSentence:impact:hayir", "Yola/Parka Terk — yapıya etkisi yok (İmar Durumu)", 2);
+registerVariantGroup("composeImarRoadSetbackSentence:yok:1000", "Yola/Parka Terk — terk yok, 1/1000 plan (İmar Durumu)", 3);
+registerVariantGroup("composeImarRoadSetbackSentence:yok:parsel", "Yola/Parka Terk — terk yok, genel (İmar Durumu)", 4);
 
 function isThousandScalePlan(value) {
   const text = String(value || "").trim();
@@ -22520,14 +22652,42 @@ function shouldIncludeIsbankUrbanNoRiskAreaNote(data) {
     && isThousandScalePlan(data.planScale);
 }
 
+// Varyantlar docs/cumle-envanteri.md Bölüm 3'te belgelendi — "genel fiil-
+// dönüşüm kuralı": 5 alt-durumun (Min. Cephe/18. Madde/Tevhid/Kentsel
+// Dönüşüm/Ruhsat) hepsine AYNI stil bir kez seçilip uygulanır (rapor içi
+// tutarlılık için — bir raporun bir yerinde "mevcuttur" derken başka
+// yerinde "bulunmaktadır" demesi tuhaf kaçar).
+const imarVerbStyleVariants = [
+  { bulunmaktadir: "bulunmaktadır", bulunmamaktadir: "bulunmamaktadır", yapilmistir: "yapılmıştır", yapilmamistir: "yapılmamıştır", yerAlmaktadir: "yer almaktadır", yerAlmamaktadir: "yer almamaktadır" },
+  { bulunmaktadir: "mevcuttur", bulunmamaktadir: "söz konusu değildir", yapilmistir: "uygulanmıştır", yapilmamistir: "uygulanmamıştır", yerAlmaktadir: "kapsamında bulunmaktadır", yerAlmamaktadir: "kapsamı dışındadır" },
+  { bulunmaktadir: "vardır", bulunmamaktadir: "yoktur", yapilmistir: "gerçekleştirilmiştir", yapilmamistir: "gerçekleştirilmemiştir", yerAlmaktadir: "dahilindedir", yerAlmamaktadir: "dahil değildir" },
+  { bulunmaktadir: "mevcuttur", bulunmamaktadir: "mevcut değildir", yapilmistir: "icra edilmiştir", yapilmamistir: "icra edilmemiştir", yerAlmaktadir: "kapsam dahilindedir", yerAlmamaktadir: "kapsam haricindedir" },
+  { bulunmaktadir: "söz konusudur", bulunmamaktadir: "söz konusu değildir", yapilmistir: "hayata geçirilmiştir", yapilmamistir: "hayata geçirilmemiştir", yerAlmaktadir: "içerisinde yer almaktadır", yerAlmamaktadir: "dışında kalmaktadır" },
+];
+registerVariantGroup("composeImarPlanningStatusParagraphs:verbStyle", "İmar Durum Paragrafları — genel fiil-dönüşüm stili (İmar Durumu)", imarVerbStyleVariants.length);
+
+const urbanTransformationYesVariants = [
+  "Taşınmaz kentsel dönüşüm/yenileme alanında yer almaktadır.",
+  "Taşınmaz kentsel dönüşüm/yenileme alanı kapsamında bulunmaktadır.",
+  "Söz konusu taşınmaz kentsel dönüşüm/yenileme alanı içerisindedir.",
+];
+const urbanTransformationNoVariants = [
+  "Taşınmaz kentsel dönüşüm/yenileme alanında yer almamaktadır.",
+  "Taşınmaz kentsel dönüşüm/yenileme alanı kapsamında bulunmamaktadır.",
+  "Söz konusu taşınmaz kentsel dönüşüm/yenileme alanı dışındadır.",
+];
+registerVariantGroup("composeImarPlanningStatusParagraphs:urbanTransformation:evet", "Kentsel Dönüşüm — alanda (İmar Durumu)", urbanTransformationYesVariants.length);
+registerVariantGroup("composeImarPlanningStatusParagraphs:urbanTransformation:hayir", "Kentsel Dönüşüm — alan dışı (İmar Durumu)", urbanTransformationNoVariants.length);
+
 function composeImarPlanningStatusParagraphs(data) {
   const paragraphs = [];
   const includeFallback = data.hasPlanningIssue === "Evet" || isKuveytTurkSelectedForPlanning();
+  const verbStyle = imarVerbStyleVariants[selectVariant("composeImarPlanningStatusParagraphs:verbStyle", imarVerbStyleVariants.length)];
   if (data.minimumFrontageCondition) {
     const paragraph = composeImarStatusParagraph(
       "Minimum Cephe Şartı",
       data.minimumFrontageConditionNote,
-      `Minimum cephe şartı ${data.minimumFrontageCondition === "Evet" ? "bulunmaktadır." : "bulunmamaktadır."}`,
+      `Minimum cephe şartı ${data.minimumFrontageCondition === "Evet" ? verbStyle.bulunmaktadir : verbStyle.bulunmamaktadir}.`,
       includeFallback
     );
     if (paragraph) paragraphs.push(paragraph);
@@ -22536,7 +22696,7 @@ function composeImarPlanningStatusParagraphs(data) {
     const paragraph = composeImarStatusParagraph(
       "18. Madde Uygulaması",
       data.article18AppliedNote,
-      `18. Madde uygulaması ${data.article18Applied === "Evet" ? "yapılmıştır." : "yapılmamıştır."}`,
+      `18. Madde uygulaması ${data.article18Applied === "Evet" ? verbStyle.yapilmistir : verbStyle.yapilmamistir}.`,
       includeFallback
     );
     if (paragraph) paragraphs.push(paragraph);
@@ -22545,7 +22705,7 @@ function composeImarPlanningStatusParagraphs(data) {
     const paragraph = composeImarStatusParagraph(
       "Tevhid Şartı",
       data.tevhidConditionNote,
-      `Tevhid şartı ${data.tevhidCondition === "Evet" ? "bulunmaktadır." : "bulunmamaktadır."}`,
+      `Tevhid şartı ${data.tevhidCondition === "Evet" ? verbStyle.bulunmaktadir : verbStyle.bulunmamaktadir}.`,
       includeFallback
     );
     if (paragraph) paragraphs.push(paragraph);
@@ -22554,7 +22714,9 @@ function composeImarPlanningStatusParagraphs(data) {
     const paragraph = composeImarStatusParagraph(
       "Kentsel Dönüşüm",
       data.urbanTransformationAreaNote,
-      `Taşınmaz ${data.urbanTransformationArea === "Evet" ? "kentsel dönüşüm/yenileme alanında yer almaktadır." : "kentsel dönüşüm/yenileme alanında yer almamaktadır."}`,
+      data.urbanTransformationArea === "Evet"
+        ? urbanTransformationYesVariants[selectVariant("composeImarPlanningStatusParagraphs:urbanTransformation:evet", urbanTransformationYesVariants.length)]
+        : urbanTransformationNoVariants[selectVariant("composeImarPlanningStatusParagraphs:urbanTransformation:hayir", urbanTransformationNoVariants.length)],
       includeFallback
     );
     if (paragraph) paragraphs.push(paragraph);
@@ -22563,7 +22725,7 @@ function composeImarPlanningStatusParagraphs(data) {
     const paragraph = composeImarStatusParagraph(
       "Ruhsat Durumu",
       data.licenseObstacleNote,
-      `Ruhsat almaya engel herhangi bir durum ${data.licenseObstacle === "Evet" ? "bulunmaktadır." : "bulunmamaktadır."}`,
+      `Ruhsat almaya engel herhangi bir durum ${data.licenseObstacle === "Evet" ? verbStyle.bulunmaktadir : verbStyle.bulunmamaktadir}.`,
       includeFallback
     );
     if (paragraph) paragraphs.push(paragraph);

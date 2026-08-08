@@ -4,7 +4,10 @@ const path = require("node:path");
 const vm = require("node:vm");
 
 const appSource = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
-const start = appSource.indexOf("function buildProjectSuitabilityStatusSentence");
+// "const projectSuitabilityStatusVariants" ile baslar ki fonksiyonun artik
+// disaridaki varyant kayit defterine (registerVariantGroup cagrilari dahil)
+// bagimli olan tanimi da yuklensin.
+const start = appSource.indexOf("const projectSuitabilityStatusVariants");
 const end = appSource.indexOf("function buildProjectSuitabilityBuildingReferenceSentence", start);
 assert(start >= 0 && end > start, "Proje uygunluk aciklamasi fonksiyonu bulunamadi.");
 const source = appSource.slice(start, end);
@@ -23,6 +26,11 @@ const context = {
     .replaceAll(".", ""),
   stripProjectSuitabilityRepairSentence: (value) => String(value || "").trim(),
   shouldShowProjectSuitabilityRepair: () => false,
+  // selectVariant burada BİLEREK her zaman 0 (orijinal metin) döner — bu
+  // test durum-dallanma mantığını doğruluyor, varyant SEÇİMİ ayrı olarak
+  // tools/test-variant-selection.js'te test ediliyor.
+  selectVariant: () => 0,
+  registerVariantGroup: () => {},
 };
 vm.runInNewContext(source, context);
 
