@@ -1,5 +1,15 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.376 - 2026-08-09 - Varyant düğmeleri artık ekrandaki metni ANINDA güncelliyor
+
+- Kullanıcı bildirimi: "sağ üstte yer alan orjinal v1 v2 v3 butonlarına bastığımda varyant otomatik gelmiyor, başka bir hücre değiştirdiğimde güncelliyor". Kök neden: çoğu otomatik-üretilen açıklama alanı (Çevresel Özellikler Açıklaması, Ana Gayrimenkul Açıklaması, Değerleme metinleri, Takyidat özeti vb.) `state.fields`'te ÖNBELLEKLENİR ve yalnızca kendi kaynak alanları değiştiğinde çalışan dar-kapsamlı `refresh...FromCurrentFields(changedKey)` fonksiyonlarıyla yeniden üretilir — salt `render()` bu önbelleği YENİLEMİYORDU. Varyant düğmeleri (hem bölüm-bazlı toplu düğmeler hem de modal'daki tekil düğmeler) yalnızca `render()` çağırıyordu, bu yüzden metin görsel olarak eskisi gibi kalıyordu (siz başka bir alanı değiştirip o alanın kendi refresh'ini tetikleyene kadar).
+- `refreshAllVariantDependentExplanationFields()` eklendi — bilinen TÜM önbellekli açıklama alanlarını (daha önce yalnızca "Açıklamalar" sekmesinde render sırasında çalışan 13 fonksiyon + yeni eklenen Çevresel Özellikler Açıklaması ve Ana Gayrimenkul Açıklaması + 4 Değerleme metni refresh'i) zorla yeniden üretir. Gated fonksiyonlara (belirli bir `changedKey` bekleyenler) kendi izleme listelerinden geçerli bir anahtar veriliyor ki boş varsayılanla sessizce atlanmasınlar.
+- Hem `createSectionVariantBar`'daki toplu düğmeler (`applyBulk`) hem `createVariantControlRow`'un modal'daki tekil düğmeleri artık `render()`'dan HEMEN ÖNCE bu fonksiyonu çağırıyor — düğmeye basar basmaz metin ekranda güncelleniyor.
+- `renderSection()`'daki "Açıklamalar" sekmesinin eski 13 satırlık refresh listesi bu ortak fonksiyona taşındı (davranış AYNEN korunuyor, tekrar önlendi).
+- `VARIANT_REGISTRY` değişmedi (**174 grup** — bu davranışsal bir düzeltme, yeni varyant grubu değil).
+- Kod değişikliğinden sonra yerel yedek alındı: `backups/before-variant-refresh-fix_*`.
+- `index.html` cache-buster'ı `20260809-0115`'e yükseltildi. `npm run verify` tamamı geçti.
+
 ## 0.0.375 - 2026-08-09 - Açık Adres tam yazım/kısaltma stili varyantlandı (174 grup)
 
 - Kullanıcı sorusu: "açık adres için varyantlar var mı? eğer yok ise mahalle cadde sokak eklentilerini kısaltabilir yada uzatabilirsin" — `buildOpenAddressText()` (Adres ve Konum bölümü "Açık Adres" paneli, `AcikAdres`/`openAddress` placeholder kaynağı) tamamen sabit formatlıydı ("... Mahallesi, ... Sokak, ... Apartmanı No: X, Kat: Y, D: Z"), hiç varyantlanmamıştı.

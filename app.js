@@ -1559,6 +1559,42 @@ function applyBulkVariantOverrideForSection(sectionId, desiredIndex) {
   });
 }
 
+// Kullanıcı bildirimi (2026-08-09): "orijinal v1 v2 v3 butonlarına
+// bastığımda varyant otomatik gelmiyor, başka bir hücre değiştirdiğimde
+// güncelliyor" — çoğu otomatik-üretilen açıklama alanı (Çevresel Özellikler
+// Açıklaması, Ana Gayrimenkul Açıklaması, Değerleme metinleri vb.)
+// state.fields'te ÖNBELLEKLENİR ve yalnızca KENDİ kaynak alanları
+// değiştiğinde (`refresh...FromCurrentFields(changedKey)` — belirli bir
+// `changedKey` bekleyen dar bir izleme listesi) yeniden üretilir; salt
+// render() bu önbelleği YENİLEMEZ. Bir varyant override'ı değiştirmek de
+// (bulk düğmeler VEYA modal'daki tekil düğmeler) kavramsal olarak "kaynak
+// veri değişti" ile eşdeğer olduğundan, override uygulandıktan HEMEN SONRA
+// (render()'dan ÖNCE) bu fonksiyon TÜM bilinen önbellekli açıklama
+// alanlarını zorla yeniden üretir. Gated fonksiyonlara (Set.has(changedKey)
+// ile kontrol edenler) kendi izleme listelerinden GEÇERLİ bir anahtar
+// veriliyor ki "" (boş) varsayılanla sessizce atlanmasınlar.
+function refreshAllVariantDependentExplanationFields() {
+  refreshEncumbranceSummaryFromCurrentData();
+  refreshLandMinimumParcelAssessment();
+  refreshShareExplanationFromCurrentFields("titleOwnershipKind");
+  refreshPenaltyDecisionExplanationFromCurrentFields("penaltyDecision");
+  refreshStaticSuitabilityExplanationFromCurrentFields("staticSuitability");
+  refreshBuildingInspectionExplanationFromCurrentFields();
+  refreshEkbExplanationFromCurrentFields("hasEkb");
+  refreshBuildingCompletionFromCurrentFields();
+  refreshInsuranceConstructionCostFromCurrentFields("buildingClass");
+  refreshBuildingDepreciationFromCurrentFields();
+  refreshZiraatExplanationSectionsFromCurrentFields();
+  refreshValuationMethodsExplanationFromCurrentFields();
+  refreshForeignCurrencyValuationExplanation();
+  refreshEnvironmentDescriptionFromCurrentFields("environmentRegionType");
+  refreshMainPropertyDescriptionFromCurrentFields("appointmentType");
+  refreshValuationMethodExplanation();
+  refreshValuationSaleabilityExplanation();
+  refreshValuationRentExplanation();
+  refreshPropertyTaxDeclarationExplanation();
+}
+
 function saveState() {
   applySystemDefaults(state);
   applyUserFieldDefaults(state);
@@ -1870,19 +1906,7 @@ function renderSection() {
   }
 
   if (section.id === "explanations") {
-    refreshEncumbranceSummaryFromCurrentData();
-    refreshLandMinimumParcelAssessment();
-    refreshShareExplanationFromCurrentFields("titleOwnershipKind");
-    refreshPenaltyDecisionExplanationFromCurrentFields("penaltyDecision");
-    refreshStaticSuitabilityExplanationFromCurrentFields("staticSuitability");
-    refreshBuildingInspectionExplanationFromCurrentFields();
-    refreshEkbExplanationFromCurrentFields("hasEkb");
-    refreshBuildingCompletionFromCurrentFields();
-    refreshInsuranceConstructionCostFromCurrentFields("buildingClass");
-    refreshBuildingDepreciationFromCurrentFields();
-    refreshZiraatExplanationSectionsFromCurrentFields();
-    refreshValuationMethodsExplanationFromCurrentFields();
-    refreshForeignCurrencyValuationExplanation();
+    refreshAllVariantDependentExplanationFields();
   }
 
   if (section.id === "encumbrance") {
@@ -33290,6 +33314,7 @@ function createSectionVariantBar(section, groups) {
 
   const applyBulk = (desiredIndex) => {
     applyBulkVariantOverrideForSection(section.id, desiredIndex);
+    refreshAllVariantDependentExplanationFields();
     autosave();
     render();
   };
@@ -33394,6 +33419,7 @@ function openVariantControlModal(sectionId = null) {
     const list = document.createElement("div");
     list.className = "variant-control-list";
     groups.forEach((group) => list.append(createVariantControlRow(group, () => {
+      refreshAllVariantDependentExplanationFields();
       render();
       openVariantControlModal(sectionId);
     })));
