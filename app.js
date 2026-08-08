@@ -1492,6 +1492,46 @@ function registerVariantGroup(key, label, count) {
   VARIANT_REGISTRY.push({ key, label, count });
 }
 
+// Bölüm bazlı "Varyant" düğmesi için: her grubun etiketi zaten
+// docs/cumle-envanteri.md'nin konu (Bölüm 1-9) adını içeriyor (ör.
+// "... (İmar Durumu)") — bu, o grubun HANGİ EKRAN SEKMESİNDE gösterileceğini
+// belirlemek için kullanılır. Konu ile ekran sekmesi (section.id) HER ZAMAN
+// bire bir değil (ör. "Proje Uygunluğu" içerik olarak İmar Durumu konusuna
+// girer ama form alanı "documents" sekmesinde render edilir) — bu yüzden bir
+// konu birden fazla sekmeye eşlenebilir (aşağıdaki dizi değerleri).
+const VARIANT_TOPIC_TO_SECTION_IDS = {
+  "Adres/Konum/Çevre": ["address"],
+  "Tapu ve Mülkiyet": ["title"],
+  Takyidat: ["encumbrance"],
+  "İmar Durumu": ["planning", "documents"],
+  "Ana Gayrimenkul": ["building"],
+  "Bağımsız Bölüm": ["unit"],
+  Değerleme: ["valuation"],
+  Emsaller: ["comparables"],
+  "Ziraat/Arsa-Arazi": ["land", "explanations"],
+};
+
+function classifyVariantGroupTopic(label) {
+  const text = String(label || "");
+  if (text.includes("Emsal")) return "Emsaller";
+  if (text.includes("Bağımsız Bölüm") || text.includes("Çok Katlı BB")) return "Bağımsız Bölüm";
+  if (text.includes("Ziraat")) return "Ziraat/Arsa-Arazi";
+  if (text.includes("Takyidat")) return "Takyidat";
+  if (text.includes("İmar Durumu")) return "İmar Durumu";
+  if (text.includes("Ana Gayrimenkul")) return "Ana Gayrimenkul";
+  if (text.includes("Değerleme")) return "Değerleme";
+  if (text.includes("Tapu ve Mülkiyet")) return "Tapu ve Mülkiyet";
+  if (text.includes("Adres") || text.includes("Konum") || text.includes("Çevre")) return "Adres/Konum/Çevre";
+  return null;
+}
+
+function getVariantGroupsForSection(sectionId) {
+  return VARIANT_REGISTRY.filter((group) => {
+    const topic = classifyVariantGroupTopic(group.label);
+    return topic && (VARIANT_TOPIC_TO_SECTION_IDS[topic] || []).includes(sectionId);
+  });
+}
+
 function setVariantOverride(sentenceKey, index) {
   if (!state.fields.variantOverrides) state.fields.variantOverrides = {};
   if (index === null) {
@@ -1793,6 +1833,20 @@ function renderSection() {
   card.innerHTML = `<div class="section-body"></div>`;
 
   const body = card.querySelector(".section-body");
+
+  const sectionVariantGroups = isCurrentUserAdmin() ? getVariantGroupsForSection(section.id) : [];
+  if (sectionVariantGroups.length) {
+    const variantBar = document.createElement("div");
+    variantBar.className = "section-variant-bar";
+    const variantButton = document.createElement("button");
+    variantButton.type = "button";
+    variantButton.className = "secondary-button section-variant-trigger";
+    variantButton.textContent = `Varyant (${sectionVariantGroups.length})`;
+    variantButton.title = "Bu bölümdeki cümle varyantlarını görüntüle/değiştir (yalnızca yönetici görür)";
+    variantButton.addEventListener("click", () => openVariantControlModal(section.id));
+    variantBar.append(variantButton);
+    body.append(variantBar);
+  }
 
   if (section.uploads && section.id !== "case") {
     body.append(createUploadGrid(section.uploads));
@@ -33157,9 +33211,16 @@ function openMissingCriticalFieldsModal() {
 // VARIANT_REGISTRY) — envanterdeki kalan fonksiyonlar koda taşındıkça
 // burada otomatik olarak listeye eklenecek (registerVariantGroup çağrısı
 // yeterli, bu fonksiyonda değişiklik gerekmez).
-function openVariantControlModal() {
+// sectionId verilirse (bölüm başlığındaki "Varyant" düğmesinden çağrılır)
+// yalnızca o ekran sekmesine ait gruplar listelenir; verilmezse (topbar'daki
+// genel "Varyant Kontrolü" düğmesi) TÜM gruplar listelenir — davranış
+// değişmedi, yalnızca opsiyonel bir filtre eklendi.
+function openVariantControlModal(sectionId = null) {
   if (!isCurrentUserAdmin()) return;
   document.querySelector(".modal-overlay")?.remove();
+
+  const groups = sectionId ? getVariantGroupsForSection(sectionId) : VARIANT_REGISTRY;
+  const sectionInfo = sectionId ? sections.find((item) => item.id === sectionId) : null;
 
   const overlay = document.createElement("div");
   overlay.className = "modal-overlay variant-control-overlay";
@@ -33174,7 +33235,9 @@ function openVariantControlModal() {
   head.className = "modal-head";
   const title = document.createElement("h3");
   title.id = "variantControlModalTitle";
-  title.textContent = `Varyant Kontrolü (${VARIANT_REGISTRY.length} grup)`;
+  title.textContent = sectionInfo
+    ? `Varyant Kontrolü — ${sectionInfo.title} (${groups.length} grup)`
+    : `Varyant Kontrolü (${groups.length} grup)`;
   const closeButton = document.createElement("button");
   closeButton.type = "button";
   closeButton.className = "modal-close";
@@ -33195,20 +33258,24 @@ function openVariantControlModal() {
 
   const intro = document.createElement("p");
   intro.className = "variant-control-intro";
-  intro.textContent = "Bu rapor için her cümlenin hangi versiyonunu kullanacağınızı seçin. \"Otomatik\" seçilirse (varsayılan) sistem raporun kimliğinden deterministik olarak seçer. Seçiminiz bu raporla birlikte kaydedilir; standart kullanıcılar bu paneli hiç görmez.";
+  intro.textContent = sectionInfo
+    ? `Bu bölümdeki cümlelerin hangi versiyonunu kullanacağınızı seçin. "Otomatik" seçilirse (varsayılan) sistem raporun kimliğinden deterministik olarak seçer. Tüm bölümleri görmek için topbar'daki "Varyant Kontrolü" düğmesini kullanın.`
+    : "Bu rapor için her cümlenin hangi versiyonunu kullanacağınızı seçin. \"Otomatik\" seçilirse (varsayılan) sistem raporun kimliğinden deterministik olarak seçer. Seçiminiz bu raporla birlikte kaydedilir; standart kullanıcılar bu paneli hiç görmez.";
   body.append(intro);
 
-  if (!VARIANT_REGISTRY.length) {
+  if (!groups.length) {
     const empty = document.createElement("p");
     empty.className = "variant-control-empty";
-    empty.textContent = "Henüz kayıtlı varyant grubu yok.";
+    empty.textContent = sectionInfo
+      ? "Bu bölüm için henüz kayıtlı varyant grubu yok."
+      : "Henüz kayıtlı varyant grubu yok.";
     body.append(empty);
   } else {
     const list = document.createElement("div");
     list.className = "variant-control-list";
-    VARIANT_REGISTRY.forEach((group) => list.append(createVariantControlRow(group, () => {
+    groups.forEach((group) => list.append(createVariantControlRow(group, () => {
       render();
-      openVariantControlModal();
+      openVariantControlModal(sectionId);
     })));
     body.append(list);
   }
@@ -33419,7 +33486,11 @@ function updateStatus() {
 }
 
 missingCriticalTrigger?.addEventListener("click", openMissingCriticalFieldsModal);
-variantControlBtn?.addEventListener("click", openVariantControlModal);
+// Not: openVariantControlModal artik opsiyonel bir sectionId parametresi
+// aliyor (bolum bazli "Varyant" dugmesi icin) — burada dogrudan fonksiyonu
+// event handler olarak vermek click Event'ini sectionId sanardi, bu yuzden
+// sarmalayici bir ok fonksiyonuyla cagriliyor (genel/tum-gruplar modu).
+variantControlBtn?.addEventListener("click", () => openVariantControlModal());
 
 document.querySelector("#saveBtn").addEventListener("click", () => {
   saveState();

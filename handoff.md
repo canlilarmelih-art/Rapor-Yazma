@@ -1,5 +1,19 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.371 - 2026-08-08 - Bölüm bazlı "Varyant" düğmesi (admin-only) eklendi
+
+- Kullanıcı talebi: her paragrafın yanına ayrı Orijinal/V1-V4 düğmesi koymak yerine (paragraf başına genelde 2-20 BAĞIMSIZ varyant grubu birleştiği için — ör. "Çevresel Özellikler Açıklaması" tek başına ~15 grup içeriyor, sabit bir V1-V4 seti anlamsız kombinasyonlar üretirdi), **bölüm başlığı bazında** bir çözüm istendi; mevcut genel "Varyant Kontrolü" (topbar) paneli AYNEN kalacak, EK olarak her ekran sekmesinin en üstünde o bölüme ait grupları filtreleyen küçük bir "Varyant (N)" düğmesi eklendi.
+- `classifyVariantGroupTopic(label)` — her grubun etiketindeki mevcut konu bilgisini (ör. "... (İmar Durumu)") 9 konuya sınıflandırır (Adres/Konum/Çevre, Tapu ve Mülkiyet, Takyidat, İmar Durumu, Ana Gayrimenkul, Bağımsız Bölüm, Değerleme, Emsaller, Ziraat/Arsa-Arazi) — 172 grubun TAMAMI sınıflandırılabiliyor (test ile doğrulanıyor).
+- `VARIANT_TOPIC_TO_SECTION_IDS` — konu → ekran sekmesi (section.id) eşlemesi. Konu ile sekme HER ZAMAN bire bir değil (ör. proje uygunluğu içerik olarak "İmar Durumu" konusuna girer ama form alanı "documents" sekmesinde render edilir) — bu yüzden bazı konular birden fazla sekmeye eşleniyor (İmar Durumu → planning+documents, Ziraat/Arsa-Arazi → land+explanations).
+- `getVariantGroupsForSection(sectionId)` — bir sekmeye ait grupları döner. `openVariantControlModal(sectionId = null)` artık opsiyonel bir filtre parametresi alıyor; `sectionId` verilirse modal başlığı/girişi o bölüme göre değişir ve yalnızca ilgili gruplar listelenir; verilmezse (topbar düğmesi) davranış AYNEN eskisi gibi tüm grupları gösterir.
+- `renderSection()` — her bölümün `.section-body`'sinin en üstüne, o bölüm için en az 1 varyant grubu varsa (ve yalnızca `isCurrentUserAdmin()` true iken) `"Varyant (N)"` düğmesi ekleniyor; standart kullanıcılar bu düğmeyi hiç görmüyor (grup sayısı 0 olan sekmelerde — ör. "Dosya ve Rapor", "Masraf Bilgileri" — düğme hiç render edilmiyor).
+- **Bulunan ve düzeltilen küçük bir regresyon riski**: `openVariantControlModal`'a opsiyonel parametre eklenince, topbar'daki eski `variantControlBtn?.addEventListener("click", openVariantControlModal)` çağrısı click Event nesnesini sectionId sanıp genel düğmeyi yanlışlıkla filtrelerdi — sarmalayıcı ok fonksiyonuyla (`() => openVariantControlModal()`) düzeltildi.
+- Yeni CSS: `.section-variant-bar`/`.section-variant-trigger` (styles.css, `.variant-control-trigger`'ın hemen ardında).
+- Yeni test: `tools/test-variant-selection.js`'e classifyVariantGroupTopic kapsam testi eklendi — kayıt defterindeki TÜM etiketlerin sınıflandırılabildiğini doğrular (yeni bir varyant grubu ileride yanlış/eksik anahtar kelimeyle eklenirse bu test yakalar).
+- **Doğrulama notu**: admin girişi gerçek Firebase şifresi gerektirdiğinden canlı ekranda görsel doğrulama yapılamadı (standart kısıtlama) — `node --check` + `npm run verify` (tam paket) ile doğrulandı.
+- Kod değişikliğinden önce yerel yedek alındı: `backups/before-section-variant-button_*`.
+- `index.html` cache-buster'ları: `app.js?v=20260808-1410`, `styles.css?v=20260808-1410`. `npm run verify` tamamı geçti.
+
 ## 0.0.370 - 2026-08-08 - Dual-project (Webtapu/Belediye) dalı server.js'te implemente edildi
 
 - Önceki turda (0.0.369) belgelenen kapsam dışı konu çözüldü: `buildProjectSuitabilityDescription()`'ın istemcideki "Webtapu Portalı ve Belediye arşivinde ayrı ayrı incelenen mimari proje farklıysa" dalı artık `server.js`'te de TAM olarak implemente edilmiş durumda.

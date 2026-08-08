@@ -155,6 +155,27 @@ function extractFn(source, startMarker, endMarker) {
     assert(label.length > 0, `Grup '${key}' icin okunabilir bir label olmali.`);
   });
   console.log(`registerVariantGroup kayit defteri sanity testi tamam (${registerCalls.length} grup, tekrarsiz anahtar).`);
+
+  // Bölüm bazlı "Varyant" düğmesi (0.0.371): her grup classifyVariantGroupTopic()
+  // ile bir konuya (Bölüm 1-9) sınıflandırılabilmeli, aksi halde o grup HİÇBİR
+  // bölüm düğmesinde görünmez (yalnızca genel/topbar modalda kalır — sessiz bir
+  // kapsam kaybı). Gerçek kaynaktan classifyVariantGroupTopic()'i izole çalıştırıp
+  // yukarıda taranan TÜM etiketlerin sınıflandırılabildiğini doğrular.
+  {
+    const classifyStart = appSource.indexOf("function classifyVariantGroupTopic(");
+    const classifyEnd = appSource.indexOf("\n}", classifyStart) + 2;
+    assert(classifyStart >= 0 && classifyEnd > classifyStart, "classifyVariantGroupTopic bulunamadi.");
+    const classifyContext = {};
+    vm.runInNewContext(appSource.slice(classifyStart, classifyEnd), classifyContext);
+    const unclassified = registerCalls
+      .map((match) => match[2])
+      .filter((label) => !classifyContext.classifyVariantGroupTopic(label));
+    assert.equal(
+      unclassified.length,
+      0,
+      `Su gruplar hicbir bolum konusuna siniflandirilamiyor (classifyVariantGroupTopic'e yeni bir kural eklenmeli): ${unclassified.join(", ")}`
+    );
+  }
 }
 
 // --- 2) Pilot fonksiyon: buildShareExplanation --------------------------

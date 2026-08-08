@@ -6209,6 +6209,18 @@ a:focus-visible,
   white-space: nowrap;
 }
 
+.section-variant-bar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+
+.section-variant-trigger {
+  white-space: nowrap;
+  font-size: 0.85em;
+  padding: 6px 12px;
+}
+
 /* — Alt bileşen yüzeyleri — */
 .subsection,
 .upload-card,
