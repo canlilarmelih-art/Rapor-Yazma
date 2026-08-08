@@ -1,5 +1,16 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.378 - 2026-08-09 - Ziraat Bankası açıklama grupları "Adres ve Konum" sekmesine taşındı
+
+- Kullanıcı bildirimi: "versiyonlara tıkladığımda adres ve konum kısmında yer alan bölümler değişmiyor" — netleştirmede "Ziraat Bankası - Konumu ve Çevresel Özellikleri / Bölgedeki Yapılaşma Durumu / Bölgenin Gelişimine İlişkin Analiz" olduğu ortaya çıktı.
+- Kök neden: 0.0.377'nin TERSİ bir eşleme hatası — bu 3 açıklamanın 9 varyant grubu, etiketlerinde "Ziraat" geçtiği için `classifyVariantGroupTopic()` onları "Ziraat/Arsa-Arazi" konusuna sınıflandırıyordu ve bu konu `VARIANT_TOPIC_TO_SECTION_IDS`'te yanlışlıkla `["land"]` (Arsa Özellikleri sekmesi) ile eşleniyordu. Ama panelleri (`createZiraatExplanationSectionsPanel`) FİİLEN `section.id === "address"` (Adres ve Konum) bloğunda render ediliyor — kullanıcı doğru sekmeden (Adres ve Konum) düğmeye basıyordu ama o sekmenin bulk butonları bu 9 grubu hiç kapsamıyordu.
+- `VARIANT_TOPIC_TO_SECTION_IDS`'teki `"Ziraat/Arsa-Arazi": ["land"]` → `["address"]` olarak düzeltildi (bu topic'in TEK kullanım yeri bu 3 fonksiyon, hepsi "address" sekmesinde gösteriliyor — grep ile doğrulandı).
+- "Açıklamalar" sekmesinden (0.0.377'nin universal fallback'i sayesinde) zaten erişilebiliyordu — bu düzeltme yalnızca "Adres ve Konum" sekmesindeki bulk düğmelerin de bu grupları kapsamasını sağlıyor (kullanıcının aslında beklediği doğal davranış).
+- `VARIANT_REGISTRY` değişmedi (**174 grup** — eşleme düzeltmesi).
+- `tools/test-variant-selection.js`'e regresyon testi eklendi: `getVariantGroupsForSection("address")` artık `buildZiraatLocationEnvironmentalExplanation:nearby` grubunu da içermeli.
+- Kod değişikliğinden sonra yerel yedek alındı: `backups/before-ziraat-section-mapping-fix_*`.
+- `index.html` cache-buster'ı `20260809-0145`'e yükseltildi. `npm run verify` tamamı geçti.
+
 ## 0.0.377 - 2026-08-09 - "Açıklamalar" sekmesi tüm varyant gruplarını gösteren merkezi sekme oldu
 
 - Kullanıcı bildirimi: "açık adres kısmını deniyorum sağ üst versiyonları tıklıyorum ancak herhangi bir değişiklik olmuyor". Kök neden: "Açık Adres" paneli (ve benzer pek çok panel — Sigortaya Esas Değer, Değerleme Özeti, Döviz Bazlı Değerleme, Yıpranma Payı vb.) veri girişi hangi sekmede olursa olsun GÖRSEL OLARAK "Açıklamalar" sekmesinde toplu gösteriliyor (`renderSection()`'daki "explanations" `body.append` listesi). Önceki turda eklenen konu-bazlı eşleme (`VARIANT_TOPIC_TO_SECTION_IDS`) o alanın verisinin girildiği "doğal" sekmeyi yansıtıyordu (Açık Adres → "Adres ve Konum") — ama panelin asıl GÖRÜNDÜĞÜ yer o değildi, kullanıcı yanlış sekmeden düğmeye basıyordu.

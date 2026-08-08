@@ -231,6 +231,15 @@ function extractFn(source, startMarker, endMarker) {
       addressGroups.some((g) => g.key === "buildOpenAddressText:style"),
       "'Açık Adres' grubu 'address' sekmesinde de gorunmeli (dogal veri sekmesi)."
     );
+    // Kullanıcı bildirimi (2026-08-09): Ziraat Bankası'na özel 3 aciklama
+    // (buildZiraatLocationEnvironmentalExplanation/BuildingPattern/
+    // DevelopmentAnalysis) etiketinde "Ziraat" gectigi icin "land" sekmesine
+    // baglanmisti, ama panelleri (createZiraatExplanationSectionsPanel) FIILEN
+    // "address" (Adres ve Konum) sekmesinde render ediliyor.
+    assert(
+      addressGroups.some((g) => g.key === "buildZiraatLocationEnvironmentalExplanation:nearby"),
+      "Ziraat aciklama gruplari 'address' sekmesinde de gorunmeli (panelleri orada render ediliyor)."
+    );
     assert(
       !addressGroups.some((g) => sectionContext.classifyVariantGroupTopic(g.label) === "Emsaller"),
       "'address' sekmesi baska bir konunun (Emsaller) grubunu gostermemeli."

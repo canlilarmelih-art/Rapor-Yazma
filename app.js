@@ -1508,7 +1508,12 @@ const VARIANT_TOPIC_TO_SECTION_IDS = {
   "Bağımsız Bölüm": ["unit"],
   Değerleme: ["valuation"],
   Emsaller: ["comparables"],
-  "Ziraat/Arsa-Arazi": ["land"],
+  // Kullanıcı bildirimi (2026-08-09): bu 3 grup "Ziraat" kelimesi geçtiği
+  // için önce "land" (Arsa Özellikleri) sekmesine bağlanmıştı, ama asıl
+  // GÖRÜNDÜKLERİ panel (createZiraatExplanationSectionsPanel) "address"
+  // (Adres ve Konum) sekmesinde render ediliyor — "İmar Durumu"/"Açık Adres"
+  // ile aynı sınıf hata (konu adı ≠ görüntülendiği sekme).
+  "Ziraat/Arsa-Arazi": ["address"],
 };
 
 function classifyVariantGroupTopic(label) {
