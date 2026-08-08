@@ -10005,11 +10005,18 @@ function composeMainRoomDecorativeSentence(presence = getUnitInteriorPresence())
   const wallGroups = groupDecorativeAreasByValue(areaNames, wallValues);
   if (!floorGroups.length && !wallGroups.length) return "";
   const floorText = floorGroups.length
-    ? `${floorGroups.map((group) => `${formatTurkishList(group.names)} zeminleri ${toLowerText(group.value)} kaplı`).join(", ")} vaziyette`
-    : `${formatTurkishList(areaNames)} bölümlerinde`;
+    ? `${floorGroups.map((group) => `${formatTurkishList(group.names)} zeminleri ${toLowerText(group.value)} kaplı`).join(", ")} ${mainRoomDecorativeFloorTailVariants[selectVariant("composeMainRoomDecorativeSentence:floorTail", mainRoomDecorativeFloorTailVariants.length)]}`
+    : `${formatTurkishList(areaNames)} ${mainRoomDecorativeAreaTailVariants[selectVariant("composeMainRoomDecorativeSentence:areaTail", mainRoomDecorativeAreaTailVariants.length)]}`;
   const wallText = wallGroups.length ? formatDecorativeWallGroups(wallGroups) : "";
-  return [floorText, wallText].filter(Boolean).join(" olup, ") + ".";
+  const joiner = mainRoomDecorativeJoinerVariants[selectVariant("composeMainRoomDecorativeSentence:joiner", mainRoomDecorativeJoinerVariants.length)];
+  return [floorText, wallText].filter(Boolean).join(joiner) + ".";
 }
+const mainRoomDecorativeFloorTailVariants = ["vaziyette", "durumda"];
+const mainRoomDecorativeAreaTailVariants = ["bölümlerinde", "hacimlerinde"];
+const mainRoomDecorativeJoinerVariants = [" olup, ", " olmak üzere, "];
+registerVariantGroup("composeMainRoomDecorativeSentence:floorTail", "Ana Mekân Dekoratif — Zemin Kuyruğu (Bağımsız Bölüm)", mainRoomDecorativeFloorTailVariants.length);
+registerVariantGroup("composeMainRoomDecorativeSentence:areaTail", "Ana Mekân Dekoratif — Bölüm Kuyruğu (Bağımsız Bölüm)", mainRoomDecorativeAreaTailVariants.length);
+registerVariantGroup("composeMainRoomDecorativeSentence:joiner", "Ana Mekân Dekoratif — Bağlaç (Bağımsız Bölüm)", mainRoomDecorativeJoinerVariants.length);
 
 function formatDecorativeWallGroups(groups = []) {
   if (!groups.length) return "";
@@ -10024,18 +10031,39 @@ function formatDecorativeWallGroups(groups = []) {
     .join(", ");
 }
 
+const singleAreaDecorativeBothSameVariants = [
+  (prefix, floor) => `${prefix} zeminler ve duvarlar ${floor} kaplıdır.`,
+  (prefix, floor) => `${prefix} zeminler ve duvarlar ${floor} kaplanmıştır.`,
+];
+const singleAreaDecorativeBothDiffVariants = [
+  (prefix, floor, wall) => `${prefix} zeminler ${floor} kaplı, duvarlar ise ${wall}.`,
+  (prefix, floor, wall) => `${prefix} zeminler ${floor} kaplanmış, duvarlar ise ${wall}.`,
+];
+const singleAreaDecorativeFloorOnlyVariants = [
+  (prefix, floor) => `${prefix} zeminler ${floor} kaplıdır.`,
+  (prefix, floor) => `${prefix} zeminler ${floor} kaplanmıştır.`,
+];
+const singleAreaDecorativeWallOnlyVariants = [
+  (prefix, wall) => `${prefix} duvarlar ${wall}.`,
+];
+registerVariantGroup("composeSingleAreaDecorativeSentence:bothSame", "Tekil Alan Dekoratif — Zemin=Duvar Aynı (Bağımsız Bölüm)", singleAreaDecorativeBothSameVariants.length);
+registerVariantGroup("composeSingleAreaDecorativeSentence:bothDiff", "Tekil Alan Dekoratif — Zemin≠Duvar (Bağımsız Bölüm)", singleAreaDecorativeBothDiffVariants.length);
+registerVariantGroup("composeSingleAreaDecorativeSentence:floorOnly", "Tekil Alan Dekoratif — Yalnız Zemin (Bağımsız Bölüm)", singleAreaDecorativeFloorOnlyVariants.length);
+
 function composeSingleAreaDecorativeSentence(prefix, floorValue, wallValue) {
   const floor = normalizeDecorativeMaterial(floorValue);
   const wall = normalizeDecorativeMaterial(wallValue);
   if (!floor && !wall) return "";
   if (floor && wall && floor === wall) {
-    return `${prefix} zeminler ve duvarlar ${toLowerText(floor)} kaplıdır.`;
+    return singleAreaDecorativeBothSameVariants[selectVariant("composeSingleAreaDecorativeSentence:bothSame", singleAreaDecorativeBothSameVariants.length)](prefix, toLowerText(floor));
   }
   if (floor && wall) {
-    return `${prefix} zeminler ${toLowerText(floor)} kaplı, duvarlar ise ${formatWallMaterialPhrase(wall)}.`;
+    return singleAreaDecorativeBothDiffVariants[selectVariant("composeSingleAreaDecorativeSentence:bothDiff", singleAreaDecorativeBothDiffVariants.length)](prefix, toLowerText(floor), formatWallMaterialPhrase(wall));
   }
-  if (floor) return `${prefix} zeminler ${toLowerText(floor)} kaplıdır.`;
-  return `${prefix} duvarlar ${formatWallMaterialPhrase(wall)}.`;
+  if (floor) {
+    return singleAreaDecorativeFloorOnlyVariants[selectVariant("composeSingleAreaDecorativeSentence:floorOnly", singleAreaDecorativeFloorOnlyVariants.length)](prefix, toLowerText(floor));
+  }
+  return singleAreaDecorativeWallOnlyVariants[0](prefix, formatWallMaterialPhrase(wall));
 }
 
 const bathroomFixtureNoneVariants = [

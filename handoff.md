@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.368 - 2026-08-08 - Cümle varyantı: dekoratif alan clause fonksiyonları koda taşındı (168 grup)
+
+- Bölüm 4/5'te daha önce "paylaşılan yapı-taşı fonksiyon" gerekçesiyle ertelenen kalemlerden `composeMainRoomDecorativeSentence()` (zemin/duvar kuyruğu ifadeleri + bağlaç) ve `composeSingleAreaDecorativeSentence()` (zemin=duvar aynı / zemin≠duvar / yalnız zemin durumları) koda taşındı — grup-birleştirme mantığının kendisi (`formatTurkishList`, `groupDecorativeAreasByValue`) DEĞİŞTİRİLMEDİ, yalnızca sabit bağlaç/kuyruk ifadeleri varyantlandı.
+- `composeUnitTotalAreaClause`/`composeUnitTerraceTotalClause`/`composeUnitTotalAreaTerraceSentence` hâlâ bilinçli olarak ertelenmiş durumda (birden çok üst cümlede paylaşılan düşük seviyeli clause'lar).
+- `VARIANT_REGISTRY` artık **168 grup**.
+- Ek test değişikliği gerekmedi.
+- Kod değişikliğinden sonra yerel yedek alındı: `backups/before-variant-decorative-clauses_*`.
+- `index.html` cache-buster'ı `20260808-1320`'ye yükseltildi. `npm run verify` tamamı geçti.
+
 ## 0.0.367 - 2026-08-08 - Cümle varyantı: proje uygunluk açıklaması sunucu senkronu (kritik düzeltme)
 
 - **Bulunan ve düzeltilen gerçek bug**: `buildProjectSuitabilityStatusSentence()` (app.js, Bölüm 3'te bu oturumun başında varyantlanmıştı) sonucu `buildProjectSuitabilityDescription()` üzerinden `PROJEUYGUNLUKACIKLAMASI`/`PROJECT_SUITABILITY_DESCRIPTION` placeholder'ına gidiyor — ama banka şablonu (.html) export'unda bu placeholder `server.js`'teki `applyServerProtectedPlaceholderTokens` ile SUNUCU TARAFINDA YENİDEN ÜRETİLİYORDU (tahrifatı önlemek için ham alanlardan yeniden hesaplama — bilinçli bir güvenlik tasarımı). Sunucunun `buildServerProjectSuitabilityDescription()`'ı varyant sisteminden HABERSİZDİ ve HER ZAMAN sabit (orijinal/V0) metni üretiyordu — yani banka şablonu export'u ekrandaki (istemci) önizlemeden FARKLI metin gösteriyordu. Bu, önceki oturumda "ayrı bir tur gerektiriyor" diye ertelenmiş, ama meğerse zaten devrede olan gerçek bir tutarsızlıktı.
