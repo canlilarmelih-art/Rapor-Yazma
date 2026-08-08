@@ -3010,11 +3010,20 @@ function formatInsuranceUnitCost(value) {
   return `${value.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL/m²`;
 }
 
+const insuranceConstructionCostExplanationVariants = [
+  (group, cost) => `Ana gayrimenkul yapı sınıfı ${group} olarak seçildiğinden sigortaya esas yapı yaklaşık birim maliyeti ${cost} olarak alınmıştır.`,
+  (group, cost) => `Ana gayrimenkulün yapı sınıfı ${group} olarak belirlendiğinden, sigortaya esas yaklaşık birim inşaat maliyeti ${cost} olarak dikkate alınmıştır.`,
+];
+registerVariantGroup("buildInsuranceConstructionCostExplanation", "Sigortaya Esas Yapı Birim Maliyeti Açıklaması (Değerleme)", insuranceConstructionCostExplanationVariants.length);
+
 function buildInsuranceConstructionCostExplanation() {
   const row = getInsuranceConstructionCostRow();
   if (!row) return "";
   return normalizeReportDescriptionText(
-    `Ana gayrimenkul yapı sınıfı ${row.group} olarak seçildiğinden sigortaya esas yapı yaklaşık birim maliyeti ${formatInsuranceUnitCost(row.unitCost)} olarak alınmıştır.`
+    insuranceConstructionCostExplanationVariants[selectVariant("buildInsuranceConstructionCostExplanation", insuranceConstructionCostExplanationVariants.length)](
+      row.group,
+      formatInsuranceUnitCost(row.unitCost)
+    )
   );
 }
 
@@ -3911,6 +3920,13 @@ function parseValuationMultiValue(value) {
     .filter(Boolean);
 }
 
+const valuationMethodExplanationVariants = [
+  (joined, approachWord) => `Konu gayrimenkulün değerlemesinde ${joined} ${approachWord} kullanılmıştır. Konumuz taşınmazın değerlendirmesinde civardaki alım satım rayiç değerleri ve günümüz ekonomik koşulları, taşınmazın konumu, yaşı, fiziki özellikleri, emsallerdeki pazarlık payları, arz/talep dengesi gibi dışsal etkenler dikkate alınmıştır.`,
+  (joined, approachWord) => `Değerlemeye konu gayrimenkulün değer tespitinde ${joined} ${approachWord} esas alınmıştır. Söz konusu taşınmazın değerlendirilmesinde bölgedeki alım-satım rayiç bedelleri ile güncel ekonomik koşullar, taşınmazın konumu, yaşı, fiziksel nitelikleri, emsallerdeki pazarlık payları ve arz-talep dengesi gibi dışsal faktörler göz önünde bulundurulmuştur.`,
+  (joined, approachWord) => `Rapor konusu mülkün değerlemesinde ${joined} ${approachWord} uygulanmıştır. Mülkün değerlendirilme sürecinde civar alım-satım rayiçleri ve mevcut ekonomik konjonktür, taşınmazın konumu, yaşı, fiziki durumu, emsallerdeki pazarlık marjları ve arz-talep dengesi gibi harici unsurlar dikkate alınmıştır.`,
+];
+registerVariantGroup("buildValuationMethodExplanation", "Değerleme Yöntemi Açıklaması Girişi (Değerleme)", valuationMethodExplanationVariants.length);
+
 function buildValuationMethodExplanation() {
   const approaches = parseValuationMultiValue(state.fields.valuationMethod)
     .map((method) => method.replace(/\s*Yöntemi$/i, "").trim())
@@ -3920,18 +3936,24 @@ function buildValuationMethodExplanation() {
     ? approaches[0]
     : `${approaches.slice(0, -1).join(", ")} ve ${approaches[approaches.length - 1]}`;
   const approachWord = approaches.length > 1 ? "yaklaşımları" : "yaklaşımı";
-  const baseText = `Konu gayrimenkulün değerlemesinde ${joined} ${approachWord} kullanılmıştır. Konumuz taşınmazın değerlendirmesinde civardaki alım satım rayiç değerleri ve günümüz ekonomik koşulları, taşınmazın konumu, yaşı, fiziki özellikleri, emsallerdeki pazarlık payları, arz/talep dengesi gibi dışsal etkenler dikkate alınmıştır.`;
+  const baseText = valuationMethodExplanationVariants[selectVariant("buildValuationMethodExplanation", valuationMethodExplanationVariants.length)](joined, approachWord);
   const externalAppraisalText = buildValuationExternalAppraisalText();
   const usageNatureDifferenceText = buildValuationUsageNatureDifferenceText();
   const constructionLevelText = buildValuationConstructionLevelRiskText();
   return [baseText, externalAppraisalText, usageNatureDifferenceText, constructionLevelText].filter(Boolean).join("\n\n");
 }
 
+const valuationExternalAppraisalTextVariants = [
+  (reason, institution) => `${reason} sebebi ile dışarıdan ekspertiz yapılmış, taşınmazın alan ve mimari açıdan proje ile uygunluğu kontrol edilememiş olup proje ile uygun olduğu kabul edilmiştir. Taşınmazın, bağımsız bölüm bazında projesinde planlanan katta ve konumda olduğu ${institution} incelenen projesinden tespit edilmiştir. Proje üzerinden hesaplanan alan dikkate alınmış, iç hacim özellikleri vasat kabulüyle değerleme yapılmıştır.`,
+  (reason, institution) => `${reason} nedeniyle taşınmazın içi dışarıdan değerlendirilmiş, alan ve mimari açıdan proje ile uygunluğu yerinde kontrol edilememiş, projeyle uyumlu olduğu kabul edilmiştir. Taşınmazın bağımsız bölüm bazında projesinde öngörülen kat ve konumda yer aldığı, ${institution} incelenen proje üzerinden tespit edilmiştir. Değerleme, proje üzerinden hesaplanan alan esas alınarak ve iç hacim özellikleri vasat kabulüyle gerçekleştirilmiştir.`,
+];
+registerVariantGroup("buildValuationExternalAppraisalText", "Dışarıdan Ekspertiz Ek Paragrafı (Değerleme)", valuationExternalAppraisalTextVariants.length);
+
 function buildValuationExternalAppraisalText() {
   if (!isExternalAppointmentType(state.fields.appointmentType)) return "";
   const reason = getExternalAppraisalReasonText() || "Taşınmazın içi görülememesi";
   const projectInstitution = state.fields.projectInstitution || "ilgili kurumda";
-  return `${reason} sebebi ile dışarıdan ekspertiz yapılmış, taşınmazın alan ve mimari açıdan proje ile uygunluğu kontrol edilememiş olup proje ile uygun olduğu kabul edilmiştir. Taşınmazın, bağımsız bölüm bazında projesinde planlanan katta ve konumda olduğu ${projectInstitution} incelenen projesinden tespit edilmiştir. Proje üzerinden hesaplanan alan dikkate alınmış, iç hacim özellikleri vasat kabulüyle değerleme yapılmıştır.`;
+  return valuationExternalAppraisalTextVariants[selectVariant("buildValuationExternalAppraisalText", valuationExternalAppraisalTextVariants.length)](reason, projectInstitution);
 }
 
 function getExternalAppraisalReasonText() {
@@ -3943,6 +3965,12 @@ function getExternalAppraisalReasonText() {
 function isAgriculturalUsageNature(value) {
   return agriculturalUsageNatureOptions.includes(String(value || "").trim());
 }
+
+const agriculturalUsageNatureDifferenceVariants = [
+  (legalNature, currentNature) => `Değerlemeye konu taşınmaz ${legalNature} nitelikli olup mevcut durumda ${currentNature} niteliklidir. Değerleme esnasında yasal durum değeri olarak ham toprak değeri, mevcut durum değeri olarak ise ham toprak + ağaç değeri takdir edilmiştir.`,
+  (legalNature, currentNature) => `Değerlemeye konu taşınmaz ${legalNature} niteliğinde olup, mevcut durumda ${currentNature} niteliği taşımaktadır. Değerleme çalışmasında yasal durum değeri ham toprak değeri üzerinden, mevcut durum değeri ise ham toprak ile ağaç değerinin toplamı üzerinden takdir edilmiştir.`,
+];
+registerVariantGroup("buildAgriculturalUsageNatureDifferenceText", "Tarımsal Nitelik Farkı Açıklaması (Değerleme)", agriculturalUsageNatureDifferenceVariants.length);
 
 function buildAgriculturalUsageNatureDifferenceText() {
   const legalNature = String(state.fields.legalUsageNature || "").trim();
@@ -3956,8 +3984,24 @@ function buildAgriculturalUsageNatureDifferenceText() {
   ) {
     return "";
   }
-  return `Değerlemeye konu taşınmaz ${legalNature} nitelikli olup mevcut durumda ${currentNature} niteliklidir. Değerleme esnasında yasal durum değeri olarak ham toprak değeri, mevcut durum değeri olarak ise ham toprak + ağaç değeri takdir edilmiştir.`;
+  return agriculturalUsageNatureDifferenceVariants[selectVariant("buildAgriculturalUsageNatureDifferenceText", agriculturalUsageNatureDifferenceVariants.length)](legalNature, currentNature);
 }
+
+const usageNatureDifferenceIntroVariants = [
+  (legalNature, currentNature) => `Ekspertize konu taşınmaz Tapu Kayıtlarına göre "${legalNature}" Nitelikli olup, Mevcut Kullanımı "${currentNature}" nitelikli olduğu gözlemlenmiştir.`,
+  (legalNature, currentNature) => `Ekspertize konu taşınmazın Tapu Kayıtlarına göre niteliği "${legalNature}" olup, mevcut kullanımının "${currentNature}" nitelikte olduğu tespit edilmiştir.`,
+];
+const usageNatureDifferenceNoGapVariants = [
+  (legalNature, currentNature) => `Bölge genelinde yapılan incelemelerde ${legalNature} nitelikli gayrimenkuller ile ${currentNature} nitelikli gayrimenkuller arasında m2 birim değeri olarak herhangi bir farklılık bulunmadığı gözlemlenmiştir. Bu sebeple yasal ve mevcut m2 birim değeri arasında herhangi bir farklılık bulunmamaktadır.`,
+  (legalNature, currentNature) => `Bölge genelinde yapılan incelemelerde, ${legalNature} nitelikli gayrimenkuller ile ${currentNature} nitelikli gayrimenkuller arasında m² birim değeri bakımından bir farklılığa rastlanmamıştır. Bu nedenle yasal ve mevcut m² birim değerleri arasında herhangi bir fark bulunmamaktadır.`,
+];
+const usageNatureDifferenceGapVariants = [
+  (legalNature, currentNature) => `Yasal durum değeri tespitinde bölgedeki ${legalNature} nitelikli gayrimenkullerin araştırması yapılmış olup, Mevcut durum değeri tespitinde ${currentNature} nitelikli gayrimenkullerin araştırması yapılmıştır.`,
+  (legalNature, currentNature) => `Yasal durum değerinin tespitinde bölgedeki ${legalNature} nitelikli gayrimenkuller araştırılmış, mevcut durum değerinin tespitinde ise ${currentNature} nitelikli gayrimenkuller araştırılmıştır.`,
+];
+registerVariantGroup("buildValuationUsageNatureDifferenceText:intro", "Kullanım Niteliği Farkı — Giriş Cümlesi (Değerleme)", usageNatureDifferenceIntroVariants.length);
+registerVariantGroup("buildValuationUsageNatureDifferenceText:noGap", "Kullanım Niteliği Farkı — Fark Yok (Değerleme)", usageNatureDifferenceNoGapVariants.length);
+registerVariantGroup("buildValuationUsageNatureDifferenceText:gap", "Kullanım Niteliği Farkı — Fark Var (Değerleme)", usageNatureDifferenceGapVariants.length);
 
 function buildValuationUsageNatureDifferenceText() {
   const agriculturalDifference = buildAgriculturalUsageNatureDifferenceText();
@@ -3967,16 +4011,22 @@ function buildValuationUsageNatureDifferenceText() {
   const currentNature = state.fields.currentUsageNature || "mevcut kullanım";
   const legalUnitValue = parseValuationNumber(state.fields.legalValueUnit);
   const currentUnitValue = parseValuationNumber(state.fields.currentValueUnit);
-  const intro = `Ekspertize konu taşınmaz Tapu Kayıtlarına göre "${legalNature}" Nitelikli olup, Mevcut Kullanımı "${currentNature}" nitelikli olduğu gözlemlenmiştir.`;
+  const intro = usageNatureDifferenceIntroVariants[selectVariant("buildValuationUsageNatureDifferenceText:intro", usageNatureDifferenceIntroVariants.length)](legalNature, currentNature);
   if (!Number.isFinite(legalUnitValue) || legalUnitValue <= 0 || !Number.isFinite(currentUnitValue) || currentUnitValue <= 0) {
     return intro;
   }
   const differenceRate = Math.abs(currentUnitValue - legalUnitValue) / legalUnitValue;
   if (differenceRate < 0.1) {
-    return `${intro} Bölge genelinde yapılan incelemelerde ${legalNature} nitelikli gayrimenkuller ile ${currentNature} nitelikli gayrimenkuller arasında m2 birim değeri olarak herhangi bir farklılık bulunmadığı gözlemlenmiştir. Bu sebeple yasal ve mevcut m2 birim değeri arasında herhangi bir farklılık bulunmamaktadır.`;
+    return `${intro} ${usageNatureDifferenceNoGapVariants[selectVariant("buildValuationUsageNatureDifferenceText:noGap", usageNatureDifferenceNoGapVariants.length)](legalNature, currentNature)}`;
   }
-  return `${intro} Yasal durum değeri tespitinde bölgedeki ${legalNature} nitelikli gayrimenkullerin araştırması yapılmış olup, Mevcut durum değeri tespitinde ${currentNature} nitelikli gayrimenkullerin araştırması yapılmıştır.`;
+  return `${intro} ${usageNatureDifferenceGapVariants[selectVariant("buildValuationUsageNatureDifferenceText:gap", usageNatureDifferenceGapVariants.length)](legalNature, currentNature)}`;
 }
+
+const valuationConstructionLevelRiskVariants = [
+  (level) => `Konu taşınmaz hali hazırda %${level} inşaat seviyeli olup, herhangi bir nedenle inşaatın yasal prosedürlere uygun tamamlanıp tamamlanamayacağı, yapı ruhsatı süresinin yeterli olup olmayacağı, yenileme ruhsatı ve inşaatın tamamlanması durumunda iskan belgesinin alınıp alınamayacağı rapor tarihi itibari ile öngörülememekte olup, inşaatın herhangi bir nedenle tamamlanamama riski bulunmaktadır.`,
+  (level) => `Konu taşınmaz hâlihazırda %${level} inşaat seviyesinde olup, inşaatın yasal prosedürlere uygun şekilde tamamlanıp tamamlanamayacağı, mevcut yapı ruhsatı süresinin yeterli olup olmayacağı, yenileme ruhsatı gerekip gerekmeyeceği ve inşaat tamamlandığında iskân belgesinin alınıp alınamayacağı rapor tarihi itibarıyla öngörülememektedir; bu nedenle inşaatın herhangi bir sebeple tamamlanamama riski bulunmaktadır.`,
+];
+registerVariantGroup("buildValuationConstructionLevelRiskText", "İnşaat Seviyesi Riski Açıklaması (Değerleme)", valuationConstructionLevelRiskVariants.length);
 
 function buildValuationConstructionLevelRiskText() {
   const level = parseConstructionLevelPercentForExplanation(state.fields.unitConstructionLevel);
@@ -3985,7 +4035,7 @@ function buildValuationConstructionLevelRiskText() {
     minimumFractionDigits: Number.isInteger(level) ? 0 : 2,
     maximumFractionDigits: 2,
   });
-  return `Konu taşınmaz hali hazırda %${formattedLevel} inşaat seviyeli olup, herhangi bir nedenle inşaatın yasal prosedürlere uygun tamamlanıp tamamlanamayacağı, yapı ruhsatı süresinin yeterli olup olmayacağı, yenileme ruhsatı ve inşaatın tamamlanması durumunda iskan belgesinin alınıp alınamayacağı rapor tarihi itibari ile öngörülememekte olup, inşaatın herhangi bir nedenle tamamlanamama riski bulunmaktadır.`;
+  return valuationConstructionLevelRiskVariants[selectVariant("buildValuationConstructionLevelRiskText", valuationConstructionLevelRiskVariants.length)](formattedLevel);
 }
 
 function parseConstructionLevelPercentForExplanation(value) {
@@ -4092,7 +4142,11 @@ function createValuationMinimumParcelAssessmentPanel() {
   return card;
 }
 
-const tarlaSaleabilityRiskExplanation = "Tarla / Bahçe vasıflı gayrimenkullerin herhangi bir sebeple satışa arz edilmesi halinde; tarım girdi maliyetlerinin çok yüksek olması nedeniyle cazip bir yatırım olarak görülmemesi, bu vasıftaki gayrimenkullerin alım satım piyasasının gelişmemiş olması, ancak aynı yerleşim biriminde yaşayan ya da bitişik komşu parsel maliklerince tercih edilmesi nedeniyle sınırlı tercih ve talebin söz konusu olması, bu tür gayrimenkullerin icra ve bunun gibi yollarla satışında ülkemizdeki örf - adet ve geleneklerden gelen nedenlerle kimsenin satışa iştirak etmemesi, bu vasıfta gayrimenkullerin doğal tesirlerden (kar-buz, don, dolu, haşerat, vb.) direk etkilenmesi, verimliliklerinin doğadaki gelişmelere bağlı olması, bahçe vasıflı gayrimenkuller üzerindeki ağaç vb. unsurların her türlü etki ve tehlikelere (tahrip edilme, hırsızlık, kesim, vb.) maruz kalmaları gibi olumsuz tüm faktörlerin dikkate alınması gerekmektedir.";
+const tarlaSaleabilityRiskExplanationVariants = [
+  "Tarla / Bahçe vasıflı gayrimenkullerin herhangi bir sebeple satışa arz edilmesi halinde; tarım girdi maliyetlerinin çok yüksek olması nedeniyle cazip bir yatırım olarak görülmemesi, bu vasıftaki gayrimenkullerin alım satım piyasasının gelişmemiş olması, ancak aynı yerleşim biriminde yaşayan ya da bitişik komşu parsel maliklerince tercih edilmesi nedeniyle sınırlı tercih ve talebin söz konusu olması, bu tür gayrimenkullerin icra ve bunun gibi yollarla satışında ülkemizdeki örf - adet ve geleneklerden gelen nedenlerle kimsenin satışa iştirak etmemesi, bu vasıfta gayrimenkullerin doğal tesirlerden (kar-buz, don, dolu, haşerat, vb.) direk etkilenmesi, verimliliklerinin doğadaki gelişmelere bağlı olması, bahçe vasıflı gayrimenkuller üzerindeki ağaç vb. unsurların her türlü etki ve tehlikelere (tahrip edilme, hırsızlık, kesim, vb.) maruz kalmaları gibi olumsuz tüm faktörlerin dikkate alınması gerekmektedir.",
+  "Tarla / Bahçe niteliğindeki gayrimenkullerin herhangi bir nedenle satışa çıkarılması durumunda; tarımsal girdi maliyetlerinin oldukça yüksek olması sebebiyle cazip bir yatırım aracı olarak değerlendirilmemesi, bu nitelikteki taşınmazlara yönelik alım-satım piyasasının yeterince gelişmemiş olması, buna karşın aynı yerleşim yerinde ikamet eden ya da komşu parsel maliklerince tercih edilmesi nedeniyle talebin sınırlı kalması, bu tür taşınmazların icra yoluyla veya benzer yöntemlerle satışında ülkemizdeki örf, adet ve geleneksel yaklaşımlar nedeniyle satışa katılımın düşük olması, söz konusu taşınmazların doğal etkenlerden (kar-buz, don, dolu, haşere vb.) doğrudan etkilenmesi, verim düzeyinin doğa koşullarındaki değişimlere bağlı olması, bahçe vasıflı taşınmazlar üzerinde bulunan ağaç ve benzeri unsurların tahribat, hırsızlık, kesim gibi çeşitli risklere açık olması gibi olumsuz etkenlerin tamamının göz önünde bulundurulması gerekmektedir.",
+];
+registerVariantGroup("buildTarlaValuationRiskExplanation", "Tarla/Bahçe Değerleme Riski Açıklaması (Değerleme)", tarlaSaleabilityRiskExplanationVariants.length);
 
 // Varyantlar docs/cumle-envanteri.md Bölüm 6'da belgelendi ("Satılabilir"
 // en sık görülen durum — HER raporun büyük çoğunluğunda birebir aynı çıkıyordu).
@@ -4157,7 +4211,8 @@ function createValuationSaleabilityExplanationPanel() {
 }
 
 function buildTarlaValuationRiskExplanation() {
-  return isTarlaOwnershipType() ? tarlaSaleabilityRiskExplanation : "";
+  if (!isTarlaOwnershipType()) return "";
+  return tarlaSaleabilityRiskExplanationVariants[selectVariant("buildTarlaValuationRiskExplanation", tarlaSaleabilityRiskExplanationVariants.length)];
 }
 
 function createTarlaValuationRiskExplanationPanel() {
@@ -4191,20 +4246,44 @@ function createTarlaValuationRiskExplanationPanel() {
   return card;
 }
 
+const valuationRentEqualVariants = [
+  (rent) => `Ekspertize konu taşınmazın yasal ve mevcut kira değerinin ${rent} TL/ay olacağı görüş ve kanaatindeyiz.`,
+  (rent) => `Değerlemeye konu gayrimenkulün yasal ve mevcut kira bedelinin ${rent} TL/ay olacağı kanaatine varılmıştır.`,
+];
+const valuationRentDiffVariants = [
+  (legal, current) => `Ekspertize konu taşınmazın yasal kira değerinin ${legal} TL/ay, mevcut kira değerinin ${current} TL/ay olacağı görüş ve kanaatindeyiz.`,
+  (legal, current) => `Değerlemeye konu gayrimenkulün yasal kira bedelinin ${legal} TL/ay, mevcut kira bedelinin ise ${current} TL/ay olacağı değerlendirilmiştir.`,
+];
+const valuationRentLegalOnlyVariants = [
+  (legal) => `Ekspertize konu taşınmazın yasal kira değerinin ${legal} TL/ay olacağı görüş ve kanaatindeyiz.`,
+  (legal) => `Değerlemeye konu gayrimenkulün yasal kira bedelinin ${legal} TL/ay olacağı kanaatine varılmıştır.`,
+];
+const valuationRentCurrentOnlyVariants = [
+  (current) => `Ekspertize konu taşınmazın mevcut kira değerinin ${current} TL/ay olacağı görüş ve kanaatindeyiz.`,
+  (current) => `Değerlemeye konu gayrimenkulün mevcut kira bedelinin ${current} TL/ay olacağı kanaatine varılmıştır.`,
+];
+registerVariantGroup("buildValuationRentExplanation:equal", "Kira Açıklaması — Yasal=Mevcut (Değerleme)", valuationRentEqualVariants.length);
+registerVariantGroup("buildValuationRentExplanation:diff", "Kira Açıklaması — Yasal≠Mevcut (Değerleme)", valuationRentDiffVariants.length);
+registerVariantGroup("buildValuationRentExplanation:legalOnly", "Kira Açıklaması — Yalnız Yasal (Değerleme)", valuationRentLegalOnlyVariants.length);
+registerVariantGroup("buildValuationRentExplanation:currentOnly", "Kira Açıklaması — Yalnız Mevcut (Değerleme)", valuationRentCurrentOnlyVariants.length);
+
 function buildValuationRentExplanation() {
   const legalRent = parseValuationNumber(state.fields.legalRent);
   const currentRent = parseValuationNumber(state.fields.currentRent);
   if (!Number.isFinite(legalRent) && !Number.isFinite(currentRent)) return "";
   if (Number.isFinite(legalRent) && Number.isFinite(currentRent) && areValuationAreasEqual(legalRent, currentRent)) {
-    return `Ekspertize konu taşınmazın yasal ve mevcut kira değerinin ${formatValuationRentExplanationMoney(legalRent)} TL/ay olacağı görüş ve kanaatindeyiz.`;
+    return valuationRentEqualVariants[selectVariant("buildValuationRentExplanation:equal", valuationRentEqualVariants.length)](formatValuationRentExplanationMoney(legalRent));
   }
   if (Number.isFinite(legalRent) && Number.isFinite(currentRent)) {
-    return `Ekspertize konu taşınmazın yasal kira değerinin ${formatValuationRentExplanationMoney(legalRent)} TL/ay, mevcut kira değerinin ${formatValuationRentExplanationMoney(currentRent)} TL/ay olacağı görüş ve kanaatindeyiz.`;
+    return valuationRentDiffVariants[selectVariant("buildValuationRentExplanation:diff", valuationRentDiffVariants.length)](
+      formatValuationRentExplanationMoney(legalRent),
+      formatValuationRentExplanationMoney(currentRent)
+    );
   }
   if (Number.isFinite(legalRent)) {
-    return `Ekspertize konu taşınmazın yasal kira değerinin ${formatValuationRentExplanationMoney(legalRent)} TL/ay olacağı görüş ve kanaatindeyiz.`;
+    return valuationRentLegalOnlyVariants[selectVariant("buildValuationRentExplanation:legalOnly", valuationRentLegalOnlyVariants.length)](formatValuationRentExplanationMoney(legalRent));
   }
-  return `Ekspertize konu taşınmazın mevcut kira değerinin ${formatValuationRentExplanationMoney(currentRent)} TL/ay olacağı görüş ve kanaatindeyiz.`;
+  return valuationRentCurrentOnlyVariants[selectVariant("buildValuationRentExplanation:currentOnly", valuationRentCurrentOnlyVariants.length)](formatValuationRentExplanationMoney(currentRent));
 }
 
 function formatValuationRentExplanationMoney(value) {
@@ -4294,6 +4373,12 @@ function getPropertyTaxDeclarationYearText() {
   return yearMatch ? yearMatch[1] : String(new Date().getFullYear());
 }
 
+const propertyTaxDeclarationValueVariants = [
+  (datePrefix, municipality, year, value) => `${datePrefix}${municipality} Emlak Servisinden alınan bilgiye göre değerlemeye konu taşınmazın ${year} Yılı Emlak Beyan Değeri ${value} TL'dir.`,
+  (datePrefix, municipality, year, value) => `${datePrefix}${municipality} Emlak Servisinden edinilen bilgiye göre, söz konusu gayrimenkulün ${year} yılına ait emlak beyan değeri ${value} TL olarak tespit edilmiştir.`,
+];
+registerVariantGroup("buildPropertyTaxDeclarationValueExplanation", "Emlak Beyan Değeri Açıklaması (Değerleme)", propertyTaxDeclarationValueVariants.length);
+
 function buildPropertyTaxDeclarationValueExplanation() {
   if (!isPropertyTaxDeclarationEnabled()) return "";
   const value = parseValuationNumber(state.fields.propertyTaxDeclarationValue);
@@ -4302,13 +4387,25 @@ function buildPropertyTaxDeclarationValueExplanation() {
   const datePrefix = dateText ? `${dateText} tarihinde ` : "";
   const municipality = getPropertyTaxDeclarationMunicipalityText();
   const declarationYear = getPropertyTaxDeclarationYearText();
-  return `${datePrefix}${municipality} Emlak Servisinden alınan bilgiye göre değerlemeye konu taşınmazın ${declarationYear} Yılı Emlak Beyan Değeri ${formatValuationRentExplanationMoney(value)} TL'dir.`;
+  return propertyTaxDeclarationValueVariants[selectVariant("buildPropertyTaxDeclarationValueExplanation", propertyTaxDeclarationValueVariants.length)](
+    datePrefix,
+    municipality,
+    declarationYear,
+    formatValuationRentExplanationMoney(value)
+  );
 }
+
+const propertyTaxDeclarationUnavailableVariants = [
+  (municipality) => `${municipality} Emlak Servisinde yapılan incelemelerde taşınmaza ait rayiç bedel hakkında bilgilerin malik dışındaki 3. Kişilere verilmediği beyan edilmiştir.`,
+  (municipality) => `${municipality} Emlak Servisi nezdinde yapılan araştırmada, taşınmazın rayiç bedeline ilişkin bilgilerin malik dışındaki üçüncü kişilerle paylaşılmadığı belirtilmiştir.`,
+  (municipality) => `${municipality} Emlak Servisinden yapılan sorgulamada, gayrimenkulün rayiç değerine dair bilgilerin yalnızca malike açıklandığı, üçüncü kişilere verilmediği ifade edilmiştir.`,
+];
+registerVariantGroup("buildPropertyTaxDeclarationUnavailableExplanation", "Emlak Beyan Değeri — Bilgi Alınamadı (Değerleme)", propertyTaxDeclarationUnavailableVariants.length);
 
 function buildPropertyTaxDeclarationUnavailableExplanation() {
   if (isPropertyTaxDeclarationEnabled()) return "";
   const municipality = getPropertyTaxDeclarationMunicipalityText();
-  return `${municipality} Emlak Servisinde yapılan incelemelerde taşınmaza ait rayiç bedel hakkında bilgilerin malik dışındaki 3. Kişilere verilmediği beyan edilmiştir.`;
+  return propertyTaxDeclarationUnavailableVariants[selectVariant("buildPropertyTaxDeclarationUnavailableExplanation", propertyTaxDeclarationUnavailableVariants.length)](municipality);
 }
 
 const propertyTaxDeclarationExplanationFallback = "Emlak beyan değeri girildiğinde açıklama otomatik oluşacaktır.";

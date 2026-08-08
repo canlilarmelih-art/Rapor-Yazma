@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.363 - 2026-08-08 - Cümle varyantı: Bölüm 6 (Değerleme) büyük ölçüde koda taşındı (140 grup)
+
+- Koda taşınanlar: `buildValuationMethodExplanation` (⭐⭐ giriş paragrafı), `buildValuationExternalAppraisalText`, `buildAgriculturalUsageNatureDifferenceText`, `buildValuationUsageNatureDifferenceText` (giriş/fark-yok/fark-var), `buildValuationConstructionLevelRiskText`, `buildValuationRentExplanation` (yasal=mevcut/farklı/yalnız yasal/yalnız mevcut), `buildPropertyTaxDeclarationValueExplanation`, `buildPropertyTaxDeclarationUnavailableExplanation`, `buildInsuranceConstructionCostExplanation`, `buildTarlaValuationRiskExplanation` (Tarla/Bahçe riski, tamamen sabit uzun paragraf — 2 tam-metin varyantı). `buildValuationSaleabilityExplanation` zaten önceki bir pilotta tamamlanmıştı.
+- **Bilinçli olarak ERTELENMEDİ** — Bölüm 6 artık TAM sayılabilir; yalnızca `buildForeignCurrencyValuationExplanation` (doküman gereği "veri, üslup değil" gerekçesiyle kalıcı olarak varyantlanmıyor) hariç.
+- `VARIANT_REGISTRY` artık **140 grup**.
+- 2 mevcut test dosyası güncellendi: `test-tarla-usage-nature-difference.js` (gerçek/mock'lanmamış `selectVariant` ile çalıştığı fark edildi — extraction aralığı `agriculturalUsageNatureOptions`'tan başlayıp gerçek `selectVariant`/`registerVariantGroup` tanımlarını da kapsıyor; assert'ler artık V0/V1 arasında ortak içerik unsurlarını kontrol ediyor, literal V0 metnini değil). `test-tarla-saleability-explanation.js` zaten regex tabanlı olduğundan değişiklik gerekmedi.
+- Kod değişikliğinden sonra yerel yedek alındı: `backups/before-variant-section6-code_*`.
+- `index.html` cache-buster'ı `20260808-1210`'a yükseltildi. `npm run verify` tamamı geçti.
+
 ## 0.0.362 - 2026-08-08 - Cümle varyantı: Bölüm 5 (Bağımsız Bölüm İç Özellikleri) büyük ölçüde koda taşındı (125 grup)
 
 - Koda taşınanlar: `composeVerticalUnitDescriptionIntro`, `composeExternalUnitInspectionSentence` (sabit, değişkensiz), `composeUnitShopFrontageDepthSentence` (cephe+derinlik/yalnız cephe/yalnız derinlik), `composeHorizontalUnitDescriptionIntro` (kat bileşimi cümlesi), `composeUnitLandSharePhrase` (alan hesabıyla/yalnız oran), `composeSingleUnitFloorInteriorParagraph` (⭐⭐, en sık görülen durum — 6 alt-varyant grubu: alan+hacim/yalnız alan cümlesi, tek/çift alan öneki, yasal≠mevcut, yalnız hacim), `composeMultiUnitFloorInteriorSentence` (aynı desenin çok katlı hali, 6 grup), `composeUnitTerraceSentence` (not metni + yasal=mevcut/yasal≠mevcut), `composeUnitViewSentence`, `composeUnitHeatingSentence`, `composeUnitConstructionLevelSentence`, `composeBathroomFixtureSentence` (yok/mevcut liste/kalan eksikler), `composeDoorsWindowsSentence` (eksik montaj kısmı), `composeKitchenCabinetCounterSentence` (yok/yalnız dolap/yalnız tezgah/ikisi de var).
