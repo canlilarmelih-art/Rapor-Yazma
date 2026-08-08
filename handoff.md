@@ -1,5 +1,15 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.374 - 2026-08-08 - Ana arterden otomatik ulaşım tarifi cümlesi varyantlandı (173 grup)
+
+- Kullanıcı sorusu: "Ulaşım Tarifi tüm varyantlarda aynı mı geliyor?" — cevap: o alan (`transport`) serbest metin kutusu olduğundan (kullanıcı/`createTransportNearbyComposer` panelinden elle oluşturuluyor) zaten varyant sistemi kapsamı dışında, doğru davranış. Ama kullanıcı doğru bir eksik yakaladı: haritadan **"Ulaşım ana arteri" seçildiğinde `transport` alanına otomatik yazılan** `buildTransportDirectionText(road)` — 3 cümlelik ("...ana arterlerinden X üzerinden Y istikametine ilerlenir. Yaklaşık Z metre sonra ... W güzergahına ulaşılır. ... taşınmaz W üzerinde yer almaktadır.") — tamamen sabitti, hiç varyantlanmamıştı.
+- `transportDirectionVariants` (4 tam-cümle varyantı) eklendi, `buildTransportDirectionText` bunlardan `selectVariant("buildTransportDirectionText", ...)` ile seçim yapıyor.
+- `classifyVariantGroupTopic` etiketi "(Adres/Konum/Çevre)" içerdiğinden yeni grup otomatik olarak "Adres ve Konum" sekmesinin bölüm-bazlı Varyant düğmesinde de görünüyor — ek eşleme kodu gerekmedi.
+- `VARIANT_REGISTRY` artık **173 grup**.
+- Ek test değişikliği gerekmedi (dedike bir test dosyası yoktu).
+- Kod değişikliğinden sonra yerel yedek alındı: `backups/before-transport-direction-variant_*`.
+- `index.html` cache-buster'ı `20260808-1450`'ye yükseltildi. `npm run verify` tamamı geçti.
+
 ## 0.0.373 - 2026-08-08 - En sık görülen 2-varyantlı gruplar 4 varyanta çıkarıldı
 
 - Kullanıcı geri bildirimi: "bazı bölümler 2 varyant sadece onları niye çeşitlendirmedik?" — cevap: kapsam/zaman önceliklendirmesi (172 grubun tamamına 4-5 varyant yazmak yerine, önce tüm envanteri koda taşımaya odaklanıldı). Kullanıcı "en sık görülenleri önce yap" seçeneğini onayladı.

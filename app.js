@@ -25240,12 +25240,25 @@ function updateTransportFromMainArtery(road, options = {}) {
   setFieldFromSource("nearbyTransport", "transport", text, options);
 }
 
+// Varyantlar: kullanıcı talebi (2026-08-08) — "ulaşım ana arteri seçildiğinde
+// gelen otomatik cümle de varyantlanmalı" (Ulaşım Tarifi alanı bizzat serbest
+// metin olduğundan varyant sistemi dışında kalıyordu, ama HARİTADAN OTOMATİK
+// ÜRETİLEN bu üç cümlelik kalıp — her ana arter seçiminde birebir aynı
+// çıkıyordu — gerçek bir BDDK-risk kaynağıydı).
+const transportDirectionVariants = [
+  (roadSuffix, direction, distance, street) => `Ekspertize konu taşınmaza ulaşım için bölgenin ana arterlerinden ${roadSuffix} üzerinden ${direction} istikametine ilerlenir. Yaklaşık ${distance} metre sonra taşınmazın bulunduğu ${street} güzergahına ulaşılır. Ekspertize konu taşınmaz ${street} üzerinde yer almaktadır.`,
+  (roadSuffix, direction, distance, street) => `Taşınmaza ulaşım, bölgenin ana arterlerinden ${roadSuffix} üzerinden ${direction} istikametine ilerlenerek sağlanır. Yaklaşık ${distance} metre sonra ${street} güzergâhına ulaşılmaktadır. Değerlemeye konu taşınmaz ${street} üzerinde yer almaktadır.`,
+  (roadSuffix, direction, distance, street) => `Bölgenin ana arterlerinden ${roadSuffix} üzerinden ${direction} yönünde ilerlendiğinde, yaklaşık ${distance} metre sonra taşınmazın bulunduğu ${street} güzergâhına varılmaktadır. Söz konusu taşınmaz ${street} üzerinde konumludur.`,
+  (roadSuffix, direction, distance, street) => `Taşınmaza erişim, ana arterlerden ${roadSuffix} üzerinden ${direction} istikametine hareket edilerek gerçekleştirilir; yaklaşık ${distance} metre sonra ${street} güzergâhına ulaşılır. Rapor konusu gayrimenkul ${street} üzerinde bulunmaktadır.`,
+];
+registerVariantGroup("buildTransportDirectionText", "Ana Arterden Otomatik Ulaşım Tarifi (Adres/Konum/Çevre)", transportDirectionVariants.length);
+
 function buildTransportDirectionText(road) {
   const street = cleanupStreetName(state.fields.street || "taşınmazın bulunduğu sokak");
   const distance = Math.max(50, Math.round((road.distance || 0) / 10) * 10);
   const direction = getDirectionTextFromRoad(road);
   const roadSuffix = road.name.match(/caddesi|cadde|bulvarı|bulvar|sokak|sokağı/i) ? road.name : `${road.name} güzergahı`;
-  return `Ekspertize konu taşınmaza ulaşım için bölgenin ana arterlerinden ${roadSuffix} üzerinden ${direction} istikametine ilerlenir. Yaklaşık ${distance} metre sonra taşınmazın bulunduğu ${street} güzergahına ulaşılır. Ekspertize konu taşınmaz ${street} üzerinde yer almaktadır.`;
+  return transportDirectionVariants[selectVariant("buildTransportDirectionText", transportDirectionVariants.length)](roadSuffix, direction, distance, street);
 }
 
 function getDirectionTextFromRoad(road) {
