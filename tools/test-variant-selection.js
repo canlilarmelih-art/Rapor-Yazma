@@ -199,6 +199,44 @@ function extractFn(source, startMarker, endMarker) {
       `Su gruplar hicbir bolum konusuna siniflandirilamiyor (classifyVariantGroupTopic'e yeni bir kural eklenmeli): ${unclassified.join(", ")}`
     );
   }
+
+  // "Açıklamalar" sekmesi merkezi gözden geçirme ekranı (0.0.377):
+  // kullanıcı bildirimi — "Açık Adres" gibi pek çok otomatik-üretilen panel
+  // asıl "Açıklamalar" sekmesinde görüntüleniyor, veri girişi hangi sekmede
+  // olursa olsun. getVariantGroupsForSection("explanations") TÜM
+  // sınıflandırılmış grupları döndürmeli (metnin fiilen göründüğü yer),
+  // "address" gibi doğal bir sekme ise yalnızca kendi konusunu görmeli.
+  {
+    const classifyStart2 = appSource.indexOf("function classifyVariantGroupTopic(");
+    const classifyEnd2 = appSource.indexOf("\n}", classifyStart2) + 2;
+    const registryStart = appSource.indexOf("const VARIANT_TOPIC_TO_SECTION_IDS");
+    const registryEnd = appSource.indexOf("\nfunction getVariantGroupsForSection", registryStart);
+    const fnStart = appSource.indexOf("function getVariantGroupsForSection");
+    const fnEnd = appSource.indexOf("\n}", fnStart) + 2;
+    assert(registryStart >= 0 && registryEnd > registryStart, "VARIANT_TOPIC_TO_SECTION_IDS bulunamadi.");
+    assert(fnStart >= 0 && fnEnd > fnStart, "getVariantGroupsForSection bulunamadi.");
+    const sectionContext = { VARIANT_REGISTRY: registerCalls.map((match) => ({ key: match[1], label: match[2], count: 2 })) };
+    vm.createContext(sectionContext);
+    vm.runInContext(appSource.slice(classifyStart2, classifyEnd2), sectionContext);
+    vm.runInContext(appSource.slice(registryStart, registryEnd), sectionContext);
+    vm.runInContext(appSource.slice(fnStart, fnEnd), sectionContext);
+    const explanationsGroups = sectionContext.getVariantGroupsForSection("explanations");
+    assert.equal(
+      explanationsGroups.length,
+      registerCalls.length,
+      `"Açıklamalar" sekmesi TÜM siniflandirilmis gruplari gostermeli (beklenen ${registerCalls.length}, bulunan ${explanationsGroups.length}).`
+    );
+    const addressGroups = sectionContext.getVariantGroupsForSection("address");
+    assert(
+      addressGroups.some((g) => g.key === "buildOpenAddressText:style"),
+      "'Açık Adres' grubu 'address' sekmesinde de gorunmeli (dogal veri sekmesi)."
+    );
+    assert(
+      !addressGroups.some((g) => sectionContext.classifyVariantGroupTopic(g.label) === "Emsaller"),
+      "'address' sekmesi baska bir konunun (Emsaller) grubunu gostermemeli."
+    );
+    console.log('"Açıklamalar" merkezi gozden gecirme sekmesi + dogal sekme filtresi testi tamam.');
+  }
 }
 
 // --- 2) Pilot fonksiyon: buildShareExplanation --------------------------

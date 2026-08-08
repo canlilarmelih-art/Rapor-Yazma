@@ -1508,7 +1508,7 @@ const VARIANT_TOPIC_TO_SECTION_IDS = {
   "Bağımsız Bölüm": ["unit"],
   Değerleme: ["valuation"],
   Emsaller: ["comparables"],
-  "Ziraat/Arsa-Arazi": ["land", "explanations"],
+  "Ziraat/Arsa-Arazi": ["land"],
 };
 
 function classifyVariantGroupTopic(label) {
@@ -1525,10 +1525,25 @@ function classifyVariantGroupTopic(label) {
   return null;
 }
 
+// Kullanıcı bildirimi (2026-08-09): "açık adres kısmında sağ üst
+// versiyonları tıklıyorum ancak herhangi bir değişiklik olmuyor" — kök
+// neden: "Açık Adres" gibi pek çok otomatik-üretilen açıklama PANELİ, veri
+// giriş alanları hangi sekmede olursa olsun, GÖRSEL OLARAK "Açıklamalar"
+// sekmesinde toplu gösteriliyor (bkz. renderSection()'daki "explanations"
+// body.append listesi — createOpenAddressPanel, createInsuranceConstructionCostPanel,
+// createValuationSummaryPanel vb. hepsi orada). Konu-bazlı eşleme
+// (VARIANT_TOPIC_TO_SECTION_IDS) o alanın VERİSİNİN girildiği "doğal"
+// sekmeyi yansıtıyordu, panelin asıl GÖRÜNDÜĞÜ yeri değil — kullanıcı "Adres
+// ve Konum" sekmesinden düğmeye basıyordu ama "Açık Adres" paneli orada
+// hiç görünmüyordu. Düzeltme: "Açıklamalar" sekmesi HER konudan grupları
+// gösterir (metnin fiilen göründüğü merkezi bir "gözden geçirme" sekmesi
+// olduğundan) — diğer sekmeler yine yalnızca kendi "doğal" konularını görür.
 function getVariantGroupsForSection(sectionId) {
   return VARIANT_REGISTRY.filter((group) => {
     const topic = classifyVariantGroupTopic(group.label);
-    return topic && (VARIANT_TOPIC_TO_SECTION_IDS[topic] || []).includes(sectionId);
+    if (!topic) return false;
+    if (sectionId === "explanations") return true;
+    return (VARIANT_TOPIC_TO_SECTION_IDS[topic] || []).includes(sectionId);
   });
 }
 

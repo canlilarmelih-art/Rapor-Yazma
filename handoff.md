@@ -1,5 +1,15 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.377 - 2026-08-09 - "Açıklamalar" sekmesi tüm varyant gruplarını gösteren merkezi sekme oldu
+
+- Kullanıcı bildirimi: "açık adres kısmını deniyorum sağ üst versiyonları tıklıyorum ancak herhangi bir değişiklik olmuyor". Kök neden: "Açık Adres" paneli (ve benzer pek çok panel — Sigortaya Esas Değer, Değerleme Özeti, Döviz Bazlı Değerleme, Yıpranma Payı vb.) veri girişi hangi sekmede olursa olsun GÖRSEL OLARAK "Açıklamalar" sekmesinde toplu gösteriliyor (`renderSection()`'daki "explanations" `body.append` listesi). Önceki turda eklenen konu-bazlı eşleme (`VARIANT_TOPIC_TO_SECTION_IDS`) o alanın verisinin girildiği "doğal" sekmeyi yansıtıyordu (Açık Adres → "Adres ve Konum") — ama panelin asıl GÖRÜNDÜĞÜ yer o değildi, kullanıcı yanlış sekmeden düğmeye basıyordu.
+- `getVariantGroupsForSection(sectionId)` artık `sectionId === "explanations"` için TÜM sınıflandırılmış grupları döndürüyor (metnin fiilen göründüğü merkezi "gözden geçirme" sekmesi); diğer sekmeler (address, title, valuation vb.) yine yalnızca kendi "doğal" konularını gösteriyor — davranış değişmedi, yalnızca "Açıklamalar" sekmesi kapsamı genişledi.
+- `VARIANT_TOPIC_TO_SECTION_IDS`'teki "Ziraat/Arsa-Arazi": ["land", "explanations"] artık gereksiz hale gelen "explanations" ekinden temizlendi (fonksiyon zaten evrensel olarak ekliyor).
+- `VARIANT_REGISTRY` değişmedi (**174 grup** — davranışsal düzeltme).
+- Yeni test: `tools/test-variant-selection.js`'e "Açıklamalar" sekmesinin TÜM 174 grubu döndürdüğünü VE "address" gibi doğal bir sekmenin hem kendi konusunu (Açık Adres) hem de başka konuları (Emsaller) DOĞRU filtrelediğini doğrulayan blok eklendi.
+- Kod değişikliğinden sonra yerel yedek alındı: `backups/before-explanations-tab-variant-fix_*`.
+- `index.html` cache-buster'ı `20260809-0130`'a yükseltildi. `npm run verify` tamamı geçti.
+
 ## 0.0.376 - 2026-08-09 - Varyant düğmeleri artık ekrandaki metni ANINDA güncelliyor
 
 - Kullanıcı bildirimi: "sağ üstte yer alan orjinal v1 v2 v3 butonlarına bastığımda varyant otomatik gelmiyor, başka bir hücre değiştirdiğimde güncelliyor". Kök neden: çoğu otomatik-üretilen açıklama alanı (Çevresel Özellikler Açıklaması, Ana Gayrimenkul Açıklaması, Değerleme metinleri, Takyidat özeti vb.) `state.fields`'te ÖNBELLEKLENİR ve yalnızca kendi kaynak alanları değiştiğinde çalışan dar-kapsamlı `refresh...FromCurrentFields(changedKey)` fonksiyonlarıyla yeniden üretilir — salt `render()` bu önbelleği YENİLEMİYORDU. Varyant düğmeleri (hem bölüm-bazlı toplu düğmeler hem de modal'daki tekil düğmeler) yalnızca `render()` çağırıyordu, bu yüzden metin görsel olarak eskisi gibi kalıyordu (siz başka bir alanı değiştirip o alanın kendi refresh'ini tetikleyene kadar).
