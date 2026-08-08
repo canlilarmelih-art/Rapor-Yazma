@@ -1193,6 +1193,14 @@
 
   // Bu küçük ham alan paketi sadece banka şablonu oluşturulurken gönderilir.
   // Form etkileşimleri, otomatik kayıt ve önizleme tamamen yerelde kalır.
+  //
+  // variantSeed/variantOverrides: sunucunun (server.js, buildServerProjectSuitabilityDescription)
+  // buildProjectSuitabilityStatusSentence() ile AYNI cümle-varyantını seçebilmesi
+  // için eklendi (bkz. docs/cumle-envanteri.md, Bölüm 3 — daha önce ertelenmiş
+  // server senkronu). Yalnızca kalıcı reportId varsa gönderilir; oturum-içi
+  // rastgele variantSeed (state.variantSeed, henüz kaydedilmemiş rapor) sunucuya
+  // hiç yollanmaz — sunucu bu durumda güvenli varsayılan olarak orijinal (index 0)
+  // metni üretir (bkz. server.js selectVariantServer yorumu).
   function buildServerProtectedPlaceholderInput() {
     const fields = state.fields || {};
     return {
@@ -1202,6 +1210,8 @@
       projectSuitabilityStatus: fields.projectSuitabilityStatus ?? "",
       projectConformity: fields.projectConformity ?? "",
       projectSuitabilitySimpleRepair: fields.projectSuitabilitySimpleRepair ?? "",
+      variantSeed: state.reportId || "",
+      variantOverrides: fields.variantOverrides && typeof fields.variantOverrides === "object" ? fields.variantOverrides : {},
     };
   }
 

@@ -2816,43 +2816,175 @@ function buildServerBuildingFootprintAndEntranceExplanation(input) {
   return sentences.join(" ");
 }
 
+// Cumle-varyanti mekanizmasi (istemci: app.js "VARYANT SEÇİM mekanizması")
+// sunucuda TEKRAR UYGULANIYOR ki korumali placeholder (BINA_OTURUMU_VE_
+// GIRIS_ACIKLAMASI/PROJECT_SUITABILITY_DESCRIPTION) istemcinin o rapor icin
+// secmis oldugu varyantla AYNI metni uretsin — aksi halde sunucu HER ZAMAN
+// index 0'i (orijinal metni) dondurur ve banka sablonu export'unda goruntu
+// ekrandaki (istemci) onizlemeyle UYUSMAZ. Hash algoritmasi app.js'teki
+// hashVariantSeedText/getAutoVariantIndex ile BİREBİR AYNI olmali — biri
+// degisirse digeri de guncellenmeli (bkz. tools/test-server-template-rendering.js
+// "varyant senkronu" bolumu).
+function hashVariantSeedTextServer(text) {
+  let hash = 2166136261;
+  const value = String(text || "");
+  for (let i = 0; i < value.length; i++) {
+    hash ^= value.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+// seed bos ise (rapor henuz kaydedilmemis/reportId yok) DAIMA index 0
+// (orijinal metin) dondurulur — istemcinin rastgele oturum-ici variantSeed
+// yedegi sunucuya hic gonderilmez (kalici olmadigindan senkron edilemez);
+// bu, "rapor henuz kaydedilmeden export edilirse orijinal metin gorunur"
+// seklinde guvenli ve deterministik bir varsayilan saglar.
+function selectVariantServer(seed, overrides, sentenceKey, variantCount) {
+  if (!Number.isInteger(variantCount) || variantCount <= 1) return 0;
+  const override = overrides?.[sentenceKey];
+  if (Number.isInteger(override) && override >= 0 && override < variantCount) return override;
+  if (!seed) return 0;
+  const hash = hashVariantSeedTextServer(`${seed}::${sentenceKey}`);
+  return hash % variantCount;
+}
+
+function foldTurkishServer(value) {
+  return String(value || "")
+    .toLocaleUpperCase("tr")
+    .replace(/İ/g, "I")
+    .replace(/Ş/g, "S")
+    .replace(/Ğ/g, "G")
+    .replace(/Ü/g, "U")
+    .replace(/Ö/g, "O")
+    .replace(/Ç/g, "C")
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "");
+}
+
+// AŞAĞIDAKİ VARYANT METİNLERİ app.js'teki projectSuitabilityStatusVariants /
+// projectSuitabilityRepairVariants ile BİREBİR AYNI TUTULMALI (ayrı
+// çalışma zamanı/modül oldukları için elle senkron edilir — bkz. yukarıdaki
+// yorum). tools/test-server-template-rendering.js bu iki listenin
+// birbirinden kopmadığını otomatik doğrular.
+const serverProjectSuitabilityStatusVariants = {
+  UYGUNDUR: [
+    (lead) => `${lead}Ekspertize konu bağımsız bölüm kat, kattaki konum, alan ve mimari olarak projesine uygundur.`,
+    (lead) => `${lead}Değerlemeye konu bağımsız bölüm; kat, kattaki konumu, alanı ve mimarisi itibarıyla onaylı projesine uygun bulunmuştur.`,
+    (lead) => `${lead}Söz konusu bağımsız bölümün kat, konum, alan ve mimari özellikleri onaylı projeyle uyumludur.`,
+    (lead) => `${lead}Değerlemeye konu bağımsız bölüm kat, konumu, alanı ve mimarisi bakımından onaylı projeye uygun bulunmuştur.`,
+    (lead) => `${lead}Söz konusu bağımsız bölüm; kat, kattaki konum, alan ve mimari özellikleri itibarıyla projesine uygun olduğu tespit edilmiştir.`,
+  ],
+  "BLOK BAZINDA KONUM OLARAK UYGUN DEGILDIR": [
+    (lead) => `${lead}Ekspertize konu taşınmaz blok bazında projesine uygun değildir.`,
+    (lead) => `${lead}Değerlemeye konu gayrimenkul, blok bazında incelendiğinde projesine uygun bulunmamıştır.`,
+    (lead) => `${lead}Söz konusu taşınmaz blok bazında incelendiğinde projesiyle uyumsuz bulunmuştur.`,
+    (lead) => `${lead}Rapor konusu gayrimenkul, blok bazında projesine uygun olmadığı tespit edilmiştir.`,
+    (lead) => `${lead}Mülk, blok konumu itibarıyla onaylı projeyle örtüşmemektedir.`,
+  ],
+  "MIMARI OLARAK UYGUN DEGILDIR": [
+    (lead) => `${lead}Ekspertize konu bağımsız bölüm vaziyet planına göre blok bazında konum, kat, kattaki konum ve kullanım alanı olarak projesine uygun olup, mimari olarak projesine uygun değildir.`,
+    (lead) => `${lead}Değerlemeye konu bağımsız bölüm, vaziyet planı esas alındığında blok, kat, kattaki konum ve kullanım alanı bakımından projesiyle uyumlu olup, yalnızca mimari açıdan projesine uygun bulunmamıştır.`,
+    (lead) => `${lead}Söz konusu bağımsız bölüm, vaziyet planına göre blok, kat, kattaki konum ve kullanım alanı bakımından projesine uygun olup, yalnızca mimari yönden farklılık göstermektedir.`,
+    (lead) => `${lead}Rapor konusu bağımsız bölüm blok, kat, konum ve kullanım alanı itibarıyla projeyle örtüşmekte, mimari açıdan uygunsuzluk tespit edilmiştir.`,
+    (lead) => `${lead}Mülk; blok, kat, konum ve kullanım alanı bakımından projesine uygun olmakla birlikte, mimari yönden uyumsuzluk bulunmaktadır.`,
+  ],
+  "KULLANIM ALANI OLARAK UYGUN DEGILDIR": [
+    (lead) => `${lead}Ekspertize konu bağımsız bölüm vaziyet planına göre blok bazında konum, kat, kattaki konum ve mimari olarak projesine uygun olup, kullanım alanı olarak projesine uygun değildir.`,
+    (lead) => `${lead}Değerlemeye konu bağımsız bölüm vaziyet planı esas alındığında blok, kat ve mimari açıdan projesiyle örtüşmekte, ancak kullanım alanı bakımından projeden farklılık göstermektedir.`,
+    (lead) => `${lead}Söz konusu bağımsız bölüm blok, kat ve mimari açıdan projesiyle uyumlu olup, kullanım alanı bakımından farklılık göstermektedir.`,
+    (lead) => `${lead}Rapor konusu bağımsız bölüm; blok, kat, konum ve mimari özellikleri itibarıyla projeye uygun olup, kullanım alanında uyumsuzluk tespit edilmiştir.`,
+    (lead) => `${lead}Mülk blok, kat ve mimari bakımdan projesiyle örtüşmekte, kullanım alanı açısından farklılık taşımaktadır.`,
+  ],
+  "KULLANIM ALANI VE MIMARI OLARAK UYGUN DEGILDIR": [
+    (lead) => `${lead}Ekspertize konu bağımsız bölüm vaziyet planına göre blok bazında konum, kat ve kattaki konum olarak projesine uygun olup, kullanım alanı ve mimari olarak projesine uygun değildir.`,
+    (lead) => `${lead}Değerlemeye konu bağımsız bölüm, vaziyet planına göre blok, kat ve kattaki konum bakımından projesine uygun olmakla birlikte, kullanım alanı ve mimari açıdan projeyle uyumsuzluk göstermektedir.`,
+    (lead) => `${lead}Söz konusu bağımsız bölüm blok, kat ve konum bakımından projesine uygun olup, kullanım alanı ve mimari açıdan farklılık göstermektedir.`,
+    (lead) => `${lead}Rapor konusu bağımsız bölüm; blok, kat ve kattaki konum itibarıyla projeyle uyumlu olup, kullanım alanı ile mimari yönden uygunsuzluk tespit edilmiştir.`,
+    (lead) => `${lead}Mülk, blok, kat ve konum bakımından projesine uygun olmakla birlikte, kullanım alanı ve mimari açıdan uyumsuzluk taşımaktadır.`,
+  ],
+  "PROJEYE UYGUNLUK TESPIT EDILMEMISTIR": [
+    (lead) => `${lead}Ekspertize konu bağımsız bölümün konum tespiti dışarıdan yapılmış olup kat, alan ve mimari olarak uygunluk tespit edilememiştir.`,
+    (lead) => `${lead}Değerlemeye konu bağımsız bölümün konum tespiti dışarıdan gerçekleştirilmiş olup, kat, alan ve mimari açıdan projeye uygunluk belirlenememiştir.`,
+    (lead) => `${lead}Söz konusu bağımsız bölümün konumu dışarıdan tespit edilmiş olup, kat, alan ve mimari uygunluk belirlenememiştir.`,
+    (lead) => `${lead}Rapor konusu bağımsız bölümün yeri dışarıdan incelenmiş, kat, alan ve mimari açıdan uygunluk tespiti yapılamamıştır.`,
+    (lead) => `${lead}Mülkün konumu dışarıdan değerlendirilmiş olup, kat, alan ve mimari uygunluğu belirlenememiştir.`,
+  ],
+  TRAMPA: [
+    (lead) => `${lead}ekspertize konu taşınmaz vaziyet planına göre blok bazında konum, kat, kattaki konum ve kullanım alanı olarak projesine uygun değildir.`,
+    (lead) => `${lead}değerlemeye konu taşınmaz, vaziyet planına göre blok bazında konum, kat, kattaki konum ve kullanım alanı bakımından projesine uygun değildir.`,
+    (lead) => `${lead}söz konusu taşınmaz vaziyet planına göre blok, kat, konum ve kullanım alanı bakımından projesine uygun değildir.`,
+    (lead) => `${lead}rapor konusu gayrimenkul vaziyet planına göre blok, kat, konum ve kullanım alanı yönünden projeyle uyumsuzdur.`,
+    (lead) => `${lead}mülk, vaziyet planı esas alındığında blok, kat, konum ve kullanım alanı bakımından projesine aykırıdır.`,
+  ],
+  "TRAMPA VE AYNA SIMETRISI": [
+    (lead) => `${lead}ekspertize konu taşınmaz kattaki konum olarak projesine uygun değildir.`,
+    (lead) => `${lead}değerlemeye konu taşınmaz, kattaki konumu itibarıyla projesine uygun bulunmamıştır.`,
+    (lead) => `${lead}söz konusu taşınmaz kattaki konumu bakımından projesine uygun değildir.`,
+    (lead) => `${lead}rapor konusu gayrimenkul, kattaki konumu itibarıyla projeyle örtüşmemektedir.`,
+    (lead) => `${lead}mülk, kattaki konumu açısından onaylı projeye aykırıdır.`,
+  ],
+  "AYNA SIMETRISI (KONUM ETKILENMIYOR)": [
+    (lead) => `${lead}yapılan ruhsata aykırı imalat taşınmazın konumunu etkilememektedir.`,
+    (lead) => `${lead}gerçekleştirilen ruhsata aykırı imalatın taşınmazın konumu üzerinde herhangi bir etkisi bulunmamaktadır.`,
+    (lead) => `${lead}gerçekleştirilen ruhsata aykırı imalatın taşınmazın konumuna herhangi bir etkisi yoktur.`,
+    (lead) => `${lead}yapılan ruhsata aykırı imalat, gayrimenkulün konumunu değiştirmemektedir.`,
+    (lead) => `${lead}söz konusu ruhsata aykırı imalat, mülkün konumu üzerinde etki oluşturmamaktadır.`,
+  ],
+};
+const serverProjectSuitabilityRepairVariants = [
+  (repair) => `Basit bir tadilat ile ${repair === "Evet" ? "düzeltilebilir" : "düzeltilemez"} niteliktedir.`,
+  (repair) => `Basit bir tadilat uygulanarak ${repair === "Evet" ? "düzeltilebilir" : "düzeltilemez"} durumdadır.`,
+  (repair) => `Küçük çaplı bir tadilat ile ${repair === "Evet" ? "giderilebilir" : "giderilemez"} durumdadır.`,
+  (repair) => `Basit onarımla ${repair === "Evet" ? "düzeltilmesi mümkündür" : "düzeltilmesi mümkün değildir"}.`,
+];
+
 function buildServerProjectSuitabilityDescription(input) {
   const status = serverTemplateRuleText(input?.projectSuitabilityStatus);
-  const statusKey = normalizeServerTemplateTokenName(status);
+  // İstemcideki projectSuitabilityStatusKey(value) = foldTurkish(...).replace(/\./g, "").trim()
+  // ile BİREBİR AYNI (boşluklar KORUNUR — sözlük anahtarları boşluklu).
+  const statusKey = foldTurkishServer(status).replace(/\./g, "").trim();
   const note = serverTemplateRuleText(input?.projectConformity);
-  const simpleRepair = normalizeServerTemplateTokenName(input?.projectSuitabilitySimpleRepair) === "EVET";
+  // İstemcideki normalizeYesNoChoice(value) ile BİREBİR AYNI: "Evet"/"Hayır"
+  // dönüyor, tanınmayan değerde "" (repair notu hiç eklenmez).
+  const repairFolded = foldTurkishServer(String(input?.projectSuitabilitySimpleRepair || "").trim());
+  const repair = /^(EVET|VAR|YES|TRUE|1)$/.test(repairFolded) ? "Evet" : /^(HAYIR|YOK|NO|FALSE|0)$/.test(repairFolded) ? "Hayır" : "";
+  // İstemcideki shouldShowProjectSuitabilityRepair(value) ile BİREBİR AYNI.
   const repairEligible = new Set([
-    "MIMARIOLARAKUYGUNDEGILDIR",
-    "KULLANIMALANIOLARAKUYGUNDEGILDIR",
-    "KULLANIMALANIVEMIMARIOLARAKUYGUNDEGILDIR",
+    "MIMARI OLARAK UYGUN DEGILDIR",
+    "KULLANIM ALANI OLARAK UYGUN DEGILDIR",
+    "KULLANIM ALANI VE MIMARI OLARAK UYGUN DEGILDIR",
   ]);
-  const sentences = [];
+  // İstemcideki buildProjectSuitabilityStatusSentence'daki acceptsConformityNote
+  // listesiyle BİREBİR AYNI (repairEligible'dan FARKLI — ayrıca "BLOK BAZINDA..."
+  // da not eklemeye uygundur, ama tadilat notu almaz).
+  const acceptsConformityNote = new Set([
+    "BLOK BAZINDA KONUM OLARAK UYGUN DEGILDIR",
+    "MIMARI OLARAK UYGUN DEGILDIR",
+    "KULLANIM ALANI OLARAK UYGUN DEGILDIR",
+    "KULLANIM ALANI VE MIMARI OLARAK UYGUN DEGILDIR",
+  ]);
+  const seed = String(input?.variantSeed || "").trim();
+  const overrides = input?.variantOverrides && typeof input.variantOverrides === "object" ? input.variantOverrides : null;
 
-  switch (statusKey) {
-    case "":
-    case "UYGUNDUR":
-      sentences.push("Ekspertize konu bağımsız bölüm kat, kattaki konum, alan ve mimari olarak projesine uygundur.");
-      break;
-    case "BLOKBAZINDAKONUMOLARAKUYGUNDEGILDIR":
-      sentences.push("Ekspertize konu taşınmaz blok bazında projesine uygun değildir.");
-      break;
-    case "MIMARIOLARAKUYGUNDEGILDIR":
-      sentences.push("Ekspertize konu bağımsız bölüm vaziyet planına göre blok bazında konum, kat, kattaki konum ve kullanım alanı olarak projesine uygun olup, mimari olarak projesine uygun değildir.");
-      break;
-    case "KULLANIMALANIOLARAKUYGUNDEGILDIR":
-      sentences.push("Ekspertize konu bağımsız bölüm vaziyet planına göre blok bazında konum, kat, kattaki konum ve mimari olarak projesine uygun olup, kullanım alanı olarak projesine uygun değildir.");
-      break;
-    case "KULLANIMALANIVEMIMARIOLARAKUYGUNDEGILDIR":
-      sentences.push("Ekspertize konu bağımsız bölüm vaziyet planına göre blok bazında konum, kat ve kattaki konum olarak projesine uygun olup, kullanım alanı ve mimari olarak projesine uygun değildir.");
-      break;
-    case "PROJEYEUYGUNLUKTESPITEDILMEMISTIR":
-    case "PROJEYEUYGUNLUKTESPITEDILEMEMISTIR":
-      return note || "Ekspertize konu bağımsız bölümün konum tespiti dışarıdan yapılmış olup kat, alan ve mimari olarak uygunluk tespit edilememiştir.";
-    default:
-      return status;
+  if (statusKey === "PROJEYE UYGUNLUK TESPIT EDILMEMISTIR" || statusKey === "PROJEYE UYGUNLUK TESPIT EDILEMEMISTIR") {
+    if (note) return note;
+    const variants = serverProjectSuitabilityStatusVariants["PROJEYE UYGUNLUK TESPIT EDILMEMISTIR"];
+    const index = selectVariantServer(seed, overrides, "buildProjectSuitabilityStatusSentence:PROJEYE UYGUNLUK TESPIT EDILMEMISTIR", variants.length);
+    return variants[index]("");
   }
-  if (statusKey !== "UYGUNDUR" && note) sentences.push(note);
-  if (repairEligible.has(statusKey) && simpleRepair) sentences.push("Basit bir tadilat ile düzeltilebilir niteliktedir.");
+
+  let registryKey = statusKey || "UYGUNDUR";
+  const variants = serverProjectSuitabilityStatusVariants[registryKey];
+  if (!variants) return status;
+
+  const variantIndex = selectVariantServer(seed, overrides, `buildProjectSuitabilityStatusSentence:${registryKey}`, variants.length);
+  const sentences = [variants[variantIndex]("")];
+  if (acceptsConformityNote.has(registryKey) && note) sentences.push(note);
+  if (repairEligible.has(registryKey) && repair) {
+    const repairIndex = selectVariantServer(seed, overrides, "buildProjectSuitabilityStatusSentence:repair", serverProjectSuitabilityRepairVariants.length);
+    sentences.push(serverProjectSuitabilityRepairVariants[repairIndex](repair));
+  }
   return sentences.join(" ");
 }
 
