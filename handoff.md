@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.373 - 2026-08-08 - En sık görülen 2-varyantlı gruplar 4 varyanta çıkarıldı
+
+- Kullanıcı geri bildirimi: "bazı bölümler 2 varyant sadece onları niye çeşitlendirmedik?" — cevap: kapsam/zaman önceliklendirmesi (172 grubun tamamına 4-5 varyant yazmak yerine, önce tüm envanteri koda taşımaya odaklanıldı). Kullanıcı "en sık görülenleri önce yap" seçeneğini onayladı.
+- Bu turda **en yüksek görünürlüklü** (her/çoğu raporda çıkan veya emsal kartı başına tekrarlanan) 10 grup 2 → 4 varyanta çıkarıldı: `insuranceConstructionCostExplanationVariants`, `unitFloorInteriorClauseWithRoomsVariants`/`unitFloorInteriorClauseNoRoomsVariants` (⭐⭐ en sık görülen durum, tek katlı BB), `multiUnitFloorInteriorClauseWithRoomsVariants`/`multiUnitFloorInteriorClauseNoRoomsVariants` (çok katlı BB karşılığı), `unitViewSentenceVariants`, `unitHeatingSentenceVariants`, `unitConstructionLevelSentenceVariants`, `comparablePositionSimilarVariants`/`comparablePositionBetterVariants`/`comparableFeatureExternalVariants`/`comparableFeatureInternalVariants` (her emsal kartında tekrarlanır, rapor başına 3-4 kez), `encumbranceUnavailableVariants` (TAKBİS temin edilemedi — banka fark etmeksizin sık), `comparableSubjectOpeningVariants`.
+- `VARIANT_REGISTRY` grup sayısı **172'de sabit kaldı** (yeni grup eklenmedi — mevcut grupların `.length`'e bağlı varyant sayısı arttı, `registerVariantGroup` çağrıları otomatik güncellendi).
+- Kalan ~100 küçük-frekanslı grup (nadir koşullu clause'lar, tek-banka-özel cümleler vb.) şimdilik 2 varyantta bırakıldı — kullanıcı isterse ayrı bir turda genişletilebilir.
+- Kod değişikliğinden sonra yerel yedek alındı: `backups/before-expand-high-frequency-variants_*`.
+- `index.html` cache-buster'ı `20260808-1440`'a yükseltildi. `npm run verify` tamamı geçti.
+
 ## 0.0.372 - 2026-08-08 - Bölüm bazlı toplu "Orijinal/V1/V2/..." hızlı-uygulama düğmeleri
 
 - Kullanıcı geri bildirimi (0.0.371 sonrası): "adres ve konum bölümünde V1 bastığım zaman adres ve konumda yer alan TÜM bölümler V1 olmalı" — önceki turda eklenen bölüm düğmesi yalnızca detay modalını açıyordu (her grubu tek tek tıklamak gerekiyordu); bu tur bunu tek tıkla toplu uygulamaya genişletti.

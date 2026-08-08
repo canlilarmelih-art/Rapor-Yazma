@@ -3076,6 +3076,8 @@ function formatInsuranceUnitCost(value) {
 const insuranceConstructionCostExplanationVariants = [
   (group, cost) => `Ana gayrimenkul yapı sınıfı ${group} olarak seçildiğinden sigortaya esas yapı yaklaşık birim maliyeti ${cost} olarak alınmıştır.`,
   (group, cost) => `Ana gayrimenkulün yapı sınıfı ${group} olarak belirlendiğinden, sigortaya esas yaklaşık birim inşaat maliyeti ${cost} olarak dikkate alınmıştır.`,
+  (group, cost) => `Yapı sınıfı ${group} olarak tespit edildiğinden, sigortaya esas yaklaşık birim maliyet ${cost} olarak hesaplanmıştır.`,
+  (group, cost) => `Ana gayrimenkulün ${group} yapı sınıfına göre, sigortaya esas yaklaşık birim inşaat maliyeti ${cost} olarak öngörülmüştür.`,
 ];
 registerVariantGroup("buildInsuranceConstructionCostExplanation", "Sigortaya Esas Yapı Birim Maliyeti Açıklaması (Değerleme)", insuranceConstructionCostExplanationVariants.length);
 
@@ -9284,8 +9286,15 @@ function normalizeUnitFloorDescriptionRow(row = {}) {
 const unitFloorInteriorClauseWithRoomsVariants = [
   (interiorText) => ` kullanım alanına sahip olup, ${interiorText} hacimlerinden oluşmaktadır.`,
   (interiorText) => ` kullanım alanına sahip olup, ${interiorText} bölümlerinden meydana gelmektedir.`,
+  (interiorText) => ` kullanım alanına sahiptir; ${interiorText} hacimlerinden oluşmaktadır.`,
+  (interiorText) => ` kullanım alanına sahip olup, ${interiorText} mahallerinden teşekkül etmektedir.`,
 ];
-const unitFloorInteriorClauseNoRoomsVariants = [" kullanım alanına sahiptir.", " kullanım alanına sahip olduğu tespit edilmiştir."];
+const unitFloorInteriorClauseNoRoomsVariants = [
+  " kullanım alanına sahiptir.",
+  " kullanım alanına sahip olduğu tespit edilmiştir.",
+  " kullanım alanına haizdir.",
+  " kullanım alanına sahip olduğu belirlenmiştir.",
+];
 const unitFloorSingleAreaPrefixVariants = ["Taşınmaz projesine göre", "Taşınmaz, projesine göre"];
 const unitFloorBothAreaPrefixVariants = ["Taşınmaz projesine ve mevcut duruma göre", "Taşınmaz, projesine ve mevcut duruma göre"];
 const unitFloorLegalCurrentDiffVariants = [
@@ -9331,8 +9340,15 @@ function composeSingleUnitFloorInteriorParagraph(row) {
 const multiUnitFloorInteriorClauseWithRoomsVariants = [
   (interiorText) => ` kullanım alanına sahip olup, projesine göre ${interiorText} iç hacimlerinden oluşmaktadır.`,
   (interiorText) => ` kullanım alanına sahip olup, projesine göre ${interiorText} bölümlerinden meydana gelmektedir.`,
+  (interiorText) => ` kullanım alanına sahiptir; projesine göre ${interiorText} iç hacimlerinden oluşmaktadır.`,
+  (interiorText) => ` kullanım alanına sahip olup, projesine göre ${interiorText} mahallerinden teşekkül etmektedir.`,
 ];
-const multiUnitFloorInteriorClauseNoRoomsVariants = [" kullanım alanına sahiptir.", " kullanım alanına sahip olduğu tespit edilmiştir."];
+const multiUnitFloorInteriorClauseNoRoomsVariants = [
+  " kullanım alanına sahiptir.",
+  " kullanım alanına sahip olduğu tespit edilmiştir.",
+  " kullanım alanına haizdir.",
+  " kullanım alanına sahip olduğu belirlenmiştir.",
+];
 const multiUnitFloorSinglePrefixVariants = [(floor) => `${floor} projesine göre`, (floor) => `${floor}, projesine göre`];
 const multiUnitFloorBothPrefixVariants = [(floor) => `${floor} projesine ve mevcut duruma göre`, (floor) => `${floor}, projesine ve mevcut duruma göre`];
 const multiUnitFloorDiffVariants = [
@@ -10038,6 +10054,8 @@ function composeUnitDecorativeDescription() {
 const unitViewSentenceVariants = [
   (viewPhrase) => `${viewPhrase} sahip olan taşınmaz bu yönüyle manzara şerefiyesine sahiptir.`,
   (viewPhrase) => `${viewPhrase} sahip olması, taşınmaza manzara şerefiyesi kazandırmaktadır.`,
+  (viewPhrase) => `${viewPhrase} sahip olan gayrimenkul bu yönüyle değerini olumlu yönde etkilemektedir.`,
+  (viewPhrase) => `${viewPhrase} sahip olması nedeniyle taşınmaz manzara şerefiyesinden faydalanmaktadır.`,
 ];
 registerVariantGroup("composeUnitViewSentence", "Manzara Şerefiyesi Cümlesi (Bağımsız Bölüm)", unitViewSentenceVariants.length);
 
@@ -10051,6 +10069,8 @@ function composeUnitViewSentence() {
 const unitHeatingSentenceVariants = [
   (heating, mounted) => `Isınma ihtiyacı ${heating} ile karşılanacak şekilde tesisatlandırılmış olup, ısıtma sistemi halihazırda monte edil${mounted ? "miştir" : "memiştir"}.`,
   (heating, mounted) => `Taşınmazın ısınma ihtiyacı ${heating} ile karşılanmak üzere tesisatlandırılmış olup, ısıtma sistemi ${mounted ? "halihazırda monte edilmiştir" : "henüz monte edilmemiştir"}.`,
+  (heating, mounted) => `Isınma ${heating} sistemiyle sağlanacak şekilde tesisatlandırılmış olup, ısıtma tesisatı ${mounted ? "kurulu vaziyettedir" : "henüz kurulmamıştır"}.`,
+  (heating, mounted) => `Taşınmazda ısınma ihtiyacının ${heating} ile karşılanması planlanmış olup, sistem ${mounted ? "halihazırda tesis edilmiştir" : "henüz tesis edilmemiştir"}.`,
 ];
 registerVariantGroup("composeUnitHeatingSentence", "Isınma Tesisatı Cümlesi (Bağımsız Bölüm)", unitHeatingSentenceVariants.length);
 
@@ -10064,6 +10084,8 @@ function composeUnitHeatingSentence() {
 const unitConstructionLevelSentenceVariants = [
   (level) => `Taşınmazın bazı inşaat işleri eksik vaziyette olup, yerinde yapılan incelemeler ve düzenlenen pursantaj tablosuna göre taşınmazın inşaat seviyesi ${level} mertebesinde olduğu tespit edilmiştir.`,
   (level) => `Taşınmazda bazı inşaat işleri tamamlanmamış olup, yerinde yapılan incelemeler ve pursantaj tablosuna göre inşaat seviyesinin ${level} mertebesinde olduğu belirlenmiştir.`,
+  (level) => `Söz konusu taşınmazın inşaatı henüz tamamlanmamış olup, yerinde yapılan incelemeler ve pursantaj tablosuna göre inşaat seviyesi ${level} olarak tespit edilmiştir.`,
+  (level) => `Taşınmazın bazı imalatları eksik olup, saha incelemesi ve düzenlenen pursantaj tablosu doğrultusunda inşaat seviyesinin ${level} mertebesinde olduğu değerlendirilmiştir.`,
 ];
 registerVariantGroup("composeUnitConstructionLevelSentence", "İnşaat Seviyesi/Pursantaj Cümlesi (Bağımsız Bölüm)", unitConstructionLevelSentenceVariants.length);
 
@@ -20970,6 +20992,8 @@ function getEncumbranceIntroSentenceForPlaceholder() {
 const encumbranceUnavailableVariants = [
   "Talep tarihi itibarıyla konu taşınmaza ilişkin TAKBİS belgesi temin edilememiş olup, değerleme çalışması takyidat kayıtlarından bağımsız olarak gerçekleştirilmiştir.",
   "Talep tarihi itibarıyla söz konusu taşınmaza ait TAKBİS belgesine ulaşılamamış olup, değerleme çalışması takyidat kayıtları dikkate alınmaksızın yürütülmüştür.",
+  "Talep tarihi itibarıyla taşınmaza ait TAKBİS kaydına erişilememiş olup, değerleme takyidat bilgisinden bağımsız olarak yürütülmüştür.",
+  "Talep tarihi itibarıyla konu taşınmazın TAKBİS belgesi elde edilememiş, bu nedenle değerleme çalışması takyidat kayıtları olmaksızın gerçekleştirilmiştir.",
 ];
 registerVariantGroup("buildEncumbranceSummaryVariants:unavailable", "TAKBİS Temin Edilemedi Açıklaması (Takyidat)", encumbranceUnavailableVariants.length);
 
@@ -31784,10 +31808,14 @@ function getComparableStatusText(row, metrics) {
 const comparablePositionSimilarVariants = [
   (reason) => (reason ? `${reason} olmasına rağmen benzer konumda` : "benzer konumda"),
   (reason) => (reason ? `${reason} olmasına karşın benzer bir konumdadır` : "benzer bir konumdadır"),
+  (reason) => (reason ? `${reason} olmasına rağmen konum bakımından benzerdir` : "konum bakımından benzerdir"),
+  (reason) => (reason ? `${reason} olmasına rağmen benzer bir konuma sahiptir` : "benzer bir konuma sahiptir"),
 ];
 const comparablePositionBetterVariants = [
   (reason, level) => `${reason}taşınmaza göre ${level} konumda`,
   (reason, level) => `${reason}taşınmaza kıyasla ${level} bir konumdadır`,
+  (reason, level) => `${reason}taşınmaza göre ${level} bir konuma sahiptir`,
+  (reason, level) => `${reason}taşınmaza nazaran ${level} konumdadır`,
 ];
 registerVariantGroup("buildComparablePositionComparisonText:similar", "Emsal Konum Karşılaştırması — Benzer (Emsaller)", comparablePositionSimilarVariants.length);
 registerVariantGroup("buildComparablePositionComparisonText:diff", "Emsal Konum Karşılaştırması — Farklı (Emsaller)", comparablePositionBetterVariants.length);
@@ -31809,10 +31837,14 @@ function buildComparablePositionComparisonText(row) {
 const comparableFeatureExternalVariants = [
   (level) => `iç özellikleri ${level} seviyededir.`,
   (level) => `iç mekân özellikleri ${level} seviyededir.`,
+  (level) => `iç özellikleri ${level} seviyede olduğu değerlendirilmiştir.`,
+  (level) => `iç mekân niteliği ${level} seviyededir.`,
 ];
 const comparableFeatureInternalVariants = [
   (level) => `Emsal, konu taşınmaza göre ${level} iç özelliklere sahiptir.`,
   (level) => `Emsal, değerlemeye konu gayrimenkule kıyasla ${level} iç özelliklere sahiptir.`,
+  (level) => `Emsal, konu taşınmaza göre ${level} iç mekân niteliği taşımaktadır.`,
+  (level) => `Emsal, değerlemeye konu gayrimenkule göre ${level} iç özellikler barındırmaktadır.`,
 ];
 registerVariantGroup("buildComparableFeatureComparisonText:external", "Emsal İç Özellik Karşılaştırması — Dışarıdan Ekspertiz (Emsaller)", comparableFeatureExternalVariants.length);
 registerVariantGroup("buildComparableFeatureComparisonText:internal", "Emsal İç Özellik Karşılaştırması (Emsaller)", comparableFeatureInternalVariants.length);
@@ -31874,6 +31906,8 @@ function buildComparableContactLine(row) {
 const comparableSubjectOpeningVariants = [
   "Ekspertize konu taşınmaz satılık olup",
   "Değerlemeye konu gayrimenkul satışa sunulmuş olup",
+  "Söz konusu taşınmaz satılık olarak piyasaya sunulmuş olup",
+  "Rapor konusu gayrimenkul satışa arz edilmiş olup",
 ];
 registerVariantGroup("buildComparableSubjectStatement", "'Konu Taşınmaz' Emsal Kartı Açılışı (Emsaller)", comparableSubjectOpeningVariants.length);
 
