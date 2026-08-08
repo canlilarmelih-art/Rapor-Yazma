@@ -1,5 +1,16 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.359 - 2026-08-08 - Cümle varyantı: Bölüm 1-2 tam koda taşındı (55 grup)
+
+- Kullanıcı talebi: "kalan fonksiyonları da koda taşımaya devam edelim" — `docs/cumle-envanteri.md`'deki envanterin geri kalanını koda taşıma çalışması başladı.
+- **Bölüm 1 (Adres, Konum ve Çevre) TAMAMEN koda taşındı**: `buildEnvironmentalIntro()` (özne+fiil varyantı), `buildCommercialFunctionSentence()` (giriş + etki×3 + tamamlanma×2), `buildIndustrialUsePurposeText()`/`buildAgriculturalActivityText()` (varsayılan metin), `buildEnvironmentalDescription()`'ın TÜM ortak alt cümleleri (nizam, hız, yaş, sosyal ihtiyaç, gelir seviyesi, ana arter, yakın çevre, altyapı) ve 4 bölge branşının hepsi (Tarımsal Alan tam paragraf + Sanayi/Ticaret/Konut açılış cümleleri).
+- **Bölüm 2 (Tapu ve Mülkiyet) TAMAMEN koda taşındı**: `buildEncumbranceTitleRecordChangeParagraph()`'ın 4 alt-durumu (önsöz, farklılık yok, farklılık var/seçim yok, farklılık var/seçim var).
+- `VARIANT_REGISTRY` artık **55 grup** (önceki 17'den) — "Varyant Kontrolü" admin paneli otomatik genişledi, kod değişikliği gerekmedi.
+- `createTransportNearbyComposer()` (dokümanda "text-composer" sanılmıştı) aslında bir DOM/form UI oluşturucusu olduğu görüldü — atlandı, envanterdeki bu satır düzeltilmeli (sonraki tur).
+- Kod değişikliğinden önce yerel yedek alındı: `backups/before-variant-section1-2-code_2026-08-08_11-20-32/`.
+- `index.html` cache-buster'ı (`app.js`) `20260808-1120`'e yükseltildi.
+- `npm run verify` tamamı geçti.
+
 ## 0.0.358 - 2026-08-08 - Cümle varyantı: admin-only manuel seçim paneli ("Varyant Kontrolü")
 
 - Kullanıcı talebi: "tüm cümle versiyonlarını admin modunda seçme düğmeleri ile görmek istiyorum standart kullanıcı görememeli" — 0.0.357'de kararlaştırılan "manuel override YOK" kuralı GENİŞLETİLDİ: standart kullanıcılar için hâlâ tamamen otomatik/deterministik, ama YÖNETİCİ (`isCurrentUserAdmin()`, zaten var olan tek-admin kontrolü) artık her cümle için hangi varyantın kullanılacağını elle seçebiliyor.

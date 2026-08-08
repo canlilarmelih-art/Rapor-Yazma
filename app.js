@@ -2501,34 +2501,111 @@ function buildZiraatLocationEnvironmentalExplanation() {
   const values = getZiraatExplanationValues();
   const subject = formatZiraatLocationSubject(values);
   const sentences = [`${subject}.`];
-  if (values.nearby) sentences.push(`Konu taşınmaza yakın konumda bulunan bilinen yerler; ${values.nearby} olarak ifade edilebilir.`);
-  if (values.mainArtery) sentences.push(`Gayrimenkule ${values.mainArtery} güzergahında işleyen toplu taşıma araçları ve özel araç ile ulaşım mümkündür.`);
-  if (values.infrastructureLevel) sentences.push(`Bölgesel altyapı ihtiyacı (yol, elektrik, su, doğalgaz, kanalizasyon vb.) ${values.infrastructureLevel} derecede karşılanabilmektedir.`);
+  if (values.nearby) {
+    const variants = [
+      `Konu taşınmaza yakın konumda bulunan bilinen yerler; ${values.nearby} olarak ifade edilebilir.`,
+      `Taşınmazın yakın çevresinde bulunan bilinen yerler arasında ${values.nearby} sayılabilir.`,
+      `Söz konusu gayrimenkulün yakınında bulunan tanınmış yerler ${values.nearby} şeklinde sıralanabilir.`,
+      `Mülkün yakın çevresindeki bilinen mekânlar ${values.nearby} olarak belirtilebilir.`,
+    ];
+    sentences.push(variants[selectVariant("buildZiraatLocationEnvironmentalExplanation:nearby", variants.length)]);
+  }
+  if (values.mainArtery) {
+    const variants = [
+      `Gayrimenkule ${values.mainArtery} güzergahında işleyen toplu taşıma araçları ve özel araç ile ulaşım mümkündür.`,
+      `Taşınmaza ${values.mainArtery} güzergâhında hizmet veren toplu taşıma araçları ve özel araçla erişim sağlanabilmektedir.`,
+      `${values.mainArtery} güzergâhı üzerinde çalışan toplu taşıma araçları ve özel araçlarla gayrimenkule ulaşım mümkündür.`,
+      `Mülke, ${values.mainArtery} güzergâhında işleyen toplu taşıma hattı ve özel araç aracılığıyla erişilebilmektedir.`,
+    ];
+    sentences.push(variants[selectVariant("buildZiraatLocationEnvironmentalExplanation:mainArtery", variants.length)]);
+  }
+  if (values.infrastructureLevel) {
+    const variants = [
+      `Bölgesel altyapı ihtiyacı (yol, elektrik, su, doğalgaz, kanalizasyon vb.) ${values.infrastructureLevel} derecede karşılanabilmektedir.`,
+      `Bölgenin altyapı ihtiyaçları (yol, elektrik, su, doğalgaz, kanalizasyon vb.) ${values.infrastructureLevel} düzeyde giderilebilmektedir.`,
+      `Bölgesel altyapı hizmetleri (yol, elektrik, su, doğalgaz, kanalizasyon vb.) ${values.infrastructureLevel} ölçüde sağlanabilmektedir.`,
+      `Bölgedeki altyapı ihtiyaçları (yol, elektrik, su, doğalgaz, kanalizasyon vb.) ${values.infrastructureLevel} seviyede karşılanmaktadır.`,
+    ];
+    sentences.push(variants[selectVariant("buildZiraatLocationEnvironmentalExplanation:infrastructure", variants.length)]);
+  }
   return normalizeReportDescriptionText(sentences.join(" "));
 }
+registerVariantGroup("buildZiraatLocationEnvironmentalExplanation:nearby", "Yakın Çevre — Ziraat (Ziraat/Arsa-Arazi)", 4);
+registerVariantGroup("buildZiraatLocationEnvironmentalExplanation:mainArtery", "Ana Arter Ulaşımı — Ziraat (Ziraat/Arsa-Arazi)", 4);
+registerVariantGroup("buildZiraatLocationEnvironmentalExplanation:infrastructure", "Altyapı Seviyesi — Ziraat (Ziraat/Arsa-Arazi)", 4);
 
 function buildZiraatDevelopmentAnalysisExplanation() {
   const values = getZiraatExplanationValues();
   const sentences = [];
   if (values.developmentDensity) sentences.push(`Yapılaşmanın ${values.developmentDensity} yoğunlukta olduğu bölgede`);
   else sentences.push("Yapılaşmanın bulunduğu bölgede");
-  if (values.socialNeeds) sentences[0] += `, sosyal yaşamın gerektirdiği alışveriş, sağlık ocağı, okul, market vb. sosyal ihtiyaçlar ${values.socialNeeds} mesafelerde karşılanabilmektedir.`;
-  else sentences[0] += ", sosyal yaşamın gerektirdiği ihtiyaçlar karşılanabilmektedir.";
-  if (values.regionBuildingAge) sentences.push(`Yapı stokunun genel yaşı ${values.regionBuildingAge} yıl aralığındadır.`);
-  if (values.incomeLevel) sentences.push(`Bölge, ${values.incomeLevel} gelir grubuna mensup kişilerin ikamet etmeyi tercih ettiği bir yerleşim karakterine sahiptir.`);
+  if (values.socialNeeds) {
+    const variants = [
+      `, sosyal yaşamın gerektirdiği alışveriş, sağlık ocağı, okul, market vb. sosyal ihtiyaçlar ${values.socialNeeds} mesafelerde karşılanabilmektedir.`,
+      `, günlük yaşamın gerektirdiği alışveriş, sağlık ocağı, okul, market gibi sosyal ihtiyaçlara ${values.socialNeeds} mesafeden erişilebilmektedir.`,
+      `, alışveriş, sağlık ocağı, okul, market gibi günlük ihtiyaçlar ${values.socialNeeds} mesafede karşılanmaktadır.`,
+      `, sosyal yaşama ilişkin alışveriş, sağlık ocağı, okul, market gibi ihtiyaçlara ${values.socialNeeds} mesafeden ulaşım mümkündür.`,
+    ];
+    sentences[0] += variants[selectVariant("buildZiraatDevelopmentAnalysisExplanation:socialNeeds", variants.length)];
+  } else sentences[0] += ", sosyal yaşamın gerektirdiği ihtiyaçlar karşılanabilmektedir.";
+  if (values.regionBuildingAge) {
+    const variants = [
+      `Yapı stokunun genel yaşı ${values.regionBuildingAge} yıl aralığındadır.`,
+      `Bölgedeki yapı stokunun yaş aralığı ${values.regionBuildingAge} yıl civarındadır.`,
+      `Bölge genelindeki yapı stokunun ortalama yaşı ${values.regionBuildingAge} yıl aralığında seyretmektedir.`,
+      `Bölgedeki binaların genel yaşı ${values.regionBuildingAge} yıl bandında bulunmaktadır.`,
+    ];
+    sentences.push(variants[selectVariant("buildZiraatDevelopmentAnalysisExplanation:age", variants.length)]);
+  }
+  if (values.incomeLevel) {
+    const variants = [
+      `Bölge, ${values.incomeLevel} gelir grubuna mensup kişilerin ikamet etmeyi tercih ettiği bir yerleşim karakterine sahiptir.`,
+      `Bölge, ${values.incomeLevel} gelir düzeyine sahip kişilerin yerleşim tercihinde bulunduğu bir karaktere sahiptir.`,
+      `Bölge, ${values.incomeLevel} gelir seviyesindeki kişilerce ikamet için tercih edilen bir yerleşim niteliği taşımaktadır.`,
+      `Bölge, genel olarak ${values.incomeLevel} gelir düzeyindeki kişilerin ikamet ettiği bir yerleşim profiline sahiptir.`,
+    ];
+    sentences.push(variants[selectVariant("buildZiraatDevelopmentAnalysisExplanation:income", variants.length)]);
+  }
   return normalizeReportDescriptionText(sentences.join(" "));
 }
+registerVariantGroup("buildZiraatDevelopmentAnalysisExplanation:socialNeeds", "Sosyal İhtiyaç Mesafesi — Ziraat (Ziraat/Arsa-Arazi)", 4);
+registerVariantGroup("buildZiraatDevelopmentAnalysisExplanation:age", "Yapı Stoku Yaşı — Ziraat (Ziraat/Arsa-Arazi)", 4);
+registerVariantGroup("buildZiraatDevelopmentAnalysisExplanation:income", "Gelir Seviyesi — Ziraat (Ziraat/Arsa-Arazi)", 4);
 
 function buildZiraatBuildingPatternExplanation() {
   const values = getZiraatExplanationValues();
   const sentences = [];
-  if (values.regionBuildOrder) sentences.push(`Bölgede ağırlıklı olarak ${formatEnvironmentalList(values.regionBuildOrder)} nizamlı yapılaşma görülmektedir.`);
-  if (values.developmentSpeed) sentences.push(`Bölgedeki yapılaşma hızı ${values.developmentSpeed} seviyededir.`);
+  if (values.regionBuildOrder) {
+    const variants = [
+      `Bölgede ağırlıklı olarak ${formatEnvironmentalList(values.regionBuildOrder)} nizamlı yapılaşma görülmektedir.`,
+      `Bölge genelinde çoğunlukla ${formatEnvironmentalList(values.regionBuildOrder)} nizamda bir yapılaşma dokusu bulunmaktadır.`,
+      `Bölgede genel olarak ${formatEnvironmentalList(values.regionBuildOrder)} nizama uygun bir yapılaşma söz konusudur.`,
+      `Bölge genelinde ${formatEnvironmentalList(values.regionBuildOrder)} nizama sahip bir yapılaşma yapısı gözlenmektedir.`,
+    ];
+    sentences.push(variants[selectVariant("buildZiraatBuildingPatternExplanation:order", variants.length)]);
+  }
+  if (values.developmentSpeed) {
+    const variants = [
+      `Bölgedeki yapılaşma hızı ${values.developmentSpeed} seviyededir.`,
+      `Bölgenin yapılaşma temposu ${values.developmentSpeed} olarak değerlendirilmektedir.`,
+      `Bölgedeki yapılaşma temposu ${values.developmentSpeed} düzeyde seyretmektedir.`,
+      `Bölge genelinde yapılaşma süreci ${values.developmentSpeed} bir hızla ilerlemektedir.`,
+    ];
+    sentences.push(variants[selectVariant("buildZiraatBuildingPatternExplanation:speed", variants.length)]);
+  }
   const purpose = values.regionUsePurpose ? `${values.regionUsePurpose} amaçlı` : "konut amaçlı";
   const floors = values.regionFloorRange ? `zemin + ${values.regionFloorRange} katlı` : "zemin ve normal katlardan oluşan";
-  sentences.push(`Taşınmazın bulunduğu yakın çevrede genellikle ${floors} ve ${purpose} yapılaşma söz konusudur.`);
+  const patternVariants = [
+    `Taşınmazın bulunduğu yakın çevrede genellikle ${floors} ve ${purpose} yapılaşma söz konusudur.`,
+    `Taşınmazın yakın çevresinde çoğunlukla ${floors}, ${purpose} bir yapılaşma dokusu bulunmaktadır.`,
+    `Gayrimenkulün yakın çevresinde ağırlıklı olarak ${floors}, ${purpose} bir yapılaşma söz konusudur.`,
+  ];
+  sentences.push(patternVariants[selectVariant("buildZiraatBuildingPatternExplanation:pattern", patternVariants.length)]);
   return normalizeReportDescriptionText(sentences.join(" "));
 }
+registerVariantGroup("buildZiraatBuildingPatternExplanation:order", "Yapılaşma Nizamı — Ziraat (Ziraat/Arsa-Arazi)", 4);
+registerVariantGroup("buildZiraatBuildingPatternExplanation:speed", "Yapılaşma Hızı — Ziraat (Ziraat/Arsa-Arazi)", 4);
+registerVariantGroup("buildZiraatBuildingPatternExplanation:pattern", "Yakın Çevre Kat/Kullanım Amacı — Ziraat (Ziraat/Arsa-Arazi)", 3);
 
 function refreshZiraatExplanationSectionsFromCurrentFields() {
   const texts = {
@@ -6045,9 +6122,23 @@ function normalizeReportNumberFormats(value) {
   );
 }
 
+// Varyantlar docs/cumle-envanteri.md Bölüm 1'de belgelendi — konum
+// paragrafının giriş cümlesi, HER raporda çıkar. Yalnızca özne+fiil çifti
+// değişir (konum bilgisi/formatı aynı kalır).
+const environmentalIntroSubjectVariants = [
+  { subject: "Ekspertize konu taşınmaz", verb: "konumludur" },
+  { subject: "Değerlemeye konu gayrimenkul", verb: "yer almaktadır" },
+  { subject: "Rapor konusu mülk", verb: "konumlanmaktadır" },
+  { subject: "Söz konusu taşınmaz", verb: "bulunmaktadır" },
+  { subject: "İncelemeye konu gayrimenkul", verb: "konumlu olduğu tespit edilmiştir" },
+];
+registerVariantGroup("buildEnvironmentalIntro", "Konum Paragrafı Giriş Cümlesi (Adres/Konum/Çevre)", environmentalIntroSubjectVariants.length);
+
 function buildEnvironmentalIntro(values, options = {}) {
+  const variantIndex = options.usePlaceholderTokens ? 0 : selectVariant("buildEnvironmentalIntro", environmentalIntroSubjectVariants.length);
+  const { subject, verb } = environmentalIntroSubjectVariants[variantIndex];
   const baseLocation =
-    `Ekspertize konu taşınmaz, ${values.city} ili, ${values.district} ilçesi, ${values.neighborhood} mahallesinde, ` +
+    `${subject}, ${values.city} ili, ${values.district} ilçesi, ${values.neighborhood} mahallesinde, ` +
     `${values.blockNo} ada, ${values.parcelNo} parsel üzerinde`;
 
   if (options.usePlaceholderTokens) {
@@ -6057,7 +6148,7 @@ function buildEnvironmentalIntro(values, options = {}) {
   }
 
   if (!values.unitNo) {
-    return `${baseLocation} konumludur.`;
+    return `${baseLocation} ${verb}.`;
   }
 
   const unitParts = formatEnvironmentalUnitDescriptor(values);
@@ -6087,32 +6178,80 @@ function buildCommercialFunctionSentence(values, options = {}) {
   const densityPhrase = densityKey === "orta yoğun" ? "orta yoğunlukta" : `${densityKey} olarak`;
   const movementPhrase = densityKey === "seyrek" ? "sınırlı" : densityKey === "orta yoğun" ? "orta yoğunlukta" : "yüksek";
   const movementSource = roadType === "Yaya Yolu" ? "yaya sirkülasyonunun" : "araç ve yaya sirkülasyonunun";
-  const effectSentence =
-    densityKey === "seyrek"
-      ? "Ticari hareketliliğin seyrek olması, görünürlük ve erişilebilirlik açısından dezavantaj oluşturmaktadır."
-      : densityKey === "orta yoğun"
-        ? "Ticari hareketliliğin orta yoğunlukta olması, görünürlük ve erişilebilirlik açısından dengeli bir konum avantajı sağlamaktadır."
-        : "Ticari hareketliliğin yoğun olması, görünürlük ve erişilebilirlik açısından avantaj sağlamaktadır.";
-  const completionSentence = isCompleted
-    ? "Bölge genelinde yapılaşma tamamlanmış olup, taşınmazın konumu ticari kullanım ve yatırım açısından olumlu nitelik taşımaktadır."
-    : "Bölge genelinde yapılaşma tamamlanmamış olup, taşınmazın konumu ticari kullanım ve yatırım açısından standart seviyededir.";
 
-  return `Taşınmazın bulunduğu bölge, ticari fonksiyonların ${densityPhrase} geliştiği, ${movementSource} ${movementPhrase} olduğu bir konumda yer almaktadır. ${effectSentence} ${completionSentence} `;
+  // Varyantlar docs/cumle-envanteri.md Bölüm 1'de belgelendi.
+  const introVariants = [
+    `Taşınmazın bulunduğu bölge, ticari fonksiyonların ${densityPhrase} geliştiği, ${movementSource} ${movementPhrase} olduğu bir konumda yer almaktadır.`,
+    `Gayrimenkulün konumlandığı bölge, ticari faaliyetlerin ${densityPhrase} yoğunlaştığı, ${movementSource} ${movementPhrase} seviyede olduğu bir alanda bulunmaktadır.`,
+  ];
+  const introSentence = options.usePlaceholderTokens ? introVariants[0] : introVariants[selectVariant("buildCommercialFunctionSentence:intro", introVariants.length)];
+
+  const effectSeyrekVariants = [
+    "Ticari hareketliliğin seyrek olması, görünürlük ve erişilebilirlik açısından dezavantaj oluşturmaktadır.",
+    "Ticari hareketliliğin sınırlı kalması, taşınmazın görünürlüğü ve erişilebilirliği bakımından bir dezavantaj teşkil etmektedir.",
+  ];
+  const effectOrtaVariants = [
+    "Ticari hareketliliğin orta yoğunlukta olması, görünürlük ve erişilebilirlik açısından dengeli bir konum avantajı sağlamaktadır.",
+    "Ticari hareketliliğin orta düzeyde seyretmesi, görünürlük ve erişim kolaylığı açısından dengeli bir konum avantajı sunmaktadır.",
+  ];
+  const effectYogunVariants = [
+    "Ticari hareketliliğin yoğun olması, görünürlük ve erişilebilirlik açısından avantaj sağlamaktadır.",
+    "Ticari hareketliliğin yüksek düzeyde olması, görünürlük ve erişim kolaylığı bakımından belirgin bir avantaj sağlamaktadır.",
+  ];
+  const effectSentence = options.usePlaceholderTokens
+    ? (densityKey === "seyrek" ? effectSeyrekVariants[0] : densityKey === "orta yoğun" ? effectOrtaVariants[0] : effectYogunVariants[0])
+    : densityKey === "seyrek"
+      ? effectSeyrekVariants[selectVariant("buildCommercialFunctionSentence:etki:seyrek", effectSeyrekVariants.length)]
+      : densityKey === "orta yoğun"
+        ? effectOrtaVariants[selectVariant("buildCommercialFunctionSentence:etki:orta", effectOrtaVariants.length)]
+        : effectYogunVariants[selectVariant("buildCommercialFunctionSentence:etki:yogun", effectYogunVariants.length)];
+
+  const completedVariants = [
+    "Bölge genelinde yapılaşma tamamlanmış olup, taşınmazın konumu ticari kullanım ve yatırım açısından olumlu nitelik taşımaktadır.",
+    "Bölgedeki yapılaşmanın büyük ölçüde tamamlanmış olması, taşınmazın ticari kullanım ve yatırım potansiyeli açısından olumlu bir unsur olarak değerlendirilmektedir.",
+  ];
+  const notCompletedVariants = [
+    "Bölge genelinde yapılaşma tamamlanmamış olup, taşınmazın konumu ticari kullanım ve yatırım açısından standart seviyededir.",
+    "Bölgedeki yapılaşmanın henüz tamamlanmamış olması, taşınmazın ticari kullanım ve yatırım açısından standart bir düzeyde kalmasına yol açmaktadır.",
+  ];
+  const completionSentence = options.usePlaceholderTokens
+    ? (isCompleted ? completedVariants[0] : notCompletedVariants[0])
+    : isCompleted
+      ? completedVariants[selectVariant("buildCommercialFunctionSentence:tamamlanma:evet", completedVariants.length)]
+      : notCompletedVariants[selectVariant("buildCommercialFunctionSentence:tamamlanma:hayir", notCompletedVariants.length)];
+
+  return `${introSentence} ${effectSentence} ${completionSentence} `;
 }
+registerVariantGroup("buildCommercialFunctionSentence:intro", "Ticari Bölge Yoğunluğu — Giriş (Adres/Konum/Çevre)", 2);
+registerVariantGroup("buildCommercialFunctionSentence:etki:seyrek", "Ticari Hareketlilik Etkisi — Seyrek (Adres/Konum/Çevre)", 2);
+registerVariantGroup("buildCommercialFunctionSentence:etki:orta", "Ticari Hareketlilik Etkisi — Orta (Adres/Konum/Çevre)", 2);
+registerVariantGroup("buildCommercialFunctionSentence:etki:yogun", "Ticari Hareketlilik Etkisi — Yoğun (Adres/Konum/Çevre)", 2);
+registerVariantGroup("buildCommercialFunctionSentence:tamamlanma:evet", "Yapılaşma Tamamlanma — Tamamlanmış (Adres/Konum/Çevre)", 2);
+registerVariantGroup("buildCommercialFunctionSentence:tamamlanma:hayir", "Yapılaşma Tamamlanma — Tamamlanmamış (Adres/Konum/Çevre)", 2);
 
 function buildIndustrialUsePurposeText(value, options = {}) {
   const text = String(value || "").trim();
   if (options.usePlaceholderTokens) return text || "{{BÖLGE.YAP.KUL.AMACI}}";
-  if (!text) return "sanayi tesisleri";
-  return formatEnvironmentalList(text).toLocaleLowerCase("tr-TR");
+  if (text) return formatEnvironmentalList(text).toLocaleLowerCase("tr-TR");
+  const defaultVariants = ["sanayi tesisleri", "sanayi yapıları", "sanayi amaçlı tesisler", "sanayi kullanımına yönelik yapılar", "sınai amaçlı tesisler"];
+  return defaultVariants[selectVariant("buildIndustrialUsePurposeText", defaultVariants.length)];
 }
+registerVariantGroup("buildIndustrialUsePurposeText", "Sanayi Bölgesi Kullanım Amacı — varsayılan (Adres/Konum/Çevre)", 5);
 
 function buildAgriculturalActivityText(value, options = {}) {
   const text = String(value || "").trim();
   if (options.usePlaceholderTokens) return text || "{{TARIMSAL.FAALİYET.TÜRÜ}}";
-  if (!text) return "bitkisel üretim, hayvancılık ve tarıma dayalı kullanım";
-  return formatEnvironmentalList(text).toLocaleLowerCase("tr-TR");
+  if (text) return formatEnvironmentalList(text).toLocaleLowerCase("tr-TR");
+  const defaultVariants = [
+    "bitkisel üretim, hayvancılık ve tarıma dayalı kullanım",
+    "tarımsal üretim, hayvancılık ve tarım kökenli faaliyetler",
+    "bitkisel ve hayvansal üretim ile tarımsal amaçlı kullanım",
+    "bitkisel yetiştiricilik, hayvan yetiştiriciliği ve tarım temelli faaliyetler",
+    "zirai üretim, hayvancılık ve tarımsal nitelikli kullanım",
+  ];
+  return defaultVariants[selectVariant("buildAgriculturalActivityText", defaultVariants.length)];
 }
+registerVariantGroup("buildAgriculturalActivityText", "Tarımsal Faaliyet Türü — varsayılan (Adres/Konum/Çevre)", 5);
 
 function cleanBoundNeighborhoodCenterName(value = "") {
   const baseName = String(value || "")
@@ -6192,18 +6331,134 @@ function buildEnvironmentalDescription(regionType = state.fields?.environmentReg
   };
   const detectedType = detectEnvironmentalRegionType(regionType);
   const intro = buildEnvironmentalIntro(values, { usePlaceholderTokens });
+
+  // Ortak alt cümleler (docs/cumle-envanteri.md Bölüm 1, ↳ satırları) —
+  // 4 bölge branşının hepsinde tekrarlanan parçalar, varyant burada tek
+  // yerde seçilir.
   const regionBuildOrderText = formatEnvironmentalList(values.regionBuildOrder);
-  const buildOrderSentence = values.regionBuildOrder
-    ? `Bölgede ağırlıklı olarak ${regionBuildOrderText} nizamlı yapılaşma görülmektedir. `
-    : "";
-  const speedSentence = values.developmentSpeed
-    ? `Bölgedeki yapılaşma hızı ${values.developmentSpeed} seviyededir. `
-    : "";
-  const ageSentence = values.regionBuildingAge
-    ? values.regionBuildingAge === "yeni"
-      ? "Yapı stoku genel olarak yeni niteliktedir. "
-      : `Yapı stokunun genel yaşı ${values.regionBuildingAge} yıl aralığındadır. `
-    : "";
+  const orderSentenceVariants = [
+    `Bölgede ağırlıklı olarak ${regionBuildOrderText} nizamlı yapılaşma görülmektedir. `,
+    `Bölge genelinde çoğunlukla ${regionBuildOrderText} nizamda bir yapılaşma dokusu bulunmaktadır. `,
+    `Bölgede genel olarak ${regionBuildOrderText} nizama uygun bir yapılaşma söz konusudur. `,
+    `Bölgenin büyük bölümünde ${regionBuildOrderText} nizamlı bir yapılaşma dokusu hâkimdir. `,
+    `Bölge genelinde ${regionBuildOrderText} nizama sahip bir yapılaşma yapısı gözlenmektedir. `,
+  ];
+  const buildOrderSentence = values.regionBuildOrder && !usePlaceholderTokens
+    ? orderSentenceVariants[selectVariant("buildEnvironmentalDescription:orderSentence", orderSentenceVariants.length)]
+    : values.regionBuildOrder
+      ? orderSentenceVariants[0]
+      : "";
+
+  const speedSentenceVariants = [
+    `Bölgedeki yapılaşma hızı ${values.developmentSpeed} seviyededir. `,
+    `Bölgenin yapılaşma temposu ${values.developmentSpeed} olarak değerlendirilmektedir. `,
+    `Bölgedeki yapılaşma temposu ${values.developmentSpeed} düzeyde seyretmektedir. `,
+    `Bölge genelinde yapılaşma süreci ${values.developmentSpeed} bir hızla ilerlemektedir. `,
+    `Bölgedeki inşa faaliyetlerinin hızı ${values.developmentSpeed} seviyede bulunmaktadır. `,
+  ];
+  const speedSentence = values.developmentSpeed && !usePlaceholderTokens
+    ? speedSentenceVariants[selectVariant("buildEnvironmentalDescription:speedSentence", speedSentenceVariants.length)]
+    : values.developmentSpeed
+      ? speedSentenceVariants[0]
+      : "";
+
+  const isNewAge = values.regionBuildingAge === "yeni";
+  const ageSentenceNewVariants = [
+    "Yapı stoku genel olarak yeni niteliktedir. ",
+    "Bölgedeki yapı stoku genel itibarıyla yeni niteliktedir. ",
+    "Bölge genelindeki yapı stoku çoğunlukla yeni nitelikte bulunmaktadır. ",
+    "Bölgedeki bina stoku genel olarak yeni yapılardan oluşmaktadır. ",
+    "Bölge genelinde yapı stokunun büyük bölümü yeni niteliktedir. ",
+  ];
+  const ageSentenceRangeVariants = [
+    `Yapı stokunun genel yaşı ${values.regionBuildingAge} yıl aralığındadır. `,
+    `Bölgedeki yapı stokunun yaş aralığı ${values.regionBuildingAge} yıl civarındadır. `,
+    `Bölge genelindeki yapı stokunun ortalama yaşı ${values.regionBuildingAge} yıl aralığında seyretmektedir. `,
+    `Bölgedeki binaların genel yaşı ${values.regionBuildingAge} yıl bandında bulunmaktadır. `,
+    `Bölge genelinde yapı stokunun yaş ortalaması ${values.regionBuildingAge} yıl arasında değişmektedir. `,
+  ];
+  const ageSentence = !values.regionBuildingAge
+    ? ""
+    : usePlaceholderTokens
+      ? (isNewAge ? ageSentenceNewVariants[0] : ageSentenceRangeVariants[0])
+      : isNewAge
+        ? ageSentenceNewVariants[selectVariant("buildEnvironmentalDescription:ageSentence:yeni", ageSentenceNewVariants.length)]
+        : ageSentenceRangeVariants[selectVariant("buildEnvironmentalDescription:ageSentence:aralik", ageSentenceRangeVariants.length)];
+
+  const socialNeedsKonutVariants = [
+    `Yapılaşmanın ${values.developmentDensity} yoğunlukta olduğu bölgede, sosyal yaşamın gerektirdiği alışveriş, sağlık ocağı, okul, market vb. sosyal ihtiyaçlar ${values.socialNeeds} mesafelerde karşılanabilmektedir. `,
+    `Yapılaşmanın ${values.developmentDensity} yoğunlukta olduğu bölgede, günlük yaşamın gerektirdiği alışveriş, sağlık ocağı, okul, market gibi sosyal ihtiyaçlara ${values.socialNeeds} mesafeden erişilebilmektedir. `,
+    `${values.developmentDensity} yoğunlukta yapılaşmanın bulunduğu bölgede, alışveriş, sağlık ocağı, okul, market gibi günlük ihtiyaçlar ${values.socialNeeds} mesafede karşılanmaktadır. `,
+    `Yapılaşma yoğunluğunun ${values.developmentDensity} olduğu bölgede, sosyal yaşama ilişkin alışveriş, sağlık ocağı, okul, market gibi ihtiyaçlara ${values.socialNeeds} mesafeden ulaşım mümkündür. `,
+    `Bölgedeki yapılaşmanın ${values.developmentDensity} düzeyde olması nedeniyle, alışveriş, sağlık ocağı, okul, market gibi sosyal ihtiyaçlar ${values.socialNeeds} mesafede giderilebilmektedir. `,
+  ];
+  const socialNeedsTicaretVariants = [
+    `Sosyal yaşamın gerektirdiği market benzeri ticari birimler ve sağlık ocağı, okul, çocuk parkı gibi ihtiyaçlar ${values.socialNeeds} mesafeden karşılanabilmektedir. `,
+    `Sosyal yaşamın gerektirdiği market benzeri ticari birimler ile sağlık ocağı, okul, çocuk parkı gibi ihtiyaçlara ${values.socialNeeds} mesafeden ulaşılabilmektedir. `,
+    `Günlük yaşamın gerektirdiği market benzeri ticari birimler ve sağlık ocağı, okul, çocuk parkı gibi ihtiyaçlar ${values.socialNeeds} mesafede karşılanmaktadır. `,
+    `Market türü ticari birimler ile sağlık ocağı, okul, çocuk parkı gibi sosyal ihtiyaçlara ${values.socialNeeds} mesafeden erişim sağlanabilmektedir. `,
+    `Sosyal yaşama ilişkin market benzeri ticari birimler ve sağlık ocağı, okul, çocuk parkı gibi ihtiyaçlar ${values.socialNeeds} mesafede giderilebilmektedir. `,
+  ];
+  const socialNeedsKonutSentence = usePlaceholderTokens ? socialNeedsKonutVariants[0] : socialNeedsKonutVariants[selectVariant("buildEnvironmentalDescription:socialNeeds:konut", socialNeedsKonutVariants.length)];
+  const socialNeedsTicaretSentence = usePlaceholderTokens ? socialNeedsTicaretVariants[0] : socialNeedsTicaretVariants[selectVariant("buildEnvironmentalDescription:socialNeeds:ticaret", socialNeedsTicaretVariants.length)];
+
+  const incomeLevelVariants = [
+    `Bölge, ${values.incomeLevel} gelir grubuna mensup kişilerin ikamet etmeyi tercih ettiği bir yerleşim karakterine sahiptir. `,
+    `Bölge, ${values.incomeLevel} gelir düzeyine sahip kişilerin yerleşim tercihinde bulunduğu bir karaktere sahiptir. `,
+    `Bölge, ${values.incomeLevel} gelir seviyesindeki kişilerce ikamet için tercih edilen bir yerleşim niteliği taşımaktadır. `,
+    `Söz konusu bölge, ${values.incomeLevel} gelir grubuna mensup hanelerin yerleşim tercihi doğrultusunda şekillenmiş bir karakter sergilemektedir. `,
+    `Bölge, genel olarak ${values.incomeLevel} gelir düzeyindeki kişilerin ikamet ettiği bir yerleşim profiline sahiptir. `,
+  ];
+  const incomeLevelSentence = usePlaceholderTokens ? incomeLevelVariants[0] : incomeLevelVariants[selectVariant("buildEnvironmentalDescription:incomeLevel", incomeLevelVariants.length)];
+
+  const mainArteryStandardVariants = [
+    `Ayrıca toplu taşıma güzergâhında yer alan ${values.mainArtery} yakınında bulunması, taşınmaza ulaşım açısından önemli bir avantaj sağlamaktadır. `,
+    `Toplu taşıma hattı üzerinde bulunan ${values.mainArtery} güzergâhına yakın olması, taşınmazın ulaşım imkânları açısından önemli bir avantaj oluşturmaktadır. `,
+    `${values.mainArtery} güzergâhının yakınında, toplu taşıma hattı üzerinde konumlanmış olması, gayrimenkulün ulaşım imkânları bakımından önemli bir üstünlük sağlamaktadır. `,
+    `Toplu taşıma güzergâhı üzerindeki ${values.mainArtery}'e yakınlık, mülkün ulaşım açısından belirgin bir avantaj oluşturmasını sağlamaktadır. `,
+    `${values.mainArtery} güzergâhına ve toplu taşıma hattına yakın konumu, taşınmazın ulaşım imkânları bakımından önemli bir avantaj yaratmaktadır. `,
+  ];
+  // Ticaret branşının kendi cümlesi aynı ama "Ayrıca " öneki yok — bilerek
+  // AYRI bir varyant grubu (öneksiz), Konut'la aynı içerik havuzunu paylaşır.
+  const mainArteryTicaretVariants = mainArteryStandardVariants.map((text) => text.replace(/^Ayrıca /, ""));
+  const mainArterySanayiVariants = [
+    `Toplu taşıma ve servis güzergâhında yer alan ${values.mainArtery} yakınında bulunması, taşınmaza ulaşım ve ticari/üretim faaliyetleri açısından avantaj sağlamaktadır. `,
+    `Toplu taşıma ve servis hattı üzerinde bulunan ${values.mainArtery} güzergâhına yakınlığı, taşınmaza hem ulaşım hem ticari/üretim faaliyetleri bakımından avantaj sağlamaktadır. `,
+    `${values.mainArtery} güzergâhındaki toplu taşıma ve servis hattına yakın konumu, gayrimenkule ulaşım ile ticari/üretim faaliyetleri açısından üstünlük kazandırmaktadır. `,
+    `Toplu taşıma ve servis güzergâhı üzerinde bulunan ${values.mainArtery}'e yakınlık, mülkün hem ulaşım hem de ticari/üretim faaliyetleri bakımından avantajlı olmasını sağlamaktadır. `,
+    `${values.mainArtery} üzerindeki toplu taşıma ve servis hattına yakın konumu, taşınmazın ulaşım ve üretim/ticari faaliyetleri açısından avantaj oluşturmaktadır. `,
+  ];
+  const mainArteryStandardSentence = usePlaceholderTokens ? mainArteryStandardVariants[0] : mainArteryStandardVariants[selectVariant("buildEnvironmentalDescription:mainArtery:standart", mainArteryStandardVariants.length)];
+  const mainArteryTicaretSentence = usePlaceholderTokens ? mainArteryTicaretVariants[0] : mainArteryTicaretVariants[selectVariant("buildEnvironmentalDescription:mainArtery:standart", mainArteryTicaretVariants.length)];
+  const mainArterySanayiSentence = usePlaceholderTokens ? mainArterySanayiVariants[0] : mainArterySanayiVariants[selectVariant("buildEnvironmentalDescription:mainArtery:sanayi", mainArterySanayiVariants.length)];
+
+  const nearbyVariants = [
+    `Konu taşınmaza yakın konumda bulunan bilinen yerler; ${values.nearby} olarak ifade edilebilir.`,
+    `Taşınmazın yakın çevresinde bulunan bilinen yerler arasında ${values.nearby} sayılabilir.`,
+    `Söz konusu gayrimenkulün yakınında bulunan tanınmış yerler ${values.nearby} şeklinde sıralanabilir.`,
+    `Mülkün yakın çevresindeki bilinen mekânlar ${values.nearby} olarak belirtilebilir.`,
+  ];
+  const nearbySentence = usePlaceholderTokens ? nearbyVariants[0] : nearbyVariants[selectVariant("buildEnvironmentalDescription:nearby", nearbyVariants.length)];
+
+  const infrastructureKonutVariants = [
+    `Bölgesel alt yapı ihtiyacı (yol, elektrik, su, doğalgaz, kanalizasyon vb.) ${values.infrastructureLevel} derecede karşılanabilmektedir.`,
+    `Bölgesel altyapı ihtiyacı (yol, elektrik, su, doğalgaz, kanalizasyon vb.) ${values.infrastructureLevel} derecede karşılanabilmektedir.`,
+    `Bölgenin altyapı ihtiyaçları (yol, elektrik, su, doğalgaz, kanalizasyon vb.) ${values.infrastructureLevel} düzeyde giderilebilmektedir.`,
+    `Bölgesel altyapı hizmetleri (yol, elektrik, su, doğalgaz, kanalizasyon vb.) ${values.infrastructureLevel} ölçüde sağlanabilmektedir.`,
+    `Bölgedeki altyapı ihtiyaçları (yol, elektrik, su, doğalgaz, kanalizasyon vb.) ${values.infrastructureLevel} seviyede karşılanmaktadır.`,
+  ];
+  const infrastructureTicaretVariants = infrastructureKonutVariants.map((text) => text.replace(/\s*\(yol, elektrik, su, doğalgaz, kanalizasyon vb\.\)\s*/, " "));
+  const infrastructureSanayiVariants = [
+    `Bölgedeki üretim ve servis kullanımlarının gerektirdiği ulaşım, altyapı ve teknik ihtiyaçlar ${values.infrastructureLevel} derecede karşılanabilmektedir.`,
+    `Bölgedeki üretim ve servis faaliyetlerinin gerektirdiği ulaşım, altyapı ve teknik altyapı ihtiyaçları ${values.infrastructureLevel} derecede karşılanabilmektedir.`,
+    `Bölgedeki üretim ve servis kullanımlarının ihtiyaç duyduğu ulaşım, altyapı ve teknik unsurlar ${values.infrastructureLevel} düzeyde giderilebilmektedir.`,
+    `Üretim ve servis faaliyetlerinin gerektirdiği ulaşım, altyapı ve teknik gereksinimler bölgede ${values.infrastructureLevel} ölçüde sağlanabilmektedir.`,
+    `Bölgedeki üretim ve servis kullanımına yönelik ulaşım, altyapı ve teknik ihtiyaçlar ${values.infrastructureLevel} seviyede karşılanmaktadır.`,
+  ];
+  const infrastructureKonutSentence = usePlaceholderTokens ? infrastructureKonutVariants[0] : infrastructureKonutVariants[selectVariant("buildEnvironmentalDescription:infrastructure:konut", infrastructureKonutVariants.length)];
+  const infrastructureTicaretSentence = usePlaceholderTokens ? infrastructureTicaretVariants[0] : infrastructureTicaretVariants[selectVariant("buildEnvironmentalDescription:infrastructure:konut", infrastructureTicaretVariants.length)];
+  const infrastructureSanayiSentence = usePlaceholderTokens ? infrastructureSanayiVariants[0] : infrastructureSanayiVariants[selectVariant("buildEnvironmentalDescription:infrastructure:sanayi", infrastructureSanayiVariants.length)];
+
   const commercialFunctionSentence = buildCommercialFunctionSentence(values, { usePlaceholderTokens });
   const commercialFirmScale = usePlaceholderTokens
     ? values.commercialFirmType
@@ -6219,54 +6474,58 @@ function buildEnvironmentalDescription(regionType = state.fields?.environmentReg
   const agriculturalKmlDistanceSentence = buildAgriculturalKmlDistanceSentence(values, { usePlaceholderTokens });
 
   if (detectedType === "Tarımsal Alan") {
-    return normalizeReportDescriptionText(
-      `${intro} Taşınmazın bulunduğu bölge, tarımsal faaliyetlerin ${agriculturalDensityText} olarak sürdürüldüğü kırsal nitelikli bir çevrede yer almaktadır. ` +
-        agriculturalKmlDistanceSentence +
-        `Yakın çevresinde tarla, bağ, bahçe, zeytinlik, meyve bahçesi ve benzeri tarımsal amaçlı kullanılan taşınmazlar bulunmaktadır. ` +
-        `Bölge genelinde yapılaşma yoğunluğu ${values.developmentDensity} olup yerleşim alanları daha çok köy/mahalle merkezi çevresinde gelişmiştir. ` +
-        `Taşınmazın çevresi doğal karakterini büyük ölçüde korumakta olup bölgedeki ekonomik faaliyetler ağırlıklı olarak ${agriculturalActivityText} kullanımlarından oluşmaktadır. ` +
-        `Ulaşım imkanları tarla yolları, köy yolları ve bağlantılı yollar üzerinden sağlanmakta olup ana ulaşım akslarına erişim mesafeye bağlı olarak değişkenlik göstermektedir. ` +
-        `Altyapı hizmetleri bölgenin kırsal niteliğine bağlı olarak kısmen mevcut olup elektrik, yol ve su imkanları parsel bazında farklılık gösterebilmektedir. ` +
-        `Mevcut çevresel özellikleri itibarıyla taşınmaz, tarımsal kullanım açısından ${agriculturalSuitabilityText} niteliktedir.`
-    );
+    const tarimsalVariants = [
+      `${intro} Taşınmazın bulunduğu bölge, tarımsal faaliyetlerin ${agriculturalDensityText} olarak sürdürüldüğü kırsal nitelikli bir çevrede yer almaktadır. ${agriculturalKmlDistanceSentence}Yakın çevresinde tarla, bağ, bahçe, zeytinlik, meyve bahçesi ve benzeri tarımsal amaçlı kullanılan taşınmazlar bulunmaktadır. Bölge genelinde yapılaşma yoğunluğu ${values.developmentDensity} olup yerleşim alanları daha çok köy/mahalle merkezi çevresinde gelişmiştir. Taşınmazın çevresi doğal karakterini büyük ölçüde korumakta olup bölgedeki ekonomik faaliyetler ağırlıklı olarak ${agriculturalActivityText} kullanımlarından oluşmaktadır. Ulaşım imkanları tarla yolları, köy yolları ve bağlantılı yollar üzerinden sağlanmakta olup ana ulaşım akslarına erişim mesafeye bağlı olarak değişkenlik göstermektedir. Altyapı hizmetleri bölgenin kırsal niteliğine bağlı olarak kısmen mevcut olup elektrik, yol ve su imkanları parsel bazında farklılık gösterebilmektedir. Mevcut çevresel özellikleri itibarıyla taşınmaz, tarımsal kullanım açısından ${agriculturalSuitabilityText} niteliktedir.`,
+      `${intro} Taşınmazın yer aldığı bölge, tarımsal faaliyetlerin ${agriculturalDensityText} bir şekilde yürütüldüğü kırsal karakterli bir çevrede bulunmaktadır. ${agriculturalKmlDistanceSentence}Yakın çevresinde tarla, bağ, bahçe, zeytinlik, meyve bahçesi gibi tarımsal amaçlı kullanılan taşınmazlara rastlanmaktadır. Bölge genelinde yapılaşma yoğunluğu ${values.developmentDensity} düzeyde olup, yerleşim alanları ağırlıklı olarak köy/mahalle merkezi etrafında şekillenmiştir. Taşınmazın çevresi doğal niteliğini büyük ölçüde muhafaza etmekte olup, bölgedeki ekonomik faaliyetler esas itibarıyla ${agriculturalActivityText} kullanımları etrafında yoğunlaşmaktadır. Ulaşım, tarla yolları, köy yolları ve bunlara bağlı yollar üzerinden sağlanmakta olup, ana ulaşım akslarına erişim mesafeye göre farklılık göstermektedir. Altyapı hizmetleri, bölgenin kırsal karakteri nedeniyle kısmen mevcut olup, elektrik, yol ve su imkânları parsel bazında değişkenlik gösterebilmektedir. Mevcut çevresel özellikleri dikkate alındığında, taşınmazın tarımsal kullanım açısından ${agriculturalSuitabilityText} nitelikte olduğu değerlendirilmektedir.`,
+      `${intro} Taşınmazın konumlandığı bölge, tarımsal faaliyetlerin ${agriculturalDensityText} düzeyde sürdürüldüğü kırsal nitelikli bir çevrede bulunmaktadır. ${agriculturalKmlDistanceSentence}Yakın çevresinde tarla, bağ, bahçe, zeytinlik, meyve bahçesi gibi tarımsal amaçlı kullanılan taşınmazlar mevcuttur. Bölge genelinde yapılaşma yoğunluğu ${values.developmentDensity} seviyede olup, yerleşim alanları çoğunlukla köy/mahalle merkezi civarında gelişim göstermiştir. Taşınmazın çevresi doğal yapısını önemli ölçüde korumakta olup, bölgedeki ekonomik faaliyetler esasen ${agriculturalActivityText} kullanımlarından meydana gelmektedir. Ulaşım, tarla yolları, köy yolları ve bunlara bağlı güzergâhlar üzerinden sağlanmakta olup, ana ulaşım akslarına erişim mesafeye göre değişkenlik göstermektedir. Altyapı hizmetleri bölgenin kırsal yapısı gereği kısmen mevcut olup, elektrik, yol ve su imkânları parsel bazında farklılaşabilmektedir. Mevcut çevresel özellikleri göz önünde bulundurulduğunda, taşınmazın tarımsal kullanım açısından ${agriculturalSuitabilityText} nitelikte olduğu görülmektedir.`,
+      `${intro} Taşınmazın yer aldığı bölge, tarımsal faaliyetlerin ${agriculturalDensityText} ölçüde yürütüldüğü kırsal özellikli bir çevre teşkil etmektedir. ${agriculturalKmlDistanceSentence}Yakın çevresinde tarla, bağ, bahçe, zeytinlik, meyve bahçesi niteliğinde tarımsal amaçlı taşınmazlara rastlanmaktadır. Bölge genelinde yapılaşma yoğunluğu ${values.developmentDensity} düzeyde olup, yerleşim alanları ekseriyetle köy/mahalle merkezi etrafında kurulmuştur. Taşınmazın çevresi doğal görünümünü büyük oranda korumakta, bölgedeki ekonomik faaliyetler temelde ${agriculturalActivityText} kullanımlarından ibarettir. Ulaşım, tarla yolları, köy yolları ve bunlara bağlı güzergâhlar aracılığıyla temin edilmekte, ana ulaşım akslarına erişim mesafeye göre farklılaşmaktadır. Altyapı hizmetleri bölgenin kırsal niteliği nedeniyle kısmi düzeyde mevcut olup, elektrik, yol ve su imkânları parsel bazında değişkenlik gösterebilmektedir. Mevcut çevresel nitelikleri itibarıyla, taşınmazın tarımsal kullanım bakımından ${agriculturalSuitabilityText} olduğu kanaatine varılmaktadır.`,
+      `${intro} Taşınmazın bulunduğu bölge, tarımsal faaliyetlerin ${agriculturalDensityText} biçimde icra edildiği kırsal nitelikli bir çevrede konumlanmaktadır. ${agriculturalKmlDistanceSentence}Yakın çevresinde tarla, bağ, bahçe, zeytinlik, meyve bahçesi türünde tarımsal amaçlı taşınmazlar bulunmaktadır. Bölge genelinde yapılaşma yoğunluğu ${values.developmentDensity} seviyede olup, yerleşim alanları genel olarak köy/mahalle merkezi civarında oluşmuştur. Taşınmazın çevresi doğal yapısını büyük ölçüde korumakta olup, bölgedeki ekonomik faaliyetler ağırlıklı olarak ${agriculturalActivityText} kullanımına dayanmaktadır. Ulaşım imkânları tarla yolları, köy yolları ve bağlantılı güzergâhlar aracılığıyla sağlanmakta, ana ulaşım akslarına erişim mesafeye bağlı olarak farklılaşmaktadır. Altyapı hizmetleri bölgenin kırsal yapısı nedeniyle kısmen mevcut olup, elektrik, yol ve su olanakları parsel bazında değişkenlik gösterebilmektedir. Mevcut çevresel özellikleri esas alındığında, taşınmazın tarımsal kullanım açısından ${agriculturalSuitabilityText} nitelikte olduğu değerlendirilmektedir.`,
+    ];
+    const variantIndex = usePlaceholderTokens ? 0 : selectVariant("buildEnvironmentalDescription:tarimsal", tarimsalVariants.length);
+    return normalizeReportDescriptionText(tarimsalVariants[variantIndex]);
   }
 
   if (detectedType === "Sanayi Bölgesi") {
-    return normalizeReportDescriptionText(
-      `${intro} Taşınmazın bulunduğu yakın çevrede, genellikle ${industrialUsePurposeText} amaçlı ve zemin + ${values.regionFloorRange} katlı olacak şekilde yapılaşma söz konusudur. ${buildOrderSentence}` +
-        `Bölgedeki yapılaşma ${values.developmentDensity} yoğunlukta olup üretim, servis ve depolama faaliyetlerine uygun bir çevre karakteri sunmaktadır. ` +
-        speedSentence +
-        ageSentence +
-        `Bölgedeki üretim ve servis kullanımlarının gerektirdiği ulaşım, altyapı ve teknik ihtiyaçlar ${values.infrastructureLevel} derecede karşılanabilmektedir. ` +
-        `Toplu taşıma ve servis güzergâhında yer alan ${values.mainArtery} yakınında bulunması, taşınmaza ulaşım ve ticari/üretim faaliyetleri açısından avantaj sağlamaktadır. ` +
-        `Konu taşınmaza yakın konumda bulunan bilinen yerler; ${values.nearby} olarak ifade edilebilir.`
-    );
+    const sanayiVariants = [
+      `${intro} Taşınmazın bulunduğu yakın çevrede, genellikle ${industrialUsePurposeText} amaçlı ve zemin + ${values.regionFloorRange} katlı olacak şekilde yapılaşma söz konusudur. ${buildOrderSentence}Bölgedeki yapılaşma ${values.developmentDensity} yoğunlukta olup üretim, servis ve depolama faaliyetlerine uygun bir çevre karakteri sunmaktadır. ${speedSentence}${ageSentence}${infrastructureSanayiSentence} ${mainArterySanayiSentence}${nearbySentence}`,
+      `${intro} Taşınmazın bulunduğu yakın çevrede, genellikle ${industrialUsePurposeText} amaçlı, zemin + ${values.regionFloorRange} katlı bir yapılaşma dokusu bulunmaktadır. ${buildOrderSentence}Bölgedeki yapılaşma ${values.developmentDensity} yoğunlukta olup, üretim, servis ve depolama faaliyetlerine elverişli bir çevre karakteri taşımaktadır. ${speedSentence}${ageSentence}${infrastructureSanayiSentence} ${mainArterySanayiSentence}${nearbySentence}`,
+    ];
+    const variantIndex = usePlaceholderTokens ? 0 : selectVariant("buildEnvironmentalDescription:sanayiOpener", sanayiVariants.length);
+    return normalizeReportDescriptionText(sanayiVariants[variantIndex]);
   }
 
   if (detectedType === "Ticaret Bölgesi") {
-    return normalizeReportDescriptionText(
-      `${intro} Taşınmazın bulunduğu yakın çevrede, genellikle ${values.regionUsePurpose} amaçlı ve muhtelif katta bodrum üzerine zemin + ${values.regionFloorRange} olacak şekilde yapılaşma söz konusudur. ${buildOrderSentence}` +
-        `Yapılaşmanın ${values.developmentDensity} yoğunlukta olduğu bölgenin ticari potansiyeli ${commercialFirmScale} firmaların faaliyet göstermesine olanak sağlamaktadır. ` +
-        speedSentence +
-        ageSentence +
-        commercialFunctionSentence +
-        `Sosyal yaşamın gerektirdiği market benzeri ticari birimler ve sağlık ocağı, okul, çocuk parkı gibi ihtiyaçlar ${values.socialNeeds} mesafeden karşılanabilmektedir. ` +
-        `Toplu taşıma güzergâhında yer alan ${values.mainArtery} yakınında bulunması, taşınmaza ulaşım açısından önemli bir avantaj sağlamaktadır. ` +
-        `Bölgesel alt yapı ihtiyacı ${values.infrastructureLevel} derecede karşılanabilmektedir.`
-    );
+    const ticaretVariants = [
+      `${intro} Taşınmazın bulunduğu yakın çevrede, genellikle ${values.regionUsePurpose} amaçlı ve muhtelif katta bodrum üzerine zemin + ${values.regionFloorRange} olacak şekilde yapılaşma söz konusudur. ${buildOrderSentence}Yapılaşmanın ${values.developmentDensity} yoğunlukta olduğu bölgenin ticari potansiyeli ${commercialFirmScale} firmaların faaliyet göstermesine olanak sağlamaktadır. ${speedSentence}${ageSentence}${commercialFunctionSentence}${socialNeedsTicaretSentence}${mainArteryTicaretSentence}${infrastructureTicaretSentence}`,
+      `${intro} Taşınmazın bulunduğu yakın çevrede, genellikle ${values.regionUsePurpose} amaçlı, bodrum üzerine zemin + ${values.regionFloorRange} katlı bir yapılaşma söz konusudur. ${buildOrderSentence}Yapılaşmanın ${values.developmentDensity} yoğunlukta olduğu bölgenin ticari potansiyeli, ${commercialFirmScale} firmaların bölgede faaliyet göstermesine imkân tanımaktadır. ${speedSentence}${ageSentence}${commercialFunctionSentence}${socialNeedsTicaretSentence}${mainArteryTicaretSentence}${infrastructureTicaretSentence}`,
+    ];
+    const variantIndex = usePlaceholderTokens ? 0 : selectVariant("buildEnvironmentalDescription:ticaretOpener", ticaretVariants.length);
+    return normalizeReportDescriptionText(ticaretVariants[variantIndex]);
   }
 
-  return normalizeReportDescriptionText(
-    `${intro} Taşınmazın bulunduğu yakın çevrede, genellikle ${values.regionUsePurpose} amaçlı ve bodrum kat üzerine zemin + ${values.regionFloorRange} katlı olacak şekilde yapılaşma söz konusudur. ${buildOrderSentence}` +
-      `Yapılaşmanın ${values.developmentDensity} yoğunlukta olduğu bölgede, sosyal yaşamın gerektirdiği alışveriş, sağlık ocağı, okul, market vb. sosyal ihtiyaçlar ${values.socialNeeds} mesafelerde karşılanabilmektedir. ` +
-      speedSentence +
-      ageSentence +
-      `Bölge, ${values.incomeLevel} gelir grubuna mensup kişilerin ikamet etmeyi tercih ettiği bir yerleşim karakterine sahiptir. ` +
-      `Ayrıca toplu taşıma güzergâhında yer alan ${values.mainArtery} yakınında bulunması, taşınmaza ulaşım açısından önemli bir avantaj sağlamaktadır. ` +
-      `Konu taşınmaza yakın konumda bulunan bilinen yerler; ${values.nearby} olarak ifade edilebilir. ` +
-      `Bölgesel alt yapı ihtiyacı (yol, elektrik, su, doğalgaz, kanalizasyon vb.) ${values.infrastructureLevel} derecede karşılanabilmektedir.`
-  );
+  const konutVariants = [
+    `${intro} Taşınmazın bulunduğu yakın çevrede, genellikle ${values.regionUsePurpose} amaçlı ve bodrum kat üzerine zemin + ${values.regionFloorRange} katlı olacak şekilde yapılaşma söz konusudur. ${buildOrderSentence}${socialNeedsKonutSentence}${speedSentence}${ageSentence}${incomeLevelSentence}${mainArteryStandardSentence}${nearbySentence} ${infrastructureKonutSentence}`,
+    `${intro} Taşınmazın bulunduğu yakın çevrede, genellikle ${values.regionUsePurpose} amaçlı, bodrum kat üzerine zemin + ${values.regionFloorRange} katlı bir yapılaşma dokusu bulunmaktadır. ${buildOrderSentence}${socialNeedsKonutSentence}${speedSentence}${ageSentence}${incomeLevelSentence}${mainArteryStandardSentence}${nearbySentence} ${infrastructureKonutSentence}`,
+  ];
+  const konutVariantIndex = usePlaceholderTokens ? 0 : selectVariant("buildEnvironmentalDescription:konutOpener", konutVariants.length);
+  return normalizeReportDescriptionText(konutVariants[konutVariantIndex]);
 }
+registerVariantGroup("buildEnvironmentalDescription:orderSentence", "Yapılaşma Nizamı — ortak (Adres/Konum/Çevre)", 5);
+registerVariantGroup("buildEnvironmentalDescription:speedSentence", "Yapılaşma Hızı — ortak (Adres/Konum/Çevre)", 5);
+registerVariantGroup("buildEnvironmentalDescription:ageSentence:yeni", "Yapı Stoku Yaşı — Yeni (Adres/Konum/Çevre)", 5);
+registerVariantGroup("buildEnvironmentalDescription:ageSentence:aralik", "Yapı Stoku Yaşı — Yıl Aralığı (Adres/Konum/Çevre)", 5);
+registerVariantGroup("buildEnvironmentalDescription:socialNeeds:konut", "Sosyal İhtiyaç Mesafesi — Konut (Adres/Konum/Çevre)", 5);
+registerVariantGroup("buildEnvironmentalDescription:socialNeeds:ticaret", "Sosyal İhtiyaç Mesafesi — Ticaret (Adres/Konum/Çevre)", 5);
+registerVariantGroup("buildEnvironmentalDescription:incomeLevel", "Gelir Seviyesi — Konut (Adres/Konum/Çevre)", 5);
+registerVariantGroup("buildEnvironmentalDescription:mainArtery:standart", "Ana Arter Yakınlığı — Konut/Ticaret (Adres/Konum/Çevre)", 5);
+registerVariantGroup("buildEnvironmentalDescription:mainArtery:sanayi", "Ana Arter Yakınlığı — Sanayi (Adres/Konum/Çevre)", 5);
+registerVariantGroup("buildEnvironmentalDescription:nearby", "Yakın Çevre/Bilinen Yerler — Konut/Sanayi (Adres/Konum/Çevre)", 4);
+registerVariantGroup("buildEnvironmentalDescription:infrastructure:konut", "Altyapı Seviyesi — Konut/Ticaret (Adres/Konum/Çevre)", 5);
+registerVariantGroup("buildEnvironmentalDescription:infrastructure:sanayi", "Altyapı Seviyesi — Sanayi (Adres/Konum/Çevre)", 5);
+registerVariantGroup("buildEnvironmentalDescription:tarimsal", "Tarımsal Alan Branşı — tam paragraf (Adres/Konum/Çevre)", 5);
+registerVariantGroup("buildEnvironmentalDescription:sanayiOpener", "Sanayi Bölgesi Branşı — açılış/karakter cümlesi (Adres/Konum/Çevre)", 2);
+registerVariantGroup("buildEnvironmentalDescription:ticaretOpener", "Ticaret Bölgesi Branşı — açılış/firma ölçeği cümlesi (Adres/Konum/Çevre)", 2);
+registerVariantGroup("buildEnvironmentalDescription:konutOpener", "Konut Branşı (varsayılan) — açılış cümlesi (Adres/Konum/Çevre)", 2);
 
 const buildingFloorCountFields = [
   { key: "basement", label: "Bodrum" },
@@ -20962,21 +21221,52 @@ function getEncumbranceAnnotationsSectionText() {
   return rows.length ? buildCondensedAnnotationSummary(rows) : "Herhangi bir kayıt bulunmamaktadır.";
 }
 
+// Varyantlar docs/cumle-envanteri.md Bölüm 2'de belgelendi.
 function buildEncumbranceTitleRecordChangeParagraph(date, method) {
   const answer = normalizeYesNoChoice(state.fields.titleRecordChange);
   if (!answer) return "";
-  const prefix = `${date} tarihinde ${method} üzerinden alınan TKGM (TAKBİS) kaydı ile tapu senedi arasında`;
+  const prefixVariants = [
+    `${date} tarihinde ${method} üzerinden alınan TKGM (TAKBİS) kaydı ile tapu senedi arasında`,
+    `${date} tarihli, ${method} aracılığıyla temin edilen TKGM (TAKBİS) kaydı ile tapu senedi arasında`,
+    `${date} tarihinde ${method} üzerinden alınan TKGM (TAKBİS) kaydı ile tapu senedi karşılaştırıldığında`,
+    `${date} tarihli ${method} kaynaklı TKGM (TAKBİS) kaydı ile tapu senedi arasında`,
+  ];
+  const prefixIndex = selectVariant("buildEncumbranceTitleRecordChangeParagraph:prefix", prefixVariants.length);
+  const prefix = prefixVariants[prefixIndex];
+
   if (answer === "Hayır") {
-    return `Tapu Kaydı Değişikliği:\n${prefix} herhangi bir farklılık tespit edilmemiştir.`;
+    const noneVariants = [
+      "herhangi bir farklılık tespit edilmemiştir.",
+      "herhangi bir farklılığa rastlanmamıştır.",
+      "herhangi bir uyumsuzluk tespit edilmemiştir.",
+      "fark bulunmadığı görülmüştür.",
+    ];
+    return `Tapu Kaydı Değişikliği:\n${prefix} ${noneVariants[selectVariant("buildEncumbranceTitleRecordChangeParagraph:none", noneVariants.length)]}`;
   }
   const selectedLabels = (state.fields.titleChangedRecords || [])
     .map((key) => titleRecordChangeOptions.find((option) => option.key === key)?.label)
     .filter(Boolean);
   if (!selectedLabels.length) {
-    return `Tapu Kaydı Değişikliği:\n${prefix} farklılık bulunduğu belirtilmiş, değişen kayıt bölümleri seçilmemiştir.`;
+    const noSelectionVariants = [
+      "farklılık bulunduğu belirtilmiş, değişen kayıt bölümleri seçilmemiştir.",
+      "bir farklılık tespit edilmiş olup, değişen kayıt bölümleri belirtilmemiştir.",
+      "bir uyumsuzluk saptanmış, ancak hangi bölümlerin değiştiği ifade edilmemiştir.",
+      "bir farklılığa rastlanmış olup, değişikliğin hangi bölümlere ait olduğu belirtilmemiştir.",
+    ];
+    return `Tapu Kaydı Değişikliği:\n${prefix} ${noSelectionVariants[selectVariant("buildEncumbranceTitleRecordChangeParagraph:noSelection", noSelectionVariants.length)]}`;
   }
-  return `Tapu Kaydı Değişikliği:\n${prefix} farklılık olarak ${joinTurkishList(selectedLabels)} bölümlerinin değişmiş olduğu tespit edilmiştir.`;
+  const selectedVariants = [
+    `farklılık olarak ${joinTurkishList(selectedLabels)} bölümlerinin değişmiş olduğu tespit edilmiştir.`,
+    `${joinTurkishList(selectedLabels)} bölümlerinde değişiklik olduğu tespit edilmiştir.`,
+    `${joinTurkishList(selectedLabels)} bölümlerinde farklılık olduğu saptanmıştır.`,
+    `${joinTurkishList(selectedLabels)} bölümlerinde uyumsuzluk bulunduğu görülmüştür.`,
+  ];
+  return `Tapu Kaydı Değişikliği:\n${prefix} ${selectedVariants[selectVariant("buildEncumbranceTitleRecordChangeParagraph:selected", selectedVariants.length)]}`;
 }
+registerVariantGroup("buildEncumbranceTitleRecordChangeParagraph:prefix", "Tapu Kaydı Değişikliği — Önsöz (Tapu ve Mülkiyet)", 4);
+registerVariantGroup("buildEncumbranceTitleRecordChangeParagraph:none", "Tapu Kaydı Değişikliği — Farklılık Yok (Tapu ve Mülkiyet)", 4);
+registerVariantGroup("buildEncumbranceTitleRecordChangeParagraph:noSelection", "Tapu Kaydı Değişikliği — Farklılık Var, Seçim Yok (Tapu ve Mülkiyet)", 4);
+registerVariantGroup("buildEncumbranceTitleRecordChangeParagraph:selected", "Tapu Kaydı Değişikliği — Farklılık Var, Seçim Var (Tapu ve Mülkiyet)", 4);
 
 function encumbranceCleanText(value) {
   return String(value || "").replace(/\s+/g, " ").trim();
