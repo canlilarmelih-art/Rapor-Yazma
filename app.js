@@ -31626,34 +31626,60 @@ function getComparableStatusText(row, metrics) {
   return status ? `${status} olduğu bilgisi alınmıştır.` : "";
 }
 
+const comparablePositionSimilarVariants = [
+  (reason) => (reason ? `${reason} olmasına rağmen benzer konumda` : "benzer konumda"),
+  (reason) => (reason ? `${reason} olmasına karşın benzer bir konumdadır` : "benzer bir konumdadır"),
+];
+const comparablePositionBetterVariants = [
+  (reason, level) => `${reason}taşınmaza göre ${level} konumda`,
+  (reason, level) => `${reason}taşınmaza kıyasla ${level} bir konumdadır`,
+];
+registerVariantGroup("buildComparablePositionComparisonText:similar", "Emsal Konum Karşılaştırması — Benzer (Emsaller)", comparablePositionSimilarVariants.length);
+registerVariantGroup("buildComparablePositionComparisonText:diff", "Emsal Konum Karşılaştırması — Farklı (Emsaller)", comparablePositionBetterVariants.length);
+
 function buildComparablePositionComparisonText(row) {
   const sign = String(row.c9 || "").trim();
   const reason = row.c10 ? `${row.c10} sebebiyle ` : "";
   const percent = parseComparablePercent(row.c22);
+  const variantIndex = selectVariant("buildComparablePositionComparisonText:similar", comparablePositionSimilarVariants.length);
+  const diffVariantIndex = selectVariant("buildComparablePositionComparisonText:diff", comparablePositionBetterVariants.length);
   if (!Number.isFinite(percent) || percent === 0) {
-    return reason ? `${row.c10} olmasına rağmen benzer konumda` : "benzer konumda";
+    return comparablePositionSimilarVariants[variantIndex](row.c10);
   }
-  if (sign === "+") return `${reason}taşınmaza göre ${percent > 0.25 ? "çok daha iyi" : "daha iyi"} konumda`;
-  if (sign === "-") return `${reason}taşınmaza göre ${percent > 0.25 ? "çok daha vasat" : "daha vasat"} konumda`;
-  return reason ? `${row.c10} olmasına rağmen benzer konumda` : "benzer konumda";
+  if (sign === "+") return comparablePositionBetterVariants[diffVariantIndex](reason, percent > 0.25 ? "çok daha iyi" : "daha iyi");
+  if (sign === "-") return comparablePositionBetterVariants[diffVariantIndex](reason, percent > 0.25 ? "çok daha vasat" : "daha vasat");
+  return comparablePositionSimilarVariants[variantIndex](row.c10);
 }
+
+const comparableFeatureExternalVariants = [
+  (level) => `iç özellikleri ${level} seviyededir.`,
+  (level) => `iç mekân özellikleri ${level} seviyededir.`,
+];
+const comparableFeatureInternalVariants = [
+  (level) => `Emsal, konu taşınmaza göre ${level} iç özelliklere sahiptir.`,
+  (level) => `Emsal, değerlemeye konu gayrimenkule kıyasla ${level} iç özelliklere sahiptir.`,
+];
+registerVariantGroup("buildComparableFeatureComparisonText:external", "Emsal İç Özellik Karşılaştırması — Dışarıdan Ekspertiz (Emsaller)", comparableFeatureExternalVariants.length);
+registerVariantGroup("buildComparableFeatureComparisonText:internal", "Emsal İç Özellik Karşılaştırması (Emsaller)", comparableFeatureInternalVariants.length);
 
 function buildComparableFeatureComparisonText(row) {
   const sign = String(row.c8 || "").trim();
   const percent = parseComparablePercent(row.c21);
   if (isExternalAppointmentType(state.fields.appointmentType)) {
+    const externalIndex = selectVariant("buildComparableFeatureComparisonText:external", comparableFeatureExternalVariants.length);
     if (sign === "+") {
-      return `iç özellikleri ${percent > 0.25 ? "lüks" : "bakımlı"} seviyededir.`;
+      return comparableFeatureExternalVariants[externalIndex](percent > 0.25 ? "lüks" : "bakımlı");
     }
     if (sign === "-") {
-      return `iç özellikleri ${percent > 0.25 ? "çok vasat" : "vasat"} seviyededir.`;
+      return comparableFeatureExternalVariants[externalIndex](percent > 0.25 ? "çok vasat" : "vasat");
     }
-    return "iç özellikleri orta seviyededir.";
+    return comparableFeatureExternalVariants[externalIndex]("orta");
   }
-  if (!Number.isFinite(percent) || percent === 0 || sign === "0") return "Emsal, konu taşınmaza göre benzer iç özelliklere sahiptir.";
-  if (sign === "+") return `Emsal, konu taşınmaza göre ${percent > 0.25 ? "çok daha iyi" : "daha iyi"} iç özelliklere sahiptir.`;
-  if (sign === "-") return `Emsal, konu taşınmaza göre ${percent > 0.25 ? "çok daha vasat" : "daha vasat"} iç özelliklere sahiptir.`;
-  return "Emsal, konu taşınmaza göre benzer iç özelliklere sahiptir.";
+  const internalIndex = selectVariant("buildComparableFeatureComparisonText:internal", comparableFeatureInternalVariants.length);
+  if (!Number.isFinite(percent) || percent === 0 || sign === "0") return comparableFeatureInternalVariants[internalIndex]("benzer");
+  if (sign === "+") return comparableFeatureInternalVariants[internalIndex](percent > 0.25 ? "çok daha iyi" : "daha iyi");
+  if (sign === "-") return comparableFeatureInternalVariants[internalIndex](percent > 0.25 ? "çok daha vasat" : "daha vasat");
+  return comparableFeatureInternalVariants[internalIndex]("benzer");
 }
 
 // İş Bankası ve Kuveyt Türk raporlarında emsal telefon numarası tam 10
@@ -31690,6 +31716,12 @@ function buildComparableContactLine(row) {
   return `(İrtibat Kişisi ve Telefon No: ${[row.c0, phone].filter(Boolean).join(" / ") || "-"})`;
 }
 
+const comparableSubjectOpeningVariants = [
+  "Ekspertize konu taşınmaz satılık olup",
+  "Değerlemeye konu gayrimenkul satışa sunulmuş olup",
+];
+registerVariantGroup("buildComparableSubjectStatement", "'Konu Taşınmaz' Emsal Kartı Açılışı (Emsaller)", comparableSubjectOpeningVariants.length);
+
 function buildComparableSubjectStatement(row, metrics) {
   const contactLine = buildComparableContactLine(row);
   const declaredArea = formatComparableArea(row.c12, "m2");
@@ -31700,8 +31732,9 @@ function buildComparableSubjectStatement(row, metrics) {
   const negotiationText = Number.isFinite(metrics.negotiationRate) && metrics.negotiationRate > 0
     ? `Pazarlık payı vardır. Pazarlık payının yaklaşık %${Math.round(metrics.negotiationRate * 100).toLocaleString("tr-TR")} olduğu düşünülmektedir.`
     : "Pazarlık payı yoktur.";
+  const opening = comparableSubjectOpeningVariants[selectVariant("buildComparableSubjectStatement", comparableSubjectOpeningVariants.length)];
   const sentence = [
-    "Ekspertize konu taşınmaz satılık olup",
+    opening,
     declaredArea ? `, ${declaredArea} olarak beyan edilmiş` : "",
     correctedArea ? `, ${correctedArea} olduğu bilinmektedir.` : ".",
     ` ${priceText}`,
@@ -31710,6 +31743,12 @@ function buildComparableSubjectStatement(row, metrics) {
   return normalizeComparableText(`${contactLine}\n\n${sentence}`);
 }
 
+const comparableGeneralStatementVariants = [
+  (source, valueText) => `${source} alınan sözlü bilgiye göre bölgede yer alan benzer özellikteki gayrimenkullerin m2 birim değerinin ${valueText} civarında olabileceği bilgisi alınmıştır.`,
+  (source, valueText) => `${source} edinilen sözlü bilgiye göre, bölgedeki benzer nitelikli gayrimenkullerin m² birim değerinin ${valueText} arasında değişebileceği bilgisine ulaşılmıştır.`,
+];
+registerVariantGroup("buildComparableGeneralStatement", "'Genel' Emsal Kartı Açıklaması (Emsaller)", comparableGeneralStatementVariants.length);
+
 function buildComparableGeneralStatement(row, metrics) {
   const value = Number.isFinite(metrics.adjustedUnitValue) ? metrics.adjustedUnitValue : metrics.unitValue;
   const lower = Number.isFinite(value) ? roundComparableToNearest1000(value * 0.96) : Number.NaN;
@@ -31717,8 +31756,41 @@ function buildComparableGeneralStatement(row, metrics) {
   const valueText = Number.isFinite(lower) && Number.isFinite(upper)
     ? `${formatComparableMoney(lower, " TL/m2")} ila ${formatComparableMoney(upper, " TL/m2")}`
     : "piyasa koşullarına göre değişen değerler";
-  return normalizeComparableText(`${buildComparableSourceAblative(row.c0)} alınan sözlü bilgiye göre bölgede yer alan benzer özellikteki gayrimenkullerin m2 birim değerinin ${valueText} civarında olabileceği bilgisi alınmıştır.`);
+  return normalizeComparableText(
+    comparableGeneralStatementVariants[selectVariant("buildComparableGeneralStatement", comparableGeneralStatementVariants.length)](
+      buildComparableSourceAblative(row.c0),
+      valueText
+    )
+  );
 }
+
+const comparableRentalMarketValueVariants = [
+  (range) => `Bölgedeki kapitalizasyon oranı dikkate alındığında emsalin piyasa değerinin yaklaşık ${range} arasında olabileceği düşünülmektedir.`,
+  (range) => `Bölgedeki kapitalizasyon oranı esas alındığında, emsalin piyasa değerinin yaklaşık ${range} bandında olabileceği değerlendirilmektedir.`,
+];
+const comparableRentTextVariants = [
+  (rent) => `Kira değerinin ${rent} olacağı düşünülmektedir.`,
+  (rent) => `Kira bedelinin ${rent} olacağı değerlendirilmektedir.`,
+];
+const comparableNegotiationYesRentVariants = [
+  (rate, rent) => `Pazarlık payı vardır. Pazarlık payının yaklaşık %${rate}, kira değerinin ${rent} olacağı düşünülmektedir.`,
+  (rate, rent) => `Emsalde pazarlık payı bulunmaktadır. Pazarlık payının yaklaşık %${rate}, kira bedelinin ise ${rent} olacağı değerlendirilmektedir.`,
+];
+const comparableNegotiationYesVariants = [
+  (rate) => `Pazarlık payı vardır. Pazarlık payının yaklaşık %${rate} olduğu düşünülmektedir.`,
+  (rate) => `Emsalde pazarlık payı bulunmaktadır. Pazarlık payının yaklaşık %${rate} olduğu değerlendirilmektedir.`,
+];
+const comparableNegotiationNoRentVariants = [
+  (rent) => `Pazarlık payı yoktur. Kira değerinin ${rent} olacağı düşünülmektedir.`,
+  (rent) => `Emsalde pazarlık payı bulunmamaktadır. Kira bedelinin ${rent} olacağı değerlendirilmektedir.`,
+];
+const comparableNegotiationNoVariants = ["Pazarlık payı yoktur.", "Emsalde pazarlık payı bulunmamaktadır."];
+registerVariantGroup("buildComparableBargainAndRentText:rentalMarketValue", "Emsal Kiralık — Bölge Piyasa Değeri (Emsaller)", comparableRentalMarketValueVariants.length);
+registerVariantGroup("buildComparableBargainAndRentText:rentOnly", "Emsal — Yalnız Kira Cümlesi (Emsaller)", comparableRentTextVariants.length);
+registerVariantGroup("buildComparableBargainAndRentText:negotiationYesRent", "Emsal — Pazarlık Var + Kira (Emsaller)", comparableNegotiationYesRentVariants.length);
+registerVariantGroup("buildComparableBargainAndRentText:negotiationYes", "Emsal — Yalnız Pazarlık Var (Emsaller)", comparableNegotiationYesVariants.length);
+registerVariantGroup("buildComparableBargainAndRentText:negotiationNoRent", "Emsal — Pazarlık Yok + Kira (Emsaller)", comparableNegotiationNoRentVariants.length);
+registerVariantGroup("buildComparableBargainAndRentText:negotiationNo", "Emsal — Yalnız Pazarlık Yok (Emsaller)", comparableNegotiationNoVariants.length);
 
 function buildComparableBargainAndRentText(row, metrics) {
   const status = String(row.c2 || "").toLocaleLowerCase("tr-TR");
@@ -31726,22 +31798,28 @@ function buildComparableBargainAndRentText(row, metrics) {
     const lower = metrics.bargainPrice > 0 ? formatComparableMoney(metrics.bargainPrice) : "";
     const upper = metrics.askingPrice > 0 ? formatComparableMoney(metrics.askingPrice) : "";
     if (!lower && !upper) return "";
-    return `Bölgedeki kapitalizasyon oranı dikkate alındığında emsalin piyasa değerinin yaklaşık ${[lower, upper].filter(Boolean).join(" - ")} arasında olabileceği düşünülmektedir.`;
+    return comparableRentalMarketValueVariants[selectVariant("buildComparableBargainAndRentText:rentalMarketValue", comparableRentalMarketValueVariants.length)](
+      [lower, upper].filter(Boolean).join(" - ")
+    );
   }
   if (status.includes("genel")) return "";
   if (status.includes("satılmış")) {
-    return metrics.rent > 0 ? `Kira değerinin ${formatComparableMoney(metrics.rent, " TL/ay")} olacağı düşünülmektedir.` : "";
+    return metrics.rent > 0
+      ? comparableRentTextVariants[selectVariant("buildComparableBargainAndRentText:rentOnly", comparableRentTextVariants.length)](formatComparableMoney(metrics.rent, " TL/ay"))
+      : "";
   }
-  const rentText = metrics.rent > 0 ? `Kira değerinin ${formatComparableMoney(metrics.rent, " TL/ay")} olacağı düşünülmektedir.` : "";
   if (Number.isFinite(metrics.negotiationRate) && metrics.negotiationRate > 0) {
     const negotiationRateText = Math.round(metrics.negotiationRate * 100).toLocaleString("tr-TR");
     return metrics.rent > 0
-      ? `Pazarlık payı vardır. Pazarlık payının yaklaşık %${negotiationRateText}, kira değerinin ${formatComparableMoney(metrics.rent, " TL/ay")} olacağı düşünülmektedir.`
-      : `Pazarlık payı vardır. Pazarlık payının yaklaşık %${negotiationRateText} olduğu düşünülmektedir.`;
+      ? comparableNegotiationYesRentVariants[selectVariant("buildComparableBargainAndRentText:negotiationYesRent", comparableNegotiationYesRentVariants.length)](
+          negotiationRateText,
+          formatComparableMoney(metrics.rent, " TL/ay")
+        )
+      : comparableNegotiationYesVariants[selectVariant("buildComparableBargainAndRentText:negotiationYes", comparableNegotiationYesVariants.length)](negotiationRateText);
   }
   return metrics.rent > 0
-    ? `Pazarlık payı yoktur. Kira değerinin ${formatComparableMoney(metrics.rent, " TL/ay")} olacağı düşünülmektedir.`
-    : "Pazarlık payı yoktur.";
+    ? comparableNegotiationNoRentVariants[selectVariant("buildComparableBargainAndRentText:negotiationNoRent", comparableNegotiationNoRentVariants.length)](formatComparableMoney(metrics.rent, " TL/ay"))
+    : comparableNegotiationNoVariants[selectVariant("buildComparableBargainAndRentText:negotiationNo", comparableNegotiationNoVariants.length)];
 }
 
 function buildComparableCalculationText(row, metrics) {
@@ -31833,8 +31911,18 @@ function buildComparableWorkplaceFloorReductionExplanation(row, metrics) {
   if (!totalArea) return "";
   const baselinePhrase = baselineLabels.length ? `${joinComparableTurkishList(baselineLabels)} etkili alan olarak belirlenmiş olup ` : "";
   const reducedPhrase = reducedLabels.length ? `${joinComparableTurkishList(reducedLabels)} oranında indirgenerek ` : "";
-  return `Kat bazında indirgenmiş alan ${baselinePhrase}${reducedPhrase}etkili alan ${totalArea} olarak hesaplanmıştır.`;
+  return workplaceFloorReductionVariants[selectVariant("buildComparableWorkplaceFloorReductionExplanation", workplaceFloorReductionVariants.length)](
+    baselinePhrase,
+    reducedPhrase,
+    totalArea
+  );
 }
+
+const workplaceFloorReductionVariants = [
+  (baselinePhrase, reducedPhrase, totalArea) => `Kat bazında indirgenmiş alan ${baselinePhrase}${reducedPhrase}etkili alan ${totalArea} olarak hesaplanmıştır.`,
+  (baselinePhrase, reducedPhrase, totalArea) => `Kat bazında indirgenmiş alan hesabında ${baselinePhrase}${reducedPhrase}toplam etkili alan ${totalArea} olarak belirlenmiştir.`,
+];
+registerVariantGroup("buildComparableWorkplaceFloorReductionExplanation", "İşyeri Emsali Kat Bazında İndirgeme Açıklaması (Emsaller)", workplaceFloorReductionVariants.length);
 
 function normalizeComparableFloorName(value) {
   const text = String(value || "").trim();

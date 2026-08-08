@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.364 - 2026-08-08 - Cümle varyantı: Bölüm 7 (Emsaller) kalan fonksiyonlar koda taşındı (153 grup)
+
+- Koda taşınanlar: `buildComparablePositionComparisonText` (benzer/farklı konum), `buildComparableFeatureComparisonText` (dışarıdan ekspertiz/normal), `buildComparableSubjectStatement` ("Konu Taşınmaz" kartı açılışı), `buildComparableGeneralStatement` ("Genel" kart açıklaması), `buildComparableBargainAndRentText` (6 alt-durum: kiralık-piyasa değeri, yalnız kira, pazarlık var+kira, yalnız pazarlık var, pazarlık yok+kira, yalnız pazarlık yok), `buildComparableWorkplaceFloorReductionExplanation`. `buildComparableMarketAnalysisText`/`buildLandComparableMarketAnalysisText` (comparable-market-analysis.js) ve `buildComparableLongText`'in kompozit yapıştırıcı cümleleri zaten önceki pilotlarda tamamlanmıştı.
+- Bölüm 7 artık TAM sayılabilir — yalnızca doküman gereği "veri, üslup değil" gerekçesiyle bilinçli varyantlanmayan `buildComparableCalculationText`/`buildComparableLandCalculationText` (hesaplama formülü), `buildComparableSaleDateText` (göreli tarih), `buildComparableLocationText` (mesafe/yön) hariç.
+- `VARIANT_REGISTRY` artık **153 grup**.
+- `test-comparable-workplace-floor-description.js` güncellendi: `buildComparableWorkplaceFloorReductionExplanation`'ın dışarıda tanımlı yeni varyant dizisi de yükleniyor, `selectVariant: () => 0` + `registerVariantGroup: () => {}` mock'ları eklendi (hem saf fonksiyon testi hem `buildComparableLongText` kablolama testi için).
+- Kod değişikliğinden sonra yerel yedek alındı: `backups/before-variant-section7-code_*`.
+- `index.html` cache-buster'ı `20260808-1225`'e yükseltildi. `npm run verify` tamamı geçti.
+
 ## 0.0.363 - 2026-08-08 - Cümle varyantı: Bölüm 6 (Değerleme) büyük ölçüde koda taşındı (140 grup)
 
 - Koda taşınanlar: `buildValuationMethodExplanation` (⭐⭐ giriş paragrafı), `buildValuationExternalAppraisalText`, `buildAgriculturalUsageNatureDifferenceText`, `buildValuationUsageNatureDifferenceText` (giriş/fark-yok/fark-var), `buildValuationConstructionLevelRiskText`, `buildValuationRentExplanation` (yasal=mevcut/farklı/yalnız yasal/yalnız mevcut), `buildPropertyTaxDeclarationValueExplanation`, `buildPropertyTaxDeclarationUnavailableExplanation`, `buildInsuranceConstructionCostExplanation`, `buildTarlaValuationRiskExplanation` (Tarla/Bahçe riski, tamamen sabit uzun paragraf — 2 tam-metin varyantı). `buildValuationSaleabilityExplanation` zaten önceki bir pilotta tamamlanmıştı.

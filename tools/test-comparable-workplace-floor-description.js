@@ -40,6 +40,14 @@ function sliceFn(startMarker) {
   return appSource.slice(start, end);
 }
 
+function sliceRange(startMarker, endMarker) {
+  const start = appSource.indexOf(startMarker);
+  assert(start >= 0, `Bulunamadi: ${startMarker}`);
+  const end = appSource.indexOf(endMarker, start);
+  assert(end > start, `Bulunamadi (bitis): ${endMarker}`);
+  return appSource.slice(start, end);
+}
+
 const normalizeComparableFloorNameSrc = sliceFn("function normalizeComparableFloorName(");
 const joinComparableTurkishListSrc = sliceFn("function joinComparableTurkishList(");
 const formatComparableAreaSrc = sliceFn("function formatComparableArea(");
@@ -47,6 +55,13 @@ const parseComparableNumberSrc = sliceFn("function parseComparableNumber(");
 const parseComparableWorkplaceReductionRateSrc = sliceFn("function parseComparableWorkplaceReductionRate(");
 const buildComparableWorkplaceFloorAreaPhraseSrc = sliceFn("function buildComparableWorkplaceFloorAreaPhrase(");
 const buildComparableWorkplaceFloorReductionExplanationSrc = sliceFn("function buildComparableWorkplaceFloorReductionExplanation(");
+// buildComparableWorkplaceFloorReductionExplanation artik disaridan tanimli
+// bir varyant dizisine bagli (bkz. docs/cumle-envanteri.md, Bolum 7) — o da
+// birlikte yuklenmeli; selectVariant/registerVariantGroup asagida mock'lanir.
+const workplaceFloorReductionVariantsSrc = sliceRange(
+  "const workplaceFloorReductionVariants = [",
+  "registerVariantGroup(\"buildComparableWorkplaceFloorReductionExplanation\""
+);
 const buildComparableFloorPhraseSrc = sliceFn("function buildComparableFloorPhrase(");
 const foldTurkishSrc = sliceFn("function foldTurkish(");
 const isWorkplaceLikeUsageNatureSrc = sliceFn("function isWorkplaceLikeUsageNature(");
@@ -99,13 +114,20 @@ const buildComparableLongTextSrc = sliceFn("function buildComparableLongText(");
 
 // --- 1b) buildComparableWorkplaceFloorReductionExplanation — saf fonksiyon testi ---
 {
-  const context = {};
+  const context = {
+    // selectVariant burada BİLEREK her zaman 0 (orijinal metin) döner — bu
+    // test dallanma/hesaplama mantığını doğruluyor, varyant SEÇİMİ ayrı
+    // olarak tools/test-variant-selection.js'te test ediliyor.
+    selectVariant: () => 0,
+    registerVariantGroup: () => {},
+  };
   vm.createContext(context);
   vm.runInContext(parseComparableNumberSrc, context);
   vm.runInContext(normalizeComparableFloorNameSrc, context);
   vm.runInContext(joinComparableTurkishListSrc, context);
   vm.runInContext(formatComparableAreaSrc, context);
   vm.runInContext(parseComparableWorkplaceReductionRateSrc, context);
+  vm.runInContext(workplaceFloorReductionVariantsSrc, context);
   vm.runInContext(buildComparableWorkplaceFloorReductionExplanationSrc, context);
 
   // Kullanıcının verdiği örnek: zemin kat %100 (baz), asma kat %30 indirgenmiş.
@@ -167,6 +189,11 @@ function createLongTextContext(fields = {}) {
     buildComparableCalculationText: () => "",
     formatComparableExtraNote: () => "",
     normalizeComparableText: (value) => value,
+    // selectVariant burada BİLEREK her zaman 0 (orijinal metin) döner — bu
+    // test kablolama/sıralama mantığını doğruluyor, varyant SEÇİMİ ayrı
+    // olarak tools/test-variant-selection.js'te test ediliyor.
+    selectVariant: () => 0,
+    registerVariantGroup: () => {},
   };
   vm.createContext(context);
   vm.runInContext(parseComparableNumberSrc, context);
@@ -175,6 +202,7 @@ function createLongTextContext(fields = {}) {
   vm.runInContext(formatComparableAreaSrc, context);
   vm.runInContext(parseComparableWorkplaceReductionRateSrc, context);
   vm.runInContext(buildComparableWorkplaceFloorAreaPhraseSrc, context);
+  vm.runInContext(workplaceFloorReductionVariantsSrc, context);
   vm.runInContext(buildComparableWorkplaceFloorReductionExplanationSrc, context);
   vm.runInContext(buildComparableFloorPhraseSrc, context);
   vm.runInContext(foldTurkishSrc, context);
