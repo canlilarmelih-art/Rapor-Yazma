@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.369 - 2026-08-08 - Cümle varyantı: composeUnitTotalAreaClause ailesi koda taşındı (172 grup) — cümle varyantı işi artık tamamlandı
+
+- `composeUnitTotalAreaClause()` (dışarıdan ekspertiz/yasal+mevcut/yasal≠mevcut önekleri) ve `composeUnitTerraceTotalClause()` (toplam/toplamda öneki) koda taşındı. **Dikkatli kısıtlama**: bu clause'lar `composeUnitTotalAreaTerraceSentence()`/`composeUnitTerraceTotalSentence()` içinde ham `"na sahiptir."` eki ile birleştiriliyor — bu ek yalnızca metin "alanı" ile bittiğinde doğru Türkçe çekim (belirtili nesne durumu) veriyor. Bu yüzden varyantlar SADECE önek/bağlaç kısmını değiştiriyor, cümle her zaman "... alanı" ile bitmeye devam ediyor (aksi halde "-na" eki yanlış kaynaşma üretirdi — bilinçli tasarım kısıtı).
+- `VARIANT_REGISTRY` artık **172 grup**. Bununla `docs/cumle-envanteri.md`'nin cümle-varyantı kapsamındaki TÜM kalemleri (Bölüm 1-9 + ertelenen 3 kalem) koda taşınmış durumda.
+- Ek test değişikliği gerekmedi.
+- Kod değişikliğinden sonra yerel yedek alındı: `backups/before-variant-unit-total-area-clause_*`.
+- `index.html` cache-buster'ı `20260808-1335`'e yükseltildi. `npm run verify` tamamı geçti.
+- **Kalan, cümle-varyantı KAPSAMI DIŞINDA ayrı bir konu (bu turda keşfedildi, bilerek dokunulmadı)**: `buildProjectSuitabilityDescription()`'ın "Webtapu/Belediye farklı proje" (dual-project) dalı `server.js`'te hiç implemente edilmemiş — `shouldUseProjectDifferenceComparison()` zinciri (`shouldShowArchitecturalProjectFields`, `isOwnershipProjectDifferenceComparable`, `getSelectedProjectInstitutions` dahil, çok sayıda bağımlı fonksiyon) sunucuda yeniden üretilmesi gerekiyor — kapsamı büyük ve riski (yanlış kopyalanırsa export'ta yanlış metin çıkması) yüksek, ayrı bir kullanıcı talebi/tur olarak ele alınmalı.
+
 ## 0.0.368 - 2026-08-08 - Cümle varyantı: dekoratif alan clause fonksiyonları koda taşındı (168 grup)
 
 - Bölüm 4/5'te daha önce "paylaşılan yapı-taşı fonksiyon" gerekçesiyle ertelenen kalemlerden `composeMainRoomDecorativeSentence()` (zemin/duvar kuyruğu ifadeleri + bağlaç) ve `composeSingleAreaDecorativeSentence()` (zemin=duvar aynı / zemin≠duvar / yalnız zemin durumları) koda taşındı — grup-birleştirme mantığının kendisi (`formatTurkishList`, `groupDecorativeAreasByValue`) DEĞİŞTİRİLMEDİ, yalnızca sabit bağlaç/kuyruk ifadeleri varyantlandı.

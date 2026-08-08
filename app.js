@@ -9365,28 +9365,48 @@ function composeUnitTotalAreaTerraceSentence(legalTotal, currentTotal, legalTerr
   return "";
 }
 
+// NOT: bu clause'lar composeUnitTotalAreaTerraceSentence/composeUnitTerraceTotalSentence
+// icinde ham "na sahiptir."/"na ve ...na sahiptir." eki ile BIRLESTIRILIYOR —
+// bu ek yalnizca metin "alanı" ile bittiginde (belirtili nesne durumu -na
+// çekim eki) dogru Turkce dilbilgisi verir. Bu yuzden varyantlar SADECE
+// ONEK/BAGLAC kismini degistirir, cumle HER ZAMAN "... alanı" ile bitmeye
+// devam eder — aksi halde "-na" eki yanlis kaynasma uretir (dilbilgisi hatasi).
+const unitTotalAreaExternalPrefixVariants = ["Taşınmaz projesine göre toplam", "Taşınmaz, projesine göre toplam"];
+const unitTotalAreaBothPrefixVariants = ["Taşınmaz projesine ve mevcut duruma göre toplam", "Taşınmaz, projesine ve mevcut duruma göre toplam"];
+const unitTotalAreaDiffPrefixVariants = ["Taşınmaz yasal olarak toplam", "Taşınmaz, yasal olarak toplam"];
+registerVariantGroup("composeUnitTotalAreaClause:external", "Toplam Kullanım Alanı — Dışarıdan Ekspertiz Öneki (Bağımsız Bölüm)", unitTotalAreaExternalPrefixVariants.length);
+registerVariantGroup("composeUnitTotalAreaClause:both", "Toplam Kullanım Alanı — Yasal+Mevcut Öneki (Bağımsız Bölüm)", unitTotalAreaBothPrefixVariants.length);
+registerVariantGroup("composeUnitTotalAreaClause:diff", "Toplam Kullanım Alanı — Yasal≠Mevcut Öneki (Bağımsız Bölüm)", unitTotalAreaDiffPrefixVariants.length);
+
 function composeUnitTotalAreaClause(legalTotal, currentTotal) {
   if (!(legalTotal > 0) && !(currentTotal > 0)) return "";
   if (shouldUseExternalUnitInspectionText()) {
     const area = legalTotal > 0 ? legalTotal : currentTotal;
-    return `Taşınmaz projesine göre toplam ${formatUnitAreaText(area)} kullanım alanı`;
+    const prefix = unitTotalAreaExternalPrefixVariants[selectVariant("composeUnitTotalAreaClause:external", unitTotalAreaExternalPrefixVariants.length)];
+    return `${prefix} ${formatUnitAreaText(area)} kullanım alanı`;
   }
   if (legalTotal === currentTotal || !(currentTotal > 0)) {
-    return `Taşınmaz projesine ve mevcut duruma göre toplam ${formatUnitAreaText(legalTotal)} kullanım alanı`;
+    const prefix = unitTotalAreaBothPrefixVariants[selectVariant("composeUnitTotalAreaClause:both", unitTotalAreaBothPrefixVariants.length)];
+    return `${prefix} ${formatUnitAreaText(legalTotal)} kullanım alanı`;
   }
-  return `Taşınmaz yasal olarak toplam ${formatUnitAreaText(legalTotal)}, mevcut olarak toplam ${formatUnitAreaText(currentTotal)} kullanım alanı`;
+  const prefix = unitTotalAreaDiffPrefixVariants[selectVariant("composeUnitTotalAreaClause:diff", unitTotalAreaDiffPrefixVariants.length)];
+  return `${prefix} ${formatUnitAreaText(legalTotal)}, mevcut olarak toplam ${formatUnitAreaText(currentTotal)} kullanım alanı`;
 }
+
+const unitTerraceTotalLeadVariants = ["toplam", "toplamda"];
+registerVariantGroup("composeUnitTerraceTotalClause", "Toplam Teras Alanı — Önek (Bağımsız Bölüm)", unitTerraceTotalLeadVariants.length);
 
 function composeUnitTerraceTotalClause(legalTotal, currentTotal) {
   if (!(legalTotal > 0) && !(currentTotal > 0)) return "";
+  const lead = unitTerraceTotalLeadVariants[selectVariant("composeUnitTerraceTotalClause", unitTerraceTotalLeadVariants.length)];
   if (legalTotal > 0 && currentTotal > 0) {
     if (legalTotal === currentTotal) {
-      return `toplam ${formatUnitAreaText(legalTotal)} yasal ve mevcut teras alanı`;
+      return `${lead} ${formatUnitAreaText(legalTotal)} yasal ve mevcut teras alanı`;
     }
-    return `toplam ${formatUnitAreaText(legalTotal)} yasal teras ve ${formatUnitAreaText(currentTotal)} mevcut teras alanı`;
+    return `${lead} ${formatUnitAreaText(legalTotal)} yasal teras ve ${formatUnitAreaText(currentTotal)} mevcut teras alanı`;
   }
-  if (legalTotal > 0) return `toplam ${formatUnitAreaText(legalTotal)} yasal teras alanı`;
-  return `toplam ${formatUnitAreaText(currentTotal)} mevcut teras alanı`;
+  if (legalTotal > 0) return `${lead} ${formatUnitAreaText(legalTotal)} yasal teras alanı`;
+  return `${lead} ${formatUnitAreaText(currentTotal)} mevcut teras alanı`;
 }
 
 function composeUnitTerraceTotalSentence(legalTotal, currentTotal) {
