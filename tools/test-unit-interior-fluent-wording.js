@@ -42,6 +42,13 @@ function sliceRange(startMarker, endMarker) {
 const foldTurkishSrc = sliceFn("function foldTurkish(");
 const capitalizeSentenceSrc = sliceFn("function capitalizeSentence(");
 const composeDoorsWindowsSentenceSrc = sliceFn("function composeDoorsWindowsSentence(");
+// composeKitchenCabinetCounterSentence artik disaridan tanimli varyant
+// dizilerine bagli (bkz. docs/cumle-envanteri.md, Bolum 5) — o const'lar da
+// birlikte yuklenmeli.
+const kitchenCabinetCounterVariantsSrc = sliceRange(
+  "const kitchenCabinetCounterNoneVariants = [",
+  "function composeKitchenCabinetCounterSentence("
+);
 const composeKitchenCabinetCounterSentenceSrc = sliceFn("function composeKitchenCabinetCounterSentence(");
 // composeMaterialQualitySentence artik varyant secimi icin ayri bir
 // `const materialQualitySentenceVariants` sozlugune bagli — o da birlikte
@@ -51,6 +58,11 @@ const materialQualitySentenceVariantsSrc = sliceRange(
   "function composeMaterialQualitySentence("
 );
 const composeMaterialQualitySentenceSrc = sliceFn("function composeMaterialQualitySentence(");
+// composeUnitHeatingSentence artik disaridan tanimli varyant dizisine bagli.
+const unitHeatingSentenceVariantsSrc = sliceRange(
+  "const unitHeatingSentenceVariants = [",
+  "function composeUnitHeatingSentence("
+);
 const composeUnitHeatingSentenceSrc = sliceFn("function composeUnitHeatingSentence(");
 
 function createContext(fields) {
@@ -77,9 +89,11 @@ function createContext(fields) {
   vm.runInContext(foldTurkishSrc, context);
   vm.runInContext(capitalizeSentenceSrc, context);
   vm.runInContext(composeDoorsWindowsSentenceSrc, context);
+  vm.runInContext(kitchenCabinetCounterVariantsSrc, context);
   vm.runInContext(composeKitchenCabinetCounterSentenceSrc, context);
   vm.runInContext(materialQualitySentenceVariantsSrc, context);
   vm.runInContext(composeMaterialQualitySentenceSrc, context);
+  vm.runInContext(unitHeatingSentenceVariantsSrc, context);
   vm.runInContext(composeUnitHeatingSentenceSrc, context);
   return context;
 }

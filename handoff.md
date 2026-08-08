@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.362 - 2026-08-08 - Cümle varyantı: Bölüm 5 (Bağımsız Bölüm İç Özellikleri) büyük ölçüde koda taşındı (125 grup)
+
+- Koda taşınanlar: `composeVerticalUnitDescriptionIntro`, `composeExternalUnitInspectionSentence` (sabit, değişkensiz), `composeUnitShopFrontageDepthSentence` (cephe+derinlik/yalnız cephe/yalnız derinlik), `composeHorizontalUnitDescriptionIntro` (kat bileşimi cümlesi), `composeUnitLandSharePhrase` (alan hesabıyla/yalnız oran), `composeSingleUnitFloorInteriorParagraph` (⭐⭐, en sık görülen durum — 6 alt-varyant grubu: alan+hacim/yalnız alan cümlesi, tek/çift alan öneki, yasal≠mevcut, yalnız hacim), `composeMultiUnitFloorInteriorSentence` (aynı desenin çok katlı hali, 6 grup), `composeUnitTerraceSentence` (not metni + yasal=mevcut/yasal≠mevcut), `composeUnitViewSentence`, `composeUnitHeatingSentence`, `composeUnitConstructionLevelSentence`, `composeBathroomFixtureSentence` (yok/mevcut liste/kalan eksikler), `composeDoorsWindowsSentence` (eksik montaj kısmı), `composeKitchenCabinetCounterSentence` (yok/yalnız dolap/yalnız tezgah/ikisi de var).
+- **Bilinçli olarak ERTELENDİ**: `composeUnitTotalAreaClause`/`composeUnitTerraceTotalClause`/`composeUnitTotalAreaTerraceSentence` (düşük seviyeli, birden çok üst cümlede paylaşılan yapı-taşı fonksiyonlar — ayrı varyant seçimi cümle bütünlüğünü bozma riski taşıyor, ayrı bir turda ele alınacak), `composeMainRoomDecorativeSentence`/`composeSingleAreaDecorativeSentence` (grup birleştirme mantığı dokümanda varsayılandan karmaşık), `composeUnitTerraceTotalSentence`.
+- `VARIANT_REGISTRY` artık **125 grup**.
+- Mevcut test dosyası `test-unit-interior-fluent-wording.js`, yeni dışarıdan tanımlı varyant dizilerini (`kitchenCabinetCounterNoneVariants`, `unitHeatingSentenceVariants`) de yükleyecek şekilde güncellendi (aynı `registerVariantGroup: () => {}` / `selectVariant: () => 0` mock deseni).
+- Kod değişikliğinden sonra yerel yedek alındı: `backups/before-variant-section5-code_*`.
+- `index.html` cache-buster'ı `20260808-1150`'ye yükseltildi. `npm run verify` tamamı geçti.
+
 ## 0.0.361 - 2026-08-08 - Cümle varyantı: Bölüm 4 (Ana Gayrimenkul) tamamı koda taşındı (93 grup)
 
 - `buildMainPropertyOpeningSentence`, `buildMainPropertyProjectSentence` (uyumlu/uyumsuz), `buildMainPropertyFloorSentence`, `buildMainPropertyBlockPositionSentence` (belirtilmiş/belirtilmemiş), `buildMainPropertyPhysicalSentence`, `buildBuildingCarparkElevatorSentences` (asansör var/yok/bekliyor, otopark var/yok, ısınma), `buildHorizontalMainPropertySiteSentence`/`...FloorSentence`/`...AmenitySentence` (yatay kat irtifakı ailesi), `buildBuildingInspectionExplanation` (aktif/feshedilmiş), `buildBuildingInspectionLawExemptionExplanation`, `buildBuildingInspectionTerminationExplanation` (aynı "feshedilmiş" varyant havuzunu paylaşır) koda taşındı.

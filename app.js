@@ -8925,6 +8925,10 @@ function composeUnitDescriptionIntro(rows = []) {
   return composeVerticalUnitDescriptionIntro(rows);
 }
 
+// Varyantlar docs/cumle-envanteri.md Bölüm 5'te belgelendi.
+const verticalUnitIntroSubjectVariants = ["Ekspertize konu taşınmaz", "Değerlemeye konu bağımsız bölüm", "Söz konusu taşınmaz"];
+registerVariantGroup("composeVerticalUnitDescriptionIntro", "Bağımsız Bölüm Giriş Cümlesi — dikey mülkiyet (Bağımsız Bölüm)", verticalUnitIntroSubjectVariants.length);
+
 function composeVerticalUnitDescriptionIntro(rows = []) {
   const floorPhrase = formatUnitFloorsIntroPhrase(rows);
   const entranceDirectionPhrase = formatUnitBuildingEntranceDirectionPhrase(state.fields.buildingEntranceDirection);
@@ -8933,9 +8937,10 @@ function composeVerticalUnitDescriptionIntro(rows = []) {
   const unitNoPhrase = state.fields.unitNo ? `${state.fields.unitNo} bağımsız bölüm no.lu` : "";
   const naturePhrase = formatUnitNaturePhrase();
   const details = [floorPhrase, entranceDirectionPhrase, positionPhrase, facadePhrase, unitNoPhrase, naturePhrase].filter(Boolean).join(", ");
+  const subject = verticalUnitIntroSubjectVariants[selectVariant("composeVerticalUnitDescriptionIntro", verticalUnitIntroSubjectVariants.length)];
   return details
-    ? `Ekspertize konu taşınmaz, incelenen onaylı mimari projesine göre, ${details}.`
-    : "Ekspertize konu taşınmaz, incelenen onaylı mimari projesine göre değerlendirilmiştir.";
+    ? `${subject}, incelenen onaylı mimari projesine göre, ${details}.`
+    : `${subject}, incelenen onaylı mimari projesine göre değerlendirilmiştir.`;
 }
 
 function formatUnitFloorsIntroPhrase(rows = []) {
@@ -8967,16 +8972,33 @@ function formatUnitBuildingEntranceDirectionPhrase(value) {
   return `${direction} yönünden sağlanan`;
 }
 
+const horizontalUnitFloorPhraseVariants = [
+  (composition, totalFloors) => `Taşınmaz projesine göre ${composition}${totalFloors ? ` olmak üzere toplam ${totalFloors} kattan` : ""} oluşmaktadır.`,
+  (composition, totalFloors) => `Taşınmaz, projesine göre ${composition}${totalFloors ? ` olmak üzere toplam ${totalFloors} kattan` : ""} meydana gelmektedir.`,
+];
+registerVariantGroup("composeHorizontalUnitDescriptionIntro:floorPhrase", "Yatay Mülkiyet Kat Bileşimi Cümlesi (Bağımsız Bölüm)", horizontalUnitFloorPhraseVariants.length);
+
 function composeHorizontalUnitDescriptionIntro() {
   updateBuildingFloorTotals();
   const sharePhrase = composeUnitLandSharePhrase();
   const floorComposition = buildMainPropertyFloorComposition();
   const totalFloors = String(state.fields.totalFloors || "").trim();
   const floorPhrase = floorComposition
-    ? `Taşınmaz projesine göre ${floorComposition}${totalFloors ? ` olmak üzere toplam ${totalFloors} kattan` : ""} oluşmaktadır.`
+    ? horizontalUnitFloorPhraseVariants[selectVariant("composeHorizontalUnitDescriptionIntro:floorPhrase", horizontalUnitFloorPhraseVariants.length)](floorComposition, totalFloors)
     : "";
   return joinNonEmptySentences([sharePhrase, floorPhrase]);
 }
+
+const unitLandShareWithAreaVariants = [
+  (rawShare, shareArea) => `Ekspertize konu taşınmaz (${rawShare}) ${shareArea} arsa payına sahiptir.`,
+  (rawShare, shareArea) => `Değerlemeye konu bağımsız bölüm (${rawShare}) ${shareArea} arsa payına sahiptir.`,
+];
+const unitLandShareOnlyVariants = [
+  (rawShare) => `Ekspertize konu taşınmaz (${rawShare}) arsa payına sahiptir.`,
+  (rawShare) => `Değerlemeye konu bağımsız bölüm (${rawShare}) arsa payına sahiptir.`,
+];
+registerVariantGroup("composeUnitLandSharePhrase:withArea", "Arsa Payı — Alan Hesabıyla (Bağımsız Bölüm)", unitLandShareWithAreaVariants.length);
+registerVariantGroup("composeUnitLandSharePhrase:shareOnly", "Arsa Payı — Yalnız Oran (Bağımsız Bölüm)", unitLandShareOnlyVariants.length);
 
 function composeUnitLandSharePhrase() {
   const share = parseReportNumber(state.fields.share);
@@ -8985,9 +9007,9 @@ function composeUnitLandSharePhrase() {
   const rawShare = [state.fields.share, state.fields.denominator].filter(Boolean).join("/");
   if (share > 0 && denominator > 0 && landArea > 0) {
     const shareArea = (landArea * share) / denominator;
-    return `Ekspertize konu taşınmaz (${rawShare}) ${formatUnitAreaText(shareArea)} arsa payına sahiptir.`;
+    return unitLandShareWithAreaVariants[selectVariant("composeUnitLandSharePhrase:withArea", unitLandShareWithAreaVariants.length)](rawShare, formatUnitAreaText(shareArea));
   }
-  if (rawShare) return `Ekspertize konu taşınmaz (${rawShare}) arsa payına sahiptir.`;
+  if (rawShare) return unitLandShareOnlyVariants[selectVariant("composeUnitLandSharePhrase:shareOnly", unitLandShareOnlyVariants.length)](rawShare);
   return "";
 }
 
@@ -9030,22 +9052,46 @@ function formatUnitNaturePhrase() {
   return `${text} nitelikli bağımsız bölümdür`;
 }
 
+const externalUnitInspectionVariants = [
+  "Yer görme işlemi şube bilgisi dahilinde dışarıdan yapılmış olup mimari uygunluk tespit edilememiş ve iç hacimlerin malzeme ve işçilik kalitesi standart olarak varsayılmıştır.",
+  "Yerinde inceleme, şube bilgisi doğrultusunda dışarıdan gerçekleştirilmiş olup mimari uygunluk tespiti yapılamamış, iç hacimlerin malzeme ve işçilik niteliği standart kabul edilmiştir.",
+  "Yer görme işlemi şubeden edinilen bilgi doğrultusunda dışarıdan yapılmış, mimari uygunluk belirlenememiş, iç hacimlerin malzeme ve işçilik kalitesi standart varsayılmıştır.",
+  "İnceleme, şube bilgisi esas alınarak dışarıdan icra edilmiş olup mimari uygunluk saptanamamış, iç mekân malzeme ve işçilik niteliği standart kabul edilmiştir.",
+];
+registerVariantGroup("composeExternalUnitInspectionSentence", "Dışarıdan Ekspertiz Sabit Cümlesi (Bağımsız Bölüm)", externalUnitInspectionVariants.length);
+
 function composeExternalUnitInspectionSentence() {
-  return "Yer görme işlemi şube bilgisi dahilinde dışarıdan yapılmış olup mimari uygunluk tespit edilememiş ve iç hacimlerin malzeme ve işçilik kalitesi standart olarak varsayılmıştır.";
+  return externalUnitInspectionVariants[selectVariant("composeExternalUnitInspectionSentence", externalUnitInspectionVariants.length)];
 }
+
+const shopFrontageDepthBothVariants = [
+  (f, d) => `Taşınmazın dükkan cephe uzunluğu ${f} metre, dükkan derinliği ise ${d} metre olarak ölçümlenmiştir.`,
+  (f, d) => `Taşınmazın dükkân cephe genişliği ${f} metre, derinliği ise ${d} metre olarak tespit edilmiştir.`,
+];
+const shopFrontageOnlyVariants = [
+  (f) => `Taşınmazın dükkan cephe uzunluğu ${f} metre olarak ölçümlenmiştir.`,
+  (f) => `Taşınmazın dükkân cephe genişliği ${f} metre olarak tespit edilmiştir.`,
+];
+const shopDepthOnlyVariants = [
+  (d) => `Taşınmazın dükkan derinliği ${d} metre olarak ölçümlenmiştir.`,
+  (d) => `Taşınmazın dükkân derinliği ${d} metre olarak tespit edilmiştir.`,
+];
+registerVariantGroup("composeUnitShopFrontageDepthSentence:both", "Dükkân Cephe+Derinlik (Bağımsız Bölüm)", shopFrontageDepthBothVariants.length);
+registerVariantGroup("composeUnitShopFrontageDepthSentence:frontage", "Dükkân Yalnız Cephe (Bağımsız Bölüm)", shopFrontageOnlyVariants.length);
+registerVariantGroup("composeUnitShopFrontageDepthSentence:depth", "Dükkân Yalnız Derinlik (Bağımsız Bölüm)", shopDepthOnlyVariants.length);
 
 function composeUnitShopFrontageDepthSentence() {
   if (!shouldShowWorkplaceFrontageDepthFields()) return "";
   const frontage = formatUnitMeasurementForSentence(state.fields.unitShopFrontage);
   const depth = formatUnitMeasurementForSentence(state.fields.unitShopDepth);
   if (frontage && depth) {
-    return `Taşınmazın dükkan cephe uzunluğu ${frontage} metre, dükkan derinliği ise ${depth} metre olarak ölçümlenmiştir.`;
+    return shopFrontageDepthBothVariants[selectVariant("composeUnitShopFrontageDepthSentence:both", shopFrontageDepthBothVariants.length)](frontage, depth);
   }
   if (frontage) {
-    return `Taşınmazın dükkan cephe uzunluğu ${frontage} metre olarak ölçümlenmiştir.`;
+    return shopFrontageOnlyVariants[selectVariant("composeUnitShopFrontageDepthSentence:frontage", shopFrontageOnlyVariants.length)](frontage);
   }
   if (depth) {
-    return `Taşınmazın dükkan derinliği ${depth} metre olarak ölçümlenmiştir.`;
+    return shopDepthOnlyVariants[selectVariant("composeUnitShopFrontageDepthSentence:depth", shopDepthOnlyVariants.length)](depth);
   }
   return "";
 }
@@ -9075,6 +9121,28 @@ function normalizeUnitFloorDescriptionRow(row = {}) {
   };
 }
 
+const unitFloorInteriorClauseWithRoomsVariants = [
+  (interiorText) => ` kullanım alanına sahip olup, ${interiorText} hacimlerinden oluşmaktadır.`,
+  (interiorText) => ` kullanım alanına sahip olup, ${interiorText} bölümlerinden meydana gelmektedir.`,
+];
+const unitFloorInteriorClauseNoRoomsVariants = [" kullanım alanına sahiptir.", " kullanım alanına sahip olduğu tespit edilmiştir."];
+const unitFloorSingleAreaPrefixVariants = ["Taşınmaz projesine göre", "Taşınmaz, projesine göre"];
+const unitFloorBothAreaPrefixVariants = ["Taşınmaz projesine ve mevcut duruma göre", "Taşınmaz, projesine ve mevcut duruma göre"];
+const unitFloorLegalCurrentDiffVariants = [
+  (legalArea, currentArea, interiorClause) => `Taşınmaz projesine göre ${legalArea}, mevcut durumda ${currentArea}${interiorClause}`,
+  (legalArea, currentArea, interiorClause) => `Taşınmaz, projesine göre ${legalArea}, mevcut duruma göre ise ${currentArea}${interiorClause}`,
+];
+const unitFloorRoomsOnlyVariants = [
+  (interiorText) => `Taşınmaz ${interiorText} hacimlerinden oluşmaktadır.`,
+  (interiorText) => `Taşınmaz ${interiorText} bölümlerinden meydana gelmektedir.`,
+];
+registerVariantGroup("composeSingleUnitFloorInteriorParagraph:clauseWithRooms", "Bağımsız Bölüm Alan+Hacim Cümlesi", unitFloorInteriorClauseWithRoomsVariants.length);
+registerVariantGroup("composeSingleUnitFloorInteriorParagraph:clauseNoRooms", "Bağımsız Bölüm Yalnız Alan Cümlesi", unitFloorInteriorClauseNoRoomsVariants.length);
+registerVariantGroup("composeSingleUnitFloorInteriorParagraph:singlePrefix", "Bağımsız Bölüm — Tek Alan Öneki", unitFloorSingleAreaPrefixVariants.length);
+registerVariantGroup("composeSingleUnitFloorInteriorParagraph:bothPrefix", "Bağımsız Bölüm — Yasal+Mevcut Öneki", unitFloorBothAreaPrefixVariants.length);
+registerVariantGroup("composeSingleUnitFloorInteriorParagraph:diff", "Bağımsız Bölüm — Yasal≠Mevcut Alan", unitFloorLegalCurrentDiffVariants.length);
+registerVariantGroup("composeSingleUnitFloorInteriorParagraph:roomsOnly", "Bağımsız Bölüm — Yalnız Hacim (Alansız)", unitFloorRoomsOnlyVariants.length);
+
 function composeSingleUnitFloorInteriorParagraph(row) {
   const legalArea = formatUnitAreaText(row.legalAreaNumber);
   const currentArea = formatUnitAreaText(row.currentAreaNumber || row.legalAreaNumber);
@@ -9082,21 +9150,47 @@ function composeSingleUnitFloorInteriorParagraph(row) {
   const parts = [];
   if (row.legalAreaNumber > 0 || row.currentAreaNumber > 0) {
     const interiorClause = row.interiorText
-      ? ` kullanım alanına sahip olup, ${row.interiorText} hacimlerinden oluşmaktadır.`
-      : " kullanım alanına sahiptir.";
+      ? unitFloorInteriorClauseWithRoomsVariants[selectVariant("composeSingleUnitFloorInteriorParagraph:clauseWithRooms", unitFloorInteriorClauseWithRoomsVariants.length)](row.interiorText)
+      : unitFloorInteriorClauseNoRoomsVariants[selectVariant("composeSingleUnitFloorInteriorParagraph:clauseNoRooms", unitFloorInteriorClauseNoRoomsVariants.length)];
     if (externalInspection || row.legalAreaNumber === row.currentAreaNumber || !row.currentAreaNumber) {
       const areaText = row.legalAreaNumber > 0 ? legalArea : currentArea;
-      const prefix = externalInspection ? "Taşınmaz projesine göre" : "Taşınmaz projesine ve mevcut duruma göre";
+      const prefix = externalInspection
+        ? unitFloorSingleAreaPrefixVariants[selectVariant("composeSingleUnitFloorInteriorParagraph:singlePrefix", unitFloorSingleAreaPrefixVariants.length)]
+        : unitFloorBothAreaPrefixVariants[selectVariant("composeSingleUnitFloorInteriorParagraph:bothPrefix", unitFloorBothAreaPrefixVariants.length)];
       parts.push(`${prefix} ${areaText}${interiorClause}`);
     } else {
-      parts.push(`Taşınmaz projesine göre ${legalArea}, mevcut durumda ${currentArea}${interiorClause}`);
+      parts.push(unitFloorLegalCurrentDiffVariants[selectVariant("composeSingleUnitFloorInteriorParagraph:diff", unitFloorLegalCurrentDiffVariants.length)](legalArea, currentArea, interiorClause));
     }
   } else if (row.interiorText) {
-    parts.push(`Taşınmaz ${row.interiorText} hacimlerinden oluşmaktadır.`);
+    parts.push(unitFloorRoomsOnlyVariants[selectVariant("composeSingleUnitFloorInteriorParagraph:roomsOnly", unitFloorRoomsOnlyVariants.length)](row.interiorText));
   }
   parts.push(composeUnitTerraceSentence(row));
   return parts.filter(Boolean).join(" ");
 }
+
+const multiUnitFloorInteriorClauseWithRoomsVariants = [
+  (interiorText) => ` kullanım alanına sahip olup, projesine göre ${interiorText} iç hacimlerinden oluşmaktadır.`,
+  (interiorText) => ` kullanım alanına sahip olup, projesine göre ${interiorText} bölümlerinden meydana gelmektedir.`,
+];
+const multiUnitFloorInteriorClauseNoRoomsVariants = [" kullanım alanına sahiptir.", " kullanım alanına sahip olduğu tespit edilmiştir."];
+const multiUnitFloorSinglePrefixVariants = [(floor) => `${floor} projesine göre`, (floor) => `${floor}, projesine göre`];
+const multiUnitFloorBothPrefixVariants = [(floor) => `${floor} projesine ve mevcut duruma göre`, (floor) => `${floor}, projesine ve mevcut duruma göre`];
+const multiUnitFloorDiffVariants = [
+  (floor, legalArea, legalTerrace, currentArea, currentTerrace, interiorClause) =>
+    `${floor} projesine göre ${legalArea}${legalTerrace}, mevcut durumda ${currentArea}${currentTerrace}${interiorClause}`,
+  (floor, legalArea, legalTerrace, currentArea, currentTerrace, interiorClause) =>
+    `${floor}, projesine göre ${legalArea}${legalTerrace}, mevcut duruma göre ise ${currentArea}${currentTerrace}${interiorClause}`,
+];
+const multiUnitFloorRoomsOnlyVariants = [
+  (floor, interiorText) => `${floor} ${interiorText} iç hacimlerinden oluşmaktadır.`,
+  (floor, interiorText) => `${floor} ${interiorText} bölümlerinden meydana gelmektedir.`,
+];
+registerVariantGroup("composeMultiUnitFloorInteriorSentence:clauseWithRooms", "Çok Katlı BB Alan+Hacim Cümlesi", multiUnitFloorInteriorClauseWithRoomsVariants.length);
+registerVariantGroup("composeMultiUnitFloorInteriorSentence:clauseNoRooms", "Çok Katlı BB Yalnız Alan Cümlesi", multiUnitFloorInteriorClauseNoRoomsVariants.length);
+registerVariantGroup("composeMultiUnitFloorInteriorSentence:singlePrefix", "Çok Katlı BB — Tek Alan Öneki", multiUnitFloorSinglePrefixVariants.length);
+registerVariantGroup("composeMultiUnitFloorInteriorSentence:bothPrefix", "Çok Katlı BB — Yasal+Mevcut Öneki", multiUnitFloorBothPrefixVariants.length);
+registerVariantGroup("composeMultiUnitFloorInteriorSentence:diff", "Çok Katlı BB — Yasal≠Mevcut Alan", multiUnitFloorDiffVariants.length);
+registerVariantGroup("composeMultiUnitFloorInteriorSentence:roomsOnly", "Çok Katlı BB — Yalnız Hacim (Alansız)", multiUnitFloorRoomsOnlyVariants.length);
 
 function composeMultiUnitFloorInteriorSentence(row) {
   const legalArea = formatUnitAreaText(row.legalAreaNumber);
@@ -9105,18 +9199,29 @@ function composeMultiUnitFloorInteriorSentence(row) {
   const currentTerrace = row.currentTerraceNumber > 0 ? ` (Teras: ${formatUnitAreaText(row.currentTerraceNumber)})` : "";
   const floor = formatUnitFloorNameForSentence(row.floor);
   const interiorClause = row.interiorText
-    ? ` kullanım alanına sahip olup, projesine göre ${row.interiorText} iç hacimlerinden oluşmaktadır.`
-    : " kullanım alanına sahiptir.";
+    ? multiUnitFloorInteriorClauseWithRoomsVariants[selectVariant("composeMultiUnitFloorInteriorSentence:clauseWithRooms", multiUnitFloorInteriorClauseWithRoomsVariants.length)](row.interiorText)
+    : multiUnitFloorInteriorClauseNoRoomsVariants[selectVariant("composeMultiUnitFloorInteriorSentence:clauseNoRooms", multiUnitFloorInteriorClauseNoRoomsVariants.length)];
   if (row.legalAreaNumber > 0 || row.currentAreaNumber > 0) {
     if (shouldUseExternalUnitInspectionText() || row.legalAreaNumber === row.currentAreaNumber || !row.currentAreaNumber) {
       const areaText = row.legalAreaNumber > 0 ? legalArea : currentArea;
       const terraceText = row.legalAreaNumber > 0 ? legalTerrace : currentTerrace;
-      const prefix = shouldUseExternalUnitInspectionText() ? `${floor} projesine göre` : `${floor} projesine ve mevcut duruma göre`;
+      const prefix = shouldUseExternalUnitInspectionText()
+        ? multiUnitFloorSinglePrefixVariants[selectVariant("composeMultiUnitFloorInteriorSentence:singlePrefix", multiUnitFloorSinglePrefixVariants.length)](floor)
+        : multiUnitFloorBothPrefixVariants[selectVariant("composeMultiUnitFloorInteriorSentence:bothPrefix", multiUnitFloorBothPrefixVariants.length)](floor);
       return `${prefix} ${areaText}${terraceText}${interiorClause}`;
     }
-    return `${floor} projesine göre ${legalArea}${legalTerrace}, mevcut durumda ${currentArea}${currentTerrace}${interiorClause}`;
+    return multiUnitFloorDiffVariants[selectVariant("composeMultiUnitFloorInteriorSentence:diff", multiUnitFloorDiffVariants.length)](
+      floor,
+      legalArea,
+      legalTerrace,
+      currentArea,
+      currentTerrace,
+      interiorClause
+    );
   }
-  if (row.interiorText) return `${floor} ${row.interiorText} iç hacimlerinden oluşmaktadır.`;
+  if (row.interiorText) {
+    return multiUnitFloorRoomsOnlyVariants[selectVariant("composeMultiUnitFloorInteriorSentence:roomsOnly", multiUnitFloorRoomsOnlyVariants.length)](floor, row.interiorText);
+  }
   return "";
 }
 
@@ -9127,15 +9232,31 @@ function formatUnitFloorNameForSentence(value) {
   return `${floor} Kat`;
 }
 
+const unitTerraceNoteVariants = [
+  "Teras alanları kullanım alanına dahil edilmemiş olup, değer arttırıcı faktör olarak değerlemede dikkate alınmıştır.",
+  "Teras alanları kullanım alanının dışında bırakılmış, değer artırıcı bir unsur olarak değerlemede göz önünde bulundurulmuştur.",
+];
+const unitTerraceEqualVariants = [
+  (area, note) => `Taşınmazın ${area} yasal ve mevcut teras alanı bulunmaktadır. ${note}`,
+  (area, note) => `Taşınmazda ${area} yasal ve mevcut teras alanı tespit edilmiştir. ${note}`,
+];
+const unitTerraceDiffVariants = [
+  (legal, current, note) => `Taşınmazın ${legal} yasal teras ve ${current} mevcut teras alanı bulunmaktadır. ${note}`,
+  (legal, current, note) => `Taşınmazda ${legal} yasal teras ve ${current} mevcut teras alanı tespit edilmiştir. ${note}`,
+];
+registerVariantGroup("composeUnitTerraceSentence:note", "Teras Alanı Notu (Bağımsız Bölüm)", unitTerraceNoteVariants.length);
+registerVariantGroup("composeUnitTerraceSentence:equal", "Teras Alanı — Yasal=Mevcut (Bağımsız Bölüm)", unitTerraceEqualVariants.length);
+registerVariantGroup("composeUnitTerraceSentence:diff", "Teras Alanı — Yasal≠Mevcut (Bağımsız Bölüm)", unitTerraceDiffVariants.length);
+
 function composeUnitTerraceSentence(row) {
   const legal = row.legalTerraceNumber;
   const current = row.currentTerraceNumber;
   if (!(legal > 0) && !(current > 0)) return "";
-  const terraceNote = "Teras alanları kullanım alanına dahil edilmemiş olup, değer arttırıcı faktör olarak değerlemede dikkate alınmıştır.";
+  const terraceNote = unitTerraceNoteVariants[selectVariant("composeUnitTerraceSentence:note", unitTerraceNoteVariants.length)];
   if (legal === current) {
-    return `Taşınmazın ${formatUnitAreaText(legal)} yasal ve mevcut teras alanı bulunmaktadır. ${terraceNote}`;
+    return unitTerraceEqualVariants[selectVariant("composeUnitTerraceSentence:equal", unitTerraceEqualVariants.length)](formatUnitAreaText(legal), terraceNote);
   }
-  return `Taşınmazın ${formatUnitAreaText(legal)} yasal teras ve ${formatUnitAreaText(current)} mevcut teras alanı bulunmaktadır. ${terraceNote}`;
+  return unitTerraceDiffVariants[selectVariant("composeUnitTerraceSentence:diff", unitTerraceDiffVariants.length)](formatUnitAreaText(legal), formatUnitAreaText(current), terraceNote);
 }
 
 function composeUnitTotalAreaTerraceSentence(legalTotal, currentTotal, legalTerraceTotal, currentTerraceTotal) {
@@ -9734,25 +9855,43 @@ function composeUnitDecorativeDescription() {
   ]));
 }
 
+const unitViewSentenceVariants = [
+  (viewPhrase) => `${viewPhrase} sahip olan taşınmaz bu yönüyle manzara şerefiyesine sahiptir.`,
+  (viewPhrase) => `${viewPhrase} sahip olması, taşınmaza manzara şerefiyesi kazandırmaktadır.`,
+];
+registerVariantGroup("composeUnitViewSentence", "Manzara Şerefiyesi Cümlesi (Bağımsız Bölüm)", unitViewSentenceVariants.length);
+
 function composeUnitViewSentence() {
   const view = toLowerText(state.fields.unitViewStatus);
   if (!view || view === "manzara yok") return "";
   const viewPhrase = view.endsWith("manzarası") ? view.replace(/manzarası$/i, "manzarasına") : `${view}na`;
-  return `${capitalizeSentence(viewPhrase)} sahip olan taşınmaz bu yönüyle manzara şerefiyesine sahiptir.`;
+  return unitViewSentenceVariants[selectVariant("composeUnitViewSentence", unitViewSentenceVariants.length)](capitalizeSentence(viewPhrase));
 }
+
+const unitHeatingSentenceVariants = [
+  (heating, mounted) => `Isınma ihtiyacı ${heating} ile karşılanacak şekilde tesisatlandırılmış olup, ısıtma sistemi halihazırda monte edil${mounted ? "miştir" : "memiştir"}.`,
+  (heating, mounted) => `Taşınmazın ısınma ihtiyacı ${heating} ile karşılanmak üzere tesisatlandırılmış olup, ısıtma sistemi ${mounted ? "halihazırda monte edilmiştir" : "henüz monte edilmemiştir"}.`,
+];
+registerVariantGroup("composeUnitHeatingSentence", "Isınma Tesisatı Cümlesi (Bağımsız Bölüm)", unitHeatingSentenceVariants.length);
 
 function composeUnitHeatingSentence() {
   const heating = toLowerText(state.fields.unitHeatingType);
   if (!heating) return "";
   const mounted = normalizeYesNoChoice(state.fields.unitHeatingMounted || "Evet") !== "Hayır";
-  return `Isınma ihtiyacı ${heating} ile karşılanacak şekilde tesisatlandırılmış olup, ısıtma sistemi halihazırda monte edil${mounted ? "miştir" : "memiştir"}.`;
+  return unitHeatingSentenceVariants[selectVariant("composeUnitHeatingSentence", unitHeatingSentenceVariants.length)](heating, mounted);
 }
+
+const unitConstructionLevelSentenceVariants = [
+  (level) => `Taşınmazın bazı inşaat işleri eksik vaziyette olup, yerinde yapılan incelemeler ve düzenlenen pursantaj tablosuna göre taşınmazın inşaat seviyesi ${level} mertebesinde olduğu tespit edilmiştir.`,
+  (level) => `Taşınmazda bazı inşaat işleri tamamlanmamış olup, yerinde yapılan incelemeler ve pursantaj tablosuna göre inşaat seviyesinin ${level} mertebesinde olduğu belirlenmiştir.`,
+];
+registerVariantGroup("composeUnitConstructionLevelSentence", "İnşaat Seviyesi/Pursantaj Cümlesi (Bağımsız Bölüm)", unitConstructionLevelSentenceVariants.length);
 
 function composeUnitConstructionLevelSentence() {
   const level = String(state.fields.unitConstructionLevel || "").trim();
   if (!level || level === "100%") return "";
   const formattedLevel = level.startsWith("%") ? level : `%${level.replace(/%/g, "")}`;
-  return `Taşınmazın bazı inşaat işleri eksik vaziyette olup, yerinde yapılan incelemeler ve düzenlenen pursantaj tablosuna göre taşınmazın inşaat seviyesi ${formattedLevel} mertebesinde olduğu tespit edilmiştir.`;
+  return unitConstructionLevelSentenceVariants[selectVariant("composeUnitConstructionLevelSentence", unitConstructionLevelSentenceVariants.length)](formattedLevel);
 }
 
 function composeMainRoomDecorativeSentence(presence = getUnitInteriorPresence()) {
@@ -9802,6 +9941,22 @@ function composeSingleAreaDecorativeSentence(prefix, floorValue, wallValue) {
   return `${prefix} duvarlar ${formatWallMaterialPhrase(wall)}.`;
 }
 
+const bathroomFixtureNoneVariants = [
+  "Banyoda vitrifiye elemanları montajı henüz yapılmamıştır.",
+  "Banyoda vitrifiye elemanlarının montajı henüz tamamlanmamıştır.",
+];
+const bathroomFixturePresentVariants = [
+  (list) => `Banyo bölümünde ${list} vitrifiye elemanları bulunmaktadır.`,
+  (list) => `Banyoda ${list} vitrifiye elemanları mevcuttur.`,
+];
+const bathroomFixtureRemainingMissingVariants = [
+  "Seçilen diğer vitrifiye elemanlarının montajı henüz yapılmamıştır.",
+  "Seçilen diğer vitrifiye elemanları henüz monte edilmemiştir.",
+];
+registerVariantGroup("composeBathroomFixtureSentence:none", "Vitrifiye — Hiçbiri Monte Edilmemiş (Bağımsız Bölüm)", bathroomFixtureNoneVariants.length);
+registerVariantGroup("composeBathroomFixtureSentence:present", "Vitrifiye — Mevcut Liste (Bağımsız Bölüm)", bathroomFixturePresentVariants.length);
+registerVariantGroup("composeBathroomFixtureSentence:remainingMissing", "Vitrifiye — Kalan Eksikler (Bağımsız Bölüm)", bathroomFixtureRemainingMissingVariants.length);
+
 function composeBathroomFixtureSentence() {
   const fixtureValues = ["unitBathroomFixture1", "unitBathroomFixture2", "unitBathroomFixture3"]
     .map((key) => state.fields[key])
@@ -9809,14 +9964,14 @@ function composeBathroomFixtureSentence() {
   const fixtures = fixtureValues.filter((value) => !isNotInstalledDecorative(value));
   const missingCount = fixtureValues.filter(isNotInstalledDecorative).length;
   if (fixtureValues.length && missingCount === fixtureValues.length) {
-    return "Banyoda vitrifiye elemanları montajı henüz yapılmamıştır.";
+    return bathroomFixtureNoneVariants[selectVariant("composeBathroomFixtureSentence:none", bathroomFixtureNoneVariants.length)];
   }
   if (!fixtures.length) {
-    return "Banyoda vitrifiye elemanları montajı henüz yapılmamıştır.";
+    return bathroomFixtureNoneVariants[selectVariant("composeBathroomFixtureSentence:none", bathroomFixtureNoneVariants.length)];
   }
-  const sentence = `Banyo bölümünde ${formatTurkishList(fixtures.map(toLowerText))} vitrifiye elemanları bulunmaktadır.`;
+  const sentence = bathroomFixturePresentVariants[selectVariant("composeBathroomFixtureSentence:present", bathroomFixturePresentVariants.length)](formatTurkishList(fixtures.map(toLowerText)));
   if (missingCount) {
-    return `${sentence} Seçilen diğer vitrifiye elemanlarının montajı henüz yapılmamıştır.`;
+    return `${sentence} ${bathroomFixtureRemainingMissingVariants[selectVariant("composeBathroomFixtureSentence:remainingMissing", bathroomFixtureRemainingMissingVariants.length)]}`;
   }
   return sentence;
 }
@@ -9836,11 +9991,41 @@ function composeDoorsWindowsSentence() {
   if (interiorMissing) missingParts.push("iç kapı");
   if (windows && !windowMissing) parts.push(`pencereler ${formatDoorWindowMaterial(windows)} doğramadır`);
   if (windowMissing) missingParts.push("pencere");
+  const doorsWindowsMissingVariants = [
+    (list) => `${list} montajı henüz yapılmamıştır.`,
+    (list) => `${list} henüz monte edilmemiştir.`,
+  ];
   const sentences = [];
   if (parts.length) sentences.push(`${capitalizeSentence(formatTurkishList(parts))}.`);
-  if (missingParts.length) sentences.push(`${formatTurkishList(missingParts)} montajı henüz yapılmamıştır.`);
+  if (missingParts.length) {
+    sentences.push(
+      doorsWindowsMissingVariants[selectVariant("composeDoorsWindowsSentence:missing", doorsWindowsMissingVariants.length)](formatTurkishList(missingParts))
+    );
+  }
   return sentences.join(" ");
 }
+registerVariantGroup("composeDoorsWindowsSentence:missing", "Kapı/Pencere — Eksik Montaj (Bağımsız Bölüm)", 2);
+
+const kitchenCabinetCounterNoneVariants = [
+  "Mutfak dolabı ve tezgahının montajı henüz yapılmamıştır.",
+  "Mutfak dolabı ve tezgahı henüz monte edilmemiştir.",
+];
+const kitchenCabinetOnlyVariants = [
+  (cabinet) => `Mutfak dolapları ${cabinet} olup, tezgahının montajı henüz yapılmamıştır.`,
+  (cabinet) => `Mutfak dolapları ${cabinet} olup, tezgahı henüz monte edilmemiştir.`,
+];
+const kitchenCounterOnlyVariants = [
+  (counter) => `Mutfak tezgahı ${counter} olup, dolabı montajı henüz yapılmamıştır.`,
+  (counter) => `Mutfak tezgahı ${counter} olup, dolabı henüz monte edilmemiştir.`,
+];
+const kitchenCabinetCounterBothVariants = [
+  (cabinet, counter) => `Mutfak dolapları ${cabinet} olup, tezgahı ${counter} olarak düzenlenmiştir.`,
+  (cabinet, counter) => `Mutfak dolapları ${cabinet}, tezgahı ise ${counter} şeklinde tespit edilmiştir.`,
+];
+registerVariantGroup("composeKitchenCabinetCounterSentence:none", "Mutfak Dolap+Tezgah — İkisi de Yok (Bağımsız Bölüm)", kitchenCabinetCounterNoneVariants.length);
+registerVariantGroup("composeKitchenCabinetCounterSentence:cabinetOnly", "Mutfak — Yalnız Dolap (Bağımsız Bölüm)", kitchenCabinetOnlyVariants.length);
+registerVariantGroup("composeKitchenCabinetCounterSentence:counterOnly", "Mutfak — Yalnız Tezgah (Bağımsız Bölüm)", kitchenCounterOnlyVariants.length);
+registerVariantGroup("composeKitchenCabinetCounterSentence:both", "Mutfak Dolap+Tezgah — İkisi de Var (Bağımsız Bölüm)", kitchenCabinetCounterBothVariants.length);
 
 function composeKitchenCabinetCounterSentence() {
   const cabinet = state.fields.unitKitchenCabinet || "";
@@ -9848,10 +10033,16 @@ function composeKitchenCabinetCounterSentence() {
   const cabinetMissing = isNotInstalledDecorative(cabinet);
   const counterMissing = isNotInstalledDecorative(counter);
   if (!cabinet && !counter) return "";
-  if (cabinetMissing && counterMissing) return "Mutfak dolabı ve tezgahının montajı henüz yapılmamıştır.";
-  if (!cabinetMissing && counterMissing) return `Mutfak dolapları ${ensureCabinetText(cabinet)} olup, tezgahının montajı henüz yapılmamıştır.`;
-  if (cabinetMissing && !counterMissing) return `Mutfak tezgahı ${toLowerText(counter)} olup, dolabı montajı henüz yapılmamıştır.`;
-  return `Mutfak dolapları ${ensureCabinetText(cabinet)} olup, tezgahı ${toLowerText(counter)} olarak düzenlenmiştir.`;
+  if (cabinetMissing && counterMissing) {
+    return kitchenCabinetCounterNoneVariants[selectVariant("composeKitchenCabinetCounterSentence:none", kitchenCabinetCounterNoneVariants.length)];
+  }
+  if (!cabinetMissing && counterMissing) {
+    return kitchenCabinetOnlyVariants[selectVariant("composeKitchenCabinetCounterSentence:cabinetOnly", kitchenCabinetOnlyVariants.length)](ensureCabinetText(cabinet));
+  }
+  if (cabinetMissing && !counterMissing) {
+    return kitchenCounterOnlyVariants[selectVariant("composeKitchenCabinetCounterSentence:counterOnly", kitchenCounterOnlyVariants.length)](toLowerText(counter));
+  }
+  return kitchenCabinetCounterBothVariants[selectVariant("composeKitchenCabinetCounterSentence:both", kitchenCabinetCounterBothVariants.length)](ensureCabinetText(cabinet), toLowerText(counter));
 }
 
 // Varyantlar docs/cumle-envanteri.md Bölüm 5'te belgelendi (bu grubun EN
