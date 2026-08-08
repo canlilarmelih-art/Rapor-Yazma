@@ -21399,19 +21399,33 @@ function createTakyidatTablePanel() {
 //  Örnek: "Görükle Mahallesi, Koza Caddesi, Atalay Apartmanı No: 26,
 //          Kat: 1. kat, D: 4 Nilüfer / Bursa (UAVT Kodu: 1234567)"
 // ==========================================================
-function formatOpenAddressNeighborhood(value) {
+// Açık adres tam yazım/kısaltma STİLİ — kullanıcı talebi (2026-08-08):
+// "açık adres için varyantlar var mı? yoksa mahalle cadde sokak eklentilerini
+// kısaltabilir yada uzatabilirsin". Gerçek değerleme uzmanları arasında da bu
+// tür resmi kısaltmalar (Mah./Apt./Sit./K./No.) değişkenlik gösterir. Bir stil
+// TÜM adres BİR KEZ seçilip tutarlı uygulanır (composeImarPlanningStatusParagraphs'daki
+// "genel fiil-dönüşüm stili" deseniyle aynı gerekçe — aynı raporda "Mahallesi"
+// ile "Apt." karışık görünmesin). Adresin KENDİSİ (il/ilçe/mahalle/sokak adı,
+// kapı no vb.) DEĞİŞMEZ — yalnızca resmi ek kelimelerin tam/kısa yazımı değişir.
+const openAddressStyleVariants = [
+  { neighborhoodSuffix: " Mahallesi", neighborhoodShortRe: /mahalle|mah\.?$/i, apartmanSuffix: " Apartmanı", apartmanRe: /apartman/i, apartmanStripRe: /\s+apartman(?:ı|i)?$/i, siteSuffix: " Sitesi", siteRe: /site/i, siteStripRe: /\s+site(?:si)?$/i, blokSuffix: " Blok", noLabel: "No: ", katLabel: "Kat: ", daireLabel: "D: " },
+  { neighborhoodSuffix: " Mah.", neighborhoodShortRe: /mahalle|mah\.?$/i, apartmanSuffix: " Apt.", apartmanRe: /apartman/i, apartmanStripRe: /\s+apartman(?:ı|i)?$/i, siteSuffix: " Sit.", siteRe: /site/i, siteStripRe: /\s+site(?:si)?$/i, blokSuffix: " Blok", noLabel: "No: ", katLabel: "K: ", daireLabel: "D: " },
+];
+registerVariantGroup("buildOpenAddressText:style", "Açık Adres — Tam Yazım/Kısaltma Stili (Adres/Konum/Çevre)", openAddressStyleVariants.length);
+
+function formatOpenAddressNeighborhood(value, style) {
   const text = String(value || "").trim();
   if (!text) return "";
-  return /mahalle|mah\.?$/i.test(text) ? text : `${text} Mahallesi`;
+  return style.neighborhoodShortRe.test(text) ? text : `${text}${style.neighborhoodSuffix}`;
 }
 
-function formatOpenAddressBuildingName(value) {
+function formatOpenAddressBuildingName(value, style) {
   const text = String(value || "").trim().replace(/\s+/g, " ");
   if (!text) return "";
-  if (/apartman/i.test(text)) return text.replace(/\s+apartman(?:ı|i)?$/i, "").trim() + " Apartmanı";
-  if (/site/i.test(text)) return text.replace(/\s+site(?:si)?$/i, "").trim() + " Sitesi";
+  if (style.apartmanRe.test(text)) return text.replace(style.apartmanStripRe, "").trim() + style.apartmanSuffix;
+  if (style.siteRe.test(text)) return text.replace(style.siteStripRe, "").trim() + style.siteSuffix;
   // Adres kodu alanı türü ayrı vermediğinde bloklu adları site olarak adlandırırız.
-  return `${text} Sitesi`;
+  return `${text}${style.siteSuffix}`;
 }
 
 function buildOpenAddressText() {
@@ -21432,21 +21446,22 @@ function buildOpenAddressText() {
   const district = get("district", "titleDistrict");
   const city = get("city", "titleCity");
   const uavt = get("uavt");
+  const style = openAddressStyleVariants[selectVariant("buildOpenAddressText:style", openAddressStyleVariants.length)];
 
   const segments = [];
-  if (neighborhood) segments.push(formatOpenAddressNeighborhood(neighborhood));
+  if (neighborhood) segments.push(formatOpenAddressNeighborhood(neighborhood, style));
   if (street) segments.push(street);
 
   const buildingParts = [];
-  if (siteName) buildingParts.push(formatOpenAddressBuildingName(siteName));
-  if (blockName) buildingParts.push(/blok/i.test(blockName) ? blockName : `${blockName} Blok`);
-  if (outerDoor) buildingParts.push(`No: ${outerDoor}`);
+  if (siteName) buildingParts.push(formatOpenAddressBuildingName(siteName, style));
+  if (blockName) buildingParts.push(/blok/i.test(blockName) ? blockName : `${blockName}${style.blokSuffix}`);
+  if (outerDoor) buildingParts.push(`${style.noLabel}${outerDoor}`);
   if (buildingParts.length) segments.push(buildingParts.join(" "));
 
-  if (floor) segments.push(`Kat: ${floor}`);
+  if (floor) segments.push(`${style.katLabel}${floor}`);
 
   const lastParts = [];
-  if (innerDoor) lastParts.push(`D: ${innerDoor}`);
+  if (innerDoor) lastParts.push(`${style.daireLabel}${innerDoor}`);
   const districtCity = [district, city].filter(Boolean).join(" / ");
   if (districtCity) lastParts.push(districtCity);
   if (lastParts.length) segments.push(lastParts.join(" "));

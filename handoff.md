@@ -1,5 +1,15 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.375 - 2026-08-09 - Açık Adres tam yazım/kısaltma stili varyantlandı (174 grup)
+
+- Kullanıcı sorusu: "açık adres için varyantlar var mı? eğer yok ise mahalle cadde sokak eklentilerini kısaltabilir yada uzatabilirsin" — `buildOpenAddressText()` (Adres ve Konum bölümü "Açık Adres" paneli, `AcikAdres`/`openAddress` placeholder kaynağı) tamamen sabit formatlıydı ("... Mahallesi, ... Sokak, ... Apartmanı No: X, Kat: Y, D: Z"), hiç varyantlanmamıştı.
+- `openAddressStyleVariants` (2 STİL: tam yazım — "Mahallesi/Apartmanı/Sitesi/No:/Kat:/D:" — ve kısaltmalı — "Mah./Apt./Sit./No:/K:/D:") eklendi; `composeImarPlanningStatusParagraphs`'daki "genel fiil-dönüşüm stili" deseniyle aynı gerekçeyle **rapor başına bir kez** seçilip TÜM adrese tutarlı uygulanıyor (aynı adreste "Mahallesi" ile "Apt." karışık görünmesin diye). Adresin kendisi (il/ilçe/mahalle/sokak adı/kapı no vb.) DEĞİŞMİYOR — yalnızca resmi ek kelimelerin tam/kısa yazımı değişiyor.
+- `formatOpenAddressNeighborhood`/`formatOpenAddressBuildingName` artık `style` parametresi alıyor (tek çağrı yeri `buildOpenAddressText`, imza değişikliği güvenli).
+- `VARIANT_REGISTRY` artık **174 grup**.
+- Ek test değişikliği gerekmedi (dedike bir test dosyası yoktu).
+- Kod değişikliğinden sonra yerel yedek alındı: `backups/before-open-address-style-variant_*`.
+- `index.html` cache-buster'ı `20260809-0100`'e yükseltildi. `npm run verify` tamamı geçti.
+
 ## 0.0.374 - 2026-08-08 - Ana arterden otomatik ulaşım tarifi cümlesi varyantlandı (173 grup)
 
 - Kullanıcı sorusu: "Ulaşım Tarifi tüm varyantlarda aynı mı geliyor?" — cevap: o alan (`transport`) serbest metin kutusu olduğundan (kullanıcı/`createTransportNearbyComposer` panelinden elle oluşturuluyor) zaten varyant sistemi kapsamı dışında, doğru davranış. Ama kullanıcı doğru bir eksik yakaladı: haritadan **"Ulaşım ana arteri" seçildiğinde `transport` alanına otomatik yazılan** `buildTransportDirectionText(road)` — 3 cümlelik ("...ana arterlerinden X üzerinden Y istikametine ilerlenir. Yaklaşık Z metre sonra ... W güzergahına ulaşılır. ... taşınmaz W üzerinde yer almaktadır.") — tamamen sabitti, hiç varyantlanmamıştı.
