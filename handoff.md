@@ -1,5 +1,16 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.372 - 2026-08-08 - Bölüm bazlı toplu "Orijinal/V1/V2/..." hızlı-uygulama düğmeleri
+
+- Kullanıcı geri bildirimi (0.0.371 sonrası): "adres ve konum bölümünde V1 bastığım zaman adres ve konumda yer alan TÜM bölümler V1 olmalı" — önceki turda eklenen bölüm düğmesi yalnızca detay modalını açıyordu (her grubu tek tek tıklamak gerekiyordu); bu tur bunu tek tıkla toplu uygulamaya genişletti.
+- `applyBulkVariantOverrideForSection(sectionId, desiredIndex)` — o bölümdeki TÜM gruplara aynı hedef indeksi uygular. Gruplar farklı sayıda varyanta sahip olabildiğinden (kimi 2, kimi 5) hedef indeks her grubun KENDİ üst sınırına (`count - 1`) kırpılır — ör. "V4" hedefinde 2 varyantlı bir grup hata vermeden kendi en üst (index 1) seçeneğine geçer. `desiredIndex = null` ise bölümdeki tüm override'lar kaldırılır (Otomatik'e dönüş).
+- `createSectionVariantBar(section, groups)` — bölüm başlığındaki çubuğu artık iki parçadan oluşturuyor: (1) "Otomatik/Orijinal/V1/V2/..." hızlı-uygulama düğmeleri (o bölümün gruplarındaki EN YÜKSEK varyant sayısı kadar gösterilir — gereksiz "V4" düğmesi hiçbir grupta karşılığı yoksa gösterilmez), (2) mevcut "Varyant (N)" düğmesi (detaylı, tek tek kontrol için modalı açar, davranışı değişmedi).
+- Yeni CSS: `.section-variant-quick-row`/`.section-variant-quick-btn` (styles.css).
+- Yeni test: `tools/test-variant-selection.js`'e `applyBulkVariantOverrideForSection` için 2 alt-test eklendi — kırpma davranışı (5 varyantlı grup tam hedefe ulaşır, 2 varyantlı grup kendi üst sınırına kırpılır, başka bölümün grubuna dokunulmaz) ve Otomatik'e dönüş.
+- **Doğrulama notu**: admin girişi gerçek şifre gerektirdiğinden canlı ekranda görsel doğrulama yapılamadı — `node --check` + `npm run verify` (tam paket, 172 grup) ile doğrulandı.
+- Kod değişikliğinden sonra yerel yedek alındı: `backups/before-bulk-section-variant_*`.
+- `index.html` cache-buster'ları: `app.js?v=20260808-1425`, `styles.css?v=20260808-1425`. `npm run verify` tamamı geçti.
+
 ## 0.0.371 - 2026-08-08 - Bölüm bazlı "Varyant" düğmesi (admin-only) eklendi
 
 - Kullanıcı talebi: her paragrafın yanına ayrı Orijinal/V1-V4 düğmesi koymak yerine (paragraf başına genelde 2-20 BAĞIMSIZ varyant grubu birleştiği için — ör. "Çevresel Özellikler Açıklaması" tek başına ~15 grup içeriyor, sabit bir V1-V4 seti anlamsız kombinasyonlar üretirdi), **bölüm başlığı bazında** bir çözüm istendi; mevcut genel "Varyant Kontrolü" (topbar) paneli AYNEN kalacak, EK olarak her ekran sekmesinin en üstünde o bölüme ait grupları filtreleyen küçük bir "Varyant (N)" düğmesi eklendi.

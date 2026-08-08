@@ -1541,6 +1541,24 @@ function setVariantOverride(sentenceKey, index) {
   }
 }
 
+// Bölüm başlığındaki toplu "Orijinal/V1/V2/..." düğmeleri için: o bölümdeki
+// TÜM gruplara AYNI ANDA aynı hedef indeksi uygular. Kullanıcı talebi: "adres
+// ve konum bölümünde V1 bastığım zaman adres ve konumda yer alan TÜM
+// bölümler V1 olmalı". Gruplar farklı sayıda varyanta sahip olabildiğinden
+// (kimi 2, kimi 5) hedef indeks her grubun KENDİ üst sınırına (count - 1)
+// kırpılır — böylece "V4" gibi yüksek bir hedefte, yalnızca 2 varyantlı bir
+// grup hata vermeden kendi en üst (en "farklı") seçeneğine geçer.
+// desiredIndex null ise (Otomatik) bölümdeki tüm override'lar kaldırılır.
+function applyBulkVariantOverrideForSection(sectionId, desiredIndex) {
+  getVariantGroupsForSection(sectionId).forEach((group) => {
+    if (desiredIndex === null) {
+      setVariantOverride(group.key, null);
+    } else {
+      setVariantOverride(group.key, Math.min(desiredIndex, group.count - 1));
+    }
+  });
+}
+
 function saveState() {
   applySystemDefaults(state);
   applyUserFieldDefaults(state);
@@ -1836,16 +1854,7 @@ function renderSection() {
 
   const sectionVariantGroups = isCurrentUserAdmin() ? getVariantGroupsForSection(section.id) : [];
   if (sectionVariantGroups.length) {
-    const variantBar = document.createElement("div");
-    variantBar.className = "section-variant-bar";
-    const variantButton = document.createElement("button");
-    variantButton.type = "button";
-    variantButton.className = "secondary-button section-variant-trigger";
-    variantButton.textContent = `Varyant (${sectionVariantGroups.length})`;
-    variantButton.title = "Bu bölümdeki cümle varyantlarını görüntüle/değiştir (yalnızca yönetici görür)";
-    variantButton.addEventListener("click", () => openVariantControlModal(section.id));
-    variantBar.append(variantButton);
-    body.append(variantBar);
+    body.append(createSectionVariantBar(section, sectionVariantGroups));
   }
 
   if (section.uploads && section.id !== "case") {
@@ -33203,6 +33212,55 @@ function openMissingCriticalFieldsModal() {
 
 // Kullanıcı talebi (2026-08-08): "tüm cümle versiyonlarını admin modunda
 // seçme düğmeleri ile görmek istiyorum standart kullanıcı görememeli" —
+// Bölüm başlığındaki toplu düğme çubuğu: "Varyant (N)" (detay modalını
+// açar) + "Otomatik/Orijinal/V1/V2/..." hızlı-uygulama düğmeleri (kullanıcı
+// talebi: "adres ve konum bölümünde V1 bastığım zaman ... tüm bölümler V1
+// olmalı"). Hızlı düğmeler bölümün gruplarındaki EN YÜKSEK varyant sayısı
+// kadar gösterilir (ör. bir bölümde en çok 4 varyantlı grup varsa V1-V3
+// gösterilir; V4 gösterilmez, çünkü hiçbir grupta karşılığı yoktur).
+function createSectionVariantBar(section, groups) {
+  const bar = document.createElement("div");
+  bar.className = "section-variant-bar";
+
+  const quickRow = document.createElement("div");
+  quickRow.className = "section-variant-quick-row";
+  const maxCount = Math.max(...groups.map((group) => group.count));
+
+  const applyBulk = (desiredIndex) => {
+    applyBulkVariantOverrideForSection(section.id, desiredIndex);
+    autosave();
+    render();
+  };
+
+  const autoBtn = document.createElement("button");
+  autoBtn.type = "button";
+  autoBtn.className = "variant-choice-btn variant-choice-auto section-variant-quick-btn";
+  autoBtn.textContent = "Otomatik";
+  autoBtn.title = "Bu bölümdeki tüm cümleleri otomatik (rapor kimliğinden deterministik) seçime döndür";
+  autoBtn.addEventListener("click", () => applyBulk(null));
+  quickRow.append(autoBtn);
+
+  for (let index = 0; index < maxCount; index++) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "variant-choice-btn section-variant-quick-btn";
+    btn.textContent = index === 0 ? "Orijinal" : `V${index}`;
+    btn.title = `Bu bölümdeki tüm cümleleri ${index === 0 ? "Orijinal" : `V${index}`} yap (daha az varyantlı gruplar kendi en üst seçeneğine geçer)`;
+    btn.addEventListener("click", () => applyBulk(index));
+    quickRow.append(btn);
+  }
+
+  const detailButton = document.createElement("button");
+  detailButton.type = "button";
+  detailButton.className = "secondary-button section-variant-trigger";
+  detailButton.textContent = `Varyant (${groups.length})`;
+  detailButton.title = "Bu bölümdeki cümle varyantlarını tek tek görüntüle/değiştir (yalnızca yönetici görür)";
+  detailButton.addEventListener("click", () => openVariantControlModal(section.id));
+
+  bar.append(quickRow, detailButton);
+  return bar;
+}
+
 // yalnızca isCurrentUserAdmin() true iken açılabilir (tetikleyici düğme
 // zaten normal kullanıcıya hiç gösterilmiyor, bkz. render()). Her varyant
 // grubu için "Otomatik" + numaralı seçenek düğmeleri gösterir; seçim

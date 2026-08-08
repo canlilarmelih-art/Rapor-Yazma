@@ -6211,8 +6211,23 @@ a:focus-visible,
 
 .section-variant-bar {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   justify-content: flex-end;
+  gap: 8px;
   margin-bottom: 12px;
+}
+
+.section-variant-quick-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.section-variant-quick-btn {
+  font-size: 0.8em;
+  padding: 4px 10px;
 }
 
 .section-variant-trigger {

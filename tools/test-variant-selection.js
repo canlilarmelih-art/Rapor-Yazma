@@ -139,6 +139,29 @@ function extractFn(source, startMarker, endMarker) {
   assert.equal(context.selectVariant("keyB", 2), 1);
   console.log("Cumle bazinda bagimsiz override testi tamam.");
 
+  // Bolum bazli toplu "Orijinal/V1/V2/..." dugmeleri (0.0.372): kullanici
+  // talebi "adres ve konum bolumunde V1 bastigim zaman ... tum bolumler V1
+  // olmali" — applyBulkVariantOverrideForSection bir bolumdeki TUM gruplara
+  // ayni hedef indeksi uygulamali, farkli sayida varyanti olan gruplar kendi
+  // ust sinirina (count-1) kirpilmali, DIGER bolumlerin gruplarina DOKUNMAMALI.
+  {
+    context.state = { reportId: "RE-2026-BULK1", fields: {} };
+    context.registerVariantGroup("bulkA", "Test Grubu A (Adres/Konum/Çevre)", 5);
+    context.registerVariantGroup("bulkB", "Test Grubu B (Adres/Konum/Çevre)", 2);
+    context.registerVariantGroup("bulkC", "Test Grubu C (İmar Durumu)", 5);
+
+    context.applyBulkVariantOverrideForSection("address", 3);
+    assert.equal(context.state.fields.variantOverrides.bulkA, 3, "5 varyantli grup hedef indekse (3) tam ulasmali.");
+    assert.equal(context.state.fields.variantOverrides.bulkB, 1, "2 varyantli grup kendi ust sinirina (1) kirpilmali.");
+    assert.equal(context.state.fields.variantOverrides.bulkC, undefined, "Baska bolumun grubuna dokunulmamali.");
+    console.log("Bolum bazli toplu varyant uygulama (kirpma) testi tamam.");
+
+    context.applyBulkVariantOverrideForSection("address", null);
+    assert.equal(context.state.fields.variantOverrides.bulkA, undefined, "Otomatik'e donusce override kalkmali (grup A).");
+    assert.equal(context.state.fields.variantOverrides.bulkB, undefined, "Otomatik'e donusce override kalkmali (grup B).");
+    console.log("Bolum bazli toplu varyant Otomatik'e donus testi tamam.");
+  }
+
   // Kayit defteri: app.js kaynaginda registerVariantGroup("KEY", "LABEL", COUNT)
   // cagrilarinin hepsini regex ile tara — anahtar tekrari OLMAMALI (iki
   // fonksiyon ayni anahtari kullanirsa admin panelinde cakisir ve
