@@ -1,5 +1,17 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.365 - 2026-08-08 - Cümle varyantı: Bölüm 8 (Takyidat) tamamlandı, Bölüm 9 zaten tamdı (155 grup) — envanterin TÜM bölümleri artık koda taşındı
+
+- Koda taşınanlar: `buildIsbankEncumbranceExplanation` (İş Bankası TAKBİS inceleme tarihi cümlesi), `buildEncumbranceSummaryVariants()`'ın "TAKBİS temin edilemedi" sabit açıklaması. `buildEncumbranceIntroSentence` ve `buildEncumbranceTitleRecordChangeParagraph` zaten önceki pilot/Bölüm 2'de tamamlanmıştı; `formatEncumbranceDeclarationRow`/`formatEncumbranceMortgageRow`/`buildEncumbranceSectionParagraph`/`buildCondensedEncumbranceSectionSummary` doküman gereği bilinçli olarak varyantlanmadı (veri-ağırlıklı formatter'lar).
+- **Bölüm 9 (Ziraat/Arsa-Arazi) kontrol edildi — zaten tamdı**: `buildZiraatLocationEnvironmentalExplanation`, `buildZiraatDevelopmentAnalysisExplanation`, `buildZiraatBuildingPatternExplanation` Bölüm 1 batch'inde (bu oturumun başında) tamamlanmış; `buildTarlaValuationRiskExplanation` Bölüm 6'da tamamlandı. Ek işlem gerekmedi.
+- **Bölüm 10 (GDYS/GABİM)**: doküman gereği kalıcı olarak kapsam dışı (serbest metin değil, sabit sınıflandırma etiketi üretiyor) — kontrol edildi, ek işlem yok.
+- `docs/cumle-envanteri.md`'deki 10 bölümün TAMAMI artık ya koda taşınmış ya da (Bölüm 10 ve birkaç "veri, üslup değil" formatter/hesaplama fonksiyonu için) bilinçli olarak kapsam dışı bırakılmış durumda.
+- `VARIANT_REGISTRY` artık **155 grup** (17'den başladı).
+- Test dosyalarında ek değişiklik gerekmedi (`test-encumbrance-intro-sentence.js`, `test-facade-count-and-encumbrance-sections.js`, `test-bank-templates.js` gerçek/mock'lanmamış `selectVariant` ile zaten sorunsuz çalıştı — regex/kısmi-eşleşme tabanlı assert'ler kullanıyorlardı).
+- Kod değişikliğinden sonra yerel yedek alındı: `backups/before-variant-section8-code_*`.
+- `index.html` cache-buster'ı `20260808-1235`'e yükseltildi. `npm run verify` tamamı geçti.
+- **Kalan iş** (bilinçli olarak ertelendi, ayrı bir tur gerektiriyor): Bölüm 3'teki `buildImarPlanningNote()`'un ana paragraf gövdesi ve `buildProjectSuitabilityBuildingReferenceSentence()`/`buildBuildingFootprintAndEntranceExplanation()` (server.js senkron gerektiriyor); Bölüm 4/5'teki bazı düşük seviyeli "yapı taşı" clause fonksiyonları (ör. `composeUnitTotalAreaClause`, `composeMainRoomDecorativeSentence`).
+
 ## 0.0.364 - 2026-08-08 - Cümle varyantı: Bölüm 7 (Emsaller) kalan fonksiyonlar koda taşındı (153 grup)
 
 - Koda taşınanlar: `buildComparablePositionComparisonText` (benzer/farklı konum), `buildComparableFeatureComparisonText` (dışarıdan ekspertiz/normal), `buildComparableSubjectStatement` ("Konu Taşınmaz" kartı açılışı), `buildComparableGeneralStatement` ("Genel" kart açıklaması), `buildComparableBargainAndRentText` (6 alt-durum: kiralık-piyasa değeri, yalnız kira, pazarlık var+kira, yalnız pazarlık var, pazarlık yok+kira, yalnız pazarlık yok), `buildComparableWorkplaceFloorReductionExplanation`. `buildComparableMarketAnalysisText`/`buildLandComparableMarketAnalysisText` (comparable-market-analysis.js) ve `buildComparableLongText`'in kompozit yapıştırıcı cümleleri zaten önceki pilotlarda tamamlanmıştı.

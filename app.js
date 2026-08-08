@@ -20810,12 +20810,18 @@ function buildEncumbranceSummary(mode = state.fields.encumbranceSummaryMode) {
   return selectEncumbranceSummaryVariant(buildEncumbranceSummaryVariants(), mode);
 }
 
+const isbankEncumbranceExplanationVariants = [
+  (reviewedAt) => `TKGM (TAKBİS) kayıtlarında incelemeler ${reviewedAt} gerçekleştirilmiştir.`,
+  (reviewedAt) => `TKGM (TAKBİS) kayıtları üzerinde yapılan incelemeler ${reviewedAt} tamamlanmıştır.`,
+];
+registerVariantGroup("buildIsbankEncumbranceExplanation", "İş Bankası TAKBİS İnceleme Tarihi Cümlesi (Takyidat)", isbankEncumbranceExplanationVariants.length);
+
 function buildIsbankEncumbranceExplanation() {
   const date = encumbranceDateOrBila(state.fields.takbisDate);
   const time = String(state.fields.takbisTime || "").trim();
   if (!date || date === "Bila") return "";
   const reviewedAt = time ? `${date} tarihinde saat ${time}'de` : `${date} tarihinde`;
-  return `TKGM (TAKBİS) kayıtlarında incelemeler ${reviewedAt} gerçekleştirilmiştir.`;
+  return isbankEncumbranceExplanationVariants[selectVariant("buildIsbankEncumbranceExplanation", isbankEncumbranceExplanationVariants.length)](reviewedAt);
 }
 
 // Kullanıcı talebi: "03.08.2026 tarihinde saat 17:32 Webtapu Sistemi
@@ -20850,9 +20856,15 @@ function getEncumbranceIntroSentenceForPlaceholder() {
   return buildEncumbranceIntroSentence();
 }
 
+const encumbranceUnavailableVariants = [
+  "Talep tarihi itibarıyla konu taşınmaza ilişkin TAKBİS belgesi temin edilememiş olup, değerleme çalışması takyidat kayıtlarından bağımsız olarak gerçekleştirilmiştir.",
+  "Talep tarihi itibarıyla söz konusu taşınmaza ait TAKBİS belgesine ulaşılamamış olup, değerleme çalışması takyidat kayıtları dikkate alınmaksızın yürütülmüştür.",
+];
+registerVariantGroup("buildEncumbranceSummaryVariants:unavailable", "TAKBİS Temin Edilemedi Açıklaması (Takyidat)", encumbranceUnavailableVariants.length);
+
 function buildEncumbranceSummaryVariants() {
   if (state.fields.takbisMethod === "Tapu Kaydı Alınmamıştır.") {
-    const detail = "Talep tarihi itibarıyla konu taşınmaza ilişkin TAKBİS belgesi temin edilememiş olup, değerleme çalışması takyidat kayıtlarından bağımsız olarak gerçekleştirilmiştir.";
+    const detail = encumbranceUnavailableVariants[selectVariant("buildEncumbranceSummaryVariants:unavailable", encumbranceUnavailableVariants.length)];
     return { detail, summary: detail, exceedsLimit: false };
   }
 
