@@ -9,10 +9,12 @@ Tespiti" kartı, 0.0.356 — bu envanter o riskin **kök çözümü**: tespit ye
 
 **Nasıl okunur:** Her satır bir fonksiyonu (`app.js`, aksi belirtilmedikçe) ve o
 fonksiyonun ürettiği sabit cümle kalıbını/kalıplarını gösterir. "Varyant" sütunu
-alternatif ifadeleri içerir (V1/V2 gibi) — bunlar şu an yalnızca METİN olarak
-bu dosyada duruyor, `app.js`'te henüz KODA dönüştürülmedi (bkz. "Durum ve
-Sıradaki Adım" bölümü). Varyant SEÇİM mekanizması (hangi rapor hangi varyantı
-alacak) KARARLAŞTIRILDI — bkz. "Varyant Seçim Mekanizması" bölümü.
+alternatif ifadeleri içerir (V1-V4, hepsi tamamlandı) — bunların bir kısmı
+(17 grup, "Kodda mı?" = Evet işaretli) `app.js`'e taşındı, kalanı henüz
+yalnızca METİN olarak bu dosyada duruyor (bkz. "Durum ve Sıradaki Adım"
+bölümü). Varyant SEÇİM mekanizması KARARLAŞTIRILDI ve KODLANDI — rapor
+bazında deterministik + admin için manuel override ("Varyant Kontrolü"
+paneli) — bkz. "Varyant Seçim Mekanizması" bölümü.
 
 **İlerleme:** Envanterin 10 bölümünün tamamı dolduruldu (bkz. checklist).
 
@@ -59,11 +61,17 @@ Envanter (metin yazma) tamamlandıktan sonra kullanıcıyla birlikte netleştiri
   hepsi aynı varyanta düşme ihtimali pratikte sıfırdır). Rapor içi tutarlılık
   sorun değil çünkü her cümlenin hangi varyantı olursa olsun anlamı ve
   resmi üslubu aynı kalıyor (bkz. Varyant Stratejisi yukarıda).
-- **Manuel override YOK** — kullanıcı hiçbir cümle için elle varyant
-  seçmeyecek, tamamen otomatik/deterministik. Bilinçli bir karar: 50+
-  varyantlı cümle için elle seçim UI'si gereksiz karmaşıklık olurdu ve
-  asıl amaç (raporların birbirinden ayrışması) manuel müdahale olmadan
-  zaten sağlanıyor.
+- **Standart kullanıcılar için manuel override YOK** — tamamen otomatik/
+  deterministik, elle seçim UI'si göstermiyor. **GÜNCELLEME (2026-08-08,
+  kullanıcı talebi): "tüm cümle versiyonlarını admin modunda seçme
+  düğmeleri ile görmek istiyorum standart kullanıcı görememeli"** — bu
+  karar YÖNETİCİ için genişletildi: admin artık "Varyant Kontrolü"
+  panelinden (yalnızca `isCurrentUserAdmin()` true iken görünür/erişilir
+  buton) her cümle için "Otomatik" veya belirli bir versiyonu (Orijinal/
+  V1/V2/...) elle seçebiliyor; seçim `state.fields.variantOverrides
+  [sentenceKey]` içinde rapor verisiyle birlikte saklanıyor. Standart
+  kullanıcılar bu paneli hiç görmüyor/erişemiyor — davranışları hâlâ
+  tamamen otomatik. Uygulandı: 0.0.358 (bkz. handoff.md).
 - **Taslak algoritma (uygulama aşamasında netleşecek):** `selectVariant(reportId,
   sentenceKey, variantCount)` — `reportId + "::" + sentenceKey` string'inin
   basit, ortam-bağımsız bir hash'i (ör. FNV-1a benzeri, kriptografik olmak
@@ -341,14 +349,15 @@ yapılacak bir şey yok; envanter tamamlığı için işaretlendi.*
 
 ## Durum ve Sıradaki Adım
 
-- **Varyant metinleri şu an İÇERİK olarak var, KOD olarak YOK.** Yukarıdaki V1/V2 sütunları
-  yalnızca bu markdown dosyasında — `app.js` içinde henüz hiçbir fonksiyon
-  değiştirilmedi, varyant döndüren kod yazılmadı.
-- **Varyant SEÇİM mekanizması artık KARARLAŞTIRILDI** (bkz. yukarıdaki
+- **Varyant metinleri bu markdown dosyasında (V1-V4, 2026-08-08'de tamamlandı
+  — bkz. `Cumle_Varyantlari_Tum_Sistem_V1-V4.xlsx`) ve KISMEN koda taşındı**
+  (bkz. aşağıdaki "Kod Entegrasyonu" bölümü — 17 grup canlıda, kalan onlarca
+  grup henüz yalnızca dokümanda).
+- **Varyant SEÇİM mekanizması KARARLAŞTIRILDI ve KODLANDI** (bkz. yukarıdaki
   "Varyant Seçim Mekanizması" bölümü) — rapor bazında sabit-tohumlu
   (`reportId`'den türetilen deterministik hash), cümle bazında bağımsız
-  seçim, manuel override yok. Tasarım netleşti ama **kod henüz yazılmadı**
-  — kullanıcı onayı bekleyen tek şey artık kod entegrasyonuna geçiş zamanı.
+  seçim, VE (2026-08-08 güncellemesi) admin için manuel override — "Varyant
+  Kontrolü" paneli, yalnızca `isCurrentUserAdmin()` true iken görünür.
 - **Tüm 10 bölüm artık TAM sayılabilir** (bkz. yukarıdaki checklist — hepsi
   işaretli, ve daha önce "sonraki turda" olarak bırakılan TÜM alt-fonksiyonlar
   tamamlandı):
@@ -371,22 +380,31 @@ yapılacak bir şey yok; envanter tamamlığı için işaretlendi.*
   - Bölüm 8/9/10'da da bilinçli olarak varyantlanmayan veri-ağırlıklı
     fonksiyonlar hariç (gerekçeleri ilgili bölümlerde belirtildi) envanter
     tamamlanmış durumda.
-- **Envanter aşaması tamamlandı.** Varyant SEÇİM mekanizması KARARLAŞTIRILDI
-  (yukarıdaki "Varyant Seçim Mekanizması" bölümü) ve **KOD ENTEGRASYONU
-  BAŞLADI** (0.0.357, 2026-08-08):
-  - Çekirdek altyapı yazıldı: `getVariantSelectionSeedId()` /
-    `hashVariantSeedText()` / `selectVariant(sentenceKey, variantCount)`
-    (`app.js`, `saveState()`'ten hemen önce).
-  - **Pilot grup — 6 fonksiyon** koda taşındı: `buildShareExplanation()`
-    (Bölüm 2), `composeMaterialQualitySentence()` (Bölüm 5),
+- **Envanter aşaması tamamlandı** (V1-V4, tüm 10 bölüm — bkz. masaüstündeki
+  `Cumle_Varyantlari_Tum_Sistem_V1-V4.xlsx`). Varyant SEÇİM mekanizması
+  KARARLAŞTIRILDI ve **KOD ENTEGRASYONU BAŞLADI**:
+  - **0.0.357 (2026-08-08):** Çekirdek altyapı yazıldı: `getVariantSelectionSeedId()`
+    / `hashVariantSeedText()` / `selectVariant(sentenceKey, variantCount)`
+    (`app.js`, `saveState()`'ten hemen önce). **Pilot grup — 6 fonksiyon**
+    koda taşındı: `buildShareExplanation()` (Bölüm 2),
+    `composeMaterialQualitySentence()` (Bölüm 5),
     `buildValuationSaleabilityExplanation()` (Bölüm 6),
     `buildBuildingCompletionExplanation()` (Bölüm 4),
     `buildEncumbranceIntroSentence()` (Bölüm 8), ve
     `buildComparableMarketAnalysisText()`/`buildLandComparableMarketAnalysisText()`
     (Bölüm 7 — `src/comparables/comparable-market-analysis.js`, `input.selectVariant`
     olarak enjekte edilir).
-  - Test: `tools/test-variant-selection.js` (`npm run verify`'e eklendi).
-  - **Kalan ~onlarca fonksiyon henüz koda taşınmadı** — bu bilinçli olarak
-    küçük, doğrulanabilir bir pilot olarak tutuldu. Sonraki adım: kalan
-    fonksiyonları bölüm bölüm (docs/cumle-envanteri.md'deki sıraya göre)
-    koda taşımaya devam etmek — kullanıcı onayı/yönlendirmesiyle.
+  - **0.0.358 (2026-08-08):** Kullanıcı talebi üzerine ADMIN MANUEL OVERRIDE
+    eklendi — "Varyant Kontrolü" paneli (topbar, yalnızca admin'e görünür),
+    `VARIANT_REGISTRY`/`registerVariantGroup()` kayıt defteri (şu an 17
+    grup — pilot 6 fonksiyon + comparable-market-analysis.js'in 6 alt-
+    grubu), `selectVariant()` artık önce `state.fields.variantOverrides
+    [sentenceKey]`'e bakıyor.
+  - Test: `tools/test-variant-selection.js` (`npm run verify`'e eklendi,
+    override öncelik/geçerlilik/bağımsızlık + kayıt defteri testleri dahil).
+  - **Kalan ~onlarca fonksiyon henüz koda taşınmadı** — pilot grubun
+    dışındakiler hâlâ yalnızca bu dosyada metin olarak duruyor. Yeni bir
+    fonksiyon koda taşındığında `registerVariantGroup(...)` çağrısı eklemek
+    yeterli — admin paneli otomatik genişler, panel kodunda değişiklik
+    gerekmez. Sonraki adım: kalan fonksiyonları bölüm bölüm koda taşımaya
+    devam etmek — kullanıcı onayı/yönlendirmesiyle.

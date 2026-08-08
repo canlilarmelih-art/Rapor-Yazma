@@ -1,5 +1,18 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.358 - 2026-08-08 - Cümle varyantı: admin-only manuel seçim paneli ("Varyant Kontrolü")
+
+- Kullanıcı talebi: "tüm cümle versiyonlarını admin modunda seçme düğmeleri ile görmek istiyorum standart kullanıcı görememeli" — 0.0.357'de kararlaştırılan "manuel override YOK" kuralı GENİŞLETİLDİ: standart kullanıcılar için hâlâ tamamen otomatik/deterministik, ama YÖNETİCİ (`isCurrentUserAdmin()`, zaten var olan tek-admin kontrolü) artık her cümle için hangi varyantın kullanılacağını elle seçebiliyor.
+- `selectVariant(sentenceKey, variantCount)` artık önce `state.fields.variantOverrides[sentenceKey]`'e bakıyor (geçerli aralıktaysa kullanır), yoksa eskisi gibi deterministik hash'e (`getAutoVariantIndex`) düşüyor. Override rapor verisiyle birlikte saklanıyor (rapor kaydedildiğinde/yüklendiğinde korunuyor).
+- Yeni **`VARIANT_REGISTRY`** + **`registerVariantGroup(key, label, count)`** — her varyant dizisi/sözlüğü tanımlandığı yerin hemen ardından kendini kaydediyor (şu an 17 grup: pilot 6 fonksiyon + comparable-market-analysis.js'in 6 alt-grubu). Yeni bir fonksiyon varyantlandıkça bu tek satırlık kayıt yeterli — admin panelinde otomatik görünür.
+- Yeni **"Varyant Kontrolü" düğmesi** (topbar, `#variantControlBtn`) — YALNIZCA admin'e görünür (`render()` içinde her render'da `isCurrentUserAdmin()` ile kontrol edilir, standart kullanıcıda `hidden`). Tıklanınca `openVariantControlModal()` her kayıtlı grup için "Otomatik (şu an: ...)" + "Orijinal"/"V1"/"V2"... düğmeleri gösteren bir modal açar; bir düğmeye tıklamak override'ı kaydeder ve raporu yeniden render eder.
+- Yeni CSS: `.variant-control-modal`, `.variant-control-list`, `.variant-control-item`, `.variant-control-choices`, `.variant-choice-btn` (+ `.is-active`) — mevcut `.modal-card`/`.modal-overlay` altyapısını (missing-critical-fields modalıyla aynı desen) kullanıyor, yeni bağımsız bir modal sistemi eklenmedi.
+- **Kapsam bilinçli olarak sınırlı**: yalnızca şu an koda taşınmış ~17 grup admin panelinde seçilebilir. `docs/cumle-envanteri.md`'deki kalan onlarca fonksiyon koda taşındıkça (bkz. 0.0.357) `registerVariantGroup` çağrısı eklenmesi yeterli, panel kodu değişmeden otomatik genişler.
+- Test: `tools/test-variant-selection.js`'e override öncelik/geçerlilik/bağımsızlık senaryoları + `registerVariantGroup` kayıt defteri (tekrarsız anahtar) testi eklendi. 3 mevcut test dosyası (`test-tarla-saleability-explanation.js`, `test-unit-interior-fluent-wording.js`) `registerVariantGroup: () => {}` no-op mock'u ile güncellendi (yeni kayıt çağrıları extraction aralıklarına girdiği için).
+- Kod değişikliğinden önce yerel yedek alındı: `backups/before-admin-variant-control-panel_2026-08-08_11-00-48/`.
+- `index.html` cache-buster'ları (`app.js`, `styles.css`) `20260808-1100`'e yükseltildi.
+- `npm run verify` tamamı geçti. **Not:** tarayıcıda uçtan uca görsel doğrulama YAPILAMADI — uygulama Firebase oturum çerezi gerektiriyor ve gerçek admin kimlik bilgileriyle giriş yapmak (canlilar.melih@gmail.com şifresi) güvenlik kuralları gereği bu ortamda yapılmadı. Kullanıcının kendi tarayıcısında canlıda doğrulaması önerilir.
+
 ## 0.0.357 - 2026-08-08 - Cümle varyantı: kod entegrasyonu (pilot grup) + seçim altyapısı
 
 - Kullanıcı kararı (bkz. `docs/cumle-envanteri.md`, "Varyant Seçim Mekanizması"): **rapor bazında sabit-tohumlu** (aynı rapor her zaman aynı metni üretir, farklı raporlar çoğu cümlede farklı varyanta düşer), **cümle bazında bağımsız seçim** (rapor tek bir üslup seçmiyor, her cümle kendi anahtarıyla ayrı seçim yapıyor), **manuel override YOK**.

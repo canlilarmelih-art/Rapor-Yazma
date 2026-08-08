@@ -1017,6 +1017,7 @@ const caseCode = document.querySelector("#caseCode");
 const bankStatus = document.querySelector("#bankStatus");
 const missingCount = document.querySelector("#missingCount");
 const missingCriticalTrigger = document.querySelector("#missingCriticalTrigger");
+const variantControlBtn = document.querySelector("#variantControlBtn");
 const lastSaved = document.querySelector("#lastSaved");
 const tcmbRateStrip = document.querySelector("#tcmbRateStrip");
 const tcmbRateContent = document.querySelector("#tcmbRateContent");
@@ -1415,7 +1416,8 @@ function getReportCompletionStats(targetState = state) {
 }
 
 // Cümle/paragraf VARYANT SEÇİM mekanizması (bkz. docs/cumle-envanteri.md,
-// "Varyant Seçim Mekanizması" bölümü, kullanıcı kararı 2026-08-07):
+// "Varyant Seçim Mekanizması" bölümü, kullanıcı kararı 2026-08-07 — sonradan
+// 2026-08-08'de admin manuel override ile GENİŞLETİLDİ):
 // - Rapor bazında sabit-tohumlu: aynı rapor her zaman aynı metni üretir
 //   (kararlı), farklı raporlar (farklı kullanıcı/taşınmaz) çoğu cümlede
 //   farklı varyanta düşer — bu, farklı uzmanların aynı taşınmaz için
@@ -1423,7 +1425,15 @@ function getReportCompletionStats(targetState = state) {
 //   (bkz. admin panelindeki "Tekrarlanan Ada/Parsel Tespiti" kartı, 0.0.356).
 // - Cümle bazında bağımsız: rapor tek bir "üslup" seçmiyor, her cümle kendi
 //   anahtarıyla ayrı seçim yapıyor.
-// - Manuel override YOK — tamamen otomatik/deterministik.
+// - Standart kullanıcılar için manuel override YOK — otomatik/deterministik.
+// - Kullanıcı talebi (2026-08-08): "tüm cümle versiyonlarını admin modunda
+//   seçme düğmeleri ile görmek istiyorum standart kullanıcı görememeli" —
+//   YÖNETİCİYE (yalnızca `isCurrentUserAdmin()`) her cümle için hangi
+//   varyantın kullanılacağını ELLE seçme imkanı eklendi (bkz. "Varyant
+//   Kontrolü" paneli, aşağıda `openVariantControlModal`). Seçim
+//   `state.fields.variantOverrides[sentenceKey]` içinde rapor verisiyle
+//   birlikte saklanır — normal kullanıcılar bu alanı hiç görmez/düzenleyemez,
+//   UI'de yalnızca admin'e gösterilir.
 // reportId henüz atanmamışsa (cloud/report-library.js henüz ilk kaydı
 // yapmadıysa) state.variantSeed'e düşülür — ilk kez burada, ihtiyaç anında,
 // tembel olarak üretilir ve state'e yazılır (autosave zaten kısa süre
@@ -1450,15 +1460,45 @@ function hashVariantSeedText(text) {
   return hash >>> 0;
 }
 
-// sentenceKey: çağrı yerinde BENZERSİZ bir anahtar (ör. fonksiyon adı,
-// gerekirse alt-durum etiketiyle birlikte — bkz. docs/cumle-envanteri.md).
-// variantCount: o cümle için toplam seçenek sayısı (orijinal dahil — ör.
-// orijinal + V1 + V2 için 3). 0 döner = orijinal metin kullanılır.
-function selectVariant(sentenceKey, variantCount) {
+// Deterministik (otomatik) index — override'dan BAĞIMSIZ. Admin paneli
+// "şu an otomatik olarak hangisi seçilirdi" bilgisini göstermek için kullanır.
+function getAutoVariantIndex(sentenceKey, variantCount) {
   if (!Number.isInteger(variantCount) || variantCount <= 1) return 0;
   const seed = getVariantSelectionSeedId();
   const hash = hashVariantSeedText(`${seed}::${sentenceKey}`);
   return hash % variantCount;
+}
+
+// sentenceKey: çağrı yerinde BENZERSİZ bir anahtar (ör. fonksiyon adı,
+// gerekirse alt-durum etiketiyle birlikte — bkz. docs/cumle-envanteri.md).
+// variantCount: o cümle için toplam seçenek sayısı (orijinal dahil — ör.
+// orijinal + V1 + V2 için 3). 0 döner = orijinal metin kullanılır.
+// Admin elle bir varyant SEÇMİŞSE (state.fields.variantOverrides[sentenceKey])
+// o öncelikli — geçersiz/aralık dışıysa otomatik hesaplamaya düşülür.
+function selectVariant(sentenceKey, variantCount) {
+  if (!Number.isInteger(variantCount) || variantCount <= 1) return 0;
+  const override = state.fields?.variantOverrides?.[sentenceKey];
+  if (Number.isInteger(override) && override >= 0 && override < variantCount) return override;
+  return getAutoVariantIndex(sentenceKey, variantCount);
+}
+
+// Admin paneli için: tüm varyant gruplarının kayıt defteri. Her varyant
+// dizisi/sözlüğü tanımlandığı yerin hemen ardından `registerVariantGroup`
+// ile eklenir (bkz. buildShareExplanation, composeMaterialQualitySentence
+// vb.). comparable-market-analysis.js AYRI bir modül olduğundan (state'e
+// erişemiyor) kendi grupları burada elle kaydedilir.
+const VARIANT_REGISTRY = [];
+function registerVariantGroup(key, label, count) {
+  VARIANT_REGISTRY.push({ key, label, count });
+}
+
+function setVariantOverride(sentenceKey, index) {
+  if (!state.fields.variantOverrides) state.fields.variantOverrides = {};
+  if (index === null) {
+    delete state.fields.variantOverrides[sentenceKey];
+  } else {
+    state.fields.variantOverrides[sentenceKey] = index;
+  }
 }
 
 function saveState() {
@@ -1720,6 +1760,10 @@ function setActiveSection(id) {
 
 function render() {
   ensureActiveSectionVisible();
+  // Kullanıcı talebi: "tüm cümle versiyonlarını admin modunda seçme
+  // düğmeleri ile görmek istiyorum standart kullanıcı görememeli" —
+  // düğme yalnızca isCurrentUserAdmin() true iken gösterilir.
+  if (variantControlBtn) variantControlBtn.hidden = !isCurrentUserAdmin();
   document.body.classList.toggle("field-mode", Boolean(fieldMode?.checked));
   createNav();
   renderNavState();
@@ -3980,6 +4024,7 @@ const valuationSaleabilityExplanationVariants = [
   "Söz konusu gayrimenkul yukarıda belirtilen özellikleri nedeniyle tercih edilen bir taşınmaz niteliğindedir. Konumu, ulaşım olanakları ve diğer nitelikleri birlikte değerlendirildiğinde SATILABİLİR olduğu görüş ve kanaatine varılmıştır.",
   "Rapor konusu mülk, sahip olduğu yukarıdaki özellikler nedeniyle talep gören bir gayrimenkul niteliğindedir. Konumu, ulaşım imkânları ve diğer nitelikleri birlikte ele alındığında SATILABİLİR nitelikte olduğu değerlendirilmiştir.",
 ];
+registerVariantGroup("buildValuationSaleabilityExplanation", "Satış Kabiliyeti Açıklaması — Satılabilir (Değerleme)", valuationSaleabilityExplanationVariants.length);
 
 function buildValuationSaleabilityExplanation() {
   const saleability = saleabilityOptions.includes(state.fields.saleability)
@@ -9462,6 +9507,11 @@ const materialQualitySentenceVariants = {
     "İç mekân nitelikleri kötü düzeyde olup, kapsamlı tadilat ihtiyacı bulunmaktadır.",
   ],
 };
+registerVariantGroup("composeMaterialQualitySentence:LUKS", "İç Mekân Malzeme Kalitesi — Lüks (Bağımsız Bölüm)", materialQualitySentenceVariants.LUKS.length);
+registerVariantGroup("composeMaterialQualitySentence:KALITELI", "İç Mekân Malzeme Kalitesi — Kaliteli (Bağımsız Bölüm)", materialQualitySentenceVariants.KALITELI.length);
+registerVariantGroup("composeMaterialQualitySentence:ORTA", "İç Mekân Malzeme Kalitesi — Standart (Bağımsız Bölüm)", materialQualitySentenceVariants.ORTA.length);
+registerVariantGroup("composeMaterialQualitySentence:VASAT", "İç Mekân Malzeme Kalitesi — Vasat (Bağımsız Bölüm)", materialQualitySentenceVariants.VASAT.length);
+registerVariantGroup("composeMaterialQualitySentence:KOTU", "İç Mekân Malzeme Kalitesi — Kötü (Bağımsız Bölüm)", materialQualitySentenceVariants.KOTU.length);
 
 function composeMaterialQualitySentence() {
   const quality = state.fields.unitMaterialQuality || "";
@@ -18050,6 +18100,10 @@ function calculateConstructionYearText(completionIsoDate) {
 
 // Varyantlar docs/cumle-envanteri.md Bölüm 4'te belgelendi (HER raporda
 // çıkan bir açıklama — iskan var/yok/tarih tespit edilemedi 3 alt-durumu).
+registerVariantGroup("buildBuildingCompletionExplanation:no-date", "Yapı Bitiş Tarihi — Tarih Tespit Edilemedi (Ana Gayrimenkul)", 2);
+registerVariantGroup("buildBuildingCompletionExplanation:occupancy", "Yapı Bitiş Tarihi — İskan Var (Ana Gayrimenkul)", 2);
+registerVariantGroup("buildBuildingCompletionExplanation:permit-plus-2y", "Yapı Bitiş Tarihi — İskan Yok, Ruhsat+2 Yıl (Ana Gayrimenkul)", 2);
+
 function buildBuildingCompletionExplanation(result = calculateBuildingCompletionFromReviewedDocuments()) {
   if (!result.isoDate) {
     const variants = [
@@ -19401,6 +19455,7 @@ const shareExplanationVariants = [
   "Değerlemeye konu gayrimenkul hisseli mülkiyete tabi olup, GAYRİMENKULÜN TÜM HİSSELERİNİN (AÇIKTA HİSSE BIRAKILMAKSIZIN) İPOTEK ALTINA ALINMASI KOŞULUYLA uzman kanaatimizce SATILABİLİR nitelikte olduğu değerlendirilmiştir.",
   "Söz konusu mülk hisseli tapu kaydına sahip olup, TÜM HİSSELERİN (AÇIKTA HİSSE KALMAKSIZIN) İPOTEK KAPSAMINA ALINMASI ŞARTIYLA taşınmazın SATILABİLİR olduğu kanaatine varılmıştır.",
 ];
+registerVariantGroup("buildShareExplanation", "Hisse Açıklaması (Tapu ve Mülkiyet)", shareExplanationVariants.length);
 
 function buildShareExplanation() {
   const variantIndex = selectVariant("buildShareExplanation", shareExplanationVariants.length);
@@ -20016,6 +20071,8 @@ function buildIsbankEncumbranceExplanation() {
 // hem yeni placeholder'da AYNI kaynak kullanılsın.
 // Varyantlar docs/cumle-envanteri.md Bölüm 8'de belgelendi (TAKBİS
 // alınabildiyse HER raporda birebir aynı çıkan giriş cümlesi).
+registerVariantGroup("buildEncumbranceIntroSentence", "Takyidat Bölümü Giriş Cümlesi", 3);
+
 function buildEncumbranceIntroSentence() {
   const date = encumbranceDateOrBila(state.fields.takbisDate);
   const time = String(state.fields.takbisTime || "").trim();
@@ -28596,6 +28653,15 @@ function createComparableMarketAnalysisPanel() {
   return wrapper;
 }
 
+// src/comparables/comparable-market-analysis.js AYRI bir modül (state'e
+// erişemiyor) — kendi varyant gruplarını burada, app.js'te elle kaydeder.
+registerVariantGroup("buildComparableMarketAnalysisText:p1", "Emsal Piyasa Analizi — Paragraf 1 (Konut/İşyeri)", 2);
+registerVariantGroup("buildComparableMarketAnalysisText:p2", "Emsal Piyasa Analizi — Paragraf 2 (Konut/İşyeri)", 2);
+registerVariantGroup("buildComparableMarketAnalysisText:p3", "Emsal Piyasa Analizi — Paragraf 3, koşullu (Konut/İşyeri)", 2);
+registerVariantGroup("buildLandComparableMarketAnalysisText:p1", "Emsal Piyasa Analizi — Paragraf 1 (Arsa/Tarla)", 2);
+registerVariantGroup("buildLandComparableMarketAnalysisText:p2", "Emsal Piyasa Analizi — Paragraf 2 (Arsa/Tarla)", 2);
+registerVariantGroup("buildLandComparableMarketAnalysisText:p3", "Emsal Piyasa Analizi — Paragraf 3, koşullu (Arsa/Tarla)", 2);
+
 function refreshComparableMarketAnalysisPanel() {
   const textarea = document.querySelector("[data-comparable-market-analysis-text]");
   if (!textarea) return;
@@ -32031,6 +32097,133 @@ function openMissingCriticalFieldsModal() {
   closeButton.focus();
 }
 
+// Kullanıcı talebi (2026-08-08): "tüm cümle versiyonlarını admin modunda
+// seçme düğmeleri ile görmek istiyorum standart kullanıcı görememeli" —
+// yalnızca isCurrentUserAdmin() true iken açılabilir (tetikleyici düğme
+// zaten normal kullanıcıya hiç gösterilmiyor, bkz. render()). Her varyant
+// grubu için "Otomatik" + numaralı seçenek düğmeleri gösterir; seçim
+// state.fields.variantOverrides[sentenceKey] içinde raporla birlikte
+// saklanır. Kapsam: yalnızca şu an koda taşınmış ~17 varyant grubu (bkz.
+// VARIANT_REGISTRY) — envanterdeki kalan fonksiyonlar koda taşındıkça
+// burada otomatik olarak listeye eklenecek (registerVariantGroup çağrısı
+// yeterli, bu fonksiyonda değişiklik gerekmez).
+function openVariantControlModal() {
+  if (!isCurrentUserAdmin()) return;
+  document.querySelector(".modal-overlay")?.remove();
+
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay variant-control-overlay";
+
+  const card = document.createElement("section");
+  card.className = "modal-card modal-card-wide variant-control-modal";
+  card.setAttribute("role", "dialog");
+  card.setAttribute("aria-modal", "true");
+  card.setAttribute("aria-labelledby", "variantControlModalTitle");
+
+  const head = document.createElement("div");
+  head.className = "modal-head";
+  const title = document.createElement("h3");
+  title.id = "variantControlModalTitle";
+  title.textContent = `Varyant Kontrolü (${VARIANT_REGISTRY.length} grup)`;
+  const closeButton = document.createElement("button");
+  closeButton.type = "button";
+  closeButton.className = "modal-close";
+  closeButton.setAttribute("aria-label", "Kapat");
+  closeButton.textContent = "×";
+  const closeModal = () => {
+    overlay.remove();
+    document.removeEventListener("keydown", closeWithEscape);
+  };
+  const closeWithEscape = (event) => {
+    if (event.key === "Escape") closeModal();
+  };
+  closeButton.addEventListener("click", closeModal);
+  head.append(title, closeButton);
+
+  const body = document.createElement("div");
+  body.className = "modal-body variant-control-modal-body";
+
+  const intro = document.createElement("p");
+  intro.className = "variant-control-intro";
+  intro.textContent = "Bu rapor için her cümlenin hangi versiyonunu kullanacağınızı seçin. \"Otomatik\" seçilirse (varsayılan) sistem raporun kimliğinden deterministik olarak seçer. Seçiminiz bu raporla birlikte kaydedilir; standart kullanıcılar bu paneli hiç görmez.";
+  body.append(intro);
+
+  if (!VARIANT_REGISTRY.length) {
+    const empty = document.createElement("p");
+    empty.className = "variant-control-empty";
+    empty.textContent = "Henüz kayıtlı varyant grubu yok.";
+    body.append(empty);
+  } else {
+    const list = document.createElement("div");
+    list.className = "variant-control-list";
+    VARIANT_REGISTRY.forEach((group) => list.append(createVariantControlRow(group, () => {
+      render();
+      openVariantControlModal();
+    })));
+    body.append(list);
+  }
+
+  card.append(head, body);
+  overlay.append(card);
+  overlay.addEventListener("click", (event) => {
+    if (event.target === overlay) closeModal();
+  });
+  document.addEventListener("keydown", closeWithEscape);
+  document.body.append(overlay);
+  closeButton.focus();
+}
+
+function createVariantControlRow(group, onChange) {
+  const row = document.createElement("div");
+  row.className = "variant-control-item";
+
+  const labelRow = document.createElement("div");
+  labelRow.className = "variant-control-item-label";
+  const label = document.createElement("strong");
+  label.textContent = group.label;
+  const key = document.createElement("span");
+  key.className = "variant-control-item-key";
+  key.textContent = group.key;
+  labelRow.append(label, key);
+
+  const override = state.fields?.variantOverrides?.[group.key];
+  const hasOverride = Number.isInteger(override) && override >= 0 && override < group.count;
+  const autoIndex = getAutoVariantIndex(group.key, group.count);
+  const activeIndex = hasOverride ? override : autoIndex;
+
+  const choices = document.createElement("div");
+  choices.className = "variant-control-choices";
+
+  const autoBtn = document.createElement("button");
+  autoBtn.type = "button";
+  autoBtn.className = "variant-choice-btn variant-choice-auto";
+  autoBtn.classList.toggle("is-active", !hasOverride);
+  autoBtn.textContent = `Otomatik (şu an: ${autoIndex === 0 ? "Orijinal" : `V${autoIndex}`})`;
+  autoBtn.addEventListener("click", () => {
+    setVariantOverride(group.key, null);
+    autosave();
+    onChange();
+  });
+  choices.append(autoBtn);
+
+  for (let index = 0; index < group.count; index++) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "variant-choice-btn";
+    btn.classList.toggle("is-active", hasOverride && activeIndex === index);
+    btn.textContent = index === 0 ? "Orijinal" : `V${index}`;
+    btn.addEventListener("click", () => {
+      setVariantOverride(group.key, index);
+      autosave();
+      onChange();
+    });
+    choices.append(btn);
+  }
+
+  row.append(labelRow, choices);
+  return row;
+}
+
 function isIndependentSectionGroundType(value = state.fields.groundType) {
   const groundType = foldTurkish(value).replace(/[^A-Z]/g, "");
   return groundType === "KATMULKIYETI" || groundType === "KATIRTIFAKI";
@@ -32176,6 +32369,7 @@ function updateStatus() {
 }
 
 missingCriticalTrigger?.addEventListener("click", openMissingCriticalFieldsModal);
+variantControlBtn?.addEventListener("click", openVariantControlModal);
 
 document.querySelector("#saveBtn").addEventListener("click", () => {
   saveState();

@@ -35,6 +35,10 @@ function evaluate({ tarla, saleability = "Satılabilir" }) {
     // test tarla/tarla-disi dallanmasini dogruluyor, varyant SEÇİMİ ayrı
     // olarak tools/test-variant-selection.js'te test ediliyor.
     selectVariant: () => 0,
+    // registerVariantGroup çağrısı (valuationSaleabilityExplanationVariants'ın
+    // hemen ardında, modül-yükleme anında çalışır) burada no-op — kayıt
+    // defteri ayrıca tools/test-variant-selection.js'te test ediliyor.
+    registerVariantGroup: () => {},
   };
   vm.runInNewContext(`${saleabilitySource}\n${tarlaRiskSource}\n${exportSource}`, context);
   return {

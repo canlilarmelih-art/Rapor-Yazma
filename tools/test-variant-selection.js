@@ -3,16 +3,27 @@
 /*
   Kullanici karari (docs/cumle-envanteri.md, "Varyant Secim Mekanizmasi",
   2026-08-07): rapor bazinda sabit-tohumlu (reportId'den turetilen
-  deterministik hash), cumle bazinda bagimsiz secim, manuel override YOK.
+  deterministik hash), cumle bazinda bagimsiz secim. 2026-08-08'de
+  GENISLETILDI: "tum cumle versiyonlarini admin modunda secme dugmeleri ile
+  gormek istiyorum standart kullanici gorememeli" — admin icin state.fields
+  .variantOverrides[sentenceKey] araciligiyla ELLE override eklendi (bkz.
+  openVariantControlModal, sadece isCurrentUserAdmin() true iken UI'de
+  gorunur/tetiklenebilir).
 
   Bu test:
   1) Cekirdek altyapiyi (getVariantSelectionSeedId/hashVariantSeedText/
-     selectVariant) app.js'ten cikarip dogrudan test eder.
-  2) Bu altyapiyi kullanan ilk pilot fonksiyonlari (buildShareExplanation,
+     selectVariant/getAutoVariantIndex/setVariantOverride) app.js'ten
+     cikarip dogrudan test eder — determinizm, cumle/rapor bazinda
+     farklilasma, VE admin override'in oncelik/gecerlilik/bagimsizlik
+     davranisi dahil.
+  2) app.js kaynagindaki TUM registerVariantGroup(...) cagrilarini regex ile
+     tarayip anahtar tekrari olmadigini dogrular (admin panelindeki kayit
+     defteri).
+  3) Bu altyapiyi kullanan ilk pilot fonksiyonlari (buildShareExplanation,
      composeMaterialQualitySentence, buildValuationSaleabilityExplanation,
      buildBuildingCompletionExplanation, buildEncumbranceIntroSentence) uctan
      uca dogrular.
-  3) src/comparables/comparable-market-analysis.js'e enjekte edilen
+  4) src/comparables/comparable-market-analysis.js'e enjekte edilen
      selectVariant kancasinin calistigini ve enjekte edilmezse (mevcut
      testlerle geriye donuk uyum icin) hep orijinal metni dondurdugunu
      dogrular.
@@ -88,6 +99,62 @@ function extractFn(source, startMarker, endMarker) {
   context.state = { reportId: "RE-2026-CCCCCC", variantSeed: "VS-should-be-ignored" };
   assert.equal(context.getVariantSelectionSeedId(), "RE-2026-CCCCCC", "reportId varsa variantSeed yerine o kullanilmali.");
   console.log("reportId var iken oncelik testi tamam.");
+}
+
+// --- 1b) Admin manuel override (2026-08-08 karari) ------------------------
+{
+  const source = extractFn(appSource, "function getVariantSelectionSeedId", "function saveState");
+  const context = { state: {} };
+  vm.createContext(context);
+  vm.runInContext(source, context);
+
+  // Override yoksa otomatik (deterministik) sonuc donmeli.
+  context.state = { reportId: "RE-2026-OVR1", fields: {} };
+  const autoResult = context.selectVariant("testKey", 3);
+  assert.equal(autoResult, context.getAutoVariantIndex("testKey", 3), "Override yokken selectVariant otomatik sonucla ayni olmali.");
+
+  // Gecerli bir override selectVariant'i BAGLAMALI (otomatik sonuctan
+  // FARKLI bir index secerek override'in gercekten calistigini kanitla).
+  context.setVariantOverride("testKey", (autoResult + 1) % 3);
+  assert.equal(context.selectVariant("testKey", 3), (autoResult + 1) % 3, "Gecerli override selectVariant sonucunu BELIRLEMELI.");
+  console.log("Admin override selectVariant'i baglar testi tamam.");
+
+  // Override kaldirilinca (null) tekrar otomatige donmeli.
+  context.setVariantOverride("testKey", null);
+  assert.equal(context.selectVariant("testKey", 3), autoResult, "Override kaldirilinca otomatik sonuca donulmeli.");
+  console.log("Override kaldirma (otomatige donus) testi tamam.");
+
+  // Araligin DISINDAKI override (negatif veya >=variantCount) YOK sayilip
+  // otomatige duselim — bozuk/eski veri crash'e yol acmamali.
+  context.setVariantOverride("testKey", 99);
+  assert.equal(context.selectVariant("testKey", 3), autoResult, "Aralik disi override yok sayilip otomatige dusulmeli.");
+  context.setVariantOverride("testKey", -1);
+  assert.equal(context.selectVariant("testKey", 3), autoResult, "Negatif override yok sayilip otomatige dusulmeli.");
+  console.log("Aralik disi/gecersiz override yok sayma testi tamam.");
+
+  // Farkli sentenceKey'ler birbirinden BAGIMSIZ override tasimali.
+  context.setVariantOverride("keyA", 0);
+  context.setVariantOverride("keyB", 1);
+  assert.equal(context.selectVariant("keyA", 2), 0);
+  assert.equal(context.selectVariant("keyB", 2), 1);
+  console.log("Cumle bazinda bagimsiz override testi tamam.");
+
+  // Kayit defteri: app.js kaynaginda registerVariantGroup("KEY", "LABEL", COUNT)
+  // cagrilarinin hepsini regex ile tara — anahtar tekrari OLMAMALI (iki
+  // fonksiyon ayni anahtari kullanirsa admin panelinde cakisir ve
+  // override'lar birbirine karisir). VM'de calistirmak yerine dogrudan
+  // kaynak metni taramak, cagri sirasinin (registerVariantGroup'un
+  // tanimlandigi yerden COK SONRA, her varyant dizisinin hemen ardinda
+  // dagitik olarak cagrilmasi) test kurulumunu karmasiklastirmamasini saglar.
+  const registerCalls = [...appSource.matchAll(/registerVariantGroup\(\s*"([^"]+)"\s*,\s*"([^"]+)"\s*,\s*([^)]+)\)/g)];
+  assert(registerCalls.length >= 17, `En az 17 registerVariantGroup cagrisi olmali (pilot fonksiyonlar), bulunan: ${registerCalls.length}`);
+  const keys = registerCalls.map((match) => match[1]);
+  assert.equal(new Set(keys).size, keys.length, "registerVariantGroup cagrilarinda tekrar eden anahtar OLMAMALI.");
+  registerCalls.forEach((match) => {
+    const [, key, label] = match;
+    assert(label.length > 0, `Grup '${key}' icin okunabilir bir label olmali.`);
+  });
+  console.log(`registerVariantGroup kayit defteri sanity testi tamam (${registerCalls.length} grup, tekrarsiz anahtar).`);
 }
 
 // --- 2) Pilot fonksiyon: buildShareExplanation --------------------------
