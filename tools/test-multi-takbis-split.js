@@ -154,4 +154,20 @@ function row(text) {
   console.log("PDF.js satir bolmeli baslik testi tamam.");
 }
 
+// --- 6) Başlık filtrelenmişse kimlik numarasıyla yedek ayırma ---------------
+{
+  const rows = [
+    row("Makbuz ve başvuru satırı"),
+    row("Taşınmaz Kimlik No: 96455493"),
+    row("A/1.BODRUM//6"),
+    row("Taşınmaz Kimlik No: 96455499"),
+    row("B/1.BODRUM//6"),
+  ];
+  const blocks = fns.splitMultiTakbisRowBlocks(rows);
+  assert.equal(blocks.length, 2, "Başlık satırları yoksa iki kimlik numarası iki blok oluşturmalı.");
+  assert.equal(blocks[0][0].text, "Taşınmaz Kimlik No: 96455493", "İlk yedek blok ilk kimlik satırından başlamalı.");
+  assert.equal(blocks[1][0].text, "Taşınmaz Kimlik No: 96455499", "İkinci yedek blok ikinci kimlik satırından başlamalı.");
+  console.log("Kimlik numarasi yedek ayirma testi tamam.");
+}
+
 console.log("Coklu TAKBIS PDF bolme testleri basarili.");

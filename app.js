@@ -16178,9 +16178,25 @@ function splitMultiTakbisRowBlocks(rows) {
       .trim();
     if (/\bTAPU\s+KAYIT\s+BILGISI\b/.test(headerWindow)) startIndexes.push(index);
   });
-  if (startIndexes.length <= 1) return [rows || []];
-  return startIndexes.map((start, i) => {
-    const end = i + 1 < startIndexes.length ? startIndexes[i + 1] : rows.length;
+  const identityIndexes = [];
+  (rows || []).forEach((row, index) => {
+    const current = foldTurkish(row?.text || "")
+      .replace(/[\u00A0\u2007\u202F]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (/\bTASINMAZ\s+KIMLIK\s+NO\b/.test(current)) identityIndexes.push(index);
+  });
+  // Bazı PDF.js çıktılarında başlık harf harf öğelere ayrıldığı için
+  // readTakbisPdfRows() filtresinden sonra hiç başlık satırı kalmayabilir.
+  // Kimlik numarası her tapu kaydında bulunduğundan güvenilir yedek ayırıcıdır.
+  const boundaryIndexes = startIndexes.length > 1
+    ? startIndexes
+    : identityIndexes.length > 1
+      ? identityIndexes
+      : startIndexes;
+  if (boundaryIndexes.length <= 1) return [rows || []];
+  return boundaryIndexes.map((start, i) => {
+    const end = i + 1 < boundaryIndexes.length ? boundaryIndexes[i + 1] : rows.length;
     return rows.slice(start, end);
   });
 }
