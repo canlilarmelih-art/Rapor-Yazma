@@ -15369,6 +15369,75 @@ async function processTakbisFile(file) {
   }
 }
 
+// Çoklu TAKBİS PDF ayrıştırma — Faz 1 (2026-08-09, bkz. docs/coklu-takbis-import-plan.md).
+// Tek bir PDF'te birden fazla taşınmaz kaydı olduğunda (ya da tek-kayıtlı
+// birden fazla PDF art arda yüklendiğinde) HER kaydı ayrı ayrı ayrıştırır.
+// Ayırıcı olarak "TAPU KAYIT BİLGİSİ" bölüm başlığı kullanılır — bu başlık
+// her taşınmaz kaydında BİR KEZ, kaydın en başında görünür ve
+// readTakbisPdfRows()'un gürültü filtresi tarafından SİLİNMEZ (banner
+// satırı "BU BELGE TOPLAM ... BİLGİ AMAÇLIDIR." SİLİNİR, o yüzden AYIRICI
+// OLARAK KULLANILAMAZ — bu ayrımı yaparken bu hataya düşülmüştü, pdf.js
+// çıktısı canlı test edilerek yakalandı, bkz. plan dosyasındaki not).
+// Tek kayıtlı bir PDF'te başlık yalnızca 1 kez bulunur → tek blok (tüm
+// rows, başlıktan ÖNCEKİ makbuz/dekont satırları dahil) döner — bu, MEVCUT
+// tek-kayıt davranışını (readTakbisPdf) BİREBİR korur, geriye dönük uyumlu.
+function splitMultiTakbisRowBlocks(rows) {
+  const startIndexes = [];
+  (rows || []).forEach((row, index) => {
+    if (/TAPU\s+KAYIT\s+BILGISI/.test(foldTurkish(row?.text || ""))) startIndexes.push(index);
+  });
+  if (startIndexes.length <= 1) return [rows || []];
+  return startIndexes.map((start, i) => {
+    const end = i + 1 < startIndexes.length ? startIndexes[i + 1] : rows.length;
+    return rows.slice(start, end);
+  });
+}
+
+// pdfData.rows'u splitMultiTakbisRowBlocks() ile bloklara ayırıp HER blok
+// için mevcut (tek-kayıt) ayrıştırma fonksiyonlarını (parseTakbisTitleRows/
+// parseTakbisOwners/parseTakbisEncumbrances/parseTakbisAttachments) TEKRAR
+// çalıştırır — sıfırdan bir ayrıştırıcı YAZILMADI, kanıtlanmış tek-kayıt
+// mantığı N kez uygulanıyor. BİLİNÇLİ SADELEŞTİRME: readTakbisPdf()'teki OCR
+// yedek akışı (eksik kesir/malik/rehin tutarı durumunda devreye giren) BURADA
+// YOK — N kayıt için OCR çalıştırmak yavaş/pahalı olurdu; bir kayıt eksik
+// gelirse kullanıcı o kaydı elle tamamlayabilir. Henüz HİÇBİR UI'a
+// BAĞLANMADI (bkz. plan dosyası, Faz 1 kapsamı budur — UI/state modeli
+// SONRAKİ adım).
+async function readMultiTakbisPdf(file) {
+  const lowerName = file.name.toLowerCase();
+  const isPdf = file.type === "application/pdf" || lowerName.endsWith(".pdf");
+  if (!isPdf) {
+    throw new Error("TAKBİS için PDF dosyası yükleyin.");
+  }
+  const pdfData = await readTakbisPdfRows(file);
+  const blocks = splitMultiTakbisRowBlocks(pdfData.rows);
+  const records = blocks.map((blockRows) => {
+    const titleRaw = parseTakbisTitleRows(blockRows, pdfData.pageWidth);
+    const fields = mapTakbisTitleToReportFields(titleRaw, blockRows);
+    const attachments = parseTakbisAttachments(blockRows);
+    fields.titleAttachment = formatTakbisAttachmentsForReport(attachments);
+    const owners = parseTakbisOwners(blockRows);
+    const encumbrances = reconcileTakbisRestrictedOwners(
+      parseTakbisEncumbrances(blockRows, pdfData.pageWidth),
+      owners,
+    );
+    return {
+      titleRaw,
+      fields,
+      attachments,
+      owners,
+      encumbrances,
+      ownerShareWarning: getOwnerShareWarning(owners),
+    };
+  });
+
+  if (!records.some((record) => Object.values(record.fields).some(Boolean))) {
+    throw new Error("TAKBİS tapu kayıt bilgisi okunamadı. Farklı PDF düzeni olabilir.");
+  }
+
+  return { records, pageWidth: pdfData.pageWidth, blockCount: blocks.length };
+}
+
 async function readTakbisPdf(file) {
   const lowerName = file.name.toLowerCase();
   const isPdf = file.type === "application/pdf" || lowerName.endsWith(".pdf");

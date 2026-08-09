@@ -4,8 +4,10 @@ Bu dosya, Claude ile başlanan "çoklu tapu/TAKBİS PDF içe aktarma" özelliği
 o oturumda varılan karar ve bulguları kaydeder — devam eden ajan (Codex veya
 farklı bir Claude oturumu) buradan kaldığı yerden sürdürebilsin diye.
 
-**Durum: Yalnızca PLANLAMA + izole (uygulamaya bağlanmamış) bir Faz 1
-kanıt-of-concept scripti var. app.js'e HENÜZ hiçbir değişiklik yapılmadı.**
+**Durum (2026-08-09, güncellendi): Faz 1'in ÇEKİRDEK ayrıştırma kısmı
+app.js'e LANDLENDİ ve test edildi (`splitMultiTakbisRowBlocks`,
+`readMultiTakbisPdf`). HENÜZ hiçbir UI/upload düğmesine BAĞLANMADI — yalnızca
+fonksiyonlar mevcut, çağrılmıyor. Aşağıdaki "Faz 1 kod durumu" bölümüne bak.**
 
 ## Kullanıcının orijinal isteği
 
@@ -87,7 +89,22 @@ pdftotext ile çıkarılan `TKB_20260612182932035261.pdf` metni incelendi
 - Bölme mekanizması (banner satırına göre split) **43/43 kaydı KUSURSUZ**
   ayırdı — bu kısım güvenilir ve production'a taşınabilir.
 
-## ⚠️ Kritik açık nokta: pdftotext ile Türkçe karakter kaybı
+## ✅ Türkçe karakter sorusu ÇÖZÜLDÜ (2026-08-09, canlı pdf.js testi)
+
+Aşağıdaki paragrafta anlatılan endişe **kontrol edildi ve pdf.js'te SORUN
+OLMADIĞI kanıtlandı**. Yöntem: `vendor/pdfjs/pdf.local.js` + gerçek
+`sample.pdf` (kullanıcının verdiği 43-kayıtlı dosya) session scratchpad'inde
+minimal bir statik sunucu üzerinden Browser preview ile canlı çalıştırıldı,
+app.js'teki `readTakbisPdfRows`'un AYNI `getTextContent()` +
+satır-gruplama mantığı taklit edildi. Sonuç: **"İl/İlçe: DÜZCE/MERKEZ"**,
+**"Bağımsız Bölüm Nitelik: MESKEN"**, **"TERA FİNANS FAKTORİNG ANONİM
+ŞİRKETİ"**, **"709 Parsel - 2 nolu Bağ. Bölüm"** — TÜM Türkçe karakterler
+(İ/ı/ğ/ş/ö/ü/ç) KUSURSUZ çıktı. 43 banner satırı ve 43 "Taşınmaz Kimlik No"
+eşleşmesi doğrulandı. **Sorun yalnızca hızlı POC'ta kullanılan `pdftotext`
+(poppler) aracına özgüydü — app.js'in gerçek pdf.js tabanlı parser'ında HİÇ
+YOK.** Aşağıdaki eski uyarı paragrafı artık TARİHSEL bağlam için korunuyor.
+
+### (Eski, artık çözülmüş) pdftotext ile Türkçe karakter kaybı uyarısı
 
 Faz 1 kanıt-of-concept'i (`pdftotext -layout` + regex alan çıkarma) ile
 denendiğinde, **Türkçe özel karakterler (İ, ı, ğ, ş, ö, ü, ç bazı yerlerde)
@@ -121,24 +138,46 @@ production için YETERSİZ. Gerçek uygulamada bu script değil,
 `parseTakbisEncumbrances`/`parseTakbisAttachments` fonksiyonları HER BLOK
 İÇİN TEKRAR KULLANILMALI** (bunlar zaten olgun, production'da kanıtlanmış).
 
-## Sıradaki adımlar (öncelik sırasıyla)
+## Faz 1 kod durumu — LANDLENDİ (2026-08-09, commit bkz. handoff.md)
 
-1. **Türkçe karakter doğrulaması** (yukarıda açıklandı) — pdf.js tabanlı
-   gerçek parser'ın bu PDF ile çalıştırılıp çalıştırılmadığını kontrol et.
-2. **Çoklu blok bölme fonksiyonu app.js'e eklensin**: `readTakbisPdfRows`'un
-   döndürdüğü `rows` dizisini (pdf.js satırları, `{page, y, text}`) aynı
-   banner metnine göre N alt-diziye bölen bir fonksiyon (ör.
-   `splitMultiTakbisRowBlocks(rows)`). Tek-kayıtlı bir PDF için doğal olarak
-   1 blok döner — GERİYE DÖNÜK UYUMLU, mevcut tek-kayıt akışını BOZMAZ.
-3. **Her blok için mevcut parser'ları çalıştır**, N adet
-   `{ titleRaw, fields, attachments, owners, encumbrances }` sonucu topla.
+`app.js`'e eklendi (henüz UI'a bağlanmadı, yalnızca fonksiyonlar mevcut):
+
+- **`splitMultiTakbisRowBlocks(rows)`** — `readTakbisPdfRows()`'un
+  döndürdüğü `rows` dizisini `"TAPU KAYIT BİLGİSİ"` bölüm başlığına göre N
+  alt-diziye böler (banner satırı DEĞİL — banner `readTakbisPdfRows`'un
+  gürültü filtresinde SİLİNİYOR, bu yüzden ayırıcı olarak KULLANILAMAZ; bu
+  ayrımı yaparken düşülen ilk hataydı, canlı pdf.js testiyle düzeltildi).
+  Tek başlıkta 1 blok (TÜM satırlar, başlık öncesi dahil) döner — **mevcut
+  tek-kayıt akışını (`readTakbisPdf`) birebir korur, geriye dönük uyumlu**.
+- **`readMultiTakbisPdf(file)`** — bloklara ayırıp HER blok için mevcut
+  `parseTakbisTitleRows`/`parseTakbisOwners`/`parseTakbisEncumbrances`/
+  `parseTakbisAttachments` fonksiyonlarını TEKRAR çalıştırır, N adet
+  `{ titleRaw, fields, attachments, owners, encumbrances, ownerShareWarning }`
+  kaydı döner. **Bilinçli sadeleştirme**: `readTakbisPdf()`'teki OCR yedek
+  akışı (eksik kesir/malik/rehin durumunda) BURADA YOK — N kayıt için OCR
+  çalıştırmak yavaş olurdu; eksik gelen kayıt kullanıcı tarafından elle
+  tamamlanabilir (ileride gerekirse eklenebilir).
+- Test: `tools/test-multi-takbis-split.js` (4 senaryo: tek kayıt geriye
+  dönük uyumluluk, 3-kayıtlı doğru bölünme, başlıksız/bozuk PDF'te hata
+  fırlatmama, büyük/küçük harf + Türkçe karakter varyasyonu) — `npm run
+  verify` zincirine eklendi, hepsi geçiyor.
+
+## Sıradaki adımlar (öncelik sırasıyla, kalan)
+
+1. ~~Türkçe karakter doğrulaması~~ ✅ TAMAMLANDI (yukarıda).
+2. ~~Çoklu blok bölme fonksiyonu~~ ✅ TAMAMLANDI (`splitMultiTakbisRowBlocks`).
+3. ~~Her blok için mevcut parser'ları çalıştır~~ ✅ TAMAMLANDI (`readMultiTakbisPdf`).
 4. **Çoklu dosya yükleme desteği**: kullanıcı birden fazla PDF seçebilsin
    (tek dosya da olur — mevcut akış bozulmaz), her dosyanın blokları tek bir
-   listede birleştirilsin.
+   listede birleştirilsin — `readMultiTakbisPdf` ŞU AN TEK dosya alıyor,
+   birden fazla dosyayı dışarıdan (çağıran kod) N kez çağırıp sonuçları
+   birleştirerek kullanmak mümkün, ama HENÜZ bunu yapan bir UI/orkestratör
+   yok.
 5. **Doğrulama/önizleme ekranı**: N kaydı listeleyip zorunlu alanların
    (Taşınmaz Kimlik No, Ada/Parsel, en az 1 malik) dolu geldiğini gösteren,
    henüz rapora YAZMAYAN bir ara ekran — kullanıcı "doğru mu" diye kontrol
-   edebilsin.
+   edebilsin. **Bu, gerçek bir PDF ile ilk canlı entegrasyon adımı olacağı
+   için sıradaki en değerli iş.**
 6. **(Büyük iş, ayrı tasarım gerektirir) `state.titleUnits[]` veri modeli**
    ve Tapu ve Mülkiyet / Takyidat / Bağımsız Bölüm / Değerleme sekmelerine
    tab çubuğu eklenmesi — bu, mevcut TEK-tapu varsayımına dayanan pek çok

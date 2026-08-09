@@ -1,5 +1,16 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.380 - 2026-08-09 - Çoklu TAKBİS PDF bölme fonksiyonları eklendi (Faz 1 çekirdeği, UI'a bağlanmadı)
+
+- Bkz. `docs/coklu-takbis-import-plan.md` — tüm detay, kararlar ve durum orada.
+- **Kritik bulgu (canlı pdf.js testiyle doğrulandı)**: pdf.js Türkçe karakterleri (İ/ı/ğ/ş/ö/ü/ç) kusursuz okuyor — önceki oturumdaki "doğrulanmadı" uyarısı çözüldü. Sorun yalnızca hızlı POC'ta kullanılan `pdftotext` (poppler) aracına özgüydü.
+- `splitMultiTakbisRowBlocks(rows)` eklendi — `readTakbisPdfRows()` çıktısını `"TAPU KAYIT BİLGİSİ"` başlığına göre N bloğa böler (banner satırı DEĞİL — o zaten filtreleniyor). Tek başlıkta 1 blok (tüm satırlar) döner — **mevcut tek-kayıt akışını (`readTakbisPdf`) birebir korur**.
+- `readMultiTakbisPdf(file)` eklendi — bloklara ayırıp HER blok için mevcut `parseTakbisTitleRows`/`parseTakbisOwners`/`parseTakbisEncumbrances`/`parseTakbisAttachments` fonksiyonlarını tekrar çalıştırır. OCR yedek akışı BİLİNÇLİ OLARAK dahil edilmedi (N kayıt için yavaş olurdu).
+- **Henüz hiçbir UI/upload düğmesine bağlanmadı** — yalnızca fonksiyonlar var, çağrılmıyor. Sıradaki adım: doğrulama/önizleme ekranı (plan dosyasında madde 5).
+- Yeni test: `tools/test-multi-takbis-split.js` (4 senaryo) — `package.json`'daki `test` zincirine eklendi.
+- Kod değişikliğinden önce yerel yedek alındı: `backups/before-multi-takbis-split_*`.
+- `index.html` cache-buster'ı `20260809-0230`'a yükseltildi. `npm run verify` tamamı geçti.
+
 ## PLANLAMA (kod değişikliği YOK) - 2026-08-09 - Çoklu TAKBİS PDF içe aktarma tasarımı başladı
 
 - Kullanıcı, TEK PDF içinde 43 ayrı taşınmaz kaydı barındıran "çoklu TAKBİS" dosyalarını otomatik ayrıştırıp sisteme aktarma özelliği istedi. Bu, henüz PLANLAMA aşamasında — **app.js'e hiçbir kod değişikliği yapılmadı**, yalnızca mimari kararlar netleşti ve izole (repo dışı) bir kanıt-of-concept scripti ile PDF yapısı doğrulandı.
