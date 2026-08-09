@@ -14753,6 +14753,9 @@ function importSectionExcelRows(section, rows) {
     if (!window.confirm("Bu Excel aktif ana bölümdeki mevcut verilerin üzerine yazacak. Devam edilsin mi?")) return 0;
   }
   if (state.activeTitleUnitIndex !== 0) switchActiveTitleUnit(0);
+  // Bölüm Excel'i mevcut taşınmaz listesini temsil eder. Eski bir içe aktarmadan
+  // kalan fazla tablar korunursa aynı taşınmaz grubu ekranda ikinci kez görünür.
+  state.titleUnits.length = Math.max(imported.length - 1, 0);
   imported.forEach((item, index) => {
     if (index === 0) {
       state.fields = { ...state.fields, ...item.fields };

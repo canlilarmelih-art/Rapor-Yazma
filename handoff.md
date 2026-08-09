@@ -8047,6 +8047,12 @@ Doğrulama: `node --check app.js`, `node tools/check-basic.js`, `git diff --chec
 - Gercek Halkbankasi Tapu Excel dosyasinda gorulen `t=s` hucre yapisi desteklendi.
 - `index.html` app.js cache-buster `20260810-0245` yapildi.
 
+## 0.0.401 - 2026-08-10 - Excel ice aktarmada eski fazla tablarin temizlenmesi
+
+- Bolum Excel'i yuklenirken `state.titleUnits` uzunlugu Excel'deki kayit sayisiyla esitlendi.
+- Onceki ice aktarmadan kalan fazla tasinmaz tablarinin ayni grubu ikinci kez gostermesi engellendi.
+- `index.html` app.js cache-buster `20260810-0315` yapildi.
+
 - TCMB Piyasa Verisi bandı varsayılan olarak CSS ile gizlendi; yalnızca aktif bölüm `valuation` olduğunda görünür hale geliyor.
 - `hidden` niteliği ve gövde görünürlük sınıfı birlikte kullanıldı; eski cache’li oturumlarda da diğer bölümlerde görünmemesi sağlandı.
 - `index.html` app.js cache-buster `20260810-0015` yapıldı.
