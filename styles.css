@@ -1521,6 +1521,13 @@ td .free-lookup input {
   align-items: start;
 }
 
+.title-record-change-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 8px;
+  align-items: center;
+}
+
 .conditional-yes-no-control:has(.conditional-detail-button[hidden]) {
   grid-template-columns: 1fr;
 }
@@ -1530,10 +1537,18 @@ td .free-lookup input {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-top: 6px;
+  min-height: 42px;
+  margin-top: 0;
   font-size: 0.85em;
   font-weight: 600;
   cursor: pointer;
+}
+
+.title-record-change-apply-all input {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  accent-color: var(--green);
 }
 
 .title-record-change-apply-all-note:empty {
@@ -5878,6 +5893,10 @@ td textarea.table-textarea {
     grid-template-columns: 1fr;
   }
 
+  .title-record-change-row {
+    grid-template-columns: 1fr;
+  }
+
   .frontage-choice-row {
     grid-template-columns: 1fr;
   }
@@ -5885,6 +5904,10 @@ td textarea.table-textarea {
   .road-setback-detail-button,
   .conditional-detail-button {
     width: 100%;
+  }
+
+  .title-record-change-apply-all {
+    justify-content: flex-start;
   }
 
   .bottom-nav button {

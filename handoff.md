@@ -7987,3 +7987,9 @@ Doğrulama: `node --check app.js`, `node tools/check-basic.js`, `git diff --chec
 - `parseTakbisEncumbrances()` yalnizca tarih/yevmiye tasiyan, turu/aciklamasi olmayan kayitlari artik takyidat olarak kabul etmiyor.
 - Yeni metadata-only regresyon testi eklendi; `npm.cmd test` tam zinciri basarili.
 - `index.html` app.js cache-buster `20260809-1930` yapildi; tarayici eski parser kodunu kullanmayacak.
+
+## 0.0.391 - 2026-08-09 - Tapu kaydi toplu uygulama checkbox yerlesimi
+
+- `Tüm taşınmazlara uygulansın mı?` kontrolu, Tapu Kaydı Değişikliği seçimiyle aynı satıra kompakt checkbox olarak alındı.
+- Tek seferlik tüm taşınmazlara uygulama davranışı ve uygulanan taşınmaz sayacı korundu; dar ekranlarda kontrol doğal olarak alt satıra sarılır.
+- `index.html` app.js cache-buster `20260809-2000` yapıldı.

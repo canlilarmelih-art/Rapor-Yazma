@@ -13292,7 +13292,11 @@ function createTitleRecordChangeControl(field) {
       autosave();
     });
 
-    label.append(applyAllLabel, applyAllNote);
+    const controlRow = document.createElement("div");
+    controlRow.className = "title-record-change-row";
+    controlRow.append(select, detailButton, applyAllLabel);
+    control.insertBefore(controlRow, summary);
+    control.append(applyAllNote);
   }
 
   return label;
