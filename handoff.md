@@ -8017,6 +8017,12 @@ Doğrulama: `node --check app.js`, `node tools/check-basic.js`, `git diff --chec
 
 ## 0.0.395 - 2026-08-10 - TCMB kur bandinin sadece Degerleme'de gorunmesi
 
+## 0.0.396 - 2026-08-10 - Coklu talep tasinmaz tablarinin kompakt UI duzeni
+
+- Coklu talep Tapu ve Takyidat sekmelerindeki tasinmaz tablari daha kucuk, sik ve taranabilir bir chip duzenine alindi.
+- Aktif tabin ayirt edilebilirligi korunurken sekme, islem dugmesi ve aciklama olculeri birlikte kucultuldu.
+- `index.html` app.js cache-buster `20260810-0045` yapildi.
+
 - TCMB Piyasa Verisi bandı varsayılan olarak CSS ile gizlendi; yalnızca aktif bölüm `valuation` olduğunda görünür hale geliyor.
 - `hidden` niteliği ve gövde görünürlük sınıfı birlikte kullanıldı; eski cache’li oturumlarda da diğer bölümlerde görünmemesi sağlandı.
 - `index.html` app.js cache-buster `20260810-0015` yapıldı.
