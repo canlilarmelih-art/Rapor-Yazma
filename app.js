@@ -2336,7 +2336,7 @@ function renderSection() {
   // createUploadGrid) çoklu kaydı otomatik algılar (processTakbisUpload).
   // Bu panel yalnızca ÇOKLU kayıt tespit edildiğinde, onay bekleyen bir
   // ara ekran olarak görünür.
-  if (section.id === "case" && pendingMultiTakbisImport && isCurrentUserAdmin()) {
+  if (section.id === "case" && pendingMultiTakbisImport) {
     body.append(createMultiTakbisPendingImportPanel());
   }
 
@@ -14344,7 +14344,7 @@ function createUploadGrid(uploads) {
     // birden fazla tek-kayıtlı PDF tespiti processTakbisUpload() içinde
     // yapılır. Diğer 5 yükleme alanı ve normal kullanıcılar için DEĞİŞMEDİ
     // (tek dosya).
-    const allowMultipleTakbis = upload.id === "takbis" && isCurrentUserAdmin();
+    const allowMultipleTakbis = upload.id === "takbis";
     card.innerHTML = `
       <strong>${upload.title}</strong>
       <p>${upload.hint}</p>
@@ -16330,10 +16330,10 @@ async function processTakbisUpload(files) {
       probe = null; // yoklama başarısız -> sessizce tek-kayıt (OCR'lı) akışa düş
     }
     if (probe && probe.records.length > 1) {
-      pendingMultiTakbisImport = {
-        records: probe.records.map((record) => ({ ...record, sourceFile: files[0].name })),
-        errors: [],
-      };
+      importTakbisRecordsIntoTitleUnits(
+        probe.records.map((record) => ({ ...record, sourceFile: files[0].name })),
+      );
+      pendingMultiTakbisImport = null;
       return;
     }
   } else if (files.length > 1) {
@@ -16348,7 +16348,8 @@ async function processTakbisUpload(files) {
       }
     }
     if (allRecords.length) {
-      pendingMultiTakbisImport = { records: allRecords, errors };
+      importTakbisRecordsIntoTitleUnits(allRecords);
+      pendingMultiTakbisImport = null;
       return;
     }
     if (errors.length) throw new Error(`Hiçbir dosya okunamadı: ${errors.join(" | ")}`);
