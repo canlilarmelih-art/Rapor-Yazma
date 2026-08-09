@@ -15756,12 +15756,56 @@ async function readMultiTakbisPdf(file) {
   return { records, pageWidth: pdfData.pageWidth, blockCount: blocks.length };
 }
 
+// Önizleme panelinden "Rapora Aktar" — Faz 2, 4. artış (2026-08-09, bkz.
+// docs/coklu-takbis-import-plan.md "Sıradaki adımlar" madde 1). Sıfırdan
+// bir alan/tablo eşleme fonksiyonu YAZILMADI — processTakbisFile()'ın
+// (mevcut, kanıtlanmış tek-dosya TAKBİS yükleme akışı) kullandığı AYNI
+// applyTakbisTitleFieldsToReport/applyTakbisOwnersToTable/
+// applyTakbisEncumbranceFieldsToReport/applyTakbisEncumbrancesToTable
+// fonksiyonları HER kayıt için tekrar çalıştırılır. İlk kayıt BİRİNCİL
+// taşınmaza (index 0) yazılır — mevcut Tapu ve Mülkiyet/Takyidat verisinin
+// ÜZERİNE yazar (çağıran taraf onay almalı, bkz. createMultiTakbisPreviewPanel).
+// Sonraki kayıtlar için switchActiveTitleUnit/addTitleUnitTab (Faz 2 takas
+// motoru) ile YENİ tab'lar açılır. Birden fazla kayıt varsa requestType
+// otomatik "Çoklu Talep"a çekilir ki tab çubuğu hemen görünür olsun.
+//
+// BİLİNEN SINIRLAMA: state.sourceValues.takbis ("bu alan TAKBİS'ten mi
+// geldi" rozeti için kaynak-izleme kaydı) taşınmaz-bazlı DEĞİL, takas
+// kapsamının (TITLE_UNIT_SCOPED_*) DIŞINDA — yalnızca EN SON aktarılan
+// kaydı yansıtır. Alan DEĞERLERİNİN kendisi TÜM taşınmazlar için doğru
+// aktarılır; yalnızca "kaynak" rozeti diğer taşınmazlar için güncel
+// kalmayabilir (kozmetik, veri kaybı DEĞİL).
+function importTakbisRecordsIntoTitleUnits(records) {
+  const validRecords = (records || []).filter((record) => record && record.fields);
+  if (!validRecords.length) return 0;
+
+  validRecords.forEach((record, index) => {
+    const targetIndex = index === 0 ? 0 : addTitleUnitTab();
+    switchActiveTitleUnit(targetIndex);
+    state.sourceValues.takbis = {
+      ...record,
+      readAt: new Date().toISOString(),
+      fileName: record.sourceFile || "",
+      applied: {},
+    };
+    applyTakbisTitleFieldsToReport({ force: true });
+    applyTakbisOwnersToTable(record.owners || []);
+    applyTakbisEncumbranceFieldsToReport(record, { force: true });
+    applyTakbisEncumbrancesToTable(record.encumbrances || []);
+  });
+
+  if (getTitleUnitCount() > 1) state.fields.requestType = "Çoklu Talep";
+  switchActiveTitleUnit(0);
+  return validRecords.length;
+}
+
 // Çoklu TAKBİS önizleme paneli (Faz 1, 2026-08-09 — bkz.
 // docs/coklu-takbis-import-plan.md). Bir veya birden fazla PDF dosyası
 // seçilebilir (her biri readMultiTakbisPdf() ile ayrı ayrı işlenip
 // sonuçlar birleştirilir — tek-kayıtlı VEYA çoklu-kayıtlı dosyalar
-// KARIŞIK yüklenebilir, kullanıcı talebiyle uyumlu). SADECE ÖNİZLEME —
-// hiçbir alanı/tabloyu doldurmaz.
+// KARIŞIK yüklenebilir, kullanıcı talebiyle uyumlu). Varsayılan davranış
+// SADECE ÖNİZLEME'dir; "Rapora Aktar" düğmesi (2026-08-09 eklendi) açıkça
+// tıklanmadan hiçbir alan/tablo doldurulmaz.
 function createMultiTakbisPreviewPanel() {
   const card = document.createElement("div");
   card.className = "subsection multi-takbis-preview-card";
@@ -15792,10 +15836,24 @@ function createMultiTakbisPreviewPanel() {
   resultWrap.className = "multi-takbis-preview-result";
   card.append(resultWrap);
 
+  const importRow = document.createElement("div");
+  importRow.className = "multi-takbis-import-row";
+  importRow.hidden = true;
+  const importButton = document.createElement("button");
+  importButton.type = "button";
+  importButton.className = "title-unit-tab-add";
+  importButton.textContent = "Rapora Aktar";
+  importRow.append(importButton);
+  card.append(importRow);
+
+  let lastRecords = [];
+
   input.addEventListener("change", async () => {
     const files = Array.from(input.files || []);
     if (!files.length) return;
     resultWrap.innerHTML = "";
+    importRow.hidden = true;
+    lastRecords = [];
     status.textContent = `${files.length} dosya işleniyor...`;
     const allRecords = [];
     const errors = [];
@@ -15809,6 +15867,20 @@ function createMultiTakbisPreviewPanel() {
     }
     status.textContent = `${files.length} dosya, toplam ${allRecords.length} taşınmaz kaydı bulundu.` + (errors.length ? ` (${errors.length} dosya okunamadı)` : "");
     resultWrap.append(createMultiTakbisPreviewTable(allRecords, errors));
+    lastRecords = allRecords;
+    importRow.hidden = !allRecords.length;
+  });
+
+  importButton.addEventListener("click", () => {
+    if (!lastRecords.length) return;
+    const warning = lastRecords.length > 1
+      ? `${lastRecords.length} taşınmaz kaydı rapora aktarılacak: 1. kayıt BİRİNCİL taşınmazın (mevcut Tapu ve Mülkiyet/Takyidat verisinin ÜZERİNE yazılır), diğerleri için YENİ tab'lar açılır ve "Talep Türü" otomatik "Çoklu Talep" yapılır. Devam edilsin mi?`
+      : `1 taşınmaz kaydı BİRİNCİL taşınmaza aktarılacak — mevcut Tapu ve Mülkiyet/Takyidat verisinin ÜZERİNE yazılır. Devam edilsin mi?`;
+    if (!window.confirm(warning)) return;
+    const importedCount = importTakbisRecordsIntoTitleUnits(lastRecords);
+    if (!importedCount) return;
+    saveState();
+    render();
   });
 
   return card;

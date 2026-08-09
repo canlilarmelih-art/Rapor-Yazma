@@ -1,5 +1,15 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.385 - 2026-08-09 - Önizleme panelinden "Rapora Aktar" akışı eklendi
+
+- Kullanıcı: "dediğin çok mantıklı yapalım" (bir önceki turda önerilen "Rapora Aktar" akışı onaylandı). Bkz. `docs/coklu-takbis-import-plan.md`, "Önizleme panelinden 'Rapora Aktar' — LANDLENDİ" bölümü.
+- `app.js`: yeni `importTakbisRecordsIntoTitleUnits(records)` — sıfırdan alan/tablo eşleme YAZILMADI, `processTakbisFile()`'ın kullandığı AYNI `applyTakbisTitleFieldsToReport`/`applyTakbisOwnersToTable`/`applyTakbisEncumbranceFieldsToReport`/`applyTakbisEncumbrancesToTable` fonksiyonları her kayıt için tekrar çağrılıyor. İlk kayıt birincile (üzerine yazarak), sonrakiler yeni tab'lara (`addTitleUnitTab`/`switchActiveTitleUnit`) yazılıyor; >1 kayıtta `requestType` otomatik "Çoklu Talep"a çekiliyor; işlem sonunda birincile dönülüyor.
+- `createMultiTakbisPreviewPanel`'e "Rapora Aktar" düğmesi eklendi — tıklanınca `window.confirm` ile "mevcut veri ÜZERİNE yazılacak" uyarısı gösteriliyor, onaylanırsa `importTakbisRecordsIntoTitleUnits` çağrılıp `saveState()`+`render()` yapılıyor.
+- Bilinen sınırlama (dokümante edildi): `state.sourceValues.takbis` (kaynak-rozeti bookkeeping) taşınmaz-bazlı değil, yalnızca en son aktarılan kaydı yansıtır — alan değerlerinin kendisi etkilenmez, yalnızca "bu alan TAKBİS'ten mi geldi" rozeti kozmetik olarak güncel kalmayabilir.
+- Yeni test: `tools/test-title-unit-import.js` (4 senaryo, apply* fonksiyonları hafif stub'larla — onlar zaten `processTakbisFile` akışında kanıtlanmış, burada test edilen YENİ orkestrasyon mantığı) — `npm run verify` zincirine eklendi, hepsi geçti.
+- Admin girişi gerektirdiğinden gerçek tarayıcıda UÇTAN UCA (dosya yükle → Rapora Aktar → tab çubuğunda kontrol et) test YAPILAMADI (standart kısıtlama) — `node --check`, tam `npm run verify` suite'i ve kod incelemesiyle doğrulandı.
+- `index.html` cache-buster: `app.js`/`styles.css` → `20260809-0500`.
+
 ## 0.0.384 - 2026-08-09 - "Talep Türü" alanı (Tekli/Çoklu Talep) - tab çubuğunu gate'liyor
 
 - Kullanıcı: "talep oluşturma ekranına talep türü kısmı girelim, tekli talep çoklu talep olarak seçsek nasıl olur." Bkz. `docs/coklu-takbis-import-plan.md`, "'Talep Türü' alanı — LANDLENDİ" bölümü.

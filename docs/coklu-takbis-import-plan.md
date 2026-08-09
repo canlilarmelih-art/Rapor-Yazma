@@ -161,16 +161,45 @@ yuvasına park edilir) — aksi halde tab çubuğu kaybolunca kullanıcı "yetim
 bir ek taşınmazın verisini görmeye devam ederdi. Test: 7. senaryo olarak
 `tools/test-title-unit-switch.js`'e eklendi (kaynak-düzeyi doğrulama).
 
+**Önizleme panelinden "Rapora Aktar" — LANDLENDİ (2026-08-09, 4. artış):**
+
+Kullanıcı onayladı ("dediğin çok mantıklı yapalım"). `createMultiTakbisPreviewPanel`'e
+"Rapora Aktar" düğmesi eklendi. Sıfırdan bir alan/tablo eşleme fonksiyonu
+YAZILMADI — `processTakbisFile()`'ın (mevcut, kanıtlanmış tek-dosya TAKBİS
+akışı) kullandığı AYNI `applyTakbisTitleFieldsToReport`/`applyTakbisOwnersToTable`/
+`applyTakbisEncumbranceFieldsToReport`/`applyTakbisEncumbrancesToTable`
+fonksiyonları yeni `importTakbisRecordsIntoTitleUnits(records)` orkestratörü
+tarafından HER kayıt için tekrar çağrılıyor:
+
+- İlk kayıt **BİRİNCİL** taşınmaza (index 0) yazılır — mevcut Tapu ve
+  Mülkiyet/Takyidat verisinin ÜZERİNE yazar (düğmeye basmadan önce
+  `window.confirm` ile açıkça uyarılıyor).
+- Sonraki kayıtlar için `addTitleUnitTab`/`switchActiveTitleUnit` (takas
+  motoru) ile YENİ tab'lar açılır.
+- Birden fazla kayıt varsa `requestType` OTOMATİK `"Çoklu Talep"`a çekilir
+  — tab çubuğu hemen görünür olur, kullanıcı ayrıca "Talep Türü"nü elle
+  değiştirmek zorunda kalmaz.
+- İşlem sonunda her zaman birincile (`index 0`) dönülür.
+
+**Bilinen sınırlama**: `state.sourceValues.takbis` ("bu alan TAKBİS'ten mi
+geldi" kaynak-rozeti bookkeeping'i) taşınmaz-bazlı DEĞİL — yalnızca EN SON
+aktarılan kaydı yansıtır. Alan DEĞERLERİ tüm taşınmazlar için doğru
+aktarılır; yalnızca kaynak rozeti diğer taşınmazlarda güncel kalmayabilir
+(kozmetik, veri kaybı değil).
+
+Test: `tools/test-title-unit-import.js` (4 senaryo — boş/geçersiz girdi,
+tek kayıt/requestType zorlanmaz, üç kayıt/requestType zorlanır + round-trip
+doğru, her kaydın kendi `sourceValues.takbis`'iyle eşleştiği) — apply*
+fonksiyonları hafif stub'larla değiştirildi (o fonksiyonlar zaten
+`processTakbisFile` akışında kanıtlanmış; burada test edilen YENİ
+orkestrasyon mantığı).
+
 **HENÜZ YAPILMADI (sıradaki adımlar, öncelik sırasıyla):**
 
-1. **Önizleme panelinden "İçe Aktar" akışı** — `createMultiTakbisPreviewPanel`
-   şu an salt önizleme; bir "Rapora Aktar" düğmesi eklenip her önizleme
-   kaydını `addTitleUnitTab()` + alan/tablo doldurma ile bir taşınmaza
-   dönüştürecek bir eşleme fonksiyonu (`applyTakbisRecordToActiveTitleUnit`
-   gibi) yazılmalı — `record.owners`/`record.encumbrances` şeklinin
-   `tables.title`/`tables.encumbrance` ile tam örtüştüğü ayrıca
-   doğrulanmalı (bu segment içinde doğrulanmadı). Bu tamamlanınca kullanıcı
-   çoklu TAKBİS PDF'inden tek tıkla N sekme doldurabilecek.
+1. Gerçek admin girişiyle UÇTAN UCA canlı doğrulama (dosya yükle → önizle
+   → Rapora Aktar → tab çubuğunda kontrol et) — bu segment içinde
+   yapılamadı (standart kısıtlama), yalnızca kod incelemesi + testlerle
+   doğrulandı.
 2. **Bağımsız Bölüm/Değerleme sekmelerine tab desteği** — kasıtlı olarak
    ertelendi (yukarıya bak), ayrı bir denetim/oturum gerektiriyor.
 3. Autosave/cloud sync'in ek taşınmazlarla birlikte doğru senkronlandığının

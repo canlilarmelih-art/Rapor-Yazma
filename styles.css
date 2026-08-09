@@ -4110,6 +4110,10 @@ table {
   margin: 8px 0;
 }
 
+.multi-takbis-import-row {
+  margin-top: 12px;
+}
+
 /* Çoklu TAKBİS Faz 2 — tapu-başına tab çubuğu (2026-08-09). */
 .title-unit-tab-bar {
   display: flex;
