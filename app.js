@@ -23061,11 +23061,18 @@ function formatEncumbranceRestrictedOwner(row, columnIndex) {
   return restrictedOwner ? ` (Kısıtlı Malik: ${restrictedOwner})` : "";
 }
 
-function formatEncumbranceTitleUnitScope(row) {
+function formatEncumbranceTitleUnitScope(row, totalTitleUnitCount = null) {
   const references = Array.isArray(row?.__titleUnitReferences)
     ? row.__titleUnitReferences.filter(Boolean)
     : [];
-  return references.length ? `, ${references.join(" ve ")} üzerinde` : "";
+  if (!references.length) return "";
+  const resolvedTitleUnitCount = Number.isFinite(totalTitleUnitCount)
+    ? totalTitleUnitCount
+    : (typeof getTitleUnitCount === "function" ? getTitleUnitCount() : references.length);
+  if (resolvedTitleUnitCount > 1 && references.length === resolvedTitleUnitCount) {
+    return " (Tüm Taşınmazlar üzerinde müştereken)";
+  }
+  return ` (${references.join(" ve ")} üzerinde)`;
 }
 
 function formatEncumbranceDeclarationRow(row, options = {}) {
@@ -23080,7 +23087,7 @@ function formatEncumbranceDeclarationRow(row, options = {}) {
     && hasManagementPlanStatement([type, description].join(" "))
     ? ` ${getIsbankManagementPlanNote()}`
     : "";
-  return `${mainText} (Tarih: ${encumbranceDateOrBila(row.c2)}, Yevmiye No: ${encumbranceTextOrBila(row.c3)}${formatEncumbranceTitleUnitScope(row)})${formatEncumbranceRestrictedOwner(row, 4)}${note}`;
+  return `${mainText} (Tarih: ${encumbranceDateOrBila(row.c2)}, Yevmiye No: ${encumbranceTextOrBila(row.c3)})${formatEncumbranceTitleUnitScope(row)}${formatEncumbranceRestrictedOwner(row, 4)}${note}`;
 }
 
 function formatEncumbranceAnnotationRow(row) {
@@ -23093,14 +23100,14 @@ function formatEncumbranceAnnotationRow(row) {
   detailParts.push(`Yevmiye No: ${encumbranceTextOrBila(row.c4)}`);
   const mainText = [type, description].filter(Boolean).join(type && description ? ": " : "");
   if (!mainText) return "";
-  return `${mainText} (${detailParts.join(", ")}${formatEncumbranceTitleUnitScope(row)})${formatEncumbranceRestrictedOwner(row, 5)}`;
+  return `${mainText} (${detailParts.join(", ")})${formatEncumbranceTitleUnitScope(row)}${formatEncumbranceRestrictedOwner(row, 5)}`;
 }
 
 function formatEncumbranceMortgageRow(row) {
   const creditor = normalizeMortgageCreditorDisplay(row.c0) || "Bila";
   const degree = formatEncumbranceMortgageDegree(row.c1);
   const amount = formatEncumbranceMoney(row.c2);
-  return `${creditor} lehine ${degree} ${amount} tutarında ipotek kaydı bulunmaktadır. (Tarih: ${encumbranceDateOrBila(row.c3)}, Yevmiye No: ${encumbranceTextOrBila(row.c4)}${formatEncumbranceTitleUnitScope(row)})${formatEncumbranceRestrictedOwner(row, 5)}`;
+  return `${creditor} lehine ${degree} ${amount} tutarında ipotek kaydı bulunmaktadır. (Tarih: ${encumbranceDateOrBila(row.c3)}, Yevmiye No: ${encumbranceTextOrBila(row.c4)})${formatEncumbranceTitleUnitScope(row)}${formatEncumbranceRestrictedOwner(row, 5)}`;
 }
 
 // Kullanıcı talebi: "takyidatlar bölümünde beyanlar bölümü rehinler bölümü
@@ -23852,7 +23859,7 @@ function parseTakbisMortgageRecord(record) {
   const parsedCreditor = toTitleCaseTakbisEntity(cleanTakbisMortgageCreditorTokens(cleanTakbisMortgageCreditor(creditor)));
 
   return {
-    c0: chooseKnownMortgageCreditor(parsedCreditor),
+    c0: normalizeMortgageCreditorDisplay(chooseKnownMortgageCreditor(parsedCreditor)),
     c1: degreeMatch ? degreeMatch[0].split("/")[0].trim() : "",
     c2: amountInfo.text,
     c3: record?.date || fallbackDateInfo.date || "",
@@ -23961,8 +23968,32 @@ function chooseKnownMortgageCreditor(value) {
   return best.score >= 24 ? best.name : cleaned;
 }
 
+function stripMortgageCreditorLocationLeak(value) {
+  let text = cleanTakbisValue(value);
+  if (!text || typeof state === "undefined") return text;
+  const locations = [
+    "Düzce",
+    state.fields?.titleCity,
+    state.fields?.titleDistrict,
+    state.fields?.titleNeighborhood,
+    state.fields?.city,
+    state.fields?.district,
+    state.fields?.neighborhood,
+  ]
+    .map((location) => cleanTakbisValue(location))
+    .filter((location) => location.length >= 3);
+  locations.forEach((location) => {
+    if (foldTurkish(text) === foldTurkish(location)) return;
+    text = text.replace(new RegExp(`\\b${escapeRegExp(location)}\\b`, "gi"), " ");
+  });
+  return text.replace(/\\s+/g, " ").trim();
+}
+
 function normalizeMortgageCreditorDisplay(value) {
-  const cleaned = cleanTakbisValue(value);
+  const cleaned = stripMortgageCreditorLocationLeak(value)
+    .replace(/\bDeğişken\b/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
   if (!cleaned) return "";
   const known = chooseKnownMortgageCreditor(cleaned);
   if (mortgageCreditorBankNames.includes(known)) return known;

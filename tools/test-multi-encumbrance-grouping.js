@@ -36,6 +36,7 @@ const functionNames = [
   "getEncumbranceRowJournalNo",
   "formatTitleUnitEncumbranceReference",
   "groupEncumbranceRowsAcrossTitleUnits",
+  "formatEncumbranceTitleUnitScope",
 ];
 const sandboxSource = `${functionNames.map(extractFunction).join("\n")}\nreturn { ${functionNames.join(", ")} };`;
 // eslint-disable-next-line no-new-func
@@ -64,4 +65,12 @@ assert.equal(grouped.length, 2, "Aynı yevmiye tek satıra, farklı yevmiye ayr�
 assert.deepEqual(grouped[0].__titleUnitReferences, ["A-2", "A-4"]);
 assert.deepEqual(grouped[1].__titleUnitReferences, ["B-7"]);
 assert.equal(fns.getEncumbranceRowJournalNo("encumbranceDeclarations", grouped[0]), "39154");
+assert.equal(
+  fns.formatEncumbranceTitleUnitScope(grouped[0], 2),
+  " (Tüm Taşınmazlar üzerinde müştereken)",
+);
+assert.equal(
+  fns.formatEncumbranceTitleUnitScope(grouped[0], 3),
+  " (A-2 ve A-4 üzerinde)",
+);
 console.log("Coklu takyidat ayni yevmiye gruplama testi tamam.");
