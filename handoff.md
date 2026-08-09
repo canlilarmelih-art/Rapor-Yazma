@@ -1,5 +1,11 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## PLANLAMA (kod değişikliği YOK) - 2026-08-09 - Çoklu TAKBİS PDF içe aktarma tasarımı başladı
+
+- Kullanıcı, TEK PDF içinde 43 ayrı taşınmaz kaydı barındıran "çoklu TAKBİS" dosyalarını otomatik ayrıştırıp sisteme aktarma özelliği istedi. Bu, henüz PLANLAMA aşamasında — **app.js'e hiçbir kod değişikliği yapılmadı**, yalnızca mimari kararlar netleşti ve izole (repo dışı) bir kanıt-of-concept scripti ile PDF yapısı doğrulandı.
+- **TÜM detay, kararlar, açık noktalar ve sıradaki adımlar için**: [`docs/coklu-takbis-import-plan.md`](docs/coklu-takbis-import-plan.md) — devam eden ajan (Codex veya farklı oturum) ÖNCE bu dosyayı okumalı.
+- Özet: banner satırına göre bölme (`"BU BELGE TOPLAM ... BİLGİ AMAÇLIDIR."`) 43/43 kaydı kusursuz ayırıyor; Tapu ve Mülkiyet/Takyidat/Bağımsız Bölüm/Değerleme sekmeleri tapu-bazlı tab çubuğuna, diğerleri paylaşımlı kalacak şekilde onaylandı; **açık kritik risk**: pdftotext ile Türkçe karakterler (İ/ğ/ş) kayboluyor, bunun app.js'in gerçek pdf.js tabanlı parser'ında da olup olmadığı DOĞRULANMADI — sıradaki oturumun ilk işi bu.
+
 ## 0.0.379 - 2026-08-09 - Varyant yenileme zincirindeki tek bir hata artık TÜM ekran güncellemesini engellemiyor
 
 - Kullanıcı bildirimi (0.0.378 sonrası da devam ediyor): topbar'daki genel "Varyant Kontrolü" panelinden bile tek bir gruba V2 basıldığında hiçbir şey değişmiyor — bölüm-bazlı düğmelere özgü bir sorun değil, TÜM varyant düğmeleri etkileniyor.
