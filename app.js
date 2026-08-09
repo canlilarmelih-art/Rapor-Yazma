@@ -1257,6 +1257,12 @@ function getTitleUnitFieldsForLabel(index) {
   return state.titleUnits[index - 1]?.fields || {};
 }
 
+function getTitleUnitTablesForLabel(index) {
+  if (index === state.activeTitleUnitIndex) return state.tables;
+  if (index === 0) return state.primaryTitleUnitShadow?.tables || {};
+  return state.titleUnits[index - 1]?.tables || {};
+}
+
 function getTitleUnitTabModels() {
   const count = getTitleUnitCount();
   const all = Array.from({ length: count }, (_, index) => ({ fields: getTitleUnitFieldsForLabel(index) }));
@@ -22162,7 +22168,16 @@ function buildEncumbranceIntroSentence() {
 
 function getEncumbranceIntroSentenceForPlaceholder() {
   if (state.fields.takbisMethod === "Tapu Kaydı Alınmamıştır.") return "";
-  const hasRows = encumbranceReportTables.some((table) => getFilledEncumbranceRows(table.key).length);
+  const declarationRows = typeof getMultiTitleUnitEncumbranceRows === "function"
+    ? getMultiTitleUnitEncumbranceRows("encumbranceDeclarations")
+    : getFilledEncumbranceRows("encumbranceDeclarations");
+  const mortgageRows = typeof getMultiTitleUnitEncumbranceRows === "function"
+    ? getMultiTitleUnitEncumbranceRows("encumbranceMortgages")
+    : getFilledEncumbranceRows("encumbranceMortgages");
+  const annotationRows = typeof getMultiTitleUnitEncumbranceRows === "function"
+    ? getMultiTitleUnitEncumbranceRows("encumbranceAnnotations")
+    : getFilledEncumbranceRows("encumbranceAnnotations");
+  const hasRows = declarationRows.length || mortgageRows.length || annotationRows.length;
   const hasTitleChange = Boolean(normalizeYesNoChoice(state.fields.titleRecordChange));
   if (!hasRows && !state.fields.takbisDate && !state.fields.takbisMethod && !hasTitleChange) return "";
   return buildEncumbranceIntroSentence();
@@ -22190,11 +22205,8 @@ function buildEncumbranceSummaryVariants() {
 
   const date = encumbranceDateOrBila(state.fields.takbisDate);
   const method = encumbranceTextOrBila(state.fields.takbisMethod || "Webtapu Sistemi");
-  const declarationRows = getFilledEncumbranceRows("encumbranceDeclarations");
   const declarationRowsWithoutRights = declarationRows.filter((row) => !isEncumbranceRightOrLiabilityRow(row));
   const easementRows = declarationRows.filter(isEncumbranceRightOrLiabilityRow);
-  const mortgageRows = getFilledEncumbranceRows("encumbranceMortgages");
-  const annotationRows = getFilledEncumbranceRows("encumbranceAnnotations");
   const intro = buildEncumbranceIntroSentence();
   const sections = [
     {
@@ -22931,6 +22943,59 @@ function getFilledEncumbranceRows(tableKey) {
   return (state.tables[tableKey] || []).filter((row) => hasMeaningfulEncumbranceTableRow(tableKey, row));
 }
 
+function getEncumbranceRowJournalNo(tableKey, row) {
+  const column = tableKey === "encumbranceDeclarations" ? "c3" : "c4";
+  return encumbranceCleanText(row?.[column] || "");
+}
+
+function formatTitleUnitEncumbranceReference(fields = {}, index = 0, compact = false) {
+  const block = encumbranceCleanText(fields.blockNo);
+  const parcel = encumbranceCleanText(fields.parcelNo);
+  const unitNo = encumbranceCleanText(fields.unitNo);
+  const buildingBlock = encumbranceCleanText(fields.titleBlockName || fields.addressBlockName || block);
+  if (compact && buildingBlock && unitNo) return `${buildingBlock}-${unitNo}`;
+  if (block && parcel && unitNo) return `${block} ada ${parcel} parsel, ${unitNo} no.lu B.B.`;
+  if (block && parcel) return `${block} ada ${parcel} parsel`;
+  if (fields.titlePropertyId) return `${encumbranceCleanText(fields.titlePropertyId)} kimlik no.lu taşınmaz`;
+  return `${index + 1}. taşınmaz`;
+}
+
+function groupEncumbranceRowsAcrossTitleUnits(rowsByUnit = [], tableKey = "") {
+  const grouped = new Map();
+  rowsByUnit.forEach(({ rows = [], fields = {}, index = 0 }) => {
+    rows.forEach((row, rowIndex) => {
+      const journalNo = getEncumbranceRowJournalNo(tableKey, row);
+      const key = journalNo ? `journal:${journalNo}` : `unit:${index}:row:${rowIndex}`;
+      const existing = grouped.get(key);
+      const groupEntries = journalNo
+        ? rowsByUnit.filter((entry) => entry.rows.some((entryRow) => getEncumbranceRowJournalNo(tableKey, entryRow) === journalNo))
+        : [{ fields, index }];
+      const firstEntry = groupEntries[0];
+      const sameParcel = groupEntries.every(
+        (entry) => encumbranceCleanText(entry.fields?.blockNo) === encumbranceCleanText(firstEntry.fields?.blockNo)
+          && encumbranceCleanText(entry.fields?.parcelNo) === encumbranceCleanText(firstEntry.fields?.parcelNo),
+      );
+      const reference = formatTitleUnitEncumbranceReference(fields, index, sameParcel);
+      if (existing) {
+        if (!existing.__titleUnitReferences.includes(reference)) existing.__titleUnitReferences.push(reference);
+        return;
+      }
+      grouped.set(key, { ...row, __titleUnitReferences: [reference] });
+    });
+  });
+  return [...grouped.values()];
+}
+
+function getMultiTitleUnitEncumbranceRows(tableKey) {
+  if (getTitleUnitCount() <= 1) return getFilledEncumbranceRows(tableKey);
+  const rowsByUnit = Array.from({ length: getTitleUnitCount() }, (_, index) => {
+    const tables = getTitleUnitTablesForLabel(index);
+    const rows = (tables?.[tableKey] || []).filter((row) => hasMeaningfulEncumbranceTableRow(tableKey, row));
+    return { rows, fields: getTitleUnitFieldsForLabel(index), index };
+  });
+  return groupEncumbranceRowsAcrossTitleUnits(rowsByUnit, tableKey);
+}
+
 function hasMeaningfulEncumbranceTableRow(tableKey, row) {
   const keys = tableKey === "encumbranceMortgages" ? ["c0", "c1", "c2"] : Object.keys(row || {});
   return keys.some((key) => String(row?.[key] || "").trim());
@@ -22987,6 +23052,13 @@ function formatEncumbranceRestrictedOwner(row, columnIndex) {
   return restrictedOwner ? ` (Kısıtlı Malik: ${restrictedOwner})` : "";
 }
 
+function formatEncumbranceTitleUnitScope(row) {
+  const references = Array.isArray(row?.__titleUnitReferences)
+    ? row.__titleUnitReferences.filter(Boolean)
+    : [];
+  return references.length ? `, ${references.join(" ve ")} üzerinde` : "";
+}
+
 function formatEncumbranceDeclarationRow(row, options = {}) {
   const type = encumbranceCleanText(row.c0);
   const description = encumbranceCleanText(row.c1);
@@ -22999,7 +23071,7 @@ function formatEncumbranceDeclarationRow(row, options = {}) {
     && hasManagementPlanStatement([type, description].join(" "))
     ? ` ${getIsbankManagementPlanNote()}`
     : "";
-  return `${mainText} (Tarih: ${encumbranceDateOrBila(row.c2)}, Yevmiye No: ${encumbranceTextOrBila(row.c3)})${formatEncumbranceRestrictedOwner(row, 4)}${note}`;
+  return `${mainText} (Tarih: ${encumbranceDateOrBila(row.c2)}, Yevmiye No: ${encumbranceTextOrBila(row.c3)}${formatEncumbranceTitleUnitScope(row)})${formatEncumbranceRestrictedOwner(row, 4)}${note}`;
 }
 
 function formatEncumbranceAnnotationRow(row) {
@@ -23012,14 +23084,14 @@ function formatEncumbranceAnnotationRow(row) {
   detailParts.push(`Yevmiye No: ${encumbranceTextOrBila(row.c4)}`);
   const mainText = [type, description].filter(Boolean).join(type && description ? ": " : "");
   if (!mainText) return "";
-  return `${mainText} (${detailParts.join(", ")})${formatEncumbranceRestrictedOwner(row, 5)}`;
+  return `${mainText} (${detailParts.join(", ")}${formatEncumbranceTitleUnitScope(row)})${formatEncumbranceRestrictedOwner(row, 5)}`;
 }
 
 function formatEncumbranceMortgageRow(row) {
   const creditor = normalizeMortgageCreditorDisplay(row.c0) || "Bila";
   const degree = formatEncumbranceMortgageDegree(row.c1);
   const amount = formatEncumbranceMoney(row.c2);
-  return `${creditor} lehine ${degree} ${amount} tutarında ipotek kaydı bulunmaktadır. (Tarih: ${encumbranceDateOrBila(row.c3)}, Yevmiye No: ${encumbranceTextOrBila(row.c4)})${formatEncumbranceRestrictedOwner(row, 5)}`;
+  return `${creditor} lehine ${degree} ${amount} tutarında ipotek kaydı bulunmaktadır. (Tarih: ${encumbranceDateOrBila(row.c3)}, Yevmiye No: ${encumbranceTextOrBila(row.c4)}${formatEncumbranceTitleUnitScope(row)})${formatEncumbranceRestrictedOwner(row, 5)}`;
 }
 
 // Kullanıcı talebi: "takyidatlar bölümünde beyanlar bölümü rehinler bölümü
@@ -23039,7 +23111,10 @@ function joinEncumbranceRows(rows, formatter) {
 }
 
 function getEncumbranceDeclarationsSectionText() {
-  const rows = getFilledEncumbranceRows("encumbranceDeclarations").filter((row) => !isEncumbranceRightOrLiabilityRow(row));
+  const rows = (typeof getMultiTitleUnitEncumbranceRows === "function"
+    ? getMultiTitleUnitEncumbranceRows("encumbranceDeclarations")
+    : getFilledEncumbranceRows("encumbranceDeclarations"))
+    .filter((row) => !isEncumbranceRightOrLiabilityRow(row));
   return joinEncumbranceRows(
     rows,
     (row) => formatEncumbranceDeclarationRow(row, { addIsbankManagementPlanNote: true }),
@@ -23047,7 +23122,10 @@ function getEncumbranceDeclarationsSectionText() {
 }
 
 function getEncumbranceEasementsSectionText() {
-  const rows = getFilledEncumbranceRows("encumbranceDeclarations").filter(isEncumbranceRightOrLiabilityRow);
+  const rows = (typeof getMultiTitleUnitEncumbranceRows === "function"
+    ? getMultiTitleUnitEncumbranceRows("encumbranceDeclarations")
+    : getFilledEncumbranceRows("encumbranceDeclarations"))
+    .filter(isEncumbranceRightOrLiabilityRow);
   return joinEncumbranceRows(rows, formatEncumbranceDeclarationRow);
 }
 
@@ -23055,12 +23133,16 @@ function getEncumbranceEasementsSectionText() {
 // (encumbranceMortgages) karşılık gelir — ipotek, gayrimenkul hukukunda
 // rehin hakkının tapu sicilindeki karşılığıdır.
 function getEncumbranceMortgagesSectionText() {
-  const rows = getFilledEncumbranceRows("encumbranceMortgages");
+  const rows = typeof getMultiTitleUnitEncumbranceRows === "function"
+    ? getMultiTitleUnitEncumbranceRows("encumbranceMortgages")
+    : getFilledEncumbranceRows("encumbranceMortgages");
   return joinEncumbranceRows(rows, formatEncumbranceMortgageRow);
 }
 
 function getEncumbranceAnnotationsSectionText() {
-  const rows = getFilledEncumbranceRows("encumbranceAnnotations");
+  const rows = typeof getMultiTitleUnitEncumbranceRows === "function"
+    ? getMultiTitleUnitEncumbranceRows("encumbranceAnnotations")
+    : getFilledEncumbranceRows("encumbranceAnnotations");
   return rows.length ? buildCondensedAnnotationSummary(rows) : "Herhangi bir kayıt bulunmamaktadır.";
 }
 
