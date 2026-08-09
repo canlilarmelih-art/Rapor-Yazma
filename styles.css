@@ -4110,6 +4110,69 @@ table {
   margin: 8px 0;
 }
 
+/* Çoklu TAKBİS Faz 2 — tapu-başına tab çubuğu (2026-08-09). */
+.title-unit-tab-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.title-unit-tab-bar-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex: 1 1 auto;
+}
+
+.title-unit-tab {
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 0.85em;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.title-unit-tab.is-active {
+  background: var(--green);
+  border-color: var(--green);
+  color: #fff;
+}
+
+.title-unit-tab-bar-actions {
+  display: flex;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.title-unit-tab-add,
+.title-unit-tab-remove {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 0.85em;
+  cursor: pointer;
+}
+
+.title-unit-tab-remove {
+  color: var(--red);
+  border-color: var(--red);
+}
+
+.title-unit-tab-bar-note {
+  flex-basis: 100%;
+  margin: 6px 0 0;
+}
+
 .multi-takbis-preview-table {
   width: 100%;
   font-size: 0.85em;

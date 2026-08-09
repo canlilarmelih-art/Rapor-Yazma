@@ -1057,6 +1057,16 @@ function loadState() {
     // raporu (bugünkü %100 kullanıcı kitlesi). Henüz hiçbir UI bu diziyi
     // OKUMUYOR/YAZMIYOR — yalnızca veri modeli + yardımcı fonksiyonlar var.
     titleUnits: [],
+    // Çoklu TAKBİS Faz 2, tab-anahtarlama motoru (2026-08-09). `activeTitleUnitIndex`:
+    // 0 = birincil taşınmaz (state.fields), >0 = state.titleUnits[index-1].
+    // `primaryTitleUnitShadow`: yalnızca activeTitleUnitIndex !== 0 iken dolu
+    // olur — birincil taşınmazın Tapu/Takyidat verisinin GEÇİCİ yedeği (aktif
+    // tab birincil değilken state.fields başka bir taşınmazı gösterdiği için
+    // birincilin verisi buraya "park edilir"). Kalıcı olarak persist
+    // edilmesinin nedeni: sayfa yenilendiğinde tab hâlâ birincil DEĞİLKEN
+    // veri kaybı olmaması (bkz. switchActiveTitleUnit).
+    activeTitleUnitIndex: 0,
+    primaryTitleUnitShadow: null,
     updatedAt: null,
   };
 
@@ -1080,6 +1090,10 @@ function loadState() {
       },
       tables: { ...fallback.tables, ...(stored.tables || {}) },
       titleUnits: Array.isArray(stored.titleUnits) ? stored.titleUnits : fallback.titleUnits,
+      activeTitleUnitIndex: Number.isInteger(stored.activeTitleUnitIndex) ? stored.activeTitleUnitIndex : fallback.activeTitleUnitIndex,
+      primaryTitleUnitShadow: stored.primaryTitleUnitShadow && typeof stored.primaryTitleUnitShadow === "object"
+        ? stored.primaryTitleUnitShadow
+        : fallback.primaryTitleUnitShadow,
     };
     merged.settings.mapMode = stored.settings?.mapMode ? normalizeMapMode(merged.settings.mapMode) : "hybrid";
     return merged;
@@ -1128,6 +1142,207 @@ function computeTitleUnitTabLabel(unit, allUnits) {
   }
   const adaParselLabel = [blockNo, parcelNo].filter(Boolean).join(" ");
   return adaParselLabel || "Taşınmaz";
+}
+
+// Çoklu TAKBİS Faz 2 — tab-anahtarlama motoru (2026-08-09, bkz.
+// docs/coklu-takbis-import-plan.md "Faz 2: state.titleUnits[] veri modeli").
+// KAPSAM BİLİNÇLİ OLARAK DAR: yalnızca "title" (Tapu ve Mülkiyet) ve
+// "encumbrance" (Takyidat) sekmeleri tapu-başına ayrılıyor — bunlar TAKBİS
+// PDF'inden doğrudan gelen, `sections` dizisinde AÇIKÇA listelenmiş alanlar.
+// "Bağımsız Bölüm"/"Değerleme" sekmeleri KASITLI OLARAK KAPSAM DIŞI: o
+// sekmelerin gerçek alan yüzeyi `sections[].fields`'ta değil, onlarca ayrı
+// panel/hesaplama fonksiyonuna (createUnitAreaInteriorPanel,
+// createBuildingFloorDistribution, değerleme hesap zinciri vb.) YAYILMIŞ —
+// bunları güvenle kapsamak ayrı, dikkatli bir denetim gerektirir (ayrı bir
+// oturumda ele alınmalı, bkz. plan dosyası "Henüz yapılmadı" listesi).
+const TITLE_UNIT_SCOPED_SECTION_IDS = ["title", "encumbrance"];
+const TITLE_UNIT_SCOPED_TABLE_KEYS = ["title", "encumbrance", "encumbranceDeclarations", "encumbranceAnnotations", "encumbranceMortgages"];
+
+function getTitleUnitScopedFieldKeys() {
+  const keys = new Set();
+  TITLE_UNIT_SCOPED_SECTION_IDS.forEach((sectionId) => {
+    const section = sections.find((item) => item.id === sectionId);
+    (section?.fields || []).forEach((field) => keys.add(field.key));
+  });
+  return keys;
+}
+
+// Aktif taşınmazın Tapu/Takyidat alan+tablo verisini state'ten bağımsız bir
+// anlık görüntü olarak çıkarır (başka bir taşınmaza geçmeden ÖNCE "kaydet").
+function snapshotTitleUnitScopedData() {
+  const fields = {};
+  getTitleUnitScopedFieldKeys().forEach((key) => {
+    if (Object.prototype.hasOwnProperty.call(state.fields, key)) fields[key] = state.fields[key];
+  });
+  const tables = {};
+  TITLE_UNIT_SCOPED_TABLE_KEYS.forEach((key) => {
+    if (state.tables[key] !== undefined) tables[key] = state.tables[key];
+  });
+  return { fields, tables };
+}
+
+// Verilen taşınmazın (snapshot şeklinde: {fields, tables}) verisini
+// state.fields/state.tables'a YÜKLER — bir taşınmaza geçerken kullanılır.
+// Snapshot'ta olmayan anahtarlar SİLİNİR (undefined bırakılır), böylece
+// createTable() gibi tüketicilerin kendi varsayılan-satır üretme mantığı
+// (`state.tables[key] || Array.from(...)`) doğru şekilde devreye girer —
+// boş dizi ATAMAK bu varsayılanı YANLIŞLIKLA bastırır (bkz. yorum,
+// switchActiveTitleUnit çağrı yeri).
+function applyTitleUnitScopedData(snapshot) {
+  const fields = snapshot?.fields || {};
+  getTitleUnitScopedFieldKeys().forEach((key) => {
+    if (Object.prototype.hasOwnProperty.call(fields, key)) {
+      state.fields[key] = fields[key];
+    } else {
+      delete state.fields[key];
+    }
+  });
+  const tables = snapshot?.tables || {};
+  TITLE_UNIT_SCOPED_TABLE_KEYS.forEach((key) => {
+    if (tables[key] !== undefined) {
+      state.tables[key] = tables[key];
+    } else {
+      delete state.tables[key];
+    }
+  });
+}
+
+function getTitleUnitCount() {
+  return 1 + (Array.isArray(state.titleUnits) ? state.titleUnits.length : 0);
+}
+
+// Etiket hesaplama İÇİN "index'teki taşınmazın fields'ı ne" sorusuna cevap
+// verir — aktif index'te state.fields (canlı veri), diğerlerinde kendi
+// depolama yuvası (birincil için primaryTitleUnitShadow, diğerleri için
+// titleUnits[i-1]) kullanılır.
+function getTitleUnitFieldsForLabel(index) {
+  if (index === state.activeTitleUnitIndex) return state.fields;
+  if (index === 0) return state.primaryTitleUnitShadow?.fields || {};
+  return state.titleUnits[index - 1]?.fields || {};
+}
+
+function getTitleUnitTabModels() {
+  const count = getTitleUnitCount();
+  const all = Array.from({ length: count }, (_, index) => ({ fields: getTitleUnitFieldsForLabel(index) }));
+  return all.map((unit, index) => ({
+    index,
+    isActive: index === state.activeTitleUnitIndex,
+    label: computeTitleUnitTabLabel(unit, all),
+  }));
+}
+
+// Yalnızca STATE MUTASYONU yapar — render()/saveState() ÇAĞIRMAZ (bilinçli:
+// bu fonksiyonu DOM/localStorage bağımlılığı olmadan sandbox'ta test
+// edebilmek için, bkz. tools/test-title-unit-switch.js). Çağıran taraf
+// (UI event handler) mutasyondan SONRA saveState()+render() çağırmalı.
+function switchActiveTitleUnit(newIndex) {
+  const count = getTitleUnitCount();
+  if (!Number.isInteger(newIndex) || newIndex < 0 || newIndex >= count || newIndex === state.activeTitleUnitIndex) return false;
+
+  const currentSnapshot = snapshotTitleUnitScopedData();
+  if (state.activeTitleUnitIndex === 0) {
+    state.primaryTitleUnitShadow = currentSnapshot;
+  } else {
+    const unit = state.titleUnits[state.activeTitleUnitIndex - 1];
+    if (unit) {
+      unit.fields = currentSnapshot.fields;
+      unit.tables = currentSnapshot.tables;
+    }
+  }
+
+  if (newIndex === 0) {
+    applyTitleUnitScopedData(state.primaryTitleUnitShadow || { fields: {}, tables: {} });
+    state.primaryTitleUnitShadow = null;
+  } else {
+    const targetUnit = state.titleUnits[newIndex - 1] || createEmptyTitleUnit();
+    applyTitleUnitScopedData(targetUnit);
+  }
+
+  state.activeTitleUnitIndex = newIndex;
+  return true;
+}
+
+// Yeni boş bir taşınmaz birimi ekler, YENİ index'i döner (henüz oraya
+// GEÇMEZ — çağıran taraf switchActiveTitleUnit(dönenIndex) ile geçmeli).
+function addTitleUnitTab() {
+  if (!Array.isArray(state.titleUnits)) state.titleUnits = [];
+  state.titleUnits.push(createEmptyTitleUnit());
+  return state.titleUnits.length;
+}
+
+// Aktif taşınmazı (birincil HARİÇ) siler. Önce birincile geçerek aktif
+// taşınmazın son verisini kendi yuvasına düzgünce "check-in" eder, sonra
+// diziden çıkarır — switchActiveTitleUnit'in mevcut mantığını tekrar
+// yazmak yerine yeniden kullanır.
+function removeActiveTitleUnitTab() {
+  if (state.activeTitleUnitIndex === 0) return false;
+  const removedIndex = state.activeTitleUnitIndex;
+  switchActiveTitleUnit(0);
+  state.titleUnits.splice(removedIndex - 1, 1);
+  return true;
+}
+
+// Tab çubuğu UI'ı — yalnızca "title"/"encumbrance" sekmelerinde, EN ÜSTTE
+// (kullanıcı talimatı) render edilir (bkz. renderSection). Admin-only:
+// deneysel, gerçek rapor verisini değiştirdiği için (önizleme panelinin
+// aksine) daha temkinli, kısıtlı bir kitleyle başlatılıyor.
+function createTitleUnitTabBar() {
+  const wrap = document.createElement("div");
+  wrap.className = "title-unit-tab-bar";
+
+  const tabs = document.createElement("div");
+  tabs.className = "title-unit-tab-bar-tabs";
+  getTitleUnitTabModels().forEach((tab) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "title-unit-tab";
+    button.classList.toggle("is-active", tab.isActive);
+    button.textContent = tab.label;
+    button.addEventListener("click", () => {
+      if (!switchActiveTitleUnit(tab.index)) return;
+      saveState();
+      render();
+    });
+    tabs.append(button);
+  });
+  wrap.append(tabs);
+
+  const actions = document.createElement("div");
+  actions.className = "title-unit-tab-bar-actions";
+
+  const addButton = document.createElement("button");
+  addButton.type = "button";
+  addButton.className = "title-unit-tab-add";
+  addButton.textContent = "+ Taşınmaz Ekle";
+  addButton.addEventListener("click", () => {
+    const newIndex = addTitleUnitTab();
+    switchActiveTitleUnit(newIndex);
+    saveState();
+    render();
+  });
+  actions.append(addButton);
+
+  if (state.activeTitleUnitIndex !== 0) {
+    const removeButton = document.createElement("button");
+    removeButton.type = "button";
+    removeButton.className = "title-unit-tab-remove";
+    removeButton.textContent = "Bu taşınmazı sil";
+    removeButton.addEventListener("click", () => {
+      if (!window.confirm("Bu ek taşınmazı ve girilen tüm Tapu ve Mülkiyet/Takyidat verilerini silmek istediğinize emin misiniz?")) return;
+      if (!removeActiveTitleUnitTab()) return;
+      saveState();
+      render();
+    });
+    actions.append(removeButton);
+  }
+  wrap.append(actions);
+
+  const note = document.createElement("p");
+  note.className = "muted-note title-unit-tab-bar-note";
+  note.textContent = "Deneysel (Faz 2): birden fazla taşınmaz için Tapu ve Mülkiyet/Takyidat verisi burada ayrı ayrı tutulur ve tab değiştirildiğinde otomatik kaydedilir. Bağımsız Bölüm ve Değerleme sekmeleri henüz bu tab çubuğuna bağlı DEĞİL — o veriler hâlâ tek/paylaşımlı.";
+  wrap.append(note);
+
+  return wrap;
 }
 
 function loadUserDefaults() {
@@ -1979,6 +2194,14 @@ function renderSection() {
   card.innerHTML = `<div class="section-body"></div>`;
 
   const body = card.querySelector(".section-body");
+
+  // Çoklu TAKBİS Faz 2 — tab çubuğu, sekmenin EN ÜSTÜNDE (kullanıcı
+  // talimatı, bkz. docs/coklu-takbis-import-plan.md). Yalnızca "Tapu ve
+  // Mülkiyet"/"Takyidat" — kapsam kasıtlı olarak dar, bkz.
+  // TITLE_UNIT_SCOPED_SECTION_IDS yorumu. Admin-only.
+  if (["title", "encumbrance"].includes(section.id) && isCurrentUserAdmin()) {
+    body.append(createTitleUnitTabBar());
+  }
 
   const sectionVariantGroups = isCurrentUserAdmin() ? getVariantGroupsForSection(section.id) : [];
   if (sectionVariantGroups.length) {

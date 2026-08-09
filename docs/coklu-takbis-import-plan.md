@@ -104,33 +104,68 @@ HİÇBİR UI/render bunları KULLANMIYOR henüz):**
 - Test: `tools/test-title-unit-model.js` (4 senaryo) — `npm run verify`
   zincirine eklendi.
 
+**Tab çubuğu UI + anahtarlama motoru — LANDLENDİ (2026-08-09, 2. artış):**
+
+Kullanıcı "faz 2 riskli kısmı yapalım" dedi. `createForm`/`renderSection`'ı
+(89/69 çağıranlı hub fonksiyonlar, onlarca ayrı alan-kontrolü fonksiyonu
+`state.fields`'a doğrudan erişiyor) TEK TEK yeniden yazmak yerine —
+**"checkout/checkin" (takas) mimarisi** seçildi: `state.fields`/`state.tables`
+HER ZAMAN "şu an aktif olan taşınmaz"ı temsil etmeye devam eder (createForm
+dahil TÜM mevcut kod SIFIR değişiklikle çalışmaya devam eder); tab
+değiştirilince aktif taşınmazın verisi kendi yuvasına (`state.titleUnits[i]`
+veya birincil için `state.primaryTitleUnitShadow`) "park edilir", hedef
+taşınmazın verisi `state.fields`/`state.tables`'a "yüklenir".
+
+- **Kapsam kasıtlı olarak DAR** (`TITLE_UNIT_SCOPED_SECTION_IDS = ["title", "encumbrance"]`):
+  yalnızca Tapu ve Mülkiyet + Takyidat taşınmaz-başına ayrılıyor. Bağımsız
+  Bölüm/Değerleme sekmeleri KASITLI OLARAK KAPSAM DIŞI — onların gerçek alan
+  yüzeyi `sections[].fields`'ta değil, onlarca ayrı panel/hesaplama
+  fonksiyonuna yayılmış (`createUnitAreaInteriorPanel`,
+  `createBuildingFloorDistribution`, değerleme hesap zinciri vb.); bunları
+  güvenle kapsamak ayrı, dikkatli bir denetim ister.
+- Yeni fonksiyonlar (app.js): `getTitleUnitScopedFieldKeys`,
+  `snapshotTitleUnitScopedData`, `applyTitleUnitScopedData`,
+  `getTitleUnitCount`, `getTitleUnitFieldsForLabel`, `getTitleUnitTabModels`,
+  `switchActiveTitleUnit` (yalnızca state mutasyonu, render/saveState
+  ÇAĞIRMAZ — sandbox'ta test edilebilir olması için bilinçli), `addTitleUnitTab`,
+  `removeActiveTitleUnitTab`, `createTitleUnitTabBar` (DOM, admin-only).
+- `state.activeTitleUnitIndex`/`state.primaryTitleUnitShadow` eklendi
+  (loadState fallback+merge, CLOUD_WHITELIST) — sayfa yenilemede/cihazlar
+  arası "hangi tab açıktı" ve birincilin "park edilmiş" verisi kaybolmasın
+  diye persist edilir.
+- Malikler tablosu (`state.tables.title`) ve Takyidat tabloları
+  (`state.tables.encumbrance`/`encumbranceDeclarations`/`encumbranceAnnotations`/`encumbranceMortgages`)
+  aynı takas mekanizmasıyla taşınmaza göre ayrılıyor.
+- UI: "Tapu ve Mülkiyet"/"Takyidat" sekmelerinin EN ÜSTÜNDE (kullanıcı
+  talimatı) tab çubuğu + "+ Taşınmaz Ekle"/"Bu taşınmazı sil" düğmeleri —
+  admin-only (deneysel, gerçek rapor verisini değiştiriyor).
+- Test: `tools/test-title-unit-switch.js` (6 senaryo — round-trip veri
+  kaybı YOK, paylaşımlı/kapsam-dışı alanlar etkilenmiyor, malikler tablosu
+  doğru ayrılıyor, birincil silinemiyor) — `npm run verify` zincirine
+  eklendi. Admin girişi gerektirdiğinden gerçek tarayıcıda tıklama testi
+  YAPILAMADI (standart proje kısıtlaması) — `node --check` + tam test
+  suite'i + kod incelemesiyle doğrulandı.
+
 **HENÜZ YAPILMADI (sıradaki adımlar, öncelik sırasıyla):**
 
-1. **Tab çubuğu UI bileşeni** — Tapu ve Mülkiyet/Takyidat/Bağımsız
-   Bölüm/Değerleme sekmelerinin üstünde `computeTitleUnitTabLabel` ile
-   etiketlenen bir yatay tab çubuğu. Tıklanınca "aktif taşınmaz index"i
-   değiştirir (yeni bir ephemeral state, `state.titleUnits`'e YAZILMAZ —
-   sadece "şu an hangi tab açık" bilgisi).
-2. **`createForm`/`renderSection`'ın "aktif taşınmaz"a göre okuma/yazma
-   yapması** — bu 4 sekmenin field get/set mantığı, aktif tab birincil
-   taşınmazsa `state.fields`'a, değilse `state.titleUnits[i].fields`'a
-   yönlenmeli. **EN YÜKSEK RİSKLİ ADIM** — `createForm`/`renderSection` hub
-   fonksiyon olduğu için `trace_path` ile TÜM çağıranlar gözden geçirilmeden
-   başlanmamalı. Ayrı, odaklı bir oturumda ele alınmalı.
-3. **Önizleme panelinden "İçe Aktar" akışı** — `createMultiTakbisPreviewPanel`
+1. **Önizleme panelinden "İçe Aktar" akışı** — `createMultiTakbisPreviewPanel`
    şu an salt önizleme; bir "Rapora Aktar" düğmesi eklenip her önizleme
-   kaydını `createEmptyTitleUnit` ile bir `state.titleUnits` elemanına
-   (birincisi `state.fields`'a) dönüştürecek bir eşleme fonksiyonu
-   (`titleUnitFromTakbisRecord` gibi) yazılmalı — `record.owners`/`record.encumbrances`
-   şeklinin `tables.title`/`tables.encumbrance` ile tam örtüştüğü ayrıca
-   doğrulanmalı (bu segment içinde doğrulanmadı).
-4. **Malikler/Takyidat tabloları** — bugün `state.tables.title`/`state.tables.encumbrance`
-   tek taşınmaza ait; aktif taşınmaza göre `state.titleUnits[i].tables`'a
-   yönlenmesi gerekiyor (madde 2 ile aynı risk sınıfı).
-5. Autosave/cloud sync'in ek taşınmazlarla birlikte doğru senkronlandığının
-   UÇTAN UCA (gerçek çoklu-tapu raporu ile) doğrulanması — şu an yalnızca
-   kaynak-düzeyi (statik metin) testle doğrulandı, canlı senaryo test
-   edilmedi.
+   kaydını `addTitleUnitTab()` + alan/tablo doldurma ile bir taşınmaza
+   dönüştürecek bir eşleme fonksiyonu (`applyTakbisRecordToActiveTitleUnit`
+   gibi) yazılmalı — `record.owners`/`record.encumbrances` şeklinin
+   `tables.title`/`tables.encumbrance` ile tam örtüştüğü ayrıca
+   doğrulanmalı (bu segment içinde doğrulanmadı). Bu tamamlanınca kullanıcı
+   çoklu TAKBİS PDF'inden tek tıkla N sekme doldurabilecek.
+2. **Bağımsız Bölüm/Değerleme sekmelerine tab desteği** — kasıtlı olarak
+   ertelendi (yukarıya bak), ayrı bir denetim/oturum gerektiriyor.
+3. Autosave/cloud sync'in ek taşınmazlarla birlikte doğru senkronlandığının
+   UÇTAN UCA (gerçek çoklu-tapu raporu ile, gerçek admin girişiyle)
+   doğrulanması — şu an yalnızca kaynak-düzeyi (statik metin) ve
+   sandbox'lanmış mantık testleriyle doğrulandı, canlı tarayıcı senaryosu
+   test edilmedi.
+4. Banka şablonu export'unun (madde 7, Faz 3) çoklu taşınmazlı raporlarda
+   nasıl davranacağı — bugün yalnızca birincil taşınmazın verisini kullanır,
+   ek taşınmazlar export'a hiç YANSIMAZ (bilinen, dokümante edilmiş sınır).
 
 ## PDF yapısı — doğrulanmış bulgular
 

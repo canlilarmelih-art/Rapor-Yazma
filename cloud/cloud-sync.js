@@ -24,10 +24,13 @@
   "use strict";
 
   // "titleUnits" 2026-08-09'da eklendi (Çoklu TAKBİS Faz 2, bkz.
-  // docs/coklu-takbis-import-plan.md) — ek taşınmaz kayıtları. Generic
-  // key-listesi döngüsü sayesinde buildCloudReportPayload/applyPayloadToState
-  // otomatik destekler, ayrı kod gerekmedi.
-  const CLOUD_WHITELIST = ["fields", "tables", "lookupOptions", "titleUnits", "updatedAt"];
+  // docs/coklu-takbis-import-plan.md) — ek taşınmaz kayıtları.
+  // "activeTitleUnitIndex"/"primaryTitleUnitShadow" aynı gün, tab-anahtarlama
+  // motoruyla birlikte eklendi — cihazlar arası devamlılık için (hangi tab
+  // açıktı, birincilin "park edilmiş" verisi). Generic key-listesi döngüsü
+  // sayesinde buildCloudReportPayload/applyPayloadToState otomatik destekler,
+  // ayrı kod gerekmedi.
+  const CLOUD_WHITELIST = ["fields", "tables", "lookupOptions", "titleUnits", "activeTitleUnitIndex", "primaryTitleUnitShadow", "updatedAt"];
   const CLOUD_SCHEMA = "rapor-yazma-cloud";
   const CLOUD_SCHEMA_VERSION = 1;
   const RETENTION_DAYS = 30;

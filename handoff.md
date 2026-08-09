@@ -1,5 +1,18 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.383 - 2026-08-09 - Çoklu TAKBİS Faz 2: tapu-başına tab çubuğu (takas mimarisi, admin-only)
+
+- Kullanıcı "faz 2 riskli kısmı yapalım ama önce yedek al" dedi. Yedek: `backups/before-title-unit-tab-ui_*`. TÜM detay ve gerekçe: `docs/coklu-takbis-import-plan.md`, "Tab çubuğu UI + anahtarlama motoru — LANDLENDİ" bölümü.
+- **Mimari seçim**: `createForm`/`renderSection` (89/69 çağıranlı hub fonksiyonlar) TEK TEK yeniden yazmak yerine "checkout/checkin" (takas) yaklaşımı seçildi — `state.fields`/`state.tables` HER ZAMAN "aktif taşınmaz"ı temsil eder, tab değişince aktif taşınmazın verisi kendi yuvasına (`state.titleUnits[i]` / birincil için `state.primaryTitleUnitShadow`) park edilir, hedefin verisi yüklenir. Sonuç: `createForm` ve onlarca alan-kontrolü fonksiyonuna SIFIR dokunuş, mevcut tek-tapu davranışı birebir korunuyor.
+- **Kapsam kasıtlı DAR**: yalnızca Tapu ve Mülkiyet + Takyidat (`TITLE_UNIT_SCOPED_SECTION_IDS`). Bağımsız Bölüm/Değerleme KASITLI OLARAK ERTELENDİ — alan yüzeyleri `sections[].fields`'ta değil onlarca ayrı panel/hesaplama fonksiyonuna yayılmış, ayrı denetim gerektiriyor (plan dosyasında detaylı).
+- `app.js`: `getTitleUnitScopedFieldKeys`, `snapshotTitleUnitScopedData`, `applyTitleUnitScopedData`, `getTitleUnitCount`, `getTitleUnitFieldsForLabel`, `getTitleUnitTabModels`, `switchActiveTitleUnit` (yalnızca state mutasyonu — render()/saveState() ÇAĞIRMAZ, bilerek: sandbox'ta test edilebilsin diye), `addTitleUnitTab`, `removeActiveTitleUnitTab`, `createTitleUnitTabBar` (DOM, admin-only) eklendi. `renderSection()`'a "title"/"encumbrance" sekmelerinin EN ÜSTÜNE (kullanıcı talimatı) tab çubuğu eklendi.
+- `state.activeTitleUnitIndex`/`state.primaryTitleUnitShadow` eklendi (loadState fallback+merge, `cloud/cloud-sync.js` CLOUD_WHITELIST) — reload/cihaz senkronunda "hangi tab açıktı" ve birincilin park edilmiş verisi kaybolmasın diye.
+- Malikler (`state.tables.title`) ve Takyidat (`encumbrance`/`encumbranceDeclarations`/`encumbranceAnnotations`/`encumbranceMortgages`) tabloları da aynı takas mekanizmasıyla taşınmaza göre ayrılıyor.
+- UI: "+ Taşınmaz Ekle" / "Bu taşınmazı sil" düğmeleri — admin kullanıcı artık ELLE ikinci bir taşınmaz açıp Tapu/Takyidat verisini ayrı ayrı girebilir (TAKBİS önizleme panelinden OTOMATİK aktarım henüz YOK — sıradaki adım, plan dosyasında madde 1).
+- Yeni test: `tools/test-title-unit-switch.js` (6 senaryo: tek taşınmaz no-op, yeni taşınmaz eklemede birincil+paylaşımlı alanlar korunuyor, **ileri-geri geçişte veri kaybı YOK** [kritik round-trip], malikler tablosu doğru ayrılıyor, silme sonrası birincile dönülüyor + birincil silinemiyor, kapsam-dışı alanlar hiç etkilenmiyor) — `npm run verify` zincirine eklendi, hepsi geçti.
+- Admin girişi gerektirdiğinden tarayıcıda tıklama ile CANLI test YAPILAMADI (standart proje kısıtlaması) — `node --check`, tam `npm run verify` suite'i (tümü yeşil) ve manuel kod incelemesiyle (CSS token'ları `styles.css`'te grep ile doğrulandı: `--green`/`--red`/`--line`/`--surface`/`--muted` gerçek) doğrulandı.
+- `index.html` cache-buster'ları: `app.js`/`styles.css`/`cloud/cloud-sync.js` → `20260809-0400`.
+
 ## 0.0.382 - 2026-08-09 - Çoklu TAKBİS Faz 2: state.titleUnits[] veri modeli (plumbing, UI YOK)
 
 - Kullanıcı "madde 6'ya geçelim" dedi — bkz. `docs/coklu-takbis-import-plan.md`, "Faz 2: state.titleUnits[] veri modeli" bölümü, TÜM tasarım kararı ve gerekçesi orada.
