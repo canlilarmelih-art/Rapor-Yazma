@@ -1377,6 +1377,7 @@ function createTitleUnitTabBar() {
   note.className = "muted-note title-unit-tab-bar-note";
   note.textContent = "Deneysel (Faz 2): birden fazla taşınmaz için Tapu ve Mülkiyet/Takyidat verisi burada ayrı ayrı tutulur ve tab değiştirildiğinde otomatik kaydedilir. Bağımsız Bölüm ve Değerleme sekmeleri henüz bu tab çubuğuna bağlı DEĞİL — o veriler hâlâ tek/paylaşımlı.";
   wrap.append(note);
+  note.textContent = "Deneysel: Tapu, Adres ve Takyidat verisi her tasinmaz icin ayri tutulur ve tab degistirildiginde otomatik kaydedilir. Bagimsiz Bolum ve Degerleme verileri henuz bu tab grubuna bagli degildir.";
 
   return wrap;
 }
@@ -2243,7 +2244,7 @@ function renderSection() {
   // bu ikinci koşul olmadan TÜM mevcut/yeni raporlar (requestType hiç
   // kayıtlı değilken "Tekli Talep" varsayılanına düşer) tab çubuğunu HİÇ
   // görmez, sıfır görsel değişiklik.
-  if (["title", "encumbrance"].includes(section.id) && isCurrentUserAdmin() && state.fields.requestType === "Çoklu Talep") {
+  if (["address", "title", "encumbrance"].includes(section.id) && isCurrentUserAdmin() && state.fields.requestType === "Çoklu Talep") {
     body.append(createTitleUnitTabBar());
   }
 

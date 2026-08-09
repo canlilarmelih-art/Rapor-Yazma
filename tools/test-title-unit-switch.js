@@ -11,16 +11,15 @@
 // Kapsanan senaryolar:
 //  1) Tek taşınmaz (titleUnits boş): getTitleUnitCount()===1, switch no-op.
 //  2) Yeni taşınmaz ekleme: state.fields'taki Tapu/Takyidat alanları
-//     KORUNUR (yeni tab boş açılır, birincil DEĞİŞMEZ), paylaşımlı alanlar
-//     (ör. city) HİÇ ETKİLENMEZ.
+//     KORUNUR (yeni tab boş açılır, birincil DEĞİŞMEZ), adres alanları da
+//     taşınmazla birlikte ayrılır.
 //  3) İleri-geri geçiş (0 -> 1 -> 0): veri KAYBOLMAZ, her iki taşınmazın
 //     kendi alanları doğru yerde kalır (kritik round-trip testi).
 //  4) Malikler tablosu (state.tables.title) taşınmaza göre doğru ayrılır.
 //  5) Ek taşınmaz silme: aktif taşınmaz birincile döner, dizi küçülür,
 //     birincil SİLİNEMEZ.
-//  6) Paylaşımlı alanlar (address bölümü, "unit"/"valuation" bölümü
-//     alanları) HİÇBİR taşınmaz geçişinde DEĞİŞMEZ (kapsam dışı olduğunun
-//     kanıtı).
+//  6) Paylaşımlı/kapsam dışı alanlar ("unit"/"valuation" bölümü alanları)
+//     HİÇBİR taşınmaz geçişinde DEĞİŞMEZ.
 
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -89,7 +88,7 @@ let sections = [
   { id: "unit", fields: [{ key: "legalArea" }] },
 ];
 let state = null;
-const TITLE_UNIT_SCOPED_SECTION_IDS = ["title", "encumbrance"];
+const TITLE_UNIT_SCOPED_SECTION_IDS = ["address", "title", "encumbrance"];
 const TITLE_UNIT_SCOPED_TABLE_KEYS = ["title", "encumbrance", "encumbranceDeclarations", "encumbranceAnnotations", "encumbranceMortgages"];
 ${functionNames.map(extractFunction).join("\n")}
 return {
@@ -136,10 +135,10 @@ function freshState(overrides = {}) {
   const afterSwitch = sandbox.getState();
   assert.equal(afterSwitch.activeTitleUnitIndex, 1, "activeTitleUnitIndex güncellenmeli.");
   assert.equal(afterSwitch.fields.blockNo, undefined, "Yeni (boş) taşınmaza geçince Ada alanı BOŞ olmalı.");
-  assert.equal(afterSwitch.fields.city, "İstanbul", "Paylaşımlı alan (city) taşınmaz geçişinden ETKİLENMEMELİ.");
+  assert.equal(afterSwitch.fields.city, undefined, "Adres alanı (city) yeni taşınmazda boş olmalı.");
   assert.ok(afterSwitch.primaryTitleUnitShadow, "Birincilin verisi primaryTitleUnitShadow'a park edilmeli.");
   assert.equal(afterSwitch.primaryTitleUnitShadow.fields.blockNo, "709", "Park edilen birincil verisi (Ada) doğru olmalı.");
-  console.log("Yeni tasinmaz ekleme (birincil korunur, paylasimli alan etkilenmez) testi tamam.");
+  console.log("Yeni tasinmaz ekleme (birincil ve adres verisi korunur) testi tamam.");
 }
 
 // --- 3) İleri-geri geçiş: veri kaybolmaz (kritik round-trip) ------------
@@ -220,7 +219,7 @@ function freshState(overrides = {}) {
   const newIndex = sandbox.fns.addTitleUnitTab();
   sandbox.fns.switchActiveTitleUnit(newIndex);
   const afterAdd = sandbox.getState();
-  assert.equal(afterAdd.fields.city, "Ankara", "\"address\" sekmesi alanı (city) taşınmaz geçişinden etkilenmemeli.");
+  assert.equal(afterAdd.fields.city, undefined, "\"address\" sekmesi alanı (city) yeni taşınmazda boş olmalı.");
   assert.equal(afterAdd.fields.legalArea, "120", "\"unit\" sekmesi alanı (legalArea) KAPSAM DIŞI olduğu için taşınmaz geçişinden etkilenmemeli (Faz 2 bilinçli sınırlama).");
   console.log("Paylasimli/kapsam-disi alanlarin etkilenmemesi testi tamam.");
 }
@@ -238,7 +237,7 @@ function freshState(overrides = {}) {
   );
   assert.match(
     appSource,
-    /\["title", "encumbrance"\]\.includes\(section\.id\) && isCurrentUserAdmin\(\) && state\.fields\.requestType === "Çoklu Talep"/,
+    /\["address", "title", "encumbrance"\]\.includes\(section\.id\) && isCurrentUserAdmin\(\) && state\.fields\.requestType === "Çoklu Talep"/,
     "Tab çubuğu YALNIZCA admin + \"Çoklu Talep\" ikisi birden doğruyken render edilmeli (mevcut/yeni raporlarda varsayılan olarak GİZLİ kalmalı)."
   );
   const requestTypeGuardOccurrences = appSource.split(

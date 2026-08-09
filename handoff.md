@@ -8029,6 +8029,12 @@ Doğrulama: `node --check app.js`, `node tools/check-basic.js`, `git diff --chec
 - Kullanici tarafindan verilen Excel yukleme ve indirme ikonlari inline SVG olarak eklendi; mevcut import/export davranisi korunuyor.
 - `index.html` app.js cache-buster `20260810-0115` yapildi.
 
+## 0.0.398 - 2026-08-10 - Adres ve Konum bolumunde tasinmaz tablari
+
+- Coklu talep modunda tasinmaz tablari Adres ve Konum bolumunde de gosteriliyor.
+- Adres alanlari tasinmazlar arasinda ayrilmis olarak saklaniyor; paylasimli alanlarin davranisi korunuyor.
+- `index.html` app.js cache-buster `20260810-0145` yapildi.
+
 - TCMB Piyasa Verisi bandı varsayılan olarak CSS ile gizlendi; yalnızca aktif bölüm `valuation` olduğunda görünür hale geliyor.
 - `hidden` niteliği ve gövde görünürlük sınıfı birlikte kullanıldı; eski cache’li oturumlarda da diğer bölümlerde görünmemesi sağlandı.
 - `index.html` app.js cache-buster `20260810-0015` yapıldı.
