@@ -2219,6 +2219,7 @@ function renderSection() {
   document.querySelectorAll(".creditor-combo-panel").forEach((node) => node.remove());
   ensureActiveSectionVisible();
   const section = getVisibleSections().find((item) => item.id === activeSectionId) || getVisibleSections()[0] || sections[0];
+  tcmbRateStrip?.toggleAttribute("hidden", section.id !== "valuation");
   if (section.id === "land") refreshLandMinimumParcelAssessment();
   const card = document.createElement("article");
   card.className = `section-card section-${section.id}`;
@@ -2271,6 +2272,9 @@ function renderSection() {
   if ((section.fields || []).length && section.id !== "unit") {
     body.append(createForm(section));
   }
+
+  const sectionExcelPanel = createSectionExcelPanel(section);
+  if (sectionExcelPanel) body.append(sectionExcelPanel);
 
   if (section.id === "land") {
     const climatePanel = createLandClimateEarthquakePanel();
@@ -14632,6 +14636,164 @@ function createMultiRequestExcelPanel() {
 // geldi. Alttaki dışa aktarma fonksiyonları (buildReportJsonExportPayload,
 // window.RaporReportTablesXlsx.exportAllTables) SİLİNMEDİ — zip paketleme
 // akışı onları hâlâ {download:false} ile doğrudan çağırıyor.
+function getSectionExcelOptions(field) {
+  const configured = Array.isArray(field?.options) ? field.options : [];
+  const remembered = state.lookupOptions?.[field?.key] || [];
+  const rendered = field?.type === "select"
+    ? [...document.querySelectorAll(`[data-field="${field.key}"] option`)].map((option) => option.value)
+    : [];
+  return [...new Set([...configured, ...remembered, ...rendered].map((value) => String(value ?? "")))];
+}
+
+function getSectionExcelFieldDefinitions(section) {
+  const seen = new Set();
+  return (section?.fields || []).filter((field) => {
+    if (!field?.key || seen.has(field.key)) return false;
+    seen.add(field.key);
+    return true;
+  }).map((field) => ({ key: field.key, label: field.label || field.key, type: field.type, options: getSectionExcelOptions(field) }));
+}
+
+function getSectionExcelTableKeys(sectionId) {
+  const tableKeys = {
+    title: ["title"],
+    encumbrance: ["encumbrance", "encumbranceDeclarations", "encumbranceAnnotations", "encumbranceMortgages"],
+    documents: ["documents"],
+    comparables: ["comparables"],
+  };
+  return (tableKeys[sectionId] || []).filter((key) => TITLE_UNIT_SCOPED_TABLE_KEYS.includes(key));
+}
+
+function getSectionExcelColumnLetter(index) {
+  let value = index + 1;
+  let result = "";
+  while (value > 0) {
+    const remainder = (value - 1) % 26;
+    result = String.fromCharCode(65 + remainder) + result;
+    value = Math.floor((value - 1) / 26);
+  }
+  return result;
+}
+
+function getSectionExcelDefinitions(section) {
+  return [
+    ...getSectionExcelFieldDefinitions(section),
+    ...getSectionExcelTableKeys(section.id).map((key) => ({ key: `__table:${key}`, label: `Tablo - ${key}`, tableKey: key, type: "table" })),
+  ];
+}
+
+function getSectionExcelRows(section) {
+  const definitions = getSectionExcelDefinitions(section);
+  const rows = [["Kayıt No", ...definitions.map((definition) => definition.label)]];
+  for (let index = 0; index < getTitleUnitCount(); index += 1) {
+    const fields = getMultiRequestUnitFields(index);
+    const tables = index === state.activeTitleUnitIndex
+      ? state.tables || {}
+      : (index === 0 ? state.primaryTitleUnitShadow?.tables || {} : state.titleUnits?.[index - 1]?.tables || {});
+    rows.push([String(index + 1), ...definitions.map((definition) => definition.tableKey
+      ? JSON.stringify(tables[definition.tableKey] || [])
+      : fields[definition.key] ?? "")]);
+  }
+  return { rows, definitions };
+}
+
+function getSectionExcelValidations(definitions) {
+  return definitions.flatMap((definition, index) => {
+    if (definition.type !== "select" || !Array.isArray(definition.options) || !definition.options.length) return [];
+    const options = definition.options.map((option) => String(option ?? "")).join(",");
+    if (options.length > 240 || options.includes('"')) return [];
+    const column = getSectionExcelColumnLetter(index + 1);
+    return [{ sqref: `${column}2:${column}1048576`, formula1: `"${options}"` }];
+  });
+}
+
+function importSectionExcelRows(section, rows) {
+  if (!Array.isArray(rows) || rows.length < 2) throw new Error("Excel dosyasında başlık ve en az bir veri satırı bulunmalı.");
+  const definitions = getSectionExcelDefinitions(section);
+  const byHeader = new Map();
+  definitions.forEach((definition) => {
+    byHeader.set(window.RaporMultiRequestXlsx.normalizeHeader(definition.label), definition);
+    byHeader.set(window.RaporMultiRequestXlsx.normalizeHeader(definition.key), definition);
+  });
+  const mapped = rows[0].map((header) => byHeader.get(window.RaporMultiRequestXlsx.normalizeHeader(header)) || null);
+  if (!mapped.some(Boolean)) throw new Error("Excel başlıkları bu ana bölümle eşleşmedi.");
+  const imported = rows.slice(1).map((row) => {
+    const fields = {};
+    const tables = {};
+    mapped.forEach((definition, index) => {
+      if (!definition) return;
+      const value = normalizeMultiRequestValue(row[index]);
+      if (definition.tableKey) {
+        if (!value) return;
+        try { tables[definition.tableKey] = JSON.parse(value); } catch { throw new Error(`${definition.label} hücresindeki JSON okunamadı.`); }
+      } else {
+        fields[definition.key] = value;
+      }
+    });
+    return { fields, tables };
+  }).filter((item) => Object.values(item.fields).some(Boolean) || Object.values(item.tables).some(Boolean));
+  if (!imported.length) throw new Error("Excel dosyasında aktarılacak veri bulunamadı.");
+  if (getTitleUnitCount() > 1 || Object.values(state.fields || {}).some(Boolean)) {
+    if (!window.confirm("Bu Excel aktif ana bölümdeki mevcut verilerin üzerine yazacak. Devam edilsin mi?")) return 0;
+  }
+  if (state.activeTitleUnitIndex !== 0) switchActiveTitleUnit(0);
+  imported.forEach((item, index) => {
+    if (index === 0) {
+      state.fields = { ...state.fields, ...item.fields };
+      state.tables = { ...state.tables, ...item.tables };
+      return;
+    }
+    const existing = state.titleUnits[index - 1] || createEmptyTitleUnit();
+    state.titleUnits[index - 1] = createEmptyTitleUnit({
+      ...existing,
+      fields: { ...(existing.fields || {}), ...item.fields },
+      tables: { ...(existing.tables || {}), ...item.tables },
+    });
+  });
+  if (imported.length > 1) state.fields.requestType = "Çoklu Talep";
+  state.activeTitleUnitIndex = 0;
+  return imported.length;
+}
+
+function createSectionExcelPanel(section) {
+  if (!window.RaporMultiRequestXlsx || !section?.fields?.length) return null;
+  const panel = document.createElement("div");
+  panel.className = "subsection section-excel-panel";
+  panel.innerHTML = `
+    <div class="subsection-heading"><div><span class="eyebrow">Aktif ana bölüm</span><h3>${escapeHtml(section.title)} Excel</h3></div></div>
+    <p class="muted-note">Yalnızca bu bölümün alanları aktarılır. Açılır liste alanları Excel'de de seçim listesi olarak korunur.</p>
+    <div class="output-export-actions">
+      <button type="button" class="secondary-button" data-section-excel-export>Excel indir</button>
+      <label class="secondary-button file-button">Excel yükle<input type="file" accept=".xlsx,.csv,text/csv" data-section-excel-import hidden /></label>
+    </div>
+    <p class="export-status" data-section-excel-status aria-live="polite"></p>
+  `;
+  const status = panel.querySelector("[data-section-excel-status]");
+  panel.querySelector("[data-section-excel-export]").addEventListener("click", () => {
+    try {
+      const { rows, definitions } = getSectionExcelRows(section);
+      window.RaporMultiRequestXlsx.exportRows(rows, `${buildExportBaseFileName()}-${slugifyFileName(section.id)}.xlsx`, {
+        validations: getSectionExcelValidations(definitions),
+      });
+      status.textContent = "Bölüm Excel dosyası indirildi.";
+    } catch (error) { status.textContent = error.message || "Excel oluşturulamadı."; }
+  });
+  panel.querySelector("[data-section-excel-import]").addEventListener("change", async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      const rows = await window.RaporMultiRequestXlsx.readRows(file);
+      const count = importSectionExcelRows(section, rows);
+      if (!count) return;
+      autosave();
+      status.textContent = `${count} kayıt bu bölüme aktarıldı.`;
+      render();
+    } catch (error) { status.textContent = error.message || "Excel okunamadı."; }
+    event.target.value = "";
+  });
+  return panel;
+}
+
 function createOutputExportPanel() {
   const panel = document.createElement("div");
   panel.className = "subsection output-export-panel";

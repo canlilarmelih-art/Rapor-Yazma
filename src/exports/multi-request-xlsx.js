@@ -36,7 +36,7 @@
       .replace(/[\s_\-\/]+/g, "");
   }
 
-  function buildSheetXml(rows) {
+  function buildSheetXml(rows, validations = []) {
     const rowsXml = rows.map((row, rowIndex) => {
       const cellsXml = row.map((value, columnIndex) => {
         const text = String(value ?? "");
@@ -50,7 +50,10 @@
     const cols = Array.from({ length: columnCount }, (_, index) =>
       `<col min="${index + 1}" max="${index + 1}" width="18" customWidth="1"/>`
     ).join("");
-    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><cols>${cols}</cols><sheetData>${rowsXml}</sheetData></worksheet>`;
+    const validationXml = validations.length
+      ? `<dataValidations count="${validations.length}">${validations.map((validation) => `<dataValidation type="list" allowBlank="1" showInputMessage="1" showErrorMessage="1" sqref="${xmlEscape(validation.sqref)}"><formula1>${xmlEscape(validation.formula1)}</formula1></dataValidation>`).join("")}</dataValidations>`
+      : "";
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><cols>${cols}</cols><sheetData>${rowsXml}</sheetData>${validationXml}</worksheet>`;
   }
 
   function workbookEntries(sheetXml) {
@@ -64,9 +67,9 @@
     ];
   }
 
-  function exportRows(rows, fileName = "coklu-talepler.xlsx") {
+  function exportRows(rows, fileName = "coklu-talepler.xlsx", options = {}) {
     if (!window.RaporXlsxFill?.writeStoredZip) throw new Error("Excel motoru yüklenemedi.");
-    const bytes = window.RaporXlsxFill.writeStoredZip(workbookEntries(buildSheetXml(rows)));
+    const bytes = window.RaporXlsxFill.writeStoredZip(workbookEntries(buildSheetXml(rows, options.validations || [])));
     const blob = new Blob([bytes], { type: XLSX_MIME });
     window.RaporXlsxFill.downloadBlob(fileName, blob);
     return blob;

@@ -7993,3 +7993,11 @@ Doğrulama: `node --check app.js`, `node tools/check-basic.js`, `git diff --chec
 - `Tüm taşınmazlara uygulansın mı?` kontrolu, Tapu Kaydı Değişikliği seçimiyle aynı satıra kompakt checkbox olarak alındı.
 - Tek seferlik tüm taşınmazlara uygulama davranışı ve uygulanan taşınmaz sayacı korundu; dar ekranlarda kontrol doğal olarak alt satıra sarılır.
 - `index.html` app.js cache-buster `20260809-2000` yapıldı.
+
+## 0.0.392 - 2026-08-09 - Ana bolum bazli Excel ve secim listeleri
+
+- Her ana bölümün kendi Excel indir/yükle paneli eklendi; aktif bölüm dışındaki alanlar dosyaya dahil edilmez.
+- Bölüm dosyaları mevcut taşınmaz satırlarını korur, ilgili bölüm tablolarını JSON hücreleriyle taşır ve çoklu satırlarda taşınmaz birimlerine aktarır.
+- Sistem `select` alanlarındaki seçenekler Excel veri doğrulaması olarak yazılır; il/ilçe/mahalle gibi canlı seçimler ekrandaki güncel seçeneklerden alınır.
+- TCMB Piyasa Verisi bandı yalnızca Değerleme bölümünde görünür.
+- `index.html` app.js ve bölüm Excel motoru cache-buster `20260809-2115` yapıldı.
