@@ -8001,3 +8001,9 @@ Doğrulama: `node --check app.js`, `node tools/check-basic.js`, `git diff --chec
 - Sistem `select` alanlarındaki seçenekler Excel veri doğrulaması olarak yazılır; il/ilçe/mahalle gibi canlı seçimler ekrandaki güncel seçeneklerden alınır.
 - TCMB Piyasa Verisi bandı yalnızca Değerleme bölümünde görünür.
 - `index.html` app.js ve bölüm Excel motoru cache-buster `20260809-2115` yapıldı.
+
+## 0.0.393 - 2026-08-09 - Coklu talep Tapu tabinda talep turunun korunmasi
+
+- `requestType` taşınmaz-bazlı snapshot alanlarından çıkarıldı; Tapu tabına geçişte `Çoklu Talep` artık `Tekli Talep`e dönmüyor.
+- Birincil ve ek taşınmazlar arasında geçiş için regresyon testi eklendi.
+- `index.html` app.js cache-buster `20260809-2140` yapıldı.

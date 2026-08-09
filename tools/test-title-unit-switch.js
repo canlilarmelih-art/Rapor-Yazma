@@ -272,6 +272,19 @@ function freshState(overrides = {}) {
   console.log("titleChangedRecords unit-scoped round-trip testi tamam.");
 }
 
+// --- 8b) requestType tasinmaz tabina gecince rapor genelinde korunur -----
+{
+  const state = freshState();
+  state.fields.requestType = "Çoklu Talep";
+  sandbox.setState(state);
+  const newIndex = sandbox.fns.addTitleUnitTab();
+  sandbox.fns.switchActiveTitleUnit(newIndex);
+  assert.equal(sandbox.getState().fields.requestType, "Çoklu Talep", "Tapu tabina geciste Talep Turu Çoklu Talep olarak korunmali.");
+  sandbox.fns.switchActiveTitleUnit(0);
+  assert.equal(sandbox.getState().fields.requestType, "Çoklu Talep", "Birincile donuste Talep Turu korunmali.");
+  console.log("requestType tasinmaz tab gecisinde korunma testi tamam.");
+}
+
 // --- 9) applyTitleRecordChangeToAllTitleUnits: tumune uygula ------------
 {
   const state = freshState();

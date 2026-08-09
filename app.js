@@ -1187,7 +1187,11 @@ function getTitleUnitScopedFieldKeys() {
   const keys = new Set();
   TITLE_UNIT_SCOPED_SECTION_IDS.forEach((sectionId) => {
     const section = sections.find((item) => item.id === sectionId);
-    (section?.fields || []).forEach((field) => keys.add(field.key));
+    (section?.fields || []).forEach((field) => {
+      // Talep Türü rapor-genelidir; taşınmaz tabına geçerken birim verisiyle
+      // üzerine yazılırsa Çoklu Talep yanlışlıkla Tekli Talep'e döner.
+      if (field.key !== "requestType") keys.add(field.key);
+    });
   });
   // "titleChangedRecords" "title" sekmesinin DEKLARATİF fields listesinde
   // yer almıyor — openTitleRecordChangeModal ile programatik yazılıyor
