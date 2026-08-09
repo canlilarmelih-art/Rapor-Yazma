@@ -22197,7 +22197,16 @@ function buildEncumbranceSummaryVariants() {
     return { detail, summary: detail, exceedsLimit: false };
   }
 
-  const hasRows = encumbranceReportTables.some((table) => getFilledEncumbranceRows(table.key).length);
+  const declarationRows = typeof getMultiTitleUnitEncumbranceRows === "function"
+    ? getMultiTitleUnitEncumbranceRows("encumbranceDeclarations")
+    : getFilledEncumbranceRows("encumbranceDeclarations");
+  const mortgageRows = typeof getMultiTitleUnitEncumbranceRows === "function"
+    ? getMultiTitleUnitEncumbranceRows("encumbranceMortgages")
+    : getFilledEncumbranceRows("encumbranceMortgages");
+  const annotationRows = typeof getMultiTitleUnitEncumbranceRows === "function"
+    ? getMultiTitleUnitEncumbranceRows("encumbranceAnnotations")
+    : getFilledEncumbranceRows("encumbranceAnnotations");
+  const hasRows = declarationRows.length || mortgageRows.length || annotationRows.length;
   const hasTitleChange = Boolean(normalizeYesNoChoice(state.fields.titleRecordChange));
   if (!hasRows && !state.fields.takbisDate && !state.fields.takbisMethod && !hasTitleChange) {
     return { detail: "", summary: "", exceedsLimit: false };
