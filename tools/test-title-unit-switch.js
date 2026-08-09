@@ -324,5 +324,6 @@ function freshState(overrides = {}) {
 assert.match(appSource, /function createSectionExcelPanel\(section\)/, "Her ana bolum icin bolum Excel paneli bulunmali.");
 assert.match(appSource, /getSectionExcelValidations\(definitions\)/, "Bölüm Excel dışa aktarımı seçim listesi doğrulamalarını iletmeli.");
 assert.match(appSource, /tcmbRateStrip\?\.toggleAttribute\("hidden", section\.id !== "valuation"\)/, "TCMB kur bandı yalnızca Değerleme bölümünde görünmeli.");
+assert.match(appSource, /body\.classList\.toggle\("show-tcmb-rate-strip", showTcmbRateStrip\)/, "TCMB bandı görünürlüğü gövde görünürlük sınıfıyla da korunmalı.");
 console.log("Bolum bazli Excel + Excel dropdown + TCMB gorunurluk kontrolleri tamam.");
 console.log("Coklu TAKBIS Faz 2 tab-anahtarlama motoru testleri basarili.");

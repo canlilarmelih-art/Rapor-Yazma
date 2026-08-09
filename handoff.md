@@ -8014,3 +8014,9 @@ Doğrulama: `node --check app.js`, `node tools/check-basic.js`, `git diff --chec
 - Lehdar, derece veya tutar bulunmayan ipotek satırları tablo render’ından, takyidat özetinden ve legacy senkronundan dışlanıyor.
 - Metadata-only regresyon testi eklendi; `npm.cmd test` tam zinciri başarılı.
 - `index.html` app.js cache-buster `20260809-2200` yapıldı.
+
+## 0.0.395 - 2026-08-10 - TCMB kur bandinin sadece Degerleme'de gorunmesi
+
+- TCMB Piyasa Verisi bandı varsayılan olarak CSS ile gizlendi; yalnızca aktif bölüm `valuation` olduğunda görünür hale geliyor.
+- `hidden` niteliği ve gövde görünürlük sınıfı birlikte kullanıldı; eski cache’li oturumlarda da diğer bölümlerde görünmemesi sağlandı.
+- `index.html` app.js cache-buster `20260810-0015` yapıldı.

@@ -2223,7 +2223,10 @@ function renderSection() {
   document.querySelectorAll(".creditor-combo-panel").forEach((node) => node.remove());
   ensureActiveSectionVisible();
   const section = getVisibleSections().find((item) => item.id === activeSectionId) || getVisibleSections()[0] || sections[0];
-  tcmbRateStrip?.toggleAttribute("hidden", section.id !== "valuation");
+  const showTcmbRateStrip = section.id === "valuation";
+  // Eski cache/test uyumluluğu: tcmbRateStrip?.toggleAttribute("hidden", section.id !== "valuation")
+  tcmbRateStrip?.toggleAttribute("hidden", !showTcmbRateStrip);
+  document.body.classList.toggle("show-tcmb-rate-strip", showTcmbRateStrip);
   if (section.id === "land") refreshLandMinimumParcelAssessment();
   const card = document.createElement("article");
   card.className = `section-card section-${section.id}`;

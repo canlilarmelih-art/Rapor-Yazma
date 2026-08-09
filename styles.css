@@ -842,6 +842,11 @@ body[data-app-theme="clay"] .brand-mark-icon-navy {
   box-shadow: 0 5px 14px rgba(19, 40, 79, 0.07);
 }
 
+#tcmbRateStrip[hidden],
+body:not(.show-tcmb-rate-strip) #tcmbRateStrip {
+  display: none !important;
+}
+
 .tcmb-rate-heading {
   display: grid;
   align-content: center;
