@@ -16322,7 +16322,7 @@ async function processTakbisUpload(files) {
   if (!files.length) return;
   state.uploads.takbis = files.length === 1 ? files[0].name : `${files.length} dosya`;
 
-  if (isCurrentUserAdmin() && files.length === 1) {
+  if (files.length === 1) {
     let probe = null;
     try {
       probe = await readMultiTakbisPdf(files[0]);
@@ -16336,7 +16336,7 @@ async function processTakbisUpload(files) {
       };
       return;
     }
-  } else if (isCurrentUserAdmin() && files.length > 1) {
+  } else if (files.length > 1) {
     const allRecords = [];
     const errors = [];
     for (const file of files) {
