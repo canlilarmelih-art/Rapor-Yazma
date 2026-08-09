@@ -16164,7 +16164,19 @@ async function processTakbisFile(file) {
 function splitMultiTakbisRowBlocks(rows) {
   const startIndexes = [];
   (rows || []).forEach((row, index) => {
-    if (/TAPU\s+KAYIT\s+BILGISI/.test(foldTurkish(row?.text || ""))) startIndexes.push(index);
+    const current = foldTurkish(row?.text || "")
+      .replace(/[\u00A0\u2007\u202F]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (!/\bTAPU\b/.test(current)) return;
+    const headerWindow = (rows || [])
+      .slice(index, index + 3)
+      .map((candidate) => foldTurkish(candidate?.text || ""))
+      .join(" ")
+      .replace(/[\u00A0\u2007\u202F]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (/\bTAPU\s+KAYIT\s+BILGISI\b/.test(headerWindow)) startIndexes.push(index);
   });
   if (startIndexes.length <= 1) return [rows || []];
   return startIndexes.map((start, i) => {
@@ -16238,7 +16250,12 @@ async function readMultiTakbisPdf(file) {
 // aktarılır; yalnızca "kaynak" rozeti diğer taşınmazlar için güncel
 // kalmayabilir (kozmetik, veri kaybı DEĞİL).
 function importTakbisRecordsIntoTitleUnits(records) {
-  const validRecords = (records || []).filter((record) => record && record.fields);
+  const validRecords = (records || []).filter(
+    (record) =>
+      record &&
+      record.fields &&
+      Object.values(record.fields).some((value) => String(value ?? "").trim()),
+  );
   if (!validRecords.length) return 0;
 
   validRecords.forEach((record, index) => {

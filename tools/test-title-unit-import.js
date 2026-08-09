@@ -119,6 +119,8 @@ function record(id, blockNo, owners = [{ name: "MALİK" }]) {
   assert.equal(sandbox.getApplyCalls().length, 0, "Boş dizide hiçbir apply* fonksiyonu çağrılmamalı.");
   const count2 = sandbox.fns.importTakbisRecordsIntoTitleUnits([{ owners: [] }]); // fields yok -> geçersiz
   assert.equal(count2, 0, "fields'ı olmayan kayıt geçersiz sayılıp atlanmalı.");
+  const count3 = sandbox.fns.importTakbisRecordsIntoTitleUnits([{ fields: {}, owners: [] }]);
+  assert.equal(count3, 0, "Tamamen bos fields nesnesi bos tab olarak eklenmemeli.");
   console.log("Bos/gecersiz girdi testi tamam.");
 }
 

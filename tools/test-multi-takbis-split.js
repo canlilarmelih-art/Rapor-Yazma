@@ -132,4 +132,26 @@ function row(text) {
   console.log("Buyuk/kucuk harf ve Turkce karakter varyasyonu testi tamam.");
 }
 
+// --- 5) PDF.js başlığı komşu satırlara böldüğünde de ayırma -------------------
+{
+  const rows = [
+    row("TAPU KAYIT"),
+    row("BİLGİSİ"),
+    row("Taşınmaz Kimlik No: 96455493"),
+    row("İlk kaydın devamı"),
+    row("TAPU"),
+    row("KAYIT"),
+    row("BİLGİSİ"),
+    row("Taşınmaz Kimlik No: 96455499"),
+    row("İkinci kaydın devamı"),
+  ];
+  const blocks = fns.splitMultiTakbisRowBlocks(rows);
+  assert.equal(blocks.length, 2, "Komşu satırlara bölünmüş iki TAKBİS başlığı da bulunmalı.");
+  assert.equal(blocks[0][0].text, "TAPU KAYIT", "İlk blok bölünmüş başlığın ilk satırından başlamalı.");
+  assert.equal(blocks[1][0].text, "TAPU", "İkinci blok bölünmüş başlığın ilk satırından başlamalı.");
+  assert.ok(blocks[0].some((r) => r.text.includes("96455493")) && !blocks[0].some((r) => r.text.includes("96455499")));
+  assert.ok(blocks[1].some((r) => r.text.includes("96455499")) && !blocks[1].some((r) => r.text.includes("96455493")));
+  console.log("PDF.js satir bolmeli baslik testi tamam.");
+}
+
 console.log("Coklu TAKBIS PDF bolme testleri basarili.");

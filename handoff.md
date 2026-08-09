@@ -8056,3 +8056,7 @@ Doğrulama: `node --check app.js`, `node tools/check-basic.js`, `git diff --chec
 - TCMB Piyasa Verisi bandı varsayılan olarak CSS ile gizlendi; yalnızca aktif bölüm `valuation` olduğunda görünür hale geliyor.
 - `hidden` niteliği ve gövde görünürlük sınıfı birlikte kullanıldı; eski cache’li oturumlarda da diğer bölümlerde görünmemesi sağlandı.
 - `index.html` app.js cache-buster `20260810-0015` yapıldı.
+# 0.0.388 - 2026-08-10 - Coklu TAKBIS PDF baslik ayirma duzeltmesi
+
+- Iki tasinmazli TAKBIS PDF icin PDF.js basligi komsu satirlara bolse bile `splitMultiTakbisRowBlocks` uc satirlik normalize edilmis pencereyle taraniyor.
+- Tamamen bos `fields` nesneleri gecersiz sayiliyor; sahte bos tasinmaz tabu olusmuyor. Ilgili split/import regresyon testleri eklendi. `index.html` app.js cache-buster `20260810-0400` yapildi.
