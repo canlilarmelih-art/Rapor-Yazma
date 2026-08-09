@@ -8035,6 +8035,12 @@ Doğrulama: `node --check app.js`, `node tools/check-basic.js`, `git diff --chec
 - Adres alanlari tasinmazlar arasinda ayrilmis olarak saklaniyor; paylasimli alanlarin davranisi korunuyor.
 - `index.html` app.js cache-buster `20260810-0145` yapildi.
 
+## 0.0.399 - 2026-08-10 - Excel bolum dosyasi round-trip baslik esleme duzeltmesi
+
+- Bolumden indirilen Excel dosyasinin ayni bolume geri yuklenmesi icin `Kayit No` sonrasinda kolon sirasi yedek esleme olarak desteklendi.
+- Excel basliklarindaki BOM ve gorunmez karakterler normalize ediliyor.
+- `index.html` app.js cache-buster `20260810-0215` yapildi.
+
 - TCMB Piyasa Verisi bandı varsayılan olarak CSS ile gizlendi; yalnızca aktif bölüm `valuation` olduğunda görünür hale geliyor.
 - `hidden` niteliği ve gövde görünürlük sınıfı birlikte kullanıldı; eski cache’li oturumlarda da diğer bölümlerde görünmemesi sağlandı.
 - `index.html` app.js cache-buster `20260810-0015` yapıldı.

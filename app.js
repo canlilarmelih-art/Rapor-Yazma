@@ -14723,7 +14723,15 @@ function importSectionExcelRows(section, rows) {
     byHeader.set(window.RaporMultiRequestXlsx.normalizeHeader(definition.label), definition);
     byHeader.set(window.RaporMultiRequestXlsx.normalizeHeader(definition.key), definition);
   });
-  const mapped = rows[0].map((header) => byHeader.get(window.RaporMultiRequestXlsx.normalizeHeader(header)) || null);
+  const normalizedHeaders = rows[0].map((header) => window.RaporMultiRequestXlsx.normalizeHeader(header));
+  let mapped = normalizedHeaders.map((header) => byHeader.get(header) || null);
+  // Excel bazen başlık hücrelerini yeniden biçimlendirir. Uygulamanın kendi
+  // dışa aktardığı dosyalarda ilk sütun sabit olduğu için kolon sırası güvenilir
+  // bir yedek eşleme olarak kullanılabilir.
+  if (!mapped.some(Boolean) && normalizedHeaders[0] === window.RaporMultiRequestXlsx.normalizeHeader("Kayıt No")) {
+    mapped = rows[0].slice(1, definitions.length + 1).map((_, index) => definitions[index] || null);
+    mapped.unshift(null);
+  }
   if (!mapped.some(Boolean)) throw new Error("Excel başlıkları bu ana bölümle eşleşmedi.");
   const imported = rows.slice(1).map((row) => {
     const fields = {};

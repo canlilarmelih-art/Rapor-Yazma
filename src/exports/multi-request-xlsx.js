@@ -25,6 +25,7 @@
 
   function normalizeHeader(value) {
     return String(value ?? "")
+      .replace(/[\uFEFF\u200B]/g, "")
       .trim()
       .toLocaleLowerCase("tr-TR")
       .replace(/[çÇ]/g, "c")
