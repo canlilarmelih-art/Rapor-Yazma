@@ -7979,3 +7979,11 @@ Doğrulama: `node --check app.js`, `node tools/check-basic.js`, `git diff --chec
 - XLSX/CSV ice aktarimi taninan kolonlari mevcut form alanlarina yazar; UAVT zorunlu, bos/gecersiz satirlar raporlanir, mevcut veri uzerine yazmadan once onay istenir.
 - Rapor-genelindeki Banka ve Cikti/Masraf, admin/yonetim alanlari ile dosya/harita/OCR gibi ikili veya otomatik uretilen varliklar satir bazli aktarilmaz; bunlar tek talep/oturum baglamina aittir.
 - Yeni `src/exports/multi-request-xlsx.js` dosyasi deploy minify listesine eklendi; `npm.cmd test` tam zinciri basarili.
+
+## 0.0.390 - 2026-08-09 - Sonraki tasinmaz metadata satirinin ipotege sizmasi
+
+- Kullanici ekran goruntusu: ipotek tablosunda sonraki kaydin `12.06.2026 / 18` tarih-yevmiye satiri gorunmeye devam ediyordu.
+- `getTakbisEncumbranceGroups()` siniri; `TASINMAZ KIMLIK NO` ile `BU BELGE ... tarih` metadata satirlarini da sonraki kayit baslangici kabul edecek sekilde genisletildi.
+- `parseTakbisEncumbrances()` yalnizca tarih/yevmiye tasiyan, turu/aciklamasi olmayan kayitlari artik takyidat olarak kabul etmiyor.
+- Yeni metadata-only regresyon testi eklendi; `npm.cmd test` tam zinciri basarili.
+- `index.html` app.js cache-buster `20260809-1930` yapildi; tarayici eski parser kodunu kullanmayacak.

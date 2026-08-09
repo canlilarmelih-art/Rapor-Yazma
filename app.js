@@ -16833,7 +16833,9 @@ function parseTakbisEncumbrances(rows, pageWidth = 842) {
   const records = groups
     .flatMap((group) => parseTakbisEncumbranceRows(group.rows, group.key, pageWidth))
     .flatMap(expandTakbisEmbeddedMortgageAnnotations)
-    .filter((record) => (record.type || record.description || record.date || record.journalNo) && !isTakbisEncumbranceNoiseRecord(record));
+    // Yalnızca tarih/yevmiye taşıyan satır, sonraki taşınmazın belge metadata'sıdır;
+    // gerçek takyidat kaydında en az tür veya açıklama bulunmalıdır.
+    .filter((record) => (record.type || record.description) && !isTakbisEncumbranceNoiseRecord(record));
 
   return dedupeTakbisEncumbrances(records);
 }
@@ -16871,7 +16873,9 @@ function getTakbisEncumbranceGroups(rows) {
     // Bir sonraki taşınmaz kaydının başlığı takyidat grubuna dahil edilmez.
     const boundaryStart = sourceRows.findIndex((row, index) => {
       if (index <= start.index || index >= nextSectionIndex) return false;
-      return /MULKIYET\s+BILGILERI|EKLENTI\s+BILGILERI|TAPU\s+KAYIT\s+BILGISI/.test(foldTurkish(row?.text || ""));
+      const foldedText = foldTurkish(row?.text || "");
+      return /MULKIYET\s+BILGILERI|EKLENTI\s+BILGILERI|TAPU\s+KAYIT\s+BILGISI|TASINMAZ\s+KIMLIK\s+NO/.test(foldedText)
+        || (/BU\s+BELGE/.test(foldedText) && /\d{1,2}[.\/-]\d{1,2}[.\/-]\d{4}/.test(foldedText));
     });
     const end = boundaryStart > start.index ? boundaryStart : nextSectionIndex;
     return { key: start.key, rows: sourceRows.slice(start.index, end) };

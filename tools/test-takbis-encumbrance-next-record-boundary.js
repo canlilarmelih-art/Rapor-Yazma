@@ -3,6 +3,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const appSource = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
+assert.match(appSource, /filter\(\(record\) => \(record\.type \|\| record\.description\) && !isTakbisEncumbranceNoiseRecord/);
 
 function extractFunction(name) {
   const marker = `function ${name}(`;
@@ -69,6 +70,20 @@ function row(text) {
   assert.ok(ipotekGroup, "Ipotek group should still exist.");
   assert.equal(ipotekGroup.rows.length, 3, "The group should stop at TAPU KAYIT BILGISI.");
   assert.ok(!ipotekGroup.rows.some((item) => item.text.includes("12.06.2026") || item.text.includes("222222")));
+}
+
+{
+  const rows = [
+    row("IPOTEK BILGILERI"),
+    row("Ipotek Lehdari: Nurol Yatirim Bankasi"),
+    row("Ipotek Tutari: 109.260.000,00 TL Tarih: 29.05.2025 Yevmiye No: 28866"),
+    row("BU BELGE 12.06.2026 TARİHİNDE ALINMIŞTIR"),
+    row("Sira No: 18"),
+  ];
+  const groups = fns.getTakbisEncumbranceGroups(rows);
+  const ipotekGroup = groups.find((group) => group.key === "ipotek");
+  assert.equal(ipotekGroup.rows.length, 3, "The group should stop at next-record metadata without a section heading.");
+  assert.ok(!ipotekGroup.rows.some((item) => item.text.includes("12.06.2026") || item.text.includes("18")));
 }
 
 {
