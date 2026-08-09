@@ -194,6 +194,29 @@ fonksiyonları hafif stub'larla değiştirildi (o fonksiyonlar zaten
 `processTakbisFile` akışında kanıtlanmış; burada test edilen YENİ
 orkestrasyon mantığı).
 
+**Ayrı buton KALDIRILDI, mevcut TAKBİS düğmesi konsolide edildi (2026-08-09, 5. artış):**
+
+Kullanıcı haklı bir soru sordu: "zaten mevcutta takbis ekle butonu vardı
+buradan çözemez miydik bunu?" — Cevap: evet, ve bu yapıldı. Önceki artışta
+eklenen AYRI "Çoklu TAKBİS Önizleme" paneli/butonu (`createMultiTakbisPreviewPanel`)
+TAMAMEN KALDIRILDI. Artık TEK buton var: "Dosya ve Rapor" > TAKBİS PDF.
+
+- `processTakbisUpload(files)` — `createUploadGrid`'in "takbis" dalından
+  çağrılır. **Admin + tek dosya**: önce `readMultiTakbisPdf` ile SESSİZCE
+  "kaç kayıt var" yoklanır (probe); yoklama BAŞARISIZ olursa VEYA 1 kayıt
+  bulunursa HER ZAMAN eski/kanıtlanmış `processTakbisFile()`'a (OCR yedek
+  akışı DAHİL) düşülür — normal tek-tapu akışı sıfır regresyonla korunur.
+  Yalnızca GERÇEKTEN >1 kayıt bulunursa çoklu akışa geçilir. **Admin + >1
+  dosya**: input artık `multiple` (yalnızca admin için, `<input>`'a
+  dinamik eklendi) — hepsi işlenip kayıtlar birleştirilir. **Normal
+  kullanıcı**: DEĞİŞMEDİ, her zaman `processTakbisFile()` (tek dosya).
+- Çoklu kayıt tespit edilince `pendingMultiTakbisImport` (modül-seviyesi,
+  `state` DIŞINDA — `activeSectionId` gibi geçici UI durumu) doldurulur;
+  "case" sekmesinde `createMultiTakbisPendingImportPanel()` (mevcut
+  `createMultiTakbisPreviewTable`'ı yeniden kullanır) bir onay ekranı
+  gösterir — "Rapora Aktar" / "Vazgeç".
+- `importTakbisRecordsIntoTitleUnits` DEĞİŞMEDİ (bir önceki artıştan).
+
 **HENÜZ YAPILMADI (sıradaki adımlar, öncelik sırasıyla):**
 
 1. Gerçek admin girişiyle UÇTAN UCA canlı doğrulama (dosya yükle → önizle

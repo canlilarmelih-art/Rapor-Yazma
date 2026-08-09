@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.386 - 2026-08-09 - Ayrı "Çoklu TAKBİS" butonu KALDIRILDI, mevcut TAKBİS düğmesi konsolide edildi
+
+- Kullanıcı geri bildirimi: "zaten mevcutta takbis ekle butonu vardı buradan çözemez miydik bunu?" — haklı, ayrı buton gereksizdi. Bkz. `docs/coklu-takbis-import-plan.md`, "Ayrı buton KALDIRILDI" bölümü.
+- `createMultiTakbisPreviewPanel` (0.0.381'de eklenen ayrı panel/buton) TAMAMEN KALDIRILDI.
+- `app.js`: yeni `processTakbisUpload(files)` — mevcut "TAKBİS PDF" yükleme alanından (`createUploadGrid`, "takbis" dalı) çağrılıyor. Admin + tek dosyada önce SESSİZCE `readMultiTakbisPdf` ile kaç kayıt olduğu yoklanıyor; yoklama başarısız olursa veya 1 kayıt bulunursa HER ZAMAN eski `processTakbisFile()` (OCR yedek akışı DAHİL) çalışıyor — normal tek-tapu akışı sıfır regresyonla korundu. Yalnızca gerçekten >1 kayıt varsa (veya admin birden fazla dosya seçtiyse — `<input multiple>` artık yalnızca admin için dinamik ekleniyor) çoklu akışa geçiliyor.
+- Çoklu kayıt tespit edilince `pendingMultiTakbisImport` (modül-seviyesi geçici UI durumu, `state`'e YAZILMIYOR) dolduruluyor; "Dosya ve Rapor" sekmesinde `createMultiTakbisPendingImportPanel()` (mevcut `createMultiTakbisPreviewTable` yeniden kullanılıyor) bir onay ekranı gösteriyor — "Rapora Aktar"/"Vazgeç".
+- `importTakbisRecordsIntoTitleUnits` DEĞİŞMEDİ. `npm run verify` tamamı (yeni test dosyası eklenmedi, mevcutlar hepsi geçti — `processTakbisUpload`'ın async/PDF-bağımlı dalları gerçek pdf.js/DOM gerektirdiğinden sandbox'ta test edilemedi, kod incelemesiyle doğrulandı).
+- `index.html` cache-buster: `app.js` → `20260809-0530`.
+
 ## 0.0.385 - 2026-08-09 - Önizleme panelinden "Rapora Aktar" akışı eklendi
 
 - Kullanıcı: "dediğin çok mantıklı yapalım" (bir önceki turda önerilen "Rapora Aktar" akışı onaylandı). Bkz. `docs/coklu-takbis-import-plan.md`, "Önizleme panelinden 'Rapora Aktar' — LANDLENDİ" bölümü.
