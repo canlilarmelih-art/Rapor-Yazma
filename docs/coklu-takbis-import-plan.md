@@ -146,6 +146,21 @@ taşınmazın verisi `state.fields`/`state.tables`'a "yüklenir".
   YAPILAMADI (standart proje kısıtlaması) — `node --check` + tam test
   suite'i + kod incelemesiyle doğrulandı.
 
+**"Talep Türü" alanı — LANDLENDİ (2026-08-09, 3. artış):**
+
+Kullanıcı "talep oluşturma ekranına talep türü kısmı girelim, tekli talep
+çoklu talep olarak seçsek nasıl olur" dedi. `"Dosya ve Rapor"` sekmesine
+(ilk alan) `requestType` eklendi: **"Tekli Talep"** (varsayılan) /
+**"Çoklu Talep"**. Tab çubuğu artık İKİ koşulun İKİSİ de doğruyken görünür:
+admin-only **VE** `requestType === "Çoklu Talep"`. Varsayılan "Tekli Talep"
+olduğu ve mevcut/eski raporlarda bu alan hiç kayıtlı olmadığı için TÜM
+mevcut raporlarda tab çubuğu sessizce gizli kalır — sıfır görsel değişiklik.
+Güvenlik ağı: kullanıcı "Çoklu Talep"ten "Tekli Talep"e dönerse VE aktif tab
+birincil değilse, otomatik olarak birincile geçilir (veri KAYBOLMAZ, kendi
+yuvasına park edilir) — aksi halde tab çubuğu kaybolunca kullanıcı "yetim"
+bir ek taşınmazın verisini görmeye devam ederdi. Test: 7. senaryo olarak
+`tools/test-title-unit-switch.js`'e eklendi (kaynak-düzeyi doğrulama).
+
 **HENÜZ YAPILMADI (sıradaki adımlar, öncelik sırasıyla):**
 
 1. **Önizleme panelinden "İçe Aktar" akışı** — `createMultiTakbisPreviewPanel`

@@ -229,4 +229,31 @@ function freshState(overrides = {}) {
   console.log("Paylasimli/kapsam-disi alanlarin etkilenmemesi testi tamam.");
 }
 
+// --- 7) "Talep Türü" alanı ve gizleme güvenlik ağı (kaynak-düzeyi) ------
+// switchActiveTitleUnit vb. saf fonksiyonlar bu gate'ten habersiz (gate
+// renderSection/createForm'da yaşıyor, DOM bağımlı) — bu yüzden davranışı
+// kaynak metninde doğruluyoruz, tıpkı loadState() için yapıldığı gibi
+// (bkz. tools/test-title-unit-model.js).
+{
+  assert.match(
+    appSource,
+    /key: "requestType",\s*\n\s*label: "Talep Türü",\s*\n\s*type: "select",\s*\n\s*defaultValue: "Tekli Talep",[\s\S]{0,120}options: \["Tekli Talep", "Çoklu Talep"\],/,
+    "\"case\" sekmesinde requestType alanı (Tekli/Çoklu Talep, varsayılan Tekli) tanımlı olmalı."
+  );
+  assert.match(
+    appSource,
+    /\["title", "encumbrance"\]\.includes\(section\.id\) && isCurrentUserAdmin\(\) && state\.fields\.requestType === "Çoklu Talep"/,
+    "Tab çubuğu YALNIZCA admin + \"Çoklu Talep\" ikisi birden doğruyken render edilmeli (mevcut/yeni raporlarda varsayılan olarak GİZLİ kalmalı)."
+  );
+  const requestTypeGuardOccurrences = appSource.split(
+    'field.key === "requestType" && event.target.value !== "Çoklu Talep" && state.activeTitleUnitIndex !== 0'
+  ).length - 1;
+  assert.equal(requestTypeGuardOccurrences, 1, "\"input\" olayında Çoklu Talep'ten çıkışta otomatik birincile dönüş güvenlik ağı bir kez tanımlı olmalı.");
+  const requestTypeBlurGuardOccurrences = appSource.split(
+    'field.key === "requestType" && formattedValue !== "Çoklu Talep" && state.activeTitleUnitIndex !== 0'
+  ).length - 1;
+  assert.equal(requestTypeBlurGuardOccurrences, 1, "\"blur\" olayında da aynı güvenlik ağı bir kez tanımlı olmalı (select alanları bazı tarayıcılarda blur tetikleyebilir).");
+  console.log("Talep Turu alani + gizleme guvenlik agi (kaynak-duzeyi) testi tamam.");
+}
+
 console.log("Coklu TAKBIS Faz 2 tab-anahtarlama motoru testleri basarili.");

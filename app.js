@@ -83,6 +83,22 @@ const sections = [
     description:
       "Banka, randevu, iş dosyası ve belge kaynakları burada yönetilir. Bu ekran hem mobilde hızlı başlangıç hem masaüstünde üretim kontrolü için merkezdir.",
     fields: [
+      // Çoklu TAKBİS Faz 2 (2026-08-09, bkz. docs/coklu-takbis-import-plan.md)
+      // — kullanıcı talebi: "talep türü kısmı girelim, tekli/çoklu talep
+      // olarak seçsek". Varsayılan "Tekli Talep" — TÜM mevcut raporlar
+      // (bu alan hiç kayıtlı değilken) sessizce bu varsayılana düşer, yani
+      // tapu-başına tab çubuğu "Çoklu Talep" AÇIKÇA seçilmeden hiç
+      // görünmez (bkz. renderSection'daki requestType kontrolü) — admin-only
+      // gate'e ek bir güvenlik katmanı.
+      {
+        key: "requestType",
+        label: "Talep Türü",
+        type: "select",
+        defaultValue: "Tekli Talep",
+        critical: true,
+        options: ["Tekli Talep", "Çoklu Talep"],
+        note: "Çoklu Talep seçilirse Tapu ve Mülkiyet/Takyidat sekmelerinde taşınmaz başına ayrı tab açılır (deneysel).",
+      },
       {
         key: "bank",
         label: "Banka",
@@ -2198,8 +2214,12 @@ function renderSection() {
   // Çoklu TAKBİS Faz 2 — tab çubuğu, sekmenin EN ÜSTÜNDE (kullanıcı
   // talimatı, bkz. docs/coklu-takbis-import-plan.md). Yalnızca "Tapu ve
   // Mülkiyet"/"Takyidat" — kapsam kasıtlı olarak dar, bkz.
-  // TITLE_UNIT_SCOPED_SECTION_IDS yorumu. Admin-only.
-  if (["title", "encumbrance"].includes(section.id) && isCurrentUserAdmin()) {
+  // TITLE_UNIT_SCOPED_SECTION_IDS yorumu. Admin-only VE kullanıcı "Dosya ve
+  // Rapor" sekmesinde "Talep Türü"nü açıkça "Çoklu Talep" seçmiş olmalı —
+  // bu ikinci koşul olmadan TÜM mevcut/yeni raporlar (requestType hiç
+  // kayıtlı değilken "Tekli Talep" varsayılanına düşer) tab çubuğunu HİÇ
+  // görmez, sıfır görsel değişiklik.
+  if (["title", "encumbrance"].includes(section.id) && isCurrentUserAdmin() && state.fields.requestType === "Çoklu Talep") {
     body.append(createTitleUnitTabBar());
   }
 
@@ -2587,6 +2607,17 @@ function createForm(section) {
         if (syncCurrentUsageNatureWithLegalNature()) clearFieldSourceOwnership("currentUsageNature");
       }
       if (section.id === "case" && field.key === "ownershipType") clearLandOwnershipDependentData(event.target.value);
+      // Çoklu TAKBİS Faz 2: "Çoklu Talep"ten çıkılırken tab çubuğu HEMEN
+      // gizlenir (yukarıdaki renderSection kontrolü) — ama aktif taşınmaz
+      // hâlâ birincil DEĞİLSE state.fields "yetim" bir ek taşınmazı
+      // gösterirdi (kullanıcının artık tab çubuğu üzerinden geri
+      // dönebileceği bir yolu kalmaz). Güvenlik için otomatik birincile
+      // dön — veri KAYBOLMAZ (switchActiveTitleUnit onu kendi yuvasına
+      // park eder, "Çoklu Talep" tekrar seçilirse tab çubuğunda görünmeye
+      // devam eder).
+      if (section.id === "case" && field.key === "requestType" && event.target.value !== "Çoklu Talep" && state.activeTitleUnitIndex !== 0) {
+        switchActiveTitleUnit(0);
+      }
       if (field.key === "caseName") caseTitle.textContent = event.target.value || "Yeni Ekspertiz Raporu";
       refreshPlanningNoteFromCurrentFields(field.key);
       refreshEnvironmentDescriptionFromCurrentFields(field.key);
@@ -2624,6 +2655,7 @@ function createForm(section) {
         });
       }
       if (section.id === "case" && field.key === "ownershipType") render();
+      if (section.id === "case" && field.key === "requestType") render();
       if (section.id === "case" && field.key === "legalUsageNature") renderSection();
       if (section.id === "case" && ["legalUsageNature", "ownershipType"].includes(field.key) && activeSectionId === "land") renderSection();
       if (section.id === "title" && ["groundType", "titleCity", "titleDistrict"].includes(field.key)) renderSection();
@@ -2670,6 +2702,9 @@ function createForm(section) {
         if (syncCurrentUsageNatureWithLegalNature()) clearFieldSourceOwnership("currentUsageNature");
       }
       if (section.id === "case" && field.key === "ownershipType") clearLandOwnershipDependentData(formattedValue);
+      if (section.id === "case" && field.key === "requestType" && formattedValue !== "Çoklu Talep" && state.activeTitleUnitIndex !== 0) {
+        switchActiveTitleUnit(0);
+      }
       if (field.key === "caseName") caseTitle.textContent = formattedValue || "Yeni Ekspertiz Raporu";
       refreshPlanningNoteFromCurrentFields(field.key);
       refreshEnvironmentDescriptionFromCurrentFields(field.key);
@@ -2698,6 +2733,7 @@ function createForm(section) {
       renderValidation();
       updateStatus();
       if (section.id === "case" && field.key === "ownershipType") render();
+      if (section.id === "case" && field.key === "requestType") render();
       if (section.id === "case" && field.key === "legalUsageNature") renderSection();
       if (section.id === "case" && ["legalUsageNature", "ownershipType"].includes(field.key) && activeSectionId === "land") renderSection();
     });

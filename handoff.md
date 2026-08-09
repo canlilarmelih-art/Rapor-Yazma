@@ -1,5 +1,15 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.384 - 2026-08-09 - "Talep Türü" alanı (Tekli/Çoklu Talep) - tab çubuğunu gate'liyor
+
+- Kullanıcı: "talep oluşturma ekranına talep türü kısmı girelim, tekli talep çoklu talep olarak seçsek nasıl olur." Bkz. `docs/coklu-takbis-import-plan.md`, "'Talep Türü' alanı — LANDLENDİ" bölümü.
+- `app.js`: "Dosya ve Rapor" sekmesine (ilk alan) `requestType` eklendi — `select`, seçenekler `["Tekli Talep", "Çoklu Talep"]`, varsayılan `"Tekli Talep"`.
+- Tapu ve Mülkiyet/Takyidat tab çubuğu artık İKİ koşul birden doğruyken görünür: `isCurrentUserAdmin()` **VE** `state.fields.requestType === "Çoklu Talep"`. Varsayılan + mevcut raporlarda alan hiç kayıtlı olmadığı için TÜM mevcut raporlarda tab çubuğu sessizce gizli kalır — 0.0.383'ün admin-only riskini bir kademe daha azaltıyor (artık admin bile açıkça "Çoklu Talep" seçmeden görmüyor).
+- Güvenlik ağı: "Çoklu Talep"ten çıkılırken aktif tab birincil değilse otomatik `switchActiveTitleUnit(0)` çağrılır (hem `input` hem `blur` olay dinleyicisinde, `ownershipType` alanındaki mevcut desenle birebir aynı yapıda) — veri KAYBOLMAZ (kendi yuvasına park edilir), yalnızca kullanıcının "yetim" bir ek taşınmaz görmesi engellenir.
+- Test: `tools/test-title-unit-switch.js`'e 7. senaryo eklendi (requestType alan tanımı + gate koşulu + her iki event handler'daki güvenlik ağının kaynak-düzeyinde varlığı) — `npm run verify` tamamı geçti.
+- Kendi kontrolümde yakalanan hata: `package.json`'a test zincirini eklerken kazara fazladan boş satır girdim (JSON söz dizimini bozmuyordu ama gereksizdi) — fark edilip düzeltildi, `JSON.parse` ile doğrulandı.
+- `index.html` cache-buster: `app.js` → `20260809-0430`.
+
 ## 0.0.383 - 2026-08-09 - Çoklu TAKBİS Faz 2: tapu-başına tab çubuğu (takas mimarisi, admin-only)
 
 - Kullanıcı "faz 2 riskli kısmı yapalım ama önce yedek al" dedi. Yedek: `backups/before-title-unit-tab-ui_*`. TÜM detay ve gerekçe: `docs/coklu-takbis-import-plan.md`, "Tab çubuğu UI + anahtarlama motoru — LANDLENDİ" bölümü.
