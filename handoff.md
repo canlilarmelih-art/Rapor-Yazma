@@ -8041,6 +8041,12 @@ Doğrulama: `node --check app.js`, `node tools/check-basic.js`, `git diff --chec
 - Excel basliklarindaki BOM ve gorunmez karakterler normalize ediliyor.
 - `index.html` app.js cache-buster `20260810-0215` yapildi.
 
+## 0.0.400 - 2026-08-10 - Excel sharedStrings okuyucu destegi
+
+- Excel dosyalarinda baslik ve hucre metinleri `sharedStrings.xml` indeksleriyle saklandiginda okuyucu bu metinleri artik cozuyor.
+- Gercek Halkbankasi Tapu Excel dosyasinda gorulen `t=s` hucre yapisi desteklendi.
+- `index.html` app.js cache-buster `20260810-0245` yapildi.
+
 - TCMB Piyasa Verisi bandı varsayılan olarak CSS ile gizlendi; yalnızca aktif bölüm `valuation` olduğunda görünür hale geliyor.
 - `hidden` niteliği ve gövde görünürlük sınıfı birlikte kullanıldı; eski cache’li oturumlarda da diğer bölümlerde görünmemesi sağlandı.
 - `index.html` app.js cache-buster `20260810-0015` yapıldı.

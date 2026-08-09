@@ -156,7 +156,7 @@
     return rows;
   }
 
-  function parseSheetXml(xmlText) {
+  function parseSheetXml(xmlText, sharedStrings = []) {
     const xml = new DOMParser().parseFromString(xmlText, "application/xml");
     if (xml.querySelector("parsererror")) throw new Error("XLSX çalışma sayfası okunamadı.");
     return [...xml.querySelectorAll("row")].map((row) => {
@@ -167,7 +167,11 @@
         let col = 0;
         if (match) [...match[1].toUpperCase()].forEach((char) => { col = col * 26 + char.charCodeAt(0) - 64; });
         col -= 1;
-        let value = cell.querySelector("is t")?.textContent || cell.querySelector("v")?.textContent || "";
+        const rawValue = cell.querySelector("v")?.textContent || "";
+        let value = cell.querySelector("is t")?.textContent || rawValue;
+        if (cell.getAttribute("t") === "s" && rawValue !== "") {
+          value = sharedStrings[Number(rawValue)] ?? "";
+        }
         while (values.length <= col) values.push("");
         values[col] = value;
       });
@@ -182,7 +186,12 @@
     const decoder = new TextDecoder();
     const sheetName = [...entries.keys()].find((key) => /^xl\/worksheets\/sheet\d+\.xml$/i.test(key));
     if (!sheetName) throw new Error("XLSX içinde çalışma sayfası bulunamadı.");
-    return parseSheetXml(decoder.decode(entries.get(sheetName)));
+    const sharedStringsXml = entries.get("xl/sharedStrings.xml");
+    const sharedStrings = sharedStringsXml
+      ? [...new DOMParser().parseFromString(decoder.decode(sharedStringsXml), "application/xml").querySelectorAll("si")]
+        .map((item) => [...item.querySelectorAll("t")].map((node) => node.textContent || "").join(""))
+      : [];
+    return parseSheetXml(decoder.decode(entries.get(sheetName)), sharedStrings);
   }
 
   window.RaporMultiRequestXlsx = { exportRows, readRows, normalizeHeader };
