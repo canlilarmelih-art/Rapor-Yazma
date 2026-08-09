@@ -4595,6 +4595,58 @@ td textarea.table-textarea {
   margin: 12px 0 8px;
 }
 
+.section-excel-panel {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+  min-height: 54px;
+  padding: 8px 20px 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.section-excel-panel .section-excel-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
+  padding: 5px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+  transition: border-color var(--speed-fast) var(--ease-out), box-shadow var(--speed-fast) var(--ease-out), transform var(--speed-fast) var(--ease-out);
+}
+
+.section-excel-panel .section-excel-icon-button:hover,
+.section-excel-panel .section-excel-icon-button:focus-visible {
+  border-color: var(--green);
+  box-shadow: 0 3px 10px rgba(16, 124, 65, 0.18);
+  transform: translateY(-1px);
+}
+
+.section-excel-panel .section-excel-icon-button svg {
+  display: block;
+  width: 30px;
+  height: 30px;
+}
+
+.section-excel-panel .export-status {
+  max-width: 260px;
+  margin: 0 0 0 4px;
+  font-size: 11px;
+  line-height: 1.25;
+}
+
+.section-excel-panel .file-button {
+  font-size: 0;
+}
+
 .location-map-tools {
   display: grid;
   gap: 14px;

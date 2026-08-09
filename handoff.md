@@ -8023,6 +8023,12 @@ Doğrulama: `node --check app.js`, `node tools/check-basic.js`, `git diff --chec
 - Aktif tabin ayirt edilebilirligi korunurken sekme, islem dugmesi ve aciklama olculeri birlikte kucultuldu.
 - `index.html` app.js cache-buster `20260810-0045` yapildi.
 
+## 0.0.397 - 2026-08-10 - Excel kontrollerinin bolum karti ustune alinmasi
+
+- Her ana bolumun Excel yukle/indir kontrolleri kartin sag ustundeki kompakt arac cubuguna tasindi.
+- Kullanici tarafindan verilen Excel yukleme ve indirme ikonlari inline SVG olarak eklendi; mevcut import/export davranisi korunuyor.
+- `index.html` app.js cache-buster `20260810-0115` yapildi.
+
 - TCMB Piyasa Verisi bandı varsayılan olarak CSS ile gizlendi; yalnızca aktif bölüm `valuation` olduğunda görünür hale geliyor.
 - `hidden` niteliği ve gövde görünürlük sınıfı birlikte kullanıldı; eski cache’li oturumlarda da diğer bölümlerde görünmemesi sağlandı.
 - `index.html` app.js cache-buster `20260810-0015` yapıldı.

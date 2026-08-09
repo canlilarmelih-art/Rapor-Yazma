@@ -2281,7 +2281,7 @@ function renderSection() {
   }
 
   const sectionExcelPanel = createSectionExcelPanel(section);
-  if (sectionExcelPanel) body.append(sectionExcelPanel);
+  if (sectionExcelPanel) card.insertBefore(sectionExcelPanel, body);
 
   if (section.id === "land") {
     const climatePanel = createLandClimateEarthquakePanel();
@@ -14762,6 +14762,20 @@ function importSectionExcelRows(section, rows) {
   return imported.length;
 }
 
+function getSectionExcelIconMarkup(direction) {
+  const isDownload = direction === "download";
+  const arrowPath = isDownload
+    ? '<path d="M44 37V47M44 47L40 43M44 47L48 43" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />'
+    : '<path d="M44 51V41M44 41L40 45M44 41L48 45" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />';
+  return `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+    <path d="M14 8C14 5.79086 15.7909 4 18 4H38L50 16V56C50 58.2091 48.2091 60 46 60H18C15.7909 60 14 58.2091 14 56V8Z" fill="#107C41" />
+    <path d="M38 4L50 16H40C38.8954 16 38 15.1046 38 14V4Z" fill="#0E6B37" />
+    <path d="M22 22L27 30L22 38H25.5L28.8 32.6L32.1 38H35.5L30.5 30L35.5 22H32L28.8 27.2L25.5 22H22Z" fill="white" />
+    <circle cx="44" cy="44" r="12" fill="#1F9A55" stroke="white" stroke-width="2" />
+    ${arrowPath}
+  </svg>`;
+}
+
 function createSectionExcelPanel(section) {
   if (!window.RaporMultiRequestXlsx || !section?.fields?.length) return null;
   const panel = document.createElement("div");
@@ -14775,6 +14789,18 @@ function createSectionExcelPanel(section) {
     </div>
     <p class="export-status" data-section-excel-status aria-live="polite"></p>
   `;
+  const exportButton = panel.querySelector("[data-section-excel-export]");
+  exportButton.className = "section-excel-icon-button";
+  exportButton.innerHTML = getSectionExcelIconMarkup("download");
+  exportButton.setAttribute("aria-label", `${section.title} Excel indir`);
+  exportButton.title = `${section.title} Excel indir`;
+  const importLabel = panel.querySelector(".file-button");
+  importLabel.className = "section-excel-icon-button file-button";
+  importLabel.insertAdjacentHTML("afterbegin", getSectionExcelIconMarkup("upload"));
+  importLabel.setAttribute("aria-label", `${section.title} Excel yükle`);
+  importLabel.title = `${section.title} Excel yükle`;
+  panel.querySelector(".subsection-heading")?.remove();
+  panel.querySelector(".muted-note")?.remove();
   const status = panel.querySelector("[data-section-excel-status]");
   panel.querySelector("[data-section-excel-export]").addEventListener("click", () => {
     try {
