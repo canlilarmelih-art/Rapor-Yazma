@@ -21515,9 +21515,7 @@ function applyTakbisEncumbrancesToTable(encumbrances) {
   });
 
   encumbranceReportTables.forEach((table) => {
-    state.tables[table.key] = groupedRows[table.key].length
-      ? groupedRows[table.key]
-      : [];
+    state.tables[table.key] = groupedRows[table.key].filter((row) => hasMeaningfulEncumbranceTableRow(table.key, row));
   });
   refreshEncumbranceSummaryFromCurrentData();
 }
@@ -22831,7 +22829,12 @@ function createMaliklerTablePanel() {
 }
 
 function getFilledEncumbranceRows(tableKey) {
-  return (state.tables[tableKey] || []).filter((row) => Object.values(row || {}).some((value) => String(value || "").trim()));
+  return (state.tables[tableKey] || []).filter((row) => hasMeaningfulEncumbranceTableRow(tableKey, row));
+}
+
+function hasMeaningfulEncumbranceTableRow(tableKey, row) {
+  const keys = tableKey === "encumbranceMortgages" ? ["c0", "c1", "c2"] : Object.keys(row || {});
+  return keys.some((key) => String(row?.[key] || "").trim());
 }
 
 function isEncumbranceRightOrLiabilityRow(row) {
@@ -33549,6 +33552,7 @@ function createTable(section) {
     tableState.forEach(normalizeTakbisAnnotationTableRow);
   }
   if (section.id === "encumbranceMortgages") {
+    tableState = tableState.filter((row) => hasMeaningfulEncumbranceTableRow(section.id, row));
     tableState.forEach((row) => {
       if (row?.c0) row.c0 = normalizeMortgageCreditorDisplay(row.c0);
     });
@@ -34120,7 +34124,7 @@ function isEncumbranceReportTableKey(key) {
 function syncLegacyEncumbranceTable() {
   state.tables.encumbrance = encumbranceReportTables
     .flatMap((table) => (state.tables[table.key] || [])
-      .filter((row) => Object.values(row || {}).some(Boolean))
+      .filter((row) => hasMeaningfulEncumbranceTableRow(table.key, row))
       .map((row) => table.key === "encumbranceMortgages"
         ? {
             c0: "İpotek",

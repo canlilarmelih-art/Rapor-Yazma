@@ -4,6 +4,7 @@ const path = require("node:path");
 
 const appSource = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
 assert.match(appSource, /filter\(\(record\) => \(record\.type \|\| record\.description\) && !isTakbisEncumbranceNoiseRecord/);
+assert.match(appSource, /tableKey === "encumbranceMortgages" \? \["c0", "c1", "c2"\]/);
 
 function extractFunction(name) {
   const marker = `function ${name}(`;
@@ -33,10 +34,13 @@ function extractFunction(name) {
   throw new Error(`Function body not closed: ${name}`);
 }
 
-const functionNames = ["foldTurkish", "getTakbisEncumbranceGroups"];
+const functionNames = ["hasMeaningfulEncumbranceTableRow", "foldTurkish", "getTakbisEncumbranceGroups"];
 const sandboxSource = `${functionNames.map(extractFunction).join("\n")}\nreturn { ${functionNames.join(", ")} };`;
 // eslint-disable-next-line no-new-func
 const fns = new Function(sandboxSource)();
+
+assert.equal(fns.hasMeaningfulEncumbranceTableRow("encumbranceMortgages", { c3: "2026-06-12", c4: "18" }), false, "Mortgage metadata-only rows must not be treated as real mortgages.");
+assert.equal(fns.hasMeaningfulEncumbranceTableRow("encumbranceMortgages", { c0: "Banka", c3: "2026-06-12" }), true, "A mortgage with a creditor must remain visible.");
 
 function row(text) {
   return { text };

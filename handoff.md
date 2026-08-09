@@ -8007,3 +8007,10 @@ Doğrulama: `node --check app.js`, `node tools/check-basic.js`, `git diff --chec
 - `requestType` taşınmaz-bazlı snapshot alanlarından çıkarıldı; Tapu tabına geçişte `Çoklu Talep` artık `Tekli Talep`e dönmüyor.
 - Birincil ve ek taşınmazlar arasında geçiş için regresyon testi eklendi.
 - `index.html` app.js cache-buster `20260809-2140` yapıldı.
+
+## 0.0.394 - 2026-08-09 - Ipoteklerde metadata-only bos satir temizligi
+
+- İpotek tablolarında yalnızca tarih/yevmiye taşıyan satırlar gerçek ipotek kabul edilmiyor.
+- Lehdar, derece veya tutar bulunmayan ipotek satırları tablo render’ından, takyidat özetinden ve legacy senkronundan dışlanıyor.
+- Metadata-only regresyon testi eklendi; `npm.cmd test` tam zinciri başarılı.
+- `index.html` app.js cache-buster `20260809-2200` yapıldı.
