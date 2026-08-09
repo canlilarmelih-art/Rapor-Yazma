@@ -1,5 +1,17 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.382 - 2026-08-09 - Çoklu TAKBİS Faz 2: state.titleUnits[] veri modeli (plumbing, UI YOK)
+
+- Kullanıcı "madde 6'ya geçelim" dedi — bkz. `docs/coklu-takbis-import-plan.md`, "Faz 2: state.titleUnits[] veri modeli" bölümü, TÜM tasarım kararı ve gerekçesi orada.
+- **Tasarım kararı (additive, sıfır regresyon riski)**: mevcut `state.fields`/`state.tables` DEĞİŞMEDİ — her zaman "birincil taşınmaz"ı (bugünkü TÜM tek-tapu raporları) temsil etmeye devam ediyor. Yeni `state.titleUnits = []` dizisi yalnızca EK taşınmazları (2. ve sonraki tab) tutacak. Boş dizi = tek-tapu raporu = bugünkü davranış, birebir korunuyor.
+- Neden mevcut `fields`'ı diziye çevirmedik: `createForm` (69 çağıran) ve `renderSection` (89 çağıran) hub fonksiyonları `state.fields`'a yüzlerce yerden doğrudan erişiyor (CLAUDE.md/AGENTS.md hub-fonksiyon uyarısı) — birincil taşınmazı da taşımak devasa, tek seferde test edilemeyecek bir regresyon riski olurdu.
+- `app.js`: `loadState()`'e `titleUnits: []` fallback + `Array.isArray` merge mantığı eklendi (`saveState()` zaten tüm state'i `JSON.stringify` ile yazdığı için ayrı değişiklik gerekmedi). `createEmptyTitleUnit(overrides)` ve `computeTitleUnitTabLabel(unit, allUnits)` (kullanıcının onayladığı "aynı ada/parselde Blok-BBNo, farklıysa Ada Parsel" kuralı) eklendi.
+- `cloud/cloud-sync.js`: `CLOUD_WHITELIST`'e `"titleUnits"` eklendi — `buildCloudReportPayload`/`applyPayloadToState` genel key-listesi döngüsü kullandığından ek kod gerekmedi.
+- **Henüz hiçbir UI/render bu diziyi okumuyor/yazmıyor** — yalnızca veri modeli + saf yardımcı fonksiyonlar. Sıradaki (ve en riskli) adım: tab çubuğu UI'ı + `createForm`/`renderSection`'ın aktif taşınmaza göre okuma/yazma yapması — bu, hub fonksiyonlar olduğu için ayrı, odaklı bir oturumda `trace_path` ile tüm çağıranlar gözden geçirilerek ele alınmalı (plan dosyasında detaylandırıldı).
+- Yeni test: `tools/test-title-unit-model.js` (4 senaryo: `createEmptyTitleUnit` varsayılan/override, tab adlandırma kuralı — eksik Blok/BB No dahil, `loadState()` kaynak-düzeyi kontrolü, `CLOUD_WHITELIST` kontrolü) — `package.json`'daki `test` zincirine eklendi.
+- Kod değişikliğinden önce yerel yedek alındı: `backups/before-title-unit-data-model_*`.
+- `index.html` cache-buster'ları: `app.js` → `20260809-0330`, `cloud/cloud-sync.js` → `20260809-0330`. `npm run verify` tamamı geçti.
+
 ## 0.0.381 - 2026-08-09 - Çoklu TAKBİS önizleme paneli eklendi (Faz 1, deneysel, admin-only)
 
 - Bkz. `docs/coklu-takbis-import-plan.md` — güncellendi (madde 5 tamamlandı işaretlendi).

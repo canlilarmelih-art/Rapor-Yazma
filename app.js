@@ -1049,6 +1049,14 @@ function loadState() {
       userDefaults: savedUserDefaults,
     },
     tables: {},
+    // Çoklu TAKBİS Faz 2 (bkz. docs/coklu-takbis-import-plan.md, "state.titleUnits[]
+    // veri modeli"). BİLİNÇLİ TASARIM: mevcut düz `fields`/`tables` HER ZAMAN
+    // "birincil taşınmaz"ı (tek-tapu raporlarda TEK taşınmazı) temsil eder ve
+    // BİREBİR KORUNUR — geriye dönük uyumluluk için sıfır risk. `titleUnits`
+    // yalnızca EK taşınmazları (2. ve sonrası tab) tutar; boş dizi = tek-tapu
+    // raporu (bugünkü %100 kullanıcı kitlesi). Henüz hiçbir UI bu diziyi
+    // OKUMUYOR/YAZMIYOR — yalnızca veri modeli + yardımcı fonksiyonlar var.
+    titleUnits: [],
     updatedAt: null,
   };
 
@@ -1071,12 +1079,55 @@ function loadState() {
         },
       },
       tables: { ...fallback.tables, ...(stored.tables || {}) },
+      titleUnits: Array.isArray(stored.titleUnits) ? stored.titleUnits : fallback.titleUnits,
     };
     merged.settings.mapMode = stored.settings?.mapMode ? normalizeMapMode(merged.settings.mapMode) : "hybrid";
     return merged;
   } catch {
     return fallback;
   }
+}
+
+// Çoklu TAKBİS Faz 2 — bkz. docs/coklu-takbis-import-plan.md. `titleUnits[]`
+// dizisindeki her eleman EK bir taşınmazı temsil eder (birincil taşınmaz
+// state.fields/state.tables'ta kalır, buraya girmez). Şu an yalnızca veri
+// modeli + yardımcı fonksiyonlar — hiçbir UI bunları çağırmıyor.
+function createEmptyTitleUnit(overrides = {}) {
+  return {
+    id: overrides.id || `unit-${Math.random().toString(36).slice(2, 10)}`,
+    fields: { ...(overrides.fields || {}) },
+    tables: { ...(overrides.tables || {}) },
+    sourceFile: overrides.sourceFile || "",
+  };
+}
+
+// Kullanıcının onayladığı tab adlandırma kuralı (bkz. docs/coklu-takbis-import-plan.md,
+// "Onaylanan mimari kararlar"): aynı ada/parselde birden fazla taşınmaz varsa
+// tab adı "Blok-BağımsızBölümNo" (ör. "A-3"), farklı ada/parsellerdeyse tab
+// adı "Ada Parsel" olur. `allUnits`, birincil taşınmazı da (index 0 gibi
+// temsil eden bir birim) İÇERMELİDİR ki "aynı ada/parselde kaç taşınmaz var"
+// doğru sayılsın — bu fonksiyon kendisi state.fields'a bakmaz, çağıran taraf
+// birincil taşınmazı da aynı şekle (fields: {...}) sarıp listeye eklemeli.
+function computeTitleUnitTabLabel(unit, allUnits) {
+  const fields = unit?.fields || {};
+  const blockNo = String(fields.blockNo || "").trim();
+  const parcelNo = String(fields.parcelNo || "").trim();
+  const adaParselKey = `${blockNo}|${parcelNo}`;
+  const list = Array.isArray(allUnits) ? allUnits : [unit];
+  const sameAdaParselCount = list.filter((candidate) => {
+    const candidateFields = candidate?.fields || {};
+    const key = `${String(candidateFields.blockNo || "").trim()}|${String(candidateFields.parcelNo || "").trim()}`;
+    return key === adaParselKey;
+  }).length;
+
+  if (sameAdaParselCount > 1) {
+    const blockName = String(fields.titleBlockName || "").trim();
+    const unitNo = String(fields.unitNo || "").trim();
+    const label = [blockName, unitNo].filter(Boolean).join("-");
+    if (label) return label;
+  }
+  const adaParselLabel = [blockNo, parcelNo].filter(Boolean).join(" ");
+  return adaParselLabel || "Taşınmaz";
 }
 
 function loadUserDefaults() {

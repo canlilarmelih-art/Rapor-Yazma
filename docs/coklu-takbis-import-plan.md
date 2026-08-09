@@ -60,13 +60,77 @@ Bu, PDF'ten çıkan `Ada/Parsel` + `Blok/Kat/Giriş/BBNo` alanlarına bakılarak
 otomatik gruplanabilir: aynı ada/parsel değerini paylaşan kayıtlar blok
 isimlendirmesine girer, farklı olanlar ada/parsel isimlendirmesine girer.
 
-**Veri modeli etkisi (henüz tasarlanmadı, sadece tespit edildi)**:
-`state.fields` şu an TEK düz obje. Bu mimari, `state.titleUnits` (veya
-benzeri) gibi bir **dizi** gerektirecek — her eleman
-`{ id, label, fields: {...tapu/takyidat/BB/değerleme alanları...} }`.
-Bu, uygulamanın state şeklinde temel bir değişiklik — autosave, cloud sync,
-bank template export, mevcut TAKBİS okuma akışının HEPSİ etkilenir. **Bu
-kısım henüz hiç tasarlanmadı — sıradaki büyük iş bu.**
+**Veri modeli etkisi**: `state.fields` şu an TEK düz obje. Bu mimari,
+`state.titleUnits` gibi bir **dizi** gerektiriyor. Tasarım kararı ve mevcut
+kod durumu için aşağıdaki "Faz 2" bölümüne bak.
+
+## Faz 2: state.titleUnits[] veri modeli (2026-08-09, plumbing LANDLENDİ)
+
+**Tasarım kararı — ADDITIVE (ek), mevcut `state.fields`/`state.tables`'a
+DOKUNMAZ:**
+
+- `state.fields` ve `state.tables` **HER ZAMAN "birincil taşınmaz"ı** temsil
+  eder — bugünkü TÜM tek-tapu raporlarının verisi, hiçbir dönüşüm/migrasyon
+  OLMADAN, birebir aynı yerde kalır. Bu, "Tapu ve Mülkiyet" tab çubuğundaki
+  **1. tab**a karşılık gelir.
+- `state.titleUnits` **YENİ bir dizi** — yalnızca **EK taşınmazları** (2. ve
+  sonraki tab'lar) tutar. Boş dizi (`[]`) = tek-tapu raporu = bugünkü %100
+  kullanıcı davranışı, SIFIR risk.
+- Neden bu yaklaşım (mevcut `fields`'ı da diziye çevirmek yerine): `createForm`
+  (69 çağıran) ve `renderSection` (89 çağıran) gibi hub fonksiyonlar `state.fields`'a
+  YÜZLERCE yerden doğrudan erişiyor (bkz. CLAUDE.md/AGENTS.md hub-fonksiyon
+  uyarısı). Birincil taşınmazı da diziye taşımak bu erişimlerin TAMAMININ
+  değişmesini gerektirirdi — devasa, tek seferde test edilemeyecek bir
+  regresyon riski. Additive tasarım, mevcut kodu SIFIR değiştirerek yalnızca
+  "tab 2+" için yeni bir katman ekler.
+
+**Şu ana kadar LANDLENDİ (yalnızca veri modeli + saf yardımcı fonksiyonlar,
+HİÇBİR UI/render bunları KULLANMIYOR henüz):**
+
+- `loadState()` — fallback nesnesine `titleUnits: []` eklendi, merge
+  mantığına `titleUnits: Array.isArray(stored.titleUnits) ? stored.titleUnits
+  : fallback.titleUnits` eklendi. `saveState()` zaten `JSON.stringify(state)`
+  ile TÜM state'i yazdığı için ayrı bir değişiklik gerekmedi.
+- `cloud/cloud-sync.js` — `CLOUD_WHITELIST` dizisine `"titleUnits"` eklendi.
+  `buildCloudReportPayload`/`applyPayloadToState` zaten genel bir
+  key-listesi döngüsü kullandığı için ayrı kod gerekmedi.
+- `createEmptyTitleUnit(overrides)` — yeni bir taşınmaz birimi
+  `{ id, fields: {}, tables: {}, sourceFile: "" }` şeklinde üretir.
+- `computeTitleUnitTabLabel(unit, allUnits)` — kullanıcının onayladığı
+  adlandırma kuralını uygular: aynı ada/parselde birden fazla taşınmaz varsa
+  `"Blok-BBNo"` (`A-3`), tekse veya farklı ada/parseldeyse `"Ada Parsel"`.
+  Blok/BB No eksikse (veri gelmemişse) boş etikete düşmez, Ada/Parsel'e
+  geri döner.
+- Test: `tools/test-title-unit-model.js` (4 senaryo) — `npm run verify`
+  zincirine eklendi.
+
+**HENÜZ YAPILMADI (sıradaki adımlar, öncelik sırasıyla):**
+
+1. **Tab çubuğu UI bileşeni** — Tapu ve Mülkiyet/Takyidat/Bağımsız
+   Bölüm/Değerleme sekmelerinin üstünde `computeTitleUnitTabLabel` ile
+   etiketlenen bir yatay tab çubuğu. Tıklanınca "aktif taşınmaz index"i
+   değiştirir (yeni bir ephemeral state, `state.titleUnits`'e YAZILMAZ —
+   sadece "şu an hangi tab açık" bilgisi).
+2. **`createForm`/`renderSection`'ın "aktif taşınmaz"a göre okuma/yazma
+   yapması** — bu 4 sekmenin field get/set mantığı, aktif tab birincil
+   taşınmazsa `state.fields`'a, değilse `state.titleUnits[i].fields`'a
+   yönlenmeli. **EN YÜKSEK RİSKLİ ADIM** — `createForm`/`renderSection` hub
+   fonksiyon olduğu için `trace_path` ile TÜM çağıranlar gözden geçirilmeden
+   başlanmamalı. Ayrı, odaklı bir oturumda ele alınmalı.
+3. **Önizleme panelinden "İçe Aktar" akışı** — `createMultiTakbisPreviewPanel`
+   şu an salt önizleme; bir "Rapora Aktar" düğmesi eklenip her önizleme
+   kaydını `createEmptyTitleUnit` ile bir `state.titleUnits` elemanına
+   (birincisi `state.fields`'a) dönüştürecek bir eşleme fonksiyonu
+   (`titleUnitFromTakbisRecord` gibi) yazılmalı — `record.owners`/`record.encumbrances`
+   şeklinin `tables.title`/`tables.encumbrance` ile tam örtüştüğü ayrıca
+   doğrulanmalı (bu segment içinde doğrulanmadı).
+4. **Malikler/Takyidat tabloları** — bugün `state.tables.title`/`state.tables.encumbrance`
+   tek taşınmaza ait; aktif taşınmaza göre `state.titleUnits[i].tables`'a
+   yönlenmesi gerekiyor (madde 2 ile aynı risk sınıfı).
+5. Autosave/cloud sync'in ek taşınmazlarla birlikte doğru senkronlandığının
+   UÇTAN UCA (gerçek çoklu-tapu raporu ile) doğrulanması — şu an yalnızca
+   kaynak-düzeyi (statik metin) testle doğrulandı, canlı senaryo test
+   edilmedi.
 
 ## PDF yapısı — doğrulanmış bulgular
 

@@ -23,7 +23,11 @@
 (() => {
   "use strict";
 
-  const CLOUD_WHITELIST = ["fields", "tables", "lookupOptions", "updatedAt"];
+  // "titleUnits" 2026-08-09'da eklendi (Çoklu TAKBİS Faz 2, bkz.
+  // docs/coklu-takbis-import-plan.md) — ek taşınmaz kayıtları. Generic
+  // key-listesi döngüsü sayesinde buildCloudReportPayload/applyPayloadToState
+  // otomatik destekler, ayrı kod gerekmedi.
+  const CLOUD_WHITELIST = ["fields", "tables", "lookupOptions", "titleUnits", "updatedAt"];
   const CLOUD_SCHEMA = "rapor-yazma-cloud";
   const CLOUD_SCHEMA_VERSION = 1;
   const RETENTION_DAYS = 30;
