@@ -1,5 +1,16 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.381 - 2026-08-09 - Çoklu TAKBİS önizleme paneli eklendi (Faz 1, deneysel, admin-only)
+
+- Bkz. `docs/coklu-takbis-import-plan.md` — güncellendi (madde 5 tamamlandı işaretlendi).
+- `createMultiTakbisPreviewPanel()` + `createMultiTakbisPreviewTable()` eklendi (`app.js`). "Dosya ve Rapor" bölümüne (`section.id === "case"`), yalnızca `isCurrentUserAdmin()` true iken ekleniyor — deneysel, tam ürün akışına henüz bağlı değil.
+- Panel: `<input type="file" multiple>` ile birden fazla TAKBİS PDF'i (tek-kayıtlı ve/veya çoklu-kayıtlı, karışık olabilir) seçtirir, her dosyayı `readMultiTakbisPdf()` ile ayrı ayrı işler, TÜM dosyaların kayıtlarını TEK bir tabloda birleştirir (# / kaynak dosya / Taşınmaz Kimlik No / Ada-Parsel / Blok-Kat-BB No / Nitelik / Malik(ler) / Rehin sayısı / eksik-alan uyarısı). **Salt önizleme — `state.fields`/`state.tables`'a hiçbir yazma yapmaz, raporu değiştirmez.**
+- Okunamayan dosyalar (`readMultiTakbisPdf` hata fırlatırsa) diğerlerini engellemeden ayrı bir uyarı satırında listelenir (per-file hata izolasyonu).
+- İki küçük hata kendi kontrolümde yakalandı ve düzeltildi: var olmayan `"field-note"` CSS sınıfı yerine gerçek `.muted-note`; var olmayan `var(--danger, ...)` yerine gerçek `var(--red)` token'ı kullanıldı (`styles.css` grep ile doğrulandı).
+- Admin girişi gerektirdiğinden panel canlıda tıklama ile test edilemedi (standart kısıtlama) — `node --check app.js`, ilgili fonksiyon adlarının (`cleanTakbisOwnerDisplayName`, `getOwnerShareWarning`) varlığı grep ile ve `npm run verify` (tüm test paketi) ile doğrulandı.
+- Kod değişikliğinden önce yerel yedek alındı: `backups/before-multi-takbis-preview-panel_*`.
+- `index.html` cache-buster'ları: `app.js` → `20260809-0245`, `styles.css` → `20260809-0245`. `npm run verify` tamamı geçti.
+
 ## 0.0.380 - 2026-08-09 - Çoklu TAKBİS PDF bölme fonksiyonları eklendi (Faz 1 çekirdeği, UI'a bağlanmadı)
 
 - Bkz. `docs/coklu-takbis-import-plan.md` — tüm detay, kararlar ve durum orada.

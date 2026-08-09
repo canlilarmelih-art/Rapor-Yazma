@@ -4106,6 +4106,20 @@ table {
   background: var(--surface-muted);
 }
 
+.multi-takbis-preview-card input[type="file"] {
+  margin: 8px 0;
+}
+
+.multi-takbis-preview-table {
+  width: 100%;
+  font-size: 0.85em;
+}
+
+.multi-takbis-preview-table tr.is-warning td {
+  background: #fff7f7;
+  color: var(--red);
+}
+
 .owner-share-summary.is-ok {
   color: var(--green);
 }

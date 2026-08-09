@@ -2007,6 +2007,14 @@ function renderSection() {
     body.append(createUploadGrid(section.uploads));
   }
 
+  // Çoklu TAKBİS PDF önizleme (Faz 1, 2026-08-09 — bkz.
+  // docs/coklu-takbis-import-plan.md). Yalnızca ÖNİZLEME — hiçbir alanı/
+  // tabloyu DOLDURMAZ, raporu değiştirmez. Admin-only: deneysel, henüz
+  // tam ürün akışına bağlanmadı.
+  if (section.id === "case" && isCurrentUserAdmin()) {
+    body.append(createMultiTakbisPreviewPanel());
+  }
+
   if (section.id === "address") {
     if (isZiraatBankSelectedForPropertyTaxDeclaration()) {
       body.append(createZiraatExplanationSectionsPanel());
@@ -15436,6 +15444,111 @@ async function readMultiTakbisPdf(file) {
   }
 
   return { records, pageWidth: pdfData.pageWidth, blockCount: blocks.length };
+}
+
+// Çoklu TAKBİS önizleme paneli (Faz 1, 2026-08-09 — bkz.
+// docs/coklu-takbis-import-plan.md). Bir veya birden fazla PDF dosyası
+// seçilebilir (her biri readMultiTakbisPdf() ile ayrı ayrı işlenip
+// sonuçlar birleştirilir — tek-kayıtlı VEYA çoklu-kayıtlı dosyalar
+// KARIŞIK yüklenebilir, kullanıcı talebiyle uyumlu). SADECE ÖNİZLEME —
+// hiçbir alanı/tabloyu doldurmaz.
+function createMultiTakbisPreviewPanel() {
+  const card = document.createElement("div");
+  card.className = "subsection multi-takbis-preview-card";
+
+  const head = document.createElement("div");
+  head.className = "open-address-head";
+  const title = document.createElement("h4");
+  title.textContent = "Çoklu TAKBİS Önizleme (Deneysel)";
+  head.append(title);
+  card.append(head);
+
+  const note = document.createElement("p");
+  note.className = "muted-note";
+  note.textContent = "Bir veya birden fazla TAKBİS PDF'i seçin (tek-kayıtlı ve çoklu-kayıtlı dosyalar karışık olabilir). Yalnızca önizleme yapar — hiçbir alanı/tabloyu doldurmaz.";
+  card.append(note);
+
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = ".pdf,application/pdf";
+  input.multiple = true;
+  card.append(input);
+
+  const status = document.createElement("p");
+  status.className = "muted-note";
+  card.append(status);
+
+  const resultWrap = document.createElement("div");
+  resultWrap.className = "multi-takbis-preview-result";
+  card.append(resultWrap);
+
+  input.addEventListener("change", async () => {
+    const files = Array.from(input.files || []);
+    if (!files.length) return;
+    resultWrap.innerHTML = "";
+    status.textContent = `${files.length} dosya işleniyor...`;
+    const allRecords = [];
+    const errors = [];
+    for (const file of files) {
+      try {
+        const result = await readMultiTakbisPdf(file);
+        result.records.forEach((record) => allRecords.push({ ...record, sourceFile: file.name }));
+      } catch (error) {
+        errors.push(`${file.name}: ${error?.message || error}`);
+      }
+    }
+    status.textContent = `${files.length} dosya, toplam ${allRecords.length} taşınmaz kaydı bulundu.` + (errors.length ? ` (${errors.length} dosya okunamadı)` : "");
+    resultWrap.append(createMultiTakbisPreviewTable(allRecords, errors));
+  });
+
+  return card;
+}
+
+function createMultiTakbisPreviewTable(records, errors) {
+  const wrap = document.createElement("div");
+  if (errors.length) {
+    const errorList = document.createElement("p");
+    errorList.className = "muted-note";
+    errorList.style.color = "var(--red)";
+    errorList.textContent = "Okunamayan dosyalar: " + errors.join(" | ");
+    wrap.append(errorList);
+  }
+  if (!records.length) return wrap;
+
+  const table = document.createElement("table");
+  table.className = "table-shell multi-takbis-preview-table";
+  const thead = document.createElement("thead");
+  thead.innerHTML = "<tr><th>#</th><th>Kaynak dosya</th><th>Taşınmaz Kimlik No</th><th>Ada/Parsel</th><th>Blok/Kat/BB No</th><th>Nitelik</th><th>Malik(ler)</th><th>Rehin</th><th>Uyarı</th></tr>";
+  table.append(thead);
+  const tbody = document.createElement("tbody");
+  records.forEach((record, index) => {
+    const tr = document.createElement("tr");
+    const missing = !record.fields.titlePropertyId || !record.fields.blockNo || !record.owners?.length;
+    if (missing) tr.classList.add("is-warning");
+    const ownerNames = (record.owners || []).map((owner) => cleanTakbisOwnerDisplayName(owner.name || "")).filter(Boolean).join(", ");
+    const adaParsel = [record.fields.blockNo, record.fields.parcelNo].filter(Boolean).join("/");
+    const blokKatBB = [record.fields.titleBlockName, record.fields.titleFloor, record.fields.unitNo].filter(Boolean).join(" / ");
+    const cells = [
+      String(index + 1),
+      record.sourceFile || "",
+      record.fields.titlePropertyId || "",
+      adaParsel,
+      blokKatBB,
+      record.fields.titleQuality || record.fields.mainPropertyQuality || "",
+      ownerNames,
+      (record.encumbrances || []).length ? `${record.encumbrances.length} kayıt` : "-",
+      missing ? "⚠ eksik alan" : "",
+    ];
+    cells.forEach((text) => {
+      const td = document.createElement("td");
+      td.textContent = text;
+      tr.append(td);
+    });
+    tbody.append(tr);
+  });
+  table.append(tbody);
+  wrap.append(table);
+  return wrap;
 }
 
 async function readTakbisPdf(file) {

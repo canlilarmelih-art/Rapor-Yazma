@@ -4,10 +4,13 @@ Bu dosya, Claude ile başlanan "çoklu tapu/TAKBİS PDF içe aktarma" özelliği
 o oturumda varılan karar ve bulguları kaydeder — devam eden ajan (Codex veya
 farklı bir Claude oturumu) buradan kaldığı yerden sürdürebilsin diye.
 
-**Durum (2026-08-09, güncellendi): Faz 1'in ÇEKİRDEK ayrıştırma kısmı
-app.js'e LANDLENDİ ve test edildi (`splitMultiTakbisRowBlocks`,
-`readMultiTakbisPdf`). HENÜZ hiçbir UI/upload düğmesine BAĞLANMADI — yalnızca
-fonksiyonlar mevcut, çağrılmıyor. Aşağıdaki "Faz 1 kod durumu" bölümüne bak.**
+**Durum (2026-08-09, güncellendi): Faz 1'in ÇEKİRDEK ayrıştırma kısmı VE
+salt-önizleme UI'ı app.js'e LANDLENDİ ve test edildi
+(`splitMultiTakbisRowBlocks`, `readMultiTakbisPdf`,
+`createMultiTakbisPreviewPanel`). Önizleme paneli admin-only/deneysel ve
+`state.fields`/`state.tables`'a HİÇBİR ŞEY YAZMAZ — gerçek rapora
+aktarma (tab-per-tapu UI + veri modeli, aşağıdaki madde 6) HENÜZ
+BAŞLAMADI. Aşağıdaki "Faz 1 kod durumu" bölümüne bak.**
 
 ## Kullanıcının orijinal isteği
 
@@ -173,11 +176,16 @@ production için YETERSİZ. Gerçek uygulamada bu script değil,
    birden fazla dosyayı dışarıdan (çağıran kod) N kez çağırıp sonuçları
    birleştirerek kullanmak mümkün, ama HENÜZ bunu yapan bir UI/orkestratör
    yok.
-5. **Doğrulama/önizleme ekranı**: N kaydı listeleyip zorunlu alanların
-   (Taşınmaz Kimlik No, Ada/Parsel, en az 1 malik) dolu geldiğini gösteren,
-   henüz rapora YAZMAYAN bir ara ekran — kullanıcı "doğru mu" diye kontrol
-   edebilsin. **Bu, gerçek bir PDF ile ilk canlı entegrasyon adımı olacağı
-   için sıradaki en değerli iş.**
+5. ✅ TAMAMLANDI — **Doğrulama/önizleme ekranı**: `createMultiTakbisPreviewPanel()`
+   eklendi ("Dosya ve Rapor" sekmesi, admin-only, `isCurrentUserAdmin()`
+   gated). Birden fazla dosya seçilebilir (`<input type="file" multiple>`),
+   her dosya `readMultiTakbisPdf()` ile ayrı işlenir, sonuçlar TEK bir
+   tabloda birleştirilir (#, kaynak dosya, Taşınmaz Kimlik No, Ada/Parsel,
+   Blok/Kat/BB No, Nitelik, Malik(ler), Rehin sayısı, eksik-alan uyarısı).
+   **Hiçbir alanı/tabloyu doldurmaz** — salt önizleme. Admin girişi gerektirdiğinden
+   canlı ekranda görsel doğrulama yapılamadı (standart kısıtlama) — `node
+   --check` + `npm run verify` ile doğrulandı, fonksiyon adları (`cleanTakbisOwnerDisplayName`,
+   `getOwnerShareWarning` vb.) grep ile teyit edildi.
 6. **(Büyük iş, ayrı tasarım gerektirir) `state.titleUnits[]` veri modeli**
    ve Tapu ve Mülkiyet / Takyidat / Bağımsız Bölüm / Değerleme sekmelerine
    tab çubuğu eklenmesi — bu, mevcut TEK-tapu varsayımına dayanan pek çok
