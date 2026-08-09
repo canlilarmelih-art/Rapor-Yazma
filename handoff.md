@@ -7962,3 +7962,20 @@ Doğrulama: `node --check app.js`, `node tools/check-basic.js`, `git diff --chec
 - Yönetici kullanıcı ekranı, onaylı hesapları aktif/pasif yapma ve sistem erişiminden kaldırma kontrollerini içerir. Pasife alınan hesapların sunucu oturumları, güvenilir cihazları ve ayrıcalıklı görünürlüğü kaldırılır; tekrar aktifleştirilebilir.
 - Kullanıcı onay akışı testi profil güncelleme, pasife alma, tekrar aktifleştirme ve silme senaryolarını kapsayacak şekilde genişletildi.
 - Cache-buster: `styles.css?v=20260804-0017`, `cloud/cloud-sync.js?v=20260804-0017`.
+
+## 0.0.388 - 2026-08-09 - Coklu TAKBIS kayitlarinda ipotek siniri
+
+- Kullanici bildirimi: Ipotekler bolumunde bir sonraki tapu kaydinin alinma tarihi ve saati ipotek kaydi gibi gorunuyordu.
+- `getTakbisEncumbranceGroups()` icin `TAPU KAYIT BILGISI` basligi yeni tasinmaz kaydinin siniri olarak eklendi. Serh/rehin/ipotek gruplari bir sonraki kaydin tarih-saat ve kimlik satirlarini icermiyor; tek kayitli akista mevcut sona kadar uzama davranisi korunuyor.
+- Yeni `tools/test-takbis-encumbrance-next-record-boundary.js` testi eklendi ve `npm run test` zincirine baglandi. Test, yeni kayit sinirini ve mevcut `EKLENTI BILGILERI` sinirini dogruluyor.
+- `index.html` cache-buster: `app.js` -> `20260809-1800`.
+- Duzenleme oncesi yedek: `backups/before-takbis-next-record-boundary_2026-08-09_17-57-38`.
+
+## 0.0.389 - 2026-08-09 - Ana bolumlerin coklu Excel aktarimi
+
+- `Dosya ve Rapor` ekranina yonetici icin `Excel ile toplu giriş` paneli eklendi. Bir satir bir talep/taşinmazdir.
+- Excel disari aktarimi; Talep, Adres, Tapu, Takyidat, Imar, Belgeler, Arsa, Ana Gayrimenkul, Bagimsiz Bolum, Emsaller ve Degerleme alanlarini kolonlar halinde verir.
+- Malikler, belgeler, emsal ve takyidat gibi tablo verileri veri kaybi olmamasi icin ayni satirda JSON hucreleri olarak korunur ve geri yuklenir.
+- XLSX/CSV ice aktarimi taninan kolonlari mevcut form alanlarina yazar; UAVT zorunlu, bos/gecersiz satirlar raporlanir, mevcut veri uzerine yazmadan once onay istenir.
+- Rapor-genelindeki Banka ve Cikti/Masraf, admin/yonetim alanlari ile dosya/harita/OCR gibi ikili veya otomatik uretilen varliklar satir bazli aktarilmaz; bunlar tek talep/oturum baglamina aittir.
+- Yeni `src/exports/multi-request-xlsx.js` dosyasi deploy minify listesine eklendi; `npm.cmd test` tam zinciri basarili.

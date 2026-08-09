@@ -1171,8 +1171,17 @@ function computeTitleUnitTabLabel(unit, allUnits) {
 // createBuildingFloorDistribution, değerleme hesap zinciri vb.) YAYILMIŞ —
 // bunları güvenle kapsamak ayrı, dikkatli bir denetim gerektirir (ayrı bir
 // oturumda ele alınmalı, bkz. plan dosyası "Henüz yapılmadı" listesi).
-const TITLE_UNIT_SCOPED_SECTION_IDS = ["title", "encumbrance"];
-const TITLE_UNIT_SCOPED_TABLE_KEYS = ["title", "encumbrance", "encumbranceDeclarations", "encumbranceAnnotations", "encumbranceMortgages"];
+// Çoklu Excel/çoklu talep akışında bir satırın bütün ana bölüm alanları aynı
+// taşınmaza aittir. Çıktı/masraf ve yönetim bölümleri rapor-genelidir; burada
+// bilinçli olarak taşınmaz satırlarına çoğaltılmaz.
+const TITLE_UNIT_SCOPED_SECTION_IDS = [
+  "case", "address", "title", "encumbrance", "planning", "documents", "land",
+  "building", "unit", "comparables", "valuation",
+];
+const TITLE_UNIT_SCOPED_TABLE_KEYS = [
+  "title", "encumbrance", "documents", "comparables",
+  "encumbranceDeclarations", "encumbranceAnnotations", "encumbranceMortgages",
+];
 
 function getTitleUnitScopedFieldKeys() {
   const keys = new Set();
@@ -2306,6 +2315,8 @@ function renderSection() {
 
   if (section.uploads && section.id === "case") {
     body.append(createUploadGrid(section.uploads));
+    const multiRequestExcelPanel = createMultiRequestExcelPanel();
+    if (multiRequestExcelPanel) body.append(multiRequestExcelPanel);
   }
 
   // Çoklu TAKBİS içe aktarma (2026-08-09 — bkz. docs/coklu-takbis-import-plan.md).
@@ -14458,6 +14469,158 @@ function syncRenderedAddressFields() {
   });
 }
 
+// Çoklu talep Excel akışı: bir satır bir talep/taşınmazdır. Formda tanımlı
+// bütün ana bölüm alanları aynı çalışma sayfasında sütun olarak taşınır.
+const MULTI_REQUEST_SECTION_IDS = [
+  "case", "address", "title", "encumbrance", "planning", "documents", "land",
+  "building", "unit", "comparables", "valuation",
+];
+
+function getMultiRequestFieldDefinitions() {
+  const seen = new Set();
+  const definitions = [];
+  MULTI_REQUEST_SECTION_IDS.forEach((sectionId) => {
+    const section = sections.find((item) => item.id === sectionId);
+    (section?.fields || []).forEach((field) => {
+      if (!field?.key || seen.has(field.key)) return;
+      seen.add(field.key);
+      definitions.push({ key: field.key, label: field.label || field.key });
+    });
+  });
+  return definitions;
+}
+
+function getMultiRequestColumnDefinitions() {
+  return [
+    ...getMultiRequestFieldDefinitions(),
+    ...TITLE_UNIT_SCOPED_TABLE_KEYS.map((key) => ({
+      key: `__table:${key}`,
+      label: `Tablo - ${key}`,
+      tableKey: key,
+    })),
+  ];
+}
+
+function getMultiRequestUnitFields(index) {
+  if (index === state.activeTitleUnitIndex) return state.fields || {};
+  if (index === 0) return state.primaryTitleUnitShadow?.fields || {};
+  return state.titleUnits?.[index - 1]?.fields || {};
+}
+
+function buildMultiRequestExcelRows() {
+  const definitions = getMultiRequestColumnDefinitions();
+  const headers = ["Talep No", ...definitions.map((field) => field.label)];
+  const rows = [headers];
+  const count = getTitleUnitCount();
+  for (let index = 0; index < count; index += 1) {
+    const fields = getMultiRequestUnitFields(index);
+    const tables = index === state.activeTitleUnitIndex
+      ? state.tables || {}
+      : (index === 0 ? state.primaryTitleUnitShadow?.tables || {} : state.titleUnits?.[index - 1]?.tables || {});
+    rows.push([String(index + 1), ...definitions.map((field) => field.tableKey
+      ? JSON.stringify(tables[field.tableKey] || [])
+      : fields[field.key] ?? "")]);
+  }
+  return { rows };
+}
+
+function normalizeMultiRequestValue(value) {
+  return String(value ?? "").trim();
+}
+
+function importMultiRequestRows(rows) {
+  if (!Array.isArray(rows) || rows.length < 2) throw new Error("Excel dosyasında başlık ve en az bir talep satırı bulunmalı.");
+  const headers = rows[0].map((value) => window.RaporMultiRequestXlsx.normalizeHeader(value));
+  const definitions = getMultiRequestColumnDefinitions();
+  const definitionByHeader = new Map(definitions.map((field) => [window.RaporMultiRequestXlsx.normalizeHeader(field.label), field.key]));
+  definitions.forEach((field) => definitionByHeader.set(window.RaporMultiRequestXlsx.normalizeHeader(field.key), field.key));
+  const mapped = headers.map((header) => definitionByHeader.get(header) || "");
+  const recognized = mapped.filter(Boolean);
+  if (!recognized.includes("uavt")) throw new Error("Excel başlıklarında UAVT sütunu bulunamadı.");
+
+  const imported = [];
+  const invalidRows = [];
+  const seenUavt = new Set();
+  rows.slice(1).forEach((row, rowOffset) => {
+    const fields = {};
+    const tables = {};
+    mapped.forEach((key, index) => {
+      if (!key) return;
+      if (key.startsWith("__table:")) {
+        const tableKey = key.slice("__table:".length);
+        const raw = normalizeMultiRequestValue(row[index]);
+        if (!raw) return;
+        try { tables[tableKey] = JSON.parse(raw); } catch { invalidRows.push(rowOffset + 2); }
+        return;
+      }
+      fields[key] = normalizeMultiRequestValue(row[index]);
+    });
+    const uavt = fields.uavt || "";
+    if (!Object.values(fields).some(Boolean)) return;
+    if (!/^\d{5,15}$/.test(uavt)) {
+      invalidRows.push(rowOffset + 2);
+      return;
+    }
+    if (seenUavt.has(uavt)) return;
+    seenUavt.add(uavt);
+    imported.push({ fields, tables });
+  });
+  if (!imported.length) throw new Error("Excel dosyasında geçerli UAVT içeren talep satırı bulunamadı.");
+  if (invalidRows.length) {
+    const suffix = invalidRows.length > 8 ? ` ve ${invalidRows.length - 8} satır daha` : "";
+    if (!window.confirm(`Şu Excel satırlarında geçerli UAVT bulunamadı: ${invalidRows.slice(0, 8).join(", ")}${suffix}. Geçerli satırlarla devam edilsin mi?`)) return 0;
+  }
+  if (getTitleUnitCount() > 1 || Object.values(state.fields || {}).some(Boolean)) {
+    if (!window.confirm("Excel verileri mevcut rapor alanlarını ve çoklu talep listesini değiştirecek. Devam edilsin mi?")) return 0;
+  }
+  if (state.activeTitleUnitIndex !== 0) switchActiveTitleUnit(0);
+  if (imported.length > 1) imported.forEach((item) => { item.fields.requestType = "Çoklu Talep"; });
+  state.fields = { ...state.fields, ...(imported[0].fields || {}) };
+  state.tables = { ...state.tables, ...(imported[0].tables || {}) };
+  state.titleUnits = imported.slice(1).map((item) => createEmptyTitleUnit(item));
+  state.primaryTitleUnitShadow = null;
+  state.activeTitleUnitIndex = 0;
+  if (imported.length > 1) state.fields.requestType = "Çoklu Talep";
+  return imported.length;
+}
+
+function createMultiRequestExcelPanel() {
+  if (!isCurrentUserAdmin() || !window.RaporMultiRequestXlsx) return null;
+  const panel = document.createElement("div");
+  panel.className = "subsection multi-request-excel-panel";
+  panel.innerHTML = `
+    <div class="subsection-heading"><div><span class="eyebrow">Çoklu talep</span><h3>Excel ile toplu giriş</h3></div></div>
+    <p class="muted-note">Bir satır bir talep olur. Formda tanımlı ana bölüm alanları Excel sütunlarına aktarılır; UAVT sütunu zorunludur.</p>
+    <div class="output-export-actions">
+      <button type="button" class="secondary-button" data-multi-request-template>Excel şablonunu indir</button>
+      <label class="secondary-button file-button">Excel yükle<input type="file" accept=".xlsx,.csv,text/csv" data-multi-request-import hidden /></label>
+    </div>
+    <p class="export-status" data-multi-request-status aria-live="polite"></p>
+  `;
+  const status = panel.querySelector("[data-multi-request-status]");
+  panel.querySelector("[data-multi-request-template]").addEventListener("click", () => {
+    try {
+      const { rows } = buildMultiRequestExcelRows();
+      window.RaporMultiRequestXlsx.exportRows(rows, `${buildExportBaseFileName()}-coklu-talep.xlsx`);
+      status.textContent = "Excel şablonu/listesi indirildi.";
+    } catch (error) { status.textContent = error.message || "Excel oluşturulamadı."; }
+  });
+  panel.querySelector("[data-multi-request-import]").addEventListener("change", async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      const rows = await window.RaporMultiRequestXlsx.readRows(file);
+      const count = importMultiRequestRows(rows);
+      if (!count) return;
+      autosave();
+      status.textContent = `${count} talep Excel'den aktarıldı.`;
+      render();
+    } catch (error) { status.textContent = error.message || "Excel okunamadı."; }
+    event.target.value = "";
+  });
+  return panel;
+}
+
 // Kullanıcı talebi: "Farklı Kaydet" (JSON) ve "Tüm Tabloları Excel Olarak
 // İndir" ayrı düğmeleri kaldırıldı — "Banka Şablonuyla Kaydet" artık bu
 // ikisini (Word ile birlikte) zaten tek bir .zip'te üretiyor
@@ -16705,9 +16868,10 @@ function getTakbisEncumbranceGroups(rows) {
     const nextSectionIndex = startIndex + 1 < starts.length ? starts[startIndex + 1].index : sourceRows.length;
     // Mülkiyet ve Eklenti bölümleri şerh grubuna dahil edilmez; eklenti sistem
     // numaraları yevmiye sanılmasın diye grup bu başlıklarda kesilir.
+    // Bir sonraki taşınmaz kaydının başlığı takyidat grubuna dahil edilmez.
     const boundaryStart = sourceRows.findIndex((row, index) => {
       if (index <= start.index || index >= nextSectionIndex) return false;
-      return /MULKIYET\s+BILGILERI|EKLENTI\s+BILGILERI/.test(foldTurkish(row?.text || ""));
+      return /MULKIYET\s+BILGILERI|EKLENTI\s+BILGILERI|TAPU\s+KAYIT\s+BILGISI/.test(foldTurkish(row?.text || ""));
     });
     const end = boundaryStart > start.index ? boundaryStart : nextSectionIndex;
     return { key: start.key, rows: sourceRows.slice(start.index, end) };

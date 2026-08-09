@@ -71,18 +71,13 @@ const functionNames = [
   "applyTitleRecordChangeToAllTitleUnits",
 ];
 
-// Gerçek uygulamadaki "title"/"encumbrance" sekmelerinin alan anahtarlarını
-// TAM olarak birebir kopyalamak yerine (kırılgan olurdu — sections dizisi
-// değişince test sessizce eskir), doğrudan appSource'tan
-// TITLE_UNIT_SCOPED_SECTION_IDS sabitinin GERÇEKTEN "title"/"encumbrance"
-// olduğunu doğruluyoruz; fixture `sections`, testin kendi kontrollü alan
-// kümesini temsil eder (fonksiyonlar section.id'ye göre fields okur, hangi
-// ANAHTARLARIN var olduğu testin kendi sorumluluğunda).
+// Çoklu Excel akışında ana form bölümlerinin tamamı taşınmaz kapsamındadır.
+// Fixture `sections`, testin kendi kontrollü alan kümesini temsil eder.
 {
   assert.match(
     appSource,
-    /const TITLE_UNIT_SCOPED_SECTION_IDS = \["title", "encumbrance"\];/,
-    "TITLE_UNIT_SCOPED_SECTION_IDS kapsamı beklenmedik şekilde değişmiş (title/encumbrance dışına genişlemiş veya daralmış) — bu test fixture'ı da güncellenmeli."
+    /const TITLE_UNIT_SCOPED_SECTION_IDS = \[[\s\S]*?"address"[\s\S]*?"valuation"[\s\S]*?\];/,
+    "TITLE_UNIT_SCOPED_SECTION_IDS ana form bölümlerini kapsamıyor — fixture güncellenmeli."
   );
 }
 
