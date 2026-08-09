@@ -1180,6 +1180,13 @@ function getTitleUnitScopedFieldKeys() {
     const section = sections.find((item) => item.id === sectionId);
     (section?.fields || []).forEach((field) => keys.add(field.key));
   });
+  // "titleChangedRecords" "title" sekmesinin DEKLARATİF fields listesinde
+  // yer almıyor — openTitleRecordChangeModal ile programatik yazılıyor
+  // (bkz. createTitleRecordChangeControl). Yine de taşınmaza özgüdür; geç
+  // fark edilen bir boşluktu (2026-08-09) — elle eklendi, aksi halde tab
+  // değiştirince bu alan TÜM taşınmazlar arasında PAYLAŞILIRDI (yanlışlıkla
+  // sızardı).
+  keys.add("titleChangedRecords");
   return keys;
 }
 
@@ -13244,7 +13251,69 @@ function createTitleRecordChangeControl(field) {
 
   control.append(select, detailButton, summary);
   label.append(createSpan(field.label), control);
+
+  // Kullanıcı talebi (2026-08-09): "Tapu Kaydı Değişikliği Var Mı? yanına
+  // tüm taşınmazlara uygulansın mı seçeneği olsun. seçildiğinde tüm
+  // taşınmazlara mevcut değer uygulansın, sonra kullanıcı isterse manuel
+  // değiştirebilsin." Yalnızca birden fazla taşınmaz varken (Çoklu Talep,
+  // admin) anlamlı — TEK taşınmazlı raporda hiç gösterilmez. Sürekli bir
+  // "senkron modu" DEĞİL: işaretlenince BİR KEZ tüm taşınmazlara kopyalanır,
+  // ardından kutucuk kendiliğinden işareti kaldırır — her taşınmaz yine
+  // bağımsız düzenlenebilir kalır (kullanıcının "sonra manuel değiştirebilsin"
+  // isteğiyle birebir).
+  if (isCurrentUserAdmin() && getTitleUnitCount() > 1) {
+    const applyAllLabel = document.createElement("label");
+    applyAllLabel.className = "title-record-change-apply-all";
+    const applyAllCheckbox = document.createElement("input");
+    applyAllCheckbox.type = "checkbox";
+    const applyAllText = document.createElement("span");
+    applyAllText.textContent = "Tüm taşınmazlara uygulansın mı?";
+    applyAllLabel.append(applyAllCheckbox, applyAllText);
+
+    const applyAllNote = document.createElement("small");
+    applyAllNote.className = "muted-note title-record-change-apply-all-note";
+
+    applyAllCheckbox.addEventListener("change", () => {
+      if (!applyAllCheckbox.checked) return;
+      const unitCount = applyTitleRecordChangeToAllTitleUnits();
+      applyAllNote.textContent = `${unitCount} taşınmaza uygulandı.`;
+      applyAllCheckbox.checked = false;
+      autosave();
+    });
+
+    label.append(applyAllLabel, applyAllNote);
+  }
+
   return label;
+}
+
+// Aktif taşınmazın titleRecordChange (Evet/Hayır) + titleChangedRecords
+// (hangi kayıtların değiştiği, modal seçimi) değerlerini TÜM taşınmazlara
+// (birincil + state.titleUnits) kopyalar. Aktif taşınmaz zaten state.fields
+// üzerinden "kaynak" değeri taşıdığı için kendisine dokunmaya gerek yok —
+// yalnızca DİĞER taşınmazların kendi depolama yuvaları güncellenir.
+function applyTitleRecordChangeToAllTitleUnits() {
+  const value = state.fields.titleRecordChange;
+  const changedRecords = Array.isArray(state.fields.titleChangedRecords) ? [...state.fields.titleChangedRecords] : [];
+
+  (state.titleUnits || []).forEach((unit) => {
+    if (!unit) return;
+    unit.fields = unit.fields || {};
+    unit.fields.titleRecordChange = value;
+    unit.fields.titleChangedRecords = [...changedRecords];
+  });
+
+  // Aktif taşınmaz birincil DEĞİLSE, birincilin "park edilmiş" verisi
+  // primaryTitleUnitShadow'dadır (bkz. switchActiveTitleUnit) — o da
+  // güncellenmeli, aksi halde birincile geri dönüldüğünde eski değer
+  // geri gelir.
+  if (state.activeTitleUnitIndex !== 0 && state.primaryTitleUnitShadow) {
+    state.primaryTitleUnitShadow.fields = state.primaryTitleUnitShadow.fields || {};
+    state.primaryTitleUnitShadow.fields.titleRecordChange = value;
+    state.primaryTitleUnitShadow.fields.titleChangedRecords = [...changedRecords];
+  }
+
+  return getTitleUnitCount();
 }
 
 function getSelectedTitleRecordChangeKeys() {

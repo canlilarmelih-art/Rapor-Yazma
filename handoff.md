@@ -1,5 +1,13 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.387 - 2026-08-09 - "Tapu Kaydı Değişikliği" tümüne uygula kutucuğu + titleChangedRecords sızıntı düzeltmesi
+
+- Kullanıcı: "Tapu Kaydı Değişikliği Var Mı? kutucuğunun yanına tüm taşınmazlara uygulansın mı seçeneği olsun." Bkz. `docs/coklu-takbis-import-plan.md`, "'Tapu Kaydı Değişikliği' tümüne uygula — LANDLENDİ" bölümü.
+- `applyTitleRecordChangeToAllTitleUnits()` eklendi; admin + birden fazla taşınmaz varken `createTitleRecordChangeControl`'e "Tüm taşınmazlara uygulansın mı?" kutucuğu eklendi. İşaretlenince BİR KEZ tüm taşınmazlara kopyalar, kendiliğinden işareti kaldırır (sürekli senkron DEĞİL) — sonra her taşınmaz yine bağımsız düzenlenebilir.
+- **Kendi kontrolümde yakalanan gerçek hata**: `titleChangedRecords` (tapu kaydı değişikliği modal'ından gelen seçim) `sections[title].fields`'ta deklaratif olarak yoktu, bu yüzden `getTitleUnitScopedFieldKeys()` onu görmüyordu — tab değiştirince bu alan TÜM taşınmazlar arasında yanlışlıkla PAYLAŞILIYORDU. Düzeltildi: elle `TITLE_UNIT_SCOPED` kapsamına eklendi.
+- Test: `tools/test-title-unit-switch.js`'e 3 yeni senaryo (titleChangedRecords artık sızmıyor, tümüne-uygula doğru çalışıyor, UI gate kaynakta doğru) — toplam 10 senaryo, `npm run verify` tamamı geçti.
+- `index.html` cache-buster: `app.js`/`styles.css` → `20260809-0600`.
+
 ## 0.0.386 - 2026-08-09 - Ayrı "Çoklu TAKBİS" butonu KALDIRILDI, mevcut TAKBİS düğmesi konsolide edildi
 
 - Kullanıcı geri bildirimi: "zaten mevcutta takbis ekle butonu vardı buradan çözemez miydik bunu?" — haklı, ayrı buton gereksizdi. Bkz. `docs/coklu-takbis-import-plan.md`, "Ayrı buton KALDIRILDI" bölümü.

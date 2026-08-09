@@ -68,6 +68,7 @@ const functionNames = [
   "switchActiveTitleUnit",
   "addTitleUnitTab",
   "removeActiveTitleUnitTab",
+  "applyTitleRecordChangeToAllTitleUnits",
 ];
 
 // Gerçek uygulamadaki "title"/"encumbrance" sekmelerinin alan anahtarlarını
@@ -87,7 +88,7 @@ const functionNames = [
 
 const sandboxSource = `
 let sections = [
-  { id: "title", fields: [{ key: "blockNo" }, { key: "parcelNo" }, { key: "titleBlockName" }, { key: "unitNo" }, { key: "titleQuality" }] },
+  { id: "title", fields: [{ key: "blockNo" }, { key: "parcelNo" }, { key: "titleBlockName" }, { key: "unitNo" }, { key: "titleQuality" }, { key: "titleRecordChange" }] },
   { id: "encumbrance", fields: [{ key: "takbisSummary" }, { key: "takbisDate" }] },
   { id: "address", fields: [{ key: "city" }] },
   { id: "unit", fields: [{ key: "legalArea" }] },
@@ -254,6 +255,62 @@ function freshState(overrides = {}) {
   ).length - 1;
   assert.equal(requestTypeBlurGuardOccurrences, 1, "\"blur\" olayında da aynı güvenlik ağı bir kez tanımlı olmalı (select alanları bazı tarayıcılarda blur tetikleyebilir).");
   console.log("Talep Turu alani + gizleme guvenlik agi (kaynak-duzeyi) testi tamam.");
+}
+
+// --- 8) titleChangedRecords artik unit-scoped (round-trip sizmiyor) -----
+{
+  const state = freshState();
+  state.fields.titleRecordChange = "Hayır";
+  state.fields.titleChangedRecords = [];
+  sandbox.setState(state);
+  const newIndex = sandbox.fns.addTitleUnitTab();
+  sandbox.fns.switchActiveTitleUnit(newIndex);
+  const afterAdd = sandbox.getState();
+  afterAdd.fields.titleRecordChange = "Evet";
+  afterAdd.fields.titleChangedRecords = ["mulkiyet"];
+
+  sandbox.fns.switchActiveTitleUnit(0);
+  const primaryAgain = sandbox.getState();
+  assert.equal(primaryAgain.fields.titleRecordChange, "Hayır", "Birincilin titleRecordChange degeri sizinti olmadan korunmali.");
+  assert.deepEqual(primaryAgain.fields.titleChangedRecords, [], "Birincilin titleChangedRecords degeri sizinti olmadan korunmali.");
+  assert.deepEqual(primaryAgain.titleUnits[0].fields.titleChangedRecords, ["mulkiyet"], "2. tasinmazin titleChangedRecords secimi kendi yuvasinda dogru saklanmali.");
+  console.log("titleChangedRecords unit-scoped round-trip testi tamam.");
+}
+
+// --- 9) applyTitleRecordChangeToAllTitleUnits: tumune uygula ------------
+{
+  const state = freshState();
+  state.fields.titleRecordChange = "Evet";
+  state.fields.titleChangedRecords = ["mulkiyet", "sinirlama"];
+  sandbox.setState(state);
+  sandbox.fns.addTitleUnitTab();
+  sandbox.fns.addTitleUnitTab();
+  const beforeApply = sandbox.getState();
+  assert.equal(beforeApply.titleUnits.length, 2, "2 ek tasinmaz olusturulmali (fixture).");
+  assert.notEqual(beforeApply.titleUnits[0].fields.titleRecordChange, "Evet", "Uygulanmadan once diger tasinmazlar farkli/bos olmali (fixture kontrolu).");
+
+  const unitCount = sandbox.fns.applyTitleRecordChangeToAllTitleUnits();
+  const afterApply = sandbox.getState();
+  assert.equal(unitCount, 3, "Toplam tasinmaz sayisi (1 birincil + 2 ek) donmeli.");
+  assert.equal(afterApply.titleUnits[0].fields.titleRecordChange, "Evet", "1. ek tasinmaza deger kopyalanmali.");
+  assert.deepEqual(afterApply.titleUnits[0].fields.titleChangedRecords, ["mulkiyet", "sinirlama"], "1. ek tasinmaza secili kayitlar da kopyalanmali.");
+  assert.equal(afterApply.titleUnits[1].fields.titleRecordChange, "Evet", "2. ek tasinmaza deger kopyalanmali.");
+  assert.equal(afterApply.fields.titleRecordChange, "Evet", "Aktif (birincil) tasinmazin kendi degeri degismeden kalmali (zaten kaynaktı).");
+
+  // Baska bir tasinmaza gecince de kopyalanan deger goruluyor mu (round-trip)?
+  sandbox.fns.switchActiveTitleUnit(1);
+  assert.equal(sandbox.getState().fields.titleRecordChange, "Evet", "2. tasinmaza gecilince kopyalanan deger dogru gorunmeli.");
+  console.log("applyTitleRecordChangeToAllTitleUnits (tumune uygula) testi tamam.");
+}
+
+// --- 10) Bulk-uygula UI'nin kaynakta dogru sartlarla gate'lendigi -------
+{
+  assert.match(
+    appSource,
+    /if \(isCurrentUserAdmin\(\) && getTitleUnitCount\(\) > 1\) \{\s*\n\s*const applyAllLabel/,
+    "\"Tumune uygula\" kutucugu YALNIZCA admin + birden fazla tasinmaz varken gosterilmeli."
+  );
+  console.log("Tumune uygula UI gate kosulu (kaynak-duzeyi) testi tamam.");
 }
 
 console.log("Coklu TAKBIS Faz 2 tab-anahtarlama motoru testleri basarili.");

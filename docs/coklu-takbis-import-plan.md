@@ -217,6 +217,32 @@ TAMAMEN KALDIRILDI. Artık TEK buton var: "Dosya ve Rapor" > TAKBİS PDF.
   gösterir — "Rapora Aktar" / "Vazgeç".
 - `importTakbisRecordsIntoTitleUnits` DEĞİŞMEDİ (bir önceki artıştan).
 
+**"Tapu Kaydı Değişikliği" tümüne uygula — LANDLENDİ (2026-08-09, 6. artış):**
+
+Kullanıcı: "Tapu Kaydı Değişikliği Var Mı? kutucuğunun yanına tüm
+taşınmazlara uygulansın mı seçeneği olsun. seçildiğinde tüm taşınmazlara
+uygulansın, sonra kullanıcı isterse manuel değiştirebilsin." Landlendi:
+
+- Yalnızca birden fazla taşınmaz varken (admin + `getTitleUnitCount() > 1`)
+  `titleRecordChange` alanının yanında "Tüm taşınmazlara uygulansın mı?"
+  kutucuğu görünür.
+- Kutucuk işaretlenince `applyTitleRecordChangeToAllTitleUnits()` çalışır:
+  aktif taşınmazın `titleRecordChange` (Evet/Hayır) + `titleChangedRecords`
+  (modal'dan seçilen kayıtlar) değerlerini TÜM diğer taşınmazlara (birincil
+  dahil, `primaryTitleUnitShadow` üzerinden) BİR KEZ kopyalar, sonra
+  kutucuk kendiliğinden işareti kaldırır — **sürekli senkron modu DEĞİL**,
+  tek seferlik toplu uygulama. Sonrasında her taşınmaz yine bağımsız
+  düzenlenebilir (kullanıcının isteğiyle birebir).
+- **Yan bulgu/düzeltme**: `titleChangedRecords` (hangi tapu kayıtlarının
+  değiştiği, `openTitleRecordChangeModal`'dan gelir) `sections[title].fields`'ta
+  DEKLARATİF olarak tanımlı değildi — bu yüzden `getTitleUnitScopedFieldKeys()`
+  onu görmüyordu ve tab değiştirince bu alan TÜM taşınmazlar arasında
+  YANLIŞLIKLA PAYLAŞILIYORDU (gerçek bir hataydı, bu iş sırasında fark
+  edildi ve düzeltildi — artık elle `TITLE_UNIT_SCOPED` kümesine ekleniyor).
+- Test: `tools/test-title-unit-switch.js`'e 3 yeni senaryo (8-10) eklendi:
+  `titleChangedRecords`'un artık sızmadığı, tümüne-uygula'nın doğru
+  çalıştığı, UI gate koşulunun kaynakta doğru olduğu.
+
 **HENÜZ YAPILMADI (sıradaki adımlar, öncelik sırasıyla):**
 
 1. Gerçek admin girişiyle UÇTAN UCA canlı doğrulama (dosya yükle → önizle

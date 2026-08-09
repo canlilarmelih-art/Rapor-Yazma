@@ -1525,6 +1525,21 @@ td .free-lookup input {
   grid-template-columns: 1fr;
 }
 
+/* Coklu TAKBIS Faz 2 — "Tapu Kaydi Degisikligi" tumune uygula (2026-08-09). */
+.title-record-change-apply-all {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 0.85em;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.title-record-change-apply-all-note:empty {
+  display: none;
+}
+
 .road-setback-detail-button,
 .conditional-detail-button {
   min-height: 42px;
