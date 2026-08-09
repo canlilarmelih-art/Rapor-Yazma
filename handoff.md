@@ -1,5 +1,12 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## PLANLAMA (kod değişikliği YOK) - 2026-08-09 - "Tümüne uygula" tüm ana başlıklara yayılacak
+
+- Kullanıcı: "bunu tüm ana başlıklar için yapmalıyız. ancak limitin bitmek üzere şimdilik dur." Kod değişikliği YAPILMADI — yalnızca istek `docs/coklu-takbis-import-plan.md`'ye ("Sıradaki istek — 'tümüne uygula' TÜM ana başlıklara yayılmalı" bölümü) kaydedildi.
+- Kapsam: `applyTitleRecordChangeToAllTitleUnits` deseni (0.0.387) yalnızca `titleRecordChange` alanına özel — bunun Tapu ve Mülkiyet + Takyidat sekmelerindeki TÜM alanlara (ve muhtemelen Malikler/Takyidat tablolarına) genelleştirilmesi isteniyor.
+- Ayrıca Excel içe/dışa aktarma talebi (bir önceki mesaj) de HENÜZ netleşmedi — `AskUserQuestion` kullanıcı tarafından cevapsız geçildi (dismissed), kapsam kararı bekleniyor.
+- Devam eden ajan (Codex veya yeni oturum) ÖNCE `docs/coklu-takbis-import-plan.md`'yi okumalı — orada olası bir yaklaşım taslağı ve dikkat edilecek hub-fonksiyon riskleri (createForm/createTable) not edildi.
+
 ## 0.0.387 - 2026-08-09 - "Tapu Kaydı Değişikliği" tümüne uygula kutucuğu + titleChangedRecords sızıntı düzeltmesi
 
 - Kullanıcı: "Tapu Kaydı Değişikliği Var Mı? kutucuğunun yanına tüm taşınmazlara uygulansın mı seçeneği olsun." Bkz. `docs/coklu-takbis-import-plan.md`, "'Tapu Kaydı Değişikliği' tümüne uygula — LANDLENDİ" bölümü.

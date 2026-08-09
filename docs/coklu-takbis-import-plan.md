@@ -243,6 +243,29 @@ uygulansın, sonra kullanıcı isterse manuel değiştirebilsin." Landlendi:
   `titleChangedRecords`'un artık sızmadığı, tümüne-uygula'nın doğru
   çalıştığı, UI gate koşulunun kaynakta doğru olduğu.
 
+**Sıradaki istek — "tümüne uygula" TÜM ana başlıklara yayılmalı (2026-08-09,
+kullanıcı talebi, HENÜZ BAŞLANMADI):**
+
+Kullanıcı: "bunu tüm ana başlıklar için yapmalıyız" — yani
+`applyTitleRecordChangeToAllTitleUnits` deseni (bkz. yukarıdaki "'Tapu
+Kaydı Değişikliği' tümüne uygula" bölümü) yalnızca `titleRecordChange`
+alanına özel kalmamalı, tab'lı olan TÜM alanlara (Tapu ve Mülkiyet +
+Takyidat sekmelerindeki her alan — Ada, Parsel, Blok, Nitelik, Malikler
+tablosu, Takyidat tabloları vb.) genelleştirilmeli. Kullanıcı "şimdilik
+dur" dedi (haftalık limit endişesiyle) — **HENÜZ HİÇBİR KOD YAZILMADI**,
+yalnızca bu not düşüldü ki devam eden ajan (Codex veya yeni oturum)
+buradan başlasın.
+
+Olası yaklaşım (tasarlanmadı, yalnızca ilk fikir): `applyTitleRecordChangeToAllTitleUnits`'i
+genel bir `applyFieldToAllTitleUnits(fieldKey)` fonksiyonuna dönüştürüp,
+`createForm`'un "title"/"encumbrance" alan render mantığına HER alanın
+yanına (mevcut `field.wide`/`field.critical` gibi bir bayrakla, ör.
+`field.bulkApplyToAllUnits: true`) opsiyonel bir "tümüne uygula" kutucuğu
+eklemek — tablo alanları (Malikler/Takyidat kayıtları) için ayrı bir
+mekanizma gerekebilir (tablo satırları field.key tabanlı değil). Bu,
+`createForm`/`createTable` gibi hub fonksiyonlara dokunmayı gerektirebilir
+— dikkatli, `trace_path` ile başlanmalı (bkz. AGENTS.md).
+
 **HENÜZ YAPILMADI (sıradaki adımlar, öncelik sırasıyla):**
 
 1. Gerçek admin girişiyle UÇTAN UCA canlı doğrulama (dosya yükle → önizle
