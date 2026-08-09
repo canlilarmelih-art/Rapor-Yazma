@@ -1306,6 +1306,24 @@ function addTitleUnitTab() {
   return state.titleUnits.length;
 }
 
+const MULTI_TITLE_UNIT_OWNERSHIP_TYPES = new Set([
+  "Dikey Kat İrtifakı",
+  "Yatay Kat İrtifakı",
+]);
+
+function syncMultiTitleUnitOwnershipType(value = state.fields.ownershipType) {
+  if (!MULTI_TITLE_UNIT_OWNERSHIP_TYPES.has(value) || getTitleUnitCount() <= 1) return false;
+  state.fields.ownershipType = value;
+  if (state.primaryTitleUnitShadow?.fields) {
+    state.primaryTitleUnitShadow.fields.ownershipType = value;
+  }
+  (state.titleUnits || []).forEach((unit) => {
+    unit.fields = unit.fields || {};
+    unit.fields.ownershipType = value;
+  });
+  return true;
+}
+
 // Aktif taşınmazı (birincil HARİÇ) siler. Önce birincile geçerek aktif
 // taşınmazın son verisini kendi yuvasına düzgünce "check-in" eder, sonra
 // diziden çıkarır — switchActiveTitleUnit'in mevcut mantığını tekrar
@@ -2638,6 +2656,9 @@ function createForm(section) {
         if (syncCurrentUsageNatureWithLegalNature()) clearFieldSourceOwnership("currentUsageNature");
       }
       if (section.id === "case" && field.key === "ownershipType") clearLandOwnershipDependentData(event.target.value);
+      if (section.id === "case" && field.key === "ownershipType") {
+        syncMultiTitleUnitOwnershipType(enteredValue);
+      }
       // Çoklu TAKBİS Faz 2: "Çoklu Talep"ten çıkılırken tab çubuğu HEMEN
       // gizlenir (yukarıdaki renderSection kontrolü) — ama aktif taşınmaz
       // hâlâ birincil DEĞİLSE state.fields "yetim" bir ek taşınmazı
@@ -2733,6 +2754,9 @@ function createForm(section) {
         if (syncCurrentUsageNatureWithLegalNature()) clearFieldSourceOwnership("currentUsageNature");
       }
       if (section.id === "case" && field.key === "ownershipType") clearLandOwnershipDependentData(formattedValue);
+      if (section.id === "case" && field.key === "ownershipType") {
+        syncMultiTitleUnitOwnershipType(formattedValue);
+      }
       if (section.id === "case" && field.key === "requestType" && formattedValue !== "Çoklu Talep" && state.activeTitleUnitIndex !== 0) {
         switchActiveTitleUnit(0);
       }

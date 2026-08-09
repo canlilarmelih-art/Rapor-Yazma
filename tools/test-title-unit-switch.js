@@ -66,6 +66,7 @@ const functionNames = [
   "getTitleUnitTabModels",
   "switchActiveTitleUnit",
   "addTitleUnitTab",
+  "syncMultiTitleUnitOwnershipType",
   "removeActiveTitleUnitTab",
   "applyTitleRecordChangeToAllTitleUnits",
 ];
@@ -81,6 +82,7 @@ const functionNames = [
 }
 
 const sandboxSource = `
+const MULTI_TITLE_UNIT_OWNERSHIP_TYPES = new Set(["Dikey Kat İrtifakı", "Yatay Kat İrtifakı"]);
 let sections = [
   { id: "title", fields: [{ key: "blockNo" }, { key: "parcelNo" }, { key: "titleBlockName" }, { key: "unitNo" }, { key: "titleQuality" }, { key: "titleRecordChange" }] },
   { id: "encumbrance", fields: [{ key: "takbisSummary" }, { key: "takbisDate" }] },
@@ -325,4 +327,26 @@ assert.match(appSource, /getSectionExcelValidations\(definitions\)/, "Bölüm Ex
 assert.match(appSource, /tcmbRateStrip\?\.toggleAttribute\("hidden", section\.id !== "valuation"\)/, "TCMB kur bandı yalnızca Değerleme bölümünde görünmeli.");
 assert.match(appSource, /body\.classList\.toggle\("show-tcmb-rate-strip", showTcmbRateStrip\)/, "TCMB bandı görünürlüğü gövde görünürlük sınıfıyla da korunmalı.");
 console.log("Bolum bazli Excel + Excel dropdown + TCMB gorunurluk kontrolleri tamam.");
+// --- 11) Kat irtifakı türü tüm çoklu taşınmazlara yayılır ---------------------
+{
+  const state = freshState({
+    fields: { ownershipType: "Dikey Kat İrtifakı" },
+    titleUnits: [
+      { fields: { ownershipType: "Müstakil Bina" }, tables: {} },
+      { fields: { ownershipType: "Arsa" }, tables: {} },
+    ],
+    primaryTitleUnitShadow: { fields: { ownershipType: "Tarla" }, tables: {} },
+    activeTitleUnitIndex: 1,
+  });
+  sandbox.setState(state);
+  const changed = sandbox.fns.syncMultiTitleUnitOwnershipType("Yatay Kat İrtifakı");
+  assert.equal(changed, true, "Yatay kat irtifakı çoklu taşınmazlarda senkronize edilmeli.");
+  const after = sandbox.getState();
+  assert.equal(after.fields.ownershipType, "Yatay Kat İrtifakı");
+  assert.equal(after.primaryTitleUnitShadow.fields.ownershipType, "Yatay Kat İrtifakı");
+  assert.deepEqual(after.titleUnits.map((unit) => unit.fields.ownershipType), ["Yatay Kat İrtifakı", "Yatay Kat İrtifakı"]);
+  assert.equal(sandbox.fns.syncMultiTitleUnitOwnershipType("Arsa"), false, "Arsa kat irtifakı senkronizasyon kuralını tetiklememeli.");
+  console.log("Coklu tasinmaz kat irtifaki mulkiyet senkronizasyonu testi tamam.");
+}
+
 console.log("Coklu TAKBIS Faz 2 tab-anahtarlama motoru testleri basarili.");
