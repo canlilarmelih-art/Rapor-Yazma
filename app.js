@@ -33066,10 +33066,13 @@ function buildComparableLongText(row, rowIndex, metrics) {
   // da kaldırılır (kullanıcı talebi).
   const roomCountText = isWorkplaceLikeUsageNature() ? "" : row.c5;
   const statusText = getComparableStatusText(row, metrics);
-  const positionText = buildComparablePositionComparisonText(row);
-  const isExternalAppraisal = isExternalAppointmentType(state.fields.appointmentType);
-  const featureText = buildComparableFeatureComparisonText(row).replace(/^Emsal,\s*/i, "");
-  const comparisonText = isExternalAppraisal
+  const positionText = buildComparablePositionComparisonText(row)
+    .replace(/konum bak\u0131m\u0131ndan benzerdir$/i, "benzer konumda")
+    .replace(/benzer bir konumdad\u0131r$/i, "benzer konumda")
+    .replace(/benzer bir konuma sahiptir$/i, "benzer konumda");
+ const isExternalAppraisal = isExternalAppointmentType(state.fields.appointmentType);
+const featureText = buildComparableFeatureComparisonText(row).replace(/^Emsal,\s*/i, "");
+const comparisonText = isExternalAppraisal
     ? positionText
       ? `Emsal konu taşınmaz ile ${positionText.replace(/taşınmaza göre\s*/i, "")} yer almakta olup, ${featureText}`
       : `Emsalin ${featureText}`

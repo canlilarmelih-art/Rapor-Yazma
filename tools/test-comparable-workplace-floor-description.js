@@ -276,3 +276,5 @@ function createLongTextContext(fields = {}) {
 }
 
 console.log("Emsaller kat bazinda aciklama (dukkana/katlara gore) testi tamam.");
+assert.match(appSource, /const positionText = buildComparablePositionComparisonText\(row\)[\s\S]*?benzer konumda/);
+assert.match(appSource, /positionText\.replace/);
