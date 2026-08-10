@@ -17,9 +17,26 @@ function sliceFunction(name) {
 const context = { state: { titleUnits: [{}] } };
 vm.createContext(context);
 vm.runInContext(
-  [sliceFunction("isMultiTitleUnitReportForNarrative"), sliceFunction("pluralizeEnvironmentalSubjectText")].join("\n"),
+  [
+    sliceFunction("isMultiTitleUnitReportForNarrative"),
+    sliceFunction("pluralizeEnvironmentalSubjectText"),
+    sliceFunction("formatZiraatLocationSubject"),
+  ].join("\n"),
   context,
 );
+
+const ziraatSubject = context.formatZiraatLocationSubject({
+  city: "Düzce",
+  district: "Merkez",
+  neighborhood: "Sancaklar",
+  blockNo: "709",
+  parcelNo: "2",
+  siteName: "Nurol",
+  blockName: "A",
+  floor: "Zemin",
+  unitNo: "2",
+});
+assert.equal(ziraatSubject, "Ekspertize konu taşınmaz, Düzce ili, Merkez ilçesi, Sancaklar mahallesi üzerinde konumludur");
 
 assert.equal(
   context.pluralizeEnvironmentalSubjectText("Taşınmazın yakın çevresinde gayrimenkule ulaşım mümkündür."),
@@ -35,5 +52,7 @@ assert.match(appSource, /buildZiraatLocationEnvironmentalExplanation\(\)[\s\S]*?
 assert.match(appSource, /buildZiraatDevelopmentAnalysisExplanation\(\)[\s\S]*?pluralizeEnvironmentalSubjectText/);
 assert.match(appSource, /buildZiraatBuildingPatternExplanation\(\)[\s\S]*?pluralizeEnvironmentalSubjectText/);
 assert.match(appSource, /buildEnvironmentalDescription\([\s\S]*?pluralizeEnvironmentalSubjectText/);
+assert.match(appSource, /buildEnvironmentalIntro\([\s\S]*?sharedBaseLocation/);
+assert.match(appSource, /formatZiraatLocationSubject\([\s\S]*?isSharedMultiTitleUnitNarrative/);
 
 console.log("Coklu cevre aciklamalarinda tasinmaz cogullastirma testi tamam.");

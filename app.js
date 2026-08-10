@@ -3014,18 +3014,19 @@ function getZiraatExplanationValues() {
 }
 
 function formatZiraatLocationSubject(values) {
+  const isSharedMultiTitleUnitNarrative = isMultiTitleUnitReportForNarrative();
   const addressParts = [
     values.city && `${values.city} ili`,
     values.district && `${values.district} ilçesi`,
     values.neighborhood && `${values.neighborhood} mahallesi`,
-    values.blockNo && `${values.blockNo} ada`,
-    values.parcelNo && `${values.parcelNo} parsel`,
+    !isSharedMultiTitleUnitNarrative && values.blockNo && `${values.blockNo} ada`,
+    !isSharedMultiTitleUnitNarrative && values.parcelNo && `${values.parcelNo} parsel`,
   ].filter(Boolean);
   const unitParts = [
-    values.siteName,
-    values.blockName && `${values.blockName} Blok`,
-    values.floor && `${values.floor}. Kat`,
-    values.unitNo && `${values.unitNo} no.lu bağımsız bölüm`,
+    !isSharedMultiTitleUnitNarrative && values.siteName,
+    !isSharedMultiTitleUnitNarrative && values.blockName && `${values.blockName} Blok`,
+    !isSharedMultiTitleUnitNarrative && values.floor && `${values.floor}. Kat`,
+    !isSharedMultiTitleUnitNarrative && values.unitNo && `${values.unitNo} no.lu bağımsız bölüm`,
   ].filter(Boolean);
   if (!addressParts.length && !unitParts.length) return "Ekspertize konu taşınmaz";
   return `Ekspertize konu taşınmaz, ${[...addressParts, ...unitParts].join(", ")} üzerinde konumludur`;
@@ -6779,6 +6780,15 @@ registerVariantGroup("buildEnvironmentalIntro", "Konum Paragrafı Giriş Cümles
 function buildEnvironmentalIntro(values, options = {}) {
   const variantIndex = options.usePlaceholderTokens ? 0 : selectVariant("buildEnvironmentalIntro", environmentalIntroSubjectVariants.length);
   const { subject, verb } = environmentalIntroSubjectVariants[variantIndex];
+  const isSharedMultiTitleUnitNarrative = !options.usePlaceholderTokens && isMultiTitleUnitReportForNarrative();
+  if (isSharedMultiTitleUnitNarrative) {
+    const sharedBaseLocation =
+      `${subject}, ${values.city} ili, ${values.district} ilçesi, ${values.neighborhood} mahallesinde`;
+    return pluralizeEnvironmentalSubjectText(
+      `${sharedBaseLocation} ${verb}.`,
+      true,
+    );
+  }
   const baseLocation =
     `${subject}, ${values.city} ili, ${values.district} ilçesi, ${values.neighborhood} mahallesinde, ` +
     `${values.blockNo} ada, ${values.parcelNo} parsel üzerinde`;
