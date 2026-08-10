@@ -23072,7 +23072,7 @@ function formatEncumbranceTitleUnitScope(row, totalTitleUnitCount = null) {
   if (resolvedTitleUnitCount > 1 && references.length === resolvedTitleUnitCount) {
     return " (Tüm Taşınmazlar üzerinde müştereken)";
   }
-  return ` (${references.join(" ve ")} üzerinde)`;
+  return ` (${references.join(", ")} üzerinde)`;
 }
 
 function formatEncumbranceDeclarationRow(row, options = {}) {

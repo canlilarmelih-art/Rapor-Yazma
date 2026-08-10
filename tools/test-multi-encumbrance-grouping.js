@@ -71,6 +71,6 @@ assert.equal(
 );
 assert.equal(
   fns.formatEncumbranceTitleUnitScope(grouped[0], 3),
-  " (A-2 ve A-4 üzerinde)",
+  " (A-2, A-4 üzerinde)",
 );
 console.log("Coklu takyidat ayni yevmiye gruplama testi tamam.");
