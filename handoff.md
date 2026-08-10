@@ -8065,3 +8065,34 @@ Doğrulama: `node --check app.js`, `node tools/check-basic.js`, `git diff --chec
 - Kullanıcı doğrulamasında ara panelin normal kullanıcıya görünmediği tespit edildi: çoklu kayıtlar `pendingMultiTakbisImport` içinde bekliyor, panel ise yalnızca `case` bölümünde gösteriliyordu. Çoklu TAKBİS kayıtları artık yükleme tamamlanınca doğrudan `importTakbisRecordsIntoTitleUnits` ile tablara aktarılıyor; çoklu seçim de tüm kullanıcılara açıldı. Cache-buster `20260810-0530` yapıldı.
 - Çoklu talepte `ownershipType` olarak `Dikey Kat İrtifakı` veya `Yatay Kat İrtifakı` seçildiğinde `syncMultiTitleUnitOwnershipType` birincil kayıt, ek taşınmazlar ve `primaryTitleUnitShadow` içindeki değeri eşitliyor. `test-title-unit-switch.js` içine regresyon testi eklendi. Cache-buster `20260810-0600` yapıldı.
 - Takyidat açıklaması çoklu taşınmazlarda yevmiye numarasına göre gruplanıyor. Aynı yevmiye tek satırda tutuluyor; aynı ada/parsel grubunda taşınmaz kapsamı `A-2`, `A-4` gibi tab etiketleriyle yazılıyor, farklı ada/parselde tam ada/parsel referansı korunuyor. `tools/test-multi-encumbrance-grouping.js` ile doğrulandı. Cache-buster `20260810-0630` yapıldı.
+
+## 0.0.402 - 2026-08-10 - Çoğul TAKBİS giriş cümlesi (çok taşınmazlı raporlar)
+
+- Takyidat bölümü giriş cümlesi (`buildEncumbranceIntroSentence`) artık çok taşınmazlı raporlarda (`getTitleUnitCount() > 1`) "TAKBİS belgesine"/"konu taşınmaz" yerine "TAKBİS belgelerine"/"TAKBİS kayıtlarına"/"taşınmazlar" çoğul ifadelerini kullanıyor; tekli-tapu raporlarında cümle birebir aynı kalıyor.
+- `tools/test-encumbrance-intro-sentence.js` çok-taşınmazlı senaryoyla genişletildi.
+- Cache-buster: `app.js?v=20260810-0830`.
+
+## 0.0.403 - 2026-08-10 - Çevresel anlatımların çoğullaştırılması (çok taşınmazlı)
+
+- Yeni `isMultiTitleUnitReportForNarrative()` + `pluralizeEnvironmentalSubjectText()` yardımcıları eklendi; ikincisi "Taşınmaz(ın/a/da)", "Gayrimenkul(ün/e)", "Mülk(ün/e)" kalıplarını regex ile çoğul forma (Taşınmazlar/Gayrimenkuller/Mülkler ...) çeviriyor.
+- Ziraat konum/gelişim-analizi/yapılaşma anlatımları (`buildZiraatLocationEnvironmentalExplanation`, `buildZiraatDevelopmentAnalysisExplanation`, `buildZiraatBuildingPatternExplanation`) ve genel `buildEnvironmentalDescription`'ın tarımsal/sanayi/ticaret/konut açılış cümleleri, çok taşınmazlı raporlarda bu çoğullaştırmadan geçiriliyor. Şablon placeholder-önizleme modu (`usePlaceholderTokens`) etkilenmiyor.
+- Cache-buster: `app.js?v=20260810-0900`.
+
+## 0.0.404 - 2026-08-10 - Çevresel anlatımda taşınmaza özel ada/parselin paylaşımlı raporlarda gizlenmesi
+
+- `formatZiraatLocationSubject` ve `buildEnvironmentalIntro`, çok taşınmazlı raporlarda taşınmaza özel ada/parsel/site/blok/kat/BB no bilgisini artık cümleye BASMIYOR — bu alanlar taşınmaz başına farklı olabileceğinden tek (yanlış/eksik) bir değeri tüm taşınmazlar için yazma riski kaldırıldı. Cümle yalnızca ortak il/ilçe/mahalle konum bilgisiyle devam ediyor.
+- Cache-buster: `app.js?v=20260810-0930`.
+
+## 0.0.405 - 2026-08-10 - Ortak ada/parselin çok taşınmazlı anlatıma geri eklenmesi
+
+- Bir önceki artışta (0.0.404) kaldırılan ada/parsel bilgisi, TÜM taşınmazlar AYNI ada/parseldeyse (`getSharedNarrativeParcelPhrase()`) cümleye tekrar ekleniyor; taşınmazlar farklı ada/parsellerdeyse hâlâ yazılmıyor (çelişkili bilgi riski korunuyor).
+- Aynı ada/parselde birden fazla blok varsa blok adları da (`A Blok, B Blok` gibi) cümleye ekleniyor.
+- Yeni `getNarrativeTitleUnitFields()` yardımcısı: birincil taşınmaz + ek taşınmazların (takas mimarisi üzerinden) `fields`'ını tek dizide toplar; anlatım fonksiyonları taşınmazlar arasında bu diziyle karşılaştırma yapıyor.
+- Cache-buster: `app.js?v=20260810-1000`.
+
+## 0.0.406 - 2026-08-10 - İmar planı notunun paylaşımlı parsellerde çoğullaştırılması
+
+- `buildImarPlanningNote()`, taşınmazlar ortak bir ada/parseli paylaşıyorsa (`getSharedNarrativeParcelPhrase()` boş dönmediğinde) metni de `pluralizeEnvironmentalSubjectText` ile çoğul forma çeviriyor.
+- Bölüm bazlı Excel panelinde (`createSectionExcelPanel`) taşınmazlar FARKLI ada/parsellerdeyse ayırt edici bir CSS sınıfı (`section-excel-panel--mixed-parcels`) ve `data-parcel-scope="mixed"` niteliği eklendi — bu artışta davranışsal bir fark yaratmıyor, ileride karışık-parsel uyarısı için altyapı.
+- Cache-buster: `app.js?v=20260810-1030`.
+- **Not**: Bu 5 madde (0.0.402-0.0.406) `docs/coklu-takbis-import-plan.md`'deki resmi plana işlenmemişti; commit geçmişinden (`84cfe7f`..`54b7636`) yeniden inşa edilip buraya eklendi. `npm run verify` bu haliyle yeşil.
