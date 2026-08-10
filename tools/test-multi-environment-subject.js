@@ -19,6 +19,8 @@ vm.createContext(context);
 vm.runInContext(
   [
     sliceFunction("isMultiTitleUnitReportForNarrative"),
+    sliceFunction("getNarrativeTitleUnitFields"),
+    sliceFunction("getSharedNarrativeParcelPhrase"),
     sliceFunction("pluralizeEnvironmentalSubjectText"),
     sliceFunction("formatZiraatLocationSubject"),
   ].join("\n"),
@@ -54,5 +56,28 @@ assert.match(appSource, /buildZiraatBuildingPatternExplanation\(\)[\s\S]*?plural
 assert.match(appSource, /buildEnvironmentalDescription\([\s\S]*?pluralizeEnvironmentalSubjectText/);
 assert.match(appSource, /buildEnvironmentalIntro\([\s\S]*?sharedBaseLocation/);
 assert.match(appSource, /formatZiraatLocationSubject\([\s\S]*?isSharedMultiTitleUnitNarrative/);
+
+context.state.fields = { blockNo: "0", parcelNo: "709", titleBlockName: "A" };
+context.state.titleUnits = [
+  { fields: { blockNo: "0", parcelNo: "709", titleBlockName: "B" } },
+  { fields: { blockNo: "0", parcelNo: "709", titleBlockName: "C" } },
+];
+const sharedZiraatSubject = context.formatZiraatLocationSubject({
+  city: "Düzce",
+  district: "Merkez",
+  neighborhood: "Sancaklar",
+});
+assert.equal(
+  sharedZiraatSubject,
+  "Ekspertize konu taşınmazlar, Düzce ili, Merkez ilçesi, Sancaklar mahallesi, 0 ada 709 parsel üzerinde A, B, C bloklarda yer almaktadır.",
+);
+
+context.state.titleUnits[1].fields.parcelNo = "710";
+const differentParcelSubject = context.formatZiraatLocationSubject({
+  city: "Düzce",
+  district: "Merkez",
+  neighborhood: "Sancaklar",
+});
+assert.ok(!differentParcelSubject.includes("0 ada 709 parsel"));
 
 console.log("Coklu cevre aciklamalarinda tasinmaz cogullastirma testi tamam.");

@@ -2966,6 +2966,38 @@ function isMultiTitleUnitReportForNarrative() {
     : Array.isArray(state.titleUnits) && state.titleUnits.length > 0;
 }
 
+function getNarrativeTitleUnitFields() {
+  const count = typeof getTitleUnitCount === "function"
+    ? getTitleUnitCount()
+    : 1 + (Array.isArray(state.titleUnits) ? state.titleUnits.length : 0);
+  return Array.from({ length: count }, (_, index) => {
+    if (typeof getTitleUnitFieldsForLabel === "function") {
+      return getTitleUnitFieldsForLabel(index) || {};
+    }
+    return index === 0 ? state.fields || {} : state.titleUnits?.[index - 1]?.fields || {};
+  });
+}
+
+function getSharedNarrativeParcelPhrase() {
+  if (!isMultiTitleUnitReportForNarrative()) return "";
+  const units = getNarrativeTitleUnitFields();
+  const first = units[0] || {};
+  const firstBlock = String(first.blockNo || first.titleBlockNo || "").trim();
+  const firstParcel = String(first.parcelNo || first.titleParcelNo || "").trim();
+  if (!firstBlock || !firstParcel) return "";
+  const sameParcel = units.every((unit) =>
+    String(unit.blockNo || unit.titleBlockNo || "").trim() === firstBlock
+    && String(unit.parcelNo || unit.titleParcelNo || "").trim() === firstParcel,
+  );
+  if (!sameParcel) return "";
+  const blocks = [...new Set(units
+    .map((unit) => String(unit.titleBlockName || unit.addressBlockName || unit.blockName || "").trim())
+    .filter(Boolean))];
+  const blockPhrase = blocks.length > 1
+    ? ` ${blocks.join(", ")} bloklarda yer almaktadır`
+    : "";
+  return `${firstBlock} ada ${firstParcel} parsel üzerinde${blockPhrase}`;
+}
 function pluralizeEnvironmentalSubjectText(value, enabled = true) {
   if (!enabled || !value) return value;
   return String(value)
@@ -3028,6 +3060,13 @@ function formatZiraatLocationSubject(values) {
     !isSharedMultiTitleUnitNarrative && values.floor && `${values.floor}. Kat`,
     !isSharedMultiTitleUnitNarrative && values.unitNo && `${values.unitNo} no.lu bağımsız bölüm`,
   ].filter(Boolean);
+  if (isSharedMultiTitleUnitNarrative) {
+    const sharedParcelPhrase = getSharedNarrativeParcelPhrase();
+    if (sharedParcelPhrase) {
+      addressParts.push(sharedParcelPhrase);
+      return `Ekspertize konu taşınmazlar, ${[...addressParts, ...unitParts].join(", ")}.`;
+    }
+  }
   if (!addressParts.length && !unitParts.length) return "Ekspertize konu taşınmaz";
   return `Ekspertize konu taşınmaz, ${[...addressParts, ...unitParts].join(", ")} üzerinde konumludur`;
 }
@@ -6784,8 +6823,12 @@ function buildEnvironmentalIntro(values, options = {}) {
   if (isSharedMultiTitleUnitNarrative) {
     const sharedBaseLocation =
       `${subject}, ${values.city} ili, ${values.district} ilçesi, ${values.neighborhood} mahallesinde`;
+    const sharedParcelPhrase = getSharedNarrativeParcelPhrase();
+    const sharedLocation = sharedParcelPhrase
+      ? `${sharedBaseLocation}, ${sharedParcelPhrase}`
+      : `${sharedBaseLocation} ${verb}`;
     return pluralizeEnvironmentalSubjectText(
-      `${sharedBaseLocation} ${verb}.`,
+      `${sharedLocation}.`,
       true,
     );
   }
