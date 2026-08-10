@@ -14905,6 +14905,16 @@ function importSectionExcelRows(section, rows) {
   return imported.length;
 }
 
+function hasMixedTitleUnitParcels() {
+  if (getTitleUnitCount() < 2) return false;
+  const keys = getNarrativeTitleUnitFields().map((fields) => {
+    const block = String(fields.blockNo || fields.titleBlockNo || "").trim();
+    const parcel = String(fields.parcelNo || fields.titleParcelNo || "").trim();
+    return block && parcel ? `${block}/${parcel}` : "";
+  });
+  return new Set(keys).size > 1;
+}
+
 function getSectionExcelIconMarkup(direction) {
   const isDownload = direction === "download";
   const arrowPath = isDownload
@@ -14923,6 +14933,9 @@ function createSectionExcelPanel(section) {
   if (!window.RaporMultiRequestXlsx || !section?.fields?.length) return null;
   const panel = document.createElement("div");
   panel.className = "subsection section-excel-panel";
+  const mixedParcels = hasMixedTitleUnitParcels();
+  panel.classList.toggle("section-excel-panel--mixed-parcels", mixedParcels);
+  panel.dataset.parcelScope = mixedParcels ? "mixed" : "shared-or-single";
   panel.innerHTML = `
     <div class="subsection-heading"><div><span class="eyebrow">Aktif ana bölüm</span><h3>${escapeHtml(section.title)} Excel</h3></div></div>
     <p class="muted-note">Yalnızca bu bölümün alanları aktarılır. Açılır liste alanları Excel'de de seçim listesi olarak korunur.</p>
@@ -24510,9 +24523,12 @@ function buildImarPlanningNote(fields = {}) {
     if (data.planRestrictionNote) parts.push(data.planRestrictionNote);
   }
 
-  parts.push(...composeImarPlanningStatusParagraphs(data));
-
-  return normalizeReportDescriptionText(parts.filter(Boolean).join("\n\n"));
+ parts.push(...composeImarPlanningStatusParagraphs(data));
+  const note = normalizeReportDescriptionText(parts.filter(Boolean).join("\n\n"));
+  const sharedParcelNarrative = typeof getSharedNarrativeParcelPhrase === "function"
+    ? getSharedNarrativeParcelPhrase()
+    : "";
+  return pluralizeEnvironmentalSubjectText(note, Boolean(sharedParcelNarrative));
 }
 
 function isAgriculturalPlanningLegend(value = "") {

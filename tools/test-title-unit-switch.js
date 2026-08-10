@@ -327,6 +327,9 @@ assert.match(appSource, /getSectionExcelValidations\(definitions\)/, "Bölüm Ex
 assert.match(appSource, /tcmbRateStrip\?\.toggleAttribute\("hidden", section\.id !== "valuation"\)/, "TCMB kur bandı yalnızca Değerleme bölümünde görünmeli.");
 assert.match(appSource, /body\.classList\.toggle\("show-tcmb-rate-strip", showTcmbRateStrip\)/, "TCMB bandı görünürlüğü gövde görünürlük sınıfıyla da korunmalı.");
 console.log("Bolum bazli Excel + Excel dropdown + TCMB gorunurluk kontrolleri tamam.");
+assert.match(appSource, /buildImarPlanningNote\([\s\S]*?pluralizeEnvironmentalSubjectText\(note, Boolean\(sharedParcelNarrative\)\)/);
+assert.match(appSource, /section-excel-panel--mixed-parcels/);
+assert.match(appSource, /panel\.dataset\.parcelScope = mixedParcels \? "mixed" : "shared-or-single"/);
 // --- 11) Kat irtifakı türü tüm çoklu taşınmazlara yayılır ---------------------
 {
   const state = freshState({
