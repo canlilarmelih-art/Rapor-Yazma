@@ -2960,6 +2960,33 @@ function applyClimateEarthquakeAutoFields(record) {
   if (control) markFieldSourceState(control, "earthquakeZone");
 }
 
+function isMultiTitleUnitReportForNarrative() {
+  return typeof getTitleUnitCount === "function"
+    ? getTitleUnitCount() > 1
+    : Array.isArray(state.titleUnits) && state.titleUnits.length > 0;
+}
+
+function pluralizeEnvironmentalSubjectText(value, enabled = true) {
+  if (!enabled || !value) return value;
+  return String(value)
+    .replace(/\bTaşınmazın\b/g, "Taşınmazların")
+    .replace(/\bTaşınmaza\b/g, "Taşınmazlara")
+    .replace(/\bTaşınmazda\b/g, "Taşınmazlarda")
+    .replace(/\btaşınmazın\b/g, "taşınmazların")
+    .replace(/\btaşınmaza\b/g, "taşınmazlara")
+    .replace(/\btaşınmazda\b/g, "taşınmazlarda")
+    .replace(/\bTaşınmaz\b/g, "Taşınmazlar")
+    .replace(/\btaşınmaz\b/g, "taşınmazlar")
+    .replace(/\bGayrimenkulün\b/g, "Gayrimenkullerin")
+    .replace(/\bGayrimenkule\b/g, "Gayrimenkullere")
+    .replace(/\bgayrimenkulün\b/g, "gayrimenkullerin")
+    .replace(/\bgayrimenkule\b/g, "gayrimenkullere")
+    .replace(/\bMülkün\b/g, "Mülklerin")
+    .replace(/\bMülke\b/g, "Mülklere")
+    .replace(/\bmülkün\b/g, "mülklerin")
+    .replace(/\bmülke\b/g, "mülklere");
+}
+
 function getZiraatExplanationValues() {
   const value = (...keys) => keys.map((key) => String(state.fields?.[key] || "").trim()).find(Boolean) || "";
   return {
@@ -3035,7 +3062,10 @@ function buildZiraatLocationEnvironmentalExplanation() {
     ];
     sentences.push(variants[selectVariant("buildZiraatLocationEnvironmentalExplanation:infrastructure", variants.length)]);
   }
-  return normalizeReportDescriptionText(sentences.join(" "));
+  return pluralizeEnvironmentalSubjectText(
+    normalizeReportDescriptionText(sentences.join(" ")),
+    isMultiTitleUnitReportForNarrative(),
+  );
 }
 registerVariantGroup("buildZiraatLocationEnvironmentalExplanation:nearby", "Yakın Çevre — Ziraat (Ziraat/Arsa-Arazi)", 4);
 registerVariantGroup("buildZiraatLocationEnvironmentalExplanation:mainArtery", "Ana Arter Ulaşımı — Ziraat (Ziraat/Arsa-Arazi)", 4);
@@ -3073,7 +3103,10 @@ function buildZiraatDevelopmentAnalysisExplanation() {
     ];
     sentences.push(variants[selectVariant("buildZiraatDevelopmentAnalysisExplanation:income", variants.length)]);
   }
-  return normalizeReportDescriptionText(sentences.join(" "));
+  return pluralizeEnvironmentalSubjectText(
+    normalizeReportDescriptionText(sentences.join(" ")),
+    isMultiTitleUnitReportForNarrative(),
+  );
 }
 registerVariantGroup("buildZiraatDevelopmentAnalysisExplanation:socialNeeds", "Sosyal İhtiyaç Mesafesi — Ziraat (Ziraat/Arsa-Arazi)", 4);
 registerVariantGroup("buildZiraatDevelopmentAnalysisExplanation:age", "Yapı Stoku Yaşı — Ziraat (Ziraat/Arsa-Arazi)", 4);
@@ -3108,7 +3141,10 @@ function buildZiraatBuildingPatternExplanation() {
     `Gayrimenkulün yakın çevresinde ağırlıklı olarak ${floors}, ${purpose} bir yapılaşma söz konusudur.`,
   ];
   sentences.push(patternVariants[selectVariant("buildZiraatBuildingPatternExplanation:pattern", patternVariants.length)]);
-  return normalizeReportDescriptionText(sentences.join(" "));
+  return pluralizeEnvironmentalSubjectText(
+    normalizeReportDescriptionText(sentences.join(" ")),
+    isMultiTitleUnitReportForNarrative(),
+  );
 }
 registerVariantGroup("buildZiraatBuildingPatternExplanation:order", "Yapılaşma Nizamı — Ziraat (Ziraat/Arsa-Arazi)", 4);
 registerVariantGroup("buildZiraatBuildingPatternExplanation:speed", "Yapılaşma Hızı — Ziraat (Ziraat/Arsa-Arazi)", 4);
@@ -7088,7 +7124,10 @@ function buildEnvironmentalDescription(regionType = state.fields?.environmentReg
       `${intro} Taşınmazın bulunduğu bölge, tarımsal faaliyetlerin ${agriculturalDensityText} biçimde icra edildiği kırsal nitelikli bir çevrede konumlanmaktadır. ${agriculturalKmlDistanceSentence}Yakın çevresinde tarla, bağ, bahçe, zeytinlik, meyve bahçesi türünde tarımsal amaçlı taşınmazlar bulunmaktadır. Bölge genelinde yapılaşma yoğunluğu ${values.developmentDensity} seviyede olup, yerleşim alanları genel olarak köy/mahalle merkezi civarında oluşmuştur. Taşınmazın çevresi doğal yapısını büyük ölçüde korumakta olup, bölgedeki ekonomik faaliyetler ağırlıklı olarak ${agriculturalActivityText} kullanımına dayanmaktadır. Ulaşım imkânları tarla yolları, köy yolları ve bağlantılı güzergâhlar aracılığıyla sağlanmakta, ana ulaşım akslarına erişim mesafeye bağlı olarak farklılaşmaktadır. Altyapı hizmetleri bölgenin kırsal yapısı nedeniyle kısmen mevcut olup, elektrik, yol ve su olanakları parsel bazında değişkenlik gösterebilmektedir. Mevcut çevresel özellikleri esas alındığında, taşınmazın tarımsal kullanım açısından ${agriculturalSuitabilityText} nitelikte olduğu değerlendirilmektedir.`,
     ];
     const variantIndex = usePlaceholderTokens ? 0 : selectVariant("buildEnvironmentalDescription:tarimsal", tarimsalVariants.length);
-    return normalizeReportDescriptionText(tarimsalVariants[variantIndex]);
+     return pluralizeEnvironmentalSubjectText(
+       normalizeReportDescriptionText(tarimsalVariants[variantIndex]),
+       !usePlaceholderTokens && isMultiTitleUnitReportForNarrative(),
+     );
   }
 
   if (detectedType === "Sanayi Bölgesi") {
@@ -7097,7 +7136,10 @@ function buildEnvironmentalDescription(regionType = state.fields?.environmentReg
       `${intro} Taşınmazın bulunduğu yakın çevrede, genellikle ${industrialUsePurposeText} amaçlı, zemin + ${values.regionFloorRange} katlı bir yapılaşma dokusu bulunmaktadır. ${buildOrderSentence}Bölgedeki yapılaşma ${values.developmentDensity} yoğunlukta olup, üretim, servis ve depolama faaliyetlerine elverişli bir çevre karakteri taşımaktadır. ${speedSentence}${ageSentence}${infrastructureSanayiSentence} ${mainArterySanayiSentence}${nearbySentence}`,
     ];
     const variantIndex = usePlaceholderTokens ? 0 : selectVariant("buildEnvironmentalDescription:sanayiOpener", sanayiVariants.length);
-    return normalizeReportDescriptionText(sanayiVariants[variantIndex]);
+     return pluralizeEnvironmentalSubjectText(
+       normalizeReportDescriptionText(sanayiVariants[variantIndex]),
+       !usePlaceholderTokens && isMultiTitleUnitReportForNarrative(),
+     );
   }
 
   if (detectedType === "Ticaret Bölgesi") {
@@ -7106,7 +7148,10 @@ function buildEnvironmentalDescription(regionType = state.fields?.environmentReg
       `${intro} Taşınmazın bulunduğu yakın çevrede, genellikle ${values.regionUsePurpose} amaçlı, bodrum üzerine zemin + ${values.regionFloorRange} katlı bir yapılaşma söz konusudur. ${buildOrderSentence}Yapılaşmanın ${values.developmentDensity} yoğunlukta olduğu bölgenin ticari potansiyeli, ${commercialFirmScale} firmaların bölgede faaliyet göstermesine imkân tanımaktadır. ${speedSentence}${ageSentence}${commercialFunctionSentence}${socialNeedsTicaretSentence}${mainArteryTicaretSentence}${infrastructureTicaretSentence}`,
     ];
     const variantIndex = usePlaceholderTokens ? 0 : selectVariant("buildEnvironmentalDescription:ticaretOpener", ticaretVariants.length);
-    return normalizeReportDescriptionText(ticaretVariants[variantIndex]);
+     return pluralizeEnvironmentalSubjectText(
+       normalizeReportDescriptionText(ticaretVariants[variantIndex]),
+       !usePlaceholderTokens && isMultiTitleUnitReportForNarrative(),
+     );
   }
 
   const konutVariants = [
@@ -7114,7 +7159,10 @@ function buildEnvironmentalDescription(regionType = state.fields?.environmentReg
     `${intro} Taşınmazın bulunduğu yakın çevrede, genellikle ${values.regionUsePurpose} amaçlı, bodrum kat üzerine zemin + ${values.regionFloorRange} katlı bir yapılaşma dokusu bulunmaktadır. ${buildOrderSentence}${socialNeedsKonutSentence}${speedSentence}${ageSentence}${incomeLevelSentence}${mainArteryStandardSentence}${nearbySentence} ${infrastructureKonutSentence}`,
   ];
   const konutVariantIndex = usePlaceholderTokens ? 0 : selectVariant("buildEnvironmentalDescription:konutOpener", konutVariants.length);
-  return normalizeReportDescriptionText(konutVariants[konutVariantIndex]);
+  return pluralizeEnvironmentalSubjectText(
+    normalizeReportDescriptionText(konutVariants[konutVariantIndex]),
+    !usePlaceholderTokens && isMultiTitleUnitReportForNarrative(),
+  );
 }
 registerVariantGroup("buildEnvironmentalDescription:orderSentence", "Yapılaşma Nizamı — ortak (Adres/Konum/Çevre)", 5);
 registerVariantGroup("buildEnvironmentalDescription:speedSentence", "Yapılaşma Hızı — ortak (Adres/Konum/Çevre)", 5);
