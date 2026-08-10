@@ -56,11 +56,11 @@ const src = [
   sliceFn("function getEncumbranceIntroSentenceForPlaceholder("),
 ].join("\n");
 
-function run(fields, tables = {}) {
+function run(fields, tables = {}, titleUnits = []) {
   // selectVariant burada BİLEREK her zaman 0 (orijinal metin) döner — bu
   // test alan/tarih/yöntem BİRLEŞTİRME mantığını doğruluyor, varyant
   // SEÇİMİ ayrı olarak tools/test-variant-selection.js'te test ediliyor.
-  const context = { state: { fields, tables }, selectVariant: () => 0 };
+  const context = { state: { fields, tables, titleUnits }, selectVariant: () => 0 };
   vm.createContext(context);
   vm.runInContext(src, context);
   return context;
@@ -73,6 +73,19 @@ function run(fields, tables = {}) {
     ctx.buildEncumbranceIntroSentence(),
     "03.08.2026 tarihinde saat 17:32 Webtapu Sistemi üzerinden alınan TAKBİS belgesine göre, konu taşınmaz üzerinde aşağıdaki takyidatlar bulunmaktadır.",
     "Kullanicinin verdigi ornek cumleyle birebir eslesmeli."
+  );
+}
+
+// --- 1b) Coklu tasinmazlarda belge ve tasinmaz ifadeleri cogul olmali ------
+{
+  const ctx = run(
+    { takbisDate: "2026-08-03", takbisTime: "17:32", takbisMethod: "Webtapu Sistemi" },
+    {},
+    [{ fields: {} }],
+  );
+  assert.equal(
+    ctx.buildEncumbranceIntroSentence(),
+    "03.08.2026 tarihinde saat 17:32 Webtapu Sistemi üzerinden alınan TAKBİS belgelerine göre, konu taşınmazlar üzerinde aşağıdaki takyidatlar bulunmaktadır.",
   );
 }
 

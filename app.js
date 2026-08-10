@@ -22158,10 +22158,15 @@ function buildEncumbranceIntroSentence() {
   const time = String(state.fields.takbisTime || "").trim();
   const method = encumbranceTextOrBila(state.fields.takbisMethod || "Webtapu Sistemi");
   const receivedAt = time ? `${date} tarihinde saat ${time}` : `${date} tarihinde`;
+  const isMultiTitleUnitReport = typeof getTitleUnitCount === "function"
+    ? getTitleUnitCount() > 1
+    : Array.isArray(state.titleUnits) && state.titleUnits.length > 0;
+  const takbisDocumentLabel = isMultiTitleUnitReport ? "TAKBİS belgelerine" : "TAKBİS belgesine";
+  const subjectPropertyLabel = isMultiTitleUnitReport ? "taşınmazlar" : "taşınmaz";
   const variants = [
-    `${receivedAt} ${method} üzerinden alınan TAKBİS belgesine göre, konu taşınmaz üzerinde aşağıdaki takyidatlar bulunmaktadır.`,
-    `${receivedAt} ${method} aracılığıyla temin edilen TAKBİS belgesine göre, ekspertize konu taşınmaz üzerinde aşağıda belirtilen takyidatlar tespit edilmiştir.`,
-    `${method} üzerinden ${receivedAt} alınan TAKBİS kaydına göre, söz konusu taşınmaz üzerinde aşağıdaki takyidat kalemleri bulunmaktadır.`,
+    `${receivedAt} ${method} üzerinden alınan ${takbisDocumentLabel} göre, konu ${subjectPropertyLabel} üzerinde aşağıdaki takyidatlar bulunmaktadır.`,
+    `${receivedAt} ${method} aracılığıyla temin edilen ${takbisDocumentLabel} göre, ekspertize konu ${subjectPropertyLabel} üzerinde aşağıda belirtilen takyidatlar tespit edilmiştir.`,
+    `${method} üzerinden ${receivedAt} alınan ${isMultiTitleUnitReport ? "TAKBİS kayıtlarına" : "TAKBİS kaydına"} göre, söz konusu ${subjectPropertyLabel} üzerinde aşağıdaki takyidat kalemleri bulunmaktadır.`,
   ];
   return variants[selectVariant("buildEncumbranceIntroSentence", variants.length)];
 }
