@@ -482,7 +482,8 @@ const sections = [
       { key: "kaks", label: "KAKS / Emsal", type: "text" },
       { key: "calculatedEmsal", label: "Hesaplanan Emsal", type: "text" },
       { key: "frontGarden", label: "Ön bahçe", type: "text" },
-      { key: "sideGarden", label: "Yan bahçe", type: "text" },
+     { key: "sideGarden", label: "Yan bahçe", type: "text" },
+      { key: "backGarden", label: "Arka bahçe", type: "text" },
       { key: "hasPlanningIssue", label: "Taşınmazın İmar Durumunda Sorun Var mı?", type: "checkbox", checkedValue: "Evet", uncheckedValue: "Hayır", defaultValue: "Hayır", wide: true },
       { key: "planCancellationStay", label: "Plan İptali/Yürütmeyi Durdurma Kararı Var mı?", type: "conditionalYesNo", detailWhen: "Evet", detailKey: "planCancellationStayNote", hideInactiveDetail: true },
       { key: "roadSetback", label: "Yola terk var mı", type: "select", options: ["", "Evet", "Hayır"] },
@@ -2502,7 +2503,11 @@ function createForm(section) {
       return;
     }
 
-    if (section.id === "planning" && field.key === "sideGarden") {
+   if (section.id === "planning" && field.key === "sideGarden") {
+     return;
+   }
+
+    if (section.id === "planning" && field.key === "backGarden") {
       return;
     }
 
@@ -6636,7 +6641,8 @@ const planningNoteAutoRefreshFields = new Set([
   "taks",
   "kaks",
   "frontGarden",
-  "sideGarden",
+ "sideGarden",
+  "backGarden",
   "roadSetback",
   "roadSetbackAmount",
   "roadSetbackBuildingImpact",
@@ -13240,12 +13246,16 @@ function createGardenSetbacksPairControl() {
     key: "frontGarden",
     label: "Ön Bahçe",
   });
-  const sideGardenLabel = createInlineTextField({
-    key: "sideGarden",
-    label: "Yan Bahçe",
+ const sideGardenLabel = createInlineTextField({
+   key: "sideGarden",
+   label: "Yan Bahçe",
+ });
+  const backGardenLabel = createInlineTextField({
+    key: "backGarden",
+    label: "Arka Bahçe",
   });
 
-  wrapper.append(frontGardenLabel, sideGardenLabel);
+  wrapper.append(frontGardenLabel, sideGardenLabel, backGardenLabel);
   if (shouldShowPlanningIssueFields()) {
     const roadField = createRoadSetbackControl({
       key: "roadSetback",
@@ -24298,7 +24308,8 @@ function applyImarFieldsToReport(options = {}) {
     hmax: fields.binaYuksekligi,
     floorCount: fields.katAdedi,
     frontGarden: fields.onBahce,
-    sideGarden: fields.yanBahce,
+   sideGarden: fields.yanBahce,
+    backGarden: fields.arkaBahce,
     roadSetback: normalizeYesNoChoice(fields.yolaTerk),
     planRestrictionNote: fields.planRestrictionNote,
     planningNote: buildImarPlanningNote(fields),
@@ -24324,7 +24335,8 @@ function resetImarDerivedFields() {
     "hmax",
     "floorCount",
     "frontGarden",
-    "sideGarden",
+   "sideGarden",
+    "backGarden",
     "roadSetback",
     "roadSetbackAmount",
     "roadSetbackBuildingImpact",
