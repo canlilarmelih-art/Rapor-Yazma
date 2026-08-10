@@ -2842,11 +2842,9 @@ function hashVariantSeedTextServer(text) {
 // seklinde guvenli ve deterministik bir varsayilan saglar.
 function selectVariantServer(seed, overrides, sentenceKey, variantCount) {
   if (!Number.isInteger(variantCount) || variantCount <= 1) return 0;
-  const override = overrides?.[sentenceKey];
-  if (Number.isInteger(override) && override >= 0 && override < variantCount) return override;
-  if (!seed) return 0;
-  const hash = hashVariantSeedTextServer(`${seed}::${sentenceKey}`);
-  return hash % variantCount;
+ const override = overrides?.[sentenceKey];
+ if (Number.isInteger(override) && override >= 0 && override < variantCount) return override;
+  return 0;
 }
 
 function foldTurkishServer(value) {

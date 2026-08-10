@@ -73,7 +73,7 @@ function extractFn(source, startMarker, endMarker) {
   for (let i = 0; i < 40; i++) {
     outcomesAcrossKeys.add(context.selectVariant(`sentence-${i}`, 3));
   }
-  assert(outcomesAcrossKeys.size > 1, "40 farkli cumle anahtari icin en az 2 farkli varyant secilmeli.");
+  assert.deepEqual([...outcomesAcrossKeys], [0], "Override yokken tum cumleler Orijinal varyanti kullanmali.");
   console.log("Cumle bazinda bagimsiz secim (varyasyon var) testi tamam.");
 
   // Rapor bazinda farklilasma: farkli reportId'ler icin AYNI sentenceKey
@@ -84,7 +84,7 @@ function extractFn(source, startMarker, endMarker) {
     context.state = { reportId: `RE-2026-REPORT${i}` };
     outcomesAcrossReports.add(context.selectVariant("buildImarPlanningNote", 3));
   }
-  assert(outcomesAcrossReports.size > 1, "40 farkli rapor icin ayni cumle en az 2 farkli varyanta dusmeli.");
+  assert.deepEqual([...outcomesAcrossReports], [0], "Farkli raporlarda da varsayilan Orijinal korunmali.");
   console.log("Rapor bazinda farklilasma (BDDK riskini kiran mekanizma) testi tamam.");
 
   // reportId yoksa state.variantSeed'e tembel dusme + kararlilik.
@@ -111,7 +111,7 @@ function extractFn(source, startMarker, endMarker) {
   // Override yoksa otomatik (deterministik) sonuc donmeli.
   context.state = { reportId: "RE-2026-OVR1", fields: {} };
   const autoResult = context.selectVariant("testKey", 3);
-  assert.equal(autoResult, context.getAutoVariantIndex("testKey", 3), "Override yokken selectVariant otomatik sonucla ayni olmali.");
+  assert.equal(autoResult, 0, "Override yokken selectVariant Orijinal sonucu vermeli.");
 
   // Gecerli bir override selectVariant'i BAGLAMALI (otomatik sonuctan
   // FARKLI bir index secerek override'in gercekten calistigini kanitla).
@@ -121,15 +121,15 @@ function extractFn(source, startMarker, endMarker) {
 
   // Override kaldirilinca (null) tekrar otomatige donmeli.
   context.setVariantOverride("testKey", null);
-  assert.equal(context.selectVariant("testKey", 3), autoResult, "Override kaldirilinca otomatik sonuca donulmeli.");
+  assert.equal(context.selectVariant("testKey", 3), 0, "Override kaldirilinca Orijinal secime donulmeli.");
   console.log("Override kaldirma (otomatige donus) testi tamam.");
 
   // Araligin DISINDAKI override (negatif veya >=variantCount) YOK sayilip
   // otomatige duselim — bozuk/eski veri crash'e yol acmamali.
   context.setVariantOverride("testKey", 99);
-  assert.equal(context.selectVariant("testKey", 3), autoResult, "Aralik disi override yok sayilip otomatige dusulmeli.");
+  assert.equal(context.selectVariant("testKey", 3), 0, "Aralik disi override Orijinal secime dusmeli.");
   context.setVariantOverride("testKey", -1);
-  assert.equal(context.selectVariant("testKey", 3), autoResult, "Negatif override yok sayilip otomatige dusulmeli.");
+  assert.equal(context.selectVariant("testKey", 3), 0, "Negatif override Orijinal secime dusmeli.");
   console.log("Aralik disi/gecersiz override yok sayma testi tamam.");
 
   // Farkli sentenceKey'ler birbirinden BAGIMSIZ override tasimali.
@@ -270,7 +270,7 @@ function extractFn(source, startMarker, endMarker) {
     context.state = { reportId: `RE-2026-SHARE${i}` };
     seen.add(context.buildShareExplanation());
   }
-  assert(seen.size > 1, "20 farkli rapor icin buildShareExplanation birden fazla varyant uretmeli.");
+  assert.equal(seen.size, 1, "Override yokken buildShareExplanation Orijinal metni korumali.");
   console.log("buildShareExplanation() varyant secimi testi tamam.");
 }
 
@@ -407,7 +407,7 @@ function extractFn(source, startMarker, endMarker) {
     context.state.reportId = `RE-2026-ENC${i}`;
     seen.add(context.buildEncumbranceIntroSentence());
   }
-  assert(seen.size > 1, "20 farkli rapor icin en az 2 farkli varyant gorulmeli.");
+  assert.equal(seen.size, 1, "Override yokken takyidat giris cümlesi Orijinal metni korumali.");
   console.log("buildEncumbranceIntroSentence() varyant secimi testi tamam.");
 }
 

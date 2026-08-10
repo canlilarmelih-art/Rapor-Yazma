@@ -1806,7 +1806,7 @@ function selectVariant(sentenceKey, variantCount) {
   if (!Number.isInteger(variantCount) || variantCount <= 1) return 0;
   const override = state.fields?.variantOverrides?.[sentenceKey];
   if (Number.isInteger(override) && override >= 0 && override < variantCount) return override;
-  return getAutoVariantIndex(sentenceKey, variantCount);
+  return 0;
 }
 
 // Admin paneli için: tüm varyant gruplarının kayıt defteri. Her varyant
