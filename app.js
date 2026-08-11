@@ -7059,11 +7059,16 @@ function buildAgriculturalKmlDistanceSentence(values, options = {}) {
   return `KML koordinat verisine göre taşınmaz, ${formatTurkishList(parts)} yer almaktadır. `;
 }
 
-// Kullanıcı talebi (2026-08-12): Çoklu Talep + Tarımsal Alan (arazi)
-// raporlarında "Ulaşım Tarifi" (transport alanı), taşınmazların ada/parsel
-// dağılımına göre 3 farklı şekilde yazılmalı:
-//  1) Tüm taşınmazlar AYNI parseldeyse (tek KML) → "Ekspertize konu
-//     taşınmazlara" ile BAŞLAYAN, tek bir ortak mesafe cümlesi.
+// Kullanıcı talebi (2026-08-12, düzeltildi): Çoklu Talep + Tarımsal Alan
+// (arazi) raporlarında "Ulaşım Tarifi" (transport alanı), taşınmazların
+// ada/parsel dağılımına göre şöyle yazılmalı:
+//  1) Tüm taşınmazlar AYNI parseldeyse (tek KML) → AYRI bir cümle YOK —
+//     normal tekli rapordaki AYNI ana-arter tabanlı otomatik metin
+//     (buildTransportDirectionText, kullanıcı Ulaşım ana arteri seçince)
+//     kullanılır, yalnızca "taşınmaz" → "taşınmazlar" çoğullaştırılır. Bkz.
+//     updateTransportFromMainArtery'deki pluralizeEnvironmentalSubjectText
+//     çağrısı — bu fonksiyon (buildAgriculturalMultiTitleUnitTransportText)
+//     bu durumda BOŞ döner, o mekanizmaya karışmaz.
 //  2) Taşınmazlar FARKLI ada/parsellerdeyse VE sayı ≤ 5 ise → HER taşınmaz
 //     için ayrı "{tab etiketi} taşınmaz bağlı bulunduğu {mahalle} Mahalle
 //     Merkezinin {mesafe}" cümlecikleri, virgülle birleştirilir. Etiket,
@@ -7082,16 +7087,6 @@ function getAgriculturalNeighborhoodBaseName(value = "") {
     .replace(/\s+/g, " ")
     .trim();
 }
-
-const agriculturalMultiUnitSharedParcelTransportVariants = [
-  (center, distance) => `Ekspertize konu taşınmazlara ulaşım, bağlı bulundukları ${center} ${distance} sağlanmaktadır.`,
-  (center, distance) => `Ekspertize konu taşınmazlara, bağlı bulundukları ${center} ${distance} üzerinden ulaşılmaktadır.`,
-];
-registerVariantGroup(
-  "agriculturalMultiUnitSharedParcelTransport",
-  "Ulaşım Tarifi — Çoklu Talep, Ortak Parsel, Tarımsal Alan (Adres/Konum/Çevre)",
-  agriculturalMultiUnitSharedParcelTransportVariants.length,
-);
 
 const agriculturalMultiUnitParcelListTransportFragmentVariants = [
   (label, center, distance) => `${label} taşınmaz bağlı bulunduğu ${center} ${distance}`,
@@ -7124,19 +7119,10 @@ function buildAgriculturalMultiTitleUnitTransportText() {
   const units = getNarrativeTitleUnitFields();
   const labels = getTitleUnitTabModels().map((tab) => tab.label);
 
-  if (!hasMixedTitleUnitParcels()) {
-    // 1) Tüm taşınmazlar aynı parselde (tek KML) — ortak mesafe verisi
-    // için birincil taşınmazınkini kullan (hepsi aynı konumda kabul edilir).
-    const primary = units[0] || {};
-    const center = cleanBoundNeighborhoodCenterName(primary.boundNeighborhood);
-    const distance = cleanEnvironmentalDistancePhrase(primary.boundNeighborhoodDistance);
-    if (!center || !distance) return "";
-    const variantIndex = selectVariant(
-      "agriculturalMultiUnitSharedParcelTransport",
-      agriculturalMultiUnitSharedParcelTransportVariants.length,
-    );
-    return agriculturalMultiUnitSharedParcelTransportVariants[variantIndex](center, distance);
-  }
+  // 1) Tüm taşınmazlar aynı parselde (tek KML) — bu fonksiyon KARIŞMAZ,
+  // updateTransportFromMainArtery kendi çoğullaştırmasını yapar (yukarıdaki
+  // yorum). Burada üretilecek AYRI bir cümle YOK.
+  if (!hasMixedTitleUnitParcels()) return "";
 
   if (units.length > AGRICULTURAL_MULTI_UNIT_TRANSPORT_LIST_LIMIT) {
     // 3) 5'ten fazla farklı ada/parsel — taşınmaz bazlı liste yerine genel
@@ -26983,8 +26969,19 @@ function selectMainArtery(id, options = {}) {
 function updateTransportFromMainArtery(road, options = {}) {
   if (!road) return;
   const text = buildTransportDirectionText(road);
+  // Kullanıcı talebi (2026-08-12): Çoklu Talep + Tarımsal Alan raporlarında
+  // taşınmazlar AYNI parseldeyse (tek KML), Ulaşım Tarifi normal tekli
+  // rapordaki AYNI ana-arter tabanlı otomatik metinle üretilmeli — yalnızca
+  // "taşınmaz" ifadesi çoğullaşmalı ("taşınmazlar"). Farklı ada/parsellerde
+  // (hasMixedTitleUnitParcels) bu metin uygun DEĞİL — o durum ayrı bir
+  // taşınmaz-bazlı liste/özet ile ele alınıyor, bkz.
+  // buildAgriculturalMultiTitleUnitTransportText.
+  const shouldPluralize = state.fields?.environmentRegionType === "Tarımsal Alan"
+    && isMultiTitleUnitReportForNarrative()
+    && !hasMixedTitleUnitParcels();
+  const finalText = shouldPluralize ? pluralizeEnvironmentalSubjectText(text, true) : text;
   state.sourceValues.nearbyTransport = state.sourceValues.nearbyTransport || {};
-  setFieldFromSource("nearbyTransport", "transport", text, options);
+  setFieldFromSource("nearbyTransport", "transport", finalText, options);
 }
 
 // Varyantlar: kullanıcı talebi (2026-08-08) — "ulaşım ana arteri seçildiğinde

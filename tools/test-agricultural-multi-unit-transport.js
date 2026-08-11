@@ -1,13 +1,14 @@
 "use strict";
 
-// Kullanıcı talebi (2026-08-12): Çoklu Talep + Tarımsal Alan (arazi)
-// raporlarında "Ulaşım Tarifi" (transport), taşınmazların ada/parsel
-// dağılımına göre 3 farklı biçimde üretilmeli:
-//  1) Tüm taşınmazlar AYNI parselde (tek KML) → "Ekspertize konu
-//     taşınmazlara" ile başlayan tek ortak mesafe cümlesi.
+// Kullanıcı talebi (2026-08-12, düzeltildi): Çoklu Talep + Tarımsal Alan
+// (arazi) raporlarında "Ulaşım Tarifi" (transport):
+//  1) Tüm taşınmazlar AYNI parselde (tek KML) → AYRI bir cümle YOK — normal
+//     tekli rapordaki AYNI ana-arter tabanlı otomatik metin
+//     (buildTransportDirectionText) kullanılır, yalnızca "taşınmaz" →
+//     "taşınmazlar" çoğullaştırılır (updateTransportFromMainArtery içinde).
 //  2) Farklı ada/parseller, taşınmaz sayısı ≤ 5 → her taşınmaz için ayrı
 //     "{tab etiketi} taşınmaz bağlı bulunduğu {mahalle} Mahalle Merkezinin
-//     {mesafe}" cümleciği, virgülle birleştirilir.
+//     {mesafe}" cümleciği, virgülle birleştirilir (buildAgriculturalMultiTitleUnitTransportText).
 //  3) Farklı ada/parseller, taşınmaz sayısı > 5 → genel özet cümlesi.
 // Diğer bölge türlerini (Konut/Ticaret/Sanayi) ve tek-taşınmazlı raporları
 // ETKİLEMEMELİ.
@@ -67,6 +68,7 @@ const functionNames = [
   "cleanEnvironmentalDistancePhrase",
   "getAgriculturalNeighborhoodBaseName",
   "buildAgriculturalMultiTitleUnitTransportText",
+  "pluralizeEnvironmentalSubjectText",
   "selectVariant",
   "registerVariantGroup",
 ];
@@ -74,12 +76,11 @@ const functionNames = [
 const sandboxSource = `
 let state = {};
 const VARIANT_REGISTRY = [];
-${extractConstArray("agriculturalMultiUnitSharedParcelTransportVariants")}
 ${extractConstArray("agriculturalMultiUnitParcelListTransportFragmentVariants")}
 ${extractConstArray("agriculturalMultiUnitManyParcelsTransportVariants")}
 const AGRICULTURAL_MULTI_UNIT_TRANSPORT_LIST_LIMIT = 5;
 ${functionNames.map(extractFunction).join("\n")}
-return { buildAgriculturalMultiTitleUnitTransportText, setState: (s) => { state = s; } };
+return { buildAgriculturalMultiTitleUnitTransportText, pluralizeEnvironmentalSubjectText, setState: (s) => { state = s; } };
 `;
 // eslint-disable-next-line no-new-func
 const sandbox = new Function(sandboxSource)();
@@ -93,7 +94,9 @@ function boundFields(blockNo, parcelNo, distanceText) {
   };
 }
 
-// 1) Tek KML / aynı parsel — "Ekspertize konu taşınmazlara" ile başlamalı.
+// 1) Tek KML / aynı parsel — buildAgriculturalMultiTitleUnitTransportText
+// KENDİ bir cümle ÜRETMEMELİ (no-op); bu durum artık
+// updateTransportFromMainArtery'nin çoğullaştırmasına bırakılıyor.
 {
   sandbox.setState({
     fields: { environmentRegionType: "Tarımsal Alan", ...boundFields("1408", "3", "800 m güneyinde") },
@@ -101,10 +104,37 @@ function boundFields(blockNo, parcelNo, distanceText) {
     activeTitleUnitIndex: 0,
     primaryTitleUnitShadow: null,
   });
-  const text = sandbox.buildAgriculturalMultiTitleUnitTransportText();
-  assert.match(text, /^Ekspertize konu taşınmazlara/, "Aynı parselde çoğul \"Ekspertize konu taşınmazlara\" ile başlamalı.");
-  assert.match(text, /Ataevler Mahalle Merkezinin 800 m güneyinde/, "Ortak mesafe bilgisini içermeli.");
-  console.log("Ayni parsel (tek KML) - cogul giris testi tamam.");
+  assert.equal(
+    sandbox.buildAgriculturalMultiTitleUnitTransportText(),
+    "",
+    "Aynı parselde (tek KML) bu fonksiyon no-op dönmeli — metin ana-arter mekanizmasından gelir.",
+  );
+  console.log("Ayni parsel (tek KML) - no-op (ana arter mekanizmasina birakilir) testi tamam.");
+}
+
+// 1b) updateTransportFromMainArtery'nin, aynı parselde çoğullaştırma
+// yapması gerektiğini kaynak-düzeyinde doğrula + pluralizeEnvironmentalSubjectText'in
+// gerçek ana-arter cümlesini doğru çoğullaştırdığını davranışsal olarak kontrol et.
+{
+  assert.match(
+    appSource,
+    /function updateTransportFromMainArtery\([\s\S]{0,900}?pluralizeEnvironmentalSubjectText\(text, true\)/,
+    "updateTransportFromMainArtery, Çoklu Talep + Tarımsal Alan + aynı parselde " +
+      "buildTransportDirectionText metnini pluralizeEnvironmentalSubjectText ile çoğullaştırmalı.",
+  );
+  assert.match(
+    appSource,
+    /function updateTransportFromMainArtery\([\s\S]{0,900}?!hasMixedTitleUnitParcels\(\)/,
+    "Çoğullaştırma yalnızca FARKLI ada/parsel OLMADIĞINDA (hasMixedTitleUnitParcels false) uygulanmalı.",
+  );
+  const singular = "Ekspertize konu taşınmaza ulaşım için bölgenin ana arterlerinden D-100 üzerinden kuzey " +
+    "istikametine ilerlenir. Yaklaşık 250 metre sonra taşınmazın bulunduğu Atatürk Caddesi güzergahına " +
+    "ulaşılır. Ekspertize konu taşınmaz Atatürk Caddesi üzerinde yer almaktadır.";
+  const plural = sandbox.pluralizeEnvironmentalSubjectText(singular, true);
+  assert.match(plural, /^Ekspertize konu taşınmazlara ulaşım için/, "Çoğullaştırılan metin \"taşınmazlara\" ile başlamalı.");
+  assert.match(plural, /taşınmazların bulunduğu/, "\"taşınmazın\" da çoğullaşmalı.");
+  assert.match(plural, /Ekspertize konu taşınmazlar Atatürk Caddesi üzerinde/, "Kapanış cümlesi de çoğullaşmalı.");
+  console.log("Ana arter metninin cogullastirilmasi testi tamam.");
 }
 
 // 2) Farklı ada/parsel, ≤5 taşınmaz — taşınmaz başına ayrı cümlecik.
@@ -161,7 +191,7 @@ function boundFields(blockNo, parcelNo, distanceText) {
   console.log("Tek tasinmazli rapor - no-op regresyon testi tamam.");
 }
 
-// 6) Kaynak-düzeyi doğrulama: tetikleyiciler gerçekten kablolanmış mı?
+// 6) Kaynak-düzeyi doğrulama: farklı-parsel tetikleyicileri kablolanmış mı?
 {
   assert.match(
     appSource,

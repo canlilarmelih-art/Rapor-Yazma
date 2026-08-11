@@ -8368,3 +8368,34 @@ tek-taşınmazlı "ana arter" tabanlı otomatik metin veya elle giriş vardı).
   kablolamasının kaynak-düzeyi doğrulaması). `npm test` zincirine eklendi.
 - Cache-buster: `app.js?v=20260812-0300`.
 - Yedek: `backups/before-agricultural-multi-unit-transport_2026-08-12_02-04-37`.
+
+## 0.0.416 - 2026-08-12 - 0.0.415 düzeltmesi: aynı-parsel durumu ana arter mekanizmasını kullanmalı
+
+Kullanıcı 0.0.415'i düzeltti: "aynı parsel" (tek KML) durumunda YENİ bir
+mesafe cümlesi İCAT ETMEK yerine, normal TEKLİ raporlardaki AYNI ana-arter
+tabanlı otomatik Ulaşım Tarifi mekanizması (`buildTransportDirectionText`,
+kullanıcı "Ulaşım ana arteri" seçince) kullanılmalı — yalnızca "taşınmaz"
+ifadesi çoğullaşmalı ("taşınmazlar").
+
+- `updateTransportFromMainArtery(road, options)`, `state.fields.environmentRegionType
+  === "Tarımsal Alan"` VE `isMultiTitleUnitReportForNarrative()` VE
+  `!hasMixedTitleUnitParcels()` (aynı parsel) iken
+  `buildTransportDirectionText(road)`'ın ürettiği metni
+  `pluralizeEnvironmentalSubjectText(text, true)` ile çoğullaştırıyor —
+  "Ekspertize konu taşınmaza ulaşım için..." → "...taşınmazlara...".
+  Farklı ada/parsellerde (mixed) bu çoğullaştırma UYGULANMAZ (o durum ayrı,
+  taşınmaz-bazlı liste/özet ile ele alınıyor).
+- `buildAgriculturalMultiTitleUnitTransportText()`'in "aynı parsel" dalı
+  (0.0.415'te eklenen `agriculturalMultiUnitSharedParcelTransportVariants`
+  + kendi mesafe cümlesi) TAMAMEN KALDIRILDI — bu fonksiyon artık aynı
+  parselde HER ZAMAN "" döner, no-op; metin artık yukarıdaki ana-arter
+  mekanizmasından gelir. Farklı-parsel dalları (≤5 liste, >5 özet)
+  DEĞİŞMEDİ.
+- Test: `tools/test-agricultural-multi-unit-transport.js` güncellendi —
+  aynı-parsel senaryosu artık no-op'u doğruluyor; yeni bir senaryo
+  `updateTransportFromMainArtery`'nin kaynak-düzeyinde doğru koşullarla
+  çoğullaştırma çağırdığını VE `pluralizeEnvironmentalSubjectText`'in
+  gerçek ana-arter cümlesini (3 cümlelik kalıbın tamamını) doğru
+  çoğullaştırdığını kontrol ediyor.
+- Cache-buster: `app.js?v=20260812-0330`.
+- Yedek: `backups/before-agri-transport-artery-reuse-fix_2026-08-12_02-15-25`.
