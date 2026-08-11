@@ -25408,17 +25408,19 @@ async function fetchNearbyPlacesForCurrentLocation(options = {}) {
 
 function getAllNearbyPlacesWithUser(places = []) {
   const map = new Map();
+  const selectedIds = new Set(state.sourceValues.nearbyPlaces?.selectedIds || []);
   [...getUserNearbyPlaces(), ...places].forEach((place) => {
-    if (!place?.id || !isNearbyPlaceInAddressRadius(place)) return;
+    if (!place?.id || (!selectedIds.has(place.id) && !isNearbyPlaceInAddressRadius(place))) return;
     map.set(place.id, place);
   });
   return [...map.values()];
 }
 
 function getUserNearbyPlaces() {
+  const selectedIds = new Set(state.sourceValues.nearbyPlaces?.selectedIds || []);
   return (state.sourceValues.userNearbyPlaces?.places || [])
     .filter((place) => place.category === "user")
-    .filter((place) => isUserNearbyPlaceInAddressRadius(place))
+    .filter((place) => selectedIds.has(place.id) || isNearbyPlaceInAddressRadius(place))
     .sort((a, b) => a.distance - b.distance);
 }
 
@@ -25450,7 +25452,8 @@ function getAllMainArteryPlacesWithUser(places = []) {
 
 function getNearbySelectionDisplayPlaces(source = state.sourceValues.nearbyPlaces || {}) {
   const allUserPlaces = getUserNearbyPlaces();
-  const autoSourcePlaces = (source.places || []).filter((place) => isNearbyPlaceInAddressRadius(place));
+  const selectedIds = new Set(source.selectedIds || []);
+  const autoSourcePlaces = (source.places || []).filter((place) => selectedIds.has(place.id) || isNearbyPlaceInAddressRadius(place));
   const usefulPlaceCount = [...allUserPlaces, ...autoSourcePlaces]
     .filter((place) => importantNearbyCategories.has(place.category) && !isSettlementLikeNearbyPlace(place))
     .length;
