@@ -8292,3 +8292,33 @@ yarıçap daraltmasından sonra) listeden düşmüyor.
 - Kod değişikliği yok (yalnızca `package.json`), bu yüzden cache-buster
   bump'a gerek yoktu.
 - Yedek: `backups/before-wire-missing-tests_2026-08-12_00-16-23`.
+
+## 0.0.414 - 2026-08-12 - Hesaplanan Emsal, TAKBİS/İmar yükleme sırasından bağımsız
+
+- Kullanıcı bildirimi: "Dosya ve Rapor" kısmında önce TAKBİS sonra İmar
+  Durumu PDF yüklenince "Hesaplanan Emsal" hesaplanıyor; önce İmar sonra
+  TAKBİS yüklenince HESAPLANMIYOR. Belge yükleme sırasının bir önemi
+  olmaması gerekiyordu.
+- **Kök neden**: `applyImarFieldsToReport`, `calculatedEmsal`'i İmar PDF
+  işlenirken TEK SEFERLİK hesaplıyor (`buildImarCalculatedEmsal`, o anki
+  `state.fields.landArea`'ya bakar). `landArea` (Ana taşınmaz yüzölçümü)
+  TAKBİS'ten gelir (`mapTakbisTitleToReportFields`). İmar, TAKBİS'ten ÖNCE
+  işlenirse `landArea` henüz boştur → hesap boş kalır (`composeImarCalculatedEmsal`
+  parcelArea<=0 için "" döner) → `applyImarFieldsToReport`'un
+  `if (!value) return;` koruması bu boş değeri yazmaz bile — ve bir daha
+  ASLA yeniden tetiklenmezdi: `applyTakbisTitleFieldsToReport`
+  `calculatedEmsal`'in varlığından hiç haberdar değildi.
+- **Düzeltme**: `applyTakbisTitleFieldsToReport`, `landArea`'yı set ettikten
+  sonra `refreshPlanningNoteFromCurrentFields("landArea")` çağırıyor — bu
+  fonksiyon zaten mevcuttu (manuel alan düzenlemelerinde kullanılıyordu) ve
+  `"landArea"` zaten `planningNoteAutoRefreshFields` kümesindeydi; yalnızca
+  TAKBİS içe aktarma akışından çağrılmıyordu. Artık `planningNote` VE
+  `calculatedEmsal` ikisi de GÜNCEL `state.fields` ile yeniden hesaplanıyor
+  — İmar henüz hiç işlenmediyse (kaks/floorCount boş) no-op kalır, TAKBİS
+  önce işlenmişse (mevcut, çalışan davranış) regresyon yapmaz.
+- Test: `tools/test-imar-calculated-emsal-order.js` — hem kaynak-düzeyinde
+  (tetikleyici çağrının varlığını) hem davranışsal olarak (İmar-önce/
+  TAKBİS-sonra senaryosunda doğru hesap + TAKBİS-önce sırasında regresyon
+  olmadığını) doğruluyor. `npm test` zincirine eklendi.
+- Cache-buster: `app.js?v=20260812-0130`.
+- Yedek: `backups/before-imar-calculated-emsal-order_2026-08-12_01-33-49`.

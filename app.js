@@ -835,6 +835,12 @@ const userNearbyRadiusMeters = 1000;
 let nearbySelectionRadiusMeters = userNearbyRadiusMeters;
 let nearbyArteryFallbackRadiusMeters = userNearbyRadiusMeters;
 const nearbyLandScanRadiusMeters = 3000;
+const nearbyFieldAndIndustrialScanRadiusMeters = 5000;
+
+function isFieldOrIndustrialNearbyScanProperty(value = state.fields?.ownershipType) {
+  const normalized = foldTurkish(value || "").replace(/\s+/g, " ").trim();
+  return ["TARLA", "SANAYI TESISI"].includes(normalized);
+}
 
 function isWideNearbyScanProperty(value = state.fields?.ownershipType) {
   const normalized = foldTurkish(value || "").replace(/\s+/g, " ").trim();
@@ -842,11 +848,14 @@ function isWideNearbyScanProperty(value = state.fields?.ownershipType) {
 }
 
 function getNearbyScanRadiusMeters() {
+  if (isFieldOrIndustrialNearbyScanProperty()) return nearbyFieldAndIndustrialScanRadiusMeters;
   return isWideNearbyScanProperty() ? nearbyLandScanRadiusMeters : nearbyRadiusMeters;
 }
 
 function getNearbySelectionRadiusMeters() {
-  nearbySelectionRadiusMeters = isWideNearbyScanProperty() ? nearbyLandScanRadiusMeters : userNearbyRadiusMeters;
+  nearbySelectionRadiusMeters = isFieldOrIndustrialNearbyScanProperty()
+    ? nearbyFieldAndIndustrialScanRadiusMeters
+    : (isWideNearbyScanProperty() ? nearbyLandScanRadiusMeters : userNearbyRadiusMeters);
   nearbyArteryFallbackRadiusMeters = nearbySelectionRadiusMeters;
   return nearbySelectionRadiusMeters;
 }
@@ -21738,6 +21747,16 @@ function applyTakbisTitleFieldsToReport(options = {}) {
   applyAdministrativeNeighborhoodFallback("takbis", fields.titleNeighborhood);
   syncAddressBlockFromTakbis(options);
   refreshEnvironmentDescriptionFromCurrentFields("titleFloor");
+  // Kullanıcı bildirimi (2026-08-12): İmar Durumu PDF'i TAKBİS'ten ÖNCE
+  // yüklenirse "Hesaplanan Emsal" boş kalıyordu. Sebep: `applyImarFieldsToReport`
+  // calculatedEmsal'i İMAR işlenirken TEK SEFERLİK hesaplıyor
+  // (`buildImarCalculatedEmsal` o an `state.fields.landArea`'ya bakıyor) —
+  // landArea henüz TAKBİS'ten gelmediyse hesap boş kalıp bir daha
+  // tetiklenmiyordu. `landArea` burada (TAKBİS'ten) set edildiği için,
+  // yükleme sırası ne olursa olsun planningNote/calculatedEmsal'i güncel
+  // state.fields ile YENİDEN hesaplat — İmar henüz hiç işlenmediyse bu
+  // no-op'tur (planCancellationStay boş, kaks boş).
+  refreshPlanningNoteFromCurrentFields("landArea");
 }
 
 function syncAddressBlockFromTakbis(options = {}) {
