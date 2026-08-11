@@ -27434,6 +27434,12 @@ function getKmlMapSubjectEntries(records = []) {
   });
 }
 
+
+function getCompactKmlSubjectLabel(record, fallback = "KONU TAŞINMAZ") {
+  const blockNo = String(record?.parsed?.fields?.blockNo || "").trim();
+  const parcelNo = String(record?.parsed?.fields?.parcelNo || "").trim();
+  return blockNo && parcelNo ? `${blockNo}/${parcelNo}` : fallback;
+}
 function renderLeafletKmlMap() {
   const panel = document.querySelector("#kmlMapPanel");
   const records = getTitleUnitKmlRecordsForMap();
@@ -32140,6 +32146,18 @@ function drawExportComparableSketch(context, subjectPoint, comparablePoints, top
       y: comps.reduce((sum, c) => sum + c.pixel.y, 0) / comps.length,
     }
     : { x: context.canvas.width / 2, y: context.canvas.height / 2 };
+  const kmlRecordsForSketch = typeof getTitleUnitKmlRecordsForMap === "function"
+    ? getTitleUnitKmlRecordsForMap()
+    : [];
+  const compactKmlLabel = typeof getCompactKmlSubjectLabel === "function"
+    ? getCompactKmlSubjectLabel
+    : (record, fallback = "KONU TAŞINMAZ") => {
+      const blockNo = String(record?.parsed?.fields?.blockNo || "").trim();
+      const parcelNo = String(record?.parsed?.fields?.parcelNo || "").trim();
+      return blockNo && parcelNo ? `${blockNo}/${parcelNo}` : fallback;
+    };
+  const activeKmlRecord = kmlRecordsForSketch.find((record) => record.index === state.activeTitleUnitIndex);
+  const activeSubjectLabel = compactKmlLabel(activeKmlRecord, "KONU TAŞINMAZ");
 
   // Etiket anchor'ları
   const anchors = [];
@@ -32165,8 +32183,8 @@ function drawExportComparableSketch(context, subjectPoint, comparablePoints, top
       kind: "subject",
       x: subjectAnchorPixel.x,
       y: subjectAnchorPixel.y,
-      text: "KONU TAŞINMAZ",
-      w: Math.min(context.measureText("KONU TAŞINMAZ").width + 36, 360),
+      text: activeSubjectLabel,
+      w: Math.min(context.measureText(activeSubjectLabel).width + 36, 360),
       h: 50,
       font: "900 26px Arial",
       fill: "#c81e1e",
@@ -32181,7 +32199,42 @@ function drawExportComparableSketch(context, subjectPoint, comparablePoints, top
       pushDistance: 130,
     });
   }
-  comps.forEach(({ item, pixel }) => {
+  const kmlSubjectEntries = typeof getKmlMapSubjectEntries === "function"
+    ? getKmlMapSubjectEntries(kmlRecordsForSketch)
+    : [];
+  kmlSubjectEntries
+    .filter((entry) => entry.index !== state.activeTitleUnitIndex)
+    .forEach((entry) => {
+      const record = kmlRecordsForSketch.find((item) => item.index === entry.index);
+      const centroid = record?.parsed?.centroid;
+      if (!centroid) return;
+      const point = projectExportPoint(Number(centroid.lat), Number(centroid.lng), topLeft, zoom);
+      const boundaryPoint = pickKmlBoundaryAnchorPixel(record.parsed, topLeft, zoom, compCenter) || point;
+      const text = compactKmlLabel(record, entry.text);
+      context.font = "900 26px Arial";
+      const escapeDirX = boundaryPoint.x - compCenter.x;
+      const escapeDirY = boundaryPoint.y - compCenter.y;
+      anchors.push({
+        id: `subject-${entry.index}`,
+        kind: "subject",
+        x: boundaryPoint.x,
+        y: boundaryPoint.y,
+        text,
+        w: Math.min(context.measureText(text).width + 36, 360),
+        h: 50,
+        font: "900 26px Arial",
+        fill: "#c81e1e",
+        textColor: "#ffffff",
+        borderColor: "#ffffff",
+        markerColor: "#c81e1e",
+        leaderColor: "#c81e1e",
+        leaderDashed: true,
+        markerRadius: 8,
+        dirX: escapeDirX,
+        dirY: escapeDirY,
+        pushDistance: 130,
+      });
+    });  comps.forEach(({ item, pixel }) => {
     const text = `Emsal ${item.index + 1}`;
     context.font = "700 22px Arial";
     anchors.push({
