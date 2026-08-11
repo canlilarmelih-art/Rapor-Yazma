@@ -5,6 +5,44 @@ handoff.md 0.0.388-0.0.406) genel bir işlevsellik incelemesinin sonucudur.
 Devam eden ajan (Codex veya yeni bir Claude oturumu) buradan kaldığı yerden
 sürdürebilsin diye yazıldı.
 
+## Durum güncellemesi (2026-08-11, bkz. handoff.md 0.0.407-0.0.411)
+
+Bu dosya yazıldıktan sonra Codex tarafında yoğun bir devam çalışması oldu
+(27 commit). Aşağıdaki bulgularla ilişkisi:
+
+- **Bulgu #1** (unit/valuation/building kısmi ayrım) — **HÂLÂ AÇIK**.
+  `0.0.407`'de `TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS` eklenerek
+  yalnızca `saleabilityNote` (valuation'ın 1 alanı) paylaşımlı hale
+  getirildi; ad-hoc panel alanlarının (oda/iç mekan, bina sınıfı,
+  değerleme hesap girdileri) BÜYÜK ÇOĞUNLUĞU hâlâ deklaratif değil, hâlâ
+  taşınmaza göre ayrılmıyor. Kapsam ayrıca YENİ bir eksene genişledi:
+  `sourceValues` (kml/nearbyPlaces/...) artık taşınmaza göre ayrılıyor
+  (0.0.409) — bu doğru yönde bir adım ama unit/valuation/building
+  meselesini çözmüyor.
+- **Bulgu #2** (stale test fixture) — **HÂLÂ AÇIK**, dokunulmadı.
+- **Bulgu #3** (normal kullanıcı tab çubuğunu göremiyor) — **HÂLÂ AÇIK**,
+  `isCurrentUserAdmin()` gate'i duruyor. Ayrıca artık KML çoklu-dosya
+  eşleştirmesi de aynı gate altındaki tab-bazlı veriye yazıyor — kapsam
+  büyüdükçe bu boşluğun etkisi de büyüyor.
+- **Bulgu #4** (case alanları/Banka-Müşteri yanlışlıkla taşınmaza özel) —
+  **KISMEN ELE ALINDI**: açıklama/anlatım metinleri artık paylaşımlı
+  (0.0.407), ama Banka/Müşteri/İş adı/Randevu türü-tarihi HÂLÂ
+  `TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS`'e dahil değil, hâlâ taşınmaza
+  göre ayrılıyor. Orijinal öneri (bu alanların da paylaşımlı kümeye
+  eklenmesi) geçerliliğini koruyor.
+- **Bulgu #5** (export çoklu taşınmazdan habersiz) — **KISMEN ELE
+  ALINDI**: `template-engine.js`'in `field()` çözücüsü artık 13 paylaşımlı
+  alan için taşınmaz yuvaları arasında arama yapıyor (0.0.407) — ama
+  taşınmaza-özel alanlar (Ada/Parsel/Malik/Değerleme sonucu vb.) hâlâ
+  yalnızca aktif/birincil taşınmazdan geliyor; export hâlâ N taşınmazlı
+  bir raporu TEK taşınmazmış gibi üretiyor, kullanıcıya hâlâ uyarı yok.
+- **Bulgu #6/7/8/9/10** — dokunulmadı, hâlâ geçerli.
+- **YENİ bulunan konu** (0.0.408, `ea7b9a9`): cümle-varyantı rastgele
+  seçim sistemi artık override yoksa HER ZAMAN orijinal (0.) metni
+  döndürüyor — [[rapor-app-sentence-variant-project]]'teki BDDK-riski
+  azaltma mekanizması efektif olarak devre dışı kaldı. Bu ÇOKLU TAŞINMAZLA
+  ilgili değil ama geniş etkili; kullanıcıya kasıtlı mı diye sorulmalı.
+
 ## Yöntem ve kısıt
 
 Admin girişi gerektiren UI (`createTitleUnitTabBar`, Excel panelleri) bu
