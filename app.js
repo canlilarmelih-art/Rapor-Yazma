@@ -25676,7 +25676,8 @@ async function fetchNearbyPlacesFast(lat, lng) {
 }
 
 async function fetchNearbyPlacesWithCoverage(lat, lng) {
-  let first = { places: [], radius: nearbyRadiusMeters, regionAnalysis: {} };
+  const scanRadius = getNearbyScanRadiusMeters();
+  let first = { places: [], radius: scanRadius, regionAnalysis: {} };
   try {
     first = await fetchNearbyPlacesFastByRadius(lat, lng, scanRadius);
   } catch (error) {
