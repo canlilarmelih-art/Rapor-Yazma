@@ -32157,7 +32157,8 @@ function drawExportComparableSketch(context, subjectPoint, comparablePoints, top
     };
   const nearestKmlBoundary = typeof pickKmlBoundaryNearestPixel === "function"
     ? pickKmlBoundaryNearestPixel
-    : (boundary, boundaryTopLeft, boundaryZoom, targetPoint) => pickKmlBoundaryAnchorPixel(boundary, boundaryTopLeft, boundaryZoom, targetPoint);  const kmlSubjectEntries = typeof getKmlMapSubjectEntries === "function"
+    : (boundary, boundaryTopLeft, boundaryZoom, targetPoint) => pickKmlBoundaryAnchorPixel(boundary, boundaryTopLeft, boundaryZoom, targetPoint);
+  const kmlSubjectEntries = typeof getKmlMapSubjectEntries === "function"
     ? getKmlMapSubjectEntries(kmlRecordsForSketch)
     : [];
   const activeKmlRecord = kmlRecordsForSketch.find((record) => record.index === state.activeTitleUnitIndex);
@@ -32175,7 +32176,7 @@ function drawExportComparableSketch(context, subjectPoint, comparablePoints, top
     // çizildiğinden (drawExportKmlPolygon) ayrı bir nokta işaretine gerek
     // yok. KML yoksa (eski davranış) doğrudan koordinat noktasına bağlanır.
     subjectAnchorPixel = nearestKmlBoundary(activeKmlRecord?.parsed || parsed, topLeft, zoom, subjectPixel) || subjectPixel;
-    context.font = "900 26px Arial";
+    context.font = "900 18px Arial";
     // Kullanıcı talebi (2026-08-05): "konu taşınmaz daha uzağa, emsal
     // yazılarının olmadığı bir kısma konumlanmalıydı" — kaçış yönü genel
     // ağırlık merkezine göre DEĞİL, doğrudan emsal kümesinin merkezinden
@@ -32189,19 +32190,19 @@ function drawExportComparableSketch(context, subjectPoint, comparablePoints, top
       x: subjectAnchorPixel.x,
       y: subjectAnchorPixel.y,
       text: activeSubjectLabel,
-      w: Math.min(context.measureText(activeSubjectLabel).width + 36, 360),
-      h: 50,
-      font: "900 26px Arial",
+      w: Math.min(context.measureText(activeSubjectLabel).width + 24, 280),
+      h: 36,
+      font: "900 18px Arial",
       fill: "#c81e1e",
       textColor: "#ffffff",
       borderColor: "#ffffff",
       markerColor: "#c81e1e",
       leaderColor: "#c81e1e",
       leaderDashed: true,
-      markerRadius: 8,
+      markerRadius: 6,
       dirX: escapeDirX,
       dirY: escapeDirY,
-      pushDistance: 130,
+      pushDistance: 95,
     });
   }
   kmlSubjectEntries
@@ -32213,7 +32214,7 @@ function drawExportComparableSketch(context, subjectPoint, comparablePoints, top
       const point = projectExportPoint(Number(centroid.lat), Number(centroid.lng), topLeft, zoom);
       const boundaryPoint = nearestKmlBoundary(record.parsed, topLeft, zoom, point) || point;
       const text = entry.text;
-      context.font = "900 26px Arial";
+      context.font = "900 18px Arial";
       const escapeDirX = boundaryPoint.x - compCenter.x;
       const escapeDirY = boundaryPoint.y - compCenter.y;
       anchors.push({
@@ -32222,19 +32223,19 @@ function drawExportComparableSketch(context, subjectPoint, comparablePoints, top
         x: boundaryPoint.x,
         y: boundaryPoint.y,
         text,
-        w: Math.min(context.measureText(text).width + 36, 360),
-        h: 50,
-        font: "900 26px Arial",
+        w: Math.min(context.measureText(text).width + 24, 280),
+        h: 36,
+        font: "900 18px Arial",
         fill: "#c81e1e",
         textColor: "#ffffff",
         borderColor: "#ffffff",
         markerColor: "#c81e1e",
         leaderColor: "#c81e1e",
         leaderDashed: true,
-        markerRadius: 8,
+        markerRadius: 6,
         dirX: escapeDirX,
         dirY: escapeDirY,
-        pushDistance: 130,
+        pushDistance: 95,
       });
     });  comps.forEach(({ item, pixel }) => {
     const text = `Emsal ${item.index + 1}`;
