@@ -27413,20 +27413,29 @@ function getTitleUnitKmlRecordsForMap() {
   }).filter(Boolean);
 }
 
+function getKmlRecordParcelFields(record = {}) {
+  const parsedFields = record.parsed?.fields || {};
+  const reportFields = record.fields || {};
+  return {
+    blockNo: String(parsedFields.blockNo || reportFields.blockNo || "").trim(),
+    parcelNo: String(parsedFields.parcelNo || reportFields.parcelNo || "").trim(),
+  };
+}
+
 function getKmlMapSubjectEntries(records = []) {
-  const isMulti = isMultiTitleUnitReportForNarrative();
+  const isMulti = isMultiTitleUnitReportForNarrative() || records.length > 1;
   if (!isMulti) return [{ index: state.activeTitleUnitIndex, text: "KONU TAŞINMAZ" }];
 
-  const distinctParcelKeys = new Set(records.map((record) => [record.parsed?.fields?.blockNo, record.parsed?.fields?.parcelNo]
-    .map(normalizeKmlParcelMatchPart)
-    .join("|")));
+  const distinctParcelKeys = new Set(records.map((record) => {
+    const { blockNo, parcelNo } = getKmlRecordParcelFields(record);
+    return [blockNo, parcelNo].map(normalizeKmlParcelMatchPart).join("|");
+  }));
   if (distinctParcelKeys.size <= 1) {
     return [{ index: state.activeTitleUnitIndex, text: "KONU TAŞINMAZLAR" }];
   }
 
   return records.map((record) => {
-    const blockNo = String(record.parsed?.fields?.blockNo || "").trim();
-    const parcelNo = String(record.parsed?.fields?.parcelNo || "").trim();
+    const { blockNo, parcelNo } = getKmlRecordParcelFields(record);
     const parcelText = [blockNo ? `${blockNo} Ada` : "", parcelNo ? `${parcelNo} Parsel` : ""]
       .filter(Boolean)
       .join(" ");
@@ -27434,10 +27443,8 @@ function getKmlMapSubjectEntries(records = []) {
   });
 }
 
-
 function getCompactKmlSubjectLabel(record, fallback = "KONU TAŞINMAZ") {
-  const blockNo = String(record?.parsed?.fields?.blockNo || "").trim();
-  const parcelNo = String(record?.parsed?.fields?.parcelNo || "").trim();
+  const { blockNo, parcelNo } = getKmlRecordParcelFields(record);
   return blockNo && parcelNo ? `${blockNo}/${parcelNo}` : fallback;
 }
 function renderLeafletKmlMap() {
