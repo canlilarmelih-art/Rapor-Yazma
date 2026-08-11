@@ -1349,6 +1349,9 @@ function addTitleUnitTab() {
 const MULTI_TITLE_UNIT_OWNERSHIP_TYPES = new Set([
   "Dikey Kat İrtifakı",
   "Yatay Kat İrtifakı",
+  "Müstakil Bina",
+  "Arsa",
+  "Tarla",
 ]);
 
 function syncMultiTitleUnitOwnershipType(value = state.fields.ownershipType) {

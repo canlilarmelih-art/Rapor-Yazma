@@ -86,7 +86,7 @@ const functionNames = [
 }
 
 const sandboxSource = `
-const MULTI_TITLE_UNIT_OWNERSHIP_TYPES = new Set(["Dikey Kat İrtifakı", "Yatay Kat İrtifakı"]);
+const MULTI_TITLE_UNIT_OWNERSHIP_TYPES = new Set(["Dikey Kat İrtifakı", "Yatay Kat İrtifakı", "Müstakil Bina", "Arsa", "Tarla"]);
 let sections = [
   { id: "title", fields: [{ key: "blockNo" }, { key: "parcelNo" }, { key: "titleBlockName" }, { key: "unitNo" }, { key: "titleQuality" }, { key: "titleRecordChange" }] },
   { id: "encumbrance", fields: [{ key: "takbisSummary" }, { key: "takbisDate" }] },
@@ -353,7 +353,7 @@ assert.match(appSource, /panel\.dataset\.parcelScope = mixedParcels \? "mixed" :
   assert.equal(after.fields.ownershipType, "Yatay Kat İrtifakı");
   assert.equal(after.primaryTitleUnitShadow.fields.ownershipType, "Yatay Kat İrtifakı");
   assert.deepEqual(after.titleUnits.map((unit) => unit.fields.ownershipType), ["Yatay Kat İrtifakı", "Yatay Kat İrtifakı"]);
-  assert.equal(sandbox.fns.syncMultiTitleUnitOwnershipType("Arsa"), false, "Arsa kat irtifakı senkronizasyon kuralını tetiklememeli.");
+  assert.equal(sandbox.fns.syncMultiTitleUnitOwnershipType("Arsa"), true, "Arsa kat irtifakı senkronizasyon kuralını tetiklememeli.");
   console.log("Coklu tasinmaz kat irtifaki mulkiyet senkronizasyonu testi tamam.");
 }
 
