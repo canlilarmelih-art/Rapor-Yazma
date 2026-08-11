@@ -24536,6 +24536,7 @@ function buildImarPlanningNote(fields = {}) {
     licenseObstacle: normalizeYesNoChoice(current.licenseObstacle),
     licenseObstacleNote: current.licenseObstacleNote || "",
     planRestrictionNote: firstFilled(fields.planRestrictionNote, current.planRestrictionNote),
+    ownershipType: firstFilled(fields.mulkuliyetTuru, current.ownershipType),
     planCancellationStay: normalizeYesNoChoice(current.planCancellationStay),
     planCancellationStayNote: current.planCancellationStayNote || "",
     hasPlanningIssue: normalizeYesNoChoice(current.hasPlanningIssue),
@@ -24746,6 +24747,11 @@ function composeImarRoadSetbackSentence(data) {
     return `${variants[selectVariant("composeImarRoadSetbackSentence:var", variants.length)]}${impact}`;
   }
   if (data.roadSetback === "Hayır") {
+    const isKatIrtifaki = ["Dikey Kat İrtifakı", "Yatay Kat İrtifakı"].includes(data.ownershipType);
+    if (isKatIrtifaki) {
+      const subject = isMultiTitleUnitReportForNarrative() ? "Taşınmazların" : "Taşınmazın";
+      return `${subject} yer aldığı parselin yola/parka terki bulunmamaktadır.`;
+    }
     if (isThousandScalePlan(data.planScale)) {
       const variants = [
         "Taşınmazın Yola/Parka terki bulunmamaktadır.",
