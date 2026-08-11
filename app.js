@@ -27997,7 +27997,7 @@ async function buildSavedLocationMapAsset(config) {
   context.fillRect(0, 0, canvas.width, canvas.height);
   await drawExportTiles(context, canvas, topLeft, zoom, "base", mode);
   await drawExportTiles(context, canvas, topLeft, zoom, "labels", mode);
-  drawExportKmlPolygon(context, parsed, topLeft, zoom);
+  drawExportKmlPolygons(context, getTitleUnitKmlRecordsForMap(), topLeft, zoom);
   const subjectPoint = selectedPoint || (parsed?.centroid ? [Number(parsed.centroid.lat), Number(parsed.centroid.lng)] : center);
   drawExportLocationLeaderLabels(
     context,
@@ -28038,7 +28038,7 @@ async function buildSavedComparableSketchAsset(config) {
   context.fillRect(0, 0, canvas.width, canvas.height);
   await drawExportTiles(context, canvas, topLeft, zoom, "base", mode);
   await drawExportTiles(context, canvas, topLeft, zoom, "labels", mode);
-  drawExportKmlPolygon(context, parsed, topLeft, zoom);
+  drawExportKmlPolygons(context, getTitleUnitKmlRecordsForMap(), topLeft, zoom);
   drawExportComparableSketch(context, subjectPoint, comparablePoints, topLeft, zoom, parsed);
   const items = [
     ...(subjectPoint ? [{ label: "Konu Taşınmaz", lat: subjectPoint[0], lng: subjectPoint[1], kind: "subject" }] : []),
@@ -28085,7 +28085,7 @@ async function exportMapAsJpeg(triggerButton) {
   context.fillRect(0, 0, canvas.width, canvas.height);
   await drawExportTiles(context, canvas, topLeft, zoom, "base");
   await drawExportTiles(context, canvas, topLeft, zoom, "labels");
-  drawExportKmlPolygon(context, parsed, topLeft, zoom);
+  drawExportKmlPolygons(context, getTitleUnitKmlRecordsForMap(), topLeft, zoom);
   drawExportLocationLeaderLabels(
     context,
     subjectPoint,
@@ -28110,7 +28110,7 @@ async function exportMapAsJpeg(triggerButton) {
   } catch (error) {
     try {
       drawExportFallbackBase(context, canvas);
-      drawExportKmlPolygon(context, parsed, topLeft, zoom);
+      drawExportKmlPolygons(context, getTitleUnitKmlRecordsForMap(), topLeft, zoom);
       drawExportLocationLeaderLabels(
         context,
         subjectPoint,
@@ -28303,6 +28303,12 @@ function drawExportKmlPolygon(context, parsed, topLeft, zoom) {
   context.fill();
   context.stroke();
   context.restore();
+}
+
+function drawExportKmlPolygons(context, records, topLeft, zoom) {
+  (records || []).forEach((record) => {
+    drawExportKmlPolygon(context, record.parsed, topLeft, zoom);
+  });
 }
 
 function drawExportPlaces(context, topLeft, zoom) {
@@ -31518,6 +31524,7 @@ function renderComparableLocationSketchMap(wrapper) {
 
   const subjectPoint = getComparableSubjectPoint();
   const comparablePoints = getComparableSketchPoints();
+  const kmlRecords = getTitleUnitKmlRecordsForMap();
   if (!isLeafletReady()) {
     panel.innerHTML = `<div class="map-placeholder">Harita kütüphanesi yüklenemedi.</div>`;
     return;
@@ -31768,7 +31775,7 @@ async function exportComparableSketchAsJpeg(wrapper, triggerButton) {
   context.fillRect(0, 0, canvas.width, canvas.height);
   await drawExportTiles(context, canvas, topLeft, zoom, "base");
   await drawExportTiles(context, canvas, topLeft, zoom, "labels");
-  drawExportKmlPolygon(context, parsed, topLeft, zoom);
+  drawExportKmlPolygons(context, getTitleUnitKmlRecordsForMap(), topLeft, zoom);
   drawExportPlaces(context, topLeft, zoom);
   drawExportComparableSketch(context, subjectPoint, comparablePoints, topLeft, zoom, parsed);
 
@@ -31783,7 +31790,7 @@ async function exportComparableSketchAsJpeg(wrapper, triggerButton) {
   } catch (error) {
     try {
       drawExportFallbackBase(context, canvas);
-      drawExportKmlPolygon(context, parsed, topLeft, zoom);
+      drawExportKmlPolygons(context, getTitleUnitKmlRecordsForMap(), topLeft, zoom);
       drawExportPlaces(context, topLeft, zoom);
       drawExportComparableSketch(context, subjectPoint, comparablePoints, topLeft, zoom, parsed);
       const fallbackLink = document.createElement("a");
