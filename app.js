@@ -27892,7 +27892,7 @@ function ensureReportMapImagesForExport() {
   const unavailable = [];
   const size = getMapExportCanvasSize("16:9", 1200);
   const selectedPoint = getSelectedMapPoint();
-  const parsed = state.sourceValues.kml;
+  const parsed = getComparableSketchExportKml();
   if (missingLocation) {
     if (selectedPoint || parsed?.coordinates?.length) {
       const center = getExportMapCenter(selectedPoint, parsed);
@@ -27999,7 +27999,7 @@ async function buildSavedLocationMapAsset(config) {
   await drawExportTiles(context, canvas, topLeft, zoom, "labels", mode);
   drawExportKmlPolygons(context, getTitleUnitKmlRecordsForMap(), topLeft, zoom);
   const subjectPoint = selectedPoint || (parsed?.centroid ? [Number(parsed.centroid.lat), Number(parsed.centroid.lng)] : center);
-  drawExportLocationLeaderLabels(
+  drawExportMultiLocationLabels(
     context,
     subjectPoint,
     topLeft,
@@ -28055,7 +28055,7 @@ function buildReportJpegAsset(key, title, location, canvas, items) {
 
 async function exportMapAsJpeg(triggerButton) {
   const selectedPoint = getSelectedMapPoint();
-  const parsed = state.sourceValues.kml;
+  const parsed = getComparableSketchExportKml();
   const hasKmlGeometry = Boolean(parsed?.coordinates?.length);
   if (!selectedPoint && !hasKmlGeometry) {
     window.alert("Harita kaydı için önce KML veya koordinat bilgisi gerekiyor.");
@@ -28086,7 +28086,7 @@ async function exportMapAsJpeg(triggerButton) {
   await drawExportTiles(context, canvas, topLeft, zoom, "base");
   await drawExportTiles(context, canvas, topLeft, zoom, "labels");
   drawExportKmlPolygons(context, getTitleUnitKmlRecordsForMap(), topLeft, zoom);
-  drawExportLocationLeaderLabels(
+  drawExportMultiLocationLabels(
     context,
     subjectPoint,
     topLeft,
@@ -28111,14 +28111,14 @@ async function exportMapAsJpeg(triggerButton) {
     try {
       drawExportFallbackBase(context, canvas);
       drawExportKmlPolygons(context, getTitleUnitKmlRecordsForMap(), topLeft, zoom);
-      drawExportLocationLeaderLabels(
-        context,
-        subjectPoint,
-        topLeft,
-        zoom,
-        true,
-        getLocationMapLabelScale(null, canvas),
-      );
+      drawExportMultiLocationLabels(
+    context,
+    subjectPoint,
+    topLeft,
+    zoom,
+    true,
+    getLocationMapLabelScale(null, canvas),
+  );
       const fallbackLink = document.createElement("a");
       fallbackLink.download = `harita-konu-tasinmaz-${dateIsoToTr(new Date().toISOString().slice(0, 10))}.jpg`;
       fallbackLink.href = canvas.toDataURL("image/jpeg", 0.92);
@@ -28198,6 +28198,17 @@ function getExportMapCenter(selectedPoint, parsed) {
   if (leafletMap?.getCenter) {
     const center = leafletMap.getCenter();
     return [center.lat, center.lng];
+  }
+  if (selectedPoint && getTitleUnitCount() <= 1) return selectedPoint;
+  if (getTitleUnitCount() > 1 && parsed?.coordinates?.length) {
+    const points = parsed.coordinates
+      .map((point) => [Number(point.lat), Number(point.lng)])
+      .filter(([lat, lng]) => Number.isFinite(lat) && Number.isFinite(lng));
+    if (points.length) {
+      const lats = points.map(([lat]) => lat);
+      const lngs = points.map(([, lng]) => lng);
+      return [(Math.min(...lats) + Math.max(...lats)) / 2, (Math.min(...lngs) + Math.max(...lngs)) / 2];
+    }
   }
   if (selectedPoint) return selectedPoint;
   if (parsed?.centroid) return [Number(parsed.centroid.lat), Number(parsed.centroid.lng)];
@@ -28335,7 +28346,30 @@ function isExportPointVisible(pixel, canvas) {
 
 // Konum haritası JPEG export'unda konu taşınmaz + yakın çevre etiketlerini
 // çakışma-önleyen leader etiketleriyle çizer (emsal krokisiyle aynı mantık).
-function drawExportLocationLeaderLabels(context, subjectPoint, topLeft, zoom, includePlaces, labelScale = 1.5) {
+function drawExportMultiLocationLabels(context, fallbackSubjectPoint, topLeft, zoom, includePlaces, labelScale = 1.5) {
+  const records = getTitleUnitKmlRecordsForMap();
+  const entries = getKmlMapSubjectEntries(records);
+  const subjectPoints = entries.map((entry) => {
+    const record = records.find((item) => item.index === entry.index);
+    if (entry.index === state.activeTitleUnitIndex && fallbackSubjectPoint) {
+      return { ...entry, point: fallbackSubjectPoint };
+    }
+    const centroid = record?.parsed?.centroid;
+    if (centroid && Number.isFinite(Number(centroid.lat)) && Number.isFinite(Number(centroid.lng))) {
+      return { ...entry, point: [Number(centroid.lat), Number(centroid.lng)] };
+    }
+    return { ...entry, point: fallbackSubjectPoint };
+  }).filter((entry) => Array.isArray(entry.point));
+
+  subjectPoints.forEach((entry) => {
+    drawExportLocationLeaderLabels(context, entry.point, topLeft, zoom, false, labelScale, entry.text);
+  });
+  if (includePlaces) {
+    drawExportLocationLeaderLabels(context, null, topLeft, zoom, true, labelScale);
+  }
+}
+
+function drawExportLocationLeaderLabels(context, subjectPoint, topLeft, zoom, includePlaces, labelScale = 1.5, subjectLabel = "KONU TAŞINMAZ") {
   const scale = Math.max(0.8, Math.min(2.25, Number(labelScale) || 1.5));
   const anchors = [];
   if (subjectPoint && Number.isFinite(subjectPoint[0]) && Number.isFinite(subjectPoint[1])) {
@@ -28346,8 +28380,8 @@ function drawExportLocationLeaderLabels(context, subjectPoint, topLeft, zoom, in
       kind: "subject",
       x: pixel.x,
       y: pixel.y,
-      text: "KONU TAŞINMAZ",
-      w: Math.min(context.measureText("KONU TAŞINMAZ").width + 24 * scale, 240 * scale),
+      text: subjectLabel,
+      w: Math.min(context.measureText(subjectLabel).width + 24 * scale, 240 * scale),
       h: 26 * scale,
       font,
       fill: "#c81e1e",
