@@ -64,6 +64,9 @@ const functionNames = [
   "getTitleUnitCount",
   "getTitleUnitFieldsForLabel",
   "getTitleUnitTabModels",
+  "normalizeKmlParcelMatchPart",
+  "getKmlParcelMatchKey",
+  "getKmlTargetIndexes",
   "switchActiveTitleUnit",
   "addTitleUnitTab",
   "syncMultiTitleUnitOwnershipType",
@@ -371,6 +374,21 @@ assert.match(appSource, /panel\.dataset\.parcelScope = mixedParcels \? "mixed" :
   sandbox.fns.switchActiveTitleUnit(0);
   assert.equal(sandbox.getState().fields.takbisSummary, "Ortak takyidat açıklaması", "Birincil taba dönüşte ortak takyidat açıklaması korunmalı.");
   console.log("Ortak açıklama alanları tab değişiminde korunuyor testi tamam.");
+}
+
+// --- 13) KML dosyalari ada + parsel ile dogru tapu tabina eslesir ---------
+{
+  const state = freshState({
+    fields: { blockNo: "101", parcelNo: "2" },
+    titleUnits: [{ fields: { blockNo: "202", parcelNo: "7" }, tables: {} }],
+  });
+  sandbox.setState(state);
+  const indexes = sandbox.fns.getKmlTargetIndexes([
+    { parsed: { fields: { blockNo: "202", parcelNo: "7" } } },
+    { parsed: { fields: { blockNo: "101", parcelNo: "2" } } },
+  ]);
+  assert.deepEqual(indexes, [1, 0], "KML dosyalari yukleme sirasindan bagimsiz olarak ada/parsel tablarina eslesmeli.");
+  console.log("KML coklu dosya ada/parsel eslestirme testi tamam.");
 }
 
 console.log("Coklu TAKBIS Faz 2 tab-anahtarlama motoru testleri basarili.");

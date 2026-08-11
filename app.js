@@ -1128,6 +1128,7 @@ function createEmptyTitleUnit(overrides = {}) {
     id: overrides.id || `unit-${Math.random().toString(36).slice(2, 10)}`,
     fields: { ...(overrides.fields || {}) },
     tables: { ...(overrides.tables || {}) },
+    sourceValues: { ...(overrides.sourceValues || {}) },
     sourceFile: overrides.sourceFile || "",
   };
 }
@@ -1235,7 +1236,11 @@ function snapshotTitleUnitScopedData() {
   TITLE_UNIT_SCOPED_TABLE_KEYS.forEach((key) => {
     if (state.tables[key] !== undefined) tables[key] = state.tables[key];
   });
-  return { fields, tables };
+  const sourceValues = {};
+  ["kml", "nearbyPlaces", "nearbyArtery", "nearbyTransport", "regionAnalysis", "localNeighborhood", "administrativeNeighborhoodFallback"].forEach((key) => {
+    if (state.sourceValues?.[key] !== undefined) sourceValues[key] = state.sourceValues[key];
+  });
+  return { fields, tables, sourceValues };
 }
 
 // Verilen taşınmazın (snapshot şeklinde: {fields, tables}) verisini
@@ -1261,6 +1266,12 @@ function applyTitleUnitScopedData(snapshot) {
     } else {
       delete state.tables[key];
     }
+  });
+  state.sourceValues = state.sourceValues || {};
+  const sourceValues = snapshot?.sourceValues || {};
+  ["kml", "nearbyPlaces", "nearbyArtery", "nearbyTransport", "regionAnalysis", "localNeighborhood", "administrativeNeighborhoodFallback"].forEach((key) => {
+    if (sourceValues[key] !== undefined) state.sourceValues[key] = sourceValues[key];
+    else delete state.sourceValues[key];
   });
 }
 
@@ -1310,6 +1321,7 @@ function switchActiveTitleUnit(newIndex) {
     if (unit) {
       unit.fields = currentSnapshot.fields;
       unit.tables = currentSnapshot.tables;
+      unit.sourceValues = currentSnapshot.sourceValues;
     }
   }
 
@@ -14505,11 +14517,11 @@ function createUploadGrid(uploads) {
     // birden fazla tek-kayıtlı PDF tespiti processTakbisUpload() içinde
     // yapılır. Diğer 5 yükleme alanı ve normal kullanıcılar için DEĞİŞMEDİ
     // (tek dosya).
-    const allowMultipleTakbis = upload.id === "takbis";
+    const allowMultipleFiles = upload.id === "takbis" || upload.id === "kml";
     card.innerHTML = `
       <strong>${upload.title}</strong>
       <p>${upload.hint}</p>
-      <input type="file" data-upload="${upload.id}" ${accept ? `accept="${accept}"` : ""} ${allowMultipleTakbis ? "multiple" : ""} />
+      <input type="file" data-upload="${upload.id}" ${accept ? `accept="${accept}"` : ""} ${allowMultipleFiles ? "multiple" : ""} />
       <p>${stored ? `Seçilen dosya: ${stored}` : "Henüz dosya seçilmedi."}</p>
       ${uploadError ? `<p class="upload-error">${escapeHtml(uploadError)}</p>` : ""}
     `;
@@ -14529,12 +14541,13 @@ function createUploadGrid(uploads) {
         renderSection();
         return;
       }
-      const file = event.target.files[0];
+      const files = Array.from(event.target.files || []);
+      const file = files[0];
       if (!file) return;
-      state.uploads[upload.id] = file.name;
+      state.uploads[upload.id] = files.length > 1 ? `${files.length} dosya` : file.name;
       try {
         if (upload.id === "kml") {
-          await processKmlFile(file);
+          await processKmlFiles(files);
         } else if (upload.id === "address") {
           await processAddressFile(file);
         } else if (upload.id === "ekb") {
@@ -21636,6 +21649,7 @@ function applyAddressFieldsToReport(options = {}) {
 
   Object.entries(fields).forEach(([key, value]) => {
     if (!value) return;
+    if (options.preserveShared && TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS.has(key)) return;
     const nextValue = key === "addressSiteName" ? cleanAddressTableName(value) : value;
     if (!nextValue) return;
     setFieldFromSource("address", key, nextValue, options);
@@ -26822,27 +26836,91 @@ function joinTurkishList(items) {
 async function processKmlFile(file) {
   const text = await readFileAsText(file);
   const parsed = parseKml(text);
-  resetKmlDerivedFields();
-  state.sourceValues.kml = parsed;
-  applyKmlFieldsToReport({ force: true });
-  await applyLocalNeighborhoodForCurrentLocation({ force: true, silent: true }).catch(() => false);
-  nearbyAutoFetchStarted = false;
-  state.sourceValues.nearbyPlaces = {
-    ...(state.sourceValues.nearbyPlaces || {}),
-    loading: true,
-    center: parsed.centroid ? { lat: parsed.centroid.lat, lng: parsed.centroid.lng } : state.sourceValues.nearbyPlaces?.center,
-  };
-  fetchNearbyPlacesForCurrentLocation({ silent: true, force: true }).then(() => {
-    autosave();
-    if (activeSectionId === "address") {
-      renderSection();
+  await applyKmlRecordsToTitleUnits([{ parsed, fileName: file.name || "" }]);
+}
+
+async function processKmlFiles(files) {
+  const records = await Promise.all(
+    (files || []).map(async (file) => ({
+      parsed: parseKml(await readFileAsText(file)),
+      fileName: file.name || "",
+    })),
+  );
+  await applyKmlRecordsToTitleUnits(records);
+}
+
+function normalizeKmlParcelMatchPart(value) {
+  return String(value ?? "")
+    .trim()
+    .replace(/\s+/g, "")
+    .toLocaleLowerCase("tr-TR");
+}
+
+function getKmlParcelMatchKey(fields = {}) {
+  const blockNo = normalizeKmlParcelMatchPart(fields.blockNo);
+  const parcelNo = normalizeKmlParcelMatchPart(fields.parcelNo);
+  return blockNo && parcelNo ? `${blockNo}|${parcelNo}` : "";
+}
+
+function getKmlTargetIndexes(records) {
+  while (getTitleUnitCount() < records.length) addTitleUnitTab();
+  const available = new Set(Array.from({ length: getTitleUnitCount() }, (_, index) => index));
+  return records.map((record, orderIndex) => {
+    const kmlKey = getKmlParcelMatchKey(record.parsed?.fields);
+    let targetIndex = -1;
+    if (kmlKey) {
+      targetIndex = [...available].find(
+        (index) => getKmlParcelMatchKey(getTitleUnitFieldsForLabel(index)) === kmlKey,
+      ) ?? -1;
     }
-    renderValidation();
-    updateStatus();
+    if (targetIndex < 0) targetIndex = [...available][0] ?? orderIndex;
+    available.delete(targetIndex);
+    return targetIndex;
   });
 }
 
-function resetKmlDerivedFields() {
+async function applyKmlRecordsToTitleUnits(records) {
+  const validRecords = (records || []).filter((record) => record?.parsed?.fields);
+  if (!validRecords.length) return;
+  const targetIndexes = getKmlTargetIndexes(validRecords);
+
+  for (let recordIndex = 0; recordIndex < validRecords.length; recordIndex += 1) {
+    const record = validRecords[recordIndex];
+    const targetIndex = targetIndexes[recordIndex];
+    if (targetIndex !== state.activeTitleUnitIndex) switchActiveTitleUnit(targetIndex);
+    const preserveShared = recordIndex > 0;
+    resetKmlDerivedFields({ preserveShared });
+    state.sourceValues.kml = record.parsed;
+    state.sourceValues.kml.fileName = record.fileName;
+    applyKmlFieldsToReport({ force: true, preserveShared });
+
+    // Çevre/mahalle sorgusu ortak rapor anlatımını yalnızca ilk KML'den üretir;
+    // diğer KML'ler yalnızca kendi taşınmazlarının konum ve tarla alanlarını doldurur.
+    if (recordIndex === 0) {
+      await applyLocalNeighborhoodForCurrentLocation({ force: true, silent: true }).catch(() => false);
+      nearbyAutoFetchStarted = false;
+      state.sourceValues.nearbyPlaces = {
+        ...(state.sourceValues.nearbyPlaces || {}),
+        loading: true,
+        center: record.parsed.centroid
+          ? { lat: record.parsed.centroid.lat, lng: record.parsed.centroid.lng }
+          : state.sourceValues.nearbyPlaces?.center,
+      };
+      fetchNearbyPlacesForCurrentLocation({ silent: true, force: true }).then(() => {
+        autosave();
+        renderValidation();
+        updateStatus();
+      });
+    }
+  }
+  switchActiveTitleUnit(0);
+  autosave();
+  renderValidation();
+  updateStatus();
+}
+
+function resetKmlDerivedFields(options = {}) {
+  const preserveShared = Boolean(options.preserveShared);
   nearbyRequestSerial += 1;
   nearbyAutoFetchStarted = false;
   [
@@ -26881,7 +26959,7 @@ function resetKmlDerivedFields() {
     "commercialFrontageRoadType",
     "commercialDevelopmentCompleted",
     "environmentDescription",
-  ].forEach((key) => {
+  ].filter((key) => !preserveShared || !TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS.has(key)).forEach((key) => {
     state.fields[key] = "";
   });
   state.fields.landRoadFrontageItems = [];
