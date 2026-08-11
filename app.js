@@ -31632,12 +31632,6 @@ function renderComparableLocationSketchMap(wrapper) {
 
   comparablePoints.forEach((item) => {
     boundsPoints.push(item.point);
-    leaflet.polyline([subjectPoint, item.point], {
-      color: "#0f766e",
-      weight: 2,
-      opacity: 0.65,
-      dashArray: "6 6",
-    }).addTo(map);
     leaflet.circleMarker(item.point, {
       radius: 8,
       color: "#0f766e",
@@ -32125,6 +32119,19 @@ function pickKmlBoundaryAnchorPixel(parsed, topLeft, zoom, awayFromPoint) {
   return best;
 }
 
+function pickKmlBoundaryNearestPixel(parsed, topLeft, zoom, targetPoint) {
+  const coordinates = Array.isArray(parsed?.coordinates) ? parsed.coordinates : [];
+  if (!coordinates.length || !targetPoint) return null;
+  const pixels = coordinates
+    .map((point) => projectExportPoint(Number(point.lat), Number(point.lng), topLeft, zoom))
+    .filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y));
+  if (!pixels.length) return null;
+  return pixels.reduce((nearest, point) => {
+    const pointDistance = Math.hypot(point.x - targetPoint.x, point.y - targetPoint.y);
+    const nearestDistance = Math.hypot(nearest.x - targetPoint.x, nearest.y - targetPoint.y);
+    return pointDistance < nearestDistance ? point : nearest;
+  });
+}
 function drawExportComparableSketch(context, subjectPoint, comparablePoints, topLeft, zoom, parsed) {
   const subjectPixel = subjectPoint ? projectExportPoint(subjectPoint[0], subjectPoint[1], topLeft, zoom) : null;
   const comps = comparablePoints.map((item) => ({
@@ -32148,7 +32155,9 @@ function drawExportComparableSketch(context, subjectPoint, comparablePoints, top
       const parcelNo = String(record?.parsed?.fields?.parcelNo || "").trim();
       return blockNo && parcelNo ? `${blockNo}/${parcelNo}` : fallback;
     };
-  const kmlSubjectEntries = typeof getKmlMapSubjectEntries === "function"
+  const nearestKmlBoundary = typeof pickKmlBoundaryNearestPixel === "function"
+    ? pickKmlBoundaryNearestPixel
+    : (boundary, boundaryTopLeft, boundaryZoom, targetPoint) => pickKmlBoundaryAnchorPixel(boundary, boundaryTopLeft, boundaryZoom, targetPoint);  const kmlSubjectEntries = typeof getKmlMapSubjectEntries === "function"
     ? getKmlMapSubjectEntries(kmlRecordsForSketch)
     : [];
   const activeKmlRecord = kmlRecordsForSketch.find((record) => record.index === state.activeTitleUnitIndex);
@@ -32165,7 +32174,7 @@ function drawExportComparableSketch(context, subjectPoint, comparablePoints, top
     // kırmızı OK ile bağlanıyor; sınır poligonu zaten kırmızı dolgulu
     // çizildiğinden (drawExportKmlPolygon) ayrı bir nokta işaretine gerek
     // yok. KML yoksa (eski davranış) doğrudan koordinat noktasına bağlanır.
-    subjectAnchorPixel = pickKmlBoundaryAnchorPixel(activeKmlRecord?.parsed || parsed, topLeft, zoom, compCenter) || subjectPixel;
+    subjectAnchorPixel = nearestKmlBoundary(activeKmlRecord?.parsed || parsed, topLeft, zoom, subjectPixel) || subjectPixel;
     context.font = "900 26px Arial";
     // Kullanıcı talebi (2026-08-05): "konu taşınmaz daha uzağa, emsal
     // yazılarının olmadığı bir kısma konumlanmalıydı" — kaçış yönü genel
@@ -32202,7 +32211,7 @@ function drawExportComparableSketch(context, subjectPoint, comparablePoints, top
       const centroid = record?.parsed?.centroid;
       if (!centroid) return;
       const point = projectExportPoint(Number(centroid.lat), Number(centroid.lng), topLeft, zoom);
-      const boundaryPoint = pickKmlBoundaryAnchorPixel(record.parsed, topLeft, zoom, compCenter) || point;
+      const boundaryPoint = nearestKmlBoundary(record.parsed, topLeft, zoom, point) || point;
       const text = entry.text;
       context.font = "900 26px Arial";
       const escapeDirX = boundaryPoint.x - compCenter.x;
