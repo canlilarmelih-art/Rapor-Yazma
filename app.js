@@ -832,8 +832,24 @@ const sourceGeneratedDefaultExcludedKeys = new Set([
 const nearbyRadiusMeters = 500;
 const nearbyExpandedRadiusMeters = 1000;
 const userNearbyRadiusMeters = 1000;
-const nearbySelectionRadiusMeters = userNearbyRadiusMeters;
-const nearbyArteryFallbackRadiusMeters = nearbySelectionRadiusMeters;
+let nearbySelectionRadiusMeters = userNearbyRadiusMeters;
+let nearbyArteryFallbackRadiusMeters = userNearbyRadiusMeters;
+const nearbyLandScanRadiusMeters = 3000;
+
+function isWideNearbyScanProperty(value = state.fields?.ownershipType) {
+  const normalized = foldTurkish(value || "").replace(/\s+/g, " ").trim();
+  return ["ARSA", "ARAZI", "TICARI BINA", "SANAYI TESISI"].includes(normalized);
+}
+
+function getNearbyScanRadiusMeters() {
+  return isWideNearbyScanProperty() ? nearbyLandScanRadiusMeters : nearbyRadiusMeters;
+}
+
+function getNearbySelectionRadiusMeters() {
+  nearbySelectionRadiusMeters = isWideNearbyScanProperty() ? nearbyLandScanRadiusMeters : userNearbyRadiusMeters;
+  nearbyArteryFallbackRadiusMeters = nearbySelectionRadiusMeters;
+  return nearbySelectionRadiusMeters;
+}
 const nearbySettlementFallbackRadiusMeters = 2000;
 const nearbyRequestTimeoutMs = 7000;
 const nearbyResultLimit = 45;
@@ -14447,7 +14463,7 @@ function createMainArteryComposer(field) {
   if (!roads.length) {
     const empty = document.createElement("p");
     empty.className = "muted-note";
-    empty.textContent = "1000 m içinde cadde/bulvar bulunamadı.";
+    empty.textContent = `${getNearbySelectionRadiusMeters()} m içinde cadde/bulvar bulunamadı.`;
     list.append(empty);
   } else {
     roads.slice(0, mainArteryAutoLimit + getUserMainArteryPlaces().length).forEach((road) => {
@@ -25267,7 +25283,7 @@ function createNearbyEnvironmentTools(options = {}) {
   const places = getAllNearbyPlacesWithUser(source.places || []);
   const error = formatNearbyError(state.uploadErrors?.nearbyPlaces);
   const loadingText = source.loading ? "Çevre taraması sürüyor..." : `${places.length} öğe bulundu`;
-  const statusText = places.length ? loadingText : "KML yüklendiğinde önce 500 m, gerekirse 1000 m çevre otomatik taranacak.";
+  const statusText = places.length ? loadingText : `KML yüklendiğinde ${getNearbyScanRadiusMeters()} m çevre otomatik taranacak.`;
   const buttonDisabled = !getSelectedMapPoint() || source.loading;
   const selectedIds = new Set(source.selectedIds || []);
   const displayPlaces = getNearbySelectionDisplayPlaces(source);
@@ -25412,6 +25428,7 @@ function isUserNearbyPlaceInAddressRadius(place = {}) {
 
 function isNearbyPlaceInAddressRadius(place = {}) {
   const distance = Number(place.distance);
+  getNearbySelectionRadiusMeters();
   return Number.isFinite(distance) && distance >= 0 && distance <= nearbySelectionRadiusMeters;
 }
 
@@ -25661,15 +25678,15 @@ async function fetchNearbyPlacesFast(lat, lng) {
 async function fetchNearbyPlacesWithCoverage(lat, lng) {
   let first = { places: [], radius: nearbyRadiusMeters, regionAnalysis: {} };
   try {
-    first = await fetchNearbyPlacesFastByRadius(lat, lng, nearbyRadiusMeters);
+    first = await fetchNearbyPlacesFastByRadius(lat, lng, scanRadius);
   } catch (error) {
-    first = { places: [], radius: nearbyRadiusMeters, regionAnalysis: {}, error };
+    first = { places: [], radius: scanRadius, regionAnalysis: {}, error };
   }
   if (hasRequiredNearbyCoverage(first.places)) return first;
 
   let merged = first;
   try {
-    const expanded = await fetchNearbyPlacesFastByRadius(lat, lng, nearbyExpandedRadiusMeters);
+    const expanded = await fetchNearbyPlacesFastByRadius(lat, lng, Math.max(nearbyExpandedRadiusMeters, scanRadius));
     merged = mergeNearbyEnvironments(first, expanded);
   } catch (error) {
     merged = first;
@@ -26731,9 +26748,9 @@ function getNearbyArteries(places) {
   const arteries = (places || [])
     .filter((place) => place.category === "arteries" && isNearbyPlaceInAddressRadius(place))
     .sort((a, b) => a.distance - b.distance);
-  const withinRadius = arteries.filter((place) => place.distance <= 500);
+  const withinRadius = arteries.filter((place) => place.distance <= getNearbySelectionRadiusMeters());
   if (withinRadius.length >= mainArteryAutoLimit) return withinRadius;
-  const withinExpanded = arteries.filter((place) => place.distance <= nearbyExpandedRadiusMeters);
+  const withinExpanded = arteries.filter((place) => place.distance <= Math.max(nearbyExpandedRadiusMeters, getNearbySelectionRadiusMeters()));
   return withinExpanded.slice(0, mainArteryAutoLimit);
 }
 
