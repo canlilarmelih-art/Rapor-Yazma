@@ -67,6 +67,7 @@ const functionNames = [
   "cleanBoundNeighborhoodCenterName",
   "cleanEnvironmentalDistancePhrase",
   "getAgriculturalNeighborhoodBaseName",
+  "formatAgriculturalParcelLabel",
   "buildAgriculturalMultiTitleUnitTransportText",
   "pluralizeEnvironmentalSubjectText",
   "selectVariant",
@@ -146,10 +147,33 @@ function boundFields(blockNo, parcelNo, distanceText) {
     primaryTitleUnitShadow: null,
   });
   const text = sandbox.buildAgriculturalMultiTitleUnitTransportText();
-  assert.match(text, /1408 3 taşınmaz bağlı bulunduğu Ataevler Mahalle Merkezinin 800 m güneyinde/);
-  assert.match(text, /1409 7 taşınmaz bağlı bulunduğu Ataevler Mahalle Merkezinin 400 m kuzeyinde/);
+  assert.match(text, /1408 Ada 3 Parsel taşınmaz bağlı bulunduğu Ataevler Mahalle Merkezinin 800 m güneyinde/, "Etiket \"Ada\"/\"Parsel\" kelimeleriyle kurulmalı.");
+  assert.match(text, /1409 Ada 7 Parsel taşınmaz bağlı bulunduğu Ataevler Mahalle Merkezinin 400 m kuzeyinde/);
   assert.ok(text.includes(", "), "Taşınmaz cümlecikleri virgülle ayrılmalı.");
+  assert.match(text, /kuzeyinde yer almaktadır\.$/, "Cümle TEK bir yüklemle (\"yer almaktadır\") tamamlanmalı, yarım kalmamalı.");
   console.log("Farkli ada/parsel (<=5 tasinmaz) - tasinmaz bazli liste testi tamam.");
+}
+
+// 2b) Kullanıcının gerçek örneği (3 farklı parsel, ekran görüntüsü) —
+// tam cümle metni birebir doğrulanır.
+{
+  sandbox.setState({
+    fields: { environmentRegionType: "Tarımsal Alan", ...boundFields("2928", "46", "1,83 km güneyinde") },
+    titleUnits: [
+      { fields: boundFields("2927", "12", "2,57 km güneydoğusunda") },
+      { fields: boundFields("2930", "1", "1,67 km güneybatısında") },
+    ],
+    activeTitleUnitIndex: 0,
+    primaryTitleUnitShadow: null,
+  });
+  const text = sandbox.buildAgriculturalMultiTitleUnitTransportText();
+  assert.equal(
+    text,
+    "2928 Ada 46 Parsel taşınmaz bağlı bulunduğu Ataevler Mahalle Merkezinin 1,83 km güneyinde, "
+      + "2927 Ada 12 Parsel taşınmaz bağlı bulunduğu Ataevler Mahalle Merkezinin 2,57 km güneydoğusunda, "
+      + "2930 Ada 1 Parsel taşınmaz bağlı bulunduğu Ataevler Mahalle Merkezinin 1,67 km güneybatısında yer almaktadır.",
+  );
+  console.log("Kullanici ornegi (3 farkli parsel) - birebir cumle testi tamam.");
 }
 
 // 3) Farklı ada/parsel, >5 taşınmaz — genel özet cümlesi.

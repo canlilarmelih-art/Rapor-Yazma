@@ -7070,11 +7070,16 @@ function buildAgriculturalKmlDistanceSentence(values, options = {}) {
 //     çağrısı — bu fonksiyon (buildAgriculturalMultiTitleUnitTransportText)
 //     bu durumda BOŞ döner, o mekanizmaya karışmaz.
 //  2) Taşınmazlar FARKLI ada/parsellerdeyse VE sayı ≤ 5 ise → HER taşınmaz
-//     için ayrı "{tab etiketi} taşınmaz bağlı bulunduğu {mahalle} Mahalle
-//     Merkezinin {mesafe}" cümlecikleri, virgülle birleştirilir. Etiket,
-//     computeTitleUnitTabLabel'in ürettiği AYNI tab etiketidir (Blok-BBNo
-//     veya Ada Parsel) — takyidat gruplamasındaki ("A-2, A-4") etiketle
-//     tutarlı olsun diye.
+//     için ayrı "{Ada} Ada {Parsel} Parsel taşınmaz bağlı bulunduğu
+//     {mahalle} Mahalle Merkezinin {mesafe}" cümlecikleri, virgülle
+//     birleştirilip TEK bir "yer almaktadır" ile tamamlanır — kullanıcı
+//     bildirimi (2026-08-12): önceki hâlde (a) etiket UI tab kısaltmasıydı
+//     ("2928 46", "Ada"/"Parsel" kelimeleri yoktu) ve (b) cümlenin hiç
+//     yüklemi yoktu (virgülle ayrılmış parçalar bir noktayla bitiyordu,
+//     "anlamsız" bir cümle). Etiket burada AMAÇLICA
+//     computeTitleUnitTabLabel'İ (UI tab/takyidat etiketi) KULLANMIYOR —
+//     doğrudan blockNo/parcelNo'dan "Ada"/"Parsel" kelimeleriyle kuruluyor
+//     (bkz. formatAgriculturalParcelLabel).
 //  3) Taşınmazlar FARKLI ada/parsellerdeyse VE sayı > 5 ise → tek bir genel
 //     özet cümlesi (mahalle çevresi).
 // Diğer bölge türlerini (Konut/Ticaret/Sanayi) ETKİLEMEZ — yalnızca
@@ -7086,6 +7091,15 @@ function getAgriculturalNeighborhoodBaseName(value = "") {
     .replace(/\b(mahallesi|mahalle|mah\.?|köyü|köy)\b/gi, "")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function formatAgriculturalParcelLabel(blockNo = "", parcelNo = "", fallbackIndex = 0) {
+  const block = String(blockNo || "").trim();
+  const parcel = String(parcelNo || "").trim();
+  if (block && parcel) return `${block} Ada ${parcel} Parsel`;
+  if (parcel) return `${parcel} Parsel`;
+  if (block) return `${block} Ada`;
+  return `${fallbackIndex + 1}. taşınmaz`;
 }
 
 const agriculturalMultiUnitParcelListTransportFragmentVariants = [
@@ -7117,7 +7131,6 @@ function buildAgriculturalMultiTitleUnitTransportText() {
   if (!isMultiTitleUnitReportForNarrative()) return "";
 
   const units = getNarrativeTitleUnitFields();
-  const labels = getTitleUnitTabModels().map((tab) => tab.label);
 
   // 1) Tüm taşınmazlar aynı parselde (tek KML) — bu fonksiyon KARIŞMAZ,
   // updateTransportFromMainArtery kendi çoğullaştırmasını yapar (yukarıdaki
@@ -7148,12 +7161,15 @@ function buildAgriculturalMultiTitleUnitTransportText() {
       const center = cleanBoundNeighborhoodCenterName(unit.boundNeighborhood);
       const distance = cleanEnvironmentalDistancePhrase(unit.boundNeighborhoodDistance);
       if (!center || !distance) return "";
-      const label = labels[index] || `Taşınmaz ${index + 1}`;
+      const label = formatAgriculturalParcelLabel(unit.blockNo, unit.parcelNo, index);
       return agriculturalMultiUnitParcelListTransportFragmentVariants[fragmentVariantIndex](label, center, distance);
     })
     .filter(Boolean);
   if (!fragments.length) return "";
-  return `${fragments.join(", ")}.`;
+  // Parçalar TEK bir cümlenin virgülle ayrılmış öğeleridir — yüklem
+  // ("yer almaktadır") yalnızca SONDA, bir kez gelir (kullanıcı bildirimi:
+  // önceki hâlde hiç yüklem yoktu, cümle anlamsız kalıyordu).
+  return `${fragments.join(", ")} yer almaktadır.`;
 }
 
 // Çoklu Talep + Tarımsal Alan raporlarında "Ulaşım Tarifi"ni GÜNCEL taşınmaz

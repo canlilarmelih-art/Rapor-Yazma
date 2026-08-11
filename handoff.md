@@ -8428,3 +8428,32 @@ ifadesi çoğullaşmalı ("taşınmazlar").
   kullanıcıya bunu doğrulatmalı.
 - Cache-buster: `app.js?v=20260812-0400`.
 - Yedek: `backups/before-transport-street-fallback-fix_2026-08-12_02-42-18`.
+
+## 0.0.418 - 2026-08-12 - Farklı-parsel Ulaşım Tarifi listesinde etiket ve yüklem düzeltmesi
+
+Kullanıcı, 0.0.415/0.0.416'daki farklı-ada/parsel listeleme kuralının artık
+DEVREYE GİRDİĞİNİ (region türü "Tarımsal Alan"a çevrilince) ama çıktının
+iki açıdan sorunlu olduğunu bildirdi: "2928 46 taşınmaz bağlı bulunduğu
+Karahıdırköyü Mahalle Merkezinin 1,83 km güneyinde, ... güneybatısında."
+
+- **Etiket sorunu**: `labels[index]` `getTitleUnitTabModels()`'in ürettiği
+  UI-tab kısaltmasıydı ("2928 46" — "Ada"/"Parsel" kelimesi YOK). Yeni
+  `formatAgriculturalParcelLabel(blockNo, parcelNo, fallbackIndex)`
+  doğrudan `unit.blockNo`/`unit.parcelNo`'dan **"2928 Ada 46 Parsel"**
+  biçiminde kuruyor — `computeTitleUnitTabLabel` (UI tab/takyidat etiketi)
+  DEĞİŞMEDİ, yalnızca bu cümle için AYRI bir etiket fonksiyonu eklendi.
+- **Yüklem sorunu**: fragment'ler hiç fiil içermiyordu, virgülle ayrılıp
+  düz bir noktayla bitiyordu — "anlamsız" bir cümleydi. Artık TÜM
+  parçalar tek bir cümlenin virgülle ayrılan öğeleri sayılıyor ve cümle
+  SONDA tek bir "... yer almaktadır." ile tamamlanıyor.
+- Kullanıcının verdiği 3-parsel örneği artık BİREBİR şu metni üretiyor:
+  "2928 Ada 46 Parsel taşınmaz bağlı bulunduğu {Mahalle} Mahalle
+  Merkezinin 1,83 km güneyinde, 2927 Ada 12 Parsel taşınmaz bağlı
+  bulunduğu {Mahalle} Mahalle Merkezinin 2,57 km güneydoğusunda, 2930 Ada
+  1 Parsel taşınmaz bağlı bulunduğu {Mahalle} Mahalle Merkezinin 1,67 km
+  güneybatısında yer almaktadır."
+- Test: `tools/test-agricultural-multi-unit-transport.js`'e kullanıcının
+  gerçek 3-parsel örneğinin BİREBİR beklenen çıktısı eklendi (regresyon
+  güvenliği için en güçlü doğrulama biçimi).
+- Cache-buster: `app.js?v=20260812-0430`.
+- Yedek: `backups/before-agri-transport-label-sentence-fix_2026-08-12_02-52-15`.
