@@ -26910,24 +26910,18 @@ async function applyKmlRecordsToTitleUnits(records) {
     state.sourceValues.kml.fileName = record.fileName;
     applyKmlFieldsToReport({ force: true, preserveShared });
 
-    // Çevre/mahalle sorgusu ortak rapor anlatımını yalnızca ilk KML'den üretir;
-    // diğer KML'ler yalnızca kendi taşınmazlarının konum ve tarla alanlarını doldurur.
-    if (recordIndex === 0) {
-      await applyLocalNeighborhoodForCurrentLocation({ force: true, silent: true }).catch(() => false);
-      nearbyAutoFetchStarted = false;
-      state.sourceValues.nearbyPlaces = {
-        ...(state.sourceValues.nearbyPlaces || {}),
-        loading: true,
-        center: record.parsed.centroid
-          ? { lat: record.parsed.centroid.lat, lng: record.parsed.centroid.lng }
-          : state.sourceValues.nearbyPlaces?.center,
-      };
-      fetchNearbyPlacesForCurrentLocation({ silent: true, force: true }).then(() => {
-        autosave();
-        renderValidation();
-        updateStatus();
-      });
-    }
+    // Her KML kendi taşınmazının mahalle/köy/ilçe ve mesafe verisini üretmelidir.
+    // Açıklama alanları ortak kalsa da bu teknik konum verileri tab bazında saklanır.
+    await applyLocalNeighborhoodForCurrentLocation({ force: true, silent: true }).catch(() => false);
+    nearbyAutoFetchStarted = false;
+    state.sourceValues.nearbyPlaces = {
+      ...(state.sourceValues.nearbyPlaces || {}),
+      loading: true,
+      center: record.parsed.centroid
+        ? { lat: record.parsed.centroid.lat, lng: record.parsed.centroid.lng }
+        : state.sourceValues.nearbyPlaces?.center,
+    };
+    await fetchNearbyPlacesForCurrentLocation({ silent: true, force: true }).catch(() => false);
   }
   switchActiveTitleUnit(0);
   autosave();
@@ -27405,13 +27399,27 @@ function setFieldFromSource(source, key, value, options = {}) {
   };
 }
 
+function getTitleUnitKmlRecordsForMap() {
+  return Array.from({ length: getTitleUnitCount() }, (_, index) => {
+    const sourceValues = index === state.activeTitleUnitIndex
+      ? state.sourceValues
+      : index === 0
+        ? state.primaryTitleUnitShadow?.sourceValues
+        : state.titleUnits[index - 1]?.sourceValues;
+    const parsed = sourceValues?.kml;
+    if (!parsed?.coordinates?.length) return null;
+    return { index, parsed, fields: getTitleUnitFieldsForLabel(index) };
+  }).filter(Boolean);
+}
+
 function renderLeafletKmlMap() {
   const panel = document.querySelector("#kmlMapPanel");
+  const records = getTitleUnitKmlRecordsForMap();
   const parsed = state.sourceValues.kml;
   if (!panel) return;
 
   const selectedPoint = getSelectedMapPoint();
-  const hasKmlGeometry = Boolean(parsed?.coordinates?.length);
+  const hasKmlGeometry = records.length > 0;
 
   if (!hasKmlGeometry && !selectedPoint) {
     renderKmlMapFallback("KML dosyası yükleyin veya enlem/boylam alanlarını doldurun.");
@@ -27436,26 +27444,35 @@ function renderLeafletKmlMap() {
   leafletKmlLayer = null;
   leafletSelectedMarker = null;
 
-  const center = selectedPoint || (parsed?.centroid
-    ? [Number(parsed.centroid.lat), Number(parsed.centroid.lng)]
-    : parsed?.coordinates?.[0]
-      ? [parsed.coordinates[0].lat, parsed.coordinates[0].lng]
+  const firstRecord = records[0];
+  const center = selectedPoint || (firstRecord?.parsed?.centroid
+    ? [Number(firstRecord.parsed.centroid.lat), Number(firstRecord.parsed.centroid.lng)]
+    : firstRecord?.parsed?.coordinates?.[0]
+      ? [firstRecord.parsed.coordinates[0].lat, firstRecord.parsed.coordinates[0].lng]
       : [Number(state.fields.latitude), Number(state.fields.longitude)]);
-  const path = hasKmlGeometry ? parsed.coordinates.map((point) => [point.lat, point.lng]) : [];
 
   leafletMap = leaflet.map(panel, getLeafletInteractionOptions({ forceDraggable: true })).setView(center, 16);
 
   getLeafletTileLayer().addTo(leafletMap);
 
-  if (path.length) {
-    leafletKmlLayer = leaflet.polygon(path, {
-      color: "#d92525",
+  const polygonLayers = records.map((record, recordIndex) => leaflet.polygon(
+    record.parsed.coordinates.map((point) => [point.lat, point.lng]),
+    {
+      color: recordIndex === 0 ? "#d92525" : "#2563eb",
       weight: 3,
       opacity: 0.95,
-      fillColor: "#d92525",
+      fillColor: recordIndex === 0 ? "#d92525" : "#2563eb",
       fillOpacity: 0.16,
-    }).addTo(leafletMap);
-  }
+    },
+  ).addTo(leafletMap));
+  leafletKmlLayer = polygonLayers.length ? leaflet.featureGroup(polygonLayers).addTo(leafletMap) : null;
+
+  records.forEach((record) => {
+    if (!record.parsed.centroid || record.index === state.activeTitleUnitIndex) return;
+    leaflet.marker([record.parsed.centroid.lat, record.parsed.centroid.lng])
+      .addTo(leafletMap)
+      .bindPopup(`Taşınmaz ${record.index + 1}${record.fields?.blockNo ? `<br>Blok: ${escapeHtml(record.fields.blockNo)}` : ""}`);
+  });
 
   leafletSelectedMarker = leaflet.marker(center, { draggable: !isCoarsePointerDevice() })
     .addTo(leafletMap)
@@ -27474,7 +27491,7 @@ function renderLeafletKmlMap() {
 
   renderSelectedNearbyMarkers();
 
-  if (leafletKmlLayer && path.length > 1) {
+  if (leafletKmlLayer) {
     leafletMap.fitBounds(leafletKmlLayer.getBounds(), {
       padding: [70, 70],
       maxZoom: 16,
@@ -27608,30 +27625,38 @@ function getMapLabelPlaces() {
 
 function renderStaticKmlMap() {
   const panel = document.querySelector("#kmlMapPanel");
+  const records = getTitleUnitKmlRecordsForMap();
   const parsed = state.sourceValues.kml;
   if (!panel) return;
 
   const selectedPoint = getSelectedMapPoint();
-  const hasKmlGeometry = Boolean(parsed?.coordinates?.length);
+  const hasKmlGeometry = records.length > 0;
   if (!hasKmlGeometry && !selectedPoint) {
     renderKmlMapFallback("KML dosyası yükleyin veya enlem/boylam alanlarını doldurun.");
     return;
   }
 
-  const points = hasKmlGeometry ? parsed.coordinates : [];
-  const center = selectedPoint || (parsed?.centroid
-    ? [Number(parsed.centroid.lat), Number(parsed.centroid.lng)]
+  const firstRecord = records[0];
+  const points = firstRecord?.parsed?.coordinates || [];
+  const center = selectedPoint || (firstRecord?.parsed?.centroid
+    ? [Number(firstRecord.parsed.centroid.lat), Number(firstRecord.parsed.centroid.lng)]
     : [Number(points[0]?.lat), Number(points[0]?.lng)]);
   const nearby = getMapLabelPlaces().filter((place) => Number.isFinite(place.lat) && Number.isFinite(place.lng));
   const allPoints = [
-    ...points.map((point) => [Number(point.lat), Number(point.lng)]),
+    ...records.flatMap((record) => record.parsed.coordinates.map((point) => [Number(point.lat), Number(point.lng)])),
     center,
     ...nearby.map((place) => [place.lat, place.lng]),
   ].filter(([lat, lng]) => Number.isFinite(lat) && Number.isFinite(lng));
 
   const bounds = getCoordinateBounds(allPoints);
   const project = createStaticMapProjector(bounds, 760, 420);
-  const polygon = points.map((point) => project(Number(point.lat), Number(point.lng))).map(([x, y]) => `${x},${y}`).join(" ");
+  const polygons = records.map((record, recordIndex) => {
+    const pointsForRecord = record.parsed.coordinates
+      .map((point) => project(Number(point.lat), Number(point.lng)))
+      .map(([x, y]) => `${x},${y}`)
+      .join(" ");
+    return `<polygon class="static-kml-polygon${recordIndex ? " secondary" : ""}" points="${pointsForRecord}"></polygon>`;
+  }).join("");
   const [markerX, markerY] = project(center[0], center[1]);
   const nearbyMarkup = nearby.map((place) => {
     const [x, y] = project(place.lat, place.lng);
@@ -27650,7 +27675,7 @@ function renderStaticKmlMap() {
         ${Array.from({ length: 8 }, (_, index) => `<line x1="${index * 110}" y1="0" x2="${index * 110 - 80}" y2="420"></line>`).join("")}
         ${Array.from({ length: 6 }, (_, index) => `<line x1="0" y1="${index * 90}" x2="760" y2="${index * 90 - 35}"></line>`).join("")}
       </g>
-      ${polygon ? `<polygon class="static-kml-polygon" points="${polygon}"></polygon>` : ""}
+       ${polygons}
       ${nearbyMarkup}
       <g class="static-subject-marker">
         <path d="M ${markerX} ${markerY - 30} C ${markerX - 16} ${markerY - 30}, ${markerX - 18} ${markerY - 8}, ${markerX} ${markerY + 10} C ${markerX + 18} ${markerY - 8}, ${markerX + 16} ${markerY - 30}, ${markerX} ${markerY - 30} Z"></path>
