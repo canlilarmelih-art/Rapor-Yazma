@@ -8399,3 +8399,32 @@ ifadesi çoğullaşmalı ("taşınmazlar").
   çoğullaştırdığını kontrol ediyor.
 - Cache-buster: `app.js?v=20260812-0330`.
 - Yedek: `backups/before-agri-transport-artery-reuse-fix_2026-08-12_02-15-25`.
+
+## 0.0.417 - 2026-08-12 - Ulaşım Tarifi'nde "taşınmazın bulunduğu" tekrarı
+
+- Kullanıcı ekran görüntüsü (3 tarlalık çoklu değerleme): "Sokak / Cadde"
+  alanı boşken (tarla/arazi taşınmazlarda yaygın) otomatik Ulaşım Tarifi
+  cümlesi "...Yaklaşık 2080 metre sonra taşınmazın bulunduğu **taşınmazın
+  bulunduğu** sokak güzergahına ulaşılır..." şeklinde TEKRARLI çıkıyordu.
+- **Kök neden**: `buildTransportDirectionText`'in `street` boşsa kullandığı
+  yedek değer ("taşınmazın bulunduğu sokak") ile varyant 0/2'nin şablonunun
+  KENDİSİ zaten kurduğu `"taşınmazın bulunduğu ${street}"` kalıbı üst üste
+  biniyordu. Varyant seçimi artık her zaman 0 döndüğünden (bkz.
+  [[rapor-app-sentence-variant-project]], `ea7b9a9`) bu hata HER BOŞ SOKAK
+  durumunda görünür hale gelmişti.
+- **Düzeltme**: yedek değer sade "sokak" oldu (`buildTransportDirectionText`
+  VE `cleanupStreetName`'in kendi iç yedeği) — "taşınmazın bulunduğu"
+  ifadesi artık yalnızca şablonda bir kez geçiyor.
+- Test: `tools/test-transport-direction-street-fallback.js` (boş/dolu sokak
+  senaryoları + `cleanupStreetName` yedek değeri). `npm test` zincirine
+  eklendi.
+- **Ayrıca kullanıcıya sorulması gereken**: aynı ekran görüntüsünde
+  "Çevresel Özellik Bölge Türü" **"Konut Bölgesi"** olarak görünüyordu — bu
+  3-tarlalık raporda 0.0.415/0.0.416'daki yeni Ulaşım Tarifi mantığının
+  (çoğullaştırma/taşınmaz-bazlı liste) hiç DEVREYE GİRMEMİŞ olmasının en
+  olası nedeni bu (mantık yalnızca `environmentRegionType === "Tarımsal
+  Alan"` iken çalışıyor) — kod tarafında bir hata değil, muhtemelen bu
+  raporda alan hiç "Tarımsal Alan"a çevrilmemiş. Devam eden ajan/oturum
+  kullanıcıya bunu doğrulatmalı.
+- Cache-buster: `app.js?v=20260812-0400`.
+- Yedek: `backups/before-transport-street-fallback-fix_2026-08-12_02-42-18`.

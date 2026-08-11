@@ -26998,7 +26998,12 @@ const transportDirectionVariants = [
 registerVariantGroup("buildTransportDirectionText", "Ana Arterden Otomatik Ulaşım Tarifi (Adres/Konum/Çevre)", transportDirectionVariants.length);
 
 function buildTransportDirectionText(road) {
-  const street = cleanupStreetName(state.fields.street || "taşınmazın bulunduğu sokak");
+  // "Sokak / Cadde" boşsa (tarla/arazi gibi kırsal taşınmazlarda yaygın)
+  // yedek değer BARE bir isim olmalı — varyant 0/2 zaten "taşınmazın
+  // bulunduğu ${street}" kalıbını KENDİSİ kuruyor; yedek değer de aynı
+  // ifadeyi içerirse "taşınmazın bulunduğu taşınmazın bulunduğu sokak"
+  // gibi tekrarlı bir cümle çıkıyordu (kullanıcı bildirimi, 2026-08-12).
+  const street = cleanupStreetName(state.fields.street || "sokak");
   const distance = Math.max(50, Math.round((road.distance || 0) / 10) * 10);
   const direction = getDirectionTextFromRoad(road);
   const roadSuffix = road.name.match(/caddesi|cadde|bulvarı|bulvar|sokak|sokağı/i) ? road.name : `${road.name} güzergahı`;
@@ -27026,7 +27031,7 @@ function calculateBearing(lat1, lng1, lat2, lng2) {
 
 function cleanupStreetName(value) {
   const text = cleanupPlaceName(value).replace(/\.$/, "");
-  if (!text) return "taşınmazın bulunduğu sokak";
+  if (!text) return "sokak";
   return /sokak|sokağı|cadde|caddesi|bulvar|bulvarı/i.test(text) ? text : `${text} Sokak`;
 }
 
