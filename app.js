@@ -32162,8 +32162,8 @@ function drawExportComparableSketch(context, subjectPoint, comparablePoints, top
     ? getKmlMapSubjectEntries(kmlRecordsForSketch)
     : [];
   const activeKmlRecord = kmlRecordsForSketch.find((record) => record.index === state.activeTitleUnitIndex);
-  const activeSubjectLabel = compactKmlLabel(activeKmlRecord,
-    kmlSubjectEntries.find((entry) => entry.index === state.activeTitleUnitIndex)?.text || "KONU TAŞINMAZ");
+  const activeSubjectLabel = kmlSubjectEntries.find((entry) => entry.index === state.activeTitleUnitIndex)?.text
+    || compactKmlLabel(activeKmlRecord, "KONU TAŞINMAZ");
 
   // Etiket anchor'ları
   const anchors = [];
@@ -32213,7 +32213,7 @@ function drawExportComparableSketch(context, subjectPoint, comparablePoints, top
       if (!centroid) return;
       const point = projectExportPoint(Number(centroid.lat), Number(centroid.lng), topLeft, zoom);
       const boundaryPoint = nearestKmlBoundary(record.parsed, topLeft, zoom, point) || point;
-      const text = compactKmlLabel(record, entry.text);
+      const text = entry.text;
       context.font = "900 13px Arial";
       const escapeDirX = boundaryPoint.x - compCenter.x;
       const escapeDirY = boundaryPoint.y - compCenter.y;
