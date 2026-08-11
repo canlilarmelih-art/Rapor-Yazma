@@ -8235,3 +8235,44 @@ POIs` olarak commit'lendi, bu satırları yazan oturum DOKUNMADI/COMMIT'LEMEDİ.
 ?.selectedIds` kontrolü yapıyor: kullanıcının elle seçtiği bir yakın-çevre
 noktası, adres yarıçapı dışında kalsa bile (`f89f712`/`703616e`'deki
 yarıçap daraltmasından sonra) listeden düşmüyor.
+
+## 0.0.412 - 2026-08-12 - TAKBİS: uzun unvanlı malik ile Edinme Sebebi sütun karışması
+
+- Kullanıcı bildirimi + gerçek PDF (YKB-202600639, tek taşınmazlı Nilüfer/
+  Ataevler raporu): Malikler tablosunda uzun bir tüzel kişi unvanı ("...
+  SANAYİ VE TİCARET ANONİM ŞİRKETİ") ile Edinme Sebebi ("6306 Sayılı Kanun
+  Gereğince Kat Karşılığı Temlik İşlemi") birbirine karışıyordu — Malik
+  sütunu kısa/eksik, Edinme Sebebi sütunu şirket unvanı parçalarıyla dolu
+  geliyordu.
+- **Kök neden**: PDF gerçekten pdf.js ile (vendor/pdfjs + gerçek dosya,
+  scratchpad'de geçici bir Node/Browser harness'i ile) okunup
+  `groupPdfItemsIntoRows`'un ÜRETTİĞİ GERÇEK satırlar incelendi. Malik
+  unvanı 4 satıra sarılınca, TAKBİS tablosunun Edinme Sebebi sütunu da
+  AYNI Y bantlarına kendi sarma satırlarını düşürüyor — `groupPdfItemsIntoRows`
+  bu iki farklı sütunun metnini TEK satır metninde birleştiriyor (ör.
+  `"SERAMİK GRANİT İNŞAAT TAAHHÜT Kanun"`). `findTakbisAcquisitionToken`
+  bu PDF'teki edinme sebebini (6306 sayılı Kanun/kentsel dönüşüm) tanımadığı
+  için `extractTakbisAcquisitionReason` "kesir ile tarih arasındaki ham
+  metni" ham haliyle edinme sebebi kabul ediyordu — sarma satırlarında bu
+  ham metin, Malik sütununun devam metnini de içeriyordu. Bulgu, gerçek
+  app.js fonksiyonları (`extractFunction` tekniğiyle metinden çıkarılıp)
+  gerçek satır verisiyle çalıştırılarak DOĞRULANDI (varsayım değil).
+- **Düzeltme**: yeni `splitTakbisOwnerRowByColumn(row)` — SN satırı DIŞINDAKİ
+  (index > 0) devam satırlarında `row.items`'ın x konumuna bakarak Malik
+  sütunu (`x < OWNER_ROW_NAME_COLUMN_MAX_X = 400`) ile diğer sütunları
+  (Edinme/Terkin Sebebi, `x >=`) ayırıyor — Malik/El Birliği/Hisse/Metrekare
+  sütunları TAKBİS'te asla sarılmadığından bu iki bölge arasında her zaman
+  geniş bir boşluk kalıyor (bu örnekte ~140 → ~630, 490pt fark). `parseTakbisOwnerRows`
+  edinme-sebebi tarafı için, `buildTakbisOwnerNameFromRows` isim tarafı için
+  bu ayrımı kullanıyor. İlk (SN) satır dokunulmadan bırakıldı — oradaki
+  mevcut kesir/tarih tabanlı ayrıştırma zaten doğru çalışıyordu.
+- Test: `tools/test-takbis-owner-column-overlap.js` (gerçek PDF'in satır
+  verisiyle uzun-unvan senaryosu + kısa/tek-satır malik regresyon senaryosu)
+  — `npm test` zincirine eklendi.
+- **Not**: `tools/test-multi-encumbrance-grouping.js` ve
+  `tools/test-multi-environment-subject.js` dosyaları var ama `package.json`'daki
+  `test` script'ine BAĞLI DEĞİL (`npm run verify` onları çalıştırmıyor) —
+  bu artıştan önce fark edildi, bu artışın kapsamı dışında, ayrı bir
+  göreve bırakıldı.
+- Cache-buster: `app.js?v=20260812-0030`.
+- Yedek: `backups/before-takbis-owner-column-overlap_2026-08-12_00-10-46`.

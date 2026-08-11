@@ -17886,8 +17886,34 @@ function mergeTakbisSameOwnerShares(owners) {
   return merged;
 }
 
+// Malik ismi çok uzunsa (birden fazla satıra sarılan tüzel kişi unvanı gibi)
+// TAKBİS tablosunda o satırların Y bandı, "Edinme Sebebi" sütununun kendi
+// sarma satırlarıyla ÇAKIŞIR — pdf.js metnini satıra göre gruplayan
+// `groupPdfItemsIntoRows` bu iki farklı sütunun metnini TEK satırda
+// birleştirir (ör. "SERAMİK GRANİT İNŞAAT TAAHHÜT Kanun"). Malik/Edinme
+// Sebebi sütunları arasında (El Birliği/Hisse/Metrekare sütunları asla
+// sarılmadığı için) her zaman geniş bir boş x aralığı kalır; bu sabit eşik
+// devam satırlarında hangi metin parçasının Malik'e, hangisinin Edinme/
+// Terkin Sebebi'ne ait olduğunu ayırt etmek için kullanılır. İlk satır
+// (SN ile başlayan) dokunulmadan bırakılır — oradaki mevcut kesir/tarih
+// tabanlı ayrıştırma zaten doğru çalışıyor, yalnızca SARMA satırları
+// (index > 0) bu sorunu yaşıyor.
+const OWNER_ROW_NAME_COLUMN_MAX_X = 400;
+
+function splitTakbisOwnerRowByColumn(row) {
+  const items = row?.items || [];
+  const join = (list) => list.map((item) => item.str || "").join(" ").replace(/\s+/g, " ").trim();
+  return {
+    nameText: join(items.filter((item) => Number(item.x) < OWNER_ROW_NAME_COLUMN_MAX_X)),
+    restText: join(items.filter((item) => Number(item.x) >= OWNER_ROW_NAME_COLUMN_MAX_X)),
+  };
+}
+
 function parseTakbisOwnerRows(rows) {
-  const fullText = rows.map((row) => row.text || "").join(" ");
+  const fullText = rows.map((row, index) => {
+    if (index === 0 || !(row?.items || []).length) return row.text || "";
+    return splitTakbisOwnerRowByColumn(row).restText;
+  }).join(" ");
   const baseOwner = parseTakbisOwnerSegment(fullText);
   const columnFraction = findTakbisFractionFromOwnerRows(rows);
   if (columnFraction) {
@@ -17969,7 +17995,12 @@ function buildTakbisOwnerNameFromRows(rows, shareValue = "", acquisitionText = "
   const sharePattern = shareValue ? new RegExp(`\\b${escapeRegExp(shareValue).replace("/", "\\s*\\/\\s*")}\\b`) : null;
 
   for (const [index, row] of rows.entries()) {
-    let text = cleanTakbisValue(row.text || "");
+    // Devam satırlarında (index > 0) Malik sütununun sarma metnine başka bir
+    // sütunun (Edinme/Terkin Sebebi) aynı Y bandındaki metni karışabilir —
+    // bkz. splitTakbisOwnerRowByColumn yorumu. `row.items` yoksa (ör. metin-
+    // tabanlı yedek akış) mevcut davranış (tam row.text) korunur.
+    const useColumnSplit = index > 0 && (row?.items || []).length > 0;
+    let text = cleanTakbisValue((useColumnSplit ? splitTakbisOwnerRowByColumn(row).nameText : row.text) || "");
     if (!text || /^\d+\s*\/\s*\d+$/.test(text)) continue;
     if (index === 0) {
       text = text.replace(/^\s*\d{8,10}\s*\(\s*SN\s*:\s*\d+\s*\)\s*/i, "");
