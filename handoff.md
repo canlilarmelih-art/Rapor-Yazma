@@ -8096,3 +8096,145 @@ Doğrulama: `node --check app.js`, `node tools/check-basic.js`, `git diff --chec
 - Bölüm bazlı Excel panelinde (`createSectionExcelPanel`) taşınmazlar FARKLI ada/parsellerdeyse ayırt edici bir CSS sınıfı (`section-excel-panel--mixed-parcels`) ve `data-parcel-scope="mixed"` niteliği eklendi — bu artışta davranışsal bir fark yaratmıyor, ileride karışık-parsel uyarısı için altyapı.
 - Cache-buster: `app.js?v=20260810-1030`.
 - **Not**: Bu 5 madde (0.0.402-0.0.406) `docs/coklu-takbis-import-plan.md`'deki resmi plana işlenmemişti; commit geçmişinden (`84cfe7f`..`54b7636`) yeniden inşa edilip buraya eklendi. `npm run verify` bu haliyle yeşil.
+
+## 0.0.407 - 2026-08-10/11 - Çoklu taşınmazda tekrar/kapsam düzeltmeleri
+
+Bu artışta 4 ayrı commit (`88a6147`, `7756055`, `21ef3a8`, `586e71c`) —
+docs/coklu-talep-fonksiyonel-test-bulgulari.md'deki bulgu #4'ün ("case"
+bölümü alanları yanlışlıkla taşınmaza-özel) RUHUNA uygun, ama TAM kapsamlı
+olmayan bir dizi düzeltme yapıldı:
+
+- **TAKBİS tekrar aktarımı engellendi** (`88a6147`): `getTakbisDuplicateKey()`
+  (Taşınmaz Kimlik No + normalize edilmiş rapor tarihi) ile aynı taşınmaz
+  kaydı birden fazla kez (aynı veya farklı dosyadan) içe aktarılamıyor;
+  hem mevcut taşınmaz tabları hem de aynı yükleme içindeki tekrarlar
+  kontrol ediliyor. `tools/test-title-unit-import.js` genişletildi.
+- **Açıklama/anlatım alanları rapor-geneline alındı** (`7756055`): yeni
+  `TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS` kümesi (`addressRaw`,
+  `transport`, `nearby`, `environmentDescription`, `takbisSummary`,
+  `planRestrictionNote`, `planningNote`, `projectReviewDescription`,
+  `projectConformity`, `reviewedDocumentsDescription`, `landNote`,
+  `landClimateEarthquakeExplanation`, `comparableMarketAnalysisText`,
+  `saleabilityNote`) `getTitleUnitScopedFieldKeys()`'te `requestType` gibi
+  artık HARİÇ TUTULUYOR — taşınmaz tabı değiştirildiğinde bu alanlar
+  DEĞİŞMİYOR (bulgu #1'deki "valuation" alanlarından `saleabilityNote` bu
+  şekilde kısmen ele alındı, ama diğer ad-hoc değerleme/bağımsız bölüm
+  alanları HÂLÂ dokunulmadı — bkz. bulgu #1, hâlâ geçerli).
+- **Şablon export'u da bu paylaşım kümesine saygı gösteriyor** (`21ef3a8`):
+  `template-engine.js`'teki `field()` token çözücüsü artık
+  `SHARED_REPORT_FIELD_KEYS` (yukarıdakiyle aynı 13 alan) için
+  `state.fields` → `primaryTitleUnitShadow` → `titleUnits[]` sırasıyla İLK
+  DOLU değeri arar — bu, bulgu #5'i ("export çoklu taşınmazdan tamamen
+  habersiz") TAM olarak çözmüyor (Ada/Parsel/Malik/Değerleme gibi
+  taşınmaza-özel alanlar hâlâ yalnızca aktif/birincil taşınmazdan gelir),
+  yalnızca bu 13 paylaşımlı metin alanı için eski taslaklardaki olası
+  yanlış-yuvalanmayı tolere eden bir güvenlik ağı.
+- **Mülkiyet senkronizasyonu kapsamı genişletildi** (`586e71c`):
+  `syncMultiTitleUnitOwnershipType` artık yalnızca aktif değişiklik anında
+  değil, `switchActiveTitleUnit` içinde de çağrılıyor (test:
+  `tools/test-title-unit-switch.js` güncellendi).
+- Cache-buster'lar sırasıyla `app.js?v=20260811-1015` .. `20260811-1035`.
+
+## 0.0.408 - 2026-08-10/11 - Çoklu taşınmaz DIŞI değişiklikler (ilgisiz, kısa not)
+
+Aynı aralıkta çoklu taşınmazla İLGİSİZ 4 commit de geldi, kayıt için:
+
+- `2a890ca` — Emsal uzun metninde konum karşılaştırma cümlesi ifadesi
+  sadeleştirildi ("konum bakımından benzerdir" → "benzer konumda" vb.).
+- `ea7b9a9` — **Dikkat, geniş etkili**: cümle-varyantı rastgele seçim
+  sistemi (`selectVariant`/`selectVariantServer`) artık override yoksa HER
+  ZAMAN 0. varyantı (orijinal metni) döndürüyor — otomatik/hash-tabanlı
+  varyant seçimi (`getAutoVariantIndex`/sunucudaki hash mantığı)
+  KALDIRILDI. Bu, [[rapor-app-sentence-variant-project]] anılan "BDDK
+  riskini kıran mekanizma"yı EFEKTİF OLARAK DEVRE DIŞI bırakıyor (admin
+  elle override vermedikçe artık her rapor birebir aynı cümleleri
+  üretiyor). Kasıtlı bir ürün kararı mı yoksa geçici bir hata ayıklama
+  değişikliği mi belirsiz — sonraki oturum kullanıcıya TEYİT ETTİRMELİ.
+- `e1295fe` + `2f7a43d` — İmar Durumu bölümüne opsiyonel "Arka Bahçe"
+  (`backGarden`) alanı eklendi (Ön/Yan Bahçe'nin yanına); ikinci commit
+  yalnızca girinti/boşluk temizliği.
+
+## 0.0.409 - 2026-08-11 - Çoklu KML → taşınmaz tabı eşleştirme (yeni alt-sistem)
+
+`6ec35f7` ile başlayan, aynı gün 700+ satırlık bir dizi commitle
+genişleyen YENİ bir alt-sistem: TEK yüklemede BİRDEN FAZLA KML dosyası
+seçilebiliyor (`upload.id === "kml"` artık `multiple`) ve her dosya kendi
+ada/parseline göre doğru taşınmaz tabına eşleştirilip taşınmaz-başına
+ayrılıyor. Bu, `docs/coklu-talep-fonksiyonel-test-bulgulari.md` bulgu
+#1'in kapsamadığı YENİ bir taşınmaz-başına-ayrım ekseni: `sourceValues`
+(`kml`, `nearbyPlaces`, `nearbyArtery`, `nearbyTransport`,
+`regionAnalysis`, `localNeighborhood`,
+`administrativeNeighborhoodFallback`) artık `snapshotTitleUnitScopedData`/
+`applyTitleUnitScopedData`'nın parçası (önceden yalnızca `fields`/`tables`
+taşınıyordu).
+
+- **`6ec35f7` Match multiple KML files to title tabs**: `processKmlFiles`
+  → `applyKmlRecordsToTitleUnits(records)`; `getKmlParcelMatchKey(fields)`
+  (normalize edilmiş `blockNo|parcelNo`) ile her KML kaydı EŞLEŞEN taşınmaz
+  tabına yönlendirilir, eşleşme yoksa sırayla boş taşınmaza veya (yetmezse)
+  `addTitleUnitTab()` ile YENİ tab'a düşer. İlk KML dışındakiler için
+  `preserveShared: true` — [[0.0.407]]'deki paylaşımlı açıklama alanlarının
+  üzerine YAZILMAZ, yalnızca çevre/mahalle sorgusu tek sefer (ilk KML'den)
+  çalışır.
+- **`c687865` Match KML by parcel when ada is missing**: ada boşsa yalnızca
+  parsel numarasıyla eşleştirme yedek olarak eklendi.
+- **`705f379` Use parcel wording for kat irtifaki setback**: Kat İrtifakı
+  mülkiyetinde yola terk/çekme cümlesinde "taşınmaz" yerine "parsel"
+  kelimesi kullanılıyor (birden fazla bağımsız bölüm aynı parseli
+  paylaşabileceği için daha doğru ifade).
+- **`b0ceddb` Show nearby data and all KML parcels on map** ve
+  **`1b34a40` Label multi parcel KML subjects on maps**: Adres/Konum
+  haritasında artık yalnızca aktif taşınmazın değil, rapordaki TÜM KML
+  parsellerinin sınırları ve etiketleri (taşınmaz tab etiketiyle aynı,
+  `computeTitleUnitTabLabel` deseni) aynı anda gösteriliyor; yakın çevre
+  (POI) verisi de tüm parsellerden birleştiriliyor.
+- Test: KML çoklu dosya ada/parsel eşleştirme testi eklendi (`npm run
+  verify`'de "KML coklu dosya ada/parsel eslestirme testi tamam" olarak
+  görünüyor).
+- Cache-buster'lar `app.js?v=20260811-1630` .. `20260811-1745` civarı.
+
+## 0.0.410 - 2026-08-11 - Emsal krokisi/harita dışa aktarımında çoklu parsel
+
+0.0.409'un doğal devamı: Emsal (comparables) bölümündeki kroki/harita JPG
+dışa aktarımı da artık ekrandaki gibi TÜM KML parsellerini çiziyor —
+önceden yalnızca aktif/birincil taşınmazın sınırı ve tek bir "KONU
+TAŞINMAZ" etiketi basılıyordu.
+
+- `9539d19` Render all KMLs in comparable sketch export — dışa aktarılan
+  krokide artık tüm KML kayıtları döngüyle çiziliyor.
+- `95b411b` Aggregate multi parcel POIs in map exports — harita JPG'sinde
+  yakın çevre noktaları tüm parsellerden birleştiriliyor.
+- `a9b8dfd` Render all parcel boundaries in comparable maps — tüm parsel
+  sınır poligonları haritaya basılıyor (yalnızca aktif değil).
+- `e82854e` Match multi parcel labels in JPG exports,
+  `fe7b867` Label parcel ids in comparable sketch export,
+  `335fe40` Use title fields for comparable parcel labels,
+  `86d864b` Match comparable export labels to map UI — etiket metni
+  ekrandaki harita ile dışa aktarılan JPG/kroki arasında TUTARLI hale
+  getirildi; etiketler artık Tapu alanlarından (`computeTitleUnitTabLabel`
+  ile aynı "Blok-BBNo"/"Ada Parsel" deseni) üretiliyor.
+- `660bb00` Fix comparable sketch leader lines,
+  `c386424` Remove comparable distance lines — kroki üzerindeki
+  etiket-yönlendirme çizgileri (leader lines) düzeltildi, emsal-arası
+  mesafe çizgileri kaldırıldı (görsel sadeleştirme, kullanıcı talebi).
+- `fe45b55`/`41569dd`/`f1285f5` — etiket boyutu/formatıyla aynı gün
+  içinde birkaç kez oynandı (küçültüldü → kompakt yapıldı → TAM formata
+  geri alındı); **son/kalıcı hâl `f1285f5`**: `compactKmlLabel` kısaltması
+  TERK EDİLDİ, etiketler `computeTitleUnitTabLabel`'in ÜRETTİĞİ tam metni
+  (kısaltılmamış) kullanıyor.
+- Cache-buster'lar `app.js?v=20260811-1800` .. `20260811-2315` civarı.
+
+## Devam eden (commit'lenmemiş) çalışma — 2026-08-11
+
+Çalışma dizininde şu an (bu handoff girdisi yazıldığı sırada) COMMIT
+EDİLMEMİŞ bir `app.js` değişikliği var: `getAllNearbyPlacesWithUser`,
+`getUserNearbyPlaces`, `getNearbySelectionDisplayPlaces` içine
+`state.sourceValues.nearbyPlaces?.selectedIds` kontrolü ekleniyor —
+amaç muhtemelen "kullanıcı elle seçtiği bir yakın-çevre noktası, adres
+yarıçapı dışında kalsa bile listeden düşmesin" (bkz. committed
+`f89f712`/`703616e` "nearby scan radius" düzeltmelerinin devamı). Cache-
+buster BUMP EDİLMEMİŞ, test eklenmemiş — muhtemelen YARIM kalmış bir
+oturum. **Bu satırları yazan oturum bu değişikliği YAPMADI ve
+COMMIT'LEMEDİ** (bkz. AGENTS.md "paralel oturum uyarısı") — devam eden
+ajan bunu ya tamamlayıp cache-buster/test ekleyerek commit'lemeli ya da
+sahibiyle (muhtemelen Codex) çakışmayı konuşmalı.
