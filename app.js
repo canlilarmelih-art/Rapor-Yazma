@@ -32132,21 +32132,6 @@ function drawExportComparableSketch(context, subjectPoint, comparablePoints, top
     pixel: projectExportPoint(item.point[0], item.point[1], topLeft, zoom),
   }));
 
-  // Konu taşınmaz → emsal kesikli bağlantı çizgileri (mavi) — DEĞİŞMEDİ.
-  if (subjectPixel) {
-    comps.forEach(({ pixel }) => {
-      context.save();
-      context.strokeStyle = "rgba(37, 99, 235, 0.78)";
-      context.lineWidth = 4;
-      context.setLineDash([14, 12]);
-      context.beginPath();
-      context.moveTo(subjectPixel.x, subjectPixel.y);
-      context.lineTo(pixel.x, pixel.y);
-      context.stroke();
-      context.restore();
-    });
-  }
-
   const compCenter = comps.length
     ? {
       x: comps.reduce((sum, c) => sum + c.pixel.x, 0) / comps.length,
@@ -32180,7 +32165,7 @@ function drawExportComparableSketch(context, subjectPoint, comparablePoints, top
     // kırmızı OK ile bağlanıyor; sınır poligonu zaten kırmızı dolgulu
     // çizildiğinden (drawExportKmlPolygon) ayrı bir nokta işaretine gerek
     // yok. KML yoksa (eski davranış) doğrudan koordinat noktasına bağlanır.
-    subjectAnchorPixel = pickKmlBoundaryAnchorPixel(parsed, topLeft, zoom, compCenter) || subjectPixel;
+    subjectAnchorPixel = pickKmlBoundaryAnchorPixel(activeKmlRecord?.parsed || parsed, topLeft, zoom, compCenter) || subjectPixel;
     context.font = "900 26px Arial";
     // Kullanıcı talebi (2026-08-05): "konu taşınmaz daha uzağa, emsal
     // yazılarının olmadığı bir kısma konumlanmalıydı" — kaçış yönü genel
