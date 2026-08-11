@@ -69,6 +69,7 @@ let sections = [
 let state = null;
 const TITLE_UNIT_SCOPED_SECTION_IDS = ["title", "encumbrance"];
 const TITLE_UNIT_SCOPED_TABLE_KEYS = ["title", "encumbrance", "encumbranceDeclarations", "encumbranceAnnotations", "encumbranceMortgages"];
+const TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS = new Set(["transport", "nearby", "environmentDescription", "takbisSummary"]);
 
 let applyCalls = [];
 function applyTakbisTitleFieldsToReport() {

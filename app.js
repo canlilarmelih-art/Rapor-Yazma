@@ -1183,6 +1183,24 @@ const TITLE_UNIT_SCOPED_TABLE_KEYS = [
   "title", "encumbrance", "documents", "comparables",
   "encumbranceDeclarations", "encumbranceAnnotations", "encumbranceMortgages",
 ];
+// Açıklamalar rapor-genelidir. Çoklu tapu sekmeleri arasında taşınmazın
+// teknik verileri değişir; ortak rapor anlatımı ve kullanıcı metinleri değişmez.
+const TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS = new Set([
+  "addressRaw",
+  "transport",
+  "nearby",
+  "environmentDescription",
+  "takbisSummary",
+  "planRestrictionNote",
+  "planningNote",
+  "projectReviewDescription",
+  "projectConformity",
+  "reviewedDocumentsDescription",
+  "landNote",
+  "landClimateEarthquakeExplanation",
+  "comparableMarketAnalysisText",
+  "saleabilityNote",
+]);
 
 function getTitleUnitScopedFieldKeys() {
   const keys = new Set();
@@ -1191,7 +1209,9 @@ function getTitleUnitScopedFieldKeys() {
     (section?.fields || []).forEach((field) => {
       // Talep Türü rapor-genelidir; taşınmaz tabına geçerken birim verisiyle
       // üzerine yazılırsa Çoklu Talep yanlışlıkla Tekli Talep'e döner.
-      if (field.key !== "requestType") keys.add(field.key);
+      if (field.key !== "requestType" && !TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS.has(field.key)) {
+        keys.add(field.key);
+      }
     });
   });
   // "titleChangedRecords" "title" sekmesinin DEKLARATİF fields listesinde

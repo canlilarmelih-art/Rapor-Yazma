@@ -92,6 +92,7 @@ let sections = [
 let state = null;
 const TITLE_UNIT_SCOPED_SECTION_IDS = ["address", "title", "encumbrance"];
 const TITLE_UNIT_SCOPED_TABLE_KEYS = ["title", "encumbrance", "encumbranceDeclarations", "encumbranceAnnotations", "encumbranceMortgages"];
+const TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS = new Set(["transport", "nearby", "environmentDescription", "takbisSummary"]);
 ${functionNames.map(extractFunction).join("\n")}
 return {
   fns: { ${functionNames.join(", ")} },
@@ -350,6 +351,26 @@ assert.match(appSource, /panel\.dataset\.parcelScope = mixedParcels \? "mixed" :
   assert.deepEqual(after.titleUnits.map((unit) => unit.fields.ownershipType), ["Yatay Kat İrtifakı", "Yatay Kat İrtifakı"]);
   assert.equal(sandbox.fns.syncMultiTitleUnitOwnershipType("Arsa"), false, "Arsa kat irtifakı senkronizasyon kuralını tetiklememeli.");
   console.log("Coklu tasinmaz kat irtifaki mulkiyet senkronizasyonu testi tamam.");
+}
+
+// --- 12) Açıklama alanları rapor-genelidir, tab değişiminde korunur --------
+{
+  const state = freshState({
+    fields: {
+      city: "İstanbul",
+      blockNo: "709",
+      takbisSummary: "Ortak takyidat açıklaması",
+      environmentDescription: "Ortak çevresel özellikler açıklaması",
+    },
+  });
+  sandbox.setState(state);
+  const newIndex = sandbox.fns.addTitleUnitTab();
+  sandbox.fns.switchActiveTitleUnit(newIndex);
+  assert.equal(sandbox.getState().fields.takbisSummary, "Ortak takyidat açıklaması", "Takyidat açıklaması tab değişiminde korunmalı.");
+  assert.equal(sandbox.getState().fields.environmentDescription, "Ortak çevresel özellikler açıklaması", "Çevresel açıklama tab değişiminde korunmalı.");
+  sandbox.fns.switchActiveTitleUnit(0);
+  assert.equal(sandbox.getState().fields.takbisSummary, "Ortak takyidat açıklaması", "Birincil taba dönüşte ortak takyidat açıklaması korunmalı.");
+  console.log("Ortak açıklama alanları tab değişiminde korunuyor testi tamam.");
 }
 
 console.log("Coklu TAKBIS Faz 2 tab-anahtarlama motoru testleri basarili.");
