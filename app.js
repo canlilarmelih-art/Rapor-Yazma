@@ -31705,7 +31705,7 @@ function getComparableSketchPoints() {
 function saveComparableSketchForReport(wrapper, triggerButton) {
   const subjectPoint = getComparableSubjectPoint();
   const comparablePoints = getComparableSketchPoints();
-  const parsed = state.sourceValues.kml;
+  const parsed = getComparableSketchExportKml();
   if (!subjectPoint || !comparablePoints.length) {
     window.alert("Krokiyi rapora kaydetmek için konu taşınmaz ve en az bir emsal konumu gerekiyor.");
     return;
@@ -31727,7 +31727,7 @@ function saveComparableSketchForReport(wrapper, triggerButton) {
 async function exportComparableSketchAsJpeg(wrapper, triggerButton) {
   const subjectPoint = getComparableSubjectPoint();
   const comparablePoints = getComparableSketchPoints();
-  const parsed = state.sourceValues.kml;
+  const parsed = getComparableSketchExportKml();
   if (!subjectPoint && !comparablePoints.length && !parsed?.coordinates?.length) {
     window.alert("Emsal krokisi kaydı için önce taşınmaz veya emsal konumu gerekiyor.");
     return;
@@ -34003,15 +34003,25 @@ function openComparableLocationModal(row, rowIndex, onSave = () => {}) {
 function getComparableSubjectPoint() {
   const selected = getSelectedMapPoint();
   if (selected) return selected;
-  const centroid = state.sourceValues.kml?.centroid;
+  const kmlRecords = getTitleUnitKmlRecordsForMap();
+  const centroid = state.sourceValues.kml?.centroid || kmlRecords[0]?.parsed?.centroid;
   if (centroid && Number.isFinite(Number(centroid.lat)) && Number.isFinite(Number(centroid.lng))) {
     return [Number(centroid.lat), Number(centroid.lng)];
   }
-  const firstCoordinate = state.sourceValues.kml?.coordinates?.[0];
+  const firstCoordinate = state.sourceValues.kml?.coordinates?.[0] || kmlRecords[0]?.parsed?.coordinates?.[0];
   if (firstCoordinate && Number.isFinite(Number(firstCoordinate.lat)) && Number.isFinite(Number(firstCoordinate.lng))) {
     return [Number(firstCoordinate.lat), Number(firstCoordinate.lng)];
   }
   return null;
+}
+
+function getComparableSketchExportKml() {
+  const records = getTitleUnitKmlRecordsForMap();
+  if (!records.length) return state.sourceValues.kml;
+  return {
+    ...(state.sourceValues.kml || {}),
+    coordinates: records.flatMap((record) => record.parsed.coordinates || []),
+  };
 }
 
 function getComparableSavedPoint(row) {
