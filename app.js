@@ -28002,6 +28002,7 @@ async function buildSavedLocationMapAsset(config) {
 async function buildSavedComparableSketchAsset(config) {
   const subjectPoint = getComparableSubjectPoint();
   const comparablePoints = getComparableSketchPoints();
+  const kmlRecords = getTitleUnitKmlRecordsForMap();
   const parsed = state.sourceValues.kml;
   if (!subjectPoint && !comparablePoints.length) return null;
   const size = getMapExportCanvasSize("16:9", 1200);
@@ -31523,24 +31524,44 @@ function renderComparableLocationSketchMap(wrapper) {
   wrapper._comparableSketchMap = map;
   getLeafletTileLayer().addTo(map);
 
-  const coordinates = state.sourceValues.kml?.coordinates || [];
-  if (coordinates.length) {
-    leaflet.polygon(coordinates.map((point) => [point.lat, point.lng]), {
-      color: "#d92525",
+  kmlRecords.forEach((record, recordIndex) => {
+    leaflet.polygon(record.parsed.coordinates.map((point) => [point.lat, point.lng]), {
+      color: recordIndex === 0 ? "#d92525" : "#2563eb",
       weight: 3,
       opacity: 0.95,
-      fillColor: "#d92525",
+      fillColor: recordIndex === 0 ? "#d92525" : "#2563eb",
       fillOpacity: 0.12,
     }).addTo(map);
-  }
+  });
 
   const boundsPoints = [subjectPoint];
-  leaflet.marker(subjectPoint).addTo(map);
+  const subjectEntries = getKmlMapSubjectEntries(kmlRecords);
+  const subjectMarkers = new Map();
+  subjectEntries.forEach((subject) => {
+    const record = kmlRecords.find((item) => item.index === subject.index);
+    const point = subject.index === state.activeTitleUnitIndex
+      ? subjectPoint
+      : record?.parsed?.centroid
+        ? [Number(record.parsed.centroid.lat), Number(record.parsed.centroid.lng)]
+        : subjectPoint;
+    boundsPoints.push(point);
+    subjectMarkers.set(subject.index, leaflet.marker(point).addTo(map));
+  });
+  if (!subjectEntries.length) {
+    subjectMarkers.set(state.activeTitleUnitIndex, leaflet.marker(subjectPoint).addTo(map));
+  }
   // id: getComparableSketchLabelOverride/setComparableSketchLabelOverride'in
   // anahtarı — kullanıcı bu etiketi sürükleyip bıraktığında konumu bu id
   // altında kalıcı olarak saklanır (nokta/marker'ın kendisi HER ZAMAN
   // subjectPoint/item.point'ten gelir, değişmez).
-  const labelEntries = [{ id: "subject", kind: "subject", latlng: subjectPoint, text: "KONU TAŞINMAZ" }];
+  const labelEntries = subjectEntries.length
+    ? subjectEntries.map((subject) => ({
+      id: subject.index === state.activeTitleUnitIndex ? "subject" : `subject-${subject.index}`,
+      kind: "subject",
+      latlng: subjectMarkers.get(subject.index).getLatLng(),
+      text: subject.text,
+    }))
+    : [{ id: "subject", kind: "subject", latlng: subjectPoint, text: "KONU TAŞINMAZ" }];
 
   comparablePoints.forEach((item) => {
     boundsPoints.push(item.point);
