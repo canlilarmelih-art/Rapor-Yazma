@@ -8224,17 +8224,14 @@ TAŞINMAZ" etiketi basılıyordu.
   (kısaltılmamış) kullanıyor.
 - Cache-buster'lar `app.js?v=20260811-1800` .. `20260811-2315` civarı.
 
-## Devam eden (commit'lenmemiş) çalışma — 2026-08-11
+## 0.0.411 - 2026-08-11 - Elle seçilen yakın çevre noktalarının korunması
 
-Çalışma dizininde şu an (bu handoff girdisi yazıldığı sırada) COMMIT
-EDİLMEMİŞ bir `app.js` değişikliği var: `getAllNearbyPlacesWithUser`,
-`getUserNearbyPlaces`, `getNearbySelectionDisplayPlaces` içine
-`state.sourceValues.nearbyPlaces?.selectedIds` kontrolü ekleniyor —
-amaç muhtemelen "kullanıcı elle seçtiği bir yakın-çevre noktası, adres
-yarıçapı dışında kalsa bile listeden düşmesin" (bkz. committed
-`f89f712`/`703616e` "nearby scan radius" düzeltmelerinin devamı). Cache-
-buster BUMP EDİLMEMİŞ, test eklenmemiş — muhtemelen YARIM kalmış bir
-oturum. **Bu satırları yazan oturum bu değişikliği YAPMADI ve
-COMMIT'LEMEDİ** (bkz. AGENTS.md "paralel oturum uyarısı") — devam eden
-ajan bunu ya tamamlayıp cache-buster/test ekleyerek commit'lemeli ya da
-sahibiyle (muhtemelen Codex) çakışmayı konuşmalı.
+Bu girdi yazılırken çalışma dizininde commit'lenmemiş bir `app.js`
+değişikliği vardı (başka/paralel bir oturuma ait, bkz. AGENTS.md "paralel
+oturum uyarısı") — birkaç dakika içinde `933ddf4 Preserve selected nearby
+POIs` olarak commit'lendi, bu satırları yazan oturum DOKUNMADI/COMMIT'LEMEDİ.
+`getAllNearbyPlacesWithUser`/`getUserNearbyPlaces`/
+`getNearbySelectionDisplayPlaces` artık `state.sourceValues.nearbyPlaces
+?.selectedIds` kontrolü yapıyor: kullanıcının elle seçtiği bir yakın-çevre
+noktası, adres yarıçapı dışında kalsa bile (`f89f712`/`703616e`'deki
+yarıçap daraltmasından sonra) listeden düşmüyor.
