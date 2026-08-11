@@ -27409,7 +27409,7 @@ function getTitleUnitKmlRecordsForMap() {
         : state.titleUnits[index - 1]?.sourceValues;
     const parsed = sourceValues?.kml;
     if (!parsed?.coordinates?.length) return null;
-    return { index, parsed, fields: getTitleUnitFieldsForLabel(index) };
+    return { index, parsed, fields: getTitleUnitFieldsForLabel(index), sourceValues };
   }).filter(Boolean);
 }
 
@@ -27642,14 +27642,27 @@ function renderSelectedNearbyMarkers() {
 }
 
 function getMapLabelPlaces() {
-  const selectedPlaces = getSelectedNearbyPlaces();
-  const selectedArteryId = String(state.fields.mainArteryId || "");
-  const selectedArtery = selectedArteryId
-    ? getAllMainArteryPlacesWithUser(state.sourceValues.nearbyPlaces?.places || [])
-      .find((place) => place.id === selectedArteryId)
-    : null;
+  const records = getTitleUnitKmlRecordsForMap();
+  const sources = records.length
+    ? records.map((record) => ({
+      sourceValues: record.sourceValues || {},
+      fields: record.fields || {},
+    }))
+    : [{ sourceValues: state.sourceValues, fields: state.fields }];
+  const allPlaces = sources.flatMap(({ sourceValues, fields }) => {
+    const nearbySource = sourceValues.nearbyPlaces || {};
+    const selected = new Set(nearbySource.selectedIds || []);
+    const selectedPlaces = getAllNearbyPlacesWithUser(nearbySource.places || [])
+      .filter((place) => selected.has(place.id));
+    const selectedArteryId = String(fields.mainArteryId || "");
+    const selectedArtery = selectedArteryId
+      ? getAllMainArteryPlacesWithUser(nearbySource.places || [])
+        .find((place) => place.id === selectedArteryId)
+      : null;
+    return [...selectedPlaces, ...(selectedArtery ? [selectedArtery] : [])];
+  });
   return [...new Map(
-    [...selectedPlaces, ...(selectedArtery ? [selectedArtery] : [])]
+    allPlaces
       .map((place) => [place.id, place]),
   ).values()];
 }
@@ -31756,6 +31769,7 @@ async function exportComparableSketchAsJpeg(wrapper, triggerButton) {
   await drawExportTiles(context, canvas, topLeft, zoom, "base");
   await drawExportTiles(context, canvas, topLeft, zoom, "labels");
   drawExportKmlPolygon(context, parsed, topLeft, zoom);
+  drawExportPlaces(context, topLeft, zoom);
   drawExportComparableSketch(context, subjectPoint, comparablePoints, topLeft, zoom, parsed);
 
   try {
@@ -31770,6 +31784,7 @@ async function exportComparableSketchAsJpeg(wrapper, triggerButton) {
     try {
       drawExportFallbackBase(context, canvas);
       drawExportKmlPolygon(context, parsed, topLeft, zoom);
+      drawExportPlaces(context, topLeft, zoom);
       drawExportComparableSketch(context, subjectPoint, comparablePoints, topLeft, zoom, parsed);
       const fallbackLink = document.createElement("a");
       fallbackLink.download = `emsal-konum-krokisi-${dateIsoToTr(new Date().toISOString().slice(0, 10))}.jpg`;
@@ -31831,6 +31846,7 @@ function getComparableSketchExportPoints(subjectPoint, comparablePoints, parsed)
     ...(parsed?.coordinates || []).map((point) => [Number(point.lat), Number(point.lng)]),
     ...(subjectPoint ? [subjectPoint] : []),
     ...comparablePoints.map((item) => item.point),
+    ...getMapLabelPlaces().map((place) => [Number(place.lat), Number(place.lng)]),
   ].filter(([lat, lng]) => Number.isFinite(lat) && Number.isFinite(lng));
 }
 

@@ -210,7 +210,8 @@ function main() {
       appJs.includes("selectionCustomized: true") &&
       appJs.includes("nearbySource.selectionCustomized") &&
       appJs.includes(": [],") &&
-      appJs.includes("const selectedArteryId = String(state.fields.mainArteryId") &&
+       (appJs.includes("const selectedArteryId = String(state.fields.mainArteryId") ||
+         appJs.includes("const selectedArteryId = String(fields.mainArteryId")) &&
       cloudSyncJs.includes("selectionCustomized: Boolean(source.nearbyPlaces.selectionCustomized)") &&
       cloudSyncJs.includes("hydrateImportedAddressAdministrativeFields(state)"),
     "Adres yukleme, 1 km POI siniri veya secili olmayan harita noktasi kurali korunmuyor."
