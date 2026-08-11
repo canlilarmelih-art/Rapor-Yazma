@@ -65,9 +65,42 @@
       .replace(/[^A-Z0-9]+/g, "");
   }
 
+  // Çoklu taşınmazlarda bu alanlar rapor-genelidir. Eski taslaklarda yanlışlıkla
+  // taşınmaz yuvalarına kaydedilmişse dışa aktarımda ilk dolu ortak metni kullan.
+  const SHARED_REPORT_FIELD_KEYS = new Set([
+    "transport",
+    "nearby",
+    "environmentDescription",
+    "takbisSummary",
+    "planRestrictionNote",
+    "planningNote",
+    "projectReviewDescription",
+    "projectConformity",
+    "reviewedDocumentsDescription",
+    "landNote",
+    "landClimateEarthquakeExplanation",
+    "comparableMarketAnalysisText",
+    "saleabilityNote",
+  ]);
+
+  function sharedReportField(key) {
+    const candidates = [
+      state.fields,
+      state.primaryTitleUnitShadow?.fields,
+      ...(Array.isArray(state.titleUnits) ? state.titleUnits.map((unit) => unit?.fields) : []),
+    ];
+    for (const fields of candidates) {
+      const value = String(fields?.[key] ?? "").trim();
+      if (value) return value;
+    }
+    return "";
+  }
+
   function field(...keys) {
     for (const key of keys) {
-      const value = String(state.fields?.[key] ?? "").trim();
+      const value = SHARED_REPORT_FIELD_KEYS.has(key)
+        ? sharedReportField(key)
+        : String(state.fields?.[key] ?? "").trim();
       if (value) return value;
     }
     return "";
