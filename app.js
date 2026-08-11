@@ -945,6 +945,7 @@ applyUserFieldDefaults(state);
 let leafletMap = null;
 let leafletKmlLayer = null;
 let leafletSelectedMarker = null;
+let leafletKmlSubjectMarkers = [];
 let leafletMapRetryTimer = null;
 let nearbyAutoFetchStarted = false;
 let nearbyRequestSerial = 0;
@@ -27412,6 +27413,27 @@ function getTitleUnitKmlRecordsForMap() {
   }).filter(Boolean);
 }
 
+function getKmlMapSubjectEntries(records = []) {
+  const isMulti = isMultiTitleUnitReportForNarrative();
+  if (!isMulti) return [{ index: state.activeTitleUnitIndex, text: "KONU TAŞINMAZ" }];
+
+  const distinctParcelKeys = new Set(records.map((record) => [record.parsed?.fields?.blockNo, record.parsed?.fields?.parcelNo]
+    .map(normalizeKmlParcelMatchPart)
+    .join("|")));
+  if (distinctParcelKeys.size <= 1) {
+    return [{ index: state.activeTitleUnitIndex, text: "KONU TAŞINMAZLAR" }];
+  }
+
+  return records.map((record) => {
+    const blockNo = String(record.parsed?.fields?.blockNo || "").trim();
+    const parcelNo = String(record.parsed?.fields?.parcelNo || "").trim();
+    const parcelText = [blockNo ? `${blockNo} Ada` : "", parcelNo ? `${parcelNo} Parsel` : ""]
+      .filter(Boolean)
+      .join(" ");
+    return { index: record.index, text: parcelText || `TAŞINMAZ ${record.index + 1}` };
+  });
+}
+
 function renderLeafletKmlMap() {
   const panel = document.querySelector("#kmlMapPanel");
   const records = getTitleUnitKmlRecordsForMap();
@@ -27443,6 +27465,7 @@ function renderLeafletKmlMap() {
   leafletMap = null;
   leafletKmlLayer = null;
   leafletSelectedMarker = null;
+  leafletKmlSubjectMarkers = [];
 
   const firstRecord = records[0];
   const center = selectedPoint || (firstRecord?.parsed?.centroid
@@ -27469,9 +27492,10 @@ function renderLeafletKmlMap() {
 
   records.forEach((record) => {
     if (!record.parsed.centroid || record.index === state.activeTitleUnitIndex) return;
-    leaflet.marker([record.parsed.centroid.lat, record.parsed.centroid.lng])
+    const marker = leaflet.marker([record.parsed.centroid.lat, record.parsed.centroid.lng])
       .addTo(leafletMap)
       .bindPopup(`Taşınmaz ${record.index + 1}${record.fields?.blockNo ? `<br>Blok: ${escapeHtml(record.fields.blockNo)}` : ""}`);
+    leafletKmlSubjectMarkers.push({ index: record.index, marker });
   });
 
   leafletSelectedMarker = leaflet.marker(center, { draggable: !isCoarsePointerDevice() })
@@ -27587,12 +27611,17 @@ function renderSelectedNearbyMarkers() {
     }).addTo(leafletMap);
     marker.bindPopup(escapeHtml(place.name));
   });
-  // Etiketler: konu taşınmaz + yakın çevre noktaları çakışma-önleyen leader
-  // etiketleriyle çizilir (yakın konumlarda üst üste binmez).
+  // Etiketler: tekli talepte konu taşınmaz; çoklu talepte aynı parsel için
+  // konu taşınmazlar, farklı parseller için her KML'nin ada/parseli gösterilir.
   const entries = [];
-  if (leafletSelectedMarker) {
-    entries.push({ kind: "subject", latlng: leafletSelectedMarker.getLatLng(), text: "KONU TAŞINMAZ" });
-  }
+  const kmlRecords = getTitleUnitKmlRecordsForMap();
+  const subjectEntries = getKmlMapSubjectEntries(kmlRecords);
+  subjectEntries.forEach((subject) => {
+    const marker = subject.index === state.activeTitleUnitIndex
+      ? leafletSelectedMarker
+      : leafletKmlSubjectMarkers.find((item) => item.index === subject.index)?.marker;
+    if (marker) entries.push({ kind: "subject", subjectIndex: subject.index, latlng: marker.getLatLng(), text: subject.text });
+  });
   places.forEach((place) => {
     entries.push({
       kind: "place",
@@ -27602,9 +27631,11 @@ function renderSelectedNearbyMarkers() {
     });
   });
   const leader = renderMapLeaderLabels(leafletMap, window.L, entries);
-  if (leafletSelectedMarker && entries.length) {
+  if (leafletSelectedMarker && entries.length && subjectEntries.some((item) => item.index === state.activeTitleUnitIndex)) {
     leafletSelectedMarker.on("drag", () => {
-      entries[0].latlng = leafletSelectedMarker.getLatLng();
+      const activeEntry = entries.find((entry) => entry.kind === "subject"
+        && entry.subjectIndex === state.activeTitleUnitIndex);
+      if (activeEntry) activeEntry.latlng = leafletSelectedMarker.getLatLng();
       leader.relayout();
     });
   }
@@ -27667,6 +27698,21 @@ function renderStaticKmlMap() {
       </g>
     `;
   }).join("");
+  const subjectEntries = getKmlMapSubjectEntries(records);
+  const subjectMarkup = subjectEntries.map((subject) => {
+    const record = records.find((item) => item.index === subject.index);
+    const point = record?.parsed?.centroid
+      ? [Number(record.parsed.centroid.lat), Number(record.parsed.centroid.lng)]
+      : center;
+    const [x, y] = project(point[0], point[1]);
+    return `
+      <g class="static-subject-marker">
+        <path d="M ${x} ${y - 30} C ${x - 16} ${y - 30}, ${x - 18} ${y - 8}, ${x} ${y + 10} C ${x + 18} ${y - 8}, ${x + 16} ${y - 30}, ${x} ${y - 30} Z"></path>
+        <circle cx="${x}" cy="${y - 17}" r="6"></circle>
+        <text x="${x + 14}" y="${y - 24}">${escapeHtml(subject.text)}</text>
+      </g>
+    `;
+  }).join("");
 
   panel.innerHTML = `
     <svg class="static-map" viewBox="0 0 760 420" role="img" aria-label="KML konum haritası">
@@ -27677,11 +27723,7 @@ function renderStaticKmlMap() {
       </g>
        ${polygons}
       ${nearbyMarkup}
-      <g class="static-subject-marker">
-        <path d="M ${markerX} ${markerY - 30} C ${markerX - 16} ${markerY - 30}, ${markerX - 18} ${markerY - 8}, ${markerX} ${markerY + 10} C ${markerX + 18} ${markerY - 8}, ${markerX + 16} ${markerY - 30}, ${markerX} ${markerY - 30} Z"></path>
-        <circle cx="${markerX}" cy="${markerY - 17}" r="6"></circle>
-        <text x="${markerX + 14}" y="${markerY - 24}">KONU TAŞINMAZ</text>
-      </g>
+       ${subjectMarkup}
       <text class="static-map-note" x="18" y="398">Yerel harita görünümü - KML sınırı ve seçili konum</text>
     </svg>
   `;
