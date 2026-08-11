@@ -51,8 +51,13 @@ const functionNames = [
   "snapshotTitleUnitScopedData",
   "applyTitleUnitScopedData",
   "getTitleUnitCount",
+  "getTitleUnitFieldsForLabel",
   "switchActiveTitleUnit",
   "addTitleUnitTab",
+  "normalizeTakbisDuplicatePart",
+  "normalizeTakbisDuplicateDate",
+  "getTakbisDuplicateKey",
+  "getExistingTakbisDuplicateKeys",
   "importTakbisRecordsIntoTitleUnits",
 ];
 
@@ -107,7 +112,7 @@ function freshState() {
 }
 
 function record(id, blockNo, owners = [{ name: "MALİK" }]) {
-  return { fields: { titlePropertyId: id, blockNo }, owners, encumbrances: [], sourceFile: `${id}.pdf` };
+  return { fields: { titlePropertyId: id, blockNo, takbisReportDate: "2026-08-10" }, owners, encumbrances: [], sourceFile: `${id}.pdf` };
 }
 
 // --- 1) Boş/geçersiz girdi: hiçbir şey değişmez, 0 döner ------------------
@@ -174,6 +179,25 @@ function record(id, blockNo, owners = [{ name: "MALİK" }]) {
   const calls = sandbox.getApplyCalls().filter((c) => c.type === "title");
   assert.deepEqual(calls.map((c) => c.propertyId), ["AAA", "BBB"], "Her kayıt kendi Taşınmaz Kimlik No'suyla applyTakbisTitleFieldsToReport'a gitmeli (state.sourceValues.takbis sırayla doğru kaydı yansıtmalı).");
   console.log("Kayit basina sourceValues.takbis dogrulugu testi tamam.");
+}
+
+// --- 5) AynÄ± kimlik + aynÄ± TAKBÄ°S tarihi tekrar eklenmemeli; farklÄ± tarih kabul edilmeli
+{
+  const state = freshState();
+  sandbox.setState(state);
+  sandbox.resetApplyCalls();
+  const first = record("123456789", "709");
+  assert.equal(sandbox.fns.importTakbisRecordsIntoTitleUnits([first]), 1, "Ä°lk TAKBÄ°S kaydÄ± aktarÄ±lmalÄ±.");
+  const duplicate = record("123456789", "709");
+  assert.equal(sandbox.fns.importTakbisRecordsIntoTitleUnits([duplicate]), 0, "AynÄ± kimlik ve tarihteki TAKBÄ°S tekrarÄ± atlanmalÄ±.");
+  assert.equal(sandbox.getState().titleUnits.length, 0, "Tekrar TAKBÄ°S kaydÄ± yeni tab oluÅŸturmamalÄ±.");
+
+  const laterReport = record("123456789", "709");
+  laterReport.fields.takbisReportDate = "2026-08-11";
+  assert.equal(sandbox.fns.importTakbisRecordsIntoTitleUnits([laterReport]), 1, "AynÄ± taÅŸÄ±nmazÄ±n farklÄ± tarihteki raporu kabul edilmeli.");
+  assert.equal(sandbox.getState().titleUnits.length, 0, "FarklÄ± TAKBÄ°S tarihi mevcut taÅŸÄ±nmazÄ± gÃ¼ncellemeli, yeni tab aÃ§mamalÄ±.");
+  assert.equal(sandbox.getState().fields.takbisReportDate, "2026-08-11", "FarklÄ± TAKBÄ°S tarihi kabul edilip mevcut kayda yazÄ±lmalÄ±.");
+  console.log("TAKBIS kimlik + tarih tekrar kontrolu testi tamam.");
 }
 
 console.log("Coklu TAKBIS Faz 2 rapora aktar orkestrasyonu testleri basarili.");

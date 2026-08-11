@@ -16419,13 +16419,58 @@ async function readMultiTakbisPdf(file) {
 // kaydı yansıtır. Alan DEĞERLERİNİN kendisi TÜM taşınmazlar için doğru
 // aktarılır; yalnızca "kaynak" rozeti diğer taşınmazlar için güncel
 // kalmayabilir (kozmetik, veri kaybı DEĞİL).
-function importTakbisRecordsIntoTitleUnits(records) {
-  const validRecords = (records || []).filter(
-    (record) =>
-      record &&
-      record.fields &&
-      Object.values(record.fields).some((value) => String(value ?? "").trim()),
+function normalizeTakbisDuplicatePart(value) {
+  return String(value ?? "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLocaleLowerCase("tr-TR");
+}
+
+function normalizeTakbisDuplicateDate(value) {
+  const normalized = normalizeTakbisDuplicatePart(value);
+  if (!normalized) return "";
+  const isoMatch = normalized.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
+  if (isoMatch) return `${isoMatch[1]}-${isoMatch[2].padStart(2, "0")}-${isoMatch[3].padStart(2, "0")}`;
+  const trMatch = normalized.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})/);
+  if (trMatch) return `${trMatch[3]}-${trMatch[2].padStart(2, "0")}-${trMatch[1].padStart(2, "0")}`;
+  return normalized;
+}
+
+function getTakbisDuplicateKey(fields = {}) {
+  const propertyId = normalizeTakbisDuplicatePart(fields.titlePropertyId);
+  const reportDate = normalizeTakbisDuplicateDate(
+    fields.takbisReportDate || fields.takbisDate || fields.takbisReceivedDate,
   );
+  return propertyId && reportDate ? `${propertyId}::${reportDate}` : "";
+}
+
+function getExistingTakbisDuplicateKeys() {
+  const keys = new Set();
+  for (let index = 0; index < getTitleUnitCount(); index += 1) {
+    const key = getTakbisDuplicateKey(getTitleUnitFieldsForLabel(index));
+    if (key) keys.add(key);
+  }
+  return keys;
+}
+
+function importTakbisRecordsIntoTitleUnits(records) {
+  const existingKeys = getExistingTakbisDuplicateKeys();
+  const incomingKeys = new Set();
+  const validRecords = (records || []).filter((record) => {
+    if (
+      !record ||
+      !record.fields ||
+      !Object.values(record.fields).some((value) => String(value ?? "").trim())
+    ) {
+      return false;
+    }
+    const duplicateKey = getTakbisDuplicateKey(record.fields);
+    if (duplicateKey && (existingKeys.has(duplicateKey) || incomingKeys.has(duplicateKey))) {
+      return false;
+    }
+    if (duplicateKey) incomingKeys.add(duplicateKey);
+    return true;
+  });
   if (!validRecords.length) return 0;
 
   validRecords.forEach((record, index) => {
