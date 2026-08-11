@@ -26859,7 +26859,17 @@ function normalizeKmlParcelMatchPart(value) {
 function getKmlParcelMatchKey(fields = {}) {
   const blockNo = normalizeKmlParcelMatchPart(fields.blockNo);
   const parcelNo = normalizeKmlParcelMatchPart(fields.parcelNo);
-  return blockNo && parcelNo ? `${blockNo}|${parcelNo}` : "";
+  if (!parcelNo) return "";
+  return blockNo ? `ada|${blockNo}|${parcelNo}` : `parsel|${parcelNo}`;
+}
+
+function kmlParcelMatchesTitleUnit(kmlFields = {}, titleFields = {}) {
+  const kmlParcel = normalizeKmlParcelMatchPart(kmlFields.parcelNo);
+  const titleParcel = normalizeKmlParcelMatchPart(titleFields.parcelNo);
+  if (!kmlParcel || kmlParcel !== titleParcel) return false;
+  const kmlBlock = normalizeKmlParcelMatchPart(kmlFields.blockNo);
+  const titleBlock = normalizeKmlParcelMatchPart(titleFields.blockNo);
+  return !kmlBlock || !titleBlock || kmlBlock === titleBlock;
 }
 
 function getKmlTargetIndexes(records) {
@@ -26870,7 +26880,7 @@ function getKmlTargetIndexes(records) {
     let targetIndex = -1;
     if (kmlKey) {
       targetIndex = [...available].find(
-        (index) => getKmlParcelMatchKey(getTitleUnitFieldsForLabel(index)) === kmlKey,
+        (index) => kmlParcelMatchesTitleUnit(record.parsed?.fields, getTitleUnitFieldsForLabel(index)),
       ) ?? -1;
     }
     if (targetIndex < 0) targetIndex = [...available][0] ?? orderIndex;

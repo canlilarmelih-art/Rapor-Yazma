@@ -66,6 +66,7 @@ const functionNames = [
   "getTitleUnitTabModels",
   "normalizeKmlParcelMatchPart",
   "getKmlParcelMatchKey",
+  "kmlParcelMatchesTitleUnit",
   "getKmlTargetIndexes",
   "switchActiveTitleUnit",
   "addTitleUnitTab",
@@ -385,7 +386,7 @@ assert.match(appSource, /panel\.dataset\.parcelScope = mixedParcels \? "mixed" :
   sandbox.setState(state);
   const indexes = sandbox.fns.getKmlTargetIndexes([
     { parsed: { fields: { blockNo: "202", parcelNo: "7" } } },
-    { parsed: { fields: { blockNo: "101", parcelNo: "2" } } },
+    { parsed: { fields: { parcelNo: "2" } } },
   ]);
   assert.deepEqual(indexes, [1, 0], "KML dosyalari yukleme sirasindan bagimsiz olarak ada/parsel tablarina eslesmeli.");
   console.log("KML coklu dosya ada/parsel eslestirme testi tamam.");
