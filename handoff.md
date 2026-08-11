@@ -8276,3 +8276,19 @@ yarıçap daraltmasından sonra) listeden düşmüyor.
   göreve bırakıldı.
 - Cache-buster: `app.js?v=20260812-0030`.
 - Yedek: `backups/before-takbis-owner-column-overlap_2026-08-12_00-10-46`.
+
+## 0.0.413 - 2026-08-12 - Eksik testler npm test zincirine bağlandı
+
+- `tools/test-multi-encumbrance-grouping.js` (çoklu taşınmazlarda takyidat
+  satırlarının yevmiye numarasına göre gruplanması, `groupEncumbranceRowsAcrossTitleUnits`)
+  ve `tools/test-multi-environment-subject.js` (çevresel/konum anlatım
+  cümlelerinin çoğullaştırılması + ortak ada/parsel paylaşımı,
+  `pluralizeEnvironmentalSubjectText`/`buildEnvironmentalIntro` vb.) dosyaları
+  vardı, tek başına doğru çalışıyordu, ama `package.json`'daki `test`
+  script'ine hiç eklenmemişlerdi — `npm run verify` onları hiçbir zaman
+  çalıştırmıyordu (0.0.412'de fark edildi).
+- İkisi de `test` script zincirinin sonuna eklendi. `npm run verify` tam
+  zincirle (bu iki test dahil) yeşil.
+- Kod değişikliği yok (yalnızca `package.json`), bu yüzden cache-buster
+  bump'a gerek yoktu.
+- Yedek: `backups/before-wire-missing-tests_2026-08-12_00-16-23`.
