@@ -8322,3 +8322,49 @@ yarıçap daraltmasından sonra) listeden düşmüyor.
   olmadığını) doğruluyor. `npm test` zincirine eklendi.
 - Cache-buster: `app.js?v=20260812-0130`.
 - Yedek: `backups/before-imar-calculated-emsal-order_2026-08-12_01-33-49`.
+
+## 0.0.415 - 2026-08-12 - Çoklu Talep + Tarımsal Alan'da taşınmaz-farkındalı Ulaşım Tarifi
+
+Kullanıcı talebi: Çoklu Talep + Tarımsal Alan (arazi) raporlarında "Ulaşım
+Tarifi" (transport) alanı taşınmazların ada/parsel dağılımına göre 3 farklı
+biçimde yazılmalı — daha önce bu alan için böyle bir mantık YOKTU (yalnızca
+tek-taşınmazlı "ana arter" tabanlı otomatik metin veya elle giriş vardı).
+
+- **Tüm taşınmazlar AYNI parselde** (tek KML) → "Ekspertize konu
+  taşınmazlara ulaşım, bağlı bulundukları {Mahalle} Mahalle Merkezinin
+  {mesafe} sağlanmaktadır." — çoğul "taşınmazlara" ile başlar.
+- **Farklı ada/parseller, taşınmaz sayısı ≤ 5** → her taşınmaz için ayrı
+  "{tab etiketi} taşınmaz bağlı bulunduğu {Mahalle} Mahalle Merkezinin
+  {mesafe}" cümleciği, virgülle birleştirilir. Etiket
+  `computeTitleUnitTabLabel`'in ürettiği AYNI tab etiketi (Ada Parsel veya
+  Blok-BBNo) — takyidat gruplamasındaki ("A-2, A-4") etiketle tutarlı.
+- **Farklı ada/parseller, taşınmaz sayısı > 5** → tek bir genel özet
+  cümlesi: "Ekspertize konu taşınmazlar, bağlı bulundukları {Mahalle}
+  mahallesinin çevresinde yer almaktadır."
+- Diğer bölge türlerini (Konut/Ticaret/Sanayi) ve tek-taşınmazlı raporları
+  ETKİLEMEZ — yalnızca `environmentRegionType === "Tarımsal Alan"` VE
+  `getTitleUnitCount() > 1` iken devreye girer (kullanıcı onayıyla
+  netleştirildi, `AskUserQuestion`).
+- Yeni `buildAgriculturalMultiTitleUnitTransportText()` + 3 varyant grubu
+  (`registerVariantGroup`, her biri 2 varyant — `agriculturalMultiUnitSharedParcelTransport`,
+  `agriculturalMultiUnitParcelListTransportFragment`,
+  `agriculturalMultiUnitManyParcelsTransport`) — mevcut
+  `cleanBoundNeighborhoodCenterName`/`cleanEnvironmentalDistancePhrase`
+  yardımcılarını (Ziraat KML mesafe cümlesiyle AYNI) yeniden kullanıyor.
+  **Not**: grup etiketleri `classifyVariantGroupTopic()`'in tanıdığı
+  "(Adres/Konum/Çevre)" son ekiyle bitmeli — ilk denemede "(Tarımsal Alan)"
+  kullanılmıştı, `tools/test-variant-selection.js`'in sınıflandırma
+  sanity testi bunu yakaladı (grup hiçbir bölüm "Varyant" düğmesinde
+  görünmezdi), düzeltildi.
+- `refreshMultiTitleUnitAgriculturalTransport()` iki noktadan tetikleniyor:
+  (1) `applyKmlRecordsToTitleUnits` TÜM KML kayıtlarını işledikten sonra
+  (tüm taşınmazların mesafe verisi artık bilinir), (2) `environmentRegionType`
+  alanı "Tarımsal Alan"a değiştirildiğinde (KML'den SONRA bölge türü
+  değişirse de yakalansın diye). `transport` zaten paylaşımlı bir alan
+  olduğundan (`TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS`) tek bir değeri
+  vardır, taşınmaz tabı değiştirmek onu etkilemez.
+- Test: `tools/test-agricultural-multi-unit-transport.js` (3 kuralın her
+  biri + Konut Bölgesi/tek-taşınmaz no-op regresyonları + tetikleyici
+  kablolamasının kaynak-düzeyi doğrulaması). `npm test` zincirine eklendi.
+- Cache-buster: `app.js?v=20260812-0300`.
+- Yedek: `backups/before-agricultural-multi-unit-transport_2026-08-12_02-04-37`.

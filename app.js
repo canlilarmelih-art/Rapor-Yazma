@@ -2787,6 +2787,10 @@ function createForm(section) {
       if (section.id === "address" && field.key === "environmentRegionType") {
         normalizeRegionUsePurposeForEnvironment();
         refreshEnvironmentDescriptionFromCurrentFields("regionUsePurpose");
+        // Bölge türü KML'den SONRA "Tarımsal Alan"a çevrilirse Ulaşım
+        // Tarifi'ni de bu andan itibaren yeniden üret (bkz. yorum,
+        // refreshMultiTitleUnitAgriculturalTransport).
+        refreshMultiTitleUnitAgriculturalTransport();
         renderSection();
       }
       if (section.id === "documents" && ["hasArchitecturalProject", "hasEkb"].includes(field.key)) renderSection();
@@ -7053,6 +7057,134 @@ function buildAgriculturalKmlDistanceSentence(values, options = {}) {
   }
   if (!parts.length) return "";
   return `KML koordinat verisine göre taşınmaz, ${formatTurkishList(parts)} yer almaktadır. `;
+}
+
+// Kullanıcı talebi (2026-08-12): Çoklu Talep + Tarımsal Alan (arazi)
+// raporlarında "Ulaşım Tarifi" (transport alanı), taşınmazların ada/parsel
+// dağılımına göre 3 farklı şekilde yazılmalı:
+//  1) Tüm taşınmazlar AYNI parseldeyse (tek KML) → "Ekspertize konu
+//     taşınmazlara" ile BAŞLAYAN, tek bir ortak mesafe cümlesi.
+//  2) Taşınmazlar FARKLI ada/parsellerdeyse VE sayı ≤ 5 ise → HER taşınmaz
+//     için ayrı "{tab etiketi} taşınmaz bağlı bulunduğu {mahalle} Mahalle
+//     Merkezinin {mesafe}" cümlecikleri, virgülle birleştirilir. Etiket,
+//     computeTitleUnitTabLabel'in ürettiği AYNI tab etiketidir (Blok-BBNo
+//     veya Ada Parsel) — takyidat gruplamasındaki ("A-2, A-4") etiketle
+//     tutarlı olsun diye.
+//  3) Taşınmazlar FARKLI ada/parsellerdeyse VE sayı > 5 ise → tek bir genel
+//     özet cümlesi (mahalle çevresi).
+// Diğer bölge türlerini (Konut/Ticaret/Sanayi) ETKİLEMEZ — yalnızca
+// environmentRegionType === "Tarımsal Alan" iken devreye girer.
+
+function getAgriculturalNeighborhoodBaseName(value = "") {
+  return String(value || "")
+    .split(/\s*-\s*|\s*\/\s*/)[0]
+    .replace(/\b(mahallesi|mahalle|mah\.?|köyü|köy)\b/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+const agriculturalMultiUnitSharedParcelTransportVariants = [
+  (center, distance) => `Ekspertize konu taşınmazlara ulaşım, bağlı bulundukları ${center} ${distance} sağlanmaktadır.`,
+  (center, distance) => `Ekspertize konu taşınmazlara, bağlı bulundukları ${center} ${distance} üzerinden ulaşılmaktadır.`,
+];
+registerVariantGroup(
+  "agriculturalMultiUnitSharedParcelTransport",
+  "Ulaşım Tarifi — Çoklu Talep, Ortak Parsel, Tarımsal Alan (Adres/Konum/Çevre)",
+  agriculturalMultiUnitSharedParcelTransportVariants.length,
+);
+
+const agriculturalMultiUnitParcelListTransportFragmentVariants = [
+  (label, center, distance) => `${label} taşınmaz bağlı bulunduğu ${center} ${distance}`,
+  (label, center, distance) => `${label} taşınmaz, bağlı bulunduğu ${center} ${distance}`,
+];
+registerVariantGroup(
+  "agriculturalMultiUnitParcelListTransportFragment",
+  "Ulaşım Tarifi — Çoklu Talep, Taşınmaz Başına Mesafe, Tarımsal Alan (Adres/Konum/Çevre)",
+  agriculturalMultiUnitParcelListTransportFragmentVariants.length,
+);
+
+const agriculturalMultiUnitManyParcelsTransportVariants = [
+  (neighborhood) => `Ekspertize konu taşınmazlar, bağlı bulundukları ${neighborhood} mahallesinin çevresinde yer almaktadır.`,
+  (neighborhood) => `Ekspertize konu taşınmazlar bağlı bulundukları ${neighborhood} mahallesi çevresinde konumlanmaktadır.`,
+];
+registerVariantGroup(
+  "agriculturalMultiUnitManyParcelsTransport",
+  "Ulaşım Tarifi — Çoklu Talep, 5'ten Fazla Farklı Parsel, Tarımsal Alan (Adres/Konum/Çevre)",
+  agriculturalMultiUnitManyParcelsTransportVariants.length,
+);
+
+// Farklı ada/parsellerde kaçtan sonra taşınmaz bazlı listelemenin yerini
+// genel özet cümlesinin aldığı eşik (kullanıcı talebi: "5 ten fazla ise").
+const AGRICULTURAL_MULTI_UNIT_TRANSPORT_LIST_LIMIT = 5;
+
+function buildAgriculturalMultiTitleUnitTransportText() {
+  if (state.fields?.environmentRegionType !== "Tarımsal Alan") return "";
+  if (!isMultiTitleUnitReportForNarrative()) return "";
+
+  const units = getNarrativeTitleUnitFields();
+  const labels = getTitleUnitTabModels().map((tab) => tab.label);
+
+  if (!hasMixedTitleUnitParcels()) {
+    // 1) Tüm taşınmazlar aynı parselde (tek KML) — ortak mesafe verisi
+    // için birincil taşınmazınkini kullan (hepsi aynı konumda kabul edilir).
+    const primary = units[0] || {};
+    const center = cleanBoundNeighborhoodCenterName(primary.boundNeighborhood);
+    const distance = cleanEnvironmentalDistancePhrase(primary.boundNeighborhoodDistance);
+    if (!center || !distance) return "";
+    const variantIndex = selectVariant(
+      "agriculturalMultiUnitSharedParcelTransport",
+      agriculturalMultiUnitSharedParcelTransportVariants.length,
+    );
+    return agriculturalMultiUnitSharedParcelTransportVariants[variantIndex](center, distance);
+  }
+
+  if (units.length > AGRICULTURAL_MULTI_UNIT_TRANSPORT_LIST_LIMIT) {
+    // 3) 5'ten fazla farklı ada/parsel — taşınmaz bazlı liste yerine genel
+    // özet (birincil taşınmazın bağlı bulunduğu mahalle esas alınır).
+    const primary = units[0] || {};
+    const neighborhood = getAgriculturalNeighborhoodBaseName(primary.boundNeighborhood)
+      || getAgriculturalNeighborhoodBaseName(primary.neighborhood);
+    if (!neighborhood) return "";
+    const variantIndex = selectVariant(
+      "agriculturalMultiUnitManyParcelsTransport",
+      agriculturalMultiUnitManyParcelsTransportVariants.length,
+    );
+    return agriculturalMultiUnitManyParcelsTransportVariants[variantIndex](neighborhood);
+  }
+
+  // 2) 5 veya daha az, farklı ada/parsel — taşınmaz başına ayrı cümlecik.
+  const fragmentVariantIndex = selectVariant(
+    "agriculturalMultiUnitParcelListTransportFragment",
+    agriculturalMultiUnitParcelListTransportFragmentVariants.length,
+  );
+  const fragments = units
+    .map((unit, index) => {
+      const center = cleanBoundNeighborhoodCenterName(unit.boundNeighborhood);
+      const distance = cleanEnvironmentalDistancePhrase(unit.boundNeighborhoodDistance);
+      if (!center || !distance) return "";
+      const label = labels[index] || `Taşınmaz ${index + 1}`;
+      return agriculturalMultiUnitParcelListTransportFragmentVariants[fragmentVariantIndex](label, center, distance);
+    })
+    .filter(Boolean);
+  if (!fragments.length) return "";
+  return `${fragments.join(", ")}.`;
+}
+
+// Çoklu Talep + Tarımsal Alan raporlarında "Ulaşım Tarifi"ni GÜNCEL taşınmaz
+// listesiyle yeniden üretir (transport rapor-geneli/paylaşımlı bir alandır,
+// bkz. TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS — hangi taşınmaz tabı aktif
+// olursa olsun tek bir değeri vardır). Şart sağlanmıyorsa (tek taşınmaz veya
+// bölge türü Tarımsal Alan değilse) DOKUNMAZ — kullanıcının elle girdiği
+// veya ana arter tabanlı mevcut Ulaşım Tarifi'ni EZMEZ.
+function refreshMultiTitleUnitAgriculturalTransport() {
+  const nextTransport = buildAgriculturalMultiTitleUnitTransportText();
+  if (!nextTransport) return false;
+  state.fields.transport = nextTransport;
+  const transportControl = document.querySelector('[data-field="transport"]');
+  if (transportControl && transportControl.value !== nextTransport) {
+    transportControl.value = nextTransport;
+  }
+  return true;
 }
 
 function buildEnvironmentalDescription(regionType = state.fields?.environmentRegionType || "", options = {}) {
@@ -26999,6 +27131,10 @@ async function applyKmlRecordsToTitleUnits(records) {
     await fetchNearbyPlacesForCurrentLocation({ silent: true, force: true }).catch(() => false);
   }
   switchActiveTitleUnit(0);
+  // Tüm taşınmazların KML/mesafe verisi artık bilinir (döngü bitti) — Çoklu
+  // Talep + Tarımsal Alan raporlarında "Ulaşım Tarifi"ni bu güncel listeyle
+  // yeniden üret (bkz. refreshMultiTitleUnitAgriculturalTransport yorumu).
+  refreshMultiTitleUnitAgriculturalTransport();
   autosave();
   renderValidation();
   updateStatus();
