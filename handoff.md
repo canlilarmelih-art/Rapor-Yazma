@@ -8624,3 +8624,47 @@ sayfası/tablo"** seçildi.
   kanıtlanmış).
 - Cache-buster: `app.js?v=20260812-0630`.
 - Yedek: `backups/before-encumbrance-shared-summary-excel_2026-08-12_12-45-26`.
+
+## 0.0.423 - 2026-08-12 - Yapı Kredi şablonu: 2. düzeltme listesi (5 madde)
+
+Kullanıcı, Yapı Kredi bankasının kendi formatıyla karşılaştırmalı bir
+ekran görüntüsü gönderdi (5 satır). `templates/yapikredi.html` ve
+`getResidenceTypeText()` güncellendi:
+
+1. **"İncelenen Kurum Adı"** ("webtapu, belediye" — ham checkbox listesi
+   geliyordu) → artık `{{PROJECT_İNSTİTUTİON}}` yerine önceden var olan,
+   düzgün formatlı `{{DOCUMENT_REVİEW_İNSTİTUTİON}}` kullanılıyor
+   (`buildProjectReviewInstitutionSummary()`'den — "Webtapu Portalı ve
+   [İlçe] Belediyesi" gibi).
+2. **"Konum Alan Açıklaması"** → "Parsel Bazında Konum Yer Teyidi" ile
+   YANLIŞLIKLA AYNI `{{PROJECT_CONFORMİTY}}`'yi tekrarlıyordu; artık
+   kendi doğru alanı olan `{{PROJECT_REVİEW_DESCRİPTİON}}` ("Proje
+   İnceleme Açıklaması") kullanıyor.
+3. **"Ruhsat / İskan Bilgileri"** → mevcut `{{REVİEWED_DOCUMENTS_TEXT}}`
+   (metin) alanının yanına, önceden var olan ama bu şablonda hiç
+   kullanılmayan `{{İNCELENEN_BELGELER_TABLO}}` (incelenen belgeler
+   TABLOSU, `documentsTableHtml()`) da eklendi.
+4. **"KONUT NİTELİĞİ"** ("YANLIŞ GELİYOR") — **gerçek kod hatası**:
+   `getResidenceTypeText()` yanlışlıkla `state.fields.titleOwnershipKind`
+   (TAKBİS'ten gelen "Tam Mülkiyet"/"Hisseli Mülkiyet" — hisse türü, bina
+   tipiyle ilgisiz) okuyordu. "Dikey Kat İrtifakı"/"Yatay Kat İrtifakı"
+   aslında "case" bölümündeki `ownershipType` (Mülkiyet) alanının
+   seçenekleri — bu yüzden koşul HER ZAMAN yanlış (false) çıkıp gerçek
+   bina tipinden bağımsız HEP "Müstakil Bina" dönüyordu. `ownershipType`
+   okuyacak şekilde düzeltildi. **Önemli**: `tools/test-yapikredi-template-fixes.js`'in
+   (0.0.??? 2026-08-06 tarihli) mevcut testi bu hatayı YAKALAMIYORDU —
+   test de aynı yanlış `titleOwnershipKind` varsayımıyla yazılmıştı; test
+   artık gerçek `ownershipType` alanıyla çalışıyor.
+5. **"Değerle İlgili Açıklamalar, Görüşler, Uyarılar, Getirilen
+   Sınırlamalar, Kısıtlayıcı Koşullar vb. Analiz Sonuçlarının
+   Değerlendirilmesi"** — bu başlık şablonda hiç YOKTU; mevcut açıklama
+   bloğu (`{{DEGERLEME_YONTEMI_ACIKLAMASI}}`, `{{SATIS_KABILIYETI_ACIKLAMASI}}`
+   vb. — içerik zaten üretiliyordu) bir başlık ALTINDA görünmüyordu.
+   `vakifkatilim.html`'deki eşdeğer bölümden esinlenerek başlık eklendi,
+   İÇERİK/token'lar DEĞİŞMEDİ (yalnızca görünür başlık eklendi) — **bu
+   madde en belirsiz olanıydı, kullanıcı doğrulamalı**.
+- Test: `tools/test-yapikredi-template-fixes.js`'e madde 1/2/3/5 için 2
+  yeni senaryo + madde 4'ün test fikstürü düzeltmesi eklendi. `npm run
+  verify` tam zincirle yeşil.
+- Cache-buster: `app.js?v=20260812-0700`.
+- Yedek: `backups/before-yapikredi-2nd-fix-list_2026-08-12_22-45-16`.

@@ -5543,7 +5543,14 @@ function getUrgentSaleValueText(mode) {
 // "Tarla"] seçeneklerinden Dikey/Yatay Kat İrtifakı ise "Apartman Dairesi",
 // aksi halde (Müstakil Bina/Arsa/Tarla/seçilmemiş) "Müstakil Bina" döner.
 function getResidenceTypeText() {
-  const kind = state.fields.titleOwnershipKind || "";
+  // Kullanıcı bildirimi (2026-08-12, Yapı Kredi şablonu "KONUT NİTELİĞİ"
+  // hücresi "YANLIŞ GELİYOR"): burada YANLIŞLIKLA `titleOwnershipKind`
+  // (TAKBİS'ten gelen "Tam Mülkiyet"/"Hisseli Mülkiyet" — hisse türü, bina
+  // tipiyle ilgisiz) okunuyordu. "Dikey Kat İrtifakı"/"Yatay Kat İrtifakı"
+  // aslında "case" bölümündeki `ownershipType` (Mülkiyet) alanının
+  // seçenekleridir — bu yüzden koşul HER ZAMAN yanlış (false) çıkıp
+  // gerçek bina tipinden bağımsız hep "Müstakil Bina" dönüyordu.
+  const kind = state.fields.ownershipType || "";
   return kind === "Dikey Kat İrtifakı" || kind === "Yatay Kat İrtifakı" ? "Apartman Dairesi" : "Müstakil Bina";
 }
 

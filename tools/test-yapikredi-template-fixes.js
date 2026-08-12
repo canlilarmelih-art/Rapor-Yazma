@@ -128,6 +128,15 @@ function indexAfter(text, needle, fromIndex) {
 
 // --- 4) getResidenceTypeText() — Dikey/Yatay Kat İrtifakı -> Apartman
 // Dairesi, aksi halde Müstakil Bina. ----------------------------------------
+// Kullanıcı bildirimi (2026-08-12, Yapı Kredi "KONUT NİTELİĞİ" hücresi
+// "YANLIŞ GELİYOR"): fonksiyon YANLIŞLIKLA `titleOwnershipKind` (TAKBİS'ten
+// gelen "Tam Mülkiyet"/"Hisseli Mülkiyet" — hisse türü) okuyordu.
+// "Dikey/Yatay Kat İrtifakı" aslında "case" bölümündeki `ownershipType`
+// (Mülkiyet) alanının seçenekleri — bu yüzden koşul HER ZAMAN false çıkıp
+// gerçek bina tipinden bağımsız hep "Müstakil Bina" dönüyordu. Bu test
+// önceki (hatalı) sürümde de `titleOwnershipKind` kullanıyordu — yani bu
+// hatayı YAKALAMIYORDU, yalnızca kendi (yanlış) varsayımını doğruluyordu.
+// Artık gerçek alan olan `ownershipType` ile test ediliyor.
 {
   function sliceFn(startMarker) {
     const start = appSource.indexOf(startMarker);
@@ -136,8 +145,8 @@ function indexAfter(text, needle, fromIndex) {
     return appSource.slice(start, end);
   }
 
-  function run(titleOwnershipKind) {
-    const context = { state: { fields: { titleOwnershipKind } } };
+  function run(ownershipType) {
+    const context = { state: { fields: { ownershipType } } };
     vm.createContext(context);
     vm.runInContext(sliceFn("function getResidenceTypeText("), context);
     return context.getResidenceTypeText();
@@ -150,6 +159,16 @@ function indexAfter(text, needle, fromIndex) {
   assert.equal(run("Tarla"), "Müstakil Bina");
   assert.equal(run(""), "Müstakil Bina", "Seçilmemişse (bos) varsayilan Müstakil Bina olmali.");
   assert.equal(run(undefined), "Müstakil Bina");
+
+  // titleOwnershipKind'in artik OKUNMADIĞINI (Tam/Hisseli Mülkiyet gibi
+  // alakasiz bir deger verilse bile sonucu ETKİLEMEDİĞİNİ) doğrula —
+  // eski hatanin GERİ GELMEDİĞİNİ garanti eder.
+  {
+    const context = { state: { fields: { ownershipType: "Dikey Kat İrtifakı", titleOwnershipKind: "Hisseli Mülkiyet" } } };
+    vm.createContext(context);
+    vm.runInContext(sliceFn("function getResidenceTypeText("), context);
+    assert.equal(context.getResidenceTypeText(), "Apartman Dairesi", "ownershipType dolu iken titleOwnershipKind sonucu ETKİLEMEMELİ.");
+  }
 
   console.log("getResidenceTypeText() testi tamam.");
 }
@@ -171,4 +190,59 @@ function indexAfter(text, needle, fromIndex) {
     "RESIDENCE_TYPE, collectGeneratedTextPlaceholders() katalogunda GÖRÜNMÜYOR (Placeholder referans ekraninda gizli kalir)."
   );
   console.log("RESIDENCE_TYPE placeholder katalog kapsami testi tamam.");
+}
+
+// --- 7) Kullanıcının 2. düzeltme listesi (2026-08-12, ekran görüntüsü) ----
+// 5 madde: İncelenen Kurum Adı, Konum Alan Açıklaması, Ruhsat/İskan +
+// incelenen belgeler tablosu, KONUT NİTELİĞİ (madde 4 ile aynı, yukarıda),
+// ve "Değerle İlgili Açıklamalar..." başlığının eklenmesi.
+{
+  // 7a) "İncelenen Kurum Adı" artık ham {{PROJECT_İNSTİTUTİON}} (checkbox
+  // listesi, "webtapu, belediye" gibi çıkıyordu) DEĞİL, önceden hazır/
+  // formatlı {{DOCUMENT_REVİEW_İNSTİTUTİON}} kullanmalı ("Webtapu Portalı
+  // ve (İlçe) Belediyesi" gibi).
+  const kurumBaslikIdx = template.indexOf("İncelenen Kurum Adı");
+  assert(kurumBaslikIdx >= 0, "İncelenen Kurum Adı basligi bulunamadi.");
+  const kurumSnippet = template.slice(kurumBaslikIdx, kurumBaslikIdx + 150);
+  assert(kurumSnippet.includes("{{DOCUMENT_REVİEW_İNSTİTUTİON}}"), "İncelenen Kurum Adı artik {{DOCUMENT_REVİEW_İNSTİTUTİON}} kullanmali.");
+  assert(!kurumSnippet.includes("{{PROJECT_İNSTİTUTİON}}"), "Ham/checkbox-listesi {{PROJECT_İNSTİTUTİON}} artik burada KULLANILMAMALI.");
+
+  // 7b) "Konum Alan Açıklaması", "Parsel Bazında Konum Yer Teyidi" ile AYNI
+  // {{PROJECT_CONFORMİTY}}'yi tekrar KULLANMAMALI — kendi doğru alanı olan
+  // {{PROJECT_REVİEW_DESCRİPTİON}}'a ("Proje İnceleme Açıklaması") geçmeli.
+  const konumAlanIdx = template.indexOf("Konum Alan Açıklaması");
+  assert(konumAlanIdx >= 0, "Konum Alan Açıklaması basligi bulunamadi.");
+  const konumAlanSnippet = template.slice(konumAlanIdx, konumAlanIdx + 60);
+  assert(konumAlanSnippet.includes("{{PROJECT_REVİEW_DESCRİPTİON}}"), "Konum Alan Açıklaması artik {{PROJECT_REVİEW_DESCRİPTİON}} kullanmali.");
+  assert(!konumAlanSnippet.includes("{{PROJECT_CONFORMİTY}}"), "Konum Alan Açıklaması, Parsel Bazında Konum Yer Teyidi ile AYNI token'i tekrar kullanmamali.");
+
+  // 7c) "Ruhsat / İskan Bilgileri"nden hemen sonra, mevcut
+  // {{REVİEWED_DOCUMENTS_TEXT}} (metin) yaninda {{İNCELENEN_BELGELER_TABLO}}
+  // (tablo) da gelmeli.
+  const ruhsatIdx = template.indexOf("Ruhsat / İskan Bilgileri");
+  assert(ruhsatIdx >= 0, "Ruhsat / İskan Bilgileri basligi bulunamadi.");
+  const ruhsatSnippet = template.slice(ruhsatIdx, ruhsatIdx + 150);
+  assert(ruhsatSnippet.includes("{{REVİEWED_DOCUMENTS_TEXT}}"), "Ruhsat / İskan Bilgileri metni korunmali.");
+  assert(ruhsatSnippet.includes("{{İNCELENEN_BELGELER_TABLO}}"), "Ruhsat / İskan Bilgileri'nden sonra incelenen belgeler tablosu ({{İNCELENEN_BELGELER_TABLO}}) da gelmeli.");
+
+  // 7d) Yeni başlık: "Değerle İlgili Açıklamalar..." — mevcut açıklama
+  // bloğunun (DEGERLEME_YONTEMI_ACIKLAMASI...SATIS_KABILIYETI_ACIKLAMASI)
+  // hemen üstünde olmalı.
+  const analizBaslikIdx = template.indexOf("Değerle İlgili Açıklamalar, Görüşler, Uyarılar, Getirilen Sınırlamalar, Kısıtlayıcı Koşullar vb. Analiz Sonuçlarının Değerlendirilmesi");
+  assert(analizBaslikIdx >= 0, "Yeni 'Değerle İlgili Açıklamalar...' basligi bulunamadi.");
+  const degerlemeAciklamaIdx = indexAfter(template, "{{DEGERLEME_YONTEMI_ACIKLAMASI}}", analizBaslikIdx);
+  const satisKabiliyetiIdx = indexAfter(template, "{{SATIS_KABILIYETI_ACIKLAMASI}}", degerlemeAciklamaIdx);
+  assert(degerlemeAciklamaIdx - analizBaslikIdx < 400, "DEGERLEME_YONTEMI_ACIKLAMASI yeni basligin hemen altinda olmali.");
+  assert(satisKabiliyetiIdx > degerlemeAciklamaIdx, "SATIS_KABILIYETI_ACIKLAMASI de bu blokta (basliktan sonra) olmali.");
+
+  console.log("Ikinci duzeltme listesi (Incelenen Kurum/Konum Aciklamasi/Belgeler Tablosu/Analiz basligi) testi tamam.");
+}
+
+// --- 8) Yeni/degisen token'larin template-engine.js'te GERCEKTEN
+// cozulebilir olmasi (LEGACY_ALIASES'te var mi) --------------------------
+{
+  assert(engineSource.includes("DOCUMENTREVIEWINSTITUTION:"), "DOCUMENTREVIEWINSTITUTION LEGACY_ALIASES'te bulunamadi.");
+  assert(engineSource.includes("PROJECTREVIEWDESCRIPTION:"), "PROJECTREVIEWDESCRIPTION LEGACY_ALIASES'te bulunamadi.");
+  assert(engineSource.includes("INCELENENBELGELERTABLO:"), "INCELENENBELGELERTABLO LEGACY_ALIASES'te bulunamadi.");
+  console.log("Yeni token'larin LEGACY_ALIASES kablolamasi testi tamam.");
 }
