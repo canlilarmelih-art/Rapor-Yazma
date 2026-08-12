@@ -566,9 +566,10 @@ const sections = [
       { key: "landBoundaryElement", label: "Sınırları Belirleyici Unsur Var mı?", type: "select", options: ["", "Evet", "Hayır"] },
       { key: "landAgriculturalProduct", label: "Parsel üzerinde Zirai Ürün Var mı?", type: "select", options: ["", "Evet", "Hayır"] },
       // Kuveyt Türk (INVEX) "ARSA BİLGİLERİ" ekranındaki 6 ayrı serbest metin
-      // kutusuna karşılık (0.0.42x, 2026-08-13) — landNote'un aksine OTOMATİK
-      // ÜRETİLMEZ/ÜZERİNE YAZILMAZ (bkz. refreshLandDescriptionFromCurrentFields),
-      // yalnızca manuel doldurulur.
+      // kutusuna karşılık (0.0.42x, 2026-08-13) — landNote gibi ilgili arsa
+      // alanları değiştikçe OTOMATİK üretilip üzerine yazılır (bkz.
+      // refreshLandDetailTextFieldsFromCurrentFields / landDetailTextAutoRefreshFields),
+      // ama üretilen metin serbestçe elle de düzenlenebilir.
       { key: "landUsageShapeText", label: "Halihazırdaki Kullanım Şekli", type: "textarea", sensitiveOnly: true },
       { key: "landUsagePurposeText", label: "Halihazırdaki Kullanım Amacı", type: "textarea", sensitiveOnly: true },
       { key: "landDevelopmentObstacleText", label: "Yapılaşmaya Engel Teşkil Edebilecek Unsurlar", type: "textarea", sensitiveOnly: true },
@@ -3017,7 +3018,43 @@ const landDescriptionAutoRefreshFields = new Set([
   "titleDistrict",
 ]);
 
+// Kuveyt Türk arsa/arazi şablonundaki "ARSA BİLGİLERİ" 6 alt-alanı için
+// (0.0.42x, 2026-08-13) — landDescriptionAutoRefreshFields'ten AYRI bir set:
+// bu alanlar landNote'tan farklı bir alan grubuna (ör. infrastructureLevel)
+// da bağlı, ayrı tutmak landNote'un mevcut tetikleme davranışını değiştirmez.
+const landDetailTextAutoRefreshFields = new Set([
+  "landShape",
+  "landTopography",
+  "landRoadFrontage",
+  "landRoadFrontageItems",
+  "landRoadType",
+  "landRoadName",
+  "landRoadDirection",
+  "landRoadFrontageLength",
+  "landAgricultureType",
+  "landClassification",
+  "landIrrigationWaterSource",
+  "landIrrigationSystem",
+  "landBoundaryElement",
+  "landBoundaryElementItems",
+  "landBoundaryElementOther",
+  "landAgriculturalProduct",
+  "landAgriculturalProductItems",
+  "landAgriculturalProductType",
+  "landAgriculturalUnitCount",
+  "landAgriculturalAge",
+  "landAgriculturalYield",
+  "landAgriculturalTotalCount",
+  "landArea",
+  "infrastructureLevel",
+  "city",
+  "district",
+  "titleCity",
+  "titleDistrict",
+]);
+
 function refreshLandDescriptionFromCurrentFields(changedKey = "") {
+  refreshLandDetailTextFieldsFromCurrentFields(changedKey);
   if (changedKey && !landDescriptionAutoRefreshFields.has(changedKey)) return;
   refreshLandMinimumParcelAssessment();
   const description = buildLandDescription();
@@ -3028,6 +3065,35 @@ function refreshLandDescriptionFromCurrentFields(changedKey = "") {
     control.value = description;
     markFieldSourceState(control, "landNote");
   }
+}
+
+// Kuveyt Türk arsa/arazi "ARSA BİLGİLERİ" 6 alt-alanını, landNote'u üreten
+// mevcut cümle-üretim yapı taşlarını (buildLandAgriculturalProductSentence,
+// buildLandAgricultureSentence, buildLandRoadFrontageSentence,
+// buildLandBoundarySentence, buildLandMinimumParcelAssessmentSentence)
+// YENİDEN KULLANARAK otomatik doldurur (kullanıcı talebi: "otomatik üret",
+// landNote ile aynı mekanizma). Manuel düzenlenebilir, ilgili alan
+// değişince üzerine yeniden yazılır.
+function refreshLandDetailTextFieldsFromCurrentFields(changedKey = "") {
+  if (changedKey && !landDetailTextAutoRefreshFields.has(changedKey)) return;
+  const updates = {
+    landUsageShapeText: buildLandUsageShapeSentence(),
+    landUsagePurposeText: buildLandUsagePurposeSentence(),
+    landDevelopmentObstacleText: buildLandDevelopmentObstacleSentence(),
+    landInfrastructureTopographyText: buildLandInfrastructureTopographySentence(),
+    landFrontageDepthText: buildLandFrontageDepthSentence(),
+    landBoundaryStatusText: buildLandBoundaryStatusSentence(),
+  };
+  Object.keys(updates).forEach((key) => {
+    const value = updates[key];
+    if (!value) return;
+    state.fields[key] = value;
+    const control = document.querySelector(`[data-field="${key}"]`);
+    if (control && control.value !== value) {
+      control.value = value;
+      markFieldSourceState(control, key);
+    }
+  });
 }
 
 function normalizeClimateLookupValue(value) {
@@ -3697,6 +3763,71 @@ function formatLandBoundaryElementForDescription(item) {
   if (!text) return "";
   if (foldTurkish(text) === "komsu parsel siniri") return "komşu parsel sınırları";
   return text;
+}
+
+// --- Kuveyt Türk arsa/arazi "ARSA BİLGİLERİ" 6 alt-alanı için cümle -------
+// üretimi (0.0.42x, 2026-08-13). Mevcut landNote yapı taşları YENİDEN
+// KULLANILIR; her biri kendi konusuna odaklanmış, tek başına anlamlı bir
+// cümle/paragraf döner (veri eksikse "" döner, hiçbir varsayılan/olumlu
+// kanaat cümlesi UYDURULMAZ).
+
+function buildLandUsageShapeSentence() {
+  // "Halihazırdaki Kullanım Şekli": parsel üzerinde fiilen ne var (boş/ekili/
+  // dikili vb.) — mevcut zirai ürün cümlesiyle birebir örtüşüyor.
+  return buildLandAgriculturalProductSentence();
+}
+
+function buildLandUsagePurposeSentence() {
+  // "Halihazırdaki Kullanım Amacı": arazi sınıflandırması + tarım türü amacı.
+  const classification = normalizeReportTitleText(state.fields.landClassification || "");
+  const classificationSentence = classification
+    ? `Parsel, Arazi Sınıflandırması bakımından ${classification} niteliğindedir.`
+    : "";
+  const agricultureSentence = buildLandAgricultureSentence();
+  return [classificationSentence, agricultureSentence].filter(Boolean).join(" ");
+}
+
+function buildLandDevelopmentObstacleSentence() {
+  // "Yapılaşmaya Engel Teşkil Edebilecek Unsurlar": yol cephesi yokluğu, çok
+  // eğimli topografya ve 5403 sayılı Kanun'a göre minimum parsel büyüklüğünü
+  // karşılamama — üçü de zaten başka yerlerde hesaplanan gerçek sinyaller.
+  const parts = [];
+  if (normalizeYesNoChoice(state.fields.landRoadFrontage) === "Hayır") {
+    parts.push("Parselin kadastro veya imar yoluna cephesinin bulunmaması, yapılaşma açısından olumsuz bir unsur olarak değerlendirilmektedir.");
+  }
+  if (foldTurkish(state.fields.landTopography || "") === foldTurkish("Çok eğimli")) {
+    parts.push("Parselin çok eğimli topografik yapısı, yapılaşmayı zorlaştırabilecek bir unsurdur.");
+  }
+  const minimumAssessment = buildLandMinimumParcelAssessmentSentence();
+  if (minimumAssessment && minimumAssessment.includes("karşılamamaktadır")) {
+    parts.push(minimumAssessment);
+  }
+  return parts.join(" ");
+}
+
+function buildLandInfrastructureTopographySentence() {
+  // "Parselin Alt Yapısı ve Topografik Durumu": topografya (şekil HARİÇ,
+  // {{LAND_SHAPE}} zaten ayrı satırda gösteriliyor — tekrar olmasın) + bölgedeki
+  // altyapı seviyesi (infrastructureLevel, tüm taşınmazlarda paylaşımlı alan).
+  const topography = toLowerText(state.fields.landTopography || "");
+  const infrastructure = toLowerText(state.fields.infrastructureLevel || "");
+  const parts = [];
+  if (topography) parts.push(`Parsel topografik açıdan ${topography} zemin yapısındadır.`);
+  if (infrastructure) parts.push(`Bölgedeki altyapı seviyesi ${infrastructure} olarak değerlendirilmektedir.`);
+  return parts.join(" ");
+}
+
+function buildLandFrontageDepthSentence() {
+  // "Parselin Cephe ve Derinlik Bilgileri": mevcut yol cephesi cümlesi
+  // yeniden kullanılır. NOT: "derinlik" (parsel derinliği) için ayrı bir
+  // veri alanı YOK — yalnızca cephe bilgisi üretilir, derinlik manuel
+  // eklenmelidir.
+  return buildLandRoadFrontageSentence();
+}
+
+function buildLandBoundaryStatusSentence() {
+  // "Parselin Sınırlarının Durumu": mevcut sınır-unsuru cümlesiyle birebir.
+  return buildLandBoundarySentence();
 }
 
 function formatLandAreaForDescription(value) {

@@ -8793,4 +8793,57 @@ eder).
   `landDescriptionAutoRefreshFields`'e yanlışlıkla eklenmediğini doğruluyor.
   `npm run verify` tam zincirle yeşil.
 - Cache-buster: `app.js?v=20260813-1300`.
+
+## 0.0.426 - 2026-08-13 - Kuveyt Türk arsa/arazi: 6 yeni alan "otomatik üret" moduna geçirildi
+
+Kullanıcı 0.0.425'teki manuel-alan kararını sorguladı: "nasıl yani otomatik
+gelmiyor mu bu gücrelere". `AskUserQuestion` ile netleştirildi — kullanıcı
+"Otomatik üret (Recommended)" seçeneğini seçti: `landNote` gibi mevcut
+seçim alanlarından otomatik cümle üretilsin, elle de düzenlenebilsin.
+
+- `app.js`'e **landNote'un mevcut, iyi test edilmiş cümle-üretim yapı
+  taşları YENİDEN KULLANILARAK** 6 yeni `buildLand*Sentence()` fonksiyonu
+  eklendi:
+  - `buildLandUsageShapeSentence()` (Halihazırdaki Kullanım Şekli) →
+    `buildLandAgriculturalProductSentence()` ile birebir aynı (parsel
+    üzerinde ne var/yok).
+  - `buildLandUsagePurposeSentence()` (Halihazırdaki Kullanım Amacı) →
+    `landClassification` cümlesi + `buildLandAgricultureSentence()`
+    (sulu/kuru tarım amacı).
+  - `buildLandDevelopmentObstacleSentence()` (Yapılaşmaya Engel Unsurlar) →
+    üç gerçek sinyalden bileşik: yol cephesi yokluğu, "Çok eğimli"
+    topografya, ve `buildLandMinimumParcelAssessmentSentence()`'ın (5403
+    sayılı Kanun kontrolü) "karşılamamaktadır" sonucu. Hiçbiri yoksa "" döner
+    — **uydurma bir "engel bulunmamaktadır" varsayılan cümlesi YOK**
+    (veri eksikliğiyle "kontrol edildi, sorun yok" karıştırılmasın diye).
+  - `buildLandInfrastructureTopographySentence()` (Alt Yapı ve Topografik
+    Durum) → `landTopography` (şekil HARİÇ — {{LAND_SHAPE}} zaten ayrı
+    satırda var, tekrar olmasın) + `infrastructureLevel` (Bölgedeki
+    Altyapı, paylaşımlı alan) cümlesi.
+  - `buildLandFrontageDepthSentence()` (Cephe ve Derinlik) →
+    `buildLandRoadFrontageSentence()` ile birebir aynı. **Bilinen sınırlama**:
+    "derinlik" (parsel derinliği) için veri modelinde alan YOK, yalnızca
+    cephe bilgisi üretiliyor — derinlik manuel eklenmelidir.
+  - `buildLandBoundaryStatusSentence()` (Sınırların Durumu) →
+    `buildLandBoundarySentence()` ile birebir aynı.
+- Tetikleme: yeni, AYRI bir `landDetailTextAutoRefreshFields` Set'i
+  eklendi (mevcut `landDescriptionAutoRefreshFields`'ten bağımsız —
+  `infrastructureLevel`/`landClassification` gibi landNote'un
+  tetiklemediği alanları da kapsıyor, landNote'un kendi tetikleme
+  davranışını BOZMADAN). `refreshLandDescriptionFromCurrentFields()`
+  (landNote'u üreten mevcut fonksiyon), erken-çıkış kontrolünden ÖNCE yeni
+  `refreshLandDetailTextFieldsFromCurrentFields(changedKey)`'i çağıracak
+  şekilde güncellendi — mevcut 10 çağrı noktasının HİÇBİRİNE dokunmadan
+  (`refreshLandDescriptionFromCurrentFields(field.key)` zaten her yerde
+  çağrılıyordu) yeni alanlar da otomatik tetiklenmeye başladı.
+- `templates/kuveytturk-arsa-arazi.html`'deki alan etiketi/yorumu
+  güncellendi (artık "otomatik üretilir, elle de düzenlenebilir" diyor).
+- Test: `tools/test-kuveytturk-arsa-arazi-template.js` baştan yazıldı —
+  `landDetailTextAutoRefreshFields` içeriği, `refreshLandDescriptionFromCurrentFields`
+  içinde yeni fonksiyonun erken-çıkıştan ÖNCE çağrıldığı (kaynak-düzeyi),
+  VE 6 yapı-taşı fonksiyonunun GERÇEK KAYNAKTAN (bağımlılık kapanışı otomatik
+  toplanarak) çalıştırılıp 3 senaryoda (dolu veri / neredeyse boş veri →
+  hiçbir cümle uydurulmuyor / gate kontrolü) doğru çıktı ürettiği
+  doğrulanıyor. `npm run verify` tam zincirle yeşil.
+- Cache-buster: `app.js?v=20260813-1400`.
 - Yedek: `backups/before-yapikredi-2nd-fix-list_2026-08-12_22-45-16`.

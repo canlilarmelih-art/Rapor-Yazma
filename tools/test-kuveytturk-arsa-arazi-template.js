@@ -160,23 +160,182 @@ const appSource = fs.readFileSync(path.join(appDir, "app.js"), "utf8");
     `app.js icinde "${key}" alan anahtari bulunamadi (LAND_* placeholder'lari bosa dusebilir).`
   );
 });
-// Yeni 6 manuel alan, landNote'un aksine OTOMATİK ÜRETİLMEMELİ — auto-refresh
-// bağımlılık listesine (landDescriptionAutoRefreshFields) YANLIŞLIKLA
-// eklenirse kullanıcının elle girdiği metin sessizce üzerine yazılır.
-const autoRefreshStart = appSource.indexOf("const landDescriptionAutoRefreshFields = new Set([");
-const autoRefreshEnd = appSource.indexOf("]);", autoRefreshStart);
-assert(autoRefreshStart >= 0 && autoRefreshEnd > autoRefreshStart, "landDescriptionAutoRefreshFields bulunamadi.");
-const autoRefreshSlice = appSource.slice(autoRefreshStart, autoRefreshEnd);
-[
-  "landUsageShapeText", "landUsagePurposeText", "landDevelopmentObstacleText",
-  "landInfrastructureTopographyText", "landFrontageDepthText", "landBoundaryStatusText",
-].forEach((key) => {
-  assert(
-    !autoRefreshSlice.includes(`"${key}"`),
-    `"${key}" yanlislikla landDescriptionAutoRefreshFields'e eklenmis — manuel metin otomatik uzerine yazilabilir.`
-  );
+// 6 yeni alan, kullanicinin "otomatik uret" tercihiyle (2026-08-13) KENDI
+// AYRI tetikleme setinden (landDescriptionAutoRefreshFields'ten BAGIMSIZ,
+// landNote'un mevcut davranisini bozmamak icin) otomatik uretiliyor olmali.
+const detailAutoRefreshStart = appSource.indexOf("const landDetailTextAutoRefreshFields = new Set([");
+const detailAutoRefreshEnd = appSource.indexOf("]);", detailAutoRefreshStart);
+assert(detailAutoRefreshStart >= 0 && detailAutoRefreshEnd > detailAutoRefreshStart, "landDetailTextAutoRefreshFields bulunamadi.");
+const detailAutoRefreshSlice = appSource.slice(detailAutoRefreshStart, detailAutoRefreshEnd);
+["landTopography", "landRoadFrontage", "landBoundaryElement", "landClassification", "landAgriculturalProduct", "infrastructureLevel"].forEach((key) => {
+  assert(detailAutoRefreshSlice.includes(`"${key}"`), `"${key}" landDetailTextAutoRefreshFields icinde yok — ilgili alan degisince yeni metinler yenilenmez.`);
 });
+// refreshLandDescriptionFromCurrentFields (landNote'u besleyen mevcut
+// fonksiyon) yeni fonksiyonu KENDI govdesinin icinde, erken-cikis
+// kontrolunden ONCE cagirmali — aksi halde landDescriptionAutoRefreshFields
+// setinde OLMAYAN bir alan (ör. infrastructureLevel) degistiginde 6 yeni
+// alan hic yenilenmez.
+{
+  const refreshFnSrc = extractFnBody(appSource, "refreshLandDescriptionFromCurrentFields");
+  assert(refreshFnSrc, "refreshLandDescriptionFromCurrentFields bulunamadi.");
+  const callIndex = refreshFnSrc.indexOf("refreshLandDetailTextFieldsFromCurrentFields(changedKey);");
+  const gateIndex = refreshFnSrc.indexOf("if (changedKey && !landDescriptionAutoRefreshFields.has(changedKey)) return;");
+  assert(callIndex >= 0, "refreshLandDescriptionFromCurrentFields artik refreshLandDetailTextFieldsFromCurrentFields'i cagirmiyor.");
+  assert(gateIndex >= 0, "erken-cikis kontrolu bulunamadi (kaynak degismis olabilir).");
+  assert(callIndex < gateIndex, "yeni fonksiyon erken-cikistan SONRA cagriliyor — landDescriptionAutoRefreshFields disindaki tetikleyiciler (infrastructureLevel gibi) calismaz.");
+}
 
-console.log("LAND_* placeholder field-anahtari varligi testi tamam.");
+function extractFnBody(source, name) {
+  const marker = `function ${name}(`;
+  const start = source.indexOf(marker);
+  if (start < 0) return null;
+  const braceStart = source.indexOf("{", start);
+  let depth = 0;
+  let i = braceStart;
+  for (; i < source.length; i++) {
+    if (source[i] === "{") depth++;
+    else if (source[i] === "}") { depth--; if (depth === 0) { i++; break; } }
+  }
+  return source.slice(start, i);
+}
+
+console.log("LAND_* placeholder field-anahtari ve otomatik-uretim kablolamasi testi tamam.");
+
+// --- 6) 6 yeni cumle-uretim fonksiyonu GERCEK KAYNAKTAN calistirilip -------
+//        anlamli metin urettigi dogrulanir (sadece "var/yok" degil, ic
+//        icerik). Bagimlilik agaci genis oldugu icin (buildLandAgricultural
+//        ProductSentence -> shouldHideLandAgricultureControls -> ... vb.)
+//        elle tek tek listelemek yerine KAPANIS (transitive closure) ile
+//        toplanir: bir fonksiyonun govdesinde gecen ve app.js'te tanimli
+//        her isim otomatik olarak da yuklenir.
+{
+  const vmModule = require("node:vm");
+
+  function extractFunctionSource(name) {
+    const marker = `function ${name}(`;
+    const start = appSource.indexOf(marker);
+    if (start < 0) return null;
+    const braceStart = appSource.indexOf("{", start);
+    let depth = 0;
+    let i = braceStart;
+    for (; i < appSource.length; i++) {
+      if (appSource[i] === "{") depth++;
+      else if (appSource[i] === "}") {
+        depth--;
+        if (depth === 0) { i++; break; }
+      }
+    }
+    return appSource.slice(start, i);
+  }
+
+  function collectClosure(rootNames) {
+    const collected = new Map();
+    const queue = [...rootNames];
+    while (queue.length) {
+      const name = queue.shift();
+      if (collected.has(name)) continue;
+      const src = extractFunctionSource(name);
+      if (!src) continue;
+      collected.set(name, src);
+      const calls = new Set([...src.matchAll(/\b([a-zA-Z_][a-zA-Z0-9_]*)\s*\(/g)].map((m) => m[1]));
+      calls.forEach((c) => { if (c !== name && !collected.has(c)) queue.push(c); });
+    }
+    return collected;
+  }
+
+  const closure = collectClosure([
+    "buildLandUsageShapeSentence",
+    "buildLandUsagePurposeSentence",
+    "buildLandDevelopmentObstacleSentence",
+    "buildLandInfrastructureTopographySentence",
+    "buildLandFrontageDepthSentence",
+    "buildLandBoundaryStatusSentence",
+    "refreshLandDetailTextFieldsFromCurrentFields",
+  ]);
+  assert(closure.size >= 6, `Kapanis beklenenden kucuk (${closure.size}) — kaynak taramasi calismamis olabilir.`);
+
+  function makeContext() {
+    const context = {
+      state: { fields: {} },
+      document: { querySelector: () => null },
+      markFieldSourceState: () => {},
+      MinimumAgriculturalParcelSizes: [
+        { city: "Bursa", district: "Nilüfer", suluM2: 20000, kuruM2: 40000, dikiliM2: 5000 },
+      ],
+      console,
+    };
+    vmModule.createContext(context);
+    // refreshLandDetailTextFieldsFromCurrentFields disaridaki
+    // landDetailTextAutoRefreshFields Set'ine bagli — fonksiyon-govdesi
+    // taramasi bunu yakalamaz (const bildirimi), o yuzden ayrica yuklenir.
+    vmModule.runInContext(
+      appSource.slice(detailAutoRefreshStart, detailAutoRefreshEnd + "]);".length),
+      context
+    );
+    closure.forEach((src) => { try { vmModule.runInContext(src, context); } catch { /* bagimli olmayan yardimci atlanir */ } });
+    return context;
+  }
+
+  // Senaryo A: kuru tarim arazisi, yol cephesi yok, cok egimli, sinir unsuru
+  // yok, siniflandirma dolu, altyapi dolu, minimum parsel altinda.
+  {
+    const ctx = makeContext();
+    ctx.state.fields = {
+      ownershipType: "Tarla",
+      landAgricultureType: "Kuru Tarım",
+      landAgriculturalProduct: "Hayır",
+      landRoadFrontage: "Hayır",
+      landTopography: "Çok eğimli",
+      landBoundaryElement: "Hayır",
+      landClassification: "Mutlak Tarım Arazisi",
+      infrastructureLevel: "Yeterli",
+      landArea: "1000",
+      titleCity: "Bursa",
+      titleDistrict: "Nilüfer",
+    };
+    const usageShape = ctx.buildLandUsageShapeSentence();
+    assert.match(usageShape, /zirai ürün bulunmamak/, "Kullanim Sekli cumlesi (urun yok) uretilmedi.");
+    assert.match(usageShape, /kuru tarım arazisi/, "Kullanim Sekli cumlesinde kuru tarim niteligi yok.");
+    assert.match(ctx.buildLandUsagePurposeSentence(), /Mutlak Tarım Arazisi/, "Kullanim Amaci cumlesinde siniflandirma yok.");
+    const obstacle = ctx.buildLandDevelopmentObstacleSentence();
+    assert.match(obstacle, /cephesinin bulunmaması/, "Engel cumlesinde yol cephesi yoklugu yok.");
+    assert.match(obstacle, /çok eğimli/, "Engel cumlesinde egim uyarisi yok.");
+    assert.match(obstacle, /karşılamamaktadır/, "Engel cumlesinde minimum parsel uyarisi yok (1000 m2 < 40000 m2 olmali).");
+    const infra = ctx.buildLandInfrastructureTopographySentence();
+    assert.match(infra, /çok eğimli zemin/, "Alt yapi/topografya cumlesinde topografya yok.");
+    assert.match(infra, /altyapı seviyesi yeterli/, "Alt yapi/topografya cumlesinde altyapi seviyesi yok.");
+    assert.equal(ctx.buildLandFrontageDepthSentence(), "Konu parselin kadastro yoluna veya imar yoluna cephesi bulunmamaktadır.", "Cephe/derinlik cumlesi yol-cephesi-yok metniyle eslesmiyor.");
+    assert.equal(ctx.buildLandBoundaryStatusSentence(), "Parsel sınırlarını arazide belirgin şekilde gösteren çit, duvar, tel örgü vb. herhangi bir unsur bulunmamaktadır.", "Sinir durumu cumlesi sinir-unsuru-yok metniyle eslesmiyor.");
+  }
+
+  // Senaryo B: veri neredeyse tamamen bos (Arsa - tarim disi) -> tum
+  // cumleler "" donmeli (uydurma varsayilan metin OLMAMALI).
+  {
+    const ctx = makeContext();
+    ctx.state.fields = { ownershipType: "Arsa" };
+    assert.equal(ctx.buildLandUsageShapeSentence(), "", "Bos veride Kullanim Sekli cumlesi bos donmedi.");
+    assert.equal(ctx.buildLandUsagePurposeSentence(), "", "Bos veride Kullanim Amaci cumlesi bos donmedi.");
+    assert.equal(ctx.buildLandDevelopmentObstacleSentence(), "", "Bos veride Engel cumlesi bos donmedi (uydurma olmamali).");
+    assert.equal(ctx.buildLandInfrastructureTopographySentence(), "", "Bos veride Alt yapi/topografya cumlesi bos donmedi.");
+    assert.equal(ctx.buildLandFrontageDepthSentence(), "", "Bos veride Cephe/derinlik cumlesi bos donmedi.");
+    assert.equal(ctx.buildLandBoundaryStatusSentence(), "", "Bos veride Sinir durumu cumlesi bos donmedi.");
+  }
+
+  // Senaryo C: refreshLandDetailTextFieldsFromCurrentFields gate kontrolu —
+  // set icinde OLMAYAN bir changedKey ile cagrilirsa hicbir alani yazmamali.
+  {
+    const ctx = makeContext();
+    ctx.state.fields = {
+      ownershipType: "Tarla",
+      landBoundaryElement: "Hayır",
+    };
+    ctx.refreshLandDetailTextFieldsFromCurrentFields("someUnrelatedField");
+    assert.equal(ctx.state.fields.landBoundaryStatusText, undefined, "Set disi bir changedKey ile refresh yine de yazdi (gate calismiyor).");
+    ctx.refreshLandDetailTextFieldsFromCurrentFields("landBoundaryElement");
+    assert.equal(ctx.state.fields.landBoundaryStatusText, "Parsel sınırlarını arazide belirgin şekilde gösteren çit, duvar, tel örgü vb. herhangi bir unsur bulunmamaktadır.", "Set icindeki changedKey ile refresh dogru alani yazmadi.");
+  }
+
+  console.log("Otomatik-uretim (buildLand*Sentence + refreshLandDetailTextFieldsFromCurrentFields) gercek-kaynak testi tamam.");
+}
 
 console.log("Kuveyt Turk arsa/arazi sablonu testleri basarili.");
