@@ -159,20 +159,30 @@
 
 <!-- Konut şablonundaki "TAŞINMAZ BİLGİLERİ" (iç hacim/kat/ısıtma/manzara vb.
      bina alanları) yerine, INVEX'in arazi ekranındaki "ARSA BİLGİLERİ"
-     bölümü geldi: parselin geometrisi, topografyası, yol/sınır durumu ve
-     serbest metin arsa açıklaması. -->
+     bölümü geldi: parselin geometrisi/sınıflandırması (select alanları) +
+     INVEX'teki 6 ayrı serbest metin kutusuna karşılık gelen 6 ayrı manuel
+     açıklama alanı (0.0.42x, 2026-08-13 — kullanıcı talebiyle eklendi;
+     landNote'un aksine bunlar OTOMATİK ÜRETİLMEZ, elle doldurulur). -->
 <div class="kt-sec">ARSA BİLGİLERİ</div>
 <table class="kt-form">
   <tr><td class="l">Halihazır Kullanım Durumu:</td><td class="v">{{UNİT_USAGE_STATUS}}</td></tr>
   <tr><td class="l">Parselin Geometrik Şekli:</td><td class="v">{{LAND_SHAPE}}</td></tr>
-  <tr><td class="l">Parselin Alt Yapısı ve Topografik Durumu:</td><td class="v">{{LAND_TOPOGRAPHY}}</td></tr>
   <tr><td class="l">Kadastral/İmar Yoluna Cepheli mi?:</td><td class="v">{{LAND_ROAD_FRONTAGE}}</td></tr>
-  <tr><td class="l">Parselin Sınırlarının Durumu:</td><td class="v">{{LAND_BOUNDARY_ELEMENT}}</td></tr>
   <tr><td class="l">Arazi Sınıflandırması:</td><td class="v">{{LAND_CLASSIFICATION}}</td></tr>
   <tr><td class="l">Parsel Üzerinde Zirai Ürün Var mı?:</td><td class="v">{{LAND_AGRICULTURAL_PRODUCT}}</td></tr>
 </table>
-<div class="kt-subsec">Hali Hazırdaki Kullanım Şekli / Amacı ve Yapılaşmaya Engel Teşkil Edebilecek Unsurlar</div>
-{{LAND_NOTE}}
+<div class="kt-subsec">Halihazırdaki Kullanım Şekli</div>
+{{LAND_USAGE_SHAPE_TEXT}}
+<div class="kt-subsec">Halihazırdaki Kullanım Amacı</div>
+{{LAND_USAGE_PURPOSE_TEXT}}
+<div class="kt-subsec">Yapılaşmaya Engel Teşkil Edebilecek Unsurlar</div>
+{{LAND_DEVELOPMENT_OBSTACLE_TEXT}}
+<div class="kt-subsec">Parselin Alt Yapısı ve Topografik Durumu</div>
+{{LAND_INFRASTRUCTURE_TOPOGRAPHY_TEXT}}
+<div class="kt-subsec">Parselin Cephe ve Derinlik Bilgileri</div>
+{{LAND_FRONTAGE_DEPTH_TEXT}}
+<div class="kt-subsec">Parselin Sınırlarının Durumu</div>
+{{LAND_BOUNDARY_STATUS_TEXT}}
 
 <!-- Konut şablonundaki "ENERJİ KİMLİK BİLGİSİ" bölümü kaldırıldı (çıplak
      arazide bina/EKB olmadığından İNVEX arazi ekranında bu bölüm yerine

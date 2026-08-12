@@ -565,6 +565,16 @@ const sections = [
       },
       { key: "landBoundaryElement", label: "Sınırları Belirleyici Unsur Var mı?", type: "select", options: ["", "Evet", "Hayır"] },
       { key: "landAgriculturalProduct", label: "Parsel üzerinde Zirai Ürün Var mı?", type: "select", options: ["", "Evet", "Hayır"] },
+      // Kuveyt Türk (INVEX) "ARSA BİLGİLERİ" ekranındaki 6 ayrı serbest metin
+      // kutusuna karşılık (0.0.42x, 2026-08-13) — landNote'un aksine OTOMATİK
+      // ÜRETİLMEZ/ÜZERİNE YAZILMAZ (bkz. refreshLandDescriptionFromCurrentFields),
+      // yalnızca manuel doldurulur.
+      { key: "landUsageShapeText", label: "Halihazırdaki Kullanım Şekli", type: "textarea", sensitiveOnly: true },
+      { key: "landUsagePurposeText", label: "Halihazırdaki Kullanım Amacı", type: "textarea", sensitiveOnly: true },
+      { key: "landDevelopmentObstacleText", label: "Yapılaşmaya Engel Teşkil Edebilecek Unsurlar", type: "textarea", sensitiveOnly: true },
+      { key: "landInfrastructureTopographyText", label: "Parselin Alt Yapısı ve Topografik Durumu", type: "textarea", sensitiveOnly: true },
+      { key: "landFrontageDepthText", label: "Parselin Cephe ve Derinlik Bilgileri", type: "textarea", sensitiveOnly: true },
+      { key: "landBoundaryStatusText", label: "Parselin Sınırlarının Durumu", type: "textarea", sensitiveOnly: true },
       { key: "landNote", label: "Arsa açıklaması", type: "textarea", sensitiveOnly: true },
       { key: "landClimateEarthquakeExplanation", label: "İklim ve Deprem Bilgileri", type: "textarea", hidden: true },
     ],

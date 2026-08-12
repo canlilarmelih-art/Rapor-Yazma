@@ -8744,5 +8744,53 @@ kod GEREKMEDİ, yalnızca 2 registry girdisi eklendi.
   Sınırların Durumu) veri modelimizde TEK bir serbest metin alanına
   (`landNote` / "Arsa açıklaması") karşılık geliyor — ayrı ayrı alanlara
   bölünmesi istenirse yeni field'lar eklenmesi gerekir (kapsam dışı
-  bırakıldı, kullanıcı onayı gerekiyor).
+  bırakıldı, kullanıcı onayı gerekiyor). **Kullanıcı onayladı ("yeni field
+  lar ekleyebilirsin") → aşağıdaki 0.0.425'te eklendi.**
+
+## 0.0.425 - 2026-08-13 - Kuveyt Türk arsa/arazi: "ARSA BİLGİLERİ" 6 alanı ayrıştırıldı
+
+0.0.424'te bırakılan açık nokta kullanıcı tarafından onaylandı. `app.js`'in
+"Arsa Özellikleri" (`land`) bölümüne 6 yeni MANUEL (`sensitiveOnly: true`)
+textarea alanı eklendi — INVEX'teki her bir kutuya birebir karşılık gelir:
+`landUsageShapeText` (Halihazırdaki Kullanım Şekli), `landUsagePurposeText`
+(Halihazırdaki Kullanım Amacı), `landDevelopmentObstacleText`
+(Yapılaşmaya Engel Teşkil Edebilecek Unsurlar), `landInfrastructureTopographyText`
+(Parselin Alt Yapısı ve Topografik Durumu), `landFrontageDepthText`
+(Parselin Cephe ve Derinlik Bilgileri), `landBoundaryStatusText`
+(Parselin Sınırlarının Durumu).
+
+**Önemli mimari karar**: bu 6 alan, aynı bölümdeki mevcut `landNote`
+("Arsa açıklaması") alanından BİLİNÇLİ OLARAK FARKLI davranır — `landNote`
+`landDescriptionAutoRefreshFields` bağımlılık listesindeki ~25 alan
+değiştikçe `refreshLandDescriptionFromCurrentFields()` tarafından OTOMATİK
+üretilip textarea'nın üzerine yazılıyor (bkz. `buildLandDescription()`).
+Yeni 6 alan bu mekanizmaya KASITLI OLARAK dahil edilmedi — appraiser'ın
+INVEX portalındaki gibi elle yazdığı serbest metin, otomatik üretimle
+sessizce ezilmemeli. Test bu ayrımı özellikle doğruluyor (6 alanın
+`landDescriptionAutoRefreshFields`'e YANLIŞLIKLA eklenmediğini kontrol
+eder).
+
+- `templates/kuveytturk-arsa-arazi.html`'deki ARSA BİLGİLERİ bölümü
+  güncellendi: tek `{{LAND_NOTE}}` paragrafı yerine INVEX'teki sırayla 6
+  ayrı `<div class="kt-subsec">` başlığı + `{{LAND_USAGE_SHAPE_TEXT}}` /
+  `{{LAND_USAGE_PURPOSE_TEXT}}` / `{{LAND_DEVELOPMENT_OBSTACLE_TEXT}}` /
+  `{{LAND_INFRASTRUCTURE_TOPOGRAPHY_TEXT}}` / `{{LAND_FRONTAGE_DEPTH_TEXT}}` /
+  `{{LAND_BOUNDARY_STATUS_TEXT}}` placeholder'ı eklendi. Aynı zamanda artık
+  bu 6 kutuyla kavramsal olarak çakışan iki eski select-tabanlı satır
+  (Parselin Alt Yapısı ve Topografik Durumu / Parselin Sınırlarının Durumu
+  — `{{LAND_TOPOGRAPHY}}`/`{{LAND_BOUNDARY_ELEMENT}}`) tablo satırlarından
+  çıkarıldı (asıl `landTopography`/`landBoundaryElement` select alanları
+  app.js'te ve diğer şablonlarda DEĞİŞMEDİ, yalnızca bu şablonda ikinci kez
+  gösterilmiyor).
+- Diğer tüm placeholder'lar gibi bunlar da düz field-key katlaması ile
+  otomatik çözülüyor (`getFoldedFieldIndex`) — `template-engine.js`'te
+  ekstra bir `LEGACY_ALIASES` girdisi GEREKMEDİ.
+- `land` bölümü zaten `TITLE_UNIT_SCOPED_SECTION_IDS` içinde olduğu için bu
+  6 alan da diğer arsa alanları gibi taşınmaz-bazlı (her taşınmaz tabında
+  ayrı) — paylaşımlı listeye eklenmedi.
+- Test: `tools/test-kuveytturk-arsa-arazi-template.js` güncellendi — yeni 6
+  field anahtarının app.js'te var olduğunu, şablonda kullanıldığını VE
+  `landDescriptionAutoRefreshFields`'e yanlışlıkla eklenmediğini doğruluyor.
+  `npm run verify` tam zincirle yeşil.
+- Cache-buster: `app.js?v=20260813-1300`.
 - Yedek: `backups/before-yapikredi-2nd-fix-list_2026-08-12_22-45-16`.

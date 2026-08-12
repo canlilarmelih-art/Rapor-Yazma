@@ -110,12 +110,15 @@ console.log("Otomatik arsa-arazi varyant secimi (defaultTemplateKeyForBank/resol
 [
   "ARSA BİLGİLERİ",
   "{{LAND_SHAPE}}",
-  "{{LAND_TOPOGRAPHY}}",
   "{{LAND_ROAD_FRONTAGE}}",
-  "{{LAND_BOUNDARY_ELEMENT}}",
   "{{LAND_CLASSIFICATION}}",
   "{{LAND_AGRICULTURAL_PRODUCT}}",
-  "{{LAND_NOTE}}",
+  "{{LAND_USAGE_SHAPE_TEXT}}",
+  "{{LAND_USAGE_PURPOSE_TEXT}}",
+  "{{LAND_DEVELOPMENT_OBSTACLE_TEXT}}",
+  "{{LAND_INFRASTRUCTURE_TOPOGRAPHY_TEXT}}",
+  "{{LAND_FRONTAGE_DEPTH_TEXT}}",
+  "{{LAND_BOUNDARY_STATUS_TEXT}}",
   "{{ACTUAL_USE_PURPOSE}}",
   "TİCARİ FİYAT ENDEKSİ ÖZELLİKLERİ",
   "{{GABIM_TRANSPORTATION}}",
@@ -147,10 +150,30 @@ console.log("kuveytturk-arsa-arazi.html arazi-ozgu placeholder icerigi testi tam
 //        anahtarlari app.js'te hala mevcut mu (isim degisirse sessizce
 //        bosa duser).
 const appSource = fs.readFileSync(path.join(appDir, "app.js"), "utf8");
-["landShape", "landTopography", "landRoadFrontage", "landClassification", "landBoundaryElement", "landAgriculturalProduct", "landNote"].forEach((key) => {
+[
+  "landShape", "landRoadFrontage", "landClassification", "landAgriculturalProduct",
+  "landUsageShapeText", "landUsagePurposeText", "landDevelopmentObstacleText",
+  "landInfrastructureTopographyText", "landFrontageDepthText", "landBoundaryStatusText",
+].forEach((key) => {
   assert(
     new RegExp(`key:\\s*"${key}"`).test(appSource),
     `app.js icinde "${key}" alan anahtari bulunamadi (LAND_* placeholder'lari bosa dusebilir).`
+  );
+});
+// Yeni 6 manuel alan, landNote'un aksine OTOMATİK ÜRETİLMEMELİ — auto-refresh
+// bağımlılık listesine (landDescriptionAutoRefreshFields) YANLIŞLIKLA
+// eklenirse kullanıcının elle girdiği metin sessizce üzerine yazılır.
+const autoRefreshStart = appSource.indexOf("const landDescriptionAutoRefreshFields = new Set([");
+const autoRefreshEnd = appSource.indexOf("]);", autoRefreshStart);
+assert(autoRefreshStart >= 0 && autoRefreshEnd > autoRefreshStart, "landDescriptionAutoRefreshFields bulunamadi.");
+const autoRefreshSlice = appSource.slice(autoRefreshStart, autoRefreshEnd);
+[
+  "landUsageShapeText", "landUsagePurposeText", "landDevelopmentObstacleText",
+  "landInfrastructureTopographyText", "landFrontageDepthText", "landBoundaryStatusText",
+].forEach((key) => {
+  assert(
+    !autoRefreshSlice.includes(`"${key}"`),
+    `"${key}" yanlislikla landDescriptionAutoRefreshFields'e eklenmis — manuel metin otomatik uzerine yazilabilir.`
   );
 });
 
