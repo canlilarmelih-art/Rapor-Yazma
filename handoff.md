@@ -8510,3 +8510,48 @@ Değeri Değişimi, tarımsal/ticari alt alanlar vb.) da SIFIRLIYOR/AYIRIYORDU
   önerildi, henüz alınmadı).
 - Cache-buster: `app.js?v=20260812-0500`.
 - Yedek: `backups/before-environmental-fields-shared_2026-08-12_09-56-02`.
+
+## 0.0.420 - 2026-08-12 - "Çevresel Özellikler Açıklaması"ndaki KML mesafe cümlesi de taşınmaz-bazlı listeye alındı
+
+Kullanıcı bildirimi: "Çevresel Özellikler Açıklaması tab değiştirildiğinde
+... köy mahalle ilçe il merkezine uzaklıklar değişiyor. 3 tapulu yerde 3
+adet çevresel özellik açıklaması olmuş." — `environmentDescription` alanı
+(0.0.407'den beri) PAYLAŞIMLI olmasına rağmen, İÇERİĞİNİ üreten
+`buildEnvironmentalDescription()`'ın Tarımsal Alan dalındaki
+`agriculturalKmlDistanceSentence` (bağlı bulunduğu mahalle/ilçe/il merkezi
+mesafesi cümlesi) hâlâ SADECE aktif taşınmazın kendi mesafesini
+(`state.fields.boundNeighborhoodDistance`) okuyordu — hangi taşınmaz tabı
+aktifken bu paylaşımlı alan yeniden hesaplandıysa O taşınmazın mesafesiyle
+"donup" kalıyordu.
+
+- **Düzeltme**: yeni ortak yardımcı `buildAgriculturalMultiUnitParcelDistanceSentence()`
+  — hem "Ulaşım Tarifi" (`buildAgriculturalMultiTitleUnitTransportText`)
+  HEM `buildAgriculturalKmlDistanceSentence` tarafından kullanılır (aynı
+  bilgi iki yerde ayrı ayrı ve TUTARSIZ üretilmesin diye). Farklı ada/
+  parsellerde (`hasMixedTitleUnitParcels()`) artık "Ulaşım Tarifi" ile
+  BİREBİR AYNI taşınmaz-bazlı liste ("2928 Ada 46 Parsel taşınmaz bağlı
+  bulunduğu ... , 2927 Ada 12 Parsel ... yer almaktadır.") kullanılıyor;
+  aynı parselde (mixed=false) eski tekli mantık DEĞİŞMEDEN kalıyor (tüm
+  taşınmazların mesafesi zaten aynı/çok yakın kabul edilir).
+- `applyKmlRecordsToTitleUnits`, tüm KML kayıtları işlendikten sonra artık
+  `refreshEnvironmentDescriptionFromCurrentFields("boundNeighborhoodDistance")`
+  de çağırıyor — paylaşımlı `environmentDescription` KML yüklendiği anda
+  güncel taşınmaz listesiyle yeniden hesaplanır, kullanıcının elle bir
+  alanı değiştirip tetiklemesine gerek KALMAZ (0.0.415'teki "Ulaşım
+  Tarifi" için yalnızca son-işlenen-taşınmaz sorununun aynısı, burada da
+  aynı yerden düzeltildi).
+- Test: `tools/test-agricultural-multi-unit-transport.js`'e 2 senaryo
+  eklendi — (a) `buildAgriculturalKmlDistanceSentence`'ın HANGİ taşınmaz
+  aktifken çağrıldığından bağımsız olarak HER ZAMAN aynı (tüm 3 taşınmazı
+  içeren) sonucu ürettiğini doğruluyor (switchActiveTitleUnit'in gerçek
+  "checkout/checkin" davranışını doğru simüle ederek — ilk denemede test
+  kurgusunun kendisi yanlışlıkla sırayı karıştırıyordu, düzeltildi), (b)
+  aynı parselde eski tekli mantığın regresyon yapmadığını doğruluyor.
+  `npm test` zincirine eklendi (aynı dosya, ek fonksiyonlar).
+- **Not**: bu, önceki oturumdaki eski/kaydedilmiş "Çevresel Özellikler
+  Açıklaması" metnini OTOMATİK düzeltmez — zaten kaydedilmiş bir raporda
+  düzelmiş metni görmek için `environmentDescriptionAutoRefreshFields`
+  kümesindeki bir alanı (ör. Çevresel Özellik Bölge Türü'nü kapatıp
+  açarak) tetiklemek gerekir; yeni KML yüklemelerinde artık otomatik.
+- Cache-buster: `app.js?v=20260812-0530`.
+- Yedek: `backups/before-agri-environmental-description-shared_2026-08-12_10-34-30`.

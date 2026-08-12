@@ -7080,6 +7080,20 @@ function buildAgriculturalKmlDistanceSentence(values, options = {}) {
   if (options.usePlaceholderTokens) {
     return `KML koordinat verisine göre taşınmaz, bağlı bulunduğu ${values.boundNeighborhood} mahalle/köy merkezinin ${values.boundNeighborhoodDistance}, ${values.district} ilçe merkezinin ${values.districtCenterDistance}, ${values.city} il merkezinin ${values.cityCenterDistance} konumunda yer almaktadır. `;
   }
+  // Kullanıcı bildirimi (2026-08-12): Çoklu Talep + farklı ada/parsellerde
+  // bu cümle yalnızca AKTİF taşınmazın (`values.boundNeighborhoodDistance`,
+  // `state.fields`'tan gelir) mesafesini yansıtıyordu — tab değiştirildikçe
+  // "Çevresel Özellikler Açıklaması" (paylaşımlı bir alan olmasına rağmen)
+  // hangi taşınmaz aktifken yeniden hesaplandıysa O taşınmazın mesafesini
+  // gösterip kalıyordu. Farklı ada/parsellerde artık "Ulaşım Tarifi" ile
+  // AYNI ortak taşınmaz-bazlı mesafe cümlesi kullanılır (bkz.
+  // buildAgriculturalMultiUnitParcelDistanceSentence) — aynı parselde ise
+  // (tüm taşınmazların mesafesi zaten aynı/çok yakın olduğundan) aşağıdaki
+  // tekli mantık değişmeden kalır.
+  if (isMultiTitleUnitReportForNarrative() && hasMixedTitleUnitParcels()) {
+    const sharedSentence = buildAgriculturalMultiUnitParcelDistanceSentence();
+    return sharedSentence ? `${sharedSentence} ` : "";
+  }
   const parts = [];
   const boundCenterName = cleanBoundNeighborhoodCenterName(values.boundNeighborhood);
   const boundDistance = cleanEnvironmentalDistancePhrase(values.boundNeighborhoodDistance);
@@ -7165,19 +7179,19 @@ registerVariantGroup(
 // genel özet cümlesinin aldığı eşik (kullanıcı talebi: "5 ten fazla ise").
 const AGRICULTURAL_MULTI_UNIT_TRANSPORT_LIST_LIMIT = 5;
 
-function buildAgriculturalMultiTitleUnitTransportText() {
-  if (state.fields?.environmentRegionType !== "Tarımsal Alan") return "";
-  if (!isMultiTitleUnitReportForNarrative()) return "";
-
+// Farklı ada/parsellerdeki taşınmazlar için ORTAK mesafe cümlesi/özeti —
+// hem "Ulaşım Tarifi" (buildAgriculturalMultiTitleUnitTransportText) hem
+// "Çevresel Özellikler Açıklaması"nın KML mesafe cümlesi
+// (buildAgriculturalKmlDistanceSentence) TARAFINDAN kullanılır. Kullanıcı
+// bildirimi (2026-08-12): "taşınmazların tamamı mahallenin farklı
+// çevresinde yer alıyor olabilir, bunu ortak bir cümleye aktarmamız
+// lazım" — aynı bilginin iki yerde ayrı ayrı (ve TUTARSIZ, aktif taşınmaza
+// göre değişen) üretilmesini önlemek için TEK yerde hesaplanır.
+function buildAgriculturalMultiUnitParcelDistanceSentence() {
   const units = getNarrativeTitleUnitFields();
 
-  // 1) Tüm taşınmazlar aynı parselde (tek KML) — bu fonksiyon KARIŞMAZ,
-  // updateTransportFromMainArtery kendi çoğullaştırmasını yapar (yukarıdaki
-  // yorum). Burada üretilecek AYRI bir cümle YOK.
-  if (!hasMixedTitleUnitParcels()) return "";
-
   if (units.length > AGRICULTURAL_MULTI_UNIT_TRANSPORT_LIST_LIMIT) {
-    // 3) 5'ten fazla farklı ada/parsel — taşınmaz bazlı liste yerine genel
+    // 5'ten fazla farklı ada/parsel — taşınmaz bazlı liste yerine genel
     // özet (birincil taşınmazın bağlı bulunduğu mahalle esas alınır).
     const primary = units[0] || {};
     const neighborhood = getAgriculturalNeighborhoodBaseName(primary.boundNeighborhood)
@@ -7190,7 +7204,7 @@ function buildAgriculturalMultiTitleUnitTransportText() {
     return agriculturalMultiUnitManyParcelsTransportVariants[variantIndex](neighborhood);
   }
 
-  // 2) 5 veya daha az, farklı ada/parsel — taşınmaz başına ayrı cümlecik.
+  // 5 veya daha az, farklı ada/parsel — taşınmaz başına ayrı cümlecik.
   const fragmentVariantIndex = selectVariant(
     "agriculturalMultiUnitParcelListTransportFragment",
     agriculturalMultiUnitParcelListTransportFragmentVariants.length,
@@ -7209,6 +7223,19 @@ function buildAgriculturalMultiTitleUnitTransportText() {
   // ("yer almaktadır") yalnızca SONDA, bir kez gelir (kullanıcı bildirimi:
   // önceki hâlde hiç yüklem yoktu, cümle anlamsız kalıyordu).
   return `${fragments.join(", ")} yer almaktadır.`;
+}
+
+function buildAgriculturalMultiTitleUnitTransportText() {
+  if (state.fields?.environmentRegionType !== "Tarımsal Alan") return "";
+  if (!isMultiTitleUnitReportForNarrative()) return "";
+
+  // 1) Tüm taşınmazlar aynı parselde (tek KML) — bu fonksiyon KARIŞMAZ,
+  // updateTransportFromMainArtery kendi çoğullaştırmasını yapar (yukarıdaki
+  // yorum). Burada üretilecek AYRI bir cümle YOK.
+  if (!hasMixedTitleUnitParcels()) return "";
+
+  // 2/3) Farklı ada/parsel — ortak yardımcıdan üretilir.
+  return buildAgriculturalMultiUnitParcelDistanceSentence();
 }
 
 // Çoklu Talep + Tarımsal Alan raporlarında "Ulaşım Tarifi"ni GÜNCEL taşınmaz
@@ -27192,6 +27219,11 @@ async function applyKmlRecordsToTitleUnits(records) {
   // Talep + Tarımsal Alan raporlarında "Ulaşım Tarifi"ni bu güncel listeyle
   // yeniden üret (bkz. refreshMultiTitleUnitAgriculturalTransport yorumu).
   refreshMultiTitleUnitAgriculturalTransport();
+  // Paylaşımlı "Çevresel Özellikler Açıklaması" da (buildAgriculturalKmlDistanceSentence
+  // üzerinden) aynı güncel taşınmaz listesiyle yeniden hesaplansın — aksi
+  // halde son işlenen taşınmazın mesafesiyle donmuş kalırdı (kullanıcı
+  // bildirimi, 2026-08-12).
+  refreshEnvironmentDescriptionFromCurrentFields("boundNeighborhoodDistance");
   autosave();
   renderValidation();
   updateStatus();

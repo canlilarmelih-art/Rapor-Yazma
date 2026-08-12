@@ -68,7 +68,10 @@ const functionNames = [
   "cleanEnvironmentalDistancePhrase",
   "getAgriculturalNeighborhoodBaseName",
   "formatAgriculturalParcelLabel",
+  "buildAgriculturalMultiUnitParcelDistanceSentence",
   "buildAgriculturalMultiTitleUnitTransportText",
+  "buildAgriculturalKmlDistanceSentence",
+  "formatTurkishList",
   "pluralizeEnvironmentalSubjectText",
   "selectVariant",
   "registerVariantGroup",
@@ -81,7 +84,12 @@ ${extractConstArray("agriculturalMultiUnitParcelListTransportFragmentVariants")}
 ${extractConstArray("agriculturalMultiUnitManyParcelsTransportVariants")}
 const AGRICULTURAL_MULTI_UNIT_TRANSPORT_LIST_LIMIT = 5;
 ${functionNames.map(extractFunction).join("\n")}
-return { buildAgriculturalMultiTitleUnitTransportText, pluralizeEnvironmentalSubjectText, setState: (s) => { state = s; } };
+return {
+  buildAgriculturalMultiTitleUnitTransportText,
+  buildAgriculturalKmlDistanceSentence,
+  pluralizeEnvironmentalSubjectText,
+  setState: (s) => { state = s; },
+};
 `;
 // eslint-disable-next-line no-new-func
 const sandbox = new Function(sandboxSource)();
@@ -227,5 +235,73 @@ function boundFields(blockNo, parcelNo, distanceText) {
     /field\.key === "environmentRegionType"[\s\S]{0,500}?refreshMultiTitleUnitAgriculturalTransport\(\);/,
     "environmentRegionType alanı değiştiğinde de refreshMultiTitleUnitAgriculturalTransport() çağrılmalı (KML'den SONRA Tarımsal Alan'a geçiş senaryosu).",
   );
+  assert.match(
+    appSource,
+    /switchActiveTitleUnit\(0\);[\s\S]{0,600}?refreshEnvironmentDescriptionFromCurrentFields\("boundNeighborhoodDistance"\);/,
+    "applyKmlRecordsToTitleUnits, TÜM KML kayıtları işlendikten sonra \"Çevresel Özellikler Açıklaması\"nı da (boundNeighborhoodDistance tetikleyicisiyle) yeniden hesaplatmalı.",
+  );
   console.log("Tetikleyici kablolamasi - kaynak-duzeyi dogrulama testi tamam.");
+}
+
+// 7) Kullanıcı bildirimi (2026-08-12): "Çevresel Özellikler Açıklaması"
+// (buildEnvironmentalDescription'ın tarımsal dalına gömülü KML mesafe
+// cümlesi) tab değiştirildiğinde farklı taşınmazın mesafesini gösterip
+// duruyordu — artık farklı ada/parsellerde "Ulaşım Tarifi" ile AYNI ortak
+// taşınmaz-bazlı cümleyi kullanmalı ve hangi taşınmaz aktifken
+// çağrıldığından BAĞIMSIZ, HER ZAMAN aynı sonucu üretmeli.
+{
+  // Sabit "yuva" sırası: slot0=2928/46 (birincil), slot1=2927/12, slot2=2930/1.
+  // switchActiveTitleUnit GERÇEKTE diziyi karıştırmaz — yalnızca HANGİ
+  // yuvanın verisi o an state.fields'ta "canlı", hangisinin kendi
+  // (primaryTitleUnitShadow / titleUnits[i-1]) yuvasında "park edilmiş"
+  // olduğunu değiştirir. Test bunu doğru simüle etmeli, aksi halde yanlış
+  // bir "sıra karışıyor" hatası kendi test kurgusundan kaynaklanır.
+  const slot0 = boundFields("2928", "46", "1,83 km güneyinde");
+  const slot1 = boundFields("2927", "12", "2,57 km güneydoğusunda");
+  const slot2 = boundFields("2930", "1", "1,67 km güneybatısında");
+  const values = { boundNeighborhood: "Ataevler", boundNeighborhoodDistance: "Taşınmaz mahalle merkezinin 1,83 km güneyinde" };
+
+  const resultsByActiveIndex = [0, 1, 2].map((activeIndex) => {
+    const slots = [slot0, slot1, slot2];
+    sandbox.setState({
+      fields: { environmentRegionType: "Tarımsal Alan", ...slots[activeIndex] },
+      primaryTitleUnitShadow: activeIndex === 0 ? null : { fields: slot0 },
+      titleUnits: [
+        activeIndex === 1 ? { fields: {} } : { fields: slot1 },
+        activeIndex === 2 ? { fields: {} } : { fields: slot2 },
+      ],
+      activeTitleUnitIndex: activeIndex,
+    });
+    return sandbox.buildAgriculturalKmlDistanceSentence(values, {});
+  });
+
+  assert.ok(resultsByActiveIndex.every(Boolean), "Farklı ada/parsellerde KML mesafe cümlesi boş dönmemeli.");
+  assert.equal(
+    new Set(resultsByActiveIndex).size,
+    1,
+    `Cümle, HANGİ taşınmaz aktifken hesaplandığından bağımsız aynı olmalı (aksi halde tab değiştirince "değişen" bir cümle görünür). Üretilenler: ${JSON.stringify(resultsByActiveIndex)}`,
+  );
+  assert.match(resultsByActiveIndex[0], /2928 Ada 46 Parsel taşınmaz bağlı bulunduğu Ataevler Mahalle Merkezinin 1,83 km güneyinde/);
+  assert.match(resultsByActiveIndex[0], /2927 Ada 12 Parsel taşınmaz bağlı bulunduğu Ataevler Mahalle Merkezinin 2,57 km güneydoğusunda/);
+  assert.match(resultsByActiveIndex[0], /yer almaktadır\.\s$/, "Cümle bir sonrakiyle temiz birleşsin diye sonunda tek boşluk olmalı.");
+  console.log("Cevresel Ozellikler Aciklamasi mesafe cumlesi - tab-bagimsiz kararlilik testi tamam.");
+}
+
+// 7b) Aynı parselde (mixed=false) KML mesafe cümlesi eski (tekli) mantığı
+// KULLANMAYA devam etmeli — regresyon yok.
+{
+  sandbox.setState({
+    fields: { environmentRegionType: "Tarımsal Alan", ...boundFields("1408", "3", "800 m güneyinde") },
+    titleUnits: [{ fields: boundFields("1408", "3", "800 m güneyinde") }],
+    activeTitleUnitIndex: 0,
+    primaryTitleUnitShadow: null,
+  });
+  const values = {
+    boundNeighborhood: "Ataevler",
+    boundNeighborhoodDistance: "Taşınmaz mahalle merkezinin 800 m güneyinde",
+    district: "", city: "",
+  };
+  const text = sandbox.buildAgriculturalKmlDistanceSentence(values, {});
+  assert.match(text, /^KML koordinat verisine göre taşınmaz, bağlı bulunduğu Ataevler Mahalle Merkezinin 800 m güneyinde yer almaktadır\.\s$/);
+  console.log("Ayni parselde KML mesafe cumlesi - tekli mantik regresyon testi tamam.");
 }
