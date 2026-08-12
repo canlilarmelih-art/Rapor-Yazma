@@ -77,6 +77,11 @@ function run(fields, tables = {}, titleUnits = []) {
 }
 
 // --- 1b) Coklu tasinmazlarda belge ve tasinmaz ifadeleri cogul olmali ------
+// Kullanıcı bildirimi (2026-08-12): her taşınmazın kendi TAKBİS PDF'i
+// genelde aynı gün ama farklı SAATTE alınmış oluyor — bu "değişken" saat,
+// hangi taşınmaz aktifken cümle üretildiyse O taşınmazınkini gösterip
+// "tek ortak açıklama" olma amacını bozuyordu. Çoklu talepte saat artık
+// TAMAMEN KALDIRILIYOR (takbisTime dolu olsa bile) — yalnızca tarih kalır.
 {
   const ctx = run(
     { takbisDate: "2026-08-03", takbisTime: "17:32", takbisMethod: "Webtapu Sistemi" },
@@ -85,7 +90,18 @@ function run(fields, tables = {}, titleUnits = []) {
   );
   assert.equal(
     ctx.buildEncumbranceIntroSentence(),
-    "03.08.2026 tarihinde saat 17:32 Webtapu Sistemi üzerinden alınan TAKBİS belgelerine göre, konu taşınmazlar üzerinde aşağıdaki takyidatlar bulunmaktadır.",
+    "03.08.2026 tarihinde Webtapu Sistemi üzerinden alınan TAKBİS belgelerine göre, konu taşınmazlar üzerinde aşağıdaki takyidatlar bulunmaktadır.",
+    "Coklu talepte saat DOLU olsa bile cumleye girmemeli, yalnizca tarih kalmali.",
+  );
+}
+
+// --- 1c) Tekli raporlarda saat DAVRANIŞI DEĞİŞMEMELİ (regresyon) ----------
+{
+  const ctx = run({ takbisDate: "2026-08-03", takbisTime: "17:32", takbisMethod: "Webtapu Sistemi" });
+  assert.equal(
+    ctx.buildEncumbranceIntroSentence(),
+    "03.08.2026 tarihinde saat 17:32 Webtapu Sistemi üzerinden alınan TAKBİS belgesine göre, konu taşınmaz üzerinde aşağıdaki takyidatlar bulunmaktadır.",
+    "Tekli (tek taşınmazlı) raporlarda saat hâlâ gösterilmeli — yalnızca çoklu talep etkilenir.",
   );
 }
 

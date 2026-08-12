@@ -8555,3 +8555,36 @@ aktifken bu paylaşımlı alan yeniden hesaplandıysa O taşınmazın mesafesiyl
   açarak) tetiklemek gerekir; yeni KML yüklemelerinde artık otomatik.
 - Cache-buster: `app.js?v=20260812-0530`.
 - Yedek: `backups/before-agri-environmental-description-shared_2026-08-12_10-34-30`.
+
+## 0.0.421 - 2026-08-12 - Takyidat giriş cümlesinde çoklu talepte saat kaldırıldı
+
+Kullanıcı bildirimi: "Tapu takyidat bölümünde aynı sorun var, takyidat
+alınma saati değişken oluyor, bu bölümü kaldıralım, çoklu taleplerde
+sadece tarih olsun, template bölümüne tek ortak açıklama aktarılmalı."
+Aynı sınıf hata: her taşınmazın TAKBİS PDF'i genelde aynı GÜN ama farklı
+SAATTE (birkaç dakika arayla) alınmış oluyor; `buildEncumbranceIntroSentence()`
+yalnızca AKTİF taşınmazın `takbisTime`'ını okuyordu — "tek ortak açıklama"
+olması gereken giriş cümlesi, hangi taşınmaz aktifken üretildiyse o
+taşınmazın saatini gösteriyordu.
+
+- **Düzeltme**: `buildEncumbranceIntroSentence()`, çoklu taleplerde
+  (`getTitleUnitCount() > 1`) "saat {time}" kısmını TAMAMEN kaldırıyor —
+  `takbisTime` dolu olsa bile yalnızca "{tarih} tarihinde ..." kalıyor.
+  Tarih tipik olarak aynı gün olduğundan (yalnızca saat değişken) bu tek
+  başına kararlı/ortak bir cümle üretmeye yetiyor — mahalle-mesafesi
+  sorununun aksine ayrı bir taşınmaz-bazlı liste/itemizasyon GEREKMEDİ.
+  Tekli (tek taşınmazlı) raporlarda davranış DEĞİŞMEDİ, saat varsa
+  gösterilmeye devam ediyor.
+- Bu fonksiyon zaten hem `getEncumbranceIntroSentenceForPlaceholder()`
+  (banka şablonu `{{TAKYIDATACIKLAMAGIRISCUMLESI}}` placeholder'ı) HEM
+  `buildEncumbranceSummaryVariants()` (paylaşımlı `takbisSummary` alanı)
+  tarafından kullanıldığından — ve ikisi de takyidat TABLOSU için zaten
+  0.0.401'den beri taşınmaz-bazlı `getMultiTitleUnitEncumbranceRows()`'u
+  kullandığından — bu TEK düzeltme kullanıcının "template bölümüne tek
+  ortak açıklama aktarılmalı" isteğini de otomatik karşılıyor, ayrı bir
+  template-tarafı değişiklik gerekmedi.
+- Test: `tools/test-encumbrance-intro-sentence.js` — çoklu talepte saat
+  DOLU olsa bile cümleye girmediğini, tekli raporlarda ise saat davranışının
+  DEĞİŞMEDİĞİNİ (regresyon) doğrulayan 2 senaryo güncellendi/eklendi.
+- Cache-buster: `app.js?v=20260812-0600`.
+- Yedek: `backups/before-encumbrance-intro-time-drop_2026-08-12_12-04-07`.

@@ -22630,10 +22630,18 @@ function buildEncumbranceIntroSentence() {
   const date = encumbranceDateOrBila(state.fields.takbisDate);
   const time = String(state.fields.takbisTime || "").trim();
   const method = encumbranceTextOrBila(state.fields.takbisMethod || "Webtapu Sistemi");
-  const receivedAt = time ? `${date} tarihinde saat ${time}` : `${date} tarihinde`;
   const isMultiTitleUnitReport = typeof getTitleUnitCount === "function"
     ? getTitleUnitCount() > 1
     : Array.isArray(state.titleUnits) && state.titleUnits.length > 0;
+  // Kullanıcı bildirimi (2026-08-12): Çoklu Talep raporlarında her
+  // taşınmazın kendi TAKBİS PDF'i genelde aynı GÜN içinde ama FARKLI
+  // SAATLERDE (birkaç dakika arayla) alınmış oluyor — bu "saat", hangi
+  // taşınmaz aktifken cümle üretildiyse O taşınmazınkini gösteriyordu
+  // ("tek ortak açıklama" yerine taşınmaza göre değişen bir metin).
+  // Çoklu talepte saat TAMAMEN KALDIRILDI, yalnızca tarih kullanılır —
+  // tarih genelde aynı gün olduğundan tek ortak/kararlı bir cümle çıkar.
+  // Tekli raporlarda davranış DEĞİŞMEDİ (saat varsa gösterilmeye devam eder).
+  const receivedAt = (time && !isMultiTitleUnitReport) ? `${date} tarihinde saat ${time}` : `${date} tarihinde`;
   const takbisDocumentLabel = isMultiTitleUnitReport ? "TAKBİS belgelerine" : "TAKBİS belgesine";
   const subjectPropertyLabel = isMultiTitleUnitReport ? "taşınmazlar" : "taşınmaz";
   const variants = [
