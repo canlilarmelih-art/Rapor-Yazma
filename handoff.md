@@ -8457,3 +8457,56 @@ Karahıdırköyü Mahalle Merkezinin 1,83 km güneyinde, ... güneybatısında."
   güvenliği için en güçlü doğrulama biçimi).
 - Cache-buster: `app.js?v=20260812-0430`.
 - Yedek: `backups/before-agri-transport-label-sentence-fix_2026-08-12_02-52-15`.
+
+## 0.0.419 - 2026-08-12 - "Adres ve Konum" Çevresel Özellik bloğu tamamen paylaşımlı
+
+Kullanıcı bildirimi: "bir tabtan diğerine geçtiğimde yine çevresel özellik
+kısımlarını seçmek zorunda kalıyorum ... tüm tablar için geçerli ortak
+kısımlar bunlar." — Çoklu Talep raporlarında taşınmaz tabı değiştirmek,
+"Adres ve Konum" sekmesindeki "Çevresel Özellik" alanlarını (Bölge Türü,
+Yapılaşma Yoğunluğu, Deprem Derecesi, Bölgede Güvenlik Problemi, Mülk
+Değeri Değişimi, tarımsal/ticari alt alanlar vb.) da SIFIRLIYOR/AYIRIYORDU
+— kullanıcı her taşınmaz tabında bunları TEKRAR seçmek zorunda kalıyordu.
+
+- **Gerekçe**: çoklu talepteki taşınmazlar genelde AYNI iş/bölgede birlikte
+  değerlendiriliyor — bölgenin yapılaşma yoğunluğu, deprem derecesi,
+  güvenlik durumu vb. taşınmaza değil, ÇEVREYE ait bilgilerdir. Yalnızca
+  gerçekten taşınmaza özgü alanlar (ada/parsel, blok/kat/BB no, il/ilçe/
+  mahalle, dış kapı no, mesafeler) taşınmaza göre ayrılmaya devam ediyor.
+- `TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS`'e (0.0.407'de "açıklama"
+  metin alanları için eklenmişti) 22 yeni alan eklendi: `mainArtery`,
+  `environmentRegionType`, `mainArteryProximity`,
+  `agriculturalActivityDensity`, `agriculturalActivityTypes`,
+  `agriculturalSuitability`, `regionBuildOrder`, `regionFloorRange`,
+  `regionIncomeLevel`, `infrastructureLevel`, `developmentSpeed`,
+  `regionBuildingAge`, `developmentDensity`, `socialNeeds`,
+  `regionUsePurpose`, `earthquakeZone`, `regionSecurityIssue`,
+  `propertyValueTrend`, `commercialFunctionDensity`, `commercialFirmType`,
+  `commercialFrontageRoadType`, `commercialDevelopmentCompleted`.
+  `mainArteryId` zaten deklaratif bir `sections[].fields` girdisi
+  OLMADIĞINDAN dolaylı olarak zaten paylaşımlıydı, tutarlılık için
+  `mainArtery` (görünen ad) da eklendi.
+- Bu değişiklik **Tarımsal Alan'a özel DEĞİL** — tüm bölge türlerinde
+  (Konut/Ticaret/Sanayi/Tarımsal Alan) geçerli, çünkü ilke ("çevre
+  bilgisi, taşınmaz bilgisi değil") bölge türünden bağımsız.
+  `resetKmlDerivedFields` zaten `TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS`'e
+  bakarak filtreleme yaptığından (`!preserveShared ||
+  !TITLE_UNIT_SHARED...has(key)`) ek bir değişiklik gerekmedi — bu alanlar
+  artık orada da otomatik korunuyor.
+- Test: `tools/test-environmental-fields-shared-across-units.js` — (a) yeni
+  eklenen 22 alanın GERÇEK `TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS`
+  metninden çıkarılıp doğrulanması (hard-coded kopya DEĞİL — bkz.
+  docs/coklu-talep-fonksiyonel-test-bulgulari.md bulgu #2, stale-fixture
+  riskine karşı), (b) yeni taşınmaz tabında bu alanların KORUNDUĞU, (c) bir
+  alanı herhangi bir taşınmazdan değiştirmenin TÜM taşınmazlara yansıdığı
+  (gerçekten tek ortak değer). `npm test` zincirine eklendi.
+- **Bilinen sınır**: bu, `tools/test-title-unit-switch.js` ve
+  `tools/test-title-unit-import.js`'in KENDİ ESKİ/eksik
+  `TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS` kopyalarını (yalnızca 4 alan:
+  transport/nearby/environmentDescription/takbisSummary) GÜNCELLEMEDİ —
+  o testler zaten öncesinde de gerçek sabitten geri kalmıştı (14 vs 4),
+  şimdi 36 vs 4. Bu iki test dosyasının kendi sabit kopyalarını gerçek
+  app.js'ten çıkarmaya geçirmesi ayrı bir iyileştirme (daha önce de
+  önerildi, henüz alınmadı).
+- Cache-buster: `app.js?v=20260812-0500`.
+- Yedek: `backups/before-environmental-fields-shared_2026-08-12_09-56-02`.

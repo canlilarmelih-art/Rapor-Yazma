@@ -1211,7 +1211,23 @@ const TITLE_UNIT_SCOPED_TABLE_KEYS = [
   "encumbranceDeclarations", "encumbranceAnnotations", "encumbranceMortgages",
 ];
 // Açıklamalar rapor-genelidir. Çoklu tapu sekmeleri arasında taşınmazın
-// teknik verileri değişir; ortak rapor anlatımı ve kullanıcı metinleri değişmez.
+// teknik verileri (ada/parsel, adres detayları, mesafeler vb.) değişir;
+// ortak rapor anlatımı ve kullanıcı metinleri değişmez.
+//
+// 2026-08-12 kullanıcı bildirimi: "bir tabtan diğerine geçtiğimde yine
+// çevresel özellik kısımlarını seçmek zorunda kalıyorum ... tüm tablar
+// için geçerli ortak kısımlar bunlar" — "Adres ve Konum" sekmesindeki
+// TÜM "Çevresel Özellik" alanları (environmentRegionType'tan
+// environmentDescription'a kadar olan blok) eklendi. Gerekçe: çoklu
+// talepteki taşınmazlar genelde AYNI iş/bölgede birlikte değerlendiriliyor
+// — bölgenin yapılaşma yoğunluğu, deprem derecesi, güvenlik durumu vb.
+// taşınmaza değil, ÇEVREYE ait bilgilerdir, tab başına tekrar
+// seçilmesi anlamsız veri tekrarı. Yalnızca gerçekten taşınmaza özgü
+// alanlar (ada/parsel, blok/kat/BB no, mesafeler) kapsam dışı kalmaya
+// devam ediyor. `mainArtery`/`mainArteryId` de eklendi — `mainArteryId`
+// zaten deklaratif bir alan OLMADIĞI için (getTitleUnitScopedFieldKeys
+// yalnızca sections[].fields'ı tarar) dolaylı olarak zaten paylaşımlıydı;
+// `mainArtery` (görünen ad) da aynı tutarlılıkta paylaşımlı olmalı.
 const TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS = new Set([
   "addressRaw",
   "transport",
@@ -1227,6 +1243,29 @@ const TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS = new Set([
   "landClimateEarthquakeExplanation",
   "comparableMarketAnalysisText",
   "saleabilityNote",
+  // "Adres ve Konum" — Çevresel Özellik bloğu (2026-08-12)
+  "mainArtery",
+  "environmentRegionType",
+  "mainArteryProximity",
+  "agriculturalActivityDensity",
+  "agriculturalActivityTypes",
+  "agriculturalSuitability",
+  "regionBuildOrder",
+  "regionFloorRange",
+  "regionIncomeLevel",
+  "infrastructureLevel",
+  "developmentSpeed",
+  "regionBuildingAge",
+  "developmentDensity",
+  "socialNeeds",
+  "regionUsePurpose",
+  "earthquakeZone",
+  "regionSecurityIssue",
+  "propertyValueTrend",
+  "commercialFunctionDensity",
+  "commercialFirmType",
+  "commercialFrontageRoadType",
+  "commercialDevelopmentCompleted",
 ]);
 
 function getTitleUnitScopedFieldKeys() {
