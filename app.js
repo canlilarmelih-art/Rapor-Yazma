@@ -2409,6 +2409,11 @@ function renderSection() {
   const sectionExcelPanel = createSectionExcelPanel(section);
   if (sectionExcelPanel) card.insertBefore(sectionExcelPanel, body);
 
+  if (section.id === "encumbrance") {
+    const encumbranceSummaryPanel = createEncumbranceSharedSummaryPanel();
+    if (encumbranceSummaryPanel) card.insertBefore(encumbranceSummaryPanel, body);
+  }
+
   if (section.id === "land") {
     const climatePanel = createLandClimateEarthquakePanel();
     if (climatePanel) body.append(climatePanel);
@@ -15255,6 +15260,40 @@ function createSectionExcelPanel(section) {
   return panel;
 }
 
+// Kullanıcı talebi (2026-08-12): Takyidat kayıtlarının hangi taşınmazlarda
+// ORTAK (aynı yevmiye no ile birden fazla taşınmazda), hangilerinin
+// taşınmaza-özel/AYRI olduğunu ayrı, salt-okunur bir Excel özeti olarak
+// indirebilmek. Yalnızca Çoklu Talep'te (birden fazla taşınmaz varken)
+// anlamlı olduğundan admin-only + getTitleUnitCount() > 1 iken gösterilir.
+// Bölüm Excel'inden (createSectionExcelPanel) KASITLI OLARAK AYRI bir
+// panel — içe aktarımı YOK, çünkü ortak/ayrı bilgisi yevmiye no'dan
+// OTOMATİK hesaplanır; elle düzenlenip geri yüklenebilir bir alan olursa
+// gerçek veriyle çelişen yanlış bir "ortak" işareti kalıcı hâle gelebilir.
+function createEncumbranceSharedSummaryPanel() {
+  if (!window.RaporMultiRequestXlsx || !isCurrentUserAdmin() || getTitleUnitCount() <= 1) return null;
+  const panel = document.createElement("div");
+  panel.className = "subsection section-excel-panel";
+  panel.innerHTML = `
+    <div class="output-export-actions">
+      <button type="button" class="secondary-button" data-encumbrance-summary-export>Ortak/Ayrı Takyidat Özeti (Excel)</button>
+    </div>
+    <p class="export-status" data-encumbrance-summary-status aria-live="polite"></p>
+  `;
+  const status = panel.querySelector("[data-encumbrance-summary-status]");
+  panel.querySelector("[data-encumbrance-summary-export]").addEventListener("click", () => {
+    try {
+      const rows = getEncumbranceMultiUnitSummaryRows();
+      if (rows.length <= 1) {
+        status.textContent = "Özetlenecek bir takyidat kaydı bulunamadı.";
+        return;
+      }
+      window.RaporMultiRequestXlsx.exportRows(rows, `${buildExportBaseFileName()}-takyidat-ortak-ayri-ozet.xlsx`);
+      status.textContent = "Özet Excel dosyası indirildi (salt-okunur, geri yüklenmez).";
+    } catch (error) { status.textContent = error.message || "Excel oluşturulamadı."; }
+  });
+  return panel;
+}
+
 function createOutputExportPanel() {
   const panel = document.createElement("div");
   panel.className = "subsection output-export-panel";
@@ -23494,6 +23533,41 @@ function getMultiTitleUnitEncumbranceRows(tableKey) {
 function hasMeaningfulEncumbranceTableRow(tableKey, row) {
   const keys = tableKey === "encumbranceMortgages" ? ["c0", "c1", "c2"] : Object.keys(row || {});
   return keys.some((key) => String(row?.[key] || "").trim());
+}
+
+// Kullanıcı talebi (2026-08-12): "Takyidat Excel tablosunda ortak/ayrı
+// kayıtlar nasıl belirtiliyor" — Bölüm Excel'i (getSectionExcelRows) HAM
+// veriyi taşınmaz başına ayrı tutar, ortak/ayrı bilgisini HİÇ göstermez;
+// bu bilgi yalnızca RAPOR METNİ üretilirken (formatEncumbranceTitleUnitScope)
+// yevmiye numarasından OTOMATIK hesaplanır. Kullanıcı bu hesaplamanın
+// AYRI, salt-okunur bir özet Excel'i olarak da indirilebilmesini istedi —
+// mevcut Bölüm Excel'inden BAĞIMSIZ, içe aktarımı YOK (yevmiye eşleşmesi
+// TEK doğru kaynak olarak kalsın diye kasıtlı olarak salt-okunur).
+const ENCUMBRANCE_MULTI_UNIT_SUMMARY_TABLES = [
+  { key: "encumbranceDeclarations", label: "Beyanlar / Hak ve Mükellefiyetler", formatter: (row) => formatEncumbranceDeclarationRow(row) },
+  { key: "encumbranceAnnotations", label: "Şerhler", formatter: formatEncumbranceAnnotationRow },
+  { key: "encumbranceMortgages", label: "İpotekler", formatter: formatEncumbranceMortgageRow },
+];
+
+function getEncumbranceMultiUnitSummaryRows() {
+  const header = ["Bölüm", "Yevmiye No", "Ortak mı?", "Kapsadığı Taşınmazlar", "Açıklama (rapor metni)"];
+  const rows = [header];
+  ENCUMBRANCE_MULTI_UNIT_SUMMARY_TABLES.forEach((table) => {
+    getMultiTitleUnitEncumbranceRows(table.key).forEach((row) => {
+      const text = table.formatter(row);
+      if (!text) return;
+      const references = Array.isArray(row.__titleUnitReferences) ? row.__titleUnitReferences.filter(Boolean) : [];
+      const journalNo = getEncumbranceRowJournalNo(table.key, row);
+      rows.push([
+        table.label,
+        encumbranceTextOrBila(journalNo),
+        references.length > 1 ? "Evet" : "Hayır",
+        references.join(", "),
+        text,
+      ]);
+    });
+  });
+  return rows;
 }
 
 function isEncumbranceRightOrLiabilityRow(row) {

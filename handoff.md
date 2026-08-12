@@ -8588,3 +8588,39 @@ taşınmazın saatini gösteriyordu.
   DEĞİŞMEDİĞİNİ (regresyon) doğrulayan 2 senaryo güncellendi/eklendi.
 - Cache-buster: `app.js?v=20260812-0600`.
 - Yedek: `backups/before-encumbrance-intro-time-drop_2026-08-12_12-04-07`.
+
+## 0.0.422 - 2026-08-12 - Ortak/Ayrı Takyidat Özeti (salt-okunur Excel)
+
+Kullanıcı sorusu: "Takyidat Excel tablosunda nasıl belirtiliyor ortak ve
+ayrı takyidat kayıtları" — cevap: HİÇ belirtilmiyordu, Bölüm Excel'i
+(`getSectionExcelRows`) her taşınmazın ham takyidat kayıtlarını AYRI AYRI
+JSON olarak tutuyor; ortak/ayrı bilgisi yalnızca RAPOR METNİ üretilirken
+(`formatEncumbranceTitleUnitScope`, yevmiye no eşleşmesinden) hesaplanıyor.
+Kullanıcıya 2 seçenek sunuldu (`AskUserQuestion`); **"ayrı bir özet
+sayfası/tablo"** seçildi.
+
+- Yeni `getEncumbranceMultiUnitSummaryRows()`: 3 alt-tablonun (Beyanlar/
+  Hak ve Mükellefiyetler, Şerhler, İpotekler) HER BİRİ için
+  `getMultiTitleUnitEncumbranceRows(tableKey)` ile GRUPLANMIŞ satırları
+  alır, her satır için mevcut `formatEncumbrance*Row` fonksiyonlarını
+  (rapor metniyle AYNI kaynak, tutarlılık için) çağırır ve şu sütunları
+  üretir: Bölüm, Yevmiye No, **Ortak mı? (Evet/Hayır)**, Kapsadığı
+  Taşınmazlar (`A-2, A-4` gibi), Açıklama (rapor metni).
+- Yeni `createEncumbranceSharedSummaryPanel()`: Takyidat sekmesine
+  "Ortak/Ayrı Takyidat Özeti (Excel)" düğmesi ekler — admin-only VE
+  yalnızca `getTitleUnitCount() > 1` (Çoklu Talep) iken görünür.
+- **Bilinçli olarak salt-okunur**: mevcut Bölüm Excel'inden (indir/yükle
+  çifti) AYRI bir panel — bu özetin İÇE AKTARIMI YOK. Ortak/ayrı bilgisi
+  yevmiye no eşleşmesinden OTOMATİK hesaplandığından, elle düzenlenip
+  geri yüklenebilir bir alan olursa gerçek veriyle çelişen yanlış bir
+  "ortak" işareti kalıcı hâle gelebilirdi — kullanıcı bu riski
+  `AskUserQuestion` sorusunda görüp onayladı.
+- Test: `tools/test-multi-encumbrance-grouping.js`'e yeni bir senaryo
+  eklendi — 3 alt-tablonun doğru gruplandığını, "Ortak mı?"/"Kapsadığı
+  Taşınmazlar" sütunlarının doğru hesaplandığını doğruluyor (asıl
+  `formatEncumbrance*Row` biçimlendirme mantığı kendi derin bağımlılık
+  zincirinden dolayı hafif sahte/stub sürümlerle değiştirildi — yalnızca
+  ORKESTRASYON test ediliyor, biçimlendirme mantığı zaten başka yerde
+  kanıtlanmış).
+- Cache-buster: `app.js?v=20260812-0630`.
+- Yedek: `backups/before-encumbrance-shared-summary-excel_2026-08-12_12-45-26`.

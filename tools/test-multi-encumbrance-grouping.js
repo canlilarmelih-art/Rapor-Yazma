@@ -74,3 +74,100 @@ assert.equal(
   " (A-2, A-4 üzerinde)",
 );
 console.log("Coklu takyidat ayni yevmiye gruplama testi tamam.");
+
+// --- Ortak/Ayrı Takyidat Özeti (Excel) — kullanıcı talebi (2026-08-12) ----
+// "Excel'de de ortak/ayrı gösterelim mi" sorusuna kullanıcı "ayrı bir özet
+// sayfası/tablo" cevabını verdi: getEncumbranceMultiUnitSummaryRows() bu
+// özeti üretir. Bu test, 3 alt-tablonun (Beyanlar/Şerhler/İpotekler)
+// GRUPLAMA + Excel satırı ORKESTRASYONUNU doğrular — asıl metin
+// biçimlendirme (formatEncumbrance*Row) fonksiyonları KENDİ (derin
+// bağımlılık zinciri olan) mantıklarıyla başka yerde zaten test ediliyor;
+// burada onlar YERİNE hafif sahte (stub) sürümler kullanılır.
+{
+  function extractConstArray(name) {
+    const marker = `const ${name} = [`;
+    const start = appSource.indexOf(marker);
+    assert(start >= 0, `Sabit dizi bulunamadı: ${name}`);
+    const end = appSource.indexOf("\n];", start);
+    assert(end > start, `Sabit dizi kapanmadı: ${name}`);
+    return appSource.slice(start, end + 3);
+  }
+
+  const summaryFunctionNames = [
+    "getMultiTitleUnitEncumbranceRows",
+    "hasMeaningfulEncumbranceTableRow",
+    "getEncumbranceMultiUnitSummaryRows",
+  ];
+  const summarySandboxSource = `
+let state = null;
+function getTitleUnitCount() { return state.titleUnits.length + 1; }
+function getTitleUnitFieldsForLabel(index) {
+  return index === 0 ? state.fields : state.titleUnits[index - 1].fields;
+}
+function getTitleUnitTablesForLabel(index) {
+  return index === 0 ? state.tables : state.titleUnits[index - 1].tables;
+}
+// Gerçek biçimlendiriciler yerine hafif sahteler — yalnızca orkestrasyon test ediliyor.
+function formatEncumbranceDeclarationRow(row) { return row.c1 ? \`BEYAN:\${row.c1}\` : ""; }
+function formatEncumbranceAnnotationRow(row) { return row.c1 ? \`SERH:\${row.c1}\` : ""; }
+function formatEncumbranceMortgageRow(row) { return row.c0 ? \`IPOTEK:\${row.c0}\` : ""; }
+${extractConstArray("ENCUMBRANCE_MULTI_UNIT_SUMMARY_TABLES")}
+${["encumbranceCleanText", "encumbranceTextOrBila", "getEncumbranceRowJournalNo", "formatTitleUnitEncumbranceReference", "groupEncumbranceRowsAcrossTitleUnits", "formatEncumbranceTitleUnitScope"].map(extractFunction).join("\n")}
+${summaryFunctionNames.map(extractFunction).join("\n")}
+return { getEncumbranceMultiUnitSummaryRows, setState: (s) => { state = s; } };
+`;
+  // eslint-disable-next-line no-new-func
+  const summarySandbox = new Function(summarySandboxSource)();
+
+  summarySandbox.setState({
+    fields: {
+      blockNo: "709", parcelNo: "2", titleBlockName: "A", unitNo: "2",
+    },
+    tables: {
+      encumbranceDeclarations: [{ c0: "Beyan", c1: "Otopark taahhüdü", c2: "26.10.2021", c3: "39154" }],
+      encumbranceAnnotations: [],
+      encumbranceMortgages: [{ c0: "X Bankası", c1: "1", c2: "500000", c3: "01.02.2022", c4: "12345" }],
+    },
+    titleUnits: [
+      {
+        fields: { blockNo: "709", parcelNo: "2", titleBlockName: "A", unitNo: "4" },
+        tables: {
+          encumbranceDeclarations: [{ c0: "Beyan", c1: "Otopark taahhüdü", c2: "26.10.2021", c3: "39154" }],
+          encumbranceAnnotations: [],
+          encumbranceMortgages: [],
+        },
+      },
+      {
+        fields: { blockNo: "709", parcelNo: "2", titleBlockName: "B", unitNo: "7" },
+        tables: {
+          encumbranceDeclarations: [{ c0: "Şerh", c1: "Farklı kayıt", c2: "27.10.2021", c3: "40000" }],
+          encumbranceAnnotations: [],
+          encumbranceMortgages: [],
+        },
+      },
+    ],
+  });
+
+  const rows = summarySandbox.getEncumbranceMultiUnitSummaryRows();
+  assert.deepEqual(rows[0], ["Bölüm", "Yevmiye No", "Ortak mı?", "Kapsadığı Taşınmazlar", "Açıklama (rapor metni)"]);
+  assert.equal(rows.length, 4, "Basliktan sonra 3 kayit (2 beyan gruplanip 1 satira, + 1 ipotek) olmali.");
+
+  const shared = rows.find((row) => row[1] === "39154");
+  assert.ok(shared, "Ortak yevmiyeli (39154) satir bulunamadi.");
+  assert.equal(shared[0], "Beyanlar / Hak ve Mükellefiyetler");
+  assert.equal(shared[2], "Evet", "Iki tasinmazda gecen kayit \"Ortak mi?\" = Evet olmali.");
+  assert.equal(shared[3], "A-2, A-4", "Kapsadigi tasinmazlar A-2 ve A-4 olmali.");
+  assert.equal(shared[4], "BEYAN:Otopark taahhüdü");
+
+  const separate = rows.find((row) => row[1] === "40000");
+  assert.ok(separate, "Ayri yevmiyeli (40000) satir bulunamadi.");
+  assert.equal(separate[2], "Hayır", "Tek tasinmazda gecen kayit \"Ortak mi?\" = Hayir olmali.");
+  assert.equal(separate[3], "B-7");
+
+  const mortgage = rows.find((row) => row[0] === "İpotekler");
+  assert.ok(mortgage, "Ipotek satiri bulunamadi.");
+  assert.equal(mortgage[2], "Hayır", "Tek tasinmazdaki ipotek \"Ortak mi?\" = Hayir olmali.");
+  assert.equal(mortgage[4], "IPOTEK:X Bankası");
+
+  console.log("Ortak/Ayri Takyidat Ozeti (Excel) orkestrasyon testi tamam.");
+}
