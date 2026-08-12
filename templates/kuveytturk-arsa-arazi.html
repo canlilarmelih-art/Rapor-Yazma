@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+<meta charset="utf-8">
+<title>Kuveyt Türk Rapor Formatı (Arsa/Arazi)</title>
+<!--
+  KUVEYT TÜRK ARSA/ARAZİ ÖZET RAPOR ŞABLONU — INVEX ekspertiz portalının
+  arsa/arazi (tarla, bağ-bahçe vb.) raporlarında gösterdiği ekran farklarına
+  göre hazırlandı (kullanıcının gönderdiği 3 ekran görüntüsü referans
+  alındı). templates/kuveytturk.html (konut) ile aynı mantık/biçim
+  kullanılır; yalnızca "Özellikler" ve "Gayrimenkul Özellikleri" sekmelerinde
+  bina/bağımsız bölüme özgü bölümler arsa/araziye özgü bölümlerle
+  değiştirilmiştir (bkz. aşağıdaki yorumlar). Sonraki sayfalar (Değerleme,
+  Emsaller, GDYS Yardımcı Bilgiler, GABİM Veri Seti, Çalışma Kağıdı) konut
+  şablonuyla birebir aynıdır — bkz. templates/ziraat-arsa-arazi.html'deki
+  aynı prensip.
+  {{PLACEHOLDER}} işaretleri dışa aktarmada programdaki verilerle
+  doldurulur; adlar için templates/PLACEHOLDER-REHBERI.md dosyasına bakın.
+  Serbestçe düzenleyebilirsiniz.
+-->
+<style>
+  @page WordSection1 { size: 595.35pt 841.95pt; margin: 36pt; mso-header-margin:35.4pt; mso-footer-margin:35.4pt; mso-paper-source:0; }
+  body { font-family: Verdana, Arial, sans-serif; font-size: 6.5pt; color: #333333; background: #ffffff; }
+  p { margin: 0 0 10pt; line-height: 1.4; font-size: 10pt; text-align: justify; }
+
+  .encumbrance-summary { font-size: 10pt; text-align: justify; }
+  .share-explanation { font-size: 10pt; text-align: justify; }
+  div.WordSection1 { page: WordSection1; }
+  /* --- INVEX üst şerit / marka --- */
+  .kt-topbar { font-size: 6pt; color: #6b7f78; padding: 2pt 0 5pt; border-bottom: 0.75pt solid #d7e8e0; }
+  .kt-brand { font-size: 13pt; font-weight: bold; color: #009b6b; margin: 6pt 0 2pt; }
+  .kt-brand span { color: #4d6b62; font-weight: normal; font-size: 9.5pt; }
+  .kt-caseline { font-size: 6.5pt; color: #33544a; margin: 2pt 0 7pt; }
+  .kt-caseline strong { color: #0d6b4e; }
+
+  /* --- yeşil sekme şeritleri --- */
+  .kt-nav { background: #e7f5ee; border: 0.75pt solid #bee0d2; padding: 4pt 6pt; margin: 0 0 6pt; border-radius: 4pt; }
+  .kt-tab { display: inline-block; background: #009b6b; color: #ffffff; font-weight: bold; font-size: 6.5pt; padding: 2pt 7pt; border: 0.75pt solid #007a55; border-radius: 8pt; margin-right: 3pt; }
+  .kt-tab-passive { display: inline-block; background: #ffffff; color: #009b6b; font-weight: bold; font-size: 6.5pt; padding: 2pt 7pt; border: 0.75pt solid #009b6b; border-radius: 8pt; margin-right: 3pt; }
+
+  /* --- turuncu bölüm başlığı (İNVEX "TAŞINMAZ BİLGİLERİ" bandı) --- */
+  .kt-sec { background: #efefef; border-top: 0.75pt solid #dcdcdc; border-bottom: 0.75pt solid #dcdcdc; color: #e8820c; font-weight: bold; font-size: 7pt; letter-spacing: 0.4pt; padding: 3pt 6pt; margin: 10pt 0 5pt; }
+  .kt-subsec { color: #0d6b4e; font-weight: bold; font-size: 7pt; margin: 7pt 0 3pt; }
+
+  /* --- etiket/değer form tablosu --- */
+  table.kt-form { border-collapse: collapse; width: 100%; margin: 3pt 0 12pt; }
+  table.kt-form td { padding: 2.2pt 5pt; vertical-align: top; }
+  table.kt-form td.l { width: 34%; text-align: right; font-weight: bold; color: #17493b; }
+  table.kt-form td.v { background: #e9e9e9; border: 0.75pt solid #cfcfcf; border-radius: 3pt; }
+  .kt-floor-distribution-row .v, .kt-floor-distribution-row .v p { font-size: 6.5pt; }
+
+  /* --- liste tabloları (malikler, belgeler, motor tabloları) --- */
+  .word-table, table.kt-list { border-collapse: collapse; width: 100%; margin: 3pt 0 12pt; border: 0.75pt solid #bee0d2; font-size: 6.5pt; }
+  .word-table th, .word-table td, table.kt-list th, table.kt-list td { border: 0.75pt solid #cfe4da; padding: 2.2pt 4pt; vertical-align: top; }
+  .word-table th, table.kt-list th { background: #e7f5ee; color: #17493b; font-weight: bold; text-align: left; }
+  .word-table tbody tr:nth-child(even) td, table.kt-list tbody tr:nth-child(even) td { background: #f4faf7; }
+
+  .kt-note { font-size: 6pt; color: #8a6d3b; }
+  .kt-btn { display: inline-block; background: #009b6b; color: #ffffff; font-weight: bold; font-size: 7pt; padding: 3pt 10pt; border-radius: 8pt; border: 0.75pt solid #007a55; }
+
+  /* Değerleme/Emsaller/GDYS Yardımcı Bilgiler/Gabim bölümleri tek sayfaya
+     sığacak şekilde sıkıştırılır (kullanıcı talebi). Sayfa başı kırılması
+     .pg-section üzerinde DEĞİL, başlık .kt-sec div'inde satır içi
+     style="page-break-before:always" ile uygulanır — Word'ün .doc HTML
+     motoru bunu dış sarmalayıcı div üzerine konursa içindeki HER
+     PARAGRAFA miras bırakıyordu (canlı testte görüldü). */
+  .pg-section .kt-sec { margin-top: 0; }
+  .pg-section table.kt-form td, .pg-section .word-table td, .pg-section .word-table th, .pg-section table.kt-list td, .pg-section table.kt-list th { padding: 1pt 2pt; font-size: 5.5pt; }
+  .table-block { margin-bottom: 16px; page-break-inside: avoid; break-inside: avoid; }
+</style>
+</head>
+<body>
+<div class="WordSection1">
+
+<div class="kt-topbar">:: GİRİŞ SAYFASI &nbsp;|&nbsp; UZMAN: -</div>
+<div class="kt-brand">&#10064; KuveytTürk <span>| ekspertiz</span></div>
+<div class="kt-caseline"><strong>{{CASE_NAME}}</strong> &nbsp;|&nbsp; FİRMA: - &nbsp;|&nbsp; MÜŞTERİ: {{CUSTOMER_NAME}}</div>
+
+<div class="kt-nav">
+  <span class="kt-tab">Talep</span><span class="kt-tab-passive">Rapor</span><span class="kt-tab-passive">Fatura</span><span class="kt-tab-passive">Mobil İmza</span>
+</div>
+<div class="kt-nav">
+  <span class="kt-tab">Temel Bilgiler</span><span class="kt-tab-passive">Tapu Kaydı</span><span class="kt-tab-passive">Konum</span><span class="kt-tab-passive">Belgeler</span>
+</div>
+
+<div class="kt-sec">TEMEL BİLGİLER</div>
+<table class="kt-form">
+  <tr><td class="l">Değerleme Tarihi:</td><td class="v">{{APPOİNTMENT_DATE}}</td></tr>
+  <tr><td class="l">Talep Türü:</td><td class="v">GAYRİMENKUL DEĞERLEME</td></tr>
+  <tr><td class="l">Müşteri/Ünvan:</td><td class="v">{{CUSTOMER_NAME}}</td></tr>
+</table>
+
+<div class="kt-nav">
+  <span class="kt-tab-passive">Temel Bilgiler</span><span class="kt-tab">Tapu Kaydı</span><span class="kt-tab-passive">Konum</span><span class="kt-tab-passive">Belgeler</span>
+</div>
+
+<div class="kt-sec">TAPU KAYDI</div>
+<table class="kt-form">
+  <tr><td class="l">* Tapunun Türü:</td><td class="v">{{GROUND_TYPE}}</td></tr>
+  <tr><td class="l">* Ana Taşınmaz Vasfı:</td><td class="v">{{MAİN_PROPERTY_QUALİTY}}</td></tr>
+  <tr><td class="l">* Parselin Alanı:</td><td class="v">{{LAND_AREA}} m²</td></tr>
+</table>
+
+<div class="kt-subsec">* Malikler</div>
+{{MALIKLER_TABLO}}
+
+<div aria-hidden="true" style="height:10pt;"></div>
+
+<table class="kt-form">
+  <tr><td class="l">* İl:</td><td class="v">{{CİTY_BUYUK}}</td></tr>
+  <tr><td class="l">* İlçe:</td><td class="v">{{DİSTRİCT_BUYUK}}</td></tr>
+  <tr><td class="l">Mahalle/Köy:</td><td class="v">{{TİTLE_NEİGHBORHOOD}}</td></tr>
+  <tr><td class="l">Mevki:</td><td class="v">{{LOCATİON_NAME}}</td></tr>
+  <tr><td class="l">Pafta:</td><td class="v">{{SHEET_NO}}</td></tr>
+  <tr><td class="l">* Ada:</td><td class="v">{{BLOCK_NO}}</td></tr>
+  <tr><td class="l">* Parsel:</td><td class="v">{{PARCEL_NO}}</td></tr>
+  <tr><td class="l">Eski Ada - Parsel:</td><td class="v">{{OLD_BLOCK_NO}} - {{OLD_PARCEL_NO}}</td></tr>
+  <tr><td class="l">* Taşınmazın Tapudaki Niteliği:</td><td class="v">{{TİTLE_QUALİTY}}</td></tr>
+  <tr><td class="l">Yevmiye No:</td><td class="v">{{TAPU_YEVMİYESİ}}</td></tr>
+  <tr><td class="l">Cilt No / Sahife No:</td><td class="v">{{REGİSTRY_VOLUME}} / {{REGİSTRY_PAGE}}</td></tr>
+  <tr><td class="l">Tapu Tarihi:</td><td class="v">{{TAPU_TARİHİ}}</td></tr>
+  <tr><td class="l">ADRES NO:</td><td class="v">{{UAVT}}</td></tr>
+  <tr><td class="l">* Taşınmaz ID:</td><td class="v">{{TİTLE_PROPERTY_ID}}</td></tr>
+</table>
+<p class="kt-note">(Adres kodu ve Taşınmaz ID doğru olarak yazılmalıdır. Random sayılar yazılarak bu alan geçilmemelidir!)</p>
+
+<div class="kt-nav">
+  <span class="kt-tab-passive">Temel Bilgiler</span><span class="kt-tab-passive">Tapu Kaydı</span><span class="kt-tab">Konum</span><span class="kt-tab-passive">Belgeler</span>
+</div>
+
+<div class="kt-sec">GAYRİMENKULÜN AÇIK ADRESİ</div>
+<table class="kt-form">
+  <tr><td class="l">İl:</td><td class="v">{{CİTY_BUYUK}}</td></tr>
+  <tr><td class="l">İlçe:</td><td class="v">{{DİSTRİCT_BUYUK}}</td></tr>
+  <tr><td class="l">Mahalle/Köy:</td><td class="v">{{NEİGHBORHOOD_BUYUK}}</td></tr>
+  <tr><td class="l">Mevkii:</td><td class="v">{{LOCATİON_NAME}}</td></tr>
+  <tr><td class="l">Açık Adres:</td><td class="v">{{ACIK_ADRES}}</td></tr>
+  <tr><td class="l">Enlem (K):</td><td class="v">{{LATİTUDE}}</td></tr>
+  <tr><td class="l">Boylam (D):</td><td class="v">{{LONGİTUDE}}</td></tr>
+</table>
+
+<div class="kt-subsec">Ulaşım Tarifi</div>
+{{TRANSPORT_REPORT_TEXT}}
+
+{{LOCATION_MAP_SECTION}}
+
+<div class="kt-nav">
+  <span class="kt-tab-passive">Talep</span><span class="kt-tab">Rapor</span><span class="kt-tab-passive">Fatura</span>
+</div>
+<div class="kt-nav">
+  <span class="kt-tab">Özellikler</span><span class="kt-tab-passive">Değerleme</span><span class="kt-tab-passive">Emsaller</span><span class="kt-tab-passive">Rapor Ekleri</span><span class="kt-tab-passive">Rapor (PDF)</span>
+</div>
+
+<div class="kt-sec">NİTELİĞİ</div>
+<table class="kt-form">
+  <tr><td class="l">Taşınmazın Mahallindeki Niteliği:</td><td class="v">{{CURRENT_USAGE_NATURE}}</td></tr>
+  <tr><td class="l">Fiili Kullanım Amacı:</td><td class="v">{{ACTUAL_USE_PURPOSE}}</td></tr>
+</table>
+
+<!-- Konut şablonundaki "TAŞINMAZ BİLGİLERİ" (iç hacim/kat/ısıtma/manzara vb.
+     bina alanları) yerine, INVEX'in arazi ekranındaki "ARSA BİLGİLERİ"
+     bölümü geldi: parselin geometrisi, topografyası, yol/sınır durumu ve
+     serbest metin arsa açıklaması. -->
+<div class="kt-sec">ARSA BİLGİLERİ</div>
+<table class="kt-form">
+  <tr><td class="l">Halihazır Kullanım Durumu:</td><td class="v">{{UNİT_USAGE_STATUS}}</td></tr>
+  <tr><td class="l">Parselin Geometrik Şekli:</td><td class="v">{{LAND_SHAPE}}</td></tr>
+  <tr><td class="l">Parselin Alt Yapısı ve Topografik Durumu:</td><td class="v">{{LAND_TOPOGRAPHY}}</td></tr>
+  <tr><td class="l">Kadastral/İmar Yoluna Cepheli mi?:</td><td class="v">{{LAND_ROAD_FRONTAGE}}</td></tr>
+  <tr><td class="l">Parselin Sınırlarının Durumu:</td><td class="v">{{LAND_BOUNDARY_ELEMENT}}</td></tr>
+  <tr><td class="l">Arazi Sınıflandırması:</td><td class="v">{{LAND_CLASSIFICATION}}</td></tr>
+  <tr><td class="l">Parsel Üzerinde Zirai Ürün Var mı?:</td><td class="v">{{LAND_AGRICULTURAL_PRODUCT}}</td></tr>
+</table>
+<div class="kt-subsec">Hali Hazırdaki Kullanım Şekli / Amacı ve Yapılaşmaya Engel Teşkil Edebilecek Unsurlar</div>
+{{LAND_NOTE}}
+
+<!-- Konut şablonundaki "ENERJİ KİMLİK BİLGİSİ" bölümü kaldırıldı (çıplak
+     arazide bina/EKB olmadığından İNVEX arazi ekranında bu bölüm yerine
+     "Ticari Fiyat Endeksi Özellikleri"nin arazi/tarım alanlarına özgü
+     alt kümesi geliyor). -->
+<div class="kt-sec">TİCARİ FİYAT ENDEKSİ ÖZELLİKLERİ</div>
+<table class="kt-form">
+  <tr><td class="l">Ulaşım İmkanı:</td><td class="v">{{GABIM_TRANSPORTATION}}</td></tr>
+  <tr><td class="l">Kadastral Yola Cepheli Olup Olmaması:</td><td class="v">{{GABIM_ROAD_FRONTAGE}}</td></tr>
+  <tr><td class="l">Arazinin Eğimi:</td><td class="v">{{GABIM_LAND_SLOPE}}</td></tr>
+  <tr><td class="l">Toprağın Tarıma Elverişliliği:</td><td class="v">{{GABIM_ARABLE_SOIL}}</td></tr>
+  <tr><td class="l">Tarım Türü:</td><td class="v">{{GABIM_AGRICULTURE_TYPE}}</td></tr>
+</table>
+
+<div class="kt-sec">MERKEZ BANKASI AÇIKLAMA</div>
+<table class="kt-form">
+  <tr><td class="l">MB Açıklama:</td><td class="v">Merkez bankası verilerinde sorun bulunmamaktadır.</td></tr>
+</table>
+
+<div class="kt-nav">
+  <span class="kt-tab">Gayrimenkul Özellikleri</span><span class="kt-tab-passive">B.B. (Kİ)</span>
+</div>
+
+<div class="kt-sec">TAPU TAKYİDAT BİLGİLERİ</div>
+<table class="kt-form">
+  <tr><td class="l">Takyidat İnceleme Tarihi:</td><td class="v">{{TAKBİS_DATE}}</td></tr>
+  <tr><td class="l">Takyidat Saati:</td><td class="v">{{TAKBİS_TİME}}</td></tr>
+  <tr><td class="l">Takyidat Nasıl Görüldü:</td><td class="v">{{TAKBİS_METHOD}}</td></tr>
+</table>
+{{TAKYIDAT_TABLO}}
+<div class="kt-subsec">Takyidat Açıklaması</div>
+{{TAKBİS_SUMMARY}}
+
+<div class="kt-sec">BÖLGE ÖZELLİKLERİ</div>
+<div class="kt-subsec">* Gayrimenkulün Konumu, Çevresel Özellikleri ve Yakın Çevresinin Yapılaşma Bilgileri</div>
+{{ENVIRONMENTAL_FEATURES_TEXT}}
+<table class="kt-form">
+  <tr><td class="l">Bölgedeki Altyapı:</td><td class="v">{{ALTYAPI}}</td></tr>
+  <tr><td class="l">Kullanıma Hazır İnşası Bitmiş Aynı Cins Boş Gayrimenkul Oranı:</td><td class="v">&nbsp;</td></tr>
+  <tr><td class="l">Arz - Talep Durumu:</td><td class="v">&nbsp;</td></tr>
+  <tr><td class="l">* Deprem Bölgesi:</td><td class="v">{{EARTHQUAKE_ZONE}}</td></tr>
+  <tr><td class="l">* Deprem Dayanıklılık ve Hasar Durumu:</td><td class="v">Hasarsız</td></tr>
+</table>
+
+<!-- Konut şablonundaki "GAYRİMENKULÜN TEKNİK ÖZELLİKLERİ" (yapı cinsi/
+     sınıfı/nizamı/asansör/otopark vb.) bölümü kaldırıldı — çıplak arazide
+     karşılığı yok. Yerine İNVEX'in arazi ekranındaki bölgesel "Ticari Fiyat
+     Endeksi Özellikleri" (kentsel dönüşüm/yatırım/yapılaşma hızı vb.)
+     geldi. -->
+<div class="kt-sec">TİCARİ FİYAT ENDEKSİ ÖZELLİKLERİ (BÖLGESEL)</div>
+<table class="kt-form">
+  <tr><td class="l">Kentsel Dönüşüm Bölgesi:</td><td class="v">{{KENTSELDONUSUM}}</td></tr>
+  <tr><td class="l">Çevresinde Büyük Yatırım Projelerinin Olması:</td><td class="v">{{GABIM_MAJOR_INVESTMENT}}</td></tr>
+  <tr><td class="l">Markalı Konut Projelerinin Yoğunluğu:</td><td class="v">{{GABIM_BRANDED_HOUSING}}</td></tr>
+  <tr><td class="l">Çevrenin Genel Yapılaşma Hızı:</td><td class="v">{{GABIM_DEVELOPMENT_SPEED}}</td></tr>
+  <tr><td class="l">Ticari Faaliyetlerin Gelişme Hızı:</td><td class="v">{{GABIM_COMMERCIAL_SPEED}}</td></tr>
+  <tr><td class="l">Sanayileşme Hızı:</td><td class="v">{{GABIM_INDUSTRIALIZATION_SPEED}}</td></tr>
+  <tr><td class="l">Turizm Gelişme Potansiyeli:</td><td class="v">{{GABIM_TOURISM_POTENTIAL}}</td></tr>
+</table>
+
+<div class="kt-sec">İSKAN BİLGİSİ</div>
+<table class="kt-form">
+  <tr><td class="l">İskanı Varmı? (Yapı Kullanım İzin Belgesi):</td><td class="v">{{İSKAN_VAR_MI}}</td></tr>
+</table>
+<div class="kt-subsec">Gayrimenkulde Kaçak Yapılaşma / Ruhsata Uygunluk Açıklaması</div>
+{{PROJECT_REVİEW_DESCRİPTİON}}
+{{BUILDING_INSPECTION_EXPLANATION_TEXT}}
+{{STATİC_SUİTABİLİTY_EXPLANATİON_TEXT}}
+{{PENALTY_DECİSİON_EXPLANATİON_TEXT}}
+
+<div class="kt-sec">İMAR DURUMU</div>
+<table class="kt-form">
+  <tr><td class="l">Plan Adı ve Tarihi:</td><td class="v">{{PLAN_NAME}} - {{PLAN_DATE}}</td></tr>
+  <tr><td class="l">* Plan Ölçeği:</td><td class="v">{{PLAN_SCALE}}</td></tr>
+  <tr><td class="l">* İmar Lejandı:</td><td class="v">{{LEGEND}}</td></tr>
+  <tr><td class="l">* İnşaat Nizamı:</td><td class="v">{{ORDER}}</td></tr>
+  <tr><td class="l">* TAKS:</td><td class="v">{{TAKS}}</td></tr>
+  <tr><td class="l">* KAKS/EMSAL:</td><td class="v">{{KAKS}}</td></tr>
+  <tr><td class="l">* Hmax:</td><td class="v">{{HMAX}}</td></tr>
+  <tr><td class="l">* Hesaplanan Emsal:</td><td class="v">{{CALCULATED_EMSAL}}</td></tr>
+  <tr><td class="l">Çekme Mesafeleri (m): Ön / Yan:</td><td class="v">{{FRONT_GARDEN}} / {{SİDE_GARDEN}}</td></tr>
+  <tr><td class="l">* Terk varsa miktarı:</td><td class="v">{{ROAD_SETBACK}}</td></tr>
+  <tr><td class="l">Minimum Cephe Şartı:</td><td class="v">{{MİNİMUM_FRONTAGE_CONDİTİON}}</td></tr>
+  <tr><td class="l">Tevhid Şartı:</td><td class="v">{{TEVHİD_CONDİTİON}}</td></tr>
+  <tr><td class="l">18. Madde Uygulaması Yapılmış Mı?:</td><td class="v">{{ARTİCLE18_APPLİED}}</td></tr>
+  <tr><td class="l">Tercihli Kullanım Alanı mı?:</td><td class="v">{{GABIM_PREFERRED_USE}}</td></tr>
+  <tr><td class="l">Kentsel Dönüşüm ve Yenileme alanı içinde mi?:</td><td class="v">{{URBAN_TRANSFORMATİON_AREA}}</td></tr>
+</table>
+<div class="kt-subsec">İmar Durumu Açıklama / Plan Notu</div>
+{{PLANNİNG_NOTE_TEXT}}
+
+<div class="kt-sec">İNCELENEN BELGELER</div>
+{{İNCELENEN_BELGELER_TABLO}}
+{{REVİEWED_DOCUMENTS_TEXT}}
+
+<div class="kt-sec">DEĞERLEMEYİ ETKİLEYEN FAKTÖRLER</div>
+<div class="kt-subsec">Olumlu Faktörler</div>
+{{DEGERI_ETKILEYEN_OLUMLU_FAKTORLER}}
+<div class="kt-subsec">Olumsuz Faktörler</div>
+{{DEGERI_ETKILEYEN_OLUMSUZ_FAKTORLER}}
+
+<div class="kt-nav">
+  <span class="kt-tab-passive">Özellikler</span><span class="kt-tab">Değerleme</span><span class="kt-tab-passive">Emsaller</span>
+</div>
+
+<div class="pg-section">
+<div class="kt-sec" style="page-break-before:always;">DEĞERLEME — GENEL BİLGİLER (UZMAN GÖRÜŞÜ)</div>
+{{DEGERLEME_YONTEMI_ACIKLAMASI}}
+{{BUILDING_INSPECTION_TERMINATION_EXPLANATION_TEXT}}
+{{HISSE_ACIKLAMASI}}
+{{SATIS_KABILIYETI_ACIKLAMASI}}
+{{TARLA_BAHCE_DEGERLEME_RISKI_ACIKLAMASI}}
+{{KIRA_ACIKLAMASI}}
+{{EMLAK_BEYAN_DEGERI_ACIKLAMASI}}
+<p>*** Taşınmazın değerlemesi takyidatlardan bağımsız yapılmıştır.</p>
+{{STATIC_SUITABILITY_EXPLANATION_TEXT}}
+<div class="table-block">{{DEGERLENDIRME_TABLOSU}}</div>
+<div class="table-block">{{KAT_BAZINDA_INDIRGENMIS_ALAN_TABLOSU}}</div>
+<div class="table-block">{{DEGERLENDIRME_SEMASI}}</div>
+</div>
+
+<div class="kt-nav">
+  <span class="kt-tab-passive">Özellikler</span><span class="kt-tab-passive">Değerleme</span><span class="kt-tab">Emsaller</span>
+</div>
+
+<div class="pg-section">
+<div class="kt-sec" style="page-break-before:always;">EMSALLER</div>
+{{EMSAL_MATRISI}}
+
+<div class="kt-subsec">Emsal Açıklaması</div>
+{{EMSAL_PIYASA_ANALIZI}}
+{{COMPARABLE_SKETCH_SECTION}}
+<p style="margin:0;padding:0;height:12pt;line-height:12pt;font-size:1pt;mso-line-height-rule:exactly;">&nbsp;</p>
+<div class="table-block">{{EMSAL_DEGERLEME_TABLOSU}}</div>
+</div>
+
+<div class="pg-section">
+<div class="kt-sec" style="page-break-before:always;">GDYS YARDIMCI BİLGİLER</div>
+<table class="kt-form">
+  <tr><td class="l">İl:</td><td class="v">{{CİTY_BUYUK}}</td></tr>
+  <tr><td class="l">İlçe:</td><td class="v">{{DİSTRİCT_BUYUK}}</td></tr>
+  <tr><td class="l">Mahalle / Köy:</td><td class="v">{{NEİGHBORHOOD_BUYUK}}</td></tr>
+  <tr><td class="l">Açık Adres:</td><td class="v">{{ACIK_ADRES}}</td></tr>
+  <tr><td class="l">UAVT Kodu:</td><td class="v">{{UAVT}}</td></tr>
+  <tr><td class="l">Arazi Sınıflandırması:</td><td class="v">{{GABIM_LAND_CLASSIFICATION}}</td></tr>
+  <tr><td class="l">Arazinin Eğimi:</td><td class="v">{{GABIM_LAND_SLOPE}}</td></tr>
+  <tr><td class="l">Tarıma Elverişli mi?:</td><td class="v">{{GABIM_ARABLE_LAND}}</td></tr>
+  <tr><td class="l">Tarım Türü:</td><td class="v">{{GABIM_AGRICULTURE_TYPE}}</td></tr>
+  <tr><td class="l">Kadastro Yoluna Cephesi Var mı?:</td><td class="v">{{GABIM_ROAD_FRONTAGE}}</td></tr>
+  <tr><td class="l">Yasal Durum Piyasa Değeri:</td><td class="v">{{LEGAL_VALUE}}</td></tr>
+  <tr><td class="l">Mevcut Durum Piyasa Değeri:</td><td class="v">{{CURRENT_VALUE}}</td></tr>
+  <tr><td class="l">Eksper Kanaati / Satış Kabiliyeti:</td><td class="v">{{SALEABİLİTY_NOTE}}</td></tr>
+</table>
+</div>
+
+<div class="pg-section">
+<div class="kt-sec" style="page-break-before:always;">GABİM VERİ SETİ</div>
+{{GABIM_VERI_SETI}}
+</div>
+
+<div class="kt-sec">ÇALIŞMA KAĞIDI</div>
+<table class="kt-form">
+  <tr><td class="l">Plan Adı:</td><td class="v">{{PLAN_NAME}}</td></tr>
+  <tr><td class="l">İmar Lejandı:</td><td class="v">{{LEGEND}}</td></tr>
+  <tr><td class="l">Plan Ölçeği:</td><td class="v">{{PLAN_SCALE}}</td></tr>
+  <tr><td class="l">Plan Onay Tarihi:</td><td class="v">{{PLAN_DATE}}</td></tr>
+  <tr><td class="l">TAKS:</td><td class="v">{{TAKS}}</td></tr>
+  <tr><td class="l">KAKS:</td><td class="v">{{KAKS}}</td></tr>
+  <tr><td class="l">Hmax:</td><td class="v">{{HMAX}}</td></tr>
+  <tr><td class="l">Ön/Yan Bahçe:</td><td class="v">{{FRONT_GARDEN}} / {{SİDE_GARDEN}}</td></tr>
+</table>
+
+<p style="text-align:center;margin-top:14pt;"><span class="kt-btn">Rapor Üret</span></p>
+<p class="kt-topbar" style="border-top:0.75pt solid #d7e8e0;border-bottom:none;padding-top:6pt;">KUVEYTTÜRK - EKSPERTİZ (INVEX) &nbsp;|&nbsp; Bu şablon Rapor Yazma Programı tarafından doldurulmuştur.</p>
+
+</div>
+</body>
+</html>

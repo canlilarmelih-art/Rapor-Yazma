@@ -8667,4 +8667,82 @@ ekran görüntüsü gönderdi (5 satır). `templates/yapikredi.html` ve
   yeni senaryo + madde 4'ün test fikstürü düzeltmesi eklendi. `npm run
   verify` tam zincirle yeşil.
 - Cache-buster: `app.js?v=20260812-0700`.
+
+## 0.0.424 - 2026-08-13 - Kuveyt Türk arsa/arazi banka şablonu
+
+Kullanıcı: "KUVEYT türk rapor formatında arsa arazi raporlarında konut
+raporlarına göre değişiklik olan kısımları attım bankanın arazi formatını
+hazırla" — INVEX portalının arsa/arazi (tarla/bağ-bahçe) ekranlarından 3
+ekran görüntüsü gönderdi. `templates/ziraat-arsa-arazi.html` (mevcut emsal:
+Ziraat'in konut/arsa-arazi ikilisi) örnek alınarak yeni
+`templates/kuveytturk-arsa-arazi.html` oluşturuldu; mekanizma tamamen
+jenerik (`defaultTemplateKeyForBank`/`resolveTemplateKeyForExport`,
+`ownershipType` Arsa/Tarla ise otomatik yönlendirir) — ekstra banka-özel
+kod GEREKMEDİ, yalnızca 2 registry girdisi eklendi.
+
+- **`templates/kuveytturk-arsa-arazi.html`** (yeni) — `templates/kuveytturk.html`
+  (konut) temel alındı, ekran görüntülerindeki farklara göre:
+  - **"Özellikler" sekmesi**: NİTELİĞİ'ne "Fiili Kullanım Amacı"
+    (`{{ACTUAL_USE_PURPOSE}}`) eklendi. Bina-özgü "TAŞINMAZ BİLGİLERİ" (iç
+    hacim/kat/ısıtma/manzara vb.) → "ARSA BİLGİLERİ" ile değiştirildi
+    (parselin geometrik şekli/topografyası/yol cephesi/sınır durumu/
+    sınıflandırması `landShape`/`landTopography`/`landRoadFrontage`/
+    `landBoundaryElement`/`landClassification`/`landAgriculturalProduct`
+    field-key katlamasıyla doğrudan çözülüyor + serbest metin `{{LAND_NOTE}}`
+    — INVEX'teki 6 ayrı textarea'ya karşılık tek "Arsa açıklaması" alanımız
+    var, bu bilinçli bir sadeleştirme). "ENERJİ KİMLİK BİLGİSİ" (çıplak
+    arazide EKB yok) → arazi-özgü "TİCARİ FİYAT ENDEKSİ ÖZELLİKLERİ"
+    (Ulaşım İmkanı/Kadastral Yol Cephesi/Arazi Eğimi/Toprağın Tarıma
+    Elverişliliği/Tarım Türü — hepsi zaten var olan `GABIM_*` üretilmiş-metin
+    token'larıyla, ör. `gabimLandSlopeText`) ile değiştirildi.
+  - **"Gayrimenkul Özellikleri" sekmesi**: BÖLGE ÖZELLİKLERİ'ne "Bölgedeki
+    Altyapı" (`{{ALTYAPI}}` → `infrastructureLevel`, 0.0.419'da paylaşımlı
+    yapılan alanlardan biri) eklendi; "Kullanıma Hazır ... Boş Gayrimenkul
+    Oranı" ve "Arz-Talep Durumu" için veri modelinde karşılık YOK — INVEX
+    portalına özgü, elle doldurulacak boş hücre olarak bırakıldı (ziraat
+    şablonundaki "Zincir İşletme mi? → Hayır" statik-değer emsaliyle aynı
+    disiplin, ama burada sabit bir varsayılan güvenilir olmadığından boş).
+    Bina-özgü "GAYRİMENKULÜN TEKNİK ÖZELLİKLERİ" (yapı cinsi/sınıfı/nizamı/
+    asansör/otopark) → bölgesel "TİCARİ FİYAT ENDEKSİ ÖZELLİKLERİ (BÖLGESEL)"
+    (Kentsel Dönüşüm/Büyük Yatırım/Markalı Konut/Yapılaşma-Ticari-Sanayi
+    Hızı/Turizm Potansiyeli — yine mevcut `GABIM_*` token'ları) ile
+    değiştirildi. İMAR DURUMU'na "Tercihli Kullanım Alanı mı?"
+    (`{{GABIM_PREFERRED_USE}}`, zaten var olan alias) satırı eklendi.
+  - Tapu Kaydı/Adres tablolarından bina-özgü satırlar (Blok/Kat/BB No/Arsa
+    Payı/Site-Apartman/İç Kapı No vb.) çıkarıldı — çıplak parselde karşılığı
+    yok.
+  - Değerleme/Emsaller/GDYS Yardımcı Bilgiler/GABİM Veri Seti/Çalışma
+    Kağıdı sayfaları konut şablonuyla BİREBİR AYNI bırakıldı (ziraat
+    emsalindeki "sonraki sayfalar aynı" prensibi).
+- **`src/templates/template-engine.js`**: `TEMPLATE_REGISTRY`'ye
+  `{ key: "kuveytturk-arsa-arazi", ..., bank: "Kuveyt Türk Katılım Bankası
+  A.Ş.", variant: "arsa-arazi", hiddenFromList: true }` eklendi (konut
+  girdisiyle AYNI banka adı — otomatik eşleşme buna dayanıyor).
+- **`server.js`**: `PRIVATE_REPORT_TEMPLATES`'e `"kuveytturk-arsa-arazi":
+  "kuveytturk-arsa-arazi.html"` eklendi (iki-registry senkron kuralı,
+  0.0.312).
+- `caseBankOptions` (app.js) değişmedi — arsa-arazi varyantı `hiddenFromList`
+  olduğu için açılır listede AYRI seçenek göstermiyor, mevcut "Kuveyt Türk
+  Katılım Bankası A.Ş." seçeneği üzerinden otomatik yönleniyor.
+- Test: yeni `tools/test-kuveytturk-arsa-arazi-template.js` — (1) registry
+  girdisinin şekli (variant/hiddenFromList/banka adı eşleşmesi), (2) server.js
+  senkronu, (3) `defaultTemplateKeyForBank`/`resolveTemplateKeyForExport`'un
+  gerçek kaynaktan çalıştırılıp arsa-arazi yönlendirmesini doğrulaması, (4)
+  yeni şablonun arazi-özgü placeholder'ları içerdiğini VE bina-özgü
+  başlıkları (GAYRİMENKULÜN TEKNİK ÖZELLİKLERİ, ENERJİ KİMLİK BİLGİSİ)
+  ARTIK içermediğini, (5) `LAND_*` token'larının dayandığı field anahtarlarının
+  app.js'te hâlâ var olduğunu doğruluyor. `npm run verify` tam zincirle
+  yeşil (mevcut jenerik `tools/test-bank-templates.js` ve
+  `tools/test-server-template-rendering.js` testleri de yeni dosyayı otomatik
+  kapsadı — sayfa düzeni/varyant sırası/registry-dosya senkron kontrolleri
+  ek değişiklik gerektirmeden geçti).
+- Cache-buster: `src/templates/template-engine.js?v=20260813-1200`
+  (`app.js` bu değişiklikte dokunulmadı).
+- **Kullanıcıdan doğrulama beklenen nokta**: ekran görüntülerindeki
+  "ARSA BİLGİLERİ" 6 ayrı textarea'sı (Hali Hazırdaki Kullanım Şekli/Amacı,
+  Yapılaşmaya Engel Unsurlar, Alt Yapı/Topografik Durum, Cephe/Derinlik,
+  Sınırların Durumu) veri modelimizde TEK bir serbest metin alanına
+  (`landNote` / "Arsa açıklaması") karşılık geliyor — ayrı ayrı alanlara
+  bölünmesi istenirse yeni field'lar eklenmesi gerekir (kapsam dışı
+  bırakıldı, kullanıcı onayı gerekiyor).
 - Yedek: `backups/before-yapikredi-2nd-fix-list_2026-08-12_22-45-16`.

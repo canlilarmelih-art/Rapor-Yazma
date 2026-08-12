@@ -40,6 +40,10 @@
     { key: "isbankasi", file: "templates/isbankasi.html", title: "İş Bankası Rapor Formatı", bank: "Türkiye İş Bankası A.Ş." },
     { key: "isbankasi-masraf", file: "templates/isbankasi-masraf.html", title: "İş Bankası Masraf Yazısı", bank: "" },
     { key: "kuveytturk", file: "templates/kuveytturk.html", title: "Kuveyt Türk Rapor Formatı", bank: "Kuveyt Türk Katılım Bankası A.Ş." },
+    // ownershipType (Mülkiyet) Arsa/Tarla ise otomatik olarak bu varyanta yönlendirilir
+    // (bkz. resolveBankTemplateKeyForExport / appendBankTemplateExportBlock). Karışıklığı
+    // önlemek için açılır listede AYRI bir seçenek olarak GÖSTERİLMEZ.
+    { key: "kuveytturk-arsa-arazi", file: "templates/kuveytturk-arsa-arazi.html", title: "Kuveyt Türk Rapor Formatı (Arsa/Arazi)", bank: "Kuveyt Türk Katılım Bankası A.Ş.", variant: "arsa-arazi", hiddenFromList: true },
     { key: "vakifbank", file: "templates/vakifbank.html", title: "Vakıfbank Rapor Formatı", bank: "Türkiye Vakıflar Bankası T.A.O." },
     { key: "vakifkatilim", file: "templates/vakifkatilim.html", title: "Vakıf Katılım Rapor Formatı", bank: "Vakıf Katılım Bankası A.Ş." },
     { key: "yapikredi", file: "templates/yapikredi.html", title: "Yapı Kredi Rapor Formatı", bank: "Yapı ve Kredi Bankası A.Ş." },

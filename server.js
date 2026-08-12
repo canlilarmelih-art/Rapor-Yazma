@@ -24,6 +24,7 @@ const PRIVATE_REPORT_TEMPLATES = Object.freeze({
   isbankasi: "isbankasi.html",
   "isbankasi-masraf": "isbankasi-masraf.html",
   kuveytturk: "kuveytturk.html",
+  "kuveytturk-arsa-arazi": "kuveytturk-arsa-arazi.html",
   vakifbank: "vakifbank.html",
   vakifkatilim: "vakifkatilim.html",
   yapikredi: "yapikredi.html",
