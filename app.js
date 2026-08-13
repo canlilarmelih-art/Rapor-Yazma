@@ -32008,7 +32008,7 @@ function createComparablePortalButton({ label, initials, className, title, build
     "sahibinden-search-button": "assets/portal-logos/sahibinden.png",
   };
   const logo = logoMap[className];
-  button.innerHTML = `<img class="comparable-portal-logo" src="${logo || ""}" alt="" aria-hidden="true">`;
+  button.innerHTML = `<img class="comparable-portal-logo" src="${logo || ""}" width="24" height="24" alt="" aria-hidden="true">`;
   button.title = title;
   button.addEventListener("click", () => {
     const url = buildUrl();
@@ -32094,7 +32094,10 @@ function createComparablesVerticalEditor(section) {
     autosave();
     renderSection();
   });
-  headingRow.append(createSahibindenSearchButton(), createHepsiemlakSearchButton(), createEmlakjetSearchButton(), createComparableViewModeControl(), createComparableRowLabelsToggle(), addButton);
+  const portalGroup = document.createElement("div");
+  portalGroup.className = "comparable-portal-group";
+  portalGroup.append(createSahibindenSearchButton(), createHepsiemlakSearchButton(), createEmlakjetSearchButton());
+  headingRow.append(portalGroup, createComparableViewModeControl(), createComparableRowLabelsToggle(), addButton);
 
   const rows = getComparableRows();
   const viewMode = getComparableViewMode();
