@@ -47,29 +47,37 @@ const closureFnNames = [
   "getSahibindenCategorySlug",
   "buildSahibindenLocationSlugPart",
   "buildSahibindenNeighborhoodSlug",
+  "getSelectedMapPoint",
+  "getSahibindenSubjectCentroid",
+  "buildSahibindenMapBounds",
   "buildSahibindenSearchUrl",
   "foldTurkish",
   "isLandOwnershipType",
   "normalizeOwnershipTypeForSectionVisibility",
 ];
 
-function makeContext(fields) {
-  const context = { state: { fields } };
+function makeContext(fields, extraState = {}) {
+  const context = { state: { fields, sourceValues: {}, ...extraState }, URLSearchParams };
   vm.createContext(context);
   vm.runInContext(extractConstSource("SAHIBINDEN_CATEGORY_BY_USAGE_NATURE"), context);
   closureFnNames.forEach((name) => vm.runInContext(extractFunctionSource(name), context));
   return context;
 }
 
-// --- 1) Konut: satilik-daire + il-ilce ---------------------------------
+// --- 1) Konut: centroid merkezli harita arama ---------------------------
 {
-  const ctx = makeContext({ currentUsageNature: "Konut", titleCity: "Bursa", titleDistrict: "Nilüfer" });
-  assert.equal(ctx.buildSahibindenSearchUrl(), "https://www.sahibinden.com/satilik-daire/bursa-nilufer?viewType=map");
+  const ctx = makeContext({ currentUsageNature: "Konut", titleCity: "Bursa", titleDistrict: "NilÃ¼fer", latitude: "40.200000", longitude: "28.900000" });
+  const url = new URL(ctx.buildSahibindenSearchUrl());
+  assert.equal(url.pathname, "/haritada-emlak-arama/emlak/bursa-nilafer");
+  assert.equal(url.searchParams.get("viewType"), "map");
+  assert.equal(url.searchParams.get("category"), "satilik-daire");
+  assert.equal(url.searchParams.get("geoLocation_latitude_north"), "40.226949");
+  assert.equal(url.searchParams.get("geoLocation_latitude_south"), "40.173051");
 }
 
 // --- 2) Arsa/Tarla/Arazi -> satilik-arsa --------------------------------
 ["Arsa", "Tarla", "Arazi", "Sanayi Tesisi"].forEach((usage) => {
-  const ctx = makeContext({ currentUsageNature: usage, titleCity: "Bursa", titleDistrict: "Osmangazi" });
+  const ctx = makeContext({ currentUsageNature: usage, titleCity: "Bursa", titleDistrict: "Osmangazi" }, { sourceValues: {} });
   assert.equal(
     ctx.buildSahibindenSearchUrl(),
     "https://www.sahibinden.com/satilik-arsa/bursa-osmangazi?viewType=map",
@@ -110,11 +118,11 @@ function makeContext(fields) {
 
 // --- 6) Il/ilce eksikse zarif geri dusus (kirik URL uretilmemeli) -------
 {
-  const ctx = makeContext({ currentUsageNature: "Konut", titleCity: "Bursa" }); // ilce yok
+  const ctx = makeContext({ currentUsageNature: "Konut", titleCity: "Bursa" }, { sourceValues: {} }); // ilce yok
   assert.equal(ctx.buildSahibindenSearchUrl(), "https://www.sahibinden.com/satilik-daire/bursa?viewType=map");
 }
 {
-  const ctx = makeContext({ currentUsageNature: "Konut" }); // ikisi de yok
+  const ctx = makeContext({ currentUsageNature: "Konut" }, { sourceValues: {} }); // ikisi de yok
   assert.equal(ctx.buildSahibindenSearchUrl(), "https://www.sahibinden.com/satilik-daire?viewType=map");
 }
 

@@ -2954,7 +2954,7 @@ function createFieldCopyButton() {
   button.type = "button";
   button.className = "field-copy-button";
   button.textContent = "Kopyala";
-  button.title = "Açıklama paragrafını kopyala";
+  button.title = "Konu tasinmazin KML merkezinin yaklasik 3 km cevresindeki Sahibinden ilanlarini harita gorunumunde acar.";
   button.addEventListener("click", async (event) => {
     event.preventDefault();
     event.stopPropagation();
@@ -4933,7 +4933,7 @@ function createValuationMethodExplanationPanel() {
   copyButton.type = "button";
   copyButton.className = "valuation-method-copy-button";
   copyButton.textContent = "Kopyala";
-  copyButton.title = "Açıklama paragrafını kopyala";
+  copybutton.title = "Konu tasinmazin KML merkezinin yaklasik 3 km cevresindeki Sahibinden ilanlarini harita gorunumunde acar.";
   copyButton.addEventListener("click", async () => {
     try {
       await navigator.clipboard.writeText(state.fields.valuationMethodExplanation || "");
@@ -4965,7 +4965,7 @@ function createValuationShareExplanationPanel() {
   copyButton.type = "button";
   copyButton.className = "valuation-method-copy-button";
   copyButton.textContent = "Kopyala";
-  copyButton.title = "Hisse açıklamasını kopyala";
+  copybutton.title = "Konu tasinmazin KML merkezinin yaklasik 3 km cevresindeki Sahibinden ilanlarini harita gorunumunde acar.";
   copyButton.addEventListener("click", async () => {
     try {
       await navigator.clipboard.writeText(state.fields.shareExplanation || "");
@@ -5670,7 +5670,7 @@ function createLandValuationResetToAutoButton(key) {
   button.type = "button";
   button.className = "land-valuation-reset-button";
   button.textContent = "Otomatik hesaplamaya dön";
-  button.title = "Bu değer daha önce elle girildiği için Emsaller'deki değişikliklerle otomatik güncellenmiyor. Tıklayınca Arsa Emsali/Hesaplanan Emsal verisinden yeniden otomatik hesaplanır.";
+  button.title = "Konu tasinmazin KML merkezinin yaklasik 3 km cevresindeki Sahibinden ilanlarini harita gorunumunde acar.";
   button.addEventListener("click", (event) => {
     event.preventDefault();
     event.stopPropagation();
@@ -6264,7 +6264,7 @@ function createValuationSummaryPanel() {
     copyButton.type = "button";
     copyButton.className = "valuation-method-copy-button";
     copyButton.textContent = "Kopyala";
-    copyButton.title = "Değerleme özetini metin olarak kopyala";
+    copybutton.title = "Konu tasinmazin KML merkezinin yaklasik 3 km cevresindeki Sahibinden ilanlarini harita gorunumunde acar.";
     copyButton.addEventListener("click", async () => {
       try {
         await navigator.clipboard.writeText(buildValuationSummaryText());
@@ -10816,7 +10816,7 @@ function createUnitFloorDeleteButton(index) {
   button.type = "button";
   button.className = "delete-row-button unit-floor-delete";
   button.textContent = "×";
-  button.title = "Katı sil";
+  button.title = "Konu tasinmazin KML merkezinin yaklasik 3 km cevresindeki Sahibinden ilanlarini harita gorunumunde acar.";
   button.addEventListener("click", () => {
     const rows = getUnitFloorRows();
     rows.splice(index, 1);
@@ -23254,7 +23254,7 @@ function createTakyidatTablePanel() {
     copyButton.type = "button";
     copyButton.className = "valuation-method-copy-button";
     copyButton.textContent = "Kopyala";
-    copyButton.title = "Takyidat tablosunu metin olarak kopyala";
+    copybutton.title = "Konu tasinmazin KML merkezinin yaklasik 3 km cevresindeki Sahibinden ilanlarini harita gorunumunde acar.";
     copyButton.addEventListener("click", async () => {
       try {
         await navigator.clipboard.writeText(buildTakyidatTableText());
@@ -23422,7 +23422,7 @@ function createOpenAddressPanel() {
     copyButton.type = "button";
     copyButton.className = "valuation-method-copy-button";
     copyButton.textContent = "Kopyala";
-    copyButton.title = "Açık adres metnini kopyala";
+    copybutton.title = "Konu tasinmazin KML merkezinin yaklasik 3 km cevresindeki Sahibinden ilanlarini harita gorunumunde acar.";
     copyButton.addEventListener("click", async () => {
       try {
         await navigator.clipboard.writeText(address);
@@ -23595,7 +23595,7 @@ function createMaliklerTablePanel() {
     copyButton.type = "button";
     copyButton.className = "valuation-method-copy-button";
     copyButton.textContent = "Kopyala";
-    copyButton.title = "Malikler tablosunu metin olarak kopyala";
+    copybutton.title = "Konu tasinmazin KML merkezinin yaklasik 3 km cevresindeki Sahibinden ilanlarini harita gorunumunde acar.";
     copyButton.addEventListener("click", async () => {
       try {
         await navigator.clipboard.writeText(buildMaliklerTableText());
@@ -31949,14 +31949,36 @@ function buildSahibindenNeighborhoodSlug(value) {
     .replace(/-mah\.?$/i, "-mah.");
 }
 
+function getSahibindenSubjectCentroid() {
+  const selected = getSelectedMapPoint();
+  if (selected) return selected;
+  const records = typeof getTitleUnitKmlRecordsForMap === "function" ? getTitleUnitKmlRecordsForMap() : [];
+  const points = [state.sourceValues.kml?.centroid, ...records.map((record) => record?.parsed?.centroid)]
+    .map((point) => [Number(point?.lat), Number(point?.lng)])
+    .filter(([lat, lng]) => Number.isFinite(lat) && Number.isFinite(lng));
+  if (!points.length) return null;
+  return [points.reduce((sum, point) => sum + point[0], 0) / points.length, points.reduce((sum, point) => sum + point[1], 0) / points.length];
+}
+
+function buildSahibindenMapBounds(point, radiusMeters = 3000) {
+  if (!point) return null;
+  const [lat, lng] = point;
+  const latDelta = radiusMeters / 111320;
+  const lngDelta = radiusMeters / (111320 * Math.max(Math.cos((lat * Math.PI) / 180), 0.2));
+  return { north: lat + latDelta, south: lat - latDelta, east: lng + lngDelta, west: lng - lngDelta };
+}
+
 function buildSahibindenSearchUrl() {
   const city = buildSahibindenLocationSlugPart(state.fields.titleCity || state.fields.city);
   const district = buildSahibindenLocationSlugPart(state.fields.titleDistrict || state.fields.district);
   const neighborhood = buildSahibindenNeighborhoodSlug(state.fields.titleNeighborhood || state.fields.neighborhood);
-  const base = `https://www.sahibinden.com/${getSahibindenCategorySlug()}`;
-  // Sahibinden mahalle rotalarında ilçe/semt parçası da bulunuyor. Uygulamada
-  // ayrı bir semt alanı olmadığından ilçe adı semt karşılığı olarak kullanılır.
-  // viewType=map ile ilanlar harita görünümünde açılır.
+  const bounds = buildSahibindenMapBounds(getSahibindenSubjectCentroid());
+  const category = getSahibindenCategorySlug();
+  if (city && district && bounds) {
+    const query = new URLSearchParams({ viewType: "map", category, geoLocation_latitude_north: bounds.north.toFixed(6), geoLocation_latitude_south: bounds.south.toFixed(6), geoLocation_longitude_east: bounds.east.toFixed(6), geoLocation_longitude_west: bounds.west.toFixed(6) });
+    return `https://www.sahibinden.com/haritada-emlak-arama/emlak/${city}-${district}?${query.toString()}`;
+  }
+  const base = `https://www.sahibinden.com/${category}`;
   if (city && district && neighborhood) return `${base}/${city}-${district}-${district}-${neighborhood}?viewType=map`;
   if (city && district) return `${base}/${city}-${district}?viewType=map`;
   if (city) return `${base}/${city}?viewType=map`;
@@ -31967,7 +31989,7 @@ function createSahibindenSearchButton() {
   button.type = "button";
   button.className = "mini-button sahibinden-search-button";
   button.textContent = "Sahibinden.com üzerinden ara";
-  button.title = "Aktif taşınmazın il, ilçe ve idari mahallesine göre Sahibinden ilanlarını harita görünümünde açar.";
+  button.title = "Konu tasinmazin KML merkezinin yaklasik 3 km cevresindeki Sahibinden ilanlarini harita gorunumunde acar.";
   button.addEventListener("click", () => {
     window.open(buildSahibindenSearchUrl(), "_blank", "noopener,noreferrer");
   });
@@ -33147,7 +33169,7 @@ function createComparableMatrixCell(section, field, row, rowIndex) {
     mapButton.type = "button";
     mapButton.className = "mini-button comparable-map-button";
     mapButton.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.5-7-11a7 7 0 0 1 14 0c0 4.5-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>';
-    mapButton.title = "Haritadan seç";
+    mapbutton.title = "Konu tasinmazin KML merkezinin yaklasik 3 km cevresindeki Sahibinden ilanlarini harita gorunumunde acar.";
     mapButton.setAttribute("aria-label", "Haritadan seç");
     mapButton.dataset.comparableRow = String(rowIndex);
     mapButton.dataset.comparableField = "c7map";
@@ -35794,7 +35816,7 @@ function createSectionVariantBar(section, groups) {
   detailButton.type = "button";
   detailButton.className = "secondary-button section-variant-trigger";
   detailButton.textContent = `Varyant (${groups.length})`;
-  detailButton.title = "Bu bölümdeki cümle varyantlarını tek tek görüntüle/değiştir (yalnızca yönetici görür)";
+  detailbutton.title = "Konu tasinmazin KML merkezinin yaklasik 3 km cevresindeki Sahibinden ilanlarini harita gorunumunde acar.";
   detailButton.addEventListener("click", () => openVariantControlModal(section.id));
 
   bar.append(quickRow, detailButton);
