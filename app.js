@@ -31943,21 +31943,31 @@ function buildSahibindenLocationSlugPart(value) {
     .replace(/\s+/g, "-");
 }
 
+function buildSahibindenNeighborhoodSlug(value) {
+  return buildSahibindenLocationSlugPart(value)
+    .replace(/-mahallesi$/i, "-mah")
+    .replace(/-mah\.?$/i, "-mah.");
+}
+
 function buildSahibindenSearchUrl() {
   const city = buildSahibindenLocationSlugPart(state.fields.titleCity || state.fields.city);
   const district = buildSahibindenLocationSlugPart(state.fields.titleDistrict || state.fields.district);
+  const neighborhood = buildSahibindenNeighborhoodSlug(state.fields.titleNeighborhood || state.fields.neighborhood);
   const base = `https://www.sahibinden.com/${getSahibindenCategorySlug()}`;
-  if (city && district) return `${base}/${city}-${district}`;
-  if (city) return `${base}/${city}`;
-  return base;
+  // Sahibinden mahalle rotalarında ilçe/semt parçası da bulunuyor. Uygulamada
+  // ayrı bir semt alanı olmadığından ilçe adı semt karşılığı olarak kullanılır.
+  // viewType=map ile ilanlar harita görünümünde açılır.
+  if (city && district && neighborhood) return `${base}/${city}-${district}-${district}-${neighborhood}?viewType=map`;
+  if (city && district) return `${base}/${city}-${district}?viewType=map`;
+  if (city) return `${base}/${city}?viewType=map`;
+  return `${base}?viewType=map`;
 }
-
 function createSahibindenSearchButton() {
   const button = document.createElement("button");
   button.type = "button";
   button.className = "mini-button sahibinden-search-button";
   button.textContent = "Sahibinden.com üzerinden ara";
-  button.title = "Aktif taşınmazın il/ilçesine ve mülkiyet/kullanım türüne göre sahibinden.com'da ilanları yeni sekmede açar.";
+  button.title = "Aktif taşınmazın il, ilçe ve idari mahallesine göre Sahibinden ilanlarını harita görünümünde açar.";
   button.addEventListener("click", () => {
     window.open(buildSahibindenSearchUrl(), "_blank", "noopener,noreferrer");
   });

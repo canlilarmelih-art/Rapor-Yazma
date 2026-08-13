@@ -46,6 +46,7 @@ function extractConstSource(name) {
 const closureFnNames = [
   "getSahibindenCategorySlug",
   "buildSahibindenLocationSlugPart",
+  "buildSahibindenNeighborhoodSlug",
   "buildSahibindenSearchUrl",
   "foldTurkish",
   "isLandOwnershipType",
@@ -63,7 +64,7 @@ function makeContext(fields) {
 // --- 1) Konut: satilik-daire + il-ilce ---------------------------------
 {
   const ctx = makeContext({ currentUsageNature: "Konut", titleCity: "Bursa", titleDistrict: "Nilüfer" });
-  assert.equal(ctx.buildSahibindenSearchUrl(), "https://www.sahibinden.com/satilik-daire/bursa-nilufer");
+  assert.equal(ctx.buildSahibindenSearchUrl(), "https://www.sahibinden.com/satilik-daire/bursa-nilufer?viewType=map");
 }
 
 // --- 2) Arsa/Tarla/Arazi -> satilik-arsa --------------------------------
@@ -71,7 +72,7 @@ function makeContext(fields) {
   const ctx = makeContext({ currentUsageNature: usage, titleCity: "Bursa", titleDistrict: "Osmangazi" });
   assert.equal(
     ctx.buildSahibindenSearchUrl(),
-    "https://www.sahibinden.com/satilik-arsa/bursa-osmangazi",
+    "https://www.sahibinden.com/satilik-arsa/bursa-osmangazi?viewType=map",
     `"${usage}" kullanim niteligi satilik-arsa'ya eslenmedi.`
   );
 });
@@ -81,7 +82,7 @@ function makeContext(fields) {
   const ctx = makeContext({ currentUsageNature: usage, titleCity: "İstanbul", titleDistrict: "Beşiktaş" });
   assert.equal(
     ctx.buildSahibindenSearchUrl(),
-    "https://www.sahibinden.com/satilik-is-yeri/istanbul-besiktas",
+    "https://www.sahibinden.com/satilik-is-yeri/istanbul-besiktas?viewType=map",
     `"${usage}" kullanim niteligi satilik-is-yeri'ye eslenmedi.`
   );
 });
@@ -89,7 +90,7 @@ function makeContext(fields) {
 // --- 4) Turkce karakter katlama (I noktali/noktasiz, ü, ş, ö, ç, ğ) -----
 {
   const ctx = makeContext({ currentUsageNature: "Konut", titleCity: "Çanakkale", titleDistrict: "Gökçeada" });
-  assert.equal(ctx.buildSahibindenSearchUrl(), "https://www.sahibinden.com/satilik-daire/canakkale-gokceada");
+  assert.equal(ctx.buildSahibindenSearchUrl(), "https://www.sahibinden.com/satilik-daire/canakkale-gokceada?viewType=map");
 }
 
 // --- 5) titleCity/titleDistrict (tapu), city/district'ten ONCELIKLI -----
@@ -99,35 +100,49 @@ function makeContext(fields) {
     titleCity: "Bursa", titleDistrict: "Nilüfer",
     city: "İstanbul", district: "Kadıköy",
   });
-  assert.equal(ctx.buildSahibindenSearchUrl(), "https://www.sahibinden.com/satilik-daire/bursa-nilufer", "titleCity/titleDistrict yerine adres alanlari kullanilmis.");
+  assert.equal(ctx.buildSahibindenSearchUrl(), "https://www.sahibinden.com/satilik-daire/bursa-nilufer?viewType=map", "titleCity/titleDistrict yerine adres alanlari kullanilmis.");
 }
 // tapu alanlari BOSSA adres alanlarina duser (fallback).
 {
   const ctx = makeContext({ currentUsageNature: "Konut", city: "İstanbul", district: "Kadıköy" });
-  assert.equal(ctx.buildSahibindenSearchUrl(), "https://www.sahibinden.com/satilik-daire/istanbul-kadikoy");
+  assert.equal(ctx.buildSahibindenSearchUrl(), "https://www.sahibinden.com/satilik-daire/istanbul-kadikoy?viewType=map");
 }
 
 // --- 6) Il/ilce eksikse zarif geri dusus (kirik URL uretilmemeli) -------
 {
   const ctx = makeContext({ currentUsageNature: "Konut", titleCity: "Bursa" }); // ilce yok
-  assert.equal(ctx.buildSahibindenSearchUrl(), "https://www.sahibinden.com/satilik-daire/bursa");
+  assert.equal(ctx.buildSahibindenSearchUrl(), "https://www.sahibinden.com/satilik-daire/bursa?viewType=map");
 }
 {
   const ctx = makeContext({ currentUsageNature: "Konut" }); // ikisi de yok
-  assert.equal(ctx.buildSahibindenSearchUrl(), "https://www.sahibinden.com/satilik-daire");
+  assert.equal(ctx.buildSahibindenSearchUrl(), "https://www.sahibinden.com/satilik-daire?viewType=map");
 }
 
 // --- 7) Kullanim niteligi bossa: ownershipType'a (Arsa/Tarla) bakiyor ----
 {
   const ctx = makeContext({ ownershipType: "Tarla", titleCity: "Bursa", titleDistrict: "Nilüfer" });
-  assert.equal(ctx.buildSahibindenSearchUrl(), "https://www.sahibinden.com/satilik-arsa/bursa-nilufer", "ownershipType=Tarla iken satilik-arsa'ya duşmedi.");
+  assert.equal(ctx.buildSahibindenSearchUrl(), "https://www.sahibinden.com/satilik-arsa/bursa-nilufer?viewType=map", "ownershipType=Tarla iken satilik-arsa'ya duşmedi.");
 }
 // hicbir ipucu yoksa varsayilan: satilik-daire (en yaygin/genel dava).
 {
   const ctx = makeContext({ titleCity: "Bursa", titleDistrict: "Nilüfer" });
-  assert.equal(ctx.buildSahibindenSearchUrl(), "https://www.sahibinden.com/satilik-daire/bursa-nilufer");
+  assert.equal(ctx.buildSahibindenSearchUrl(), "https://www.sahibinden.com/satilik-daire/bursa-nilufer?viewType=map");
 }
 
+// --- 7b) İl + ilçe + idari mahalle: Sahibinden mahalle rotası -----------
+{
+  const ctx = makeContext({
+    currentUsageNature: "Tarla",
+    titleCity: "Bursa",
+    titleDistrict: "Gürsu",
+    titleNeighborhood: "İpekyolu Mahallesi",
+  });
+  assert.equal(
+    ctx.buildSahibindenSearchUrl(),
+    "https://www.sahibinden.com/satilik-arsa/bursa-gursu-gursu-ipekyolu-mah.?viewType=map",
+    "İlçe ve idari mahalle Sahibinden mahalle rotasına eklenmedi."
+  );
+}
 console.log("Sahibinden.com arama URL uretimi (buildSahibindenSearchUrl) gercek-kaynak testleri tamam.");
 
 // --- 8) Buton, Emsaller (comparables) editorune kablanmis mi? -----------
