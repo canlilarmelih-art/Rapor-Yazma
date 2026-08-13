@@ -3608,6 +3608,44 @@ td .free-lookup input {
   border-color: #e0940a !important;
 }
 
+.comparable-portal-button {
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.comparable-portal-mark {
+  display: inline-grid;
+  place-items: center;
+  min-width: 21px;
+  height: 21px;
+  padding: 0 3px;
+  border-radius: 5px;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.hepsiemlak-search-button {
+  border-color: #37a66a !important;
+  color: #237446 !important;
+  background: #effaf3 !important;
+}
+
+.hepsiemlak-search-button .comparable-portal-mark {
+  background: #37a66a;
+}
+
+.emlakjet-search-button {
+  border-color: #e85b4e !important;
+  color: #ae3d33 !important;
+  background: #fff2f0 !important;
+}
+
+.emlakjet-search-button .comparable-portal-mark {
+  background: #e85b4e;
+}
+
 .comparable-column-actions .row-delete-button {
   width: 28px;
   height: 28px;

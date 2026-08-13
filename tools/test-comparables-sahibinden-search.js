@@ -50,6 +50,9 @@ const closureFnNames = [
   "getSelectedMapPoint",
   "getSahibindenSubjectCentroid",
   "buildSahibindenMapBounds",
+  "getComparablePortalCategory",
+  "buildHepsiemlakSearchUrl",
+  "buildEmlakjetSearchUrl",
   "buildSahibindenSearchUrl",
   "foldTurkish",
   "isLandOwnershipType",
@@ -157,7 +160,7 @@ console.log("Sahibinden.com arama URL uretimi (buildSahibindenSearchUrl) gercek-
 const editorSource = extractFunctionSource("createComparablesVerticalEditor");
 assert.match(
   editorSource,
-  /headingRow\.append\(createSahibindenSearchButton\(\), createComparableViewModeControl\(\), createComparableRowLabelsToggle\(\), addButton\);/,
+  /headingRow\.append\(createSahibindenSearchButton\(\), createHepsiemlakSearchButton\(\), createEmlakjetSearchButton\(\), createComparableViewModeControl\(\), createComparableRowLabelsToggle\(\), addButton\);/,
   "createSahibindenSearchButton() artik Emsaller basligina eklenmiyor."
 );
 const buttonSource = extractFunctionSource("createSahibindenSearchButton");
@@ -166,3 +169,18 @@ assert.match(buttonSource, /window\.open\(buildSahibindenSearchUrl\(\), "_blank"
 console.log("Sahibinden dugmesi Emsaller basligina kablolama testi tamam.");
 
 console.log("Comparables sahibinden arama testleri basarili.");
+
+// --- 9) Hepsiemlak ve Emlakjet: ayni merkez siniri ----------------------
+{
+  const ctx = makeContext({ currentUsageNature: "Tarla", titleCity: "Bursa", latitude: "40.200000", longitude: "28.900000" });
+  const hepsi = new URL(ctx.buildHepsiemlakSearchUrl());
+  assert.equal(hepsi.pathname, "/harita/bursa-satilik/arsa");
+  assert.equal(hepsi.searchParams.get("mapTopLeft"), "40.226949,28.864717");
+  assert.equal(hepsi.searchParams.get("mapBottomRight"), "40.173051,28.935283");
+
+  const jet = new URL(ctx.buildEmlakjetSearchUrl());
+  assert.equal(jet.pathname, "/satilik-arsa/bursa/");
+  assert.equal(jet.searchParams.get("bottom_left"), "40.173051,28.864717");
+  assert.equal(jet.searchParams.get("top_right"), "40.226949,28.935283");
+}
+console.log("Hepsiemlak ve Emlakjet merkezli arama testleri basarili.");

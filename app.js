@@ -31968,6 +31968,65 @@ function buildSahibindenMapBounds(point, radiusMeters = 3000) {
   return { north: lat + latDelta, south: lat - latDelta, east: lng + lngDelta, west: lng - lngDelta };
 }
 
+function getComparablePortalCategory(portal) {
+  const usageKey = foldTurkish(state.fields.currentUsageNature || state.fields.legalUsageNature || "");
+  const isLand = isLandOwnershipType() || ["ARSA", "TARLA", "ARAZI", "SANAYI TESISI"].includes(usageKey);
+  if (portal === "hepsiemlak") return isLand ? "arsa" : usageKey.includes("ISYERI") || usageKey.includes("TICARI") ? "isyeri" : "daire";
+  return isLand ? "satilik-arsa" : usageKey.includes("ISYERI") || usageKey.includes("TICARI") ? "satilik-isyeri" : "satilik-daire";
+}
+
+function buildHepsiemlakSearchUrl() {
+  const city = buildSahibindenLocationSlugPart(state.fields.titleCity || state.fields.city);
+  const bounds = buildSahibindenMapBounds(getSahibindenSubjectCentroid());
+  if (!city || !bounds) return "https://www.hepsiemlak.com/harita";
+  const query = new URLSearchParams({
+    mapTopLeft: `${bounds.north.toFixed(6)},${bounds.west.toFixed(6)}`,
+    mapBottomRight: `${bounds.south.toFixed(6)},${bounds.east.toFixed(6)}`,
+  });
+  return `https://www.hepsiemlak.com/harita/${city}-satilik/${getComparablePortalCategory("hepsiemlak")}?${query.toString()}`;
+}
+
+function buildEmlakjetSearchUrl() {
+  const city = buildSahibindenLocationSlugPart(state.fields.titleCity || state.fields.city);
+  const bounds = buildSahibindenMapBounds(getSahibindenSubjectCentroid());
+  if (!city || !bounds) return "https://www.emlakjet.com/";
+  const query = new URLSearchParams({
+    bottom_left: `${bounds.south.toFixed(6)},${bounds.west.toFixed(6)}`,
+    top_right: `${bounds.north.toFixed(6)},${bounds.east.toFixed(6)}`,
+  });
+  return `https://www.emlakjet.com/${getComparablePortalCategory("emlakjet")}/${city}/?${query.toString()}`;
+}
+
+function createComparablePortalButton({ label, initials, className, title, buildUrl }) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = `mini-button comparable-portal-button ${className}`;
+  button.innerHTML = `<span class="comparable-portal-mark" aria-hidden="true">${initials}</span><span>${label}</span>`;
+  button.title = title;
+  button.addEventListener("click", () => window.open(buildUrl(), "_blank", "noopener,noreferrer"));
+  return button;
+}
+
+function createHepsiemlakSearchButton() {
+  return createComparablePortalButton({
+    label: "Hepsiemlak",
+    initials: "HE",
+    className: "hepsiemlak-search-button",
+    title: "Konu taşınmazın KML merkezinin yaklaşık 3 km çevresindeki Hepsiemlak ilanlarını açar.",
+    buildUrl: buildHepsiemlakSearchUrl,
+  });
+}
+
+function createEmlakjetSearchButton() {
+  return createComparablePortalButton({
+    label: "Emlakjet",
+    initials: "EJ",
+    className: "emlakjet-search-button",
+    title: "Konu taşınmazın KML merkezinin yaklaşık 3 km çevresindeki Emlakjet ilanlarını açar.",
+    buildUrl: buildEmlakjetSearchUrl,
+  });
+}
+
 function buildSahibindenSearchUrl() {
   const city = buildSahibindenLocationSlugPart(state.fields.titleCity || state.fields.city);
   const district = buildSahibindenLocationSlugPart(state.fields.titleDistrict || state.fields.district);
@@ -32020,7 +32079,7 @@ function createComparablesVerticalEditor(section) {
     autosave();
     renderSection();
   });
-  headingRow.append(createSahibindenSearchButton(), createComparableViewModeControl(), createComparableRowLabelsToggle(), addButton);
+  headingRow.append(createSahibindenSearchButton(), createHepsiemlakSearchButton(), createEmlakjetSearchButton(), createComparableViewModeControl(), createComparableRowLabelsToggle(), addButton);
 
   const rows = getComparableRows();
   const viewMode = getComparableViewMode();
