@@ -71,11 +71,11 @@ function makeContext(fields, extraState = {}) {
 {
   const ctx = makeContext({ currentUsageNature: "Konut", titleCity: "Bursa", titleDistrict: "Nilüfer", latitude: "40.200000", longitude: "28.900000" });
   const url = new URL(ctx.buildSahibindenSearchUrl());
-  assert.equal(url.pathname, "/haritada-emlak-arama/emlak/bursa-nilufer");
+  assert.equal(url.pathname, "/satilik-daire");
   assert.equal(url.searchParams.get("viewType"), "map");
-  assert.equal(url.searchParams.get("category"), "satilik-daire");
-  assert.equal(url.searchParams.get("geoLocation_latitude_north"), "40.226949");
-  assert.equal(url.searchParams.get("geoLocation_latitude_south"), "40.173051");
+  assert.equal(url.searchParams.get("geoLocation_latitude"), "40.200000");
+  assert.equal(url.searchParams.get("geoLocation_longitude"), "28.900000");
+  assert.equal(url.searchParams.get("geoLocation_geoDistance_max"), "3000");
 }
 
 // --- 2) Arsa/Tarla/Arazi -> satilik-arsa --------------------------------
@@ -179,7 +179,10 @@ console.log("Sahibinden dugmesi Emsaller basligina kablolama testi tamam.");
 
 console.log("Comparables sahibinden arama testleri basarili.");
 
-// --- 9) Hepsiemlak ve Emlakjet: ayni merkez siniri ----------------------
+// --- 9) Hepsiemlak, Emlakjet ve Sahibinden: ayni merkez siniri ----------
+// (buildSahibindenSearchUrl()'un koordinat/bounds dalı — bkz. senaryo 1;
+// burada asıl doğrulanan, üç portalın da AYNI getSahibindenSubjectCentroid()/
+// buildSahibindenMapBounds() cikisini paylastigidir.)
 {
   const ctx = makeContext({ currentUsageNature: "Tarla", titleCity: "Bursa", titleDistrict: "Nilüfer", latitude: "40.200000", longitude: "28.900000" });
   const hepsi = new URL(ctx.buildHepsiemlakSearchUrl());

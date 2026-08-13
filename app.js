@@ -32006,8 +32006,8 @@ function createComparablePortalButton({ label, initials, className, title, build
   button.setAttribute("aria-label", label);
   const logoMap = {
     "hepsiemlak-search-button": "assets/portal-logos/emlakjet.png",
-    "emlakjet-search-button": "assets/portal-logos/hepsiemlak.png",
-    "sahibinden-search-button": "assets/portal-logos/sahibinden.png",
+    "emlakjet-search-button": "assets/portal-logos/sahibinden.png",
+    "sahibinden-search-button": "assets/portal-logos/hepsiemlak.png",
   };
   const logo = logoMap[className];
   button.innerHTML = `<img class="comparable-portal-logo" src="${logo || ""}" width="24" height="24" alt="" aria-hidden="true">`;
@@ -32053,6 +32053,16 @@ function buildSahibindenSearchUrl() {
   const neighborhood = buildSahibindenNeighborhoodSlug(state.fields.titleNeighborhood || state.fields.neighborhood);
   const bounds = buildSahibindenMapBounds(getSahibindenSubjectCentroid());
   const category = getSahibindenCategorySlug();
+  const subjectPoint = getSahibindenSubjectCentroid();
+  if (subjectPoint) {
+    const query = new URLSearchParams({
+      geoLocation_latitude: Number(subjectPoint[0]).toFixed(6),
+      geoLocation_longitude: Number(subjectPoint[1]).toFixed(6),
+      geoLocation_geoDistance_max: "3000",
+      viewType: "map",
+    });
+    return `https://www.sahibinden.com/${category}?${query.toString()}`;
+  }
   if (city && district && bounds) {
     const query = new URLSearchParams({ viewType: "map", category, geoLocation_latitude_north: bounds.north.toFixed(6), geoLocation_latitude_south: bounds.south.toFixed(6), geoLocation_longitude_east: bounds.east.toFixed(6), geoLocation_longitude_west: bounds.west.toFixed(6) });
     return `https://www.sahibinden.com/haritada-emlak-arama/emlak/${city}-${district}?${query.toString()}`;
