@@ -9043,4 +9043,39 @@ raporlarda (yaygın durum) hiçbir fark yaratmıyor.
   kontrol ediyor) değişiklik gerektirmeden yeşil kaldı. `npm run verify`
   tam zincirle yeşil.
 - Cache-buster: `app.js?v=20260813-1800`.
+
+## 0.0.431 - 2026-08-13 - Taleplerim arama kutusu: "Yalnızca bulutta" kartlar filtreyi hiç görmüyordu
+
+Kullanıcı ekran görüntüsü gönderdi: arama kutusuna "00748" yazınca eşleşen
+tek talebin yanında ilgisiz bir sürü "Yalnızca bulutta" kart da (İş
+Bankası, Halkbank, Vakıf, Ziraat vb.) görünmeye devam ediyordu — "herhangi
+bir kelime yazıyorum örnek kuvyt ama bu kelime haricinde sonuçlar da
+geliyor".
+
+**Kök neden** (`cloud/report-library.js`, `renderDashboardBody()`): bu
+cihaza hiç getirilmemiş, yalnızca bulutta duran raporlar,
+searchQuery/statusFilter/showArchived'a göre filtrelenen `visible`
+listesinin TAMAMEN DIŞINDA, AYRI bir `Object.keys(cloudReportsCache)...
+forEach` döngüsüyle ekleniyordu — arama kutusuna ne yazılırsa yazılsın bu
+kartların HİÇBİRİ süzülmüyordu, hep gösteriliyordu. Düzeltme: bu döngüye
+de `matchesSearch({ summary: cloudReportsCache[id]?.summary },
+searchQuery)` filtresi eklendi (aynı fonksiyon, local kartlarda zaten
+kullanılan).
+
+Canlı doğrulama (localhost:5173): "vakif" ve "kuvyt" aratıldı — her ikisi
+de artık SADECE gerçekten eşleşen kartları gösteriyor (ör. "kuvyt" →
+yalnızca "Kuvyt-..." adlı/Kuveyt Türk bankalı 5 kart; önceden İş Bankası/
+Halkbank/Vakıf/Ziraat kartları da karışık geliyordu). Konsolda hata yok.
+- Test: yeni `tools/test-report-library-cloud-search.js` — (1) cloud-only
+  döngüde `matchesSearch` çağrısının gerçekten eklendiğini (kaynak-düzeyi),
+  (2) `matchesSearch()`'ün gerçek kaynaktan çalıştırılıp ilgili/ilgisiz
+  kayıtları doğru ayırdığını VE boş özetli bir kaydın boş-olmayan bir
+  sorguyla YANLIŞLIKLA eşleşmediğini (asıl hatanın kök nedeni tam olarak
+  buydu) doğruluyor. `npm run verify` tam zincirle yeşil.
+- Not: `statusFilter`/`showArchived` bu "Yalnızca bulutta" kartlara hâlâ
+  uygulanmıyor (kapsam dışı bırakıldı — kullanıcı yalnızca aramayı bildirdi,
+  `cloudReportsCache[id]`'de local `index` girdisindeki gibi bir
+  archived/status alanı olup olmadığı doğrulanmadı; ayrı bir inceleme
+  gerektirir).
+- Cache-buster: `cloud/report-library.js?v=20260813-1900`.
 - Yedek: `backups/before-yapikredi-2nd-fix-list_2026-08-12_22-45-16`.

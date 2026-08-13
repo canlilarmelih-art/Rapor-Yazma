@@ -642,9 +642,18 @@
     }
 
     if (window.RaporCloudSync?.isConfigured() && window.RaporCloudSync.getStatus().signedIn && cloudReportsCache) {
+      // Kullanıcı bildirimi (2026-08-13): "Talep Arama kısmı çalışmıyor,
+      // herhangi bir kelime yazıyorum ama bu kelime haricinde sonuçlar da
+      // geliyor" — GERÇEK HATA: "Yalnızca bulutta" (bu cihaza hiç
+      // getirilmemiş) kartlar `visible` (searchQuery/statusFilter/
+      // showArchived'a göre filtrelenmiş) listesinin TAMAMEN DIŞINDA,
+      // ayrı bir döngüyle ekleniyordu — arama kutusuna ne yazılırsa
+      // yazılsın hepsi HER ZAMAN gösteriliyordu. `matchesSearch` burada da
+      // uygulanarak düzeltildi.
       Object.keys(cloudReportsCache)
         .filter((id) => !localIds.has(id))
         .filter((id) => isMinimumCompleteSummary(cloudReportsCache[id]?.summary))
+        .filter((id) => matchesSearch({ summary: cloudReportsCache[id]?.summary }, searchQuery))
         .forEach((id) => {
           html += cloudOnlyCardHtml(id, cloudReportsCache[id]);
         });
