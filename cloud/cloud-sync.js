@@ -11,7 +11,8 @@
 //  - Beyaz liste: fields, tables, lookupOptions, updatedAt ve sanitize edilmis
 //    harita durumu (ham belge/KML metni, uploads ve diger sourceValues gitmez).
 //  - Yol: users/{uid}/reports/{reportId} (yalnız sahibi erişir — D2).
-//  - expireAt = updatedAt + 30 gün; Firestore TTL siler (D3).
+//  - expireAt = updatedAt + RETENTION_DAYS (14 gün, 2026-08-13'te 30'dan
+//    düşürüldü); Firestore TTL siler (D3).
 //  - Yapılandırma yoksa (apiKey === "YAPISTIR") modül tamamen pasiftir (D6).
 //
 // Faz 2 değişikliği: artık TEK rapor değil, o an AKTİF olan rapor senkronlanır
@@ -33,7 +34,14 @@
   const CLOUD_WHITELIST = ["fields", "tables", "lookupOptions", "titleUnits", "activeTitleUnitIndex", "primaryTitleUnitShadow", "updatedAt"];
   const CLOUD_SCHEMA = "rapor-yazma-cloud";
   const CLOUD_SCHEMA_VERSION = 1;
-  const RETENTION_DAYS = 30;
+  // Kullanıcı talebi (2026-08-13): 30 günden 14 güne düşürüldü — "bulutta
+  // saklama süresini 30 günden 7 güne düşürelim" olarak geldi, ama 7 gün
+  // iOS Safari'nin 7-gün-etkileşimsiz-siteler-için yerel depolamayı
+  // otomatik temizleme riskiyle (bkz. cloud/FAZ0-TASARIM.md Faz 3 notu)
+  // TAM ÜST ÜSTE biner — bir taslak tam 7 gün hiç açılmazsa hem yerel hem
+  // bulut kopyası aynı anda gidebilir. Kullanıcıya açıklandı, 14 günde
+  // (kurtarma tamponu koruyarak) karar kılındı.
+  const RETENTION_DAYS = 14;
   const PUSH_MIN_INTERVAL_MS = 45 * 1000; // kota bütçesi: FAZ0 Bölüm 5
   const DIRTY_CHECK_INTERVAL_MS = 10 * 1000;
   const QUOTA_STORAGE_KEY = "rapor-cloud-push-quota-v1";
@@ -388,8 +396,8 @@
     }
   }
 
-  // "30 gün daha sakla": raporu AÇMADAN/değiştirmeden yalnızca expireAt'i
-  // yeniler. rev, FieldValue.increment YERİNE düz sayı olarak yazılır çünkü
+  // "+14 gün" (eski adıyla "30 gün daha sakla"): raporu AÇMADAN/değiştirmeden
+  // yalnızca expireAt'i yeniler. rev, FieldValue.increment YERİNE düz sayı olarak yazılır çünkü
   // Firestore Rules'daki "rev is int" kontrolü artış (increment) sentinel'ini
   // değerlendiremez — bu yüzden önce okunup elle +1 yapılır.
   async function extendReportExpiry(reportId) {

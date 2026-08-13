@@ -436,7 +436,11 @@
     if (!expireAtTimestamp || typeof expireAtTimestamp.toDate !== "function") return "";
     const expireDate = expireAtTimestamp.toDate();
     const daysLeft = Math.ceil((expireDate.getTime() - Date.now()) / (24 * 60 * 60 * 1000));
-    const warn = daysLeft <= 7;
+    // Saklama süresi 30 günden 14 güne düşürüldü (2026-08-13, kullanıcı
+    // talebi) — uyarı eşiği de orantılı küçültüldü (eskiden 7/30 ≈ %23,
+    // şimdi 3/14 ≈ %21) ki uyarı hâlâ yalnızca sürenin SON dilimini
+    // işaretlesin, yarısını değil.
+    const warn = daysLeft <= 3;
     const label = daysLeft <= 0 ? "bugün silinecek" : `${daysLeft} gün sonra silinecek`;
     return `<span class="library-badge ${warn ? "library-badge-warn" : "library-badge-ok"}">Bulut · ${label}</span>`;
   }
@@ -460,7 +464,7 @@
         return;
       }
       const badge = formatExpiryBadge(cloudData.expireAt) || `<span class="library-badge library-badge-ok">Bulutta</span>`;
-      slot.innerHTML = `${badge} <button type="button" class="library-extend-button" data-action="extend" data-id="${escapeHtml(id)}">+30 gün</button>`;
+      slot.innerHTML = `${badge} <button type="button" class="library-extend-button" data-action="extend" data-id="${escapeHtml(id)}">+14 gün</button>`;
     });
   }
 

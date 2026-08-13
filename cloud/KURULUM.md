@@ -36,7 +36,7 @@ giriş ekranını açar.
 2. Bu depodaki `cloud/firestore.rules` dosyasının TÜM içeriğini yapıştır → **Publish**.
 3. Doğrulama: Rules playground'da `get /users/BAŞKA_UID/reports/x` → Denied görmelisin.
 
-## 5. TTL (30 gün otomatik silme — D3)
+## 5. TTL (14 gün otomatik silme — D3)
 
 1. Firestore → **TTL** (Time-to-live) sekmesi → **Create policy**.
 2. Collection group: `reports` · Timestamp field: `expireAt` → Create.
@@ -96,7 +96,8 @@ oturumu gerekir; şimdiden hazırlık yapılmadı.
 
 ## Notlar / Sınırlar (Faz 1)
 
-- **Bulut = taşıma tamponu:** kayıt son gönderimden 30 gün sonra silinir.
+- **Bulut = taşıma tamponu:** kayıt son gönderimden 14 gün sonra silinir
+  (2026-08-13'te 30 günden düşürüldü).
   Kalıcı arşiv: *12 - Banka ve Çıktı → JSON olarak farklı kaydet* (geri
   yüklenebilir tek format; Word/PDF çıktıdır).
 - Belgeler (PDF/görsel) ve ham belge metinleri hiçbir koşulda buluta gitmez.

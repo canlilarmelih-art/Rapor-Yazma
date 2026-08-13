@@ -14,7 +14,7 @@ uygulaması bu dokümana göre yapılacaktır.
 |---|---|---|
 | D1 | **Belgeler ve ham belge metinleri buluta GİTMEZ.** PDF/görsel dosyaları cihazda kalır; state içindeki `sourceValues` (TAKBİS ham satırları, adres/EKB/imar ham metinleri) senkron paketine girmez. | KVKK veri minimizasyonu; 1 MiB belge limiti; ham veri belge yeniden yüklenerek türetilebilir. |
 | D2 | **Veri yolu `users/{uid}/reports/{reportId}`.** Kullanıcı yalnızca kendi raporlarını görür; izolasyon Security Rules + yapısal yol ile çift katmanlıdır. | Yanlış sorgu yazımıyla bile başka kullanıcının verisine erişilemez. |
-| D3 | **Raporlar son güncellemeden 30 gün sonra buluttan kalıcı silinir.** `expireAt = updatedAt + 30 gün` alanı + Firestore yerleşik **TTL policy**. Cloud Functions gerekmez. | KVKK saklama sınırlaması; 1 GB kota hiç dolmaz; bulut = arşiv değil taşıma tamponu. |
+| D3 | **Raporlar son güncellemeden 14 gün sonra buluttan kalıcı silinir** (2026-08-13'te 30 günden düşürüldü). `expireAt = updatedAt + 14 gün` alanı + Firestore yerleşik **TTL policy**. Cloud Functions gerekmez. | KVKK saklama sınırlaması; 1 GB kota hiç dolmaz; bulut = arşiv değil taşıma tamponu. |
 | D4 | **Arşiv kullanıcının cihazıdır.** JSON = geri yüklenebilir tam yedek; Word/PDF = teslim çıktısı (geri yüklenemez). Tamamlama akışında dışa aktarma modalı zorunlu adım olur. | Banka revizyon talepleri buluttan bağımsız karşılanır. |
 | D5 | **0 TL sınırları:** Firebase Auth (50K MAU) + Firestore (europe-west bölgesi) + Firebase Hosting + **App Check**. Cloud Functions ve Firebase Storage KULLANILMAZ (yeni projelerde Blaze ister). Cloudflare Turnstile yerine App Check. | Turnstile sunucu doğrulaması ister (sunucumuz yok); App Check SDK çağrılarını da korur. |
 | D6 | ~~Bulut kapalıyken uygulama bugünkü gibi %100 çalışır.~~ **SÜPÜRÜLDÜ (superseded) — 2026-07-09.** Bkz. D7. | — |
@@ -81,7 +81,7 @@ BULUT paketi        :  6.5 KiB   → 1 MiB limitinin %0.6'sı
   "lastActiveSection": "valuation",  // mevcut activeSectionId birebir
   "createdAt": "<serverTimestamp>",
   "updatedAt": "<serverTimestamp>",
-  "expireAt": "<Timestamp: updatedAt + 30 gün>",   // TTL alanı
+  "expireAt": "<Timestamp: updatedAt + 14 gün>",   // TTL alanı
   "summary": {                       // dashboard kartı için hızlı alanlar
     "caseName": "", "bank": "", "city": "", "district": "",
     "adaParsel": "", "propertyType": ""
@@ -101,8 +101,9 @@ BULUT paketi        :  6.5 KiB   → 1 MiB limitinin %0.6'sı
 
 Firestore → TTL policies → koleksiyon grubu `reports`, alan `expireAt`.
 Silme, süre dolumundan sonra ~24-72 saat içinde gerçekleşir (kabul edilir).
-"30 gün daha sakla" butonu = `expireAt`'i `now + 30g` yapar (Rules üst sınırı
-40 gün olduğundan istemci kurcalamasıyla süresiz uzatılamaz).
+"+14 gün" butonu (eski adıyla "30 gün daha sakla") = `expireAt`'i `now + 14g`
+yapar (Rules üst sınırı 20 gün olduğundan istemci kurcalamasıyla süresiz
+uzatılamaz).
 
 ---
 
@@ -120,7 +121,7 @@ Silme, süre dolumundan sonra ~24-72 saat içinde gerçekleşir (kabul edilir).
   tarafı şifreleme opsiyonu Faz 3'te masada).
 - **KVKK metni için hazır cümleler:** "Rapor verileri yalnızca rapor sahibinin
   erişebileceği şekilde saklanır; yüklenen belgeler ve ham belge içerikleri
-  sunucuya aktarılmaz; rapor kayıtları son işlemden 30 gün sonra otomatik ve
+  sunucuya aktarılmaz; rapor kayıtları son işlemden 14 gün sonra otomatik ve
   kalıcı olarak silinir."
 
 ---
@@ -150,8 +151,14 @@ buluttaki alınır (yerel kirli değilse).
 - **Faz 2:** Çoklu rapor + dashboard (kartlar/tablo, arama, arşiv, kopyala,
   geri sayım rozeti) + yeni talep akışı (kısa form) + tamamlama/dışa aktarma modalı.
 - **Faz 3:** Çakışma modalı, `lastActiveSection` devri, PWA kurulumu
-  (manifest + service worker; iOS 7 gün silme riskine karşı), "30 gün daha
-  sakla", kota telemetrisi, istemci şifreleme değerlendirmesi.
+  (manifest + service worker; iOS 7 gün silme riskine karşı), "+14 gün"
+  (eski adıyla "30 gün daha sakla"), kota telemetrisi, istemci şifreleme
+  değerlendirmesi.
+  **Not (2026-08-13):** RETENTION_DAYS 30'dan 14'e düşürüldü (kullanıcı
+  talebi, önce 7 gün istendi). iOS'un 7-gün-etkileşimsiz-siteler-için
+  yerel depolamayı temizleme riskiyle kalan tampon artık 23 günden 7 güne
+  düştü — hâlâ pozitif ama önceye göre çok daha dar. 7 günün altına
+  ASLA inilmemeli (tampon sıfırlanır/negatife düşer).
 
 ## 8. Açık Sorular (Faz 1 öncesi yanıtlanmalı)
 

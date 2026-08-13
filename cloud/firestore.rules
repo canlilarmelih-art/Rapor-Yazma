@@ -5,8 +5,10 @@ rules_version = '2';
 // İlkeler:
 //  1) Varsayılan: HER ŞEY KAPALI. Yalnızca aşağıda açıkça izin verilen yol açık.
 //  2) Kullanıcı yalnızca KENDİ raporlarını okur/yazar/siler (users/{uid}/reports).
-//  3) Her yazmada zarf alanları doğrulanır; expireAt (30 gün TTL) zorunludur ve
-//     istemci kurcalamasıyla süresiz uzatılamaz (üst sınır: şimdi + 40 gün).
+//  3) Her yazmada zarf alanları doğrulanır; expireAt (14 gün TTL, 2026-08-13'te
+//     30 günden düşürüldü) zorunludur ve istemci kurcalamasıyla süresiz
+//     uzatılamaz (üst sınır: şimdi + 20 gün — eskiden 30+10 gün marj, orantılı
+//     olarak 14+6 gün).
 //
 // Not: Belge boyutu limitini (1 MiB) Firestore kendisi uygular; ham belge
 // metinleri (sourceValues) istemci beyaz listesi gereği zaten pakete girmez.
@@ -31,7 +33,7 @@ service cloud.firestore {
     function hasBoundedExpiry() {
       return request.resource.data.expireAt is timestamp
         && request.resource.data.expireAt > request.time
-        && request.resource.data.expireAt < request.time + duration.value(40, 'd');
+        && request.resource.data.expireAt < request.time + duration.value(20, 'd');
     }
 
     match /users/{uid}/reports/{reportId} {

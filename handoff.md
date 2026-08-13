@@ -9078,4 +9078,52 @@ Halkbank/Vakıf/Ziraat kartları da karışık geliyordu). Konsolda hata yok.
   archived/status alanı olup olmadığı doğrulanmadı; ayrı bir inceleme
   gerektirir).
 - Cache-buster: `cloud/report-library.js?v=20260813-1900`.
+
+## 0.0.432 - 2026-08-13 - Bulut saklama süresi 30 günden 14 güne düşürüldü
+
+Kullanıcı: "bulutta saklama süresini 30 günden 7 güne düşürelim." Uygulamadan
+önce risk açıklandı: `cloud/FAZ0-TASARIM.md`'ye göre 30 gün, iOS Safari'nin
+7-gün-etkileşimsiz-siteler-için yerel depolamayı otomatik temizleme
+riskine karşı bilinçli bir GÜVENLİK TAMPONUYDU — süreyi tam 7 güne
+indirmek bu iki riski üst üste bindirip bir iOS kullanıcısının hem yerel
+hem bulut kopyasını aynı anda kaybetmesine yol açabilirdi.
+`AskUserQuestion` ile netleştirildi, kullanıcı riski dinledikten sonra
+**14 gün**e karar verdi (7 günlük bir kurtarma tamponu korunuyor).
+
+- `cloud/cloud-sync.js`: `RETENTION_DAYS = 30` → `14` — tek gerçek kaynak;
+  hem `expireAt` hesaplaması (ilk gönderim VE `extendReportExpiry`) hem
+  giriş/hesap modallarındaki metinler (`${RETENTION_DAYS} gün ...`) bu
+  sabitten otomatik türüyor, ayrıca değiştirilmesi gerekmedi.
+- `cloud/report-library.js`: "+30 gün" uzatma düğmesi → "+14 gün".
+  `formatExpiryBadge()`'in "yaklaşıyor" uyarı eşiği de orantılı küçültüldü
+  (eski 7/30 ≈ %23 → yeni 3/14 ≈ %21) — aksi halde 14 günlük pencerede
+  `daysLeft <= 7` HER ZAMAN doğru olur, tüm kartlar sürekli "uyarı"
+  renginde görünürdü.
+- `cloud/firestore.rules`: `hasBoundedExpiry()`'nin istemci-kurcalama üst
+  sınırı `duration.value(40, 'd')` → `duration.value(20, 'd')` (eski
+  30+10 gün marjıyla orantılı, 14+6 gün). **Bu dosya GitHub Actions ile
+  OTOMATİK DEPLOY OLMUYOR** — Firestore güvenlik kuralları ayrı, elle
+  `firebase deploy --only firestore:rules` gerektiriyor; bu oturumda o
+  komutu çalıştıracak Firebase CLI/kimlik bilgisi yoktu. Mevcut canlı
+  kural (40 gün üst sınır) 14 günlük yeni süreyi ZATEN sorunsuz kabul
+  ediyor (14 < 40), yani bu SADECE güvenlik marjını sıkılaştıran, ACİL
+  OLMAYAN bir değişiklik — kullanıcı uygun olduğunda Firebase
+  Console'dan veya CLI ile manuel deploy etmeli.
+- `cloud/FAZ0-TASARIM.md` ve `cloud/KURULUM.md`: tüm "30 gün" referansları
+  (D3 tablosu, JSON örneği, TTL kurulum başlığı, KVKK cümlesi, Faz 3
+  notu) 14 güne güncellendi; Faz 3'e iOS-tampon daralması hakkında yeni
+  bir not eklendi.
+- Canlı doğrulama (localhost:5173): yeni bir kayıt "Bulut · 14 gün sonra
+  silinecek" + "+14 gün" gösteriyor; ÖNCEDEN 30 günlük değerle
+  kaydedilmiş bir rapor hâlâ "30 gün sonra silinecek" gösteriyor (bu
+  BEKLENEN — Firestore'daki mevcut `expireAt` değeri geriye dönük
+  değişmez, yalnızca bir sonraki kayıt/uzatmada yeni süreye geçer);
+  düğme etiketi her ikisinde de doğru "+14 gün". Konsolda hata yok.
+- Test: yeni `tools/test-cloud-retention-days.js` — `RETENTION_DAYS`'in
+  tek yerde tanımlı olduğunu VE gerçekten kullanıldığı 4 yeri (push,
+  extend, giriş/hesap modal metinleri), `report-library.js`'deki buton
+  etiketi + uyarı eşiğini, `firestore.rules`'daki üst sınırı doğruluyor.
+  `npm run verify` tam zincirle yeşil.
+- Cache-buster: `cloud/cloud-sync.js?v=20260813-2000`,
+  `cloud/report-library.js?v=20260813-2000`.
 - Yedek: `backups/before-yapikredi-2nd-fix-list_2026-08-12_22-45-16`.
