@@ -32010,7 +32010,17 @@ function createComparablePortalButton({ label, initials, className, title, build
   const logo = logoMap[className];
   button.innerHTML = `<img class="comparable-portal-logo" src="${logo || ""}" alt="" aria-hidden="true">`;
   button.title = title;
-  button.addEventListener("click", () => window.open(buildUrl(), "_blank", "noopener,noreferrer"));
+  button.addEventListener("click", () => {
+    const url = buildUrl();
+    const isMobileBrowser = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || "");
+    if (isMobileBrowser) {
+      // Mobilde popup/deep-link yerine normal web navigasyonu kullanılır;
+      // böylece harita sınırları query string içinde korunur.
+      window.location.assign(url);
+      return;
+    }
+    window.open(url, "_blank", "noopener,noreferrer");
+  });
   return button;
 }
 

@@ -171,6 +171,8 @@ assert.match(appSource, /portal-logos\/emlakjet\.png/, "Emlakjet logosu yerel va
 assert.match(appSource, /portal-logos\/sahibinden\.png/, "Sahibinden logosu yerel varliktan kullanilmiyor.");
 assert.match(appSource, /button\.setAttribute\("aria-label", label\)/, "Portal butonlarinda erisilebilir ad yok.");
 assert.match(appSource, /comparable-portal-logo/, "Portal butonlari kare logo gorseli kullanmiyor.");
+assert.match(appSource, /isMobileBrowser/, "Mobil portal acilisi ayri ele alinmiyor.");
+assert.match(appSource, /window\.location\.assign\(url\)/, "Mobilde normal web navigasyonu kullanilmiyor.");
 
 console.log("Sahibinden dugmesi Emsaller basligina kablolama testi tamam.");
 
