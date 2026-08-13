@@ -169,6 +169,8 @@ const portalButtonSource = extractFunctionSource("createComparablePortalButton")
 assert.match(appSource, /portal-logos\/hepsiemlak\.png/, "Hepsiemlak logosu yerel varliktan kullanilmiyor.");
 assert.match(appSource, /portal-logos\/emlakjet\.png/, "Emlakjet logosu yerel varliktan kullanilmiyor.");
 assert.match(appSource, /portal-logos\/sahibinden\.png/, "Sahibinden logosu yerel varliktan kullanilmiyor.");
+assert.match(appSource, /button\.setAttribute\("aria-label", label\)/, "Portal butonlarinda erisilebilir ad yok.");
+assert.match(appSource, /comparable-portal-logo/, "Portal butonlari kare logo gorseli kullanmiyor.");
 
 console.log("Sahibinden dugmesi Emsaller basligina kablolama testi tamam.");
 

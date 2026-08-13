@@ -32001,13 +32001,14 @@ function createComparablePortalButton({ label, initials, className, title, build
   const button = document.createElement("button");
   button.type = "button";
   button.className = `mini-button comparable-portal-button ${className}`;
+  button.setAttribute("aria-label", label);
   const logoMap = {
     "hepsiemlak-search-button": "assets/portal-logos/emlakjet.png",
     "emlakjet-search-button": "assets/portal-logos/hepsiemlak.png",
     "sahibinden-search-button": "assets/portal-logos/sahibinden.png",
   };
   const logo = logoMap[className];
-  button.innerHTML = `<img class="comparable-portal-logo" src="${logo || ""}" alt="" aria-hidden="true"><span>${label}</span>`;
+  button.innerHTML = `<img class="comparable-portal-logo" src="${logo || ""}" alt="" aria-hidden="true">`;
   button.title = title;
   button.addEventListener("click", () => window.open(buildUrl(), "_blank", "noopener,noreferrer"));
   return button;
