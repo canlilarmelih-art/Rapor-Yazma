@@ -387,6 +387,16 @@
   const PHOTO_CELL_MARGIN_DXA = 60; // ~1mm — hücreler arasi/etrafinda ince BEYAZ bosluk
   const PHOTO_BANNER_FILL = "1F3864"; // lacivert (navy blue)
 
+  // Kullanici talebi (2026-08-13, 3. tur): "worde eklenen resimlerin
+  // boyutlari cok buyuk maksimum genislik 15 cm olmali" — TEK sutunlu
+  // yerlesimlerde (vertical_single/stacked_pair) hucre, "8.1 Fotograflar"
+  // hucresinin TAM genisligini (10505 dxa ~= 18.5 cm) kullaniyordu; artik
+  // HER hucre (kapak fotografi dahil) en fazla 15 cm genisliginde.
+  // 1 cm = 1440/2.54 twip (dxa); 1 cm = 360000 EMU (tam sayi).
+  const MAX_PHOTO_WIDTH_DXA = 8503; // 15 cm ~= 8503.94 dxa; AŞAĞI yuvarlandı (8503*635=5399405 EMU <= 5400000, üste taşmaz)
+  const MAX_PHOTO_WIDTH_EMU = 5400000; // 15 cm, tam deger
+  const MAX_COVER_PHOTO_HEIGHT_EMU = 7200000; // 20 cm — asiri dikey kapak fotograflari icin guvenlik sinirlamasi
+
   // Her yerleşim şablonu için HÜCRE en-boy oranı (width:height) — fotoğraf
   // bu orana göre ORTALANARAK KIRPILIR (srcRect), boşluk kalmadan hücreyi
   // TAM doldurur ("tam sığmalı" — kullanıcı talebi). Şablon adları/columns/
@@ -444,6 +454,40 @@
     return `<w:p><w:pPr><w:shd w:val="clear" w:color="auto" w:fill="${PHOTO_BANNER_FILL}"/><w:spacing w:before="240" w:after="140"/><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:b/><w:bCs/><w:color w:val="FFFFFF"/><w:sz w:val="24"/><w:szCs w:val="24"/></w:rPr><w:t xml:space="preserve">${escapeXmlText(label)}</w:t></w:r></w:p>`;
   }
 
+  // "Kapak Fotoğrafı" — kullanıcı talebi (2026-08-13, 3. tur): "kapak
+  // fotoğrafı için bir placeholder oluştur. kullanıcı bu fotoğrafı
+  // nerede istiyor ise orada kullansın." Diğer 22 kategorinin aksine
+  // ızgara/batch sistemine GİRMEZ — kategori döngüsünden ÖNCE, TEK ve
+  // AYRI bir paragraf (etiket + ortalanmış tek görsel, en fazla 15 cm
+  // genişlik, en-boy oranı KIRPILMADAN korunur — bkz. srcRect=null)
+  // olarak eklenir. Word'de sıradan bir paragraf olduğundan kullanıcı
+  // bu ikili paragrafı seçip belgenin istediği yerine (ör. gerçek kapak
+  // sayfasına) taşıyabilir — konumu BİZ sabitlemiyoruz.
+  function computeCoverPhotoEmuSize(pixelSize) {
+    const width = pixelSize?.width;
+    const height = pixelSize?.height;
+    if (!width || !height) return { cx: MAX_PHOTO_WIDTH_EMU, cy: Math.round((MAX_PHOTO_WIDTH_EMU * 3) / 4) };
+    const aspect = width / height;
+    let cx = MAX_PHOTO_WIDTH_EMU;
+    let cy = Math.round(cx / aspect);
+    if (cy > MAX_COVER_PHOTO_HEIGHT_EMU) {
+      cy = MAX_COVER_PHOTO_HEIGHT_EMU;
+      cx = Math.round(cy * aspect);
+    }
+    return { cx, cy };
+  }
+
+  function buildCoverPhotoBlockXml(photo, registrar) {
+    const { relId, extension } = registrar.register(photo.base64, photo.mimeType);
+    const imageBytes = base64ToBytes(photo.base64);
+    const pixelSize = extension === "jpeg" ? getJpegPixelSize(imageBytes) : null;
+    const { cx, cy } = computeCoverPhotoEmuSize(pixelSize || { width: photo.width, height: photo.height });
+    const drawing = buildDrawingXmlCropped(relId, "Kapak Fotoğrafı", cx, cy, null);
+    const label = `<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:after="80"/></w:pPr><w:r><w:rPr><w:b/><w:bCs/><w:i/><w:iCs/><w:sz w:val="18"/><w:szCs w:val="18"/></w:rPr><w:t xml:space="preserve">Kapak Fotoğrafı (yer tutucu — istediğiniz konuma taşıyabilirsiniz)</w:t></w:r></w:p>`;
+    const imageParagraph = `<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:after="200"/></w:pPr><w:r>${drawing}</w:r></w:p>`;
+    return label + imageParagraph;
+  }
+
   // "registerImage" — rels/media kayitlarini MUTASYONLA (kapali degiskenler
   // uzerinden) gunceller, cagirana yalnizca yeni rId'yi doner. embedImageAssets
   // ile ayni teknik, coklu-cagri icin fonksiyona cikarildi.
@@ -479,7 +523,12 @@
   function buildPhotoPageTableXml(photos, layoutKey, registrar) {
     const { columns } = getLayoutGrid(layoutKey);
     const cellAspect = getLayoutCellAspect(layoutKey);
-    const cellWidthDxa = Math.floor(PHOTO_TABLE_WIDTH_DXA / columns);
+    // Her hücre en fazla MAX_PHOTO_WIDTH_DXA (15 cm) genişliğinde olabilir —
+    // çok sütunlu yerleşimlerde (ör. 2 sütun) doğal pay zaten bunun altında
+    // kalır, tek sütunlu yerleşimlerde (dikey tekli/alt alta ikili) devreye
+    // girer. Tablo bu nedenle "8.1" hücresinin tam genişliğini doldurmayabilir
+    // — <w:jc w:val="center"/> ile sayfada ortalanır.
+    const cellWidthDxa = Math.min(Math.floor(PHOTO_TABLE_WIDTH_DXA / columns), MAX_PHOTO_WIDTH_DXA);
     const cellWidthEmu = cellWidthDxa * 635; // 1 dxa (twip) = 635 EMU
     const cellHeightEmu = Math.round(cellWidthEmu / cellAspect);
 
@@ -499,7 +548,8 @@
     }
     const gridCols = Array.from({ length: columns }, () => `<w:gridCol w:w="${cellWidthDxa}"/>`).join("");
     const cellMar = `<w:tcMar><w:top w:w="${PHOTO_CELL_MARGIN_DXA}" w:type="dxa"/><w:left w:w="${PHOTO_CELL_MARGIN_DXA}" w:type="dxa"/><w:bottom w:w="${PHOTO_CELL_MARGIN_DXA}" w:type="dxa"/><w:right w:w="${PHOTO_CELL_MARGIN_DXA}" w:type="dxa"/></w:tcMar>`;
-    return `<w:tbl><w:tblPr><w:tblW w:w="${PHOTO_TABLE_WIDTH_DXA}" w:type="dxa"/><w:tblLayout w:type="fixed"/><w:tblBorders><w:top w:val="none"/><w:left w:val="none"/><w:bottom w:val="none"/><w:right w:val="none"/><w:insideH w:val="none"/><w:insideV w:val="none"/></w:tblBorders>${cellMar}</w:tblPr><w:tblGrid>${gridCols}</w:tblGrid>${rows.join("")}</w:tbl><w:p/>`;
+    const tableWidthDxa = cellWidthDxa * columns;
+    return `<w:tbl><w:tblPr><w:tblW w:w="${tableWidthDxa}" w:type="dxa"/><w:jc w:val="center"/><w:tblLayout w:type="fixed"/><w:tblBorders><w:top w:val="none"/><w:left w:val="none"/><w:bottom w:val="none"/><w:right w:val="none"/><w:insideH w:val="none"/><w:insideV w:val="none"/></w:tblBorders>${cellMar}</w:tblPr><w:tblGrid>${gridCols}</w:tblGrid>${rows.join("")}</w:tbl><w:p/>`;
   }
 
   const PAGE_BREAK_PARAGRAPH_XML = `<w:p><w:r><w:br w:type="page"/></w:r></w:p>`;
@@ -521,7 +571,8 @@
     (Array.isArray(categoryGroups) ? categoryGroups : []).forEach((group) => {
       const token = group?.token;
       const categories = Array.isArray(group?.categories) ? group.categories : [];
-      if (!token || !categories.length) return;
+      const coverPhoto = group?.coverPhoto?.base64 ? group.coverPhoto : null;
+      if (!token || (!categories.length && !coverPhoto)) return;
       const marker = `{{${token}}}`;
       const markerIndex = text.indexOf(marker);
       if (markerIndex < 0) return; // sablonda bu token yoksa (beklenmeyen sürüm) sessizce atlanır
@@ -538,11 +589,14 @@
       const registrar = makeImageRegistrar(nextEntries, dec.decode(relsEntry.bytes));
 
       const parts = [];
+      if (coverPhoto) {
+        parts.push(buildCoverPhotoBlockXml(coverPhoto, registrar));
+      }
       categories.forEach((category, categoryIndex) => {
         const batches = Array.isArray(category?.batches) ? category.batches : [];
         const validBatches = batches.filter((b) => Array.isArray(b?.photos) && b.photos.length);
         if (!validBatches.length) return;
-        if (categoryIndex > 0) parts.push(PAGE_BREAK_PARAGRAPH_XML);
+        if (categoryIndex > 0 || coverPhoto) parts.push(PAGE_BREAK_PARAGRAPH_XML);
         parts.push(buildCategoryBannerXml(category.label));
         validBatches.forEach((batch, batchIndex) => {
           const { columns, rows } = getLayoutGrid(batch.layoutKey);

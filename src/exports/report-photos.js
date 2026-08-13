@@ -315,19 +315,36 @@
     });
   }
 
-  // docx-fill.js'in embedPhotoAppendix() fonksiyonuna verilecek formata
-  // dönüştürür: TEK token ({{FOTO_ALANI_1}}) + kategori sırasına göre
-  // sıralanmış, İÇİNDE FOTOĞRAF OLAN kategoriler (fotoğrafsız kategoriler
-  // TAMAMEN atlanır — kullanıcı talebi: "seçilmeyen görseller ... başlık
-  // olarak belirtilmesin"). Her kategori kendi içinde batch'lere (aynı
-  // ekleme turunda seçilen yerleşim şablonuyla) bölünür.
+  // "Kapak Fotoğrafı" kategorisi diğer 22'den FARKLI muamele görür —
+  // kullanıcı talebi (2026-08-13, 3. tur): "kapak fotoğrafı için bir
+  // placeholder oluştur. kullanıcı bu fotoğrafı nerede istiyor ise orada
+  // kullansın." Bu yüzden ızgara/batch sistemine (categories) hiç
+  // GİRMEZ — ayrı, TEK bir "coverPhoto" alanı olarak taşınır; docx-fill.js
+  // bunu kategori döngüsünden önce, TEK ve taşınabilir bir paragraf
+  // olarak gömer (bkz. buildCoverPhotoBlockXml). Birden fazla kapak
+  // fotoğrafı eklenmişse yalnızca İLKİ (order'a göre) kullanılır — bu bir
+  // "yer tutucu", galeri değil.
+  const COVER_PHOTO_CATEGORY_KEY = "kapak";
+
+  // docx-fill.js'in embedPhotoGalleryAssets() fonksiyonuna verilecek
+  // formata dönüştürür: TEK token ({{FOTO_ALANI_1}}) + kategori sırasına
+  // göre sıralanmış, İÇİNDE FOTOĞRAF OLAN kategoriler (fotoğrafsız
+  // kategoriler TAMAMEN atlanır — kullanıcı talebi: "seçilmeyen görseller
+  // ... başlık olarak belirtilmesin") + ayrı bir coverPhoto alanı. Her
+  // kategori kendi içinde batch'lere (aynı ekleme turunda seçilen
+  // yerleşim şablonuyla) bölünür.
   async function getPhotoAppendixForExport(reportId) {
     const photos = await listPhotos(reportId);
     if (!photos.length) return [];
     const categoryGroups = [];
+    let coverPhotoRecord = null;
     PHOTO_CATEGORIES.forEach((category) => {
       const categoryPhotos = photos.filter((p) => p.category === category.key);
       if (!categoryPhotos.length) return;
+      if (category.key === COVER_PHOTO_CATEGORY_KEY) {
+        coverPhotoRecord = categoryPhotos[0];
+        return;
+      }
       const batchIds = [...new Set(categoryPhotos.map((p) => p.batchId))];
       categoryGroups.push({
         category: category.key,
@@ -357,8 +374,20 @@
       }
       if (batches.length) result.push({ label: group.label, batches });
     }
-    if (!result.length) return [];
-    return [{ token: PHOTO_APPENDIX_TOKEN, categories: result }];
+    let coverPhoto = null;
+    if (coverPhotoRecord) {
+      const base64 = await blobToBase64(coverPhotoRecord.blob).catch(() => null);
+      if (base64) {
+        coverPhoto = {
+          base64,
+          mimeType: coverPhotoRecord.mimeType || "image/jpeg",
+          width: coverPhotoRecord.width,
+          height: coverPhotoRecord.height,
+        };
+      }
+    }
+    if (!result.length && !coverPhoto) return [];
+    return [{ token: PHOTO_APPENDIX_TOKEN, categories: result, coverPhoto }];
   }
 
   window.RaporReportPhotos = {

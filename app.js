@@ -15524,7 +15524,7 @@ function createReportPhotosPanel() {
     <div class="subsection-title-row">
       <div>
         <h4>Fotoğraflar</h4>
-        <p class="subtle-text">Bu görseller yalnızca bu cihazda (tarayıcınızda) saklanır, sunucuya hiç gönderilmez. Şu an yalnızca <strong>Emlak Katılım Rapor Formatı</strong> dışa aktarılırken "8. Ekler" bölümüne otomatik gömülür.</p>
+        <p class="subtle-text">Bu görseller yalnızca bu cihazda (tarayıcınızda) saklanır, sunucuya hiç gönderilmez. Şu an yalnızca <strong>Emlak Katılım Rapor Formatı</strong> dışa aktarılırken "8. Ekler" bölümüne otomatik gömülür (her görsel en fazla 15 cm genişlikte). <strong>Kapak Fotoğrafı</strong> kategorisi ayrı, tek bir yer tutucu olarak eklenir — Word çıktısında istediğiniz konuma (ör. gerçek kapak sayfasına) taşıyabilirsiniz.</p>
       </div>
       <button type="button" class="primary-button report-photos-add-trigger">+ Fotoğraf Ekle</button>
     </div>

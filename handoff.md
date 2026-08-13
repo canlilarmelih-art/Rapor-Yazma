@@ -9414,3 +9414,69 @@ temizlendi.
   `styles.css?v=20260813-2345`,
   `src/exports/docx-fill.js?v=20260813-2345`,
   `src/exports/report-photos.js?v=20260813-2345`.
+
+## 0.0.436 - 2026-08-13 - Fotoğraflar: 15 cm genişlik sınırı + Kapak Fotoğrafı taşınabilir yer tutucu
+
+Kullanıcı: "worde eklenen resimlerin boyutları çok büyük maksimum
+genişlik 15 cm olmalı. ayrıca kapak fotoğrafı için bir placeholder
+oluştur. kullanıcı bu fotoğrafı nerede istiyor ise orada kullansın.
+kapak fotoğrafında maksimum genişlik 15 cm".
+
+**Kök neden (genişlik)**: tek sütunlu yerleşimlerde (Dikey Tekli/Alt
+Alta İkili) hücre genişliği "8.1 Fotoğraflar" hücresinin TAM payını
+(10505 dxa ≈ 18.5 cm) kullanıyordu — 2 sütunlu yerleşimler (Yatay
+İkili/6'lı Grid, hücre başına ~9.3 cm) zaten sınırın altındaydı.
+
+**`docx-fill.js`**:
+- Yeni `MAX_PHOTO_WIDTH_DXA = 8503` (15 cm, AŞAĞI yuvarlandı — 8503×635
+  = 5399405 EMU, asla 5400000'i (tam 15 cm) aşmaz) ve
+  `MAX_PHOTO_WIDTH_EMU = 5400000`. `buildPhotoPageTableXml`'de hücre
+  genişliği artık `Math.min(dogal_pay, MAX_PHOTO_WIDTH_DXA)` — tablo bu
+  yüzden "8.1" hücresinin tam genişliğini doldurmayabilir, bu durumda
+  `<w:jc w:val="center"/>` ile sayfada ortalanır.
+- Yeni `buildCoverPhotoBlockXml`/`computeCoverPhotoEmuSize`: "Kapak
+  Fotoğrafı" artık 22 diğer kategori gibi ızgara/batch sistemine
+  GİRMEZ — kategori döngüsünden ÖNCE, TEK ve AYRI bir paragraf (italik
+  etiket: "Kapak Fotoğrafı (yer tutucu — istediğiniz konuma
+  taşıyabilirsiniz)" + altında en fazla 15 cm genişliğinde, en-boy oranı
+  KIRPILMADAN (srcRect=null, "cover" değil "contain" mantığı) korunan
+  tek görsel). Word'de sıradan bir paragraf olduğundan kullanıcı bu
+  ikili paragrafı seçip belgenin istediği yerine (ör. gerçek kapak
+  sayfasına) taşıyabilir — konumu biz sabitlemiyoruz, kullanıcı karar
+  veriyor ("kullanıcı bu fotoğrafı nerede istiyor ise orada kullansın").
+- `embedPhotoGalleryAssets`: `group.coverPhoto` varsa kategori
+  listesinden ÖNCE gömülüyor (ardından kategoriler varsa aralarına
+  sayfa sonu ekleniyor); `categories` boş olsa bile YALNIZCA
+  `coverPhoto` ile de çalışıyor (tek başına kapak fotoğrafı senaryosu).
+
+**`report-photos.js`**: `getPhotoAppendixForExport` artık "kapak"
+kategorisini `categories` dizisine HİÇ eklemiyor — bunun yerine
+(birden fazla kapak fotoğrafı eklenmişse yalnızca İLKİ, `order`'a göre)
+ayrı bir `coverPhoto: {base64, mimeType, width, height}` alanı olarak
+döndürüyor. Export şekli artık `[{token, categories, coverPhoto}]`.
+
+**`app.js`**: "Fotoğraflar" panel açıklamasına 15 cm sınırı ve Kapak
+Fotoğrafı'nın taşınabilir bir yer tutucu olduğu notu eklendi
+(kategori seçici/dosya/yerleşim akışının kendisi DEĞİŞMEDİ — "kapak"
+kategorisi hâlâ 23'lük listede, farkı yalnızca export-taraflı gömme
+mantığında).
+
+Canlı doğrulama (localhost:5173): gerçek `/api/report-template-docx`
+uç noktasından (Firebase ID token ile) GERÇEK `emlakkatilim.docx`
+baytları çekildi, `window.RaporDocxFill.fillTemplate` tarayıcıda
+sentetik 2 kategori + 1 kapak fotoğrafıyla çalıştırıldı: şablonun
+KENDİ logo genişlikleri (ör. 6945863 EMU ≈ 19.3 cm, önceden var,
+değişmedi) hariç tutulup yalnızca YENİ eklenen 3 görsel karşılaştırıldı
+— üçü de tam 15 cm veya altında (5400000 / 5399405 / 5399405 EMU),
+kapak etiketi kategori banner'larından ÖNCE geldi, hiçbir rapor verisi
+değiştirilmedi.
+- Test: `tools/test-emlakkatilim-photo-embed.js` genişletildi — genişlik
+  sınırını (baseline logo genişliklerini bir multiset farkıyla dışarıda
+  bırakarak) hem kategori ızgarası hem kapak fotoğrafı için doğruluyor;
+  kapak fotoğrafının kategori banner'larından ÖNCE geldiğini, KENDİ
+  banner'ını ALMADIĞINI, KIRPILMADIĞINI (srcRect yok) ve kategori
+  olmadan TEK BAŞINA da çalıştığını (6 senaryo toplam) doğruluyor.
+  `npm run verify` tam zincirle yeşil.
+- Cache-buster: `app.js?v=20260813-2350`,
+  `src/exports/docx-fill.js?v=20260813-2350`,
+  `src/exports/report-photos.js?v=20260813-2350`.
