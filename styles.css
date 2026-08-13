@@ -3595,6 +3595,19 @@ td .free-lookup input {
   font-size: 12px;
 }
 
+/* "Sahibinden.com üzerinden ara" — sahibinden'in marka rengine (turuncu)
+   yakın bir vurgu ile diğer mini-button'lardan ayrışır. */
+.sahibinden-search-button {
+  border-color: #f0ad4e !important;
+  color: #b3690f !important;
+  background: #fff6ea !important;
+}
+
+.sahibinden-search-button:hover {
+  background: #ffe9c7 !important;
+  border-color: #e0940a !important;
+}
+
 .comparable-column-actions .row-delete-button {
   width: 28px;
   height: 28px;

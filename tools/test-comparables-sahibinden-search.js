@@ -1,0 +1,145 @@
+"use strict";
+
+// "Sahibinden.com üzerinden ara" düğmesi (0.0.43x, 2026-08-13) — kullanıcı
+// bir rakip programın (Ekspress Rapor) Emsaller ekranını örnek gösterip
+// "taşınmaz yada taşınmazların konumuna göre bize sahibinden harita
+// üzerinden ilanları göstersin" istedi. sahibinden.com'un kendi bot
+// koruması otomatik erişimi engellediğinden (canlı doğrulanamadı), İl-İlçe
+// düzeyinde sahibinden'in kendi indekslenmiş SEO URL kalıbı kullanıldı
+// (gerçek örnekler: sahibinden.com/satilik-arsa/bursa-nilufer,
+// .../satilik-daire/bursa, .../satilik-is-yeri/bursa — web aramasıyla
+// doğrulandı, bkz. handoff.md). Bu test, URL üretim mantığının GERÇEK
+// KAYNAKTAN doğru çalıştığını doğrular.
+
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+const vm = require("node:vm");
+
+const appDir = path.join(__dirname, "..");
+const appSource = fs.readFileSync(path.join(appDir, "app.js"), "utf8");
+
+function extractFunctionSource(name) {
+  const marker = `function ${name}(`;
+  const start = appSource.indexOf(marker);
+  assert(start >= 0, `Bulunamadi: ${name}`);
+  const braceStart = appSource.indexOf("{", start);
+  let depth = 0;
+  let i = braceStart;
+  for (; i < appSource.length; i++) {
+    if (appSource[i] === "{") depth++;
+    else if (appSource[i] === "}") { depth--; if (depth === 0) { i++; break; } }
+  }
+  return appSource.slice(start, i);
+}
+
+// Kategori esleme sabitini de (const, function-govdesi taramasi yakalamaz)
+// ayrica cikarip yukluyoruz.
+function extractConstSource(name) {
+  const marker = `const ${name} = `;
+  const start = appSource.indexOf(marker);
+  assert(start >= 0, `Bulunamadi: const ${name}`);
+  const end = appSource.indexOf("\n};", start) + 3;
+  return appSource.slice(start, end);
+}
+
+const closureFnNames = [
+  "getSahibindenCategorySlug",
+  "buildSahibindenLocationSlugPart",
+  "buildSahibindenSearchUrl",
+  "foldTurkish",
+  "isLandOwnershipType",
+  "normalizeOwnershipTypeForSectionVisibility",
+];
+
+function makeContext(fields) {
+  const context = { state: { fields } };
+  vm.createContext(context);
+  vm.runInContext(extractConstSource("SAHIBINDEN_CATEGORY_BY_USAGE_NATURE"), context);
+  closureFnNames.forEach((name) => vm.runInContext(extractFunctionSource(name), context));
+  return context;
+}
+
+// --- 1) Konut: satilik-daire + il-ilce ---------------------------------
+{
+  const ctx = makeContext({ currentUsageNature: "Konut", titleCity: "Bursa", titleDistrict: "Nilüfer" });
+  assert.equal(ctx.buildSahibindenSearchUrl(), "https://www.sahibinden.com/satilik-daire/bursa-nilufer");
+}
+
+// --- 2) Arsa/Tarla/Arazi -> satilik-arsa --------------------------------
+["Arsa", "Tarla", "Arazi", "Sanayi Tesisi"].forEach((usage) => {
+  const ctx = makeContext({ currentUsageNature: usage, titleCity: "Bursa", titleDistrict: "Osmangazi" });
+  assert.equal(
+    ctx.buildSahibindenSearchUrl(),
+    "https://www.sahibinden.com/satilik-arsa/bursa-osmangazi",
+    `"${usage}" kullanim niteligi satilik-arsa'ya eslenmedi.`
+  );
+});
+
+// --- 3) Isyeri/Ofis/Ticari Bina -> satilik-is-yeri ----------------------
+["İşyeri", "Ofis", "Ticari Bina"].forEach((usage) => {
+  const ctx = makeContext({ currentUsageNature: usage, titleCity: "İstanbul", titleDistrict: "Beşiktaş" });
+  assert.equal(
+    ctx.buildSahibindenSearchUrl(),
+    "https://www.sahibinden.com/satilik-is-yeri/istanbul-besiktas",
+    `"${usage}" kullanim niteligi satilik-is-yeri'ye eslenmedi.`
+  );
+});
+
+// --- 4) Turkce karakter katlama (I noktali/noktasiz, ü, ş, ö, ç, ğ) -----
+{
+  const ctx = makeContext({ currentUsageNature: "Konut", titleCity: "Çanakkale", titleDistrict: "Gökçeada" });
+  assert.equal(ctx.buildSahibindenSearchUrl(), "https://www.sahibinden.com/satilik-daire/canakkale-gokceada");
+}
+
+// --- 5) titleCity/titleDistrict (tapu), city/district'ten ONCELIKLI -----
+{
+  const ctx = makeContext({
+    currentUsageNature: "Konut",
+    titleCity: "Bursa", titleDistrict: "Nilüfer",
+    city: "İstanbul", district: "Kadıköy",
+  });
+  assert.equal(ctx.buildSahibindenSearchUrl(), "https://www.sahibinden.com/satilik-daire/bursa-nilufer", "titleCity/titleDistrict yerine adres alanlari kullanilmis.");
+}
+// tapu alanlari BOSSA adres alanlarina duser (fallback).
+{
+  const ctx = makeContext({ currentUsageNature: "Konut", city: "İstanbul", district: "Kadıköy" });
+  assert.equal(ctx.buildSahibindenSearchUrl(), "https://www.sahibinden.com/satilik-daire/istanbul-kadikoy");
+}
+
+// --- 6) Il/ilce eksikse zarif geri dusus (kirik URL uretilmemeli) -------
+{
+  const ctx = makeContext({ currentUsageNature: "Konut", titleCity: "Bursa" }); // ilce yok
+  assert.equal(ctx.buildSahibindenSearchUrl(), "https://www.sahibinden.com/satilik-daire/bursa");
+}
+{
+  const ctx = makeContext({ currentUsageNature: "Konut" }); // ikisi de yok
+  assert.equal(ctx.buildSahibindenSearchUrl(), "https://www.sahibinden.com/satilik-daire");
+}
+
+// --- 7) Kullanim niteligi bossa: ownershipType'a (Arsa/Tarla) bakiyor ----
+{
+  const ctx = makeContext({ ownershipType: "Tarla", titleCity: "Bursa", titleDistrict: "Nilüfer" });
+  assert.equal(ctx.buildSahibindenSearchUrl(), "https://www.sahibinden.com/satilik-arsa/bursa-nilufer", "ownershipType=Tarla iken satilik-arsa'ya duşmedi.");
+}
+// hicbir ipucu yoksa varsayilan: satilik-daire (en yaygin/genel dava).
+{
+  const ctx = makeContext({ titleCity: "Bursa", titleDistrict: "Nilüfer" });
+  assert.equal(ctx.buildSahibindenSearchUrl(), "https://www.sahibinden.com/satilik-daire/bursa-nilufer");
+}
+
+console.log("Sahibinden.com arama URL uretimi (buildSahibindenSearchUrl) gercek-kaynak testleri tamam.");
+
+// --- 8) Buton, Emsaller (comparables) editorune kablanmis mi? -----------
+const editorSource = extractFunctionSource("createComparablesVerticalEditor");
+assert.match(
+  editorSource,
+  /headingRow\.append\(createSahibindenSearchButton\(\), createComparableViewModeControl\(\), createComparableRowLabelsToggle\(\), addButton\);/,
+  "createSahibindenSearchButton() artik Emsaller basligina eklenmiyor."
+);
+const buttonSource = extractFunctionSource("createSahibindenSearchButton");
+assert.match(buttonSource, /window\.open\(buildSahibindenSearchUrl\(\), "_blank", "noopener,noreferrer"\);/, "Sahibinden dugmesi artik yeni sekmede acmiyor / noopener guvenligi kaldirilmis.");
+
+console.log("Sahibinden dugmesi Emsaller basligina kablolama testi tamam.");
+
+console.log("Comparables sahibinden arama testleri basarili.");

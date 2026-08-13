@@ -31902,6 +31902,68 @@ function syncComparableLandBuildableArea(row = {}, force = false) {
   return true;
 }
 
+// "Sahibinden.com üzerinden ara" düğmesi (0.0.43x, 2026-08-13) — kullanıcı
+// bir rakip programın (Ekspress Rapor) Emsaller ekranındaki aynı düğmeyi
+// örnek gösterdi: aktif taşınmazın il/ilçesine göre sahibinden.com'da o
+// bölgenin ilanlarını yeni sekmede açar. sahibinden.com otomatik erişimi
+// (bot koruması, Cloudflare benzeri "Olağan dışı erişim" hata sayfası)
+// engellediğinden harita/koordinat tabanlı bir URL şeması DOĞRULANAMADI —
+// bunun yerine sahibinden'in kendi herkese açık, arama motorlarınca
+// indekslenmiş SEO URL kalıbı kullanıldı (doğrulanan gerçek örnekler:
+// sahibinden.com/satilik-arsa/bursa-nilufer, .../satilik-daire/bursa,
+// .../satilik-is-yeri/bursa) — yalnızca İl-İlçe düzeyinde, çünkü mahalle
+// düzeyi köy/mahalle'ye göre tutarsız bir ek slug kullanıyor
+// (ör. ".../bursa-nilufer-koyler-gokce-mh.") ve güvenilir şekilde
+// üretilemiyor.
+const SAHIBINDEN_CATEGORY_BY_USAGE_NATURE = {
+  KONUT: "satilik-daire",
+  ARSA: "satilik-arsa",
+  ARAZI: "satilik-arsa",
+  TARLA: "satilik-arsa",
+  "SANAYI TESISI": "satilik-arsa",
+  ISYERI: "satilik-is-yeri",
+  OFIS: "satilik-is-yeri",
+  "TICARI BINA": "satilik-is-yeri",
+};
+
+function getSahibindenCategorySlug() {
+  const usageKey = foldTurkish(state.fields.currentUsageNature || state.fields.legalUsageNature || "");
+  if (SAHIBINDEN_CATEGORY_BY_USAGE_NATURE[usageKey]) return SAHIBINDEN_CATEGORY_BY_USAGE_NATURE[usageKey];
+  return isLandOwnershipType() ? "satilik-arsa" : "satilik-daire";
+}
+
+// sahibinden'in SEO URL'lerindeki il/ilçe parçası: küçük harf, Türkçe
+// karakterler ASCII'ye katlanmış, boşluklar tire. foldTurkish() BÜYÜK harf
+// döndürdüğü için burada ayrıca küçültülüyor (ör. "Nilüfer" → "nilufer").
+function buildSahibindenLocationSlugPart(value) {
+  return foldTurkish(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-");
+}
+
+function buildSahibindenSearchUrl() {
+  const city = buildSahibindenLocationSlugPart(state.fields.titleCity || state.fields.city);
+  const district = buildSahibindenLocationSlugPart(state.fields.titleDistrict || state.fields.district);
+  const base = `https://www.sahibinden.com/${getSahibindenCategorySlug()}`;
+  if (city && district) return `${base}/${city}-${district}`;
+  if (city) return `${base}/${city}`;
+  return base;
+}
+
+function createSahibindenSearchButton() {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "mini-button sahibinden-search-button";
+  button.textContent = "Sahibinden.com üzerinden ara";
+  button.title = "Aktif taşınmazın il/ilçesine ve mülkiyet/kullanım türüne göre sahibinden.com'da ilanları yeni sekmede açar.";
+  button.addEventListener("click", () => {
+    window.open(buildSahibindenSearchUrl(), "_blank", "noopener,noreferrer");
+  });
+  return button;
+}
+
 function createComparablesVerticalEditor(section) {
   const wrapper = document.createElement("div");
   wrapper.className = "subsection is-detail comparables-excel-editor";
@@ -31923,7 +31985,7 @@ function createComparablesVerticalEditor(section) {
     autosave();
     renderSection();
   });
-  headingRow.append(createComparableViewModeControl(), createComparableRowLabelsToggle(), addButton);
+  headingRow.append(createSahibindenSearchButton(), createComparableViewModeControl(), createComparableRowLabelsToggle(), addButton);
 
   const rows = getComparableRows();
   const viewMode = getComparableViewMode();

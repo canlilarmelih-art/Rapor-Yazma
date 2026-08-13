@@ -9126,4 +9126,65 @@ hem bulut kopyasını aynı anda kaybetmesine yol açabilirdi.
   `npm run verify` tam zincirle yeşil.
 - Cache-buster: `cloud/cloud-sync.js?v=20260813-2000`,
   `cloud/report-library.js?v=20260813-2000`.
+
+## 0.0.433 - 2026-08-13 - Emsaller: "Sahibinden.com üzerinden ara" düğmesi
+
+Kullanıcı bir rakip programın (Ekspress Rapor) Emsaller ekranından ekran
+görüntüsü gönderdi: sol üstte "Sahibinden.com üzerinden ara" düğmesi,
+taşınmazın konumuna göre sahibinden'de ilanları gösteriyor. Aynısı bizim
+Emsaller (comparables) editörüne eklendi.
+
+**Araştırma notu**: sahibinden.com'un harita/koordinat tabanlı arama URL
+şeması (lat/lon/zoom parametreleri) DOĞRULANAMADI — hem Browser aracı hem
+WebFetch, sahibinden'in bot korumasınca ("Olağan dışı erişim tespit
+ettik...") engellendi. Bunun yerine web araması ile sahibinden'in kendi
+arama motorlarınca indekslenmiş, herkese açık SEO URL kalıbı GERÇEK
+ÖRNEKLERLE doğrulandı:
+- `sahibinden.com/satilik-arsa/bursa-nilufer` (Arsa/Tarla/Arazi)
+- `sahibinden.com/satilik-daire/bursa` (Konut)
+- `sahibinden.com/satilik-is-yeri/bursa` (İşyeri/Ofis/Ticari Bina)
+
+Mahalle düzeyi (ör. `.../bursa-nilufer-koyler-gokce-mh.`) köy/mahalle
+statüsüne göre TUTARSIZ bir ek slug kullandığından güvenilir şekilde
+üretilemiyor — bu yüzden yalnızca **İl-İlçe düzeyinde** arama yapılıyor.
+
+- `app.js`: `buildSahibindenSearchUrl()` aktif taşınmazın (Çoklu Talep'te
+  o an açık tab) `titleCity`/`titleDistrict` (tapu, öncelikli) veya
+  `city`/`district` (adres, geri düşüş) alanlarından İl-İlçe slug'ı
+  kurar; `getSahibindenCategorySlug()` `currentUsageNature`/
+  `legalUsageNature` alanına göre (Konut→satilik-daire, Arsa/Tarla/
+  Arazi/Sanayi Tesisi→satilik-arsa, İşyeri/Ofis/Ticari Bina→
+  satilik-is-yeri) kategori seçer, hiçbiri yoksa `isLandOwnershipType()`
+  ile Mülkiyet alanına, o da yoksa "satilik-daire" varsayılanına düşer.
+  Türkçe karakterler `foldTurkish()` ile ASCII'ye katlanıp küçük harfe
+  çevrilir (ör. "Nilüfer" → "nilufer"). İl/ilçe eksikse zarif geri düşüş
+  var (yalnızca kategori URL'i).
+- Düğme `createComparablesVerticalEditor()`'ın başlık satırına
+  (`headingRow`) eklendi — "Emsal Kayıtları" başlığının hemen yanında,
+  "Görünüm"/"Başlıkları gizle"/"Emsal ekle" düğmeleriyle aynı sırada;
+  boş-emsal durumunda bile görünür (appraiser emsal eklemeden ÖNCE arama
+  yapabilmeli). Tıklanınca `window.open(url, "_blank",
+  "noopener,noreferrer")` ile yeni sekmede açılır — dış bağlantı, veri
+  gönderimi yok.
+- `styles.css`: `.sahibinden-search-button` — sahibinden'in turuncu marka
+  rengine yakın bir vurguyla diğer mini-button'lardan ayrışıyor.
+- Canlı doğrulama (localhost:5173, "Kuvyt-202600791" taslağı — Tarla,
+  Bursa/Nilüfer): `buildSahibindenSearchUrl()` → tam olarak
+  `https://www.sahibinden.com/satilik-arsa/bursa-nilufer` üretti — bu,
+  araştırma sırasında web aramasıyla doğrulanan GERÇEK bir sahibinden
+  URL'iyle birebir eşleşiyor. Düğme Emsaller başlığında doğru konumda
+  render edildi. Konsolda yeni bir hata yok (mevcut/ilgisiz bir 429 rate-
+  limit hariç, bu oturuma özgü ve bu değişiklikten bağımsız).
+- Test: yeni `tools/test-comparables-sahibinden-search.js` — URL üretim
+  mantığını (kategori eşleme, Türkçe katlama, tapu/adres önceliği,
+  eksik-veri geri düşüşü) VE düğmenin Emsaller başlığına doğru
+  kablandığını gerçek kaynaktan doğruluyor (8 senaryo). `npm run verify`
+  tam zincirle yeşil.
+- **Bilinen sınırlama**: sahibinden'e otomatik erişim engellendiğinden bu
+  URL şeması hiçbir zaman doğrudan sahibinden.com'a karşı test
+  edilemedi — yalnızca arama motoru sonuçlarındaki indekslenmiş
+  örneklerle doğrulandı. Kullanıcı ilk kullanımda "boş sonuç" ile
+  karşılaşırsa (ör. sahibinden URL şemasını değiştirmiş olabilir) haber
+  vermeli.
+- Cache-buster: `app.js?v=20260813-2100`, `styles.css?v=20260813-2100`.
 - Yedek: `backups/before-yapikredi-2nd-fix-list_2026-08-12_22-45-16`.
