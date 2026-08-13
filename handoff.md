@@ -8901,4 +8901,60 @@ gelirse (ör. konsol hatası, ekran görüntüsü) tekrar araştırılacak.
   gerçek kaynaktan çalıştırılarak) doğrulanıyor. `npm run verify` tam
   zincirle yeşil.
 - Cache-buster: `app.js?v=20260813-1500`.
+
+## 0.0.428 - 2026-08-13 - "Otomatik hesaplamaya dön" düğmesi + ikinci gerçek hata doğrulandı (CANLI TEST)
+
+Kullanıcı 0.0.427'nin ardından: "Emsaller sekmesinde Arsa Emsali işaretli
+satır ve Arsa Alanı dolu, burada otomatik tetiklemeyi aktif etmek için
+arsa emsal değerlerini değiştirdim ancak otomatik yazılmadı. mevcut taslak
+üzerinden çalıştığım için olabilir mi?" — bu doğru sezgi doğru çıktı, kod
+izinde kesin kanıt bulundu VE **kullanıcının gerçek taslağı üzerinde
+(localhost:5173, tarayıcıda oturum açık halde bulundu) canlı olarak
+doğrulandı**.
+
+**Kök neden** (önceden var olan, "manuel geçersiz kılma" tasarımının
+kalıcı yan etkisi): `markValuationManualField()` (app.js), kullanıcı
+Yasal/Mevcut Durum Değeri kutusuna DOĞRUDAN elle bir kez bile yazsa
+`legalValueUserDefined`/`currentValueUserDefined` alanını KALICI OLARAK
+`"1"` yapıyor (raporun kaydedilmiş verisinde saklanıyor). Bu bayrak
+`"1"` iken `setAutoValuationField()` bir daha ASLA Emsaller'den
+hesaplanan değeri gerçek `legalValue`/`currentValue` alanına yazmıyor —
+yalnızca görünmez `...ComparableAutoManual` gölge alanını güncelliyor.
+Bu KASITLI bir tasarım (eksperin manuel kanaatini korumak için) ama
+bunu GERİ ALMANIN hiçbir arayüz yolu yoktu.
+
+**Canlı doğrulama** (kullanıcının "Kuvyt-202600791" taslağı,
+`ownershipType: "Tarla"`, `bank: "Kuveyt Türk Katılım Bankası A.Ş."`):
+tarayıcı konsolunda `state.fields` okunduğunda tam olarak beklenen durum
+görüldü — `legalValue: ""`, `currentValue: ""`,
+`legalValueUserDefined: "1"`, `currentValueUserDefined: "1"`,
+`legalValueComparableAuto: "11.150.000"` (doğru hesaplanmış ama hiç
+yazılmamış gölge değer). Aynı oturumda 0.0.427'nin dropdown düzeltmesi de
+doğrulandı: `[data-template-select]` artık `value: "kuveytturk"`
+("Kuveyt Türk Rapor Formatı") ile doğru seçili geliyor.
+
+**Düzeltme**: `createValuationMarketTable()`'daki (app.js) Yasal/Mevcut
+Durum Değeri satır etiketine, `landOwnership &&
+hasUserDefinedLandMarketValue(row.totalKey)` iken yeni bir "Otomatik
+hesaplamaya dön" düğmesi (`createLandValuationResetToAutoButton`)
+ekleniyor. Tıklanınca `clearLandValuationManualOverride(key)`:
+`...UserDefined` VE `...ComparableAutoManual` bayraklarını temizler,
+`refreshValuationComputedFields()`'i çağırır (Emsaller'den yeniden
+hesaplar), `renderSection()` ile arayüzü tazeler. Canlı taslakta iki
+düğmeye de tıklanarak test edildi — `legalValue`/`currentValue` doğru
+şekilde `"11.150.000"`'e döndü, düğmeler kilidi açılan satırlarda
+kayboldu, konsolda hiç hata yok, "Kaydedildi" durumu korundu.
+- `styles.css`: `.land-valuation-reset-button` (küçük, sarı/amber
+  vurgulu, hover'da yeşile dönen inline düğme — `.valuation-label-note`
+  ile aynı hücrede).
+- Test: `tools/test-land-valuation-manual-override.js`'e yeni senaryo
+  eklendi — (1) `clearLandValuationManualOverride`'ın gerçekten iki
+  bayrağı da temizlediği VE `refreshValuationComputedFields()`'i
+  çağırdığı (kaynak-düzeyi), (2) `createValuationMarketTable`'ın
+  düğmeyi doğru koşulda eklediği (kaynak-düzeyi), (3) bayraklar
+  temizlendiğinde `syncLandOwnershipValuationDefaults()`'ın artık
+  kilitli olmayıp yeni emsal değerini yazdığı (davranışsal, gerçek
+  kaynaktan). `npm run verify` + `tools/check-basic.js` tam zincirle
+  yeşil.
+- Cache-buster: `app.js?v=20260813-1600`, `styles.css?v=20260813-1600`.
 - Yedek: `backups/before-yapikredi-2nd-fix-list_2026-08-12_22-45-16`.

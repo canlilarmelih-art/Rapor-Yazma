@@ -4315,8 +4315,23 @@ function createValuationMarketTable() {
     : valuationMarketRows;
   marketRows.forEach((row) => {
     const tr = document.createElement("tr");
+    const labelCell = createValuationLabelCell(getValuationMarketRowLabel(row), { note: buildValuationIncomeMetricNote(row.totalKey), marketRowKey: row.totalKey });
+    // Kullanıcı bildirimi (2026-08-13): "Emsaller'de Arsa Emsali değerlerini
+    // değiştirdim ama Yasal/Mevcut Durum Değeri otomatik yazılmadı — var
+    // olan taslak olabilir mi?" — EVET: bu değerlere daha önce (aynı
+    // raporda, hatta ownershipType arsa/tarlaya çevrilmeden önce bile)
+    // doğrudan elle bir kez yazılmışsa hasUserDefinedLandMarketValue()
+    // kalıcı olarak "true" kalır ve setAutoValuationField() bir daha ASLA
+    // emsal ortalamasından üzerine yazmaz (bilinçli tasarım — eksperin
+    // manuel kanaatini korur). Ama bunu geri almanın hiçbir yolu YOKTU.
+    // Bu düğme legalValueUserDefined/currentValueUserDefined VE
+    // ...ComparableAutoManual bayraklarını temizleyip otomatik hesaplamayı
+    // yeniden devreye sokar.
+    if (landOwnership && hasUserDefinedLandMarketValue(row.totalKey)) {
+      labelCell.append(createLandValuationResetToAutoButton(row.totalKey));
+    }
     tr.append(
-      createValuationLabelCell(getValuationMarketRowLabel(row), { note: buildValuationIncomeMetricNote(row.totalKey), marketRowKey: row.totalKey }),
+      labelCell,
       createValuationInputCell(row.areaKey, "Alan", { suffix: "m²" }),
       createValuationInputCell(row.unitKey, row.unitLabel, { suffix: "TL/m²", readOnly: true }),
       createValuationInputCell(row.totalKey, "Piyasa Değeri", { suffix: row.totalKey.includes("Rent") ? "TL/ay" : "TL" }),
@@ -5626,6 +5641,36 @@ function markValuationManualField(key) {
   if (isLandOwnershipType() && ["legalValue", "currentValue"].includes(key)) {
     state.fields[`${key}UserDefined`] = "1";
   }
+}
+
+// "Otomatik hesaplamaya dön" (0.0.42x, 2026-08-13) — markValuationManualField()'in
+// kalıcı olarak set ettiği manuel-geçersiz-kılma bayraklarını (bkz.
+// hasUserDefinedLandMarketValue) temizleyip Yasal/Mevcut Durum Değeri'ni
+// Emsaller'deki "Arsa Emsali" ortalamasından/Hesaplanan Emsal'den yeniden
+// otomatik hesaplanır hale getirir. Önceden bu bayrakları geri almanın
+// HİÇBİR yolu yoktu — kullanıcı bildirimiyle eklendi.
+function clearLandValuationManualOverride(key) {
+  state.fields[`${key}UserDefined`] = "";
+  state.fields[`${key}ComparableAutoManual`] = "";
+  refreshValuationComputedFields();
+  autosave();
+  renderSection();
+  renderValidation();
+  updateStatus();
+}
+
+function createLandValuationResetToAutoButton(key) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "land-valuation-reset-button";
+  button.textContent = "Otomatik hesaplamaya dön";
+  button.title = "Bu değer daha önce elle girildiği için Emsaller'deki değişikliklerle otomatik güncellenmiyor. Tıklayınca Arsa Emsali/Hesaplanan Emsal verisinden yeniden otomatik hesaplanır.";
+  button.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    clearLandValuationManualOverride(key);
+  });
+  return button;
 }
 
 function hasUserDefinedLandMarketValue(key) {

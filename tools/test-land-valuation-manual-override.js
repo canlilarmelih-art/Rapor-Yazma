@@ -82,3 +82,58 @@ function runLandSync({ tarla, legalValue, currentValue, previousAuto, nextValue,
 });
 
 console.log("land valuation manual override tests passed");
+
+// --- "Otomatik hesaplamaya dön" düğmesi (0.0.42x, 2026-08-13) -------------
+// Kullanıcı bildirimi: "Emsaller'de Arsa Emsali değerlerini değiştirdim
+// ama Yasal/Mevcut Durum Değeri otomatik yazılmadı — var olan taslak
+// olabilir mi?" — yukarıdaki "locked" senaryosu bunu zaten kanıtlıyor
+// (userDefined:true iken legalValue/currentValue KİLİTLİ kalıyor, yalnızca
+// ...ComparableAuto gölge alanı güncelleniyor). Önceden bu kilidi açmanın
+// HİÇBİR yolu yoktu; clearLandValuationManualOverride() + arayüzdeki
+// "Otomatik hesaplamaya dön" düğmesi bunu çözer. Burada iki şey doğrulanır:
+// (1) fonksiyon GERÇEKTEN iki bayrağı da temizliyor VE
+//     refreshValuationComputedFields()'i çağırıyor (kaynak-düzeyi),
+// (2) bayraklar temizlendikten SONRA syncLandOwnershipValuationDefaults()
+//     artık kilitli DEĞİL, yeni emsal değerini yazıyor (davranışsal,
+//     yukarıdaki runLandSync ile aynı sandbox'ı yeniden kullanır).
+{
+  const resetFnSource = sourceBetween("function clearLandValuationManualOverride", "function createLandValuationResetToAutoButton");
+  assert.match(resetFnSource, /state\.fields\[`\$\{key\}UserDefined`\] = "";/, "clearLandValuationManualOverride artik UserDefined bayragini temizlemiyor.");
+  assert.match(resetFnSource, /state\.fields\[`\$\{key\}ComparableAutoManual`\] = "";/, "clearLandValuationManualOverride artik ComparableAutoManual bayragini temizlemiyor.");
+  assert.match(resetFnSource, /refreshValuationComputedFields\(\);/, "clearLandValuationManualOverride otomatik hesaplamayi yeniden tetiklemiyor.");
+
+  // Dropdown/arayuz kablolamasi: createValuationMarketTable, arsa/arazi
+  // mulkiyette VE deger kilitliyken duzeltme dugmesini gercekten ekliyor mu?
+  const marketTableSource = sourceBetween("function createValuationMarketTable", "function createValuationUrgentSaleTable");
+  assert.match(
+    marketTableSource,
+    /if \(landOwnership && hasUserDefinedLandMarketValue\(row\.totalKey\)\) \{\s*labelCell\.append\(createLandValuationResetToAutoButton\(row\.totalKey\)\);/,
+    "createValuationMarketTable, kilitli arsa/arazi degerleri icin sifirlama dugmesini eklemiyor."
+  );
+
+  // Davranissal: kilit acildiktan SONRA otomatik hesaplama gercekten calisir mi?
+  const stillLocked = runLandSync({
+    tarla: true,
+    legalValue: "900000",
+    currentValue: "900000",
+    previousAuto: "900000",
+    nextValue: 1200000,
+    userDefined: true,
+  });
+  assert.equal(stillLocked.legalValue, "900000", "On-kosul: kilit senaryosu hala kilitli degil.");
+
+  // clearLandValuationManualOverride'in yaptigi TAM ISLEMI (bayrak temizleme)
+  // simule edip ayni sync fonksiyonunu tekrar calistiriyoruz.
+  const unlockedContext = runLandSync({
+    tarla: true,
+    legalValue: "900000",
+    currentValue: "900000",
+    previousAuto: "900000",
+    nextValue: 1200000,
+    userDefined: false, // <-- clearLandValuationManualOverride'in temizledigi bayragin karsiligi
+  });
+  assert.equal(unlockedContext.legalValue, "1200000", "Bayraklar temizlendikten sonra otomatik hesaplama yeni emsal degerini yazmadi.");
+  assert.equal(unlockedContext.currentValue, "1200000", "Bayraklar temizlendikten sonra otomatik hesaplama yeni emsal degerini yazmadi (currentValue).");
+
+  console.log("Otomatik hesaplamaya don (clearLandValuationManualOverride) testi tamam.");
+}
