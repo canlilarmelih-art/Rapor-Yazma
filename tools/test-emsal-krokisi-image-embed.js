@@ -227,7 +227,11 @@ function bytesToBase64(bytes) {
   check(fnBody.includes('tokens.includes("EMSAL_KROKISI")'), "exportDocxTemplate EMSAL_KROKISI token varligini kontrol etmiyor.");
   check(fnBody.includes('safeCall("ensureReportMapImagesForExport")'), "exportDocxTemplate ensureReportMapImagesForExport'u cagirmiyor.");
   check(fnBody.includes('safeCall("buildSavedReportImageAssets")'), "exportDocxTemplate buildSavedReportImageAssets'i cagirmiyor.");
-  check(/fillTemplate\(arrayBuffer, values, boldFlags, imageAssets\)/.test(fnBody), "fillTemplate imageAssets ile cagrilmiyor.");
+  // 2026-08-13: "8. Ekler" fotograf modulu icin fillTemplate'e 5. (opsiyonel)
+  // photoGroups parametresi eklendi — imageAssets'ten SONRA geldigi surece
+  // kabul edilir (bkz. tools/test-emlakkatilim-photo-embed.js, o parametreyi
+  // ayrica dogruluyor).
+  check(/fillTemplate\(arrayBuffer, values, boldFlags, imageAssets(, \w+)?\)/.test(fnBody), "fillTemplate imageAssets ile cagrilmiyor.");
   check(fnBody.includes('embeddedImageKeys.has("comparables")'), "Basariyla gomulen EMSAL_KROKISI 'missing' listesinden filtrelenmiyor.");
   console.log("exportDocxTemplate gorsel varlik hazirlama kablolamasi testi tamam.");
 }

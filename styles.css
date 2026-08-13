@@ -4672,6 +4672,81 @@ td textarea.table-textarea {
   margin-top: 18px;
 }
 
+/* Fotoğraflar paneli (2026-08-13) — yalnızca cihazda saklanan, Emlak
+   Katılım .docx export'una gömülen görseller. */
+.report-photos-panel {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
+.report-photos-category-group {
+  margin-top: 14px;
+}
+
+.report-photos-category-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.report-photos-category-head h5 {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink);
+}
+
+.report-photos-add-button {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.report-photos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.report-photo-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px;
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.report-photo-thumb {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: var(--surface-muted);
+}
+
+.report-photo-caption {
+  font-size: 12px;
+  padding: 4px 6px;
+}
+
+.report-photo-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.report-photo-actions .mini-button {
+  min-height: 26px;
+  padding: 0 8px;
+  font-size: 12px;
+  flex: 1;
+}
+
 .output-export-actions {
   display: flex;
   flex-wrap: wrap;

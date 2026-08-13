@@ -15498,7 +15498,137 @@ function createOutputExportPanel() {
   panel.className = "subsection output-export-panel";
   panel.append(createExpenseFeesSummaryPanel());
   appendBankTemplateExportBlock(panel);
+  panel.append(createReportPhotosPanel());
   return panel;
+}
+
+// "8. Ekler" fotoğraf modülü (2026-08-13) — kullanıcı talebi: "ben
+// görsellerin eklenmesini ve kullanılabilmesini istiyorum ancak bunlar
+// kullanıcı cihazında kalmalı ve server a hiç gitmemeli". Şu an yalnızca
+// Emlak Katılım (.docx) export'unda "8.1 Fotoğraflar"/"8.3 Proje
+// Fotoğrafları" bölümlerine gömülüyor — kullanıcı bilerek diğer banka
+// şablonlarını kapsam dışı bıraktı. Depolama: src/exports/report-photos.js
+// (window.RaporReportPhotos, IndexedDB — sunucuya hiçbir çağrı yapmaz).
+function createReportPhotosPanel() {
+  const panel = document.createElement("div");
+  panel.className = "subsection report-photos-panel";
+  panel.innerHTML = `
+    <div class="subsection-title-row">
+      <div>
+        <h4>Fotoğraflar</h4>
+        <p class="subtle-text">Bu görseller yalnızca bu cihazda (tarayıcınızda) saklanır, sunucuya hiç gönderilmez. Şu an yalnızca <strong>Emlak Katılım Rapor Formatı</strong> dışa aktarılırken "8. Ekler" bölümüne otomatik gömülür.</p>
+      </div>
+    </div>
+    <div data-report-photos-groups></div>
+  `;
+  const groupsContainer = panel.querySelector("[data-report-photos-groups]");
+  if (!window.RaporReportPhotos?.isSupported?.()) {
+    const warn = document.createElement("p");
+    warn.className = "subtle-text";
+    warn.textContent = "Bu tarayıcı yerel fotoğraf depolamayı (IndexedDB) desteklemiyor.";
+    groupsContainer.append(warn);
+    return panel;
+  }
+  window.RaporReportPhotos.PHOTO_CATEGORIES.forEach((category) => {
+    groupsContainer.append(createReportPhotoCategoryGroup(category));
+  });
+  return panel;
+}
+
+function createReportPhotoCategoryGroup(category) {
+  const group = document.createElement("div");
+  group.className = "report-photos-category-group";
+  group.dataset.category = category.key;
+  group.innerHTML = `
+    <div class="report-photos-category-head">
+      <h5>${escapeHtml(category.label)}</h5>
+      <label class="mini-button report-photos-add-button">
+        + Fotoğraf Ekle
+        <input type="file" accept="image/*" multiple hidden>
+      </label>
+    </div>
+    <div class="report-photos-grid" data-report-photos-grid>
+      <p class="subtle-text">Yükleniyor…</p>
+    </div>
+  `;
+  const fileInput = group.querySelector('input[type="file"]');
+  fileInput.addEventListener("change", async () => {
+    if (!fileInput.files?.length) return;
+    fileInput.disabled = true;
+    try {
+      await window.RaporReportPhotos.addPhotos(state.reportId, fileInput.files, category.key);
+    } catch (error) {
+      window.alert(`Fotoğraf eklenemedi: ${error?.message || error}`);
+    } finally {
+      fileInput.value = "";
+      fileInput.disabled = false;
+      refreshReportPhotoGroup(group, category.key);
+    }
+  });
+  refreshReportPhotoGroup(group, category.key);
+  return group;
+}
+
+async function refreshReportPhotoGroup(group, categoryKey) {
+  const grid = group.querySelector("[data-report-photos-grid]");
+  const photos = await window.RaporReportPhotos.listPhotos(state.reportId).catch(() => []);
+  const categoryPhotos = photos.filter((p) => p.category === categoryKey);
+  grid.innerHTML = "";
+  if (!categoryPhotos.length) {
+    const empty = document.createElement("p");
+    empty.className = "subtle-text";
+    empty.textContent = "Henüz fotoğraf eklenmedi.";
+    grid.append(empty);
+    return;
+  }
+  categoryPhotos.forEach((photo, index) => {
+    grid.append(createReportPhotoCard(photo, index, categoryPhotos.length, group, categoryKey));
+  });
+}
+
+function createReportPhotoCard(photo, index, total, group, categoryKey) {
+  const card = document.createElement("div");
+  card.className = "report-photo-card";
+  const objectUrl = URL.createObjectURL(photo.blob);
+  card.innerHTML = `
+    <img src="${objectUrl}" alt="" class="report-photo-thumb">
+    <input type="text" class="text-input report-photo-caption" placeholder="Açıklama (opsiyonel)" value="${escapeHtml(photo.caption || "")}">
+    <div class="report-photo-actions">
+      <button type="button" class="mini-button" data-action="up"${index === 0 ? " disabled" : ""} aria-label="Yukarı taşı">↑</button>
+      <button type="button" class="mini-button" data-action="down"${index === total - 1 ? " disabled" : ""} aria-label="Aşağı taşı">↓</button>
+      <button type="button" class="mini-button library-danger-button" data-action="delete">Sil</button>
+    </div>
+  `;
+  const img = card.querySelector("img");
+  img.addEventListener("load", () => URL.revokeObjectURL(objectUrl), { once: true });
+  const captionInput = card.querySelector(".report-photo-caption");
+  captionInput.addEventListener("change", async () => {
+    await window.RaporReportPhotos.updatePhoto(photo.id, { caption: captionInput.value.trim() });
+  });
+  card.querySelector('[data-action="delete"]').addEventListener("click", async () => {
+    if (!window.confirm("Bu fotoğraf silinsin mi?")) return;
+    await window.RaporReportPhotos.removePhoto(photo.id);
+    refreshReportPhotoGroup(group, categoryKey);
+  });
+  card.querySelector('[data-action="up"]').addEventListener("click", async () => {
+    await swapReportPhotoOrder(categoryKey, photo.id, -1);
+    refreshReportPhotoGroup(group, categoryKey);
+  });
+  card.querySelector('[data-action="down"]').addEventListener("click", async () => {
+    await swapReportPhotoOrder(categoryKey, photo.id, 1);
+    refreshReportPhotoGroup(group, categoryKey);
+  });
+  return card;
+}
+
+async function swapReportPhotoOrder(categoryKey, photoId, direction) {
+  const photos = (await window.RaporReportPhotos.listPhotos(state.reportId)).filter((p) => p.category === categoryKey);
+  const index = photos.findIndex((p) => p.id === photoId);
+  const swapIndex = index + direction;
+  if (index < 0 || swapIndex < 0 || swapIndex >= photos.length) return;
+  const orderedIds = photos.map((p) => p.id);
+  [orderedIds[index], orderedIds[swapIndex]] = [orderedIds[swapIndex], orderedIds[index]];
+  await window.RaporReportPhotos.reorderPhotos(orderedIds);
 }
 
 // Masraf yazısı ücret kalemlerinin (Rapor/Değerleme Ücreti, KDV oranları,
@@ -28578,6 +28708,22 @@ async function buildSavedReportImageAssets() {
     if (asset) assets.push(asset);
   }
   return assets;
+}
+
+// "8. Ekler" fotoğraf modülü (2026-08-13) — template-engine.js'in
+// exportDocxTemplate()'i safeCall("getReportPhotoGroupsForExport") ile
+// dinamik çağırır (bkz. 147-dinamik-çağrı uyarısı, CLAUDE.md 0.0.285 —
+// terser mangle.toplevel:false bu ismi KORUR). window.RaporReportPhotos
+// (src/exports/report-photos.js) yüklenmemişse/desteklenmiyorsa boş dizi
+// döner — hiçbir zaman sunucuya istek atmaz.
+async function getReportPhotoGroupsForExport() {
+  if (!window.RaporReportPhotos) return [];
+  try {
+    return await window.RaporReportPhotos.getPhotoGroupsForExport(state.reportId);
+  } catch (error) {
+    console.warn("Rapor fotoğrafları export için hazırlanamadı:", error?.message || error);
+    return [];
+  }
 }
 
 async function buildSavedLocationMapAsset(config) {

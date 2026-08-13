@@ -354,6 +354,115 @@
     return { xmlText: text, entries: nextEntries, embeddedAny };
   }
 
+  // "8. Ekler" fotoğraf modülü (2026-08-13) — kullanıcı talebi: "ben
+  // görsellerin eklenmesini ve kullanılabilmesini istiyorum ancak bunlar
+  // kullanıcı cihazında kalmalı ve server a hiç gitmemeli". embedImageAssets
+  // TEK bir token'a TEK bir görsel gömer (Emsal Krokisi); burada bir
+  // token'a (ör. {{FOTO_ALANI_1}}) N adet görsel + altyazı, alt alta
+  // paragraflar halinde gömülür. templates/emlakkatilim.docx'teki "8.1
+  // Fotoğraflar"/"8.3 Proje Fotoğrafları" hücreleri satır-birleştirmeli
+  // (vMerge restart) BOŞ hücreler — Word bu tür hücrelerde içerik satır
+  // sayısından fazlaysa hücreyi otomatik BÜYÜTÜR (trHeight değerleri
+  // minimum, exact DEĞİL), bu yüzden yeni <w:tr> satırı üretmeye GEREK
+  // YOK — token'ı barındıran TEK paragraf, N görsel+altyazı paragrafıyla
+  // değiştirilir.
+  function escapeXmlText(value) {
+    return String(value || "").replace(/[<>&"']/g, (ch) => (
+      { "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;", "'": "&apos;" }[ch]
+    ));
+  }
+
+  // Galeri görselleri, çok sayıda yan yana sığması için Emsal Krokisi'nden
+  // (tek, büyük görsel) daha küçük bir kutuya sığdırılır (en-boy korunarak).
+  const GALLERY_IMAGE_MAX_WIDTH_EMU = 3200000; // ~3.5 in
+  const GALLERY_IMAGE_MAX_HEIGHT_EMU = 2400000; // ~2.62 in
+
+  function computeGalleryImageEmuSize(pixelSize) {
+    const width = pixelSize?.width;
+    const height = pixelSize?.height;
+    if (!width || !height) return { cx: GALLERY_IMAGE_MAX_WIDTH_EMU, cy: Math.round((GALLERY_IMAGE_MAX_WIDTH_EMU * 3) / 4) };
+    const aspect = width / height;
+    let cx = GALLERY_IMAGE_MAX_WIDTH_EMU;
+    let cy = Math.round(cx / aspect);
+    if (cy > GALLERY_IMAGE_MAX_HEIGHT_EMU) {
+      cy = GALLERY_IMAGE_MAX_HEIGHT_EMU;
+      cx = Math.round(cy * aspect);
+    }
+    return { cx, cy };
+  }
+
+  function buildPhotoParagraphXml(relId, caption, cx, cy) {
+    const drawing = buildDrawingXml(relId, caption || "Rapor fotoğrafı", cx, cy);
+    const imageParagraph = `<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:after="40"/></w:pPr><w:r>${drawing}</w:r></w:p>`;
+    if (!caption) return imageParagraph;
+    const captionParagraph = `<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:after="160"/><w:rPr><w:i/><w:iCs/><w:sz w:val="16"/><w:szCs w:val="16"/></w:rPr></w:pPr><w:r><w:rPr><w:i/><w:iCs/><w:sz w:val="16"/><w:szCs w:val="16"/></w:rPr><w:t xml:space="preserve">${escapeXmlText(caption)}</w:t></w:r></w:p>`;
+    return imageParagraph + captionParagraph;
+  }
+
+  // xmlText icindeki {{FOTO_ALANI_N}} gibi galeri token'larini, elde mevcut
+  // fotoğraf gruplarıyla (photoGroups — RaporReportPhotos.getPhotoGroupsForExport()
+  // çıktısı: [{ token, photos: [{ base64, mimeType, caption }] }]) gerçek
+  // <w:drawing>+altyazı paragraf dizisine gömer. Token'ın İÇİNDE BULUNDUĞU
+  // TEK paragraf (en yakın <w:p>...</w:p>) bulunup TAMAMEN bu dizi ile
+  // DEĞİŞTİRİLİR. Karşılığı olmayan/boş grup token'ları DOKUNULMADAN
+  // bırakılır (normal metin-token döngüsü onları "missing" raporlar).
+  function embedPhotoGalleryAssets(xmlText, entries, photoGroups) {
+    let nextEntries = entries.slice();
+    let text = xmlText;
+    let embeddedAny = false;
+
+    (Array.isArray(photoGroups) ? photoGroups : []).forEach((group) => {
+      const token = group?.token;
+      const photos = Array.isArray(group?.photos) ? group.photos : [];
+      if (!token || !photos.length) return;
+      const marker = `{{${token}}}`;
+      const markerIndex = text.indexOf(marker);
+      if (markerIndex < 0) return; // sablonda bu token yoksa (beklenmeyen sürüm) sessizce atlanır
+
+      const paragraphStart = text.lastIndexOf("<w:p>", markerIndex) >= 0 || text.lastIndexOf("<w:p ", markerIndex) >= 0
+        ? Math.max(text.lastIndexOf("<w:p>", markerIndex), text.lastIndexOf("<w:p ", markerIndex))
+        : -1;
+      const paragraphEndTagIndex = text.indexOf("</w:p>", markerIndex);
+      if (paragraphStart < 0 || paragraphEndTagIndex < 0) return; // beklenmeyen sablon yapisi — dokunulmaz
+      const paragraphEnd = paragraphEndTagIndex + "</w:p>".length;
+
+      const relsEntry = nextEntries.find((e) => e.name === "word/_rels/document.xml.rels");
+      if (!relsEntry) return;
+      let relsXml = dec.decode(relsEntry.bytes);
+
+      const galleryParagraphs = [];
+      photos.forEach((photo) => {
+        if (!photo?.base64) return;
+        const existingRelIds = [...relsXml.matchAll(/Id="rId(\d+)"/g)].map((m) => Number(m[1]));
+        const relId = (existingRelIds.length ? Math.max(...existingRelIds) : 0) + 1;
+        const existingMediaIndices = nextEntries
+          .map((e) => e.name.match(/^word\/media\/image(\d+)\./))
+          .filter(Boolean)
+          .map((m) => Number(m[1]));
+        const mediaIndex = (existingMediaIndices.length ? Math.max(...existingMediaIndices) : 0) + 1;
+        const extension = extensionForMimeType(photo.mimeType);
+        const mediaName = `word/media/image${mediaIndex}.${extension}`;
+        const imageBytes = base64ToBytes(photo.base64);
+        const pixelSize = extension === "jpeg" ? getJpegPixelSize(imageBytes) : null;
+        const { cx, cy } = computeGalleryImageEmuSize(pixelSize);
+
+        relsXml = relsXml.replace(
+          "</Relationships>",
+          `<Relationship Id="rId${relId}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/image${mediaIndex}.${extension}"/></Relationships>`
+        );
+        nextEntries = nextEntries.concat([{ name: mediaName, bytes: imageBytes }]);
+        galleryParagraphs.push(buildPhotoParagraphXml(relId, photo.caption, cx, cy));
+      });
+      if (!galleryParagraphs.length) return;
+
+      nextEntries = nextEntries.map((e) => (e.name === "word/_rels/document.xml.rels" ? { name: e.name, bytes: enc.encode(relsXml) } : e));
+      text = text.slice(0, paragraphStart) + galleryParagraphs.join("") + text.slice(paragraphEnd);
+      embeddedAny = true;
+    });
+
+    return { xmlText: text, entries: nextEntries, embeddedAny };
+  }
+
   // --- Ana API ---------------------------------------------------------
   // arrayBuffer: STORED .docx şablonu (fetch edilmiş ham bayt)
   // values: { TOKEN: htmlValue } — window.RaporTemplates.resolveTemplateTokenValues() çıktısı
@@ -362,7 +471,12 @@
   // imageAssets: [{key, title, base64, mimeType}] — buildSavedReportImageAssets()
   // çıktısı; IMAGE_TOKEN_ASSET_KEYS'teki token'lar (ör. {{EMSAL_KROKISI}})
   // gerçek <w:drawing> olarak gömülür (bkz. embedImageAssets).
-  function fillTemplate(arrayBuffer, values, boldFlags, imageAssets) {
+  // photoGroups: [{token, photos:[{base64, mimeType, caption}]}] —
+  // RaporReportPhotos.getPhotoGroupsForExport() çıktısı (2026-08-13,
+  // "8.1 Fotoğraflar"/"8.3 Proje Fotoğrafları" — bkz. embedPhotoGalleryAssets).
+  // Tamamen opsiyonel: window.RaporReportPhotos hiç yüklenmemiş/kullanılmamışsa
+  // undefined/[] geçilir, hiçbir şey değişmez.
+  function fillTemplate(arrayBuffer, values, boldFlags, imageAssets, photoGroups) {
     let entries = readStoredZip(arrayBuffer);
     let docEntry = entries.find((e) => e.name === "word/document.xml");
     if (!docEntry) throw new Error("DOCX şablonunda word/document.xml bulunamadı.");
@@ -373,6 +487,13 @@
     xmlText = imageResult.xmlText;
     if (imageResult.embeddedAny) {
       entries = imageResult.entries;
+      docEntry = entries.find((e) => e.name === "word/document.xml");
+    }
+
+    const photoResult = embedPhotoGalleryAssets(xmlText, entries, photoGroups);
+    xmlText = photoResult.xmlText;
+    if (photoResult.embeddedAny) {
+      entries = photoResult.entries;
       docEntry = entries.find((e) => e.name === "word/document.xml");
     }
 

@@ -38,6 +38,7 @@ const TARGET_FILES = [
   "src/exports/docx-fill.js",
   "src/exports/export-validation.js",
   "src/exports/multi-request-xlsx.js",
+  "src/exports/report-photos.js",
   "src/exports/report-tables-xlsx.js",
   "src/exports/xlsx-fill.js",
   "src/exports/ziraat-ek-tablo-xlsx.js",

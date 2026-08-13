@@ -9188,3 +9188,104 @@ statüsüne göre TUTARSIZ bir ek slug kullandığından güvenilir şekilde
   vermeli.
 - Cache-buster: `app.js?v=20260813-2100`, `styles.css?v=20260813-2100`.
 - Yedek: `backups/before-yapikredi-2nd-fix-list_2026-08-12_22-45-16`.
+
+(Not: 0.0.433'ten sonra Codex ayrı commit'lerle Hepsiemlak/Emlakjet
+portallarını, gerçek logo görsellerini, mobil icon-only tasarımı ve KML
+merkez-koordinatlı harita aramasını ekledi — bu commit'ler kendi
+mesajlarıyla git log'da duruyor, burada ayrıca tekrarlanmadı. Yol
+boyunca CI'ı kıran bir eski test kalıntısı (`5848dbb`) bulunup düzeltildi,
+Codex de ayrıca bir logo-eşleme hatasını (`f2df544`) kendi düzeltti.)
+
+## 0.0.434 - 2026-08-13 - "8. Ekler" fotoğraf modülü (yalnızca emlakkatilim.docx, tamamen cihaz-içi)
+
+Kullanıcı bir rakip programın videosunu (4:24'ten sonrası) örnek gösterip
+"oluşturulan pdf üzerine fotoğraf ekleme modülü" istedi — **açık koşul**:
+"bunlar kullanıcı cihazında kalmalı ve server a hiç gitmemeli, KVKK
+kapsamı ve server maliyeti burada önemli". `AskUserQuestion` ile kapsam
+netleştirildi: kullanıcı yalnızca `templates/emlakkatilim.docx`'e gömmeyi
+istedi, diğer ~10 banka şablonu (sunucu tarafında render edilen HTML
+şablonları) kapsam dışı bırakıldı — zaten KVKK kısıtı gereği o şablonlara
+fotoğraf eklemek sunucuya veri göndermeyi gerektirirdi.
+
+**Keşif**: `templates/emlakkatilim.docx`'te "8. Ekler" altında "8.1
+Fotoğraflar"/"8.3 Proje Fotoğrafları" bölümleri zaten VARDI ama BOŞ
+hücrelerdi (CLAUDE.md 0.0.313/0.0.314'teki "gerçek görsel gömme işi ...
+kapsam dışı" notuyla birebir eşleşiyor). `src/exports/docx-fill.js`'te
+zaten kanıtlanmış, tamamen istemci-taraflı bir görsel-gömme altyapısı
+(`embedImageAssets`, Emsal Krokisi için) vardı — aynı teknik (word/media/
++ rels + gerçek `<w:drawing>`) çoklu-fotoğraf galerisi için genişletildi.
+
+**Depolama (`src/exports/report-photos.js`, yeni, `window.RaporReportPhotos`)**:
+- **IndexedDB**, localStorage DEĞİL — rapor state'i zaten tek bir
+  localStorage anahtarında (~5-10 MB kota); fotoğrafları oraya eklemek
+  kota dolunca TÜM raporun autosave'ini sessizce bozma riski taşırdı.
+  IndexedDB kotası çok daha büyük ve tamamen ayrı bir mağaza.
+  **Sunucuya hiçbir fetch/XHR çağrısı YOK** (dosyada arama yapılabilir,
+  hiç yok).
+  - Her fotoğraf eklenmeden önce `<canvas>` ile sıkıştırılıyor (uzun kenar
+    max 1600px, JPEG kalite 0.8) — telefon kamerası orijinallerinin
+    (birkaç MB) depoyu şişirmesini önler.
+  - İki kategori: `genel` (8.1 Fotoğraflar) / `proje` (8.3 Proje
+    Fotoğrafları) — diğer 3 "Ekler" alt bölümü (Uavt/Kroki/İmar, Takbis
+    Belgesi, Diğer Ekler) belge taraması niteliğinde, "fotoğraf" kapsamı
+    dışında bırakıldı.
+  - API: `addPhotos`, `listPhotos`, `removePhoto`, `updatePhoto`
+    (altyazı), `reorderPhotos`, `clearReportPhotos`,
+    `getPhotoGroupsForExport` (export'a hazır `{token, photos}` listesi).
+- **UI**: "Banka ve Çıktı" bölümünde, export düğmesinin altında yeni bir
+  "Fotoğraflar" paneli (`createReportPhotosPanel`) — her kategori için
+  dosya seçici + küçük resim ızgarası (altyazı girişi, yukarı/aşağı sıra
+  değiştirme, sil). Rapor bankası ne olursa olsun HER ZAMAN görünür (yalnızca
+  Emlak Katılım export'unda kullanıldığına dair not var) — kullanıcı hangi
+  bankayı seçeceğine karar vermeden ÖNCE de fotoğraf ekleyebilsin diye.
+- **`templates/emlakkatilim.docx` bayt-düzeyinde düzenlendi** (elle DEĞİL,
+  gerçek `writeStoredZip`/`readStoredZip`/`crc32` fonksiyonları
+  docx-fill.js'ten `vm` ile çıkarılıp bir Node betiğiyle çalıştırıldı —
+  hataya açık elle-kopyalama riskinden kaçınmak için): "8.1 Fotoğraflar"
+  hücresindeki mevcut BOŞ run'ın metni (`\xa0`, non-breaking space —
+  CLAUDE.md'nin tarif ettiği tam olarak o durum) `{{FOTO_ALANI_1}}` ile
+  değiştirildi; "8.3 Proje Fotoğrafları" hücresinde run BİLE yoktu, yeni
+  bir `<w:r><w:t>{{FOTO_ALANI_3}}</w:t></w:r>` eklendi. STORED zip olarak
+  yeniden paketlendi (2032915 → 2033020 bayt). Orijinal
+  `backups/before-emlakkatilim-photo-tokens_.../emlakkatilim.docx`'e
+  yedeklendi.
+- **`docx-fill.js`**: yeni `embedPhotoGalleryAssets(xmlText, entries,
+  photoGroups)` — `embedImageAssets`'in aksine TEK token'a N görsel+altyazı
+  paragrafı gömer (vMerge=restart hücreler minimum-yükseklik olduğundan
+  Word içeriğe göre otomatik büyür — yeni `<w:tr>` üretmeye GEREK YOK).
+  `fillTemplate`'e 5. (opsiyonel) parametre olarak eklendi.
+- **`template-engine.js`**: `exportDocxTemplate()` artık şablonda
+  `FOTO_ALANI_*` token'ı varsa `safeCall("getReportPhotoGroupsForExport")`
+  ile (app.js'teki ince sarmalayıcı, `window.RaporReportPhotos`'u
+  `state.reportId` ile çağırır) fotoğrafları hazırlayıp `fillTemplate`'e
+  geçiyor. Fotoğrafı OLMAYAN kategorilerin token'ı `values[token]=""`
+  ile temiz şekilde siliniyor (ham `{{FOTO_ALANI_1}}` metni asla
+  görünmüyor) VE hiçbir zaman "eksik alan" uyarısına dönüşmüyor (bilerek
+  opsiyonel).
+- **Regresyon (bulundu, düzeltildi)**: mevcut
+  `tools/test-emsal-krokisi-image-embed.js`'teki katı bir regex
+  (`fillTemplate(arrayBuffer, values, boldFlags, imageAssets)` — tam
+  eşleşme) yeni 5. parametre eklendiğinde kırıldı; regex opsiyonel son
+  argümanı kabul edecek şekilde gevşetildi.
+- Canlı doğrulama (localhost:5173, gerçek taslak): panel doğru render
+  edildi; sentetik bir PNG `window.RaporReportPhotos.addPhotos()` ile
+  eklendi → JPEG'e sıkıştırıldı (759 bayt) → IndexedDB'de listelendi →
+  `getPhotoGroupsForExport` doğru `{token:"FOTO_ALANI_1", photos:[...]}`
+  döndürdü → panel yeniden render edilince küçük resim kartı (blob URL
+  `<img>`, altyazı girişi, sil/sıra düğmeleri) doğru göründü. Test verisi
+  temizlendi (`clearReportPhotos`). Konsolda hiç hata yok.
+- Test: yeni `tools/test-emlakkatilim-photo-embed.js` — gerçek
+  `templates/emlakkatilim.docx`'in hâlâ geçerli STORED zip olduğunu,
+  `collectTokens()`'ın iki yeni token'ı bulduğunu, fotoğraf VARKEN
+  şablona göre TAM +3 `<w:drawing>`/+3 rels/+3 media eklendiğini (mutlak
+  sayı değil — şablonun kendi logo/antet görselleri zaten var, delta
+  ölçüldü), altyazıların doğru geldiğini, fotoğraf YOKKEN token'ın hiçbir
+  iz bırakmadan (ne ham metin ne "missing" uyarısı ne yeni `<w:drawing>`)
+  temizlendiğini doğruluyor (5 senaryo). `npm run verify` tam zincirle
+  yeşil.
+- `tools/minify-for-deploy.js`'in `TARGET_FILES` listesine
+  `src/exports/report-photos.js` eklendi (CLAUDE.md 0.0.285 uyarısı).
+- Cache-buster: `app.js?v=20260813-2300`,
+  `src/exports/docx-fill.js?v=20260813-2300`,
+  `src/exports/report-photos.js?v=20260813-2300`.
+- Yedek: `backups/before-emlakkatilim-photo-tokens_20260813_162309/`.
