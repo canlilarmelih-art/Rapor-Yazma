@@ -15502,13 +15502,21 @@ function createOutputExportPanel() {
   return panel;
 }
 
-// "8. Ekler" fotoğraf modülü (2026-08-13) — kullanıcı talebi: "ben
-// görsellerin eklenmesini ve kullanılabilmesini istiyorum ancak bunlar
-// kullanıcı cihazında kalmalı ve server a hiç gitmemeli". Şu an yalnızca
-// Emlak Katılım (.docx) export'unda "8.1 Fotoğraflar"/"8.3 Proje
-// Fotoğrafları" bölümlerine gömülüyor — kullanıcı bilerek diğer banka
-// şablonlarını kapsam dışı bıraktı. Depolama: src/exports/report-photos.js
-// (window.RaporReportPhotos, IndexedDB — sunucuya hiçbir çağrı yapmaz).
+// "8. Ekler" fotoğraf modülü (2026-08-13, 2. tur — kategori/sayfa yerleşim
+// şeması) — kullanıcı talebi: "ben görsellerin eklenmesini ve
+// kullanılabilmesini istiyorum ancak bunlar kullanıcı cihazında kalmalı ve
+// server a hiç gitmemeli". Şu an yalnızca Emlak Katılım (.docx) export'unda
+// "8.1 Fotoğraflar" bölümüne (23 kategori, TEK konsolide token) gömülüyor —
+// kullanıcı bilerek diğer banka şablonlarını kapsam dışı bıraktı. Depolama:
+// src/exports/report-photos.js (window.RaporReportPhotos, IndexedDB —
+// sunucuya hiçbir çağrı yapmaz).
+//
+// UX (kullanıcı talebi — rakip programın ekran görüntüsüne göre): TEK
+// "+ Fotoğraf Ekle" düğmesi → 1) kategori seç (23 seçenek) → 2) fotoğraf(lar)
+// seç → 3) sayfa yerleşim şablonu seç (4 görsel seçenek, en-boy oranına göre
+// bir varsayılan ÖNERİLİR). Aşağıda yalnızca fotoğrafı OLAN kategoriler,
+// Word çıktısındakiyle aynı lacivert başlık önizlemesiyle listelenir —
+// fotoğrafsız kategoriler burada da (ve Word'de) hiç görünmez.
 function createReportPhotosPanel() {
   const panel = document.createElement("div");
   panel.className = "subsection report-photos-panel";
@@ -15518,84 +15526,71 @@ function createReportPhotosPanel() {
         <h4>Fotoğraflar</h4>
         <p class="subtle-text">Bu görseller yalnızca bu cihazda (tarayıcınızda) saklanır, sunucuya hiç gönderilmez. Şu an yalnızca <strong>Emlak Katılım Rapor Formatı</strong> dışa aktarılırken "8. Ekler" bölümüne otomatik gömülür.</p>
       </div>
+      <button type="button" class="primary-button report-photos-add-trigger">+ Fotoğraf Ekle</button>
     </div>
     <div data-report-photos-groups></div>
   `;
   const groupsContainer = panel.querySelector("[data-report-photos-groups]");
+  const addTrigger = panel.querySelector(".report-photos-add-trigger");
   if (!window.RaporReportPhotos?.isSupported?.()) {
+    addTrigger.disabled = true;
     const warn = document.createElement("p");
     warn.className = "subtle-text";
     warn.textContent = "Bu tarayıcı yerel fotoğraf depolamayı (IndexedDB) desteklemiyor.";
     groupsContainer.append(warn);
     return panel;
   }
-  window.RaporReportPhotos.PHOTO_CATEGORIES.forEach((category) => {
-    groupsContainer.append(createReportPhotoCategoryGroup(category));
+  addTrigger.addEventListener("click", () => {
+    openReportPhotoCategoryModal((categoryKey) => {
+      triggerReportPhotoFilePick(categoryKey, () => refreshReportPhotosGroups(groupsContainer));
+    });
   });
+  refreshReportPhotosGroups(groupsContainer);
   return panel;
 }
 
-function createReportPhotoCategoryGroup(category) {
+async function refreshReportPhotosGroups(groupsContainer) {
+  const photos = await window.RaporReportPhotos.listPhotos(state.reportId).catch(() => []);
+  groupsContainer.innerHTML = "";
+  if (!photos.length) {
+    const empty = document.createElement("p");
+    empty.className = "subtle-text";
+    empty.textContent = "Henüz fotoğraf eklenmedi.";
+    groupsContainer.append(empty);
+    return;
+  }
+  window.RaporReportPhotos.PHOTO_CATEGORIES.forEach((category) => {
+    const categoryPhotos = photos.filter((p) => p.category === category.key);
+    if (!categoryPhotos.length) return; // fotoğrafsız kategori — Word'de de görünmüyor, burada da gösterilmez
+    groupsContainer.append(createReportPhotoCategoryGroup(category, categoryPhotos, groupsContainer));
+  });
+}
+
+function createReportPhotoCategoryGroup(category, categoryPhotos, groupsContainer) {
   const group = document.createElement("div");
   group.className = "report-photos-category-group";
   group.dataset.category = category.key;
   group.innerHTML = `
-    <div class="report-photos-category-head">
-      <h5>${escapeHtml(category.label)}</h5>
-      <label class="mini-button report-photos-add-button">
-        + Fotoğraf Ekle
-        <input type="file" accept="image/*" multiple hidden>
-      </label>
-    </div>
-    <div class="report-photos-grid" data-report-photos-grid>
-      <p class="subtle-text">Yükleniyor…</p>
-    </div>
+    <div class="report-photos-category-banner">${escapeHtml(category.label)}</div>
+    <div class="report-photos-grid" data-report-photos-grid></div>
   `;
-  const fileInput = group.querySelector('input[type="file"]');
-  fileInput.addEventListener("change", async () => {
-    if (!fileInput.files?.length) return;
-    fileInput.disabled = true;
-    try {
-      await window.RaporReportPhotos.addPhotos(state.reportId, fileInput.files, category.key);
-    } catch (error) {
-      window.alert(`Fotoğraf eklenemedi: ${error?.message || error}`);
-    } finally {
-      fileInput.value = "";
-      fileInput.disabled = false;
-      refreshReportPhotoGroup(group, category.key);
-    }
+  const grid = group.querySelector("[data-report-photos-grid]");
+  categoryPhotos.forEach((photo) => {
+    grid.append(createReportPhotoCard(photo, groupsContainer));
   });
-  refreshReportPhotoGroup(group, category.key);
   return group;
 }
 
-async function refreshReportPhotoGroup(group, categoryKey) {
-  const grid = group.querySelector("[data-report-photos-grid]");
-  const photos = await window.RaporReportPhotos.listPhotos(state.reportId).catch(() => []);
-  const categoryPhotos = photos.filter((p) => p.category === categoryKey);
-  grid.innerHTML = "";
-  if (!categoryPhotos.length) {
-    const empty = document.createElement("p");
-    empty.className = "subtle-text";
-    empty.textContent = "Henüz fotoğraf eklenmedi.";
-    grid.append(empty);
-    return;
-  }
-  categoryPhotos.forEach((photo, index) => {
-    grid.append(createReportPhotoCard(photo, index, categoryPhotos.length, group, categoryKey));
-  });
-}
-
-function createReportPhotoCard(photo, index, total, group, categoryKey) {
+function createReportPhotoCard(photo, groupsContainer) {
   const card = document.createElement("div");
   card.className = "report-photo-card";
   const objectUrl = URL.createObjectURL(photo.blob);
+  const orientationLabel = photo.orientation === "portrait" ? "Dikey" : photo.orientation === "square" ? "Kare" : "Yatay";
   card.innerHTML = `
     <img src="${objectUrl}" alt="" class="report-photo-thumb">
+    <span class="report-photo-orientation-badge">${escapeHtml(orientationLabel)}</span>
     <input type="text" class="text-input report-photo-caption" placeholder="Açıklama (opsiyonel)" value="${escapeHtml(photo.caption || "")}">
     <div class="report-photo-actions">
-      <button type="button" class="mini-button" data-action="up"${index === 0 ? " disabled" : ""} aria-label="Yukarı taşı">↑</button>
-      <button type="button" class="mini-button" data-action="down"${index === total - 1 ? " disabled" : ""} aria-label="Aşağı taşı">↓</button>
       <button type="button" class="mini-button library-danger-button" data-action="delete">Sil</button>
     </div>
   `;
@@ -15608,27 +15603,115 @@ function createReportPhotoCard(photo, index, total, group, categoryKey) {
   card.querySelector('[data-action="delete"]').addEventListener("click", async () => {
     if (!window.confirm("Bu fotoğraf silinsin mi?")) return;
     await window.RaporReportPhotos.removePhoto(photo.id);
-    refreshReportPhotoGroup(group, categoryKey);
-  });
-  card.querySelector('[data-action="up"]').addEventListener("click", async () => {
-    await swapReportPhotoOrder(categoryKey, photo.id, -1);
-    refreshReportPhotoGroup(group, categoryKey);
-  });
-  card.querySelector('[data-action="down"]').addEventListener("click", async () => {
-    await swapReportPhotoOrder(categoryKey, photo.id, 1);
-    refreshReportPhotoGroup(group, categoryKey);
+    refreshReportPhotosGroups(groupsContainer);
   });
   return card;
 }
 
-async function swapReportPhotoOrder(categoryKey, photoId, direction) {
-  const photos = (await window.RaporReportPhotos.listPhotos(state.reportId)).filter((p) => p.category === categoryKey);
-  const index = photos.findIndex((p) => p.id === photoId);
-  const swapIndex = index + direction;
-  if (index < 0 || swapIndex < 0 || swapIndex >= photos.length) return;
-  const orderedIds = photos.map((p) => p.id);
-  [orderedIds[index], orderedIds[swapIndex]] = [orderedIds[swapIndex], orderedIds[index]];
-  await window.RaporReportPhotos.reorderPhotos(orderedIds);
+// Adım 1 — kategori seçim modalı (23 seçenek, tek seçim). Seçim yapılınca
+// modal kapanır ve onSelectCategory(categoryKey) çağrılır.
+function openReportPhotoCategoryModal(onSelectCategory) {
+  document.querySelector(".modal-overlay")?.remove();
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.innerHTML = `
+    <div class="modal-card modal-card-wide report-photo-category-modal" role="dialog" aria-modal="true" aria-labelledby="reportPhotoCategoryModalTitle">
+      <div class="modal-head">
+        <h3 id="reportPhotoCategoryModalTitle">Fotoğraf/Belge Türü Seçin</h3>
+        <button class="modal-close" type="button" aria-label="Kapat">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="report-photo-category-choice-list" data-report-photo-category-choices></div>
+      </div>
+    </div>
+  `;
+  const choicesContainer = overlay.querySelector("[data-report-photo-category-choices]");
+  window.RaporReportPhotos.PHOTO_CATEGORIES.forEach((category) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "report-photo-category-choice";
+    button.textContent = category.label;
+    button.addEventListener("click", () => {
+      overlay.remove();
+      onSelectCategory(category.key);
+    });
+    choicesContainer.append(button);
+  });
+  const close = () => overlay.remove();
+  overlay.querySelector(".modal-close").addEventListener("click", close);
+  document.body.append(overlay);
+}
+
+// Adım 2 — native dosya seçiciyi programatik olarak açar (kategori seçim
+// düğmesinin click handler'ı içinden çağrıldığı için tarayıcı bunu kullanıcı
+// etkileşimi sayar). Dosyalar seçilince Adım 3'e (yerleşim seçimi) geçer.
+function triggerReportPhotoFilePick(categoryKey, onDone) {
+  const fileInput = document.createElement("input");
+  fileInput.type = "file";
+  fileInput.accept = "image/*";
+  fileInput.multiple = true;
+  fileInput.style.display = "none";
+  fileInput.addEventListener("change", async () => {
+    const files = fileInput.files?.length ? Array.from(fileInput.files) : [];
+    fileInput.remove();
+    if (!files.length) return;
+    const orientations = await window.RaporReportPhotos.peekOrientations(files).catch(() => []);
+    const suggestedLayoutKey = window.RaporReportPhotos.suggestLayoutForOrientations(orientations);
+    openReportPhotoLayoutModal(suggestedLayoutKey, async (layoutKey) => {
+      try {
+        await window.RaporReportPhotos.addPhotos(state.reportId, files, categoryKey, layoutKey);
+      } catch (error) {
+        window.alert(`Fotoğraf eklenemedi: ${error?.message || error}`);
+      } finally {
+        onDone();
+      }
+    });
+  });
+  document.body.append(fileInput);
+  fileInput.click();
+}
+
+// Adım 3 — sayfa yerleşim şablonu seçimi (4 görsel seçenek: Yatay İkili/
+// Dikey Tekli/Alt Alta İkili/6'lı Grid). Fotoğrafların çoğunluğunun
+// yönüne göre hesaplanan suggestedLayoutKey öne çıkarılır (rozet), kullanıcı
+// yine de diğerini seçebilir.
+function openReportPhotoLayoutModal(suggestedLayoutKey, onSelectLayout) {
+  document.querySelector(".modal-overlay")?.remove();
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.innerHTML = `
+    <div class="modal-card modal-card-wide report-photo-layout-modal" role="dialog" aria-modal="true" aria-labelledby="reportPhotoLayoutModalTitle">
+      <div class="modal-head">
+        <h3 id="reportPhotoLayoutModalTitle">Sayfa Yerleşimi Seçin</h3>
+        <button class="modal-close" type="button" aria-label="Kapat">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="report-photo-layout-choice-list" data-report-photo-layout-choices></div>
+      </div>
+    </div>
+  `;
+  const choicesContainer = overlay.querySelector("[data-report-photo-layout-choices]");
+  window.RaporReportPhotos.LAYOUT_TEMPLATES.forEach((layout) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `report-photo-layout-choice report-photo-layout-choice-${layout.key}`;
+    const isSuggested = layout.key === suggestedLayoutKey;
+    button.innerHTML = `
+      <span class="report-photo-layout-icon" data-columns="${layout.columns}" data-rows="${layout.rows}">
+        ${Array.from({ length: layout.columns * layout.rows }, () => '<span class="report-photo-layout-icon-cell"></span>').join("")}
+      </span>
+      <span class="report-photo-layout-label">${escapeHtml(layout.label)}</span>
+      ${isSuggested ? '<span class="report-photo-layout-badge">Önerilen</span>' : ""}
+    `;
+    button.addEventListener("click", () => {
+      overlay.remove();
+      onSelectLayout(layout.key);
+    });
+    choicesContainer.append(button);
+  });
+  const close = () => overlay.remove();
+  overlay.querySelector(".modal-close").addEventListener("click", close);
+  document.body.append(overlay);
 }
 
 // Masraf yazısı ücret kalemlerinin (Rapor/Değerleme Ücreti, KDV oranları,

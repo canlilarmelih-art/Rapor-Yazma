@@ -354,67 +354,174 @@
     return { xmlText: text, entries: nextEntries, embeddedAny };
   }
 
-  // "8. Ekler" fotoğraf modülü (2026-08-13) — kullanıcı talebi: "ben
-  // görsellerin eklenmesini ve kullanılabilmesini istiyorum ancak bunlar
-  // kullanıcı cihazında kalmalı ve server a hiç gitmemeli". embedImageAssets
-  // TEK bir token'a TEK bir görsel gömer (Emsal Krokisi); burada bir
-  // token'a (ör. {{FOTO_ALANI_1}}) N adet görsel + altyazı, alt alta
-  // paragraflar halinde gömülür. templates/emlakkatilim.docx'teki "8.1
-  // Fotoğraflar"/"8.3 Proje Fotoğrafları" hücreleri satır-birleştirmeli
-  // (vMerge restart) BOŞ hücreler — Word bu tür hücrelerde içerik satır
-  // sayısından fazlaysa hücreyi otomatik BÜYÜTÜR (trHeight değerleri
-  // minimum, exact DEĞİL), bu yüzden yeni <w:tr> satırı üretmeye GEREK
-  // YOK — token'ı barındıran TEK paragraf, N görsel+altyazı paragrafıyla
-  // değiştirilir.
+  // "8. Ekler" fotoğraf modülü (2026-08-13, 2. tur — kategori/sayfa
+  // yerleşim şeması) — kullanıcı talebi: "ben görsellerin eklenmesini ve
+  // kullanılabilmesini istiyorum ancak bunlar kullanıcı cihazında kalmalı
+  // ve server a hiç gitmemeli"; devamında rakip bir programın ekran
+  // görüntülerini örnek gösterip: her fotoğraf TÜRÜ (23 kategori, bkz.
+  // report-photos.js PHOTO_CATEGORIES) tek satır LACİVERT zeminli beyaz
+  // başlık + altında fotoğraflar; 4 sayfa yerleşim şablonu (Yatay İkili/
+  // Dikey Tekli/Alt Alta İkili/6'lı Grid); fotoğrafın yatay/dikey
+  // olduğunun otomatik algılanıp yerleşime yansıması; SEÇİLMEYEN
+  // (fotoğrafsız) kategoriler çıktıda HİÇ görünmesin.
+  //
+  // embedImageAssets TEK bir token'a TEK bir görsel gömer (Emsal
+  // Krokisi); burada TEK token'a (ör. {{FOTO_ALANI_1}}, bkz.
+  // report-photos.js PHOTO_APPENDIX_TOKEN) N kategori × N sayfa × N
+  // görsel gömülür. templates/emlakkatilim.docx'teki "8.1 Fotoğraflar"
+  // hücresi satır-birleştirmeli (vMerge restart) BOŞ bir hücre — Word bu
+  // tür hücrelerde içerik satır sayısından fazlaysa hücreyi otomatik
+  // BÜYÜTÜR (trHeight değerleri minimum, exact DEĞİL), bu yüzden dış
+  // tabloya yeni <w:tr> satırı üretmeye GEREK YOK — token'ı barındıran TEK
+  // paragraf, kategori başlıkları + sayfa-sayfa iç içe (nested) ızgara
+  // tablolarından oluşan bir paragraf dizisiyle değiştirilir.
   function escapeXmlText(value) {
     return String(value || "").replace(/[<>&"']/g, (ch) => (
       { "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;", "'": "&apos;" }[ch]
     ));
   }
 
-  // Galeri görselleri, çok sayıda yan yana sığması için Emsal Krokisi'nden
-  // (tek, büyük görsel) daha küçük bir kutuya sığdırılır (en-boy korunarak).
-  const GALLERY_IMAGE_MAX_WIDTH_EMU = 3200000; // ~3.5 in
-  const GALLERY_IMAGE_MAX_HEIGHT_EMU = 2400000; // ~2.62 in
+  // "8.1 Fotoğraflar" hücresinin genişliği (templates/emlakkatilim.docx'te
+  // <w:tcW w:w="10505"/>) — ızgara tablosu bu genişliğe göre kuruluyor.
+  const PHOTO_TABLE_WIDTH_DXA = 10505;
+  const PHOTO_CELL_MARGIN_DXA = 60; // ~1mm — hücreler arasi/etrafinda ince BEYAZ bosluk
+  const PHOTO_BANNER_FILL = "1F3864"; // lacivert (navy blue)
 
-  function computeGalleryImageEmuSize(pixelSize) {
-    const width = pixelSize?.width;
-    const height = pixelSize?.height;
-    if (!width || !height) return { cx: GALLERY_IMAGE_MAX_WIDTH_EMU, cy: Math.round((GALLERY_IMAGE_MAX_WIDTH_EMU * 3) / 4) };
-    const aspect = width / height;
-    let cx = GALLERY_IMAGE_MAX_WIDTH_EMU;
-    let cy = Math.round(cx / aspect);
-    if (cy > GALLERY_IMAGE_MAX_HEIGHT_EMU) {
-      cy = GALLERY_IMAGE_MAX_HEIGHT_EMU;
-      cx = Math.round(cy * aspect);
+  // Her yerleşim şablonu için HÜCRE en-boy oranı (width:height) — fotoğraf
+  // bu orana göre ORTALANARAK KIRPILIR (srcRect), boşluk kalmadan hücreyi
+  // TAM doldurur ("tam sığmalı" — kullanıcı talebi). Şablon adları/columns/
+  // rows report-photos.js'teki LAYOUT_TEMPLATES ile BİREBİR eşleşmeli.
+  const LAYOUT_CELL_ASPECT = {
+    horizontal_pair: 1.35, // 2 sütun x 1 satır — yatay/geniş fotoğraflar
+    vertical_single: 0.75, // 1 sütun x 1 satır — dikey/portre, tam sayfa
+    stacked_pair: 1.6, // 1 sütun x 2 satır — yatay, alt alta
+    grid_six: 1.33, // 2 sütun x 3 satır — küçük kareye yakın hücreler
+  };
+  const LAYOUT_GRID = {
+    horizontal_pair: { columns: 2, rows: 1 },
+    vertical_single: { columns: 1, rows: 1 },
+    stacked_pair: { columns: 1, rows: 2 },
+    grid_six: { columns: 2, rows: 3 },
+  };
+
+  function getLayoutGrid(layoutKey) {
+    return LAYOUT_GRID[layoutKey] || LAYOUT_GRID.horizontal_pair;
+  }
+
+  function getLayoutCellAspect(layoutKey) {
+    return LAYOUT_CELL_ASPECT[layoutKey] || LAYOUT_CELL_ASPECT.horizontal_pair;
+  }
+
+  // Fotoğrafın gerçek en-boy oranı ile hedef HÜCRE en-boy oranını
+  // karşılaştırıp ortalanmış bir kırpma dikdörtgeni (srcRect, binde
+  // yüzde: 100000 = %100) hesaplar — boşluksuz "cover" doldurma.
+  function computeCoverSrcRect(photoWidth, photoHeight, cellAspect) {
+    if (!photoWidth || !photoHeight || !cellAspect) return null;
+    const photoAspect = photoWidth / photoHeight;
+    if (Math.abs(photoAspect - cellAspect) < 0.01) return null; // zaten yakinsa kirpma gereksiz
+    if (photoAspect > cellAspect) {
+      // Fotoğraf hedeften daha GENİŞ — sağ/soldan kırp, tam yükseklik kalsın.
+      const keepFraction = cellAspect / photoAspect;
+      const insetPercentMil = Math.round(((1 - keepFraction) / 2) * 100000);
+      return { l: insetPercentMil, r: insetPercentMil, t: 0, b: 0 };
     }
-    return { cx, cy };
+    // Fotoğraf hedeften daha UZUN (dikey) — üst/alttan kırp, tam genişlik kalsın.
+    const keepFraction = photoAspect / cellAspect;
+    const insetPercentMil = Math.round(((1 - keepFraction) / 2) * 100000);
+    return { l: 0, r: 0, t: insetPercentMil, b: insetPercentMil };
   }
 
-  function buildPhotoParagraphXml(relId, caption, cx, cy) {
-    const drawing = buildDrawingXml(relId, caption || "Rapor fotoğrafı", cx, cy);
-    const imageParagraph = `<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:after="40"/></w:pPr><w:r>${drawing}</w:r></w:p>`;
-    if (!caption) return imageParagraph;
-    const captionParagraph = `<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:after="160"/><w:rPr><w:i/><w:iCs/><w:sz w:val="16"/><w:szCs w:val="16"/></w:rPr></w:pPr><w:r><w:rPr><w:i/><w:iCs/><w:sz w:val="16"/><w:szCs w:val="16"/></w:rPr><w:t xml:space="preserve">${escapeXmlText(caption)}</w:t></w:r></w:p>`;
-    return imageParagraph + captionParagraph;
+  function buildDrawingXmlCropped(relId, title, cx, cy, srcRect) {
+    const safeTitle = String(title || "Rapor görseli").replace(/[<>&"']/g, (ch) => (
+      { "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;", "'": "&apos;" }[ch]
+    ));
+    const uid = 1000000000 + (relId % 900000000);
+    const srcRectXml = srcRect ? `<a:srcRect l="${srcRect.l}" t="${srcRect.t}" r="${srcRect.r}" b="${srcRect.b}"/>` : "";
+    return `<w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="${cx}" cy="${cy}"/><wp:effectExtent l="0" t="0" r="0" b="0"/><wp:docPr id="${uid}" name="Resim ${relId}" descr="${safeTitle}"/><wp:cNvGraphicFramePr><a:graphicFrameLocks xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" noChangeAspect="1"/></wp:cNvGraphicFramePr><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="${uid}" name="Resim ${relId}" descr="${safeTitle}"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="rId${relId}"/>${srcRectXml}<a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing>`;
   }
 
-  // xmlText icindeki {{FOTO_ALANI_N}} gibi galeri token'larini, elde mevcut
-  // fotoğraf gruplarıyla (photoGroups — RaporReportPhotos.getPhotoGroupsForExport()
-  // çıktısı: [{ token, photos: [{ base64, mimeType, caption }] }]) gerçek
-  // <w:drawing>+altyazı paragraf dizisine gömer. Token'ın İÇİNDE BULUNDUĞU
-  // TEK paragraf (en yakın <w:p>...</w:p>) bulunup TAMAMEN bu dizi ile
-  // DEĞİŞTİRİLİR. Karşılığı olmayan/boş grup token'ları DOKUNULMADAN
-  // bırakılır (normal metin-token döngüsü onları "missing" raporlar).
-  function embedPhotoGalleryAssets(xmlText, entries, photoGroups) {
+  function buildCategoryBannerXml(label) {
+    return `<w:p><w:pPr><w:shd w:val="clear" w:color="auto" w:fill="${PHOTO_BANNER_FILL}"/><w:spacing w:before="240" w:after="140"/><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:b/><w:bCs/><w:color w:val="FFFFFF"/><w:sz w:val="24"/><w:szCs w:val="24"/></w:rPr><w:t xml:space="preserve">${escapeXmlText(label)}</w:t></w:r></w:p>`;
+  }
+
+  // "registerImage" — rels/media kayitlarini MUTASYONLA (kapali degiskenler
+  // uzerinden) gunceller, cagirana yalnizca yeni rId'yi doner. embedImageAssets
+  // ile ayni teknik, coklu-cagri icin fonksiyona cikarildi.
+  function makeImageRegistrar(initialEntries, initialRelsXml) {
+    let entries = initialEntries;
+    let relsXml = initialRelsXml;
+    function register(base64, mimeType) {
+      const existingRelIds = [...relsXml.matchAll(/Id="rId(\d+)"/g)].map((m) => Number(m[1]));
+      const relId = (existingRelIds.length ? Math.max(...existingRelIds) : 0) + 1;
+      const existingMediaIndices = entries
+        .map((e) => e.name.match(/^word\/media\/image(\d+)\./))
+        .filter(Boolean)
+        .map((m) => Number(m[1]));
+      const mediaIndex = (existingMediaIndices.length ? Math.max(...existingMediaIndices) : 0) + 1;
+      const extension = extensionForMimeType(mimeType);
+      const mediaName = `word/media/image${mediaIndex}.${extension}`;
+      const imageBytes = base64ToBytes(base64);
+      relsXml = relsXml.replace(
+        "</Relationships>",
+        `<Relationship Id="rId${relId}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/image${mediaIndex}.${extension}"/></Relationships>`
+      );
+      entries = entries.concat([{ name: mediaName, bytes: imageBytes }]);
+      return { relId, extension, imageBytes };
+    }
+    return { register, getEntries: () => entries, getRelsXml: () => relsXml };
+  }
+
+  // Bir sayfalık (columns×rows'a kadar) fotoğraf dizisini satır satır
+  // <w:tbl> ızgarasına gömer — kenarlıksız, ince beyaz hücre boşluklu
+  // (PHOTO_CELL_MARGIN_DXA), her hücre kendi en-boy oranına kırpılmış TEK
+  // görsel içerir. Son sayfanın son satırı eksikse (columns'tan az
+  // fotoğraf kaldıysa) o satır kısa kalır — boş hücre ÜRETİLMEZ.
+  function buildPhotoPageTableXml(photos, layoutKey, registrar) {
+    const { columns } = getLayoutGrid(layoutKey);
+    const cellAspect = getLayoutCellAspect(layoutKey);
+    const cellWidthDxa = Math.floor(PHOTO_TABLE_WIDTH_DXA / columns);
+    const cellWidthEmu = cellWidthDxa * 635; // 1 dxa (twip) = 635 EMU
+    const cellHeightEmu = Math.round(cellWidthEmu / cellAspect);
+
+    const rows = [];
+    for (let i = 0; i < photos.length; i += columns) {
+      const rowPhotos = photos.slice(i, i + columns);
+      const cells = rowPhotos.map((photo) => {
+        const { relId, extension } = registrar.register(photo.base64, photo.mimeType);
+        const imageBytes = base64ToBytes(photo.base64);
+        const pixelSize = extension === "jpeg" ? getJpegPixelSize(imageBytes) : null;
+        const srcRect = pixelSize ? computeCoverSrcRect(pixelSize.width, pixelSize.height, cellAspect)
+          : computeCoverSrcRect(photo.width, photo.height, cellAspect);
+        const drawing = buildDrawingXmlCropped(relId, photo.caption || "Rapor fotoğrafı", cellWidthEmu, cellHeightEmu, srcRect);
+        return `<w:tc><w:tcPr><w:tcW w:w="${cellWidthDxa}" w:type="dxa"/><w:vAlign w:val="center"/></w:tcPr><w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r>${drawing}</w:r></w:p></w:tc>`;
+      });
+      rows.push(`<w:tr>${cells.join("")}</w:tr>`);
+    }
+    const gridCols = Array.from({ length: columns }, () => `<w:gridCol w:w="${cellWidthDxa}"/>`).join("");
+    const cellMar = `<w:tcMar><w:top w:w="${PHOTO_CELL_MARGIN_DXA}" w:type="dxa"/><w:left w:w="${PHOTO_CELL_MARGIN_DXA}" w:type="dxa"/><w:bottom w:w="${PHOTO_CELL_MARGIN_DXA}" w:type="dxa"/><w:right w:w="${PHOTO_CELL_MARGIN_DXA}" w:type="dxa"/></w:tcMar>`;
+    return `<w:tbl><w:tblPr><w:tblW w:w="${PHOTO_TABLE_WIDTH_DXA}" w:type="dxa"/><w:tblLayout w:type="fixed"/><w:tblBorders><w:top w:val="none"/><w:left w:val="none"/><w:bottom w:val="none"/><w:right w:val="none"/><w:insideH w:val="none"/><w:insideV w:val="none"/></w:tblBorders>${cellMar}</w:tblPr><w:tblGrid>${gridCols}</w:tblGrid>${rows.join("")}</w:tbl><w:p/>`;
+  }
+
+  const PAGE_BREAK_PARAGRAPH_XML = `<w:p><w:r><w:br w:type="page"/></w:r></w:p>`;
+
+  // xmlText icindeki TEK konsolide fotoğraf-eki token'ini (ör.
+  // {{FOTO_ALANI_1}}, bkz. report-photos.js PHOTO_APPENDIX_TOKEN),
+  // categoryGroups ([{token, categories:[{label, batches:[{layoutKey,
+  // photos:[{base64,mimeType,caption,width,height}]}]}]}] —
+  // RaporReportPhotos.getPhotoGroupsForExport() çıktısı) ile GERÇEK bir
+  // "kategori başlığı + sayfa sayfa ızgara" paragraf dizisine gömer.
+  // Fotoğrafsız kategoriler zaten çağıran tarafta (report-photos.js)
+  // ELENDİĞİNDEN burada hiç görünmez. Token'ın İÇİNDE BULUNDUĞU TEK
+  // paragraf tamamen bu dizi ile DEĞİŞTİRİLİR.
+  function embedPhotoGalleryAssets(xmlText, entries, categoryGroups) {
     let nextEntries = entries.slice();
     let text = xmlText;
     let embeddedAny = false;
 
-    (Array.isArray(photoGroups) ? photoGroups : []).forEach((group) => {
+    (Array.isArray(categoryGroups) ? categoryGroups : []).forEach((group) => {
       const token = group?.token;
-      const photos = Array.isArray(group?.photos) ? group.photos : [];
-      if (!token || !photos.length) return;
+      const categories = Array.isArray(group?.categories) ? group.categories : [];
+      if (!token || !categories.length) return;
       const marker = `{{${token}}}`;
       const markerIndex = text.indexOf(marker);
       if (markerIndex < 0) return; // sablonda bu token yoksa (beklenmeyen sürüm) sessizce atlanır
@@ -428,35 +535,32 @@
 
       const relsEntry = nextEntries.find((e) => e.name === "word/_rels/document.xml.rels");
       if (!relsEntry) return;
-      let relsXml = dec.decode(relsEntry.bytes);
+      const registrar = makeImageRegistrar(nextEntries, dec.decode(relsEntry.bytes));
 
-      const galleryParagraphs = [];
-      photos.forEach((photo) => {
-        if (!photo?.base64) return;
-        const existingRelIds = [...relsXml.matchAll(/Id="rId(\d+)"/g)].map((m) => Number(m[1]));
-        const relId = (existingRelIds.length ? Math.max(...existingRelIds) : 0) + 1;
-        const existingMediaIndices = nextEntries
-          .map((e) => e.name.match(/^word\/media\/image(\d+)\./))
-          .filter(Boolean)
-          .map((m) => Number(m[1]));
-        const mediaIndex = (existingMediaIndices.length ? Math.max(...existingMediaIndices) : 0) + 1;
-        const extension = extensionForMimeType(photo.mimeType);
-        const mediaName = `word/media/image${mediaIndex}.${extension}`;
-        const imageBytes = base64ToBytes(photo.base64);
-        const pixelSize = extension === "jpeg" ? getJpegPixelSize(imageBytes) : null;
-        const { cx, cy } = computeGalleryImageEmuSize(pixelSize);
-
-        relsXml = relsXml.replace(
-          "</Relationships>",
-          `<Relationship Id="rId${relId}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/image${mediaIndex}.${extension}"/></Relationships>`
-        );
-        nextEntries = nextEntries.concat([{ name: mediaName, bytes: imageBytes }]);
-        galleryParagraphs.push(buildPhotoParagraphXml(relId, photo.caption, cx, cy));
+      const parts = [];
+      categories.forEach((category, categoryIndex) => {
+        const batches = Array.isArray(category?.batches) ? category.batches : [];
+        const validBatches = batches.filter((b) => Array.isArray(b?.photos) && b.photos.length);
+        if (!validBatches.length) return;
+        if (categoryIndex > 0) parts.push(PAGE_BREAK_PARAGRAPH_XML);
+        parts.push(buildCategoryBannerXml(category.label));
+        validBatches.forEach((batch, batchIndex) => {
+          const { columns, rows } = getLayoutGrid(batch.layoutKey);
+          const perPage = Math.max(1, columns * rows);
+          if (batchIndex > 0) parts.push(PAGE_BREAK_PARAGRAPH_XML);
+          for (let pageStart = 0; pageStart < batch.photos.length; pageStart += perPage) {
+            if (pageStart > 0) parts.push(PAGE_BREAK_PARAGRAPH_XML);
+            const pagePhotos = batch.photos.slice(pageStart, pageStart + perPage);
+            parts.push(buildPhotoPageTableXml(pagePhotos, batch.layoutKey, registrar));
+          }
+        });
       });
-      if (!galleryParagraphs.length) return;
+      if (!parts.length) return;
 
-      nextEntries = nextEntries.map((e) => (e.name === "word/_rels/document.xml.rels" ? { name: e.name, bytes: enc.encode(relsXml) } : e));
-      text = text.slice(0, paragraphStart) + galleryParagraphs.join("") + text.slice(paragraphEnd);
+      nextEntries = registrar.getEntries().map((e) => (
+        e.name === "word/_rels/document.xml.rels" ? { name: e.name, bytes: enc.encode(registrar.getRelsXml()) } : e
+      ));
+      text = text.slice(0, paragraphStart) + parts.join("") + text.slice(paragraphEnd);
       embeddedAny = true;
     });
 
@@ -471,9 +575,10 @@
   // imageAssets: [{key, title, base64, mimeType}] — buildSavedReportImageAssets()
   // çıktısı; IMAGE_TOKEN_ASSET_KEYS'teki token'lar (ör. {{EMSAL_KROKISI}})
   // gerçek <w:drawing> olarak gömülür (bkz. embedImageAssets).
-  // photoGroups: [{token, photos:[{base64, mimeType, caption}]}] —
-  // RaporReportPhotos.getPhotoGroupsForExport() çıktısı (2026-08-13,
-  // "8.1 Fotoğraflar"/"8.3 Proje Fotoğrafları" — bkz. embedPhotoGalleryAssets).
+  // photoGroups: [{token, categories:[{label, batches:[{layoutKey,
+  // photos:[{base64, mimeType, caption, width, height}]}]}]}] —
+  // RaporReportPhotos.getPhotoGroupsForExport() çıktısı (2026-08-13, "8.1
+  // Fotoğraflar" tek konsolide token — bkz. embedPhotoGalleryAssets).
   // Tamamen opsiyonel: window.RaporReportPhotos hiç yüklenmemiş/kullanılmamışsa
   // undefined/[] geçilir, hiçbir şey değişmez.
   function fillTemplate(arrayBuffer, values, boldFlags, imageAssets, photoGroups) {

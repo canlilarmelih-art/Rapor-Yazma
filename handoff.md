@@ -9289,3 +9289,128 @@ zaten kanıtlanmış, tamamen istemci-taraflı bir görsel-gömme altyapısı
   `src/exports/docx-fill.js?v=20260813-2300`,
   `src/exports/report-photos.js?v=20260813-2300`.
 - Yedek: `backups/before-emlakkatilim-photo-tokens_20260813_162309/`.
+
+## 0.0.435 - 2026-08-13 - Fotoğraf modülü: 23 kategori + 4 sayfa yerleşim şablonu + lacivert başlıklar
+
+0.0.434'ün ilk sürümü (2 sabit kategori, tek düğme-per-kategori, tek
+görsel-listesi galerisi) kullanıcıya rakip bir programın 2 ekran
+görüntüsüyle örneklendi ve önemli ölçüde genişletildi: "fotoğrafın yatay
+yada dikey olduğunu anlaması lazım programın", 23 kalemlik gerçek bir
+kategori/belge türü listesi (Kapak Fotoğrafı ... Diğer), 4 sayfa yerleşim
+şablonu (Yatay İkili/Dikey Tekli/Alt Alta İkili/6'lı Grid), "görseller
+bölünen bölümlere tam sığmalı ... ince beyaz çerçeve boşlukları olmalı",
+TEK "Fotoğraf Ekle" düğmesi (kategori seç → dosya seç → yerleşim seç
+akışı). Bir sonraki mesajda kesinleşen görsel kural: **her kategori tek
+satır lacivert (navy blue) dolgulu beyaz başlık + altında fotoğraflar**,
+**fotoğrafsız kategoriler Word çıktısında başlık olarak bile
+belirtilmesin**.
+
+**`src/exports/report-photos.js`** (veri katmanı, baştan yazıldı):
+- `PHOTO_CATEGORIES`: kullanıcının ekran görüntüsündeki 23 kalemle
+  BİREBİR aynı sırada (`kapak`, `dis_mekan`, `ic_mekan`, ... `diger`).
+  Eski 2 kategorili (`genel`/`proje`) şema TAMAMEN kaldırıldı.
+- `LAYOUT_TEMPLATES`: 4 şablon (`horizontal_pair`/`vertical_single`/
+  `stacked_pair`/`grid_six`), her biri `columns`/`rows`/`orientation`
+  taşıyor.
+- `PHOTO_APPENDIX_TOKEN = "FOTO_ALANI_1"` — TÜM 23 kategori TEK bu
+  token'a gömülüyor (8.1 hücresi zaten genel bir başlık); `{{FOTO_ALANI_3}}`
+  (eski "8.3 Proje Fotoğrafları") şablonda fiziksel olarak duruyor ama
+  yeni akışta hiç kullanılmıyor, her export'ta `values["FOTO_ALANI_3"]=""`
+  ile sessizce temizleniyor (docx binary'sine dokunmaya GEREK KALMADI).
+- `compressImageFile`: sıkıştırmadan ÖNCE gerçek piksel
+  genişlik/yüksekliği okuyup `classifyOrientation` (oran >1.15 yatay,
+  <0.87 dikey, aradaysa kare) ile sınıflandırıyor; sonuç fotoğraf
+  kaydıyla birlikte saklanıyor.
+- `addPhotos(reportId, files, category, layoutKey)`: her "ekleme turu"
+  ortak bir `batchId` alıyor — aynı kategoriye farklı zamanlarda/farklı
+  yerleşimlerle eklenen fotoğraflar birbirini EZMİYOR, her biri kendi
+  yerleşimiyle sırayla render ediliyor.
+- `getPhotoGroupsForExport` (iç adı `getPhotoAppendixForExport`): yeni
+  iç içe şekil — `[{token, categories:[{label, batches:[{layoutKey,
+  photos:[...]}]}]}]`. Fotoğrafı OLMAYAN kategoriler dizide HİÇ YOK
+  (kullanıcı talebi burada, veri katmanında uygulanıyor).
+- Yeni `peekOrientations(files)`: sıkıştırma yapmadan (canvas yok,
+  yalnızca `<img>` boyutu) dosyaların yönünü hızlıca okuyup arayüzün
+  yerleşim-önerisi adımını besliyor.
+
+**`src/exports/docx-fill.js`**: eski `embedPhotoGalleryAssets` (düz
+liste → alt alta görsel+altyazı paragrafları) TAMAMEN yeniden yazıldı
+(fonksiyon adı aynı kaldı, `fillTemplate` çağrı yeri değişmedi):
+- Her kategori için tek satırlık lacivert banner (`<w:shd w:fill="1F3864"/>`,
+  beyaz kalın metin, ortalanmış) — yalnızca fotoğrafı OLAN kategoriler
+  için üretiliyor.
+- Her batch, seçilen yerleşime göre (`columns`/`rows`) kenarlıksız bir
+  `<w:tbl>` ızgarasına bölünüyor; "8.1 Fotoğraflar" hücresinin gerçek
+  genişliği (10505 twip, şablondan ölçüldü) sütun sayısına bölünüp hücre
+  genişliği/EMU'su hesaplanıyor.
+- **"tam sığmalı" kırpma**: her hücrenin hedef en-boy oranı
+  (`LAYOUT_CELL_ASPECT`, ör. yatay ikili ~1.35) fotoğrafın gerçek
+  oranıyla karşılaştırılıp `computeCoverSrcRect` ortalanmış bir
+  `<a:srcRect l/t/r/b>` (binde yüzde) üretiyor — JPEG baytları FİZİKSEL
+  olarak kırpılmıyor, yalnızca DrawingML görüntüleme talimatı; boşluksuz
+  "cover" doldurma.
+- **"ince beyaz çerçeve boşlukları"**: tablo kenarlıkları `none`, ama
+  `tblCellMar` (~60 twip) her hücrenin etrafında ince beyaz boşluk
+  bırakıyor.
+- Kategoriler/sayfalar arası `<w:br w:type="page"/>` ile ayrılıyor (son
+  kategoriden sonra fazladan sayfa sonu YOK).
+- rId/media kaydı artık tek-seferlik değil, kapalı bir `makeImageRegistrar`
+  üzerinden çoklu-çağrı için paylaşılıyor (aynı rels/media biriktirme
+  tekniği, `embedImageAssets`'teki gibi ama çoklu görsel için çıkarıldı).
+
+**`app.js`**: eski "her kategori için ayrı + Fotoğraf Ekle düğmesi" UI'ı
+TAMAMEN kaldırılıp tek akışla değiştirildi:
+- `createReportPhotosPanel`: TEK "+ Fotoğraf Ekle" düğmesi + altında
+  yalnızca fotoğrafı OLAN kategorilerin (lacivert banner önizlemeli)
+  listesi.
+- `openReportPhotoCategoryModal` → 23 seçenekli modal (mevcut
+  `.modal-overlay`/`.modal-card` deseni yeniden kullanıldı).
+- `triggerReportPhotoFilePick`: kategori seçim click handler'ı İÇİNDEN
+  native dosya seçiciyi programatik `.click()` ile açıyor (tarayıcı bunu
+  kullanıcı etkileşimi sayıyor, ayrı bir düğmeye gerek yok).
+- `openReportPhotoLayoutModal`: 4 renkli, mini-ızgara ikonlu yerleşim
+  kartı (mavi/yeşil/kahve/mor — rakip programın ekran görüntüsündeki
+  şemayı andırıyor); `suggestLayoutForOrientations` ile hesaplanan
+  öneri bir "Önerilen" rozetiyle işaretleniyor.
+- Fotoğraf kartlarında artık yukarı/aşağı sıralama YOK (batch/yerleşim
+  yapısı bunu anlamsızlaştırdı) — yalnızca altyazı + sil.
+
+**CSS**: `.report-photos-category-banner` (lacivert, styles.css'te
+`docx-fill.js`'teki `1F3864` ile AYNI ton), `.report-photo-category-choice-list`
+(23 buton ızgarası), `.report-photo-layout-choice-*` (4 renkli kart +
+`.report-photo-layout-icon`'un JS'te üretilen gerçek hücre `<span>`'leriyle
+mini-önizleme).
+
+**Regresyon (bulundu, düzeltildi kendi turumda)**: yerleşim rozetinin
+CSS'i (`top:-8px; right:-8px`) komşu karta taşıyordu — `top:6px; right:6px`
+olarak içe alındı.
+
+Canlı doğrulama (localhost:5173, gerçek "Kuvyt-202600791" taslağı,
+GEÇİCİ olarak Emlak Katılım bankasına çevrilip test SONUNDA hem yerel
+taslak/kütüphane blobu/index hem de Firestore bulut belgesi
+(`payload.fields.bank`/`summary.bank`) doğrulanarak orijinal "Kuveyt
+Türk Katılım Bankası A.Ş." değerine geri döndürüldü — hiçbir kalıcı veri
+kaybı yok): 23 kategori modalı doğru render edildi → "Dış Mekan" seçildi
+→ sentetik JPEG dosyası native seçiciye enjekte edildi → yerleşim modalı
+AÇILDI, 4 renkli kart + doğru "Önerilen" rozeti (stacked_pair) doğru
+hesaplandı → seçim sonrası IndexedDB'ye yazıldı → panel lacivert "Dış
+Mekan" banner'ı + fotoğraf kartını (küçük resim, "Kare" yön rozeti,
+altyazı, sil) doğru gösterdi → "Banka Şablonuyla Kaydet" ile gerçek
+export tetiklendi, 2.3MB'lık geçerli bir .zip blob'u istemci tarafında
+üretildi, ağ isteklerinde harita karoları ve mevcut opak
+`/api/report-event` pingi DIŞINDA hiçbir şey yok (fotoğraf baytları
+sunucuya HİÇ gitmedi — KVKK koşulu). Test verisi (`clearReportPhotos`)
+temizlendi.
+- Test: `tools/test-emlakkatilim-photo-embed.js` baştan yazıldı — yeni
+  kategori/batch şeklini kullanıyor; 2 kategori × 3 fotoğraf ekleyip
+  doğru sayıda lacivert banner (`w:fill="1F3864"` × 2), doğru sayıda
+  `<w:drawing>`/rels/media deltası, seçilmeyen bir kategorinin
+  ("Finansal Tablolar") ciktida hiç GEÇMEDİĞİNİ, her hücrede en az bir
+  `<a:srcRect>` kırpması ve kategoriler arası sayfa sonu üretildiğini
+  doğruluyor; fotoğrafsız senaryoda token'ın iz bırakmadan silindiğini
+  ve banner üretilmediğini de kapsıyor. `npm run verify` tam zincirle
+  yeşil (162 test dosyası).
+- Cache-buster: `app.js?v=20260813-2345`,
+  `styles.css?v=20260813-2345`,
+  `src/exports/docx-fill.js?v=20260813-2345`,
+  `src/exports/report-photos.js?v=20260813-2345`.

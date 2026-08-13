@@ -4672,46 +4672,53 @@ td textarea.table-textarea {
   margin-top: 18px;
 }
 
-/* Fotoğraflar paneli (2026-08-13) — yalnızca cihazda saklanan, Emlak
-   Katılım .docx export'una gömülen görseller. */
+/* Fotoğraflar paneli (2026-08-13, 2. tur — kategori/sayfa yerleşim şeması)
+   — yalnızca cihazda saklanan, Emlak Katılım .docx export'una (23 kategori,
+   tek konsolide token) gömülen görseller. Tek "+ Fotoğraf Ekle" düğmesi →
+   kategori seç → dosya seç → yerleşim seç akışı; aşağıda yalnızca fotoğrafı
+   OLAN kategoriler, Word çıktısındakiyle aynı lacivert başlıkla önizlenir. */
 .report-photos-panel {
   margin-top: 22px;
   padding-top: 18px;
   border-top: 1px solid var(--line);
 }
 
-.report-photos-category-group {
-  margin-top: 14px;
+.report-photos-panel .subsection-title-row {
+  align-items: flex-start;
+  gap: 14px;
 }
 
-.report-photos-category-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 8px;
-}
-
-.report-photos-category-head h5 {
-  margin: 0;
-  font-size: 13px;
-  color: var(--ink);
-}
-
-.report-photos-add-button {
-  display: inline-flex;
-  align-items: center;
-  cursor: pointer;
+.report-photos-add-trigger {
   white-space: nowrap;
+}
+
+.report-photos-category-group {
+  margin-top: 16px;
+}
+
+.report-photos-category-banner {
+  background: #1f3864;
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 13px;
+  text-align: center;
+  padding: 8px 12px;
+  border-radius: 6px 6px 0 0;
 }
 
 .report-photos-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-top: none;
+  border-radius: 0 0 6px 6px;
+  background: var(--surface);
 }
 
 .report-photo-card {
+  position: relative;
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 8px;
@@ -4730,6 +4737,17 @@ td textarea.table-textarea {
   background: var(--surface-muted);
 }
 
+.report-photo-orientation-badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  background: rgba(31, 56, 100, 0.85);
+  color: #ffffff;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
 .report-photo-caption {
   font-size: 12px;
   padding: 4px 6px;
@@ -4745,6 +4763,100 @@ td textarea.table-textarea {
   padding: 0 8px;
   font-size: 12px;
   flex: 1;
+}
+
+/* Adım 1 — kategori seçim modalı (23 seçenek). */
+.report-photo-category-choice-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px;
+}
+
+.report-photo-category-choice {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 10px 12px;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.report-photo-category-choice:hover {
+  border-color: var(--accent, #1f3864);
+  background: var(--surface-muted);
+}
+
+/* Adım 3 — sayfa yerleşim şablonu seçimi (4 görsel seçenek). Her düğme,
+   kendi grid ikonuyla (columns×rows) yerleşimi önizler; renkler rakip
+   programın ekran görüntüsündeki şemayı andırır (mavi/yeşil/kahve/mor). */
+.report-photo-layout-choice-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 14px;
+}
+
+.report-photo-layout-choice {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  padding: 14px 10px;
+  cursor: pointer;
+  color: #ffffff;
+  transition: transform 0.1s ease;
+}
+
+.report-photo-layout-choice:hover {
+  transform: translateY(-2px);
+}
+
+.report-photo-layout-choice-horizontal_pair { background: #2f6fb0; }
+.report-photo-layout-choice-vertical_single { background: #3f9b5e; }
+.report-photo-layout-choice-stacked_pair { background: #8a5a3b; }
+.report-photo-layout-choice-grid_six { background: #6b4e9b; }
+
+.report-photo-layout-icon {
+  display: grid;
+  width: 56px;
+  height: 42px;
+  gap: 3px;
+  grid-template-columns: repeat(var(--columns, 1), 1fr);
+  grid-template-rows: repeat(var(--rows, 1), 1fr);
+}
+
+.report-photo-layout-icon[data-columns="1"] { --columns: 1; }
+.report-photo-layout-icon[data-columns="2"] { --columns: 2; }
+.report-photo-layout-icon[data-rows="1"] { --rows: 1; }
+.report-photo-layout-icon[data-rows="2"] { --rows: 2; }
+.report-photo-layout-icon[data-rows="3"] { --rows: 3; }
+
+.report-photo-layout-icon-cell {
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 2px;
+}
+
+.report-photo-layout-label {
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.report-photo-layout-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: #ffffff;
+  color: #1f3864;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 999px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
 }
 
 .output-export-actions {
