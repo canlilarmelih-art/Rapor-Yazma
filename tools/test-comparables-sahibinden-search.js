@@ -171,8 +171,9 @@ assert.match(appSource, /portal-logos\/emlakjet\.png/, "Emlakjet logosu yerel va
 assert.match(appSource, /portal-logos\/sahibinden\.png/, "Sahibinden logosu yerel varliktan kullanilmiyor.");
 assert.match(appSource, /button\.setAttribute\("aria-label", label\)/, "Portal butonlarinda erisilebilir ad yok.");
 assert.match(appSource, /comparable-portal-logo/, "Portal butonlari kare logo gorseli kullanmiyor.");
-assert.match(appSource, /isMobileBrowser/, "Mobil portal acilisi ayri ele alinmiyor.");
-assert.match(appSource, /window\.location\.assign\(url\)/, "Mobilde normal web navigasyonu kullanilmiyor.");
+assert.match(appSource, /intent:\/\//, "Android'de portal web sekmesi zorlanmiyor.");
+assert.match(appSource, /com\.android\.chrome/, "Android portal acilisi Chrome web sekmesine bagli degil.");
+assert.doesNotMatch(appSource, /window\.location\.assign\(url\)/, "Mobilde portal uygulamasina devreden location.assign kullaniliyor.");
 
 console.log("Sahibinden dugmesi Emsaller basligina kablolama testi tamam.");
 
@@ -180,14 +181,14 @@ console.log("Comparables sahibinden arama testleri basarili.");
 
 // --- 9) Hepsiemlak ve Emlakjet: ayni merkez siniri ----------------------
 {
-  const ctx = makeContext({ currentUsageNature: "Tarla", titleCity: "Bursa", latitude: "40.200000", longitude: "28.900000" });
+  const ctx = makeContext({ currentUsageNature: "Tarla", titleCity: "Bursa", titleDistrict: "Nilüfer", latitude: "40.200000", longitude: "28.900000" });
   const hepsi = new URL(ctx.buildHepsiemlakSearchUrl());
-  assert.equal(hepsi.pathname, "/harita/bursa-satilik/arsa");
+  assert.equal(hepsi.pathname, "/harita/bursa-nilufer-satilik/arsa");
   assert.equal(hepsi.searchParams.get("mapTopLeft"), "40.226949,28.864717");
   assert.equal(hepsi.searchParams.get("mapBottomRight"), "40.173051,28.935283");
 
   const jet = new URL(ctx.buildEmlakjetSearchUrl());
-  assert.equal(jet.pathname, "/satilik-arsa/bursa/");
+  assert.equal(jet.pathname, "/satilik-arsa/bursa-nilufer/");
   assert.equal(jet.searchParams.get("bottom_left"), "40.173051,28.864717");
   assert.equal(jet.searchParams.get("top_right"), "40.226949,28.935283");
 }

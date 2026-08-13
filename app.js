@@ -31977,24 +31977,26 @@ function getComparablePortalCategory(portal) {
 
 function buildHepsiemlakSearchUrl() {
   const city = buildSahibindenLocationSlugPart(state.fields.titleCity || state.fields.city);
+  const district = buildSahibindenLocationSlugPart(state.fields.titleDistrict || state.fields.district);
   const bounds = buildSahibindenMapBounds(getSahibindenSubjectCentroid());
-  if (!city || !bounds) return "https://www.hepsiemlak.com/harita";
+  if (!city || !district || !bounds) return "https://www.hepsiemlak.com/harita";
   const query = new URLSearchParams({
     mapTopLeft: `${bounds.north.toFixed(6)},${bounds.west.toFixed(6)}`,
     mapBottomRight: `${bounds.south.toFixed(6)},${bounds.east.toFixed(6)}`,
   });
-  return `https://www.hepsiemlak.com/harita/${city}-satilik/${getComparablePortalCategory("hepsiemlak")}?${query.toString()}`;
+  return `https://www.hepsiemlak.com/harita/${city}-${district}-satilik/${getComparablePortalCategory("hepsiemlak")}?${query.toString()}`;
 }
 
 function buildEmlakjetSearchUrl() {
   const city = buildSahibindenLocationSlugPart(state.fields.titleCity || state.fields.city);
+  const district = buildSahibindenLocationSlugPart(state.fields.titleDistrict || state.fields.district);
   const bounds = buildSahibindenMapBounds(getSahibindenSubjectCentroid());
-  if (!city || !bounds) return "https://www.emlakjet.com/";
+  if (!city || !district || !bounds) return "https://www.emlakjet.com/";
   const query = new URLSearchParams({
     bottom_left: `${bounds.south.toFixed(6)},${bounds.west.toFixed(6)}`,
     top_right: `${bounds.north.toFixed(6)},${bounds.east.toFixed(6)}`,
   });
-  return `https://www.emlakjet.com/${getComparablePortalCategory("emlakjet")}/${city}/?${query.toString()}`;
+  return `https://www.emlakjet.com/${getComparablePortalCategory("emlakjet")}/${city}-${district}/?${query.toString()}`;
 }
 
 function createComparablePortalButton({ label, initials, className, title, buildUrl }) {
@@ -32012,11 +32014,12 @@ function createComparablePortalButton({ label, initials, className, title, build
   button.title = title;
   button.addEventListener("click", () => {
     const url = buildUrl();
-    const isMobileBrowser = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || "");
-    if (isMobileBrowser) {
-      // Mobilde popup/deep-link yerine normal web navigasyonu kullanılır;
-      // böylece harita sınırları query string içinde korunur.
-      window.location.assign(url);
+    const userAgent = navigator.userAgent || "";
+    if (/Android/i.test(userAgent)) {
+      // Android universal-link yönlendirmesini atlayıp Chrome'un web sekmesini aç.
+      const parsed = new URL(url);
+      const intentUrl = `intent://${parsed.host}${parsed.pathname}${parsed.search}#Intent;scheme=https;package=com.android.chrome;end`;
+      window.location.href = intentUrl;
       return;
     }
     window.open(url, "_blank", "noopener,noreferrer");
