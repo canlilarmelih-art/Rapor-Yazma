@@ -66,9 +66,9 @@ function makeContext(fields, extraState = {}) {
 
 // --- 1) Konut: centroid merkezli harita arama ---------------------------
 {
-  const ctx = makeContext({ currentUsageNature: "Konut", titleCity: "Bursa", titleDistrict: "NilÃ¼fer", latitude: "40.200000", longitude: "28.900000" });
+  const ctx = makeContext({ currentUsageNature: "Konut", titleCity: "Bursa", titleDistrict: "Nilüfer", latitude: "40.200000", longitude: "28.900000" });
   const url = new URL(ctx.buildSahibindenSearchUrl());
-  assert.equal(url.pathname, "/haritada-emlak-arama/emlak/bursa-nilafer");
+  assert.equal(url.pathname, "/haritada-emlak-arama/emlak/bursa-nilufer");
   assert.equal(url.searchParams.get("viewType"), "map");
   assert.equal(url.searchParams.get("category"), "satilik-daire");
   assert.equal(url.searchParams.get("geoLocation_latitude_north"), "40.226949");
@@ -77,7 +77,7 @@ function makeContext(fields, extraState = {}) {
 
 // --- 2) Arsa/Tarla/Arazi -> satilik-arsa --------------------------------
 ["Arsa", "Tarla", "Arazi", "Sanayi Tesisi"].forEach((usage) => {
-  const ctx = makeContext({ currentUsageNature: usage, titleCity: "Bursa", titleDistrict: "Osmangazi" }, { sourceValues: {} });
+  const ctx = makeContext({ currentUsageNature: usage, titleCity: "Bursa", titleDistrict: "Osmangazi" });
   assert.equal(
     ctx.buildSahibindenSearchUrl(),
     "https://www.sahibinden.com/satilik-arsa/bursa-osmangazi?viewType=map",
@@ -118,11 +118,11 @@ function makeContext(fields, extraState = {}) {
 
 // --- 6) Il/ilce eksikse zarif geri dusus (kirik URL uretilmemeli) -------
 {
-  const ctx = makeContext({ currentUsageNature: "Konut", titleCity: "Bursa" }, { sourceValues: {} }); // ilce yok
+  const ctx = makeContext({ currentUsageNature: "Konut", titleCity: "Bursa" }); // ilce yok
   assert.equal(ctx.buildSahibindenSearchUrl(), "https://www.sahibinden.com/satilik-daire/bursa?viewType=map");
 }
 {
-  const ctx = makeContext({ currentUsageNature: "Konut" }, { sourceValues: {} }); // ikisi de yok
+  const ctx = makeContext({ currentUsageNature: "Konut" }); // ikisi de yok
   assert.equal(ctx.buildSahibindenSearchUrl(), "https://www.sahibinden.com/satilik-daire?viewType=map");
 }
 
