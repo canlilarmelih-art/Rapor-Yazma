@@ -9480,3 +9480,32 @@ değiştirilmedi.
 - Cache-buster: `app.js?v=20260813-2350`,
   `src/exports/docx-fill.js?v=20260813-2350`,
   `src/exports/report-photos.js?v=20260813-2350`.
+
+## 0.0.437 - 2026-08-13 - Fotoğraf başlıkları: her kategori kendi sayfasında başlar
+
+Kullanıcı: "başlıklar sayfa sonundan başlamamalı her bir başlık yeni
+sayfadan başlamalı".
+
+**Kök neden**: `embedPhotoGalleryAssets` yalnızca kategoriler ARASINDA
+(`categoryIndex > 0`) sayfa sonu ekliyordu — İLK kategori (kapak
+fotoğrafı yoksa) önceki içeriğin hemen ardından, sayfanın herhangi bir
+yerinden (ör. sayfa sonuna yakın) başlayabiliyordu.
+
+**`docx-fill.js`**: `categories.forEach` içindeki koşullu sayfa sonu
+(`if (categoryIndex > 0 || coverPhoto) ...`) kaldırıldı — artık HER
+kategori banner'ından hemen ÖNCE KOŞULSUZ bir `<w:br w:type="page"/>`
+ekleniyor (ilk kategori dahil, kapak fotoğrafı olsun olmasın). Kapak
+fotoğrafının kendisi hâlâ sayfa sonu ALMIYOR (bir "başlık"/banner
+değil, ayrı bir yer tutucu) — yalnızca ondan SONRA gelen ilk kategori
+banner'ı kendi sayfasında başlıyor.
+
+Canlı doğrulama (localhost:5173): gerçek `/api/report-template-docx`
+uç noktasından GERÇEK `emlakkatilim.docx` çekildi, 2 kategori + kapak
+fotoğrafıyla `fillTemplate` çalıştırıldı — tam 2 sayfa sonu üretildi
+(her kategori için 1), kapak fotoğrafından hemen sonra bir sayfa sonu
+geldi, "Dış Mekan" "İç Mekan"'dan önce doğru sırada kaldı.
+- Test: `tools/test-emlakkatilim-photo-embed.js` — gevşek `>= 1` sayfa
+  sonu kontrolü, kategori sayısıyla TAM eşleşen kesin sayılara
+  (2 kategori → 2, kapak+1 kategori → 1) güncellendi.
+  `npm run verify` tam zincirle yeşil.
+- Cache-buster: `src/exports/docx-fill.js?v=20260813-2355`.

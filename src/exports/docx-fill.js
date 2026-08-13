@@ -592,11 +592,16 @@
       if (coverPhoto) {
         parts.push(buildCoverPhotoBlockXml(coverPhoto, registrar));
       }
-      categories.forEach((category, categoryIndex) => {
+      categories.forEach((category) => {
         const batches = Array.isArray(category?.batches) ? category.batches : [];
         const validBatches = batches.filter((b) => Array.isArray(b?.photos) && b.photos.length);
         if (!validBatches.length) return;
-        if (categoryIndex > 0 || coverPhoto) parts.push(PAGE_BREAK_PARAGRAPH_XML);
+        // Kullanici talebi (2026-08-13, 4. tur): "başlıklar sayfa
+        // sonundan başlamamalı her bir başlık yeni sayfadan başlamalı" —
+        // ILK kategori (ve kapak fotoğrafından sonraki ilk kategori)
+        // DAHIL HER banner kendi sayfasında baslar, oncesinde ne olursa
+        // olsun (önceki içerik ne kadar kısa/uzun olursa olsun).
+        parts.push(PAGE_BREAK_PARAGRAPH_XML);
         parts.push(buildCategoryBannerXml(category.label));
         validBatches.forEach((batch, batchIndex) => {
           const { columns, rows } = getLayoutGrid(batch.layoutKey);

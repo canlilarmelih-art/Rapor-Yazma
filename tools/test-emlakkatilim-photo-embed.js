@@ -35,6 +35,14 @@
   kategori donguşunden ONCE, ayri, TEK ve tasinabilir bir paragraf (etiket
   + 15 cm sinirli, KIRPILMAMIS gorsel) olarak gomulur.
 
+  4. tur (ayni gun): kullanici "başlıklar sayfa sonundan başlamamalı her
+  bir başlık yeni sayfadan başlamalı" dedi — ONCEDEN yalnizca kategoriler
+  ARASINDA (categoryIndex > 0) sayfa sonu ekleniyordu, ILK kategori
+  onceki icerigin hemen ardindan (sayfanin herhangi bir yerinden)
+  baslayabiliyordu. Artik HER kategori banner'i (ILK dahil, kapak
+  fotografi olsun olmasin) kendi sayfasinda baslar — banner'dan hemen
+  ONCE KOSULSUZ bir sayfa sonu eklenir.
+
   Bu test dogrular:
   1) Sablon hala GECERLI bir STORED .docx (readStoredZip patlamiyor).
   2) collectTokens() FOTO_ALANI_1'i buluyor.
@@ -195,9 +203,12 @@ function makePhoto(caption) {
   const srcRectCount = countOccurrences(outXml, "<a:srcRect ");
   check(srcRectCount === totalPhotos, `Her hucre icin kirpma (srcRect) bekleniyordu (${totalPhotos}), bulunan: ${srcRectCount}`);
 
-  // Kategoriler arasi (2 kategori -> 1 gecis) en az bir sayfa sonu.
+  // "başlıklar sayfa sonundan başlamamalı her bir başlık yeni sayfadan
+  // başlamalı" — HER kategori banner'i (ILK dahil) kendi sayfasında
+  // baslar: 2 kategori = TAM 2 sayfa sonu (once ne kadar icerik olursa
+  // olsun, ilk banner de kendi sayfasinda baslar).
   const pageBreakCount = countOccurrences(outXml, '<w:br w:type="page"/>');
-  check(pageBreakCount >= 1, "Kategoriler arasinda beklenen sayfa sonu (<w:br w:type=\"page\"/>) bulunamadi.");
+  check(pageBreakCount === 2, `2 kategori icin TAM 2 sayfa sonu (her basligin kendi sayfasi) bekleniyordu, bulunan: ${pageBreakCount}`);
 
   // "worde eklenen resimlerin boyutlari cok buyuk maksimum genislik 15 cm
   // olmali" — vertical_single (tek sutun) yerlesimi ONCEDEN "8.1" hucresinin
@@ -281,6 +292,12 @@ function makePhoto(caption) {
   // (vertical_single) fotografinda 1 srcRect beklenir, kapakta HIC.
   const srcRectCount = countOccurrences(outXml, "<a:srcRect ");
   check(srcRectCount === 1, `Yalnizca kategori fotografinda 1 srcRect (kirpma) bekleniyordu (kapak KIRPILMAZ), bulunan: ${srcRectCount}`);
+
+  // "her bir başlık yeni sayfadan başlamalı" — kapak fotografindan SONRA,
+  // TEK kategori (İç Mekan) icin TAM 1 sayfa sonu (kapagin KENDISI icin
+  // sayfa sonu eklenmez, yalnizca ardindan gelen basliktan ONCE).
+  const pageBreakCount = countOccurrences(outXml, '<w:br w:type="page"/>');
+  check(pageBreakCount === 1, `Kapak fotografi + 1 kategori icin TAM 1 sayfa sonu (basligin kendi sayfasi) bekleniyordu, bulunan: ${pageBreakCount}`);
 
   try {
     DocxFill.readStoredZip(filled.bytes.buffer);
