@@ -160,7 +160,7 @@ console.log("Sahibinden.com arama URL uretimi (buildSahibindenSearchUrl) gercek-
 const editorSource = extractFunctionSource("createComparablesVerticalEditor");
 assert.match(
   editorSource,
-  /headingRow\.append\(createSahibindenSearchButton\(\), createHepsiemlakSearchButton\(\), createEmlakjetSearchButton\(\), createComparableViewModeControl\(\), createComparableRowLabelsToggle\(\), addButton\);/,
+  /portalGroup\.append\(createSahibindenSearchButton\(\), createHepsiemlakSearchButton\(\), createEmlakjetSearchButton\(\)\)/,
   "createSahibindenSearchButton() artik Emsaller basligina eklenmiyor."
 );
 const buttonSource = extractFunctionSource("createSahibindenSearchButton");

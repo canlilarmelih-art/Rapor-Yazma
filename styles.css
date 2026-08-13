@@ -3619,6 +3619,21 @@ td .free-lookup input {
   border-radius: 7px;
 }
 
+.comparables-excel-editor > .subsection-table-head {
+  position: relative;
+  min-height: 48px;
+  padding-top: 48px;
+}
+
+.comparable-portal-group {
+  position: absolute;
+  top: 6px;
+  left: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .comparable-portal-logo {
   width: 24px;
   height: 24px;
