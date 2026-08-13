@@ -32006,8 +32006,8 @@ function createComparablePortalButton({ label, initials, className, title, build
   button.setAttribute("aria-label", label);
   const logoMap = {
     "hepsiemlak-search-button": "assets/portal-logos/emlakjet.png",
-    "emlakjet-search-button": "assets/portal-logos/sahibinden.png",
-    "sahibinden-search-button": "assets/portal-logos/hepsiemlak.png",
+    "emlakjet-search-button": "assets/portal-logos/hepsiemlak.png",
+    "sahibinden-search-button": "assets/portal-logos/sahibinden.png",
   };
   const logo = logoMap[className];
   button.innerHTML = `<img class="comparable-portal-logo" src="${logo || ""}" width="24" height="24" alt="" aria-hidden="true">`;
