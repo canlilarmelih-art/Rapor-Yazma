@@ -8846,4 +8846,59 @@ seçim alanlarından otomatik cümle üretilsin, elle de düzenlenebilsin.
   hiçbir cümle uydurulmuyor / gate kontrolü) doğru çıktı ürettiği
   doğrulanıyor. `npm run verify` tam zincirle yeşil.
 - Cache-buster: `app.js?v=20260813-1400`.
+
+## 0.0.427 - 2026-08-13 - Gerçek hata: Banka şablonu dropdown'u arsa/arazi mülkiyette boşa düşüyordu
+
+Kullanıcı: "yaptığın güncellemeden sonra yasal ve mevcut durum değeri
+otomatik gelmiyor banka ve çıktı bölümünde template türü otomatik
+gelmiyor. Test et." — canlı uygulamaya giriş yapamadığımdan (statik dosya
+oturum kapısı) kod izi + `npm run verify` ile araştırıldı; kullanıcı
+Ctrl+F5 yaptığını ve konsolda hata olmadığını doğruladı (JS crash değil).
+
+**Bulunan gerçek, GENEL (yalnızca Kuveyt Türk'ü değil, Ziraat dahil TÜM
+banka+arsa-arazi çiftlerini etkileyen, ÖNCEDEN VAR OLAN) hata**:
+`appendBankTemplateExportBlock()`'taki (app.js) "Banka Şablonuyla Kaydet"
+açılır listesi, seçenekleri `TEMPLATE_REGISTRY`'den `hiddenFromList !==
+true` filtresiyle kuruyor (arsa-arazi varyantları — ör.
+`kuveytturk-arsa-arazi`, `ziraat-arsa-arazi` — kasıtlı olarak listede
+GÖRÜNMÜYOR, bkz. 0.0.312/ziraat-arsa-arazi tasarımı). Ama varsayılan seçimi
+hesaplarken `defaultTemplateKeyForBank(state.fields.bank,
+isLandPropertyForBankTemplate())` çağrılıyordu — mülkiyet Arsa/Tarla ise bu
+TAM OLARAK o gizli anahtarı (`"kuveytturk-arsa-arazi"`) döndürür.
+`select.value = "kuveytturk-arsa-arazi"` ise dropdown'da böyle bir
+`<option>` OLMADIĞINDAN sessizce başarısız olur — tarayıcı seçimi boşa/ilk
+seçeneğe düşürür. Sonuç: mülkiyet Arsa/Tarla olan HER raporda, "Banka ve
+Çıktı" bölümüne girildiğinde dropdown, kullanıcının bankasını (ör. "Kuveyt
+Türk Rapor Formatı") OTOMATİK GÖSTERMİYORDU — tam olarak kullanıcının
+tarif ettiği belirti.
+
+Düzeltme: dropdown varsayılanı artık `defaultTemplateKeyForBank(state.fields.bank)`
+(isLandOwnership argümanı OLMADAN, her zaman false) çağrılıyor — bu her
+zaman listede GERÇEKTEN VAR OLAN (görünür/konut) anahtarı döndürür.
+Arsa/arazi yönlendirmesi, export TIKLANINCA zaten ayrı bir çağrıyla
+(`resolveTemplateKeyForExport(select.value, isLandPropertyForBankTemplate())`,
+export click handler'ında, DOKUNULMADI) "sessizce" yapılıyor — dropdown'un
+görünür durumu ile export'un gerçek davranışı artık tutarlı.
+
+**"Yasal ve Mevcut Durum Değeri" için ayrı bir kod hatası BULUNAMADI** —
+`refreshValuationComputedFields()` → `syncLandOwnershipValuationDefaults()`
+zinciri (legalValue/currentValue'yu Emsaller'deki "Arsa Emsali"
+(`landComparable`) işaretli satırların ortalamasından VEYA Hesaplanan
+Emsal'den hesaplar) benim değişikliklerimden tamamen bağımsız, hiçbir
+fonksiyon/alan adım bu zincire dokunmuyor; `npm run verify`'daki ilgili
+testler (`test-land-valuation-manual-override.js` dahil) yeşil. En olası
+açıklama: Emsaller (comparables) tablosunda "Arsa Emsali" işaretli satır
+veya Arsa Alanı henüz girilmemiş — bu durumda değer hesaplanacak veri
+yoktur, "otomatik gelmiyor" hissi verir ama kod hatası değildir. Kullanıcıya
+bunu doğrulaması için soruldu (henüz yanıt bekleniyor); yeni bir kanıt
+gelirse (ör. konsol hatası, ekran görüntüsü) tekrar araştırılacak.
+- Test: yeni `tools/test-bank-template-dropdown-default.js` — hem
+  kaynak-düzeyinde (`appendBankTemplateExportBlock` artık dropdown
+  varsayılanı için `isLandPropertyForBankTemplate()` GEÇMİYOR, export
+  tıklamasındaki yönlendirme ise KORUNMUŞ) hem davranışsal olarak (gerçek
+  `TEMPLATE_REGISTRY`'den regex ile çıkarılan Ziraat VE Kuveyt Türk
+  arsa-arazi çiftleriyle, `defaultTemplateKeyForBank`/`resolveTemplateKeyForExport`
+  gerçek kaynaktan çalıştırılarak) doğrulanıyor. `npm run verify` tam
+  zincirle yeşil.
+- Cache-buster: `app.js?v=20260813-1500`.
 - Yedek: `backups/before-yapikredi-2nd-fix-list_2026-08-12_22-45-16`.

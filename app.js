@@ -15573,7 +15573,18 @@ function appendBankTemplateExportBlock(panel) {
   `;
   const select = block.querySelector("[data-template-select]");
   const status = block.querySelector("[data-output-export-status]");
-  const defaultKey = window.RaporTemplates.defaultTemplateKeyForBank(state.fields.bank, isLandPropertyForBankTemplate());
+  // Kullanıcı bildirimi (2026-08-13): "Banka ve Çıktı bölümünde template
+  // türü otomatik gelmiyor" — GERÇEK BUG: burada isLandOwnership=true
+  // geçilince defaultTemplateKeyForBank() gizli (hiddenFromList:true)
+  // "...-arsa-arazi" anahtarını döndürüyordu, ama `options` listesi az
+  // yukarıda TAM OLARAK bu gizli anahtarları FİLTRELİYOR — yani
+  // select.value hiçbir <option>'a karşılık gelmeyen bir değere
+  // ayarlanıyor, tarayıcı da seçimi boşa/ilk seçeneğe düşürüyor (görünürde
+  // "otomatik seçim çalışmıyor" gibi duruyor). Doğrusu: açılır liste HER
+  // ZAMAN bankanın GÖRÜNÜR (arsa-arazi olmayan) anahtarını göstermeli —
+  // arsa/arazi yönlendirmesi zaten "sessizce" export tıklanınca
+  // resolveTemplateKeyForExport() ile aşağıda ayrıca yapılıyor.
+  const defaultKey = window.RaporTemplates.defaultTemplateKeyForBank(state.fields.bank);
   if (defaultKey) select.value = defaultKey;
   block.querySelector("[data-export-template]").addEventListener("click", async () => {
     if (!confirmExportWithMissingFields()) return;
