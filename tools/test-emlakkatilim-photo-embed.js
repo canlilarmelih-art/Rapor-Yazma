@@ -39,9 +39,18 @@
   bir başlık yeni sayfadan başlamalı" dedi — ONCEDEN yalnizca kategoriler
   ARASINDA (categoryIndex > 0) sayfa sonu ekleniyordu, ILK kategori
   onceki icerigin hemen ardindan (sayfanin herhangi bir yerinden)
-  baslayabiliyordu. Artik HER kategori banner'i (ILK dahil, kapak
-  fotografi olsun olmasin) kendi sayfasinda baslar — banner'dan hemen
-  ONCE KOSULSUZ bir sayfa sonu eklenir.
+  baslayabiliyordu. HER kategori banner'inden (ILK dahil) hemen ONCE
+  KOSULSUZ bir sayfa sonu eklendi.
+
+  5. tur (bir sonraki gun, ayni sikayet devam etti): kullanici "halen
+  başlıklar sayfa sonundan başlayabiliyor görseller arasında yada
+  altında boşluk bırakabilirsin önemli olan sayfa başında başlık
+  olması" dedi — manuel <w:br w:type="page"/> (run seviyesi), "8.1
+  Fotoğraflar" hucresinin (vMerge=restart, tablo hucresi) İÇİNDE HER
+  ZAMAN guvenilir sekilde uygulanmiyor. Artik HER kategori banner'inin
+  KENDI <w:pPr>'inde EK OLARAK Word'un native <w:pageBreakBefore/>
+  paragraf ozelligi de var (iki katmanli koruma — manuel kirilim
+  KALDIRILMADI, ikisi birlikte fazladan bos sayfa URETMEZ).
 
   Bu test dogrular:
   1) Sablon hala GECERLI bir STORED .docx (readStoredZip patlamiyor).
@@ -209,6 +218,13 @@ function makePhoto(caption) {
   // olsun, ilk banner de kendi sayfasinda baslar).
   const pageBreakCount = countOccurrences(outXml, '<w:br w:type="page"/>');
   check(pageBreakCount === 2, `2 kategori icin TAM 2 sayfa sonu (her basligin kendi sayfasi) bekleniyordu, bulunan: ${pageBreakCount}`);
+  // Kullanici "halen basliklar sayfa sonundan baslayabiliyor" dedi —
+  // manuel <w:br> tablo hucresi icinde (8.1 Fotoğraflar, vMerge=restart)
+  // her zaman guvenilir olmadigindan HER banner'in <w:pPr>'inde AYRICA
+  // Word'un native <w:pageBreakBefore/> ozelligi de bulunmali (iki katmanli
+  // koruma) — 2 kategori icin TAM 2 tane.
+  const pageBreakBeforeCount = countOccurrences(outXml, "<w:pageBreakBefore/>");
+  check(pageBreakBeforeCount === 2, `2 kategori icin TAM 2 <w:pageBreakBefore/> bekleniyordu (her banner kendi paragrafinda), bulunan: ${pageBreakBeforeCount}`);
 
   // "worde eklenen resimlerin boyutlari cok buyuk maksimum genislik 15 cm
   // olmali" — vertical_single (tek sutun) yerlesimi ONCEDEN "8.1" hucresinin
@@ -298,6 +314,10 @@ function makePhoto(caption) {
   // sayfa sonu eklenmez, yalnizca ardindan gelen basliktan ONCE).
   const pageBreakCount = countOccurrences(outXml, '<w:br w:type="page"/>');
   check(pageBreakCount === 1, `Kapak fotografi + 1 kategori icin TAM 1 sayfa sonu (basligin kendi sayfasi) bekleniyordu, bulunan: ${pageBreakCount}`);
+  // Iki katmanli koruma: banner'in <w:pPr>'inde AYRICA <w:pageBreakBefore/>
+  // da olmali (kapak fotografinin KENDI etiket paragrafinda YOK).
+  const pageBreakBeforeCount = countOccurrences(outXml, "<w:pageBreakBefore/>");
+  check(pageBreakBeforeCount === 1, `1 kategori icin TAM 1 <w:pageBreakBefore/> bekleniyordu, bulunan: ${pageBreakBeforeCount}`);
 
   try {
     DocxFill.readStoredZip(filled.bytes.buffer);

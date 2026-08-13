@@ -9509,3 +9509,41 @@ geldi, "Dış Mekan" "İç Mekan"'dan önce doğru sırada kaldı.
   (2 kategori → 2, kapak+1 kategori → 1) güncellendi.
   `npm run verify` tam zincirle yeşil.
 - Cache-buster: `src/exports/docx-fill.js?v=20260813-2355`.
+
+## 0.0.438 - 2026-08-14 - Başlıklar hâlâ sayfa sonundan başlıyordu — `<w:pageBreakBefore/>` eklendi
+
+Kullanıcı 0.0.437'nin ardından: "halen başlıklar sayfa sonundan
+başlayabiliyor görseller arasında yada altında boşluk bırakabilirsin
+önemli olan sayfa başında başlık olması" dedi.
+
+**Kök neden**: 0.0.437'de eklenen `<w:br w:type="page"/>` bir RUN
+seviyesi manuel kırılımdır — bu içerik "8.1 Fotoğraflar" hücresinin
+(vMerge=restart, orijinalde birkaç küçük satır için tasarlanmış, artık
+onlarca sayfalık dinamik içerik barındıran bir TABLO HÜCRESİ) İÇİNDE
+yaşıyor. Word'ün manuel `w:br` kırılımları tablo hücreleri içinde HER
+ZAMAN güvenilir şekilde uygulanmıyor (test bunu XML seviyesinde
+doğruluyordu — kırılım MARKUP'ı vardı — ama gerçek Word render'ında
+etkisi güvenilir değildi).
+
+**`docx-fill.js`**: `buildCategoryBannerXml` artık HER banner'ın
+`<w:pPr>`'sine (şema sırasına uygun olarak en başa) Word'ün NATİF
+sayfalama özelliği `<w:pageBreakBefore/>`'yi de ekliyor — bu, Word
+arayüzündeki "Paragraf > Satır ve Sayfa Kesmeleri > Bu paragraftan
+önce sayfa sonu ekle" seçeneğiyle BİREBİR aynı mekanizma ve tablo
+hücreleri dahil çok daha güvenilir şekilde uygulanıyor. Önceki manuel
+`<w:br w:type="page"/>` KALDIRILMADI (iki katmanlı koruma — ikisi
+birlikte fazladan boş sayfa ÜRETMEZ, çünkü ilk kırılımdan sonra imleç
+zaten sayfa başındadır).
+
+Canlı doğrulama (localhost:5173): gerçek `/api/report-template-docx`
+uç noktasından GERÇEK `emlakkatilim.docx` çekildi, 2 kategori + kapak
+fotoğrafıyla `fillTemplate` çalıştırıldı — hem 2 `<w:br
+w:type="page"/>` HEM de 2 `<w:pageBreakBefore/>` doğrulandı.
+- Test: `tools/test-emlakkatilim-photo-embed.js` — hem çok-kategori hem
+  kapak-fotoğraflı senaryolara `<w:pageBreakBefore/>` sayım kontrolleri
+  eklendi (kategori sayısıyla TAM eşleşmeli). `npm run verify` tam
+  zincirle yeşil.
+- Not: Gerçek Word render'ını yine de görsel olarak doğrulayamıyorum
+  (bu ortamda Word yok) — kullanıcının bir sonraki gerçek export'u
+  denemesi ve sonucu bildirmesi gerekiyor.
+- Cache-buster: `src/exports/docx-fill.js?v=20260814-0900`.
