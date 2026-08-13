@@ -183,7 +183,12 @@ console.log("Comparables sahibinden arama testleri basarili.");
 {
   const ctx = makeContext({ currentUsageNature: "Tarla", titleCity: "Bursa", titleDistrict: "Nilüfer", latitude: "40.200000", longitude: "28.900000" });
   const hepsi = new URL(ctx.buildHepsiemlakSearchUrl());
-  assert.equal(hepsi.pathname, "/harita/bursa-nilufer-satilik/arsa");
+  const sahibinden = new URL(ctx.buildSahibindenSearchUrl());
+  assert.equal(sahibinden.pathname, "/satilik-arsa");
+  assert.equal(sahibinden.searchParams.get("geoLocation_latitude"), "40.200000");
+  assert.equal(sahibinden.searchParams.get("geoLocation_longitude"), "28.900000");
+  assert.equal(sahibinden.searchParams.get("geoLocation_geoDistance_max"), "3000");
+  assert.equal(hepsi.pathname, "/harita/bursa-satilik/arsa");
   assert.equal(hepsi.searchParams.get("mapTopLeft"), "40.226949,28.864717");
   assert.equal(hepsi.searchParams.get("mapBottomRight"), "40.173051,28.935283");
 

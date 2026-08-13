@@ -31984,7 +31984,7 @@ function buildHepsiemlakSearchUrl() {
     mapTopLeft: `${bounds.north.toFixed(6)},${bounds.west.toFixed(6)}`,
     mapBottomRight: `${bounds.south.toFixed(6)},${bounds.east.toFixed(6)}`,
   });
-  return `https://www.hepsiemlak.com/harita/${city}-${district}-satilik/${getComparablePortalCategory("hepsiemlak")}?${query.toString()}`;
+  return `https://www.hepsiemlak.com/harita/${city}-satilik/${getComparablePortalCategory("hepsiemlak")}?${query.toString()}`;
 }
 
 function buildEmlakjetSearchUrl() {
