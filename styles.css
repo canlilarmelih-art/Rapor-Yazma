@@ -3626,24 +3626,32 @@ td .free-lookup input {
   letter-spacing: 0;
 }
 
+.comparable-portal-logo {
+  width: 21px;
+  height: 21px;
+  border-radius: 5px;
+  object-fit: cover;
+  flex: 0 0 21px;
+}
+
 .hepsiemlak-search-button {
-  border-color: #37a66a !important;
-  color: #237446 !important;
-  background: #effaf3 !important;
-}
-
-.hepsiemlak-search-button .comparable-portal-mark {
-  background: #37a66a;
-}
-
-.emlakjet-search-button {
   border-color: #e85b4e !important;
   color: #ae3d33 !important;
   background: #fff2f0 !important;
 }
 
-.emlakjet-search-button .comparable-portal-mark {
+.hepsiemlak-search-button .comparable-portal-mark {
   background: #e85b4e;
+}
+
+.emlakjet-search-button {
+  border-color: #37a66a !important;
+  color: #237446 !important;
+  background: #effaf3 !important;
+}
+
+.emlakjet-search-button .comparable-portal-mark {
+  background: #37a66a;
 }
 
 .comparable-column-actions .row-delete-button {

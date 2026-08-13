@@ -32001,7 +32001,13 @@ function createComparablePortalButton({ label, initials, className, title, build
   const button = document.createElement("button");
   button.type = "button";
   button.className = `mini-button comparable-portal-button ${className}`;
-  button.innerHTML = `<span class="comparable-portal-mark" aria-hidden="true">${initials}</span><span>${label}</span>`;
+  const logoMap = {
+    "hepsiemlak-search-button": "assets/portal-logos/emlakjet.png",
+    "emlakjet-search-button": "assets/portal-logos/hepsiemlak.png",
+    "sahibinden-search-button": "assets/portal-logos/sahibinden.png",
+  };
+  const logo = logoMap[className];
+  button.innerHTML = `<img class="comparable-portal-logo" src="${logo || ""}" alt="" aria-hidden="true"><span>${label}</span>`;
   button.title = title;
   button.addEventListener("click", () => window.open(buildUrl(), "_blank", "noopener,noreferrer"));
   return button;
@@ -32047,15 +32053,13 @@ function buildSahibindenSearchUrl() {
   return `${base}?viewType=map`;
 }
 function createSahibindenSearchButton() {
-  const button = document.createElement("button");
-  button.type = "button";
-  button.className = "mini-button sahibinden-search-button";
-  button.textContent = "Sahibinden.com üzerinden ara";
-  button.title = "Konu taşınmazın KML merkezinin yaklaşık 3 km çevresindeki Sahibinden ilanlarını harita görünümünde açar.";
-  button.addEventListener("click", () => {
-    window.open(buildSahibindenSearchUrl(), "_blank", "noopener,noreferrer");
+  return createComparablePortalButton({
+    label: "Sahibinden.com",
+    initials: "S",
+    className: "sahibinden-search-button",
+    title: "Konu taşınmazın KML merkezinin yaklaşık 3 km çevresindeki Sahibinden ilanlarını harita görünümünde açar.",
+    buildUrl: buildSahibindenSearchUrl,
   });
-  return button;
 }
 
 function createComparablesVerticalEditor(section) {

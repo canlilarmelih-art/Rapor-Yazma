@@ -164,7 +164,11 @@ assert.match(
   "createSahibindenSearchButton() artik Emsaller basligina eklenmiyor."
 );
 const buttonSource = extractFunctionSource("createSahibindenSearchButton");
-assert.match(buttonSource, /window\.open\(buildSahibindenSearchUrl\(\), "_blank", "noopener,noreferrer"\);/, "Sahibinden dugmesi artik yeni sekmede acmiyor / noopener guvenligi kaldirilmis.");
+assert.match(buttonSource, /buildUrl: buildSahibindenSearchUrl/, "Sahibinden dugmesi arama URL'sine bagli degil.");
+const portalButtonSource = extractFunctionSource("createComparablePortalButton");
+assert.match(appSource, /portal-logos\/hepsiemlak\.png/, "Hepsiemlak logosu yerel varliktan kullanilmiyor.");
+assert.match(appSource, /portal-logos\/emlakjet\.png/, "Emlakjet logosu yerel varliktan kullanilmiyor.");
+assert.match(appSource, /portal-logos\/sahibinden\.png/, "Sahibinden logosu yerel varliktan kullanilmiyor.");
 
 console.log("Sahibinden dugmesi Emsaller basligina kablolama testi tamam.");
 
