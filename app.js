@@ -565,17 +565,6 @@ const sections = [
       },
       { key: "landBoundaryElement", label: "Sınırları Belirleyici Unsur Var mı?", type: "select", options: ["", "Evet", "Hayır"] },
       { key: "landAgriculturalProduct", label: "Parsel üzerinde Zirai Ürün Var mı?", type: "select", options: ["", "Evet", "Hayır"] },
-      // Kuveyt Türk (INVEX) "ARSA BİLGİLERİ" ekranındaki 6 ayrı serbest metin
-      // kutusuna karşılık (0.0.42x, 2026-08-13) — landNote gibi ilgili arsa
-      // alanları değiştikçe OTOMATİK üretilip üzerine yazılır (bkz.
-      // refreshLandDetailTextFieldsFromCurrentFields / landDetailTextAutoRefreshFields),
-      // ama üretilen metin serbestçe elle de düzenlenebilir.
-      { key: "landUsageShapeText", label: "Halihazırdaki Kullanım Şekli", type: "textarea", sensitiveOnly: true },
-      { key: "landUsagePurposeText", label: "Halihazırdaki Kullanım Amacı", type: "textarea", sensitiveOnly: true },
-      { key: "landDevelopmentObstacleText", label: "Yapılaşmaya Engel Teşkil Edebilecek Unsurlar", type: "textarea", sensitiveOnly: true },
-      { key: "landInfrastructureTopographyText", label: "Parselin Alt Yapısı ve Topografik Durumu", type: "textarea", sensitiveOnly: true },
-      { key: "landFrontageDepthText", label: "Parselin Cephe ve Derinlik Bilgileri", type: "textarea", sensitiveOnly: true },
-      { key: "landBoundaryStatusText", label: "Parselin Sınırlarının Durumu", type: "textarea", sensitiveOnly: true },
       { key: "landNote", label: "Arsa açıklaması", type: "textarea", sensitiveOnly: true },
       { key: "landClimateEarthquakeExplanation", label: "İklim ve Deprem Bilgileri", type: "textarea", hidden: true },
     ],
@@ -764,6 +753,23 @@ const sections = [
       { key: "insuranceUnitCost", label: "Yapı Yaklaşık Birim Maliyeti", type: "text", readOnly: true },
       { key: "insuranceConstructionCostExplanation", label: "Sigortaya Esas Değer Açıklaması", type: "textarea", wide: true, readOnly: true },
       { key: "halkbankCentralBankExplanation", label: "Halkbank - Merkez Bankası Açıklaması", type: "textarea", wide: true },
+      // Kuveyt Türk (INVEX) "ARSA BİLGİLERİ" ekranındaki 6 ayrı serbest metin
+      // kutusuna karşılık (0.0.42x, 2026-08-13). Kullanıcı talebiyle "Arsa
+      // Özellikleri" bölümünden buraya taşındı — yalnızca "Arsa açıklaması"
+      // (landNote) orada kaldı. İlgili arsa alanları (Topografya, Yol
+      // Cepheli mi, Sınıflandırma vb. — hâlâ "land" bölümünde) değiştikçe
+      // OTOMATİK üretilip üzerine yazılır (bkz.
+      // refreshLandDetailTextFieldsFromCurrentFields / landDetailTextAutoRefreshFields),
+      // ama üretilen metin serbestçe elle de düzenlenebilir. Taşıma yalnızca
+      // bu alanların hangi sekmede GÖRÜNDÜĞÜNÜ değiştirir; state.fields
+      // anahtarları, otomatik üretim mantığı ve şablon token'ları (LAND_*_TEXT)
+      // AYNI kaldı.
+      { key: "landUsageShapeText", label: "Arsa - Halihazırdaki Kullanım Şekli", type: "textarea", wide: true },
+      { key: "landUsagePurposeText", label: "Arsa - Halihazırdaki Kullanım Amacı", type: "textarea", wide: true },
+      { key: "landDevelopmentObstacleText", label: "Arsa - Yapılaşmaya Engel Teşkil Edebilecek Unsurlar", type: "textarea", wide: true },
+      { key: "landInfrastructureTopographyText", label: "Arsa - Parselin Alt Yapısı ve Topografik Durumu", type: "textarea", wide: true },
+      { key: "landFrontageDepthText", label: "Arsa - Parselin Cephe ve Derinlik Bilgileri", type: "textarea", wide: true },
+      { key: "landBoundaryStatusText", label: "Arsa - Parselin Sınırlarının Durumu", type: "textarea", wide: true },
       { key: "ziraatLocationEnvironmentalExplanation", label: "Ziraat Bankası - Konumu ve Çevresel Özellikleri", type: "textarea", wide: true, hidden: true, readOnly: true },
       { key: "ziraatDevelopmentAnalysisExplanation", label: "Ziraat Bankası - Bölgenin Gelişimine İlişkin Analiz", type: "textarea", wide: true, hidden: true, readOnly: true },
       { key: "ziraatBuildingPatternExplanation", label: "Ziraat Bankası - Bölgedeki Yapılaşma Durumu", type: "textarea", wide: true, hidden: true, readOnly: true },

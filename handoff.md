@@ -9001,4 +9001,46 @@ karşılarında cümle şeklinde yazmalı [diğer satırlar gibi]".
   edildi.
 - Cache-buster: `src/templates/template-engine.js?v=20260813-1700`
   (`app.js` bu turda değişmedi).
+
+## 0.0.430 - 2026-08-13 - Arsa'nın 6 açıklaması "Açıklamalar" bölümüne taşındı
+
+Kullanıcı: "Arsa bölümünde Arsa Açıklaması hariç diğer açıklamaları
+açıklamalar bölümüne gönder." — 0.0.425'te "Arsa Özellikleri" (`land`)
+bölümüne eklenen 6 alan (Halihazırdaki Kullanım Şekli/Amacı, Yapılaşmaya
+Engel Unsurlar, Alt Yapı/Topografik Durum, Cephe/Derinlik, Sınırların
+Durumu) `app.js`'te `sections` dizisinde `id: "land"`'den `id:
+"explanations"` ("Açıklamalar") bölümüne taşındı; yalnızca `landNote`
+("Arsa açıklaması") `land` bölümünde kaldı — kullanıcının istediği gibi.
+
+Diğer "Açıklamalar" alanlarıyla (Halkbank/Ziraat gibi) tutarlı olsun diye
+etiketlere "Arsa - " öneki eklendi (ör. "Arsa - Halihazırdaki Kullanım
+Şekli") — bölüm artık birden fazla konuyu (Hisse/EKB/Ceza/Statik/Yapı/
+Sigorta/Halkbank/Ziraat/Arsa) tek listede topluyor, önek karışıklığı
+önlüyor. `wide: true` eklendi (bölümdeki diğer serbest-metin alanlarıyla
+aynı).
+
+**Bu SADECE bir görünüm/organizasyon taşıması** — `state.fields` düz bir
+obje olduğundan alan anahtarları, otomatik üretim mantığı
+(`refreshLandDetailTextFieldsFromCurrentFields`/
+`landDetailTextAutoRefreshFields`, hâlâ `land` bölümündeki
+landTopography/landRoadFrontage vb. seçimlerini dinliyor) ve şablon
+token'ları (`{{LAND_USAGE_SHAPE_TEXT}}` vb., `field()||safeCall()`
+fallback'i) TAMAMEN AYNI kaldı — hiçbiri bölüm kimliğine bakmıyor. Tek
+gerçek yan etki: "Açıklamalar" bölümü `TITLE_UNIT_SCOPED_SECTION_IDS`
+listesinde YOK (`land` ise var) — yani bu 6 alan artık çoklu taşınmazlı
+raporlarda `land`'daki select alanları gibi taşınmaz-bazlı DEĞİL, rapor
+genelinde paylaşımlı (bölümdeki diğer tüm alanlarla — ör.
+`halkbankCentralBankExplanation` — zaten aynı davranış). Tek taşınmazlı
+raporlarda (yaygın durum) hiçbir fark yaratmıyor.
+- Canlı doğrulama (localhost:5173, aynı taslak): `sections.find(s=>s.id
+  ==="land").fields` artık yalnızca 9 alan (6'sı çıkarıldı, `landNote`
+  dahil), `explanations` bölümünde 6 yeni alan görünüyor; "Açıklamalar"
+  sekmesinde "Arsa - ..." etiketleriyle Kopyala düğmeleriyle birlikte
+  doğru render edildi; `buildLandUsageShapeSentence()` vb. hâlâ doğru
+  cümle üretiyor (taşıma öncesiyle birebir aynı). Konsolda hata yok.
+- Test: mevcut `tools/test-kuveytturk-arsa-arazi-template.js` (bölüm
+  kimliğine bakmıyor, sadece `key: "..."` ve token/alias varlığını
+  kontrol ediyor) değişiklik gerektirmeden yeşil kaldı. `npm run verify`
+  tam zincirle yeşil.
+- Cache-buster: `app.js?v=20260813-1800`.
 - Yedek: `backups/before-yapikredi-2nd-fix-list_2026-08-12_22-45-16`.
