@@ -781,6 +781,24 @@
     GABIMARABLESOIL: { fn: () => safeCall("gabimArableSoilText") },
     TOTALLEGALREDUCEDAREA: { fn: () => safeCall("gabimTotalReducedAreaText", "legal") },
     TOTALCURRENTREDUCEDAREA: { fn: () => safeCall("gabimTotalReducedAreaText", "current") },
+    // Kuveyt Türk arsa/arazi "ARSA BİLGİLERİ" 6 alt-alanı (0.0.42x,
+    // 2026-08-13). Bu alanlar app.js'te "land" bölümünde plain field
+    // olarak da tanımlı (bkz. getFoldedFieldIndex fallback) VE ilgili
+    // seçim alanları değiştikçe otomatik üretiliyor — ama bu otomatik
+    // üretim yalnızca ONCHANGE ile tetiklenir. Kullanıcı bildirimi
+    // (2026-08-13): raporun arsa/tarım alanları BU ÖZELLİK EKLENMEDEN
+    // ÖNCE dolduruşmuş var olan taslaklarda hiçbir değişiklik olayı
+    // tetiklenmediği için alan boş kalıyor, export'ta boş görünüyordu.
+    // Burada `field(...)` (kaydedilmiş/elle düzenlenmiş değeri ÖNCELİKLİ
+    // kullanır) `|| safeCall(...)` (boşsa mevcut alan durumundan CANLI
+    // hesaplar) ile fn-tabanlı alias eklenerek export HER ZAMAN taze/dolu
+    // olur — KENTSELDONUSUM'daki aynı desen (satır ~654).
+    LANDUSAGESHAPETEXT: { fn: () => field("landUsageShapeText") || safeCall("buildLandUsageShapeSentence") },
+    LANDUSAGEPURPOSETEXT: { fn: () => field("landUsagePurposeText") || safeCall("buildLandUsagePurposeSentence") },
+    LANDDEVELOPMENTOBSTACLETEXT: { fn: () => field("landDevelopmentObstacleText") || safeCall("buildLandDevelopmentObstacleSentence") },
+    LANDINFRASTRUCTURETOPOGRAPHYTEXT: { fn: () => field("landInfrastructureTopographyText") || safeCall("buildLandInfrastructureTopographySentence") },
+    LANDFRONTAGEDEPTHTEXT: { fn: () => field("landFrontageDepthText") || safeCall("buildLandFrontageDepthSentence") },
+    LANDBOUNDARYSTATUSTEXT: { fn: () => field("landBoundaryStatusText") || safeCall("buildLandBoundaryStatusSentence") },
 
     // --- Ana gayrimenkul / bağımsız bölüm ---
     ANAGAYRIMENKUL2025: { t: () => field("mainPropertyDescription") || safeCall("buildMainPropertyDescription") },

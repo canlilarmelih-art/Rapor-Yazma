@@ -144,7 +144,60 @@ console.log("Otomatik arsa-arazi varyant secimi (defaultTemplateKeyForBank/resol
   assert(!templateSource.includes(needle), `kuveytturk-arsa-arazi.html hala bina-ozgu icerik barindiriyor: ${needle}`);
 });
 
+// Kullanici geri bildirimi (2026-08-13): 6 alt-alan basta ayri "kt-subsec"
+// basligi + alt paragraf olarak eklenmisti, gercek export'ta bos/kopuk
+// gorundu — kullanici digerleri gibi "Etiket: Kutu" tablo satiri istedi.
+// Artik tumu AYNI <table class="kt-form"> icinde <tr><td class="l">...
+// <td class="v">{{TOKEN}}</td></tr> seklinde olmali; ayri "kt-subsec"
+// basligi KALMAMALI.
+[
+  "Halihazırdaki Kullanım Şekli", "Halihazırdaki Kullanım Amacı",
+  "Yapılaşmaya Engel Teşkil Edebilecek Unsurlar", "Parselin Alt Yapısı ve Topografik Durumu",
+  "Parselin Cephe ve Derinlik Bilgileri", "Parselin Sınırlarının Durumu",
+].forEach((label) => {
+  assert(
+    !templateSource.includes(`<div class="kt-subsec">${label}</div>`),
+    `"${label}" hala ayri bir kt-subsec basligi olarak duruyor — tablo satirina cevrilmemis.`
+  );
+});
+[
+  ['Halihazırdaki Kullanım Şekli:', "{{LAND_USAGE_SHAPE_TEXT}}"],
+  ['Halihazırdaki Kullanım Amacı:', "{{LAND_USAGE_PURPOSE_TEXT}}"],
+  ['Yapılaşmaya Engel Teşkil Edebilecek Unsurlar:', "{{LAND_DEVELOPMENT_OBSTACLE_TEXT}}"],
+  ['Parselin Alt Yapısı ve Topografik Durumu:', "{{LAND_INFRASTRUCTURE_TOPOGRAPHY_TEXT}}"],
+  ['Parselin Cephe ve Derinlik Bilgileri:', "{{LAND_FRONTAGE_DEPTH_TEXT}}"],
+  ['Parselin Sınırlarının Durumu:', "{{LAND_BOUNDARY_STATUS_TEXT}}"],
+].forEach(([label, token]) => {
+  assert(
+    templateSource.includes(`<tr><td class="l">${label}</td><td class="v">${token}</td></tr>`),
+    `"${label}" / ${token} artik diger satirlarla ayni "Etiket: Kutu" tablo satiri biciminde degil.`
+  );
+});
+
 console.log("kuveytturk-arsa-arazi.html arazi-ozgu placeholder icerigi testi tamam.");
+console.log("ARSA BİLGİLERİ 6 alt-alani tablo-satiri (Etiket: Kutu) bicimi testi tamam.");
+
+// --- 4b) 6 token'in export-taze fallback'i: LEGACY_ALIASES'te field() -----
+//         (kayitli/elle duzenlenmis deger) once, bos ise safeCall(build...)
+//         (mevcut alan durumundan canli hesaplama) sonra denenmeli — boylece
+//         bu ozellik EKLENMEDEN ONCE doldurulmus var olan taslaklarda da
+//         export'ta bos kalmaz (kullanici bildirimi: "template bu sekilde
+//         cikti ... karsilarinda cumle seklinde yazmali").
+[
+  ["LANDUSAGESHAPETEXT", "landUsageShapeText", "buildLandUsageShapeSentence"],
+  ["LANDUSAGEPURPOSETEXT", "landUsagePurposeText", "buildLandUsagePurposeSentence"],
+  ["LANDDEVELOPMENTOBSTACLETEXT", "landDevelopmentObstacleText", "buildLandDevelopmentObstacleSentence"],
+  ["LANDINFRASTRUCTURETOPOGRAPHYTEXT", "landInfrastructureTopographyText", "buildLandInfrastructureTopographySentence"],
+  ["LANDFRONTAGEDEPTHTEXT", "landFrontageDepthText", "buildLandFrontageDepthSentence"],
+  ["LANDBOUNDARYSTATUSTEXT", "landBoundaryStatusText", "buildLandBoundaryStatusSentence"],
+].forEach(([aliasKey, fieldKey, builderFnName]) => {
+  const re = new RegExp(
+    `${aliasKey}:\\s*\\{\\s*fn:\\s*\\(\\)\\s*=>\\s*field\\("${fieldKey}"\\)\\s*\\|\\|\\s*safeCall\\("${builderFnName}"\\)\\s*\\}`
+  );
+  assert(re.test(engineSource), `LEGACY_ALIASES icinde ${aliasKey} icin field()||safeCall() geri-dususu bulunamadi.`);
+});
+
+console.log("LAND_*_TEXT token'lari icin export-taze fallback (field()||safeCall()) kablolamasi testi tamam.");
 
 // --- 5) LAND_* token'larinin gercekten field-fold ile cozulecegi field --------
 //        anahtarlari app.js'te hala mevcut mu (isim degisirse sessizce

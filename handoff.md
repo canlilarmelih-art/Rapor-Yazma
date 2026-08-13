@@ -8957,4 +8957,48 @@ kayboldu, konsolda hiç hata yok, "Kaydedildi" durumu korundu.
   kaynaktan). `npm run verify` + `tools/check-basic.js` tam zincirle
   yeşil.
 - Cache-buster: `app.js?v=20260813-1600`, `styles.css?v=20260813-1600`.
+
+## 0.0.429 - 2026-08-13 - Kuveyt Türk arsa/arazi: ARSA BİLGİLERİ 6 alanı tablo satırına çevrildi + export-taze fallback
+
+Kullanıcı gerçek Word çıktısından bir ekran görüntüsü gönderdi: 6 yeni
+alan (Halihazırdaki Kullanım Şekli vb.) yeşil başlık olarak görünüyor ama
+karşılarında/altlarında HİÇBİR cümle yok — "template bu şekilde çıktı ...
+karşılarında cümle şeklinde yazmalı [diğer satırlar gibi]".
+
+İki ayrı sorun tespit edildi:
+
+1. **Görsel biçim yanlıştı**: 0.0.425'te bu 6 alan `<div class="kt-subsec">
+   Etiket</div>{{TOKEN}}` (ayrı başlık + alt paragraf) olarak eklenmişti —
+   ama şablondaki TÜM diğer alanlar (Ulaşım İmkanı, Arazi Sınıflandırması
+   vb.) `<tr><td class="l">Etiket:</td><td class="v">{{TOKEN}}</td></tr>`
+   tablo satırı biçiminde. `templates/kuveytturk-arsa-arazi.html`
+   düzeltildi — 6 alan artık ARSA BİLGİLERİ tablosunun İÇİNDE, diğer
+   satırlarla birebir aynı "Etiket: Kutu" biçiminde.
+2. **Gerçek (daha ciddi) kök neden**: bu 6 alan yalnızca ilgili seçim
+   kutusu (landTopography, landRoadFrontage vb.) DEĞİŞTİĞİNDE otomatik
+   üretiliyordu (0.0.426). Kullanıcının test ettiği taslak bu özellik
+   eklenmeden ÖNCE dolduruşmuştu — hiçbir değişiklik olayı hiç tetiklenmedi,
+   `state.fields.landUsageShapeText` vb. hâlâ boş, export'ta da boş
+   çıkıyordu. Canlı doğrulama (localhost:5173, aynı "Kuvyt-202600791"
+   taslağı, tarayıcı konsolunda `buildLandUsageShapeSentence()` vb. 6
+   fonksiyon doğrudan çağrıldı): hepsi doğru, dolu cümle üretti — yani
+   ASIL SORUN üretim mantığında değil, üretilen değerin KAYITLI ALANA hiç
+   yazılmamış olmasıydı.
+
+   Düzeltme (KENTSELDONUSUM'daki mevcut desenle aynı, `template-engine.js`):
+   6 token artık `LEGACY_ALIASES`'te `field(key) || safeCall(builderFn)`
+   şeklinde fn-tabanlı — kayıtlı/elle düzenlenmiş bir değer varsa ONU
+   kullanır, yoksa export ANINDA mevcut alan durumundan CANLI hesaplar.
+   Böylece bu özellikten önce doldurulmuş TÜM eski taslaklar da dahil,
+   export her zaman güncel/dolu çıkar; kullanıcı manuel düzenlemesi de
+   (varsa) korunur.
+- Test: `tools/test-kuveytturk-arsa-arazi-template.js` — (a) 6 alanın artık
+  ayrı `kt-subsec` başlığı OLMADIĞINI ve diğerleriyle birebir aynı tablo
+  satırı biçiminde olduğunu, (b) `LEGACY_ALIASES`'teki 6 yeni
+  `field()||safeCall()` girdisinin var olduğunu doğruluyor. `npm run
+  verify` tam zincirle yeşil; ayrıca canlı taslakta (F12 konsolu) 6
+  fonksiyon doğrudan çağrılıp doğru Türkçe cümleler üretildiği teyit
+  edildi.
+- Cache-buster: `src/templates/template-engine.js?v=20260813-1700`
+  (`app.js` bu turda değişmedi).
 - Yedek: `backups/before-yapikredi-2nd-fix-list_2026-08-12_22-45-16`.
