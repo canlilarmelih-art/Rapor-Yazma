@@ -9547,3 +9547,59 @@ w:type="page"/>` HEM de 2 `<w:pageBreakBefore/>` doğrulandı.
   (bu ortamda Word yok) — kullanıcının bir sonraki gerçek export'u
   denemesi ve sonucu bildirmesi gerekiyor.
 - Cache-buster: `src/exports/docx-fill.js?v=20260814-0900`.
+
+## 0.0.439 - 2026-08-14 - Fotoğraf sayfaları: kesin 16×21,33 cm kutu + her sayfada tekrarlanan başlık
+
+Kullanıcı bir Word ekran görüntüsü gönderdi (bir görselin Boyut panelinde
+Genişlik 16 cm / Yükseklik 21,33 cm gösteriliyordu) ve şunu istedi: "yine
+olmamış her sayfa genişlik 16 yükseklik 21,33 olacak şekilde oturum
+sağlanmalı. gerekirse yüklenen görselin boyutları ile oyna daralt/genişlet
+uzat kısalt. 16 cm X 21,33 cm örnek: alt alta 2 yatay görsel. genişlik 16
+cm uzunluk 10,50 + ara boşluk 0,33 cm + genişlik 16 cm uzunluk 10,50 + ara
+boşluk eğer birden fazla sayfaya sığması gerekiyor ise örnek altı adet iç
+hacim görseli eklendi alt alta 2 yatay görsel istendi ise 3 sayfada da İç
+Mekan Başlığı olacak. Hiç bir başlık sayfa ortasından sonundan
+başlamayacak gerekirse sayfanın altı boş kalacak".
+
+Bu, 0.0.436'daki "15 cm max genişlik + arbitrary LAYOUT_CELL_ASPECT
+sabitleri" yaklaşımını TAMAMEN DEĞİŞTİRDİ: artık her fotoğraf sayfası
+KESİN 16×21,33 cm'lik bir kutuya, hücreler arası KESİN 0,33 cm boşlukla
+yerleştiriliyor — kullanıcının kendi örneği (stacked_pair: (21,33-0,33)/2
+= 10,50 cm) matematiksel olarak BİREBİR doğrulandı.
+
+**`docx-fill.js`**:
+- `LAYOUT_CELL_ASPECT` (arbitrary sabitler: 1.35/0.75/1.6/1.33) ve
+  `MAX_PHOTO_WIDTH_DXA/EMU` (15 cm sınırı) TAMAMEN KALDIRILDI. Yeni
+  `computeCellSizeForLayout(layoutKey)`: `PAGE_CONTENT_WIDTH_CM=16`,
+  `PAGE_CONTENT_HEIGHT_CM=21.33`, `CELL_GAP_CM=0.33` sabitlerinden
+  columns/rows'a göre `cellWidthDxa/cellHeightDxa/cellWidthEmu/
+  cellHeightEmu/cellAspect` hesaplıyor: `(PAGE_WIDTH - GAP*(cols-1))/cols`
+  ve `(PAGE_HEIGHT - GAP*(rows-1))/rows`.
+- `buildPhotoPageTableXml` yeniden yazıldı: hücreler arası boşluk artık
+  `w:tcMar` (kenar boşluğu, taşma riskli) DEĞİL, tablo ızgarasına eklenen
+  AYRI, boş, TAM `GAP_DXA` (0,33 cm) yükseklik/genişlikte "ara satır/
+  sütun" hücreleri — her görselin cx/cy'si hesaplanan hücre payıyla
+  BİREBİR eşleşiyor, taşma/kırpma riski yok. Görsel satırları
+  `w:hRule="atLeast"` (paragraf/satır aralığı kaynaklı kırpma riskini
+  önler), ara satırlar `w:hRule="exact"` (kesin küçük boşluk).
+- `computeCoverPhotoEmuSize` artık 15 cm/20 cm yerine aynı sayfa kutusu
+  sabitlerini (`PAGE_WIDTH_EMU`/`PAGE_HEIGHT_EMU`, 16×21,33 cm) kullanıyor
+  — kapak fotoğrafı da aynı üst sınıra tabi.
+- `embedPhotoGalleryAssets`: "banner artık kategori başına BİR KEZ değil,
+  o kategorinin ürettiği HER SAYFADA tekrarlanıyor" — döngü kategori→
+  batch→sayfa yerine DOĞRUDAN her (batch, sayfa) çiftinden ÖNCE kendi
+  sayfa sonu + kendi banner'ı ekleyecek şekilde düzleştirildi (6 fotoğraf,
+  2'li alt-alta yerleşim → 3 sayfa → 3 kez "İç Mekan" başlığı).
+
+Canlı doğrulama (localhost:5173): gerçek `/api/report-template-docx`
+uç noktasından GERÇEK `emlakkatilim.docx` çekildi, 6 "İç Mekan"
+fotoğrafı + stacked_pair yerleşimiyle `fillTemplate` çalıştırıldı —
+TAM 3 banner (3× "İç Mekan" metni), TAM 3 sayfa sonu (her iki
+mekanizma), 6 görselin HEPSİ tam 16×10,50 cm (5760000×3780000 EMU,
+kullanıcının verdiği sayılarla birebir).
+- Test: `tools/test-emlakkatilim-photo-embed.js` — yeni senaryo 6 (6
+  fotoğraf → 3 sayfa → 3 tekrarlanan banner, kesin boyut doğrulaması);
+  mevcut genişlik sınırı testleri 15 cm'den 16 cm'e güncellendi; tablo
+  sayımı artık baseline'a göre delta (şablonun kendi diğer tabloları
+  yanlışlıkla sayılmasın diye). `npm run verify` tam zincirle yeşil.
+- Cache-buster: `src/exports/docx-fill.js?v=20260814-1030`.

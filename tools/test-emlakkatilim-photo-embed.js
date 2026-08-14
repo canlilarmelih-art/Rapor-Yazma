@@ -52,6 +52,24 @@
   paragraf ozelligi de var (iki katmanli koruma — manuel kirilim
   KALDIRILMADI, ikisi birlikte fazladan bos sayfa URETMEZ).
 
+  6. tur (ayni gun devam): kullanici "her sayfa genişlik 16 yükseklik
+  21,33 olacak şekilde oturum sağlanmalı. gerekirse yüklenen görselin
+  boyutları ile oyna daralt/genişlet uzat kısalt. 16 cm X 21,33 cm
+  örnek: alt alta 2 yatay görsel. genişlik 16 cm uzunluk 10,50 + ara
+  boşluk 0,33 cm + genişlik 16 cm uzunluk 10,50 + ara boşluk eğer
+  birden fazla sayfaya sığması gerekiyor ise örnek altı adet iç hacim
+  görseli eklendi alt alta 2 yatay görsel istendi ise 3 sayfada da İç
+  Mekan Başlığı olacak. Hiç bir başlık sayfa ortasından sonundan
+  başlamayacak gerekirse sayfanın altı boş kalacak" dedi. Bu, ONCEKI
+  "15 cm max genislik" (0.0.436) kuralını DAHA KESIN bir sayfa-kutusu
+  modeliyle DEGISTIRDI: her fotoğraf sayfası TAM 16×21,33 cm'lik bir
+  kutuya, hücreler arası TAM 0,33 cm boşlukla yerleştiriliyor (bkz.
+  computeCellSizeForLayout — stacked_pair için (21,33-0,33)/2 = 10,50 cm,
+  kullanıcının verdiği örnekle BİREBİR eşleşiyor). AYRICA: banner artık
+  kategori başına BİR KEZ değil, o kategorinin ürettiği HER SAYFADA
+  tekrarlanıyor (6 fotoğraf, 2'li alt-alta yerleşim → 3 sayfa → 3 kez
+  "İç Mekan" başlığı).
+
   Bu test dogrular:
   1) Sablon hala GECERLI bir STORED .docx (readStoredZip patlamiyor).
   2) collectTokens() FOTO_ALANI_1'i buluyor.
@@ -63,14 +81,17 @@
      - gercek <w:drawing> + rels + media girisleri (sablona GORE delta)
        toplam fotograf sayisi kadar artiyor,
      - en az bir <a:srcRect> (kirpma) uretiliyor,
-     - HICBIR gorselin genisligi (wp:extent cx) 5400000 EMU'yu (15 cm)
+     - HICBIR gorselin genisligi (wp:extent cx) 5760000 EMU'yu (16 cm)
        asmiyor,
      - kategoriler arasi sayfa sonu (<w:br w:type="page"/>) var.
   4) Fotograf YOKKEN: token TEMIZ sekilde silinip belgede GORUNMUYOR.
   5) Kapak Fotografi VARKEN: "Kapak Fotoğrafı" etiketi kategori
-     banner'larindan ONCE geliyor, gorseli 15 cm'i asmiyor, KIRPILMAMIS
+     banner'larindan ONCE geliyor, gorseli 16 cm'i asmiyor, KIRPILMAMIS
      (srcRect yok) ve kategori listesine (banner) DAHIL EDILMIYOR.
-  6) Her senaryoda ciktinin STORED-zip round-trip'i saglam.
+  6) 6 fotoğraf + stacked_pair (Alt Alta İkili, sayfa başına 2) → TAM 3
+     sayfa, HER sayfada kendi "İç Mekan" banner'ı (3 kez tekrar), her
+     görsel TAM 16×10,50 cm (kullanıcının verdiği örnekle birebir).
+  7) Her senaryoda ciktinin STORED-zip round-trip'i saglam.
 */
 
 const fs = require("node:fs");
@@ -147,6 +168,7 @@ const baselineRelsXml = Buffer.from(baselineRelsEntry.bytes).toString("utf8");
 const baselineImageRelCount = countOccurrences(baselineRelsXml, 'Type="http://schemas\\.openxmlformats\\.org/officeDocument/2006/relationships/image"');
 const baselineExtentWidths = [...xmlText.matchAll(/<wp:extent cx="(\d+)"/g)].map((m) => Number(m[1]));
 const baselineMediaCount = entries.filter((e) => e.name.startsWith("word/media/")).length;
+const baselineTableCount = countOccurrences(xmlText, "<w:tbl>"); // sablonun KENDI (8.1 disi) tablolari
 
 function makePhoto(caption) {
   return { base64: TINY_JPEG_BASE64, mimeType: "image/jpeg", caption: caption || "", width: 800, height: 800, orientation: "square" };
@@ -226,14 +248,13 @@ function makePhoto(caption) {
   const pageBreakBeforeCount = countOccurrences(outXml, "<w:pageBreakBefore/>");
   check(pageBreakBeforeCount === 2, `2 kategori icin TAM 2 <w:pageBreakBefore/> bekleniyordu (her banner kendi paragrafinda), bulunan: ${pageBreakBeforeCount}`);
 
-  // "worde eklenen resimlerin boyutlari cok buyuk maksimum genislik 15 cm
-  // olmali" — vertical_single (tek sutun) yerlesimi ONCEDEN "8.1" hucresinin
-  // TAM genisligini (~18.5 cm) kullaniyordu; artik HICBIR gorsel genisligi
-  // (wp:extent cx) 5400000 EMU'yu (15 cm) gecmemeli.
+  // "her sayfa genişlik 16 yükseklik 21,33 olacak şekilde oturum
+  // sağlanmalı" — HICBIR gorsel genisligi (wp:extent cx) 5760000 EMU'yu
+  // (16 cm, sayfa kutusunun genisligi) gecmemeli.
   const extentWidths = [...outXml.matchAll(/<wp:extent cx="(\d+)"/g)].map((m) => Number(m[1]));
   const newExtentWidths = subtractMultiset(extentWidths, baselineExtentWidths);
-  const oversizedWidths = newExtentWidths.filter((cx) => cx > 5400000);
-  check(oversizedWidths.length === 0, `15 cm (5400000 EMU) sinirini asan ${oversizedWidths.length} YENİ gorsel bulundu: ${oversizedWidths.join(", ")}`);
+  const oversizedWidths = newExtentWidths.filter((cx) => cx > 5760000);
+  check(oversizedWidths.length === 0, `16 cm (5760000 EMU) sinirini asan ${oversizedWidths.length} YENİ gorsel bulundu: ${oversizedWidths.join(", ")}`);
 
   // Cikti hala saglam bir STORED zip olmali (round-trip).
   try {
@@ -261,7 +282,7 @@ function makePhoto(caption) {
   check(bannerCountEmpty === 0, `Fotografsiz durumda kategori banner'i olmamaliydi, bulunan: ${bannerCountEmpty}`);
 }
 
-// --- 5) Kapak Fotografi: ayri, tek, 15 cm sinirli, KIRPILMAMIS -----------
+// --- 5) Kapak Fotografi: ayri, tek, 16 cm sinirli, KIRPILMAMIS -----------
 {
   const values = buildValuesWithMissingPlaceholders(tokens, { FOTO_ALANI_3: "" });
   // 4:3 (dikey olmayan) bir "gercek boyut" bildirimi: pixelSize test
@@ -301,8 +322,8 @@ function makePhoto(caption) {
 
   const extentWidths = [...outXml.matchAll(/<wp:extent cx="(\d+)"/g)].map((m) => Number(m[1]));
   const newExtentWidths = subtractMultiset(extentWidths, baselineExtentWidths);
-  const oversizedWidths = newExtentWidths.filter((cx) => cx > 5400000);
-  check(oversizedWidths.length === 0, `Kapak fotografi dahil, 15 cm sinirini asan ${oversizedWidths.length} YENİ gorsel bulundu.`);
+  const oversizedWidths = newExtentWidths.filter((cx) => cx > 5760000);
+  check(oversizedWidths.length === 0, `Kapak fotografi dahil, 16 cm sinirini asan ${oversizedWidths.length} YENİ gorsel bulundu.`);
 
   // Kapak fotografi KIRPILMAZ (srcRect=null gecilir) — yalnizca kategori
   // (vertical_single) fotografinda 1 srcRect beklenir, kapakta HIC.
@@ -326,7 +347,59 @@ function makePhoto(caption) {
   }
 }
 
-// --- 6) Kapak Fotografi TEK BASINA (kategori yokken de calismali) --------
+// --- 6) 6 fotoğraf + Alt Alta İkili (stacked_pair) → 3 sayfa, HER
+// sayfada tekrar eden "İç Mekan" başlığı — kullanıcının verdiği tam
+// örnek: "örnek altı adet iç hacim görseli eklendi alt alta 2 yatay
+// görsel istendi ise 3 sayfada da İç Mekan Başlığı olacak" --------------
+{
+  const values = buildValuesWithMissingPlaceholders(tokens, { FOTO_ALANI_3: "" });
+  const sixPhotos = Array.from({ length: 6 }, (_, i) => makePhoto(`İç mekan ${i + 1}`));
+  const photoGroups = [
+    {
+      token: "FOTO_ALANI_1",
+      categories: [
+        { label: "İç Mekan", batches: [{ layoutKey: "stacked_pair", photos: sixPhotos }] },
+      ],
+    },
+  ];
+  const filled = DocxFill.fillTemplate(arrayBuffer, values, {}, [], photoGroups);
+  check(!filled.missing.includes("FOTO_ALANI_1"), "6-fotografli senaryoda FOTO_ALANI_1 'missing' listesinde.");
+
+  const outEntries = DocxFill.readStoredZip(filled.bytes.buffer);
+  const outDoc = outEntries.find((e) => e.name === "word/document.xml");
+  const outXml = Buffer.from(outDoc.bytes).toString("utf8");
+
+  // stacked_pair sayfa basina 2 gorsel aliyor -> 6 gorsel = TAM 3 sayfa.
+  const bannerCount = countOccurrences(outXml, `w:fill="1F3864"`);
+  check(bannerCount === 3, `6 fotograf / sayfa basina 2 icin TAM 3 "İç Mekan" banner'i (her sayfada tekrar) bekleniyordu, bulunan: ${bannerCount}`);
+  const iconMekanCount = countOccurrences(outXml, "İç Mekan");
+  check(iconMekanCount === 3, `"İç Mekan" metni TAM 3 kez (3 sayfa) gecmeliydi, bulunan: ${iconMekanCount}`);
+
+  const pageBreakCount = countOccurrences(outXml, '<w:br w:type="page"/>');
+  check(pageBreakCount === 3, `3 sayfa icin TAM 3 sayfa sonu bekleniyordu, bulunan: ${pageBreakCount}`);
+  const pageBreakBeforeCount = countOccurrences(outXml, "<w:pageBreakBefore/>");
+  check(pageBreakBeforeCount === 3, `3 sayfa icin TAM 3 <w:pageBreakBefore/> bekleniyordu, bulunan: ${pageBreakBeforeCount}`);
+
+  const tableCount = countOccurrences(outXml, "<w:tbl>") - baselineTableCount;
+  check(tableCount === 3, `3 sayfa icin TAM 3 izgara tablosu (sablona gore delta) bekleniyordu, bulunan: ${tableCount}`);
+
+  const drawingCount = countOccurrences(outXml, "<w:drawing>");
+  check(drawingCount === baselineDrawingCount + 6, `6 fotograf icin +6 <w:drawing> bekleniyordu, gercek fark: ${drawingCount - baselineDrawingCount}`);
+
+  // Kullanicinin verdigi TAM ornek: "genişlik 16 cm uzunluk 10,50" —
+  // her gorsel TAM 5760000×3780000 EMU (16×10,50 cm) olmali.
+  const extents = [...outXml.matchAll(/<wp:extent cx="(\d+)" cy="(\d+)"/g)].map((m) => ({ cx: Number(m[1]), cy: Number(m[2]) }));
+  const stackedPairExtents = extents.filter((e) => e.cx === 5760000 && e.cy === 3780000);
+  check(stackedPairExtents.length === 6, `6 gorselin de TAM 16×10,50 cm (5760000×3780000 EMU) olmasi bekleniyordu, bulunan (eslesen): ${stackedPairExtents.length}`);
+
+  try {
+    DocxFill.readStoredZip(filled.bytes.buffer);
+  } catch (error) {
+    check(false, `6-fotografli cikti STORED zip olarak yeniden okunamadi: ${error.message}`);
+  }
+}
+
+// --- 7) Kapak Fotografi TEK BASINA (kategori yokken de calismali) --------
 {
   const values = buildValuesWithMissingPlaceholders(tokens, { FOTO_ALANI_3: "" });
   const photoGroups = [
@@ -346,4 +419,4 @@ if (failures.length) {
   console.error("emlakkatilim.docx fotograf gomme testi BASARISIZ:\n" + failures.map((f) => ` - ${f}`).join("\n"));
   process.exit(1);
 }
-console.log("emlakkatilim.docx '8. Ekler' fotograf gomme (kategori/yerlesim semasi + kapak fotografi yer tutucusu + 15 cm sinirlamasi) testleri basarili.");
+console.log("emlakkatilim.docx '8. Ekler' fotograf gomme (16x21,33 cm sayfa kutusu + sayfa basina tekrarlanan basliklar + kapak fotografi yer tutucusu) testleri basarili.");

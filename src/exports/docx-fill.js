@@ -381,32 +381,31 @@
     ));
   }
 
-  // "8.1 Fotoğraflar" hücresinin genişliği (templates/emlakkatilim.docx'te
-  // <w:tcW w:w="10505"/>) — ızgara tablosu bu genişliğe göre kuruluyor.
-  const PHOTO_TABLE_WIDTH_DXA = 10505;
-  const PHOTO_CELL_MARGIN_DXA = 60; // ~1mm — hücreler arasi/etrafinda ince BEYAZ bosluk
   const PHOTO_BANNER_FILL = "1F3864"; // lacivert (navy blue)
 
-  // Kullanici talebi (2026-08-13, 3. tur): "worde eklenen resimlerin
-  // boyutlari cok buyuk maksimum genislik 15 cm olmali" — TEK sutunlu
-  // yerlesimlerde (vertical_single/stacked_pair) hucre, "8.1 Fotograflar"
-  // hucresinin TAM genisligini (10505 dxa ~= 18.5 cm) kullaniyordu; artik
-  // HER hucre (kapak fotografi dahil) en fazla 15 cm genisliginde.
+  // Kullanici talebi (2026-08-14, 5. tur): "her sayfa genişlik 16
+  // yükseklik 21,33 olacak şekilde oturum sağlanmalı ... 16 cm X 21,33 cm
+  // örnek: alt alta 2 yatay görsel. genişlik 16 cm uzunluk 10,50 + ara
+  // boşluk 0,33 cm + genişlik 16 cm uzunluk 10,50" — ONCEKI "15 cm
+  // maksimum genislik" kurali (0.0.436) bu DAHA KESIN sayfa-kutusu
+  // hesabiyla DEGISTIRILDI: her fotograf sayfasi TAM 16×21,33 cm'lik bir
+  // kutuya, hucreler arasinda TAM 0,33 cm bosluklarla yerlestiriliyor.
   // 1 cm = 1440/2.54 twip (dxa); 1 cm = 360000 EMU (tam sayi).
-  const MAX_PHOTO_WIDTH_DXA = 8503; // 15 cm ~= 8503.94 dxa; AŞAĞI yuvarlandı (8503*635=5399405 EMU <= 5400000, üste taşmaz)
-  const MAX_PHOTO_WIDTH_EMU = 5400000; // 15 cm, tam deger
-  const MAX_COVER_PHOTO_HEIGHT_EMU = 7200000; // 20 cm — asiri dikey kapak fotograflari icin guvenlik sinirlamasi
+  const CM_TO_DXA = 1440 / 2.54;
+  const CM_TO_EMU = 360000;
+  function cmToDxa(cm) { return Math.round(cm * CM_TO_DXA); }
+  function cmToEmu(cm) { return Math.round(cm * CM_TO_EMU); }
 
-  // Her yerleşim şablonu için HÜCRE en-boy oranı (width:height) — fotoğraf
-  // bu orana göre ORTALANARAK KIRPILIR (srcRect), boşluk kalmadan hücreyi
-  // TAM doldurur ("tam sığmalı" — kullanıcı talebi). Şablon adları/columns/
-  // rows report-photos.js'teki LAYOUT_TEMPLATES ile BİREBİR eşleşmeli.
-  const LAYOUT_CELL_ASPECT = {
-    horizontal_pair: 1.35, // 2 sütun x 1 satır — yatay/geniş fotoğraflar
-    vertical_single: 0.75, // 1 sütun x 1 satır — dikey/portre, tam sayfa
-    stacked_pair: 1.6, // 1 sütun x 2 satır — yatay, alt alta
-    grid_six: 1.33, // 2 sütun x 3 satır — küçük kareye yakın hücreler
-  };
+  const PAGE_CONTENT_WIDTH_CM = 16;
+  const PAGE_CONTENT_HEIGHT_CM = 21.33;
+  const CELL_GAP_CM = 0.33;
+  const PAGE_WIDTH_DXA = cmToDxa(PAGE_CONTENT_WIDTH_CM);
+  const PAGE_WIDTH_EMU = cmToEmu(PAGE_CONTENT_WIDTH_CM);
+  const PAGE_HEIGHT_DXA = cmToDxa(PAGE_CONTENT_HEIGHT_CM);
+  const PAGE_HEIGHT_EMU = cmToEmu(PAGE_CONTENT_HEIGHT_CM);
+  const GAP_DXA = cmToDxa(CELL_GAP_CM);
+  const GAP_EMU = cmToEmu(CELL_GAP_CM);
+
   const LAYOUT_GRID = {
     horizontal_pair: { columns: 2, rows: 1 },
     vertical_single: { columns: 1, rows: 1 },
@@ -418,8 +417,17 @@
     return LAYOUT_GRID[layoutKey] || LAYOUT_GRID.horizontal_pair;
   }
 
-  function getLayoutCellAspect(layoutKey) {
-    return LAYOUT_CELL_ASPECT[layoutKey] || LAYOUT_CELL_ASPECT.horizontal_pair;
+  // columns×rows'a göre, 16×21,33 cm'lik sayfa kutusunu (hücreler arasında
+  // TAM CELL_GAP_CM boşluk bırakarak) eşit hücrelere böler. Kullanıcının
+  // verdiği örnek (stacked_pair, 1×2) BİREBİR doğrular: (21,33-0,33)/2 =
+  // 10,50 cm — tam istenen değer.
+  function computeCellSizeForLayout(layoutKey) {
+    const { columns, rows } = getLayoutGrid(layoutKey);
+    const cellWidthDxa = Math.round((PAGE_WIDTH_DXA - GAP_DXA * (columns - 1)) / columns);
+    const cellHeightDxa = Math.round((PAGE_HEIGHT_DXA - GAP_DXA * (rows - 1)) / rows);
+    const cellWidthEmu = Math.round((PAGE_WIDTH_EMU - GAP_EMU * (columns - 1)) / columns);
+    const cellHeightEmu = Math.round((PAGE_HEIGHT_EMU - GAP_EMU * (rows - 1)) / rows);
+    return { columns, rows, cellWidthDxa, cellHeightDxa, cellWidthEmu, cellHeightEmu, cellAspect: cellWidthEmu / cellHeightEmu };
   }
 
   // Fotoğrafın gerçek en-boy oranı ile hedef HÜCRE en-boy oranını
@@ -473,20 +481,21 @@
   // fotoğrafı için bir placeholder oluştur. kullanıcı bu fotoğrafı
   // nerede istiyor ise orada kullansın." Diğer 22 kategorinin aksine
   // ızgara/batch sistemine GİRMEZ — kategori döngüsünden ÖNCE, TEK ve
-  // AYRI bir paragraf (etiket + ortalanmış tek görsel, en fazla 15 cm
-  // genişlik, en-boy oranı KIRPILMADAN korunur — bkz. srcRect=null)
-  // olarak eklenir. Word'de sıradan bir paragraf olduğundan kullanıcı
-  // bu ikili paragrafı seçip belgenin istediği yerine (ör. gerçek kapak
-  // sayfasına) taşıyabilir — konumu BİZ sabitlemiyoruz.
+  // AYRI bir paragraf (etiket + ortalanmış tek görsel, en fazla sayfa
+  // kutusu kadar — 16×21,33 cm, en-boy oranı KIRPILMADAN korunur —
+  // bkz. srcRect=null) olarak eklenir. Word'de sıradan bir paragraf
+  // olduğundan kullanıcı bu ikili paragrafı seçip belgenin istediği
+  // yerine (ör. gerçek kapak sayfasına) taşıyabilir — konumu BİZ
+  // sabitlemiyoruz.
   function computeCoverPhotoEmuSize(pixelSize) {
     const width = pixelSize?.width;
     const height = pixelSize?.height;
-    if (!width || !height) return { cx: MAX_PHOTO_WIDTH_EMU, cy: Math.round((MAX_PHOTO_WIDTH_EMU * 3) / 4) };
+    if (!width || !height) return { cx: PAGE_WIDTH_EMU, cy: Math.round((PAGE_WIDTH_EMU * 3) / 4) };
     const aspect = width / height;
-    let cx = MAX_PHOTO_WIDTH_EMU;
+    let cx = PAGE_WIDTH_EMU;
     let cy = Math.round(cx / aspect);
-    if (cy > MAX_COVER_PHOTO_HEIGHT_EMU) {
-      cy = MAX_COVER_PHOTO_HEIGHT_EMU;
+    if (cy > PAGE_HEIGHT_EMU) {
+      cy = PAGE_HEIGHT_EMU;
       cx = Math.round(cy * aspect);
     }
     return { cx, cy };
@@ -530,41 +539,70 @@
     return { register, getEntries: () => entries, getRelsXml: () => relsXml };
   }
 
-  // Bir sayfalık (columns×rows'a kadar) fotoğraf dizisini satır satır
-  // <w:tbl> ızgarasına gömer — kenarlıksız, ince beyaz hücre boşluklu
-  // (PHOTO_CELL_MARGIN_DXA), her hücre kendi en-boy oranına kırpılmış TEK
-  // görsel içerir. Son sayfanın son satırı eksikse (columns'tan az
-  // fotoğraf kaldıysa) o satır kısa kalır — boş hücre ÜRETİLMEZ.
+  // TEK sayfalık (columns×rows'a kadar) bir fotoğraf ızgarasını <w:tbl>
+  // olarak gömer. 2026-08-14 (5. tur) yeniden tasarımı — kullanıcı: "her
+  // sayfa genişlik 16 yükseklik 21,33 olacak şekilde oturum sağlanmalı
+  // ... alt alta 2 yatay görsel: genişlik 16 uzunluk 10,50 + ara boşluk
+  // 0,33 + genişlik 16 uzunluk 10,50". Görsel hücreleri arasındaki
+  // boşluk artık `w:tcMar` (kenar boşluğu — önceki tur) DEĞİL, tablo
+  // ızgarasına eklenen AYRI, boş, TAM CELL_GAP_CM (0,33 cm) yükseklik/
+  // genişlikte "ara satır/sütun" hücreleridir — bu, her görselin
+  // gerçek boyutunun (cx/cy) hesaplanan hücre boyutuyla BİREBİR eşleşmesini
+  // garantiler (kenar boşluğu + görsel boyutu toplamının hücre payını
+  // AŞIP taşma riski yok). Son sayfanın son satırı eksikse (columns'tan
+  // az fotoğraf kaldıysa) kalan hücreler BOŞ bırakılır.
   function buildPhotoPageTableXml(photos, layoutKey, registrar) {
-    const { columns } = getLayoutGrid(layoutKey);
-    const cellAspect = getLayoutCellAspect(layoutKey);
-    // Her hücre en fazla MAX_PHOTO_WIDTH_DXA (15 cm) genişliğinde olabilir —
-    // çok sütunlu yerleşimlerde (ör. 2 sütun) doğal pay zaten bunun altında
-    // kalır, tek sütunlu yerleşimlerde (dikey tekli/alt alta ikili) devreye
-    // girer. Tablo bu nedenle "8.1" hücresinin tam genişliğini doldurmayabilir
-    // — <w:jc w:val="center"/> ile sayfada ortalanır.
-    const cellWidthDxa = Math.min(Math.floor(PHOTO_TABLE_WIDTH_DXA / columns), MAX_PHOTO_WIDTH_DXA);
-    const cellWidthEmu = cellWidthDxa * 635; // 1 dxa (twip) = 635 EMU
-    const cellHeightEmu = Math.round(cellWidthEmu / cellAspect);
+    const { columns, rows, cellWidthDxa, cellHeightDxa, cellWidthEmu, cellHeightEmu, cellAspect } = computeCellSizeForLayout(layoutKey);
 
-    const rows = [];
-    for (let i = 0; i < photos.length; i += columns) {
-      const rowPhotos = photos.slice(i, i + columns);
-      const cells = rowPhotos.map((photo) => {
-        const { relId, extension } = registrar.register(photo.base64, photo.mimeType);
-        const imageBytes = base64ToBytes(photo.base64);
-        const pixelSize = extension === "jpeg" ? getJpegPixelSize(imageBytes) : null;
-        const srcRect = pixelSize ? computeCoverSrcRect(pixelSize.width, pixelSize.height, cellAspect)
-          : computeCoverSrcRect(photo.width, photo.height, cellAspect);
-        const drawing = buildDrawingXmlCropped(relId, photo.caption || "Rapor fotoğrafı", cellWidthEmu, cellHeightEmu, srcRect);
-        return `<w:tc><w:tcPr><w:tcW w:w="${cellWidthDxa}" w:type="dxa"/><w:vAlign w:val="center"/></w:tcPr><w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r>${drawing}</w:r></w:p></w:tc>`;
-      });
-      rows.push(`<w:tr>${cells.join("")}</w:tr>`);
+    function buildImageCellXml(photo) {
+      if (!photo) return `<w:tc><w:tcPr><w:tcW w:w="${cellWidthDxa}" w:type="dxa"/></w:tcPr><w:p/></w:tc>`;
+      const { relId, extension } = registrar.register(photo.base64, photo.mimeType);
+      const imageBytes = base64ToBytes(photo.base64);
+      const pixelSize = extension === "jpeg" ? getJpegPixelSize(imageBytes) : null;
+      const srcRect = pixelSize ? computeCoverSrcRect(pixelSize.width, pixelSize.height, cellAspect)
+        : computeCoverSrcRect(photo.width, photo.height, cellAspect);
+      const drawing = buildDrawingXmlCropped(relId, photo.caption || "Rapor fotoğrafı", cellWidthEmu, cellHeightEmu, srcRect);
+      return `<w:tc><w:tcPr><w:tcW w:w="${cellWidthDxa}" w:type="dxa"/><w:vAlign w:val="center"/></w:tcPr><w:p><w:pPr><w:jc w:val="center"/><w:spacing w:before="0" w:after="0"/></w:pPr><w:r>${drawing}</w:r></w:p></w:tc>`;
     }
-    const gridCols = Array.from({ length: columns }, () => `<w:gridCol w:w="${cellWidthDxa}"/>`).join("");
-    const cellMar = `<w:tcMar><w:top w:w="${PHOTO_CELL_MARGIN_DXA}" w:type="dxa"/><w:left w:w="${PHOTO_CELL_MARGIN_DXA}" w:type="dxa"/><w:bottom w:w="${PHOTO_CELL_MARGIN_DXA}" w:type="dxa"/><w:right w:w="${PHOTO_CELL_MARGIN_DXA}" w:type="dxa"/></w:tcMar>`;
-    const tableWidthDxa = cellWidthDxa * columns;
-    return `<w:tbl><w:tblPr><w:tblW w:w="${tableWidthDxa}" w:type="dxa"/><w:jc w:val="center"/><w:tblLayout w:type="fixed"/><w:tblBorders><w:top w:val="none"/><w:left w:val="none"/><w:bottom w:val="none"/><w:right w:val="none"/><w:insideH w:val="none"/><w:insideV w:val="none"/></w:tblBorders>${cellMar}</w:tblPr><w:tblGrid>${gridCols}</w:tblGrid>${rows.join("")}</w:tbl><w:p/>`;
+
+    function buildGapCellXml() {
+      return `<w:tc><w:tcPr><w:tcW w:w="${GAP_DXA}" w:type="dxa"/></w:tcPr><w:p/></w:tc>`;
+    }
+
+    const gridColsParts = [];
+    for (let c = 0; c < columns; c += 1) {
+      if (c > 0) gridColsParts.push(`<w:gridCol w:w="${GAP_DXA}"/>`);
+      gridColsParts.push(`<w:gridCol w:w="${cellWidthDxa}"/>`);
+    }
+
+    const trParts = [];
+    for (let r = 0; r < rows; r += 1) {
+      if (r > 0) {
+        // Ara SATIR (0,33 cm, sabit yükseklik, boş) — sütun sayısı kadar
+        // (görsel + varsa ara sütun) hücre gerekiyor ki <w:tblGrid> ile
+        // hücre sayısı eşleşsin.
+        const gapCells = [];
+        for (let c = 0; c < columns; c += 1) {
+          if (c > 0) gapCells.push(buildGapCellXml());
+          gapCells.push(`<w:tc><w:tcPr><w:tcW w:w="${cellWidthDxa}" w:type="dxa"/></w:tcPr><w:p/></w:tc>`);
+        }
+        trParts.push(`<w:tr><w:trPr><w:trHeight w:val="${GAP_DXA}" w:hRule="exact"/></w:trPr>${gapCells.join("")}</w:tr>`);
+      }
+      const cells = [];
+      for (let c = 0; c < columns; c += 1) {
+        if (c > 0) cells.push(buildGapCellXml());
+        cells.push(buildImageCellXml(photos[r * columns + c]));
+      }
+      // hRule="atLeast": satır EN AZ görsel yüksekliği kadar olsun —
+      // "exact" kullanılsaydı paragraf/satır aralığı kaynaklı 1-2 nokta
+      // taşma görseli kırpabilirdi; "atLeast" bu riski taşımadan yine de
+      // hesaplanan (16×21,33 cm kutusuna göre) boyutu hedefler.
+      trParts.push(`<w:tr><w:trPr><w:trHeight w:val="${cellHeightDxa}" w:hRule="atLeast"/></w:trPr>${cells.join("")}</w:tr>`);
+    }
+
+    const tableWidthDxa = cellWidthDxa * columns + GAP_DXA * (columns - 1);
+    const tblCellMarZero = `<w:tblCellMar><w:top w:w="0" w:type="dxa"/><w:left w:w="0" w:type="dxa"/><w:bottom w:w="0" w:type="dxa"/><w:right w:w="0" w:type="dxa"/></w:tblCellMar>`;
+    return `<w:tbl><w:tblPr><w:tblW w:w="${tableWidthDxa}" w:type="dxa"/><w:jc w:val="center"/><w:tblLayout w:type="fixed"/><w:tblBorders><w:top w:val="none"/><w:left w:val="none"/><w:bottom w:val="none"/><w:right w:val="none"/><w:insideH w:val="none"/><w:insideV w:val="none"/></w:tblBorders>${tblCellMarZero}</w:tblPr><w:tblGrid>${gridColsParts.join("")}</w:tblGrid>${trParts.join("")}</w:tbl><w:p/>`;
   }
 
   const PAGE_BREAK_PARAGRAPH_XML = `<w:p><w:r><w:br w:type="page"/></w:r></w:p>`;
@@ -611,20 +649,20 @@
         const batches = Array.isArray(category?.batches) ? category.batches : [];
         const validBatches = batches.filter((b) => Array.isArray(b?.photos) && b.photos.length);
         if (!validBatches.length) return;
-        // Kullanici talebi (2026-08-13, 4. tur): "başlıklar sayfa
-        // sonundan başlamamalı her bir başlık yeni sayfadan başlamalı" —
-        // ILK kategori (ve kapak fotoğrafından sonraki ilk kategori)
-        // DAHIL HER banner kendi sayfasında baslar, oncesinde ne olursa
-        // olsun (önceki içerik ne kadar kısa/uzun olursa olsun).
-        parts.push(PAGE_BREAK_PARAGRAPH_XML);
-        parts.push(buildCategoryBannerXml(category.label));
-        validBatches.forEach((batch, batchIndex) => {
+        // Kullanici talebi (2026-08-14, 5. tur): "gerekirse birden fazla
+        // sayfaya sığması gerekiyor ise örnek altı adet iç hacim görseli
+        // eklendi alt alta 2 yatay görsel istendi ise 3 sayfada da İç
+        // Mekan Başlığı olacak. Hiç bir başlık sayfa ortasından
+        // sonundan başlamayacak" — banner artık kategori başına BİR KEZ
+        // değil, o kategorinin ürettiği HER SAYFADA TEKRARLANIR: her
+        // page-table'dan hemen ÖNCE kendi sayfa sonu + kendi banner'ı var.
+        validBatches.forEach((batch) => {
           const { columns, rows } = getLayoutGrid(batch.layoutKey);
           const perPage = Math.max(1, columns * rows);
-          if (batchIndex > 0) parts.push(PAGE_BREAK_PARAGRAPH_XML);
           for (let pageStart = 0; pageStart < batch.photos.length; pageStart += perPage) {
-            if (pageStart > 0) parts.push(PAGE_BREAK_PARAGRAPH_XML);
             const pagePhotos = batch.photos.slice(pageStart, pageStart + perPage);
+            parts.push(PAGE_BREAK_PARAGRAPH_XML);
+            parts.push(buildCategoryBannerXml(category.label));
             parts.push(buildPhotoPageTableXml(pagePhotos, batch.layoutKey, registrar));
           }
         });
