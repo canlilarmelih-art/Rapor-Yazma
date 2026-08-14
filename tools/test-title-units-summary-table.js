@@ -151,6 +151,10 @@ function unit(fields, ownerRows) {
 }
 
 // --- 2) "aynı ise gizlensin" kuralı + "diğer bölümler her zaman var" -----
+// NOT (2026-08-15): fixture'da blockNo/parcelNo ARTIK 3 taşınmazda da
+// AYNI (4834/1) — çünkü Arsa Payı/Payda/Hissesine Düşen Arsa Payı SADECE
+// aynı ada/parselde gösterilir (bkz. senaryo 2d). "Farklı ise göster"
+// mekaniğini test etmek için bu kez Mevkii (locationName) farklılaştırıldı.
 {
   const shared = { titleCity: "Bursa", titleDistrict: "Nilüfer", titleNeighborhood: "Özlüce", locationName: "-", sheetNo: "F21", blockNo: "4834", parcelNo: "1", landArea: "1200", mainPropertyQuality: "Arsa" };
   fns.setState({
@@ -159,27 +163,33 @@ function unit(fields, ownerRows) {
     tables: { title: [{ c0: "Ahmet Yılmaz", c1: "1/2", c2: "Satın Alma", c3: "01.01.2020", c4: "1234" }] },
     titleUnits: [
       { fields: { ...shared, titlePropertyId: "123457", titleBlockName: "A", titleFloor: "4", unitNo: "6", titleQuality: "Daire", share: "60", denominator: "1000", registryVolume: "12", registryPage: "35" }, tables: { title: [{ c0: "Ayşe Yılmaz", c1: "1/2" }] } },
-      { fields: { ...shared, parcelNo: "2", titlePropertyId: "123458", titleBlockName: "B", titleFloor: "1", unitNo: "1", titleQuality: "Dükkan", share: "40", denominator: "1000", registryVolume: "13", registryPage: "1" }, tables: { title: [] } },
+      { fields: { ...shared, locationName: "Sahil Kesimi", titlePropertyId: "123458", titleBlockName: "B", titleFloor: "1", unitNo: "1", titleQuality: "Dükkan", share: "40", denominator: "1000", registryVolume: "13", registryPage: "1" }, tables: { title: [] } },
     ],
   });
   const data = fns.buildTitleUnitsSummaryTableData();
   assert.ok(data, "3 taşınmazlı raporda tablo verisi dönmeli.");
   assert.equal(data.rows.length, 3, "3 satır (3 taşınmaz) bekleniyordu.");
-  // İl/İlçe/Mahalle/Mevkii/Pafta/Ana Taşınmaz Niteliği/Yüzölçümü AYNI —
-  // gizlenmeli; yalnızca Parsel FARKLI (3. taşınmazda "2") — o KALMALI.
-  assert.equal(data.sharedColumnCount, 1, `Yalnızca "Parsel" farklı olduğundan 1 paylaşılan sütun bekleniyordu, bulunan: ${data.sharedColumnCount}`);
-  assert.ok(data.headers.includes("Parsel"), "\"Parsel\" (farklı olan) sütunu bulunmalı.");
-  assert.ok(!data.headers.includes("İl"), "\"İl\" (aynı olan) sütunu GİZLENMELİYDİ.");
-  assert.ok(!data.headers.includes("Ana Taşınmaz Niteliği"), "\"Ana Taşınmaz Niteliği\" (aynı olan) sütunu GİZLENMELİYDİ.");
-  // "Diğer bölümler" HER ZAMAN var — kullanıcı "Taşınmaz Kimlik No arsa
-  // pay payda cilt sayfa eksik" dedi, bu 5 alan da eklendi. "Sıra No"
-  // ve "Hissesine Düşen Arsa Payı" da HER ZAMAN gösterilir.
-  ["Sıra No", "Taşınmaz Kimlik No", "Blok", "Kat", "Bağımsız Bölüm No", "Bağımsız Bölüm Niteliği", "Arsa Payı", "Arsa Payda", "Hissesine Düşen Arsa Payı", "Malik(ler)", "Hisse Payı", "Edinme Sebebi", "Tapu Tarihi", "Yevmiye No", "Cilt", "Sayfa"].forEach((col) => {
+  // Aynı ada/parselde olduğundan İl/İlçe/Mahalle/Pafta ZORLA gizli; Ada/
+  // Parsel/Yüzölçümü de (equality) AYNI olduğundan gizli. Yalnızca Mevkii
+  // (3. taşınmazda "Sahil Kesimi") FARKLI — o KALMALI.
+  assert.equal(data.sharedColumnCount, 1, `Yalnızca "Mevkii" farklı olduğundan 1 paylaşılan sütun bekleniyordu, bulunan: ${data.sharedColumnCount}`);
+  assert.ok(data.headers.includes("Mevkii"), "\"Mevkii\" (farklı olan) sütunu bulunmalı.");
+  assert.ok(!data.headers.includes("İl"), "\"İl\" (aynı ada/parsel) sütunu GİZLENMELİYDİ.");
+  // "Diğer bölümler" HER ZAMAN var (Arsa Payı/Payda/Hissesine Düşen Arsa
+  // Payı DAHİL — TÜM taşınmazlar AYNI ada/parselde olduğundan; farklı
+  // ada/parselde bu üçü kaldırılır, bkz. senaryo 2d). "Ana Taşınmaz
+  // Niteliği" artık ayrı, HER ZAMAN gösterilen sabit bir sütun (aynı-ise-
+  // gizle listesinden 2026-08-15'te ÇIKARILDI — kullanıcı talebi "Ana
+  // taşınmaz niteliği bölümünü ekle").
+  ["Sıra No", "Taşınmaz Kimlik No", "Blok", "Kat", "Bağımsız Bölüm No", "Bağımsız Bölüm Niteliği", "Ana Taşınmaz Niteliği", "Arsa Payı", "Arsa Payda", "Hissesine Düşen Arsa Payı", "Malik(ler)", "Hisse Payı", "Edinme Sebebi", "Tapu Tarihi", "Yevmiye No", "Cilt", "Sayfa"].forEach((col) => {
     assert.ok(data.headers.includes(col), `"${col}" sütunu HER ZAMAN gösterilmeliydi.`);
   });
   // "en sola Sıra No sütunu ekle 1 den başla saymaya" — EN SOL sütun,
-  // 1'den başlayan sıra numarası.
+  // 1'den başlayan sıra numarası. "taşınmaz kimlik no sıra nodan sonra
+  // gelsin" (2026-08-15) — Taşınmaz Kimlik No HEMEN ardından gelmeli
+  // (paylaşımlı alanlardan/Blok'tan bile ÖNCE).
   assert.equal(data.headers[0], "Sıra No", "\"Sıra No\" EN SOL sütun olmalı.");
+  assert.equal(data.headers[1], "Taşınmaz Kimlik No", "\"Taşınmaz Kimlik No\" Sıra No'nun HEMEN ardından gelmeli.");
   assert.deepEqual(data.rows.map((row) => row[0]), [1, 2, 3], "Sıra No 1'den başlayıp sırayla artmalı.");
   // "her bir taşınmazın 'Hissesine Düşen Arsa Payı' bölümünü hesapla.
   // (Yüzölçümü) / Arsa Payda X Arsa Pay" — 1. taşınmaz: 1200/1000*50 = 60.
@@ -245,6 +255,48 @@ function unit(fields, ownerRows) {
   assert.ok(data.headers.includes("Mahalle"), "Farkli ada/parselde, Mahalle de farkliysa 'Mahalle' sutunu GOSTERILMELIYDI.");
   assert.ok(data.headers.includes("Pafta"), "Farkli ada/parselde, Pafta de farkliysa 'Pafta' sutunu GOSTERILMELIYDI.");
   console.log("Il/Ilce/Mahalle/Pafta: farkli ada/parselde kendi metni de farkliysa gosterilme kurali testi tamam.");
+}
+
+// --- 2d) Arsa Payı/Payda/Hissesine Düşen Arsa Payı: FARKLI ada/parselde --
+// KALDIRILIR (veri DOLU olsa bile), AYNI ada/parselde KORUNUR. Kullanıcı
+// talebi: "farklı ada parsellerden oluşan çoklu taleplerde ARSA PAYI
+// ARSA PAYDA KALDIR" — Arsa Payı/Payda TEK bir ORTAK parselin toplam
+// alanındaki payını ifade eder; taşınmazlar FARKLI parsellerdeyse her
+// satırın payı/paydası KENDİ (birbirinden bağımsız) parseline aittir —
+// yan yana KIYASLANAMAZ, gösterilmesi YANILTICI olur. Hissesine Düşen
+// Arsa Payı de (bu ikisinden HESAPLANDIĞI için) AYNI gerekçeyle kalkar.
+{
+  const base = { titleCity: "Bursa", titleDistrict: "Nilüfer", titleNeighborhood: "Özlüce", locationName: "-", sheetNo: "-", landArea: "1200", mainPropertyQuality: "Arsa" };
+  // FARKLI ada/parsel (100/1 vs 200/9) — share/denominator DOLU olmasına
+  // rağmen (bu, salt "boş sütun kaldırılır" kuralından AYRI, ÖZEL bir
+  // kural olduğunu kanıtlar) üç sütun de KALDIRILMALI.
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: { ...base, blockNo: "100", parcelNo: "1", share: "1", denominator: "2" },
+    tables: { title: [] },
+    titleUnits: [
+      { fields: { ...base, blockNo: "200", parcelNo: "9", share: "1", denominator: "3" }, tables: { title: [] } },
+    ],
+  });
+  const diffParcelData = fns.buildTitleUnitsSummaryTableData();
+  ["Arsa Payı", "Arsa Payda", "Hissesine Düşen Arsa Payı"].forEach((col) => {
+    assert.ok(!diffParcelData.headers.includes(col), `Farkli ada/parselde "${col}" sutunu (veri DOLU olsa bile) KALDIRILMALIYDI, bulunan basliklar: ${diffParcelData.headers.join(", ")}`);
+  });
+
+  // AYNI ada/parsel (100/1) — üç sütun de KALMALI.
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: { ...base, blockNo: "100", parcelNo: "1", share: "1", denominator: "2" },
+    tables: { title: [] },
+    titleUnits: [
+      { fields: { ...base, blockNo: "100", parcelNo: "1", share: "1", denominator: "3" }, tables: { title: [] } },
+    ],
+  });
+  const sameParcelData = fns.buildTitleUnitsSummaryTableData();
+  ["Arsa Payı", "Arsa Payda", "Hissesine Düşen Arsa Payı"].forEach((col) => {
+    assert.ok(sameParcelData.headers.includes(col), `Ayni ada/parselde "${col}" sutunu GOSTERILMELIYDI, bulunan basliklar: ${sameParcelData.headers.join(", ")}`);
+  });
+  console.log("Arsa Payi/Payda/Hissesine Dusen Arsa Payi: farkli ada/parselde kaldirilma, ayni ada/parselde korunma kurali testi tamam.");
 }
 
 // --- 3) Tekil raporda (1 taşınmaz) tablo üretilmemeli ---------------------
@@ -325,16 +377,19 @@ function unit(fields, ownerRows) {
   console.log("buildTitleUnitsSummaryWordTableHtml gercek HTML uretimi (dinamik genislik + ortalama + 2 satirli baslik + daima BUYUK harf) testi tamam.");
 }
 
-// --- 17) Tum tasinmazlarda BOS olan sutun TAMAMEN kaldirilir --------------
+// --- 17) Farkli parselli tarla raporunda: BOS sutun kurali VE "farkli ----
+// ada/parselde Arsa Payi/Payda" kurali BIRLIKTE uygulanir ------------------
 // Kullanici talebi: "eğer sistemde hücrede veri yoksa. örnek tarla raporu
-// bb no kat bölümler boş o zaman tabloda bu sütunlar gözükmemeli" — tarla/
-// arazi raporlarinda Blok/Kat/Bagimsiz Bolum No gibi alanlar TUM
-// tasinmazlarda dolmaz (arazinin kati/bagimsiz bolumu yoktur); bu durumda
-// sutun "diger bolumler HER ZAMAN gosterilir" kuralina RAGMEN kaldirilmali.
-// Dolu kalan sutunlar (Tasinmaz Kimlik No, Bagimsiz Bolum Niteligi, Arsa
-// Payi/Payda, Hissesine Dusen Arsa Payi, Malik(ler), Cilt, Sayfa) ETKİLENMEMELİ.
+// bb no kat bölümler boş o zaman tabloda bu sütunlar gözükmemeli" VE
+// "farklı ada parsellerden oluşan çoklu taleplerde ARSA PAYI ARSA PAYDA
+// KALDIR" — gerçekci bir tarla ornegi: HER tarla parcasi genelde AYRI bir
+// parseldir (bu fixture'da 12 ve 13). Blok/Kat/Bagimsiz Bolum No hepsi
+// BOS (arazinin karsiligi yok) → kaldirilir (bos-sutun kurali, 0.0.451).
+// Arsa Payi/Payda DOLU (share/denominator "1"/"1") OLMASINA RAGMEN farkli
+// parsel oldugundan kaldirilir (senaryo 2d'deki kuralin bagimsiz bir
+// dogrulamasi — bu ikisi AYNI ANDA gecerli olabiliyor).
 {
-  const shared = { titleCity: "Konya", titleDistrict: "Ereğli", titleNeighborhood: "-", locationName: "-", sheetNo: "-", blockNo: "500", parcelNo: "12", landArea: "8000", mainPropertyQuality: "Tarla" };
+  const shared = { titleCity: "Konya", titleDistrict: "Ereğli", titleNeighborhood: "-", locationName: "-", sheetNo: "-", blockNo: "500", landArea: "8000", mainPropertyQuality: "Tarla" };
   fns.setState({
     activeTitleUnitIndex: 0,
     // Blok/Kat/Bagimsiz Bolum No hepsi bos ("") — tarla parcasinda
@@ -348,16 +403,16 @@ function unit(fields, ownerRows) {
   });
   const data = fns.buildTitleUnitsSummaryTableData();
   assert.ok(data, "2 tasinmazli tarla raporunda tablo verisi donmeli.");
-  ["Blok", "Kat", "Bağımsız Bölüm No"].forEach((col) => {
-    assert.ok(!data.headers.includes(col), `Tum tasinmazlarda BOS olan "${col}" sutunu KALDIRILMALIYDI, bulunan basliklar: ${data.headers.join(", ")}`);
+  ["Blok", "Kat", "Bağımsız Bölüm No", "Arsa Payı", "Arsa Payda", "Hissesine Düşen Arsa Payı"].forEach((col) => {
+    assert.ok(!data.headers.includes(col), `Bu sutun (bos veya farkli-parsel kurali geregi) KALDIRILMALIYDI: "${col}", bulunan basliklar: ${data.headers.join(", ")}`);
   });
-  ["Sıra No", "Taşınmaz Kimlik No", "Bağımsız Bölüm Niteliği", "Arsa Payı", "Arsa Payda", "Hissesine Düşen Arsa Payı", "Malik(ler)", "Edinme Sebebi", "Cilt", "Sayfa"].forEach((col) => {
+  ["Sıra No", "Taşınmaz Kimlik No", "Bağımsız Bölüm Niteliği", "Ana Taşınmaz Niteliği", "Malik(ler)", "Edinme Sebebi", "Cilt", "Sayfa"].forEach((col) => {
     assert.ok(data.headers.includes(col), `Dolu olan "${col}" sutunu KORUNMALIYDI, bulunan basliklar: ${data.headers.join(", ")}`);
   });
   // "Parsel" farkli (12 vs 13) oldugundan paylasimli sutun olarak kalmali.
   assert.ok(data.headers.includes("Parsel"), "\"Parsel\" (farkli olan paylasimli alan) sutunu kalmali.");
   assert.equal(data.sharedColumnCount, 1, `sharedColumnCount filtreden SONRA da dogru sayilmali (yalnizca Parsel), bulunan: ${data.sharedColumnCount}`);
-  console.log("Tum tasinmazlarda bos olan sutunun (tarla raporu ornegi) kaldirilma testi tamam.");
+  console.log("Farkli parselli tarla ornegi: bos sutun + farkli-ada-parselde Arsa Payi/Payda kaldirma kurali birlikte testi tamam.");
 }
 
 // --- 6) template-engine.js'te {{TASINMAZLARTAPUTABLOSU}} kayitli mi -------

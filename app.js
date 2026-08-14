@@ -16384,10 +16384,14 @@ function buildAllTitleUnitsForSummaryTable() {
   }));
 }
 
-// "İl ilçe mahalle mevkii pafta ada parsel yüzölçümü ana taşınmaz
-// niteliği" — kullanıcının AYNI ise gizlenmesini istediği 9 alan, TAM
-// bu sırayla. Anahtarlar Tapu bölümünün KENDİ alanları (adres bölümüyle
-// KARIŞTIRILMASIN — bkz. CLAUDE.md 0.0.342 "_BUYUK/_DUZGUN" notu).
+// "İl ilçe mahalle mevkii pafta ada parsel yüzölçümü" — kullanıcının
+// AYNI ise gizlenmesini istediği alanlar, TAM bu sırayla. Anahtarlar
+// Tapu bölümünün KENDİ alanları (adres bölümüyle KARIŞTIRILMASIN —
+// bkz. CLAUDE.md 0.0.342 "_BUYUK/_DUZGUN" notu). NOT: "Ana Taşınmaz
+// Niteliği" (mainPropertyQuality) BURADAN 2026-08-15'te ÇIKARILDI —
+// kullanıcı talebi "Ana taşınmaz niteliği bölümünü ekle" ile artık
+// buildTitleUnitsSummaryTableData()'da HER ZAMAN gösterilen (aynı ise
+// gizlenmeyen) sabit bir sütun oldu, bkz. o fonksiyondaki yorum.
 const TITLE_UNITS_TABLE_SHARED_FIELD_DEFS = [
   { key: "titleCity", label: "İl" },
   { key: "titleDistrict", label: "İlçe" },
@@ -16397,7 +16401,6 @@ const TITLE_UNITS_TABLE_SHARED_FIELD_DEFS = [
   { key: "blockNo", label: "Ada" },
   { key: "parcelNo", label: "Parsel" },
   { key: "landArea", label: "Yüzölçümü" },
-  { key: "mainPropertyQuality", label: "Ana Taşınmaz Niteliği" },
 ];
 
 // units[].tables.title satırlarındaki (bkz. applyTakbisOwnersToTable:
@@ -16447,16 +16450,40 @@ function buildTitleUnitsSummaryTableData() {
   });
 
   // Kullanıcı talebi (2026-08-14, devam): "Taşınmaz Kimlik No arsa pay
-  // payda cilt sayfa eksik" — bu 5 alan "aynı ise gizlensin" listesinde
+  // payda cilt sayfa eksik" — bu alanlar "aynı ise gizlensin" listesinde
   // (TITLE_UNITS_TABLE_SHARED_FIELD_DEFS) YOK, dolayısıyla "diğer
-  // bölümler" gibi HER ZAMAN gösterilen sütunlara ekleniyor. "en sola
-  // Sıra No sütunu ekle 1 den başla saymaya" — en sol sütun HER ZAMAN
-  // 1'den başlayan satır numarası.
+  // bölümler" gibi (koşullu Arsa Payı/Payda/Hissesine Düşen Arsa Payı
+  // HARİÇ) HER ZAMAN gösterilen sütunlara ekleniyor. "en sola Sıra No
+  // sütunu ekle 1 den başla saymaya" — en sol sütun HER ZAMAN 1'den
+  // başlayan satır numarası. "taşınmaz kimlik no sıra nodan sonra
+  // gelsin" (2026-08-15) — Taşınmaz Kimlik No artık Sıra No'nun HEMEN
+  // ardından, paylaşımlı alanlardan (İl/İlçe/Parsel vb.) ÖNCE geliyor.
+  //
+  // "farklı ada parsellerden oluşan çoklu taleplerde ARSA PAYI ARSA
+  // PAYDA KALDIR" (2026-08-15) — Arsa Payı/Payda, taşınmazların TEK bir
+  // ORTAK parselin (aynı ada/parsel) toplam alanındaki payını ifade
+  // eder (ör. aynı binadaki bağımsız bölümler). Taşınmazlar FARKLI
+  // parsellerdeyse her satırın payı/paydası KENDİ (birbirinden bağımsız)
+  // parseline aittir — yan yana göstermek YANILTICI olur (kıyaslanamaz
+  // değerler aynı sütunda). Bu yüzden bu üç sütun (Arsa Payı, Arsa
+  // Payda VE bunlardan hesaplanan Hissesine Düşen Arsa Payı — aynı
+  // gerekçeyle) yalnızca TÜM taşınmazlar AYNI ada/parselde
+  // (allSameAdaParsel) İSE gösterilir.
+  //
+  // "Ana taşınmaz niteliği bölümünü ekle" (2026-08-15) — mainPropertyQuality
+  // artık TITLE_UNITS_TABLE_SHARED_FIELD_DEFS'te DEĞİL (bkz. o sabitin
+  // yorumu); "Bağımsız Bölüm Niteliği" (bağımsız bölümün KENDİ niteliği,
+  // ör. Daire/Dükkan) gibi HER ZAMAN gösterilen sabit bir sütun oldu —
+  // farklı parsellerde bu alan ayrıca ÖNEMLİDİR (ör. biri Tarla, biri
+  // Arsa olabilir) ve yalnızca "aynı metin" diye kaybolmamalı.
+  const showShareColumns = allSameAdaParsel;
   const headers = [
     "Sıra No",
+    "Taşınmaz Kimlik No",
     ...sharedFieldsToShow.map((def) => def.label),
-    "Taşınmaz Kimlik No", "Blok", "Kat", "Bağımsız Bölüm No", "Bağımsız Bölüm Niteliği",
-    "Arsa Payı", "Arsa Payda", "Hissesine Düşen Arsa Payı", "Malik(ler)", "Hisse Payı",
+    "Blok", "Kat", "Bağımsız Bölüm No", "Bağımsız Bölüm Niteliği", "Ana Taşınmaz Niteliği",
+    ...(showShareColumns ? ["Arsa Payı", "Arsa Payda", "Hissesine Düşen Arsa Payı"] : []),
+    "Malik(ler)", "Hisse Payı",
     "Edinme Sebebi", "Tapu Tarihi", "Yevmiye No", "Cilt", "Sayfa",
   ];
 
@@ -16466,15 +16493,18 @@ function buildTitleUnitsSummaryTableData() {
       .filter((row) => String(row?.c0 || "").trim());
     return [
       index + 1,
-      ...sharedFieldsToShow.map((def) => String(fields[def.key] || "").trim() || "-"),
       String(fields.titlePropertyId || "").trim() || "-",
+      ...sharedFieldsToShow.map((def) => String(fields[def.key] || "").trim() || "-"),
       String(fields.titleBlockName || "").trim() || "-",
       String(fields.titleFloor || "").trim() || "-",
       String(fields.unitNo || "").trim() || "-",
       String(fields.titleQuality || "").trim() || "-",
-      String(fields.share || "").trim() || "-",
-      String(fields.denominator || "").trim() || "-",
-      computeTitleUnitShareOfLandArea(fields),
+      String(fields.mainPropertyQuality || "").trim() || "-",
+      ...(showShareColumns ? [
+        String(fields.share || "").trim() || "-",
+        String(fields.denominator || "").trim() || "-",
+        computeTitleUnitShareOfLandArea(fields),
+      ] : []),
       joinTitleUnitOwnerColumn(ownerRows, (r) => r.c0),
       joinTitleUnitOwnerColumn(ownerRows, (r) => r.c1),
       joinTitleUnitOwnerColumn(ownerRows, (r) => r.c2),
@@ -16501,10 +16531,12 @@ function buildTitleUnitsSummaryTableData() {
   ));
   const filteredHeaders = headers.filter((_, columnIndex) => columnHasData[columnIndex]);
   const filteredRows = rows.map((row) => row.filter((_, columnIndex) => columnHasData[columnIndex]));
-  // sharedFieldsToShow sütunları headers'ta index 1..sharedFieldsToShow.length
-  // aralığında; sharedColumnCount de bu filtreden SONRA gerçekten kalan
-  // sayıyı yansıtmalı (aksi halde tüketiciler yanlış bölme noktası kullanır).
-  const survivingSharedColumnCount = columnHasData.slice(1, 1 + sharedFieldsToShow.length).filter(Boolean).length;
+  // sharedFieldsToShow sütunları headers'ta index 2..2+sharedFieldsToShow.length
+  // aralığında (0=Sıra No, 1=Taşınmaz Kimlik No — "sıra nodan sonra
+  // gelsin" değişikliğiyle kaydı, bkz. yukarıdaki headers dizisi);
+  // sharedColumnCount de bu filtreden SONRA gerçekten kalan sayıyı
+  // yansıtmalı (aksi halde tüketiciler yanlış bölme noktası kullanır).
+  const survivingSharedColumnCount = columnHasData.slice(2, 2 + sharedFieldsToShow.length).filter(Boolean).length;
 
   return { headers: filteredHeaders, rows: filteredRows, sharedColumnCount: survivingSharedColumnCount };
 }

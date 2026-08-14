@@ -9886,6 +9886,22 @@ gerekmedi, testle (bkz. aşağıda) tekrar doğrulandı.
   zincirle yeşil.
 - Cache-buster: `app.js?v=20260814-1745`.
 
+## 0.0.453 - 2026-08-15 - Farklı parsellerde Arsa Payı/Payda kaldırılır, Kimlik No Sıra No'dan sonra, Ana Taşınmaz Niteliği her zaman gösterilir
+
+Kullanıcı: "farklı ada parsellerden oluşan çoklu taleplerde ARSA PAYI ARSA PAYDA KALDIR. tAŞINMAZ kimlik no sır nodan sonra gelsin Ana taşınmaz niteliği bölümünü ekle" — üç ayrı değişiklik:
+
+1. **Arsa Payı/Payda (ve bunlardan hesaplanan Hissesine Düşen Arsa Payı) artık yalnızca TÜM taşınmazlar AYNI ada/parselde ise gösteriliyor.** Gerekçe: bu alanlar TEK bir ORTAK parselin toplam alanındaki payı ifade eder (ör. aynı binadaki bağımsız bölümler); taşınmazlar FARKLI parsellerdeyse her satırın payı/paydası KENDİ (bağımsız) parseline aittir — yan yana KIYASLANAMAZ, gösterilmesi YANILTICI olurdu. `buildTitleUnitsSummaryTableData()`'da (`app.js`) yeni `showShareColumns = allSameAdaParsel` koşulu ile bu 3 sütun artık koşullu (spread operatörle) ekleniyor. Bu, önceki (0.0.451) "tüm taşınmazlarda boş olan sütun kaldırılır" filtresinden AYRI, ÖZEL bir kural — veri DOLU olsa bile farklı parselde kalkıyor.
+2. **"Taşınmaz Kimlik No" artık "Sıra No"nun HEMEN ardından geliyor** — daha önce paylaşımlı alanlardan (İl/İlçe/Parsel vb.) SONRA geliyordu, şimdi ÖNCE.
+3. **"Ana Taşınmaz Niteliği" artık HER ZAMAN gösteriliyor** — `TITLE_UNITS_TABLE_SHARED_FIELD_DEFS`'ten (aynı-ise-gizle listesi) ÇIKARILDI, "Bağımsız Bölüm Niteliği" gibi sabit bir sütun oldu. Gerekçe: farklı parsellerde bu alan özellikle önemlidir (ör. biri Tarla, biri Arsa olabilir) ve yalnızca metinleri tesadüfen aynı diye kaybolmamalı.
+
+`sharedColumnCount` hesaplaması, "Taşınmaz Kimlik No"nun artık paylaşımlı alanlardan ÖNCE gelmesine göre (index 1 → 2 kaymasıyla) güncellendi.
+
+`tools/test-title-units-summary-table.js`: senaryo 2 (aynı ada/parsel kullanacak şekilde yeniden kuruldu, "farklı ise göster" mekaniği artık Mevkii ile test ediliyor), yeni senaryo 2d (farklı ada/parselde Arsa Payı/Payda/Hissesine Düşen Arsa Payı — veri dolu olsa bile — kaldırılıyor, aynı ada/parselde korunuyor), senaryo 17 (tarla örneği) güncellendi — artık HEM boş-sütun kuralını HEM farklı-parsel kuralını BİRLİKTE doğruluyor.
+
+Canlı tarayıcıda doğrulandı: gerçek state geçici olarak (autosave/render çağırmadan) hem farklı-parsel hem aynı-parsel senaryolarıyla değiştirilip fonksiyon doğrudan çağrıldı, beklenen sütun listeleri elde edildi, state aynen geri yüklendi — gerçek rapora dokunulmadı.
+
+`npm run verify` tamamı yeşil. Cache-buster: `app.js?v=20260815-0205`.
+
 ## 0.0.452 - 2026-08-15 - Taşınmazlar Tapu Özeti: tüm harfler daima büyük
 
 - Kullanıcı: "sistemde harfler küçükte olsa büyükte olsa tabloda tüm harfler daima büyük olacak" — sistemde kayıtlı veri (malik adı, edinme sebebi, taşınmaz niteliği, İl/İlçe vb.) hangi büyük/küçük harf karışımıyla girilmiş olursa olsun, tabloda HER ZAMAN Türkçe büyük harfle (İ/ı dahil) görünmeli.
