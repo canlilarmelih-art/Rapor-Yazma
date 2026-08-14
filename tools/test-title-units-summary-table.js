@@ -144,11 +144,11 @@ function unit(fields, ownerRows) {
   const shared = { titleCity: "Bursa", titleDistrict: "Nilüfer", titleNeighborhood: "Özlüce", locationName: "-", sheetNo: "F21", blockNo: "4834", parcelNo: "1", landArea: "1200", mainPropertyQuality: "Arsa" };
   fns.setState({
     activeTitleUnitIndex: 0,
-    fields: { ...shared, titleBlockName: "A", titleFloor: "3", unitNo: "5", titleQuality: "Daire" },
+    fields: { ...shared, titlePropertyId: "123456", titleBlockName: "A", titleFloor: "3", unitNo: "5", titleQuality: "Daire", share: "50", denominator: "1000", registryVolume: "12", registryPage: "34" },
     tables: { title: [{ c0: "Ahmet Yılmaz", c1: "1/2", c2: "Satın Alma", c3: "01.01.2020", c4: "1234" }] },
     titleUnits: [
-      { fields: { ...shared, titleBlockName: "A", titleFloor: "4", unitNo: "6", titleQuality: "Daire" }, tables: { title: [{ c0: "Ayşe Yılmaz", c1: "1/2" }] } },
-      { fields: { ...shared, parcelNo: "2", titleBlockName: "B", titleFloor: "1", unitNo: "1", titleQuality: "Dükkan" }, tables: { title: [] } },
+      { fields: { ...shared, titlePropertyId: "123457", titleBlockName: "A", titleFloor: "4", unitNo: "6", titleQuality: "Daire", share: "60", denominator: "1000", registryVolume: "12", registryPage: "35" }, tables: { title: [{ c0: "Ayşe Yılmaz", c1: "1/2" }] } },
+      { fields: { ...shared, parcelNo: "2", titlePropertyId: "123458", titleBlockName: "B", titleFloor: "1", unitNo: "1", titleQuality: "Dükkan", share: "40", denominator: "1000", registryVolume: "13", registryPage: "1" }, tables: { title: [] } },
     ],
   });
   const data = fns.buildTitleUnitsSummaryTableData();
@@ -160,11 +160,19 @@ function unit(fields, ownerRows) {
   assert.ok(data.headers.includes("Parsel"), "\"Parsel\" (farklı olan) sütunu bulunmalı.");
   assert.ok(!data.headers.includes("İl"), "\"İl\" (aynı olan) sütunu GİZLENMELİYDİ.");
   assert.ok(!data.headers.includes("Ana Taşınmaz Niteliği"), "\"Ana Taşınmaz Niteliği\" (aynı olan) sütunu GİZLENMELİYDİ.");
-  // "Diğer bölümler" HER ZAMAN var.
-  ["Blok", "Kat", "Bağımsız Bölüm No", "Bağımsız Bölüm Niteliği", "Malik(ler)", "Hisse Payı", "Edinme Sebebi", "Tapu Tarihi", "Yevmiye No"].forEach((col) => {
+  // "Diğer bölümler" HER ZAMAN var — kullanıcı "Taşınmaz Kimlik No arsa
+  // pay payda cilt sayfa eksik" dedi, bu 5 alan da eklendi.
+  ["Taşınmaz Kimlik No", "Blok", "Kat", "Bağımsız Bölüm No", "Bağımsız Bölüm Niteliği", "Arsa Payı", "Arsa Payda", "Malik(ler)", "Hisse Payı", "Edinme Sebebi", "Tapu Tarihi", "Yevmiye No", "Cilt", "Sayfa"].forEach((col) => {
     assert.ok(data.headers.includes(col), `"${col}" sütunu HER ZAMAN gösterilmeliydi.`);
   });
-  console.log("\"Ayni ise gizlensin\" + \"diger bolumler her zaman var\" kurali testi tamam.");
+  const propertyIdColumnIndex = data.headers.indexOf("Taşınmaz Kimlik No");
+  assert.equal(data.rows[0][propertyIdColumnIndex], "123456", "1. taşınmazın Taşınmaz Kimlik No'su doğru sütunda olmalı.");
+  assert.equal(data.rows[1][propertyIdColumnIndex], "123457", "2. taşınmazın Taşınmaz Kimlik No'su doğru sütunda olmalı.");
+  const shareColumnIndex = data.headers.indexOf("Arsa Payı");
+  assert.equal(data.rows[0][shareColumnIndex], "50", "1. taşınmazın Arsa Payı doğru sütunda olmalı.");
+  const registryPageColumnIndex = data.headers.indexOf("Sayfa");
+  assert.equal(data.rows[2][registryPageColumnIndex], "1", "3. taşınmazın Sayfa değeri doğru sütunda olmalı.");
+  console.log("\"Ayni ise gizlensin\" + \"diger bolumler her zaman var\" (Kimlik No/Arsa Payi/Payda/Cilt/Sayfa dahil) kurali testi tamam.");
 }
 
 // --- 3) Tekil raporda (1 taşınmaz) tablo üretilmemeli ---------------------

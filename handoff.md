@@ -9858,3 +9858,30 @@ farklı (1 / 99) yapılınca "Parsel" sütunu DOĞRU şekilde belirdi, diğer
   `package.json`'ın `test` zincirine eklendi. `npm run verify` tam
   zincirle yeşil.
 - Cache-buster: `app.js?v=20260814-1700`, `styles.css?v=20260814-1700`.
+
+## 0.0.445 - 2026-08-14 - Taşınmazlar Tapu Özeti: eksik 5 sütun eklendi
+
+Kullanıcı: "Taşınmaz Kimlik No arsa pay payda cilt sayfa eksik" — bu 5
+alan "aynı ise gizlensin" 9'luk listesinde OLMADIĞI için "diğer
+bölümler" (her zaman gösterilen) grubuna eklenmesi gerekiyordu, unutulmuştu.
+
+**`app.js`**: `buildTitleUnitsSummaryTableData()`'ya 5 yeni sütun
+eklendi — `titlePropertyId` (Taşınmaz Kimlik No), `share` (Arsa Payı),
+`denominator` (Arsa Payda), `registryVolume` (Cilt), `registryPage`
+(Sayfa) — hepsi "Tapu ve Mülkiyet" bölümünün zaten var olan alanları
+(bkz. app.js satır ~418-438). Sütun sırası: Taşınmaz Kimlik No, Blok,
+Kat, Bağımsız Bölüm No, Bağımsız Bölüm Niteliği, Arsa Payı, Arsa Payda,
+Malik(ler), Hisse Payı, Edinme Sebebi, Tapu Tarihi, Yevmiye No, Cilt,
+Sayfa.
+
+Kullanıcı ayrıca "İl İlçe Mahalle Pafta bunlar aynı ada parsel
+taleplerinde tabloda yer almamalı" dedi — bu davranış zaten mevcuttu
+(bu 4 alan `TITLE_UNITS_TABLE_SHARED_FIELD_DEFS` listesinde, "TÜM
+taşınmazlarda aynıysa gizle" kuralına tabi) — ek bir kod değişikliği
+gerekmedi, testle (bkz. aşağıda) tekrar doğrulandı.
+
+- Test: `tools/test-title-units-summary-table.js` güncellendi — 5 yeni
+  sütunun HER ZAMAN göründüğü VE doğru taşınmaza/doğru sütuna
+  yerleştiği (index bazlı) ayrıca doğrulandı. `npm run verify` tam
+  zincirle yeşil.
+- Cache-buster: `app.js?v=20260814-1745`.

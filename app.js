@@ -16403,10 +16403,15 @@ function buildTitleUnitsSummaryTableData() {
     return !values.every((value) => value === values[0]);
   });
 
+  // Kullanıcı talebi (2026-08-14, devam): "Taşınmaz Kimlik No arsa pay
+  // payda cilt sayfa eksik" — bu 5 alan "aynı ise gizlensin" listesinde
+  // (TITLE_UNITS_TABLE_SHARED_FIELD_DEFS) YOK, dolayısıyla "diğer
+  // bölümler" gibi HER ZAMAN gösterilen sütunlara ekleniyor.
   const headers = [
     ...sharedFieldsToShow.map((def) => def.label),
-    "Blok", "Kat", "Bağımsız Bölüm No", "Bağımsız Bölüm Niteliği",
-    "Malik(ler)", "Hisse Payı", "Edinme Sebebi", "Tapu Tarihi", "Yevmiye No",
+    "Taşınmaz Kimlik No", "Blok", "Kat", "Bağımsız Bölüm No", "Bağımsız Bölüm Niteliği",
+    "Arsa Payı", "Arsa Payda", "Malik(ler)", "Hisse Payı",
+    "Edinme Sebebi", "Tapu Tarihi", "Yevmiye No", "Cilt", "Sayfa",
   ];
 
   const rows = units.map((unit) => {
@@ -16415,15 +16420,20 @@ function buildTitleUnitsSummaryTableData() {
       .filter((row) => String(row?.c0 || "").trim());
     return [
       ...sharedFieldsToShow.map((def) => String(fields[def.key] || "").trim() || "-"),
+      String(fields.titlePropertyId || "").trim() || "-",
       String(fields.titleBlockName || "").trim() || "-",
       String(fields.titleFloor || "").trim() || "-",
       String(fields.unitNo || "").trim() || "-",
       String(fields.titleQuality || "").trim() || "-",
+      String(fields.share || "").trim() || "-",
+      String(fields.denominator || "").trim() || "-",
       joinTitleUnitOwnerColumn(ownerRows, (r) => r.c0),
       joinTitleUnitOwnerColumn(ownerRows, (r) => r.c1),
       joinTitleUnitOwnerColumn(ownerRows, (r) => r.c2),
       joinTitleUnitOwnerColumn(ownerRows, (r) => r.c3),
       joinTitleUnitOwnerColumn(ownerRows, (r) => r.c4),
+      String(fields.registryVolume || "").trim() || "-",
+      String(fields.registryPage || "").trim() || "-",
     ];
   });
 
