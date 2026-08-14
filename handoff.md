@@ -9885,3 +9885,51 @@ gerekmedi, testle (bkz. aşağıda) tekrar doğrulandı.
   yerleştiği (index bazlı) ayrıca doğrulandı. `npm run verify` tam
   zincirle yeşil.
 - Cache-buster: `app.js?v=20260814-1745`.
+
+## 0.0.446 - 2026-08-14 - Pafta ada/parsel önceliği, Sıra No, hesaplanan Arsa Payı, dinamik/ortalı tablo
+
+Aynı oturumda 3 ayrı takip mesajı:
+
+1. "pafta bölümünü kaldır aynı ada parselde yer alan işlemlerde" (ve
+   öncesindeki "kml den alınan pafta bilgisi aynı ada parselde ise
+   belirtilmesin" / "İl İlçe Mahalle Pafta ... aynı ada parsel
+   taleplerinde tabloda yer almamalı") — Pafta ARTIK ada/parsel
+   eşitliğine ÖNCELİK veriyor: TÜM taşınmazlar AYNI ada/parseldeyse,
+   Pafta'nın KENDİ metin değeri (KML/TAKBİS'ten taşınmaz başına ayrı
+   ayrı içeri alındığı için veri girişi tutarsızlığıyla farklı
+   görünebilir) farklı olsa BİLE ZORLA gizlenir — çünkü ada/parsel
+   tanım gereği paftayı belirler. `allSameAdaParsel` kontrolü
+   `buildTitleUnitsSummaryTableData()`'ya eklendi.
+2. "her bir taşınmazın 'Hissesine Düşen Arsa Payı' bölümünü hesapla.
+   (Yüzölçümü) / Arsa Payda X Arsa Pay bunu sütun olarak ekle" — yeni
+   `computeTitleUnitShareOfLandArea(fields)` fonksiyonu, kullanıcının
+   verdiği formülü BİREBİR uyguluyor (`parseReportNumber` ile Türkçe
+   ondalık/binlik ayraç çözümü, `formatSquareMeterArea` ile "X,XX m²"
+   çıktısı; payda 0 veya herhangi bir girdi eksikse "-").
+3. "en sola Sıra No sütunu ekle 1 den başla saymaya" — en sol sütun
+   artık HER ZAMAN 1'den başlayan satır numarası.
+4. "sütun genişliklerini dinamik yap başlıkları metin kaydır yaparak
+   birden fazla satır yapabilirsin. tüm hücreler yatay ve dikey ortalı
+   olsun" — yeni, bu tabloya ÖZEL `buildTitleUnitsSummaryTableHtmlFromData()`
+   fonksiyonu yazıldı (PAYLAŞILAN `buildCompactReportWordTableHtml`
+   DEĞİŞTİRİLMEDİ — o diğer raporlarda da kullanılıyor, değiştirmek
+   ONLARI da etkilerdi). `table-layout:auto` (sabit değil, içeriğe göre
+   dinamik genişlik), `white-space:normal` (başlıklar gerekirse birden
+   fazla satıra sarar), HER hücrede (başlık + gövde) hem
+   `text-align:center` hem `vertical-align:middle`.
+
+Canlı doğrulama (localhost:5173, GEÇİCİ bir test talebiyle — sonda
+tamamen silindi): "Sıra No" sütunu en solda 1/2 olarak doğru göründü,
+"Hissesine Düşen Arsa Payı" dahil TÜM yeni sütunlar tabloda yer aldı,
+başlıklar (ör. "Bağımsız Bölüm No", "Hissesine Düşen Arsa Payı") gerçekten
+BİRDEN FAZLA satıra sardı (dinamik genişlik çalışıyor), hücreler
+görsel olarak ortalı geldi, tablo geniş olduğunda yatay kaydırma
+devreye girdi.
+- Test: `tools/test-title-units-summary-table.js` genişletildi — Pafta'nın
+  ada/parsel eşitliğinde KENDİ metni farklı olsa bile gizlendiğini (VE
+  farklı ada/parselde gerçekten farklıysa gösterildiğini), Sıra No'nun
+  1'den başladığını, hesaplanan Arsa Payı formülünü (Türkçe ondalık
+  biçim + payda-sıfır + eksik-veri uç durumları dahil), yeni HTML
+  üreticinin `table-layout:auto` + tam ortalama içerdiğini doğruluyor.
+  `npm run verify` tam zincirle yeşil.
+- Cache-buster: `app.js?v=20260814-1815`.

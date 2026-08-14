@@ -86,12 +86,20 @@ const functionNames = [
   "getTitleUnitTablesForLabel",
   "buildAllTitleUnitsForSummaryTable",
   "joinTitleUnitOwnerColumn",
+  "computeTitleUnitShareOfLandArea",
   "buildTitleUnitsSummaryTableData",
   "buildTitleUnitsSummaryWordTableHtml",
-  "buildCompactReportWordTableHtml",
+  "buildTitleUnitsSummaryTableHtmlFromData",
+  "parseReportNumber",
+  "formatSquareMeterArea",
+  "getReportThemeToken",
   "formatWordCell",
   "escapeHtml",
 ];
+// Not: "buildCompactReportWordTableHtml" artık bu tablo TARAFINDAN
+// KULLANILMIYOR (kendi ÖZEL HTML üreticisi var, bkz. yukarıdaki yorum —
+// diğer PAYLAŞILAN tabloları etkilememek için) — bu yüzden listeye
+// eklenmedi.
 const constNames = ["TITLE_UNITS_TABLE_SHARED_FIELD_DEFS"];
 
 const sandboxSource = `
@@ -102,6 +110,7 @@ const sandboxSource = `
     setState: (s) => { state = s; },
     getTitleUnitCount, getTitleUnitFieldsForLabel, getTitleUnitTablesForLabel,
     buildAllTitleUnitsForSummaryTable, joinTitleUnitOwnerColumn,
+    computeTitleUnitShareOfLandArea,
     buildTitleUnitsSummaryTableData, buildTitleUnitsSummaryWordTableHtml,
   };
 `;
@@ -161,10 +170,20 @@ function unit(fields, ownerRows) {
   assert.ok(!data.headers.includes("İl"), "\"İl\" (aynı olan) sütunu GİZLENMELİYDİ.");
   assert.ok(!data.headers.includes("Ana Taşınmaz Niteliği"), "\"Ana Taşınmaz Niteliği\" (aynı olan) sütunu GİZLENMELİYDİ.");
   // "Diğer bölümler" HER ZAMAN var — kullanıcı "Taşınmaz Kimlik No arsa
-  // pay payda cilt sayfa eksik" dedi, bu 5 alan da eklendi.
-  ["Taşınmaz Kimlik No", "Blok", "Kat", "Bağımsız Bölüm No", "Bağımsız Bölüm Niteliği", "Arsa Payı", "Arsa Payda", "Malik(ler)", "Hisse Payı", "Edinme Sebebi", "Tapu Tarihi", "Yevmiye No", "Cilt", "Sayfa"].forEach((col) => {
+  // pay payda cilt sayfa eksik" dedi, bu 5 alan da eklendi. "Sıra No"
+  // ve "Hissesine Düşen Arsa Payı" da HER ZAMAN gösterilir.
+  ["Sıra No", "Taşınmaz Kimlik No", "Blok", "Kat", "Bağımsız Bölüm No", "Bağımsız Bölüm Niteliği", "Arsa Payı", "Arsa Payda", "Hissesine Düşen Arsa Payı", "Malik(ler)", "Hisse Payı", "Edinme Sebebi", "Tapu Tarihi", "Yevmiye No", "Cilt", "Sayfa"].forEach((col) => {
     assert.ok(data.headers.includes(col), `"${col}" sütunu HER ZAMAN gösterilmeliydi.`);
   });
+  // "en sola Sıra No sütunu ekle 1 den başla saymaya" — EN SOL sütun,
+  // 1'den başlayan sıra numarası.
+  assert.equal(data.headers[0], "Sıra No", "\"Sıra No\" EN SOL sütun olmalı.");
+  assert.deepEqual(data.rows.map((row) => row[0]), [1, 2, 3], "Sıra No 1'den başlayıp sırayla artmalı.");
+  // "her bir taşınmazın 'Hissesine Düşen Arsa Payı' bölümünü hesapla.
+  // (Yüzölçümü) / Arsa Payda X Arsa Pay" — 1. taşınmaz: 1200/1000*50 = 60.
+  const shareAreaColumnIndex = data.headers.indexOf("Hissesine Düşen Arsa Payı");
+  assert.equal(data.rows[0][shareAreaColumnIndex], "60,00 m²", `1. taşınmazın hesabı (1200/1000*50=60) yanlış, bulunan: ${data.rows[0][shareAreaColumnIndex]}`);
+  assert.equal(data.rows[1][shareAreaColumnIndex], "72,00 m²", `2. taşınmazın hesabı (1200/1000*60=72) yanlış, bulunan: ${data.rows[1][shareAreaColumnIndex]}`);
   const propertyIdColumnIndex = data.headers.indexOf("Taşınmaz Kimlik No");
   assert.equal(data.rows[0][propertyIdColumnIndex], "123456", "1. taşınmazın Taşınmaz Kimlik No'su doğru sütunda olmalı.");
   assert.equal(data.rows[1][propertyIdColumnIndex], "123457", "2. taşınmazın Taşınmaz Kimlik No'su doğru sütunda olmalı.");
@@ -173,6 +192,45 @@ function unit(fields, ownerRows) {
   const registryPageColumnIndex = data.headers.indexOf("Sayfa");
   assert.equal(data.rows[2][registryPageColumnIndex], "1", "3. taşınmazın Sayfa değeri doğru sütunda olmalı.");
   console.log("\"Ayni ise gizlensin\" + \"diger bolumler her zaman var\" (Kimlik No/Arsa Payi/Payda/Cilt/Sayfa dahil) kurali testi tamam.");
+}
+
+// --- 2b) Pafta: AYNI ada/parselde, KENDİ metni FARKLI olsa bile GİZLENİR --
+// Kullanıcı talebi: "pafta bölümünü kaldır aynı ada parselde yer alan
+// işlemlerde" — KML/TAKBİS'ten taşınmaz başına ayrı ayrı içeri alınan
+// pafta metninde veri girişi tutarsızlığı (ör. "F21" / "F 21") olsa
+// BİLE, ada/parsel eşitse Pafta zorla gizlenmeli (ada/parsel eşitliği
+// pafta karşılaştırmasından ÖNCELİKLİDİR).
+{
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: { titleCity: "Bursa", titleDistrict: "Nilüfer", titleNeighborhood: "Özlüce", locationName: "-", sheetNo: "F21", blockNo: "4834", parcelNo: "1", landArea: "1200", mainPropertyQuality: "Arsa" },
+    tables: { title: [] },
+    titleUnits: [
+      // AYNI ada/parsel (4834/1) ama Pafta metni KASITLI OLARAK FARKLI ("F 21").
+      { fields: { titleCity: "Bursa", titleDistrict: "Nilüfer", titleNeighborhood: "Özlüce", locationName: "-", sheetNo: "F 21", blockNo: "4834", parcelNo: "1", landArea: "1200", mainPropertyQuality: "Arsa" }, tables: { title: [] } },
+    ],
+  });
+  const data = fns.buildTitleUnitsSummaryTableData();
+  assert.ok(data, "2 taşınmazlı raporda tablo verisi dönmeli.");
+  assert.ok(!data.headers.includes("Pafta"), "Ayni ada/parselde Pafta metni farkli OLSA BILE 'Pafta' sutunu GIZLENMELIYDI.");
+  console.log("Pafta: ayni ada/parselde kendi metni farkli olsa bile gizlenme kurali testi tamam.");
+}
+
+// --- 2c) Pafta: FARKLI ada/parselde, kendi metni de FARKLI ise GÖSTERİLİR -
+{
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: { titleCity: "Bursa", titleDistrict: "Nilüfer", titleNeighborhood: "Özlüce", locationName: "-", sheetNo: "F21", blockNo: "4834", parcelNo: "1", landArea: "1200", mainPropertyQuality: "Arsa" },
+    tables: { title: [] },
+    titleUnits: [
+      // FARKLI ada/parsel (5000/9) VE farklı Pafta — bu durumda Pafta
+      // GERÇEKTEN bilgilendirici, gizlenmemeli.
+      { fields: { titleCity: "Bursa", titleDistrict: "Nilüfer", titleNeighborhood: "Özlüce", locationName: "-", sheetNo: "G30", blockNo: "5000", parcelNo: "9", landArea: "1200", mainPropertyQuality: "Arsa" }, tables: { title: [] } },
+    ],
+  });
+  const data = fns.buildTitleUnitsSummaryTableData();
+  assert.ok(data.headers.includes("Pafta"), "Farkli ada/parselde, Pafta de farkliysa 'Pafta' sutunu GOSTERILMELIYDI.");
+  console.log("Pafta: farkli ada/parselde kendi metni de farkliysa gosterilme kurali testi tamam.");
 }
 
 // --- 3) Tekil raporda (1 taşınmaz) tablo üretilmemeli ---------------------
@@ -191,6 +249,18 @@ function unit(fields, ownerRows) {
   console.log("joinTitleUnitOwnerColumn coklu malik birlestirme testi tamam.");
 }
 
+// --- 4b) computeTitleUnitShareOfLandArea(): formül + eksik veri --------
+{
+  // (Yüzölçümü) / Arsa Payda X Arsa Pay — Türkçe ondalık virgül de
+  // desteklenmeli (parseReportNumber).
+  assert.equal(fns.computeTitleUnitShareOfLandArea({ landArea: "1200", denominator: "1000", share: "50" }), "60,00 m²", "1200/1000*50 = 60 m² bekleniyordu.");
+  assert.equal(fns.computeTitleUnitShareOfLandArea({ landArea: "1.200,50", denominator: "1000", share: "50" }), "60,02 m²", "Turkce ondalik/binlik bicimli yuzolcumu dogru parse edilmeli (1200,50/1000*50=60,025, kayan nokta yuvarlama).");
+  assert.equal(fns.computeTitleUnitShareOfLandArea({ landArea: "1200", denominator: "0", share: "50" }), "-", "Payda 0 ise '-' donmeli (sifira bolme).");
+  assert.equal(fns.computeTitleUnitShareOfLandArea({ landArea: "", denominator: "1000", share: "50" }), "-", "Yuzolcumu eksikse '-' donmeli.");
+  assert.equal(fns.computeTitleUnitShareOfLandArea({}), "-", "Hicbir alan yoksa '-' donmeli.");
+  console.log("computeTitleUnitShareOfLandArea formul + eksik veri testi tamam.");
+}
+
 // --- 5) Gerçek HTML üretimi: birden fazla malik <br>'a dönüşüyor mu ------
 {
   const shared = { titleCity: "Bursa", titleDistrict: "Nilüfer", titleNeighborhood: "Özlüce", locationName: "-", sheetNo: "-", blockNo: "1", parcelNo: "1", landArea: "500", mainPropertyQuality: "Arsa" };
@@ -203,7 +273,11 @@ function unit(fields, ownerRows) {
   const html = fns.buildTitleUnitsSummaryWordTableHtml();
   assert.ok(html.includes("<table"), "Gecerli bir <table> HTML'i uretilmeli.");
   assert.ok(html.includes("Ahmet Yılmaz<br>Ayşe Yılmaz"), "Birden fazla malik hucre icinde <br> ile alt alta gelmeli.");
-  console.log("buildTitleUnitsSummaryWordTableHtml gercek HTML uretimi testi tamam.");
+  // "sütun genişliklerini dinamik yap" — table-layout:fixed DEĞİL, auto.
+  assert.ok(html.includes("table-layout:auto"), "Sutun genislikleri DINAMIK (table-layout:auto) olmali.");
+  // "tüm hücreler yatay ve dikey ortalı olsun".
+  assert.ok(html.includes("text-align:center") && html.includes("vertical-align:middle"), "Tum hucreler yatay VE dikey ortali olmali.");
+  console.log("buildTitleUnitsSummaryWordTableHtml gercek HTML uretimi (dinamik genislik + ortalama) testi tamam.");
 }
 
 // --- 6) template-engine.js'te {{TASINMAZLARTAPUTABLOSU}} kayitli mi -------

@@ -16395,10 +16395,27 @@ function buildTitleUnitsSummaryTableData() {
   const units = buildAllTitleUnitsForSummaryTable();
   if (units.length < 2) return null;
 
+  // Kullanıcı talebi (2026-08-14, devam): "pafta bölümünü kaldır aynı
+  // ada parselde yer alan işlemlerde" (bkz. "kml den alınan pafta
+  // bilgisi aynı ada parselde ise belirtilmesin" / "İl İlçe Mahalle
+  // Pafta ... aynı ada parsel taleplerinde tabloda yer almamalı") —
+  // Pafta, tanım gereği ada/parsel tarafından belirlenir (aynı ada/
+  // parsel = aynı pafta, HER ZAMAN); ancak pafta değeri KML/TAKBİS'ten
+  // taşınmaz başına AYRI AYRI içeri alındığından veri girişi
+  // tutarsızlığı (boşluk, farklı kaynak, vb.) yüzünden metin olarak
+  // FARKLI görünebilir. TÜM taşınmazlar AYNI ada/parseldeyse, Pafta'nın
+  // KENDİ metin değeri farklı olsa BİLE zorla GİZLENİR — ada/parsel
+  // eşitliği pafta karşılaştırmasından daha ÖNCELİKLİDİR.
+  const allSameAdaParsel = units.every((unit) => (
+    String(unit.fields?.blockNo || "").trim() === String(units[0].fields?.blockNo || "").trim()
+    && String(unit.fields?.parcelNo || "").trim() === String(units[0].fields?.parcelNo || "").trim()
+  ));
+
   // "aynı ise tabloda gözükmeyecek" — TÜM taşınmazlarda BİREBİR aynı
   // (boşluk arındırılmış) değere sahip alanlar sütun listesinden
   // tamamen ÇIKARILIR.
   const sharedFieldsToShow = TITLE_UNITS_TABLE_SHARED_FIELD_DEFS.filter((def) => {
+    if (def.key === "sheetNo" && allSameAdaParsel) return false;
     const values = units.map((unit) => String(unit.fields?.[def.key] || "").trim());
     return !values.every((value) => value === values[0]);
   });
@@ -16406,19 +16423,23 @@ function buildTitleUnitsSummaryTableData() {
   // Kullanıcı talebi (2026-08-14, devam): "Taşınmaz Kimlik No arsa pay
   // payda cilt sayfa eksik" — bu 5 alan "aynı ise gizlensin" listesinde
   // (TITLE_UNITS_TABLE_SHARED_FIELD_DEFS) YOK, dolayısıyla "diğer
-  // bölümler" gibi HER ZAMAN gösterilen sütunlara ekleniyor.
+  // bölümler" gibi HER ZAMAN gösterilen sütunlara ekleniyor. "en sola
+  // Sıra No sütunu ekle 1 den başla saymaya" — en sol sütun HER ZAMAN
+  // 1'den başlayan satır numarası.
   const headers = [
+    "Sıra No",
     ...sharedFieldsToShow.map((def) => def.label),
     "Taşınmaz Kimlik No", "Blok", "Kat", "Bağımsız Bölüm No", "Bağımsız Bölüm Niteliği",
-    "Arsa Payı", "Arsa Payda", "Malik(ler)", "Hisse Payı",
+    "Arsa Payı", "Arsa Payda", "Hissesine Düşen Arsa Payı", "Malik(ler)", "Hisse Payı",
     "Edinme Sebebi", "Tapu Tarihi", "Yevmiye No", "Cilt", "Sayfa",
   ];
 
-  const rows = units.map((unit) => {
+  const rows = units.map((unit, index) => {
     const fields = unit.fields || {};
     const ownerRows = (Array.isArray(unit.tables?.title) ? unit.tables.title : [])
       .filter((row) => String(row?.c0 || "").trim());
     return [
+      index + 1,
       ...sharedFieldsToShow.map((def) => String(fields[def.key] || "").trim() || "-"),
       String(fields.titlePropertyId || "").trim() || "-",
       String(fields.titleBlockName || "").trim() || "-",
@@ -16427,6 +16448,7 @@ function buildTitleUnitsSummaryTableData() {
       String(fields.titleQuality || "").trim() || "-",
       String(fields.share || "").trim() || "-",
       String(fields.denominator || "").trim() || "-",
+      computeTitleUnitShareOfLandArea(fields),
       joinTitleUnitOwnerColumn(ownerRows, (r) => r.c0),
       joinTitleUnitOwnerColumn(ownerRows, (r) => r.c1),
       joinTitleUnitOwnerColumn(ownerRows, (r) => r.c2),
@@ -16440,15 +16462,63 @@ function buildTitleUnitsSummaryTableData() {
   return { headers, rows, sharedColumnCount: sharedFieldsToShow.length };
 }
 
+// "her bir taşınmazın 'Hissesine Düşen Arsa Payı' bölümünü hesapla.
+// (Yüzölçümü) / Arsa Payda X Arsa Pay" — kullanıcının verdiği formül
+// BİREBİR: (landArea / denominator) × share. parseReportNumber ondalık
+// virgül/nokta karışıklığını (Türkçe biçim) çözer; sonuç
+// formatSquareMeterArea ile "X.XXX,XX m²" olarak biçimlenir. Herhangi
+// bir girdi eksik/geçersizse veya payda 0 ise "-" döner (hesap
+// güvenilir değil).
+function computeTitleUnitShareOfLandArea(fields) {
+  const area = parseReportNumber(fields.landArea);
+  const denominator = parseReportNumber(fields.denominator);
+  const share = parseReportNumber(fields.share);
+  if (!Number.isFinite(area) || !Number.isFinite(denominator) || !Number.isFinite(share) || denominator === 0) return "-";
+  return formatSquareMeterArea((area / denominator) * share);
+}
+
 // Banka şablonlarına {{TASINMAZLARTAPUTABLOSU}} ile enjekte edilecek
 // gerçek HTML tablo (bkz. template-engine.js). Tekil raporda ya da hiç
 // taşınmaz yoksa boş döner (placeholder normal {{TOKEN}} akışıyla
 // temiz şekilde silinir, "eksik alan" uyarısı OLUŞTURMAZ — diğer tüm
 // tablo placeholder'larıyla aynı desen, bkz. buildReviewedDocumentsWordTableHtml).
+// "sütun genişliklerini dinamik yap başlıkları metin kaydır yaparak
+// birden fazla satır yapabilirsin. tüm hücreler yatay ve dikey ortalı
+// olsun" — bu tabloya ÖZEL, KENDİ HTML üretici fonksiyonu var
+// (buildCompactReportWordTableHtml PAYLAŞILAN/başka raporlarda da
+// kullanılan bir fonksiyon — onu değiştirmek DİĞER tabloları etkilerdi).
 function buildTitleUnitsSummaryWordTableHtml() {
   const data = buildTitleUnitsSummaryTableData();
   if (!data || !data.rows.length) return "";
-  return buildCompactReportWordTableHtml(data.headers, data.rows);
+  return buildTitleUnitsSummaryTableHtmlFromData(data.headers, data.rows);
+}
+
+// "Sıra No" hariç tüm sütun genişlikleri "auto" (içeriğe göre dinamik,
+// table-layout:fixed DEĞİL) — Word/tarayıcı en uygun genişliği kendi
+// hesaplar. Başlıklar `white-space:normal` (gerekirse birden fazla
+// satıra sarar). HER hücre (başlık + gövde) hem yatay (text-align:center)
+// hem dikey (vertical-align:middle) ortalı.
+function buildTitleUnitsSummaryTableHtmlFromData(headers, rows) {
+  const ink = getReportThemeToken("--ink", "#152238");
+  const line = getReportThemeToken("--line", "#dde3ef");
+  const blue = getReportThemeToken("--blue", "#3a5691");
+  const surface = getReportThemeToken("--surface", "#ffffff");
+  const surfaceMuted = getReportThemeToken("--surface-muted", "#eef2fa");
+  const border = `border:1pt solid ${line};`;
+  const baseCell = `${border}padding:3pt 4pt;text-align:center;vertical-align:middle;line-height:1.15;color:${ink};background:${surface};font-size:6.5pt;white-space:normal;`;
+  const headerCell = `${baseCell}background:${surfaceMuted};color:${blue};font-weight:800;`;
+  const zebraCell = `${baseCell}background:${surfaceMuted};`;
+
+  const headerHtml = `<tr>${headers.map((label) => `<th style="${headerCell}">${escapeHtml(label)}</th>`).join("")}</tr>`;
+  const bodyHtml = rows.map((row, rowIndex) => {
+    const cellStyle = rowIndex % 2 === 1 ? zebraCell : baseCell;
+    return `<tr>${row.map((cell) => `<td style="${cellStyle}">${formatWordCell(cell)}</td>`).join("")}</tr>`;
+  }).join("");
+
+  return `<table class="word-table title-units-summary-table" style="border-collapse:collapse;width:100%;margin:5pt 0 12pt;table-layout:auto;">
+    <thead>${headerHtml}</thead>
+    <tbody>${bodyHtml}</tbody>
+  </table>`;
 }
 
 function buildTakyidatWordTableHtml() {
