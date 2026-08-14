@@ -16485,7 +16485,28 @@ function buildTitleUnitsSummaryTableData() {
     ];
   });
 
-  return { headers, rows, sharedColumnCount: sharedFieldsToShow.length };
+  // Kullanıcı talebi (2026-08-15): "eğer sistemde hücrede veri yoksa.
+  // örnek tarla raporu bb no kat bölümler boş o zaman tabloda bu
+  // sütunlar gözükmemeli" — ör. tarla/arazi raporlarında Kat/Bağımsız
+  // Bölüm No gibi "diğer bölümler" sütunları TÜM taşınmazlarda boş ("-")
+  // kalabilir (arazinin katı/bağımsız bölümü yoktur). Böyle bir sütun,
+  // TÜM taşınmazlarda boşsa TAMAMEN KALDIRILIR. "Sıra No" (index 0)
+  // hiçbir zaman boş olmadığından (her zaman 1'den başlayan sayı)
+  // filtreden etkilenmez — yine de niyeti netleştirmek için elle korunur.
+  const columnHasData = headers.map((_, columnIndex) => (
+    columnIndex === 0 || rows.some((row) => {
+      const value = row[columnIndex];
+      return value !== undefined && value !== null && String(value).trim() !== "" && String(value).trim() !== "-";
+    })
+  ));
+  const filteredHeaders = headers.filter((_, columnIndex) => columnHasData[columnIndex]);
+  const filteredRows = rows.map((row) => row.filter((_, columnIndex) => columnHasData[columnIndex]));
+  // sharedFieldsToShow sütunları headers'ta index 1..sharedFieldsToShow.length
+  // aralığında; sharedColumnCount de bu filtreden SONRA gerçekten kalan
+  // sayıyı yansıtmalı (aksi halde tüketiciler yanlış bölme noktası kullanır).
+  const survivingSharedColumnCount = columnHasData.slice(1, 1 + sharedFieldsToShow.length).filter(Boolean).length;
+
+  return { headers: filteredHeaders, rows: filteredRows, sharedColumnCount: survivingSharedColumnCount };
 }
 
 // "her bir taşınmazın 'Hissesine Düşen Arsa Payı' bölümünü hesapla.

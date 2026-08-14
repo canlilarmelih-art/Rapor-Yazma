@@ -294,9 +294,13 @@ function unit(fields, ownerRows) {
   const shared = { titleCity: "Bursa", titleDistrict: "Nilüfer", titleNeighborhood: "Özlüce", locationName: "-", sheetNo: "-", blockNo: "1", parcelNo: "1", landArea: "500", mainPropertyQuality: "Arsa" };
   fns.setState({
     activeTitleUnitIndex: 0,
-    fields: { ...shared, titleBlockName: "-", titleFloor: "-", unitNo: "-", titleQuality: "Arsa" },
+    // Not: denominator/share BİLEREK dolduruldu — aksi halde "Hissesine
+    // Düşen Arsa Payı" sütunu TÜM taşınmazlarda "-" kalır ve YENİ "tüm
+    // taşınmazlarda boş olan sütun kaldırılır" kuralıyla (bkz. senaryo 17)
+    // bu test asagidaki <br> assertion'ini bozacak şekilde SİLİNİR.
+    fields: { ...shared, titleBlockName: "-", titleFloor: "-", unitNo: "-", titleQuality: "Arsa", denominator: "1000", share: "50" },
     tables: { title: [{ c0: "Ahmet Yılmaz", c1: "1/2" }, { c0: "Ayşe Yılmaz", c1: "1/2" }] },
-    titleUnits: [{ fields: shared, tables: { title: [] } }],
+    titleUnits: [{ fields: { ...shared, denominator: "1000", share: "40" }, tables: { title: [] } }],
   });
   const html = fns.buildTitleUnitsSummaryWordTableHtml();
   assert.ok(html.includes("<table"), "Gecerli bir <table> HTML'i uretilmeli.");
@@ -310,6 +314,41 @@ function unit(fields, ownerRows) {
   assert.ok(html.includes("Bağımsız Bölüm<br>Niteliği"), "'Bağımsız Bölüm Niteliği' basligi HTML ciktisinda <br> ile 2 satira bolunmus olmali.");
   assert.ok(html.includes("Hissesine Düşen<br>Arsa Payı"), "'Hissesine Düşen Arsa Payı' basligi HTML ciktisinda <br> ile 2 satira bolunmus olmali.");
   console.log("buildTitleUnitsSummaryWordTableHtml gercek HTML uretimi (dinamik genislik + ortalama + 2 satirli baslik) testi tamam.");
+}
+
+// --- 17) Tum tasinmazlarda BOS olan sutun TAMAMEN kaldirilir --------------
+// Kullanici talebi: "eğer sistemde hücrede veri yoksa. örnek tarla raporu
+// bb no kat bölümler boş o zaman tabloda bu sütunlar gözükmemeli" — tarla/
+// arazi raporlarinda Blok/Kat/Bagimsiz Bolum No gibi alanlar TUM
+// tasinmazlarda dolmaz (arazinin kati/bagimsiz bolumu yoktur); bu durumda
+// sutun "diger bolumler HER ZAMAN gosterilir" kuralina RAGMEN kaldirilmali.
+// Dolu kalan sutunlar (Tasinmaz Kimlik No, Bagimsiz Bolum Niteligi, Arsa
+// Payi/Payda, Hissesine Dusen Arsa Payi, Malik(ler), Cilt, Sayfa) ETKİLENMEMELİ.
+{
+  const shared = { titleCity: "Konya", titleDistrict: "Ereğli", titleNeighborhood: "-", locationName: "-", sheetNo: "-", blockNo: "500", parcelNo: "12", landArea: "8000", mainPropertyQuality: "Tarla" };
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    // Blok/Kat/Bagimsiz Bolum No hepsi bos ("") — tarla parcasinda
+    // bunlarin karsiligi yok. Diger alanlar (Kimlik No, Nitelik, Arsa
+    // Payi/Payda, Malik, Cilt/Sayfa) DOLU.
+    fields: { ...shared, parcelNo: "12", titlePropertyId: "999001", titleBlockName: "", titleFloor: "", unitNo: "", titleQuality: "Tarla", share: "1", denominator: "1", registryVolume: "7", registryPage: "20" },
+    tables: { title: [{ c0: "Veli Demir", c1: "1/1", c2: "Miras", c3: "05.03.2019", c4: "555" }] },
+    titleUnits: [
+      { fields: { ...shared, parcelNo: "13", titlePropertyId: "999002", titleBlockName: "", titleFloor: "", unitNo: "", titleQuality: "Tarla", share: "1", denominator: "1", registryVolume: "7", registryPage: "21" }, tables: { title: [{ c0: "Ayşe Demir", c1: "1/1" }] } },
+    ],
+  });
+  const data = fns.buildTitleUnitsSummaryTableData();
+  assert.ok(data, "2 tasinmazli tarla raporunda tablo verisi donmeli.");
+  ["Blok", "Kat", "Bağımsız Bölüm No"].forEach((col) => {
+    assert.ok(!data.headers.includes(col), `Tum tasinmazlarda BOS olan "${col}" sutunu KALDIRILMALIYDI, bulunan basliklar: ${data.headers.join(", ")}`);
+  });
+  ["Sıra No", "Taşınmaz Kimlik No", "Bağımsız Bölüm Niteliği", "Arsa Payı", "Arsa Payda", "Hissesine Düşen Arsa Payı", "Malik(ler)", "Edinme Sebebi", "Cilt", "Sayfa"].forEach((col) => {
+    assert.ok(data.headers.includes(col), `Dolu olan "${col}" sutunu KORUNMALIYDI, bulunan basliklar: ${data.headers.join(", ")}`);
+  });
+  // "Parsel" farkli (12 vs 13) oldugundan paylasimli sutun olarak kalmali.
+  assert.ok(data.headers.includes("Parsel"), "\"Parsel\" (farkli olan paylasimli alan) sutunu kalmali.");
+  assert.equal(data.sharedColumnCount, 1, `sharedColumnCount filtreden SONRA da dogru sayilmali (yalnizca Parsel), bulunan: ${data.sharedColumnCount}`);
+  console.log("Tum tasinmazlarda bos olan sutunun (tarla raporu ornegi) kaldirilma testi tamam.");
 }
 
 // --- 6) template-engine.js'te {{TASINMAZLARTAPUTABLOSU}} kayitli mi -------

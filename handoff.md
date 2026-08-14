@@ -9886,6 +9886,16 @@ gerekmedi, testle (bkz. aşağıda) tekrar doğrulandı.
   zincirle yeşil.
 - Cache-buster: `app.js?v=20260814-1745`.
 
+## 0.0.451 - 2026-08-15 - Taşınmazlar Tapu Özeti: tüm taşınmazlarda boş olan sütun kaldırılır
+
+- Kullanıcı: "eğer sistemde hücrede veri yoksa. örnek tarla raporu bb no kat bölümler boş o zaman tabloda bu sütunlar gözükmemeli." — daha önce (0.0.446) "diğer bölümler" (Taşınmaz Kimlik No, Blok, Kat, Bağımsız Bölüm No, Bağımsız Bölüm Niteliği, Arsa Payı, Arsa Payda, Hissesine Düşen Arsa Payı, Malik(ler), Hisse Payı, Edinme Sebebi, Tapu Tarihi, Yevmiye No, Cilt, Sayfa) HER ZAMAN gösteriliyordu ("bunların tamamı" onayı) — ancak tarla/arazi raporlarında Blok/Kat/Bağımsız Bölüm No gibi alanların karşılığı yoktur, tüm taşınmazlarda boş ("-") kalır ve tabloda anlamsız bir boş sütun olarak duruyordu.
+- `buildTitleUnitsSummaryTableData()`'ya (`app.js`) son adım olarak bir filtre eklendi: TÜM satırlarda değeri boş/"-" olan HERHANGİ bir sütun (Sıra No hariç — o hiçbir zaman boş olmaz) tablodan tamamen çıkarılır. `sharedColumnCount` de bu filtreden SONRAKİ gerçek sayıyı yansıtacak şekilde yeniden hesaplanıyor.
+- Bu, sharedFieldsToShow (İl/İlçe/Mahalle/Mevkii/Pafta/Ada/Parsel/Yüzölçümü/Ana Taşınmaz Niteliği) sütunlarını da kapsar — ama pratikte onlar zaten yalnızca "farklıysa" gösterildiğinden (aynıysa zaten hariç tutuluyor), tamamen boş olma ihtimalleri çok düşüktür.
+- `tools/test-title-units-summary-table.js`: yeni "17" senaryosu — tam olarak kullanıcının verdiği örnek (tarla raporu, Blok/Kat/Bağımsız Bölüm No boş, diğer alanlar dolu) — Blok/Kat/Bağımsız Bölüm No'nun KALDIRILDIĞINI, dolu kalan sütunların (Taşınmaz Kimlik No, Bağımsız Bölüm Niteliği, Arsa Payı/Payda, Hissesine Düşen Arsa Payı, Malik(ler), Cilt, Sayfa) KORUNDUĞUNU doğruluyor. Mevcut senaryo 5 (HTML üretim testi) fixture'ına denominator/share eklendi (aksi halde "Hissesine Düşen Arsa Payı" sütunu da tüm taşınmazlarda "-" kalıp YENİ kuralla silinir, mevcut <br> assertion'ı kırılırdı).
+- Canlı tarayıcıda doğrulandı: gerçek state'i geçici olarak (autosave/render ÇAĞIRMADAN) kullanıcının tam senaryosuyla (tarla, Blok/Kat/BB No boş) değiştirip `buildTitleUnitsSummaryTableData()` doğrudan çağrıldı, beklenen sütun listesi elde edildi, ardından state AYNEN geri yüklendi — gerçek rapora dokunulmadı.
+- `npm run verify` tamamı yeşil.
+- Cache-buster: `app.js?v=20260815-0120`.
+
 ## 0.0.450 - 2026-08-15 - ACİL DÜZELTME: KML yükleme butonu (0.0.449 regresyonu)
 
 - Kullanıcı: "ŞU AN KML YÜKLEME BUTONU ÇALIŞMIYOR" — 0.0.449'da KML kartına eklenen "tümüne uygula" kutucuğu, `.upload-card input` (TÜM input'ları type farketmeksizin `position:absolute; inset:0; opacity:0` yaparak KARTIN TAMAMINI kaplayan görünmez bir tıklama alanına çeviren, "Belge seç / sürükle" tıklama/sürükle-bırak tetikleyici deseni) kuralına YAKALANDI — checkbox da aynı overlay'e dönüşüp dosya `<input>`'unun ÜZERİNE binip TÜM tıklamaları yuttu, dosya seçici hiç açılmıyordu.
