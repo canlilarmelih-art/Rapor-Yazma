@@ -9886,6 +9886,16 @@ gerekmedi, testle (bkz. aşağıda) tekrar doğrulandı.
   zincirle yeşil.
 - Cache-buster: `app.js?v=20260814-1745`.
 
+## 0.0.449 - 2026-08-15 - KML'i tek seferde yükleyip tüm taşınmazlara uygula
+
+- Kullanıcı: "aynı ada parsel taleplerinde 1 adet kml olacak zaten kml parsel bazında bir dosya" — bu KML/İl/İlçe/Mahalle/Pafta tablo-gizleme düzeltmelerinin (0.0.447) ARDINDAN gelen kök-neden gözlemiydi. `AskUserQuestion` ile netleştirildi: kullanıcı "KML'i tek seferde yükleyip tüm taşınmazlara uygula" seçeneğini onayladı (mevcut "Tapu Kaydı Değişikliği tümüne uygula" — 0.0.387 — desenine benzer).
+- Kök sorun: normal akışta (`processKmlFiles` → `applyKmlRecordsToTitleUnits` → `getKmlTargetIndexes`) her yüklenen KML kaydı YALNIZCA BİR taşınmaza eşleşiyordu; aynı bina/parseldeki DİĞER taşınmazların İl/İlçe/Mahalle/Pafta/Ada/Parsel/Yüzölçümü gibi KML kaynaklı alanları BOŞ kalıyordu — bu yalnızca tabloda değil, RAPORUN KENDİSİNDE eksik veri anlamına geliyordu.
+- `app.js`: yeni `applyKmlFileToAllTitleUnits(file)` — TEK dosyayı ayrıştırıp mevcut taşınmaz sayısı kadar (sığ kopyalanmış, birbirinden bağımsız) kayda çoğaltır, `applyKmlRecordsToTitleUnits()`'e verir. Yeniden dağıtım mantığı YAZILMADI — `getKmlTargetIndexes()` zaten N kaydı N farklı taşınmaza (varsa ada/parsel eşleşmesiyle önce, kalanlar sırayla boşta olana) dağıtan mantığa SAHİPTİ, burada yalnızca TEK dosyayı N kopyaya çoğaltarak bu mevcut mekanizma yeniden kullanıldı.
+- `createUploadGrid()`'de KML kartına yeni bir kutucuk eklendi: "Tek dosya seçilirse tüm taşınmazlara uygulansın (aynı ada/parsel)" — yalnızca admin + Çoklu Talep + 2'den fazla taşınmaz varken görünür (`createTitleRecordChangeControl`'deki AYNI gate deseni). İşaretliyken VE gerçekten tek dosya seçildiyse `applyKmlFileToAllTitleUnits()` çağrılır; birden fazla dosya seçilirse (her biri kendi ada/parseline eşlenen NORMAL çoklu-KML akışı) kutucuk görmezden gelinir. `styles.css`'e `.kml-apply-all-label` eklendi (`.title-record-change-apply-all` ile aynı görsel dil).
+- Canlı tarayıcıda doğrulandı: Çoklu Talep + 2 taşınmazlı geçici bir test talebinde (kalıcı kütüphaneye hiç yazılmadığı `rapor-library-index-v1` üzerinden doğrulandı, gerçek rapora dokunulmadı) kutucuk beklenen koşulda göründü. Gerçek dosya seçimi (native OS diyaloğu) bu tarayıcı otomasyon aracıyla simüle edilemediğinden dağıtım mantığı `tools/test-title-unit-switch.js`'e eklenen 2 yeni senaryoyla (aynı KML kaydı N kez verildiğinde N FARKLI taşınmaza dağıtılıyor; önceden eşleşen taşınmaz önceliklendirilip kalanlar boşa dağıtılıyor) doğrudan test edildi, + kaynak-düzeyi kablolama testi (3. senaryo).
+- `npm run verify` tamamı yeşil.
+- Cache-buster: `app.js`/`styles.css` → `20260815-0055`.
+
 ## 0.0.448 - 2026-08-15 - Taşınmazlar Tapu Özeti: başlıklar zorla 2 satıra bölünüyor
 
 - Kullanıcı: "sütun başlıklarını 2 satır yap böylelikle hücre genişliği bir nebze azalacaktır." — önceki `white-space:normal` başlıkların sarmasına İZİN veriyordu ama table-layout:auto'da tarayıcı, alan yeterliyse çok kelimeli başlıkları TEK SATIRDA bırakıyordu (sarma yalnızca alan gerçekten yetmeyince devreye giriyordu), bu da sütunları gereğinden geniş yapıyordu.

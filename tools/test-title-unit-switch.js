@@ -392,4 +392,67 @@ assert.match(appSource, /panel\.dataset\.parcelScope = mixedParcels \? "mixed" :
   console.log("KML coklu dosya ada/parsel eslestirme testi tamam.");
 }
 
+// --- 14) KML: ayni kayit N kez verilirse N FARKLI tasinmaza dagitilir ----
+// Kullanici talebi (2026-08-15): "KML'i tek seferde yükleyip tüm
+// taşınmazlara uygula" (AskUserQuestion onayi) — bkz. yeni
+// applyKmlFileToAllTitleUnits() (app.js), TEK dosyayi ayristirip mevcut
+// tasinmaz sayisi kadar KOPYALAYIP getKmlTargetIndexes()'e veriyor. Bu
+// dagitimin GERCEKTEN her kopyayi FARKLI bir tasinmaza atadigini (ayni
+// index'e IKI KEZ yazip digerlerini BOS BIRAKMADIGINI) dogrudan test eder.
+{
+  const state = freshState({
+    fields: { blockNo: "", parcelNo: "" },
+    titleUnits: [{ fields: { blockNo: "", parcelNo: "" }, tables: {} }],
+  });
+  sandbox.setState(state);
+  const sameParcelRecord = { parsed: { fields: { blockNo: "4834", parcelNo: "1" } } };
+  const indexes = sandbox.fns.getKmlTargetIndexes([sameParcelRecord, sameParcelRecord]);
+  assert.deepEqual([...indexes].sort(), [0, 1], "Ayni KML kaydi tekrarlandiginda TUM tasinmazlara (farkli index'lere) dagitilmali, ayni index'e iki kez YAZILMAMALI.");
+  console.log("KML: ayni kayit N kez verildiginde N farkli tasinmaza dagitilma testi tamam.");
+}
+
+// --- 15) KML: onceden eslesen tasinmaz oncelikli, kalan kopyalar BOSTAKI --
+// diger tasinmazlara dagitilir (3. tasinmaz gerekirse addTitleUnitTab ile
+// otomatik acilir — getKmlTargetIndexes'in kendi mevcut davranisi).
+{
+  const state = freshState({
+    fields: { blockNo: "", parcelNo: "" },
+    titleUnits: [
+      { fields: { blockNo: "4834", parcelNo: "1" }, tables: {} }, // index 1: zaten eslesen
+      { fields: { blockNo: "", parcelNo: "" }, tables: {} }, // index 2: bos
+    ],
+  });
+  sandbox.setState(state);
+  const sameParcelRecord = { parsed: { fields: { blockNo: "4834", parcelNo: "1" } } };
+  const indexes = sandbox.fns.getKmlTargetIndexes([sameParcelRecord, sameParcelRecord, sameParcelRecord]);
+  assert.deepEqual([...indexes].sort(), [0, 1, 2], "3 tasinmaz (biri onceden eslesen) icin 3 kopya UC FARKLI index'e dagitilmali.");
+  assert.ok(indexes.includes(1), "Ada/parsel ONCEDEN eslesen tasinmaz (index 1) kopyalardan birine atanmali.");
+  console.log("KML: onceden eslesen tasinmaz + kalanlarin bosa dagitilmasi testi tamam.");
+}
+
+// --- 16) applyKmlFileToAllTitleUnits() kaynak-duzeyi kablolama kontrolu --
+// (applyKmlRecordsToTitleUnits ANDDOM/async agdrilar icerdiginden — bkz.
+// applyLocalNeighborhoodForCurrentLocation/fetchNearbyPlacesForCurrentLocation —
+// tam pipeline sandbox'ta calistirilamaz; DAGITIM mantigi 14/15'te
+// dogrudan test edildi, burada yalnizca UI kablolamasinin app.js
+// KAYNAGINDA var oldugu dogrulanir.)
+{
+  assert.match(
+    appSource,
+    /async function applyKmlFileToAllTitleUnits\(file\)\s*\{[\s\S]*?applyKmlRecordsToTitleUnits\(records\);/,
+    "applyKmlFileToAllTitleUnits() bulunamadi veya applyKmlRecordsToTitleUnits'e kayit dizisi vermiyor."
+  );
+  assert.match(
+    appSource,
+    /applyAllCheckbox\?\.checked && files\.length === 1\)\s*\{\s*await applyKmlFileToAllTitleUnits\(files\[0\]\);/,
+    "KML yukleme degisim-olayinda 'tum tasinmazlara uygula' kutucugu isaretliyken applyKmlFileToAllTitleUnits cagrilmiyor."
+  );
+  assert.match(
+    appSource,
+    /kmlApplyAllEligible = upload\.id === "kml" && isCurrentUserAdmin\(\) && getTitleUnitCount\(\) > 1/,
+    "KML 'tum tasinmazlara uygula' kutucugu admin + Coklu Talep (2+ tasinmaz) gate'i kaybolmus olabilir."
+  );
+  console.log("applyKmlFileToAllTitleUnits kaynak-duzeyi kablolama testi tamam.");
+}
+
 console.log("Coklu TAKBIS Faz 2 tab-anahtarlama motoru testleri basarili.");

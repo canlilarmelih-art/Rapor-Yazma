@@ -14989,15 +14989,25 @@ function createUploadGrid(uploads) {
     // yapılır. Diğer 5 yükleme alanı ve normal kullanıcılar için DEĞİŞMEDİ
     // (tek dosya).
     const allowMultipleFiles = upload.id === "takbis" || upload.id === "kml";
+    // "KML'i tek seferde yükleyip tüm taşınmazlara uygula" kutucuğu yalnızca
+    // Çoklu Talep + admin + 2'den fazla taşınmaz varken anlamlı (bkz.
+    // createTitleRecordChangeControl'deki AYNI gate deseni) — tek taşınmazlı
+    // raporda zaten tek hedef vardır, kutucuk gereksiz kafa karıştırır.
+    const kmlApplyAllEligible = upload.id === "kml" && isCurrentUserAdmin() && getTitleUnitCount() > 1;
     card.innerHTML = `
       <strong>${upload.title}</strong>
       <p>${upload.hint}</p>
       <input type="file" data-upload="${upload.id}" ${accept ? `accept="${accept}"` : ""} ${allowMultipleFiles ? "multiple" : ""} />
+      ${kmlApplyAllEligible ? `
+      <label class="kml-apply-all-label">
+        <input type="checkbox" class="kml-apply-all-checkbox" />
+        <span>Tek dosya seçilirse tüm taşınmazlara uygulansın (aynı ada/parsel)</span>
+      </label>` : ""}
       <p>${stored ? `Seçilen dosya: ${stored}` : "Henüz dosya seçilmedi."}</p>
       ${uploadError ? `<p class="upload-error">${escapeHtml(uploadError)}</p>` : ""}
     `;
 
-    card.querySelector("input").addEventListener("change", async (event) => {
+    card.querySelector('input[type="file"]').addEventListener("change", async (event) => {
       if (upload.id === "takbis") {
         const files = Array.from(event.target.files || []);
         if (!files.length) return;
@@ -15018,7 +15028,18 @@ function createUploadGrid(uploads) {
       state.uploads[upload.id] = files.length > 1 ? `${files.length} dosya` : file.name;
       try {
         if (upload.id === "kml") {
-          await processKmlFiles(files);
+          // "Tek dosya seçilirse tüm taşınmazlara uygulansın" kutucuğu
+          // işaretliyse VE gerçekten TEK dosya seçildiyse (birden fazla
+          // dosya seçilmişse zaten her biri kendi ada/parseline eşlenen
+          // NORMAL çoklu-KML akışı geçerli olmalı — kutucuk bu durumda
+          // görmezden gelinir) applyKmlFileToAllTitleUnits() kullanılır.
+          const applyAllCheckbox = card.querySelector(".kml-apply-all-checkbox");
+          if (applyAllCheckbox?.checked && files.length === 1) {
+            await applyKmlFileToAllTitleUnits(files[0]);
+            applyAllCheckbox.checked = false;
+          } else {
+            await processKmlFiles(files);
+          }
         } else if (upload.id === "address") {
           await processAddressFile(file);
         } else if (upload.id === "ekb") {
@@ -27905,6 +27926,29 @@ async function processKmlFiles(files) {
       fileName: file.name || "",
     })),
   );
+  await applyKmlRecordsToTitleUnits(records);
+}
+
+// Kullanıcı talebi (2026-08-15, AskUserQuestion onayı): "KML'i tek seferde
+// yükleyip tüm taşınmazlara uygula" — bkz. "aynı ada parsel taleplerinde 1
+// adet kml olacak zaten kml parsel bazında bir dosya". Çoklu Talep'te aynı
+// bina/parseldeki TÜM taşınmazlar (bağımsız bölümler) için gerçekte TEK bir
+// KML yeterlidir; normal akışta (processKmlFiles → applyKmlRecordsToTitleUnits
+// → getKmlTargetIndexes) her KML kaydı YALNIZCA BİR taşınmaza eşleşirdi,
+// diğerleri İl/İlçe/Mahalle/Pafta/Ada/Parsel/Yüzölçümü gibi KML kaynaklı
+// alanlar BOŞ kalırdı (yalnızca tabloda değil, RAPORUN KENDİSİNDE eksik veri
+// anlamına gelirdi). Bu fonksiyon TEK dosyayı ayrıştırıp mevcut taşınmaz
+// sayısı kadar (sığ kopyalanmış, birbirinden bağımsız) kayda çoğaltır ve
+// applyKmlRecordsToTitleUnits()'e verir — getKmlTargetIndexes() zaten N
+// kaydı N farklı taşınmaza (varsa ada/parsel eşleşmesiyle, yoksa sırayla
+// boşta olana) dağıtan mantığa zaten sahip; burada YENİDEN YAZILMADI.
+async function applyKmlFileToAllTitleUnits(file) {
+  const parsed = parseKml(await readFileAsText(file));
+  const unitCount = Math.max(getTitleUnitCount(), 1);
+  const records = Array.from({ length: unitCount }, () => ({
+    parsed: { ...parsed, fields: { ...parsed.fields } },
+    fileName: file.name || "",
+  }));
   await applyKmlRecordsToTitleUnits(records);
 }
 
