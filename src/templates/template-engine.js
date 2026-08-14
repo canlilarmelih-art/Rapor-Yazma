@@ -591,6 +591,15 @@
     MAIN_PROPERTY_QUALITY_DUZGUN: { fn: () => safeCall("normalizeReportTitleText", field("mainPropertyQuality")) },
     TITLE_ATTACHMENT_DUZGUN: { fn: () => safeCall("normalizeReportTitleText", field("titleAttachment")) },
     MALIKLERTABLO: { h: () => safeCall("buildMaliklerTableWordHtml") },
+    // Kullanıcı talebi (2026-08-14): "çoklu raporlarda tapu bilgilerini
+    // oluşturan tablo yapalım il ilçe mahalle mevkii pafta ada parsel
+    // yüzölçümü ana taşınmaz niteliği aynı ise tabloda gözükmeyecek.
+    // diğer bölümler her biri bir sütun olacak şekilde tablo oluşsun" —
+    // çoklu taşınmazlı (state.titleUnits) raporlarda TÜM taşınmazların
+    // tapu özetini TEK tabloda gösterir; tekil raporda veya ortak
+    // alanlar (il/ilçe/... ana taşınmaz niteliği) HİÇ farklılaşmıyorsa
+    // boş döner (bkz. buildTitleUnitsSummaryTableData, app.js).
+    TASINMAZLARTAPUTABLOSU: { h: () => safeCall("buildTitleUnitsSummaryWordTableHtml") },
     GABIMVERISETI: { h: () => safeCall("buildGabimDataSetWordHtml") },
     HISSEACIKLAMASI: { t: () => field("shareExplanation"), paragraphClass: "share-explanation" },
     EKLENTI: { f: ["titleAttachment"] },

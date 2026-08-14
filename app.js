@@ -1524,6 +1524,37 @@ function createTitleUnitTabBar() {
   return wrap;
 }
 
+// "Tapu ve Mülkiyet" sekmesinde, tab çubuğunun hemen altında — TÜM
+// taşınmazların tapu özetini (bkz. buildTitleUnitsSummaryWordTableHtml,
+// app.js) canlı önizler. Tekil raporda / ortak alanlar hiç
+// farklılaşmıyorsa bilgilendirici bir not gösterir (tablo YOK demek
+// "hata" değil, "henüz anlamlı bir fark yok" demek).
+function createTitleUnitsSummaryTablePreview() {
+  const wrap = document.createElement("div");
+  wrap.className = "title-units-summary-table-preview";
+  const heading = document.createElement("h5");
+  heading.textContent = "Taşınmazlar Tapu Özeti";
+  wrap.append(heading);
+
+  const tableHtml = buildTitleUnitsSummaryWordTableHtml();
+  if (!tableHtml) {
+    const note = document.createElement("p");
+    note.className = "muted-note";
+    note.textContent = "Bu tablo yalnızca birden fazla taşınmaz eklendiğinde görünür. Banka şablonlarında {{TASINMAZLARTAPUTABLOSU}} olarak kullanılabilir.";
+    wrap.append(note);
+    return wrap;
+  }
+  const tableContainer = document.createElement("div");
+  tableContainer.className = "title-units-summary-table-container";
+  tableContainer.innerHTML = tableHtml;
+  wrap.append(tableContainer);
+  const hint = document.createElement("p");
+  hint.className = "muted-note";
+  hint.textContent = "İl/İlçe/Mahalle/Mevkii/Pafta/Ada/Parsel/Yüzölçümü/Ana Taşınmaz Niteliği yalnızca taşınmazlar arasında FARKLIYSA gösterilir. Banka şablonlarında {{TASINMAZLARTAPUTABLOSU}} olarak kullanılabilir.";
+  wrap.append(hint);
+  return wrap;
+}
+
 function loadUserDefaults() {
   try {
     const stored = JSON.parse(localStorage.getItem(userDefaultsStorageKey) || "{}");
@@ -2388,6 +2419,13 @@ function renderSection() {
   // görmez, sıfır görsel değişiklik.
   if (["address", "title", "encumbrance"].includes(section.id) && isCurrentUserAdmin() && state.fields.requestType === "Çoklu Talep") {
     body.append(createTitleUnitTabBar());
+    // Kullanıcı talebi (2026-08-14): "çoklu raporlarda tapu bilgilerini
+    // oluşturan tablo yapalım" — yalnızca "Tapu ve Mülkiyet" sekmesinde,
+    // tab çubuğunun hemen altında; aynı admin-only/"Çoklu Talep" kapısını
+    // paylaşır (bkz. yukarıdaki yorum — bu veri modeli hâlâ deneysel).
+    if (section.id === "title") {
+      body.append(createTitleUnitsSummaryTablePreview());
+    }
   }
 
   const sectionVariantGroups = isCurrentUserAdmin() ? getVariantGroupsForSection(section.id) : [];
@@ -16297,6 +16335,110 @@ function buildReviewedDocumentsWordTableHtml() {
     rows,
     { columnWidths: ["18%", "27%", "12%", "12%", "31%"] },
   );
+}
+
+// Çoklu taşınmazlı (state.titleUnits) raporlarda TÜM taşınmazların tapu
+// bilgilerini TEK bir tabloda özetler — kullanıcı talebi (2026-08-14):
+// "çoklu raporlarda tapu bilgilerini oluşturan tablo yapalım il ilçe
+// mahalle mevkii pafta ada parsel yüzölçümü ana taşınmaz niteliği aynı
+// ise tabloda gözükmeyecek. diğer bölümler her biri bir sütun olacak
+// şekilde tablo oluşsun" — kullanıcı AskUserQuestion ile hem uygulama
+// içi önizleme HEM DE export token'ı istedi, "diğer bölümler" için
+// TÜM 4 grup (Blok/Kat/BB No, Bağımsız Bölüm Niteliği, Malik+Hisse,
+// Edinme Sebebi+Tapu Tarihi/No) onaylandı.
+//
+// TÜM taşınmazları (birincil + state.titleUnits[]) tek bir listede
+// döner. DİKKAT: aktif OLMAYAN taşınmazların güncel verisi state.fields'ta
+// DEĞİL, kendi "gölge" yuvasında durur (bkz. switchActiveTitleUnit,
+// getTitleUnitFieldsForLabel/getTitleUnitTablesForLabel — SADECE aktif
+// index state.fields/state.tables'ı, diğerleri primaryTitleUnitShadow
+// veya titleUnits[i-1]'i okur). getTitleUnitTabModels() ile AYNI deseni
+// kullanıyoruz ki hangi tab açık olursa olsun tablo HER taşınmazın
+// GÜNCEL verisini göstersin.
+function buildAllTitleUnitsForSummaryTable() {
+  const count = getTitleUnitCount();
+  return Array.from({ length: count }, (_, index) => ({
+    fields: getTitleUnitFieldsForLabel(index) || {},
+    tables: getTitleUnitTablesForLabel(index) || {},
+  }));
+}
+
+// "İl ilçe mahalle mevkii pafta ada parsel yüzölçümü ana taşınmaz
+// niteliği" — kullanıcının AYNI ise gizlenmesini istediği 9 alan, TAM
+// bu sırayla. Anahtarlar Tapu bölümünün KENDİ alanları (adres bölümüyle
+// KARIŞTIRILMASIN — bkz. CLAUDE.md 0.0.342 "_BUYUK/_DUZGUN" notu).
+const TITLE_UNITS_TABLE_SHARED_FIELD_DEFS = [
+  { key: "titleCity", label: "İl" },
+  { key: "titleDistrict", label: "İlçe" },
+  { key: "titleNeighborhood", label: "Mahalle" },
+  { key: "locationName", label: "Mevkii" },
+  { key: "sheetNo", label: "Pafta" },
+  { key: "blockNo", label: "Ada" },
+  { key: "parcelNo", label: "Parsel" },
+  { key: "landArea", label: "Yüzölçümü" },
+  { key: "mainPropertyQuality", label: "Ana Taşınmaz Niteliği" },
+];
+
+// units[].tables.title satırlarındaki (bkz. applyTakbisOwnersToTable:
+// c0=Malik, c1=Hisse Payı, c2=Edinme Sebebi, c3=Tapu Tarihi, c4=Yevmiye)
+// BİRDEN FAZLA malik/hissedar VARSA, aynı sütun içinde alt alta (\n,
+// formatWordCell tarafından <br>'a çevrilir) listelenir.
+function joinTitleUnitOwnerColumn(ownerRows, pick) {
+  const values = ownerRows.map(pick).map((v) => String(v || "").trim()).filter(Boolean);
+  return values.length ? values.join("\n") : "-";
+}
+
+// Tabloyu (başlıklar + satırlar) hesaplar; YALNIZCA 2+ taşınmaz varsa
+// (tekil raporda "aynı/farklı" karşılaştırması anlamsız) bir sonuç
+// döner, aksi halde null.
+function buildTitleUnitsSummaryTableData() {
+  const units = buildAllTitleUnitsForSummaryTable();
+  if (units.length < 2) return null;
+
+  // "aynı ise tabloda gözükmeyecek" — TÜM taşınmazlarda BİREBİR aynı
+  // (boşluk arındırılmış) değere sahip alanlar sütun listesinden
+  // tamamen ÇIKARILIR.
+  const sharedFieldsToShow = TITLE_UNITS_TABLE_SHARED_FIELD_DEFS.filter((def) => {
+    const values = units.map((unit) => String(unit.fields?.[def.key] || "").trim());
+    return !values.every((value) => value === values[0]);
+  });
+
+  const headers = [
+    ...sharedFieldsToShow.map((def) => def.label),
+    "Blok", "Kat", "Bağımsız Bölüm No", "Bağımsız Bölüm Niteliği",
+    "Malik(ler)", "Hisse Payı", "Edinme Sebebi", "Tapu Tarihi", "Yevmiye No",
+  ];
+
+  const rows = units.map((unit) => {
+    const fields = unit.fields || {};
+    const ownerRows = (Array.isArray(unit.tables?.title) ? unit.tables.title : [])
+      .filter((row) => String(row?.c0 || "").trim());
+    return [
+      ...sharedFieldsToShow.map((def) => String(fields[def.key] || "").trim() || "-"),
+      String(fields.titleBlockName || "").trim() || "-",
+      String(fields.titleFloor || "").trim() || "-",
+      String(fields.unitNo || "").trim() || "-",
+      String(fields.titleQuality || "").trim() || "-",
+      joinTitleUnitOwnerColumn(ownerRows, (r) => r.c0),
+      joinTitleUnitOwnerColumn(ownerRows, (r) => r.c1),
+      joinTitleUnitOwnerColumn(ownerRows, (r) => r.c2),
+      joinTitleUnitOwnerColumn(ownerRows, (r) => r.c3),
+      joinTitleUnitOwnerColumn(ownerRows, (r) => r.c4),
+    ];
+  });
+
+  return { headers, rows, sharedColumnCount: sharedFieldsToShow.length };
+}
+
+// Banka şablonlarına {{TASINMAZLARTAPUTABLOSU}} ile enjekte edilecek
+// gerçek HTML tablo (bkz. template-engine.js). Tekil raporda ya da hiç
+// taşınmaz yoksa boş döner (placeholder normal {{TOKEN}} akışıyla
+// temiz şekilde silinir, "eksik alan" uyarısı OLUŞTURMAZ — diğer tüm
+// tablo placeholder'larıyla aynı desen, bkz. buildReviewedDocumentsWordTableHtml).
+function buildTitleUnitsSummaryWordTableHtml() {
+  const data = buildTitleUnitsSummaryTableData();
+  if (!data || !data.rows.length) return "";
+  return buildCompactReportWordTableHtml(data.headers, data.rows);
 }
 
 function buildTakyidatWordTableHtml() {

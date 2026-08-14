@@ -9788,3 +9788,73 @@ her banner), 0 manuel kırılım, 0 kırpma — hepsi doğru.
 - Cache-buster: `src/exports/docx-fill.js?v=20260814-1600`,
   `src/exports/report-photos.js?v=20260814-1600`,
   `src/templates/template-engine.js?v=20260814-1600`.
+
+## 0.0.444 - 2026-08-14 - "Taşınmazlar Tapu Özeti" tablosu (çoklu taşınmaz)
+
+Kullanıcı: "şimdi çoklu raporlarda tapu bilgilerini oluşturan tablo
+yapalım il ilçe mahalle mevkii pafta ada parsel yüzölçümü ana taşınmaz
+niteliği aynı ise tabloda gözükmeyecek. diğer bölümler her biri bir
+sütun olacak şekilde tablo oluşsun". `AskUserQuestion` ile iki karar
+netleşti: (1) tablo hem uygulama içi önizleme HEM DE export
+`{{TOKEN}}`'ı olarak eklensin, (2) "diğer bölümler" için TÜM 4 grup
+(Blok/Kat/Bağımsız Bölüm No, Bağımsız Bölüm Niteliği, Malik(ler)+Hisse
+Oranı, Edinme Sebebi+Tapu Tarihi/No) her biri kendi sütunu olsun.
+
+**`app.js`**:
+- `buildAllTitleUnitsForSummaryTable()`: TÜM taşınmazları (birincil +
+  `state.titleUnits[]`) tek listede döner. **KRİTİK doğruluk noktası**:
+  aktif OLMAYAN taşınmazların güncel verisi `state.fields`'ta DEĞİL,
+  kendi "gölge" yuvasında durur (`primaryTitleUnitShadow` / `titleUnits[i-1]`,
+  bkz. `switchActiveTitleUnit`) — bu yüzden `getTitleUnitFieldsForLabel`/
+  `getTitleUnitTablesForLabel` (tab etiketlerinin ZATEN kullandığı
+  fonksiyonlar) yeniden kullanıldı; `state.fields`'ı doğrudan okuyan ilk
+  taslak, aktif OLMAYAN sekmelerde veriyi hep boş gösterirdi.
+- `TITLE_UNITS_TABLE_SHARED_FIELD_DEFS`: "aynı ise gizlensin" 9 alan
+  (İl/İlçe/Mahalle/Mevkii/Pafta/Ada/Parsel/Yüzölçümü/Ana Taşınmaz
+  Niteliği) — Tapu bölümünün KENDİ alanları (`titleCity`/`titleDistrict`/
+  `titleNeighborhood`/`locationName`/`sheetNo`/`blockNo`/`parcelNo`/
+  `landArea`/`mainPropertyQuality`), adres bölümüyle KARIŞTIRILMADI.
+- `buildTitleUnitsSummaryTableData()`: 2'den az taşınmazda `null` döner
+  (tekil raporda "aynı/farklı" karşılaştırması anlamsız). 9 paylaşılan
+  alandan TÜM taşınmazlarda BİREBİR aynı (boşluk arındırılmış) olanlar
+  sütun listesinden ÇIKARILIR; "diğer bölümler" HER ZAMAN gösterilir.
+  Malik(ler)/Hisse/Edinme Sebebi/Tarih/Yevmiye, `state.tables.title`
+  satırlarından (bkz. `applyTakbisOwnersToTable`: c0=Malik, c1=Hisse,
+  c2=Edinme Sebebi, c3=Tarih, c4=Yevmiye) geliyor — bir taşınmazda
+  BİRDEN FAZLA malik varsa `joinTitleUnitOwnerColumn` ile aynı hücrede
+  alt alta (`\n` → Word'de `<br>`, bkz. `formatWordCell`) birleştiriliyor.
+- `buildTitleUnitsSummaryWordTableHtml()`: gerçek HTML tabloyu
+  (`buildCompactReportWordTableHtml`, `buildReviewedDocumentsWordTableHtml`
+  ile AYNI aile) üretir; uygulanamıyorsa (`null`/boş) `""` döner —
+  placeholder normal `{{TOKEN}}`→`""` akışıyla temiz silinir, "eksik
+  alan" uyarısı OLUŞTURMAZ (`MALIKLERTABLO` ile aynı desen).
+- `createTitleUnitsSummaryTablePreview()`: "Tapu ve Mülkiyet" sekmesinde,
+  mevcut taşınmaz tab çubuğunun (`createTitleUnitTabBar`) HEMEN altında
+  — AYNI admin-only + "Çoklu Talep" kapısını paylaşır (bu veri modeli
+  hâlâ "Deneysel (Faz 2)"). Tablo uygulanamıyorsa bilgilendirici bir not
+  gösterir ("hata" değil, "henüz anlamlı fark yok" demek).
+
+**`template-engine.js`**: `TASINMAZLARTAPUTABLOSU: { h: () =>
+safeCall("buildTitleUnitsSummaryWordTableHtml") }` — `MALIKLERTABLO` ile
+aynı `LEGACY_ALIASES` girişi deseni, banka şablonlarında
+`{{TASINMAZLARTAPUTABLOSU}}` olarak kullanılabilir.
+
+**`styles.css`**: `.title-units-summary-table-preview` ve alt sınıfları
+— mevcut `.title-unit-tab-bar` ile aynı görsel dil (var(--surface)/
+var(--line)), geniş tablolar için `overflow-x: auto`.
+
+Canlı doğrulama (localhost:5173, GERÇEK rapor yerine GEÇİCİ bir test
+talebiyle — sonda tamamen silindi, gerçek veriye dokunulmadı): "Çoklu
+Talep" seçilip 2. bir taşınmaz eklendi — panel önce "yalnızca birden
+fazla taşınmazda görünür" notunu doğru gösterdi, taşınmaz eklenince
+tablo (tüm sütunlar "-", 9 paylaşılan alan başlangıçta AYNI/boş
+olduğundan gizli) doğru render edildi; iki taşınmazın "Parsel" alanı
+farklı (1 / 99) yapılınca "Parsel" sütunu DOĞRU şekilde belirdi, diğer
+8 paylaşılan alan (hâlâ aynı/boş) gizli KALDI.
+- Test: yeni `tools/test-title-units-summary-table.js` — aktif/gölge
+  okuma kuralı, "aynı ise gizlensin" + "diğer bölümler her zaman var"
+  kuralı, tekil rapor (`null`/`""`), çoklu malik birleştirme, gerçek
+  HTML üretimi, `{{TASINMAZLARTAPUTABLOSU}}` kablolaması (6 senaryo).
+  `package.json`'ın `test` zincirine eklendi. `npm run verify` tam
+  zincirle yeşil.
+- Cache-buster: `app.js?v=20260814-1700`, `styles.css?v=20260814-1700`.

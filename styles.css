@@ -4302,6 +4302,39 @@ table {
   line-height: 1.25;
 }
 
+/* Taşınmazlar Tapu Özeti (2026-08-14) — tab çubuğunun altında, TÜM
+   taşınmazların tapu bilgisini tek tabloda önizler (bkz.
+   createTitleUnitsSummaryTablePreview, app.js). */
+.title-units-summary-table-preview {
+  display: grid;
+  gap: 6px;
+  padding: 8px 10px;
+  margin-bottom: 10px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.title-units-summary-table-preview h5 {
+  margin: 0;
+  font-size: 0.8em;
+  color: var(--ink);
+}
+
+.title-units-summary-table-preview .muted-note {
+  margin: 0;
+  font-size: 0.72em;
+  line-height: 1.25;
+}
+
+.title-units-summary-table-container {
+  overflow-x: auto;
+}
+
+.title-units-summary-table-container table {
+  min-width: 100%;
+}
+
 .multi-takbis-preview-table {
   width: 100%;
   font-size: 0.85em;
