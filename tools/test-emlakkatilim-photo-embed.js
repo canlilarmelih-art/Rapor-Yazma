@@ -234,16 +234,15 @@ function makePhoto(caption) {
   const srcRectCount = countOccurrences(outXml, "<a:srcRect ");
   check(srcRectCount === totalPhotos, `Her hucre icin kirpma (srcRect) bekleniyordu (${totalPhotos}), bulunan: ${srcRectCount}`);
 
-  // "başlıklar sayfa sonundan başlamamalı her bir başlık yeni sayfadan
-  // başlamalı" — HER kategori banner'i (ILK dahil) kendi sayfasında
-  // baslar: 2 kategori = TAM 2 sayfa sonu (once ne kadar icerik olursa
-  // olsun, ilk banner de kendi sayfasinda baslar).
+  // "her sayfa başlığının üstünde bir boşluk kısmı var" — ayrı, tek
+  // başına <w:br w:type="page"/> paragrafı (kendi paragraf işareti yeni
+  // sayfada boş bir satır bırakıyordu) TAMAMEN KALDIRILDI; artık HİÇ
+  // manuel sayfa sonu paragrafı YOK, yalnızca banner'ın <w:pPr>'indeki
+  // <w:pageBreakBefore/> sayfa geçişini sağlıyor.
   const pageBreakCount = countOccurrences(outXml, '<w:br w:type="page"/>');
-  check(pageBreakCount === 2, `2 kategori icin TAM 2 sayfa sonu (her basligin kendi sayfasi) bekleniyordu, bulunan: ${pageBreakCount}`);
-  // Kullanici "halen basliklar sayfa sonundan baslayabiliyor" dedi —
-  // manuel <w:br> tablo hucresi icinde (8.1 Fotoğraflar, vMerge=restart)
-  // her zaman guvenilir olmadigindan HER banner'in <w:pPr>'inde AYRICA
-  // Word'un native <w:pageBreakBefore/> ozelligi de bulunmali (iki katmanli
+  check(pageBreakCount === 0, `Artık ayrı manuel sayfa sonu paragrafı OLMAMALI (boşluk kaynağıydı), bulunan: ${pageBreakCount}`);
+  // 2 kategori icin HER banner'in <w:pPr>'inde Word'un native
+  // <w:pageBreakBefore/> ozelligi bulunmali (TEK mekanizma — iki katmanli
   // koruma) — 2 kategori icin TAM 2 tane.
   const pageBreakBeforeCount = countOccurrences(outXml, "<w:pageBreakBefore/>");
   check(pageBreakBeforeCount === 2, `2 kategori icin TAM 2 <w:pageBreakBefore/> bekleniyordu (her banner kendi paragrafinda), bulunan: ${pageBreakBeforeCount}`);
@@ -330,13 +329,12 @@ function makePhoto(caption) {
   const srcRectCount = countOccurrences(outXml, "<a:srcRect ");
   check(srcRectCount === 1, `Yalnizca kategori fotografinda 1 srcRect (kirpma) bekleniyordu (kapak KIRPILMAZ), bulunan: ${srcRectCount}`);
 
-  // "her bir başlık yeni sayfadan başlamalı" — kapak fotografindan SONRA,
-  // TEK kategori (İç Mekan) icin TAM 1 sayfa sonu (kapagin KENDISI icin
-  // sayfa sonu eklenmez, yalnizca ardindan gelen basliktan ONCE).
+  // Artık ayrı manuel sayfa sonu paragrafı YOK (boşluk kaynağıydı) —
+  // kapak fotografindan SONRA, TEK kategori (İç Mekan) icin banner'in
+  // KENDI <w:pageBreakBefore/>'i sayfa geçişini sağlıyor (kapağın
+  // KENDİSİ pageBreakBefore ALMAZ, yalnızca ardından gelen banner).
   const pageBreakCount = countOccurrences(outXml, '<w:br w:type="page"/>');
-  check(pageBreakCount === 1, `Kapak fotografi + 1 kategori icin TAM 1 sayfa sonu (basligin kendi sayfasi) bekleniyordu, bulunan: ${pageBreakCount}`);
-  // Iki katmanli koruma: banner'in <w:pPr>'inde AYRICA <w:pageBreakBefore/>
-  // da olmali (kapak fotografinin KENDI etiket paragrafinda YOK).
+  check(pageBreakCount === 0, `Artık ayrı manuel sayfa sonu paragrafı OLMAMALI, bulunan: ${pageBreakCount}`);
   const pageBreakBeforeCount = countOccurrences(outXml, "<w:pageBreakBefore/>");
   check(pageBreakBeforeCount === 1, `1 kategori icin TAM 1 <w:pageBreakBefore/> bekleniyordu, bulunan: ${pageBreakBeforeCount}`);
 
@@ -376,7 +374,7 @@ function makePhoto(caption) {
   check(iconMekanCount === 3, `"İç Mekan" metni TAM 3 kez (3 sayfa) gecmeliydi, bulunan: ${iconMekanCount}`);
 
   const pageBreakCount = countOccurrences(outXml, '<w:br w:type="page"/>');
-  check(pageBreakCount === 3, `3 sayfa icin TAM 3 sayfa sonu bekleniyordu, bulunan: ${pageBreakCount}`);
+  check(pageBreakCount === 0, `Artık ayrı manuel sayfa sonu paragrafı OLMAMALI, bulunan: ${pageBreakCount}`);
   const pageBreakBeforeCount = countOccurrences(outXml, "<w:pageBreakBefore/>");
   check(pageBreakBeforeCount === 3, `3 sayfa icin TAM 3 <w:pageBreakBefore/> bekleniyordu, bulunan: ${pageBreakBeforeCount}`);
 

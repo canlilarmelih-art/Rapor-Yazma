@@ -9603,3 +9603,37 @@ kullanıcının verdiği sayılarla birebir).
   sayımı artık baseline'a göre delta (şablonun kendi diğer tabloları
   yanlışlıkla sayılmasın diye). `npm run verify` tam zincirle yeşil.
 - Cache-buster: `src/exports/docx-fill.js?v=20260814-1030`.
+
+## 0.0.440 - 2026-08-14 - Başlığın üstündeki fazla boşluk kaldırıldı
+
+Kullanıcı gerçek bir export'tan ekran görüntüsü gönderdi: her fotoğraf
+sayfasının en üstünde, lacivert başlıktan HEMEN önce fazladan bir boşluk
+vardı — "her şey çok iyi ancak görselde her sayfa başlığının üstünde bir
+boşluk kısmı var bu boşluk olmamalı bunun sebebi nedir?"
+
+**Kök neden**: 0.0.438'de `<w:pageBreakBefore/>` eklenirken, ONCEKİ
+manuel `<w:br w:type="page"/>` paragrafı "yedekli/iki katmanlı koruma"
+mantığıyla KALDIRILMAMIŞTI — varsayımım şuydu: "ikisi birlikte fazladan
+BOŞ SAYFA üretmez". Bu doğruydu ama YANLIŞ soruyu cevaplıyordu: o ayrı,
+tek başına kırılım içeren paragrafın KENDİ paragraf işareti (paragraph
+mark), kırılımdan SONRA yeni sayfada BOŞ BİR SATIR olarak render
+ediliyordu — tam da kullanıcının gördüğü boşluk buydu.
+
+**`docx-fill.js`**: Ayrı `<w:br w:type="page"/>` paragrafı (ve onu üreten
+`PAGE_BREAK_PARAGRAPH_XML` sabiti) TAMAMEN KALDIRILDI — `<w:pageBreakBefore/>`
+TEK BAŞINA zaten güvenilir çalıştığı (bu oturumda defalarca canlı
+doğrulandı) için ayrıca gerekmiyor. `buildCategoryBannerXml`'deki
+`w:spacing w:before` de `240`'tan `0`'a çekildi (ekstra ~0,42 cm boşluk
+kaynağıydı) — banner artık sayfanın gerçek en üstünde, hiçbir boş
+satır/boşluk olmadan başlıyor.
+
+Canlı doğrulama (localhost:5173): gerçek `/api/report-template-docx`
+uç noktasından GERÇEK `emlakkatilim.docx` çekildi — çıktıda HİÇ manuel
+`<w:br w:type="page"/>` paragrafı yok, yalnızca banner'ın kendi
+`<w:pageBreakBefore/>`'i var, başlığın hemen öncesinde boş paragraf
+deseni bulunmuyor.
+- Test: `tools/test-emlakkatilim-photo-embed.js` — tüm senaryolarda
+  manuel sayfa sonu sayımı artık `=== 0` bekliyor (önceden kategori/
+  sayfa sayısıyla eşleşmesi bekleniyordu); `pageBreakBefore` sayımı TEK
+  mekanizma olarak kaldı. `npm run verify` tam zincirle yeşil.
+- Cache-buster: `src/exports/docx-fill.js?v=20260814-1245`.

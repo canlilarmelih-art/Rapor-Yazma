@@ -458,23 +458,21 @@
     return `<w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="${cx}" cy="${cy}"/><wp:effectExtent l="0" t="0" r="0" b="0"/><wp:docPr id="${uid}" name="Resim ${relId}" descr="${safeTitle}"/><wp:cNvGraphicFramePr><a:graphicFrameLocks xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" noChangeAspect="1"/></wp:cNvGraphicFramePr><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="${uid}" name="Resim ${relId}" descr="${safeTitle}"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="rId${relId}"/>${srcRectXml}<a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing>`;
   }
 
-  // Kullanici talebi (2026-08-14): "halen başlıklar sayfa sonundan
-  // başlayabiliyor ... önemli olan sayfa başında başlık olması" — bir
-  // ONCEKİ turda eklenen KOŞULSUZ <w:br w:type="page"/> paragrafı YETERLİ
-  // OLMADI: bu icerik "8.1 Fotoğraflar" hücresinin (vMerge=restart,
-  // orijinalde birkaç küçük satır için tasarlanmış, artık onlarca sayfa
-  // barındıran) İÇİNDE yaşıyor — Word'ün manuel `w:br` (run seviyesi)
-  // kırılımları tablo hücreleri içinde HER ZAMAN güvenilir şekilde
-  // uygulanmıyor. Bunun yerine Word'ün SAYFALAMA (pagination) motorunun
-  // native olarak tanıdığı PARAGRAF ÖZELLİĞİ `<w:pageBreakBefore/>`
-  // (Word arayüzünde "Paragraf > Satır ve Sayfa Kesmeleri > Bu paragraftan
-  // önce sayfa sonu ekle" ile birebir aynı mekanizma) kullanılıyor — bu,
-  // manuel `w:br` çalışmadığı senaryolarda (tablo hücreleri dahil) daha
-  // güvenilir. Önceki `<w:br w:type="page"/>` paragrafı da KALDIRILMADI
-  // (yedekli/iki katmanlı koruma — ikisi birlikte fazladan boş sayfa
-  // ÜRETMEZ, çünkü ilk kırılımdan sonra imleç zaten sayfa başındadır).
+  // Kullanici talebi (2026-08-14, 6. tur): "her sayfa başlığının üstünde
+  // bir boşluk kısmı var bu boşluk olmamalı" — kok neden bulundu: bir
+  // ONCEKI turda `<w:pageBreakBefore/>`'a EK OLARAK "yedek" diye
+  // birlikte tutulan AYRI, tek basina `<w:br w:type="page"/>` icin
+  // paragraf (PAGE_BREAK_PARAGRAPH_XML) — bu paragrafin KENDI paragraf
+  // isareti (paragraph mark) kirilimdan SONRA yeni sayfada BOS BIR
+  // SATIR olarak render ediliyordu (calisma varsayimim yanlisti: "ikisi
+  // birlikte fazladan bos sayfa URETMEZ" dogruydu ama fazladan bos
+  // SATIR/BOSLUK URETIYORDU). `<w:pageBreakBefore/>` TEK BASINA zaten
+  // guvenilir calistigi (bu oturumda canli dogrulandi) icin AYRI kirilim
+  // paragrafi TAMAMEN KALDIRILDI — banner artik dogrudan sayfa basinda,
+  // hicbir bos satir olmadan baslar. `w:spacing w:before` de "0"a
+  // cekildi (ONCEDEN 240 twip ~0,42 cm ek bosluk birakiyordu).
   function buildCategoryBannerXml(label) {
-    return `<w:p><w:pPr><w:pageBreakBefore/><w:shd w:val="clear" w:color="auto" w:fill="${PHOTO_BANNER_FILL}"/><w:spacing w:before="240" w:after="140"/><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:b/><w:bCs/><w:color w:val="FFFFFF"/><w:sz w:val="24"/><w:szCs w:val="24"/></w:rPr><w:t xml:space="preserve">${escapeXmlText(label)}</w:t></w:r></w:p>`;
+    return `<w:p><w:pPr><w:pageBreakBefore/><w:shd w:val="clear" w:color="auto" w:fill="${PHOTO_BANNER_FILL}"/><w:spacing w:before="0" w:after="140"/><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:b/><w:bCs/><w:color w:val="FFFFFF"/><w:sz w:val="24"/><w:szCs w:val="24"/></w:rPr><w:t xml:space="preserve">${escapeXmlText(label)}</w:t></w:r></w:p>`;
   }
 
   // "Kapak Fotoğrafı" — kullanıcı talebi (2026-08-13, 3. tur): "kapak
@@ -605,8 +603,6 @@
     return `<w:tbl><w:tblPr><w:tblW w:w="${tableWidthDxa}" w:type="dxa"/><w:jc w:val="center"/><w:tblLayout w:type="fixed"/><w:tblBorders><w:top w:val="none"/><w:left w:val="none"/><w:bottom w:val="none"/><w:right w:val="none"/><w:insideH w:val="none"/><w:insideV w:val="none"/></w:tblBorders>${tblCellMarZero}</w:tblPr><w:tblGrid>${gridColsParts.join("")}</w:tblGrid>${trParts.join("")}</w:tbl><w:p/>`;
   }
 
-  const PAGE_BREAK_PARAGRAPH_XML = `<w:p><w:r><w:br w:type="page"/></w:r></w:p>`;
-
   // xmlText icindeki TEK konsolide fotoğraf-eki token'ini (ör.
   // {{FOTO_ALANI_1}}, bkz. report-photos.js PHOTO_APPENDIX_TOKEN),
   // categoryGroups ([{token, categories:[{label, batches:[{layoutKey,
@@ -661,7 +657,10 @@
           const perPage = Math.max(1, columns * rows);
           for (let pageStart = 0; pageStart < batch.photos.length; pageStart += perPage) {
             const pagePhotos = batch.photos.slice(pageStart, pageStart + perPage);
-            parts.push(PAGE_BREAK_PARAGRAPH_XML);
+            // Banner'in KENDİ <w:pPr>'indeki <w:pageBreakBefore/> tek
+            // başına sayfa geçişini sağlıyor — ayrı bir <w:br type="page"/>
+            // paragrafı EKLEMİYORUZ artık (o paragrafın kendi paragraf
+            // işareti yeni sayfada boş bir satır/boşluk bırakıyordu).
             parts.push(buildCategoryBannerXml(category.label));
             parts.push(buildPhotoPageTableXml(pagePhotos, batch.layoutKey, registrar));
           }
