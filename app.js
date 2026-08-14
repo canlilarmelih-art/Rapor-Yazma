@@ -16498,11 +16498,41 @@ function buildTitleUnitsSummaryWordTableHtml() {
   return buildTitleUnitsSummaryTableHtmlFromData(data.headers, data.rows);
 }
 
+// "sütun başlıklarını 2 satır yap böylelikle hücre genişliği bir nebze
+// azalacaktır" — table-layout:auto'da tarayıcı, yeterli yatay alan
+// olduğunda white-space:normal'e RAĞMEN çok kelimeli başlıkları TEK
+// SATIRDA bırakabiliyor (sarma yalnızca alan YETMEYİNCE devreye giriyor),
+// bu da o sütunun gereğinden GENİŞ hesaplanmasına yol açıyor. Her başlığı
+// elle kırmak yerine, birden fazla kelimeli başlıklarda ORTAYA en yakın
+// boşluktan ZORLA <br> ekleyen genel bir yardımcı — tek kelimelik
+// başlıklar (İl, Blok, Kat, Cilt, Sayfa...) DOKUNULMADAN kalır (kıracak
+// boşluk yok), böylece o sütunlar zaten dar.
+function splitTableHeaderLabelIntoTwoLines(label) {
+  const text = String(label || "");
+  const spaceIndexes = [];
+  for (let i = 0; i < text.length; i += 1) {
+    if (text[i] === " ") spaceIndexes.push(i);
+  }
+  if (!spaceIndexes.length) return escapeHtml(text);
+  const middle = text.length / 2;
+  let bestIndex = spaceIndexes[0];
+  let bestDistance = Math.abs(bestIndex - middle);
+  spaceIndexes.forEach((index) => {
+    const distance = Math.abs(index - middle);
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      bestIndex = index;
+    }
+  });
+  return `${escapeHtml(text.slice(0, bestIndex))}<br>${escapeHtml(text.slice(bestIndex + 1))}`;
+}
+
 // "Sıra No" hariç tüm sütun genişlikleri "auto" (içeriğe göre dinamik,
 // table-layout:fixed DEĞİL) — Word/tarayıcı en uygun genişliği kendi
 // hesaplar. Başlıklar `white-space:normal` (gerekirse birden fazla
-// satıra sarar). HER hücre (başlık + gövde) hem yatay (text-align:center)
-// hem dikey (vertical-align:middle) ortalı.
+// satıra sarar) VE çok kelimeliyse ZORLA 2 satıra bölünür (bkz.
+// splitTableHeaderLabelIntoTwoLines). HER hücre (başlık + gövde) hem
+// yatay (text-align:center) hem dikey (vertical-align:middle) ortalı.
 function buildTitleUnitsSummaryTableHtmlFromData(headers, rows) {
   const ink = getReportThemeToken("--ink", "#152238");
   const line = getReportThemeToken("--line", "#dde3ef");
@@ -16514,7 +16544,7 @@ function buildTitleUnitsSummaryTableHtmlFromData(headers, rows) {
   const headerCell = `${baseCell}background:${surfaceMuted};color:${blue};font-weight:800;`;
   const zebraCell = `${baseCell}background:${surfaceMuted};`;
 
-  const headerHtml = `<tr>${headers.map((label) => `<th style="${headerCell}">${escapeHtml(label)}</th>`).join("")}</tr>`;
+  const headerHtml = `<tr>${headers.map((label) => `<th style="${headerCell}">${splitTableHeaderLabelIntoTwoLines(label)}</th>`).join("")}</tr>`;
   const bodyHtml = rows.map((row, rowIndex) => {
     const cellStyle = rowIndex % 2 === 1 ? zebraCell : baseCell;
     return `<tr>${row.map((cell) => `<td style="${cellStyle}">${formatWordCell(cell)}</td>`).join("")}</tr>`;

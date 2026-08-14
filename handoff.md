@@ -9886,6 +9886,15 @@ gerekmedi, testle (bkz. aşağıda) tekrar doğrulandı.
   zincirle yeşil.
 - Cache-buster: `app.js?v=20260814-1745`.
 
+## 0.0.448 - 2026-08-15 - Taşınmazlar Tapu Özeti: başlıklar zorla 2 satıra bölünüyor
+
+- Kullanıcı: "sütun başlıklarını 2 satır yap böylelikle hücre genişliği bir nebze azalacaktır." — önceki `white-space:normal` başlıkların sarmasına İZİN veriyordu ama table-layout:auto'da tarayıcı, alan yeterliyse çok kelimeli başlıkları TEK SATIRDA bırakıyordu (sarma yalnızca alan gerçekten yetmeyince devreye giriyordu), bu da sütunları gereğinden geniş yapıyordu.
+- `app.js`'e yeni `splitTableHeaderLabelIntoTwoLines(label)` eklendi: birden fazla kelimeli başlıklarda ORTAYA en yakın boşluktan `<br>` ile ZORLA kırar (ör. "Bağımsız Bölüm Niteliği" → "Bağımsız Bölüm<br>Niteliği"); tek kelimeli başlıklar (İl, Blok, Kat, Cilt, Sayfa...) dokunulmadan kalır. `buildTitleUnitsSummaryTableHtmlFromData()` artık başlık hücrelerinde `escapeHtml(label)` yerine bunu kullanıyor.
+- Canlı tarayıcıda (geçici test talebi, sonra silinmeden zaten kütüphaneye hiç kaydedilmemiş transient taslak olduğu doğrulanarak) DOM üzerinden `thead th` innerHTML'leri kontrol edildi — tüm çok kelimeli başlıklar `<br>` ile 2 satıra bölünmüş halde geldi.
+- `tools/test-title-units-summary-table.js`: yeni "4c" senaryosu (`splitTableHeaderLabelIntoTwoLines` doğrudan test) + HTML üretim testine (#5) çok kelimeli başlıkların `<br>` içerdiğine dair assertion eklendi.
+- `npm run verify` tamamı yeşil.
+- Cache-buster: `app.js?v=20260815-0035`.
+
 ## 0.0.447 - 2026-08-15 - "İl İlçe Mahalle hala çıkıyor" düzeltmesi: ada/parsel önceliği 4 alana genişletildi
 
 - Kullanıcı: "İL İLÇE MAHALLE HALA ÇIKIYOR AYNI OLMASINA RAĞMEN TÜM TAŞINMAZLARIN" — 0.0.446'da "İl İlçe Mahalle Pafta ... aynı ada parsel taleplerinde tabloda yer almamalı" isteği yanlışlıkla YALNIZCA Pafta'ya (`sheetNo`) uygulanmıştı; İl/İlçe/Mahalle (`titleCity`/`titleDistrict`/`titleNeighborhood`) unutulmuştu.

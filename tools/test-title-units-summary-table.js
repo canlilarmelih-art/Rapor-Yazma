@@ -89,6 +89,7 @@ const functionNames = [
   "computeTitleUnitShareOfLandArea",
   "buildTitleUnitsSummaryTableData",
   "buildTitleUnitsSummaryWordTableHtml",
+  "splitTableHeaderLabelIntoTwoLines",
   "buildTitleUnitsSummaryTableHtmlFromData",
   "parseReportNumber",
   "formatSquareMeterArea",
@@ -110,7 +111,7 @@ const sandboxSource = `
     setState: (s) => { state = s; },
     getTitleUnitCount, getTitleUnitFieldsForLabel, getTitleUnitTablesForLabel,
     buildAllTitleUnitsForSummaryTable, joinTitleUnitOwnerColumn,
-    computeTitleUnitShareOfLandArea,
+    computeTitleUnitShareOfLandArea, splitTableHeaderLabelIntoTwoLines,
     buildTitleUnitsSummaryTableData, buildTitleUnitsSummaryWordTableHtml,
   };
 `;
@@ -273,6 +274,21 @@ function unit(fields, ownerRows) {
   console.log("computeTitleUnitShareOfLandArea formul + eksik veri testi tamam.");
 }
 
+// --- 4c) splitTableHeaderLabelIntoTwoLines(): coklu kelimeli basliklar --
+// ZORLA 2 satira bolunmeli. Kullanici talebi: "sütun başlıklarını 2 satır
+// yap böylelikle hücre genişliği bir nebze azalacaktır" — table-layout:
+// auto'da tarayici yeterli alan varken white-space:normal'e ragmen tek
+// satirda birakabiliyordu, bu yuzden ORTAYA en yakin bosluktan <br> ile
+// ELLE kiriliyor. Tek kelimeli basliklar (bosluk yok) DOKUNULMADAN kalir.
+{
+  assert.equal(fns.splitTableHeaderLabelIntoTwoLines("Bağımsız Bölüm Niteliği"), "Bağımsız Bölüm<br>Niteliği", "3 kelimeli baslik ortaya en yakin bosluktan kirilmali.");
+  assert.equal(fns.splitTableHeaderLabelIntoTwoLines("Hissesine Düşen Arsa Payı"), "Hissesine Düşen<br>Arsa Payı", "4 kelimeli baslik ortaya en yakin bosluktan kirilmali.");
+  assert.equal(fns.splitTableHeaderLabelIntoTwoLines("Taşınmaz Kimlik No"), "Taşınmaz<br>Kimlik No", "3 kelimeli baslik ortaya en yakin bosluktan kirilmali.");
+  assert.equal(fns.splitTableHeaderLabelIntoTwoLines("Blok"), "Blok", "Tek kelimeli baslik (bosluk yok) DOKUNULMADAN kalmali.");
+  assert.equal(fns.splitTableHeaderLabelIntoTwoLines("Sayfa"), "Sayfa", "Tek kelimeli baslik (bosluk yok) DOKUNULMADAN kalmali.");
+  console.log("splitTableHeaderLabelIntoTwoLines coklu kelimeli baslik kirma testi tamam.");
+}
+
 // --- 5) Gerçek HTML üretimi: birden fazla malik <br>'a dönüşüyor mu ------
 {
   const shared = { titleCity: "Bursa", titleDistrict: "Nilüfer", titleNeighborhood: "Özlüce", locationName: "-", sheetNo: "-", blockNo: "1", parcelNo: "1", landArea: "500", mainPropertyQuality: "Arsa" };
@@ -289,7 +305,11 @@ function unit(fields, ownerRows) {
   assert.ok(html.includes("table-layout:auto"), "Sutun genislikleri DINAMIK (table-layout:auto) olmali.");
   // "tüm hücreler yatay ve dikey ortalı olsun".
   assert.ok(html.includes("text-align:center") && html.includes("vertical-align:middle"), "Tum hucreler yatay VE dikey ortali olmali.");
-  console.log("buildTitleUnitsSummaryWordTableHtml gercek HTML uretimi (dinamik genislik + ortalama) testi tamam.");
+  // "sütun başlıklarını 2 satır yap" — coklu kelimeli baslik (ornegin
+  // "Bağımsız Bölüm Niteliği") HTML CIKTISINDA <br> ile bolunmus olmali.
+  assert.ok(html.includes("Bağımsız Bölüm<br>Niteliği"), "'Bağımsız Bölüm Niteliği' basligi HTML ciktisinda <br> ile 2 satira bolunmus olmali.");
+  assert.ok(html.includes("Hissesine Düşen<br>Arsa Payı"), "'Hissesine Düşen Arsa Payı' basligi HTML ciktisinda <br> ile 2 satira bolunmus olmali.");
+  console.log("buildTitleUnitsSummaryWordTableHtml gercek HTML uretimi (dinamik genislik + ortalama + 2 satirli baslik) testi tamam.");
 }
 
 // --- 6) template-engine.js'te {{TASINMAZLARTAPUTABLOSU}} kayitli mi -------
