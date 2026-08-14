@@ -9682,3 +9682,41 @@ manuel sayfa sonu 0, `pageBreakBefore` TAM 4 (sayfa sayısıyla eşleşti),
   boyut kontrolü 16×10,50'den 16×10,75'e güncellendi. `npm run verify`
   tam zincirle yeşil.
 - Cache-buster: `src/exports/docx-fill.js?v=20260814-1420`.
+
+## 0.0.442 - 2026-08-14 - "8.1 Fotoğraflar" hücresinin boş çerçeve kutusu kalıcı olarak giderildi
+
+Kullanıcı bir ekran görüntüsü gönderdi: logo ile "Dış Mekan" başlığı
+arasında, kenarlıklı BOŞ bir kutu vardı — "tek sorun buradaki boşluk."
+
+**Kök neden bulundu (nihayet kesin kanıtla)**: "8.1 Fotoğraflar"
+hücresi kendi kenarlıklarına (`w:tcBorders`, tüm kenarlar "single"
+siyah) sahip, ve içeriği TAM `{{FOTO_ALANI_1}}` token'ının olduğu yerde
+başlıyor. 0.0.438'den beri bu hücreye gömülen İLK paragraf (kapak
+fotoğrafı yoksa İLK kategori banner'ı) `<w:pageBreakBefore/>` taşıyordu
+— ama bu paragraf zaten hücrenin doğal/ilk içeriğiydi, "önce sayfa
+başına git" demenin hiçbir anlamı yoktu. Word, bu çelişkiyi hücrenin
+kenarlıklı çerçevesini DOĞAL konumunda (BOŞ olarak) gösterip gerçek
+içeriği bir sonraki sayfaya iterek çözüyordu — tam olarak kullanıcının
+işaretlediği boş kutu.
+
+**`docx-fill.js`**: `buildCategoryBannerXml(label, includePageBreakBefore)`
+artık koşullu — `embedPhotoGalleryAssets` içinde bir `isFirstBannerOverall`
+bayrağı takip ediliyor: kapak fotoğrafı YOKSA akışın EN İLK banner'ı
+`pageBreakBefore` ALMAZ (zaten hücrenin doğal başlangıcında duruyor,
+hiçbir şey onu "sayfa sonuna" itmiyor); SONRAKİ HER banner (2. kategori,
+aynı kategorinin 2./3. sayfası, ya da kapak fotoğrafından sonraki İLK
+banner) YİNE `pageBreakBefore` alır (kapak fotoğrafı zaten hücrenin
+doğal başlangıcında durduğu için kendisi hiç pageBreakBefore almıyordu,
+bu davranış değişmedi).
+
+Doğrulama: `tools/test-emlakkatilim-photo-embed.js`'e YENİ, kesin bir
+kontrol eklendi — "Dış Mekan" (ilk banner) paragrafının `<w:pPr>`'i
+`<w:pageBreakBefore/>` İÇERMEMELİ, "İç Mekan" (2. banner) paragrafının
+`<w:pPr>`'i İÇERMELİ. Gerçek `templates/emlakkatilim.docx` üzerinde
+Node ile (tarayıcı oturumu bu turda düştüğü için doğrudan dosyadan)
+çalıştırıldı, geçti. Toplam pageBreakBefore sayıları da güncellendi
+(2 kategori → 1, kapak fotoğrafı yoksa; 3 sayfa → 2, ilk sayfa hariç).
+- Test: `tools/test-emlakkatilim-photo-embed.js` — yukarıdaki kesin
+  paragraf-seviyesi kontrol + güncellenmiş toplam sayılar. `npm run
+  verify` tam zincirle yeşil.
+- Cache-buster: `src/exports/docx-fill.js?v=20260814-1500`.

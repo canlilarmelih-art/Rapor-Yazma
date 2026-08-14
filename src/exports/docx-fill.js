@@ -455,8 +455,24 @@
   // paragrafi TAMAMEN KALDIRILDI — banner artik dogrudan sayfa basinda,
   // hicbir bos satir olmadan baslar. `w:spacing w:before` de "0"a
   // cekildi (ONCEDEN 240 twip ~0,42 cm ek bosluk birakiyordu).
-  function buildCategoryBannerXml(label) {
-    return `<w:p><w:pPr><w:pageBreakBefore/><w:shd w:val="clear" w:color="auto" w:fill="${PHOTO_BANNER_FILL}"/><w:spacing w:before="0" w:after="140"/><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:b/><w:bCs/><w:color w:val="FFFFFF"/><w:sz w:val="24"/><w:szCs w:val="24"/></w:rPr><w:t xml:space="preserve">${escapeXmlText(label)}</w:t></w:r></w:p>`;
+  //
+  // 2026-08-14 (8. tur): kullanici ekran goruntusunde "tek sorun buradaki
+  // boşluk" diyerek "8.1 Fotoğraflar" hucresinin (kenarlıklı/bordered)
+  // KENDI cercevesinin, logo ile ilk banner arasinda BOS bir kutu olarak
+  // gorundugunu gosterdi. Kok neden: bu hucrenin İLK paragrafi (kapak
+  // fotografi yoksa İLK kategori banner'i) `pageBreakBefore` tasiyordu —
+  // hucre TAM BURADA (token'in oldugu yerde) baslamasina ragmen, ICINDEKI
+  // TEK icerik "once sayfa basina git" dedigi icin Word, hucrenin
+  // cercevesini bu (dogal) sayfada NEREDEYSE BOS gosterip gercek icerigi
+  // bir SONRAKI sayfaya itiyordu. Duzeltme: `includePageBreakBefore`
+  // parametresi eklendi — akisin EN BASINDAKI ilk banner (kapak
+  // fotografi yoksa) pageBreakBefore ALMAZ (zaten dogal konumunda,
+  // hicbir sey onu "sayfa sonuna" itmiyor); SONRAKI HER banner (2.
+  // kategori, veya ayni kategorinin 2./3. sayfasi, veya kapak
+  // fotografindan sonraki ilk banner) yine pageBreakBefore ALIR.
+  function buildCategoryBannerXml(label, includePageBreakBefore) {
+    const pageBreakXml = includePageBreakBefore ? "<w:pageBreakBefore/>" : "";
+    return `<w:p><w:pPr>${pageBreakXml}<w:shd w:val="clear" w:color="auto" w:fill="${PHOTO_BANNER_FILL}"/><w:spacing w:before="0" w:after="140"/><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:b/><w:bCs/><w:color w:val="FFFFFF"/><w:sz w:val="24"/><w:szCs w:val="24"/></w:rPr><w:t xml:space="preserve">${escapeXmlText(label)}</w:t></w:r></w:p>`;
   }
 
   // "Kapak Fotoğrafı" — kullanıcı talebi (2026-08-13, 3. tur): "kapak
@@ -625,6 +641,17 @@
       if (coverPhoto) {
         parts.push(buildCoverPhotoBlockXml(coverPhoto, registrar));
       }
+      // "8.1 Fotoğraflar" hücresine gömülen İLK paragraf (kapak fotoğrafı
+      // yoksa İLK kategori banner'ı) pageBreakBefore ALMAZ — bu hücre zaten
+      // TAM BURADA (token'in konumunda) doğal olarak başlıyor; ona
+      // "önce sayfa başına git" demek, hücrenin çerçevesini bu sayfada
+      // NEREDEYSE BOŞ bırakıp gerçek içeriği bir sonraki sayfaya iten bir
+      // boş kutu yaratıyordu (kullanıcının ekran görüntüsünde işaretlediği
+      // sorun). Kapak fotoğrafı VARSA o zaten hücrenin doğal başlangıcında
+      // duruyor (pageBreakBefore hiç almıyor) — ondan SONRAKI ilk banner
+      // farklı bir mantıkla YİNE pageBreakBefore alır (kapak fotoğrafının
+      // hemen ardından kendi sayfasında başlamalı).
+      let isFirstBannerOverall = !coverPhoto;
       categories.forEach((category) => {
         const batches = Array.isArray(category?.batches) ? category.batches : [];
         const validBatches = batches.filter((b) => Array.isArray(b?.photos) && b.photos.length);
@@ -645,7 +672,8 @@
             // başına sayfa geçişini sağlıyor — ayrı bir <w:br type="page"/>
             // paragrafı EKLEMİYORUZ artık (o paragrafın kendi paragraf
             // işareti yeni sayfada boş bir satır/boşluk bırakıyordu).
-            parts.push(buildCategoryBannerXml(category.label));
+            parts.push(buildCategoryBannerXml(category.label, !isFirstBannerOverall));
+            isFirstBannerOverall = false;
             parts.push(buildPhotoPageTableXml(pagePhotos, batch.layoutKey, registrar));
           }
         });

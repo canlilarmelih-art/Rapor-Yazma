@@ -224,6 +224,16 @@ function makePhoto(caption) {
   check(outXml.includes("İç Mekan"), "\"İç Mekan\" kategori basligi ciktida yok.");
   check(!outXml.includes("Finansal Tablolar"), "Secilmeyen \"Finansal Tablolar\" kategorisi ciktida gorunmemeliydi (kullanici talebi).");
 
+  // "tek sorun buradaki boşluk" (kullanici ekran goruntusu) — hücrenin
+  // TOKEN KONUMUNDA doğal başlayan İLK banner ("Dış Mekan") KESİNLİKLE
+  // pageBreakBefore ALMAMALI (hücre çerçevesinin bir önceki sayfada boş
+  // kutu olarak görünmesine sebep oluyordu); 2. banner ("İç Mekan") İSE
+  // ALMALI.
+  const disMekanParagraph = outXml.slice(outXml.indexOf('<w:p><w:pPr>', Math.max(0, outXml.indexOf("Dış Mekan") - 300)), outXml.indexOf("Dış Mekan"));
+  check(!disMekanParagraph.includes("<w:pageBreakBefore/>"), "İLK banner (\"Dış Mekan\") pageBreakBefore ALMAMALIYDI (hücrenin doğal başlangıç konumunda, boş kutu sorununa yol açar).");
+  const icMekanParagraph = outXml.slice(outXml.lastIndexOf('<w:p><w:pPr>', outXml.lastIndexOf("İç Mekan")), outXml.lastIndexOf("İç Mekan"));
+  check(icMekanParagraph.includes("<w:pageBreakBefore/>"), "2. banner (\"İç Mekan\") pageBreakBefore ALMALIYDI (kendi sayfasında başlamalı).");
+
   const bannerCount = countOccurrences(outXml, `w:fill="1F3864"`);
   check(bannerCount === 2, `2 kategori banner'i (lacivert dolgu) bekleniyordu, bulunan: ${bannerCount}`);
 
@@ -251,11 +261,13 @@ function makePhoto(caption) {
   // <w:pageBreakBefore/> sayfa geçişini sağlıyor.
   const pageBreakCount = countOccurrences(outXml, '<w:br w:type="page"/>');
   check(pageBreakCount === 0, `Artık ayrı manuel sayfa sonu paragrafı OLMAMALI (boşluk kaynağıydı), bulunan: ${pageBreakCount}`);
-  // 2 kategori icin HER banner'in <w:pPr>'inde Word'un native
-  // <w:pageBreakBefore/> ozelligi bulunmali (TEK mekanizma — iki katmanli
-  // koruma) — 2 kategori icin TAM 2 tane.
+  // "tek sorun buradaki boşluk" — hücrenin İLK paragrafı (kapak yoksa
+  // İLK banner) pageBreakBefore ALMAZ (hücre zaten token'in konumunda
+  // doğal başlıyor; pageBreakBefore vermek hücre çerçevesini bu sayfada
+  // boş bir kutu olarak bırakıyordu). 2. kategori İSE alır — 2 kategori
+  // icin TAM 1 pageBreakBefore (yalnızca 2.).
   const pageBreakBeforeCount = countOccurrences(outXml, "<w:pageBreakBefore/>");
-  check(pageBreakBeforeCount === 2, `2 kategori icin TAM 2 <w:pageBreakBefore/> bekleniyordu (her banner kendi paragrafinda), bulunan: ${pageBreakBeforeCount}`);
+  check(pageBreakBeforeCount === 1, `2 kategoriden yalnızca 2.'sinde <w:pageBreakBefore/> bekleniyordu (ilk banner doğal konumunda başlar), bulunan: ${pageBreakBeforeCount}`);
 
   // "her sayfa genişlik 16 yükseklik 21,33 olacak şekilde oturum
   // sağlanmalı" — HICBIR gorsel genisligi (wp:extent cx) 5760000 EMU'yu
@@ -384,8 +396,10 @@ function makePhoto(caption) {
 
   const pageBreakCount = countOccurrences(outXml, '<w:br w:type="page"/>');
   check(pageBreakCount === 0, `Artık ayrı manuel sayfa sonu paragrafı OLMAMALI, bulunan: ${pageBreakCount}`);
+  // İLK sayfa (kapak fotoğrafı yok, akışın en başı) pageBreakBefore
+  // ALMAZ; 2. ve 3. sayfa alır — 3 sayfa icin TAM 2 pageBreakBefore.
   const pageBreakBeforeCount = countOccurrences(outXml, "<w:pageBreakBefore/>");
-  check(pageBreakBeforeCount === 3, `3 sayfa icin TAM 3 <w:pageBreakBefore/> bekleniyordu, bulunan: ${pageBreakBeforeCount}`);
+  check(pageBreakBeforeCount === 2, `3 sayfadan yalnızca 2.-3.'sünde <w:pageBreakBefore/> bekleniyordu (ilk sayfa doğal konumunda başlar), bulunan: ${pageBreakBeforeCount}`);
 
   const tableCount = countOccurrences(outXml, "<w:tbl>") - baselineTableCount;
   check(tableCount === 3, `3 sayfa icin TAM 3 izgara tablosu (sablona gore delta) bekleniyordu, bulunan: ${tableCount}`);
