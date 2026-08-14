@@ -1402,19 +1402,23 @@
       safeCall("ensureReportMapImagesForExport");
       imageAssets = (await Promise.resolve(safeCall("buildSavedReportImageAssets"))) || [];
     }
-    // "8. Ekler" fotoğraf modülü (2026-08-13) — kullanıcı talebi: görseller
+    // "8. Ekler" fotoğraf modülü (2026-08-13, 2026-08-14'te 23 kategoriye
+    // AYRI token şemasına genişletildi) — kullanıcı talebi: görseller
     // yalnızca bu cihazda (IndexedDB, window.RaporReportPhotos) durur,
     // sunucuya HİÇ gönderilmez; yalnızca export ANINDA, yerelde .docx'e
-    // gömülür (bkz. embedPhotoGalleryAssets, docx-fill.js).
+    // gömülür (bkz. embedPhotoGalleryAssets, docx-fill.js). Her kategori
+    // KENDİ {{FOTO_XXX}} token'ına sahip (ör. {{FOTO_DISMEKAN}}) — hepsi
+    // "FOTO_" ile başlar (eski tek-konsolide {{FOTO_ALANI_1}} şeması
+    // KALDIRILDI, bkz. report-photos.js tokenForCategoryKey).
     let photoGroups = [];
-    const photoTokensInTemplate = tokens.filter((t) => t.startsWith("FOTO_ALANI_"));
+    const photoTokensInTemplate = tokens.filter((t) => t.startsWith("FOTO_"));
     if (photoTokensInTemplate.length) {
       photoGroups = (await Promise.resolve(safeCall("getReportPhotoGroupsForExport"))) || [];
       // Fotoğrafı OLMAYAN kategorilerin token'ı embedPhotoGalleryAssets
       // tarafından hiç dokunulmadan bırakılır (bkz. o fonksiyonun yorumu) —
       // burada boş string olarak "values"e eklenip normal token döngüsünde
-      // temiz şekilde silinmesi sağlanır; aksi halde ham "{{FOTO_ALANI_1}}"
-      // metni belgede GÖRÜNÜR kalırdı.
+      // temiz şekilde silinmesi sağlanır; aksi halde ham "{{FOTO_DISMEKAN}}"
+      // gibi bir metin belgede GÖRÜNÜR kalırdı.
       const embeddedPhotoTokens = new Set(photoGroups.map((g) => g.token));
       photoTokensInTemplate.forEach((token) => {
         if (!embeddedPhotoTokens.has(token)) values[token] = "";
@@ -1428,12 +1432,12 @@
     // yoldan islenir) — gercekten gomulduyse (imageAssets icinde varlik
     // hazirlandiysa) yanlislikla "eksik alan" olarak raporlanmasin.
     const embeddedImageKeys = new Set(imageAssets.map((a) => a.key));
-    // FOTO_ALANI_* token'ları HER ZAMAN opsiyonel/süslemedir (fotoğraf
+    // FOTO_* token'ları HER ZAMAN opsiyonel/süslemedir (fotoğraf
     // eklenmemişse boş kalması normaldir) — EMSAL_KROKISI'nin aksine,
     // gömülmese bile hiçbir zaman "eksik alan" uyarısına dönüşmemeli.
     const filteredMissing = missing.filter((name) => (
       !(name === "EMSAL_KROKISI" && embeddedImageKeys.has("comparables"))
-      && !name.startsWith("FOTO_ALANI_")
+      && !name.startsWith("FOTO_")
     ));
     return {
       fileName,

@@ -40,11 +40,18 @@
   const MAX_DIMENSION = 1600;
   const JPEG_QUALITY = 0.8;
 
-  // templates/emlakkatilim.docx'teki "8. Ekler" bölümüne gömülen TEK
-  // konsolide fotoğraf ekinin kategori listesi — kullanıcının gönderdiği
-  // ekran görüntüsündeki sıra ile BİREBİR aynı. Yeni bir kategori
-  // eklenirse yalnızca bu diziye eklenmesi yeterli (docx tarafında
-  // değişiklik gerekmez — hepsi TEK {{FOTO_ALANI_1}} token'ına gömülür).
+  // templates/emlakkatilim.docx'teki "8. Ekler" bölümüne gömülen kategori
+  // listesi — kullanıcının gönderdiği ekran görüntüsündeki sıra ile
+  // BİREBİR aynı. 2026-08-14 (9. tur): kullanıcı "tüm görsel türlerine
+  // placeholder ekleyebilir miyiz. örnek (DIŞMEKAN)" dedi, "Her kategori
+  // için .docx şablonunda AYRI bir {{TOKEN}} olsun" seçeneğini onayladı
+  // — artık HER kategori KENDİ {{FOTO_XXX}} token'ına gömülüyor (bkz.
+  // tokenForCategoryKey), tek konsolide {{FOTO_ALANI_1}} token'ı
+  // KALDIRILDI (templates/emlakkatilim.docx'te 23 ayrı token'la
+  // DEĞİŞTİRİLDİ). Kullanıcı export sonrası her kategorinin bloğunu
+  // Word'de istediği yere taşıyabilir. Yeni bir kategori eklenirse hem
+  // bu diziye HEM DE .docx şablonuna elle yeni bir {{FOTO_XXX}} token'ı
+  // eklemek gerekir (docx tarafı artık otomatik değil).
   const PHOTO_CATEGORIES = [
     { key: "kapak", label: "Kapak Fotoğrafı" },
     { key: "dis_mekan", label: "Dış Mekan" },
@@ -71,9 +78,14 @@
     { key: "diger", label: "Diğer" },
   ];
 
-  // "8. Ekler" içindeki TÜM kategoriler için TEK gömme noktası — 8.1
-  // "Fotoğraflar" başlığı zaten bu amaca uygun genel bir başlık.
-  const PHOTO_APPENDIX_TOKEN = "FOTO_ALANI_1";
+  // Her kategori KENDİ token'ına sahip — templates/emlakkatilim.docx'teki
+  // 23 {{FOTO_XXX}} token'ıyla BİREBİR eşleşmeli (bkz. binary düzenleme,
+  // handoff.md). Ad üretimi: "FOTO_" + anahtar (alt çizgiler silinmiş,
+  // BÜYÜK harf) — ör. "dis_mekan" → "FOTO_DISMEKAN" (kullanıcının verdiği
+  // örnekle birebir).
+  function tokenForCategoryKey(key) {
+    return `FOTO_${String(key || "").toUpperCase().replace(/_/g, "")}`;
+  }
 
   // 4 sayfa yerleşim şablonu (kullanıcının gönderdiği ekran görüntüsündeki
   // isim ve sırayla) — columns×rows, bir sayfaya kaç fotoğraf sığdığını
@@ -327,73 +339,64 @@
   const COVER_PHOTO_CATEGORY_KEY = "kapak";
 
   // docx-fill.js'in embedPhotoGalleryAssets() fonksiyonuna verilecek
-  // formata dönüştürür: TEK token ({{FOTO_ALANI_1}}) + kategori sırasına
-  // göre sıralanmış, İÇİNDE FOTOĞRAF OLAN kategoriler (fotoğrafsız
-  // kategoriler TAMAMEN atlanır — kullanıcı talebi: "seçilmeyen görseller
-  // ... başlık olarak belirtilmesin") + ayrı bir coverPhoto alanı. Her
-  // kategori kendi içinde batch'lere (aynı ekleme turunda seçilen
-  // yerleşim şablonuyla) bölünür.
+  // formata dönüştürür: HER kategori KENDİ token'ıyla (tokenForCategoryKey)
+  // AYRI bir grup olarak döner — fotoğrafsız kategoriler TAMAMEN atlanır
+  // (kullanıcı talebi: "seçilmeyen görseller ... başlık olarak
+  // belirtilmesin"). "Kapak Fotoğrafı" yine özel: kendi token'ına
+  // (FOTO_KAPAK) sahip ama `categories` yerine tek bir `coverPhoto`
+  // alanı taşır (ızgara/batch sistemine girmez, tek/kırpılmamış/taşınabilir
+  // yer tutucu). Her kategori kendi içinde batch'lere (aynı ekleme
+  // turunda seçilen yerleşim şablonuyla) bölünür.
   async function getPhotoAppendixForExport(reportId) {
     const photos = await listPhotos(reportId);
     if (!photos.length) return [];
-    const categoryGroups = [];
-    let coverPhotoRecord = null;
-    PHOTO_CATEGORIES.forEach((category) => {
-      const categoryPhotos = photos.filter((p) => p.category === category.key);
-      if (!categoryPhotos.length) return;
-      if (category.key === COVER_PHOTO_CATEGORY_KEY) {
-        coverPhotoRecord = categoryPhotos[0];
-        return;
-      }
-      const batchIds = [...new Set(categoryPhotos.map((p) => p.batchId))];
-      categoryGroups.push({
-        category: category.key,
-        label: category.label,
-        batches: batchIds.map((batchId) => {
-          const batchPhotos = categoryPhotos.filter((p) => p.batchId === batchId);
-          return {
-            layoutKey: batchPhotos[0]?.layoutKey || LAYOUT_TEMPLATES[0].key,
-            photos: batchPhotos,
-          };
-        }),
-      });
-    });
-    // base64'e cevirme (agir islem) TEK SEFERDE, en sonda yapilir.
     const result = [];
-    for (const group of categoryGroups) {
+    for (const category of PHOTO_CATEGORIES) {
+      const categoryPhotos = photos.filter((p) => p.category === category.key);
+      if (!categoryPhotos.length) continue;
+      const token = tokenForCategoryKey(category.key);
+
+      if (category.key === COVER_PHOTO_CATEGORY_KEY) {
+        const coverPhotoRecord = categoryPhotos[0];
+        // eslint-disable-next-line no-await-in-loop
+        const base64 = await blobToBase64(coverPhotoRecord.blob).catch(() => null);
+        if (!base64) continue;
+        result.push({
+          token,
+          categories: [],
+          coverPhoto: {
+            base64,
+            mimeType: coverPhotoRecord.mimeType || "image/jpeg",
+            width: coverPhotoRecord.width,
+            height: coverPhotoRecord.height,
+          },
+        });
+        continue;
+      }
+
+      const batchIds = [...new Set(categoryPhotos.map((p) => p.batchId))];
       const batches = [];
-      for (const batch of group.batches) {
+      for (const batchId of batchIds) {
+        const batchPhotos = categoryPhotos.filter((p) => p.batchId === batchId);
         const withBase64 = [];
-        for (const photo of batch.photos) {
+        for (const photo of batchPhotos) {
           // eslint-disable-next-line no-await-in-loop
           const base64 = await blobToBase64(photo.blob).catch(() => null);
           if (!base64) continue;
           withBase64.push({ base64, mimeType: photo.mimeType || "image/jpeg", caption: photo.caption || "", width: photo.width, height: photo.height, orientation: photo.orientation });
         }
-        if (withBase64.length) batches.push({ layoutKey: batch.layoutKey, photos: withBase64 });
+        if (withBase64.length) batches.push({ layoutKey: batchPhotos[0]?.layoutKey || LAYOUT_TEMPLATES[0].key, photos: withBase64 });
       }
-      if (batches.length) result.push({ label: group.label, batches });
+      if (!batches.length) continue;
+      result.push({ token, categories: [{ label: category.label, batches }] });
     }
-    let coverPhoto = null;
-    if (coverPhotoRecord) {
-      const base64 = await blobToBase64(coverPhotoRecord.blob).catch(() => null);
-      if (base64) {
-        coverPhoto = {
-          base64,
-          mimeType: coverPhotoRecord.mimeType || "image/jpeg",
-          width: coverPhotoRecord.width,
-          height: coverPhotoRecord.height,
-        };
-      }
-    }
-    if (!result.length && !coverPhoto) return [];
-    return [{ token: PHOTO_APPENDIX_TOKEN, categories: result, coverPhoto }];
+    return result;
   }
 
   window.RaporReportPhotos = {
     PHOTO_CATEGORIES,
     LAYOUT_TEMPLATES,
-    PHOTO_APPENDIX_TOKEN,
+    tokenForCategoryKey,
     getLayoutTemplate,
     suggestLayoutForOrientations,
     peekOrientations,

@@ -5,102 +5,64 @@
   kullanılabilmesini istiyorum ancak bunlar kullanıcı cihazında kalmalı
   ve server a hiç gitmemeli" — sonrasinda kapsam "sadece docx dosyalara
   gömeceğiz. diğerleri olmayacak. şu an sadece emlakkatılım" olarak
-  netlesti.
+  netlesti. Sonraki turlarda: 23 kategori + 4 sayfa yerlesim sablonu +
+  lacivert basliklar (2. tur), kapak fotografi icin ayri/tasinabilir
+  yer tutucu (3. tur), her basligin kendi sayfasinda baslamasi (4-6.
+  tur), 16×22 cm kesin sayfa kutusu + kirpma yerine "uzat" (7. tur),
+  hucre cercevesinin bos kutu sorunu (8. tur) — TAM detaylar icin
+  handoff.md 0.0.434-0.0.442.
 
-  2. tur (ayni gun, ekran goruntusu ornekleriyle genisletildi): 23
-  fotograf/belge TURU (kategori), her tur icin tek satir LACIVERT
-  zeminli baslik + fotograflar, 4 sayfa yerlesim sablonu (Yatay Ikili/
-  Dikey Tekli/Alt Alta Ikili/6'li Grid), fotografin yatay/dikey
-  oldugunun srcRect kirpmasina yansitilmasi. Kullanici acikca: "Her bir
-  turdeki fotografta tek satir navy Blue dolgu rengi icine beyaz Dis
-  Mekan Altina fotograflar. olarak gelsin secilmeyen gorseller ornek:
-  finansal tablolar kullanici tarafindan secilmedi ise wordde baslik
-  olarak belirtilmesin" dedi.
+  9. tur (2026-08-14): kullanici "tüm görsel türlerine placeholder
+  ekleyebilir miyiz. örnek (DIŞMEKAN)" dedi; AskUserQuestion ile "Her
+  kategori için .docx şablonunda AYRI bir {{TOKEN}} olsun" secenegini
+  onayladi. Bu, mimariyi KOKTEN degistirdi:
 
-  templates/emlakkatilim.docx'in "8.1 Fotoğraflar" bolumundeki (onceden
-  BOS) hucreye elle {{FOTO_ALANI_1}} token'i eklendi (word/document.xml
-  bayt-duzeyinde duzenlenip STORED zip olarak yeniden paketlendi — bkz.
-  handoff.md). Bu TEK token, YENI semada TUM kategorileri barindirir —
-  {{FOTO_ALANI_3}} (eski "8.3 Proje Fotografları" ayri token'i) sablonda
-  hala FIZIKSEL olarak duruyor ama yeni akista hic kullanilmiyor (her
-  zaman "" ile temizlenir, template-engine.js'in gercek davranisi).
-
-  3. tur (ayni gun): kullanici "worde eklenen resimlerin boyutlari cok
-  buyuk maksimum genislik 15 cm olmali" + "kapak fotografi icin bir
-  placeholder olustur. kullanici bu fotografi nerede istiyor ise orada
-  kullansin. kapak fotografinda maksimum genislik 15 cm" dedi. Bu ikisi
-  icin: (a) HER hucrenin genisligi artik en fazla 15 cm (5400000 EMU) ile
-  sinirli (once tek sutunlu yerlesimlerde ~18.5 cm'e kadar cikabiliyordu),
-  (b) "Kapak Fotografi" kategorisi artik izgara/batch sistemine GIRMEZ —
-  kategori donguşunden ONCE, ayri, TEK ve tasinabilir bir paragraf (etiket
-  + 15 cm sinirli, KIRPILMAMIS gorsel) olarak gomulur.
-
-  4. tur (ayni gun): kullanici "başlıklar sayfa sonundan başlamamalı her
-  bir başlık yeni sayfadan başlamalı" dedi — ONCEDEN yalnizca kategoriler
-  ARASINDA (categoryIndex > 0) sayfa sonu ekleniyordu, ILK kategori
-  onceki icerigin hemen ardindan (sayfanin herhangi bir yerinden)
-  baslayabiliyordu. HER kategori banner'inden (ILK dahil) hemen ONCE
-  KOSULSUZ bir sayfa sonu eklendi.
-
-  5. tur (bir sonraki gun, ayni sikayet devam etti): kullanici "halen
-  başlıklar sayfa sonundan başlayabiliyor görseller arasında yada
-  altında boşluk bırakabilirsin önemli olan sayfa başında başlık
-  olması" dedi — manuel <w:br w:type="page"/> (run seviyesi), "8.1
-  Fotoğraflar" hucresinin (vMerge=restart, tablo hucresi) İÇİNDE HER
-  ZAMAN guvenilir sekilde uygulanmiyor. Artik HER kategori banner'inin
-  KENDI <w:pPr>'inde EK OLARAK Word'un native <w:pageBreakBefore/>
-  paragraf ozelligi de var (iki katmanli koruma — manuel kirilim
-  KALDIRILMADI, ikisi birlikte fazladan bos sayfa URETMEZ).
-
-  6. tur (ayni gun devam): kullanici "her sayfa genişlik 16 yükseklik
-  21,33 olacak şekilde oturum sağlanmalı. gerekirse yüklenen görselin
-  boyutları ile oyna daralt/genişlet uzat kısalt. 16 cm X 21,33 cm
-  örnek: alt alta 2 yatay görsel. genişlik 16 cm uzunluk 10,50 + ara
-  boşluk 0,33 cm + genişlik 16 cm uzunluk 10,50 + ara boşluk eğer
-  birden fazla sayfaya sığması gerekiyor ise örnek altı adet iç hacim
-  görseli eklendi alt alta 2 yatay görsel istendi ise 3 sayfada da İç
-  Mekan Başlığı olacak. Hiç bir başlık sayfa ortasından sonundan
-  başlamayacak gerekirse sayfanın altı boş kalacak" dedi. Bu, ONCEKI
-  "15 cm max genislik" (0.0.436) kuralını DAHA KESIN bir sayfa-kutusu
-  modeliyle DEGISTIRDI: her fotoğraf sayfası TAM 16×21,33 cm'lik bir
-  kutuya, hücreler arası TAM 0,33 cm boşlukla yerleştiriliyor (bkz.
-  computeCellSizeForLayout — stacked_pair için (21,33-0,33)/2 = 10,50 cm,
-  kullanıcının verdiği örnekle BİREBİR eşleşiyor). AYRICA: banner artık
-  kategori başına BİR KEZ değil, o kategorinin ürettiği HER SAYFADA
-  tekrarlanıyor (6 fotoğraf, 2'li alt-alta yerleşim → 3 sayfa → 3 kez
-  "İç Mekan" başlığı).
-
-  7. tur (bir sonraki gun): kullanici "olmuş ancak halen başlıklar alta
-  geliyor. ayrıca görselleri uzat kırpma. yeni boyutlar 16 cm 22 cm 2 li
-  dikey de boşluğu 0,50 cm yap görsel uzunluğu 10,75 olsun" dedi. İki
-  degisiklik: (a) sayfa kutusu 16×21,33 cm'den 16×22 cm'e, hucre araligi
-  0,33 cm'den 0,50 cm'e cikti — dogrulama: (22-0,50)/2 = 10,75 cm, tam
-  istenen deger. (b) "kırpma" — grid gorsellerindeki srcRect-tabanli
-  KIRPMA (cover-fit) TAMAMEN KALDIRILDI; artik HICBIR gorsel kirpilmiyor,
-  bunun yerine hücreye TAM sığdırmak icin gerekiyorsa en-boy orani
-  BOZULARAK (stretch/"uzat") dolduruluyor — kullanicinin acik talebi.
+  - templates/emlakkatilim.docx'teki TEK {{FOTO_ALANI_1}} token'i,
+    "8.1 Fotoğraflar" hücresine art arda gömülen 23 AYRI token'la
+    DEGISTIRILDI (bkz. FOTO_TOKEN_BY_KEY asagida) — her biri
+    report-photos.js'teki tokenForCategoryKey ile birebir uretiliyor
+    ("FOTO_" + BUYUK_HARF_ANAHTAR, alt cizgiler silinmis; ör.
+    "dis_mekan" → "FOTO_DISMEKAN", kullanicinin verdigi ornekle
+    birebir). Binary duzenleme: readStoredZip/writeStoredZip vm ile
+    cikarilip Node betiginde calistirildi, yedek: backups/ altinda
+    "before-per-category-photo-tokens" ile baslayan klasor.
+  - report-photos.js'in getPhotoAppendixForExport'u artik TEK degil,
+    HER kategori icin AYRI bir {token, categories/coverPhoto} girisi
+    donduruyor (fotografi olmayan kategoriler hala TAMAMEN atlaniyor).
+  - docx-fill.js'in embedPhotoGalleryAssets'i zaten COKLU grup'u
+    destekliyordu (degisiklik gerekmedi) — TEK kritik duzeltme:
+    "isFirstBannerOverall" bayragi artik HER GRUP icin sifirlanmiyor,
+    TUM cagri boyunca (23 token'in HEPSI) PAYLASILIYOR — aksi halde
+    HER kategorinin kendi ilk sayfasi "ilk" sanilip pageBreakBefore
+    kaybederdi (2., 3., ... kategoriler yine ortadan/sondan baslardi,
+    tam 0.0.442'de duzeltilen sorunun GERI GELMESI anlamina gelirdi).
+  - template-engine.js'teki "FOTO_ALANI_" filtresi "FOTO_" olarak
+    genisletildi (tum 23 yeni token'i ve eski/kullanilmayan
+    FOTO_ALANI_3'u kapsayacak sekilde).
 
   Bu test dogrular:
   1) Sablon hala GECERLI bir STORED .docx (readStoredZip patlamiyor).
-  2) collectTokens() FOTO_ALANI_1'i buluyor.
-  3) Fotograf VARKEN (2 kategori, farkli yerlesim sablonlari):
+  2) collectTokens() 23 YENI kategori token'inin TAMAMINI buluyor.
+  3) Fotograf VARKEN (2 AYRI token/kategori — FOTO_DISMEKAN + FOTO_ICMEKAN):
+     - her ikisi de kendi paragrafinda GERCEK icerige donusuyor,
      - her kategori icin TEK bir lacivert (1F3864) dolgu banner'i var,
-     - kategori etiketleri (ör. "Dış Mekan") ciktida geciyor,
-     - FOTOGRAFSIZ bir kategori (ör. "Finansal Tablolar") ciktida HIC
-       gecmiyor (ne baslik ne baska bir iz),
+     - FOTOGRAFSIZ bir kategori (ör. FOTO_FINANSALTABLOLAR) ciktida HIC
+       gecmiyor (temiz sekilde "" ile siliniyor),
      - gercek <w:drawing> + rels + media girisleri (sablona GORE delta)
        toplam fotograf sayisi kadar artiyor,
      - HICBIR gorsel KIRPILMIYOR (srcRect YOK),
-     - HICBIR gorselin genisligi (wp:extent cx) 5760000 EMU'yu (16 cm)
-       asmiyor,
-     - manuel sayfa sonu paragrafı YOK, yalnizca pageBreakBefore var.
-  4) Fotograf YOKKEN: token TEMIZ sekilde silinip belgede GORUNMUYOR.
-  5) Kapak Fotografi VARKEN: "Kapak Fotoğrafı" etiketi kategori
-     banner'larindan ONCE geliyor, gorseli 16 cm'i asmiyor, KIRPILMAMIS
-     ve kategori listesine (banner) DAHIL EDILMIYOR.
-  6) 6 fotoğraf + stacked_pair (Alt Alta İkili, sayfa başına 2) → TAM 3
-     sayfa, HER sayfada kendi "İç Mekan" banner'ı (3 kez tekrar), her
-     görsel TAM 16×10,75 cm (kullanıcının en son verdiği örnekle birebir).
+     - HICBIR gorselin genisligi 5760000 EMU'yu (16 cm) asmiyor,
+     - manuel sayfa sonu paragrafı YOK,
+     - KESIN paragraf-seviyesi kontrol: TÜM 23 token arasinda FİZİKSEL
+       OLARAK İLK olan banner ("Dış Mekan") pageBreakBefore ALMAZ, 2.
+       banner ("İç Mekan") ALIR — ayrı token'lar OLMASINA RAĞMEN.
+  4) Fotograf YOKKEN: token'lar TEMIZ sekilde silinip belgede
+     GORUNMUYOR.
+  5) Kapak Fotografi (FOTO_KAPAK) VARKEN: kendi token'inda, tek,
+     KIRPILMAMIS, KENDI banner'i OLMAYAN bir yer tutucu olarak geliyor.
+  6) 6 fotoğraf + stacked_pair (FOTO_ICMEKAN) → TAM 3 sayfa, HER
+     sayfada kendi "İç Mekan" banner'ı (3 kez tekrar), her görsel TAM
+     16×10,75 cm.
   7) Her senaryoda ciktinin STORED-zip round-trip'i saglam.
 */
 
@@ -125,6 +87,21 @@ const templatePath = path.join(appDir, "templates", "emlakkatilim.docx");
 const templateBuffer = fs.readFileSync(templatePath);
 const arrayBuffer = templateBuffer.buffer.slice(templateBuffer.byteOffset, templateBuffer.byteOffset + templateBuffer.byteLength);
 
+// report-photos.js PHOTO_CATEGORIES ile BIREBIR ayni sira/anahtarlar —
+// tokenForCategoryKey ile uretilen tam token adlari.
+const CATEGORY_KEYS = [
+  "kapak", "dis_mekan", "ic_mekan", "yapi_ruhsati", "yapi_kullanma_izin",
+  "yapi_kayit", "mimari_proje_belediye", "mimari_proje_tapu", "imar_durumu",
+  "kadastro_paftasi", "tapu_senedi", "takbis_belgesi", "konum_kroki",
+  "konum_harita", "emsal_harita", "adres_kodu", "enerji_kimlik",
+  "tutanaklar", "mahkeme_evraklari", "uzman_ozcekim", "hesaplama_tablolari",
+  "finansal_tablolar", "diger",
+];
+function tokenForKey(key) {
+  return `FOTO_${key.toUpperCase().replace(/_/g, "")}`;
+}
+const ALL_CATEGORY_TOKENS = CATEGORY_KEYS.map(tokenForKey);
+
 // --- 1) Hala gecerli STORED zip mi? -----------------------------------
 let entries;
 try {
@@ -135,16 +112,18 @@ try {
 const docEntry = entries?.find((e) => e.name === "word/document.xml");
 check(Boolean(docEntry), "word/document.xml girisi bulunamadi.");
 
-// --- 2) collectTokens FOTO_ALANI_1'i buluyor mu? ----------------------
+// --- 2) collectTokens 23 kategori token'inin TAMAMINI buluyor mu? -----
 const xmlText = Buffer.from(docEntry.bytes).toString("utf8");
 const tokens = DocxFill.collectTokens(xmlText);
-check(tokens.includes("FOTO_ALANI_1"), "{{FOTO_ALANI_1}} sablonda bulunamadi (8.1 Fotograflar duzenlemesi kaybolmus olabilir).");
+ALL_CATEGORY_TOKENS.forEach((t) => {
+  check(tokens.includes(t), `{{${t}}} sablonda bulunamadi (kategori-basina-token duzenlemesi kaybolmus olabilir).`);
+});
 
 // Gercek, gecerli, kucuk (1x1 kirmizi) bir JPEG — getJpegPixelSize'in
 // gercek bir goruntude de dogru calistigini kanitlamak icin.
 const TINY_JPEG_BASE64 = "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAMCAgICAgMCAgIDAwMDBAYEBAQEBAgGBgUGCQgKCgkICQkKDA8MCgsOCwkJDRENDg8QEBEQCgwSExIQEw8QEBD/2wBDAQMDAwQDBAgEBAgQCwkLEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBD/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAj/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k=";
 
-function buildValuesWithMissingPlaceholders(tokenList, overrides = {}) {
+function buildValuesWithAllTokensMissing(tokenList, overrides = {}) {
   const values = {};
   tokenList.forEach((t) => { values[t] = overrides[t] !== undefined ? overrides[t] : `[${t}]`; });
   return values;
@@ -154,10 +133,6 @@ function countOccurrences(text, needle) {
   return (text.match(new RegExp(needle, "g")) || []).length;
 }
 
-// Sablon zaten (logo/antet gibi) kendi <wp:extent> genislikleriyle
-// geliyor — bir listeyi BASKA bir listeden "cikarirken" (multiset fark)
-// baseline'da zaten var olan degerleri sayaclariyla dusup yalnizca YENİ
-// (bizim eklediğimiz) degerleri dondurur.
 function subtractMultiset(outputArr, baselineArr) {
   const baselineCounts = new Map();
   baselineArr.forEach((v) => baselineCounts.set(v, (baselineCounts.get(v) || 0) + 1));
@@ -178,61 +153,54 @@ const baselineRelsXml = Buffer.from(baselineRelsEntry.bytes).toString("utf8");
 const baselineImageRelCount = countOccurrences(baselineRelsXml, 'Type="http://schemas\\.openxmlformats\\.org/officeDocument/2006/relationships/image"');
 const baselineExtentWidths = [...xmlText.matchAll(/<wp:extent cx="(\d+)"/g)].map((m) => Number(m[1]));
 const baselineMediaCount = entries.filter((e) => e.name.startsWith("word/media/")).length;
-const baselineTableCount = countOccurrences(xmlText, "<w:tbl>"); // sablonun KENDI (8.1 disi) tablolari
+const baselineTableCount = countOccurrences(xmlText, "<w:tbl>");
 
 function makePhoto(caption) {
-  return { base64: TINY_JPEG_BASE64, mimeType: "image/jpeg", caption: caption || "", width: 800, height: 800, orientation: "square" };
+  return { base64: TINY_JPEG_BASE64, mimeType: "image/jpeg", caption: caption || "", width: 800, height: 800 };
 }
 
-// --- 3) Fotograf VARKEN: kategori banner'lari + gercek gomme -----------
+function singleCategoryGroup(token, label, layoutKey, photos) {
+  return { token, categories: [{ label, batches: [{ layoutKey, photos }] }] };
+}
+
+// --- 3) Fotograf VARKEN (2 AYRI token): banner'lar + gercek gomme ------
 {
-  const values = buildValuesWithMissingPlaceholders(tokens, { FOTO_ALANI_3: "" });
+  const values = buildValuesWithAllTokensMissing(tokens);
   const boldFlags = {};
   const photoGroups = [
-    {
-      token: "FOTO_ALANI_1",
-      categories: [
-        {
-          label: "Dış Mekan",
-          batches: [
-            { layoutKey: "horizontal_pair", photos: [makePhoto("Ön cephe"), makePhoto("Bahçe")] },
-          ],
-        },
-        {
-          label: "İç Mekan",
-          batches: [
-            { layoutKey: "vertical_single", photos: [makePhoto("Salon")] },
-          ],
-        },
-        // "Finansal Tablolar" kasitli olarak HIC eklenmedi — kullanici
-        // acikca "secilmeyen gorseller ... wordde baslik olarak
-        // belirtilmesin" dedi; bu kategori listede bile yok.
-      ],
-    },
+    singleCategoryGroup("FOTO_DISMEKAN", "Dış Mekan", "horizontal_pair", [makePhoto("Ön cephe"), makePhoto("Bahçe")]),
+    singleCategoryGroup("FOTO_ICMEKAN", "İç Mekan", "vertical_single", [makePhoto("Salon")]),
+    // FOTO_FINANSALTABLOLAR kasitli olarak HIC eklenmedi — kullanici
+    // acikca "secilmeyen gorseller ... wordde baslik olarak
+    // belirtilmesin" dedi; bu token'in grubu listede bile yok.
   ];
   const totalPhotos = 3;
   const filled = DocxFill.fillTemplate(arrayBuffer, values, boldFlags, [], photoGroups);
-  check(!filled.missing.includes("FOTO_ALANI_1"), "FOTO_ALANI_1 fotograf gomulmesine ragmen 'missing' listesinde.");
+  check(!filled.missing.includes("FOTO_DISMEKAN") && !filled.missing.includes("FOTO_ICMEKAN"), "Fotograf gomulmesine ragmen ilgili token'lar 'missing' listesinde.");
 
   const outEntries = DocxFill.readStoredZip(filled.bytes.buffer);
   const outDoc = outEntries.find((e) => e.name === "word/document.xml");
   const outXml = Buffer.from(outDoc.bytes).toString("utf8");
-  check(!outXml.includes("{{FOTO_ALANI_1}}"), "Ciktida ham {{FOTO_ALANI_1}} metni hala duruyor (gomulmemis).");
-  check(!outXml.includes("{{FOTO_ALANI_3}}"), "Ciktida ham {{FOTO_ALANI_3}} metni hala duruyor (temizlenmemis).");
+  check(!outXml.includes("{{FOTO_DISMEKAN}}") && !outXml.includes("{{FOTO_ICMEKAN}}"), "Ciktida ham {{FOTO_*}} metni hala duruyor (gomulmemis).");
 
   check(outXml.includes("Dış Mekan"), "\"Dış Mekan\" kategori basligi ciktida yok.");
   check(outXml.includes("İç Mekan"), "\"İç Mekan\" kategori basligi ciktida yok.");
   check(!outXml.includes("Finansal Tablolar"), "Secilmeyen \"Finansal Tablolar\" kategorisi ciktida gorunmemeliydi (kullanici talebi).");
 
-  // "tek sorun buradaki boşluk" (kullanici ekran goruntusu) — hücrenin
-  // TOKEN KONUMUNDA doğal başlayan İLK banner ("Dış Mekan") KESİNLİKLE
-  // pageBreakBefore ALMAMALI (hücre çerçevesinin bir önceki sayfada boş
-  // kutu olarak görünmesine sebep oluyordu); 2. banner ("İç Mekan") İSE
-  // ALMALI.
-  const disMekanParagraph = outXml.slice(outXml.indexOf('<w:p><w:pPr>', Math.max(0, outXml.indexOf("Dış Mekan") - 300)), outXml.indexOf("Dış Mekan"));
-  check(!disMekanParagraph.includes("<w:pageBreakBefore/>"), "İLK banner (\"Dış Mekan\") pageBreakBefore ALMAMALIYDI (hücrenin doğal başlangıç konumunda, boş kutu sorununa yol açar).");
-  const icMekanParagraph = outXml.slice(outXml.lastIndexOf('<w:p><w:pPr>', outXml.lastIndexOf("İç Mekan")), outXml.lastIndexOf("İç Mekan"));
-  check(icMekanParagraph.includes("<w:pageBreakBefore/>"), "2. banner (\"İç Mekan\") pageBreakBefore ALMALIYDI (kendi sayfasında başlamalı).");
+  // KESIN paragraf-seviyesi kontrol: FİZİKSEL OLARAK İLK gelen banner
+  // ("Dış Mekan", çünkü FOTO_DISMEKAN token'ı FOTO_ICMEKAN'dan ÖNCE
+  // gelir) pageBreakBefore ALMAMALI (hücrenin doğal başlangıcına en
+  // yakın); "İç Mekan" (2.) ALMALI — bu, AYRI token'lar olsa BİLE
+  // dogru calismali (isFirstBannerOverall'un TUM cagri boyunca
+  // paylasilmasi gerektigini kanitlar).
+  const disMekanIdx = outXml.indexOf("Dış Mekan");
+  const disMekanParaStart = outXml.lastIndexOf("<w:p><w:pPr>", disMekanIdx);
+  const disMekanPara = outXml.slice(disMekanParaStart, disMekanIdx);
+  check(!disMekanPara.includes("<w:pageBreakBefore/>"), "İLK banner (\"Dış Mekan\") pageBreakBefore ALMAMALIYDI (hücrenin doğal başlangıç konumunda).");
+  const icMekanIdx = outXml.indexOf("İç Mekan");
+  const icMekanParaStart = outXml.lastIndexOf("<w:p><w:pPr>", icMekanIdx);
+  const icMekanPara = outXml.slice(icMekanParaStart, icMekanIdx);
+  check(icMekanPara.includes("<w:pageBreakBefore/>"), "2. banner (\"İç Mekan\", AYRI bir token olsa da) pageBreakBefore ALMALIYDI.");
 
   const bannerCount = countOccurrences(outXml, `w:fill="1F3864"`);
   check(bannerCount === 2, `2 kategori banner'i (lacivert dolgu) bekleniyordu, bulunan: ${bannerCount}`);
@@ -248,36 +216,17 @@ function makePhoto(caption) {
   const mediaEntries = outEntries.filter((e) => e.name.startsWith("word/media/"));
   check(mediaEntries.length === baselineMediaCount + totalPhotos, `Sablona gore +${totalPhotos} word/media/ girisi bekleniyordu, gercek fark: ${mediaEntries.length - baselineMediaCount}`);
 
-  // "görselleri uzat kırpma" — artık HİÇBİR görsel kırpılmıyor (srcRect
-  // hiç üretilmiyor); hücreye sığdırmak için gerekiyorsa en-boy oranı
-  // BOZULARAK (stretch) dolduruluyor.
   const srcRectCount = countOccurrences(outXml, "<a:srcRect ");
   check(srcRectCount === 0, `Artık hiçbir görsel kırpılmamalı (srcRect olmamalı), bulunan: ${srcRectCount}`);
 
-  // "her sayfa başlığının üstünde bir boşluk kısmı var" — ayrı, tek
-  // başına <w:br w:type="page"/> paragrafı (kendi paragraf işareti yeni
-  // sayfada boş bir satır bırakıyordu) TAMAMEN KALDIRILDI; artık HİÇ
-  // manuel sayfa sonu paragrafı YOK, yalnızca banner'ın <w:pPr>'indeki
-  // <w:pageBreakBefore/> sayfa geçişini sağlıyor.
-  const pageBreakCount = countOccurrences(outXml, '<w:br w:type="page"/>');
-  check(pageBreakCount === 0, `Artık ayrı manuel sayfa sonu paragrafı OLMAMALI (boşluk kaynağıydı), bulunan: ${pageBreakCount}`);
-  // "tek sorun buradaki boşluk" — hücrenin İLK paragrafı (kapak yoksa
-  // İLK banner) pageBreakBefore ALMAZ (hücre zaten token'in konumunda
-  // doğal başlıyor; pageBreakBefore vermek hücre çerçevesini bu sayfada
-  // boş bir kutu olarak bırakıyordu). 2. kategori İSE alır — 2 kategori
-  // icin TAM 1 pageBreakBefore (yalnızca 2.).
-  const pageBreakBeforeCount = countOccurrences(outXml, "<w:pageBreakBefore/>");
-  check(pageBreakBeforeCount === 1, `2 kategoriden yalnızca 2.'sinde <w:pageBreakBefore/> bekleniyordu (ilk banner doğal konumunda başlar), bulunan: ${pageBreakBeforeCount}`);
+  const manualBreakCount = countOccurrences(outXml, '<w:br w:type="page"/>');
+  check(manualBreakCount === 0, `Artık ayrı manuel sayfa sonu paragrafı OLMAMALI, bulunan: ${manualBreakCount}`);
 
-  // "her sayfa genişlik 16 yükseklik 21,33 olacak şekilde oturum
-  // sağlanmalı" — HICBIR gorsel genisligi (wp:extent cx) 5760000 EMU'yu
-  // (16 cm, sayfa kutusunun genisligi) gecmemeli.
   const extentWidths = [...outXml.matchAll(/<wp:extent cx="(\d+)"/g)].map((m) => Number(m[1]));
   const newExtentWidths = subtractMultiset(extentWidths, baselineExtentWidths);
   const oversizedWidths = newExtentWidths.filter((cx) => cx > 5760000);
   check(oversizedWidths.length === 0, `16 cm (5760000 EMU) sinirini asan ${oversizedWidths.length} YENİ gorsel bulundu: ${oversizedWidths.join(", ")}`);
 
-  // Cikti hala saglam bir STORED zip olmali (round-trip).
   try {
     DocxFill.readStoredZip(filled.bytes.buffer);
   } catch (error) {
@@ -285,79 +234,52 @@ function makePhoto(caption) {
   }
 }
 
-// --- 4) Fotograf YOKKEN: token temiz sekilde silinmeli -------------------
+// --- 4) Fotograf YOKKEN: token'lar temiz sekilde silinmeli -------------
 {
-  const overrides = { FOTO_ALANI_1: "", FOTO_ALANI_3: "" }; // template-engine.js'in gercek davranisi
-  const values = buildValuesWithMissingPlaceholders(tokens, overrides);
+  const overrides = {};
+  ALL_CATEGORY_TOKENS.forEach((t) => { overrides[t] = ""; }); // template-engine.js'in gercek davranisi
+  const values = buildValuesWithAllTokensMissing(tokens, overrides);
   const filled = DocxFill.fillTemplate(arrayBuffer, values, {}, [], []);
-  check(!filled.missing.includes("FOTO_ALANI_1"), "Fotografsiz durumda FOTO_ALANI_1 'missing' olarak isaretlenmis.");
+  ALL_CATEGORY_TOKENS.forEach((t) => {
+    check(!filled.missing.includes(t), `Fotografsiz durumda ${t} 'missing' olarak isaretlenmis.`);
+  });
   const outEntries = DocxFill.readStoredZip(filled.bytes.buffer);
   const outDoc = outEntries.find((e) => e.name === "word/document.xml");
   const outXml = Buffer.from(outDoc.bytes).toString("utf8");
-  check(!outXml.includes("{{FOTO_ALANI_1}}"), "Fotografsiz durumda ham {{FOTO_ALANI_1}} metni ciktida kalmis.");
-  // Sablonun KENDI logo/antet gorselleri (baseline) hala dursun — yalnizca
-  // FOTO_ALANI_* icin YENI bir <w:drawing> eklenmemis olmasi kontrol edilir.
+  ALL_CATEGORY_TOKENS.forEach((t) => {
+    check(!outXml.includes(`{{${t}}}`), `Fotografsiz durumda ham {{${t}}} metni ciktida kalmis.`);
+  });
   const drawingCountEmpty = countOccurrences(outXml, "<w:drawing>");
   check(drawingCountEmpty === baselineDrawingCount, `Fotografsiz durumda <w:drawing> sayisi sablonla ayni kalmaliydi (${baselineDrawingCount}), bulunan: ${drawingCountEmpty}`);
   const bannerCountEmpty = countOccurrences(outXml, `w:fill="1F3864"`);
   check(bannerCountEmpty === 0, `Fotografsiz durumda kategori banner'i olmamaliydi, bulunan: ${bannerCountEmpty}`);
 }
 
-// --- 5) Kapak Fotografi: ayri, tek, 16 cm sinirli, KIRPILMAMIS -----------
+// --- 5) Kapak Fotografi (FOTO_KAPAK): ayri, tek, kirpilmamis -----------
 {
-  const values = buildValuesWithMissingPlaceholders(tokens, { FOTO_ALANI_3: "" });
-  // 4:3 (dikey olmayan) bir "gercek boyut" bildirimi: pixelSize test
-  // JPEG'inden (1x1) okunacagindan srcRect hesaplamasinda width/height
-  // override'i onemli degil, ama genislik/yukseklik hesap mantigini
-  // (computeCoverPhotoEmuSize) dogrulamak icin makePhoto ile ayni sekil.
+  const values = buildValuesWithAllTokensMissing(tokens);
   const photoGroups = [
-    {
-      token: "FOTO_ALANI_1",
-      categories: [
-        { label: "İç Mekan", batches: [{ layoutKey: "vertical_single", photos: [makePhoto("Salon")] }] },
-      ],
-      coverPhoto: { base64: TINY_JPEG_BASE64, mimeType: "image/jpeg", width: 1600, height: 1200 },
-    },
+    { token: "FOTO_KAPAK", categories: [], coverPhoto: { base64: TINY_JPEG_BASE64, mimeType: "image/jpeg", width: 1600, height: 1200 } },
   ];
-  const totalPhotos = 2; // 1 kapak + 1 kategori fotografi
   const filled = DocxFill.fillTemplate(arrayBuffer, values, {}, [], photoGroups);
-  check(!filled.missing.includes("FOTO_ALANI_1"), "Kapak fotografli senaryoda FOTO_ALANI_1 'missing' listesinde.");
+  check(!filled.missing.includes("FOTO_KAPAK"), "Kapak fotografli senaryoda FOTO_KAPAK 'missing' listesinde.");
 
   const outEntries = DocxFill.readStoredZip(filled.bytes.buffer);
   const outDoc = outEntries.find((e) => e.name === "word/document.xml");
   const outXml = Buffer.from(outDoc.bytes).toString("utf8");
 
-  const coverLabelIndex = outXml.indexOf("Kapak Fotoğrafı (yer tutucu");
-  const bannerIndex = outXml.indexOf('w:fill="1F3864"');
-  check(coverLabelIndex >= 0, "\"Kapak Fotoğrafı\" yer tutucu etiketi ciktida bulunamadi.");
-  check(bannerIndex >= 0, "Kategori banner'i (İç Mekan) ciktida bulunamadi.");
-  check(coverLabelIndex >= 0 && bannerIndex >= 0 && coverLabelIndex < bannerIndex, "Kapak Fotoğrafı, kategori banner'larindan ONCE gelmeliydi.");
-  // "Kapak Fotoğrafı" kendi lacivert banner'ini ALMAZ — yalnizca "İç Mekan"
-  // icin TEK bir banner (w:fill="1F3864") olmali, kapak icin AYRICA bir
-  // tane daha OLMAMALI (kategori listesine dahil edilmedigi icin).
-  const coverScenarioBannerCount = countOccurrences(outXml, 'w:fill="1F3864"');
-  check(coverScenarioBannerCount === 1, `Yalnizca "İç Mekan" icin 1 banner bekleniyordu (Kapak Fotoğrafı banner ALMAZ), bulunan: ${coverScenarioBannerCount}`);
+  check(outXml.includes("Kapak Fotoğrafı (yer tutucu"), "\"Kapak Fotoğrafı\" yer tutucu etiketi ciktida bulunamadi.");
+  const bannerCount = countOccurrences(outXml, `w:fill="1F3864"`);
+  check(bannerCount === 0, `Kapak fotoğrafı KENDİ banner'ını ALMAMALI, bulunan: ${bannerCount}`);
 
   const drawingCount = countOccurrences(outXml, "<w:drawing>");
-  check(drawingCount === baselineDrawingCount + totalPhotos, `Sablona gore +${totalPhotos} <w:drawing> bekleniyordu (1 kapak + 1 kategori), gercek fark: ${drawingCount - baselineDrawingCount}`);
+  check(drawingCount === baselineDrawingCount + 1, `Sablona gore +1 <w:drawing> bekleniyordu, gercek fark: ${drawingCount - baselineDrawingCount}`);
 
-  const extentWidths = [...outXml.matchAll(/<wp:extent cx="(\d+)"/g)].map((m) => Number(m[1]));
-  const newExtentWidths = subtractMultiset(extentWidths, baselineExtentWidths);
-  const oversizedWidths = newExtentWidths.filter((cx) => cx > 5760000);
-  check(oversizedWidths.length === 0, `Kapak fotografi dahil, 16 cm sinirini asan ${oversizedWidths.length} YENİ gorsel bulundu.`);
-
-  // Artık HİÇBİR görsel kırpılmıyor — ne kapak ne kategori fotoğrafı.
   const srcRectCount = countOccurrences(outXml, "<a:srcRect ");
-  check(srcRectCount === 0, `Hiçbir görsel kırpılmamalı (kapak da kategori de), bulunan: ${srcRectCount}`);
+  check(srcRectCount === 0, `Kapak fotoğrafı kırpılmamalı, bulunan srcRect: ${srcRectCount}`);
 
-  // Artık ayrı manuel sayfa sonu paragrafı YOK (boşluk kaynağıydı) —
-  // kapak fotografindan SONRA, TEK kategori (İç Mekan) icin banner'in
-  // KENDI <w:pageBreakBefore/>'i sayfa geçişini sağlıyor (kapağın
-  // KENDİSİ pageBreakBefore ALMAZ, yalnızca ardından gelen banner).
-  const pageBreakCount = countOccurrences(outXml, '<w:br w:type="page"/>');
-  check(pageBreakCount === 0, `Artık ayrı manuel sayfa sonu paragrafı OLMAMALI, bulunan: ${pageBreakCount}`);
   const pageBreakBeforeCount = countOccurrences(outXml, "<w:pageBreakBefore/>");
-  check(pageBreakBeforeCount === 1, `1 kategori icin TAM 1 <w:pageBreakBefore/> bekleniyordu, bulunan: ${pageBreakBeforeCount}`);
+  check(pageBreakBeforeCount === 0, `Yalnız kapak fotoğrafı senaryosunda pageBreakBefore OLMAMALI (kapak hiç almaz, başka banner yok), bulunan: ${pageBreakBeforeCount}`);
 
   try {
     DocxFill.readStoredZip(filled.bytes.buffer);
@@ -366,40 +288,32 @@ function makePhoto(caption) {
   }
 }
 
-// --- 6) 6 fotoğraf + Alt Alta İkili (stacked_pair) → 3 sayfa, HER
-// sayfada tekrar eden "İç Mekan" başlığı — kullanıcının verdiği tam
-// örnek: "örnek altı adet iç hacim görseli eklendi alt alta 2 yatay
-// görsel istendi ise 3 sayfada da İç Mekan Başlığı olacak" --------------
+// --- 6) 6 fotoğraf + Alt Alta İkili (FOTO_ICMEKAN, stacked_pair) → 3
+// sayfa, HER sayfada tekrarlanan başlık ------------------------------
 {
-  const values = buildValuesWithMissingPlaceholders(tokens, { FOTO_ALANI_3: "" });
+  const values = buildValuesWithAllTokensMissing(tokens);
   const sixPhotos = Array.from({ length: 6 }, (_, i) => makePhoto(`İç mekan ${i + 1}`));
   const photoGroups = [
-    {
-      token: "FOTO_ALANI_1",
-      categories: [
-        { label: "İç Mekan", batches: [{ layoutKey: "stacked_pair", photos: sixPhotos }] },
-      ],
-    },
+    singleCategoryGroup("FOTO_ICMEKAN", "İç Mekan", "stacked_pair", sixPhotos),
   ];
   const filled = DocxFill.fillTemplate(arrayBuffer, values, {}, [], photoGroups);
-  check(!filled.missing.includes("FOTO_ALANI_1"), "6-fotografli senaryoda FOTO_ALANI_1 'missing' listesinde.");
+  check(!filled.missing.includes("FOTO_ICMEKAN"), "6-fotografli senaryoda FOTO_ICMEKAN 'missing' listesinde.");
 
   const outEntries = DocxFill.readStoredZip(filled.bytes.buffer);
   const outDoc = outEntries.find((e) => e.name === "word/document.xml");
   const outXml = Buffer.from(outDoc.bytes).toString("utf8");
 
-  // stacked_pair sayfa basina 2 gorsel aliyor -> 6 gorsel = TAM 3 sayfa.
   const bannerCount = countOccurrences(outXml, `w:fill="1F3864"`);
   check(bannerCount === 3, `6 fotograf / sayfa basina 2 icin TAM 3 "İç Mekan" banner'i (her sayfada tekrar) bekleniyordu, bulunan: ${bannerCount}`);
-  const iconMekanCount = countOccurrences(outXml, "İç Mekan");
-  check(iconMekanCount === 3, `"İç Mekan" metni TAM 3 kez (3 sayfa) gecmeliydi, bulunan: ${iconMekanCount}`);
+  const icMekanCount = countOccurrences(outXml, "İç Mekan");
+  check(icMekanCount === 3, `"İç Mekan" metni TAM 3 kez (3 sayfa) gecmeliydi, bulunan: ${icMekanCount}`);
 
-  const pageBreakCount = countOccurrences(outXml, '<w:br w:type="page"/>');
-  check(pageBreakCount === 0, `Artık ayrı manuel sayfa sonu paragrafı OLMAMALI, bulunan: ${pageBreakCount}`);
-  // İLK sayfa (kapak fotoğrafı yok, akışın en başı) pageBreakBefore
+  const manualBreakCount = countOccurrences(outXml, '<w:br w:type="page"/>');
+  check(manualBreakCount === 0, `Artık ayrı manuel sayfa sonu paragrafı OLMAMALI, bulunan: ${manualBreakCount}`);
+  // İLK sayfa (bu senaryoda TEK grup/token, akışın en başı) pageBreakBefore
   // ALMAZ; 2. ve 3. sayfa alır — 3 sayfa icin TAM 2 pageBreakBefore.
   const pageBreakBeforeCount = countOccurrences(outXml, "<w:pageBreakBefore/>");
-  check(pageBreakBeforeCount === 2, `3 sayfadan yalnızca 2.-3.'sünde <w:pageBreakBefore/> bekleniyordu (ilk sayfa doğal konumunda başlar), bulunan: ${pageBreakBeforeCount}`);
+  check(pageBreakBeforeCount === 2, `3 sayfadan yalnızca 2.-3.'sünde <w:pageBreakBefore/> bekleniyordu, bulunan: ${pageBreakBeforeCount}`);
 
   const tableCount = countOccurrences(outXml, "<w:tbl>") - baselineTableCount;
   check(tableCount === 3, `3 sayfa icin TAM 3 izgara tablosu (sablona gore delta) bekleniyordu, bulunan: ${tableCount}`);
@@ -407,9 +321,6 @@ function makePhoto(caption) {
   const drawingCount = countOccurrences(outXml, "<w:drawing>");
   check(drawingCount === baselineDrawingCount + 6, `6 fotograf icin +6 <w:drawing> bekleniyordu, gercek fark: ${drawingCount - baselineDrawingCount}`);
 
-  // Kullanicinin en son verdigi TAM ornek: "genişlik 16 cm ... görsel
-  // uzunluğu 10,75 olsun" — her gorsel TAM 5760000×3870000 EMU
-  // (16×10,75 cm) olmali.
   const extents = [...outXml.matchAll(/<wp:extent cx="(\d+)" cy="(\d+)"/g)].map((m) => ({ cx: Number(m[1]), cy: Number(m[2]) }));
   const stackedPairExtents = extents.filter((e) => e.cx === 5760000 && e.cy === 3870000);
   check(stackedPairExtents.length === 6, `6 gorselin de TAM 16×10,75 cm (5760000×3870000 EMU) olmasi bekleniyordu, bulunan (eslesen): ${stackedPairExtents.length}`);
@@ -421,24 +332,33 @@ function makePhoto(caption) {
   }
 }
 
-// --- 7) Kapak Fotografi TEK BASINA (kategori yokken de calismali) --------
+// --- 7) Kapak + AYRI kategori BİRLİKTE: farklı token'lar, hücrenin
+// FİZİKSEL SIRASI (kapak önce) doğru şekilde takip ediliyor mu? --------
 {
-  const values = buildValuesWithMissingPlaceholders(tokens, { FOTO_ALANI_3: "" });
+  const values = buildValuesWithAllTokensMissing(tokens);
   const photoGroups = [
-    { token: "FOTO_ALANI_1", categories: [], coverPhoto: { base64: TINY_JPEG_BASE64, mimeType: "image/jpeg", width: 1600, height: 1200 } },
+    { token: "FOTO_KAPAK", categories: [], coverPhoto: { base64: TINY_JPEG_BASE64, mimeType: "image/jpeg", width: 1600, height: 1200 } },
+    singleCategoryGroup("FOTO_DISMEKAN", "Dış Mekan", "vertical_single", [makePhoto("Sokak")]),
   ];
   const filled = DocxFill.fillTemplate(arrayBuffer, values, {}, [], photoGroups);
-  check(!filled.missing.includes("FOTO_ALANI_1"), "Yalniz-kapak senaryosunda FOTO_ALANI_1 'missing' listesinde.");
   const outEntries = DocxFill.readStoredZip(filled.bytes.buffer);
   const outDoc = outEntries.find((e) => e.name === "word/document.xml");
   const outXml = Buffer.from(outDoc.bytes).toString("utf8");
-  check(outXml.includes("Kapak Fotoğrafı (yer tutucu"), "Kategori olmadan yalniz kapak fotografi eklendiginde etiket ciktida yok.");
-  const drawingCount = countOccurrences(outXml, "<w:drawing>");
-  check(drawingCount === baselineDrawingCount + 1, `Yalniz-kapak senaryosunda +1 <w:drawing> bekleniyordu, gercek fark: ${drawingCount - baselineDrawingCount}`);
+
+  // Kapak fotoğrafı kendi token'ında (FOTO_KAPAK, hücrenin fiziksel
+  // olarak İLK token'ı) hiç pageBreakBefore almaz; "Dış Mekan" (FOTO_
+  // DISMEKAN, kapaktan SONRAKİ ilk gerçek banner) KENDİSİ pageBreakBefore
+  // ALMALI (kapak fotoğrafından sonra kendi sayfasında başlamalı).
+  const disMekanIdx = outXml.indexOf("Dış Mekan");
+  const disMekanParaStart = outXml.lastIndexOf("<w:p><w:pPr>", disMekanIdx);
+  const disMekanPara = outXml.slice(disMekanParaStart, disMekanIdx);
+  check(disMekanPara.includes("<w:pageBreakBefore/>"), "Kapak fotoğrafından SONRAKİ ilk banner (\"Dış Mekan\") pageBreakBefore ALMALIYDI.");
+  const pageBreakBeforeCount = countOccurrences(outXml, "<w:pageBreakBefore/>");
+  check(pageBreakBeforeCount === 1, `Kapak + 1 kategori icin TAM 1 pageBreakBefore bekleniyordu, bulunan: ${pageBreakBeforeCount}`);
 }
 
 if (failures.length) {
   console.error("emlakkatilim.docx fotograf gomme testi BASARISIZ:\n" + failures.map((f) => ` - ${f}`).join("\n"));
   process.exit(1);
 }
-console.log("emlakkatilim.docx '8. Ekler' fotograf gomme (16x22 cm sayfa kutusu, kirpma yok/stretch, sayfa basina tekrarlanan basliklar + kapak fotografi yer tutucusu) testleri basarili.");
+console.log("emlakkatilim.docx '8. Ekler' fotograf gomme (23 kategori-özel token + 16x22 cm sayfa kutusu + kirpma yok + kapak fotografi yer tutucusu) testleri basarili.");

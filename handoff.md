@@ -9720,3 +9720,71 @@ Node ile (tarayıcı oturumu bu turda düştüğü için doğrudan dosyadan)
   paragraf-seviyesi kontrol + güncellenmiş toplam sayılar. `npm run
   verify` tam zincirle yeşil.
 - Cache-buster: `src/exports/docx-fill.js?v=20260814-1500`.
+
+## 0.0.443 - 2026-08-14 - Her fotoğraf kategorisi KENDİ {{TOKEN}}'ına sahip (23 ayrı yer tutucu)
+
+Kullanıcı: "tüm görsel türlerine placeholder ekleyebilir miyiz. örnek
+(DIŞMEKAN)". `AskUserQuestion` ile üç seçenek sunuldu (Kapak gibi hepsi
+tek/kırpılmamış görsel olsun / ızgara aynen kalsın sadece bloklar
+taşınabilir olsun / her kategori için AYRI {{TOKEN}} olsun) — kullanıcı
+üçüncüyü seçti: "Her kategori için .docx şablonunda AYRI bir {{TOKEN}}
+olsun".
+
+Bu, tek konsolide `{{FOTO_ALANI_1}}` şemasını (0.0.437-442) 23 BAĞIMSIZ
+token'a genişletti — kullanıcı artık export sonrası HER kategorinin
+bloğunu (Kapak Fotoğrafı DAHİL) Word'de bağımsız olarak bulup istediği
+yere taşıyabilir.
+
+**`templates/emlakkatilim.docx` (binary düzenleme)**: "8.1 Fotoğraflar"
+hücresindeki TEK `{{FOTO_ALANI_1}}` paragrafı, PHOTO_CATEGORIES sırasıyla
+art arda gelen 23 AYRI placeholder paragrafla DEĞİŞTİRİLDİ — her biri
+orijinal paragrafla AYNI görsel stil (küçük, kalın, 1F497D, ortalanmış),
+yalnızca metni (token) farklı: `{{FOTO_KAPAK}}`, `{{FOTO_DISMEKAN}}`,
+`{{FOTO_ICMEKAN}}`, ... `{{FOTO_DIGER}}` (ad üretimi: "FOTO_" + BÜYÜK
+anahtar, alt çizgiler silinmiş — "dis_mekan" → "FOTO_DISMEKAN",
+kullanıcının verdiği örnekle birebir). Teknik: gerçek
+`readStoredZip`/`writeStoredZip` fonksiyonları docx-fill.js'ten `vm` ile
+çıkarılıp Node betiğiyle çalıştırıldı (2033020 → 2043008 bayt). Eski
+`{{FOTO_ALANI_3}}` (kullanılmayan "8.3" token'ı) dokunulmadan kaldı.
+Yedek: `backups/before-per-category-photo-tokens_<tarih>/emlakkatilim.docx`.
+
+**`report-photos.js`**: `PHOTO_APPENDIX_TOKEN` sabiti kaldırıldı, yerine
+`tokenForCategoryKey(key)` fonksiyonu geldi. `getPhotoAppendixForExport`
+artık TEK değil, fotoğrafı OLAN her kategori için AYRI bir
+`{token, categories/coverPhoto}` girişi döndürüyor (fotoğrafsız
+kategoriler hâlâ TAMAMEN atlanıyor).
+
+**`docx-fill.js`**: `embedPhotoGalleryAssets` zaten ÇOKLU grup'u
+destekliyordu (fonksiyonun kendisi DEĞİŞMEDİ) — ama KRİTİK bir
+regresyon riski bulundu ve düzeltildi: `isFirstBannerOverall` bayrağı
+ÖNCEDEN her grup için sıfırlanıyordu — bu, 23 AYRI token ile HER
+kategorinin kendi ilk sayfasının "ilk" sanılıp pageBreakBefore
+kaybetmesine yol açardı (0.0.442'de düzeltilen "boş kutu" sorununu
+önlerken, bu sefer TÜM kategorilerin yeniden ortadan/sondan
+başlamasına neden olurdu). Bayrak artık `embedPhotoGalleryAssets`
+çağrısının TAMAMI boyunca (23 token'ın HEPSİ) paylaşılıyor — yalnızca
+hücrenin FİZİKSEL OLARAK İLK banner'ı (kapak fotoğrafı hariç, o zaten
+hiç almıyor) pageBreakBefore almıyor; kapak fotoğrafı VARSA onu
+işledikten hemen sonra bayrak `false`'a çekiliyor (ondan sonraki İLK
+banner de kendi sayfasında başlamalı).
+
+**`template-engine.js`**: `t.startsWith("FOTO_ALANI_")` filtresi
+`t.startsWith("FOTO_")` olarak genişletildi — yeni 23 token'ın hepsini
+VE eski/kullanılmayan `FOTO_ALANI_3`'ü kapsıyor (fotoğrafsız kategoriler
+hâlâ asla "eksik alan" uyarısına dönüşmüyor).
+
+Canlı doğrulama (localhost:5173): gerçek `/api/report-template-docx`
+uç noktasından GERÇEK (yeni düzenlenmiş) `emlakkatilim.docx` çekildi —
+24 `FOTO_*` token bulundu (23 yeni + eski FOTO_ALANI_3); kapak
+fotoğrafı + "Dış Mekan" (1 sayfa) + "İç Mekan" (6 fotoğraf, 3 sayfa)
+AYRI token'larla dolduruldu — 4 banner, 4 pageBreakBefore (kapak hariç
+her banner), 0 manuel kırılım, 0 kırpma — hepsi doğru.
+- Test: `tools/test-emlakkatilim-photo-embed.js` BAŞTAN yazıldı — 23
+  token'ın TAMAMININ şablonda bulunduğu, AYRI token'lı 2 kategori
+  arasında (kullanıcının gördüğü boş-kutu regresyonuna karşı) kesin
+  paragraf-seviyesi pageBreakBefore sırası, kapak+kategori birlikte
+  senaryosu (fiziksel sıra takibi) dahil 7 senaryo. `npm run verify`
+  tam zincirle yeşil.
+- Cache-buster: `src/exports/docx-fill.js?v=20260814-1600`,
+  `src/exports/report-photos.js?v=20260814-1600`,
+  `src/templates/template-engine.js?v=20260814-1600`.

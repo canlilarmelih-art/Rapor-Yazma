@@ -603,19 +603,38 @@
     return `<w:tbl><w:tblPr><w:tblW w:w="${tableWidthDxa}" w:type="dxa"/><w:jc w:val="center"/><w:tblLayout w:type="fixed"/><w:tblBorders><w:top w:val="none"/><w:left w:val="none"/><w:bottom w:val="none"/><w:right w:val="none"/><w:insideH w:val="none"/><w:insideV w:val="none"/></w:tblBorders>${tblCellMarZero}</w:tblPr><w:tblGrid>${gridColsParts.join("")}</w:tblGrid>${trParts.join("")}</w:tbl><w:p/>`;
   }
 
-  // xmlText icindeki TEK konsolide fotoğraf-eki token'ini (ör.
-  // {{FOTO_ALANI_1}}, bkz. report-photos.js PHOTO_APPENDIX_TOKEN),
-  // categoryGroups ([{token, categories:[{label, batches:[{layoutKey,
+  // xmlText icindeki HER BİR kategori-özel fotoğraf-eki token'ini (ör.
+  // {{FOTO_DISMEKAN}}, bkz. report-photos.js tokenForCategoryKey — 23
+  // kategorinin HER BİRİ KENDİ token'ına sahip, 2026-08-14, kullanıcı:
+  // "tüm görsel türlerine placeholder ekleyebilir miyiz ... Her kategori
+  // için .docx şablonunda AYRI bir token olsun"), categoryGroups
+  // ([{token, categories:[{label, batches:[{layoutKey,
   // photos:[{base64,mimeType,caption,width,height}]}]}]}] —
-  // RaporReportPhotos.getPhotoGroupsForExport() çıktısı) ile GERÇEK bir
+  // RaporReportPhotos.getPhotoGroupsForExport() çıktısı, HER GİRİŞ
+  // KENDİ AYRI paragrafına/token'ına karşılık gelir) ile GERÇEK bir
   // "kategori başlığı + sayfa sayfa ızgara" paragraf dizisine gömer.
   // Fotoğrafsız kategoriler zaten çağıran tarafta (report-photos.js)
-  // ELENDİĞİNDEN burada hiç görünmez. Token'ın İÇİNDE BULUNDUĞU TEK
-  // paragraf tamamen bu dizi ile DEĞİŞTİRİLİR.
+  // ELENDİĞİNDEN burada hiç görünmez (kendi token'ları normal
+  // {{TOKEN}}→"" akışıyla temizlenir, bkz. template-engine.js). Her
+  // token'ın İÇİNDE BULUNDUĞU TEK paragraf tamamen KENDİ içeriğiyle
+  // DEĞİŞTİRİLİR.
   function embedPhotoGalleryAssets(xmlText, entries, categoryGroups) {
     let nextEntries = entries.slice();
     let text = xmlText;
     let embeddedAny = false;
+
+    // "8.1 Fotoğraflar" hücresine art arda gömülen 23 token — HEPSİ AYNI
+    // kenarlıklı hücrenin İÇİNDE. Bu bayrak, TÜM token'lar (fonksiyon
+    // çağrısı) BOYUNCA paylaşılır (grup başına SIFIRLANMAZ): hücrenin
+    // FİZİKSEL OLARAK İLK banner'ı (döküman sırasına göre — kapak
+    // fotoğrafı hariç, o zaten hiç pageBreakBefore almıyor) pageBreakBefore
+    // ALMAZ — o paragraf zaten hücrenin doğal başlangıcına en yakın
+    // konumda; ona "önce sayfa başına git" demek, hücrenin çerçevesini bu
+    // sayfada NEREDEYSE BOŞ bırakıp gerçek içeriği bir sonraki sayfaya
+    // iten bir boş kutu yaratıyordu (kullanıcının ekran görüntüsünde
+    // işaretlediği sorun). SONRAKİ HER banner (başka bir kategori, ya da
+    // aynı kategorinin 2./3. sayfası) YİNE pageBreakBefore alır.
+    let isFirstBannerOverall = true;
 
     (Array.isArray(categoryGroups) ? categoryGroups : []).forEach((group) => {
       const token = group?.token;
@@ -640,18 +659,13 @@
       const parts = [];
       if (coverPhoto) {
         parts.push(buildCoverPhotoBlockXml(coverPhoto, registrar));
+        // Kapak fotoğrafı (FOTO_KAPAK) her zaman "8.1 Fotoğraflar"
+        // hücresinin FİZİKSEL OLARAK İLK token'ı — kendisi hiç
+        // pageBreakBefore almaz, ama ondan SONRAKİ ilk banner (başka bir
+        // kategori) artık hücrenin ilk paragrafı DEĞİL; kendi sayfasında
+        // başlaması gerekir.
+        isFirstBannerOverall = false;
       }
-      // "8.1 Fotoğraflar" hücresine gömülen İLK paragraf (kapak fotoğrafı
-      // yoksa İLK kategori banner'ı) pageBreakBefore ALMAZ — bu hücre zaten
-      // TAM BURADA (token'in konumunda) doğal olarak başlıyor; ona
-      // "önce sayfa başına git" demek, hücrenin çerçevesini bu sayfada
-      // NEREDEYSE BOŞ bırakıp gerçek içeriği bir sonraki sayfaya iten bir
-      // boş kutu yaratıyordu (kullanıcının ekran görüntüsünde işaretlediği
-      // sorun). Kapak fotoğrafı VARSA o zaten hücrenin doğal başlangıcında
-      // duruyor (pageBreakBefore hiç almıyor) — ondan SONRAKI ilk banner
-      // farklı bir mantıkla YİNE pageBreakBefore alır (kapak fotoğrafının
-      // hemen ardından kendi sayfasında başlamalı).
-      let isFirstBannerOverall = !coverPhoto;
       categories.forEach((category) => {
         const batches = Array.isArray(category?.batches) ? category.batches : [];
         const validBatches = batches.filter((b) => Array.isArray(b?.photos) && b.photos.length);
