@@ -9886,6 +9886,16 @@ gerekmedi, testle (bkz. aşağıda) tekrar doğrulandı.
   zincirle yeşil.
 - Cache-buster: `app.js?v=20260814-1745`.
 
+## 0.0.454 - 2026-08-15 - TAKBİS yeniden yüklendiğinde eski veri artık TAMAMEN silinir
+
+- Kullanıcı: "takbis yüklendikten sonra yeni bir takbis yüklendiğinde eski takbisteki veriler kalıyor. üstüne ekliyor. tamamını silmeli yeni takbis yükleyince."
+- Kök neden: `resetTakbisTitleDerivedFields()` (`app.js`, `processTakbisFile()`'ın ilk adımı) alanları yalnızca kullanıcının ELLE DEĞİŞTİRMEDİĞİ durumda (`currentValue === state.sourceValues.takbis.applied[key]`) temizliyordu — "manuel düzeltmeyi koru" niyetiyle eklenmiş bir kontroldü, ama bunun net etkisi: eski TAKBİS'in doldurduğu bazı alanlar (özellikle "elle değiştirilmiş gibi görünenler") yeni TAKBİS yüklendikten SONRA da tabloda KALIYORDU. `resetKmlDerivedFields()` (KML için AYNI amaçla var olan fonksiyon) zaten KOŞULSUZ temizliyordu — TAKBİS bu tutarsız/istenmeyen davranışın TEK istisnasıydı.
+- Düzeltme: `resetTakbisTitleDerivedFields()`'teki koşullu kontrol KALDIRILDI — artık TÜM türetilmiş alanlar (28 alan: titleQuality, blockNo, parcelNo, share, denominator, landArea, titleAttachment vb.) her yeni TAKBİS yüklemesinde KOŞULSUZ boşaltılıyor. Malikler (`state.tables.title`), Takyidat (`state.tables.encumbrance`) ve alt tablolar (Beyanlar/Şerhler/İpotekler — `encumbranceReportTables`) ZATEN koşulsuz sıfırlanıyordu, DEĞİŞMEDİ.
+- Yeni `tools/test-takbis-reset-on-reupload.js` (5 senaryo): "elle değiştirilmemiş alan boşalır", **REGRESYON testi**: "elle değiştirilmiş GİBİ görünen alan da artık koşulsuz boşalır" (kullanıcının bildirdiği asıl hata buydu), Malikler/Takyidat tabloları sıfırlanır, Beyanlar/Şerhler/İpotekler alt tabloları boş diziye döner, `sourceValues.takbis`/`sourceConflicts.takbis` sıfırlanır. `package.json`'daki test zincirine eklendi.
+- Kapsam DIŞI bırakıldı (bilinçli): `importTakbisRecordsIntoTitleUnits()` (Çoklu TAKBİS "Rapora Aktar" — Deneysel Faz 2 akışı) bu resetı ÇAĞIRMIYOR; bu fonksiyon zaten KENDİ dokümantasyonunda "mevcut veri ÜZERİNE yazar, çağıran taraf onay almalı" diye belirtiliyor (kullanıcı onaylı bir akış) — kapsamı genişletmek `tools/test-title-unit-import.js`'in stub tabanlı sandbox'ını (encumbranceReportTables/sections.table bağımlılığı olmadan) bozardı; kullanıcının bildirdiği asıl sorun (tekli "TAKBİS PDF" butonuyla yeniden yükleme) `processTakbisFile()` üzerinden zaten tam kapsandı.
+- Canlı tarayıcıda doğrulandı: gerçek state geçici olarak (autosave/render çağırmadan) "eski TAKBİS" durumunu taklit edecek şekilde değiştirilip `resetTakbisTitleDerivedFields()` doğrudan çağrıldı — tüm alanlar VE tablolar doğru şekilde sıfırlandı, sonra state aynen geri yüklendi, gerçek rapora dokunulmadı.
+- `npm run verify` tamamı yeşil. Cache-buster: `app.js?v=20260815-0225`.
+
 ## 0.0.453 - 2026-08-15 - Farklı parsellerde Arsa Payı/Payda kaldırılır, Kimlik No Sıra No'dan sonra, Ana Taşınmaz Niteliği her zaman gösterilir
 
 Kullanıcı: "farklı ada parsellerden oluşan çoklu taleplerde ARSA PAYI ARSA PAYDA KALDIR. tAŞINMAZ kimlik no sır nodan sonra gelsin Ana taşınmaz niteliği bölümünü ekle" — üç ayrı değişiklik:

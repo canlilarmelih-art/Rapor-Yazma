@@ -25412,6 +25412,16 @@ function normalizeTakbisMortgageAmount(value) {
     .trim();
 }
 
+// Kullanıcı bildirimi (2026-08-15): "takbis yüklendikten sonra yeni bir
+// takbis yüklendiğinde eski takbisteki veriler kalıyor. üstüne ekliyor.
+// tamamını silmeli yeni takbis yükleyince" — ÖNCEKİ davranış yalnızca
+// kullanıcının ELLE DEĞİŞTİRMEDİĞİ alanları temizliyordu (currentValue
+// === previousSourceValue kontrolü), "manuel düzeltmeyi koru" niyetiyle
+// eklenmişti; ama bu YENİ bir TAKBİS'in eski verinin bir kısmının
+// (özellikle elle dokunulmuş görünen alanların) TABLODA KALMASINA yol
+// açıyordu — kullanıcı bunu istemiyor. Yeni bir TAKBİS yüklendiğinde
+// TÜM türetilmiş alanlar KOŞULSUZ temizlenir — resetKmlDerivedFields()
+// zaten AYNI koşulsuz deseni kullanıyordu, TAKBİS artık ona uyuyor.
 function resetTakbisTitleDerivedFields() {
   [
     "takbisReportDate",
@@ -25444,11 +25454,7 @@ function resetTakbisTitleDerivedFields() {
     "takbisMethod",
     "takbisSummary",
   ].forEach((key) => {
-    const currentValue = state.fields[key] || "";
-    const previousSourceValue = state.sourceValues.takbis?.applied?.[key] || "";
-    if (!currentValue || currentValue === previousSourceValue) {
-      state.fields[key] = "";
-    }
+    state.fields[key] = "";
   });
   state.tables.title = Array.from({ length: sections.find((section) => section.id === "title")?.table?.rows || 3 }, () => ({}));
   state.tables.encumbrance = Array.from({ length: sections.find((section) => section.id === "encumbrance")?.table?.rows || 5 }, () => ({}));
