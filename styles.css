@@ -1561,8 +1561,22 @@ td .free-lookup input {
 }
 
 /* KML "tek dosya -> tüm taşınmazlara uygula" kutucuğu (2026-08-15) — aynı
-   görsel dil (title-record-change-apply-all) ama upload-card içinde. */
-.kml-apply-all-label {
+   görsel dil (title-record-change-apply-all) ama upload-card içinde.
+   ÖNEMLİ (2026-08-15 hotfix): "ŞU AN KML YÜKLEME BUTONU ÇALIŞMIYOR" —
+   `.upload-card input` (bkz. aşağıda, "Neumorfik dosya yukleme kartlari"
+   bölümü) TÜM input'ları (type farketmeksizin) position:absolute; inset:0;
+   opacity:0 yaparak kartın TAMAMINI kaplayan görünmez bir dosya-seçme
+   overlay'ine çeviriyor — bu KML kartına ikinci bir <input> (checkbox)
+   eklenince O DA ayni overlay'e dönüşüp dosya input'unun ÜZERİNE binip
+   TÜM tıklamaları yutuyordu (dosya seçici hiç açılmıyordu). Eşit
+   özgüllükte (.upload-card input) SONRA tanımlandığı için eski
+   `.kml-apply-all-label input` kuralını (yalnızca width/height/accent-color
+   set eden, position/opacity'ye hiç dokunmayan) eziyordu. Çözüm: `.upload-card`
+   önekiyle DAHA ÖZGÜL bir selector kullanıp position/opacity'yi ELLE
+   normale döndürmek. */
+.upload-card .kml-apply-all-label {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -1572,10 +1586,12 @@ td .free-lookup input {
   cursor: pointer;
 }
 
-.kml-apply-all-label input {
+.upload-card .kml-apply-all-label input {
+  position: static;
   width: 16px;
   height: 16px;
   flex: 0 0 auto;
+  opacity: 1;
   accent-color: var(--green);
 }
 

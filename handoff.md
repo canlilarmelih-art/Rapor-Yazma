@@ -9886,6 +9886,15 @@ gerekmedi, testle (bkz. aşağıda) tekrar doğrulandı.
   zincirle yeşil.
 - Cache-buster: `app.js?v=20260814-1745`.
 
+## 0.0.450 - 2026-08-15 - ACİL DÜZELTME: KML yükleme butonu (0.0.449 regresyonu)
+
+- Kullanıcı: "ŞU AN KML YÜKLEME BUTONU ÇALIŞMIYOR" — 0.0.449'da KML kartına eklenen "tümüne uygula" kutucuğu, `.upload-card input` (TÜM input'ları type farketmeksizin `position:absolute; inset:0; opacity:0` yaparak KARTIN TAMAMINI kaplayan görünmez bir tıklama alanına çeviren, "Belge seç / sürükle" tıklama/sürükle-bırak tetikleyici deseni) kuralına YAKALANDI — checkbox da aynı overlay'e dönüşüp dosya `<input>`'unun ÜZERİNE binip TÜM tıklamaları yuttu, dosya seçici hiç açılmıyordu.
+- Kök neden: `.kml-apply-all-label input` kuralı (0.0.449) yalnızca width/height/accent-color set ediyordu, position/opacity'ye HİÇ dokunmuyordu; `.upload-card input` (styles.css'te SONRA tanımlı, eşit özgüllük) bu yüzden position:absolute/opacity:0'ı EZİYORDU.
+- `styles.css`: `.kml-apply-all-label`/`.kml-apply-all-label input` → `.upload-card .kml-apply-all-label`/`.upload-card .kml-apply-all-label input` (DAHA ÖZGÜL, `.upload-card input`'u garantili ezer) + `position: static; opacity: 1;` elle geri döndürüldü.
+- Canlı tarayıcıda doğrulandı: `getComputedStyle` ile dosya input'u hâlâ `position:absolute, opacity:0, 205x270` (tüm kartı kaplıyor, DOĞRU) — checkbox artık `position:static, opacity:1, 16x16` (küçük, bağımsız, DOĞRU). Checkbox'a tıklamak yalnızca kendisini işaretliyor, dosya seçiciyi TETİKLEMİYOR (birbirini engellemiyorlar). Test raporu temizlendi, gerçek rapora dokunulmadı.
+- `npm run verify` tamamı yeşil (davranışsal, DOM'a bağlı bir CSS hatası olduğu için otomatik testle yakalanamazdı — canlı tarayıcı kontrolü ŞART).
+- Cache-buster: `styles.css?v=20260815-0105`.
+
 ## 0.0.449 - 2026-08-15 - KML'i tek seferde yükleyip tüm taşınmazlara uygula
 
 - Kullanıcı: "aynı ada parsel taleplerinde 1 adet kml olacak zaten kml parsel bazında bir dosya" — bu KML/İl/İlçe/Mahalle/Pafta tablo-gizleme düzeltmelerinin (0.0.447) ARDINDAN gelen kök-neden gözlemiydi. `AskUserQuestion` ile netleştirildi: kullanıcı "KML'i tek seferde yükleyip tüm taşınmazlara uygula" seçeneğini onayladı (mevcut "Tapu Kaydı Değişikliği tümüne uygula" — 0.0.387 — desenine benzer).
