@@ -388,8 +388,11 @@
   // örnek: alt alta 2 yatay görsel. genişlik 16 cm uzunluk 10,50 + ara
   // boşluk 0,33 cm + genişlik 16 cm uzunluk 10,50" — ONCEKI "15 cm
   // maksimum genislik" kurali (0.0.436) bu DAHA KESIN sayfa-kutusu
-  // hesabiyla DEGISTIRILDI: her fotograf sayfasi TAM 16×21,33 cm'lik bir
-  // kutuya, hucreler arasinda TAM 0,33 cm bosluklarla yerlestiriliyor.
+  // hesabiyla DEGISTIRILDI: her fotograf sayfasi TAM 16×22 cm'lik bir
+  // kutuya, hucreler arasinda TAM 0,50 cm bosluklarla yerlestiriliyor
+  // (2026-08-14, 7. tur — kullanici: "yeni boyutlar 16 cm 22 cm 2 li
+  // dikey de boşluğu 0,50 cm yap görsel uzunluğu 10,75 olsun"; dogrulama:
+  // (22-0,50)/2 = 10,75 cm, tam istenen deger).
   // 1 cm = 1440/2.54 twip (dxa); 1 cm = 360000 EMU (tam sayi).
   const CM_TO_DXA = 1440 / 2.54;
   const CM_TO_EMU = 360000;
@@ -397,8 +400,8 @@
   function cmToEmu(cm) { return Math.round(cm * CM_TO_EMU); }
 
   const PAGE_CONTENT_WIDTH_CM = 16;
-  const PAGE_CONTENT_HEIGHT_CM = 21.33;
-  const CELL_GAP_CM = 0.33;
+  const PAGE_CONTENT_HEIGHT_CM = 22;
+  const CELL_GAP_CM = 0.5;
   const PAGE_WIDTH_DXA = cmToDxa(PAGE_CONTENT_WIDTH_CM);
   const PAGE_WIDTH_EMU = cmToEmu(PAGE_CONTENT_WIDTH_CM);
   const PAGE_HEIGHT_DXA = cmToDxa(PAGE_CONTENT_HEIGHT_CM);
@@ -417,10 +420,10 @@
     return LAYOUT_GRID[layoutKey] || LAYOUT_GRID.horizontal_pair;
   }
 
-  // columns×rows'a göre, 16×21,33 cm'lik sayfa kutusunu (hücreler arasında
+  // columns×rows'a göre, 16×22 cm'lik sayfa kutusunu (hücreler arasında
   // TAM CELL_GAP_CM boşluk bırakarak) eşit hücrelere böler. Kullanıcının
-  // verdiği örnek (stacked_pair, 1×2) BİREBİR doğrular: (21,33-0,33)/2 =
-  // 10,50 cm — tam istenen değer.
+  // verdiği örnek (stacked_pair, 1×2) BİREBİR doğrular: (22-0,50)/2 =
+  // 10,75 cm — tam istenen değer.
   function computeCellSizeForLayout(layoutKey) {
     const { columns, rows } = getLayoutGrid(layoutKey);
     const cellWidthDxa = Math.round((PAGE_WIDTH_DXA - GAP_DXA * (columns - 1)) / columns);
@@ -428,25 +431,6 @@
     const cellWidthEmu = Math.round((PAGE_WIDTH_EMU - GAP_EMU * (columns - 1)) / columns);
     const cellHeightEmu = Math.round((PAGE_HEIGHT_EMU - GAP_EMU * (rows - 1)) / rows);
     return { columns, rows, cellWidthDxa, cellHeightDxa, cellWidthEmu, cellHeightEmu, cellAspect: cellWidthEmu / cellHeightEmu };
-  }
-
-  // Fotoğrafın gerçek en-boy oranı ile hedef HÜCRE en-boy oranını
-  // karşılaştırıp ortalanmış bir kırpma dikdörtgeni (srcRect, binde
-  // yüzde: 100000 = %100) hesaplar — boşluksuz "cover" doldurma.
-  function computeCoverSrcRect(photoWidth, photoHeight, cellAspect) {
-    if (!photoWidth || !photoHeight || !cellAspect) return null;
-    const photoAspect = photoWidth / photoHeight;
-    if (Math.abs(photoAspect - cellAspect) < 0.01) return null; // zaten yakinsa kirpma gereksiz
-    if (photoAspect > cellAspect) {
-      // Fotoğraf hedeften daha GENİŞ — sağ/soldan kırp, tam yükseklik kalsın.
-      const keepFraction = cellAspect / photoAspect;
-      const insetPercentMil = Math.round(((1 - keepFraction) / 2) * 100000);
-      return { l: insetPercentMil, r: insetPercentMil, t: 0, b: 0 };
-    }
-    // Fotoğraf hedeften daha UZUN (dikey) — üst/alttan kırp, tam genişlik kalsın.
-    const keepFraction = photoAspect / cellAspect;
-    const insetPercentMil = Math.round(((1 - keepFraction) / 2) * 100000);
-    return { l: 0, r: 0, t: insetPercentMil, b: insetPercentMil };
   }
 
   function buildDrawingXmlCropped(relId, title, cx, cy, srcRect) {
@@ -538,28 +522,28 @@
   }
 
   // TEK sayfalık (columns×rows'a kadar) bir fotoğraf ızgarasını <w:tbl>
-  // olarak gömer. 2026-08-14 (5. tur) yeniden tasarımı — kullanıcı: "her
-  // sayfa genişlik 16 yükseklik 21,33 olacak şekilde oturum sağlanmalı
-  // ... alt alta 2 yatay görsel: genişlik 16 uzunluk 10,50 + ara boşluk
-  // 0,33 + genişlik 16 uzunluk 10,50". Görsel hücreleri arasındaki
-  // boşluk artık `w:tcMar` (kenar boşluğu — önceki tur) DEĞİL, tablo
-  // ızgarasına eklenen AYRI, boş, TAM CELL_GAP_CM (0,33 cm) yükseklik/
-  // genişlikte "ara satır/sütun" hücreleridir — bu, her görselin
-  // gerçek boyutunun (cx/cy) hesaplanan hücre boyutuyla BİREBİR eşleşmesini
-  // garantiler (kenar boşluğu + görsel boyutu toplamının hücre payını
-  // AŞIP taşma riski yok). Son sayfanın son satırı eksikse (columns'tan
-  // az fotoğraf kaldıysa) kalan hücreler BOŞ bırakılır.
+  // olarak gömer. 2026-08-14 (7. tur) — kullanıcı: "yeni boyutlar 16 cm
+  // 22 cm 2 li dikey de boşluğu 0,50 cm yap görsel uzunluğu 10,75 olsun
+  // ... görselleri uzat kırpma" — HİÇBİR görsel artık KIRPILMAZ
+  // (srcRect=null her zaman geçilir); tam tersine hücreyi TAM doldurmak
+  // için gerekiyorsa en-boy oranı BOZULARAK (stretch/uzat) hücreye
+  // sığdırılır — kullanıcı bunu kesinlikle istedi ("uzat", kırpma değil).
+  // Görsel hücreleri arasındaki boşluk `w:tcMar` (kenar boşluğu — çok
+  // önceki tur) DEĞİL, tablo ızgarasına eklenen AYRI, boş, TAM
+  // CELL_GAP_CM yükseklik/genişlikte "ara satır/sütun" hücreleridir —
+  // bu, her görselin gerçek boyutunun (cx/cy) hesaplanan hücre
+  // boyutuyla BİREBİR eşleşmesini garantiler (taşma riski yok). Son
+  // sayfanın son satırı eksikse (columns'tan az fotoğraf kaldıysa)
+  // kalan hücreler BOŞ bırakılır.
   function buildPhotoPageTableXml(photos, layoutKey, registrar) {
-    const { columns, rows, cellWidthDxa, cellHeightDxa, cellWidthEmu, cellHeightEmu, cellAspect } = computeCellSizeForLayout(layoutKey);
+    const { columns, rows, cellWidthDxa, cellHeightDxa, cellWidthEmu, cellHeightEmu } = computeCellSizeForLayout(layoutKey);
 
     function buildImageCellXml(photo) {
       if (!photo) return `<w:tc><w:tcPr><w:tcW w:w="${cellWidthDxa}" w:type="dxa"/></w:tcPr><w:p/></w:tc>`;
-      const { relId, extension } = registrar.register(photo.base64, photo.mimeType);
-      const imageBytes = base64ToBytes(photo.base64);
-      const pixelSize = extension === "jpeg" ? getJpegPixelSize(imageBytes) : null;
-      const srcRect = pixelSize ? computeCoverSrcRect(pixelSize.width, pixelSize.height, cellAspect)
-        : computeCoverSrcRect(photo.width, photo.height, cellAspect);
-      const drawing = buildDrawingXmlCropped(relId, photo.caption || "Rapor fotoğrafı", cellWidthEmu, cellHeightEmu, srcRect);
+      const { relId } = registrar.register(photo.base64, photo.mimeType);
+      // srcRect=null: kırpma YOK, görsel doğrudan hücreye "stretch" ile
+      // (en-boy oranı gerekirse bozularak) tam sığdırılır.
+      const drawing = buildDrawingXmlCropped(relId, photo.caption || "Rapor fotoğrafı", cellWidthEmu, cellHeightEmu, null);
       return `<w:tc><w:tcPr><w:tcW w:w="${cellWidthDxa}" w:type="dxa"/><w:vAlign w:val="center"/></w:tcPr><w:p><w:pPr><w:jc w:val="center"/><w:spacing w:before="0" w:after="0"/></w:pPr><w:r>${drawing}</w:r></w:p></w:tc>`;
     }
 

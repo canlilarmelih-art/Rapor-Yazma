@@ -9637,3 +9637,48 @@ deseni bulunmuyor.
   sayfa sayısıyla eşleşmesi bekleniyordu); `pageBreakBefore` sayımı TEK
   mekanizma olarak kaldı. `npm run verify` tam zincirle yeşil.
 - Cache-buster: `src/exports/docx-fill.js?v=20260814-1245`.
+
+## 0.0.441 - 2026-08-14 - Sayfa kutusu 16×22 cm'e çıktı, görseller artık KIRPILMIYOR
+
+Kullanıcı: "olmuş ancak halen başlıklar alta geliyor. ayrıca görselleri
+uzat kırpma. yeni boyutlar 16 cm 22 cm 2 li dikey de boşluğu 0,50 cm yap
+görsel uzunluğu 10,75 olsun".
+
+**Boyut değişikliği**: `PAGE_CONTENT_HEIGHT_CM` 21,33'ten 22'ye,
+`CELL_GAP_CM` 0,33'ten 0,50'ye çıktı — doğrulama: (22-0,50)/2 = 10,75 cm,
+kullanıcının verdiği tam değer. `computeCellSizeForLayout` formülü
+DEĞİŞMEDİ (aynı hesap, yalnızca girdi sabitleri güncellendi).
+
+**Kırpma kaldırıldı**: "görselleri uzat kırpma" — grid görsellerindeki
+`computeCoverSrcRect`-tabanlı KIRPMA (cover-fit, kenarlardan kesme)
+fonksiyonuyla birlikte TAMAMEN KALDIRILDI. Artık `buildDrawingXmlCropped`'a
+her zaman `srcRect=null` geçiliyor — görsel hücreye tam sığdırmak için
+gerekiyorsa en-boy oranı BOZULARAK (stretch) dolduruluyor, hiçbir kenar
+kesilmiyor. (Kapak Fotoğrafı zaten hiç kırpılmıyordu, bu değişiklik onu
+etkilemedi.)
+
+**"Başlıklar alta geliyor" hakkında**: kullanıcının gönderdiği ekran
+görüntüsü (bkz. 0.0.440) VE bu mesajdaki "halen" ifadesi aynı, ÖNCEKİ
+export'a mı işaret ediyor yoksa YENİ bir teste mi belirsizdi. Bu turda
+tekrar canlı doğrulama yapıldı (gerçek şablon, çok kategorili/çok
+sayfalı senaryo) — `pageBreakBefore` sayısı sayfa sayısıyla TAM
+eşleşiyor, manuel sayfa sonu paragrafı hiç yok, yapısal olarak sorun
+bulunamadı. Kullanıcıdan TAZE bir export (tüm sekmeler kapatılıp
+yeniden açıldıktan sonra) ile tekrar test etmesi istendi — eğer sorun
+GERÇEKTEN devam ediyorsa, `vMerge=restart` tablo hücresi içinde
+`pageBreakBefore`'un Word'ün bazı render yollarında güvenilir
+olmayabileceği ihtimaline karşı, fotoğraf ekini tablo hücresinden
+tamamen ÇIKARIP normal gövde akışına taşımak (daha büyük, riskli bir
+mimari değişiklik) bir sonraki adım olabilir.
+
+Canlı doğrulama (localhost:5173): gerçek `/api/report-template-docx`
+uç noktasından GERÇEK `emlakkatilim.docx` çekildi, 6 fotoğraf
+(stacked_pair) + 1 fotoğraf (vertical_single, farklı kategori) ile
+`fillTemplate` çalıştırıldı — `srcRect` sayısı 0 (hiç kırpma yok),
+manuel sayfa sonu 0, `pageBreakBefore` TAM 4 (sayfa sayısıyla eşleşti),
+6 görsel TAM 16×10,75 cm, 1 görsel TAM 16×22 cm (tam sayfa kutusu).
+- Test: `tools/test-emlakkatilim-photo-embed.js` — tüm `srcRect`
+  beklentileri `0`'a güncellendi (artık hiç kırpma yok), stacked_pair
+  boyut kontrolü 16×10,50'den 16×10,75'e güncellendi. `npm run verify`
+  tam zincirle yeşil.
+- Cache-buster: `src/exports/docx-fill.js?v=20260814-1420`.
