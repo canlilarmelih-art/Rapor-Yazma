@@ -9886,6 +9886,14 @@ gerekmedi, testle (bkz. aşağıda) tekrar doğrulandı.
   zincirle yeşil.
 - Cache-buster: `app.js?v=20260814-1745`.
 
+## 0.0.447 - 2026-08-15 - "İl İlçe Mahalle hala çıkıyor" düzeltmesi: ada/parsel önceliği 4 alana genişletildi
+
+- Kullanıcı: "İL İLÇE MAHALLE HALA ÇIKIYOR AYNI OLMASINA RAĞMEN TÜM TAŞINMAZLARIN" — 0.0.446'da "İl İlçe Mahalle Pafta ... aynı ada parsel taleplerinde tabloda yer almamalı" isteği yanlışlıkla YALNIZCA Pafta'ya (`sheetNo`) uygulanmıştı; İl/İlçe/Mahalle (`titleCity`/`titleDistrict`/`titleNeighborhood`) unutulmuştu.
+- `buildTitleUnitsSummaryTableData()`'daki (`app.js`) `allSameAdaParsel` override'ı artık `HIDE_WHEN_SAME_ADA_PARSEL_KEYS = {titleCity, titleDistrict, titleNeighborhood, sheetNo}` dört alanının TAMAMINI kapsıyor — tüm taşınmazlar aynı ada/parselde ise bu dördü, kendi metin değerleri (KML/TAKBİS içe aktarma tutarsızlığıyla) farklı görünse bile ZORLA gizleniyor.
+- `tools/test-title-units-summary-table.js`'teki 2b/2c senaryoları genişletildi: artık İl/İlçe/Mahalle/Pafta'nın DÖRDÜ birden, hem "aynı ada/parsel + farklı kendi metni → gizlenir" hem "farklı ada/parsel + farklı kendi metni → gösterilir" yönünde test ediliyor.
+- `npm run verify` tamamı (check + ~103 test dosyası) yeşil.
+- Cache-buster: `app.js?v=20260815-0010`.
+
 ## 0.0.446 - 2026-08-14 - Pafta ada/parsel önceliği, Sıra No, hesaplanan Arsa Payı, dinamik/ortalı tablo
 
 Aynı oturumda 3 ayrı takip mesajı:

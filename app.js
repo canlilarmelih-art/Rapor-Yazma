@@ -16395,27 +16395,32 @@ function buildTitleUnitsSummaryTableData() {
   const units = buildAllTitleUnitsForSummaryTable();
   if (units.length < 2) return null;
 
-  // Kullanıcı talebi (2026-08-14, devam): "pafta bölümünü kaldır aynı
-  // ada parselde yer alan işlemlerde" (bkz. "kml den alınan pafta
-  // bilgisi aynı ada parselde ise belirtilmesin" / "İl İlçe Mahalle
-  // Pafta ... aynı ada parsel taleplerinde tabloda yer almamalı") —
-  // Pafta, tanım gereği ada/parsel tarafından belirlenir (aynı ada/
-  // parsel = aynı pafta, HER ZAMAN); ancak pafta değeri KML/TAKBİS'ten
-  // taşınmaz başına AYRI AYRI içeri alındığından veri girişi
-  // tutarsızlığı (boşluk, farklı kaynak, vb.) yüzünden metin olarak
-  // FARKLI görünebilir. TÜM taşınmazlar AYNI ada/parseldeyse, Pafta'nın
-  // KENDİ metin değeri farklı olsa BİLE zorla GİZLENİR — ada/parsel
-  // eşitliği pafta karşılaştırmasından daha ÖNCELİKLİDİR.
+  // Kullanıcı talebi (2026-08-14/15, devam): "pafta bölümünü kaldır aynı
+  // ada parselde yer alan işlemlerde" / "kml den alınan pafta bilgisi
+  // aynı ada parselde ise belirtilmesin" / "İl İlçe Mahalle Pafta ...
+  // aynı ada parsel taleplerinde tabloda yer almamalı" — bu ÜÇ mesaj
+  // BİRLİKTE dört alanı (İl, İlçe, Mahalle, Pafta) kapsıyor, SADECE
+  // Pafta değil (ilk uygulamada kapsam yanlışlıkla Pafta'ya daraltılmıştı
+  // — "İL İLÇE MAHALLE HALA ÇIKIYOR AYNI OLMASINA RAĞMEN" ile düzeltildi).
+  // Bu dört alan tanım gereği ada/parsel tarafından belirlenir (aynı ada/
+  // parsel = aynı il/ilçe/mahalle/pafta, HER ZAMAN); ancak değerleri
+  // KML/TAKBİS'ten taşınmaz başına AYRI AYRI içeri alındığından veri
+  // girişi tutarsızlığı (boşluk, farklı kaynak, büyük/küçük harf vb.)
+  // yüzünden metin olarak FARKLI görünebilir. TÜM taşınmazlar AYNI ada/
+  // parseldeyse, bu dört alanın KENDİ metin değeri farklı olsa BİLE
+  // zorla GİZLENİR — ada/parsel eşitliği bunların karşılaştırmasından
+  // daha ÖNCELİKLİDİR.
   const allSameAdaParsel = units.every((unit) => (
     String(unit.fields?.blockNo || "").trim() === String(units[0].fields?.blockNo || "").trim()
     && String(unit.fields?.parcelNo || "").trim() === String(units[0].fields?.parcelNo || "").trim()
   ));
+  const HIDE_WHEN_SAME_ADA_PARSEL_KEYS = new Set(["titleCity", "titleDistrict", "titleNeighborhood", "sheetNo"]);
 
   // "aynı ise tabloda gözükmeyecek" — TÜM taşınmazlarda BİREBİR aynı
   // (boşluk arındırılmış) değere sahip alanlar sütun listesinden
   // tamamen ÇIKARILIR.
   const sharedFieldsToShow = TITLE_UNITS_TABLE_SHARED_FIELD_DEFS.filter((def) => {
-    if (def.key === "sheetNo" && allSameAdaParsel) return false;
+    if (HIDE_WHEN_SAME_ADA_PARSEL_KEYS.has(def.key) && allSameAdaParsel) return false;
     const values = units.map((unit) => String(unit.fields?.[def.key] || "").trim());
     return !values.every((value) => value === values[0]);
   });

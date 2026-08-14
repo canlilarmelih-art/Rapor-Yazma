@@ -194,43 +194,55 @@ function unit(fields, ownerRows) {
   console.log("\"Ayni ise gizlensin\" + \"diger bolumler her zaman var\" (Kimlik No/Arsa Payi/Payda/Cilt/Sayfa dahil) kurali testi tamam.");
 }
 
-// --- 2b) Pafta: AYNI ada/parselde, KENDİ metni FARKLI olsa bile GİZLENİR --
-// Kullanıcı talebi: "pafta bölümünü kaldır aynı ada parselde yer alan
-// işlemlerde" — KML/TAKBİS'ten taşınmaz başına ayrı ayrı içeri alınan
-// pafta metninde veri girişi tutarsızlığı (ör. "F21" / "F 21") olsa
-// BİLE, ada/parsel eşitse Pafta zorla gizlenmeli (ada/parsel eşitliği
-// pafta karşılaştırmasından ÖNCELİKLİDİR).
+// --- 2b) İl/İlçe/Mahalle/Pafta: AYNI ada/parselde, KENDİ metni FARKLI ----
+// olsa bile GİZLENİR. Kullanıcı talebi: "İl İlçe Mahalle Pafta bunlar
+// aynı ada parsel taleplerinde tabloda yer almamalı" / "pafta bölümünü
+// kaldır aynı ada parselde yer alan işlemlerde" — bu DÖRT alan da (yalnız
+// Pafta değil) KML/TAKBİS'ten taşınmaz başına ayrı ayrı içeri alındığından
+// veri girişi tutarsızlığı (ör. "Özlüce" / "Özlüce " veya "F21" / "F 21")
+// olsa BİLE, ada/parsel eşitse zorla gizlenmeli (ada/parsel eşitliği bu
+// dördünün karşılaştırmasından ÖNCELİKLİDİR). Regresyon testi: ilk
+// uygulamada kapsam yanlışlıkla sadece Pafta'ya daraltılmıştı — kullanıcı
+// "İL İLÇE MAHALLE HALA ÇIKIYOR AYNI OLMASINA RAĞMEN" ile düzeltti.
 {
   fns.setState({
     activeTitleUnitIndex: 0,
     fields: { titleCity: "Bursa", titleDistrict: "Nilüfer", titleNeighborhood: "Özlüce", locationName: "-", sheetNo: "F21", blockNo: "4834", parcelNo: "1", landArea: "1200", mainPropertyQuality: "Arsa" },
     tables: { title: [] },
     titleUnits: [
-      // AYNI ada/parsel (4834/1) ama Pafta metni KASITLI OLARAK FARKLI ("F 21").
-      { fields: { titleCity: "Bursa", titleDistrict: "Nilüfer", titleNeighborhood: "Özlüce", locationName: "-", sheetNo: "F 21", blockNo: "4834", parcelNo: "1", landArea: "1200", mainPropertyQuality: "Arsa" }, tables: { title: [] } },
+      // AYNI ada/parsel (4834/1) ama İl/İlçe/Mahalle/Pafta metinleri
+      // KASITLI OLARAK FARKLI (KML/TAKBİS veri girişi tutarsızlığını taklit ediyor).
+      { fields: { titleCity: "BURSA ", titleDistrict: "Nilufer", titleNeighborhood: "Özlüce ", locationName: "-", sheetNo: "F 21", blockNo: "4834", parcelNo: "1", landArea: "1200", mainPropertyQuality: "Arsa" }, tables: { title: [] } },
     ],
   });
   const data = fns.buildTitleUnitsSummaryTableData();
   assert.ok(data, "2 taşınmazlı raporda tablo verisi dönmeli.");
+  assert.ok(!data.headers.includes("İl"), "Ayni ada/parselde Il metni farkli OLSA BILE 'Il' sutunu GIZLENMELIYDI.");
+  assert.ok(!data.headers.includes("İlçe"), "Ayni ada/parselde Ilce metni farkli OLSA BILE 'Ilce' sutunu GIZLENMELIYDI.");
+  assert.ok(!data.headers.includes("Mahalle"), "Ayni ada/parselde Mahalle metni farkli OLSA BILE 'Mahalle' sutunu GIZLENMELIYDI.");
   assert.ok(!data.headers.includes("Pafta"), "Ayni ada/parselde Pafta metni farkli OLSA BILE 'Pafta' sutunu GIZLENMELIYDI.");
-  console.log("Pafta: ayni ada/parselde kendi metni farkli olsa bile gizlenme kurali testi tamam.");
+  console.log("Il/Ilce/Mahalle/Pafta: ayni ada/parselde kendi metni farkli olsa bile gizlenme kurali testi tamam.");
 }
 
-// --- 2c) Pafta: FARKLI ada/parselde, kendi metni de FARKLI ise GÖSTERİLİR -
+// --- 2c) İl/İlçe/Mahalle/Pafta: FARKLI ada/parselde, kendi metni de ------
+// FARKLI ise GÖSTERİLİR.
 {
   fns.setState({
     activeTitleUnitIndex: 0,
     fields: { titleCity: "Bursa", titleDistrict: "Nilüfer", titleNeighborhood: "Özlüce", locationName: "-", sheetNo: "F21", blockNo: "4834", parcelNo: "1", landArea: "1200", mainPropertyQuality: "Arsa" },
     tables: { title: [] },
     titleUnits: [
-      // FARKLI ada/parsel (5000/9) VE farklı Pafta — bu durumda Pafta
-      // GERÇEKTEN bilgilendirici, gizlenmemeli.
-      { fields: { titleCity: "Bursa", titleDistrict: "Nilüfer", titleNeighborhood: "Özlüce", locationName: "-", sheetNo: "G30", blockNo: "5000", parcelNo: "9", landArea: "1200", mainPropertyQuality: "Arsa" }, tables: { title: [] } },
+      // FARKLI ada/parsel (5000/9) VE farklı İl/İlçe/Mahalle/Pafta — bu
+      // durumda dördü de GERÇEKTEN bilgilendirici, gizlenmemeli.
+      { fields: { titleCity: "İstanbul", titleDistrict: "Kadıköy", titleNeighborhood: "Fenerbahçe", locationName: "-", sheetNo: "G30", blockNo: "5000", parcelNo: "9", landArea: "1200", mainPropertyQuality: "Arsa" }, tables: { title: [] } },
     ],
   });
   const data = fns.buildTitleUnitsSummaryTableData();
+  assert.ok(data.headers.includes("İl"), "Farkli ada/parselde, Il de farkliysa 'Il' sutunu GOSTERILMELIYDI.");
+  assert.ok(data.headers.includes("İlçe"), "Farkli ada/parselde, Ilce de farkliysa 'Ilce' sutunu GOSTERILMELIYDI.");
+  assert.ok(data.headers.includes("Mahalle"), "Farkli ada/parselde, Mahalle de farkliysa 'Mahalle' sutunu GOSTERILMELIYDI.");
   assert.ok(data.headers.includes("Pafta"), "Farkli ada/parselde, Pafta de farkliysa 'Pafta' sutunu GOSTERILMELIYDI.");
-  console.log("Pafta: farkli ada/parselde kendi metni de farkliysa gosterilme kurali testi tamam.");
+  console.log("Il/Ilce/Mahalle/Pafta: farkli ada/parselde kendi metni de farkliysa gosterilme kurali testi tamam.");
 }
 
 // --- 3) Tekil raporda (1 taşınmaz) tablo üretilmemeli ---------------------
