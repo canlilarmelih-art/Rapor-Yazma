@@ -90,6 +90,7 @@ const functionNames = [
   "buildTitleUnitsSummaryTableData",
   "buildTitleUnitsSummaryWordTableHtml",
   "splitTableHeaderLabelIntoTwoLines",
+  "toTitleFieldUppercase",
   "buildTitleUnitsSummaryTableHtmlFromData",
   "parseReportNumber",
   "formatSquareMeterArea",
@@ -299,21 +300,29 @@ function unit(fields, ownerRows) {
     // taşınmazlarda boş olan sütun kaldırılır" kuralıyla (bkz. senaryo 17)
     // bu test asagidaki <br> assertion'ini bozacak şekilde SİLİNİR.
     fields: { ...shared, titleBlockName: "-", titleFloor: "-", unitNo: "-", titleQuality: "Arsa", denominator: "1000", share: "50" },
-    tables: { title: [{ c0: "Ahmet Yılmaz", c1: "1/2" }, { c0: "Ayşe Yılmaz", c1: "1/2" }] },
+    // Not: malik adları BİLEREK küçük harfle yazıldı — "sistemde harfler
+    // küçükte olsa büyükte olsa tabloda tüm harfler daima büyük olacak"
+    // kuralını (bkz. asagidaki assertion) anlamli şekilde test edebilmek
+    // için.
+    tables: { title: [{ c0: "ahmet yılmaz", c1: "1/2" }, { c0: "ayşe yılmaz", c1: "1/2" }] },
     titleUnits: [{ fields: { ...shared, denominator: "1000", share: "40" }, tables: { title: [] } }],
   });
   const html = fns.buildTitleUnitsSummaryWordTableHtml();
   assert.ok(html.includes("<table"), "Gecerli bir <table> HTML'i uretilmeli.");
-  assert.ok(html.includes("Ahmet Yılmaz<br>Ayşe Yılmaz"), "Birden fazla malik hucre icinde <br> ile alt alta gelmeli.");
+  assert.ok(html.includes("AHMET YILMAZ<br>AYŞE YILMAZ"), "Birden fazla malik hucre icinde <br> ile alt alta gelmeli VE kucuk harfli girdi BUYUK harfe cevrilmeli.");
+  assert.ok(!html.includes("ahmet yılmaz") && !html.includes("Ahmet Yılmaz"), "Kucuk/karisik harfli orijinal metin HTML ciktisinda KALMAMALI (tamami buyutulmus olmali).");
   // "sütun genişliklerini dinamik yap" — table-layout:fixed DEĞİL, auto.
   assert.ok(html.includes("table-layout:auto"), "Sutun genislikleri DINAMIK (table-layout:auto) olmali.");
   // "tüm hücreler yatay ve dikey ortalı olsun".
   assert.ok(html.includes("text-align:center") && html.includes("vertical-align:middle"), "Tum hucreler yatay VE dikey ortali olmali.");
   // "sütun başlıklarını 2 satır yap" — coklu kelimeli baslik (ornegin
   // "Bağımsız Bölüm Niteliği") HTML CIKTISINDA <br> ile bolunmus olmali.
-  assert.ok(html.includes("Bağımsız Bölüm<br>Niteliği"), "'Bağımsız Bölüm Niteliği' basligi HTML ciktisinda <br> ile 2 satira bolunmus olmali.");
-  assert.ok(html.includes("Hissesine Düşen<br>Arsa Payı"), "'Hissesine Düşen Arsa Payı' basligi HTML ciktisinda <br> ile 2 satira bolunmus olmali.");
-  console.log("buildTitleUnitsSummaryWordTableHtml gercek HTML uretimi (dinamik genislik + ortalama + 2 satirli baslik) testi tamam.");
+  // Kullanıcı talebi (2026-08-15): "sistemde harfler küçükte olsa büyükte
+  // olsa tabloda tüm harfler daima büyük olacak" — basliklar da (İl,
+  // Bağımsız Bölüm Niteliği vb.) artik TÜRKÇE BÜYÜK HARFLE cikiyor.
+  assert.ok(html.includes("BAĞIMSIZ BÖLÜM<br>NİTELİĞİ"), "'Bağımsız Bölüm Niteliği' basligi BUYUK harfle VE <br> ile 2 satira bolunmus olmali.");
+  assert.ok(html.includes("HİSSESİNE DÜŞEN<br>ARSA PAYI"), "'Hissesine Düşen Arsa Payı' basligi BUYUK harfle VE <br> ile 2 satira bolunmus olmali.");
+  console.log("buildTitleUnitsSummaryWordTableHtml gercek HTML uretimi (dinamik genislik + ortalama + 2 satirli baslik + daima BUYUK harf) testi tamam.");
 }
 
 // --- 17) Tum tasinmazlarda BOS olan sutun TAMAMEN kaldirilir --------------

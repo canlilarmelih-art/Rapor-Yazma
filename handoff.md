@@ -9886,6 +9886,16 @@ gerekmedi, testle (bkz. aşağıda) tekrar doğrulandı.
   zincirle yeşil.
 - Cache-buster: `app.js?v=20260814-1745`.
 
+## 0.0.452 - 2026-08-15 - Taşınmazlar Tapu Özeti: tüm harfler daima büyük
+
+- Kullanıcı: "sistemde harfler küçükte olsa büyükte olsa tabloda tüm harfler daima büyük olacak" — sistemde kayıtlı veri (malik adı, edinme sebebi, taşınmaz niteliği, İl/İlçe vb.) hangi büyük/küçük harf karışımıyla girilmiş olursa olsun, tabloda HER ZAMAN Türkçe büyük harfle (İ/ı dahil) görünmeli.
+- `buildTitleUnitsSummaryTableHtmlFromData()`'da (`app.js`) hem başlık etiketleri hem hücre değerleri, render'dan hemen önce mevcut `toTitleFieldUppercase()` (Tapu bölümü alanlarının giriş-anı büyütmesi için zaten var olan `toLocaleUpperCase("tr-TR")` sarmalayıcısı) ile büyütülüyor — yeni bir fonksiyon YAZILMADI, mevcut yardımcı yeniden kullanıldı. `splitTableHeaderLabelIntoTwoLines()` artık ZATEN büyütülmüş metni bölüyor (karakter sayısı Türkçe büyütmede değişmediğinden ortadan-en-yakın-boşluk mantığı bozulmuyor).
+- `buildTitleUnitsSummaryTableData()`'nın (ham veri) kendisi DEĞİŞMEDİ — büyütme yalnızca HTML render aşamasında uygulanıyor, hem in-app önizleme (`createTitleUnitsSummaryTablePreview`) hem banka şablonu export'u (`{{TASINMAZLARTAPUTABLOSU}}`) AYNI `buildTitleUnitsSummaryWordTableHtml()` → `buildTitleUnitsSummaryTableHtmlFromData()` yolunu kullandığından tek noktadan ikisi de kapsandı.
+- `tools/test-title-units-summary-table.js`: senaryo 5 fixture'ındaki malik adları BİLEREK küçük harfe çevrildi ("ahmet yılmaz" → beklenen çıktı "AHMET YILMAZ"), başlık `<br>` assertion'ları büyük harfli hallerine güncellendi (`BAĞIMSIZ BÖLÜM<br>NİTELİĞİ`, `HİSSESİNE DÜŞEN<br>ARSA PAYI`), orijinal küçük/karışık harfli metnin HTML çıktısında KALMADIĞINI doğrulayan negatif bir assertion eklendi.
+- Canlı tarayıcıda doğrulandı: gerçek state geçici olarak (autosave/render çağırmadan) küçük harfli örnek verilerle (bursa, tarla, daire, veli demir, miras yoluyla intikal, 4.000,00 m²) değiştirilip `buildTitleUnitsSummaryWordTableHtml()` doğrudan çağrıldı — TÜM başlık ve hücreler (m² birimi dahil: "4.000,00 M²") büyük harfle döndü, ardından state aynen geri yüklendi, gerçek rapora dokunulmadı.
+- `npm run verify` tamamı yeşil.
+- Cache-buster: `app.js?v=20260815-0140`.
+
 ## 0.0.451 - 2026-08-15 - Taşınmazlar Tapu Özeti: tüm taşınmazlarda boş olan sütun kaldırılır
 
 - Kullanıcı: "eğer sistemde hücrede veri yoksa. örnek tarla raporu bb no kat bölümler boş o zaman tabloda bu sütunlar gözükmemeli." — daha önce (0.0.446) "diğer bölümler" (Taşınmaz Kimlik No, Blok, Kat, Bağımsız Bölüm No, Bağımsız Bölüm Niteliği, Arsa Payı, Arsa Payda, Hissesine Düşen Arsa Payı, Malik(ler), Hisse Payı, Edinme Sebebi, Tapu Tarihi, Yevmiye No, Cilt, Sayfa) HER ZAMAN gösteriliyordu ("bunların tamamı" onayı) — ancak tarla/arazi raporlarında Blok/Kat/Bağımsız Bölüm No gibi alanların karşılığı yoktur, tüm taşınmazlarda boş ("-") kalır ve tabloda anlamsız bir boş sütun olarak duruyordu.

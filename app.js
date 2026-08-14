@@ -16575,6 +16575,16 @@ function splitTableHeaderLabelIntoTwoLines(label) {
 // satıra sarar) VE çok kelimeliyse ZORLA 2 satıra bölünür (bkz.
 // splitTableHeaderLabelIntoTwoLines). HER hücre (başlık + gövde) hem
 // yatay (text-align:center) hem dikey (vertical-align:middle) ortalı.
+// Kullanıcı talebi (2026-08-15): "sistemde harfler küçükte olsa
+// büyükte olsa tabloda tüm harfler daima büyük olacak" — kaynak veri
+// (malik adı, edinme sebebi, taşınmaz niteliği vb.) sistemde HANGİ
+// harf büyüklüğüyle girilmiş olursa olsun, bu tabloda HER ZAMAN Türkçe
+// büyük harfe (İ/ı dahil) zorlanır — mevcut `toTitleFieldUppercase()`
+// (app.js'te Tapu bölümü alanlarının giriş-anı büyütmesi için zaten
+// var olan `toLocaleUpperCase("tr-TR")` sarmalayıcısı) burada da
+// yeniden kullanılıyor, tekrar yazılmadı. Sayılar (Sıra No vb.)
+// büyük/küçük harften etkilenmediğinden zararsız şekilde string'e
+// çevrilir.
 function buildTitleUnitsSummaryTableHtmlFromData(headers, rows) {
   const ink = getReportThemeToken("--ink", "#152238");
   const line = getReportThemeToken("--line", "#dde3ef");
@@ -16586,10 +16596,10 @@ function buildTitleUnitsSummaryTableHtmlFromData(headers, rows) {
   const headerCell = `${baseCell}background:${surfaceMuted};color:${blue};font-weight:800;`;
   const zebraCell = `${baseCell}background:${surfaceMuted};`;
 
-  const headerHtml = `<tr>${headers.map((label) => `<th style="${headerCell}">${splitTableHeaderLabelIntoTwoLines(label)}</th>`).join("")}</tr>`;
+  const headerHtml = `<tr>${headers.map((label) => `<th style="${headerCell}">${splitTableHeaderLabelIntoTwoLines(toTitleFieldUppercase(label))}</th>`).join("")}</tr>`;
   const bodyHtml = rows.map((row, rowIndex) => {
     const cellStyle = rowIndex % 2 === 1 ? zebraCell : baseCell;
-    return `<tr>${row.map((cell) => `<td style="${cellStyle}">${formatWordCell(cell)}</td>`).join("")}</tr>`;
+    return `<tr>${row.map((cell) => `<td style="${cellStyle}">${formatWordCell(toTitleFieldUppercase(cell))}</td>`).join("")}</tr>`;
   }).join("");
 
   return `<table class="word-table title-units-summary-table" style="border-collapse:collapse;width:100%;margin:5pt 0 12pt;table-layout:auto;">
