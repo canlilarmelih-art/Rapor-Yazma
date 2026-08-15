@@ -1555,6 +1555,36 @@ function createTitleUnitsSummaryTablePreview() {
   return wrap;
 }
 
+// Kullanıcı talebi (2026-08-15): "adres ve konum bölümü için aynı mantıkta
+// tablo oluşturalım" — createTitleUnitsSummaryTablePreview() (yukarıda)
+// ile BİREBİR AYNI desen/görsel dil, yalnızca Adres ve Konum bölümü
+// alanları için (bkz. buildAddressUnitsSummaryTableData yorumu).
+function createAddressUnitsSummaryTablePreview() {
+  const wrap = document.createElement("div");
+  wrap.className = "title-units-summary-table-preview";
+  const heading = document.createElement("h5");
+  heading.textContent = "Taşınmazlar Adres Özeti";
+  wrap.append(heading);
+
+  const tableHtml = buildAddressUnitsSummaryWordTableHtml();
+  if (!tableHtml) {
+    const note = document.createElement("p");
+    note.className = "muted-note";
+    note.textContent = "Bu tablo yalnızca birden fazla taşınmaz eklendiğinde görünür. Banka şablonlarında {{TASINMAZLARADRESTABLOSU}} olarak kullanılabilir.";
+    wrap.append(note);
+    return wrap;
+  }
+  const tableContainer = document.createElement("div");
+  tableContainer.className = "title-units-summary-table-container";
+  tableContainer.innerHTML = tableHtml;
+  wrap.append(tableContainer);
+  const hint = document.createElement("p");
+  hint.className = "muted-note";
+  hint.textContent = "İl/İlçe/İdari Mahalle/Sokak-Cadde/Site-Apartman yalnızca taşınmazlar arasında FARKLIYSA gösterilir. Banka şablonlarında {{TASINMAZLARADRESTABLOSU}} olarak kullanılabilir.";
+  wrap.append(hint);
+  return wrap;
+}
+
 function loadUserDefaults() {
   try {
     const stored = JSON.parse(localStorage.getItem(userDefaultsStorageKey) || "{}");
@@ -2425,6 +2455,12 @@ function renderSection() {
     // paylaşır (bkz. yukarıdaki yorum — bu veri modeli hâlâ deneysel).
     if (section.id === "title") {
       body.append(createTitleUnitsSummaryTablePreview());
+    }
+    // Kullanıcı talebi (2026-08-15): "adres ve konum bölümü için aynı
+    // mantıkta tablo oluşturalım" — yukarıdaki Tapu tablosuyla AYNI gate
+    // (admin + Çoklu Talep), yalnızca "Adres ve Konum" sekmesinde.
+    if (section.id === "address") {
+      body.append(createAddressUnitsSummaryTablePreview());
     }
   }
 
@@ -16673,6 +16709,92 @@ function buildTitleUnitsSummaryTableHtmlFromData(headers, rows) {
   </table>`;
 }
 
+// Kullanıcı talebi (2026-08-15): "adres ve konum bölümü için aynı mantıkta
+// tablo oluşturalım" — Tapu özet tablosuyla (buildTitleUnitsSummaryTableData/
+// buildTitleUnitsSummaryWordTableHtml, yukarıda) AYNI DESEN, Adres ve Konum
+// bölümü alanları için: "aynı ise gizlensin" grubu (İl/İlçe/İdari Mahalle/
+// Sokak-Cadde/Site-Apartman — aynı sitedeki taşınmazlarda genelde AYNI
+// olur) + HER ZAMAN gösterilen taşınmaza özgü alanlar (Blok/Giriş/Dış Kapı
+// No/Kat/İç Kapı No — aynı sitede bile HER bağımsız bölümün KENDİ fiziksel
+// konumu farklıdır). buildAllTitleUnitsForSummaryTable() DOĞRUDAN yeniden
+// kullanılıyor (o fonksiyon zaten TÜM alanları içeren tam `fields` nesnesini
+// döner — Tapu'ya özgü değil); buildTitleUnitsSummaryTableHtmlFromData()
+// (2 satırlı başlık + dinamik genişlik + tam ortalama + HER ZAMAN büyük
+// harf) de AYNEN yeniden kullanılıyor — ikinci bir HTML üretici YAZILMADI.
+const ADDRESS_UNITS_TABLE_SHARED_FIELD_DEFS = [
+  { key: "city", label: "İl" },
+  { key: "district", label: "İlçe" },
+  { key: "neighborhood", label: "İdari Mahalle" },
+  { key: "street", label: "Sokak / Cadde" },
+  { key: "addressSiteName", label: "Site / Apartman" },
+];
+
+// Tabloyu (başlıklar + satırlar) hesaplar; YALNIZCA 2+ taşınmaz varsa bir
+// sonuç döner, aksi halde null (Tapu tablosuyla AYNI kural).
+function buildAddressUnitsSummaryTableData() {
+  const units = buildAllTitleUnitsForSummaryTable();
+  if (units.length < 2) return null;
+
+  // "aynı ise tabloda gözükmeyecek" — TÜM taşınmazlarda BİREBİR aynı
+  // (boşluk arındırılmış) değere sahip alanlar sütun listesinden ÇIKARILIR.
+  const sharedFieldsToShow = ADDRESS_UNITS_TABLE_SHARED_FIELD_DEFS.filter((def) => {
+    const values = units.map((unit) => String(unit.fields?.[def.key] || "").trim());
+    return !values.every((value) => value === values[0]);
+  });
+
+  // "UAVT" taşınmazın adres-bazlı kimlik numarasıdır (Tapu tablosundaki
+  // "Taşınmaz Kimlik No" ile AYNI konumsal mantık) — Sıra No'nun HEMEN
+  // ardından, paylaşımlı alanlardan (İl/İlçe vb.) ÖNCE gelir.
+  const headers = [
+    "Sıra No",
+    "UAVT",
+    ...sharedFieldsToShow.map((def) => def.label),
+    "Blok", "Giriş", "Dış Kapı No", "Kat", "İç Kapı No",
+  ];
+
+  const rows = units.map((unit, index) => {
+    const fields = unit.fields || {};
+    return [
+      index + 1,
+      String(fields.uavt || "").trim() || "-",
+      ...sharedFieldsToShow.map((def) => String(fields[def.key] || "").trim() || "-"),
+      String(fields.addressBlockName || "").trim() || "-",
+      String(fields.addressEntrance || "").trim() || "-",
+      String(fields.outerDoor || "").trim() || "-",
+      String(fields.addressFloor || "").trim() || "-",
+      String(fields.innerDoor || "").trim() || "-",
+    ];
+  });
+
+  // "eğer sistemde hücrede veri yoksa ... tabloda bu sütunlar gözükmemeli"
+  // (Tapu tablosundaki AYNI kural, 0.0.451) — TÜM taşınmazlarda boş ("-")
+  // kalan bir sütun (ör. site içi taşınmazlarda "Giriş" hiç kullanılmıyorsa)
+  // tamamen kaldırılır. "Sıra No" (index 0) hiçbir zaman boş olmadığından
+  // etkilenmez.
+  const columnHasData = headers.map((_, columnIndex) => (
+    columnIndex === 0 || rows.some((row) => {
+      const value = row[columnIndex];
+      return value !== undefined && value !== null && String(value).trim() !== "" && String(value).trim() !== "-";
+    })
+  ));
+  const filteredHeaders = headers.filter((_, columnIndex) => columnHasData[columnIndex]);
+  const filteredRows = rows.map((row) => row.filter((_, columnIndex) => columnHasData[columnIndex]));
+  // sharedFieldsToShow sütunları headers'ta index 2..2+sharedFieldsToShow.length
+  // aralığında (0=Sıra No, 1=UAVT).
+  const survivingSharedColumnCount = columnHasData.slice(2, 2 + sharedFieldsToShow.length).filter(Boolean).length;
+
+  return { headers: filteredHeaders, rows: filteredRows, sharedColumnCount: survivingSharedColumnCount };
+}
+
+// Banka şablonlarına {{TASINMAZLARADRESTABLOSU}} ile enjekte edilecek
+// gerçek HTML tablo (bkz. template-engine.js) — Tapu tablosunun export
+// akışıyla (buildTitleUnitsSummaryWordTableHtml) BİREBİR AYNI desen.
+function buildAddressUnitsSummaryWordTableHtml() {
+  const data = buildAddressUnitsSummaryTableData();
+  if (!data || !data.rows.length) return "";
+  return buildTitleUnitsSummaryTableHtmlFromData(data.headers, data.rows);
+}
+
 function buildTakyidatWordTableHtml() {
   const rows = buildTakyidatTableGroups().flatMap((group) => {
     const items = group.items.length ? group.items : ["Herhangi bir kayıt bulunmamaktadır."];
@@ -24050,6 +24172,37 @@ function buildOpenAddressText() {
   return result;
 }
 
+function buildLandOpenAddressText() {
+  const get = (...keys) => {
+    for (const key of keys) {
+      const value = String(state.fields[key] || "").trim();
+      if (value) return value;
+    }
+    return "";
+  };
+
+  const neighborhood = get("neighborhood", "titleNeighborhood");
+  const locationName = get("locationName");
+  const street = get("street");
+  const blockNo = get("blockNo");
+  const parcelNo = get("parcelNo");
+  const district = get("district", "titleDistrict");
+  const city = get("city", "titleCity");
+
+  const segments = [];
+  if (neighborhood) segments.push(formatOpenAddressNeighborhood(neighborhood, openAddressStyleVariants[0]));
+  if (locationName) segments.push(`Mevkii ${locationName}`);
+  if (street) segments.push(street);
+  if (blockNo || parcelNo) {
+    const parcel = [blockNo ? `${blockNo} Ada` : "", parcelNo ? `${parcelNo} Parsel` : ""]
+      .filter(Boolean)
+      .join(" ");
+    if (parcel) segments.push(parcel);
+  }
+  const districtCity = [district, city].filter(Boolean).join(" / ");
+  if (districtCity) segments.push(districtCity);
+  return segments.join(", ");
+}
 function createOpenAddressPanel() {
   const address = buildOpenAddressText();
   state.fields.openAddress = address;

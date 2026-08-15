@@ -600,6 +600,10 @@
     // alanlar (il/ilçe/... ana taşınmaz niteliği) HİÇ farklılaşmıyorsa
     // boş döner (bkz. buildTitleUnitsSummaryTableData, app.js).
     TASINMAZLARTAPUTABLOSU: { h: () => safeCall("buildTitleUnitsSummaryWordTableHtml") },
+    // "adres ve konum bölümü için aynı mantıkta tablo oluşturalım"
+    // (2026-08-15) — TASINMAZLARTAPUTABLOSU ile AYNI desen, Adres ve Konum
+    // bölümü alanları için (bkz. buildAddressUnitsSummaryTableData, app.js).
+    TASINMAZLARADRESTABLOSU: { h: () => safeCall("buildAddressUnitsSummaryWordTableHtml") },
     GABIMVERISETI: { h: () => safeCall("buildGabimDataSetWordHtml") },
     HISSEACIKLAMASI: { t: () => field("shareExplanation"), paragraphClass: "share-explanation" },
     EKLENTI: { f: ["titleAttachment"] },

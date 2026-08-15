@@ -9886,6 +9886,18 @@ gerekmedi, testle (bkz. aşağıda) tekrar doğrulandı.
   zincirle yeşil.
 - Cache-buster: `app.js?v=20260814-1745`.
 
+## 0.0.457 - 2026-08-15 - Taşınmazlar Adres Özeti: Adres ve Konum bölümü için AYNI mantıkta yeni tablo
+
+- Kullanıcı: "adres ve konum bölümü için aynı mantıkta tablo oluşturalım" — Taşınmazlar Tapu Özeti tablosuyla (0.0.446+) BİREBİR AYNI desen, Adres ve Konum bölümü alanları için.
+- Yeni `ADDRESS_UNITS_TABLE_SHARED_FIELD_DEFS` (`app.js`): İl (city), İlçe (district), İdari Mahalle (neighborhood), Sokak/Cadde (street), Site/Apartman (addressSiteName) — "aynı ise gizlensin" grubu (aynı sitedeki taşınmazlarda genelde AYNI olur). "Diğer bölümler" (HER ZAMAN gösterilir, taşınmaza özgü fiziksel konum): Blok (addressBlockName), Giriş (addressEntrance), Dış Kapı No (outerDoor), Kat (addressFloor), İç Kapı No (innerDoor). UAVT (taşınmazın adres-bazlı kimlik no'su, Tapu tablosundaki "Taşınmaz Kimlik No" ile AYNI konumsal mantık) Sıra No'nun HEMEN ardından gelir.
+- Yeni `buildAddressUnitsSummaryTableData()` — `buildAllTitleUnitsForSummaryTable()`'ı (Tapu tablosuyla PAYLAŞILAN, zaten `fields` nesnesinin TAMAMINI döndüğü için Tapu'ya özgü değil) DOĞRUDAN yeniden kullanır; "aynı ise gizle" + "tüm taşınmazlarda boşsa sütunu kaldır" (0.0.451) mantığı Tapu tablosuyla AYNI ama KENDİ KOPYASI (ayrı fonksiyon — paylaşılan/başka tabloları etkilememe felsefesi, bkz. CLAUDE.md).
+- Yeni `buildAddressUnitsSummaryWordTableHtml()` — HTML üretimi için YENİ bir renderer YAZILMADI, mevcut `buildTitleUnitsSummaryTableHtmlFromData()` (dinamik genişlik + 2 satırlı başlık + tam ortalama + HER ZAMAN büyük harf) DOĞRUDAN yeniden kullanıldı — tamamen jenerik (headers/rows parametreli), Tapu'ya özgü hiçbir şey içermiyordu.
+- Yeni `createAddressUnitsSummaryTablePreview()` — `createTitleUnitsSummaryTablePreview()` ile AYNI görsel dil/CSS sınıfları (`title-units-summary-table-preview`/`-container` — jenerik isimler, iki tablo için de kullanılabilir), "Adres ve Konum" sekmesinde AYNI admin+Çoklu Talep kapısıyla gösterilir (`renderSection()`'a `section.id === "address"` dalı eklendi).
+- Yeni export placeholder `{{TASINMAZLARADRESTABLOSU}}` — `src/templates/template-engine.js`'e `TASINMAZLARTAPUTABLOSU` ile AYNI desende kaydedildi.
+- Yeni `tools/test-address-units-summary-table.js` (6 senaryo): aynı-ise-gizle + diğer-bölümler-her-zaman-var (UAVT dahil), tüm-taşınmazlarda-boş-sütun-kaldırma, tekil-rapor-null, gerçek-HTML-üretimi (dinamik genişlik + ortalama + büyük harf + 2 satırlı başlık), template-engine kablolama. `package.json`'a eklendi.
+- Canlı tarayıcıda doğrulandı: gerçek state geçici olarak (autosave/render'ı GERÇEKTEN çağırarak, sonra state+activeSectionId AYNEN geri yüklenerek) "Adres ve Konum" sekmesine geçilip render() tetiklendi — "Taşınmazlar Adres Özeti" başlığı ve tablo DOM'da doğru şekilde bulundu, sonra her şey geri yüklendi. Gerçek rapora dokunulmadı.
+- `npm run verify` tamamı yeşil. Cache-buster: `app.js?v=20260815-1030`.
+
 ## 0.0.456 - 2026-08-15 - Çoklu TAKBİS artık ada/parsel ile MEVCUT taşınmazlara eşleşir, sıra bağımsız
 
 - Kullanıcı: "önce takbis sonra kml sırasını da otomatik düzelt" — 0.0.455'te bulunan (ve o zaman kapsam dışı bırakılan) sorun: KML'ler ÖNCE yüklenip taşınmaz sekmelerini ada/parsel bilgisiyle doldurmuşsa, `importTakbisRecordsIntoTitleUnits()` bu MEVCUT sekmelerle hiç eşleştirme yapmıyordu — her zaman "1. kayıt birincile, kalanlar YENİ tab'lara" mantığıyla çalışıp mükerrer/yetim taşınmazlara yol açıyordu (gerçek dosyalarla testte 3 yerine 5 sekme gözlenmişti).
