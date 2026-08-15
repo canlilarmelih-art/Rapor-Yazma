@@ -17582,9 +17582,26 @@ let pendingMultiTakbisImport = null;
 // yani normal tek-tapu yükleme akışı BİREBİR korunur, sıfır regresyon.
 // Yalnızca yoklama GERÇEKTEN >1 kayıt bulursa (veya birden fazla dosya
 // seçilmişse) yeni çoklu-taşınmaz akışına geçilir.
+//
+// DÜZELTME (2026-08-15, canlı dosyalarla test sırasında bulundu — kullanıcı
+// onayı ile): önceki sürüm çoklu kayıt tespit edilince importTakbisRecordsIntoTitleUnits()'i
+// DOĞRUDAN çağırıyordu — pendingMultiTakbisImport'u HİÇ set etmiyordu,
+// yalnızca null'a set ediyordu. Bu yüzden createMultiTakbisPendingImportPanel()
+// (aşağıda tam çalışır halde duran "Rapora Aktar / Vazgeç" onay ekranı,
+// render()'da zaten doğru koşulla gösteriliyordu — bkz. renderSection'ın
+// "case" bölümü) HİÇBİR ZAMAN tetiklenmiyordu: birden fazla taşınmaz
+// kaydı, kullanıcıya HİÇ SORULMADAN, birincil taşınmazın mevcut Tapu ve
+// Mülkiyet/Takyidat verisinin üzerine sessizce yazılıyordu. Artık bu
+// fonksiyon doğrudan içe aktarmıyor — bulunan kayıtları pendingMultiTakbisImport'a
+// yazıp DÖNÜYOR; asıl içe aktarma yalnızca kullanıcı panelde "Rapora
+// Aktar"a bastığında (importButton'un click handler'ı) gerçekleşiyor.
 async function processTakbisUpload(files) {
   if (!files.length) return;
   state.uploads.takbis = files.length === 1 ? files[0].name : `${files.length} dosya`;
+  // Önceki (kullanıcı hiç yanıtlamadığı) bekleyen bir onay varsa, YENİ bir
+  // yükleme başlarken bayat kalmasın diye temizlenir — aşağıda gerçekten
+  // çoklu kayıt bulunursa zaten taze bir değerle DOLDURULACAK.
+  pendingMultiTakbisImport = null;
 
   if (files.length === 1) {
     let probe = null;
@@ -17594,10 +17611,10 @@ async function processTakbisUpload(files) {
       probe = null; // yoklama başarısız -> sessizce tek-kayıt (OCR'lı) akışa düş
     }
     if (probe && probe.records.length > 1) {
-      importTakbisRecordsIntoTitleUnits(
-        probe.records.map((record) => ({ ...record, sourceFile: files[0].name })),
-      );
-      pendingMultiTakbisImport = null;
+      pendingMultiTakbisImport = {
+        records: probe.records.map((record) => ({ ...record, sourceFile: files[0].name })),
+        errors: [],
+      };
       return;
     }
   } else if (files.length > 1) {
@@ -17612,8 +17629,7 @@ async function processTakbisUpload(files) {
       }
     }
     if (allRecords.length) {
-      importTakbisRecordsIntoTitleUnits(allRecords);
-      pendingMultiTakbisImport = null;
+      pendingMultiTakbisImport = { records: allRecords, errors };
       return;
     }
     if (errors.length) throw new Error(`Hiçbir dosya okunamadı: ${errors.join(" | ")}`);
