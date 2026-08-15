@@ -10002,6 +10002,21 @@ function formatUnitFloorInteriorSummary(rows = []) {
   }).filter(Boolean).join("\n");
 }
 
+function buildUnitFloorAreaDistributionText(mode = "current") {
+  const areaKey = mode === "legal" ? "legalArea" : "currentArea";
+  const terraceKey = mode === "legal" ? "legalTerrace" : "currentTerrace";
+  return getUnitFloorRows().map((row) => {
+    const floor = String(row.floor || "").trim();
+    const area = formatUnitMeasurementForSentence(row[areaKey]);
+    const terrace = formatUnitMeasurementForSentence(row[terraceKey]);
+    if (!floor || (!area && !terrace)) return "";
+    const parts = [];
+    if (area) parts.push(`${area} m²`);
+    if (terrace) parts.push(`TERAS: ${terrace} m²`);
+    return `${floor.toLocaleUpperCase("tr-TR")}: ${parts.join(", ")}`;
+  }).filter(Boolean).join(", ");
+}
+
 function updateUnitFloorRow(index, key, value) {
   const rows = getUnitFloorRows();
   if (!rows[index]) return;

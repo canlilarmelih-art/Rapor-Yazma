@@ -920,6 +920,8 @@
     TOTALCURRENTAREA: { fn: () => safeCall("getValuationUnitAreaTotals").current },
     TOPLAMYASALALAN: { fn: () => safeCall("getValuationUnitAreaTotals").legal },
     TOPLAMMEVCUTALAN: { fn: () => safeCall("getValuationUnitAreaTotals").current },
+    LEGALBUILDINGAREADISTRIBUTION: { fn: () => safeCall("buildUnitFloorAreaDistributionText", "legal") },
+    CURRENTBUILDINGAREADISTRIBUTION: { fn: () => safeCall("buildUnitFloorAreaDistributionText", "current") },
     DEGERLEME2025: { t: () => field("saleabilityNote") || safeCall("buildValuationMethodExplanation") },
     STKACIKLAMA2025: { t: () => field("saleabilityNote") },
     SATISACIKLAMA: { t: () => field("saleabilityNote") },

@@ -203,6 +203,17 @@ console.log("LAND_*_TEXT token'lari icin export-taze fallback (field()||safeCall
 //        anahtarlari app.js'te hala mevcut mu (isim degisirse sessizce
 //        bosa duser).
 const appSource = fs.readFileSync(path.join(appDir, "app.js"), "utf8");
+const kuveytturkKonutTemplate = fs.readFileSync(path.join(appDir, "templates", "kuveytturk.html"), "utf8");
+[
+  "{{LEGAL_BUILDING_VALUE_AREA}}",
+  "{{LEGAL_BUILDING_AREA_DISTRIBUTION}}",
+  "{{CURRENT_BUILDING_VALUE_AREA}}",
+  "{{CURRENT_BUILDING_AREA_DISTRIBUTION}}",
+].forEach((token) => {
+  assert(kuveytturkKonutTemplate.includes(token), `kuveytturk.html icinde kat/alan token'i eksik: ${token}`);
+});
+assert.match(engineSource, /LEGALBUILDINGAREADISTRIBUTION:\s*\{\s*fn:/, "Yasal kat alan dağılımı alias'ı eksik.");
+assert.match(engineSource, /CURRENTBUILDINGAREADISTRIBUTION:\s*\{\s*fn:/, "Mevcut kat alan dağılımı alias'ı eksik.");
 [
   "landShape", "landRoadFrontage", "landClassification", "landAgriculturalProduct",
   "landUsageShapeText", "landUsagePurposeText", "landDevelopmentObstacleText",
