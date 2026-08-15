@@ -4420,6 +4420,15 @@ table {
   background: var(--surface);
 }
 
+/* Çift Yönlü Düzenleme, Faz 3 (2026-08-15): AKTİF OLMAYAN taşınmazların
+   satırları da artık düzenlenebilir olduğundan, hangi satırın şu an
+   ekranda açık olan tab'a karşılık geldiğini ayırt etmek için ince bir
+   vurgu — inline style= ile gelen background'ı EZMEZ (box-shadow), yalnızca
+   ekran-içi (export'a sızmaz). */
+.tus-active-row td {
+  box-shadow: inset 0 2px 0 var(--blue), inset 0 -2px 0 var(--blue);
+}
+
 .multi-takbis-preview-table {
   width: 100%;
   font-size: 0.85em;

@@ -229,9 +229,14 @@ const fns = new Function(sandboxSource)();
   assert.equal(data.columnMeta[cityColumnIndex].fieldKey, "city", "Il -> city eslesmeli.");
   assert.ok(data.columnMeta.every((meta) => meta.kind === "seq" || meta.kind === "scalar"), "Adres tablosunda 'owner'/'computed' turu OLMAMALI (tumu seq/scalar).");
   const html = fns.buildTitleUnitsSummaryTableHtmlEditable(data.headers, data.rows, data.columnMeta, 0);
-  const expectedEditableCount = data.columnMeta.filter((meta) => meta.kind === "scalar").length;
+  // Çift Yönlü Düzenleme, Faz 3 (2026-08-15): "yalnızca aktif satır"
+  // kısıtlaması kaldırıldı — artık TÜM satırların (data.rows.length) scalar
+  // sütunları düzenlenebilir işaretlenir; aktif satır (index 0) yalnızca
+  // GÖRSEL olarak "tus-active-row" sınıfıyla ayrıca vurgulanır.
+  const expectedEditableCount = data.columnMeta.filter((meta) => meta.kind === "scalar").length * data.rows.length;
   const actualEditableCount = (html.match(/tus-editable-cell/g) || []).length;
-  assert.equal(actualEditableCount, expectedEditableCount, `Aktif satirin (index 0) TUM scalar sutunlari (${expectedEditableCount} adet) duzenlenebilir isaretlenmeliydi, bulunan: ${actualEditableCount}.`);
+  assert.equal(actualEditableCount, expectedEditableCount, `TUM satirlarin scalar sutunlari (${expectedEditableCount} adet) duzenlenebilir isaretlenmeliydi, bulunan: ${actualEditableCount}.`);
+  assert.ok(html.includes('<tr class="tus-active-row">'), "Aktif satir (index 0) GORSEL olarak 'tus-active-row' sinifiyla isaretlenmeli.");
   console.log("buildAddressUnitsSummaryTableData columnMeta esleme + buildTitleUnitsSummaryTableHtmlEditable isaretleme testi tamam.");
 }
 

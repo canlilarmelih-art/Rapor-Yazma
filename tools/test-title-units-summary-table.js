@@ -96,6 +96,13 @@ const functionNames = [
   // export'tan (buildTitleUnitsSummaryTableHtmlFromData, yukarıda) TAMAMEN
   // AYRI, yalnızca ekran-içi düzenlenebilir önizleme için kullanılan renderer.
   "buildTitleUnitsSummaryTableHtmlEditable",
+  // Çift Yönlü Düzenleme, Faz 3 (2026-08-15) — bkz. app.js'teki yorum:
+  // aktif OLMAYAN taşınmazların gölge yuvasına hedefli yazma yardımcıları.
+  // createEmptyTitleUnit, resolveTitleUnitWriteTarget'ın index>0 dalının
+  // (titleUnits[index-1] eksikse otomatik oluşturma) bağımlılığıdır.
+  "createEmptyTitleUnit",
+  "resolveTitleUnitWriteTarget",
+  "setTitleUnitFieldValue",
   "parseReportNumber",
   "formatSquareMeterArea",
   "getReportThemeToken",
@@ -114,11 +121,13 @@ const sandboxSource = `
   ${functionNames.map(extractFunction).join("\n")}
   return {
     setState: (s) => { state = s; },
+    getState: () => state,
     getTitleUnitCount, getTitleUnitFieldsForLabel, getTitleUnitTablesForLabel,
     buildAllTitleUnitsForSummaryTable, joinTitleUnitOwnerColumn,
     computeTitleUnitShareOfLandArea, splitTableHeaderLabelIntoTwoLines,
     buildTitleUnitsSummaryTableData, buildTitleUnitsSummaryWordTableHtml,
     buildTitleUnitsSummaryTableHtmlEditable,
+    resolveTitleUnitWriteTarget, setTitleUnitFieldValue,
   };
 `;
 // eslint-disable-next-line no-new-func
@@ -467,8 +476,11 @@ function unit(fields, ownerRows) {
   console.log("columnMeta bos-sutun filtresiyle birlikte budanma testi tamam.");
 }
 
-// --- 9) buildTitleUnitsSummaryTableHtmlEditable(): yalnizca AKTIF satirin -
-// scalar hucreleri duzenlenebilir isaretlenir -------------------------------
+// --- 9) buildTitleUnitsSummaryTableHtmlEditable(): TUM satirlarin scalar --
+// hucreleri duzenlenebilir isaretlenir (Cift Yonlu Duzenleme, Faz 3, ------
+// 2026-08-15) — "yalnizca AKTIF satir" kisitlamasi Faz 2'de vardi, Faz -----
+// 3'te KALDIRILDI; aktif satir artik yalnizca GORSEL olarak (tus-active- --
+// row sinifiyla) isaretleniyor, duzenlenebilirligi ETKILEMIYOR. ------------
 {
   const shared = { titleCity: "Bursa", titleDistrict: "Nilüfer", titleNeighborhood: "Özlüce", locationName: "-", sheetNo: "F21", blockNo: "4834", parcelNo: "1", landArea: "1200", mainPropertyQuality: "Arsa" };
   fns.setState({
@@ -481,12 +493,65 @@ function unit(fields, ownerRows) {
   const data = fns.buildTitleUnitsSummaryTableData();
   const html = fns.buildTitleUnitsSummaryTableHtmlEditable(data.headers, data.rows, data.columnMeta, 1);
   assert.ok(html.includes('data-unit-index="1"'), "Aktif tasinmazin (index 1) hucreleri isaretlenmeli.");
-  assert.ok(!html.includes('data-unit-index="0"'), "Aktif OLMAYAN tasinmazin (index 0) hucreleri Faz 2'de duzenlenebilir isaretlenmemeli.");
+  assert.ok(html.includes('data-unit-index="0"'), "Aktif OLMAYAN tasinmazin (index 0) hucreleri de Faz 3'te duzenlenebilir isaretlenmeli.");
   assert.ok(html.includes('data-field-key="titlePropertyId"'), "Aktif satirin scalar hucresi (Tasinmaz Kimlik No) duzenlenebilir isaretlenmeli.");
-  const expectedEditableCount = data.columnMeta.filter((meta) => meta.kind === "scalar").length;
+  assert.ok(html.includes('<tr class="tus-active-row">'), "Aktif satir (index 1) GORSEL olarak 'tus-active-row' sinifiyla isaretlenmeli.");
+  const expectedEditableCount = data.columnMeta.filter((meta) => meta.kind === "scalar").length * data.rows.length;
   const actualEditableCount = (html.match(/tus-editable-cell/g) || []).length;
-  assert.equal(actualEditableCount, expectedEditableCount, `Yalnizca AKTIF satirin 'scalar' sutunlari (${expectedEditableCount} adet) duzenlenebilir isaretlenmeliydi, bulunan: ${actualEditableCount}.`);
-  console.log("buildTitleUnitsSummaryTableHtmlEditable aktif-satir/scalar-sutun isaretleme testi tamam.");
+  assert.equal(actualEditableCount, expectedEditableCount, `TUM satirlarin 'scalar' sutunlari (${expectedEditableCount} adet) duzenlenebilir isaretlenmeliydi, bulunan: ${actualEditableCount}.`);
+  console.log("buildTitleUnitsSummaryTableHtmlEditable TUM-satir/scalar-sutun isaretleme + aktif-satir gorsel vurgu testi tamam.");
+}
+
+// --- 10) resolveTitleUnitWriteTarget()/setTitleUnitFieldValue(): aktif/ ---
+// index-0-golge/diger 3 yonlu dallanma (Faz 3, 2026-08-15) -----------------
+{
+  // 10a) index === aktif -> dogrudan state.fields (referans, kopya DEGIL).
+  fns.setState({ activeTitleUnitIndex: 0, fields: { titlePropertyId: "AKTIF" }, tables: { title: [] }, titleUnits: [{ fields: { titlePropertyId: "DIGER" }, tables: {} }] });
+  assert.equal(fns.setTitleUnitFieldValue(0, "titlePropertyId", "AKTIF-YENI"), true, "Aktif tasinmaza yazma basarili donmeli.");
+  assert.equal(fns.getState().fields.titlePropertyId, "AKTIF-YENI", "Aktif tasinmaza yazilan deger state.fields'ta gorunmeli.");
+
+  // 10b) index === 0, primaryTitleUnitShadow HENUZ YOKSA (bozuk/teorik durum)
+  // -> yeni bir gölge yuva OLUSTURULUP oraya yazilmali (sessizce KAYBOLMAMALI).
+  fns.setState({ activeTitleUnitIndex: 1, fields: { titlePropertyId: "AKTIF-2" }, tables: { title: [] }, primaryTitleUnitShadow: null, titleUnits: [{ fields: {}, tables: {} }] });
+  assert.equal(fns.setTitleUnitFieldValue(0, "titlePropertyId", "GOLGE-YENI"), true, "primaryTitleUnitShadow yokken bile yazma basarili donmeli.");
+  assert.ok(fns.getState().primaryTitleUnitShadow, "Yoksa primaryTitleUnitShadow OTOMATIK olusturulmali.");
+  assert.equal(fns.getState().primaryTitleUnitShadow.fields.titlePropertyId, "GOLGE-YENI", "Deger yeni olusturulan golge yuvaya dogru yazilmali.");
+  assert.equal(fns.getState().fields.titlePropertyId, "AKTIF-2", "Aktif tasinmazin (index 1) kendi degeri ETKILENMEMELI.");
+
+  // 10c) index === 0, primaryTitleUnitShadow ZATEN VARSA -> ustune yazilir,
+  // MEVCUT diger alanlar KORUNUR (round-trip guvenligi).
+  fns.setState({ activeTitleUnitIndex: 1, fields: {}, tables: {}, primaryTitleUnitShadow: { fields: { titlePropertyId: "ESKI", titleCity: "Bursa" }, tables: {} }, titleUnits: [{ fields: {}, tables: {} }] });
+  assert.equal(fns.setTitleUnitFieldValue(0, "titlePropertyId", "GUNCEL"), true);
+  assert.equal(fns.getState().primaryTitleUnitShadow.fields.titlePropertyId, "GUNCEL", "Var olan golge yuvadaki alan guncellenmeli.");
+  assert.equal(fns.getState().primaryTitleUnitShadow.fields.titleCity, "Bursa", "Golge yuvadaki DIGER alanlar (titleCity) ETKILENMEMELI.");
+
+  // 10d) index > 0 (titleUnits[index-1]) -> mevcutsa uzerine yazilir.
+  fns.setState({ activeTitleUnitIndex: 0, fields: {}, tables: {}, titleUnits: [{ fields: { titlePropertyId: "ESKI-2" }, tables: {} }, { fields: {}, tables: {} }] });
+  assert.equal(fns.setTitleUnitFieldValue(1, "titlePropertyId", "GUNCEL-2"), true, "titleUnits[0]'a (index 1) yazma basarili donmeli.");
+  assert.equal(fns.getState().titleUnits[0].fields.titlePropertyId, "GUNCEL-2", "titleUnits[0].fields dogru guncellenmeli.");
+  assert.equal(fns.getState().fields.titlePropertyId, undefined, "Aktif (index 0) tasinmazin fields'i ETKILENMEMELI.");
+
+  // 10e) index > 0, titleUnits[index-1] HENUZ YOKSA (dizide "delik" var,
+  // ör. bozuk/eksik veri) -> otomatik olusturulup yazilmali (10b'nin
+  // index>0 karsiligi), DIGER tasinmazlar ETKILENMEMELI.
+  fns.setState({ activeTitleUnitIndex: 0, fields: {}, tables: {}, titleUnits: [undefined, { fields: { titlePropertyId: "UCUNCU" }, tables: {} }] });
+  assert.equal(fns.getState().titleUnits.length, 2, "Fixture: 2 ek tasinmaz (3 toplam) — index 1 (titleUnits[0]) EKSIK.");
+  assert.equal(fns.setTitleUnitFieldValue(1, "titlePropertyId", "YENI-UNITE"), true, "titleUnits[0] eksikken bile (index gecerli araliktaysa) yazma basarili donmeli.");
+  assert.ok(fns.getState().titleUnits[0], "Eksik olan titleUnits[0] OTOMATIK olusturulmali.");
+  assert.equal(fns.getState().titleUnits[0].fields.titlePropertyId, "YENI-UNITE", "Deger yeni olusturulan yuvaya dogru yazilmali.");
+  assert.equal(fns.getState().titleUnits[1].fields.titlePropertyId, "UCUNCU", "Diger tasinmazin (index 2) verisi ETKILENMEMELI.");
+  console.log("resolveTitleUnitWriteTarget/setTitleUnitFieldValue 3-yonlu dallanma testi tamam.");
+}
+
+// --- 11) setTitleUnitFieldValue(): gecersiz index icin false doner, hata --
+// firlatmaz --------------------------------------------------------------
+{
+  fns.setState({ activeTitleUnitIndex: 0, fields: {}, tables: {}, titleUnits: [{ fields: {}, tables: {} }] });
+  assert.equal(fns.setTitleUnitFieldValue(-1, "titlePropertyId", "X"), false, "Negatif index false donmeli.");
+  assert.equal(fns.setTitleUnitFieldValue(5, "titlePropertyId", "X"), false, "Aralik disi (5) index false donmeli (2 tasinmaz varken).");
+  assert.equal(fns.setTitleUnitFieldValue(0, "", "X"), false, "Bos key false donmeli.");
+  assert.equal(fns.setTitleUnitFieldValue(0.5, "titlePropertyId", "X"), false, "Tam sayi olmayan index false donmeli.");
+  console.log("setTitleUnitFieldValue gecersiz girdi guvenlik agi testi tamam.");
 }
 
 // --- 6) template-engine.js'te {{TASINMAZLARTAPUTABLOSU}} kayitli mi -------

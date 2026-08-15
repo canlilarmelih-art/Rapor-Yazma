@@ -1435,6 +1435,45 @@ const MULTI_TITLE_UNIT_OWNERSHIP_TYPES = new Set([
   "Tarla",
 ]);
 
+// Çift Yönlü Düzenleme, Faz 3 (2026-08-15) — "tab üzerinden değiştirince
+// tablo değişsin tablo üzerinden değiştirdiğimde tab değişsin" isteğinin
+// AKTİF OLMAYAN taşınmazlar için tamamlanması (bkz. plan:
+// idempotent-launching-kernighan.md). getTitleUnitFieldsForLabel() (yukarıda)
+// SALT-OKUMA amaçlıdır: index===0 VE primaryTitleUnitShadow henüz YOKSA
+// (teorik/bozuk bir çağrı) transient bir `{}` literal döner — ona yazmak
+// SESSİZCE KAYBOLURDU. Bu fonksiyon YAZMA amaçlıdır: gerekli gölge yuvayı
+// (yoksa) ÖNCE oluşturur, SONRA gerçek (state İÇİNDEKİ referans) fields
+// nesnesini döner — mevcut syncMultiTitleUnitOwnershipType (yukarıda) ve
+// applyTitleRecordChangeToAllTitleUnits'in "gölgeye doğrudan yaz" desenini
+// TEK bir hedefli index için genelleştirir. switchActiveTitleUnit'in
+// kuralını miras alır: SADECE state mutasyonu yapar, render()/saveState()
+// ÇAĞIRMAZ — çağıran taraf gerekirse kendisi tetiklemeli.
+function resolveTitleUnitWriteTarget(index) {
+  if (index === state.activeTitleUnitIndex) return state.fields;
+  if (index === 0) {
+    if (!state.primaryTitleUnitShadow || typeof state.primaryTitleUnitShadow !== "object") {
+      state.primaryTitleUnitShadow = { fields: {}, tables: {} };
+    }
+    state.primaryTitleUnitShadow.fields = state.primaryTitleUnitShadow.fields || {};
+    return state.primaryTitleUnitShadow.fields;
+  }
+  if (!Array.isArray(state.titleUnits)) state.titleUnits = [];
+  if (!state.titleUnits[index - 1]) state.titleUnits[index - 1] = createEmptyTitleUnit();
+  state.titleUnits[index - 1].fields = state.titleUnits[index - 1].fields || {};
+  return state.titleUnits[index - 1].fields;
+}
+
+// Tek bir taşınmazın TEK bir skaler alanını yazar — Faz 2'nin aktif-
+// taşınmaz kısayolunun (doğrudan state.fields) AKTİF OLMAYAN taşınmazlara
+// genellenmiş hali. index geçersizse (0 <= index < getTitleUnitCount()
+// aralığı dışında) veya key boşsa false döner, aksi halde true.
+function setTitleUnitFieldValue(index, key, value) {
+  if (!Number.isInteger(index) || index < 0 || index >= getTitleUnitCount() || !key) return false;
+  const fields = resolveTitleUnitWriteTarget(index);
+  fields[key] = value;
+  return true;
+}
+
 function syncMultiTitleUnitOwnershipType(value = state.fields.ownershipType) {
   if (!MULTI_TITLE_UNIT_OWNERSHIP_TYPES.has(value) || getTitleUnitCount() <= 1) return false;
   state.fields.ownershipType = value;
@@ -1623,6 +1662,20 @@ function refreshAddressUnitsSummaryTablePreview() {
   const host = document.querySelector(".title-units-summary-table-preview");
   if (!host) return;
   host.replaceWith(createAddressUnitsSummaryTablePreview());
+}
+
+// Çift Yönlü Düzenleme, Faz 3 (2026-08-15) — yukarıdaki iki fonksiyonla
+// AYNI "hafif, yerinde değiştir" deseni: tab çubuğunu (createTitleUnitTabBar,
+// yukarıda) TAMAMEN yeniden üretip DOM'da yerine koyar. Ada/Parsel/Blok/
+// Bağımsız Bölüm No gibi alanlar computeTitleUnitTabLabel()'in girdisi
+// olduğundan, özet tablodan AKTİF OLMAYAN bir taşınmazın bu alanlarından
+// biri düzenlenirse tab etiketi bayatlar — bu yüzden commitTitleUnitsSummaryCellEdit()
+// HER commit'te bunu da çağırır (ucuz; alan etiketi etkilemese bile
+// zararsız). Panel ekranda değilse (querySelector null) no-op.
+function refreshTitleUnitTabBar() {
+  const host = document.querySelector(".title-unit-tab-bar");
+  if (!host) return;
+  host.replaceWith(createTitleUnitTabBar());
 }
 
 // "Aynı ise gizle" (Tapu tablosu) ve "tüm taşınmazlarda boşsa kaldır"
@@ -16842,13 +16895,24 @@ function buildTitleUnitsSummaryTableHtmlEditable(headers, rows, columnMeta, acti
     const cellStyle = rowIndex % 2 === 1 ? zebraCell : baseCell;
     const cellsHtml = row.map((cell, columnIndex) => {
       const meta = (columnMeta && columnMeta[columnIndex]) || null;
-      const isEditable = Boolean(meta) && meta.kind === "scalar" && rowIndex === activeRowIndex;
+      // Faz 3 (2026-08-15): "yalnızca AKTİF satır" kısıtlaması KALDIRILDI —
+      // artık HER satırın "scalar" hücresi düzenlenebilir (gölge-yazma,
+      // bkz. resolveTitleUnitWriteTarget/setTitleUnitFieldValue). "owner"
+      // (Malik(ler) vb., Faz 4'ü bekliyor) ve "computed" (asla) satır
+      // farketmeksizin düzenlenemez kalır.
+      const isEditable = Boolean(meta) && meta.kind === "scalar";
       if (!isEditable) {
         return `<td style="${cellStyle}">${formatWordCell(toTitleFieldUppercase(cell))}</td>`;
       }
       return `<td style="${cellStyle}cursor:text;" class="tus-editable-cell" data-unit-index="${rowIndex}" data-field-key="${escapeHtml(meta.fieldKey)}" title="Düzenlemek için tıklayın">${formatWordCell(toTitleFieldUppercase(cell))}</td>`;
     }).join("");
-    return `<tr>${cellsHtml}</tr>`;
+    // "activeRowIndex" artık düzenlenebilirliği DEĞİL, yalnızca hangi
+    // satırın şu an ekranda açık olan tab'a karşılık geldiğini görsel
+    // olarak işaretlemek için kullanılıyor (styles.css: .tus-active-row) —
+    // kullanıcı tablo üzerinden aktif OLMAYAN bir satırı düzenlerken bile
+    // hangi taşınmazın "canlı form" tarafı olduğunu ayırt edebilsin.
+    const rowAttr = rowIndex === activeRowIndex ? ' class="tus-active-row"' : "";
+    return `<tr${rowAttr}>${cellsHtml}</tr>`;
   }).join("");
 
   return `<table class="word-table title-units-summary-table title-units-summary-table-editable" style="border-collapse:collapse;width:100%;margin:5pt 0 12pt;table-layout:auto;">
@@ -16873,13 +16937,12 @@ function beginEditingTitleUnitsSummaryCell(cell) {
   if (!cell || cell.classList.contains("is-editing")) return;
   const unitIndex = Number(cell.dataset.unitIndex);
   const fieldKey = cell.dataset.fieldKey;
-  if (!Number.isInteger(unitIndex) || !fieldKey) return;
-  // Faz 2: yalnızca AKTİF taşınmaz düzenlenebilir (bkz. plan). Tablo her
-  // tazelendiğinde dinleyiciler yeniden bağlandığından bu kontrol normal
-  // koşullarda hiç tetiklenmez — savunma amaçlı korunuyor.
-  if (unitIndex !== state.activeTitleUnitIndex) return;
+  if (!Number.isInteger(unitIndex) || unitIndex < 0 || unitIndex >= getTitleUnitCount() || !fieldKey) return;
 
-  const currentValue = String(state.fields[fieldKey] ?? "");
+  // Faz 3 (2026-08-15): "yalnızca AKTİF taşınmaz" kısıtlaması KALDIRILDI —
+  // getTitleUnitFieldsForLabel() aktif/gölge ayrımını KENDİSİ çözer (aktif
+  // taşınmaz için state.fields, diğerleri için kendi gölge yuvası).
+  const currentValue = String(getTitleUnitFieldsForLabel(unitIndex)[fieldKey] ?? "");
   cell.classList.add("is-editing");
   const originalHtml = cell.innerHTML;
   const input = document.createElement("input");
@@ -16903,7 +16966,7 @@ function beginEditingTitleUnitsSummaryCell(cell) {
     settled = true;
     const newValue = input.value;
     cell.classList.remove("is-editing");
-    commitTitleUnitsSummaryCellEdit(fieldKey, newValue);
+    commitTitleUnitsSummaryCellEdit(fieldKey, newValue, unitIndex);
   };
 
   input.addEventListener("keydown", (event) => {
@@ -16918,8 +16981,8 @@ function beginEditingTitleUnitsSummaryCell(cell) {
   input.addEventListener("blur", commitEdit);
 }
 
-// Yeni değeri gerçek forma yazar — Mimari kararlar (plan): "hedef taşınmaz
-// aktifse, ekrandaki gerçek <input>'a da değer basılır ve senkron bir
+// Yeni değeri hedef taşınmaza yazar. Mimari kararlar (plan): "hedef taşınmaz
+// AKTİFSE, ekrandaki gerçek <input>'a da değer basılır ve senkron bir
 // input event dispatch edilir" (createForm'un dev kaskadını YENİDEN
 // YAZMAK yerine TETİKLEMEK için — titleTextUppercaseKeys gibi alan-özel
 // davranışlar böylece bedavaya miras alınır). Alan o an ekranda
@@ -16928,16 +16991,29 @@ function beginEditingTitleUnitsSummaryCell(cell) {
 // kullandığı saf fonksiyon) ile state.fields'a doğrudan yazılır ve
 // autosave/renderValidation/updateStatus elle tetiklenir (createForm'un
 // input dinleyicisinin yaptığının en az kapsamlı ama doğru alt kümesi).
-function commitTitleUnitsSummaryCellEdit(fieldKey, rawValue) {
-  const control = document.querySelector(`[data-field="${fieldKey}"]`);
-  if (control) {
-    control.value = rawValue;
-    control.dispatchEvent(new Event("input", { bubbles: true }));
+// Faz 3 (2026-08-15): hedef taşınmaz AKTİF DEĞİLSE (unitIndex !==
+// state.activeTitleUnitIndex) yukarıdaki İKİ yol da YANLIŞ olurdu —
+// state.fields o an BAŞKA bir taşınmazı temsil ediyor, ona yazmak ya da
+// createForm'un aktif-taşınmaza-göre hesaplanan kaskadını tetiklemek
+// veri karışıklığına yol açardı. Bunun yerine setTitleUnitFieldValue()
+// ile DOĞRUDAN hedef taşınmazın gölge yuvasına yazılır — createForm
+// kaskadı (refreshXFromCurrentFields vb.) BİLEREK atlanır, çünkü o
+// kaskad şu an ekranda görünen (aktif) taşınmaza göre hesaplama yapar.
+function commitTitleUnitsSummaryCellEdit(fieldKey, rawValue, unitIndex) {
+  if (unitIndex === state.activeTitleUnitIndex) {
+    const control = document.querySelector(`[data-field="${fieldKey}"]`);
+    if (control) {
+      control.value = rawValue;
+      control.dispatchEvent(new Event("input", { bubbles: true }));
+    } else {
+      state.fields[fieldKey] = normalizeReportFieldValue(fieldKey, rawValue);
+      autosave();
+      renderValidation();
+      updateStatus();
+    }
   } else {
-    state.fields[fieldKey] = normalizeReportFieldValue(fieldKey, rawValue);
+    setTitleUnitFieldValue(unitIndex, fieldKey, normalizeReportFieldValue(fieldKey, rawValue));
     autosave();
-    renderValidation();
-    updateStatus();
   }
   // createForm'un kancası (getTitleUnitScopedFieldKeys ile) zaten
   // debounce'lu bir tazeleme tetikliyor — ama kullanıcı bir hücreyi
@@ -16947,6 +17023,11 @@ function commitTitleUnitsSummaryCellEdit(fieldKey, rawValue) {
   // (debounce'suz) çağrılıyor.
   refreshTitleUnitsSummaryTablePreview();
   refreshAddressUnitsSummaryTablePreview();
+  // Faz 3: Ada/Parsel/Blok/Bağımsız Bölüm No gibi alanlar tab çubuğu
+  // etiketlerini (computeTitleUnitTabLabel) etkileyebilir — hangi alan
+  // düzenlendiğinden bağımsız olarak HER commit'te tab çubuğu da
+  // tazelenir (ucuz; ilgisiz bir alan için çağrılması zararsız).
+  refreshTitleUnitTabBar();
 }
 
 // Kullanıcı talebi (2026-08-15): "adres ve konum bölümü için aynı mantıkta
