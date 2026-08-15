@@ -471,6 +471,7 @@
     MEVKII: { f: ["locationName"] },
     ADRES2025: { fn: () => safeCall("buildOpenAddressText") },
     ACIKADRES: { fn: () => safeCall("buildOpenAddressText") },
+    LANDOPENADDRESSTEXT: { fn: () => safeCall("buildLandOpenAddressText") },
     LOCATIONMAPIMAGE: { h: () => reportImageHtml("location") },
     KONUMHARITASI: { h: () => reportImageHtml("location") },
     COMPARABLESKETCHIMAGE: { h: () => reportImageHtml("comparables") },
