@@ -71,11 +71,11 @@ function makeContext(fields, extraState = {}) {
 {
   const ctx = makeContext({ currentUsageNature: "Konut", titleCity: "Bursa", titleDistrict: "Nilüfer", latitude: "40.200000", longitude: "28.900000" });
   const url = new URL(ctx.buildSahibindenSearchUrl());
-  assert.equal(url.pathname, "/satilik-daire");
-  assert.equal(url.searchParams.get("viewType"), "map");
-  assert.equal(url.searchParams.get("geoLocation_latitude"), "40.200000");
-  assert.equal(url.searchParams.get("geoLocation_longitude"), "28.900000");
-  assert.equal(url.searchParams.get("geoLocation_geoDistance_max"), "3000");
+  assert.equal(url.pathname, "/haritada-emlak-arama/satilik-daire");
+  assert.equal(url.searchParams.get("geoLocation_latitude_north"), "40.226949");
+  assert.equal(url.searchParams.get("geoLocation_latitude_south"), "40.173051");
+  assert.equal(url.searchParams.get("geoLocation_longitude_east"), "28.935283");
+  assert.equal(url.searchParams.get("geoLocation_longitude_west"), "28.864717");
 }
 
 // --- 2) Arsa/Tarla/Arazi -> satilik-arsa --------------------------------
@@ -187,10 +187,11 @@ console.log("Comparables sahibinden arama testleri basarili.");
   const ctx = makeContext({ currentUsageNature: "Tarla", titleCity: "Bursa", titleDistrict: "Nilüfer", latitude: "40.200000", longitude: "28.900000" });
   const hepsi = new URL(ctx.buildHepsiemlakSearchUrl());
   const sahibinden = new URL(ctx.buildSahibindenSearchUrl());
-  assert.equal(sahibinden.pathname, "/satilik-arsa");
-  assert.equal(sahibinden.searchParams.get("geoLocation_latitude"), "40.200000");
-  assert.equal(sahibinden.searchParams.get("geoLocation_longitude"), "28.900000");
-  assert.equal(sahibinden.searchParams.get("geoLocation_geoDistance_max"), "3000");
+  assert.equal(sahibinden.pathname, "/haritada-emlak-arama/satilik-arsa");
+  assert.equal(sahibinden.searchParams.get("geoLocation_latitude_north"), "40.226949");
+  assert.equal(sahibinden.searchParams.get("geoLocation_latitude_south"), "40.173051");
+  assert.equal(sahibinden.searchParams.get("geoLocation_longitude_east"), "28.935283");
+  assert.equal(sahibinden.searchParams.get("geoLocation_longitude_west"), "28.864717");
   assert.equal(hepsi.pathname, "/harita/bursa-satilik/arsa");
   assert.equal(hepsi.searchParams.get("mapTopLeft"), "40.226949,28.864717");
   assert.equal(hepsi.searchParams.get("mapBottomRight"), "40.173051,28.935283");

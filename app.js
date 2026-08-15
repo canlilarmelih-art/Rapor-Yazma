@@ -32728,18 +32728,16 @@ function buildSahibindenSearchUrl() {
   const bounds = buildSahibindenMapBounds(getSahibindenSubjectCentroid());
   const category = getSahibindenCategorySlug();
   const subjectPoint = getSahibindenSubjectCentroid();
-  if (subjectPoint) {
+  if (subjectPoint && bounds) {
+    // Sahibinden liste rotası geoLocation_* parametrelerini yok sayıp il
+    // geneline dönebilir. Harita rotası dört köşe sınırını gerçekten işler.
     const query = new URLSearchParams({
-      geoLocation_latitude: Number(subjectPoint[0]).toFixed(6),
-      geoLocation_longitude: Number(subjectPoint[1]).toFixed(6),
-      geoLocation_geoDistance_max: "3000",
-      viewType: "map",
+      geoLocation_longitude_east: bounds.east.toFixed(6),
+      geoLocation_latitude_north: bounds.north.toFixed(6),
+      geoLocation_latitude_south: bounds.south.toFixed(6),
+      geoLocation_longitude_west: bounds.west.toFixed(6),
     });
-    return `https://www.sahibinden.com/${category}?${query.toString()}`;
-  }
-  if (city && district && bounds) {
-    const query = new URLSearchParams({ viewType: "map", category, geoLocation_latitude_north: bounds.north.toFixed(6), geoLocation_latitude_south: bounds.south.toFixed(6), geoLocation_longitude_east: bounds.east.toFixed(6), geoLocation_longitude_west: bounds.west.toFixed(6) });
-    return `https://www.sahibinden.com/haritada-emlak-arama/emlak/${city}-${district}?${query.toString()}`;
+    return `https://www.sahibinden.com/haritada-emlak-arama/${category}?${query.toString()}`;
   }
   const base = `https://www.sahibinden.com/${category}`;
   // Sahibinden mahalle rotalarında ilçe/semt parçası da bulunuyor. Uygulamada
