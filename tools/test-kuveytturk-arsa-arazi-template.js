@@ -206,6 +206,7 @@ const appSource = fs.readFileSync(path.join(appDir, "app.js"), "utf8");
 const kuveytturkLandTemplate = fs.readFileSync(path.join(appDir, "templates", "kuveytturk-arsa-arazi.html"), "utf8");
 const ziraatLandTemplate = fs.readFileSync(path.join(appDir, "templates", "ziraat-arsa-arazi.html"), "utf8");
 assert(appSource.includes("function buildLandOpenAddressText()"), "Arsa/tarla açık adres üreticisi eksik.");
+assert(appSource.includes("if (isLandPropertyForBankTemplate() || isLandProjectReview()) return buildLandOpenAddressText();"), "Açıklamalardaki genel açık adres arsa/tarla biçimine bağlanmamış.");
 assert(engineSource.includes("LANDOPENADDRESSTEXT"), "Arsa/tarla açık adres alias'ı eksik.");
 assert(kuveytturkLandTemplate.includes("{{LAND_OPEN_ADDRESS_TEXT}}"), "Kuveyt Türk arsa/tarla açık adres token'ı eksik.");
 assert(ziraatLandTemplate.includes("{{LAND_OPEN_ADDRESS_TEXT}}"), "Ziraat arsa/tarla açık adres token'ı eksik.");

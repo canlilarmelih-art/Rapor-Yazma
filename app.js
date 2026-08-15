@@ -24128,7 +24128,7 @@ function formatOpenAddressBuildingName(value, style) {
 }
 
 function buildOpenAddressText() {
-  if (isLandPropertyForBankTemplate()) return buildLandOpenAddressText();
+  if (isLandPropertyForBankTemplate() || isLandProjectReview()) return buildLandOpenAddressText();
 
   const get = (...keys) => {
     for (const key of keys) {
