@@ -92,6 +92,10 @@ const functionNames = [
   "splitTableHeaderLabelIntoTwoLines",
   "toTitleFieldUppercase",
   "buildTitleUnitsSummaryTableHtmlFromData",
+  // Çift Yönlü Düzenleme, Faz 2 (2026-08-15) — bkz. app.js'teki yorum:
+  // export'tan (buildTitleUnitsSummaryTableHtmlFromData, yukarıda) TAMAMEN
+  // AYRI, yalnızca ekran-içi düzenlenebilir önizleme için kullanılan renderer.
+  "buildTitleUnitsSummaryTableHtmlEditable",
   "parseReportNumber",
   "formatSquareMeterArea",
   "getReportThemeToken",
@@ -114,6 +118,7 @@ const sandboxSource = `
     buildAllTitleUnitsForSummaryTable, joinTitleUnitOwnerColumn,
     computeTitleUnitShareOfLandArea, splitTableHeaderLabelIntoTwoLines,
     buildTitleUnitsSummaryTableData, buildTitleUnitsSummaryWordTableHtml,
+    buildTitleUnitsSummaryTableHtmlEditable,
   };
 `;
 // eslint-disable-next-line no-new-func
@@ -413,6 +418,75 @@ function unit(fields, ownerRows) {
   assert.ok(data.headers.includes("Parsel"), "\"Parsel\" (farkli olan paylasimli alan) sutunu kalmali.");
   assert.equal(data.sharedColumnCount, 1, `sharedColumnCount filtreden SONRA da dogru sayilmali (yalnizca Parsel), bulunan: ${data.sharedColumnCount}`);
   console.log("Farkli parselli tarla ornegi: bos sutun + farkli-ada-parselde Arsa Payi/Payda kaldirma kurali birlikte testi tamam.");
+}
+
+// --- 7) columnMeta: headers ile hizali, dogru kind/fieldKey/ownerColumn --
+// eslemesi (Cift Yonlu Duzenleme, Faz 2, 2026-08-15) -----------------------
+{
+  const shared = { titleCity: "Bursa", titleDistrict: "Nilüfer", titleNeighborhood: "Özlüce", locationName: "-", sheetNo: "F21", blockNo: "4834", parcelNo: "1", landArea: "1200", mainPropertyQuality: "Arsa" };
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: { ...shared, titlePropertyId: "123456", titleBlockName: "A", titleFloor: "3", unitNo: "5", titleQuality: "Daire", share: "50", denominator: "1000", registryVolume: "12", registryPage: "34" },
+    tables: { title: [{ c0: "Ahmet Yılmaz", c1: "1/2", c2: "Satın Alma", c3: "01.01.2020", c4: "1234" }] },
+    titleUnits: [
+      { fields: { ...shared, locationName: "Sahil Kesimi", titlePropertyId: "123457", titleBlockName: "B", titleFloor: "1", unitNo: "1", titleQuality: "Dükkan", share: "40", denominator: "1000", registryVolume: "13", registryPage: "1" }, tables: { title: [] } },
+    ],
+  });
+  const data = fns.buildTitleUnitsSummaryTableData();
+  assert.ok(Array.isArray(data.columnMeta), "columnMeta dizisi donmeli.");
+  assert.equal(data.columnMeta.length, data.headers.length, "columnMeta, headers ile AYNI uzunlukta olmali.");
+  assert.equal(data.columnMeta[0].kind, "seq", "Ilk sutun (Sira No) 'seq' olmali.");
+  assert.equal(data.columnMeta[1].kind, "scalar", "Ikinci sutun (Tasinmaz Kimlik No) 'scalar' olmali.");
+  assert.equal(data.columnMeta[1].fieldKey, "titlePropertyId", "Tasinmaz Kimlik No -> titlePropertyId eslesmeli.");
+  const malikColumnIndex = data.headers.indexOf("Malik(ler)");
+  assert.equal(data.columnMeta[malikColumnIndex].kind, "owner", "Malik(ler) sutunu 'owner' olmali (Faz 4'e kadar duzenlenemez).");
+  assert.equal(data.columnMeta[malikColumnIndex].ownerColumn, "c0", "Malik(ler) -> c0 eslesmeli.");
+  const shareAreaColumnIndex = data.headers.indexOf("Hissesine Düşen Arsa Payı");
+  assert.equal(data.columnMeta[shareAreaColumnIndex].kind, "computed", "Hissesine Dusen Arsa Payi 'computed' olmali (asla duzenlenemez).");
+  const shareColumnIndex = data.headers.indexOf("Arsa Payı");
+  assert.equal(data.columnMeta[shareColumnIndex].kind, "scalar", "Arsa Payi 'scalar' olmali.");
+  assert.equal(data.columnMeta[shareColumnIndex].fieldKey, "share", "Arsa Payi -> share eslesmeli.");
+  console.log("buildTitleUnitsSummaryTableData columnMeta esleme testi tamam.");
+}
+
+// --- 8) columnMeta: bos-sutun filtresi headers ile BIRLIKTE columnMeta'yi -
+// da budar (Faz 2) -----------------------------------------------------------
+{
+  const shared = { titleCity: "Konya", titleDistrict: "Ereğli", titleNeighborhood: "-", locationName: "-", sheetNo: "-", blockNo: "500", landArea: "8000", mainPropertyQuality: "Tarla" };
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: { ...shared, parcelNo: "12", titlePropertyId: "999001", titleBlockName: "", titleFloor: "", unitNo: "", titleQuality: "Tarla", share: "1", denominator: "1", registryVolume: "7", registryPage: "20" },
+    tables: { title: [{ c0: "Veli Demir", c1: "1/1", c2: "Miras", c3: "05.03.2019", c4: "555" }] },
+    titleUnits: [
+      { fields: { ...shared, parcelNo: "13", titlePropertyId: "999002", titleBlockName: "", titleFloor: "", unitNo: "", titleQuality: "Tarla", share: "1", denominator: "1", registryVolume: "7", registryPage: "21" }, tables: { title: [{ c0: "Ayşe Demir", c1: "1/1" }] } },
+    ],
+  });
+  const data = fns.buildTitleUnitsSummaryTableData();
+  assert.equal(data.columnMeta.length, data.headers.length, "Bos-sutun filtresinden SONRA da columnMeta headers ile AYNI uzunlukta olmali.");
+  assert.ok(!data.columnMeta.some((meta) => meta.fieldKey === "titleBlockName"), "Kaldirilan 'Blok' sutununun columnMeta girdisi de KALKMALI.");
+  console.log("columnMeta bos-sutun filtresiyle birlikte budanma testi tamam.");
+}
+
+// --- 9) buildTitleUnitsSummaryTableHtmlEditable(): yalnizca AKTIF satirin -
+// scalar hucreleri duzenlenebilir isaretlenir -------------------------------
+{
+  const shared = { titleCity: "Bursa", titleDistrict: "Nilüfer", titleNeighborhood: "Özlüce", locationName: "-", sheetNo: "F21", blockNo: "4834", parcelNo: "1", landArea: "1200", mainPropertyQuality: "Arsa" };
+  fns.setState({
+    activeTitleUnitIndex: 1,
+    fields: { ...shared, titlePropertyId: "AKTIF-ID", titleBlockName: "A", titleFloor: "3", unitNo: "5", titleQuality: "Daire", share: "50", denominator: "1000", registryVolume: "12", registryPage: "34" },
+    tables: { title: [{ c0: "Ahmet Yılmaz", c1: "1/2" }] },
+    primaryTitleUnitShadow: { fields: { ...shared, titlePropertyId: "GOLGE-ID", titleBlockName: "B", titleFloor: "1", unitNo: "1", titleQuality: "Dükkan", share: "40", denominator: "1000", registryVolume: "13", registryPage: "1" }, tables: { title: [] } },
+    titleUnits: [{}],
+  });
+  const data = fns.buildTitleUnitsSummaryTableData();
+  const html = fns.buildTitleUnitsSummaryTableHtmlEditable(data.headers, data.rows, data.columnMeta, 1);
+  assert.ok(html.includes('data-unit-index="1"'), "Aktif tasinmazin (index 1) hucreleri isaretlenmeli.");
+  assert.ok(!html.includes('data-unit-index="0"'), "Aktif OLMAYAN tasinmazin (index 0) hucreleri Faz 2'de duzenlenebilir isaretlenmemeli.");
+  assert.ok(html.includes('data-field-key="titlePropertyId"'), "Aktif satirin scalar hucresi (Tasinmaz Kimlik No) duzenlenebilir isaretlenmeli.");
+  const expectedEditableCount = data.columnMeta.filter((meta) => meta.kind === "scalar").length;
+  const actualEditableCount = (html.match(/tus-editable-cell/g) || []).length;
+  assert.equal(actualEditableCount, expectedEditableCount, `Yalnizca AKTIF satirin 'scalar' sutunlari (${expectedEditableCount} adet) duzenlenebilir isaretlenmeliydi, bulunan: ${actualEditableCount}.`);
+  console.log("buildTitleUnitsSummaryTableHtmlEditable aktif-satir/scalar-sutun isaretleme testi tamam.");
 }
 
 // --- 6) template-engine.js'te {{TASINMAZLARTAPUTABLOSU}} kayitli mi -------

@@ -1536,21 +1536,29 @@ function createTitleUnitsSummaryTablePreview() {
   heading.textContent = "Taşınmazlar Tapu Özeti";
   wrap.append(heading);
 
-  const tableHtml = buildTitleUnitsSummaryWordTableHtml();
-  if (!tableHtml) {
+  // Faz 2 (Çift Yönlü Düzenleme, 2026-08-15): ekran önizlemesi artık
+  // export'un paylaştığı buildTitleUnitsSummaryWordTableHtml() DEĞİL,
+  // buildTitleUnitsSummaryTableData()'nın ham {headers, rows, columnMeta}
+  // çıktısıyla beslenen AYRI, düzenlenebilir buildTitleUnitsSummaryTableHtmlEditable()
+  // ile üretiliyor — export akışı (buildTitleUnitsSummaryWordTableHtml,
+  // hâlâ eski salt-okunur renderer'ı kullanıyor) etkilenmez.
+  const data = buildTitleUnitsSummaryTableData();
+  if (!data || !data.rows.length) {
     const note = document.createElement("p");
     note.className = "muted-note";
     note.textContent = "Bu tablo yalnızca birden fazla taşınmaz eklendiğinde görünür. Banka şablonlarında {{TASINMAZLARTAPUTABLOSU}} olarak kullanılabilir.";
     wrap.append(note);
     return wrap;
   }
+  const tableHtml = buildTitleUnitsSummaryTableHtmlEditable(data.headers, data.rows, data.columnMeta, state.activeTitleUnitIndex);
   const tableContainer = document.createElement("div");
   tableContainer.className = "title-units-summary-table-container";
   tableContainer.innerHTML = tableHtml;
   wrap.append(tableContainer);
+  attachTitleUnitsSummaryTableEditing(tableContainer);
   const hint = document.createElement("p");
   hint.className = "muted-note";
-  hint.textContent = "İl/İlçe/Mahalle/Mevkii/Pafta/Ada/Parsel/Yüzölçümü/Ana Taşınmaz Niteliği yalnızca taşınmazlar arasında FARKLIYSA gösterilir. Banka şablonlarında {{TASINMAZLARTAPUTABLOSU}} olarak kullanılabilir.";
+  hint.textContent = "İl/İlçe/Mahalle/Mevkii/Pafta/Ada/Parsel/Yüzölçümü/Ana Taşınmaz Niteliği yalnızca taşınmazlar arasında FARKLIYSA gösterilir. Aktif taşınmazın hücrelerine tıklayarak doğrudan düzenleyebilirsiniz. Banka şablonlarında {{TASINMAZLARTAPUTABLOSU}} olarak kullanılabilir.";
   wrap.append(hint);
   return wrap;
 }
@@ -1566,21 +1574,26 @@ function createAddressUnitsSummaryTablePreview() {
   heading.textContent = "Taşınmazlar Adres Özeti";
   wrap.append(heading);
 
-  const tableHtml = buildAddressUnitsSummaryWordTableHtml();
-  if (!tableHtml) {
+  // Faz 2 (Çift Yönlü Düzenleme, 2026-08-15) — bkz. createTitleUnitsSummaryTablePreview()'daki
+  // aynı isimli yorum: export akışından (buildAddressUnitsSummaryWordTableHtml)
+  // AYRI, düzenlenebilir renderer.
+  const data = buildAddressUnitsSummaryTableData();
+  if (!data || !data.rows.length) {
     const note = document.createElement("p");
     note.className = "muted-note";
     note.textContent = "Bu tablo yalnızca birden fazla taşınmaz eklendiğinde görünür. Banka şablonlarında {{TASINMAZLARADRESTABLOSU}} olarak kullanılabilir.";
     wrap.append(note);
     return wrap;
   }
+  const tableHtml = buildTitleUnitsSummaryTableHtmlEditable(data.headers, data.rows, data.columnMeta, state.activeTitleUnitIndex);
   const tableContainer = document.createElement("div");
   tableContainer.className = "title-units-summary-table-container";
   tableContainer.innerHTML = tableHtml;
   wrap.append(tableContainer);
+  attachTitleUnitsSummaryTableEditing(tableContainer);
   const hint = document.createElement("p");
   hint.className = "muted-note";
-  hint.textContent = "Banka şablonlarında {{TASINMAZLARADRESTABLOSU}} olarak kullanılabilir.";
+  hint.textContent = "Aktif taşınmazın hücrelerine tıklayarak doğrudan düzenleyebilirsiniz. Banka şablonlarında {{TASINMAZLARADRESTABLOSU}} olarak kullanılabilir.";
   wrap.append(hint);
   return wrap;
 }
@@ -16633,6 +16646,40 @@ function buildTitleUnitsSummaryTableData() {
     ];
   });
 
+  // Kullanıcı talebi (2026-08-15, Çift Yönlü Düzenleme Faz 2): hangi
+  // hücrenin hangi taşınmaz alanına karşılık geldiğini (headers ile
+  // BİREBİR aynı sırada/uzunlukta) taşıyan "gölge" dizi — export yolu
+  // (buildTitleUnitsSummaryWordTableHtml) BUNU OKUMAZ, yalnızca
+  // düzenlenebilir önizleme (buildTitleUnitsSummaryTableHtmlEditable)
+  // kullanır. "seq" = Sıra No (asla düzenlenemez, satır numarası),
+  // "scalar" = doğrudan fields[fieldKey] (düzenlenebilir), "computed" =
+  // Hissesine Düşen Arsa Payı (landArea/denominator/share'den TÜRETİLİR,
+  // düzenlenemez), "owner" = Malik(ler)/Hisse Payı/Edinme Sebebi/Tapu
+  // Tarihi/Yevmiye No (N malik satırının BİRLEŞTİRİLMİŞ hücresi — Faz
+  // 4'ün popover'ı gelene kadar düzenlenemez, bkz. plan).
+  const columnMeta = [
+    { kind: "seq" },
+    { kind: "scalar", fieldKey: "titlePropertyId" },
+    ...sharedFieldsToShow.map((def) => ({ kind: "scalar", fieldKey: def.key })),
+    { kind: "scalar", fieldKey: "titleBlockName" },
+    { kind: "scalar", fieldKey: "titleFloor" },
+    { kind: "scalar", fieldKey: "unitNo" },
+    { kind: "scalar", fieldKey: "titleQuality" },
+    { kind: "scalar", fieldKey: "mainPropertyQuality" },
+    ...(showShareColumns ? [
+      { kind: "scalar", fieldKey: "share" },
+      { kind: "scalar", fieldKey: "denominator" },
+      { kind: "computed" },
+    ] : []),
+    { kind: "owner", ownerColumn: "c0" },
+    { kind: "owner", ownerColumn: "c1" },
+    { kind: "owner", ownerColumn: "c2" },
+    { kind: "owner", ownerColumn: "c3" },
+    { kind: "owner", ownerColumn: "c4" },
+    { kind: "scalar", fieldKey: "registryVolume" },
+    { kind: "scalar", fieldKey: "registryPage" },
+  ];
+
   // Kullanıcı talebi (2026-08-15): "eğer sistemde hücrede veri yoksa.
   // örnek tarla raporu bb no kat bölümler boş o zaman tabloda bu
   // sütunlar gözükmemeli" — ör. tarla/arazi raporlarında Kat/Bağımsız
@@ -16649,6 +16696,7 @@ function buildTitleUnitsSummaryTableData() {
   ));
   const filteredHeaders = headers.filter((_, columnIndex) => columnHasData[columnIndex]);
   const filteredRows = rows.map((row) => row.filter((_, columnIndex) => columnHasData[columnIndex]));
+  const filteredColumnMeta = columnMeta.filter((_, columnIndex) => columnHasData[columnIndex]);
   // sharedFieldsToShow sütunları headers'ta index 2..2+sharedFieldsToShow.length
   // aralığında (0=Sıra No, 1=Taşınmaz Kimlik No — "sıra nodan sonra
   // gelsin" değişikliğiyle kaydı, bkz. yukarıdaki headers dizisi);
@@ -16656,7 +16704,7 @@ function buildTitleUnitsSummaryTableData() {
   // yansıtmalı (aksi halde tüketiciler yanlış bölme noktası kullanır).
   const survivingSharedColumnCount = columnHasData.slice(2, 2 + sharedFieldsToShow.length).filter(Boolean).length;
 
-  return { headers: filteredHeaders, rows: filteredRows, sharedColumnCount: survivingSharedColumnCount };
+  return { headers: filteredHeaders, rows: filteredRows, columnMeta: filteredColumnMeta, sharedColumnCount: survivingSharedColumnCount };
 }
 
 // "her bir taşınmazın 'Hissesine Düşen Arsa Payı' bölümünü hesapla.
@@ -16758,6 +16806,149 @@ function buildTitleUnitsSummaryTableHtmlFromData(headers, rows) {
   </table>`;
 }
 
+// Çift Yönlü Düzenleme, Faz 2 (2026-08-15): "tablo üzerinden değiştirince
+// tab değişsin" — yukarıdaki buildTitleUnitsSummaryTableHtmlFromData()
+// hem Word export'un HEM DE (Faz 2'ye kadar) salt-okunur ekran önizlemesinin
+// PAYLAŞTIĞI fonksiyondu; export'a asla dokunulmaması gerektiğinden
+// (bkz. plan: idempotent-launching-kernighan.md) bu TAMAMEN AYRI bir
+// renderer — YALNIZCA ekran-içi düzenlenebilir önizleme
+// (createTitleUnitsSummaryTablePreview/createAddressUnitsSummaryTablePreview)
+// tarafından çağrılır, export akışı (buildTitleUnitsSummaryWordTableHtml/
+// buildAddressUnitsSummaryWordTableHtml) hâlâ eski fonksiyonu kullanır.
+// Aynı görsel dili (satır içi style=, iki satırlı başlık, zebra) miras
+// alır; ek olarak columnMeta[i].kind === "scalar" VE satır aktif taşınmaza
+// (activeRowIndex — satır indeksi === taşınmaz indeksi, bkz.
+// buildAllTitleUnitsForSummaryTable) aitse hücreye data-unit-index/
+// data-field-key + yalnızca bu render'a özel (styles.css'te tanımlı,
+// export HTML'ine hiç SIZMAYAN) "tus-editable-cell" sınıfı eklenir.
+// "owner" (Malik(ler) vb. — Faz 4'ün popover'ını bekliyor) ve "computed"
+// (Hissesine Düşen Arsa Payı — türetilmiş, asla düzenlenemez) sütunları
+// ile aktif OLMAYAN taşınmazların satırları (Faz 3'ü bekliyor) düz metin
+// kalır. Tıklama/klavye kancası attachTitleUnitsSummaryTableEditing()
+// içinde (aşağıda) ayrıca bağlanır.
+function buildTitleUnitsSummaryTableHtmlEditable(headers, rows, columnMeta, activeRowIndex) {
+  const ink = getReportThemeToken("--ink", "#152238");
+  const line = getReportThemeToken("--line", "#dde3ef");
+  const blue = getReportThemeToken("--blue", "#3a5691");
+  const surface = getReportThemeToken("--surface", "#ffffff");
+  const surfaceMuted = getReportThemeToken("--surface-muted", "#eef2fa");
+  const border = `border:1pt solid ${line};`;
+  const baseCell = `${border}padding:3pt 4pt;text-align:center;vertical-align:middle;line-height:1.15;color:${ink};background:${surface};font-size:6.5pt;white-space:normal;`;
+  const headerCell = `${baseCell}background:${surfaceMuted};color:${blue};font-weight:800;`;
+  const zebraCell = `${baseCell}background:${surfaceMuted};`;
+
+  const headerHtml = `<tr>${headers.map((label) => `<th style="${headerCell}">${splitTableHeaderLabelIntoTwoLines(toTitleFieldUppercase(label))}</th>`).join("")}</tr>`;
+  const bodyHtml = rows.map((row, rowIndex) => {
+    const cellStyle = rowIndex % 2 === 1 ? zebraCell : baseCell;
+    const cellsHtml = row.map((cell, columnIndex) => {
+      const meta = (columnMeta && columnMeta[columnIndex]) || null;
+      const isEditable = Boolean(meta) && meta.kind === "scalar" && rowIndex === activeRowIndex;
+      if (!isEditable) {
+        return `<td style="${cellStyle}">${formatWordCell(toTitleFieldUppercase(cell))}</td>`;
+      }
+      return `<td style="${cellStyle}cursor:text;" class="tus-editable-cell" data-unit-index="${rowIndex}" data-field-key="${escapeHtml(meta.fieldKey)}" title="Düzenlemek için tıklayın">${formatWordCell(toTitleFieldUppercase(cell))}</td>`;
+    }).join("");
+    return `<tr>${cellsHtml}</tr>`;
+  }).join("");
+
+  return `<table class="word-table title-units-summary-table title-units-summary-table-editable" style="border-collapse:collapse;width:100%;margin:5pt 0 12pt;table-layout:auto;">
+    <thead>${headerHtml}</thead>
+    <tbody>${bodyHtml}</tbody>
+  </table>`;
+}
+
+// Çift Yönlü Düzenleme, Faz 2 — düzenlenebilir önizleme konteynerine
+// (buildTitleUnitsSummaryTableHtmlEditable'ın ürettiği HTML'i barındıran
+// DOM düğümü) tıklama dinleyicilerini bağlar. tableKind burada
+// kullanılmıyor gibi görünse de Faz 4'te (Malik popover'ı) tablo türüne
+// göre farklı davranış eklemek için imzada TUTULUYOR.
+function attachTitleUnitsSummaryTableEditing(container) {
+  if (!container) return;
+  container.querySelectorAll(".tus-editable-cell").forEach((cell) => {
+    cell.addEventListener("click", () => beginEditingTitleUnitsSummaryCell(cell));
+  });
+}
+
+function beginEditingTitleUnitsSummaryCell(cell) {
+  if (!cell || cell.classList.contains("is-editing")) return;
+  const unitIndex = Number(cell.dataset.unitIndex);
+  const fieldKey = cell.dataset.fieldKey;
+  if (!Number.isInteger(unitIndex) || !fieldKey) return;
+  // Faz 2: yalnızca AKTİF taşınmaz düzenlenebilir (bkz. plan). Tablo her
+  // tazelendiğinde dinleyiciler yeniden bağlandığından bu kontrol normal
+  // koşullarda hiç tetiklenmez — savunma amaçlı korunuyor.
+  if (unitIndex !== state.activeTitleUnitIndex) return;
+
+  const currentValue = String(state.fields[fieldKey] ?? "");
+  cell.classList.add("is-editing");
+  const originalHtml = cell.innerHTML;
+  const input = document.createElement("input");
+  input.type = "text";
+  input.className = "tus-editable-cell-input";
+  input.value = currentValue;
+  cell.innerHTML = "";
+  cell.append(input);
+  input.focus();
+  input.select();
+
+  let settled = false;
+  const cancelEdit = () => {
+    if (settled) return;
+    settled = true;
+    cell.classList.remove("is-editing");
+    cell.innerHTML = originalHtml;
+  };
+  const commitEdit = () => {
+    if (settled) return;
+    settled = true;
+    const newValue = input.value;
+    cell.classList.remove("is-editing");
+    commitTitleUnitsSummaryCellEdit(fieldKey, newValue);
+  };
+
+  input.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      input.blur();
+    } else if (event.key === "Escape") {
+      event.preventDefault();
+      cancelEdit();
+    }
+  });
+  input.addEventListener("blur", commitEdit);
+}
+
+// Yeni değeri gerçek forma yazar — Mimari kararlar (plan): "hedef taşınmaz
+// aktifse, ekrandaki gerçek <input>'a da değer basılır ve senkron bir
+// input event dispatch edilir" (createForm'un dev kaskadını YENİDEN
+// YAZMAK yerine TETİKLEMEK için — titleTextUppercaseKeys gibi alan-özel
+// davranışlar böylece bedavaya miras alınır). Alan o an ekranda
+// render edilmiyorsa (ör. koşullu görünürlük) gerçek kontrol DOM'da
+// yoktur — bu durumda normalizeReportFieldValue (createForm'un da
+// kullandığı saf fonksiyon) ile state.fields'a doğrudan yazılır ve
+// autosave/renderValidation/updateStatus elle tetiklenir (createForm'un
+// input dinleyicisinin yaptığının en az kapsamlı ama doğru alt kümesi).
+function commitTitleUnitsSummaryCellEdit(fieldKey, rawValue) {
+  const control = document.querySelector(`[data-field="${fieldKey}"]`);
+  if (control) {
+    control.value = rawValue;
+    control.dispatchEvent(new Event("input", { bubbles: true }));
+  } else {
+    state.fields[fieldKey] = normalizeReportFieldValue(fieldKey, rawValue);
+    autosave();
+    renderValidation();
+    updateStatus();
+  }
+  // createForm'un kancası (getTitleUnitScopedFieldKeys ile) zaten
+  // debounce'lu bir tazeleme tetikliyor — ama kullanıcı bir hücreyi
+  // düzenleyip commit ettiğinde tablo GECİKMESİZ güncellenmeli (form
+  // alanına yazarken titreşimi önlemek için gereken debounce, tek bir
+  // hücre commit'i için gerekli değil), bu yüzden burada AYRICA anında
+  // (debounce'suz) çağrılıyor.
+  refreshTitleUnitsSummaryTablePreview();
+  refreshAddressUnitsSummaryTablePreview();
+}
+
 // Kullanıcı talebi (2026-08-15): "adres ve konum bölümü için aynı mantıkta
 // tablo oluşturalım" — Tapu özet tablosuyla (buildTitleUnitsSummaryTableData/
 // buildTitleUnitsSummaryWordTableHtml, yukarıda) AYNI DESEN, Adres ve Konum
@@ -16821,6 +17012,21 @@ function buildAddressUnitsSummaryTableData() {
   // kalan bir sütun (ör. site içi taşınmazlarda "Giriş" hiç kullanılmıyorsa)
   // tamamen kaldırılır. "Sıra No" (index 0) hiçbir zaman boş olmadığından
   // etkilenmez.
+  // Faz 2 (Çift Yönlü Düzenleme, 2026-08-15) — bkz. buildTitleUnitsSummaryTableData()'daki
+  // aynı isimli yorum: headers ile BİREBİR aynı sırada/uzunlukta, hangi
+  // hücrenin hangi taşınmaz alanına karşılık geldiğini taşıyan gölge dizi.
+  // Adres tablosunda "owner"/"computed" sütunu yok — tamamı seq/scalar.
+  const columnMeta = [
+    { kind: "seq" },
+    { kind: "scalar", fieldKey: "uavt" },
+    ...ADDRESS_UNITS_TABLE_SHARED_FIELD_DEFS.map((def) => ({ kind: "scalar", fieldKey: def.key })),
+    { kind: "scalar", fieldKey: "addressBlockName" },
+    { kind: "scalar", fieldKey: "addressEntrance" },
+    { kind: "scalar", fieldKey: "outerDoor" },
+    { kind: "scalar", fieldKey: "addressFloor" },
+    { kind: "scalar", fieldKey: "innerDoor" },
+  ];
+
   const columnHasData = headers.map((_, columnIndex) => (
     columnIndex === 0 || rows.some((row) => {
       const value = row[columnIndex];
@@ -16829,8 +17035,9 @@ function buildAddressUnitsSummaryTableData() {
   ));
   const filteredHeaders = headers.filter((_, columnIndex) => columnHasData[columnIndex]);
   const filteredRows = rows.map((row) => row.filter((_, columnIndex) => columnHasData[columnIndex]));
+  const filteredColumnMeta = columnMeta.filter((_, columnIndex) => columnHasData[columnIndex]);
 
-  return { headers: filteredHeaders, rows: filteredRows };
+  return { headers: filteredHeaders, rows: filteredRows, columnMeta: filteredColumnMeta };
 }
 
 // Banka şablonlarına {{TASINMAZLARADRESTABLOSU}} ile enjekte edilecek

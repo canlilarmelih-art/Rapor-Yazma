@@ -4370,6 +4370,56 @@ table {
   min-width: 100%;
 }
 
+/* Çift Yönlü Düzenleme, Faz 2 (2026-08-15): yalnızca ekran-içi
+   düzenlenebilir önizlemede (buildTitleUnitsSummaryTableHtmlEditable)
+   üretilen sınıflar — export HTML'i (buildTitleUnitsSummaryWordTableHtml/
+   buildAddressUnitsSummaryWordTableHtml) bu sınıfları hiç KULLANMAZ, tüm
+   export stili satır-içi style= ile geliyor, bu yüzden bu kurallar
+   Word/bank-şablonu çıktısını ETKİLEMEZ. */
+.tus-editable-cell {
+  cursor: text;
+  position: relative;
+  transition: background-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+.tus-editable-cell:hover {
+  background: var(--surface-muted) !important;
+  box-shadow: inset 0 0 0 1px var(--blue);
+}
+
+.tus-editable-cell::after {
+  content: "✎";
+  position: absolute;
+  top: 1px;
+  right: 2px;
+  font-size: 7px;
+  opacity: 0;
+  color: var(--blue);
+  transition: opacity 0.12s ease;
+}
+
+.tus-editable-cell:hover::after {
+  opacity: 0.65;
+}
+
+.tus-editable-cell.is-editing {
+  padding: 0 !important;
+  box-shadow: inset 0 0 0 2px var(--blue);
+}
+
+.tus-editable-cell-input {
+  width: 100%;
+  box-sizing: border-box;
+  border: none;
+  outline: none;
+  padding: 3pt 4pt;
+  font: inherit;
+  font-size: 6.5pt;
+  text-align: center;
+  color: var(--ink);
+  background: var(--surface);
+}
+
 .multi-takbis-preview-table {
   width: 100%;
   font-size: 0.85em;

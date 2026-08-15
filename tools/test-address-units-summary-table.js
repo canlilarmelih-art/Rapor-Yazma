@@ -84,6 +84,10 @@ const functionNames = [
   "splitTableHeaderLabelIntoTwoLines",
   "toTitleFieldUppercase",
   "buildTitleUnitsSummaryTableHtmlFromData",
+  // Çift Yönlü Düzenleme, Faz 2 (2026-08-15) — bkz. test-title-units-summary-table.js'teki
+  // aynı isimli yorum: export'tan AYRI, yalnızca ekran-içi düzenlenebilir
+  // önizleme için kullanılan (Tapu VE Adres tablosunca PAYLAŞILAN) renderer.
+  "buildTitleUnitsSummaryTableHtmlEditable",
   "getReportThemeToken",
   "formatWordCell",
   "escapeHtml",
@@ -98,6 +102,7 @@ const sandboxSource = `
     setState: (s) => { state = s; },
     buildAllTitleUnitsForSummaryTable,
     buildAddressUnitsSummaryTableData, buildAddressUnitsSummaryWordTableHtml,
+    buildTitleUnitsSummaryTableHtmlEditable,
   };
 `;
 // eslint-disable-next-line no-new-func
@@ -199,6 +204,35 @@ const fns = new Function(sandboxSource)();
   assert.ok(!html.includes("a blok") && !html.includes("b blok"), "Küçük harfli orijinal metin HTML çıktısında KALMAMALI.");
   assert.ok(html.includes("DIŞ<br>KAPI NO") || html.includes("DIŞ KAPI<br>NO"), "\"Dış Kapı No\" başlığı BÜYÜK harfle VE <br> ile 2 satıra bölünmüş olmalı.");
   console.log("buildAddressUnitsSummaryWordTableHtml gercek HTML uretimi (dinamik genislik + ortalama + daima BUYUK harf) testi tamam.");
+}
+
+// --- 4b) columnMeta: headers ile hizali, tamami "scalar" (owner/computed --
+// sütunu yok) — Çift Yönlü Düzenleme, Faz 2 (2026-08-15) --------------------
+{
+  const shared = { city: "Bursa", district: "Nilüfer", neighborhood: "Özlüce", street: "Atatürk Caddesi", addressSiteName: "Yeşil Vadi Sitesi" };
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: { ...shared, uavt: "123456789", addressBlockName: "A", addressEntrance: "1", outerDoor: "3", addressFloor: "2", innerDoor: "5" },
+    tables: {},
+    titleUnits: [
+      { fields: { ...shared, uavt: "123456790", addressBlockName: "A", addressEntrance: "1", outerDoor: "4", addressFloor: "2", innerDoor: "6" }, tables: {} },
+    ],
+  });
+  const data = fns.buildAddressUnitsSummaryTableData();
+  assert.ok(Array.isArray(data.columnMeta), "columnMeta dizisi donmeli.");
+  assert.equal(data.columnMeta.length, data.headers.length, "columnMeta, headers ile AYNI uzunlukta olmali.");
+  assert.equal(data.columnMeta[0].kind, "seq", "Ilk sutun (Sira No) 'seq' olmali.");
+  const uavtColumnIndex = data.headers.indexOf("UAVT");
+  assert.equal(data.columnMeta[uavtColumnIndex].kind, "scalar", "UAVT 'scalar' olmali.");
+  assert.equal(data.columnMeta[uavtColumnIndex].fieldKey, "uavt", "UAVT -> uavt eslesmeli.");
+  const cityColumnIndex = data.headers.indexOf("İl");
+  assert.equal(data.columnMeta[cityColumnIndex].fieldKey, "city", "Il -> city eslesmeli.");
+  assert.ok(data.columnMeta.every((meta) => meta.kind === "seq" || meta.kind === "scalar"), "Adres tablosunda 'owner'/'computed' turu OLMAMALI (tumu seq/scalar).");
+  const html = fns.buildTitleUnitsSummaryTableHtmlEditable(data.headers, data.rows, data.columnMeta, 0);
+  const expectedEditableCount = data.columnMeta.filter((meta) => meta.kind === "scalar").length;
+  const actualEditableCount = (html.match(/tus-editable-cell/g) || []).length;
+  assert.equal(actualEditableCount, expectedEditableCount, `Aktif satirin (index 0) TUM scalar sutunlari (${expectedEditableCount} adet) duzenlenebilir isaretlenmeliydi, bulunan: ${actualEditableCount}.`);
+  console.log("buildAddressUnitsSummaryTableData columnMeta esleme + buildTitleUnitsSummaryTableHtmlEditable isaretleme testi tamam.");
 }
 
 // --- 5) template-engine.js'te {{TASINMAZLARADRESTABLOSU}} kayıtlı mı -------
