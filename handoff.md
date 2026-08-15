@@ -9886,6 +9886,16 @@ gerekmedi, testle (bkz. aşağıda) tekrar doğrulandı.
   zincirle yeşil.
 - Cache-buster: `app.js?v=20260814-1745`.
 
+## 0.0.456 - 2026-08-15 - Çoklu TAKBİS artık ada/parsel ile MEVCUT taşınmazlara eşleşir, sıra bağımsız
+
+- Kullanıcı: "önce takbis sonra kml sırasını da otomatik düzelt" — 0.0.455'te bulunan (ve o zaman kapsam dışı bırakılan) sorun: KML'ler ÖNCE yüklenip taşınmaz sekmelerini ada/parsel bilgisiyle doldurmuşsa, `importTakbisRecordsIntoTitleUnits()` bu MEVCUT sekmelerle hiç eşleştirme yapmıyordu — her zaman "1. kayıt birincile, kalanlar YENİ tab'lara" mantığıyla çalışıp mükerrer/yetim taşınmazlara yol açıyordu (gerçek dosyalarla testte 3 yerine 5 sekme gözlenmişti).
+- Yeni `getTakbisTargetIndexes(records)` (`app.js`) — KML'nin `getKmlTargetIndexes()`'iyle AYNI ada/parsel eşleştirme deseni (o fonksiyonun `getKmlParcelMatchKey`/`kmlParcelMatchesTitleUnit` yardımcıları isim olarak "kml" taşısa da yalnızca blockNo/parcelNo karşılaştırıyor, KML'e özgü hiçbir şey yok — AYNEN yeniden kullanıldı, ikinci bir eşleştirme fonksiyonu YAZILMADI): her TAKBİS kaydı ÖNCE ada/parseli eşleşen MEVCUT bir taşınmaza yönlendirilir; eşleşme yoksa sırayla boşta olan ilk taşınmaza (gerekirse `addTitleUnitTab()` ile büyütülerek) düşer. Sıra ARTIK ÖNEMLİ DEĞİL. Ada/parseli set etmeyen kayıtlar için davranış DEĞİŞMEDİ (boş eşleştirme anahtarı → eski "1. kayıt birincile" davranışıyla BİREBİR aynı sonuç).
+- `createMultiTakbisPendingImportPanel()`'in açıklama metni yeni davranışı yansıtacak şekilde güncellendi.
+- `tools/test-title-unit-import.js`: `titlePropertyId` artık test sandbox'ının `sections` fixture'ında taşınmaz-kapsamlı (scoped) alan olarak deklare edildi (gerçek app.js'teki gibi — bu olmadan taşınmazlar arası geçişte kimlik no yanlışlıkla "sızıyordu", ilk test denemesinde yakalandı). İki yeni senaryo: (6) 2 mevcut taşınmaz TERS sırada gelen kayıtlarla doğru eşleşiyor, YENİ tab AÇILMIYOR; (7) eşleşmeyen kayıt için YENİ tab açılıyor, mevcutlar etkilenmiyor.
+- Canlı tarayıcıda kullanıcının GERÇEK dosyalarıyla (KML'ler ÖNCE, çok-kayıtlı TAKBİS SONRA — daha önce mükerrer sekmeye yol açan TAM sıra) doğrulandı: artık 3 taşınmaz (5 DEĞİL), hepsi hem KML hem TAKBİS verisiyle doğru birleşmiş. Test raporu silindi, gerçek rapora dokunulmadı.
+- `npm run verify` tamamı yeşil.
+- NOT: bu değişiklik commit edilirken depoda eşzamanlı çalışan başka bir ajanın (Codex) `daf6454`/`e22fbd0` commit'leriyle çakıştı — kod değişikliğim (getTakbisTargetIndexes dahil) o commit'lerden birine (`daf6454`, "Hide land-inapplicable document controls") karışmış halde zaten push edilmiş bulundu; ayrıca bir commit YAPILMADI, yalnızca bu handoff notu eklendi.
+
 ## 0.0.455 - 2026-08-15 - Çoklu TAKBİS: sessiz otomatik içe aktarma yerine onay paneli
 
 - Kullanıcı gerçek dosyalarıyla (ZRT-202606006, "gürsu karahıdır 3 adet tarla" — 1 TAKBİS PDF + 3 KML) uçtan uca canlı test istedi ("BU DOSYALARLA DENE BAKALIM OLMUŞ MU"). Test yöntemi: gerçek rapora DOKUNMADAN, dosya seçici gerektirmeyen bir teknikle (dev sunucusunun `/_tmp_test_takbis.pdf` olarak geçici sunduğu gerçek PDF + KML metinleri `DataTransfer`/`File` API'siyle gerçek input'lara enjekte edilip `change` olayı tetiklendi) throwaway test talepleri üzerinde doğrulandı, sonra silindi.
