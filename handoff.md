@@ -9886,6 +9886,17 @@ gerekmedi, testle (bkz. aşağıda) tekrar doğrulandı.
   zincirle yeşil.
 - Cache-buster: `app.js?v=20260814-1745`.
 
+## 0.0.459 - 2026-08-15 - Çift Yönlü Özet Tablo, Faz 1: Tab → Tablo canlı tazeleme
+
+- Kullanıcı: "bu kullandığımız tabloların etkileşimli olma imkanı var mı? ... çift yönlü tab üzerinden değiştirince tablo değissin tablo üzerinden değiştirdiğimde tab değişssin bu mümkün mü? Plan yapalım mümkünse" — Plan Mode ile ayrıntılı bir 4 fazlı plan hazırlandı ve onaylandı (plan dosyası: `C:\Users\90551\.claude\plans\idempotent-launching-kernighan.md`). Riskli bir mimari değişiklik olduğundan başlamadan önce `git tag backup-before-editable-summary-tables-20260815-1345` (push edildi) ile geri dönüş noktası alındı.
+- **Bu commit yalnızca Faz 1'i kapsıyor: Tab → Tablo YÖNÜNDE canlı tazeleme, HENÜZ DÜZENLEME YOK** (Faz 2/3/4 — tablo üzerinden düzenleme — ayrı, sonraki commit'lerde).
+- Yeni `refreshTitleUnitsSummaryTablePreview()`/`refreshAddressUnitsSummaryTablePreview()` (`app.js`) — `activeSectionId` kontrolüyle hangi paneli (Tapu mu Adres mi) yenileyeceğini bilir, `.title-units-summary-table-preview` DOM düğümünü TAZE bir kopyasıyla `replaceWith`'ler — TÜM `renderSection()`'ı ÇAĞIRMAZ (section'ın geri kalanının odağı/scroll'u bozulmaz). Panel ekranda değilse (farklı sekme ya da admin/Çoklu Talep gate'i kapalı) sessizce no-op.
+- Mevcut `debounce()` yardımcısı (autosave'in de kullandığı, app.js) yeniden kullanılarak `refreshTitleUnitsSummaryTablePreviewDebounced`/`refreshAddressUnitsSummaryTablePreviewDebounced` (350ms) — "aynı ise gizle" mantığı her render'da yeniden hesaplandığından, yazarken sütunların anlık titremesini önlemek için.
+- İki kanca noktası eklendi: (1) `createForm()`'un TÜM deklaratif alanlar için TEK olan jenerik `input` dinleyicisine (`getTitleUnitScopedFieldKeys().has(field.key)` koşuluyla) — taşınmaza-özgü HERHANGİ bir form alanı değişince tetiklenir; (2) `createTable()`'ın Malikler (`section.id === "title"`) hücre değişim handler'ına — kullanıcının VERDİĞİ TAM ÖRNEĞİ ("malik ismi hatalı gelmiş") bu yoldan geçiyor, çünkü Malik(ler)/Hisse Payı/Edinme Sebebi/Tapu Tarihi/Yevmiye No sütunları `joinTitleUnitOwnerColumn` ile bu tablodan besleniyor.
+- Canlı tarayıcıda doğrulandı: gerçek state geçici olarak (autosave/render GERÇEKTEN çağrılarak, sonra AYNEN geri yüklenerek) Çoklu Talep + 2 taşınmaz kurulup "Tapu ve Mülkiyet" sekmesine geçildi — (a) Malikler tablosundaki bir isim düzeltilip `input` event dispatch edildi, 500ms sonra özet tablonun YENİ isimle güncellendiği DOM'dan doğrulandı; (b) "Bağımsız Bölüm Niteliği" form alanı değiştirilip aynı şekilde özet tablonun güncellendiği doğrulandı. Gerçek rapora dokunulmadı.
+- Bu fonksiyonlar `activeSectionId`/`document.querySelector`/`render()` gibi DOM'a bağımlı olduğundan sandbox-testi (extractFunction tekniği) UYGULANAMAZ — plan'da öngörüldüğü gibi doğrulama YALNIZCA canlı tarayıcı testiyle yapıldı.
+- `npm run verify` tamamı yeşil. Cache-buster: `app.js?v=20260815-1400`.
+
 ## 0.0.458 - 2026-08-15 - Taşınmazlar Adres Özeti: İl/İlçe/Mahalle/Sokak/Site artık her zaman gösteriliyor
 
 - Kullanıcı: "Aynı ise gizlensin: İl, İlçe, İdari Mahalle, Sokak/Cadde, Site/Apartman bu madde adres tablosu için iptal edilsin" — 0.0.457'de Tapu tablosuyla aynı mantıkla kurulan "aynı ise gizle" kuralı, Adres tablosu için KASITLI olarak KALDIRILDI.

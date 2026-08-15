@@ -1585,6 +1585,42 @@ function createAddressUnitsSummaryTablePreview() {
   return wrap;
 }
 
+// Kullanıcı talebi (2026-08-15): "tab üzerinden değiştirince tablo
+// değişsin" — Çift Yönlü Düzenleme özelliğinin Faz 1'i (bkz. plan:
+// idempotent-launching-kernighan.md). Taşınmazlar Tapu/Adres Özeti
+// önizleme panelleri şimdiye kadar SADECE renderSection() (section'ın
+// TÜM gövdesini yeniden kurar — odak/scroll kaybına yol açabilir, ör.
+// kullanıcı o an başka bir alanda yazıyorsa) çağrıldığında tazeleniyordu.
+// Bu iki fonksiyon YALNIZCA özet tablo widget'ını (varsa) YERİNDE
+// değiştirir — hangi taşınmaza-özgü bölümdeyiz (activeSectionId) kontrolü
+// SAYESİNDE hangi paneli (Tapu mu Adres mi) yenileyeceğini bilir; panel
+// o an ekranda DEĞİLSE (farklı sekmedeyiz ya da admin/Çoklu Talep gate'i
+// kapalı — createTitleUnitsSummaryTablePreview/createAddressUnitsSummaryTablePreview
+// zaten bu durumları kendi içinde ele alıyor) no-op'tur — AYRI bir yetki
+// kontrolü GEREKMEZ, DOM'da panel yoksa querySelector null döner.
+function refreshTitleUnitsSummaryTablePreview() {
+  if (activeSectionId !== "title") return;
+  const host = document.querySelector(".title-units-summary-table-preview");
+  if (!host) return;
+  host.replaceWith(createTitleUnitsSummaryTablePreview());
+}
+
+function refreshAddressUnitsSummaryTablePreview() {
+  if (activeSectionId !== "address") return;
+  const host = document.querySelector(".title-units-summary-table-preview");
+  if (!host) return;
+  host.replaceWith(createAddressUnitsSummaryTablePreview());
+}
+
+// "Aynı ise gizle" (Tapu tablosu) ve "tüm taşınmazlarda boşsa kaldır"
+// (her iki tablo) mantığı HER çağrıda yeniden hesaplanıyor — kullanıcı
+// bir alanı yazarken ara-değerler yüzünden sütunlar anlık olarak
+// belirip kaybolmasın diye (titreme) bu tazeleme debounce'lu çağrılır;
+// mevcut debounce() yardımcısı (autosave'in de kullandığı) yeniden
+// kullanılıyor, yeni bir zamanlayıcı YAZILMADI.
+const refreshTitleUnitsSummaryTablePreviewDebounced = debounce(refreshTitleUnitsSummaryTablePreview, 350);
+const refreshAddressUnitsSummaryTablePreviewDebounced = debounce(refreshAddressUnitsSummaryTablePreview, 350);
+
 function loadUserDefaults() {
   try {
     const stored = JSON.parse(localStorage.getItem(userDefaultsStorageKey) || "{}");
@@ -2933,6 +2969,19 @@ function createForm(section) {
       if (section.id === "documents" && field.key === "projectRegisteredInCadastre") renderSection();
       if (section.id === "address" && ["city", "district", "neighborhood"].includes(field.key)) {
         applyPostalCodeFromNeighborhoodDebounced();
+      }
+      // Kullanıcı talebi (2026-08-15): "tab üzerinden değiştirince tablo
+      // değişsin" — taşınmaza-özgü (Tapu/Adres sekmesindeki) bir alan
+      // değiştiyse, o an ekranda olabilecek Taşınmazlar Tapu/Adres Özeti
+      // önizleme panelini debounce'lu tazele (bkz. yukarıdaki
+      // refreshTitleUnitsSummaryTablePreviewDebounced yorumu). Her iki
+      // çağrı da HARMLESS — activeSectionId doğru sekme değilse ya da
+      // panel DOM'da yoksa (gate kapalı) sessizce no-op olur, bu yüzden
+      // hangi alanın hangi tabloya ait olduğunu tek tek eşlemek yerine
+      // GENİŞ getTitleUnitScopedFieldKeys() kümesi kullanılıyor.
+      if (getTitleUnitScopedFieldKeys().has(field.key)) {
+        refreshTitleUnitsSummaryTablePreviewDebounced();
+        refreshAddressUnitsSummaryTablePreviewDebounced();
       }
     });
     if (section.id === "case" && ["legalUsageNature", "currentUsageNature"].includes(field.key)) {
@@ -35962,6 +36011,15 @@ function createTable(section) {
           if (key === "c0") {
             renderSection();
           }
+        }
+        // Kullanıcı talebi (2026-08-15): "tab üzerinden değiştirince
+        // tablo değişsin" — kullanıcının verdiği TAM örnek ("malik ismi
+        // hatalı gelmiş") bu tablo (section.id === "title", Malikler)
+        // üzerinden düzeltiliyor; Taşınmazlar Tapu Özeti'ndeki Malik(ler)/
+        // Hisse Payı/Edinme Sebebi/Tapu Tarihi/Yevmiye No sütunları bu
+        // tablodan (joinTitleUnitOwnerColumn ile) besleniyor.
+        if (isOwnersTable) {
+          refreshTitleUnitsSummaryTablePreviewDebounced();
         }
         autosave();
       };
