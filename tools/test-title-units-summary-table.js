@@ -103,6 +103,13 @@ const functionNames = [
   "createEmptyTitleUnit",
   "resolveTitleUnitWriteTarget",
   "setTitleUnitFieldValue",
+  // Çift Yönlü Düzenleme, Faz 4 (2026-08-15) — Malik(ler) satırı yazma
+  // yardımcıları (aynı 3 yönlü dallanma, `fields` yerine `tables.title`
+  // DİZİSİNE uygulanmış hali).
+  "resolveTitleUnitOwnerRowsWriteTarget",
+  "setTitleUnitOwnerRowValue",
+  "addTitleUnitOwnerRow",
+  "removeTitleUnitOwnerRow",
   "parseReportNumber",
   "formatSquareMeterArea",
   "getReportThemeToken",
@@ -128,6 +135,8 @@ const sandboxSource = `
     buildTitleUnitsSummaryTableData, buildTitleUnitsSummaryWordTableHtml,
     buildTitleUnitsSummaryTableHtmlEditable,
     resolveTitleUnitWriteTarget, setTitleUnitFieldValue,
+    resolveTitleUnitOwnerRowsWriteTarget, setTitleUnitOwnerRowValue,
+    addTitleUnitOwnerRow, removeTitleUnitOwnerRow,
   };
 `;
 // eslint-disable-next-line no-new-func
@@ -552,6 +561,91 @@ function unit(fields, ownerRows) {
   assert.equal(fns.setTitleUnitFieldValue(0, "", "X"), false, "Bos key false donmeli.");
   assert.equal(fns.setTitleUnitFieldValue(0.5, "titlePropertyId", "X"), false, "Tam sayi olmayan index false donmeli.");
   console.log("setTitleUnitFieldValue gecersiz girdi guvenlik agi testi tamam.");
+}
+
+// --- 12) resolveTitleUnitOwnerRowsWriteTarget()/setTitleUnitOwnerRowValue()/ -
+// addTitleUnitOwnerRow()/removeTitleUnitOwnerRow(): aktif/index-0-golge/ ----
+// diger 3 yonlu dallanma + satir ekle/sil (Cift Yonlu Duzenleme, Faz 4, ----
+// 2026-08-15) --------------------------------------------------------------
+{
+  // 12a) index === aktif -> dogrudan state.tables.title (referans).
+  fns.setState({ activeTitleUnitIndex: 0, fields: {}, tables: { title: [{ c0: "Ahmet Yılmaz", c1: "1/2" }] }, titleUnits: [{ fields: {}, tables: {} }] });
+  assert.equal(fns.setTitleUnitOwnerRowValue(0, 0, "c0", "Ahmet Yılmaz (Düzeltildi)"), true, "Aktif tasinmaza malik satiri yazma basarili donmeli.");
+  assert.equal(fns.getState().tables.title[0].c0, "Ahmet Yılmaz (Düzeltildi)", "Aktif tasinmazin malik satirina yazilan deger state.tables.title'da gorunmeli.");
+
+  // 12b) index === 0, primaryTitleUnitShadow HENUZ YOKSA -> otomatik olusur.
+  fns.setState({ activeTitleUnitIndex: 1, fields: {}, tables: {}, primaryTitleUnitShadow: null, titleUnits: [{ fields: {}, tables: {} }] });
+  assert.equal(fns.setTitleUnitOwnerRowValue(0, 0, "c0", "Golge Malik"), true, "primaryTitleUnitShadow yokken bile malik satiri yazma basarili donmeli.");
+  assert.ok(fns.getState().primaryTitleUnitShadow, "Yoksa primaryTitleUnitShadow OTOMATIK olusturulmali.");
+  assert.equal(fns.getState().primaryTitleUnitShadow.tables.title[0].c0, "Golge Malik", "Deger yeni olusturulan golge yuvanin tables.title'ina dogru yazilmali.");
+
+  // 12c) index > 0, titleUnits[index-1] mevcut -> uzerine yazilir, DIGER
+  // satirlar/sutunlar ETKILENMEZ.
+  fns.setState({ activeTitleUnitIndex: 0, fields: {}, tables: {}, titleUnits: [{ fields: {}, tables: { title: [{ c0: "Eski Malik", c1: "1/1" }, { c0: "Ikinci Malik" }] } }] });
+  assert.equal(fns.setTitleUnitOwnerRowValue(1, 0, "c0", "Guncel Malik"), true, "titleUnits[0]'un (index 1) malik satirina yazma basarili donmeli.");
+  assert.equal(fns.getState().titleUnits[0].tables.title[0].c0, "Guncel Malik", "Hedeflenen satir/sutun guncellenmeli.");
+  assert.equal(fns.getState().titleUnits[0].tables.title[0].c1, "1/1", "Ayni satirin DIGER sutunu (c1) ETKILENMEMELI.");
+  assert.equal(fns.getState().titleUnits[0].tables.title[1].c0, "Ikinci Malik", "Diger satir (index 1) ETKILENMEMELI.");
+
+  // 12d) addTitleUnitOwnerRow: yeni bos satir ekler, YENI index'i doner.
+  fns.setState({ activeTitleUnitIndex: 0, fields: {}, tables: { title: [{ c0: "Tek Malik" }] }, titleUnits: [] });
+  const newRowIndex = fns.addTitleUnitOwnerRow(0);
+  assert.equal(newRowIndex, 1, "Yeni satir index 1 (2. satir) olmali.");
+  assert.deepEqual(fns.getState().tables.title[1], {}, "Yeni eklenen satir BOS olmali.");
+
+  // 12e) removeTitleUnitOwnerRow: gecerli index'te satiri kaldirir, DIGER
+  // satirlar KAYMALI (splice); gecersiz index icin false doner.
+  fns.setState({ activeTitleUnitIndex: 0, fields: {}, tables: { title: [{ c0: "Birinci" }, { c0: "Ikinci" }, { c0: "Ucuncu" }] }, titleUnits: [] });
+  assert.equal(fns.removeTitleUnitOwnerRow(0, 1), true, "Gecerli index'te satir silme basarili donmeli.");
+  assert.deepEqual(fns.getState().tables.title.map((r) => r.c0), ["Birinci", "Ucuncu"], "Ortadaki satir (Ikinci) kaldirilip digerleri KORUNMALI.");
+  assert.equal(fns.removeTitleUnitOwnerRow(0, 99), false, "Aralik disi satir index'i false donmeli, hata firlatmamali.");
+  console.log("resolveTitleUnitOwnerRowsWriteTarget/setTitleUnitOwnerRowValue/addTitleUnitOwnerRow/removeTitleUnitOwnerRow 3-yonlu dallanma + satir ekle-sil testi tamam.");
+}
+
+// --- 13) buildTitleUnitsSummaryTableHtmlEditable(): "owner" sutunlari -----
+// (Malik(ler) vb.) TUM satirlarda "tus-owner-cell" (popover tetikleyici) --
+// ile isaretlenir, "tus-editable-cell" (inline duzenleme) ile DEGIL -------
+// (Cift Yonlu Duzenleme, Faz 4, 2026-08-15) ---------------------------------
+{
+  const shared = { titleCity: "Bursa", titleDistrict: "Nilüfer", titleNeighborhood: "Özlüce", locationName: "-", sheetNo: "F21", blockNo: "4834", parcelNo: "1", landArea: "1200", mainPropertyQuality: "Arsa" };
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: { ...shared, titlePropertyId: "AKTIF-ID", share: "50", denominator: "1000" },
+    tables: { title: [{ c0: "Ahmet Yılmaz", c1: "1/2" }] },
+    titleUnits: [{ fields: { ...shared, titlePropertyId: "DIGER-ID", share: "40", denominator: "1000" }, tables: { title: [{ c0: "Ayşe Yılmaz", c1: "1/2" }] } }],
+  });
+  const data = fns.buildTitleUnitsSummaryTableData();
+  const html = fns.buildTitleUnitsSummaryTableHtmlEditable(data.headers, data.rows, data.columnMeta, 0);
+  const malikColumnCount = data.columnMeta.filter((meta) => meta.kind === "owner").length;
+  assert.ok(malikColumnCount > 0, "Fixture'da en az bir 'owner' sutunu (Malik(ler) vb.) olmali.");
+  const expectedOwnerCellCount = malikColumnCount * data.rows.length;
+  const actualOwnerCellCount = (html.match(/tus-owner-cell/g) || []).length;
+  assert.equal(actualOwnerCellCount, expectedOwnerCellCount, `TUM satirlarin 'owner' sutunlari (${expectedOwnerCellCount} adet) 'tus-owner-cell' ile isaretlenmeliydi, bulunan: ${actualOwnerCellCount}.`);
+  assert.ok(html.includes('data-unit-index="0"') && html.includes('data-unit-index="1"'), "Her iki tasinmazin da 'owner' hucreleri data-unit-index tasimali (popover hangi tasinmazi acacagini bilsin).");
+  // "owner" hucrelerinde data-field-key OLMAMALI (tek alan degil, TUM
+  // satir popover ile duzenleniyor) — yalnizca data-unit-index yeterli.
+  const ownerCellMatch = html.match(/<td[^>]*class="tus-owner-cell"[^>]*>/);
+  assert.ok(ownerCellMatch && !ownerCellMatch[0].includes("data-field-key"), "'owner' hucrelerinde data-field-key OLMAMALI (popover tum satiri acar).");
+  console.log("buildTitleUnitsSummaryTableHtmlEditable 'owner' sutunlarinin tus-owner-cell ile isaretlenmesi testi tamam.");
+}
+
+// --- 14) openTitleUnitOwnerRowEditor() popover sutun etiketleri, "title" --
+// bolumunun table.columns tanimiyla (kaynak-duzeyinde) senkron mu ----------
+// (openTitleUnitOwnerRowEditor DOM/document.createElement agir kullandigi --
+// icin sandbox'ta CALISTIRILAMAZ — bkz. tools/test-title-unit-switch.js'in --
+// benzer "kaynak-duzeyi" kontrolleri, ayni teknik) --------------------------
+{
+  assert.match(
+    appSource,
+    /table:\s*\{\s*\n\s*title:\s*"Malikler",\s*\n\s*columns:\s*\["Malik",\s*"Hisse",\s*"Edinme sebebi",\s*"Tapu tarihi",\s*"Yevmiye"\]/,
+    "\"title\" bolumunun table.columns tanimi degismis olabilir — openTitleUnitOwnerRowEditor'daki 'columns' dizisi ELLE senkron tutulmali."
+  );
+  assert.match(
+    appSource,
+    /function openTitleUnitOwnerRowEditor\(unitIndex\)\s*\{[\s\S]{0,400}const columns = \["Malik", "Hisse", "Edinme sebebi", "Tapu tarihi", "Yevmiye"\];/,
+    "openTitleUnitOwnerRowEditor'daki 'columns' dizisi \"title\" bolumunun table.columns tanimiyla BIREBIR AYNI olmali."
+  );
+  console.log("openTitleUnitOwnerRowEditor sutun etiketleri kaynak-duzeyi senkron testi tamam.");
 }
 
 // --- 6) template-engine.js'te {{TASINMAZLARTAPUTABLOSU}} kayitli mi -------

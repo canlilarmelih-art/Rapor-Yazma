@@ -1474,6 +1474,66 @@ function setTitleUnitFieldValue(index, key, value) {
   return true;
 }
 
+// Çift Yönlü Düzenleme, Faz 4 (2026-08-15) — Malik(ler)/Hisse Payı/Edinme
+// Sebebi/Tapu Tarihi/Yevmiye No özet tablo sütunları TEK bir skaler alan
+// DEĞİL, `state.tables.title` (Malikler tablosu) DİZİSİNİN `joinTitleUnitOwnerColumn`
+// ile birleştirilmiş hali — bu yüzden resolveTitleUnitWriteTarget()'tan
+// (fields nesnesi döner) AYRI bir hedef-çözücü gerekir: aynı 3 yönlü
+// aktif/index-0-gölge/diğer dallanmayı `fields` yerine `tables.title`
+// DİZİSİNE uygular. SADECE state mutasyonu yapar, render()/saveState()
+// ÇAĞIRMAZ (resolveTitleUnitWriteTarget ile AYNI kural).
+function resolveTitleUnitOwnerRowsWriteTarget(index) {
+  if (index === state.activeTitleUnitIndex) {
+    state.tables = state.tables || {};
+    state.tables.title = state.tables.title || [];
+    return state.tables.title;
+  }
+  if (index === 0) {
+    if (!state.primaryTitleUnitShadow || typeof state.primaryTitleUnitShadow !== "object") {
+      state.primaryTitleUnitShadow = { fields: {}, tables: {} };
+    }
+    state.primaryTitleUnitShadow.tables = state.primaryTitleUnitShadow.tables || {};
+    state.primaryTitleUnitShadow.tables.title = state.primaryTitleUnitShadow.tables.title || [];
+    return state.primaryTitleUnitShadow.tables.title;
+  }
+  if (!Array.isArray(state.titleUnits)) state.titleUnits = [];
+  if (!state.titleUnits[index - 1]) state.titleUnits[index - 1] = createEmptyTitleUnit();
+  const unit = state.titleUnits[index - 1];
+  unit.tables = unit.tables || {};
+  unit.tables.title = unit.tables.title || [];
+  return unit.tables.title;
+}
+
+// Tek bir taşınmazın TEK bir malik satırındaki TEK bir sütunu (c0..c4)
+// yazar. rowIndex, mevcut satır sayısının ÖTESİNDEYSE (ör. "Malik ekle"
+// sonrası ilk yazım) aradaki boşluk boş `{}` satırlarla doldurulur —
+// çağıran taraf (popover) satırları HER ZAMAN ardışık indeksle
+// oluşturduğundan bu normalde tetiklenmez, savunma amaçlı.
+function setTitleUnitOwnerRowValue(index, rowIndex, columnKey, value) {
+  if (!Number.isInteger(index) || index < 0 || index >= getTitleUnitCount()) return false;
+  if (!Number.isInteger(rowIndex) || rowIndex < 0 || !columnKey) return false;
+  const rows = resolveTitleUnitOwnerRowsWriteTarget(index);
+  while (rows.length <= rowIndex) rows.push({});
+  rows[rowIndex][columnKey] = value;
+  return true;
+}
+
+// Boş bir malik satırı ekler, YENİ satırın index'ini döner.
+function addTitleUnitOwnerRow(index) {
+  if (!Number.isInteger(index) || index < 0 || index >= getTitleUnitCount()) return -1;
+  const rows = resolveTitleUnitOwnerRowsWriteTarget(index);
+  rows.push({});
+  return rows.length - 1;
+}
+
+function removeTitleUnitOwnerRow(index, rowIndex) {
+  if (!Number.isInteger(index) || index < 0 || index >= getTitleUnitCount()) return false;
+  const rows = resolveTitleUnitOwnerRowsWriteTarget(index);
+  if (!Number.isInteger(rowIndex) || rowIndex < 0 || rowIndex >= rows.length) return false;
+  rows.splice(rowIndex, 1);
+  return true;
+}
+
 function syncMultiTitleUnitOwnershipType(value = state.fields.ownershipType) {
   if (!MULTI_TITLE_UNIT_OWNERSHIP_TYPES.has(value) || getTitleUnitCount() <= 1) return false;
   state.fields.ownershipType = value;
@@ -16897,9 +16957,17 @@ function buildTitleUnitsSummaryTableHtmlEditable(headers, rows, columnMeta, acti
       const meta = (columnMeta && columnMeta[columnIndex]) || null;
       // Faz 3 (2026-08-15): "yalnızca AKTİF satır" kısıtlaması KALDIRILDI —
       // artık HER satırın "scalar" hücresi düzenlenebilir (gölge-yazma,
-      // bkz. resolveTitleUnitWriteTarget/setTitleUnitFieldValue). "owner"
-      // (Malik(ler) vb., Faz 4'ü bekliyor) ve "computed" (asla) satır
-      // farketmeksizin düzenlenemez kalır.
+      // bkz. resolveTitleUnitWriteTarget/setTitleUnitFieldValue).
+      // Faz 4 (2026-08-15): "owner" (Malik(ler)/Hisse Payı/Edinme Sebebi/
+      // Tapu Tarihi/Yevmiye No — N malik satırının BİRLEŞTİRİLMİŞ hücresi)
+      // artık bir POPOVER tetikleyicisi olarak tıklanabilir (tek hücrede
+      // inline düzenleme YAPILMAZ — 5 sütun BAĞIMSIZ \n-birleştiği için
+      // satır hizası bozulmasın diye, bkz. plan). "computed" (Hissesine
+      // Düşen Arsa Payı) tek istisna: satır farketmeksizin HİÇBİR ZAMAN
+      // tıklanabilir değil.
+      if (meta && meta.kind === "owner") {
+        return `<td style="${cellStyle}cursor:pointer;" class="tus-owner-cell" data-unit-index="${rowIndex}" title="Malik(ler) bilgilerini düzenlemek için tıklayın">${formatWordCell(toTitleFieldUppercase(cell))}</td>`;
+      }
       const isEditable = Boolean(meta) && meta.kind === "scalar";
       if (!isEditable) {
         return `<td style="${cellStyle}">${formatWordCell(toTitleFieldUppercase(cell))}</td>`;
@@ -16930,6 +16998,14 @@ function attachTitleUnitsSummaryTableEditing(container) {
   if (!container) return;
   container.querySelectorAll(".tus-editable-cell").forEach((cell) => {
     cell.addEventListener("click", () => beginEditingTitleUnitsSummaryCell(cell));
+  });
+  // Faz 4 (2026-08-15) — "owner" hücreleri (Malik(ler) vb.) inline değil,
+  // popover ile düzenlenir (bkz. openTitleUnitOwnerRowEditor).
+  container.querySelectorAll(".tus-owner-cell").forEach((cell) => {
+    cell.addEventListener("click", () => {
+      const unitIndex = Number(cell.dataset.unitIndex);
+      if (Number.isInteger(unitIndex)) openTitleUnitOwnerRowEditor(unitIndex);
+    });
   });
 }
 
@@ -17028,6 +17104,133 @@ function commitTitleUnitsSummaryCellEdit(fieldKey, rawValue, unitIndex) {
   // düzenlendiğinden bağımsız olarak HER commit'te tab çubuğu da
   // tazelenir (ucuz; ilgisiz bir alan için çağrılması zararsız).
   refreshTitleUnitTabBar();
+}
+
+// Çift Yönlü Düzenleme, Faz 4 (2026-08-15) — kullanıcının PLANDA verdiği TAM
+// örneği ("malik ismi hatalı gelmiş, tablo üzerinden düzeltmek") karşılar.
+// Bu, mevcut createTable()'ın "title" (Malikler) bölümü mantığıyla AYNI
+// LİVE-COMMIT davranışını (her tuş vuruşunda anında state'e yazma, ayrı bir
+// "Kaydet" adımı YOK) yalnızca farklı bir DOM konteynerinde (popover)
+// tekrarlar — mevcut modal-overlay/modal-card deseni (bkz. openTitleRecordChangeModal,
+// yukarıda) yeniden kullanılır. Sütun etiketleri `sections` dizisindeki
+// "title" bölümünün `table.columns` tanımıyla ("Malik", "Hisse", "Edinme
+// sebebi", "Tapu tarihi", "Yevmiye") BİREBİR AYNI tutulur (elle senkron —
+// section tanımı değişirse burası da güncellenmeli, test bunu doğrular).
+function openTitleUnitOwnerRowEditor(unitIndex) {
+  if (!Number.isInteger(unitIndex) || unitIndex < 0 || unitIndex >= getTitleUnitCount()) return;
+  document.querySelector(".modal-overlay")?.remove();
+
+  const columns = ["Malik", "Hisse", "Edinme sebebi", "Tapu tarihi", "Yevmiye"];
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.innerHTML = `
+    <div class="modal-card modal-card-wide" role="dialog" aria-modal="true" aria-labelledby="titleUnitOwnerEditorTitle">
+      <div class="modal-head">
+        <h3 id="titleUnitOwnerEditorTitle">Malik(ler) — Taşınmaz ${unitIndex + 1}</h3>
+        <button class="modal-close" type="button" aria-label="Kapat">×</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-lead">Bu taşınmazın malik/hissedar satırlarını düzenleyin — değişiklikler anında kaydedilir.</p>
+        <div class="table-shell">
+          <table class="table-title owners-table tus-owner-editor-table">
+            <thead><tr>${columns.map((label) => `<th>${escapeHtml(label)}</th>`).join("")}<th></th></tr></thead>
+            <tbody data-owner-editor-body></tbody>
+          </table>
+        </div>
+        <button class="secondary-button" type="button" data-owner-editor-add>+ Malik ekle</button>
+      </div>
+      <div class="modal-actions">
+        <button class="primary-button" type="button" data-owner-editor-close>Kapat</button>
+      </div>
+    </div>
+  `;
+
+  const tbody = overlay.querySelector("[data-owner-editor-body]");
+
+  // Aktif taşınmaz için ekranda GERÇEK bir Malikler tablosu (createTable,
+  // "title" bölümü) render edilmiş olabilir — varsa, o tablonun kendi
+  // input'una da değer basılıp senkron bir input event dispatch edilir
+  // (Faz 2/3'teki "gerçek kontrol varsa TETİKLE" felsefesiyle AYNI): bu
+  // sayede o tablonun KENDİ değişim mantığı (refreshTitleOwnershipKindFromOwners/
+  // updateOwnerShareSummary) da BEDAVAYA tetiklenmiş olur. Gerçek tablo
+  // DOM'da yoksa (farklı sekmedeyiz ya da hedef aktif değil) sessizce
+  // atlanır — state zaten setTitleUnitOwnerRowValue ile YAZILMIŞ olur.
+  const syncRealOwnersTableInput = (rowIndex, columnIndex, value) => {
+    if (unitIndex !== state.activeTitleUnitIndex) return;
+    const realRow = document.querySelectorAll(".table-title.owners-table tbody tr")[rowIndex];
+    const realCell = realRow?.children?.[columnIndex];
+    const realControl = realCell?.querySelector("input, select, textarea");
+    if (!realControl || realControl.closest(".tus-owner-editor-table")) return;
+    realControl.value = value;
+    realControl.dispatchEvent(new Event("input", { bubbles: true }));
+  };
+
+  const renderRows = () => {
+    const rows = getTitleUnitTablesForLabel(unitIndex).title || [];
+    tbody.innerHTML = "";
+    if (!rows.length) {
+      const tr = document.createElement("tr");
+      const td = document.createElement("td");
+      td.colSpan = columns.length + 1;
+      td.className = "muted-note";
+      td.textContent = "Henüz malik satırı yok.";
+      tr.append(td);
+      tbody.append(tr);
+      return;
+    }
+    rows.forEach((row, rowIndex) => {
+      const tr = document.createElement("tr");
+      columns.forEach((_, columnIndex) => {
+        const key = `c${columnIndex}`;
+        const td = document.createElement("td");
+        const input = document.createElement("input");
+        input.type = "text";
+        input.value = row[key] || "";
+        input.addEventListener("input", () => {
+          setTitleUnitOwnerRowValue(unitIndex, rowIndex, key, input.value);
+          autosave();
+          refreshTitleUnitsSummaryTablePreview();
+          syncRealOwnersTableInput(rowIndex, columnIndex, input.value);
+        });
+        td.append(input);
+        tr.append(td);
+      });
+      const deleteTd = document.createElement("td");
+      const deleteButton = document.createElement("button");
+      deleteButton.type = "button";
+      deleteButton.className = "row-delete-button";
+      deleteButton.setAttribute("aria-label", "Maliki sil");
+      deleteButton.textContent = "×";
+      deleteButton.addEventListener("click", () => {
+        removeTitleUnitOwnerRow(unitIndex, rowIndex);
+        autosave();
+        refreshTitleUnitsSummaryTablePreview();
+        renderRows();
+      });
+      deleteTd.append(deleteButton);
+      tr.append(deleteTd);
+      tbody.append(tr);
+    });
+  };
+
+  renderRows();
+
+  const close = () => overlay.remove();
+  overlay.querySelector(".modal-close").addEventListener("click", close);
+  overlay.querySelector("[data-owner-editor-close]").addEventListener("click", close);
+  overlay.addEventListener("click", (event) => {
+    if (event.target === overlay) close();
+  });
+  overlay.querySelector("[data-owner-editor-add]").addEventListener("click", () => {
+    addTitleUnitOwnerRow(unitIndex);
+    autosave();
+    refreshTitleUnitsSummaryTablePreview();
+    renderRows();
+    tbody.querySelector("tr:last-child input")?.focus();
+  });
+
+  document.body.append(overlay);
+  tbody.querySelector("input")?.focus();
 }
 
 // Kullanıcı talebi (2026-08-15): "adres ve konum bölümü için aynı mantıkta
