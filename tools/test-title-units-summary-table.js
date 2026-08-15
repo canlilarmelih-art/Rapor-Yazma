@@ -648,6 +648,24 @@ function unit(fields, ownerRows) {
   console.log("openTitleUnitOwnerRowEditor sutun etiketleri kaynak-duzeyi senkron testi tamam.");
 }
 
+// --- 15) openTitleUnitOwnerRowEditor(): blur'da normalizeReportTableValue --
+// ile AYNI normalizasyon uygulanmali (Cift Yonlu Duzenleme, kendi kendine ---
+// derin test sirasinda BULUNAN gercek gap: popover'daki "input" dinleyicisi -
+// yalnizca CANLI yaziyordu, GERCEK Malikler tablosunun blur'da yaptigi -----
+// buyuk-harf/baslik-harf normalizasyonunu UYGULAMIYORDU — bu yuzden -------
+// popover'dan girilen deger, gercek tablodan girilenle FARKLI bicimde ------
+// saklanirdi (ozellikle "aktif OLMAYAN" tasinmaz icin, cunku o hicbir zaman -
+// normalizeReportStateFields'in autosave-zamanli genel taramasindan --------
+// GECMEZ — bkz. app.js normalizeReportStateFields yorumu). --------------
+{
+  assert.match(
+    appSource,
+    /function openTitleUnitOwnerRowEditor\(unitIndex\)[\s\S]{0,5000}?input\.addEventListener\("blur", \(\) => \{[\s\S]{0,80}?normalizeReportTableValue\(titleTableSection, columns\[columnIndex\], input\.value\)/,
+    "openTitleUnitOwnerRowEditor'da malik satiri input'lari icin blur'da normalizeReportTableValue(titleTableSection, ...) cagrilan bir dinleyici bulunamadi — gercek Malikler tablosuyla (createTable) TUTARSIZ normalizasyon riski."
+  );
+  console.log("openTitleUnitOwnerRowEditor blur-normalizasyon (gercek tabloyla tutarlilik) kaynak-duzeyi testi tamam.");
+}
+
 // --- 6) template-engine.js'te {{TASINMAZLARTAPUTABLOSU}} kayitli mi -------
 {
   const templateEngineSource = fs.readFileSync(path.join(__dirname, "..", "src", "templates", "template-engine.js"), "utf8");

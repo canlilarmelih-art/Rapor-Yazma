@@ -17146,6 +17146,12 @@ function openTitleUnitOwnerRowEditor(unitIndex) {
   `;
 
   const tbody = overlay.querySelector("[data-owner-editor-body]");
+  // Gerçek Malikler tablosunun (createTable, "title" bölümü) blur'da
+  // uyguladığı normalizeReportTableValue (Malik: HER ZAMAN büyük harf,
+  // Edinme Sebebi: Başlık Harfleri vb.) İLE AYNI davranış — aksi halde
+  // popover'dan girilen değer, gerçek tablodan girilenle FARKLI biçimde
+  // saklanırdı (kaynak-düzeyinde bulundu, canlı testte doğrulandı).
+  const titleTableSection = sections.find((item) => item.id === "title");
 
   // Aktif taşınmaz için ekranda GERÇEK bir Malikler tablosu (createTable,
   // "title" bölümü) render edilmiş olabilir — varsa, o tablonun kendi
@@ -17191,6 +17197,15 @@ function openTitleUnitOwnerRowEditor(unitIndex) {
           autosave();
           refreshTitleUnitsSummaryTablePreview();
           syncRealOwnersTableInput(rowIndex, columnIndex, input.value);
+        });
+        input.addEventListener("blur", () => {
+          const formattedValue = normalizeReportTableValue(titleTableSection, columns[columnIndex], input.value);
+          if (formattedValue === input.value) return;
+          input.value = formattedValue;
+          setTitleUnitOwnerRowValue(unitIndex, rowIndex, key, formattedValue);
+          autosave();
+          refreshTitleUnitsSummaryTablePreview();
+          syncRealOwnersTableInput(rowIndex, columnIndex, formattedValue);
         });
         td.append(input);
         tr.append(td);

@@ -9886,6 +9886,15 @@ gerekmedi, testle (bkz. aşağıda) tekrar doğrulandı.
   zincirle yeşil.
 - Cache-buster: `app.js?v=20260814-1745`.
 
+## 0.0.463 - 2026-08-15 - DÜZELTME: Malik(ler) popover'ı blur'da normalizeReportTableValue uygulamıyordu
+
+- Kullanıcı: "sen kendin test et derin bir şekilde ... bir hata bulursan düzelt" — Faz 1-4'ün tamamı canlı tarayıcıda GERÇEK rapor üzerinde uçtan uca yeniden test edildi (deep-clone backup/restore ile). Faz 1/2/3 hatasız geçti; Faz 4'ün popover'ında GERÇEK bir tutarsızlık bulundu.
+- **Bulunan hata**: `createTable()`'ın "title" (Malikler) bölümündeki GERÇEK input'lar `blur` olayında `normalizeReportTableValue(section, column, value)` ile normalize ediliyor (Malik/Edinme Sebebi → HER ZAMAN büyük harf, bkz. 0.0.342 kuralı) — `openTitleUnitOwnerRowEditor()`'daki (0.0.462) popover input'ları ise yalnızca `input` olayını dinliyordu, bu normalizasyonu HİÇ UYGULAMIYORDU. Sonuç: popover'dan (özellikle AKTİF OLMAYAN bir taşınmaz için — çünkü `normalizeReportStateFields`'in autosave-zamanlı genel taraması SADECE `state.fields`/`state.tables`'ı [aktif taşınmazı] kapsıyor, `titleUnits[]`/`primaryTitleUnitShadow`'a HİÇ İNMİYOR) girilen malik adı, gerçek tablodan girilenden FARKLI biçimde (küçük/karışık harfle) saklanabiliyordu.
+- Düzeltme: popover'ın her satır input'una, gerçek tablonunkiyle BİREBİR AYNI mantıkla bir `blur` dinleyicisi eklendi — `sections.find(s => s.id === "title")`'dan alınan section + ilgili sütun etiketiyle `normalizeReportTableValue(titleTableSection, columns[columnIndex], input.value)` çağrılıp sonuç hem `input.value`'ya hem `setTitleUnitOwnerRowValue()` ile state'e yazılıyor, `autosave()`/tablo tazeleme/gerçek-kontrol-senkronu (varsa) AYNEN tekrarlanıyor.
+- Test: `tools/test-title-units-summary-table.js`'e kaynak-düzeyinde bu blur-dinleyicisinin varlığını doğrulayan yeni senaryo eklendi.
+- Canlı tarayıcıda GERÇEK rapor üzerinde doğrulandı (deep-clone backup/restore ile): AKTİF OLMAYAN taşınmazın popover'ına küçük harfle "mehmet demir (kucuk harf test)" yazıldı — `input` sırasında (yazarken) küçük harfle kalıyor (canlı-yazma deneyimi bozulmadı), `blur` (odak kaybı) ANINDA "MEHMET DEMİR (KUCUK HARF TEST)" olarak normalize edildiği hem ekranda hem `state.titleUnits[].tables.title`'da doğrulandı — artık gerçek tabloyla TUTARLI. Test sonunda state TAM (deep-clone) geri yüklendi — gerçek veri kaybı OLMADI.
+- `npm run verify` tamamı yeşil. Cache-buster: `app.js`/`styles.css` → `20260815-2205`.
+
 ## 0.0.462 - 2026-08-15 - Çift Yönlü Özet Tablo, Faz 4 (SON FAZ): Malik(ler) popover düzenleme
 
 - Kullanıcı: "yedek al ve faz 4 e geç" — başlamadan önce `git tag backup-before-faz4-owner-popover-20260815-2015` (push edildi) ile geri dönüş noktası alındı. Planın (`idempotent-launching-kernighan.md`) SON fazı — kullanıcının en başta verdiği TAM örneği ("şu 10 taşınmaz değerlerken malik ismi hatalı gelmiş, tablo üzerinden tıklayıp değiştirsem") artık tamamen karşılanıyor.
