@@ -209,9 +209,14 @@ const kuveytturkKonutTemplate = fs.readFileSync(path.join(appDir, "templates", "
   "{{LEGAL_BUILDING_AREA_DISTRIBUTION}}",
   "{{CURRENT_BUILDING_VALUE_AREA}}",
   "{{CURRENT_BUILDING_AREA_DISTRIBUTION}}",
+  "{{INCELENENBELGELERTABLO}}",
 ].forEach((token) => {
   assert(kuveytturkKonutTemplate.includes(token), `kuveytturk.html icinde kat/alan token'i eksik: ${token}`);
 });
+assert(
+  (kuveytturkKonutTemplate.match(/\{\{INCELENENBELGELERTABLO\}\}/g) || []).length >= 2,
+  "kuveytturk.html icinde incelenen belgeler tablosu hem belge hem calisma kagidi bolumunde olmali.",
+);
 assert.match(engineSource, /LEGALBUILDINGAREADISTRIBUTION:\s*\{\s*fn:/, "Yasal kat alan dağılımı alias'ı eksik.");
 assert.match(engineSource, /CURRENTBUILDINGAREADISTRIBUTION:\s*\{\s*fn:/, "Mevcut kat alan dağılımı alias'ı eksik.");
 [
