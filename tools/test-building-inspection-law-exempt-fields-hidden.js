@@ -79,7 +79,7 @@ function collectDatasetFieldKeys(node, acc = []) {
   return acc;
 }
 
-function runScenario({ documents = [], contractActive = "" }) {
+function runScenario({ documents = [], contractActive = "", landReport = false }) {
   const context = {
     state: {
       tables: { documents },
@@ -92,6 +92,7 @@ function runScenario({ documents = [], contractActive = "" }) {
         municipalityInspectionDate: "",
         appointmentDate: "",
         district: "",
+        ownershipType: landReport ? "Arsa" : "Dikey Kat Irtifaki",
         titleDistrict: "",
         hasArchitecturalProject: "Hayır",
       },
@@ -105,7 +106,12 @@ function runScenario({ documents = [], contractActive = "" }) {
     hasReviewedOccupancyPermitDocument: () => false,
     // Bu testin kapsami disi: Cezai Karar/Statik Uygunluk kontrolleri sahte
     // bir <div> ile temsil edilir, dataset.field icermez (taramaya girmez).
-    createConditionalYesNoControl: () => makeElementStub("div"),
+    isLandProjectReview: () => landReport,
+    createConditionalYesNoControl: (field) => {
+      const control = makeElementStub("div");
+      control.dataset.field = field.key;
+      return control;
+    },
     refreshBuildingInspectionExplanationFromCurrentFields: () => {},
     // Bu testin kapsami: kanun-kapsam-disi hucre gizleme mantigi.
     // Ayricalikli-kullanici gorunurlugu (sensitiveOnly) ayri bir testte
@@ -193,3 +199,12 @@ const modernPermitRow = { c0: "Yeni Yapı Ruhsatı", c1: "X Belediyesi", c2: "20
 }
 
 console.log("Yapi denetim kanunu kapsam disinda Sözleşme/Hakediş hucrelerinin gizlenmesi testi tamam.");
+// 5) Arsa/Tarla raporlarında statik uygunluk ve yapı denetim alanları tamamen gizlenmeli.
+{
+  const { fieldKeys, fields } = runScenario({ documents: [modernPermitRow], contractActive: "Evet", landReport: true });
+  assert.ok(fieldKeys.includes("penaltyDecision"), `Arsa raporunda cezai karar alanı korunmalı: ${JSON.stringify(fieldKeys)}`);
+  assert.ok(!fieldKeys.includes("staticSuitability"), `Arsa raporunda statik uygunluk gizlenmeli: ${JSON.stringify(fieldKeys)}`);
+  assert.ok(!fieldKeys.includes("buildingInspectionContractActive"), `Arsa raporunda yapı denetim sözleşmesi gizlenmeli: ${JSON.stringify(fieldKeys)}`);
+  assert.equal(fields.staticSuitability, "", "Gizlenen statik uygunluk değeri temizlenmeli.");
+  assert.equal(fields.buildingInspectionContractActive, "", "Gizlenen sözleşme değeri temizlenmeli.");
+}

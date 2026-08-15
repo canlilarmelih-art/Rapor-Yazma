@@ -58,12 +58,16 @@ const functionNames = [
   "normalizeTakbisDuplicateDate",
   "getTakbisDuplicateKey",
   "getExistingTakbisDuplicateKeys",
+  "normalizeKmlParcelMatchPart",
+  "getKmlParcelMatchKey",
+  "kmlParcelMatchesTitleUnit",
+  "getTakbisTargetIndexes",
   "importTakbisRecordsIntoTitleUnits",
 ];
 
 const sandboxSource = `
 let sections = [
-  { id: "title", fields: [{ key: "blockNo" }, { key: "parcelNo" }] },
+  { id: "title", fields: [{ key: "blockNo" }, { key: "parcelNo" }, { key: "titlePropertyId" }] },
   { id: "encumbrance", fields: [{ key: "takbisSummary" }] },
 ];
 let state = null;
@@ -114,6 +118,13 @@ function freshState() {
 
 function record(id, blockNo, owners = [{ name: "MALİK" }]) {
   return { fields: { titlePropertyId: id, blockNo, takbisReportDate: "2026-08-10" }, owners, encumbrances: [], sourceFile: `${id}.pdf` };
+}
+
+// parcelNo DAHİL — ada/parsel eşleştirme senaryolarında kullanılır
+// (record() parcelNo set etmez, bu yüzden matching key hep boş kalır ve
+// mevcut senaryolar ESKİ "1. kayıt birincile" davranışını hâlâ görür).
+function recordWithParcel(id, blockNo, parcelNo, owners = [{ name: "MALİK" }]) {
+  return { fields: { titlePropertyId: id, blockNo, parcelNo, takbisReportDate: "2026-08-10" }, owners, encumbrances: [], sourceFile: `${id}.pdf` };
 }
 
 // --- 1) Boş/geçersiz girdi: hiçbir şey değişmez, 0 döner ------------------
@@ -199,6 +210,60 @@ function record(id, blockNo, owners = [{ name: "MALİK" }]) {
   assert.equal(sandbox.getState().titleUnits.length, 0, "FarklÄ± TAKBÄ°S tarihi mevcut taÅŸÄ±nmazÄ± gÃ¼ncellemeli, yeni tab aÃ§mamalÄ±.");
   assert.equal(sandbox.getState().fields.takbisReportDate, "2026-08-11", "FarklÄ± TAKBÄ°S tarihi kabul edilip mevcut kayda yazÄ±lmalÄ±.");
   console.log("TAKBIS kimlik + tarih tekrar kontrolu testi tamam.");
+}
+
+// --- 6) Ada/parsel eşleşmesiyle MEVCUT taşınmazlara yönlendirme, SIRA -----
+// BAĞIMSIZ. Kullanıcı talebi (2026-08-15, gerçek dosyalarla test):
+// "önce takbis sonra kml sırasını da otomatik düzelt" — KML'ler ÖNCE
+// yüklenip taşınmaz sekmelerini ada/parsel bilgisiyle DOLDURMUŞSA, SONRA
+// yüklenen TAKBİS artık bu MEVCUT sekmelerle eşleşir — YENİ tab AÇMAZ,
+// mükerrer taşınmaz OLUŞMAZ, kayıtların GELİŞ SIRASI önemli DEĞİLDİR.
+{
+  const state = freshState();
+  // KML'nin önceden doldurduğu 2 taşınmaz tabını taklit ediyoruz.
+  state.fields = { ...state.fields, blockNo: "2927", parcelNo: "12" };
+  state.titleUnits = [{ fields: { blockNo: "2928", parcelNo: "46" }, tables: {} }];
+  sandbox.setState(state);
+  sandbox.resetApplyCalls();
+  // Kayıtlar TERS sırada geliyor: önce 2928/46, sonra 2927/12.
+  const count = sandbox.fns.importTakbisRecordsIntoTitleUnits([
+    recordWithParcel("AAA", "2928", "46"),
+    recordWithParcel("BBB", "2927", "12"),
+  ]);
+  assert.equal(count, 2, "2 kayıt da aktarılmalı.");
+  const after = sandbox.getState();
+  assert.equal(after.titleUnits.length, 1, "Ada/parseli zaten MEVCUT olan 2 taşınmaz için YENİ tab AÇILMAMALI (toplam hâlâ 2).");
+  // Birincilin (index 0) ada/parseli 2927/12 idi -> eşleşen BBB kaydını almalı (sıradaki 1. kayıt AAA DEĞİL).
+  assert.equal(after.fields.titlePropertyId, "BBB", "Birincil (2927/12), kendi ada/parseline eşleşen BBB kaydını almalı (sıra farklı olsa bile).");
+  // Round-trip: 2. taşınmaza (2928/46) geçince AAA kaydını görmeli.
+  sandbox.fns.switchActiveTitleUnit(1);
+  assert.equal(sandbox.getState().fields.titlePropertyId, "AAA", "2. taşınmaz (2928/46), kendi ada/parseline eşleşen AAA kaydını almalı.");
+  console.log("Ada/parsel eslesmesiyle mevcut tasinmazlara yonlendirme (sira bagimsiz) testi tamam.");
+}
+
+// --- 7) Ada/parsel eşleşmeyen kayıt: mevcut taşınmazlar zaten eşleşen -----
+// kayıtlara ayrılmışsa YENİ tab açılır (eski davranış — hiç eşleşme yoksa
+// sırayla boşa düşme/gerekirse yeni tab — burada da geçerli).
+{
+  const state = freshState();
+  state.fields = { ...state.fields, blockNo: "2927", parcelNo: "12" };
+  state.titleUnits = [{ fields: { blockNo: "2928", parcelNo: "46" }, tables: {} }];
+  sandbox.setState(state);
+  sandbox.resetApplyCalls();
+  const count = sandbox.fns.importTakbisRecordsIntoTitleUnits([
+    recordWithParcel("BBB", "2927", "12"), // mevcut birincile eşleşir
+    recordWithParcel("AAA", "2928", "46"), // mevcut 2. taşınmaza eşleşir
+    recordWithParcel("CCC", "5000", "1"), // hiçbirine eşleşmez -> YENİ tab
+  ]);
+  assert.equal(count, 3, "3 kayıt da aktarılmalı.");
+  const after = sandbox.getState();
+  assert.equal(after.titleUnits.length, 2, "Eşleşmeyen 1 kayıt için YENİ bir tab açılıp toplam 3 taşınmaza çıkmalı (2 EK).");
+  assert.equal(after.fields.titlePropertyId, "BBB", "Birincil (2927/12) BBB kaydını almalı.");
+  sandbox.fns.switchActiveTitleUnit(1);
+  assert.equal(sandbox.getState().fields.titlePropertyId, "AAA", "2. taşınmaz (2928/46) AAA kaydını almalı.");
+  sandbox.fns.switchActiveTitleUnit(2);
+  assert.equal(sandbox.getState().fields.titlePropertyId, "CCC", "Eşleşmeyen kayıt YENİ açılan 3. taşınmaza gitmeli.");
+  console.log("Eslesmeyen kayit icin yeni tab acilma testi tamam.");
 }
 
 console.log("Coklu TAKBIS Faz 2 rapora aktar orkestrasyonu testleri basarili.");

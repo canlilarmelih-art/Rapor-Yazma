@@ -14569,6 +14569,7 @@ function formatMultiCheckboxSummary(values, field = {}) {
 function createDocumentDecisionControls() {
   const wrapper = document.createElement("div");
   wrapper.className = "document-decision-grid";
+  const isLandReport = typeof isLandProjectReview === "function" && isLandProjectReview();
   wrapper.append(
     createConditionalYesNoControl({
       key: "penaltyDecision",
@@ -14581,7 +14582,24 @@ function createDocumentDecisionControls() {
       detailTitle: "Cezai Karar Açıklama",
       defaultValue: "Hayır",
       hideInactiveDetail: true,
-    }),
+    })
+  );
+
+  if (isLandReport) {
+    // Arsa/Tarla raporlarında yapı niteliğiyle ilgili bu iki karar alanı
+    // anlamlı değildir; önceki rapor verisi varsa çıktıya sızmaması için temizlenir.
+    state.fields.staticSuitability = "";
+    state.fields.staticSuitabilityNote = "";
+    state.fields.staticSuitabilityExplanation = "";
+    state.fields.buildingInspectionContractActive = "";
+    state.fields.buildingInspectionProgressLevel = "";
+    state.fields.buildingInspectionTerminationDate = "";
+    state.fields.buildingInspectionTerminationLevel = "";
+    state.fields.buildingInspectionExplanation = "";
+    return wrapper;
+  }
+
+  wrapper.append(
     createConditionalYesNoControl({
       key: "staticSuitability",
       label: "Statik Uygunluk",
@@ -17471,12 +17489,25 @@ async function readMultiTakbisPdf(file) {
 // yükleme akışı) kullandığı AYNI applyTakbisTitleFieldsToReport/
 // applyTakbisOwnersToTable/applyTakbisEncumbranceFieldsToReport/
 // applyTakbisEncumbrancesToTable fonksiyonları HER kayıt için tekrar
-// çalıştırılır. İlk kayıt BİRİNCİL taşınmaza (index 0) yazılır — mevcut
-// Tapu ve Mülkiyet/Takyidat verisinin ÜZERİNE yazar (çağıran taraf onay
-// almalı, bkz. processTakbisUpload/createMultiTakbisPendingImportPanel).
-// Sonraki kayıtlar için switchActiveTitleUnit/addTitleUnitTab (Faz 2 takas
-// motoru) ile YENİ tab'lar açılır. Birden fazla kayıt varsa requestType
-// otomatik "Çoklu Talep"a çekilir ki tab çubuğu hemen görünür olsun.
+// çalıştırılır. Birden fazla kayıt varsa requestType otomatik "Çoklu
+// Talep"a çekilir ki tab çubuğu hemen görünür olsun.
+//
+// Kullanıcı bildirimi (2026-08-15, gerçek dosyalarla test — ZRT-202606006):
+// "önce takbis sonra kml sırasını da otomatik düzelt" — ÖNCEKİ davranış
+// HER ZAMAN "1. kayıt birincile (index 0), kalanlar YENİ tab'lara" idi;
+// KML'ler ÖNCE yüklenip taşınmaz sekmelerini ada/parsel bilgisiyle zaten
+// doldurmuşsa, bu MEVCUT sekmelerle hiç eşleştirme YAPMADAN üstüne yeni
+// tab'lar açıyor, mükerrer/yetim taşınmazlara yol açıyordu. Artık
+// getTakbisTargetIndexes() (KML'nin getKmlTargetIndexes()'iyle AYNI ada/
+// parsel eşleştirme deseni — bkz. o fonksiyonun yorumu) her kaydı ÖNCE
+// ada/parseli eşleşen MEVCUT bir taşınmaza yönlendirir; eşleşme yoksa
+// sırayla boşta olan ilk taşınmaza (gerekirse addTitleUnitTab() ile
+// büyütülerek) düşer — sıra ARTIK ÖNEMLİ DEĞİL. Ada/parseli olmayan
+// (ör. bu alanları set etmeyen) kayıtlar için davranış DEĞİŞMEDİ (boş
+// eşleştirme anahtarı → doğrudan sıradaki boş taşınmaza düşer, ESKİ "1.
+// kayıt birincile" davranışıyla BİREBİR aynı sonucu verir — bkz.
+// tools/test-title-unit-import.js'in mevcut senaryoları, hepsi ada/parsel
+// SET ETMEYEN fixture kullandığından etkilenmeden geçmeye devam eder).
 //
 // BİLİNEN SINIRLAMA: state.sourceValues.takbis ("bu alan TAKBİS'ten mi
 // geldi" rozeti için kaynak-izleme kaydı) taşınmaz-bazlı DEĞİL, takas
@@ -17518,6 +17549,33 @@ function getExistingTakbisDuplicateKeys() {
   return keys;
 }
 
+// getKmlTargetIndexes() (bkz. app.js, KML ada/parsel eşleştirme) ile AYNI
+// desen — TAKBİS kayıtları için. getKmlParcelMatchKey/kmlParcelMatchesTitleUnit
+// isim olarak "kml" taşısa da uygulamaları YALNIZCA blockNo/parcelNo
+// karşılaştırıyor (KML'e özgü hiçbir şey yok), bu yüzden burada AYNEN
+// yeniden kullanılıyor — ikinci bir eşleştirme fonksiyonu YAZILMADI.
+// "önce takbis sonra kml sırasını da otomatik düzelt" (2026-08-15): her
+// kayıt ÖNCE ada/parseli eşleşen MEVCUT bir taşınmaza yönlendirilir;
+// eşleşme yoksa (ör. kayıtta ada/parsel yoksa, ya da eşleşen taşınmaz
+// zaten başka bir kayda ayrılmışsa) sırayla boşta olan ilk taşınmaza
+// düşer, gerekirse addTitleUnitTab() ile yeni sekme açılır.
+function getTakbisTargetIndexes(records) {
+  while (getTitleUnitCount() < records.length) addTitleUnitTab();
+  const available = new Set(Array.from({ length: getTitleUnitCount() }, (_, index) => index));
+  return records.map((record, orderIndex) => {
+    const takbisKey = getKmlParcelMatchKey(record.fields);
+    let targetIndex = -1;
+    if (takbisKey) {
+      targetIndex = [...available].find(
+        (index) => kmlParcelMatchesTitleUnit(record.fields, getTitleUnitFieldsForLabel(index)),
+      ) ?? -1;
+    }
+    if (targetIndex < 0) targetIndex = [...available][0] ?? orderIndex;
+    available.delete(targetIndex);
+    return targetIndex;
+  });
+}
+
 function importTakbisRecordsIntoTitleUnits(records) {
   const existingKeys = getExistingTakbisDuplicateKeys();
   const incomingKeys = new Set();
@@ -17538,8 +17596,9 @@ function importTakbisRecordsIntoTitleUnits(records) {
   });
   if (!validRecords.length) return 0;
 
+  const targetIndexes = getTakbisTargetIndexes(validRecords);
   validRecords.forEach((record, index) => {
-    const targetIndex = index === 0 ? 0 : addTitleUnitTab();
+    const targetIndex = targetIndexes[index];
     switchActiveTitleUnit(targetIndex);
     state.sourceValues.takbis = {
       ...record,
@@ -17656,7 +17715,7 @@ function createMultiTakbisPendingImportPanel() {
 
   const note = document.createElement("p");
   note.className = "muted-note";
-  note.textContent = `${records.length} taşınmaz kaydı tespit edildi. Listeyi kontrol edin: "Rapora Aktar" basılırsa 1. kayıt BİRİNCİL taşınmazın mevcut Tapu ve Mülkiyet/Takyidat verisinin ÜZERİNE yazılır, diğerleri için yeni tab açılır ve "Talep Türü" otomatik "Çoklu Talep" olur.`;
+  note.textContent = `${records.length} taşınmaz kaydı tespit edildi. Listeyi kontrol edin: "Rapora Aktar" basılırsa her kayıt, ada/parseli eşleşen bir taşınmaz varsa (ör. daha önce yüklenmiş KML) ONUN mevcut Tapu ve Mülkiyet/Takyidat verisinin ÜZERİNE yazılır; eşleşme yoksa yeni bir tab açılır. "Talep Türü" otomatik "Çoklu Talep" olur.`;
   card.append(note);
 
   card.append(createMultiTakbisPreviewTable(records, errors));
@@ -31736,13 +31795,13 @@ function collectGeneratedTextPlaceholders() {
       category: "Belgeler ve Proje",
       key: "static_suitability_explanation_text",
       title: "Statik Uygunluk Açıklaması",
-      value: state.fields.staticSuitabilityExplanation || buildStaticSuitabilityExplanation(),
+      value: isLandProjectReview() ? "" : (state.fields.staticSuitabilityExplanation || buildStaticSuitabilityExplanation()),
     },
     {
       category: "Belgeler ve Proje",
       key: "building_inspection_explanation_text",
       title: "Yapı Denetim Açıklaması",
-      value: state.fields.buildingInspectionExplanation || buildBuildingInspectionExplanation(),
+      value: isLandProjectReview() ? "" : (state.fields.buildingInspectionExplanation || buildBuildingInspectionExplanation()),
     },
     {
       category: "Belgeler ve Proje",
