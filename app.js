@@ -1580,7 +1580,7 @@ function createAddressUnitsSummaryTablePreview() {
   wrap.append(tableContainer);
   const hint = document.createElement("p");
   hint.className = "muted-note";
-  hint.textContent = "İl/İlçe/İdari Mahalle/Sokak-Cadde/Site-Apartman yalnızca taşınmazlar arasında FARKLIYSA gösterilir. Banka şablonlarında {{TASINMAZLARADRESTABLOSU}} olarak kullanılabilir.";
+  hint.textContent = "Banka şablonlarında {{TASINMAZLARADRESTABLOSU}} olarak kullanılabilir.";
   wrap.append(hint);
   return wrap;
 }
@@ -16712,15 +16712,22 @@ function buildTitleUnitsSummaryTableHtmlFromData(headers, rows) {
 // Kullanıcı talebi (2026-08-15): "adres ve konum bölümü için aynı mantıkta
 // tablo oluşturalım" — Tapu özet tablosuyla (buildTitleUnitsSummaryTableData/
 // buildTitleUnitsSummaryWordTableHtml, yukarıda) AYNI DESEN, Adres ve Konum
-// bölümü alanları için: "aynı ise gizlensin" grubu (İl/İlçe/İdari Mahalle/
-// Sokak-Cadde/Site-Apartman — aynı sitedeki taşınmazlarda genelde AYNI
-// olur) + HER ZAMAN gösterilen taşınmaza özgü alanlar (Blok/Giriş/Dış Kapı
-// No/Kat/İç Kapı No — aynı sitede bile HER bağımsız bölümün KENDİ fiziksel
-// konumu farklıdır). buildAllTitleUnitsForSummaryTable() DOĞRUDAN yeniden
+// bölümü alanları için: İl/İlçe/İdari Mahalle/Sokak-Cadde/Site-Apartman +
+// HER ZAMAN gösterilen taşınmaza özgü alanlar (Blok/Giriş/Dış Kapı No/Kat/
+// İç Kapı No). buildAllTitleUnitsForSummaryTable() DOĞRUDAN yeniden
 // kullanılıyor (o fonksiyon zaten TÜM alanları içeren tam `fields` nesnesini
 // döner — Tapu'ya özgü değil); buildTitleUnitsSummaryTableHtmlFromData()
 // (2 satırlı başlık + dinamik genişlik + tam ortalama + HER ZAMAN büyük
 // harf) de AYNEN yeniden kullanılıyor — ikinci bir HTML üretici YAZILMADI.
+//
+// NOT (2026-08-15, devam): "Aynı ise gizlensin: İl, İlçe, İdari Mahalle,
+// Sokak/Cadde, Site/Apartman bu madde adres tablosu için iptal edilsin" —
+// Tapu tablosunun AKSİNE, bu 5 alan artık "aynı ise gizle" FİLTRESİNE TABİ
+// DEĞİL — TÜM taşınmazlarda birebir aynı olsalar BİLE HER ZAMAN gösterilir
+// (yalnızca TÜMÜ boşsa, aşağıdaki genel "boş sütun kaldırılır" kuralıyla
+// kalkar). ADDRESS_UNITS_TABLE_SHARED_FIELD_DEFS adı KORUNDU (bu alanların
+// "adres kimliği" anlamını hâlâ taşıyor) ama artık eşitlik KARŞILAŞTIRMASI
+// YAPILMIYOR.
 const ADDRESS_UNITS_TABLE_SHARED_FIELD_DEFS = [
   { key: "city", label: "İl" },
   { key: "district", label: "İlçe" },
@@ -16735,20 +16742,14 @@ function buildAddressUnitsSummaryTableData() {
   const units = buildAllTitleUnitsForSummaryTable();
   if (units.length < 2) return null;
 
-  // "aynı ise tabloda gözükmeyecek" — TÜM taşınmazlarda BİREBİR aynı
-  // (boşluk arındırılmış) değere sahip alanlar sütun listesinden ÇIKARILIR.
-  const sharedFieldsToShow = ADDRESS_UNITS_TABLE_SHARED_FIELD_DEFS.filter((def) => {
-    const values = units.map((unit) => String(unit.fields?.[def.key] || "").trim());
-    return !values.every((value) => value === values[0]);
-  });
-
   // "UAVT" taşınmazın adres-bazlı kimlik numarasıdır (Tapu tablosundaki
   // "Taşınmaz Kimlik No" ile AYNI konumsal mantık) — Sıra No'nun HEMEN
-  // ardından, paylaşımlı alanlardan (İl/İlçe vb.) ÖNCE gelir.
+  // ardından, İl/İlçe/İdari Mahalle/Sokak-Cadde/Site-Apartman'dan ÖNCE
+  // gelir. Bu 5 alan (yukarıdaki not) artık HER ZAMAN gösterilir.
   const headers = [
     "Sıra No",
     "UAVT",
-    ...sharedFieldsToShow.map((def) => def.label),
+    ...ADDRESS_UNITS_TABLE_SHARED_FIELD_DEFS.map((def) => def.label),
     "Blok", "Giriş", "Dış Kapı No", "Kat", "İç Kapı No",
   ];
 
@@ -16757,7 +16758,7 @@ function buildAddressUnitsSummaryTableData() {
     return [
       index + 1,
       String(fields.uavt || "").trim() || "-",
-      ...sharedFieldsToShow.map((def) => String(fields[def.key] || "").trim() || "-"),
+      ...ADDRESS_UNITS_TABLE_SHARED_FIELD_DEFS.map((def) => String(fields[def.key] || "").trim() || "-"),
       String(fields.addressBlockName || "").trim() || "-",
       String(fields.addressEntrance || "").trim() || "-",
       String(fields.outerDoor || "").trim() || "-",
@@ -16779,11 +16780,8 @@ function buildAddressUnitsSummaryTableData() {
   ));
   const filteredHeaders = headers.filter((_, columnIndex) => columnHasData[columnIndex]);
   const filteredRows = rows.map((row) => row.filter((_, columnIndex) => columnHasData[columnIndex]));
-  // sharedFieldsToShow sütunları headers'ta index 2..2+sharedFieldsToShow.length
-  // aralığında (0=Sıra No, 1=UAVT).
-  const survivingSharedColumnCount = columnHasData.slice(2, 2 + sharedFieldsToShow.length).filter(Boolean).length;
 
-  return { headers: filteredHeaders, rows: filteredRows, sharedColumnCount: survivingSharedColumnCount };
+  return { headers: filteredHeaders, rows: filteredRows };
 }
 
 // Banka şablonlarına {{TASINMAZLARADRESTABLOSU}} ile enjekte edilecek
@@ -24130,6 +24128,8 @@ function formatOpenAddressBuildingName(value, style) {
 }
 
 function buildOpenAddressText() {
+  if (isLandPropertyForBankTemplate()) return buildLandOpenAddressText();
+
   const get = (...keys) => {
     for (const key of keys) {
       const value = String(state.fields[key] || "").trim();

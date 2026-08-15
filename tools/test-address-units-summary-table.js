@@ -103,7 +103,11 @@ const sandboxSource = `
 // eslint-disable-next-line no-new-func
 const fns = new Function(sandboxSource)();
 
-// --- 1) "aynı ise gizlensin" + "diğer bölümler her zaman var" -------------
+// --- 1) İl/İlçe/İdari Mahalle/Sokak-Cadde/Site-Apartman + diğer bölümler --
+// HER ZAMAN gösterilir — AYNI olsalar bile GİZLENMEZ. Kullanıcı talebi
+// (2026-08-15, devam): "Aynı ise gizlensin: İl, İlçe, İdari Mahalle,
+// Sokak/Cadde, Site/Apartman bu madde adres tablosu için iptal edilsin" —
+// bu, Tapu tablosundaki "aynı ise gizle" davranışından KASITLI bir SAPMA.
 {
   const shared = { city: "Bursa", district: "Nilüfer", neighborhood: "Özlüce", street: "Atatürk Caddesi", addressSiteName: "Yeşil Vadi Sitesi" };
   fns.setState({
@@ -112,20 +116,16 @@ const fns = new Function(sandboxSource)();
     tables: {},
     titleUnits: [
       { fields: { ...shared, uavt: "123456790", addressBlockName: "A", addressEntrance: "1", outerDoor: "4", addressFloor: "2", innerDoor: "6" }, tables: {} },
-      { fields: { ...shared, street: "Cumhuriyet Sokak", uavt: "123456791", addressBlockName: "B", addressEntrance: "2", outerDoor: "1", addressFloor: "1", innerDoor: "1" }, tables: {} },
+      { fields: { ...shared, uavt: "123456791", addressBlockName: "B", addressEntrance: "2", outerDoor: "1", addressFloor: "1", innerDoor: "1" }, tables: {} },
     ],
   });
   const data = fns.buildAddressUnitsSummaryTableData();
   assert.ok(data, "3 taşınmazlı raporda tablo verisi dönmeli.");
   assert.equal(data.rows.length, 3, "3 satır (3 taşınmaz) bekleniyordu.");
-  // İl/İlçe/İdari Mahalle/Site-Apartman AYNI — gizlenmeli; yalnızca Sokak/
-  // Cadde FARKLI (3. taşınmazda "Cumhuriyet Sokak") — o KALMALI.
-  assert.equal(data.sharedColumnCount, 1, `Yalnızca "Sokak / Cadde" farklı olduğundan 1 paylaşılan sütun bekleniyordu, bulunan: ${data.sharedColumnCount}`);
-  assert.ok(data.headers.includes("Sokak / Cadde"), "\"Sokak / Cadde\" (farklı olan) sütunu bulunmalı.");
-  assert.ok(!data.headers.includes("İl"), "\"İl\" (aynı olan) sütunu GİZLENMELİYDİ.");
-  assert.ok(!data.headers.includes("Site / Apartman"), "\"Site / Apartman\" (aynı olan) sütunu GİZLENMELİYDİ.");
-  ["Sıra No", "UAVT", "Blok", "Giriş", "Dış Kapı No", "Kat", "İç Kapı No"].forEach((col) => {
-    assert.ok(data.headers.includes(col), `"${col}" sütunu HER ZAMAN gösterilmeliydi.`);
+  // İl/İlçe/İdari Mahalle/Sokak-Cadde/Site-Apartman TAMAMI AYNI olmasına
+  // RAĞMEN hepsi GÖSTERİLMELİ (artık gizlenmiyorlar).
+  ["Sıra No", "UAVT", "İl", "İlçe", "İdari Mahalle", "Sokak / Cadde", "Site / Apartman", "Blok", "Giriş", "Dış Kapı No", "Kat", "İç Kapı No"].forEach((col) => {
+    assert.ok(data.headers.includes(col), `"${col}" sütunu HER ZAMAN gösterilmeliydi (aynı olsa bile), bulunan başlıklar: ${data.headers.join(", ")}`);
   });
   assert.equal(data.headers[0], "Sıra No", "\"Sıra No\" EN SOL sütun olmalı.");
   assert.equal(data.headers[1], "UAVT", "\"UAVT\" Sıra No'nun HEMEN ardından gelmeli (Tapu tablosunun Taşınmaz Kimlik No deseniyle AYNI).");
@@ -133,9 +133,12 @@ const fns = new Function(sandboxSource)();
   const uavtColumnIndex = data.headers.indexOf("UAVT");
   assert.equal(data.rows[0][uavtColumnIndex], "123456789", "1. taşınmazın UAVT'si doğru sütunda olmalı.");
   assert.equal(data.rows[2][uavtColumnIndex], "123456791", "3. taşınmazın UAVT'si doğru sütunda olmalı.");
+  const cityColumnIndex = data.headers.indexOf("İl");
+  assert.equal(data.rows[0][cityColumnIndex], "Bursa", "1. taşınmazın İl'i (aynı olsa bile) doğru sütunda olmalı.");
+  assert.equal(data.rows[2][cityColumnIndex], "Bursa", "3. taşınmazın İl'i (aynı olsa bile) doğru sütunda olmalı.");
   const outerDoorColumnIndex = data.headers.indexOf("Dış Kapı No");
   assert.equal(data.rows[1][outerDoorColumnIndex], "4", "2. taşınmazın Dış Kapı No'su doğru sütunda olmalı.");
-  console.log("\"Ayni ise gizlensin\" + \"diger bolumler her zaman var\" (UAVT/Blok/Giris/Kat dahil) kurali testi tamam.");
+  console.log("Il/Ilce/Idari Mahalle/Sokak-Cadde/Site-Apartman (ayni olsa bile) + diger bolumler her zaman var kurali testi tamam.");
 }
 
 // --- 2) Tüm taşınmazlarda BOŞ olan sütun TAMAMEN kaldırılır ---------------
@@ -157,7 +160,9 @@ const fns = new Function(sandboxSource)();
   ["Giriş", "İç Kapı No"].forEach((col) => {
     assert.ok(!data.headers.includes(col), `Tüm taşınmazlarda BOŞ olan "${col}" sütunu KALDIRILMALIYDI, bulunan başlıklar: ${data.headers.join(", ")}`);
   });
-  ["Sıra No", "UAVT", "Blok", "Dış Kapı No", "Kat"].forEach((col) => {
+  // İl/İlçe/İdari Mahalle DOLU ve TÜM taşınmazlarda AYNI ("İzmir"/"Bornova"/
+  // "Erzene") — yine de GİZLENMEMELİ (artık "aynı ise gizle" kuralı yok).
+  ["Sıra No", "UAVT", "İl", "İlçe", "İdari Mahalle", "Blok", "Dış Kapı No", "Kat"].forEach((col) => {
     assert.ok(data.headers.includes(col), `Dolu olan "${col}" sütunu KORUNMALIYDI, bulunan başlıklar: ${data.headers.join(", ")}`);
   });
   console.log("Tum tasinmazlarda bos olan sutunun kaldirilma testi tamam.");

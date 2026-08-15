@@ -9886,6 +9886,15 @@ gerekmedi, testle (bkz. aşağıda) tekrar doğrulandı.
   zincirle yeşil.
 - Cache-buster: `app.js?v=20260814-1745`.
 
+## 0.0.458 - 2026-08-15 - Taşınmazlar Adres Özeti: İl/İlçe/Mahalle/Sokak/Site artık her zaman gösteriliyor
+
+- Kullanıcı: "Aynı ise gizlensin: İl, İlçe, İdari Mahalle, Sokak/Cadde, Site/Apartman bu madde adres tablosu için iptal edilsin" — 0.0.457'de Tapu tablosuyla aynı mantıkla kurulan "aynı ise gizle" kuralı, Adres tablosu için KASITLI olarak KALDIRILDI.
+- `buildAddressUnitsSummaryTableData()`'daki (`app.js`) eşitlik filtresi silindi — İl/İlçe/İdari Mahalle/Sokak-Cadde/Site-Apartman artık TÜM taşınmazlarda birebir aynı olsalar BİLE HER ZAMAN gösteriliyor; yalnızca TÜMÜ boşsa (0.0.451'deki genel "boş sütun kaldırılır" kuralıyla) kalkıyorlar. `ADDRESS_UNITS_TABLE_SHARED_FIELD_DEFS` sabiti (isim ve alan listesi) KORUNDU, yalnızca karşılaştırma mantığı kaldırıldı. Dönüş değerinden artık anlamsızlaşan `sharedColumnCount` de çıkarıldı.
+- `createAddressUnitsSummaryTablePreview()`'daki artık YANLIŞ olan ipucu metni ("...yalnızca taşınmazlar arasında FARKLIYSA gösterilir") kaldırıldı.
+- `tools/test-address-units-summary-table.js`: senaryo 1 yeniden yazıldı — artık İl/İlçe/İdari Mahalle/Sokak/Site'nin TAMAMEN AYNI olduğu bir fixture'da BİLE hepsinin gösterildiğini doğruluyor; senaryo 2'ye dolu VE aynı İl/İlçe/İdari Mahalle'nin de gizlenmediğini doğrulayan assertion'lar eklendi.
+- Canlı tarayıcıda doğrulandı: gerçek state geçici olarak İl/İlçe/İdari Mahalle/Sokak/Site TAMAMEN AYNI olacak şekilde değiştirilip fonksiyon doğrudan çağrıldı — 5 alan da (aynı olmalarına rağmen) başlıklarda çıktı, sonra state aynen geri yüklendi.
+- `npm run verify` tamamı yeşil. Cache-buster: `app.js?v=20260815-1045`.
+
 ## 0.0.457 - 2026-08-15 - Taşınmazlar Adres Özeti: Adres ve Konum bölümü için AYNI mantıkta yeni tablo
 
 - Kullanıcı: "adres ve konum bölümü için aynı mantıkta tablo oluşturalım" — Taşınmazlar Tapu Özeti tablosuyla (0.0.446+) BİREBİR AYNI desen, Adres ve Konum bölümü alanları için.
