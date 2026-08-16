@@ -1348,10 +1348,36 @@ function applyImarDataToAllTitleUnits() {
   const snapshot = {};
   keys.forEach((key) => { snapshot[key] = state.fields[key]; });
 
+  // Kullanıcı talebi (2026-08-16, devam): "tümüne uygula dediğimde
+  // hesaplanan emsal mevcut sistemimizdeki formül ile hesaplanıp
+  // yazılmalı aynı sayı yazılmamalı. bu hesaplanan emsal kısmında bir
+  // istisna." "Hesaplanan Emsal" (calculatedEmsal) TEK istisna: diğer
+  // alanlar (planScale/hmax/taks/kaks/floorCount/planCancellationStay vb.)
+  // aktif taşınmazdan AYNEN kopyalanır, ama Hesaplanan Emsal'in kendisi
+  // KOPYALANMAZ — her hedef taşınmazın KENDİ net taşınmaz yüzölçümü
+  // (landArea, Tapu bölümünde zaten taşınmaza-özgü) ile composeImarCalculatedEmsal()
+  // (mevcut, canlı formda da AYNI formülü kullanan buildImarCalculatedEmsal/
+  // refreshPlanningNoteFromCurrentFields'in dayandığı fonksiyon) üzerinden
+  // YENİDEN hesaplanır — aksi halde farklı ada/parseldeki (farklı
+  // yüzölçümlü) bir taşınmaza aktif taşınmazın SAYISI yanlışlıkla
+  // yapıştırılmış olurdu.
+  const applyKeysToUnitFields = (unitFields) => {
+    keys.forEach((key) => {
+      if (key === "calculatedEmsal") return;
+      unitFields[key] = snapshot[key];
+    });
+    unitFields.calculatedEmsal = composeImarCalculatedEmsal({
+      netParcelArea: unitFields.landArea,
+      kaks: unitFields.kaks,
+      floorCount: unitFields.floorCount,
+      planCancellationStay: unitFields.planCancellationStay,
+    });
+  };
+
   (state.titleUnits || []).forEach((unit) => {
     if (!unit) return;
     unit.fields = unit.fields || {};
-    keys.forEach((key) => { unit.fields[key] = snapshot[key]; });
+    applyKeysToUnitFields(unit.fields);
   });
 
   // Aktif taşınmaz birincil DEĞİLSE, birincilin "park edilmiş" verisi
@@ -1360,7 +1386,7 @@ function applyImarDataToAllTitleUnits() {
   // geri gelir.
   if (state.activeTitleUnitIndex !== 0 && state.primaryTitleUnitShadow) {
     state.primaryTitleUnitShadow.fields = state.primaryTitleUnitShadow.fields || {};
-    keys.forEach((key) => { state.primaryTitleUnitShadow.fields[key] = snapshot[key]; });
+    applyKeysToUnitFields(state.primaryTitleUnitShadow.fields);
   }
 
   return getTitleUnitCount();

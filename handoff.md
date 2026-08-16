@@ -9886,6 +9886,15 @@ gerekmedi, testle (bkz. aşağıda) tekrar doğrulandı.
   zincirle yeşil.
 - Cache-buster: `app.js?v=20260814-1745`.
 
+## 0.0.469 - 2026-08-16 - İmar Durumu "tümüne uygula": Hesaplanan Emsal istisnası
+
+- Kullanıcı: "tümüne uygula dediğimde hesaplanan emsal mevcut sistemimizdeki formül ile hesaplanıp yazılmalı aynı sayı yazılmamalı. bu hesaplanan emsal kısmında bir istisna."
+- `applyImarDataToAllTitleUnits()` (0.0.467) şimdiye kadar `calculatedEmsal`'i de diğer alanlar gibi aktif taşınmazdan OLDUĞU GİBİ kopyalıyordu — bu YANLIŞ, çünkü Hesaplanan Emsal `composeImarCalculatedEmsal()`'ın (mevcut formül: KAKS doluysa `KAKS × Net Taşınmaz Yüzölçümü`, değilse `Kat Adedi × Net Taşınmaz Yüzölçümü`, Plan İptali "Evet"se boş) taşınmaza-özgü bir SONUCUDUR — farklı ada/parseldeki bir taşınmazın yüzölçümü aktiften FARKLI olduğundan aynı sayı YANLIŞ olurdu.
+- Düzeltildi: `calculatedEmsal` artık kopyalanan alanlardan HARİÇ TUTULUYOR; bunun yerine her hedef taşınmaz için, o taşınmazın KENDİ `landArea`'sı (Tapu bölümünde zaten taşınmaza-özgü) + YENİ kopyalanan `kaks`/`floorCount`/`planCancellationStay` değerleriyle `composeImarCalculatedEmsal()` YENİDEN çağrılıp doğru, taşınmaza-özgü sonuç yazılıyor — canlı formda (`refreshPlanningNoteFromCurrentFields`) kullanılan AYNI formül, ikinci bir hesaplama mantığı YAZILMADI.
+- Test: `tools/test-title-unit-switch.js`'e yeni senaryo — aktif taşınmazın (yanlış/farklı) calculatedEmsal'i hedefe kopyalanmadığı, hedefin KENDİ landArea'sıyla doğru yeniden hesaplandığı (kaks×landArea), diğer alanların (kaks) yine normal kopyalandığı doğrulanıyor.
+- Canlı tarayıcıda GERÇEK rapor üzerinde doğrulandı (deep-clone backup/restore ile): farklı yüzölçümlü hedef taşınmaza "tümüne uygula" uygulanınca Hesaplanan Emsal aktif taşınmazın (bilerek yanlış konulan) değeriyle DEĞİL, hedefin kendi yüzölçümüyle doğru hesaplanmış değerle ("1.000 m²") güncellendi.
+- `npm run verify` tamamı yeşil. Cache-buster: `app.js` → `20260816-1510`.
+
 ## 0.0.468 - 2026-08-16 - Taşınmazlar İmar Özeti: sütun kümesi netleştirildi (13 alan, hepsi düzenlenebilir)
 
 - Kullanıcı: "Taşınmazlar İmar Özeti tablosunda yer alması gereken sütunlar Plan Ölçeği İmar Plan Adı Plan Tarihi İmar Lejantı İmar Nizamı Kat Adedi Hmax TAKS KAKS / Emsal Hesaplanan Emsal Ön Bahçe Yan Bahçe Arka Bahçe diğer bölümler yer almayacak Taşınmazın imar durumunda sorun var mı seçeneği kullanıcı tarafından işaretlenecek. sorun var ise kullanıcı manuel olarak girecek."

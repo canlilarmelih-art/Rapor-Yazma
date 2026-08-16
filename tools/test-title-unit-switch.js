@@ -82,6 +82,13 @@ const functionNames = [
   // İmar Durumu "tümüne uygula" (2026-08-16).
   "getImarSectionFieldKeys",
   "applyImarDataToAllTitleUnits",
+  // "Hesaplanan Emsal" istisnasi (2026-08-16, devam) - applyImarDataToAllTitleUnits()
+  // artik composeImarCalculatedEmsal() ile YENIDEN hesapliyor, kopyalamiyor.
+  "composeImarCalculatedEmsal",
+  "normalizeYesNoChoice",
+  "parseReportNumber",
+  "formatImarSquareMeter",
+  "foldTurkish",
 ];
 
 // Çoklu Excel akışında ana form bölümlerinin tamamı taşınmaz kapsamındadır.
@@ -103,7 +110,7 @@ let sections = [
   { id: "unit", fields: [{ key: "legalArea" }] },
   // "İmar Durumu" koşullu scoping testi (2026-08-16) icin fixture'a eklendi
   // - gercek app.js'teki planning bolumunun kucultulmus bir kopyasi.
-  { id: "planning", fields: [{ key: "planScale" }, { key: "hmax" }] },
+  { id: "planning", fields: [{ key: "planScale" }, { key: "hmax" }, { key: "kaks" }, { key: "floorCount" }, { key: "planCancellationStay" }] },
 ];
 let state = null;
 const TITLE_UNIT_SCOPED_SECTION_IDS = ["address", "title", "encumbrance", "planning"];
@@ -572,6 +579,35 @@ assert.match(appSource, /panel\.dataset\.parcelScope = mixedParcels \? "mixed" :
   sandbox.fns.switchActiveTitleUnit(0);
   assert.equal(sandbox.getState().fields.planScale, "1/5000-FARKLI", "Aktif tasinmaz birincil degilken uygulanan deger, birincile (primaryTitleUnitShadow uzerinden) de yansimali.");
   console.log("applyImarDataToAllTitleUnits (tumune uygula) testi tamam.");
+}
+
+// --- 21) applyImarDataToAllTitleUnits(): "Hesaplanan Emsal" ISTISNASI ----
+// (2026-08-16, devam) — kullanici talebi: "tumune uygula dedigimde
+// hesaplanan emsal mevcut sistemimizdeki formul ile hesaplanip yazilmali
+// ayni sayi yazilmamali." calculatedEmsal AKTIF tasinmazdan KOPYALANMAMALI,
+// her hedef tasinmazin KENDI landArea'siyla composeImarCalculatedEmsal()
+// (kaks * netParselAlani) formuluyle YENIDEN hesaplanmali.
+{
+  const state = freshState({
+    fields: { city: "İstanbul", blockNo: "100", parcelNo: "1", kaks: "2", landArea: "1000", calculatedEmsal: "YANLIS-KOPYALANMAMALI" },
+  });
+  sandbox.setState(state);
+  const newIndex = sandbox.fns.addTitleUnitTab();
+  // Hedef (2.) tasinmazin KENDI landArea'si aktiften FARKLI (500 vs 1000) —
+  // dogru davranista bu YENI hesaba katilmali, aktifin "1000"i DEGIL.
+  sandbox.getState().titleUnits[0].fields.landArea = "500";
+
+  sandbox.fns.applyImarDataToAllTitleUnits();
+  const afterApply = sandbox.getState();
+  // Beklenen: kaks(2) * landArea(500) = 1000 m^2 — aktifin calculatedEmsal
+  // DEGERI ("YANLIS-KOPYALANMAMALI") DEGIL, kaks(2) * kendi landArea(500)
+  // ile YENIDEN hesaplanmis "1.000 m²" olmali.
+  assert.notEqual(afterApply.titleUnits[0].fields.calculatedEmsal, "YANLIS-KOPYALANMAMALI", "Hesaplanan Emsal aktif tasinmazdan OLDUGU GIBI kopyalanmamali.");
+  assert.equal(afterApply.titleUnits[0].fields.calculatedEmsal, "1.000 m²", `Hedef tasinmazin KENDI landArea'siyla (500) YENIDEN hesaplanmis deger bekleniyordu, bulunan: ${afterApply.titleUnits[0].fields.calculatedEmsal}`);
+  // kaks/planCancellationStay gibi DIGER alanlar hala normal sekilde
+  // kopyalanmali (istisna SADECE calculatedEmsal'e ozel).
+  assert.equal(afterApply.titleUnits[0].fields.kaks, "2", "kaks alani normal sekilde (istisna DISINDA) kopyalanmali.");
+  console.log("applyImarDataToAllTitleUnits Hesaplanan Emsal istisnasi testi tamam.");
 }
 
 console.log("Coklu TAKBIS Faz 2 tab-anahtarlama motoru testleri basarili.");
