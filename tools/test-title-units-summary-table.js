@@ -110,6 +110,10 @@ const functionNames = [
   "setTitleUnitOwnerRowValue",
   "addTitleUnitOwnerRow",
   "removeTitleUnitOwnerRow",
+  // İmar Durumu koşullu (ada/parsel'e göre ortak/scoped) scoping (2026-08-16)
+  // - buildTitleUnitsSummaryTableData() artık bu yeniden kullanılabilir
+  // yardımcıyı çağırıyor (davranış aynı, sadece çıkarıldı).
+  "computeTitleUnitsShareSameAdaParsel",
   "parseReportNumber",
   "formatSquareMeterArea",
   "getReportThemeToken",

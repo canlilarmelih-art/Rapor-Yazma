@@ -104,6 +104,13 @@ const functionNames = [
   "getTitleUnitCount",
   "switchActiveTitleUnit",
   "addTitleUnitTab",
+  // İmar Durumu koşullu (ada/parsel'e göre ortak/scoped) scoping (2026-08-16)
+  // - getTitleUnitScopedFieldKeys() artık bunlara bağımlı.
+  "getTitleUnitFieldsForLabel",
+  "getTitleUnitTablesForLabel",
+  "buildAllTitleUnitsForSummaryTable",
+  "computeTitleUnitsShareSameAdaParsel",
+  "isPlanningScopedByAdaParsel",
 ];
 
 const sandboxSource = `

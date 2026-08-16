@@ -63,6 +63,12 @@ const functionNames = [
   "kmlParcelMatchesTitleUnit",
   "getTakbisTargetIndexes",
   "importTakbisRecordsIntoTitleUnits",
+  // İmar Durumu koşullu (ada/parsel'e göre ortak/scoped) scoping (2026-08-16)
+  // - getTitleUnitScopedFieldKeys() artık bunlara bağımlı.
+  "getTitleUnitTablesForLabel",
+  "buildAllTitleUnitsForSummaryTable",
+  "computeTitleUnitsShareSameAdaParsel",
+  "isPlanningScopedByAdaParsel",
 ];
 
 const sandboxSource = `

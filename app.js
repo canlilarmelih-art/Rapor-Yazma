@@ -1285,9 +1285,53 @@ const TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS = new Set([
   "commercialDevelopmentCompleted",
 ]);
 
+// Kullanıcı talebi (2026-08-16): "Aynı ada parselde yer alan çoklu rapor
+// bilgileri için ortak imar durumu sekmeleri olacak" — saf (state-bağımsız)
+// karşılaştırma: verilen taşınmaz listesi (buildAllTitleUnitsForSummaryTable()
+// çıktısı) TÜMÜYLE aynı Ada (blockNo) + Parsel (parcelNo)'de mi. Daha önce
+// yalnızca buildTitleUnitsSummaryTableData() içinde INLINE duran
+// "allSameAdaParsel" hesabının ÇIKARILMIŞ, yeniden kullanılabilir hali —
+// davranış AYNI (yalnızca fonksiyona taşındı), tools/test-title-unit-switch.js'te
+// izole test edilebilsin diye de state okumaz.
+function computeTitleUnitsShareSameAdaParsel(units) {
+  if (!units.length) return true;
+  return units.every((unit) => (
+    String(unit.fields?.blockNo || "").trim() === String(units[0].fields?.blockNo || "").trim()
+    && String(unit.fields?.parcelNo || "").trim() === String(units[0].fields?.parcelNo || "").trim()
+  ));
+}
+
+// "İmar Durumu" (planning) bölümü ŞU AN taşınmaza-özgü (scoped) mi olmalı?
+// Yalnızca 2+ taşınmaz VE hepsi FARKLI ada/parselde olduğunda EVET — aksi
+// halde (tekil rapor veya tüm taşınmazlar AYNI ada/parselde) İmar Durumu
+// PAYLAŞIMLI kalır (mantıklı: aynı parselin imar durumu zaten aynıdır).
+// getTitleUnitScopedFieldKeys() bunu HER çağrıda canlı olarak sorar — bkz.
+// o fonksiyonun yorumunda "geçiş anında veri taşıma" ile ilgili bilinen
+// sınırlama notu.
+function isPlanningScopedByAdaParsel() {
+  const units = buildAllTitleUnitsForSummaryTable();
+  return units.length > 1 && !computeTitleUnitsShareSameAdaParsel(units);
+}
+
 function getTitleUnitScopedFieldKeys() {
   const keys = new Set();
+  // 2026-08-16: İmar Durumu artık KOŞULLU taşınmaza-özgü — tüm taşınmazlar
+  // AYNI ada/parselde ise bu bölümün alanları scoped-set'e HİÇ eklenmez
+  // (TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS alanları gibi PAYLAŞIMLI
+  // kalır, state.fields'ta sabit durur — hiçbir switchActiveTitleUnit onu
+  // taşımaz). BİLİNEN SINIRLAMA: bir rapor "paylaşımlı"dan "taşınmaza-özgü"ye
+  // GEÇTİĞİNDE (ör. kullanıcı sonradan bir taşınmazın parselNo'sunu
+  // farklılaştırırsa), o ana kadar HİÇ taşınmaza-özgü gölge yuvası
+  // yazılmamış olan taşınmazların İmar Durumu alanları (applyTitleUnitScopedData'nın
+  // "yoksa sil" kuralı gereği) sonraki tab geçişinde BOŞ görünür — veri
+  // KAYBOLMAZ (paylaşılan değer, o anda aktif/ayrılan taşınmazın kendi
+  // gölgesinde kalır), yalnızca diğer taşınmazlar için yeniden girilmesi
+  // gerekebilir. Otomatik taşıma BİLİNÇLİ OLARAK yazılmadı (ada/parsel
+  // tipik olarak Tapu veri girişinde, İmar Durumu'ndan ÖNCE netleşir) —
+  // bkz. plan: idempotent-launching-kernighan.md.
+  const planningIsShared = !isPlanningScopedByAdaParsel();
   TITLE_UNIT_SCOPED_SECTION_IDS.forEach((sectionId) => {
+    if (sectionId === "planning" && planningIsShared) return;
     const section = sections.find((item) => item.id === sectionId);
     (section?.fields || []).forEach((field) => {
       // Talep Türü rapor-genelidir; taşınmaz tabına geçerken birim verisiyle
@@ -1304,6 +1348,15 @@ function getTitleUnitScopedFieldKeys() {
   // değiştirince bu alan TÜM taşınmazlar arasında PAYLAŞILIRDI (yanlışlıkla
   // sızardı).
   keys.add("titleChangedRecords");
+  // Kullanıcı talebi (2026-08-16, İmar Durumu koşullu scoping): bu 6 alan
+  // "planning" bölümünün DEKLARATİF fields listesinde AYRI yer almıyor —
+  // yalnızca ebeveyn conditionalYesNo alanının detailKey'i olarak var
+  // (titleChangedRecords ile AYNI kategori boşluk). İmar Durumu şu an
+  // taşınmaza-özgüyse bu detay notları da öyle olmalı, aksi halde Evet/Hayır
+  // cevabı taşınmaza-özgü ama açıklaması PAYLAŞIMLI kalır (tutarsız çift).
+  if (!planningIsShared) {
+    ["planCancellationStayNote", "minimumFrontageConditionNote", "tevhidConditionNote", "article18AppliedNote", "urbanTransformationAreaNote", "licenseObstacleNote"].forEach((key) => keys.add(key));
+  }
   return keys;
 }
 
@@ -16678,10 +16731,11 @@ function buildTitleUnitsSummaryTableData() {
   // parseldeyse, bu dört alanın KENDİ metin değeri farklı olsa BİLE
   // zorla GİZLENİR — ada/parsel eşitliği bunların karşılaştırmasından
   // daha ÖNCELİKLİDİR.
-  const allSameAdaParsel = units.every((unit) => (
-    String(unit.fields?.blockNo || "").trim() === String(units[0].fields?.blockNo || "").trim()
-    && String(unit.fields?.parcelNo || "").trim() === String(units[0].fields?.parcelNo || "").trim()
-  ));
+  // 2026-08-16: bu karşılaştırma computeTitleUnitsShareSameAdaParsel()'e
+  // ÇIKARILDI (İmar Durumu'nun koşullu paylaşımlı/taşınmaza-özgü mantığı da
+  // AYNI karşılaştırmayı kullanıyor, bkz. isPlanningScopedByAdaParsel) —
+  // davranış BURADA DEĞİŞMEDİ, yalnızca fonksiyona taşındı.
+  const allSameAdaParsel = computeTitleUnitsShareSameAdaParsel(units);
   const HIDE_WHEN_SAME_ADA_PARSEL_KEYS = new Set(["titleCity", "titleDistrict", "titleNeighborhood", "sheetNo"]);
 
   // "aynı ise tabloda gözükmeyecek" — TÜM taşınmazlarda BİREBİR aynı

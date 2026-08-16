@@ -73,6 +73,12 @@ const functionNames = [
   "syncMultiTitleUnitOwnershipType",
   "removeActiveTitleUnitTab",
   "applyTitleRecordChangeToAllTitleUnits",
+  // "İmar Durumu" koşullu (ada/parsel'e göre ortak/taşınmaza-özgü) scoping
+  // (2026-08-16) — getTitleUnitScopedFieldKeys() artık bunlara bağımlı.
+  "getTitleUnitTablesForLabel",
+  "buildAllTitleUnitsForSummaryTable",
+  "computeTitleUnitsShareSameAdaParsel",
+  "isPlanningScopedByAdaParsel",
 ];
 
 // Çoklu Excel akışında ana form bölümlerinin tamamı taşınmaz kapsamındadır.
@@ -92,9 +98,12 @@ let sections = [
   { id: "encumbrance", fields: [{ key: "takbisSummary" }, { key: "takbisDate" }] },
   { id: "address", fields: [{ key: "city" }] },
   { id: "unit", fields: [{ key: "legalArea" }] },
+  // "İmar Durumu" koşullu scoping testi (2026-08-16) icin fixture'a eklendi
+  // - gercek app.js'teki planning bolumunun kucultulmus bir kopyasi.
+  { id: "planning", fields: [{ key: "planScale" }, { key: "hmax" }] },
 ];
 let state = null;
-const TITLE_UNIT_SCOPED_SECTION_IDS = ["address", "title", "encumbrance"];
+const TITLE_UNIT_SCOPED_SECTION_IDS = ["address", "title", "encumbrance", "planning"];
 const TITLE_UNIT_SCOPED_TABLE_KEYS = ["title", "encumbrance", "encumbranceDeclarations", "encumbranceAnnotations", "encumbranceMortgages"];
 const TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS = new Set(["transport", "nearby", "environmentDescription", "takbisSummary"]);
 ${functionNames.map(extractFunction).join("\n")}
@@ -453,6 +462,74 @@ assert.match(appSource, /panel\.dataset\.parcelScope = mixedParcels \? "mixed" :
     "KML 'tum tasinmazlara uygula' kutucugu admin + Coklu Talep (2+ tasinmaz) gate'i kaybolmus olabilir."
   );
   console.log("applyKmlFileToAllTitleUnits kaynak-duzeyi kablolama testi tamam.");
+}
+
+// --- 17) computeTitleUnitsShareSameAdaParsel(): saf fonksiyon tablosu ----
+// (Imar Durumu kosullu scoping, 2026-08-16) --------------------------------
+{
+  const u = (blockNo, parcelNo) => ({ fields: { blockNo, parcelNo } });
+  assert.equal(sandbox.fns.computeTitleUnitsShareSameAdaParsel([]), true, "Bos dizi icin true donmeli.");
+  assert.equal(sandbox.fns.computeTitleUnitsShareSameAdaParsel([u("100", "1")]), true, "Tek tasinmaz icin true donmeli.");
+  assert.equal(sandbox.fns.computeTitleUnitsShareSameAdaParsel([u("100", "1"), u("100", "1")]), true, "Ayni ada/parsel icin true donmeli.");
+  assert.equal(sandbox.fns.computeTitleUnitsShareSameAdaParsel([u("100", "1"), u("100", "2")]), false, "Farkli parsel icin false donmeli.");
+  assert.equal(sandbox.fns.computeTitleUnitsShareSameAdaParsel([u("100", "1"), u("200", "1")]), false, "Farkli ada icin false donmeli.");
+  assert.equal(sandbox.fns.computeTitleUnitsShareSameAdaParsel([u(" 100 ", "1"), u("100", " 1 ")]), true, "Bosluk farkiyla ayni ada/parsel yine de true donmeli (trim).");
+  console.log("computeTitleUnitsShareSameAdaParsel saf fonksiyon tablosu testi tamam.");
+}
+
+// --- 18) Imar Durumu kosullu scoping: ayni ada/parselde PAYLASIMLI, ------
+// farkli ada/parselde tasinmaza-ozgu (Cift Yonlu Duzenleme'nin devami, ----
+// 2026-08-16) ---------------------------------------------------------------
+{
+  // 18a) Ayni ada/parsel -> planScale/hmax scoped-set'te OLMAMALI, switch
+  // sirasinda DEGISMEMELI (paylasimli).
+  const sameState = freshState({ fields: { city: "İstanbul", blockNo: "709", parcelNo: "2", planScale: "1/1000", hmax: "12.50" } });
+  sandbox.setState(sameState);
+  const newIndex1 = sandbox.fns.addTitleUnitTab();
+  // Yeni eklenen tasinmaz da AYNI ada/parseli tasisin (varsayilan senaryo:
+  // coklu talepte butun birimler ayni parselde baslar) — bos birakilirsa
+  // (createEmptyTitleUnit) bos "" degeri "709" ile ESLESMEZ ve ada/parsel
+  // FARKLI sayilir, bu senaryonun test etmek istedigi "ayni ada/parsel"
+  // durumunu YANLIS temsil eder.
+  sandbox.getState().titleUnits[0].fields.blockNo = "709";
+  sandbox.getState().titleUnits[0].fields.parcelNo = "2";
+  const beforeKeys = sandbox.fns.getTitleUnitScopedFieldKeys();
+  assert.ok(!beforeKeys.has("planScale") && !beforeKeys.has("hmax"), "Ayni ada/parselde planScale/hmax scoped-set'te OLMAMALI.");
+  const switched1 = sandbox.fns.switchActiveTitleUnit(newIndex1);
+  assert.equal(switched1, true, "Ayni ada/parselli 2. tasinmaza gecis basarili olmali.");
+  const afterSwitch1 = sandbox.getState();
+  assert.equal(afterSwitch1.fields.planScale, "1/1000", "Ayni ada/parselde planScale PAYLASIMLI kalmali (2. tasinmaza gecince degismemeli).");
+  assert.equal(afterSwitch1.fields.hmax, "12.50", "Ayni ada/parselde hmax PAYLASIMLI kalmali.");
+  assert.equal(afterSwitch1.primaryTitleUnitShadow.fields.planScale, undefined, "Paylasimliyken planScale golge yuvaya HIC yazilmamali (scoped-set disinda).");
+
+  // 18b) Farkli ada/parsel -> planScale/hmax scoped-set'te OLMALI, switch
+  // sirasinda BAGIMSIZLASMALI (round-trip).
+  const diffState = freshState({ fields: { city: "İstanbul", blockNo: "709", parcelNo: "2", planScale: "1/1000", hmax: "12.50" } });
+  sandbox.setState(diffState);
+  const newIndex2 = sandbox.fns.addTitleUnitTab();
+  sandbox.getState().titleUnits[0].fields.blockNo = "845"; // FARKLI parsel
+  sandbox.getState().titleUnits[0].fields.parcelNo = "7";
+  const afterKeys = sandbox.fns.getTitleUnitScopedFieldKeys();
+  assert.ok(afterKeys.has("planScale") && afterKeys.has("hmax"), "Farkli ada/parselde planScale/hmax scoped-set'te OLMALI.");
+  sandbox.fns.switchActiveTitleUnit(newIndex2);
+  const afterSwitch2 = sandbox.getState();
+  assert.equal(afterSwitch2.fields.planScale, undefined, "Farkli ada/parselde 2. (yeni, bos) tasinmaza gecince planScale BOS olmali (bagimsiz).");
+  afterSwitch2.fields.planScale = "1/5000";
+  afterSwitch2.fields.hmax = "9.50";
+  sandbox.fns.switchActiveTitleUnit(0);
+  const backToPrimary2 = sandbox.getState();
+  assert.equal(backToPrimary2.fields.planScale, "1/1000", "Birincilin planScale'i (1/1000) farkli ada/parselde BAGIMSIZ kalip degismemeli.");
+  sandbox.fns.switchActiveTitleUnit(1);
+  const secondAgain2 = sandbox.getState();
+  assert.equal(secondAgain2.fields.planScale, "1/5000", "2. tasinmaza tekrar gecince kendi girdigi deger (1/5000) KAYBOLMAMALI (round-trip).");
+  console.log("Imar Durumu kosullu (ada/parsel'e gore ortak/scoped) davranis testi tamam.");
+}
+
+// --- 19) isPlanningScopedByAdaParsel(): tekil raporda HER ZAMAN false ----
+{
+  sandbox.setState(freshState({ titleUnits: [] }));
+  assert.equal(sandbox.fns.isPlanningScopedByAdaParsel(), false, "Tekil (1 tasinmazli) raporda Imar Durumu HER ZAMAN paylasimli (false) olmali.");
+  console.log("isPlanningScopedByAdaParsel tekil rapor testi tamam.");
 }
 
 console.log("Coklu TAKBIS Faz 2 tab-anahtarlama motoru testleri basarili.");
