@@ -234,4 +234,80 @@ function lineDiv(text) {
   );
 }
 
+// --- 4) ARSA/TARLA emsalinde "Yüzölçümü" (c24) boşsa "Beyan Edilen -------
+// Alan"/"Düzeltilmiş Alan" (c12/c13) YEDEK olarak kullanılmalı ------------
+// (2026-08-16, kullanıcı bildirimi: "ARSA raporlarında emsal tablosu
+// excel olarak export edilmiyor" — kök neden: varsayılan "Tüm Alanlar"
+// görünümünde arsa nitelikli bir satırda c12/c13 [KONUT'a özgü alanlar]
+// de görünüp doldurulabiliyor, ama calculateComparableMetrics arsa/tarla
+// satırlarında SADECE c24'ü okuyordu — c24 boş kalırsa unitValue hep NaN
+// olup satır getComparableValuationRows()'tan sessizce eleniyordu; arsa
+// raporlarında AYRICA "Kat Bazında İndirgenmiş Alan Tablosu" da HER ZAMAN
+// boş olduğundan, "Değerleme ve Emsaller" Excel sayfasının 5 alt-tablosu
+// tümden boşalıp sayfa hiç görünmüyordu.)
+{
+  const calculateComparableMetricsSrc = sliceFn("function calculateComparableMetrics(");
+  const calculateComparableAdjustmentSrc = sliceFn("function calculateComparableAdjustment(");
+  const parseComparablePercentSrc = sliceFn("function parseComparablePercent(");
+  const parseComparableWorkplaceReductionRateSrc = sliceFn("function parseComparableWorkplaceReductionRate(");
+  const getComparableMultiValuesSrc = sliceFn("function getComparableMultiValues(");
+  const syncComparableWorkplaceFloorsSrc = sliceFn("function syncComparableWorkplaceFloors(");
+  const getComparableValuationRowsSrc = sliceFn("function getComparableValuationRows(");
+  const foldTurkishForNatureSrc = sliceFn("function foldTurkish(");
+  const isWorkplaceLikeUsageNatureSrc = sliceFn("function isWorkplaceLikeUsageNature(");
+
+  function sliceArray(startMarker) {
+    const start = appSource.indexOf(startMarker);
+    assert(start >= 0, `Bulunamadi: ${startMarker}`);
+    const end = appSource.indexOf("\n];", start) + 3;
+    return appSource.slice(start, end);
+  }
+  const comparableFloorOptionsArraySrc = sliceArray("const comparableFloorOptions = [");
+
+  const rows = [
+    // E1: arsa, c24 BOŞ, c12 DOLU (yanlışlıkla konut alanına yazılmış) ->
+    // YEDEK olarak c12 kullanılmalı.
+    { c23: "Arsa", c2: "Satılık", c12: "500", c24: "", c14: "1.000.000", c15: "" },
+    // E2: arsa, c24 DOLU -> normal davranış (c24 kullanılır, c12 YOK SAYILIR).
+    { c23: "Arsa", c2: "Satılık", c12: "999999", c24: "400", c14: "800.000", c15: "" },
+    // E3: arsa, HEM c24 HEM c12/c13 BOŞ -> hâlâ elenmeli (regresyon olmamalı).
+    { c23: "Arsa", c2: "Satılık", c14: "500.000", c15: "" },
+  ];
+  const context = {
+    state: { fields: { legalUsageNature: "Arsa" } },
+    isLandComparable: (row) => ["arsa", "tarla", "meyve bahcesi"].includes(String(row?.c23 || "").toLocaleLowerCase("tr")),
+    syncComparableLandBuildableArea: () => {},
+    getComparableRows: () => rows,
+  };
+  vm.createContext(context);
+  vm.runInContext(comparableFloorOptionsArraySrc, context);
+  vm.runInContext(foldTurkishForNatureSrc, context);
+  vm.runInContext(isWorkplaceLikeUsageNatureSrc, context);
+  vm.runInContext(getComparableMultiValuesSrc, context);
+  vm.runInContext(syncComparableWorkplaceFloorsSrc, context);
+  vm.runInContext(parseComparableNumberSrc, context);
+  vm.runInContext(parseComparablePercentSrc, context);
+  vm.runInContext(parseComparableWorkplaceReductionRateSrc, context);
+  vm.runInContext(calculateComparableAdjustmentSrc, context);
+  vm.runInContext(calculateComparableMetricsSrc, context);
+  vm.runInContext(getComparableValuationRowsSrc, context);
+
+  const valuationRows = context.getComparableValuationRows();
+  assert.equal(
+    valuationRows.length, 2,
+    `Yalnizca gecerli alani olan 2 satir (E1 yedek + E2 normal) donmeli, E3 (alan hic yok) elenmeli: ${JSON.stringify(valuationRows.map((r) => r.no))}`
+  );
+  assert.equal(valuationRows[0].no, "E1", "1. satir E1 olmali.");
+  assert.equal(
+    Math.round(valuationRows[0].unitValue), 2000,
+    `E1: c24 bos oldugundan c12 (500) YEDEK alinip 1.000.000/500=2000 olmali: ${valuationRows[0].unitValue}`
+  );
+  assert.equal(valuationRows[1].no, "E2", "2. satir E2 olmali.");
+  assert.equal(
+    Math.round(valuationRows[1].unitValue), 2000,
+    `E2: c24 (400) DOLU oldugundan KULLANILMALI, c12 (999999) YOK SAYILMALI: 800.000/400=2000: ${valuationRows[1].unitValue}`
+  );
+  console.log("Arsa/tarla emsalinde c24 bossa c12/c13 yedek alan testi tamam.");
+}
+
 console.log("Emsal Degerleme Tablosu kat detayi testi tamam.");

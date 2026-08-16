@@ -683,7 +683,11 @@ function main() {
       appJs.includes('if (["c24", "c26", "c27", "c28"].includes(field.key) && syncComparableLandBuildableArea(row, true))') &&
       appJs.includes('if (["c24", "c26", "c27", "c28"].includes(field.key)) return;') &&
       appJs.includes("/^\\d{1,3}(?:\\.\\d{3})+$/.test(text)") &&
-      appJs.includes("const adjustedArea = landComparable ? parseComparableNumber(row.c24)") &&
+      // 2026-08-16: "ARSA raporlarında emsal tablosu excel olarak export
+      // edilmiyor" düzeltmesi — arsa/tarla satırında c24 boşsa artık
+      // c12/c13'ten (rawArea) YEDEK alınıyor (bkz. tools/test-comparable-valuation-summary-floor-detail.js
+      // senaryo 4).
+      appJs.includes("const adjustedArea = landComparable ? (parseComparableNumber(row.c24) || rawArea)") &&
       appJs.includes("formatComparableMapLocationPhrase") &&
       appJs.includes("Math.round(distance / 10) * 10") &&
       appJs.includes("allowEmpty: false") &&

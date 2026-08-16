@@ -35682,7 +35682,23 @@ function calculateComparableMetrics(row) {
         return sum + (Number.isFinite(area) ? area : 0);
       }, 0)
     : rawArea;
-  const adjustedArea = landComparable ? parseComparableNumber(row.c24) : workplaceReducedArea;
+  // Kullanıcı bildirimi (2026-08-16): "ARSA raporlarında emsal tablosu
+  // excel olarak export edilmiyor" — kök neden: arsa/tarla nitelikli bir
+  // emsal satırında "Yüzölçümü" (c24) alanı boş bırakılıp bunun yerine
+  // (varsayılan "Tüm Alanlar" görünümünde c12/c13 de AYNI ekranda
+  // görünüyor, bkz. getComparableDisplayFields) "Beyan Edilen Alan"/
+  // "Düzeltilmiş Alan" (c12/c13, KONUT'a özgü alanlar) dolduruluyordu —
+  // bu durumda adjustedArea daima NaN kalıyor, unitValue/adjustedUnitValue
+  // hesaplanamıyor, satır getComparableValuationRows()'un filtresinden
+  // (Number.isFinite kontrolü) SESSİZCE elenip "Emsal Değerleme Tablosu"
+  // boş kalıyordu — arsa raporlarında AYRICA "Kat Bazında İndirgenmiş
+  // Alan Tablosu" da HER ZAMAN boş olduğundan (arazi için kat kavramı
+  // yok), "Değerleme ve Emsaller" Excel sayfasının 5 alt-tablosundan 2'si
+  // garanti boşken emsal hesaplaması da boşalınca sayfa TAMAMEN
+  // kayboluyordu. Düzeltme: arsa/tarla satırında c24 boş/geçersizse
+  // c12/c13'ten (rawArea, YUKARIDA zaten hesaplanmıştı ama önceden
+  // arsa/tarla için YOK SAYILIYORDU) YEDEK olarak düşülür.
+  const adjustedArea = landComparable ? (parseComparableNumber(row.c24) || rawArea) : workplaceReducedArea;
   const calculatedEmsalArea = landComparable ? parseComparableNumber(row.c31) : Number.NaN;
   const rent = landComparable ? Number.NaN : parseComparableNumber(row.c16);
   const featureAdjustment = landComparable ? 0 : calculateComparableAdjustment(row.c8, row.c21);

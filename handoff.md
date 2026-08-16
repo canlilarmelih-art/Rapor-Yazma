@@ -9886,6 +9886,15 @@ gerekmedi, testle (bkz. aşağıda) tekrar doğrulandı.
   zincirle yeşil.
 - Cache-buster: `app.js?v=20260814-1745`.
 
+## 0.0.470 - 2026-08-16 - ARSA emsal tablosu: "Yüzölçümü" boşsa Excel'den sessizce düşme düzeltildi
+
+- Kullanıcı: "ARSA raporlarında emsal tablosu excel oalrak export edilmiyor" — netleştirme sorusuna cevap: etkilenen çıktı "Banka Şablonuyla Kaydet" ZIP'indeki "Tüm Tablolar" Excel'i.
+- Kök neden: `calculateComparableMetrics(row)` (app.js) arsa/tarla nitelikli bir emsal satırında `adjustedArea`'yı YALNIZCA "Yüzölçümü" (c24) alanından hesaplıyordu; `getComparableDisplayFields()`'in varsayılan ("Tüm Alanlar") görünümü KONUT'a özgü "Beyan Edilen Alan"/"Düzeltilmiş Alan" (c12/c13) alanlarını da AYNI ekranda göstermeye devam ettiğinden, kullanıcı arsa satırında yanlışlıkla c24 yerine c12/c13'ü doldurduğunda `adjustedArea` NaN kalıyor, `unitValue`/`adjustedUnitValue` hesaplanamıyor, satır `getComparableValuationRows()`'un `Number.isFinite` filtresinden SESSİZCE elenip "Emsal Değerleme Tablosu" boş kalıyordu. Bu, arsa/tarla raporlarında AYRICA HER ZAMAN boş olan "Kat Bazında İndirgenmiş Alan Tablosu" (`clearLandOwnershipDependentData`) ile birleşince, "Değerleme ve Emsaller" Excel sayfasını besleyen 5 alt-tablodan 2'si zaten boşken emsal de boşalınca `combineNamedGrids()` TÜM sayfayı sessizce atlıyordu (hepsi boşsa sayfa hiç üretilmiyor).
+- Düzeltildi: arsa/tarla satırında `adjustedArea` artık c24 boş/geçersizse önceden zaten hesaplanmış ama YOK SAYILAN `rawArea` (c12/c13) değerine YEDEK olarak düşüyor — `const adjustedArea = landComparable ? (parseComparableNumber(row.c24) || rawArea) : workplaceReducedArea;`. c24 doluysa davranış DEĞİŞMEDİ (c24 kullanılır, c12/c13 yok sayılır); hem c24 hem c12/c13 boşsa satır hâlâ (doğru şekilde) elenir.
+- Test: `tools/test-comparable-valuation-summary-floor-detail.js`'e yeni senaryo (4) — c24 boş/c12 dolu arsa satırının YEDEK ile doğru hesaplandığı, c24 doluyken c12'nin yok sayıldığı, ikisi de boşken satırın hâlâ elendiği `vm.runInContext` sandbox'ıyla doğrulandı. `tools/check-basic.js`'teki (satır ~686) `adjustedArea` kaynak-metni regresyon koruması yeni koda güncellendi.
+- **Not**: bu değişiklik CANLI tarayıcıda doğrulanamadı — geliştirme sunucusu bu oturum içinde yeniden başlatılınca bellek-içi oturum (session) geçersiz kaldı ve giriş sayfasına düştü; kimlik bilgisi olmadığından (ve bunu girmek yasak bir eylem olduğundan) tekrar giriş YAPILMADI. Düzeltme yalnızca Node seviyesinde (`npm run verify`, EXIT:0, tüm paket yeşil) doğrulandı — kullanıcının gerçek bir ARSA raporunda "Banka Şablonuyla Kaydet" ile bir sonraki fırsatta teyit etmesi önerilir.
+- `npm run verify` tamamı yeşil. Cache-buster: `app.js` → `20260816-1620`.
+
 ## 0.0.469 - 2026-08-16 - İmar Durumu "tümüne uygula": Hesaplanan Emsal istisnası
 
 - Kullanıcı: "tümüne uygula dediğimde hesaplanan emsal mevcut sistemimizdeki formül ile hesaplanıp yazılmalı aynı sayı yazılmamalı. bu hesaplanan emsal kısmında bir istisna."
