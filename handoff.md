@@ -9886,6 +9886,15 @@ gerekmedi, testle (bkz. aşağıda) tekrar doğrulandı.
   zincirle yeşil.
 - Cache-buster: `app.js?v=20260814-1745`.
 
+## 0.0.468 - 2026-08-16 - Taşınmazlar İmar Özeti: sütun kümesi netleştirildi (13 alan, hepsi düzenlenebilir)
+
+- Kullanıcı: "Taşınmazlar İmar Özeti tablosunda yer alması gereken sütunlar Plan Ölçeği İmar Plan Adı Plan Tarihi İmar Lejantı İmar Nizamı Kat Adedi Hmax TAKS KAKS / Emsal Hesaplanan Emsal Ön Bahçe Yan Bahçe Arka Bahçe diğer bölümler yer almayacak Taşınmazın imar durumunda sorun var mı seçeneği kullanıcı tarafından işaretlenecek. sorun var ise kullanıcı manuel olarak girecek."
+- `IMAR_UNITS_TABLE_FIELD_DEFS` (app.js, 0.0.466'da eklenmişti) 21 alandan (14 scalar + 7 "readonly") kullanıcının verdiği TAM 13 alana daraltıldı, TAM sırasıyla: Plan Ölçeği, İmar Plan Adı, Plan Tarihi, İmar Lejantı, İmar Nizamı, Kat Adedi, Hmax, TAKS, KAKS/Emsal, Hesaplanan Emsal, Ön Bahçe, Yan Bahçe, Arka Bahçe — HEPSİ artık "scalar" (düzenlenebilir); "İmar Sorunu Var mı?" + 5 conditionalYesNo alanı (Plan İptali, Min. Cephe, Tevhid, 18. Madde, Kentsel Dönüşüm, Ruhsat Engeli) + Yola Terk tablodan TAMAMEN ÇIKARILDI — bunlar taşınmaza özgü, kullanıcının kendi İmar Durumu sekmesinde elle işaretlediği/manuel girdiği alanlar olarak KALMAYA devam ediyor (yalnızca ÖZET TABLONUN sütun kümesi daraldı; Faz A'nın koşullu scoping'i ve "tümüne uygula" (0.0.467) hâlâ İmar Durumu'nun TÜM alanlarını kapsıyor — `getImarSectionFieldKeys()` DEĞİŞMEDİ, yalnızca `IMAR_UNITS_TABLE_FIELD_DEFS` değişti, iki liste BİLİNÇLİ OLARAK ayrı).
+- `columnMeta`'daki `"readonly"` türü artık HİÇ üretilmiyor (genel mekanizma — `buildTitleUnitsSummaryTableHtmlEditable` — silinmedi, sadece bu tabloda kullanılmıyor; ileride benzer bir ihtiyaç çıkarsa hazır).
+- Test: `tools/test-planning-units-summary-table.js` güncellendi — 13 alan/TAM sıra/hepsi-scalar doğrulaması, "İmar Sorunu Var mı?"/"Yola Terk"/conditionalYesNo alanlarının tabloda OLMADIĞI regresyon kontrolü.
+- Canlı tarayıcıda GERÇEK rapor üzerinde doğrulandı (deep-clone backup/restore ile): farklı ada/parselde tablo artık tam olarak istenen 11 sütunu (dolu olanlar, boş sütun kuralı hâlâ geçerli) doğru sırada gösterdi, hepsi düzenlenebilir, "İmar Sorunu"/"Yola Terk" sütunları hiç görünmedi.
+- `npm run verify` tamamı yeşil. Cache-buster: `app.js` → `20260816-1450`.
+
 ## 0.0.467 - 2026-08-16 - İmar Durumu: farklı ada/parselde "tümüne uygula" seçeneği
 
 - Kullanıcı: "İmar durumu farklı ada parsellerde rapor yaparken bazen tüm taşınmazlar aynı imar planına sahip olabiliyor. (Örnek: 5 Adet Tarla hepsi Tarım Alanı) farklı ada parselde imar durumu kısmında tümüne uygula seçeneği olsun."

@@ -17,10 +17,12 @@
 //     Tapu/Adres tablolarından FARKLI.
 //  3) Tekil raporda (1 taşınmaz) null döner.
 //  4) Tüm taşınmazlarda BOŞ olan sütun tamamen kaldırılır.
-//  5) columnMeta: curated 14 alan "scalar", 7 alan "readonly"; "owner"/
-//     "computed" türü YOK.
-//  6) buildTitleUnitsSummaryTableHtmlEditable(): "scalar" sütunlar TÜM
-//     satırlarda düzenlenebilir, "readonly" sütunlar HİÇBİR satırda değil.
+//  5) columnMeta: curate edilmiş TAM 13 alan, HEPSİ "scalar" (kullanıcı
+//     netleştirmesi, 2026-08-16: "İmar Sorunu Var mı?" + 5 conditionalYesNo
+//     alanı + Yola Terk tablo DIŞI — "readonly" türü artık KULLANILMIYOR);
+//     "owner"/"computed" türü de YOK.
+//  6) buildTitleUnitsSummaryTableHtmlEditable(): TÜM sütunlar TÜM
+//     satırlarda düzenlenebilir.
 //  7) Gerçek HTML üretimi: dinamik genişlik + tam ortalama + HER ZAMAN
 //     büyük harf (Tapu/Adres tablolarıyla AYNI paylaşılan HTML üretici).
 //  8) template-engine.js'te {{TASINMAZLARIMARTABLOSU}} kayıtlı mı.
@@ -179,15 +181,22 @@ function unit(blockNo, parcelNo, overrides = {}) {
   console.log("Tum tasinmazlarda bos olan sutunun kaldirilma testi tamam.");
 }
 
-// --- 5) columnMeta: curated scalar/readonly kind eşlemesi ------------------
+// --- 5) columnMeta: curate edilmiş 13 alan, HEPSI "scalar" (2026-08-16 ----
+// kullanıcı netleştirmesi: "diğer bölümler yer almayacak ... İmar Sorunu
+// Var mı ve diğer conditionalYesNo alanları/Yola Terk tablo DIŞI") -------
 {
   const defs = fns.getFieldDefs();
-  const scalarDefs = defs.filter((d) => d.kind === "scalar");
-  const readonlyDefs = defs.filter((d) => d.kind === "readonly");
-  assert.equal(scalarDefs.length, 14, `14 alan 'scalar' olmalıydı, bulunan: ${scalarDefs.length}`);
-  assert.equal(readonlyDefs.length, 7, `7 alan 'readonly' olmalıydı, bulunan: ${readonlyDefs.length}`);
+  assert.equal(defs.length, 13, `Tam olarak 13 sutun bekleniyordu, bulunan: ${defs.length}`);
+  assert.ok(defs.every((d) => d.kind === "scalar"), "IMAR_UNITS_TABLE_FIELD_DEFS'teki TUM alanlar 'scalar' olmali (readonly turu KALDIRILDI).");
+  assert.deepEqual(defs.map((d) => d.key), [
+    "planScale", "planName", "planDate", "legend", "order", "floorCount",
+    "hmax", "taks", "kaks", "calculatedEmsal", "frontGarden", "sideGarden", "backGarden",
+  ], "Sutun sirasi kullanicinin belirttigi TAM sirayla eslemeli.");
   assert.ok(!defs.some((d) => d.key === "imarInfoInstitution"), "imarInfoInstitution (multiCheckbox) tabloda OLMAMALI.");
   assert.ok(!defs.some((d) => d.key === "planRestrictionNote" || d.key === "planningNote"), "Paylaşımlı (sensitiveOnly) açıklama alanları tabloda OLMAMALI.");
+  assert.ok(!defs.some((d) => d.key === "hasPlanningIssue"), "\"İmar Sorunu Var mı?\" artik tabloda OLMAMALI (kullanicinin kendi sekmesinde elle isaretlenmeye devam ediyor).");
+  assert.ok(!defs.some((d) => d.key === "roadSetback"), "\"Yola Terk\" artik tabloda OLMAMALI (kullanici listesinde yok).");
+  assert.ok(!defs.some((d) => /Condition$|Applied$|TransformationArea$|Obstacle$/.test(d.key)), "conditionalYesNo alanlari (Plan Iptali/Cephe/Tevhid/18. Madde/Kentsel Donusum/Ruhsat) tabloda OLMAMALI.");
 
   const fieldsObj = {};
   defs.forEach((d) => { fieldsObj[d.key] = `deger-${d.key}`; });
@@ -200,16 +209,14 @@ function unit(blockNo, parcelNo, overrides = {}) {
   const data = fns.buildImarUnitsSummaryTableData();
   assert.equal(data.columnMeta.length, data.headers.length, "columnMeta, headers ile AYNI uzunlukta olmali.");
   assert.equal(data.columnMeta[0].kind, "seq", "Ilk sutun (Sira No) 'seq' olmali.");
-  assert.ok(!data.columnMeta.some((m) => m.kind === "owner" || m.kind === "computed"), "Imar tablosunda 'owner'/'computed' turu OLMAMALI.");
+  assert.ok(!data.columnMeta.some((m) => m.kind === "owner" || m.kind === "computed" || m.kind === "readonly"), "Imar tablosunda 'owner'/'computed'/'readonly' turu OLMAMALI (hepsi scalar/seq).");
   const scalarCount = data.columnMeta.filter((m) => m.kind === "scalar").length;
-  const readonlyCount = data.columnMeta.filter((m) => m.kind === "readonly").length;
-  assert.equal(scalarCount, 14, `columnMeta'da 14 'scalar' sutun bekleniyordu, bulunan: ${scalarCount}`);
-  assert.equal(readonlyCount, 7, `columnMeta'da 7 'readonly' sutun bekleniyordu, bulunan: ${readonlyCount}`);
-  console.log("columnMeta scalar/readonly kind eslemesi testi tamam.");
+  assert.equal(scalarCount, 13, `columnMeta'da 13 'scalar' sutun bekleniyordu, bulunan: ${scalarCount}`);
+  console.log("columnMeta curate edilmis 13 scalar sutun eslemesi testi tamam.");
 }
 
-// --- 6) buildTitleUnitsSummaryTableHtmlEditable(): "scalar" TUM satirlarda -
-// duzenlenebilir, "readonly" HICBIR satirda degil --------------------------
+// --- 6) buildTitleUnitsSummaryTableHtmlEditable(): TUM sutunlar TUM ------
+// satirlarda duzenlenebilir (hepsi scalar, readonly turu artik yok) -------
 {
   const defs = fns.getFieldDefs();
   const fieldsObj = {};
@@ -227,7 +234,7 @@ function unit(blockNo, parcelNo, overrides = {}) {
   const actualEditableCount = (html.match(/tus-editable-cell/g) || []).length;
   assert.equal(actualEditableCount, expectedEditableCount, `TUM satirlarin scalar sutunlari (${expectedEditableCount} adet) duzenlenebilir isaretlenmeliydi, bulunan: ${actualEditableCount}.`);
   assert.ok(!html.includes("tus-owner-cell"), "Imar tablosunda 'owner' hucresi (Malik popover tetikleyicisi) OLMAMALI.");
-  console.log("buildTitleUnitsSummaryTableHtmlEditable scalar/readonly isaretleme testi tamam.");
+  console.log("buildTitleUnitsSummaryTableHtmlEditable tum-sutun scalar isaretleme testi tamam.");
 }
 
 // --- 7) Gerçek HTML üretimi: dinamik genişlik + tam ortalama + BÜYÜK ------

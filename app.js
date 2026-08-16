@@ -17566,23 +17566,31 @@ function buildAddressUnitsSummaryWordTableHtml() {
 // İmar Durumu Faz B (Çift Yönlü Düzenleme, 2026-08-16) — kullanıcı talebi:
 // "farklı ada parselde yer alan taşınmazların oluşturduğu çoklu raporlarda
 // tapu bömlümündeki gibi her bölüme ait sütundan oluşan tablo olacak...
-// çift taraflı olmalı". Tapu/Adres tablolarıyla AYNI desen; İmar Durumu'nun
-// 25 alanından curate edilmiş bir alt küme sütun oluyor:
-// - "scalar" (metin/select/tarih, tıkla-düzenle mekanizmasıyla AYNI —
-//   select-tipi alanlarda [planScale/legend/order/floorCount/roadSetback]
-//   serbest metin girişinin gerçek <select>'teki bir seçenekle TAM
-//   eşleşmesi gerektiği BİLİNEN bir sınırlama — Tapu tablosunun titleCity/
-//   titleDistrict için ZATEN taşıdığı AYNI sınırlama, burada YENİ değil).
-// - "readonly" (checkbox/conditionalYesNo alanlarının Evet/Hayır kısmı —
-//   karşılaştırma için GÖRÜNÜR ama tıklanamaz; detay notları HARİÇ, uzun
-//   serbest metin tek satır hücreye sığmaz).
-// imarInfoInstitution (multiCheckbox) ve planRestrictionNote/planningNote
-// (zaten TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS'te paylaşımlı, hiç
-// taşınmaza-özgü değil) KASITLI OLARAK tabloda YOK.
+// çift taraflı olmalı". Tapu/Adres tablolarıyla AYNI desen.
+//
+// GÜNCELLEME (2026-08-16, devam): kullanıcı sütun listesini NETLEŞTİRDİ —
+// "Taşınmazlar İmar Özeti tablosunda yer alması gereken sütunlar Plan
+// Ölçeği İmar Plan Adı Plan Tarihi İmar Lejantı İmar Nizamı Kat Adedi
+// Hmax TAKS KAKS/Emsal Hesaplanan Emsal Ön Bahçe Yan Bahçe Arka Bahçe
+// diğer bölümler yer almayacak. Taşınmazın imar durumunda sorun var mı
+// seçeneği kullanıcı tarafından işaretlenecek, sorun var ise kullanıcı
+// manuel olarak girecek" — yani "İmar Sorunu Var mı?" + 5 conditionalYesNo
+// alanı (Plan İptali/Yürütmeyi Durdurma, Minimum Cephe Şartı, Tevhid
+// Şartı, 18. Madde, Kentsel Dönüşüm, Ruhsat Engeli) VE Yola Terk BİLİNÇLİ
+// OLARAK tablo DIŞI — bunlar taşınmaza özgü elle işaretlenen/manuel
+// girilen alanlar olarak KENDİ sekmesinde kalmaya devam ediyor (Faz A'nın
+// scoping/"tümüne uygula" mantığı hâlâ TÜM İmar Durumu alanlarını
+// kapsıyor — bkz. getImarSectionFieldKeys — YALNIZCA bu ÖZET TABLONUN
+// sütun kümesi daraldı, taşınmaza-özgü veri modeli DEĞİŞMEDİ).
+// Tümü "scalar" (metin/select/tarih, tıkla-düzenle mekanizmasıyla AYNI —
+// select-tipi alanlarda [planScale/legend/order/floorCount] serbest metin
+// girişinin gerçek <select>'teki bir seçenekle TAM eşleşmesi gerektiği
+// BİLİNEN bir sınırlama — Tapu tablosunun titleCity/titleDistrict için
+// ZATEN taşıdığı AYNI sınırlama, burada YENİ değil).
 const IMAR_UNITS_TABLE_FIELD_DEFS = [
   { key: "planScale", label: "Plan Ölçeği", kind: "scalar" },
-  { key: "planDate", label: "Plan Tarihi", kind: "scalar" },
   { key: "planName", label: "İmar Plan Adı", kind: "scalar" },
+  { key: "planDate", label: "Plan Tarihi", kind: "scalar" },
   { key: "legend", label: "İmar Lejantı", kind: "scalar" },
   { key: "order", label: "İmar Nizamı", kind: "scalar" },
   { key: "floorCount", label: "Kat Adedi", kind: "scalar" },
@@ -17593,14 +17601,6 @@ const IMAR_UNITS_TABLE_FIELD_DEFS = [
   { key: "frontGarden", label: "Ön Bahçe", kind: "scalar" },
   { key: "sideGarden", label: "Yan Bahçe", kind: "scalar" },
   { key: "backGarden", label: "Arka Bahçe", kind: "scalar" },
-  { key: "roadSetback", label: "Yola Terk", kind: "scalar" },
-  { key: "hasPlanningIssue", label: "İmar Sorunu Var mı?", kind: "readonly" },
-  { key: "planCancellationStay", label: "Plan İptali / Yürütmeyi Durdurma", kind: "readonly" },
-  { key: "minimumFrontageCondition", label: "Minimum Cephe Şartı", kind: "readonly" },
-  { key: "tevhidCondition", label: "Tevhid Şartı", kind: "readonly" },
-  { key: "article18Applied", label: "18. Madde Uygulaması", kind: "readonly" },
-  { key: "urbanTransformationArea", label: "Kentsel Dönüşüm Bölgesi", kind: "readonly" },
-  { key: "licenseObstacle", label: "Ruhsat Engeli", kind: "readonly" },
 ];
 
 // Tabloyu (başlıklar + satırlar) hesaplar; YALNIZCA 2+ taşınmaz VE hepsi
