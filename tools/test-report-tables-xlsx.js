@@ -277,6 +277,46 @@ assert(!result.sheetNames.includes("Emsal kayıtları"), "Emsal kayitlari artik 
 assert(result.sheetNames.includes("İncelenen belgeler"), "Dolu 'İncelenen belgeler' tablosu icin sayfa olusmali.");
 assert(!result.sheetNames.includes("Beyanlar - Hak ve Mükellefiyetler"), "Tamamen bos 'Beyanlar' tablosu icin sayfa olusturulmamali.");
 
+// --- 2b) Taşınmazlar Tapu/Adres Özeti sayfaları (2026-08-15) --------------
+// Kullanıcı talebi: "bu adres ve tapu tablosunu çıktıda yer alan excel
+// tablosunu sayfa olarak aktar" — app.js'teki (Çift Yönlü Özet Tablo
+// özelliğiyle PAYLAŞILAN export fonksiyonları) buildTitleUnitsSummaryWordTableHtml/
+// buildAddressUnitsSummaryWordTableHtml bu Node test ortamında (app.js hiç
+// yüklenmiyor) window'da TANIMSIZ olduğundan yukarıdaki (2) numaralı ana
+// export zaten bu iki sayfayı İÇERMEMELİ (safeCall sessizce "" döner) —
+// bu, gerçek uygulamada "tekil taşınmazlı raporda sayfa oluşmaz" davranışının
+// dolaylı bir kanıtı. Burada fonksiyonları STUB'layıp GERÇEKTEN sayfa
+// üretildiğini + doğru konumda/adda olduğunu + içeriğin doğru aktarıldığını
+// doğruluyoruz.
+assert(!result.sheetNames.includes("Taşınmazlar Tapu Özeti"), "buildTitleUnitsSummaryWordTableHtml tanimsizken (tek tasinmazli rapor benzeri) sayfa OLUSMAMALIYDI.");
+assert(!result.sheetNames.includes("Taşınmazlar Adres Özeti"), "buildAddressUnitsSummaryWordTableHtml tanimsizken sayfa OLUSMAMALIYDI.");
+
+global.window.buildTitleUnitsSummaryWordTableHtml = () => `<table class="word-table title-units-summary-table">
+  <thead><tr><th>Sıra No</th><th>Taşınmaz Kimlik No</th></tr></thead>
+  <tbody><tr><td>1</td><td>123456</td></tr><tr><td>2</td><td>123457</td></tr></tbody>
+</table>`;
+global.window.buildAddressUnitsSummaryWordTableHtml = () => `<table class="word-table title-units-summary-table">
+  <thead><tr><th>Sıra No</th><th>UAVT</th></tr></thead>
+  <tbody><tr><td>1</td><td>111</td></tr><tr><td>2</td><td>222</td></tr></tbody>
+</table>`;
+const resultWithUnitSummaries = ReportTablesXlsx.exportAllTables({ download: false });
+assert(resultWithUnitSummaries.sheetNames.includes("Taşınmazlar Tapu Özeti"), "buildTitleUnitsSummaryWordTableHtml tanimliyken 'Taşınmazlar Tapu Özeti' sayfasi olusmali.");
+assert(resultWithUnitSummaries.sheetNames.includes("Taşınmazlar Adres Özeti"), "buildAddressUnitsSummaryWordTableHtml tanimliyken 'Taşınmazlar Adres Özeti' sayfasi olusmali.");
+const genelIndex = resultWithUnitSummaries.sheetNames.indexOf("Genel Bilgiler");
+const tapuOzetIndex = resultWithUnitSummaries.sheetNames.indexOf("Taşınmazlar Tapu Özeti");
+const adresOzetIndex = resultWithUnitSummaries.sheetNames.indexOf("Taşınmazlar Adres Özeti");
+const maliklerIndex = resultWithUnitSummaries.sheetNames.indexOf("Malikler");
+assert(genelIndex < tapuOzetIndex && tapuOzetIndex < adresOzetIndex && adresOzetIndex < maliklerIndex, `Sayfa sirasi beklenmedik (Genel Bilgiler -> Tapu Özeti -> Adres Özeti -> Malikler bekleniyordu): ${resultWithUnitSummaries.sheetNames.join(" | ")}`);
+
+// Fonksiyon tanimli ama BOS string donerse (gercek app.js'te tekil
+// tasinmazli rapor davranisi) sayfa yine OLUSMAMALI.
+global.window.buildTitleUnitsSummaryWordTableHtml = () => "";
+global.window.buildAddressUnitsSummaryWordTableHtml = () => "";
+const resultSingleUnit = ReportTablesXlsx.exportAllTables({ download: false });
+assert(!resultSingleUnit.sheetNames.includes("Taşınmazlar Tapu Özeti"), "Fonksiyon bos string donunce (tekil tasinmaz) 'Taşınmazlar Tapu Özeti' sayfasi OLUSMAMALIYDI.");
+assert(!resultSingleUnit.sheetNames.includes("Taşınmazlar Adres Özeti"), "Fonksiyon bos string donunce (tekil tasinmaz) 'Taşınmazlar Adres Özeti' sayfasi OLUSMAMALIYDI.");
+console.log("Tasinmazlar Tapu/Adres Ozeti Excel sayfasi olusturma + konum + tekil-tasinmazda-yok testi tamam.");
+
 async function verifyBlob() {
   const buf = await capturedBlob.blob.arrayBuffer();
   const entries = XlsxFill.readStoredZip(buf);
@@ -354,6 +394,23 @@ async function verifyBlob() {
   const masrafXml = sheetXmlByName.get("Masraf Tablosu");
   assert(masrafXml.includes("<t>Değerleme (Rapor) Ücreti</t>") && masrafXml.includes("<t>16.500,00 TL</t>"), "Masraf Tablosunda Degerleme Ucreti satiri eksik.");
   assert(masrafXml.includes("<t>Toplam Ücret</t>") && masrafXml.includes("<t>20.603,06 TL</t>"), "Masraf Tablosunda Toplam Ucret satiri eksik.");
+
+  // --- Tasinmazlar Tapu/Adres Ozeti sayfalarinin GERCEK icerigi -----------
+  // (resultWithUnitSummaries, scenario 2b'de olusturuldu) — sayfa varligi
+  // zaten dogrulandi, burada hucre icerigi de dogru aktarilmis mi bakiliyor.
+  const unitSummaryBuf = await resultWithUnitSummaries.blob.arrayBuffer();
+  const unitSummaryEntries = XlsxFill.readStoredZip(unitSummaryBuf);
+  const unitSummaryWorkbookXml = dec.decode(unitSummaryEntries.find((entry) => entry.name === "xl/workbook.xml").bytes);
+  const unitSummarySheetNames = [...unitSummaryWorkbookXml.matchAll(/<sheet name="([^"]*)"/g)].map((m) => m[1]);
+  const unitSummarySheetXmlByName = new Map();
+  unitSummarySheetNames.forEach((name, index) => {
+    const sheetEntry = unitSummaryEntries.find((entry) => entry.name === `xl/worksheets/sheet${index + 1}.xml`);
+    unitSummarySheetXmlByName.set(name, dec.decode(sheetEntry.bytes));
+  });
+  const tapuOzetXml = unitSummarySheetXmlByName.get("Taşınmazlar Tapu Özeti");
+  assert(tapuOzetXml && tapuOzetXml.includes("<t>Taşınmaz Kimlik No</t>") && tapuOzetXml.includes("<t>123456</t>") && tapuOzetXml.includes("<t>123457</t>"), "Taşınmazlar Tapu Özeti sayfasinda beklenen hucre icerigi eksik.");
+  const adresOzetXml = unitSummarySheetXmlByName.get("Taşınmazlar Adres Özeti");
+  assert(adresOzetXml && adresOzetXml.includes("<t>UAVT</t>") && adresOzetXml.includes("<t>111</t>") && adresOzetXml.includes("<t>222</t>"), "Taşınmazlar Adres Özeti sayfasinda beklenen hucre icerigi eksik.");
 
   if (failures.length) {
     console.error("Tum tablolar Excel disa aktarma testi BASARISIZ:");

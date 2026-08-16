@@ -9886,6 +9886,15 @@ gerekmedi, testle (bkz. aşağıda) tekrar doğrulandı.
   zincirle yeşil.
 - Cache-buster: `app.js?v=20260814-1745`.
 
+## 0.0.464 - 2026-08-15 - Taşınmazlar Tapu/Adres Özeti artık "Tüm Tablolar" Excel'inde de sayfa
+
+- Kullanıcı: "bu adres ve tapu tablosunu çıktıda yer alan excel tablosunu sayfa olarak aktar" — "Banka Şablonuyla Kaydet" ZIP paketindeki "Tüm Tablolar" Excel'ine (`src/exports/report-tables-xlsx.js`, `RaporReportTablesXlsx.exportAllTables()`) Çift Yönlü Özet Tablo özelliğinin (0.0.457-463) Tapu/Adres özet tabloları da eklendi.
+- `buildSheetsFromCurrentState()`'e "Genel Bilgiler" kapak sayfasının HEMEN ardından (Malikler/Takyidat gibi ham tablolardan ÖNCE) iki yeni sayfa eklendi: "Taşınmazlar Tapu Özeti" ve "Taşınmazlar Adres Özeti". İkinci bir HTML/hücre-ızgara üretici YAZILMADI — diğer sistem-üretimi tablolarla (ör. "Değerlendirme Tablosu") AYNI mevcut `generatedCellGridFor("fnAdı")` yolu (`safeCall` ile `window[fnAdı]()` çağırıp `parseHtmlTables` ile ayrıştırma) kullanıldı; `buildTitleUnitsSummaryWordTableHtml`/`buildAddressUnitsSummaryWordTableHtml` (app.js) — Word/banka şablonu export'uyla PAYLAŞILAN, ekran-içi düzenlenebilir önizlemeden TAMAMEN AYRI fonksiyonlar — doğrudan yeniden kullanıldı.
+- Yalnızca 2+ taşınmazlı (Çoklu Talep) raporlarda veri döndüklerinden, tekil raporlarda bu iki sayfa hiç eklenmiyor (mevcut fonksiyonlar zaten `""` dönüyor, `generatedCellGridFor` bunu `null`'a çeviriyor — sayfa oluşturulmuyor); ayrı bir kapı/kontrol YAZILMADI.
+- Test: `tools/test-report-tables-xlsx.js`'e üç yeni doğrulama eklendi — (a) fonksiyonlar tanımsızken (bu Node test ortamında app.js hiç yüklenmez) sayfaların OLUŞMADIĞI, (b) stub'lanınca sayfaların doğru ADDA/KONUMDA (Genel Bilgiler → Tapu Özeti → Adres Özeti → diğer tablolar) oluştuğu VE hücre içeriğinin doğru aktarıldığı, (c) fonksiyon tanımlı ama boş string dönerse (gerçek tekil-taşınmaz davranışı) yine sayfa oluşmadığı.
+- Canlı tarayıcıda GERÇEK rapor üzerinde doğrulandı — `exportAllTables()` SALT OKUNUR (state'e hiç yazmaz) olduğundan yedek/geri-yükleme GEREKMEDİ: gerçek 2 taşınmazlı raporun Excel çıktısında iki yeni sayfa doğru sırada oluştu, hücrelerde gerçek veriler (Taşınmaz Kimlik No "15135172", UAVT "1276628466", İl "BURSA" vb.) doğru şekilde göründü.
+- `npm run verify` tamamı yeşil. Cache-buster: `src/exports/report-tables-xlsx.js` → `20260815-2245`.
+
 ## 0.0.463 - 2026-08-15 - DÜZELTME: Malik(ler) popover'ı blur'da normalizeReportTableValue uygulamıyordu
 
 - Kullanıcı: "sen kendin test et derin bir şekilde ... bir hata bulursan düzelt" — Faz 1-4'ün tamamı canlı tarayıcıda GERÇEK rapor üzerinde uçtan uca yeniden test edildi (deep-clone backup/restore ile). Faz 1/2/3 hatasız geçti; Faz 4'ün popover'ında GERÇEK bir tutarsızlık bulundu.

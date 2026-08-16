@@ -689,6 +689,28 @@
       });
     }
 
+    // Kullanıcı talebi (2026-08-15): "bu adres ve tapu tablosunu çıktıda
+    // yer alan excel tablosunu sayfa olarak aktar" — Çoklu Talep'te
+    // (2+ taşınmaz) admin panelinde görünen "Taşınmazlar Tapu Özeti"/
+    // "Taşınmazlar Adres Özeti" tabloları (bkz. app.js, Çift Yönlü Özet
+    // Tablo özelliği) artık "Tüm Tablolar" Excel'inde de AYRI birer sayfa.
+    // buildTitleUnitsSummaryWordTableHtml/buildAddressUnitsSummaryWordTableHtml
+    // export-shared (Word/banka şablonu ile PAYLAŞILAN, ekran-içi
+    // düzenlenebilir önizlemeden TAMAMEN AYRI) fonksiyonlar — diğer
+    // sistem-üretimi tablolarla (ör. "Değerlendirme Tablosu") AYNI
+    // generatedCellGridFor() yoluyla, İKİNCİ bir HTML/hücre-ızgara
+    // üretici YAZILMADAN kullanılıyor. Yalnızca 2+ taşınmazda (Çoklu
+    // Talep) veri döndüklerinden, tekil raporlarda bu iki sayfa hiç
+    // eklenmez (generatedCellGridFor zaten null döner).
+    const titleUnitsSummaryCellGrid = generatedCellGridFor("buildTitleUnitsSummaryWordTableHtml");
+    if (titleUnitsSummaryCellGrid) {
+      sheets.push({ name: sanitizeSheetName("Taşınmazlar Tapu Özeti", usedNames), sheetXml: buildSheetXmlFromCellGrid(styleRegistry, titleUnitsSummaryCellGrid) });
+    }
+    const addressUnitsSummaryCellGrid = generatedCellGridFor("buildAddressUnitsSummaryWordTableHtml");
+    if (addressUnitsSummaryCellGrid) {
+      sheets.push({ name: sanitizeSheetName("Taşınmazlar Adres Özeti", usedNames), sheetXml: buildSheetXmlFromCellGrid(styleRegistry, addressUnitsSummaryCellGrid) });
+    }
+
     const rawGridDefs = collectRawGridDefs();
     const takyidatDefs = rawGridDefs.filter((def) => TAKYIDAT_KEYS.includes(def.key));
     const otherRawDefs = rawGridDefs.filter((def) => !TAKYIDAT_KEYS.includes(def.key) && def.key !== "comparables");
