@@ -27251,21 +27251,47 @@ function resetAddressDerivedFields() {
   state.sourceConflicts.address = {};
 }
 
+// Kullanıcı bildirimi (2026-08-17): "talebe girip çıktığımda Adres ve
+// Konum kısmındaki il ve ilçe bölümü siliniyor" — kök neden BURADAYDI.
+// Bu fonksiyon her `normalizeAddressSourceState()` çağrısında (yani HER
+// SAYFA AÇILIŞINDA/rapor yeniden yüklendiğinde — app.js:984 ve
+// restoreStateFromImportedJson) çalışır. ESKİ mantık: `currentValue`
+// ("Bursa") üç kaynaktan (previousApplied, previousFields, TAZE yeniden
+// ayrıştırılan `fields`) HERHANGİ birine eşitse alanı KOŞULSUZ boşaltıyordu
+// — ama `fields[key]` (TAZE parse) neredeyse HER ZAMAN aynı `currentValue`yu
+// üretir (kaynak PDF metni değişmedi), yani bu "veya" bir kez uygulanmış
+// her il/ilçe değerini bir SONRAKİ açılışta otomatik SİLİYORDU (asıl amaç
+// "kaynak artık bu değeri sağlamıyorsa temizle" idi, ama "kaynak HALA aynı
+// değeri sağlıyor" durumunu da yanlışlıkla siliyordu). İdari Mahalle
+// (neighborhood) bu listede OLMADIĞI için etkilenmiyordu — kullanıcının
+// ekran görüntüsünde yalnızca İl/İlçe'nin boşalıp Mahalle'nin dolu kalması
+// bununla birebir örtüşüyor.
+// Düzeltme: artık SADECE alan önceden kaynaklıYSA (wasSourceOwned) VE taze
+// parse ARTIK aynı değeri doğrulamıyorSA (!stillConfirmedBySource) temizlenir
+// — "hala aynı" olan (normal, sık) durumda dokunulmaz. addressBlockName/
+// blockName için ayrıştırma KALICI olarak kaldırıldığından (parseAddressCodeText
+// bu ikisi için HER ZAMAN "" döner) davranış AYNEN korunur (hep temizlenir).
+// "applied" izleme kaydı da artık silinmek yerine (kaynak hâlâ doğruluyorsa)
+// GÜNCEL tutulur — aksi halde bir SONRAKİ açılışta "kaynaklı mıydı" bilgisi
+// kaybolup gerçekten kaynağı değişen bir alan bir daha hiç temizlenemezdi.
 function clearRetiredAddressSourceFields(fields, previousApplied, targetState = state, previousFields = {}) {
   ["city", "district", "addressBlockName", "blockName"].forEach((key) => {
     const currentValue = targetState.fields[key] || "";
-    const sourceOwnedValues = [previousApplied?.[key], previousFields?.[key], fields?.[key]].filter(Boolean);
-    if (currentValue && sourceOwnedValues.includes(currentValue)) {
+    const wasSourceOwned = [previousApplied?.[key], previousFields?.[key]].filter(Boolean).includes(currentValue);
+    const stillConfirmedBySource = Boolean(fields?.[key]) && fields[key] === currentValue;
+    if (currentValue && wasSourceOwned && !stillConfirmedBySource) {
       targetState.fields[key] = "";
-    }
-    if (targetState.sourceValues.address?.fields) {
-      targetState.sourceValues.address.fields[key] = "";
-    }
-    if (targetState.sourceValues.address?.applied) {
-      delete targetState.sourceValues.address.applied[key];
-    }
-    if (targetState.sourceConflicts.address) {
-      delete targetState.sourceConflicts.address[key];
+      if (targetState.sourceValues.address?.fields) {
+        targetState.sourceValues.address.fields[key] = "";
+      }
+      if (targetState.sourceValues.address?.applied) {
+        delete targetState.sourceValues.address.applied[key];
+      }
+      if (targetState.sourceConflicts.address) {
+        delete targetState.sourceConflicts.address[key];
+      }
+    } else if (currentValue && wasSourceOwned && stillConfirmedBySource && targetState.sourceValues.address?.applied) {
+      targetState.sourceValues.address.applied[key] = currentValue;
     }
   });
 }
