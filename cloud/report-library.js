@@ -348,8 +348,18 @@
     const index = readIndex().filter((entry) => entry.reportId !== id);
     writeIndex(index);
 
+    let cloudDeleteFailed = false;
     if (window.RaporCloudSync?.isConfigured()) {
-      await window.RaporCloudSync.deleteCloudReport(id);
+      const result = await window.RaporCloudSync.deleteCloudReport(id);
+      cloudDeleteFailed = Boolean(result && !result.ok);
+    }
+    // Yerel kopya HER ZAMAN silinir (yukarıda zaten yapıldı) — bulut kopyası
+    // silinemezse (kurallar/ağ/oturum) kullanıcı en azından NEDEN bir
+    // sonraki açılışta "yalnızca bulutta" hayalet kart görebileceğini bilsin
+    // (2026-08-17, "talep silme butonu çalışmıyor" bildirimiyle aynı kök
+    // neden — bkz. deleteCloudOnlyReport).
+    if (cloudDeleteFailed) {
+      window.alert("Rapor bu cihazdan silindi, ancak bulut kopyası silinemedi. Bir süre sonra tekrar deneyin.");
     }
     // Bellekteki bulut listesi önbelleği (cloudReportsCache) burada
     // güncellenmezse, biraz önce silinen rapor bir sonraki çizimde "yalnızca
@@ -562,7 +572,22 @@
       "Bu rapor bu cihaza hiç getirilmedi; yalnızca bulut hesabınızdan kalıcı olarak silinecek. Devam edilsin mi?",
     );
     if (!confirmed) return;
-    await window.RaporCloudSync?.deleteCloudReport(id);
+    if (!window.RaporCloudSync) {
+      window.alert("Bulut bağlantısı yüklenemedi, rapor silinemedi.");
+      return;
+    }
+    // Kullanıcı bildirimi (2026-08-17): "talep silme butonu çalışmıyor" —
+    // bu kart için silme Firestore'a gidiyor, sonucu KONTROL EDİLMEDEN
+    // kart yerelden kaldırılıp "silindi" gibi davranılıyordu; gerçek silme
+    // (kurallar/ağ/oturum yüzünden) sessizce başarısız olursa rapor bir
+    // sonraki açılışta hayalet gibi geri geliyordu. Artık sonuç kontrol
+    // edilip başarısızsa kullanıcıya AÇIKÇA bildiriliyor, kart yerinde
+    // kalıyor (yanlış "silindi" izlenimi verilmiyor).
+    const result = await window.RaporCloudSync.deleteCloudReport(id);
+    if (!result?.ok) {
+      window.alert(`Bulut kaydı silinemedi: ${result?.error || "bilinmeyen hata"}. Lütfen tekrar deneyin.`);
+      return;
+    }
     if (cloudReportsCache) delete cloudReportsCache[id];
     renderDashboardBody();
   }

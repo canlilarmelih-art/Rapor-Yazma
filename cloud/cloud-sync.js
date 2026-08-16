@@ -382,17 +382,29 @@
     }
   }
 
+  // Kullanıcı bildirimi (2026-08-17): "talep silme butonu çalışmıyor" —
+  // "Yalnızca bulutta" kartlardaki Sil butonunun TEK işi budur (yerelde
+  // silinecek bir kopya yok). Önceden bu fonksiyon `true`/`false` dönüyordu
+  // AMA HER İKİ ÇAĞIRAN da (report-library.js: deleteCloudOnlyReport/
+  // deleteReport) dönüş değerini HİÇ KONTROL ETMİYORDU — silme Firestore
+  // tarafında (kurallar/ağ/oturum nedeniyle) SESSİZCE başarısız olsa bile
+  // arayüz kartı kaldırıp "silindi" gibi davranıyordu; rapor bir sonraki
+  // "Taleplerim" açılışında (cloudReportsCache'in tazelendiği an) hayalet
+  // gibi GERİ GELİYORDU — kullanıcı bunu "buton çalışmıyor" olarak yaşıyordu.
+  // Artık `{ ok, error }` döner ki çağıran GERÇEKTEN silinip silinmediğini
+  // ayırt edip kullanıcıya doğru geri bildirim verebilsin.
   async function deleteCloudReport(reportId) {
-    if (!cloud.user || !reportId) return false;
+    if (!cloud.user || !reportId) return { ok: false, error: "Bulut hesabına bağlı değilsiniz." };
     try {
       await cloud.db
         .collection("users").doc(cloud.user.uid)
         .collection("reports").doc(reportId)
         .delete();
-      return true;
+      return { ok: true };
     } catch (error) {
-      console.warn("Bulut silme hatası:", error?.code || error?.message || error);
-      return false;
+      const reason = error?.code || error?.message || String(error || "bilinmeyen hata");
+      console.warn("Bulut silme hatası:", reason);
+      return { ok: false, error: reason };
     }
   }
 
