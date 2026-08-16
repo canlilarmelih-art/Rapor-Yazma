@@ -1313,6 +1313,59 @@ function isPlanningScopedByAdaParsel() {
   return units.length > 1 && !computeTitleUnitsShareSameAdaParsel(units);
 }
 
+// "İmar Durumu" (planning) bölümünün TÜM taşınmaza-özgü olabilecek alan
+// anahtarları — declaratif `section.fields` + 6 conditionalYesNo detay
+// notu (titleChangedRecords emsaliyle AYNI boşluk: yalnızca ebeveyn
+// alanın detailKey'i olarak var, section.fields'ta AYRI listelenmiyor).
+// Zaten HER ZAMAN paylaşımlı olan planRestrictionNote/planningNote
+// (TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS) HARİÇ. İKİ tüketicisi var:
+// getTitleUnitScopedFieldKeys() (İmar Durumu farklı ada/parselde
+// taşınmaza-özgü olduğunda hangi alanların TAB DEĞİŞTİRİNCE swap
+// edileceği) ve applyImarDataToAllTitleUnits() (kullanıcı talebi,
+// 2026-08-16: "tümüne uygula" — hangi alanların KOPYALANACAĞI) — TEK
+// kaynaktan, aralarında sürüklenme (drift) riski olmadan.
+function getImarSectionFieldKeys() {
+  const section = sections.find((item) => item.id === "planning");
+  const keys = (section?.fields || [])
+    .map((field) => field.key)
+    .filter((key) => !TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS.has(key));
+  return [...keys, "planCancellationStayNote", "minimumFrontageConditionNote", "tevhidConditionNote", "article18AppliedNote", "urbanTransformationAreaNote", "licenseObstacleNote"];
+}
+
+// Kullanıcı talebi (2026-08-16): "farklı ada parselde imar durumu
+// kısmında bazen tüm taşınmazlar aynı imar planına sahip olabiliyor
+// (Örnek: 5 Adet Tarla hepsi Tarım Alanı) ... tümüne uygula seçeneği
+// olsun." applyTitleRecordChangeToAllTitleUnits()'in (yukarıda,
+// tools/test-title-unit-switch.js'te test edilen) AYNI "bir kez kopyala,
+// sürekli senkron DEĞİL" deseni — TEK farkı bir alan yerine İmar
+// Durumu'nun TÜM alanlarını kopyalar. Aktif taşınmaz zaten state.fields
+// üzerinden "kaynak" değeri taşıdığı için kendisine dokunulmaz; yalnızca
+// DİĞER taşınmazların kendi depolama yuvaları güncellenir. Sadece
+// state mutasyonu yapar — render()/saveState() ÇAĞIRMAZ (switchActiveTitleUnit'in
+// AYNI kuralı), çağıran taraf (UI) sonrasında autosave()/tazeleme yapar.
+function applyImarDataToAllTitleUnits() {
+  const keys = getImarSectionFieldKeys();
+  const snapshot = {};
+  keys.forEach((key) => { snapshot[key] = state.fields[key]; });
+
+  (state.titleUnits || []).forEach((unit) => {
+    if (!unit) return;
+    unit.fields = unit.fields || {};
+    keys.forEach((key) => { unit.fields[key] = snapshot[key]; });
+  });
+
+  // Aktif taşınmaz birincil DEĞİLSE, birincilin "park edilmiş" verisi
+  // primaryTitleUnitShadow'dadır (bkz. switchActiveTitleUnit) — o da
+  // güncellenmeli, aksi halde birincile geri dönüldüğünde eski değer
+  // geri gelir.
+  if (state.activeTitleUnitIndex !== 0 && state.primaryTitleUnitShadow) {
+    state.primaryTitleUnitShadow.fields = state.primaryTitleUnitShadow.fields || {};
+    keys.forEach((key) => { state.primaryTitleUnitShadow.fields[key] = snapshot[key]; });
+  }
+
+  return getTitleUnitCount();
+}
+
 function getTitleUnitScopedFieldKeys() {
   const keys = new Set();
   // 2026-08-16: İmar Durumu artık KOŞULLU taşınmaza-özgü — tüm taşınmazlar
@@ -1331,7 +1384,10 @@ function getTitleUnitScopedFieldKeys() {
   // bkz. plan: idempotent-launching-kernighan.md.
   const planningIsShared = !isPlanningScopedByAdaParsel();
   TITLE_UNIT_SCOPED_SECTION_IDS.forEach((sectionId) => {
-    if (sectionId === "planning" && planningIsShared) return;
+    // "planning" ayrı ele alınıyor (aşağıda, getImarSectionFieldKeys ile) —
+    // 2026-08-16'da applyImarDataToAllTitleUnits() ile TEK kaynaktan
+    // (drift riski olmadan) paylaşılan bir çıkarım haline getirildi.
+    if (sectionId === "planning") return;
     const section = sections.find((item) => item.id === sectionId);
     (section?.fields || []).forEach((field) => {
       // Talep Türü rapor-genelidir; taşınmaz tabına geçerken birim verisiyle
@@ -1348,14 +1404,11 @@ function getTitleUnitScopedFieldKeys() {
   // değiştirince bu alan TÜM taşınmazlar arasında PAYLAŞILIRDI (yanlışlıkla
   // sızardı).
   keys.add("titleChangedRecords");
-  // Kullanıcı talebi (2026-08-16, İmar Durumu koşullu scoping): bu 6 alan
-  // "planning" bölümünün DEKLARATİF fields listesinde AYRI yer almıyor —
-  // yalnızca ebeveyn conditionalYesNo alanının detailKey'i olarak var
-  // (titleChangedRecords ile AYNI kategori boşluk). İmar Durumu şu an
-  // taşınmaza-özgüyse bu detay notları da öyle olmalı, aksi halde Evet/Hayır
-  // cevabı taşınmaza-özgü ama açıklaması PAYLAŞIMLI kalır (tutarsız çift).
+  // İmar Durumu şu an taşınmaza-özgüyse (farklı ada/parsel) TÜM alanları
+  // (declaratif + 6 detay notu — getImarSectionFieldKeys, yukarıda) scoped
+  // set'e eklenir; aksi halde (paylaşımlı) hiçbiri eklenmez.
   if (!planningIsShared) {
-    ["planCancellationStayNote", "minimumFrontageConditionNote", "tevhidConditionNote", "article18AppliedNote", "urbanTransformationAreaNote", "licenseObstacleNote"].forEach((key) => keys.add(key));
+    getImarSectionFieldKeys().forEach((key) => keys.add(key));
   }
   return keys;
 }
@@ -1747,6 +1800,46 @@ function createAddressUnitsSummaryTablePreview() {
   hint.className = "muted-note";
   hint.textContent = "Aktif taşınmazın hücrelerine tıklayarak doğrudan düzenleyebilirsiniz. Banka şablonlarında {{TASINMAZLARADRESTABLOSU}} olarak kullanılabilir.";
   wrap.append(hint);
+  return wrap;
+}
+
+// Kullanıcı talebi (2026-08-16): "farklı ada parselde imar durumu
+// kısmında bazen tüm taşınmazlar aynı imar planına sahip olabiliyor
+// (Örnek: 5 Adet Tarla hepsi Tarım Alanı) ... tümüne uygula seçeneği
+// olsun." "Tapu Kaydı Değişikliği" tümüne uygula kutucuğuyla (bkz.
+// createTitleRecordChangeControl) AYNI görsel dil (.title-record-change-apply-all,
+// zaten 3. kez yeniden kullanılıyor — KML "tek dosya -> tüm taşınmazlara
+// uygula" kutucuğu da aynı sınıfı paylaşıyor) + "bir kez kopyala, sürekli
+// senkron DEĞİL" deseni — işaretlenince applyImarDataToAllTitleUnits()
+// TÜM İmar Durumu alanlarını diğer taşınmazlara kopyalar, kutucuk
+// kendiliğinden işareti kaldırır, her taşınmaz yine bağımsız düzenlenebilir
+// kalır.
+function createImarApplyAllControl() {
+  const wrap = document.createElement("div");
+  wrap.className = "imar-apply-all-wrap";
+
+  const label = document.createElement("label");
+  label.className = "title-record-change-apply-all";
+  const checkbox = document.createElement("input");
+  checkbox.type = "checkbox";
+  const text = document.createElement("span");
+  text.textContent = "Aktif taşınmazın İmar Durumu bilgilerini TÜM taşınmazlara uygula";
+  label.append(checkbox, text);
+  wrap.append(label);
+
+  const note = document.createElement("small");
+  note.className = "muted-note title-record-change-apply-all-note";
+  wrap.append(note);
+
+  checkbox.addEventListener("change", () => {
+    if (!checkbox.checked) return;
+    const unitCount = applyImarDataToAllTitleUnits();
+    note.textContent = `${unitCount} taşınmaza uygulandı.`;
+    checkbox.checked = false;
+    autosave();
+    refreshImarUnitsSummaryTablePreview();
+  });
+
   return wrap;
 }
 
@@ -2734,6 +2827,14 @@ function renderSection() {
   // içermediğinden DEĞİŞTİRİLMEDEN yeniden kullanılıyor.
   if (section.id === "planning" && isCurrentUserAdmin() && state.fields.requestType === "Çoklu Talep" && isPlanningScopedByAdaParsel()) {
     body.append(createTitleUnitTabBar());
+    // Kullanıcı talebi (2026-08-16): "farklı ada parselde imar durumu
+    // kısmında bazen tüm taşınmazlar aynı imar planına sahip olabiliyor
+    // (ör. 5 tarla hepsi Tarım Alanı) ... tümüne uygula seçeneği olsun" —
+    // AYNI görsel dil + "bir kez kopyala, sürekli senkron DEĞİL" deseni
+    // ("Tapu Kaydı Değişikliği" tümüne uygula kutucuğuyla, bkz.
+    // applyTitleRecordChangeToAllTitleUnits, AYNI ilke) — yalnızca burada
+    // tek bir alan değil, İmar Durumu'nun TÜM alanları kopyalanır.
+    body.append(createImarApplyAllControl());
     body.append(createImarUnitsSummaryTablePreview());
   }
 

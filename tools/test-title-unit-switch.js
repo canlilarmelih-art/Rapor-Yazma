@@ -79,6 +79,9 @@ const functionNames = [
   "buildAllTitleUnitsForSummaryTable",
   "computeTitleUnitsShareSameAdaParsel",
   "isPlanningScopedByAdaParsel",
+  // İmar Durumu "tümüne uygula" (2026-08-16).
+  "getImarSectionFieldKeys",
+  "applyImarDataToAllTitleUnits",
 ];
 
 // Çoklu Excel akışında ana form bölümlerinin tamamı taşınmaz kapsamındadır.
@@ -530,6 +533,45 @@ assert.match(appSource, /panel\.dataset\.parcelScope = mixedParcels \? "mixed" :
   sandbox.setState(freshState({ titleUnits: [] }));
   assert.equal(sandbox.fns.isPlanningScopedByAdaParsel(), false, "Tekil (1 tasinmazli) raporda Imar Durumu HER ZAMAN paylasimli (false) olmali.");
   console.log("isPlanningScopedByAdaParsel tekil rapor testi tamam.");
+}
+
+// --- 20) applyImarDataToAllTitleUnits(): "tumune uygula" (2026-08-16) ----
+// Kullanici talebi: "farkli ada parselde imar durumu kisminda bazen tum
+// tasinmazlar ayni imar planina sahip olabiliyor (Ornek: 5 Adet Tarla
+// hepsi Tarim Alani) ... tumune uygula secenegi olsun." applyTitleRecordChangeToAllTitleUnits
+// (senaryo 9) ile AYNI "bir kez kopyala" deseni, tek farki TEK alan
+// yerine getImarSectionFieldKeys()'in dondugu TUM alanlari kopyalamasi.
+{
+  const state = freshState({
+    fields: { city: "İstanbul", blockNo: "100", parcelNo: "1", planScale: "1/1000", hmax: "12.50" },
+  });
+  sandbox.setState(state);
+  sandbox.fns.addTitleUnitTab();
+  sandbox.fns.addTitleUnitTab();
+  const beforeApply = sandbox.getState();
+  assert.equal(beforeApply.titleUnits.length, 2, "2 ek tasinmaz olusturulmali (fixture).");
+  assert.notEqual(beforeApply.titleUnits[0].fields.planScale, "1/1000", "Uygulanmadan once diger tasinmazlar farkli/bos olmali (fixture kontrolu).");
+
+  const unitCount = sandbox.fns.applyImarDataToAllTitleUnits();
+  const afterApply = sandbox.getState();
+  assert.equal(unitCount, 3, "Toplam tasinmaz sayisi (1 birincil + 2 ek) donmeli.");
+  assert.equal(afterApply.titleUnits[0].fields.planScale, "1/1000", "1. ek tasinmaza Plan Olcegi kopyalanmali.");
+  assert.equal(afterApply.titleUnits[0].fields.hmax, "12.50", "1. ek tasinmaza Hmax da (TUM alanlar) kopyalanmali.");
+  assert.equal(afterApply.titleUnits[1].fields.planScale, "1/1000", "2. ek tasinmaza da kopyalanmali.");
+  assert.equal(afterApply.fields.planScale, "1/1000", "Aktif (birincil) tasinmazin kendi degeri degismeden kalmali (zaten kaynaktı).");
+
+  // Baska bir tasinmaza gecince de kopyalanan deger goruluyor mu (round-trip)?
+  sandbox.fns.switchActiveTitleUnit(1);
+  assert.equal(sandbox.getState().fields.planScale, "1/1000", "2. tasinmaza gecilince kopyalanan deger dogru gorunmeli.");
+  assert.equal(sandbox.getState().fields.hmax, "12.50", "2. tasinmaza gecilince Hmax da dogru gorunmeli.");
+
+  // Aktif tasinmaz BIRINCIL DEGILKEN de calismali (primaryTitleUnitShadow
+  // guncellenmeli, aksi halde birincile donulunce eski deger geri gelir).
+  sandbox.getState().fields.planScale = "1/5000-FARKLI";
+  sandbox.fns.applyImarDataToAllTitleUnits();
+  sandbox.fns.switchActiveTitleUnit(0);
+  assert.equal(sandbox.getState().fields.planScale, "1/5000-FARKLI", "Aktif tasinmaz birincil degilken uygulanan deger, birincile (primaryTitleUnitShadow uzerinden) de yansimali.");
+  console.log("applyImarDataToAllTitleUnits (tumune uygula) testi tamam.");
 }
 
 console.log("Coklu TAKBIS Faz 2 tab-anahtarlama motoru testleri basarili.");

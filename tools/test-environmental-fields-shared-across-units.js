@@ -111,6 +111,7 @@ const functionNames = [
   "buildAllTitleUnitsForSummaryTable",
   "computeTitleUnitsShareSameAdaParsel",
   "isPlanningScopedByAdaParsel",
+  "getImarSectionFieldKeys",
 ];
 
 const sandboxSource = `

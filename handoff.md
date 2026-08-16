@@ -9886,6 +9886,17 @@ gerekmedi, testle (bkz. aşağıda) tekrar doğrulandı.
   zincirle yeşil.
 - Cache-buster: `app.js?v=20260814-1745`.
 
+## 0.0.467 - 2026-08-16 - İmar Durumu: farklı ada/parselde "tümüne uygula" seçeneği
+
+- Kullanıcı: "İmar durumu farklı ada parsellerde rapor yaparken bazen tüm taşınmazlar aynı imar planına sahip olabiliyor. (Örnek: 5 Adet Tarla hepsi Tarım Alanı) farklı ada parselde imar durumu kısmında tümüne uygula seçeneği olsun."
+- Farklı ada/parselli (İmar Durumu taşınmaza-özgü, bkz. Faz A) raporlarda "İmar Durumu" sekmesine, tab çubuğu ile özet tablo arasına, mevcut "Tapu Kaydı Değişikliği" tümüne uygula kutucuğuyla (`applyTitleRecordChangeToAllTitleUnits`, 0.0.387) AYNI görsel dil (`.title-record-change-apply-all` — zaten KML "tek dosya→tüm taşınmazlara uygula" kutucuğuyla da paylaşılan, şimdi 3. kez yeniden kullanılan bir sınıf) ve "bir kez kopyala, sürekli senkron DEĞİL" deseniyle yeni bir "Aktif taşınmazın İmar Durumu bilgilerini TÜM taşınmazlara uygula" kutucuğu eklendi.
+- Yeni `getImarSectionFieldKeys()` (app.js) — İmar Durumu'nun TÜM alan anahtarlarını (declaratif + 6 detay notu, zaten paylaşımlı planRestrictionNote/planningNote HARİÇ) döner; hem `getTitleUnitScopedFieldKeys()` (Faz A'da bu listeyi INLINE tutuyordu) HEM DE yeni `applyImarDataToAllTitleUnits()` bu TEK kaynağı kullanacak şekilde refactor edildi — iki tüketici arasında sürüklenme (drift) riski kalmadı.
+- Yeni `applyImarDataToAllTitleUnits()` — `applyTitleRecordChangeToAllTitleUnits()` ile BİREBİR aynı desen (aktif taşınmazın verisi TÜM diğer taşınmazların kendi depolama yuvalarına — `titleUnits[]` + gerekirse `primaryTitleUnitShadow` — kopyalanır), TEK farkı bir alan yerine `getImarSectionFieldKeys()`'in döndürdüğü TÜM alanları kopyalaması.
+- Yeni `createImarApplyAllControl()` — kutucuğun UI'ı; işaretlenince `applyImarDataToAllTitleUnits()` çağrılıp sonuç sayısı ("N taşınmaza uygulandı.") gösteriliyor, kutucuk kendiliğinden işareti kaldırıyor, `autosave()` + `refreshImarUnitsSummaryTablePreview()` ile özet tablo ANINDA güncelleniyor. Aynı ada/parselde (İmar Durumu paylaşımlı) kutucuk hiç GÖRÜNMÜYOR — tab çubuğu/özet tabloyla AYNI gate (`isPlanningScopedByAdaParsel()`), zaten paylaşımlı bir bölümde "tümüne uygula" anlamsız olurdu.
+- Test: `tools/test-title-unit-switch.js`'e yeni senaryo (aktif taşınmaz birincilKEN ve birincil DEĞİLKEN — primaryTitleUnitShadow dahil — doğru kopyalandığı + round-trip) + 3 sandbox test dosyasının extraction listesi yeni bağımlılıklarla (`getImarSectionFieldKeys`) güncellendi.
+- Canlı tarayıcıda GERÇEK rapor üzerinde doğrulandı (deep-clone backup/restore ile): aynı ada/parselde kutucuk YOK; ada/parsel geçici olarak farklılaştırılıp kutucuk işaretlenince İmar Durumu'nun TÜM alanları (Plan Ölçeği, Hmax, İmar Plan Adı) diğer taşınmaza doğru kopyalandı, özet tablo anında güncellendi, round-trip doğru çalıştı. Test sonunda state TAM (deep-clone) geri yüklendi, `localStorage` doğrulandı — gerçek veri kaybı OLMADI.
+- `npm run verify` tamamı yeşil. Cache-buster: `app.js` → `20260816-1420`.
+
 ## 0.0.466 - 2026-08-16 - İmar Durumu Faz B (SON FAZ): Taşınmazlar İmar Özeti tablosu, çift taraflı düzenleme
 
 - Kullanıcı: "FAZ B ye geçelim" — Faz A'nın (0.0.465) ardından planın (`idempotent-launching-kernighan.md`) son fazı. Başlamadan önce `git tag backup-before-imar-summary-table-20260816-1230` (push edildi) ile geri dönüş noktası alındı.
