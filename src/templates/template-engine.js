@@ -605,6 +605,11 @@
     // (2026-08-15) — TASINMAZLARTAPUTABLOSU ile AYNI desen, Adres ve Konum
     // bölümü alanları için (bkz. buildAddressUnitsSummaryTableData, app.js).
     TASINMAZLARADRESTABLOSU: { h: () => safeCall("buildAddressUnitsSummaryWordTableHtml") },
+    // İmar Durumu Faz B (2026-08-16) — TASINMAZLARTAPUTABLOSU/TASINMAZLARADRESTABLOSU
+    // ile AYNI desen; yalnızca taşınmazlar FARKLI ada/parselde iken dolu
+    // döner (aynı ada/parselde İmar Durumu paylaşımlı, bkz. Faz A —
+    // isPlanningScopedByAdaParsel, app.js).
+    TASINMAZLARIMARTABLOSU: { h: () => safeCall("buildImarUnitsSummaryWordTableHtml") },
     GABIMVERISETI: { h: () => safeCall("buildGabimDataSetWordHtml") },
     HISSEACIKLAMASI: { t: () => field("shareExplanation"), paragraphClass: "share-explanation" },
     EKLENTI: { f: ["titleAttachment"] },

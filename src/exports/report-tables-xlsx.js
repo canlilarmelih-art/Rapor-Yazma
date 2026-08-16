@@ -710,6 +710,13 @@
     if (addressUnitsSummaryCellGrid) {
       sheets.push({ name: sanitizeSheetName("Taşınmazlar Adres Özeti", usedNames), sheetXml: buildSheetXmlFromCellGrid(styleRegistry, addressUnitsSummaryCellGrid) });
     }
+    // İmar Durumu Faz B (2026-08-16) — yukarıdaki ikisiyle AYNI desen;
+    // yalnızca taşınmazlar FARKLI ada/parselde iken dolu döner (bkz.
+    // buildImarUnitsSummaryTableData, app.js).
+    const imarUnitsSummaryCellGrid = generatedCellGridFor("buildImarUnitsSummaryWordTableHtml");
+    if (imarUnitsSummaryCellGrid) {
+      sheets.push({ name: sanitizeSheetName("Taşınmazlar İmar Özeti", usedNames), sheetXml: buildSheetXmlFromCellGrid(styleRegistry, imarUnitsSummaryCellGrid) });
+    }
 
     const rawGridDefs = collectRawGridDefs();
     const takyidatDefs = rawGridDefs.filter((def) => TAKYIDAT_KEYS.includes(def.key));

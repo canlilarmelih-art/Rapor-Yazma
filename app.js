@@ -1750,6 +1750,41 @@ function createAddressUnitsSummaryTablePreview() {
   return wrap;
 }
 
+// İmar Durumu Faz B (Çift Yönlü Düzenleme, 2026-08-16) — Tapu/Adres Özeti
+// panelleriyle (yukarıda) BİREBİR AYNI desen. Tek fark: bu tablo yalnızca
+// taşınmazlar FARKLI ada/parselde iken (isPlanningScopedByAdaParsel() true)
+// anlamlı — AYNI ada/parselde İmar Durumu paylaşımlı olduğundan (bkz. Faz A)
+// karşılaştırılacak bir şey yok; buildImarUnitsSummaryTableData() bu
+// durumda zaten null döner (createTitleUnitsSummaryTablePreview'daki
+// "1 taşınmazda null döner" kuralıyla AYNI ilke, koşul yalnızca genişledi).
+function createImarUnitsSummaryTablePreview() {
+  const wrap = document.createElement("div");
+  wrap.className = "title-units-summary-table-preview";
+  const heading = document.createElement("h5");
+  heading.textContent = "Taşınmazlar İmar Özeti";
+  wrap.append(heading);
+
+  const data = buildImarUnitsSummaryTableData();
+  if (!data || !data.rows.length) {
+    const note = document.createElement("p");
+    note.className = "muted-note";
+    note.textContent = "Bu tablo yalnızca taşınmazlar FARKLI ada/parselde olduğunda görünür (aynı ada/parselde İmar Durumu paylaşımlıdır). Banka şablonlarında {{TASINMAZLARIMARTABLOSU}} olarak kullanılabilir.";
+    wrap.append(note);
+    return wrap;
+  }
+  const tableHtml = buildTitleUnitsSummaryTableHtmlEditable(data.headers, data.rows, data.columnMeta, state.activeTitleUnitIndex);
+  const tableContainer = document.createElement("div");
+  tableContainer.className = "title-units-summary-table-container";
+  tableContainer.innerHTML = tableHtml;
+  wrap.append(tableContainer);
+  attachTitleUnitsSummaryTableEditing(tableContainer);
+  const hint = document.createElement("p");
+  hint.className = "muted-note";
+  hint.textContent = "Aktif taşınmazın hücrelerine tıklayarak doğrudan düzenleyebilirsiniz. Banka şablonlarında {{TASINMAZLARIMARTABLOSU}} olarak kullanılabilir.";
+  wrap.append(hint);
+  return wrap;
+}
+
 // Kullanıcı talebi (2026-08-15): "tab üzerinden değiştirince tablo
 // değişsin" — Çift Yönlü Düzenleme özelliğinin Faz 1'i (bkz. plan:
 // idempotent-launching-kernighan.md). Taşınmazlar Tapu/Adres Özeti
@@ -1777,6 +1812,14 @@ function refreshAddressUnitsSummaryTablePreview() {
   host.replaceWith(createAddressUnitsSummaryTablePreview());
 }
 
+// İmar Durumu Faz B (2026-08-16) — yukarıdaki ikisiyle AYNI desen.
+function refreshImarUnitsSummaryTablePreview() {
+  if (activeSectionId !== "planning") return;
+  const host = document.querySelector(".title-units-summary-table-preview");
+  if (!host) return;
+  host.replaceWith(createImarUnitsSummaryTablePreview());
+}
+
 // Çift Yönlü Düzenleme, Faz 3 (2026-08-15) — yukarıdaki iki fonksiyonla
 // AYNI "hafif, yerinde değiştir" deseni: tab çubuğunu (createTitleUnitTabBar,
 // yukarıda) TAMAMEN yeniden üretip DOM'da yerine koyar. Ada/Parsel/Blok/
@@ -1799,6 +1842,7 @@ function refreshTitleUnitTabBar() {
 // kullanılıyor, yeni bir zamanlayıcı YAZILMADI.
 const refreshTitleUnitsSummaryTablePreviewDebounced = debounce(refreshTitleUnitsSummaryTablePreview, 350);
 const refreshAddressUnitsSummaryTablePreviewDebounced = debounce(refreshAddressUnitsSummaryTablePreview, 350);
+const refreshImarUnitsSummaryTablePreviewDebounced = debounce(refreshImarUnitsSummaryTablePreview, 350);
 
 function loadUserDefaults() {
   try {
@@ -2678,6 +2722,20 @@ function renderSection() {
       body.append(createAddressUnitsSummaryTablePreview());
     }
   }
+  // Kullanıcı talebi (2026-08-16): "Aynı ada parselde... ortak imar durumu
+  // sekmeleri olacak. farklı ada parselde... her bölüme ait sütundan
+  // oluşan tablo olacak" — yukarıdaki gate'ten (title/address/encumbrance,
+  // HER ZAMAN Çoklu Talep'te scoped) KASITLI OLARAK AYRI: "planning" tab
+  // çubuğu/özet tablosu yalnızca taşınmazlar FARKLI ada/parselde iken
+  // (isPlanningScopedByAdaParsel() true) anlamlı — aynı ada/parselde İmar
+  // Durumu paylaşımlı (bkz. Faz A) olduğundan tab çubuğu göstermek
+  // (hiçbir şeyi değiştirmeyecek bir "geçiş" hissi vererek) YANILTICI
+  // olurdu. createTitleUnitTabBar() Tapu/Adres/Takyidat'a özgü hiçbir şey
+  // içermediğinden DEĞİŞTİRİLMEDEN yeniden kullanılıyor.
+  if (section.id === "planning" && isCurrentUserAdmin() && state.fields.requestType === "Çoklu Talep" && isPlanningScopedByAdaParsel()) {
+    body.append(createTitleUnitTabBar());
+    body.append(createImarUnitsSummaryTablePreview());
+  }
 
   const sectionVariantGroups = isCurrentUserAdmin() ? getVariantGroupsForSection(section.id) : [];
   if (sectionVariantGroups.length) {
@@ -3161,6 +3219,7 @@ function createForm(section) {
       if (getTitleUnitScopedFieldKeys().has(field.key)) {
         refreshTitleUnitsSummaryTablePreviewDebounced();
         refreshAddressUnitsSummaryTablePreviewDebounced();
+        refreshImarUnitsSummaryTablePreviewDebounced();
       }
     });
     if (section.id === "case" && ["legalUsageNature", "currentUsageNature"].includes(field.key)) {
@@ -17153,6 +17212,7 @@ function commitTitleUnitsSummaryCellEdit(fieldKey, rawValue, unitIndex) {
   // (debounce'suz) çağrılıyor.
   refreshTitleUnitsSummaryTablePreview();
   refreshAddressUnitsSummaryTablePreview();
+  refreshImarUnitsSummaryTablePreview();
   // Faz 3: Ada/Parsel/Blok/Bağımsız Bölüm No gibi alanlar tab çubuğu
   // etiketlerini (computeTitleUnitTabLabel) etkileyebilir — hangi alan
   // düzenlendiğinden bağımsız olarak HER commit'te tab çubuğu da
@@ -17398,6 +17458,96 @@ function buildAddressUnitsSummaryTableData() {
 // akışıyla (buildTitleUnitsSummaryWordTableHtml) BİREBİR AYNI desen.
 function buildAddressUnitsSummaryWordTableHtml() {
   const data = buildAddressUnitsSummaryTableData();
+  if (!data || !data.rows.length) return "";
+  return buildTitleUnitsSummaryTableHtmlFromData(data.headers, data.rows);
+}
+
+// İmar Durumu Faz B (Çift Yönlü Düzenleme, 2026-08-16) — kullanıcı talebi:
+// "farklı ada parselde yer alan taşınmazların oluşturduğu çoklu raporlarda
+// tapu bömlümündeki gibi her bölüme ait sütundan oluşan tablo olacak...
+// çift taraflı olmalı". Tapu/Adres tablolarıyla AYNI desen; İmar Durumu'nun
+// 25 alanından curate edilmiş bir alt küme sütun oluyor:
+// - "scalar" (metin/select/tarih, tıkla-düzenle mekanizmasıyla AYNI —
+//   select-tipi alanlarda [planScale/legend/order/floorCount/roadSetback]
+//   serbest metin girişinin gerçek <select>'teki bir seçenekle TAM
+//   eşleşmesi gerektiği BİLİNEN bir sınırlama — Tapu tablosunun titleCity/
+//   titleDistrict için ZATEN taşıdığı AYNI sınırlama, burada YENİ değil).
+// - "readonly" (checkbox/conditionalYesNo alanlarının Evet/Hayır kısmı —
+//   karşılaştırma için GÖRÜNÜR ama tıklanamaz; detay notları HARİÇ, uzun
+//   serbest metin tek satır hücreye sığmaz).
+// imarInfoInstitution (multiCheckbox) ve planRestrictionNote/planningNote
+// (zaten TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS'te paylaşımlı, hiç
+// taşınmaza-özgü değil) KASITLI OLARAK tabloda YOK.
+const IMAR_UNITS_TABLE_FIELD_DEFS = [
+  { key: "planScale", label: "Plan Ölçeği", kind: "scalar" },
+  { key: "planDate", label: "Plan Tarihi", kind: "scalar" },
+  { key: "planName", label: "İmar Plan Adı", kind: "scalar" },
+  { key: "legend", label: "İmar Lejantı", kind: "scalar" },
+  { key: "order", label: "İmar Nizamı", kind: "scalar" },
+  { key: "floorCount", label: "Kat Adedi", kind: "scalar" },
+  { key: "hmax", label: "Hmax", kind: "scalar" },
+  { key: "taks", label: "TAKS", kind: "scalar" },
+  { key: "kaks", label: "KAKS / Emsal", kind: "scalar" },
+  { key: "calculatedEmsal", label: "Hesaplanan Emsal", kind: "scalar" },
+  { key: "frontGarden", label: "Ön Bahçe", kind: "scalar" },
+  { key: "sideGarden", label: "Yan Bahçe", kind: "scalar" },
+  { key: "backGarden", label: "Arka Bahçe", kind: "scalar" },
+  { key: "roadSetback", label: "Yola Terk", kind: "scalar" },
+  { key: "hasPlanningIssue", label: "İmar Sorunu Var mı?", kind: "readonly" },
+  { key: "planCancellationStay", label: "Plan İptali / Yürütmeyi Durdurma", kind: "readonly" },
+  { key: "minimumFrontageCondition", label: "Minimum Cephe Şartı", kind: "readonly" },
+  { key: "tevhidCondition", label: "Tevhid Şartı", kind: "readonly" },
+  { key: "article18Applied", label: "18. Madde Uygulaması", kind: "readonly" },
+  { key: "urbanTransformationArea", label: "Kentsel Dönüşüm Bölgesi", kind: "readonly" },
+  { key: "licenseObstacle", label: "Ruhsat Engeli", kind: "readonly" },
+];
+
+// Tabloyu (başlıklar + satırlar) hesaplar; YALNIZCA 2+ taşınmaz VE hepsi
+// FARKLI ada/parselde ise bir sonuç döner, aksi halde null — Tapu/Adres
+// tablolarının "1 taşınmazda null döner" kuralına EK bir koşul: aynı ada/
+// parselde İmar Durumu paylaşımlı olduğundan (bkz. Faz A,
+// isPlanningScopedByAdaParsel) satırlar arasında karşılaştırılacak bir şey
+// yok, tablo bilinçli olarak HİÇ üretilmez (export dahil — Word/Excel
+// çıktısında da anlamsız bir "hepsi aynı" tablo görünmesin diye).
+function buildImarUnitsSummaryTableData() {
+  const units = buildAllTitleUnitsForSummaryTable();
+  if (units.length < 2 || !isPlanningScopedByAdaParsel()) return null;
+
+  const headers = ["Sıra No", ...IMAR_UNITS_TABLE_FIELD_DEFS.map((def) => def.label)];
+  const columnMeta = [
+    { kind: "seq" },
+    ...IMAR_UNITS_TABLE_FIELD_DEFS.map((def) => ({ kind: def.kind, fieldKey: def.key })),
+  ];
+
+  const rows = units.map((unit, index) => {
+    const fields = unit.fields || {};
+    return [
+      index + 1,
+      ...IMAR_UNITS_TABLE_FIELD_DEFS.map((def) => String(fields[def.key] || "").trim() || "-"),
+    ];
+  });
+
+  // "eğer sistemde hücrede veri yoksa ... tabloda bu sütunlar gözükmemeli"
+  // (Tapu/Adres tablolarındaki AYNI kural) — TÜM taşınmazlarda boş ("-")
+  // kalan bir sütun tamamen kaldırılır.
+  const columnHasData = headers.map((_, columnIndex) => (
+    columnIndex === 0 || rows.some((row) => {
+      const value = row[columnIndex];
+      return value !== undefined && value !== null && String(value).trim() !== "" && String(value).trim() !== "-";
+    })
+  ));
+  const filteredHeaders = headers.filter((_, columnIndex) => columnHasData[columnIndex]);
+  const filteredRows = rows.map((row) => row.filter((_, columnIndex) => columnHasData[columnIndex]));
+  const filteredColumnMeta = columnMeta.filter((_, columnIndex) => columnHasData[columnIndex]);
+
+  return { headers: filteredHeaders, rows: filteredRows, columnMeta: filteredColumnMeta };
+}
+
+// Banka şablonlarına {{TASINMAZLARIMARTABLOSU}} ile enjekte edilecek
+// gerçek HTML tablo (bkz. template-engine.js) — Tapu/Adres tablolarının
+// export akışıyla BİREBİR AYNI desen.
+function buildImarUnitsSummaryWordTableHtml() {
+  const data = buildImarUnitsSummaryTableData();
   if (!data || !data.rows.length) return "";
   return buildTitleUnitsSummaryTableHtmlFromData(data.headers, data.rows);
 }
