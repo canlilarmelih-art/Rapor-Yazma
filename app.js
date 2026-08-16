@@ -16693,41 +16693,82 @@ function getComparableDistanceTextForWord(row = {}) {
   return buildComparableLocationText(lat, lng);
 }
 
+// Kullanıcı bildirimi (2026-08-16, ARSA emsal export düzeltmesinin devamı):
+// canlı ekrandaki "Emsal Değerleme Tablosu" (createComparableValuationSummaryTable)
+// TÜM emsaller arsa/tarla nitelikliyken (landMode) FARKLI bir sütun kümesi
+// gösterir — Alan yerine Yüzölçümü + Hesaplanan Emsal, İç Özellik Şerefiye/
+// Kira sütunları YOK (arazi emsalinde anlamsız), bunun yerine Hesaplanan
+// Emsal M² Birim Değeri + İnd. Hesaplanan Emsal M² Birim Değeri EKLENİR.
+// Bu fonksiyon (Word/Excel export'un TEK kaynağı, safeCall ile hem
+// template-engine.js hem report-tables-xlsx.js tarafından dinamik
+// çağrılıyor) o ayrımı HİÇ yapmıyordu — arsa raporlarında export edilen
+// tablo her zaman genel (konut) sütun kümesiyle çıkıyordu (İç Özellik/Kira
+// sütunları boş "—", Hesaplanan Emsal sütunları HİÇ yoktu) — ekrandakiyle
+// AYNI görünmüyordu. Düzeltme: getComparableValuationRows()'un zaten
+// döndürdüğü row.landComparable ile AYNI landMode ayrımı burada da
+// uygulanıp, ekrandaki İKİ farklı sütun kümesinin BİREBİR export karşılığı
+// üretiliyor.
 function buildComparableValuationWordTableHtml() {
   const rows = getComparableValuationRows();
   if (!rows.length) return "";
-  const headers = ["No", "Alan (m²)", "Talep Edilen Değer", "P. Payı", "Pazarlıklı Değer", "M² Birim", "İç Özellik Şerefiye", "Konum Şerefiye", "İnd. M² Birim", "Kira", "Kira Birim", "İnd. Kira Birim"];
-  const bodyRows = rows.map((row) => formatComparableValuationWordRow(row));
-  bodyRows.push(formatComparableValuationWordRow({ no: "ORTALAMA", ...calculateComparableValuationAverages(rows) }));
+  const landMode = rows.length > 0 && rows.every((row) => row.landComparable);
+  const bodyRows = rows.map((row) => formatComparableValuationWordRow(row, landMode));
+  bodyRows.push(formatComparableValuationWordRow({ no: "ORTALAMA", ...calculateComparableValuationAverages(rows) }, landMode));
   const ink = getReportThemeToken("--ink", "#152238");
-  const line = getReportThemeToken("--line", "#dde3ef");
   const blue = getReportThemeToken("--blue", "#3a5691");
   const blueSoft = getReportThemeToken("--blue-soft", "#e4ebf8");
-  const surface = getReportThemeToken("--surface", "#ffffff");
   const rowStyle = "height:0.5cm;mso-height-source:userset;mso-height-rule:exactly;";
   const groupHeaderRowStyle = "height:0.55cm;mso-height-source:userset;mso-height-rule:exactly;";
   const detailHeaderRowStyle = "height:0.8cm;mso-height-source:userset;mso-height-rule:exactly;";
-  const widths = ["9%", "6%", "12%", "6%", "12%", "8%", "7%", "6%", "10%", "6%", "8%", "10%"];
+  const widths = landMode
+    ? ["6%", "8%", "9%", "13%", "7%", "13%", "9%", "8%", "10%", "9%", "8%"]
+    : ["9%", "6%", "12%", "6%", "12%", "8%", "7%", "6%", "10%", "6%", "8%", "10%"];
   const baseCell = `border:0;border-bottom:.25pt solid #ccd6e4;padding:3pt 2pt;mso-padding-alt:3pt 2pt 3pt 2pt;vertical-align:middle;line-height:6pt;mso-line-height-rule:exactly;font-family:Arial,sans-serif;font-size:6pt;color:${ink};white-space:nowrap;`;
   const headerStyle = `${baseCell}background:${blueSoft};color:${blue};font-weight:700;text-align:center;white-space:normal;`;
   const blueHeaderStyle = `${headerStyle}background:#315fae;color:#ffffff;`;
   const darkHeaderStyle = `${headerStyle}background:#23447d;color:#ffffff;`;
+  const calculatedHeaderStyle = `${headerStyle}background:#6a3fa0;color:#ffffff;`;
   const bodyStyle = `${baseCell}background:#edf2f8;`;
   const alternateBodyStyle = `${baseCell}background:#e6edf5;`;
   const adjustedStyle = `${baseCell}background:#d5e1f4;color:#1e55a5;font-weight:700;`;
+  const calculatedStyle = `${baseCell}background:#e8def4;color:#5a2f92;font-weight:700;`;
   const premiumStyle = `${baseCell}background:#edf2f8;color:#e96f00;font-weight:700;`;
   const alternatePremiumStyle = `${baseCell}background:#e6edf5;color:#e96f00;font-weight:700;`;
   const averageStyle = `${baseCell}background:#24313f;color:#ffffff;font-weight:700;`;
   const averageAdjustedStyle = `${baseCell}background:#315fae;color:#ffffff;font-weight:700;`;
-  const groupEdgeStyle = (index) => {
-    if (index === 0) return "border-left:1pt solid #1f2a32;border-right:1pt solid #1f2a32;";
-    if ([1, 5, 7, 8, 11].includes(index)) return "border-right:1pt solid #1f2a32;";
-    return "";
-  };
+  const averageCalculatedStyle = `${baseCell}background:#6a3fa0;color:#ffffff;font-weight:700;`;
+  const groupEdgeStyle = landMode
+    ? (index) => {
+      if (index === 0) return "border-left:1pt solid #1f2a32;border-right:1pt solid #1f2a32;";
+      if ([2, 6, 7, 10].includes(index)) return "border-right:1pt solid #1f2a32;";
+      return "";
+    }
+    : (index) => {
+      if (index === 0) return "border-left:1pt solid #1f2a32;border-right:1pt solid #1f2a32;";
+      if ([1, 5, 7, 8, 11].includes(index)) return "border-right:1pt solid #1f2a32;";
+      return "";
+    };
   const headerCell = (text, index, extra = "") => `<th style="${headerStyle}width:${widths[index]};${groupEdgeStyle(index)}${extra}">${escapeHtml(text).replace(/\n/g, "<br>")}</th>`;
-  const table = `<table class="word-table is-wide comparable-valuation-word-table" style="border-collapse:collapse;width:100%;margin:0;table-layout:fixed;font-family:Arial,sans-serif;font-size:6pt;">
-    <colgroup>${widths.map((width) => `<col style="width:${width};">`).join("")}</colgroup>
-    <thead>
+  const thead = landMode
+    ? `<thead>
+      <tr height="21" style="${groupHeaderRowStyle}">
+        <th rowspan="2" style="${headerStyle}width:${widths[0]};${groupEdgeStyle(0)}">NO</th>
+        <th rowspan="2" style="${headerStyle}width:${widths[1]};${groupEdgeStyle(1)}">YÜZÖLÇÜMÜ<br>m²</th>
+        <th rowspan="2" style="${headerStyle}width:${widths[2]};${groupEdgeStyle(2)}">HESAPLANAN EMSAL<br>m²</th>
+        <th colspan="4" style="${headerStyle}border-right:1pt solid #1f2a32;">SATIŞ / ARSA DEĞERLEMESİ</th>
+        <th rowspan="2" style="${headerStyle}color:#e96f00;width:${widths[7]};${groupEdgeStyle(7)}">KONUM<br>ŞEREFİYESİ</th>
+        <th rowspan="2" style="${blueHeaderStyle}width:${widths[8]};${groupEdgeStyle(8)}">İND. M² BİRİM DEĞER<br>TL/m²</th>
+        <th rowspan="2" style="${calculatedHeaderStyle}width:${widths[9]};${groupEdgeStyle(9)}">HESAPLANAN EMSAL M² BİRİM DEĞERİ<br>TL/m²</th>
+        <th rowspan="2" style="${calculatedHeaderStyle}width:${widths[10]};${groupEdgeStyle(10)}">İND. HESAPLANAN EMSAL M² BİRİM DEĞERİ<br>TL/m²</th>
+      </tr>
+      <tr height="30" style="${detailHeaderRowStyle}">
+        ${headerCell("TALEP EDİLEN DEĞER", 3, "")}
+        ${headerCell("P. PAYI", 4, "")}
+        ${headerCell("PAZARLIKLI DEĞER", 5, "")}
+        ${headerCell("M² BİRİM\nDEĞERİ", 6, "")}
+      </tr>
+    </thead>`
+    : `<thead>
       <tr height="21" style="${groupHeaderRowStyle}">
         <th rowspan="2" style="${headerStyle}width:${widths[0]};${groupEdgeStyle(0)}">NO</th>
         <th rowspan="2" style="${headerStyle}width:${widths[1]};${groupEdgeStyle(1)}">ALAN<br>m²</th>
@@ -16747,16 +16788,26 @@ function buildComparableValuationWordTableHtml() {
         <th style="${headerStyle}width:${widths[10]};">KİRA BİRİM<br>TL/m²</th>
         <th style="${darkHeaderStyle}width:${widths[11]};">İND. KİRA BİRİM<br>TL/m²</th>
       </tr>
-    </thead>
+    </thead>`;
+  const accentIndexes = landMode ? [8, 9, 10] : [8, 11];
+  const meritIndexes = landMode ? [7] : [6, 7];
+  const table = `<table class="word-table is-wide comparable-valuation-word-table" style="border-collapse:collapse;width:100%;margin:0;table-layout:fixed;font-family:Arial,sans-serif;font-size:6pt;">
+    <colgroup>${widths.map((width) => `<col style="width:${width};">`).join("")}</colgroup>
+    ${thead}
     <tbody>${bodyRows.map((row, rowIndex) => {
       const isAverage = rowIndex === bodyRows.length - 1;
       const rowCellStyle = isAverage ? averageStyle : (rowIndex % 2 ? alternateBodyStyle : bodyStyle);
       return `<tr height="19" style="${rowStyle}">${row.map((cell, cellIndex) => {
+        const isCalculated = landMode && (cellIndex === 9 || cellIndex === 10);
+        const isAdjustedSale = cellIndex === 8;
+        const isAdjustedRent = !landMode && cellIndex === 11;
         const style = isAverage
-          ? (cellIndex === 8 || cellIndex === 11 ? averageAdjustedStyle : averageStyle)
-          : (cellIndex === 8 || cellIndex === 11
-            ? adjustedStyle
-            : (cellIndex === 6 || cellIndex === 7 ? (rowIndex % 2 ? alternatePremiumStyle : premiumStyle) : rowCellStyle));
+          ? (isCalculated ? averageCalculatedStyle : ((isAdjustedSale || isAdjustedRent) ? averageAdjustedStyle : averageStyle))
+          : (isCalculated
+            ? calculatedStyle
+            : ((isAdjustedSale || isAdjustedRent)
+              ? adjustedStyle
+              : (meritIndexes.includes(cellIndex) ? (rowIndex % 2 ? alternatePremiumStyle : premiumStyle) : rowCellStyle)));
         return `<td style="${style}width:${widths[cellIndex]};${groupEdgeStyle(cellIndex)}text-align:${cellIndex === 0 ? "center" : "right"};">${formatWordCell(cell)}</td>`;
       }).join("")}</tr>`;
     }).join("")}</tbody>
@@ -16771,7 +16822,22 @@ function buildComparableValuationWordTableHtml() {
   return wrapWordLandscapeSection("", frame);
 }
 
-function formatComparableValuationWordRow(row) {
+function formatComparableValuationWordRow(row, landMode = false) {
+  if (landMode) {
+    return [
+      row.no,
+      formatComparableSummaryNumber(row.area, { decimals: 2 }),
+      formatComparableSummaryNumber(row.calculatedEmsalArea, { decimals: 2 }),
+      formatComparableSummaryMoney(row.askingPrice),
+      formatComparableSummaryPercent(row.negotiationRate),
+      formatComparableSummaryMoney(row.saleValue),
+      formatComparableSummaryNumber(row.unitValue, { decimals: 2 }),
+      formatComparableSummarySignedPercent(row.locationAdjustment),
+      formatComparableSummaryNumber(row.adjustedUnitValue, { decimals: 2 }),
+      formatComparableSummaryNumber(row.calculatedEmsalUnitValue, { decimals: 2 }),
+      formatComparableSummaryNumber(row.adjustedCalculatedEmsalUnitValue, { decimals: 2 }),
+    ];
+  }
   return [
     row.no,
     formatComparableSummaryNumber(row.area, { decimals: 2 }),

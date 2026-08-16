@@ -310,4 +310,110 @@ function lineDiv(text) {
   console.log("Arsa/tarla emsalinde c24 bossa c12/c13 yedek alan testi tamam.");
 }
 
+// --- 5) buildComparableValuationWordTableHtml() landMode export ---------
+// (2026-08-16, kullanicinin bildirdigi ARSA emsal export sorununun DEVAMI:
+// kullanici gercek "Tum Tablolar" Excel'ini paylasti — 4. senaryonun
+// duzeltmesiyle "Emsal Degerleme Tablosu" artik BOS DEGIL, ama canli
+// ekrandaki [createComparableValuationSummaryTable] TUM emsaller arsa/
+// tarla iken FARKLI bir sutun kumesi gosteriyor: ALAN yerine YUZOLCUMU +
+// HESAPLANAN EMSAL, IC OZELLIK/KIRA sutunlari YOK, bunun yerine HESAPLANAN
+// EMSAL M² BIRIM DEGERI + IND. HESAPLANAN EMSAL M² BIRIM DEGERI var —
+// export edilen tablo (buildComparableValuationWordTableHtml, hem
+// template-engine.js hem report-tables-xlsx.js'in TEK kaynagi) bu ayrimi
+// hic yapmiyordu, HER ZAMAN genel/konut sutun kumesini uretiyordu. Bu
+// senaryo, export fonksiyonunun artik ekrandakiyle AYNI iki sutun kumesini
+// (arsa-only landMode vs karisik/konut) urettigini dogrular.
+{
+  const calculateComparableMetricsSrc = sliceFn("function calculateComparableMetrics(");
+  const calculateComparableAdjustmentSrc = sliceFn("function calculateComparableAdjustment(");
+  const parseComparablePercentSrc = sliceFn("function parseComparablePercent(");
+  const parseComparableWorkplaceReductionRateSrc = sliceFn("function parseComparableWorkplaceReductionRate(");
+  const getComparableMultiValuesSrc = sliceFn("function getComparableMultiValues(");
+  const syncComparableWorkplaceFloorsSrc = sliceFn("function syncComparableWorkplaceFloors(");
+  const getComparableValuationRowsSrc = sliceFn("function getComparableValuationRows(");
+  const foldTurkishForNatureSrc = sliceFn("function foldTurkish(");
+  const isWorkplaceLikeUsageNatureSrc = sliceFn("function isWorkplaceLikeUsageNature(");
+  const calculateComparableValuationAveragesSrc = sliceFn("function calculateComparableValuationAverages(");
+  const buildComparableValuationWordTableHtmlSrc = sliceFn("function buildComparableValuationWordTableHtml(");
+  const formatComparableValuationWordRowSrc = sliceFn("function formatComparableValuationWordRow(");
+  const formatComparableSummaryMoneySrc = sliceFn("function formatComparableSummaryMoney(");
+  const formatComparableSummaryPercentSrc = sliceFn("function formatComparableSummaryPercent(");
+  const formatComparableSummarySignedPercentSrc = sliceFn("function formatComparableSummarySignedPercent(");
+  const formatWordCellSrc = sliceFn("function formatWordCell(");
+  const getReportThemeTokenSrc = sliceFn("function getReportThemeToken(");
+  const wrapWordLandscapeSectionSrc = sliceFn("function wrapWordLandscapeSection(");
+
+  function sliceArray(startMarker) {
+    const start = appSource.indexOf(startMarker);
+    assert(start >= 0, `Bulunamadi: ${startMarker}`);
+    const end = appSource.indexOf("\n];", start) + 3;
+    return appSource.slice(start, end);
+  }
+  const comparableFloorOptionsArraySrc = sliceArray("const comparableFloorOptions = [");
+
+  function runBuildTable(rows) {
+    const context = {
+      state: { fields: { legalUsageNature: "Arsa" } },
+      isLandComparable: (row) => ["arsa", "tarla", "meyve bahcesi"].includes(String(row?.c23 || "").toLocaleLowerCase("tr")),
+      syncComparableLandBuildableArea: () => {},
+      getComparableRows: () => rows,
+      document: { body: {} },
+      getComputedStyle: () => { throw new Error("no DOM in sandbox"); },
+    };
+    vm.createContext(context);
+    vm.runInContext(comparableFloorOptionsArraySrc, context);
+    vm.runInContext(escapeHtmlSrc, context);
+    vm.runInContext(foldTurkishForNatureSrc, context);
+    vm.runInContext(isWorkplaceLikeUsageNatureSrc, context);
+    vm.runInContext(getComparableMultiValuesSrc, context);
+    vm.runInContext(syncComparableWorkplaceFloorsSrc, context);
+    vm.runInContext(parseComparableNumberSrc, context);
+    vm.runInContext(parseComparablePercentSrc, context);
+    vm.runInContext(parseComparableWorkplaceReductionRateSrc, context);
+    vm.runInContext(calculateComparableAdjustmentSrc, context);
+    vm.runInContext(calculateComparableMetricsSrc, context);
+    vm.runInContext(getComparableValuationRowsSrc, context);
+    vm.runInContext(calculateComparableValuationAveragesSrc, context);
+    vm.runInContext(formatComparableSummaryNumberSrc, context);
+    vm.runInContext(formatComparableSummaryMoneySrc, context);
+    vm.runInContext(formatComparableSummaryPercentSrc, context);
+    vm.runInContext(formatComparableSummarySignedPercentSrc, context);
+    vm.runInContext(formatWordCellSrc, context);
+    vm.runInContext(getReportThemeTokenSrc, context);
+    vm.runInContext(wrapWordLandscapeSectionSrc, context);
+    vm.runInContext(formatComparableValuationWordRowSrc, context);
+    vm.runInContext(buildComparableValuationWordTableHtmlSrc, context);
+    return context.buildComparableValuationWordTableHtml();
+  }
+
+  // E1/E2: her ikisi de arsa (landMode = TUM satirlar arsa/tarla).
+  const landRows = [
+    { c23: "Arsa", c2: "Satılık", c24: "500", c31: "600", c14: "1.000.000", c15: "" },
+    { c23: "Tarla", c2: "Satılık", c24: "400", c31: "480", c14: "800.000", c15: "" },
+  ];
+  const landHtml = runBuildTable(landRows);
+  assert(landHtml.includes("YÜZÖLÇÜMÜ"), `landMode export'ta YÜZÖLÇÜMÜ basligi eksik: ${landHtml.slice(0, 400)}`);
+  assert(landHtml.includes("HESAPLANAN EMSAL"), "landMode export'ta HESAPLANAN EMSAL basligi eksik.");
+  assert(landHtml.includes("HESAPLANAN EMSAL M² BİRİM DEĞERİ"), "landMode export'ta HESAPLANAN EMSAL M² BİRİM DEĞERİ basligi eksik.");
+  assert(landHtml.includes("İND. HESAPLANAN EMSAL M² BİRİM DEĞERİ"), "landMode export'ta İND. HESAPLANAN EMSAL M² BİRİM DEĞERİ basligi eksik.");
+  assert(landHtml.includes("SATIŞ / ARSA DEĞERLEMESİ"), "landMode export'ta SATIŞ / ARSA DEĞERLEMESİ grup basligi eksik.");
+  assert(!landHtml.includes("KİRA DEĞERLEMESİ"), "landMode export'ta olmamasi gereken KİRA DEĞERLEMESİ grubu bulundu.");
+  assert(!landHtml.includes("İÇ ÖZELLİK"), "landMode export'ta olmamasi gereken İÇ ÖZELLİK sutunu bulundu.");
+  assert(landHtml.includes(">E1<"), "landMode export'ta E1 satiri eksik.");
+  assert(landHtml.includes(">ORTALAMA<"), "landMode export'ta ORTALAMA satiri eksik.");
+
+  // Karisik (konut + arsa) durumda landMode=false kalmali, ESKI (genel)
+  // sutun kumesi korunmali — regresyon kontrolu.
+  const mixedRows = [
+    { c23: "Arsa", c2: "Satılık", c24: "500", c31: "600", c14: "1.000.000", c15: "" },
+    { c23: "Daire", c2: "Satılık", c12: "100", c13: "95", c14: "2.000.000", c15: "" },
+  ];
+  const mixedHtml = runBuildTable(mixedRows);
+  assert(mixedHtml.includes("İÇ ÖZELLİK"), "karisik durumda İÇ ÖZELLİK sutunu kaybolmus (eski davranis bozulmus).");
+  assert(mixedHtml.includes("KİRA DEĞERLEMESİ"), "karisik durumda KİRA DEĞERLEMESİ grubu kaybolmus (eski davranis bozulmus).");
+  assert(!mixedHtml.includes("HESAPLANAN EMSAL M² BİRİM DEĞERİ"), "karisik durumda olmamasi gereken HESAPLANAN EMSAL M² BİRİM DEĞERİ basligi bulundu.");
+
+  console.log("buildComparableValuationWordTableHtml landMode export testi tamam.");
+}
+
 console.log("Emsal Degerleme Tablosu kat detayi testi tamam.");
