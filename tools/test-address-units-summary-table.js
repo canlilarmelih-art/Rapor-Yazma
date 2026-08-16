@@ -146,6 +146,50 @@ const fns = new Function(sandboxSource)();
   console.log("Il/Ilce/Idari Mahalle/Sokak-Cadde/Site-Apartman (ayni olsa bile) + diger bolumler her zaman var kurali testi tamam.");
 }
 
+// --- 1b) Mevkii/Ada/Parsel: Tapu ve Mülkiyet'in KENDİ alanlarından ---------
+// (locationName/blockNo/parcelNo) çekilir (2026-08-17, kullanıcı talebi:
+// "adres ve konumda yer alan çoklu taleplerde kullanılan tabloda Mevkii Ada
+// ve Parsel Bilgisi Tapu Kayıtlarından çekilsin") — Adres ve Konum
+// bölümünün KENDİ bir Mevkii/Ada/Parsel alanı YOK, bu üçü zaten Tapu
+// bölümünün ("title" section) alanları; İdari Mahalle'den SONRA, Sokak/
+// Cadde'den ÖNCE gelmeli, "scalar" (düzenlenebilir) olmalı ve Tapu
+// tablosunda kullanılan AYNI anahtarları (locationName/blockNo/parcelNo)
+// okumalı — iki ayrı kopya YOK, TEK kaynak.
+{
+  const shared = { city: "Bursa", district: "Nilüfer", neighborhood: "Özlüce", street: "Atatürk Caddesi", addressSiteName: "Yeşil Vadi Sitesi" };
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: { ...shared, uavt: "123456789", locationName: "Karaağaç Mevkii", blockNo: "1010", parcelNo: "5" },
+    tables: {},
+    titleUnits: [
+      { fields: { ...shared, uavt: "123456790", locationName: "Karaağaç Mevkii", blockNo: "1010", parcelNo: "6" }, tables: {} },
+    ],
+  });
+  const data = fns.buildAddressUnitsSummaryTableData();
+  assert.ok(data, "2 taşınmazlı raporda tablo verisi dönmeli.");
+  ["Mevkii", "Ada", "Parsel"].forEach((col) => {
+    assert.ok(data.headers.includes(col), `"${col}" sütunu tabloya EKLENMİŞ olmalıydı, bulunan başlıklar: ${data.headers.join(", ")}`);
+  });
+  const neighborhoodIdx = data.headers.indexOf("İdari Mahalle");
+  const mevkiiIdx = data.headers.indexOf("Mevkii");
+  const adaIdx = data.headers.indexOf("Ada");
+  const parselIdx = data.headers.indexOf("Parsel");
+  const streetIdx = data.headers.indexOf("Sokak / Cadde");
+  assert.ok(
+    neighborhoodIdx < mevkiiIdx && mevkiiIdx < adaIdx && adaIdx < parselIdx && parselIdx < streetIdx,
+    `Mevkii/Ada/Parsel, İdari Mahalle ile Sokak/Cadde ARASINDA (bu sırada) olmalı: ${data.headers.join(", ")}`
+  );
+  assert.equal(data.rows[0][mevkiiIdx], "Karaağaç Mevkii", "1. taşınmazın Mevkii'si locationName'den gelmeli.");
+  assert.equal(data.rows[0][adaIdx], "1010", "1. taşınmazın Ada'sı blockNo'dan gelmeli.");
+  assert.equal(data.rows[0][parselIdx], "5", "1. taşınmazın Parsel'i parcelNo'dan gelmeli.");
+  assert.equal(data.rows[1][parselIdx], "6", "2. taşınmazın Parsel'i (farklı) kendi parcelNo'sundan gelmeli.");
+  assert.equal(data.columnMeta[mevkiiIdx].kind, "scalar", "Mevkii sütunu 'scalar' (düzenlenebilir) olmalı.");
+  assert.equal(data.columnMeta[mevkiiIdx].fieldKey, "locationName", "Mevkii -> locationName eslesmeli (Tapu ile AYNI alan, ikinci kopya yok).");
+  assert.equal(data.columnMeta[adaIdx].fieldKey, "blockNo", "Ada -> blockNo eslesmeli.");
+  assert.equal(data.columnMeta[parselIdx].fieldKey, "parcelNo", "Parsel -> parcelNo eslesmeli.");
+  console.log("Mevkii/Ada/Parsel (Tapu Kayitlarindan) adres tablosuna eklenme testi tamam.");
+}
+
 // --- 2) Tüm taşınmazlarda BOŞ olan sütun TAMAMEN kaldırılır ---------------
 // (Tapu tablosundaki AYNI kural, 0.0.451) — ör. site içi taşınmazlarda
 // "Giriş" ve "İç Kapı No" hiç kullanılmıyorsa (hepsi boş) kaldırılmalı,

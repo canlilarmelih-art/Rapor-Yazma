@@ -9886,6 +9886,16 @@ gerekmedi, testle (bkz. aşağıda) tekrar doğrulandı.
   zincirle yeşil.
 - Cache-buster: `app.js?v=20260814-1745`.
 
+## 0.0.474 - 2026-08-17 - Taşınmazlar Adres Özeti tablosuna Mevkii/Ada/Parsel eklendi (Tapu Kayıtlarından)
+
+- Kullanıcı: "adres ve konumda yer alan çoklu taleplerde kullanılan tabloda Mevkii Ada ve Parsel Bilgisi Tapu Kayıtlarından çekilsin."
+- Adres ve Konum bölümünün KENDİ bir Mevkii/Ada/Parsel alanı yok — bu üçü zaten Tapu ve Mülkiyet bölümünün alanları (`locationName`/`blockNo`/`parcelNo`; anahtarlar "title" öneki taşımaz çünkü raporda TEK bir Mevkii/Ada/Parsel kavramı var, Tapu'ya özgü ayrı bir kopyası yok). Bu yüzden yeni bir Adres-alanı/tablo yazılmadı — `ADDRESS_UNITS_TABLE_SHARED_FIELD_DEFS`e (Taşınmazlar Adres Özeti tablosunun sütun tanımları) Tapu'nun mevcut taşınmaza-özgü alanları doğrudan üç yeni sütun olarak eklendi, İdari Mahalle'nin hemen ardından, Sokak/Cadde'den önce (İl → İlçe → İdari Mahalle → Mevkii → Ada → Parsel → Sokak/Cadde → Site/Apartman).
+- Mevcut genel "scalar" tıkla-düzenle mekanizması (Çift Yönlü Düzenleme altyapısı, sıfır yeni kod) sayesinde bu sütunlar da düzenlenebilir — ama TEK kaynak (`locationName`/`blockNo`/`parcelNo`) olduğundan, Adres tablosundan yapılan bir düzenleme Tapu sekmesindeki/tablosundaki değeri de AYNI ANDA günceller (iki ayrı kopya yok, senkron kayması riski yok).
+- Bu üç sütun, tablonun diğer 5 "kimlik" sütunuyla (İl/İlçe/İdari Mahalle/Sokak-Cadde/Site-Apartman, 0.0.458) AYNI kurala tabi: tüm taşınmazlarda birebir aynı olsalar bile HER ZAMAN gösterilir (yalnızca tümü boşsa genel "boş sütun kaldırılır" kuralıyla kalkar) — Tapu tablosundaki "aynı ise gizle" davranışından KASITLI bir sapma, zaten aynı array'e eklendiği için otomatik.
+- Test: `tools/test-address-units-summary-table.js`'e yeni senaryo (1b) — Mevkii/Ada/Parsel sütunlarının varlığı, doğru sırası (İdari Mahalle ile Sokak/Cadde arasında), doğru taşınmaza doğru değer eşlemesi, `locationName`/`blockNo`/`parcelNo` alan anahtarlarına doğru bağlandığı ve "scalar" (düzenlenebilir) olduğu doğrulandı.
+- **Not**: bu değişiklik de CANLI tarayıcıda doğrulanamadı (oturum hâlâ düşük, kimlik bilgisi olmadığından giriş yapılmadı) — kod/test seviyesinde (`npm run verify` EXIT:0, yeni senaryo dahil) doğrulandı; bir sonraki çoklu talepli (farklı ada/parselli) rapor açıldığında tablonun doğru göründüğünü teyit etmeniz rica edilir.
+- `npm run verify` tamamı yeşil. Cache-buster: `app.js` → `20260817-0245`.
+
 ## 0.0.473 - 2026-08-17 - "Yalnızca bulutta" kartlarda Sil butonu: başarısız silme artık sessizce yutulmuyor
 
 - Kullanıcı, ekrandan seçtiği bir öğeyle ("Bu Cihaza Getir ve Aç" / "Sil" ikilisinden `data-action="delete-cloud-only"` butonu) "talep silme butonu çalışmıyor" dedi.

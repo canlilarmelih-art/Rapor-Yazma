@@ -17568,16 +17568,32 @@ function openTitleUnitOwnerRowEditor(unitIndex) {
 //
 // NOT (2026-08-15, devam): "Aynı ise gizlensin: İl, İlçe, İdari Mahalle,
 // Sokak/Cadde, Site/Apartman bu madde adres tablosu için iptal edilsin" —
-// Tapu tablosunun AKSİNE, bu 5 alan artık "aynı ise gizle" FİLTRESİNE TABİ
+// Tapu tablosunun AKSİNE, bu alanlar artık "aynı ise gizle" FİLTRESİNE TABİ
 // DEĞİL — TÜM taşınmazlarda birebir aynı olsalar BİLE HER ZAMAN gösterilir
 // (yalnızca TÜMÜ boşsa, aşağıdaki genel "boş sütun kaldırılır" kuralıyla
 // kalkar). ADDRESS_UNITS_TABLE_SHARED_FIELD_DEFS adı KORUNDU (bu alanların
 // "adres kimliği" anlamını hâlâ taşıyor) ama artık eşitlik KARŞILAŞTIRMASI
 // YAPILMIYOR.
+//
+// GÜNCELLEME (2026-08-17): kullanıcı talebi — "adres ve konumda yer alan
+// çoklu taleplerde kullanılan tabloda Mevkii Ada ve Parsel Bilgisi Tapu
+// Kayıtlarından çekilsin". Adres ve Konum bölümünün KENDİ Mevkii/Ada/Parsel
+// alanı YOK — bu üçü zaten Tapu ve Mülkiyet bölümünün alanlarıdır
+// (`locationName`/`blockNo`/`parcelNo`, bkz. TITLE_UNITS_TABLE_SHARED_FIELD_DEFS
+// yukarıda — anahtarlar "title" öneki TAŞIMAZ, çünkü raporda TEK bir Mevkii/
+// Ada/Parsel kavramı vardır, Tapu'ya özgü ayrı bir kopyası yoktur). Bu
+// yüzden yeni bir Adres-alanı EKLEMEK yerine, Tapu'nun MEVCUT taşınmaza-özgü
+// alanları doğrudan bu tabloya (üçüncü bir "kaynak" tablo YAZILMADAN)
+// sütun olarak ekleniyor — hücreye tıklayıp düzenlemek de (mevcut genel
+// "scalar" tıkla-düzenle mekanizmasıyla) AYNI alanı günceller, yani Tapu
+// sekmesindeki değerle her zaman senkron kalır (iki ayrı kopya YOK).
 const ADDRESS_UNITS_TABLE_SHARED_FIELD_DEFS = [
   { key: "city", label: "İl" },
   { key: "district", label: "İlçe" },
   { key: "neighborhood", label: "İdari Mahalle" },
+  { key: "locationName", label: "Mevkii" },
+  { key: "blockNo", label: "Ada" },
+  { key: "parcelNo", label: "Parsel" },
   { key: "street", label: "Sokak / Cadde" },
   { key: "addressSiteName", label: "Site / Apartman" },
 ];
