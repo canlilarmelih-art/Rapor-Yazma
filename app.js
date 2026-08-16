@@ -2104,6 +2104,7 @@ function applySystemDefaults(targetState) {
 
   syncEkbPresenceField(targetState);
   syncCurrentUsageNatureWithLegalNature(targetState);
+  syncEnvironmentRegionTypeWithOwnershipType(targetState);
 }
 
 function syncCurrentUsageNatureWithLegalNature(targetState = state) {
@@ -2114,6 +2115,28 @@ function syncCurrentUsageNatureWithLegalNature(targetState = state) {
   if (fields.currentUsageNature === nextNature) return false;
 
   fields.currentUsageNature = nextNature;
+  return true;
+}
+
+// Kullanıcı talebi (2026-08-17): "Tarla raporlarında Çevresel Özellik Bölge
+// Türü otomatik olarak tarımsal alan gelmeli" — Mülkiyet (ownershipType)
+// "Tarla" ise Adres ve Konum'daki "Çevresel özellik bölge türü"
+// (environmentRegionType, varsayılanı "Konut Bölgesi") "Tarımsal Alan"a
+// çevrilir. "Konut Bölgesi" hâlâ değiştirilmemiş (dokunulmamış) genel
+// varsayılan sayılır — bu yüzden hem BOŞ hem "Konut Bölgesi" durumunda
+// üzerine yazılır; kullanıcı BİLİNÇLİ olarak "Ticaret Bölgesi"/"Sanayi
+// Bölgesi" seçtiyse (veya zaten "Tarımsal Alan"sa) dokunulmaz — kilitli bir
+// alan DEĞİL, yalnızca akıllı bir varsayılan (applyUserDefaultToField'ın
+// "yalnızca boşsa doldur" ilkesiyle AYNI ruhta).
+function syncEnvironmentRegionTypeWithOwnershipType(targetState = state) {
+  const fields = targetState?.fields;
+  if (!fields || !isTarlaOwnershipType(fields.ownershipType)) return false;
+
+  const current = fields.environmentRegionType || "";
+  if (current && current !== "Konut Bölgesi") return false;
+  if (current === "Tarımsal Alan") return false;
+
+  fields.environmentRegionType = "Tarımsal Alan";
   return true;
 }
 
@@ -3265,6 +3288,7 @@ function createForm(section) {
       if (section.id === "case" && field.key === "ownershipType") clearLandOwnershipDependentData(event.target.value);
       if (section.id === "case" && field.key === "ownershipType") {
         syncMultiTitleUnitOwnershipType(enteredValue);
+        if (syncEnvironmentRegionTypeWithOwnershipType()) clearFieldSourceOwnership("environmentRegionType");
       }
       // Çoklu TAKBİS Faz 2: "Çoklu Talep"ten çıkılırken tab çubuğu HEMEN
       // gizlenir (yukarıdaki renderSection kontrolü) — ama aktif taşınmaz
@@ -3381,6 +3405,7 @@ function createForm(section) {
       if (section.id === "case" && field.key === "ownershipType") clearLandOwnershipDependentData(formattedValue);
       if (section.id === "case" && field.key === "ownershipType") {
         syncMultiTitleUnitOwnershipType(formattedValue);
+        if (syncEnvironmentRegionTypeWithOwnershipType()) clearFieldSourceOwnership("environmentRegionType");
       }
       if (section.id === "case" && field.key === "requestType" && formattedValue !== "Çoklu Talep" && state.activeTitleUnitIndex !== 0) {
         switchActiveTitleUnit(0);
@@ -12537,6 +12562,17 @@ function shouldHideField(sectionId, fieldKey) {
   if (sectionId === "address") {
     if (fieldKey === "environmentDescription") {
       return isZiraatBankSelectedForPropertyTaxDeclaration();
+    }
+    // Kullanıcı talebi (2026-08-17): "arsa ve arazi raporlarında adres ve
+    // konum bölümünde site apartman blok giriş dış kapı no iç kapı no uavt
+    // ve posta kodu bölümleri gizlenmeli" — bu 7 alan bir binadaki bağımsız
+    // bölümün adres kimliğine (site/apartman/blok/kat/kapı) ve ona bağlı
+    // UAVT/posta kodu kaydına aittir; Arsa/Tarla raporlarında ortada bir
+    // bağımsız bölüm olmadığından anlamsızdır (isLandOwnershipType, bkz.
+    // clearLandOwnershipDependentData'nın AYNI Arsa/Tarla ayrımı).
+    const landAddressHiddenKeys = ["addressSiteName", "addressBlockName", "addressEntrance", "outerDoor", "innerDoor", "uavt", "postalCode"];
+    if (landAddressHiddenKeys.includes(fieldKey)) {
+      return isLandOwnershipType();
     }
     const environmentType = detectEnvironmentalRegionType(state.fields.environmentRegionType);
     const commercialEnvironmentKeys = ["commercialFunctionDensity", "commercialFirmType", "commercialFrontageRoadType", "commercialDevelopmentCompleted"];
