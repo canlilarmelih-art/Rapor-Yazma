@@ -12565,12 +12565,13 @@ function shouldHideField(sectionId, fieldKey) {
     }
     // Kullanıcı talebi (2026-08-17): "arsa ve arazi raporlarında adres ve
     // konum bölümünde site apartman blok giriş dış kapı no iç kapı no uavt
-    // ve posta kodu bölümleri gizlenmeli" — bu 7 alan bir binadaki bağımsız
-    // bölümün adres kimliğine (site/apartman/blok/kat/kapı) ve ona bağlı
-    // UAVT/posta kodu kaydına aittir; Arsa/Tarla raporlarında ortada bir
-    // bağımsız bölüm olmadığından anlamsızdır (isLandOwnershipType, bkz.
+    // ve posta kodu bölümleri gizlenmeli" + devam: "Kat bölümü kalmış o
+    // kısmı da kaldıralım" — bu 8 alan bir binadaki bağımsız bölümün adres
+    // kimliğine (site/apartman/blok/kat/kapı) ve ona bağlı UAVT/posta kodu
+    // kaydına aittir; Arsa/Tarla raporlarında ortada bir bağımsız bölüm
+    // olmadığından anlamsızdır (isLandOwnershipType, bkz.
     // clearLandOwnershipDependentData'nın AYNI Arsa/Tarla ayrımı).
-    const landAddressHiddenKeys = ["addressSiteName", "addressBlockName", "addressEntrance", "outerDoor", "innerDoor", "uavt", "postalCode"];
+    const landAddressHiddenKeys = ["addressSiteName", "addressBlockName", "addressEntrance", "outerDoor", "addressFloor", "innerDoor", "uavt", "postalCode"];
     if (landAddressHiddenKeys.includes(fieldKey)) {
       return isLandOwnershipType();
     }

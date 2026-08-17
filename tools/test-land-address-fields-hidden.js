@@ -3,9 +3,10 @@
 /*
   Kullanici talebi (2026-08-17): "arsa ve arazi raporlarinda adres ve konum
   bolumunde site apartman blok giris dis kapi no ic kapi no uavt ve posta
-  kodu bolumleri gizlenmeli" — bu 7 alan bir binadaki bagimsiz bolumun
-  adres kimligine ait; Arsa/Tarla (isLandOwnershipType) raporlarinda ortada
-  bir bagimsiz bolum olmadigindan anlamsiz.
+  kodu bolumleri gizlenmeli" + devam: "Kat bolumu kalmis o kismi da
+  kaldiralim" — bu 8 alan bir binadaki bagimsiz bolumun adres kimligine
+  ait; Arsa/Tarla (isLandOwnershipType) raporlarinda ortada bir bagimsiz
+  bolum olmadigindan anlamsiz.
 
   shouldHideField() gercek app.js kaynagindan izole calistirilir (bkz.
   tools/test-land-classification-visibility.js'teki AYNI teknik).
@@ -56,9 +57,9 @@ function isHiddenFor(ownershipType, fieldKey) {
   return context.shouldHideField("address", fieldKey);
 }
 
-const LAND_HIDDEN_KEYS = ["addressSiteName", "addressBlockName", "addressEntrance", "outerDoor", "innerDoor", "uavt", "postalCode"];
+const LAND_HIDDEN_KEYS = ["addressSiteName", "addressBlockName", "addressEntrance", "outerDoor", "addressFloor", "innerDoor", "uavt", "postalCode"];
 
-// --- 1) Arsa/Tarla mulkiyetinde 7 alanin TUMU gizlenmeli. ------------------
+// --- 1) Arsa/Tarla mulkiyetinde 8 alanin TUMU gizlenmeli. ------------------
 ["Arsa", "Tarla"].forEach((ownershipType) => {
   LAND_HIDDEN_KEYS.forEach((fieldKey) => {
     assert.equal(
@@ -82,9 +83,9 @@ const LAND_HIDDEN_KEYS = ["addressSiteName", "addressBlockName", "addressEntranc
   });
 });
 
-// --- 3) Listeye dahil OLMAYAN adres alanlari (Kat, Sokak/Cadde vb.) HICBIR -
-// mulkiyet turunde bu kuralla gizlenmemeli.
-["addressFloor", "street", "city", "district", "neighborhood"].forEach((fieldKey) => {
+// --- 3) Listeye dahil OLMAYAN adres alanlari (Sokak/Cadde, Il/Ilce/Mahalle --
+// vb.) HICBIR mulkiyet turunde bu kuralla gizlenmemeli.
+["street", "city", "district", "neighborhood"].forEach((fieldKey) => {
   assert.equal(isHiddenFor("Arsa", fieldKey), false, `"${fieldKey}" bu kuralla gizlenmemeliydi (kapsam disi alan).`);
 });
 

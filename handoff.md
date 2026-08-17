@@ -9886,6 +9886,14 @@ gerekmedi, testle (bkz. aşağıda) tekrar doğrulandı.
   zincirle yeşil.
 - Cache-buster: `app.js?v=20260814-1745`.
 
+## 0.0.476 - 2026-08-17 - Arsa/Tarla adres gizleme listesine "Kat" da eklendi
+
+- Kullanıcı (0.0.475'in hemen ardından): "Kat bölümü kalmış o kısmı da kaldıralım."
+- `shouldHideField()`'in "address" dalındaki `landAddressHiddenKeys` listesine `addressFloor` ("Kat") eklendi — artık Arsa/Tarla raporlarında Site/Apartman, Blok, Giriş, Dış Kapı No, **Kat**, İç Kapı No, UAVT, Posta Kodu (8 alan) gizleniyor.
+- Test: `tools/test-land-address-fields-hidden.js` güncellendi — `addressFloor` artık gizlenmesi gereken 8 alanlık listede; kapsam-dışı kontrolü (Sokak/Cadde, İl/İlçe/Mahalle) `addressFloor` çıkarılarak güncellendi.
+- **Not**: bu değişiklik de CANLI tarayıcıda doğrulanamadı (oturum hâlâ düşük) — kod/test seviyesinde (`npm run verify` EXIT:0) doğrulandı.
+- `npm run verify` tamamı yeşil. Cache-buster: `app.js` → `20260817-0335`.
+
 ## 0.0.475 - 2026-08-17 - Arsa/Tarla: Adres alanları gizlendi + Tarla'da Çevresel Özellik Bölge Türü otomatik "Tarımsal Alan"
 
 - Kullanıcı: "arsa ve arazi raporlarında adres ve konum bölümünde site apartman blok giriş dış kapı no iç kapı no uavt ve posta kodu bölümleri gizlenmeli. Tarla raporlarında Çevresel Özellik Bölge Türü otomatik olarak tarımsal alan gelmeli." — iki ayrı, ilişkili istek.
