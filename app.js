@@ -17551,6 +17551,36 @@ function attachTitleUnitsSummaryTableEditing(container) {
   });
 }
 
+// Kullanıcı talebi (2026-08-17): "bu tablolarda kullanıcı değişiklik
+// yaparken eğer değişiklik yaptığı bölüm açılır liste ise tablo üzerinde
+// değişiklik yapılmaya çalışıldığında da aynı açılır liste olmalı." —
+// Taşınmazlar Tapu/Adres/İmar/Arsa Özeti tablolarının TÜMÜ bu TEK
+// fonksiyonu paylaşıyor, bu yüzden buradaki düzeltme HEPSİNE otomatik
+// yayılır. Alanın GERÇEK formundaki sabit seçenek listesini (varsa) bulur:
+//   1) `landIrrigationWaterSource`/`landIrrigationSystem` — "Sulu Tarım
+//      Detayı" popup'ında (openLandIrrigationModal) elle yerleştirilen,
+//      section.fields'ta AYRI listelenmeyen 2 istisna, elle eşlenir.
+//   2) Diğer TÜM alanlar için `sections[].fields[]`'ta ARANIR — yalnızca
+//      `type === "select"` VE statik (boş olmayan) bir `options` dizisi
+//      varsa kullanılır. İl/İlçe/İdari Mahalle gibi CANLI (idari
+//      veritabanından async doldurulan, bkz. populateAddressLocationSelect/
+//      populateTitleLocationSelect) alanların declaratif tanımında STATİK
+//      bir `options` dizisi YOK — bu yüzden bu fonksiyon onlar için
+//      BİLEREK null döner, o alanlar KAPSAM DIŞI kalmaya devam eder (metin
+//      girişi, önceki davranış — canlı ağ sorgusunu tablo hücresi içinde
+//      tekrarlamak bu görevin kapsamı dışı).
+function getSelectOptionsForFieldKey(fieldKey) {
+  if (fieldKey === "landIrrigationWaterSource") return irrigationWaterSourceOptions;
+  if (fieldKey === "landIrrigationSystem") return irrigationSystemOptions;
+  for (const section of sections) {
+    const field = (section.fields || []).find((item) => item.key === fieldKey);
+    if (field && field.type === "select" && Array.isArray(field.options) && field.options.length) {
+      return field.options;
+    }
+  }
+  return null;
+}
+
 function beginEditingTitleUnitsSummaryCell(cell) {
   if (!cell || cell.classList.contains("is-editing")) return;
   const unitIndex = Number(cell.dataset.unitIndex);
@@ -17563,14 +17593,35 @@ function beginEditingTitleUnitsSummaryCell(cell) {
   const currentValue = String(getTitleUnitFieldsForLabel(unitIndex)[fieldKey] ?? "");
   cell.classList.add("is-editing");
   const originalHtml = cell.innerHTML;
-  const input = document.createElement("input");
-  input.type = "text";
+  const selectOptions = getSelectOptionsForFieldKey(fieldKey);
+  const input = document.createElement(selectOptions ? "select" : "input");
   input.className = "tus-editable-cell-input";
-  input.value = currentValue;
+  if (selectOptions) {
+    selectOptions.forEach((option) => {
+      const optionElement = document.createElement("option");
+      optionElement.value = option;
+      optionElement.textContent = option || "Seçiniz";
+      input.append(optionElement);
+    });
+    // Mevcut değer seçenekler DIŞINDAYSA (ör. eski/serbest bir değer)
+    // kaybolmasın diye ekstra bir seçenek olarak eklenir — Tapu il/ilçe
+    // açılır listesindeki "liste dışı değer korunur" ilkesiyle AYNI
+    // (bkz. populateLocationSelect).
+    if (currentValue && !selectOptions.includes(currentValue)) {
+      const extraOption = document.createElement("option");
+      extraOption.value = currentValue;
+      extraOption.textContent = currentValue;
+      input.append(extraOption);
+    }
+    input.value = currentValue;
+  } else {
+    input.type = "text";
+    input.value = currentValue;
+  }
   cell.innerHTML = "";
   cell.append(input);
   input.focus();
-  input.select();
+  if (!selectOptions) input.select();
 
   let settled = false;
   const cancelEdit = () => {
@@ -17597,6 +17648,12 @@ function beginEditingTitleUnitsSummaryCell(cell) {
     }
   });
   input.addEventListener("blur", commitEdit);
+  // <select> için seçim yapılınca (bazı tarayıcılarda blur gecikebilir)
+  // ANINDA da commit edilir — "settled" bayrağı sayesinde blur'un ardından
+  // TEKRAR çalışması zararsızdır (ikinci çağrı sessizce no-op olur).
+  if (selectOptions) {
+    input.addEventListener("change", commitEdit);
+  }
 }
 
 // Yeni değeri hedef taşınmaza yazar. Mimari kararlar (plan): "hedef taşınmaz
