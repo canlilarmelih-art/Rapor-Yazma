@@ -70,6 +70,9 @@ const functionNames = [
   "computeTitleUnitsShareSameAdaParsel",
   "isPlanningScopedByAdaParsel",
   "getImarSectionFieldKeys",
+  // Arsa Özellikleri scoping-gap-fix (2026-08-17) - getTitleUnitScopedFieldKeys()
+  // artık buna KOŞULSUZ bağımlı.
+  "getLandSectionFieldKeys",
 ];
 
 const sandboxSource = `

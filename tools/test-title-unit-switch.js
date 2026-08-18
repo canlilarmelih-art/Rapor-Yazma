@@ -89,6 +89,13 @@ const functionNames = [
   "parseReportNumber",
   "formatImarSquareMeter",
   "foldTurkish",
+  // Arsa Özellikleri (land) scoping-gap-fix + tümüne uygula (2026-08-17) -
+  // getTitleUnitScopedFieldKeys() artik getLandSectionFieldKeys()'e KOSULSUZ
+  // bagimli (İmar'in aksine land'in paylasim modeli degismiyor).
+  "getLandSectionFieldKeys",
+  "applyLandDataToAllTitleUnits",
+  "calculateAgriculturalTotalCount",
+  "roundAgriculturalTreeCount",
 ];
 
 // Çoklu Excel akışında ana form bölümlerinin tamamı taşınmaz kapsamındadır.
@@ -111,9 +118,15 @@ let sections = [
   // "İmar Durumu" koşullu scoping testi (2026-08-16) icin fixture'a eklendi
   // - gercek app.js'teki planning bolumunun kucultulmus bir kopyasi.
   { id: "planning", fields: [{ key: "planScale" }, { key: "hmax" }, { key: "kaks" }, { key: "floorCount" }, { key: "planCancellationStay" }] },
+  // "Arsa Özellikleri" scoping-gap-fix testi (2026-08-17) icin fixture'a
+  // eklendi - gercek app.js'teki land bolumunun kucultulmus bir kopyasi
+  // (9 gercek alandan 3'u temsili; landNote/landClimateEarthquakeExplanation
+  // PAYLASIMLI oldugu icin BILEREK disarida - gercek TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS'teki
+  // ayni ayrimi yansitir).
+  { id: "land", fields: [{ key: "landShape" }, { key: "landRoadFrontage" }, { key: "landAgriculturalProduct" }] },
 ];
 let state = null;
-const TITLE_UNIT_SCOPED_SECTION_IDS = ["address", "title", "encumbrance", "planning"];
+const TITLE_UNIT_SCOPED_SECTION_IDS = ["address", "title", "encumbrance", "planning", "land"];
 const TITLE_UNIT_SCOPED_TABLE_KEYS = ["title", "encumbrance", "encumbranceDeclarations", "encumbranceAnnotations", "encumbranceMortgages"];
 const TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS = new Set(["transport", "nearby", "environmentDescription", "takbisSummary"]);
 ${functionNames.map(extractFunction).join("\n")}
@@ -608,6 +621,119 @@ assert.match(appSource, /panel\.dataset\.parcelScope = mixedParcels \? "mixed" :
   // kopyalanmali (istisna SADECE calculatedEmsal'e ozel).
   assert.equal(afterApply.titleUnits[0].fields.kaks, "2", "kaks alani normal sekilde (istisna DISINDA) kopyalanmali.");
   console.log("applyImarDataToAllTitleUnits Hesaplanan Emsal istisnasi testi tamam.");
+}
+
+// --- 22) Arsa Özellikleri: popup alanlari artik tab degistirince SIZMIYOR --
+// (2026-08-17, scoping-gap-fix) — kullanici bildirmeden ONCE kesfedilen
+// sessiz kusur: landRoadFrontageItems/landBoundaryElementItems/
+// landAgriculturalProductItems section.fields'ta olmadigindan (titleChangedRecords
+// emsaliyle AYNI bosluk sinifi) getTitleUnitScopedFieldKeys() bunlari HIC
+// toplamiyordu — bir tasinmaza Kadastro Yolu/Sinir Unsuru/Zirai Urun
+// detayi girilip baska bir tasinmaza gecilince o veri YANLISLIKLA
+// state.fields'ta kalip YENI tasinmaza "siziyordu".
+{
+  const state = freshState();
+  state.fields.landRoadFrontage = "Evet";
+  state.fields.landRoadFrontageItems = [{ roadType: "Kadastro yolu", roadName: "Atatürk Caddesi", direction: "Kuzey", length: "25" }];
+  state.fields.landBoundaryElement = "Evet";
+  state.fields.landBoundaryElementItems = ["Tel Örgü", "Duvar"];
+  state.fields.landBoundaryElementOther = "Ek açıklama";
+  state.fields.landAgriculturalProduct = "Evet";
+  state.fields.landAgriculturalProductItems = [{ productType: "Zeytin", unitCount: "50", age: "10", yieldRate: "Yüksek", totalCount: "500" }];
+  sandbox.setState(state);
+  const newIndex = sandbox.fns.addTitleUnitTab();
+  sandbox.fns.switchActiveTitleUnit(newIndex);
+  const secondUnit = sandbox.getState();
+  assert.equal(secondUnit.fields.landRoadFrontageItems, undefined, "REGRESYON: 2. (yeni/bos) tasinmaza Kadastro Yolu kayitlari SIZMAMALI.");
+  assert.equal(secondUnit.fields.landBoundaryElementItems, undefined, "REGRESYON: 2. tasinmaza Sinir Unsuru kayitlari SIZMAMALI.");
+  assert.equal(secondUnit.fields.landAgriculturalProductItems, undefined, "REGRESYON: 2. tasinmaza Zirai Urun kayitlari SIZMAMALI.");
+
+  sandbox.fns.switchActiveTitleUnit(0);
+  const primaryAgain = sandbox.getState();
+  assert.deepEqual(
+    primaryAgain.fields.landRoadFrontageItems,
+    [{ roadType: "Kadastro yolu", roadName: "Atatürk Caddesi", direction: "Kuzey", length: "25" }],
+    "Birincilin Kadastro Yolu kayitlari sizinti olmadan (round-trip) korunmali."
+  );
+  assert.deepEqual(primaryAgain.fields.landBoundaryElementItems, ["Tel Örgü", "Duvar"], "Birincilin Sinir Unsuru kayitlari korunmali.");
+  assert.equal(primaryAgain.fields.landBoundaryElementOther, "Ek açıklama", "Birincilin Sinir Unsuru 'Diger' metni korunmali.");
+  assert.deepEqual(
+    primaryAgain.fields.landAgriculturalProductItems,
+    [{ productType: "Zeytin", unitCount: "50", age: "10", yieldRate: "Yüksek", totalCount: "500" }],
+    "Birincilin Zirai Urun kayitlari korunmali."
+  );
+  console.log("Arsa Ozellikleri popup alanlari (Kadastro Yolu/Sinir Unsuru/Zirai Urun) unit-scoped round-trip testi tamam.");
+}
+
+// --- 23) applyLandDataToAllTitleUnits(): "tumune uygula" (2026-08-17) ----
+// Kullanici talebi: "bu bolumde tum tasinmazlara uygula butonu da yer
+// alsin." applyImarDataToAllTitleUnits (senaryo 20) ile AYNI desen —
+// skaler alanlar + landRoadFrontageItems/landBoundaryElementItems AYNEN
+// kopyalanir (bu diziler taşınmaza-özgü hesaplanmis bir deger icermez).
+{
+  const state = freshState({
+    fields: {
+      city: "Bursa", blockNo: "10", parcelNo: "1",
+      landShape: "Dikdörtgen", landRoadFrontage: "Evet",
+      landRoadFrontageItems: [{ roadType: "Kadastro yolu", roadName: "Atatürk Caddesi", direction: "Kuzey", length: "25" }],
+      landBoundaryElement: "Evet", landBoundaryElementItems: ["Tel Örgü"],
+    },
+  });
+  sandbox.setState(state);
+  sandbox.fns.addTitleUnitTab();
+  sandbox.fns.addTitleUnitTab();
+  const beforeApply = sandbox.getState();
+  assert.equal(beforeApply.titleUnits.length, 2, "2 ek tasinmaz olusturulmali (fixture).");
+  assert.notEqual(beforeApply.titleUnits[0].fields.landShape, "Dikdörtgen", "Uygulanmadan once diger tasinmazlar farkli/bos olmali (fixture kontrolu).");
+
+  const unitCount = sandbox.fns.applyLandDataToAllTitleUnits();
+  const afterApply = sandbox.getState();
+  assert.equal(unitCount, 3, "Toplam tasinmaz sayisi (1 birincil + 2 ek) donmeli.");
+  assert.equal(afterApply.titleUnits[0].fields.landShape, "Dikdörtgen", "1. ek tasinmaza skaler alan (landShape) kopyalanmali.");
+  assert.deepEqual(
+    afterApply.titleUnits[0].fields.landRoadFrontageItems,
+    [{ roadType: "Kadastro yolu", roadName: "Atatürk Caddesi", direction: "Kuzey", length: "25" }],
+    "1. ek tasinmaza Kadastro Yolu kayitlari AYNEN kopyalanmali (hesaplanmis deger icermiyor)."
+  );
+  assert.deepEqual(afterApply.titleUnits[0].fields.landBoundaryElementItems, ["Tel Örgü"], "1. ek tasinmaza Sinir Unsuru kayitlari da kopyalanmali.");
+  assert.equal(afterApply.fields.landShape, "Dikdörtgen", "Aktif (birincil) tasinmazin kendi degeri degismeden kalmali (zaten kaynaktı).");
+
+  sandbox.fns.switchActiveTitleUnit(1);
+  assert.equal(sandbox.getState().fields.landShape, "Dikdörtgen", "2. tasinmaza gecilince kopyalanan deger dogru gorunmeli (round-trip).");
+  console.log("applyLandDataToAllTitleUnits (tumune uygula) testi tamam.");
+}
+
+// --- 24) applyLandDataToAllTitleUnits(): landAgriculturalProductItems ----
+// totalCount ISTISNASI (2026-08-17, devam) — İmar'in calculatedEmsal
+// istisnasiyla BIREBIR AYNI desen/gerekce: her kaydin totalCount'u AKTIF
+// tasinmazdan KOPYALANMAZ, HEDEF tasinmazin KENDI landArea'siyla
+// calculateAgriculturalTotalCount() ile YENIDEN hesaplanir.
+{
+  const state = freshState({
+    fields: {
+      city: "Bursa", blockNo: "10", parcelNo: "1", landArea: "1000",
+      landAgriculturalProduct: "Evet",
+      landAgriculturalProductItems: [{ productType: "Zeytin", unitCount: "10", age: "5", yieldRate: "Orta", totalCount: "YANLIS-KOPYALANMAMALI" }],
+    },
+  });
+  sandbox.setState(state);
+  const newIndex = sandbox.fns.addTitleUnitTab();
+  // Hedef (2.) tasinmazin KENDI landArea'si aktiften FARKLI (500 vs 1000) —
+  // dogru davranista bu YENI hesaba katilmali, aktifin "1000"i DEGIL.
+  sandbox.getState().titleUnits[0].fields.landArea = "500";
+
+  sandbox.fns.applyLandDataToAllTitleUnits();
+  const afterApply = sandbox.getState();
+  const copiedItem = afterApply.titleUnits[0].fields.landAgriculturalProductItems[0];
+  assert.notEqual(copiedItem.totalCount, "YANLIS-KOPYALANMAMALI", "totalCount aktif tasinmazdan OLDUGU GIBI kopyalanmamali.");
+  // Beklenen: (landArea/1000) * unitCount = (500/1000) * 10 = 5 -> 10'a
+  // yuvarlanir (roundAgriculturalTreeCount, en yakin 10'a yuvarlar).
+  assert.equal(copiedItem.totalCount, (10).toLocaleString("tr-TR"), `Hedef tasinmazin KENDI landArea'siyla (500) YENIDEN hesaplanmis deger bekleniyordu, bulunan: ${copiedItem.totalCount}`);
+  // Digger alt-alanlar (productType/unitCount/age/yieldRate) hala normal
+  // sekilde kopyalanmali (istisna SADECE totalCount'a ozel).
+  assert.equal(copiedItem.productType, "Zeytin", "productType normal sekilde (istisna DISINDA) kopyalanmali.");
+  assert.equal(copiedItem.unitCount, "10", "unitCount normal sekilde kopyalanmali.");
+  console.log("applyLandDataToAllTitleUnits landAgriculturalProductItems totalCount istisnasi testi tamam.");
 }
 
 console.log("Coklu TAKBIS Faz 2 tab-anahtarlama motoru testleri basarili.");

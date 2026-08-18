@@ -717,6 +717,13 @@
     if (imarUnitsSummaryCellGrid) {
       sheets.push({ name: sanitizeSheetName("Taşınmazlar İmar Özeti", usedNames), sheetXml: buildSheetXmlFromCellGrid(styleRegistry, imarUnitsSummaryCellGrid) });
     }
+    // Arsa Özellikleri (2026-08-17) — yukarıdaki İmar sayfasıyla AYNI
+    // desen; yalnızca taşınmazlar FARKLI ada/parselde iken dolu döner
+    // (bkz. buildLandUnitsSummaryTableData, app.js).
+    const landUnitsSummaryCellGrid = generatedCellGridFor("buildLandUnitsSummaryWordTableHtml");
+    if (landUnitsSummaryCellGrid) {
+      sheets.push({ name: sanitizeSheetName("Taşınmazlar Arsa Özeti", usedNames), sheetXml: buildSheetXmlFromCellGrid(styleRegistry, landUnitsSummaryCellGrid) });
+    }
 
     const rawGridDefs = collectRawGridDefs();
     const takyidatDefs = rawGridDefs.filter((def) => TAKYIDAT_KEYS.includes(def.key));

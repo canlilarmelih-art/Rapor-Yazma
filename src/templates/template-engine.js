@@ -610,6 +610,10 @@
     // döner (aynı ada/parselde İmar Durumu paylaşımlı, bkz. Faz A —
     // isPlanningScopedByAdaParsel, app.js).
     TASINMAZLARIMARTABLOSU: { h: () => safeCall("buildImarUnitsSummaryWordTableHtml") },
+    // Arsa Özellikleri (2026-08-17) — yukarıdaki İmar tablosuyla AYNI
+    // desen (aynı görünürlük kuralı: yalnızca farklı ada/parselde dolu
+    // döner, bkz. buildLandUnitsSummaryTableData, app.js).
+    TASINMAZLARARSATABLOSU: { h: () => safeCall("buildLandUnitsSummaryWordTableHtml") },
     GABIMVERISETI: { h: () => safeCall("buildGabimDataSetWordHtml") },
     HISSEACIKLAMASI: { t: () => field("shareExplanation"), paragraphClass: "share-explanation" },
     EKLENTI: { f: ["titleAttachment"] },

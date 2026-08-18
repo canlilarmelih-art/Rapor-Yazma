@@ -1332,6 +1332,87 @@ function getImarSectionFieldKeys() {
   return [...keys, "planCancellationStayNote", "minimumFrontageConditionNote", "tevhidConditionNote", "article18AppliedNote", "urbanTransformationAreaNote", "licenseObstacleNote"];
 }
 
+// "Arsa Özellikleri" (land) bölümünün TÜM taşınmaza-özgü olabilecek alan
+// anahtarları — getImarSectionFieldKeys() ile AYNI ilke. `section.fields`'taki
+// 9 deklaratif alandan (landNote/landClimateEarthquakeExplanation zaten
+// TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS'te, HARİÇ tutulur) + 4 popup
+// alanının (Kadastro/İmar Yolu Cephesi, Sulu Tarım, Sınır Unsuru, Zirai
+// Ürün — bkz. landDescriptionAutoRefreshFields, tek kanonik kaynak, aşağıda)
+// programatik yazılan ekstra state anahtarlarından oluşur. Bu anahtarlar
+// section.fields'ta AYRI listelenmiyor (titleChangedRecords/İmar'ın
+// conditionalYesNo notlarıyla AYNI boşluk sınıfı) — 2026-08-17'ye kadar
+// getTitleUnitScopedFieldKeys() bunları HİÇ toplamıyordu, yani tab
+// değiştirince Kadastro Yolu/Sınır Unsuru/Zirai Ürün detayları YANLIŞLIKLA
+// diğer taşınmaza SIZIYORDU (kullanıcı bildirmeden ÖNCE keşfedilen sessiz
+// bir kusur). İKİ tüketicisi var: getTitleUnitScopedFieldKeys() (tab
+// değiştirince hangi alanların taşınacağı) ve applyLandDataToAllTitleUnits()
+// (kullanıcı talebi, 2026-08-17: "tüm taşınmazlara uygula" — hangi
+// alanların KOPYALANACAĞI) — TEK kaynaktan, drift riski olmadan.
+function getLandSectionFieldKeys() {
+  const section = sections.find((item) => item.id === "land");
+  const keys = (section?.fields || [])
+    .map((field) => field.key)
+    .filter((key) => !TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS.has(key));
+  return [
+    ...keys,
+    "landRoadFrontageItems", "landRoadType", "landRoadName", "landRoadDirection", "landRoadFrontageLength",
+    "landIrrigationWaterSource", "landIrrigationSystem",
+    "landBoundaryElementItems", "landBoundaryElementOther",
+    "landAgriculturalProductItems", "landAgriculturalProductType", "landAgriculturalUnitCount", "landAgriculturalAge", "landAgriculturalYield", "landAgriculturalTotalCount",
+  ];
+}
+
+// Kullanıcı talebi (2026-08-17): "bu bölümde tüm taşınmazlara uygula
+// butonu da yer alsın" — applyImarDataToAllTitleUnits()'in (yukarıda)
+// BİREBİR AYNI "bir kez kopyala, sürekli senkron DEĞİL" deseni. TEK
+// istisna `landAgriculturalProductItems`: diğer TÜM alanlar (skaler +
+// `landRoadFrontageItems`/`landBoundaryElementItems` gibi diziler DAHİL)
+// aktif taşınmazdan AYNEN kopyalanır — bu diziler taşınmaza-özgü
+// HESAPLANMIŞ bir değer içermez, "aynen kopyala" burada zaten doğru
+// davranıştır. `landAgriculturalProductItems`'ın HER kaydındaki
+// `totalCount` ise `calculateAgriculturalTotalCount(unitCount, areaValue)`
+// (yukarıda, artık 2. parametreli) ile HEDEF taşınmazın KENDİ `landArea`'sı
+// kullanılarak YENİDEN hesaplanır — aksi halde farklı ada/parseldeki
+// (farklı yüzölçümlü) bir taşınmaza aktif taşınmazın SAYISI yanlışlıkla
+// yapıştırılmış olurdu (İmar'ın `calculatedEmsal` istisnasıyla BİREBİR
+// aynı risk/çözüm).
+function applyLandDataToAllTitleUnits() {
+  const keys = getLandSectionFieldKeys();
+  const snapshot = {};
+  keys.forEach((key) => { snapshot[key] = state.fields[key]; });
+  const sourceAgriculturalItems = Array.isArray(snapshot.landAgriculturalProductItems)
+    ? snapshot.landAgriculturalProductItems
+    : [];
+
+  const applyKeysToUnitFields = (unitFields) => {
+    keys.forEach((key) => {
+      if (key === "landAgriculturalProductItems") return;
+      unitFields[key] = snapshot[key];
+    });
+    unitFields.landAgriculturalProductItems = sourceAgriculturalItems.map((item) => ({
+      ...item,
+      totalCount: calculateAgriculturalTotalCount(item.unitCount, unitFields.landArea),
+    }));
+  };
+
+  (state.titleUnits || []).forEach((unit) => {
+    if (!unit) return;
+    unit.fields = unit.fields || {};
+    applyKeysToUnitFields(unit.fields);
+  });
+
+  // Aktif taşınmaz birincil DEĞİLSE, birincilin "park edilmiş" verisi
+  // primaryTitleUnitShadow'dadır (bkz. switchActiveTitleUnit) — o da
+  // güncellenmeli, aksi halde birincile geri dönüldüğünde eski değer
+  // geri gelir.
+  if (state.activeTitleUnitIndex !== 0 && state.primaryTitleUnitShadow) {
+    state.primaryTitleUnitShadow.fields = state.primaryTitleUnitShadow.fields || {};
+    applyKeysToUnitFields(state.primaryTitleUnitShadow.fields);
+  }
+
+  return getTitleUnitCount();
+}
+
 // Kullanıcı talebi (2026-08-16): "farklı ada parselde imar durumu
 // kısmında bazen tüm taşınmazlar aynı imar planına sahip olabiliyor
 // (Örnek: 5 Adet Tarla hepsi Tarım Alanı) ... tümüne uygula seçeneği
@@ -1436,6 +1517,14 @@ function getTitleUnitScopedFieldKeys() {
   if (!planningIsShared) {
     getImarSectionFieldKeys().forEach((key) => keys.add(key));
   }
+  // "land" (Arsa Özellikleri) İmar'ın AKSİNE koşullu paylaşıma geçmiyor —
+  // HER ZAMAN taşınmaza-özgü kalıyor (yukarıdaki genel döngü zaten "land"i
+  // hariç tutmuyor, 9 deklaratif alan doğru toplanıyor). Yalnızca popup
+  // alanlarının (Kadastro Yolu/Sınır Unsuru/Zirai Ürün vb.) section.fields'ta
+  // OLMAYAN ekstra state anahtarları eksikti (2026-08-17'de keşfedilen
+  // sessiz sızıntı kusuru, bkz. getLandSectionFieldKeys() yorumu) — KOŞULSUZ
+  // eklenir.
+  getLandSectionFieldKeys().forEach((key) => keys.add(key));
   return keys;
 }
 
@@ -1869,6 +1958,39 @@ function createImarApplyAllControl() {
   return wrap;
 }
 
+// Kullanıcı talebi (2026-08-17): "bu bölümde tüm taşınmazlara uygula
+// butonu da yer alsın" — createImarApplyAllControl() ile BİREBİR aynı
+// desen, 3. kez yeniden kullanılan AYNI `.title-record-change-apply-all`
+// CSS sınıfı (Tapu Kaydı Değişikliği → KML → İmar Durumu → Arsa Özellikleri).
+function createLandApplyAllControl() {
+  const wrap = document.createElement("div");
+  wrap.className = "imar-apply-all-wrap";
+
+  const label = document.createElement("label");
+  label.className = "title-record-change-apply-all";
+  const checkbox = document.createElement("input");
+  checkbox.type = "checkbox";
+  const text = document.createElement("span");
+  text.textContent = "Aktif taşınmazın Arsa Özellikleri bilgilerini TÜM taşınmazlara uygula";
+  label.append(checkbox, text);
+  wrap.append(label);
+
+  const note = document.createElement("small");
+  note.className = "muted-note title-record-change-apply-all-note";
+  wrap.append(note);
+
+  checkbox.addEventListener("change", () => {
+    if (!checkbox.checked) return;
+    const unitCount = applyLandDataToAllTitleUnits();
+    note.textContent = `${unitCount} taşınmaza uygulandı.`;
+    checkbox.checked = false;
+    autosave();
+    refreshLandUnitsSummaryTablePreview();
+  });
+
+  return wrap;
+}
+
 // İmar Durumu Faz B (Çift Yönlü Düzenleme, 2026-08-16) — Tapu/Adres Özeti
 // panelleriyle (yukarıda) BİREBİR AYNI desen. Tek fark: bu tablo yalnızca
 // taşınmazlar FARKLI ada/parselde iken (isPlanningScopedByAdaParsel() true)
@@ -1900,6 +2022,39 @@ function createImarUnitsSummaryTablePreview() {
   const hint = document.createElement("p");
   hint.className = "muted-note";
   hint.textContent = "Aktif taşınmazın hücrelerine tıklayarak doğrudan düzenleyebilirsiniz. Banka şablonlarında {{TASINMAZLARIMARTABLOSU}} olarak kullanılabilir.";
+  wrap.append(hint);
+  return wrap;
+}
+
+// Kullanıcı talebi (2026-08-17): "arsa özelliklerinde bulunan tüm hücreler
+// burada sütun olarak olacak" — İmar Özeti panelinin (yukarıda) BİREBİR
+// AYNI deseni. "readonly" (dinamik popup) sütunları da AYNI genel
+// mekanizmayla (buildTitleUnitsSummaryTableHtmlEditable) render edilir —
+// yeni bir render dalı gerekmedi.
+function createLandUnitsSummaryTablePreview() {
+  const wrap = document.createElement("div");
+  wrap.className = "title-units-summary-table-preview";
+  const heading = document.createElement("h5");
+  heading.textContent = "Taşınmazlar Arsa Özeti";
+  wrap.append(heading);
+
+  const data = buildLandUnitsSummaryTableData();
+  if (!data || !data.rows.length) {
+    const note = document.createElement("p");
+    note.className = "muted-note";
+    note.textContent = "Bu tablo yalnızca taşınmazlar FARKLI ada/parselde olduğunda görünür. Banka şablonlarında {{TASINMAZLARARSATABLOSU}} olarak kullanılabilir.";
+    wrap.append(note);
+    return wrap;
+  }
+  const tableHtml = buildTitleUnitsSummaryTableHtmlEditable(data.headers, data.rows, data.columnMeta, state.activeTitleUnitIndex);
+  const tableContainer = document.createElement("div");
+  tableContainer.className = "title-units-summary-table-container";
+  tableContainer.innerHTML = tableHtml;
+  wrap.append(tableContainer);
+  attachTitleUnitsSummaryTableEditing(tableContainer);
+  const hint = document.createElement("p");
+  hint.className = "muted-note";
+  hint.textContent = "Aktif taşınmazın hücrelerine tıklayarak doğrudan düzenleyebilirsiniz (Kadastro Yolu/Sınır Unsuru/Zirai Ürün sütunları tıklanamaz — ilgili taşınmazın tab'ındaki \"Detay\" penceresinden düzenlenir). Banka şablonlarında {{TASINMAZLARARSATABLOSU}} olarak kullanılabilir.";
   wrap.append(hint);
   return wrap;
 }
@@ -1939,6 +2094,14 @@ function refreshImarUnitsSummaryTablePreview() {
   host.replaceWith(createImarUnitsSummaryTablePreview());
 }
 
+// Arsa Özellikleri (2026-08-17) — yukarıdakilerle AYNI desen.
+function refreshLandUnitsSummaryTablePreview() {
+  if (activeSectionId !== "land") return;
+  const host = document.querySelector(".title-units-summary-table-preview");
+  if (!host) return;
+  host.replaceWith(createLandUnitsSummaryTablePreview());
+}
+
 // Çift Yönlü Düzenleme, Faz 3 (2026-08-15) — yukarıdaki iki fonksiyonla
 // AYNI "hafif, yerinde değiştir" deseni: tab çubuğunu (createTitleUnitTabBar,
 // yukarıda) TAMAMEN yeniden üretip DOM'da yerine koyar. Ada/Parsel/Blok/
@@ -1962,6 +2125,7 @@ function refreshTitleUnitTabBar() {
 const refreshTitleUnitsSummaryTablePreviewDebounced = debounce(refreshTitleUnitsSummaryTablePreview, 350);
 const refreshAddressUnitsSummaryTablePreviewDebounced = debounce(refreshAddressUnitsSummaryTablePreview, 350);
 const refreshImarUnitsSummaryTablePreviewDebounced = debounce(refreshImarUnitsSummaryTablePreview, 350);
+const refreshLandUnitsSummaryTablePreviewDebounced = debounce(refreshLandUnitsSummaryTablePreview, 350);
 
 function loadUserDefaults() {
   try {
@@ -2886,6 +3050,16 @@ function renderSection() {
     body.append(createImarApplyAllControl());
     body.append(createImarUnitsSummaryTablePreview());
   }
+  // Kullanıcı talebi (2026-08-17): "Çoklu çalışmalarda ada parsel farklı
+  // taleplerde arsa özellikleri bölümünde aynı çift taraflı tablo mantığı
+  // kullanılacak. bu bölümde tüm taşınmazlara uygula butonu da yer alsın."
+  // — planning gate'iyle BİREBİR AYNI şekil (isPlanningScopedByAdaParsel()
+  // yeniden kullanılıyor, land'e özgü YENİ bir gate fonksiyonu YAZILMADI).
+  if (section.id === "land" && isCurrentUserAdmin() && state.fields.requestType === "Çoklu Talep" && isPlanningScopedByAdaParsel()) {
+    body.append(createTitleUnitTabBar());
+    body.append(createLandApplyAllControl());
+    body.append(createLandUnitsSummaryTablePreview());
+  }
 
   const sectionVariantGroups = isCurrentUserAdmin() ? getVariantGroupsForSection(section.id) : [];
   if (sectionVariantGroups.length) {
@@ -3371,6 +3545,7 @@ function createForm(section) {
         refreshTitleUnitsSummaryTablePreviewDebounced();
         refreshAddressUnitsSummaryTablePreviewDebounced();
         refreshImarUnitsSummaryTablePreviewDebounced();
+        refreshLandUnitsSummaryTablePreviewDebounced();
       }
     });
     if (section.id === "case" && ["legalUsageNature", "currentUsageNature"].includes(field.key)) {
@@ -13151,14 +13326,18 @@ function formatLandRoadFrontageSummary() {
   return parts.length ? parts.join(" - ") : "Yol cephesi detayları bekliyor.";
 }
 
-function getLandRoadFrontageItems() {
-  if (Array.isArray(state.fields.landRoadFrontageItems)) return state.fields.landRoadFrontageItems;
-  if (state.fields.landRoadType || state.fields.landRoadDirection || state.fields.landRoadFrontageLength || state.fields.landRoadName) {
+// Kullanıcı talebi (2026-08-17): "Taşınmazlar Arsa Özeti" çoklu-taşınmaz
+// tablosu, her taşınmazın KENDİ (aktif/gölge) Kadastro Yolu kayıtlarını
+// okuyabilsin diye opsiyonel `fields` parametresi eklendi — parametresiz
+// çağrı (mevcut TÜM çağrı yerleri) davranışı AYNEN korur (state.fields).
+function getLandRoadFrontageItems(fields = state.fields) {
+  if (Array.isArray(fields.landRoadFrontageItems)) return fields.landRoadFrontageItems;
+  if (fields.landRoadType || fields.landRoadDirection || fields.landRoadFrontageLength || fields.landRoadName) {
     return [{
-      roadType: state.fields.landRoadType || "",
-      roadName: state.fields.landRoadName || "",
-      direction: state.fields.landRoadDirection || "",
-      length: state.fields.landRoadFrontageLength || "",
+      roadType: fields.landRoadType || "",
+      roadName: fields.landRoadName || "",
+      direction: fields.landRoadDirection || "",
+      length: fields.landRoadFrontageLength || "",
     }];
   }
   return [];
@@ -13337,6 +13516,11 @@ function openLandRoadFrontageModal(onSave = () => {}) {
     autosave();
     renderValidation();
     updateStatus();
+    // Kullanıcı talebi (2026-08-17): bu popup createForm'un genel input
+    // dinleyicisinden GEÇMEZ (kendi "Kaydet" butonu var) — Taşınmazlar
+    // Arsa Özeti tablosu bu kaydı ANINDA yansıtsın diye burada AYRICA
+    // tetiklenir.
+    refreshLandUnitsSummaryTablePreviewDebounced();
     onSave();
     close();
   });
@@ -13499,6 +13683,7 @@ function openLandIrrigationModal(onSave = () => {}) {
     autosave();
     renderValidation();
     updateStatus();
+    refreshLandUnitsSummaryTablePreviewDebounced();
     onSave();
     close();
   });
@@ -13592,8 +13777,10 @@ function clearLandBoundaryElementDetails() {
   state.fields.landBoundaryElementOther = "";
 }
 
-function getLandBoundaryElementItems() {
-  return Array.isArray(state.fields.landBoundaryElementItems) ? state.fields.landBoundaryElementItems : [];
+// Opsiyonel `fields` parametresi (2026-08-17) - bkz. getLandRoadFrontageItems
+// yorumu, AYNI gerekçe.
+function getLandBoundaryElementItems(fields = state.fields) {
+  return Array.isArray(fields.landBoundaryElementItems) ? fields.landBoundaryElementItems : [];
 }
 
 function formatLandBoundaryElementSummary() {
@@ -13662,6 +13849,7 @@ function openLandBoundaryElementModal(onSave = () => {}) {
     autosave();
     renderValidation();
     updateStatus();
+    refreshLandUnitsSummaryTablePreviewDebounced();
     onSave();
     close();
   });
@@ -13760,21 +13948,25 @@ function formatLandAgriculturalProductSummary() {
   return parts.length ? parts.join(" - ") : "Zirai ürün detayları bekliyor.";
 }
 
-function getLandAgriculturalProductItems() {
-  if (Array.isArray(state.fields.landAgriculturalProductItems)) return state.fields.landAgriculturalProductItems;
+// Opsiyonel `fields` parametresi (2026-08-17) - bkz. getLandRoadFrontageItems
+// yorumu, AYNI gerekçe. Geriye dönük fallback dalı da (state.fields.landArea
+// yerine fields.landArea ile) verilen taşınmazın KENDİ yüzölçümüyle
+// hesaplar.
+function getLandAgriculturalProductItems(fields = state.fields) {
+  if (Array.isArray(fields.landAgriculturalProductItems)) return fields.landAgriculturalProductItems;
   if (
-    state.fields.landAgriculturalProductType ||
-    state.fields.landAgriculturalUnitCount ||
-    state.fields.landAgriculturalAge ||
-    state.fields.landAgriculturalYield ||
-    state.fields.landAgriculturalTotalCount
+    fields.landAgriculturalProductType ||
+    fields.landAgriculturalUnitCount ||
+    fields.landAgriculturalAge ||
+    fields.landAgriculturalYield ||
+    fields.landAgriculturalTotalCount
   ) {
     return [{
-      productType: state.fields.landAgriculturalProductType || "",
-      unitCount: state.fields.landAgriculturalUnitCount || "",
-      age: state.fields.landAgriculturalAge || "",
-      yieldRate: state.fields.landAgriculturalYield || "",
-      totalCount: state.fields.landAgriculturalTotalCount || calculateAgriculturalTotalCount(state.fields.landAgriculturalUnitCount),
+      productType: fields.landAgriculturalProductType || "",
+      unitCount: fields.landAgriculturalUnitCount || "",
+      age: fields.landAgriculturalAge || "",
+      yieldRate: fields.landAgriculturalYield || "",
+      totalCount: fields.landAgriculturalTotalCount || calculateAgriculturalTotalCount(fields.landAgriculturalUnitCount, fields.landArea),
     }];
   }
   return [];
@@ -13791,8 +13983,14 @@ function formatLandAgriculturalProductItem(item = {}) {
   return parts.join(" - ");
 }
 
-function calculateAgriculturalTotalCount(unitCountValue = state.fields.landAgriculturalUnitCount) {
-  const area = parseReportNumber(state.fields.landArea);
+// Kullanıcı talebi (2026-08-17): "tümüne uygula" ile landAgriculturalProductItems
+// kopyalanırken her kaydın totalCount'u HEDEF taşınmazın KENDİ landArea'sıyla
+// yeniden hesaplanabilsin diye opsiyonel `areaValue` parametresi eklendi
+// (İmar Durumu'nun calculatedEmsal istisnasıyla AYNI desen/gerekçe - bkz.
+// applyLandDataToAllTitleUnits). Parametresiz çağrı (mevcut TÜM çağrı
+// yerleri) davranışı AYNEN korur (state.fields.landArea).
+function calculateAgriculturalTotalCount(unitCountValue = state.fields.landAgriculturalUnitCount, areaValue = state.fields.landArea) {
+  const area = parseReportNumber(areaValue);
   const unitCount = parseReportNumber(unitCountValue);
   if (!Number.isFinite(area) || !Number.isFinite(unitCount)) return "";
   const total = (area / 1000) * unitCount;
@@ -13965,6 +14163,7 @@ function openLandAgriculturalProductModal(onSave = () => {}) {
     autosave();
     renderValidation();
     updateStatus();
+    refreshLandUnitsSummaryTablePreviewDebounced();
     onSave();
     close();
   });
@@ -17443,6 +17642,7 @@ function commitTitleUnitsSummaryCellEdit(fieldKey, rawValue, unitIndex) {
   refreshTitleUnitsSummaryTablePreview();
   refreshAddressUnitsSummaryTablePreview();
   refreshImarUnitsSummaryTablePreview();
+  refreshLandUnitsSummaryTablePreview();
   // Faz 3: Ada/Parsel/Blok/Bağımsız Bölüm No gibi alanlar tab çubuğu
   // etiketlerini (computeTitleUnitTabLabel) etkileyebilir — hangi alan
   // düzenlendiğinden bağımsız olarak HER commit'te tab çubuğu da
@@ -17794,6 +17994,127 @@ function buildImarUnitsSummaryTableData() {
 // export akışıyla BİREBİR AYNI desen.
 function buildImarUnitsSummaryWordTableHtml() {
   const data = buildImarUnitsSummaryTableData();
+  if (!data || !data.rows.length) return "";
+  return buildTitleUnitsSummaryTableHtmlFromData(data.headers, data.rows);
+}
+
+// Kullanıcı talebi (2026-08-17): "Çoklu çalışmalarda ada parsel farklı
+// taleplerde arsa özellikleri bölümünde aynı çift taraflı tablo mantığı
+// kullanılacak ... arsa özelliklerinde bulunan tüm hücreler burada sütun
+// olarak olacak." — İmar'ın 13 SABİT skaler sütununun aksine, "Arsa
+// Özellikleri"nin 4 alanı (landRoadFrontage/landAgricultureType/
+// landBoundaryElement/landAgriculturalProduct) "Evet" seçilince bir POPUP
+// açıp kullanıcının N adet kayıt eklemesine izin verir (bkz.
+// getLandSectionFieldKeys yorumu) — bu yüzden 9 sabit sütuna EK olarak,
+// aşağıda her popup alan için (o alanın TÜM taşınmazlar arasındaki EN
+// FAZLA kayıt sayısı kadar) DİNAMİK sütun üretilir.
+const LAND_UNITS_TABLE_FIELD_DEFS = [
+  { key: "landShape", label: "Arsanın Geometrik Şekli", kind: "scalar" },
+  { key: "landTopography", label: "Topografya / Eğim", kind: "scalar" },
+  { key: "landRoadFrontage", label: "Kadastro/İmar Yoluna Cepheli mi?", kind: "scalar" },
+  { key: "landAgricultureType", label: "Tarım Türü", kind: "scalar" },
+  { key: "landIrrigationWaterSource", label: "Su Kaynağı", kind: "scalar" },
+  { key: "landIrrigationSystem", label: "Sulama Sistemi", kind: "scalar" },
+  { key: "landClassification", label: "Arazi Sınıflandırması", kind: "scalar" },
+  { key: "landBoundaryElement", label: "Sınırları Belirleyici Unsur Var mı?", kind: "scalar" },
+  { key: "landAgriculturalProduct", label: "Parsel Üzerinde Zirai Ürün Var mı?", kind: "scalar" },
+];
+
+// Bir popup-alanının (Kadastro Yolu/Sınır Unsuru/Zirai Ürün) TÜM
+// taşınmazlar arasındaki EN FAZLA kayıt sayısı kadar "readonly" sütun
+// üretir — kullanıcı talebi: "kullanıcı 2 adet ekledi ise iki sütun
+// açalım" — sütun BAŞINA bir KAYIT (alt-alan başına değil), mevcut özet
+// formatlayıcı (`formatItem`) yeniden kullanılır. Tablo hücresinden
+// DÜZENLENEMEZ (`kind: "readonly"`) — bir kaydın birden çok alt-alanını
+// tek metin hücresine yazıp geri ayrıştırmak güvenilir değil, kullanıcı
+// ilgili taşınmazın tab'ına geçip "Detay" popup'ını kullanmaya devam eder
+// (İmar Faz B'nin aynı ilkesi — bkz. plan: idempotent-launching-kernighan.md).
+function buildLandDynamicColumnGroup(units, label, getItems, formatItem) {
+  const itemsByUnit = units.map((unit) => getItems(unit.fields || {}));
+  const maxCount = itemsByUnit.reduce((max, items) => Math.max(max, items.length), 0);
+  return Array.from({ length: maxCount }, (_, columnIndex) => ({
+    label: `${label} ${columnIndex + 1}`,
+    values: itemsByUnit.map((items) => {
+      const item = items[columnIndex];
+      if (item === undefined) return "-";
+      return String(formatItem(item) || "").trim() || "-";
+    }),
+  }));
+}
+
+// Tabloyu (başlıklar + satırlar) hesaplar; İmar Özeti tablosuyla AYNI
+// koşul: YALNIZCA 2+ taşınmaz VE hepsi FARKLI ada/parselde ise bir sonuç
+// döner ("land" alanları AYNI ada/parselde bile taşınmaza-özgü kalmaya
+// devam ediyor — bkz. mimari karar 1, plan dosyası — ama bu tablo/tab
+// çubuğu/tümüne-uygula YİNE DE kullanıcının açıkça istediği "farklı ada
+// parsel" kapsamıyla SINIRLI, İmar'daki AYNI görünürlük kuralı export'ta
+// da tutarlı kalsın diye buraya da uygulanır).
+function buildLandUnitsSummaryTableData() {
+  const units = buildAllTitleUnitsForSummaryTable();
+  if (units.length < 2 || !isPlanningScopedByAdaParsel()) return null;
+
+  const roadColumns = buildLandDynamicColumnGroup(
+    units, "Kadastro/İmar Yolu",
+    (fields) => getLandRoadFrontageItems(fields),
+    (item) => formatLandRoadFrontageItem(item),
+  );
+  const boundaryColumns = buildLandDynamicColumnGroup(
+    units, "Sınır Unsuru",
+    (fields) => {
+      const items = getLandBoundaryElementItems(fields);
+      return fields.landBoundaryElementOther ? [...items, `Diğer: ${fields.landBoundaryElementOther}`] : items;
+    },
+    (item) => item,
+  );
+  const agriculturalColumns = buildLandDynamicColumnGroup(
+    units, "Zirai Ürün",
+    (fields) => getLandAgriculturalProductItems(fields),
+    (item) => formatLandAgriculturalProductItem(item),
+  );
+  const dynamicColumnGroups = [...roadColumns, ...boundaryColumns, ...agriculturalColumns];
+
+  const headers = [
+    "Sıra No",
+    ...LAND_UNITS_TABLE_FIELD_DEFS.map((def) => def.label),
+    ...dynamicColumnGroups.map((group) => group.label),
+  ];
+  const columnMeta = [
+    { kind: "seq" },
+    ...LAND_UNITS_TABLE_FIELD_DEFS.map((def) => ({ kind: def.kind, fieldKey: def.key })),
+    ...dynamicColumnGroups.map(() => ({ kind: "readonly" })),
+  ];
+
+  const rows = units.map((unit, index) => {
+    const fields = unit.fields || {};
+    return [
+      index + 1,
+      ...LAND_UNITS_TABLE_FIELD_DEFS.map((def) => String(fields[def.key] || "").trim() || "-"),
+      ...dynamicColumnGroups.map((group) => group.values[index]),
+    ];
+  });
+
+  // "eğer sistemde hücrede veri yoksa ... tabloda bu sütunlar gözükmemeli"
+  // (Tapu/Adres/İmar tablolarındaki AYNI kural) — TÜM taşınmazlarda boş
+  // ("-") kalan bir sütun tamamen kaldırılır (hem sabit hem dinamik
+  // sütunlar için TEK geçişte).
+  const columnHasData = headers.map((_, columnIndex) => (
+    columnIndex === 0 || rows.some((row) => {
+      const value = row[columnIndex];
+      return value !== undefined && value !== null && String(value).trim() !== "" && String(value).trim() !== "-";
+    })
+  ));
+  const filteredHeaders = headers.filter((_, columnIndex) => columnHasData[columnIndex]);
+  const filteredRows = rows.map((row) => row.filter((_, columnIndex) => columnHasData[columnIndex]));
+  const filteredColumnMeta = columnMeta.filter((_, columnIndex) => columnHasData[columnIndex]);
+
+  return { headers: filteredHeaders, rows: filteredRows, columnMeta: filteredColumnMeta };
+}
+
+// Banka şablonlarına {{TASINMAZLARARSATABLOSU}} ile enjekte edilecek
+// gerçek HTML tablo (bkz. template-engine.js) — Tapu/Adres/İmar
+// tablolarının export akışıyla BİREBİR AYNI desen.
+function buildLandUnitsSummaryWordTableHtml() {
+  const data = buildLandUnitsSummaryTableData();
   if (!data || !data.rows.length) return "";
   return buildTitleUnitsSummaryTableHtmlFromData(data.headers, data.rows);
 }
