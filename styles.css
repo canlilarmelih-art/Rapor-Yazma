@@ -2518,11 +2518,6 @@ td .free-lookup input {
   margin-top: 18px;
 }
 
-.single-structure-cost-method-shell {
-  margin-top: 12px;
-  overflow-x: auto;
-}
-
 .single-structure-cost-method-section + .single-structure-cost-method-section {
   margin-top: 18px;
 }
@@ -2533,41 +2528,55 @@ td .free-lookup input {
   font-size: 13px;
 }
 
-.single-structure-cost-method-table {
+.single-structure-cost-method-grid-shell {
+  margin-top: 12px;
   min-width: 980px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
 }
 
-.single-structure-cost-method-table th:first-child {
-  min-width: 150px;
+.single-structure-cost-method-grid-row {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
 }
 
-.single-structure-cost-method-table td:last-child {
-  color: var(--muted);
+.single-structure-cost-method-grid-cell {
+  min-width: 0;
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  font-size: 12.5px;
+  line-height: 1.4;
   white-space: nowrap;
-}
-
-.single-structure-cost-method-table td,
-.single-structure-cost-method-table th {
-  white-space: nowrap;
-}
-
-.single-structure-cost-method-table tbody td,
-.single-structure-cost-method-table tbody th:last-child,
-.single-structure-cost-method-table thead th:not(:first-child) {
-  text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
-.single-structure-cost-method-table thead th:first-child,
-.single-structure-cost-method-table tbody th:first-child {
+.single-structure-cost-method-grid-row:last-child .single-structure-cost-method-grid-cell {
+  border-bottom: none;
+}
+
+.single-structure-cost-method-grid-cell.is-header {
+  background: var(--surface-muted);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.single-structure-cost-method-grid-cell.is-left {
   text-align: left;
 }
 
-.single-structure-cost-method-table th.single-structure-cost-method-emphasis {
+.single-structure-cost-method-grid-cell.is-right {
+  text-align: right;
+}
+
+.single-structure-cost-method-grid-cell.is-emphasis {
   background: var(--green-soft);
   color: var(--green);
   font-weight: 800;
-  text-align: right;
 }
 
 .single-structure-cost-method-formula {
@@ -2577,11 +2586,9 @@ td .free-lookup input {
   line-height: 1.45;
 }
 
-.single-structure-cost-method-table .single-structure-cost-method-emphasis th,
-.single-structure-cost-method-table .single-structure-cost-method-emphasis td {
-  background: var(--green-soft);
-  color: var(--green);
-  font-weight: 800;
+.single-structure-cost-method-sections {
+  min-width: 980px;
+  overflow-x: auto;
 }
 
 .expense-fees-guidance-row td {

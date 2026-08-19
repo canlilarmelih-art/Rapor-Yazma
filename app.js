@@ -5577,6 +5577,21 @@ function createSingleStructureCostMethodPanel() {
   const shell = document.createElement("div");
   shell.className = "single-structure-cost-method-sections";
 
+  const createGridRow = (columns, values, isHeader = false) => {
+    const row = document.createElement("div");
+    row.className = `single-structure-cost-method-grid-row${isHeader ? " is-header" : " is-value"}`;
+    columns.forEach((column, index) => {
+      const cell = document.createElement("div");
+      const alignment = column.align || "right";
+      cell.className = `single-structure-cost-method-grid-cell is-${alignment}${isHeader ? " is-header" : ""}`;
+      cell.style.gridColumn = `span ${column.span}`;
+      cell.textContent = isHeader ? column.label : values[index];
+      if (!isHeader && index === columns.length - 1) cell.classList.add("is-emphasis");
+      row.append(cell);
+    });
+    return row;
+  };
+
   const createSection = (titleText, columns, values, formulaText = "") => {
     const section = document.createElement("section");
     section.className = "single-structure-cost-method-section";
@@ -5584,30 +5599,10 @@ function createSingleStructureCostMethodPanel() {
     sectionTitle.textContent = titleText;
     section.append(sectionTitle);
 
-    const tableShell = document.createElement("div");
-    tableShell.className = "table-shell single-structure-cost-method-shell";
-    const table = document.createElement("table");
-    table.className = "valuation-summary-table single-structure-cost-method-table";
-    const thead = document.createElement("thead");
-    const headerRow = document.createElement("tr");
-    columns.forEach((column) => {
-      const cell = document.createElement("th");
-      cell.textContent = column;
-      headerRow.append(cell);
-    });
-    thead.append(headerRow);
-    const tbody = document.createElement("tbody");
-    const valueRow = document.createElement("tr");
-    values.forEach((value, index) => {
-      const cell = document.createElement(index === columns.length - 1 ? "th" : "td");
-      cell.textContent = value;
-      if (index === columns.length - 1) cell.className = "single-structure-cost-method-emphasis";
-      valueRow.append(cell);
-    });
-    tbody.append(valueRow);
-    table.append(thead, tbody);
-    tableShell.append(table);
-    section.append(tableShell);
+    const gridShell = document.createElement("div");
+    gridShell.className = "single-structure-cost-method-grid-shell";
+    gridShell.append(createGridRow(columns, [], true), createGridRow(columns, values));
+    section.append(gridShell);
 
     if (formulaText) {
       const formula = document.createElement("p");
@@ -5625,32 +5620,11 @@ function createSingleStructureCostMethodPanel() {
     sectionTitle.textContent = titleText;
     section.append(sectionTitle);
 
-    const tableShell = document.createElement("div");
-    tableShell.className = "table-shell single-structure-cost-method-shell";
-    const table = document.createElement("table");
-    table.className = "valuation-summary-table single-structure-cost-method-table";
-    const thead = document.createElement("thead");
-    const headerRow = document.createElement("tr");
-    columns.forEach((column) => {
-      const cell = document.createElement("th");
-      cell.textContent = column;
-      headerRow.append(cell);
-    });
-    thead.append(headerRow);
-    const tbody = document.createElement("tbody");
-    rows.forEach((row) => {
-      const valueRow = document.createElement("tr");
-      row.forEach((value, index) => {
-        const cell = document.createElement(index === 0 ? "th" : index === row.length - 1 ? "th" : "td");
-        cell.textContent = value;
-        if (index === row.length - 1) cell.className = "single-structure-cost-method-emphasis";
-        valueRow.append(cell);
-      });
-      tbody.append(valueRow);
-    });
-    table.append(thead, tbody);
-    tableShell.append(table);
-    section.append(tableShell);
+    const gridShell = document.createElement("div");
+    gridShell.className = "single-structure-cost-method-grid-shell";
+    gridShell.append(createGridRow(columns, [], true));
+    rows.forEach((row) => gridShell.append(createGridRow(columns, row)));
+    section.append(gridShell);
 
     if (formulaText) {
       const formula = document.createElement("p");
@@ -5686,11 +5660,68 @@ function createSingleStructureCostMethodPanel() {
     state.fields.currentBuildingValue,
     "TL",
   );
+  const gridColumn = (label, span, align = "right") => ({ label, span, align });
+  const landColumns = [
+    gridColumn("Başlık", 3, "left"),
+    gridColumn("Arsa Pay / Payda", 2),
+    gridColumn("Yüzölçümü", 2),
+    gridColumn("Arsa m² Birim Değeri", 3),
+    gridColumn("Arsa Değeri", 2),
+  ];
+  const legalBuildingColumns = legalShowsConstructionLevel
+    ? [
+      gridColumn("Yapı Adı", 2, "left"),
+      gridColumn("Yapı Sınıfı", 1),
+      gridColumn("Yapı Alanı", 2),
+      gridColumn("Yapı Birim Değeri", 2),
+      gridColumn("İnşaat Seviyesi", 2),
+      gridColumn("Yıpranma Oranı", 1),
+      gridColumn("Yapı Değeri", 2),
+    ]
+    : [
+      gridColumn("Yapı Adı", 3, "left"),
+      gridColumn("Yapı Sınıfı", 1),
+      gridColumn("Yapı Alanı", 2),
+      gridColumn("Yapı Birim Değeri", 3),
+      gridColumn("Yıpranma Oranı", 1),
+      gridColumn("Yapı Değeri", 2),
+    ];
+  const currentBuildingColumns = currentShowsConstructionLevel
+    ? [
+      gridColumn("Yapı Adı", 2, "left"),
+      gridColumn("Yapı Sınıfı", 1),
+      gridColumn("Yapı Alanı", 2),
+      gridColumn("Yapı Birim Değeri", 2),
+      gridColumn("İnşaat Seviyesi", 2),
+      gridColumn("Yıpranma Oranı", 1),
+      gridColumn("Yapı Değeri", 2),
+    ]
+    : [
+      gridColumn("Yapı Adı", 3, "left"),
+      gridColumn("Yapı Sınıfı", 1),
+      gridColumn("Yapı Alanı", 2),
+      gridColumn("Yapı Birim Değeri", 3),
+      gridColumn("Yıpranma Oranı", 1),
+      gridColumn("Yapı Değeri", 2),
+    ];
+  const premiumColumns = [
+    gridColumn("Durum", 3, "left"),
+    gridColumn("Arsa Değeri", 3),
+    gridColumn("Yapı Değeri", 2),
+    gridColumn("Şerefiye Oranı", 2),
+    gridColumn("Şerefiye Tutarı", 2),
+  ];
+  const resultColumns = [
+    gridColumn("Yasal Toplam Değer", 4),
+    gridColumn("Mevcut Toplam Değer", 4),
+    gridColumn("Yasal TL/m²", 2),
+    gridColumn("Mevcut TL/m²", 2),
+  ];
 
   shell.append(
     createSection(
       "Arsa Değeri",
-      ["Başlık", "Arsa Pay / Payda", "Yüzölçümü", "Arsa m² Birim Değeri", "Arsa Değeri"],
+      landColumns,
       [
         landValueHeading,
         `${landShare} / ${landDenominator}`,
@@ -5702,15 +5733,7 @@ function createSingleStructureCostMethodPanel() {
     ),
     createSection(
       "Yasal Yapı Değeri",
-      [
-        "Yapı Adı",
-        "Yapı Sınıfı",
-        "Yapı Alanı",
-        "Yapı Birim Değeri",
-        ...(legalShowsConstructionLevel ? ["İnşaat Seviyesi"] : []),
-        "Yıpranma Oranı",
-        "Yapı Değeri",
-      ],
+      legalBuildingColumns,
       [
         buildingName,
         buildingClass,
@@ -5724,15 +5747,7 @@ function createSingleStructureCostMethodPanel() {
     ),
     createSection(
       "Mevcut Yapı Değeri",
-      [
-        "Yapı Adı",
-        "Yapı Sınıfı",
-        "Yapı Alanı",
-        "Yapı Birim Değeri",
-        ...(currentShowsConstructionLevel ? ["İnşaat Seviyesi"] : []),
-        "Yıpranma Oranı",
-        "Yapı Değeri",
-      ],
+      currentBuildingColumns,
       [
         buildingName,
         buildingClass,
@@ -5746,7 +5761,7 @@ function createSingleStructureCostMethodPanel() {
     ),
     createMultiRowSection(
       "Şerefiye / Çevre Düzenlemesi",
-      ["Durum", "Arsa Değeri", "Yapı Değeri", "Şerefiye Oranı", "Şerefiye Tutarı"],
+      premiumColumns,
       [
         [
           "Yasal Durum",
@@ -5767,7 +5782,7 @@ function createSingleStructureCostMethodPanel() {
     ),
     createSection(
       "Değerleme Sonucu",
-      ["Yasal Toplam Değer", "Mevcut Toplam Değer", "Yasal TL/m²", "Mevcut TL/m²"],
+      resultColumns,
       [
         formatSingleStructureCostCell(state.fields.legalValue, "TL"),
         formatSingleStructureCostCell(state.fields.currentValue, "TL"),
