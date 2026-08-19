@@ -3825,6 +3825,8 @@ function renderSection() {
     body.append(createEncumbranceCountSummaryPanel());
     body.append(createTakyidatTablePanel());
     body.append(createMaliklerTablePanel());
+    const singleStructureCostMethodPanel = createSingleStructureCostMethodPanel();
+    if (singleStructureCostMethodPanel) body.append(singleStructureCostMethodPanel);
     body.append(createInsuranceConstructionCostPanel());
     body.append(createBuildingDepreciationRatePanel());
     body.append(createValuationSummaryPanel());
@@ -5395,6 +5397,180 @@ function createBuildingDepreciationRatePanel() {
   table.append(tbody);
   tableWrap.append(table);
   panel.append(header, tableWrap);
+  return panel;
+}
+
+function formatSingleStructureCostCell(value, unit = "") {
+  const text = String(value ?? "").trim();
+  if (!text) return "-";
+  const number = parseValuationNumber(text);
+  if (!Number.isFinite(number)) return unit ? `${text} ${unit}` : text;
+  const formatted = number.toLocaleString("tr-TR", {
+    minimumFractionDigits: Number.isInteger(number) ? 0 : 2,
+    maximumFractionDigits: 2,
+  });
+  return unit ? `${formatted} ${unit}` : formatted;
+}
+
+function buildSingleStructureCostMethodRows() {
+  refreshValuationComputedFields();
+  return [
+    {
+      label: "Arsa Alanı",
+      legal: state.fields.landArea,
+      current: state.fields.landArea,
+      unit: "m²",
+    },
+    {
+      label: "Arsa Birim Değeri",
+      legal: state.fields.landUnitValue,
+      current: state.fields.landUnitValue,
+      unit: "TL/m²",
+    },
+    {
+      label: "Arsa Değeri",
+      legal: state.fields.landValue,
+      current: state.fields.landValue,
+      unit: "TL",
+      emphasis: true,
+    },
+    {
+      label: "Tek Yapı Alanı",
+      legal: state.fields.legalBuildingValueArea,
+      current: state.fields.currentBuildingValueArea,
+      unit: "m²",
+    },
+    {
+      label: "Yapı Birim Maliyeti",
+      legal: state.fields.legalBuildingUnitCost,
+      current: state.fields.currentBuildingUnitCost,
+      unit: "TL/m²",
+    },
+    {
+      label: "İnşaat Seviyesi",
+      legal: state.fields.legalBuildingConstructionLevel,
+      current: state.fields.currentBuildingConstructionLevel,
+      unit: "%",
+    },
+    {
+      label: "Yıpranma Oranı",
+      legal: state.fields.legalBuildingDepreciationRate,
+      current: state.fields.currentBuildingDepreciationRate,
+      unit: "%",
+    },
+    {
+      label: "Yapı Değeri",
+      legal: state.fields.legalBuildingValue,
+      current: state.fields.currentBuildingValue,
+      unit: "TL",
+      emphasis: true,
+    },
+    {
+      label: "Şerefiye / Çevre Düzenlemesi",
+      legal: state.fields.legalPremiumValue,
+      current: state.fields.currentPremiumValue,
+      unit: "TL",
+    },
+    {
+      label: "Toplam Değer",
+      legal: state.fields.legalValue,
+      current: state.fields.currentValue,
+      unit: "TL",
+      emphasis: true,
+    },
+    {
+      label: "Toplam m² Birim Değeri",
+      legal: state.fields.legalValueUnit,
+      current: state.fields.currentValueUnit,
+      unit: "TL/m²",
+      emphasis: true,
+    },
+  ];
+}
+
+function buildSingleStructureCostMethodText() {
+  const rows = buildSingleStructureCostMethodRows();
+  return [
+    "TEK YAPIDAN OLUŞAN GAYRİMENKUL - MALİYET YÖNTEMİ",
+    "Kalem | Yasal Durum | Mevcut Durum | Birim",
+    ...rows.map((row) => [
+      row.label,
+      formatSingleStructureCostCell(row.legal),
+      formatSingleStructureCostCell(row.current),
+      row.unit,
+    ].join(" | ")),
+  ].join("\n");
+}
+
+function createSingleStructureCostMethodPanel() {
+  if (isLandProjectReview()) return null;
+  const rows = buildSingleStructureCostMethodRows();
+  const panel = document.createElement("div");
+  panel.className = "subsection single-structure-cost-method-panel";
+
+  const head = document.createElement("div");
+  head.className = "subsection-title-row";
+  const title = document.createElement("h4");
+  title.textContent = "Tek Yapı Maliyet Yöntemi Hesap Tablosu";
+  const description = document.createElement("p");
+  description.textContent = "Tek bir ana yapıdan oluşan gayrimenkul için yasal ve mevcut durum maliyet hesabı değerleme alanlarından otomatik gösterilir.";
+  head.append(title, description);
+
+  const copyButton = document.createElement("button");
+  copyButton.type = "button";
+  copyButton.className = "valuation-method-copy-button";
+  copyButton.textContent = "Kopyala";
+  copyButton.title = "Tek yapı maliyet tablosunu metin olarak kopyala";
+  copyButton.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(buildSingleStructureCostMethodText());
+      copyButton.textContent = "Kopyalandı";
+    } catch {
+      copyButton.textContent = "Kopyalanamadı";
+    }
+    setTimeout(() => {
+      copyButton.textContent = "Kopyala";
+    }, 1500);
+  });
+  head.append(copyButton);
+
+  const hint = document.createElement("p");
+  hint.className = "subtle-text";
+  hint.textContent = "Bu sürüm tek yapı içindir. Yapı ekleme ve birden fazla bina satırı sonraki aşamada eklenecektir.";
+
+  const shell = document.createElement("div");
+  shell.className = "table-shell single-structure-cost-method-shell";
+  const table = document.createElement("table");
+  table.className = "valuation-summary-table single-structure-cost-method-table";
+  table.innerHTML = `
+    <thead>
+      <tr>
+        <th>Kalem</th>
+        <th>Yasal Durum</th>
+        <th>Mevcut Durum</th>
+        <th>Birim / Açıklama</th>
+      </tr>
+    </thead>
+  `;
+  const tbody = document.createElement("tbody");
+  rows.forEach((row) => {
+    const tr = document.createElement("tr");
+    if (row.emphasis) tr.className = "single-structure-cost-method-emphasis";
+    [
+      row.label,
+      formatSingleStructureCostCell(row.legal),
+      formatSingleStructureCostCell(row.current),
+      row.unit,
+    ].forEach((value, index) => {
+      const cell = index === 0 ? document.createElement("th") : document.createElement("td");
+      cell.textContent = value;
+      tr.append(cell);
+    });
+    tbody.append(tr);
+  });
+  table.append(tbody);
+  shell.append(table);
+  panel.append(head, hint, shell);
   return panel;
 }
 

@@ -2514,6 +2514,41 @@ td .free-lookup input {
   border-bottom: none;
 }
 
+.single-structure-cost-method-panel {
+  margin-top: 18px;
+}
+
+.single-structure-cost-method-shell {
+  margin-top: 12px;
+  overflow-x: auto;
+}
+
+.single-structure-cost-method-table {
+  min-width: 640px;
+}
+
+.single-structure-cost-method-table th:first-child {
+  width: 34%;
+}
+
+.single-structure-cost-method-table td:not(:last-child) {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.single-structure-cost-method-table td:last-child {
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.single-structure-cost-method-table .single-structure-cost-method-emphasis th,
+.single-structure-cost-method-table .single-structure-cost-method-emphasis td {
+  background: var(--green-soft);
+  color: var(--green);
+  font-weight: 800;
+}
+
 .expense-fees-guidance-row td {
   font-size: 11px;
   font-style: italic;
