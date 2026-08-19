@@ -3252,13 +3252,24 @@ function isLandProjectReview() {
 function clearLandOwnershipDependentData(value) {
   if (!isLandOwnershipType(value)) return;
 
+  // 2026-08-20 kullanıcı bildirimi: "2 tarladan oluşan çoklu raporda
+  // Değerleme'de yasal/mevcut değerleri giriyorum ama başka bölüme geçip
+  // geri dönünce siliniyor". Kök neden: bu fonksiyon her Değerleme render'ında
+  // (createValuationEditor, aşağıda) KOŞULSUZ çağrılıyor, ve legalValue/
+  // currentValue/...Area/...Unit ARSA/TARLA'da da (createValuationMarketTable'ın
+  // `landOwnership` filtresine bakınca) AKTİF OLARAK KULLANILAN "Piyasa Değeri"
+  // alanları — bina-özgü DEĞİL. Bu 6 anahtar ("legalValueArea", "currentValueArea",
+  // "legalValue", "currentValue", "legalValueUnit", "currentValueUnit")
+  // BİLEREK bu listeden ÇIKARILDI; Kira alanları (legalRent*/currentRent*)
+  // Arsa/Tarla'da hiç gösterilmediğinden (aynı filtre) temizlenmeye devam
+  // ediyor, zararsız.
   const exactKeys = new Set([
     "buildingFloorCounts", "carpark", "elevator", "exteriorCladding", "stairLanding", "interiorWalls",
     "buildingEntranceDoor", "buildingFootprintReference", "buildingEntranceLevel", "buildingEntranceDirection",
     "buildingSocialFacilities", "legalArea", "currentArea", "unitFloor", "unitAreaReductionRate",
     "unitLegalTerrace", "unitCurrentTerrace", "unitTerraceReductionRate", "interiorFeatures", "landNote",
-    "legalValueArea", "currentValueArea", "legalRentArea", "currentRentArea", "legalValue", "currentValue",
-    "legalRent", "currentRent", "legalValueUnit", "currentValueUnit", "legalRentUnit", "currentRentUnit",
+    "legalRentArea", "currentRentArea",
+    "legalRent", "currentRent", "legalRentUnit", "currentRentUnit",
     "legalIncompleteValueArea", "legalIncompleteValueUnit", "legalIncompleteValue", "currentIncompleteValueArea",
     "currentIncompleteValueUnit", "currentIncompleteValue", "legalBuildingValueArea", "currentBuildingValueArea",
     "legalBuildingUnitCost", "currentBuildingUnitCost", "legalBuildingValue", "currentBuildingValue",

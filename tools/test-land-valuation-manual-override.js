@@ -137,3 +137,84 @@ console.log("land valuation manual override tests passed");
 
   console.log("Otomatik hesaplamaya don (clearLandValuationManualOverride) testi tamam.");
 }
+
+// --- "Değerleme'ye girip çıkınca Arsa/Tarla'da Yasal/Mevcut Durum Değeri
+// siliniyor" (0.0.48x, 2026-08-20) --------------------------------------
+// Kullanıcı bildirimi: "2 adet tarladan oluşan çoklu raporda Değerleme
+// bölümünde değerleri giriyorum yasal ve mevcut olmak üzere ancak başka
+// bir bölüme geçip geri döndüğümde değerler siliniyor." Kök neden:
+// clearLandOwnershipDependentData() createValuationEditor()'da HER
+// render'da koşulsuz çağrılıyor VE legalValue/currentValue/...Area/...Unit
+// (createValuationMarketTable'ın Arsa/Tarla'da GERÇEKTEN kullandığı Piyasa
+// Değeri alanları) yanlışlıkla "bina-özgü" temizlik listesindeydi. Burada
+// hem gerçek fonksiyon kaynağından çıkarılıp (1) legalValue/currentValue ve
+// alan/birim eşleniklerinin ARTIK korunduğu, (2) hâlâ gösterilmeyen
+// Kira (legalRent/currentRent) ve bina-özgü alanların (ör. carpark) yine de
+// temizlendiği, (3) art arda birden çok çağrının (sekmeler arası gidiş-geliş
+// simülasyonu) veri kaybına yol AÇMADIĞI doğrulanır.
+{
+  const clearFnSource = sourceBetween("function clearLandOwnershipDependentData", "function getCurrentAccessRole");
+  const isLandOwnershipTypeSource = sourceBetween("function isLandOwnershipType", "// Kullanıcı talebi (2026-08-19)");
+  const normalizeSource = sourceBetween("function normalizeOwnershipTypeForSectionVisibility", "function isLandOwnershipType");
+  const foldTurkishSource = sourceBetween("function foldTurkish", "function parseAddressCodeText");
+
+  function runClearTwice(ownershipType) {
+    const context = {
+      state: {
+        fields: {
+          ownershipType,
+          legalValueArea: "5000",
+          currentValueArea: "5000",
+          legalValue: "900000",
+          currentValue: "950000",
+          legalValueUnit: "180",
+          currentValueUnit: "190",
+          legalRentArea: "5000",
+          currentRentArea: "5000",
+          legalRent: "1000",
+          currentRent: "1100",
+          legalRentUnit: "0.2",
+          currentRentUnit: "0.22",
+          carpark: "Var",
+          elevator: "Var",
+        },
+        tables: { buildingFloors: [{ x: 1 }], unitFloors: [{ x: 1 }] },
+      },
+    };
+    vm.runInNewContext(
+      `${foldTurkishSource}\n${normalizeSource}\n${isLandOwnershipTypeSource}\n${clearFnSource}\nclearLandOwnershipDependentData(state.fields.ownershipType);\nclearLandOwnershipDependentData(state.fields.ownershipType);`,
+      context
+    );
+    return context.state.fields;
+  }
+
+  const afterTwoRenders = runClearTwice("Tarla");
+  assert.equal(afterTwoRenders.legalValueArea, "5000", "Yasal Durum Değeri - Alan art arda render'da silinmemeli.");
+  assert.equal(afterTwoRenders.currentValueArea, "5000", "Mevcut Durum Değeri - Alan art arda render'da silinmemeli.");
+  assert.equal(afterTwoRenders.legalValue, "900000", "Yasal Durum Değeri art arda render'da silinmemeli (kullanıcı bildirimi).");
+  assert.equal(afterTwoRenders.currentValue, "950000", "Mevcut Durum Değeri art arda render'da silinmemeli (kullanıcı bildirimi).");
+  assert.equal(afterTwoRenders.legalValueUnit, "180", "M2 Birim Değeri (Yasal) art arda render'da silinmemeli.");
+  assert.equal(afterTwoRenders.currentValueUnit, "190", "M2 Birim Değeri (Mevcut) art arda render'da silinmemeli.");
+
+  // Kira alanları Arsa/Tarla'da hiç gösterilmiyor (createValuationMarketTable
+  // filtresi) — temizlenmeye devam etmeleri zararsız, davranış değişmedi.
+  assert.equal(afterTwoRenders.legalRent, "", "Kira (Yasal) Arsa/Tarla'da hâlâ temizlenmeli (gösterilmiyor).");
+  assert.equal(afterTwoRenders.currentRent, "", "Kira (Mevcut) Arsa/Tarla'da hâlâ temizlenmeli (gösterilmiyor).");
+
+  // Bina-özgü alanlar Arsa/Tarla'da hâlâ temizlenmeli (davranış değişmedi).
+  assert.equal(afterTwoRenders.carpark, "", "Otopark (bina-özgü) Arsa/Tarla'da hâlâ temizlenmeli.");
+  assert.equal(afterTwoRenders.elevator, "", "Asansör (bina-özgü) Arsa/Tarla'da hâlâ temizlenmeli.");
+
+  // Arsa mülkiyetinde de aynı koruma geçerli.
+  const arsaResult = runClearTwice("Arsa");
+  assert.equal(arsaResult.legalValue, "900000", "Yasal Durum Değeri Arsa'da da korunmalı.");
+  assert.equal(arsaResult.currentValue, "950000", "Mevcut Durum Değeri Arsa'da da korunmalı.");
+
+  // Bina/Kat İrtifakı mülkiyetinde fonksiyon zaten en baştan çıkıyor
+  // (isLandOwnershipType false) — hiçbir alan silinmemeli, regresyon yok.
+  const nonLandResult = runClearTwice("Dikey Kat İrtifakı");
+  assert.equal(nonLandResult.legalValue, "900000", "Kat İrtifakı'nda değerler zaten silinmemeliydi.");
+  assert.equal(nonLandResult.carpark, "Var", "Kat İrtifakı'nda bina alanları da silinmemeliydi.");
+
+  console.log("Arsa/Tarla Değerleme render tekrarında veri kaybı regresyon testi tamam.");
+}

@@ -1,5 +1,13 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.485 - 2026-08-20 - Arsa/Tarla Değerleme'de Yasal/Mevcut Durum Değeri render tekrarında siliniyordu — düzeltildi
+
+- Kullanıcı: "2 adet tarladan oluşan çoklu raporda değerleme bölümünde değerleri giriyorum yasal ve mevcut olmak üzere ancak başka bir bölüme geçip geri döndüğümde değerler siliniyor. bu olmamalı bunu düzeltir misin."
+- **Kök neden**: `clearLandOwnershipDependentData()` (app.js), Değerleme sekmesi HER render edildiğinde (`createValuationEditor()` içinde koşulsuz çağrılıyor — yalnızca `ownershipType` değiştiğinde değil) mülkiyet Arsa/Tarla ise bir "bina-özgü alanları temizle" listesi çalıştırıyordu. Bu liste yanlışlıkla `legalValueArea`, `currentValueArea`, `legalValue`, `currentValue`, `legalValueUnit`, `currentValueUnit`'i de içeriyordu — oysa bunlar `createValuationMarketTable`'ın Arsa/Tarla'da (Kira satırları filtrelenip) GERÇEKTEN gösterip kullandığı "Piyasa Değeri" (Yasal/Mevcut Durum Değeri) alanları, bina-özgü değil. Sonuç: kullanıcı Değerleme'de bu değerleri girip başka bir bölüme geçip geri döndüğünde (Değerleme yeniden render edildiğinde) girdiği değerler sessizce siliniyordu.
+- **Düzeltme**: bu 6 anahtar `clearLandOwnershipDependentData()`'nın temizlik listesinden çıkarıldı. Kira alanları (`legalRent`/`currentRent` ve alan/birim eşlenikleri) listede KALDI — Arsa/Tarla'da zaten hiç gösterilmedikleri için (aynı `landOwnership` filtresi) temizlenmeye devam etmeleri zararsız, davranış değişmedi. Bina/otopark/asansör vb. bina-özgü alanlar da aynı şekilde temizlenmeye devam ediyor.
+- Test: `tools/test-land-valuation-manual-override.js`'e yeni bir blok eklendi — `clearLandOwnershipDependentData` art arda iki kez çağrılıp (sekmeler arası gidiş-geliş simülasyonu) (1) Yasal/Mevcut Durum Değeri + Alan + M2 Birim Değeri'nin ARTIK korunduğu, (2) Kira ve bina-özgü alanların hâlâ temizlendiği (davranış değişmedi), (3) Arsa'da da aynı korumanın geçerli olduğu, (4) Kat İrtifakı gibi Arsa/Tarla DIŞI mülkiyette fonksiyonun zaten hiçbir şey silmediği (regresyon yok) doğrulandı. `npm run verify` tam paket EXIT:0.
+- `index.html`'de `app.js` cache-buster'ı `?v=20260820-0930`'a yükseltildi.
+
 ## PLANLAMA (kod değişikliği YOK) - 2026-08-09 - "Tümüne uygula" tüm ana başlıklara yayılacak
 
 - Kullanıcı: "bunu tüm ana başlıklar için yapmalıyız. ancak limitin bitmek üzere şimdilik dur." Kod değişikliği YAPILMADI — yalnızca istek `docs/coklu-takbis-import-plan.md`'ye ("Sıradaki istek — 'tümüne uygula' TÜM ana başlıklara yayılmalı" bölümü) kaydedildi.
