@@ -2523,12 +2523,22 @@ td .free-lookup input {
   overflow-x: auto;
 }
 
+.single-structure-cost-method-section + .single-structure-cost-method-section {
+  margin-top: 18px;
+}
+
+.single-structure-cost-method-section h5 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 13px;
+}
+
 .single-structure-cost-method-table {
   min-width: 980px;
 }
 
 .single-structure-cost-method-table th:first-child {
-  width: 34%;
+  min-width: 150px;
 }
 
 .single-structure-cost-method-table td:not(:last-child) {
@@ -2542,12 +2552,28 @@ td .free-lookup input {
   white-space: nowrap;
 }
 
-.single-structure-cost-method-table td:nth-child(4) {
-  min-width: 380px;
+.single-structure-cost-method-table td,
+.single-structure-cost-method-table th {
+  white-space: nowrap;
+}
+
+.single-structure-cost-method-table td:not(:last-child),
+.single-structure-cost-method-table th:not(:last-child) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.single-structure-cost-method-table th.single-structure-cost-method-emphasis {
+  background: var(--green-soft);
+  color: var(--green);
+  font-weight: 800;
+}
+
+.single-structure-cost-method-formula {
+  margin: 7px 0 0;
   color: var(--muted);
   font-size: 12px;
   line-height: 1.45;
-  white-space: pre-line;
 }
 
 .single-structure-cost-method-table .single-structure-cost-method-emphasis th,

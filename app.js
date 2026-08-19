@@ -5517,7 +5517,6 @@ function buildSingleStructureCostMethodText() {
 
 function createSingleStructureCostMethodPanel() {
   if (isLandProjectReview()) return null;
-  const rows = buildSingleStructureCostMethodRows();
   const panel = document.createElement("div");
   panel.className = "subsection single-structure-cost-method-panel";
 
@@ -5552,39 +5551,116 @@ function createSingleStructureCostMethodPanel() {
   hint.textContent = "Bu sürüm tek yapı içindir. Yapı ekleme ve birden fazla bina satırı sonraki aşamada eklenecektir.";
 
   const shell = document.createElement("div");
-  shell.className = "table-shell single-structure-cost-method-shell";
-  const table = document.createElement("table");
-  table.className = "valuation-summary-table single-structure-cost-method-table";
-  table.innerHTML = `
-    <thead>
-      <tr>
-        <th>Kalem</th>
-        <th>Yasal Durum</th>
-        <th>Mevcut Durum</th>
-        <th>Hesaplama Adımı</th>
-        <th>Birim / Açıklama</th>
-      </tr>
-    </thead>
-  `;
-  const tbody = document.createElement("tbody");
-  rows.forEach((row) => {
-    const tr = document.createElement("tr");
-    if (row.emphasis) tr.className = "single-structure-cost-method-emphasis";
-    [
-      row.label,
-      formatSingleStructureCostCell(row.legal),
-      formatSingleStructureCostCell(row.current),
-      row.calculation || "Girdi",
-      row.unit,
-    ].forEach((value, index) => {
-      const cell = index === 0 ? document.createElement("th") : document.createElement("td");
-      cell.textContent = value;
-      tr.append(cell);
+  shell.className = "single-structure-cost-method-sections";
+
+  const createSection = (titleText, columns, values, formulaText = "") => {
+    const section = document.createElement("section");
+    section.className = "single-structure-cost-method-section";
+    const sectionTitle = document.createElement("h5");
+    sectionTitle.textContent = titleText;
+    section.append(sectionTitle);
+
+    const tableShell = document.createElement("div");
+    tableShell.className = "table-shell single-structure-cost-method-shell";
+    const table = document.createElement("table");
+    table.className = "valuation-summary-table single-structure-cost-method-table";
+    const thead = document.createElement("thead");
+    const headerRow = document.createElement("tr");
+    columns.forEach((column) => {
+      const cell = document.createElement("th");
+      cell.textContent = column;
+      headerRow.append(cell);
     });
-    tbody.append(tr);
-  });
-  table.append(tbody);
-  shell.append(table);
+    thead.append(headerRow);
+    const tbody = document.createElement("tbody");
+    const valueRow = document.createElement("tr");
+    values.forEach((value, index) => {
+      const cell = document.createElement(index === columns.length - 1 ? "th" : "td");
+      cell.textContent = value;
+      if (index === columns.length - 1) cell.className = "single-structure-cost-method-emphasis";
+      valueRow.append(cell);
+    });
+    tbody.append(valueRow);
+    table.append(thead, tbody);
+    tableShell.append(table);
+    section.append(tableShell);
+
+    if (formulaText) {
+      const formula = document.createElement("p");
+      formula.className = "single-structure-cost-method-formula";
+      formula.textContent = formulaText;
+      section.append(formula);
+    }
+    return section;
+  };
+
+  const buildingClass = state.fields.buildingClass || state.fields.insuranceConstructionClass || "-";
+  const legalBuildingFormula = buildSingleStructureCostFormula(
+    state.fields.legalBuildingValueArea,
+    state.fields.legalBuildingUnitCost,
+    state.fields.legalBuildingConstructionLevel,
+    state.fields.legalBuildingDepreciationRate,
+    state.fields.legalBuildingValue,
+    "TL",
+  );
+  const currentBuildingFormula = buildSingleStructureCostFormula(
+    state.fields.currentBuildingValueArea,
+    state.fields.currentBuildingUnitCost,
+    state.fields.currentBuildingConstructionLevel,
+    state.fields.currentBuildingDepreciationRate,
+    state.fields.currentBuildingValue,
+    "TL",
+  );
+
+  shell.append(
+    createSection(
+      "Arsa Değeri",
+      ["Yüzölçümü", "Arsa m² Birim Değeri", "Arsa Değeri"],
+      [
+        formatSingleStructureCostCell(state.fields.landArea, "m²"),
+        formatSingleStructureCostCell(state.fields.landUnitValue, "TL/m²"),
+        formatSingleStructureCostCell(state.fields.landValue, "TL"),
+      ],
+      `${singleStructureCostFormulaValue(state.fields.landArea, "m²")} × ${singleStructureCostFormulaValue(state.fields.landUnitValue, "TL/m²")} = ${singleStructureCostFormulaValue(state.fields.landValue, "TL")}`,
+    ),
+    createSection(
+      "Yasal Yapı Değeri",
+      ["Yapı Sınıfı", "Yapı Alanı", "Yapı Birim Değeri", "İnşaat Seviyesi", "Yıpranma Oranı", "Yapı Değeri"],
+      [
+        buildingClass,
+        formatSingleStructureCostCell(state.fields.legalBuildingValueArea, "m²"),
+        formatSingleStructureCostCell(state.fields.legalBuildingUnitCost, "TL/m²"),
+        formatSingleStructureCostCell(state.fields.legalBuildingConstructionLevel, "%"),
+        formatSingleStructureCostCell(state.fields.legalBuildingDepreciationRate, "%"),
+        formatSingleStructureCostCell(state.fields.legalBuildingValue, "TL"),
+      ],
+      legalBuildingFormula,
+    ),
+    createSection(
+      "Mevcut Yapı Değeri",
+      ["Yapı Sınıfı", "Yapı Alanı", "Yapı Birim Değeri", "İnşaat Seviyesi", "Yıpranma Oranı", "Yapı Değeri"],
+      [
+        buildingClass,
+        formatSingleStructureCostCell(state.fields.currentBuildingValueArea, "m²"),
+        formatSingleStructureCostCell(state.fields.currentBuildingUnitCost, "TL/m²"),
+        formatSingleStructureCostCell(state.fields.currentBuildingConstructionLevel, "%"),
+        formatSingleStructureCostCell(state.fields.currentBuildingDepreciationRate, "%"),
+        formatSingleStructureCostCell(state.fields.currentBuildingValue, "TL"),
+      ],
+      currentBuildingFormula,
+    ),
+    createSection(
+      "Değerleme Sonucu",
+      ["Yasal Toplam Değer", "Mevcut Toplam Değer", "Yasal TL/m²", "Mevcut TL/m²"],
+      [
+        formatSingleStructureCostCell(state.fields.legalValue, "TL"),
+        formatSingleStructureCostCell(state.fields.currentValue, "TL"),
+        formatSingleStructureCostCell(state.fields.legalValueUnit, "TL/m²"),
+        formatSingleStructureCostCell(state.fields.currentValueUnit, "TL/m²"),
+      ],
+      "Toplam Değer = Arsa Değeri + Yapı Değeri + Şerefiye / Çevre Düzenlemesi",
+    ),
+  );
   panel.append(head, hint, shell);
   return panel;
 }
