@@ -2541,12 +2541,6 @@ td .free-lookup input {
   min-width: 150px;
 }
 
-.single-structure-cost-method-table td:not(:last-child) {
-  text-align: right;
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
-}
-
 .single-structure-cost-method-table td:last-child {
   color: var(--muted);
   white-space: nowrap;
@@ -2557,10 +2551,16 @@ td .free-lookup input {
   white-space: nowrap;
 }
 
-.single-structure-cost-method-table td:not(:last-child),
-.single-structure-cost-method-table th:not(:last-child) {
+.single-structure-cost-method-table tbody td,
+.single-structure-cost-method-table tbody th:last-child,
+.single-structure-cost-method-table thead th:not(:first-child) {
   text-align: right;
   font-variant-numeric: tabular-nums;
+}
+
+.single-structure-cost-method-table thead th:first-child,
+.single-structure-cost-method-table tbody th:first-child {
+  text-align: left;
 }
 
 .single-structure-cost-method-table th.single-structure-cost-method-emphasis {
