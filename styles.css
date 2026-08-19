@@ -2579,6 +2579,13 @@ td .free-lookup input {
   font-weight: 800;
 }
 
+.single-structure-cost-method-grid-cell.is-identity {
+  background: var(--blue-soft);
+  color: var(--ink);
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
 .single-structure-cost-method-formula {
   margin: 7px 0 0;
   color: var(--muted);
