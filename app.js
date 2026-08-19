@@ -5501,6 +5501,25 @@ function buildSingleStructureCostMethodRows() {
   ];
 }
 
+function getSingleStructureLandValueHeading() {
+  const ownershipType = String(state.fields.ownershipType || "").trim();
+  const isCondominiumEasement = ["Dikey Kat İrtifakı", "Yatay Kat İrtifakı"].includes(ownershipType);
+  if (isCondominiumEasement) {
+    const block = String(state.fields.titleBlockName || state.fields.blockName || "").trim();
+    const unitNo = String(state.fields.unitNo || "").trim();
+    const blockText = block ? (/\bblok$/i.test(block) ? block : `${block} Blok`) : "";
+    return [blockText, unitNo && `${unitNo} B.B. No`, "Arsa Payı Değeri:"]
+      .filter(Boolean)
+      .join(" ") || "Arsa Payı Değeri:";
+  }
+
+  const blockNo = String(state.fields.blockNo || "").trim();
+  const parcelNo = String(state.fields.parcelNo || "").trim();
+  return [blockNo && `${blockNo} Ada`, parcelNo && `${parcelNo} Parsel`, "Arsa Değeri"]
+    .filter(Boolean)
+    .join(" ") || "Arsa Değeri";
+}
+
 function buildSingleStructureCostMethodText() {
   const rows = buildSingleStructureCostMethodRows();
   return [
@@ -5599,6 +5618,7 @@ function createSingleStructureCostMethodPanel() {
   const buildingName = state.fields.buildingName || "Ana Yapı";
   const landShare = state.fields.share || "-";
   const landDenominator = state.fields.denominator || "-";
+  const landValueHeading = getSingleStructureLandValueHeading();
   const legalBuildingFormula = buildSingleStructureCostFormula(
     state.fields.legalBuildingValueArea,
     state.fields.legalBuildingUnitCost,
@@ -5619,8 +5639,9 @@ function createSingleStructureCostMethodPanel() {
   shell.append(
     createSection(
       "Arsa Değeri",
-      ["Arsa Pay / Payda", "Yüzölçümü", "Arsa m² Birim Değeri", "Arsa Değeri"],
+      ["Başlık", "Arsa Pay / Payda", "Yüzölçümü", "Arsa m² Birim Değeri", "Arsa Değeri"],
       [
+        landValueHeading,
         `${landShare} / ${landDenominator}`,
         formatSingleStructureCostCell(state.fields.landArea, "m²"),
         formatSingleStructureCostCell(state.fields.landUnitValue, "TL/m²"),
