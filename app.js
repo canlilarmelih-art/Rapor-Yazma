@@ -5480,6 +5480,7 @@ function buildSingleStructureCostMethodRows() {
       legal: state.fields.legalPremiumValue,
       current: state.fields.currentPremiumValue,
       unit: "TL",
+      calculation: `Yasal: ${singleStructureCostFormulaValue(state.fields.legalPremiumValue, "TL")} (${singleStructureCostFormulaValue(state.fields.legalPremiumRate, "%")}) / Mevcut: ${singleStructureCostFormulaValue(state.fields.currentPremiumValue, "TL")} (${singleStructureCostFormulaValue(state.fields.currentPremiumRate, "%")})`,
     },
     {
       label: "Toplam Değer",
@@ -5595,6 +5596,9 @@ function createSingleStructureCostMethodPanel() {
   };
 
   const buildingClass = state.fields.buildingClass || state.fields.insuranceConstructionClass || "-";
+  const buildingName = state.fields.buildingName || "Ana Yapı";
+  const landShare = state.fields.share || "-";
+  const landDenominator = state.fields.denominator || "-";
   const legalBuildingFormula = buildSingleStructureCostFormula(
     state.fields.legalBuildingValueArea,
     state.fields.legalBuildingUnitCost,
@@ -5615,18 +5619,20 @@ function createSingleStructureCostMethodPanel() {
   shell.append(
     createSection(
       "Arsa Değeri",
-      ["Yüzölçümü", "Arsa m² Birim Değeri", "Arsa Değeri"],
+      ["Arsa Pay / Payda", "Yüzölçümü", "Arsa m² Birim Değeri", "Arsa Değeri"],
       [
+        `${landShare} / ${landDenominator}`,
         formatSingleStructureCostCell(state.fields.landArea, "m²"),
         formatSingleStructureCostCell(state.fields.landUnitValue, "TL/m²"),
         formatSingleStructureCostCell(state.fields.landValue, "TL"),
       ],
-      `${singleStructureCostFormulaValue(state.fields.landArea, "m²")} × ${singleStructureCostFormulaValue(state.fields.landUnitValue, "TL/m²")} = ${singleStructureCostFormulaValue(state.fields.landValue, "TL")}`,
+      `(${landShare} / ${landDenominator}) × ${singleStructureCostFormulaValue(state.fields.landArea, "m²")} × ${singleStructureCostFormulaValue(state.fields.landUnitValue, "TL/m²")} = ${singleStructureCostFormulaValue(state.fields.landValue, "TL")}`,
     ),
     createSection(
       "Yasal Yapı Değeri",
-      ["Yapı Sınıfı", "Yapı Alanı", "Yapı Birim Değeri", "İnşaat Seviyesi", "Yıpranma Oranı", "Yapı Değeri"],
+      ["Yapı Adı", "Yapı Sınıfı", "Yapı Alanı", "Yapı Birim Değeri", "İnşaat Seviyesi", "Yıpranma Oranı", "Yapı Değeri"],
       [
+        buildingName,
         buildingClass,
         formatSingleStructureCostCell(state.fields.legalBuildingValueArea, "m²"),
         formatSingleStructureCostCell(state.fields.legalBuildingUnitCost, "TL/m²"),
@@ -5638,8 +5644,9 @@ function createSingleStructureCostMethodPanel() {
     ),
     createSection(
       "Mevcut Yapı Değeri",
-      ["Yapı Sınıfı", "Yapı Alanı", "Yapı Birim Değeri", "İnşaat Seviyesi", "Yıpranma Oranı", "Yapı Değeri"],
+      ["Yapı Adı", "Yapı Sınıfı", "Yapı Alanı", "Yapı Birim Değeri", "İnşaat Seviyesi", "Yıpranma Oranı", "Yapı Değeri"],
       [
+        buildingName,
         buildingClass,
         formatSingleStructureCostCell(state.fields.currentBuildingValueArea, "m²"),
         formatSingleStructureCostCell(state.fields.currentBuildingUnitCost, "TL/m²"),
@@ -5648,6 +5655,17 @@ function createSingleStructureCostMethodPanel() {
         formatSingleStructureCostCell(state.fields.currentBuildingValue, "TL"),
       ],
       currentBuildingFormula,
+    ),
+    createSection(
+      "Şerefiye / Çevre Düzenlemesi",
+      ["Yasal Şerefiye", "Yasal Oran", "Mevcut Şerefiye", "Mevcut Oran"],
+      [
+        formatSingleStructureCostCell(state.fields.legalPremiumValue, "TL"),
+        formatSingleStructureCostCell(state.fields.legalPremiumRate, "%"),
+        formatSingleStructureCostCell(state.fields.currentPremiumValue, "TL"),
+        formatSingleStructureCostCell(state.fields.currentPremiumRate, "%"),
+      ],
+      "Şerefiye = Piyasa Değeri - Arsa Değeri - Yapı Değeri",
     ),
     createSection(
       "Değerleme Sonucu",
