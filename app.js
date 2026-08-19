@@ -23252,10 +23252,109 @@ function buildMissingReviewedDocumentSentences(institutionValue = "") {
   ];
 }
 
+// Kullanıcı talebi (2026-08-19, devam): "İncelenen belgeler açıklaması
+// ortak olmalı yalnızca bu ortak açıklamada blok bazında ayrım
+// gözetilmeli." — `reviewedDocumentsDescription` ZATEN rapor-geneli ortak
+// (TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS, değişmedi), ama onu üreten
+// `buildReviewedDocumentsDescription()` yalnızca AKTİF taşınmazın
+// `state.tables.documents`'ını (bir tek bloğun kayıtlarını) okuyordu —
+// blok-tab yapısı (0.0.480) devreye girdiğinde bile açıklama metni yalnızca
+// hangi taşınmaz aktifse ONUN bloğunu yansıtıyordu. Bu fonksiyon, blok/BB
+// tab yapısı aktifken (isDocumentsBlockGroupingActive) TÜM bloklardan
+// (her bloğun temsilci/ilk üyesinin tablosu — bloktaki tüm üyeler zaten
+// syncDocumentsSharedDataToBlockSiblings ile senkron) kayıt toplar; aksi
+// halde (kat irtifakı dışı / tek blok / tekil taşınmaz) DAVRANIŞ AYNEN
+// KORUNUR (yalnızca aktif taşınmazın tablosu, blok etiketi YOK).
+function collectDocumentsDescriptionRowGroups() {
+  if (!isDocumentsBlockGroupingActive()) {
+    return [{ blockLabel: null, rows: state.tables?.documents || [] }];
+  }
+  const units = buildAllTitleUnitsForSummaryTable();
+  const groups = computeDocumentsBlockGroups(units);
+  return groups.map((group) => ({
+    blockLabel: computeDocumentsBlockLabel(group, groups),
+    rows: units[group.unitIndices[0]]?.tables?.documents || [],
+  }));
+}
+
+// "A Blok"/"B Blok" gibi " Blok" ekiyle biten etiketlerden ayırt edici
+// kısmı ("A"/"B") çıkarır — birden fazla bloğun AYNI belgeyi paylaştığı
+// durumda "A ve B Blok'a ait" gibi TEK "Blok" kelimesiyle birleştirilmiş
+// bir ifade kurabilmek için (kullanıcı örneği: "A ve B Bloka ait ...").
+// Etiket bu kalıba uymuyorsa (serbest metin bir blok adı) null döner —
+// çağıran taraf ham etiketi kullanmaya geri döner.
+function stripBlockLabelSuffixForMerging(label) {
+  const match = String(label || "").trim().match(/^(.*?)\s*Blok$/i);
+  return match ? match[1].trim() : null;
+}
+
+// Bir belgeye "sahip" bloklardan (etiket dizisi, GÖRÜNÜM SIRASINA göre
+// zaten sıralanmış) okunabilir bir "X'a/X ve Y Blok'a ait" ifadesi kurar.
+function formatDocumentBlockAttributionPhrase(blockLabels) {
+  const labels = (blockLabels || []).filter(Boolean);
+  if (!labels.length) return "";
+  const strippedPrefixes = labels.map(stripBlockLabelSuffixForMerging);
+  if (strippedPrefixes.every(Boolean)) {
+    return `${joinTurkishList(strippedPrefixes)} Blok'a ait`;
+  }
+  return `${joinTurkishList(labels)}'a ait`;
+}
+
+// Bir arşiv-önek (kurum/tarih) grubu içindeki belge referanslarını
+// (bkz. formatReviewedDocumentReference) blok etiketine göre gruplar:
+// AYNI blok(lar)dan gelen TÜM referanslar TEK bir "X Blok'a ait ..., ..."
+// öbeğinde birleşir; birden fazla bloğun BİREBİR AYNI referansı varsa
+// (aynı tarih+no+tür) TEK bir "A ve B Blok'a ait ..." öbeğinde toplanır
+// (kullanıcının "ortak olarak cümle kurulabilir" örneği). Blok etiketi
+// hiç YOKSA (isDocumentsBlockGroupingActive false) ESKİ/DEĞİŞMEYEN
+// davranış: referanslar düz joinTurkishList ile birleştirilir.
+function buildDocumentsPermitGroupPhrase(items, blockOrder) {
+  const hasAnyBlockLabel = items.some((item) => item.blockLabel);
+  if (!hasAnyBlockLabel) {
+    return joinTurkishList(items.map((item) => item.referenceText));
+  }
+
+  const labelsByReference = new Map();
+  const referenceOrder = [];
+  items.forEach(({ referenceText, blockLabel }) => {
+    if (!labelsByReference.has(referenceText)) {
+      labelsByReference.set(referenceText, new Set());
+      referenceOrder.push(referenceText);
+    }
+    if (blockLabel) labelsByReference.get(referenceText).add(blockLabel);
+  });
+
+  const sortByBlockOrder = (labels) => labels.slice().sort((a, b) => (blockOrder.get(a) ?? 0) - (blockOrder.get(b) ?? 0));
+
+  const groupsByAttribution = new Map();
+  const attributionOrder = [];
+  referenceOrder.forEach((referenceText) => {
+    const labels = sortByBlockOrder(Array.from(labelsByReference.get(referenceText)));
+    const key = labels.join("||");
+    if (!groupsByAttribution.has(key)) {
+      groupsByAttribution.set(key, { labels, references: [] });
+      attributionOrder.push(key);
+    }
+    groupsByAttribution.get(key).references.push(referenceText);
+  });
+
+  return attributionOrder
+    .map((key) => {
+      const { labels, references } = groupsByAttribution.get(key);
+      const attribution = formatDocumentBlockAttributionPhrase(labels);
+      const referenceList = references.join(", ");
+      return attribution ? `${attribution} ${referenceList}` : referenceList;
+    })
+    .join(", ");
+}
+
 function buildReviewedDocumentsDescription() {
-  const rows = getReviewedDocumentChronologicalEntries()
-    .map(({ row }) => normalizeReviewedDocumentRow(row))
-    .filter((row) => row.type);
+  const rowGroups = collectDocumentsDescriptionRowGroups();
+  const blockOrder = new Map(rowGroups.map((group, index) => [group.blockLabel, index]));
+  const rows = rowGroups.flatMap((group) => (
+    getReviewedDocumentChronologicalEntries(group.rows)
+      .map(({ row }) => ({ ...normalizeReviewedDocumentRow(row), blockLabel: group.blockLabel }))
+  )).filter((row) => row.type);
   const ekbExplanation = buildEkbExplanation();
   if (!rows.length) {
     return normalizeReportDescriptionText([...buildMissingReviewedDocumentSentences(), ekbExplanation].filter(Boolean).join("\n\n"));
@@ -23272,14 +23371,14 @@ function buildReviewedDocumentsDescription() {
     if (isPermitLikeDocument(row.type) && row.date && row.no) {
       const prefix = buildDocumentArchivePrefix(row.institution);
       if (!permitGroups.has(prefix)) permitGroups.set(prefix, []);
-      permitGroups.get(prefix).push(formatReviewedDocumentReference(row));
+      permitGroups.get(prefix).push({ referenceText: formatReviewedDocumentReference(row), blockLabel: row.blockLabel });
     }
   });
 
   const parts = [];
   if (permitGroups.size) {
     permitGroups.forEach((permitItems, prefix) => {
-      parts.push(`${prefix} yer alan ${joinTurkishList(permitItems)} incelenmiştir.`);
+      parts.push(`${prefix} yer alan ${buildDocumentsPermitGroupPhrase(permitItems, blockOrder)} incelenmiştir.`);
     });
   } else {
     const prefix = buildDocumentArchivePrefix();
