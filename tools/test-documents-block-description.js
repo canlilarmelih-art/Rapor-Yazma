@@ -9,11 +9,28 @@
 // tek blok / tekil taşınmaz raporlarda DAVRANIŞ DEĞİŞMEZ (blok etiketi
 // YOK, eski düz joinTurkishList birleştirmesi).
 //
+// Kullanıcı, canlıda test ettikten sonra 2 bulgu bildirdi (2026-08-19,
+// devam): (1) "A'ya ait" çıkıyor, "A Blok" olacak, "Blok" kelimesi hiç
+// görünmüyor - taşınmazın Blok alanına yalnızca "A" (tek harf, "A Blok"
+// DEĞİL) girildiğinde normalizeBlockLabelPrefixForAttribution'ın eski hali
+// (stripBlockLabelSuffixForMerging) "Blok" kalıbına uymayan etiketlerde ham
+// etiketi KULLANIP "Blok" kelimesini HİÇ EKLEMİYORDU - düzeltildi, artık
+// HER ZAMAN "{ad} Blok'a ait" formatında. (2) 4 bloklu (A/C farklı
+// tarih, B/D aynı tarih) bir örnekte C Blok açıklamada HİÇ görünmedi -
+// KÖK NEDEN henüz netleştirilemedi (kullanıcıdan ek bilgi istendi); bu
+// dosyaya kullanıcının TAM senaryosunu (4 blok, 2 farklı + 2 ortak tarih)
+// birebir yansıtan bir regresyon senaryosu eklendi - saf algoritma
+// SEVİYESİNDE dört bloğun hepsi doğru çıkıyor (bkz. senaryo 6), yani sorun
+// buildDocumentsPermitGroupPhrase/collectDocumentsDescriptionRowGroups
+// mantığında DEĞİL, muhtemelen canlı veri girişi/senkron zamanlamasında.
+//
 // Bu test kapsamı:
-//  1) stripBlockLabelSuffixForMerging(): "X Blok" kalıbından "X"i çıkarır,
-//     uymayan serbest metinde null döner.
-//  2) formatDocumentBlockAttributionPhrase(): tek etiket, "Blok" kalıbına
-//     uyan birleştirme ("A ve B Blok'a ait"), uymayan ham-etiket fallback'i.
+//  1) normalizeBlockLabelPrefixForAttribution(): "X Blok" kalıbından "X"i
+//     çıkarır; kalıba uymayan ("A" gibi tek başına bir ad) ham etiketi
+//     AYNEN döner (null DEĞİL - çağıran taraf her durumda "Blok" ekler).
+//  2) formatDocumentBlockAttributionPhrase(): tek etiket ("A" -> "A Blok'a
+//     ait", "A Blok" -> "A Blok'a ait" - İKİSİ DE AYNI SONUCU vermeli),
+//     "Blok" kalıbına uyan/uymayan karışık etiketlerin birleştirilmesi.
 //  3) buildDocumentsPermitGroupPhrase(): blok etiketi YOKSA eski davranış
 //     (düz birleştirme); AYNI bloktan 2 farklı belge TEK "X Blok'a ait a,
 //     b" öbeğinde; 2 FARKLI bloktan AYNI belge TEK "A ve B Blok'a ait"
@@ -22,10 +39,14 @@
 //     grup + aktif taşınmazın tablosu; gate AÇIKKEN bloklara göre doğru
 //     ayrılmış gruplar (her biri kendi temsilci taşınmazının tablosu).
 //  5) buildReviewedDocumentsDescription() UÇTAN UCA (ağır bağımlılıklar
-//     stub'lanmış): kullanıcının ÖRNEK senaryosu - farklı bloklardan farklı
-//     ruhsatlar doğru blok etiketleriyle tek cümlede; AYNI belge 2 bloktan
-//     geliyorsa "A ve B Blok'a ait" ile birleşiyor; TEKİL/kat-irtifakı-dışı
-//     durumda blok etiketi HİÇ görünmüyor (regresyon).
+//     stub'lanmış): kullanıcının İLK ÖRNEK senaryosu - farklı bloklardan
+//     farklı ruhsatlar doğru blok etiketleriyle tek cümlede; AYNI belge 2
+//     bloktan geliyorsa "A ve B Blok'a ait" ile birleşiyor; TEKİL/kat-
+//     irtifakı-dışı durumda blok etiketi HİÇ görünmüyor (regresyon); Blok
+//     alanına yalnızca TEK HARF ("A") girilse bile "A Blok'a ait" çıkıyor.
+//  6) buildReviewedDocumentsDescription() 4 BLOKLU senaryo (kullanıcının
+//     ikinci bulgusunun BİREBİR yansıması: A/C farklı tarih, B/D aynı
+//     tarih) - TÜM 4 bloğun açıklamada göründüğü doğrulanır.
 
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -62,7 +83,7 @@ function extractFunction(name) {
 }
 
 const functionNames = [
-  "stripBlockLabelSuffixForMerging",
+  "normalizeBlockLabelPrefixForAttribution",
   "formatDocumentBlockAttributionPhrase",
   "buildDocumentsPermitGroupPhrase",
   "collectDocumentsDescriptionRowGroups",
@@ -131,7 +152,7 @@ const sandboxSource = `
   return {
     setState: (s) => { state = s; },
     getState: () => state,
-    stripBlockLabelSuffixForMerging, formatDocumentBlockAttributionPhrase,
+    normalizeBlockLabelPrefixForAttribution, formatDocumentBlockAttributionPhrase,
     buildDocumentsPermitGroupPhrase, collectDocumentsDescriptionRowGroups,
     buildReviewedDocumentsDescription, isDocumentsBlockGroupingActive,
   };
@@ -154,22 +175,31 @@ function freshState(overrides = {}) {
   };
 }
 
-// --- 1) stripBlockLabelSuffixForMerging() ---------------------------------
+// --- 1) normalizeBlockLabelPrefixForAttribution() -------------------------
 {
-  assert.equal(fns.stripBlockLabelSuffixForMerging("A Blok"), "A", "'A Blok' -> 'A' donmeli.");
-  assert.equal(fns.stripBlockLabelSuffixForMerging("B blok"), "B", "Kucuk harfli 'blok' de eslesmeli (case-insensitive).");
-  assert.equal(fns.stripBlockLabelSuffixForMerging("1. Blok"), "1.", "'1. Blok' -> '1.' donmeli.");
-  assert.equal(fns.stripBlockLabelSuffixForMerging("Kule 1"), null, "'Blok' kalibina uymayan serbest metinde null donmeli.");
-  assert.equal(fns.stripBlockLabelSuffixForMerging(""), null, "Bos girdide null donmeli.");
-  console.log("stripBlockLabelSuffixForMerging testi tamam.");
+  assert.equal(fns.normalizeBlockLabelPrefixForAttribution("A Blok"), "A", "'A Blok' -> 'A' donmeli.");
+  assert.equal(fns.normalizeBlockLabelPrefixForAttribution("B blok"), "B", "Kucuk harfli 'blok' de eslesmeli (case-insensitive).");
+  assert.equal(fns.normalizeBlockLabelPrefixForAttribution("1. Blok"), "1.", "'1. Blok' -> '1.' donmeli.");
+  // REGRESYON (kullanici bulgusu): "Blok" kalibina UYMAYAN (kullanicinin
+  // Blok alanina yalnizca TEK HARF girdigi) etiketlerde artik null DEGIL,
+  // ham etiketin KENDISI donmeli - cagiran taraf HER ZAMAN "Blok" ekleyecek.
+  assert.equal(fns.normalizeBlockLabelPrefixForAttribution("A"), "A", "'Blok' kalibina uymayan (yalnizca 'A') etiket AYNEN donmeli (null DEGIL).");
+  assert.equal(fns.normalizeBlockLabelPrefixForAttribution("Kule 1"), "Kule 1", "Serbest metin bir blok adi da AYNEN donmeli.");
+  assert.equal(fns.normalizeBlockLabelPrefixForAttribution(""), "", "Bos girdide bos string donmeli.");
+  console.log("normalizeBlockLabelPrefixForAttribution testi tamam.");
 }
 
 // --- 2) formatDocumentBlockAttributionPhrase() ----------------------------
 {
   assert.equal(fns.formatDocumentBlockAttributionPhrase(["A Blok"]), "A Blok'a ait", "Tek etiket icin 'X Blok\\'a ait' donmeli.");
   assert.equal(fns.formatDocumentBlockAttributionPhrase(["A Blok", "B Blok"]), "A ve B Blok'a ait", "Iki 'X Blok' etiketi TEK 'Blok' kelimesiyle birlesmeli (kullanici ornegi).");
-  assert.equal(fns.formatDocumentBlockAttributionPhrase(["Kule 1"]), "Kule 1'a ait", "'Blok' kalibina uymayan etiket ham haliyle kullanilmali.");
-  assert.equal(fns.formatDocumentBlockAttributionPhrase(["Kule 1", "B Blok"]), "Kule 1 ve B Blok'a ait", "Karisik (biri 'Blok' kalibinda degil) etiketlerde ham-etiket fallback'i kullanilmali.");
+  // REGRESYON (kullanici bulgusu, 2026-08-19): Blok alanina yalnizca "A"
+  // (tek harf, "A Blok" DEGIL) girilse bile sonuc AYNI "A Blok'a ait"
+  // olmali - "Blok" kelimesi ASLA kaybolmamali.
+  assert.equal(fns.formatDocumentBlockAttributionPhrase(["A"]), "A Blok'a ait", "Yalnizca 'A' etiketiyle bile 'A Blok\\'a ait' cikmali (Blok kelimesi eklenmeli).");
+  assert.equal(fns.formatDocumentBlockAttributionPhrase(["A", "B"]), "A ve B Blok'a ait", "Iki 'tek harf' etiket de TEK 'Blok' kelimesiyle birlesmeli.");
+  assert.equal(fns.formatDocumentBlockAttributionPhrase(["Kule 1"]), "Kule 1 Blok'a ait", "Serbest metin bir etikete de 'Blok' kelimesi eklenmeli.");
+  assert.equal(fns.formatDocumentBlockAttributionPhrase(["Kule 1", "B Blok"]), "Kule 1 ve B Blok'a ait", "Karisik (biri zaten 'Blok' ile bitiyor) etiketler TEK 'Blok' kelimesiyle birlesmeli.");
   assert.equal(fns.formatDocumentBlockAttributionPhrase([]), "", "Bos liste icin bos string donmeli.");
   console.log("formatDocumentBlockAttributionPhrase testi tamam.");
 }
@@ -291,6 +321,54 @@ function freshState(overrides = {}) {
   assert.ok(!singleDescription.includes("Blok'a ait"), `REGRESYON: Tekli Talep'te blok etiketi HIC gorunmemeli, bulunan: ${singleDescription}`);
   assert.ok(singleDescription.includes("256/47"), "Belge referansi yine de dogru gorunmeli.");
   console.log("buildReviewedDocumentsDescription regresyon (blok gruplama kapaliyken eski davranis) testi tamam.");
+
+  // 5d) REGRESYON (kullanici bulgusu): Blok alanina yalnizca "A" (tek harf,
+  // "A Blok" DEGIL) girilse bile aciklamada "A Blok'a ait" cikmali.
+  fns.setState(freshState({
+    fields: {
+      requestType: "Çoklu Talep", ownershipType: "Yatay Kat İrtifakı",
+      blockNo: "100", parcelNo: "1", titleBlockName: "A",
+      documentReviewInstitution: "Merkez Belediyesi",
+    },
+    tables: { documents: [{ c0: "Yeni Yapı Ruhsatı", c1: "Merkez Belediyesi", c2: "16.11.2012", c3: "256/47" }] },
+    titleUnits: [{
+      fields: { blockNo: "100", parcelNo: "1", titleBlockName: "B" },
+      tables: { documents: [{ c0: "Yeni Yapı Ruhsatı", c1: "Merkez Belediyesi", c2: "18.12.2013", c3: "569/78" }] },
+    }],
+  }));
+  const shortLabelDescription = fns.buildReviewedDocumentsDescription();
+  assert.ok(shortLabelDescription.includes("A Blok'a ait"), `REGRESYON: Blok alanina yalnizca 'A' girilse bile 'A Blok\\'a ait' cikmali (Blok kelimesi kaybolmamali), bulunan: ${shortLabelDescription}`);
+  assert.ok(shortLabelDescription.includes("B Blok'a ait"), `REGRESYON: 'B' etiketi de 'B Blok\\'a ait' cikmali, bulunan: ${shortLabelDescription}`);
+  assert.ok(!shortLabelDescription.includes("A'ya ait"), "REGRESYON: 'A'ya ait' (Blok kelimesi olmadan) ARTIK gorunmemeli.");
+  console.log("buildReviewedDocumentsDescription regresyon (Blok alanina tek harf girilse bile 'Blok' kelimesi eklenir) testi tamam.");
+}
+
+// --- 6) buildReviewedDocumentsDescription() 4 BLOKLU senaryo --------------
+// (kullanicinin ikinci bulgusunun BIREBIR yansimasi, 2026-08-19): A ve C
+// FARKLI tarih, B ve D AYNI tarih kullanildi; kullanici C Blok'un
+// aciklamada HIC gorunmedigini bildirdi. Bu senaryo saf ALGORITMA
+// seviyesinde TUM 4 bloğun dogru ciktigini dogrular - eğer bu test
+// GECERSE, canlidaki kayip muhtemelen bu fonksiyonun kendi mantiginda
+// DEGIL (veri girisi/senkron zamanlamasi ile ilgili, ayri arastirilmali).
+{
+  fns.setState(freshState({
+    fields: {
+      requestType: "Çoklu Talep", ownershipType: "Yatay Kat İrtifakı",
+      blockNo: "100", parcelNo: "1", titleBlockName: "A Blok",
+      documentReviewInstitution: "Merkez Belediyesi",
+    },
+    tables: { documents: [{ c0: "Yeni Yapı Ruhsatı", c1: "Merkez Belediyesi", c2: "01.01.2010", c3: "1/1" }] },
+    titleUnits: [
+      { fields: { blockNo: "100", parcelNo: "1", titleBlockName: "B Blok" }, tables: { documents: [{ c0: "Yeni Yapı Ruhsatı", c1: "Merkez Belediyesi", c2: "02.02.2020", c3: "2/2" }] } },
+      { fields: { blockNo: "100", parcelNo: "1", titleBlockName: "C Blok" }, tables: { documents: [{ c0: "Yeni Yapı Ruhsatı", c1: "Merkez Belediyesi", c2: "03.03.2030", c3: "3/3" }] } },
+      { fields: { blockNo: "100", parcelNo: "1", titleBlockName: "D Blok" }, tables: { documents: [{ c0: "Yeni Yapı Ruhsatı", c1: "Merkez Belediyesi", c2: "02.02.2020", c3: "2/2" }] } },
+    ],
+  }));
+  const fourBlockDescription = fns.buildReviewedDocumentsDescription();
+  assert.ok(fourBlockDescription.includes("A Blok'a ait 01.01.2010 tarih, 1/1 sayılı Yeni Yapı Ruhsatı"), `A Blok'un kendi (farkli) ruhsati gorunmeli, bulunan: ${fourBlockDescription}`);
+  assert.ok(fourBlockDescription.includes("B ve D Blok'a ait 02.02.2020 tarih, 2/2 sayılı Yeni Yapı Ruhsatı"), `B ve D Blok AYNI tarihi paylastigi icin TEK 'B ve D Blok\\'a ait' ogesinde birlesmeli, bulunan: ${fourBlockDescription}`);
+  assert.ok(fourBlockDescription.includes("C Blok'a ait 03.03.2030 tarih, 3/3 sayılı Yeni Yapı Ruhsatı"), `KULLANICI BULGUSU: C Blok'un kendi (farkli) ruhsati de aciklamada MUTLAKA gorunmeli, bulunan: ${fourBlockDescription}`);
+  console.log("buildReviewedDocumentsDescription 4 blok senaryosu (A/C farkli, B/D ortak - C Blok kayip DEGIL) testi tamam.");
 }
 
 console.log("Incelenen Belgeler Aciklamasi blok-bazli gruplama testleri basarili.");

@@ -23281,23 +23281,29 @@ function collectDocumentsDescriptionRowGroups() {
 // kısmı ("A"/"B") çıkarır — birden fazla bloğun AYNI belgeyi paylaştığı
 // durumda "A ve B Blok'a ait" gibi TEK "Blok" kelimesiyle birleştirilmiş
 // bir ifade kurabilmek için (kullanıcı örneği: "A ve B Bloka ait ...").
-// Etiket bu kalıba uymuyorsa (serbest metin bir blok adı) null döner —
-// çağıran taraf ham etiketi kullanmaya geri döner.
-function stripBlockLabelSuffixForMerging(label) {
-  const match = String(label || "").trim().match(/^(.*?)\s*Blok$/i);
-  return match ? match[1].trim() : null;
+// 2026-08-19 DÜZELTME: kullanıcı taşınmazın "Blok" alanına (titleBlockName)
+// yalnızca "A" gibi TEK harf/kısa ad girdiğinde ("A Blok" DEĞİL) çıktı
+// "A'ya ait" oluyordu — "Blok" kelimesi TAMAMEN kayboluyordu (kullanıcı
+// bildirimi: "A Blok olacak sadece Blok harfi olmayacak"). Artık etiket
+// zaten "...Blok" ile bitiyorsa o kısım TEKRARLANMADAN kullanılır, AKSİ
+// HALDE ham etiketin kendisi "Blok" kelimesinin ÖNÜNE eklenir — sonuç HER
+// ZAMAN "{ad} Blok'a ait" olur, etiketin kendisinde "Blok" kelimesi olsun
+// ya da olmasın.
+function normalizeBlockLabelPrefixForAttribution(label) {
+  const trimmed = String(label || "").trim();
+  if (!trimmed) return "";
+  const match = trimmed.match(/^(.*?)\s*Blok$/i);
+  const stripped = match ? match[1].trim() : "";
+  return stripped || trimmed;
 }
 
 // Bir belgeye "sahip" bloklardan (etiket dizisi, GÖRÜNÜM SIRASINA göre
-// zaten sıralanmış) okunabilir bir "X'a/X ve Y Blok'a ait" ifadesi kurar.
+// zaten sıralanmış) okunabilir, HER ZAMAN "Blok" kelimesini içeren bir
+// "X Blok'a ait"/"X ve Y Blok'a ait" ifadesi kurar.
 function formatDocumentBlockAttributionPhrase(blockLabels) {
-  const labels = (blockLabels || []).filter(Boolean);
-  if (!labels.length) return "";
-  const strippedPrefixes = labels.map(stripBlockLabelSuffixForMerging);
-  if (strippedPrefixes.every(Boolean)) {
-    return `${joinTurkishList(strippedPrefixes)} Blok'a ait`;
-  }
-  return `${joinTurkishList(labels)}'a ait`;
+  const prefixes = (blockLabels || []).filter(Boolean).map(normalizeBlockLabelPrefixForAttribution).filter(Boolean);
+  if (!prefixes.length) return "";
+  return `${joinTurkishList(prefixes)} Blok'a ait`;
 }
 
 // Bir arşiv-önek (kurum/tarih) grubu içindeki belge referanslarını
