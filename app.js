@@ -5697,7 +5697,7 @@ function createSingleStructureCostMethodPanel() {
     gridColumn("Şerefiye Tutarı", 2),
   ];
   const resultColumns = [
-    gridColumn("Durum", 5, "right"),
+    gridColumn("Durum", 5, "right", true),
     gridColumn("Toplam m² Birim Değeri", 5),
     gridColumn("Toplam Değer", 2),
   ];
@@ -5765,12 +5765,12 @@ function createSingleStructureCostMethodPanel() {
       resultColumns,
       [
         [
-          "Yasal Durum Değeri",
+          "Maliyet Yöntemine Göre Yasal Durum Değeri",
           formatSingleStructureCostCell(state.fields.legalValueUnit, "TL/m²"),
           formatSingleStructureCostCell(state.fields.legalValue, "TL"),
         ],
         [
-          "Mevcut Durum Değeri",
+          "Maliyet Yöntemine Göre Mevcut Durum Değeri",
           formatSingleStructureCostCell(state.fields.currentValueUnit, "TL/m²"),
           formatSingleStructureCostCell(state.fields.currentValue, "TL"),
         ],
