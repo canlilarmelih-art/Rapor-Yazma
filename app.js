@@ -1226,6 +1226,11 @@ const TITLE_UNIT_SCOPED_SECTION_IDS = [
 const TITLE_UNIT_SCOPED_TABLE_KEYS_BASE = [
   "title", "encumbrance", "documents", "comparables",
   "encumbranceDeclarations", "encumbranceAnnotations", "encumbranceMortgages",
+  // 2026-08-20: "unit"/"building" scoping-gap-fix — bölümlerin ANA veri
+  // giriş yüzeyi olan satır tabloları (Katlar/Alanlar/Teraslar/İç Hacimler
+  // / Ana Gayrimenkul Kat Dağılımı) bugüne kadar hiç taşınmaza-özgü
+  // scoped set'te değildi, bkz. getUnitSectionFieldKeys()/getBuildingSectionFieldKeys().
+  "unitFloors", "buildingFloors",
 ];
 // Kullanıcı talebi (2026-08-19): "ÇOKLU ARSA TARLA raporlarında emsaller
 // ortak olmalı" — yalnızca Arsa/Tarla Çoklu Talep raporlarında "comparables"
@@ -1477,6 +1482,51 @@ function syncDocumentsSharedDataToBlockSiblings() {
   });
 }
 
+// Kullanıcı talebi (2026-08-20): "Ana gayrimenkul bölümünde blok bazında
+// açıklama olsun kaç adet blok var ise belgeler bölümünde yer aldığı gibi
+// blok bazında o kadar ana gayrimenkul açıklaması olsun." —
+// isDocumentsBlockGroupingActive()'in (yukarıda) BİREBİR AYNI gövdesi,
+// "building" bölümü için kendi adıyla — computeDocumentsBlockGroups()
+// TAMAMEN JENERİK olduğundan doğrudan yeniden kullanılır (documents'a özgü
+// hiçbir şey içermiyor).
+function isBuildingBlockGroupingActive() {
+  if (state.fields.requestType !== "Çoklu Talep") return false;
+  const units = buildAllTitleUnitsForSummaryTable();
+  if (units.length < 2) return false;
+  if (!isCondominiumOwnershipTypeValue(units[0]?.fields?.ownershipType)) return false;
+  return computeDocumentsBlockGroups(units).length > 1;
+}
+
+// syncDocumentsSharedDataToBlockSiblings()'in (yukarıda) BİREBİR ikizi —
+// "building" (Ana Gayrimenkul Özellikleri) alanları için. getBuildingSectionFieldKeys()'in
+// TAMAMI (mainPropertyDescription/mainPropertyFloorCountText DAHİL — bkz.
+// getBuildingBlockSharedFieldKeys() yorumu) + state.tables.buildingFloors
+// (Kat Satırları — "aynı bina" kavramının parçası) aktif taşınmazdan AYNI
+// bloktaki diğer bağımsız bölümlere kopyalanır. FARKLI bloklar bağımsız
+// kalır. Çağrı noktaları: building bölümünün her commit noktası (bkz. plan,
+// "her input/change/save/refresh handler'ın sonuna eklenir").
+function syncBuildingSharedDataToBlockSiblings() {
+  if (!isBuildingBlockGroupingActive()) return;
+  const units = buildAllTitleUnitsForSummaryTable();
+  const groups = computeDocumentsBlockGroups(units);
+  const activeGroup = groups.find((group) => group.unitIndices.includes(state.activeTitleUnitIndex));
+  if (!activeGroup || activeGroup.unitIndices.length < 2) return;
+
+  const sourceFields = state.fields;
+  const sharedKeys = getBuildingBlockSharedFieldKeys();
+  const sourceBuildingFloorRows = state.tables?.buildingFloors || [];
+  activeGroup.unitIndices.forEach((index) => {
+    if (index === state.activeTitleUnitIndex) return;
+    const targetFields = resolveTitleUnitWriteTarget(index);
+    sharedKeys.forEach((key) => {
+      targetFields[key] = sourceFields[key];
+    });
+    const targetRows = resolveTitleUnitBuildingFloorsRowsWriteTarget(index);
+    targetRows.length = 0;
+    sourceBuildingFloorRows.forEach((row) => targetRows.push({ ...row }));
+  });
+}
+
 // "İmar Durumu" (planning) bölümünün TÜM taşınmaza-özgü olabilecek alan
 // anahtarları — declaratif `section.fields` + 6 conditionalYesNo detay
 // notu (titleChangedRecords emsaliyle AYNI boşluk: yalnızca ebeveyn
@@ -1719,6 +1769,14 @@ function getTitleUnitScopedFieldKeys() {
   // arasında paylaşılıyordu. "valuation" paylaşım modeli DEĞİŞMİYOR (her
   // zaman taşınmaza-özgü) — KOŞULSUZ eklenir.
   getValuationPerUnitOnlyFieldKeys().forEach((key) => keys.add(key));
+  // "unit"/"building" (Bağımsız Bölüm/Ana Gayrimenkul Özellikleri)
+  // scoping-gap-fix (2026-08-20, bkz. getUnitSectionFieldKeys()/
+  // getBuildingSectionFieldKeys() yorumları) — paylaşım modelleri
+  // DEĞİŞMİYOR (her zaman taşınmaza-özgü depo; building'in blok-arası
+  // paylaşımı AYRI bir katman, bkz. syncBuildingSharedDataToBlockSiblings)
+  // — KOŞULSUZ eklenir.
+  getUnitSectionFieldKeys().forEach((key) => keys.add(key));
+  getBuildingSectionFieldKeys().forEach((key) => keys.add(key));
   return keys;
 }
 
@@ -1739,6 +1797,91 @@ function getValuationPerUnitOnlyFieldKeys() {
     "legalRentComparableAutoManual", "currentRentComparableAutoManual",
     "legalValueUserDefined", "currentValueUserDefined",
   ];
+}
+
+// Kullanıcı talebi (2026-08-20): "hangi bölümü geliştirmeye başlamalıyız"
+// sorusuna verilen eleştirel rapor cevabı — "Bağımsız Bölüm Özellikleri"
+// (unit) hiç denetlenmemişti, en yüksek riskli alandı. getImarSectionFieldKeys()/
+// getLandSectionFieldKeys() ile AYNI ilke: `section.fields`'taki 2 deklaratif
+// alan (legalArea/currentArea, zaten doğru scoped) + createUnitFeaturesEditor'ün
+// (genel/alan-iç mekan/dekoratif panelleri, açıklama alanları) PROGRAMATİK
+// yazdığı ~50 alan — section.fields'ta HİÇ deklaratif değildi (titleChangedRecords/
+// documents/valuation'la AYNI sınıf sessiz kusur). "unit" paylaşım modeli HER
+// ZAMAN taşınmaza-özgü (blok kavramı burada anlamsız — aynı bloktaki iki
+// bağımsız bölüm bile doğası gereği farklı alan/iç mekan/dekorasyon bilgisine
+// sahiptir) — KOŞULSUZ eklenir.
+function getUnitSectionFieldKeys() {
+  const section = sections.find((item) => item.id === "unit");
+  const keys = (section?.fields || [])
+    .map((field) => field.key)
+    .filter((key) => !TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS.has(key));
+  return [
+    ...keys,
+    // Genel panel (createUnitGeneralPanel)
+    "unitUsageStatus", "unitFirstSaleStatus", "unitFirstSaleStatusManual", "unitEntrancePosition", "facades",
+    "unitConstructionLevel", "unitViewStatus", "unitHeatingType", "unitHeatingMounted",
+    "unitShopFrontage", "unitShopDepth",
+    // Alan/iç mekan özeti (syncUnitFloorSummaryFields, unitFloors[0]'dan türetilir)
+    "unitFloor", "unitAreaReductionRate", "unitLegalTerrace", "unitCurrentTerrace", "unitTerraceReductionRate", "interiorFeatures",
+    // Dekoratif panel (applyUnitDecorativeFieldChange)
+    "unitSalonFloor", "unitSalonWall", "unitRoomFloor", "unitRoomWall", "unitHallFloor", "unitHallWall",
+    "unitKitchenFloor", "unitKitchenWall", "unitWetFloor", "unitWetWall", "unitBalconyFloor", "unitBalconyWall",
+    "unitWindows", "unitExteriorDoor", "unitInteriorDoors", "unitKitchenCabinet", "unitKitchenCounter",
+    "unitMaterialQuality", "unitBathroomFixture1", "unitBathroomFixture2", "unitBathroomFixture3",
+    // Açıklama alanları
+    "unitInteriorDescription", "unitInteriorDescriptionManual", "unitDecorativeDescription", "unitDecorativeDescriptionManual",
+    // Eski/dormant fallback alanları (yalnızca unitFloors tablosu henüz
+    // migrate edilmemişse getUnitFloorRows() tarafından okunur, bugünün
+    // arayüzü artık yazmıyor ama tam koruma için dahil edildi)
+    "unitLegalReductionRate", "unitCurrentReductionRate", "unitLegalTerraceReductionRate", "unitCurrentTerraceReductionRate",
+    "unitLivingRoom", "unitRoomCount", "unitKitchen", "unitBathroom", "unitBalcony", "unitWc", "unitHall",
+    "unitDressingRoom", "unitLaundryRoom",
+  ];
+}
+
+// Kullanıcı talebi (2026-08-20) — AYNI rapor: "Ana Gayrimenkul Özellikleri"
+// (building) section.fields'ı LİTERAL BOŞ DİZİ — hiçbir alan deklaratif
+// değil, bu yüzden TITLE_UNIT_SCOPED_SECTION_IDS'te olmasına RAĞMEN genel
+// döngü hiçbir şey toplamıyordu; createBuildingFloorDistribution'ın (genel
+// teknik özellikler paneli, kat dağılımı, Ana Gayrimenkul Açıklaması)
+// PROGRAMATİK yazdığı ~22 alan BUGÜNE KADAR TAMAMEN rapor-geneli
+// paylaşımlıydı (tab değiştirmenin hiçbir etkisi yoktu — documents/
+// valuation'daki sessiz kusurdan bile daha ciddisi, çünkü hiç scoped
+// değildi). "building" paylaşım modeli de HER ZAMAN taşınmaza-özgü
+// (temel depo) — bloklar arası paylaşım ayrıca syncBuildingSharedDataToBlockSiblings()
+// ile (Kat İrtifakı + Çoklu Talep + birden fazla blok varken) sağlanır,
+// bkz. aşağıdaki BUILDING_BLOCK_SHARED_FIELD_KEYS.
+function getBuildingSectionFieldKeys() {
+  const section = sections.find((item) => item.id === "building");
+  const keys = (section?.fields || [])
+    .map((field) => field.key)
+    .filter((key) => !TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS.has(key));
+  return [
+    ...keys,
+    "buildingStyle", "buildingOrder", "buildingClass", "buildingAge", "buildingAgeManualOverride",
+    "carpark", "elevator", "exteriorCladding", "stairLanding", "interiorWalls",
+    "buildingEntranceDoor", "buildingFootprintReference", "buildingEntranceLevel", "buildingEntranceDirection",
+    "socialFacilities", "buildingBlockCount", "buildingSubjectBlockPosition",
+    "buildingFloorCounts", "totalFloors", "totalUnits",
+    "mainPropertyFloorSummary", "mainPropertyDescription", "mainPropertyFloorCountText",
+  ];
+}
+
+// Kullanıcı talebi (2026-08-20): "Ana gayrimenkul bölümünde blok bazında
+// açıklama olsun kaç adet blok var ise belgeler bölümünde yer aldığı gibi
+// blok bazında o kadar ana gayrimenkul açıklaması olsun." —
+// getBuildingSectionFieldKeys()'in TÜMÜ (mainPropertyDescription/
+// mainPropertyFloorCountText DAHİL) — bir bağımsız bölümde üretilen/
+// düzenlenen Ana Gayrimenkul verisi, AYNI bloktaki diğer bağımsız
+// bölümlere OTOMATİK yansır (Belgeler'in DOCUMENTS_BLOCK_SHARED_FIELD_KEYS
+// deseninin BİREBİR ikizi) — FARKLI bloklar bağımsız kalır. Fonksiyon
+// olarak tanımlandı (DOCUMENTS_BLOCK_SHARED_FIELD_KEYS gibi düz `const`
+// DEĞİL) çünkü getBuildingSectionFieldKeys() `sections` dizisine bağımlı —
+// modül yükleme sırasına duyarlı bir üst-seviye `const` yerine, ilk
+// kullanımda (syncBuildingSharedDataToBlockSiblings içinde) tembel
+// çağrılır.
+function getBuildingBlockSharedFieldKeys() {
+  return getBuildingSectionFieldKeys();
 }
 
 // bkz. yukarıdaki getTitleUnitScopedFieldKeys() yorumu — "Proje Uygunluk
@@ -1999,6 +2142,31 @@ function resolveTitleUnitDocumentsRowsWriteTarget(index) {
   return unit.tables.documents;
 }
 
+// resolveTitleUnitDocumentsRowsWriteTarget()'ın (yukarıda) BİREBİR ikizi —
+// "building" (Ana Gayrimenkul) bölümünün Kat Satırları tablosu için.
+// Tüketicisi: syncBuildingSharedDataToBlockSiblings().
+function resolveTitleUnitBuildingFloorsRowsWriteTarget(index) {
+  if (index === state.activeTitleUnitIndex) {
+    state.tables = state.tables || {};
+    state.tables.buildingFloors = state.tables.buildingFloors || [];
+    return state.tables.buildingFloors;
+  }
+  if (index === 0) {
+    if (!state.primaryTitleUnitShadow || typeof state.primaryTitleUnitShadow !== "object") {
+      state.primaryTitleUnitShadow = { fields: {}, tables: {} };
+    }
+    state.primaryTitleUnitShadow.tables = state.primaryTitleUnitShadow.tables || {};
+    state.primaryTitleUnitShadow.tables.buildingFloors = state.primaryTitleUnitShadow.tables.buildingFloors || [];
+    return state.primaryTitleUnitShadow.tables.buildingFloors;
+  }
+  if (!Array.isArray(state.titleUnits)) state.titleUnits = [];
+  if (!state.titleUnits[index - 1]) state.titleUnits[index - 1] = createEmptyTitleUnit();
+  const unit = state.titleUnits[index - 1];
+  unit.tables = unit.tables || {};
+  unit.tables.buildingFloors = unit.tables.buildingFloors || [];
+  return unit.tables.buildingFloors;
+}
+
 // Boş bir malik satırı ekler, YENİ satırın index'ini döner.
 function addTitleUnitOwnerRow(index) {
   if (!Number.isInteger(index) || index < 0 || index >= getTitleUnitCount()) return -1;
@@ -2167,6 +2335,66 @@ function createDocumentsBlockTabBar() {
   const note = document.createElement("p");
   note.className = "muted-note title-unit-tab-bar-note";
   note.textContent = "Blok sekmesinde girilen bilgiler (İncelenen Belgeler, EKB, Statik Uygunluk, Yapı Denetim, Proje bilgileri vb.) o bloktaki TÜM bağımsız bölümlere otomatik uygulanır. Yalnızca \"Proje Uygunluk Durumu - Bağımsız Bölüm\" her bağımsız bölüme özeldir.";
+  wrap.append(note);
+
+  return wrap;
+}
+
+// createDocumentsBlockTabBar()'ın (yukarıda) BİREBİR ikizi — "Ana
+// Gayrimenkul Özellikleri" (building) bölümü için. Kullanıcı talebi
+// (2026-08-20): "Ana gayrimenkul bölümünde blok bazında açıklama olsun
+// kaç adet blok var ise belgeler bölümünde yer aldığı gibi blok bazında o
+// kadar ana gayrimenkul açıklaması olsun."
+function createBuildingBlockTabBar() {
+  const units = buildAllTitleUnitsForSummaryTable();
+  const groups = computeDocumentsBlockGroups(units);
+
+  const wrap = document.createElement("div");
+  wrap.className = "title-unit-tab-bar building-block-tab-bar";
+
+  const outerTabs = document.createElement("div");
+  outerTabs.className = "title-unit-tab-bar-tabs";
+  const activeGroup = groups.find((group) => group.unitIndices.includes(state.activeTitleUnitIndex)) || groups[0];
+  groups.forEach((group) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "title-unit-tab";
+    button.classList.toggle("is-active", group === activeGroup);
+    button.textContent = computeDocumentsBlockLabel(group, groups);
+    button.addEventListener("click", () => {
+      if (group === activeGroup) return;
+      if (!switchActiveTitleUnit(group.unitIndices[0])) return;
+      saveState();
+      render();
+    });
+    outerTabs.append(button);
+  });
+  wrap.append(outerTabs);
+
+  if (activeGroup && activeGroup.unitIndices.length > 1) {
+    const innerTabs = document.createElement("div");
+    innerTabs.className = "title-unit-tab-bar-tabs building-block-unit-tabs";
+    activeGroup.unitIndices.forEach((unitIndex, memberOrder) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "title-unit-tab title-unit-tab-secondary";
+      button.classList.toggle("is-active", unitIndex === state.activeTitleUnitIndex);
+      const unitNo = String(units[unitIndex]?.fields?.unitNo || "").trim();
+      button.textContent = unitNo ? `${unitNo} no.lu BB` : `${memberOrder + 1}. BB`;
+      button.addEventListener("click", () => {
+        if (unitIndex === state.activeTitleUnitIndex) return;
+        if (!switchActiveTitleUnit(unitIndex)) return;
+        saveState();
+        render();
+      });
+      innerTabs.append(button);
+    });
+    wrap.append(innerTabs);
+  }
+
+  const note = document.createElement("p");
+  note.className = "muted-note title-unit-tab-bar-note";
+  note.textContent = "Blok sekmesinde girilen Ana Gayrimenkul bilgileri (teknik özellikler, kat dağılımı, Ana Gayrimenkul Açıklaması) o bloktaki TÜM bağımsız bölümlere otomatik uygulanır.";
   wrap.append(note);
 
   return wrap;
@@ -3266,7 +3494,11 @@ function clearLandOwnershipDependentData(value) {
   const exactKeys = new Set([
     "buildingFloorCounts", "carpark", "elevator", "exteriorCladding", "stairLanding", "interiorWalls",
     "buildingEntranceDoor", "buildingFootprintReference", "buildingEntranceLevel", "buildingEntranceDirection",
-    "buildingSocialFacilities", "legalArea", "currentArea", "unitFloor", "unitAreaReductionRate",
+    // 2026-08-20: "buildingSocialFacilities" BAYAT bir anahtardı — gerçek
+    // alan adı `socialFacilities` (building prefiksi yok, createBuildingSocialFacilitiesControl
+    // ile yazılıyor). Düzeltilmeden önce sosyal tesis verisi Arsa/Tarla'ya
+    // geçişte hiç temizlenmiyordu.
+    "socialFacilities", "legalArea", "currentArea", "unitFloor", "unitAreaReductionRate",
     "unitLegalTerrace", "unitCurrentTerrace", "unitTerraceReductionRate", "interiorFeatures", "landNote",
     "legalRentArea", "currentRentArea",
     "legalRent", "currentRent", "legalRentUnit", "currentRentUnit",
@@ -3527,6 +3759,19 @@ function renderSection() {
   if (section.id === "valuation" && isCurrentUserAdmin() && state.fields.requestType === "Çoklu Talep") {
     body.append(createTitleUnitTabBar());
     body.append(createValuationUnitsSummaryTablePreview());
+  }
+
+  // Kullanıcı talebi (2026-08-20): "Ana gayrimenkul bölümünde blok bazında
+  // açıklama olsun kaç adet blok var ise belgeler bölümünde yer aldığı gibi
+  // blok bazında o kadar ana gayrimenkul açıklaması olsun." — Belgeler'in
+  // 2 katmanlı Blok → Bağımsız Bölüm tab yapısının BİREBİR ikizi, AYNI
+  // kısıt (yalnızca Dikey/Yatay Kat İrtifakı + birden fazla blok varken).
+  // Belgeler'in AKSİNE düz-tab-bar/özet-tablo FALLBACK'i YOK (istenmedi) —
+  // blok-gruplama aktif değilken (Müstakil Bina Çoklu Talep veya tek-bloklu
+  // Kat İrtifakı) building alanları sessizce taşınmaza-özgü kalır, UI
+  // eklenmez.
+  if (section.id === "building" && isCurrentUserAdmin() && state.fields.requestType === "Çoklu Talep" && isBuildingBlockGroupingActive()) {
+    body.append(createBuildingBlockTabBar());
   }
 
   const sectionVariantGroups = isCurrentUserAdmin() ? getVariantGroupsForSection(section.id) : [];
@@ -9272,6 +9517,11 @@ function createBuildingFloorDistribution() {
     state.tables.buildingFloors = buildBuildingFloorRowsFromCounts(nextCounts, state.tables.buildingFloors || []);
     updateBuildingFloorTotals();
     refreshMainPropertyFloorCountTextFromCounts({ force: true });
+    // Blok bazlı paylaşım (2026-08-20) — buildingFloorCounts/buildingFloors
+    // tablosu burada TOPTAN yeniden üretiliyor; renderSection() sonrasında
+    // dolaylı olarak da tetiklenir (bkz. updateBuildingFloorSummary) ama
+    // netlik için burada da elle çağrılır.
+    syncBuildingSharedDataToBlockSiblings();
     autosave();
     renderValidation();
     updateStatus();
@@ -9389,6 +9639,11 @@ function commitBuildingAgeOverride(input) {
     state.fields.buildingAgeManualOverride = Boolean(completion.isoDate && proposedAge !== calculatedAge) || !completion.isoDate;
     input.value = proposedAge;
     refreshBuildingDepreciationFromCurrentFields("buildingAge");
+    // Blok bazlı paylaşım (2026-08-20) — buildingAge/buildingAgeManualOverride
+    // mainPropertyDescriptionAutoRefreshFields'te OLMADIĞINDAN
+    // refreshMainPropertyDescriptionFromCurrentFields'in genel senkron
+    // çağrısı buraya ulaşmıyor, elle eklenir.
+    syncBuildingSharedDataToBlockSiblings();
     autosave();
     renderValidation();
     updateStatus();
@@ -9848,6 +10103,10 @@ function createBuildingFloorRowsTable() {
         const formattedValue = normalizeLowercaseFreeText(input.value);
         input.value = formattedValue;
         row[column.key] = formattedValue;
+        // Blok bazlı paylaşım (2026-08-20) — "input" olayı satırı zaten
+        // senkronladı, ama blur'daki büyük/küçük harf normalizasyonu
+        // SONRADAN değiştiriyor; drift olmaması için tekrar senkronlanır.
+        syncBuildingSharedDataToBlockSiblings();
         autosave();
       });
       td.append(input);
@@ -9976,6 +10235,9 @@ function createMainPropertyDescriptionPanel() {
   textarea.value = nextDescription;
   textarea.addEventListener("input", (event) => {
     state.fields.mainPropertyDescription = event.target.value;
+    // Blok bazlı paylaşım (2026-08-20) — elle düzenlenen Ana Gayrimenkul
+    // Açıklaması da aynı bloktaki diğer bağımsız bölümlere yansır.
+    syncBuildingSharedDataToBlockSiblings();
     autosave();
     renderValidation();
     updateStatus();
@@ -9984,6 +10246,7 @@ function createMainPropertyDescriptionPanel() {
     const formattedValue = normalizeReportDescriptionText(textarea.value);
     textarea.value = formattedValue;
     state.fields.mainPropertyDescription = formattedValue;
+    syncBuildingSharedDataToBlockSiblings();
     autosave();
   });
 
@@ -9995,6 +10258,7 @@ function createMainPropertyDescriptionPanel() {
   refreshButton.textContent = "Ana taşınmaz açıklamasını yenile";
   refreshButton.addEventListener("click", () => {
     state.fields.mainPropertyDescription = buildMainPropertyDescription();
+    syncBuildingSharedDataToBlockSiblings();
     autosave();
     renderSection();
     renderValidation();
@@ -10021,6 +10285,7 @@ function createMainPropertyFloorCountTextControl() {
     const upperValue = formatMainPropertyFloorCountText(event.target.value);
     event.target.value = upperValue;
     state.fields.mainPropertyFloorCountText = upperValue;
+    syncBuildingSharedDataToBlockSiblings();
     autosave();
     renderValidation();
     updateStatus();
@@ -10029,6 +10294,7 @@ function createMainPropertyFloorCountTextControl() {
     const upperValue = formatMainPropertyFloorCountText(input.value);
     input.value = upperValue;
     state.fields.mainPropertyFloorCountText = upperValue;
+    syncBuildingSharedDataToBlockSiblings();
     autosave();
   });
   label.classList.add("has-field-copy");
@@ -10087,6 +10353,16 @@ function refreshMainPropertyDescriptionFromCurrentFields(changedKey = "") {
   if (control && control.value !== nextDescription) {
     control.value = nextDescription;
   }
+  // mainPropertyDescriptionAutoRefreshFields'in kapsadığı TÜM anahtarlar
+  // (buildingStyle/buildingOrder/buildingClass/carpark/elevator/exteriorCladding/
+  // stairLanding/interiorWalls/buildingEntranceDoor/buildingFootprintReference/
+  // buildingEntranceLevel/buildingEntranceDirection/socialFacilities/
+  // buildingBlockCount/buildingSubjectBlockPosition/buildingFloorRows vb.)
+  // AYNI zamanda blok-paylaşımlı Ana Gayrimenkul alanları — bu tek çağrı
+  // noktası, building bölümünün en yaygın 7 commit noktasını (genel select
+  // alanları, sosyal tesisler, blok adedi/konumu, kat satırı düzenlemeleri)
+  // TEK yerden kapsar.
+  syncBuildingSharedDataToBlockSiblings();
 }
 
 function buildMainPropertyDescription(options = {}) {

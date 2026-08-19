@@ -112,6 +112,11 @@ const functionNames = [
   "isComparablesSharedForLandReport",
   "isLandOwnershipType",
   "normalizeOwnershipTypeForSectionVisibility",
+  // Bağımsız Bölüm/Ana Gayrimenkul scoping-gap-fix (2026-08-20) -
+  // getTitleUnitScopedFieldKeys() artik getUnitSectionFieldKeys()'e ve
+  // getBuildingSectionFieldKeys()'e KOSULSUZ bagimli.
+  "getUnitSectionFieldKeys",
+  "getBuildingSectionFieldKeys",
 ];
 
 // Çoklu Excel akışında ana form bölümlerinin tamamı taşınmaz kapsamındadır.
@@ -157,10 +162,19 @@ let sections = [
   // shared setinde - gercek TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS'teki
   // ayrimi yansitir).
   { id: "valuation", fields: [{ key: "legalValue" }, { key: "currentValue" }, { key: "saleabilityNote" }] },
+  // Bağımsız Bölüm/Ana Gayrimenkul scoping-gap-fix testi (2026-08-20) icin
+  // fixture'a eklendi - gercek app.js'teki "building" bolumu section.fields'i
+  // LITERAL BOS DIZI (hicbir alan deklaratif degil, tum alanlar
+  // getBuildingSectionFieldKeys() ile programatik eklenir) - fixture bunu
+  // birebir yansitir.
+  { id: "building", fields: [] },
 ];
 let state = null;
-const TITLE_UNIT_SCOPED_SECTION_IDS = ["address", "title", "encumbrance", "planning", "land", "documents", "comparables", "valuation"];
-const TITLE_UNIT_SCOPED_TABLE_KEYS_BASE = ["title", "encumbrance", "encumbranceDeclarations", "encumbranceAnnotations", "encumbranceMortgages", "comparables"];
+// "unit"/"building" (2026-08-20) - gercek TITLE_UNIT_SCOPED_SECTION_IDS'in
+// (app.js) guncel halini yansitir; onceden bu fixture kopyasi bayatlamisti
+// (bkz. asagidaki senaryo 6 duzeltmesi).
+const TITLE_UNIT_SCOPED_SECTION_IDS = ["address", "title", "encumbrance", "planning", "land", "documents", "comparables", "valuation", "unit", "building"];
+const TITLE_UNIT_SCOPED_TABLE_KEYS_BASE = ["title", "encumbrance", "encumbranceDeclarations", "encumbranceAnnotations", "encumbranceMortgages", "comparables", "unitFloors", "buildingFloors"];
 const TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS = new Set(["transport", "nearby", "environmentDescription", "takbisSummary", "reviewedDocumentsDescription", "comparableMarketAnalysisText", "saleabilityNote"]);
 ${functionNames.map(extractFunction).join("\n")}
 return {
@@ -305,7 +319,7 @@ function freshState(overrides = {}) {
   console.log("Ek tasinmaz silme (birincile doner, birincil silinemez) testi tamam.");
 }
 
-// --- 6) Paylaşımlı/kapsam-dışı alanlar hiçbir geçişte değişmez ----------
+// --- 6) Paylaşımlı alanlar hiçbir geçişte değişmez; "unit" ARTIK sızmıyor
 {
   const state = freshState({ fields: { city: "Ankara", blockNo: "1", parcelNo: "1", legalArea: "120" } });
   sandbox.setState(state);
@@ -313,8 +327,16 @@ function freshState(overrides = {}) {
   sandbox.fns.switchActiveTitleUnit(newIndex);
   const afterAdd = sandbox.getState();
   assert.equal(afterAdd.fields.city, undefined, "\"address\" sekmesi alanı (city) yeni taşınmazda boş olmalı.");
-  assert.equal(afterAdd.fields.legalArea, "120", "\"unit\" sekmesi alanı (legalArea) KAPSAM DIŞI olduğu için taşınmaz geçişinden etkilenmemeli (Faz 2 bilinçli sınırlama).");
-  console.log("Paylasimli/kapsam-disi alanlarin etkilenmemesi testi tamam.");
+  // 2026-08-20 DUZELTME: bu iddia ONCEDEN (yanlislikla) "legalArea KAPSAM
+  // DISI, sizmamali" diyordu - oysa gercek app.js'te "unit" HER ZAMAN
+  // TITLE_UNIT_SCOPED_SECTION_IDS'teydi ve legalArea section.fields'ta
+  // deklaratifti (hidden:true), yani ZATEN dogru scoped'du. Bu fixture'in
+  // KENDI TITLE_UNIT_SCOPED_SECTION_IDS kopyasi bayatlamis oldugundan test
+  // yanlislikla "gecmiyor" olarak "gecen" bir iddiayi dogruluyordu. Simdi
+  // fixture guncellendi (yukarida) - dogru davranis: legalArea DE taşınmaza
+  // ozgu, yeni taşınmazda BOS olmali.
+  assert.equal(afterAdd.fields.legalArea, undefined, "\"unit\" sekmesi alanı (legalArea) taşınmaza-özgüdür, yeni taşınmazda BOŞ olmalı (sızma YOK).");
+  console.log("Paylasimli alanlarin etkilenmemesi + unit'in artik sizmamasi testi tamam.");
 }
 
 // --- 7) "Talep Türü" alanı ve gizleme güvenlik ağı (kaynak-düzeyi) ------
@@ -919,6 +941,89 @@ assert.match(appSource, /panel\.dataset\.parcelScope = mixedParcels \? "mixed" :
   assert.equal(primaryAgain.fields.legalValueUnit, "5000", "Birincilin legalValueUnit'i korunmali.");
   assert.equal(primaryAgain.fields.legalValueUserDefined, "1", "Birincilin Arsa-ozel manuel-bayragi korunmali.");
   console.log("Degerleme Piyasa Degeri alan/birim/manuel-bayrak alanlari unit-scoped round-trip testi tamam.");
+}
+
+// --- 30) Bağımsız Bölüm (unit): programatik alanlar artik SIZMIYOR --------
+// (2026-08-20, scoping-gap-fix) - unitSalonFloor/unitInteriorDescription
+// vb. ~50 alan section.fields'ta deklaratif OLMADIGINDAN daha once HIC
+// toplanmiyordu (documents/valuation'la AYNI hata sinifi).
+{
+  const state = freshState({
+    fields: {
+      ...freshState().fields,
+      unitUsageStatus: "Mesken", unitSalonFloor: "Seramik", unitInteriorDescription: "İç mekan metni",
+      unitInteriorDescriptionManual: "1", facades: "Kuzey, Güney",
+    },
+  });
+  sandbox.setState(state);
+  const newIndex = sandbox.fns.addTitleUnitTab();
+  sandbox.fns.switchActiveTitleUnit(newIndex);
+  const secondUnit = sandbox.getState();
+  assert.equal(secondUnit.fields.unitUsageStatus, undefined, "REGRESYON: 2. tasinmaza unitUsageStatus SIZMAMALI.");
+  assert.equal(secondUnit.fields.unitSalonFloor, undefined, "REGRESYON: 2. tasinmaza unitSalonFloor (dekoratif panel) SIZMAMALI.");
+  assert.equal(secondUnit.fields.unitInteriorDescription, undefined, "REGRESYON: 2. tasinmaza unitInteriorDescription SIZMAMALI.");
+  assert.equal(secondUnit.fields.facades, undefined, "REGRESYON: 2. tasinmaza facades SIZMAMALI.");
+
+  sandbox.fns.switchActiveTitleUnit(0);
+  const primaryAgain = sandbox.getState();
+  assert.equal(primaryAgain.fields.unitSalonFloor, "Seramik", "Birincilin unitSalonFloor'u round-trip korunmali.");
+  assert.equal(primaryAgain.fields.unitInteriorDescriptionManual, "1", "Birincilin unitInteriorDescriptionManual bayragi korunmali.");
+  console.log("Bagimsiz Bolum (unit) programatik alanlari artik sizmiyor (round-trip) testi tamam.");
+}
+
+// --- 31) Ana Gayrimenkul (building): programatik alanlar artik SIZMIYOR ---
+// (2026-08-20, scoping-gap-fix) - section.fields LITERAL BOS DIZI oldugundan
+// bu bolumun HICBIR alani daha once toplanmiyordu (6 bolumun en ciddi
+// bosluguydu - tab degistirmenin HICBIR etkisi yoktu).
+{
+  const state = freshState({
+    fields: {
+      ...freshState().fields,
+      buildingStyle: "Betonarme", buildingAge: "10 yıl", buildingAgeManualOverride: "1",
+      socialFacilities: "Yüzme Havuzu, Spor Salonu", mainPropertyDescription: "Ana gayrimenkul metni",
+    },
+  });
+  sandbox.setState(state);
+  const newIndex = sandbox.fns.addTitleUnitTab();
+  sandbox.fns.switchActiveTitleUnit(newIndex);
+  const secondUnit = sandbox.getState();
+  assert.equal(secondUnit.fields.buildingStyle, undefined, "REGRESYON: 2. tasinmaza buildingStyle SIZMAMALI.");
+  assert.equal(secondUnit.fields.buildingAge, undefined, "REGRESYON: 2. tasinmaza buildingAge SIZMAMALI.");
+  assert.equal(secondUnit.fields.socialFacilities, undefined, "REGRESYON: 2. tasinmaza socialFacilities SIZMAMALI.");
+  assert.equal(secondUnit.fields.mainPropertyDescription, undefined, "REGRESYON: 2. tasinmaza mainPropertyDescription SIZMAMALI.");
+
+  sandbox.fns.switchActiveTitleUnit(0);
+  const primaryAgain = sandbox.getState();
+  assert.equal(primaryAgain.fields.buildingStyle, "Betonarme", "Birincilin buildingStyle'i round-trip korunmali.");
+  assert.equal(primaryAgain.fields.buildingAgeManualOverride, "1", "Birincilin buildingAgeManualOverride bayragi korunmali.");
+  assert.equal(primaryAgain.fields.mainPropertyDescription, "Ana gayrimenkul metni", "Birincilin mainPropertyDescription'i round-trip korunmali.");
+  console.log("Ana Gayrimenkul (building) programatik alanlari artik sizmiyor (round-trip) testi tamam.");
+}
+
+// --- 32) unitFloors/buildingFloors tablolari artik SIZMIYOR ---------------
+// (2026-08-20) - getTitleUnitScopedTableKeys() TITLE_UNIT_SCOPED_TABLE_KEYS_BASE'e
+// eklendi, snapshotTitleUnitScopedData/applyTitleUnitScopedData bu iki
+// anahtari da tablolar icin ayni genel mekanizmayla kapsiyor.
+{
+  const state = freshState({
+    tables: {
+      title: [{ c0: "MALİK BİR" }],
+      unitFloors: [{ floorName: "Zemin", residential: "1" }],
+      buildingFloors: [{ floorName: "Zemin", residential: "1" }],
+    },
+  });
+  sandbox.setState(state);
+  const newIndex = sandbox.fns.addTitleUnitTab();
+  sandbox.fns.switchActiveTitleUnit(newIndex);
+  const secondUnit = sandbox.getState();
+  assert.equal(secondUnit.tables.unitFloors, undefined, "REGRESYON: 2. tasinmaza unitFloors tablosu SIZMAMALI.");
+  assert.equal(secondUnit.tables.buildingFloors, undefined, "REGRESYON: 2. tasinmaza buildingFloors tablosu SIZMAMALI.");
+
+  sandbox.fns.switchActiveTitleUnit(0);
+  const primaryAgain = sandbox.getState();
+  assert.deepEqual(primaryAgain.tables.unitFloors, [{ floorName: "Zemin", residential: "1" }], "Birincilin unitFloors tablosu round-trip korunmali.");
+  assert.deepEqual(primaryAgain.tables.buildingFloors, [{ floorName: "Zemin", residential: "1" }], "Birincilin buildingFloors tablosu round-trip korunmali.");
+  console.log("unitFloors/buildingFloors tablolari artik sizmiyor (round-trip) testi tamam.");
 }
 
 console.log("Coklu TAKBIS Faz 2 tab-anahtarlama motoru testleri basarili.");

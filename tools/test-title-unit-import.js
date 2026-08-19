@@ -85,6 +85,10 @@ const functionNames = [
   "isLandOwnershipType",
   "normalizeOwnershipTypeForSectionVisibility",
   "foldTurkish",
+  // Bağımsız Bölüm/Ana Gayrimenkul scoping-gap-fix (2026-08-20) -
+  // getTitleUnitScopedFieldKeys() artik bunlara da KOSULSUZ bagimli.
+  "getUnitSectionFieldKeys",
+  "getBuildingSectionFieldKeys",
 ];
 
 const sandboxSource = `

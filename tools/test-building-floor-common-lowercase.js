@@ -109,6 +109,11 @@ function runTableScenario(rows) {
     },
     updateBuildingFloorTotals: () => {},
     updateBuildingFloorSummary: () => {},
+    // 2026-08-20: syncBuildingSharedDataToBlockSiblings() blok bazli
+    // paylasim icin satir input/blur dinleyicilerine eklendi (bkz.
+    // tools/test-building-block-shared-sync.js, bu fonksiyonun kendi
+    // testi) - burada davranissal olarak KAPSAM DISI, no-op stub yeterli.
+    syncBuildingSharedDataToBlockSiblings: () => {},
     autosave: () => {
       context.autosaveCalls = (context.autosaveCalls || 0) + 1;
     },
