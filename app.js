@@ -5667,8 +5667,8 @@ function createSingleStructureCostMethodPanel() {
       gridColumn("Yapı Adı", 3, "right", true),
       gridColumn("Yapı Sınıfı", 1),
       gridColumn("Yapı Alanı", 2),
-      gridColumn("Yıpranma Oranı", 1),
-      gridColumn("Yapı Birim Değeri", 3),
+      gridColumn("Yıpranma Oranı", 2),
+      gridColumn("Yapı Birim Değeri", 2),
       gridColumn("Yapı Değeri", 2),
     ];
   const currentBuildingColumns = currentShowsConstructionLevel
@@ -5685,8 +5685,8 @@ function createSingleStructureCostMethodPanel() {
       gridColumn("Yapı Adı", 3, "right", true),
       gridColumn("Yapı Sınıfı", 1),
       gridColumn("Yapı Alanı", 2),
-      gridColumn("Yıpranma Oranı", 1),
-      gridColumn("Yapı Birim Değeri", 3),
+      gridColumn("Yıpranma Oranı", 2),
+      gridColumn("Yapı Birim Değeri", 2),
       gridColumn("Yapı Değeri", 2),
     ];
   const premiumColumns = [
