@@ -101,6 +101,17 @@ const functionNames = [
   // KOSULSUZ bagimli (documents'in paylasim modeli de degismiyor, land ile
   // AYNI mantik).
   "getDocumentsPerUnitOnlyFieldKeys",
+  // Degerleme (valuation) scoping-gap-fix (2026-08-19, devam) -
+  // getTitleUnitScopedFieldKeys() artik getValuationPerUnitOnlyFieldKeys()'e
+  // KOSULSUZ bagimli (valuation'in paylasim modeli de degismiyor).
+  "getValuationPerUnitOnlyFieldKeys",
+  // Emsaller (comparables) Arsa/Tarla'da paylasimli (2026-08-19, devam) -
+  // TITLE_UNIT_SCOPED_TABLE_KEYS artik getTitleUnitScopedTableKeys()
+  // fonksiyonuna cevrildi (isComparablesSharedForLandReport kosuluyla).
+  "getTitleUnitScopedTableKeys",
+  "isComparablesSharedForLandReport",
+  "isLandOwnershipType",
+  "normalizeOwnershipTypeForSectionVisibility",
 ];
 
 // Çoklu Excel akışında ana form bölümlerinin tamamı taşınmaz kapsamındadır.
@@ -135,11 +146,22 @@ let sections = [
   // app.js'teki 2026-08-19 cikarimini yansitir), reviewedDocumentsDescription
   // ise hala fixture'in kendi shared setinde (asagida) - degismedi.
   { id: "documents", fields: [{ key: "projectInstitution" }, { key: "projectConformity" }, { key: "projectReviewDescription" }, { key: "reviewedDocumentsDescription" }] },
+  // Emsaller (comparables) Arsa/Tarla'da paylasimli testi (2026-08-19,
+  // devam) icin fixture'a eklendi - gercek app.js'teki comparables
+  // bolumunun kucultulmus bir kopyasi (comparableMarketAnalysisText zaten
+  // shared setinde, asagida).
+  { id: "comparables", fields: [{ key: "comparableMarketAnalysisText" }] },
+  // Degerleme (valuation) scoping-gap-fix testi icin fixture'a eklendi -
+  // gercek app.js'teki valuation bolumunun kucultulmus bir kopyasi
+  // (legalValue/currentValue zaten declaratif/dogru scoped; saleabilityNote
+  // shared setinde - gercek TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS'teki
+  // ayrimi yansitir).
+  { id: "valuation", fields: [{ key: "legalValue" }, { key: "currentValue" }, { key: "saleabilityNote" }] },
 ];
 let state = null;
-const TITLE_UNIT_SCOPED_SECTION_IDS = ["address", "title", "encumbrance", "planning", "land", "documents"];
-const TITLE_UNIT_SCOPED_TABLE_KEYS = ["title", "encumbrance", "encumbranceDeclarations", "encumbranceAnnotations", "encumbranceMortgages"];
-const TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS = new Set(["transport", "nearby", "environmentDescription", "takbisSummary", "reviewedDocumentsDescription"]);
+const TITLE_UNIT_SCOPED_SECTION_IDS = ["address", "title", "encumbrance", "planning", "land", "documents", "comparables", "valuation"];
+const TITLE_UNIT_SCOPED_TABLE_KEYS_BASE = ["title", "encumbrance", "encumbranceDeclarations", "encumbranceAnnotations", "encumbranceMortgages", "comparables"];
+const TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS = new Set(["transport", "nearby", "environmentDescription", "takbisSummary", "reviewedDocumentsDescription", "comparableMarketAnalysisText", "saleabilityNote"]);
 ${functionNames.map(extractFunction).join("\n")}
 return {
   fns: { ${functionNames.join(", ")} },
@@ -825,6 +847,78 @@ assert.match(appSource, /panel\.dataset\.parcelScope = mixedParcels \? "mixed" :
   const primaryAgain = sandbox.getState();
   assert.equal(primaryAgain.fields.projectConformity, "Birincilin aciklamasi", "Birincilin projectConformity'si 2. tasinmazdan ETKILENMEDEN (taşınmaza-özgü) korunmali.");
   console.log("projectConformity/projectReviewDescription artik tasinmaza-ozgu (rapor-geneli paylasim CIKARILDI) testi tamam.");
+}
+
+// --- 27) Emsaller (comparables): Arsa/Tarla Coklu Talep'te PAYLASIMLI -----
+// Kullanici talebi (2026-08-19, devam): "COKLU ARSA TARLA raporlarinda
+// emsaller ortak olmali. yani her tasinmaz icin ayri emsal girilmemeli."
+{
+  const state = freshState({
+    fields: { ...freshState().fields, requestType: "Çoklu Talep", ownershipType: "Arsa", comparableMarketAnalysisText: "ORTAK METIN" },
+    tables: { title: [{ c0: "MALİK BİR" }], comparables: [{ c0: "Emsal 1" }] },
+  });
+  sandbox.setState(state);
+  assert.equal(sandbox.fns.isComparablesSharedForLandReport(), true, "Arsa + Coklu Talep icin paylasimli olmali (fixture kontrolu).");
+  const newIndex = sandbox.fns.addTitleUnitTab();
+  sandbox.fns.switchActiveTitleUnit(newIndex);
+  const afterAdd = sandbox.getState();
+  // "comparables" section'in declaratif alani (comparableMarketAnalysisText)
+  // ZATEN shared setinde (TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS) - bu
+  // yeni ozellikten BAGIMSIZ olarak degismemeliydi (regresyon kontrolu).
+  assert.equal(afterAdd.fields.comparableMarketAnalysisText, "ORTAK METIN", "comparableMarketAnalysisText zaten paylasimli - yeni tasinmazda da AYNI kalmali.");
+  // "comparables" TABLOSU (Emsal kayitlari) - YENI ozellik: Arsa/Tarla
+  // Coklu Talep'te bu da paylasimli olmali (yeni bos tasinmaza gecince
+  // BOSALMAMALI, ayni satirlar gorunmeye devam etmeli).
+  assert.deepEqual(afterAdd.tables.comparables, [{ c0: "Emsal 1" }], "KULLANICI TALEBI: Emsal kayitlari tablosu Arsa/Tarla Coklu Talep'te paylasimli olmali - yeni tasinmaza gecince BOSALMAMALI.");
+  console.log("Emsaller (comparables) Arsa/Tarla Coklu Talep'te paylasimli olma testi tamam.");
+}
+
+// --- 28) Emsaller: Musteakil Bina/Tekli Talep'te davranis DEGISMEZ --------
+{
+  const state = freshState({
+    fields: { ...freshState().fields, requestType: "Çoklu Talep", ownershipType: "Yatay Kat İrtifakı" },
+    tables: { title: [{ c0: "MALİK BİR" }], comparables: [{ c0: "Emsal 1" }] },
+  });
+  sandbox.setState(state);
+  assert.equal(sandbox.fns.isComparablesSharedForLandReport(), false, "Kat Irtifaki'nda paylasimli OLMAMALI (fixture kontrolu).");
+  const newIndex = sandbox.fns.addTitleUnitTab();
+  sandbox.fns.switchActiveTitleUnit(newIndex);
+  const afterAdd = sandbox.getState();
+  assert.equal(afterAdd.tables.comparables, undefined, "REGRESYON: Kat Irtifaki'nda (Arsa/Tarla DISI) Emsal kayitlari tablosu HALA tasinmaza-ozgu olmali (yeni tasinmazda BOS).");
+  console.log("Emsaller Kat Irtifaki/Musteakil disinda davranis DEGISMEZ (regresyon) testi tamam.");
+}
+
+// --- 29) Degerleme: Piyasa Degeri alan/birim/manuel-bayrak alanlari -------
+// artik tab degistirince SIZMIYOR (2026-08-19, devam, scoping-gap-fix) -
+// kullanici bildirmeden ONCE kesfedilen sessiz kusur: bu alanlar
+// section.fields'ta deklaratif OLMADIGINDAN getTitleUnitScopedFieldKeys()
+// bunlari HIC toplamiyordu.
+{
+  const state = freshState({
+    fields: {
+      ...freshState().fields,
+      legalValueArea: "100", legalValueUnit: "5000", legalValue: "500000",
+      legalValueComparableAutoManual: "1", legalValueUserDefined: "1",
+    },
+  });
+  sandbox.setState(state);
+  const newIndex = sandbox.fns.addTitleUnitTab();
+  sandbox.fns.switchActiveTitleUnit(newIndex);
+  const secondUnit = sandbox.getState();
+  assert.equal(secondUnit.fields.legalValueArea, undefined, "REGRESYON: 2. (yeni/bos) tasinmaza legalValueArea SIZMAMALI.");
+  assert.equal(secondUnit.fields.legalValueUnit, undefined, "REGRESYON: 2. tasinmaza legalValueUnit SIZMAMALI.");
+  assert.equal(secondUnit.fields.legalValueComparableAutoManual, undefined, "REGRESYON: 2. tasinmaza manuel-bayrak SIZMAMALI.");
+  assert.equal(secondUnit.fields.legalValueUserDefined, undefined, "REGRESYON: 2. tasinmaza Arsa-ozel manuel-bayrak SIZMAMALI.");
+  // legalValue (declaratif, zaten dogru scoped) da ayni sekilde bos olmali -
+  // regresyon kontrolu (bu PR'dan ONCE de dogruydu).
+  assert.equal(secondUnit.fields.legalValue, undefined, "legalValue (declaratif) zaten dogru tasinmaza-ozguydu - hala oyle olmali.");
+
+  sandbox.fns.switchActiveTitleUnit(0);
+  const primaryAgain = sandbox.getState();
+  assert.equal(primaryAgain.fields.legalValueArea, "100", "Birincilin legalValueArea'si sizinti olmadan (round-trip) korunmali.");
+  assert.equal(primaryAgain.fields.legalValueUnit, "5000", "Birincilin legalValueUnit'i korunmali.");
+  assert.equal(primaryAgain.fields.legalValueUserDefined, "1", "Birincilin Arsa-ozel manuel-bayragi korunmali.");
+  console.log("Degerleme Piyasa Degeri alan/birim/manuel-bayrak alanlari unit-scoped round-trip testi tamam.");
 }
 
 console.log("Coklu TAKBIS Faz 2 tab-anahtarlama motoru testleri basarili.");

@@ -20,7 +20,7 @@
     const fields = input.fields || {};
     const ownership = fold(fields.ownershipType);
     if (ownership === "ARSA" || ownership === "TARLA") {
-      return buildLandComparableMarketAnalysisText(input, fields, input.rows || [], ownership === "TARLA" ? "tarla" : "arsa");
+      return buildLandComparableMarketAnalysisText(input, fields, input.rows || [], ownership === "TARLA" ? "tarla" : "arsa", Boolean(input.isMultiUnit));
     }
     const rows = getComparableAnalysisRows(input.rows || []);
     const neighborhood = cleanText(fields.titleNeighborhood || fields.neighborhood || "ilgili");
@@ -61,10 +61,18 @@
     return normalizeParagraphs(paragraphs.join("\n\n"));
   }
 
-  function buildLandComparableMarketAnalysisText(input, fields, sourceRows, landType) {
+  // Kullanıcı talebi (2026-08-19): "ÇOKLU ARSA TARLA raporlarında emsaller
+  // ortak olmalı ... yalnızca emsal açıklamalarını çoğul şekilde güncelle
+  // taşınmaz yerine taşınmazlar vb." — `isMultiUnit` true iken (Arsa/Tarla
+  // Çoklu Talep raporu, bkz. app.js isComparablesSharedForLandReport) her
+  // paragrafın TEKİL yerine ÇOĞUL (elle yazılmış, ayrı) varyantları
+  // kullanılır — bu kod tabanının HER YERDE izlediği "varyant metinleri
+  // elle yazılır, regex ile tekil→çoğul çevirimi YAPILMAZ" ilkesi
+  // (linguistik risk nedeniyle) burada da korunur.
+  function buildLandComparableMarketAnalysisText(input, fields, sourceRows, landType, isMultiUnit) {
     const rows = getComparableAnalysisRows(sourceRows);
     const neighborhood = cleanText(fields.titleNeighborhood || fields.neighborhood || "ilgili");
-    const street = cleanText(fields.street || fields.mainArtery || "yak\u0131n \u00e7evre");
+    const street = cleanText(fields.street || fields.mainArtery || "yakın çevre");
     const locationText = buildLocationText(neighborhood, street);
     const comparableCount = rows.length;
     const marketingRange = calculateMarketingRange(rows);
@@ -73,26 +81,39 @@
     const appraisedUnitValue = selectAppraisedUnitValue(fields, unitValueSummary);
     const microMarketRadius = calculateMicroMarketRadius(rows);
     const marketingText = marketingRange
-      ? `B\u00f6lgedeki ${landType} piyasas\u0131nda, arz edilen ta\u015f\u0131nmazlar\u0131n beyan edilen y\u00fcz\u00f6l\u00e7\u00fcmlerinin pazarlama a\u015famas\u0131nda ${formatMarketingRange(marketingRange)} farkl\u0131l\u0131k g\u00f6sterebildi\u011fi tespit edilmi\u015ftir.`
-      : `B\u00f6lgedeki ${landType} piyasas\u0131nda, arz edilen ta\u015f\u0131nmazlar\u0131n beyan edilen y\u00fcz\u00f6l\u00e7\u00fcmlerinin pazarlama a\u015famas\u0131nda farkl\u0131l\u0131k g\u00f6sterebildi\u011fi tespit edilmi\u015ftir.`;
+      ? `Bölgedeki ${landType} piyasasında, arz edilen taşınmazların beyan edilen yüzölçümlerinin pazarlama aşamasında ${formatMarketingRange(marketingRange)} farklılık gösterebildiği tespit edilmiştir.`
+      : `Bölgedeki ${landType} piyasasında, arz edilen taşınmazların beyan edilen yüzölçümlerinin pazarlama aşamasında farklılık gösterebildiği tespit edilmiştir.`;
+    const microMarketSubjectPhrase = isMultiUnit ? "değerleme konusu taşınmazları" : "değerleme konusu taşınmazı";
     const microMarketText = Number.isFinite(microMarketRadius) && microMarketRadius > 0
-      ? ` Piyasa \u00e7al\u0131\u015fmalar\u0131 kapsam\u0131nda verilerin do\u011frulu\u011funu ve homojenli\u011fini sa\u011flamak ad\u0131na; de\u011ferleme konusu ta\u015f\u0131nmaz\u0131 merkez alan ve ${formatMoney(microMarketRadius)} metrelik etki yar\u0131\u00e7ap\u0131 i\u00e7erisinde kalan emsal veriler de\u011ferlendirmeye dahil edilmi\u015ftir.`
+      ? ` Piyasa çalışmaları kapsamında verilerin doğruluğunu ve homojenliğini sağlamak adına; ${microMarketSubjectPhrase} merkez alan ve ${formatMoney(microMarketRadius)} metrelik etki yarıçapı içerisinde kalan emsal veriler değerlendirmeye dahil edilmiştir.`
       : "";
+    const p1Variants = isMultiUnit ? [
+      `Değerleme konusu taşınmazların konumlu olduğu ${locationText} yürütülen saha çalışmaları kapsamında; taşınmazlar ile benzer imar koşullarına, yüzölçümüne ve konum özelliklerine sahip toplam ${comparableCount} adet ${landType} emsali değerlendirmeye dahil edilmiştir.${microMarketText} ${marketingText} Bu doğrultuda, değerleme tablosunda yer alan emsal yüzölçümleri ve indirgenmiş m² birim değerleri değerlendirmeye esas alınmıştır.`,
+      `Değerlemeye konu taşınmazların bulunduğu ${locationText} gerçekleştirilen yerinde incelemeler kapsamında; taşınmazlarla benzer imar durumuna, yüzölçümüne ve konum niteliklerine sahip toplam ${comparableCount} adet ${landType} emsali değerlendirmeye alınmıştır.${microMarketText} ${marketingText} Buna göre, değerleme tablosundaki emsal yüzölçümleri ve indirgenmiş m² birim değerleri değerlendirmeye dahil edilmiştir.`,
+    ] : [
+      `Değerleme konusu taşınmazın konumlu olduğu ${locationText} yürütülen saha çalışmaları kapsamında; taşınmaz ile benzer imar koşullarına, yüzölçümüne ve konum özelliklerine sahip toplam ${comparableCount} adet ${landType} emsali değerlendirmeye dahil edilmiştir.${microMarketText} ${marketingText} Bu doğrultuda, değerleme tablosunda yer alan emsal yüzölçümleri ve indirgenmiş m² birim değerleri değerlendirmeye esas alınmıştır.`,
+      `Değerlemeye konu taşınmazın bulunduğu ${locationText} gerçekleştirilen yerinde incelemeler kapsamında; taşınmazla benzer imar durumuna, yüzölçümüne ve konum niteliklerine sahip toplam ${comparableCount} adet ${landType} emsali değerlendirmeye alınmıştır.${microMarketText} ${marketingText} Buna göre, değerleme tablosundaki emsal yüzölçümleri ve indirgenmiş m² birim değerleri değerlendirmeye dahil edilmiştir.`,
+    ];
+    const p2Variants = isMultiUnit ? [
+      `Bölgede yapılan detaylı piyasa araştırmaları, yerel gayrimenkul danışmanları ile gerçekleştirilen görüşmeler ve toplanan verilerin değerlendirilmesi sonucunda; emsallerin konum, yüzölçümü, imar yapılaşma nizamı, Emsal/KAKS oranı ve imar lejantı gibi birim değerini doğrudan etkileyen kriterleri ${correctionDirection} konu taşınmazların nihai birim değer takdirinde karşılaştırma tablosu olarak kullanılmıştır.`,
+      `Bölgede gerçekleştirilen kapsamlı piyasa incelemeleri, yerel emlak danışmanlarıyla yapılan görüşmeler ve elde edilen verilerin analiz edilmesi neticesinde; emsallerin konum, yüzölçümü, imar yapılaşma nizamı, Emsal/KAKS oranı ve imar lejantı gibi birim değeri doğrudan etkileyen unsurları ${correctionDirection} taşınmazların nihai birim değer tespitinde karşılaştırma tablosu şeklinde kullanılmıştır.`,
+    ] : [
+      `Bölgede yapılan detaylı piyasa araştırmaları, yerel gayrimenkul danışmanları ile gerçekleştirilen görüşmeler ve toplanan verilerin değerlendirilmesi sonucunda; emsallerin konum, yüzölçümü, imar yapılaşma nizamı, Emsal/KAKS oranı ve imar lejantı gibi birim değerini doğrudan etkileyen kriterleri ${correctionDirection} konu taşınmazın nihai birim değer takdirinde karşılaştırma tablosu olarak kullanılmıştır.`,
+      `Bölgede gerçekleştirilen kapsamlı piyasa incelemeleri, yerel emlak danışmanlarıyla yapılan görüşmeler ve elde edilen verilerin analiz edilmesi neticesinde; emsallerin konum, yüzölçümü, imar yapılaşma nizamı, Emsal/KAKS oranı ve imar lejantı gibi birim değeri doğrudan etkileyen unsurları ${correctionDirection} gayrimenkulün nihai birim değer tespitinde karşılaştırma tablosu şeklinde kullanılmıştır.`,
+    ];
     const paragraphs = [
-      pickVariant(input, "buildLandComparableMarketAnalysisText:p1", [
-        `De\u011ferleme konusu ta\u015f\u0131nmaz\u0131n konumlu oldu\u011fu ${locationText} y\u00fcr\u00fct\u00fclen saha \u00e7al\u0131\u015fmalar\u0131 kapsam\u0131nda; ta\u015f\u0131nmaz ile benzer imar ko\u015fullar\u0131na, y\u00fcz\u00f6l\u00e7\u00fcm\u00fcne ve konum \u00f6zelliklerine sahip toplam ${comparableCount} adet ${landType} emsali de\u011ferlendirmeye dahil edilmi\u015ftir.${microMarketText} ${marketingText} Bu do\u011frultuda, de\u011ferleme tablosunda yer alan emsal y\u00fcz\u00f6l\u00e7\u00fcmleri ve indirgenmi\u015f m\u00b2 birim de\u011ferleri de\u011ferlendirmeye esas al\u0131nm\u0131\u015ft\u0131r.`,
-        `De\u011ferlemeye konu ta\u015f\u0131nmaz\u0131n bulundu\u011fu ${locationText} ger\u00e7ekle\u015ftirilen yerinde incelemeler kapsam\u0131nda; ta\u015f\u0131nmazla benzer imar durumuna, y\u00fcz\u00f6l\u00e7\u00fcm\u00fcne ve konum niteliklerine sahip toplam ${comparableCount} adet ${landType} emsali de\u011ferlendirmeye al\u0131nm\u0131\u015ft\u0131r.${microMarketText} ${marketingText} Buna g\u00f6re, de\u011ferleme tablosundaki emsal y\u00fcz\u00f6l\u00e7\u00fcmleri ve indirgenmi\u015f m\u00b2 birim de\u011ferleri de\u011ferlendirmeye dahil edilmi\u015ftir.`,
-      ]),
-      pickVariant(input, "buildLandComparableMarketAnalysisText:p2", [
-        `B\u00f6lgede yap\u0131lan detayl\u0131 piyasa ara\u015ft\u0131rmalar\u0131, yerel gayrimenkul dan\u0131\u015fmanlar\u0131 ile ger\u00e7ekle\u015ftirilen g\u00f6r\u00fc\u015fmeler ve toplanan verilerin de\u011ferlendirilmesi sonucunda; emsallerin konum, y\u00fcz\u00f6l\u00e7\u00fcm\u00fc, imar yap\u0131la\u015fma nizam\u0131, Emsal/KAKS oran\u0131 ve imar lejant\u0131 gibi birim de\u011ferini do\u011frudan etkileyen kriterleri ${correctionDirection} konu ta\u015f\u0131nmaz\u0131n nihai birim de\u011fer takdirinde kar\u015f\u0131la\u015ft\u0131rma tablosu olarak kullan\u0131lm\u0131\u015ft\u0131r.`,
-        `B\u00f6lgede ger\u00e7ekle\u015ftirilen kapsaml\u0131 piyasa incelemeleri, yerel emlak dan\u0131\u015fmanlar\u0131yla yap\u0131lan g\u00f6r\u00fc\u015fmeler ve elde edilen verilerin analiz edilmesi neticesinde; emsallerin konum, y\u00fcz\u00f6l\u00e7\u00fcm\u00fc, imar yap\u0131la\u015fma nizam\u0131, Emsal/KAKS oran\u0131 ve imar lejant\u0131 gibi birim de\u011feri do\u011frudan etkileyen unsurlar\u0131 ${correctionDirection} gayrimenkul\u00fcn nihai birim de\u011fer tespitinde kar\u015f\u0131la\u015ft\u0131rma tablosu \u015feklinde kullan\u0131lm\u0131\u015ft\u0131r.`,
-      ]),
+      pickVariant(input, "buildLandComparableMarketAnalysisText:p1", p1Variants),
+      pickVariant(input, "buildLandComparableMarketAnalysisText:p2", p2Variants),
     ];
     if (unitValueSummary && Number.isFinite(appraisedUnitValue)) {
-      paragraphs.push(pickVariant(input, "buildLandComparableMarketAnalysisText:p3", [
-        `Yap\u0131lan d\u00fczeltmeler sonucunda, emsallerin konu ta\u015f\u0131nmaza indirgenmi\u015f birim de\u011ferlerinin ${formatMoney(unitValueSummary.min)} TL/m\u00b2 ile ${formatMoney(unitValueSummary.max)} TL/m\u00b2 aral\u0131\u011f\u0131nda dengelendi\u011fi g\u00f6r\u00fclm\u00fc\u015ft\u00fcr. Bu do\u011frultuda, ta\u015f\u0131nmaz\u0131n nihai birim de\u011feri ${formatMoney(appraisedUnitValue)} TL/m\u00b2 olarak takdir edilmi\u015ftir.`,
-        `Uygulanan d\u00fczeltmeler neticesinde, emsallerin ta\u015f\u0131nmaza indirgenmi\u015f birim de\u011ferlerinin ${formatMoney(unitValueSummary.min)} TL/m\u00b2 ile ${formatMoney(unitValueSummary.max)} TL/m\u00b2 band\u0131nda dengelendi\u011fi g\u00f6r\u00fclm\u00fc\u015ft\u00fcr. Bu do\u011frultuda, ta\u015f\u0131nmaz\u0131n nihai birim de\u011feri ${formatMoney(appraisedUnitValue)} TL/m\u00b2 olarak takdir edilmi\u015ftir.`,
-      ]));
+      const p3Variants = isMultiUnit ? [
+        `Yapılan düzeltmeler sonucunda, emsallerin konu taşınmazlara indirgenmiş birim değerlerinin ${formatMoney(unitValueSummary.min)} TL/m² ile ${formatMoney(unitValueSummary.max)} TL/m² aralığında dengelendiği görülmüştür. Bu doğrultuda, taşınmazların nihai birim değeri ${formatMoney(appraisedUnitValue)} TL/m² olarak takdir edilmiştir.`,
+        `Uygulanan düzeltmeler neticesinde, emsallerin taşınmazlara indirgenmiş birim değerlerinin ${formatMoney(unitValueSummary.min)} TL/m² ile ${formatMoney(unitValueSummary.max)} TL/m² bandında dengelendiği görülmüştür. Bu doğrultuda, taşınmazların nihai birim değeri ${formatMoney(appraisedUnitValue)} TL/m² olarak takdir edilmiştir.`,
+      ] : [
+        `Yapılan düzeltmeler sonucunda, emsallerin konu taşınmaza indirgenmiş birim değerlerinin ${formatMoney(unitValueSummary.min)} TL/m² ile ${formatMoney(unitValueSummary.max)} TL/m² aralığında dengelendiği görülmüştür. Bu doğrultuda, taşınmazın nihai birim değeri ${formatMoney(appraisedUnitValue)} TL/m² olarak takdir edilmiştir.`,
+        `Uygulanan düzeltmeler neticesinde, emsallerin taşınmaza indirgenmiş birim değerlerinin ${formatMoney(unitValueSummary.min)} TL/m² ile ${formatMoney(unitValueSummary.max)} TL/m² bandında dengelendiği görülmüştür. Bu doğrultuda, taşınmazın nihai birim değeri ${formatMoney(appraisedUnitValue)} TL/m² olarak takdir edilmiştir.`,
+      ];
+      paragraphs.push(pickVariant(input, "buildLandComparableMarketAnalysisText:p3", p3Variants));
     }
     return normalizeParagraphs(paragraphs.join("\n\n"));
   }

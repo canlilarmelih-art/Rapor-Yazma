@@ -118,6 +118,15 @@ const functionNames = [
   // Belgeler ve Proje scoping-gap-fix (2026-08-19) - getTitleUnitScopedFieldKeys()
   // artık buna da KOŞULSUZ bağımlı.
   "getDocumentsPerUnitOnlyFieldKeys",
+  // Degerleme scoping-gap-fix + Emsaller (comparables) Arsa/Tarla paylasimi
+  // (2026-08-19, devam) - getTitleUnitScopedFieldKeys()/getTitleUnitScopedTableKeys()
+  // artik bunlara bagimli.
+  "getValuationPerUnitOnlyFieldKeys",
+  "getTitleUnitScopedTableKeys",
+  "isComparablesSharedForLandReport",
+  "isLandOwnershipType",
+  "normalizeOwnershipTypeForSectionVisibility",
+  "foldTurkish",
 ];
 
 const sandboxSource = `
@@ -132,7 +141,7 @@ let sections = [
 ];
 let state = null;
 const TITLE_UNIT_SCOPED_SECTION_IDS = ["address", "title"];
-const TITLE_UNIT_SCOPED_TABLE_KEYS = ["title"];
+const TITLE_UNIT_SCOPED_TABLE_KEYS_BASE = ["title", "comparables"];
 ${sharedKeysSource}
 ${functionNames.map(extractFunction).join("\n")}
 return {

@@ -618,6 +618,10 @@
     // görünürlük kuralı ada/parsel DEĞİL BLOK (bkz.
     // buildDocumentsUnitsSummaryTableData/isDocumentsScopedByBlock, app.js).
     TASINMAZLARBELGETABLOSU: { h: () => safeCall("buildDocumentsUnitsSummaryWordTableHtml") },
+    // Değerleme (2026-08-19) — yukarıdakilerle AYNI desen; görünürlük
+    // kuralı en basiti (yalnızca 2+ taşınmaz, bkz. buildValuationUnitsSummaryTableData,
+    // app.js) — Değerleme değerleri her zaman taşınmaza-özgüdür.
+    TASINMAZLARDEGERLEMETABLOSU: { h: () => safeCall("buildValuationUnitsSummaryWordTableHtml") },
     GABIMVERISETI: { h: () => safeCall("buildGabimDataSetWordHtml") },
     HISSEACIKLAMASI: { t: () => field("shareExplanation"), paragraphClass: "share-explanation" },
     EKLENTI: { f: ["titleAttachment"] },

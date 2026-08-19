@@ -731,6 +731,12 @@
     if (documentsUnitsSummaryCellGrid) {
       sheets.push({ name: sanitizeSheetName("Taşınmazlar Belgeler Özeti", usedNames), sheetXml: buildSheetXmlFromCellGrid(styleRegistry, documentsUnitsSummaryCellGrid) });
     }
+    // Değerleme (2026-08-19) — yukarıdakilerle AYNI desen; yalnızca 2+
+    // taşınmaz varsa dolu döner (bkz. buildValuationUnitsSummaryTableData, app.js).
+    const valuationUnitsSummaryCellGrid = generatedCellGridFor("buildValuationUnitsSummaryWordTableHtml");
+    if (valuationUnitsSummaryCellGrid) {
+      sheets.push({ name: sanitizeSheetName("Taşınmazlar Değerleme Özeti", usedNames), sheetXml: buildSheetXmlFromCellGrid(styleRegistry, valuationUnitsSummaryCellGrid) });
+    }
 
     const rawGridDefs = collectRawGridDefs();
     const takyidatDefs = rawGridDefs.filter((def) => TAKYIDAT_KEYS.includes(def.key));

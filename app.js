@@ -1223,10 +1223,23 @@ const TITLE_UNIT_SCOPED_SECTION_IDS = [
   "case", "address", "title", "encumbrance", "planning", "documents", "land",
   "building", "unit", "comparables", "valuation",
 ];
-const TITLE_UNIT_SCOPED_TABLE_KEYS = [
+const TITLE_UNIT_SCOPED_TABLE_KEYS_BASE = [
   "title", "encumbrance", "documents", "comparables",
   "encumbranceDeclarations", "encumbranceAnnotations", "encumbranceMortgages",
 ];
+// Kullanıcı talebi (2026-08-19): "ÇOKLU ARSA TARLA raporlarında emsaller
+// ortak olmalı" — yalnızca Arsa/Tarla Çoklu Talep raporlarında "comparables"
+// (Emsal kayıtları) tablosu da (fields'lara ek olarak, bkz.
+// isComparablesSharedForLandReport) taşınmaza-özgü scoped set'ten
+// ÇIKARILIR — rapor-geneli TEK bir emsal listesi kalır. Eskiden düz bir
+// `const` idi (TITLE_UNIT_SCOPED_TABLE_KEYS) — İmar'ın getTitleUnitScopedFieldKeys()'teki
+// AYNI koşullu-hariç-tutma deseniyle fonksiyona çevrildi.
+function getTitleUnitScopedTableKeys() {
+  if (isComparablesSharedForLandReport()) {
+    return TITLE_UNIT_SCOPED_TABLE_KEYS_BASE.filter((key) => key !== "comparables");
+  }
+  return TITLE_UNIT_SCOPED_TABLE_KEYS_BASE;
+}
 // Açıklamalar rapor-genelidir. Çoklu tapu sekmeleri arasında taşınmazın
 // teknik verileri (ada/parsel, adres detayları, mesafeler vb.) değişir;
 // ortak rapor anlatımı ve kullanıcı metinleri değişmez.
@@ -1646,6 +1659,12 @@ function getTitleUnitScopedFieldKeys() {
     // 2026-08-16'da applyImarDataToAllTitleUnits() ile TEK kaynaktan
     // (drift riski olmadan) paylaşılan bir çıkarım haline getirildi.
     if (sectionId === "planning") return;
+    // Kullanıcı talebi (2026-08-19): "ÇOKLU ARSA TARLA raporlarında
+    // emsaller ortak olmalı" — yalnızca Arsa/Tarla Çoklu Talep raporlarında
+    // "comparables" (Emsaller) bölümünün alanları scoped set'e HİÇ
+    // eklenmez (rapor-geneli paylaşımlı kalır) — bkz. isComparablesSharedForLandReport.
+    // Diğer mülkiyet türlerinde/Tekli Talep'te davranış DEĞİŞMİYOR.
+    if (sectionId === "comparables" && isComparablesSharedForLandReport()) return;
     const section = sections.find((item) => item.id === sectionId);
     (section?.fields || []).forEach((field) => {
       // Talep Türü rapor-genelidir; taşınmaz tabına geçerken birim verisiyle
@@ -1688,7 +1707,38 @@ function getTitleUnitScopedFieldKeys() {
   // idempotent-launching-kernighan.md). "documents" paylaşım modeli
   // DEĞİŞMİYOR (her zaman taşınmaza-özgü) — KOŞULSUZ eklenir.
   getDocumentsPerUnitOnlyFieldKeys().forEach((key) => keys.add(key));
+  // "valuation" (Değerleme) alanlarının çoğu declaratif (legalValue vb.,
+  // hidden:true olsalar da scoping döngüsü hidden'a bakmaz, doğru
+  // toplanıyor) — AMA Piyasa Değeri tablosunun alan/birim ALT alanları
+  // (legalValueArea/currentValueArea/legalRentArea/currentRentArea/
+  // legalValueUnit/currentValueUnit/legalRentUnit/currentRentUnit) ve
+  // "manuel geçersiz kılma" bayrakları section.fields'ta DEKLARATİF
+  // DEĞİL (createValuationInput ile PROGRAMATİK yazılıyor,
+  // titleChangedRecords/documents'la AYNI sınıf sessiz kusur, 2026-08-19'da
+  // keşfedildi) — bu yüzden BUGÜNE KADAR yanlışlıkla TÜM taşınmazlar
+  // arasında paylaşılıyordu. "valuation" paylaşım modeli DEĞİŞMİYOR (her
+  // zaman taşınmaza-özgü) — KOŞULSUZ eklenir.
+  getValuationPerUnitOnlyFieldKeys().forEach((key) => keys.add(key));
   return keys;
+}
+
+// bkz. yukarıdaki getTitleUnitScopedFieldKeys() yorumu — Piyasa Değeri
+// tablosunun (createValuationMarketTable) alan/birim alt alanları ve
+// manuel-geçersiz-kılma bayrakları, section.fields'ta deklaratif olmayan
+// programatik alanlar. Tam liste `clearLandOwnershipDependentData()`'nın
+// `exactKeys` setinden (bu fonksiyonun ZATEN Arsa/Tarla'ya geçişte
+// temizlediği, dolayısıyla taşınmaza-özgü olması gereken alanları
+// listeleyen kanonik kaynaktan) doğrulanmıştır — tek kanonik kaynak,
+// drift riski olmadan hem scoping-gap-fix hem (ileride gerekirse) başka
+// tüketiciler için.
+function getValuationPerUnitOnlyFieldKeys() {
+  return [
+    "legalValueArea", "currentValueArea", "legalRentArea", "currentRentArea",
+    "legalValueUnit", "currentValueUnit", "legalRentUnit", "currentRentUnit",
+    "legalValueComparableAutoManual", "currentValueComparableAutoManual",
+    "legalRentComparableAutoManual", "currentRentComparableAutoManual",
+    "legalValueUserDefined", "currentValueUserDefined",
+  ];
 }
 
 // bkz. yukarıdaki getTitleUnitScopedFieldKeys() yorumu — "Proje Uygunluk
@@ -1718,7 +1768,7 @@ function snapshotTitleUnitScopedData() {
     if (Object.prototype.hasOwnProperty.call(state.fields, key)) fields[key] = state.fields[key];
   });
   const tables = {};
-  TITLE_UNIT_SCOPED_TABLE_KEYS.forEach((key) => {
+  getTitleUnitScopedTableKeys().forEach((key) => {
     if (state.tables[key] !== undefined) tables[key] = state.tables[key];
   });
   const sourceValues = {};
@@ -1745,7 +1795,7 @@ function applyTitleUnitScopedData(snapshot) {
     }
   });
   const tables = snapshot?.tables || {};
-  TITLE_UNIT_SCOPED_TABLE_KEYS.forEach((key) => {
+  getTitleUnitScopedTableKeys().forEach((key) => {
     if (tables[key] !== undefined) {
       state.tables[key] = tables[key];
     } else {
@@ -2371,6 +2421,40 @@ function createDocumentsUnitsSummaryTablePreview() {
   return wrap;
 }
 
+// Değerleme (2026-08-19) — Tapu/Adres/İmar/Arsa/Belgeler ile BİREBİR aynı
+// desen. Kullanıcı: "değerleme kısmında tab mantığı ve çift taraflı tablo
+// mantığı olmalı" — TEK fark: gate koşulu ada/parsel veya bloğa DEĞİL,
+// yalnızca "2+ taşınmaz var mı"ya bakar (Değerleme değerleri HER ZAMAN
+// taşınmaza-özgüdür, ortak bir alt-küme yok — bkz. isDocumentsBlockGroupingActive
+// gibi bir koşullu paylaşım burada YOK).
+function createValuationUnitsSummaryTablePreview() {
+  const wrap = document.createElement("div");
+  wrap.className = "title-units-summary-table-preview";
+  const heading = document.createElement("h5");
+  heading.textContent = "Taşınmazlar Değerleme Özeti";
+  wrap.append(heading);
+
+  const data = buildValuationUnitsSummaryTableData();
+  if (!data || !data.rows.length) {
+    const note = document.createElement("p");
+    note.className = "muted-note";
+    note.textContent = "Bu tablo yalnızca birden fazla taşınmaz eklendiğinde görünür. Banka şablonlarında {{TASINMAZLARDEGERLEMETABLOSU}} olarak kullanılabilir.";
+    wrap.append(note);
+    return wrap;
+  }
+  const tableHtml = buildTitleUnitsSummaryTableHtmlEditable(data.headers, data.rows, data.columnMeta, state.activeTitleUnitIndex);
+  const tableContainer = document.createElement("div");
+  tableContainer.className = "title-units-summary-table-container";
+  tableContainer.innerHTML = tableHtml;
+  wrap.append(tableContainer);
+  attachTitleUnitsSummaryTableEditing(tableContainer);
+  const hint = document.createElement("p");
+  hint.className = "muted-note";
+  hint.textContent = "Aktif taşınmazın hücrelerine tıklayarak doğrudan düzenleyebilirsiniz (M2 Birim Değeri ve Acil Satış Değeri sütunları salt-okunurdur — otomatik hesaplanır, kendi taşınmazının sekmesinde düzenlenir). Banka şablonlarında {{TASINMAZLARDEGERLEMETABLOSU}} olarak kullanılabilir.";
+  wrap.append(hint);
+  return wrap;
+}
+
 // Kullanıcı talebi (2026-08-15): "tab üzerinden değiştirince tablo
 // değişsin" — Çift Yönlü Düzenleme özelliğinin Faz 1'i (bkz. plan:
 // idempotent-launching-kernighan.md). Taşınmazlar Tapu/Adres Özeti
@@ -2422,6 +2506,14 @@ function refreshDocumentsUnitsSummaryTablePreview() {
   host.replaceWith(createDocumentsUnitsSummaryTablePreview());
 }
 
+// Değerleme (2026-08-19, devam) — yukarıdakilerle AYNI desen.
+function refreshValuationUnitsSummaryTablePreview() {
+  if (activeSectionId !== "valuation") return;
+  const host = document.querySelector(".title-units-summary-table-preview");
+  if (!host) return;
+  host.replaceWith(createValuationUnitsSummaryTablePreview());
+}
+
 // Çift Yönlü Düzenleme, Faz 3 (2026-08-15) — yukarıdaki iki fonksiyonla
 // AYNI "hafif, yerinde değiştir" deseni: tab çubuğunu (createTitleUnitTabBar,
 // yukarıda) TAMAMEN yeniden üretip DOM'da yerine koyar. Ada/Parsel/Blok/
@@ -2447,6 +2539,7 @@ const refreshAddressUnitsSummaryTablePreviewDebounced = debounce(refreshAddressU
 const refreshImarUnitsSummaryTablePreviewDebounced = debounce(refreshImarUnitsSummaryTablePreview, 350);
 const refreshLandUnitsSummaryTablePreviewDebounced = debounce(refreshLandUnitsSummaryTablePreview, 350);
 const refreshDocumentsUnitsSummaryTablePreviewDebounced = debounce(refreshDocumentsUnitsSummaryTablePreview, 350);
+const refreshValuationUnitsSummaryTablePreviewDebounced = debounce(refreshValuationUnitsSummaryTablePreview, 350);
 
 function loadUserDefaults() {
   try {
@@ -3119,6 +3212,17 @@ function isLandOwnershipType(value = state.fields.ownershipType) {
   return ["ARSA", "TARLA"].includes(normalizeOwnershipTypeForSectionVisibility(value));
 }
 
+// Kullanıcı talebi (2026-08-19): "ÇOKLU ARSA TARLA raporlarında emsaller
+// ortak olmalı. yani her taşınmaz için ayrı emsal girilmemeli burada tab
+// mantığı olmasına gerek yok" — yalnızca Arsa/Tarla Çoklu Talep raporlarında
+// "Emsaller" (comparables) bölümünün hem satırları (state.tables.comparables)
+// hem de section.fields'ı taşınmaza-özgü DEĞİL, rapor-geneli TEK olmalı.
+// Kat irtifakı/Müstakil Bina gibi diğer mülkiyet türlerinde davranış
+// DEĞİŞMİYOR (her taşınmazın kendi emsalleri olmaya devam ediyor).
+function isComparablesSharedForLandReport() {
+  return state.fields.requestType === "Çoklu Talep" && isLandOwnershipType();
+}
+
 function isTarlaOwnershipType(value = state.fields.ownershipType) {
   return normalizeOwnershipTypeForSectionVisibility(value) === "TARLA";
 }
@@ -3401,6 +3505,17 @@ function renderSection() {
       body.append(createTitleUnitTabBar());
       body.append(createDocumentsUnitsSummaryTablePreview());
     }
+  }
+
+  // Kullanıcı talebi (2026-08-19, devam): "değerleme kısmında tab mantığı
+  // ve çift taraflı tablo mantığı olmalı" — Tapu/Adres'in EN BASİT deseni
+  // (ada/parsel veya bloğa göre koşullu paylaşım YOK, Değerleme değerleri
+  // HER ZAMAN taşınmaza-özgü): 2+ taşınmaz varsa tab çubuğu + özet tablo.
+  // "Tümüne uygula" butonu BİLİNÇLİ OLARAK YOK (her taşınmazın kendi
+  // değeri farklı olması normal/beklenen, körü körüne kopyalama anlamsız).
+  if (section.id === "valuation" && isCurrentUserAdmin() && state.fields.requestType === "Çoklu Talep") {
+    body.append(createTitleUnitTabBar());
+    body.append(createValuationUnitsSummaryTablePreview());
   }
 
   const sectionVariantGroups = isCurrentUserAdmin() ? getVariantGroupsForSection(section.id) : [];
@@ -5083,6 +5198,90 @@ const valuationUrgentSaleRows = [
   { label: "Mevcut Acil Satış Değeri", marketKey: "currentValue", totalKey: "currentUrgentSaleValue" },
 ];
 
+// Kullanıcı talebi (2026-08-19): "değerleme kısmında tab mantığı ve çift
+// taraflı tablo mantığı olmalı" — kullanıcının netleştirmesiyle (alan×birim
+// detayı DAHİL) kapsam Piyasa Değeri tablosunun TAMAMI. `valuationMarketRows`/
+// `valuationUrgentSaleRows`'un (yukarıda) TEK kaynağından türetilir (drift
+// riski olmadan) — her satır kendi Acil Satış karşılığını (varsa) taşır.
+const VALUATION_UNITS_TABLE_ROW_DEFS = valuationMarketRows.map((row) => {
+  const urgentSaleRow = valuationUrgentSaleRows.find((item) => item.marketKey === row.totalKey);
+  return {
+    ...row,
+    urgentSaleKey: urgentSaleRow ? urgentSaleRow.totalKey : null,
+    urgentSaleLabel: urgentSaleRow ? urgentSaleRow.label : null,
+  };
+});
+
+// Tabloyu (başlıklar + satırlar) hesaplar; YALNIZCA 2+ taşınmaz varsa bir
+// sonuç döner (Tapu/Adres'in en basit deseni — Değerleme değerleri HER
+// ZAMAN taşınmaza-özgüdür, ada/parsel veya bloğa göre koşullu paylaşım
+// YOK). Her satır 3 sütun (Alan `scalar`, M2 Birim Değeri `readonly` —
+// zaten gerçek formda da salt-okunur, bkz. createValuationMarketTable —,
+// [satır adı] Değeri `scalar`) + Yasal/Mevcut Durum satırları için AYRICA
+// Acil Satış Değeri (`readonly` — zaten gerçek formda da salt-okunur, bkz.
+// createValuationUrgentSaleTable) üretir.
+function buildValuationUnitsSummaryTableData() {
+  const units = buildAllTitleUnitsForSummaryTable();
+  if (units.length < 2) return null;
+
+  const headers = ["Sıra No"];
+  const columnMeta = [{ kind: "seq" }];
+  VALUATION_UNITS_TABLE_ROW_DEFS.forEach((row) => {
+    headers.push(`${row.label} - Alan`, `${row.label} - ${row.unitLabel}`, row.label);
+    columnMeta.push(
+      { kind: "scalar", fieldKey: row.areaKey },
+      { kind: "readonly" },
+      { kind: "scalar", fieldKey: row.totalKey },
+    );
+    if (row.urgentSaleKey) {
+      headers.push(row.urgentSaleLabel);
+      columnMeta.push({ kind: "readonly" });
+    }
+  });
+
+  const rows = units.map((unit, index) => {
+    const fields = unit.fields || {};
+    const row = [index + 1];
+    VALUATION_UNITS_TABLE_ROW_DEFS.forEach((rowDef) => {
+      row.push(
+        String(fields[rowDef.areaKey] || "").trim() || "-",
+        String(fields[rowDef.unitKey] || "").trim() || "-",
+        String(fields[rowDef.totalKey] || "").trim() || "-",
+      );
+      if (rowDef.urgentSaleKey) {
+        row.push(String(fields[rowDef.urgentSaleKey] || "").trim() || "-");
+      }
+    });
+    return row;
+  });
+
+  // "eğer sistemde hücrede veri yoksa ... tabloda bu sütunlar gözükmemeli"
+  // (Tapu/Adres/İmar/Arsa/Belgeler tablolarındaki AYNI kural — Arsa/Tarla
+  // raporlarında Kira satırları zaten boş kalacağından, createValuationMarketTable'ın
+  // KENDİ `landOwnership` filtresiyle TUTARLI şekilde bu sütunlar OTOMATİK
+  // kalkar) — TÜM taşınmazlarda boş ("-") kalan bir sütun tamamen kaldırılır.
+  const columnHasData = headers.map((_, columnIndex) => (
+    columnIndex === 0 || rows.some((row) => {
+      const value = row[columnIndex];
+      return value !== undefined && value !== null && String(value).trim() !== "" && String(value).trim() !== "-";
+    })
+  ));
+  const filteredHeaders = headers.filter((_, columnIndex) => columnHasData[columnIndex]);
+  const filteredRows = rows.map((row) => row.filter((_, columnIndex) => columnHasData[columnIndex]));
+  const filteredColumnMeta = columnMeta.filter((_, columnIndex) => columnHasData[columnIndex]);
+
+  return { headers: filteredHeaders, rows: filteredRows, columnMeta: filteredColumnMeta };
+}
+
+// Banka şablonlarına {{TASINMAZLARDEGERLEMETABLOSU}} ile enjekte edilecek
+// gerçek HTML tablo (bkz. template-engine.js) — Tapu/Adres/İmar/Arsa/
+// Belgeler tablolarının export akışıyla BİREBİR AYNI desen.
+function buildValuationUnitsSummaryWordTableHtml() {
+  const data = buildValuationUnitsSummaryTableData();
+  if (!data || !data.rows.length) return "";
+  return buildTitleUnitsSummaryTableHtmlFromData(data.headers, data.rows);
+}
+
 const incompleteConstructionMarketRows = {
   legalValue: {
     label: "Natamam Yasal Durum Değeri",
@@ -6655,6 +6854,10 @@ function createValuationInput(key, label, options = {}) {
     state.fields[key] = event.target.value;
     markValuationManualField(key);
     refreshValuationComputedFields();
+    // Değerleme Özeti tablosu (2026-08-19) — Tapu/Adres/İmar/Arsa/Belgeler'in
+    // AYNI debounce'lu "yazarken tazele" deseni. Panel ekranda değilse
+    // (farklı sekmedeyiz ya da 2+ taşınmaz yoksa) no-op'tur.
+    refreshValuationUnitsSummaryTablePreviewDebounced();
     autosave();
     renderValidation();
     updateStatus();
@@ -6666,6 +6869,7 @@ function createValuationInput(key, label, options = {}) {
     state.fields[key] = formatted;
     markValuationManualField(key);
     refreshValuationComputedFields();
+    refreshValuationUnitsSummaryTablePreviewDebounced();
     autosave();
     renderValidation();
     updateStatus();
@@ -16303,7 +16507,7 @@ function getMultiRequestFieldDefinitions() {
 function getMultiRequestColumnDefinitions() {
   return [
     ...getMultiRequestFieldDefinitions(),
-    ...TITLE_UNIT_SCOPED_TABLE_KEYS.map((key) => ({
+    ...getTitleUnitScopedTableKeys().map((key) => ({
       key: `__table:${key}`,
       label: `Tablo - ${key}`,
       tableKey: key,
@@ -16463,7 +16667,7 @@ function getSectionExcelTableKeys(sectionId) {
     documents: ["documents"],
     comparables: ["comparables"],
   };
-  return (tableKeys[sectionId] || []).filter((key) => TITLE_UNIT_SCOPED_TABLE_KEYS.includes(key));
+  return (tableKeys[sectionId] || []).filter((key) => getTitleUnitScopedTableKeys().includes(key));
 }
 
 function getSectionExcelColumnLetter(index) {
@@ -18110,6 +18314,7 @@ function commitTitleUnitsSummaryCellEdit(fieldKey, rawValue, unitIndex) {
   refreshImarUnitsSummaryTablePreview();
   refreshLandUnitsSummaryTablePreview();
   refreshDocumentsUnitsSummaryTablePreview();
+  refreshValuationUnitsSummaryTablePreview();
   // Faz 3: Ada/Parsel/Blok/Bağımsız Bölüm No gibi alanlar tab çubuğu
   // etiketlerini (computeTitleUnitTabLabel) etkileyebilir — hangi alan
   // düzenlendiğinden bağımsız olarak HER commit'te tab çubuğu da
@@ -35215,6 +35420,11 @@ function buildComparableMarketAnalysisText() {
     fields: state.fields || {},
     rows: getComparableRows(),
     selectVariant,
+    // Kullanıcı talebi (2026-08-19): "ÇOKLU ARSA TARLA raporlarında
+    // emsaller ortak olmalı... yalnızca emsal açıklamalarını çoğul
+    // şekilde güncelle" — yalnızca Arsa/Tarla Çoklu Talep raporlarında
+    // (isComparablesSharedForLandReport) modül ÇOĞUL varyantları kullanır.
+    isMultiUnit: isComparablesSharedForLandReport(),
   });
   state.fields.comparableMarketAnalysisText = text;
   return text;

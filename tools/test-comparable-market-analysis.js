@@ -59,6 +59,43 @@ function main() {
   assert(!parallel.includes("%10 ile %10 aralığında"), "Tek pazarlama bandinda ile/araliginda tekrari olmamali");
   assert(parallel.includes("paralel yönde uyumlandırılarak"), "Sifir duzeltmede paralel yon gelmeli");
 
+  // --- Arsa/Tarla dali: TEKIL (isMultiUnit yok/false) - REGRESYON --------
+  const landSingle = buildComparableMarketAnalysisText({
+    fields: { ownershipType: "Arsa", titleNeighborhood: "Görükle", street: "Üniversite Caddesi", legalValueUnit: "1000" },
+    rows: [
+      { c2: "Satılık", c12: "500", c13: "500", c8: "0", c21: "0%", c9: "0", c22: "0%", c14: "500.000" },
+      { c2: "Satılık", c12: "600", c13: "600", c8: "0", c21: "0%", c9: "0", c22: "0%", c14: "600.000" },
+    ],
+  });
+  assert(landSingle.includes("Değerleme konusu taşınmazın konumlu olduğu"), "REGRESYON: Arsa TEKIL modda 'taşınmazın' (tekil) ifadesi kullanilmali.");
+  assert(landSingle.includes("taşınmaz ile benzer imar koşullarına"), "REGRESYON: Arsa TEKIL modda 'taşınmaz ile' (tekil) ifadesi kullanilmali.");
+  assert(!landSingle.includes("taşınmazların konumlu"), "REGRESYON: Arsa TEKIL modda cogul ifade OLMAMALI.");
+
+  // --- Arsa/Tarla dali: COGUL (isMultiUnit true) - KULLANICI TALEBI ------
+  const landMulti = buildComparableMarketAnalysisText({
+    fields: { ownershipType: "Arsa", titleNeighborhood: "Görükle", street: "Üniversite Caddesi", legalValueUnit: "1000" },
+    rows: [
+      { c2: "Satılık", c12: "500", c13: "500", c8: "0", c21: "0%", c9: "0", c22: "0%", c14: "500.000" },
+      { c2: "Satılık", c12: "600", c13: "600", c8: "0", c21: "0%", c9: "0", c22: "0%", c14: "600.000" },
+    ],
+    isMultiUnit: true,
+  });
+  assert(landMulti.includes("Değerleme konusu taşınmazların konumlu olduğu"), "KULLANICI TALEBI: Arsa COGUL modda 'taşınmazların' (cogul) ifadesi kullanilmali.");
+  assert(landMulti.includes("taşınmazlar ile benzer imar koşullarına"), "KULLANICI TALEBI: Arsa COGUL modda 'taşınmazlar ile' (cogul) ifadesi kullanilmali.");
+  assert(!landMulti.includes("taşınmazın konumlu"), "KULLANICI TALEBI: Arsa COGUL modda TEKIL ifade KALMAMALI.");
+  assert(landMulti.includes("taşınmazların nihai birim değeri"), "KULLANICI TALEBI: Arsa COGUL modda p3 de cogul olmali.");
+
+  // --- Tarla dali: COGUL - "tarla" landType kelimesi de korunmali --------
+  const tarlaMulti = buildComparableMarketAnalysisText({
+    fields: { ownershipType: "Tarla", titleNeighborhood: "Görükle", street: "" },
+    rows: [
+      { c2: "Satılık", c12: "1000", c13: "1000", c8: "0", c21: "0%", c9: "0", c22: "0%", c14: "1.000.000" },
+    ],
+    isMultiUnit: true,
+  });
+  assert(tarlaMulti.includes("adet tarla emsali"), "Tarla dalinda 'tarla' landType kelimesi cogul modda da korunmali.");
+  assert(tarlaMulti.includes("taşınmazların konumlu"), "Tarla COGUL modda da cogul ifade kullanilmali.");
+
   console.log("Emsal piyasa analizi testi tamam.");
 }
 

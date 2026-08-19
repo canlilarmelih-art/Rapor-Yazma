@@ -76,6 +76,15 @@ const functionNames = [
   // Belgeler ve Proje scoping-gap-fix (2026-08-19) - getTitleUnitScopedFieldKeys()
   // artık buna da KOŞULSUZ bağımlı.
   "getDocumentsPerUnitOnlyFieldKeys",
+  // Degerleme scoping-gap-fix + Emsaller (comparables) Arsa/Tarla paylasimi
+  // (2026-08-19, devam) - getTitleUnitScopedFieldKeys()/getTitleUnitScopedTableKeys()
+  // artik bunlara bagimli.
+  "getValuationPerUnitOnlyFieldKeys",
+  "getTitleUnitScopedTableKeys",
+  "isComparablesSharedForLandReport",
+  "isLandOwnershipType",
+  "normalizeOwnershipTypeForSectionVisibility",
+  "foldTurkish",
 ];
 
 const sandboxSource = `
@@ -85,7 +94,7 @@ let sections = [
 ];
 let state = null;
 const TITLE_UNIT_SCOPED_SECTION_IDS = ["title", "encumbrance"];
-const TITLE_UNIT_SCOPED_TABLE_KEYS = ["title", "encumbrance", "encumbranceDeclarations", "encumbranceAnnotations", "encumbranceMortgages"];
+const TITLE_UNIT_SCOPED_TABLE_KEYS_BASE = ["title", "encumbrance", "encumbranceDeclarations", "encumbranceAnnotations", "encumbranceMortgages", "comparables"];
 const TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS = new Set(["transport", "nearby", "environmentDescription", "takbisSummary"]);
 
 let applyCalls = [];
