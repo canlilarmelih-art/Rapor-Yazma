@@ -5648,9 +5648,9 @@ function createSingleStructureCostMethodPanel() {
   const gridColumn = (label, span, align = "right", identity = false) => ({ label, span, align, identity });
   const landColumns = [
     gridColumn("Başlık", 3, "right", true),
+    gridColumn("Arsa m² Birim Değeri", 3),
     gridColumn("Arsa Pay / Payda", 2),
     gridColumn("Yüzölçümü", 2),
-    gridColumn("Arsa m² Birim Değeri", 3),
     gridColumn("Arsa Değeri", 2),
   ];
   const legalBuildingColumns = legalShowsConstructionLevel
@@ -5708,9 +5708,9 @@ function createSingleStructureCostMethodPanel() {
       landColumns,
       [
         landValueHeading,
+        formatSingleStructureCostCell(state.fields.landUnitValue, "TL/m²"),
         `${landShare} / ${landDenominator}`,
         formatSingleStructureCostCell(state.fields.landArea, "m²"),
-        formatSingleStructureCostCell(state.fields.landUnitValue, "TL/m²"),
         formatSingleStructureCostCell(state.fields.landValue, "TL"),
       ],
     ),
