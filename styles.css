@@ -2567,6 +2567,7 @@ td .free-lookup input {
   background: var(--green-soft);
   color: var(--green);
   font-weight: 800;
+  text-align: right;
 }
 
 .single-structure-cost-method-formula {

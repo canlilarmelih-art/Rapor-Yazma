@@ -5618,6 +5618,49 @@ function createSingleStructureCostMethodPanel() {
     return section;
   };
 
+  const createMultiRowSection = (titleText, columns, rows, formulaText = "") => {
+    const section = document.createElement("section");
+    section.className = "single-structure-cost-method-section";
+    const sectionTitle = document.createElement("h5");
+    sectionTitle.textContent = titleText;
+    section.append(sectionTitle);
+
+    const tableShell = document.createElement("div");
+    tableShell.className = "table-shell single-structure-cost-method-shell";
+    const table = document.createElement("table");
+    table.className = "valuation-summary-table single-structure-cost-method-table";
+    const thead = document.createElement("thead");
+    const headerRow = document.createElement("tr");
+    columns.forEach((column) => {
+      const cell = document.createElement("th");
+      cell.textContent = column;
+      headerRow.append(cell);
+    });
+    thead.append(headerRow);
+    const tbody = document.createElement("tbody");
+    rows.forEach((row) => {
+      const valueRow = document.createElement("tr");
+      row.forEach((value, index) => {
+        const cell = document.createElement(index === 0 ? "th" : index === row.length - 1 ? "th" : "td");
+        cell.textContent = value;
+        if (index === row.length - 1) cell.className = "single-structure-cost-method-emphasis";
+        valueRow.append(cell);
+      });
+      tbody.append(valueRow);
+    });
+    table.append(thead, tbody);
+    tableShell.append(table);
+    section.append(tableShell);
+
+    if (formulaText) {
+      const formula = document.createElement("p");
+      formula.className = "single-structure-cost-method-formula";
+      formula.textContent = formulaText;
+      section.append(formula);
+    }
+    return section;
+  };
+
   const buildingClass = state.fields.buildingClass || state.fields.insuranceConstructionClass || "-";
   const buildingName = state.fields.buildingName || "Ana Yapı";
   const landShare = state.fields.share || "-";
@@ -5701,14 +5744,24 @@ function createSingleStructureCostMethodPanel() {
       ],
       currentBuildingFormula,
     ),
-    createSection(
+    createMultiRowSection(
       "Şerefiye / Çevre Düzenlemesi",
-      ["Yasal Şerefiye", "Yasal Oran", "Mevcut Şerefiye", "Mevcut Oran"],
+      ["Durum", "Arsa Değeri", "Yapı Değeri", "Şerefiye Oranı", "Şerefiye Tutarı"],
       [
-        formatSingleStructureCostCell(state.fields.legalPremiumValue, "TL"),
-        formatSingleStructureCostCell(state.fields.legalPremiumRate, "%"),
-        formatSingleStructureCostCell(state.fields.currentPremiumValue, "TL"),
-        formatSingleStructureCostCell(state.fields.currentPremiumRate, "%"),
+        [
+          "Yasal Durum",
+          formatSingleStructureCostCell(state.fields.legalPremiumLandValue || state.fields.landValue, "TL"),
+          formatSingleStructureCostCell(state.fields.legalBuildingValue, "TL"),
+          formatSingleStructureCostCell(state.fields.legalPremiumRate, "%"),
+          formatSingleStructureCostCell(state.fields.legalPremiumValue, "TL"),
+        ],
+        [
+          "Mevcut Durum",
+          formatSingleStructureCostCell(state.fields.currentPremiumLandValue || state.fields.landValue, "TL"),
+          formatSingleStructureCostCell(state.fields.currentBuildingValue, "TL"),
+          formatSingleStructureCostCell(state.fields.currentPremiumRate, "%"),
+          formatSingleStructureCostCell(state.fields.currentPremiumValue, "TL"),
+        ],
       ],
       "Şerefiye = Piyasa Değeri - Arsa Değeri - Yapı Değeri",
     ),
