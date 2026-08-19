@@ -2524,7 +2524,7 @@ td .free-lookup input {
 }
 
 .single-structure-cost-method-table {
-  min-width: 640px;
+  min-width: 980px;
 }
 
 .single-structure-cost-method-table th:first-child {
@@ -2540,6 +2540,14 @@ td .free-lookup input {
 .single-structure-cost-method-table td:last-child {
   color: var(--muted);
   white-space: nowrap;
+}
+
+.single-structure-cost-method-table td:nth-child(4) {
+  min-width: 380px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: pre-line;
 }
 
 .single-structure-cost-method-table .single-structure-cost-method-emphasis th,

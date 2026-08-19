@@ -5412,6 +5412,14 @@ function formatSingleStructureCostCell(value, unit = "") {
   return unit ? `${formatted} ${unit}` : formatted;
 }
 
+function singleStructureCostFormulaValue(value, unit = "") {
+  return formatSingleStructureCostCell(value, unit);
+}
+
+function buildSingleStructureCostFormula(area, unitCost, constructionLevel, depreciationRate, result, unit) {
+  return `${singleStructureCostFormulaValue(area, "m²")} × ${singleStructureCostFormulaValue(unitCost, "TL/m²")} × ${singleStructureCostFormulaValue(constructionLevel, "%")} / 100 × (1 - ${singleStructureCostFormulaValue(depreciationRate, "%")} / 100) = ${singleStructureCostFormulaValue(result, unit)}`;
+}
+
 function buildSingleStructureCostMethodRows() {
   refreshValuationComputedFields();
   return [
@@ -5432,6 +5440,7 @@ function buildSingleStructureCostMethodRows() {
       legal: state.fields.landValue,
       current: state.fields.landValue,
       unit: "TL",
+      calculation: `${singleStructureCostFormulaValue(state.fields.landArea, "m²")} × ${singleStructureCostFormulaValue(state.fields.landUnitValue, "TL/m²")} = ${singleStructureCostFormulaValue(state.fields.landValue, "TL")}`,
       emphasis: true,
     },
     {
@@ -5463,6 +5472,7 @@ function buildSingleStructureCostMethodRows() {
       legal: state.fields.legalBuildingValue,
       current: state.fields.currentBuildingValue,
       unit: "TL",
+      calculation: `Yasal: ${buildSingleStructureCostFormula(state.fields.legalBuildingValueArea, state.fields.legalBuildingUnitCost, state.fields.legalBuildingConstructionLevel, state.fields.legalBuildingDepreciationRate, state.fields.legalBuildingValue, "TL")}\nMevcut: ${buildSingleStructureCostFormula(state.fields.currentBuildingValueArea, state.fields.currentBuildingUnitCost, state.fields.currentBuildingConstructionLevel, state.fields.currentBuildingDepreciationRate, state.fields.currentBuildingValue, "TL")}`,
       emphasis: true,
     },
     {
@@ -5476,6 +5486,7 @@ function buildSingleStructureCostMethodRows() {
       legal: state.fields.legalValue,
       current: state.fields.currentValue,
       unit: "TL",
+      calculation: `Arsa Değeri + Yapı Değeri + Şerefiye / Çevre Düzenlemesi = Yasal: ${singleStructureCostFormulaValue(state.fields.legalValue, "TL")} / Mevcut: ${singleStructureCostFormulaValue(state.fields.currentValue, "TL")}`,
       emphasis: true,
     },
     {
@@ -5483,6 +5494,7 @@ function buildSingleStructureCostMethodRows() {
       legal: state.fields.legalValueUnit,
       current: state.fields.currentValueUnit,
       unit: "TL/m²",
+      calculation: `Toplam Değer / Toplam Alan = Yasal: ${singleStructureCostFormulaValue(state.fields.legalValueUnit, "TL/m²")} / Mevcut: ${singleStructureCostFormulaValue(state.fields.currentValueUnit, "TL/m²")}`,
       emphasis: true,
     },
   ];
@@ -5492,11 +5504,12 @@ function buildSingleStructureCostMethodText() {
   const rows = buildSingleStructureCostMethodRows();
   return [
     "TEK YAPIDAN OLUŞAN GAYRİMENKUL - MALİYET YÖNTEMİ",
-    "Kalem | Yasal Durum | Mevcut Durum | Birim",
+    "Kalem | Yasal Durum | Mevcut Durum | Hesaplama Adımı | Birim",
     ...rows.map((row) => [
       row.label,
       formatSingleStructureCostCell(row.legal),
       formatSingleStructureCostCell(row.current),
+      String(row.calculation || "Girdi").replace(/\n/g, " / "),
       row.unit,
     ].join(" | ")),
   ].join("\n");
@@ -5548,6 +5561,7 @@ function createSingleStructureCostMethodPanel() {
         <th>Kalem</th>
         <th>Yasal Durum</th>
         <th>Mevcut Durum</th>
+        <th>Hesaplama Adımı</th>
         <th>Birim / Açıklama</th>
       </tr>
     </thead>
@@ -5560,6 +5574,7 @@ function createSingleStructureCostMethodPanel() {
       row.label,
       formatSingleStructureCostCell(row.legal),
       formatSingleStructureCostCell(row.current),
+      row.calculation || "Girdi",
       row.unit,
     ].forEach((value, index) => {
       const cell = index === 0 ? document.createElement("th") : document.createElement("td");
