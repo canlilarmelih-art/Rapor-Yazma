@@ -115,6 +115,9 @@ const functionNames = [
   // Arsa Özellikleri scoping-gap-fix (2026-08-17) - getTitleUnitScopedFieldKeys()
   // artık buna KOŞULSUZ bağımlı.
   "getLandSectionFieldKeys",
+  // Belgeler ve Proje scoping-gap-fix (2026-08-19) - getTitleUnitScopedFieldKeys()
+  // artık buna da KOŞULSUZ bağımlı.
+  "getDocumentsPerUnitOnlyFieldKeys",
 ];
 
 const sandboxSource = `

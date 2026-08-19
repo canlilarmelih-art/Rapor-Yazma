@@ -4337,6 +4337,30 @@ table {
   line-height: 1.25;
 }
 
+/* Belgeler ve Proje: Blok → Bağımsız Bölüm 2 katmanlı tab çubuğu
+   (2026-08-19) — dış satır bloklar (.title-unit-tab-bar-tabs, mevcut
+   stil), iç satır (.documents-block-unit-tabs) o bloktaki bağımsız
+   bölümler; hafif bir girinti/çizgiyle görsel olarak "alt katman" hissi
+   verir. */
+.documents-block-unit-tabs {
+  padding-left: 14px;
+  border-left: 2px solid var(--line);
+  margin-left: 2px;
+}
+
+.title-unit-tab-secondary {
+  font-size: 0.64em;
+  min-height: 20px;
+  opacity: 0.9;
+}
+
+.documents-scope-hint {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.68em;
+  color: var(--muted);
+}
+
 /* Taşınmazlar Tapu Özeti (2026-08-14) — tab çubuğunun altında, TÜM
    taşınmazların tapu bilgisini tek tabloda önizler (bkz.
    createTitleUnitsSummaryTablePreview, app.js). */

@@ -34,11 +34,17 @@ const mainGroundStart = appSource.indexOf("function isMainPropertyGroundType(");
 const mainGroundEnd = appSource.indexOf("\n}", mainGroundStart) + 2;
 const ownershipTextStart = appSource.indexOf("function getOwnershipTypeText(");
 const ownershipTextEnd = appSource.indexOf("\n}", ownershipTextStart) + 2;
+// 2026-08-19: isCondominiumOwnershipType() artik saf/parametreli
+// isCondominiumOwnershipTypeValue()'ya devrediyor (Belgeler ve Proje blok/
+// bagimsiz-bolum tab yapisi icin, bkz. plan idempotent-launching-kernighan.md)
+// - bu yuzden o da ayrica extract edilip ONCE calistirilmali.
+const condoValueStart = appSource.indexOf("function isCondominiumOwnershipTypeValue(");
+const condoValueEnd = appSource.indexOf("\n}", condoValueStart) + 2;
 const condoStart = appSource.indexOf("function isCondominiumOwnershipType(");
 const condoEnd = appSource.indexOf("\n}", condoStart) + 2;
 assert(
-  foldStart >= 0 && mainGroundStart >= 0 && ownershipTextStart >= 0 && condoStart >= 0,
-  "foldTurkish / isMainPropertyGroundType / getOwnershipTypeText / isCondominiumOwnershipType bulunamadi."
+  foldStart >= 0 && mainGroundStart >= 0 && ownershipTextStart >= 0 && condoValueStart >= 0 && condoStart >= 0,
+  "foldTurkish / isMainPropertyGroundType / getOwnershipTypeText / isCondominiumOwnershipTypeValue / isCondominiumOwnershipType bulunamadi."
 );
 
 function hiddenFieldsFor(groundType, ownershipType = "") {
@@ -50,6 +56,7 @@ function hiddenFieldsFor(groundType, ownershipType = "") {
   vm.runInContext(appSource.slice(foldStart, foldEnd), context);
   vm.runInContext(appSource.slice(mainGroundStart, mainGroundEnd), context);
   vm.runInContext(appSource.slice(ownershipTextStart, ownershipTextEnd), context);
+  vm.runInContext(appSource.slice(condoValueStart, condoValueEnd), context);
   vm.runInContext(appSource.slice(condoStart, condoEnd), context);
   vm.runInContext(appSource.slice(start, end), context);
   const keys = ["titleQuality", "titleBlockName", "titleEntrance", "titleFloor", "unitNo", "share", "denominator"];

@@ -1245,6 +1245,16 @@ const TITLE_UNIT_SCOPED_TABLE_KEYS = [
 // zaten deklaratif bir alan OLMADIĞI için (getTitleUnitScopedFieldKeys
 // yalnızca sections[].fields'ı tarar) dolaylı olarak zaten paylaşımlıydı;
 // `mainArtery` (görünen ad) da aynı tutarlılıkta paylaşımlı olmalı.
+//
+// 2026-08-19: `projectReviewDescription`/`projectConformity` bu listeden
+// ÇIKARILDI (kullanıcı: "Proje Uygunluk Durumu... bağımsız bölüm bazında
+// kalsın hepsi" — projectConformity, projectSuitabilityStatus'un KENDİ
+// açıklama/not alanı, bkz. createProjectSuitabilityField). Genel döngü
+// (getTitleUnitScopedFieldKeys) onları artık otomatik taşınmaza-özgü
+// toplar. DAVRANIŞ DEĞİŞİKLİĞİ: bu iki alan artık HİÇBİR çoklu-taşınmaz
+// senaryosunda (kat irtifakı olsun olmasın) rapor-geneli paylaşılmıyor —
+// kullanıcının doğrudan talimatının kapsamı, bkz. plan:
+// idempotent-launching-kernighan.md.
 const TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS = new Set([
   "addressRaw",
   "transport",
@@ -1253,8 +1263,6 @@ const TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS = new Set([
   "takbisSummary",
   "planRestrictionNote",
   "planningNote",
-  "projectReviewDescription",
-  "projectConformity",
   "reviewedDocumentsDescription",
   "landNote",
   "landClimateEarthquakeExplanation",
@@ -1343,6 +1351,117 @@ function computeTitleUnitsShareSameBlock(units) {
 function isDocumentsScopedByBlock() {
   const units = buildAllTitleUnitsForSummaryTable();
   return units.length > 1 && !computeTitleUnitsShareSameBlock(units);
+}
+
+// Kullanıcı talebi (2026-08-19): "diyelim ki taşınmazlar toplam 3 blokta
+// yer alıyor. bu 3 bloğu blok bazında gruplandıralım. Belgeler ve proje
+// bölümünde 3 adet tab açılsın." — computeTitleUnitsShareSameBlock()'un
+// (yukarıda) AYNI anahtarını (blockNo+parcelNo+titleBlockName) kullanarak
+// `units`'i (buildAllTitleUnitsForSummaryTable() çıktısı) blok gruplarına
+// ayırır. Her grup `{ key, unitIndices: [...], fields }` döner —
+// `unitIndices`, o bloktaki HER taşınmazın (bağımsız bölümün) global
+// index'i (switchActiveTitleUnit'e doğrudan verilebilir), `fields` ilk
+// üyenin alanları (blok etiketi/gate kontrolü için).
+function computeDocumentsBlockGroups(units) {
+  const groups = [];
+  (units || []).forEach((unit, index) => {
+    const fields = unit?.fields || {};
+    const key = [fields.blockNo, fields.parcelNo, fields.titleBlockName]
+      .map((value) => String(value || "").trim())
+      .join("|");
+    let group = groups.find((item) => item.key === key);
+    if (!group) {
+      group = { key, unitIndices: [], fields };
+      groups.push(group);
+    }
+    group.unitIndices.push(index);
+  });
+  return groups;
+}
+
+// Blok tab etiketi: titleBlockName ("A Blok" vb.) doluysa doğrudan o,
+// boşsa sıra numarasıyla "N. Blok" (computeTitleUnitTabLabel'in taşınmaz
+// etiketi ürettiği ADI kalıbından esinlenerek, ama blok GRANÜLERLİĞİNDE).
+function computeDocumentsBlockLabel(group, allGroups) {
+  const blockName = String(group?.fields?.titleBlockName || "").trim();
+  if (blockName) return blockName;
+  const list = Array.isArray(allGroups) ? allGroups : [group];
+  const fallbackIndex = list.indexOf(group) + 1;
+  return `${fallbackIndex > 0 ? fallbackIndex : 1}. Blok`;
+}
+
+// "Belgeler ve Proje"nin YENİ 2 katmanlı (Blok → Bağımsız Bölüm) tab
+// yapısı ŞU AN anlamlı mı? Kullanıcı netleştirmesi (2026-08-19): bu yapı
+// YALNIZCA Dikey/Yatay Kat İrtifakı raporlarında geçerli ("bu bölümler
+// müstakil binalar için geçerli... bahsettiğimiz mimari yapı dikey ve
+// yatay kat irtifakı için olacak") — Müstakil Bina/Arsa/Tarla çoklu-
+// taşınmaz senaryolarında (nadir ama mümkün) 0.0.479'un ESKİ düz-tab +
+// özet-tablo davranışı FALLBACK olarak korunur (bkz. renderSection gate'i).
+// PRİMARY (units[0]) taşınmazın ownershipType'ı kontrol edilir — "hangi
+// taşınmaz o an aktif" tutarsızlığından kaçınmak için (bir raporun TÜM
+// taşınmazları normalde aynı mülkiyet türünde olur).
+function isDocumentsBlockGroupingActive() {
+  if (state.fields.requestType !== "Çoklu Talep") return false;
+  const units = buildAllTitleUnitsForSummaryTable();
+  if (units.length < 2) return false;
+  if (!isCondominiumOwnershipTypeValue(units[0]?.fields?.ownershipType)) return false;
+  return computeDocumentsBlockGroups(units).length > 1;
+}
+
+// "Belgeler ve Proje"de BLOK BAZINDA ORTAK (bir kez girilip bloktaki TÜM
+// bağımsız bölümlere otomatik uygulanan) alanlar — kullanıcının verdiği
+// TAM liste (2026-08-19): İncelenen Belgeler (ayrı ele alınır, bkz.
+// syncDocumentsSharedDataToBlockSiblings), Proje İncelenen Kurum, İnceleme
+// Yapılan Kurum, Tapu/Belediye Proje Farkı+Türü+Tarihi+No, Ana Gayrimenkul
+// Projesine Uygunluk, EKB grubu, Cezai Karar, Statik Uygunluk, Yapı
+// Denetim Sözleşme Durumu. BİLEREK YOK: hasArchitecturalProject/
+// projectRegisteredInCadastre/3 kadastro detay alanı (müstakil binaya
+// özgü, kullanıcı onayıyla kapsam dışı) — bkz. plan:
+// idempotent-launching-kernighan.md "Kapsam dışı".
+const DOCUMENTS_BLOCK_SHARED_FIELD_KEYS = [
+  "projectInstitution", "documentReviewInstitution", "projectDifference",
+  "projectDate", "projectNo", "projectType",
+  "titleProjectDate", "titleProjectNo", "titleProjectType",
+  "municipalityProjectDate", "municipalityProjectNo", "municipalityProjectType",
+  "mainRealEstateProjectSuitable", "mainRealEstateProjectSuitabilityNote",
+  "hasEkb", "ekbDocumentNo", "ekbIssueDate", "ekbValidUntil", "ekbEnergyClass", "ekbEmissionClass",
+  "penaltyDecision", "penaltyNote",
+  "staticSuitability", "staticSuitabilityNote", "staticSuitabilityExplanation",
+  "buildingInspectionContractActive", "buildingInspectionProgressLevel",
+  "buildingInspectionTerminationDate", "buildingInspectionTerminationLevel", "buildingInspectionExplanation",
+];
+
+// Kullanıcı talebi (2026-08-19): "blok bazında giriş yapıldığında tüm o
+// blokta yer alan bağımsız bölümlere aynı bilgiler girilecek" — İmar/
+// Arsa'nın "tümüne uygula" BUTONUNUN aksine bu senkron HER ilgili
+// değişiklikte OTOMATİK çalışır (buton YOK). Aktif taşınmazın bloğunu
+// bulur, 2+ üyesi yoksa (veya blok-tab yapısı bu an anlamlı değilse)
+// no-op — HANGİ alan değiştiği önemli değil, DOCUMENTS_BLOCK_SHARED_FIELD_KEYS'in
+// TAMAMI + İncelenen Belgeler tablosu her seferinde bloktaki DİĞER
+// taşınmazlara (resolveTitleUnitWriteTarget/resolveTitleUnitDocumentsRowsWriteTarget
+// ile) kopyalanır — küçük blok boyutları için ucuz, tek-alan senkronundan
+// (İmar/Arsa) daha basit ve hatasız. Çağrı noktaları: bkz. plan, madde 7
+// (çoğu zaten var olan "no-op'a düşebilen refresh" hub çağrılarının
+// yanına tek satır olarak eklenir).
+function syncDocumentsSharedDataToBlockSiblings() {
+  if (!isDocumentsBlockGroupingActive()) return;
+  const units = buildAllTitleUnitsForSummaryTable();
+  const groups = computeDocumentsBlockGroups(units);
+  const activeGroup = groups.find((group) => group.unitIndices.includes(state.activeTitleUnitIndex));
+  if (!activeGroup || activeGroup.unitIndices.length < 2) return;
+
+  const sourceFields = state.fields;
+  const sourceDocumentsRows = state.tables?.documents || [];
+  activeGroup.unitIndices.forEach((index) => {
+    if (index === state.activeTitleUnitIndex) return;
+    const targetFields = resolveTitleUnitWriteTarget(index);
+    DOCUMENTS_BLOCK_SHARED_FIELD_KEYS.forEach((key) => {
+      targetFields[key] = sourceFields[key];
+    });
+    const targetRows = resolveTitleUnitDocumentsRowsWriteTarget(index);
+    targetRows.length = 0;
+    sourceDocumentsRows.forEach((row) => targetRows.push({ ...row }));
+  });
 }
 
 // "İmar Durumu" (planning) bölümünün TÜM taşınmaza-özgü olabilecek alan
@@ -1557,7 +1676,38 @@ function getTitleUnitScopedFieldKeys() {
   // sessiz sızıntı kusuru, bkz. getLandSectionFieldKeys() yorumu) — KOŞULSUZ
   // eklenir.
   getLandSectionFieldKeys().forEach((key) => keys.add(key));
+  // "documents" (Belgeler ve Proje) alanlarından bir kısmı ("Proje Uygunluk
+  // Durumu - Bağımsız Bölüm" ve Tapu/Belediye proje FARKLIYSA görünen
+  // varyantları) `createProjectSuitabilityField`/`createProjectSuitabilityPanel`
+  // ile PROGRAMATİK yazılıyor — section.fields'ta DEKLARATİF olarak
+  // listelenmiyor (titleChangedRecords'la AYNI sınıf). Bu yüzden yukarıdaki
+  // genel döngü onları HİÇ toplamıyordu — "documents" TITLE_UNIT_SCOPED_SECTION_IDS'te
+  // olmasına RAĞMEN, tab değiştirince bu alanlar BUGÜNE KADAR (2026-08-19'a
+  // kadar) yanlışlıkla TÜM taşınmazlar arasında paylaşılıyordu (Arsa'nın
+  // popup sızıntısıyla AYNI sınıf sessiz kusur, bkz. plan:
+  // idempotent-launching-kernighan.md). "documents" paylaşım modeli
+  // DEĞİŞMİYOR (her zaman taşınmaza-özgü) — KOŞULSUZ eklenir.
+  getDocumentsPerUnitOnlyFieldKeys().forEach((key) => keys.add(key));
   return keys;
+}
+
+// bkz. yukarıdaki getTitleUnitScopedFieldKeys() yorumu — "Proje Uygunluk
+// Durumu - Bağımsız Bölüm" (ve Tapu/Belediye proje FARKLIYSA görünen
+// varyantları) section.fields'ta deklaratif olmayan, programatik alanlar.
+// Kullanıcı talebi (2026-08-19): "Proje Uygunluk Durumu... bağımsız bölüm
+// bazında kalsın hepsi" — tek kanonik kaynak, drift riski olmadan hem
+// scoping-gap-fix hem (ileride gerekirse) başka tüketiciler için.
+function getDocumentsPerUnitOnlyFieldKeys() {
+  return [
+    "projectSuitabilityStatus",
+    "projectSuitabilitySimpleRepair",
+    "titleProjectSuitabilityStatus",
+    "titleProjectSuitabilityNote",
+    "titleProjectSuitabilitySimpleRepair",
+    "municipalityProjectSuitabilityStatus",
+    "municipalityProjectSuitabilityNote",
+    "municipalityProjectSuitabilitySimpleRepair",
+  ];
 }
 
 // Aktif taşınmazın Tapu/Takyidat alan+tablo verisini state'ten bağımsız bir
@@ -1771,6 +1921,33 @@ function setTitleUnitOwnerRowValue(index, rowIndex, columnKey, value) {
   return true;
 }
 
+// resolveTitleUnitOwnerRowsWriteTarget()'ın (yukarıda) BİREBİR ikizi —
+// yalnızca `tables.title` yerine `tables.documents` ("İncelenen belgeler"
+// tablosu). Belgeler ve Proje blok-senkronunun (syncDocumentsSharedDataToBlockSiblings,
+// 2026-08-19) aktif OLMAYAN blok kardeşlerine tablo satırlarını yazması
+// için — SADECE state mutasyonu yapar, render()/saveState() ÇAĞIRMAZ.
+function resolveTitleUnitDocumentsRowsWriteTarget(index) {
+  if (index === state.activeTitleUnitIndex) {
+    state.tables = state.tables || {};
+    state.tables.documents = state.tables.documents || [];
+    return state.tables.documents;
+  }
+  if (index === 0) {
+    if (!state.primaryTitleUnitShadow || typeof state.primaryTitleUnitShadow !== "object") {
+      state.primaryTitleUnitShadow = { fields: {}, tables: {} };
+    }
+    state.primaryTitleUnitShadow.tables = state.primaryTitleUnitShadow.tables || {};
+    state.primaryTitleUnitShadow.tables.documents = state.primaryTitleUnitShadow.tables.documents || [];
+    return state.primaryTitleUnitShadow.tables.documents;
+  }
+  if (!Array.isArray(state.titleUnits)) state.titleUnits = [];
+  if (!state.titleUnits[index - 1]) state.titleUnits[index - 1] = createEmptyTitleUnit();
+  const unit = state.titleUnits[index - 1];
+  unit.tables = unit.tables || {};
+  unit.tables.documents = unit.tables.documents || [];
+  return unit.tables.documents;
+}
+
 // Boş bir malik satırı ekler, YENİ satırın index'ini döner.
 function addTitleUnitOwnerRow(index) {
   if (!Number.isInteger(index) || index < 0 || index >= getTitleUnitCount()) return -1;
@@ -1872,6 +2049,72 @@ function createTitleUnitTabBar() {
   note.textContent = "Deneysel (Faz 2): birden fazla taşınmaz için Tapu ve Mülkiyet/Takyidat verisi burada ayrı ayrı tutulur ve tab değiştirildiğinde otomatik kaydedilir. Bağımsız Bölüm ve Değerleme sekmeleri henüz bu tab çubuğuna bağlı DEĞİL — o veriler hâlâ tek/paylaşımlı.";
   wrap.append(note);
   note.textContent = "Deneysel: Tapu, Adres ve Takyidat verisi her tasinmaz icin ayri tutulur ve tab degistirildiginde otomatik kaydedilir. Bagimsiz Bolum ve Degerleme verileri henuz bu tab grubuna bagli degildir.";
+
+  return wrap;
+}
+
+// "Belgeler ve Proje"nin YENİ 2 katmanlı (Blok → Bağımsız Bölüm) tab
+// çubuğu (2026-08-19) — createTitleUnitTabBar()'ın (yukarıda) YAPISAL
+// şablonu, AYNI `.title-unit-tab`/`.title-unit-tab-bar-tabs` CSS
+// sınıfları yeniden kullanılır. DIŞ satır = bloklar (tıklama →
+// switchActiveTitleUnit(group.unitIndices[0])); aktif bloğun 2+ üyesi
+// varsa İÇ satır = o bloktaki bağımsız bölümler (tıklama →
+// switchActiveTitleUnit(unitIndex)) — HER İKİ katman da AYNI mevcut
+// switchActiveTitleUnit()/saveState()/render() üçlüsünü kullanır, YENİ
+// bir state-geçiş mekanizması YOK. Taşınmaz ekle/sil butonları BİLEREK
+// YOK (yapısal ekleme/silme Tapu sekmesinin mevcut tab çubuğundan yapılır
+// — bkz. plan "Kapsam dışı").
+function createDocumentsBlockTabBar() {
+  const units = buildAllTitleUnitsForSummaryTable();
+  const groups = computeDocumentsBlockGroups(units);
+
+  const wrap = document.createElement("div");
+  wrap.className = "title-unit-tab-bar documents-block-tab-bar";
+
+  const outerTabs = document.createElement("div");
+  outerTabs.className = "title-unit-tab-bar-tabs";
+  const activeGroup = groups.find((group) => group.unitIndices.includes(state.activeTitleUnitIndex)) || groups[0];
+  groups.forEach((group) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "title-unit-tab";
+    button.classList.toggle("is-active", group === activeGroup);
+    button.textContent = computeDocumentsBlockLabel(group, groups);
+    button.addEventListener("click", () => {
+      if (group === activeGroup) return;
+      if (!switchActiveTitleUnit(group.unitIndices[0])) return;
+      saveState();
+      render();
+    });
+    outerTabs.append(button);
+  });
+  wrap.append(outerTabs);
+
+  if (activeGroup && activeGroup.unitIndices.length > 1) {
+    const innerTabs = document.createElement("div");
+    innerTabs.className = "title-unit-tab-bar-tabs documents-block-unit-tabs";
+    activeGroup.unitIndices.forEach((unitIndex, memberOrder) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "title-unit-tab title-unit-tab-secondary";
+      button.classList.toggle("is-active", unitIndex === state.activeTitleUnitIndex);
+      const unitNo = String(units[unitIndex]?.fields?.unitNo || "").trim();
+      button.textContent = unitNo ? `${unitNo} no.lu BB` : `${memberOrder + 1}. BB`;
+      button.addEventListener("click", () => {
+        if (unitIndex === state.activeTitleUnitIndex) return;
+        if (!switchActiveTitleUnit(unitIndex)) return;
+        saveState();
+        render();
+      });
+      innerTabs.append(button);
+    });
+    wrap.append(innerTabs);
+  }
+
+  const note = document.createElement("p");
+  note.className = "muted-note title-unit-tab-bar-note";
+  note.textContent = "Blok sekmesinde girilen bilgiler (İncelenen Belgeler, EKB, Statik Uygunluk, Yapı Denetim, Proje bilgileri vb.) o bloktaki TÜM bağımsız bölümlere otomatik uygulanır. Yalnızca \"Proje Uygunluk Durumu - Bağımsız Bölüm\" her bağımsız bölüme özeldir.";
+  wrap.append(note);
 
   return wrap;
 }
@@ -3135,17 +3378,25 @@ function renderSection() {
     body.append(createLandApplyAllControl());
     body.append(createLandUnitsSummaryTablePreview());
   }
-  // Kullanıcı talebi (2026-08-19): "BELGELER ve proje bölümünü incele bu
-  // bölümü çoklu formata nasıl uydurabiliriz. burada aynı ada parselde
-  // yer alsa da blok bazında farklı ruhsat iskan veya projeler
-  // olabiliyor." — land gate'iyle AYNI şekil, TEK fark görünürlük koşulu
-  // (ada/parsel DEĞİL, BLOK — bkz. isDocumentsScopedByBlock). "Tümüne
-  // uygula" butonu BİLEREK yok (bkz. plan: idempotent-launching-kernighan.md
-  // — bu bölümün motivasyonu zaten bloklar arası FARKLILIK, körü körüne
-  // kopyalama burada riskli olurdu).
-  if (section.id === "documents" && isCurrentUserAdmin() && state.fields.requestType === "Çoklu Talep" && isDocumentsScopedByBlock()) {
-    body.append(createTitleUnitTabBar());
-    body.append(createDocumentsUnitsSummaryTablePreview());
+  // Kullanıcı talebi (2026-08-19, devam): "diyelim ki taşınmazlar toplam 3
+  // blokta yer alıyor. bu 3 bloğu blok bazında gruplandıralım. Belgeler ve
+  // proje bölümünde 3 adet tab açılsın." — bu, aşağıdaki (2026-08-19'un
+  // AYNI günü daha erken teslim edilen) düz-tab+özet-tablo yaklaşımının
+  // YERİNE geçen GERÇEK bir 2 katmanlı (Blok → Bağımsız Bölüm) tab yapısı,
+  // AMA YALNIZCA Dikey/Yatay Kat İrtifakı raporlarında (kullanıcı: "bu
+  // bölümler müstakil binalar için geçerli... dikey ve yatay kat irtifakı
+  // için olacak" — bkz. isDocumentsBlockGroupingActive). Kat-irtifakı-DIŞI
+  // çoklu-taşınmaz "documents" senaryolarında (nadir: Müstakil Bina/Arsa/
+  // Tarla) ESKİ davranış (düz tab çubuğu + özet tablosu) FALLBACK olarak
+  // korunur — bkz. plan: idempotent-launching-kernighan.md "0.0.479'a ne
+  // olacak?".
+  if (section.id === "documents" && isCurrentUserAdmin() && state.fields.requestType === "Çoklu Talep") {
+    if (isDocumentsBlockGroupingActive()) {
+      body.append(createDocumentsBlockTabBar());
+    } else if (isDocumentsScopedByBlock()) {
+      body.append(createTitleUnitTabBar());
+      body.append(createDocumentsUnitsSummaryTablePreview());
+    }
   }
 
   const sectionVariantGroups = isCurrentUserAdmin() ? getVariantGroupsForSection(section.id) : [];
@@ -3634,6 +3885,13 @@ function createForm(section) {
         refreshImarUnitsSummaryTablePreviewDebounced();
         refreshLandUnitsSummaryTablePreviewDebounced();
         refreshDocumentsUnitsSummaryTablePreviewDebounced();
+      }
+      // Belgeler ve Proje blok-senkronu (2026-08-19) — declaratif ortak
+      // alanlar (projectInstitution/documentReviewInstitution/EKB grubu
+      // vb.) createForm'un genel döngüsünden geçtiğinden BURADA yakalanır;
+      // no-op'a düşebilir (bkz. syncDocumentsSharedDataToBlockSiblings).
+      if (section.id === "documents" && DOCUMENTS_BLOCK_SHARED_FIELD_KEYS.includes(field.key)) {
+        syncDocumentsSharedDataToBlockSiblings();
       }
     });
     if (section.id === "case" && ["legalUsageNature", "currentUsageNature"].includes(field.key)) {
@@ -12458,6 +12716,10 @@ function createProjectDetailField(section, field) {
     clearFieldSourceOwnership(field.key);
     state.fields[field.key] = event.target.value;
     refreshReviewedDocumentsDescriptionFromCurrentFields(field.key);
+    // Belgeler ve Proje blok-senkronu (2026-08-19) — bu fonksiyon documents'e
+    // özgü (proje tarihi/no/türü, tek/Tapu/Belediye varyantları — hepsi
+    // blok ortak).
+    syncDocumentsSharedDataToBlockSiblings();
     autosave();
     renderValidation();
     updateStatus();
@@ -12468,6 +12730,7 @@ function createProjectDetailField(section, field) {
     control.value = formattedValue;
     state.fields[field.key] = formattedValue;
     refreshReviewedDocumentsDescriptionFromCurrentFields(field.key);
+    syncDocumentsSharedDataToBlockSiblings();
     autosave();
     renderValidation();
     updateStatus();
@@ -12475,6 +12738,21 @@ function createProjectDetailField(section, field) {
 
   label.append(createSpan(getFieldDisplayLabel(section.id, field)), control);
   return label;
+}
+
+// Kullanıcı talebi (2026-08-19, Blok/BB tab yapısı, "hem daha sade olacak
+// hem daha kullanıcı dostu"): DOM yeniden konumlandırılmadan (bu fonksiyon
+// zaten karmaşık dallanmalar içeriyor, yeniden yapılandırmak gereksiz risk
+// — bkz. plan idempotent-launching-kernighan.md madde 10), yalnızca hangi
+// kontrolün bağımsız bölüme özel/bloğa ortak olduğunu belirten küçük bir
+// <small> ipucu ekler. isDocumentsBlockGroupingActive() false ise (kat
+// irtifakı DIŞI veya tekil taşınmaz) no-op — hiçbir ipucu eklenmez.
+function createDocumentsScopeHint(text) {
+  if (!isDocumentsBlockGroupingActive()) return null;
+  const hint = document.createElement("small");
+  hint.className = "muted-note documents-scope-hint";
+  hint.textContent = text;
+  return hint;
 }
 
 function createProjectSuitabilityControl() {
@@ -12500,6 +12778,8 @@ function createProjectSuitabilityControl() {
         "municipalityProjectSuitabilitySimpleRepair",
       ),
     );
+    const perUnitHint = createDocumentsScopeHint("Bu bilgi yalnızca bu bağımsız bölüme aittir.");
+    if (perUnitHint) wrapper.append(perUnitHint);
     wrapper.append(createMainRealEstateProjectSuitabilityControl());
   } else {
     wrapper.append(
@@ -12509,9 +12789,13 @@ function createProjectSuitabilityControl() {
         "projectConformity",
         "projectSuitabilitySimpleRepair",
       ),
-      createMainRealEstateProjectSuitabilityControl(),
     );
+    const perUnitHint = createDocumentsScopeHint("Bu bilgi yalnızca bu bağımsız bölüme aittir.");
+    if (perUnitHint) wrapper.append(perUnitHint);
+    wrapper.append(createMainRealEstateProjectSuitabilityControl());
   }
+  const sharedHint = createDocumentsScopeHint("(Blok ortak)");
+  if (sharedHint) wrapper.append(sharedHint);
   wrapper.append(createProjectReviewDescriptionField());
 
   return wrapper;
@@ -12760,6 +13044,9 @@ function createMainRealEstateProjectSuitabilityControl() {
     detailButton.hidden = state.fields[key] !== "Hayır";
     refreshMainPropertyDescriptionFromCurrentFields(key);
     refreshReviewedDocumentsDescriptionFromCurrentFields(key);
+    // Belgeler ve Proje blok-senkronu (2026-08-19) — bu fonksiyon documents'e
+    // özgü ("Ana Gayrimenkul Projesine Uygun Mu?" blok ortak alanlardan).
+    syncDocumentsSharedDataToBlockSiblings();
     autosave();
     renderValidation();
     updateStatus();
@@ -12912,9 +13199,19 @@ function getOwnershipTypeText() {
   return normalizeReportTitleText(state.fields.ownershipType || "").trim();
 }
 
-function isCondominiumOwnershipType() {
-  const folded = foldTurkish(getOwnershipTypeText());
+// 2026-08-19: isCondominiumOwnershipType()'ın saf/parametreli hali —
+// "Belgeler ve Proje" blok/bağımsız-bölüm tab yapısının gate koşulu
+// (isDocumentsBlockGroupingActive) AKTİF OLMAYAN bir taşınmazın (örn.
+// units[0], "primary") ownershipType'ını kontrol edebilmeli. Mevcut
+// isCondominiumOwnershipType() çağıranları (aşağıda, hep aktif
+// state.fields üzerinden) ETKİLENMEDEN bu fonksiyona devrediyor.
+function isCondominiumOwnershipTypeValue(value) {
+  const folded = foldTurkish(normalizeReportTitleText(String(value || "")).trim());
   return folded.includes("DIKEY KAT IRTIFAKI") || folded.includes("YATAY KAT IRTIFAKI");
+}
+
+function isCondominiumOwnershipType() {
+  return isCondominiumOwnershipTypeValue(getOwnershipTypeText());
 }
 
 function isOwnershipProjectDifferenceComparable() {
@@ -14913,6 +15210,14 @@ function createConditionalYesNoControl(field) {
     refreshPenaltyDecisionExplanationFromCurrentFields(field.key);
     refreshStaticSuitabilityExplanationFromCurrentFields(field.key);
     refreshEkbExplanationFromCurrentFields(field.key);
+    // Belgeler ve Proje blok-senkronu (2026-08-19) — bu HUB fonksiyon
+    // İmar/Arazi/Belgeler'de ONLARCA alan için ortak kullanılıyor; diğer
+    // refresh...FromCurrentFields çağrılarıyla AYNI "ilgiliyse çalış,
+    // değilse no-op" deseninde (field.key documents'e özgü DEĞİLSE
+    // DOCUMENTS_BLOCK_SHARED_FIELD_KEYS'te bulunmaz, sessizce atlanır).
+    if (DOCUMENTS_BLOCK_SHARED_FIELD_KEYS.includes(field.key)) {
+      syncDocumentsSharedDataToBlockSiblings();
+    }
     autosave();
     renderValidation();
     updateStatus();
@@ -15497,6 +15802,9 @@ function createDocumentDecisionSelect(field) {
     select.value = nextValue;
     field.onChange?.(nextValue);
     refreshBuildingInspectionExplanationFromCurrentFields(field.key);
+    // Belgeler ve Proje blok-senkronu (2026-08-19) — bu fonksiyon zaten
+    // documents'e özgü (buildingInspectionContractActive/ProgressLevel).
+    syncDocumentsSharedDataToBlockSiblings();
     autosave();
     renderValidation();
     updateStatus();
@@ -15557,6 +15865,8 @@ function openBuildingInspectionTerminationModal(onSave = () => {}) {
     state.fields.buildingInspectionTerminationDate = dateInput.value;
     state.fields.buildingInspectionTerminationLevel = levelSelect.value;
     refreshBuildingInspectionExplanationFromCurrentFields();
+    // Belgeler ve Proje blok-senkronu (2026-08-19) — bu modal documents'e özgü.
+    syncDocumentsSharedDataToBlockSiblings();
     autosave();
     renderValidation();
     updateStatus();
@@ -15622,6 +15932,13 @@ function openConditionalExplanationModal(field, onSave = () => {}) {
     refreshPenaltyDecisionExplanationFromCurrentFields(field.detailKey);
     refreshStaticSuitabilityExplanationFromCurrentFields(field.detailKey);
     refreshEkbExplanationFromCurrentFields(field.detailKey);
+    // Belgeler ve Proje blok-senkronu (2026-08-19) — bu ORTAK modal
+    // penaltyNote/staticSuitabilityNote/mainRealEstateProjectSuitabilityNote
+    // gibi birden fazla bölümün detay notu için kullanılıyor; AYNI
+    // "ilgiliyse çalış, değilse no-op" deseni.
+    if (DOCUMENTS_BLOCK_SHARED_FIELD_KEYS.includes(field.key) || DOCUMENTS_BLOCK_SHARED_FIELD_KEYS.includes(field.detailKey)) {
+      syncDocumentsSharedDataToBlockSiblings();
+    }
     autosave();
     renderValidation();
     updateStatus();
@@ -37615,6 +37932,11 @@ function createTable(section) {
         }
         if (isDocumentsTable) {
           refreshReviewedDocumentsDescriptionFromCurrentRows();
+          // Belgeler ve Proje blok-senkronu (2026-08-19) — "İncelenen
+          // Belgeler" tablosu blok ortak alanlardan; ayrı ele alınır (bkz.
+          // syncDocumentsSharedDataToBlockSiblings, tables.documents'ı
+          // resolveTitleUnitDocumentsRowsWriteTarget ile kopyalar).
+          syncDocumentsSharedDataToBlockSiblings();
           if (key === "c0") {
             renderSection();
           } else {
@@ -37663,6 +37985,7 @@ function createTable(section) {
         }
         if (isDocumentsTable) {
           refreshReviewedDocumentsDescriptionFromCurrentRows();
+          syncDocumentsSharedDataToBlockSiblings();
         }
         autosave();
         if (isDocumentsTable && key === "c2") {
@@ -37699,6 +38022,7 @@ function createTable(section) {
         }
         if (isDocumentsTable) {
           refreshReviewedDocumentsDescriptionFromCurrentRows();
+          syncDocumentsSharedDataToBlockSiblings();
         }
         autosave();
         renderSection();
@@ -37741,6 +38065,7 @@ function createTable(section) {
     }
     if (isDocumentsTable) {
       refreshReviewedDocumentsDescriptionFromCurrentRows();
+      syncDocumentsSharedDataToBlockSiblings();
     }
     autosave();
     renderSection();

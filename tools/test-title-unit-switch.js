@@ -96,6 +96,11 @@ const functionNames = [
   "applyLandDataToAllTitleUnits",
   "calculateAgriculturalTotalCount",
   "roundAgriculturalTreeCount",
+  // Belgeler ve Proje (documents) scoping-gap-fix (2026-08-19) -
+  // getTitleUnitScopedFieldKeys() artik getDocumentsPerUnitOnlyFieldKeys()'e
+  // KOSULSUZ bagimli (documents'in paylasim modeli de degismiyor, land ile
+  // AYNI mantik).
+  "getDocumentsPerUnitOnlyFieldKeys",
 ];
 
 // Çoklu Excel akışında ana form bölümlerinin tamamı taşınmaz kapsamındadır.
@@ -124,11 +129,17 @@ let sections = [
   // PAYLASIMLI oldugu icin BILEREK disarida - gercek TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS'teki
   // ayni ayrimi yansitir).
   { id: "land", fields: [{ key: "landShape" }, { key: "landRoadFrontage" }, { key: "landAgriculturalProduct" }] },
+  // "Belgeler ve Proje" scoping-gap-fix testi (2026-08-19) icin fixture'a
+  // eklendi - projectConformity/projectReviewDescription artik BILEREK
+  // TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS fixture'inda DEGIL (gercek
+  // app.js'teki 2026-08-19 cikarimini yansitir), reviewedDocumentsDescription
+  // ise hala fixture'in kendi shared setinde (asagida) - degismedi.
+  { id: "documents", fields: [{ key: "projectInstitution" }, { key: "projectConformity" }, { key: "projectReviewDescription" }, { key: "reviewedDocumentsDescription" }] },
 ];
 let state = null;
-const TITLE_UNIT_SCOPED_SECTION_IDS = ["address", "title", "encumbrance", "planning", "land"];
+const TITLE_UNIT_SCOPED_SECTION_IDS = ["address", "title", "encumbrance", "planning", "land", "documents"];
 const TITLE_UNIT_SCOPED_TABLE_KEYS = ["title", "encumbrance", "encumbranceDeclarations", "encumbranceAnnotations", "encumbranceMortgages"];
-const TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS = new Set(["transport", "nearby", "environmentDescription", "takbisSummary"]);
+const TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS = new Set(["transport", "nearby", "environmentDescription", "takbisSummary", "reviewedDocumentsDescription"]);
 ${functionNames.map(extractFunction).join("\n")}
 return {
   fns: { ${functionNames.join(", ")} },
@@ -734,6 +745,65 @@ assert.match(appSource, /panel\.dataset\.parcelScope = mixedParcels \? "mixed" :
   assert.equal(copiedItem.productType, "Zeytin", "productType normal sekilde (istisna DISINDA) kopyalanmali.");
   assert.equal(copiedItem.unitCount, "10", "unitCount normal sekilde kopyalanmali.");
   console.log("applyLandDataToAllTitleUnits landAgriculturalProductItems totalCount istisnasi testi tamam.");
+}
+
+// --- 25) Belgeler ve Proje: projectSuitabilityStatus (ve varyantlari) ------
+// artik tab degistirince SIZMIYOR (2026-08-19, scoping-gap-fix) - kullanici
+// bildirmeden ONCE kesfedilen sessiz kusur: bu alanlar section.fields'ta
+// deklaratif OLMADIGINDAN (titleChangedRecords emsaliyle AYNI bosluk
+// sinifi) getTitleUnitScopedFieldKeys() bunlari HIC toplamiyordu - bir
+// tasinmaza "Proje Uygunluk Durumu" girilip baska bir tasinmaza gecilince
+// o deger YANLISLIKLA state.fields'ta kalip YENI tasinmaza "siziyordu".
+{
+  const state = freshState();
+  state.fields.projectSuitabilityStatus = "projeye uygundur.";
+  state.fields.projectSuitabilitySimpleRepair = "Evet";
+  state.fields.titleProjectSuitabilityStatus = "projeye uygundur.";
+  state.fields.titleProjectSuitabilityNote = "Tapu projesi notu";
+  state.fields.municipalityProjectSuitabilityStatus = "projeye uygun degildir.";
+  state.fields.municipalityProjectSuitabilityNote = "Belediye projesi notu";
+  sandbox.setState(state);
+  const newIndex = sandbox.fns.addTitleUnitTab();
+  sandbox.fns.switchActiveTitleUnit(newIndex);
+  const secondUnit = sandbox.getState();
+  assert.equal(secondUnit.fields.projectSuitabilityStatus, undefined, "REGRESYON: 2. (yeni/bos) tasinmaza Proje Uygunluk Durumu SIZMAMALI.");
+  assert.equal(secondUnit.fields.projectSuitabilitySimpleRepair, undefined, "REGRESYON: 2. tasinmaza basit onarim notu SIZMAMALI.");
+  assert.equal(secondUnit.fields.titleProjectSuitabilityStatus, undefined, "REGRESYON: 2. tasinmaza Tapu Projesi Uygunluk Durumu SIZMAMALI.");
+  assert.equal(secondUnit.fields.municipalityProjectSuitabilityStatus, undefined, "REGRESYON: 2. tasinmaza Belediye Projesi Uygunluk Durumu SIZMAMALI.");
+
+  sandbox.fns.switchActiveTitleUnit(0);
+  const primaryAgain = sandbox.getState();
+  assert.equal(primaryAgain.fields.projectSuitabilityStatus, "projeye uygundur.", "Birincilin Proje Uygunluk Durumu sizinti olmadan (round-trip) korunmali.");
+  assert.equal(primaryAgain.fields.titleProjectSuitabilityNote, "Tapu projesi notu", "Birincilin Tapu Projesi notu korunmali.");
+  assert.equal(primaryAgain.fields.municipalityProjectSuitabilityStatus, "projeye uygun degildir.", "Birincilin Belediye Projesi Uygunluk Durumu korunmali.");
+  console.log("Belgeler ve Proje Uygunluk Durumu (projectSuitabilityStatus ve varyantlari) unit-scoped round-trip testi tamam.");
+}
+
+// --- 26) Belgeler ve Proje: projectConformity/projectReviewDescription -----
+// artik RAPOR-GENELI PAYLASIMLI DEGIL, taşınmaza-özgü (2026-08-19) -
+// kullanici: "Proje Uygunluk Durumu... bagimsiz bolum bazinda kalsin
+// hepsi" - bu ikisi TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS'ten
+// CIKARILDIGINDAN artik genel dongu tarafindan otomatik toplaniyor.
+{
+  const state = freshState();
+  state.fields.projectConformity = "Birincilin aciklamasi";
+  state.fields.projectReviewDescription = "Birincilin proje inceleme aciklamasi";
+  state.fields.reviewedDocumentsDescription = "Rapor geneli aciklama";
+  sandbox.setState(state);
+  const newIndex = sandbox.fns.addTitleUnitTab();
+  sandbox.fns.switchActiveTitleUnit(newIndex);
+  const secondUnit = sandbox.getState();
+  assert.equal(secondUnit.fields.projectConformity, undefined, "projectConformity ARTIK tasinmaza-ozgu - 2. (yeni/bos) tasinmaza SIZMAMALI.");
+  assert.equal(secondUnit.fields.projectReviewDescription, undefined, "projectReviewDescription ARTIK tasinmaza-ozgu - 2. tasinmaza SIZMAMALI.");
+  // reviewedDocumentsDescription DEGISMEDI - hala rapor geneli paylasimli,
+  // 2. (yeni) tasinmazda da AYNI deger gorunmeli (REGRESYON kontrolu).
+  assert.equal(secondUnit.fields.reviewedDocumentsDescription, "Rapor geneli aciklama", "REGRESYON: reviewedDocumentsDescription hala rapor geneli paylasimli kalmali.");
+
+  secondUnit.fields.projectConformity = "Ikincinin aciklamasi";
+  sandbox.fns.switchActiveTitleUnit(0);
+  const primaryAgain = sandbox.getState();
+  assert.equal(primaryAgain.fields.projectConformity, "Birincilin aciklamasi", "Birincilin projectConformity'si 2. tasinmazdan ETKILENMEDEN (taşınmaza-özgü) korunmali.");
+  console.log("projectConformity/projectReviewDescription artik tasinmaza-ozgu (rapor-geneli paylasim CIKARILDI) testi tamam.");
 }
 
 console.log("Coklu TAKBIS Faz 2 tab-anahtarlama motoru testleri basarili.");
