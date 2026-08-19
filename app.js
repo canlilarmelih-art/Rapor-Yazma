@@ -5648,9 +5648,9 @@ function createSingleStructureCostMethodPanel() {
   const gridColumn = (label, span, align = "right", identity = false) => ({ label, span, align, identity });
   const landColumns = [
     gridColumn("Başlık", 3, "right", true),
+    gridColumn("Arsa m² Birim Değeri", 3),
     gridColumn("Arsa Pay / Payda", 2),
     gridColumn("Yüzölçümü", 2),
-    gridColumn("Arsa m² Birim Değeri", 3),
     gridColumn("Arsa Değeri", 2),
   ];
   const legalBuildingColumns = legalShowsConstructionLevel
@@ -5658,17 +5658,17 @@ function createSingleStructureCostMethodPanel() {
       gridColumn("Yapı Adı", 2, "right", true),
       gridColumn("Yapı Sınıfı", 1),
       gridColumn("Yapı Alanı", 2),
+      gridColumn("Yapı Birim Değeri", 2),
       gridColumn("İnşaat Seviyesi", 2),
       gridColumn("Yıpranma Oranı", 1),
-      gridColumn("Yapı Birim Değeri", 2),
       gridColumn("Yapı Değeri", 2),
     ]
     : [
       gridColumn("Yapı Adı", 3, "right", true),
       gridColumn("Yapı Sınıfı", 1),
       gridColumn("Yapı Alanı", 2),
-      gridColumn("Yıpranma Oranı", 1),
       gridColumn("Yapı Birim Değeri", 3),
+      gridColumn("Yıpranma Oranı", 1),
       gridColumn("Yapı Değeri", 2),
     ];
   const currentBuildingColumns = currentShowsConstructionLevel
@@ -5676,17 +5676,17 @@ function createSingleStructureCostMethodPanel() {
       gridColumn("Yapı Adı", 2, "right", true),
       gridColumn("Yapı Sınıfı", 1),
       gridColumn("Yapı Alanı", 2),
+      gridColumn("Yapı Birim Değeri", 2),
       gridColumn("İnşaat Seviyesi", 2),
       gridColumn("Yıpranma Oranı", 1),
-      gridColumn("Yapı Birim Değeri", 2),
       gridColumn("Yapı Değeri", 2),
     ]
     : [
       gridColumn("Yapı Adı", 3, "right", true),
       gridColumn("Yapı Sınıfı", 1),
       gridColumn("Yapı Alanı", 2),
-      gridColumn("Yıpranma Oranı", 1),
       gridColumn("Yapı Birim Değeri", 3),
+      gridColumn("Yıpranma Oranı", 1),
       gridColumn("Yapı Değeri", 2),
     ];
   const premiumColumns = [
@@ -5708,9 +5708,9 @@ function createSingleStructureCostMethodPanel() {
       landColumns,
       [
         landValueHeading,
+        formatSingleStructureCostCell(state.fields.landUnitValue, "TL/m²"),
         `${landShare} / ${landDenominator}`,
         formatSingleStructureCostCell(state.fields.landArea, "m²"),
-        formatSingleStructureCostCell(state.fields.landUnitValue, "TL/m²"),
         formatSingleStructureCostCell(state.fields.landValue, "TL"),
       ],
     ),
@@ -5721,9 +5721,9 @@ function createSingleStructureCostMethodPanel() {
         buildingName,
         buildingClass,
         formatSingleStructureCostCell(state.fields.legalBuildingValueArea, "m²"),
+        formatSingleStructureCostCell(state.fields.legalBuildingUnitCost, "TL/m²"),
         ...(legalShowsConstructionLevel ? [formatSingleStructureCostCell(state.fields.legalBuildingConstructionLevel, "%")] : []),
         formatSingleStructureCostCell(state.fields.legalBuildingDepreciationRate, "%"),
-        formatSingleStructureCostCell(state.fields.legalBuildingUnitCost, "TL/m²"),
         formatSingleStructureCostCell(state.fields.legalBuildingValue, "TL"),
       ],
     ),
@@ -5734,9 +5734,9 @@ function createSingleStructureCostMethodPanel() {
         buildingName,
         buildingClass,
         formatSingleStructureCostCell(state.fields.currentBuildingValueArea, "m²"),
+        formatSingleStructureCostCell(state.fields.currentBuildingUnitCost, "TL/m²"),
         ...(currentShowsConstructionLevel ? [formatSingleStructureCostCell(state.fields.currentBuildingConstructionLevel, "%")] : []),
         formatSingleStructureCostCell(state.fields.currentBuildingDepreciationRate, "%"),
-        formatSingleStructureCostCell(state.fields.currentBuildingUnitCost, "TL/m²"),
         formatSingleStructureCostCell(state.fields.currentBuildingValue, "TL"),
       ],
     ),
