@@ -1801,6 +1801,7 @@ function switchActiveTitleUnit(newIndex) {
   const currentSnapshot = snapshotTitleUnitScopedData();
   if (state.activeTitleUnitIndex === 0) {
     state.primaryTitleUnitShadow = currentSnapshot;
+    state.primaryTitleUnitShadow.fields.ownershipType = state.fields.ownershipType;
   } else {
     const unit = state.titleUnits[state.activeTitleUnitIndex - 1];
     if (unit) {
@@ -1965,14 +1966,16 @@ function removeTitleUnitOwnerRow(index, rowIndex) {
 }
 
 function syncMultiTitleUnitOwnershipType(value = state.fields.ownershipType) {
-  if (!MULTI_TITLE_UNIT_OWNERSHIP_TYPES.has(value) || getTitleUnitCount() <= 1) return false;
-  state.fields.ownershipType = value;
+  const primaryFields = getTitleUnitFieldsForLabel(0) || {};
+  const sourceValue = String(primaryFields.ownershipType || value || "").trim();
+  if (!MULTI_TITLE_UNIT_OWNERSHIP_TYPES.has(sourceValue) || getTitleUnitCount() <= 1) return false;
+  state.fields.ownershipType = sourceValue;
   if (state.primaryTitleUnitShadow?.fields) {
-    state.primaryTitleUnitShadow.fields.ownershipType = value;
+    state.primaryTitleUnitShadow.fields.ownershipType = sourceValue;
   }
   (state.titleUnits || []).forEach((unit) => {
     unit.fields = unit.fields || {};
-    unit.fields.ownershipType = value;
+    unit.fields.ownershipType = sourceValue;
   });
   return true;
 }
@@ -3306,6 +3309,7 @@ function renderNavState() {
 }
 
 function renderSection() {
+  syncMultiTitleUnitOwnershipType();
   // Açık kalmış lehdar combobox panellerini temizle (yeniden render yetim bırakmasın).
   document.querySelectorAll(".creditor-combo-panel").forEach((node) => node.remove());
   ensureActiveSectionVisible();

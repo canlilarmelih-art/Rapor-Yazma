@@ -191,7 +191,28 @@ function freshState(overrides = {}) {
   console.log("Yeni tasinmaz ekleme (birincil ve adres verisi korunur) testi tamam.");
 }
 
-// --- 3) İleri-geri geçiş: veri kaybolmaz (kritik round-trip) ------------
+// --- 3) İlk taşınmazın mülkiyet türü tüm taşınmazlara uygulanır ---------
+{
+  const state = freshState({
+    fields: {
+      ...freshState().fields,
+      ownershipType: "Tarla",
+    },
+    titleUnits: [{ fields: { ownershipType: "Arsa" }, tables: {} }],
+  });
+  sandbox.setState(state);
+  assert.equal(sandbox.fns.syncMultiTitleUnitOwnershipType(), true, "İlk mülkiyet türü çoklu taşınmazlara uygulanmalı.");
+  assert.equal(state.titleUnits[0].fields.ownershipType, "Tarla", "Ek taşınmaz ilk türü miras almalı.");
+
+  sandbox.fns.switchActiveTitleUnit(1);
+  assert.equal(sandbox.getState().fields.ownershipType, "Tarla", "İkinci taba geçince ilk tür korunmalı.");
+  sandbox.getState().fields.ownershipType = "Arsa";
+  sandbox.fns.syncMultiTitleUnitOwnershipType();
+  assert.equal(sandbox.getState().fields.ownershipType, "Tarla", "İkinci tab ilk türü değiştirememeli.");
+  console.log("Çoklu mülkiyet türü (ilk taşınmaz kaynak) testi tamam.");
+}
+
+// --- 4) İleri-geri geçiş: veri kaybolmaz (kritik round-trip) ------------
 {
   const state = freshState();
   sandbox.setState(state);
@@ -378,7 +399,7 @@ console.log("Bolum bazli Excel + Excel dropdown + TCMB gorunurluk kontrolleri ta
 assert.match(appSource, /buildImarPlanningNote\([\s\S]*?pluralizeEnvironmentalSubjectText\(note, Boolean\(sharedParcelNarrative\)\)/);
 assert.match(appSource, /section-excel-panel--mixed-parcels/);
 assert.match(appSource, /panel\.dataset\.parcelScope = mixedParcels \? "mixed" : "shared-or-single"/);
-// --- 11) Kat irtifakı türü tüm çoklu taşınmazlara yayılır ---------------------
+// --- 11) İlk taşınmazın mülkiyet türü tüm çoklu taşınmazlara yayılır -----
 {
   const state = freshState({
     fields: { ownershipType: "Dikey Kat İrtifakı" },
@@ -393,11 +414,11 @@ assert.match(appSource, /panel\.dataset\.parcelScope = mixedParcels \? "mixed" :
   const changed = sandbox.fns.syncMultiTitleUnitOwnershipType("Yatay Kat İrtifakı");
   assert.equal(changed, true, "Yatay kat irtifakı çoklu taşınmazlarda senkronize edilmeli.");
   const after = sandbox.getState();
-  assert.equal(after.fields.ownershipType, "Yatay Kat İrtifakı");
-  assert.equal(after.primaryTitleUnitShadow.fields.ownershipType, "Yatay Kat İrtifakı");
-  assert.deepEqual(after.titleUnits.map((unit) => unit.fields.ownershipType), ["Yatay Kat İrtifakı", "Yatay Kat İrtifakı"]);
-  assert.equal(sandbox.fns.syncMultiTitleUnitOwnershipType("Arsa"), true, "Arsa kat irtifakı senkronizasyon kuralını tetiklememeli.");
-  console.log("Coklu tasinmaz kat irtifaki mulkiyet senkronizasyonu testi tamam.");
+  assert.equal(after.fields.ownershipType, "Tarla");
+  assert.equal(after.primaryTitleUnitShadow.fields.ownershipType, "Tarla");
+  assert.deepEqual(after.titleUnits.map((unit) => unit.fields.ownershipType), ["Tarla", "Tarla"]);
+  assert.equal(sandbox.fns.syncMultiTitleUnitOwnershipType("Arsa"), true, "İkinci taşınmazın seçimi ilk türü değiştirmemeli.");
+  console.log("Coklu tasinmaz mulkiyet senkronizasyonu testi tamam.");
 }
 
 // --- 12) Açıklama alanları rapor-genelidir, tab değişiminde korunur --------
