@@ -88,6 +88,7 @@ const functionNames = [
   "buildDocumentsPermitGroupPhrase",
   "collectDocumentsDescriptionRowGroups",
   "buildReviewedDocumentsDescription",
+  "buildDocumentsOccupancyParts",
   "createEmptyTitleUnit",
   "getTitleUnitCount",
   "getTitleUnitFieldsForLabel",
@@ -144,8 +145,18 @@ const sandboxSource = `
   function buildDocumentArchivePrefix(institution = "") {
     return \`PREFIX(\${institution || "DEFAULT"})\`;
   }
-  function isOccupancyPermitDocument() { return false; }
-  function buildOccupancyPermitDocumentSentence() { return "OCCUPANCY_SENTENCE"; }
+  // Turkce buyuk/kucuk harf katlama tuzagi: naif bir /i regex bayragi
+  // "Kullanım"daki noktasiz "ı" ile eslesmez (Unicode varsayilan katlama
+  // Turkce degildir) - gercek isBuildingCompletionOccupancyDocument()'in
+  // AYNI teknigi (foldTurkish, zaten extract edilmis) kullanilir.
+  function isOccupancyPermitDocument(type) {
+    const text = foldTurkish(type || "");
+    return text.includes("ISKAN") || text.includes("KULLANMA") || text.includes("KULLANIM") || text.includes("OTURMA");
+  }
+  function buildOccupancyPermitDocumentSentence(row = {}) {
+    if (!row.date || !row.no) return "OLD_MISSING_OCCUPANCY_SENTENCE";
+    return \`OCCUPANCY_FOUND(\${row.date},\${row.no})\`;
+  }
   function buildMissingReviewedDocumentSentences() { return ["MISSING_SENTENCE"]; }
   function buildEkbExplanation() { return ""; }
   ${functionNames.map(extractFunction).join("\n")}
@@ -154,7 +165,7 @@ const sandboxSource = `
     getState: () => state,
     normalizeBlockLabelPrefixForAttribution, formatDocumentBlockAttributionPhrase,
     buildDocumentsPermitGroupPhrase, collectDocumentsDescriptionRowGroups,
-    buildReviewedDocumentsDescription, isDocumentsBlockGroupingActive,
+    buildReviewedDocumentsDescription, buildDocumentsOccupancyParts, isDocumentsBlockGroupingActive,
   };
 `;
 // eslint-disable-next-line no-new-func
@@ -369,6 +380,69 @@ function freshState(overrides = {}) {
   assert.ok(fourBlockDescription.includes("B ve D Blok'a ait 02.02.2020 tarih, 2/2 sayılı Yeni Yapı Ruhsatı"), `B ve D Blok AYNI tarihi paylastigi icin TEK 'B ve D Blok\\'a ait' ogesinde birlesmeli, bulunan: ${fourBlockDescription}`);
   assert.ok(fourBlockDescription.includes("C Blok'a ait 03.03.2030 tarih, 3/3 sayılı Yeni Yapı Ruhsatı"), `KULLANICI BULGUSU: C Blok'un kendi (farkli) ruhsati de aciklamada MUTLAKA gorunmeli, bulunan: ${fourBlockDescription}`);
   console.log("buildReviewedDocumentsDescription 4 blok senaryosu (A/C farkli, B/D ortak - C Blok kayip DEGIL) testi tamam.");
+}
+
+// --- 7) buildDocumentsOccupancyParts() SAF FONKSIYON -----------------------
+// Kullanıcı talebi (2026-08-19, devam): "eğer bir blok için yapı kullanma
+// izin belgesi eklenmedi ise bu blokun yapı kullanma izin belgesinin
+// bulunamadığı açıklamada belirtilmeli... C ve D Blokta yok ise
+// 'Ekspertize konu taşınmazların yer aldığı C ve D Bloka ait yapı kullanma
+// izin belgesi bulunamamıştır.' cümlesi gelmeli."
+{
+  const rowGroups = [
+    { blockLabel: "A Blok" }, { blockLabel: "B Blok" }, { blockLabel: "C Blok" }, { blockLabel: "D Blok" },
+  ];
+  const blockOrder = new Map(rowGroups.map((g, i) => [g.blockLabel, i]));
+  const rows = [
+    { type: "Yapı Kullanım İzin Belgesi", date: "01.01.2015", no: "1/1", institution: "Merkez Belediyesi", blockLabel: "A Blok" },
+    { type: "Yapı Kullanım İzin Belgesi", date: "02.02.2016", no: "2/2", institution: "Merkez Belediyesi", blockLabel: "B Blok" },
+    // C Blok ve D Blok: HIC İskan satiri YOK (kullanicinin tam senaryosu).
+  ];
+  const parts = fns.buildDocumentsOccupancyParts(rowGroups, rows, blockOrder);
+  const joined = parts.join(" | ");
+  assert.ok(joined.includes("yer alan A Blok'a ait"), `A Blok'un bulunan belgesi kendi etiketiyle gorunmeli, bulunan: ${joined}`);
+  assert.ok(joined.includes("yer alan"), `Bulunan bloklar icin normal 'incelenmistir' cumlesi olmali, bulunan: ${joined}`);
+  assert.ok(joined.includes("Ekspertize konu taşınmazların yer aldığı C ve D Blok'a ait yapı kullanma izin belgesi bulunamamıştır."), `KULLANICI ORNEGI: C ve D Blok icin TAM BEKLENEN cumle gelmeli, bulunan: ${joined}`);
+  console.log("buildDocumentsOccupancyParts saf fonksiyon (bulunan/bulunamayan bloklarin ayrimi) testi tamam.");
+}
+
+// --- 8) buildReviewedDocumentsDescription() UCTAN UCA: kullanicinin TAM ---
+// senaryosu (A ve B'de var, C ve D'de yok).
+{
+  fns.setState(freshState({
+    fields: {
+      requestType: "Çoklu Talep", ownershipType: "Yatay Kat İrtifakı",
+      blockNo: "100", parcelNo: "1", titleBlockName: "A Blok",
+      documentReviewInstitution: "Merkez Belediyesi",
+    },
+    tables: { documents: [{ c0: "Yapı Kullanım İzin Belgesi", c1: "Merkez Belediyesi", c2: "01.01.2015", c3: "1/1" }] },
+    titleUnits: [
+      { fields: { blockNo: "100", parcelNo: "1", titleBlockName: "B Blok" }, tables: { documents: [{ c0: "Yapı Kullanım İzin Belgesi", c1: "Merkez Belediyesi", c2: "02.02.2016", c3: "2/2" }] } },
+      { fields: { blockNo: "100", parcelNo: "1", titleBlockName: "C Blok" }, tables: { documents: [] } },
+      { fields: { blockNo: "100", parcelNo: "1", titleBlockName: "D Blok" }, tables: { documents: [] } },
+    ],
+  }));
+  const description = fns.buildReviewedDocumentsDescription();
+  assert.ok(description.includes("A Blok'a ait 01.01.2015 tarih, 1/1 sayılı Yapı Kullanım İzin Belgesi"), `A Blok'un bulunan Iskani gorunmeli, bulunan: ${description}`);
+  assert.ok(description.includes("B Blok'a ait 02.02.2016 tarih, 2/2 sayılı Yapı Kullanım İzin Belgesi"), `B Blok'un bulunan Iskani gorunmeli, bulunan: ${description}`);
+  assert.ok(description.includes("Ekspertize konu taşınmazların yer aldığı C ve D Blok'a ait yapı kullanma izin belgesi bulunamamıştır."), `KULLANICININ TAM ORNEK CUMLESI cikmali, bulunan: ${description}`);
+  console.log("buildReviewedDocumentsDescription kullanicinin TAM senaryosu (A/B var, C/D yok) testi tamam.");
+}
+
+// --- 9) REGRESYON: blok gruplama KAPALIYKEN eski Iskan davranisi korunur --
+{
+  fns.setState(freshState({
+    fields: {
+      requestType: "Tekli Talep", ownershipType: "Yatay Kat İrtifakı",
+      blockNo: "100", parcelNo: "1", titleBlockName: "A Blok",
+      documentReviewInstitution: "Merkez Belediyesi",
+    },
+    tables: { documents: [{ c0: "Yeni Yapı Ruhsatı", c1: "Merkez Belediyesi", c2: "16.11.2012", c3: "256/47" }] },
+  }));
+  const description = fns.buildReviewedDocumentsDescription();
+  assert.ok(!description.includes("Ekspertize konu taşınmazların yer aldığı"), `REGRESYON: Tekli Talep'te YENI 'Ekspertize konu...' cumlesi gorunmemeli (eski davranis korunmali), bulunan: ${description}`);
+  assert.ok(description.includes("OLD_MISSING_OCCUPANCY_SENTENCE"), `REGRESYON: eski (genel, blok-etiketsiz) Iskan-yok cumlesi hala kullanilmali, bulunan: ${description}`);
+  console.log("buildReviewedDocumentsDescription regresyon (blok gruplama kapaliyken eski Iskan davranisi) testi tamam.");
 }
 
 console.log("Incelenen Belgeler Aciklamasi blok-bazli gruplama testleri basarili.");

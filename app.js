@@ -23354,6 +23354,57 @@ function buildDocumentsPermitGroupPhrase(items, blockOrder) {
     .join(", ");
 }
 
+// Kullanıcı talebi (2026-08-19, devam): "eğer bir blok için yapı kullanma
+// izin belgesi eklenmedi ise bu blokun yapı kullanma izin belgesinin
+// bulunamadığı açıklamada belirtilmeli. aynı mantıkta eğer A ve B blokta
+// var ise yapı kullanma izin belgesi açıklama girilmeli. C ve D Blokta
+// yok ise 'Ekspertize konu taşınmazların yer aldığı C ve D Bloka ait yapı
+// kullanma izin belgesi bulunamamıştır.' cümlesi ... gelmeli." — ruhsat
+// (permit-like) belgelerdeki AYNI blok-bazlı mantık (bkz.
+// buildDocumentsPermitGroupPhrase) İSKAN/yapı kullanma izin belgesine de
+// uygulanır: HER blok ayrı ayrı "bulundu mu" diye kontrol edilir — bulunan
+// bloklar (varsa) block-etiketli/birleştirilmiş "incelenmiştir" cümle(leri)
+// üretir (ruhsatla BİREBİR aynı `buildDocumentsPermitGroupPhrase` yeniden
+// kullanılır), bulunamayan bloklar TEK bir birleştirilmiş "Ekspertize konu
+// taşınmazların yer aldığı {bloklar} yapı kullanma izin belgesi
+// bulunamamıştır." cümlesinde toplanır (formatDocumentBlockAttributionPhrase
+// ile AYNI birleştirme). Blok gruplama AKTİF DEĞİLSE (kat irtifakı dışı/
+// tek blok/tekil taşınmaz) davranış AYNEN korunur — her satır kendi
+// (mevcut, değiştirilmeyen) cümlesini üretir, hiçbiri yoksa TEK genel
+// "bulunamamıştır" cümlesi (buildOccupancyPermitDocumentSentence({})).
+function buildDocumentsOccupancyParts(rowGroups, rows, blockOrder) {
+  if (!isDocumentsBlockGroupingActive()) {
+    const occupancyTexts = rows.filter((row) => isOccupancyPermitDocument(row.type)).map((row) => buildOccupancyPermitDocumentSentence(row));
+    return occupancyTexts.length ? occupancyTexts : [buildOccupancyPermitDocumentSentence({})];
+  }
+
+  const foundGroups = new Map();
+  const missingBlockLabels = [];
+  rowGroups.forEach((group) => {
+    const validRows = rows.filter((row) => row.blockLabel === group.blockLabel && isOccupancyPermitDocument(row.type) && row.date && row.no);
+    if (!validRows.length) {
+      missingBlockLabels.push(group.blockLabel);
+      return;
+    }
+    validRows.forEach((row) => {
+      const prefix = buildDocumentArchivePrefix(row.institution);
+      if (!foundGroups.has(prefix)) foundGroups.set(prefix, []);
+      foundGroups.get(prefix).push({ referenceText: formatReviewedDocumentReference(row), blockLabel: row.blockLabel });
+    });
+  });
+
+  const parts = [];
+  foundGroups.forEach((items, prefix) => {
+    parts.push(`${prefix} yer alan ${buildDocumentsPermitGroupPhrase(items, blockOrder)} incelenmiştir.`);
+  });
+  if (missingBlockLabels.length) {
+    const sortedMissingLabels = missingBlockLabels.slice().sort((a, b) => (blockOrder.get(a) ?? 0) - (blockOrder.get(b) ?? 0));
+    const attribution = formatDocumentBlockAttributionPhrase(sortedMissingLabels);
+    parts.push(`Ekspertize konu taşınmazların yer aldığı ${attribution} yapı kullanma izin belgesi bulunamamıştır.`);
+  }
+  return parts;
+}
+
 function buildReviewedDocumentsDescription() {
   const rowGroups = collectDocumentsDescriptionRowGroups();
   const blockOrder = new Map(rowGroups.map((group, index) => [group.blockLabel, index]));
@@ -23367,13 +23418,9 @@ function buildReviewedDocumentsDescription() {
   }
 
   const permitGroups = new Map();
-  const occupancyTexts = [];
 
   rows.forEach((row) => {
-    if (isOccupancyPermitDocument(row.type)) {
-      occupancyTexts.push(buildOccupancyPermitDocumentSentence(row));
-      return;
-    }
+    if (isOccupancyPermitDocument(row.type)) return;
     if (isPermitLikeDocument(row.type) && row.date && row.no) {
       const prefix = buildDocumentArchivePrefix(row.institution);
       if (!permitGroups.has(prefix)) permitGroups.set(prefix, []);
@@ -23390,7 +23437,7 @@ function buildReviewedDocumentsDescription() {
     const prefix = buildDocumentArchivePrefix();
     parts.push(`${prefix} yapılan incelemelerde taşınmaza ait yeni yapı ruhsatı bulunamamıştır.`);
   }
-  parts.push(...(occupancyTexts.length ? occupancyTexts : [buildOccupancyPermitDocumentSentence({})]));
+  parts.push(...buildDocumentsOccupancyParts(rowGroups, rows, blockOrder));
   if (ekbExplanation) parts.push(ekbExplanation);
 
   return normalizeReportDescriptionText(parts.join("\n\n"));
