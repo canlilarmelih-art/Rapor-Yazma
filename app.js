@@ -5417,7 +5417,11 @@ function singleStructureCostFormulaValue(value, unit = "") {
 }
 
 function buildSingleStructureCostFormula(area, unitCost, constructionLevel, depreciationRate, result, unit) {
-  return `${singleStructureCostFormulaValue(area, "m²")} × ${singleStructureCostFormulaValue(unitCost, "TL/m²")} × ${singleStructureCostFormulaValue(constructionLevel, "%")} / 100 × (1 - ${singleStructureCostFormulaValue(depreciationRate, "%")} / 100) = ${singleStructureCostFormulaValue(result, unit)}`;
+  const level = parseValuationNumber(constructionLevel);
+  const levelFactor = Number.isFinite(level) && level === 100
+    ? ""
+    : ` × ${singleStructureCostFormulaValue(constructionLevel, "%")} / 100`;
+  return `${singleStructureCostFormulaValue(area, "m²")} × ${singleStructureCostFormulaValue(unitCost, "TL/m²")}${levelFactor} × (1 - ${singleStructureCostFormulaValue(depreciationRate, "%")} / 100) = ${singleStructureCostFormulaValue(result, unit)}`;
 }
 
 function buildSingleStructureCostMethodRows() {
@@ -5619,6 +5623,10 @@ function createSingleStructureCostMethodPanel() {
   const landShare = state.fields.share || "-";
   const landDenominator = state.fields.denominator || "-";
   const landValueHeading = getSingleStructureLandValueHeading();
+  const legalConstructionLevel = parseValuationNumber(state.fields.legalBuildingConstructionLevel);
+  const currentConstructionLevel = parseValuationNumber(state.fields.currentBuildingConstructionLevel);
+  const legalShowsConstructionLevel = !Number.isFinite(legalConstructionLevel) || legalConstructionLevel !== 100;
+  const currentShowsConstructionLevel = !Number.isFinite(currentConstructionLevel) || currentConstructionLevel !== 100;
   const legalBuildingFormula = buildSingleStructureCostFormula(
     state.fields.legalBuildingValueArea,
     state.fields.legalBuildingUnitCost,
@@ -5651,13 +5659,21 @@ function createSingleStructureCostMethodPanel() {
     ),
     createSection(
       "Yasal Yapı Değeri",
-      ["Yapı Adı", "Yapı Sınıfı", "Yapı Alanı", "Yapı Birim Değeri", "İnşaat Seviyesi", "Yıpranma Oranı", "Yapı Değeri"],
+      [
+        "Yapı Adı",
+        "Yapı Sınıfı",
+        "Yapı Alanı",
+        "Yapı Birim Değeri",
+        ...(legalShowsConstructionLevel ? ["İnşaat Seviyesi"] : []),
+        "Yıpranma Oranı",
+        "Yapı Değeri",
+      ],
       [
         buildingName,
         buildingClass,
         formatSingleStructureCostCell(state.fields.legalBuildingValueArea, "m²"),
         formatSingleStructureCostCell(state.fields.legalBuildingUnitCost, "TL/m²"),
-        formatSingleStructureCostCell(state.fields.legalBuildingConstructionLevel, "%"),
+        ...(legalShowsConstructionLevel ? [formatSingleStructureCostCell(state.fields.legalBuildingConstructionLevel, "%")] : []),
         formatSingleStructureCostCell(state.fields.legalBuildingDepreciationRate, "%"),
         formatSingleStructureCostCell(state.fields.legalBuildingValue, "TL"),
       ],
@@ -5665,13 +5681,21 @@ function createSingleStructureCostMethodPanel() {
     ),
     createSection(
       "Mevcut Yapı Değeri",
-      ["Yapı Adı", "Yapı Sınıfı", "Yapı Alanı", "Yapı Birim Değeri", "İnşaat Seviyesi", "Yıpranma Oranı", "Yapı Değeri"],
+      [
+        "Yapı Adı",
+        "Yapı Sınıfı",
+        "Yapı Alanı",
+        "Yapı Birim Değeri",
+        ...(currentShowsConstructionLevel ? ["İnşaat Seviyesi"] : []),
+        "Yıpranma Oranı",
+        "Yapı Değeri",
+      ],
       [
         buildingName,
         buildingClass,
         formatSingleStructureCostCell(state.fields.currentBuildingValueArea, "m²"),
         formatSingleStructureCostCell(state.fields.currentBuildingUnitCost, "TL/m²"),
-        formatSingleStructureCostCell(state.fields.currentBuildingConstructionLevel, "%"),
+        ...(currentShowsConstructionLevel ? [formatSingleStructureCostCell(state.fields.currentBuildingConstructionLevel, "%")] : []),
         formatSingleStructureCostCell(state.fields.currentBuildingDepreciationRate, "%"),
         formatSingleStructureCostCell(state.fields.currentBuildingValue, "TL"),
       ],
