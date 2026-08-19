@@ -614,6 +614,10 @@
     // desen (aynı görünürlük kuralı: yalnızca farklı ada/parselde dolu
     // döner, bkz. buildLandUnitsSummaryTableData, app.js).
     TASINMAZLARARSATABLOSU: { h: () => safeCall("buildLandUnitsSummaryWordTableHtml") },
+    // Belgeler ve Proje (2026-08-19) — yukarıdakilerle AYNI desen, ama
+    // görünürlük kuralı ada/parsel DEĞİL BLOK (bkz.
+    // buildDocumentsUnitsSummaryTableData/isDocumentsScopedByBlock, app.js).
+    TASINMAZLARBELGETABLOSU: { h: () => safeCall("buildDocumentsUnitsSummaryWordTableHtml") },
     GABIMVERISETI: { h: () => safeCall("buildGabimDataSetWordHtml") },
     HISSEACIKLAMASI: { t: () => field("shareExplanation"), paragraphClass: "share-explanation" },
     EKLENTI: { f: ["titleAttachment"] },

@@ -1313,6 +1313,38 @@ function isPlanningScopedByAdaParsel() {
   return units.length > 1 && !computeTitleUnitsShareSameAdaParsel(units);
 }
 
+// Kullanıcı talebi (2026-08-19): "BELGELER ve proje bölümünü incele bu
+// bölümü çoklu formata nasıl uydurabiliriz. burada aynı ada parselde yer
+// alsa da blok bazında farklı ruhsat iskan veya projeler olabiliyor." —
+// computeTitleUnitsShareSameAdaParsel()'in AYNI saf ilkesi, ama BLOK
+// düzeyinde: `blockNo`+`parcelNo`+`titleBlockName` ÜÇLÜSÜ birebir aynı mı.
+// Yalnızca `titleBlockName` karşılaştırmak YETMEZ — farklı parsellerdeki
+// taşınmazların blok adı TESADÜFEN aynı/boş olabilir ("A Blok" = "A Blok"
+// ama farklı parseldeyse FARKLI bloktur); ada/parsel de dahil edilerek bu
+// yanlış-pozitif önlenir.
+function computeTitleUnitsShareSameBlock(units) {
+  if (!units.length) return true;
+  return units.every((unit) => (
+    String(unit.fields?.blockNo || "").trim() === String(units[0].fields?.blockNo || "").trim()
+    && String(unit.fields?.parcelNo || "").trim() === String(units[0].fields?.parcelNo || "").trim()
+    && String(unit.fields?.titleBlockName || "").trim() === String(units[0].fields?.titleBlockName || "").trim()
+  ));
+}
+
+// "Belgeler ve Proje" (documents) bölümünün özet tablosu/tab çubuğu ŞU AN
+// anlamlı mı? İmar'ın aksine bu bölümün PAYLAŞIM MODELİ değişmiyor (her
+// zaman taşınmaza-özgü kalır, bkz. getTitleUnitScopedFieldKeys — "documents"
+// zaten hariç tutulmuyor) — bu yalnızca YENİ tablo/tab çubuğu katmanının
+// GÖRÜNÜRLÜK kuralı: yalnızca 2+ taşınmaz VE hepsi FARKLI blokta olduğunda
+// (aynı ada/parselde bile bloklar farklıysa ruhsat/iskan/proje farklı
+// olabilir, kullanıcının bildirdiği gerçek budur) tablo/tab çubuğu
+// gösterilir — aksi halde (tekil rapor veya tüm taşınmazlar AYNI blokta)
+// karşılaştırılacak bir şey yoktur.
+function isDocumentsScopedByBlock() {
+  const units = buildAllTitleUnitsForSummaryTable();
+  return units.length > 1 && !computeTitleUnitsShareSameBlock(units);
+}
+
 // "İmar Durumu" (planning) bölümünün TÜM taşınmaza-özgü olabilecek alan
 // anahtarları — declaratif `section.fields` + 6 conditionalYesNo detay
 // notu (titleChangedRecords emsaliyle AYNI boşluk: yalnızca ebeveyn
@@ -2059,6 +2091,40 @@ function createLandUnitsSummaryTablePreview() {
   return wrap;
 }
 
+// Kullanıcı talebi (2026-08-19): "BELGELER ve proje bölümünü incele bu
+// bölümü çoklu formata nasıl uydurabiliriz. burada aynı ada parselde yer
+// alsa da blok bazında farklı ruhsat iskan veya projeler olabiliyor." —
+// Arsa Özeti panelinin (yukarıda) BİREBİR AYNI deseni; TEK fark
+// görünürlük koşulu (ada/parsel DEĞİL, BLOK — bkz. isDocumentsScopedByBlock)
+// ve metin farkı.
+function createDocumentsUnitsSummaryTablePreview() {
+  const wrap = document.createElement("div");
+  wrap.className = "title-units-summary-table-preview";
+  const heading = document.createElement("h5");
+  heading.textContent = "Taşınmazlar Belgeler Özeti";
+  wrap.append(heading);
+
+  const data = buildDocumentsUnitsSummaryTableData();
+  if (!data || !data.rows.length) {
+    const note = document.createElement("p");
+    note.className = "muted-note";
+    note.textContent = "Bu tablo yalnızca taşınmazlar FARKLI BLOKTA olduğunda görünür (aynı blokta ruhsat/iskan/proje ortak kabul edilir). Banka şablonlarında {{TASINMAZLARBELGETABLOSU}} olarak kullanılabilir.";
+    wrap.append(note);
+    return wrap;
+  }
+  const tableHtml = buildTitleUnitsSummaryTableHtmlEditable(data.headers, data.rows, data.columnMeta, state.activeTitleUnitIndex);
+  const tableContainer = document.createElement("div");
+  tableContainer.className = "title-units-summary-table-container";
+  tableContainer.innerHTML = tableHtml;
+  wrap.append(tableContainer);
+  attachTitleUnitsSummaryTableEditing(tableContainer);
+  const hint = document.createElement("p");
+  hint.className = "muted-note";
+  hint.textContent = "Aktif taşınmazın hücrelerine tıklayarak doğrudan düzenleyebilirsiniz (Proje İncelenen Kurum ve İncelenen Belge sütunları tıklanamaz — ilgili taşınmazın tab'ından düzenlenir). Banka şablonlarında {{TASINMAZLARBELGETABLOSU}} olarak kullanılabilir.";
+  wrap.append(hint);
+  return wrap;
+}
+
 // Kullanıcı talebi (2026-08-15): "tab üzerinden değiştirince tablo
 // değişsin" — Çift Yönlü Düzenleme özelliğinin Faz 1'i (bkz. plan:
 // idempotent-launching-kernighan.md). Taşınmazlar Tapu/Adres Özeti
@@ -2102,6 +2168,14 @@ function refreshLandUnitsSummaryTablePreview() {
   host.replaceWith(createLandUnitsSummaryTablePreview());
 }
 
+// Belgeler ve Proje (2026-08-19) — yukarıdakilerle AYNI desen.
+function refreshDocumentsUnitsSummaryTablePreview() {
+  if (activeSectionId !== "documents") return;
+  const host = document.querySelector(".title-units-summary-table-preview");
+  if (!host) return;
+  host.replaceWith(createDocumentsUnitsSummaryTablePreview());
+}
+
 // Çift Yönlü Düzenleme, Faz 3 (2026-08-15) — yukarıdaki iki fonksiyonla
 // AYNI "hafif, yerinde değiştir" deseni: tab çubuğunu (createTitleUnitTabBar,
 // yukarıda) TAMAMEN yeniden üretip DOM'da yerine koyar. Ada/Parsel/Blok/
@@ -2126,6 +2200,7 @@ const refreshTitleUnitsSummaryTablePreviewDebounced = debounce(refreshTitleUnits
 const refreshAddressUnitsSummaryTablePreviewDebounced = debounce(refreshAddressUnitsSummaryTablePreview, 350);
 const refreshImarUnitsSummaryTablePreviewDebounced = debounce(refreshImarUnitsSummaryTablePreview, 350);
 const refreshLandUnitsSummaryTablePreviewDebounced = debounce(refreshLandUnitsSummaryTablePreview, 350);
+const refreshDocumentsUnitsSummaryTablePreviewDebounced = debounce(refreshDocumentsUnitsSummaryTablePreview, 350);
 
 function loadUserDefaults() {
   try {
@@ -3060,6 +3135,18 @@ function renderSection() {
     body.append(createLandApplyAllControl());
     body.append(createLandUnitsSummaryTablePreview());
   }
+  // Kullanıcı talebi (2026-08-19): "BELGELER ve proje bölümünü incele bu
+  // bölümü çoklu formata nasıl uydurabiliriz. burada aynı ada parselde
+  // yer alsa da blok bazında farklı ruhsat iskan veya projeler
+  // olabiliyor." — land gate'iyle AYNI şekil, TEK fark görünürlük koşulu
+  // (ada/parsel DEĞİL, BLOK — bkz. isDocumentsScopedByBlock). "Tümüne
+  // uygula" butonu BİLEREK yok (bkz. plan: idempotent-launching-kernighan.md
+  // — bu bölümün motivasyonu zaten bloklar arası FARKLILIK, körü körüne
+  // kopyalama burada riskli olurdu).
+  if (section.id === "documents" && isCurrentUserAdmin() && state.fields.requestType === "Çoklu Talep" && isDocumentsScopedByBlock()) {
+    body.append(createTitleUnitTabBar());
+    body.append(createDocumentsUnitsSummaryTablePreview());
+  }
 
   const sectionVariantGroups = isCurrentUserAdmin() ? getVariantGroupsForSection(section.id) : [];
   if (sectionVariantGroups.length) {
@@ -3546,6 +3633,7 @@ function createForm(section) {
         refreshAddressUnitsSummaryTablePreviewDebounced();
         refreshImarUnitsSummaryTablePreviewDebounced();
         refreshLandUnitsSummaryTablePreviewDebounced();
+        refreshDocumentsUnitsSummaryTablePreviewDebounced();
       }
     });
     if (section.id === "case" && ["legalUsageNature", "currentUsageNature"].includes(field.key)) {
@@ -17700,6 +17788,7 @@ function commitTitleUnitsSummaryCellEdit(fieldKey, rawValue, unitIndex) {
   refreshAddressUnitsSummaryTablePreview();
   refreshImarUnitsSummaryTablePreview();
   refreshLandUnitsSummaryTablePreview();
+  refreshDocumentsUnitsSummaryTablePreview();
   // Faz 3: Ada/Parsel/Blok/Bağımsız Bölüm No gibi alanlar tab çubuğu
   // etiketlerini (computeTitleUnitTabLabel) etkileyebilir — hangi alan
   // düzenlendiğinden bağımsız olarak HER commit'te tab çubuğu da
@@ -18077,17 +18166,24 @@ const LAND_UNITS_TABLE_FIELD_DEFS = [
   { key: "landAgriculturalProduct", label: "Parsel Üzerinde Zirai Ürün Var mı?", kind: "scalar" },
 ];
 
-// Bir popup-alanının (Kadastro Yolu/Sınır Unsuru/Zirai Ürün) TÜM
-// taşınmazlar arasındaki EN FAZLA kayıt sayısı kadar "readonly" sütun
-// üretir — kullanıcı talebi: "kullanıcı 2 adet ekledi ise iki sütun
-// açalım" — sütun BAŞINA bir KAYIT (alt-alan başına değil), mevcut özet
-// formatlayıcı (`formatItem`) yeniden kullanılır. Tablo hücresinden
-// DÜZENLENEMEZ (`kind: "readonly"`) — bir kaydın birden çok alt-alanını
-// tek metin hücresine yazıp geri ayrıştırmak güvenilir değil, kullanıcı
-// ilgili taşınmazın tab'ına geçip "Detay" popup'ını kullanmaya devam eder
-// (İmar Faz B'nin aynı ilkesi — bkz. plan: idempotent-launching-kernighan.md).
-function buildLandDynamicColumnGroup(units, label, getItems, formatItem) {
-  const itemsByUnit = units.map((unit) => getItems(unit.fields || {}));
+// Bir taşınmazın N adet kaydı olabilen bir alanının (Arsa'nın Kadastro
+// Yolu/Sınır Unsuru/Zirai Ürün popup'ları, Belgeler'in "İncelenen Belgeler"
+// tablosu vb.) TÜM taşınmazlar arasındaki EN FAZLA kayıt sayısı kadar
+// "readonly" sütun üretir — kullanıcı talebi (Arsa Özellikleri, 2026-08-17):
+// "kullanıcı 2 adet ekledi ise iki sütun açalım" — sütun BAŞINA bir KAYIT
+// (alt-alan başına değil), mevcut özet formatlayıcı (`formatItem`) yeniden
+// kullanılır. Tablo hücresinden DÜZENLENEMEZ (`kind: "readonly"`) — bir
+// kaydın birden çok alt-alanını tek metin hücresine yazıp geri ayrıştırmak
+// güvenilir değil, kullanıcı ilgili taşınmazın tab'ına geçip kaynağı
+// (popup/tablo) kullanmaya devam eder (İmar Faz B'nin aynı ilkesi — bkz.
+// plan: idempotent-launching-kernighan.md). Genel isim ("TitleUnits", "Land"
+// DEĞİL) BİLEREK seçildi — Belgeler ve Proje'nin "İncelenen Belgeler N"
+// sütunları da (2026-08-19) bu AYNI fonksiyonu kullanıyor. `getItems` TÜM
+// birimi (`{fields, tables}`) alır (yalnızca `fields` DEĞİL) — Belgeler'in
+// "İncelenen Belgeler" kayıtları `tables.documents`'ta durur, Arsa'nın
+// popup dizileri ise `fields`'ta; her çağıran ihtiyacına göre seçer.
+function buildTitleUnitsDynamicColumnGroup(units, label, getItems, formatItem) {
+  const itemsByUnit = units.map((unit) => getItems(unit || {}));
   const maxCount = itemsByUnit.reduce((max, items) => Math.max(max, items.length), 0);
   return Array.from({ length: maxCount }, (_, columnIndex) => ({
     label: `${label} ${columnIndex + 1}`,
@@ -18110,22 +18206,23 @@ function buildLandUnitsSummaryTableData() {
   const units = buildAllTitleUnitsForSummaryTable();
   if (units.length < 2 || !isPlanningScopedByAdaParsel()) return null;
 
-  const roadColumns = buildLandDynamicColumnGroup(
+  const roadColumns = buildTitleUnitsDynamicColumnGroup(
     units, "Kadastro/İmar Yolu",
-    (fields) => getLandRoadFrontageItems(fields),
+    (unit) => getLandRoadFrontageItems(unit.fields || {}),
     (item) => formatLandRoadFrontageItem(item),
   );
-  const boundaryColumns = buildLandDynamicColumnGroup(
+  const boundaryColumns = buildTitleUnitsDynamicColumnGroup(
     units, "Sınır Unsuru",
-    (fields) => {
+    (unit) => {
+      const fields = unit.fields || {};
       const items = getLandBoundaryElementItems(fields);
       return fields.landBoundaryElementOther ? [...items, `Diğer: ${fields.landBoundaryElementOther}`] : items;
     },
     (item) => item,
   );
-  const agriculturalColumns = buildLandDynamicColumnGroup(
+  const agriculturalColumns = buildTitleUnitsDynamicColumnGroup(
     units, "Zirai Ürün",
-    (fields) => getLandAgriculturalProductItems(fields),
+    (unit) => getLandAgriculturalProductItems(unit.fields || {}),
     (item) => formatLandAgriculturalProductItem(item),
   );
   const dynamicColumnGroups = [...roadColumns, ...boundaryColumns, ...agriculturalColumns];
@@ -18172,6 +18269,140 @@ function buildLandUnitsSummaryTableData() {
 // tablolarının export akışıyla BİREBİR AYNI desen.
 function buildLandUnitsSummaryWordTableHtml() {
   const data = buildLandUnitsSummaryTableData();
+  if (!data || !data.rows.length) return "";
+  return buildTitleUnitsSummaryTableHtmlFromData(data.headers, data.rows);
+}
+
+// Kullanıcı talebi (2026-08-19): "BELGELER ve proje bölümünü incele bu
+// bölümü çoklu formata nasıl uydurabiliriz. burada aynı ada parselde yer
+// alsa da blok bazında farklı ruhsat iskan veya projeler olabiliyor." —
+// "Belgeler ve Proje" bölümünün (`section.id === "documents"`) 26
+// alanından 3 uzun serbest-metin açıklaması (`projectReviewDescription`/
+// `projectConformity`/`reviewedDocumentsDescription`, hepsi `sensitiveOnly`
+// — İmar'ın `planRestrictionNote`/`planningNote`'uyla AYNI sınıf, rapor-
+// geneli kalır) HARİÇ, geri kalan 23'ü Arsa'daki "tüm hücreler sütun
+// olacak" ilkesiyle sütun olur. `projectInstitution` (çoklu seçim) TEK
+// istisna: `kind: "readonly"`, seçili kurumlar `", "` ile birleştirilir
+// (çoklu seçim tek metin hücresine yazılıp geri ayrıştırılamaz).
+const DOCUMENTS_UNITS_TABLE_FIELD_DEFS = [
+  { key: "hasArchitecturalProject", label: "Mimari Proje Var mı?", kind: "scalar" },
+  { key: "projectRegisteredInCadastre", label: "Kadastroya İşli mi?", kind: "scalar" },
+  { key: "cadastralRegisteredBaseArea", label: "Kadastroya İşli Taban Alanı", kind: "scalar" },
+  { key: "cadastralFootprintMatches", label: "Taban Oturumu Kadastral Paftaya Uygun mu?", kind: "scalar" },
+  { key: "cadastralCorrectionFloorCount", label: "Cins Tashihine Esas Kat Sayısı", kind: "scalar" },
+  { key: "projectInstitution", label: "Proje İncelenen Kurum", kind: "readonly" },
+  { key: "documentReviewInstitution", label: "İnceleme Yapılan Kurum", kind: "scalar" },
+  { key: "projectDifference", label: "Tapu/Belediye Projesi Arasında Fark Var mı?", kind: "scalar" },
+  { key: "projectDate", label: "Proje Tarihi", kind: "scalar" },
+  { key: "projectNo", label: "Proje No", kind: "scalar" },
+  { key: "projectType", label: "Proje Türü", kind: "scalar" },
+  { key: "titleProjectDate", label: "Tapu Proje Tarihi", kind: "scalar" },
+  { key: "titleProjectNo", label: "Tapu Proje No", kind: "scalar" },
+  { key: "titleProjectType", label: "Tapu Proje Türü", kind: "scalar" },
+  { key: "municipalityProjectDate", label: "Belediye Proje Tarihi", kind: "scalar" },
+  { key: "municipalityProjectNo", label: "Belediye Proje No", kind: "scalar" },
+  { key: "municipalityProjectType", label: "Belediye Proje Türü", kind: "scalar" },
+  { key: "hasEkb", label: "Enerji Kimlik Belgesi", kind: "scalar" },
+  { key: "ekbDocumentNo", label: "EKB Belge No", kind: "scalar" },
+  { key: "ekbIssueDate", label: "EKB Veriliş Tarihi", kind: "scalar" },
+  { key: "ekbValidUntil", label: "EKB Son Geçerlilik Tarihi", kind: "scalar" },
+  { key: "ekbEnergyClass", label: "Enerji Performans Sınıfı", kind: "scalar" },
+];
+
+// `projectInstitution` (multiCheckbox) hem dizi hem virgülle-ayrılmış
+// metin olarak saklanmış olabilir (bkz. getMultiCheckboxValues) — bu
+// SADECE görüntüleme amaçlı readonly sütun için, o fonksiyonun tam
+// ayrıştırma mantığını (options eşleştirme vb.) TEKRARLAMADAN, iki
+// saklama şeklini de okunabilir tek satıra çevirir.
+function formatDocumentsProjectInstitutionCell(fields) {
+  const value = fields.projectInstitution;
+  if (Array.isArray(value)) return value.map((item) => String(item || "").trim()).filter(Boolean).join(", ");
+  return String(value || "").trim();
+}
+
+// Bir taşınmazın "İncelenen Belgeler" (Ruhsat/İskan/Proje kayıtları,
+// `unit.tables.documents`) kayıtlarını TEK bir okunabilir satıra
+// formatlar — dinamik "Belge N" sütunlarında kullanılır.
+// getReviewedDocumentChronologicalEntries() (mevcut, ARBİTRER bir
+// taşınmazın tablosuyla çağrılabilir, YENİDEN PARAMETRELEŞTİRMEYE gerek
+// yok) + normalizeReviewedDocumentRow() (mevcut) DOĞRUDAN yeniden
+// kullanılır — YENİ bir ayrıştırıcı YAZILMAZ.
+function formatReviewedDocumentSummaryLine(entry) {
+  const normalized = normalizeReviewedDocumentRow(entry.row);
+  const parts = [normalized.type];
+  if (normalized.date) parts.push(normalized.date);
+  if (normalized.no) parts.push(`No: ${normalized.no}`);
+  return parts.filter(Boolean).join(" - ");
+}
+
+// Tabloyu (başlıklar + satırlar) hesaplar; YALNIZCA 2+ taşınmaz VE hepsi
+// FARKLI BLOKTA ise bir sonuç döner (Arsa/İmar'ın "farklı ada/parsel"
+// koşulunun AKSİNE — bkz. isDocumentsScopedByBlock, "documents" bölümü
+// ada/parsel değil BLOK düzeyinde karşılaştırılıyor, kullanıcının
+// bildirdiği gerçek budur). "documents" alanlarının paylaşım modeli
+// DEĞİŞMİYOR (her zaman taşınmaza-özgü) — bu yalnızca YENİ tablo/tab
+// çubuğunun görünürlük kuralı.
+function buildDocumentsUnitsSummaryTableData() {
+  const units = buildAllTitleUnitsForSummaryTable();
+  if (units.length < 2 || !isDocumentsScopedByBlock()) return null;
+
+  const documentColumns = buildTitleUnitsDynamicColumnGroup(
+    units, "İncelenen Belge",
+    // Boş taşınmazlarda `unit.tables?.documents` undefined olabilir — bunu
+    // AÇIKÇA bir boş diziye çevirmeden geçirmek TEHLİKELİ: fonksiyonun
+    // varsayılan parametresi (`= state.tables?.documents || []`) yalnızca
+    // argüman TAM OLARAK undefined ise devreye girer, bu durumda AKTİF
+    // taşınmazın (yanlış) verisine düşerdi — Arsa'nın land getter'larında
+    // ÇÖZÜLEN AYNI sınıf hata (bkz. plan) burada da BİLEREK önlenir.
+    (unit) => getReviewedDocumentChronologicalEntries(unit.tables?.documents || []),
+    (entry) => formatReviewedDocumentSummaryLine(entry),
+  );
+
+  const headers = [
+    "Sıra No",
+    ...DOCUMENTS_UNITS_TABLE_FIELD_DEFS.map((def) => def.label),
+    ...documentColumns.map((group) => group.label),
+  ];
+  const columnMeta = [
+    { kind: "seq" },
+    ...DOCUMENTS_UNITS_TABLE_FIELD_DEFS.map((def) => ({ kind: def.kind, fieldKey: def.key })),
+    ...documentColumns.map(() => ({ kind: "readonly" })),
+  ];
+
+  const rows = units.map((unit, index) => {
+    const fields = unit.fields || {};
+    return [
+      index + 1,
+      ...DOCUMENTS_UNITS_TABLE_FIELD_DEFS.map((def) => (
+        def.key === "projectInstitution"
+          ? formatDocumentsProjectInstitutionCell(fields) || "-"
+          : String(fields[def.key] || "").trim() || "-"
+      )),
+      ...documentColumns.map((group) => group.values[index]),
+    ];
+  });
+
+  // "eğer sistemde hücrede veri yoksa ... tabloda bu sütunlar gözükmemeli"
+  // (Tapu/Adres/İmar/Arsa tablolarındaki AYNI kural) — TÜM taşınmazlarda
+  // boş ("-") kalan bir sütun tamamen kaldırılır.
+  const columnHasData = headers.map((_, columnIndex) => (
+    columnIndex === 0 || rows.some((row) => {
+      const value = row[columnIndex];
+      return value !== undefined && value !== null && String(value).trim() !== "" && String(value).trim() !== "-";
+    })
+  ));
+  const filteredHeaders = headers.filter((_, columnIndex) => columnHasData[columnIndex]);
+  const filteredRows = rows.map((row) => row.filter((_, columnIndex) => columnHasData[columnIndex]));
+  const filteredColumnMeta = columnMeta.filter((_, columnIndex) => columnHasData[columnIndex]);
+
+  return { headers: filteredHeaders, rows: filteredRows, columnMeta: filteredColumnMeta };
+}
+
+// Banka şablonlarına {{TASINMAZLARBELGETABLOSU}} ile enjekte edilecek
+// gerçek HTML tablo (bkz. template-engine.js) — Tapu/Adres/İmar/Arsa
+// tablolarının export akışıyla BİREBİR AYNI desen.
+function buildDocumentsUnitsSummaryWordTableHtml() {
+  const data = buildDocumentsUnitsSummaryTableData();
   if (!data || !data.rows.length) return "";
   return buildTitleUnitsSummaryTableHtmlFromData(data.headers, data.rows);
 }
@@ -37386,6 +37617,14 @@ function createTable(section) {
           refreshReviewedDocumentsDescriptionFromCurrentRows();
           if (key === "c0") {
             renderSection();
+          } else {
+            // Kullanıcı talebi (2026-08-19): "Belgeler ve Proje" için
+            // Taşınmazlar Belgeler Özeti'ndeki dinamik "İncelenen Belge N"
+            // sütunları bu satırların (c1-c4) içeriğini de gösterir —
+            // c0 zaten yukarıda tam renderSection() tetikliyor (bu ANINDA
+            // özet tabloyu da içerir), diğer sütunlar için debounce'lu
+            // tazeleme yeterli (isOwnersTable'ın AYNI ilkesi).
+            refreshDocumentsUnitsSummaryTablePreviewDebounced();
           }
         }
         // Kullanıcı talebi (2026-08-15): "tab üzerinden değiştirince
@@ -37426,7 +37665,11 @@ function createTable(section) {
           refreshReviewedDocumentsDescriptionFromCurrentRows();
         }
         autosave();
-        if (isDocumentsTable && key === "c2") renderSection();
+        if (isDocumentsTable && key === "c2") {
+          renderSection();
+        } else if (isDocumentsTable) {
+          refreshDocumentsUnitsSummaryTablePreviewDebounced();
+        }
       });
       td.append(input);
       tr.append(td);

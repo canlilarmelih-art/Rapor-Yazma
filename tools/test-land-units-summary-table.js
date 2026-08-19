@@ -102,7 +102,7 @@ const functionNames = [
   "calculateAgriculturalTotalCount",
   "roundAgriculturalTreeCount",
   "parseReportNumber",
-  "buildLandDynamicColumnGroup",
+  "buildTitleUnitsDynamicColumnGroup",
   "buildLandUnitsSummaryTableData",
   "buildLandUnitsSummaryWordTableHtml",
   "splitTableHeaderLabelIntoTwoLines",

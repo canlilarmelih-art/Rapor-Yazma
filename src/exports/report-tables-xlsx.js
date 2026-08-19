@@ -724,6 +724,13 @@
     if (landUnitsSummaryCellGrid) {
       sheets.push({ name: sanitizeSheetName("Taşınmazlar Arsa Özeti", usedNames), sheetXml: buildSheetXmlFromCellGrid(styleRegistry, landUnitsSummaryCellGrid) });
     }
+    // Belgeler ve Proje (2026-08-19) — yukarıdakilerle AYNI desen; yalnızca
+    // taşınmazlar FARKLI BLOKTA iken dolu döner (ada/parsel değil — bkz.
+    // buildDocumentsUnitsSummaryTableData/isDocumentsScopedByBlock, app.js).
+    const documentsUnitsSummaryCellGrid = generatedCellGridFor("buildDocumentsUnitsSummaryWordTableHtml");
+    if (documentsUnitsSummaryCellGrid) {
+      sheets.push({ name: sanitizeSheetName("Taşınmazlar Belgeler Özeti", usedNames), sheetXml: buildSheetXmlFromCellGrid(styleRegistry, documentsUnitsSummaryCellGrid) });
+    }
 
     const rawGridDefs = collectRawGridDefs();
     const takyidatDefs = rawGridDefs.filter((def) => TAKYIDAT_KEYS.includes(def.key));
