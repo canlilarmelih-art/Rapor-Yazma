@@ -1908,6 +1908,58 @@ function getUnitSectionFieldKeys() {
   ];
 }
 
+// Kullanıcı talebi (2026-08-20/21): "bağımsız bölüm özellikleri bölümüne
+// yeni bir bölüm eklemek istiyorum ... tümüne uygula mantığında ama
+// SEÇECEĞİM bağımsız bölümlere kopyalama yapılmalı, tamamına değil.
+// aktif bulunduğum bağımsız bölümün bilgilerini istediğim bağımsız
+// bölümlere kopyalamak işin özeti." — applyImarDataToAllTitleUnits()/
+// applyLandDataToAllTitleUnits()'in (yukarıda) AYNI "bir kez kopyala,
+// sürekli senkron DEĞİL" mekaniği — TEK fark: hedefler "TÜM taşınmazlar"
+// değil, çağıranın açıkça verdiği targetIndices alt kümesi.
+// getUnitSectionFieldKeys() listesi (aktif taşınmazdan BİR KEZ okunur) +
+// state.tables.unitFloors (Katlar/Alanlar/Teraslar/İç Hacimler, bölümün
+// ANA veri yüzeyi) kopyalanır. Bu alanların TAMAMI skaler (string) —
+// object/array-safe klonlama GEREKMİYOR (facades bile virgülle-birleştirilmiş
+// TEK STRING, gerçek array değil, bkz. app.js'teki facades checkbox
+// handler'ı) — applyLandDataToAllTitleUnits'in AYNI basit atama deseni
+// yeterli. setTitleUnitFieldValue()'nun (yukarıda) AYNI index doğrulama
+// kuralı — geçersiz/aralık dışı/tekrarlı index'ler SESSİZCE atlanır (throw
+// etmez), aktif taşınmazın kendi index'i de (yanlışlıkla listede olsa
+// bile) SESSİZCE atlanır (kendine kopyalama anlamsız, no-op olmalı, hata
+// DEĞİL). Yalnızca state mutasyonu yapar — render()/saveState() ÇAĞIRMAZ
+// (mevcut kural), çağıran taraf (UI) saveState()+render() yapmalı.
+// Gerçekten uygulanan taşınmaz sayısını döner.
+function applyUnitDataToSelectedTitleUnits(targetIndices) {
+  if (!Array.isArray(targetIndices) || !targetIndices.length) return 0;
+
+  const keys = getUnitSectionFieldKeys();
+  const snapshot = {};
+  keys.forEach((key) => { snapshot[key] = state.fields[key]; });
+  const sourceUnitFloorRows = state.tables?.unitFloors || [];
+
+  const count = getTitleUnitCount();
+  const seen = new Set();
+  let appliedCount = 0;
+
+  targetIndices.forEach((index) => {
+    if (!Number.isInteger(index) || index < 0 || index >= count) return;
+    if (index === state.activeTitleUnitIndex) return;
+    if (seen.has(index)) return;
+    seen.add(index);
+
+    const targetFields = resolveTitleUnitWriteTarget(index);
+    keys.forEach((key) => { targetFields[key] = snapshot[key]; });
+
+    const targetRows = resolveTitleUnitUnitFloorsRowsWriteTarget(index);
+    targetRows.length = 0;
+    sourceUnitFloorRows.forEach((row) => targetRows.push({ ...row }));
+
+    appliedCount += 1;
+  });
+
+  return appliedCount;
+}
+
 // Kullanıcı talebi (2026-08-20) — AYNI rapor: "Ana Gayrimenkul Özellikleri"
 // (building) section.fields'ı LİTERAL BOŞ DİZİ — hiçbir alan deklaratif
 // değil, bu yüzden TITLE_UNIT_SCOPED_SECTION_IDS'te olmasına RAĞMEN genel
@@ -2236,6 +2288,32 @@ function resolveTitleUnitBuildingFloorsRowsWriteTarget(index) {
   return unit.tables.buildingFloors;
 }
 
+// resolveTitleUnitBuildingFloorsRowsWriteTarget()'ın (yukarıda) BİREBİR
+// ikizi — "unit" (Bağımsız Bölüm Özellikleri) bölümünün Katlar/Alanlar/
+// Teraslar/İç Hacimler tablosu için. Tüketicisi: applyUnitDataToSelectedTitleUnits()
+// (kullanıcı talebi, 2026-08-20: seçili taşınmazlara kopyalama).
+function resolveTitleUnitUnitFloorsRowsWriteTarget(index) {
+  if (index === state.activeTitleUnitIndex) {
+    state.tables = state.tables || {};
+    state.tables.unitFloors = state.tables.unitFloors || [];
+    return state.tables.unitFloors;
+  }
+  if (index === 0) {
+    if (!state.primaryTitleUnitShadow || typeof state.primaryTitleUnitShadow !== "object") {
+      state.primaryTitleUnitShadow = { fields: {}, tables: {} };
+    }
+    state.primaryTitleUnitShadow.tables = state.primaryTitleUnitShadow.tables || {};
+    state.primaryTitleUnitShadow.tables.unitFloors = state.primaryTitleUnitShadow.tables.unitFloors || [];
+    return state.primaryTitleUnitShadow.tables.unitFloors;
+  }
+  if (!Array.isArray(state.titleUnits)) state.titleUnits = [];
+  if (!state.titleUnits[index - 1]) state.titleUnits[index - 1] = createEmptyTitleUnit();
+  const unit = state.titleUnits[index - 1];
+  unit.tables = unit.tables || {};
+  unit.tables.unitFloors = unit.tables.unitFloors || [];
+  return unit.tables.unitFloors;
+}
+
 // Boş bir malik satırı ekler, YENİ satırın index'ini döner.
 function addTitleUnitOwnerRow(index) {
   if (!Number.isInteger(index) || index < 0 || index >= getTitleUnitCount()) return -1;
@@ -2348,6 +2426,102 @@ function createTitleUnitTabBar() {
   wrap.append(note);
 
   return wrap;
+}
+
+// Kullanıcı talebi (2026-08-20/21): "aktif bulunduğum bağımsız bölümün
+// bilgilerini istediğim bağımsız bölümlere kopyalamak" — createImarApplyAllControl()/
+// createLandApplyAllControl()'le AYNI YERE (tab çubuğunun hemen altına)
+// eklenen KARDEŞ kontrol, ama BİLİNÇLİ OLARAK farklı etkileşim:
+// checkbox+otomatik-tetikleme DEĞİL, çünkü hedef bir ALT KÜME seçimi
+// gerektiriyor — bu yüzden bir düğme + modal (bkz. openUnitCopyToSelectedModal).
+function createUnitCopyToSelectedControl() {
+  const wrap = document.createElement("div");
+  wrap.className = "unit-copy-to-selected-wrap";
+
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "secondary-button";
+  button.textContent = "Seçili Taşınmazlara Kopyala";
+
+  const note = document.createElement("small");
+  note.className = "muted-note unit-copy-to-selected-note";
+
+  button.addEventListener("click", () => {
+    if (getTitleUnitCount() < 2) return;
+    openUnitCopyToSelectedModal((appliedCount) => {
+      note.textContent = appliedCount
+        ? `${appliedCount} bağımsız bölüme kopyalandı.`
+        : "Hiçbir taşınmaz seçilmedi, kopyalama yapılmadı.";
+    });
+  });
+
+  wrap.append(button, note);
+  return wrap;
+}
+
+// openTitleRecordChangeModal()'ın (bkz. .checkbox-list/.checkbox-row —
+// zaten stillenmiş, çalışan bir özellikte kullanılıyor) BİREBİR şablonu —
+// hedef listesi getTitleUnitTabModels()'ten (aktif taşınmaz HARİÇ) gelir.
+// Kaydet handler'ı applyUnitDataToSelectedTitleUnits()'i çağırıp ardından
+// createTitleUnitTabBar()'ın ekle/sil butonlarıyla AYNI deseni (saveState()+
+// render(), autosave() DEĞİL — bu münferit alan düzenlemesi değil YAPISAL
+// çoklu-taşınmaz mutasyonu) izler.
+function openUnitCopyToSelectedModal(onDone = () => {}) {
+  document.querySelector(".modal-overlay")?.remove();
+
+  const targets = getTitleUnitTabModels().filter((tab) => !tab.isActive);
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.innerHTML = `
+    <div class="modal-card modal-card-wide" role="dialog" aria-modal="true" aria-labelledby="unitCopyToSelectedModalTitle">
+      <div class="modal-head">
+        <h3 id="unitCopyToSelectedModalTitle">Bağımsız Bölüm Bilgilerini Kopyala</h3>
+        <button class="modal-close" type="button" aria-label="Kapat">×</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-lead">Aktif taşınmazın Bağımsız Bölüm Özellikleri bilgileri (genel/alan-iç mekan/dekoratif bilgiler ve Katlar, Alanlar ve İç Hacimler tablosu) seçtiğiniz taşınmazlara kopyalanacak.</p>
+        <div class="checkbox-list">
+          ${targets.map((tab) => `
+            <label class="checkbox-row">
+              <input type="checkbox" value="${tab.index}" data-unit-copy-target>
+              <span>${escapeHtml(tab.label)}</span>
+            </label>
+          `).join("")}
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="secondary-button" type="button" data-unit-copy-select-all>Tümünü Seç</button>
+        <button class="secondary-button" type="button" data-unit-copy-clear>Seçimi Temizle</button>
+        <button class="secondary-button" type="button" data-unit-copy-cancel>Vazgeç</button>
+        <button class="primary-button" type="button" data-unit-copy-save>Seçilenlere Kopyala</button>
+      </div>
+    </div>
+  `;
+
+  const close = () => overlay.remove();
+  overlay.querySelector(".modal-close").addEventListener("click", close);
+  overlay.querySelector("[data-unit-copy-cancel]").addEventListener("click", close);
+  overlay.addEventListener("click", (event) => {
+    if (event.target === overlay) close();
+  });
+  overlay.querySelector("[data-unit-copy-select-all]").addEventListener("click", () => {
+    overlay.querySelectorAll("[data-unit-copy-target]").forEach((box) => { box.checked = true; });
+  });
+  overlay.querySelector("[data-unit-copy-clear]").addEventListener("click", () => {
+    overlay.querySelectorAll("[data-unit-copy-target]").forEach((box) => { box.checked = false; });
+  });
+  overlay.querySelector("[data-unit-copy-save]").addEventListener("click", () => {
+    const selectedIndices = [...overlay.querySelectorAll("[data-unit-copy-target]:checked")]
+      .map((box) => Number.parseInt(box.value, 10));
+    const appliedCount = applyUnitDataToSelectedTitleUnits(selectedIndices);
+    saveState();
+    render();
+    onDone(appliedCount);
+    close();
+  });
+
+  document.body.append(overlay);
+  overlay.querySelector("[data-unit-copy-target]")?.focus();
 }
 
 // "Belgeler ve Proje"nin YENİ 2 katmanlı (Blok → Bağımsız Bölüm) tab
@@ -3875,11 +4049,21 @@ function renderSection() {
   // aktif taşınmazı değiştirip Bağımsız Bölüm'e gelmesini gerektiriyordu —
   // diğer 6 bölümle (Tapu/Adres/İmar/Arsa/Belgeler/Değerleme) tutarsız ve
   // kullanışsız. Değerleme'nin EN BASİT deseni (ada/parsel/blok koşulu
-  // YOK, yalnızca 2+ taşınmaz): "Tümüne uygula" butonu BİLİNÇLİ OLARAK
-  // YOK (her bağımsız bölümün kendi alan/iç mekan/dekorasyon bilgisi
-  // farklı olması normal/beklenen).
+  // YOK, yalnızca 2+ taşınmaz) — 0.0.488'de eklendi.
+  //
+  // Kullanıcı talebi (2026-08-20/21, devam): "1 adet bağımsız bölüm
+  // bilgisi tamamen doldurdum ben bunu tümüne uygula mantığında olacak
+  // şekilde diğer bağımsız bölümlere kolay kopyalamak istiyorum. ancak
+  // burada benim seçeceğim bağımsız bölümlere kopyalama yapılmalı
+  // tamamına değil." — bu, YUKARIDAKİ "Tümüne uygula BİLİNÇLİ OLARAK
+  // YOK" kararıyla ÇELİŞMİYOR: itiraz edilen "körü körüne TÜMÜNE" tek-
+  // tıkla davranışıydı (İmar/Arsa'daki gibi); createUnitCopyToSelectedControl()/
+  // openUnitCopyToSelectedModal() SEÇİLEBİLİR bir alt küme kopyalama
+  // aracı — kullanıcı hangi bağımsız bölümlerin aktif taşınmazla AYNI
+  // bilgiye sahip olacağını kendisi işaretler.
   if (section.id === "unit" && isCurrentUserAdmin() && state.fields.requestType === "Çoklu Talep") {
     body.append(createTitleUnitTabBar());
+    body.append(createUnitCopyToSelectedControl());
   }
 
   // Kullanıcı talebi (2026-08-20): "Ana gayrimenkul bölümünde blok bazında

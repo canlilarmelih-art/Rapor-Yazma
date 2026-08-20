@@ -1649,6 +1649,17 @@ td .free-lookup input {
   display: none;
 }
 
+/* Bağımsız Bölüm "Seçili Taşınmazlara Kopyala" (2026-08-20/21) — kullanıcı
+   sonuç notu (X bağımsız bölüme kopyalandı.) boşken görünmesin, üstteki
+   apply-all not desenindeki AYNI ilke. */
+.unit-copy-to-selected-note:empty {
+  display: none;
+}
+
+.unit-copy-to-selected-wrap {
+  margin-top: 8px;
+}
+
 /* KML "tek dosya -> tüm taşınmazlara uygula" kutucuğu (2026-08-15) — aynı
    görsel dil (title-record-change-apply-all) ama upload-card içinde.
    ÖNEMLİ (2026-08-15 hotfix): "ŞU AN KML YÜKLEME BUTONU ÇALIŞMIYOR" —
