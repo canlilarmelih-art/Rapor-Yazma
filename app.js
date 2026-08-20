@@ -3128,7 +3128,7 @@ function createUnitUnitsSummaryTablePreview() {
   attachTitleUnitsSummaryTableEditing(tableContainer);
   const hint = document.createElement("p");
   hint.className = "muted-note";
-  hint.textContent = "Aktif taşınmazın hücrelerine tıklayarak doğrudan düzenleyebilirsiniz (Kat/Alan/Teras sütunları taşınmazın \"Katlar, Alanlar ve İç Hacimler\" panelindeki ilk kat satırıyla eşlenir — buradan düzenlemek o satırı da günceller; yalnızca İç Hacimler Özeti sütunu tıklanamaz, çünkü TÜM kat satırlarının birleşik özetidir, o panelden düzenlenmelidir; Dekoratif Özellikler bu tabloya dahil edilmemiştir). Banka şablonlarında {{TASINMAZLARBAGIMSIZBOLUMTABLOSU}} olarak kullanılabilir.";
+  hint.textContent = "Aktif taşınmazın hücrelerine tıklayarak doğrudan düzenleyebilirsiniz (Kat/Alan/Teras sütunları taşınmazın \"Katlar, Alanlar ve İç Hacimler\" panelindeki ilk kat satırıyla eşlenir — buradan düzenlemek o satırı da günceller; Blok/Bağımsız Bölüm No ile \"İç Hacimler - Kat N\" sütunları tıklanamaz, ilgili taşınmazın kendi panelinden düzenlenmelidir; Dekoratif Özellikler bu tabloya dahil edilmemiştir). Banka şablonlarında {{TASINMAZLARBAGIMSIZBOLUMTABLOSU}} olarak kullanılabilir.";
   wrap.append(hint);
   return wrap;
 }
@@ -12446,12 +12446,22 @@ function syncUnitFloorSummaryFields(rows = getUnitFloorRows()) {
   recalculateExpenseFees();
 }
 
+// TEK bir Katlar/Alanlar satırını ("Zemin: Salon, Oda, Hol: kısa not" gibi)
+// tek satırlık özet metnine çevirir. formatUnitFloorInteriorSummary() (çok
+// satırlı, TÜM satırların birleşimi) VE Bağımsız Bölüm özet tablosunun
+// "İç Hacimler - Kat N" dinamik sütun grubu (buildUnitUnitsSummaryTableData,
+// kullanıcı talebi 2026-08-21: "iç hacimler özet kısmını kendi içinde
+// tablolaştırmamız lazım" — Land'in Kadastro Yolu/Sınır Unsuru dinamik
+// sütun grubu deseninin AYNISI, artık TEK bir metin bloğu yerine taşınmaz
+// başına birden fazla "Kat" sütunu) TARAFINDAN PAYLAŞILIR.
+function formatUnitFloorRowInteriorLine(row = {}) {
+  const floor = row.floor || "Kat";
+  const parts = String(row.interiors || "").split(",").map((item) => item.trim()).filter(Boolean);
+  return [floor, parts.join(", "), row.note].filter(Boolean).join(": ");
+}
+
 function formatUnitFloorInteriorSummary(rows = []) {
-  return rows.map((row) => {
-    const floor = row.floor || "Kat";
-    const parts = String(row.interiors || "").split(",").map((item) => item.trim()).filter(Boolean);
-    return [floor, parts.join(", "), row.note].filter(Boolean).join(": ");
-  }).filter(Boolean).join("\n");
+  return rows.map((row) => formatUnitFloorRowInteriorLine(row)).filter(Boolean).join("\n");
 }
 
 function buildUnitFloorAreaDistributionText(mode = "current") {
@@ -20222,14 +20232,25 @@ function buildDocumentsUnitsSummaryWordTableHtml() {
 // çağrısı — tablo hücresi düzenlendiğinde YALNIZCA aynalı state.fields[key]
 // DEĞİL, kaynağın KENDİSİ (unitFloors[0][rowKey]) de güncellenir; böylece
 // sonraki her senkron ZATEN güncel değeri okur, ezme riski kalmaz (bkz.
-// UNIT_FLOOR_MIRROR_FIELD_TO_ROW_KEY). `interiorFeatures` İSTİSNA — TEK bir
-// satırın aynası DEĞİL, TÜM unitFloors satırlarının (kat+iç hacimler+not)
-// birleştirilmiş ÇOK SATIRLI özeti (formatUnitFloorInteriorSummary) —
-// serbest metinden 10'a kadar dropdown'a güvenilir şekilde geri
-// ayrıştırılamaz (Land'in popup-tabanlı çoklu-kayıt alanlarıyla AYNI
-// gerekçeyle "readonly" kaldı, tam düzenleme o taşınmazın kendi Katlar/
-// Alanlar panelinden yapılmaya devam ediyor).
+// UNIT_FLOOR_MIRROR_FIELD_TO_ROW_KEY).
+//
+// Kullanıcı takip talebi (2026-08-21, devam #2): "tabloda blok ve bağımsız
+// bölüm numarası bulunmuyor" — `titleBlockName`("Blok")/`unitNo`("Bağımsız
+// Bölüm No") EN BAŞA (Sıra No'nun hemen ardına) eklendi; bunlar Tapu
+// bölümünün KENDİ alanları (kendi özet tablosunda zaten düzenlenebilir),
+// burada SADECE satırın hangi taşınmaza ait olduğunu tanımlamak için
+// "readonly" — Sıra No'nun (kind:"seq") mantıksal devamı.
+//
+// "iç hacimler özet kısmını kendi içinde tablolaştırmamız lazım" —
+// `interiorFeatures` (TÜM unitFloors satırlarının TEK bir metin bloğunda
+// birleştirilmiş özeti) KALDIRILDI; yerine Land'in Kadastro Yolu/Sınır
+// Unsuru/Zirai Ürün'ünün AYNI `buildTitleUnitsDynamicColumnGroup()` deseni
+// kullanılarak "İç Hacimler - Kat N" dinamik sütun grubu eklendi (bkz.
+// buildUnitUnitsSummaryTableData) — artık HER kat satırı kendi sütununda,
+// serbest metin bloğuna sıkıştırılmadan.
 const UNIT_UNITS_TABLE_FIELD_DEFS = [
+  { key: "titleBlockName", label: "Blok", kind: "readonly" },
+  { key: "unitNo", label: "Bağımsız Bölüm No", kind: "readonly" },
   { key: "unitUsageStatus", label: "Kullanım Durumu", kind: "scalar" },
   { key: "unitFirstSaleStatus", label: "İlk Satış Durumu", kind: "scalar" },
   { key: "unitEntrancePosition", label: "Bina Girişine Göre Konum", kind: "scalar" },
@@ -20247,7 +20268,6 @@ const UNIT_UNITS_TABLE_FIELD_DEFS = [
   { key: "unitLegalTerrace", label: "Yasal Teras (m²)", kind: "scalar" },
   { key: "unitCurrentTerrace", label: "Mevcut Teras (m²)", kind: "scalar" },
   { key: "unitTerraceReductionRate", label: "Teras İnd. Oranı", kind: "scalar" },
-  { key: "interiorFeatures", label: "İç Hacimler Özeti", kind: "readonly" },
 ];
 
 // fieldKey -> unitFloors satırındaki (row0) karşılık gelen anahtar. Yalnızca
@@ -20283,12 +20303,33 @@ function buildUnitUnitsSummaryTableData() {
   const units = buildAllTitleUnitsForSummaryTable();
   if (units.length < 2) return null;
 
-  const headers = ["Sıra No", ...UNIT_UNITS_TABLE_FIELD_DEFS.map((def) => def.label)];
-  const columnMeta = [{ kind: "seq" }, ...UNIT_UNITS_TABLE_FIELD_DEFS.map((def) => ({ kind: def.kind, fieldKey: def.key }))];
+  // "iç hacimler özet kısmını kendi içinde tablolaştırmamız lazım" — Land'in
+  // Kadastro Yolu/Sınır Unsuru/Zirai Ürün'üyle AYNI desen: HER taşınmazın
+  // KENDİ unitFloors satır sayısı kadar "İç Hacimler - Kat N" sütunu açılır
+  // (en çok satırı olan taşınmaz kaç sütun gerektiriyorsa o kadar; eksik
+  // satırlı taşınmazlarda "-" görünür), formatUnitFloorRowInteriorLine()
+  // (formatUnitFloorInteriorSummary'nin PAYLAŞTIĞI tek-satır formatlayıcı)
+  // ile her satır "Kat: İç Hacimler: Not" biçiminde TEK sütuna sığar.
+  const interiorColumns = buildTitleUnitsDynamicColumnGroup(
+    units, "İç Hacimler - Kat",
+    (unit) => (Array.isArray(unit.tables && unit.tables.unitFloors) ? unit.tables.unitFloors : []),
+    (row) => formatUnitFloorRowInteriorLine(row),
+  );
+
+  const headers = ["Sıra No", ...UNIT_UNITS_TABLE_FIELD_DEFS.map((def) => def.label), ...interiorColumns.map((group) => group.label)];
+  const columnMeta = [
+    { kind: "seq" },
+    ...UNIT_UNITS_TABLE_FIELD_DEFS.map((def) => ({ kind: def.kind, fieldKey: def.key })),
+    ...interiorColumns.map(() => ({ kind: "readonly" })),
+  ];
 
   const rows = units.map((unit, index) => {
     const fields = unit.fields || {};
-    return [index + 1, ...UNIT_UNITS_TABLE_FIELD_DEFS.map((def) => String(fields[def.key] || "").trim() || "-")];
+    return [
+      index + 1,
+      ...UNIT_UNITS_TABLE_FIELD_DEFS.map((def) => String(fields[def.key] || "").trim() || "-"),
+      ...interiorColumns.map((group) => group.values[index]),
+    ];
   });
 
   // "eğer sistemde hücrede veri yoksa ... tabloda bu sütunlar gözükmemeli"

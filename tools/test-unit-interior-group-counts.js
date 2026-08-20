@@ -45,6 +45,7 @@ function sliceRange(startMarker, endMarker) {
 const src = [
   sliceFn("function foldTurkish("),
   sliceFn("function getUnitFloorRows("),
+  sliceFn("function formatUnitFloorRowInteriorLine("),
   sliceFn("function formatUnitFloorInteriorSummary("),
   sliceFn("function escapeRegExp("),
   sliceFn("function normalizeReportWhitespace("),

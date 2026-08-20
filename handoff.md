@@ -1,5 +1,15 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.495 - 2026-08-21 - Bağımsız Bölüm özet tablosuna Blok/BB No kimlik sütunları + İç Hacimler kat-kat tablolaştı
+
+- Kullanıcı: "tabloda blok ve bağımsız bölüm numarası bulunmuyor iç hacimler özet kısmını kendi içinde tablolaştırmamız lazım."
+- **Blok/Bağımsız Bölüm No**: `titleBlockName` ("Blok") ve `unitNo` ("Bağımsız Bölüm No") — Tapu bölümünün kendi alanları — `UNIT_UNITS_TABLE_FIELD_DEFS`'in EN BAŞINA (Sıra No'nun hemen ardına), `kind: "readonly"` olarak eklendi. Bunlar burada SADECE hangi satırın hangi taşınmaza ait olduğunu göstermek için — gerçek düzenleme Tapu'nun kendi özet tablosundan (`{{TASINMAZLARTAPUTABLOSU}}`) yapılmaya devam ediyor.
+- **İç Hacimler Özeti → dinamik "İç Hacimler - Kat N" sütun grubu**: eski TEK sütunluk `interiorFeatures` (TÜM kat satırlarının `\n`'li birleşik metin özeti) kaldırıldı; yerine Arsa'nın Kadastro Yolu/Sınır Unsuru dinamik sütun grubuyla (`buildTitleUnitsDynamicColumnGroup`, zaten var olan jenerik fonksiyon, YENİ kod gerekmedi) AYNI desen kullanılarak, taşınmaz başına KAÇ kat satırı varsa o kadar "İç Hacimler - Kat N" (readonly) sütunu açılıyor — en çok satırlı taşınmaz sütun sayısını belirliyor, eksik satırlı taşınmazlarda "-" görünüyor. Her hücre `formatUnitFloorRowInteriorLine(row)` ile "Kat: İç Hacimler: Not" biçiminde formatlanıyor.
+- **Küçük, davranış-koruyan refactor**: `formatUnitFloorInteriorSummary(rows)` (mevcut, TÜM satırları `\n` ile birleştiren fonksiyon — "İç Hacimler Açıklaması" metninde hâlâ kullanılıyor) artık YENİ `formatUnitFloorRowInteriorLine(row)` (TEK satırı formatlayan, çıkarılmış) fonksiyonunu satır başına çağırıyor — davranış birebir aynı, yalnızca tek-satırlık kısım paylaşılabilir hale geldi. Bu değişiklik `tools/test-unit-interior-group-counts.js`'in sandbox extraction listesine yeni fonksiyonu eklemeyi gerektirdi (aksi halde ReferenceError).
+- Test: `tools/test-unit-units-summary-table.js` genişletildi (14 senaryo — yeni: kimlik sütunlarının doğru konumda/değerde olduğu, "İç Hacimler - Kat N" dinamik sütun grubunun doğru sayıda/formatlanmış/readonly olduğu). `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` cache-buster `?v=20260821-1330`.
+- Canlı tarayıcı testi yapılamadı (giriş bilgisi yok) — doğrulama kod/test seviyesinde.
+
 ## 0.0.494 - 2026-08-21 - Bağımsız Bölüm özet tablosu: Kat/Alan/Teras alanları da gerçekten çift taraflı
 
 - Kullanıcı (0.0.493'ün hemen ardından): "Kat/Alan/Teras/İç Hacimler özeti bunları tablodan değiştirmem sorun mu olur" → açıklama sonrası: "çift taraflı düzenleme yapabilmeliyim buna çözüm bulalım."
