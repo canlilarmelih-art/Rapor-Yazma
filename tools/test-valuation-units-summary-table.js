@@ -258,15 +258,22 @@ function unit(overrides = {}) {
 {
   fns.setState({
     activeTitleUnitIndex: 0,
-    fields: { legalValue: "500.000", currentValue: "550.000" },
+    fields: {
+      legalValueArea: "100", legalValueUnit: "5.000", legalValue: "500.000",
+      currentValueArea: "100", currentValueUnit: "5.500", currentValue: "550.000",
+    },
     tables: {},
-    titleUnits: [unit({ legalValue: "720.000", currentValue: "760.000" })],
+    titleUnits: [unit({
+      legalValueArea: "120", legalValueUnit: "6.000", legalValue: "720.000",
+      currentValueArea: "120", currentValueUnit: "6.333", currentValue: "760.000",
+    })],
   });
   const html = fns.buildValuationUnitsSummaryWordTableHtml();
   assert.ok(html.includes("<table"), "Geçerli bir <table> HTML'i üretilmeli.");
   assert.ok(html.includes("table-layout:auto"), "Sütun genişlikleri DİNAMİK (table-layout:auto) olmalı.");
   assert.ok(html.includes("text-align:center") && html.includes("vertical-align:middle"), "Tüm hücreler yatay VE dikey ortalı olmalı.");
   assert.ok(html.includes('rowspan="2"') && html.includes("YASAL DURUM DEĞERİ") && html.includes("MEVCUT DURUM DEĞERİ"), "Değerleme tablosu yasal/mevcut durum için iki katmanlı grup başlıkları kullanmalı.");
+  assert.ok(html.includes("ALAN<br>(M²)") && html.includes("BİRİM DEĞERİ<br>(TL/M²)") && html.includes("PİYASA DEĞERİ<br>(TL)"), "Alt başlıklarda alan ve değer birimleri ikinci satırda gösterilmelidir.");
   assert.ok(html.includes("500.000") && html.includes("720.000"), "Her iki taşınmazın değerleri de HTML'de gözükmeli.");
   console.log("buildValuationUnitsSummaryWordTableHtml gercek HTML uretimi testi tamam.");
 }

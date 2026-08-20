@@ -6012,13 +6012,13 @@ function getValuationUnitsSummaryHeaderGroup(label) {
 function getValuationUnitsSummarySubheader(label) {
   const normalized = String(label || "");
   if (normalized === "Sıra No") return "No";
-  if (normalized.endsWith(" - Alan")) return "Alan";
+  if (normalized.endsWith(" - Alan")) return "Alan\n(m²)";
   if (normalized.endsWith(" - M2 Birim Değeri")) {
-    return normalized.includes("Kira") ? "Kira M2 Birim Değeri" : "M2 Birim Değeri";
+    return normalized.includes("Kira") ? "Kira M2 Birim Değeri\n(TL/m²)" : "M2 Birim Değeri\n(TL/m²)";
   }
-  if (normalized.includes("Acil Satış")) return "Acil Satış Değeri";
-  if (normalized.includes("Kira Değeri")) return "Kira Değeri";
-  return "Piyasa Değeri";
+  if (normalized.includes("Acil Satış")) return "Acil Satış Değeri\n(TL)";
+  if (normalized.includes("Kira Değeri")) return "Kira Değeri\n(TL/ay)";
+  return "Piyasa Değeri\n(TL)";
 }
 
 // Çoklu değerleme özeti iki katmanlıdır: üst satır Yasal/Mevcut durum
@@ -6047,7 +6047,10 @@ function buildValuationUnitsSummaryTableHtml(data, activeRowIndex, { editable = 
   }, {});
   const groupOrder = ["Yasal Durum Değeri", "Mevcut Durum Değeri", "Diğer"].filter((group) => groupedColumns[group]?.length);
   const topHeaderHtml = `<tr><th rowspan="2" style="${headerCell}">${toTitleFieldUppercase(headers[0])}</th>${groupOrder.map((group) => `<th colspan="${groupedColumns[group].length}" style="${headerCell}">${toTitleFieldUppercase(group)}</th>`).join("")}</tr>`;
-  const subHeaderHtml = `<tr>${groupOrder.flatMap((group) => groupedColumns[group]).map(({ label }) => `<th style="${headerCell}">${toTitleFieldUppercase(getValuationUnitsSummarySubheader(label))}</th>`).join("")}</tr>`;
+  const subHeaderHtml = `<tr>${groupOrder.flatMap((group) => groupedColumns[group]).map(({ label }) => {
+    const subheader = toTitleFieldUppercase(getValuationUnitsSummarySubheader(label));
+    return `<th style="${headerCell}">${escapeHtml(subheader).replace(/\n/g, "<br>")}</th>`;
+  }).join("")}</tr>`;
   const bodyHtml = rows.map((row, rowIndex) => {
     const cellStyle = rowIndex % 2 === 1 ? zebraCell : baseCell;
     const cellsHtml = row.map((cell, columnIndex) => {
