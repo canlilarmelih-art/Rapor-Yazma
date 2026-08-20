@@ -695,6 +695,17 @@ assert(
   "Harita/kroki kaydetme veya Word gorsel varligi ureticileri bulunamadi."
 );
 const isbankTemplateSource = fs.readFileSync(path.join(appDir, "templates", "isbankasi.html"), "utf8");
+const yapikrediTemplateSource = fs.readFileSync(path.join(appDir, "templates", "yapikredi.html"), "utf8");
+const yapikrediFurnishingSectionStart = yapikrediTemplateSource.indexOf("<h2>Değerleme ve Tefrişat</h2>");
+const yapikrediFurnishingSectionEnd = yapikrediTemplateSource.indexOf("<h3>Olumlu Faktörler</h3>", yapikrediFurnishingSectionStart);
+const yapikrediFurnishingSection = yapikrediTemplateSource.slice(yapikrediFurnishingSectionStart, yapikrediFurnishingSectionEnd);
+assert(
+  yapikrediFurnishingSectionStart >= 0 &&
+    yapikrediFurnishingSectionEnd > yapikrediFurnishingSectionStart &&
+    yapikrediFurnishingSection.includes("{{UNİT_İNTERİOR_DESCRİPTİON_TEXT}}") &&
+    !yapikrediFurnishingSection.includes("{{UNİT_DECORATİVE_DESCRİPTİON_TEXT}}"),
+  "Yapı Kredi tefrişat bölümünde dekoratif özellikler, iç özellikler metnine ikinci kez eklenmemelidir."
+);
 const isbankSectionHeadings = [
   "1. TAPU SEKMESİ",
   "2. KONUM BİLGİLERİ",
