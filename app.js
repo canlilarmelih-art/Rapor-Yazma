@@ -1274,15 +1274,15 @@ const TITLE_UNIT_SCOPED_TABLE_KEYS_BASE = [
   // scoped set'te değildi, bkz. getUnitSectionFieldKeys()/getBuildingSectionFieldKeys().
   "unitFloors", "buildingFloors",
 ];
-// Kullanıcı talebi (2026-08-19): "ÇOKLU ARSA TARLA raporlarında emsaller
-// ortak olmalı" — yalnızca Arsa/Tarla Çoklu Talep raporlarında "comparables"
-// (Emsal kayıtları) tablosu da (fields'lara ek olarak, bkz.
-// isComparablesSharedForLandReport) taşınmaza-özgü scoped set'ten
-// ÇIKARILIR — rapor-geneli TEK bir emsal listesi kalır. Eskiden düz bir
-// `const` idi (TITLE_UNIT_SCOPED_TABLE_KEYS) — İmar'ın getTitleUnitScopedFieldKeys()'teki
+// Kullanıcı talebi (2026-08-19, 2026-08-20'de TÜM mülkiyet türlerine
+// genişletildi — bkz. isComparablesSharedAcrossUnits() yorumu): Çoklu
+// Talep raporlarında "comparables" (Emsal kayıtları) tablosu da
+// (fields'lara ek olarak) taşınmaza-özgü scoped set'ten ÇIKARILIR —
+// rapor-geneli TEK bir emsal listesi kalır. Eskiden düz bir `const` idi
+// (TITLE_UNIT_SCOPED_TABLE_KEYS) — İmar'ın getTitleUnitScopedFieldKeys()'teki
 // AYNI koşullu-hariç-tutma deseniyle fonksiyona çevrildi.
 function getTitleUnitScopedTableKeys() {
-  if (isComparablesSharedForLandReport()) {
+  if (isComparablesSharedAcrossUnits()) {
     return TITLE_UNIT_SCOPED_TABLE_KEYS_BASE.filter((key) => key !== "comparables");
   }
   return TITLE_UNIT_SCOPED_TABLE_KEYS_BASE;
@@ -1778,12 +1778,12 @@ function getTitleUnitScopedFieldKeys() {
     // 2026-08-16'da applyImarDataToAllTitleUnits() ile TEK kaynaktan
     // (drift riski olmadan) paylaşılan bir çıkarım haline getirildi.
     if (sectionId === "planning") return;
-    // Kullanıcı talebi (2026-08-19): "ÇOKLU ARSA TARLA raporlarında
-    // emsaller ortak olmalı" — yalnızca Arsa/Tarla Çoklu Talep raporlarında
-    // "comparables" (Emsaller) bölümünün alanları scoped set'e HİÇ
-    // eklenmez (rapor-geneli paylaşımlı kalır) — bkz. isComparablesSharedForLandReport.
-    // Diğer mülkiyet türlerinde/Tekli Talep'te davranış DEĞİŞMİYOR.
-    if (sectionId === "comparables" && isComparablesSharedForLandReport()) return;
+    // Kullanıcı talebi (2026-08-19, 2026-08-20'de TÜM mülkiyet türlerine
+    // genişletildi — bkz. isComparablesSharedAcrossUnits() yorumu): Çoklu
+    // Talep raporlarında "comparables" (Emsaller) bölümünün alanları
+    // scoped set'e HİÇ eklenmez (rapor-geneli paylaşımlı kalır). Tekli
+    // Talep'te davranış DEĞİŞMİYOR.
+    if (sectionId === "comparables" && isComparablesSharedAcrossUnits()) return;
     const section = sections.find((item) => item.id === sectionId);
     (section?.fields || []).forEach((field) => {
       // Talep Türü rapor-genelidir; taşınmaz tabına geçerken birim verisiyle
@@ -3534,13 +3534,25 @@ function isLandOwnershipType(value = state.fields.ownershipType) {
 
 // Kullanıcı talebi (2026-08-19): "ÇOKLU ARSA TARLA raporlarında emsaller
 // ortak olmalı. yani her taşınmaz için ayrı emsal girilmemeli burada tab
-// mantığı olmasına gerek yok" — yalnızca Arsa/Tarla Çoklu Talep raporlarında
-// "Emsaller" (comparables) bölümünün hem satırları (state.tables.comparables)
-// hem de section.fields'ı taşınmaza-özgü DEĞİL, rapor-geneli TEK olmalı.
-// Kat irtifakı/Müstakil Bina gibi diğer mülkiyet türlerinde davranış
-// DEĞİŞMİYOR (her taşınmazın kendi emsalleri olmaya devam ediyor).
-function isComparablesSharedForLandReport() {
-  return state.fields.requestType === "Çoklu Talep" && isLandOwnershipType();
+// mantığı olmasına gerek yok" — başlangıçta YALNIZCA Arsa/Tarla Çoklu
+// Talep raporlarına uygulanmıştı.
+//
+// Kullanıcı talebi (2026-08-20, genişletme): "emsaller bölümünce emsal
+// metni çoklu raporlarda tekli rapor gibi davranıyor... çoklu talebe
+// uygun paragraf olmalı" — netleştirme sorusuyla (AskUserQuestion) onaylandı:
+// Kat İrtifakı/Müstakil Bina Çoklu Talep raporlarında da AYNI davranış
+// istendi ("Emsaller de ortak olsun, Arsa/Tarla ile aynı"). Bu yüzden
+// isLandOwnershipType() KOŞULU KALDIRILDI — artık TÜM mülkiyet türlerinde,
+// yalnızca Çoklu Talep ise "Emsaller" (comparables) bölümünün hem satırları
+// (state.tables.comparables) hem de section.fields'ı taşınmaza-özgü DEĞİL,
+// rapor-geneli TEK. Fonksiyon adı da bu yüzden isComparablesSharedForLandReport'tan
+// isComparablesSharedAcrossUnits'e yeniden adlandırıldı (artık "land" ile
+// sınırlı değil). BİLİNEN GEÇİŞ RİSKİ (Belgeler'in blok-senkronuyla AYNI
+// sınıf): bu özellikten ÖNCE oluşturulmuş, bağımsız bölümler arasında
+// FARKLI emsal satırları girilmiş bir rapor bu davranışa geçtiğinde, o an
+// aktif olan taşınmazın satırları "kazanır", diğerleri kaybolur.
+function isComparablesSharedAcrossUnits() {
+  return state.fields.requestType === "Çoklu Talep";
 }
 
 function isTarlaOwnershipType(value = state.fields.ownershipType) {
@@ -36297,11 +36309,12 @@ function buildComparableMarketAnalysisText() {
     fields: state.fields || {},
     rows: getComparableRows(),
     selectVariant,
-    // Kullanıcı talebi (2026-08-19): "ÇOKLU ARSA TARLA raporlarında
-    // emsaller ortak olmalı... yalnızca emsal açıklamalarını çoğul
-    // şekilde güncelle" — yalnızca Arsa/Tarla Çoklu Talep raporlarında
-    // (isComparablesSharedForLandReport) modül ÇOĞUL varyantları kullanır.
-    isMultiUnit: isComparablesSharedForLandReport(),
+    // Kullanıcı talebi (2026-08-19, 2026-08-20'de TÜM mülkiyet türlerine
+    // genişletildi): Çoklu Talep raporlarında (isComparablesSharedAcrossUnits)
+    // modül ÇOĞUL varyantları kullanır — hem Arsa/Tarla dalı
+    // (buildLandComparableMarketAnalysisText) hem genel/Konut-İşyeri dalı
+    // (buildComparableMarketAnalysisText) artık isMultiUnit'e bakıyor.
+    isMultiUnit: isComparablesSharedAcrossUnits(),
   });
   const furnishedMarketNote = buildComparableFurnishedMarketNote();
   const fullText = [text, furnishedMarketNote].filter(Boolean).join("\n\n");

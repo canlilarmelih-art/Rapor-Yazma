@@ -123,7 +123,7 @@ const functionNames = [
   // artik bunlara bagimli.
   "getValuationPerUnitOnlyFieldKeys",
   "getTitleUnitScopedTableKeys",
-  "isComparablesSharedForLandReport",
+  "isComparablesSharedAcrossUnits",
   "isLandOwnershipType",
   "normalizeOwnershipTypeForSectionVisibility",
   "foldTurkish",

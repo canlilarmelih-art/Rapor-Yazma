@@ -107,9 +107,10 @@ const functionNames = [
   "getValuationPerUnitOnlyFieldKeys",
   // Emsaller (comparables) Arsa/Tarla'da paylasimli (2026-08-19, devam) -
   // TITLE_UNIT_SCOPED_TABLE_KEYS artik getTitleUnitScopedTableKeys()
-  // fonksiyonuna cevrildi (isComparablesSharedForLandReport kosuluyla).
+  // fonksiyonuna cevrildi (isComparablesSharedAcrossUnits kosuluyla, 2026-08-20'de
+  // TUM mulkiyet turlerine genisletildi - eskiden isComparablesSharedForLandReport).
   "getTitleUnitScopedTableKeys",
-  "isComparablesSharedForLandReport",
+  "isComparablesSharedAcrossUnits",
   "isLandOwnershipType",
   "normalizeOwnershipTypeForSectionVisibility",
   // Bağımsız Bölüm/Ana Gayrimenkul scoping-gap-fix (2026-08-20) -
@@ -880,7 +881,7 @@ assert.match(appSource, /panel\.dataset\.parcelScope = mixedParcels \? "mixed" :
     tables: { title: [{ c0: "MALİK BİR" }], comparables: [{ c0: "Emsal 1" }] },
   });
   sandbox.setState(state);
-  assert.equal(sandbox.fns.isComparablesSharedForLandReport(), true, "Arsa + Coklu Talep icin paylasimli olmali (fixture kontrolu).");
+  assert.equal(sandbox.fns.isComparablesSharedAcrossUnits(), true, "Arsa + Coklu Talep icin paylasimli olmali (fixture kontrolu).");
   const newIndex = sandbox.fns.addTitleUnitTab();
   sandbox.fns.switchActiveTitleUnit(newIndex);
   const afterAdd = sandbox.getState();
@@ -895,19 +896,43 @@ assert.match(appSource, /panel\.dataset\.parcelScope = mixedParcels \? "mixed" :
   console.log("Emsaller (comparables) Arsa/Tarla Coklu Talep'te paylasimli olma testi tamam.");
 }
 
-// --- 28) Emsaller: Musteakil Bina/Tekli Talep'te davranis DEGISMEZ --------
+// --- 28) Emsaller: Kat Irtifaki/Mustakil Bina Coklu Talep'te de PAYLASIMLI
+// (2026-08-20, genisletme) -----------------------------------------------
+// Kullanici bildirimi: "emsaller bolumunce emsal metni coklu raporlarda
+// tekli rapor gibi davraniyor... coklu talebe uygun paragraf olmali" -
+// netlestirme sorusuyla (AskUserQuestion) Kat Irtifaki/Mustakil Bina icin
+// de AYNI paylasim davranisi onaylandi ("Emsaller de ortak olsun, Arsa/
+// Tarla ile ayni") - isComparablesSharedAcrossUnits() artik isLandOwnershipType()
+// KOSULUNU ICERMIYOR, yalnizca requestType'a bakiyor.
 {
   const state = freshState({
     fields: { ...freshState().fields, requestType: "Çoklu Talep", ownershipType: "Yatay Kat İrtifakı" },
     tables: { title: [{ c0: "MALİK BİR" }], comparables: [{ c0: "Emsal 1" }] },
   });
   sandbox.setState(state);
-  assert.equal(sandbox.fns.isComparablesSharedForLandReport(), false, "Kat Irtifaki'nda paylasimli OLMAMALI (fixture kontrolu).");
+  assert.equal(sandbox.fns.isComparablesSharedAcrossUnits(), true, "2026-08-20 genisletmesi: Kat Irtifaki + Coklu Talep de ARTIK paylasimli olmali (fixture kontrolu).");
   const newIndex = sandbox.fns.addTitleUnitTab();
   sandbox.fns.switchActiveTitleUnit(newIndex);
   const afterAdd = sandbox.getState();
-  assert.equal(afterAdd.tables.comparables, undefined, "REGRESYON: Kat Irtifaki'nda (Arsa/Tarla DISI) Emsal kayitlari tablosu HALA tasinmaza-ozgu olmali (yeni tasinmazda BOS).");
-  console.log("Emsaller Kat Irtifaki/Musteakil disinda davranis DEGISMEZ (regresyon) testi tamam.");
+  assert.deepEqual(afterAdd.tables.comparables, [{ c0: "Emsal 1" }], "KULLANICI TALEBI (2026-08-20): Kat Irtifaki Coklu Talep'te de Emsal kayitlari tablosu paylasimli olmali - yeni tasinmaza gecince BOSALMAMALI.");
+  console.log("Emsaller (comparables) Kat Irtifaki Coklu Talep'te de paylasimli olma (genisletme) testi tamam.");
+}
+
+// --- 28b) Emsaller: Tekli Talep'te (herhangi bir mulkiyet turu) paylasim
+// HALA YOK (regresyon - genisletme yalnizca Coklu Talep sinirini KALDIRMADI,
+// yalnizca "Arsa/Tarla" sinirini kaldirdi) --------------------------------
+{
+  const state = freshState({
+    fields: { ...freshState().fields, requestType: "Tekli Talep", ownershipType: "Yatay Kat İrtifakı" },
+    tables: { title: [{ c0: "MALİK BİR" }], comparables: [{ c0: "Emsal 1" }] },
+  });
+  sandbox.setState(state);
+  assert.equal(sandbox.fns.isComparablesSharedAcrossUnits(), false, "REGRESYON: Tekli Talep'te (mulkiyet turu farketmeksizin) paylasimli OLMAMALI.");
+  const newIndex = sandbox.fns.addTitleUnitTab();
+  sandbox.fns.switchActiveTitleUnit(newIndex);
+  const afterAdd = sandbox.getState();
+  assert.equal(afterAdd.tables.comparables, undefined, "REGRESYON: Tekli Talep'te Emsal kayitlari tablosu HALA tasinmaza-ozgu olmali (yeni tasinmazda BOS).");
+  console.log("Emsaller Tekli Talep'te paylasim YOK (regresyon) testi tamam.");
 }
 
 // --- 29) Degerleme: Piyasa Degeri alan/birim/manuel-bayrak alanlari -------

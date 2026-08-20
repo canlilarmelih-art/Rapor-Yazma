@@ -1,5 +1,16 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.489 - 2026-08-20 - Emsaller ortak paylaşım + çoğul metin TÜM mülkiyet türlerine genişletildi
+
+- Kullanıcı: "emsaller bölümünce emsal metni çoklu raporlarda tekli rapor gibi davranıyor. taşınmaz yerine taşınmazlar demeli bunun gibi çoklu talebe uygun paragraf olmalı."
+- Netleştirme (AskUserQuestion, 2 soru): (1) hangi mülkiyet türü — "Kat İrtifakı/Müstakil Bina" (Arsa/Tarla DEĞİL, yani 0.0.484'teki mevcut özellik değil, gerçek bir kapsam genişletmesi gerekiyordu); (2) emsal LİSTESİ de mi ortak olsun yoksa yalnızca metin mi çoğullaşsın — "Emsaller de ortak olsun (Arsa/Tarla ile aynı)".
+- **`isComparablesSharedForLandReport()` → `isComparablesSharedAcrossUnits()` olarak yeniden adlandırıldı ve `isLandOwnershipType()` koşulu KALDIRILDI** — artık TÜM mülkiyet türlerinde, yalnızca `requestType === "Çoklu Talep"` ise "Emsaller" bölümünün hem satırları (`state.tables.comparables`) hem alanları rapor-geneli TEK. 3 gerçek çağrı yeri (`getTitleUnitScopedTableKeys`, `getTitleUnitScopedFieldKeys`, `buildComparableMarketAnalysisText`'in `isMultiUnit` hesaplaması) + ilgili yorumlar güncellendi.
+- **`src/comparables/comparable-market-analysis.js`'in GENEL (Arsa/Tarla DIŞI, Konut/İşyeri) dalına** — 0.0.484'te yalnızca `buildLandComparableMarketAnalysisText`'e (Arsa/Tarla dalı) uygulanan "elle yazılmış ÇOĞUL varyant" deseni AYNEN kopyalandı: `isMultiUnit` true iken p1/p2/p3 paragraflarının tamamı (mikro-piyasa cümlesi dahil) "taşınmazın/taşınmaz ile/taşınmaza" yerine "taşınmazların/taşınmazlar ile/taşınmazlara" çoğul varyantlarını kullanır. Regex ile tekil→çoğul çevirim YAPILMADI (bu kod tabanının her yerde izlediği linguistik-risk-önleme ilkesi korundu).
+- **Bilinen geçiş riski** (Belgeler'in blok-senkronuyla AYNI sınıf, dokümante edildi): bu özellikten ÖNCE oluşturulmuş, bağımsız bölümler arasında FARKLI emsal satırları girilmiş bir Kat İrtifakı/Müstakil Bina Çoklu Talep raporu bu davranışa geçtiğinde, o an aktif olan taşınmazın satırları "kazanır", diğerleri kaybolur.
+- Test: `tools/test-comparable-market-analysis.js`'e genel dal için TEKİL (regresyon) + ÇOĞUL (yeni) senaryo eklendi. `tools/test-title-unit-switch.js`'te senaryo 28 ("Kat İrtifakı'nda paylaşımlı OLMAMALI") DAVRANIŞ DEĞİŞİKLİĞİNİ yansıtacak şekilde ters çevrildi (artık "Kat İrtifakı'nda da paylaşımlı OLMALI") + yeni senaryo 28b eklendi (Tekli Talep'te — mülkiyet türü farketmeksizin — paylaşım HÂLÂ yok, regresyon). `tools/test-environmental-fields-shared-across-units.js`/`tools/test-title-unit-import.js`'te fonksiyon adı extraction listelerinde güncellendi. `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` ve `src/comparables/comparable-market-analysis.js` cache-buster'ları `?v=20260820-1740`.
+- Canlı tarayıcı testi yapılamadı (giriş bilgisi yok) — doğrulama kod/test seviyesinde.
+
 ## 0.0.488 - 2026-08-20 - Bağımsız Bölüm'e taşınmaz tab çubuğu eklendi + stale not metni + orphan test düzeltmeleri
 
 - Kullanıcı: "Bağımsız bölüm özellikleri bölümünde bağımsız bölüm tabları bulunmuyor."

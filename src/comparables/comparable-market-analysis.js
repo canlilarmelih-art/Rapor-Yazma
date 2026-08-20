@@ -16,12 +16,28 @@
     return variants[Number.isInteger(index) && index >= 0 && index < count ? index : 0];
   }
 
+  // Kullanıcı talebi (2026-08-19): "ÇOKLU ARSA TARLA raporlarında emsaller
+  // ortak olmalı ... yalnızca emsal açıklamalarını çoğul şekilde güncelle
+  // taşınmaz yerine taşınmazlar vb." — başlangıçta yalnızca Arsa/Tarla dalına
+  // (buildLandComparableMarketAnalysisText) uygulanmıştı.
+  //
+  // Kullanıcı talebi (2026-08-20, genişletme): "emsaller bölümünce emsal
+  // metni çoklu raporlarda tekli rapor gibi davranıyor... taşınmaz yerine
+  // taşınmazlar demeli" — netleştirme (AskUserQuestion) Kat İrtifakı/
+  // Müstakil Bina için de AYNI davranışı (emsaller ortak + çoğul metin)
+  // onayladı. `isMultiUnit` true iken (Çoklu Talep raporu, bkz. app.js
+  // isComparablesSharedAcrossUnits) BU genel/Konut-İşyeri dalı da,
+  // Arsa/Tarla dalı gibi, her paragrafın TEKİL yerine ÇOĞUL (elle yazılmış,
+  // ayrı) varyantlarını kullanır — bu kod tabanının HER YERDE izlediği
+  // "varyant metinleri elle yazılır, regex ile tekil→çoğul çevirimi
+  // YAPILMAZ" ilkesi (linguistik risk nedeniyle) burada da korunur.
   function buildComparableMarketAnalysisText(input = {}) {
     const fields = input.fields || {};
     const ownership = fold(fields.ownershipType);
     if (ownership === "ARSA" || ownership === "TARLA") {
       return buildLandComparableMarketAnalysisText(input, fields, input.rows || [], ownership === "TARLA" ? "tarla" : "arsa", Boolean(input.isMultiUnit));
     }
+    const isMultiUnit = Boolean(input.isMultiUnit);
     const rows = getComparableAnalysisRows(input.rows || []);
     const neighborhood = cleanText(fields.titleNeighborhood || fields.neighborhood || "ilgili");
     const street = cleanText(fields.street || fields.mainArtery || "yakın çevre");
@@ -36,39 +52,47 @@
     const marketingText = marketingRange
       ? `Bölgedeki gayrimenkul piyasasında, arz edilen taşınmazların brüt alanlarının pazarlama aşamasında ${formatMarketingRange(marketingRange)} daha yüksek beyan edildiği (ortak alanlar, eklentiler vb. nedenlerle) tespit edilmiştir.`
       : "Bölgedeki gayrimenkul piyasasında, arz edilen taşınmazların brüt alanlarının pazarlama aşamasında ortak alanlar, eklentiler vb. nedenlerle farklılık gösterebildiği tespit edilmiştir.";
+    const microMarketSubjectPhrase = isMultiUnit ? "değerleme konusu taşınmazları" : "değerleme konusu taşınmazı";
     const microMarketText = Number.isFinite(microMarketRadius) && microMarketRadius > 0
-      ? ` Piyasa çalışmaları kapsamında verilerin doğruluğunu ve homojenliğini sağlamak adına; değerleme konusu taşınmazı merkez alan ve ${formatMoney(microMarketRadius)} metrelik etki yarıçapı (mikro-piyasa) içerisinde kalan emsal veriler değerlendirmeye dahil edilmiştir.`
+      ? ` Piyasa çalışmaları kapsamında verilerin doğruluğunu ve homojenliğini sağlamak adına; ${microMarketSubjectPhrase} merkez alan ve ${formatMoney(microMarketRadius)} metrelik etki yarıçapı (mikro-piyasa) içerisinde kalan emsal veriler değerlendirmeye dahil edilmiştir.`
       : "";
 
+    const p1Variants = isMultiUnit ? [
+      `Değerleme konusu taşınmazların konumlu olduğu ${locationText} yürütülen saha çalışmaları kapsamında; taşınmazlar ile benzer imar koşullarına, yapı kalitesine ve fonksiyonel özelliklere sahip toplam ${comparableCount} adet emsal veri değerlendirmeye dahil edilmiştir.${microMarketText} ${marketingText} Bu doğrultuda, değerleme tablosunda yer alan emsal alanları, teknik olarak netleştirilmiş ve indirgenmiş proje alanları üzerinden değerlendirmeye esas alınmıştır.`,
+      `Değerlemeye konu gayrimenkullerin bulunduğu ${locationText} gerçekleştirilen yerinde incelemeler kapsamında; taşınmazlarla benzer imar durumuna, yapı niteliğine ve kullanım özelliklerine sahip toplam ${comparableCount} adet emsal veri değerlendirmeye alınmıştır.${microMarketText} ${marketingText} Buna göre, değerleme tablosundaki emsal alanları, teknik olarak sadeleştirilmiş ve indirgenmiş proje alanları üzerinden değerlendirmeye dahil edilmiştir.`,
+    ] : [
+      `Değerleme konusu taşınmazın konumlu olduğu ${locationText} yürütülen saha çalışmaları kapsamında; taşınmaz ile benzer imar koşullarına, yapı kalitesine ve fonksiyonel özelliklere sahip toplam ${comparableCount} adet emsal veri değerlendirmeye dahil edilmiştir.${microMarketText} ${marketingText} Bu doğrultuda, değerleme tablosunda yer alan emsal alanları, teknik olarak netleştirilmiş ve indirgenmiş proje alanları üzerinden değerlendirmeye esas alınmıştır.`,
+      `Değerlemeye konu gayrimenkulün bulunduğu ${locationText} gerçekleştirilen yerinde incelemeler kapsamında; taşınmazla benzer imar durumuna, yapı niteliğine ve kullanım özelliklerine sahip toplam ${comparableCount} adet emsal veri değerlendirmeye alınmıştır.${microMarketText} ${marketingText} Buna göre, değerleme tablosundaki emsal alanları, teknik olarak sadeleştirilmiş ve indirgenmiş proje alanları üzerinden değerlendirmeye dahil edilmiştir.`,
+    ];
+    const p2Variants = isMultiUnit ? [
+      `Bölgede yapılan detaylı piyasa araştırmaları, yerel gayrimenkul danışmanları ile gerçekleştirilen görüşmeler ve toplanan verilerin değerlendirilmesi sonucunda; emsallerin konum, kat, cephe, manzarası ve iç mekan işçilik kalitesi gibi birim değerini doğrudan etkileyen kriterleri ${correctionDirection} yönde uyumlandırılarak konu taşınmazların nihai birim değer takdirinde karşılaştırma tablosu olarak kullanılmıştır.`,
+      `Bölgede gerçekleştirilen kapsamlı piyasa incelemeleri, yerel emlak danışmanlarıyla yapılan görüşmeler ve elde edilen verilerin analiz edilmesi neticesinde; emsallerin konum, kat, cephe, manzara ve iç mekân işçilik kalitesi gibi birim değeri doğrudan etkileyen unsurları ${correctionDirection} yönde dengelenerek gayrimenkullerin nihai birim değer tespitinde karşılaştırma tablosu şeklinde kullanılmıştır.`,
+    ] : [
+      `Bölgede yapılan detaylı piyasa araştırmaları, yerel gayrimenkul danışmanları ile gerçekleştirilen görüşmeler ve toplanan verilerin değerlendirilmesi sonucunda; emsallerin konum, kat, cephe, manzarası ve iç mekan işçilik kalitesi gibi birim değerini doğrudan etkileyen kriterleri ${correctionDirection} yönde uyumlandırılarak konu taşınmazın nihai birim değer takdirinde karşılaştırma tablosu olarak kullanılmıştır.`,
+      `Bölgede gerçekleştirilen kapsamlı piyasa incelemeleri, yerel emlak danışmanlarıyla yapılan görüşmeler ve elde edilen verilerin analiz edilmesi neticesinde; emsallerin konum, kat, cephe, manzara ve iç mekân işçilik kalitesi gibi birim değeri doğrudan etkileyen unsurları ${correctionDirection} yönde dengelenerek gayrimenkulün nihai birim değer tespitinde karşılaştırma tablosu şeklinde kullanılmıştır.`,
+    ];
+
     const paragraphs = [
-      pickVariant(input, "buildComparableMarketAnalysisText:p1", [
-        `Değerleme konusu taşınmazın konumlu olduğu ${locationText} yürütülen saha çalışmaları kapsamında; taşınmaz ile benzer imar koşullarına, yapı kalitesine ve fonksiyonel özelliklere sahip toplam ${comparableCount} adet emsal veri değerlendirmeye dahil edilmiştir.${microMarketText} ${marketingText} Bu doğrultuda, değerleme tablosunda yer alan emsal alanları, teknik olarak netleştirilmiş ve indirgenmiş proje alanları üzerinden değerlendirmeye esas alınmıştır.`,
-        `Değerlemeye konu gayrimenkulün bulunduğu ${locationText} gerçekleştirilen yerinde incelemeler kapsamında; taşınmazla benzer imar durumuna, yapı niteliğine ve kullanım özelliklerine sahip toplam ${comparableCount} adet emsal veri değerlendirmeye alınmıştır.${microMarketText} ${marketingText} Buna göre, değerleme tablosundaki emsal alanları, teknik olarak sadeleştirilmiş ve indirgenmiş proje alanları üzerinden değerlendirmeye dahil edilmiştir.`,
-      ]),
-      pickVariant(input, "buildComparableMarketAnalysisText:p2", [
-        `Bölgede yapılan detaylı piyasa araştırmaları, yerel gayrimenkul danışmanları ile gerçekleştirilen görüşmeler ve toplanan verilerin değerlendirilmesi sonucunda; emsallerin konum, kat, cephe, manzarası ve iç mekan işçilik kalitesi gibi birim değerini doğrudan etkileyen kriterleri ${correctionDirection} yönde uyumlandırılarak konu taşınmazın nihai birim değer takdirinde karşılaştırma tablosu olarak kullanılmıştır.`,
-        `Bölgede gerçekleştirilen kapsamlı piyasa incelemeleri, yerel emlak danışmanlarıyla yapılan görüşmeler ve elde edilen verilerin analiz edilmesi neticesinde; emsallerin konum, kat, cephe, manzara ve iç mekân işçilik kalitesi gibi birim değeri doğrudan etkileyen unsurları ${correctionDirection} yönde dengelenerek gayrimenkulün nihai birim değer tespitinde karşılaştırma tablosu şeklinde kullanılmıştır.`,
-      ]),
+      pickVariant(input, "buildComparableMarketAnalysisText:p1", p1Variants),
+      pickVariant(input, "buildComparableMarketAnalysisText:p2", p2Variants),
     ];
 
     if (unitValueSummary && Number.isFinite(appraisedUnitValue)) {
-      paragraphs.push(pickVariant(input, "buildComparableMarketAnalysisText:p3", [
+      const p3Variants = isMultiUnit ? [
+        `Yapılan düzeltmeler sonucunda, emsallerin konu taşınmazlara indirgenmiş birim değerlerinin ${formatMoney(unitValueSummary.min)} TL/m² ile ${formatMoney(unitValueSummary.max)} TL/m² aralığında dengelendiği görülmüştür. Karşılaştırma tablosundan elde edilen verilerin bölge piyasasındaki güncel arz-talep dengesiyle örtüşmesi ve sapma oranlarının makul sınırlar içinde kalması sebebiyle, ulaşılan sonuçların piyasa gerçeğini yansıttığı tespit edilmiştir. Bu doğrultuda, taşınmazların nihai birim değeri, karşılaştırma tablosunun işaret ettiği analitik ağırlıklar ve mesleki kanaatimiz çerçevesinde ${formatMoney(appraisedUnitValue)} TL/m² olarak takdir edilmiştir.`,
+        `Uygulanan düzeltmeler neticesinde, emsallerin taşınmazlara indirgenmiş birim değerlerinin ${formatMoney(unitValueSummary.min)} TL/m² - ${formatMoney(unitValueSummary.max)} TL/m² bandında yoğunlaştığı görülmüştür. Karşılaştırma tablosundan elde edilen bulguların bölge piyasasındaki güncel arz-talep dengesiyle uyumlu olması ve sapma oranlarının makul sınırlar içinde kalması nedeniyle, ulaşılan sonuçların piyasa gerçeğini yansıttığı değerlendirilmiştir. Bu doğrultuda, gayrimenkullerin nihai birim değeri, karşılaştırma tablosunun işaret ettiği analitik ağırlıklar ve mesleki kanaatimiz çerçevesinde ${formatMoney(appraisedUnitValue)} TL/m² olarak takdir edilmiştir.`,
+      ] : [
         `Yapılan düzeltmeler sonucunda, emsallerin konu taşınmaza indirgenmiş birim değerlerinin ${formatMoney(unitValueSummary.min)} TL/m² ile ${formatMoney(unitValueSummary.max)} TL/m² aralığında dengelendiği görülmüştür. Karşılaştırma tablosundan elde edilen verilerin bölge piyasasındaki güncel arz-talep dengesiyle örtüşmesi ve sapma oranlarının makul sınırlar içinde kalması sebebiyle, ulaşılan sonuçların piyasa gerçeğini yansıttığı tespit edilmiştir. Bu doğrultuda, taşınmazın nihai birim değeri, karşılaştırma tablosunun işaret ettiği analitik ağırlıklar ve mesleki kanaatimiz çerçevesinde ${formatMoney(appraisedUnitValue)} TL/m² olarak takdir edilmiştir.`,
         `Uygulanan düzeltmeler neticesinde, emsallerin taşınmaza indirgenmiş birim değerlerinin ${formatMoney(unitValueSummary.min)} TL/m² - ${formatMoney(unitValueSummary.max)} TL/m² bandında yoğunlaştığı görülmüştür. Karşılaştırma tablosundan elde edilen bulguların bölge piyasasındaki güncel arz-talep dengesiyle uyumlu olması ve sapma oranlarının makul sınırlar içinde kalması nedeniyle, ulaşılan sonuçların piyasa gerçeğini yansıttığı değerlendirilmiştir. Bu doğrultuda, gayrimenkulün nihai birim değeri, karşılaştırma tablosunun işaret ettiği analitik ağırlıklar ve mesleki kanaatimiz çerçevesinde ${formatMoney(appraisedUnitValue)} TL/m² olarak takdir edilmiştir.`,
-      ]));
+      ];
+      paragraphs.push(pickVariant(input, "buildComparableMarketAnalysisText:p3", p3Variants));
     }
 
     return normalizeParagraphs(paragraphs.join("\n\n"));
   }
 
-  // Kullanıcı talebi (2026-08-19): "ÇOKLU ARSA TARLA raporlarında emsaller
-  // ortak olmalı ... yalnızca emsal açıklamalarını çoğul şekilde güncelle
-  // taşınmaz yerine taşınmazlar vb." — `isMultiUnit` true iken (Arsa/Tarla
-  // Çoklu Talep raporu, bkz. app.js isComparablesSharedForLandReport) her
-  // paragrafın TEKİL yerine ÇOĞUL (elle yazılmış, ayrı) varyantları
-  // kullanılır — bu kod tabanının HER YERDE izlediği "varyant metinleri
-  // elle yazılır, regex ile tekil→çoğul çevirimi YAPILMAZ" ilkesi
-  // (linguistik risk nedeniyle) burada da korunur.
+  // bkz. yukarıdaki buildComparableMarketAnalysisText() yorumu — AYNI
+  // "isMultiUnit -> elle yazılmış çoğul varyant" ilkesi burada da geçerli.
   function buildLandComparableMarketAnalysisText(input, fields, sourceRows, landType, isMultiUnit) {
     const rows = getComparableAnalysisRows(sourceRows);
     const neighborhood = cleanText(fields.titleNeighborhood || fields.neighborhood || "ilgili");

@@ -96,6 +96,43 @@ function main() {
   assert(tarlaMulti.includes("adet tarla emsali"), "Tarla dalinda 'tarla' landType kelimesi cogul modda da korunmali.");
   assert(tarlaMulti.includes("taşınmazların konumlu"), "Tarla COGUL modda da cogul ifade kullanilmali.");
 
+  // --- Genel (Konut/İşyeri, Arsa/Tarla DIŞI) dal: TEKIL - REGRESYON -------
+  // Kullanici bildirimi (2026-08-20): "emsaller bolumunce emsal metni coklu
+  // raporlarda tekli rapor gibi davraniyor" - netlestirme sonrasi Kat
+  // Irtifaki/Mustakil Bina icin de COGUL destegi eklendi. Bu senaryo
+  // isMultiUnit=false (varsayilan) iken davranisin DEGISMEDIGINI kanitlar.
+  const generalSingle = buildComparableMarketAnalysisText({
+    fields: { ownershipType: "Yatay Kat İrtifakı", titleNeighborhood: "Görükle", street: "Üniversite Caddesi", legalValueUnit: "24594" },
+    rows: [
+      { c2: "Satılık", c12: "110", c13: "100", c8: "-", c21: "10%", c9: "0", c22: "0%", c14: "3.800.000" },
+      { c2: "Satılık", c12: "126", c13: "100", c8: "-", c21: "5%", c9: "-", c22: "5%", c14: "4.000.000" },
+    ],
+  });
+  assert(generalSingle.includes("Değerleme konusu taşınmazın konumlu olduğu"), "REGRESYON: Genel dal TEKIL modda 'taşınmazın' (tekil) ifadesi kullanilmali.");
+  assert(generalSingle.includes("taşınmaz ile benzer imar koşullarına"), "REGRESYON: Genel dal TEKIL modda 'taşınmaz ile' (tekil) ifadesi kullanilmali.");
+  assert(generalSingle.includes("konu taşınmazın nihai birim değer takdirinde"), "REGRESYON: Genel dal TEKIL modda p2'de 'taşınmazın' (tekil) ifadesi kullanilmali.");
+  assert(generalSingle.includes("taşınmazın nihai birim değeri"), "REGRESYON: Genel dal TEKIL modda p3'te 'taşınmazın' (tekil) ifadesi kullanilmali.");
+  assert(!generalSingle.includes("taşınmazların konumlu"), "REGRESYON: Genel dal TEKIL modda cogul ifade OLMAMALI.");
+
+  // --- Genel (Konut/İşyeri) dal: COGUL (isMultiUnit true) - KULLANICI TALEBI
+  // (2026-08-20, genisletme): "taşınmaz yerine taşınmazlar demeli ... coklu
+  // talebe uygun paragraf olmalı" - netlestirme sorusuyla Kat Irtifaki/
+  // Mustakil Bina icin de onaylandi.
+  const generalMulti = buildComparableMarketAnalysisText({
+    fields: { ownershipType: "Yatay Kat İrtifakı", titleNeighborhood: "Görükle", street: "Üniversite Caddesi", legalValueUnit: "24594" },
+    rows: [
+      { c2: "Satılık", c12: "110", c13: "100", c8: "-", c21: "10%", c9: "0", c22: "0%", c14: "3.800.000" },
+      { c2: "Satılık", c12: "126", c13: "100", c8: "-", c21: "5%", c9: "-", c22: "5%", c14: "4.000.000" },
+    ],
+    isMultiUnit: true,
+  });
+  assert(generalMulti.includes("Değerleme konusu taşınmazların konumlu olduğu"), "KULLANICI TALEBI: Genel dal COGUL modda 'taşınmazların' (cogul) ifadesi kullanilmali.");
+  assert(generalMulti.includes("taşınmazlar ile benzer imar koşullarına"), "KULLANICI TALEBI: Genel dal COGUL modda 'taşınmazlar ile' (cogul) ifadesi kullanilmali.");
+  assert(generalMulti.includes("konu taşınmazların nihai birim değer takdirinde"), "KULLANICI TALEBI: Genel dal COGUL modda p2 de cogul olmali.");
+  assert(generalMulti.includes("taşınmazların nihai birim değeri"), "KULLANICI TALEBI: Genel dal COGUL modda p3 de cogul olmali (emsallerin konu taşınmazlara indirgenmiş).");
+  assert(generalMulti.includes("emsallerin konu taşınmazlara indirgenmiş"), "KULLANICI TALEBI: Genel dal COGUL modda p3'un ilk cumlesinde 'taşınmazlara' (cogul, -e hali) kullanilmali.");
+  assert(!generalMulti.includes("taşınmazın konumlu"), "KULLANICI TALEBI: Genel dal COGUL modda TEKIL ifade KALMAMALI.");
+
   console.log("Emsal piyasa analizi testi tamam.");
 }
 
