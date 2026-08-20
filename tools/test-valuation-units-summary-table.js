@@ -10,7 +10,8 @@
 //
 // Bu test kapsamı:
 //  1) Farklı taşınmazlarda tablo verisi döner, sütun sırası VALUATION_UNITS_TABLE_ROW_DEFS
-//     ile eşleşir (her satır için Alan/M2 Birim Değeri/Değer + Yasal-Mevcut
+//     ile eşleşir (piyasa satırlarında Alan/M2 Birim Değeri/Değer, kira
+//     satırlarında alan tekrar edilmeden M2 Birim Değeri/Değer + Yasal-Mevcut
 //     Durum satırları için ayrıca Acil Satış Değeri).
 //  2) Tekil raporda (1 taşınmaz) null döner.
 //  3) Tüm taşınmazlarda BOŞ olan sütun tamamen kaldırılır (Arsa/Tarla'da
@@ -157,6 +158,31 @@ function unit(overrides = {}) {
   assert.ok(urgentSaleIndex >= 0, "Acil Satış Değeri sütunu bulunmalı.");
   assert.equal(data.rows[0][urgentSaleIndex], "450.000", "1. taşınmazın Acil Satış Değeri doğru sütunda olmalı.");
   console.log("Farkli tasinmazlarda tablo verisi + sutun sirasi testi tamam.");
+}
+
+// --- 1b) Kira alanı, piyasa alanı ile aynı olduğundan tekrar edilmez ------
+{
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: {
+      legalValueArea: "100", legalRentArea: "100", legalRentUnit: "150", legalRent: "15.000",
+      currentValueArea: "110", currentRentArea: "110", currentRentUnit: "170", currentRent: "18.700",
+    },
+    tables: {},
+    titleUnits: [unit({
+      legalValueArea: "120", legalRentArea: "120", legalRentUnit: "160", legalRent: "19.200",
+      currentValueArea: "130", currentRentArea: "130", currentRentUnit: "180", currentRent: "23.400",
+    })],
+  });
+  const data = fns.buildValuationUnitsSummaryTableData();
+  assert.ok(!data.headers.includes("Yasal Kira Değeri - Alan"), "Yasal kira için alan sütunu tekrarlanmamalı.");
+  assert.ok(!data.headers.includes("Mevcut Kira Değeri - Alan"), "Mevcut kira için alan sütunu tekrarlanmamalı.");
+  const legalRentUnitIndex = data.headers.indexOf("Yasal Kira Değeri - M2 Birim Değeri");
+  const legalRentIndex = data.headers.indexOf("Yasal Kira Değeri");
+  assert.equal(data.columnMeta[legalRentUnitIndex].kind, "readonly", "Kira m2 birim değeri salt-okunur olmalı.");
+  assert.equal(data.columnMeta[legalRentIndex].kind, "scalar", "Kira değeri düzenlenebilir olmalı.");
+  assert.equal(data.rows[0][legalRentIndex], "15.000", "Yasal kira değeri korunmalı.");
+  console.log("Kira alani piyasa alaniyla tekrarlanmadan kira birim/deger sutunlari testi tamam.");
 }
 
 // --- 2) Tekil raporda (1 taşınmaz) null döner ------------------------------

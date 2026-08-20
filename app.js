@@ -5933,6 +5933,7 @@ const VALUATION_UNITS_TABLE_ROW_DEFS = valuationMarketRows.map((row) => {
   const urgentSaleRow = valuationUrgentSaleRows.find((item) => item.marketKey === row.totalKey);
   return {
     ...row,
+    includeArea: !row.totalKey.includes("Rent"),
     urgentSaleKey: urgentSaleRow ? urgentSaleRow.totalKey : null,
     urgentSaleLabel: urgentSaleRow ? urgentSaleRow.label : null,
   };
@@ -5941,11 +5942,11 @@ const VALUATION_UNITS_TABLE_ROW_DEFS = valuationMarketRows.map((row) => {
 // Tabloyu (başlıklar + satırlar) hesaplar; YALNIZCA 2+ taşınmaz varsa bir
 // sonuç döner (Tapu/Adres'in en basit deseni — Değerleme değerleri HER
 // ZAMAN taşınmaza-özgüdür, ada/parsel veya bloğa göre koşullu paylaşım
-// YOK). Her satır 3 sütun (Alan `scalar`, M2 Birim Değeri `readonly` —
-// zaten gerçek formda da salt-okunur, bkz. createValuationMarketTable —,
-// [satır adı] Değeri `scalar`) + Yasal/Mevcut Durum satırları için AYRICA
-// Acil Satış Değeri (`readonly` — zaten gerçek formda da salt-okunur, bkz.
-// createValuationUrgentSaleTable) üretir.
+// YOK). Piyasa değerinde Alan `scalar`, M2 Birim Değeri `readonly` ve
+// Değer `scalar` sütunları; kira değerinde ise aynı alan tekrar edilmeden
+// yalnızca M2 Birim Değeri `readonly` ve Kira Değeri `scalar` sütunları
+// üretilir. Yasal/Mevcut piyasa satırları ayrıca Acil Satış Değeri
+// (`readonly`) taşır.
 function buildValuationUnitsSummaryTableData() {
   const units = buildAllTitleUnitsForSummaryTable();
   if (units.length < 2) return null;
@@ -5953,12 +5954,12 @@ function buildValuationUnitsSummaryTableData() {
   const headers = ["Sıra No"];
   const columnMeta = [{ kind: "seq" }];
   VALUATION_UNITS_TABLE_ROW_DEFS.forEach((row) => {
-    headers.push(`${row.label} - Alan`, `${row.label} - ${row.unitLabel}`, row.label);
-    columnMeta.push(
-      { kind: "scalar", fieldKey: row.areaKey },
-      { kind: "readonly" },
-      { kind: "scalar", fieldKey: row.totalKey },
-    );
+    if (row.includeArea) {
+      headers.push(`${row.label} - Alan`);
+      columnMeta.push({ kind: "scalar", fieldKey: row.areaKey });
+    }
+    headers.push(`${row.label} - ${row.unitLabel}`, row.label);
+    columnMeta.push({ kind: "readonly" }, { kind: "scalar", fieldKey: row.totalKey });
     if (row.urgentSaleKey) {
       headers.push(row.urgentSaleLabel);
       columnMeta.push({ kind: "readonly" });
@@ -5969,8 +5970,10 @@ function buildValuationUnitsSummaryTableData() {
     const fields = unit.fields || {};
     const row = [index + 1];
     VALUATION_UNITS_TABLE_ROW_DEFS.forEach((rowDef) => {
+      if (rowDef.includeArea) {
+        row.push(String(fields[rowDef.areaKey] || "").trim() || "-");
+      }
       row.push(
-        String(fields[rowDef.areaKey] || "").trim() || "-",
         String(fields[rowDef.unitKey] || "").trim() || "-",
         String(fields[rowDef.totalKey] || "").trim() || "-",
       );
