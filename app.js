@@ -3098,6 +3098,41 @@ function createValuationUnitsSummaryTablePreview() {
   return wrap;
 }
 
+// Bağımsız Bölüm Özellikleri (2026-08-21) — Arsa/Değerleme ile BİREBİR aynı
+// desen. Kullanıcı: "çift taraflı tablo mantığını dekoratif özellikler
+// hariç bağımsız bölüm özellikleri bölümüne uygulayalım" — Dekoratif
+// Özellikler paneli (20 alan) BİLEREK dışarıda (bkz. UNIT_UNITS_TABLE_FIELD_DEFS
+// yorumu). Gate koşulu Değerleme'yle AYNI: ada/parsel veya bloğa DEĞİL,
+// yalnızca "2+ taşınmaz var mı"ya bakar (Bağımsız Bölüm bilgisi HER ZAMAN
+// taşınmaza-özgüdür).
+function createUnitUnitsSummaryTablePreview() {
+  const wrap = document.createElement("div");
+  wrap.className = "title-units-summary-table-preview";
+  const heading = document.createElement("h5");
+  heading.textContent = "Taşınmazlar Bağımsız Bölüm Özeti";
+  wrap.append(heading);
+
+  const data = buildUnitUnitsSummaryTableData();
+  if (!data || !data.rows.length) {
+    const note = document.createElement("p");
+    note.className = "muted-note";
+    note.textContent = "Bu tablo yalnızca birden fazla taşınmaz eklendiğinde görünür. Banka şablonlarında {{TASINMAZLARBAGIMSIZBOLUMTABLOSU}} olarak kullanılabilir.";
+    wrap.append(note);
+    return wrap;
+  }
+  const tableHtml = buildTitleUnitsSummaryTableHtmlEditable(data.headers, data.rows, data.columnMeta, state.activeTitleUnitIndex);
+  const tableContainer = document.createElement("div");
+  tableContainer.className = "title-units-summary-table-container";
+  tableContainer.innerHTML = tableHtml;
+  wrap.append(tableContainer);
+  attachTitleUnitsSummaryTableEditing(tableContainer);
+  const hint = document.createElement("p");
+  hint.className = "muted-note";
+  hint.textContent = "Aktif taşınmazın hücrelerine tıklayarak doğrudan düzenleyebilirsiniz (Kat/Alan/Teras/İç Hacimler sütunları tıklanamaz — bu değerler taşınmazın \"Katlar, Alanlar ve İç Hacimler\" panelindeki ilk kat satırından otomatik alınır, doğrudan o panelden düzenlenmelidir; Dekoratif Özellikler bu tabloya dahil edilmemiştir). Banka şablonlarında {{TASINMAZLARBAGIMSIZBOLUMTABLOSU}} olarak kullanılabilir.";
+  wrap.append(hint);
+  return wrap;
+}
+
 // Kullanıcı talebi (2026-08-15): "tab üzerinden değiştirince tablo
 // değişsin" — Çift Yönlü Düzenleme özelliğinin Faz 1'i (bkz. plan:
 // idempotent-launching-kernighan.md). Taşınmazlar Tapu/Adres Özeti
@@ -3157,6 +3192,14 @@ function refreshValuationUnitsSummaryTablePreview() {
   host.replaceWith(createValuationUnitsSummaryTablePreview());
 }
 
+// Bağımsız Bölüm Özellikleri (2026-08-21, devam) — yukarıdakilerle AYNI desen.
+function refreshUnitUnitsSummaryTablePreview() {
+  if (activeSectionId !== "unit") return;
+  const host = document.querySelector(".title-units-summary-table-preview");
+  if (!host) return;
+  host.replaceWith(createUnitUnitsSummaryTablePreview());
+}
+
 // Çift Yönlü Düzenleme, Faz 3 (2026-08-15) — yukarıdaki iki fonksiyonla
 // AYNI "hafif, yerinde değiştir" deseni: tab çubuğunu (createTitleUnitTabBar,
 // yukarıda) TAMAMEN yeniden üretip DOM'da yerine koyar. Ada/Parsel/Blok/
@@ -3183,6 +3226,7 @@ const refreshImarUnitsSummaryTablePreviewDebounced = debounce(refreshImarUnitsSu
 const refreshLandUnitsSummaryTablePreviewDebounced = debounce(refreshLandUnitsSummaryTablePreview, 350);
 const refreshDocumentsUnitsSummaryTablePreviewDebounced = debounce(refreshDocumentsUnitsSummaryTablePreview, 350);
 const refreshValuationUnitsSummaryTablePreviewDebounced = debounce(refreshValuationUnitsSummaryTablePreview, 350);
+const refreshUnitUnitsSummaryTablePreviewDebounced = debounce(refreshUnitUnitsSummaryTablePreview, 350);
 
 function loadUserDefaults() {
   try {
@@ -4220,6 +4264,7 @@ function renderSection() {
   if (section.id === "unit" && isCurrentUserAdmin() && state.fields.requestType === "Çoklu Talep") {
     body.append(createTitleUnitTabBar());
     body.append(createUnitCopyToSelectedControl());
+    body.append(createUnitUnitsSummaryTablePreview());
   }
 
   // Kullanıcı talebi (2026-08-20): "Ana gayrimenkul bölümünde blok bazında
@@ -12377,6 +12422,7 @@ function setUnitFloorRows(rows) {
   if (!state.tables) state.tables = {};
   state.tables.unitFloors = rows;
   syncUnitFloorSummaryFields(rows);
+  refreshUnitUnitsSummaryTablePreviewDebounced();
   updateUnitInteriorDescription();
   autosave();
   renderValidation();
@@ -13970,6 +14016,7 @@ function attachUnitFieldEvents(control, key) {
     autosave();
     renderValidation();
     updateStatus();
+    refreshUnitUnitsSummaryTablePreviewDebounced();
   };
   control.addEventListener("input", handleValueChange);
   if (control.tagName === "SELECT") {
@@ -13993,6 +14040,7 @@ function attachUnitFieldEvents(control, key) {
     autosave();
     renderValidation();
     updateStatus();
+    refreshUnitUnitsSummaryTablePreviewDebounced();
   });
 }
 
@@ -14024,9 +14072,7 @@ function createUnitFacadeControl() {
       autosave();
       renderValidation();
       updateStatus();
-      if (field.key === "projectInstitution") {
-        renderSection();
-      }
+      refreshUnitUnitsSummaryTablePreviewDebounced();
     });
   });
   label.append(createSpan("Gayrimenkulün Cepheli Olduğu Yönler"), list);
@@ -14063,6 +14109,7 @@ function createUnitCheckboxField(labelText, key, checkedValue = "Evet") {
     autosave();
     renderValidation();
     updateStatus();
+    refreshUnitUnitsSummaryTablePreviewDebounced();
   });
   label.append(input, createSpan(labelText));
   return label;
@@ -19387,6 +19434,15 @@ function attachTitleUnitsSummaryTableEditing(container) {
 function getSelectOptionsForFieldKey(fieldKey) {
   if (fieldKey === "landIrrigationWaterSource") return irrigationWaterSourceOptions;
   if (fieldKey === "landIrrigationSystem") return irrigationSystemOptions;
+  // Bağımsız Bölüm Genel panelindeki select alanları sections[]'te DEKLARATİF
+  // DEĞİL (saf programatik) — yukarıdaki iki İmar istisnasıyla AYNI desen,
+  // yoksa bu 6 alan tabloda düz-metin girişine düşer (bkz. plan).
+  if (fieldKey === "unitUsageStatus") return unitUsageStatusOptions;
+  if (fieldKey === "unitFirstSaleStatus") return unitFirstSaleStatusOptions;
+  if (fieldKey === "unitEntrancePosition") return unitEntrancePositionOptions;
+  if (fieldKey === "unitConstructionLevel") return unitConstructionLevelOptions;
+  if (fieldKey === "unitViewStatus") return unitViewStatusOptions;
+  if (fieldKey === "unitHeatingType") return unitHeatingOptions;
   for (const section of sections) {
     const field = (section.fields || []).find((item) => item.key === fieldKey);
     if (field && field.type === "select" && Array.isArray(field.options) && field.options.length) {
@@ -19517,6 +19573,7 @@ function commitTitleUnitsSummaryCellEdit(fieldKey, rawValue, unitIndex) {
   refreshLandUnitsSummaryTablePreview();
   refreshDocumentsUnitsSummaryTablePreview();
   refreshValuationUnitsSummaryTablePreview();
+  refreshUnitUnitsSummaryTablePreview();
   // Faz 3: Ada/Parsel/Blok/Bağımsız Bölüm No gibi alanlar tab çubuğu
   // etiketlerini (computeTitleUnitTabLabel) etkileyebilir — hangi alan
   // düzenlendiğinden bağımsız olarak HER commit'te tab çubuğu da
@@ -20131,6 +20188,80 @@ function buildDocumentsUnitsSummaryTableData() {
 // tablolarının export akışıyla BİREBİR AYNI desen.
 function buildDocumentsUnitsSummaryWordTableHtml() {
   const data = buildDocumentsUnitsSummaryTableData();
+  if (!data || !data.rows.length) return "";
+  return buildTitleUnitsSummaryTableHtmlFromData(data.headers, data.rows);
+}
+
+// Kullanıcı talebi (2026-08-21): "çift taraflı tablo mantığını dekoratif
+// özellikler hariç bağımsız bölüm özellikleri bölümüne uygulayalım" —
+// Arsa'nın (LAND_UNITS_TABLE_FIELD_DEFS) BİREBİR AYNI şekli, dinamik sütun
+// grubu YOK. Dekoratif Özellikler paneli (unitSalonFloor/.../unitBathroom
+// Fixture3, 20 alan) BİLEREK dışarıda — açık kullanıcı talebi. Açıklama
+// alanları (unitInteriorDescription/unitDecorativeDescription, uzun
+// otomatik-üretilen paragraf) ve eski/dormant fallback alanları da hiçbir
+// diğer özet tablosunda sütunlaşmadığı için dışarıda. Alan/İç Hacim özeti
+// (unitFloor/legalArea/currentArea/unitAreaReductionRate/unitLegalTerrace/
+// unitCurrentTerrace/unitTerraceReductionRate/interiorFeatures) BİLEREK
+// "readonly" — bu 8 alan syncUnitFloorSummaryFields() tarafından TEK YÖNLÜ
+// olarak state.tables.unitFloors[0]'dan türetiliyor; tabloya doğrudan
+// scalar-yazma izni verilirse, taşınmazın Katlar/Alanlar panelinde İLGİSİZ
+// bir satır değiştiğinde bile senkron tekrar tetiklenip tablo-üzerinden
+// girilen değeri SESSİZCE ezer (0.0.485'te düzeltilen Değerleme veri-kaybı
+// ile AYNI hata sınıfı) — readonly bu riski baştan kapatıyor.
+const UNIT_UNITS_TABLE_FIELD_DEFS = [
+  { key: "unitUsageStatus", label: "Kullanım Durumu", kind: "scalar" },
+  { key: "unitFirstSaleStatus", label: "İlk Satış Durumu", kind: "scalar" },
+  { key: "unitEntrancePosition", label: "Bina Girişine Göre Konum", kind: "scalar" },
+  { key: "facades", label: "Cepheli Olduğu Yönler", kind: "scalar" },
+  { key: "unitConstructionLevel", label: "İnşaat Seviyesi", kind: "scalar" },
+  { key: "unitViewStatus", label: "Manzara Durumu", kind: "scalar" },
+  { key: "unitHeatingType", label: "Isınma Sistemi", kind: "scalar" },
+  { key: "unitHeatingMounted", label: "Isıtma Monte mi?", kind: "scalar" },
+  { key: "unitShopFrontage", label: "Cephe (m)", kind: "scalar" },
+  { key: "unitShopDepth", label: "Derinlik (m)", kind: "scalar" },
+  { key: "unitFloor", label: "Kat", kind: "readonly" },
+  { key: "legalArea", label: "Yasal Alan (m²)", kind: "readonly" },
+  { key: "currentArea", label: "Mevcut Alan (m²)", kind: "readonly" },
+  { key: "unitAreaReductionRate", label: "Alan İnd. Oranı", kind: "readonly" },
+  { key: "unitLegalTerrace", label: "Yasal Teras (m²)", kind: "readonly" },
+  { key: "unitCurrentTerrace", label: "Mevcut Teras (m²)", kind: "readonly" },
+  { key: "unitTerraceReductionRate", label: "Teras İnd. Oranı", kind: "readonly" },
+  { key: "interiorFeatures", label: "İç Hacimler Özeti", kind: "readonly" },
+];
+
+function buildUnitUnitsSummaryTableData() {
+  const units = buildAllTitleUnitsForSummaryTable();
+  if (units.length < 2) return null;
+
+  const headers = ["Sıra No", ...UNIT_UNITS_TABLE_FIELD_DEFS.map((def) => def.label)];
+  const columnMeta = [{ kind: "seq" }, ...UNIT_UNITS_TABLE_FIELD_DEFS.map((def) => ({ kind: def.kind, fieldKey: def.key }))];
+
+  const rows = units.map((unit, index) => {
+    const fields = unit.fields || {};
+    return [index + 1, ...UNIT_UNITS_TABLE_FIELD_DEFS.map((def) => String(fields[def.key] || "").trim() || "-")];
+  });
+
+  // "eğer sistemde hücrede veri yoksa ... tabloda bu sütunlar gözükmemeli"
+  // (diğer 6 bölümdeki AYNI kural) — TÜM taşınmazlarda boş ("-") kalan bir
+  // sütun tamamen kaldırılır.
+  const columnHasData = headers.map((_, columnIndex) => (
+    columnIndex === 0 || rows.some((row) => {
+      const value = row[columnIndex];
+      return value !== undefined && value !== null && String(value).trim() !== "" && String(value).trim() !== "-";
+    })
+  ));
+  const filteredHeaders = headers.filter((_, columnIndex) => columnHasData[columnIndex]);
+  const filteredRows = rows.map((row) => row.filter((_, columnIndex) => columnHasData[columnIndex]));
+  const filteredColumnMeta = columnMeta.filter((_, columnIndex) => columnHasData[columnIndex]);
+
+  return { headers: filteredHeaders, rows: filteredRows, columnMeta: filteredColumnMeta };
+}
+
+// Banka şablonlarına {{TASINMAZLARBAGIMSIZBOLUMTABLOSU}} ile enjekte
+// edilecek gerçek HTML tablo (bkz. template-engine.js) — diğer 6 bölümün
+// export akışıyla BİREBİR AYNI desen.
+function buildUnitUnitsSummaryWordTableHtml() {
+  const data = buildUnitUnitsSummaryTableData();
   if (!data || !data.rows.length) return "";
   return buildTitleUnitsSummaryTableHtmlFromData(data.headers, data.rows);
 }

@@ -737,6 +737,13 @@
     if (valuationUnitsSummaryCellGrid) {
       sheets.push({ name: sanitizeSheetName("Taşınmazlar Değerleme Özeti", usedNames), sheetXml: buildSheetXmlFromCellGrid(styleRegistry, valuationUnitsSummaryCellGrid) });
     }
+    // Bağımsız Bölüm Özellikleri (2026-08-21) — yukarıdakilerle AYNI desen;
+    // yalnızca 2+ taşınmaz varsa dolu döner (bkz. buildUnitUnitsSummaryTableData,
+    // app.js). Dekoratif Özellikler paneli BİLEREK hariç tutulur.
+    const unitUnitsSummaryCellGrid = generatedCellGridFor("buildUnitUnitsSummaryWordTableHtml");
+    if (unitUnitsSummaryCellGrid) {
+      sheets.push({ name: sanitizeSheetName("Taşınmazlar Bağımsız Bölüm Özeti", usedNames), sheetXml: buildSheetXmlFromCellGrid(styleRegistry, unitUnitsSummaryCellGrid) });
+    }
 
     const rawGridDefs = collectRawGridDefs();
     const takyidatDefs = rawGridDefs.filter((def) => TAKYIDAT_KEYS.includes(def.key));

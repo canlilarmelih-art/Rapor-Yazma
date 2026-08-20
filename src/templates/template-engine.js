@@ -622,6 +622,11 @@
     // kuralı en basiti (yalnızca 2+ taşınmaz, bkz. buildValuationUnitsSummaryTableData,
     // app.js) — Değerleme değerleri her zaman taşınmaza-özgüdür.
     TASINMAZLARDEGERLEMETABLOSU: { h: () => safeCall("buildValuationUnitsSummaryWordTableHtml") },
+    // Bağımsız Bölüm Özellikleri (2026-08-21) — yukarıdakilerle AYNI desen;
+    // görünürlük kuralı Değerleme ile AYNI (yalnızca 2+ taşınmaz, bkz.
+    // buildUnitUnitsSummaryTableData, app.js) — Dekoratif Özellikler paneli
+    // BİLEREK hariç tutulur.
+    TASINMAZLARBAGIMSIZBOLUMTABLOSU: { h: () => safeCall("buildUnitUnitsSummaryWordTableHtml") },
     GABIMVERISETI: { h: () => safeCall("buildGabimDataSetWordHtml") },
     HISSEACIKLAMASI: { t: () => field("shareExplanation"), paragraphClass: "share-explanation" },
     EKLENTI: { f: ["titleAttachment"] },
