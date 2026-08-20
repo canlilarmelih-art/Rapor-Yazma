@@ -3128,7 +3128,7 @@ function createUnitUnitsSummaryTablePreview() {
   attachTitleUnitsSummaryTableEditing(tableContainer);
   const hint = document.createElement("p");
   hint.className = "muted-note";
-  hint.textContent = "Aktif taşınmazın hücrelerine tıklayarak doğrudan düzenleyebilirsiniz (Kat/Alan/Teras/İç Hacimler sütunları tıklanamaz — bu değerler taşınmazın \"Katlar, Alanlar ve İç Hacimler\" panelindeki ilk kat satırından otomatik alınır, doğrudan o panelden düzenlenmelidir; Dekoratif Özellikler bu tabloya dahil edilmemiştir). Banka şablonlarında {{TASINMAZLARBAGIMSIZBOLUMTABLOSU}} olarak kullanılabilir.";
+  hint.textContent = "Aktif taşınmazın hücrelerine tıklayarak doğrudan düzenleyebilirsiniz (Kat/Alan/Teras sütunları taşınmazın \"Katlar, Alanlar ve İç Hacimler\" panelindeki ilk kat satırıyla eşlenir — buradan düzenlemek o satırı da günceller; yalnızca İç Hacimler Özeti sütunu tıklanamaz, çünkü TÜM kat satırlarının birleşik özetidir, o panelden düzenlenmelidir; Dekoratif Özellikler bu tabloya dahil edilmemiştir). Banka şablonlarında {{TASINMAZLARBAGIMSIZBOLUMTABLOSU}} olarak kullanılabilir.";
   wrap.append(hint);
   return wrap;
 }
@@ -19443,6 +19443,9 @@ function getSelectOptionsForFieldKey(fieldKey) {
   if (fieldKey === "unitConstructionLevel") return unitConstructionLevelOptions;
   if (fieldKey === "unitViewStatus") return unitViewStatusOptions;
   if (fieldKey === "unitHeatingType") return unitHeatingOptions;
+  // "unitFloor" Genel panelde DEĞİL, Katlar/Alanlar satır tablosunda
+  // (createUnitFloorRowSelect) seçiliyor — aynı seçenek listesi.
+  if (fieldKey === "unitFloor") return unitFloorOptions;
   for (const section of sections) {
     const field = (section.fields || []).find((item) => item.key === fieldKey);
     if (field && field.type === "select" && Array.isArray(field.options) && field.options.length) {
@@ -19561,6 +19564,11 @@ function commitTitleUnitsSummaryCellEdit(fieldKey, rawValue, unitIndex) {
     setTitleUnitFieldValue(unitIndex, fieldKey, normalizeReportFieldValue(fieldKey, rawValue));
     autosave();
   }
+  // Bağımsız Bölüm'ün 7 aynalı alanı (unitFloor/legalArea/currentArea/...)
+  // için KAYNAK satırı (unitFloors[0]) da günceller — bkz. yorum,
+  // applyUnitFloorMirrorFieldEdit(). Diğer TÜM alanlar için no-op (false
+  // döner), bu yüzden koşulsuz çağrılabilir.
+  applyUnitFloorMirrorFieldEdit(fieldKey, normalizeReportFieldValue(fieldKey, rawValue), unitIndex);
   // createForm'un kancası (getTitleUnitScopedFieldKeys ile) zaten
   // debounce'lu bir tazeleme tetikliyor — ama kullanıcı bir hücreyi
   // düzenleyip commit ettiğinde tablo GECİKMESİZ güncellenmeli (form
@@ -20199,15 +20207,28 @@ function buildDocumentsUnitsSummaryWordTableHtml() {
 // Fixture3, 20 alan) BİLEREK dışarıda — açık kullanıcı talebi. Açıklama
 // alanları (unitInteriorDescription/unitDecorativeDescription, uzun
 // otomatik-üretilen paragraf) ve eski/dormant fallback alanları da hiçbir
-// diğer özet tablosunda sütunlaşmadığı için dışarıda. Alan/İç Hacim özeti
-// (unitFloor/legalArea/currentArea/unitAreaReductionRate/unitLegalTerrace/
-// unitCurrentTerrace/unitTerraceReductionRate/interiorFeatures) BİLEREK
-// "readonly" — bu 8 alan syncUnitFloorSummaryFields() tarafından TEK YÖNLÜ
-// olarak state.tables.unitFloors[0]'dan türetiliyor; tabloya doğrudan
-// scalar-yazma izni verilirse, taşınmazın Katlar/Alanlar panelinde İLGİSİZ
-// bir satır değiştiğinde bile senkron tekrar tetiklenip tablo-üzerinden
-// girilen değeri SESSİZCE ezer (0.0.485'te düzeltilen Değerleme veri-kaybı
-// ile AYNI hata sınıfı) — readonly bu riski baştan kapatıyor.
+// diğer özet tablosunda sütunlaşmadığı için dışarıda.
+//
+// Kullanıcı takip talebi (2026-08-21, devam): "çift taraflı düzenleme
+// yapabilmeliyim" — Alan/İç Hacim özeti (unitFloor/legalArea/currentArea/
+// unitAreaReductionRate/unitLegalTerrace/unitCurrentTerrace/
+// unitTerraceReductionRate) İLK sürümde "readonly" bırakılmıştı çünkü bu 7
+// alan syncUnitFloorSummaryFields() tarafından TEK YÖNLÜ olarak
+// state.tables.unitFloors[0]'dan türetiliyor — tabloya doğrudan yazma
+// izni verilseydi, taşınmazın Katlar/Alanlar panelinde İLGİSİZ bir satır
+// değiştiğinde bile senkron tekrar tetiklenip tablo-üzerinden girilen
+// değeri SESSİZCE ezerdi. Şimdi "scalar" yapıldı AMA riski kapatan asıl
+// düzeltme commitTitleUnitsSummaryCellEdit()'teki applyUnitFloorMirrorFieldEdit()
+// çağrısı — tablo hücresi düzenlendiğinde YALNIZCA aynalı state.fields[key]
+// DEĞİL, kaynağın KENDİSİ (unitFloors[0][rowKey]) de güncellenir; böylece
+// sonraki her senkron ZATEN güncel değeri okur, ezme riski kalmaz (bkz.
+// UNIT_FLOOR_MIRROR_FIELD_TO_ROW_KEY). `interiorFeatures` İSTİSNA — TEK bir
+// satırın aynası DEĞİL, TÜM unitFloors satırlarının (kat+iç hacimler+not)
+// birleştirilmiş ÇOK SATIRLI özeti (formatUnitFloorInteriorSummary) —
+// serbest metinden 10'a kadar dropdown'a güvenilir şekilde geri
+// ayrıştırılamaz (Land'in popup-tabanlı çoklu-kayıt alanlarıyla AYNI
+// gerekçeyle "readonly" kaldı, tam düzenleme o taşınmazın kendi Katlar/
+// Alanlar panelinden yapılmaya devam ediyor).
 const UNIT_UNITS_TABLE_FIELD_DEFS = [
   { key: "unitUsageStatus", label: "Kullanım Durumu", kind: "scalar" },
   { key: "unitFirstSaleStatus", label: "İlk Satış Durumu", kind: "scalar" },
@@ -20219,15 +20240,44 @@ const UNIT_UNITS_TABLE_FIELD_DEFS = [
   { key: "unitHeatingMounted", label: "Isıtma Monte mi?", kind: "scalar" },
   { key: "unitShopFrontage", label: "Cephe (m)", kind: "scalar" },
   { key: "unitShopDepth", label: "Derinlik (m)", kind: "scalar" },
-  { key: "unitFloor", label: "Kat", kind: "readonly" },
-  { key: "legalArea", label: "Yasal Alan (m²)", kind: "readonly" },
-  { key: "currentArea", label: "Mevcut Alan (m²)", kind: "readonly" },
-  { key: "unitAreaReductionRate", label: "Alan İnd. Oranı", kind: "readonly" },
-  { key: "unitLegalTerrace", label: "Yasal Teras (m²)", kind: "readonly" },
-  { key: "unitCurrentTerrace", label: "Mevcut Teras (m²)", kind: "readonly" },
-  { key: "unitTerraceReductionRate", label: "Teras İnd. Oranı", kind: "readonly" },
+  { key: "unitFloor", label: "Kat", kind: "scalar" },
+  { key: "legalArea", label: "Yasal Alan (m²)", kind: "scalar" },
+  { key: "currentArea", label: "Mevcut Alan (m²)", kind: "scalar" },
+  { key: "unitAreaReductionRate", label: "Alan İnd. Oranı", kind: "scalar" },
+  { key: "unitLegalTerrace", label: "Yasal Teras (m²)", kind: "scalar" },
+  { key: "unitCurrentTerrace", label: "Mevcut Teras (m²)", kind: "scalar" },
+  { key: "unitTerraceReductionRate", label: "Teras İnd. Oranı", kind: "scalar" },
   { key: "interiorFeatures", label: "İç Hacimler Özeti", kind: "readonly" },
 ];
+
+// fieldKey -> unitFloors satırındaki (row0) karşılık gelen anahtar. Yalnızca
+// TEK bir satırın basit aynası olan 7 alan burada — interiorFeatures (ÇOK
+// satırlı birleşik özet) BİLEREK YOK, bkz. yukarıdaki yorum.
+const UNIT_FLOOR_MIRROR_FIELD_TO_ROW_KEY = {
+  unitFloor: "floor",
+  legalArea: "legalArea",
+  currentArea: "currentArea",
+  unitAreaReductionRate: "areaReductionRate",
+  unitLegalTerrace: "legalTerrace",
+  unitCurrentTerrace: "currentTerrace",
+  unitTerraceReductionRate: "terraceReductionRate",
+};
+
+// Özet tablodan bu 7 aynalı alandan biri düzenlendiğinde, KAYNAK satırın
+// (unitFloors[0]) KENDİSİNİ de günceller — böylece o taşınmazın Katlar/
+// Alanlar panelinde SONRADAN alakasız bir satır değişikliği olsa bile,
+// syncUnitFloorSummaryFields() ZATEN güncel değeri row0'dan okur (ezme
+// riski yok). fieldKey eşleşmiyorsa (bu 7 alandan biri değilse) no-op,
+// false döner — commitTitleUnitsSummaryCellEdit() HER hücre için koşulsuz
+// çağırabilir.
+function applyUnitFloorMirrorFieldEdit(fieldKey, normalizedValue, unitIndex) {
+  const rowKey = UNIT_FLOOR_MIRROR_FIELD_TO_ROW_KEY[fieldKey];
+  if (!rowKey) return false;
+  const rows = resolveTitleUnitUnitFloorsRowsWriteTarget(unitIndex);
+  if (!rows[0]) rows[0] = createEmptyUnitFloorRow();
+  rows[0][rowKey] = normalizedValue;
+  return true;
+}
 
 function buildUnitUnitsSummaryTableData() {
   const units = buildAllTitleUnitsForSummaryTable();
