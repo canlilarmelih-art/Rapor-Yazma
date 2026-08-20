@@ -101,6 +101,21 @@
         ? "Satışa arz şerhi Halkbank ipoteğiyle birlikte bulundu."
         : "Satışa arz şerhi Halkbank dışı kişi/kurumla ilişkilendirildi.");
     }
+    // Kullanıcı talebi (2026-08-20): "takyidatlarda İİK 150/C Şerhi var ve
+    // ipoteklerde Türkiye Halk Bankası A.Ş. var ise bu bir takip
+    // çalışmasıdır ve halkbankası risk kodlarından olan 126D otomatik
+    // olarak eklenmelidir." — mevcut saleToExecutionByHalkbank (18A/18B)
+    // yalnızca AYNI şerh satırının metninde "HALK" geçip geçmediğine
+    // bakıyor (TAKBİS'ten otomatik ayrıştırılan şerh satırlarında banka adı
+    // neredeyse HİÇ geçmez); burada BİLEREK farklı, doğru sinyal kullanılır:
+    // şerh (encumbranceAnnotations) İİK 150/c ise VE İpotekler
+    // (encumbranceMortgages) tablosunda AYRI bir satırda Halkbank varsa
+    // (hasHalkbankMortgage, yukarıda zaten hesaplandı) — 126D 18A/18B'den
+    // BAĞIMSIZ, EK bir kod (farklı risk boyutu: "İdari/Yasal Takip
+    // Aşamasında Taşınmaz", değerleme yöntemini de etkiliyor).
+    if (encumbrance.hasIikArt150cAnnotation && encumbrance.hasHalkbankMortgage) {
+      add("126D", "Takyidatlarda İİK 150/c şerhi ve İpoteklerde Halkbank ipoteği birlikte bulundu (takip çalışması).");
+    }
     if (encumbrance.bankruptcy) add("21A", "İflas/Konkordato şerhi bulundu.");
     if (encumbrance.precautionaryMeasure) add("36A", "İhtiyati tedbir veya ferağdan men şerhi bulundu.");
     if (hasFunctionDifference(fields)) add("104D", "Yasal kullanım niteliği ile mevcut kullanım niteliği farklı.");
@@ -178,6 +193,10 @@
       ownerPresenceRestriction: allTexts.some((text) => text.includes("MALIK") && (text.includes("GELMEDEN") || text.includes("BIZZAT")) && text.includes("ISLEM")),
       saleToExecution: annotationTexts.some((text) => text.includes("SATISA ARZ") || text.includes("150/C") || text.includes("150 C")),
       saleToExecutionByHalkbank: annotationTexts.some((text) => (text.includes("SATISA ARZ") || text.includes("150/C") || text.includes("150 C")) && text.includes("HALK")),
+      // Kullanıcı talebi (2026-08-20, 126D) - saleToExecution'dan BİLEREK
+      // ayrı: yalnızca "150/C" (İİK 150/c şerhi) metnini arar, genel
+      // "SATIŞA ARZ" ifadesini DAHİL ETMEZ - 126D özellikle bu şerhe bağlı.
+      hasIikArt150cAnnotation: annotationTexts.some((text) => text.includes("150/C") || text.includes("150 C")),
       bankruptcy: annotationTexts.some((text) => (text.includes("IFLAS") && !text.includes("IFLAS ERTELEME")) || text.includes("KONKORDATO")),
       precautionaryMeasure: annotationTexts.some((text) => text.includes("IHTIYATI TEDBIR") || text.includes("FERAGDAN MEN")),
     };

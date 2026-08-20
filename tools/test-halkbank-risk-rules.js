@@ -143,6 +143,49 @@ function main() {
   }));
   assertDeepEqual(codesOf(durationCodes), ["6C", "8A", "11B", "17B", "30B"], "Süre hesabina bagli 2. paket kodlari");
 
+  // Kullanıcı talebi (2026-08-20): "takyidatlarda İİK 150/C Şerhi var ve
+  // ipoteklerde Türkiye Halk Bankası A.Ş. var ise ... 126D otomatik
+  // eklenmelidir." TAKBİS'ten otomatik ayrıştırılan şerh satırında banka
+  // adı GEÇMEZ (c1'de yalnızca şerh açıklaması) - Halkbank sinyali AYRI
+  // İpotekler tablosundan (c0) gelir, AYNI şerh satırından DEĞİL.
+  const iikTakip = calculateHalkbankRiskCodes(baseInput({
+    tables: {
+      encumbranceMortgages: [{ c0: "Türkiye Halk Bankası A.Ş.", c1: "1", c2: "500.000 TL" }],
+      encumbranceAnnotations: [
+        { c0: "İİK 150/C Şerhi", c1: "Taşınmazın satışa arzına karar verilmiştir.", c3: "01.01.2026" },
+      ],
+    },
+  }));
+  // Not: 18A/18B mevcut (DEĞİŞTİRİLMEMİŞ) mantığa göre AYNI şerh satırının
+  // metninde "HALK" gecmedigi icin 18B doner (Halkbank sinyali burada
+  // yalnizca 126D'nin kendi kontrolunde, İpotekler tablosundan ayrı
+  // okunuyor) - 126D 18B ile BİRLİKTE, onun YERİNE değil EK olarak eklenir.
+  assertDeepEqual(codesOf(iikTakip), ["1A", "18B", "126D"], "İİK 150/c + Halkbank ipoteği -> 126D (18B ile BİRLİKTE, 126D bunun YERİNE değil EK).");
+
+  // Regresyon: İİK 150/c şerhi VAR ama Halkbank ipoteği YOKSA 126D
+  // eklenmemeli (yalnızca başka bankanın ipoteği).
+  const iikOtherBank = calculateHalkbankRiskCodes(baseInput({
+    tables: {
+      encumbranceMortgages: [{ c0: "Başka Banka A.Ş.", c1: "1", c2: "500.000 TL" }],
+      encumbranceAnnotations: [
+        { c0: "İİK 150/C Şerhi", c1: "Taşınmazın satışa arzına karar verilmiştir.", c3: "01.01.2026" },
+      ],
+    },
+  }));
+  assert(!codesOf(iikOtherBank).includes("126D"), "İİK 150/c var ama Halkbank ipoteği YOKSA 126D EKLENMEMELİ.");
+  assert(codesOf(iikOtherBank).includes("1B"), "Başka banka ipoteği 1B kodunu tetiklemeli (kontrol).");
+
+  // Regresyon: Halkbank ipoteği VAR ama İİK 150/c şerhi YOKSA 126D
+  // eklenmemeli (sıradan Halkbank kredisi, takip aşaması değil).
+  const halkbankNoIik = calculateHalkbankRiskCodes(baseInput({
+    tables: {
+      encumbranceMortgages: [{ c0: "Türkiye Halk Bankası A.Ş.", c1: "1", c2: "500.000 TL" }],
+    },
+  }));
+  assert(!codesOf(halkbankNoIik).includes("126D"), "Halkbank ipoteği var ama İİK 150/c şerhi YOKSA 126D EKLENMEMELİ.");
+
+  console.log("İİK 150/c + Halkbank ipoteği -> 126D otomatik risk kodu testi tamam.");
+
   console.log("Halkbank risk kodlari testi tamam.");
 }
 
