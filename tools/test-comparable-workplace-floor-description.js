@@ -189,6 +189,11 @@ function createLongTextContext(fields = {}) {
     buildComparableCalculationText: () => "",
     formatComparableExtraNote: () => "",
     normalizeComparableText: (value) => value,
+    // 2026-08-20: Emsaller Coklu Talep'te ortak (isComparablesSharedAcrossUnits,
+    // bkz. tools/test-comparable-card-multi-unit-plural.js) - burada
+    // davranissal olarak KAPSAM DISI, sabit false stub yeterli (bu test
+    // kat-bazli alan ifadesini kapsiyor, cogullastirmayi degil).
+    isComparablesSharedAcrossUnits: () => false,
     // selectVariant burada BİLEREK her zaman 0 (orijinal metin) döner — bu
     // test kablolama/sıralama mantığını doğruluyor, varyant SEÇİMİ ayrı
     // olarak tools/test-variant-selection.js'te test ediliyor.

@@ -38299,9 +38299,23 @@ function buildComparableLongText(row, rowIndex, metrics) {
     .replace(/benzer bir konuma sahiptir$/i, "benzer konumda");
  const isExternalAppraisal = isExternalAppointmentType(state.fields.appointmentType);
 const featureText = buildComparableFeatureComparisonText(row).replace(/^Emsal,\s*/i, "");
+// Kullanıcı talebi (2026-08-20): "ÇOK TALEPLERDE ekspertize konu
+// taşınmazla aynı bölgede yerine ekspertize konu taşınmazlarla aynı
+// bölgede demesi gerekiyor... konum olarak taşınmazla benzer konumda
+// yerine konum olarak taşınmazlarla benzer konumda demeli" — Emsaller
+// artık Çoklu Talep raporlarında ORTAK (bkz. isComparablesSharedAcrossUnits,
+// 0.0.489) olduğundan, emsal kartı açıklamasındaki TÜM tekil "taşınmaz"
+// (taşınmazla/taşınmaza göre/taşınmazın) referansları da bu durumda çoğul
+// olmalı. Regex ile serbest metin çevirimi YAPILMIYOR — yalnızca bu
+// fonksiyonun KENDİ kontrolündeki sabit bağlaç kelimesi (${subjectDative})
+// koşullu; positionText/featureText'in İÇİNDEKİ çoğullaştırma AYRICA
+// buildComparablePositionComparisonText/buildComparableFeatureComparisonText'te
+// yapılıyor (aşağıda), regex burada yalnızca O ÖNCEDEN çoğullaştırılmış
+// metni (hem tekil hem çoğul biçimini) doğru şekilde ayıklamak için var.
+const isMultiUnitComparable = isComparablesSharedAcrossUnits();
 const comparisonText = isExternalAppraisal
     ? positionText
-      ? `Emsal konu taşınmaz ile ${positionText.replace(/taşınmaza göre\s*/i, "")} yer almakta olup, ${featureText}`
+      ? `Emsal konu ${isMultiUnitComparable ? "taşınmazlarla" : "taşınmaz ile"} ${positionText.replace(/taşınmaz(?:lar)?a göre\s*/i, "")} yer almakta olup, ${featureText}`
       : `Emsalin ${featureText}`
     : positionText || featureText
       ? `Emsal, ${[positionText, featureText].filter(Boolean).join(" ve ")}.`
@@ -38314,7 +38328,7 @@ const comparisonText = isExternalAppraisal
   const calculationText = buildComparableCalculationText(row, metrics);
   const extraText = formatComparableExtraNote(row.c17);
   const sentence = [
-    "Ekspertize konu taşınmazla ",
+    isMultiUnitComparable ? "Ekspertize konu taşınmazlarla " : "Ekspertize konu taşınmazla ",
     location,
     age ? `, ${age}` : "",
     workplaceFloorAreaPhrase ? `, ${workplaceFloorAreaPhrase}` : (floor ? `, ${floor}` : ""),
@@ -38349,8 +38363,11 @@ function buildComparableLandLongText(row, rowIndex, metrics) {
   const negotiationText = buildComparableLandNegotiationText(metrics);
   const calculationText = buildComparableLandCalculationText(row, metrics);
   const extraText = formatComparableExtraNote(row.c17);
+  // bkz. buildComparableLongText() yorumu — Emsaller Çoklu Talep'te ortak
+  // olduğundan (isComparablesSharedAcrossUnits) tekil "taşınmaz" referansları
+  // burada da çoğullaştırılır.
   const sentence = [
-    "Ekspertize konu taşınmazla ",
+    isComparablesSharedAcrossUnits() ? "Ekspertize konu taşınmazlarla " : "Ekspertize konu taşınmazla ",
     location,
     mapLocation ? `, ${mapLocation}` : "",
     positionText ? `, konum olarak ${positionText}` : "",
@@ -38374,22 +38391,30 @@ function buildComparableRoadFrontageText(row = {}) {
 function formatComparableMapLocationPhrase(row = {}) {
   const text = String(row.c20 || "").trim();
   if (!text) return "";
+  // bkz. buildComparableLongText() yorumu — Emsaller Çoklu Talep'te ortak
+  // olduğundan (isComparablesSharedAcrossUnits) tekil "taşınmazın" (genitif)
+  // referansı burada da çoğullaştırılır.
+  const subjectGenitive = isComparablesSharedAcrossUnits() ? "taşınmazların" : "taşınmazın";
   const match = text.match(/([\d.,]+)\s*(?:m|metre)\s+(.+)/i);
-  if (!match) return `taşınmazın ${text}`;
+  if (!match) return `${subjectGenitive} ${text}`;
   const distance = parseComparableNumber(match[1]);
   const direction = String(match[2] || "").trim();
-  if (!Number.isFinite(distance) || distance <= 0 || !direction) return `taşınmazın ${text}`;
+  if (!Number.isFinite(distance) || distance <= 0 || !direction) return `${subjectGenitive} ${text}`;
   const roundedDistance = Math.max(10, Math.round(distance / 10) * 10);
-  return `taşınmazın yaklaşık ${roundedDistance.toLocaleString("tr-TR")} metre ${direction}`;
+  return `${subjectGenitive} yaklaşık ${roundedDistance.toLocaleString("tr-TR")} metre ${direction}`;
 }
 
 function buildComparableLandPositionText(row) {
   const sign = String(row.c9 || "").trim();
   const reason = row.c10 ? `${row.c10} sebebiyle ` : "";
   const percent = parseComparablePercent(row.c22);
+  // bkz. buildComparableLongText() yorumu — Emsaller Çoklu Talep'te ortak
+  // olduğundan (isComparablesSharedAcrossUnits) tekil "taşınmaza göre"
+  // (dativ) referansı burada da çoğullaştırılır.
+  const subjectDative = isComparablesSharedAcrossUnits() ? "taşınmazlara" : "taşınmaza";
   if (!Number.isFinite(percent) || percent === 0 || sign === "0") return "benzer konumda";
-  if (sign === "+") return `${reason}taşınmaza göre ${percent > 0.25 ? "çok daha iyi" : "daha iyi"} konumda`;
-  if (sign === "-") return `${reason}taşınmaza göre ${percent > 0.25 ? "çok daha vasat" : "daha vasat"} konumda`;
+  if (sign === "+") return `${reason}${subjectDative} göre ${percent > 0.25 ? "çok daha iyi" : "daha iyi"} konumda`;
+  if (sign === "-") return `${reason}${subjectDative} göre ${percent > 0.25 ? "çok daha vasat" : "daha vasat"} konumda`;
   return "benzer konumda";
 }
 
@@ -38501,11 +38526,14 @@ const comparablePositionSimilarVariants = [
   (reason) => (reason ? `${reason} olmasına rağmen konum bakımından benzerdir` : "konum bakımından benzerdir"),
   (reason) => (reason ? `${reason} olmasına rağmen benzer bir konuma sahiptir` : "benzer bir konuma sahiptir"),
 ];
+// bkz. buildComparableLongText() yorumu — Emsaller Çoklu Talep'te ortak
+// olduğundan (isComparablesSharedAcrossUnits) tekil "taşınmaza" (dativ)
+// referansı bu varyantlarda da çoğullaştırılır.
 const comparablePositionBetterVariants = [
-  (reason, level) => `${reason}taşınmaza göre ${level} konumda`,
-  (reason, level) => `${reason}taşınmaza kıyasla ${level} bir konumdadır`,
-  (reason, level) => `${reason}taşınmaza göre ${level} bir konuma sahiptir`,
-  (reason, level) => `${reason}taşınmaza nazaran ${level} konumdadır`,
+  (reason, level) => `${reason}${isComparablesSharedAcrossUnits() ? "taşınmazlara" : "taşınmaza"} göre ${level} konumda`,
+  (reason, level) => `${reason}${isComparablesSharedAcrossUnits() ? "taşınmazlara" : "taşınmaza"} kıyasla ${level} bir konumdadır`,
+  (reason, level) => `${reason}${isComparablesSharedAcrossUnits() ? "taşınmazlara" : "taşınmaza"} göre ${level} bir konuma sahiptir`,
+  (reason, level) => `${reason}${isComparablesSharedAcrossUnits() ? "taşınmazlara" : "taşınmaza"} nazaran ${level} konumdadır`,
 ];
 registerVariantGroup("buildComparablePositionComparisonText:similar", "Emsal Konum Karşılaştırması — Benzer (Emsaller)", comparablePositionSimilarVariants.length);
 registerVariantGroup("buildComparablePositionComparisonText:diff", "Emsal Konum Karşılaştırması — Farklı (Emsaller)", comparablePositionBetterVariants.length);
@@ -38530,11 +38558,14 @@ const comparableFeatureExternalVariants = [
   (level) => `iç özellikleri ${level} seviyede olduğu değerlendirilmiştir.`,
   (level) => `iç mekân niteliği ${level} seviyededir.`,
 ];
+// bkz. buildComparableLongText() yorumu — Emsaller Çoklu Talep'te ortak
+// olduğundan (isComparablesSharedAcrossUnits) tekil "taşınmaza"/"gayrimenkule"
+// (dativ) referansları bu varyantlarda da çoğullaştırılır.
 const comparableFeatureInternalVariants = [
-  (level) => `Emsal, konu taşınmaza göre ${level} iç özelliklere sahiptir.`,
-  (level) => `Emsal, değerlemeye konu gayrimenkule kıyasla ${level} iç özelliklere sahiptir.`,
-  (level) => `Emsal, konu taşınmaza göre ${level} iç mekân niteliği taşımaktadır.`,
-  (level) => `Emsal, değerlemeye konu gayrimenkule göre ${level} iç özellikler barındırmaktadır.`,
+  (level) => `Emsal, konu ${isComparablesSharedAcrossUnits() ? "taşınmazlara" : "taşınmaza"} göre ${level} iç özelliklere sahiptir.`,
+  (level) => `Emsal, değerlemeye konu ${isComparablesSharedAcrossUnits() ? "gayrimenkullere" : "gayrimenkule"} kıyasla ${level} iç özelliklere sahiptir.`,
+  (level) => `Emsal, konu ${isComparablesSharedAcrossUnits() ? "taşınmazlara" : "taşınmaza"} göre ${level} iç mekân niteliği taşımaktadır.`,
+  (level) => `Emsal, değerlemeye konu ${isComparablesSharedAcrossUnits() ? "gayrimenkullere" : "gayrimenkule"} göre ${level} iç özellikler barındırmaktadır.`,
 ];
 registerVariantGroup("buildComparableFeatureComparisonText:external", "Emsal İç Özellik Karşılaştırması — Dışarıdan Ekspertiz (Emsaller)", comparableFeatureExternalVariants.length);
 registerVariantGroup("buildComparableFeatureComparisonText:internal", "Emsal İç Özellik Karşılaştırması (Emsaller)", comparableFeatureInternalVariants.length);
