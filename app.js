@@ -35491,10 +35491,10 @@ const comparableViewModeOptions = [
   { value: "residential", label: "Konut / Yapı Emsalleri" },
   { value: "land", label: "Arsa / Tarla / Meyve Bahçesi Emsalleri" },
 ];
-const comparableResidentialOnlyFieldKeys = new Set(["c4", "c5", "c6", "c8", "c11", "c12", "c13", "c16", "calcRentUnitValue"]);
+const comparableResidentialOnlyFieldKeys = new Set(["c4", "c5", "c6", "c8", "c11", "c12", "c13", "c16", "c32", "c33", "calcRentUnitValue"]);
 // m2/değer alanları: giriş kutusundan çıkarken (blur) tr-TR binler+ondalık
 // ayracıyla gösterilir (bkz. formatComparableNumericInputValue).
-const comparableNumericInputFieldKeys = new Set(["c12", "c13", "c24", "c14", "c15", "c16"]);
+const comparableNumericInputFieldKeys = new Set(["c12", "c13", "c24", "c14", "c15", "c16", "c33"]);
 const comparableLandOnlyFieldKeys = new Set(["c24", "c25", "c26", "c27", "c28", "c29", "c31", "calcCalculatedEmsalUnitValue", "calcAdjustedCalculatedEmsalUnitValue"]);
 // Konu taşınmaz işyeri/ofis/ticari bina değilse (konut dahil) bu alanlar
 // Emsaller tablosunda gösterilmez — kullanıcı talebi (bkz. isWorkplaceLikeUsageNature).
@@ -35600,6 +35600,18 @@ const comparableFields = [
   { key: "c31", label: "Hesaplanan Emsal" },
   { key: "c14", label: "Talep Edilen Değer" },
   { key: "c15", label: "Pazarlıklı Değer" },
+  {
+    key: "c32",
+    label: "Eşyalı",
+    type: "select",
+    options: ["Hayır", "Evet"],
+    allowEmpty: false,
+  },
+  {
+    key: "c33",
+    label: "Eşya Bedeli",
+    showWhen: () => getComparableRows().some((row) => isComparableFurnished(row)),
+  },
   { key: "calcNegotiation", label: "Pazarlık Payı", computed: true },
   { key: "calcUnitValue", label: "M2 Birim Değer", computed: true },
   { key: "calcFeatureAdjustment", label: "Özellik Şerefiyesi", computed: true, hidden: true },
@@ -35626,6 +35638,17 @@ function isAgriculturalComparable(row = {}) {
   return comparableAgriculturalNatureKeys.has(normalizeComparableNature(row));
 }
 
+function isComparableFurnished(row = {}) {
+  return !isLandComparable(row) && foldTurkish(String(row.c32 || "").trim()) === "EVET";
+}
+
+function buildComparableFurnishedMarketNote() {
+  const saleRows = getComparableRows().filter((row) => !isLandComparable(row) && /satilik/i.test(foldTurkish(row.c2 || "")));
+  const furnishedCount = saleRows.filter((row) => isComparableFurnished(row)).length;
+  if (!saleRows.length || furnishedCount <= saleRows.length / 2) return "";
+  return "* Not: Bölgede satışa sunulan benzer nitelikteki gayrimenkullerin çoğunluğunun eşyalı olarak pazarlandığı gözlemlenmiştir.";
+}
+
 function getComparableViewMode() {
   const value = state.fields.comparableViewMode || "all";
   return comparableViewModeOptions.some((option) => option.value === value) ? value : "all";
@@ -35645,6 +35668,7 @@ function getComparableDisplayFields(viewMode) {
   const showWorkplaceFields = isWorkplaceLikeUsageNature();
   return comparableFields.filter((field) => {
     if (field.hidden) return false;
+    if (field.showWhen && !field.showWhen()) return false;
     if (!showWorkplaceFields && comparableWorkplaceOnlyFieldKeys.has(field.key)) return false;
     if (showWorkplaceFields && comparableHiddenForWorkplaceFieldKeys.has(field.key)) return false;
     if (viewMode === "all") return true;
@@ -36140,8 +36164,10 @@ function buildComparableMarketAnalysisText() {
     // (isComparablesSharedForLandReport) modül ÇOĞUL varyantları kullanır.
     isMultiUnit: isComparablesSharedForLandReport(),
   });
-  state.fields.comparableMarketAnalysisText = text;
-  return text;
+  const furnishedMarketNote = buildComparableFurnishedMarketNote();
+  const fullText = [text, furnishedMarketNote].filter(Boolean).join("\n\n");
+  state.fields.comparableMarketAnalysisText = fullText;
+  return fullText;
 }
 
 function createComparableLocationSketchPanel() {
@@ -37076,7 +37102,7 @@ function createComparableMatrixCell(section, field, row, rowIndex) {
     if (["c24", "c26", "c27", "c28"].includes(field.key)) return;
     refreshComparableComputedCells(row, rowIndex);
     updateComparableReasonRowsVisibility(cell.closest(".comparables-matrix-shell"));
-    if (field.key === "c23") renderSection();
+    if (field.key === "c23" || field.key === "c32") renderSection();
   });
   control.addEventListener("change", (event) => {
     row[field.key] = event.target.value;
@@ -37092,7 +37118,7 @@ function createComparableMatrixCell(section, field, row, rowIndex) {
     autosave();
     refreshComparableComputedCells(row, rowIndex);
     updateComparableReasonRowsVisibility(cell.closest(".comparables-matrix-shell"));
-    if (field.key === "c23") renderSection();
+    if (field.key === "c23" || field.key === "c32") renderSection();
   });
   control.addEventListener("blur", () => {
     if (control.tagName === "SELECT" || field.type === "date") return;
@@ -37860,9 +37886,12 @@ function calculateComparableMetrics(row) {
     : bargainPrice > 0
       ? bargainPrice
       : askingPrice;
-  const unitValue = saleValue > 0 && adjustedArea > 0 ? saleValue / adjustedArea : Number.NaN;
+  const furnished = !landComparable && isComparableFurnished(row);
+  const furnitureValue = furnished ? parseComparableNumber(row.c33) : Number.NaN;
+  const netSaleValue = saleValue - (Number.isFinite(furnitureValue) && furnitureValue > 0 ? furnitureValue : 0);
+  const unitValue = netSaleValue > 0 && adjustedArea > 0 ? netSaleValue / adjustedArea : Number.NaN;
   const adjustedUnitValue = Number.isFinite(unitValue) ? unitValue * (1 + featureAdjustment + locationAdjustment) : Number.NaN;
-  const calculatedEmsalUnitValue = saleValue > 0 && calculatedEmsalArea > 0 ? saleValue / calculatedEmsalArea : Number.NaN;
+  const calculatedEmsalUnitValue = netSaleValue > 0 && calculatedEmsalArea > 0 ? netSaleValue / calculatedEmsalArea : Number.NaN;
   const adjustedCalculatedEmsalUnitValue = Number.isFinite(calculatedEmsalUnitValue)
     ? calculatedEmsalUnitValue * (1 + locationAdjustment)
     : Number.NaN;
@@ -37872,6 +37901,9 @@ function calculateComparableMetrics(row) {
     askingPrice,
     bargainPrice,
     saleValue,
+    furnished,
+    furnitureValue,
+    netSaleValue,
     adjustedArea,
     workplaceReducedArea,
     workplaceTotalArea,
@@ -38123,6 +38155,7 @@ const comparisonText = isExternalAppraisal
       ? `Emsal, ${[positionText, featureText].filter(Boolean).join(" ve ")}.`
       : "";
   const bargainRentText = buildComparableBargainAndRentText(row, metrics);
+  const furnitureText = buildComparableFurnitureText(row, metrics);
   const workplaceFloorReductionExplanation = buildComparableWorkplaceFloorReductionExplanation(row, metrics);
   const calculationText = buildComparableCalculationText(row, metrics);
   const extraText = formatComparableExtraNote(row.c17);
@@ -38137,6 +38170,7 @@ const comparisonText = isExternalAppraisal
     row.c4 ? ` ${row.c4}` : "",
     statusText ? ` ${statusText}` : "",
     comparisonText ? ` ${comparisonText}` : "",
+    furnitureText ? ` ${furnitureText}` : "",
     bargainRentText ? ` ${bargainRentText}` : "",
     workplaceFloorReductionExplanation ? ` ${workplaceFloorReductionExplanation}` : "",
     extraText ? ` ${extraText}` : "",
@@ -38516,10 +38550,20 @@ function buildComparableBargainAndRentText(row, metrics) {
 function buildComparableCalculationText(row, metrics) {
   const status = String(row.c2 || "").toLocaleLowerCase("tr-TR");
   if (!status.includes("satılık") && !status.includes("satılmış")) return "";
-  if (!Number.isFinite(metrics.adjustedUnitValue) || metrics.adjustedArea <= 0 || metrics.saleValue <= 0) return "";
+  if (!Number.isFinite(metrics.adjustedUnitValue) || metrics.adjustedArea <= 0 || metrics.netSaleValue <= 0) return "";
   const totalAdjustment = 1 + metrics.featureAdjustment + metrics.locationAdjustment;
   const label = status.includes("satılmış") ? "Satış Değeri" : "Pazarlıklı Değer";
-  return ` (İndirgenmiş m2 Birim Değeri: ${formatComparableMoney(metrics.saleValue)} (${label}) × ${totalAdjustment.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (Toplam Şerefiye Katsayısı) / ${metrics.adjustedArea.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} m2 = ${formatComparableMoney(metrics.adjustedUnitValue, " TL/m2")})`;
+  const valueExpression = Number.isFinite(metrics.furnitureValue) && metrics.furnitureValue > 0
+    ? `(${formatComparableMoney(metrics.saleValue)} (${label}) - ${formatComparableMoney(metrics.furnitureValue)} (Eşya Bedeli))`
+    : `${formatComparableMoney(metrics.saleValue)} (${label})`;
+  return ` (İndirgenmiş m2 Birim Değeri: ${valueExpression} × ${totalAdjustment.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (Toplam Şerefiye Katsayısı) / ${metrics.adjustedArea.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} m2 = ${formatComparableMoney(metrics.adjustedUnitValue, " TL/m2")})`;
+}
+
+function buildComparableFurnitureText(row, metrics) {
+  if (!metrics.furnished || !Number.isFinite(metrics.furnitureValue) || metrics.furnitureValue <= 0) return "";
+  const status = String(row.c2 || "").toLocaleLowerCase("tr-TR");
+  const marketingVerb = status.includes("satılmış") ? "pazarlanmış" : "pazarlanmakta";
+  return `Emsal eşyalı olarak ${marketingVerb} olup eşya bedeli ${formatComparableMoney(metrics.furnitureValue)} olarak değerlemede dikkate alınmıştır.`;
 }
 
 function buildComparableLocationLocative(value) {
