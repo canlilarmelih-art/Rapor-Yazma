@@ -232,6 +232,16 @@ function freshState(overrides = {}) {
     /if \(section\.id === "building" && isCurrentUserAdmin\(\) && state\.fields\.requestType === "Çoklu Talep" && isBuildingBlockGroupingActive\(\)\) \{\s*\n\s*body\.append\(createBuildingBlockTabBar\(\)\);/,
     "renderSection() 'building' icin isBuildingBlockGroupingActive() kosuluyla createBuildingBlockTabBar()'i eklemiyor."
   );
+  assert.match(
+    appSource,
+    /function createBuildingBlockTabBar\(\)[\s\S]*?outerTabs\.append\(applyAllBlocksButton\);[\s\S]*?wrap\.append\(outerTabs\);/,
+    "Tum bloklara uygula butonu blok sekmelerinin bulundugu satira eklenmelidir."
+  );
+  assert.doesNotMatch(
+    appSource,
+    /function createBuildingTechnicalOptionsPanel\(\)[\s\S]*?building-apply-all-blocks-button/,
+    "Tum bloklara uygula butonu teknik bilgiler basliginda yinelenmemelidir."
+  );
   console.log("renderSection building blok-tab gate kaynak-duzeyi kablolama testi tamam.");
 }
 

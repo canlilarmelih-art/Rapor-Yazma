@@ -3230,8 +3230,6 @@ td .free-lookup input {
 }
 
 .building-apply-all-blocks-button {
-  margin-left: auto;
-  align-self: center;
   white-space: nowrap;
 }
 
@@ -6381,11 +6379,6 @@ td textarea.table-textarea {
 
   .subsection-title-row {
     display: grid;
-  }
-
-  .building-apply-all-blocks-button {
-    margin-left: 0;
-    justify-self: start;
   }
 
   .table-shell {

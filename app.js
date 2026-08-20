@@ -2378,6 +2378,7 @@ function createDocumentsBlockTabBar() {
     });
     outerTabs.append(button);
   });
+
   wrap.append(outerTabs);
 
   if (activeGroup && activeGroup.unitIndices.length > 1) {
@@ -2438,6 +2439,21 @@ function createBuildingBlockTabBar() {
     });
     outerTabs.append(button);
   });
+
+  const applyAllBlocksButton = document.createElement("button");
+  applyAllBlocksButton.type = "button";
+  applyAllBlocksButton.className = "title-unit-tab building-apply-all-blocks-button";
+  applyAllBlocksButton.textContent = "Tüm bloklara uygula";
+  applyAllBlocksButton.title = "Seçili bloktaki ana gayrimenkul özelliklerini diğer bloklara uygular";
+  applyAllBlocksButton.addEventListener("click", () => {
+    if (!applyBuildingDataToAllBlocks()) return;
+    autosave();
+    renderValidation();
+    updateStatus();
+    renderSection();
+  });
+  outerTabs.append(applyAllBlocksButton);
+
   wrap.append(outerTabs);
 
   if (activeGroup && activeGroup.unitIndices.length > 1) {
@@ -9996,22 +10012,6 @@ function createBuildingTechnicalOptionsPanel() {
       <p>Yapı tarzı, nizam, sınıf ve asansör bilgileri burada seçilir.</p>
     </div>
   `;
-
-  if (isBuildingBlockGroupingActive()) {
-    const applyAllBlocksButton = document.createElement("button");
-    applyAllBlocksButton.type = "button";
-    applyAllBlocksButton.className = "secondary-button building-apply-all-blocks-button";
-    applyAllBlocksButton.textContent = "Tüm bloklara uygula";
-    applyAllBlocksButton.title = "Seçili bloktaki ana gayrimenkul özelliklerini diğer bloklara uygular";
-    applyAllBlocksButton.addEventListener("click", () => {
-      if (!applyBuildingDataToAllBlocks()) return;
-      autosave();
-      renderValidation();
-      updateStatus();
-      renderSection();
-    });
-    panel.querySelector(".subsection-title-row")?.append(applyAllBlocksButton);
-  }
 
   const grid = document.createElement("div");
   grid.className = "building-technical-grid";
