@@ -27,5 +27,6 @@ assert(!displayFieldsSource.includes('field.key === "c32" &&'), "Eşyalı seçen
 
 assert(source.includes('field.key === "c23" || field.key === "c32"'), "Eşyalı seçimi sonrası tablo yeniden çizilmelidir.");
 assert(source.includes("const netSaleValue = saleValue - (Number.isFinite(furnitureValue)"), "Eşya bedeli indirgenmiş değer hesabından düşülmelidir.");
+assert(source.includes("yalnızca gayrimenkule atfedilen net bedel esas alınmıştır"), "Eşyalı emsal piyasa notu net gayrimenkul bedeli yaklaşımını açıklamalıdır.");
 
 console.log("Emsaller eşyalı alanı görünürlük ve hesaplama regresyon testi tamam.");

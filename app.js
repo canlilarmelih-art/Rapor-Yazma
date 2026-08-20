@@ -35690,7 +35690,7 @@ function buildComparableFurnishedMarketNote() {
   const saleRows = getComparableRows().filter((row) => !isLandComparable(row) && /satilik/i.test(foldTurkish(row.c2 || "")));
   const furnishedCount = saleRows.filter((row) => isComparableFurnished(row)).length;
   if (!saleRows.length || furnishedCount <= saleRows.length / 2) return "";
-  return "* Not: Bölgede satışa sunulan benzer nitelikteki gayrimenkullerin çoğunluğunun eşyalı olarak pazarlandığı gözlemlenmiştir.";
+  return "* Not: Yapılan piyasa araştırmasında, bölgede satışa sunulan benzer nitelikteki gayrimenkullerin çoğunluğunun eşyalı olarak pazarlandığı gözlemlenmiştir. Bu nedenle eşyalı ilanların bedelleri analiz edilirken mobilya ve diğer taşınır eşyalara atfedilen tutarlar mümkün olduğu ölçüde ayrıştırılmış, değerleme hesabında yalnızca gayrimenkule atfedilen net bedel esas alınmıştır.";
 }
 
 function getComparableViewMode() {
