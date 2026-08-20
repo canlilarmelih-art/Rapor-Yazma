@@ -35559,6 +35559,19 @@ const comparableFields = [
     allowEmpty: false,
   },
   {
+    // Konut/yapı emsalinde ilk bakışta erişilebilir olmalı. Eşya Bedeli
+    // satırı, seçim "Evet" olduğunda bunun hemen altında görünür.
+    key: "c32",
+    label: "Eşyalı",
+    type: "select",
+    options: ["Hayır", "Evet"],
+    allowEmpty: false,
+  },
+  {
+    key: "c33",
+    label: "Eşya Bedeli",
+  },
+  {
     key: "c2",
     label: "Emsal Durumu",
     type: "select",
@@ -35643,17 +35656,6 @@ const comparableFields = [
   { key: "c31", label: "Hesaplanan Emsal" },
   { key: "c14", label: "Talep Edilen Değer" },
   { key: "c15", label: "Pazarlıklı Değer" },
-  {
-    key: "c32",
-    label: "Eşyalı",
-    type: "select",
-    options: ["Hayır", "Evet"],
-    allowEmpty: false,
-  },
-  {
-    key: "c33",
-    label: "Eşya Bedeli",
-  },
   { key: "calcNegotiation", label: "Pazarlık Payı", computed: true },
   { key: "calcUnitValue", label: "M2 Birim Değer", computed: true },
   { key: "calcFeatureAdjustment", label: "Özellik Şerefiyesi", computed: true, hidden: true },
