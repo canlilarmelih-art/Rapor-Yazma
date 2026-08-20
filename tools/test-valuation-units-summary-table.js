@@ -101,6 +101,9 @@ const functionNames = [
   "getTitleUnitTablesForLabel",
   "buildAllTitleUnitsForSummaryTable",
   "buildValuationUnitsSummaryTableData",
+  "getValuationUnitsSummaryHeaderGroup",
+  "getValuationUnitsSummarySubheader",
+  "buildValuationUnitsSummaryTableHtml",
   "buildValuationUnitsSummaryWordTableHtml",
   "splitTableHeaderLabelIntoTwoLines",
   "toTitleFieldUppercase",
@@ -255,14 +258,15 @@ function unit(overrides = {}) {
 {
   fns.setState({
     activeTitleUnitIndex: 0,
-    fields: { legalValue: "500.000" },
+    fields: { legalValue: "500.000", currentValue: "550.000" },
     tables: {},
-    titleUnits: [unit({ legalValue: "720.000" })],
+    titleUnits: [unit({ legalValue: "720.000", currentValue: "760.000" })],
   });
   const html = fns.buildValuationUnitsSummaryWordTableHtml();
   assert.ok(html.includes("<table"), "Geçerli bir <table> HTML'i üretilmeli.");
   assert.ok(html.includes("table-layout:auto"), "Sütun genişlikleri DİNAMİK (table-layout:auto) olmalı.");
   assert.ok(html.includes("text-align:center") && html.includes("vertical-align:middle"), "Tüm hücreler yatay VE dikey ortalı olmalı.");
+  assert.ok(html.includes('rowspan="2"') && html.includes("YASAL DURUM DEĞERİ") && html.includes("MEVCUT DURUM DEĞERİ"), "Değerleme tablosu yasal/mevcut durum için iki katmanlı grup başlıkları kullanmalı.");
   assert.ok(html.includes("500.000") && html.includes("720.000"), "Her iki taşınmazın değerleri de HTML'de gözükmeli.");
   console.log("buildValuationUnitsSummaryWordTableHtml gercek HTML uretimi testi tamam.");
 }
@@ -276,6 +280,21 @@ function unit(overrides = {}) {
     "template-engine.js'te {{TASINMAZLARDEGERLEMETABLOSU}} -> buildValuationUnitsSummaryWordTableHtml kablolaması bulunamadı."
   );
   console.log("{{TASINMAZLARDEGERLEMETABLOSU}} template-engine.js kablolama testi tamam.");
+}
+
+// --- 8) Yalnızca değerleme önizlemesi iki katmanlı renderer'ı kullanır ---
+{
+  assert.match(
+    appSource,
+    /function createValuationUnitsSummaryTablePreview\(\)[\s\S]*?buildValuationUnitsSummaryTableHtml\(data, state\.activeTitleUnitIndex, \{ editable: true \}\)/,
+    "Değerleme özeti ekranda iki katmanlı grup başlıklarıyla render edilmelidir."
+  );
+  assert.match(
+    appSource,
+    /function createTitleUnitsSummaryTablePreview\(\)[\s\S]*?buildTitleUnitsSummaryTableHtmlEditable\(data\.headers, data\.rows, data\.columnMeta, state\.activeTitleUnitIndex\)/,
+    "Tapu özeti değerleme tablosuna özgü renderer'a yönlendirilmemelidir."
+  );
+  console.log("Değerleme iki katmanlı başlık renderer kablolama testi tamam.");
 }
 
 console.log("Tasinmazlar degerleme ozeti tablosu testleri basarili.");

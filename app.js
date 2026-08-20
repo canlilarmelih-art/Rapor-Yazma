@@ -2755,7 +2755,7 @@ function createValuationUnitsSummaryTablePreview() {
     wrap.append(note);
     return wrap;
   }
-  const tableHtml = buildTitleUnitsSummaryTableHtmlEditable(data.headers, data.rows, data.columnMeta, state.activeTitleUnitIndex);
+  const tableHtml = buildValuationUnitsSummaryTableHtml(data, state.activeTitleUnitIndex, { editable: true });
   const tableContainer = document.createElement("div");
   tableContainer.className = "title-units-summary-table-container";
   tableContainer.innerHTML = tableHtml;
@@ -6002,13 +6002,77 @@ function buildValuationUnitsSummaryTableData() {
   return { headers: filteredHeaders, rows: filteredRows, columnMeta: filteredColumnMeta };
 }
 
+function getValuationUnitsSummaryHeaderGroup(label) {
+  const normalized = String(label || "");
+  if (normalized.startsWith("Yasal ")) return "Yasal Durum Değeri";
+  if (normalized.startsWith("Mevcut ")) return "Mevcut Durum Değeri";
+  return "Diğer";
+}
+
+function getValuationUnitsSummarySubheader(label) {
+  const normalized = String(label || "");
+  if (normalized === "Sıra No") return "No";
+  if (normalized.endsWith(" - Alan")) return "Alan";
+  if (normalized.endsWith(" - M2 Birim Değeri")) {
+    return normalized.includes("Kira") ? "Kira M2 Birim Değeri" : "M2 Birim Değeri";
+  }
+  if (normalized.includes("Acil Satış")) return "Acil Satış Değeri";
+  if (normalized.includes("Kira Değeri")) return "Kira Değeri";
+  return "Piyasa Değeri";
+}
+
+// Çoklu değerleme özeti iki katmanlıdır: üst satır Yasal/Mevcut durum
+// gruplarını, alt satır her grubun hesaplama sütunlarını gösterir. Aynı
+// renderer ekran önizlemesi ve banka şablonu çıktısı tarafından kullanılır.
+function buildValuationUnitsSummaryTableHtml(data, activeRowIndex, { editable = false } = {}) {
+  const headers = data?.headers || [];
+  const rows = data?.rows || [];
+  const columnMeta = data?.columnMeta || [];
+  if (!headers.length || !rows.length) return "";
+
+  const ink = getReportThemeToken("--ink", "#152238");
+  const line = getReportThemeToken("--line", "#dde3ef");
+  const blue = getReportThemeToken("--blue", "#3a5691");
+  const surface = getReportThemeToken("--surface", "#ffffff");
+  const surfaceMuted = getReportThemeToken("--surface-muted", "#eef2fa");
+  const border = `border:1pt solid ${line};`;
+  const baseCell = `${border}padding:3pt 4pt;text-align:center;vertical-align:middle;line-height:1.15;color:${ink};background:${surface};font-size:6.5pt;white-space:normal;`;
+  const headerCell = `${baseCell}background:${surfaceMuted};color:${blue};font-weight:800;`;
+  const zebraCell = `${baseCell}background:${surfaceMuted};`;
+  const groupedColumns = headers.slice(1).reduce((groups, label, offset) => {
+    const group = getValuationUnitsSummaryHeaderGroup(label);
+    if (!groups[group]) groups[group] = [];
+    groups[group].push({ label, index: offset + 1 });
+    return groups;
+  }, {});
+  const groupOrder = ["Yasal Durum Değeri", "Mevcut Durum Değeri", "Diğer"].filter((group) => groupedColumns[group]?.length);
+  const topHeaderHtml = `<tr><th rowspan="2" style="${headerCell}">${toTitleFieldUppercase(headers[0])}</th>${groupOrder.map((group) => `<th colspan="${groupedColumns[group].length}" style="${headerCell}">${toTitleFieldUppercase(group)}</th>`).join("")}</tr>`;
+  const subHeaderHtml = `<tr>${groupOrder.flatMap((group) => groupedColumns[group]).map(({ label }) => `<th style="${headerCell}">${toTitleFieldUppercase(getValuationUnitsSummarySubheader(label))}</th>`).join("")}</tr>`;
+  const bodyHtml = rows.map((row, rowIndex) => {
+    const cellStyle = rowIndex % 2 === 1 ? zebraCell : baseCell;
+    const cellsHtml = row.map((cell, columnIndex) => {
+      const meta = columnMeta[columnIndex] || null;
+      const isEditable = editable && meta?.kind === "scalar";
+      if (!isEditable) return `<td style="${cellStyle}">${formatWordCell(toTitleFieldUppercase(cell))}</td>`;
+      return `<td style="${cellStyle}cursor:text;" class="tus-editable-cell" data-unit-index="${rowIndex}" data-field-key="${escapeHtml(meta.fieldKey)}" title="Düzenlemek için tıklayın">${formatWordCell(toTitleFieldUppercase(cell))}</td>`;
+    }).join("");
+    const rowAttr = editable && rowIndex === activeRowIndex ? ' class="tus-active-row"' : "";
+    return `<tr${rowAttr}>${cellsHtml}</tr>`;
+  }).join("");
+
+  return `<table class="word-table title-units-summary-table title-units-summary-table${editable ? " title-units-summary-table-editable" : ""}" style="border-collapse:collapse;width:100%;margin:5pt 0 12pt;table-layout:auto;">
+    <thead>${topHeaderHtml}${subHeaderHtml}</thead>
+    <tbody>${bodyHtml}</tbody>
+  </table>`;
+}
+
 // Banka şablonlarına {{TASINMAZLARDEGERLEMETABLOSU}} ile enjekte edilecek
-// gerçek HTML tablo (bkz. template-engine.js) — Tapu/Adres/İmar/Arsa/
-// Belgeler tablolarının export akışıyla BİREBİR AYNI desen.
+// gerçek HTML tablo (bkz. template-engine.js) — ekran önizlemesi ile aynı
+// Yasal/Mevcut durum grup başlıklarını kullanır.
 function buildValuationUnitsSummaryWordTableHtml() {
   const data = buildValuationUnitsSummaryTableData();
   if (!data || !data.rows.length) return "";
-  return buildTitleUnitsSummaryTableHtmlFromData(data.headers, data.rows);
+  return buildValuationUnitsSummaryTableHtml(data);
 }
 
 const incompleteConstructionMarketRows = {
