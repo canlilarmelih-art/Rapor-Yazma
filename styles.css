@@ -3140,6 +3140,12 @@ td .free-lookup input {
   gap: 12px;
 }
 
+.building-apply-all-blocks-button {
+  margin-left: auto;
+  align-self: center;
+  white-space: nowrap;
+}
+
 .building-technical-grid .field-wide {
   grid-column: 1 / -1;
 }
@@ -6286,6 +6292,11 @@ td textarea.table-textarea {
 
   .subsection-title-row {
     display: grid;
+  }
+
+  .building-apply-all-blocks-button {
+    margin-left: 0;
+    justify-self: start;
   }
 
   .table-shell {

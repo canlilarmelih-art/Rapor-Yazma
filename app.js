@@ -1527,6 +1527,33 @@ function syncBuildingSharedDataToBlockSiblings() {
   });
 }
 
+// Seçili blokta girilen ana gayrimenkul verisini diğer bloklara da uygular.
+// Aynı blok içi otomatik senkron korunur; bu komut yalnızca kullanıcı
+// istediğinde blok sınırını aşar.
+function applyBuildingDataToAllBlocks() {
+  if (!isBuildingBlockGroupingActive()) return false;
+  const units = buildAllTitleUnitsForSummaryTable();
+  if (computeDocumentsBlockGroups(units).length < 2) return false;
+
+  const sourceFields = state.fields;
+  const sharedKeys = getBuildingBlockSharedFieldKeys();
+  const sourceBuildingFloorRows = state.tables?.buildingFloors || [];
+  units.forEach((unit, index) => {
+    if (index === state.activeTitleUnitIndex) return;
+    const targetFields = resolveTitleUnitWriteTarget(index);
+    sharedKeys.forEach((key) => {
+      const value = sourceFields[key];
+      targetFields[key] = value && typeof value === "object"
+        ? (Array.isArray(value) ? [...value] : { ...value })
+        : value;
+    });
+    const targetRows = resolveTitleUnitBuildingFloorsRowsWriteTarget(index);
+    targetRows.length = 0;
+    sourceBuildingFloorRows.forEach((row) => targetRows.push({ ...row }));
+  });
+  return true;
+}
+
 // "İmar Durumu" (planning) bölümünün TÜM taşınmaza-özgü olabilecek alan
 // anahtarları — declaratif `section.fields` + 6 conditionalYesNo detay
 // notu (titleChangedRecords emsaliyle AYNI boşluk: yalnızca ebeveyn
@@ -9926,6 +9953,22 @@ function createBuildingTechnicalOptionsPanel() {
       <p>Yapı tarzı, nizam, sınıf ve asansör bilgileri burada seçilir.</p>
     </div>
   `;
+
+  if (isBuildingBlockGroupingActive()) {
+    const applyAllBlocksButton = document.createElement("button");
+    applyAllBlocksButton.type = "button";
+    applyAllBlocksButton.className = "secondary-button building-apply-all-blocks-button";
+    applyAllBlocksButton.textContent = "Tüm bloklara uygula";
+    applyAllBlocksButton.title = "Seçili bloktaki ana gayrimenkul özelliklerini diğer bloklara uygular";
+    applyAllBlocksButton.addEventListener("click", () => {
+      if (!applyBuildingDataToAllBlocks()) return;
+      autosave();
+      renderValidation();
+      updateStatus();
+      renderSection();
+    });
+    panel.querySelector(".subsection-title-row")?.append(applyAllBlocksButton);
+  }
 
   const grid = document.createElement("div");
   grid.className = "building-technical-grid";
