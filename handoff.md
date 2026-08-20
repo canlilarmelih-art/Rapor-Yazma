@@ -1,5 +1,17 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.488 - 2026-08-20 - Bağımsız Bölüm'e taşınmaz tab çubuğu eklendi + stale not metni + orphan test düzeltmeleri
+
+- Kullanıcı: "Bağımsız bölüm özellikleri bölümünde bağımsız bölüm tabları bulunmuyor."
+- Kök neden: 0.0.486'da "unit" (Bağımsız Bölüm Özellikleri) bölümünün ALTINDAKİ VERİ doğru taşınmaza-özgü scoped edilmişti (`getUnitSectionFieldKeys`) ama plan BİLEREK yalnızca veri bütünlüğüyle sınırlı tutulmuştu, hiçbir tab/UI eklenmemişti ("blok kavramı burada anlamsız" gerekçesiyle — bu gerekçe hâlâ doğru, ama tab çubuğunun blok'la hiçbir ilgisi yoktu, salt navigasyon). Sonuç: kullanıcı bir bağımsız bölümün kendi verisini görmek/düzenlemek için Tapu sekmesi ÜZERİNDEN aktif taşınmazı değiştirip Bağımsız Bölüm'e gelmek zorundaydı — diğer 6 bölümle (Tapu/Adres/İmar/Arsa/Belgeler/Değerleme) tutarsız ve kullanışsız.
+- Düzeltme: `renderSection()`'a Değerleme'nin EN BASİT deseniyle (ada/parsel/blok koşulu YOK, yalnızca admin + Çoklu Talep) yeni bir gate eklendi — `body.append(createTitleUnitTabBar())`. "Tümüne uygula" butonu BİLİNÇLİ OLARAK YOK (her bağımsız bölümün kendi alan/iç mekan/dekorasyon bilgisi farklı olması normal/beklenen — Değerleme'yle aynı gerekçe). Özet tablo YOK (istenmedi, yalnızca navigasyon eksikliği bildirildi).
+- **Yan düzeltme (aynı geçişte, doğrudan ilgili)**: `createTitleUnitTabBar()`'ın ortak not metni BAYATTI — iki art arda `note.textContent` ataması vardı (ilki dead code), ikincisi hangi bölümlerin "henüz bu tab grubuna bağlı değil" olduğunu TEK TEK sayıyordu (Bağımsız Bölüm ve Değerleme) — Değerleme 0.0.484'te, Bağımsız Bölüm bugün bağlandığı için ikisi de artık YANLIŞTI. Metin kalıcı olarak düzeltildi: artık HİÇBİR bölüm adı SAYMIYOR, jenerik ("bu bölümde girilen veri her taşınmaz için ayrı ayrı tutulur...") — her yeni bölüm eklendiğinde tekrar bayatlama riski ortadan kalktı.
+- **Yan düzeltme (bağımsız keşif, orphan test)**: `tools/test-halkbank-risk-rules.js` (dünkü 126D özelliğinin testi dahil) `package.json`'ın `test` script zincirine HİÇ eklenmemiş — dosya var, doğrudan çalıştırılınca geçiyor, ama `npm run verify` onu hiç ÇALIŞTIRMIYORDU (muhtemelen dosya oluşturulduğundan beri). Şimdi zincire eklendi — bundan böyle her `npm run verify`'de gerçekten koşuyor.
+- Test: yeni `tools/test-unit-tab-bar-gate.js` — (1) `renderSection()`'ın "unit" gate'inin doğru koşulla kablolu olduğunu, (2) `createTitleUnitTabBar()`'ın not metninin artık belirli bölüm adı SAYMADIĞINI (bayatlama-önleme regresyon testi) doğrular. `npm run verify` tam paket EXIT:0 (114 → 116 test dosyası, orphan `test-halkbank-risk-rules.js` dahil).
+- `index.html`: `app.js` cache-buster `?v=20260820-1610`.
+- Not: bu geçişte paralel bir Codex oturumu da aktifti (`git log` üzerinde "Add units to valuation summary headers" vb. birden fazla commit görüldü, Değerleme özet tablosuna ilişkin) — yalnızca kendi dosyalarım (`app.js`, `package.json`, `index.html`, `tools/test-unit-tab-bar-gate.js`) stage'lendi, `git status --porcelain` ile doğrulandı.
+- Canlı tarayıcı testi yapılamadı (giriş bilgisi yok) — doğrulama kod/test seviyesinde.
+
 ## 0.0.487 - 2026-08-20 - Halkbank Risk Kodu 126D: İİK 150/c şerhi + Halkbank ipoteği -> otomatik ekleme
 
 - Kullanıcı: "takyidatlarda İİK 150/C Şerhi var ve ipoteklerde Türkiye Halk Bankası A.Ş. var ise bu bir takip çalışmasıdır ve halkbankası risk kodlarından olan 126D otomatik olarak eklenmelidir."

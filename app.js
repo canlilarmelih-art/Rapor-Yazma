@@ -2334,11 +2334,18 @@ function createTitleUnitTabBar() {
   }
   wrap.append(actions);
 
+  // 2026-08-20: BAYAT metin düzeltildi — bu ortak tab çubuğu artık Tapu/
+  // Adres/İmar (koşullu)/Arsa (koşullu)/Değerleme/Bağımsız Bölüm bölümlerinin
+  // TAMAMINDA kullanılıyor (Belgeler ve Ana Gayrimenkul kendi blok-tab
+  // varyantını kullanıyor, bkz. createDocumentsBlockTabBar/createBuildingBlockTabBar).
+  // Eski metin hangi bölümlerin "henüz bağlı değil" olduğunu TEK TEK
+  // sayıyordu — bu liste her yeni bölüm eklendiğinde bayatlıyordu (bkz.
+  // handoff.md, defalarca yaşandı). Artık bölüm adı SAYMIYOR, jenerik ve
+  // her zaman doğru kalacak şekilde yazıldı.
   const note = document.createElement("p");
   note.className = "muted-note title-unit-tab-bar-note";
-  note.textContent = "Deneysel (Faz 2): birden fazla taşınmaz için Tapu ve Mülkiyet/Takyidat verisi burada ayrı ayrı tutulur ve tab değiştirildiğinde otomatik kaydedilir. Bağımsız Bölüm ve Değerleme sekmeleri henüz bu tab çubuğuna bağlı DEĞİL — o veriler hâlâ tek/paylaşımlı.";
+  note.textContent = "Deneysel: bu bölümde girilen veri, sekmesi görüntülenen her taşınmaz için ayrı ayrı tutulur ve tab değiştirildiğinde otomatik kaydedilir.";
   wrap.append(note);
-  note.textContent = "Deneysel: Tapu, Adres ve Takyidat verisi her tasinmaz icin ayri tutulur ve tab degistirildiginde otomatik kaydedilir. Bagimsiz Bolum ve Degerleme verileri henuz bu tab grubuna bagli degildir.";
 
   return wrap;
 }
@@ -3845,6 +3852,22 @@ function renderSection() {
   if (section.id === "valuation" && isCurrentUserAdmin() && state.fields.requestType === "Çoklu Talep") {
     body.append(createTitleUnitTabBar());
     body.append(createValuationUnitsSummaryTablePreview());
+  }
+
+  // Kullanıcı bildirimi (2026-08-20): "Bağımsız bölüm özellikleri
+  // bölümünde bağımsız bölüm tabları bulunmuyor." — 0.0.486'da "unit"
+  // bölümünün ALTINDAKİ VERİ doğru taşınmaza-özgü scoped edildi
+  // (getUnitSectionFieldKeys) ama BİLEREK hiçbir tab/UI eklenmemişti
+  // ("blok kavramı burada anlamsız" gerekçesiyle Faz 1 kapsamı veriyle
+  // sınırlı tutulmuştu). Ancak bu, kullanıcının Tapu sekmesi ÜZERİNDEN
+  // aktif taşınmazı değiştirip Bağımsız Bölüm'e gelmesini gerektiriyordu —
+  // diğer 6 bölümle (Tapu/Adres/İmar/Arsa/Belgeler/Değerleme) tutarsız ve
+  // kullanışsız. Değerleme'nin EN BASİT deseni (ada/parsel/blok koşulu
+  // YOK, yalnızca 2+ taşınmaz): "Tümüne uygula" butonu BİLİNÇLİ OLARAK
+  // YOK (her bağımsız bölümün kendi alan/iç mekan/dekorasyon bilgisi
+  // farklı olması normal/beklenen).
+  if (section.id === "unit" && isCurrentUserAdmin() && state.fields.requestType === "Çoklu Talep") {
+    body.append(createTitleUnitTabBar());
   }
 
   // Kullanıcı talebi (2026-08-20): "Ana gayrimenkul bölümünde blok bazında
