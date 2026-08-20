@@ -1091,7 +1091,49 @@ const appShell = document.querySelector("#appShell");
 const sidebarCollapseBtn = document.querySelector("#sidebarCollapseBtn");
 const sidebarOpenBtn = document.querySelector("#sidebarOpenBtn");
 const sahaProToolBtn = document.querySelector("#sahaProToolBtn");
-sahaProToolBtn?.addEventListener("click", () => window.open("saha-pro.html", "_blank", "noopener"));
+sahaProToolBtn?.addEventListener("click", openSahaProEmbedded);
+
+function openSahaProEmbedded() {
+  const workspace = document.querySelector(".workspace");
+  if (!workspace) return;
+
+  let panel = workspace.querySelector("[data-saha-pro-embedded]");
+  if (!panel) {
+    panel = document.createElement("section");
+    panel.className = "saha-pro-embedded";
+    panel.dataset.sahaProEmbedded = "true";
+    panel.innerHTML = `
+      <div class="saha-pro-embedded-toolbar">
+        <div>
+          <p class="eyebrow">Saha Çalışma Aracı</p>
+          <h2>Saha Pro</h2>
+        </div>
+        <button class="secondary-button" type="button" data-saha-pro-close>Rapor ekranına dön</button>
+      </div>
+      <iframe class="saha-pro-embedded-frame" src="saha-pro.html" title="Saha Pro çalışma aracı" loading="eager"></iframe>
+    `;
+    panel.querySelector("[data-saha-pro-close]").addEventListener("click", closeSahaProEmbedded);
+    workspace.append(panel);
+  }
+
+  panel.hidden = false;
+  workspace.classList.add("saha-pro-open");
+  document.body.classList.add("saha-pro-active");
+  sahaProToolBtn?.classList.add("is-active");
+  sahaProToolBtn?.setAttribute("aria-pressed", "true");
+  workspace.scrollTop = 0;
+}
+
+function closeSahaProEmbedded() {
+  const workspace = document.querySelector(".workspace");
+  const panel = workspace?.querySelector("[data-saha-pro-embedded]");
+  if (!workspace || !panel) return;
+  panel.hidden = true;
+  workspace.classList.remove("saha-pro-open");
+  document.body.classList.remove("saha-pro-active");
+  sahaProToolBtn?.classList.remove("is-active");
+  sahaProToolBtn?.setAttribute("aria-pressed", "false");
+}
 
 function loadState() {
   const savedUserDefaults = loadUserDefaults();
@@ -3641,6 +3683,7 @@ function formatMobileNavTitle(title) {
 let pendingSectionEnterAnimation = true;
 
 function setActiveSection(id) {
+  closeSahaProEmbedded();
   activeSectionId = shouldHideSection(id) ? getVisibleSections()[0]?.id || sections[0]?.id || id : id;
   pendingSectionEnterAnimation = true;
   render();
@@ -35610,7 +35653,6 @@ const comparableFields = [
   {
     key: "c33",
     label: "Eşya Bedeli",
-    showWhen: () => getComparableRows().some((row) => isComparableFurnished(row)),
   },
   { key: "calcNegotiation", label: "Pazarlık Payı", computed: true },
   { key: "calcUnitValue", label: "M2 Birim Değer", computed: true },
@@ -35666,9 +35708,11 @@ function getComparableRowsForView(rows, viewMode) {
 
 function getComparableDisplayFields(viewMode) {
   const showWorkplaceFields = isWorkplaceLikeUsageNature();
+  const comparableRows = Array.isArray(state.tables?.comparables) ? state.tables.comparables : [];
+  const showFurnitureValue = comparableRows.some((row) => String(row?.c32 || "").trim().toLocaleLowerCase("tr-TR") === "evet");
   return comparableFields.filter((field) => {
     if (field.hidden) return false;
-    if (field.showWhen && !field.showWhen()) return false;
+    if (field.key === "c33" && !showFurnitureValue) return false;
     if (!showWorkplaceFields && comparableWorkplaceOnlyFieldKeys.has(field.key)) return false;
     if (showWorkplaceFields && comparableHiddenForWorkplaceFieldKeys.has(field.key)) return false;
     if (viewMode === "all") return true;
@@ -37886,7 +37930,7 @@ function calculateComparableMetrics(row) {
     : bargainPrice > 0
       ? bargainPrice
       : askingPrice;
-  const furnished = !landComparable && isComparableFurnished(row);
+  const furnished = !landComparable && String(row.c32 || "").trim().toLocaleLowerCase("tr-TR") === "evet";
   const furnitureValue = furnished ? parseComparableNumber(row.c33) : Number.NaN;
   const netSaleValue = saleValue - (Number.isFinite(furnitureValue) && furnitureValue > 0 ? furnitureValue : 0);
   const unitValue = netSaleValue > 0 && adjustedArea > 0 ? netSaleValue / adjustedArea : Number.NaN;
@@ -38155,7 +38199,9 @@ const comparisonText = isExternalAppraisal
       ? `Emsal, ${[positionText, featureText].filter(Boolean).join(" ve ")}.`
       : "";
   const bargainRentText = buildComparableBargainAndRentText(row, metrics);
-  const furnitureText = buildComparableFurnitureText(row, metrics);
+  const furnitureText = metrics.furnished && Number.isFinite(metrics.furnitureValue) && metrics.furnitureValue > 0
+    ? `Emsal eşyalı olarak ${status.includes("satılmış") ? "pazarlanmış" : "pazarlanmakta"} olup eşya bedeli ${formatComparableMoney(metrics.furnitureValue)} olarak değerlemede dikkate alınmıştır.`
+    : "";
   const workplaceFloorReductionExplanation = buildComparableWorkplaceFloorReductionExplanation(row, metrics);
   const calculationText = buildComparableCalculationText(row, metrics);
   const extraText = formatComparableExtraNote(row.c17);
@@ -38557,13 +38603,6 @@ function buildComparableCalculationText(row, metrics) {
     ? `(${formatComparableMoney(metrics.saleValue)} (${label}) - ${formatComparableMoney(metrics.furnitureValue)} (Eşya Bedeli))`
     : `${formatComparableMoney(metrics.saleValue)} (${label})`;
   return ` (İndirgenmiş m2 Birim Değeri: ${valueExpression} × ${totalAdjustment.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (Toplam Şerefiye Katsayısı) / ${metrics.adjustedArea.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} m2 = ${formatComparableMoney(metrics.adjustedUnitValue, " TL/m2")})`;
-}
-
-function buildComparableFurnitureText(row, metrics) {
-  if (!metrics.furnished || !Number.isFinite(metrics.furnitureValue) || metrics.furnitureValue <= 0) return "";
-  const status = String(row.c2 || "").toLocaleLowerCase("tr-TR");
-  const marketingVerb = status.includes("satılmış") ? "pazarlanmış" : "pazarlanmakta";
-  return `Emsal eşyalı olarak ${marketingVerb} olup eşya bedeli ${formatComparableMoney(metrics.furnitureValue)} olarak değerlemede dikkate alınmıştır.`;
 }
 
 function buildComparableLocationLocative(value) {

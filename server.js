@@ -541,8 +541,18 @@ const SECURITY_HEADERS = {
   ].join("; "),
 };
 
-function applySecurityHeaders(response) {
-  for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
+// Saha Pro uygulamanın kendisine ait bağımsız bir çalışma yüzüdür. Yalnızca
+// aynı origin'deki ana rapor ekranı içine iframe olarak gömülebilmesi için
+// bu TEK statik sayfa SAMEORIGIN politikası kullanır; diğer tüm sayfalar
+// clickjacking'e karşı DENY olarak kalır.
+const SAHA_PRO_EMBEDDED_SECURITY_HEADERS = {
+  ...SECURITY_HEADERS,
+  "X-Frame-Options": "SAMEORIGIN",
+  "Content-Security-Policy": SECURITY_HEADERS["Content-Security-Policy"].replace("frame-ancestors 'none'", "frame-ancestors 'self'"),
+};
+
+function applySecurityHeaders(response, headers = SECURITY_HEADERS) {
+  for (const [key, value] of Object.entries(headers)) {
     response.setHeader(key, value);
   }
 }
@@ -3381,7 +3391,10 @@ async function handleStatic(request, response) {
   }
   try {
     const data = await fs.readFile(filePath);
-    applySecurityHeaders(response);
+    const staticSecurityHeaders = relativePath === "saha-pro.html"
+      ? SAHA_PRO_EMBEDDED_SECURITY_HEADERS
+      : SECURITY_HEADERS;
+    applySecurityHeaders(response, staticSecurityHeaders);
     const baseHeaders = {
       "Content-Type": mimeTypes.get(path.extname(filePath).toLowerCase()) || "application/octet-stream",
       "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
