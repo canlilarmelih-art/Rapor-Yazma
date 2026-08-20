@@ -1696,6 +1696,60 @@ function applyLandDataToAllTitleUnits() {
   return getTitleUnitCount();
 }
 
+// Kullanıcı talebi (2026-08-21): "bağımsız bölüm bilgileri için
+// uyguladığımız bu yöntemi arsa özellikleri içinde aynı mantık ile
+// uygulayalım" — applyUnitDataToSelectedTitleUnits()'in (bkz. "unit"
+// bölümü) AYNI "bir kez snapshot al, çağıranın verdiği alt kümeye yaz"
+// mekaniği, `applyLandDataToAllTitleUnits()`'in (yukarıda) YERİNE DEĞİL,
+// YANINDA (İmar/Arsa'nın "tümüne uygula"sı hâlâ duruyor — bu SEÇİLEBİLİR
+// bir kardeş araç). `landAgriculturalProductItems`'ın HER hedefin KENDİ
+// (yeni kopyalanmış) `landArea`'sıyla yeniden hesaplanan `totalCount`
+// istisnası (yukarıdaki yorum) BİREBİR korunur; diğer diziler
+// (`landRoadFrontageItems`/`landBoundaryElementItems`) de applyLandDataToAllTitleUnits
+// ile TUTARLI şekilde aynen kopyalanır (bilinçli tasarım, bkz. yukarıki
+// yorum — bu diziler taşınmaza-özgü hesaplanmış değer içermez).
+// resolveTitleUnitWriteTarget() kullanır (state.titleUnits/primaryTitleUnitShadow'u
+// elle DOLAŞMAZ — applyLandDataToAllTitleUnits'ten FARKLI, çünkü hedef
+// TÜMÜ değil açık bir liste). Doğrulama ve no-op kuralları
+// applyUnitDataToSelectedTitleUnits ile BİREBİR aynı (geçersiz/aralık-
+// dışı/tekrarlı index'ler + aktif/kaynak taşınmazın kendi index'i sessizce
+// atlanır). Yalnızca state mutasyonu, uygulanan taşınmaz sayısını döner.
+function applyLandDataToSelectedTitleUnits(targetIndices) {
+  if (!Array.isArray(targetIndices) || !targetIndices.length) return 0;
+
+  const keys = getLandSectionFieldKeys();
+  const snapshot = {};
+  keys.forEach((key) => { snapshot[key] = state.fields[key]; });
+  const sourceAgriculturalItems = Array.isArray(snapshot.landAgriculturalProductItems)
+    ? snapshot.landAgriculturalProductItems
+    : [];
+
+  const count = getTitleUnitCount();
+  const seen = new Set();
+  let appliedCount = 0;
+
+  targetIndices.forEach((index) => {
+    if (!Number.isInteger(index) || index < 0 || index >= count) return;
+    if (index === state.activeTitleUnitIndex) return;
+    if (seen.has(index)) return;
+    seen.add(index);
+
+    const targetFields = resolveTitleUnitWriteTarget(index);
+    keys.forEach((key) => {
+      if (key === "landAgriculturalProductItems") return;
+      targetFields[key] = snapshot[key];
+    });
+    targetFields.landAgriculturalProductItems = sourceAgriculturalItems.map((item) => ({
+      ...item,
+      totalCount: calculateAgriculturalTotalCount(item.unitCount, targetFields.landArea),
+    }));
+
+    appliedCount += 1;
+  });
+
+  return appliedCount;
+}
+
 // Kullanıcı talebi (2026-08-16): "farklı ada parselde imar durumu
 // kısmında bazen tüm taşınmazlar aynı imar planına sahip olabiliyor
 // (Örnek: 5 Adet Tarla hepsi Tarım Alanı) ... tümüne uygula seçeneği
@@ -2811,6 +2865,101 @@ function createLandApplyAllControl() {
   });
 
   return wrap;
+}
+
+// Kullanıcı talebi (2026-08-21): "bağımsız bölüm bilgileri için
+// uyguladığımız bu yöntemi arsa özellikleri içinde aynı mantık ile
+// uygulayalım" — createUnitCopyToSelectedControl()/openUnitCopyToSelectedModal()'ın
+// (bkz. "unit" bölümü) BİREBİR ikizi. createLandApplyAllControl()'ün
+// (yukarıda, "TÜMÜNE uygula") YERİNE DEĞİL, YANINDA — SEÇİLEBİLİR bir alt
+// küme kopyalama aracı.
+function createLandCopyToSelectedControl() {
+  const wrap = document.createElement("div");
+  wrap.className = "unit-copy-to-selected-wrap";
+
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "secondary-button";
+  button.textContent = "Seçili Taşınmazlara Kopyala";
+
+  const note = document.createElement("small");
+  note.className = "muted-note unit-copy-to-selected-note";
+
+  button.addEventListener("click", () => {
+    if (getTitleUnitCount() < 2) return;
+    openLandCopyToSelectedModal((appliedCount) => {
+      note.textContent = appliedCount
+        ? `${appliedCount} bağımsız bölüme kopyalandı.`
+        : "Hiçbir taşınmaz seçilmedi, kopyalama yapılmadı.";
+    });
+  });
+
+  wrap.append(button, note);
+  return wrap;
+}
+
+// openUnitCopyToSelectedModal()'ın (bkz. "unit" bölümü) BİREBİR ikizi —
+// hedef alan listesi Arsa Özellikleri'ne (applyLandDataToSelectedTitleUnits)
+// uyarlanmış. Kaydet sonrası createLandApplyAllControl() ile TUTARLI
+// hafif tazeleme (autosave()+refreshLandUnitsSummaryTablePreview() — "unit"
+// bölümünün AKSİNE burada zaten canlı bir özet tablosu var, tam render()
+// gerekmiyor).
+function openLandCopyToSelectedModal(onDone = () => {}) {
+  document.querySelector(".modal-overlay")?.remove();
+
+  const targets = getTitleUnitTabModels().filter((tab) => !tab.isActive);
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.innerHTML = `
+    <div class="modal-card modal-card-wide" role="dialog" aria-modal="true" aria-labelledby="landCopyToSelectedModalTitle">
+      <div class="modal-head">
+        <h3 id="landCopyToSelectedModalTitle">Arsa Özellikleri Bilgilerini Kopyala</h3>
+        <button class="modal-close" type="button" aria-label="Kapat">×</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-lead">Aktif taşınmazın Arsa Özellikleri bilgileri seçtiğiniz taşınmazlara kopyalanacak.</p>
+        <div class="checkbox-list">
+          ${targets.map((tab) => `
+            <label class="checkbox-row">
+              <input type="checkbox" value="${tab.index}" data-land-copy-target>
+              <span>${escapeHtml(tab.label)}</span>
+            </label>
+          `).join("")}
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="secondary-button" type="button" data-land-copy-select-all>Tümünü Seç</button>
+        <button class="secondary-button" type="button" data-land-copy-clear>Seçimi Temizle</button>
+        <button class="secondary-button" type="button" data-land-copy-cancel>Vazgeç</button>
+        <button class="primary-button" type="button" data-land-copy-save>Seçilenlere Kopyala</button>
+      </div>
+    </div>
+  `;
+
+  const close = () => overlay.remove();
+  overlay.querySelector(".modal-close").addEventListener("click", close);
+  overlay.querySelector("[data-land-copy-cancel]").addEventListener("click", close);
+  overlay.addEventListener("click", (event) => {
+    if (event.target === overlay) close();
+  });
+  overlay.querySelector("[data-land-copy-select-all]").addEventListener("click", () => {
+    overlay.querySelectorAll("[data-land-copy-target]").forEach((box) => { box.checked = true; });
+  });
+  overlay.querySelector("[data-land-copy-clear]").addEventListener("click", () => {
+    overlay.querySelectorAll("[data-land-copy-target]").forEach((box) => { box.checked = false; });
+  });
+  overlay.querySelector("[data-land-copy-save]").addEventListener("click", () => {
+    const selectedIndices = [...overlay.querySelectorAll("[data-land-copy-target]:checked")]
+      .map((box) => Number.parseInt(box.value, 10));
+    const appliedCount = applyLandDataToSelectedTitleUnits(selectedIndices);
+    autosave();
+    refreshLandUnitsSummaryTablePreview();
+    onDone(appliedCount);
+    close();
+  });
+
+  document.body.append(overlay);
+  overlay.querySelector("[data-land-copy-target]")?.focus();
 }
 
 // İmar Durumu Faz B (Çift Yönlü Düzenleme, 2026-08-16) — Tapu/Adres Özeti
@@ -4006,6 +4155,13 @@ function renderSection() {
   if (section.id === "land" && isCurrentUserAdmin() && state.fields.requestType === "Çoklu Talep" && isPlanningScopedByAdaParsel()) {
     body.append(createTitleUnitTabBar());
     body.append(createLandApplyAllControl());
+    // Kullanıcı talebi (2026-08-21): "bağımsız bölüm bilgileri için
+    // uyguladığımız bu yöntemi arsa özellikleri içinde aynı mantık ile
+    // uygulayalım" — "Tümüne uygula"nın YANINA (yerine değil) SEÇİLEBİLİR
+    // bir kardeş araç eklendi. AYNI gate koşuluyla (isPlanningScopedByAdaParsel) —
+    // taşınmazlar zaten AYNI ada/parselde ise Arsa Özellikleri rapor-geneli
+    // paylaşımlı, kopyalanacak "farklı" bir şey yok.
+    body.append(createLandCopyToSelectedControl());
     body.append(createLandUnitsSummaryTablePreview());
   }
   // Kullanıcı talebi (2026-08-19, devam): "diyelim ki taşınmazlar toplam 3

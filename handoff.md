@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.492 - 2026-08-21 - Arsa Özellikleri'ne de "Seçili Taşınmazlara Kopyala" eklendi
+
+- Kullanıcı: "bağımsız bölüm bilgileri için uyguladığımız bu yöntemi arsa özellikleri içinde aynı mantık ile uygulayalım." 0.0.491'de Bağımsız Bölüm'e eklenen aracın birebir ikizi, "Arsa Özellikleri" (land) bölümüne de eklendi.
+- **Yeni fonksiyon**: `applyLandDataToSelectedTitleUnits(targetIndices)` — `applyUnitDataToSelectedTitleUnits`'in AYNI mekaniği, `applyLandDataToAllTitleUnits()`'in (mevcut "Tümüne uygula") YERİNE DEĞİL, YANINDA. **Kritik fark**: `applyLandDataToAllTitleUnits`'teki `landAgriculturalProductItems` istisnası (her kaydın `totalCount`'u HEDEFİN KENDİ, yeni kopyalanmış `landArea`'sıyla `calculateAgriculturalTotalCount()` ile yeniden hesaplanır — kaynaktan aynen kopyalanmaz) BİREBİR korundu; diğer diziler (`landRoadFrontageItems`/`landBoundaryElementItems`) mevcut fonksiyonla TUTARLI şekilde aynen kopyalandı (bu, mevcut kodun BİLİNÇLİ tasarım kararı — "bu diziler taşınmaza-özgü hesaplanmış değer içermez").
+- **Yeni UI**: `createLandCopyToSelectedControl()` + `openLandCopyToSelectedModal()` — "unit" bölümündekinin birebir ikizi. `renderSection()`'ın MEVCUT land gate'ine (`isPlanningScopedByAdaParsel()` koşuluyla, "Tümüne uygula"nın hemen yanına) eklendi — aynı ada/parselde Arsa Özellikleri zaten rapor-geneli paylaşımlı olduğundan bu koşul korunmalı, kopyalanacak "farklı" bir şey yok. Kaydet sonrası, "unit"in aksine (orada canlı özet tablo yok, tam `render()` gerekiyordu) burada `createLandApplyAllControl()` ile TUTARLI hafif tazeleme (`autosave()`+`refreshLandUnitsSummaryTablePreview()`) kullanıldı.
+- Test: yeni `tools/test-land-copy-to-selected.js` (7 senaryo — `test-unit-copy-to-selected.js`'in aynısı + `landAgriculturalProductItems`'ın hedef-landArea'sıyla yeniden hesaplandığını doğrulayan özel senaryo). `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` cache-buster `?v=20260821-1030`.
+- Canlı tarayıcı testi yapılamadı (giriş bilgisi yok) — doğrulama kod/test seviyesinde.
+
 ## 0.0.491 - 2026-08-21 - Bağımsız Bölüm: "Seçili Taşınmazlara Kopyala" (İmar/Arsa'nın "tümüne uygula"sının seçilebilir kardeşi)
 
 - Kullanıcı: "bağımsız bölüm özellikleri bölümüne yeni bir bölüm eklemek istiyorum. mesela 1 adet bağımsız bölüm bilgisi tamamen doldurdum ben bunu tümüne uygula mantığında olacak şekilde diğer bağımsız bölümlere kolay kopyalamak istiyorum. ancak burada benim seçeceğim bağımsız bölümlere kopyalama yapılmalı tamamına değil. aktif bulunduğum bağımsız bölümün bilgilerini istediğim bağımsız bölümlere kopyalamak işin özeti." Plan Mode ile (bkz. plan dosyası) mimari tasarlanıp onaylandıktan sonra uygulandı.
