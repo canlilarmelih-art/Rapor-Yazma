@@ -11,14 +11,13 @@
 // Bu test kapsamı:
 //  1) Farklı taşınmazlarda tablo verisi döner, sütun sırası VALUATION_UNITS_TABLE_ROW_DEFS
 //     ile eşleşir (piyasa satırlarında Alan/M2 Birim Değeri/Değer, kira
-//     satırlarında alan tekrar edilmeden M2 Birim Değeri/Değer + Yasal-Mevcut
-//     Durum satırları için ayrıca Acil Satış Değeri).
+//     satırlarında alan tekrar edilmeden M2 Birim Değeri/Değer).
 //  2) Tekil raporda (1 taşınmaz) null döner.
 //  3) Tüm taşınmazlarda BOŞ olan sütun tamamen kaldırılır (Arsa/Tarla'da
 //     Kira satırlarının otomatik kalkması dahil — createValuationMarketTable'ın
 //     KENDİ landOwnership filtresiyle TUTARLI).
-//  4) columnMeta: Alan/Değer sütunları "scalar", M2 Birim Değeri/Acil Satış
-//     Değeri sütunları "readonly" (gerçek formda da salt-okunur).
+//  4) columnMeta: Alan/Değer sütunları "scalar", M2 Birim Değeri "readonly"
+//     (gerçek formda da salt-okunur).
 //  5) buildTitleUnitsSummaryTableHtmlEditable(): scalar sütunlar
 //     düzenlenebilir, readonly sütunlar TIKLANAMAZ.
 //  6) Gerçek HTML üretimi: dinamik genişlik + tam ortalama.
@@ -34,6 +33,18 @@
 //     "Piyasa Değeri (TL)" DEĞİL, kendi etiketleri olmalı (regresyon —
 //     getValuationUnitsSummarySubheader'ın varsayılan para-birimi dalına
 //     düşmemeli).
+//
+// Kullanıcı takip talebi (2026-08-21): "acil satış değerleri gözükmesin
+// tabloda yasal ve mevcut. yapı birim değeri inşaat seviyesi yapı yıpranma
+// payı yapı [değeri] sigortaya esas değer arsa değeri gözüksün":
+// 14) Acil Satış Değeri sütunları ARTIK YOK (regresyon). Yapı Değeri
+//     (Yapı Birim Değeri/İnşaat Seviyesi/Yıpranma Payı/Yapı Değeri, Yasal
+//     VE Mevcut) + Sigortaya Esas Değer + Arsa Değeri sütunları eklendi,
+//     doğru kind ("scalar"/"readonly") ve değerlerle.
+// 15) Yeni sütunların grup/subheader eşleşmesi doğru: "Yasal Yapı Değeri"/
+//     "Mevcut Yapı Değeri" KENDİ grup başlıklarını alır (genel "Yasal/
+//     Mevcut Durum Değeri" grubuna KARIŞMAZ), Sigortaya Esas Değer/Arsa
+//     Değeri "Diğer" grubuna düşer ama kendi subheader etiketlerini taşır.
 
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -137,6 +148,7 @@ const sandboxSource = `
   ${extractArrayConst("valuationUrgentSaleRows")}
   ${extractComputedConst("VALUATION_UNITS_TABLE_ROW_DEFS")}
   ${extractArrayConst("VALUATION_UNITS_TABLE_IDENTITY_DEFS")}
+  ${extractArrayConst("valuationBuildingValueRows")}
   ${functionNames.map(extractFunction).join("\n")}
   return {
     setState: (s) => { state = s; },
@@ -145,6 +157,7 @@ const sandboxSource = `
     getValuationUnitsSummarySubheader, getValuationUnitsSummaryHeaderGroup,
     getRowDefs: () => VALUATION_UNITS_TABLE_ROW_DEFS,
     getIdentityDefs: () => VALUATION_UNITS_TABLE_IDENTITY_DEFS,
+    getBuildingValueRows: () => valuationBuildingValueRows,
   };
 `;
 // eslint-disable-next-line no-new-func
@@ -162,11 +175,10 @@ function unit(overrides = {}) {
       titleBlockName: "A", unitNo: "3",
       legalValueArea: "100", legalValueUnit: "5.000", legalValue: "500.000",
       currentValueArea: "100", currentValueUnit: "5.500", currentValue: "550.000",
-      legalUrgentSaleValue: "450.000", currentUrgentSaleValue: "500.000",
     },
     tables: {},
     titleUnits: [
-      unit({ titleBlockName: "B", unitNo: "7", legalValueArea: "120", legalValueUnit: "6.000", legalValue: "720.000", legalUrgentSaleValue: "650.000" }),
+      unit({ titleBlockName: "B", unitNo: "7", legalValueArea: "120", legalValueUnit: "6.000", legalValue: "720.000" }),
     ],
   });
   const data = fns.buildValuationUnitsSummaryTableData();
@@ -180,9 +192,6 @@ function unit(overrides = {}) {
   const legalValueIndex = data.headers.indexOf("Yasal Durum Değeri");
   assert.equal(data.rows[0][legalValueIndex], "500.000", "1. taşınmazın Yasal Durum Değeri doğru sütunda olmalı.");
   assert.equal(data.rows[1][legalValueIndex], "720.000", "2. taşınmazın Yasal Durum Değeri doğru sütunda olmalı.");
-  const urgentSaleIndex = data.headers.indexOf("Yasal Acil Satış Değeri");
-  assert.ok(urgentSaleIndex >= 0, "Acil Satış Değeri sütunu bulunmalı.");
-  assert.equal(data.rows[0][urgentSaleIndex], "450.000", "1. taşınmazın Acil Satış Değeri doğru sütunda olmalı.");
   console.log("Farkli tasinmazlarda tablo verisi + sutun sirasi testi tamam.");
 }
 
@@ -236,12 +245,11 @@ function unit(overrides = {}) {
   console.log("Tum tasinmazlarda bos olan sutunun (Arsa/Tarla Kira senaryosu) kaldirilma testi tamam.");
 }
 
-// --- 4) columnMeta: Alan/Değer "scalar", M2 Birim Değeri/Acil Satış -------
-// Değeri "readonly".
+// --- 4) columnMeta: Alan/Değer "scalar", M2 Birim Değeri "readonly". ------
 {
   fns.setState({
     activeTitleUnitIndex: 0,
-    fields: { legalValueArea: "100", legalValueUnit: "5.000", legalValue: "500.000", legalUrgentSaleValue: "450.000" },
+    fields: { legalValueArea: "100", legalValueUnit: "5.000", legalValue: "500.000" },
     tables: {},
     titleUnits: [unit({ legalValueArea: "120" })],
   });
@@ -249,11 +257,9 @@ function unit(overrides = {}) {
   const areaIndex = data.headers.indexOf("Yasal Durum Değeri - Alan");
   const unitIndex = data.headers.indexOf("Yasal Durum Değeri - M2 Birim Değeri");
   const totalIndex = data.headers.indexOf("Yasal Durum Değeri");
-  const urgentIndex = data.headers.indexOf("Yasal Acil Satış Değeri");
   assert.equal(data.columnMeta[areaIndex].kind, "scalar", "Alan sütunu düzenlenebilir (scalar) olmalı.");
   assert.equal(data.columnMeta[unitIndex].kind, "readonly", "M2 Birim Değeri sütunu salt-okunur olmalı (gerçek formda da öyle).");
   assert.equal(data.columnMeta[totalIndex].kind, "scalar", "Değer sütunu düzenlenebilir (scalar) olmalı.");
-  assert.equal(data.columnMeta[urgentIndex].kind, "readonly", "Acil Satış Değeri sütunu salt-okunur olmalı (gerçek formda da öyle).");
   console.log("columnMeta scalar/readonly ayrimi testi tamam.");
 }
 
@@ -262,7 +268,7 @@ function unit(overrides = {}) {
 {
   fns.setState({
     activeTitleUnitIndex: 0,
-    fields: { legalValueArea: "100", legalValueUnit: "5.000", legalValue: "500.000", legalUrgentSaleValue: "450.000" },
+    fields: { legalValueArea: "100", legalValueUnit: "5.000", legalValue: "500.000" },
     tables: {},
     titleUnits: [unit({ legalValueArea: "120" })],
   });
@@ -476,6 +482,89 @@ function unit(overrides = {}) {
     "buildValuationUnitsSummaryWordTableHtml() computeValuationFieldsForAllTitleUnits()'i cagirmiyor (export'ta guncel olmayabilir)."
   );
   console.log("computeValuationFieldsForAllTitleUnits cagri-noktalari (renderSection + export) kablolama testi tamam.");
+}
+
+// --- 14) Acil Satış Değeri sütunları ARTIK YOK (regresyon); Yapı Değeri --
+// (Yasal+Mevcut, Yapı Birim Değeri/İnşaat Seviyesi/Yıpranma Payı/Yapı
+// Değeri) + Sigortaya Esas Değer + Arsa Değeri sütunları doğru kind ve
+// değerlerle eklendi.
+{
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: {
+      legalValue: "500.000", legalUrgentSaleValue: "450.000", currentUrgentSaleValue: "500.000",
+      legalBuildingUnitCost: "3.000", legalBuildingConstructionLevel: "100", legalBuildingDepreciationRate: "10", legalBuildingValue: "270.000",
+      currentBuildingUnitCost: "3.200", currentBuildingConstructionLevel: "100", currentBuildingDepreciationRate: "8", currentBuildingValue: "294.400",
+      insuranceValue: "310.000", landValue: "180.000",
+    },
+    tables: {},
+    titleUnits: [unit({ legalValue: "600.000" })],
+  });
+  const data = fns.buildValuationUnitsSummaryTableData();
+  assert.ok(!data.headers.includes("Yasal Acil Satış Değeri"), "'Yasal Acil Satış Değeri' sütunu ARTIK bulunmamalı.");
+  assert.ok(!data.headers.includes("Mevcut Acil Satış Değeri"), "'Mevcut Acil Satış Değeri' sütunu ARTIK bulunmamalı.");
+
+  const buildingRows = fns.getBuildingValueRows();
+  assert.deepEqual(buildingRows.map((r) => r.label), ["Yasal Yapı Değeri", "Mevcut Yapı Değeri"]);
+
+  const legalUnitCostIndex = data.headers.indexOf("Yasal Yapı Değeri - Yapı Birim Değeri");
+  const legalLevelIndex = data.headers.indexOf("Yasal Yapı Değeri - İnşaat Seviyesi");
+  const legalDepreciationIndex = data.headers.indexOf("Yasal Yapı Değeri - Yıpranma Payı");
+  const legalBuildingTotalIndex = data.headers.indexOf("Yasal Yapı Değeri");
+  assert.ok(legalUnitCostIndex >= 0 && legalLevelIndex >= 0 && legalDepreciationIndex >= 0 && legalBuildingTotalIndex >= 0, "Yasal Yapı Değeri sütunlarının tümü bulunmalı.");
+  assert.equal(data.columnMeta[legalUnitCostIndex].kind, "scalar", "Yapı Birim Değeri düzenlenebilir olmalı (gerçek formda da öyle).");
+  assert.equal(data.columnMeta[legalLevelIndex].kind, "readonly", "İnşaat Seviyesi salt-okunur olmalı (gerçek formda da öyle).");
+  assert.equal(data.columnMeta[legalDepreciationIndex].kind, "scalar", "Yıpranma Payı düzenlenebilir olmalı (gerçek formda da öyle).");
+  assert.equal(data.columnMeta[legalBuildingTotalIndex].kind, "readonly", "Yapı Değeri (toplam) salt-okunur olmalı (gerçek formda da öyle).");
+  assert.equal(data.rows[0][legalUnitCostIndex], "3.000");
+  assert.equal(data.rows[0][legalBuildingTotalIndex], "270.000");
+
+  const currentBuildingTotalIndex = data.headers.indexOf("Mevcut Yapı Değeri");
+  assert.ok(currentBuildingTotalIndex >= 0, "Mevcut Yapı Değeri sütunu bulunmalı.");
+  assert.equal(data.rows[0][currentBuildingTotalIndex], "294.400");
+
+  const insuranceIndex = data.headers.indexOf("Sigortaya Esas Değer");
+  const landIndex = data.headers.indexOf("Arsa Değeri");
+  assert.ok(insuranceIndex >= 0 && landIndex >= 0, "Sigortaya Esas Değer/Arsa Değeri sütunları bulunmalı.");
+  assert.equal(data.columnMeta[insuranceIndex].kind, "readonly", "Sigortaya Esas Değer salt-okunur olmalı (gerçek formda da öyle).");
+  assert.equal(data.columnMeta[landIndex].kind, "readonly", "Arsa Değeri salt-okunur olmalı (gerçek formda da öyle).");
+  assert.equal(data.rows[0][insuranceIndex], "310.000");
+  assert.equal(data.rows[0][landIndex], "180.000");
+  console.log("Acil Satis kaldirma + Yapi Degeri/Sigorta/Arsa sutunlari testi tamam.");
+}
+
+// --- 15) Yeni sütunların grup/subheader eşleşmesi doğru. ------------------
+{
+  assert.equal(fns.getValuationUnitsSummaryHeaderGroup("Yasal Yapı Değeri - Yapı Birim Değeri"), "Yasal Yapı Değeri");
+  assert.equal(fns.getValuationUnitsSummaryHeaderGroup("Yasal Yapı Değeri"), "Yasal Yapı Değeri");
+  assert.equal(fns.getValuationUnitsSummaryHeaderGroup("Mevcut Yapı Değeri - İnşaat Seviyesi"), "Mevcut Yapı Değeri");
+  assert.equal(fns.getValuationUnitsSummaryHeaderGroup("Yasal Durum Değeri"), "Yasal Durum Değeri", "Piyasa değeri grubu ETKİLENMEMELİ.");
+  assert.equal(fns.getValuationUnitsSummaryHeaderGroup("Sigortaya Esas Değer"), "Diğer");
+  assert.equal(fns.getValuationUnitsSummaryHeaderGroup("Arsa Değeri"), "Diğer");
+
+  assert.equal(fns.getValuationUnitsSummarySubheader("Yasal Yapı Değeri - Yapı Birim Değeri"), "Yapı Birim Değeri\n(TL/m²)");
+  assert.equal(fns.getValuationUnitsSummarySubheader("Yasal Yapı Değeri - İnşaat Seviyesi"), "İnşaat Seviyesi\n(%)");
+  assert.equal(fns.getValuationUnitsSummarySubheader("Mevcut Yapı Değeri - Yıpranma Payı"), "Yıpranma Payı\n(%)");
+  assert.equal(fns.getValuationUnitsSummarySubheader("Mevcut Yapı Değeri"), "Yapı Değeri\n(TL)");
+  assert.equal(fns.getValuationUnitsSummarySubheader("Sigortaya Esas Değer"), "Sigortaya Esas Değer\n(TL)");
+  assert.equal(fns.getValuationUnitsSummarySubheader("Arsa Değeri"), "Arsa Değeri\n(TL)");
+  assert.equal(fns.getValuationUnitsSummarySubheader("Yasal Durum Değeri"), "Piyasa Değeri\n(TL)", "Piyasa değeri subheader'ı ETKİLENMEMELİ.");
+
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: {
+      legalValue: "500.000",
+      legalBuildingUnitCost: "3.000", legalBuildingConstructionLevel: "100", legalBuildingDepreciationRate: "10", legalBuildingValue: "270.000",
+      insuranceValue: "310.000", landValue: "180.000",
+    },
+    tables: {},
+    titleUnits: [unit({ legalValue: "600.000" })],
+  });
+  const html = fns.buildValuationUnitsSummaryWordTableHtml();
+  assert.ok(html.includes("YASAL YAPI DEĞERİ"), "'Yasal Yapı Değeri' grup başlığı HTML'de görünmeli.");
+  assert.ok(html.includes("SİGORTAYA ESAS DEĞER") || html.includes("Sigortaya Esas Değer"), "Sigortaya Esas Değer başlığı HTML'de görünmeli.");
+  assert.ok(html.includes("270.000") && html.includes("310.000") && html.includes("180.000"), "Yapı Değeri/Sigorta/Arsa değerleri HTML'de gözükmeli.");
+  console.log("Yeni sutunlarin grup/subheader eslesmesi testi tamam.");
 }
 
 console.log("Tasinmazlar degerleme ozeti tablosu testleri basarili.");

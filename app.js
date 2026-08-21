@@ -6599,18 +6599,19 @@ const valuationUrgentSaleRows = [
 
 // Kullanıcı talebi (2026-08-19): "değerleme kısmında tab mantığı ve çift
 // taraflı tablo mantığı olmalı" — kullanıcının netleştirmesiyle (alan×birim
-// detayı DAHİL) kapsam Piyasa Değeri tablosunun TAMAMI. `valuationMarketRows`/
-// `valuationUrgentSaleRows`'un (yukarıda) TEK kaynağından türetilir (drift
-// riski olmadan) — her satır kendi Acil Satış karşılığını (varsa) taşır.
-const VALUATION_UNITS_TABLE_ROW_DEFS = valuationMarketRows.map((row) => {
-  const urgentSaleRow = valuationUrgentSaleRows.find((item) => item.marketKey === row.totalKey);
-  return {
-    ...row,
-    includeArea: !row.totalKey.includes("Rent"),
-    urgentSaleKey: urgentSaleRow ? urgentSaleRow.totalKey : null,
-    urgentSaleLabel: urgentSaleRow ? urgentSaleRow.label : null,
-  };
-});
+// detayı DAHİL) kapsam Piyasa Değeri tablosunun TAMAMI. `valuationMarketRows`'un
+// (yukarıda) TEK kaynağından türetilir (drift riski olmadan).
+// Kullanıcı takip talebi (2026-08-21): "acil satış değerleri gözükmesin
+// tabloda yasal ve mevcut" — Acil Satış Değeri sütunları bu özet tablodan
+// KALDIRILDI (bkz. buildValuationUnitsSummaryTableData). `valuationUrgentSaleRows`
+// (yukarıda) hâlâ GERÇEK hesaplamayı (refreshUrgentSaleValues, GABIM export,
+// Word "Acil Satış" panel metni) besliyor — yalnızca bu özet tablonun
+// urgentSaleKey/urgentSaleLabel ile bu değerleri SÜTUN olarak GÖSTERMESİ
+// kaldırıldı, o yüzden bu tanım artık urgentSale alanlarını taşımıyor.
+const VALUATION_UNITS_TABLE_ROW_DEFS = valuationMarketRows.map((row) => ({
+  ...row,
+  includeArea: !row.totalKey.includes("Rent"),
+}));
 
 // Tabloyu (başlıklar + satırlar) hesaplar; YALNIZCA 2+ taşınmaz varsa bir
 // sonuç döner (Tapu/Adres'in en basit deseni — Değerleme değerleri HER
@@ -6618,8 +6619,11 @@ const VALUATION_UNITS_TABLE_ROW_DEFS = valuationMarketRows.map((row) => {
 // YOK). Piyasa değerinde Alan `scalar`, M2 Birim Değeri `readonly` ve
 // Değer `scalar` sütunları; kira değerinde ise aynı alan tekrar edilmeden
 // yalnızca M2 Birim Değeri `readonly` ve Kira Değeri `scalar` sütunları
-// üretilir. Yasal/Mevcut piyasa satırları ayrıca Acil Satış Değeri
-// (`readonly`) taşır.
+// üretilir. Acil Satış Değeri sütunları YOK (kullanıcı talebiyle
+// kaldırıldı, bkz. VALUATION_UNITS_TABLE_ROW_DEFS'in üstündeki not) —
+// bunun yerine Yapı Değeri (Yapı Birim Değeri/İnşaat Seviyesi/Yıpranma
+// Payı dahil) + Sigortaya Esas Değer + Arsa Değeri sütunları eklendi
+// (bkz. buildValuationUnitsSummaryTableData'nın üstündeki not).
 // Kullanıcı talebi (2026-08-21): "değerleme tablosunu sıra no sütununun
 // sağına blok ve bağımsız bölüm no sütunu koyalım" — Bağımsız Bölüm özet
 // tablosundaki (UNIT_UNITS_TABLE_FIELD_DEFS) AYNI kimlik/tanıma sütunları
@@ -6633,6 +6637,18 @@ const VALUATION_UNITS_TABLE_IDENTITY_DEFS = [
   { key: "unitNo", label: "BB No" },
 ];
 
+// Kullanıcı takip talebi (2026-08-21): "yapı birim değeri inşaat seviyesi
+// yapı yıpranma payı yapı [değeri] sigortaya esas değer arsa değeri
+// gözüksün" — Yapı Değeri panelinin (createValuationBuildingValueTable,
+// yalnızca Müstakil Bina'da dolu — diğer mülkiyet tiplerinde bu alanlar
+// boş kalacağından aşağıdaki columnHasData filtresiyle OTOMATİK kalkar)
+// Yasal/Mevcut satırlarının Yapı Birim Değeri/İnşaat Seviyesi/Yıpranma
+// Payı/Yapı Değeri sütunları + Sigortaya Esas Değer (createValuationInsuranceTable)
+// + Arsa Değeri (createValuationLandTable) tekil sonuç sütunları eklendi.
+// `kind` her sütun için GERÇEK panel alanının kendi readOnly durumuyla
+// BİREBİR eşleşir (Yapı Birim Değeri + Yıpranma Payı editable/"scalar",
+// İnşaat Seviyesi + Yapı Değeri + Sigortaya Esas Değer + Arsa Değeri
+// readOnly/"readonly").
 function buildValuationUnitsSummaryTableData() {
   const units = buildAllTitleUnitsForSummaryTable();
   if (units.length < 2) return null;
@@ -6646,11 +6662,18 @@ function buildValuationUnitsSummaryTableData() {
     }
     headers.push(`${row.label} - ${row.unitLabel}`, row.label);
     columnMeta.push({ kind: "readonly" }, { kind: "scalar", fieldKey: row.totalKey });
-    if (row.urgentSaleKey) {
-      headers.push(row.urgentSaleLabel);
-      columnMeta.push({ kind: "readonly" });
-    }
   });
+  valuationBuildingValueRows.forEach((row) => {
+    headers.push(`${row.label} - Yapı Birim Değeri`, `${row.label} - İnşaat Seviyesi`, `${row.label} - Yıpranma Payı`, row.label);
+    columnMeta.push(
+      { kind: "scalar", fieldKey: row.unitKey },
+      { kind: "readonly" },
+      { kind: "scalar", fieldKey: row.depreciationKey },
+      { kind: "readonly" },
+    );
+  });
+  headers.push("Sigortaya Esas Değer", "Arsa Değeri");
+  columnMeta.push({ kind: "readonly" }, { kind: "readonly" });
 
   const rows = units.map((unit, index) => {
     const fields = unit.fields || {};
@@ -6663,10 +6686,19 @@ function buildValuationUnitsSummaryTableData() {
         String(fields[rowDef.unitKey] || "").trim() || "-",
         String(fields[rowDef.totalKey] || "").trim() || "-",
       );
-      if (rowDef.urgentSaleKey) {
-        row.push(String(fields[rowDef.urgentSaleKey] || "").trim() || "-");
-      }
     });
+    valuationBuildingValueRows.forEach((rowDef) => {
+      row.push(
+        String(fields[rowDef.unitKey] || "").trim() || "-",
+        String(fields[rowDef.levelKey] || "").trim() || "-",
+        String(fields[rowDef.depreciationKey] || "").trim() || "-",
+        String(fields[rowDef.totalKey] || "").trim() || "-",
+      );
+    });
+    row.push(
+      String(fields.insuranceValue || "").trim() || "-",
+      String(fields.landValue || "").trim() || "-",
+    );
     return row;
   });
 
@@ -6690,6 +6722,12 @@ function buildValuationUnitsSummaryTableData() {
 
 function getValuationUnitsSummaryHeaderGroup(label) {
   const normalized = String(label || "");
+  // Kullanıcı takip talebi (2026-08-21): Yapı Değeri sütunları da "Yasal "/
+  // "Mevcut " ile başlıyor (ör. "Yasal Yapı Değeri - Yapı Birim Değeri") —
+  // bunlar genel "Yasal/Mevcut Durum Değeri" grubuna KARIŞMASIN diye bu
+  // DAHA ÖZEL kontrol önce yapılır, KENDİ grup başlığını alırlar.
+  if (normalized.startsWith("Yasal Yapı Değeri")) return "Yasal Yapı Değeri";
+  if (normalized.startsWith("Mevcut Yapı Değeri")) return "Mevcut Yapı Değeri";
   if (normalized.startsWith("Yasal ")) return "Yasal Durum Değeri";
   if (normalized.startsWith("Mevcut ")) return "Mevcut Durum Değeri";
   return "Diğer";
@@ -6704,12 +6742,21 @@ function getValuationUnitsSummarySubheader(label) {
   // ama AŞAĞIDAKİ varsayılan ("Piyasa Değeri (TL)") YANLIŞ olurdu — bunlar
   // parasal değer DEĞİL, metin kimlik alanları.
   if (normalized === "Blok" || normalized === "BB No") return normalized;
+  // Kullanıcı takip talebi (2026-08-21): Sigortaya Esas Değer/Arsa Değeri
+  // tekil (Yasal/Mevcut ayrımı olmayan) sonuç sütunları — kendi net
+  // etiketleriyle gösterilir, aşağıdaki genel "Piyasa Değeri" varsayımına
+  // düşmemeli.
+  if (normalized === "Sigortaya Esas Değer") return "Sigortaya Esas Değer\n(TL)";
+  if (normalized === "Arsa Değeri") return "Arsa Değeri\n(TL)";
   if (normalized.endsWith(" - Alan")) return "Alan\n(m²)";
+  if (normalized.endsWith(" - Yapı Birim Değeri")) return "Yapı Birim Değeri\n(TL/m²)";
+  if (normalized.endsWith(" - İnşaat Seviyesi")) return "İnşaat Seviyesi\n(%)";
+  if (normalized.endsWith(" - Yıpranma Payı")) return "Yıpranma Payı\n(%)";
   if (normalized.endsWith(" - M2 Birim Değeri")) {
     return normalized.includes("Kira") ? "Kira M2 Birim Değeri\n(TL/m²)" : "M2 Birim Değeri\n(TL/m²)";
   }
-  if (normalized.includes("Acil Satış")) return "Acil Satış Değeri\n(TL)";
   if (normalized.includes("Kira Değeri")) return "Kira Değeri\n(TL/ay)";
+  if (normalized.includes("Yapı Değeri")) return "Yapı Değeri\n(TL)";
   return "Piyasa Değeri\n(TL)";
 }
 
@@ -6759,7 +6806,7 @@ function buildValuationUnitsSummaryTableHtml(data, activeRowIndex, { editable = 
     groups[group].push({ label, index });
     return groups;
   }, {});
-  const groupOrder = ["Yasal Durum Değeri", "Mevcut Durum Değeri", "Diğer"].filter((group) => groupedColumns[group]?.length);
+  const groupOrder = ["Yasal Durum Değeri", "Mevcut Durum Değeri", "Yasal Yapı Değeri", "Mevcut Yapı Değeri", "Diğer"].filter((group) => groupedColumns[group]?.length);
   const orderedColumns = groupOrder.flatMap((group) => groupedColumns[group]);
   const displayIndices = [...leadingIndices, ...orderedColumns.map((col) => col.index)];
   // Kullanıcı takip talebi (2026-08-21): "sıra no blok ve bağımsız bölüm
