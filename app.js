@@ -6738,8 +6738,12 @@ const VALUATION_UNITS_TABLE_ROW_DEFS = valuationMarketRows.map((row) => ({
 // başlığını BB No olarak güncelle" — Bağımsız Bölüm özet tablosundaki
 // AYNI kısaltma (gerçek Tapu formundaki tam etiket DEĞİŞMEDİ, yalnızca bu
 // özet tablonun sütun başlığı).
+// Kullanıcı takip talebi (2026-08-22): "Blok sütununu daralt BL. yap ...
+// olabildiğince kompakt bir görüntü talep ediyorum" — gerçek Tapu
+// formundaki tam etiket ("Blok") DEĞİŞMEDİ, yalnızca bu özet tablonun
+// sütun başlığı kısaltıldı.
 const VALUATION_UNITS_TABLE_IDENTITY_DEFS = [
-  { key: "titleBlockName", label: "Blok" },
+  { key: "titleBlockName", label: "BL." },
   { key: "unitNo", label: "BB No" },
 ];
 
@@ -6775,18 +6779,23 @@ function buildValuationUnitsSummaryTableData() {
   const legalIncomplete = incompleteConstructionMarketRows.legalValue;
   const currentIncomplete = incompleteConstructionMarketRows.currentValue;
 
-  const headers = ["Sıra No", ...VALUATION_UNITS_TABLE_IDENTITY_DEFS.map((def) => def.label)];
+  // Kullanıcı takip talebi (2026-08-22): "Sıra No sütununu NO yap daralt."
+  const headers = ["No", ...VALUATION_UNITS_TABLE_IDENTITY_DEFS.map((def) => def.label)];
   const columnMeta = [{ kind: "seq" }, ...VALUATION_UNITS_TABLE_IDENTITY_DEFS.map(() => ({ kind: "readonly" }))];
 
   headers.push("Yasal Alan", "Mevcut Alan");
   columnMeta.push({ kind: "scalar", fieldKey: "legalValueArea" }, { kind: "scalar", fieldKey: "currentValueArea" });
 
+  // Kullanıcı takip talebi (2026-08-22): "yıpranma payı ve inşaat seviye
+  // sütunlarını daralt ... bu iki sütun olabildiğince dar olsun" —
+  // `narrow: true` (leadingIndices'in narrowWidth'iyle AYNI mekanizma,
+  // buildValuationUnitsSummaryTableHtml'de bu bayrağa göre uygulanır).
   headers.push("Arsa Birim Değeri", "Yapı Birim Değeri", "Yıpranma Payı", "İnş. Sev.");
   columnMeta.push(
     { kind: "scalar", fieldKey: "landUnitValue" },
     { kind: "scalar", fieldKey: "legalBuildingUnitCost" },
-    { kind: "scalar", fieldKey: "legalBuildingDepreciationRate" },
-    { kind: "readonly" },
+    { kind: "scalar", fieldKey: "legalBuildingDepreciationRate", narrow: true },
+    { kind: "readonly", narrow: true },
   );
 
   if (showLandShareColumns) {
@@ -6826,11 +6835,26 @@ function buildValuationUnitsSummaryTableData() {
   const rows = units.map((unit, index) => {
     const fields = unit.fields || {};
     const cell = (key) => String(fields[key] || "").trim() || "-";
+    // Kullanıcı takip talebi (2026-08-22): "tam sayı olarak virgülün
+    // sağında rakam olmasın" — Yıpranma Payı/İnşaat Seviyesi hücrelerinde
+    // ondalık kısım (Türkçe biçimde "," sonrası) KIRPILIR — yalnızca bu
+    // tablonun GÖRÜNTÜSÜ için, altta yatan hesaplama/depolanan değer
+    // ETKİLENMEZ (aynı `fields` nesnesi başka hiçbir yerde değiştirilmiyor).
+    const cellInteger = (key) => {
+      const text = String(fields[key] || "").trim();
+      return text ? text.split(",")[0] : "-";
+    };
     const row = [index + 1, ...VALUATION_UNITS_TABLE_IDENTITY_DEFS.map((def) => String(fields[def.key] || "").trim() || "-")];
     row.push(cell("legalValueArea"), cell("currentValueArea"));
-    row.push(cell("landUnitValue"), cell("legalBuildingUnitCost"), cell("legalBuildingDepreciationRate"), cell("legalBuildingConstructionLevel"));
+    row.push(cell("landUnitValue"), cell("legalBuildingUnitCost"), cellInteger("legalBuildingDepreciationRate"), cellInteger("legalBuildingConstructionLevel"));
     if (showLandShareColumns) {
-      row.push(cell("share"), cell("denominator"), computeTitleUnitShareOfLandArea(fields));
+      // Kullanıcı takip talebi (2026-08-22): "HİSSESİNE DÜŞEN ARSA PAYI
+      // bölümünde rakamların yanında m2 yazıyor ... hücrelerde yazmasın"
+      // — birim zaten sütun başlığında belirtiliyor, hücre değerinden
+      // " m²" soneki (computeTitleUnitShareOfLandArea'nın PAYLAŞILAN
+      // biçimlendirmesi) kırpılır — Tapu özet tablosunun KENDİ kullanımı
+      // (buildTitleUnitsSummaryTableData) ETKİLENMEZ, yalnızca burada.
+      row.push(cell("share"), cell("denominator"), computeTitleUnitShareOfLandArea(fields).replace(" m²", ""));
     }
     row.push(cell("landValue"));
     row.push(cell("legalIncompleteDeductionValue"), cell("legalBuildingValue"));
@@ -6917,13 +6941,15 @@ function getValuationUnitsSummaryGroupDisplayLabel(group) {
 
 function getValuationUnitsSummarySubheader(label) {
   const normalized = String(label || "");
-  if (normalized === "Sıra No") return "No";
+  // Kullanıcı takip talebi (2026-08-22): "Sıra No sütununu NO yap daralt."
+  if (normalized === "No") return "No";
   // Kullanıcı talebi (2026-08-21): "değerleme tablosunu sıra no sütununun
   // sağına blok ve bağımsız bölüm no sütunu koyalım" — bu iki kimlik
   // sütunu "Diğer" grubuna düşüyor (getValuationUnitsSummaryHeaderGroup)
   // ama AŞAĞIDAKİ varsayılan ("Piyasa Değeri (TL)") YANLIŞ olurdu — bunlar
-  // parasal değer DEĞİL, metin kimlik alanları.
-  if (normalized === "Blok" || normalized === "BB No") return normalized;
+  // parasal değer DEĞİL, metin kimlik alanları. (2026-08-22 takip: "Blok
+  // sütununu daralt BL. yap" — kısaltma güncellendi.)
+  if (normalized === "BL." || normalized === "BB No") return normalized;
   // Kullanıcı takip talebi (2026-08-21): Sigortaya Esas Değer/Arsa Değeri
   // tekil (Yasal/Mevcut ayrımı olmayan) sonuç sütunları — kendi net
   // etiketleriyle gösterilir, aşağıdaki genel "Piyasa Değeri" varsayımına
@@ -6935,15 +6961,22 @@ function getValuationUnitsSummarySubheader(label) {
   // AYNI sütun başlığında kalır (aksi halde "Diğer" grubunda iki sütun
   // aynı alt-başlığı alır, ayırt edilemez).
   if (normalized === "Yasal Şerefiye" || normalized === "Mevcut Şerefiye") return `${normalized}\n(TL)`;
-  // Kullanıcı takip talebi (2026-08-21): "taşınmazlardan biri %90 seviyeli
-  // değerleme tablosunda natamam durum değeri belirtilmiyor" — Yasal/
-  // Mevcut ayrımı korunur (aksi halde ikisi de "Durum Değeri" grubunda
-  // ayırt edilemez olurdu).
-  if (normalized === "Natamam Yasal Durum Değeri" || normalized === "Natamam Mevcut Durum Değeri") return `${normalized}\n(TL)`;
-  // Kullanıcı takip talebi (2026-08-21): "eksik imalat bölümünü ekledin
-  // mi" — Natamam Durum Değeri'nin hesabında düşülen ara tutar, kendi net
-  // etiketiyle gösterilir.
-  if (normalized === "Yasal Eksik İmalat Tutarı" || normalized === "Mevcut Eksik İmalat Tutarı") return `${normalized}\n(TL)`;
+  // Kullanıcı takip talebi (2026-08-22): "NATAMAM YASAL DURUM DEĞERİ
+  // yerine YASAL DURUM DEĞERİ bunların üst başlıklarında zaten bunlar
+  // belirtiliyor" — "Natamam" öneki üst grup başlığında (NATAMAM YASAL/
+  // MEVCUT DURUM DEĞERİ) zaten var, alt-başlıkta TEKRARLANMAZ. Grup
+  // eşleştirmesi (getValuationUnitsSummaryHeaderGroup) HALA tam
+  // "Natamam Yasal Durum Değeri" metnine bakıyor (buildValuationUnitsSummaryTableData'nın
+  // kendi header/columnMeta dizisindeki GERÇEK metin DEĞİŞMEDİ, yalnızca
+  // bu alt-başlık GÖRÜNTÜSÜ kısaltıldı).
+  if (normalized === "Natamam Yasal Durum Değeri") return "Yasal Durum Değeri\n(TL)";
+  if (normalized === "Natamam Mevcut Durum Değeri") return "Mevcut Durum Değeri\n(TL)";
+  // Kullanıcı takip talebi (2026-08-22): "YASAL EKSİK İMALAT TUTARI yerine
+  // EKSİK İMALAT TUTARI aynı şekilde MEVCUT EKSİK İMALAT TUTARI yerine
+  // EKSİK İMALAT TUTARI" — Yasal/Mevcut öneki üst grup başlığında (YASAL/
+  // MEVCUT YAPI DEĞERİ) zaten var. İkisi de AYNI metni gösterir ama farklı
+  // gruplarda oldukları için ekranda karışmaz.
+  if (normalized === "Yasal Eksik İmalat Tutarı" || normalized === "Mevcut Eksik İmalat Tutarı") return "Eksik İmalat Tutarı\n(TL)";
   // Kullanıcı takip talebi (2026-08-21): "her bir bağımsız bölümün arsa
   // pay arsa payda ve hissesine düşen arsa payı bölümlerini tablomuza
   // ekleyelim" — Arsa Payı/Payda kesir alanları (para/oran DEĞİL, ondalık
@@ -6960,12 +6993,15 @@ function getValuationUnitsSummarySubheader(label) {
   // eşleşme gerekir.
   if (normalized === "Arsa Birim Değeri") return "Arsa Birim Değeri\n(TL/m²)";
   if (normalized === "Yapı Birim Değeri") return "Yapı Birim Değeri\n(TL/m²)";
-  if (normalized === "Yıpranma Payı") return "Yıpranma Payı\n(%)";
-  if (normalized === "İnş. Sev.") return "İnşaat Seviyesi\n(%)";
+  // Kullanıcı takip talebi (2026-08-22): "Yıp. Pay. ve İnş. Sev olarak
+  // kısaltabilirsin ... bu iki sütun olabildiğince dar olsun" — kısaltılmış
+  // etiketler + columnMeta.narrow (bkz. buildValuationUnitsSummaryTableData).
+  if (normalized === "Yıpranma Payı") return "Yıp. Pay.\n(%)";
+  if (normalized === "İnş. Sev.") return "İnş. Sev.\n(%)";
   if (normalized.endsWith(" - Alan")) return "Alan\n(m²)";
   if (normalized.endsWith(" - Yapı Birim Değeri")) return "Yapı Birim Değeri\n(TL/m²)";
-  if (normalized.endsWith(" - İnşaat Seviyesi")) return "İnşaat Seviyesi\n(%)";
-  if (normalized.endsWith(" - Yıpranma Payı")) return "Yıpranma Payı\n(%)";
+  if (normalized.endsWith(" - İnşaat Seviyesi")) return "İnş. Sev.\n(%)";
+  if (normalized.endsWith(" - Yıpranma Payı")) return "Yıp. Pay.\n(%)";
   if (normalized.endsWith(" - M2 Birim Değeri")) {
     return normalized.includes("Kira") ? "Kira M2 Birim Değeri\n(TL/m²)" : "M2 Birim Değeri\n(TL/m²)";
   }
@@ -7037,15 +7073,22 @@ function buildValuationUnitsSummaryTableHtml(data, activeRowIndex, { editable = 
   ].filter((group) => groupedColumns[group]?.length);
   const orderedColumns = groupOrder.flatMap((group) => groupedColumns[group]);
   const displayIndices = [...leadingIndices, ...orderedColumns.map((col) => col.index)];
-  // Kullanıcı takip talebi (2026-08-21): "sıra no blok ve bağımsız bölüm
-  // no sütunları olabildiğince daralt" — leadingIndices (Sıra No + kimlik
-  // sütunları) zaten TAM olarak daraltılacak sütunları temsil ediyor, ayrı
-  // bir columnMeta.narrow işaretine gerek yok.
-  const narrowWidth = "width:24pt;";
+  // Kullanıcı takip talebi (2026-08-21, devam 2026-08-22 "olabildiğince
+  // kompakt bir görüntü talep ediyorum"): "sıra no blok ve bağımsız bölüm
+  // no sütunları olabildiğince daralt" — leadingIndices (Sıra No/Blok/BB
+  // No) zaten TAM olarak daraltılacak sütunları temsil ediyor. AYRICA
+  // 2026-08-22 takip talebiyle Yıpranma Payı/İnşaat Seviyesi de daraltıldı
+  // — bunlar leadingIndices'in DIŞINDA (Parametreler grubunun içinde)
+  // olduğundan, `columnMeta.narrow` bayrağıyla işaretlenip AŞAĞIDA ayrıca
+  // kontrol edilir (buildTitleUnitsSummaryTableHtmlEditable'daki AYNI
+  // `columnMeta.narrow` deseni, bu bespoke iki-katmanlı renderer'a da
+  // uyarlandı).
+  const narrowWidth = "width:18pt;";
   const topHeaderHtml = `<tr>${leadingIndices.map((index) => `<th rowspan="2" style="${headerCell}${narrowWidth}">${toTitleFieldUppercase(headers[index])}</th>`).join("")}${groupOrder.map((group) => `<th colspan="${groupedColumns[group].length}" style="${headerCell}">${toTitleFieldUppercase(getValuationUnitsSummaryGroupDisplayLabel(group))}</th>`).join("")}</tr>`;
-  const subHeaderHtml = `<tr>${orderedColumns.map(({ label }) => {
+  const subHeaderHtml = `<tr>${orderedColumns.map(({ label, index }) => {
     const subheader = toTitleFieldUppercase(getValuationUnitsSummarySubheader(label));
-    return `<th style="${headerCell}">${escapeHtml(subheader).replace(/\n/g, "<br>")}</th>`;
+    const style = columnMeta[index]?.narrow ? `${headerCell}${narrowWidth}` : headerCell;
+    return `<th style="${style}">${escapeHtml(subheader).replace(/\n/g, "<br>")}</th>`;
   }).join("")}</tr>`;
   const bodyHtml = rows.map((row, rowIndex) => {
     const cellStyle = rowIndex % 2 === 1 ? zebraCell : baseCell;
@@ -7055,9 +7098,10 @@ function buildValuationUnitsSummaryTableHtml(data, activeRowIndex, { editable = 
       if (leadingIndices.includes(columnIndex)) {
         return `<td style="${cellStyle}${narrowWidth}">${formatWordCell(toTitleFieldUppercase(cell))}</td>`;
       }
+      const style = meta?.narrow ? `${cellStyle}${narrowWidth}` : cellStyle;
       const isEditable = editable && meta?.kind === "scalar";
-      if (!isEditable) return `<td style="${cellStyle}">${formatWordCell(toTitleFieldUppercase(cell))}</td>`;
-      return `<td style="${cellStyle}cursor:text;" class="tus-editable-cell" data-unit-index="${rowIndex}" data-field-key="${escapeHtml(meta.fieldKey)}" title="Düzenlemek için tıklayın">${formatWordCell(toTitleFieldUppercase(cell))}</td>`;
+      if (!isEditable) return `<td style="${style}">${formatWordCell(toTitleFieldUppercase(cell))}</td>`;
+      return `<td style="${style}cursor:text;" class="tus-editable-cell" data-unit-index="${rowIndex}" data-field-key="${escapeHtml(meta.fieldKey)}" title="Düzenlemek için tıklayın">${formatWordCell(toTitleFieldUppercase(cell))}</td>`;
     }).join("");
     const rowAttr = editable && rowIndex === activeRowIndex ? ' class="tus-active-row"' : "";
     return `<tr${rowAttr}>${cellsHtml}</tr>`;
@@ -20073,9 +20117,15 @@ function buildTitleUnitsSummaryTableHtmlEditable(headers, rows, columnMeta, acti
     const cellStyle = rowIndex % 2 === 1 ? zebraCell : baseCell;
     const cellsHtml = row.map((cell, columnIndex) => {
       const meta = (columnMeta && columnMeta[columnIndex]) || null;
-      if (meta?.narrow) {
-        return `<td style="${cellStyle}${narrowWidth}">${formatWordCell(toTitleFieldUppercase(cell))}</td>`;
-      }
+      // Kullanıcı takip talebi (2026-08-22): "yıpranma payı ve inşaat
+      // seviye sütunlarını daralt ... olabildiğince dar olsun" — Değerleme
+      // özet tablosunda Yıpranma Payı `narrow: true` VE `kind: "scalar"`
+      // (düzenlenebilir) — `narrow` artık yalnızca STİL (genişlik)
+      // belirler, düzenlenebilirliği ETKİLEMEZ (önceden `narrow` her
+      // zaman salt-okunur kimlik sütunları için kullanıldığından bu ikisi
+      // hiç ayrışmamıştı — `style` burada hesaplanıp aşağıdaki owner/
+      // scalar dallarının HER İKİSİNDE de kullanılır).
+      const style = meta?.narrow ? `${cellStyle}${narrowWidth}` : cellStyle;
       // Faz 3 (2026-08-15): "yalnızca AKTİF satır" kısıtlaması KALDIRILDI —
       // artık HER satırın "scalar" hücresi düzenlenebilir (gölge-yazma,
       // bkz. resolveTitleUnitWriteTarget/setTitleUnitFieldValue).
@@ -20087,13 +20137,13 @@ function buildTitleUnitsSummaryTableHtmlEditable(headers, rows, columnMeta, acti
       // Düşen Arsa Payı) tek istisna: satır farketmeksizin HİÇBİR ZAMAN
       // tıklanabilir değil.
       if (meta && meta.kind === "owner") {
-        return `<td style="${cellStyle}cursor:pointer;" class="tus-owner-cell" data-unit-index="${rowIndex}" title="Malik(ler) bilgilerini düzenlemek için tıklayın">${formatWordCell(toTitleFieldUppercase(cell))}</td>`;
+        return `<td style="${style}cursor:pointer;" class="tus-owner-cell" data-unit-index="${rowIndex}" title="Malik(ler) bilgilerini düzenlemek için tıklayın">${formatWordCell(toTitleFieldUppercase(cell))}</td>`;
       }
       const isEditable = Boolean(meta) && meta.kind === "scalar";
       if (!isEditable) {
-        return `<td style="${cellStyle}">${formatWordCell(toTitleFieldUppercase(cell))}</td>`;
+        return `<td style="${style}">${formatWordCell(toTitleFieldUppercase(cell))}</td>`;
       }
-      return `<td style="${cellStyle}cursor:text;" class="tus-editable-cell" data-unit-index="${rowIndex}" data-field-key="${escapeHtml(meta.fieldKey)}" title="Düzenlemek için tıklayın">${formatWordCell(toTitleFieldUppercase(cell))}</td>`;
+      return `<td style="${style}cursor:text;" class="tus-editable-cell" data-unit-index="${rowIndex}" data-field-key="${escapeHtml(meta.fieldKey)}" title="Düzenlemek için tıklayın">${formatWordCell(toTitleFieldUppercase(cell))}</td>`;
     }).join("");
     // "activeRowIndex" artık düzenlenebilirliği DEĞİL, yalnızca hangi
     // satırın şu an ekranda açık olan tab'a karşılık geldiğini görsel

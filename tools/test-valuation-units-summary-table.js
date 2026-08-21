@@ -191,7 +191,7 @@ function fullFixtureFields(overrides = {}) {
   const data = fns.buildValuationUnitsSummaryTableData();
   assert.ok(data, "2 taşınmazlı raporda tablo verisi dönmeli.");
   assert.deepEqual(data.headers, [
-    "Sıra No", "Blok", "BB No",
+    "No", "BL.", "BB No",
     "Yasal Alan", "Mevcut Alan",
     "Arsa Birim Değeri", "Yapı Birim Değeri", "Yıpranma Payı", "İnş. Sev.",
     "Arsa Payı", "Arsa Payda", "Hissesine Düşen Arsa Payı", "Arsa Değeri",
@@ -321,7 +321,7 @@ function fullFixtureFields(overrides = {}) {
 {
   const identityDefs = fns.getIdentityDefs();
   assert.deepEqual(identityDefs.map((d) => d.key), ["titleBlockName", "unitNo"]);
-  assert.deepEqual(identityDefs.map((d) => d.label), ["Blok", "BB No"]);
+  assert.deepEqual(identityDefs.map((d) => d.label), ["BL.", "BB No"]);
 
   fns.setState({
     activeTitleUnitIndex: 0,
@@ -330,9 +330,9 @@ function fullFixtureFields(overrides = {}) {
     titleUnits: [unit({ titleBlockName: "B", unitNo: "7", legalValue: "720.000" })],
   });
   const data = fns.buildValuationUnitsSummaryTableData();
-  const blockIndex = data.headers.indexOf("Blok");
+  const blockIndex = data.headers.indexOf("BL.");
   const unitNoIndex = data.headers.indexOf("BB No");
-  assert.equal(data.columnMeta[blockIndex].kind, "readonly", "'Blok' sütunu readonly olmalı.");
+  assert.equal(data.columnMeta[blockIndex].kind, "readonly", "'BL.' sütunu readonly olmalı.");
   assert.equal(data.columnMeta[unitNoIndex].kind, "readonly", "'BB No' sütunu readonly olmalı.");
   assert.equal(data.rows[0][blockIndex], "A", "1. taşınmazın Blok bilgisi doğru sütunda olmalı.");
   assert.equal(data.rows[1][unitNoIndex], "7", "2. taşınmazın BB No bilgisi doğru sütunda olmalı.");
@@ -348,16 +348,16 @@ function fullFixtureFields(overrides = {}) {
     tables: {},
     titleUnits: [unit({ titleBlockName: "B", unitNo: "7", legalValue: "720.000" })],
   });
-  assert.equal(fns.getValuationUnitsSummarySubheader("Blok"), "Blok");
+  assert.equal(fns.getValuationUnitsSummarySubheader("BL."), "BL.");
   assert.equal(fns.getValuationUnitsSummarySubheader("BB No"), "BB No");
-  assert.equal(fns.getValuationUnitsSummaryHeaderGroup("Blok"), "Diğer", "'Blok' herhangi bir gruba DEĞİL, 'Diğer'e düşmeli (leadingIndices zaten ayrı ele alır).");
+  assert.equal(fns.getValuationUnitsSummaryHeaderGroup("BL."), "Diğer", "'BL.' herhangi bir gruba DEĞİL, 'Diğer'e düşmeli (leadingIndices zaten ayrı ele alır).");
   const html = fns.buildValuationUnitsSummaryWordTableHtml();
-  assert.ok(html.includes(">BLOK<") || html.includes(">Blok<"), "HTML'de 'Blok' başlığı görünmeli.");
-  assert.ok(!/>BLOK<\/th>[\s\S]{0,5}PİYASA DEĞERİ/i.test(html), "'Blok' sütunu YANLIŞLIKLA 'Piyasa Değeri' alt-başlığı almamalı.");
+  assert.ok(html.includes(">BL.<"), "HTML'de 'BL.' başlığı görünmeli.");
+  assert.ok(!/>BL\.<\/th>[\s\S]{0,5}PİYASA DEĞERİ/i.test(html), "'BL.' sütunu YANLIŞLIKLA 'Piyasa Değeri' alt-başlığı almamalı.");
   const leadingThs = [...html.matchAll(/<th rowspan="2" style="([^"]*)"/g)].map((m) => m[1]);
-  assert.equal(leadingThs.length, 3, "3 rowspan=2 basligi (Sira No/Blok/BB No) olmali.");
+  assert.equal(leadingThs.length, 3, "3 rowspan=2 basligi (No/BL./BB No) olmali.");
   leadingThs.forEach((style) => {
-    assert.ok(style.includes("width:24pt;"), `Kimlik sutunu basligi dar genislik almali, bulunan stil: ${style}`);
+    assert.ok(style.includes("width:18pt;"), `Kimlik sutunu basligi dar genislik almali, bulunan stil: ${style}`);
   });
   console.log("Blok-BBNo subheader regresyon + daraltma testi tamam.");
 }
@@ -411,8 +411,8 @@ function fullFixtureFields(overrides = {}) {
   const headerRows = [...theadMatch[1].matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/g)];
   assert.equal(headerRows.length, 2, "Iki katmanli baslik (2 <tr>) olmali.");
   const topThCells = [...headerRows[0][1].matchAll(/<th[^>]*>([\s\S]*?)<\/th>/g)].map((m) => m[1]);
-  assert.equal(topThCells[0], "SIRA NO", "1. ust-satir hucresi Sira No olmali.");
-  assert.equal(topThCells[1], "BLOK", "2. ust-satir hucresi Blok olmali (rowspan=2, TEK sutun, grup DEGIL).");
+  assert.equal(topThCells[0], "NO", "1. ust-satir hucresi No olmali.");
+  assert.equal(topThCells[1], "BL.", "2. ust-satir hucresi BL. olmali (rowspan=2, TEK sutun, grup DEGIL).");
   assert.equal(topThCells[2], "BB NO", "3. ust-satir hucresi BB No olmali.");
 
   const bodyRows = [...tbodyMatch[1].matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/g)];
@@ -520,7 +520,7 @@ function fullFixtureFields(overrides = {}) {
 {
   fns.setState({
     activeTitleUnitIndex: 0,
-    fields: fullFixtureFields({ landUnitValue: "20000", legalBuildingUnitCost: "21050", legalBuildingDepreciationRate: "5", legalBuildingConstructionLevel: "90" }),
+    fields: fullFixtureFields({ landUnitValue: "20000", legalBuildingUnitCost: "21050", legalBuildingDepreciationRate: "5,00", legalBuildingConstructionLevel: "90,00" }),
     tables: {},
     titleUnits: [unit(fullFixtureFields())],
   });
@@ -531,17 +531,26 @@ function fullFixtureFields(overrides = {}) {
   assert.equal(fns.getValuationUnitsSummaryHeaderGroup("İnş. Sev."), "Parametreler");
   assert.equal(fns.getValuationUnitsSummarySubheader("Arsa Birim Değeri"), "Arsa Birim Değeri\n(TL/m²)");
   assert.equal(fns.getValuationUnitsSummarySubheader("Yapı Birim Değeri"), "Yapı Birim Değeri\n(TL/m²)");
-  assert.equal(fns.getValuationUnitsSummarySubheader("Yıpranma Payı"), "Yıpranma Payı\n(%)");
-  assert.equal(fns.getValuationUnitsSummarySubheader("İnş. Sev."), "İnşaat Seviyesi\n(%)");
+  assert.equal(fns.getValuationUnitsSummarySubheader("Yıpranma Payı"), "Yıp. Pay.\n(%)");
+  assert.equal(fns.getValuationUnitsSummarySubheader("İnş. Sev."), "İnş. Sev.\n(%)");
   assert.equal(data.rows[0][data.headers.indexOf("Arsa Birim Değeri")], "20000");
   assert.equal(data.rows[0][data.headers.indexOf("Yapı Birim Değeri")], "21050");
-  assert.equal(data.rows[0][data.headers.indexOf("Yıpranma Payı")], "5");
-  assert.equal(data.rows[0][data.headers.indexOf("İnş. Sev.")], "90");
+  // Kullanıcı takip talebi (2026-08-22): "tam sayı olarak virgülün
+  // sağında rakam olmasın" — "5,00"/"90,00" hücrelerde "5"/"90" olarak
+  // (ondalık kısım KIRPILARAK) gösterilmeli.
+  assert.equal(data.rows[0][data.headers.indexOf("Yıpranma Payı")], "5", "Yıpranma Payı ondalıksız (tam sayı) gösterilmeli.");
+  assert.equal(data.rows[0][data.headers.indexOf("İnş. Sev.")], "90", "İnşaat Seviyesi ondalıksız (tam sayı) gösterilmeli.");
+  // Kullanıcı takip talebi (2026-08-22): "bu iki sütun olabildiğince dar
+  // olsun" — columnMeta.narrow (buildValuationUnitsSummaryTableHtml'in
+  // narrowWidth'iyle AYNI mekanizma).
+  assert.equal(data.columnMeta[data.headers.indexOf("Yıpranma Payı")].narrow, true);
+  assert.equal(data.columnMeta[data.headers.indexOf("İnş. Sev.")].narrow, true);
+  assert.ok(!data.columnMeta[data.headers.indexOf("Yapı Birim Değeri")].narrow, "Yapı Birim Değeri daraltılmamalı (yalnızca Yıpranma Payı/İnş. Sev. istendi).");
   // Bir kez "Yasal Yapı Değeri - Yapı Birim Değeri" gibi eski (Yasal/Mevcut
   // AYRI) sütunlar KESİNLİKLE üretilmemeli.
   assert.ok(!data.headers.includes("Yasal Yapı Değeri - Yapı Birim Değeri"));
   assert.ok(!data.headers.includes("Mevcut Yapı Değeri - Yapı Birim Değeri"));
-  console.log("Parametreler (tek satir, Yasal/Mevcut ayri degil) testi tamam.");
+  console.log("Parametreler (tek satir, Yasal/Mevcut ayri degil, tam sayi + daraltma) testi tamam.");
 }
 
 // --- 17) ARSA DEĞERİ: bileşenler + sonuç TEK grupta, YALNIZCA aynı --------
@@ -557,8 +566,13 @@ function fullFixtureFields(overrides = {}) {
   const shareIndex = data.headers.indexOf("Arsa Payı");
   const shareOfAreaIndex = data.headers.indexOf("Hissesine Düşen Arsa Payı");
   assert.ok(shareIndex >= 0 && shareOfAreaIndex >= 0, "AYNI ada/parselde Arsa Payı/Hissesine Düşen Arsa Payı sütunları bulunmali.");
-  assert.equal(data.rows[0][shareOfAreaIndex], "100,00 m²", "1. tasinmazin hissesine dusen arsa payi (1000/100)x10=100 m2 olmali.");
-  assert.equal(data.rows[1][shareOfAreaIndex], "200,00 m²");
+  // Kullanıcı takip talebi (2026-08-22): "HİSSESİNE DÜŞEN ARSA PAYI
+  // bölümünde rakamların yanında m2 yazıyor ... hücrelerde yazmasın" —
+  // birim (m²) SÜTUN BAŞLIĞINDA kalır (bkz. senaryo subheader kontrolü),
+  // hücre değerinden " m²" soneki KIRPILIR.
+  assert.equal(data.rows[0][shareOfAreaIndex], "100,00", "1. tasinmazin hissesine dusen arsa payi (1000/100)x10=100, hucrede 'm²' SONEKI OLMADAN.");
+  assert.equal(data.rows[1][shareOfAreaIndex], "200,00");
+  assert.equal(fns.getValuationUnitsSummarySubheader("Hissesine Düşen Arsa Payı"), "Hissesine Düşen\nArsa Payı (m²)", "Birim SÜTUN BAŞLIĞINDA kalmalı.");
   assert.equal(fns.getValuationUnitsSummaryHeaderGroup("Arsa Payı"), "Arsa Değeri");
   assert.equal(fns.getValuationUnitsSummaryHeaderGroup("Arsa Değeri"), "Arsa Değeri");
 
@@ -594,7 +608,13 @@ function fullFixtureFields(overrides = {}) {
   assert.equal(fns.getValuationUnitsSummaryHeaderGroup("Mevcut Eksik İmalat Tutarı"), "Mevcut Yapı Değeri");
   assert.equal(data.rows[0][legalDeductionIndex], "250000");
   assert.equal(data.rows[0][legalBuildingIndex], "2273400");
-  console.log("Yasal/Mevcut Yapi Degeri (2 sutuna indirgendi) testi tamam.");
+  // Kullanıcı takip talebi (2026-08-22): "YASAL EKSİK İMALAT TUTARI yerine
+  // EKSİK İMALAT TUTARI aynı şekilde MEVCUT EKSİK İMALAT TUTARI yerine
+  // EKSİK İMALAT TUTARI" — Yasal/Mevcut öneki ÜST grup başlığında zaten
+  // var, ALT başlıkta TEKRARLANMAZ.
+  assert.equal(fns.getValuationUnitsSummarySubheader("Yasal Eksik İmalat Tutarı"), "Eksik İmalat Tutarı\n(TL)");
+  assert.equal(fns.getValuationUnitsSummarySubheader("Mevcut Eksik İmalat Tutarı"), "Eksik İmalat Tutarı\n(TL)");
+  console.log("Yasal/Mevcut Yapi Degeri (2 sutuna indirgendi, kisa subheader) testi tamam.");
 }
 
 // --- 19) YASAL/MEVCUT ŞEREFİYE: kendi tek-sütunluk grupları (Sigorta'dan -
@@ -665,7 +685,14 @@ function fullFixtureFields(overrides = {}) {
   assert.equal(data.rows[0][unitIndex], "40000");
   assert.equal(data.rows[0][totalIndex], "4550000");
   assert.equal(data.rows[1][totalIndex], "-", "2. (tamamlanmış, %100 seviyeli) taşınmazda Natamam Durum Değeri '-' olmalı.");
-  console.log("Natamam Yasal/Mevcut Durum Degeri (kendi grubu + M2 Birim Degeri geri) testi tamam.");
+  // Kullanıcı takip talebi (2026-08-22): "NATAMAM YASAL DURUM DEĞERİ
+  // yerine YASAL DURUM DEĞERİ bunların üst başlıklarında zaten bunlar
+  // belirtiliyor" — "Natamam" öneki ÜST grup başlığında zaten var, ALT
+  // başlıkta (subheader) TEKRARLANMAZ; grup eşleştirmesi (yukarıda test
+  // edildi) DEĞİŞMEDİ.
+  assert.equal(fns.getValuationUnitsSummarySubheader("Natamam Yasal Durum Değeri"), "Yasal Durum Değeri\n(TL)");
+  assert.equal(fns.getValuationUnitsSummarySubheader("Natamam Mevcut Durum Değeri"), "Mevcut Durum Değeri\n(TL)");
+  console.log("Natamam Yasal/Mevcut Durum Degeri (kendi grubu + M2 Birim Degeri geri + kisa subheader) testi tamam.");
 }
 
 // --- 23) YASAL/MEVCUT KİRA DEĞERİ: KENDİ ayrı grubu (önceden fark --------
@@ -683,6 +710,53 @@ function fullFixtureFields(overrides = {}) {
   assert.equal(fns.getValuationUnitsSummarySubheader("Yasal Kira Değeri - M2 Birim Değeri"), "Kira M2 Birim Değeri\n(TL/m²)");
   assert.equal(fns.getValuationUnitsSummarySubheader("Yasal Kira Değeri"), "Kira Değeri\n(TL/ay)");
   console.log("Yasal/Mevcut Kira Degeri bagimsiz gruplari testi tamam.");
+}
+
+// --- 24) REGRESYON (kullanıcı takip talebi 2026-08-22): "bu iki sütun ----
+// olabildiğince dar olsun" + tam sayı gösterimi + m² soneki kırpılması —
+// GERÇEK iki katmanlı renderer (buildValuationUnitsSummaryTableHtml)
+// çıktısında Yıpranma Payı HEM dar HEM DÜZENLENEBİLİR kalmalı (narrow +
+// scalar kombinasyonu, buildTitleUnitsSummaryTableHtmlEditable'daki
+// PAYLAŞILAN kod yolunda bulunup düzeltilen bir hatayı da dolaylı olarak
+// kapsar — narrow işaretli scalar sütunlar YANLIŞLIKLA salt-okunur
+// yapılmamalı).
+{
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: fullFixtureFields({ legalBuildingDepreciationRate: "5,00", legalBuildingConstructionLevel: "90,00" }),
+    tables: {},
+    titleUnits: [unit(fullFixtureFields())],
+  });
+  const data = fns.buildValuationUnitsSummaryTableData();
+  // Word/export çıktısı ("buildValuationUnitsSummaryWordTableHtml", editable=false
+  // VARSAYILAN) tus-editable-cell İÇERMEZ — düzenlenebilirlik yalnızca
+  // CANLI önizlemenin kullandığı { editable: true } modunda test edilebilir
+  // (bkz. createValuationUnitsSummaryTablePreview'ın GERÇEK çağrısı).
+  const html = fns.buildValuationUnitsSummaryTableHtml(data, 0, { editable: true });
+  assert.ok(html.includes(">YIP. PAY.<") || html.includes(">Yıp. Pay.<"), "HTML'de kısaltılmış 'Yıp. Pay.' alt-başlığı görünmeli.");
+  assert.ok(html.includes(">İNŞ. SEV.<") || html.includes(">İnş. Sev.<"), "HTML'de kısaltılmış 'İnş. Sev.' alt-başlığı görünmeli.");
+  assert.ok(!html.includes("YIPRANMA PAYI") && !html.includes("İNŞAAT SEVİYESİ"), "Uzun (kısaltılmamış) etiketler ARTIK görünmemeli.");
+  // Yıpranma Payı hücresi HEM dar (width:18pt) HEM düzenlenebilir
+  // (tus-editable-cell) olmalı.
+  const editableCellMatch = html.match(/<td style="[^"]*width:18pt;[^"]*cursor:text;" class="tus-editable-cell"[^>]*>5<\/td>/);
+  assert.ok(editableCellMatch, "Yıpranma Payı hücresi HEM dar HEM düzenlenebilir olmalı (narrow+scalar kombinasyonu).");
+  assert.ok(html.includes(">5<") && !html.includes(">5,00<"), "Yıpranma Payı tam sayı (ondalıksız) gösterilmeli.");
+  console.log("Yipranma Payi/Insaat Seviyesi daraltma + tam sayi + duzenlenebilirlik regresyon testi tamam.");
+}
+
+// --- 25) REGRESYON: HİSSESİNE DÜŞEN ARSA PAYI hücrelerinde " m²" ----------
+// SONEKİ ARTIK yok (birim sütun başlığında kalır).
+{
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: { blockNo: "100", parcelNo: "5", legalValue: "500.000", share: "10", denominator: "100", landArea: "1000" },
+    tables: {},
+    titleUnits: [unit({ blockNo: "100", parcelNo: "5", legalValue: "600.000", share: "20", denominator: "100", landArea: "1000" })],
+  });
+  const html = fns.buildValuationUnitsSummaryWordTableHtml();
+  assert.ok(!html.includes("100,00 M²") && !html.includes("100,00 m²"), "Hücre değerinde ARTIK 'm²' soneki olmamalı.");
+  assert.ok(html.includes(">100,00<") || html.includes(">100,00 <"), "Hücre değeri (soneksiz) HTML'de gözükmeli.");
+  console.log("Hissesine Dusen Arsa Payi hucre m2-soneki kaldirma regresyon testi tamam.");
 }
 
 console.log("Tasinmazlar degerleme ozeti tablosu testleri basarili.");

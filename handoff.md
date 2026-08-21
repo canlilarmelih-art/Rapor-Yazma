@@ -1,5 +1,18 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.515 - 2026-08-22 - Değerleme özeti daha kompakt: kısaltılmış başlıklar, daraltılmış sütunlar, tam sayı gösterimi
+
+- Kullanıcı: "yıpranma payı ve inşaat seviye sütunlarını daralt Yıp. Pay. ve İnş. Sev olarak kısaltabilirsin. tam sayı olarak virgülün sağında rakam olmasın. bu iki sütun olabildiğince dar olsun. HİSSESİNE DÜŞEN ARSA PAYI bölümünde rakamların yanında m2 yazıyor ... hücrelerde yazmasın. YASAL EKSİK İMALAT TUTARI yerine EKSİK İMALAT TUTARI ... NATAMAM YASAL DURUM DEĞERİ yerine YASAL DURUM DEĞERİ ... Blok sütununu daralt BL. yap. Sıra No sütununu NO yap daralt. olabildiğince kompakt bir görüntü talep ediyorum."
+- **Kısaltmalar**: "Sıra No" → "No", "Blok" → "BL." (leadingIndices'in kendi rowspan başlıkları), "Yıpranma Payı" → "Yıp. Pay.", "İnşaat Seviyesi" alt-başlığı → "İnş. Sev." (yalnızca alt-başlık — GRUPLAMA için kullanılan iç veri metni DEĞİŞMEDİ).
+- **Redundan Yasal/Mevcut/Natamam önekleri alt-başlıklardan kaldırıldı** (üst grup başlığında zaten belirtiliyor): "Yasal/Mevcut Eksik İmalat Tutarı" → alt-başlıkta sade "Eksik İmalat Tutarı"; "Natamam Yasal/Mevcut Durum Değeri" → alt-başlıkta sade "Yasal/Mevcut Durum Değeri". Grup EŞLEŞTİRME mantığı (`getValuationUnitsSummaryHeaderGroup`) DEĞİŞMEDİ — yalnızca GÖRÜNTÜLENEN alt-başlık metni (`getValuationUnitsSummarySubheader`) kısaltıldı.
+- **Tam sayı gösterimi**: Yıpranma Payı/İnşaat Seviyesi hücrelerinde ondalık kısım (Türkçe "," sonrası) KIRPILDI — yalnızca bu tablonun GÖRÜNTÜSÜ için, altta yatan hesaplama/depolanan değer etkilenmedi.
+- **"m²" soneki kaldırıldı**: Hissesine Düşen Arsa Payı hücrelerinden " m²" soneki kırpıldı (birim zaten sütun alt-başlığında "(m²)" olarak duruyor) — `computeTitleUnitShareOfLandArea()`'nın PAYLAŞILAN (Tapu özet tablosu da kullanıyor) biçimlendirmesi DEĞİŞTİRİLMEDİ, yalnızca bu tablonun hücre yazımında sonuç kırpıldı.
+- **Daraltma mekanizması genişletildi**: Yıpranma Payı/İnşaat Seviyesi sütunlarına `columnMeta.narrow: true` eklendi (leadingIndices'in dışındaki İLK narrow+scalar örneği) — bu, `buildTitleUnitsSummaryTableHtmlEditable`'da (6 diğer bölümün de kullandığı PAYLAŞILAN renderer) GERÇEK bir hata ORTAYA ÇIKARDI: `narrow` işaretli sütunlar `kind`'a BAKMAKSIZIN koşulsuz salt-okunur render ediliyordu (önceden narrow SADECE readonly kimlik sütunları için kullanıldığından bu ikisi hiç ayrışmamıştı) — düzeltildi (narrow artık yalnızca genişlik STİLİNİ belirliyor, düzenlenebilirliği ETKİLEMİYOR); diğer 6 bölüm için davranış DEĞİŞMEDİ (hepsinin narrow sütunları zaten readonly).
+- Kimlik sütunlarının (No/BL./BB No) sabit genişliği `24pt`'ten `18pt`'e düşürüldü ("olabildiğince kompakt" talebiyle).
+- Test: `tools/test-valuation-units-summary-table.js`'e 2 yeni regresyon senaryosu eklendi (narrow+scalar kombinasyonunun HEM dar HEM düzenlenebilir kaldığını + m² soneğinin kırpıldığını gerçek HTML çıktısı üzerinden doğrular), mevcut senaryolar yeni kısaltılmış etiketlerle güncellendi. `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` cache-buster `?v=20260822-0200`.
+- Canlı tarayıcı testi yapılamadı (giriş bilgisi yok) — doğrulama kod/test seviyesinde.
+
 ## 0.0.514 - 2026-08-21/22 - Değerleme özeti kullanıcının verdiği hedef yerleşime TAM yeniden yapılandırıldı
 
 - Kullanıcı, iki ekran görüntüsüyle (ikincisi düzeltilmiş nihai hali) "tablo yapısının bu şekilde olmasını istiyorum" dedi — Plan Mode ile (kaynaktan çapraz doğrulanmış, onaylı mimari) TAM bir sütun sırası/gruplama yeniden yapılandırması uygulandı. Bu, 0.0.503-513 arasında parça parça eklenen sütunların BİR KISMININ kararını GERİ ALIYOR.
