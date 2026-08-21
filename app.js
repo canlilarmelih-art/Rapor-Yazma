@@ -1938,6 +1938,27 @@ function getTitleUnitScopedFieldKeys() {
 // listeleyen kanonik kaynaktan) doğrulanmıştır — tek kanonik kaynak,
 // drift riski olmadan hem scoping-gap-fix hem (ileride gerekirse) başka
 // tüketiciler için.
+// Kullanıcı bildirimi (2026-08-21, ekran görüntüsü): "toplam yasal yapı
+// değeri gözükmüyor ama şu an gözükenler yıpranma payı yapı birim değeri
+// inşaat seviyesi" — Değerleme özet tablosunda YALNIZCA aktif taşınmazın
+// Yapı Değeri/Sigorta/Arsa Değeri sonucu doluydu, diğer TÜM taşınmazlar
+// boştu. KÖK NEDEN (doğrudan sandbox reprodüksiyonuyla doğrulandı — form
+// ÜL kendisi DOĞRU çalışıyor): legalBuildingValue/legalBuildingValueArea/
+// legalBuildingUnitCost/legalBuildingConstructionLevel/
+// legalBuildingDepreciationRate/insuranceValue/landValue (+ Mevcut
+// karşılıkları + Natamam İnşaat + Şerefiye + Kapitilizasyon aileleri)
+// section.fields'ta DEKLARATİF DEĞİL VE bu fonksiyonun (o zamanki) 14
+// alanlık listesinde de YOKTU — yani "valuation" TITLE_UNIT_SCOPED
+// olmasına RAĞMEN bu programatik alt-aileler HİÇ scoped DEĞİLDİ (2026-08-19'da
+// keşfedilen "declaratif değil → sızıyor" hata sınıfının BİR ÖRNEĞİ daha,
+// bu kez fark edilmeden kalmıştı çünkü bugüne kadar bu alanlar hiçbir
+// çok-taşınmaz karşılaştırma tablosunda gösterilmiyordu). Sonuç: taşınmaz
+// sekmeleri arasında geçildiğinde bu alanlar PAYLAŞILIYORDU (tek bir canlı
+// değer) — dolayısıyla `titleUnits[i].fields`/`primaryTitleUnitShadow.fields`
+// gölgelerine HİÇBİR ZAMAN yazılmadılar, özet tablo bu gölgeleri okuduğunda
+// hep boş kaldılar. Aşağıdaki 33 yeni anahtar `clearLandOwnershipDependentData()`'nın
+// `exactKeys` setinden (AYNI kanonik kaynak, zaten "taşınmaza-özgü olması
+// gereken Değerleme alanları" listesi) alındı.
 function getValuationPerUnitOnlyFieldKeys() {
   return [
     "legalValueArea", "currentValueArea", "legalRentArea", "currentRentArea",
@@ -1945,6 +1966,20 @@ function getValuationPerUnitOnlyFieldKeys() {
     "legalValueComparableAutoManual", "currentValueComparableAutoManual",
     "legalRentComparableAutoManual", "currentRentComparableAutoManual",
     "legalValueUserDefined", "currentValueUserDefined",
+    "legalIncompleteValueArea", "legalIncompleteValueUnit", "legalIncompleteValue",
+    "currentIncompleteValueArea", "currentIncompleteValueUnit", "currentIncompleteValue",
+    "legalBuildingValueArea", "currentBuildingValueArea",
+    "legalBuildingUnitCost", "currentBuildingUnitCost", "legalBuildingValue", "currentBuildingValue",
+    "legalBuildingConstructionLevel", "currentBuildingConstructionLevel",
+    "legalBuildingDepreciationRate", "currentBuildingDepreciationRate",
+    "legalBuildingDepreciationRateAuto", "currentBuildingDepreciationRateAuto",
+    "legalBuildingUnitCostAuto", "currentBuildingUnitCostAuto",
+    "insuranceValueArea", "insuranceUnitCost", "insuranceValue",
+    "legalPremiumLandValue", "currentPremiumLandValue", "legalPremiumValue", "currentPremiumValue",
+    "legalPremiumRate", "currentPremiumRate",
+    "legalCapitalizationRate", "currentCapitalizationRate",
+    "legalAmortizationMonths", "currentAmortizationMonths",
+    "landValue",
   ];
 }
 

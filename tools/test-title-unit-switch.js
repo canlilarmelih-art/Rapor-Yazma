@@ -1047,6 +1047,53 @@ assert.match(appSource, /panel\.dataset\.parcelScope = mixedParcels \? "mixed" :
   console.log("landUnitValue Yatay-Dikey Kat Irtifaki paylasim + Mustakil Bina regresyon testi tamam.");
 }
 
+// --- 29c) Degerleme: Yapi Degeri/Sigorta/Arsa/Natamam/Serefiye/Kapitilizasyon
+// aileleri artik tab degistirince SIZMIYOR (2026-08-21, ekran goruntusu
+// bildirimi: "toplam yasal yapi degeri gozukmuyor ama su an gozukenler
+// yipranma payi yapi birim degeri insaat seviyesi"). KOK NEDEN: bu
+// programatik alt-aileler section.fields'ta deklaratif OLMADIGINDAN VE
+// getValuationPerUnitOnlyFieldKeys()'in (o zamanki) 14 alanlik listesinde
+// de YOKTU - "valuation" TITLE_UNIT_SCOPED olmasina RAGMEN bu alanlar HIC
+// scoped degildi, yani taşınmaz sekmeleri arasinda PAYLASILIYORDU - Degerleme
+// ozet tablosu (buildAllTitleUnitsForSummaryTable) sadece AKTIF tasinmazin
+// golgesini degil, HER tasinmazin KENDI golgesini okudugundan, bu paylasimli
+// alanlar diger tasinmazlarin golgesine HICBIR ZAMAN yazilmiyor, hep BOS
+// kaliyordu.
+{
+  const state = freshState({
+    fields: {
+      ...freshState().fields,
+      legalBuildingValueArea: "120", legalBuildingUnitCost: "21050", legalBuildingValue: "2526000",
+      legalBuildingConstructionLevel: "100", legalBuildingDepreciationRate: "0",
+      currentBuildingValueArea: "120", currentBuildingUnitCost: "21050", currentBuildingValue: "2526000",
+      insuranceValueArea: "120", insuranceUnitCost: "21050", insuranceValue: "2526000",
+      landValue: "8887500",
+      legalIncompleteValue: "100000", legalPremiumValue: "5000", legalCapitalizationRate: "8",
+    },
+  });
+  sandbox.setState(state);
+  const newIndex = sandbox.fns.addTitleUnitTab();
+  sandbox.fns.switchActiveTitleUnit(newIndex);
+  const secondUnit = sandbox.getState();
+  [
+    "legalBuildingValueArea", "legalBuildingUnitCost", "legalBuildingValue",
+    "legalBuildingConstructionLevel", "legalBuildingDepreciationRate",
+    "currentBuildingValueArea", "currentBuildingUnitCost", "currentBuildingValue",
+    "insuranceValueArea", "insuranceUnitCost", "insuranceValue", "landValue",
+    "legalIncompleteValue", "legalPremiumValue", "legalCapitalizationRate",
+  ].forEach((key) => {
+    assert.equal(secondUnit.fields[key], undefined, `REGRESYON: 2. (yeni/bos) tasinmaza ${key} SIZMAMALI.`);
+  });
+
+  sandbox.fns.switchActiveTitleUnit(0);
+  const primaryAgain = sandbox.getState();
+  assert.equal(primaryAgain.fields.legalBuildingValue, "2526000", "Birincilin legalBuildingValue'su sizinti olmadan (round-trip) korunmali.");
+  assert.equal(primaryAgain.fields.insuranceValue, "2526000", "Birincilin insuranceValue'su korunmali.");
+  assert.equal(primaryAgain.fields.landValue, "8887500", "Birincilin landValue'su korunmali.");
+  assert.equal(primaryAgain.fields.legalPremiumValue, "5000", "Birincilin Serefiye degeri korunmali.");
+  console.log("Degerleme Yapi Degeri/Sigorta/Arsa/Natamam/Serefiye/Kapitilizasyon aileleri unit-scoped round-trip testi tamam.");
+}
+
 // --- 30) Bağımsız Bölüm (unit): programatik alanlar artik SIZMIYOR --------
 // (2026-08-20, scoping-gap-fix) - unitSalonFloor/unitInteriorDescription
 // vb. ~50 alan section.fields'ta deklaratif OLMADIGINDAN daha once HIC
