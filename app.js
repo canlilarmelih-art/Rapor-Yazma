@@ -6740,6 +6740,15 @@ const VALUATION_UNITS_TABLE_IDENTITY_DEFS = [
 function buildValuationUnitsSummaryTableData() {
   const units = buildAllTitleUnitsForSummaryTable();
   if (units.length < 2) return null;
+  // Kullanıcı takip talebi (2026-08-21): "her bir bağımsız bölümün arsa
+  // pay arsa payda ve hissesine düşen arsa payı bölümlerini tablomuza
+  // ekleyelim" — Tapu özet tablosundaki (buildTitleUnitsSummaryTableData)
+  // AYNI gerekçeyle AYNI koşula bağlandı: "farklı ada parsellerden oluşan
+  // çoklu taleplerde ARSA PAYI ARSA PAYDA KALDIR" — farklı parsellerdeki
+  // taşınmazların payı/paydası birbirinden bağımsız parsellere ait olduğundan
+  // yan yana göstermek YANILTICI olur, bu yüzden yalnızca TÜM taşınmazlar
+  // AYNI ada/parselde (computeTitleUnitsShareSameAdaParsel) İSE gösterilir.
+  const showLandShareColumns = computeTitleUnitsShareSameAdaParsel(units);
 
   const headers = ["Sıra No", ...VALUATION_UNITS_TABLE_IDENTITY_DEFS.map((def) => def.label)];
   const columnMeta = [{ kind: "seq" }, ...VALUATION_UNITS_TABLE_IDENTITY_DEFS.map(() => ({ kind: "readonly" }))];
@@ -6761,6 +6770,14 @@ function buildValuationUnitsSummaryTableData() {
       { kind: "readonly" },
     );
   });
+  if (showLandShareColumns) {
+    headers.push("Arsa Payı", "Arsa Payda", "Hissesine Düşen Arsa Payı");
+    columnMeta.push(
+      { kind: "scalar", fieldKey: "share" },
+      { kind: "scalar", fieldKey: "denominator" },
+      { kind: "readonly" },
+    );
+  }
   headers.push("Sigortaya Esas Değer", "Arsa Değeri");
   columnMeta.push({ kind: "readonly" }, { kind: "readonly" });
 
@@ -6785,6 +6802,13 @@ function buildValuationUnitsSummaryTableData() {
         String(fields[rowDef.totalKey] || "").trim() || "-",
       );
     });
+    if (showLandShareColumns) {
+      row.push(
+        String(fields.share || "").trim() || "-",
+        String(fields.denominator || "").trim() || "-",
+        computeTitleUnitShareOfLandArea(fields),
+      );
+    }
     row.push(
       String(fields.insuranceValue || "").trim() || "-",
       String(fields.landValue || "").trim() || "-",
@@ -6838,6 +6862,13 @@ function getValuationUnitsSummarySubheader(label) {
   // düşmemeli.
   if (normalized === "Sigortaya Esas Değer") return "Sigortaya Esas Değer\n(TL)";
   if (normalized === "Arsa Değeri") return "Arsa Değeri\n(TL)";
+  // Kullanıcı takip talebi (2026-08-21): "her bir bağımsız bölümün arsa
+  // pay arsa payda ve hissesine düşen arsa payı bölümlerini tablomuza
+  // ekleyelim" — Arsa Payı/Payda kesir alanları (para/oran DEĞİL, ondalık
+  // olmayan metin), Hissesine Düşen Arsa Payı ise bir ALAN (m²) — hiçbiri
+  // aşağıdaki para-birimi varsayımına düşmemeli.
+  if (normalized === "Arsa Payı" || normalized === "Arsa Payda") return normalized;
+  if (normalized === "Hissesine Düşen Arsa Payı") return "Hissesine Düşen\nArsa Payı (m²)";
   if (normalized.endsWith(" - Alan")) return "Alan\n(m²)";
   if (normalized.endsWith(" - Yapı Birim Değeri")) return "Yapı Birim Değeri\n(TL/m²)";
   if (normalized.endsWith(" - İnşaat Seviyesi")) return "İnşaat Seviyesi\n(%)";

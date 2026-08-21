@@ -1,5 +1,16 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.507 - 2026-08-21 - Değerleme özetine Arsa Payı/Arsa Payda/Hissesine Düşen Arsa Payı eklendi
+
+- Kullanıcı: "güzel çalışıyor şimdi her bir bağımsız bölümün arsa pay arsa payda ve hissesine düşen arsa payı bölümlerini tablomuza ekleyelim."
+- **Yeni sütunlar**: `share` (Arsa Payı, "scalar" — Tapu bölümünün kendi alanı, düzenlenebilir), `denominator` (Arsa Payda, "scalar"), ve türetilmiş `computeTitleUnitShareOfLandArea(fields)` (ZATEN VAR OLAN, Tapu özet tablosunun da kullandığı saf fonksiyon — "(Yüzölçümü / Arsa Payda) × Arsa Pay" formülü, "readonly") — "Sigortaya Esas Değer"/"Arsa Değeri"'nin hemen ÖNÜNE eklendi (Arsa Değeri formülünün bileşenleri olarak, Yapı Değeri'nin kendi bileşenleriyle AYNI desen).
+- **Koşullu görünürlük**: Tapu özet tablosunun (`buildTitleUnitsSummaryTableData`) AYNI gerekçesiyle — "farklı ada parsellerden oluşan çoklu taleplerde ARSA PAYI ARSA PAYDA KALDIR" (2026-08-15 kararı) — bu 3 sütun de YALNIZCA TÜM taşınmazlar AYNI ada/parselde (`computeTitleUnitsShareSameAdaParsel(units)`, ZATEN VAR OLAN paylaşılan saf fonksiyon) ise gösterilir; farklı parsellerdeki taşınmazların payı/paydası birbirinden bağımsız parsellere ait olduğundan yan yana göstermek yanıltıcı olurdu — Tapu tablosuyla TUTARLI davranış.
+- `getValuationUnitsSummarySubheader()`'a "Arsa Payı"/"Arsa Payda" (olduğu gibi, para birimi DEĞİL) ve "Hissesine Düşen Arsa Payı" (m² birimiyle) için özel eşleme eklendi.
+- Bu 3 alan zaten "title" (Tapu ve Mülkiyet) bölümünün DEKLARATİF `section.fields`'ında olduğundan (share/denominator/landArea) ayrıca bir scoping-gap-fix GEREKMEDİ — zaten doğru taşınmaza-özgüydüler (Tapu tablosunun bugüne kadar doğru çalışmasının nedeni de bu).
+- Test: `tools/test-valuation-units-summary-table.js`'e 3 yeni senaryo eklendi (16: aynı ada/parselde 3 sütunun doğru kind/değerle bulunduğu; 17: farklı ada/parselde tamamen GİZLENDİĞİ regresyonu; 18: subheader/grup eşleşmesi). `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` cache-buster `?v=20260821-2500`.
+- Canlı tarayıcı testi yapılamadı (giriş bilgisi yok) — doğrulama kod/test seviyesinde.
+
 ## 0.0.506 - 2026-08-21 - Ana Gayrimenkul: Yapı Yaşı/Yapım Yılı/Yapı Yıpranma Payı artık gerçekten blok bazında
 
 - Kullanıcı: "yapı yaşı yapım yılı ve yapı yıpranma payı blok bazında oluşturulması gerekiyor bunları düzelt."

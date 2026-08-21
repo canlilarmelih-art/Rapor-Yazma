@@ -139,6 +139,10 @@ const functionNames = [
   "getReportThemeToken",
   "formatWordCell",
   "escapeHtml",
+  "computeTitleUnitsShareSameAdaParsel",
+  "computeTitleUnitShareOfLandArea",
+  "parseReportNumber",
+  "formatSquareMeterArea",
 ];
 
 const sandboxSource = `
@@ -581,6 +585,61 @@ function unit(overrides = {}) {
   assert.ok(html.includes("SİGORTAYA ESAS DEĞER") || html.includes("Sigortaya Esas Değer"), "Sigortaya Esas Değer başlığı HTML'de görünmeli.");
   assert.ok(html.includes("270.000") && html.includes("310.000") && html.includes("180.000"), "Yapı Değeri/Sigorta/Arsa değerleri HTML'de gözükmeli.");
   console.log("Yeni sutunlarin grup/subheader eslesmesi testi tamam.");
+}
+
+// --- 16) Kullanici talebi (2026-08-21): "her bir bagimsiz bolumun arsa --
+// pay arsa payda ve hissesine dusen arsa payi bolumlerini tablomuza
+// ekleyelim" - TUM tasinmazlar AYNI ada/parselde ise Arsa Payi/Arsa Payda/
+// Hissesine Dusen Arsa Payi sutunlari eklenir, dogru kind/degerlerle.
+{
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: {
+      blockNo: "100", parcelNo: "5", legalValue: "500.000",
+      share: "10", denominator: "100", landArea: "1000",
+    },
+    tables: {},
+    titleUnits: [unit({ blockNo: "100", parcelNo: "5", legalValue: "600.000", share: "20", denominator: "100", landArea: "1000" })],
+  });
+  const data = fns.buildValuationUnitsSummaryTableData();
+  const shareIndex = data.headers.indexOf("Arsa Payı");
+  const denominatorIndex = data.headers.indexOf("Arsa Payda");
+  const shareOfAreaIndex = data.headers.indexOf("Hissesine Düşen Arsa Payı");
+  assert.ok(shareIndex >= 0 && denominatorIndex >= 0 && shareOfAreaIndex >= 0, "AYNI ada/parselde 3 yeni sutun da bulunmali.");
+  assert.equal(data.columnMeta[shareIndex].kind, "scalar", "Arsa Payi duzenlenebilir olmali (gercek formda da oyle).");
+  assert.equal(data.columnMeta[denominatorIndex].kind, "scalar", "Arsa Payda duzenlenebilir olmali.");
+  assert.equal(data.columnMeta[shareOfAreaIndex].kind, "readonly", "Hissesine Dusen Arsa Payi turetilmis/salt-okunur olmali.");
+  assert.equal(data.rows[0][shareIndex], "10");
+  assert.equal(data.rows[0][denominatorIndex], "100");
+  assert.equal(data.rows[0][shareOfAreaIndex], "100,00 m²", "1. tasinmazin hissesine dusen arsa payi (1000/100)x10=100 m2 olmali.");
+  assert.equal(data.rows[1][shareOfAreaIndex], "200,00 m²", "2. tasinmazin hissesine dusen arsa payi (1000/100)x20=200 m2 olmali.");
+  console.log("Ayni ada/parselde Arsa Payi/Payda/Hissesine Dusen Arsa Payi sutunlari testi tamam.");
+}
+
+// --- 17) REGRESYON: FARKLI ada/parselde bu 3 sutun HIC gorunmemeli --------
+// (Tapu ozet tablosundaki AYNI gerekce - payi/paydasi farkli parsellere
+// ait tasinmazlari yan yana gostermek yaniltici olur).
+{
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: { blockNo: "100", parcelNo: "5", legalValue: "500.000", share: "10", denominator: "100", landArea: "1000" },
+    tables: {},
+    titleUnits: [unit({ blockNo: "200", parcelNo: "9", legalValue: "600.000", share: "20", denominator: "100", landArea: "800" })],
+  });
+  const data = fns.buildValuationUnitsSummaryTableData();
+  assert.ok(!data.headers.includes("Arsa Payı"), "FARKLI ada/parselde 'Arsa Payı' sutunu gorunmemeli.");
+  assert.ok(!data.headers.includes("Arsa Payda"), "FARKLI ada/parselde 'Arsa Payda' sutunu gorunmemeli.");
+  assert.ok(!data.headers.includes("Hissesine Düşen Arsa Payı"), "FARKLI ada/parselde 'Hissesine Düşen Arsa Payı' sutunu gorunmemeli.");
+  console.log("Farkli ada/parselde Arsa Payi/Payda/Hissesine Dusen Arsa Payi sutunlarinin GIZLENMESI testi tamam.");
+}
+
+// --- 18) Yeni sutunlarin subheader eslesmesi dogru (para birimi degil) ----
+{
+  assert.equal(fns.getValuationUnitsSummarySubheader("Arsa Payı"), "Arsa Payı");
+  assert.equal(fns.getValuationUnitsSummarySubheader("Arsa Payda"), "Arsa Payda");
+  assert.equal(fns.getValuationUnitsSummarySubheader("Hissesine Düşen Arsa Payı"), "Hissesine Düşen\nArsa Payı (m²)");
+  assert.equal(fns.getValuationUnitsSummaryHeaderGroup("Arsa Payı"), "Diğer");
+  console.log("Arsa Payi/Payda/Hissesine Dusen Arsa Payi subheader eslesmesi testi tamam.");
 }
 
 console.log("Tasinmazlar degerleme ozeti tablosu testleri basarili.");
