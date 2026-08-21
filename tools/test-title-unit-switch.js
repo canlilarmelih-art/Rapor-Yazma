@@ -1132,6 +1132,13 @@ assert.match(appSource, /panel\.dataset\.parcelScope = mixedParcels \? "mixed" :
       ...freshState().fields,
       buildingStyle: "Betonarme", buildingAge: "10 yıl", buildingAgeManualOverride: "1",
       socialFacilities: "Yüzme Havuzu, Spor Salonu", mainPropertyDescription: "Ana gayrimenkul metni",
+      // Kullanici takip talebi (2026-08-21): "yapi yasi yapim yili ve yapi
+      // yipranma payi blok bazinda olusturulmasi gerekiyor" - bu 5 alan da
+      // artik getBuildingSectionFieldKeys()'te (once "explanations"
+      // bolumunde deklaratif ama HIC scoped OLMAYAN bir kopyalari vardi).
+      buildingConstructionYear: "2015", buildingCompletionDate: "01.01.2015",
+      buildingCompletionExplanation: "Yapi bitis aciklamasi", buildingDepreciationType: "Betonarme",
+      buildingDepreciationRate: "%10",
     },
   });
   sandbox.setState(state);
@@ -1142,12 +1149,16 @@ assert.match(appSource, /panel\.dataset\.parcelScope = mixedParcels \? "mixed" :
   assert.equal(secondUnit.fields.buildingAge, undefined, "REGRESYON: 2. tasinmaza buildingAge SIZMAMALI.");
   assert.equal(secondUnit.fields.socialFacilities, undefined, "REGRESYON: 2. tasinmaza socialFacilities SIZMAMALI.");
   assert.equal(secondUnit.fields.mainPropertyDescription, undefined, "REGRESYON: 2. tasinmaza mainPropertyDescription SIZMAMALI.");
+  assert.equal(secondUnit.fields.buildingConstructionYear, undefined, "REGRESYON: 2. tasinmaza buildingConstructionYear (Yapim Yili) SIZMAMALI.");
+  assert.equal(secondUnit.fields.buildingDepreciationRate, undefined, "REGRESYON: 2. tasinmaza buildingDepreciationRate (Yipranma Payi) SIZMAMALI.");
 
   sandbox.fns.switchActiveTitleUnit(0);
   const primaryAgain = sandbox.getState();
   assert.equal(primaryAgain.fields.buildingStyle, "Betonarme", "Birincilin buildingStyle'i round-trip korunmali.");
   assert.equal(primaryAgain.fields.buildingAgeManualOverride, "1", "Birincilin buildingAgeManualOverride bayragi korunmali.");
   assert.equal(primaryAgain.fields.mainPropertyDescription, "Ana gayrimenkul metni", "Birincilin mainPropertyDescription'i round-trip korunmali.");
+  assert.equal(primaryAgain.fields.buildingConstructionYear, "2015", "Birincilin buildingConstructionYear'i round-trip korunmali.");
+  assert.equal(primaryAgain.fields.buildingDepreciationRate, "%10", "Birincilin buildingDepreciationRate'i round-trip korunmali.");
   console.log("Ana Gayrimenkul (building) programatik alanlari artik sizmiyor (round-trip) testi tamam.");
 }
 

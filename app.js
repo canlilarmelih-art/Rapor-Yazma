@@ -2154,6 +2154,20 @@ function applyUnitDataToSelectedTitleUnits(targetIndices) {
 // (temel depo) — bloklar arası paylaşım ayrıca syncBuildingSharedDataToBlockSiblings()
 // ile (Kat İrtifakı + Çoklu Talep + birden fazla blok varken) sağlanır,
 // bkz. aşağıdaki BUILDING_BLOCK_SHARED_FIELD_KEYS.
+// Kullanıcı talebi (2026-08-21): "yapı yaşı yapım yılı ve yapı yıpranma
+// payı blok bazında oluşturulması gerekiyor" — bu 3 alan (+ birlikte
+// hesaplanan buildingCompletionDate/buildingCompletionExplanation/
+// buildingDepreciationType) `refreshBuildingCompletionFromCurrentFields()`/
+// `refreshBuildingDepreciationFromCurrentFields()` tarafından "explanations"
+// bölümünün DEKLARATİF (ama TITLE_UNIT_SCOPED_SECTION_IDS'te OLMAYAN,
+// dolayısıyla scoping'e hiç katılmayan) alanlarına yazılıyordu — bu yüzden
+// ne taşınmaza-özgüydüler NE DE blok bazında paylaşımlıydılar, tamamen
+// rapor-geneli PAYLAŞIMLIYDI (aktif taşınmazın KENDİ "Belgeler ve Proje"
+// tablosundan her render'da yeniden hesaplanıp state.fields'a yazılıyor,
+// başka hiçbir taşınmaza yansımıyordu). Buraya eklenmeleri onları hem
+// varsayılan olarak taşınmaza-özgü yapar HEM DE getBuildingBlockSharedFieldKeys()
+// (aşağıda, bu listeyi AYNEN kullanıyor) üzerinden syncBuildingSharedDataToBlockSiblings()'in
+// kapsamına sokar.
 function getBuildingSectionFieldKeys() {
   const section = sections.find((item) => item.id === "building");
   const keys = (section?.fields || [])
@@ -2167,6 +2181,8 @@ function getBuildingSectionFieldKeys() {
     "socialFacilities", "buildingBlockCount", "buildingSubjectBlockPosition",
     "buildingFloorCounts", "totalFloors", "totalUnits",
     "mainPropertyFloorSummary", "mainPropertyDescription", "mainPropertyFloorCountText",
+    "buildingConstructionYear", "buildingCompletionDate", "buildingCompletionExplanation",
+    "buildingDepreciationType", "buildingDepreciationRate",
   ];
 }
 
@@ -5000,6 +5016,16 @@ function createForm(section) {
       refreshClimateEarthquakeExplanationFromCurrentFields(field.key);
       refreshInsuranceConstructionCostFromCurrentFields(field.key);
       refreshBuildingDepreciationFromCurrentFields(field.key);
+      // Kullanıcı talebi (2026-08-21): "yapı yıpranma payı blok bazında
+      // oluşturulması gerekiyor" — refreshMainPropertyDescriptionFromCurrentFields(field.key)
+      // (yukarıda) "buildingStyle" değiştiğinde ZATEN syncBuildingSharedDataToBlockSiblings()
+      // çağırıyor, AMA bu, yıpranma oranının YUKARIDAKİ satırda henüz
+      // yeniden hesaplanmasından ÖNCE oluyor — bu yüzden ESKİ yıpranma
+      // değeri senkronlanıyordu. Burada, gerçek hesaplama TAMAMLANDIKTAN
+      // SONRA, yalnızca GERÇEKTEN ilgili bir alan değiştiğinde tekrar
+      // senkronlanır (aynı guard koşulu, refreshBuildingDepreciationFromCurrentFields'in
+      // kendi iç guard'ıyla TUTARLI).
+      if (["buildingAge", "buildingCompletionDate", "buildingStyle"].includes(field.key)) syncBuildingSharedDataToBlockSiblings();
       refreshZiraatExplanationSectionsFromCurrentFields(field.key);
       if (["legalUsageNature", "currentUsageNature", "projectInstitution"].includes(field.key)) {
         refreshValuationMethodExplanation();
@@ -5118,6 +5144,16 @@ function createForm(section) {
       refreshClimateEarthquakeExplanationFromCurrentFields(field.key);
       refreshInsuranceConstructionCostFromCurrentFields(field.key);
       refreshBuildingDepreciationFromCurrentFields(field.key);
+      // Kullanıcı talebi (2026-08-21): "yapı yıpranma payı blok bazında
+      // oluşturulması gerekiyor" — refreshMainPropertyDescriptionFromCurrentFields(field.key)
+      // (yukarıda) "buildingStyle" değiştiğinde ZATEN syncBuildingSharedDataToBlockSiblings()
+      // çağırıyor, AMA bu, yıpranma oranının YUKARIDAKİ satırda henüz
+      // yeniden hesaplanmasından ÖNCE oluyor — bu yüzden ESKİ yıpranma
+      // değeri senkronlanıyordu. Burada, gerçek hesaplama TAMAMLANDIKTAN
+      // SONRA, yalnızca GERÇEKTEN ilgili bir alan değiştiğinde tekrar
+      // senkronlanır (aynı guard koşulu, refreshBuildingDepreciationFromCurrentFields'in
+      // kendi iç guard'ıyla TUTARLI).
+      if (["buildingAge", "buildingCompletionDate", "buildingStyle"].includes(field.key)) syncBuildingSharedDataToBlockSiblings();
       refreshZiraatExplanationSectionsFromCurrentFields(field.key);
       if (["legalUsageNature", "currentUsageNature", "projectInstitution"].includes(field.key)) {
         refreshValuationMethodExplanation();
@@ -6143,6 +6179,19 @@ function refreshBuildingDepreciationFromCurrentFields(changedKey = "") {
     const control = document.querySelector(`[data-field="${key}"]`);
     if (control && control.value !== state.fields[key]) control.value = state.fields[key] || "";
   });
+  // NOT: buraya koşulsuz bir syncBuildingSharedDataToBlockSiblings() çağrısı
+  // BİLEREK EKLENMEDİ — bu fonksiyon `createBuildingDepreciationRatePanel()`
+  // (salt RENDER anında) ve `refreshValuationComputedFields()` gibi
+  // "değişiklik YOK, yalnızca görüntüleme/periyodik yeniden hesaplama"
+  // noktalarından da çağrılıyor; oraya sync eklemek, henüz kendi blok
+  // paylaşımını almamış YENİ/BOŞ bir taşınmazın salt görüntülenmesinin
+  // (boş buildingAge → yanlış düşük yıpranma oranı hesaplayıp) bloktaki
+  // ZATEN DOĞRU değeri EZMESİNE yol açardı. Bunun yerine sync, YALNIZCA
+  // gerçek bir DEĞİŞİKLİK noktasında (kullanıcının Yapı Yaşı/Yapı Tarzı
+  // alanını GERÇEKTEN değiştirdiği an) çağrılır — bkz. çağıranlar:
+  // commitBuildingAgeOverride() (zaten senkronluyordu), genel form hub'ının
+  // "buildingStyle" dalı (aşağıda eklendi), refreshBuildingCompletionFromCurrentFields()
+  // (belge tarihi bulunduğunda, aşağıda eklendi).
 }
 
 function createBuildingDepreciationRatePanel() {
@@ -25815,6 +25864,18 @@ function refreshBuildingCompletionFromCurrentFields() {
       control.value = state.fields[key] || "";
     }
   });
+  // Kullanıcı talebi (2026-08-21): "yapı yaşı yapım yılı ... blok bazında
+  // oluşturulması gerekiyor" — bu fonksiyon `createBuildingReadOnlyField()`
+  // ÜZERİNDEN her render'da KOŞULSUZ çalışıyor (aktif taşınmazın KENDİ
+  // "Belgeler ve Proje" tablosundan), ama şimdiye kadar bloktaki diğer
+  // taşınmazlara HİÇ yansımıyordu (commitBuildingAgeOverride'ın manuel
+  // düzenleme yolu zaten senkronluyordu, ama bu OTOMATİK türetme yolu
+  // unutulmuştu). Yalnızca GERÇEK bir belge tarihi bulunduğunda
+  // (result.isoDate dolu) senkronlanır — aksi halde "Belirsiz" durumundaki
+  // BOŞ bir taşınmazın salt görüntülenmesi (render), bloktaki ZATEN doğru
+  // hesaplanmış değerleri SESSİZCE SİLMEZ (bilinen tek-yönlü paylaşım
+  // riski, diğer blok-senkron noktalarıyla AYNI sınıf — dokümante edilir).
+  if (result.isoDate) syncBuildingSharedDataToBlockSiblings();
 }
 
 function calculateBuildingCompletionFromReviewedDocuments() {

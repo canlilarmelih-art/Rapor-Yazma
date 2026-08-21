@@ -245,4 +245,72 @@ function freshState(overrides = {}) {
   console.log("renderSection building blok-tab gate kaynak-duzeyi kablolama testi tamam.");
 }
 
+// --- 7) Kullanici talebi (2026-08-21): "yapi yasi yapim yili ve yapi ------
+// yipranma payi blok bazinda olusturulmasi gerekiyor" - bu 5 alan
+// (buildingConstructionYear/buildingCompletionDate/buildingCompletionExplanation/
+// buildingDepreciationType/buildingDepreciationRate) artik
+// getBuildingSectionFieldKeys()'te VE syncBuildingSharedDataToBlockSiblings()'in
+// kopyaladigi alanlar arasinda.
+{
+  const keys = fns.getBuildingSectionFieldKeys();
+  ["buildingConstructionYear", "buildingCompletionDate", "buildingCompletionExplanation",
+    "buildingDepreciationType", "buildingDepreciationRate"].forEach((key) => {
+    assert.ok(keys.includes(key), `"${key}" getBuildingSectionFieldKeys()'te OLMALI (blok bazli paylasim icin).`);
+  });
+
+  fns.setState(freshState({
+    fields: {
+      requestType: "Çoklu Talep", ownershipType: "Yatay Kat İrtifakı",
+      blockNo: "100", parcelNo: "1", titleBlockName: "A Blok",
+      buildingConstructionYear: "2015", buildingCompletionDate: "01.01.2015",
+      buildingCompletionExplanation: "A Blok icin yapi bitis tarihi aciklamasi.",
+      buildingDepreciationType: "Betonarme", buildingDepreciationRate: "%10",
+    },
+    tables: {},
+    titleUnits: [
+      { fields: { blockNo: "100", parcelNo: "1", titleBlockName: "A Blok", buildingConstructionYear: "ESKI-YIL", buildingDepreciationRate: "ESKI-ORAN" }, tables: {} },
+      { fields: { blockNo: "100", parcelNo: "1", titleBlockName: "B Blok", buildingConstructionYear: "B-BLOK-YILI", buildingDepreciationRate: "B-BLOK-ORANI" }, tables: {} },
+    ],
+  }));
+  fns.syncBuildingSharedDataToBlockSiblings();
+  const state = fns.getState();
+  assert.equal(state.titleUnits[0].fields.buildingConstructionYear, "2015", "Ayni bloktaki uyeye buildingConstructionYear (Yapim Yili) kopyalanmali.");
+  assert.equal(state.titleUnits[0].fields.buildingCompletionDate, "01.01.2015", "Ayni bloktaki uyeye buildingCompletionDate kopyalanmali.");
+  assert.equal(state.titleUnits[0].fields.buildingCompletionExplanation, "A Blok icin yapi bitis tarihi aciklamasi.", "Ayni bloktaki uyeye buildingCompletionExplanation kopyalanmali.");
+  assert.equal(state.titleUnits[0].fields.buildingDepreciationType, "Betonarme", "Ayni bloktaki uyeye buildingDepreciationType kopyalanmali.");
+  assert.equal(state.titleUnits[0].fields.buildingDepreciationRate, "%10", "Ayni bloktaki uyeye buildingDepreciationRate (Yipranma Payi) kopyalanmali.");
+  assert.equal(state.titleUnits[1].fields.buildingConstructionYear, "B-BLOK-YILI", "FARKLI bloktaki uye senkrondan ETKILENMEMELI.");
+  assert.equal(state.titleUnits[1].fields.buildingDepreciationRate, "B-BLOK-ORANI", "FARKLI bloktaki uyenin KENDI yipranma orani degismemeli.");
+  console.log("Yapi Yasi/Yapim Yili/Yapi Yipranma Payi blok bazli paylasim testi tamam.");
+}
+
+// --- 8) refreshBuildingDepreciationFromCurrentFields()'a KOSULSUZ bir -----
+// syncBuildingSharedDataToBlockSiblings() cagrisi EKLENMEDIGI kaynak-duzeyinde
+// dogrulanir (bilinclii tasarim karari - render-tetiklemeli asiri-senkron
+// riskini onlemek icin, bkz. fonksiyonun kendi ic yorumu). Bunun yerine
+// sync, YALNIZCA gercek degisiklik noktalarinda (commitBuildingAgeOverride,
+// genel form hub'inin buildingAge/buildingCompletionDate/buildingStyle
+// dallari, refreshBuildingCompletionFromCurrentFields'in belge-bulundu
+// dali) cagrilir.
+{
+  const fnStart = appSource.indexOf("\nfunction refreshBuildingDepreciationFromCurrentFields(");
+  assert(fnStart >= 0, "refreshBuildingDepreciationFromCurrentFields bulunamadi.");
+  const bodyEnd = appSource.indexOf("\nfunction createBuildingDepreciationRatePanel(", fnStart);
+  assert(bodyEnd >= 0, "createBuildingDepreciationRatePanel bulunamadi (fonksiyon siniri).");
+  const body = appSource.slice(fnStart, bodyEnd);
+  assert.doesNotMatch(
+    body,
+    /\n\s*syncBuildingSharedDataToBlockSiblings\(\);\s*\n\}/,
+    "refreshBuildingDepreciationFromCurrentFields() KOSULSUZ senkron cagirmamali (render-tetiklemeli asiri-senkron riski)."
+  );
+  console.log("refreshBuildingDepreciationFromCurrentFields kosulsuz-senkron-yok kaynak-duzeyi regresyon testi tamam.");
+
+  assert.match(
+    appSource,
+    /if \(result\.isoDate\) syncBuildingSharedDataToBlockSiblings\(\);\s*\n\}/,
+    "refreshBuildingCompletionFromCurrentFields() belge tarihi bulundugunda (result.isoDate) senkron cagirmiyor."
+  );
+  console.log("refreshBuildingCompletionFromCurrentFields guardli senkron kaynak-duzeyi kablolama testi tamam.");
+}
+
 console.log("Ana Gayrimenkul Ozellikleri blok bazli paylasim/tab yapisi testleri basarili.");
