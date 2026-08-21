@@ -1,5 +1,16 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.504 - 2026-08-21 - Yapı Değeri sütun grubuna Alan eklendi, sıra panelin gerçek formülüyle eşleşti
+
+- Kullanıcı (0.0.503'ün hemen ardından): "yasal ve mevcut yapı değeri yani kullanım alanı x yapı birim değeri x yıpranma payı x inşaat seviye formülü ile ulaşılan sonuçta yer almalı."
+- 0.0.503'te Değerleme özet tablosuna eklenen Yapı Değeri sütun grubu (Yasal + Mevcut) Alan'ı BİLİNÇLİ OLARAK dışarıda bırakmıştı (kullanıcının ilk mesajı yalnızca Birim Değeri/İnşaat Seviyesi/Yıpranma Payı/Değer'i saymıştı). Kullanıcı şimdi formülün TÜM bileşenlerini (kullanım alanı dahil) net biçimde sayarak Alan'ın da sütun olarak bulunması gerektiğini belirtti.
+- **Alan sütunu eklendi** (`legalBuildingValueArea`/`currentBuildingValueArea`, "readonly" — gerçek Yapı Değeri panelinde de salt-okunur, `syncBuildingValueDefaults()` tarafından otomatik doldurulur).
+- **Sütun sırası panelin GERÇEK sırasıyla hizalandı**: `createValuationBuildingValueTable()`'ın DOM'a ekleme sırası incelendiğinde (`insertBefore` çağrılarının GERÇEK etkisi) panel sırasının Alan → Yapı Birim Değeri → Yıpranma Payı → İnşaat Seviyesi → Yapı Değeri olduğu doğrulandı (0.0.503'te yanlışlıkla İnşaat Seviyesi, Yıpranma Payı'ndan ÖNCE sıralanmıştı) — özet tablo artık BİREBİR aynı sırayı kullanıyor, kullanıcının bu son mesajdaki sıralamasıyla da (alan, birim değeri, yıpranma payı, inşaat seviyesi) örtüşüyor.
+- `getValuationUnitsSummarySubheader()`'a yeni kod GEREKMEDİ — " - Alan" soneki zaten genel bir kural olarak vardı (Piyasa Değeri satırlarının Alan sütunuyla paylaşılıyor), Yapı Değeri'nin Alan sütunu da otomatik doğru alt-başlığı (`Alan (m²)`) alıyor.
+- Test: `tools/test-valuation-units-summary-table.js`'in 14/15. senaryoları Alan sütununun varlığı/kind/değeri + TAM sütun sırası (Alan < Birim Değeri < Yıpranma Payı < İnşaat Seviyesi < Değer) doğrulayacak şekilde genişletildi. `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` cache-buster `?v=20260821-2200`.
+- Canlı tarayıcı testi yapılamadı (giriş bilgisi yok) — doğrulama kod/test seviyesinde.
+
 ## 0.0.503 - 2026-08-21 - Değerleme özetinde Acil Satış Değeri kaldırıldı, Yapı Değeri/Sigorta/Arsa sütunları eklendi
 
 - Kullanıcı (iki mesaj, aynı isteğin devamı — ilki yarım kesildi): "acil satış değerleri gözükmesin tabloda yasal ve mevcut. yapı birim değer..." + "yapı birim değeri inşaat seviyesi yapı yıpranma payı yapı [değeri] sigortaya esas değer arsa değeri gözüksün."

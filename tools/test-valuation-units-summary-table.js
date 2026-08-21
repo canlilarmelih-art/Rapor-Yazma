@@ -34,12 +34,17 @@
 //     getValuationUnitsSummarySubheader'ın varsayılan para-birimi dalına
 //     düşmemeli).
 //
-// Kullanıcı takip talebi (2026-08-21): "acil satış değerleri gözükmesin
-// tabloda yasal ve mevcut. yapı birim değeri inşaat seviyesi yapı yıpranma
-// payı yapı [değeri] sigortaya esas değer arsa değeri gözüksün":
+// Kullanıcı takip talebi (2026-08-21, iki mesaj): "acil satış değerleri
+// gözükmesin tabloda yasal ve mevcut. yapı birim değeri inşaat seviyesi
+// yapı yıpranma payı yapı [değeri] sigortaya esas değer arsa değeri
+// gözüksün" + "yasal ve mevcut yapı değeri yani kullanım alanı x yapı
+// birim değeri x yıpranma payı x inşaat seviye formülü ile ulaşılan
+// sonuçta yer almalı":
 // 14) Acil Satış Değeri sütunları ARTIK YOK (regresyon). Yapı Değeri
-//     (Yapı Birim Değeri/İnşaat Seviyesi/Yıpranma Payı/Yapı Değeri, Yasal
-//     VE Mevcut) + Sigortaya Esas Değer + Arsa Değeri sütunları eklendi,
+//     formülünün TÜM bileşenleri (Alan/Yapı Birim Değeri/Yıpranma Payı/
+//     İnşaat Seviyesi, panelin GERÇEK sırasıyla) + formülün SONUCU (Yapı
+//     Değeri, Yasal VE Mevcut) + Sigortaya Esas Değer + Arsa Değeri
+//     sütunları eklendi,
 //     doğru kind ("scalar"/"readonly") ve değerlerle.
 // 15) Yeni sütunların grup/subheader eşleşmesi doğru: "Yasal Yapı Değeri"/
 //     "Mevcut Yapı Değeri" KENDİ grup başlıklarını alır (genel "Yasal/
@@ -493,8 +498,8 @@ function unit(overrides = {}) {
     activeTitleUnitIndex: 0,
     fields: {
       legalValue: "500.000", legalUrgentSaleValue: "450.000", currentUrgentSaleValue: "500.000",
-      legalBuildingUnitCost: "3.000", legalBuildingConstructionLevel: "100", legalBuildingDepreciationRate: "10", legalBuildingValue: "270.000",
-      currentBuildingUnitCost: "3.200", currentBuildingConstructionLevel: "100", currentBuildingDepreciationRate: "8", currentBuildingValue: "294.400",
+      legalBuildingValueArea: "100", legalBuildingUnitCost: "3.000", legalBuildingConstructionLevel: "100", legalBuildingDepreciationRate: "10", legalBuildingValue: "270.000",
+      currentBuildingValueArea: "100", currentBuildingUnitCost: "3.200", currentBuildingConstructionLevel: "100", currentBuildingDepreciationRate: "8", currentBuildingValue: "294.400",
       insuranceValue: "310.000", landValue: "180.000",
     },
     tables: {},
@@ -507,15 +512,24 @@ function unit(overrides = {}) {
   const buildingRows = fns.getBuildingValueRows();
   assert.deepEqual(buildingRows.map((r) => r.label), ["Yasal Yapı Değeri", "Mevcut Yapı Değeri"]);
 
+  // Kullanıcı takip talebi (2026-08-21): "yani kullanım alanı x yapı birim
+  // değeri x yıpranma payı x inşaat seviye formülü ile ulaşılan sonuçta
+  // yer almalı" — formülün TÜM bileşenleri (Alan dahil) sütun olarak
+  // bulunmalı, panelin GERÇEK sırasıyla (Alan, Birim Değeri, Yıpranma
+  // Payı, İnşaat Seviyesi, Değer — bkz. createValuationBuildingValueTable).
+  const legalAreaIndex = data.headers.indexOf("Yasal Yapı Değeri - Alan");
   const legalUnitCostIndex = data.headers.indexOf("Yasal Yapı Değeri - Yapı Birim Değeri");
-  const legalLevelIndex = data.headers.indexOf("Yasal Yapı Değeri - İnşaat Seviyesi");
   const legalDepreciationIndex = data.headers.indexOf("Yasal Yapı Değeri - Yıpranma Payı");
+  const legalLevelIndex = data.headers.indexOf("Yasal Yapı Değeri - İnşaat Seviyesi");
   const legalBuildingTotalIndex = data.headers.indexOf("Yasal Yapı Değeri");
-  assert.ok(legalUnitCostIndex >= 0 && legalLevelIndex >= 0 && legalDepreciationIndex >= 0 && legalBuildingTotalIndex >= 0, "Yasal Yapı Değeri sütunlarının tümü bulunmalı.");
+  assert.ok(legalAreaIndex >= 0 && legalUnitCostIndex >= 0 && legalDepreciationIndex >= 0 && legalLevelIndex >= 0 && legalBuildingTotalIndex >= 0, "Yasal Yapı Değeri formülünün TÜM sütunları (Alan dahil) bulunmalı.");
+  assert.ok(legalAreaIndex < legalUnitCostIndex && legalUnitCostIndex < legalDepreciationIndex && legalDepreciationIndex < legalLevelIndex && legalLevelIndex < legalBuildingTotalIndex, "Sütun sırası panelin GERÇEK sırasıyla (Alan, Birim Değeri, Yıpranma Payı, İnşaat Seviyesi, Değer) aynı olmalı.");
+  assert.equal(data.columnMeta[legalAreaIndex].kind, "readonly", "Alan sütunu salt-okunur olmalı (gerçek formda da öyle).");
   assert.equal(data.columnMeta[legalUnitCostIndex].kind, "scalar", "Yapı Birim Değeri düzenlenebilir olmalı (gerçek formda da öyle).");
   assert.equal(data.columnMeta[legalLevelIndex].kind, "readonly", "İnşaat Seviyesi salt-okunur olmalı (gerçek formda da öyle).");
   assert.equal(data.columnMeta[legalDepreciationIndex].kind, "scalar", "Yıpranma Payı düzenlenebilir olmalı (gerçek formda da öyle).");
   assert.equal(data.columnMeta[legalBuildingTotalIndex].kind, "readonly", "Yapı Değeri (toplam) salt-okunur olmalı (gerçek formda da öyle).");
+  assert.equal(data.rows[0][legalAreaIndex], "100");
   assert.equal(data.rows[0][legalUnitCostIndex], "3.000");
   assert.equal(data.rows[0][legalBuildingTotalIndex], "270.000");
 
@@ -535,6 +549,7 @@ function unit(overrides = {}) {
 
 // --- 15) Yeni sütunların grup/subheader eşleşmesi doğru. ------------------
 {
+  assert.equal(fns.getValuationUnitsSummaryHeaderGroup("Yasal Yapı Değeri - Alan"), "Yasal Yapı Değeri");
   assert.equal(fns.getValuationUnitsSummaryHeaderGroup("Yasal Yapı Değeri - Yapı Birim Değeri"), "Yasal Yapı Değeri");
   assert.equal(fns.getValuationUnitsSummaryHeaderGroup("Yasal Yapı Değeri"), "Yasal Yapı Değeri");
   assert.equal(fns.getValuationUnitsSummaryHeaderGroup("Mevcut Yapı Değeri - İnşaat Seviyesi"), "Mevcut Yapı Değeri");
@@ -542,6 +557,7 @@ function unit(overrides = {}) {
   assert.equal(fns.getValuationUnitsSummaryHeaderGroup("Sigortaya Esas Değer"), "Diğer");
   assert.equal(fns.getValuationUnitsSummaryHeaderGroup("Arsa Değeri"), "Diğer");
 
+  assert.equal(fns.getValuationUnitsSummarySubheader("Yasal Yapı Değeri - Alan"), "Alan\n(m²)");
   assert.equal(fns.getValuationUnitsSummarySubheader("Yasal Yapı Değeri - Yapı Birim Değeri"), "Yapı Birim Değeri\n(TL/m²)");
   assert.equal(fns.getValuationUnitsSummarySubheader("Yasal Yapı Değeri - İnşaat Seviyesi"), "İnşaat Seviyesi\n(%)");
   assert.equal(fns.getValuationUnitsSummarySubheader("Mevcut Yapı Değeri - Yıpranma Payı"), "Yıpranma Payı\n(%)");
@@ -554,7 +570,7 @@ function unit(overrides = {}) {
     activeTitleUnitIndex: 0,
     fields: {
       legalValue: "500.000",
-      legalBuildingUnitCost: "3.000", legalBuildingConstructionLevel: "100", legalBuildingDepreciationRate: "10", legalBuildingValue: "270.000",
+      legalBuildingValueArea: "100", legalBuildingUnitCost: "3.000", legalBuildingConstructionLevel: "100", legalBuildingDepreciationRate: "10", legalBuildingValue: "270.000",
       insuranceValue: "310.000", landValue: "180.000",
     },
     tables: {},

@@ -6637,18 +6637,22 @@ const VALUATION_UNITS_TABLE_IDENTITY_DEFS = [
   { key: "unitNo", label: "BB No" },
 ];
 
-// Kullanıcı takip talebi (2026-08-21): "yapı birim değeri inşaat seviyesi
-// yapı yıpranma payı yapı [değeri] sigortaya esas değer arsa değeri
-// gözüksün" — Yapı Değeri panelinin (createValuationBuildingValueTable,
+// Kullanıcı takip talebi (2026-08-21, iki mesaj): "yapı birim değeri
+// inşaat seviyesi yapı yıpranma payı yapı [değeri] sigortaya esas değer
+// arsa değeri gözüksün" + "yasal ve mevcut yapı değeri yani kullanım
+// alanı x yapı birim değeri x yıpranma payı x inşaat seviye formülü ile
+// ulaşılan sonuçta yer almalı" — Yapı Değeri panelinin (createValuationBuildingValueTable,
 // yalnızca Müstakil Bina'da dolu — diğer mülkiyet tiplerinde bu alanlar
 // boş kalacağından aşağıdaki columnHasData filtresiyle OTOMATİK kalkar)
-// Yasal/Mevcut satırlarının Yapı Birim Değeri/İnşaat Seviyesi/Yıpranma
-// Payı/Yapı Değeri sütunları + Sigortaya Esas Değer (createValuationInsuranceTable)
+// Yasal/Mevcut satırlarının TÜM formül bileşenleri (Alan/Yapı Birim
+// Değeri/Yıpranma Payı/İnşaat Seviyesi — panelin GERÇEK sütun sırasıyla
+// AYNI, bkz. createValuationBuildingValueTable) + formülün SONUCU (Yapı
+// Değeri) sütunları + Sigortaya Esas Değer (createValuationInsuranceTable)
 // + Arsa Değeri (createValuationLandTable) tekil sonuç sütunları eklendi.
 // `kind` her sütun için GERÇEK panel alanının kendi readOnly durumuyla
 // BİREBİR eşleşir (Yapı Birim Değeri + Yıpranma Payı editable/"scalar",
-// İnşaat Seviyesi + Yapı Değeri + Sigortaya Esas Değer + Arsa Değeri
-// readOnly/"readonly").
+// Alan + İnşaat Seviyesi + Yapı Değeri + Sigortaya Esas Değer + Arsa
+// Değeri readOnly/"readonly").
 function buildValuationUnitsSummaryTableData() {
   const units = buildAllTitleUnitsForSummaryTable();
   if (units.length < 2) return null;
@@ -6664,11 +6668,12 @@ function buildValuationUnitsSummaryTableData() {
     columnMeta.push({ kind: "readonly" }, { kind: "scalar", fieldKey: row.totalKey });
   });
   valuationBuildingValueRows.forEach((row) => {
-    headers.push(`${row.label} - Yapı Birim Değeri`, `${row.label} - İnşaat Seviyesi`, `${row.label} - Yıpranma Payı`, row.label);
+    headers.push(`${row.label} - Alan`, `${row.label} - Yapı Birim Değeri`, `${row.label} - Yıpranma Payı`, `${row.label} - İnşaat Seviyesi`, row.label);
     columnMeta.push(
-      { kind: "scalar", fieldKey: row.unitKey },
       { kind: "readonly" },
+      { kind: "scalar", fieldKey: row.unitKey },
       { kind: "scalar", fieldKey: row.depreciationKey },
+      { kind: "readonly" },
       { kind: "readonly" },
     );
   });
@@ -6689,9 +6694,10 @@ function buildValuationUnitsSummaryTableData() {
     });
     valuationBuildingValueRows.forEach((rowDef) => {
       row.push(
+        String(fields[rowDef.areaKey] || "").trim() || "-",
         String(fields[rowDef.unitKey] || "").trim() || "-",
-        String(fields[rowDef.levelKey] || "").trim() || "-",
         String(fields[rowDef.depreciationKey] || "").trim() || "-",
+        String(fields[rowDef.levelKey] || "").trim() || "-",
         String(fields[rowDef.totalKey] || "").trim() || "-",
       );
     });
