@@ -1925,6 +1925,73 @@ function getValuationPerUnitOnlyFieldKeys() {
   ];
 }
 
+// Kullanıcı talebi (2026-08-21): "Değerleme bölümünde Seçili Taşınmazlara
+// Kopyala butonu olsun burada zaten alan bilgisi bağımsız bölüm
+// özellikleri kısmından geliyor. kalan kısımları kullanıcı kopyalayabilsin
+// hesaplama ile ulaşılan kısımlar hariç yapı değeri zaten yapı sınıfından
+// geliyor yıpranma payı yapı yaşından geliyor bunlar otomatik gelmeli." —
+// yukarıdaki getValuationPerUnitOnlyFieldKeys() (tab-değiştirme SCOPING'i
+// için) İLE KARIŞTIRILMASIN — bu, farklı bir amaç için (KOPYALANABİLİR
+// alanlar) AYRI, çok daha DAR bir liste. Değerleme'nin geri kalan TÜM
+// alanları BİLEREK DIŞARIDA:
+//  - Alan sütunları (legalValueArea/currentValueArea/legalRentArea/
+//    currentRentArea) — syncValuationAreasFromUnitAreas() ile "unit"
+//    bölümünün KENDİ legalArea/currentArea'sından ZATEN her render'da
+//    otomatik senkronlanıyor, kopyalamaya GEREK YOK.
+//  - M2 Birim Değeri (legalValueUnit/vb.) ve Acil Satış Değeri
+//    (legalUrgentSaleValue/vb.) — HER ZAMAN hesaplanan, hiçbir zaman
+//    düzenlenemeyen (readonly) alanlar.
+//  - Yapı Değeri/Sigorta/Arsa/Şerefiye ailesi (legalBuildingValue*,
+//    insuranceValue*, landValue, legalPremium*/currentPremium*,
+//    legalCapitalizationRate/vb.) — Yapı Değeri Yapı Sınıfı'ndan (building
+//    bölümü, zaten blok bazında paylaşımlı), Yıpranma Payı Yapı Yaşı'ndan
+//    (building bölümü) otomatik hesaplanıyor (refreshValuationComputedFields
+//    → calculateBuildingValuationValue/getBuildingDepreciationRate) — bu
+//    zincir HER taşınmazın KENDİ building verisinden zaten doğru çalışıyor.
+// GERİYE KALAN, gerçekten kopyalamaya değer TEK şey: Piyasa Değeri
+// tablosunun 4 ana "Değer" alanı (legalValue/currentValue/legalRent/
+// currentRent) — bunlar comparables'tan OTOMATİK hesaplanır AMA appraiser
+// elle geçersiz kılabilir (markValuationManualField/hasUserDefinedLandMarketValue).
+// Bu yüzden değer alanları, KENDİ eşleşen "manuel geçersiz kılma"
+// bayraklarıyla (...ComparableAutoManual/...UserDefined) BİRLİKTE
+// kopyalanır — bayrak kopyalanmazsa, hedef taşınmazda bir sonraki
+// senkron değeri SESSİZCE eski (otomatik hesaplanan) haline döndürürdü.
+// Kaynak değer zaten OTOMATİK ise (bayrak boşsa), hedefte de boş kopyalanır
+// — hedef kendi comparables'ından hesaplamaya devam eder (DOĞRU davranış).
+function getValuationCopyableFieldKeys() {
+  return [
+    "legalValue", "legalValueComparableAutoManual", "legalValueUserDefined",
+    "currentValue", "currentValueComparableAutoManual", "currentValueUserDefined",
+    "legalRent", "legalRentComparableAutoManual",
+    "currentRent", "currentRentComparableAutoManual",
+  ];
+}
+
+// applyLandDataToSelectedTitleUnits()'in (app.js~1720) AYNI "aktif
+// taşınmazdan bir kez snapshot al, seçili hedeflere yaz" mekaniği —
+// Değerleme'nin land'den FARKI olan tek şey yok: hiçbir alt-tablosu
+// (unitFloors gibi) yok, TAMAMEN skaler alanlar, bu yüzden
+// resolveTitleUnitWriteTarget(index) tek başına yeterli.
+function applyValuationDataToSelectedTitleUnits(targetIndices) {
+  if (!Array.isArray(targetIndices) || !targetIndices.length) return 0;
+  const keys = getValuationCopyableFieldKeys();
+  const snapshot = {};
+  keys.forEach((key) => { snapshot[key] = state.fields[key]; });
+  const count = getTitleUnitCount();
+  const seen = new Set();
+  let appliedCount = 0;
+  targetIndices.forEach((index) => {
+    if (!Number.isInteger(index) || index < 0 || index >= count) return;
+    if (index === state.activeTitleUnitIndex) return;
+    if (seen.has(index)) return;
+    seen.add(index);
+    const targetFields = resolveTitleUnitWriteTarget(index);
+    keys.forEach((key) => { targetFields[key] = snapshot[key]; });
+    appliedCount += 1;
+  });
+  return appliedCount;
+}
+
 // Kullanıcı talebi (2026-08-20): "hangi bölümü geliştirmeye başlamalıyız"
 // sorusuna verilen eleştirel rapor cevabı — "Bağımsız Bölüm Özellikleri"
 // (unit) hiç denetlenmemişti, en yüksek riskli alandı. getImarSectionFieldKeys()/
@@ -2996,6 +3063,102 @@ function openLandCopyToSelectedModal(onDone = () => {}) {
   overlay.querySelector("[data-land-copy-target]")?.focus();
 }
 
+// Kullanıcı talebi (2026-08-21): "Değerleme bölümünde Seçili Taşınmazlara
+// Kopyala butonu olsun" — createUnitCopyToSelectedControl()/
+// createLandCopyToSelectedControl()'ün BİREBİR ikizi, doğrudan tab-çubuğu-
+// içi (title-unit-tab-copy-selected) biçimiyle inşa edilir (0.0.497/498'de
+// Unit/Land'in TAŞINDIĞI biçim — burada baştan bu şekilde). Yalnızca
+// getValuationCopyableFieldKeys()'teki 10 alanı (4 ana Değer + eşleşen
+// manuel-geçersiz-kılma bayrakları) kopyalar — alan/M2 birim/Yapı Değeri
+// ailesi BİLEREK DIŞARIDA, bkz. getValuationCopyableFieldKeys() yorumu.
+function createValuationCopyToSelectedControl() {
+  const wrap = document.createElement("span");
+  wrap.className = "title-unit-tab-copy-selected-wrap";
+
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "title-unit-tab-copy-selected";
+  button.textContent = "Seçili Taşınmazlara Kopyala";
+
+  const note = document.createElement("small");
+  note.className = "muted-note unit-copy-to-selected-note";
+
+  button.addEventListener("click", () => {
+    if (getTitleUnitCount() < 2) return;
+    openValuationCopyToSelectedModal((appliedCount) => {
+      note.textContent = appliedCount
+        ? `${appliedCount} bağımsız bölüme kopyalandı.`
+        : "Hiçbir taşınmaz seçilmedi, kopyalama yapılmadı.";
+    });
+  });
+
+  wrap.append(button, note);
+  return wrap;
+}
+
+// openLandCopyToSelectedModal()'ın (bkz. yukarıda) BİREBİR ikizi — hedef
+// alan listesi Değerleme'ye (applyValuationDataToSelectedTitleUnits)
+// uyarlanmış. Kaydet sonrası AYNI hafif tazeleme (autosave()+
+// refreshValuationUnitsSummaryTablePreview()) — Değerleme'de de zaten
+// canlı bir özet tablo var, tam render() gerekmiyor.
+function openValuationCopyToSelectedModal(onDone = () => {}) {
+  document.querySelector(".modal-overlay")?.remove();
+
+  const targets = getTitleUnitTabModels().filter((tab) => !tab.isActive);
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.innerHTML = `
+    <div class="modal-card modal-card-wide" role="dialog" aria-modal="true" aria-labelledby="valuationCopyToSelectedModalTitle">
+      <div class="modal-head">
+        <h3 id="valuationCopyToSelectedModalTitle">Değerleme Bilgilerini Kopyala</h3>
+        <button class="modal-close" type="button" aria-label="Kapat">×</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-lead">Aktif taşınmazın Yasal/Mevcut Durum Değeri ve Yasal/Mevcut Kira Değeri bilgileri (Alan, M2 Birim Değeri, Yapı Değeri, Acil Satış Değeri HARİÇ — bunlar her taşınmaz için otomatik hesaplanır) seçtiğiniz taşınmazlara kopyalanacak.</p>
+        <div class="checkbox-list">
+          ${targets.map((tab) => `
+            <label class="checkbox-row">
+              <input type="checkbox" value="${tab.index}" data-valuation-copy-target>
+              <span>${escapeHtml(tab.label)}</span>
+            </label>
+          `).join("")}
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="secondary-button" type="button" data-valuation-copy-select-all>Tümünü Seç</button>
+        <button class="secondary-button" type="button" data-valuation-copy-clear>Seçimi Temizle</button>
+        <button class="secondary-button" type="button" data-valuation-copy-cancel>Vazgeç</button>
+        <button class="primary-button" type="button" data-valuation-copy-save>Seçilenlere Kopyala</button>
+      </div>
+    </div>
+  `;
+
+  const close = () => overlay.remove();
+  overlay.querySelector(".modal-close").addEventListener("click", close);
+  overlay.querySelector("[data-valuation-copy-cancel]").addEventListener("click", close);
+  overlay.addEventListener("click", (event) => {
+    if (event.target === overlay) close();
+  });
+  overlay.querySelector("[data-valuation-copy-select-all]").addEventListener("click", () => {
+    overlay.querySelectorAll("[data-valuation-copy-target]").forEach((box) => { box.checked = true; });
+  });
+  overlay.querySelector("[data-valuation-copy-clear]").addEventListener("click", () => {
+    overlay.querySelectorAll("[data-valuation-copy-target]").forEach((box) => { box.checked = false; });
+  });
+  overlay.querySelector("[data-valuation-copy-save]").addEventListener("click", () => {
+    const selectedIndices = [...overlay.querySelectorAll("[data-valuation-copy-target]:checked")]
+      .map((box) => Number.parseInt(box.value, 10));
+    const appliedCount = applyValuationDataToSelectedTitleUnits(selectedIndices);
+    autosave();
+    refreshValuationUnitsSummaryTablePreview();
+    onDone(appliedCount);
+    close();
+  });
+
+  document.body.append(overlay);
+  overlay.querySelector("[data-valuation-copy-target]")?.focus();
+}
+
 // İmar Durumu Faz B (Çift Yönlü Düzenleme, 2026-08-16) — Tapu/Adres Özeti
 // panelleriyle (yukarıda) BİREBİR AYNI desen. Tek fark: bu tablo yalnızca
 // taşınmazlar FARKLI ada/parselde iken (isPlanningScopedByAdaParsel() true)
@@ -3127,7 +3290,7 @@ function createValuationUnitsSummaryTablePreview() {
   attachTitleUnitsSummaryTableEditing(tableContainer);
   const hint = document.createElement("p");
   hint.className = "muted-note";
-  hint.textContent = "Aktif taşınmazın hücrelerine tıklayarak doğrudan düzenleyebilirsiniz (M2 Birim Değeri ve Acil Satış Değeri sütunları salt-okunurdur — otomatik hesaplanır, kendi taşınmazının sekmesinde düzenlenir). Banka şablonlarında {{TASINMAZLARDEGERLEMETABLOSU}} olarak kullanılabilir.";
+  hint.textContent = "Aktif taşınmazın hücrelerine tıklayarak doğrudan düzenleyebilirsiniz (Blok/Bağımsız Bölüm No ile M2 Birim Değeri ve Acil Satış Değeri sütunları salt-okunurdur — otomatik hesaplanır/Tapu bölümünden gelir, kendi taşınmazının sekmesinde düzenlenir). Banka şablonlarında {{TASINMAZLARDEGERLEMETABLOSU}} olarak kullanılabilir.";
   wrap.append(hint);
   return wrap;
 }
@@ -3245,13 +3408,15 @@ function refreshUnitUnitsSummaryTablePreview() {
 function refreshTitleUnitTabBar() {
   const host = document.querySelector(".title-unit-tab-bar");
   if (!host) return;
-  // "unit"/"land" bölümlerindeyken tab çubuğunun "Seçili Taşınmazlara
-  // Kopyala" eylemini (extraActions) TAŞIMASI gerekiyor — aksi halde bu
-  // jenerik, bölüm-bağımsız tazeleme (HER hücre commit'inde tetiklenir,
-  // bkz. commitTitleUnitsSummaryCellEdit) butonu SESSİZCE kaybederdi.
+  // "unit"/"land"/"valuation" bölümlerindeyken tab çubuğunun "Seçili
+  // Taşınmazlara Kopyala" eylemini (extraActions) TAŞIMASI gerekiyor —
+  // aksi halde bu jenerik, bölüm-bağımsız tazeleme (HER hücre commit'inde
+  // tetiklenir, bkz. commitTitleUnitsSummaryCellEdit) butonu SESSİZCE
+  // kaybederdi.
   let options = {};
   if (activeSectionId === "unit") options = { extraActions: [createUnitCopyToSelectedControl()] };
   else if (activeSectionId === "land") options = { extraActions: [createLandCopyToSelectedControl()] };
+  else if (activeSectionId === "valuation") options = { extraActions: [createValuationCopyToSelectedControl()] };
   host.replaceWith(createTitleUnitTabBar(options));
 }
 
@@ -4275,8 +4440,15 @@ function renderSection() {
   // HER ZAMAN taşınmaza-özgü): 2+ taşınmaz varsa tab çubuğu + özet tablo.
   // "Tümüne uygula" butonu BİLİNÇLİ OLARAK YOK (her taşınmazın kendi
   // değeri farklı olması normal/beklenen, körü körüne kopyalama anlamsız).
+  //
+  // Kullanıcı takip talebi (2026-08-21): "Değerleme bölümünde Seçili
+  // Taşınmazlara Kopyala butonu olsun" — bu, YUKARIDAKİ "Tümüne uygula
+  // YOK" kararıyla ÇELİŞMİYOR (Unit/Land'deki AYNI ayrım): itiraz edilen
+  // "körü körüne TÜMÜNE" idi, SEÇİLEBİLİR bir alt küme kopyalama aracı
+  // (yalnızca manuel geçersiz kılınabilen 4 "Değer" alanı — bkz.
+  // getValuationCopyableFieldKeys) farklı, istenen bir şey.
   if (section.id === "valuation" && isCurrentUserAdmin() && state.fields.requestType === "Çoklu Talep") {
-    body.append(createTitleUnitTabBar());
+    body.append(createTitleUnitTabBar({ extraActions: [createValuationCopyToSelectedControl()] }));
     body.append(createValuationUnitsSummaryTablePreview());
   }
 
@@ -6406,12 +6578,21 @@ const VALUATION_UNITS_TABLE_ROW_DEFS = valuationMarketRows.map((row) => {
 // yalnızca M2 Birim Değeri `readonly` ve Kira Değeri `scalar` sütunları
 // üretilir. Yasal/Mevcut piyasa satırları ayrıca Acil Satış Değeri
 // (`readonly`) taşır.
+// Kullanıcı talebi (2026-08-21): "değerleme tablosunu sıra no sütununun
+// sağına blok ve bağımsız bölüm no sütunu koyalım" — Bağımsız Bölüm özet
+// tablosundaki (UNIT_UNITS_TABLE_FIELD_DEFS) AYNI kimlik/tanıma sütunları
+// (readonly — bunlar Tapu bölümünün kendi alanları, burada düzenlenmez).
+const VALUATION_UNITS_TABLE_IDENTITY_DEFS = [
+  { key: "titleBlockName", label: "Blok" },
+  { key: "unitNo", label: "Bağımsız Bölüm No" },
+];
+
 function buildValuationUnitsSummaryTableData() {
   const units = buildAllTitleUnitsForSummaryTable();
   if (units.length < 2) return null;
 
-  const headers = ["Sıra No"];
-  const columnMeta = [{ kind: "seq" }];
+  const headers = ["Sıra No", ...VALUATION_UNITS_TABLE_IDENTITY_DEFS.map((def) => def.label)];
+  const columnMeta = [{ kind: "seq" }, ...VALUATION_UNITS_TABLE_IDENTITY_DEFS.map(() => ({ kind: "readonly" }))];
   VALUATION_UNITS_TABLE_ROW_DEFS.forEach((row) => {
     if (row.includeArea) {
       headers.push(`${row.label} - Alan`);
@@ -6427,7 +6608,7 @@ function buildValuationUnitsSummaryTableData() {
 
   const rows = units.map((unit, index) => {
     const fields = unit.fields || {};
-    const row = [index + 1];
+    const row = [index + 1, ...VALUATION_UNITS_TABLE_IDENTITY_DEFS.map((def) => String(fields[def.key] || "").trim() || "-")];
     VALUATION_UNITS_TABLE_ROW_DEFS.forEach((rowDef) => {
       if (rowDef.includeArea) {
         row.push(String(fields[rowDef.areaKey] || "").trim() || "-");
@@ -6471,6 +6652,12 @@ function getValuationUnitsSummaryHeaderGroup(label) {
 function getValuationUnitsSummarySubheader(label) {
   const normalized = String(label || "");
   if (normalized === "Sıra No") return "No";
+  // Kullanıcı talebi (2026-08-21): "değerleme tablosunu sıra no sütununun
+  // sağına blok ve bağımsız bölüm no sütunu koyalım" — bu iki kimlik
+  // sütunu "Diğer" grubuna düşüyor (getValuationUnitsSummaryHeaderGroup)
+  // ama AŞAĞIDAKİ varsayılan ("Piyasa Değeri (TL)") YANLIŞ olurdu — bunlar
+  // parasal değer DEĞİL, metin kimlik alanları.
+  if (normalized === "Blok" || normalized === "Bağımsız Bölüm No") return normalized;
   if (normalized.endsWith(" - Alan")) return "Alan\n(m²)";
   if (normalized.endsWith(" - M2 Birim Değeri")) {
     return normalized.includes("Kira") ? "Kira M2 Birim Değeri\n(TL/m²)" : "M2 Birim Değeri\n(TL/m²)";

@@ -23,6 +23,17 @@
 //     düzenlenebilir, readonly sütunlar TIKLANAMAZ.
 //  6) Gerçek HTML üretimi: dinamik genişlik + tam ortalama.
 //  7) template-engine.js'te {{TASINMAZLARDEGERLEMETABLOSU}} kayıtlı mı.
+//
+// Kullanıcı takip talebi (2026-08-21): "değerleme tablosunu sıra no
+// sütununun sağına blok ve bağımsız bölüm no sütunu koyalım" — Bağımsız
+// Bölüm özet tablosundaki AYNI kimlik sütunları (readonly) eklendi:
+//  8) Blok/Bağımsız Bölüm No sütunları Sıra No'nun HEMEN sağında, readonly,
+//     doğru taşınmaza eşleşiyor.
+//  9) İki katmanlı HTML renderer'da (buildValuationUnitsSummaryTableHtml)
+//     bu iki sütun "Diğer" grubuna düşer AMA subheader'ları YANLIŞLIKLA
+//     "Piyasa Değeri (TL)" DEĞİL, kendi etiketleri olmalı (regresyon —
+//     getValuationUnitsSummarySubheader'ın varsayılan para-birimi dalına
+//     düşmemeli).
 
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -119,12 +130,15 @@ const sandboxSource = `
   ${extractArrayConst("valuationMarketRows")}
   ${extractArrayConst("valuationUrgentSaleRows")}
   ${extractComputedConst("VALUATION_UNITS_TABLE_ROW_DEFS")}
+  ${extractArrayConst("VALUATION_UNITS_TABLE_IDENTITY_DEFS")}
   ${functionNames.map(extractFunction).join("\n")}
   return {
     setState: (s) => { state = s; },
     buildValuationUnitsSummaryTableData, buildValuationUnitsSummaryWordTableHtml,
-    buildTitleUnitsSummaryTableHtmlEditable,
+    buildTitleUnitsSummaryTableHtmlEditable, buildValuationUnitsSummaryTableHtml,
+    getValuationUnitsSummarySubheader, getValuationUnitsSummaryHeaderGroup,
     getRowDefs: () => VALUATION_UNITS_TABLE_ROW_DEFS,
+    getIdentityDefs: () => VALUATION_UNITS_TABLE_IDENTITY_DEFS,
   };
 `;
 // eslint-disable-next-line no-new-func
@@ -139,21 +153,24 @@ function unit(overrides = {}) {
   fns.setState({
     activeTitleUnitIndex: 0,
     fields: {
+      titleBlockName: "A", unitNo: "3",
       legalValueArea: "100", legalValueUnit: "5.000", legalValue: "500.000",
       currentValueArea: "100", currentValueUnit: "5.500", currentValue: "550.000",
       legalUrgentSaleValue: "450.000", currentUrgentSaleValue: "500.000",
     },
     tables: {},
     titleUnits: [
-      unit({ legalValueArea: "120", legalValueUnit: "6.000", legalValue: "720.000", legalUrgentSaleValue: "650.000" }),
+      unit({ titleBlockName: "B", unitNo: "7", legalValueArea: "120", legalValueUnit: "6.000", legalValue: "720.000", legalUrgentSaleValue: "650.000" }),
     ],
   });
   const data = fns.buildValuationUnitsSummaryTableData();
   assert.ok(data, "2 taşınmazlı raporda tablo verisi dönmeli.");
   assert.equal(data.rows.length, 2, "2 satır (2 taşınmaz) bekleniyordu.");
   assert.equal(data.headers[0], "Sıra No", "\"Sıra No\" EN SOL sütun olmalı.");
+  assert.equal(data.headers[1], "Blok", "İkinci sütun 'Blok' olmalı (Sıra No'nun HEMEN sağı).");
+  assert.equal(data.headers[2], "Bağımsız Bölüm No", "Üçüncü sütun 'Bağımsız Bölüm No' olmalı.");
   const defs = fns.getRowDefs();
-  assert.equal(data.headers[1], `${defs[0].label} - Alan`, "İkinci sütun ilk satırın 'Alan' sütunu olmalı.");
+  assert.equal(data.headers[3], `${defs[0].label} - Alan`, "Dördüncü sütun ilk satırın 'Alan' sütunu olmalı.");
   const legalValueIndex = data.headers.indexOf("Yasal Durum Değeri");
   assert.equal(data.rows[0][legalValueIndex], "500.000", "1. taşınmazın Yasal Durum Değeri doğru sütunda olmalı.");
   assert.equal(data.rows[1][legalValueIndex], "720.000", "2. taşınmazın Yasal Durum Değeri doğru sütunda olmalı.");
@@ -289,7 +306,48 @@ function unit(overrides = {}) {
   console.log("{{TASINMAZLARDEGERLEMETABLOSU}} template-engine.js kablolama testi tamam.");
 }
 
-// --- 8) Yalnızca değerleme önizlemesi iki katmanlı renderer'ı kullanır ---
+// --- 8) Blok/Bağımsız Bölüm No sütunları Sıra No'nun HEMEN sağında, ------
+// readonly, doğru taşınmaza eşleşiyor.
+{
+  const identityDefs = fns.getIdentityDefs();
+  assert.deepEqual(identityDefs.map((d) => d.key), ["titleBlockName", "unitNo"]);
+  assert.deepEqual(identityDefs.map((d) => d.label), ["Blok", "Bağımsız Bölüm No"]);
+
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: { titleBlockName: "A", unitNo: "3", legalValue: "500.000" },
+    tables: {},
+    titleUnits: [unit({ titleBlockName: "B", unitNo: "7", legalValue: "720.000" })],
+  });
+  const data = fns.buildValuationUnitsSummaryTableData();
+  const blockIndex = data.headers.indexOf("Blok");
+  const unitNoIndex = data.headers.indexOf("Bağımsız Bölüm No");
+  assert.equal(data.columnMeta[blockIndex].kind, "readonly", "'Blok' sütunu readonly olmalı.");
+  assert.equal(data.columnMeta[unitNoIndex].kind, "readonly", "'Bağımsız Bölüm No' sütunu readonly olmalı.");
+  assert.equal(data.rows[0][blockIndex], "A", "1. taşınmazın Blok bilgisi doğru sütunda olmalı.");
+  assert.equal(data.rows[1][unitNoIndex], "7", "2. taşınmazın Bağımsız Bölüm No bilgisi doğru sütunda olmalı.");
+  console.log("Blok-Bagimsiz Bolum No kimlik sutunlari testi tamam.");
+}
+
+// --- 9) İki katmanlı HTML renderer'da Blok/BB No subheader'ı YANLIŞLIKLA -
+// "Piyasa Değeri (TL)" olmamalı (regresyon).
+{
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: { titleBlockName: "A", unitNo: "3", legalValue: "500.000" },
+    tables: {},
+    titleUnits: [unit({ titleBlockName: "B", unitNo: "7", legalValue: "720.000" })],
+  });
+  assert.equal(fns.getValuationUnitsSummarySubheader("Blok"), "Blok");
+  assert.equal(fns.getValuationUnitsSummarySubheader("Bağımsız Bölüm No"), "Bağımsız Bölüm No");
+  assert.equal(fns.getValuationUnitsSummaryHeaderGroup("Blok"), "Diğer", "'Blok' Yasal/Mevcut grubuna DEĞİL, 'Diğer'e düşmeli.");
+  const html = fns.buildValuationUnitsSummaryWordTableHtml();
+  assert.ok(html.includes(">BLOK<") || html.includes(">Blok<"), "HTML'de 'Blok' başlığı görünmeli.");
+  assert.ok(!/>BLOK<\/th>[\s\S]{0,5}PİYASA DEĞERİ/i.test(html), "'Blok' sütunu YANLIŞLIKLA 'Piyasa Değeri' alt-başlığı almamalı.");
+  console.log("Blok-BBNo subheader regresyon testi tamam.");
+}
+
+// --- 10) Yalnızca değerleme önizlemesi iki katmanlı renderer'ı kullanır --
 {
   assert.match(
     appSource,
@@ -302,6 +360,17 @@ function unit(overrides = {}) {
     "Tapu özeti değerleme tablosuna özgü renderer'a yönlendirilmemelidir."
   );
   console.log("Değerleme iki katmanlı başlık renderer kablolama testi tamam.");
+}
+
+// --- 11) renderSection() "valuation" gate'i createValuationCopyToSelectedControl()'u
+// createTitleUnitTabBar()'in extraActions'ina ekliyor mu.
+{
+  assert.match(
+    appSource,
+    /if \(section\.id === "valuation" && isCurrentUserAdmin\(\) && state\.fields\.requestType === "Çoklu Talep"\) \{\s*\n\s*body\.append\(createTitleUnitTabBar\(\{ extraActions: \[createValuationCopyToSelectedControl\(\)\] \}\)\);\s*\n\s*body\.append\(createValuationUnitsSummaryTablePreview\(\)\);\s*\n\s*\}/,
+    "renderSection() 'valuation' gate'i createValuationCopyToSelectedControl()'u extraActions'a eklemiyor."
+  );
+  console.log("renderSection valuation gate kaynak-duzeyi kablolama testi tamam.");
 }
 
 console.log("Tasinmazlar degerleme ozeti tablosu testleri basarili.");
