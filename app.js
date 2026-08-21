@@ -6760,6 +6760,25 @@ function buildValuationUnitsSummaryTableData() {
     headers.push(`${row.label} - ${row.unitLabel}`, row.label);
     columnMeta.push({ kind: "readonly" }, { kind: "scalar", fieldKey: row.totalKey });
   });
+  // Kullanıcı takip talebi (2026-08-21): "arsa değerini yapı değerin
+  // sütununun soluna al ... arsa değerini yapı değeri gibi ana başlık
+  // altında topla" — Arsa Değeri artık Yapı Değeri'nin SOLUNA (önce)
+  // yerleştirildi VE "Diğer" grubuna düşmüyor, Yapı Değeri'nin (Yasal/
+  // Mevcut Yapı Değeri) kendi grup başlığı deseninin AYNISıyla KENDİ
+  // "Arsa Değeri" grup başlığını alıyor (bkz. getValuationUnitsSummaryHeaderGroup
+  // + buildValuationUnitsSummaryTableHtml'in groupOrder'ı) — bileşenleri
+  // (Arsa Payı/Payda/Hissesine Düşen Arsa Payı) + sonucu (Arsa Değeri)
+  // TEK grupta toplanır.
+  if (showLandShareColumns) {
+    headers.push("Arsa Payı", "Arsa Payda", "Hissesine Düşen Arsa Payı");
+    columnMeta.push(
+      { kind: "scalar", fieldKey: "share" },
+      { kind: "scalar", fieldKey: "denominator" },
+      { kind: "readonly" },
+    );
+  }
+  headers.push("Arsa Değeri");
+  columnMeta.push({ kind: "readonly" });
   valuationBuildingValueRows.forEach((row) => {
     headers.push(`${row.label} - Alan`, `${row.label} - Yapı Birim Değeri`, `${row.label} - Yıpranma Payı`, `${row.label} - İnşaat Seviyesi`, row.label);
     columnMeta.push(
@@ -6770,16 +6789,11 @@ function buildValuationUnitsSummaryTableData() {
       { kind: "readonly" },
     );
   });
-  if (showLandShareColumns) {
-    headers.push("Arsa Payı", "Arsa Payda", "Hissesine Düşen Arsa Payı");
-    columnMeta.push(
-      { kind: "scalar", fieldKey: "share" },
-      { kind: "scalar", fieldKey: "denominator" },
-      { kind: "readonly" },
-    );
-  }
-  headers.push("Sigortaya Esas Değer", "Arsa Değeri");
-  columnMeta.push({ kind: "readonly" }, { kind: "readonly" });
+  // Kullanıcı takip talebi (2026-08-21, önceki mesaj): "sigortaya esas
+  // değer diğer bölümünün altında kalabilir" — bu sütun BİLİNÇLİ OLARAK
+  // "Diğer" grubunda kalıyor, kendi grup başlığını almıyor.
+  headers.push("Sigortaya Esas Değer");
+  columnMeta.push({ kind: "readonly" });
 
   const rows = units.map((unit, index) => {
     const fields = unit.fields || {};
@@ -6793,6 +6807,14 @@ function buildValuationUnitsSummaryTableData() {
         String(fields[rowDef.totalKey] || "").trim() || "-",
       );
     });
+    if (showLandShareColumns) {
+      row.push(
+        String(fields.share || "").trim() || "-",
+        String(fields.denominator || "").trim() || "-",
+        computeTitleUnitShareOfLandArea(fields),
+      );
+    }
+    row.push(String(fields.landValue || "").trim() || "-");
     valuationBuildingValueRows.forEach((rowDef) => {
       row.push(
         String(fields[rowDef.areaKey] || "").trim() || "-",
@@ -6802,17 +6824,7 @@ function buildValuationUnitsSummaryTableData() {
         String(fields[rowDef.totalKey] || "").trim() || "-",
       );
     });
-    if (showLandShareColumns) {
-      row.push(
-        String(fields.share || "").trim() || "-",
-        String(fields.denominator || "").trim() || "-",
-        computeTitleUnitShareOfLandArea(fields),
-      );
-    }
-    row.push(
-      String(fields.insuranceValue || "").trim() || "-",
-      String(fields.landValue || "").trim() || "-",
-    );
+    row.push(String(fields.insuranceValue || "").trim() || "-");
     return row;
   });
 
@@ -6844,6 +6856,13 @@ function getValuationUnitsSummaryHeaderGroup(label) {
   if (normalized.startsWith("Mevcut Yapı Değeri")) return "Mevcut Yapı Değeri";
   if (normalized.startsWith("Yasal ")) return "Yasal Durum Değeri";
   if (normalized.startsWith("Mevcut ")) return "Mevcut Durum Değeri";
+  // Kullanıcı takip talebi (2026-08-21): "arsa değerini yapı değeri gibi
+  // ana başlık altında topla" — Arsa Payı/Payda/Hissesine Düşen Arsa Payı
+  // (bileşenler) + Arsa Değeri (sonuç), Yapı Değeri'nin KENDİ grup başlığı
+  // deseninin AYNISıyla, "Diğer"e DÜŞMEDEN kendi grup başlığını alır.
+  // Sigortaya Esas Değer İSE BİLİNÇLİ OLARAK "Diğer"de kalır (kullanıcı:
+  // "sigortaya esas değer diğer bölümünün altında kalabilir").
+  if (normalized === "Arsa Payı" || normalized === "Arsa Payda" || normalized === "Hissesine Düşen Arsa Payı" || normalized === "Arsa Değeri") return "Arsa Değeri";
   return "Diğer";
 }
 
@@ -6927,7 +6946,10 @@ function buildValuationUnitsSummaryTableHtml(data, activeRowIndex, { editable = 
     groups[group].push({ label, index });
     return groups;
   }, {});
-  const groupOrder = ["Yasal Durum Değeri", "Mevcut Durum Değeri", "Yasal Yapı Değeri", "Mevcut Yapı Değeri", "Diğer"].filter((group) => groupedColumns[group]?.length);
+  // Kullanıcı takip talebi (2026-08-21): "arsa değerini yapı değerin
+  // sütununun soluna al" — "Arsa Değeri" grubu artık "Yasal/Mevcut Yapı
+  // Değeri" gruplarının HEMEN ÖNÜNDE (solunda) render ediliyor.
+  const groupOrder = ["Yasal Durum Değeri", "Mevcut Durum Değeri", "Arsa Değeri", "Yasal Yapı Değeri", "Mevcut Yapı Değeri", "Diğer"].filter((group) => groupedColumns[group]?.length);
   const orderedColumns = groupOrder.flatMap((group) => groupedColumns[group]);
   const displayIndices = [...leadingIndices, ...orderedColumns.map((col) => col.index)];
   // Kullanıcı takip talebi (2026-08-21): "sıra no blok ve bağımsız bölüm

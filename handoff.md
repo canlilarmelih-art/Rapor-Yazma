@@ -1,5 +1,15 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.508 - 2026-08-21 - Arsa Değeri, Yapı Değeri'nin soluna alındı ve kendi ana başlığını aldı
+
+- Kullanıcı: "ARSA DEĞERİNİ YAPI değerin sütununun soluna al. sigortaya esas değer diğer bölümünün altında kalabilir arsa değerini yapı değeri gibi ana başlık altında topla."
+- **Sütun sırası**: Değerleme özet tablosunda "Arsa Değeri" ailesi (Arsa Payı/Arsa Payda/Hissesine Düşen Arsa Payı + Arsa Değeri) artık "Yasal/Mevcut Yapı Değeri" gruplarının HEMEN SOLUNA (önüne) yerleşiyor — hem veri dizisi inşa sırasında (`buildValuationUnitsSummaryTableData`) hem görsel grup sırasında (`buildValuationUnitsSummaryTableHtml`'in `groupOrder`'ı).
+- **Kendi ana başlığı**: "Arsa Değeri" artık genel "Diğer" grubuna DÜŞMÜYOR — `getValuationUnitsSummaryHeaderGroup()`'a Yapı Değeri'nin AYNI deseniyle (`"Yasal Yapı Değeri"`/`"Mevcut Yapı Değeri"` özel kontrolleriyle AYNI seviyede) yeni bir `"Arsa Değeri"` grubu eklendi — bileşenleri (Arsa Payı/Payda/Hissesine Düşen Arsa Payı) + sonucu (Arsa Değeri) TEK bir colspan'lı ana başlık altında toplanıyor.
+- **Sigortaya Esas Değer BİLİNÇLİ OLARAK dokunulmadı** — kullanıcının açık talebiyle "Diğer" grubunda kalmaya devam ediyor, kendi ana başlığı YOK.
+- Test: `tools/test-valuation-units-summary-table.js`'deki eski "Arsa Değeri"/"Arsa Payı" → "Diğer" varsayımları güncellendi; yeni 19. senaryo eklendi (gerçek HTML çıktısında "ARSA DEĞERİ" grup başlığının "YASAL YAPI DEĞERİ"nin SOLUNDA render edildiğini + "Diğer"e karışmadığını doğrular). `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` cache-buster `?v=20260821-2600`.
+- Canlı tarayıcı testi yapılamadı (giriş bilgisi yok) — doğrulama kod/test seviyesinde.
+
 ## 0.0.507 - 2026-08-21 - Değerleme özetine Arsa Payı/Arsa Payda/Hissesine Düşen Arsa Payı eklendi
 
 - Kullanıcı: "güzel çalışıyor şimdi her bir bağımsız bölümün arsa pay arsa payda ve hissesine düşen arsa payı bölümlerini tablomuza ekleyelim."

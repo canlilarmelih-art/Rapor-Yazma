@@ -559,7 +559,10 @@ function unit(overrides = {}) {
   assert.equal(fns.getValuationUnitsSummaryHeaderGroup("Mevcut Yapı Değeri - İnşaat Seviyesi"), "Mevcut Yapı Değeri");
   assert.equal(fns.getValuationUnitsSummaryHeaderGroup("Yasal Durum Değeri"), "Yasal Durum Değeri", "Piyasa değeri grubu ETKİLENMEMELİ.");
   assert.equal(fns.getValuationUnitsSummaryHeaderGroup("Sigortaya Esas Değer"), "Diğer");
-  assert.equal(fns.getValuationUnitsSummaryHeaderGroup("Arsa Değeri"), "Diğer");
+  // "Arsa Değeri" ARTIK "Diğer"e düşmüyor — kendi grup başlığını alıyor
+  // (kullanıcı takip talebi: "arsa değerini yapı değeri gibi ana başlık
+  // altında topla"), bkz. senaryo 18.
+  assert.equal(fns.getValuationUnitsSummaryHeaderGroup("Arsa Değeri"), "Arsa Değeri");
 
   assert.equal(fns.getValuationUnitsSummarySubheader("Yasal Yapı Değeri - Alan"), "Alan\n(m²)");
   assert.equal(fns.getValuationUnitsSummarySubheader("Yasal Yapı Değeri - Yapı Birim Değeri"), "Yapı Birim Değeri\n(TL/m²)");
@@ -638,8 +641,41 @@ function unit(overrides = {}) {
   assert.equal(fns.getValuationUnitsSummarySubheader("Arsa Payı"), "Arsa Payı");
   assert.equal(fns.getValuationUnitsSummarySubheader("Arsa Payda"), "Arsa Payda");
   assert.equal(fns.getValuationUnitsSummarySubheader("Hissesine Düşen Arsa Payı"), "Hissesine Düşen\nArsa Payı (m²)");
-  assert.equal(fns.getValuationUnitsSummaryHeaderGroup("Arsa Payı"), "Diğer");
+  // Kullanici takip talebi (2026-08-21): "arsa degerini yapi degeri gibi
+  // ana baslik altinda topla" - Arsa Payi/Payda/Hissesine Dusen Arsa Payi
+  // (bilesenler) + Arsa Degeri (sonuc) ARTIK "Diger"e DUSMUYOR, KENDI
+  // "Arsa Degeri" grup basligini aliyor (Yapi Degeri'nin AYNI deseni).
+  assert.equal(fns.getValuationUnitsSummaryHeaderGroup("Arsa Payı"), "Arsa Değeri");
+  assert.equal(fns.getValuationUnitsSummaryHeaderGroup("Arsa Payda"), "Arsa Değeri");
+  assert.equal(fns.getValuationUnitsSummaryHeaderGroup("Hissesine Düşen Arsa Payı"), "Arsa Değeri");
   console.log("Arsa Payi/Payda/Hissesine Dusen Arsa Payi subheader eslesmesi testi tamam.");
+}
+
+// --- 19) Arsa Degeri grubu Yapi Degeri'nin SOLUNA yerlesir (kullanici ----
+// talebi: "ARSA DEĞERİNİ YAPI değerin sütununun soluna al"), Sigortaya
+// Esas Deger "Diger"de kalir (kullanici talebi: "sigortaya esas deger
+// diger bolumunun altinda kalabilir").
+{
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: {
+      blockNo: "100", parcelNo: "5", legalValue: "500.000",
+      share: "10", denominator: "100", landArea: "1000", landValue: "8.887.500",
+      legalBuildingValueArea: "100", legalBuildingUnitCost: "3.000", legalBuildingConstructionLevel: "100", legalBuildingDepreciationRate: "10", legalBuildingValue: "270.000",
+      insuranceValue: "310.000",
+    },
+    tables: {},
+    titleUnits: [unit({ blockNo: "100", parcelNo: "5", legalValue: "600.000", share: "20", denominator: "100", landArea: "1000" })],
+  });
+  const html = fns.buildValuationUnitsSummaryWordTableHtml();
+  const topThCells = [...html.matchAll(/<th[^>]*colspan[^>]*>([\s\S]*?)<\/th>/g)].map((m) => m[1]);
+  const arsaIndex = topThCells.indexOf("ARSA DEĞERİ");
+  const yasalYapiIndex = topThCells.indexOf("YASAL YAPI DEĞERİ");
+  assert.ok(arsaIndex >= 0, "'Arsa Değeri' KENDİ grup başlığını almalı (colspan'lı <th>).");
+  assert.ok(yasalYapiIndex >= 0, "'Yasal Yapı Değeri' grubu bulunmalı.");
+  assert.ok(arsaIndex < yasalYapiIndex, "'Arsa Değeri' grubu 'Yasal Yapı Değeri'nin SOLUNDA (önce) olmalı.");
+  assert.ok(!topThCells.includes("DİĞER") || topThCells.indexOf("DİĞER") > arsaIndex, "'Arsa Değeri' 'Diğer' grubuna KARIŞMAMALI.");
+  console.log("Arsa Degeri grubu Yapi Degeri'nin soluna yerlesme + Sigorta Diger'de kalma testi tamam.");
 }
 
 console.log("Tasinmazlar degerleme ozeti tablosu testleri basarili.");
