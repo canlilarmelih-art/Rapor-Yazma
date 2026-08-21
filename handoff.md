@@ -1,5 +1,15 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.517 - 2026-08-22 - Değerleme özet tablosuna TOPLAM satırı eklendi
+
+- Kullanıcı: "tablonun en altına toplam satırı koy" — Değerleme özet tablosunun (`buildValuationUnitsSummaryTableHtml`) EN ALTINA, tüm taşınmaz satırlarından sonra bir TOPLAM satırı eklendi (hem canlı önizleme hem Word/banka şablonu export'unda, aynı fonksiyonu paylaşıyorlar).
+- **Hangi sütunlar toplanıyor**: TL/m² TOPLAM anlamı taşıyan sütunlar — Alan (Yasal/Mevcut), Hissesine Düşen Arsa Payı, Arsa Değeri, Yasal/Mevcut Yapı Değeri (Eksik İmalat Tutarı + Yapı Değeri), Yasal/Mevcut Şerefiye, Sigortaya Esas Değer, Yasal/Mevcut Durum Değeri (Piyasa Değeri), Natamam Yasal/Mevcut Durum Değeri, Yasal/Mevcut Kira Değeri.
+- **Hangi sütunlar toplanMIYOR (bilinçli olarak boş bırakılır)**: birim fiyat/oran sütunları (Arsa Birim Değeri, Yapı Birim Değeri, Yıpranma Payı, İnş. Sev., tüm "- M2 Birim Değeri" sütunları) ve Arsa Payı/Arsa Payda (Payda her satırda AYNI değer olduğundan toplanırsa satır sayısıyla yanlışlıkla çarpılmış olurdu, Payı da tek başına anlamlı bir toplam değil) — yeni `isValuationUnitsSummaryColumnSummable(label)` bunu belirliyor.
+- Negatif toplam (ör. Şerefiye toplamı eksi çıkarsa) 0.0.516'daki AYNI kırmızı işaretlemeyi (`#b91c1c`) taşıyor. TOPLAM satırındaki hücreler `editable:true` modunda bile düzenlenebilir (`tus-editable-cell`) İŞARETLENMİYOR — bir toplamı elle değiştirmek anlamsız.
+- Test: `tools/test-valuation-units-summary-table.js`'e yeni 28. senaryo (gerçek HTML çıktısı üzerinden: TOPLAM etiketinin tbody'nin en sonunda olduğunu, doğru toplamların (Alan, Durum Değeri) göründüğünü, negatif toplamın kırmızı olduğunu, birim-fiyat sütununun (Arsa Birim Değeri) TOPLANMADIĞINI, hücrelerin düzenlenemez kaldığını doğrular) + `isValuationUnitsSummaryColumnSummable`'ın saf-fonksiyon tablo testi. `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` cache-buster `?v=20260822-0400`.
+- Canlı tarayıcı testi yapılamadı (giriş bilgisi yok) — kullanıcının canlıda kontrol etmesi istenir.
+
 ## 0.0.516 - 2026-08-22 - landUnitValue paylaşımı özet tabloda GERÇEKTEN çalışıyor + negatif değerler kırmızı
 
 - Kullanıcı: "arsa m2 birim değeri bir taşınmazda ne seçildi ise tüm taşınmazlara otomatik uygulanmalıydı. bu hala olmuyor." — 0.0.500'de kurulan paylaşım (Kat İrtifakı'nda `landUnitValue` `getTitleUnitScopedFieldKeys()`'ten ÇIKARILIP tek kaynağa (`state.fields`) indirgenmişti) canlı panelde çalışıyordu ama ÇOK-TAŞINMAZLI ÖZET TABLOLARDA (bkz. 0.0.514'te eklenen "Arsa Birim Değeri" Parametreler sütunu) hiç çalışmıyordu.

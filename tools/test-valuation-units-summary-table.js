@@ -101,6 +101,9 @@ const functionNames = [
   "getValuationUnitsSummaryHeaderGroup",
   "getValuationUnitsSummarySubheader",
   "getValuationUnitsSummaryGroupDisplayLabel",
+  // Toplam satırı (2026-08-22) icin -  buildValuationUnitsSummaryTableHtml
+  // artik hangi sutunlarin toplanabilir oldugunu bununla belirliyor.
+  "isValuationUnitsSummaryColumnSummable",
   "buildValuationUnitsSummaryTableHtml",
   "buildValuationUnitsSummaryWordTableHtml",
   "splitTableHeaderLabelIntoTwoLines",
@@ -147,6 +150,7 @@ const sandboxSource = `
     buildTitleUnitsSummaryTableHtmlEditable, buildValuationUnitsSummaryTableHtml,
     getValuationUnitsSummarySubheader, getValuationUnitsSummaryHeaderGroup,
     getValuationUnitsSummaryGroupDisplayLabel,
+    isValuationUnitsSummaryColumnSummable,
     getIdentityDefs: () => VALUATION_UNITS_TABLE_IDENTITY_DEFS,
   };
 `;
@@ -815,6 +819,49 @@ function fullFixtureFields(overrides = {}) {
     "commitTitleUnitsSummaryCellEdit() aktif olmayan bir satırda landUnitValue düzenlenince (Kat İrtifakı'nda) doğrudan state.fields.landUnitValue'ya yazmıyor."
   );
   console.log("commitTitleUnitsSummaryCellEdit landUnitValue paylasimli yazma yolu testi tamam.");
+}
+
+// --- 28) YENİ (2026-08-22, kullanıcı talebi): "tablonun en altına toplam ---
+// satırı koy" — TL/m² TOPLAMI anlamlı sütunlar (Alan, Durum Değeri vb.)
+// toplanır; birim fiyat/oran/payda sütunları (Arsa Birim Değeri gibi) boş
+// bırakılır; negatif toplam (Şerefiye) kırmızı olur; hücreler
+// düzenlenemez (editable:true olsa bile).
+{
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: fullFixtureFields({
+      legalValueArea: "120", currentValueArea: "130",
+      legalValue: "4800000", currentValue: "4900000",
+      legalPremiumValue: "-125000", currentPremiumValue: "125000",
+    }),
+    tables: {},
+    titleUnits: [unit(fullFixtureFields({
+      legalValueArea: "80", currentValueArea: "70",
+      legalValue: "3200000", currentValue: "3100000",
+      legalPremiumValue: "-50000", currentPremiumValue: "50000",
+    }))],
+  });
+  const data = fns.buildValuationUnitsSummaryTableData();
+  const html = fns.buildValuationUnitsSummaryTableHtml(data, 0, { editable: true });
+  const lastTrStart = html.lastIndexOf("<tr>");
+  assert.ok(lastTrStart >= 0, "TOPLAM satırı bir <tr> olarak bulunmalı.");
+  const totalsRow = html.slice(lastTrStart, html.indexOf("</tr>", lastTrStart) + "</tr>".length);
+  assert.ok(totalsRow.includes(">TOPLAM<"), "TOPLAM satırının ilk hücresi 'TOPLAM' etiketini taşımalı.");
+  assert.ok(html.indexOf(totalsRow) > html.indexOf("</thead>"), "TOPLAM satırı gövdenin (tbody) EN SONUNDA olmalı.");
+  assert.ok(totalsRow.includes(">200<"), "Alan sütunlarının toplamı (120+80 / 130+70 = 200) TOPLAM satırında görünmeli.");
+  assert.ok(totalsRow.includes(">8.000.000<"), "Durum Değeri toplamı (4.800.000+3.200.000=8.000.000) TOPLAM satırında görünmeli.");
+  const negativeTotalMatch = totalsRow.match(/<td style="[^"]*color:#b91c1c;[^"]*">-175\.000<\/td>/);
+  assert.ok(negativeTotalMatch, "Negatif Şerefiye toplamı (-125.000+-50.000=-175.000) TOPLAM satırında kırmızı görünmeli.");
+  assert.ok(totalsRow.includes(">175.000<"), "Pozitif Şerefiye toplamı (125.000+50.000=175.000) TOPLAM satırında görünmeli.");
+  assert.ok(!totalsRow.includes(">40.000<") && !totalsRow.includes(">40000<"), "Arsa Birim Değeri (birim fiyat) TOPLAM satırında TOPLANMAMALI (boş kalmalı).");
+  assert.ok(!totalsRow.includes("tus-editable-cell"), "TOPLAM satırındaki hücreler düzenlenebilir (editable:true olsa bile) OLMAMALI.");
+  assert.equal(fns.isValuationUnitsSummaryColumnSummable("Arsa Birim Değeri"), false);
+  assert.equal(fns.isValuationUnitsSummaryColumnSummable("Arsa Payı"), false);
+  assert.equal(fns.isValuationUnitsSummaryColumnSummable("Arsa Payda"), false);
+  assert.equal(fns.isValuationUnitsSummaryColumnSummable("Yasal Durum Değeri - M2 Birim Değeri"), false);
+  assert.equal(fns.isValuationUnitsSummaryColumnSummable("Yasal Durum Değeri"), true);
+  assert.equal(fns.isValuationUnitsSummaryColumnSummable("Arsa Değeri"), true);
+  console.log("Toplam (TOPLAM) satiri testi tamam.");
 }
 
 console.log("Tasinmazlar degerleme ozeti tablosu testleri basarili.");

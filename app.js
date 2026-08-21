@@ -6956,6 +6956,23 @@ function getValuationUnitsSummaryGroupDisplayLabel(group) {
   return group;
 }
 
+// Kullanıcı talebi (2026-08-22): "tablonun en altına toplam satırı koy" —
+// hangi sütunların TOPLAMI anlamlı (tutar/alan) hangilerinin anlamsız
+// (birim fiyat/oran/payda) olduğunu ayırır: "- M2 Birim Değeri" sonekli
+// TÜM sütunlar (Durum/Natamam/Kira'nın BİRİM fiyatları) + Parametreler'in
+// 4 birim/oran sütunu (Arsa/Yapı Birim Değeri, Yıpranma Payı, İnş. Sev.) +
+// Arsa Payı/Payda (Payda HER satırda AYNI değer olduğundan toplanırsa
+// satır sayısıyla YANLIŞLIKLA çarpılmış olur, Payı da TEK BAŞINA anlamlı
+// bir toplam değil) HARİÇ tutulur — geri kalan tüm TL/m² TOPLAM sütunları
+// (Alan, Hissesine Düşen Arsa Payı, Arsa/Yapı/Şerefiye/Durum/Natamam/Kira
+// Değeri) toplanır.
+function isValuationUnitsSummaryColumnSummable(label) {
+  const normalized = String(label || "");
+  if (normalized.endsWith(" - M2 Birim Değeri")) return false;
+  if (["Arsa Birim Değeri", "Yapı Birim Değeri", "Yıpranma Payı", "İnş. Sev.", "Arsa Payı", "Arsa Payda"].includes(normalized)) return false;
+  return true;
+}
+
 function getValuationUnitsSummarySubheader(label) {
   const normalized = String(label || "");
   // Kullanıcı takip talebi (2026-08-22): "Sıra No sütununu NO yap daralt."
@@ -7132,9 +7149,33 @@ function buildValuationUnitsSummaryTableHtml(data, activeRowIndex, { editable = 
     return `<tr${rowAttr}>${cellsHtml}</tr>`;
   }).join("");
 
+  // Kullanıcı talebi (2026-08-22): "tablonun en altına toplam satırı koy" —
+  // TL/m² TOPLAM anlamı taşıyan sütunlar (Alan, Hissesine Düşen Arsa Payı,
+  // Arsa/Yapı/Şerefiye/Durum/Natamam/Kira Değeri) toplanır; birim
+  // fiyat/oran/payda sütunları (bkz. isValuationUnitsSummaryColumnSummable)
+  // boş bırakılır — toplamak anlamsız/yanıltıcı olurdu. Negatif toplam
+  // (ör. Şerefiye eksi çıkarsa) AYNI kırmızı işaretlemeyi taşır. Salt-okunur
+  // — düzenlenebilir modda bile (editable:true) bu satıra tus-editable-cell
+  // eklenmez.
+  const totalStyle = `${headerCell}`;
+  const totalsCellsHtml = displayIndices.map((columnIndex) => {
+    const meta = columnMeta[columnIndex] || null;
+    const narrowStyle = leadingIndices.includes(columnIndex) || meta?.narrow ? narrowWidth : "";
+    if (columnIndex === 0) return `<td style="${totalStyle}${narrowStyle}">TOPLAM</td>`;
+    if (leadingIndices.includes(columnIndex)) return `<td style="${totalStyle}${narrowStyle}"></td>`;
+    if (!isValuationUnitsSummaryColumnSummable(headers[columnIndex])) return `<td style="${totalStyle}${narrowStyle}"></td>`;
+    const sum = rows.reduce((total, row) => {
+      const number = parseValuationNumber(row[columnIndex]);
+      return total + (Number.isFinite(number) ? number : 0);
+    }, 0);
+    const negativeStyle = sum < 0 ? "color:#b91c1c;" : "";
+    return `<td style="${totalStyle}${narrowStyle}${negativeStyle}">${formatWordCell(Math.round(sum).toLocaleString("tr-TR"))}</td>`;
+  }).join("");
+  const totalsRowHtml = `<tr>${totalsCellsHtml}</tr>`;
+
   return `<table class="word-table title-units-summary-table title-units-summary-table${editable ? " title-units-summary-table-editable" : ""}" style="border-collapse:collapse;width:100%;margin:5pt 0 12pt;table-layout:auto;">
     <thead>${topHeaderHtml}${subHeaderHtml}</thead>
-    <tbody>${bodyHtml}</tbody>
+    <tbody>${bodyHtml}${totalsRowHtml}</tbody>
   </table>`;
 }
 
