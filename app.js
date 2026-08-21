@@ -6743,29 +6743,27 @@ const VALUATION_UNITS_TABLE_IDENTITY_DEFS = [
   { key: "unitNo", label: "BB No" },
 ];
 
-// Kullanıcı takip talebi (2026-08-21, üç mesaj): "yapı birim değeri
-// inşaat seviyesi yapı yıpranma payı yapı [değeri] sigortaya esas değer
-// arsa değeri gözüksün" + "yasal ve mevcut yapı değeri yani kullanım
-// alanı x yapı birim değeri x yıpranma payı x inşaat seviye formülü ile
-// ulaşılan sonuçta yer almalı" + "yasal yapı değeri ve mevcut yapı değeri
-// kısımlarından alanları çıkart zaten alanlar yasal durum değeri ve
-// mevcut durum değerinde veriliyor" — Yapı Değeri panelinin (createValuationBuildingValueTable,
-// yalnızca Müstakil Bina'da dolu — diğer mülkiyet tiplerinde bu alanlar
-// boş kalacağından aşağıdaki columnHasData filtresiyle OTOMATİK kalkar)
-// Yasal/Mevcut satırlarının Yapı Birim Değeri/Yıpranma Payı/İnşaat
-// Seviyesi bileşenleri + formülün SONUCU (Yapı Değeri) sütunları +
-// Sigortaya Esas Değer (createValuationInsuranceTable) + Arsa Değeri
-// (createValuationLandTable) tekil sonuç sütunları eklendi. Alan sütunu
-// BİLİNÇLİ OLARAK YOK — Yasal/Mevcut Durum Değeri gruplarındaki Alan
-// sütunuyla AYNI kullanım alanı değerini tekrarladığından kaldırıldı.
-// `kind` her sütun için GERÇEK panel alanının kendi readOnly durumuyla
-// BİREBİR eşleşir (Yapı Birim Değeri + Yıpranma Payı editable/"scalar",
-// İnşaat Seviyesi + Yapı Değeri + Sigortaya Esas Değer + Arsa Değeri
-// readOnly/"readonly").
+// Kullanıcı talebi (2026-08-21/22, ekran görüntüsüyle — iki kez, ikincisi
+// düzeltilmiş nihai hali): "tablo yapısının bu şekilde olmasını istiyorum"
+// — TÜM sütun sırası/gruplaması kullanıcının verdiği hedef yerleşime göre
+// YENİDEN YAPILANDIRILDI (bkz. plan: idempotent-launching-kernighan.md).
+// Sıra: Yasal/Mevcut Alan → Parametreler (Arsa Birim Değeri/Yapı Birim
+// Değeri/Yıpranma Payı/İnş. Sev. — TEK satır, Yasal/Mevcut AYRI DEĞİL,
+// çünkü syncBuildingValueDefaults() bu 3 çifti HER ZAMAN aynı hesaplanan
+// değere koşulsuz yazıyor, pratikte hep aynı) → Arsa Değeri → Yasal/Mevcut
+// Yapı Değeri (yalnızca Eksik İmalat Tutarı + Yapı Değeri — Birim
+// Değeri/Yıpranma/Seviye artık Parametreler'de) → Yasal/Mevcut Şerefiye
+// (kendi tek-sütunluk grupları, "Diğer"e DÜŞMÜYOR) → Diğer (Sigortaya
+// Esas Değer) → Yasal/Mevcut Durum Değeri (Alan ÇIKARILDI, öne taşındı) →
+// Natamam Yasal/Mevcut Durum Değeri (KENDİ grubu + M2 Birim Değeri GERİ
+// eklendi — bu, Durum Değeri'nin M2 Birim Değeri'nden FARKLI bir değer,
+// legalIncompleteValueUnit = roundedIncompleteValue/area) → Yasal/Mevcut
+// Kira Değeri (kendi AYRI grubu — önceden fark edilmeden "Yasal/Mevcut
+// Durum Değeri" fallback'ine karışıyordu).
 function buildValuationUnitsSummaryTableData() {
   const units = buildAllTitleUnitsForSummaryTable();
   if (units.length < 2) return null;
-  // Kullanıcı takip talebi (2026-08-21): "her bir bağımsız bölümün arsa
+  // Kullanıcı talebi (2026-08-21): "her bir bağımsız bölümün arsa
   // pay arsa payda ve hissesine düşen arsa payı bölümlerini tablomuza
   // ekleyelim" — Tapu özet tablosundaki (buildTitleUnitsSummaryTableData)
   // AYNI gerekçeyle AYNI koşula bağlandı: "farklı ada parsellerden oluşan
@@ -6774,53 +6772,23 @@ function buildValuationUnitsSummaryTableData() {
   // yan yana göstermek YANILTICI olur, bu yüzden yalnızca TÜM taşınmazlar
   // AYNI ada/parselde (computeTitleUnitsShareSameAdaParsel) İSE gösterilir.
   const showLandShareColumns = computeTitleUnitsShareSameAdaParsel(units);
+  const legalIncomplete = incompleteConstructionMarketRows.legalValue;
+  const currentIncomplete = incompleteConstructionMarketRows.currentValue;
 
   const headers = ["Sıra No", ...VALUATION_UNITS_TABLE_IDENTITY_DEFS.map((def) => def.label)];
   const columnMeta = [{ kind: "seq" }, ...VALUATION_UNITS_TABLE_IDENTITY_DEFS.map(() => ({ kind: "readonly" }))];
-  VALUATION_UNITS_TABLE_ROW_DEFS.forEach((row) => {
-    if (row.includeArea) {
-      headers.push(`${row.label} - Alan`);
-      columnMeta.push({ kind: "scalar", fieldKey: row.areaKey });
-    }
-    headers.push(`${row.label} - ${row.unitLabel}`, row.label);
-    columnMeta.push({ kind: "readonly" }, { kind: "scalar", fieldKey: row.totalKey });
-    // Kullanıcı takip talebi (2026-08-21): "taşınmazlardan biri %90
-    // seviyeli değerleme tablosunda natamam durum değeri belirtilmiyor" —
-    // Yasal/Mevcut Durum Değeri satırının HEMEN ALTINA (canlı panelde de
-    // TAM olarak burada, createIncompleteConstructionMarketRow ile) eklenen
-    // "Natamam Durum Değeri" sonucu — YALNIZCA Yasal/Mevcut Durum Değeri
-    // için var (Kira için yok, incompleteConstructionMarketRows'ta yalnızca
-    // legalValue/currentValue anahtarları var). Alan/M2 Birim Değeri ARA
-    // sütunları BİLİNÇLİ OLARAK eklenmedi — ikisi de bu tabloda ZATEN başka
-    // sütunlarla AYNI değeri taşıyor (Alan = Durum Değeri'nin Alan'ı,
-    // Birim Değeri = Yapı Değeri'nin Birim Değeri'i, `legalBuildingUnitCost`
-    // üzerinden) — yalnızca YENİ bilgi olan SONUÇ (Natamam Durum Değeri)
-    // eklendi.
-    const incompleteRow = incompleteConstructionMarketRows[row.totalKey];
-    if (incompleteRow) {
-      // Kullanıcı takip talebi (2026-08-21): "eksik imalat bölümünü
-      // ekledin mi" — "Eksik İmalat ve Natamam Durum Değeri" panelinin
-      // (createIncompleteConstructionValuePanel) "Yuvarlatılmış Eksik
-      // İmalat" sütunu — Natamam Durum Değeri'ne ulaşmak için piyasa
-      // değerinden düşülen ara tutar. Natamam Durum Değeri'nin HEMEN
-      // SOLUNA (panelin kendi sırasıyla AYNI: ... Eksik İmalat Tutarı,
-      // Natamam Durum Değeri) eklendi. Kullanıcı netleştirmesiyle
-      // YUVARLATILMIŞ hali kullanıldı (diğer sonuç sütunlarıyla TUTARLI).
-      headers.push(`${row.label.startsWith("Yasal") ? "Yasal" : "Mevcut"} Eksik İmalat Tutarı`);
-      columnMeta.push({ kind: "readonly" });
-      headers.push(incompleteRow.label);
-      columnMeta.push({ kind: "readonly" });
-    }
-  });
-  // Kullanıcı takip talebi (2026-08-21): "arsa değerini yapı değerin
-  // sütununun soluna al ... arsa değerini yapı değeri gibi ana başlık
-  // altında topla" — Arsa Değeri artık Yapı Değeri'nin SOLUNA (önce)
-  // yerleştirildi VE "Diğer" grubuna düşmüyor, Yapı Değeri'nin (Yasal/
-  // Mevcut Yapı Değeri) kendi grup başlığı deseninin AYNISıyla KENDİ
-  // "Arsa Değeri" grup başlığını alıyor (bkz. getValuationUnitsSummaryHeaderGroup
-  // + buildValuationUnitsSummaryTableHtml'in groupOrder'ı) — bileşenleri
-  // (Arsa Payı/Payda/Hissesine Düşen Arsa Payı) + sonucu (Arsa Değeri)
-  // TEK grupta toplanır.
+
+  headers.push("Yasal Alan", "Mevcut Alan");
+  columnMeta.push({ kind: "scalar", fieldKey: "legalValueArea" }, { kind: "scalar", fieldKey: "currentValueArea" });
+
+  headers.push("Arsa Birim Değeri", "Yapı Birim Değeri", "Yıpranma Payı", "İnş. Sev.");
+  columnMeta.push(
+    { kind: "scalar", fieldKey: "landUnitValue" },
+    { kind: "scalar", fieldKey: "legalBuildingUnitCost" },
+    { kind: "scalar", fieldKey: "legalBuildingDepreciationRate" },
+    { kind: "readonly" },
+  );
+
   if (showLandShareColumns) {
     headers.push("Arsa Payı", "Arsa Payda", "Hissesine Düşen Arsa Payı");
     columnMeta.push(
@@ -6831,80 +6799,49 @@ function buildValuationUnitsSummaryTableData() {
   }
   headers.push("Arsa Değeri");
   columnMeta.push({ kind: "readonly" });
-  // Kullanıcı takip talebi (2026-08-21): "yasal yapı değeri ve mevcut yapı
-  // değeri kısımlarından alanları çıkart zaten alanlar yasal durum değeri
-  // ve mevcut durum değerinde veriliyor" — Alan sütunu (0.0.504'te formülün
-  // TÜM bileşenlerini göstermek için eklenmişti) Yasal/Mevcut Durum Değeri
-  // gruplarındaki Alan sütunuyla AYNI değeri (kullanım alanı) tekrarladığı
-  // için KALDIRILDI — gereksiz tekrar.
-  valuationBuildingValueRows.forEach((row) => {
-    headers.push(`${row.label} - Yapı Birim Değeri`, `${row.label} - Yıpranma Payı`, `${row.label} - İnşaat Seviyesi`, row.label);
-    columnMeta.push(
-      { kind: "scalar", fieldKey: row.unitKey },
-      { kind: "scalar", fieldKey: row.depreciationKey },
-      { kind: "readonly" },
-      { kind: "readonly" },
-    );
-  });
-  // Kullanıcı takip talebi (2026-08-21): "sigortaya esas değerinden önce
-  // yasal ve mevcut şerefiye sütunlarını koyalım" — Şerefiye Bölümü
-  // panelinin (createValuationPremiumTable) SONUÇ değeri (Şerefiye
-  // Değeri, `valuationPremiumRows`'un `premiumKey`'i) — panel 4 sütun
-  // gösteriyor (Arsa Değeri/Yapı Değeri/Şerefiye Değeri/Şerefiye Yüzdesi)
-  // ama kullanıcı yalnızca "Yasal ve Mevcut Şerefiye" dedi, Arsa/Yapı
-  // Değeri zaten bu tabloda AYRICA var — bu yüzden yalnızca Şerefiye
-  // Değeri (sonuç) eklendi, ara bileşenler/yüzde EKLENMEDİ.
-  valuationPremiumRows.forEach((row) => {
-    headers.push(row.label);
-    columnMeta.push({ kind: "readonly" });
-  });
-  // Kullanıcı takip talebi (2026-08-21, önceki mesaj): "sigortaya esas
-  // değer diğer bölümünün altında kalabilir" — bu sütun BİLİNÇLİ OLARAK
-  // "Diğer" grubunda kalıyor, kendi grup başlığını almıyor. Yasal/Mevcut
-  // Şerefiye de AYNI "Diğer" grubunda kalıyor (kendi ana başlığı İSTENMEDİ,
-  // yalnızca Sigortaya Esas Değer'in HEMEN ÖNÜNE konumlandırılması istendi).
-  headers.push("Sigortaya Esas Değer");
-  columnMeta.push({ kind: "readonly" });
+
+  headers.push("Yasal Eksik İmalat Tutarı", "Yasal Yapı Değeri");
+  columnMeta.push({ kind: "readonly" }, { kind: "readonly" });
+  headers.push("Mevcut Eksik İmalat Tutarı", "Mevcut Yapı Değeri");
+  columnMeta.push({ kind: "readonly" }, { kind: "readonly" });
+
+  headers.push("Yasal Şerefiye", "Mevcut Şerefiye", "Sigortaya Esas Değer");
+  columnMeta.push({ kind: "readonly" }, { kind: "readonly" }, { kind: "readonly" });
+
+  headers.push("Yasal Durum Değeri - M2 Birim Değeri", "Yasal Durum Değeri");
+  columnMeta.push({ kind: "readonly" }, { kind: "scalar", fieldKey: "legalValue" });
+  headers.push("Mevcut Durum Değeri - M2 Birim Değeri", "Mevcut Durum Değeri");
+  columnMeta.push({ kind: "readonly" }, { kind: "scalar", fieldKey: "currentValue" });
+
+  headers.push(`${legalIncomplete.label} - M2 Birim Değeri`, legalIncomplete.label);
+  columnMeta.push({ kind: "readonly" }, { kind: "readonly" });
+  headers.push(`${currentIncomplete.label} - M2 Birim Değeri`, currentIncomplete.label);
+  columnMeta.push({ kind: "readonly" }, { kind: "readonly" });
+
+  headers.push("Yasal Kira Değeri - M2 Birim Değeri", "Yasal Kira Değeri");
+  columnMeta.push({ kind: "readonly" }, { kind: "scalar", fieldKey: "legalRent" });
+  headers.push("Mevcut Kira Değeri - M2 Birim Değeri", "Mevcut Kira Değeri");
+  columnMeta.push({ kind: "readonly" }, { kind: "scalar", fieldKey: "currentRent" });
 
   const rows = units.map((unit, index) => {
     const fields = unit.fields || {};
+    const cell = (key) => String(fields[key] || "").trim() || "-";
     const row = [index + 1, ...VALUATION_UNITS_TABLE_IDENTITY_DEFS.map((def) => String(fields[def.key] || "").trim() || "-")];
-    VALUATION_UNITS_TABLE_ROW_DEFS.forEach((rowDef) => {
-      if (rowDef.includeArea) {
-        row.push(String(fields[rowDef.areaKey] || "").trim() || "-");
-      }
-      row.push(
-        String(fields[rowDef.unitKey] || "").trim() || "-",
-        String(fields[rowDef.totalKey] || "").trim() || "-",
-      );
-      const incompleteRow = incompleteConstructionMarketRows[rowDef.totalKey];
-      if (incompleteRow) {
-        row.push(
-          String(fields[incompleteRow.deductionKey] || "").trim() || "-",
-          String(fields[incompleteRow.totalKey] || "").trim() || "-",
-        );
-      }
-    });
+    row.push(cell("legalValueArea"), cell("currentValueArea"));
+    row.push(cell("landUnitValue"), cell("legalBuildingUnitCost"), cell("legalBuildingDepreciationRate"), cell("legalBuildingConstructionLevel"));
     if (showLandShareColumns) {
-      row.push(
-        String(fields.share || "").trim() || "-",
-        String(fields.denominator || "").trim() || "-",
-        computeTitleUnitShareOfLandArea(fields),
-      );
+      row.push(cell("share"), cell("denominator"), computeTitleUnitShareOfLandArea(fields));
     }
-    row.push(String(fields.landValue || "").trim() || "-");
-    valuationBuildingValueRows.forEach((rowDef) => {
-      row.push(
-        String(fields[rowDef.unitKey] || "").trim() || "-",
-        String(fields[rowDef.depreciationKey] || "").trim() || "-",
-        String(fields[rowDef.levelKey] || "").trim() || "-",
-        String(fields[rowDef.totalKey] || "").trim() || "-",
-      );
-    });
-    valuationPremiumRows.forEach((rowDef) => {
-      row.push(String(fields[rowDef.premiumKey] || "").trim() || "-");
-    });
-    row.push(String(fields.insuranceValue || "").trim() || "-");
+    row.push(cell("landValue"));
+    row.push(cell("legalIncompleteDeductionValue"), cell("legalBuildingValue"));
+    row.push(cell("currentIncompleteDeductionValue"), cell("currentBuildingValue"));
+    row.push(cell("legalPremiumValue"), cell("currentPremiumValue"), cell("insuranceValue"));
+    row.push(cell("legalValueUnit"), cell("legalValue"));
+    row.push(cell("currentValueUnit"), cell("currentValue"));
+    row.push(cell(legalIncomplete.unitKey), cell(legalIncomplete.totalKey));
+    row.push(cell(currentIncomplete.unitKey), cell(currentIncomplete.totalKey));
+    row.push(cell("legalRentUnit"), cell("legalRent"));
+    row.push(cell("currentRentUnit"), cell("currentRent"));
     return row;
   });
 
@@ -6926,39 +6863,56 @@ function buildValuationUnitsSummaryTableData() {
   return { headers: filteredHeaders, rows: filteredRows, columnMeta: filteredColumnMeta };
 }
 
+// Kullanıcı talebi (2026-08-21/22, ekran görüntüsüyle): "tablo yapısının
+// bu şekilde olmasını istiyorum" — grup adları kullanıcının verdiği hedef
+// yerleşime göre yeniden düzenlendi (bkz. buildValuationUnitsSummaryTableData'nın
+// üstündeki not). "Yasal Alan"/"Mevcut Alan" ve "Yasal Şerefiye"/"Mevcut
+// Şerefiye" KENDİ (birbirinden FARKLI) grup adlarını taşır — ekranda
+// İKİSİ de sade "YASAL"/"MEVCUT" gösterilir, bkz.
+// getValuationUnitsSummaryGroupDisplayLabel() (yalnızca <th> metninde
+// kullanılır, groupedColumns/groupOrder'ın kendi anahtarları BİRBİRİNDEN
+// AYRI kalır — aksi halde iki farklı sütun grubu YANLIŞLIKLA TEK başlık
+// altında birleşirdi).
 function getValuationUnitsSummaryHeaderGroup(label) {
   const normalized = String(label || "");
-  // Kullanıcı takip talebi (2026-08-21): Yapı Değeri sütunları da "Yasal "/
-  // "Mevcut " ile başlıyor (ör. "Yasal Yapı Değeri - Yapı Birim Değeri") —
-  // bunlar genel "Yasal/Mevcut Durum Değeri" grubuna KARIŞMASIN diye bu
-  // DAHA ÖZEL kontrol önce yapılır, KENDİ grup başlığını alırlar.
-  if (normalized.startsWith("Yasal Yapı Değeri")) return "Yasal Yapı Değeri";
-  if (normalized.startsWith("Mevcut Yapı Değeri")) return "Mevcut Yapı Değeri";
-  // Kullanıcı takip talebi (2026-08-21): "sigortaya esas değerinden önce
-  // yasal ve mevcut şerefiye sütunlarını koyalım" — "Yasal Şerefiye"/
-  // "Mevcut Şerefiye" de "Yasal "/"Mevcut " ile başlıyor ama genel "Yasal/
-  // Mevcut Durum Değeri" (piyasa değeri) grubuna KARIŞMAMALI — kullanıcı
-  // kendi ana başlık İSTEMEDİ (Sigortaya Esas Değer gibi "Diğer"de kalsın
-  // dedi), bu yüzden burada AÇIKÇA "Diğer"e yönlendirilir.
-  if (normalized === "Yasal Şerefiye" || normalized === "Mevcut Şerefiye") return "Diğer";
-  // Kullanıcı takip talebi (2026-08-21): "taşınmazlardan biri %90 seviyeli
-  // değerleme tablosunda natamam durum değeri belirtilmiyor" — "Natamam
-  // Yasal/Mevcut Durum Değeri" "Yasal "/"Mevcut " İLE BAŞLAMIYOR ("Natamam"
-  // önde), bu yüzden AŞAĞIDAKİ genel kontrole hiç girmez — canlı panelde
-  // Durum Değeri'nin HEMEN ALTINDA gösterildiği gibi, AYNI Yasal/Mevcut
-  // Durum Değeri grubuna dahil edilir (kendi ayrı ana başlığı YOK).
-  if (normalized.startsWith("Natamam Yasal")) return "Yasal Durum Değeri";
-  if (normalized.startsWith("Natamam Mevcut")) return "Mevcut Durum Değeri";
+  if (normalized === "Yasal Alan") return "Yasal Alan";
+  if (normalized === "Mevcut Alan") return "Mevcut Alan";
+  // Parametreler: Arsa Birim Değeri/Yapı Birim Değeri/Yıpranma Payı/İnş.
+  // Sev. — TEK satır (Yasal/Mevcut AYRI DEĞİL, bkz. yukarıdaki not).
+  if (["Arsa Birim Değeri", "Yapı Birim Değeri", "Yıpranma Payı", "İnş. Sev."].includes(normalized)) return "Parametreler";
+  // Arsa Değeri: bileşenler (Arsa Payı/Payda/Hissesine Düşen Arsa Payı) +
+  // sonuç (Arsa Değeri) TEK grupta.
+  if (normalized === "Arsa Payı" || normalized === "Arsa Payda" || normalized === "Hissesine Düşen Arsa Payı" || normalized === "Arsa Değeri") return "Arsa Değeri";
+  // Yapı Değeri: artık yalnızca Eksik İmalat Tutarı + Yapı Değeri (Birim
+  // Değeri/Yıpranma/Seviye Parametreler'e taşındı).
+  if (normalized.startsWith("Yasal Eksik İmalat Tutarı") || normalized.startsWith("Yasal Yapı Değeri")) return "Yasal Yapı Değeri";
+  if (normalized.startsWith("Mevcut Eksik İmalat Tutarı") || normalized.startsWith("Mevcut Yapı Değeri")) return "Mevcut Yapı Değeri";
+  if (normalized === "Yasal Şerefiye") return "Yasal Şerefiye";
+  if (normalized === "Mevcut Şerefiye") return "Mevcut Şerefiye";
+  // Natamam Durum Değeri artık KENDİ grubu (önceki "genel Durum Değeri
+  // grubuna göm" kararı geri alındı) — "Natamam" öneki "Yasal "/"Mevcut "
+  // İLE BAŞLAMADIĞINDAN aşağıdaki genel kontrole zaten hiç girmezdi, ama
+  // netlik için burada da açıkça yakalanır.
+  if (normalized.startsWith("Natamam Yasal")) return "Natamam Yasal Durum Değeri";
+  if (normalized.startsWith("Natamam Mevcut")) return "Natamam Mevcut Durum Değeri";
+  // Kira Değeri artık KENDİ grubu — önceden fark edilmeden aşağıdaki genel
+  // "Yasal "/"Mevcut " fallback'ine düşüp "Durum Değeri" ile KARIŞIYORDU.
+  if (normalized.startsWith("Yasal Kira Değeri")) return "Yasal Kira Değeri";
+  if (normalized.startsWith("Mevcut Kira Değeri")) return "Mevcut Kira Değeri";
   if (normalized.startsWith("Yasal ")) return "Yasal Durum Değeri";
   if (normalized.startsWith("Mevcut ")) return "Mevcut Durum Değeri";
-  // Kullanıcı takip talebi (2026-08-21): "arsa değerini yapı değeri gibi
-  // ana başlık altında topla" — Arsa Payı/Payda/Hissesine Düşen Arsa Payı
-  // (bileşenler) + Arsa Değeri (sonuç), Yapı Değeri'nin KENDİ grup başlığı
-  // deseninin AYNISıyla, "Diğer"e DÜŞMEDEN kendi grup başlığını alır.
-  // Sigortaya Esas Değer İSE BİLİNÇLİ OLARAK "Diğer"de kalır (kullanıcı:
+  // Sigortaya Esas Değer BİLİNÇLİ OLARAK "Diğer"de kalır (kullanıcı:
   // "sigortaya esas değer diğer bölümünün altında kalabilir").
-  if (normalized === "Arsa Payı" || normalized === "Arsa Payda" || normalized === "Hissesine Düşen Arsa Payı" || normalized === "Arsa Değeri") return "Arsa Değeri";
   return "Diğer";
+}
+
+// bkz. yukarıdaki fonksiyon yorumu — "Yasal Alan"/"Yasal Şerefiye" (ve
+// Mevcut karşılıkları) İÇ grup adı olarak BİRBİRİNDEN AYRI kalır ama
+// ekranda İKİSİ de sade "YASAL"/"MEVCUT" gösterilir.
+function getValuationUnitsSummaryGroupDisplayLabel(group) {
+  if (group === "Yasal Alan" || group === "Yasal Şerefiye") return "Yasal";
+  if (group === "Mevcut Alan" || group === "Mevcut Şerefiye") return "Mevcut";
+  return group;
 }
 
 function getValuationUnitsSummarySubheader(label) {
@@ -6997,6 +6951,17 @@ function getValuationUnitsSummarySubheader(label) {
   // aşağıdaki para-birimi varsayımına düşmemeli.
   if (normalized === "Arsa Payı" || normalized === "Arsa Payda") return normalized;
   if (normalized === "Hissesine Düşen Arsa Payı") return "Hissesine Düşen\nArsa Payı (m²)";
+  // Kullanıcı takip talebi (2026-08-21/22, ekran görüntüsüyle): Alan artık
+  // "Yasal Durum Değeri - Alan" SONEKİ DEĞİL, bağımsız "Yasal Alan"/"Mevcut
+  // Alan" başlıkları (tabloda öne, Parametreler'den önce taşındı).
+  if (normalized === "Yasal Alan" || normalized === "Mevcut Alan") return "Alan\n(m²)";
+  // Parametreler'in 4 sütunu — TEK satır (Yasal/Mevcut öneki YOK), bu
+  // yüzden aşağıdaki " - X" SONEK kontrolleri bunları YAKALAMAZ, tam
+  // eşleşme gerekir.
+  if (normalized === "Arsa Birim Değeri") return "Arsa Birim Değeri\n(TL/m²)";
+  if (normalized === "Yapı Birim Değeri") return "Yapı Birim Değeri\n(TL/m²)";
+  if (normalized === "Yıpranma Payı") return "Yıpranma Payı\n(%)";
+  if (normalized === "İnş. Sev.") return "İnşaat Seviyesi\n(%)";
   if (normalized.endsWith(" - Alan")) return "Alan\n(m²)";
   if (normalized.endsWith(" - Yapı Birim Değeri")) return "Yapı Birim Değeri\n(TL/m²)";
   if (normalized.endsWith(" - İnşaat Seviyesi")) return "İnşaat Seviyesi\n(%)";
@@ -7055,10 +7020,21 @@ function buildValuationUnitsSummaryTableHtml(data, activeRowIndex, { editable = 
     groups[group].push({ label, index });
     return groups;
   }, {});
-  // Kullanıcı takip talebi (2026-08-21): "arsa değerini yapı değerin
-  // sütununun soluna al" — "Arsa Değeri" grubu artık "Yasal/Mevcut Yapı
-  // Değeri" gruplarının HEMEN ÖNÜNDE (solunda) render ediliyor.
-  const groupOrder = ["Yasal Durum Değeri", "Mevcut Durum Değeri", "Arsa Değeri", "Yasal Yapı Değeri", "Mevcut Yapı Değeri", "Diğer"].filter((group) => groupedColumns[group]?.length);
+  // Kullanıcı takip talebi (2026-08-21/22, ekran görüntüsüyle): "tablo
+  // yapısının bu şekilde olmasını istiyorum" — grup sırası kullanıcının
+  // verdiği hedef yerleşime göre YENİDEN YAPILANDIRILDI (bkz.
+  // buildValuationUnitsSummaryTableData'nın üstündeki not).
+  const groupOrder = [
+    "Yasal Alan", "Mevcut Alan",
+    "Parametreler",
+    "Arsa Değeri",
+    "Yasal Yapı Değeri", "Mevcut Yapı Değeri",
+    "Yasal Şerefiye", "Mevcut Şerefiye",
+    "Diğer",
+    "Yasal Durum Değeri", "Mevcut Durum Değeri",
+    "Natamam Yasal Durum Değeri", "Natamam Mevcut Durum Değeri",
+    "Yasal Kira Değeri", "Mevcut Kira Değeri",
+  ].filter((group) => groupedColumns[group]?.length);
   const orderedColumns = groupOrder.flatMap((group) => groupedColumns[group]);
   const displayIndices = [...leadingIndices, ...orderedColumns.map((col) => col.index)];
   // Kullanıcı takip talebi (2026-08-21): "sıra no blok ve bağımsız bölüm
@@ -7066,7 +7042,7 @@ function buildValuationUnitsSummaryTableHtml(data, activeRowIndex, { editable = 
   // sütunları) zaten TAM olarak daraltılacak sütunları temsil ediyor, ayrı
   // bir columnMeta.narrow işaretine gerek yok.
   const narrowWidth = "width:24pt;";
-  const topHeaderHtml = `<tr>${leadingIndices.map((index) => `<th rowspan="2" style="${headerCell}${narrowWidth}">${toTitleFieldUppercase(headers[index])}</th>`).join("")}${groupOrder.map((group) => `<th colspan="${groupedColumns[group].length}" style="${headerCell}">${toTitleFieldUppercase(group)}</th>`).join("")}</tr>`;
+  const topHeaderHtml = `<tr>${leadingIndices.map((index) => `<th rowspan="2" style="${headerCell}${narrowWidth}">${toTitleFieldUppercase(headers[index])}</th>`).join("")}${groupOrder.map((group) => `<th colspan="${groupedColumns[group].length}" style="${headerCell}">${toTitleFieldUppercase(getValuationUnitsSummaryGroupDisplayLabel(group))}</th>`).join("")}</tr>`;
   const subHeaderHtml = `<tr>${orderedColumns.map(({ label }) => {
     const subheader = toTitleFieldUppercase(getValuationUnitsSummarySubheader(label));
     return `<th style="${headerCell}">${escapeHtml(subheader).replace(/\n/g, "<br>")}</th>`;
