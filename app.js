@@ -2418,7 +2418,17 @@ function removeActiveTitleUnitTab() {
 // (kullanıcı talimatı) render edilir (bkz. renderSection). Admin-only:
 // deneysel, gerçek rapor verisini değiştirdiği için (önizleme panelinin
 // aksine) daha temkinli, kısıtlı bir kitleyle başlatılıyor.
-function createTitleUnitTabBar() {
+// Kullanıcı talebi (2026-08-21): "seçili taşınmazlara kopyala butonunu
+// bağımsız bölüm tablarının sonuna aynı punto ve biçimde taşı" — bu ortak
+// tab çubuğu Tapu/Adres/İmar/Arsa/Değerleme/Bağımsız Bölüm'ün TAMAMINDA
+// kullanıldığından (bkz. aşağıdaki not), "Seçili Taşınmazlara Kopyala"
+// butonu BURAYA sabit-kodlanamaz (yalnızca "unit" bölümüne özgü) — bunun
+// yerine genel bir `options.extraActions` (DOM node dizisi) parametresi
+// eklendi, "+ Taşınmaz Ekle"/"Bu taşınmazı sil" butonlarının HEMEN
+// ARDINA (actions satırının SONUNA) eklenir. Diğer 5 çağrı yeri parametre
+// GEÇMEDEN (`createTitleUnitTabBar()`) çağırmaya devam eder — GERİYE
+// DÖNÜK UYUMLU, davranışları değişmez.
+function createTitleUnitTabBar(options = {}) {
   const wrap = document.createElement("div");
   wrap.className = "title-unit-tab-bar";
 
@@ -2467,6 +2477,7 @@ function createTitleUnitTabBar() {
     });
     actions.append(removeButton);
   }
+  (options.extraActions || []).forEach((node) => actions.append(node));
   wrap.append(actions);
 
   // 2026-08-20: BAYAT metin düzeltildi — bu ortak tab çubuğu artık Tapu/
@@ -2486,18 +2497,29 @@ function createTitleUnitTabBar() {
 }
 
 // Kullanıcı talebi (2026-08-20/21): "aktif bulunduğum bağımsız bölümün
-// bilgilerini istediğim bağımsız bölümlere kopyalamak" — createImarApplyAllControl()/
-// createLandApplyAllControl()'le AYNI YERE (tab çubuğunun hemen altına)
-// eklenen KARDEŞ kontrol, ama BİLİNÇLİ OLARAK farklı etkileşim:
-// checkbox+otomatik-tetikleme DEĞİL, çünkü hedef bir ALT KÜME seçimi
-// gerektiriyor — bu yüzden bir düğme + modal (bkz. openUnitCopyToSelectedModal).
+// bilgilerini istediğim bağımsız bölümlere kopyalamak" — checkbox+otomatik-
+// tetikleme DEĞİL, çünkü hedef bir ALT KÜME seçimi gerektiriyor, bu yüzden
+// bir düğme + modal (bkz. openUnitCopyToSelectedModal).
+//
+// Kullanıcı takip talebi (2026-08-21): "seçili taşınmazlara kopyala
+// butonunu bağımsız bölüm tablarının sonuna aynı punto ve biçimde taşı" —
+// İLK sürümde createLandApplyAllControl() gibi tab çubuğunun ALTINDA ayrı
+// bir `.secondary-button` bloktu; şimdi createTitleUnitTabBar()'ın
+// `extraActions`'ına (bkz. yukarıda) verilen, "+ Taşınmaz Ekle"/"Bu
+// taşınmazı sil" ile AYNI `.title-unit-tab-add`/`.title-unit-tab-remove`
+// punto/biçimini paylaşan (.title-unit-tab-copy-selected, styles.css) bir
+// düğüm döner — tab çubuğunun actions satırının SONUNA eklenir. NOT: Arsa
+// Özellikleri'ndeki KARDEŞ araç (createLandCopyToSelectedControl) BİLEREK
+// DOKUNULMADI — kullanıcı yalnızca "bağımsız bölüm tabları"ndan bahsetti,
+// Land kendi ayrı `.unit-copy-to-selected-wrap` blok stilinde kalmaya
+// devam ediyor.
 function createUnitCopyToSelectedControl() {
-  const wrap = document.createElement("div");
-  wrap.className = "unit-copy-to-selected-wrap";
+  const wrap = document.createElement("span");
+  wrap.className = "title-unit-tab-copy-selected-wrap";
 
   const button = document.createElement("button");
   button.type = "button";
-  button.className = "secondary-button";
+  button.className = "title-unit-tab-copy-selected";
   button.textContent = "Seçili Taşınmazlara Kopyala";
 
   const note = document.createElement("small");
@@ -3214,7 +3236,12 @@ function refreshUnitUnitsSummaryTablePreview() {
 function refreshTitleUnitTabBar() {
   const host = document.querySelector(".title-unit-tab-bar");
   if (!host) return;
-  host.replaceWith(createTitleUnitTabBar());
+  // "unit" bölümündeyken tab çubuğunun "Seçili Taşınmazlara Kopyala"
+  // eylemini (extraActions) TAŞIMASI gerekiyor — aksi halde bu jenerik,
+  // bölüm-bağımsız tazeleme (HER hücre commit'inde tetiklenir, bkz.
+  // commitTitleUnitsSummaryCellEdit) butonu SESSİZCE kaybederdi.
+  const options = activeSectionId === "unit" ? { extraActions: [createUnitCopyToSelectedControl()] } : {};
+  host.replaceWith(createTitleUnitTabBar(options));
 }
 
 // "Aynı ise gizle" (Tapu tablosu) ve "tüm taşınmazlarda boşsa kaldır"
@@ -4265,8 +4292,7 @@ function renderSection() {
   // aracı — kullanıcı hangi bağımsız bölümlerin aktif taşınmazla AYNI
   // bilgiye sahip olacağını kendisi işaretler.
   if (section.id === "unit" && isCurrentUserAdmin() && state.fields.requestType === "Çoklu Talep") {
-    body.append(createTitleUnitTabBar());
-    body.append(createUnitCopyToSelectedControl());
+    body.append(createTitleUnitTabBar({ extraActions: [createUnitCopyToSelectedControl()] }));
     body.append(createUnitUnitsSummaryTablePreview());
   }
 

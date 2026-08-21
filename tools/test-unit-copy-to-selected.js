@@ -222,11 +222,15 @@ function freshState(overrides = {}) {
 }
 
 // --- 7) renderSection() gate'i kaynak-duzeyinde dogru kablolu -------------
+// (2026-08-21 devam: "seçili taşınmazlara kopyala butonunu bağımsız bölüm
+// tablarının sonuna aynı punto ve biçimde taşı" — buton artık AYRI bir
+// body.append(...) DEĞİL, createTitleUnitTabBar()'a extraActions olarak
+// veriliyor, bkz. test-unit-units-summary-table.js'in AYNI kontrolü.)
 {
   assert.match(
     appSource,
-    /if \(section\.id === "unit" && isCurrentUserAdmin\(\) && state\.fields\.requestType === "Çoklu Talep"\) \{\s*\n\s*body\.append\(createTitleUnitTabBar\(\)\);\s*\n\s*body\.append\(createUnitCopyToSelectedControl\(\)\);/,
-    "renderSection() 'unit' icin createUnitCopyToSelectedControl()'u da eklemiyor."
+    /if \(section\.id === "unit" && isCurrentUserAdmin\(\) && state\.fields\.requestType === "Çoklu Talep"\) \{\s*\n\s*body\.append\(createTitleUnitTabBar\(\{ extraActions: \[createUnitCopyToSelectedControl\(\)\] \}\)\);/,
+    "renderSection() 'unit' icin createUnitCopyToSelectedControl()'u createTitleUnitTabBar()'in extraActions'ina eklemiyor."
   );
   console.log("renderSection unit seciliye-kopyala gate kaynak-duzeyi kablolama testi tamam.");
 }

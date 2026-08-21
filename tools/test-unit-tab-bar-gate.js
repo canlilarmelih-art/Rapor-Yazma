@@ -26,10 +26,15 @@ const path = require("node:path");
 const appSource = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
 
 // --- 1) renderSection() "unit" gate'i dogru kosulla kablolu ---------------
+// (2026-08-21 devam: "Seçili Taşınmazlara Kopyala" butonu artık
+// createTitleUnitTabBar()'a extraActions olarak veriliyor, bkz.
+// test-unit-copy-to-selected.js/test-unit-units-summary-table.js'in AYNI
+// kontrolü — bu dosya yalnızca tab bar'in DOGRU KOSULLA cagrildigini
+// dogrular, extraActions detayini degil.)
 {
   assert.match(
     appSource,
-    /if \(section\.id === "unit" && isCurrentUserAdmin\(\) && state\.fields\.requestType === "Çoklu Talep"\) \{\s*\n\s*body\.append\(createTitleUnitTabBar\(\)\);/,
+    /if \(section\.id === "unit" && isCurrentUserAdmin\(\) && state\.fields\.requestType === "Çoklu Talep"\) \{\s*\n\s*body\.append\(createTitleUnitTabBar\(/,
     "renderSection() 'unit' icin admin + Coklu Talep kosuluyla createTitleUnitTabBar()'i eklemiyor."
   );
   console.log("renderSection unit tab-bar gate kaynak-duzeyi kablolama testi tamam.");
@@ -38,7 +43,7 @@ const appSource = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
 // --- 2) createTitleUnitTabBar() not metni artik bolum adi SAYMIYOR --------
 // (bayatlama riskini kalici olarak ortadan kaldirmak icin).
 {
-  const fnStart = appSource.indexOf("function createTitleUnitTabBar()");
+  const fnStart = appSource.indexOf("function createTitleUnitTabBar(");
   assert(fnStart >= 0, "createTitleUnitTabBar() bulunamadi.");
   const fnEnd = appSource.indexOf("\n}", fnStart);
   const fnSource = appSource.slice(fnStart, fnEnd);

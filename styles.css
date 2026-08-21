@@ -4503,7 +4503,8 @@ table {
 }
 
 .title-unit-tab-add,
-.title-unit-tab-remove {
+.title-unit-tab-remove,
+.title-unit-tab-copy-selected {
   border: 1px solid var(--line);
   background: var(--surface);
   border-radius: 8px;
@@ -4517,6 +4518,17 @@ table {
 .title-unit-tab-remove {
   color: var(--red);
   border-color: var(--red);
+}
+
+/* Kullanıcı talebi (2026-08-21): "seçili taşınmazlara kopyala butonunu
+   bağımsız bölüm tablarının sonuna aynı punto ve biçimde taşı" —
+   "+ Taşınmaz Ekle"/"Bu taşınmazı sil" ile AYNI actions satırına
+   (title-unit-tab-bar-actions, zaten flex/wrap/gap) eklenen düğüm; not
+   metni düğmenin yanında akar, kendi satırına düşmez. */
+.title-unit-tab-copy-selected-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .title-unit-tab-bar-note {

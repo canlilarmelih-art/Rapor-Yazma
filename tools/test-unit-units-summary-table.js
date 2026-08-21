@@ -478,11 +478,15 @@ function fullUnitFields(overrides = {}) {
 }
 
 // --- 11) renderSection() "unit" gate'i doğru sırayla genişletildi ---------
+// (2026-08-21 devam: "Seçili Taşınmazlara Kopyala" butonu artık AYRI bir
+// body.append(...) DEĞİL, createTitleUnitTabBar()'a extraActions olarak
+// veriliyor — tab çubuğunun "+ Taşınmaz Ekle"/"Bu taşınmazı sil"
+// butonlarıyla AYNI actions satırının SONUNA ekleniyor.)
 {
   assert.match(
     appSource,
-    /if \(section\.id === "unit" && isCurrentUserAdmin\(\) && state\.fields\.requestType === "Çoklu Talep"\) \{\s*\n\s*body\.append\(createTitleUnitTabBar\(\)\);\s*\n\s*body\.append\(createUnitCopyToSelectedControl\(\)\);\s*\n\s*body\.append\(createUnitUnitsSummaryTablePreview\(\)\);\s*\n\s*\}/,
-    "renderSection() 'unit' gate'i beklenen sırayla (tab bar -> kopyala -> özet tablo) genişletilmemiş."
+    /if \(section\.id === "unit" && isCurrentUserAdmin\(\) && state\.fields\.requestType === "Çoklu Talep"\) \{\s*\n\s*body\.append\(createTitleUnitTabBar\(\{ extraActions: \[createUnitCopyToSelectedControl\(\)\] \}\)\);\s*\n\s*body\.append\(createUnitUnitsSummaryTablePreview\(\)\);\s*\n\s*\}/,
+    "renderSection() 'unit' gate'i beklenen şekilde (tab bar+kopyala -> özet tablo) genişletilmemiş."
   );
   console.log("renderSection unit gate kaynak-duzeyi kablolama testi tamam.");
 }

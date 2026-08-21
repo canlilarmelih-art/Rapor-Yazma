@@ -1,5 +1,17 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.497 - 2026-08-21 - "Seçili Taşınmazlara Kopyala" butonu Bağımsız Bölüm tab çubuğunun içine taşındı
+
+- Kullanıcı: "seçili taşınmazlara kopyala butonunu bağımsız bölüm tablarının sonuna aynı punto ve biçimde taşı."
+- **`createTitleUnitTabBar()` artık `options.extraActions` (DOM node dizisi) parametresi alıyor** (geriye dönük uyumlu — diğer 5+ çağrı yeri, Tapu/Adres/İmar/Arsa/Değerleme, parametre GEÇMEDEN çağırmaya devam ediyor, davranışları değişmedi). Bu ortak tab çubuğu Bağımsız Bölüm'e ÖZGÜ olmayıp birçok bölümde kullanıldığından, "Seçili Taşınmazlara Kopyala" butonu fonksiyonun içine SABİT-KODLANAMAZDI — `extraActions` ile "+ Taşınmaz Ekle"/"Bu taşınmazı sil" butonlarının HEMEN ARDINA (actions satırının sonuna) ekleniyor.
+- **`createUnitCopyToSelectedControl()` yeniden biçimlendirildi**: eskiden tab çubuğunun ALTINDA ayrı, büyük punto bir `.secondary-button` bloktu; şimdi `.title-unit-tab-add`/`.title-unit-tab-remove` ile AYNI punto/biçimi paylaşan yeni bir `.title-unit-tab-copy-selected` sınıfıyla döndürülüyor, `renderSection()`'ın "unit" gate'inde `createTitleUnitTabBar({ extraActions: [createUnitCopyToSelectedControl()] })` olarak veriliyor.
+- **`refreshTitleUnitTabBar()`** (her hücre-tablo commit'inde HER bölümde tetiklenen jenerik tazeleyici) güncellendi: `activeSectionId === "unit"` iken tazeleme sırasında `extraActions`'ı YENİDEN oluşturup geçiyor — aksi halde bu buton, unit bölümündeyken herhangi bir özet tablo hücresi düzenlendiğinde SESSİZCE kaybolurdu (tab çubuğu tamamen yeniden üretiliyor).
+- **Arsa Özellikleri'ndeki KARDEŞ araç (`createLandCopyToSelectedControl`) BİLEREK DOKUNULMADI** — kullanıcı yalnızca "bağımsız bölüm tabları"ndan bahsetti; Land kendi ayrı `.unit-copy-to-selected-wrap` blok stilinde (tab çubuğunun altında) kalmaya devam ediyor.
+- `styles.css`: `.title-unit-tab-copy-selected` yeni sınıf `.title-unit-tab-add`/`.title-unit-tab-remove` ile AYNI kurala eklendi; yeni `.title-unit-tab-copy-selected-wrap` (inline-flex, buton+not yan yana).
+- Test: `tools/test-unit-copy-to-selected.js`, `tools/test-unit-units-summary-table.js`, `tools/test-unit-tab-bar-gate.js` — üçünün de `renderSection()`/`createTitleUnitTabBar()` kaynak-düzeyi regex'leri yeni imzaya güncellendi. `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` VE `styles.css` cache-buster'ları `?v=20260821-1530`.
+- Canlı tarayıcı testi yapılamadı (giriş bilgisi yok) — doğrulama kod/test seviyesinde.
+
 ## 0.0.496 - 2026-08-21 - Bağımsız Bölüm özet tablosu: Kat sütunu taşındı, İndirgenmiş Toplam Alan eklendi, İç Hacimler oda-türü bazlı sayıldı
 
 - Kullanıcı (paylaşılan görselle birlikte): "kat sütununu blok ve bağımsız bölüm sütunu arasına al. indirgenmiş yasal ve mevcut toplam alanlar sütunlarını göster İÇ HACİMLER BÖLÜMÜ salt okunur şekilde görseldeki gibi olsun."
