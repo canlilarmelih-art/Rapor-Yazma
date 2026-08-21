@@ -975,6 +975,9 @@ const encumbranceAnnotationTypeOptions = ["Şerh", "Haciz", "İhtiyati Haciz", "
 let activeSectionId = sections[0].id;
 let state = loadState();
 let currentAccessEmail = "";
+// Çoklu seçim alanı render gerektiren bir güncelleme yaptığında açık panel
+// kaybolmasın; yeniden oluşan aynı alan kendini tekrar açar.
+let multiCheckboxFieldToReopen = "";
 // Yönetici dışında, sunucudaki privilegedUsers listesine admin tarafından
 // eklenmiş kullanıcılar için true olur (bkz. /api/my-role,
 // cloud/cloud-sync.js). Statik e-posta karşılaştırmasıyla belirlenemez —
@@ -16762,6 +16765,7 @@ function createMultiCheckboxControl(field) {
             ...selected.filter((value) => value !== imarOsbInstitutionOption),
             institutionName,
           ]);
+          multiCheckboxFieldToReopen = field.key;
           renderSection();
         });
         return;
@@ -16774,6 +16778,7 @@ function createMultiCheckboxControl(field) {
       }
       selected = persistMultiSelection(values);
       if (field.key === "projectInstitution") {
+        multiCheckboxFieldToReopen = field.key;
         renderSection();
       }
     });
@@ -16804,6 +16809,11 @@ function createMultiCheckboxControl(field) {
       }, 0);
     }
   };
+
+  if (multiCheckboxFieldToReopen === field.key) {
+    multiCheckboxFieldToReopen = "";
+    setOpen(true);
+  }
 
   summaryButton.addEventListener("click", () => {
     setOpen(list.hidden);
