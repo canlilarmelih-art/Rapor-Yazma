@@ -127,6 +127,12 @@ const functionNames = [
 
 const sandboxSource = `
   let state = {};
+  // computeValuationFieldsForAllTitleUnits() (bu dosyanin odagi DEGIL —
+  // dongu/bayrak mekanigi tools/test-title-unit-switch.js senaryo 33/34'te
+  // gercekten test ediliyor) burada no-op bir SAHTE ile degistirilir,
+  // aksi halde buildValuationUnitsSummaryWordTableHtml()'in ONA yaptigi
+  // YENI cagri ReferenceError firlatirdi.
+  function computeValuationFieldsForAllTitleUnits() {}
   ${extractArrayConst("valuationMarketRows")}
   ${extractArrayConst("valuationUrgentSaleRows")}
   ${extractComputedConst("VALUATION_UNITS_TABLE_ROW_DEFS")}
@@ -363,11 +369,14 @@ function unit(overrides = {}) {
 }
 
 // --- 11) renderSection() "valuation" gate'i createValuationCopyToSelectedControl()'u
-// createTitleUnitTabBar()'in extraActions'ina ekliyor mu.
+// createTitleUnitTabBar()'in extraActions'ina ekliyor mu. (2026-08-21 devam:
+// computeValuationFieldsForAllTitleUnits() bu gate'e EKLENDIGI icin
+// body.append(createTitleUnitTabBar(...)) satirindan hemen ONCE artik
+// baska satirlar da var — [\s\S]*? ile esnetildi, bkz. senaryo 13.)
 {
   assert.match(
     appSource,
-    /if \(section\.id === "valuation" && isCurrentUserAdmin\(\) && state\.fields\.requestType === "Çoklu Talep"\) \{\s*\n\s*body\.append\(createTitleUnitTabBar\(\{ extraActions: \[createValuationCopyToSelectedControl\(\)\] \}\)\);\s*\n\s*body\.append\(createValuationUnitsSummaryTablePreview\(\)\);\s*\n\s*\}/,
+    /if \(section\.id === "valuation" && isCurrentUserAdmin\(\) && state\.fields\.requestType === "Çoklu Talep"\) \{[\s\S]*?body\.append\(createTitleUnitTabBar\(\{ extraActions: \[createValuationCopyToSelectedControl\(\)\] \}\)\);\s*\n\s*body\.append\(createValuationUnitsSummaryTablePreview\(\)\);\s*\n\s*\}/,
     "renderSection() 'valuation' gate'i createValuationCopyToSelectedControl()'u extraActions'a eklemiyor."
   );
   console.log("renderSection valuation gate kaynak-duzeyi kablolama testi tamam.");
@@ -415,6 +424,50 @@ function unit(overrides = {}) {
   const subThCells = [...headerRows[1][1].matchAll(/<th[^>]*>([\s\S]*?)<\/th>/g)];
   assert.equal(subThCells.length, firstRowCells.length - 3, "Alt-baslik sayisi, govde hucre sayisi (Sira No+Blok+BBNo haric) ile eslesmeli.");
   console.log("Header/govde hizalama regresyon testi (Blok/BBNo en basta, Kira/Durum karismiyor) tamam.");
+}
+
+// --- 13) computeValuationFieldsForAllTitleUnits(): kaynak-duzeyi kablolama
+// (2026-08-21). Kullanici bildirimi: "bagimsiz bolum bilgisi doldurulan
+// diger tasinmazlarin degerleri otomatik olusmaliydi ancak olusmadi" —
+// davranissal test tools/test-title-unit-switch.js'te (senaryo 33/34);
+// burada yalnizca KAYNAK-DUZEYI kablolama dogrulanir: (a) 7 DOM-dokunan
+// alt-fonksiyonun HER BIRI suppressValuationSideEffects bayragiyla
+// korunuyor mu, (b) computeValuationFieldsForAllTitleUnits() renderSection()'in
+// "valuation" gate'inde VE export fonksiyonunda cagriliyor mu.
+{
+  const guardedFunctionNames = [
+    "refreshValuationControls",
+    "refreshBuildingDepreciationFromCurrentFields",
+    "refreshWorkplaceFloorCalculationTable",
+    "refreshValuationSaleabilityExplanation",
+    "refreshValuationRentExplanation",
+    "refreshValuationMethodExplanation",
+    "refreshForeignCurrencyValuationExplanation",
+  ];
+  guardedFunctionNames.forEach((name) => {
+    const fnStart = appSource.indexOf(`\nfunction ${name}(`);
+    assert(fnStart >= 0, `${name}() bulunamadi.`);
+    const bodyStart = appSource.indexOf("{", fnStart);
+    const nextLines = appSource.slice(bodyStart, bodyStart + 250);
+    assert.match(
+      nextLines,
+      /\{\s*\n\s*if \(suppressValuationSideEffects\) return;/,
+      `${name}() suppressValuationSideEffects bayragiyla korunmuyor (ilk satir olmali).`
+    );
+  });
+  console.log("7 DOM-dokunan alt-fonksiyonun suppressValuationSideEffects korumasi testi tamam.");
+
+  assert.match(
+    appSource,
+    /if \(section\.id === "valuation" && isCurrentUserAdmin\(\) && state\.fields\.requestType === "Çoklu Talep"\) \{[\s\S]{0,400}?computeValuationFieldsForAllTitleUnits\(\);[\s\S]{0,300}?body\.append\(createTitleUnitTabBar\(/,
+    "renderSection() 'valuation' gate'i computeValuationFieldsForAllTitleUnits()'i tab cubugundan ONCE cagirmiyor."
+  );
+  assert.match(
+    appSource,
+    /function buildValuationUnitsSummaryWordTableHtml\(\) \{[\s\S]{0,300}?computeValuationFieldsForAllTitleUnits\(\);[\s\S]{0,200}?buildValuationUnitsSummaryTableData\(\)/,
+    "buildValuationUnitsSummaryWordTableHtml() computeValuationFieldsForAllTitleUnits()'i cagirmiyor (export'ta guncel olmayabilir)."
+  );
+  console.log("computeValuationFieldsForAllTitleUnits cagri-noktalari (renderSection + export) kablolama testi tamam.");
 }
 
 console.log("Tasinmazlar degerleme ozeti tablosu testleri basarili.");

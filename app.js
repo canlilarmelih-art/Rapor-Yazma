@@ -4482,6 +4482,13 @@ function renderSection() {
   // (yalnızca manuel geçersiz kılınabilen 4 "Değer" alanı — bkz.
   // getValuationCopyableFieldKeys) farklı, istenen bir şey.
   if (section.id === "valuation" && isCurrentUserAdmin() && state.fields.requestType === "Çoklu Talep") {
+    // Kullanıcı bildirimi (2026-08-21): "bağımsız bölüm bilgisi doldurulan
+    // diğer taşınmazların değerleri otomatik oluşmalıydı ancak oluşmadı" —
+    // özet tablo kurulmadan ÖNCE TÜM taşınmazların hesaplanan Değerleme
+    // alanları güncellenir (bkz. computeValuationFieldsForAllTitleUnits
+    // yorumu) — aksi halde yalnızca fiilen ziyaret edilmiş taşınmazlar
+    // dolu görünürdü.
+    computeValuationFieldsForAllTitleUnits();
     body.append(createTitleUnitTabBar({ extraActions: [createValuationCopyToSelectedControl()] }));
     body.append(createValuationUnitsSummaryTablePreview());
   }
@@ -6086,6 +6093,7 @@ function getBuildingDepreciationRate() {
 }
 
 function refreshBuildingDepreciationFromCurrentFields(changedKey = "") {
+  if (suppressValuationSideEffects) return;
   if (isLandOwnershipType()) {
     state.fields.buildingDepreciationType = "";
     state.fields.buildingDepreciationRate = "";
@@ -6778,6 +6786,10 @@ function buildValuationUnitsSummaryTableHtml(data, activeRowIndex, { editable = 
 // gerçek HTML tablo (bkz. template-engine.js) — ekran önizlemesi ile aynı
 // Yasal/Mevcut durum grup başlıklarını kullanır.
 function buildValuationUnitsSummaryWordTableHtml() {
+  // Değerleme sekmesine hiç girilmeden (ör. toplu içe aktarım sonrası
+  // doğrudan) export alınırsa bile Word/Excel/banka şablonu çıktısı
+  // güncel olsun diye (bkz. computeValuationFieldsForAllTitleUnits yorumu).
+  computeValuationFieldsForAllTitleUnits();
   const data = buildValuationUnitsSummaryTableData();
   if (!data || !data.rows.length) return "";
   return buildValuationUnitsSummaryTableHtml(data);
@@ -7319,6 +7331,7 @@ function fillWorkplaceFloorCalculationTableBody(tbody, rows = getUnitFloorRows()
 }
 
 function refreshWorkplaceFloorCalculationTable() {
+  if (suppressValuationSideEffects) return;
   const table = document.querySelector("[data-workplace-floor-calculation-table]");
   if (!table) return;
   const tbody = table.querySelector("tbody");
@@ -7654,6 +7667,7 @@ function parseConstructionLevelPercentForExplanation(value) {
 const valuationMethodExplanationFallback = "Değerleme metodu seçildiğinde açıklama otomatik oluşacaktır.";
 
 function refreshValuationMethodExplanation() {
+  if (suppressValuationSideEffects) return;
   state.fields.valuationMethodExplanation = buildValuationMethodExplanation();
   const text = document.querySelector("[data-valuation-method-explanation-text]");
   if (text) text.textContent = state.fields.valuationMethodExplanation || valuationMethodExplanationFallback;
@@ -7772,6 +7786,7 @@ function buildValuationSaleabilityExplanation() {
 const valuationSaleabilityExplanationFallback = "Satış kabiliyeti seçildiğinde açıklama otomatik oluşacaktır.";
 
 function refreshValuationSaleabilityExplanation() {
+  if (suppressValuationSideEffects) return;
   state.fields.valuationSaleabilityExplanation = buildValuationSaleabilityExplanation();
   const text = document.querySelector("[data-valuation-saleability-explanation-text]");
   if (text) text.textContent = state.fields.valuationSaleabilityExplanation || valuationSaleabilityExplanationFallback;
@@ -7894,6 +7909,7 @@ function formatValuationRentExplanationMoney(value) {
 const valuationRentExplanationFallback = "Yasal ve mevcut kira değerleri girildiğinde kira açıklaması otomatik oluşacaktır.";
 
 function refreshValuationRentExplanation() {
+  if (suppressValuationSideEffects) return;
   state.fields.valuationRentExplanation = buildValuationRentExplanation();
   const text = document.querySelector("[data-valuation-rent-explanation-text]");
   if (text) text.textContent = state.fields.valuationRentExplanation || valuationRentExplanationFallback;
@@ -8439,6 +8455,24 @@ function hasUserDefinedLandMarketValue(key) {
     state.fields[`${key}UserDefined`] === "1";
 }
 
+// Kullanıcı bildirimi (2026-08-21, ekran görüntüsü): "TABLODA OTOMATİK
+// HESAPLAMA YAPMIYOR AMA arsa değerini değiştirdim bağımsız bölüm bilgisi
+// doldurulan diğer taşınmazların değerleri otomatik oluşmalıydı ancak
+// oluşmadı." — KÖK NEDEN: refreshValuationComputedFields() (aşağıda)
+// SADECE CANLI state.fields üzerinde çalışır; Değerleme özet tablosu
+// (buildAllTitleUnitsForSummaryTable/getTitleUnitFieldsForLabel) ise HER
+// taşınmazın HAM, hiç-hesaplanmamış gölge verisini okur — kullanıcı o
+// taşınmazın sekmesine hiç girmemişse hesaplanan alanlar (legalValue/
+// currentValue/landValue/Yapı Değeri vb.) orada HİÇ üretilmemiş olur.
+// Bu bayrak, computeValuationFieldsForAllTitleUnits() (aşağıda) TÜM
+// taşınmazlar arasında SESSİZCE (switchActiveTitleUnit ile) gezinip
+// hesaplama zincirini çalıştırırken, zincirin DOM'a dokunan 7 alt-
+// fonksiyonunun (görüntü senkronu/paylaşımlı açıklama metni yenileme —
+// asıl DEĞER hesaplamasını ETKİLEMEZ) EKRANDA GÖRÜNEN gerçek aktif
+// taşınmazın form alanlarını YANLIŞ taşınmazın verisiyle EZMESİNİ
+// engeller.
+let suppressValuationSideEffects = false;
+
 function refreshValuationComputedFields() {
   syncValuationAreasFromUnitAreas();
   syncComparableValuationMarketValues();
@@ -8467,6 +8501,46 @@ function refreshValuationComputedFields() {
   refreshValuationMethodExplanation();
   refreshForeignCurrencyValuationExplanation();
   refreshValuationControls();
+}
+
+// applyLandDataToAllTitleUnits()/applyImarDataToAllTitleUnits() GİBİ "tüm
+// taşınmazlar üzerinde dön" bir yardımcı DEĞİL — bu, HİÇBİR ŞEYİ
+// KOPYALAMAZ, yalnızca HER taşınmazın KENDİ verisinden HESAPLANMASI
+// gereken Değerleme alanlarını (legalValue/currentValue/landValue/Yapı
+// Değeri vb.) o taşınmazın kendi gölge deposuna YAZAR — switchActiveTitleUnit()
+// (ZATEN test edilmiş, saveState()/render()/autosave() ÇAĞIRMAYAN saf
+// state mutasyonu) ile SIRAYLA gezinip her birinde refreshValuationComputedFields()'i
+// çalıştırır, sonra orijinal aktif taşınmaza GERİ döner. suppressValuationSideEffects
+// bayrağı, bu sessiz gezinti sırasında zincirin DOM'a dokunan alt-
+// fonksiyonlarının ekrandaki (gerçek aktif taşınmazın) form alanlarını
+// EZMESİNİ engeller.
+//
+// BİLİNÇLİ OLARAK debounce'lu canlı-yazma yenilemesine/hücre-bazlı
+// commitTitleUnitsSummaryCellEdit() yoluna EKLENMEDİ (performans — büyük
+// bir raporda [örn. 43 taşınmaz] her tuş vuruşunda onlarca sekme-değiştir
+// döngüsü çalıştırmak yazarken gecikmeye yol açardı); yalnızca TAM bölüm
+// render'ında (renderSection'ın "valuation" gate'i) ve export anında
+// (buildValuationUnitsSummaryWordTableHtml) çağrılır. autosave() de
+// ÇAĞRILMAZ — switchActiveTitleUnit'in "yalnızca state mutasyonu"
+// sözleşmesiyle TUTARLI; hesaplanan değerler bir sonraki doğal
+// autosave'de kalıcılaşır (türetilmiş/yeniden-hesaplanabilir veri,
+// kullanıcı girdisi DEĞİL — o ana kadar yalnızca bellekte kalması
+// zararsız).
+function computeValuationFieldsForAllTitleUnits() {
+  const count = getTitleUnitCount();
+  if (count < 2) return;
+  const originalActiveIndex = state.activeTitleUnitIndex;
+  suppressValuationSideEffects = true;
+  try {
+    for (let index = 0; index < count; index += 1) {
+      if (index === originalActiveIndex) continue;
+      switchActiveTitleUnit(index);
+      refreshValuationComputedFields();
+    }
+  } finally {
+    switchActiveTitleUnit(originalActiveIndex);
+    suppressValuationSideEffects = false;
+  }
 }
 
 function refreshUrgentSaleValues() {
@@ -9619,6 +9693,7 @@ function calculateValuationSummaryUnitValue() {
 }
 
 function refreshValuationControls() {
+  if (suppressValuationSideEffects) return;
   document.querySelectorAll(".valuation-editor [data-field]").forEach((control) => {
     const key = control.dataset.field;
     const nextValue = state.fields[key] || "";
@@ -23788,6 +23863,7 @@ function buildForeignCurrencyValuationExplanation() {
 }
 
 function refreshForeignCurrencyValuationExplanation() {
+  if (suppressValuationSideEffects) return;
   const explanation = buildForeignCurrencyValuationExplanation();
   state.fields.foreignCurrencyValuationExplanation = explanation;
   const text = document.querySelector("[data-foreign-currency-valuation-explanation-text]");

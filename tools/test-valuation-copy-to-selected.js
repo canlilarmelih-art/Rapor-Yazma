@@ -224,10 +224,13 @@ function freshState(overrides = {}) {
 }
 
 // --- 7) renderSection() gate'i kaynak-duzeyinde dogru kablolu -------------
+// (2026-08-21 devam: computeValuationFieldsForAllTitleUnits() bu gate'e
+// EKLENDIGI icin body.append(createTitleUnitTabBar(...)) satirindan hemen
+// ONCE artik baska bir satir da var - [\s\S]*? ile esnetildi.)
 {
   assert.match(
     appSource,
-    /if \(section\.id === "valuation" && isCurrentUserAdmin\(\) && state\.fields\.requestType === "Çoklu Talep"\) \{\s*\n\s*body\.append\(createTitleUnitTabBar\(\{ extraActions: \[createValuationCopyToSelectedControl\(\)\] \}\)\);\s*\n\s*body\.append\(createValuationUnitsSummaryTablePreview\(\)\);\s*\n\s*\}/,
+    /if \(section\.id === "valuation" && isCurrentUserAdmin\(\) && state\.fields\.requestType === "Çoklu Talep"\) \{[\s\S]*?body\.append\(createTitleUnitTabBar\(\{ extraActions: \[createValuationCopyToSelectedControl\(\)\] \}\)\);\s*\n\s*body\.append\(createValuationUnitsSummaryTablePreview\(\)\);\s*\n\s*\}/,
     "renderSection() 'valuation' icin createValuationCopyToSelectedControl()'u createTitleUnitTabBar()'in extraActions'ina eklemiyor."
   );
   console.log("renderSection valuation seciliye-kopyala gate kaynak-duzeyi kablolama testi tamam.");

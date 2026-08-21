@@ -122,6 +122,17 @@ const functionNames = [
   // getBuildingSectionFieldKeys()'e KOSULSUZ bagimli.
   "getUnitSectionFieldKeys",
   "getBuildingSectionFieldKeys",
+  // Degerleme ozet tablosu: TUM tasinmazlar icin otomatik hesaplama
+  // (2026-08-21, devam) - computeValuationFieldsForAllTitleUnits()
+  // switchActiveTitleUnit()'i (yukarida) yeniden kullanir. GERCEK
+  // refreshValuationComputedFields() ~15 fonksiyonluk COK GENIS bir
+  // bagimlilik agaci gerektirdiginden (DOM erisimi dahil), burada BILEREK
+  // ekstre edilMEZ - asagida basit, davranis-koruyan bir SAHTE (stub)
+  // ile degistirilir (proje konvansiyonu: "gercek zinciri cikarmak
+  // pratik degilse basit sahte ile test et"); asil dogrulanan sey GERCEK
+  // dongu/bayrak/park-geri-yukleme mekanigi - finansal formullerin
+  // KENDISI ayrica var olan testlerle kapsaniyor.
+  "computeValuationFieldsForAllTitleUnits",
 ];
 
 // Çoklu Excel akışında ana form bölümlerinin tamamı taşınmaz kapsamındadır.
@@ -183,6 +194,16 @@ let state = null;
 const TITLE_UNIT_SCOPED_SECTION_IDS = ["address", "title", "encumbrance", "planning", "land", "documents", "comparables", "valuation", "unit", "building"];
 const TITLE_UNIT_SCOPED_TABLE_KEYS_BASE = ["title", "encumbrance", "encumbranceDeclarations", "encumbranceAnnotations", "encumbranceMortgages", "comparables", "unitFloors", "buildingFloors"];
 const TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS = new Set(["transport", "nearby", "environmentDescription", "takbisSummary", "reviewedDocumentsDescription", "comparableMarketAnalysisText", "saleabilityNote"]);
+// computeValuationFieldsForAllTitleUnits() GERCEK olarak asagida extract
+// edilir, ama onun cagirdigi refreshValuationComputedFields() (gercekte
+// ~15 fonksiyonluk, DOM-erisimli COK GENIS bir zincir) burada BILEREK
+// davranis-koruyan basit bir SAHTE ile degistirilir - test edilen sey
+// dongu/bayrak/park-geri-yukleme mekanigi, finansal formuller DEGIL
+// (onlar ayrica var olan testlerle kapsaniyor).
+let suppressValuationSideEffects = false;
+function refreshValuationComputedFields() {
+  state.fields.legalValue = "HESAPLANDI-" + state.activeTitleUnitIndex;
+}
 ${functionNames.map(extractFunction).join("\n")}
 return {
   fns: { ${functionNames.join(", ")} },
@@ -1107,6 +1128,50 @@ assert.match(appSource, /panel\.dataset\.parcelScope = mixedParcels \? "mixed" :
   assert.deepEqual(primaryAgain.tables.unitFloors, [{ floorName: "Zemin", residential: "1" }], "Birincilin unitFloors tablosu round-trip korunmali.");
   assert.deepEqual(primaryAgain.tables.buildingFloors, [{ floorName: "Zemin", residential: "1" }], "Birincilin buildingFloors tablosu round-trip korunmali.");
   console.log("unitFloors/buildingFloors tablolari artik sizmiyor (round-trip) testi tamam.");
+}
+
+// --- 33) computeValuationFieldsForAllTitleUnits(): TUM tasinmazlar icin --
+// hesaplama dongusu (2026-08-21). Kullanici bildirimi: "TABLODA OTOMATIK
+// HESAPLAMA YAPMIYOR AMA ... bagimsiz bolum bilgisi doldurulan diger
+// tasinmazlarin degerleri otomatik olusmaliydi ancak olusmadi."
+{
+  // 3 tasinmaz (0=aktif/birincil, 1, 2) - baslangicta yalnizca aktifin
+  // "hesaplanmis" degeri var (gercek app.js'teki senaryoyla AYNI: kullanici
+  // yalnizca aktif tasinmazi ziyaret etmis).
+  const state = freshState({
+    fields: { ...freshState().fields, legalValue: "AKTIF-ONCEDEN-HESAPLANMIS" },
+    titleUnits: [
+      { fields: { blockNo: "1" }, tables: {} },
+      { fields: { blockNo: "2" }, tables: {} },
+    ],
+    activeTitleUnitIndex: 0,
+  });
+  sandbox.setState(state);
+
+  sandbox.fns.computeValuationFieldsForAllTitleUnits();
+  const afterState = sandbox.getState();
+
+  // (a) Aktif tasinmazin KENDI degeri DEGISMEMELI (zaten guncel, "continue" ile atlanir).
+  assert.equal(afterState.fields.legalValue, "AKTIF-ONCEDEN-HESAPLANMIS", "Aktif tasinmazin kendi degeri ETKILENMEMELI (zaten guncel).");
+  // (b) activeTitleUnitIndex, dongu SONUNDA orijinal degere GERI DONMELI.
+  assert.equal(afterState.activeTitleUnitIndex, 0, "Dongu sonunda activeTitleUnitIndex orijinal (0) degere GERI DONMELI.");
+  // (c) Diger IKI tasinmazin da ARTIK kendi (index'e gore) hesaplanmis degeri olmali.
+  assert.equal(afterState.titleUnits[0].fields.legalValue, "HESAPLANDI-1", "1. ek tasinmazin (index 1) legalValue'su ARTIK hesaplanmis olmali.");
+  assert.equal(afterState.titleUnits[1].fields.legalValue, "HESAPLANDI-2", "2. ek tasinmazin (index 2) legalValue'su ARTIK hesaplanmis olmali.");
+  // (d) Diger tasinmazlarin KENDI verisi (blockNo) KORUNMALI - dongu sirasinda kaybolmamali.
+  assert.equal(afterState.titleUnits[0].fields.blockNo, "1", "1. ek tasinmazin blockNo'su korunmali.");
+  assert.equal(afterState.titleUnits[1].fields.blockNo, "2", "2. ek tasinmazin blockNo'su korunmali.");
+
+  console.log("computeValuationFieldsForAllTitleUnits TUM tasinmazlar icin hesaplama + aktife geri donus testi tamam.");
+}
+
+// --- 34) computeValuationFieldsForAllTitleUnits(): tekil raporda no-op ---
+{
+  const state = freshState();
+  sandbox.setState(state);
+  sandbox.fns.computeValuationFieldsForAllTitleUnits();
+  assert.equal(sandbox.getState().activeTitleUnitIndex, 0, "Tekil raporda (titleUnits bos) no-op olmali, activeTitleUnitIndex degismemeli.");
+  console.log("computeValuationFieldsForAllTitleUnits tekil raporda no-op testi tamam.");
 }
 
 console.log("Coklu TAKBIS Faz 2 tab-anahtarlama motoru testleri basarili.");
