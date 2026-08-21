@@ -92,6 +92,10 @@ const functionNames = [
   "resolveTitleUnitWriteTarget",
   "resolveTitleUnitDocumentsRowsWriteTarget",
   "syncDocumentsSharedDataToBlockSiblings",
+  // landUnitValue paylasimli-deger bindirme duzeltmesi (2026-08-22) icin -
+  // getTitleUnitFieldsForLabel artik bunlara bagimli.
+  "isCondominiumEasementOwnershipType",
+  "normalizeOwnershipTypeForSectionVisibility",
 ];
 const constNames = ["DOCUMENTS_BLOCK_SHARED_FIELD_KEYS"];
 

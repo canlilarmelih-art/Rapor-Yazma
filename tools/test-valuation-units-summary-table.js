@@ -114,6 +114,15 @@ const functionNames = [
   "computeTitleUnitShareOfLandArea",
   "parseReportNumber",
   "formatSquareMeterArea",
+  // Negatif deger kirmizi punto testi (2026-08-22) icin -
+  // buildValuationUnitsSummaryTableHtml artik hucre metnini negatiflik
+  // kontrolu icin bununla parse ediyor.
+  "parseValuationNumber",
+  // landUnitValue paylasimli-deger bindirme duzeltmesi (2026-08-22) icin -
+  // getTitleUnitFieldsForLabel artik buna (ve bagimliliklarina) bagimli.
+  "isCondominiumEasementOwnershipType",
+  "normalizeOwnershipTypeForSectionVisibility",
+  "foldTurkish",
 ];
 
 const sandboxSource = `
@@ -757,6 +766,55 @@ function fullFixtureFields(overrides = {}) {
   assert.ok(!html.includes("100,00 M²") && !html.includes("100,00 m²"), "Hücre değerinde ARTIK 'm²' soneki olmamalı.");
   assert.ok(html.includes(">100,00<") || html.includes(">100,00 <"), "Hücre değeri (soneksiz) HTML'de gözükmeli.");
   console.log("Hissesine Dusen Arsa Payi hucre m2-soneki kaldirma regresyon testi tamam.");
+}
+
+// --- 26) YENİ (2026-08-22, kullanıcı talebi): "sıfırın altında çıkan --------
+// değerler kırmızı punto ile yazılsın" — negatif Şerefiye (legalPremiumValue/
+// currentPremiumValue) hücresi kırmızı renkte (canlı Piyasa Değeri panelindeki
+// .valuation-input-negative ile AYNI ton, #b91c1c) render edilmeli; pozitif/
+// sıfır değerler ETKİLENMEMELİ.
+{
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: fullFixtureFields({ legalPremiumValue: "-125.000", currentPremiumValue: "125.000" }),
+    tables: {},
+    titleUnits: [unit(fullFixtureFields({ legalPremiumValue: "0", currentPremiumValue: "50.000" }))],
+  });
+  const data = fns.buildValuationUnitsSummaryTableData();
+  const html = fns.buildValuationUnitsSummaryTableHtml(data, 0, { editable: true });
+  const negativeCellMatch = html.match(/<td style="[^"]*color:#b91c1c;font-weight:800;[^"]*">-125\.000<\/td>/);
+  assert.ok(negativeCellMatch, "Negatif Şerefiye (-125.000) hücresi kırmızı (color:#b91c1c) render edilmeli.");
+  const positiveCellHtml = html.match(/<td style="[^"]*">125\.000<\/td>/)?.[0] || "";
+  assert.ok(!positiveCellHtml.includes("#b91c1c"), "Pozitif Şerefiye (125.000) hücresi kırmızı OLMAMALI.");
+  const zeroCellHtml = html.match(/<td style="[^"]*">0<\/td>/)?.[0] || "";
+  assert.ok(!zeroCellHtml.includes("#b91c1c"), "Sıfır Şerefiye (0) hücresi kırmızı OLMAMALI (yalnızca sıfırın ALTINDAKİ değerler).");
+  // Sıra No/BL./BB No gibi kimlik hücreleri asla negatif OLAMAZ, dolayısıyla
+  // etkilenmemeli (parseValuationNumber "-" için NaN döner, zararsız) —
+  // ayrıca Word/export yolu (buildValuationUnitsSummaryWordTableHtml, AYNI
+  // fonksiyonu editable:false ile çağırır) da aynı kırmızı işaretlemeyi
+  // taşımalı.
+  const wordHtml = fns.buildValuationUnitsSummaryWordTableHtml();
+  assert.ok(wordHtml.includes("color:#b91c1c;font-weight:800;"), "Word/export çıktısında da negatif değer kırmızı işaretlenmeli.");
+  console.log("Negatif deger (Serefiye) kirmizi punto testi tamam.");
+}
+
+// --- 27) YENİ (2026-08-22): commitTitleUnitsSummaryCellEdit() AKTİF OLMAYAN
+// bir satırda "landUnitValue" düzenlenirse (Kat İrtifakı'nda paylaşımlı),
+// setTitleUnitFieldValue (o satırın KENDİ, hiç okunmayan gölgesine yazardı)
+// DEĞİL, doğrudan state.fields.landUnitValue'ya (gerçek paylaşımlı kaynak)
+// yazmalı — aksi halde getTitleUnitFieldsForLabel'in YENİ paylaşımlı-değer
+// bindirmesi (bkz. test-title-unit-switch.js 29d) bu düzenlemeyi HER ZAMAN
+// görünmez kılardı. commitTitleUnitsSummaryCellEdit DOM/autosave/refresh*
+// zincirine bağımlı olduğundan (proje konvansiyonu: bkz. #12'deki
+// commitTitleUnitsSummaryCellEdit refresh/mirror testi) kaynak-metni
+// üzerinden doğrulanır.
+{
+  assert.match(
+    appSource,
+    /fieldKey === "landUnitValue" && isCondominiumEasementOwnershipType\(\)\)\s*\{\s*[\s\S]*?state\.fields\.landUnitValue = normalizeReportFieldValue\(fieldKey, rawValue\);/,
+    "commitTitleUnitsSummaryCellEdit() aktif olmayan bir satırda landUnitValue düzenlenince (Kat İrtifakı'nda) doğrudan state.fields.landUnitValue'ya yazmıyor."
+  );
+  console.log("commitTitleUnitsSummaryCellEdit landUnitValue paylasimli yazma yolu testi tamam.");
 }
 
 console.log("Tasinmazlar degerleme ozeti tablosu testleri basarili.");

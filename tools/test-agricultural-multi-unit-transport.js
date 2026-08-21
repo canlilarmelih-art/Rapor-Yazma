@@ -75,6 +75,11 @@ const functionNames = [
   "pluralizeEnvironmentalSubjectText",
   "selectVariant",
   "registerVariantGroup",
+  // landUnitValue paylasimli-deger bindirme duzeltmesi (2026-08-22) icin -
+  // getTitleUnitFieldsForLabel artik bunlara bagimli.
+  "isCondominiumEasementOwnershipType",
+  "normalizeOwnershipTypeForSectionVisibility",
+  "foldTurkish",
 ];
 
 const sandboxSource = `

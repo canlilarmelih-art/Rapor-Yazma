@@ -97,6 +97,11 @@ const functionNames = [
   "getReportThemeToken",
   "formatWordCell",
   "escapeHtml",
+  // landUnitValue paylasimli-deger bindirme duzeltmesi (2026-08-22) icin -
+  // getTitleUnitFieldsForLabel artik bunlara bagimli.
+  "isCondominiumEasementOwnershipType",
+  "normalizeOwnershipTypeForSectionVisibility",
+  "foldTurkish",
 ];
 const constNames = ["IMAR_UNITS_TABLE_FIELD_DEFS"];
 

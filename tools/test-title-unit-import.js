@@ -85,6 +85,9 @@ const functionNames = [
   "isLandOwnershipType",
   "normalizeOwnershipTypeForSectionVisibility",
   "foldTurkish",
+  // landUnitValue paylasimli-deger bindirme duzeltmesi (2026-08-22) icin -
+  // getTitleUnitFieldsForLabel artik buna bagimli.
+  "isCondominiumEasementOwnershipType",
   // Bağımsız Bölüm/Ana Gayrimenkul scoping-gap-fix (2026-08-20) -
   // getTitleUnitScopedFieldKeys() artik bunlara da KOSULSUZ bagimli.
   "getUnitSectionFieldKeys",

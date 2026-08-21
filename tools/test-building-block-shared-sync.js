@@ -74,6 +74,10 @@ const functionNames = [
   "getBuildingSectionFieldKeys",
   "getBuildingBlockSharedFieldKeys",
   "syncBuildingSharedDataToBlockSiblings",
+  // landUnitValue paylasimli-deger bindirme duzeltmesi (2026-08-22) icin -
+  // getTitleUnitFieldsForLabel artik bunlara bagimli.
+  "isCondominiumEasementOwnershipType",
+  "normalizeOwnershipTypeForSectionVisibility",
 ];
 
 // bkz. test-documents-block-grouping.js'teki AYNI emsal: normalizeReportTitleText

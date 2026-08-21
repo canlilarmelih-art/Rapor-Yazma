@@ -2283,8 +2283,25 @@ function getTitleUnitCount() {
 // titleUnits[i-1]) kullanılır.
 function getTitleUnitFieldsForLabel(index) {
   if (index === state.activeTitleUnitIndex) return state.fields;
-  if (index === 0) return state.primaryTitleUnitShadow?.fields || {};
-  return state.titleUnits[index - 1]?.fields || {};
+  const shadowFields = index === 0
+    ? (state.primaryTitleUnitShadow?.fields || {})
+    : (state.titleUnits[index - 1]?.fields || {});
+  // landUnitValue Kat İrtifakı'nda (Yatay/Dikey) TAMAMEN paylaşımlı hale
+  // getirildi (bkz. getTitleUnitScopedFieldKeys() içindeki 2026-08-21
+  // yorumu) — bu yüzden HİÇBİR taşınmazın gölgesine (snapshotTitleUnitScopedData/
+  // applyTitleUnitScopedData sadece SCOPED anahtarlara dokunur) HİÇ
+  // yazılmıyor. Sonuç: AKTİF taşınmazın canlı paneli doğru/paylaşılan
+  // değeri gösterirken, bu fonksiyonun AKTİF OLMAYAN taşınmazlar için
+  // döndürdüğü gölgede o alan hiç bulunmuyordu — özet tablolar (bkz.
+  // buildAllTitleUnitsForSummaryTable) diğer taşınmazlar için BOŞ/"-"
+  // gösteriyordu (kullanıcı: "arsa m2 birim değeri bir taşınmazda ne
+  // seçildi ise tüm taşınmazlara otomatik uygulanmalıydı, bu hala
+  // olmuyor", 2026-08-21). Paylaşımlı canlı değeri burada BİNDİRİYORUZ ki
+  // aktif olmayan taşınmazların salt-okunur görünümü de güncel kalsın.
+  if (isCondominiumEasementOwnershipType()) {
+    return { ...shadowFields, landUnitValue: state.fields.landUnitValue };
+  }
+  return shadowFields;
 }
 
 function getTitleUnitTablesForLabel(index) {
@@ -7098,7 +7115,15 @@ function buildValuationUnitsSummaryTableHtml(data, activeRowIndex, { editable = 
       if (leadingIndices.includes(columnIndex)) {
         return `<td style="${cellStyle}${narrowWidth}">${formatWordCell(toTitleFieldUppercase(cell))}</td>`;
       }
-      const style = meta?.narrow ? `${cellStyle}${narrowWidth}` : cellStyle;
+      // Kullanıcı talebi (2026-08-22): "sıfırın altında çıkan değerler
+      // kırmızı punto ile yazılsın" — Şerefiye gibi negatif çıkabilen
+      // hücreler (canlı Piyasa Değeri panelindeki .valuation-input-negative
+      // ile AYNI kırmızı ton, bkz. styles.css) burada da işaretlenir. Diğer
+      // sütunlar (No/BL./BB No hariç tutulduğu için zaten hiç negatif
+      // gelmez) etkilenmez — parseValuationNumber "-" veya metin için NaN
+      // döner, NaN < 0 false olduğundan zararsız.
+      const negativeStyle = parseValuationNumber(cell) < 0 ? "color:#b91c1c;font-weight:800;" : "";
+      const style = (meta?.narrow ? `${cellStyle}${narrowWidth}` : cellStyle) + negativeStyle;
       const isEditable = editable && meta?.kind === "scalar";
       if (!isEditable) return `<td style="${style}">${formatWordCell(toTitleFieldUppercase(cell))}</td>`;
       return `<td style="${style}cursor:text;" class="tus-editable-cell" data-unit-index="${rowIndex}" data-field-key="${escapeHtml(meta.fieldKey)}" title="Düzenlemek için tıklayın">${formatWordCell(toTitleFieldUppercase(cell))}</td>`;
@@ -20327,6 +20352,15 @@ function commitTitleUnitsSummaryCellEdit(fieldKey, rawValue, unitIndex) {
       renderValidation();
       updateStatus();
     }
+  } else if (fieldKey === "landUnitValue" && isCondominiumEasementOwnershipType()) {
+    // landUnitValue Kat İrtifakı'nda TAMAMEN paylaşımlı (bkz. getTitleUnitFieldsForLabel
+    // yorumu, 2026-08-21) — bu satır AKTİF taşınmaza ait olmasa bile
+    // gerçek paylaşımlı kaynağa (state.fields) yazılmalı; aksi halde
+    // setTitleUnitFieldValue bu satırın hiç okunmayan kendi gölgesine
+    // yazardı ve düzenleme HİÇBİR yerde (ne özet tabloda ne canlı
+    // panelde) görünmezdi.
+    state.fields.landUnitValue = normalizeReportFieldValue(fieldKey, rawValue);
+    autosave();
   } else {
     setTitleUnitFieldValue(unitIndex, fieldKey, normalizeReportFieldValue(fieldKey, rawValue));
     autosave();

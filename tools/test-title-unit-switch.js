@@ -1047,6 +1047,55 @@ assert.match(appSource, /panel\.dataset\.parcelScope = mixedParcels \? "mixed" :
   console.log("landUnitValue Yatay-Dikey Kat Irtifaki paylasim + Mustakil Bina regresyon testi tamam.");
 }
 
+// --- 29d) getTitleUnitFieldsForLabel(): AKTIF OLMAYAN tasinmazlar icin de
+// paylasimli landUnitValue GUNCEL gorunmeli (2026-08-22). Kullanici
+// bildirimi: "arsa m2 birim degeri bir tasinmazda ne secildi ise tum
+// tasinmazlara otomatik uygulanmaliydi. bu hala olmuyor." KOK NEDEN:
+// landUnitValue Kat Irtifakinda scoped set'ten CIKARILDIGI icin (29b) HICBIR
+// tasinmazin golgesine (primaryTitleUnitShadow/titleUnits[i].fields) HIC
+// yazilmiyordu - AKTIF tasinmazin canli paneli (state.fields) dogru
+// gorunuyordu ama getTitleUnitFieldsForLabel()'in AKTIF OLMAYAN tasinmazlar
+// icin dondurdugu golgede bu alan HIC yoktu; ozet tablolar (buildAllTitleUnitsForSummaryTable)
+// bu yuzden diger tasinmazlar icin BOS/"-" gosteriyordu.
+{
+  // (a) Yatay Kat Irtifaki: unit 1'e gecilip paylasimli deger degistirilince,
+  // unit 0'in (simdi golgede) getTitleUnitFieldsForLabel gorunumu de GUNCEL
+  // olmali - unit 0'a FIILEN geri DONMEDEN.
+  const stateYatay = freshState({
+    fields: { ...freshState().fields, ownershipType: "Yatay Kat İrtifakı", landUnitValue: "12500" },
+  });
+  sandbox.setState(stateYatay);
+  const newIndex = sandbox.fns.addTitleUnitTab();
+  sandbox.fns.switchActiveTitleUnit(newIndex);
+  // Bu noktada unit 0'in verisi primaryTitleUnitShadow'a park edildi -
+  // landUnitValue scoped OLMADIGI icin o golgede HIC YOK.
+  assert.equal(sandbox.getState().primaryTitleUnitShadow.fields.landUnitValue, undefined, "Golge (shadow) landUnitValue'yu HIC ICERMEMELI (bu, kok neden dogrulamasi).");
+  sandbox.getState().fields.landUnitValue = "77777";
+  const fieldsForUnit0 = sandbox.fns.getTitleUnitFieldsForLabel(0);
+  assert.equal(fieldsForUnit0.landUnitValue, "77777", "DUZELTME: AKTIF OLMAYAN unit 0'in gorunumu de PAYLASIMLI guncel degeri gostermeli (unit 0'a fiilen gecmeden).");
+
+  // (b) Hic ziyaret edilmemis (bos golgeli) YENI bir tasinmaz da ayni
+  // paylasimli degeri gormeli.
+  const newIndex2 = sandbox.fns.addTitleUnitTab();
+  const fieldsForNewUnit = sandbox.fns.getTitleUnitFieldsForLabel(newIndex2);
+  assert.equal(fieldsForNewUnit.landUnitValue, "77777", "Hic ziyaret edilmemis yeni tasinmazin gorunumu de paylasimli degeri gostermeli.");
+
+  // (c) REGRESYON: Mustakil Bina'da (paylasimli DEGIL) AKTIF OLMAYAN
+  // tasinmazin gorunumu KENDI (golgedeki) degerini gostermeye devam etmeli
+  // - aktif tasinmazin degeriyle KARISMAMALI.
+  const stateMustakil = freshState({
+    fields: { ...freshState().fields, ownershipType: "Müstakil Bina", landUnitValue: "5000" },
+  });
+  sandbox.setState(stateMustakil);
+  const newIndexM = sandbox.fns.addTitleUnitTab();
+  sandbox.fns.switchActiveTitleUnit(newIndexM);
+  sandbox.getState().fields.landUnitValue = "9999";
+  const fieldsForUnit0Mustakil = sandbox.fns.getTitleUnitFieldsForLabel(0);
+  assert.equal(fieldsForUnit0Mustakil.landUnitValue, "5000", "REGRESYON: Mustakil Bina'da unit 0'in gorunumu KENDI (golgedeki) degerini gostermeli, aktif unit'in degeriyle KARISMAMALI.");
+
+  console.log("getTitleUnitFieldsForLabel() aktif-olmayan tasinmazlarda paylasimli landUnitValue guncelligi testi tamam.");
+}
+
 // --- 29c) Degerleme: Yapi Degeri/Sigorta/Arsa/Natamam/Serefiye/Kapitilizasyon
 // aileleri artik tab degistirince SIZMIYOR (2026-08-21, ekran goruntusu
 // bildirimi: "toplam yasal yapi degeri gozukmuyor ama su an gozukenler

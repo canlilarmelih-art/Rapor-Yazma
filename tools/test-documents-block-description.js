@@ -103,6 +103,10 @@ const functionNames = [
   "isDocumentsBlockGroupingActive",
   "isPermitLikeDocument",
   "formatReviewedDocumentReference",
+  // landUnitValue paylasimli-deger bindirme duzeltmesi (2026-08-22) icin -
+  // getTitleUnitFieldsForLabel artik bunlara bagimli.
+  "isCondominiumEasementOwnershipType",
+  "normalizeOwnershipTypeForSectionVisibility",
 ];
 
 // Ağır/kapsam-dışı bağımlılıklar (bu testin odağı DEĞİL, mevcut/değişmeyen

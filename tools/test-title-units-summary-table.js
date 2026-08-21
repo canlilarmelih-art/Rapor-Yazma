@@ -119,6 +119,11 @@ const functionNames = [
   "getReportThemeToken",
   "formatWordCell",
   "escapeHtml",
+  // landUnitValue paylasimli-deger bindirme duzeltmesi (2026-08-22) icin -
+  // getTitleUnitFieldsForLabel artik bunlara bagimli.
+  "isCondominiumEasementOwnershipType",
+  "normalizeOwnershipTypeForSectionVisibility",
+  "foldTurkish",
 ];
 // Not: "buildCompactReportWordTableHtml" artık bu tablo TARAFINDAN
 // KULLANILMIYOR (kendi ÖZEL HTML üreticisi var, bkz. yukarıdaki yorum —

@@ -164,6 +164,10 @@ const functionNames = [
   "preserveReportSpecialWords",
   "escapeRegExp",
   "normalizeReportWhitespace",
+  // landUnitValue paylasimli-deger bindirme duzeltmesi (2026-08-22) icin -
+  // getTitleUnitFieldsForLabel artik bunlara bagimli.
+  "isCondominiumEasementOwnershipType",
+  "normalizeOwnershipTypeForSectionVisibility",
 ];
 const constNames = ["UNIT_UNITS_TABLE_FIELD_DEFS", "UNIT_UNITS_TABLE_REDUCED_AREA_DEFS", "UNIT_UNITS_TABLE_INTERIOR_GROUP_DEFS"];
 const objectConstNames = ["UNIT_FLOOR_MIRROR_FIELD_TO_ROW_KEY"];
