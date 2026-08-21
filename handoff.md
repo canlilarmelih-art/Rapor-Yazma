@@ -1,5 +1,16 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.498 - 2026-08-21 - Arsa Özellikleri'ndeki "Seçili Taşınmazlara Kopyala" da tab çubuğunun içine taşındı
+
+- Kullanıcı (0.0.497'nin hemen ardından): "arsa özelliklerindeki butonu da taşı."
+- 0.0.497'de Bağımsız Bölüm için yapılan AYNI değişiklik, Arsa Özellikleri'nin kardeş aracına (`createLandCopyToSelectedControl`) uygulandı: tab çubuğunun ALTINDAKİ ayrı `.secondary-button` blok yerine, `createTitleUnitTabBar()`'ın `extraActions`'ına verilen `.title-unit-tab-copy-selected` (Bağımsız Bölüm'ünkiyle AYNI, paylaşılan sınıf) düğümü döner.
+- **`createLandApplyAllControl()` ("Tümüne uygula" checkbox'ı) BİLİNÇLİ OLARAK DOKUNULMADI** — kullanıcı yalnızca "seçili taşınmazlara kopyala" butonundan bahsetti; bu ayrı kontrol tab çubuğunun ALTINDA kalmaya devam ediyor.
+- `refreshTitleUnitTabBar()` (her hücre-tablo commit'inde tetiklenen jenerik tazeleyici) `activeSectionId === "land"` durumunu da kapsayacak şekilde genişletildi — aksi halde buton Arsa özet tablosunda bir hücre düzenlendiğinde sessizce kaybolurdu.
+- `styles.css`'te artık kullanılmayan `.unit-copy-to-selected-wrap { margin-top: 8px; }` kuralı kaldırıldı (her iki bölüm de artık `.title-unit-tab-copy-selected-wrap` paylaşıyor); `.unit-copy-to-selected-note:empty` kuralı KORUNDU (not elemanının sınıfı değişmedi).
+- Test: `tools/test-land-copy-to-selected.js` — gate kaynak-düzeyi regex'i yeni imzaya güncellendi. `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` VE `styles.css` cache-buster'ları `?v=20260821-1600`.
+- Canlı tarayıcı testi yapılamadı (giriş bilgisi yok) — doğrulama kod/test seviyesinde.
+
 ## 0.0.497 - 2026-08-21 - "Seçili Taşınmazlara Kopyala" butonu Bağımsız Bölüm tab çubuğunun içine taşındı
 
 - Kullanıcı: "seçili taşınmazlara kopyala butonunu bağımsız bölüm tablarının sonuna aynı punto ve biçimde taşı."

@@ -2508,11 +2508,9 @@ function createTitleUnitTabBar(options = {}) {
 // `extraActions`'ına (bkz. yukarıda) verilen, "+ Taşınmaz Ekle"/"Bu
 // taşınmazı sil" ile AYNI `.title-unit-tab-add`/`.title-unit-tab-remove`
 // punto/biçimini paylaşan (.title-unit-tab-copy-selected, styles.css) bir
-// düğüm döner — tab çubuğunun actions satırının SONUNA eklenir. NOT: Arsa
-// Özellikleri'ndeki KARDEŞ araç (createLandCopyToSelectedControl) BİLEREK
-// DOKUNULMADI — kullanıcı yalnızca "bağımsız bölüm tabları"ndan bahsetti,
-// Land kendi ayrı `.unit-copy-to-selected-wrap` blok stilinde kalmaya
-// devam ediyor.
+// düğüm döner — tab çubuğunun actions satırının SONUNA eklenir. Arsa
+// Özellikleri'ndeki KARDEŞ araç (createLandCopyToSelectedControl) hemen
+// ardından AYNI değişiklikle taşındı (kullanıcının bir sonraki talebi).
 function createUnitCopyToSelectedControl() {
   const wrap = document.createElement("span");
   wrap.className = "title-unit-tab-copy-selected-wrap";
@@ -2898,13 +2896,24 @@ function createLandApplyAllControl() {
 // (bkz. "unit" bölümü) BİREBİR ikizi. createLandApplyAllControl()'ün
 // (yukarıda, "TÜMÜNE uygula") YERİNE DEĞİL, YANINDA — SEÇİLEBİLİR bir alt
 // küme kopyalama aracı.
+//
+// Kullanıcı takip talebi (2026-08-21, devam): "arsa özelliklerindeki
+// butonu da taşı" — Bağımsız Bölüm'ünkiyle (createUnitCopyToSelectedControl)
+// AYNI değişiklik: tab çubuğunun ALTINDAKİ ayrı `.secondary-button` blok
+// yerine, "+ Taşınmaz Ekle"/"Bu taşınmazı sil" ile AYNI `.title-unit-tab-
+// copy-selected` punto/biçimini paylaşan bir düğüm döner —
+// createTitleUnitTabBar()'ın `extraActions`'ına verilir (bkz.
+// renderSection()'ın "land" gate'i). `createLandApplyAllControl()`
+// ("TÜMÜNE uygula" checkbox'ı) BİLİNÇLİ OLARAK DOKUNULMADI — kullanıcı
+// yalnızca "seçili taşınmazlara kopyala" butonundan bahsetti, o ayrı bir
+// kontrol, tab çubuğunun ALTINDA kalmaya devam ediyor.
 function createLandCopyToSelectedControl() {
-  const wrap = document.createElement("div");
-  wrap.className = "unit-copy-to-selected-wrap";
+  const wrap = document.createElement("span");
+  wrap.className = "title-unit-tab-copy-selected-wrap";
 
   const button = document.createElement("button");
   button.type = "button";
-  button.className = "secondary-button";
+  button.className = "title-unit-tab-copy-selected";
   button.textContent = "Seçili Taşınmazlara Kopyala";
 
   const note = document.createElement("small");
@@ -3236,11 +3245,13 @@ function refreshUnitUnitsSummaryTablePreview() {
 function refreshTitleUnitTabBar() {
   const host = document.querySelector(".title-unit-tab-bar");
   if (!host) return;
-  // "unit" bölümündeyken tab çubuğunun "Seçili Taşınmazlara Kopyala"
-  // eylemini (extraActions) TAŞIMASI gerekiyor — aksi halde bu jenerik,
-  // bölüm-bağımsız tazeleme (HER hücre commit'inde tetiklenir, bkz.
-  // commitTitleUnitsSummaryCellEdit) butonu SESSİZCE kaybederdi.
-  const options = activeSectionId === "unit" ? { extraActions: [createUnitCopyToSelectedControl()] } : {};
+  // "unit"/"land" bölümlerindeyken tab çubuğunun "Seçili Taşınmazlara
+  // Kopyala" eylemini (extraActions) TAŞIMASI gerekiyor — aksi halde bu
+  // jenerik, bölüm-bağımsız tazeleme (HER hücre commit'inde tetiklenir,
+  // bkz. commitTitleUnitsSummaryCellEdit) butonu SESSİZCE kaybederdi.
+  let options = {};
+  if (activeSectionId === "unit") options = { extraActions: [createUnitCopyToSelectedControl()] };
+  else if (activeSectionId === "land") options = { extraActions: [createLandCopyToSelectedControl()] };
   host.replaceWith(createTitleUnitTabBar(options));
 }
 
@@ -4227,15 +4238,14 @@ function renderSection() {
   // — planning gate'iyle BİREBİR AYNI şekil (isPlanningScopedByAdaParsel()
   // yeniden kullanılıyor, land'e özgü YENİ bir gate fonksiyonu YAZILMADI).
   if (section.id === "land" && isCurrentUserAdmin() && state.fields.requestType === "Çoklu Talep" && isPlanningScopedByAdaParsel()) {
-    body.append(createTitleUnitTabBar());
+    // Kullanıcı talebi (2026-08-21, devam): "arsa özelliklerindeki butonu
+    // da taşı" — "Seçili Taşınmazlara Kopyala" artık AYRI bir
+    // body.append(...) DEĞİL, createTitleUnitTabBar()'a extraActions
+    // olarak veriliyor ("unit" bölümüyle AYNI desen). "Tümüne uygula"
+    // checkbox'ı (createLandApplyAllControl) AYRI bir kontrol olarak tab
+    // çubuğunun ALTINDA kalmaya devam ediyor — BİLİNÇLİ OLARAK taşınmadı.
+    body.append(createTitleUnitTabBar({ extraActions: [createLandCopyToSelectedControl()] }));
     body.append(createLandApplyAllControl());
-    // Kullanıcı talebi (2026-08-21): "bağımsız bölüm bilgileri için
-    // uyguladığımız bu yöntemi arsa özellikleri içinde aynı mantık ile
-    // uygulayalım" — "Tümüne uygula"nın YANINA (yerine değil) SEÇİLEBİLİR
-    // bir kardeş araç eklendi. AYNI gate koşuluyla (isPlanningScopedByAdaParsel) —
-    // taşınmazlar zaten AYNI ada/parselde ise Arsa Özellikleri rapor-geneli
-    // paylaşımlı, kopyalanacak "farklı" bir şey yok.
-    body.append(createLandCopyToSelectedControl());
     body.append(createLandUnitsSummaryTablePreview());
   }
   // Kullanıcı talebi (2026-08-19, devam): "diyelim ki taşınmazlar toplam 3

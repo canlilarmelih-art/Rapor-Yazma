@@ -1656,10 +1656,6 @@ td .free-lookup input {
   display: none;
 }
 
-.unit-copy-to-selected-wrap {
-  margin-top: 8px;
-}
-
 /* KML "tek dosya -> tüm taşınmazlara uygula" kutucuğu (2026-08-15) — aynı
    görsel dil (title-record-change-apply-all) ama upload-card içinde.
    ÖNEMLİ (2026-08-15 hotfix): "ŞU AN KML YÜKLEME BUTONU ÇALIŞMIYOR" —
@@ -4521,10 +4517,12 @@ table {
 }
 
 /* Kullanıcı talebi (2026-08-21): "seçili taşınmazlara kopyala butonunu
-   bağımsız bölüm tablarının sonuna aynı punto ve biçimde taşı" —
-   "+ Taşınmaz Ekle"/"Bu taşınmazı sil" ile AYNI actions satırına
-   (title-unit-tab-bar-actions, zaten flex/wrap/gap) eklenen düğüm; not
-   metni düğmenin yanında akar, kendi satırına düşmez. */
+   bağımsız bölüm tablarının sonuna aynı punto ve biçimde taşı" (hemen
+   ardından: "arsa özelliklerindeki butonu da taşı") — "+ Taşınmaz Ekle"/
+   "Bu taşınmazı sil" ile AYNI actions satırına (title-unit-tab-bar-actions,
+   zaten flex/wrap/gap) eklenen düğüm; Bağımsız Bölüm VE Arsa Özellikleri
+   İKİSİ de bu SINIFI paylaşır. Not metni düğmenin yanında akar, kendi
+   satırına düşmez. */
 .title-unit-tab-copy-selected-wrap {
   display: inline-flex;
   align-items: center;

@@ -215,16 +215,15 @@ function freshState(overrides = {}) {
 }
 
 // --- 7) renderSection() gate'i kaynak-duzeyinde dogru kablolu -------------
+// (2026-08-21 devam: "arsa özelliklerindeki butonu da taşı" — buton artık
+// AYRI bir body.append(...) DEĞİL, createTitleUnitTabBar()'a extraActions
+// olarak veriliyor; "Tümüne uygula" checkbox'ı (createLandApplyAllControl)
+// AYRI kontrol olarak tab çubuğunun ALTINDA kalmaya devam ediyor.)
 {
   assert.match(
     appSource,
-    /if \(section\.id === "land" && isCurrentUserAdmin\(\) && state\.fields\.requestType === "Çoklu Talep" && isPlanningScopedByAdaParsel\(\)\) \{\s*\n\s*body\.append\(createTitleUnitTabBar\(\)\);\s*\n\s*body\.append\(createLandApplyAllControl\(\)\);/,
-    "renderSection() 'land' gate'i beklenen sekilde baslamiyor."
-  );
-  assert.match(
-    appSource,
-    /body\.append\(createLandCopyToSelectedControl\(\)\);\s*\n\s*body\.append\(createLandUnitsSummaryTablePreview\(\)\);/,
-    "renderSection() 'land' gate'i createLandCopyToSelectedControl()'u eklemiyor."
+    /if \(section\.id === "land" && isCurrentUserAdmin\(\) && state\.fields\.requestType === "Çoklu Talep" && isPlanningScopedByAdaParsel\(\)\) \{[\s\S]*?body\.append\(createTitleUnitTabBar\(\{ extraActions: \[createLandCopyToSelectedControl\(\)\] \}\)\);\s*\n\s*body\.append\(createLandApplyAllControl\(\)\);\s*\n\s*body\.append\(createLandUnitsSummaryTablePreview\(\)\);/,
+    "renderSection() 'land' gate'i createLandCopyToSelectedControl()'u createTitleUnitTabBar()'in extraActions'ina eklemiyor."
   );
   console.log("renderSection land seciliye-kopyala gate kaynak-duzeyi kablolama testi tamam.");
 }
