@@ -156,6 +156,7 @@ const sandboxSource = `
   ${extractArrayConst("valuationMarketRows")}
   ${extractArrayConst("valuationUrgentSaleRows")}
   ${extractComputedConst("VALUATION_UNITS_TABLE_ROW_DEFS")}
+  ${extractComputedConst("incompleteConstructionMarketRows")}
   ${extractArrayConst("VALUATION_UNITS_TABLE_IDENTITY_DEFS")}
   ${extractArrayConst("valuationBuildingValueRows")}
   ${extractArrayConst("valuationPremiumRows")}
@@ -711,6 +712,45 @@ function unit(overrides = {}) {
   assert.equal(fns.getValuationUnitsSummarySubheader("Yasal Şerefiye"), "Yasal Şerefiye\n(TL)");
   assert.equal(fns.getValuationUnitsSummarySubheader("Mevcut Şerefiye"), "Mevcut Şerefiye\n(TL)");
   console.log("Yasal/Mevcut Serefiye sutunlari Sigortaya Esas Deger'den once testi tamam.");
+}
+
+// --- 21) Kullanici talebi (2026-08-21): "taşınmazlardan biri %90 --------
+// seviyeli değerleme tablosunda natamam durum değeri belirtilmiyor" -
+// "Natamam Yasal/Mevcut Durum Değeri" sonuc sutunlari eklendi, Durum
+// Değeri satirinin HEMEN yaninda (Alan/M2 Birim Degeri ARA sutunlari
+// olmadan - zaten baska sutunlarda mevcutlar), dogru grup/deger ile.
+{
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: {
+      legalValue: "500.000", currentValue: "550.000",
+      legalIncompleteValue: "400.000", currentIncompleteValue: "440.000",
+    },
+    tables: {},
+    // 2. tasinmaz %100 seviyeli (natamam deger yok) - sutun YINE DE
+    // gorunmeli (columnHasData: en az 1 tasinmazda deger var).
+    titleUnits: [unit({ legalValue: "600.000", currentValue: "650.000" })],
+  });
+  const data = fns.buildValuationUnitsSummaryTableData();
+  const legalDurumIndex = data.headers.indexOf("Yasal Durum Değeri");
+  const legalNatamamIndex = data.headers.indexOf("Natamam Yasal Durum Değeri");
+  const currentDurumIndex = data.headers.indexOf("Mevcut Durum Değeri");
+  const currentNatamamIndex = data.headers.indexOf("Natamam Mevcut Durum Değeri");
+  assert.ok(legalNatamamIndex >= 0 && currentNatamamIndex >= 0, "'Natamam Yasal/Mevcut Durum Değeri' sütunları bulunmalı.");
+  assert.equal(legalNatamamIndex, legalDurumIndex + 1, "Natamam Yasal Durum Değeri, Yasal Durum Değeri'nin HEMEN yanında olmalı.");
+  assert.equal(currentNatamamIndex, currentDurumIndex + 1, "Natamam Mevcut Durum Değeri, Mevcut Durum Değeri'nin HEMEN yanında olmalı.");
+  assert.equal(data.columnMeta[legalNatamamIndex].kind, "readonly", "Natamam Durum Değeri hesaplanan/salt-okunur olmalı.");
+  assert.equal(data.rows[0][legalNatamamIndex], "400.000");
+  assert.equal(data.rows[0][currentNatamamIndex], "440.000");
+  assert.equal(data.rows[1][legalNatamamIndex], "-", "2. (tamamlanmış, %100 seviyeli) taşınmazda Natamam Durum Değeri '-' olmalı.");
+  assert.ok(!data.headers.includes("Natamam Yasal Durum Değeri - Alan"), "Natamam satırının Alan ARA sütunu EKLENMEMELİ (zaten Durum Değeri'nde var).");
+  assert.ok(!data.headers.includes("Natamam Yasal Durum Değeri - M2 Birim Değeri"), "Natamam satırının M2 Birim Değeri ARA sütunu EKLENMEMELİ (zaten Yapı Değeri'nde var).");
+
+  assert.equal(fns.getValuationUnitsSummaryHeaderGroup("Natamam Yasal Durum Değeri"), "Yasal Durum Değeri", "Natamam Yasal Durum Değeri, genel Yasal Durum Değeri grubuna dahil olmalı (kendi ana başlığı YOK).");
+  assert.equal(fns.getValuationUnitsSummaryHeaderGroup("Natamam Mevcut Durum Değeri"), "Mevcut Durum Değeri");
+  assert.equal(fns.getValuationUnitsSummarySubheader("Natamam Yasal Durum Değeri"), "Natamam Yasal Durum Değeri\n(TL)");
+  assert.equal(fns.getValuationUnitsSummarySubheader("Natamam Mevcut Durum Değeri"), "Natamam Mevcut Durum Değeri\n(TL)");
+  console.log("Natamam Yasal-Mevcut Durum Degeri sutunlari testi tamam.");
 }
 
 console.log("Tasinmazlar degerleme ozeti tablosu testleri basarili.");

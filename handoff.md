@@ -1,5 +1,15 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.512 - 2026-08-21 - Değerleme özetine Natamam Yasal/Mevcut Durum Değeri eklendi
+
+- Kullanıcı, önce soru sordu ("inşaat seviyesi %100 olmadığı durumda sistem nasıl aksiyon alıyor?" — canlı panelde Yıpranma Payı'nın sıfırlandığı, Yapı Değeri'nin seviyeyle orantılı küçüldüğü, %60-%100 arası seviyede "Natamam Durum Değeri" satırının Durum Değeri'nin hemen altına otomatik eklendiği açıklandı), ardından: "taşınmazlardan biri %90 seviyeli değerleme tablosunda natamam durum değeri belirtilmiyor bunu nasıl çözeriz."
+- **Kök neden**: bu davranış canlı Değerleme panelinde (`createIncompleteConstructionMarketRow`) zaten doğru çalışıyordu — sorun, çok-taşınmazlı ÖZET tablosunun (`buildValuationUnitsSummaryTableData`) bu sütunu hiç içermemesiydi (0.0.503-511'de eklenen diğer sütunlara dahil edilmemişti). `legalIncompleteValue`/`currentIncompleteValue` (+ Alan/Birim Değeri karşılıkları) zaten 0.0.505'te `getValuationPerUnitOnlyFieldKeys()`'e eklenmişti (taşınmaza-özgü scoped) ve `refreshIncompleteConstructionValueFields()` zaten `refreshValuationComputedFields()`'in içinde (DOM'a dokunmuyor, guard gerekmedi) — yani hesaplama ZATEN her taşınmaz için doğru çalışıyordu, yalnızca tabloya SÜTUN olarak eklenmemişti.
+- **Yeni sütunlar**: "Natamam Yasal Durum Değeri" ve "Natamam Mevcut Durum Değeri" (yalnızca SONUÇ — `incompleteConstructionMarketRows`'un `totalKey`'i), Yasal/Mevcut Durum Değeri sütununun HEMEN yanına eklendi (canlı panelde de TAM olarak burada gösteriliyor). Alan/M2 Birim Değeri ARA bileşenleri BİLİNÇLİ OLARAK eklenmedi — ikisi de bu tabloda ZATEN başka sütunlarla (sırasıyla Durum Değeri'nin Alan'ı, Yapı Değeri'nin Birim Değeri'i — `legalBuildingValueArea`/`legalBuildingUnitCost` üzerinden) AYNI değeri taşıyor, Şerefiye'de izlenen "yalnızca yeni bilgiyi (sonucu) ekle" ilkesiyle TUTARLI.
+- **Grup/subheader**: "Natamam Yasal/Mevcut Durum Değeri" kendi ana başlığını ALMIYOR — genel "Yasal/Mevcut Durum Değeri" grubuna dahil ediliyor (canlı panelde Durum Değeri'nin bir "alt satırı" olması gibi). "Natamam" öneki "Yasal "/"Mevcut " ile başlamadığından bu, `getValuationUnitsSummaryHeaderGroup()`'a AÇIK bir istisna gerektirdi.
+- Test: `tools/test-valuation-units-summary-table.js`'e yeni 21. senaryo eklendi (sütunların Durum Değeri'nin hemen yanında, doğru grup/değerle geldiğini + %100 seviyeli taşınmazda "-" gösterdiğini + Alan/Birim Değeri ARA sütunlarının EKLENMEDİĞİNİ doğrular). `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` cache-buster `?v=20260821-2359`.
+- Canlı tarayıcı testi yapılamadı (giriş bilgisi yok) — %90 seviyeli taşınmazın bulunduğu raporda Değerleme özet tablosunda "Natamam Yasal/Mevcut Durum Değeri" sütununun artık göründüğünün canlıda doğrulanması istenir.
+
 ## 0.0.511 - 2026-08-21 - Yasal/Mevcut Yapı Değeri'nden tekrarlayan Alan sütunu kaldırıldı
 
 - Kullanıcı: "yasal yapı değeri ve mevcut yapı değeri kısımlarından alanları çıkart zaten alanlar yasal durum değeri ve mevcut durum değerinde veriliyor."

@@ -6782,6 +6782,23 @@ function buildValuationUnitsSummaryTableData() {
     }
     headers.push(`${row.label} - ${row.unitLabel}`, row.label);
     columnMeta.push({ kind: "readonly" }, { kind: "scalar", fieldKey: row.totalKey });
+    // Kullanıcı takip talebi (2026-08-21): "taşınmazlardan biri %90
+    // seviyeli değerleme tablosunda natamam durum değeri belirtilmiyor" —
+    // Yasal/Mevcut Durum Değeri satırının HEMEN ALTINA (canlı panelde de
+    // TAM olarak burada, createIncompleteConstructionMarketRow ile) eklenen
+    // "Natamam Durum Değeri" sonucu — YALNIZCA Yasal/Mevcut Durum Değeri
+    // için var (Kira için yok, incompleteConstructionMarketRows'ta yalnızca
+    // legalValue/currentValue anahtarları var). Alan/M2 Birim Değeri ARA
+    // sütunları BİLİNÇLİ OLARAK eklenmedi — ikisi de bu tabloda ZATEN başka
+    // sütunlarla AYNI değeri taşıyor (Alan = Durum Değeri'nin Alan'ı,
+    // Birim Değeri = Yapı Değeri'nin Birim Değeri'i, `legalBuildingUnitCost`
+    // üzerinden) — yalnızca YENİ bilgi olan SONUÇ (Natamam Durum Değeri)
+    // eklendi.
+    const incompleteRow = incompleteConstructionMarketRows[row.totalKey];
+    if (incompleteRow) {
+      headers.push(incompleteRow.label);
+      columnMeta.push({ kind: "readonly" });
+    }
   });
   // Kullanıcı takip talebi (2026-08-21): "arsa değerini yapı değerin
   // sütununun soluna al ... arsa değerini yapı değeri gibi ana başlık
@@ -6848,6 +6865,10 @@ function buildValuationUnitsSummaryTableData() {
         String(fields[rowDef.unitKey] || "").trim() || "-",
         String(fields[rowDef.totalKey] || "").trim() || "-",
       );
+      const incompleteRow = incompleteConstructionMarketRows[rowDef.totalKey];
+      if (incompleteRow) {
+        row.push(String(fields[incompleteRow.totalKey] || "").trim() || "-");
+      }
     });
     if (showLandShareColumns) {
       row.push(
@@ -6905,6 +6926,14 @@ function getValuationUnitsSummaryHeaderGroup(label) {
   // kendi ana başlık İSTEMEDİ (Sigortaya Esas Değer gibi "Diğer"de kalsın
   // dedi), bu yüzden burada AÇIKÇA "Diğer"e yönlendirilir.
   if (normalized === "Yasal Şerefiye" || normalized === "Mevcut Şerefiye") return "Diğer";
+  // Kullanıcı takip talebi (2026-08-21): "taşınmazlardan biri %90 seviyeli
+  // değerleme tablosunda natamam durum değeri belirtilmiyor" — "Natamam
+  // Yasal/Mevcut Durum Değeri" "Yasal "/"Mevcut " İLE BAŞLAMIYOR ("Natamam"
+  // önde), bu yüzden AŞAĞIDAKİ genel kontrole hiç girmez — canlı panelde
+  // Durum Değeri'nin HEMEN ALTINDA gösterildiği gibi, AYNI Yasal/Mevcut
+  // Durum Değeri grubuna dahil edilir (kendi ayrı ana başlığı YOK).
+  if (normalized.startsWith("Natamam Yasal")) return "Yasal Durum Değeri";
+  if (normalized.startsWith("Natamam Mevcut")) return "Mevcut Durum Değeri";
   if (normalized.startsWith("Yasal ")) return "Yasal Durum Değeri";
   if (normalized.startsWith("Mevcut ")) return "Mevcut Durum Değeri";
   // Kullanıcı takip talebi (2026-08-21): "arsa değerini yapı değeri gibi
@@ -6937,6 +6966,11 @@ function getValuationUnitsSummarySubheader(label) {
   // AYNI sütun başlığında kalır (aksi halde "Diğer" grubunda iki sütun
   // aynı alt-başlığı alır, ayırt edilemez).
   if (normalized === "Yasal Şerefiye" || normalized === "Mevcut Şerefiye") return `${normalized}\n(TL)`;
+  // Kullanıcı takip talebi (2026-08-21): "taşınmazlardan biri %90 seviyeli
+  // değerleme tablosunda natamam durum değeri belirtilmiyor" — Yasal/
+  // Mevcut ayrımı korunur (aksi halde ikisi de "Durum Değeri" grubunda
+  // ayırt edilemez olurdu).
+  if (normalized === "Natamam Yasal Durum Değeri" || normalized === "Natamam Mevcut Durum Değeri") return `${normalized}\n(TL)`;
   // Kullanıcı takip talebi (2026-08-21): "her bir bağımsız bölümün arsa
   // pay arsa payda ve hissesine düşen arsa payı bölümlerini tablomuza
   // ekleyelim" — Arsa Payı/Payda kesir alanları (para/oran DEĞİL, ondalık
