@@ -6789,9 +6789,23 @@ function buildValuationUnitsSummaryTableData() {
       { kind: "readonly" },
     );
   });
+  // Kullanıcı takip talebi (2026-08-21): "sigortaya esas değerinden önce
+  // yasal ve mevcut şerefiye sütunlarını koyalım" — Şerefiye Bölümü
+  // panelinin (createValuationPremiumTable) SONUÇ değeri (Şerefiye
+  // Değeri, `valuationPremiumRows`'un `premiumKey`'i) — panel 4 sütun
+  // gösteriyor (Arsa Değeri/Yapı Değeri/Şerefiye Değeri/Şerefiye Yüzdesi)
+  // ama kullanıcı yalnızca "Yasal ve Mevcut Şerefiye" dedi, Arsa/Yapı
+  // Değeri zaten bu tabloda AYRICA var — bu yüzden yalnızca Şerefiye
+  // Değeri (sonuç) eklendi, ara bileşenler/yüzde EKLENMEDİ.
+  valuationPremiumRows.forEach((row) => {
+    headers.push(row.label);
+    columnMeta.push({ kind: "readonly" });
+  });
   // Kullanıcı takip talebi (2026-08-21, önceki mesaj): "sigortaya esas
   // değer diğer bölümünün altında kalabilir" — bu sütun BİLİNÇLİ OLARAK
-  // "Diğer" grubunda kalıyor, kendi grup başlığını almıyor.
+  // "Diğer" grubunda kalıyor, kendi grup başlığını almıyor. Yasal/Mevcut
+  // Şerefiye de AYNI "Diğer" grubunda kalıyor (kendi ana başlığı İSTENMEDİ,
+  // yalnızca Sigortaya Esas Değer'in HEMEN ÖNÜNE konumlandırılması istendi).
   headers.push("Sigortaya Esas Değer");
   columnMeta.push({ kind: "readonly" });
 
@@ -6824,6 +6838,9 @@ function buildValuationUnitsSummaryTableData() {
         String(fields[rowDef.totalKey] || "").trim() || "-",
       );
     });
+    valuationPremiumRows.forEach((rowDef) => {
+      row.push(String(fields[rowDef.premiumKey] || "").trim() || "-");
+    });
     row.push(String(fields.insuranceValue || "").trim() || "-");
     return row;
   });
@@ -6854,6 +6871,13 @@ function getValuationUnitsSummaryHeaderGroup(label) {
   // DAHA ÖZEL kontrol önce yapılır, KENDİ grup başlığını alırlar.
   if (normalized.startsWith("Yasal Yapı Değeri")) return "Yasal Yapı Değeri";
   if (normalized.startsWith("Mevcut Yapı Değeri")) return "Mevcut Yapı Değeri";
+  // Kullanıcı takip talebi (2026-08-21): "sigortaya esas değerinden önce
+  // yasal ve mevcut şerefiye sütunlarını koyalım" — "Yasal Şerefiye"/
+  // "Mevcut Şerefiye" de "Yasal "/"Mevcut " ile başlıyor ama genel "Yasal/
+  // Mevcut Durum Değeri" (piyasa değeri) grubuna KARIŞMAMALI — kullanıcı
+  // kendi ana başlık İSTEMEDİ (Sigortaya Esas Değer gibi "Diğer"de kalsın
+  // dedi), bu yüzden burada AÇIKÇA "Diğer"e yönlendirilir.
+  if (normalized === "Yasal Şerefiye" || normalized === "Mevcut Şerefiye") return "Diğer";
   if (normalized.startsWith("Yasal ")) return "Yasal Durum Değeri";
   if (normalized.startsWith("Mevcut ")) return "Mevcut Durum Değeri";
   // Kullanıcı takip talebi (2026-08-21): "arsa değerini yapı değeri gibi
@@ -6881,6 +6905,11 @@ function getValuationUnitsSummarySubheader(label) {
   // düşmemeli.
   if (normalized === "Sigortaya Esas Değer") return "Sigortaya Esas Değer\n(TL)";
   if (normalized === "Arsa Değeri") return "Arsa Değeri\n(TL)";
+  // Kullanıcı takip talebi (2026-08-21): "sigortaya esas değerinden önce
+  // yasal ve mevcut şerefiye sütunlarını koyalım" — Yasal/Mevcut ayrımı
+  // AYNI sütun başlığında kalır (aksi halde "Diğer" grubunda iki sütun
+  // aynı alt-başlığı alır, ayırt edilemez).
+  if (normalized === "Yasal Şerefiye" || normalized === "Mevcut Şerefiye") return `${normalized}\n(TL)`;
   // Kullanıcı takip talebi (2026-08-21): "her bir bağımsız bölümün arsa
   // pay arsa payda ve hissesine düşen arsa payı bölümlerini tablomuza
   // ekleyelim" — Arsa Payı/Payda kesir alanları (para/oran DEĞİL, ondalık

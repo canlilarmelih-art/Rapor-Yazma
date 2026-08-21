@@ -1,5 +1,15 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.509 - 2026-08-21 - Değerleme özetine Sigortaya Esas Değer'den önce Yasal/Mevcut Şerefiye eklendi
+
+- Kullanıcı: "sigortaya esas değerinden önce yasal ve mevcut şerefiye sütunlarını koyalım."
+- **Yeni sütunlar**: "Yasal Şerefiye" ve "Mevcut Şerefiye" — Şerefiye Bölümü panelinin (`createValuationPremiumTable`, `valuationPremiumRows`) SONUÇ değeri (`premiumKey` — Şerefiye Değeri), "readonly" (gerçek panelde de salt-okunur, hesaplanan). Panel 4 sütun gösteriyor (Arsa Değeri/Yapı Değeri/Şerefiye Değeri/Şerefiye Yüzdesi) ama kullanıcı yalnızca "Yasal ve Mevcut Şerefiye" dediğinden, Arsa/Yapı Değeri ZATEN bu tabloda ayrıca var olduğundan, yalnızca Şerefiye Değeri (sonuç) eklendi — ara bileşenler/yüzde eklenmedi.
+- **Konum**: Sigortaya Esas Değer'in HEMEN ÖNÜNE yerleştirildi (kullanıcının açık talebi). Kendi ana başlığı YOK — "Diğer" grubunda, Sigortaya Esas Değer'le AYNI grupta kalıyor (kullanıcı bunu istemedi, yalnızca konum belirtti — Arsa Değeri'nin bir önceki mesajda aldığı "kendi ana başlığı" muamelesinden FARKLI, bilinçli ayrım).
+- `getValuationUnitsSummaryHeaderGroup()`'a "Yasal Şerefiye"/"Mevcut Şerefiye" için AÇIK bir "Diğer"e-yönlendirme eklendi — bu iki başlık "Yasal "/"Mevcut " ile başladığından, bu istisna olmasaydı yanlışlıkla genel "Yasal/Mevcut Durum Değeri" (piyasa değeri) grubuna karışırlardı.
+- Test: `tools/test-valuation-units-summary-table.js`'e yeni 20. senaryo eklendi (sütunların Sigortaya Esas Değer'den ÖNCE, bitişik, doğru kind/değerlerle geldiğini + "Diğer" grubunda kaldığını doğrular). `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` cache-buster `?v=20260821-2700`.
+- Canlı tarayıcı testi yapılamadı (giriş bilgisi yok) — doğrulama kod/test seviyesinde.
+
 ## 0.0.508 - 2026-08-21 - Arsa Değeri, Yapı Değeri'nin soluna alındı ve kendi ana başlığını aldı
 
 - Kullanıcı: "ARSA DEĞERİNİ YAPI değerin sütununun soluna al. sigortaya esas değer diğer bölümünün altında kalabilir arsa değerini yapı değeri gibi ana başlık altında topla."

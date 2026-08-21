@@ -158,6 +158,7 @@ const sandboxSource = `
   ${extractComputedConst("VALUATION_UNITS_TABLE_ROW_DEFS")}
   ${extractArrayConst("VALUATION_UNITS_TABLE_IDENTITY_DEFS")}
   ${extractArrayConst("valuationBuildingValueRows")}
+  ${extractArrayConst("valuationPremiumRows")}
   ${functionNames.map(extractFunction).join("\n")}
   return {
     setState: (s) => { state = s; },
@@ -676,6 +677,41 @@ function unit(overrides = {}) {
   assert.ok(arsaIndex < yasalYapiIndex, "'Arsa Değeri' grubu 'Yasal Yapı Değeri'nin SOLUNDA (önce) olmalı.");
   assert.ok(!topThCells.includes("DİĞER") || topThCells.indexOf("DİĞER") > arsaIndex, "'Arsa Değeri' 'Diğer' grubuna KARIŞMAMALI.");
   console.log("Arsa Degeri grubu Yapi Degeri'nin soluna yerlesme + Sigorta Diger'de kalma testi tamam.");
+}
+
+// --- 20) Kullanici talebi (2026-08-21): "sigortaya esas degerinden once --
+// yasal ve mevcut serefiye sutunlarini koyalim" - Yasal/Mevcut Serefiye
+// (Şerefiye Değeri sonucu, valuationPremiumRows.premiumKey) sutunlari
+// eklendi, dogru kind/degerle, HEMEN Sigortaya Esas Deger'den once.
+{
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: {
+      legalValue: "500.000",
+      legalPremiumValue: "150.000", currentPremiumValue: "160.000",
+      insuranceValue: "310.000",
+    },
+    tables: {},
+    titleUnits: [unit({ legalValue: "600.000", legalPremiumValue: "170.000" })],
+  });
+  const data = fns.buildValuationUnitsSummaryTableData();
+  const legalPremiumIndex = data.headers.indexOf("Yasal Şerefiye");
+  const currentPremiumIndex = data.headers.indexOf("Mevcut Şerefiye");
+  const insuranceIndex = data.headers.indexOf("Sigortaya Esas Değer");
+  assert.ok(legalPremiumIndex >= 0 && currentPremiumIndex >= 0, "'Yasal Şerefiye'/'Mevcut Şerefiye' sütunları bulunmalı.");
+  assert.ok(insuranceIndex >= 0, "'Sigortaya Esas Değer' sütunu bulunmalı.");
+  assert.ok(legalPremiumIndex < insuranceIndex && currentPremiumIndex < insuranceIndex, "Yasal/Mevcut Şerefiye, Sigortaya Esas Değer'den ÖNCE gelmeli.");
+  assert.ok(currentPremiumIndex - legalPremiumIndex === 1, "Yasal Şerefiye ile Mevcut Şerefiye BİTİŞİK olmalı.");
+  assert.equal(data.columnMeta[legalPremiumIndex].kind, "readonly", "Şerefiye Değeri hesaplanan/salt-okunur olmalı (gerçek formda da öyle).");
+  assert.equal(data.rows[0][legalPremiumIndex], "150.000");
+  assert.equal(data.rows[0][currentPremiumIndex], "160.000");
+  assert.equal(data.rows[1][legalPremiumIndex], "170.000");
+
+  assert.equal(fns.getValuationUnitsSummaryHeaderGroup("Yasal Şerefiye"), "Diğer", "Yasal Şerefiye kendi ana başlığını İSTEMEDİ, 'Diğer'de kalmalı.");
+  assert.equal(fns.getValuationUnitsSummaryHeaderGroup("Mevcut Şerefiye"), "Diğer");
+  assert.equal(fns.getValuationUnitsSummarySubheader("Yasal Şerefiye"), "Yasal Şerefiye\n(TL)");
+  assert.equal(fns.getValuationUnitsSummarySubheader("Mevcut Şerefiye"), "Mevcut Şerefiye\n(TL)");
+  console.log("Yasal/Mevcut Serefiye sutunlari Sigortaya Esas Deger'den once testi tamam.");
 }
 
 console.log("Tasinmazlar degerleme ozeti tablosu testleri basarili.");
