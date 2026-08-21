@@ -6113,6 +6113,17 @@ function buildInsuranceConstructionCostExplanation() {
   );
 }
 
+// Kullanıcı bildirimi (2026-08-21): "sigortaya esas değer tabloda otomatik
+// hesaplanmıyor" — KÖK NEDEN: refreshValuationComputedFields() (Değerleme
+// özet tablosunun TÜM taşınmazlar için hesaplama zinciri) `state.fields.insuranceUnitCost`'u
+// OKUYORDU (insuranceValue = Alan × Birim Maliyet) ama HİÇ YAZMIYORDU —
+// legalBuildingUnitCost'un aksine (syncBuildingValueDefaults() ile ZATEN
+// zincirin İÇİNDE), insuranceUnitCost SADECE bu fonksiyon tarafından, SADECE
+// genel form hub'ının "buildingClass" alanı GERÇEKTEN değiştiğinde
+// tetikleniyordu — yani aktif taşınmazın sekmesine hiç "buildingClass"
+// alanına dokunulmadan girilmişse (ör. blok-paylaşımdan gelmişse) veya
+// computeValuationFieldsForAllTitleUnits()'in sessiz döngüsünde diğer
+// taşınmazlar için insuranceUnitCost HİÇ hesaplanmıyordu, ESKİ/BOŞ kalıyordu.
 function refreshInsuranceConstructionCostFromCurrentFields(changedKey = "") {
   if (isLandOwnershipType()) {
     state.fields.insuranceConstructionClass = "";
@@ -6125,6 +6136,15 @@ function refreshInsuranceConstructionCostFromCurrentFields(changedKey = "") {
   state.fields.insuranceConstructionClass = row?.group || "";
   state.fields.insuranceUnitCost = row ? formatInsuranceUnitCost(row.unitCost) : "";
   state.fields.insuranceConstructionCostExplanation = row ? buildInsuranceConstructionCostExplanation() : "";
+  // NOT: guard burada (state hesaplamasından SONRA, yalnızca DOM senkronunun
+  // ÖNÜNDE) BİLİNÇLİ OLARAK duruyor — diğer 7 "DOM-dokunan" fonksiyondan
+  // FARKLI olarak buradaki state.fields yazımı GERÇEK finansal hesaplamanın
+  // (insuranceValue) girdisi, salt görüntü önbelleği DEĞİL — bu yüzden
+  // computeValuationFieldsForAllTitleUnits()'in sessiz döngüsünde de HER
+  // taşınmaz için ÇALIŞMALI; yalnızca DOM'a yazma (EKRANDA GÖRÜNEN gerçek
+  // aktif taşınmazın form alanlarını YANLIŞ taşınmazın verisiyle ezme
+  // riski) bastırılır.
+  if (suppressValuationSideEffects) return;
   [
     "insuranceConstructionClass",
     "insuranceUnitCost",
@@ -8721,6 +8741,12 @@ function refreshValuationComputedFields() {
     state.fields[row.totalKey] = value ? formatValuationMoney(value) : "";
   });
   refreshIncompleteConstructionValueFields();
+  // Kullanıcı bildirimi (2026-08-21): "sigortaya esas değer tabloda
+  // otomatik hesaplanmıyor" — insuranceUnitCost, legalBuildingUnitCost'un
+  // aksine (syncBuildingValueDefaults() ile ZATEN bu zincirin içinde) bu
+  // zincirde HİÇ yenilenmiyordu, SADECE "buildingClass" alanı doğrudan
+  // düzenlendiğinde (genel form hub'ı) hesaplanıyordu — eksik çağrı eklendi.
+  refreshInsuranceConstructionCostFromCurrentFields();
   const insuranceUnitCost = parseValuationNumber(state.fields.insuranceUnitCost);
   const insuranceValue = calculateValuationProduct(state.fields.insuranceValueArea, insuranceUnitCost);
   state.fields.insuranceValue = insuranceValue ? formatValuationMoney(insuranceValue) : "";
