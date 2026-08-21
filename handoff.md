@@ -1,5 +1,13 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.511 - 2026-08-21 - Yasal/Mevcut Yapı Değeri'nden tekrarlayan Alan sütunu kaldırıldı
+
+- Kullanıcı: "yasal yapı değeri ve mevcut yapı değeri kısımlarından alanları çıkart zaten alanlar yasal durum değeri ve mevcut durum değerinde veriliyor."
+- 0.0.504'te formülün TÜM bileşenlerini göstermek için eklenen Alan sütunu, Yasal/Mevcut Durum Değeri gruplarındaki Alan sütunuyla AYNI değeri (kullanım alanı) tekrarladığından KALDIRILDI — Yasal/Mevcut Yapı Değeri grupları artık yalnızca Yapı Birim Değeri, Yıpranma Payı, İnşaat Seviyesi, Değer sütunlarını içeriyor.
+- Test: `tools/test-valuation-units-summary-table.js`'deki 14. senaryo Alan sütununun ARTIK bulunmadığını (regresyon) + kalan sütunların doğru sırada olduğunu doğrulayacak şekilde güncellendi. `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` cache-buster `?v=20260821-2900`.
+- Canlı tarayıcı testi yapılamadı (giriş bilgisi yok) — doğrulama kod/test seviyesinde.
+
 ## 0.0.510 - 2026-08-21 - KÖK NEDEN düzeltmesi: Sigortaya Esas Değer artık gerçekten otomatik hesaplanıyor
 
 - Kullanıcı: "sigortaya esas değer tabloda otomatik hesaplanmıyor."

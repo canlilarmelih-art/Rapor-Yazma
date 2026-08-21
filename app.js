@@ -6741,22 +6741,25 @@ const VALUATION_UNITS_TABLE_IDENTITY_DEFS = [
   { key: "unitNo", label: "BB No" },
 ];
 
-// Kullanıcı takip talebi (2026-08-21, iki mesaj): "yapı birim değeri
+// Kullanıcı takip talebi (2026-08-21, üç mesaj): "yapı birim değeri
 // inşaat seviyesi yapı yıpranma payı yapı [değeri] sigortaya esas değer
 // arsa değeri gözüksün" + "yasal ve mevcut yapı değeri yani kullanım
 // alanı x yapı birim değeri x yıpranma payı x inşaat seviye formülü ile
-// ulaşılan sonuçta yer almalı" — Yapı Değeri panelinin (createValuationBuildingValueTable,
+// ulaşılan sonuçta yer almalı" + "yasal yapı değeri ve mevcut yapı değeri
+// kısımlarından alanları çıkart zaten alanlar yasal durum değeri ve
+// mevcut durum değerinde veriliyor" — Yapı Değeri panelinin (createValuationBuildingValueTable,
 // yalnızca Müstakil Bina'da dolu — diğer mülkiyet tiplerinde bu alanlar
 // boş kalacağından aşağıdaki columnHasData filtresiyle OTOMATİK kalkar)
-// Yasal/Mevcut satırlarının TÜM formül bileşenleri (Alan/Yapı Birim
-// Değeri/Yıpranma Payı/İnşaat Seviyesi — panelin GERÇEK sütun sırasıyla
-// AYNI, bkz. createValuationBuildingValueTable) + formülün SONUCU (Yapı
-// Değeri) sütunları + Sigortaya Esas Değer (createValuationInsuranceTable)
-// + Arsa Değeri (createValuationLandTable) tekil sonuç sütunları eklendi.
+// Yasal/Mevcut satırlarının Yapı Birim Değeri/Yıpranma Payı/İnşaat
+// Seviyesi bileşenleri + formülün SONUCU (Yapı Değeri) sütunları +
+// Sigortaya Esas Değer (createValuationInsuranceTable) + Arsa Değeri
+// (createValuationLandTable) tekil sonuç sütunları eklendi. Alan sütunu
+// BİLİNÇLİ OLARAK YOK — Yasal/Mevcut Durum Değeri gruplarındaki Alan
+// sütunuyla AYNI kullanım alanı değerini tekrarladığından kaldırıldı.
 // `kind` her sütun için GERÇEK panel alanının kendi readOnly durumuyla
 // BİREBİR eşleşir (Yapı Birim Değeri + Yıpranma Payı editable/"scalar",
-// Alan + İnşaat Seviyesi + Yapı Değeri + Sigortaya Esas Değer + Arsa
-// Değeri readOnly/"readonly").
+// İnşaat Seviyesi + Yapı Değeri + Sigortaya Esas Değer + Arsa Değeri
+// readOnly/"readonly").
 function buildValuationUnitsSummaryTableData() {
   const units = buildAllTitleUnitsForSummaryTable();
   if (units.length < 2) return null;
@@ -6799,10 +6802,15 @@ function buildValuationUnitsSummaryTableData() {
   }
   headers.push("Arsa Değeri");
   columnMeta.push({ kind: "readonly" });
+  // Kullanıcı takip talebi (2026-08-21): "yasal yapı değeri ve mevcut yapı
+  // değeri kısımlarından alanları çıkart zaten alanlar yasal durum değeri
+  // ve mevcut durum değerinde veriliyor" — Alan sütunu (0.0.504'te formülün
+  // TÜM bileşenlerini göstermek için eklenmişti) Yasal/Mevcut Durum Değeri
+  // gruplarındaki Alan sütunuyla AYNI değeri (kullanım alanı) tekrarladığı
+  // için KALDIRILDI — gereksiz tekrar.
   valuationBuildingValueRows.forEach((row) => {
-    headers.push(`${row.label} - Alan`, `${row.label} - Yapı Birim Değeri`, `${row.label} - Yıpranma Payı`, `${row.label} - İnşaat Seviyesi`, row.label);
+    headers.push(`${row.label} - Yapı Birim Değeri`, `${row.label} - Yıpranma Payı`, `${row.label} - İnşaat Seviyesi`, row.label);
     columnMeta.push(
-      { kind: "readonly" },
       { kind: "scalar", fieldKey: row.unitKey },
       { kind: "scalar", fieldKey: row.depreciationKey },
       { kind: "readonly" },
@@ -6851,7 +6859,6 @@ function buildValuationUnitsSummaryTableData() {
     row.push(String(fields.landValue || "").trim() || "-");
     valuationBuildingValueRows.forEach((rowDef) => {
       row.push(
-        String(fields[rowDef.areaKey] || "").trim() || "-",
         String(fields[rowDef.unitKey] || "").trim() || "-",
         String(fields[rowDef.depreciationKey] || "").trim() || "-",
         String(fields[rowDef.levelKey] || "").trim() || "-",

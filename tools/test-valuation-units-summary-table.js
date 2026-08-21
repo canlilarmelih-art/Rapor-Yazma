@@ -517,24 +517,23 @@ function unit(overrides = {}) {
   const buildingRows = fns.getBuildingValueRows();
   assert.deepEqual(buildingRows.map((r) => r.label), ["Yasal Yapı Değeri", "Mevcut Yapı Değeri"]);
 
-  // Kullanıcı takip talebi (2026-08-21): "yani kullanım alanı x yapı birim
-  // değeri x yıpranma payı x inşaat seviye formülü ile ulaşılan sonuçta
-  // yer almalı" — formülün TÜM bileşenleri (Alan dahil) sütun olarak
-  // bulunmalı, panelin GERÇEK sırasıyla (Alan, Birim Değeri, Yıpranma
-  // Payı, İnşaat Seviyesi, Değer — bkz. createValuationBuildingValueTable).
-  const legalAreaIndex = data.headers.indexOf("Yasal Yapı Değeri - Alan");
+  // Kullanıcı takip talebi (2026-08-21): "yasal yapı değeri ve mevcut yapı
+  // değeri kısımlarından alanları çıkart zaten alanlar yasal durum değeri
+  // ve mevcut durum değerinde veriliyor" — Alan sütunu KALDIRILDI, kalan
+  // sütunlar panelin GERÇEK sırasıyla (Birim Değeri, Yıpranma Payı,
+  // İnşaat Seviyesi, Değer — bkz. createValuationBuildingValueTable).
   const legalUnitCostIndex = data.headers.indexOf("Yasal Yapı Değeri - Yapı Birim Değeri");
   const legalDepreciationIndex = data.headers.indexOf("Yasal Yapı Değeri - Yıpranma Payı");
   const legalLevelIndex = data.headers.indexOf("Yasal Yapı Değeri - İnşaat Seviyesi");
   const legalBuildingTotalIndex = data.headers.indexOf("Yasal Yapı Değeri");
-  assert.ok(legalAreaIndex >= 0 && legalUnitCostIndex >= 0 && legalDepreciationIndex >= 0 && legalLevelIndex >= 0 && legalBuildingTotalIndex >= 0, "Yasal Yapı Değeri formülünün TÜM sütunları (Alan dahil) bulunmalı.");
-  assert.ok(legalAreaIndex < legalUnitCostIndex && legalUnitCostIndex < legalDepreciationIndex && legalDepreciationIndex < legalLevelIndex && legalLevelIndex < legalBuildingTotalIndex, "Sütun sırası panelin GERÇEK sırasıyla (Alan, Birim Değeri, Yıpranma Payı, İnşaat Seviyesi, Değer) aynı olmalı.");
-  assert.equal(data.columnMeta[legalAreaIndex].kind, "readonly", "Alan sütunu salt-okunur olmalı (gerçek formda da öyle).");
+  assert.ok(!data.headers.includes("Yasal Yapı Değeri - Alan"), "'Yasal Yapı Değeri - Alan' sütunu ARTIK bulunmamalı (Yasal Durum Değeri'nin Alan'ıyla tekrar).");
+  assert.ok(!data.headers.includes("Mevcut Yapı Değeri - Alan"), "'Mevcut Yapı Değeri - Alan' sütunu ARTIK bulunmamalı.");
+  assert.ok(legalUnitCostIndex >= 0 && legalDepreciationIndex >= 0 && legalLevelIndex >= 0 && legalBuildingTotalIndex >= 0, "Yasal Yapı Değeri'nin kalan sütunları bulunmalı.");
+  assert.ok(legalUnitCostIndex < legalDepreciationIndex && legalDepreciationIndex < legalLevelIndex && legalLevelIndex < legalBuildingTotalIndex, "Sütun sırası panelin GERÇEK sırasıyla (Birim Değeri, Yıpranma Payı, İnşaat Seviyesi, Değer) aynı olmalı.");
   assert.equal(data.columnMeta[legalUnitCostIndex].kind, "scalar", "Yapı Birim Değeri düzenlenebilir olmalı (gerçek formda da öyle).");
   assert.equal(data.columnMeta[legalLevelIndex].kind, "readonly", "İnşaat Seviyesi salt-okunur olmalı (gerçek formda da öyle).");
   assert.equal(data.columnMeta[legalDepreciationIndex].kind, "scalar", "Yıpranma Payı düzenlenebilir olmalı (gerçek formda da öyle).");
   assert.equal(data.columnMeta[legalBuildingTotalIndex].kind, "readonly", "Yapı Değeri (toplam) salt-okunur olmalı (gerçek formda da öyle).");
-  assert.equal(data.rows[0][legalAreaIndex], "100");
   assert.equal(data.rows[0][legalUnitCostIndex], "3.000");
   assert.equal(data.rows[0][legalBuildingTotalIndex], "270.000");
 
