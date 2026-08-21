@@ -373,4 +373,48 @@ function unit(overrides = {}) {
   console.log("renderSection valuation gate kaynak-duzeyi kablolama testi tamam.");
 }
 
+// --- 12) REGRESYON (kullanıcı ekran görüntüsü: "sütun başlıkları --------
+// karışmış"): Blok/Bağımsız Bölüm No Sıra No'nun HEMEN sağında render
+// edilir (Diğer grubuna düşüp tabloyu SONA kaymaz) VE gövde hücreleri
+// başlıkla TAM olarak aynı sırada (Kira sütunlarının Durum sütunlarının
+// İÇİNE gruplanması da dahil, kök neden buydu).
+{
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: {
+      titleBlockName: "BLOK-A", unitNo: "BBNO-5",
+      legalValueArea: "111", legalValueUnit: "222", legalValue: "333", legalUrgentSaleValue: "444",
+      currentValueArea: "555", currentValueUnit: "666", currentValue: "777", currentUrgentSaleValue: "888",
+      legalRentArea: "111", legalRentUnit: "999", legalRent: "1010",
+      currentRentArea: "555", currentRentUnit: "1111", currentRent: "1212",
+    },
+    tables: {},
+    titleUnits: [unit({ titleBlockName: "BLOK-B", unitNo: "BBNO-9" })],
+  });
+  const html = fns.buildValuationUnitsSummaryWordTableHtml();
+  const theadMatch = html.match(/<thead>([\s\S]*?)<\/thead>/);
+  const tbodyMatch = html.match(/<tbody>([\s\S]*?)<\/tbody>/);
+  assert.ok(theadMatch && tbodyMatch, "thead/tbody bulunmali.");
+  const headerRows = [...theadMatch[1].matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/g)];
+  assert.equal(headerRows.length, 2, "Iki katmanli baslik (2 <tr>) olmali.");
+  const topThCells = [...headerRows[0][1].matchAll(/<th[^>]*>([\s\S]*?)<\/th>/g)].map((m) => m[1]);
+  assert.equal(topThCells[0], "SIRA NO", "1. ust-satir hucresi Sira No olmali.");
+  assert.equal(topThCells[1], "BLOK", "2. ust-satir hucresi Blok olmali (rowspan=2, TEK sutun, grup DEGIL).");
+  assert.equal(topThCells[2], "BAĞIMSIZ BÖLÜM NO", "3. ust-satir hucresi Bagimsiz Bolum No olmali.");
+  assert.ok(!topThCells.includes("DİĞER"), "'Diğer' grup basligi ARTIK gorunmemeli (kimlik sutunlari one tasindi, grup bos kaldi).");
+
+  const bodyRows = [...tbodyMatch[1].matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/g)];
+  const firstRowCells = [...bodyRows[0][1].matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map((m) => m[1]);
+  assert.equal(firstRowCells[0], "1", "Govdenin 1. hucresi Sira No (1) olmali.");
+  assert.equal(firstRowCells[1], "BLOK-A", "Govdenin 2. hucresi Blok degeri olmali (Yasal Alan DEGIL - bu, kullanicinin bildirdigi karisma).");
+  assert.equal(firstRowCells[2], "BBNO-5", "Govdenin 3. hucresi Bagimsiz Bolum No degeri olmali.");
+
+  // Alt-basliklarin (2. satir <th>) SAYISI, her govde satirindaki <td>
+  // sayisindan (kimlik+Sira No haric) BIREBIR eslesmeli - hizalama
+  // dogrulamasinin genel formu.
+  const subThCells = [...headerRows[1][1].matchAll(/<th[^>]*>([\s\S]*?)<\/th>/g)];
+  assert.equal(subThCells.length, firstRowCells.length - 3, "Alt-baslik sayisi, govde hucre sayisi (Sira No+Blok+BBNo haric) ile eslesmeli.");
+  console.log("Header/govde hizalama regresyon testi (Blok/BBNo en basta, Kira/Durum karismiyor) tamam.");
+}
+
 console.log("Tasinmazlar degerleme ozeti tablosu testleri basarili.");

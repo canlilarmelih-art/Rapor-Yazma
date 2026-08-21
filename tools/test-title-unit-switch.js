@@ -113,6 +113,10 @@ const functionNames = [
   "isComparablesSharedAcrossUnits",
   "isLandOwnershipType",
   "normalizeOwnershipTypeForSectionVisibility",
+  // "landUnitValue" Kat İrtifakı'nda (Yatay/Dikey) paylaşımlı (2026-08-21) -
+  // getTitleUnitScopedFieldKeys() artik isCondominiumEasementOwnershipType()'a
+  // bagimli.
+  "isCondominiumEasementOwnershipType",
   // Bağımsız Bölüm/Ana Gayrimenkul scoping-gap-fix (2026-08-20) -
   // getTitleUnitScopedFieldKeys() artik getUnitSectionFieldKeys()'e ve
   // getBuildingSectionFieldKeys()'e KOSULSUZ bagimli.
@@ -162,7 +166,9 @@ let sections = [
   // (legalValue/currentValue zaten declaratif/dogru scoped; saleabilityNote
   // shared setinde - gercek TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS'teki
   // ayrimi yansitir).
-  { id: "valuation", fields: [{ key: "legalValue" }, { key: "currentValue" }, { key: "saleabilityNote" }] },
+  // "landUnitValue" (2026-08-21) Kat İrtifakı'nda (Yatay/Dikey) paylaşımlı
+  // testi icin fixture'a eklendi.
+  { id: "valuation", fields: [{ key: "legalValue" }, { key: "currentValue" }, { key: "saleabilityNote" }, { key: "landUnitValue" }] },
   // Bağımsız Bölüm/Ana Gayrimenkul scoping-gap-fix testi (2026-08-20) icin
   // fixture'a eklendi - gercek app.js'teki "building" bolumu section.fields'i
   // LITERAL BOS DIZI (hicbir alan deklaratif degil, tum alanlar
@@ -966,6 +972,58 @@ assert.match(appSource, /panel\.dataset\.parcelScope = mixedParcels \? "mixed" :
   assert.equal(primaryAgain.fields.legalValueUnit, "5000", "Birincilin legalValueUnit'i korunmali.");
   assert.equal(primaryAgain.fields.legalValueUserDefined, "1", "Birincilin Arsa-ozel manuel-bayragi korunmali.");
   console.log("Degerleme Piyasa Degeri alan/birim/manuel-bayrak alanlari unit-scoped round-trip testi tamam.");
+}
+
+// --- 29b) "landUnitValue": Yatay/Dikey Kat Irtifaki'nda PAYLASIMLI --------
+// (2026-08-21). Kullanici talebi: "arsa degeri yatay ve dikey kat
+// irtifakinda tum tasinmazlar icin ayni olmali - herhangi bir bagimsiz
+// bolum tabinda arsa m2 birim degeri girildiginde diger tum tasinmazlarin
+// arsa m2 birim degeri guncellenmeli."
+{
+  // (a) Yatay Kat Irtifaki: landUnitValue yeni (bos) tasinmaza da AYNEN
+  // gorunmeli (PAYLASIMLI - scoped set'ten cikarildi, tek kaynak).
+  const stateYatay = freshState({
+    fields: { ...freshState().fields, ownershipType: "Yatay Kat İrtifakı", landUnitValue: "12500", legalValue: "500000" },
+  });
+  sandbox.setState(stateYatay);
+  const newIndexYatay = sandbox.fns.addTitleUnitTab();
+  sandbox.fns.switchActiveTitleUnit(newIndexYatay);
+  assert.equal(sandbox.getState().fields.landUnitValue, "12500", "Yatay Kat Irtifaki: landUnitValue YENI (bos) tasinmazda da AYNI gorunmeli (paylasimli).");
+  assert.equal(sandbox.getState().fields.legalValue, undefined, "REGRESYON: legalValue (paylasimli DEGIL) hala normal sekilde SIZMAMALI.");
+  // Yeni tasinmazda deger degistirilip birincile donulunce, birincilin
+  // (paylasimli TEK kaynagin) degeri de GUNCEL (yeni deger) gormeli -
+  // "herhangi bir tabda girildiginde digerleri guncellenmeli" senaryosu.
+  sandbox.getState().fields.landUnitValue = "99999";
+  sandbox.fns.switchActiveTitleUnit(0);
+  assert.equal(sandbox.getState().fields.landUnitValue, "99999", "Yeni tasinmazda girilen deger, birincile donulunce de GUNCEL gorunmeli (gercek paylasim, kopya DEGIL).");
+
+  // (b) Dikey Kat Irtifaki: AYNI davranis.
+  const stateDikey = freshState({
+    fields: { ...freshState().fields, ownershipType: "Dikey Kat İrtifakı", landUnitValue: "7000" },
+  });
+  sandbox.setState(stateDikey);
+  const newIndexDikey = sandbox.fns.addTitleUnitTab();
+  sandbox.fns.switchActiveTitleUnit(newIndexDikey);
+  assert.equal(sandbox.getState().fields.landUnitValue, "7000", "Dikey Kat Irtifaki: landUnitValue de PAYLASIMLI olmali.");
+
+  // (c) REGRESYON: Mustakil Bina'da (Kat Irtifaki DEGIL) landUnitValue
+  // HALA tasinmaza-ozgu (SIZMAMALI) - davranis degismemeli.
+  const stateMustakil = freshState({
+    fields: { ...freshState().fields, ownershipType: "Müstakil Bina", landUnitValue: "5000" },
+  });
+  sandbox.setState(stateMustakil);
+  const newIndexMustakil = sandbox.fns.addTitleUnitTab();
+  sandbox.fns.switchActiveTitleUnit(newIndexMustakil);
+  assert.equal(sandbox.getState().fields.landUnitValue, undefined, "REGRESYON: Mustakil Bina'da landUnitValue PAYLASIMLI OLMAMALI, yeni tasinmazda BOS olmali.");
+  sandbox.fns.switchActiveTitleUnit(0);
+  assert.equal(sandbox.getState().fields.landUnitValue, "5000", "Mustakil Bina: birincilin landUnitValue'su round-trip korunmali (taşınmaza-ozgu).");
+
+  assert.equal(sandbox.fns.isCondominiumEasementOwnershipType("Yatay Kat İrtifakı"), true);
+  assert.equal(sandbox.fns.isCondominiumEasementOwnershipType("Dikey Kat İrtifakı"), true);
+  assert.equal(sandbox.fns.isCondominiumEasementOwnershipType("Müstakil Bina"), false);
+  assert.equal(sandbox.fns.isCondominiumEasementOwnershipType("Arsa"), false);
+
+  console.log("landUnitValue Yatay-Dikey Kat Irtifaki paylasim + Mustakil Bina regresyon testi tamam.");
 }
 
 // --- 30) Bağımsız Bölüm (unit): programatik alanlar artik SIZMIYOR --------

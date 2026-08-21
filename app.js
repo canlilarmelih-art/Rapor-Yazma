@@ -1845,9 +1845,32 @@ function getTitleUnitScopedFieldKeys() {
     (section?.fields || []).forEach((field) => {
       // Talep Türü rapor-genelidir; taşınmaz tabına geçerken birim verisiyle
       // üzerine yazılırsa Çoklu Talep yanlışlıkla Tekli Talep'e döner.
-      if (field.key !== "requestType" && !TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS.has(field.key)) {
-        keys.add(field.key);
-      }
+      if (field.key === "requestType") return;
+      if (TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS.has(field.key)) return;
+      // Kullanıcı talebi (2026-08-21): "arsa değeri yatay ve dikey kat
+      // irtifakında tüm taşınmazlar için aynı olmalı — herhangi bir
+      // bağımsız bölüm tabında arsa m2 birim değeri girildiğinde diğer
+      // tüm taşınmazların arsa m2 birim değeri güncellenmeli." Kat
+      // İrtifakı'nda (Yatay/Dikey) tek bir arsa üzerinde birden fazla
+      // bağımsız bölüm olduğundan, arsanın m² birim değeri FİZİKSEL
+      // olarak HEPSİ için AYNIDIR — landUnitValue bu durumda scoped
+      // set'ten ÇIKARILIR (yani "comparables" gibi TAMAMEN paylaşımlı
+      // hale gelir: state.fields.landUnitValue'nun TEK bir kopyası olur,
+      // switchActiveTitleUnit hiçbir taşınmaza-özgü gölge yaratmaz/okumaz
+      // — bkz. snapshotTitleUnitScopedData/applyTitleUnitScopedData, HER
+      // İKİSİ de SADECE bu fonksiyonun döndürdüğü anahtarlara dokunur).
+      // Bu, "kopyala" (opt-in, tek seferlik) DEĞİL, GERÇEK paylaşım —
+      // ayrı bir senkron-yayma koduna GEREK YOK, tek kaynak zaten aynı.
+      // Müstakil Bina/Arsa/Tarla'da DAVRANIŞ DEĞİŞMİYOR (koşul false).
+      // BİLİNEN GEÇİŞ RİSKİ (Belgeler'in blok-senkronuyla/Emsaller'in
+      // 0.0.489 geçişiyle AYNI sınıf, dokümante edilir, kod YAZILMAZ):
+      // bu özellikten ÖNCE taşınmazlar arasında FARKLI landUnitValue
+      // girilmiş bir Kat İrtifakı raporu bu davranışa geçtiğinde, o an
+      // aktif taşınmazın değeri "kazanır" — eski taşınmaza-özgü gölge
+      // değerler artık HİÇ okunmaz (zararsız, sadece bir daha
+      // kullanılmaz).
+      if (field.key === "landUnitValue" && isCondominiumEasementOwnershipType()) return;
+      keys.add(field.key);
     });
   });
   // "titleChangedRecords" "title" sekmesinin DEKLARATİF fields listesinde
@@ -4103,6 +4126,17 @@ function normalizeOwnershipTypeForSectionVisibility(value) {
 
 function isLandOwnershipType(value = state.fields.ownershipType) {
   return ["ARSA", "TARLA"].includes(normalizeOwnershipTypeForSectionVisibility(value));
+}
+
+// Kullanıcı talebi (2026-08-21): "arsa değeri yatay ve dikey kat
+// irtifakında tüm taşınmazlar için aynı olmalı ..." — "ownershipType"
+// alanının (app.js~139-146) TAM olarak bu iki değeri var: "Dikey Kat
+// İrtifaki"/"Yatay Kat İrtifaki" (tek bir değer + yatay/dikey alt-seçim
+// DEĞİL, iki AYRI seçenek dizesi). Projede bu ikiliyi kontrol eden
+// paylaşılan bir fonksiyon YOKTU (her çağrı yeri — app.js~6227/30136/4230 —
+// diziyi elle tekrarlıyordu) — bu, İLK reusable helper.
+function isCondominiumEasementOwnershipType(value = state.fields.ownershipType) {
+  return ["DIKEY KAT IRTIFAKI", "YATAY KAT IRTIFAKI"].includes(normalizeOwnershipTypeForSectionVisibility(value));
 }
 
 // Kullanıcı talebi (2026-08-19): "ÇOKLU ARSA TARLA raporlarında emsaller
@@ -6685,21 +6719,46 @@ function buildValuationUnitsSummaryTableHtml(data, activeRowIndex, { editable = 
   const baseCell = `${border}padding:3pt 4pt;text-align:center;vertical-align:middle;line-height:1.15;color:${ink};background:${surface};font-size:6.5pt;white-space:normal;`;
   const headerCell = `${baseCell}background:${surfaceMuted};color:${blue};font-weight:800;`;
   const zebraCell = `${baseCell}background:${surfaceMuted};`;
-  const groupedColumns = headers.slice(1).reduce((groups, label, offset) => {
+  // Kullanıcı bildirimi (2026-08-21, ekran görüntüsü): "sütun başlıkları
+  // karışmış" — KÖK NEDEN: alt-başlıklar (subHeaderHtml) grup sırasına
+  // (Yasal→Mevcut→Diğer) göre YENİDEN SIRALANIYORDU, ama gövde hücreleri
+  // (bodyHtml) HAM dizi sırasında (row.map) kalıyordu — Kira sütunları
+  // (Durum'dan SONRA, dizide ама grup içinde Durum'un HEMEN ardına
+  // toplanıyor) VE Blok/Bağımsız Bölüm No ("Diğer" grubu, HER ZAMAN EN
+  // SONA düşer) için başlık/hücre eşleşmesi kayıyordu — kullanıcının
+  // "sıra no sütununun sağına ... koyalım" isteği de bu yüzden
+  // gerçekleşmiyordu (Diğer grubu grup sırasında hep sonda). Düzeltme İKİ
+  // parça: (1) Sıra No + kimlik sütunları (Blok/Bağımsız Bölüm No, HANGİ
+  // index'te olurlarsa olsunlar — columnHasData boş-sütun filtresi
+  // birini kaldırmış olsa bile sağlam çalışır) artık gruplamaya HİÇ
+  // GİRMİYOR, Sıra No gibi rowspan="2" TEK sütun olarak EN BAŞA
+  // sabitleniyor; (2) bodyHtml artık `displayIndices` (başlığın GERÇEKTE
+  // gösterdiği sıra) üzerinden render ediliyor — böylece hücreler HER
+  // ZAMAN üstlerindeki başlıkla eşleşiyor.
+  const leadingIndices = [0];
+  headers.forEach((label, index) => {
+    if (index === 0) return;
+    if (VALUATION_UNITS_TABLE_IDENTITY_DEFS.some((def) => def.label === label)) leadingIndices.push(index);
+  });
+  const groupedColumns = headers.reduce((groups, label, index) => {
+    if (leadingIndices.includes(index)) return groups;
     const group = getValuationUnitsSummaryHeaderGroup(label);
     if (!groups[group]) groups[group] = [];
-    groups[group].push({ label, index: offset + 1 });
+    groups[group].push({ label, index });
     return groups;
   }, {});
   const groupOrder = ["Yasal Durum Değeri", "Mevcut Durum Değeri", "Diğer"].filter((group) => groupedColumns[group]?.length);
-  const topHeaderHtml = `<tr><th rowspan="2" style="${headerCell}">${toTitleFieldUppercase(headers[0])}</th>${groupOrder.map((group) => `<th colspan="${groupedColumns[group].length}" style="${headerCell}">${toTitleFieldUppercase(group)}</th>`).join("")}</tr>`;
-  const subHeaderHtml = `<tr>${groupOrder.flatMap((group) => groupedColumns[group]).map(({ label }) => {
+  const orderedColumns = groupOrder.flatMap((group) => groupedColumns[group]);
+  const displayIndices = [...leadingIndices, ...orderedColumns.map((col) => col.index)];
+  const topHeaderHtml = `<tr>${leadingIndices.map((index) => `<th rowspan="2" style="${headerCell}">${toTitleFieldUppercase(headers[index])}</th>`).join("")}${groupOrder.map((group) => `<th colspan="${groupedColumns[group].length}" style="${headerCell}">${toTitleFieldUppercase(group)}</th>`).join("")}</tr>`;
+  const subHeaderHtml = `<tr>${orderedColumns.map(({ label }) => {
     const subheader = toTitleFieldUppercase(getValuationUnitsSummarySubheader(label));
     return `<th style="${headerCell}">${escapeHtml(subheader).replace(/\n/g, "<br>")}</th>`;
   }).join("")}</tr>`;
   const bodyHtml = rows.map((row, rowIndex) => {
     const cellStyle = rowIndex % 2 === 1 ? zebraCell : baseCell;
-    const cellsHtml = row.map((cell, columnIndex) => {
+    const cellsHtml = displayIndices.map((columnIndex) => {
+      const cell = row[columnIndex];
       const meta = columnMeta[columnIndex] || null;
       const isEditable = editable && meta?.kind === "scalar";
       if (!isEditable) return `<td style="${cellStyle}">${formatWordCell(toTitleFieldUppercase(cell))}</td>`;
@@ -8099,7 +8158,18 @@ function createValuationInsuranceTable() {
 }
 
 function createValuationLandTable() {
-  const panel = createValuationPanel("Arsa Değeri", "Arsa payı/payda, yüzölçüm ve arsa m2 birim değeri ile arsa değeri hesaplanır.");
+  // Kullanıcı talebi (2026-08-21): "arsa değeri yatay ve dikey kat
+  // irtifakında tüm taşınmazlar için aynı olmalı" — Kat İrtifakı'nda
+  // (Yatay/Dikey) "Arsa M2 Birim Değeri" artık gerçekten PAYLAŞIMLI
+  // (bkz. getTitleUnitScopedFieldKeys()'teki landUnitValue istisnası) —
+  // etiket + panel açıklaması bunu şeffaf şekilde belirtir.
+  const isSharedLandUnitValue = isCondominiumEasementOwnershipType();
+  const panel = createValuationPanel(
+    "Arsa Değeri",
+    isSharedLandUnitValue
+      ? "Arsa payı/payda, yüzölçüm ve arsa m2 birim değeri ile arsa değeri hesaplanır. Arsa M2 Birim Değeri, tek bir arsa üzerindeki TÜM bağımsız bölümler için ORTAKTIR — herhangi bir taşınmazın sekmesinde girilen değer diğer tüm taşınmazlara otomatik yansır."
+      : "Arsa payı/payda, yüzölçüm ve arsa m2 birim değeri ile arsa değeri hesaplanır.",
+  );
   const table = document.createElement("table");
   table.className = "valuation-table valuation-land-table";
   const tbody = document.createElement("tbody");
@@ -8112,7 +8182,7 @@ function createValuationLandTable() {
     createValuationStaticCell("x"),
     createValuationInputCell("landArea", "Yüzölçüm", { suffix: "m²" }),
     createValuationStaticCell("x"),
-    createValuationInputCell("landUnitValue", "Arsa M2 Birim Değeri", { suffix: "TL/m²" }),
+    createValuationInputCell("landUnitValue", isSharedLandUnitValue ? "Arsa M2 Birim Değeri (Ortak)" : "Arsa M2 Birim Değeri", { suffix: "TL/m²" }),
     createValuationStaticCell("="),
     createValuationInputCell("landValue", "Arsa Değeri", { suffix: "TL", readOnly: true }),
   );
