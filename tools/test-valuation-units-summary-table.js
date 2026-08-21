@@ -174,7 +174,7 @@ function unit(overrides = {}) {
   assert.equal(data.rows.length, 2, "2 satır (2 taşınmaz) bekleniyordu.");
   assert.equal(data.headers[0], "Sıra No", "\"Sıra No\" EN SOL sütun olmalı.");
   assert.equal(data.headers[1], "Blok", "İkinci sütun 'Blok' olmalı (Sıra No'nun HEMEN sağı).");
-  assert.equal(data.headers[2], "Bağımsız Bölüm No", "Üçüncü sütun 'Bağımsız Bölüm No' olmalı.");
+  assert.equal(data.headers[2], "BB No", "Üçüncü sütun 'BB No' olmalı.");
   const defs = fns.getRowDefs();
   assert.equal(data.headers[3], `${defs[0].label} - Alan`, "Dördüncü sütun ilk satırın 'Alan' sütunu olmalı.");
   const legalValueIndex = data.headers.indexOf("Yasal Durum Değeri");
@@ -317,7 +317,7 @@ function unit(overrides = {}) {
 {
   const identityDefs = fns.getIdentityDefs();
   assert.deepEqual(identityDefs.map((d) => d.key), ["titleBlockName", "unitNo"]);
-  assert.deepEqual(identityDefs.map((d) => d.label), ["Blok", "Bağımsız Bölüm No"]);
+  assert.deepEqual(identityDefs.map((d) => d.label), ["Blok", "BB No"]);
 
   fns.setState({
     activeTitleUnitIndex: 0,
@@ -327,12 +327,12 @@ function unit(overrides = {}) {
   });
   const data = fns.buildValuationUnitsSummaryTableData();
   const blockIndex = data.headers.indexOf("Blok");
-  const unitNoIndex = data.headers.indexOf("Bağımsız Bölüm No");
+  const unitNoIndex = data.headers.indexOf("BB No");
   assert.equal(data.columnMeta[blockIndex].kind, "readonly", "'Blok' sütunu readonly olmalı.");
-  assert.equal(data.columnMeta[unitNoIndex].kind, "readonly", "'Bağımsız Bölüm No' sütunu readonly olmalı.");
+  assert.equal(data.columnMeta[unitNoIndex].kind, "readonly", "'BB No' sütunu readonly olmalı.");
   assert.equal(data.rows[0][blockIndex], "A", "1. taşınmazın Blok bilgisi doğru sütunda olmalı.");
-  assert.equal(data.rows[1][unitNoIndex], "7", "2. taşınmazın Bağımsız Bölüm No bilgisi doğru sütunda olmalı.");
-  console.log("Blok-Bagimsiz Bolum No kimlik sutunlari testi tamam.");
+  assert.equal(data.rows[1][unitNoIndex], "7", "2. taşınmazın BB No bilgisi doğru sütunda olmalı.");
+  console.log("Blok-BBNo kimlik sutunlari testi tamam.");
 }
 
 // --- 9) İki katmanlı HTML renderer'da Blok/BB No subheader'ı YANLIŞLIKLA -
@@ -345,12 +345,20 @@ function unit(overrides = {}) {
     titleUnits: [unit({ titleBlockName: "B", unitNo: "7", legalValue: "720.000" })],
   });
   assert.equal(fns.getValuationUnitsSummarySubheader("Blok"), "Blok");
-  assert.equal(fns.getValuationUnitsSummarySubheader("Bağımsız Bölüm No"), "Bağımsız Bölüm No");
+  assert.equal(fns.getValuationUnitsSummarySubheader("BB No"), "BB No");
   assert.equal(fns.getValuationUnitsSummaryHeaderGroup("Blok"), "Diğer", "'Blok' Yasal/Mevcut grubuna DEĞİL, 'Diğer'e düşmeli.");
   const html = fns.buildValuationUnitsSummaryWordTableHtml();
   assert.ok(html.includes(">BLOK<") || html.includes(">Blok<"), "HTML'de 'Blok' başlığı görünmeli.");
   assert.ok(!/>BLOK<\/th>[\s\S]{0,5}PİYASA DEĞERİ/i.test(html), "'Blok' sütunu YANLIŞLIKLA 'Piyasa Değeri' alt-başlığı almamalı.");
-  console.log("Blok-BBNo subheader regresyon testi tamam.");
+  // Kullanıcı takip talebi (2026-08-21): "sıra no blok ve bağımsız bölüm
+  // no sütunları olabildiğince daralt" — Sıra No/Blok/BB No (rowspan="2"
+  // olan 3 <th>) HER BİRİ dar sabit genişlik almalı.
+  const leadingThs = [...html.matchAll(/<th rowspan="2" style="([^"]*)"/g)].map((m) => m[1]);
+  assert.equal(leadingThs.length, 3, "3 rowspan=2 basligi (Sira No/Blok/BB No) olmali.");
+  leadingThs.forEach((style) => {
+    assert.ok(style.includes("width:24pt;"), `Kimlik sutunu basligi dar genislik almali, bulunan stil: ${style}`);
+  });
+  console.log("Blok-BBNo subheader regresyon + daraltma testi tamam.");
 }
 
 // --- 10) Yalnızca değerleme önizlemesi iki katmanlı renderer'ı kullanır --
@@ -409,7 +417,7 @@ function unit(overrides = {}) {
   const topThCells = [...headerRows[0][1].matchAll(/<th[^>]*>([\s\S]*?)<\/th>/g)].map((m) => m[1]);
   assert.equal(topThCells[0], "SIRA NO", "1. ust-satir hucresi Sira No olmali.");
   assert.equal(topThCells[1], "BLOK", "2. ust-satir hucresi Blok olmali (rowspan=2, TEK sutun, grup DEGIL).");
-  assert.equal(topThCells[2], "BAĞIMSIZ BÖLÜM NO", "3. ust-satir hucresi Bagimsiz Bolum No olmali.");
+  assert.equal(topThCells[2], "BB NO", "3. ust-satir hucresi BB No olmali.");
   assert.ok(!topThCells.includes("DİĞER"), "'Diğer' grup basligi ARTIK gorunmemeli (kimlik sutunlari one tasindi, grup bos kaldi).");
 
   const bodyRows = [...tbodyMatch[1].matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/g)];

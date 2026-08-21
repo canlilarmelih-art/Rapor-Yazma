@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.502 - 2026-08-21 - Değerleme + Bağımsız Bölüm tablolarında kimlik sütunları daraltıldı, "Bağımsız Bölüm No" → "BB No"
+
+- Kullanıcı: "tabloda sıra no blok ce bağımsız bölüm no sütunları olabildiğince daralt çok geniş bağımsız bölüm no başlığını BB No olarak güncelle."
+- **"Bağımsız Bölüm No" → "BB No"**: hem Değerleme (`VALUATION_UNITS_TABLE_IDENTITY_DEFS`) hem Bağımsız Bölüm (`UNIT_UNITS_TABLE_FIELD_DEFS`) özet tablolarının sütun başlığı kısaltıldı — Tapu formundaki GERÇEK alan etiketi ("Bağımsız Bölüm No") DEĞİŞMEDİ, yalnızca bu iki özet tablonun sütun başlığı.
+- **Daraltma**: paylaşılan tek-katmanlı render motoruna (`buildTitleUnitsSummaryTableHtmlEditable`, Tapu/Adres/İmar/Arsa/Belgeler/Bağımsız Bölüm'ün TAMAMINDA kullanılıyor) yeni bir `columnMeta.narrow` bayrağı desteği eklendi — yalnızca `narrow:true` işaretli sütunlar (bugün: Bağımsız Bölüm tablosunun Sıra No + Blok + BB No'su) dar sabit genişlik (`width:24pt`) alır, diğer TÜM bölümlerin sütunları (bayrak yok) davranış DEĞİŞTİRMEDİ. Değerleme'nin kendi özel iki-katmanlı render motoruna (`buildValuationUnitsSummaryTableHtml`) da aynı dar genişlik zaten var olan `leadingIndices` (Sıra No + kimlik sütunları) mekanizması üzerinden doğrudan eklendi.
+- Test: `tools/test-unit-units-summary-table.js`/`tools/test-valuation-units-summary-table.js`'e narrow-genişlik + yeni etiket doğrulamaları eklendi; eski "Bağımsız Bölüm No" beklentileri "BB No" olarak güncellendi. `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` cache-buster `?v=20260821-2000`.
+- Canlı tarayıcı testi yapılamadı (giriş bilgisi yok) — doğrulama kod/test seviyesinde.
+
 ## 0.0.501 - 2026-08-21 - Değerleme özet tablosu: hiç ziyaret edilmemiş taşınmazlar için de otomatik hesaplama
 
 - Kullanıcı, canlı ekran görüntüsüyle: "TABLODA OTOMATİK HESAPLAMA YAPMIYOR AMA arsa değerini değiştirdim bağımsız bölüm bilgisi doldurulan diğer taşınmazların değerleri otomatik oluşmalıydı ancak oluşmadı." Gerçek 43 taşınmazlı bir raporda, "Taşınmazlar Değerleme Özeti" tablosunda yalnızca kullanıcının FİİLEN ziyaret ettiği 3 taşınmazın değerleri doluydu; Bağımsız Bölüm bilgisi çoktan doldurulmuş diğer onlarca taşınmaz hâlâ "-" gösteriyordu. Plan Mode ile (kaynaktan doğrudan doğrulanmış kök-neden analizi + onaylı mimari) araştırılıp uygulandı.

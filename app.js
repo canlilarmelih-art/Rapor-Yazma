@@ -6624,9 +6624,13 @@ const VALUATION_UNITS_TABLE_ROW_DEFS = valuationMarketRows.map((row) => {
 // sağına blok ve bağımsız bölüm no sütunu koyalım" — Bağımsız Bölüm özet
 // tablosundaki (UNIT_UNITS_TABLE_FIELD_DEFS) AYNI kimlik/tanıma sütunları
 // (readonly — bunlar Tapu bölümünün kendi alanları, burada düzenlenmez).
+// Kullanıcı takip talebi (2026-08-21): "çok geniş bağımsız bölüm no
+// başlığını BB No olarak güncelle" — Bağımsız Bölüm özet tablosundaki
+// AYNI kısaltma (gerçek Tapu formundaki tam etiket DEĞİŞMEDİ, yalnızca bu
+// özet tablonun sütun başlığı).
 const VALUATION_UNITS_TABLE_IDENTITY_DEFS = [
   { key: "titleBlockName", label: "Blok" },
-  { key: "unitNo", label: "Bağımsız Bölüm No" },
+  { key: "unitNo", label: "BB No" },
 ];
 
 function buildValuationUnitsSummaryTableData() {
@@ -6699,7 +6703,7 @@ function getValuationUnitsSummarySubheader(label) {
   // sütunu "Diğer" grubuna düşüyor (getValuationUnitsSummaryHeaderGroup)
   // ama AŞAĞIDAKİ varsayılan ("Piyasa Değeri (TL)") YANLIŞ olurdu — bunlar
   // parasal değer DEĞİL, metin kimlik alanları.
-  if (normalized === "Blok" || normalized === "Bağımsız Bölüm No") return normalized;
+  if (normalized === "Blok" || normalized === "BB No") return normalized;
   if (normalized.endsWith(" - Alan")) return "Alan\n(m²)";
   if (normalized.endsWith(" - M2 Birim Değeri")) {
     return normalized.includes("Kira") ? "Kira M2 Birim Değeri\n(TL/m²)" : "M2 Birim Değeri\n(TL/m²)";
@@ -6758,7 +6762,12 @@ function buildValuationUnitsSummaryTableHtml(data, activeRowIndex, { editable = 
   const groupOrder = ["Yasal Durum Değeri", "Mevcut Durum Değeri", "Diğer"].filter((group) => groupedColumns[group]?.length);
   const orderedColumns = groupOrder.flatMap((group) => groupedColumns[group]);
   const displayIndices = [...leadingIndices, ...orderedColumns.map((col) => col.index)];
-  const topHeaderHtml = `<tr>${leadingIndices.map((index) => `<th rowspan="2" style="${headerCell}">${toTitleFieldUppercase(headers[index])}</th>`).join("")}${groupOrder.map((group) => `<th colspan="${groupedColumns[group].length}" style="${headerCell}">${toTitleFieldUppercase(group)}</th>`).join("")}</tr>`;
+  // Kullanıcı takip talebi (2026-08-21): "sıra no blok ve bağımsız bölüm
+  // no sütunları olabildiğince daralt" — leadingIndices (Sıra No + kimlik
+  // sütunları) zaten TAM olarak daraltılacak sütunları temsil ediyor, ayrı
+  // bir columnMeta.narrow işaretine gerek yok.
+  const narrowWidth = "width:24pt;";
+  const topHeaderHtml = `<tr>${leadingIndices.map((index) => `<th rowspan="2" style="${headerCell}${narrowWidth}">${toTitleFieldUppercase(headers[index])}</th>`).join("")}${groupOrder.map((group) => `<th colspan="${groupedColumns[group].length}" style="${headerCell}">${toTitleFieldUppercase(group)}</th>`).join("")}</tr>`;
   const subHeaderHtml = `<tr>${orderedColumns.map(({ label }) => {
     const subheader = toTitleFieldUppercase(getValuationUnitsSummarySubheader(label));
     return `<th style="${headerCell}">${escapeHtml(subheader).replace(/\n/g, "<br>")}</th>`;
@@ -6768,6 +6777,9 @@ function buildValuationUnitsSummaryTableHtml(data, activeRowIndex, { editable = 
     const cellsHtml = displayIndices.map((columnIndex) => {
       const cell = row[columnIndex];
       const meta = columnMeta[columnIndex] || null;
+      if (leadingIndices.includes(columnIndex)) {
+        return `<td style="${cellStyle}${narrowWidth}">${formatWordCell(toTitleFieldUppercase(cell))}</td>`;
+      }
       const isEditable = editable && meta?.kind === "scalar";
       if (!isEditable) return `<td style="${cellStyle}">${formatWordCell(toTitleFieldUppercase(cell))}</td>`;
       return `<td style="${cellStyle}cursor:text;" class="tus-editable-cell" data-unit-index="${rowIndex}" data-field-key="${escapeHtml(meta.fieldKey)}" title="Düzenlemek için tıklayın">${formatWordCell(toTitleFieldUppercase(cell))}</td>`;
@@ -19749,11 +19761,26 @@ function buildTitleUnitsSummaryTableHtmlEditable(headers, rows, columnMeta, acti
   const headerCell = `${baseCell}background:${surfaceMuted};color:${blue};font-weight:800;`;
   const zebraCell = `${baseCell}background:${surfaceMuted};`;
 
-  const headerHtml = `<tr>${headers.map((label) => `<th style="${headerCell}">${splitTableHeaderLabelIntoTwoLines(toTitleFieldUppercase(label))}</th>`).join("")}</tr>`;
+  // Kullanıcı talebi (2026-08-21): "sıra no blok ve bağımsız bölüm no
+  // sütunları olabildiğince daralt" — columnMeta'da `narrow: true`
+  // işaretli sütunlar (bugün yalnızca Bağımsız Bölüm özet tablosunun
+  // Sıra No/Blok/BB No kimlik sütunları) dar sabit bir genişlik alır; bu
+  // PAYLAŞIMLI render fonksiyonu Tapu/Adres/İmar/Arsa/Belgeler'de de
+  // kullanıldığından, `narrow` işaretlenMEYEN sütunlar (o bölümlerin
+  // TAMAMI) davranış DEĞİŞTİRMEZ.
+  const narrowWidth = "width:24pt;";
+  const headerHtml = `<tr>${headers.map((label, index) => {
+    const meta = (columnMeta && columnMeta[index]) || null;
+    const style = meta?.narrow ? `${headerCell}${narrowWidth}` : headerCell;
+    return `<th style="${style}">${splitTableHeaderLabelIntoTwoLines(toTitleFieldUppercase(label))}</th>`;
+  }).join("")}</tr>`;
   const bodyHtml = rows.map((row, rowIndex) => {
     const cellStyle = rowIndex % 2 === 1 ? zebraCell : baseCell;
     const cellsHtml = row.map((cell, columnIndex) => {
       const meta = (columnMeta && columnMeta[columnIndex]) || null;
+      if (meta?.narrow) {
+        return `<td style="${cellStyle}${narrowWidth}">${formatWordCell(toTitleFieldUppercase(cell))}</td>`;
+      }
       // Faz 3 (2026-08-15): "yalnızca AKTİF satır" kısıtlaması KALDIRILDI —
       // artık HER satırın "scalar" hücresi düzenlenebilir (gölge-yazma,
       // bkz. resolveTitleUnitWriteTarget/setTitleUnitFieldValue).
@@ -20644,10 +20671,17 @@ function buildDocumentsUnitsSummaryWordTableHtml() {
 //    Antre/Balkon/Diğer, TÜM kat satırları toplanmış). KALDIRILDI, yerine
 //    `getUnitFloorInteriorTableGroupCounts()` (aşağıda) ile 8 SABİT
 //    (dinamik-DEĞİL, sayısı hep 8) readonly sütun eklendi.
+// Kullanıcı takip talebi (2026-08-21): "sıra no blok ve bağımsız bölüm no
+// sütunları olabildiğince daralt çok geniş bağımsız bölüm no başlığını BB
+// No olarak güncelle" — `narrow: true` işaretli sütunlar
+// (buildTitleUnitsSummaryTableHtmlEditable'ın `columnMeta.narrow` kontrolü
+// üzerinden) dar sabit genişlik alır; "Bağımsız Bölüm No" kısaltıldı
+// (gerçek Tapu formundaki tam etiket DEĞİŞMEDİ, yalnızca bu özet
+// tablonun sütun başlığı).
 const UNIT_UNITS_TABLE_FIELD_DEFS = [
-  { key: "titleBlockName", label: "Blok", kind: "readonly" },
+  { key: "titleBlockName", label: "Blok", kind: "readonly", narrow: true },
   { key: "unitFloor", label: "Kat", kind: "scalar" },
-  { key: "unitNo", label: "Bağımsız Bölüm No", kind: "readonly" },
+  { key: "unitNo", label: "BB No", kind: "readonly", narrow: true },
   { key: "unitUsageStatus", label: "Kullanım Durumu", kind: "scalar" },
   { key: "unitFirstSaleStatus", label: "İlk Satış Durumu", kind: "scalar" },
   { key: "unitEntrancePosition", label: "Bina Girişine Göre Konum", kind: "scalar" },
@@ -20759,8 +20793,8 @@ function buildUnitUnitsSummaryTableData() {
     ...UNIT_UNITS_TABLE_INTERIOR_GROUP_DEFS.map((def) => def.label),
   ];
   const columnMeta = [
-    { kind: "seq" },
-    ...UNIT_UNITS_TABLE_FIELD_DEFS.map((def) => ({ kind: def.kind, fieldKey: def.key })),
+    { kind: "seq", narrow: true },
+    ...UNIT_UNITS_TABLE_FIELD_DEFS.map((def) => ({ kind: def.kind, fieldKey: def.key, narrow: def.narrow })),
     ...UNIT_UNITS_TABLE_REDUCED_AREA_DEFS.map(() => ({ kind: "readonly" })),
     ...UNIT_UNITS_TABLE_INTERIOR_GROUP_DEFS.map(() => ({ kind: "readonly" })),
   ];

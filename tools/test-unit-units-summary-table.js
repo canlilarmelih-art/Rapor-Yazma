@@ -243,11 +243,11 @@ function fullUnitFields(overrides = {}) {
   assert.equal(defs[2].key, "unitNo", "3. alan 'Bağımsız Bölüm No' olmalı.");
   const blockIndex = data.headers.indexOf("Blok");
   const katIndex = data.headers.indexOf("Kat");
-  const unitNoIndex = data.headers.indexOf("Bağımsız Bölüm No");
-  assert.ok(blockIndex >= 0 && katIndex >= 0 && unitNoIndex >= 0, "'Blok'/'Kat'/'Bağımsız Bölüm No' sütunları bulunmalı.");
-  assert.ok(blockIndex < katIndex && katIndex < unitNoIndex, "Sütun SIRASI Blok -> Kat -> Bağımsız Bölüm No olmalı.");
+  const unitNoIndex = data.headers.indexOf("BB No");
+  assert.ok(blockIndex >= 0 && katIndex >= 0 && unitNoIndex >= 0, "'Blok'/'Kat'/'BB No' sütunları bulunmalı.");
+  assert.ok(blockIndex < katIndex && katIndex < unitNoIndex, "Sütun SIRASI Blok -> Kat -> BB No olmalı.");
   assert.equal(data.rows[0][katIndex], "1. Normal", "1. taşınmazın Kat bilgisi doğru sütunda olmalı.");
-  assert.equal(data.rows[1][unitNoIndex], "7", "2. taşınmazın Bağımsız Bölüm No bilgisi doğru sütunda olmalı.");
+  assert.equal(data.rows[1][unitNoIndex], "7", "2. taşınmazın BB No bilgisi doğru sütunda olmalı.");
   console.log("2+ tasinmazda tablo verisi + Blok-Kat-BBNo sutun sirasi testi tamam.");
 }
 
@@ -317,11 +317,14 @@ function fullUnitFields(overrides = {}) {
   IDENTITY_KEYS.forEach((key) => {
     const def = defs.find((item) => item.key === key);
     assert.equal(def.kind, "readonly", `"${key}" sütunu readonly olmalı (Tapu bölümünün alanı, burada yalnızca kimlik/tanıma amaçlı).`);
+    assert.equal(def.narrow, true, `"${key}" sütunu narrow:true olmalı (kullanıcı talebi: mümkün olduğunca daralt).`);
   });
   [...SCALAR_KEYS, ...MIRROR_KEYS].forEach((key) => {
     const def = defs.find((item) => item.key === key);
     assert.equal(def.kind, "scalar", `"${key}" sütunu scalar (düzenlenebilir) olmalı.`);
   });
+  const katDef = defs.find((item) => item.key === "unitFloor");
+  assert.ok(!katDef.narrow, "'Kat' sütunu narrow OLMAMALI (yalnızca Sıra No/Blok/BB No daraltılır).");
 
   const html = fns.buildTitleUnitsSummaryTableHtmlEditable(data.headers, data.rows, data.columnMeta, 0);
   const scalarCount = data.columnMeta.filter((m) => m.kind === "scalar").length;
@@ -329,7 +332,15 @@ function fullUnitFields(overrides = {}) {
   const actualEditableCount = (html.match(/tus-editable-cell/g) || []).length;
   assert.equal(actualEditableCount, expectedEditableCount, `Yalnızca scalar sütunlar (${expectedEditableCount} adet) düzenlenebilir işaretlenmeliydi, bulunan: ${actualEditableCount}.`);
   assert.equal(scalarCount, SCALAR_KEYS.length + MIRROR_KEYS.length, "Scalar sütun sayısı Genel panel + aynalı alan sayısıyla eşleşmeli.");
-  console.log("columnMeta scalar/readonly ayrimi + tus-editable-cell testi tamam.");
+
+  // Kullanıcı takip talebi (2026-08-21): "sıra no blok ve bağımsız bölüm
+  // no sütunları olabildiğince daralt" — Sıra No (seq) + Blok/BB No
+  // (identity) = 3 sütun dar sabit genişlik almalı, "Kat" (identity
+  // OLMAYAN, scalar) almamalı.
+  const narrowCount = (html.match(/width:24pt;/g) || []).length;
+  const expectedNarrowCount = 3 + 3 * data.rows.length; // 3 baslik + 3 dar sutun x satir sayisi
+  assert.equal(narrowCount, expectedNarrowCount, `3 baslik + 3 dar sütun (Sıra No/Blok/BB No) x ${data.rows.length} satır = ${expectedNarrowCount} 'width:24pt;' beklenirdi, bulunan: ${narrowCount}.`);
+  console.log("columnMeta scalar/readonly/narrow ayrimi + tus-editable-cell testi tamam.");
 }
 
 // --- 7) applyUnitFloorMirrorFieldEdit(): tekil-anahtar yazma, no-op, ------
