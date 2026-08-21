@@ -1068,7 +1068,8 @@ assert.match(appSource, /panel\.dataset\.parcelScope = mixedParcels \? "mixed" :
       currentBuildingValueArea: "120", currentBuildingUnitCost: "21050", currentBuildingValue: "2526000",
       insuranceValueArea: "120", insuranceUnitCost: "21050", insuranceValue: "2526000",
       landValue: "8887500",
-      legalIncompleteValue: "100000", legalPremiumValue: "5000", legalCapitalizationRate: "8",
+      legalIncompleteValue: "100000", legalIncompleteDeductionValue: "25000",
+      legalPremiumValue: "5000", legalCapitalizationRate: "8",
     },
   });
   sandbox.setState(state);
@@ -1080,7 +1081,7 @@ assert.match(appSource, /panel\.dataset\.parcelScope = mixedParcels \? "mixed" :
     "legalBuildingConstructionLevel", "legalBuildingDepreciationRate",
     "currentBuildingValueArea", "currentBuildingUnitCost", "currentBuildingValue",
     "insuranceValueArea", "insuranceUnitCost", "insuranceValue", "landValue",
-    "legalIncompleteValue", "legalPremiumValue", "legalCapitalizationRate",
+    "legalIncompleteValue", "legalIncompleteDeductionValue", "legalPremiumValue", "legalCapitalizationRate",
   ].forEach((key) => {
     assert.equal(secondUnit.fields[key], undefined, `REGRESYON: 2. (yeni/bos) tasinmaza ${key} SIZMAMALI.`);
   });
@@ -1091,6 +1092,7 @@ assert.match(appSource, /panel\.dataset\.parcelScope = mixedParcels \? "mixed" :
   assert.equal(primaryAgain.fields.insuranceValue, "2526000", "Birincilin insuranceValue'su korunmali.");
   assert.equal(primaryAgain.fields.landValue, "8887500", "Birincilin landValue'su korunmali.");
   assert.equal(primaryAgain.fields.legalPremiumValue, "5000", "Birincilin Serefiye degeri korunmali.");
+  assert.equal(primaryAgain.fields.legalIncompleteDeductionValue, "25000", "Birincilin Eksik Imalat Tutari'nin (legalIncompleteDeductionValue) round-trip korunmali.");
   console.log("Degerleme Yapi Degeri/Sigorta/Arsa/Natamam/Serefiye/Kapitilizasyon aileleri unit-scoped round-trip testi tamam.");
 }
 

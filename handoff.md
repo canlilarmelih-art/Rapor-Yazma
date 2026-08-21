@@ -1,5 +1,15 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.513 - 2026-08-21/22 - Değerleme özetine Yasal/Mevcut Eksik İmalat Tutarı eklendi
+
+- Kullanıcı: "eksik imalat bölümünü ekledin mi" — 0.0.512'de yalnızca Natamam Durum Değeri (nihai sonuç) eklenmişti, canlı "Eksik İmalat ve Natamam Durum Değeri" panelindeki ayrı "Eksik İmalat Tutarı"/"Yuvarlatılmış Eksik İmalat" sütunları eklenmemişti. AskUserQuestion ile netleştirme: kullanıcı **yuvarlatılmış** hali istedi (diğer sonuç sütunlarıyla tutarlı, Natamam Durum Değeri'nin hesabında fiilen kullanılan değer).
+- **Kök teknik zorluk**: `roundedMissingManufacturingValue` (canlı panelin gösterdiği değer) daha önce YALNIZCA render-anlık hesaplanıp gösteriliyordu, `state.fields`'a HİÇ yazılmıyordu — çok-taşınmazlı özet tablo taşınmazın PERSİSTED gölgesini okuduğundan (canlı hesaplamayı DEĞİL), bu değerin görünmesi için önce KALICI HALE GETİRİLMESİ gerekti.
+- **Düzeltme**: `incompleteConstructionMarketRows`'a yeni `deductionKey` alanı eklendi (`legalIncompleteDeductionValue`/`currentIncompleteDeductionValue`); `refreshIncompleteConstructionValueFields()` artık bu alanlara `roundedMissingManufacturingValue`'yu yazıyor; bu 2 yeni alan `getValuationPerUnitOnlyFieldKeys()`'e (taşınmaza-özgü scoping) VE `clearLandOwnershipDependentData()`'nın `exactKeys` setine (Arsa/Tarla geçişinde temizlenme) eklendi.
+- **Yeni sütunlar**: "Yasal/Mevcut Eksik İmalat Tutarı", Natamam Yasal/Mevcut Durum Değeri'nin HEMEN SOLUNA eklendi (canlı panelin kendi sırasıyla AYNI: ... Eksik İmalat Tutarı, Natamam Durum Değeri) — aynı "Yasal/Mevcut Durum Değeri" grubuna dahil (kendi ayrı ana başlığı yok, "Yasal "/"Mevcut " öneki zaten genel gruplama kuralına uyuyor, ek istisna gerekmedi).
+- Test: `tools/test-valuation-units-summary-table.js`'e yeni 22. senaryo (sütunların Natamam'ın hemen solunda, doğru grup/değerle geldiğini doğrular). `tools/test-title-unit-switch.js`'in 29c senaryosu `legalIncompleteDeductionValue` için de genişletildi (round-trip). `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` cache-buster `?v=20260822-0001`.
+- Canlı tarayıcı testi yapılamadı (giriş bilgisi yok) — doğrulama kod/test seviyesinde.
+
 ## 0.0.512 - 2026-08-21 - Değerleme özetine Natamam Yasal/Mevcut Durum Değeri eklendi
 
 - Kullanıcı, önce soru sordu ("inşaat seviyesi %100 olmadığı durumda sistem nasıl aksiyon alıyor?" — canlı panelde Yıpranma Payı'nın sıfırlandığı, Yapı Değeri'nin seviyeyle orantılı küçüldüğü, %60-%100 arası seviyede "Natamam Durum Değeri" satırının Durum Değeri'nin hemen altına otomatik eklendiği açıklandı), ardından: "taşınmazlardan biri %90 seviyeli değerleme tablosunda natamam durum değeri belirtilmiyor bunu nasıl çözeriz."

@@ -753,4 +753,39 @@ function unit(overrides = {}) {
   console.log("Natamam Yasal-Mevcut Durum Degeri sutunlari testi tamam.");
 }
 
+// --- 22) Kullanici takip talebi (2026-08-21): "eksik imalat bolumunu -----
+// ekledin mi" - "Yasal/Mevcut Eksik Imalat Tutari" sutunlari eklendi,
+// Natamam Durum Degeri'nin HEMEN SOLUNDA (panelin kendi sirasiyla AYNI),
+// dogru grup/deger ile (yuvarlatilmis hali - kullanici netlestirmesi).
+{
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: {
+      legalValue: "500.000", currentValue: "550.000",
+      legalIncompleteValue: "400.000", currentIncompleteValue: "440.000",
+      legalIncompleteDeductionValue: "100.000", currentIncompleteDeductionValue: "110.000",
+    },
+    tables: {},
+    titleUnits: [unit({ legalValue: "600.000", currentValue: "650.000" })],
+  });
+  const data = fns.buildValuationUnitsSummaryTableData();
+  const legalDeductionIndex = data.headers.indexOf("Yasal Eksik İmalat Tutarı");
+  const currentDeductionIndex = data.headers.indexOf("Mevcut Eksik İmalat Tutarı");
+  const legalNatamamIndex = data.headers.indexOf("Natamam Yasal Durum Değeri");
+  const currentNatamamIndex = data.headers.indexOf("Natamam Mevcut Durum Değeri");
+  assert.ok(legalDeductionIndex >= 0 && currentDeductionIndex >= 0, "'Yasal/Mevcut Eksik İmalat Tutarı' sütunları bulunmalı.");
+  assert.equal(legalDeductionIndex, legalNatamamIndex - 1, "Yasal Eksik İmalat Tutarı, Natamam Yasal Durum Değeri'nin HEMEN SOLUNDA olmalı.");
+  assert.equal(currentDeductionIndex, currentNatamamIndex - 1, "Mevcut Eksik İmalat Tutarı, Natamam Mevcut Durum Değeri'nin HEMEN SOLUNDA olmalı.");
+  assert.equal(data.columnMeta[legalDeductionIndex].kind, "readonly", "Eksik İmalat Tutarı hesaplanan/salt-okunur olmalı.");
+  assert.equal(data.rows[0][legalDeductionIndex], "100.000");
+  assert.equal(data.rows[0][currentDeductionIndex], "110.000");
+  assert.equal(data.rows[1][legalDeductionIndex], "-", "2. (tamamlanmış) taşınmazda Eksik İmalat Tutarı '-' olmalı.");
+
+  assert.equal(fns.getValuationUnitsSummaryHeaderGroup("Yasal Eksik İmalat Tutarı"), "Yasal Durum Değeri");
+  assert.equal(fns.getValuationUnitsSummaryHeaderGroup("Mevcut Eksik İmalat Tutarı"), "Mevcut Durum Değeri");
+  assert.equal(fns.getValuationUnitsSummarySubheader("Yasal Eksik İmalat Tutarı"), "Yasal Eksik İmalat Tutarı\n(TL)");
+  assert.equal(fns.getValuationUnitsSummarySubheader("Mevcut Eksik İmalat Tutarı"), "Mevcut Eksik İmalat Tutarı\n(TL)");
+  console.log("Yasal-Mevcut Eksik Imalat Tutari sutunlari testi tamam.");
+}
+
 console.log("Tasinmazlar degerleme ozeti tablosu testleri basarili.");

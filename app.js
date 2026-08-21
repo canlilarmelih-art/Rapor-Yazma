@@ -1968,6 +1968,7 @@ function getValuationPerUnitOnlyFieldKeys() {
     "legalValueUserDefined", "currentValueUserDefined",
     "legalIncompleteValueArea", "legalIncompleteValueUnit", "legalIncompleteValue",
     "currentIncompleteValueArea", "currentIncompleteValueUnit", "currentIncompleteValue",
+    "legalIncompleteDeductionValue", "currentIncompleteDeductionValue",
     "legalBuildingValueArea", "currentBuildingValueArea",
     "legalBuildingUnitCost", "currentBuildingUnitCost", "legalBuildingValue", "currentBuildingValue",
     "legalBuildingConstructionLevel", "currentBuildingConstructionLevel",
@@ -4265,7 +4266,8 @@ function clearLandOwnershipDependentData(value) {
     "legalRentArea", "currentRentArea",
     "legalRent", "currentRent", "legalRentUnit", "currentRentUnit",
     "legalIncompleteValueArea", "legalIncompleteValueUnit", "legalIncompleteValue", "currentIncompleteValueArea",
-    "currentIncompleteValueUnit", "currentIncompleteValue", "legalBuildingValueArea", "currentBuildingValueArea",
+    "currentIncompleteValueUnit", "currentIncompleteValue", "legalIncompleteDeductionValue", "currentIncompleteDeductionValue",
+    "legalBuildingValueArea", "currentBuildingValueArea",
     "legalBuildingUnitCost", "currentBuildingUnitCost", "legalBuildingValue", "currentBuildingValue",
     "legalBuildingConstructionLevel", "currentBuildingConstructionLevel", "legalBuildingDepreciationRate",
     "currentBuildingDepreciationRate", "legalBuildingDepreciationRateAuto", "currentBuildingDepreciationRateAuto",
@@ -6796,6 +6798,16 @@ function buildValuationUnitsSummaryTableData() {
     // eklendi.
     const incompleteRow = incompleteConstructionMarketRows[row.totalKey];
     if (incompleteRow) {
+      // Kullanıcı takip talebi (2026-08-21): "eksik imalat bölümünü
+      // ekledin mi" — "Eksik İmalat ve Natamam Durum Değeri" panelinin
+      // (createIncompleteConstructionValuePanel) "Yuvarlatılmış Eksik
+      // İmalat" sütunu — Natamam Durum Değeri'ne ulaşmak için piyasa
+      // değerinden düşülen ara tutar. Natamam Durum Değeri'nin HEMEN
+      // SOLUNA (panelin kendi sırasıyla AYNI: ... Eksik İmalat Tutarı,
+      // Natamam Durum Değeri) eklendi. Kullanıcı netleştirmesiyle
+      // YUVARLATILMIŞ hali kullanıldı (diğer sonuç sütunlarıyla TUTARLI).
+      headers.push(`${row.label.startsWith("Yasal") ? "Yasal" : "Mevcut"} Eksik İmalat Tutarı`);
+      columnMeta.push({ kind: "readonly" });
       headers.push(incompleteRow.label);
       columnMeta.push({ kind: "readonly" });
     }
@@ -6867,7 +6879,10 @@ function buildValuationUnitsSummaryTableData() {
       );
       const incompleteRow = incompleteConstructionMarketRows[rowDef.totalKey];
       if (incompleteRow) {
-        row.push(String(fields[incompleteRow.totalKey] || "").trim() || "-");
+        row.push(
+          String(fields[incompleteRow.deductionKey] || "").trim() || "-",
+          String(fields[incompleteRow.totalKey] || "").trim() || "-",
+        );
       }
     });
     if (showLandShareColumns) {
@@ -6971,6 +6986,10 @@ function getValuationUnitsSummarySubheader(label) {
   // Mevcut ayrımı korunur (aksi halde ikisi de "Durum Değeri" grubunda
   // ayırt edilemez olurdu).
   if (normalized === "Natamam Yasal Durum Değeri" || normalized === "Natamam Mevcut Durum Değeri") return `${normalized}\n(TL)`;
+  // Kullanıcı takip talebi (2026-08-21): "eksik imalat bölümünü ekledin
+  // mi" — Natamam Durum Değeri'nin hesabında düşülen ara tutar, kendi net
+  // etiketiyle gösterilir.
+  if (normalized === "Yasal Eksik İmalat Tutarı" || normalized === "Mevcut Eksik İmalat Tutarı") return `${normalized}\n(TL)`;
   // Kullanıcı takip talebi (2026-08-21): "her bir bağımsız bölümün arsa
   // pay arsa payda ve hissesine düşen arsa payı bölümlerini tablomuza
   // ekleyelim" — Arsa Payı/Payda kesir alanları (para/oran DEĞİL, ondalık
@@ -7087,18 +7106,30 @@ function buildValuationUnitsSummaryWordTableHtml() {
   return buildValuationUnitsSummaryTableHtml(data);
 }
 
+// Kullanıcı takip talebi (2026-08-21): "eksik imalat bölümünü ekledin mi"
+// — `deductionKey` (yeni), "Eksik İmalat ve Natamam Durum Değeri" panelinin
+// (createIncompleteConstructionValuePanel) "Yuvarlatılmış Eksik İmalat"
+// sütununa karşılık gelir (kullanıcı netleştirmesiyle: yuvarlatılmış hali,
+// diğer sonuç sütunlarıyla TUTARLI). Panel bu değeri (roundedMissingManufacturingValue)
+// daha önce YALNIZCA render-anlık hesaplayıp gösteriyordu, state.fields'a
+// HİÇ yazmıyordu — çok-taşınmazlı özet tablonun (buildAllTitleUnitsForSummaryTable,
+// taşınmazın PERSİSTED gölgesini okur, canlı hesaplamayı DEĞİL) bunu
+// görebilmesi için refreshIncompleteConstructionValueFields()'te state.fields'a
+// yazılması GEREKTİ (bkz. aşağıdaki fonksiyon).
 const incompleteConstructionMarketRows = {
   legalValue: {
     label: "Natamam Yasal Durum Değeri",
     areaKey: "legalIncompleteValueArea",
     unitKey: "legalIncompleteValueUnit",
     totalKey: "legalIncompleteValue",
+    deductionKey: "legalIncompleteDeductionValue",
   },
   currentValue: {
     label: "Natamam Mevcut Durum Değeri",
     areaKey: "currentIncompleteValueArea",
     unitKey: "currentIncompleteValueUnit",
     totalKey: "currentIncompleteValue",
+    deductionKey: "currentIncompleteDeductionValue",
   },
 };
 
@@ -9562,11 +9593,13 @@ function refreshIncompleteConstructionValueFields() {
       state.fields[target.areaKey] = "";
       state.fields[target.unitKey] = "";
       state.fields[target.totalKey] = "";
+      state.fields[target.deductionKey] = "";
       return;
     }
     state.fields[target.areaKey] = formatValuationMoney(source.area, { decimals: Number.isInteger(source.area) ? 0 : 2 });
     state.fields[target.unitKey] = calculateValuationUnitValue(source.roundedIncompleteValue, source.area);
     state.fields[target.totalKey] = formatValuationMoney(source.roundedIncompleteValue);
+    state.fields[target.deductionKey] = formatValuationMoney(source.roundedMissingManufacturingValue);
   });
 }
 
