@@ -16828,6 +16828,7 @@ function createMultiCheckboxControl(field) {
 }
 
 function createImarInstitutionControl(field) {
+  const reopenKey = `imar-institution:${field.key}`;
   const wrapper = document.createElement("div");
   wrapper.className = "field multi-checkbox-dropdown imar-institution-dropdown";
   wrapper.classList.toggle("field-wide", Boolean(field.wide));
@@ -16875,6 +16876,7 @@ function createImarInstitutionControl(field) {
         setOpen(false);
         openImarOsbInstitutionModal((institutionName) => {
           persistSelection([...selected, institutionName]);
+          multiCheckboxFieldToReopen = reopenKey;
           renderSection();
         });
         return;
@@ -16883,8 +16885,8 @@ function createImarInstitutionControl(field) {
       const values = [...list.querySelectorAll("input[type='checkbox']:checked")]
         .map((checkbox) => checkbox.value)
         .filter((value) => value !== imarOsbInstitutionOption);
-      setOpen(false);
       persistSelection(values);
+      multiCheckboxFieldToReopen = reopenKey;
       renderSection();
     });
   });
@@ -16912,6 +16914,11 @@ function createImarInstitutionControl(field) {
       }, 0);
     }
   };
+
+  if (multiCheckboxFieldToReopen === reopenKey) {
+    multiCheckboxFieldToReopen = "";
+    setOpen(true);
+  }
 
   summaryButton.addEventListener("click", () => {
     setOpen(list.hidden);
@@ -37975,6 +37982,7 @@ function createComparableMatrixCell(section, field, row, rowIndex) {
 }
 
 function createComparableMultiSelectControl(field, row, rowIndex) {
+  const reopenKey = `comparable-multi-select:${rowIndex}:${field.key}`;
   const wrapper = document.createElement("div");
   wrapper.className = "multi-checkbox-dropdown comparable-multi-checkbox";
   const selected = getComparableMultiValues(row[field.key], field.options);
@@ -38011,7 +38019,10 @@ function createComparableMultiSelectControl(field, row, rowIndex) {
     // Kat seçimi değişince alttaki kat bazında alan/indirgeme oranı
     // listesinin satırları da senkronize olmalı (bkz.
     // syncComparableWorkplaceFloors) — bu, tam yeniden render gerektirir.
-    if (field.key === "c6") renderSection();
+    if (field.key === "c6") {
+      multiCheckboxFieldToReopen = reopenKey;
+      renderSection();
+    }
   };
 
   list.querySelectorAll("input[type='checkbox']").forEach((input) => {
@@ -38039,6 +38050,11 @@ function createComparableMultiSelectControl(field, row, rowIndex) {
       }, 0);
     }
   };
+
+  if (multiCheckboxFieldToReopen === reopenKey) {
+    multiCheckboxFieldToReopen = "";
+    setOpen(true);
+  }
 
   summaryButton.addEventListener("click", () => {
     setOpen(list.hidden);
