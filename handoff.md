@@ -1,5 +1,16 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.496 - 2026-08-21 - Bağımsız Bölüm özet tablosu: Kat sütunu taşındı, İndirgenmiş Toplam Alan eklendi, İç Hacimler oda-türü bazlı sayıldı
+
+- Kullanıcı (paylaşılan görselle birlikte): "kat sütununu blok ve bağımsız bölüm sütunu arasına al. indirgenmiş yasal ve mevcut toplam alanlar sütunlarını göster İÇ HACİMLER BÖLÜMÜ salt okunur şekilde görseldeki gibi olsun."
+- **Kat sütunu taşındı**: `unitFloor` artık `UNIT_UNITS_TABLE_FIELD_DEFS`'te `titleBlockName` ("Blok") ile `unitNo` ("Bağımsız Bölüm No") ARASINDA — Türkiye'de bir bağımsız bölümün kimliğini tanımlayan "Blok - Kat - BB No" üçlüsünü yansıtıyor.
+- **İndirgenmiş Toplam Yasal/Mevcut Alan (2 yeni readonly, computed sütun)**: `calculateReducedUnitFloorTotal(rows, mode)` (satır panelindeki "İndirgenmiş Toplam ... Alanı" alanlarıyla AYNI hesap, mevcut fonksiyon, YENİ kod gerekmedi) ile o taşınmazın TÜM `unitFloors` satırlarının indirgenmiş alan+teras toplamı gösteriliyor.
+- **İç Hacimler bölümü YENİDEN tasarlandı**: 0.0.495'te eklenen "İç Hacimler - Kat N" (taşınmaz başına kat sayısı kadar SERBEST METİN sütunu) kullanıcının paylaştığı görsele göre YANLIŞ granülerlikteydi — kaldırıldı. Yerine kullanıcının istediği SABİT 8 sütun eklendi: **Salon, Oda, Mutfak, Banyo, Wc, Antre, Balkon, Diğer** (hepsi sayısal, readonly, TÜM kat satırları toplanmış). Yeni `classifyUnitFloorInteriorItemGroup(name)` + `getUnitFloorInteriorTableGroupCounts(rows)` fonksiyonları — **GABIM Veri Seti'nin `getGabimUnitInteriorCounts()`'İYLE (GDYS'ye özgü, 6 gruplu SABİT bir dış-sistem sözleşmesi) KARIŞTIRILMAMASI için BİLEREK tamamen İZOLE/ayrı** bir sınıflandırma yazıldı (o fonksiyona dokunulmadı) — buradaki 8 grup Antre'yi kendi sütununa ayırıyor (GABIM'de Antre "Diğer"e düşüyor, o sözleşme DEĞİŞTİRİLMEDİ). "0" sayımlar bile HER ZAMAN gösteriliyor (boş-sütun-kaldırma filtresinden bilerek muaf — bu sabit bir döküm, "veri yok" değil).
+- **Basitleştirme, açıkça not edildi**: kullanıcının görselindeki "İÇ HACİMLER" iki katmanlı (grup+alt-sütun) başlık YERİNE, 8 sütun DÜZ (tek katmanlı) başlıklarla eklendi — paylaşılan renderer (`buildTitleUnitsSummaryTableHtmlEditable`) iki katmanlı grup başlığı desteklemiyor (yalnızca Değerleme'nin kendi özel renderer'ı destekliyor); bu tablo için ayrı bir bespoke renderer yazmak orantısız karmaşıklık olurdu, sütun İÇERİĞİ/sırası/salt-okunurluğu birebir istenen gibi.
+- Test: `tools/test-unit-units-summary-table.js` tamamen yeniden yazıldı (15 senaryo — Blok-Kat-BBNo sırası, İndirgenmiş Toplam Alan hesap doğrulaması, `classifyUnitFloorInteriorItemGroup` sınıflandırma testleri, 8 grup sayımının "0" dahil her zaman göründüğü). `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` cache-buster `?v=20260821-1430`.
+- Canlı tarayıcı testi yapılamadı (giriş bilgisi yok) — doğrulama kod/test seviyesinde.
+
 ## 0.0.495 - 2026-08-21 - Bağımsız Bölüm özet tablosuna Blok/BB No kimlik sütunları + İç Hacimler kat-kat tablolaştı
 
 - Kullanıcı: "tabloda blok ve bağımsız bölüm numarası bulunmuyor iç hacimler özet kısmını kendi içinde tablolaştırmamız lazım."

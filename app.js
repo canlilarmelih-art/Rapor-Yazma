@@ -3128,7 +3128,7 @@ function createUnitUnitsSummaryTablePreview() {
   attachTitleUnitsSummaryTableEditing(tableContainer);
   const hint = document.createElement("p");
   hint.className = "muted-note";
-  hint.textContent = "Aktif taşınmazın hücrelerine tıklayarak doğrudan düzenleyebilirsiniz (Kat/Alan/Teras sütunları taşınmazın \"Katlar, Alanlar ve İç Hacimler\" panelindeki ilk kat satırıyla eşlenir — buradan düzenlemek o satırı da günceller; Blok/Bağımsız Bölüm No ile \"İç Hacimler - Kat N\" sütunları tıklanamaz, ilgili taşınmazın kendi panelinden düzenlenmelidir; Dekoratif Özellikler bu tabloya dahil edilmemiştir). Banka şablonlarında {{TASINMAZLARBAGIMSIZBOLUMTABLOSU}} olarak kullanılabilir.";
+  hint.textContent = "Aktif taşınmazın hücrelerine tıklayarak doğrudan düzenleyebilirsiniz (Kat/Alan/Teras sütunları taşınmazın \"Katlar, Alanlar ve İç Hacimler\" panelindeki ilk kat satırıyla eşlenir — buradan düzenlemek o satırı da günceller; Blok/Bağımsız Bölüm No, İndirgenmiş Toplam Alan sütunları ve İç Hacimler grup sayıları [Salon/Oda/Mutfak/Banyo/Wc/Antre/Balkon/Diğer] tıklanamaz, ilgili taşınmazın kendi panelinden düzenlenmelidir; Dekoratif Özellikler bu tabloya dahil edilmemiştir). Banka şablonlarında {{TASINMAZLARBAGIMSIZBOLUMTABLOSU}} olarak kullanılabilir.";
   wrap.append(hint);
   return wrap;
 }
@@ -20241,15 +20241,27 @@ function buildDocumentsUnitsSummaryWordTableHtml() {
 // burada SADECE satırın hangi taşınmaza ait olduğunu tanımlamak için
 // "readonly" — Sıra No'nun (kind:"seq") mantıksal devamı.
 //
-// "iç hacimler özet kısmını kendi içinde tablolaştırmamız lazım" —
-// `interiorFeatures` (TÜM unitFloors satırlarının TEK bir metin bloğunda
-// birleştirilmiş özeti) KALDIRILDI; yerine Land'in Kadastro Yolu/Sınır
-// Unsuru/Zirai Ürün'ünün AYNI `buildTitleUnitsDynamicColumnGroup()` deseni
-// kullanılarak "İç Hacimler - Kat N" dinamik sütun grubu eklendi (bkz.
-// buildUnitUnitsSummaryTableData) — artık HER kat satırı kendi sütununda,
-// serbest metin bloğuna sıkıştırılmadan.
+// Kullanıcı takip talebi (2026-08-21, devam #3): "kat sütununu blok ve
+// bağımsız bölüm sütunu arasına al. indirgenmiş yasal ve mevcut toplam
+// alanlar sütunlarını göster İÇ HACİMLER BÖLÜMÜ salt okunur şekilde
+// görseldeki gibi olsun." — üç değişiklik:
+// 1) `unitFloor` ("Kat") Blok/Bağımsız Bölüm No ARASINA taşındı (Blok-Kat-BB
+//    No, Türkiye'de bir bağımsız bölümün kimliğini tanımlayan ÜÇLÜ — ör.
+//    "A Blok, 1. Kat, 5 No'lu Daire").
+// 2) `calculateReducedUnitFloorTotal(rows, mode)` (satır panelindeki AYNI
+//    hesap, app.js~13229 — TÜM unitFloors satırlarının indirgenmiş
+//    alan+teras toplamı) ile "İndirgenmiş Toplam Yasal/Mevcut Alan" (2
+//    readonly, computed sütun) eklendi.
+// 3) "İç Hacimler - Kat N" (0.0.495, TEK taşınmazın HER kat satırını AYRI
+//    metin sütununda gösteren dinamik grup) kullanıcının paylaştığı görsele
+//    göre YANLIŞ granülerlikte çıktı — kullanıcı bunun yerine SABİT,
+//    oda-TÜRÜ bazlı sayısal sütunlar istedi (Salon/Oda/Mutfak/Banyo/Wc/
+//    Antre/Balkon/Diğer, TÜM kat satırları toplanmış). KALDIRILDI, yerine
+//    `getUnitFloorInteriorTableGroupCounts()` (aşağıda) ile 8 SABİT
+//    (dinamik-DEĞİL, sayısı hep 8) readonly sütun eklendi.
 const UNIT_UNITS_TABLE_FIELD_DEFS = [
   { key: "titleBlockName", label: "Blok", kind: "readonly" },
+  { key: "unitFloor", label: "Kat", kind: "scalar" },
   { key: "unitNo", label: "Bağımsız Bölüm No", kind: "readonly" },
   { key: "unitUsageStatus", label: "Kullanım Durumu", kind: "scalar" },
   { key: "unitFirstSaleStatus", label: "İlk Satış Durumu", kind: "scalar" },
@@ -20261,7 +20273,6 @@ const UNIT_UNITS_TABLE_FIELD_DEFS = [
   { key: "unitHeatingMounted", label: "Isıtma Monte mi?", kind: "scalar" },
   { key: "unitShopFrontage", label: "Cephe (m)", kind: "scalar" },
   { key: "unitShopDepth", label: "Derinlik (m)", kind: "scalar" },
-  { key: "unitFloor", label: "Kat", kind: "scalar" },
   { key: "legalArea", label: "Yasal Alan (m²)", kind: "scalar" },
   { key: "currentArea", label: "Mevcut Alan (m²)", kind: "scalar" },
   { key: "unitAreaReductionRate", label: "Alan İnd. Oranı", kind: "scalar" },
@@ -20269,6 +20280,59 @@ const UNIT_UNITS_TABLE_FIELD_DEFS = [
   { key: "unitCurrentTerrace", label: "Mevcut Teras (m²)", kind: "scalar" },
   { key: "unitTerraceReductionRate", label: "Teras İnd. Oranı", kind: "scalar" },
 ];
+
+// İndirgenmiş Toplam Yasal/Mevcut Alan — computed, editable DEĞİL (satır
+// panelindeki "İndirgenmiş Toplam ... Alanı" alanlarıyla AYNI hesap,
+// calculateReducedUnitFloorTotal, TÜM unitFloors satırlarının toplamı).
+const UNIT_UNITS_TABLE_REDUCED_AREA_DEFS = [
+  { label: "İndirgenmiş Toplam Yasal Alan (m²)", mode: "legal" },
+  { label: "İndirgenmiş Toplam Mevcut Alan (m²)", mode: "current" },
+];
+
+// İç Hacimler grup sayıları — SABİT 8 sütun (Antre AYRI, Diğer dahil).
+const UNIT_UNITS_TABLE_INTERIOR_GROUP_DEFS = [
+  { key: "salon", label: "Salon" },
+  { key: "oda", label: "Oda" },
+  { key: "mutfak", label: "Mutfak" },
+  { key: "banyo", label: "Banyo" },
+  { key: "wc", label: "Wc" },
+  { key: "antre", label: "Antre" },
+  { key: "balkon", label: "Balkon" },
+  { key: "diger", label: "Diğer" },
+];
+
+// TEK bir iç hacim kalemi adını (parseUnitInteriorItem'dan gelen, normalize
+// edilmiş) yukarıdaki 8 gruptan birine sınıflandırır. GABIM Veri Seti'nin
+// isKnownUnitInteriorGroupName()/UNIT_INTERIOR_KNOWN_GROUP_PREFIXES'İYLE
+// (app.js~35412) KARIŞTIRILMASIN — o, GDYS'ye özgü AYRI/6-gruplu SABİT bir
+// sözleşme (Antre orada "Diğer"e düşer); burası o sözleşmeyi DEĞİŞTİRMEDEN
+// yalnızca BU tablo için TAMAMEN İZOLE bir sınıflandırma (Antre kendi
+// grubu).
+function classifyUnitFloorInteriorItemGroup(name) {
+  const folded = foldTurkish(name || "").toLocaleLowerCase("tr");
+  if (folded.startsWith("salon")) return "salon";
+  if (folded.startsWith("oda")) return "oda";
+  if (folded.startsWith("mutfak")) return "mutfak";
+  if (folded.startsWith("banyo") || folded.startsWith("dus")) return "banyo";
+  if (folded.startsWith("wc") || folded.startsWith("tuvalet")) return "wc";
+  if (folded.startsWith("antre") || folded.startsWith("hol")) return "antre";
+  if (folded.startsWith("balkon") || folded.startsWith("teras") || folded.startsWith("veranda")) return "balkon";
+  return "diger";
+}
+
+// Bağımsız Bölüm özet tablosunun "İç Hacimler" grubu için — TÜM unitFloors
+// satırlarındaki (rows) iç hacim kalemlerini toplayıp 8 grup+adet döner.
+function getUnitFloorInteriorTableGroupCounts(rows = []) {
+  const counts = { salon: 0, oda: 0, mutfak: 0, banyo: 0, wc: 0, antre: 0, balkon: 0, diger: 0 };
+  (rows || []).forEach((row) => {
+    String(row.interiors || "").split(",").map((item) => item.trim()).filter(Boolean).forEach((item) => {
+      const parsed = parseUnitInteriorItem(item);
+      if (!parsed.name) return;
+      counts[classifyUnitFloorInteriorItemGroup(parsed.name)] += parsed.count;
+    });
+  });
+  return counts;
+}
 
 // fieldKey -> unitFloors satırındaki (row0) karşılık gelen anahtar. Yalnızca
 // TEK bir satırın basit aynası olan 7 alan burada — interiorFeatures (ÇOK
@@ -20303,32 +20367,33 @@ function buildUnitUnitsSummaryTableData() {
   const units = buildAllTitleUnitsForSummaryTable();
   if (units.length < 2) return null;
 
-  // "iç hacimler özet kısmını kendi içinde tablolaştırmamız lazım" — Land'in
-  // Kadastro Yolu/Sınır Unsuru/Zirai Ürün'üyle AYNI desen: HER taşınmazın
-  // KENDİ unitFloors satır sayısı kadar "İç Hacimler - Kat N" sütunu açılır
-  // (en çok satırı olan taşınmaz kaç sütun gerektiriyorsa o kadar; eksik
-  // satırlı taşınmazlarda "-" görünür), formatUnitFloorRowInteriorLine()
-  // (formatUnitFloorInteriorSummary'nin PAYLAŞTIĞI tek-satır formatlayıcı)
-  // ile her satır "Kat: İç Hacimler: Not" biçiminde TEK sütuna sığar.
-  const interiorColumns = buildTitleUnitsDynamicColumnGroup(
-    units, "İç Hacimler - Kat",
-    (unit) => (Array.isArray(unit.tables && unit.tables.unitFloors) ? unit.tables.unitFloors : []),
-    (row) => formatUnitFloorRowInteriorLine(row),
-  );
-
-  const headers = ["Sıra No", ...UNIT_UNITS_TABLE_FIELD_DEFS.map((def) => def.label), ...interiorColumns.map((group) => group.label)];
+  const headers = [
+    "Sıra No",
+    ...UNIT_UNITS_TABLE_FIELD_DEFS.map((def) => def.label),
+    ...UNIT_UNITS_TABLE_REDUCED_AREA_DEFS.map((def) => def.label),
+    ...UNIT_UNITS_TABLE_INTERIOR_GROUP_DEFS.map((def) => def.label),
+  ];
   const columnMeta = [
     { kind: "seq" },
     ...UNIT_UNITS_TABLE_FIELD_DEFS.map((def) => ({ kind: def.kind, fieldKey: def.key })),
-    ...interiorColumns.map(() => ({ kind: "readonly" })),
+    ...UNIT_UNITS_TABLE_REDUCED_AREA_DEFS.map(() => ({ kind: "readonly" })),
+    ...UNIT_UNITS_TABLE_INTERIOR_GROUP_DEFS.map(() => ({ kind: "readonly" })),
   ];
 
   const rows = units.map((unit, index) => {
     const fields = unit.fields || {};
+    const floorRows = Array.isArray(unit.tables && unit.tables.unitFloors) ? unit.tables.unitFloors : [];
+    const interiorCounts = getUnitFloorInteriorTableGroupCounts(floorRows);
     return [
       index + 1,
       ...UNIT_UNITS_TABLE_FIELD_DEFS.map((def) => String(fields[def.key] || "").trim() || "-"),
-      ...interiorColumns.map((group) => group.values[index]),
+      ...UNIT_UNITS_TABLE_REDUCED_AREA_DEFS.map((def) => (
+        formatUnitReducedAreaValue(calculateReducedUnitFloorTotal(floorRows, def.mode)) || "-"
+      )),
+      // Oda-türü sayıları "0" DAHİL her zaman GÖSTERİLİR (aşağıdaki
+      // columnHasData'nın "-" / boş varsayımından BİLEREK muaf — bu sabit,
+      // her zaman anlamlı bir sayısal döküm, "veri yok" değil).
+      ...UNIT_UNITS_TABLE_INTERIOR_GROUP_DEFS.map((def) => String(interiorCounts[def.key] || 0)),
     ];
   });
 

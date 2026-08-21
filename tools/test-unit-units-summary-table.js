@@ -6,61 +6,57 @@
 // basit: yalnızca 2+ taşınmaz). Dekoratif Özellikler paneli (20 alan) VE
 // açıklama/eski-dormant alanları (17 alan) BİLEREK sütun DEĞİL.
 //
-// Kullanıcı takip talebi (2026-08-21, devam): "çift taraflı düzenleme
-// yapabilmeliyim buna çözüm bulalım" — Alan/İç Hacim özetinin 7 alanı
-// (unitFloor/legalArea/currentArea/unitAreaReductionRate/unitLegalTerrace/
-// unitCurrentTerrace/unitTerraceReductionRate) İLK sürümde "readonly"
-// bırakılmıştı (unitFloors[0]'dan tek yönlü türetildikleri için ezme
-// riski). Şimdi "scalar" (düzenlenebilir) yapıldı; ezme riskini
-// applyUnitFloorMirrorFieldEdit() KAPATIYOR — tablo hücresi
-// düzenlendiğinde KAYNAK satırın (unitFloors[0]) KENDİSİ de güncelleniyor,
-// böylece sonraki her senkron zaten güncel değeri okuyor.
+// Takip talebi #1: "çift taraflı düzenleme yapabilmeliyim buna çözüm
+// bulalım" — Alan/İç Hacim özetinin 7 alanı (Kat dahil) artık "scalar";
+// applyUnitFloorMirrorFieldEdit() ile ezme riski kapatıldı (kaynak satırın
+// -unitFloors[0]- KENDİSİ de güncellenir).
 //
-// Kullanıcı takip talebi (2026-08-21, devam #2): "tabloda blok ve bağımsız
-// bölüm numarası bulunmuyor iç hacimler özet kısmını kendi içinde
-// tablolaştırmamız lazım" — `titleBlockName`("Blok")/`unitNo`("Bağımsız
-// Bölüm No") EN BAŞA (readonly, kimlik/tanıma amaçlı) eklendi. Eski TEK
-// SÜTUNLUK `interiorFeatures` (TÜM kat satırlarının birleşik metin özeti)
-// KALDIRILDI, yerine Land'in Kadastro Yolu/Sınır Unsuru dinamik sütun
-// grubuyla AYNI desen (`buildTitleUnitsDynamicColumnGroup`) kullanılarak
-// "İç Hacimler - Kat N" dinamik sütun grubu eklendi — artık HER kat satırı
-// kendi (readonly) sütununda.
+// Takip talebi #2: "tabloda blok ve bağımsız bölüm numarası bulunmuyor iç
+// hacimler özet kısmını kendi içinde tablolaştırmamız lazım" — Blok/
+// Bağımsız Bölüm No (readonly, kimlik) eklendi; İç Hacimler önce "İç
+// Hacimler - Kat N" (taşınmaz başına kat sayısı kadar dinamik metin
+// sütunu) olarak tablolaştırıldı.
+//
+// Takip talebi #3 (bu dosyanın YANSITTIĞI GÜNCEL hal): "kat sütununu blok
+// ve bağımsız bölüm sütunu arasına al. indirgenmiş yasal ve mevcut toplam
+// alanlar sütunlarını göster İÇ HACİMLER BÖLÜMÜ salt okunur şekilde
+// görseldeki gibi olsun." Kullanıcının paylaştığı görsel #2'nin "İç
+// Hacimler - Kat N" granülerliğini YANLIŞ bulduğunu gösterdi — bunun
+// yerine SABİT, oda-TÜRÜ bazlı sayısal sütunlar istendi:
+//  - `unitFloor` ("Kat") artık Blok/Bağımsız Bölüm No ARASINDA (Blok-Kat-BB
+//    No kimlik üçlüsü).
+//  - YENİ "İndirgenmiş Toplam Yasal/Mevcut Alan" (2 readonly, computed
+//    sütun — calculateReducedUnitFloorTotal, satır panelindeki AYNI hesap).
+//  - "İç Hacimler - Kat N" KALDIRILDI; yerine SABİT 8 sütun (Salon/Oda/
+//    Mutfak/Banyo/Wc/Antre/Balkon/Diğer, TÜM kat satırları toplanmış,
+//    getUnitFloorInteriorTableGroupCounts — GABIM Veri Seti'nin KENDİ
+//    6-gruplu sözleşmesinden İZOLE, ayrı bir sınıflandırma).
 //
 // Bu test kapsamı:
 //  1) 2+ taşınmazda tablo verisi döner, sütun sırası UNIT_UNITS_TABLE_FIELD_DEFS
-//     ile eşleşir (Blok/Bağımsız Bölüm No dahil).
+//     ile eşleşir (Blok - Kat - Bağımsız Bölüm No sırası dahil).
 //  2) Tekil raporda (1 taşınmaz) null döner.
-//  3) Dekoratif Özellikler'in 20 alanı hiçbir yerde (headers/columnMeta.fieldKey)
-//     görünmez.
+//  3) Dekoratif Özellikler'in 20 alanı hiçbir yerde görünmez.
 //  4) Açıklama + eski/dormant fallback alanları (17 alan) da görünmez.
-//  5) Tüm taşınmazlarda BOŞ olan sütun tamamen kaldırılır.
-//  6) columnMeta: Blok/Bağımsız Bölüm No (2 alan) "readonly" (tabloda
-//     TIKLANAMAZ), diğer 17 alan (Genel panel 10 + aynalı 7) "scalar"
-//     (düzenlenebilir).
-//  7) applyUnitFloorMirrorFieldEdit(): aynalı 7 alandan biri düzenlendiğinde
-//     KAYNAK satırın (unitFloors[0]) yalnızca İLGİLİ anahtarı değişir,
-//     satırın DİĞER alanları (floor/note vb.) ETKİLENMEZ; eşleşmeyen bir
-//     fieldKey (ör. unitUsageStatus) için no-op (false) döner; satır (row0)
-//     yoksa oluşturulur; inactive taşınmazda resolveTitleUnitUnitFloorsRowsWriteTarget
-//     üzerinden doğru hedefe (primaryTitleUnitShadow/titleUnits[index-1])
-//     yazar.
-//  8) REGRESYON (asıl kullanıcı isteği): mirror-edit SONRASI aynı satırda
-//     ALAKASIZ bir alan (ör. "note") değişse bile, mirror-edit edilmiş
-//     değer row0'da KALICI kalır (senkronun tekrar okuyacağı kaynak zaten
-//     güncel) — SESSİZCE ESKİ HALİNE dönmez.
-//  9) "İç Hacimler - Kat N" dinamik sütun grubu: en çok kat satırı olan
-//     taşınmaz kaç sütun gerektiriyorsa o kadar sütun açılır, eksik satırlı
-//     taşınmazlarda "-" görünür, her sütun readonly (TIKLANAMAZ) ve
-//     formatUnitFloorRowInteriorLine() ile formatlanır.
-//  10) renderSection() "unit" gate'i createUnitUnitsSummaryTablePreview()'u
-//      mevcut sıraya (tab çubuğu + Seçili Taşınmazlara Kopyala'nın ARDINDAN)
-//      ekliyor mu.
-//  11) commitTitleUnitsSummaryCellEdit() yeni refresh çağrısını VE
-//      applyUnitFloorMirrorFieldEdit() çağrısını içeriyor mu.
-//  12) getSelectOptionsForFieldKey() "unitFloor" için unitFloorOptions
-//      döndürüyor mu (tabloda select-dropdown olarak düzenlenebilsin diye).
-//  13) template-engine.js'te {{TASINMAZLARBAGIMSIZBOLUMTABLOSU}} kayıtlı mı.
-//  14) report-tables-xlsx.js'te "Taşınmazlar Bağımsız Bölüm Özeti" sayfası
+//  5) Tüm taşınmazlarda BOŞ olan (genel) sütun tamamen kaldırılır.
+//  6) columnMeta: Blok/Bağımsız Bölüm No "readonly", diğer 17 alan (Genel
+//     panel 10 + aynalı 7, Kat dahil) "scalar".
+//  7) applyUnitFloorMirrorFieldEdit(): tekil-anahtar yazma, no-op, lazy
+//     row-oluşturma, inactive taşınmaz hedefi.
+//  8) REGRESYON: mirror-edit sonrası alakasız satır değişikliğinde veri
+//     kaybı YOK.
+//  9) İndirgenmiş Toplam Yasal/Mevcut Alan: calculateReducedUnitFloorTotal
+//     ile TUTARLI hesaplanır, readonly, TÜM taşınmazlarda boşsa kaldırılır.
+//  10) getUnitFloorInteriorTableGroupCounts()/classifyUnitFloorInteriorItemGroup():
+//      Salon/Oda/Mutfak/Banyo(+Duş)/Wc(+Tuvalet)/Antre(+Hol)/Balkon(+Teras+
+//      Veranda) doğru sınıflandırılır, tanımadığı kalemler "Diğer"e düşer,
+//      TÜM kat satırları toplanır; "0" bile HER ZAMAN gösterilir (boş-sütun
+//      filtresinden muaf, readonly).
+//  11) renderSection() "unit" gate'i doğru sırayla genişletildi.
+//  12) commitTitleUnitsSummaryCellEdit() refresh + mirror kablolaması.
+//  13) getSelectOptionsForFieldKey() "unitFloor" -> unitFloorOptions.
+//  14) template-engine.js'te {{TASINMAZLARBAGIMSIZBOLUMTABLOSU}} kayıtlı mı.
+//  15) report-tables-xlsx.js'te "Taşınmazlar Bağımsız Bölüm Özeti" sayfası
 //      kayıtlı mı.
 
 const assert = require("node:assert/strict");
@@ -153,10 +149,23 @@ const functionNames = [
   "createEmptyUnitFloorRow",
   "resolveTitleUnitUnitFloorsRowsWriteTarget",
   "applyUnitFloorMirrorFieldEdit",
-  "buildTitleUnitsDynamicColumnGroup",
-  "formatUnitFloorRowInteriorLine",
+  "calculateReducedUnitFloorTotal",
+  "calculateReducedUnitFloorArea",
+  "parseUnitReductionRate",
+  "formatUnitReducedAreaValue",
+  "parseReportNumber",
+  "classifyUnitFloorInteriorItemGroup",
+  "getUnitFloorInteriorTableGroupCounts",
+  "parseUnitInteriorItem",
+  "normalizeUnitInteriorName",
+  "foldTurkish",
+  "normalizeReportTitleText",
+  "toTitleCaseTr",
+  "preserveReportSpecialWords",
+  "escapeRegExp",
+  "normalizeReportWhitespace",
 ];
-const constNames = ["UNIT_UNITS_TABLE_FIELD_DEFS"];
+const constNames = ["UNIT_UNITS_TABLE_FIELD_DEFS", "UNIT_UNITS_TABLE_REDUCED_AREA_DEFS", "UNIT_UNITS_TABLE_INTERIOR_GROUP_DEFS"];
 const objectConstNames = ["UNIT_FLOOR_MIRROR_FIELD_TO_ROW_KEY"];
 
 const sandboxSource = `
@@ -171,7 +180,10 @@ const sandboxSource = `
     buildUnitUnitsSummaryTableData, buildUnitUnitsSummaryWordTableHtml,
     buildTitleUnitsSummaryTableHtmlEditable,
     applyUnitFloorMirrorFieldEdit,
+    classifyUnitFloorInteriorItemGroup, getUnitFloorInteriorTableGroupCounts,
     getFieldDefs: () => UNIT_UNITS_TABLE_FIELD_DEFS,
+    getReducedAreaDefs: () => UNIT_UNITS_TABLE_REDUCED_AREA_DEFS,
+    getInteriorGroupDefs: () => UNIT_UNITS_TABLE_INTERIOR_GROUP_DEFS,
     getMirrorMap: () => UNIT_FLOOR_MIRROR_FIELD_TO_ROW_KEY,
   };
 `;
@@ -213,31 +225,30 @@ function fullUnitFields(overrides = {}) {
   return { ...fields, ...overrides };
 }
 
-// --- 1) 2+ taşınmazda tablo verisi döner, sütun sırası doğru --------------
+// --- 1) 2+ taşınmazda tablo verisi döner, sütun sırası (Blok-Kat-BB No) --
 {
   fns.setState({
     activeTitleUnitIndex: 0,
-    fields: fullUnitFields({ unitUsageStatus: "Boş (Hiç Kullanılmamış)", titleBlockName: "A", unitNo: "3" }),
+    fields: fullUnitFields({ unitUsageStatus: "Boş (Hiç Kullanılmamış)", titleBlockName: "A", unitFloor: "1. Normal", unitNo: "3" }),
     tables: {},
-    titleUnits: [unit(fullUnitFields({ unitUsageStatus: "Kiracı", titleBlockName: "B", unitNo: "7" }))],
+    titleUnits: [unit(fullUnitFields({ unitUsageStatus: "Kiracı", titleBlockName: "B", unitFloor: "Zemin", unitNo: "7" }))],
   });
   const data = fns.buildUnitUnitsSummaryTableData();
   assert.ok(data, "2 taşınmazlı raporda tablo verisi dönmeli.");
   assert.equal(data.rows.length, 2, "2 satır (2 taşınmaz) bekleniyordu.");
   assert.equal(data.headers[0], "Sıra No", "\"Sıra No\" EN SOL sütun olmalı.");
   const defs = fns.getFieldDefs();
-  assert.equal(data.headers[1], defs[0].label, "İkinci sütun UNIT_UNITS_TABLE_FIELD_DEFS'in ilk alanı olmalı.");
-  assert.equal(defs[0].key, "titleBlockName", "İlk alan 'Blok' olmalı.");
-  assert.equal(defs[1].key, "unitNo", "İkinci alan 'Bağımsız Bölüm No' olmalı.");
+  assert.equal(defs[0].key, "titleBlockName", "1. alan 'Blok' olmalı.");
+  assert.equal(defs[1].key, "unitFloor", "2. alan 'Kat' olmalı (Blok ile Bağımsız Bölüm No ARASINDA).");
+  assert.equal(defs[2].key, "unitNo", "3. alan 'Bağımsız Bölüm No' olmalı.");
   const blockIndex = data.headers.indexOf("Blok");
+  const katIndex = data.headers.indexOf("Kat");
   const unitNoIndex = data.headers.indexOf("Bağımsız Bölüm No");
-  assert.ok(blockIndex >= 0 && unitNoIndex >= 0, "'Blok' ve 'Bağımsız Bölüm No' sütunları bulunmalı.");
-  assert.equal(data.rows[0][blockIndex], "A", "1. taşınmazın Blok bilgisi doğru sütunda olmalı.");
+  assert.ok(blockIndex >= 0 && katIndex >= 0 && unitNoIndex >= 0, "'Blok'/'Kat'/'Bağımsız Bölüm No' sütunları bulunmalı.");
+  assert.ok(blockIndex < katIndex && katIndex < unitNoIndex, "Sütun SIRASI Blok -> Kat -> Bağımsız Bölüm No olmalı.");
+  assert.equal(data.rows[0][katIndex], "1. Normal", "1. taşınmazın Kat bilgisi doğru sütunda olmalı.");
   assert.equal(data.rows[1][unitNoIndex], "7", "2. taşınmazın Bağımsız Bölüm No bilgisi doğru sütunda olmalı.");
-  const usageIndex = data.headers.indexOf("Kullanım Durumu");
-  assert.equal(data.rows[0][usageIndex], "Boş (Hiç Kullanılmamış)", "1. taşınmazın Kullanım Durumu doğru sütunda olmalı.");
-  assert.equal(data.rows[1][usageIndex], "Kiracı", "2. taşınmazın Kullanım Durumu doğru sütunda olmalı.");
-  console.log("2+ tasinmazda tablo verisi + sutun sirasi + kimlik sutunlari testi tamam.");
+  console.log("2+ tasinmazda tablo verisi + Blok-Kat-BBNo sutun sirasi testi tamam.");
 }
 
 // --- 2) Tekil raporda (1 taşınmaz) null döner ------------------------------
@@ -276,7 +287,7 @@ function fullUnitFields(overrides = {}) {
   console.log("Aciklama + eski-dormant fallback alanlarinin tabloya sizmama testi tamam.");
 }
 
-// --- 5) Tüm taşınmazlarda BOŞ olan sütun tamamen kaldırılır ----------------
+// --- 5) Tüm taşınmazlarda BOŞ olan (genel) sütun tamamen kaldırılır -------
 {
   const fieldsSparse = fullUnitFields({ unitShopFrontage: "", unitShopDepth: "" });
   fns.setState({
@@ -293,7 +304,7 @@ function fullUnitFields(overrides = {}) {
 }
 
 // --- 6) columnMeta: Blok/Bağımsız Bölüm No "readonly", diğer 17 alan ------
-// "scalar"
+// "scalar" (Kat dahil)
 {
   fns.setState({
     activeTitleUnitIndex: 0,
@@ -328,7 +339,6 @@ function fullUnitFields(overrides = {}) {
   MIRROR_KEYS.forEach((key) => {
     assert.ok(mirrorMap[key], `"${key}" UNIT_FLOOR_MIRROR_FIELD_TO_ROW_KEY'de olmalı.`);
   });
-  assert.ok(!mirrorMap.interiorFeatures, "interiorFeatures MIRROR eşlemesinde OLMAMALI (çok satırlı özet).");
 
   // 7a) Satır ZATEN varsa, yalnızca ilgili anahtar değişir, diğerleri kalır.
   fns.setState({
@@ -382,55 +392,92 @@ function fullUnitFields(overrides = {}) {
     tables: { unitFloors: [{ floor: "Zemin", legalArea: "100" }] },
     titleUnits: [],
   });
-  // Kullanıcı özet tablodan legalArea'yı 100 -> 180 yapıyor.
   fns.applyUnitFloorMirrorFieldEdit("legalArea", "180", 0);
-  // Kullanıcı SONRA o taşınmazın Katlar panelinde ALAKASIZ bir alanı
-  // (floor) değiştiriyor — bu, updateUnitFloorRow()'un YAPTIĞI gibi
-  // AYNI satır (row0) NESNESİ üzerinde TEK bir anahtarı günceller.
   const rows = fns.getState().tables.unitFloors;
   rows[0].floor = "1. Kat";
-  // legalArea (mirror-edit edilmiş değer) row0'da HÂLÂ 180 olmalı —
-  // sonraki bir syncUnitFloorSummaryFields() çağrısı bunu ZATEN doğru
-  // (180) okur, 100'e SESSİZCE dönmez.
   assert.equal(rows[0].legalArea, "180", "Mirror-edit edilmis deger, alakasiz bir satir degisikliginden SONRA bile row0'da KALICI kalmali (veri kaybi YOK).");
   console.log("Mirror-edit sonrasi alakasiz degisiklikte veri kaybi olmama regresyon testi tamam.");
 }
 
-// --- 9) "İç Hacimler - Kat N" dinamik sütun grubu --------------------------
+// --- 9) İndirgenmiş Toplam Yasal/Mevcut Alan -------------------------------
 {
-  // Taşınmaz 1: 2 kat satırı (Zemin + 1. Kat). Taşınmaz 2: 1 kat satırı.
+  const reducedDefs = fns.getReducedAreaDefs();
+  assert.equal(reducedDefs.length, 2, "2 indirgenmiş toplam alan sütunu olmalı (Yasal + Mevcut).");
+
   fns.setState({
     activeTitleUnitIndex: 0,
     fields: fullUnitFields(),
     tables: {
       unitFloors: [
-        { floor: "Zemin", interiors: "Salon, Mutfak", note: "" },
-        { floor: "1. Kat", interiors: "2 Oda, Banyo", note: "çatı katı" },
+        { floor: "Zemin", legalArea: "100", areaReductionRate: "100", legalTerrace: "20", terraceReductionRate: "50", currentArea: "95", currentTerrace: "20" },
+        { floor: "1. Kat", legalArea: "80", areaReductionRate: "80", legalTerrace: "0", terraceReductionRate: "100", currentArea: "75", currentTerrace: "0" },
       ],
     },
     titleUnits: [unit(fullUnitFields())],
   });
-  fns.getState().titleUnits[0].tables = { unitFloors: [{ floor: "Zemin", interiors: "Salon", note: "" }] };
+  fns.getState().titleUnits[0].tables = { unitFloors: [] };
   const data = fns.buildUnitUnitsSummaryTableData();
-  assert.ok(data.headers.includes("İç Hacimler - Kat 1"), "En az 1 satırı olan HER taşınmaz için 'İç Hacimler - Kat 1' sütunu açılmalı.");
-  assert.ok(data.headers.includes("İç Hacimler - Kat 2"), "En çok satırlı taşınmaz (2 kat) için 'İç Hacimler - Kat 2' sütunu da açılmalı.");
-  const kat1Index = data.headers.indexOf("İç Hacimler - Kat 1");
-  const kat2Index = data.headers.indexOf("İç Hacimler - Kat 2");
-  assert.equal(data.rows[0][kat1Index], "Zemin: Salon, Mutfak", "1. taşınmazın 1. kat satırı doğru formatlanmalı.");
-  assert.equal(data.rows[0][kat2Index], "1. Kat: 2 Oda, Banyo: çatı katı", "1. taşınmazın 2. kat satırı (not dahil) doğru formatlanmalı.");
-  assert.equal(data.rows[1][kat1Index], "Zemin: Salon", "2. taşınmazın (tek satırlı) 1. kat satırı doğru formatlanmalı.");
-  assert.equal(data.rows[1][kat2Index], "-", "2. taşınmazın 2. kat satırı YOK, '-' göstermeli.");
-
-  const kat1Meta = data.columnMeta[kat1Index];
-  assert.equal(kat1Meta.kind, "readonly", "'İç Hacimler - Kat N' sütunları readonly olmalı.");
-  assert.equal(kat1Meta.fieldKey, undefined, "Dinamik sütunların fieldKey'i olmamalı (Land'deki dinamik sütunlarla AYNI desen).");
-
-  const html = fns.buildTitleUnitsSummaryTableHtmlEditable(data.headers, data.rows, data.columnMeta, 0);
-  assert.ok(!html.includes(`data-field-key="undefined"`), "Readonly dinamik sütunlar tus-editable-cell OLARAK işaretlenmemeli.");
-  console.log("Ic Hacimler - Kat N dinamik sutun grubu testi tamam.");
+  const legalIndex = data.headers.indexOf("İndirgenmiş Toplam Yasal Alan (m²)");
+  assert.ok(legalIndex >= 0, "'İndirgenmiş Toplam Yasal Alan (m²)' sütunu bulunmalı.");
+  assert.equal(data.columnMeta[legalIndex].kind, "readonly", "İndirgenmiş toplam alan sütunu readonly olmalı.");
+  // calculateReducedUnitFloorTotal(rows, "legal") ile AYNI formül (satır
+  // panelindeki hesapla TUTARLI, TEK kaynak): (100*1.00 + 20*0.50) satır 1
+  // + (80*0.80 + 0*1.00) satır 2 = 110 + 64 = 174.
+  assert.equal(data.rows[0][legalIndex], "174", "1. taşınmazın İndirgenmiş Toplam Yasal Alanı doğru hesaplanmalı (100*1 + 20*0.5 + 80*0.8 + 0*1 = 174).");
+  assert.equal(data.rows[1][legalIndex], "-", "unitFloors'u boş olan 2. taşınmazda '-' görünmeli.");
+  console.log("Indirgenmis Toplam Yasal-Mevcut Alan sutunlari testi tamam.");
 }
 
-// --- 10) renderSection() "unit" gate'i doğru sırayla genişletildi ---------
+// --- 10) getUnitFloorInteriorTableGroupCounts / classify -------------------
+{
+  assert.equal(fns.classifyUnitFloorInteriorItemGroup("salon"), "salon");
+  assert.equal(fns.classifyUnitFloorInteriorItemGroup("oda"), "oda");
+  assert.equal(fns.classifyUnitFloorInteriorItemGroup("mutfak"), "mutfak");
+  assert.equal(fns.classifyUnitFloorInteriorItemGroup("banyo"), "banyo");
+  assert.equal(fns.classifyUnitFloorInteriorItemGroup("dus"), "banyo", "'Duş' de Banyo grubuna girmeli.");
+  assert.equal(fns.classifyUnitFloorInteriorItemGroup("wc"), "wc");
+  assert.equal(fns.classifyUnitFloorInteriorItemGroup("tuvalet"), "wc", "'Tuvalet' de Wc grubuna girmeli.");
+  assert.equal(fns.classifyUnitFloorInteriorItemGroup("antre-hol"), "antre", "'Antre-Hol' GABIM'in aksine (orada 'Diğer') burada KENDİ grubuna girmeli.");
+  assert.equal(fns.classifyUnitFloorInteriorItemGroup("balkon"), "balkon");
+  assert.equal(fns.classifyUnitFloorInteriorItemGroup("teras"), "balkon", "'Teras' de Balkon grubuna girmeli.");
+  assert.equal(fns.classifyUnitFloorInteriorItemGroup("çamaşırlık"), "diger", "Bilinmeyen bir kalem 'Diğer'e düşmeli.");
+  console.log("classifyUnitFloorInteriorItemGroup siniflandirma testi tamam.");
+
+  const counts = fns.getUnitFloorInteriorTableGroupCounts([
+    { interiors: "Salon, 3 Oda, Mutfak, 2 Banyo, WC, Antre-Hol, Balkon" },
+    { interiors: "Oda, Çamaşırlık" },
+  ]);
+  assert.equal(counts.salon, 1);
+  assert.equal(counts.oda, 4, "3 Oda + 1 Oda (2. satırdan) = 4 olmalı (TÜM satırlar toplanır).");
+  assert.equal(counts.mutfak, 1);
+  assert.equal(counts.banyo, 2);
+  assert.equal(counts.wc, 1);
+  assert.equal(counts.antre, 1);
+  assert.equal(counts.balkon, 1);
+  assert.equal(counts.diger, 1, "Çamaşırlık 'Diğer'e düşmeli.");
+  console.log("getUnitFloorInteriorTableGroupCounts toplam satirlar uzerinden testi tamam.");
+
+  const interiorDefs = fns.getInteriorGroupDefs();
+  assert.equal(interiorDefs.length, 8, "8 SABİT İç Hacimler sütunu olmalı (Antre AYRI, Diğer dahil).");
+  assert.deepEqual(interiorDefs.map((d) => d.label), ["Salon", "Oda", "Mutfak", "Banyo", "Wc", "Antre", "Balkon", "Diğer"]);
+
+  // Tüm taşınmazlarda "0" olsa bile İç Hacimler sütunları GÖSTERİLMEYE
+  // devam eder (columnHasData'nın "-" / boş varsayımından muaf).
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: fullUnitFields(),
+    tables: {},
+    titleUnits: [unit(fullUnitFields())],
+  });
+  const data = fns.buildUnitUnitsSummaryTableData();
+  assert.ok(data.headers.includes("Diğer"), "Hiçbir taşınmazda 'Diğer' kalemi olmasa bile sütun GÖRÜNMELİ (0 dahil).");
+  const digerIndex = data.headers.indexOf("Diğer");
+  assert.equal(data.rows[0][digerIndex], "0", "Boş İç Hacimler için '0' gösterilmeli, '-' DEĞİL.");
+  assert.equal(data.columnMeta[digerIndex].kind, "readonly", "İç Hacimler grup sütunları readonly olmalı.");
+  console.log("Ic Hacimler grup sutunlarinin '0' dahil her zaman gosterilmesi testi tamam.");
+}
+
+// --- 11) renderSection() "unit" gate'i doğru sırayla genişletildi ---------
 {
   assert.match(
     appSource,
@@ -440,7 +487,7 @@ function fullUnitFields(overrides = {}) {
   console.log("renderSection unit gate kaynak-duzeyi kablolama testi tamam.");
 }
 
-// --- 11) commitTitleUnitsSummaryCellEdit() refresh + mirror kablolaması ---
+// --- 12) commitTitleUnitsSummaryCellEdit() refresh + mirror kablolaması ---
 {
   assert.match(
     appSource,
@@ -455,7 +502,7 @@ function fullUnitFields(overrides = {}) {
   console.log("commitTitleUnitsSummaryCellEdit refresh + mirror kablolama testi tamam.");
 }
 
-// --- 12) getSelectOptionsForFieldKey(): "unitFloor" -> unitFloorOptions ---
+// --- 13) getSelectOptionsForFieldKey(): "unitFloor" -> unitFloorOptions ---
 {
   assert.match(
     appSource,
@@ -465,7 +512,7 @@ function fullUnitFields(overrides = {}) {
   console.log("getSelectOptionsForFieldKey unitFloor eslemesi testi tamam.");
 }
 
-// --- 13) template-engine.js'te {{TASINMAZLARBAGIMSIZBOLUMTABLOSU}} kayıtlı -
+// --- 14) template-engine.js'te {{TASINMAZLARBAGIMSIZBOLUMTABLOSU}} kayıtlı -
 {
   const templateEngineSource = fs.readFileSync(path.join(__dirname, "..", "src", "templates", "template-engine.js"), "utf8");
   assert.match(
@@ -476,7 +523,7 @@ function fullUnitFields(overrides = {}) {
   console.log("{{TASINMAZLARBAGIMSIZBOLUMTABLOSU}} template-engine.js kablolama testi tamam.");
 }
 
-// --- 14) report-tables-xlsx.js'te "Taşınmazlar Bağımsız Bölüm Özeti" ------
+// --- 15) report-tables-xlsx.js'te "Taşınmazlar Bağımsız Bölüm Özeti" ------
 {
   const xlsxSource = fs.readFileSync(path.join(__dirname, "..", "src", "exports", "report-tables-xlsx.js"), "utf8");
   assert.match(
