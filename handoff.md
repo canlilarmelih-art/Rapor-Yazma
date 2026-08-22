@@ -1,5 +1,20 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.524 - 2026-08-22 - Sistematik "sessiz sızıntı" taraması: 4 yeni grup bulundu + düzeltildi, kalıcı denetim testi eklendi
+
+- Kullanıcı, yayınlanan "Çoklu Talep Geliştirmeleri" raporundaki "Aynı sızıntı sınıfı 6 kez ayrı ayrı, kaza eseri bulundu" bulgusuna: "bunun için b[ir kontrol listesi/tarama oluşturalım]" → "kontrol listesi yaz" + "şimdi sistematik bir tarama yap" (ikisi birden) → "çözüm önerin var mı?"
+- **Çözüm**: elle "hatırla ve kontrol et" yerine, `app.js` kaynağını STATİK olarak tarayan yeni bir test yazıldı (`tools/test-multi-request-scoping-audit.js`, artık `npm run verify`'nin parçası): tüm `state.fields.KEY = ...` (literal nokta-erişimli, genel `createForm()` alanlarının kullandığı bracket notation DEĞİL — bu doğal olarak yalnızca "özel/hardcoded" alanları hedefliyor) yazma noktalarını bulur, her birini üç güvenlik kaynağının (deklaratif `sections[].fields` + `TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS` + tüm `getXxxPerUnitOnlyFieldKeys()`/`getXxxSectionFieldKeys()` fonksiyonları) birleşimine karşı doğrular. Açıklanamayan her yeni alan artık `npm run verify`'yi KIRAR — yani 7. kez aynı hatanın "kaza eseri" bulunmasını yapısal olarak önlüyor.
+- **İlk çalıştırmada 30 "açıklanamamış" alan bulundu** — tek tek incelendi, 4'ü GERÇEK, doğrulanmış scoping boşluğu çıktı (tıpkı önceki 6 örnek gibi):
+  - `staticSuitability`/`staticSuitabilityNote`/`buildingInspectionContractActive`/`buildingInspectionProgressLevel`/`buildingInspectionTerminationDate`/`buildingInspectionTerminationLevel` (Belgeler — "Statik Uygunluk"/"Yapı Denetim Sözleşmesi") → `getDocumentsPerUnitOnlyFieldKeys()`'e.
+  - `roadSetbackAmount`/`roadSetbackBuildingImpact` (İmar — "Yola Terk" detay modalı) → `getImarSectionFieldKeys()`'e.
+  - `externalAppraisalReason`/`externalAppraisalOtherNote`/`restrictedInspectionNote` (Dosya ve Rapor — `appointmentType`'ın kendisi 0.0.522'de paylaşımlı yapılmıştı, bu 3 detay alanı O ZAMAN KAÇIRILMIŞTI) → `TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS`'e.
+  - `propertyTaxDeclarationEnabled`/`propertyTaxDeclarationValue` (Değerleme — "Emlak Beyan Değeri") → `getValuationPerUnitOnlyFieldKeys()`'e.
+- **Geri kalan 16 alan** kaynak-düzeyinde tek tek incelendi ve zararsız bulundu — ya HER render'da zaten-scoped alanlardan yeniden hesaplanan açıklama metinleri (`valuationMethodExplanation` ailesi, `landMinimumParcelAssessment` — `buildingAge` ile AYNI "kendi kendini iyileştiren" sınıf), ya da gerçekten rapor-geneli bir UI tercihi (`comparableViewMode`, `halkbankRiskDisabledCodes` vb., veri değil görünüm ayarı) — test dosyasındaki `KNOWN_EXCEPTIONS` haritasında NEDENiyle birlikte belgelendi. Tek netleşmeyen (`expenseAppraisalPropertyTypeManual`) açıkça "TODO" olarak işaretlendi, sessizce göz ardı edilmedi.
+- **Kalıcı rehber**: `docs/coklu-talep-alan-kontrol-listesi.md` — yeni bir Çoklu Talep alanı eklerken sorulacak 3 soru (deklaratif mi / hangi kategoriye ait / Bölüm Excel'e yansımalı mı) + otomatik testin ne YAKALADIĞI/YAKALAMADIĞI açıkça belgelendi.
+- Test: `tools/test-title-unit-switch.js`'e yeni 26e senaryosu (4 grubun GERÇEK tab-değişim davranışını doğrular — statik tarama TEK BAŞINA "doğru kategoriye konulmuş mu" sorusunu yakalayamadığından bu davranışsal katman ayrıca gerekliydi) + `TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS` fixture'ı güncellendi. `npm run verify` tam paket EXIT:0 (yeni denetim testi dahil).
+- `index.html`: `app.js` cache-buster `?v=20260822-1100`.
+- Canlı tarayıcı testi yapılamadı (giriş bilgisi yok) — kullanıcının canlıda kontrol etmesi istenir.
+
 ## 0.0.523 - 2026-08-22 - Ana Gayrimenkul Excel paneli eklendi
 
 - Kullanıcı: "Ana Gayrimenkul Excel panelini de ekleyelim" (bkz. `docs/coklu-talep-tarama-ve-yol-haritasi.md` madde 6).

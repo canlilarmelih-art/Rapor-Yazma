@@ -1478,6 +1478,18 @@ const TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS = new Set([
   "appointmentType",
   "appointmentDate",
   "municipalityInspectionDate",
+  // "externalAppraisalReason"/"externalAppraisalOtherNote"/"restrictedInspectionNote"
+  // (2026-08-22, sistematik tarama ile bulundu — 0.0.522'nin doğal devamı,
+  // o zaman KAÇIRILMIŞTI) — "Randevu Türü" (appointmentType, yukarıda
+  // paylaşımlı yapıldı) "Dışarıdan ekspertiz"/"Kısıtlı inceleme" iken
+  // açılan detay alanları (createAppointmentTypeDetailControl'de
+  // PROGRAMATİK yazılıyor) — appointmentType artık rapor-geneli
+  // olduğundan onu AÇIKLAYAN bu 3 alan da AYNI mantıkla paylaşımlı olmalı
+  // (aksi halde "Randevu Türü" ortak ama "neden dışarıdan ekspertiz"
+  // açıklaması taşınmaza göre farklı/boş görünebilirdi).
+  "externalAppraisalReason",
+  "externalAppraisalOtherNote",
+  "restrictedInspectionNote",
 ]);
 
 // Kullanıcı talebi (2026-08-16): "Aynı ada parselde yer alan çoklu rapor
@@ -1739,7 +1751,12 @@ function getImarSectionFieldKeys() {
   const keys = (section?.fields || [])
     .map((field) => field.key)
     .filter((key) => !TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS.has(key));
-  return [...keys, "planCancellationStayNote", "minimumFrontageConditionNote", "tevhidConditionNote", "article18AppliedNote", "urbanTransformationAreaNote", "licenseObstacleNote"];
+  // "roadSetbackAmount"/"roadSetbackBuildingImpact" (2026-08-22, sistematik
+  // tarama ile bulundu) — "Yola Terk Var mı" (roadSetback, ZATEN deklaratif)
+  // "Evet" iken açılan Detay modalinin 2 alanı, createRoadSetbackControl()'de
+  // PROGRAMATİK yazılıyor — diğer detay-notu alanları (planCancellationStayNote
+  // vb., aşağıda) gibi bu listeye elle eklenmesi GEREKİYORDU, unutulmuştu.
+  return [...keys, "planCancellationStayNote", "minimumFrontageConditionNote", "tevhidConditionNote", "article18AppliedNote", "urbanTransformationAreaNote", "licenseObstacleNote", "roadSetbackAmount", "roadSetbackBuildingImpact"];
 }
 
 // "Arsa Özellikleri" (land) bölümünün TÜM taşınmaza-özgü olabilecek alan
@@ -2163,6 +2180,15 @@ function getValuationPerUnitOnlyFieldKeys() {
     "legalCapitalizationRate", "currentCapitalizationRate",
     "legalAmortizationMonths", "currentAmortizationMonths",
     "landValue",
+    // "propertyTaxDeclarationEnabled"/"propertyTaxDeclarationValue" (2026-08-22,
+    // sistematik tarama ile bulundu) — "Emlak Beyan Değeri" paneli
+    // (createPropertyTaxDeclarationValuePanel), checkbox+tutar PROGRAMATİK
+    // yazılıyor (titleChangedRecords'la AYNI boşluk sınıfı) — HİÇ scoped
+    // DEĞİLDİ. Belediye emlak beyan değeri GERÇEKTEN taşınmaza özgüdür
+    // (her bağımsız bölümün kendi beyanı olur), rapor-geneli PAYLAŞILMASI
+    // yanlış olurdu.
+    "propertyTaxDeclarationEnabled",
+    "propertyTaxDeclarationValue",
   ];
 }
 
@@ -2402,6 +2428,22 @@ function getDocumentsPerUnitOnlyFieldKeys() {
     "municipalityProjectSuitabilityStatus",
     "municipalityProjectSuitabilityNote",
     "municipalityProjectSuitabilitySimpleRepair",
+    // "Statik Uygunluk"/"Yapı Denetim Sözleşmesi" (2026-08-22, sistematik
+    // tarama ile bulundu — bkz. "Aynı sızıntı sınıfı 6 kez ayrı ayrı
+    // bulundu" bulgusu) — createDocumentDecisionControls()'te
+    // createConditionalYesNoControl({key: "staticSuitability", ...}) ile
+    // PROGRAMATİK yazılıyorlar (titleChangedRecords/projectConformity'yle
+    // AYNI boşluk sınıfı) — HİÇ scoped DEĞİLDİ, "Belgeler ve Proje"
+    // TITLE_UNIT_SCOPED olmasına RAĞMEN taşınmazlar arasında
+    // PAYLAŞILIYORDU. `staticSuitabilityExplanation`/`buildingInspectionExplanation`
+    // (bu ikisinin otomatik açıklamaları) ZATEN "explanations" bölümünde
+    // deklaratif oldukları için etkilenmiyordu.
+    "staticSuitability",
+    "staticSuitabilityNote",
+    "buildingInspectionContractActive",
+    "buildingInspectionProgressLevel",
+    "buildingInspectionTerminationDate",
+    "buildingInspectionTerminationLevel",
   ];
 }
 

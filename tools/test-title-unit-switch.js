@@ -209,8 +209,11 @@ const TITLE_UNIT_SCOPED_TABLE_KEYS_BASE = ["title", "encumbrance", "encumbranceD
 // AYNI cikarmayi yansitir, bkz. asagidaki YENI senaryo). "bank"/"customerName"/
 // "caseName"/"appointmentType"/"appointmentDate"/"municipalityInspectionDate"
 // (2026-08-22, devam - "case" scoping-gap-fix) BURAYA EKLENDI - gercek
-// app.js'teki AYNI eklemeyi yansitir.
-const TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS = new Set(["transport", "nearby", "environmentDescription", "takbisSummary", "reviewedDocumentsDescription", "comparableMarketAnalysisText", "bank", "customerName", "caseName", "appointmentType", "appointmentDate", "municipalityInspectionDate"]);
+// app.js'teki AYNI eklemeyi yansitir. "externalAppraisalReason"/
+// "externalAppraisalOtherNote"/"restrictedInspectionNote" (2026-08-22,
+// sistematik tarama ile bulundu - appointmentType'in dogal devami) da
+// AYNI sekilde eklendi.
+const TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS = new Set(["transport", "nearby", "environmentDescription", "takbisSummary", "reviewedDocumentsDescription", "comparableMarketAnalysisText", "bank", "customerName", "caseName", "appointmentType", "appointmentDate", "municipalityInspectionDate", "externalAppraisalReason", "externalAppraisalOtherNote", "restrictedInspectionNote"]);
 // computeValuationFieldsForAllTitleUnits() GERCEK olarak asagida extract
 // edilir, ama onun cagirdigi refreshValuationComputedFields() (gercekte
 // ~15 fonksiyonluk, DOM-erisimli COK GENIS bir zincir) burada BILEREK
@@ -1044,6 +1047,62 @@ assert.match(appSource, /panel\.dataset\.parcelScope = mixedParcels \? "mixed" :
   assert.equal(sandbox.getState().fields.bank, "Ziraat Bankası A.Ş.", "Yeni tasinmazda degistirilen banka, birincile donulunce de GUNCEL gorunmeli (gercek paylasim).");
 
   console.log("case (Banka/Musteri/Is Bilgileri) artik tasinmaza-ozgu DEGIL, rapor-geneli paylasimli testi tamam.");
+}
+
+// --- 26e) Sistematik taramada (tools/test-multi-request-scoping-audit.js) --
+// bulunan 4 grubun DAVRANIS testi (2026-08-22) - kullanici: "bunun icin bir
+// kontrol listesi/tarama olusturalim, cozum onerin var mi?" Statik kaynak
+// taramasi BULDU, bu senaryo GERCEK tab-degisim davranisini (round-trip)
+// dogrular - static test'in TEK BASINA yetersiz kalacagi durum (yanlis
+// kategoriye - paylasimli yerine scoped, ya da tersi - konulmus olma
+// ihtimali) burada elenir.
+{
+  // (a) Belgeler: staticSuitability/buildingInspection* artik taşınmaza-özgü.
+  const stateDocuments = freshState({
+    fields: { ...freshState().fields, staticSuitability: "Evet", buildingInspectionContractActive: "Evet" },
+  });
+  sandbox.setState(stateDocuments);
+  const newIndexDocs = sandbox.fns.addTitleUnitTab();
+  sandbox.fns.switchActiveTitleUnit(newIndexDocs);
+  assert.equal(sandbox.getState().fields.staticSuitability, undefined, "DUZELTME: staticSuitability ARTIK tasinmaza-ozgu - YENI tasinmaza SIZMAMALI.");
+  assert.equal(sandbox.getState().fields.buildingInspectionContractActive, undefined, "DUZELTME: buildingInspectionContractActive ARTIK tasinmaza-ozgu - YENI tasinmaza SIZMAMALI.");
+  sandbox.fns.switchActiveTitleUnit(0);
+  assert.equal(sandbox.getState().fields.staticSuitability, "Evet", "Birincilin staticSuitability'si round-trip korunmali.");
+
+  // (b) Imar: roadSetbackAmount/roadSetbackBuildingImpact artik taşınmaza-özgü.
+  const statePlanning = freshState({
+    fields: { ...freshState().fields, roadSetbackAmount: "3,5", roadSetbackBuildingImpact: "Etkiliyor" },
+  });
+  sandbox.setState(statePlanning);
+  const newIndexPlanning = sandbox.fns.addTitleUnitTab();
+  sandbox.fns.switchActiveTitleUnit(newIndexPlanning);
+  assert.equal(sandbox.getState().fields.roadSetbackAmount, undefined, "DUZELTME: roadSetbackAmount ARTIK tasinmaza-ozgu - YENI tasinmaza SIZMAMALI.");
+  sandbox.fns.switchActiveTitleUnit(0);
+  assert.equal(sandbox.getState().fields.roadSetbackAmount, "3,5", "Birincilin roadSetbackAmount'u round-trip korunmali.");
+
+  // (c) Dosya ve Rapor: externalAppraisalReason artik rapor-geneli
+  // paylasimli (appointmentType'in dogal devami - appointmentType ZATEN
+  // 26d'de paylasimli yapilmisti, bu onun aciklama alani).
+  const stateAppointment = freshState({
+    fields: { ...freshState().fields, appointmentType: "Dışarıdan ekspertiz", externalAppraisalReason: "Taşınmazın içi görülememesi" },
+  });
+  sandbox.setState(stateAppointment);
+  const newIndexAppt = sandbox.fns.addTitleUnitTab();
+  sandbox.fns.switchActiveTitleUnit(newIndexAppt);
+  assert.equal(sandbox.getState().fields.externalAppraisalReason, "Taşınmazın içi görülememesi", "DUZELTME: externalAppraisalReason ARTIK rapor-geneli paylasimli - YENI tasinmazda da AYNI gorunmeli.");
+
+  // (d) Degerleme: propertyTaxDeclarationEnabled/Value artik taşınmaza-özgü.
+  const stateValuation = freshState({
+    fields: { ...freshState().fields, propertyTaxDeclarationEnabled: "1", propertyTaxDeclarationValue: "150000" },
+  });
+  sandbox.setState(stateValuation);
+  const newIndexVal = sandbox.fns.addTitleUnitTab();
+  sandbox.fns.switchActiveTitleUnit(newIndexVal);
+  assert.equal(sandbox.getState().fields.propertyTaxDeclarationValue, undefined, "DUZELTME: propertyTaxDeclarationValue ARTIK tasinmaza-ozgu - YENI tasinmaza SIZMAMALI.");
+  sandbox.fns.switchActiveTitleUnit(0);
+  assert.equal(sandbox.getState().fields.propertyTaxDeclarationValue, "150000", "Birincilin propertyTaxDeclarationValue'su round-trip korunmali.");
+
+  console.log("Sistematik tarama ile bulunan 4 grubun davranis testi tamam.");
 }
 
 // --- 27) Emsaller (comparables): Arsa/Tarla Coklu Talep'te PAYLASIMLI -----
