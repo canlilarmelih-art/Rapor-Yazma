@@ -1338,9 +1338,13 @@ assert.match(appSource, /panel\.dataset\.parcelScope = mixedParcels \? "mixed" :
 }
 
 // --- 31) Ana Gayrimenkul (building): programatik alanlar artik SIZMIYOR ---
-// (2026-08-20, scoping-gap-fix) - section.fields LITERAL BOS DIZI oldugundan
-// bu bolumun HICBIR alani daha once toplanmiyordu (6 bolumun en ciddi
-// bosluguydu - tab degistirmenin HICBIR etkisi yoktu).
+// (2026-08-20, scoping-gap-fix) - section.fields O TARIHTE LITERAL BOS
+// DIZIYDI (2026-08-22'de Bolum Excel icin KISMEN deklaratif hale getirildi,
+// bkz. asagidaki 31b - ama getBuildingSectionFieldKeys()'in TAM listesi
+// hala HARDCODED, bu yuzden buradaki fixture'in `{ id: "building", fields: [] }`
+// BASİTLEŞTİRİLMİŞ hali GECERLI kalmaya devam ediyor) bu bolumun HICBIR
+// alani daha once toplanmiyordu (6 bolumun en ciddi bosluguydu - tab
+// degistirmenin HICBIR etkisi yoktu).
 {
   const state = freshState({
     fields: {
@@ -1375,6 +1379,58 @@ assert.match(appSource, /panel\.dataset\.parcelScope = mixedParcels \? "mixed" :
   assert.equal(primaryAgain.fields.buildingConstructionYear, "2015", "Birincilin buildingConstructionYear'i round-trip korunmali.");
   assert.equal(primaryAgain.fields.buildingDepreciationRate, "%10", "Birincilin buildingDepreciationRate'i round-trip korunmali.");
   console.log("Ana Gayrimenkul (building) programatik alanlari artik sizmiyor (round-trip) testi tamam.");
+}
+
+// --- 31b) Ana Gayrimenkul (building): section.fields ARTIK BOS DEGIL, ------
+// Bolum Excel paneli var (2026-08-22) - kullanici: "Ana Gayrimenkul Excel
+// panelini de ekleyelim" (bkz. docs/coklu-talep-tarama-ve-yol-haritasi.md
+// madde 6). createSectionExcelPanel()/getSectionExcelFieldDefinitions()
+// (DOM/window.RaporMultiRequestXlsx'e bagli) burada extract EDILMEZ (proje
+// konvansiyonu) - kaynak-duzeyinde dogrulanir: 17 GERCEKTEN bagimsiz/
+// serbest alan (secim listeleri + Sosyal Tesisler + Ana Gayrimenkul
+// Aciklamasi/Kat Adedi) hidden:true ile deklaratif. buildingFloorCounts
+// (obje)/totalFloors/totalUnits/mainPropertyFloorSummary (buildingFloors
+// tablosundan TURETILMIS)/buildingAge aillesi (HER render'da kosulsuz
+// yeniden hesaplanan, Excel'den ice aktarilsa SESSIZCE ustune yazilacak
+// alanlar) BILINCLI OLARAK DISARIDA - REGRESYON olarak da dogrulanir.
+{
+  const buildingSectionStart = appSource.indexOf('id: "building"');
+  assert.ok(buildingSectionStart >= 0, "'building' bolumu bulunamadi.");
+  const buildingSectionEnd = appSource.indexOf("},\n  {", buildingSectionStart);
+  const buildingSectionSrc = appSource.slice(buildingSectionStart, buildingSectionEnd);
+
+  [
+    '{ key: "buildingStyle", label: "Bina Yapı Tarzı", type: "select", hidden: true }',
+    '{ key: "buildingOrder", label: "Mevcut Yapı Nizamı", type: "select", hidden: true }',
+    '{ key: "buildingClass", label: "Yapı Sınıfı", type: "select", hidden: true }',
+    '{ key: "carpark", label: "Otopark", type: "select", hidden: true }',
+    '{ key: "elevator", label: "Asansör", type: "select", hidden: true }',
+    '{ key: "exteriorCladding", label: "Dış Cephe Kaplama", type: "select", hidden: true }',
+    '{ key: "stairLanding", label: "Apartman Merdiven Ve Sahanlık", type: "select", hidden: true }',
+    '{ key: "interiorWalls", label: "Apartman İç Duvarlar", type: "select", hidden: true }',
+    '{ key: "buildingEntranceDoor", label: "Bina Giriş Kapısı", type: "select", hidden: true }',
+    '{ key: "buildingFootprintReference", label: "Bina Oturumu Referansı", type: "select", hidden: true }',
+    '{ key: "buildingEntranceLevel", label: "Bina Giriş Kat Seviyesi", type: "select", hidden: true }',
+    '{ key: "buildingEntranceDirection", label: "Bina Giriş Yönü", type: "select", hidden: true }',
+    '{ key: "socialFacilities", label: "Sosyal Tesisler", type: "text", hidden: true }',
+    '{ key: "buildingBlockCount", label: "Blok Adedi - Konumu", type: "select", hidden: true }',
+    '{ key: "buildingSubjectBlockPosition", label: "Konu Taşınmazın Yer Aldığı Blokun Parsel Üzerindeki Konumu", type: "text", hidden: true }',
+    '{ key: "mainPropertyDescription", label: "Ana Gayrimenkul Açıklaması", type: "textarea", hidden: true }',
+    '{ key: "mainPropertyFloorCountText", label: "Ana Gayrimenkul Kat Adedi", type: "text", hidden: true }',
+  ].forEach((literal) => {
+    assert.ok(buildingSectionSrc.includes(literal), `'building' section.fields'ta bulunmuyor: ${literal}`);
+  });
+
+  // REGRESYON: bilinçli olarak dışarıda bırakılan alanlar section.fields'a
+  // (dolayısıyla Excel'e) EKLENMEMİŞ olmalı.
+  ["buildingFloorCounts", "totalFloors", "totalUnits", "mainPropertyFloorSummary", "buildingAgeManualOverride"].forEach((key) => {
+    assert.ok(!buildingSectionSrc.includes(`key: "${key}"`), `REGRESYON: '${key}' section.fields'a EKLENMEMELİ (türetilmiş/riskli alan).`);
+  });
+  // buildingAge KENDİSİ hariç tutuldu ama başka bir alanın adı içinde geçtiğinden
+  // (buildingAgeManualOverride) tam-kelime kontrolü gerekir.
+  assert.ok(!/key: "buildingAge"/.test(buildingSectionSrc), "REGRESYON: 'buildingAge' section.fields'a EKLENMEMELİ (her render'da koşulsuz yeniden hesaplanıyor).");
+
+  console.log("Ana Gayrimenkul (building) Bolum Excel deklaratif alan testi tamam.");
 }
 
 // --- 32) unitFloors/buildingFloors tablolari artik SIZMIYOR ---------------

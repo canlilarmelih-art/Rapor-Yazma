@@ -1,6 +1,6 @@
 # Çoklu Talep Tarama Raporu ve Yol Haritası
 
-> Son güncelleme: 0.0.522 (2026-08-22), `app.js` gerçek kaynağı taranarak
+> Son güncelleme: 0.0.523 (2026-08-22), `app.js` gerçek kaynağı taranarak
 > ve `npm run verify` (EXIT:0) ile doğrulanarak. Önceki tarama tarihinden
 > bu yana pek çok madde çözüldü; bu revizyon her maddeyi kaynaktan tek tek
 > yeniden doğrulayıp durumunu günceller (**[ÇÖZÜLDÜ]** / **[KISMEN]** /
@@ -96,20 +96,30 @@ koşuluyla kapılı — Çoklu TAKBİS aktarımı normal kullanıcı için de
 çalışabilse bile, taşınmaz başına düzenleme arayüzünü yalnızca admin
 görebiliyor. Değişmedi.
 
-### 6. Bölüm Excel kapsamı (Bağımsız Bölüm/Ana Gayrimenkul) — **[AÇIK, NETLEŞTİRİLDİ]**
+### 6. Bölüm Excel kapsamı (Bağımsız Bölüm/Ana Gayrimenkul) — **[KISMEN ÇÖZÜLDÜ]** (Ana Gayrimenkul, 2026-08-22, 0.0.523)
 
-Kaynaktan doğrulandı: `"building"` bölümünün `section.fields` dizisi
-KELİMENİN TAM ANLAMIYLA BOŞ (`fields: []` — tüm alanlar programatik
-yazılıyor) — `createSectionExcelPanel()` `!section?.fields?.length` iken
-`null` döndüğünden Ana Gayrimenkul'ün HİÇ Excel paneli yok. `"unit"`
-(Bağımsız Bölüm) bölümünün YALNIZCA 2 deklaratif alanı var (`legalArea`/
-`currentArea`, ikisi de `hidden:true`) — yani Bağımsız Bölüm Excel paneli
-VAR ama yalnızca bu 2 sütunu kapsıyor; oda sayısı/iç özellikler/cephe/kat
-gibi `getUnitSectionFieldKeys()`'in kapsadığı onlarca programatik alan
-Excel'e YANSIMIYOR. Aynı desen (`hidden: true` ile deklaratif hale
-getirme — 0.0.520'de Değerleme'nin `valuationMethod`/`saleability` için
-kullandığı yöntem) burada da uygulanabilir, ama alan sayısı çok daha
-fazla olduğundan ayrı bir oturum/kapsam gerektirir.
+Ana Gayrimenkul'ün Excel paneli eklendi: `"building"` bölümünün
+`section.fields` dizisi (önceden KELİMENİN TAM ANLAMIYLA BOŞTU) artık 17
+gerçekten bağımsız/serbest alanı (`hidden: true` deseniyle — Bina Yapı
+Tarzı/Nizamı/Sınıfı, Otopark/Asansör/Dış Cephe/Merdiven-Sahanlık/İç
+Duvarlar/Giriş Kapısı-Kat Seviyesi-Yönü/Oturum Referansı gibi seçim
+listeleri + Sosyal Tesisler + Blok Adedi-Konumu + Ana Gayrimenkul
+Açıklaması/Kat Adedi) deklaratif olarak listeliyor — `createSectionExcelPanel()`
+artık `null` DÖNMÜYOR. BİLİNÇLİ OLARAK DIŞARIDA bırakılanlar: `buildingFloorCounts`
+(obje, düz Excel sütunu olamaz — `buildingFloors` tablo desteği AYRI kapsam),
+`totalFloors`/`totalUnits`/`mainPropertyFloorSummary` (kat tablosundan
+TÜRETİLMİŞ, bağımsız girdi değil) ve `buildingAge` ailesi (HER render'da
+koşulsuz yeniden hesaplanıyor, Excel'den içe aktarılsa SESSİZCE üstüne
+yazılırdı — `buildingAgeManualOverride`'ın `=== true` katı boolean
+karşılaştırması Excel'in metin round-trip'iyle ZATEN uyumsuz).
+
+`"unit"` (Bağımsız Bölüm) bölümünün HÂLÂ YALNIZCA 2 deklaratif alanı var
+(`legalArea`/`currentArea`) — oda sayısı/iç özellikler/cephe gibi
+`getUnitSectionFieldKeys()`'in kapsadığı onlarca programatik alan Excel'e
+HÂLÂ YANSIMIYOR. Aynı desen uygulanabilir ama alan sayısı çok daha fazla
+ve bazı alanlar (`unitInteriorDescription` gibi) OTOMATİK ÜRETİLEN metin
+alanları olduğundan `mainPropertyDescription`'a benzer "sessizce üstüne
+yazılmama" garantisi TEK TEK doğrulanmalı — bu HÂLÂ AÇIK.
 
 ### 7. Gerçek tarayıcı testi — **[AÇIK]**
 
@@ -142,7 +152,7 @@ tek açık madde normal kullanıcı erişim kararı (madde 5).
 
 ### Faz 2: Excel
 
-1. Ana Gayrimenkul ve Bağımsız Bölüm için eksik Excel şemalarını ekle. **[AÇIK]** (madde 6 — Ana Gayrimenkul hiç yok, Bağımsız Bölüm eksik).
+1. Ana Gayrimenkul ve Bağımsız Bölüm için eksik Excel şemalarını ekle. **[KISMEN]** (madde 6 — Ana Gayrimenkul artık VAR, Bağımsız Bölüm hâlâ eksik).
 2. ~~Açılır liste seçeneklerini tek kanonik tanımdan Excel'e aktar.~~ **[ÇÖZÜLDÜ]** (`getSectionExcelOptions()` canlı DOM `<select>`'ten otomatik alıyor — 0.0.520'de Satış Kabiliyeti ile doğrulandı).
 3. Excel yükleme sonrası başlık, seçenek ve ada/parsel eşleşme doğrulamasını güçlendir. **[KISMEN]** (başlık eşleme/JSON hata mesajları var — ada/parsel çakışma doğrulaması ayrıca denetlenmedi).
 4. Bölüm bazlı Excel yükleme ve indirme davranışını tüm ana bölümlerde doğrula. **[KISMEN]** (mekanizma 7 bölümde çalışıyor, ama Bölüm Excel'in KENDİSİ hiç birim/entegrasyon testi almadı — bkz. madde 6 notundaki gözlem).
@@ -173,7 +183,7 @@ yapısal kısıta bağlı — admin girişi bu ortamda mevcut değil.
 
 ## Test Durumu
 
-`npm run verify` (check + tüm test dosyaları) 0.0.522 itibarıyla EXIT:0 —
+`npm run verify` (check + tüm test dosyaları) 0.0.523 itibarıyla EXIT:0 —
 `case`/`unit`/`building`/`valuation`/`land`/`planning`/`documents`
 bölümlerinin taşınmaz-bazlı kapsam, "Seçili Taşınmazlara Kopyala", Bölüm
 Excel gate kablolaması ve özet tablo davranışları dahil geniş bir
@@ -197,4 +207,4 @@ arama için fonksiyon/const adını kullanın:
 - `getMissingRequiredFields()` — "Zorunlu alanlar" doğrulama paneli
 - `docs/coklu-takbis-import-plan.md` — çoklu TAKBİS tasarım notu
 - `docs/coklu-talep-fonksiyonel-test-bulgulari.md` — fonksiyonel test bulguları
-- `handoff.md` — en güncel değişiklik günlüğü (0.0.500-0.0.522 arası bu taramanın çoğu maddesini kapsar)
+- `handoff.md` — en güncel değişiklik günlüğü (0.0.500-0.0.523 arası bu taramanın çoğu maddesini kapsar)

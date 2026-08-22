@@ -575,7 +575,67 @@ const sections = [
     badge: "Fiziki",
     description:
       "Ana gayrimenkul, blok, kat adedi, yapı sınıfı, bağımsız bölüm alanları ve iç özellikler burada tamamlanır.",
-    fields: [],
+    // Kullanıcı talebi (2026-08-22): "Ana Gayrimenkul Excel panelini de
+    // ekleyelim" (bkz. docs/coklu-talep-tarama-ve-yol-haritasi.md madde 6 —
+    // bu dizi ÖNCEDEN kelimenin tam anlamıyla BOŞTU, tüm alanlar
+    // getBuildingSectionFieldKeys() ile PROGRAMATİK ekleniyordu — bu yüzden
+    // createSectionExcelPanel() `!section?.fields?.length` iken null
+    // dönüyor, Ana Gayrimenkul'ün HİÇ Excel paneli yoktu). landUnitValue/
+    // saleabilityNote/valuationMethod/saleability'nin (Değerleme) izlediği
+    // AYNI `hidden: true` deseni — kendi bespoke UI'ları (createBuildingSelectField/
+    // createBuildingBlockCountControl/createBuildingSocialFacilitiesControl/
+    // createMainPropertyDescriptionPanel) var, createForm() bunları görünür
+    // render ETMEZ, ama Bölüm Excel'in section.fields taraması (hidden'a
+    // bakmaksızın) artık bunları sütun olarak görür. `type: "select"`
+    // alanlar İÇİN inline `options` dizisi BİLİNÇLİ OLARAK verilmedi (bu
+    // consts — buildingClassOptions vb. — çok DAHA SONRA tanımlanıyor,
+    // `sections` dizisinin İÇİNDE referans TDZ hatası verirdi, saleability'nin
+    // 0.0.520'deki AYNI kısıtı) — getSectionExcelOptions()'ın canlı DOM
+    // `[data-field="..."]` sorgusu (createBuildingSelectField/
+    // createBuildingBlockCountControl'ün İKİSİ de bunu kullanıyor) otomatik
+    // besliyor, ekstra kablolamaya GEREK YOK.
+    //
+    // BİLİNÇLİ OLARAK DIŞARIDA bırakılan alanlar (getBuildingSectionFieldKeys()'in
+    // geri kalanı):
+    //  - `buildingFloorCounts` — obje (kat türü → adet haritası), düz metin
+    //    sütunu OLARAK ifade edilemez; `buildingFloors` (state.tables,
+    //    kat satırları) ile birlikte JSON tablo desteği gerektirir, AYRI
+    //    bir oturum kapsamı (bkz. yol haritası).
+    //  - `totalFloors`/`totalUnits`/`mainPropertyFloorSummary` —
+    //    `buildingFloors` tablosundan TÜRETİLMİŞ salt-okunur özet
+    //    değerler, bağımsız girdi DEĞİL; Excel'e "düzenlenebilir" gibi
+    //    sütun olarak eklemek yanıltıcı olurdu (kaydedilse bile bir
+    //    sonraki render'da tablo'dan yeniden hesaplanıp SESSİZCE
+    //    ÜZERİNE yazılır).
+    //  - `buildingAge`/`buildingAgeManualOverride`/`buildingCompletionDate`/
+    //    `buildingConstructionYear`/`buildingCompletionExplanation`/
+    //    `buildingDepreciationType`/`buildingDepreciationRate` — HEPSİ
+    //    `refreshBuildingCompletionFromCurrentFields()`/`refreshBuildingDepreciationFromCurrentFields()`
+    //    tarafından panel HER render edildiğinde KOŞULSUZ yeniden
+    //    hesaplanır (`buildingAgeManualOverride` istisnası `=== true`
+    //    KATI karşılaştırması yapıyor — Excel'in düz-metin round-trip'i
+    //    STRING "true" üretir, asla gerçek boolean `true`'ya eşit
+    //    olmaz) — Excel'den içe aktarılan bir değer SESSİZCE bir sonraki
+    //    render'da eski haline döner, aynı "yanıltıcı" risk.
+    fields: [
+      { key: "buildingStyle", label: "Bina Yapı Tarzı", type: "select", hidden: true },
+      { key: "buildingOrder", label: "Mevcut Yapı Nizamı", type: "select", hidden: true },
+      { key: "buildingClass", label: "Yapı Sınıfı", type: "select", hidden: true },
+      { key: "carpark", label: "Otopark", type: "select", hidden: true },
+      { key: "elevator", label: "Asansör", type: "select", hidden: true },
+      { key: "exteriorCladding", label: "Dış Cephe Kaplama", type: "select", hidden: true },
+      { key: "stairLanding", label: "Apartman Merdiven Ve Sahanlık", type: "select", hidden: true },
+      { key: "interiorWalls", label: "Apartman İç Duvarlar", type: "select", hidden: true },
+      { key: "buildingEntranceDoor", label: "Bina Giriş Kapısı", type: "select", hidden: true },
+      { key: "buildingFootprintReference", label: "Bina Oturumu Referansı", type: "select", hidden: true },
+      { key: "buildingEntranceLevel", label: "Bina Giriş Kat Seviyesi", type: "select", hidden: true },
+      { key: "buildingEntranceDirection", label: "Bina Giriş Yönü", type: "select", hidden: true },
+      { key: "socialFacilities", label: "Sosyal Tesisler", type: "text", hidden: true },
+      { key: "buildingBlockCount", label: "Blok Adedi - Konumu", type: "select", hidden: true },
+      { key: "buildingSubjectBlockPosition", label: "Konu Taşınmazın Yer Aldığı Blokun Parsel Üzerindeki Konumu", type: "text", hidden: true },
+      { key: "mainPropertyDescription", label: "Ana Gayrimenkul Açıklaması", type: "textarea", hidden: true },
+      { key: "mainPropertyFloorCountText", label: "Ana Gayrimenkul Kat Adedi", type: "text", hidden: true },
+    ],
   },
   {
     id: "unit",
