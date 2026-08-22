@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.525 - 2026-08-22 - Aynı ada/parseldeki taşınmazların KML poligonları artık haritada üst üste binmiyor
+
+- Kullanıcı, ekran görüntüsüyle: "harita neden bu şekilde parsel sınırları içini mavi dolgu yaptı" → "aynı ada parsel çoklu taleplerde üst üste bindirmeye gerek yok."
+- **Kök neden**: Çoklu Talep raporlarında birden fazla taşınmaz (ör. aynı Kat İrtifakı binasındaki farklı bağımsız bölümler) fiziksel olarak AYNI parselde olduğunda, her taşınmazın kendi KML kaydı (aynı/çok benzer koordinatlarla) haritada AYRI AYRI poligon olarak çiziliyordu — yarı saydam dolgular üst üste yığılıp gereksiz yere koyulaşıyordu (kullanıcının ekran görüntüsündeki "mavi dolgu" tam bu).
+- **Düzeltme**: Yeni `getDistinctKmlParcelRecordsForMap(records)` — `getKmlMapSubjectEntries()`'in "aynı parselse TEK etiket göster" mantığıyla AYNI ada/parsel anahtarını (`blockNo|parcelNo`, `normalizeKmlParcelMatchPart` ile — tek kanonik eşleştirme kaynağı) kullanarak poligon çizimini TEKİL parsele indirger: her benzersiz ada/parsel için TEK bir poligon (ilk karşılaşılan kaydın koordinatlarıyla temsilen) çizilir. `renderLeafletKmlMap()` (Adres ve Konum haritası) ve `renderComparableLocationSketchMap()` (Emsal Krokisi haritası) — poligon çizen İKİ yer de bu yeni fonksiyonu kullanacak şekilde güncellendi. Taşınmaz PİNLERİ (marker'lar) bundan ETKİLENMEDİ — paylaşımlı bir parselde bile her taşınmaz kendi pinini almaya devam ediyor, yalnızca ALTINDAKİ sınır dolgusu tekilleşti.
+- Test: yeni `tools/test-kml-map-polygon-dedup.js` (5 senaryo — aynı parselde tekillestirme, farklı parsellerde tekillestirmeme, karma senaryo, boş/tekil girdi, büyük/küçük harf-boşluk normalizasyonu). `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` cache-buster `?v=20260822-1200`.
+- Canlı tarayıcı testi yapılamadı (giriş bilgisi yok) — kullanıcının canlıda kontrol etmesi istenir: aynı ada/parselli Çoklu Talep raporunda Adres ve Konum haritasında artık tek bir sınır dolgusu görünmeli (üst üste binen çoklu dolgu olmamalı).
+
 ## 0.0.524 - 2026-08-22 - Sistematik "sessiz sızıntı" taraması: 4 yeni grup bulundu + düzeltildi, kalıcı denetim testi eklendi
 
 - Kullanıcı, yayınlanan "Çoklu Talep Geliştirmeleri" raporundaki "Aynı sızıntı sınıfı 6 kez ayrı ayrı, kaza eseri bulundu" bulgusuna: "bunun için b[ir kontrol listesi/tarama oluşturalım]" → "kontrol listesi yaz" + "şimdi sistematik bir tarama yap" (ikisi birden) → "çözüm önerin var mı?"

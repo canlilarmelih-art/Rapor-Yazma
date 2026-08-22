@@ -33778,6 +33778,35 @@ function getCompactKmlSubjectLabel(record, fallback = "KONU TAŞINMAZ") {
   const { blockNo, parcelNo } = getKmlRecordParcelFields(record);
   return blockNo && parcelNo ? `${blockNo}/${parcelNo}` : fallback;
 }
+
+// Kullanıcı talebi (2026-08-22, ekran görüntüsüyle): "aynı ada parsel çoklu
+// taleplerde üst üste bindirmeye gerek yok" — Çoklu Talep'te birden fazla
+// taşınmaz (ör. AYNI Kat İrtifakı binasındaki farklı bağımsız bölümler)
+// FİZİKSEL olarak AYNI parseldeyse, her taşınmazın kendi KML kaydı (aynı/
+// çok benzer koordinatlarla) haritada AYRI AYRI çizildiğinden üst üste
+// binen — ve yarı saydam dolguları üst üste yığılıp GEREKSİZ YERE koyulaşan
+// (kullanıcının "üst üste bindirme" olarak gördüğü) TEKRARLI poligonlar
+// oluşuyordu. getKmlMapSubjectEntries()'in "aynı parselse TEK etiket
+// göster" mantığıyla AYNI ada/parsel anahtarını (blockNo|parcelNo,
+// normalizeKmlParcelMatchPart ile — tek kanonik eşleştirme kaynağı)
+// kullanarak poligon çizimini de TEKİL parsele indirger: her benzersiz
+// ada/parsel için TEK bir poligon (ilk karşılaşılan kaydın koordinatlarıyla
+// temsilen) çizilir. Taşınmaz PİNLERİ (marker'lar) bundan ETKİLENMEZ —
+// paylaşımlı bir parselde bile her taşınmaz kendi pinini almaya devam
+// eder, yalnızca ALTINDAKI sınır dolgusu tekilleşir.
+function getDistinctKmlParcelRecordsForMap(records = []) {
+  const seen = new Set();
+  const distinct = [];
+  records.forEach((record) => {
+    const { blockNo, parcelNo } = getKmlRecordParcelFields(record);
+    const key = [blockNo, parcelNo].map(normalizeKmlParcelMatchPart).join("|");
+    if (seen.has(key)) return;
+    seen.add(key);
+    distinct.push(record);
+  });
+  return distinct;
+}
+
 function renderLeafletKmlMap() {
   const panel = document.querySelector("#kmlMapPanel");
   const records = getTitleUnitKmlRecordsForMap();
@@ -33822,7 +33851,7 @@ function renderLeafletKmlMap() {
 
   getLeafletTileLayer().addTo(leafletMap);
 
-  const polygonLayers = records.map((record, recordIndex) => leaflet.polygon(
+  const polygonLayers = getDistinctKmlParcelRecordsForMap(records).map((record, recordIndex) => leaflet.polygon(
     record.parsed.coordinates.map((point) => [point.lat, point.lng]),
     {
       color: recordIndex === 0 ? "#d92525" : "#2563eb",
@@ -38158,7 +38187,7 @@ function renderComparableLocationSketchMap(wrapper) {
   wrapper._comparableSketchMap = map;
   getLeafletTileLayer().addTo(map);
 
-  kmlRecords.forEach((record, recordIndex) => {
+  getDistinctKmlParcelRecordsForMap(kmlRecords).forEach((record, recordIndex) => {
     leaflet.polygon(record.parsed.coordinates.map((point) => [point.lat, point.lng]), {
       color: recordIndex === 0 ? "#d92525" : "#2563eb",
       weight: 3,
