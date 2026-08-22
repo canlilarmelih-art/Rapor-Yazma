@@ -22455,6 +22455,18 @@ function importTakbisRecordsIntoTitleUnits(records) {
   if (!validRecords.length) return 0;
 
   const targetIndexes = getTakbisTargetIndexes(validRecords);
+  // Kullanıcı talebi (2026-08-22, "TAKBİS'ten Yasal Kullanım Niteliği
+  // önerisi" özelliğinin devamı): getTakbisTargetIndexes() gerekirse
+  // addTitleUnitTab() ile YENİ (boş) taşınmazlar açmış olabilir — bu YENİ
+  // taşınmazların ownershipType'ı (kendi senkron-yayma mekanizmasına
+  // sahip, bkz. syncMultiTitleUnitOwnershipType) normalde yalnızca bir
+  // sonraki renderSection() çağrısında (bu döngüden SONRA) senkronize
+  // olurdu — o zamana kadar suggestLegalUsageNatureFromTakbisTitleQuality()
+  // (aşağıdaki applyTakbisTitleFieldsToReport çağrısı İÇİNDE çalışır) bu
+  // YENİ taşınmazlarda ownershipType'ı BOŞ görüp Kat İrtifakı önerisini
+  // sessizce atlardı. Döngü BAŞLAMADAN ÖNCE elle senkronize ederek bu
+  // sırayı düzeltir.
+  syncMultiTitleUnitOwnershipType();
   validRecords.forEach((record, index) => {
     const targetIndex = targetIndexes[index];
     switchActiveTitleUnit(targetIndex);
@@ -27858,6 +27870,52 @@ function applyTakbisTitleFieldsToReport(options = {}) {
   // state.fields ile YENİDEN hesaplat — İmar henüz hiç işlenmediyse bu
   // no-op'tur (planCancellationStay boş, kaks boş).
   refreshPlanningNoteFromCurrentFields("landArea");
+  // Kullanıcı talebi (2026-08-22): "Dosya ve Rapor bölümünde dikey ve
+  // yatay kat irtifakı taşınmazların TAKBİS yüklendiğinde ofis mi konut mu
+  // işyeri mi otomatik bağımsız bölüm niteliğinde anlayabilir mi program" —
+  // AskUserQuestion ile netleştirme: (1) yalnızca Dikey/Yatay Kat İrtifakı,
+  // (2) yalnızca legalUsageNature BOŞSA doldur (elle seçimin üzerine
+  // YAZMA). bkz. suggestLegalUsageNatureFromTakbisTitleQuality() yorumu.
+  suggestLegalUsageNatureFromTakbisTitleQuality();
+}
+
+// bkz. yukarıdaki applyTakbisTitleFieldsToReport() yorumu. TAKBİS'in
+// serbest metin "Bağımsız Bölüm Niteliği"nden (titleQuality) "Yasal
+// Kullanım Niteliği"ni (legalUsageNature, sabit 7 seçenekli) ÖNERİR —
+// diğer otomatik-öneri alanlarıyla (ör. Tarife Türü/expenseAppraisalPropertyType,
+// bkz. refreshExpenseAppraisalPropertyTypeFromCurrentFields) AYNI "yalnızca
+// boşsa doldur, elle seçimi asla ezme" ilkesi. Kapsam BİLİNÇLİ OLARAK
+// Dikey/Yatay Kat İrtifakı ile sınırlı — Müstakil Bina/Arsa/Tarla'da
+// Yasal Kullanım Niteliği farklı mantıkla (genelde zaten Arsa/Arazi)
+// belirleniyor, bu öneri o senaryolarda anlamsız/yanıltıcı olurdu.
+function suggestLegalUsageNatureFromTakbisTitleQuality() {
+  if (!isCondominiumEasementOwnershipType()) return;
+  if (String(state.fields.legalUsageNature || "").trim()) return;
+  const suggestion = mapTitleQualityToLegalUsageNature(state.fields.titleQuality);
+  if (!suggestion) return;
+  state.fields.legalUsageNature = suggestion;
+  const control = document.querySelector('[data-field="legalUsageNature"]');
+  if (control && control.value !== suggestion) control.value = suggestion;
+}
+
+// TAKBİS'in serbest metin "Bağımsız Bölüm Niteliği"nden legalUsageNature'ın
+// sabit seçeneklerinden (Konut/İşyeri/Ofis/Ticari Bina/Sanayi Tesisi)
+// birini anahtar-kelime eşlemesiyle önerir — eşleşme yoksa "" döner (bir
+// seçenek ZORLA DAYATILMAZ, belirsizse boş bırakılır). "Arsa"/"Arazi"
+// KASITLI OLARAK kapsam dışı — bu fonksiyon yalnızca Kat İrtifakı
+// bağlamında çağrılıyor (bkz. yukarıdaki çağıran), o bağlamda anlamsız.
+// Sıra ÖNEMLİ: en spesifik/az-belirsiz kelimeler (Sanayi/Ticari Bina/Ofis)
+// önce kontrol edilir ki ör. "OFİS" içeren bir nitelik yanlışlıkla genel
+// "İşyeri" eşleşmesine düşmesin.
+function mapTitleQualityToLegalUsageNature(titleQuality) {
+  const folded = foldTurkish(titleQuality || "");
+  if (!folded) return "";
+  if (/(FABRIKA|IMALATHANE|IMALAT|ATOLYE|SANAYI|DEPO|ANTREPO)/.test(folded)) return "Sanayi Tesisi";
+  if (/(IS\s*MERKEZI|IS\s*HANI|PLAZA|AVM|ALISVERIS\s*MERKEZI|CARSI|TICARET\s*MERKEZI)/.test(folded)) return "Ticari Bina";
+  if (/(OFIS|BURO)/.test(folded)) return "Ofis";
+  if (/(ISYERI|IS\s*YERI|DUKKAN|MAGAZA|TICARETHANE|BUTIK)/.test(folded)) return "İşyeri";
+  if (/(MESKEN|DAIRE|KONUT|VILLA|DUBLEKS)/.test(folded)) return "Konut";
+  return "";
 }
 
 function syncAddressBlockFromTakbis(options = {}) {

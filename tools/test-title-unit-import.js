@@ -105,6 +105,12 @@ const TITLE_UNIT_SCOPED_TABLE_KEYS_BASE = ["title", "encumbrance", "encumbranceD
 const TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS = new Set(["transport", "nearby", "environmentDescription", "takbisSummary"]);
 
 let applyCalls = [];
+// syncMultiTitleUnitOwnershipType() (2026-08-22, importTakbisRecordsIntoTitleUnits()'in
+// dongu-oncesi cagirdigi yeni bir adim - bkz. o fonksiyonun yorumu) diger
+// STUB'larla (applyTakbisTitleFieldsToReport vb.) AYNI desen: bu testin
+// odagi hangi kaydin hangi tasinmaza gittigi, ownershipType senkronu
+// KAPSAM DISI - basit bir no-op STUB yeterli.
+function syncMultiTitleUnitOwnershipType() {}
 function applyTakbisTitleFieldsToReport() {
   const src = state.sourceValues.takbis || {};
   Object.entries(src.fields || {}).forEach(([k, v]) => { if (v) state.fields[k] = v; });

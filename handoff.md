@@ -1,5 +1,15 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.526 - 2026-08-22 - Kat İrtifakı'nda TAKBİS'ten "Yasal Kullanım Niteliği" otomatik önerisi
+
+- Kullanıcı: "dosya ve rapor bölümünde dikey ve yatay kat irtifaki taşınmazların takbis yüklendiğinde ofis mi konut mu işyeri mi otomatik bağımsız bölüm niteliğinde anlayabilir mi program" — `AskUserQuestion` ile netleştirme: (1) yalnızca Dikey/Yatay Kat İrtifakı, (2) yalnızca "Yasal Kullanım Niteliği" (`legalUsageNature`) BOŞSA doldur (elle seçimin üzerine YAZMA).
+- **Durum tespiti**: TAKBİS'in serbest metin "Bağımsız Bölüm Niteliği"nden (`titleQuality`) `legalUsageNature`'a (Konut/İşyeri/Ofis/Arsa/Arazi/Ticari Bina/Sanayi Tesisi sabit seçenekli) HİÇBİR otomatik bağlantı yoktu — kullanıcı elle seçiyordu.
+- **Yeni**: `mapTitleQualityToLegalUsageNature(titleQuality)` — anahtar-kelime eşlemesi (MESKEN/DAİRE/VİLLA→Konut, İŞYERİ/DÜKKAN/MAĞAZA→İşyeri, OFİS/BÜRO→Ofis, İş Merkezi/AVM/Plaza→Ticari Bina, Fabrika/İmalathane/Depo→Sanayi Tesisi; eşleşme yoksa `""` — zorla bir seçenek DAYATMAZ). `suggestLegalUsageNatureFromTakbisTitleQuality()` — `applyTakbisTitleFieldsToReport()`'un sonuna eklendi (hem tek hem çoklu TAKBİS akışında çalışır), `isCondominiumEasementOwnershipType()` + "yalnızca boşsa doldur" ile diğer otomatik-öneri alanlarıyla (Tarife Türü vb.) AYNI "manuel seçimi asla ezme" ilkesini izliyor.
+- **Yan düzeltme (çoklu TAKBİS akışı için gerekliydi)**: `importTakbisRecordsIntoTitleUnits()`'in kayıt-başına döngüsü ÖNCESİNE `syncMultiTitleUnitOwnershipType()` çağrısı eklendi — aksi halde YENİ (addTitleUnitTab ile açılan) taşınmazların `ownershipType`'ı döngü sırasında henüz senkronize olmamış olacağından (normalde bir sonraki `renderSection()`'a kadar bekler), bu taşınmazlarda Kat İrtifakı önerisi sessizce atlanırdı.
+- Test: yeni `tools/test-legal-usage-nature-from-takbis.js` (mapping doğruluğu + öncelik sırası + kapsam/manuel-seçim-koruması, 2 senaryo grubu, 10+ assertion). `tools/test-title-unit-import.js`'e diğer stub'larla (`applyTakbisTitleFieldsToReport` vb.) AYNI desende bir `syncMultiTitleUnitOwnershipType()` no-op stub'ı eklendi. `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` cache-buster `?v=20260822-1300`.
+- Canlı tarayıcı testi yapılamadı (giriş bilgisi yok) — kullanıcının canlıda kontrol etmesi istenir: Dikey/Yatay Kat İrtifakı raporunda TAKBİS yüklendiğinde "Yasal Kullanım Niteliği" boşsa otomatik dolmalı, elle seçilmişse DEĞİŞMEMELİ.
+
 ## 0.0.525 - 2026-08-22 - Aynı ada/parseldeki taşınmazların KML poligonları artık haritada üst üste binmiyor
 
 - Kullanıcı, ekran görüntüsüyle: "harita neden bu şekilde parsel sınırları içini mavi dolgu yaptı" → "aynı ada parsel çoklu taleplerde üst üste bindirmeye gerek yok."
