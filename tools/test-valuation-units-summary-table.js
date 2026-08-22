@@ -864,4 +864,46 @@ function fullFixtureFields(overrides = {}) {
   console.log("Toplam (TOPLAM) satiri testi tamam.");
 }
 
+// --- 28) YENİ (2026-08-22, kullanıcı talebi): "sütun başlıklarının içine
+// sağ alt bölümüne sütunun tümüne uygula butonu koyabilir miyiz" —
+// Değerleme'nin BESPOKE iki katmanlı renderer'ında (topHeaderHtml grup
+// satırı + subHeaderHtml gerçek sütun satırı) buton YALNIZCA alt-başlık
+// (subHeaderHtml) satırında, YALNIZCA editable:true + kind:"scalar"
+// sütunlarda görünmeli; export/banka-şablonu modunda (editable:false,
+// varsayılan) HİÇ görünmemeli.
+{
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: fullFixtureFields({ landUnitValue: "40.000" }),
+    tables: {},
+    titleUnits: [unit(fullFixtureFields({ landUnitValue: "40.000" }))],
+  });
+  const data = fns.buildValuationUnitsSummaryTableData();
+
+  // 28a) editable:true -> yalnizca scalar sutunlarda buton var.
+  const editableHtml = fns.buildValuationUnitsSummaryTableHtml(data, 0, { editable: true });
+  const scalarCount = data.columnMeta.filter((meta) => meta?.kind === "scalar").length;
+  const buttonCount = (editableHtml.match(/tus-apply-column-btn/g) || []).length;
+  assert.ok(scalarCount > 0, "Fixture'da en az bir 'scalar' sutun olmali.");
+  assert.equal(buttonCount, scalarCount, `"Tumune uygula" butonu YALNIZCA scalar sutunlarda (${scalarCount} adet) gorunmeliydi, bulunan: ${buttonCount}.`);
+  assert.match(
+    editableHtml,
+    /<button type="button" class="tus-apply-column-btn" data-field-key="landUnitValue" data-column-label="[^"]*"[^>]*>/,
+    "Arsa Birim Degeri (landUnitValue, scalar) sutununun alt-basliginda buton bulunamadi."
+  );
+  // Buton, GRUP basligi (topHeaderHtml, rowspan/colspan'li ilk <tr>)
+  // satirinda DEGIL, alt-baslik (subHeaderHtml, ikinci <tr>) satirinda
+  // olmali.
+  const theadHtml = editableHtml.slice(editableHtml.indexOf("<thead>"), editableHtml.indexOf("</thead>"));
+  const firstTrEnd = theadHtml.indexOf("</tr>") + "</tr>".length;
+  const topHeaderRow = theadHtml.slice(0, firstTrEnd);
+  assert.ok(!topHeaderRow.includes("tus-apply-column-btn"), "Grup basligi (topHeaderHtml) satirinda buton OLMAMALI.");
+
+  // 28b) editable:false (export/banka sablonu varsayilani) -> HIC buton yok.
+  const exportHtml = fns.buildValuationUnitsSummaryTableHtml(data, 0);
+  assert.ok(!exportHtml.includes("tus-apply-column-btn"), "Export/banka-sablonu modunda (editable:false) 'tumune uygula' butonu HIC gorunmemeli.");
+
+  console.log("buildValuationUnitsSummaryTableHtml 'sutunun tumune uygula' butonu (yalnizca editable+scalar) testi tamam.");
+}
+
 console.log("Tasinmazlar degerleme ozeti tablosu testleri basarili.");

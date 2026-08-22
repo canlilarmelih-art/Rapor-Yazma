@@ -686,4 +686,36 @@ function unit(fields, ownerRows) {
   console.log("{{TASINMAZLARTAPUTABLOSU}} template-engine.js kablolama testi tamam.");
 }
 
+// --- 16) buildTitleUnitsSummaryTableHtmlEditable(): "sutunun tumune ------
+// uygula" butonu (2026-08-22) YALNIZCA scalar sutun basliklarinda --------
+// gorunur — readonly/owner sutunlarinda YOK, dogru data-field-key/ --------
+// data-column-label tasiyor. ------------------------------------------------
+{
+  const shared = { titleCity: "Bursa", titleDistrict: "Nilüfer", titleNeighborhood: "Özlüce", locationName: "-", sheetNo: "F21", blockNo: "4834", parcelNo: "1", landArea: "1200", mainPropertyQuality: "Arsa" };
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: { ...shared, titlePropertyId: "AKTIF-ID", share: "50", denominator: "1000" },
+    tables: { title: [{ c0: "Ahmet Yılmaz", c1: "1/2" }] },
+    titleUnits: [{ fields: { ...shared, titlePropertyId: "DIGER-ID", share: "40", denominator: "1000" }, tables: { title: [{ c0: "Ayşe Yılmaz", c1: "1/2" }] } }],
+  });
+  const data = fns.buildTitleUnitsSummaryTableData();
+  const html = fns.buildTitleUnitsSummaryTableHtmlEditable(data.headers, data.rows, data.columnMeta, 0);
+  const scalarCount = data.columnMeta.filter((meta) => meta.kind === "scalar").length;
+  const nonScalarCount = data.columnMeta.filter((meta) => meta.kind !== "scalar").length;
+  assert.ok(scalarCount > 0, "Fixture'da en az bir 'scalar' sutun olmali.");
+  assert.ok(nonScalarCount > 0, "Fixture'da en az bir scalar-OLMAYAN (readonly/owner) sutun olmali (butonun YOKLUGUNU test edebilmek icin).");
+  const buttonCount = (html.match(/tus-apply-column-btn/g) || []).length;
+  assert.equal(buttonCount, scalarCount, `"Tumune uygula" butonu YALNIZCA scalar sutunlarda (${scalarCount} adet) gorunmeliydi, bulunan: ${buttonCount}.`);
+  // titlePropertyId (scalar) sutununun basliginda dogru data-field-key/
+  // data-column-label tasiyan bir buton olmali.
+  const propertyIdIndex = data.headers.findIndex((label, index) => data.columnMeta[index]?.fieldKey === "titlePropertyId");
+  assert.ok(propertyIdIndex >= 0, "Fixture'da titlePropertyId sutunu bulunamadi.");
+  assert.match(
+    html,
+    /<button type="button" class="tus-apply-column-btn" data-field-key="titlePropertyId" data-column-label="[^"]*"[^>]*>/,
+    "titlePropertyId sutununun basliginda dogru data-field-key tasiyan 'tumune uygula' butonu bulunamadi."
+  );
+  console.log("buildTitleUnitsSummaryTableHtmlEditable 'sutunun tumune uygula' butonu (yalnizca scalar sutunlar) testi tamam.");
+}
+
 console.log("Tasinmazlar tapu ozeti tablosu testleri basarili.");

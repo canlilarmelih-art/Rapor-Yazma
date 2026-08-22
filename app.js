@@ -7407,8 +7407,18 @@ function buildValuationUnitsSummaryTableHtml(data, activeRowIndex, { editable = 
   const topHeaderHtml = `<tr>${leadingIndices.map((index) => `<th rowspan="2" style="${headerCell}${narrowWidth}">${toTitleFieldUppercase(headers[index])}</th>`).join("")}${groupOrder.map((group) => `<th colspan="${groupedColumns[group].length}" style="${headerCell}">${toTitleFieldUppercase(getValuationUnitsSummaryGroupDisplayLabel(group))}</th>`).join("")}</tr>`;
   const subHeaderHtml = `<tr>${orderedColumns.map(({ label, index }) => {
     const subheader = toTitleFieldUppercase(getValuationUnitsSummarySubheader(label));
-    const style = columnMeta[index]?.narrow ? `${headerCell}${narrowWidth}` : headerCell;
-    return `<th style="${style}">${escapeHtml(subheader).replace(/\n/g, "<br>")}</th>`;
+    const meta = columnMeta[index] || null;
+    const style = `${meta?.narrow ? `${headerCell}${narrowWidth}` : headerCell}position:relative;`;
+    // Kullanıcı talebi (2026-08-22): bkz. buildTitleUnitsSummaryTableHtmlEditable
+    // + applyTitleUnitsSummaryColumnToAllRows yorumları — AYNI "sütunun
+    // tümüne uygula" butonu, yalnızca ekran-içi düzenlenebilir modda
+    // (editable:true) VE skaler (kind:"scalar") sütunlarda. Değerleme'nin
+    // export/banka-şablonu HTML'i (editable parametresiz çağrılır) bu
+    // butonu HİÇ görmez.
+    const applyButton = editable && meta?.kind === "scalar"
+      ? `<button type="button" class="tus-apply-column-btn" data-field-key="${escapeHtml(meta.fieldKey)}" data-column-label="${escapeHtml(label)}" title="Aktif taşınmazın bu sütundaki değerini diğer tüm taşınmazlara uygula">⬇</button>`
+      : "";
+    return `<th style="${style}">${escapeHtml(subheader).replace(/\n/g, "<br>")}${applyButton}</th>`;
   }).join("")}</tr>`;
   const bodyHtml = rows.map((row, rowIndex) => {
     const cellStyle = rowIndex % 2 === 1 ? zebraCell : baseCell;
@@ -20460,10 +20470,21 @@ function buildTitleUnitsSummaryTableHtmlEditable(headers, rows, columnMeta, acti
   // kullanıldığından, `narrow` işaretlenMEYEN sütunlar (o bölümlerin
   // TAMAMI) davranış DEĞİŞTİRMEZ.
   const narrowWidth = "width:24pt;";
+  // Kullanıcı talebi (2026-08-22): "sütun başlıklarının içine sağ alt
+  // bölümüne sütunun tümüne uygula butonu koyabilir miyiz ... aynı
+  // sütundaki tüm verileri alt sütunlara kopyalayabiliriz" —
+  // AskUserQuestion ile netleştirme: sürükle-doldur (Excel fill handle)
+  // DEĞİL, başlıkta buton (bkz. applyTitleUnitsSummaryColumnToAllRows
+  // yorumu, aşağıda). Yalnızca `kind: "scalar"` (gerçekten düzenlenebilir)
+  // sütunlarda gösterilir — salt-okunur/hesaplanan ve "owner" (popover)
+  // sütunlarında anlamsız olurdu.
   const headerHtml = `<tr>${headers.map((label, index) => {
     const meta = (columnMeta && columnMeta[index]) || null;
-    const style = meta?.narrow ? `${headerCell}${narrowWidth}` : headerCell;
-    return `<th style="${style}">${splitTableHeaderLabelIntoTwoLines(toTitleFieldUppercase(label))}</th>`;
+    const style = `${meta?.narrow ? `${headerCell}${narrowWidth}` : headerCell}position:relative;`;
+    const applyButton = meta?.kind === "scalar"
+      ? `<button type="button" class="tus-apply-column-btn" data-field-key="${escapeHtml(meta.fieldKey)}" data-column-label="${escapeHtml(label)}" title="Aktif taşınmazın bu sütundaki değerini diğer tüm taşınmazlara uygula">⬇</button>`
+      : "";
+    return `<th style="${style}">${splitTableHeaderLabelIntoTwoLines(toTitleFieldUppercase(label))}${applyButton}</th>`;
   }).join("")}</tr>`;
   const bodyHtml = rows.map((row, rowIndex) => {
     const cellStyle = rowIndex % 2 === 1 ? zebraCell : baseCell;
@@ -20528,6 +20549,14 @@ function attachTitleUnitsSummaryTableEditing(container) {
     cell.addEventListener("click", () => {
       const unitIndex = Number(cell.dataset.unitIndex);
       if (Number.isInteger(unitIndex)) openTitleUnitOwnerRowEditor(unitIndex);
+    });
+  });
+  // "Sütunun tümüne uygula" butonu (2026-08-22) — bkz.
+  // applyTitleUnitsSummaryColumnToAllRows yorumu.
+  container.querySelectorAll(".tus-apply-column-btn").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      applyTitleUnitsSummaryColumnToAllRows(button.dataset.fieldKey, button.dataset.columnLabel);
     });
   });
 }
@@ -20715,6 +20744,40 @@ function commitTitleUnitsSummaryCellEdit(fieldKey, rawValue, unitIndex) {
   // düzenlendiğinden bağımsız olarak HER commit'te tab çubuğu da
   // tazelenir (ucuz; ilgisiz bir alan için çağrılması zararsız).
   refreshTitleUnitTabBar();
+}
+
+// Kullanıcı talebi (2026-08-22): "tablolarda sütun başlıklarının içine
+// sağ alt bölümüne sütunun tümüne uygula butonu koyabilir miyiz ... aynı
+// sütundaki tüm verileri alt sütunlara kopyalayabiliriz" — AskUserQuestion
+// ile netleştirme: (1) sütun başlığında buton (Excel sürükle-doldur değil
+// — fare-sürükleme takibi bu native <table> yapısında kırılgan/yüksek
+// efor gerektirirdi), (2) kaynak değer HER ZAMAN AKTİF (o an ekranda
+// açık) taşınmazın değeri — mevcut "Seçili Taşınmazlara Kopyala"
+// araçlarıyla (İmar/Arsa/Belgeler/Değerleme/Bağımsız Bölüm) AYNI
+// kaynak-satır ilkesi, tutarlı kullanıcı deneyimi.
+//
+// commitTitleUnitsSummaryCellEdit() (yukarıda — aktif/gölge/landUnitValue-
+// paylaşımlı TÜM özel durumları zaten doğru ele alan TEK yazma yolu) her
+// hedef satır için tekrar tekrar çağrılır — YENİ bir yazma yolu İCAT
+// EDİLMEZ, tekli-hücre-düzenlemeyle TAM AYNI mirror/refresh/tab-çubuğu
+// yan etkilerini miras alır. Toplu/geri-alınamaz bir üzerine-yazma
+// olduğundan (bkz. rapor-app-known-pitfalls "veri kaybı" sınıfı) her
+// zaman bir onay diyaloğuyla korunur.
+function applyTitleUnitsSummaryColumnToAllRows(fieldKey, columnLabel) {
+  if (!fieldKey) return;
+  const count = getTitleUnitCount();
+  if (count < 2) return;
+  const sourceIndex = state.activeTitleUnitIndex;
+  const sourceValue = String(getTitleUnitFieldsForLabel(sourceIndex)[fieldKey] ?? "");
+  const otherCount = count - 1;
+  const confirmed = window.confirm(
+    `"${columnLabel || fieldKey}" sütunundaki aktif taşınmazın değeri ("${sourceValue || "(boş)"}"), tablodaki diğer ${otherCount} taşınmaza uygulanacak ve onların bu sütundaki mevcut değerlerinin ÜZERİNE YAZILACAK. Devam edilsin mi?`
+  );
+  if (!confirmed) return;
+  for (let index = 0; index < count; index += 1) {
+    if (index === sourceIndex) continue;
+    commitTitleUnitsSummaryCellEdit(fieldKey, sourceValue, index);
+  }
 }
 
 // Çift Yönlü Düzenleme, Faz 4 (2026-08-15) — kullanıcının PLANDA verdiği TAM

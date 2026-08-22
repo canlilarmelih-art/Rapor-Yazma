@@ -4684,6 +4684,35 @@ table {
   box-sizing: border-box;
 }
 
+/* "Sütunun tümüne uygula" başlık butonu (2026-08-22, kullanıcı talebi) —
+   yalnızca ekran-içi düzenlenebilir önizlemede (bkz. .tus-editable-cell
+   yorumu, yukarıda) skaler sütun başlıklarının sağ-alt köşesinde. Export
+   HTML'i (buildTitleUnitsSummaryWordTableHtml/buildValuationUnitsSummaryTableHtml
+   editable:false) bu sınıfı hiç ÜRETMEZ, bu kural Word/banka-şablonu
+   çıktısını ETKİLEMEZ. */
+.tus-apply-column-btn {
+  position: absolute;
+  right: 1px;
+  bottom: 1px;
+  width: 11px;
+  height: 11px;
+  line-height: 10px;
+  padding: 0;
+  border: none;
+  border-radius: 2px;
+  background: var(--blue);
+  color: #fff;
+  font-size: 7px;
+  cursor: pointer;
+  opacity: 0.55;
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+
+.tus-apply-column-btn:hover {
+  opacity: 1;
+  transform: scale(1.15);
+}
+
 .multi-takbis-preview-table {
   width: 100%;
   font-size: 0.85em;
