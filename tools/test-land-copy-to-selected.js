@@ -217,13 +217,27 @@ function freshState(overrides = {}) {
 // --- 7) renderSection() gate'i kaynak-duzeyinde dogru kablolu -------------
 // (2026-08-21 devam: "arsa özelliklerindeki butonu da taşı" — buton artık
 // AYRI bir body.append(...) DEĞİL, createTitleUnitTabBar()'a extraActions
-// olarak veriliyor; "Tümüne uygula" checkbox'ı (createLandApplyAllControl)
-// AYRI kontrol olarak tab çubuğunun ALTINDA kalmaya devam ediyor.)
+// olarak veriliyor. Kullanıcı takip talebi (2026-08-22): "tümüne uygula
+// butonlarını seçili taşınmazlara uygula olarak değiştirelim" — eski
+// "Tümüne uygula" checkbox'ı (createLandApplyAllControl) BURADAN
+// KALDIRILDI, createLandCopyToSelectedControl() artık TEK araç.)
 {
   assert.match(
     appSource,
-    /if \(section\.id === "land" && isCurrentUserAdmin\(\) && state\.fields\.requestType === "Çoklu Talep" && isPlanningScopedByAdaParsel\(\)\) \{[\s\S]*?body\.append\(createTitleUnitTabBar\(\{ extraActions: \[createLandCopyToSelectedControl\(\)\] \}\)\);\s*\n\s*body\.append\(createLandApplyAllControl\(\)\);\s*\n\s*body\.append\(createLandUnitsSummaryTablePreview\(\)\);/,
+    /if \(section\.id === "land" && isCurrentUserAdmin\(\) && state\.fields\.requestType === "Çoklu Talep" && isPlanningScopedByAdaParsel\(\)\) \{[\s\S]*?body\.append\(createTitleUnitTabBar\(\{ extraActions: \[createLandCopyToSelectedControl\(\)\] \}\)\);\s*\n\s*body\.append\(createLandUnitsSummaryTablePreview\(\)\);/,
     "renderSection() 'land' gate'i createLandCopyToSelectedControl()'u createTitleUnitTabBar()'in extraActions'ina eklemiyor."
+  );
+  // Yalnızca CANLI tanım/çağrı kalmadığını doğrular — tarihsel yorumlarda
+  // adı geçmeye devam edebilir (bilinçli, bkz. app.js yorumu).
+  assert.doesNotMatch(
+    appSource,
+    /function createLandApplyAllControl\(/,
+    "REGRESYON: eski 'Tümüne uygula' checkbox fonksiyonu (createLandApplyAllControl) ARTIK TANIMLI OLMAMALI."
+  );
+  assert.doesNotMatch(
+    appSource,
+    /body\.append\(createLandApplyAllControl\(\)\)/,
+    "REGRESYON: eski 'Tümüne uygula' checkbox'ı (createLandApplyAllControl) ARTIK ÇAĞRILMAMALI."
   );
   console.log("renderSection land seciliye-kopyala gate kaynak-duzeyi kablolama testi tamam.");
 }

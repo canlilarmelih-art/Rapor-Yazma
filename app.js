@@ -1813,6 +1813,56 @@ function applyImarDataToAllTitleUnits() {
   return getTitleUnitCount();
 }
 
+// Kullanıcı talebi (2026-08-22): "çoklu çalışmalarda ... tümüne uygula
+// butonlarını seçili taşınmazlara uygula olarak değiştirelim zaten seçili
+// taşınmazlara uygula kısmında tümüne uygula seçeneği bulunuyor" —
+// applyLandDataToSelectedTitleUnits()'in (aşağıda) BİREBİR ikizi, hedef
+// alan listesi İmar Durumu'na (getImarSectionFieldKeys) uyarlanmış.
+// applyImarDataToAllTitleUnits()'in (yukarıda) "Hesaplanan Emsal"
+// (calculatedEmsal) istisnası BİREBİR korunur: diğer alanlar aynen
+// kopyalanır, calculatedEmsal ise HER hedefin KENDİ landArea'sıyla
+// composeImarCalculatedEmsal() ile YENİDEN hesaplanır — aksi halde farklı
+// ada/parseldeki (farklı yüzölçümlü) bir taşınmaza aktif taşınmazın SAYISI
+// yanlışlıkla yapıştırılmış olurdu. resolveTitleUnitWriteTarget() kullanır
+// (applyImarDataToAllTitleUnits'ten FARKLI, çünkü hedef TÜMÜ değil açık
+// bir liste). Doğrulama ve no-op kuralları applyLandDataToSelectedTitleUnits
+// ile BİREBİR aynı. Yalnızca state mutasyonu yapar, uygulanan taşınmaz
+// sayısını döner.
+function applyImarDataToSelectedTitleUnits(targetIndices) {
+  if (!Array.isArray(targetIndices) || !targetIndices.length) return 0;
+
+  const keys = getImarSectionFieldKeys();
+  const snapshot = {};
+  keys.forEach((key) => { snapshot[key] = state.fields[key]; });
+
+  const count = getTitleUnitCount();
+  const seen = new Set();
+  let appliedCount = 0;
+
+  targetIndices.forEach((index) => {
+    if (!Number.isInteger(index) || index < 0 || index >= count) return;
+    if (index === state.activeTitleUnitIndex) return;
+    if (seen.has(index)) return;
+    seen.add(index);
+
+    const targetFields = resolveTitleUnitWriteTarget(index);
+    keys.forEach((key) => {
+      if (key === "calculatedEmsal") return;
+      targetFields[key] = snapshot[key];
+    });
+    targetFields.calculatedEmsal = composeImarCalculatedEmsal({
+      netParcelArea: targetFields.landArea,
+      kaks: targetFields.kaks,
+      floorCount: targetFields.floorCount,
+      planCancellationStay: targetFields.planCancellationStay,
+    });
+
+    appliedCount += 1;
+  });
+
+  return appliedCount;
+}
+
 function getTitleUnitScopedFieldKeys() {
   const keys = new Set();
   // 2026-08-16: İmar Durumu artık KOŞULLU taşınmaza-özgü — tüm taşınmazlar
@@ -2976,79 +3026,110 @@ function createAddressUnitsSummaryTablePreview() {
   return wrap;
 }
 
-// Kullanıcı talebi (2026-08-16): "farklı ada parselde imar durumu
-// kısmında bazen tüm taşınmazlar aynı imar planına sahip olabiliyor
-// (Örnek: 5 Adet Tarla hepsi Tarım Alanı) ... tümüne uygula seçeneği
-// olsun." "Tapu Kaydı Değişikliği" tümüne uygula kutucuğuyla (bkz.
-// createTitleRecordChangeControl) AYNI görsel dil (.title-record-change-apply-all,
-// zaten 3. kez yeniden kullanılıyor — KML "tek dosya -> tüm taşınmazlara
-// uygula" kutucuğu da aynı sınıfı paylaşıyor) + "bir kez kopyala, sürekli
-// senkron DEĞİL" deseni — işaretlenince applyImarDataToAllTitleUnits()
-// TÜM İmar Durumu alanlarını diğer taşınmazlara kopyalar, kutucuk
-// kendiliğinden işareti kaldırır, her taşınmaz yine bağımsız düzenlenebilir
-// kalır.
-function createImarApplyAllControl() {
-  const wrap = document.createElement("div");
-  wrap.className = "imar-apply-all-wrap";
+// Kullanıcı talebi (2026-08-22): "çoklu çalışmalarda farklı ada parsel
+// yada aynı ada parsel çalışmalarında tümüne uygula butonlarını seçili
+// taşınmazlara uygula olarak değiştirelim zaten seçili taşınmazlara
+// uygula kısmında tümüne uygula seçeneği bulunuyor" — İmar Durumu'nun
+// eski "TÜM taşınmazlara uygula" checkbox'ı (createImarApplyAllControl,
+// KALDIRILDI — bkz. applyImarDataToAllTitleUnits() yorumu, o veri
+// fonksiyonu hâlâ duruyor/test ediliyor, yalnızca bu UI KALDIRILDI) artık
+// Land/Unit/Değerleme'nin AYNI "Seçili Taşınmazlara Kopyala" deseniyle
+// değiştirildi — modal içindeki "Tümünü Seç" butonu (aşağıda,
+// openImarCopyToSelectedModal) körü körüne tümüne uygulama ihtiyacını da
+// karşılıyor. createLandCopyToSelectedControl()'ün BİREBİR ikizi.
+function createImarCopyToSelectedControl() {
+  const wrap = document.createElement("span");
+  wrap.className = "title-unit-tab-copy-selected-wrap";
 
-  const label = document.createElement("label");
-  label.className = "title-record-change-apply-all";
-  const checkbox = document.createElement("input");
-  checkbox.type = "checkbox";
-  const text = document.createElement("span");
-  text.textContent = "Aktif taşınmazın İmar Durumu bilgilerini TÜM taşınmazlara uygula";
-  label.append(checkbox, text);
-  wrap.append(label);
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "title-unit-tab-copy-selected";
+  button.textContent = "Seçili Taşınmazlara Kopyala";
 
   const note = document.createElement("small");
-  note.className = "muted-note title-record-change-apply-all-note";
-  wrap.append(note);
+  note.className = "muted-note unit-copy-to-selected-note";
 
-  checkbox.addEventListener("change", () => {
-    if (!checkbox.checked) return;
-    const unitCount = applyImarDataToAllTitleUnits();
-    note.textContent = `${unitCount} taşınmaza uygulandı.`;
-    checkbox.checked = false;
+  button.addEventListener("click", () => {
+    if (getTitleUnitCount() < 2) return;
+    openImarCopyToSelectedModal((appliedCount) => {
+      note.textContent = appliedCount
+        ? `${appliedCount} taşınmaza kopyalandı.`
+        : "Hiçbir taşınmaz seçilmedi, kopyalama yapılmadı.";
+    });
+  });
+
+  wrap.append(button, note);
+  return wrap;
+}
+
+// openLandCopyToSelectedModal()'ın (aşağıda) BİREBİR ikizi — hedef alan
+// listesi İmar Durumu'na (applyImarDataToSelectedTitleUnits) uyarlanmış.
+function openImarCopyToSelectedModal(onDone = () => {}) {
+  document.querySelector(".modal-overlay")?.remove();
+
+  const targets = getTitleUnitTabModels().filter((tab) => !tab.isActive);
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.innerHTML = `
+    <div class="modal-card modal-card-wide" role="dialog" aria-modal="true" aria-labelledby="imarCopyToSelectedModalTitle">
+      <div class="modal-head">
+        <h3 id="imarCopyToSelectedModalTitle">İmar Durumu Bilgilerini Kopyala</h3>
+        <button class="modal-close" type="button" aria-label="Kapat">×</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-lead">Aktif taşınmazın İmar Durumu bilgileri seçtiğiniz taşınmazlara kopyalanacak.</p>
+        <div class="checkbox-list">
+          ${targets.map((tab) => `
+            <label class="checkbox-row">
+              <input type="checkbox" value="${tab.index}" data-imar-copy-target>
+              <span>${escapeHtml(tab.label)}</span>
+            </label>
+          `).join("")}
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="secondary-button" type="button" data-imar-copy-select-all>Tümünü Seç</button>
+        <button class="secondary-button" type="button" data-imar-copy-clear>Seçimi Temizle</button>
+        <button class="secondary-button" type="button" data-imar-copy-cancel>Vazgeç</button>
+        <button class="primary-button" type="button" data-imar-copy-save>Seçilenlere Kopyala</button>
+      </div>
+    </div>
+  `;
+
+  const close = () => overlay.remove();
+  overlay.querySelector(".modal-close").addEventListener("click", close);
+  overlay.querySelector("[data-imar-copy-cancel]").addEventListener("click", close);
+  overlay.addEventListener("click", (event) => {
+    if (event.target === overlay) close();
+  });
+  overlay.querySelector("[data-imar-copy-select-all]").addEventListener("click", () => {
+    overlay.querySelectorAll("[data-imar-copy-target]").forEach((box) => { box.checked = true; });
+  });
+  overlay.querySelector("[data-imar-copy-clear]").addEventListener("click", () => {
+    overlay.querySelectorAll("[data-imar-copy-target]").forEach((box) => { box.checked = false; });
+  });
+  overlay.querySelector("[data-imar-copy-save]").addEventListener("click", () => {
+    const selectedIndices = [...overlay.querySelectorAll("[data-imar-copy-target]:checked")]
+      .map((box) => Number.parseInt(box.value, 10));
+    const appliedCount = applyImarDataToSelectedTitleUnits(selectedIndices);
     autosave();
     refreshImarUnitsSummaryTablePreview();
+    onDone(appliedCount);
+    close();
   });
 
-  return wrap;
+  document.body.append(overlay);
+  overlay.querySelector("[data-imar-copy-target]")?.focus();
 }
 
-// Kullanıcı talebi (2026-08-17): "bu bölümde tüm taşınmazlara uygula
-// butonu da yer alsın" — createImarApplyAllControl() ile BİREBİR aynı
-// desen, 3. kez yeniden kullanılan AYNI `.title-record-change-apply-all`
-// CSS sınıfı (Tapu Kaydı Değişikliği → KML → İmar Durumu → Arsa Özellikleri).
-function createLandApplyAllControl() {
-  const wrap = document.createElement("div");
-  wrap.className = "imar-apply-all-wrap";
-
-  const label = document.createElement("label");
-  label.className = "title-record-change-apply-all";
-  const checkbox = document.createElement("input");
-  checkbox.type = "checkbox";
-  const text = document.createElement("span");
-  text.textContent = "Aktif taşınmazın Arsa Özellikleri bilgilerini TÜM taşınmazlara uygula";
-  label.append(checkbox, text);
-  wrap.append(label);
-
-  const note = document.createElement("small");
-  note.className = "muted-note title-record-change-apply-all-note";
-  wrap.append(note);
-
-  checkbox.addEventListener("change", () => {
-    if (!checkbox.checked) return;
-    const unitCount = applyLandDataToAllTitleUnits();
-    note.textContent = `${unitCount} taşınmaza uygulandı.`;
-    checkbox.checked = false;
-    autosave();
-    refreshLandUnitsSummaryTablePreview();
-  });
-
-  return wrap;
-}
-
+// Kullanıcı talebi (2026-08-22): "tümüne uygula butonlarını seçili
+// taşınmazlara uygula olarak değiştirelim" — Arsa Özellikleri'nin eski
+// "TÜM taşınmazlara uygula" checkbox'ı (createLandApplyAllControl,
+// KALDIRILDI — applyLandDataToAllTitleUnits() veri fonksiyonu hâlâ
+// duruyor/test ediliyor, yalnızca bu UI KALDIRILDI) BURADAN kaldırıldı;
+// aşağıdaki createLandCopyToSelectedControl() (zaten mevcut, "Tümünü Seç"
+// içeren) artık TEK araç.
+//
 // Kullanıcı talebi (2026-08-21): "bağımsız bölüm bilgileri için
 // uyguladığımız bu yöntemi arsa özellikleri içinde aynı mantık ile
 // uygulayalım" — createUnitCopyToSelectedControl()/openUnitCopyToSelectedModal()'ın
@@ -4490,15 +4571,14 @@ function renderSection() {
   // olurdu. createTitleUnitTabBar() Tapu/Adres/Takyidat'a özgü hiçbir şey
   // içermediğinden DEĞİŞTİRİLMEDEN yeniden kullanılıyor.
   if (section.id === "planning" && isCurrentUserAdmin() && state.fields.requestType === "Çoklu Talep" && isPlanningScopedByAdaParsel()) {
-    body.append(createTitleUnitTabBar());
-    // Kullanıcı talebi (2026-08-16): "farklı ada parselde imar durumu
-    // kısmında bazen tüm taşınmazlar aynı imar planına sahip olabiliyor
-    // (ör. 5 tarla hepsi Tarım Alanı) ... tümüne uygula seçeneği olsun" —
-    // AYNI görsel dil + "bir kez kopyala, sürekli senkron DEĞİL" deseni
-    // ("Tapu Kaydı Değişikliği" tümüne uygula kutucuğuyla, bkz.
-    // applyTitleRecordChangeToAllTitleUnits, AYNI ilke) — yalnızca burada
-    // tek bir alan değil, İmar Durumu'nun TÜM alanları kopyalanır.
-    body.append(createImarApplyAllControl());
+    // Kullanıcı talebi (2026-08-22): "tümüne uygula butonlarını seçili
+    // taşınmazlara uygula olarak değiştirelim zaten seçili taşınmazlara
+    // uygula kısmında tümüne uygula seçeneği bulunuyor" — eski
+    // createImarApplyAllControl() (körü körüne TÜM taşınmazlara uygulayan
+    // checkbox, KALDIRILDI) yerine Land/Unit/Değerleme'yle AYNI desen:
+    // "Seçili Taşınmazlara Kopyala" tab-çubuğu-içi buton (extraActions),
+    // modalindeki "Tümünü Seç" ile tümüne uygulama ihtiyacı da karşılanır.
+    body.append(createTitleUnitTabBar({ extraActions: [createImarCopyToSelectedControl()] }));
     body.append(createImarUnitsSummaryTablePreview());
   }
   // Kullanıcı talebi (2026-08-17): "Çoklu çalışmalarda ada parsel farklı
@@ -4508,13 +4588,14 @@ function renderSection() {
   // yeniden kullanılıyor, land'e özgü YENİ bir gate fonksiyonu YAZILMADI).
   if (section.id === "land" && isCurrentUserAdmin() && state.fields.requestType === "Çoklu Talep" && isPlanningScopedByAdaParsel()) {
     // Kullanıcı talebi (2026-08-21, devam): "arsa özelliklerindeki butonu
-    // da taşı" — "Seçili Taşınmazlara Kopyala" artık AYRI bir
-    // body.append(...) DEĞİL, createTitleUnitTabBar()'a extraActions
-    // olarak veriliyor ("unit" bölümüyle AYNI desen). "Tümüne uygula"
-    // checkbox'ı (createLandApplyAllControl) AYRI bir kontrol olarak tab
-    // çubuğunun ALTINDA kalmaya devam ediyor — BİLİNÇLİ OLARAK taşınmadı.
+    // da taşı" — "Seçili Taşınmazlara Kopyala" AYRI bir body.append(...)
+    // DEĞİL, createTitleUnitTabBar()'a extraActions olarak veriliyor
+    // ("unit" bölümüyle AYNI desen). Kullanıcı takip talebi (2026-08-22):
+    // "tümüne uygula butonlarını seçili taşınmazlara uygula olarak
+    // değiştirelim" — eski "Tümüne uygula" checkbox'ı (createLandApplyAllControl)
+    // BURADAN KALDIRILDI, "Seçili Taşınmazlara Kopyala" (modalindeki
+    // "Tümünü Seç" ile) artık TEK araç.
     body.append(createTitleUnitTabBar({ extraActions: [createLandCopyToSelectedControl()] }));
-    body.append(createLandApplyAllControl());
     body.append(createLandUnitsSummaryTablePreview());
   }
   // Kullanıcı talebi (2026-08-19, devam): "diyelim ki taşınmazlar toplam 3
