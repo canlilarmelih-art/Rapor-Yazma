@@ -1330,7 +1330,21 @@ const TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS = new Set([
   "landNote",
   "landClimateEarthquakeExplanation",
   "comparableMarketAnalysisText",
-  "saleabilityNote",
+  // "saleabilityNote" (2026-08-22'de BURADAN ÇIKARILDI, projectConformity/
+  // projectReviewDescription'ın 2026-08-19'daki AYNI çıkarma gerekçesiyle,
+  // bkz. yukarıdaki yorum): kullanıcı talebi — "değerleme metodu ...
+  // taşınmaz bazında değiştirilebilir, satış kabiliyeti ile ilgili kısmı
+  // nasıl yapabiliriz." Kök sorun: `saleability` (Satılabilir/Satılamaz
+  // seçimi, createValuationSaleabilityControl) ZATEN doğru şekilde
+  // taşınmaza-özgüydü, ama onu AÇIKLAYAN not (saleabilityNote) rapor-geneli
+  // PAYLAŞIMLI kalmıştı — iki taşınmaz FARKLI nedenlerle "Satılamaz"
+  // işaretlense bile İKİSİ DE AYNI notu gösteriyordu (son yazılan
+  // kazanıyordu). Diğer açıklama alanlarının (çevre/ulaşım/emsal analizi
+  // vb.) AKSİNE bu alanın anlamı GERÇEKTEN taşınmaza özgü — artık normal
+  // taşınmaza-özgü scoped bir alan (declaratif, section.fields'ta zaten
+  // var, bkz. sections[] "valuation" bölümü — burada listeden çıkarmak
+  // TEK BAŞINA yeterli, titleChangedRecords/projectConformity gibi ELLE
+  // scoped-set'e eklemeye GEREK YOK).
   // "Adres ve Konum" — Çevresel Özellik bloğu (2026-08-12)
   "mainArtery",
   "environmentRegionType",
@@ -2011,6 +2025,32 @@ function getTitleUnitScopedFieldKeys() {
 // gereken Değerleme alanları" listesi) alındı.
 function getValuationPerUnitOnlyFieldKeys() {
   return [
+    // "valuationMethod"/"saleability" (2026-08-22 eklendi) — kullanıcı
+    // talebi: "değerleme metodu ... taşınmaz bazında değiştirilebilir,
+    // satış kabiliyeti ile ilgili kısmı nasıl yapabiliriz?" Aşağıdaki 48
+    // anahtarın AKSİNE bu ikisi `clearLandOwnershipDependentData()`'nın
+    // `exactKeys` kanonik kaynağından GELMİYOR (bilinçli sapma — o
+    // fonksiyon Arsa/Tarla'ya geçişte BİNA-özgü verileri temizler, bu ikisi
+    // bina-özgü değil, Arsa/Tarla'da da geçerli genel Değerleme sınıflandırma
+    // alanları). KÖK NEDEN (test sırasında keşfedildi, kullanıcı
+    // bildirmeden ÖNCE): section.fields'ta DEKLARATİF DEĞİLLER
+    // (createValuationMethodControl/createValuationSaleabilityControl ile
+    // PROGRAMATİK yazılıyorlar, titleChangedRecords/projectConformity'yle
+    // AYNI boşluk sınıfı) VE bu listede de YOKTULAR — yani "valuation"
+    // TITLE_UNIT_SCOPED olmasına RAĞMEN ikisi de HİÇ scoped DEĞİLDİ, tab
+    // değiştirince PAYLAŞILIYORLARDI (bir taşınmazda değiştirilince TÜM
+    // taşınmazlarda değişiyordu — kullanıcının "taşınmaz bazında
+    // değiştirebilir" beklentisiyle ÇELİŞEN gerçek davranış). "Ortak
+    // varsayılan" beklentisi (her taşınmazda ilk açılışta "Emsal
+    // Karşılaştırma Yöntemi"/"Satılabilir") artık scoping'DEN BAĞIMSIZ
+    // ayrı bir mekanizmayla (applyValuationDefaults(), zaten var, her
+    // taşınmazın Değerleme sekmesi ilk açıldığında boşsa doldurur)
+    // karşılanıyor — burada taşınmaza-özgü yapmak bu varsayılanı BOZMAZ,
+    // yalnızca DEĞİŞTİRME'nin artık gerçekten bağımsız olmasını sağlar.
+    // "saleabilityNote" (açıklama metni, section.fields'ta ZATEN deklaratif)
+    // İÇİN AYRI bir düzeltme yeterliydi — bkz. TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS
+    // yorumu (BURADAN çıkarıldı, buraya EKLENMESİNE gerek yok).
+    "valuationMethod", "saleability",
     "legalValueArea", "currentValueArea", "legalRentArea", "currentRentArea",
     "legalValueUnit", "currentValueUnit", "legalRentUnit", "currentRentUnit",
     "legalValueComparableAutoManual", "currentValueComparableAutoManual",

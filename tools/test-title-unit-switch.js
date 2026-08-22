@@ -175,8 +175,8 @@ let sections = [
   // Degerleme (valuation) scoping-gap-fix testi icin fixture'a eklendi -
   // gercek app.js'teki valuation bolumunun kucultulmus bir kopyasi
   // (legalValue/currentValue zaten declaratif/dogru scoped; saleabilityNote
-  // shared setinde - gercek TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS'teki
-  // ayrimi yansitir).
+  // ARTIK (2026-08-22) shared setinde DEGIL - gercek
+  // TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS'teki cikarmayi yansitir).
   // "landUnitValue" (2026-08-21) Kat İrtifakı'nda (Yatay/Dikey) paylaşımlı
   // testi icin fixture'a eklendi.
   { id: "valuation", fields: [{ key: "legalValue" }, { key: "currentValue" }, { key: "saleabilityNote" }, { key: "landUnitValue" }] },
@@ -193,7 +193,9 @@ let state = null;
 // (bkz. asagidaki senaryo 6 duzeltmesi).
 const TITLE_UNIT_SCOPED_SECTION_IDS = ["address", "title", "encumbrance", "planning", "land", "documents", "comparables", "valuation", "unit", "building"];
 const TITLE_UNIT_SCOPED_TABLE_KEYS_BASE = ["title", "encumbrance", "encumbranceDeclarations", "encumbranceAnnotations", "encumbranceMortgages", "comparables", "unitFloors", "buildingFloors"];
-const TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS = new Set(["transport", "nearby", "environmentDescription", "takbisSummary", "reviewedDocumentsDescription", "comparableMarketAnalysisText", "saleabilityNote"]);
+// "saleabilityNote" (2026-08-22'de BURADAN CIKARILDI - gercek app.js'teki
+// AYNI cikarmayi yansitir, bkz. asagidaki YENI senaryo).
+const TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS = new Set(["transport", "nearby", "environmentDescription", "takbisSummary", "reviewedDocumentsDescription", "comparableMarketAnalysisText"]);
 // computeValuationFieldsForAllTitleUnits() GERCEK olarak asagida extract
 // edilir, ama onun cagirdigi refreshValuationComputedFields() (gercekte
 // ~15 fonksiyonluk, DOM-erisimli COK GENIS bir zincir) burada BILEREK
@@ -897,6 +899,49 @@ assert.match(appSource, /panel\.dataset\.parcelScope = mixedParcels \? "mixed" :
   const primaryAgain = sandbox.getState();
   assert.equal(primaryAgain.fields.projectConformity, "Birincilin aciklamasi", "Birincilin projectConformity'si 2. tasinmazdan ETKILENMEDEN (taşınmaza-özgü) korunmali.");
   console.log("projectConformity/projectReviewDescription artik tasinmaza-ozgu (rapor-geneli paylasim CIKARILDI) testi tamam.");
+}
+
+// --- 26b) Degerleme: valuationMethod/saleability/saleabilityNote artik ----
+// RAPOR-GENELI PAYLASIMLI DEGIL, tasinmaza-ozgu (2026-08-22) - kullanici:
+// "degerleme metodu ... tasinmaz bazinda degistirilebilir. satis kabiliyeti
+// ile ilgili kismi nasil yapabiliriz?" KOK SORUN (arastirma sirasinda
+// kesfedildi, ilk izlenimin AKSINE): `valuationMethod` VE `saleability`
+// section.fields'ta HIC DEKLARATIF DEGILLERDI (titleChangedRecords/
+// projectConformity'yle AYNI bosluk sinifi) VE getValuationPerUnitOnlyFieldKeys()
+// listesinde de YOKTULAR - yani "valuation" TITLE_UNIT_SCOPED olmasina
+// RAGMEN İKİSİ DE HİÇ scoped DEGILDI: bir tasinmazda degistirilince TUM
+// tasinmazlarda degisiyordu (kullanicinin "tasinmaz bazinda degistirebilir"
+// beklentisiyle DOGRUDAN CELISEN gercek davranis). saleabilityNote ise
+// section.fields'ta DEKLARATIFTI ama TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS'te
+// (paylasimli aciklamalar) BULUNUYORDU - AYNI sonuc, farkli mekanizma.
+// Duzeltme: valuationMethod/saleability getValuationPerUnitOnlyFieldKeys()'e
+// eklendi, saleabilityNote TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS'ten
+// CIKARILDI (projectConformity/projectReviewDescription'in, senaryo 26,
+// AYNI deseni). "Ortak varsayilan" (ilk acilista "Emsal Karsilastirma
+// Yontemi"/"Satilabilir") ayri bir mekanizmadan (applyValuationDefaults(),
+// DOM'a bagli oldugu icin burada extract EDILMEDI) geliyor - bu senaryo
+// yalnizca SCOPING'i (degistirmenin bagimsiz olmasini) dogrular.
+{
+  const state = freshState();
+  state.fields.valuationMethod = "Emsal Karşılaştırma Yöntemi";
+  state.fields.saleability = "Satılamaz";
+  state.fields.saleabilityNote = "Birincinin satis engeli aciklamasi";
+  sandbox.setState(state);
+  const newIndex = sandbox.fns.addTitleUnitTab();
+  sandbox.fns.switchActiveTitleUnit(newIndex);
+  const secondUnit = sandbox.getState();
+  assert.equal(secondUnit.fields.valuationMethod, undefined, "DUZELTME: valuationMethod ARTIK tasinmaza-ozgu - 2. (yeni/bos) tasinmaza SIZMAMALI (eskiden hic scoped olmadigindan sizardi).");
+  assert.equal(secondUnit.fields.saleability, undefined, "DUZELTME: saleability ARTIK tasinmaza-ozgu - 2. (yeni/bos) tasinmaza SIZMAMALI (eskiden hic scoped olmadigindan sizardi).");
+  assert.equal(secondUnit.fields.saleabilityNote, undefined, "DUZELTME: saleabilityNote ARTIK tasinmaza-ozgu - 2. (yeni/bos) tasinmaza SIZMAMALI (eskiden rapor geneli paylasimli oldugundan sizardi).");
+
+  secondUnit.fields.valuationMethod = "Gelir İndirgeme Yöntemi";
+  secondUnit.fields.saleability = "Satılamaz";
+  secondUnit.fields.saleabilityNote = "Ikincinin FARKLI satis engeli aciklamasi";
+  sandbox.fns.switchActiveTitleUnit(0);
+  const primaryAgain = sandbox.getState();
+  assert.equal(primaryAgain.fields.valuationMethod, "Emsal Karşılaştırma Yöntemi", "Birincilin valuationMethod'u 2. tasinmazdan ETKILENMEDEN (taşınmaza-özgü) korunmali - artik ikisi de FARKLI metot secebilir.");
+  assert.equal(primaryAgain.fields.saleabilityNote, "Birincinin satis engeli aciklamasi", "Birincilin saleabilityNote'u 2. tasinmazdan ETKILENMEDEN (taşınmaza-özgü) korunmali - artik ikisi de FARKLI gerekce gosterebilir.");
+  console.log("valuationMethod/saleability/saleabilityNote artik tasinmaza-ozgu (rapor-geneli paylasim CIKARILDI) testi tamam.");
 }
 
 // --- 27) Emsaller (comparables): Arsa/Tarla Coklu Talep'te PAYLASIMLI -----
