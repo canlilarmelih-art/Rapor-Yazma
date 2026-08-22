@@ -148,6 +148,14 @@ const functionNames = [
 const sandboxSource = `
 const MULTI_TITLE_UNIT_OWNERSHIP_TYPES = new Set(["Dikey Kat İrtifakı", "Yatay Kat İrtifakı", "Müstakil Bina", "Arsa", "Tarla"]);
 let sections = [
+  // "case" (Dosya ve Rapor) scoping-gap-fix testi (2026-08-22) icin
+  // fixture'a eklendi - gercek app.js'teki case bolumunun kucultulmus bir
+  // kopyasi. requestType zaten ayri bir inline kontrolle (field.key ===
+  // "requestType") kapsam disi tutuluyor, burada declare edilmesine
+  // GEREK YOK (gercek app.js'te de fixture disi bir davranis). ownershipType
+  // ise BILEREK shared setine EKLENMEDI (syncMultiTitleUnitOwnershipType'in
+  // KENDI senkron-yayma mekanizmasi icin taşınmaza-özgü KALMALI).
+  { id: "case", fields: [{ key: "bank" }, { key: "customerName" }, { key: "caseName" }, { key: "appointmentType" }, { key: "appointmentDate" }, { key: "municipalityInspectionDate" }, { key: "ownershipType" }, { key: "legalUsageNature" }] },
   { id: "title", fields: [{ key: "blockNo" }, { key: "parcelNo" }, { key: "titleBlockName" }, { key: "unitNo" }, { key: "titleQuality" }, { key: "titleRecordChange" }] },
   { id: "encumbrance", fields: [{ key: "takbisSummary" }, { key: "takbisDate" }] },
   { id: "address", fields: [{ key: "city" }] },
@@ -192,14 +200,17 @@ let sections = [
   { id: "building", fields: [] },
 ];
 let state = null;
-// "unit"/"building" (2026-08-20) - gercek TITLE_UNIT_SCOPED_SECTION_IDS'in
-// (app.js) guncel halini yansitir; onceden bu fixture kopyasi bayatlamisti
-// (bkz. asagidaki senaryo 6 duzeltmesi).
-const TITLE_UNIT_SCOPED_SECTION_IDS = ["address", "title", "encumbrance", "planning", "land", "documents", "comparables", "valuation", "unit", "building"];
+// "unit"/"building" (2026-08-20), "case" (2026-08-22) - gercek
+// TITLE_UNIT_SCOPED_SECTION_IDS'in (app.js) guncel halini yansitir; onceden
+// bu fixture kopyasi bayatlamisti (bkz. asagidaki senaryo 6 duzeltmesi).
+const TITLE_UNIT_SCOPED_SECTION_IDS = ["case", "address", "title", "encumbrance", "planning", "land", "documents", "comparables", "valuation", "unit", "building"];
 const TITLE_UNIT_SCOPED_TABLE_KEYS_BASE = ["title", "encumbrance", "encumbranceDeclarations", "encumbranceAnnotations", "encumbranceMortgages", "comparables", "unitFloors", "buildingFloors"];
 // "saleabilityNote" (2026-08-22'de BURADAN CIKARILDI - gercek app.js'teki
-// AYNI cikarmayi yansitir, bkz. asagidaki YENI senaryo).
-const TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS = new Set(["transport", "nearby", "environmentDescription", "takbisSummary", "reviewedDocumentsDescription", "comparableMarketAnalysisText"]);
+// AYNI cikarmayi yansitir, bkz. asagidaki YENI senaryo). "bank"/"customerName"/
+// "caseName"/"appointmentType"/"appointmentDate"/"municipalityInspectionDate"
+// (2026-08-22, devam - "case" scoping-gap-fix) BURAYA EKLENDI - gercek
+// app.js'teki AYNI eklemeyi yansitir.
+const TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS = new Set(["transport", "nearby", "environmentDescription", "takbisSummary", "reviewedDocumentsDescription", "comparableMarketAnalysisText", "bank", "customerName", "caseName", "appointmentType", "appointmentDate", "municipalityInspectionDate"]);
 // computeValuationFieldsForAllTitleUnits() GERCEK olarak asagida extract
 // edilir, ama onun cagirdigi refreshValuationComputedFields() (gercekte
 // ~15 fonksiyonluk, DOM-erisimli COK GENIS bir zincir) burada BILEREK
@@ -984,6 +995,57 @@ assert.match(appSource, /panel\.dataset\.parcelScope = mixedParcels \? "mixed" :
   console.log("valuationMethod/saleability Bolum Excel deklaratif alan testi tamam.");
 }
 
+// --- 26d) "case" (Dosya ve Rapor): Banka/Musteri/Is Bilgileri artik --------
+// RAPOR-GENELI PAYLASIMLI (2026-08-22) - kullanici:
+// "docs/coklu-talep-tarama-ve-yol-haritasi.md" taramasinda bulunan "case
+// bolumu taşınmaza-özgü kalmis" sorununa "evet duzelt" onayi. KOK NEDEN:
+// "case" TITLE_UNIT_SCOPED_SECTION_IDS'teydi, requestType DISINDA hicbir
+// alani paylasim-istisna setinde degildi - bank/customerName/caseName/
+// appointmentType/appointmentDate/municipalityInspectionDate YANLISLIKLA
+// tasinmaza-ozguydu (yeni tasinmaz eklendiginde Banka/Musteri/Is Adi BOS
+// basliyordu). Duzeltme: bu 6 alan TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS'e
+// eklendi. `ownershipType` (KENDI senkron-yayma mekanizmasi var,
+// syncMultiTitleUnitOwnershipType) ve `legalUsageNature` (karma kullanimli
+// binalarda GERCEKTEN tasinmaza gore farklilasabilir) BILINCLI OLARAK
+// EKLENMEDI - asagida REGRESYON olarak dogrulanir.
+{
+  const state = freshState({
+    fields: {
+      ...freshState().fields,
+      bank: "Türkiye İş Bankası A.Ş.", customerName: "Ahmet Yılmaz",
+      caseName: "2026/1234 İş Dosyası", appointmentType: "İçi görülmüştür",
+      appointmentDate: "2026-08-20", municipalityInspectionDate: "2026-08-21",
+      ownershipType: "Yatay Kat İrtifakı", legalUsageNature: "Konut",
+    },
+  });
+  sandbox.setState(state);
+  const newIndex = sandbox.fns.addTitleUnitTab();
+  sandbox.fns.switchActiveTitleUnit(newIndex);
+  sandbox.fns.syncMultiTitleUnitOwnershipType();
+  const secondUnit = sandbox.getState();
+  assert.equal(secondUnit.fields.bank, "Türkiye İş Bankası A.Ş.", "DUZELTME: Banka YENI (bos) tasinmazda da AYNI gorunmeli (paylasimli).");
+  assert.equal(secondUnit.fields.customerName, "Ahmet Yılmaz", "DUZELTME: Musteri YENI tasinmazda da AYNI gorunmeli.");
+  assert.equal(secondUnit.fields.caseName, "2026/1234 İş Dosyası", "DUZELTME: Is Adi YENI tasinmazda da AYNI gorunmeli.");
+  assert.equal(secondUnit.fields.appointmentType, "İçi görülmüştür", "DUZELTME: Randevu turu YENI tasinmazda da AYNI gorunmeli.");
+  assert.equal(secondUnit.fields.appointmentDate, "2026-08-20", "DUZELTME: Randevu tarihi YENI tasinmazda da AYNI gorunmeli.");
+  assert.equal(secondUnit.fields.municipalityInspectionDate, "2026-08-21", "DUZELTME: Belediye inceleme tarihi YENI tasinmazda da AYNI gorunmeli.");
+  // REGRESYON: ownershipType KENDI mekanizmasiyla (sync, unit 0'in degeri)
+  // dogru geliyor - ama bu, blanket-paylasim DEGIL, syncMultiTitleUnitOwnershipType'in
+  // ayri bir yayin islemi. legalUsageNature ise HICBIR mekanizma yok -
+  // scoped oldugundan YENI tasinmazda BOS kalmali (bilincli, karma kullanim
+  // senaryosu icin).
+  assert.equal(secondUnit.fields.ownershipType, "Yatay Kat İrtifakı", "ownershipType kendi senkron mekanizmasiyla dogru gelmeli (blanket-paylasim degil).");
+  assert.equal(secondUnit.fields.legalUsageNature, undefined, "REGRESYON: legalUsageNature HALA tasinmaza-ozgu olmali (karma kullanimli bina senaryosu icin BILINCLI OLARAK paylasimli YAPILMADI).");
+
+  // Yeni tasinmazda banka degistirilip birincile donulunce, birincilin de
+  // GUNCEL (yeni) degeri gormesi gerekir (gercek paylasim, kopya DEGIL).
+  secondUnit.fields.bank = "Ziraat Bankası A.Ş.";
+  sandbox.fns.switchActiveTitleUnit(0);
+  assert.equal(sandbox.getState().fields.bank, "Ziraat Bankası A.Ş.", "Yeni tasinmazda degistirilen banka, birincile donulunce de GUNCEL gorunmeli (gercek paylasim).");
+
+  console.log("case (Banka/Musteri/Is Bilgileri) artik tasinmaza-ozgu DEGIL, rapor-geneli paylasimli testi tamam.");
+}
+
 // --- 27) Emsaller (comparables): Arsa/Tarla Coklu Talep'te PAYLASIMLI -----
 // Kullanici talebi (2026-08-19, devam): "COKLU ARSA TARLA raporlarinda
 // emsaller ortak olmali. yani her tasinmaz icin ayri emsal girilmemeli."
@@ -1094,6 +1156,14 @@ assert.match(appSource, /panel\.dataset\.parcelScope = mixedParcels \? "mixed" :
   sandbox.setState(stateYatay);
   const newIndexYatay = sandbox.fns.addTitleUnitTab();
   sandbox.fns.switchActiveTitleUnit(newIndexYatay);
+  // "case" (Dosya ve Rapor, 2026-08-22 scoping-gap-fix) artik "ownershipType"i
+  // de kapsiyor - gercek renderSection()'in HER render'da yaptigi gibi,
+  // switchActiveTitleUnit'in HEMEN ardindan syncMultiTitleUnitOwnershipType()
+  // cagrilir (aksi halde YENI/bos tasinmazda ownershipType GECICI olarak
+  // undefined kalir, isCondominiumEasementOwnershipType() yanlislikla false
+  // doner - gercek UI'da HICBIR ZAMAN gorulmeyen bir ara durum, cunku
+  // render() HER ZAMAN bunu hemen takip eder).
+  sandbox.fns.syncMultiTitleUnitOwnershipType();
   assert.equal(sandbox.getState().fields.landUnitValue, "12500", "Yatay Kat Irtifaki: landUnitValue YENI (bos) tasinmazda da AYNI gorunmeli (paylasimli).");
   assert.equal(sandbox.getState().fields.legalValue, undefined, "REGRESYON: legalValue (paylasimli DEGIL) hala normal sekilde SIZMAMALI.");
   // Yeni tasinmazda deger degistirilip birincile donulunce, birincilin
@@ -1101,6 +1171,7 @@ assert.match(appSource, /panel\.dataset\.parcelScope = mixedParcels \? "mixed" :
   // "herhangi bir tabda girildiginde digerleri guncellenmeli" senaryosu.
   sandbox.getState().fields.landUnitValue = "99999";
   sandbox.fns.switchActiveTitleUnit(0);
+  sandbox.fns.syncMultiTitleUnitOwnershipType();
   assert.equal(sandbox.getState().fields.landUnitValue, "99999", "Yeni tasinmazda girilen deger, birincile donulunce de GUNCEL gorunmeli (gercek paylasim, kopya DEGIL).");
 
   // (b) Dikey Kat Irtifaki: AYNI davranis.
@@ -1110,6 +1181,7 @@ assert.match(appSource, /panel\.dataset\.parcelScope = mixedParcels \? "mixed" :
   sandbox.setState(stateDikey);
   const newIndexDikey = sandbox.fns.addTitleUnitTab();
   sandbox.fns.switchActiveTitleUnit(newIndexDikey);
+  sandbox.fns.syncMultiTitleUnitOwnershipType();
   assert.equal(sandbox.getState().fields.landUnitValue, "7000", "Dikey Kat Irtifaki: landUnitValue de PAYLASIMLI olmali.");
 
   // (c) REGRESYON: Mustakil Bina'da (Kat Irtifaki DEGIL) landUnitValue
@@ -1120,8 +1192,10 @@ assert.match(appSource, /panel\.dataset\.parcelScope = mixedParcels \? "mixed" :
   sandbox.setState(stateMustakil);
   const newIndexMustakil = sandbox.fns.addTitleUnitTab();
   sandbox.fns.switchActiveTitleUnit(newIndexMustakil);
+  sandbox.fns.syncMultiTitleUnitOwnershipType();
   assert.equal(sandbox.getState().fields.landUnitValue, undefined, "REGRESYON: Mustakil Bina'da landUnitValue PAYLASIMLI OLMAMALI, yeni tasinmazda BOS olmali.");
   sandbox.fns.switchActiveTitleUnit(0);
+  sandbox.fns.syncMultiTitleUnitOwnershipType();
   assert.equal(sandbox.getState().fields.landUnitValue, "5000", "Mustakil Bina: birincilin landUnitValue'su round-trip korunmali (taşınmaza-ozgu).");
 
   assert.equal(sandbox.fns.isCondominiumEasementOwnershipType("Yatay Kat İrtifakı"), true);
@@ -1152,6 +1226,10 @@ assert.match(appSource, /panel\.dataset\.parcelScope = mixedParcels \? "mixed" :
   sandbox.setState(stateYatay);
   const newIndex = sandbox.fns.addTitleUnitTab();
   sandbox.fns.switchActiveTitleUnit(newIndex);
+  // "case" scoping-gap-fix (2026-08-22) sonrasi ownershipType de scoped -
+  // gercek renderSection() gibi hemen senkronize edilir (bkz. 29b'deki
+  // AYNI not).
+  sandbox.fns.syncMultiTitleUnitOwnershipType();
   // Bu noktada unit 0'in verisi primaryTitleUnitShadow'a park edildi -
   // landUnitValue scoped OLMADIGI icin o golgede HIC YOK.
   assert.equal(sandbox.getState().primaryTitleUnitShadow.fields.landUnitValue, undefined, "Golge (shadow) landUnitValue'yu HIC ICERMEMELI (bu, kok neden dogrulamasi).");
@@ -1174,6 +1252,7 @@ assert.match(appSource, /panel\.dataset\.parcelScope = mixedParcels \? "mixed" :
   sandbox.setState(stateMustakil);
   const newIndexM = sandbox.fns.addTitleUnitTab();
   sandbox.fns.switchActiveTitleUnit(newIndexM);
+  sandbox.fns.syncMultiTitleUnitOwnershipType();
   sandbox.getState().fields.landUnitValue = "9999";
   const fieldsForUnit0Mustakil = sandbox.fns.getTitleUnitFieldsForLabel(0);
   assert.equal(fieldsForUnit0Mustakil.landUnitValue, "5000", "REGRESYON: Mustakil Bina'da unit 0'in gorunumu KENDI (golgedeki) degerini gostermeli, aktif unit'in degeriyle KARISMAMALI.");

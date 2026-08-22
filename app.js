@@ -1389,6 +1389,35 @@ const TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS = new Set([
   "commercialFirmType",
   "commercialFrontageRoadType",
   "commercialDevelopmentCompleted",
+  // "case" (Dosya ve Rapor — Banka/Müşteri/İş Bilgileri, 2026-08-22) —
+  // kullanıcı: "banka müşteri iş bilgileri rapor-geneli mi taşınmaz bazlı
+  // mı olması kesinleştirilmelidir" (bkz. docs/coklu-talep-tarama-ve-yol-haritasi.md
+  // madde 3) → "evet düzelt". KÖK NEDEN (kaynaktan doğrulandı): "case"
+  // TITLE_UNIT_SCOPED_SECTION_IDS'te, ve `requestType` DIŞINDA hiçbir
+  // alanı bu sette değildi — yani bank/customerName/caseName/appointmentType/
+  // appointmentDate/municipalityInspectionDate YANLIŞLIKLA taşınmaza-özgüydü:
+  // yeni bir taşınmaz eklendiğinde (TAKBİS aktarımı veya "+ Taşınmaz Ekle")
+  // Banka/Müşteri/İş Adı BOŞ başlıyordu, HER taşınmaz tabında yeniden
+  // girilmesi gerekiyordu — aynı iş dosyasının aynı banka/müşterisi olmasına
+  // RAĞMEN. Kanıt: "case" bölümü İmar/Arsa/Değerleme/Bağımsız Bölüm'ün
+  // AKSİNE hiçbir taşınmaz-tab-çubuğu/özet-tablo UI'ı ALMIYOR
+  // (renderSection'da bu 6 alan için özel bir dal YOK) — yani kullanıcının
+  // bu alanların taşınmaz-bazında FARKLI olabileceğini görmesi/yönetmesi
+  // için HİÇBİR araç yok; sessiz taşınmaza-özgü kapsam bu yüzden bilinçli
+  // bir tasarım değil, gözden kaçmış bir kusurdu. `ownershipType` (Mülkiyet)
+  // ve `legalUsageNature`/`currentUsageNature`/`usageNatureDifference`
+  // (Kullanım Niteliği) BİLİNÇLİ OLARAK BURAYA EKLENMEDİ — Mülkiyet zaten
+  // KENDİ senkron-yayma mekanizmasına sahip (syncMultiTitleUnitOwnershipType,
+  // taşınmaza-özgü kalması GEREKİR, aksi halde o mekanizma bozulur);
+  // Kullanım Niteliği ise (ör. karma kullanımlı bir bina — bazı bağımsız
+  // bölümler Konut, bazıları İşyeri) GERÇEKTEN taşınmaza göre farklılaşabilir,
+  // paylaşımlı yapmak bu meşru senaryoyu KIRARDI.
+  "bank",
+  "customerName",
+  "caseName",
+  "appointmentType",
+  "appointmentDate",
+  "municipalityInspectionDate",
 ]);
 
 // Kullanıcı talebi (2026-08-16): "Aynı ada parselde yer alan çoklu rapor

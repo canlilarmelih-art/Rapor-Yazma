@@ -1,6 +1,6 @@
 # Çoklu Talep Tarama Raporu ve Yol Haritası
 
-> Son güncelleme: 0.0.521 (2026-08-22), `app.js` gerçek kaynağı taranarak
+> Son güncelleme: 0.0.522 (2026-08-22), `app.js` gerçek kaynağı taranarak
 > ve `npm run verify` (EXIT:0) ile doğrulanarak. Önceki tarama tarihinden
 > bu yana pek çok madde çözüldü; bu revizyon her maddeyi kaynaktan tek tek
 > yeniden doğrulayıp durumunu günceller (**[ÇÖZÜLDÜ]** / **[KISMEN]** /
@@ -67,21 +67,18 @@ artık taşınmaza-özgü, uçtan uca test edilmiş. `landUnitValue` Kat
 İrtifakı'nda bilinçli olarak paylaşımlı (fiziksel gerekçe: tek arsa/birden
 çok bağımsız bölüm) — hem okuma hem yazma yolu doğru çalışıyor.
 
-### 3. Banka, müşteri ve iş bilgileri — **[AÇIK, KANITLANDI]**
+### 3. Banka, müşteri ve iş bilgileri — **[ÇÖZÜLDÜ]** (2026-08-22, 0.0.522)
 
-Önceki taramada "risk ihtimali" olarak işaretlenmişti; bu revizyonda
-kaynaktan DOĞRULANDI: `"case"` bölümü (Dosya ve Rapor — Banka, Müşteri,
-İş Adı, Randevu Türü, Yasal Kullanım Niteliği vb.) `TITLE_UNIT_SCOPED_SECTION_IDS`
-içinde, ve `requestType` DIŞINDA (özel olarak hariç tutulan TEK alan) hiçbir
-`case` alanı `getTitleUnitScopedFieldKeys()`'in genel paylaşım-istisna
-setinde (`TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS`) yer almıyor. Sonuç:
-`bank`/`customerName`/`caseName`/`appointmentType` gibi alanlar ŞU AN
-YANLIŞLIKLA taşınmaza-özgü — yeni bir taşınmaz tabı eklendiğinde Banka/
-Müşteri/İş Adı BOŞ başlıyor, kullanıcının HER taşınmaz tabında yeniden
-girmesi gerekiyor (aynı iş dosyasının aynı banka/müşterisi olmasına
-rağmen). Düzeltme deseni bellidir (`landUnitValue`'nun izlediği "scoped
-set'ten çıkar, tek paylaşımlı kaynak" veya `TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS`'e
-ekleme) ama HENÜZ UYGULANMADI — bu, şu anki en somut/kanıtlanmış açık madde.
+Önceki taramada "risk ihtimali" olarak işaretlenmişti, bir sonraki
+revizyonda kaynaktan DOĞRULANDI ve düzeltildi: `bank`/`customerName`/
+`caseName`/`appointmentType`/`appointmentDate`/`municipalityInspectionDate`
+`TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS`'e eklenerek artık gerçekten
+rapor-geneli paylaşımlı — yeni bir taşınmaz tabı eklendiğinde bu alanlar
+artık BOŞ başlamıyor, herhangi birinde değişiklik diğerlerine de yansıyor.
+`ownershipType` (kendi senkron-yayma mekanizması var) ve `legalUsageNature`/
+`currentUsageNature`/`usageNatureDifference` (karma kullanımlı binalarda
+GERÇEKTEN taşınmaza göre farklılaşabilir) BİLİNÇLİ OLARAK taşınmaza-özgü
+bırakıldı. Test: `tools/test-title-unit-switch.js` senaryo 26d.
 
 ### 4. Word/PDF ve banka şablonu çıktısı — **[ÇÖZÜLDÜ]**
 
@@ -136,13 +133,12 @@ commit+push+CI (yeşil) ile kapatılıyor (bkz. `handoff.md`, en güncel giriş
 ### Faz 1: Veri Bütünlüğü
 
 1. ~~Bağımsız Bölüm, Ana Gayrimenkul ve Değerleme alanlarının tam envanterini çıkar.~~ **[ÇÖZÜLDÜ]**
-2. ~~Her alanı taşınmaz bazlı veya rapor-geneli olarak sınıflandır.~~ **[ÇÖZÜLDÜ]** (Değerleme/Bağımsız Bölüm/Ana Gayrimenkul için) — **[AÇIK]** `case` (Banka/Müşteri/İş Bilgileri) için, bkz. madde 3.
-3. ~~Tab değişiminde veri kaybı ve yanlış paylaşım testlerini tamamla.~~ **[ÇÖZÜLDÜ]** (kapsanan bölümler için — `case` istisna).
+2. ~~Her alanı taşınmaz bazlı veya rapor-geneli olarak sınıflandır.~~ **[ÇÖZÜLDÜ]** (Değerleme/Bağımsız Bölüm/Ana Gayrimenkul/`case` için).
+3. ~~Tab değişiminde veri kaybı ve yanlış paylaşım testlerini tamamla.~~ **[ÇÖZÜLDÜ]**
 4. Normal kullanıcıların çoklu talep arayüzüne erişim kararını netleştir. **[AÇIK]** (madde 5).
 
-**Yeni öncelik**: `case` bölümünün Banka/Müşteri/İş Adı/Randevu Türü
-alanlarını rapor-geneli paylaşımlı yap (madde 3) — en somut, en düşük
-riskli, en yüksek kullanıcı-etkili kalan Faz 1 maddesi.
+**Kalan öncelik**: Faz 1'in veri-bütünlüğü kısmı artık tamamlandı — kalan
+tek açık madde normal kullanıcı erişim kararı (madde 5).
 
 ### Faz 2: Excel
 
@@ -177,7 +173,7 @@ yapısal kısıta bağlı — admin girişi bu ortamda mevcut değil.
 
 ## Test Durumu
 
-`npm run verify` (check + tüm test dosyaları) 0.0.521 itibarıyla EXIT:0 —
+`npm run verify` (check + tüm test dosyaları) 0.0.522 itibarıyla EXIT:0 —
 `case`/`unit`/`building`/`valuation`/`land`/`planning`/`documents`
 bölümlerinin taşınmaz-bazlı kapsam, "Seçili Taşınmazlara Kopyala", Bölüm
 Excel gate kablolaması ve özet tablo davranışları dahil geniş bir
@@ -201,4 +197,4 @@ arama için fonksiyon/const adını kullanın:
 - `getMissingRequiredFields()` — "Zorunlu alanlar" doğrulama paneli
 - `docs/coklu-takbis-import-plan.md` — çoklu TAKBİS tasarım notu
 - `docs/coklu-talep-fonksiyonel-test-bulgulari.md` — fonksiyonel test bulguları
-- `handoff.md` — en güncel değişiklik günlüğü (0.0.500-0.0.521 arası bu taramanın çoğu maddesini kapsar)
+- `handoff.md` — en güncel değişiklik günlüğü (0.0.500-0.0.522 arası bu taramanın çoğu maddesini kapsar)
