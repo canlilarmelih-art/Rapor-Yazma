@@ -56,6 +56,8 @@ const functionNames = [
   "isCondominiumEasementOwnershipType",
   "mapTitleQualityToLegalUsageNature",
   "suggestLegalUsageNatureFromTakbisTitleQuality",
+  "applyLegalUsageNatureSuggestionToUnitFields",
+  "suggestLegalUsageNatureForAllTitleUnits",
 ];
 
 const sandboxSource = `
@@ -67,6 +69,7 @@ const sandboxSource = `
     getState: () => state,
     mapTitleQualityToLegalUsageNature,
     suggestLegalUsageNatureFromTakbisTitleQuality,
+    suggestLegalUsageNatureForAllTitleUnits,
   };
 `;
 // eslint-disable-next-line no-new-func
@@ -119,6 +122,64 @@ const fns = new Function(sandboxSource)();
   assert.equal(fns.getState().fields.legalUsageNature, undefined, "Eşleşmeyen titleQuality'de legalUsageNature ZORLA DOLDURULMAMALI.");
 
   console.log("suggestLegalUsageNatureFromTakbisTitleQuality kapsam + manuel-secim-korumasi testi tamam.");
+}
+
+// --- 3) suggestLegalUsageNatureForAllTitleUnits(): TOPLU/coklu TAKBIS ----
+// senaryosu (2026-08-22 kullanici bildirimi) -- Mulkiyet KENDISI Kat
+// Irtifaki'na degistiginde SADECE aktif tasinmaz degil, RAPORDAKI TUM
+// tasinmazlar (her biri KENDI titleQuality'sine gore) doldurulmali.
+{
+  // (a) Aktif taşınmaz PRIMARY (index 0): primaryTitleUnitShadow YOK,
+  // yalnizca titleUnits[] dolaşılır.
+  const statePrimaryActive = {
+    activeTitleUnitIndex: 0,
+    fields: { ownershipType: "Dikey Kat İrtifakı", titleQuality: "MESKEN" },
+    titleUnits: [
+      { fields: { titleQuality: "İŞYERİ" } }, // index 0 -> tasinmaz #2 (boş legalUsageNature)
+      { fields: { titleQuality: "OFİS", legalUsageNature: "Ofis" } }, // elle seçilmiş, EZİLMEMELİ
+      { fields: { titleQuality: "Bilinmeyen Nitelik" } }, // eşleşmez, boş kalmalı
+    ],
+  };
+  fns.setState(statePrimaryActive);
+  fns.suggestLegalUsageNatureForAllTitleUnits();
+  const s1 = fns.getState();
+  assert.equal(s1.fields.legalUsageNature, "Konut", "Aktif (primary) taşınmaz kendi titleQuality'sine göre doldurulmalı.");
+  assert.equal(s1.titleUnits[0].fields.legalUsageNature, "İşyeri", "TÜM taşınmazlar (aktif olmayanlar dahil) kendi titleQuality'siyle doldurulmalı.");
+  assert.equal(s1.titleUnits[1].fields.legalUsageNature, "Ofis", "Elle seçilmiş legalUsageNature (Ofis) EZİLMEMELİ, kendi titleQuality'sinin önerisiyle (Konut) DEĞİŞMEMELİ.");
+  assert.equal(s1.titleUnits[2].fields.legalUsageNature, undefined, "Eşleşmeyen titleQuality'de zorla doldurulmamalı.");
+
+  // (b) Aktif taşınmaz PRIMARY DEĞİL (index 2 -> titleUnits[1]):
+  // primaryTitleUnitShadow (index 0'ın gölgesi) da dolaşılmalı.
+  const stateShadowActive = {
+    activeTitleUnitIndex: 2,
+    fields: { ownershipType: "Yatay Kat İrtifakı", titleQuality: "DÜKKAN" },
+    primaryTitleUnitShadow: { fields: { titleQuality: "MESKEN" } },
+    titleUnits: [
+      { fields: { titleQuality: "BÜRO" } }, // index 0 -> tasinmaz #2 (aktif değil)
+      { fields: { titleQuality: "FABRİKA" } }, // index 1 -> tasinmaz #3 (AKTİF, state.fields üzerinden zaten işlendi)
+    ],
+  };
+  fns.setState(stateShadowActive);
+  fns.suggestLegalUsageNatureForAllTitleUnits();
+  const s2 = fns.getState();
+  assert.equal(s2.fields.legalUsageNature, "İşyeri", "Aktif taşınmaz (Dükkan) kendi titleQuality'siyle doldurulmalı.");
+  assert.equal(s2.primaryTitleUnitShadow.fields.legalUsageNature, "Konut", "Primary'nin gölgesi (aktif değilken) de doldurulmalı.");
+  assert.equal(s2.titleUnits[0].fields.legalUsageNature, "Ofis", "Diğer taşınmazlar (aktif olmayan) kendi titleQuality'siyle doldurulmalı.");
+  assert.equal(s2.titleUnits[1].fields.legalUsageNature, undefined, "Aktif taşınmazın kendisi (titleUnits[1], index+1===activeTitleUnitIndex) BİR KEZ, state.fields üzerinden işlenir - titleUnits[1].fields ayrıca dokunulmamalı (o sadece aktifken kullanılmayan bir kopya).");
+
+  // (c) Kat İrtifakı DEĞİL -> tüm liste no-op.
+  const stateMustakil = {
+    activeTitleUnitIndex: 0,
+    fields: { ownershipType: "Müstakil Bina", titleQuality: "MESKEN" },
+    titleUnits: [{ fields: { titleQuality: "İŞYERİ" } }],
+  };
+  fns.setState(stateMustakil);
+  fns.suggestLegalUsageNatureForAllTitleUnits();
+  const s3 = fns.getState();
+  assert.equal(s3.fields.legalUsageNature, undefined, "REGRESYON: Müstakil Bina'da hiçbir taşınmaza öneri uygulanmamalı.");
+  assert.equal(s3.titleUnits[0].fields.legalUsageNature, undefined, "REGRESYON: Müstakil Bina'da diğer taşınmazlara da öneri uygulanmamalı.");
+
+  console.log("suggestLegalUsageNatureForAllTitleUnits toplu/coklu TAKBIS senaryosu testi tamam.");
 }
 
 console.log("TAKBIS -> Yasal Kullanim Niteligi otomatik oneri testleri basarili.");

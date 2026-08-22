@@ -5261,6 +5261,20 @@ function createForm(section) {
       if (section.id === "case" && field.key === "ownershipType") {
         syncMultiTitleUnitOwnershipType(enteredValue);
         if (syncEnvironmentRegionTypeWithOwnershipType()) clearFieldSourceOwnership("environmentRegionType");
+        // Kullanıcı bildirimi (2026-08-22, ekran görüntüsüyle): "otomatik
+        // seçilmemiş" — TAKBİS Mülkiyet'ten (ownershipType) ÖNCE
+        // yüklenmişse (tipik akış: önce TAKBİS PDF, sonra Mülkiyet
+        // dropdown'ı elle "Dikey/Yatay Kat İrtifakı" seçilir), öneri o an
+        // isCondominiumEasementOwnershipType() henüz false döndüğünden
+        // (applyTakbisTitleFieldsToReport çağrıldığı anda) SESSİZCE
+        // atlanıyordu — Mülkiyet SONRADAN Kat İrtifakı yapıldığında bir
+        // daha HİÇ tetiklenmiyordu. Burada da (Mülkiyet'in KENDİSİ
+        // değiştiğinde) çağırarak bu sıralamayı KAPATIYORUZ. TÜM-taşınmaz
+        // sürümünü kullanıyoruz (bkz. suggestLegalUsageNatureForAllTitleUnits
+        // yorumu) — toplu/çoklu TAKBİS senaryosunda Mülkiyet TEK sefer,
+        // genelde ilk taşınmaz sekmesindeyken değiştirilir; yalnızca aktif
+        // taşınmazı doldurmak diğer onlarca taşınmazı boş bırakırdı.
+        suggestLegalUsageNatureForAllTitleUnits();
       }
       // Çoklu TAKBİS Faz 2: "Çoklu Talep"ten çıkılırken tab çubuğu HEMEN
       // gizlenir (yukarıdaki renderSection kontrolü) — ama aktif taşınmaz
@@ -5397,6 +5411,9 @@ function createForm(section) {
       if (section.id === "case" && field.key === "ownershipType") {
         syncMultiTitleUnitOwnershipType(formattedValue);
         if (syncEnvironmentRegionTypeWithOwnershipType()) clearFieldSourceOwnership("environmentRegionType");
+        // bkz. yukarıdaki "input" olay dinleyicisindeki AYNI çağrının yorumu
+        // (TÜM-taşınmaz sürümü, yalnızca aktif taşınmaz değil).
+        suggestLegalUsageNatureForAllTitleUnits();
       }
       if (section.id === "case" && field.key === "requestType" && formattedValue !== "Çoklu Talep" && state.activeTitleUnitIndex !== 0) {
         switchActiveTitleUnit(0);
@@ -27890,12 +27907,49 @@ function applyTakbisTitleFieldsToReport(options = {}) {
 // belirleniyor, bu öneri o senaryolarda anlamsız/yanıltıcı olurdu.
 function suggestLegalUsageNatureFromTakbisTitleQuality() {
   if (!isCondominiumEasementOwnershipType()) return;
-  if (String(state.fields.legalUsageNature || "").trim()) return;
-  const suggestion = mapTitleQualityToLegalUsageNature(state.fields.titleQuality);
-  if (!suggestion) return;
-  state.fields.legalUsageNature = suggestion;
+  if (!applyLegalUsageNatureSuggestionToUnitFields(state.fields)) return;
   const control = document.querySelector('[data-field="legalUsageNature"]');
-  if (control && control.value !== suggestion) control.value = suggestion;
+  if (control && control.value !== state.fields.legalUsageNature) control.value = state.fields.legalUsageNature;
+}
+
+// suggestLegalUsageNatureFromTakbisTitleQuality()'nin AKTİF taşınmazdan
+// bağımsız çekirdeği — herhangi bir taşınmazın (aktif VEYA gölge/shadow)
+// `fields` nesnesine doğrudan uygulanabilir. "Yalnızca boşsa doldur, elle
+// seçimi asla ezme" ilkesi burada da geçerli. true döner ⇔ gerçekten
+// yazdı (çağıran DOM güncellemesi gibi ek işleri buna göre yapabilir).
+function applyLegalUsageNatureSuggestionToUnitFields(fields) {
+  if (!fields || String(fields.legalUsageNature || "").trim()) return false;
+  const suggestion = mapTitleQualityToLegalUsageNature(fields.titleQuality);
+  if (!suggestion) return false;
+  fields.legalUsageNature = suggestion;
+  return true;
+}
+
+// Kullanıcı bildirimi (2026-08-22, ekran görüntüsüyle): "otomatik
+// seçilmemiş" — gerçek senaryo TOPLU/çoklu-TAKBİS içe aktarımıydı (tek
+// yükleme ile onlarca bağımsız bölüm oluşuyor), o anda Mülkiyet henüz
+// Kat İrtifakı YAPILMAMIŞ olduğundan yukarıdaki tekil-taşınmaz öneri HİÇ
+// tetiklenmiyordu; kullanıcı Mülkiyet'i SONRADAN elle Dikey/Yatay Kat
+// İrtifakı yaptığında da öneri yalnızca O AN aktif olan TEK taşınmaza
+// uygulanıyordu — geri kalan onlarca taşınmaz için kullanıcının her
+// birinin sekmesini tek tek açması gerekirdi. Bu fonksiyon, Mülkiyet'in
+// KENDİSİ Kat İrtifakı'na değiştiği anda RAPORDAKİ TÜM taşınmazlara
+// (her biri KENDİ titleQuality'sine göre) tek seferde öneriyi uygular —
+// syncMultiTitleUnitOwnershipType()'ın (aynı olay noktasında zaten
+// ownershipType'ı tüm taşınmazlara yayan fonksiyon) taradığı AYNI
+// primaryTitleUnitShadow + titleUnits[] kümesini kullanır.
+function suggestLegalUsageNatureForAllTitleUnits() {
+  if (!isCondominiumEasementOwnershipType()) return;
+  suggestLegalUsageNatureFromTakbisTitleQuality();
+  if (state.activeTitleUnitIndex && state.activeTitleUnitIndex !== 0 && state.primaryTitleUnitShadow?.fields) {
+    applyLegalUsageNatureSuggestionToUnitFields(state.primaryTitleUnitShadow.fields);
+  }
+  (state.titleUnits || []).forEach((unit, index) => {
+    if (index + 1 === state.activeTitleUnitIndex) return;
+    if (!unit) return;
+    unit.fields = unit.fields || {};
+    applyLegalUsageNatureSuggestionToUnitFields(unit.fields);
+  });
 }
 
 // TAKBİS'in serbest metin "Bağımsız Bölüm Niteliği"nden legalUsageNature'ın
