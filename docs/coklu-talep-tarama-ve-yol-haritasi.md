@@ -1,5 +1,11 @@
 # Çoklu Talep Tarama Raporu ve Yol Haritası
 
+> Son güncelleme: 0.0.521 (2026-08-22), `app.js` gerçek kaynağı taranarak
+> ve `npm run verify` (EXIT:0) ile doğrulanarak. Önceki tarama tarihinden
+> bu yana pek çok madde çözüldü; bu revizyon her maddeyi kaynaktan tek tek
+> yeniden doğrulayıp durumunu günceller (**[ÇÖZÜLDÜ]** / **[KISMEN]** /
+> **[AÇIK]** etiketleriyle).
+
 ## Genel Durum
 
 Çoklu talep altyapısının önemli bölümü kurulmuş durumdadır:
@@ -12,97 +18,187 @@
 - Takyidatların yevmiye no'ya göre gruplanması.
 - Ortak çevresel açıklamalar, takyidat açıklamaları ve ortak rapor metinleri.
 - Farklı ada/parseller için İmar, Arsa ve Belgeler tabloları.
-- Bölüm bazlı Excel içe/dışa aktarma.
+- Bölüm bazlı Excel içe/dışa aktarma (Tapu/Adres/İmar/Arsa/Belgeler/
+  Bağımsız Bölüm/Değerleme — bkz. aşağıdaki "Eksik" bölümünde kapsam notu).
 - Açılır liste alanlarının Excel düzenlemesine aktarılması.
 - Çoklu JPG/KML harita çıktıları ve emsal krokisi etiketleri.
 - Sahibinden, Hepsiemlak ve Emlakjet için konum merkezli arama URL'leri.
 - İlk taşınmazın mülkiyet türünün tüm taşınmazlara aktarılması.
+- **[YENİ]** Bağımsız Bölüm ve Ana Gayrimenkul'ün TÜM programatik alanları
+  (oda/iç özellik/kat dağılımı vb.) artık tab değişiminde sızmıyor —
+  `getUnitSectionFieldKeys()`/`getBuildingSectionFieldKeys()` ile scoped
+  set'e dahil edildi, round-trip testleriyle doğrulandı.
+- **[YENİ]** Değerleme'nin TÜM alt aileleri (Yapı Değeri/Sigorta/Arsa
+  Değeri/Natamam İnşaat/Şerefiye/Kapitilizasyon/Piyasa Değeri alan-birim
+  çiftleri, Değerleme Metodu, Satış Kabiliyeti + açıklaması) artık gerçekten
+  taşınmaza-özgü — hem tab-geçiş kapsamında hem de "Değerleme Excel"inde.
+- **[YENİ]** `landUnitValue` (Arsa M2 Birim Değeri) Kat İrtifakı'nda
+  (Yatay/Dikey) GERÇEKTEN paylaşımlı — hem okuma yolu (aktif olmayan
+  taşınmazların özet-tablo görünümü) hem yazma yolu (özet tablodan
+  düzenleme) düzeltildi.
+- **[YENİ]** Tapu/Adres/İmar/Arsa/Belgeler/Bağımsız Bölüm/Değerleme'nin
+  7'si de kendi özet tablosuna VE banka şablonu çıktısına
+  (`{{TASINMAZLARxxxTABLOSU}}`) sahip.
+- **[YENİ]** "Seçili Taşınmazlara Kopyala" deseni (taşınmaz listesinden
+  seçim + "Tümünü Seç" — Bağımsız Bölüm/Arsa/Değerleme/İmar'da) eski
+  "Tümüne Uygula" tek-tık checkbox'larının çoğunun yerini aldı.
+- **[YENİ]** Değerleme özet tablosunda TOPLAM satırı ve negatif değerler
+  için kırmızı vurgu.
 
-Ana kapsamlandırma ve tab geçiş motoru `app.js` içindeki `titleUnits`, `TITLE_UNIT_SCOPED_SECTION_IDS` ve `switchActiveTitleUnit` yapıları etrafında çalışmaktadır.
+Ana kapsamlandırma ve tab geçiş motoru `app.js` içindeki `titleUnits`,
+`TITLE_UNIT_SCOPED_SECTION_IDS` ve `switchActiveTitleUnit` yapıları
+etrafında çalışmaktadır (bkz. Referanslar — dosya büyüdükçe satır
+numaraları kayar, fonksiyon adıyla aramak daha güvenilir).
 
 ## Eksik veya Riskli Kısımlar
 
-### 1. Bağımsız Bölüm ve Ana Gayrimenkul
+### 1. Bağımsız Bölüm ve Ana Gayrimenkul — **[ÇÖZÜLDÜ]** (veri kapsamı)
 
-Deklaratif alanların bir bölümü ayrılmış olsa da oda, iç özellik, bina teknik bilgileri, kat dağılımı ve benzeri programatik alanların tamamının taşınmaz bazında ayrıldığı henüz kanıtlanmış değildir. En yüksek riskli alan budur.
+Tüm deklaratif VE programatik alanlar artık taşınmaz bazında doğru
+ayrılıyor (`getUnitSectionFieldKeys()`/`getBuildingSectionFieldKeys()`,
+2026-08-20 scoping-gap-fix, round-trip testleriyle doğrulanmış). Veri
+BÜTÜNLÜĞÜ riski kalmadı — kalan risk artık Excel kapsamı (bkz. madde 6).
 
-### 2. Değerleme
+### 2. Değerleme — **[BÜYÜK ÖLÇÜDE ÇÖZÜLDÜ]**
 
-Bazı değerleme alanları taşınmaz bazında ayrılmıştır. Ancak değerleme yöntemi, hesaplama tabloları ve yardımcı panel verilerinin tamamı için uçtan uca kontrol gereklidir.
+Piyasa Değeri, Yapı Değeri/Sigorta/Arsa Değeri/Natamam İnşaat/Şerefiye/
+Kapitilizasyon aileleri VE Değerleme Metodu/Satış Kabiliyeti (+ açıklaması)
+artık taşınmaza-özgü, uçtan uca test edilmiş. `landUnitValue` Kat
+İrtifakı'nda bilinçli olarak paylaşımlı (fiziksel gerekçe: tek arsa/birden
+çok bağımsız bölüm) — hem okuma hem yazma yolu doğru çalışıyor.
 
-### 3. Banka, müşteri ve iş bilgileri
+### 3. Banka, müşteri ve iş bilgileri — **[AÇIK, KANITLANDI]**
 
-Bu alanların rapor-geneli mi, taşınmaz bazlı mı olması kesinleştirilmelidir. Mevcut kapsamlandırmada bazı alanların yanlışlıkla taşınmaz bazına ayrılma ihtimali vardır.
+Önceki taramada "risk ihtimali" olarak işaretlenmişti; bu revizyonda
+kaynaktan DOĞRULANDI: `"case"` bölümü (Dosya ve Rapor — Banka, Müşteri,
+İş Adı, Randevu Türü, Yasal Kullanım Niteliği vb.) `TITLE_UNIT_SCOPED_SECTION_IDS`
+içinde, ve `requestType` DIŞINDA (özel olarak hariç tutulan TEK alan) hiçbir
+`case` alanı `getTitleUnitScopedFieldKeys()`'in genel paylaşım-istisna
+setinde (`TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS`) yer almıyor. Sonuç:
+`bank`/`customerName`/`caseName`/`appointmentType` gibi alanlar ŞU AN
+YANLIŞLIKLA taşınmaza-özgü — yeni bir taşınmaz tabı eklendiğinde Banka/
+Müşteri/İş Adı BOŞ başlıyor, kullanıcının HER taşınmaz tabında yeniden
+girmesi gerekiyor (aynı iş dosyasının aynı banka/müşterisi olmasına
+rağmen). Düzeltme deseni bellidir (`landUnitValue`'nun izlediği "scoped
+set'ten çıkar, tek paylaşımlı kaynak" veya `TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS`'e
+ekleme) ama HENÜZ UYGULANMADI — bu, şu anki en somut/kanıtlanmış açık madde.
 
-### 4. Word/PDF ve banka şablonu çıktısı
+### 4. Word/PDF ve banka şablonu çıktısı — **[ÇÖZÜLDÜ]**
 
-Ekrandaki çoklu yapı büyük ölçüde hazırdır. Buna karşılık banka şablonu çıktısında tüm taşınmazların tapu, adres, imar, değerleme ve bağımsız bölüm detaylarının yapılandırılmış biçimde üretilmesi tamamlanmamıştır.
+7 bölümün (Tapu/Adres/İmar/Arsa/Belgeler/Bağımsız Bölüm/Değerleme) hepsi
+kendi özet tablosuna VE template-engine.js'teki `{{TASINMAZLARxxxTABLOSU}}`
+placeholder'ına sahip — `grep -o 'TASINMAZLAR[A-Z]*TABLOSU' app.js` 7
+benzersiz sonuç veriyor, hepsi test kapsamında.
 
-### 5. Normal kullanıcı erişimi
+### 5. Normal kullanıcı erişimi — **[AÇIK, DOĞRULANDI]**
 
-Çoklu TAKBİS aktarımı yapılabilmesine rağmen tab arayüzü hâlâ admin kontrolüne bağlı görünmektedir. Normal kullanıcı çoklu veri aktarırsa veriyi yönetememe riski vardır.
+Çoklu-taşınmaz tab çubuğunu/özet tablolarını açan 6 `renderSection()`
+dalının (`planning`/`land`/`documents`/`valuation`/`unit`/`building`)
+HEPSİ hâlâ `isCurrentUserAdmin() && state.fields.requestType === "Çoklu Talep"`
+koşuluyla kapılı — Çoklu TAKBİS aktarımı normal kullanıcı için de
+çalışabilse bile, taşınmaz başına düzenleme arayüzünü yalnızca admin
+görebiliyor. Değişmedi.
 
-### 6. Ana Gayrimenkul Excel paneli
+### 6. Bölüm Excel kapsamı (Bağımsız Bölüm/Ana Gayrimenkul) — **[AÇIK, NETLEŞTİRİLDİ]**
 
-Ana Gayrimenkul bölümünde alanlar deklaratif olarak tanımlı değilse bölüm bazlı Excel paneli görünmeyebilir. Bu bölüm için ayrı Excel şeması gereklidir.
+Kaynaktan doğrulandı: `"building"` bölümünün `section.fields` dizisi
+KELİMENİN TAM ANLAMIYLA BOŞ (`fields: []` — tüm alanlar programatik
+yazılıyor) — `createSectionExcelPanel()` `!section?.fields?.length` iken
+`null` döndüğünden Ana Gayrimenkul'ün HİÇ Excel paneli yok. `"unit"`
+(Bağımsız Bölüm) bölümünün YALNIZCA 2 deklaratif alanı var (`legalArea`/
+`currentArea`, ikisi de `hidden:true`) — yani Bağımsız Bölüm Excel paneli
+VAR ama yalnızca bu 2 sütunu kapsıyor; oda sayısı/iç özellikler/cephe/kat
+gibi `getUnitSectionFieldKeys()`'in kapsadığı onlarca programatik alan
+Excel'e YANSIMIYOR. Aynı desen (`hidden: true` ile deklaratif hale
+getirme — 0.0.520'de Değerleme'nin `valuationMethod`/`saleability` için
+kullandığı yöntem) burada da uygulanabilir, ama alan sayısı çok daha
+fazla olduğundan ayrı bir oturum/kapsam gerektirir.
 
-### 7. Gerçek tarayıcı testi
+### 7. Gerçek tarayıcı testi — **[AÇIK]**
 
-Test paketi güçlü olsa da çoklu TAKBİS → tablar → KML → POİ → JPG → Word/PDF akışı gerçek mobil ve masaüstü tarayıcıda uçtan uca otomatik test edilmemektedir.
+Değişmedi — test paketi güçlü (`npm run verify`, tüm test dosyaları
+kaynak-düzeyinde/sandbox'ta), ama çoklu TAKBİS → tablar → KML → POİ → JPG
+→ Word/PDF akışı gerçek mobil/masaüstü tarayıcıda uçtan uca otomatik test
+edilmiyor. Bu oturumdaki HER değişiklik notunda da "canlı tarayıcı testi
+yapılamadı (giriş bilgisi yok)" olarak işaretlendi — yapısal bir kısıt
+(admin girişi bu ortamda mevcut değil), araç eksikliği değil.
 
-### 8. Çalışma ağacı durumu
+### 8. Çalışma ağacı durumu — **[GEÇERSİZ, KALDIRILDI]**
 
-Son commit dışında çalışma ağacında commitlenmemiş değişiklikler bulunmaktadır. Bunlar özellikle çoklu emsal açıklaması, şablon bağlantıları ve kapsam testleriyle ilgilidir. Bu değişiklikler ayrı olarak test edilip commitlenmelidir.
+Önceki taramadaki "commitlenmemiş değişiklikler var" uyarısı o anın
+görüntüsüydü (kalıcı bir mimari risk değil) — güncel durumda çalışma
+ağacı temiz, her değişiklik `npm run verify` (EXIT:0) sonrası anında
+commit+push+CI (yeşil) ile kapatılıyor (bkz. `handoff.md`, en güncel giriş
+0.0.521). Bu madde artık takip edilmiyor.
 
 ## Yol Haritası
 
 ### Faz 1: Veri Bütünlüğü
 
-1. Bağımsız Bölüm, Ana Gayrimenkul ve Değerleme alanlarının tam envanterini çıkar.
-2. Her alanı taşınmaz bazlı veya rapor-geneli olarak sınıflandır.
-3. Tab değişiminde veri kaybı ve yanlış paylaşım testlerini tamamla.
-4. Normal kullanıcıların çoklu talep arayüzüne erişim kararını netleştir.
+1. ~~Bağımsız Bölüm, Ana Gayrimenkul ve Değerleme alanlarının tam envanterini çıkar.~~ **[ÇÖZÜLDÜ]**
+2. ~~Her alanı taşınmaz bazlı veya rapor-geneli olarak sınıflandır.~~ **[ÇÖZÜLDÜ]** (Değerleme/Bağımsız Bölüm/Ana Gayrimenkul için) — **[AÇIK]** `case` (Banka/Müşteri/İş Bilgileri) için, bkz. madde 3.
+3. ~~Tab değişiminde veri kaybı ve yanlış paylaşım testlerini tamamla.~~ **[ÇÖZÜLDÜ]** (kapsanan bölümler için — `case` istisna).
+4. Normal kullanıcıların çoklu talep arayüzüne erişim kararını netleştir. **[AÇIK]** (madde 5).
+
+**Yeni öncelik**: `case` bölümünün Banka/Müşteri/İş Adı/Randevu Türü
+alanlarını rapor-geneli paylaşımlı yap (madde 3) — en somut, en düşük
+riskli, en yüksek kullanıcı-etkili kalan Faz 1 maddesi.
 
 ### Faz 2: Excel
 
-1. Ana Gayrimenkul ve Bağımsız Bölüm için eksik Excel şemalarını ekle.
-2. Açılır liste seçeneklerini tek kanonik tanımdan Excel'e aktar.
-3. Excel yükleme sonrası başlık, seçenek ve ada/parsel eşleşme doğrulamasını güçlendir.
-4. Bölüm bazlı Excel yükleme ve indirme davranışını tüm ana bölümlerde doğrula.
+1. Ana Gayrimenkul ve Bağımsız Bölüm için eksik Excel şemalarını ekle. **[AÇIK]** (madde 6 — Ana Gayrimenkul hiç yok, Bağımsız Bölüm eksik).
+2. ~~Açılır liste seçeneklerini tek kanonik tanımdan Excel'e aktar.~~ **[ÇÖZÜLDÜ]** (`getSectionExcelOptions()` canlı DOM `<select>`'ten otomatik alıyor — 0.0.520'de Satış Kabiliyeti ile doğrulandı).
+3. Excel yükleme sonrası başlık, seçenek ve ada/parsel eşleşme doğrulamasını güçlendir. **[KISMEN]** (başlık eşleme/JSON hata mesajları var — ada/parsel çakışma doğrulaması ayrıca denetlenmedi).
+4. Bölüm bazlı Excel yükleme ve indirme davranışını tüm ana bölümlerde doğrula. **[KISMEN]** (mekanizma 7 bölümde çalışıyor, ama Bölüm Excel'in KENDİSİ hiç birim/entegrasyon testi almadı — bkz. madde 6 notundaki gözlem).
 
 ### Faz 3: Çıktı
 
-1. Ortak açıklamaları şablona yalnızca bir kez aktar.
-2. Taşınmaz bazlı detayları tablo veya taşınmaz blokları halinde üret.
-3. Aynı ve farklı ada/parsel senaryoları için ayrı çıktı kuralları uygula.
-4. Eksik veri varsa çıktı öncesi açık uyarı göster.
+1. Ortak açıklamaları şablona yalnızca bir kez aktar. **[ÇÖZÜLDÜ]**
+2. ~~Taşınmaz bazlı detayları tablo veya taşınmaz blokları halinde üret.~~ **[ÇÖZÜLDÜ]** (7 özet tablosu + blok bazlı Belgeler/Ana Gayrimenkul tab yapısı).
+3. Aynı ve farklı ada/parsel senaryoları için ayrı çıktı kuralları uygula. **[ÇÖZÜLDÜ]** (İmar/Arsa'nın `isPlanningScopedByAdaParsel()` koşullu gate'i, Değerleme özet tablosunun `showLandShareColumns` koşulu).
+4. Eksik veri varsa çıktı öncesi açık uyarı göster. **[KISMEN]** (`getMissingRequiredFields()`/"Zorunlu alanlar" paneli var ve genişletiliyor — 0.0.521'de Satış Kabiliyeti Açıklaması eklendi — ama yalnızca AKTİF taşınmazı kontrol ediyor, diğer taşınmazlar ayrıca ziyaret edilmeden eksiklikleri görünmez).
 
 ### Faz 4: Harita ve Mobil
 
-1. Üç KML'li gerçek senaryo için otomatik tarayıcı testi oluştur.
-2. Tüm KML sınırlarını, etiketleri ve POİ'leri JPG çıktısında doğrula.
-3. Emsal krokisinde konu taşınmaz ve emsal etiketlerinin doğru bağlandığını test et.
-4. Mobilde portal açılışlarını ve harita parametrelerini ayrı ayrı doğrula.
+1. Üç KML'li gerçek senaryo için otomatik tarayıcı testi oluştur. **[AÇIK]**
+2. Tüm KML sınırlarını, etiketleri ve POİ'leri JPG çıktısında doğrula. **[AÇIK]**
+3. Emsal krokisinde konu taşınmaz ve emsal etiketlerinin doğru bağlandığını test et. **[KISMEN]** (kaynak-düzeyi test var, gerçek görsel karşılaştırma yok).
+4. Mobilde portal açılışlarını ve harita parametrelerini ayrı ayrı doğrula. **[AÇIK]**
+
+Bu faz genel olarak Faz 7 (gerçek tarayıcı testi, madde 7) ile aynı
+yapısal kısıta bağlı — admin girişi bu ortamda mevcut değil.
 
 ### Faz 5: Son Temizlik
 
-1. Çoklu TAKBİS plan dosyasını mevcut kodla eşitle.
-2. Eski veya çelişkili fonksiyon yorumlarını güncelle.
-3. Sentetik sandbox testlerini gerçek sabit ve şemalardan besle.
-4. Commitlenmemiş değişiklikleri ayrı bir özellik commit'i olarak test edip pushla.
+1. ~~Çoklu TAKBİS plan dosyasını mevcut kodla eşitle.~~ **[KISMEN]** (`docs/coklu-takbis-import-plan.md` ayrıca gözden geçirilmedi bu revizyonda).
+2. ~~Eski veya çelişkili fonksiyon yorumlarını güncelle.~~ **[SÜREKLİ]** (her değişiklikte yapılıyor, `handoff.md`'ye bkz.).
+3. ~~Sentetik sandbox testlerini gerçek sabit ve şemalardan besle.~~ **[ÇÖZÜLDÜ]** (fixture'lar gerçek `sections[]`/`TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS` ile senkron tutuluyor — bu revizyonda da 0.0.519/520 değişiklikleriyle güncellendi).
+4. ~~Commitlenmemiş değişiklikleri ayrı bir özellik commit'i olarak test edip pushla.~~ **[ÇÖZÜLDÜ]**, madde 8'e bkz.
 
 ## Test Durumu
 
-Son mülkiyet türü değişikliğinden önce tam test paketi başarıyla tamamlanmıştır. Ancak çalışma ağacında sonradan oluşan commitlenmemiş değişiklikler ayrıca doğrulanmadan üretim tamamlanmış kabul edilmemelidir.
+`npm run verify` (check + tüm test dosyaları) 0.0.521 itibarıyla EXIT:0 —
+`case`/`unit`/`building`/`valuation`/`land`/`planning`/`documents`
+bölümlerinin taşınmaz-bazlı kapsam, "Seçili Taşınmazlara Kopyala", Bölüm
+Excel gate kablolaması ve özet tablo davranışları dahil geniş bir
+regresyon paketiyle kapsanıyor. Çalışma ağacı temiz, her commit CI'da
+(GitHub Actions "Verify and Deploy") ayrıca doğrulanıyor. Kapsanmayan tek
+şey gerçek tarayıcı/mobil testi (madde 7).
 
 ## Referanslar
 
-- `app.js:1112` — `titleUnits` veri modeli
-- `app.js:1222` — taşınmaz bazlı bölüm kapsamı
-- `app.js:1640` — taşınmaz alanlarının kapsamlandırılması
-- `app.js:30402` — çoklu KML işleme
-- `app.js:31041` — çoklu KML harita gösterimi
-- `app.js:31676` — konum haritası JPG çıktısı
-- `app.js:16799` — bölüm Excel paneli
+Dosya sürekli büyüdüğünden satır numaraları hızla kayıyor — güvenilir
+arama için fonksiyon/const adını kullanın:
+
+- `createEmptyTitleUnit()` — `titleUnits` veri modeli
+- `TITLE_UNIT_SCOPED_SECTION_IDS` (const) — taşınmaz bazlı bölüm kapsamı
+- `getTitleUnitScopedFieldKeys()` — taşınmaz alanlarının kapsamlandırılması
+- `getValuationPerUnitOnlyFieldKeys()` — Değerleme'nin programatik alt-alanları
+- `TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS` (const) — rapor-geneli paylaşımlı açıklama alanları (madde 3'ün düzeltileceği yer)
+- `getKmlTargetIndexes()` — çoklu KML hedef eşleştirme
+- `saveLocationMapForReport()` — konum haritası JPG çıktısı
+- `createSectionExcelPanel()` — bölüm Excel paneli (madde 6)
+- `getMissingRequiredFields()` — "Zorunlu alanlar" doğrulama paneli
 - `docs/coklu-takbis-import-plan.md` — çoklu TAKBİS tasarım notu
 - `docs/coklu-talep-fonksiyonel-test-bulgulari.md` — fonksiyonel test bulguları
+- `handoff.md` — en güncel değişiklik günlüğü (0.0.500-0.0.521 arası bu taramanın çoğu maddesini kapsar)
