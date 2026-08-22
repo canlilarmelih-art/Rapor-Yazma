@@ -45,10 +45,10 @@ const getMissingRequiredFieldsEnd = appSource.indexOf("\n}", getMissingRequiredF
 assert(getMissingRequiredFieldsStart >= 0, "getMissingRequiredFields fonksiyonu bulunamadi.");
 const getMissingRequiredFieldsSrc = appSource.slice(getMissingRequiredFieldsStart, getMissingRequiredFieldsEnd);
 
-function runScenario({ documents = [], hasArchitecturalProject = "Evet", bank = "", valuationMethod = "" }) {
+function runScenario({ documents = [], hasArchitecturalProject = "Evet", bank = "", valuationMethod = "", saleability = "", saleabilityNote = "" }) {
   const context = {
     state: {
-      fields: { hasArchitecturalProject, bank, valuationMethod },
+      fields: { hasArchitecturalProject, bank, valuationMethod, saleability, saleabilityNote },
       tables: { documents },
       sourceValues: {},
     },
@@ -134,5 +134,46 @@ const ISBANK_VALUATION_METHODS_ENTRY = "Değerleme: En az 2 adet Değerleme Meto
   });
   assert.ok(!missing.includes(ISBANK_VALUATION_METHODS_ENTRY), `İki yöntem seçildiğinde uyarı kalkmalı: ${JSON.stringify(missing)}`);
 }
+
+// Kullanıcı takip talebi (2026-08-22): "satış kabiliyeti açıklaması alıcısı
+// az satışı güç ve satılamaz seçildiğinde açıklama giriyor kullanıcı bu
+// kısmı excelde nasıl ayarlanacak?" — Bölüm Excel'inde (saleability/
+// saleabilityNote'un her ikisi de sütun, 0.0.520) canlı paneldeki otomatik-
+// modal hatırlatması YOK; bu kontrol kaynağı (Excel/elle giriş) fark
+// etmeksizin "Satılabilir" dışı bir seçenek + boş açıklama durumunu
+// "Zorunlu alanlar" panelinde yakalar.
+const SALEABILITY_NOTE_ENTRY = "Değerleme: Satış Kabiliyeti Açıklaması ('Satılabilir' dışındaki bir seçenek için gerekli)";
+
+// "Satılamaz" + boş açıklama -> eksik olmalı.
+{
+  const missing = runScenario({ saleability: "Satılamaz", saleabilityNote: "" });
+  assert.ok(missing.includes(SALEABILITY_NOTE_ENTRY), `Satılamaz + boş açıklama eksik listesinde olmalı: ${JSON.stringify(missing)}`);
+}
+
+// "Alıcısı Az" + boş açıklama -> eksik olmalı (yalnızca "Satılamaz" DEĞİL, tüm alternatifler).
+{
+  const missing = runScenario({ saleability: "Alıcısı Az", saleabilityNote: "" });
+  assert.ok(missing.includes(SALEABILITY_NOTE_ENTRY), `Alıcısı Az + boş açıklama eksik listesinde olmalı: ${JSON.stringify(missing)}`);
+}
+
+// "Satışı Güç" + açıklama girilmiş -> eksik OLMAMALI.
+{
+  const missing = runScenario({ saleability: "Satışı Güç", saleabilityNote: "Bölgedeki talep düşük olduğundan satışı güç." });
+  assert.ok(!missing.includes(SALEABILITY_NOTE_ENTRY), `Açıklama girilmişse uyarı kalkmalı: ${JSON.stringify(missing)}`);
+}
+
+// "Satılabilir" (varsayılan) + boş açıklama -> eksik OLMAMALI (açıklama yalnızca alternatifler için gerekli).
+{
+  const missing = runScenario({ saleability: "Satılabilir", saleabilityNote: "" });
+  assert.ok(!missing.includes(SALEABILITY_NOTE_ENTRY), `Satılabilir'de açıklama gerekmez: ${JSON.stringify(missing)}`);
+}
+
+// saleability hiç ayarlanmamış (boş/undefined, ör. Değerleme sekmesi hiç ziyaret edilmemiş) -> eksik OLMAMALI.
+{
+  const missing = runScenario({ saleability: "", saleabilityNote: "" });
+  assert.ok(!missing.includes(SALEABILITY_NOTE_ENTRY), `saleability boşken (henüz seçilmemiş) uyarı gösterilmemeli: ${JSON.stringify(missing)}`);
+}
+
+console.log("Satis Kabiliyeti Aciklamasi kosullu eksik-alan kontrolu testi tamam.");
 
 console.log("Mimari Proje + belge girilmemiş eksik kritik alan testi tamam.");

@@ -41908,6 +41908,28 @@ function getMissingRequiredFields() {
     isIsbankReport && selectedValuationMethodCount < 2,
   );
 
+  // Kullanıcı takip talebi (2026-08-22): "satış kabiliyeti açıklaması
+  // alıcısı az satışı güç ve satılamaz seçildiğinde açıklama giriyor
+  // kullanıcı bu kısmı excelde nasıl ayarlanacak?" — canlı panelde
+  // (createValuationSaleabilityControl) "Satılabilir" DIŞINDA bir seçenek
+  // işaretlenince openSaleabilityNoteModal() otomatik açılır AMA boş
+  // kaydedilmesini TEKNİK olarak ENGELLEMEZ; Bölüm Excel'inde ise (0.0.520,
+  // saleability/saleabilityNote artık her ikisi de sütun) bu "otomatik
+  // açılan modal" hatırlatması HİÇ yok — kullanıcı Excel'de saleability'yi
+  // "Satılamaz" yapıp saleabilityNote'u boş bırakabilir, hiçbir uyarı
+  // görmez. Bu kontrol, kaynağı (Excel/elle giriş) fark etmeksizin bu
+  // durumu "Zorunlu alanlar" panelinde YAKALAR — mevcut addMissing deseniyle
+  // (yukarıdaki Değerleme Metodu kontrolü) AYNI, YALNIZCA AKTİF taşınmaz
+  // için (bu fonksiyonun TÜM diğer kontrolleri de aynı şekilde yalnızca
+  // state.fields'ı, yani aktif taşınmazı okur — çoklu-taşınmaz raporlarda
+  // diğer sekmeler ayrıca ziyaret edilmeli, mevcut mimarinin bilinen
+  // sınırlaması, burada GENİŞLETİLMEDİ).
+  addMissing(
+    "Değerleme",
+    "Satış Kabiliyeti Açıklaması ('Satılabilir' dışındaki bir seçenek için gerekli)",
+    state.fields.saleability && state.fields.saleability !== "Satılabilir" && !hasCompletionValue(state.fields.saleabilityNote),
+  );
+
   return missing;
 }
 
