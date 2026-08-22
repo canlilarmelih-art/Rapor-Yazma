@@ -23,7 +23,19 @@
   const INDEX_KEY = "rapor-library-index-v1";
   const BLOB_PREFIX = "rapor-library-report-";
   const BLOB_SCHEMA = "rapor-yazma-programi-state";
-  const QUICK_LEGAL_USAGE_OPTIONS = ["", "Konut", "İşyeri", "Ofis", "Arsa", "Arazi", "Ticari Bina", "Sanayi Tesisi"];
+  // Kullanıcı talebi (2026-08-22): "mülkiyet seçme kısmını talep açma
+  // kısmına taşı böylece kullanıcı mecburen seçmek zorunda kalsın talep
+  // açma kısmından yasal kullanım niteliğini kaldır" — Yasal Kullanım
+  // Niteliği artık ana rapordaki TAKBİS'ten otomatik önerilebiliyor (bkz.
+  // app.js suggestLegalUsageNatureForAllTitleUnits), bu yüzden hızlı
+  // formda ayrıca sorulmasına gerek kalmadı; Mülkiyet ise TAM TERSİ
+  // yönde önemli — hem bu öneriyi baştan doğru tetikler (Çoklu Talep/tek
+  // taşınmaz TÜM taşınmaz-kapsam mantığı Mülkiyet'e bağlı) hem de zaten
+  // ana rapordaki `critical: true` alanlardan biri (app.js "case"
+  // bölümü) — burada ZORUNLU kılınması kullanıcıyı daha en baştan doğru
+  // yola sokuyor. Seçenekler app.js'teki `ownershipType` alanının
+  // `options` dizisiyle BİREBİR aynı tutulmalı (elle senkron).
+  const QUICK_OWNERSHIP_TYPE_OPTIONS = ["", "Dikey Kat İrtifakı", "Yatay Kat İrtifakı", "Müstakil Bina", "Arsa", "Tarla"];
   const QUICK_APPOINTMENT_TYPE_OPTIONS = ["", "İçi görülmüştür", "Dışarıdan ekspertiz", "Kısıtlı inceleme"];
   const LIBRARY_VIEW_MODE_KEY = "rapor-library-view-mode";
 
@@ -696,7 +708,7 @@
     const bankOptions = (typeof caseBankOptions !== "undefined" ? caseBankOptions : [])
       .map((bank) => `<option value="${escapeHtml(bank)}">${escapeHtml(bank)}</option>`)
       .join("");
-    const usageOptions = QUICK_LEGAL_USAGE_OPTIONS
+    const ownershipOptions = QUICK_OWNERSHIP_TYPE_OPTIONS
       .map((opt) => `<option value="${escapeHtml(opt)}">${escapeHtml(opt || "Seçiniz")}</option>`)
       .join("");
     const appointmentTypeOptions = QUICK_APPOINTMENT_TYPE_OPTIONS
@@ -716,8 +728,8 @@
         <label class="field"><span>Randevu Türü</span>
           <select id="libraryNewAppointmentType">${appointmentTypeOptions}</select>
         </label>
-        <label class="field"><span>Yasal Kullanım Niteliği</span>
-          <select id="libraryNewUsage">${usageOptions}</select>
+        <label class="field"><span>Mülkiyet *</span>
+          <select id="libraryNewOwnership">${ownershipOptions}</select>
         </label>
       </div>
       <p id="libraryNewReportError" class="cloud-error"></p>
@@ -842,9 +854,16 @@
         });
         newPanel.querySelector("#libraryNewReportSubmit").addEventListener("click", () => {
           const caseName = newPanel.querySelector("#libraryNewCaseName").value.trim();
+          const ownershipType = newPanel.querySelector("#libraryNewOwnership").value;
           const errorLine = newPanel.querySelector("#libraryNewReportError");
           if (!caseName) {
             errorLine.textContent = "İş adı zorunludur.";
+            return;
+          }
+          // Kullanıcı talebi (2026-08-22): Mülkiyet artık burada ZORUNLU —
+          // bkz. QUICK_OWNERSHIP_TYPE_OPTIONS tanımındaki yorum.
+          if (!ownershipType) {
+            errorLine.textContent = "Mülkiyet seçimi zorunludur.";
             return;
           }
           createNewReport({
@@ -852,7 +871,7 @@
             bank: newPanel.querySelector("#libraryNewBank").value,
             customerName: newPanel.querySelector("#libraryNewCustomer").value.trim(),
             appointmentType: newPanel.querySelector("#libraryNewAppointmentType").value,
-            legalUsageNature: newPanel.querySelector("#libraryNewUsage").value,
+            ownershipType,
           });
         });
       }

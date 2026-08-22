@@ -1,5 +1,15 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.529 - 2026-08-22 - "Talep Açma" hızlı formu: Mülkiyet zorunlu eklendi, Yasal Kullanım Niteliği kaldırıldı
+
+- Kullanıcı: "mülkiyet seçme kısmını talep açma kısmına taşı böylece kullanıcı mecburen seçmek zorunda kalsın talep açma kısmından yasal kullanım niteliğini kaldır."
+- **"Talep Açma"** = `cloud/report-library.js`'teki "Taleplerim" panosunun "+ Yeni Talep Oluştur" hızlı formu (`buildQuickFormHtml()`) — Banka/Müşteri/İş Adı/Randevu Türü'nün yanında şimdiye kadar "Yasal Kullanım Niteliği" (`legalUsageNature`) soruyordu, Mülkiyet (`ownershipType`) HİÇ SORULMUYORDU (ana raporda "Dosya ve Rapor" bölümünde, `critical: true` işaretli olsa da kullanıcı boş bırakıp ilerleyebiliyordu).
+- **Değişiklik**: "Yasal Kullanım Niteliği" select'i kaldırıldı (0.0.526-528'de eklenen TAKBİS-tabanlı otomatik öneriye devredildi — artık baştan sorulmasına gerek yok). Yerine yeni bir **zorunlu** "Mülkiyet \*" select'i (`libraryNewOwnership`, seçenekler app.js'teki `ownershipType` alanıyla BİREBİR aynı: Dikey/Yatay Kat İrtifakı, Müstakil Bina, Arsa, Tarla) eklendi — "İş Adı" ile AYNI zorunluluk deseninde ("Mülkiyet seçimi zorunludur." hatası, `createNewReport()` çağrılmadan engellenir).
+- **Yan fayda**: Mülkiyet artık rapor DAHA AÇILMADAN belli olduğundan, TAKBİS ilk yüklendiğinde `isCondominiumEasementOwnershipType()` doğru sonucu baştan verir — 0.0.526-528'de düzeltilmeye çalışılan "sıralama açığı" (TAKBİS önce, Mülkiyet sonra) sınıfının YENİ raporlar için KÖKÜNDEN önüne geçilmiş olur.
+- Test: yeni `tools/test-quick-report-ownership-required.js` (3 kontrol — form kaynağında Mülkiyet var/Yasal Kullanım Niteliği yok, submit handler'da zorunluluk + doğru payload, `QUICK_OWNERSHIP_TYPE_OPTIONS` app.js'teki gerçek liste ile senkron). `npm run verify` tam paket EXIT:0.
+- `index.html`: `cloud/report-library.js` cache-buster `?v=20260822-1600`.
+- Canlı tarayıcı testi yapılamadı (giriş bilgisi yok) — kullanıcının canlıda kontrol etmesi istenir: "Taleplerim" → "+ Yeni Talep Oluştur" açıldığında artık Mülkiyet alanı zorunlu görünmeli (boşken "Talebi Oluştur" hata vermeli), Yasal Kullanım Niteliği alanı hiç görünmemeli.
+
 ## 0.0.528 - 2026-08-22 - "Yasal Kullanım Niteliği" önerisi: hâlâ tetiklenmiyordu, renderSection()'a koşulsuz kablolandı
 
 - Kullanıcı, 0.0.527'nin ardından: "düzelmemiş halen boş geliyor."
