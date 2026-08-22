@@ -618,6 +618,27 @@ const sections = [
       { key: "legalRent", label: "Yasal Kira Değeri", type: "number", hidden: true },
       { key: "landUnitValue", label: "Arsa M2 Birim Değeri", type: "number", hidden: true },
       { key: "saleabilityNote", label: "Satış Kabiliyeti Açıklaması", type: "textarea", hidden: true },
+      // "valuationMethod"/"saleability" (2026-08-22 eklendi) — kullanıcı
+      // talebi: "bu bölümü excel indir ve yükle ile çözebilir miyiz?"
+      // Önceden (0.0.519'a kadar) section.fields'ta HİÇ DEKLARATİF
+      // DEĞİLLERDİ (bkz. getValuationPerUnitOnlyFieldKeys() yorumu, 0.0.519) —
+      // bu, hem tab-değiştirme scoping'inin hem de Bölüm Excel'inin
+      // (createSectionExcelPanel/getSectionExcelFieldDefinitions, YALNIZCA
+      // section.fields'ı tarar) bu iki alanı GÖRMEMESİ anlamına geliyordu.
+      // Burada `hidden: true` ile deklaratif hale getirilmeleri (landUnitValue/
+      // saleabilityNote'un ZATEN izlediği desen — kendi bespoke UI'ları var,
+      // createForm() hidden alanları görünür render ETMEZ) TEK BAŞINA hem
+      // scoping'i (genel döngü artık otomatik toplar, getValuationPerUnitOnlyFieldKeys()'teki
+      // manuel giriş GEREKSİZLEŞTİ, kaldırıldı) HEM DE Bölüm Excel
+      // sütunlarını çözüyor — kullanıcı artık "Değerleme Excel"i indirip
+      // her taşınmaz satırında bu iki sütunu (+ zaten var olan diğerlerini)
+      // toplu düzenleyip geri yükleyebilir. `saleability` "select" tipinde
+      // (Excel'de gerçek açılır liste doğrulaması alır, bkz.
+      // getSelectOptionsForFieldKey/getSectionExcelValidations); `valuationMethod`
+      // birden fazla yöntem seçilebildiğinden (virgülle ayrılmış metin,
+      // parseValuationMultiValue) BİLİNÇLİ OLARAK "select" DEĞİL "text".
+      { key: "valuationMethod", label: "Değerleme Metodu", type: "text", hidden: true },
+      { key: "saleability", label: "Satış Kabiliyeti", type: "select", hidden: true },
     ],
   },
   {
@@ -2025,32 +2046,14 @@ function getTitleUnitScopedFieldKeys() {
 // gereken Değerleme alanları" listesi) alındı.
 function getValuationPerUnitOnlyFieldKeys() {
   return [
-    // "valuationMethod"/"saleability" (2026-08-22 eklendi) — kullanıcı
-    // talebi: "değerleme metodu ... taşınmaz bazında değiştirilebilir,
-    // satış kabiliyeti ile ilgili kısmı nasıl yapabiliriz?" Aşağıdaki 48
-    // anahtarın AKSİNE bu ikisi `clearLandOwnershipDependentData()`'nın
-    // `exactKeys` kanonik kaynağından GELMİYOR (bilinçli sapma — o
-    // fonksiyon Arsa/Tarla'ya geçişte BİNA-özgü verileri temizler, bu ikisi
-    // bina-özgü değil, Arsa/Tarla'da da geçerli genel Değerleme sınıflandırma
-    // alanları). KÖK NEDEN (test sırasında keşfedildi, kullanıcı
-    // bildirmeden ÖNCE): section.fields'ta DEKLARATİF DEĞİLLER
-    // (createValuationMethodControl/createValuationSaleabilityControl ile
-    // PROGRAMATİK yazılıyorlar, titleChangedRecords/projectConformity'yle
-    // AYNI boşluk sınıfı) VE bu listede de YOKTULAR — yani "valuation"
-    // TITLE_UNIT_SCOPED olmasına RAĞMEN ikisi de HİÇ scoped DEĞİLDİ, tab
-    // değiştirince PAYLAŞILIYORLARDI (bir taşınmazda değiştirilince TÜM
-    // taşınmazlarda değişiyordu — kullanıcının "taşınmaz bazında
-    // değiştirebilir" beklentisiyle ÇELİŞEN gerçek davranış). "Ortak
-    // varsayılan" beklentisi (her taşınmazda ilk açılışta "Emsal
-    // Karşılaştırma Yöntemi"/"Satılabilir") artık scoping'DEN BAĞIMSIZ
-    // ayrı bir mekanizmayla (applyValuationDefaults(), zaten var, her
-    // taşınmazın Değerleme sekmesi ilk açıldığında boşsa doldurur)
-    // karşılanıyor — burada taşınmaza-özgü yapmak bu varsayılanı BOZMAZ,
-    // yalnızca DEĞİŞTİRME'nin artık gerçekten bağımsız olmasını sağlar.
-    // "saleabilityNote" (açıklama metni, section.fields'ta ZATEN deklaratif)
-    // İÇİN AYRI bir düzeltme yeterliydi — bkz. TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS
-    // yorumu (BURADAN çıkarıldı, buraya EKLENMESİNE gerek yok).
-    "valuationMethod", "saleability",
+    // NOT (2026-08-22): "valuationMethod"/"saleability" ÖNCEDEN (0.0.519'da)
+    // burada MANUEL olarak listeleniyordu (section.fields'ta hiç deklaratif
+    // olmadıkları için) — kullanıcının takip talebiyle ("bu bölümü excel
+    // indir ve yükle ile çözebilir miyiz?") ikisi de artık `hidden: true`
+    // ile section.fields'ta DEKLARATİF (bkz. sections[] "valuation" bölümü,
+    // landUnitValue/saleabilityNote'un ZATEN izlediği desen) — genel döngü
+    // (getTitleUnitScopedFieldKeys) artık onları OTOMATİK topluyor, burada
+    // MANUEL tekrara GEREK KALMADI (tekil kaynak, drift riski yok).
     "legalValueArea", "currentValueArea", "legalRentArea", "currentRentArea",
     "legalValueUnit", "currentValueUnit", "legalRentUnit", "currentRentUnit",
     "legalValueComparableAutoManual", "currentValueComparableAutoManual",

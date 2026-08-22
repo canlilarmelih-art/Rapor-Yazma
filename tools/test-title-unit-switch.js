@@ -178,8 +178,12 @@ let sections = [
   // ARTIK (2026-08-22) shared setinde DEGIL - gercek
   // TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS'teki cikarmayi yansitir).
   // "landUnitValue" (2026-08-21) Kat İrtifakı'nda (Yatay/Dikey) paylaşımlı
-  // testi icin fixture'a eklendi.
-  { id: "valuation", fields: [{ key: "legalValue" }, { key: "currentValue" }, { key: "saleabilityNote" }, { key: "landUnitValue" }] },
+  // testi icin fixture'a eklendi. "valuationMethod"/"saleability" (2026-08-22,
+  // devam - "bu bolumu excel indir ve yukle ile cozebilir miyiz?") artik
+  // gercek app.js'te de DEKLARATIF (hidden:true) - fixture bunu yansitir,
+  // getValuationPerUnitOnlyFieldKeys()'teki eski MANUEL girisleri
+  // GEREKSIZLESTIRDI (kaldirildi, bkz. o fonksiyonun guncel yorumu).
+  { id: "valuation", fields: [{ key: "legalValue" }, { key: "currentValue" }, { key: "saleabilityNote" }, { key: "landUnitValue" }, { key: "valuationMethod" }, { key: "saleability" }] },
   // Bağımsız Bölüm/Ana Gayrimenkul scoping-gap-fix testi (2026-08-20) icin
   // fixture'a eklendi - gercek app.js'teki "building" bolumu section.fields'i
   // LITERAL BOS DIZI (hicbir alan deklaratif degil, tum alanlar
@@ -942,6 +946,42 @@ assert.match(appSource, /panel\.dataset\.parcelScope = mixedParcels \? "mixed" :
   assert.equal(primaryAgain.fields.valuationMethod, "Emsal Karşılaştırma Yöntemi", "Birincilin valuationMethod'u 2. tasinmazdan ETKILENMEDEN (taşınmaza-özgü) korunmali - artik ikisi de FARKLI metot secebilir.");
   assert.equal(primaryAgain.fields.saleabilityNote, "Birincinin satis engeli aciklamasi", "Birincilin saleabilityNote'u 2. tasinmazdan ETKILENMEDEN (taşınmaza-özgü) korunmali - artik ikisi de FARKLI gerekce gosterebilir.");
   console.log("valuationMethod/saleability/saleabilityNote artik tasinmaza-ozgu (rapor-geneli paylasim CIKARILDI) testi tamam.");
+}
+
+// --- 26c) Degerleme: valuationMethod/saleability artik DEKLARATIF ---------
+// (2026-08-22, devam) - kullanici takip talebi: "bu bolumu excel indir ve
+// yukle ile cozebilir miyiz?" landUnitValue/saleabilityNote'un ZATEN
+// izledigi `hidden: true` deseniyle section.fields'a eklendiler -
+// getSectionExcelFieldDefinitions() section.fields'i DOGRUDAN taradigindan
+// (hidden'a bakmaksizin) bu TEK BASINA "Degerleme Excel" sutunu olmalarini
+// saglar - ayri bir Excel-ozel kablolamaya GEREK YOK. Kaynak-duzeyinde
+// dogrulanir (getSectionExcelFieldDefinitions/createSectionExcelPanel gibi
+// DOM/window.RaporMultiRequestXlsx'e bagli fonksiyonlar burada extract
+// EDILMEZ, proje konvansiyonu).
+{
+  assert.match(
+    appSource,
+    /\{ key: "valuationMethod", label: "Değerleme Metodu", type: "text", hidden: true \}/,
+    "'valuationMethod' section.fields'ta (hidden:true) deklaratif olarak bulunmuyor."
+  );
+  assert.match(
+    appSource,
+    /\{ key: "saleability", label: "Satış Kabiliyeti", type: "select", hidden: true \}/,
+    "'saleability' section.fields'ta (hidden:true) deklaratif olarak bulunmuyor."
+  );
+  // REGRESYON: getValuationPerUnitOnlyFieldKeys()'teki eski MANUEL
+  // "valuationMethod", "saleability" girisi artik GEREKSIZ (declaratif hale
+  // geldiklerinden genel dongu zaten topluyor) - kaldirildigini dogrular.
+  const perUnitOnlyBody = appSource.slice(
+    appSource.indexOf("function getValuationPerUnitOnlyFieldKeys("),
+    appSource.indexOf("function getValuationPerUnitOnlyFieldKeys(") + 500
+  );
+  assert.doesNotMatch(
+    perUnitOnlyBody,
+    /"valuationMethod",\s*"saleability"/,
+    "REGRESYON: getValuationPerUnitOnlyFieldKeys() hala eski MANUEL 'valuationMethod'/'saleability' girdisini icermemeli (artik deklaratif, tekrar GEREKSIZ)."
+  );
+  console.log("valuationMethod/saleability Bolum Excel deklaratif alan testi tamam.");
 }
 
 // --- 27) Emsaller (comparables): Arsa/Tarla Coklu Talep'te PAYLASIMLI -----
