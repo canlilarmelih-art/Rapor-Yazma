@@ -4694,6 +4694,20 @@ function renderNavState() {
 
 function renderSection() {
   syncMultiTitleUnitOwnershipType();
+  // Kullanıcı bildirimi (2026-08-22, "düzelmemiş halen boş geliyor"):
+  // ownershipType'ın KENDİ "input"/"blur" olay dinleyicilerine eklenen
+  // suggestLegalUsageNatureForAllTitleUnits() çağrısı, Mülkiyet değeri
+  // GERÇEKTEN DEĞİŞMEDİĞİNDE (ör. rapor zaten Dikey/Yatay Kat İrtifakı
+  // olarak AÇILDIYSA — TAKBİS önceki bir oturumda/farklı bir sırada
+  // uygulanmışsa) hiç tetiklenmiyordu, çünkü tarayıcı aynı seçenek
+  // yeniden seçildiğinde olay YAYMAZ. syncMultiTitleUnitOwnershipType()
+  // İLE AYNI DESENİ izleyerek (KOŞULSUZ, HER render'da) burada da
+  // çağırıyoruz — fonksiyon zaten "yalnızca boşsa doldur" koruması
+  // taşıdığından (bkz. applyLegalUsageNatureSuggestionToUnitFields) her
+  // render'da çalışması ne elle seçimi ezer ne de performans sorunu
+  // yaratır (aynı büyüklükteki taşınmaz listesini zaten her render
+  // tarıyoruz).
+  suggestLegalUsageNatureForAllTitleUnits();
   // Açık kalmış lehdar combobox panellerini temizle (yeniden render yetim bırakmasın).
   document.querySelectorAll(".creditor-combo-panel").forEach((node) => node.remove());
   ensureActiveSectionVisible();

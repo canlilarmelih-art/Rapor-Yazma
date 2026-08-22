@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.528 - 2026-08-22 - "Yasal Kullanım Niteliği" önerisi: hâlâ tetiklenmiyordu, renderSection()'a koşulsuz kablolandı
+
+- Kullanıcı, 0.0.527'nin ardından: "düzelmemiş halen boş geliyor."
+- **Kök neden**: 0.0.527'deki düzeltme `ownershipType` alanının "input"/"blur" olay dinleyicilerine bağlıydı — yani yalnızca kullanıcı Mülkiyet değerini GERÇEKTEN DEĞİŞTİRDİĞİNDE tetikleniyordu. Ama tarayıcılar bir `<select>`'te ZATEN SEÇİLİ olan seçeneği yeniden seçtiğinizde `input`/`change` olayı YAYMAZ — kullanıcının raporu muhtemelen Mülkiyet ZATEN "Dikey Kat İrtifakı" olarak (ör. önceki bir oturumda, ya da TAKBİS'in kendisi tarafından) AÇILMIŞTI, dropdown'a hiç dokunmadı, dolayısıyla olay dinleyicisi hiç çalışmadı.
+- **Düzeltme**: `renderSection()`'ın en başına, `syncMultiTitleUnitOwnershipType()` çağrısının HEMEN ARDINDAN (AYNI KOŞULSUZ desende — bu fonksiyon zaten HER render'da, olaydan bağımsız çalışıyor) `suggestLegalUsageNatureForAllTitleUnits()` çağrısı eklendi. Fonksiyon zaten "yalnızca boşsa doldur" korumasına sahip olduğundan (bkz. 0.0.527) her render'da çalışması ne elle seçimi ezer ne de gözle görülür bir performans maliyeti getirir — `ownershipType` alanının kendi olay dinleyicilerindeki çağrılar bilinçli olarak KALDIRILMADI (artık teknik olarak gereksiz olsalar da, `syncMultiTitleUnitOwnershipType`'ın da hem olay dinleyicisinde hem `renderSection()`'da AYNI ÇİFTE-ÇAĞRI deseniyle durduğu, projede zaten yerleşik/kasıtlı bir emniyet desenidir).
+- Test: mevcut `tools/test-legal-usage-nature-from-takbis.js` senaryoları DEĞİŞMEDEN geçerli (fonksiyonun kendisi değişmedi, yalnızca YENİ bir çağrı noktası eklendi — `renderSection()` hiçbir testte tam gövdesiyle sandbox'a alınmadığından ek bir test kırılması riski yok, doğrulandı). `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` cache-buster `?v=20260822-1500`.
+- Canlı tarayıcı testi yapılamadı (giriş bilgisi yok) — kullanıcının canlıda kontrol etmesi istenir: mevcut/kayıtlı bir raporu AÇTIĞINDA bile (Mülkiyet dropdown'ına hiç dokunmadan), Dikey/Yatay Kat İrtifakı + TAKBİS verisi varsa "Yasal Kullanım Niteliği" artık otomatik dolmalı.
+
 ## 0.0.527 - 2026-08-22 - "Yasal Kullanım Niteliği" önerisi: sıralama açığı + toplu-TAKBİS kapsamı düzeltildi
 
 - Kullanıcı, iki ekran görüntüsüyle (bir Çoklu Talep raporu — Dikey Kat İrtifakı, TAKBİS PDF zaten seçili, Mülkiyet doğru şekilde "Dikey Kat İrtifakı" — ama "Yasal Kullanım Niteliği" hâlâ "Seçiniz"): "otomatik seçilmemiş" — 0.0.526'da eklenen öneri özelliği gerçek kullanımda tetiklenmedi.
