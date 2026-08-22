@@ -74,6 +74,25 @@ function extractConst(name) {
   throw new Error(`Sabit sonu bulunamadı: ${name}`);
 }
 
+// extractConst()'un "const X = new Set([...])" bicimindeki sabitler icin
+// AYNI teknikle uyarlanmis hali (2026-08-22).
+function extractSetConst(name) {
+  const marker = `const ${name} = new Set([`;
+  const start = appSource.indexOf(marker);
+  assert(start >= 0, `Set sabiti bulunamadı: ${name}`);
+  let index = start + marker.length - 1; // "[" karakterinin kendisi
+  let depth = 0;
+  for (; index < appSource.length; index += 1) {
+    const char = appSource[index];
+    if (char === "[") depth += 1;
+    if (char === "]") {
+      depth -= 1;
+      if (depth === 0) return `${appSource.slice(start, appSource.indexOf(")", index) + 1)};`;
+    }
+  }
+  throw new Error(`Set sabiti sonu bulunamadı: ${name}`);
+}
+
 const functionNames = [
   "getTitleUnitCount",
   "getTitleUnitFieldsForLabel",
@@ -96,12 +115,17 @@ const functionNames = [
   "isCondominiumEasementOwnershipType",
   "normalizeOwnershipTypeForSectionVisibility",
   "foldTurkish",
+  // "Ayni ada/parselde tumu bos olsa bile HER ZAMAN goster" istisnasi
+  // (2026-08-22) icin.
+  "computeTitleUnitsShareSameAdaParsel",
 ];
 const constNames = ["ADDRESS_UNITS_TABLE_SHARED_FIELD_DEFS"];
+const setConstNames = ["ADDRESS_UNITS_TABLE_ALWAYS_VISIBLE_WHEN_SAME_ADA_PARSEL_KEYS"];
 
 const sandboxSource = `
   let state = {};
   ${constNames.map(extractConst).join("\n")}
+  ${setConstNames.map(extractSetConst).join("\n")}
   ${functionNames.map(extractFunction).join("\n")}
   return {
     setState: (s) => { state = s; },
@@ -197,22 +221,25 @@ const fns = new Function(sandboxSource)();
 
 // --- 2) Tüm taşınmazlarda BOŞ olan sütun TAMAMEN kaldırılır ---------------
 // (Tapu tablosundaki AYNI kural, 0.0.451) — ör. site içi taşınmazlarda
-// "Giriş" ve "İç Kapı No" hiç kullanılmıyorsa (hepsi boş) kaldırılmalı,
-// dolu kalan sütunlar (UAVT, Blok, Dış Kapı No, Kat) etkilenmemeli.
+// "Giriş" hiç kullanılmıyorsa (hepsi boş) kaldırılmalı, dolu kalan
+// sütunlar (UAVT, Blok, Dış Kapı No, Kat) etkilenmemeli. "İç Kapı No" da
+// (aşağıdaki 2b istisnasının TETİKLENMEMESİ için) burada BİLEREK FARKLI
+// ada/parselli taşınmazlarla test ediliyor — aynı ada/parsel senaryosu
+// AYRICA 2b'de test ediliyor.
 {
   const shared = { city: "İzmir", district: "Bornova", neighborhood: "Erzene", street: "-", addressSiteName: "-" };
   fns.setState({
     activeTitleUnitIndex: 0,
-    fields: { ...shared, uavt: "999001", addressBlockName: "C", addressEntrance: "", outerDoor: "12", addressFloor: "3", innerDoor: "" },
+    fields: { ...shared, blockNo: "100", parcelNo: "5", uavt: "999001", addressBlockName: "C", addressEntrance: "", outerDoor: "12", addressFloor: "3", innerDoor: "" },
     tables: {},
     titleUnits: [
-      { fields: { ...shared, uavt: "999002", addressBlockName: "C", addressEntrance: "", outerDoor: "13", addressFloor: "4", innerDoor: "" }, tables: {} },
+      { fields: { ...shared, blockNo: "200", parcelNo: "9", uavt: "999002", addressBlockName: "C", addressEntrance: "", outerDoor: "13", addressFloor: "4", innerDoor: "" }, tables: {} },
     ],
   });
   const data = fns.buildAddressUnitsSummaryTableData();
   assert.ok(data, "2 taşınmazlı raporda tablo verisi dönmeli.");
   ["Giriş", "İç Kapı No"].forEach((col) => {
-    assert.ok(!data.headers.includes(col), `Tüm taşınmazlarda BOŞ olan "${col}" sütunu KALDIRILMALIYDI, bulunan başlıklar: ${data.headers.join(", ")}`);
+    assert.ok(!data.headers.includes(col), `Farklı ada/parselde, tüm taşınmazlarda BOŞ olan "${col}" sütunu KALDIRILMALIYDI, bulunan başlıklar: ${data.headers.join(", ")}`);
   });
   // İl/İlçe/İdari Mahalle DOLU ve TÜM taşınmazlarda AYNI ("İzmir"/"Bornova"/
   // "Erzene") — yine de GİZLENMEMELİ (artık "aynı ise gizle" kuralı yok).
@@ -220,6 +247,33 @@ const fns = new Function(sandboxSource)();
     assert.ok(data.headers.includes(col), `Dolu olan "${col}" sütunu KORUNMALIYDI, bulunan başlıklar: ${data.headers.join(", ")}`);
   });
   console.log("Tum tasinmazlarda bos olan sutunun kaldirilma testi tamam.");
+}
+
+// --- 2b) YENİ (2026-08-22, ekran görüntüsüyle): "görselde mavi kutucuk ----
+// ile işaretlenen alanlar aynı ada parsel taleplerinde mutlaka olması
+// gereken alanlar ... bu alanlar tamamı boş olsa bile aynı ada parsel
+// çoklu taleplerinde sütun olarak gözükmeli" — Sokak/Cadde, Blok, Dış
+// Kapı No, İç Kapı No, UAVT AYNI ada/parselde TÜMÜ BOŞ olsa bile HER ZAMAN
+// gösterilmeli (veri girişi hatırlatıcısı); "Giriş" (bu istisnaya DAHİL
+// DEĞİL) yine de kaldırılmalı.
+{
+  const shared = { city: "Düzce", district: "Merkez", neighborhood: "Sancaklar", street: "", addressSiteName: "-", blockNo: "0", parcelNo: "709" };
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: { ...shared, uavt: "", addressBlockName: "", addressEntrance: "", outerDoor: "", addressFloor: "1", innerDoor: "" },
+    tables: {},
+    titleUnits: [
+      { fields: { ...shared, uavt: "", addressBlockName: "", addressEntrance: "", outerDoor: "", addressFloor: "2", innerDoor: "" }, tables: {} },
+    ],
+  });
+  const data = fns.buildAddressUnitsSummaryTableData();
+  assert.ok(data, "2 taşınmazlı (aynı ada/parsel) raporda tablo verisi dönmeli.");
+  ["UAVT", "Sokak / Cadde", "Blok", "Dış Kapı No", "İç Kapı No"].forEach((col) => {
+    assert.ok(data.headers.includes(col), `Aynı ada/parselde, "${col}" sütunu TÜMÜ BOŞ olsa bile HER ZAMAN gösterilmeliydi, bulunan başlıklar: ${data.headers.join(", ")}`);
+  });
+  assert.ok(!data.headers.includes("Giriş"), "\"Giriş\" (istisna listesine DAHİL DEĞİL) tümü boşken yine de kaldırılmalıydı.");
+  assert.ok(data.headers.includes("Kat"), "Dolu olan \"Kat\" sütunu KORUNMALIYDI.");
+  console.log("Ayni ada/parselde 5 kimlik alani (UAVT/Sokak-Cadde/Blok/Dis Kapi No/Ic Kapi No) tumu bos olsa bile HER ZAMAN gosterilir testi tamam.");
 }
 
 // --- 3) Tekil raporda (1 taşınmaz) tablo üretilmemeli ----------------------

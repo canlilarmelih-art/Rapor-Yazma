@@ -20965,6 +20965,21 @@ const ADDRESS_UNITS_TABLE_SHARED_FIELD_DEFS = [
   { key: "addressSiteName", label: "Site / Apartman" },
 ];
 
+// Kullanıcı talebi (2026-08-22, ekran görüntüsüyle): "görselde mavi
+// kutucuk ile işaretlenen alanlar aynı ada parsel taleplerinde mutlaka
+// olması gereken alanlar ancak bu kısımlar ilk başta dolu gelmediği için
+// tabloda gösterilmiyor ... bu alanlar tamamı boş olsa bile aynı ada
+// parsel çoklu taleplerinde sütun olarak gözükmeli" — Sokak/Cadde, Blok,
+// Dış Kapı No, İç Kapı No, UAVT; AYNI ada/parseldeki (tipik: Dikey/Yatay
+// Kat İrtifakı, aynı bina/parsel içindeki farklı bağımsız bölümler)
+// taşınmazları BİRBİRİNDEN AYIRAN TEK kimlik alanlarıdır — bu yüzden
+// aşağıdaki "boş sütun kaldırılır" (0.0.451) kuralının TEK istisnası:
+// taşınmazların TÜMÜ aynı ada/parseldeyse bu 5 alan TÜMÜ boş olsa bile
+// (veri girişi hatırlatıcısı olarak) HER ZAMAN sütun olarak kalır.
+// Farklı ada/parselli taşınmazlarda (bu alanlar daha az kritik bir ayrım
+// taşıdığından) ESKİ davranış (tümü boşsa gizlenir) korunur.
+const ADDRESS_UNITS_TABLE_ALWAYS_VISIBLE_WHEN_SAME_ADA_PARSEL_KEYS = new Set(["uavt", "street", "addressBlockName", "outerDoor", "innerDoor"]);
+
 // Tabloyu (başlıklar + satırlar) hesaplar; YALNIZCA 2+ taşınmaz varsa bir
 // sonuç döner, aksi halde null (Tapu tablosuyla AYNI kural).
 function buildAddressUnitsSummaryTableData() {
@@ -21016,8 +21031,12 @@ function buildAddressUnitsSummaryTableData() {
     { kind: "scalar", fieldKey: "innerDoor" },
   ];
 
+  // bkz. ADDRESS_UNITS_TABLE_ALWAYS_VISIBLE_WHEN_SAME_ADA_PARSEL_KEYS yorumu.
+  const sameAdaParsel = computeTitleUnitsShareSameAdaParsel(units);
   const columnHasData = headers.map((_, columnIndex) => (
-    columnIndex === 0 || rows.some((row) => {
+    columnIndex === 0
+    || (sameAdaParsel && ADDRESS_UNITS_TABLE_ALWAYS_VISIBLE_WHEN_SAME_ADA_PARSEL_KEYS.has(columnMeta[columnIndex]?.fieldKey))
+    || rows.some((row) => {
       const value = row[columnIndex];
       return value !== undefined && value !== null && String(value).trim() !== "" && String(value).trim() !== "-";
     })
