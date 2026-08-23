@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.536 - 2026-08-23 - Çift Yönlü özet tablolarına "Geri Al" eklendi
+
+- Kullanıcı: "sistemde gördüğüm önemli bir eksiklik var geri al butonu yok özellikle çift taraflı tablolarda geri al butonu sence olmalı mı" — analiz + öneri sundum (tam bir undo/redo geçmişi yerine, en yıkıcı noktaya — tek hücre + "tümüne uygula" toplu işlemi — odaklanan hafif/tek-adımlı bir "son işlemi geri al") → "bu şekilde yapalım."
+- **Kapsam**: Çift Yönlü Düzenleme'nin TÜM özet tabloları (Tapu/Adres/İmar/Arsa/Belgeler/Bağımsız Bölüm + Değerleme) — hepsi zaten `commitTitleUnitsSummaryCellEdit()`/`attachTitleUnitsSummaryTableEditing()`'i paylaştığından TEK seferde kapsandı.
+- **Yeni**: Modül-seviyesi `lastTableEditUndo` (state'in PARÇASI DEĞİL — sayfa yenilenince sıfırlanır, autosave/JSON export'a karışmaz) TEK bir işlemi hatırlar: `commitTitleUnitsSummaryCellEdit()` her yazımdan ÖNCE eski değeri kaydeder (tek hücre); `applyTitleUnitsSummaryColumnToAllRows()` ("tümüne uygula", en yıkıcı eylem) döngü başlamadan önce TÜM etkilenen satırların eski değerlerini TEK bir "bulk" kaydında toplar (tekli-hücre kaydı bu döngü sırasında bilerek bastırılır, aksi halde yalnızca son satır hatırlanırdı). Özet tablo konteynerinin en başında (varsa) küçük bir amber "Geri Al" bandı görünür (`renderTableEditUndoBanner`, her render'da `attachTitleUnitsSummaryTableEditing` tarafından güncellenir/kaybolur). `undoLastTableEdit()` — hem hücre hem bulk kaydını AYNI `commitTitleUnitsSummaryCellEdit()` yazma yolu üzerinden tersine çevirir, TEK ADIMLI (kendisi bir daha geri alınamaz — geri alma-üstüne-geri-alma zinciri yok).
+- Test: `tools/test-title-units-summary-column-apply.js`'e 3 yeni senaryo (bulk undo kaydı doğru içerikle oluşuyor, undoLastTableEdit tüm satırları doğru geri alıyor + tek-adımlı temizleniyor, banner/kayıt kablolaması kaynak-düzeyinde). `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` + `styles.css` cache-buster `?v=20260823-1300`.
+- Canlı tarayıcı testi yapılamadı (giriş bilgisi yok) — kullanıcının canlıda kontrol etmesi istenir: herhangi bir özet tablosunda bir hücre düzenlendiğinde veya "tümüne uygula" kullanıldığında tablonun üstünde amber bir "Geri Al" bandı görünmeli, tıklanınca son işlem tersine dönmeli.
+
 ## 0.0.535 - 2026-08-23 - EKB Açıklaması artık "İncelenen Belgeler"deki ile AYNI "ortak açıklama, blok bazında ayrım" mantığını kullanıyor
 
 - Kullanıcı: "burada incelenen belgelerde ortak açıklama mantığı vardı EKB de de aynısı olmalı."

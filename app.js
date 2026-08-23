@@ -20447,8 +20447,88 @@ function buildTitleUnitsSummaryTableHtmlEditable(headers, rows, columnMeta, acti
 // DOM düğümü) tıklama dinleyicilerini bağlar. tableKind burada
 // kullanılmıyor gibi görünse de Faz 4'te (Malik popover'ı) tablo türüne
 // göre farklı davranış eklemek için imzada TUTULUYOR.
+// Çift Yönlü Düzenleme özet tablolarında (tüm 7 tablo — bkz.
+// attachTitleUnitsSummaryTableEditing çağrı yerleri) "geri al" — kullanıcı
+// talebi (2026-08-23): "sistemde gördüğüm önemli bir eksiklik var geri al
+// butonu yok özellikle çift taraflı tablolarda geri al butonu sence olmalı
+// mı" → "bu şekilde yapalım" — tam bir undo/redo GEÇMİŞİ DEĞİL (büyük
+// mimari iş, performans riski), yalnızca SON işlemi (tek hücre düzenlemesi
+// VEYA "sütunun tümüne uygula" toplu işlemi, bkz. applyTitleUnitsSummaryColumnToAllRows
+// yorumu — en yıkıcı olan bu) geri alan HAFİF/tek-adımlı bir mekanizma.
+// Modül-seviyesi (state'in PARÇASI DEĞİL) — sayfa yenilenince sıfırlanması
+// BEKLENEN bir davranış, autosave/JSON export'a hiç karışmaz.
+let lastTableEditUndo = null;
+// commitTitleUnitsSummaryCellEdit()'in GERİ ALMA sırasındaki kendi
+// çağrılarının (ve applyTitleUnitsSummaryColumnToAllRows'un döngüsündeki
+// ARA çağrıların) YENİ bir undo kaydı OLUŞTURMASINI engeller — aksi
+// halde toplu işlemde yalnızca SON satırın eski değeri hatırlanırdı, "Geri
+// Al" tıklamak da kendi üstüne bir "geri alınabilir geri al" zinciri
+// üretirdi (BİLİNÇLİ OLARAK tek-adımlı tutuluyor).
+let suppressTableEditUndoRecording = false;
+
+// Bir alan anahtarının (fieldKey) GERÇEK formundaki okunabilir etiketini
+// (varsa) bulur — "Geri Al" bandındaki mesaj için. Bulunamazsa (programatik/
+// deklaratif-olmayan bir alan) fieldKey'in kendisi döner (boş kalmaktan
+// iyi).
+function getFieldLabelForKey(fieldKey) {
+  for (const section of sections) {
+    const field = (section.fields || []).find((item) => item.key === fieldKey);
+    if (field?.label) return field.label;
+  }
+  return fieldKey;
+}
+
+function recordTableEditUndo(entry) {
+  if (suppressTableEditUndoRecording) return;
+  lastTableEditUndo = entry;
+}
+
+// "Geri Al" bandına tıklanınca (bkz. renderTableEditUndoBanner) son
+// kaydedilen işlemi (tek hücre VEYA toplu "tümüne uygula") tersine çevirir
+// — HER İKİSİ de mevcut commitTitleUnitsSummaryCellEdit() yazma yolu
+// üzerinden (yeni bir yazma yolu İCAT EDİLMEZ, aynı mirror/refresh/tab-
+// çubuğu yan etkilerini miras alır). TEK ADIMLI: bu çağrı lastTableEditUndo'yu
+// HEMEN temizler — geri almanın kendisi BİR DAHA geri alınamaz.
+function undoLastTableEdit() {
+  const undo = lastTableEditUndo;
+  if (!undo) return;
+  lastTableEditUndo = null;
+  suppressTableEditUndoRecording = true;
+  try {
+    if (undo.type === "cell") {
+      commitTitleUnitsSummaryCellEdit(undo.fieldKey, undo.previousValue, undo.unitIndex);
+    } else if (undo.type === "bulk") {
+      undo.previousValues.forEach(({ unitIndex, value }) => {
+        commitTitleUnitsSummaryCellEdit(undo.fieldKey, value, unitIndex);
+      });
+    }
+  } finally {
+    suppressTableEditUndoRecording = false;
+  }
+  autosave();
+  renderSection();
+}
+
+// Özet tablo konteynerinin EN BAŞINA (varsa) bir "Geri Al" bandı ekler —
+// lastTableEditUndo boşsa hiçbir şey render ETMEZ (banner sessizce
+// kaybolur). attachTitleUnitsSummaryTableEditing() HER render'da çağrıldığı
+// için bu, tablo her yenilendiğinde bandın da doğru güncel/kaybolmuş halde
+// kalmasını sağlar.
+function renderTableEditUndoBanner(container) {
+  if (!container) return;
+  const existing = container.querySelector(".tus-undo-banner");
+  if (existing) existing.remove();
+  if (!lastTableEditUndo) return;
+  const banner = document.createElement("div");
+  banner.className = "tus-undo-banner";
+  banner.innerHTML = `<span>${escapeHtml(lastTableEditUndo.message)}</span><button type="button" class="mini-button">Geri Al</button>`;
+  banner.querySelector("button").addEventListener("click", () => undoLastTableEdit());
+  container.prepend(banner);
+}
+
 function attachTitleUnitsSummaryTableEditing(container) {
   if (!container) return;
+  renderTableEditUndoBanner(container);
   container.querySelectorAll(".tus-editable-cell").forEach((cell) => {
     cell.addEventListener("click", () => beginEditingTitleUnitsSummaryCell(cell));
   });
@@ -20606,6 +20686,18 @@ function beginEditingTitleUnitsSummaryCell(cell) {
 // kaskadı (refreshXFromCurrentFields vb.) BİLEREK atlanır, çünkü o
 // kaskad şu an ekranda görünen (aktif) taşınmaza göre hesaplama yapar.
 function commitTitleUnitsSummaryCellEdit(fieldKey, rawValue, unitIndex) {
+  // "Geri Al" kaydı (2026-08-23) — bkz. yukarıdaki lastTableEditUndo/
+  // recordTableEditUndo yorumu. YENİ değer yazılmadan ÖNCE, ESKİ değer
+  // yakalanır. applyTitleUnitsSummaryColumnToAllRows'un döngüsü sırasında
+  // (suppressTableEditUndoRecording=true) bu no-op'tur — o fonksiyon
+  // KENDİ tek "bulk" kaydını döngüden SONRA oluşturur.
+  recordTableEditUndo({
+    type: "cell",
+    fieldKey,
+    unitIndex,
+    previousValue: String(getTitleUnitFieldsForLabel(unitIndex)[fieldKey] ?? ""),
+    message: `"${getFieldLabelForKey(fieldKey)}" değişikliği geri alınabilir.`,
+  });
   if (unitIndex === state.activeTitleUnitIndex) {
     const control = document.querySelector(`[data-field="${fieldKey}"]`);
     if (control) {
@@ -20683,10 +20775,33 @@ function applyTitleUnitsSummaryColumnToAllRows(fieldKey, columnLabel) {
     `"${columnLabel || fieldKey}" sütunundaki aktif taşınmazın değeri ("${sourceValue || "(boş)"}"), tablodaki diğer ${otherCount} taşınmaza uygulanacak ve onların bu sütundaki mevcut değerlerinin ÜZERİNE YAZILACAK. Devam edilsin mi?`
   );
   if (!confirmed) return;
+  // Kullanıcı talebi (2026-08-23): "geri al butonu ... özellikle çift
+  // taraflı tablolarda" — en YIKICI eylem bu olduğundan (tek seferde
+  // onlarca taşınmaz üzerine yazılabilir), döngü BAŞLAMADAN ÖNCE HER
+  // hedefin ESKİ değeri kaydedilir; döngü SIRASINDA commitTitleUnitsSummaryCellEdit'in
+  // kendi (tek hücrelik) kayıt mekanizması BİLEREK bastırılır (aksi
+  // halde yalnızca SON satırın eski değeri hatırlanırdı) — TEK "bulk"
+  // kaydı TÜM etkilenen satırları kapsar, "Geri Al" hepsini birden
+  // eski haline döndürür.
+  const previousValues = [];
   for (let index = 0; index < count; index += 1) {
     if (index === sourceIndex) continue;
-    commitTitleUnitsSummaryCellEdit(fieldKey, sourceValue, index);
+    previousValues.push({ unitIndex: index, value: String(getTitleUnitFieldsForLabel(index)[fieldKey] ?? "") });
   }
+  suppressTableEditUndoRecording = true;
+  try {
+    previousValues.forEach(({ unitIndex }) => {
+      commitTitleUnitsSummaryCellEdit(fieldKey, sourceValue, unitIndex);
+    });
+  } finally {
+    suppressTableEditUndoRecording = false;
+  }
+  lastTableEditUndo = {
+    type: "bulk",
+    fieldKey,
+    previousValues,
+    message: `"${columnLabel || fieldKey}" sütunundaki toplu değişiklik (${previousValues.length} taşınmaz) geri alınabilir.`,
+  };
 }
 
 // Çift Yönlü Düzenleme, Faz 4 (2026-08-15) — kullanıcının PLANDA verdiği TAM

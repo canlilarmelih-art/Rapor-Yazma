@@ -22,6 +22,11 @@
 //     argümanlarla (data-field-key/data-column-label) çağırıyor mu
 //     (kaynak-düzeyi — DOM click-event simülasyonu document olmadan
 //     mümkün değil, bkz. dosya sonu).
+//  3) "Geri Al" (2026-08-23, kullanıcı talebi): toplu işlem TEK bir
+//     "bulk" undo kaydı bırakır (TÜM etkilenen satırların eski değerleri),
+//     undoLastTableEdit() bunu tersine çevirip TEK ADIMLI temizler;
+//     attachTitleUnitsSummaryTableEditing()/commitTitleUnitsSummaryCellEdit()
+//     ile kablolama kaynak-düzeyinde doğrulanır.
 
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -63,7 +68,16 @@ function extractFunction(name) {
     let state = {};
     let confirmResult = true;
     let commitCalls = [];
+    // "Geri Al" (2026-08-23) — gerçek modül-seviyesi değişkenler, gerçek
+    // applyTitleUnitsSummaryColumnToAllRows()/undoLastTableEdit() bunlara
+    // BARE (bildirimsiz) atama yapıyor; burada 'let' ile ÖNCEDEN
+    // bildirilmezlerse sloppy-mode'da SESSİZCE global olurlardı (hata
+    // FIRLATMAZ ama testin kendisi hicbir sey DOGRULAMAMIS olurdu).
+    let lastTableEditUndo = null;
+    let suppressTableEditUndoRecording = false;
     const window = { confirm: () => confirmResult };
+    function autosave() {}
+    function renderSection() {}
     function getTitleUnitCount() { return 1 + (Array.isArray(state.titleUnits) ? state.titleUnits.length : 0); }
     // Gerçek getTitleUnitFieldsForLabel yerine basit bir stub — bu test
     // applyTitleUnitsSummaryColumnToAllRows'un KENDİ mantığını (kaynak
@@ -75,20 +89,29 @@ function extractFunction(name) {
       if (index === 0) return state.primaryTitleUnitShadow?.fields || {};
       return state.titleUnits?.[index - 1]?.fields || {};
     }
-    // commitTitleUnitsSummaryCellEdit'in KENDİSİ (DOM/autosave/render ağır
-    // bağımlılıkları) burada test edilmiyor (tools/test-title-unit-switch.js
+    // commitTitleUnitsSummaryCellEdit'in TAM KENDİSİ (DOM/autosave/render
+    // ağır bağımlılıkları) burada test edilmiyor (tools/test-title-unit-switch.js
     // ve tools/test-unit-units-summary-table.js'te ayrıca kapsanıyor) —
-    // burada yalnızca DOĞRU argümanlarla ÇAĞRILDIĞI doğrulanır (spy).
+    // burada DOĞRU argümanlarla ÇAĞRILDIĞI (spy) VE undoLastTableEdit()'in
+    // dogru calisabilmesi icin fixture state'ine GERCEKTEN yazdigi (basit
+    // bir yazma simulasyonu) doğrulanır.
     function commitTitleUnitsSummaryCellEdit(fieldKey, rawValue, unitIndex) {
       commitCalls.push({ fieldKey, rawValue, unitIndex });
+      const fields = getTitleUnitFieldsForLabel(unitIndex);
+      if (fields) fields[fieldKey] = rawValue;
     }
+    function getFieldLabelForKey(fieldKey) { return fieldKey; }
     ${extractFunction("applyTitleUnitsSummaryColumnToAllRows")}
+    ${extractFunction("undoLastTableEdit")}
     return {
       setState: (s) => { state = s; },
       setConfirmResult: (v) => { confirmResult = v; },
       getCommitCalls: () => commitCalls,
       resetCommitCalls: () => { commitCalls = []; },
+      getLastUndo: () => lastTableEditUndo,
+      resetUndo: () => { lastTableEditUndo = null; },
       applyTitleUnitsSummaryColumnToAllRows,
+      undoLastTableEdit,
     };
   `;
   // eslint-disable-next-line no-new-func
@@ -110,6 +133,29 @@ function extractFunction(name) {
   assert.ok(calls.every((c) => c.fieldKey === "titlePropertyId" && c.rawValue === "AKTIF-DEGER"), "Her çağrı AKTİF taşınmazın değerini ('AKTIF-DEGER') taşımalı.");
   assert.deepEqual(calls.map((c) => c.unitIndex).sort(), [0, 2], "Yalnızca aktif OLMAYAN indexler (0 ve 2) hedeflenmeli.");
   console.log("applyTitleUnitsSummaryColumnToAllRows: aktif deger diger tum satirlara uygulanir, aktif satir atlanir testi tamam.");
+
+  // 1a-2) YENİ (2026-08-23, "Geri Al" kullanıcı talebi): toplu işlem TEK
+  // bir "bulk" undo kaydı bırakmalı — TÜM etkilenen satırların ESKİ
+  // (üzerine yazılmadan ÖNCEki) değerlerini kapsamalı.
+  const undo = fns.getLastUndo();
+  assert.ok(undo, "Toplu islem sonrasi lastTableEditUndo dolu olmali.");
+  assert.equal(undo.type, "bulk", "Toplu islem 'bulk' turunde bir kayit birakmali.");
+  assert.equal(undo.fieldKey, "titlePropertyId");
+  const sortedPrev = undo.previousValues.slice().sort((a, b) => a.unitIndex - b.unitIndex);
+  assert.deepEqual(sortedPrev, [{ unitIndex: 0, value: "ESKI-0" }, { unitIndex: 2, value: "ESKI-2" }], `Onceki degerler (uzerine yazilmadan ONCEki) dogru kaydedilmeli, bulunan: ${JSON.stringify(sortedPrev)}`);
+  console.log("applyTitleUnitsSummaryColumnToAllRows: toplu islem TEK 'bulk' geri-al kaydi birakiyor testi tamam.");
+
+  // 1a-3) undoLastTableEdit(): "bulk" kaydini TERSINE cevirir - ETKILENEN
+  // TUM satirlar ESKI degerlerine doner, kayit TEK ADIMLI temizlenir.
+  fns.undoLastTableEdit();
+  const stateAfterUndo = fns.getCommitCalls();
+  const restoreCalls = stateAfterUndo.slice(2); // ilk 2 cagri asil "uygula" idi, sonraki 2'si "geri al".
+  assert.equal(restoreCalls.length, 2, `Geri al TUM etkilenen satirlari (2 adet) eski degerine dondurmeliydi, bulunan: ${restoreCalls.length}.`);
+  assert.deepEqual(restoreCalls.map((c) => ({ unitIndex: c.unitIndex, rawValue: c.rawValue })).sort((a, b) => a.unitIndex - b.unitIndex),
+    [{ unitIndex: 0, rawValue: "ESKI-0" }, { unitIndex: 2, rawValue: "ESKI-2" }],
+    "Geri al cagrilari eski degerleri (ESKI-0/ESKI-2) dogru satirlara yazmali.");
+  assert.equal(fns.getLastUndo(), null, "Geri al TEK ADIMLI - kendisi bir daha geri alinamamali (lastTableEditUndo temizlenmeli).");
+  console.log("undoLastTableEdit: toplu islemi tersine cevirir + tek-adimli temizlik testi tamam.");
 
   // 1b) Onay diyaloğu REDDEDİLİRSE (window.confirm -> false) HİÇBİR yazma
   // olmamalı (geri alınamaz toplu üzerine-yazma güvenlik ağı).
@@ -165,4 +211,25 @@ function extractFunction(name) {
   console.log("attachTitleUnitsSummaryTableEditing: 'tumune uygula' butonu kaynak-duzeyi kablolama testi tamam.");
 }
 
-console.log("Ozet tablo 'sutunun tumune uygula' testleri basarili.");
+// --- 3) "Geri Al" (2026-08-23, kullanıcı talebi): kaynak-düzeyi kablolama -
+// (attachTitleUnitsSummaryTableEditing() her render'da bandı yeniden
+// çizer + commitTitleUnitsSummaryCellEdit() ESKİ değeri kaydeder — DOM/
+// state ağır bağımlılıkları nedeniyle davranışsal test yerine, bkz. proje
+// konvansiyonu, dosya başı yorum).
+{
+  const attachSrc = extractFunction("attachTitleUnitsSummaryTableEditing");
+  assert.match(
+    attachSrc,
+    /^\s*renderTableEditUndoBanner\(container\);/m,
+    "attachTitleUnitsSummaryTableEditing artik renderTableEditUndoBanner(container)'i (HER render'da 'Geri Al' bandini guncel/kaybolmus tutan cagri) ilk satirinda cagirmiyor."
+  );
+  const commitSrc = extractFunction("commitTitleUnitsSummaryCellEdit");
+  assert.match(
+    commitSrc,
+    /^\s*recordTableEditUndo\(\{\s*\n\s*type: "cell",\s*\n\s*fieldKey,\s*\n\s*unitIndex,\s*\n\s*previousValue: String\(getTitleUnitFieldsForLabel\(unitIndex\)\[fieldKey\] \?\? ""\),/m,
+    "commitTitleUnitsSummaryCellEdit artik YENI deger yazilmadan ONCE recordTableEditUndo(...) ile ESKI degeri kaydetmiyor."
+  );
+  console.log("'Geri Al' kaynak-duzeyi kablolama (banner + tekli-hucre kaydi) testi tamam.");
+}
+
+console.log("Ozet tablo 'sutunun tumune uygula' + 'geri al' testleri basarili.");

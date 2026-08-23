@@ -5472,6 +5472,33 @@ td textarea.table-textarea {
   color: var(--amber);
 }
 
+/* Çift Yönlü Düzenleme özet tablolarında "Geri Al" bandı (2026-08-23,
+   kullanıcı talebi) — özet tablo konteynerinin en başında, yalnızca son
+   bir işlem (tek hücre veya "sütunun tümüne uygula" toplu değişikliği)
+   geri alınabilirken görünür. Export HTML'i bu sınıfı hiç ÜRETMEZ (yalnızca
+   ekran-içi düzenlenebilir önizleme, bkz. attachTitleUnitsSummaryTableEditing). */
+.tus-undo-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--amber);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--amber) 12%, var(--surface));
+}
+
+.tus-undo-banner span {
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.tus-undo-banner button {
+  flex: 0 0 auto;
+}
+
 .source-summary {
   display: grid;
   gap: 12px;
