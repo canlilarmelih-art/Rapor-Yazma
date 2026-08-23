@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.534 - 2026-08-23 - EKB "Enerji Kimlik Belgesi" satırı: buton artık select'in ALTINA değil YANINA
+
+- Kullanıcı (0.0.533'ün hemen ardından): "olmuş ancak buton dizayn açısından çok kötü duruyor EKB evet Hayır hücresi tam satır onu ikiye böl evet hayır hücresinin yanına al butonu."
+- **Kök neden**: `.field` (form alanı sarmalayıcı) varsayılan olarak DÜŞEY bir grid (`display:grid`, her çocuk kendi satırında) — "EKB Yükle" butonu 0.0.533'te doğrudan `<label>`'a üçüncü çocuk olarak eklenmişti, bu da onu select'in ALTINA, kendi tam-genişlik satırına düşürüyordu (kullanıcının "tam satır" tarifi tam olarak bu).
+- **Düzeltme**: select + buton artık `ekb-hasekb-row` adlı yeni bir `display:flex` sarmalayıcı İÇİNDE, TEK bir yatay satırda yan yana — select `flex:1 1 auto` ile mevcut genişliği doldurur, buton `flex:0 0 auto` ile sabit/kompakt kalır. `createForm()`'da `control` (zaten label'a eklenmiş DOM düğümü) `row.append(control, ...)` ile YENİDEN ebeveynlenerek (DOM'un doğal davranışı: `.append()` bir düğümü önceki konumundan otomatik kaldırır) satıra taşınıyor — yeni bir select ÖRNEĞİ oluşturulmuyor, aynı düğüm.
+- Test: `tools/test-documents-block-grouping.js`'in 9. senaryosu yeni DOM yapısını (ekb-hasekb-row sarmalayıcı + control'ün ona taşınması) doğrulayacak şekilde güncellendi. `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` + `styles.css` cache-buster `?v=20260823-1100`.
+- Canlı tarayıcı testi yapılamadı (giriş bilgisi yok) — kullanıcının canlıda kontrol etmesi istenir: "Belgeler ve Proje"de "Enerji Kimlik Belgesi" satırında Evet/Hayır açılır listesi ile "EKB Yükle" butonu artık AYNI satırda, yan yana görünmeli.
+
 ## 0.0.533 - 2026-08-23 - EKB "Enerji Kimlik Belgesi" alanının yanına yükleme kısayolu + blok-paylaşım eksikleri düzeltildi
 
 - Kullanıcı, çoklu bağımsız bölümlü bir bloğun Adres Kodu PDF'i üzerinden sohbete girdi (EKB'nin blok bazında verildiğini belirtti). İlk önerim ("EKB yükleme kutusunu Ana Gayrimenkul'e taşı, blok sekmeleri altında göster") `AskUserQuestion` ile onaylanıp uygulanmaya başlandıktan sonra kullanıcı düzeltti: "benim gözden kaçırdığım bir nokta var ekb bilgileri belgeler ve proje kısmında ... dosya ve rapor kısmında ekb yüklenmemişse hayır olarak geliyor bu hücre yanına EKB yükleme butonu koyalım zaten belgeler ve proje bölümünde de blok bazında ayrıştırma var" — Ana Gayrimenkul taşıması TAMAMEN GERİ ALINDI (`AskUserQuestion` ile onaylandı), yerine aşağıdaki yapıldı.

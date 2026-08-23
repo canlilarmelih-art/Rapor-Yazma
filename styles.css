@@ -4985,15 +4985,28 @@ td textarea.table-textarea {
   overflow-wrap: anywhere;
 }
 
-/* "Enerji Kimlik Belgesi" alanının yanındaki EKB yükleme kısayolu
-   (2026-08-23, kullanıcı bildirimi: "bu hücre yanına EKB yükleme
-   butonu koyalım") — .field label'ının içine, select'in hemen yanına
-   eklenir. */
+/* "Enerji Kimlik Belgesi" alanı: select + "EKB Yükle" butonu TEK bir
+   yatay satırda yan yana (2026-08-23, kullanıcı bildirimi: "buton
+   dizayn açısından çok kötü duruyor ... hücrenin yanına al butonu" —
+   önceki hali select'in ALTINA, kendi tam-genişlik satırına düşüyordu,
+   bkz. app.js createForm() yorumu). */
+.ekb-hasekb-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ekb-hasekb-row select {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 .ekb-inline-upload {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  margin-left: 8px;
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .ekb-inline-upload-status {

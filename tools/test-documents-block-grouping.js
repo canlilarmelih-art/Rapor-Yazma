@@ -297,9 +297,9 @@ function freshState(overrides = {}) {
 }
 
 // --- 9) createEkbInlineUploadButton(): "Enerji Kimlik Belgesi" (hasEkb) ---
-// alaninin yanina createForm() icinde eklendi mi (kullanici bildirimi,
-// 2026-08-23: "ekb bilgileri belgeler ve proje kismindaki bu hucre yanina
-// EKB yukleme butonu koyalim") - kaynak-duzeyi ----------------------------
+// alaninin YANINDA (ALTINDA DEGIL - bkz. 2026-08-23 takip: "buton dizayn
+// acisindan cok kotu duruyor ... hucrenin yanina al butonu") tek bir yatay
+// satirda (ekb-hasekb-row) createForm() icinde eklendi mi - kaynak-duzeyi -
 {
   assert.match(
     appSource,
@@ -308,10 +308,10 @@ function freshState(overrides = {}) {
   );
   assert.match(
     appSource,
-    /if \(section\.id === "documents" && field\.key === "hasEkb"\) \{\s*\n\s*label\.append\(createEkbInlineUploadButton\(\)\);/,
-    "createForm() artik hasEkb alaninin yanina createEkbInlineUploadButton() eklemiyor."
+    /if \(section\.id === "documents" && field\.key === "hasEkb"\) \{\s*\n\s*const ekbRow = document\.createElement\("div"\);\s*\n\s*ekbRow\.className = "ekb-hasekb-row";\s*\n\s*ekbRow\.append\(control, createEkbInlineUploadButton\(\)\);\s*\n\s*label\.append\(ekbRow\);/,
+    "createForm() artik select + EKB Yukle butonunu 'ekb-hasekb-row' ile AYNI yatay satira almiyor (select'in ALTINA dusme regresyonu olabilir)."
   );
-  console.log("createEkbInlineUploadButton hasEkb yanina kablolama testi tamam.");
+  console.log("createEkbInlineUploadButton hasEkb yanina (ayni satirda) kablolama testi tamam.");
 }
 
 console.log("Belgeler ve Proje blok/bagimsiz-bolum tab yapisi testleri basarili.");

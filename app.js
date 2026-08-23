@@ -5496,8 +5496,21 @@ function createForm(section) {
     if (field.key === "takbisSummary") {
       label.append(createEncumbranceSummaryModeControl());
     }
+    // Kullanıcı bildirimi (2026-08-23): "buton dizayn açısından çok kötü
+    // duruyor EKB evet Hayır hücresi tam satır onu ikiye böl evet hayır
+    // hücresinin yanına al butonu" — .field varsayılan olarak DÜŞEY grid
+    // (her çocuk kendi satırında) olduğundan, butonu doğrudan label'a
+    // eklemek select'in ALTINA, kendi tam-genişlik satırına düşürüyordu.
+    // Bunun yerine select + buton TEK bir yatay satır (ekb-hasekb-row,
+    // flex) içine alınır — control ZATEN label'a eklenmiş olduğundan
+    // row.append(control, ...) onu oradan BURAYA taşır (DOM'da bir
+    // düğüm .append() ile yeniden ebeveynlenirse önceki konumundan
+    // otomatik kaldırılır).
     if (section.id === "documents" && field.key === "hasEkb") {
-      label.append(createEkbInlineUploadButton());
+      const ekbRow = document.createElement("div");
+      ekbRow.className = "ekb-hasekb-row";
+      ekbRow.append(control, createEkbInlineUploadButton());
+      label.append(ekbRow);
     }
     if (field.type === "textarea") {
       label.classList.add("has-field-copy");
