@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.537 - 2026-08-23 - EKB Açıklaması: "A Blok'a ait binaya ait ..." çift "ait" anlam bozukluğu düzeltildi
+
+- Kullanıcı, canlı çıktıyı yapıştırdı: "A Blok'a ait binaya ait 31.07.2019 tarih, ... Enerji Kimlik Belgesi bulunmaktadır. ... cümle bu şekilde geliyor anlam bozukluğu var bunu düzeltelim."
+- **Kök neden**: 0.0.535'te eklenen blok-atıflı "found" (geçerli EKB) cümlesi, `blockAttribution` ("A Blok'a ait" — zaten "ait" ile bitiyor) değerine AYRICA sabit `"binaya ait"` ekliyordu → "A Blok'a ait binaya ait ..." çift "ait" tekrarı.
+- **Düzeltme**: `buildEkbExplanation()`'daki `buildingLead`, blok atıflıyken artık YALNIZCA `blockAttribution`'ı kullanıyor (ekstra "binaya ait" YOK) — "missing" (bulunamamıştır) cümlesinin zaten kullandığı AYNI `"{attribution} Enerji Kimlik Belgesi ..."` kalıbına paralel hale getirildi: `"A Blok'a ait 31.07.2019 tarih, ... Enerji Kimlik Belgesi bulunmaktadır."`. Enerji sınıfı cümlesi ("... A Blok'a ait binanın enerji performans sınıfı ...") zaten çift-"ait" içermiyordu, DEĞİŞTİRİLMEDİ. Blok atıfsız (tekil/blok-gruplaması-olmayan) durumda metin ESKİDEN OLDUĞU GİBİ (`"Konu taşınmazın yer aldığı binaya ait ..."`) korunuyor.
+- Test: `tools/test-ekb-explanation-block-attribution.js`'in ilgili senaryosu yeni (doğru) metni doğrulayacak şekilde güncellendi + çift-"ait" regresyon koruması eklendi. `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` cache-buster `?v=20260823-1400`.
+- Canlı tarayıcı testi yapılamadı (giriş bilgisi yok) — kullanıcının canlıda kontrol etmesi istenir: aynı bloktaki EKB cümlesi artık "A Blok'a ait 31.07.2019 tarih, ... Enerji Kimlik Belgesi bulunmaktadır." şeklinde (çift "ait" olmadan) gelmeli.
+
 ## 0.0.536 - 2026-08-23 - Çift Yönlü özet tablolarına "Geri Al" eklendi
 
 - Kullanıcı: "sistemde gördüğüm önemli bir eksiklik var geri al butonu yok özellikle çift taraflı tablolarda geri al butonu sence olmalı mı" — analiz + öneri sundum (tam bir undo/redo geçmişi yerine, en yıkıcı noktaya — tek hücre + "tümüne uygula" toplu işlemi — odaklanan hafif/tek-adımlı bir "son işlemi geri al") → "bu şekilde yapalım."

@@ -117,9 +117,15 @@ const fns = new Function(sandboxSource)();
   fns.setState({ fields: { appointmentDate: "10.03.2026" } }); // getEkbInspectionDateIso hâlâ state.fields.appointmentDate okur (rapor-geneli paylaşımlı)
   const foundWithBlock = fns.buildEkbExplanation(foundFields, "A Blok'a ait");
   assert.ok(foundWithBlock.startsWith("İnceleme tarihinde") === false, "sanity: found cumlesi inceleme tarihi onekiyle BASLAMAZ (sadece 'bulunamadi' cumlesi baslar).");
-  assert.ok(foundWithBlock.includes("A Blok'a ait binaya ait"), `Blok atifli 'found' cumlesi 'A Blok'a ait binaya ait' ifadesini icermeli, bulunan: ${foundWithBlock}`);
+  // Kullanıcı bildirimi (2026-08-23): "A Blok'a ait binaya ait ...
+  // bulunmaktadır ... anlam bozukluğu var" — blockAttribution ZATEN "ait"
+  // ile bittiğinden AYRICA "binaya ait" eklemek "ait ... ait" ÇİFT
+  // TEKRARI üretiyordu; DÜZELTİLDİ, artık "missing" cümlesiyle AYNI
+  // "{attribution} Enerji Kimlik Belgesi ..." kalıbı kullanılıyor.
+  assert.ok(!foundWithBlock.includes("ait binaya ait") && !foundWithBlock.includes("ait ... ait"), `REGRESYON: 'ait ... ait' cift tekrari ARTIK gorunmemeli, bulunan: ${foundWithBlock}`);
+  assert.ok(foundWithBlock.includes("A Blok'a ait 01.01.2025 tarih"), `Blok atifli 'found' cumlesi dogrudan '{attribution} {belge bilgisi}' ile devam etmeli, bulunan: ${foundWithBlock}`);
   assert.ok(!foundWithBlock.includes("Konu taşınmazın yer aldığı"), `Blok atifi VERILDIGINDE eski jenerik onek ARTIK gorunmemeli, bulunan: ${foundWithBlock}`);
-  assert.ok(foundWithBlock.includes("A Blok'a ait binanın enerji performans sınıfı A sınıfıdır"), `Enerji sinifi cumlesi de blok atifini kullanmali, bulunan: ${foundWithBlock}`);
+  assert.ok(foundWithBlock.includes("A Blok'a ait binanın enerji performans sınıfı A sınıfıdır"), `Enerji sinifi cumlesi (bu ayri, 'binanın' genitif hali - CIFT-ait sorunu YOK) blok atifini kullanmali, bulunan: ${foundWithBlock}`);
 
   // 2b) "expired" (süresi dolmuş EKB) + blok atıfı.
   const expiredFields = { hasEkb: "Evet", ekbIssueDate: "01.01.2010", ekbValidUntil: "01.01.2015" };

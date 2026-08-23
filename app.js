@@ -27378,7 +27378,14 @@ function buildEkbExplanation(fields = state.fields, blockAttribution = "") {
   const certificateLead = certificateParts.length
     ? `${certificateParts.join(", ")} Enerji Kimlik Belgesi`
     : "Enerji Kimlik Belgesi";
-  const buildingLead = blockAttribution ? `${blockAttribution} binaya ait` : "Konu taşınmazın yer aldığı binaya ait";
+  // Kullanıcı bildirimi (2026-08-23): "A Blok'a ait binaya ait ...
+  // bulunmaktadır ... cümle bu şekilde geliyor anlam bozukluğu var" —
+  // blockAttribution ZATEN "X Blok'a ait" ile bitiyor (bkz.
+  // formatDocumentBlockAttributionPhrase); buna AYRICA "binaya ait" eklemek
+  // "ait ... ait" tekrarı üretiyordu. Blok atıflıyken "bina" referansı hiç
+  // GEREKMİYOR — "missing" (bulunamamıştır) cümlesinin ZATEN kullandığı AYNI
+  // "{attribution} Enerji Kimlik Belgesi ..." kalıbına paralel hale getirildi.
+  const buildingLead = blockAttribution || "Konu taşınmazın yer aldığı binaya ait";
   const sentences = [`${buildingLead} ${certificateLead} bulunmaktadır.`];
   if (energyClass) {
     const buildingReference = blockAttribution ? `${blockAttribution} binanın` : "taşınmazın yer aldığı binanın";
