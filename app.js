@@ -1624,6 +1624,10 @@ const DOCUMENTS_BLOCK_SHARED_FIELD_KEYS = [
   "municipalityProjectDate", "municipalityProjectNo", "municipalityProjectType",
   "mainRealEstateProjectSuitable", "mainRealEstateProjectSuitabilityNote",
   "hasEkb", "ekbDocumentNo", "ekbIssueDate", "ekbValidUntil", "ekbEnergyClass", "ekbEmissionClass",
+  // "ekbExplanation"/"ekbRawText" (2026-08-23) — aynı EKB grubunun geri
+  // kalan 2 alanı, staticSuitabilityExplanation/buildingInspectionExplanation
+  // ile AYNI desende (kendiliğinden-iyileşen açıklama + ham metin) eksikti.
+  "ekbExplanation", "ekbRawText",
   "penaltyDecision", "penaltyNote",
   "staticSuitability", "staticSuitabilityNote", "staticSuitabilityExplanation",
   "buildingInspectionContractActive", "buildingInspectionProgressLevel",
@@ -2444,6 +2448,21 @@ function getDocumentsPerUnitOnlyFieldKeys() {
     "buildingInspectionProgressLevel",
     "buildingInspectionTerminationDate",
     "buildingInspectionTerminationLevel",
+    // "ekbEmissionClass"/"ekbRawText" (2026-08-23, kullanıcı bildirimi:
+    // "ekb bilgileri belgeler ve proje kısmında ... dosya ve rapor
+    // kısmında ekb yüklenmemişse hayır olarak geliyor" incelenirken
+    // bulundu) — "explanations" bölümünde deklaratif oldukları için
+    // (documents/hasEkb/ekbDocumentNo/ekbIssueDate/
+    // ekbValidUntil/ekbEnergyClass'ın AKSİNE) HİÇ scoped DEĞİLDİ, rapor
+    // genelinde PAYLAŞILIYORDU — Çoklu Talep'te farklı bloklarda FARKLI
+    // EKB belgeleri olsa bile emisyon sınıfı/ham metin TEK bir değere
+    // sabitlenirdi. "ekbExplanation" (aynı bölümdeki 3. EKB alanı) BİLEREK
+    // DIŞARIDA — staticSuitabilityExplanation/buildingInspectionExplanation
+    // gibi HER render'da aktif taşınmazın (artık doğru scoped) kaynak
+    // alanlarından yeniden üretilen "kendi kendini iyileştiren" bir metin
+    // (bkz. refreshEkbExplanationFromCurrentFields), scoping'e gerek yok.
+    "ekbEmissionClass",
+    "ekbRawText",
   ];
 }
 
@@ -5476,6 +5495,9 @@ function createForm(section) {
     label.append(createSpan(getFieldDisplayLabel(section.id, field)), control);
     if (field.key === "takbisSummary") {
       label.append(createEncumbranceSummaryModeControl());
+    }
+    if (section.id === "documents" && field.key === "hasEkb") {
+      label.append(createEkbInlineUploadButton());
     }
     if (field.type === "textarea") {
       label.classList.add("has-field-copy");
@@ -21966,6 +21988,52 @@ async function processEkbFile(file) {
   applyEkbFieldsToReport({ force: true });
 }
 
+// Kullanıcı bildirimi (2026-08-23): "ekb bilgileri belgeler ve proje
+// kısmında burada normal şartlarda dosya ve rapor kısmında ekb
+// yüklenmemişse hayır olarak geliyor bu hücre yanına EKB yükleme
+// butonu koyalım zaten belgeler ve proje bölümünde de blok bazında
+// ayrıştırma var" — "Enerji Kimlik Belgesi" (hasEkb) alanının YANINDA,
+// kullanıcının zaten baktığı bağlamda (ve DOCUMENTS_BLOCK_SHARED_FIELD_KEYS'in
+// sağladığı blok-paylaşımıyla, bkz. applyEkbFieldsToReport yorumu) doğrudan
+// yükleme yapılabilsin diye eklendi. "Dosya ve Rapor"daki genel EKB kartı
+// (createUploadGrid) KALDIRILMADI — ikisi de AYNI processEkbFile()'ı
+// çağırır, tek gerçek yazma yolu; burası yalnızca İKİNCİ bir giriş
+// noktası (kısayol).
+function createEkbInlineUploadButton() {
+  const wrap = document.createElement("span");
+  wrap.className = "ekb-inline-upload";
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "mini-button";
+  button.textContent = "EKB Yükle";
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = ".pdf,application/pdf";
+  input.hidden = true;
+  const status = document.createElement("span");
+  status.className = "ekb-inline-upload-status";
+  button.addEventListener("click", () => input.click());
+  input.addEventListener("change", async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    state.uploads.ekb = file.name;
+    status.textContent = "";
+    try {
+      await processEkbFile(file);
+      state.uploadErrors = { ...(state.uploadErrors || {}), ekb: "" };
+    } catch (error) {
+      state.uploadErrors = { ...(state.uploadErrors || {}), ekb: error.message || "Dosya okunamadı." };
+      status.textContent = state.uploadErrors.ekb;
+    }
+    input.value = "";
+    autosave();
+    renderDocuments();
+    renderSection();
+  });
+  wrap.append(button, input, status);
+  return wrap;
+}
+
 // EKB YALNIZCA PDF metin katmanından okunur; OCR ve sunucu tarafı okuma
 // kaldırıldı (kullanıcı isteği, 2026-07-08). Koordinatlı okuma da pdf.js
 // metin katmanı kullanır, OCR değildir.
@@ -30687,6 +30755,15 @@ function applyEkbFieldsToReport(options = {}) {
     setFieldFromSource("ekb", key, value, options);
   });
   refreshEkbExplanationFromCurrentFields("hasEkb");
+  // Kullanıcı talebi (2026-08-23): "enerji kimlik belgesi blok bazında
+  // veriliyor ... bir bloktaki EKB verisi otomatik o bloktaki TÜM
+  // bağımsız bölümlere uygulansın" — EKB PDF yüklendiğinde (bu fonksiyon)
+  // önceden yalnızca AKTİF taşınmaza yazıyordu; DOCUMENTS_BLOCK_SHARED_FIELD_KEYS
+  // (Belgeler ve Proje'nin ZATEN VAR OLAN blok-paylaşım mekanizması, EKB
+  // alanlarını da içeriyor) buraya hiç bağlanmamıştı — yalnızca "documents"
+  // formundaki ELLE değişikliklerde tetikleniyordu (bkz. createForm blur
+  // dinleyicisi). Burada da çağırarak PDF-yükleme yolunu KAPATIYORUZ.
+  syncDocumentsSharedDataToBlockSiblings();
 }
 
 function resetEkbDerivedFields() {

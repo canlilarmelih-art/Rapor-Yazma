@@ -261,7 +261,57 @@ function freshState(overrides = {}) {
   ["projectInstitution", "hasEkb", "penaltyDecision", "staticSuitability", "buildingInspectionContractActive", "mainRealEstateProjectSuitable"].forEach((key) => {
     assert.ok(sharedKeys.includes(key), `"${key}" DOCUMENTS_BLOCK_SHARED_FIELD_KEYS'te OLMALI.`);
   });
+  // 2026-08-23: EKB grubunun eksik kalan 2 alani (ekbEmissionClass ZATEN
+  // vardi) - bkz. app.js DOCUMENTS_BLOCK_SHARED_FIELD_KEYS yorumu.
+  ["ekbEmissionClass", "ekbExplanation", "ekbRawText"].forEach((key) => {
+    assert.ok(sharedKeys.includes(key), `"${key}" DOCUMENTS_BLOCK_SHARED_FIELD_KEYS'te OLMALI (EKB blok-paylasiminin tam kapsanmasi icin).`);
+  });
   console.log("DOCUMENTS_BLOCK_SHARED_FIELD_KEYS icerik testi tamam.");
+}
+
+// --- 7) getDocumentsPerUnitOnlyFieldKeys(): "explanations" bolumundeki ----
+// ekbEmissionClass/ekbRawText artik scoped set'e ekleniyor - ekbExplanation
+// (kendi kendini iyileştiren) BILEREK YOK (kaynak-duzeyi, DOM'suz saf
+// fonksiyon oldugu icin dogrudan calistirilabilir). ------------------------
+{
+  const fnSrc = extractFunction("getDocumentsPerUnitOnlyFieldKeys");
+  // eslint-disable-next-line no-new-func
+  const keys = new Function(`${fnSrc}\nreturn getDocumentsPerUnitOnlyFieldKeys();`)();
+  assert.ok(keys.includes("ekbEmissionClass"), "getDocumentsPerUnitOnlyFieldKeys() artik 'ekbEmissionClass' icermeli (2026-08-23 scoping-gap-fix).");
+  assert.ok(keys.includes("ekbRawText"), "getDocumentsPerUnitOnlyFieldKeys() artik 'ekbRawText' icermeli (2026-08-23 scoping-gap-fix).");
+  assert.ok(!keys.includes("ekbExplanation"), "getDocumentsPerUnitOnlyFieldKeys() 'ekbExplanation' ICERMEMELI (kendi kendini iyileştiren metin, ayri scoping'e gerek yok).");
+  console.log("getDocumentsPerUnitOnlyFieldKeys EKB scoping-gap-fix testi tamam.");
+}
+
+// --- 8) applyEkbFieldsToReport(): syncDocumentsSharedDataToBlockSiblings() -
+// artik cagriliyor (kaynak-duzeyi - DOM/state agir bagimliliklari nedeniyle
+// tam davranissal test yerine, bkz. proje konvansiyonu) --------------------
+{
+  const fnSrc = extractFunction("applyEkbFieldsToReport");
+  assert.match(
+    fnSrc,
+    /refreshEkbExplanationFromCurrentFields\("hasEkb"\);[\s\S]{0,1200}syncDocumentsSharedDataToBlockSiblings\(\);/,
+    "applyEkbFieldsToReport() artik syncDocumentsSharedDataToBlockSiblings()'i cagirmiyor - EKB PDF yuklendiginde aktif tasinmaz DISINDAKI blok uyeleri guncellenmez."
+  );
+  console.log("applyEkbFieldsToReport blok-senkron kablolama testi tamam.");
+}
+
+// --- 9) createEkbInlineUploadButton(): "Enerji Kimlik Belgesi" (hasEkb) ---
+// alaninin yanina createForm() icinde eklendi mi (kullanici bildirimi,
+// 2026-08-23: "ekb bilgileri belgeler ve proje kismindaki bu hucre yanina
+// EKB yukleme butonu koyalim") - kaynak-duzeyi ----------------------------
+{
+  assert.match(
+    appSource,
+    /function createEkbInlineUploadButton\(\)\s*\{[\s\S]{0,100}const button = document\.createElement\("button"\);[\s\S]{0,600}await processEkbFile\(file\);/,
+    "createEkbInlineUploadButton() bulunamadi veya processEkbFile()'i cagirmiyor."
+  );
+  assert.match(
+    appSource,
+    /if \(section\.id === "documents" && field\.key === "hasEkb"\) \{\s*\n\s*label\.append\(createEkbInlineUploadButton\(\)\);/,
+    "createForm() artik hasEkb alaninin yanina createEkbInlineUploadButton() eklemiyor."
+  );
+  console.log("createEkbInlineUploadButton hasEkb yanina kablolama testi tamam.");
 }
 
 console.log("Belgeler ve Proje blok/bagimsiz-bolum tab yapisi testleri basarili.");

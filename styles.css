@@ -4985,6 +4985,23 @@ td textarea.table-textarea {
   overflow-wrap: anywhere;
 }
 
+/* "Enerji Kimlik Belgesi" alanının yanındaki EKB yükleme kısayolu
+   (2026-08-23, kullanıcı bildirimi: "bu hücre yanına EKB yükleme
+   butonu koyalım") — .field label'ının içine, select'in hemen yanına
+   eklenir. */
+.ekb-inline-upload {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 8px;
+}
+
+.ekb-inline-upload-status {
+  color: #b91c1c;
+  font-weight: 700;
+  font-size: 11px;
+}
+
 .land-climate-earthquake-panel {
   margin-top: 18px;
   padding: 16px 18px;
