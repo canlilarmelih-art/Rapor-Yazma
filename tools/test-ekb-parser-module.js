@@ -70,7 +70,10 @@ function main() {
     "Yuklenen EKB metni Aciklamalar bolumundeki ham veri alanina aktarilmiyor."
   );
   assert(
-    appSource.includes('const documentNo = toTitleFieldUppercase(state.fields.ekbDocumentNo || "").trim();'),
+    // 2026-08-23: buildEkbExplanation() artik `fields = state.fields`
+    // parametreli (blok-atifli EKB aciklamasi icin, bkz. app.js yorumu) -
+    // yalnizca "state.fields." onekini "fields." olarak degistirdi.
+    appSource.includes('const documentNo = toTitleFieldUppercase(fields.ekbDocumentNo || "").trim();'),
     "EKB açıklamasında belge no büyük harfe dönüştürülmüyor."
   );
   assert(

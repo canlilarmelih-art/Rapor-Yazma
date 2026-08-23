@@ -26285,9 +26285,9 @@ function buildReviewedDocumentsDescription() {
     getReviewedDocumentChronologicalEntries(group.rows)
       .map(({ row }) => ({ ...normalizeReviewedDocumentRow(row), blockLabel: group.blockLabel }))
   )).filter((row) => row.type);
-  const ekbExplanation = buildEkbExplanation();
+  const ekbParts = buildEkbExplanationParts();
   if (!rows.length) {
-    return normalizeReportDescriptionText([...buildMissingReviewedDocumentSentences(), ekbExplanation].filter(Boolean).join("\n\n"));
+    return normalizeReportDescriptionText([...buildMissingReviewedDocumentSentences(), ...ekbParts].filter(Boolean).join("\n\n"));
   }
 
   const permitGroups = new Map();
@@ -26311,14 +26311,19 @@ function buildReviewedDocumentsDescription() {
     parts.push(`${prefix} yapılan incelemelerde taşınmaza ait yeni yapı ruhsatı bulunamamıştır.`);
   }
   parts.push(...buildDocumentsOccupancyParts(rowGroups, rows, blockOrder));
-  if (ekbExplanation) parts.push(ekbExplanation);
+  parts.push(...ekbParts);
 
   return normalizeReportDescriptionText(parts.join("\n\n"));
 }
 
 function splitReviewedDocumentsDescriptionsIfNeeded() {
   const generatedProjectText = buildProjectReviewExplanation();
-  const ekbExplanation = buildEkbExplanation();
+  // 2026-08-23: buildEkbExplanation() (tekil) yerine, blok-tab yapısı
+  // aktifken HER bloğu ayrı yansıtan buildEkbExplanationParts() (bkz.
+  // yorumu) — birden fazla cümle olabileceğinden "\n\n" ile birleştirilip
+  // TEK bir metin bloğu gibi karşılaştırılır/eklenir.
+  const ekbParts = buildEkbExplanationParts();
+  const ekbCombinedText = normalizeReportDescriptionText(ekbParts.join("\n\n"));
   let changed = false;
 
   if (generatedProjectText && !String(state.fields.projectReviewDescription || "").trim()) {
@@ -26338,9 +26343,9 @@ function splitReviewedDocumentsDescriptionsIfNeeded() {
       state.fields.reviewedDocumentsDescription = nextDocumentsText;
       changed = true;
     }
-  } else if (currentDocumentsText && ekbExplanation && !currentDocumentsText.includes(ekbExplanation)) {
+  } else if (currentDocumentsText && ekbCombinedText && !ekbParts.every((part) => currentDocumentsText.includes(part))) {
     const withoutLegacyEkb = stripEkbExplanationFromReviewedDocumentsText(currentDocumentsText);
-    const nextDocumentsText = normalizeReportDescriptionText([withoutLegacyEkb, ekbExplanation].filter(Boolean).join("\n\n"));
+    const nextDocumentsText = normalizeReportDescriptionText([withoutLegacyEkb, ekbCombinedText].filter(Boolean).join("\n\n"));
     if (nextDocumentsText !== state.fields.reviewedDocumentsDescription) {
       state.fields.reviewedDocumentsDescription = nextDocumentsText;
       changed = true;
@@ -26356,11 +26361,21 @@ function splitReviewedDocumentsDescriptionsIfNeeded() {
   return changed;
 }
 
+// 2026-08-23: "not found" (bulunamamıştır) cümlesi artık ya eski
+// "taşınmaza ait" (tekil/blok-gruplaması-olmayan) ya da YENİ "{Bloklar}
+// Blok'a ait" (bkz. buildEkbExplanationParts) ile başlayabiliyor — [^.]+?
+// (non-greedy, nokta içermeyen) bir önceki/sonraki cümleye TAŞMADAN yalnızca
+// "Blok'a ait" ile biten atıf öbeğini yakalar.
+// BİLİNEN SINIRLAMA (önceden de vardı, bu değişiklikle GENİŞLEMEDİ): "found,
+// geçerli" (bulunmaktadır) cümlesi için bir strip deseni YOK — içeriği
+// (belge no/tarih/sınıf) çok değişken olduğundan güvenli bir regex kurmak
+// riskli; EKB verisi değişip yeniden üretildiğinde eski "bulunmaktadır"
+// cümlesi metinde KALIR, yenisi yanına eklenir (kullanıcı elle temizlemeli).
 function stripEkbExplanationFromReviewedDocumentsText(value = "") {
   return normalizeReportDescriptionText(value || "")
     .replace(/Enerji Kimlik Belgesinin son geçerlilik tarihi sona erdiği için dikkate alınmamıştır\.?/gi, "")
     .replace(/(?:İnceleme tarihinde|\d{2}\.\d{2}\.\d{4}\s+tarihinde) taşınmaza ait(?:\s+veriliş tarihi\s+\d{2}\.\d{2}\.\d{4}(?:\s+tarihli)?(?:,\s+geçerlilik tarihi\s+\d{2}\.\d{2}\.\d{4}(?:\s+tarihli)?)?)?(?:\s+olan)?\s+Enerji Kimlik Belgesi incelenmiştir\.\s*Enerji Kimlik Belgesinin son geçerlilik tarihi sona erdiği için değerleme raporunda dikkate alınmamıştır\.?/gi, "")
-    .replace(/(?:İnceleme tarihinde|\d{2}\.\d{2}\.\d{4}\s+tarihinde) EKB sistemi, E Devlet, resmi kurumlar ve saha araştırması sonucunda taşınmaza ait Enerji Kimlik Belgesi bulunamamıştır\.?/gi, "")
+    .replace(/(?:İnceleme tarihinde|\d{2}\.\d{2}\.\d{4}\s+tarihinde) EKB sistemi, E Devlet, resmi kurumlar ve saha araştırması sonucunda (?:taşınmaza ait|[^.]+?Blok'a ait) Enerji Kimlik Belgesi bulunamamıştır\.?/gi, "")
     .trim();
 }
 
@@ -27194,32 +27209,52 @@ function getEkbInspectionDateIso() {
   return state.fields.appointmentDate || "";
 }
 
-function buildEkbExplanation() {
-  const hasEkb = normalizeYesNoChoice(state.fields.hasEkb);
+// buildEkbExplanation()'ın "İnceleme tarihinde"/"DD.MM.YYYY tarihinde"
+// önekini hesaplayan kısmı — hem tekil (parametresiz) çağrıda hem
+// buildEkbExplanationParts()'ın "bulunamamıştır" birleşik cümlesinde
+// (2026-08-23) TEKRAR yazılmasın diye çıkarıldı.
+function getEkbInspectionLead() {
   const inspectionDate = getEkbInspectionDateIso();
   const inspectionDateIso = dateTrToIso(inspectionDate) || inspectionDate;
   const inspectionDateText = dateIsoToTr(inspectionDateIso || inspectionDate);
-  const inspectionLead = inspectionDateText ? `${inspectionDateText} tarihinde` : "İnceleme tarihinde";
+  return inspectionDateText ? `${inspectionDateText} tarihinde` : "İnceleme tarihinde";
+}
+
+// Kullanıcı talebi (2026-08-23): "burada incelenen belgelerde ortak
+// açıklama mantığı vardı EKB de de aynısı olmalı" — bkz.
+// buildEkbExplanationParts() yorumu (aşağıda), o fonksiyon HER blok için
+// bu fonksiyonu KENDİ temsilci taşınmazının `fields`'ıyla + blok
+// atıf ifadesiyle ("A Blok'a ait" vb.) çağırır. `fields` verilmezse
+// (tekil/blok-gruplaması-olmayan raporlar, ESKİ/DEĞİŞMEYEN davranış)
+// AKTİF taşınmazın state.fields'ı kullanılır; `blockAttribution`
+// verilmezse (AYNI eski davranış) "Konu taşınmazın yer aldığı binaya
+// ait"/"taşınmaza ait" jenerik ifadesi kullanılır.
+function buildEkbExplanation(fields = state.fields, blockAttribution = "") {
+  const hasEkb = normalizeYesNoChoice(fields.hasEkb);
+  const inspectionLead = getEkbInspectionLead();
   if (hasEkb === "Hayır") {
     return `${inspectionLead} EKB sistemi, E Devlet, resmi kurumlar ve saha araştırması sonucunda taşınmaza ait Enerji Kimlik Belgesi bulunamamıştır.`;
   }
   if (hasEkb !== "Evet") return "";
 
-  const validUntil = state.fields.ekbValidUntil || "";
+  const inspectionDate = getEkbInspectionDateIso();
+  const inspectionDateIso = dateTrToIso(inspectionDate) || inspectionDate;
+  const validUntil = fields.ekbValidUntil || "";
   const validUntilIso = dateTrToIso(validUntil) || validUntil;
-  const issueDate = dateIsoToTr(state.fields.ekbIssueDate || "");
+  const issueDate = dateIsoToTr(fields.ekbIssueDate || "");
   const validUntilText = dateIsoToTr(validUntilIso || validUntil);
+  const expiredLead = blockAttribution || "taşınmaza ait";
   if (validUntilIso && inspectionDateIso && validUntilIso < inspectionDateIso) {
     const dateParts = [];
     if (issueDate) dateParts.push(`veriliş tarihi ${issueDate}`);
     if (validUntilText) dateParts.push(`geçerlilik tarihi ${validUntilText}`);
     const certificateDateText = dateParts.length ? ` ${dateParts.join(", ")}` : "";
     const certificateDateSuffix = certificateDateText ? `${certificateDateText} olan` : "";
-    return normalizeReportDescriptionText(`${inspectionLead} taşınmaza ait${certificateDateSuffix} Enerji Kimlik Belgesi incelenmiştir. Enerji Kimlik Belgesinin son geçerlilik tarihi sona erdiği için değerleme raporunda dikkate alınmamıştır.`);
+    return normalizeReportDescriptionText(`${inspectionLead} ${expiredLead}${certificateDateSuffix} Enerji Kimlik Belgesi incelenmiştir. Enerji Kimlik Belgesinin son geçerlilik tarihi sona erdiği için değerleme raporunda dikkate alınmamıştır.`);
   }
 
-  const documentNo = toTitleFieldUppercase(state.fields.ekbDocumentNo || "").trim();
-  const energyClass = normalizeReportTitleText(state.fields.ekbEnergyClass || "").trim();
+  const documentNo = toTitleFieldUppercase(fields.ekbDocumentNo || "").trim();
+  const energyClass = normalizeReportTitleText(fields.ekbEnergyClass || "").trim();
   const certificateParts = [];
   if (issueDate) certificateParts.push(`${issueDate} tarih`);
   if (documentNo) certificateParts.push(`${documentNo} belge numaralı`);
@@ -27228,11 +27263,57 @@ function buildEkbExplanation() {
   const certificateLead = certificateParts.length
     ? `${certificateParts.join(", ")} Enerji Kimlik Belgesi`
     : "Enerji Kimlik Belgesi";
-  const sentences = [`Konu taşınmazın yer aldığı binaya ait ${certificateLead} bulunmaktadır.`];
+  const buildingLead = blockAttribution ? `${blockAttribution} binaya ait` : "Konu taşınmazın yer aldığı binaya ait";
+  const sentences = [`${buildingLead} ${certificateLead} bulunmaktadır.`];
   if (energyClass) {
-    sentences.push(`Belgeye göre taşınmazın yer aldığı binanın enerji performans sınıfı ${energyClass} sınıfıdır.`);
+    const buildingReference = blockAttribution ? `${blockAttribution} binanın` : "taşınmazın yer aldığı binanın";
+    sentences.push(`Belgeye göre ${buildingReference} enerji performans sınıfı ${energyClass} sınıfıdır.`);
   }
   return normalizeReportDescriptionText(sentences.join(" "));
+}
+
+// Kullanıcı talebi (2026-08-23): "burada incelenen belgelerde ortak
+// açıklama mantığı vardı EKB de de aynısı olmalı" — buildDocumentsOccupancyParts()
+// (ruhsat/yapı kullanma izin belgesi, yukarıda) ZATEN blok-tab yapısı
+// aktifken (isDocumentsBlockGroupingActive) HER bloğu ayrı kontrol edip
+// "bulunanlar" ile "bulunamayanlar"ı ayrı, blok-etiketli cümlelerde
+// topluyordu — ama İncelenen Belgeler Açıklaması'nın (buildReviewedDocumentsDescription,
+// TEK rapor-geneli PAYLAŞIMLI alan) EKB kısmı yalnızca AKTİF taşınmazın
+// TEK buildEkbExplanation() çağrısını kullanıyordu (o an açık olan TEK
+// bloğu yansıtıyordu, diğer bloklardaki FARKLI EKB durumları hiç
+// görünmüyordu). Bu fonksiyon AYNI mantığı EKB'ye uygular: "Evet" olan
+// bloklar KENDİ (farklı belge no/tarih/sınıf olabileceğinden AYRI AYRI,
+// blok atıflı) cümlesini alır; "Hayır" olan bloklar buildDocumentsOccupancyParts'taki
+// "eksik bloklar" desenindeki gibi TEK birleşik bir "X ve Y Blok'a ait
+// ... bulunamamıştır." cümlesinde toplanır. Blok gruplama AKTİF DEĞİLSE
+// (kat irtifakı dışı / tek blok / tekil taşınmaz) davranış AYNEN korunur
+// (tek buildEkbExplanation() çağrısı, blok atıfsız — ESKİ metin BİREBİR).
+function buildEkbExplanationParts() {
+  if (!isDocumentsBlockGroupingActive()) {
+    const single = buildEkbExplanation();
+    return single ? [single] : [];
+  }
+  const units = buildAllTitleUnitsForSummaryTable();
+  const groups = computeDocumentsBlockGroups(units);
+  const parts = [];
+  const missingBlockLabels = [];
+  groups.forEach((group) => {
+    const blockLabel = computeDocumentsBlockLabel(group, groups);
+    const representativeFields = units[group.unitIndices[0]]?.fields || {};
+    const hasEkb = normalizeYesNoChoice(representativeFields.hasEkb);
+    if (hasEkb === "Hayır") {
+      missingBlockLabels.push(blockLabel);
+      return;
+    }
+    const attribution = formatDocumentBlockAttributionPhrase([blockLabel]);
+    const sentence = buildEkbExplanation(representativeFields, attribution);
+    if (sentence) parts.push(sentence);
+  });
+  if (missingBlockLabels.length) {
+    const attribution = formatDocumentBlockAttributionPhrase(missingBlockLabels);
+    parts.push(`${getEkbInspectionLead()} EKB sistemi, E Devlet, resmi kurumlar ve saha araştırması sonucunda ${attribution} Enerji Kimlik Belgesi bulunamamıştır.`);
+  }
+  return parts;
 }
 
 function refreshEkbExplanationFromCurrentFields(changedKey = "") {

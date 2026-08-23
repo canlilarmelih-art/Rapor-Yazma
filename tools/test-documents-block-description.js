@@ -107,6 +107,15 @@ const functionNames = [
   // getTitleUnitFieldsForLabel artik bunlara bagimli.
   "isCondominiumEasementOwnershipType",
   "normalizeOwnershipTypeForSectionVisibility",
+  // EKB'nin de "ortak aciklama" (blok bazinda ayrim) mantigina alinmasi
+  // (2026-08-23, kullanici talebi: "burada incelenen belgelerde ortak
+  // aciklama mantigi vardi EKB de de aynisi olmali") - buildEkbExplanation
+  // (asagida) yine gozlemlenebilir bir stub, ama buildEkbExplanationParts()'in
+  // KENDISI (blok-bazinda evet/hayir dallanmasi + getEkbInspectionLead)
+  // GERCEK kaynaktan calistirilir.
+  "buildEkbExplanationParts",
+  "getEkbInspectionLead",
+  "getEkbInspectionDateIso",
 ];
 
 // Ağır/kapsam-dışı bağımlılıklar (bu testin odağı DEĞİL, mevcut/değişmeyen
@@ -162,7 +171,19 @@ const sandboxSource = `
     return \`OCCUPANCY_FOUND(\${row.date},\${row.no})\`;
   }
   function buildMissingReviewedDocumentSentences() { return ["MISSING_SENTENCE"]; }
-  function buildEkbExplanation() { return ""; }
+  // Gozlemlenebilir stub (2026-08-23) - gercek cumle metni bu dosyanin
+  // odagi DEGIL (ruhsat/izin blok-gruplama mantigi); yalnizca
+  // buildEkbExplanationParts()'in DOGRU fields/attribution'la cagirdigini
+  // dogrulamak icin isaretli bir deger doner.
+  function buildEkbExplanation(fields = state.fields, attribution = "") {
+    if ((fields || {}).hasEkb === "Evet") return attribution ? \`EKB_FOUND[\${attribution}]\` : "EKB_FOUND";
+    return "";
+  }
+  function normalizeYesNoChoice(value) {
+    const text = String(value || "").trim();
+    return text === "Evet" || text === "Hayır" ? text : "";
+  }
+  function dateTrToIso(value) { return String(value || ""); }
   ${functionNames.map(extractFunction).join("\n")}
   return {
     setState: (s) => { state = s; },
@@ -170,6 +191,7 @@ const sandboxSource = `
     normalizeBlockLabelPrefixForAttribution, formatDocumentBlockAttributionPhrase,
     buildDocumentsPermitGroupPhrase, collectDocumentsDescriptionRowGroups,
     buildReviewedDocumentsDescription, buildDocumentsOccupancyParts, isDocumentsBlockGroupingActive,
+    buildEkbExplanationParts,
   };
 `;
 // eslint-disable-next-line no-new-func
@@ -447,6 +469,58 @@ function freshState(overrides = {}) {
   assert.ok(!description.includes("Ekspertize konu taşınmazların yer aldığı"), `REGRESYON: Tekli Talep'te YENI 'Ekspertize konu...' cumlesi gorunmemeli (eski davranis korunmali), bulunan: ${description}`);
   assert.ok(description.includes("OLD_MISSING_OCCUPANCY_SENTENCE"), `REGRESYON: eski (genel, blok-etiketsiz) Iskan-yok cumlesi hala kullanilmali, bulunan: ${description}`);
   console.log("buildReviewedDocumentsDescription regresyon (blok gruplama kapaliyken eski Iskan davranisi) testi tamam.");
+}
+
+// --- 10) YENI (2026-08-23, kullanici talebi): "burada incelenen belgelerde
+// ortak aciklama mantigi vardi EKB de de aynisi olmali" - buildEkbExplanationParts()
+// blok gruplamasi AKTIFKEN "Evet" olan bloklar KENDI (blok-atifli) cumlesini
+// alir, "Hayir" olan bloklar TEK birlesik "X ve Y Blok'a ait ... bulunamamistir."
+// cumlesinde toplanir (buildDocumentsOccupancyParts'taki AYNI "bulunan/
+// bulunamayan" ayrimi), bos/belirsiz olanlar HIC ETKI ETMEZ. --------------
+{
+  fns.setState(freshState({
+    fields: { requestType: "Çoklu Talep", ownershipType: "Yatay Kat İrtifakı", blockNo: "100", parcelNo: "1", titleBlockName: "A Blok", hasEkb: "Evet" },
+    titleUnits: [
+      { fields: { blockNo: "100", parcelNo: "1", titleBlockName: "B Blok", hasEkb: "Hayır" }, tables: {} },
+      { fields: { blockNo: "100", parcelNo: "1", titleBlockName: "C Blok", hasEkb: "Hayır" }, tables: {} },
+      { fields: { blockNo: "100", parcelNo: "1", titleBlockName: "D Blok" }, tables: {} },
+    ],
+  }));
+  const parts = fns.buildEkbExplanationParts();
+  assert.equal(parts.length, 2, `Bulunan (A) + birlesik bulunamayan (B+C) icin TOPLAM 2 parca beklenirdi (D bos oldugu icin hic etki etmez), bulunan: ${JSON.stringify(parts)}`);
+  assert.ok(parts.includes("EKB_FOUND[A Blok'a ait]"), `A Blok'un (Evet) kendi blok-atifli cumlesi bulunmali, bulunan: ${JSON.stringify(parts)}`);
+  const missingSentence = parts.find((part) => part !== "EKB_FOUND[A Blok'a ait]");
+  assert.ok(missingSentence, "Birlesik 'bulunamamistir' cumlesi bulunamadi.");
+  assert.ok(missingSentence.includes("B ve C Blok'a ait Enerji Kimlik Belgesi bulunamamıştır."), `B+C (Hayir) TEK birlesik cumlede olmali, bulunan: ${missingSentence}`);
+  assert.ok(!missingSentence.includes("D Blok"), `D Blok (bos hasEkb) hic gorunmemeliydi, bulunan: ${missingSentence}`);
+  console.log("buildEkbExplanationParts blok-bazli evet/hayir ayrimi testi tamam.");
+}
+
+// --- 10b) buildEkbExplanationParts(): blok gruplama KAPALIYKEN eski -------
+// (tekil, blok-atifsiz) buildEkbExplanation() davranisi AYNEN korunur -----
+{
+  fns.setState(freshState({
+    fields: { requestType: "Tekli Talep", ownershipType: "Yatay Kat İrtifakı", blockNo: "100", parcelNo: "1", titleBlockName: "A Blok", hasEkb: "Evet" },
+  }));
+  const parts = fns.buildEkbExplanationParts();
+  assert.deepEqual(parts, ["EKB_FOUND"], `Tekli/blok-gruplamasiz raporda blok atifsiz TEK 'EKB_FOUND' donmeli (regresyon), bulunan: ${JSON.stringify(parts)}`);
+  console.log("buildEkbExplanationParts regresyon (blok gruplama kapaliyken eski davranis) testi tamam.");
+}
+
+// --- 10c) buildReviewedDocumentsDescription(): EKB parcalari ruhsat/izin --
+// cumlelerinin ARDINDAN birlesik metne eklenir (uctan uca kablolama) ------
+{
+  fns.setState(freshState({
+    fields: { requestType: "Çoklu Talep", ownershipType: "Yatay Kat İrtifakı", blockNo: "100", parcelNo: "1", titleBlockName: "A Blok", hasEkb: "Evet" },
+    tables: { documents: [] },
+    titleUnits: [
+      { fields: { blockNo: "100", parcelNo: "1", titleBlockName: "B Blok", hasEkb: "Hayır" }, tables: { documents: [] } },
+    ],
+  }));
+  const description = fns.buildReviewedDocumentsDescription();
+  assert.ok(description.includes("EKB_FOUND[A Blok'a ait]"), `buildReviewedDocumentsDescription() EKB (Evet) parcasini icermeli, bulunan: ${description}`);
+  assert.ok(description.includes("B Blok'a ait Enerji Kimlik Belgesi bulunamamıştır."), `buildReviewedDocumentsDescription() EKB (Hayir) parcasini icermeli, bulunan: ${description}`);
+  console.log("buildReviewedDocumentsDescription EKB parcalari uctan uca kablolama testi tamam.");
 }
 
 console.log("Incelenen Belgeler Aciklamasi blok-bazli gruplama testleri basarili.");

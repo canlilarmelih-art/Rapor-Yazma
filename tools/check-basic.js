@@ -843,11 +843,19 @@ function main() {
     appJs.includes("EKB sistemi, E Devlet, resmi kurumlar ve saha araştırması sonucunda taşınmaza ait Enerji Kimlik Belgesi bulunamamıştır") &&
       appJs.includes("Enerji Kimlik Belgesinin son geçerlilik tarihi sona erdiği için değerleme raporunda dikkate alınmamıştır") &&
       appJs.includes("dateParts.push(`veriliş tarihi ${issueDate}`)") &&
-      appJs.includes("const inspectionLead = inspectionDateText ? `${inspectionDateText} tarihinde` : \"İnceleme tarihinde\";") &&
+      // 2026-08-23: "const inspectionLead = ..." artik ayri bir
+      // getEkbInspectionLead() yardimci fonksiyonuna cikarildi (bkz.
+      // buildEkbExplanationParts, blok-bazli EKB aciklamasi) - ayni
+      // hesaplama artik bir "return" ifadesi.
+      appJs.includes("return inspectionDateText ? `${inspectionDateText} tarihinde` : \"İnceleme tarihinde\";") &&
       appJs.includes("return `${inspectionLead} EKB sistemi, E Devlet, resmi kurumlar") &&
       appJs.includes("olan` : \"\"") &&
       appJs.includes("return state.fields.appointmentDate || \"\";") &&
-      appJs.includes("if (ekbExplanation) parts.push(ekbExplanation);"),
+      // 2026-08-23: EKB aciklamasi artik TEK bir "ekbExplanation" degil,
+      // blok basina ayri cumleler icerebilen "ekbParts" dizisi (bkz.
+      // buildEkbExplanationParts) - "ortak aciklama" (Incelenen Belgeler
+      // ile AYNI) mantigi.
+      appJs.includes("parts.push(...ekbParts);"),
     "EKB aciklamasi yeni Hayir/suresi gecmis metinleriyle incelenen belgeler aciklamasinin sonuna baglanmamis."
   );
   assert(
