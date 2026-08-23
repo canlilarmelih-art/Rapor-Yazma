@@ -214,6 +214,9 @@ const EXCLUDED_DESCRIPTION_AND_LEGACY_KEYS = [
 const SCALAR_KEYS = [
   "unitUsageStatus", "unitFirstSaleStatus", "unitEntrancePosition", "facades", "unitConstructionLevel",
   "unitViewStatus", "unitHeatingType", "unitHeatingMounted", "unitShopFrontage", "unitShopDepth",
+  // "Bağımsız Bölüm Niteliği" (2026-08-23, kullanıcı talebi) — bkz.
+  // UNIT_UNITS_TABLE_FIELD_DEFS yorumu.
+  "titleQuality",
 ];
 const MIRROR_KEYS = [
   "unitFloor", "legalArea", "currentArea", "unitAreaReductionRate",
@@ -253,6 +256,31 @@ function fullUnitFields(overrides = {}) {
   assert.equal(data.rows[0][katIndex], "1. Normal", "1. taşınmazın Kat bilgisi doğru sütunda olmalı.");
   assert.equal(data.rows[1][unitNoIndex], "7", "2. taşınmazın BB No bilgisi doğru sütunda olmalı.");
   console.log("2+ tasinmazda tablo verisi + Blok-Kat-BBNo sutun sirasi testi tamam.");
+}
+
+// --- 1b) YENİ (2026-08-23, kullanıcı talebi): "bağımsız bölüm ve --------
+// değerleme tablolarında bağımsız bölüm niteliği sütunu ekle" — Tapu
+// Özeti tablosundaki AYNI sırada (Blok/Kat/BB No'dan HEMEN SONRA), scalar
+// (düzenlenebilir), taşınmaza özgü doğru değerle. -------------------------
+{
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: fullUnitFields({ titleQuality: "Mesken" }),
+    tables: {},
+    titleUnits: [unit(fullUnitFields({ titleQuality: "Ofis ve İşyeri" }))],
+  });
+  const data = fns.buildUnitUnitsSummaryTableData();
+  const defs = fns.getFieldDefs();
+  const qualityDefIndex = defs.findIndex((item) => item.key === "titleQuality");
+  assert.ok(qualityDefIndex >= 0, "'titleQuality' UNIT_UNITS_TABLE_FIELD_DEFS'te bulunamadı.");
+  assert.equal(defs[qualityDefIndex].kind, "scalar", "'Bağımsız Bölüm Niteliği' düzenlenebilir (scalar) olmalı.");
+  const unitNoDefIndex = defs.findIndex((item) => item.key === "unitNo");
+  assert.equal(qualityDefIndex, unitNoDefIndex + 1, "'Bağımsız Bölüm Niteliği', 'BB No'nun HEMEN ARDINDAN gelmeli (Tapu Özeti tablosuyla AYNI sıra).");
+  const qualityIndex = data.headers.indexOf("Bağımsız Bölüm Niteliği");
+  assert.ok(qualityIndex >= 0, "'Bağımsız Bölüm Niteliği' sütunu başlıklarda bulunamadı.");
+  assert.equal(data.rows[0][qualityIndex], "Mesken", "1. taşınmazın niteliği doğru sütunda olmalı.");
+  assert.equal(data.rows[1][qualityIndex], "Ofis ve İşyeri", "2. taşınmazın niteliği doğru sütunda olmalı.");
+  console.log("Bagimsiz Bolum Niteligi sutunu (Blok/Kat/BB No'dan sonra, scalar) testi tamam.");
 }
 
 // --- 2) Tekil raporda (1 taşınmaz) null döner ------------------------------

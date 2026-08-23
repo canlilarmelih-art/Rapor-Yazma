@@ -7081,6 +7081,15 @@ const VALUATION_UNITS_TABLE_ROW_DEFS = valuationMarketRows.map((row) => ({
 const VALUATION_UNITS_TABLE_IDENTITY_DEFS = [
   { key: "titleBlockName", label: "BL." },
   { key: "unitNo", label: "BB No" },
+  // Kullanıcı talebi (2026-08-23): "aynı ada parsel çoklu taleplerde
+  // bağımsız bölüm ve değerleme tablolarında bağımsız bölüm niteliği
+  // sütunu ekle" — Taşınmazlar Tapu Özeti tablosundaki AYNI sıra (Blok/
+  // BB No'dan HEMEN SONRA). `narrow: false` — BL./BB No'nun AKSİNE bu
+  // alanın değeri ("Ofis ve İşyeri" gibi) uzun olabilir, leadingIndices'in
+  // varsayılan 18pt zorunlu darlığına SIĞMAZ (bkz.
+  // buildValuationUnitsSummaryTableHtml'in narrowStyle hesaplaması, artık
+  // per-sütun bu bayrağı kontrol ediyor).
+  { key: "titleQuality", label: "Bağımsız Bölüm Niteliği", narrow: false },
 ];
 
 // Kullanıcı talebi (2026-08-21/22, ekran görüntüsüyle — iki kez, ikincisi
@@ -7117,7 +7126,7 @@ function buildValuationUnitsSummaryTableData() {
 
   // Kullanıcı takip talebi (2026-08-22): "Sıra No sütununu NO yap daralt."
   const headers = ["No", ...VALUATION_UNITS_TABLE_IDENTITY_DEFS.map((def) => def.label)];
-  const columnMeta = [{ kind: "seq" }, ...VALUATION_UNITS_TABLE_IDENTITY_DEFS.map(() => ({ kind: "readonly" }))];
+  const columnMeta = [{ kind: "seq" }, ...VALUATION_UNITS_TABLE_IDENTITY_DEFS.map((def) => ({ kind: "readonly", narrow: def.narrow !== false }))];
 
   headers.push("Yasal Alan", "Mevcut Alan");
   columnMeta.push({ kind: "scalar", fieldKey: "legalValueArea" }, { kind: "scalar", fieldKey: "currentValueArea" });
@@ -7437,7 +7446,14 @@ function buildValuationUnitsSummaryTableHtml(data, activeRowIndex, { editable = 
   // `columnMeta.narrow` deseni, bu bespoke iki-katmanlı renderer'a da
   // uyarlandı).
   const narrowWidth = "width:18pt;";
-  const topHeaderHtml = `<tr>${leadingIndices.map((index) => `<th rowspan="2" style="${headerCell}${narrowWidth}">${toTitleFieldUppercase(headers[index])}</th>`).join("")}${groupOrder.map((group) => `<th colspan="${groupedColumns[group].length}" style="${headerCell}">${toTitleFieldUppercase(getValuationUnitsSummaryGroupDisplayLabel(group))}</th>`).join("")}</tr>`;
+  // Kullanıcı talebi (2026-08-23): "Bağımsız Bölüm Niteliği" sütunu (bkz.
+  // VALUATION_UNITS_TABLE_IDENTITY_DEFS yorumu) BL./BB No gibi bir
+  // leadingIndices üyesi ama onların AKSİNE zorunlu 18pt darlığa
+  // SIĞMAYACAK kadar uzun değerler taşıyabilir — narrowStyle artık
+  // TÜM leadingIndices'e blanket UYGULANMIYOR, her sütunun KENDİ
+  // columnMeta[index].narrow bayrağına (varsayılan true) göre hesaplanıyor.
+  const leadingNarrowStyle = (index) => (columnMeta[index]?.narrow === false ? "" : narrowWidth);
+  const topHeaderHtml = `<tr>${leadingIndices.map((index) => `<th rowspan="2" style="${headerCell}${leadingNarrowStyle(index)}">${toTitleFieldUppercase(headers[index])}</th>`).join("")}${groupOrder.map((group) => `<th colspan="${groupedColumns[group].length}" style="${headerCell}">${toTitleFieldUppercase(getValuationUnitsSummaryGroupDisplayLabel(group))}</th>`).join("")}</tr>`;
   const subHeaderHtml = `<tr>${orderedColumns.map(({ label, index }) => {
     const subheader = toTitleFieldUppercase(getValuationUnitsSummarySubheader(label));
     const meta = columnMeta[index] || null;
@@ -7459,7 +7475,7 @@ function buildValuationUnitsSummaryTableHtml(data, activeRowIndex, { editable = 
       const cell = row[columnIndex];
       const meta = columnMeta[columnIndex] || null;
       if (leadingIndices.includes(columnIndex)) {
-        return `<td style="${cellStyle}${narrowWidth}">${formatWordCell(toTitleFieldUppercase(cell))}</td>`;
+        return `<td style="${cellStyle}${leadingNarrowStyle(columnIndex)}">${formatWordCell(toTitleFieldUppercase(cell))}</td>`;
       }
       // Kullanıcı talebi (2026-08-22): "sıfırın altında çıkan değerler
       // kırmızı punto ile yazılsın" — Şerefiye gibi negatif çıkabilen
@@ -7489,7 +7505,7 @@ function buildValuationUnitsSummaryTableHtml(data, activeRowIndex, { editable = 
   const totalStyle = `${headerCell}`;
   const totalsCellsHtml = displayIndices.map((columnIndex) => {
     const meta = columnMeta[columnIndex] || null;
-    const narrowStyle = leadingIndices.includes(columnIndex) || meta?.narrow ? narrowWidth : "";
+    const narrowStyle = leadingIndices.includes(columnIndex) ? leadingNarrowStyle(columnIndex) : (meta?.narrow ? narrowWidth : "");
     if (columnIndex === 0) return `<td style="${totalStyle}${narrowStyle}">TOPLAM</td>`;
     if (leadingIndices.includes(columnIndex)) return `<td style="${totalStyle}${narrowStyle}"></td>`;
     if (!isValuationUnitsSummaryColumnSummable(headers[columnIndex])) return `<td style="${totalStyle}${narrowStyle}"></td>`;
@@ -21494,6 +21510,14 @@ const UNIT_UNITS_TABLE_FIELD_DEFS = [
   { key: "titleBlockName", label: "Blok", kind: "readonly", narrow: true },
   { key: "unitFloor", label: "Kat", kind: "scalar" },
   { key: "unitNo", label: "BB No", kind: "readonly", narrow: true },
+  // Kullanıcı talebi (2026-08-23): "aynı ada parsel çoklu taleplerde
+  // bağımsız bölüm ve değerleme tablolarında bağımsız bölüm niteliği
+  // sütunu ekle" — Blok/Kat/BB No'dan HEMEN SONRA, Taşınmazlar Tapu
+  // Özeti tablosundaki AYNI sıra (bkz. buildTitleUnitsSummaryTableData,
+  // titleQuality Blok/Tapu Katı/BB No'dan HEMEN SONRA gelir). "scalar"
+  // (düzenlenebilir) — Tapu tablosunda ZATEN scalar olan AYNI alan, tek
+  // gerçek kaynak (fields.titleQuality), ikinci bir kopya YOK.
+  { key: "titleQuality", label: "Bağımsız Bölüm Niteliği", kind: "scalar" },
   { key: "unitUsageStatus", label: "Kullanım Durumu", kind: "scalar" },
   { key: "unitFirstSaleStatus", label: "İlk Satış Durumu", kind: "scalar" },
   { key: "unitEntrancePosition", label: "Bina Girişine Göre Konum", kind: "scalar" },

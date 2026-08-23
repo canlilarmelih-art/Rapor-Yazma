@@ -329,50 +329,64 @@ function fullFixtureFields(overrides = {}) {
   console.log("{{TASINMAZLARDEGERLEMETABLOSU}} template-engine.js kablolama testi tamam.");
 }
 
-// --- 8) Blok/Bağımsız Bölüm No sütunları Sıra No'nun HEMEN sağında, ------
-// readonly, doğru taşınmaza eşleşiyor.
+// --- 8) Blok/Bağımsız Bölüm No/Bağımsız Bölüm Niteliği sütunları Sıra ----
+// No'nun HEMEN sağında, readonly, doğru taşınmaza eşleşiyor. Niteliği
+// (2026-08-23, kullanıcı talebi) BL./BB No'nun AKSİNE narrow:false
+// taşımalı (uzun metin sığmaz, bkz. VALUATION_UNITS_TABLE_IDENTITY_DEFS
+// yorumu). -----------------------------------------------------------------
 {
   const identityDefs = fns.getIdentityDefs();
-  assert.deepEqual(identityDefs.map((d) => d.key), ["titleBlockName", "unitNo"]);
-  assert.deepEqual(identityDefs.map((d) => d.label), ["BL.", "BB No"]);
+  assert.deepEqual(identityDefs.map((d) => d.key), ["titleBlockName", "unitNo", "titleQuality"]);
+  assert.deepEqual(identityDefs.map((d) => d.label), ["BL.", "BB No", "Bağımsız Bölüm Niteliği"]);
+  assert.equal(identityDefs.find((d) => d.key === "titleBlockName").narrow, undefined, "'BL.' icin narrow bayragi BELIRTILMEMIS olmali (varsayilan true).");
+  assert.equal(identityDefs.find((d) => d.key === "titleQuality").narrow, false, "'Bağımsız Bölüm Niteliği' icin narrow:false OLMALI (uzun metin sigmaz).");
 
   fns.setState({
     activeTitleUnitIndex: 0,
-    fields: { titleBlockName: "A", unitNo: "3", legalValue: "500.000" },
+    fields: { titleBlockName: "A", unitNo: "3", titleQuality: "Mesken", legalValue: "500.000" },
     tables: {},
-    titleUnits: [unit({ titleBlockName: "B", unitNo: "7", legalValue: "720.000" })],
+    titleUnits: [unit({ titleBlockName: "B", unitNo: "7", titleQuality: "Ofis ve İşyeri", legalValue: "720.000" })],
   });
   const data = fns.buildValuationUnitsSummaryTableData();
   const blockIndex = data.headers.indexOf("BL.");
   const unitNoIndex = data.headers.indexOf("BB No");
+  const qualityIndex = data.headers.indexOf("Bağımsız Bölüm Niteliği");
+  assert.ok(qualityIndex >= 0, "'Bağımsız Bölüm Niteliği' sütunu başlıklarda bulunamadı.");
   assert.equal(data.columnMeta[blockIndex].kind, "readonly", "'BL.' sütunu readonly olmalı.");
   assert.equal(data.columnMeta[unitNoIndex].kind, "readonly", "'BB No' sütunu readonly olmalı.");
+  assert.equal(data.columnMeta[qualityIndex].kind, "readonly", "'Bağımsız Bölüm Niteliği' sütunu readonly olmalı (Değerleme tablosunda kimlik/tanıma amaçlı, Tapu'dan düzenlenir).");
+  assert.equal(data.columnMeta[qualityIndex].narrow, false, "'Bağımsız Bölüm Niteliği' columnMeta'sı narrow:false taşımalı.");
   assert.equal(data.rows[0][blockIndex], "A", "1. taşınmazın Blok bilgisi doğru sütunda olmalı.");
   assert.equal(data.rows[1][unitNoIndex], "7", "2. taşınmazın BB No bilgisi doğru sütunda olmalı.");
-  console.log("Blok-BBNo kimlik sutunlari testi tamam.");
+  assert.equal(data.rows[0][qualityIndex], "Mesken", "1. taşınmazın Niteliği doğru sütunda olmalı.");
+  assert.equal(data.rows[1][qualityIndex], "Ofis ve İşyeri", "2. taşınmazın Niteliği doğru sütunda olmalı.");
+  console.log("Blok-BBNo-Nitelik kimlik sutunlari testi tamam.");
 }
 
 // --- 9) İki katmanlı HTML renderer'da Blok/BB No subheader'ı YANLIŞLIKLA -
-// "Piyasa Değeri (TL)" olmamalı (regresyon); kimlik sütunları daraltılmış.
+// "Piyasa Değeri (TL)" olmamalı (regresyon); kimlik sütunları daraltılmış -
+// AMA "Bağımsız Bölüm Niteliği" (2026-08-23) İSTİSNA — narrow:false. -----
 {
   fns.setState({
     activeTitleUnitIndex: 0,
-    fields: { titleBlockName: "A", unitNo: "3", legalValue: "500.000" },
+    fields: { titleBlockName: "A", unitNo: "3", titleQuality: "Mesken", legalValue: "500.000" },
     tables: {},
-    titleUnits: [unit({ titleBlockName: "B", unitNo: "7", legalValue: "720.000" })],
+    titleUnits: [unit({ titleBlockName: "B", unitNo: "7", titleQuality: "Ofis ve İşyeri", legalValue: "720.000" })],
   });
   assert.equal(fns.getValuationUnitsSummarySubheader("BL."), "BL.");
   assert.equal(fns.getValuationUnitsSummarySubheader("BB No"), "BB No");
   assert.equal(fns.getValuationUnitsSummaryHeaderGroup("BL."), "Diğer", "'BL.' herhangi bir gruba DEĞİL, 'Diğer'e düşmeli (leadingIndices zaten ayrı ele alır).");
   const html = fns.buildValuationUnitsSummaryWordTableHtml();
   assert.ok(html.includes(">BL.<"), "HTML'de 'BL.' başlığı görünmeli.");
+  assert.ok(html.includes(">BAĞIMSIZ BÖLÜM NİTELİĞİ<"), "HTML'de 'Bağımsız Bölüm Niteliği' başlığı görünmeli.");
   assert.ok(!/>BL\.<\/th>[\s\S]{0,5}PİYASA DEĞERİ/i.test(html), "'BL.' sütunu YANLIŞLIKLA 'Piyasa Değeri' alt-başlığı almamalı.");
   const leadingThs = [...html.matchAll(/<th rowspan="2" style="([^"]*)"/g)].map((m) => m[1]);
-  assert.equal(leadingThs.length, 3, "3 rowspan=2 basligi (No/BL./BB No) olmali.");
-  leadingThs.forEach((style) => {
-    assert.ok(style.includes("width:18pt;"), `Kimlik sutunu basligi dar genislik almali, bulunan stil: ${style}`);
+  assert.equal(leadingThs.length, 4, "4 rowspan=2 basligi (No/BL./BB No/Bagimsiz Bolum Niteligi) olmali.");
+  leadingThs.slice(0, 3).forEach((style) => {
+    assert.ok(style.includes("width:18pt;"), `No/BL./BB No basligi dar genislik almali, bulunan stil: ${style}`);
   });
-  console.log("Blok-BBNo subheader regresyon + daraltma testi tamam.");
+  assert.ok(!leadingThs[3].includes("width:18pt;"), `'Bağımsız Bölüm Niteliği' basligi DAR OLMAMALI (narrow:false), bulunan stil: ${leadingThs[3]}`);
+  console.log("Blok-BBNo-Nitelik subheader regresyon + daraltma-istisnasi testi tamam.");
 }
 
 // --- 10) Yalnızca değerleme önizlemesi iki katmanlı renderer'ı kullanır --

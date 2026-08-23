@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.538 - 2026-08-23 - Bağımsız Bölüm ve Değerleme özet tablolarına "Bağımsız Bölüm Niteliği" sütunu eklendi
+
+- Kullanıcı: "aynı ada parsel çoklu taleplerde bağımsız bölüm ve değerleme tablolarında bağımsız bölüm niteliği sütunu ekle."
+- **Bağımsız Bölüm tablosu** (`UNIT_UNITS_TABLE_FIELD_DEFS`): "Bağımsız Bölüm Niteliği" (titleQuality) Blok/Kat/BB No'dan HEMEN SONRA eklendi — Taşınmazlar Tapu Özeti tablosundaki AYNI sıra. **Scalar** (düzenlenebilir) — Tapu tablosunda ZATEN scalar olan aynı alan, tek gerçek kaynak, ikinci bir kopya YOK.
+- **Değerleme tablosu** (`VALUATION_UNITS_TABLE_IDENTITY_DEFS`): "Bağımsız Bölüm Niteliği" BL./BB No'dan HEMEN SONRA, kimlik/leading sütun olarak eklendi (Blok/BB No ile AYNI davranış: readonly, Tapu'dan düzenlenir). **Teknik detay**: leadingIndices sütunları ("No"/"BL."/"BB No") ŞİMDİYE KADAR HER ZAMAN zorunlu 18pt daraltılmış genişlik alıyordu — "Ofis ve İşyeri" gibi uzun değerler bu genişliğe SIĞMAZDI. Yeni bir per-sütun `narrow` bayrağı eklendi (`VALUATION_UNITS_TABLE_IDENTITY_DEFS`'te, varsayılan `true` — Blok/BB No davranışı DEĞİŞMEDİ; yeni sütun `narrow: false`) — `buildValuationUnitsSummaryTableHtml()`'in üç yerinde (başlık/gövde/toplam satırı) blanket daraltmadan per-sütun kontrolüne geçildi.
+- Test: `tools/test-unit-units-summary-table.js`'e yeni senaryo (konum + scalar doğrulaması) + `SCALAR_KEYS`'e eklendi (mevcut dinamik sayım testlerine otomatik dahil oldu). `tools/test-valuation-units-summary-table.js`'in 2 senaryosu (kimlik sütunları exact-list + subheader/daraltma) yeni sütunu kapsayacak şekilde güncellendi (narrow:false istisnası dahil). `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` cache-buster `?v=20260823-1500`.
+- Canlı tarayıcı testi yapılamadı (giriş bilgisi yok) — kullanıcının canlıda kontrol etmesi istenir: Çoklu Talep raporunda Bağımsız Bölüm ve Değerleme sekmelerindeki özet tablolarda artık "Bağımsız Bölüm Niteliği" sütunu (Blok/BB No'dan hemen sonra) görünmeli; Değerleme'de bu sütun okunabilir genişlikte olmalı (diğer kimlik sütunları gibi aşırı daraltılmamış).
+
 ## 0.0.537 - 2026-08-23 - EKB Açıklaması: "A Blok'a ait binaya ait ..." çift "ait" anlam bozukluğu düzeltildi
 
 - Kullanıcı, canlı çıktıyı yapıştırdı: "A Blok'a ait binaya ait 31.07.2019 tarih, ... Enerji Kimlik Belgesi bulunmaktadır. ... cümle bu şekilde geliyor anlam bozukluğu var bunu düzeltelim."
