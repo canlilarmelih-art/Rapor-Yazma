@@ -10,8 +10,19 @@
 //     "{tab etiketi} taşınmaz bağlı bulunduğu {mahalle} Mahalle Merkezinin
 //     {mesafe}" cümleciği, virgülle birleştirilir (buildAgriculturalMultiTitleUnitTransportText).
 //  3) Farklı ada/parseller, taşınmaz sayısı > 5 → genel özet cümlesi.
-// Diğer bölge türlerini (Konut/Ticaret/Sanayi) ve tek-taşınmazlı raporları
-// ETKİLEMEMELİ.
+// buildAgriculturalMultiTitleUnitTransportText (2 ve 3) HÂLÂ "Tarımsal
+// Alan"a ÖZGÜ — farklı ada/parseldeki taşınmazlar için mahalle-merkezi-
+// mesafe tabanlı bir liste üretir, arazi/tarla dışı bölge türlerinde
+// ANLAMSIZ olur.
+//
+// GENİŞLETME (2026-08-23, kullanıcı bildirimi — Kat İrtifakı/Düzce raporu,
+// Tarımsal Alan DEĞİL: "bu ulaşım tarifi tekil olarak veriliyor. bunun
+// çoğul olması gerekiyor"): (1)'deki çoğullaştırma ARTIK bölge türüne
+// (`environmentRegionType`) BAĞLI DEĞİL — aynı parseldeki (Kat İrtifakı
+// dahil) HERHANGİ bir çoklu taşınmaz raporunda uygulanır (bkz. senaryo 1c).
+// Diğer bölge türlerini (Konut/Ticaret/Sanayi vb. — ama HALA aynı-parsel
+// koşuluyla, bkz. hasMixedTitleUnitParcels) ve tek-taşınmazlı raporları
+// ETKİLEMEZ.
 
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -132,13 +143,13 @@ function boundFields(blockNo, parcelNo, distanceText) {
 {
   assert.match(
     appSource,
-    /function updateTransportFromMainArtery\([\s\S]{0,900}?pluralizeEnvironmentalSubjectText\(text, true\)/,
+    /function updateTransportFromMainArtery\([\s\S]{0,1800}?pluralizeEnvironmentalSubjectText\(text, true\)/,
     "updateTransportFromMainArtery, Çoklu Talep + Tarımsal Alan + aynı parselde " +
       "buildTransportDirectionText metnini pluralizeEnvironmentalSubjectText ile çoğullaştırmalı.",
   );
   assert.match(
     appSource,
-    /function updateTransportFromMainArtery\([\s\S]{0,900}?!hasMixedTitleUnitParcels\(\)/,
+    /function updateTransportFromMainArtery\([\s\S]{0,1800}?!hasMixedTitleUnitParcels\(\)/,
     "Çoğullaştırma yalnızca FARKLI ada/parsel OLMADIĞINDA (hasMixedTitleUnitParcels false) uygulanmalı.",
   );
   const singular = "Ekspertize konu taşınmaza ulaşım için bölgenin ana arterlerinden D-100 üzerinden kuzey " +
@@ -149,6 +160,29 @@ function boundFields(blockNo, parcelNo, distanceText) {
   assert.match(plural, /taşınmazların bulunduğu/, "\"taşınmazın\" da çoğullaşmalı.");
   assert.match(plural, /Ekspertize konu taşınmazlar Atatürk Caddesi üzerinde/, "Kapanış cümlesi de çoğullaşmalı.");
   console.log("Ana arter metninin cogullastirilmasi testi tamam.");
+}
+
+// 1c) YENİ (2026-08-23, kullanıcı bildirimi — Kat İrtifakı/Düzce raporu,
+// Tarımsal Alan DEĞİL: "bu ulaşım tarifi tekil olarak veriliyor. bunun
+// çoğul olması gerekiyor") — çoğullaştırma artık `environmentRegionType`
+// bölge türüne BAĞLI DEĞİL; aynı parseldeki HERHANGİ bir çoklu taşınmaz
+// raporunda (Kat İrtifakı dahil) uygulanmalı. Eski dar koşulun ("===
+// \"Tarımsal Alan\"" shouldPluralize'a bağlıyken) GERİ GELMEDİĞİNİ
+// doğrulayan regresyon testi (kaynak-düzeyi).
+{
+  const fnStart = appSource.indexOf("\nfunction updateTransportFromMainArtery(");
+  const fnEnd = appSource.indexOf("\nfunction ", fnStart + 1);
+  const fnSrc = appSource.slice(fnStart, fnEnd);
+  assert.match(
+    fnSrc,
+    /const shouldPluralize = isMultiTitleUnitReportForNarrative\(\) && !hasMixedTitleUnitParcels\(\);/,
+    "REGRESYON: shouldPluralize artik 'environmentRegionType === \"Tarımsal Alan\"' sartina BAGLI OLMAMALI - Kat Irtifaki gibi tarim-disi ayni-parsel coklu tasinmaz raporlarinda da cogullasmali."
+  );
+  assert.ok(
+    !/const shouldPluralize = state\.fields\?\.environmentRegionType === "Tarımsal Alan"/.test(fnSrc),
+    "REGRESYON: eski dar (yalnizca Tarimsal Alan) shouldPluralize kosulu GERI GELMIS olabilir."
+  );
+  console.log("shouldPluralize bolge-turunden bagimsiz (Kat Irtifaki dahil) genisletme regresyon testi tamam.");
 }
 
 // 2) Farklı ada/parsel, ≤5 taşınmaz — taşınmaz başına ayrı cümlecik.

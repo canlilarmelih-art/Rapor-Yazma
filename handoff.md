@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.539 - 2026-08-23 - Ana arter Ulaşım Tarifi çoğullaştırması artık yalnızca Tarımsal Alan'a özgü değil
+
+- Kullanıcı, ekran görüntüsüyle (Düzce Kat İrtifakı raporu): "Ekspertize konu taşınmaza ulaşım için ... Ekspertize konu taşınmaz Menekşe Sokak üzerinde yer almaktadır. bu ulaşım tarifi tekil olarak veriliyor. bunun çoğul olması gerekiyor."
+- **Kök neden**: `updateTransportFromMainArtery()`'nin (haritadan ana arter seçildiğinde Ulaşım Tarifi'ni otomatik üreten fonksiyon) çoğullaştırma koşulu (`shouldPluralize`) 0.0.4xx'te (Çoklu Talep + Tarımsal Alan talebiyle) yanlışlıkla `environmentRegionType === "Tarımsal Alan"` şartına BAĞLANMIŞTI — ama bu koşulun asıl mantığı ("aynı parseldeki taşınmazlar TEK paylaşımlı bir ulaşım tarifi cümlesini hak eder", `hasMixedTitleUnitParcels`/`pluralizeEnvironmentalSubjectText`) tarıma özgü hiçbir şey içermiyor; Kat İrtifakı gibi TÜM aynı-parsel çoklu taşınmaz senaryolarında (aslında en sık karşılaşılan durum — bir bina, birden fazla bağımsız bölüm) da geçerli.
+- **Düzeltme**: `shouldPluralize` artık yalnızca `isMultiTitleUnitReportForNarrative() && !hasMixedTitleUnitParcels()` — bölge türü şartı kaldırıldı. Farklı ada/parsellerdeki çoklu taşınmaz raporlarını (ayrı bir mekanizma, `buildAgriculturalMultiTitleUnitTransportText` — o HÂLÂ Tarımsal Alan'a özgü, DEĞİŞMEDİ) ve tek taşınmazlı raporları etkilemez.
+- Test: `tools/test-agricultural-multi-unit-transport.js`'e yeni senaryo (eski dar koşulun geri gelmediğini doğrulayan regresyon testi) + 2 mevcut kaynak-düzeyi regex'in arama penceresi genişletildi (yeni yorum bloğu nedeniyle). `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` cache-buster `?v=20260823-1600`.
+- Canlı tarayıcı testi yapılamadı (giriş bilgisi yok) — kullanıcının canlıda kontrol etmesi istenir: aynı raporda haritadan ana arteri yeniden seçtiğinde (veya yeni bir Kat İrtifakı Çoklu Talep raporunda ilk seçimde) Ulaşım Tarifi artık "taşınmazlara"/"taşınmazlar" şeklinde çoğul gelmeli.
+
 ## 0.0.538 - 2026-08-23 - Bağımsız Bölüm ve Değerleme özet tablolarına "Bağımsız Bölüm Niteliği" sütunu eklendi
 
 - Kullanıcı: "aynı ada parsel çoklu taleplerde bağımsız bölüm ve değerleme tablolarında bağımsız bölüm niteliği sütunu ekle."

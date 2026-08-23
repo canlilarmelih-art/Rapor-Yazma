@@ -33466,9 +33466,19 @@ function updateTransportFromMainArtery(road, options = {}) {
   // (hasMixedTitleUnitParcels) bu metin uygun DEĞİL — o durum ayrı bir
   // taşınmaz-bazlı liste/özet ile ele alınıyor, bkz.
   // buildAgriculturalMultiTitleUnitTransportText.
-  const shouldPluralize = state.fields?.environmentRegionType === "Tarımsal Alan"
-    && isMultiTitleUnitReportForNarrative()
-    && !hasMixedTitleUnitParcels();
+  //
+  // GENİŞLETME (2026-08-23, kullanıcı bildirimi — ekran görüntüsü: Kat
+  // İrtifakı/Düzce raporu, Tarımsal Alan DEĞİL, "bu ulaşım tarifi tekil
+  // olarak veriliyor. bunun çoğul olması gerekiyor"): yukarıdaki koşul
+  // yanlışlıkla `environmentRegionType === "Tarımsal Alan"` ile
+  // SINIRLIYDI — ama `pluralizeEnvironmentalSubjectText`/`hasMixedTitleUnitParcels`
+  // tamamen JENERİK (tarıma özgü hiçbir şey yok); "aynı parseldeki
+  // taşınmazlar TEK bir paylaşımlı ulaşım tarifi cümlesini HAK EDER"
+  // ilkesi Kat İrtifakı/Yatay Kat İrtifakı gibi TÜM aynı-parsel çoklu
+  // taşınmaz senaryoları için AYNI derecede geçerli (aslında en sık
+  // karşılaşılan senaryo budur — bir bina, birden fazla bağımsız bölüm).
+  // Bölge türü şartı KALDIRILDI.
+  const shouldPluralize = isMultiTitleUnitReportForNarrative() && !hasMixedTitleUnitParcels();
   const finalText = shouldPluralize ? pluralizeEnvironmentalSubjectText(text, true) : text;
   state.sourceValues.nearbyTransport = state.sourceValues.nearbyTransport || {};
   setFieldFromSource("nearbyTransport", "transport", finalText, options);
