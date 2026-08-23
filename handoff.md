@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.532 - 2026-08-23 - "Dosya ve Rapor"daki eski rapor-geneli "Excel ile toplu giriş" kutusu kaldırıldı
+
+- Kullanıcı, ekran görüntüsüyle ("Dosya Ve Rapor" sekmesindeki "ÇOKLU TALEP — Excel ile toplu giriş" kutusu kırmızıyla işaretlenmiş): "bu kısmı kaldır. gerekli sayfalarda zaten var excel export ve import."
+- **Bağlam**: bu, RAPOR-GENELİ tek bir Excel dosyasında TÜM ana bölümlerin (~150 alan) TEK satırda taşındığı ESKİ mekanizmaydı (`createMultiRequestExcelPanel`, yalnızca admin'e görünür). Bu oturumda (0.0.518-523) eklenen "Bölüm Excel" panelleri (`createSectionExcelPanel` — İmar/Arsa/Belgeler/Değerleme/Ana Gayrimenkul/Bağımsız Bölüm sekmelerinin HER BİRİNDE kendi Excel indir/yükle butonları) aynı işlevi bölüm-bölüm, çok daha kullanılabilir biçimde zaten sağlıyor — kullanıcının "gerekli sayfalarda zaten var" tespiti doğru.
+- **Kaldırılan**: panel çağrısı (`createMultiRequestExcelPanel()`, "Dosya ve Rapor" sekmesi) + ona ÖZEL yardımcı fonksiyonlar (`MULTI_REQUEST_SECTION_IDS`, `getMultiRequestFieldDefinitions`, `getMultiRequestColumnDefinitions`, `buildMultiRequestExcelRows`, `importMultiRequestRows`, `createMultiRequestExcelPanel`). **Korunan** (Bölüm Excel'in KENDİSİ bunları PAYLAŞIYOR — dikkatli ayrıştırma gerekti): `getMultiRequestUnitFields()` ve `normalizeMultiRequestValue()` (bkz. `getSectionExcelRows`/`importSectionExcelRows`), ve genel `window.RaporMultiRequestXlsx` xlsx okuma/yazma modülü (Bölüm Excel + Takyidat Ortak/Ayrı Özeti tarafından da kullanılıyor).
+- Test: hiçbir test dosyası bu paneli/fonksiyonları test etmiyordu (kontrol edildi — `grep` ile onaylandı), bu yüzden test dosyası değişikliği YOK. `npm run verify` tam paket EXIT:0 — özellikle `test-multi-request-scoping-audit.js` (157 `state.fields.KEY =` hedefi, sayı DEĞİŞMEDİ) ve `test-title-unit-switch.js` etkilenmedi.
+- `index.html`: `app.js` cache-buster `?v=20260823-0900`.
+- Canlı tarayıcı testi yapılamadı (giriş bilgisi yok) — kullanıcının canlıda kontrol etmesi istenir: "Dosya ve Rapor" sekmesinde "ÇOKLU TALEP — Excel ile toplu giriş" kutusu artık HİÇ görünmemeli; diğer sekmelerdeki (İmar/Arsa/Belgeler/Değerleme/Ana Gayrimenkul/Bağımsız Bölüm) "Bölüm Excel" panelleri ETKİLENMEMİŞ olmalı.
+
 ## 0.0.531 - 2026-08-22 - Adres Özeti tablosu: aynı ada/parselde 5 kimlik alanı tümü boş olsa bile artık gösteriliyor
 
 - Kullanıcı, ekran görüntüsüyle (43 taşınmazlı Dikey Kat İrtifakı raporu, "Taşınmazlar Adres Özeti" tablosunda Sokak/Cadde, Blok, Dış Kapı No, İç Kapı No, UAVT sütunları HİÇ görünmüyor): "görselde mavi kutucuk ile işaretlenen alanlar aynı ada parsel taleplerinde mutlaka olması gereken alanlar ancak bu kısımlar ilk başta dolu gelmediği için tabloda gösterilmiyor. ilk veri girilince sütun gösteriliyor. bu alanlar tamamı boş olsa bile aynı ada parsel çoklu taleplerinde sütun olarak gözükmeli."
