@@ -2008,8 +2008,30 @@ function applyImarDataToSelectedTitleUnits(targetIndices) {
   return appliedCount;
 }
 
+// Kullanıcı bildirimi (2026-08-25, canlı ekran görüntüsü — "il ilçe mesafe
+// verileri ilk taşınmazda dolu iken ikincisinde boş geliyor bunlar ortak
+// olmalı"): "Adres ve Konum"nun harita-noktası aramasından (applyLocalNeighborhoodForCurrentLocation)
+// türeyen posta kodu + bağlı/en yakın mahalle + ilçe/il merkezi mesafe
+// alanları YALNIZCA aktif taşınmaz için hesaplanıp yazılıyordu — arama tek
+// taşınmaz için tetiklendiğinden, diğer taşınmazların gölgesi hiç
+// dokunulmamış (boş) kalıyordu. Enlem/Boylam'ın AKSİNE (o ikisi taşınmazın
+// GERÇEK harita pini — critical:true, binadan binaya fiziksel olarak
+// değişebilir, BİLEREK burada YOK) bu 7 alan yalnızca mahalle/ilçe/il'den
+// türer — AYNI ada/parselde pratikte HER ZAMAN aynıdır. "planning" ile
+// AYNI koşullu model: yalnızca taşınmazlar FARKLI ada/parselde ise
+// taşınmaza-özgü kalır, aksi halde (aynı parsel, tipik senaryo) TAMAMEN
+// paylaşımlı olur — bkz. aşağıdaki `planningIsShared` kullanımı.
 function getTitleUnitScopedFieldKeys() {
   const keys = new Set();
+  const ADA_PARSEL_SHARED_ADDRESS_LOOKUP_KEYS = new Set([
+    "postalCode",
+    "boundNeighborhood",
+    "boundNeighborhoodDistance",
+    "nearestNeighborhood",
+    "nearestNeighborhoodDistance",
+    "districtCenterDistance",
+    "cityCenterDistance",
+  ]);
   // 2026-08-16: İmar Durumu artık KOŞULLU taşınmaza-özgü — tüm taşınmazlar
   // AYNI ada/parselde ise bu bölümün alanları scoped-set'e HİÇ eklenmez
   // (TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS alanları gibi PAYLAŞIMLI
@@ -2065,6 +2087,11 @@ function getTitleUnitScopedFieldKeys() {
       // değerler artık HİÇ okunmaz (zararsız, sadece bir daha
       // kullanılmaz).
       if (field.key === "landUnitValue" && isCondominiumEasementOwnershipType()) return;
+      // bkz. yukarıdaki ADA_PARSEL_SHARED_ADDRESS_LOOKUP_KEYS yorumu —
+      // posta kodu/mahalle-ilçe-il mesafe alanları AYNI ada/parselde
+      // paylaşımlı (planningIsShared === same-parcel), FARKLI parselde
+      // "planning" ile AYNI mantıkla taşınmaza-özgü kalır.
+      if (ADA_PARSEL_SHARED_ADDRESS_LOOKUP_KEYS.has(field.key) && planningIsShared) return;
       keys.add(field.key);
     });
   });

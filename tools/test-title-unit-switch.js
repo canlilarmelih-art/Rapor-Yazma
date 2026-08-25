@@ -158,7 +158,12 @@ let sections = [
   { id: "case", fields: [{ key: "bank" }, { key: "customerName" }, { key: "caseName" }, { key: "appointmentType" }, { key: "appointmentDate" }, { key: "municipalityInspectionDate" }, { key: "ownershipType" }, { key: "legalUsageNature" }] },
   { id: "title", fields: [{ key: "blockNo" }, { key: "parcelNo" }, { key: "titleBlockName" }, { key: "unitNo" }, { key: "titleQuality" }, { key: "titleRecordChange" }] },
   { id: "encumbrance", fields: [{ key: "takbisSummary" }, { key: "takbisDate" }] },
-  { id: "address", fields: [{ key: "city" }] },
+  // "postalCode"/"boundNeighborhoodDistance" (2026-08-25) - Adres ve Konum
+  // ada/parsel kosullu paylasim testi icin fixture'a eklendi (gercek app.js'teki
+  // ADA_PARSEL_SHARED_ADDRESS_LOOKUP_KEYS'in 7 alanindan 2'si temsili;
+  // "latitude" BILEREK disarida - o gercek harita pini, hicbir kosulda
+  // paylasilmaz).
+  { id: "address", fields: [{ key: "city" }, { key: "postalCode" }, { key: "boundNeighborhoodDistance" }] },
   { id: "unit", fields: [{ key: "legalArea" }] },
   // "İmar Durumu" koşullu scoping testi (2026-08-16) icin fixture'a eklendi
   // - gercek app.js'teki planning bolumunun kucultulmus bir kopyasi.
@@ -670,6 +675,57 @@ assert.match(appSource, /panel\.dataset\.parcelScope = mixedParcels \? "mixed" :
   const secondAgain2 = sandbox.getState();
   assert.equal(secondAgain2.fields.planScale, "1/5000", "2. tasinmaza tekrar gecince kendi girdigi deger (1/5000) KAYBOLMAMALI (round-trip).");
   console.log("Imar Durumu kosullu (ada/parsel'e gore ortak/scoped) davranis testi tamam.");
+}
+
+// --- 18c) Adres ve Konum ada/parsel kosullu paylasim: postalCode/ --------
+// boundNeighborhoodDistance ayni ada/parselde PAYLASIMLI, farkli ada/ ------
+// parselde tasinmaza-ozgu (kullanici bildirimi, canli ekran goruntusu, ------
+// 2026-08-25 - "il ilce mesafe verileri ilk tasinmazda dolu iken ------------
+// ikincisinde bos geliyor bunlar ortak olmali") -----------------------------
+{
+  // Ayni ada/parsel -> postalCode/boundNeighborhoodDistance scoped-set'te
+  // OLMAMALI, switch sirasinda DEGISMEMELI (paylasimli) - tam olarak
+  // kullanicinin bildirdigi senaryo: harita/UAVT aramasi yalnizca aktif
+  // tasinmaz icin calisip bu 2 alani doldurdugunda, digerlerine gecince de
+  // AYNI deger gorunmeli.
+  const sameState = freshState({
+    fields: { city: "Düzce", blockNo: "709", parcelNo: "2", postalCode: "81130", boundNeighborhoodDistance: "Taşınmaz mahalle merkezinin 508 m kuzeydoğusunda" },
+  });
+  sandbox.setState(sameState);
+  const addrNewIndex1 = sandbox.fns.addTitleUnitTab();
+  sandbox.getState().titleUnits[0].fields.blockNo = "709";
+  sandbox.getState().titleUnits[0].fields.parcelNo = "2";
+  const addrBeforeKeys = sandbox.fns.getTitleUnitScopedFieldKeys();
+  assert.ok(
+    !addrBeforeKeys.has("postalCode") && !addrBeforeKeys.has("boundNeighborhoodDistance"),
+    "Ayni ada/parselde postalCode/boundNeighborhoodDistance scoped-set'te OLMAMALI."
+  );
+  sandbox.fns.switchActiveTitleUnit(addrNewIndex1);
+  const addrAfterSwitch1 = sandbox.getState();
+  assert.equal(addrAfterSwitch1.fields.postalCode, "81130", "Ayni ada/parselde postalCode PAYLASIMLI kalmali (yeni tasinmazda da BOS gelmemeli - kullanicinin bildirdigi hatanin duzeltmesi).");
+  assert.equal(
+    addrAfterSwitch1.fields.boundNeighborhoodDistance,
+    "Taşınmaz mahalle merkezinin 508 m kuzeydoğusunda",
+    "Ayni ada/parselde boundNeighborhoodDistance PAYLASIMLI kalmali."
+  );
+
+  // Farkli ada/parsel -> postalCode/boundNeighborhoodDistance scoped-set'te
+  // OLMALI, switch sirasinda BAGIMSIZLASMALI (round-trip) - "planning" ile
+  // AYNI kosullu model, latitude/longitude gibi HER ZAMAN scoped kalanlarla
+  // KARISTIRILMAMALI.
+  const diffState = freshState({
+    fields: { city: "Düzce", blockNo: "709", parcelNo: "2", postalCode: "81130" },
+  });
+  sandbox.setState(diffState);
+  const addrNewIndex2 = sandbox.fns.addTitleUnitTab();
+  sandbox.getState().titleUnits[0].fields.blockNo = "845"; // FARKLI parsel
+  sandbox.getState().titleUnits[0].fields.parcelNo = "7";
+  const addrAfterKeys = sandbox.fns.getTitleUnitScopedFieldKeys();
+  assert.ok(addrAfterKeys.has("postalCode") && addrAfterKeys.has("boundNeighborhoodDistance"), "Farkli ada/parselde postalCode/boundNeighborhoodDistance scoped-set'te OLMALI.");
+  sandbox.fns.switchActiveTitleUnit(addrNewIndex2);
+  const addrAfterSwitch2 = sandbox.getState();
+  assert.equal(addrAfterSwitch2.fields.postalCode, undefined, "Farkli ada/parselde 2. (yeni, bos) tasinmaza gecince postalCode BOS olmali (bagimsiz).");
+  console.log("Adres ve Konum ada/parsel kosullu paylasim (postalCode/boundNeighborhoodDistance) testi tamam.");
 }
 
 // --- 19) isPlanningScopedByAdaParsel(): tekil raporda HER ZAMAN false ----
