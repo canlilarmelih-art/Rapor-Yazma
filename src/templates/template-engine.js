@@ -627,6 +627,10 @@
     // buildUnitUnitsSummaryTableData, app.js) — Dekoratif Özellikler paneli
     // BİLEREK hariç tutulur.
     TASINMAZLARBAGIMSIZBOLUMTABLOSU: { h: () => safeCall("buildUnitUnitsSummaryWordTableHtml") },
+    // Proje Uygunluk Durumu (2026-08-26) — yukarıdakilerle AYNI desen;
+    // görünürlük kuralı Değerleme/Bağımsız Bölüm ile AYNI (yalnızca 2+
+    // taşınmaz, bkz. buildProjectSuitabilityUnitsSummaryTableData, app.js).
+    TASINMAZLARPROJEUYGUNLUKTABLOSU: { h: () => safeCall("buildProjectSuitabilityUnitsSummaryWordTableHtml") },
     GABIMVERISETI: { h: () => safeCall("buildGabimDataSetWordHtml") },
     HISSEACIKLAMASI: { t: () => field("shareExplanation"), paragraphClass: "share-explanation" },
     EKLENTI: { f: ["titleAttachment"] },

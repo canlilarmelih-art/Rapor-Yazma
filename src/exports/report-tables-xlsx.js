@@ -744,6 +744,13 @@
     if (unitUnitsSummaryCellGrid) {
       sheets.push({ name: sanitizeSheetName("Taşınmazlar Bağımsız Bölüm Özeti", usedNames), sheetXml: buildSheetXmlFromCellGrid(styleRegistry, unitUnitsSummaryCellGrid) });
     }
+    // Proje Uygunluk Durumu (2026-08-26) — yukarıdakilerle AYNI desen;
+    // yalnızca 2+ taşınmaz varsa dolu döner (bkz.
+    // buildProjectSuitabilityUnitsSummaryTableData, app.js).
+    const projectSuitabilityUnitsSummaryCellGrid = generatedCellGridFor("buildProjectSuitabilityUnitsSummaryWordTableHtml");
+    if (projectSuitabilityUnitsSummaryCellGrid) {
+      sheets.push({ name: sanitizeSheetName("Taşınmazlar Proje Uygunluk Özeti", usedNames), sheetXml: buildSheetXmlFromCellGrid(styleRegistry, projectSuitabilityUnitsSummaryCellGrid) });
+    }
 
     const rawGridDefs = collectRawGridDefs();
     const takyidatDefs = rawGridDefs.filter((def) => TAKYIDAT_KEYS.includes(def.key));

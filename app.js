@@ -3917,6 +3917,19 @@ function refreshUnitUnitsSummaryTablePreview() {
   host.replaceWith(createUnitUnitsSummaryTablePreview());
 }
 
+// Proje Uygunluk Durumu (2026-08-26) — "documents" bölümünde
+// createDocumentsUnitsSummaryTablePreview() ile AYNI ANDA görünebildiği
+// için (bkz. createProjectSuitabilityUnitsSummaryTablePreview yorumu)
+// GENEL ".title-units-summary-table-preview" yerine kendi BENZERSİZ
+// sınıfıyla sorgular — aksi halde documents tablosuyla ÇAKIŞIP yanlış
+// paneli değiştirirdi.
+function refreshProjectSuitabilityUnitsSummaryTablePreview() {
+  if (activeSectionId !== "documents") return;
+  const host = document.querySelector(".project-suitability-units-summary-table-preview");
+  if (!host) return;
+  host.replaceWith(createProjectSuitabilityUnitsSummaryTablePreview());
+}
+
 // Çift Yönlü Düzenleme, Faz 3 (2026-08-15) — yukarıdaki iki fonksiyonla
 // AYNI "hafif, yerinde değiştir" deseni: tab çubuğunu (createTitleUnitTabBar,
 // yukarıda) TAMAMEN yeniden üretip DOM'da yerine koyar. Ada/Parsel/Blok/
@@ -3953,6 +3966,7 @@ const refreshLandUnitsSummaryTablePreviewDebounced = debounce(refreshLandUnitsSu
 const refreshDocumentsUnitsSummaryTablePreviewDebounced = debounce(refreshDocumentsUnitsSummaryTablePreview, 350);
 const refreshValuationUnitsSummaryTablePreviewDebounced = debounce(refreshValuationUnitsSummaryTablePreview, 350);
 const refreshUnitUnitsSummaryTablePreviewDebounced = debounce(refreshUnitUnitsSummaryTablePreview, 350);
+const refreshProjectSuitabilityUnitsSummaryTablePreviewDebounced = debounce(refreshProjectSuitabilityUnitsSummaryTablePreview, 350);
 
 function loadUserDefaults() {
   try {
@@ -4978,6 +4992,16 @@ function renderSection() {
       body.append(createTitleUnitTabBar());
       body.append(createDocumentsUnitsSummaryTablePreview());
     }
+    // Kullanıcı talebi (2026-08-26): "uygunluk durumu ile ilgili bu
+    // bölüme çift taraflı tablo oluşturalım." "Proje Uygunluk Durumu -
+    // Bağımsız Bölüm" HER ZAMAN taşınmaza-özgüdür (blok gruplama aktif
+    // olsa BİLE, bkz. createDocumentsScopeHint("Bu bilgi yalnızca bu
+    // bağımsız bölüme aittir.") — bu yüzden yukarıdaki iki dalın
+    // DIŞINDA, koşulsuz (yalnızca 2+ taşınmaz gate'ine bakan, Değerleme/
+    // Bağımsız Bölüm Özeti'yle AYNI desen) eklenir; kendi gövdesi (bkz.
+    // buildProjectSuitabilityUnitsSummaryTableData) 2'den az taşınmazda
+    // zaten null döner.
+    body.append(createProjectSuitabilityUnitsSummaryTablePreview());
   }
 
   // Kullanıcı talebi (2026-08-19, devam): "değerleme kısmında tab mantığı
@@ -5554,6 +5578,7 @@ function createForm(section) {
         refreshImarUnitsSummaryTablePreviewDebounced();
         refreshLandUnitsSummaryTablePreviewDebounced();
         refreshDocumentsUnitsSummaryTablePreviewDebounced();
+        refreshProjectSuitabilityUnitsSummaryTablePreviewDebounced();
       }
       // Belgeler ve Proje blok-senkronu (2026-08-19) — declaratif ortak
       // alanlar (projectInstitution/documentReviewInstitution/EKB grubu
@@ -15648,6 +15673,7 @@ function createProjectSuitabilityField(labelText, key, noteKey, repairKey) {
     }
     detailButton.hidden = !shouldOpenProjectSuitabilityDetail(state.fields[key]);
     refreshReviewedDocumentsDescriptionFromCurrentFields(key);
+    refreshProjectSuitabilityUnitsSummaryTablePreviewDebounced();
     autosave();
     renderValidation();
     updateStatus();
@@ -15801,6 +15827,7 @@ function createMainRealEstateProjectSuitabilityControl() {
     // Belgeler ve Proje blok-senkronu (2026-08-19) — bu fonksiyon documents'e
     // özgü ("Ana Gayrimenkul Projesine Uygun Mu?" blok ortak alanlardan).
     syncDocumentsSharedDataToBlockSiblings();
+    refreshProjectSuitabilityUnitsSummaryTablePreviewDebounced();
     autosave();
     renderValidation();
     updateStatus();
@@ -20926,6 +20953,22 @@ function getSelectOptionsForFieldKey(fieldKey) {
   // "unitFloor" Genel panelde DEĞİL, Katlar/Alanlar satır tablosunda
   // (createUnitFloorRowSelect) seçiliyor — aynı seçenek listesi.
   if (fieldKey === "unitFloor") return unitFloorOptions;
+  // Proje Uygunluk Durumu (2026-08-26) — createProjectSuitabilityField/
+  // createMainRealEstateProjectSuitabilityControl/openProjectSuitabilityDetailModal'ın
+  // select'leri de sections[]'te DEKLARATİF DEĞİL (yukarıdaki Bağımsız
+  // Bölüm istisnalarıyla AYNI sınıf sorun) — yoksa Proje Uygunluk Özeti
+  // tablosunda bu alanlar düz-metin girişine düşer.
+  if (["projectSuitabilityStatus", "titleProjectSuitabilityStatus", "municipalityProjectSuitabilityStatus"].includes(fieldKey)) {
+    return projectSuitabilityOptions;
+  }
+  if ([
+    "projectSuitabilitySimpleRepair",
+    "titleProjectSuitabilitySimpleRepair",
+    "municipalityProjectSuitabilitySimpleRepair",
+    "mainRealEstateProjectSuitable",
+  ].includes(fieldKey)) {
+    return ["Evet", "Hayır"];
+  }
   for (const section of sections) {
     const field = (section.fields || []).find((item) => item.key === fieldKey);
     if (field && field.type === "select" && Array.isArray(field.options) && field.options.length) {
@@ -21083,6 +21126,7 @@ function commitTitleUnitsSummaryCellEdit(fieldKey, rawValue, unitIndex) {
   refreshDocumentsUnitsSummaryTablePreview();
   refreshValuationUnitsSummaryTablePreview();
   refreshUnitUnitsSummaryTablePreview();
+  refreshProjectSuitabilityUnitsSummaryTablePreview();
   // Faz 3: Ada/Parsel/Blok/Bağımsız Bölüm No gibi alanlar tab çubuğu
   // etiketlerini (computeTitleUnitTabLabel) etkileyebilir — hangi alan
   // düzenlendiğinden bağımsız olarak HER commit'te tab çubuğu da
@@ -22002,6 +22046,130 @@ function buildUnitUnitsSummaryWordTableHtml() {
   const data = buildUnitUnitsSummaryTableData();
   if (!data || !data.rows.length) return "";
   return buildTitleUnitsSummaryTableHtmlFromData(data.headers, data.rows);
+}
+
+// Proje Uygunluk Durumu (2026-08-26) — kullanıcı talebi: "uygunluk durumu
+// ile ilgili bu bölüme çift taraflı tablo oluşturalım. sütunları sen
+// belirle." "Proje Uygunluk Durumu - Bağımsız Bölüm"
+// (createProjectSuitabilityControl), "Belgeler ve Proje"deki TEK
+// bağımsız-bölüme-özel alan grubu — geri kalan HER ŞEY blok ortak/
+// otomatik senkron (bkz. app.js~3221 "Yalnızca 'Proje Uygunluk Durumu -
+// Bağımsız Bölüm' her bağımsız bölüme özeldir" notu). Blok gruplama
+// AKTİFKEN (Dikey/Yatay Kat İrtifakı + 2+ blok — bu konuşmadaki ASIL
+// senaryo) mevcut buildDocumentsUnitsSummaryTableData() HİÇ
+// GÖRÜNMÜYORDU (yalnızca "isDocumentsScopedByBlock ama grouping KAPALI"
+// nadir fallback'inde render ediliyordu, bkz. renderSection) — bu yüzden
+// bu alan grubu için Değerleme/Bağımsız Bölüm Özeti'yle AYNI, blok-
+// gruplamadan BAĞIMSIZ (yalnızca "2+ taşınmaz var mı") bir gate kullanan
+// AYRI bir tablo eklendi. Hem "Tapu/Belediye Proje Farkı Var" = Evet
+// (titleProjectSuitability*/municipalityProjectSuitability*) HEM Hayır
+// (projectSuitabilityStatus/projectConformity/projectSuitabilitySimpleRepair)
+// dallarının sütunları BİRLİKTE tanımlanır — hangi dal kullanılmıyorsa
+// (TÜM taşınmazlarda boş kalır) mevcut columnHasData mekanizmasıyla
+// otomatik gizlenir (diğer 7 özet tablosuyla AYNI kural). Ana Gayrimenkul
+// Projesine Uygunluk (mainRealEstateProjectSuitable/Note) AYNI panelin
+// parçası olduğundan dahil edildi. "Proje İnceleme Açıklaması"
+// (projectReviewDescription, uzun otomatik-üretilen paragraf) diğer özet
+// tablolarındaki AYNI kuralla (Bağımsız Bölüm'ün unitInteriorDescription'ı
+// gibi) BİLEREK dışarıda bırakıldı.
+const PROJECT_SUITABILITY_UNITS_TABLE_FIELD_DEFS = [
+  { key: "titleBlockName", label: "Blok", kind: "readonly", narrow: true },
+  { key: "unitNo", label: "BB No", kind: "readonly", narrow: true },
+  { key: "projectSuitabilityStatus", label: "Proje Uygunluk Durumu", kind: "scalar" },
+  { key: "projectConformity", label: "Uygunluk Açıklaması", kind: "scalar" },
+  { key: "projectSuitabilitySimpleRepair", label: "Basit Tadilatla Düzeltilebilir mi?", kind: "scalar" },
+  { key: "titleProjectSuitabilityStatus", label: "Tapu Projesi Uygunluk Durumu", kind: "scalar" },
+  { key: "titleProjectSuitabilityNote", label: "Tapu Projesi Uygunluk Açıklaması", kind: "scalar" },
+  { key: "titleProjectSuitabilitySimpleRepair", label: "Tapu Projesi Basit Tadilatla Düzeltilebilir mi?", kind: "scalar" },
+  { key: "municipalityProjectSuitabilityStatus", label: "Belediye Projesi Uygunluk Durumu", kind: "scalar" },
+  { key: "municipalityProjectSuitabilityNote", label: "Belediye Projesi Uygunluk Açıklaması", kind: "scalar" },
+  { key: "municipalityProjectSuitabilitySimpleRepair", label: "Belediye Projesi Basit Tadilatla Düzeltilebilir mi?", kind: "scalar" },
+  { key: "mainRealEstateProjectSuitable", label: "Ana Gayrimenkul Projesine Uygun mu?", kind: "scalar" },
+  { key: "mainRealEstateProjectSuitabilityNote", label: "Ana Gayrimenkul Uygunsuzluk Açıklaması", kind: "scalar" },
+];
+
+function buildProjectSuitabilityUnitsSummaryTableData() {
+  const units = buildAllTitleUnitsForSummaryTable();
+  if (units.length < 2) return null;
+
+  const headers = ["Sıra No", ...PROJECT_SUITABILITY_UNITS_TABLE_FIELD_DEFS.map((def) => def.label)];
+  const columnMeta = [
+    { kind: "seq", narrow: true },
+    ...PROJECT_SUITABILITY_UNITS_TABLE_FIELD_DEFS.map((def) => ({ kind: def.kind, fieldKey: def.key, narrow: def.narrow })),
+  ];
+
+  const rows = units.map((unit, index) => {
+    const fields = unit.fields || {};
+    return [
+      index + 1,
+      ...PROJECT_SUITABILITY_UNITS_TABLE_FIELD_DEFS.map((def) => String(fields[def.key] || "").trim() || "-"),
+    ];
+  });
+
+  // "eğer sistemde hücrede veri yoksa ... tabloda bu sütunlar gözükmemeli"
+  // (diğer 7 özet tablosundaki AYNI kural — burada özellikle önemli, çünkü
+  // "Tapu/Belediye Proje Farkı Var" = Evet/Hayır dallarından SADECE BİRİ
+  // herhangi bir raporda dolu olur, diğeri her zaman boş kalıp otomatik
+  // gizlenir).
+  const columnHasData = headers.map((_, columnIndex) => (
+    columnIndex === 0 || rows.some((row) => {
+      const value = row[columnIndex];
+      return value !== undefined && value !== null && String(value).trim() !== "" && String(value).trim() !== "-";
+    })
+  ));
+  const filteredHeaders = headers.filter((_, columnIndex) => columnHasData[columnIndex]);
+  const filteredRows = rows.map((row) => row.filter((_, columnIndex) => columnHasData[columnIndex]));
+  const filteredColumnMeta = columnMeta.filter((_, columnIndex) => columnHasData[columnIndex]);
+
+  return { headers: filteredHeaders, rows: filteredRows, columnMeta: filteredColumnMeta };
+}
+
+// Banka şablonlarına {{TASINMAZLARPROJEUYGUNLUKTABLOSU}} ile enjekte
+// edilecek gerçek HTML tablo (bkz. template-engine.js) — diğer 7 bölümün
+// export akışıyla BİREBİR AYNI desen.
+function buildProjectSuitabilityUnitsSummaryWordTableHtml() {
+  const data = buildProjectSuitabilityUnitsSummaryTableData();
+  if (!data || !data.rows.length) return "";
+  return buildTitleUnitsSummaryTableHtmlFromData(data.headers, data.rows);
+}
+
+// Kullanıcı talebi (2026-08-26). Diğer 7 özet tablosuyla (Tapu/Adres/
+// İmar/Arsa/Belgeler/Değerleme/Bağımsız Bölüm) BİREBİR AYNI önizleme
+// deseni — TEK fark: bu panel "documents" bölümünde, blok gruplama
+// aktif/değil FARK ETMEKSİZİN render edilir (bkz. renderSection), bu
+// yüzden aynı bölümde createDocumentsUnitsSummaryTablePreview() ile
+// AYNI ANDA görünebilir (isDocumentsScopedByBlock true ama grouping
+// false olan nadir fallback'te) — paylaşılan ".title-units-summary-table-preview"
+// sınıfının YANINDA benzersiz bir ikinci sınıf (aşağıda) taşır ki
+// refreshProjectSuitabilityUnitsSummaryTablePreview() DOĞRU paneli
+// hedefleyebilsin (querySelector ilk eşleşeni döner — genel sınıfla
+// sorgulasaydı documents tablosuyla ÇAKIŞIRDI).
+function createProjectSuitabilityUnitsSummaryTablePreview() {
+  const wrap = document.createElement("div");
+  wrap.className = "title-units-summary-table-preview project-suitability-units-summary-table-preview";
+  const heading = document.createElement("h5");
+  heading.textContent = "Taşınmazlar Proje Uygunluk Özeti";
+  wrap.append(heading);
+
+  const data = buildProjectSuitabilityUnitsSummaryTableData();
+  if (!data || !data.rows.length) {
+    const note = document.createElement("p");
+    note.className = "muted-note";
+    note.textContent = "Bu tablo yalnızca birden fazla taşınmaz eklendiğinde görünür. Banka şablonlarında {{TASINMAZLARPROJEUYGUNLUKTABLOSU}} olarak kullanılabilir.";
+    wrap.append(note);
+    return wrap;
+  }
+  const tableHtml = buildTitleUnitsSummaryTableHtmlEditable(data.headers, data.rows, data.columnMeta, state.activeTitleUnitIndex);
+  const tableContainer = document.createElement("div");
+  tableContainer.className = "title-units-summary-table-container";
+  tableContainer.innerHTML = tableHtml;
+  wrap.append(tableContainer);
+  attachTitleUnitsSummaryTableEditing(tableContainer);
+  const hint = document.createElement("p");
+  hint.className = "muted-note";
+  hint.textContent = "Aktif taşınmazın hücrelerine tıklayarak doğrudan düzenleyebilirsiniz (Blok/Bağımsız Bölüm No sütunları tıklanamaz — ilgili taşınmazın kendi sekmesinden düzenlenir). Banka şablonlarında {{TASINMAZLARPROJEUYGUNLUKTABLOSU}} olarak kullanılabilir.";
+  wrap.append(hint);
+  return wrap;
 }
 
 function buildTakyidatWordTableHtml() {
