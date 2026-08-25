@@ -1,5 +1,21 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.554 - 2026-08-26 - "Uygunluk Açıklaması" sütununa "Benzer Metinleri Birleştir" düğmesi
+
+- Kullanıcı, 0.0.553'ten sonra: "UYGUNLUK AÇIKLAMASI %90 oranında uygun olan taşınmazların uygunluk açıklamasını ortak yaz." — netleştirme turundan sonra ("Farklı bir şey istiyorum") tam örnekle açıkladı: "uygunluk açıklaması normalde kullanıcının elle girdiği değerler ... örnek a2 2 oda hacmi birleştirilmiştir. a4 iki oda birleştirilmiştir birinde nokta var diğerinde yok bu insan hatası bunu metinlerin yüzde doksanı aynı ise ile bunu kastediyorum."
+- **Kök istek**: "Uygunluk Açıklaması" (`projectConformity`) serbest metin, elle giriliyor — aynı anlama gelen açıklamalar (nokta/boşluk/büyük-küçük harf farkı gibi insan hataları yüzünden) birebir eşleşmeyebiliyor. Mevcut "⬇ Tümüne Uygula" düğmesi bunun için uygun değildi (durum farketmeksizin TÜM satırlara kopyalar).
+- **Çözüm**: Sütun başlığına AYRI, ikinci bir düğme ("≈", amber renk — mavi "Tümüne Uygula"dan görsel olarak ayrışır) eklendi: **"Benzer Metinleri Birleştir"**. Tıklanınca:
+  1. `normalizeTextForSimilarityComparison()` — noktalama/boşluk/büyük-küçük harf/Türkçe karakter farkını yok sayar (kullanıcının "nokta var/yok" örneğini birebir çözer).
+  2. Normalize sonrası hâlâ birebir aynı olmayan metinler `levenshteinDistance`/`computeTextSimilarityRatio` ile karşılaştırılır — kullanıcının belirttiği **%90** benzerlik eşiği (`findSimilarTitleUnitsSummaryTextGroups`).
+  3. 2+ taşınmazı kapsayan her grup, kullanıcıya bir onay penceresinde (hangi metin, kaç taşınmazı etkileyecek) ÖNCEDEN gösterilir; onaylanırsa grubun İLK taşınmazının metni diğer üyelere yazılır.
+  4. `applyTitleUnitsSummaryColumnToAllRows` ile AYNI "toplu 'bulk' Geri Al kaydı" mekanizması — tek tıkla tüm birleştirme geri alınabilir.
+- Benzer bir semantik-eşleşme (ör. "2 oda" ↔ "iki oda" gibi kelime seçimi farkı) %90 karakter-benzerliği eşiğini HER ZAMAN aşmayabilir — bu bilinen bir sınır (tam NLP/anlam analizi kapsam dışı); nokta/boşluk/büyük-harf gibi biçimsel insan hataları güvenilir şekilde yakalanıyor.
+- Ayrıca (aynı görüşmede, önceki adım): "ANA GAYRİMENKUL PROJESİNE UYGUN MU?" sütunu tablodan kaldırıldı (0.0.553).
+- Yeni fonksiyonlar: `normalizeTextForSimilarityComparison`, `levenshteinDistance`, `computeTextSimilarityRatio`, `findSimilarTitleUnitsSummaryTextGroups`, `mergeSimilarTitleUnitsSummaryTextValues`. `PROJECT_SUITABILITY_UNITS_TABLE_FIELD_DEFS`'te `projectConformity` artık `mergeSimilar: true`. `buildTitleUnitsSummaryTableHtmlEditable`/`attachTitleUnitsSummaryTableEditing` (TÜM 8 özet tablosunun PAYLAŞTIĞI ortak render/kablolama) genişletildi — yalnızca `mergeSimilar` işaretli sütunlarda buton görünür, diğer 7 tablo ETKİLENMEDİ. `styles.css`'e `.tus-merge-similar-btn` eklendi.
+- Test: yeni `tools/test-similar-text-merge.js` (normalize, Levenshtein/benzerlik oranı, gruplama, birleştirme+onay/uyarı/Geri Al, kaynak-düzeyi kablolama). `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` ve `styles.css` cache-buster `?v=20260826-1400`.
+- Canlı tarayıcı testi yapılamadı — kullanıcının "Uygunluk Açıklaması" sütununda birbirine benzer (ör. sonunda nokta olan/olmayan) 2 açıklama girip başlıktaki "≈" düğmesine tıklayarak birleştiğini, "Geri Al" ile geri alınabildiğini doğrulaması gerekir.
+
 ## 0.0.553 - 2026-08-26 - Proje Uygunluk Özeti: "Ana Gayrimenkul Projesine Uygun mu?" sütunu kaldırıldı
 
 - Kullanıcı, 0.0.552'yi test edip: "ANA GAYRİMENKUL PROJESİNE UYGUN MU? bu kısmı kaldır."

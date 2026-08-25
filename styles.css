@@ -4714,6 +4714,33 @@ table {
   transform: scale(1.15);
 }
 
+/* "≈ Benzer Metinleri Birleştir" başlık butonu (2026-08-26, kullanıcı
+   talebi) — .tus-apply-column-btn ile AYNI köşe-buton kalıbı, ama sol-alt
+   köşede (ikisi AYNI ANDA görünebilir, ör. Uygunluk Açıklaması sütunu) ve
+   farklı bir renkte (--amber) ki iki farklı işlem karıştırılmasın. */
+.tus-merge-similar-btn {
+  position: absolute;
+  left: 1px;
+  bottom: 1px;
+  width: 11px;
+  height: 11px;
+  line-height: 10px;
+  padding: 0;
+  border: none;
+  border-radius: 2px;
+  background: var(--amber);
+  color: #fff;
+  font-size: 7px;
+  cursor: pointer;
+  opacity: 0.55;
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+
+.tus-merge-similar-btn:hover {
+  opacity: 1;
+  transform: scale(1.15);
+}
+
 .multi-takbis-preview-table {
   width: 100%;
   font-size: 0.85em;

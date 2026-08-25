@@ -20763,7 +20763,16 @@ function buildTitleUnitsSummaryTableHtmlEditable(headers, rows, columnMeta, acti
     const applyButton = meta?.kind === "scalar"
       ? `<button type="button" class="tus-apply-column-btn" data-field-key="${escapeHtml(meta.fieldKey)}" data-column-label="${escapeHtml(label)}" title="Aktif taşınmazın bu sütundaki değerini diğer tüm taşınmazlara uygula">⬇</button>`
       : "";
-    return `<th style="${style}">${splitTableHeaderLabelIntoTwoLines(toTitleFieldUppercase(label))}${applyButton}</th>`;
+    // Kullanıcı talebi (2026-08-26): "uygunluk açıklaması ... metinlerin
+    // yüzde doksanı aynı ise" — manuel serbest-metin sütunlarında (şimdilik
+    // yalnızca Proje Uygunluk Özeti'nin "Uygunluk Açıklaması"nda,
+    // `mergeSimilar: true` ile işaretli) insan-hatası (nokta/kelime farkı)
+    // yüzünden birebir eşleşmeyen ama ANLAMCA aynı metinleri TEK ortak
+    // metinde birleştiren AYRI bir buton (bkz. mergeSimilarTitleUnitsSummaryTextValues).
+    const mergeSimilarButton = meta?.mergeSimilar
+      ? `<button type="button" class="tus-merge-similar-btn" data-field-key="${escapeHtml(meta.fieldKey)}" data-column-label="${escapeHtml(label)}" title="Metni %90 ve üzeri benzeyen taşınmazları ortak açıklamada birleştir">≈</button>`
+      : "";
+    return `<th style="${style}">${splitTableHeaderLabelIntoTwoLines(toTitleFieldUppercase(label))}${applyButton}${mergeSimilarButton}</th>`;
   }).join("")}</tr>`;
   const bodyHtml = rows.map((row, rowIndex) => {
     const cellStyle = rowIndex % 2 === 1 ? zebraCell : baseCell;
@@ -20916,6 +20925,14 @@ function attachTitleUnitsSummaryTableEditing(container) {
     button.addEventListener("click", (event) => {
       event.stopPropagation();
       applyTitleUnitsSummaryColumnToAllRows(button.dataset.fieldKey, button.dataset.columnLabel);
+    });
+  });
+  // "Benzer Metinleri Birleştir" butonu (2026-08-26) — bkz.
+  // mergeSimilarTitleUnitsSummaryTextValues yorumu.
+  container.querySelectorAll(".tus-merge-similar-btn").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      mergeSimilarTitleUnitsSummaryTextValues(button.dataset.fieldKey, button.dataset.columnLabel);
     });
   });
 }
@@ -21188,6 +21205,137 @@ function applyTitleUnitsSummaryColumnToAllRows(fieldKey, columnLabel) {
     fieldKey,
     previousValues,
     message: `"${columnLabel || fieldKey}" sütunundaki toplu değişiklik (${previousValues.length} taşınmaz) geri alınabilir.`,
+  };
+}
+
+// Kullanıcı talebi (2026-08-26, Proje Uygunluk Özeti'nin "Uygunluk
+// Açıklaması" sütunu): "uygunluk açıklaması normalde kullanıcının elle
+// girdiği değerler ... örnek a2 2 oda hacmi birleştirilmiştir. a4 iki oda
+// birleştirilmiştir birinde nokta var diğerinde yok bu insan hatası bunu
+// metinlerin yüzde doksanı aynı ise ile bunu kastediyorum" — birden fazla
+// taşınmazın serbest-metin açıklaması ANLAM olarak aynı olabilir ama İNSAN
+// HATASI (noktalama/boşluk/küçük kelime farkı) yüzünden birebir eşleşmez.
+// Önce noktalama/boşluk/büyük-küçük harf farkını (foldTurkish) YOK sayacak
+// şekilde normalize edilir — "nokta var/yok" gibi kullanıcının verdiği asıl
+// örneği DOĞRUDAN (yüzde 100 normalize-eşleşme ile) çözer; ardından KALAN
+// (normalize sonrası bile birebir aynı olmayan) metinler Levenshtein
+// tabanlı bir benzerlik oranıyla karşılaştırılır — kullanıcının belirttiği
+// "%90" eşiği (computeTextSimilarityRatio) burada devreye girer.
+function normalizeTextForSimilarityComparison(value) {
+  return foldTurkish(String(value || "").trim().replace(/\s+/g, " "))
+    .replace(/[.,;:!?]+$/g, "")
+    .trim();
+}
+
+// Standart Levenshtein (düzenleme mesafesi) — iki satırı birbirine
+// çevirmek için gereken minimum ekleme/silme/değiştirme sayısı. Bu
+// projede başka bir yerde YOK (grep ile doğrulandı) — kriptografik
+// OLMAYAN, yalnızca "ne kadar benzer" sorusuna cevap için basit bir
+// dinamik programlama tablosu (satır-satır, O(n) bellek).
+function levenshteinDistance(a, b) {
+  const textA = String(a || "");
+  const textB = String(b || "");
+  const m = textA.length;
+  const n = textB.length;
+  if (m === 0) return n;
+  if (n === 0) return m;
+  let previousRow = Array.from({ length: n + 1 }, (_, j) => j);
+  for (let i = 1; i <= m; i += 1) {
+    const currentRow = [i];
+    for (let j = 1; j <= n; j += 1) {
+      const cost = textA[i - 1] === textB[j - 1] ? 0 : 1;
+      currentRow[j] = Math.min(
+        currentRow[j - 1] + 1, // ekleme
+        previousRow[j] + 1, // silme
+        previousRow[j - 1] + cost, // değiştirme
+      );
+    }
+    previousRow = currentRow;
+  }
+  return previousRow[n];
+}
+
+// 0 (tamamen farklı) — 1 (birebir aynı) arası benzerlik oranı. İki metin
+// de boşsa (edge case, çağıran taraf zaten boş değerleri filtreler ama
+// güvenlik ağı olarak) 1 döner — "aynı" sayılır, çökme YOK.
+function computeTextSimilarityRatio(a, b) {
+  const textA = String(a || "");
+  const textB = String(b || "");
+  const maxLength = Math.max(textA.length, textB.length);
+  if (maxLength === 0) return 1;
+  return 1 - levenshteinDistance(textA, textB) / maxLength;
+}
+
+// TÜM taşınmazların `fieldKey` sütunundaki (boş OLMAYAN) metnini toplar,
+// normalize edilmiş haliyle %`threshold` ve üzeri benzeyenleri AYNI gruba
+// sokar (açgözlü/tek geçişli kümeleme — grup "temsilcisi" o gruba giren
+// İLK metin, "ne yazıldıysa o kalır" ilkesiyle). Yalnızca 2+ üyeli
+// gruplar (gerçekten birleştirilecek bir şey olan) döner.
+function findSimilarTitleUnitsSummaryTextGroups(fieldKey, threshold = 0.9) {
+  const count = getTitleUnitCount();
+  const entries = [];
+  for (let index = 0; index < count; index += 1) {
+    const value = String(getTitleUnitFieldsForLabel(index)[fieldKey] ?? "").trim();
+    if (value) entries.push({ unitIndex: index, value });
+  }
+
+  const groups = [];
+  entries.forEach((entry) => {
+    const normalized = normalizeTextForSimilarityComparison(entry.value);
+    const matchedGroup = groups.find((group) => computeTextSimilarityRatio(group.normalized, normalized) >= threshold);
+    if (matchedGroup) {
+      matchedGroup.members.push(entry);
+    } else {
+      groups.push({ normalized, canonicalValue: entry.value, members: [entry] });
+    }
+  });
+
+  return groups.filter((group) => group.members.length > 1);
+}
+
+// "≈ Benzer Metinleri Birleştir" butonuna (bkz.
+// buildTitleUnitsSummaryTableHtmlEditable'daki mergeSimilar) tıklanınca
+// çalışır. applyTitleUnitsSummaryColumnToAllRows İLE AYNI "toplu 'bulk'
+// Geri Al kaydı" deseni — TEK tıkla TÜM değişiklik geri alınabilir.
+// Kullanıcıya HANGİ metinlerin HANGİ ortak metne birleşeceği ÖNCEDEN
+// (confirm penceresinde) gösterilir — bu, mevcut "tümüne uygula"
+// düğmesinden FARKLI olarak, hangi satırların etkileneceği önceden açık
+// olmayan (benzerlik hesaplamasına dayalı) bir işlem olduğundan şeffaflık
+// için özellikle önemli.
+function mergeSimilarTitleUnitsSummaryTextValues(fieldKey, columnLabel) {
+  if (!fieldKey) return;
+  const groups = findSimilarTitleUnitsSummaryTextGroups(fieldKey, 0.9);
+  if (!groups.length) {
+    window.alert(`"${columnLabel || fieldKey}" sütununda birleştirilebilecek benzer (%90 ve üzeri eşleşen) metin bulunamadı.`);
+    return;
+  }
+  const previewLines = groups
+    .map((group, index) => `${index + 1}. "${group.canonicalValue}" (${group.members.length} taşınmaz)`)
+    .join("\n");
+  const confirmed = window.confirm(
+    `"${columnLabel || fieldKey}" sütununda aşağıdaki benzer metin grupları TEK bir ortak metinde birleştirilecek (her grupta İLK taşınmazın metni esas alınır):\n\n${previewLines}\n\nDevam edilsin mi?`
+  );
+  if (!confirmed) return;
+
+  const previousValues = [];
+  suppressTableEditUndoRecording = true;
+  try {
+    groups.forEach((group) => {
+      group.members.forEach(({ unitIndex, value }) => {
+        if (value === group.canonicalValue) return;
+        previousValues.push({ unitIndex, value });
+        commitTitleUnitsSummaryCellEdit(fieldKey, group.canonicalValue, unitIndex);
+      });
+    });
+  } finally {
+    suppressTableEditUndoRecording = false;
+  }
+  if (!previousValues.length) return;
+  lastTableEditUndo = {
+    type: "bulk",
+    fieldKey,
+    previousValues,
+    message: `"${columnLabel || fieldKey}" sütunundaki benzer metin birleştirme (${previousValues.length} taşınmaz) geri alınabilir.`,
   };
 }
 
@@ -22082,7 +22230,15 @@ const PROJECT_SUITABILITY_UNITS_TABLE_FIELD_DEFS = [
   { key: "titleBlockName", label: "Blok", kind: "readonly", narrow: true },
   { key: "unitNo", label: "BB No", kind: "readonly", narrow: true },
   { key: "projectSuitabilityStatus", label: "Proje Uygunluk Durumu", kind: "scalar" },
-  { key: "projectConformity", label: "Uygunluk Açıklaması", kind: "scalar" },
+  // Kullanıcı talebi (2026-08-26): "uygunluk açıklaması normalde
+  // kullanıcının elle girdiği değerler ... bunu metinlerin yüzde doksanı
+  // aynı ise ile bunu kastediyorum" — birden fazla taşınmazın açıklaması
+  // ANLAM olarak aynı ama İNSAN HATASI yüzünden (nokta var/yok, küçük
+  // kelime farkı) birebir eşleşmeyebilir. `mergeSimilar: true`,
+  // buildTitleUnitsSummaryTableHtmlEditable'ın bu sütunun başlığına
+  // "≈ Benzer Metinleri Birleştir" butonunu (bkz. findSimilarTitleUnitsSummaryTextGroups/
+  // mergeSimilarTitleUnitsSummaryTextValues) eklemesini sağlar.
+  { key: "projectConformity", label: "Uygunluk Açıklaması", kind: "scalar", mergeSimilar: true },
   { key: "projectSuitabilitySimpleRepair", label: "Basit Tadilatla Düzeltilebilir mi?", kind: "scalar" },
   { key: "titleProjectSuitabilityStatus", label: "Tapu Projesi Uygunluk Durumu", kind: "scalar" },
   { key: "titleProjectSuitabilityNote", label: "Tapu Projesi Uygunluk Açıklaması", kind: "scalar" },
@@ -22099,7 +22255,7 @@ function buildProjectSuitabilityUnitsSummaryTableData() {
   const headers = ["Sıra No", ...PROJECT_SUITABILITY_UNITS_TABLE_FIELD_DEFS.map((def) => def.label)];
   const columnMeta = [
     { kind: "seq", narrow: true },
-    ...PROJECT_SUITABILITY_UNITS_TABLE_FIELD_DEFS.map((def) => ({ kind: def.kind, fieldKey: def.key, narrow: def.narrow })),
+    ...PROJECT_SUITABILITY_UNITS_TABLE_FIELD_DEFS.map((def) => ({ kind: def.kind, fieldKey: def.key, narrow: def.narrow, mergeSimilar: def.mergeSimilar })),
   ];
 
   const rows = units.map((unit, index) => {
