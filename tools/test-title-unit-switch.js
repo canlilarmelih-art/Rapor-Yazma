@@ -79,6 +79,12 @@ const functionNames = [
   "buildAllTitleUnitsForSummaryTable",
   "computeTitleUnitsShareSameAdaParsel",
   "isPlanningScopedByAdaParsel",
+  // Adres ve Konum posta kodu/mesafe alanlari + KML sourceValues ada/parsel
+  // kosullu paylasimi (2026-08-25) - getTitleUnitScopedFieldKeys()/
+  // snapshotTitleUnitScopedData()/applyTitleUnitScopedData()/resetKmlDerivedFields()
+  // artik bunlara bagimli.
+  "getAdaParselSharedAddressLookupKeys",
+  "isKmlSourceValuesSharedByAdaParsel",
   // İmar Durumu "tümüne uygula" (2026-08-16).
   "getImarSectionFieldKeys",
   "applyImarDataToAllTitleUnits",
@@ -726,6 +732,87 @@ assert.match(appSource, /panel\.dataset\.parcelScope = mixedParcels \? "mixed" :
   const addrAfterSwitch2 = sandbox.getState();
   assert.equal(addrAfterSwitch2.fields.postalCode, undefined, "Farkli ada/parselde 2. (yeni, bos) tasinmaza gecince postalCode BOS olmali (bagimsiz).");
   console.log("Adres ve Konum ada/parsel kosullu paylasim (postalCode/boundNeighborhoodDistance) testi tamam.");
+}
+
+// --- 18d) KML sourceValues (yakin cevre aday listesi/mahalle arama ham ----
+// verisi) ada/parsel kosullu paylasim - kullanici bildirimi (2026-08-25): -
+// "aynı ada parsel taleplerinde kml yükleme ortak, kmlye bağlı veriler -----
+// ortak olacak" ------------------------------------------------------------
+{
+  // Ayni ada/parsel -> isKmlSourceValuesSharedByAdaParsel() true, ------------
+  // sourceValues.nearbyPlaces switch sirasinda DEGISMEMELI (paylasimli, -----
+  // reset EDILMEMELI) ---------------------------------------------------------
+  const kmlSameState = freshState({
+    fields: { city: "Düzce", blockNo: "709", parcelNo: "2" },
+    sourceValues: { nearbyPlaces: { places: ["Sancaklar", "Çavuşlar"], loading: false } },
+  });
+  sandbox.setState(kmlSameState);
+  assert.equal(sandbox.fns.isKmlSourceValuesSharedByAdaParsel(), true, "Tekil (henuz ek tasinmaz yok) raporda HER ZAMAN paylasimli (true) olmali.");
+  const kmlNewIndex1 = sandbox.fns.addTitleUnitTab();
+  sandbox.getState().titleUnits[0].fields.blockNo = "709";
+  sandbox.getState().titleUnits[0].fields.parcelNo = "2";
+  assert.equal(sandbox.fns.isKmlSourceValuesSharedByAdaParsel(), true, "Ayni ada/parselde isKmlSourceValuesSharedByAdaParsel true donmeli.");
+  sandbox.fns.switchActiveTitleUnit(kmlNewIndex1);
+  assert.deepEqual(
+    sandbox.getState().sourceValues.nearbyPlaces,
+    { places: ["Sancaklar", "Çavuşlar"], loading: false },
+    "Ayni ada/parselde sourceValues.nearbyPlaces PAYLASIMLI kalmali (yeni tasinmazda da ayni aday listesi gorunmeli - kullanicinin bildirdigi 'hic yakin cevre verisi gelmiyor' hatasinin duzeltmesi)."
+  );
+
+  // resetKmlDerivedFields({preserveShared:true}) ayni ada/parselde bu
+  // paylasimli veriyi SILMEMELI (KML toplu-uygulama donguresunun 2.+
+  // taşınmazi icin cagrildiginda) - resetKmlDerivedFields kendisi
+  // nearbyRequestSerial/state.sourceConflicts/state.uploadErrors gibi bu
+  // sandbox'a HENUZ tasinmamis modul-duzeyi bagimliliklar icerdiginden
+  // (KML async pipeline'inin geri kalani gibi, bkz. senaryo 16 gerekcesi)
+  // DOGRUDAN sandbox'ta cagrilamiyor - guvenlik agi kaynak-duzeyinde (18e).
+
+  // Farkli ada/parsel -> isKmlSourceValuesSharedByAdaParsel() false, --------
+  // sourceValues.nearbyPlaces switch sirasinda BAGIMSIZLASMALI -------------
+  const kmlDiffState = freshState({
+    fields: { city: "Düzce", blockNo: "709", parcelNo: "2" },
+    sourceValues: { nearbyPlaces: { places: ["Sancaklar"], loading: false } },
+  });
+  sandbox.setState(kmlDiffState);
+  const kmlNewIndex2 = sandbox.fns.addTitleUnitTab();
+  sandbox.getState().titleUnits[0].fields.blockNo = "845"; // FARKLI parsel
+  sandbox.getState().titleUnits[0].fields.parcelNo = "7";
+  assert.equal(sandbox.fns.isKmlSourceValuesSharedByAdaParsel(), false, "Farkli ada/parselde isKmlSourceValuesSharedByAdaParsel false donmeli.");
+  sandbox.fns.switchActiveTitleUnit(kmlNewIndex2);
+  assert.equal(sandbox.getState().sourceValues.nearbyPlaces, undefined, "Farkli ada/parselde 2. (yeni) tasinmaza gecince sourceValues.nearbyPlaces BOS olmali (bagimsiz).");
+  sandbox.getState().sourceValues.nearbyPlaces = { places: ["Diger Mahalle"], loading: false };
+  sandbox.fns.switchActiveTitleUnit(0);
+  assert.deepEqual(
+    sandbox.getState().sourceValues.nearbyPlaces,
+    { places: ["Sancaklar"], loading: false },
+    "Farkli ada/parselde birincilin sourceValues.nearbyPlaces'i BAGIMSIZ kalip degismemeli."
+  );
+  console.log("KML sourceValues (nearbyPlaces vb.) ada/parsel kosullu paylasim testi tamam.");
+}
+
+// --- 18e) applyKmlRecordsToTitleUnits(): ayni ada/parsel anahtari batch ---
+// icinde DAHA ONCE islendiyse pahali 2 ag cagrisi TEKRARLANMAZ + --------
+// resetKmlDerivedFields() preserveShared+ayni-parselde paylasimli veriyi ---
+// SILMEZ (kaynak-duzeyi kontrol - tam pipeline async ag cagrilari --------
+// icerdiginden sandbox'ta calistirilamaz, bkz. yukaridaki 16 numarali -----
+// senaryonun ayni gerekcesi) -------------------------------------------------
+{
+  assert.match(
+    appSource,
+    /const processedParcelKeys = new Set\(\);[\s\S]{0,900}?const alreadyProcessedSameParcel = Boolean\(parcelKey\) && processedParcelKeys\.has\(parcelKey\);[\s\S]{0,50}?if \(parcelKey\) processedParcelKeys\.add\(parcelKey\);[\s\S]{0,50}?if \(!alreadyProcessedSameParcel\) \{[\s\S]{0,50}?await applyLocalNeighborhoodForCurrentLocation/,
+    "applyKmlRecordsToTitleUnits() artik ayni ada/parsel anahtarini TEKRAR islemliyor gorunuyor (dedup mantigi kaybolmus olabilir)."
+  );
+  assert.match(
+    appSource,
+    /function resetKmlDerivedFields\(options = \{\}\) \{[\s\S]{0,700}?const sameAdaParsel = isKmlSourceValuesSharedByAdaParsel\(\);[\s\S]{0,1600}?if \(sameAdaParsel && adaParselSharedAddressLookupKeys\.has\(key\)\) return false;/,
+    "resetKmlDerivedFields() artik ayni-ada/parsel paylasimli adres-mesafe alanlarini korumuyor gorunuyor."
+  );
+  assert.match(
+    appSource,
+    /state\.fields\.landRoadFrontageItems = \[\];\s*if \(!preserveShared \|\| !sameAdaParsel\) \{\s*state\.sourceValues\.nearbyPlaces = \{\};/,
+    "resetKmlDerivedFields() artik ayni-ada/parselde preserveShared iken sourceValues.nearbyPlaces'i korumuyor gorunuyor."
+  );
+  console.log("applyKmlRecordsToTitleUnits/resetKmlDerivedFields ada/parsel dedup+koruma kaynak-duzeyi kontrolu tamam.");
 }
 
 // --- 19) isPlanningScopedByAdaParsel(): tekil raporda HER ZAMAN false ----

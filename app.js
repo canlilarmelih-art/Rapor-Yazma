@@ -2020,10 +2020,13 @@ function applyImarDataToSelectedTitleUnits(targetIndices) {
 // türer — AYNI ada/parselde pratikte HER ZAMAN aynıdır. "planning" ile
 // AYNI koşullu model: yalnızca taşınmazlar FARKLI ada/parselde ise
 // taşınmaza-özgü kalır, aksi halde (aynı parsel, tipik senaryo) TAMAMEN
-// paylaşımlı olur — bkz. aşağıdaki `planningIsShared` kullanımı.
-function getTitleUnitScopedFieldKeys() {
-  const keys = new Set();
-  const ADA_PARSEL_SHARED_ADDRESS_LOOKUP_KEYS = new Set([
+// paylaşımlı olur. TEK kaynak (drift riski olmadan) — hem
+// getTitleUnitScopedFieldKeys() (asagida) HEM DE resetKmlDerivedFields()
+// (KML toplu-uygulama donguresunde bu paylasimli alanlarin preserveShared
+// sirasinda YANLISLIKLA silinmemesi icin, 2026-08-25 devami) tarafindan
+// kullanilir.
+function getAdaParselSharedAddressLookupKeys() {
+  return new Set([
     "postalCode",
     "boundNeighborhood",
     "boundNeighborhoodDistance",
@@ -2032,6 +2035,11 @@ function getTitleUnitScopedFieldKeys() {
     "districtCenterDistance",
     "cityCenterDistance",
   ]);
+}
+
+function getTitleUnitScopedFieldKeys() {
+  const keys = new Set();
+  const ADA_PARSEL_SHARED_ADDRESS_LOOKUP_KEYS = getAdaParselSharedAddressLookupKeys();
   // 2026-08-16: İmar Durumu artık KOŞULLU taşınmaza-özgü — tüm taşınmazlar
   // AYNI ada/parselde ise bu bölümün alanları scoped-set'e HİÇ eklenmez
   // (TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS alanları gibi PAYLAŞIMLI
@@ -2495,6 +2503,17 @@ function getDocumentsPerUnitOnlyFieldKeys() {
 
 // Aktif taşınmazın Tapu/Takyidat alan+tablo verisini state'ten bağımsız bir
 // anlık görüntü olarak çıkarır (başka bir taşınmaza geçmeden ÖNCE "kaydet").
+// Kullanıcı bildirimi (2026-08-25): "aynı ada parsel taleplerinde kml
+// yükleme ortak, kmlye bağlı veriler ortak olacak" — bu sourceValues
+// anahtarları (kml ham verisi, yakın çevre aday listesi, mahalle arama
+// sonucu vb.) HER ZAMAN taşınmaza-özgü (per-unit) snapshotlanıyordu.
+// AYNI ada/parselde bunlar FİZİKSEL olarak zaten aynı konumdan türer —
+// "planning"/adres-mesafe alanlarıyla AYNI koşullu paylaşım modeli: yalnızca
+// taşınmazlar FARKLI ada/parselde ise per-unit snapshot/restore edilir.
+function isKmlSourceValuesSharedByAdaParsel() {
+  return !isPlanningScopedByAdaParsel();
+}
+
 function snapshotTitleUnitScopedData() {
   const fields = {};
   getTitleUnitScopedFieldKeys().forEach((key) => {
@@ -2505,9 +2524,11 @@ function snapshotTitleUnitScopedData() {
     if (state.tables[key] !== undefined) tables[key] = state.tables[key];
   });
   const sourceValues = {};
-  ["kml", "nearbyPlaces", "nearbyArtery", "nearbyTransport", "regionAnalysis", "localNeighborhood", "administrativeNeighborhoodFallback"].forEach((key) => {
-    if (state.sourceValues?.[key] !== undefined) sourceValues[key] = state.sourceValues[key];
-  });
+  if (!isKmlSourceValuesSharedByAdaParsel()) {
+    ["kml", "nearbyPlaces", "nearbyArtery", "nearbyTransport", "regionAnalysis", "localNeighborhood", "administrativeNeighborhoodFallback"].forEach((key) => {
+      if (state.sourceValues?.[key] !== undefined) sourceValues[key] = state.sourceValues[key];
+    });
+  }
   return { fields, tables, sourceValues };
 }
 
@@ -2519,6 +2540,16 @@ function snapshotTitleUnitScopedData() {
 // boş dizi ATAMAK bu varsayılanı YANLIŞLIKLA bastırır (bkz. yorum,
 // switchActiveTitleUnit çağrı yeri).
 function applyTitleUnitScopedData(snapshot) {
+  // ÖNEMLİ: blockNo/parcelNo'nun KENDİSİ scoped bir alan (aşağıdaki
+  // fields-döngüsü onları da yazar) — isKmlSourceValuesSharedByAdaParsel()
+  // bu döngüden SONRA çağrılırsa, state.fields.blockNo/parcelNo o anda
+  // ZATEN hedef taşınmazın değerlerine üzerine yazılmış olur ve
+  // buildAllTitleUnitsForSummaryTable() (state.activeTitleUnitIndex henüz
+  // GÜNCELLENMEDİĞİNDEN index 0'ı hâlâ state.fields'tan okur) index 0/1'i
+  // YANLIŞLIKLA "aynı parsel" sanır (gerçek kök nedenli hata, test 18d'de
+  // yakalandı — 2026-08-25). Bu yüzden bayrak fields-döngüsünden ÖNCE,
+  // state.fields HÂLÂ ÇIKAN taşınmazın kendi değerlerini taşırken hesaplanır.
+  const sameAdaParselShared = isKmlSourceValuesSharedByAdaParsel();
   const fields = snapshot?.fields || {};
   getTitleUnitScopedFieldKeys().forEach((key) => {
     if (Object.prototype.hasOwnProperty.call(fields, key)) {
@@ -2536,11 +2567,13 @@ function applyTitleUnitScopedData(snapshot) {
     }
   });
   state.sourceValues = state.sourceValues || {};
-  const sourceValues = snapshot?.sourceValues || {};
-  ["kml", "nearbyPlaces", "nearbyArtery", "nearbyTransport", "regionAnalysis", "localNeighborhood", "administrativeNeighborhoodFallback"].forEach((key) => {
-    if (sourceValues[key] !== undefined) state.sourceValues[key] = sourceValues[key];
-    else delete state.sourceValues[key];
-  });
+  if (!sameAdaParselShared) {
+    const sourceValues = snapshot?.sourceValues || {};
+    ["kml", "nearbyPlaces", "nearbyArtery", "nearbyTransport", "regionAnalysis", "localNeighborhood", "administrativeNeighborhoodFallback"].forEach((key) => {
+      if (sourceValues[key] !== undefined) state.sourceValues[key] = sourceValues[key];
+      else delete state.sourceValues[key];
+    });
+  }
 }
 
 function getTitleUnitCount() {
@@ -33658,6 +33691,20 @@ async function applyKmlRecordsToTitleUnits(records) {
   const validRecords = (records || []).filter((record) => record?.parsed?.fields);
   if (!validRecords.length) return;
   const targetIndexes = getKmlTargetIndexes(validRecords);
+  // Kullanıcı bildirimi (2026-08-25): "tek dosya seçilirse tüm taşınmazlara
+  // uygulansın" işaretliyken (applyKmlFileToAllTitleUnits) AYNI KML N kez
+  // kopyalanıyor, ama bu döngü HER birim için AYRI AYRI mahalle/harita
+  // araması + yakın-çevre API çağrısı yapıyordu — 43 taşınmazlı bir raporda
+  // 43 ardışık AWAIT'li ağ turu ("sistemi aşırı derecede kastırıyor", çoğu
+  // zaman aşım/hız-sınırı yüzünden yakın çevre verisi HİÇ gelmiyordu).
+  // AYNI ada/parseldeki taşınmazlar için bu aramanın sonucu ZATEN AYNIdır
+  // (bkz. isKmlSourceValuesSharedByAdaParsel/getAdaParselSharedAddressLookupKeys
+  // — posta kodu/mesafe alanları + zaten paylaşımlı mainArtery/nearby/transport)
+  // — bu yüzden aynı ada/parsel anahtarı bu ÇAĞRI içinde DAHA ÖNCE işlendiyse
+  // pahalı 2 ağ çağrısı TEKRARLANMAZ, paylaşımlı sourceValues zaten doğru
+  // veriyi taşır. FARKLI ada/parsellerdeki kayıtlar (ör. Tarımsal Alan çoklu
+  // parsel senaryosu) etkilenmez — her biri kendi anahtarıyla yine tam işlenir.
+  const processedParcelKeys = new Set();
 
   for (let recordIndex = 0; recordIndex < validRecords.length; recordIndex += 1) {
     const record = validRecords[recordIndex];
@@ -33669,18 +33716,22 @@ async function applyKmlRecordsToTitleUnits(records) {
     state.sourceValues.kml.fileName = record.fileName;
     applyKmlFieldsToReport({ force: true, preserveShared });
 
-    // Her KML kendi taşınmazının mahalle/köy/ilçe ve mesafe verisini üretmelidir.
-    // Açıklama alanları ortak kalsa da bu teknik konum verileri tab bazında saklanır.
-    await applyLocalNeighborhoodForCurrentLocation({ force: true, silent: true }).catch(() => false);
-    nearbyAutoFetchStarted = false;
-    state.sourceValues.nearbyPlaces = {
-      ...(state.sourceValues.nearbyPlaces || {}),
-      loading: true,
-      center: record.parsed.centroid
-        ? { lat: record.parsed.centroid.lat, lng: record.parsed.centroid.lng }
-        : state.sourceValues.nearbyPlaces?.center,
-    };
-    await fetchNearbyPlacesForCurrentLocation({ silent: true, force: true }).catch(() => false);
+    const parcelKey = getKmlParcelMatchKey(record.parsed?.fields);
+    const alreadyProcessedSameParcel = Boolean(parcelKey) && processedParcelKeys.has(parcelKey);
+    if (parcelKey) processedParcelKeys.add(parcelKey);
+
+    if (!alreadyProcessedSameParcel) {
+      await applyLocalNeighborhoodForCurrentLocation({ force: true, silent: true }).catch(() => false);
+      nearbyAutoFetchStarted = false;
+      state.sourceValues.nearbyPlaces = {
+        ...(state.sourceValues.nearbyPlaces || {}),
+        loading: true,
+        center: record.parsed.centroid
+          ? { lat: record.parsed.centroid.lat, lng: record.parsed.centroid.lng }
+          : state.sourceValues.nearbyPlaces?.center,
+      };
+      await fetchNearbyPlacesForCurrentLocation({ silent: true, force: true }).catch(() => false);
+    }
   }
   switchActiveTitleUnit(0);
   // Tüm taşınmazların KML/mesafe verisi artık bilinir (döngü bitti) — Çoklu
@@ -33699,6 +33750,14 @@ async function applyKmlRecordsToTitleUnits(records) {
 
 function resetKmlDerivedFields(options = {}) {
   const preserveShared = Boolean(options.preserveShared);
+  // Kullanıcı bildirimi (2026-08-25) — bkz. getAdaParselSharedAddressLookupKeys()
+  // yorumu: AYNI ada/parselde bu alanlar da (TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS
+  // gibi) paylaşımlı; preserveShared=true iken (KML toplu-uygulama döngüsünde
+  // 1. taşınmazdan SONRASI) bunları da SIFIRLAMA — aksi halde 1. taşınmaz
+  // için başarıyla getirilen posta kodu/mesafe verisi 2. taşınmaz işlenirken
+  // hemen silinir.
+  const sameAdaParsel = isKmlSourceValuesSharedByAdaParsel();
+  const adaParselSharedAddressLookupKeys = getAdaParselSharedAddressLookupKeys();
   nearbyRequestSerial += 1;
   nearbyAutoFetchStarted = false;
   [
@@ -33737,19 +33796,26 @@ function resetKmlDerivedFields(options = {}) {
     "commercialFrontageRoadType",
     "commercialDevelopmentCompleted",
     "environmentDescription",
-  ].filter((key) => !preserveShared || !TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS.has(key)).forEach((key) => {
+  ].filter((key) => {
+    if (!preserveShared) return true;
+    if (TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS.has(key)) return false;
+    if (sameAdaParsel && adaParselSharedAddressLookupKeys.has(key)) return false;
+    return true;
+  }).forEach((key) => {
     state.fields[key] = "";
   });
   state.fields.landRoadFrontageItems = [];
-  state.sourceValues.nearbyPlaces = {};
-  state.sourceValues.nearbyArtery = {};
-  state.sourceValues.nearbyTransport = {};
-  state.sourceValues.regionAnalysis = {};
-  state.sourceValues.localNeighborhood = {};
-  state.sourceConflicts.nearbyArtery = {};
-  state.sourceConflicts.nearbyTransport = {};
-  state.sourceConflicts.regionAnalysis = {};
-  state.sourceConflicts.localNeighborhood = {};
+  if (!preserveShared || !sameAdaParsel) {
+    state.sourceValues.nearbyPlaces = {};
+    state.sourceValues.nearbyArtery = {};
+    state.sourceValues.nearbyTransport = {};
+    state.sourceValues.regionAnalysis = {};
+    state.sourceValues.localNeighborhood = {};
+    state.sourceConflicts.nearbyArtery = {};
+    state.sourceConflicts.nearbyTransport = {};
+    state.sourceConflicts.regionAnalysis = {};
+    state.sourceConflicts.localNeighborhood = {};
+  }
   state.uploadErrors = {
     ...(state.uploadErrors || {}),
     nearbyPlaces: "",

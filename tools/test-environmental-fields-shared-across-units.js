@@ -111,6 +111,12 @@ const functionNames = [
   "buildAllTitleUnitsForSummaryTable",
   "computeTitleUnitsShareSameAdaParsel",
   "isPlanningScopedByAdaParsel",
+  // Adres ve Konum posta kodu/mesafe alanlari + KML sourceValues ada/parsel
+  // kosullu paylasimi (2026-08-25) - getTitleUnitScopedFieldKeys()/
+  // snapshotTitleUnitScopedData()/applyTitleUnitScopedData() artik bunlara
+  // bagimli.
+  "getAdaParselSharedAddressLookupKeys",
+  "isKmlSourceValuesSharedByAdaParsel",
   "getImarSectionFieldKeys",
   // Arsa Özellikleri scoping-gap-fix (2026-08-17) - getTitleUnitScopedFieldKeys()
   // artık buna KOŞULSUZ bağımlı.
