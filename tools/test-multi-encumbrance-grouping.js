@@ -265,3 +265,109 @@ return { getEncumbranceFlattenedExcelRows, setState: (s) => { state = s; } };
 
   console.log("getEncumbranceFlattenedExcelRows (Bolum Excel okunabilirlik duzeltmesi) testi tamam.");
 }
+
+// --- importEncumbranceFlattenedExcelRows() — getEncumbranceFlattenedExcelRows'un
+// TERS yonu (kullanici talebi, 2026-08-25, devam: "excel yukle neden
+// kaldirildi?") — satir-basina-kayit formatini "Tasinmaz" etiketine gore
+// gruplayip taşınmaz + alt-tabloya geri dagitir, paylasimli Takyidat
+// tarihi/saati/kaynagini TEK SEFER state.fields'a yazar.
+{
+  function normalizeHeaderLikeProd(value) {
+    return String(value ?? "")
+      .replace(/[﻿​]/g, "")
+      .trim()
+      .toLocaleLowerCase("tr-TR")
+      .replace(/[çÇ]/g, "c")
+      .replace(/[ğĞ]/g, "g")
+      .replace(/[ıİ]/g, "i")
+      .replace(/[öÖ]/g, "o")
+      .replace(/[şŞ]/g, "s")
+      .replace(/[üÜ]/g, "u")
+      .replace(/[\s_\-\/]+/g, "");
+  }
+
+  const importFunctionNames = [
+    "normalizeMultiRequestValue",
+    "getTitleUnitCount",
+    "switchActiveTitleUnit",
+    "createEmptyTitleUnit",
+    "normalizeEkbDate",
+    "dateTrToIso",
+    "importEncumbranceFlattenedExcelRows",
+  ];
+  const importSandboxSource = `
+let state = null;
+const window = { confirm: () => true, RaporMultiRequestXlsx: { normalizeHeader: ${normalizeHeaderLikeProd.toString()} } };
+const ENCUMBRANCE_FLATTENED_TABLE_GROUPS = [
+  { key: "encumbranceDeclarations", label: "Beyanlar - Hak ve Mükellefiyetler", hasAmountColumn: false },
+  { key: "encumbranceAnnotations", label: "Şerhler", hasAmountColumn: true },
+  { key: "encumbranceMortgages", label: "İpotekler", hasAmountColumn: true },
+];
+// refreshEncumbranceSummaryFromCurrentData() DOM + agir formatlayici
+// zincirine bagimli (buildEncumbranceSummaryVariants vb.) — bu testin
+// odagi ICE AKTARMA orkestrasyonu (grupla/dagit), hafif STUB yeterli
+// (getEncumbranceMultiUnitSummaryRows testindeki AYNI desen).
+let refreshCalled = false;
+function refreshEncumbranceSummaryFromCurrentData() { refreshCalled = true; }
+${importFunctionNames.map(extractFunction).join("\n")}
+return {
+  importEncumbranceFlattenedExcelRows,
+  setState: (s) => { state = s; },
+  getState: () => state,
+  wasRefreshCalled: () => refreshCalled,
+};
+`;
+  // eslint-disable-next-line no-new-func
+  const importSandbox = new Function(importSandboxSource)();
+
+  importSandbox.setState({ fields: {}, tables: {}, titleUnits: [], activeTitleUnitIndex: 0 });
+
+  const header = ["Taşınmaz", "Takyidat Tarihi", "Takyidat Saati", "Kayıt Kaynağı", "Kayıt Grubu", "Tür / Lehdar", "Açıklama / Derece", "Tutar", "Tarih", "Yevmiye No", "Kısıtlı Malik"];
+  const rows = [
+    header,
+    ["A-2", "12.06.2026", "08:05", "Webtapu Sistemi", "Beyanlar - Hak ve Mükellefiyetler", "Beyan", "Otopark taahhüdü", "", "26.10.2021", "39154", ""],
+    ["A-2", "12.06.2026", "08:05", "Webtapu Sistemi", "İpotekler", "Nurol Yatırım Bankası", "1", "500.000,00 TL", "29.05.2025", "28866", ""],
+    ["A-4", "12.06.2026", "08:05", "Webtapu Sistemi", "Şerhler", "Haciz", "İcra takibi", "150.000,00 TL", "01.03.2023", "5000", "Malik X"],
+  ];
+
+  const count = importSandbox.importEncumbranceFlattenedExcelRows(rows);
+  assert.equal(count, 2, "2 benzersiz tasinmaz etiketi (A-2, A-4) ice aktarilmali.");
+  const after = importSandbox.getState();
+  assert.equal(after.titleUnits.length, 1, "1 EK tasinmaz (toplam 2) olusmali.");
+  assert.equal(after.fields.requestType, "Çoklu Talep", "Birden fazla tasinmazda requestType OTOMATIK Coklu Talep olmali.");
+
+  assert.equal(after.fields.takbisDate, "2026-06-12", "Paylasimli Takyidat Tarihi TR->ISO cevrilip TEK SEFER state.fields'a yazilmali.");
+  assert.equal(after.fields.takbisTime, "08:05", "Paylasimli Takyidat Saati state.fields'a yazilmali.");
+  assert.equal(after.fields.takbisMethod, "Webtapu Sistemi", "Paylasimli Kayit Kaynagi state.fields'a yazilmali.");
+
+  assert.deepEqual(
+    after.tables.encumbranceDeclarations,
+    [{ c0: "Beyan", c1: "Otopark taahhüdü", c2: "26.10.2021", c3: "39154", c4: "" }],
+    "1. tasinmazin (birincil) Beyanlar tablosu dogru yeniden kurulmali (5 sutun, Tutar'siz)."
+  );
+  assert.deepEqual(
+    after.tables.encumbranceMortgages,
+    [{ c0: "Nurol Yatırım Bankası", c1: "1", c2: "500.000,00 TL", c3: "29.05.2025", c4: "28866", c5: "" }],
+    "1. tasinmazin Ipotekler tablosu dogru yeniden kurulmali (6 sutun, Tutar dahil)."
+  );
+  assert.equal(after.tables.encumbranceAnnotations.length, 0, "1. tasinmazin Serhler tablosu bos kalmali (o kayit A-4'e ait).");
+  assert.deepEqual(
+    after.tables.encumbrance,
+    [
+      { c0: "Beyan", c1: "Otopark taahhüdü", c2: "26.10.2021", c3: "39154", c4: "" },
+      { c0: "Nurol Yatırım Bankası", c1: "1", c2: "29.05.2025", c3: "28866", c4: "" },
+    ],
+    "Birlesik 'encumbrance' (salt-goruntuleme) tablosu 3 alt-tablodan DOGRU yeniden kurulmali (ipotek icin Tutar dusup Tarih/YevmiyeNo/KisitliMalik doğru kaymali)."
+  );
+
+  assert.deepEqual(
+    after.titleUnits[0].tables.encumbranceAnnotations,
+    [{ c0: "Haciz", c1: "İcra takibi", c2: "150.000,00 TL", c3: "01.03.2023", c4: "5000", c5: "Malik X" }],
+    "2. tasinmazin (A-4) Serhler tablosu dogru yeniden kurulmali."
+  );
+  assert.equal(after.titleUnits[0].tables.encumbranceDeclarations.length, 0, "2. tasinmazin Beyanlar tablosu bos kalmali.");
+
+  assert.ok(importSandbox.wasRefreshCalled(), "Ice aktarma sonunda Takyidat aciklamasi (rapor metni) yeniden hesaplanmali.");
+
+  console.log("importEncumbranceFlattenedExcelRows (Bolum Excel ice aktarma geri getirme) testi tamam.");
+}

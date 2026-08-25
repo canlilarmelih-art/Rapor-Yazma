@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.545 - 2026-08-25 - Takyidat "Excel yükle" (içe aktarma) yeni format için geri getirildi
+
+- Kullanıcı, 0.0.544'ün "Yükle" düğmesini kaldırmasına itiraz etti: "EXCEL YÜKLE NEDEN kaldırıldı?" — sorulunca ("toplu düzenleyip geri yükleme özelliğine ihtiyacınız var mı?") "Evet, yeni format için geri getir" dedi.
+- **Düzeltme**: Yeni `importEncumbranceFlattenedExcelRows()` — `getEncumbranceFlattenedExcelRows()`'un (0.0.544) TERSİ. Satırlar "Taşınmaz" sütununa göre gruplanır (İLK GÖRÜLEN benzersiz etiket → 1. taşınmaz/birincil, 2. görülen → 1. ek tab, vb. — `importSectionExcelRows`'un "Kayıt No sırayla" ilkesiyle aynı mantık, yalnızca etiket bazında). "Kayıt Grubu" sütunu hangi alt tabloya (`encumbranceDeclarations`/`Annotations`/`Mortgages`) yazılacağını belirler; 5/6 sütun (Tutar var/yok) otomatik. Paylaşımlı Takyidat tarihi/saati/kaynağı (0.0.543) dosyadaki İLK dolu değerden TEK SEFER `state.fields`'a yazılır. Birleşik/salt-görüntüleme `encumbrance` tablosu ("Rapora girecek takyidat kayıtları" panelini besler) 3 sınıflandırılmış alt-tablodan YENİDEN kurulur ki içe aktarma sonrası o panel de güncel görünsün (rapor METNİ zaten yalnızca sınıflandırılmış tablolardan türer, bu adım olmasa da rapor çıktısı doğru olurdu).
+- `createSectionExcelPanel` artık Takyidat için de "Excel yükle" düğmesini gösteriyor, tıklanınca `importEncumbranceFlattenedExcelRows`'a dallanıyor (diğer bölümler hâlâ genel `importSectionExcelRows`'u kullanıyor).
+- Test: `tools/test-multi-encumbrance-grouping.js`'e yeni senaryo — 2 taşınmaz/3 kayıt (5 ve 6 sütunlu karışık) içe aktarılıp hem alt-tabloların hem birleşik `encumbrance` tablosunun (Tutar düşüp Tarih/Yevmiye No/Kısıtlı Malik'in doğru kaydığı) hem paylaşımlı alanların (TR→ISO tarih dönüşümü dahil) doğru kurulduğu doğrulanıyor. `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` cache-buster `?v=20260825-2100`.
+- Canlı tarayıcı testi yapılamadı — kullanıcının canlıda dene mesi istenir: Takyidat bölümünde "Excel indir" ile alıp (isterse düzenleyip) "Excel yükle" ile geri yükleyince kayıtların doğru taşınmaz + doğru gruba (Beyan/Şerh/İpotek) dağıldığını, paylaşımlı tarih/saat/kaynağın tüm taşınmazlarda aynı göründüğünü kontrol etmesi gerekir.
+
 ## 0.0.544 - 2026-08-25 - Takyidat "Bölüm Excel"i: JSON-dump yerine her kayıt kendi satırında
 
 - Kullanıcı, canlıdan indirdiği bir dosyayı (`...-encumbrance (2).xlsx`) paylaşıp: "bu tablo çok okunaksız ve anlaşılması zor bu export ettiğimiz tablo."

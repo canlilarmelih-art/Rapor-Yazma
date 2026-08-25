@@ -19165,18 +19165,20 @@ function createSectionExcelPanel(section) {
   // Kullanıcı bildirimi (2026-08-25, canlı indirilen Excel dosyası): "bu
   // tablo çok okunaksız ve anlaşılması zor" — "Takyidat" bölümünün Excel'i
   // her taşınmazın TÜM takyidat kayıtlarını (Beyan/Şerh/İpotek) TEK bir
-  // hücreye JSON.stringify ile basıyordu. Bu bölüm için artık AYRI, her
-  // kaydın KENDİ satırında olduğu salt-okunur bir dışa aktarım kullanılır
-  // (bkz. getEncumbranceFlattenedExcelRows) — "Yükle" YOK, aynı
-  // createEncumbranceSharedSummaryPanel'in gerekçesiyle (sınıflandırılmış/
-  // hesaplanmış veri, elle düzenlenip geri yüklenmesi güvenli değil).
+  // hücreye JSON.stringify ile basıyordu. Bu bölüm için artık her kaydın
+  // KENDİ satırında olduğu bir format kullanılır (bkz.
+  // getEncumbranceFlattenedExcelRows). Kullanıcı takibi ("excel yükle
+  // neden kaldırıldı?") üzerine bu YENİ format için de kendi içe aktarma
+  // fonksiyonu (importEncumbranceFlattenedExcelRows) yazıldı — genel
+  // importSectionExcelRows() bu satır-başına-kayıt şeklini TANIYAMAZ
+  // (header eşleşmez), bu yüzden bölüme göre ayrı fonksiyona dallanılır.
   const isEncumbranceFlattenedExport = section.id === "encumbrance";
   panel.innerHTML = `
     <div class="subsection-heading"><div><span class="eyebrow">Aktif ana bölüm</span><h3>${escapeHtml(section.title)} Excel</h3></div></div>
     <p class="muted-note">Yalnızca bu bölümün alanları aktarılır. Açılır liste alanları Excel'de de seçim listesi olarak korunur.</p>
     <div class="output-export-actions">
       <button type="button" class="secondary-button" data-section-excel-export>Excel indir</button>
-      ${isEncumbranceFlattenedExport ? "" : `<label class="secondary-button file-button">Excel yükle<input type="file" accept=".xlsx,.csv,text/csv" data-section-excel-import hidden /></label>`}
+      <label class="secondary-button file-button">Excel yükle<input type="file" accept=".xlsx,.csv,text/csv" data-section-excel-import hidden /></label>
     </div>
     <p class="export-status" data-section-excel-status aria-live="polite"></p>
   `;
@@ -19185,15 +19187,13 @@ function createSectionExcelPanel(section) {
   exportButton.innerHTML = getSectionExcelIconMarkup("download");
   exportButton.setAttribute("aria-label", `${section.title} Excel indir`);
   exportButton.title = isEncumbranceFlattenedExport
-    ? `${section.title} Excel indir (her kayıt kendi satırında, salt-okunur)`
+    ? `${section.title} Excel indir (her kayıt kendi satırında)`
     : `${section.title} Excel indir`;
   const importLabel = panel.querySelector(".file-button");
-  if (importLabel) {
-    importLabel.className = "section-excel-icon-button file-button";
-    importLabel.insertAdjacentHTML("afterbegin", getSectionExcelIconMarkup("upload"));
-    importLabel.setAttribute("aria-label", `${section.title} Excel yükle`);
-    importLabel.title = `${section.title} Excel yükle`;
-  }
+  importLabel.className = "section-excel-icon-button file-button";
+  importLabel.insertAdjacentHTML("afterbegin", getSectionExcelIconMarkup("upload"));
+  importLabel.setAttribute("aria-label", `${section.title} Excel yükle`);
+  importLabel.title = `${section.title} Excel yükle`;
   panel.querySelector(".subsection-heading")?.remove();
   panel.querySelector(".muted-note")?.remove();
   const status = panel.querySelector("[data-section-excel-status]");
@@ -19216,7 +19216,9 @@ function createSectionExcelPanel(section) {
     if (!file) return;
     try {
       const rows = await window.RaporMultiRequestXlsx.readRows(file);
-      const count = importSectionExcelRows(section, rows);
+      const count = isEncumbranceFlattenedExport
+        ? importEncumbranceFlattenedExcelRows(rows)
+        : importSectionExcelRows(section, rows);
       if (!count) return;
       autosave();
       status.textContent = `${count} kayıt bu bölüme aktarıldı.`;
@@ -19274,6 +19276,110 @@ function getEncumbranceFlattenedExcelRows() {
     });
   });
   return rows;
+}
+
+// getEncumbranceFlattenedExcelRows()'un (yukarıda) İÇE AKTARMA karşılığı —
+// kullanıcı talebi (2026-08-25, devam: "excel yükle neden kaldırıldı?").
+// Genel importSectionExcelRows() "N taşınmaz = N satır" varsayımlı; bu
+// YENİ format satır-başına-KAYIT olduğundan (bir taşınmazın birden fazla
+// satırı olabilir) ayrı bir fonksiyon gerekiyordu. Satırlar "Taşınmaz"
+// sütununa göre gruplanır — İLK GÖRÜLEN benzersiz etiket 1. taşınmaz
+// (birincil), 2. görülen 1. ek tab, vb. (importSectionExcelRows'un "Kayıt
+// No sırayla" ilkesiyle AYNI mantık, yalnızca etiket bazında). "Kayıt
+// Grubu" sütunu hangi alt tabloya (encumbranceDeclarations/Annotations/
+// Mortgages) yazılacağını belirler; 5/6 sütunlu ayrım (Tutar var/yok)
+// gruba göre otomatik — getEncumbranceFlattenedExcelRows'un TERSİ
+// eşleme. Takyidat tarihi/saati/kaynağı paylaşımlı olduğundan (0.0.543)
+// dosyadaki İLK dolu değer TEK SEFER state.fields'a yazılır (taşınmaz
+// başına tekrar yazılmaz). "encumbrance" (birleşik/salt-görüntüleme
+// listesi, "Rapora girecek takyidat kayıtları" panelini besler) 3
+// sınıflandırılmış alt-tablodan YENİDEN kurulur ki içe aktarma sonrası o
+// panel de güncel görünsün — rapor METNİ zaten yalnızca 3 sınıflandırılmış
+// tablodan türer (bkz. buildEncumbranceSummaryVariants), bu adım olmasa
+// da rapor çıktısı doğru olurdu, yalnızca editable panel bayat kalırdı.
+function importEncumbranceFlattenedExcelRows(rows) {
+  if (!Array.isArray(rows) || rows.length < 2) throw new Error("Excel dosyasında başlık ve en az bir veri satırı bulunmalı.");
+  const groupByNormalizedLabel = new Map(
+    ENCUMBRANCE_FLATTENED_TABLE_GROUPS.map((group) => [window.RaporMultiRequestXlsx.normalizeHeader(group.label), group])
+  );
+
+  const unitOrder = [];
+  const unitIndexByLabel = new Map();
+  const bucketsByUnitIndex = [];
+  let sharedDate = "";
+  let sharedTime = "";
+  let sharedMethod = "";
+
+  rows.slice(1).forEach((row) => {
+    const [unitLabel, dateValue, timeValue, methodValue, groupLabel, c0, c1, amountValue, dateOrC2, journalOrC3, restrictedOrC4] = row;
+    const label = normalizeMultiRequestValue(unitLabel);
+    if (!label) return;
+    const group = groupByNormalizedLabel.get(window.RaporMultiRequestXlsx.normalizeHeader(groupLabel || ""));
+    if (!group) return; // tanınmayan "Kayıt Grubu" — satır atlanır (yanlış-pozitif önlenir)
+    if (!unitIndexByLabel.has(label)) {
+      unitIndexByLabel.set(label, unitOrder.length);
+      unitOrder.push(label);
+      bucketsByUnitIndex.push({ encumbranceDeclarations: [], encumbranceAnnotations: [], encumbranceMortgages: [] });
+    }
+    const bucket = bucketsByUnitIndex[unitIndexByLabel.get(label)];
+    const tableRow = group.hasAmountColumn
+      ? {
+          c0: normalizeMultiRequestValue(c0), c1: normalizeMultiRequestValue(c1),
+          c2: normalizeMultiRequestValue(amountValue), c3: normalizeMultiRequestValue(dateOrC2),
+          c4: normalizeMultiRequestValue(journalOrC3), c5: normalizeMultiRequestValue(restrictedOrC4),
+        }
+      : {
+          c0: normalizeMultiRequestValue(c0), c1: normalizeMultiRequestValue(c1),
+          c2: normalizeMultiRequestValue(dateOrC2), c3: normalizeMultiRequestValue(journalOrC3),
+          c4: normalizeMultiRequestValue(restrictedOrC4),
+        };
+    if (Object.values(tableRow).some(Boolean)) bucket[group.key].push(tableRow);
+
+    if (!sharedDate && dateValue) sharedDate = normalizeMultiRequestValue(dateValue);
+    if (!sharedTime && timeValue) sharedTime = normalizeMultiRequestValue(timeValue);
+    if (!sharedMethod && methodValue) sharedMethod = normalizeMultiRequestValue(methodValue);
+  });
+
+  if (!unitOrder.length) throw new Error("Excel dosyasında aktarılacak takyidat kaydı bulunamadı.");
+  if (getTitleUnitCount() > 1 || Object.values(state.fields || {}).some(Boolean)) {
+    if (!window.confirm("Bu Excel Takyidat bölümündeki mevcut kayıtların üzerine yazacak. Devam edilsin mi?")) return 0;
+  }
+  if (state.activeTitleUnitIndex !== 0) switchActiveTitleUnit(0);
+  // Bölüm Excel'i mevcut taşınmaz listesini temsil eder — eski bir içe
+  // aktarmadan kalan fazla tablar korunursa aynı taşınmaz grubu ekranda
+  // ikinci kez görünür (importSectionExcelRows ile AYNI ilke).
+  state.titleUnits.length = Math.max(unitOrder.length - 1, 0);
+
+  const toMasterRow = (row, hasAmountColumn) => (hasAmountColumn
+    ? { c0: row.c0, c1: row.c1, c2: row.c3, c3: row.c4, c4: row.c5 }
+    : { c0: row.c0, c1: row.c1, c2: row.c2, c3: row.c3, c4: row.c4 });
+
+  unitOrder.forEach((label, index) => {
+    const bucket = bucketsByUnitIndex[index];
+    const mergedEncumbrance = [
+      ...bucket.encumbranceDeclarations,
+      ...bucket.encumbranceAnnotations.map((row) => toMasterRow(row, true)),
+      ...bucket.encumbranceMortgages.map((row) => toMasterRow(row, true)),
+    ];
+    const tables = { ...bucket, encumbrance: mergedEncumbrance };
+    if (index === 0) {
+      state.tables = { ...state.tables, ...tables };
+    } else {
+      const existing = state.titleUnits[index - 1] || createEmptyTitleUnit();
+      state.titleUnits[index - 1] = createEmptyTitleUnit({
+        ...existing,
+        tables: { ...(existing.tables || {}), ...tables },
+      });
+    }
+  });
+
+  state.fields.takbisDate = dateTrToIso(sharedDate) || sharedDate;
+  state.fields.takbisTime = sharedTime;
+  state.fields.takbisMethod = sharedMethod;
+  if (unitOrder.length > 1) state.fields.requestType = "Çoklu Talep";
+  state.activeTitleUnitIndex = 0;
+  refreshEncumbranceSummaryFromCurrentData();
+  return unitOrder.length;
 }
 
 // Kullanıcı talebi (2026-08-12): Takyidat kayıtlarının hangi taşınmazlarda
