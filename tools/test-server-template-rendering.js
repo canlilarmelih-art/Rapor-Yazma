@@ -246,6 +246,12 @@ clientTemplateKeys.forEach((key) => {
     const getSelectedProjectInstitutionsSrc = sliceFn3("function getSelectedProjectInstitutions(");
     const projectSuitabilityStatusKeySrc = sliceFn3("function projectSuitabilityStatusKey(");
     const isProjectSuitabilityOkSrc = sliceFn3("function isProjectSuitabilityOk(");
+    // buildProjectSuitabilityDescription() artik district hesaplamasini
+    // getProjectReviewDistrictText()'e devrediyor (2026-08-25, "Merkez"
+    // ilce -> il adi duzeltmesinin TEK kaynaga tasinmasi) - foldTurkish/
+    // normalizeReportTitleText zaten yuklu oldugundan gercek fonksiyon
+    // dogrudan calisir, ayrica stub gerekmez.
+    const getProjectReviewDistrictTextSrc = sliceFn3("function getProjectReviewDistrictText(");
     const buildProjectSuitabilityDescriptionSrc = sliceFn3("function buildProjectSuitabilityDescription(");
 
     function runClientDescription(reportId, fields) {
@@ -288,6 +294,7 @@ clientTemplateKeys.forEach((key) => {
       vmModule.runInNewContext(shouldUseProjectDifferenceComparisonSrc, context);
       vmModule.runInNewContext(projectSuitabilityStatusKeySrc, context);
       vmModule.runInNewContext(isProjectSuitabilityOkSrc, context);
+      vmModule.runInNewContext(getProjectReviewDistrictTextSrc, context);
       vmModule.runInNewContext(hashSrc, context);
       vmModule.runInNewContext(getVariantSelectionSeedIdSrc, context);
       vmModule.runInNewContext(getAutoVariantIndexSrc, context);

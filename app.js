@@ -8799,12 +8799,12 @@ function shouldShowPropertyTaxUnavailableInValuation() {
 }
 
 function getPropertyTaxDeclarationMunicipalityText() {
-  const district = normalizeReportTitleText(state.fields.titleDistrict || state.fields.district || "").trim();
+  const district = getProjectReviewDistrictText();
   return district ? `${district} Belediyesi` : "İlgili Belediye";
 }
 
 function getPropertyTaxDeclarationMunicipalitySourceText() {
-  const district = normalizeReportTitleText(state.fields.titleDistrict || state.fields.district || "").trim();
+  const district = getProjectReviewDistrictText();
   return district ? `${district} Belediyesinden` : "ilgili belediyeden";
 }
 
@@ -18148,7 +18148,7 @@ function getImarInstitutionValues(value = state.fields.imarInfoInstitution) {
 
 function getImarInstitutionOptions(selectedValues = getImarInstitutionValues()) {
   const city = normalizeReportTitleText(state.fields.titleCity || state.fields.city || "").trim();
-  const district = normalizeReportTitleText(state.fields.titleDistrict || state.fields.district || "").trim();
+  const district = getProjectReviewDistrictText();
   const regionalInstitution = city
     ? `${city} ${isMetropolitanProvince(city) ? "Büyükşehir Belediyesi" : "İl Özel İdaresi"}`
     : "";
@@ -26062,7 +26062,16 @@ function getProjectReviewDateText() {
 // Kadastro — buildProjectReviewInstitutionSummary/formatProjectReviewLocation/
 // formatProjectReviewLocationForMissing/buildNoArchitecturalProjectDescription/
 // buildSingleInstitutionCondominiumProjectDescription) TEK kaynağı
-// olduğundan burada düzeltmek hepsini tek seferde kapsar.
+// olduğundan burada düzeltmek hepsini tek seferde kapsar. 2026-08-25
+// DEVAM (kullanıcı: "kontrol ettim halen merkez belediyesi olarak
+// çıkıyor" — asıl kaynak "Belgeler ve Proje" dışında, KOPYALANMIŞ ayrı
+// birer inline hesaplamaydı) — getPropertyTaxDeclarationMunicipalityText/
+// SourceText, getImarInstitutionOptions, buildProjectSuitabilityDescription,
+// buildDefaultDocumentReviewInstitution (Proje İncelenen Kurum'un
+// VARSAYILAN seçeneği — kullanıcının GERÇEKTE gördüğü "Merkez Belediyesi"
+// muhtemelen BURADAN geliyordu), buildBuildingInspectionExplanation/
+// TerminationExplanation de artık BU fonksiyona yönlendirildi (kendi
+// district-hesaplama KOPYALARI silindi) — TEK kaynak, drift riski yok.
 function getProjectReviewDistrictText() {
   const district = normalizeReportTitleText(state.fields.titleDistrict || state.fields.district || "").trim();
   if (foldTurkish(district) === "MERKEZ") {
@@ -26270,7 +26279,7 @@ function buildProjectSuitabilityDescription() {
     const titleOk = isProjectSuitabilityOk(state.fields.titleProjectSuitabilityStatus);
     const municipalityOk = isProjectSuitabilityOk(state.fields.municipalityProjectSuitabilityStatus);
     if (titleOk && municipalityOk) {
-      const district = normalizeReportTitleText(state.fields.titleDistrict || state.fields.district || "").trim();
+      const district = getProjectReviewDistrictText();
       const municipalityText = district ? `${district} Belediyesinde` : "Belediye arşivinde";
       const bothOkVariants = [
         `Webtapu Portalında incelenen mimari proje ve ${municipalityText} incelenen proje karşılaştırıldığında taşınmazın konumunu ve alanını etkileyen herhangi bir farklılık bulunmamaktadır. Taşınmaz incelenen her iki projeye de uygun olarak inşa edilmiştir.`,
@@ -27382,7 +27391,7 @@ function formatDocumentArchiveLocation(institution) {
 }
 
 function buildDefaultDocumentReviewInstitution() {
-  const district = normalizeReportTitleText(state.fields.titleDistrict || state.fields.district || "").trim();
+  const district = getProjectReviewDistrictText();
   return district ? `${district} Belediyesi` : "";
 }
 
@@ -27583,7 +27592,7 @@ function buildBuildingInspectionExplanation() {
   const status = String(state.fields.buildingInspectionContractActive || "").trim();
   if (!status) return "";
   const date = dateIsoToTr(state.fields.municipalityInspectionDate || state.fields.appointmentDate || "");
-  const district = normalizeReportTitleText(state.fields.titleDistrict || state.fields.district || "").trim();
+  const district = getProjectReviewDistrictText();
   const municipality = district ? `${district} Belediyesinden` : "ilgili belediyeden";
   const dateText = date ? `${date} tarihinde ` : "";
   if (status === "Evet") {
@@ -27603,7 +27612,7 @@ function buildBuildingInspectionExplanation() {
 function buildBuildingInspectionTerminationExplanation() {
   if (String(state.fields.buildingInspectionContractActive || "").trim() !== "Hayır (Fesihli)") return "";
   const date = dateIsoToTr(state.fields.municipalityInspectionDate || state.fields.appointmentDate || "");
-  const district = normalizeReportTitleText(state.fields.titleDistrict || state.fields.district || "").trim();
+  const district = getProjectReviewDistrictText();
   const municipality = district ? `${district} Belediyesinden` : "ilgili belediyeden";
   const terminationDate = dateIsoToTr(state.fields.buildingInspectionTerminationDate || "");
   const level = state.fields.buildingInspectionTerminationLevel || "";

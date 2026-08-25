@@ -30,6 +30,11 @@ const context = {
   normalizeReportTitleText: (value) => String(value || "").trim(),
   normalizeMultiCheckboxValues: (values) => [...new Set(values.map((value) => String(value || "").trim()).filter(Boolean))],
   formatMultiCheckboxValue: (values) => values.join(", "),
+  // getImarInstitutionOptions() artık district hesaplamasını getProjectReviewDistrictText()'e
+  // devrediyor (2026-08-25, "Merkez" ilçe -> il adı düzeltmesinin TEK
+  // kaynağa taşınması) — bu testin senaryoları (Karacabey/Armutlu) "Merkez"
+  // içermediğinden eski davranışı birebir yansıtan hafif bir stub yeterli.
+  getProjectReviewDistrictText: () => context.state.fields.titleDistrict || context.state.fields.district || "",
 };
 vm.runInNewContext(appSource.slice(helperStart, helperEnd), context);
 

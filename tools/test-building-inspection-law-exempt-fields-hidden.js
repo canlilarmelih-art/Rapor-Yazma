@@ -104,6 +104,12 @@ function runScenario({ documents = [], contractActive = "", landReport = false }
     getArchitecturalProjectReviewedDocumentRows: () => [],
     normalizeReviewedDocumentRow: (row) => ({ type: String(row?.c0 || "") }),
     hasReviewedOccupancyPermitDocument: () => false,
+    // buildBuildingInspectionExplanation() artik district hesaplamasini
+    // getProjectReviewDistrictText()'e devrediyor (2026-08-25, "Merkez"
+    // ilce -> il adi duzeltmesinin TEK kaynaga tasinmasi) - bu testin
+    // fixture'i bos oldugundan eski davranisi birebir yansitan hafif bir
+    // stub yeterli.
+    getProjectReviewDistrictText: () => context.state.fields.titleDistrict || context.state.fields.district || "",
     // Bu testin kapsami disi: Cezai Karar/Statik Uygunluk kontrolleri sahte
     // bir <div> ile temsil edilir, dataset.field icermez (taramaya girmez).
     isLandProjectReview: () => landReport,

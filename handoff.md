@@ -1,5 +1,20 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.547 - 2026-08-25 - "Merkez Belediyesi" hatası hâlâ çıkıyordu — asıl kaynak 6 AYRI kopya haldeymiş
+
+- Kullanıcı, 0.0.546'yı canlıda test edip: "kontrol ettim halen merkez belediyesi olarak çıkıyor."
+- **Kök neden (0.0.546'nın eksik kaldığı yer)**: `getProjectReviewDistrictText()`'i düzelttim ama bu fonksiyonu ÇAĞIRAN yerler yalnızca "Belgeler ve Proje"nin özet/konum metinleriydi. Aynı "district + Belediyesi" hesaplaması, `getProjectReviewDistrictText()`'e HİÇ bağlı olmayan, KENDİ inline kopyalarını taşıyan 6 AYRI fonksiyonda tekrar ediyordu — kullanıcının GERÇEKTE gördüğü "Merkez Belediyesi" büyük olasılıkla `buildDefaultDocumentReviewInstitution()`'dan geliyordu (14+ yerden çağrılan, "Proje İncelenen Kurum" dropdown'unun VARSAYILAN seçeneğini üreten fonksiyon) — bu, benim ilk taramamda (yalnızca `getProjectReviewDistrictText()` çağıranları arayan) hiç görünmedi çünkü kendi bağımsız kopyasını taşıyordu.
+- **Düzeltme**: Aşağıdaki 6 fonksiyonun HEPSİ artık kendi inline `state.fields.titleDistrict || state.fields.district` kopyalarını SİLİP `getProjectReviewDistrictText()`'i çağırıyor (TEK kaynak, drift riski yok):
+  - `getPropertyTaxDeclarationMunicipalityText()` / `getPropertyTaxDeclarationMunicipalitySourceText()` (Emlak Beyan Değeri — belediye metni)
+  - `getImarInstitutionOptions()` (İmar Durumu kurum seçenekleri önerisi)
+  - `buildProjectSuitabilityDescription()` (Proje Uygunluk açıklaması — Webtapu/Belediye karşılaştırma cümlesi)
+  - `buildDefaultDocumentReviewInstitution()` (Proje İncelenen Kurum'un VARSAYILAN seçeneği — kullanıcının bildirdiği asıl kaynak büyük ihtimalle bu)
+  - `buildBuildingInspectionExplanation()` / `buildBuildingInspectionTerminationExplanation()` (Yapı Denetim açıklaması)
+- Kapsamlı bir tarama (`grep 'Belediyesi\|Tapu Müdürlüğü\|Kadastro Müdürlüğü'`) ile TÜM app.js doğrulandı — geriye kalan tüm kullanım yerleri ya zaten `getProjectReviewDistrictText()`'e bağlıydı ya da bu bölümün kapsamı dışındaydı (5403 sayılı Kanun asgari parsel tablosu + sahibinden.com arama slug'ı — bunlar GERÇEK "Merkez" idari kaydını gerektirir, kurum adı DEĞİLDİR, bilerek dokunulmadı).
+- Test: 6 mevcut test dosyası (`test-imar-institution-control.js`, `test-building-inspection-law-exemption.js`, `test-building-inspection-law-exempt-fields-hidden.js`, `test-server-template-rendering.js`) kendi izole sandbox'larında artık gerçek/stub `getProjectReviewDistrictText()`'e bağımlı olduğundan güncellendi (fixture'ları "Merkez" içermiyor, önceki davranışı birebir yansıtan hafif stub'lar eklendi — `test-server-template-rendering.js`'de ise GERÇEK fonksiyon zaten yüklü foldTurkish/normalizeReportTitleText'e bağımlı olduğundan doğrudan yüklendi). `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` cache-buster `?v=20260825-2300`.
+- Canlı tarayıcı testi yapılamadı — kullanıcının SIFIRDAN yeni bir raporda (İl Düzce, İlçe Merkez) "Proje İncelenen Kurum" dropdown'unun varsayılan/otomatik değerinin artık "Düzce Belediyesi" gösterip göstermediğini kontrol etmesi istenir (0.0.546'da yalnızca AŞAĞI AKIŞ metinleri düzelmişti, dropdown'un KENDİSİ değil).
+
 ## 0.0.546 - 2026-08-25 - "Merkez" ilçeli illerde kurum adı artık "(İl) Belediyesi", "Merkez Belediyesi" değil
 
 - Kullanıcı bildirimi: "büyükşehirler dışında yer alan illerde illerin merkez belediyesi oluyor. Örnek: İl Düzce İlçe Merkez Burada aslında Bilgi alınan kurum ya da inceleme yapılan kurum Düzce Belediyesi olması gerekirken Merkez Belediyesi olarak oluşturuluyor... eğer ilçe merkez ise (İl) Belediyesi olarak belirtelim."

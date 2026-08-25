@@ -78,6 +78,12 @@ function runScenario({ documents = [], occupancyPermit = false, contractStatus =
     getArchitecturalProjectReviewedDocumentRows: () => [],
     normalizeReviewedDocumentRow: (row) => ({ type: occupancyPermit ? "Yapı Kullanma İzin Belgesi" : String(row?.c0 || "") }),
     hasReviewedOccupancyPermitDocument: () => occupancyPermit,
+    // buildBuildingInspectionExplanation() artik district hesaplamasini
+    // getProjectReviewDistrictText()'e devrediyor (2026-08-25, "Merkez"
+    // ilce -> il adi duzeltmesinin TEK kaynaga tasinmasi) - bu testin
+    // sabit fixture'i ("Karsiyaka") "Merkez" icermediginden eski
+    // davranisi birebir yansitan hafif bir stub yeterli.
+    getProjectReviewDistrictText: () => context.state.fields.titleDistrict || context.state.fields.district || "",
     // selectVariant burada BİLEREK her zaman 0 (orijinal metin) döner — bu
     // test dallanma mantığını doğruluyor, varyant SEÇİMİ ayrı olarak
     // tools/test-variant-selection.js'te test ediliyor.
