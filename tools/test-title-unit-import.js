@@ -108,7 +108,7 @@ let sections = [
 let state = null;
 const TITLE_UNIT_SCOPED_SECTION_IDS = ["title", "encumbrance"];
 const TITLE_UNIT_SCOPED_TABLE_KEYS_BASE = ["title", "encumbrance", "encumbranceDeclarations", "encumbranceAnnotations", "encumbranceMortgages", "comparables"];
-const TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS = new Set(["transport", "nearby", "environmentDescription", "takbisSummary"]);
+const TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS = new Set(["transport", "nearby", "environmentDescription", "takbisSummary", "takbisDate", "takbisMethod", "takbisTime"]);
 
 let applyCalls = [];
 // syncMultiTitleUnitOwnershipType() (2026-08-22, importTakbisRecordsIntoTitleUnits()'in
@@ -305,6 +305,48 @@ function recordWithParcel(id, blockNo, parcelNo, owners = [{ name: "MALİK" }]) 
   sandbox.fns.switchActiveTitleUnit(2);
   assert.equal(sandbox.getState().fields.titlePropertyId, "CCC", "Eşleşmeyen kayıt YENİ açılan 3. taşınmaza gitmeli.");
   console.log("Eslesmeyen kayit icin yeni tab acilma testi tamam.");
+}
+
+// --- 8) takbisDate/takbisMethod/takbisTime artik paylasimli + takbisTime -
+// icin "en erken saat" hesaplamasi - kullanici talebi (2026-08-25): -------
+// "takyidat tarihi ve kayıt kaynağı ortak olmalı. takyidat saati -----------
+// taşınmazlarda farklı ise en erken saati baz al ve ortak olarak uygula." -
+{
+  // 8a) Farkli saatli 3 kayit -> paylasimli takbisTime EN ERKENI ("08:05")
+  // almali, hangi sirada geldigi ONEMLI DEGIL (siralamadan bagimsiz min).
+  const state = freshState();
+  sandbox.setState(state);
+  sandbox.resetApplyCalls();
+  const withTime = (id, blockNo, time) => ({
+    fields: { titlePropertyId: id, blockNo, takbisReportDate: "2026-08-10", takbisReportTime: time },
+    owners: [{ name: "MALİK" }],
+    encumbrances: [],
+    sourceFile: `${id}.pdf`,
+  });
+  const count = sandbox.fns.importTakbisRecordsIntoTitleUnits([
+    withTime("111", "709", "09:30"),
+    withTime("222", "845", "08:05"), // en erken - ortasinda geliyor, siralamadan bagimsiz olmali
+    withTime("333", "900", "10:15"),
+  ]);
+  assert.equal(count, 3, "3 kayit da aktarilmali.");
+  const after = sandbox.getState();
+  assert.equal(after.fields.takbisTime, "08:05", "Paylasimli takbisTime, 3 kaydin EN ERKEN saatini (08:05) almali - hangi sirada geldigi onemli degil.");
+  // Paylasimli alan oldugundan (TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS)
+  // baska bir tasinmaza gecince de AYNI deger gorunmeli (round-trip).
+  sandbox.fns.switchActiveTitleUnit(1);
+  assert.equal(sandbox.getState().fields.takbisTime, "08:05", "2. tasinmaza gecince de AYNI (paylasimli) en erken saat gorunmeli.");
+
+  // 8b) Bos/eksik takbisReportTime'li kayitlar en erken hesaplamasini
+  // BOZMAMALI (guvenlik agi - bos deger asla "en erken" olarak secilmemeli).
+  const state2 = freshState();
+  sandbox.setState(state2);
+  sandbox.resetApplyCalls();
+  sandbox.fns.importTakbisRecordsIntoTitleUnits([
+    { fields: { titlePropertyId: "444", blockNo: "1", takbisReportDate: "2026-08-11", takbisReportTime: "" }, owners: [], encumbrances: [], sourceFile: "444.pdf" },
+    withTime("555", "2", "14:00"),
+  ]);
+  assert.equal(sandbox.getState().fields.takbisTime, "14:00", "Bos takbisReportTime'li kayit, dolu olan (14:00) tek adayken en erken hesaplamasini yanlislikla '' yapmamali.");
+  console.log("takbisDate/takbisMethod/takbisTime paylasim + en erken saat hesaplamasi testi tamam.");
 }
 
 console.log("Coklu TAKBIS Faz 2 rapora aktar orkestrasyonu testleri basarili.");

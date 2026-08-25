@@ -1405,6 +1405,23 @@ const TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS = new Set([
   "nearby",
   "environmentDescription",
   "takbisSummary",
+  // "takbisDate"/"takbisMethod"/"takbisTime" (2026-08-25) — kullanıcı
+  // talebi: "takyidat tarihi ve kayıt kaynağı ortak olmalı. takyidat saati
+  // taşınmazlarda farklı ise en erken saati baz al ve ortak olarak
+  // uygula." "takbisSummary" (hemen yukarıda) ZATEN koşulsuz paylaşımlı —
+  // bu üçü AYNI Takyidat grubunun geri kalanı, tutarlılık için AYNI
+  // (koşulsuz, parsel-bağımsız) modele eklendi. "takbisMethod" (Kayıt
+  // Kaynağı) saf bir manuel seçim (section.fields'ta type:"select",
+  // TAKBİS PDF'inden HİÇ okunmuyor) — paylaşım TEK bir seçimin tüm rapora
+  // yeterli olması demek. "takbisDate"/"takbisTime" ise
+  // applyTakbisEncumbranceFieldsToReport() ile HER taşınmazın kendi
+  // TAKBİS PDF'inden ayrı ayrı okunuyordu; importTakbisRecordsIntoTitleUnits()
+  // artık "en erken saat" hesaplamasını AYRICA yapıp (bkz. o fonksiyonun
+  // içindeki yorum) bu paylaşımlı alana son olarak yazıyor — aksi halde
+  // (düz paylaşım) yalnızca SON işlenen taşınmazın saati "kazanırdı".
+  "takbisDate",
+  "takbisMethod",
+  "takbisTime",
   "planRestrictionNote",
   "planningNote",
   "reviewedDocumentsDescription",
@@ -22748,6 +22765,25 @@ function importTakbisRecordsIntoTitleUnits(records) {
     applyTakbisEncumbranceFieldsToReport(record, { force: true });
     applyTakbisEncumbrancesToTable(record.encumbrances || []);
   });
+
+  // Kullanıcı talebi (2026-08-25): "takyidat saati taşınmazlarda farklı
+  // ise en erken saati baz al ve ortak olarak uygula" — takbisDate/
+  // takbisMethod/takbisTime artık koşulsuz paylaşımlı (bkz.
+  // TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS), yani yukarıdaki döngüde her
+  // applyTakbisEncumbranceFieldsToReport çağrısı takbisTime'ı DOĞRUDAN
+  // ÜZERİNE YAZAR — düz paylaşımla yalnızca SON işlenen taşınmazın saati
+  // kazanırdı. Her taşınmazın KENDİ ham PDF verisinden okunan saati zaten
+  // `validRecords[i].fields.takbisReportTime`'da duruyor (state
+  // mutasyonundan etkilenmez) — döngü bittikten SONRA bunların EN ERKENİ
+  // hesaplanıp paylaşımlı alana son kez yazılır. "HH:MM" biçimi (bkz.
+  // extractTakbisReportDateTime) zaten sıfır dolgulu 24 saatlik olduğundan
+  // düz string karşılaştırması kronolojik sıralamayla BİREBİR örtüşür.
+  const parsedTakbisTimes = validRecords
+    .map((record) => String(record?.fields?.takbisReportTime || "").trim())
+    .filter(Boolean);
+  if (parsedTakbisTimes.length) {
+    state.fields.takbisTime = parsedTakbisTimes.reduce((earliest, time) => (time < earliest ? time : earliest));
+  }
 
   if (getTitleUnitCount() > 1) state.fields.requestType = "Çoklu Talep";
   switchActiveTitleUnit(0);
