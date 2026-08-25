@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.549 - 2026-08-25 - Blok sekmeleri artık alfabetik sırada (A B C D), taşınmaz ekleme sırasında değil
+
+- Kullanıcı, ekran görüntüsüyle: blok sekmeleri "A D B C" sırasında görünüyor, "bu sıralama neden abcd olmuyor?"
+- **Kök neden**: `computeDocumentsBlockGroups()` (Belgeler ve Proje/Ana Gayrimenkul blok sekmelerinin VE blok-bazlı üretilen rapor metinlerinin — İncelenen Belgeler açıklaması, EKB Açıklaması — TEK ortak kaynağı) blokları taşınmazların LİSTEDE İLK GÖRÜLDÜĞÜ sırayla (TAKBİS içe aktarma/taşınmaz ekleme sırası) döndürüyordu — bu, blok ADIYLA hiçbir ilişkisi olmayan, tesadüfi bir sıraydı.
+- **Düzeltme**: Gruplar artık `titleBlockName`'e göre Türkçe/doğal sıralanıyor (`localeCompare(..., "tr", {numeric: true})` — "10. Blok" "2. Blok"tan SONRA gelir, düz string sıralamasındaki gibi ÖNCE değil). Adlandırılmamış (boş `titleBlockName`) bloklar sona düşer. TEK kaynak olduğundan hem blok sekmeleri (Belgeler ve Proje + Ana Gayrimenkul) hem blok-bazlı üretilen rapor metinleri artık tutarlı A/B/C/D sırasında — `unitIndices` İÇERİĞİ (hangi taşınmaz hangi bloğa ait) DEĞİŞMEDİ, yalnızca GÖRÜNTÜLEME sırası düzeldi.
+- Test: `tools/test-documents-block-grouping.js`'e 3 yeni senaryo — kullanıcının GERÇEK "A D B C" → "A B C D" senaryosu, sayısal blok adlarında doğal sıralama ("10. Blok" > "2. Blok"), adlandırılmamış blokların sona düşmesi. Mevcut senaryo 1 de yeni davranışı birebir doğrulayacak şekilde güçlendirildi (önceden yalnızca uzunluk kontrol ediyordu, artık kimlik/sıra da doğruluyor). `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` cache-buster `?v=20260825-2500`.
+- Canlı tarayıcı testi yapılamadı — kullanıcının canlıda kontrol etmesi istenir: Belgeler ve Proje ve Ana Gayrimenkul bölümlerindeki blok sekmelerinin artık A, B, C, D sırasında (taşınmaz ekleme/TAKBİS sırasından bağımsız) göründüğünü doğrulaması gerekir.
+
 ## 0.0.548 - 2026-08-25 - "Belgeler ve Proje"ye de Ana Gayrimenkul'ün "Tüm bloklara uygula" düğmesi eklendi
 
 - Kullanıcı talebi: "ana gayrimenkuldeki tüm bloklara uygula seçeneğini belgeler ve proje bölümüne uygulamak istiyorum. uygulanacak alanlar İncelenen Belgeler Proje İncelenen Kurum Tapu Projesi Ve Belediye Projesi Arasında Fark Var Mı? Tapu/Belediye Proje Türü Tapu/Belediye Proje Tarihi Tapu/Belediye Proje No Ana Gayrimenkul Projesine Uygun Mu? Cezai Karar Var Mı? Statik Uygunluk Yapı Denetim Sözleşme Durumu."

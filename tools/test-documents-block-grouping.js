@@ -152,7 +152,10 @@ function freshState(overrides = {}) {
   };
 }
 
-// --- 1) computeDocumentsBlockGroups(): dogru gruplama --------------------
+// --- 1) computeDocumentsBlockGroups(): dogru gruplama + alfabetik siralama
+// (2026-08-25, kullanici ekran goruntusu: blok sekmeleri "A D B C" gibi
+// TASINMAZ EKLENME SIRASIYLA geliyordu, "A B C D" DEGIL - artik
+// titleBlockName'e gore Turkce/dogal siralaniyor).
 {
   const units = [
     unit("100", "1", "A Blok"),
@@ -162,11 +165,68 @@ function freshState(overrides = {}) {
   ];
   const groups = fns.computeDocumentsBlockGroups(units);
   assert.equal(groups.length, 3, `3 farkli blok grubu bekleniyordu, bulunan: ${groups.length}`);
-  assert.equal(groups[0].unitIndices.length, 2, "A Blok grubunda 2 uye olmali.");
-  assert.deepEqual(groups[0].unitIndices, [0, 1], "A Blok grubunun uye index'leri dogru olmali.");
-  assert.equal(groups[1].unitIndices.length, 1, "B Blok grubunda 1 uye olmali.");
-  assert.equal(groups[2].unitIndices.length, 1, "Farkli parseldeki 'A Blok' AYRI bir grup olmali (tesadufen ayni ad).");
+  // Alfabetik siralamada iki "A Blok" grubu (farkli parsel) birbirine ESIT
+  // sayilir - stabil sort orijinal (giris) sirasini korur, "B Blok" ise
+  // her zaman sona duser ("A" < "B"). Beklenen SON sira: A(100/1), A(200/9), B.
+  assert.equal(groups[0].key, "100|1|A Blok", "0. grup ayni-parsel 'A Blok' olmali (stabil sort - giris sirasinda ONCE gelen).");
+  assert.deepEqual(groups[0].unitIndices, [0, 1], "0. grubun (ayni-parsel A Blok) uye index'leri dogru olmali.");
+  assert.equal(groups[1].key, "200|9|A Blok", "1. grup farkli-parsel 'A Blok' olmali (ayni ad, alfabetik ESIT, stabil sort ile 0. gruptan SONRA).");
+  assert.deepEqual(groups[1].unitIndices, [3], "1. grubun (farkli-parsel A Blok) uye index'i dogru olmali.");
+  assert.equal(groups[2].key, "100|1|B Blok", "2. grup 'B Blok' olmali ('B' harfi 'A'dan SONRA geldigi icin alfabetik olarak sona duser).");
+  assert.deepEqual(groups[2].unitIndices, [2], "2. grubun (B Blok) uye index'i dogru olmali.");
   console.log("computeDocumentsBlockGroups dogru gruplama testi tamam.");
+}
+
+// --- 1b) computeDocumentsBlockGroups(): "A D B C" giris sirasi -> "A B C D"
+// alfabetik cikis sirasi (kullanicinin GERCEK ekran goruntusundeki senaryo)
+{
+  const units = [
+    unit("100", "1", "A Blok"),
+    unit("100", "1", "D Blok"),
+    unit("100", "1", "B Blok"),
+    unit("100", "1", "C Blok"),
+  ];
+  const groups = fns.computeDocumentsBlockGroups(units);
+  assert.deepEqual(
+    groups.map((group) => group.fields.titleBlockName),
+    ["A Blok", "B Blok", "C Blok", "D Blok"],
+    "Tasinmazlar 'A D B C' sirasiyla eklenmis olsa bile bloklar alfabetik 'A B C D' sirasinda donmeli."
+  );
+  console.log("computeDocumentsBlockGroups 'A D B C' -> 'A B C D' alfabetik siralama duzeltmesi testi tamam.");
+}
+
+// --- 1c) computeDocumentsBlockGroups(): "10. Blok"/"2. Blok" dogal sayisal
+// siralama (duz string siralamasinda "10." "2."den ONCE gelirdi, YANLIS) --
+{
+  const units = [
+    unit("100", "1", "10. Blok"),
+    unit("100", "1", "2. Blok"),
+    unit("100", "1", "1. Blok"),
+  ];
+  const groups = fns.computeDocumentsBlockGroups(units);
+  assert.deepEqual(
+    groups.map((group) => group.fields.titleBlockName),
+    ["1. Blok", "2. Blok", "10. Blok"],
+    "Blok adlari sayisal icerdiginde DOGAL siralama kullanilmali ('10. Blok' '2. Blok'tan SONRA gelmeli, duz string siralamasindaki gibi ONCE degil)."
+  );
+  console.log("computeDocumentsBlockGroups sayisal blok adlari dogal siralama testi tamam.");
+}
+
+// --- 1d) computeDocumentsBlockGroups(): titleBlockName BOS olan gruplar --
+// sona duser (henuz adlandirilmamis bloklar) -------------------------------
+{
+  const units = [
+    unit("100", "1", "B Blok"),
+    unit("200", "9", ""), // adlandirilmamis blok
+    unit("100", "1", "A Blok"),
+  ];
+  const groups = fns.computeDocumentsBlockGroups(units);
+  assert.deepEqual(
+    groups.map((group) => group.fields.titleBlockName),
+    ["A Blok", "B Blok", ""],
+    "Adlandirilmamis (bos titleBlockName) blok grubu SONA dusmeli, adlandirilmis bloklarin ONUNE gecmemeli."
+  );
+  console.log("computeDocumentsBlockGroups bos blok adi sona dusme testi tamam.");
 }
 
 // --- 2) computeDocumentsBlockLabel(): titleBlockName / fallback -----------

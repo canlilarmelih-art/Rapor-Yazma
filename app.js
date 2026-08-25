@@ -1592,7 +1592,28 @@ function computeDocumentsBlockGroups(units) {
     }
     group.unitIndices.push(index);
   });
-  return groups;
+  // Kullanıcı bildirimi (2026-08-25, ekran görüntüsü — blok sekmeleri "A D
+  // B C" sırasıyla geliyor): gruplar ÖNCEDEN taşınmazların İLK GÖRÜLDÜĞÜ
+  // sırayla (TAKBİS içe aktarma/taşınmaz ekleme sırası) listeleniyordu —
+  // bu, blok ADIYLA hiç ilişkili değildi. Artık titleBlockName'e göre
+  // Türkçe/doğal sıralanıyor ("numeric: true" → "10. Blok" "2. Blok"tan
+  // SONRA gelir, düz string sıralamasında olduğu gibi ÖNCE değil);
+  // titleBlockName boş olan (henüz adlandırılmamış) gruplar sona düşer.
+  // Bu sıralama HEM blok sekmelerini (createDocumentsBlockTabBar/
+  // createBuildingBlockTabBar) HEM de blok-bazlı üretilen rapor metinlerini
+  // (İncelenen Belgeler/EKB Açıklaması açıklamaları, bkz.
+  // collectDocumentsDescriptionRowGroups/buildEkbExplanationParts) etkiler
+  // — TÜMÜ artık tutarlı A/B/C/D sırasında görünür, `unitIndices` İÇERİĞİ
+  // (hangi taşınmazın hangi bloğa ait olduğu) DEĞİŞMEZ, yalnızca grup
+  // dizisinin GÖRÜNTÜLEME SIRASI değişir.
+  return groups.sort((a, b) => {
+    const nameA = String(a.fields?.titleBlockName || "").trim();
+    const nameB = String(b.fields?.titleBlockName || "").trim();
+    if (!nameA && !nameB) return 0;
+    if (!nameA) return 1;
+    if (!nameB) return -1;
+    return nameA.localeCompare(nameB, "tr", { numeric: true, sensitivity: "base" });
+  });
 }
 
 // Blok tab etiketi: titleBlockName ("A Blok" vb.) doluysa doğrudan o,
