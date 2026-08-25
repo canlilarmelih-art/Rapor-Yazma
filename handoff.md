@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.553 - 2026-08-26 - Proje Uygunluk Özeti: "Ana Gayrimenkul Projesine Uygun mu?" sütunu kaldırıldı
+
+- Kullanıcı, 0.0.552'yi test edip: "ANA GAYRİMENKUL PROJESİNE UYGUN MU? bu kısmı kaldır."
+- `PROJECT_SUITABILITY_UNITS_TABLE_FIELD_DEFS`'ten `mainRealEstateProjectSuitable`/`mainRealEstateProjectSuitabilityNote` (2 sütun) çıkarıldı — canlı paneldeki alan/kontrol (`createMainRealEstateProjectSuitabilityControl`) DEĞİŞMEDİ, yalnızca bu özet tablonun sütunlarından kaldırıldı.
+- Test: `tools/test-project-suitability-units-summary-table.js` güncellendi (beklenen başlık/satır/columnMeta listelerinden 2 sütun çıkarıldı). `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` cache-buster `?v=20260826-1300`.
+- Kullanıcının ikinci talebi ("UYGUNLUK AÇIKLAMASI %90 oranında uygun olan taşınmazların uygunluk açıklamasını ortak yaz") netleştirilmek üzere ayrıca soruldu — bu girişte henüz UYGULANMADI (bkz. bir sonraki görüşme/girdi).
+- Canlı tarayıcı testi yapılamadı — kullanıcının "Taşınmazlar Proje Uygunluk Özeti" tablosunda "Ana Gayrimenkul Projesine Uygun mu?" sütununun artık görünmediğini doğrulaması gerekir.
+
 ## 0.0.552 - 2026-08-26 - Yeni: "Taşınmazlar Proje Uygunluk Özeti" çift taraflı tablosu
 
 - Kullanıcı, 0.0.551'i canlıda test edip onayladıktan sonra: "uygunluk durumu ile ilgili bu bölüme çift taraflı tablo oluşturalım. sütunları sen belirle."

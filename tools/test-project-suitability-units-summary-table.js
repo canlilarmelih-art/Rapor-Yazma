@@ -148,24 +148,22 @@ function freshState(fields, titleUnits = []) {
     {
       titleBlockName: "A Blok", unitNo: "1",
       projectSuitabilityStatus: "uygundur.", projectConformity: "", projectSuitabilitySimpleRepair: "",
-      mainRealEstateProjectSuitable: "Evet", mainRealEstateProjectSuitabilityNote: "",
     },
     [unit({
       titleBlockName: "B Blok", unitNo: "2",
       projectSuitabilityStatus: "mimari olarak uygun değildir.", projectConformity: "Balkon farklı.", projectSuitabilitySimpleRepair: "Evet",
-      mainRealEstateProjectSuitable: "Evet", mainRealEstateProjectSuitabilityNote: "",
     })],
   ));
   const data = fns.buildProjectSuitabilityUnitsSummaryTableData();
   assert.ok(data && data.rows.length === 2, "2 taşınmazda 2 satır dönmeli.");
   assert.deepEqual(
     data.headers,
-    ["Sıra No", "Blok", "BB No", "Proje Uygunluk Durumu", "Uygunluk Açıklaması", "Basit Tadilatla Düzeltilebilir mi?", "Ana Gayrimenkul Projesine Uygun mu?"],
-    `Sadece dolu dal (Hayır) + Ana Gayrimenkul sütunları kalmalı, Tapu/Belediye (Evet dalı) TÜM taşınmazlarda boş olduğundan kaldırılmalı, bulunan: ${JSON.stringify(data.headers)}`,
+    ["Sıra No", "Blok", "BB No", "Proje Uygunluk Durumu", "Uygunluk Açıklaması", "Basit Tadilatla Düzeltilebilir mi?"],
+    `Sadece dolu dal (Hayır) sütunları kalmalı, Tapu/Belediye (Evet dalı) TÜM taşınmazlarda boş olduğundan VE Ana Gayrimenkul (2026-08-26'da bilerek kaldırıldı) kaldırılmalı, bulunan: ${JSON.stringify(data.headers)}`,
   );
-  assert.deepEqual(data.rows[0], [1, "A Blok", "1", "uygundur.", "-", "-", "Evet"], `1. satır (temsilci/aktif taşınmaz) beklenen degerlerle eslesmeli, bulunan: ${JSON.stringify(data.rows[0])}`);
-  assert.deepEqual(data.rows[1], [2, "B Blok", "2", "mimari olarak uygun değildir.", "Balkon farklı.", "Evet", "Evet"], `2. satir (titleUnits[0]) beklenen degerlerle eslesmeli, bulunan: ${JSON.stringify(data.rows[1])}`);
-  assert.deepEqual(data.columnMeta.map((m) => m.kind), ["seq", "readonly", "readonly", "scalar", "scalar", "scalar", "scalar"], "columnMeta: Sira No 'seq', Blok/BB No 'readonly', geri kalanı 'scalar' olmalı.");
+  assert.deepEqual(data.rows[0], [1, "A Blok", "1", "uygundur.", "-", "-"], `1. satır (temsilci/aktif taşınmaz) beklenen degerlerle eslesmeli, bulunan: ${JSON.stringify(data.rows[0])}`);
+  assert.deepEqual(data.rows[1], [2, "B Blok", "2", "mimari olarak uygun değildir.", "Balkon farklı.", "Evet"], `2. satir (titleUnits[0]) beklenen degerlerle eslesmeli, bulunan: ${JSON.stringify(data.rows[1])}`);
+  assert.deepEqual(data.columnMeta.map((m) => m.kind), ["seq", "readonly", "readonly", "scalar", "scalar", "scalar"], "columnMeta: Sira No 'seq', Blok/BB No 'readonly', geri kalanı 'scalar' olmalı.");
   console.log("2+ tasinmaz, proje farki YOK dali (Hayir) testi tamam.");
 }
 
@@ -176,19 +174,14 @@ function freshState(fields, titleUnits = []) {
       titleBlockName: "A Blok", unitNo: "1",
       titleProjectSuitabilityStatus: "uygundur.", titleProjectSuitabilityNote: "",
       municipalityProjectSuitabilityStatus: "uygundur.", municipalityProjectSuitabilityNote: "",
-      mainRealEstateProjectSuitable: "Hayır", mainRealEstateProjectSuitabilityNote: "Kat farkı var.",
     },
     [unit({ titleBlockName: "B Blok", unitNo: "2" })],
   ));
   const data = fns.buildProjectSuitabilityUnitsSummaryTableData();
   assert.deepEqual(
     data.headers,
-    [
-      "Sıra No", "Blok", "BB No",
-      "Tapu Projesi Uygunluk Durumu", "Belediye Projesi Uygunluk Durumu",
-      "Ana Gayrimenkul Projesine Uygun mu?", "Ana Gayrimenkul Uygunsuzluk Açıklaması",
-    ],
-    `Evet dalı sütunları kalmalı, Hayır dalı (projectSuitabilityStatus vb.) TÜM taşınmazlarda boş olduğundan kaldırılmalı, bulunan: ${JSON.stringify(data.headers)}`,
+    ["Sıra No", "Blok", "BB No", "Tapu Projesi Uygunluk Durumu", "Belediye Projesi Uygunluk Durumu"],
+    `Evet dalı sütunları kalmalı, Hayır dalı (projectSuitabilityStatus vb.) TÜM taşınmazlarda boş olduğundan VE Ana Gayrimenkul (2026-08-26'da bilerek kaldırıldı) kaldırılmalı, bulunan: ${JSON.stringify(data.headers)}`,
   );
   console.log("2+ tasinmaz, proje farki VAR dali (Evet) testi tamam.");
 }

@@ -22066,12 +22066,18 @@ function buildUnitUnitsSummaryWordTableHtml() {
 // (projectSuitabilityStatus/projectConformity/projectSuitabilitySimpleRepair)
 // dallarının sütunları BİRLİKTE tanımlanır — hangi dal kullanılmıyorsa
 // (TÜM taşınmazlarda boş kalır) mevcut columnHasData mekanizmasıyla
-// otomatik gizlenir (diğer 7 özet tablosuyla AYNI kural). Ana Gayrimenkul
-// Projesine Uygunluk (mainRealEstateProjectSuitable/Note) AYNI panelin
-// parçası olduğundan dahil edildi. "Proje İnceleme Açıklaması"
-// (projectReviewDescription, uzun otomatik-üretilen paragraf) diğer özet
-// tablolarındaki AYNI kuralla (Bağımsız Bölüm'ün unitInteriorDescription'ı
-// gibi) BİLEREK dışarıda bırakıldı.
+// otomatik gizlenir (diğer 7 özet tablosuyla AYNI kural). "Proje İnceleme
+// Açıklaması" (projectReviewDescription, uzun otomatik-üretilen paragraf)
+// diğer özet tablolarındaki AYNI kuralla (Bağımsız Bölüm'ün
+// unitInteriorDescription'ı gibi) BİLEREK dışarıda bırakıldı.
+//
+// Kullanıcı takip talebi (2026-08-26): "ANA GAYRİMENKUL PROJESİNE UYGUN
+// MU? bu kısmı kaldır." — Ana Gayrimenkul Projesine Uygunluk
+// (mainRealEstateProjectSuitable/Note) BAŞLANGIÇTA "aynı panelin parçası"
+// gerekçesiyle dahil edilmişti, kullanıcı bunun bu tabloda YER ALMASINI
+// istemedi — KALDIRILDI (canlı panelden, createMainRealEstateProjectSuitabilityControl
+// ile, DEĞİŞMEDEN düzenlenmeye devam ediyor; yalnızca BU tablonun
+// sütunlarından çıkarıldı).
 const PROJECT_SUITABILITY_UNITS_TABLE_FIELD_DEFS = [
   { key: "titleBlockName", label: "Blok", kind: "readonly", narrow: true },
   { key: "unitNo", label: "BB No", kind: "readonly", narrow: true },
@@ -22084,8 +22090,6 @@ const PROJECT_SUITABILITY_UNITS_TABLE_FIELD_DEFS = [
   { key: "municipalityProjectSuitabilityStatus", label: "Belediye Projesi Uygunluk Durumu", kind: "scalar" },
   { key: "municipalityProjectSuitabilityNote", label: "Belediye Projesi Uygunluk Açıklaması", kind: "scalar" },
   { key: "municipalityProjectSuitabilitySimpleRepair", label: "Belediye Projesi Basit Tadilatla Düzeltilebilir mi?", kind: "scalar" },
-  { key: "mainRealEstateProjectSuitable", label: "Ana Gayrimenkul Projesine Uygun mu?", kind: "scalar" },
-  { key: "mainRealEstateProjectSuitabilityNote", label: "Ana Gayrimenkul Uygunsuzluk Açıklaması", kind: "scalar" },
 ];
 
 function buildProjectSuitabilityUnitsSummaryTableData() {
