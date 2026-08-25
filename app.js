@@ -26047,8 +26047,29 @@ function getProjectReviewDateText() {
   return dateIsoToTr(state.fields.municipalityInspectionDate || state.fields.appointmentDate || "").trim();
 }
 
+// Kullanıcı bildirimi (2026-08-25): "büyükşehirler dışında yer alan
+// illerde illerin merkez belediyesi oluyor. Örnek: İl Düzce İlçe Merkez
+// Burada aslında Bilgi alınan kurum ya da inceleme yapılan kurum Düzce
+// Belediyesi olması gerekirken Merkez Belediyesi olarak oluşturuluyor.
+// ... eğer ilçe merkez ise (İl) Belediyesi olarak belirtelim." —
+// Büyükşehir OLMAYAN illerin merkez ilçesi idari kayıtlarda genellikle
+// "Merkez" olarak geçer (büyükşehirlerde bu kavram yok, her ilçe kendi
+// adıyla anılır — bu yüzden "Merkez" ilçe adı PRATİKTE HER ZAMAN bir
+// büyükşehir-olmayan il işareti sayılabilir), ama kurum adı olarak
+// kullanılınca ("Merkez Belediyesi"/"Merkez Tapu Müdürlüğü"/"Merkez
+// Kadastro Müdürlüğü") anlamsız olur — gerçekte "[İl Adı] Belediyesi"
+// denir. Bu fonksiyon TÜM kurum-adlandırma metinlerinin (Belediye/Tapu/
+// Kadastro — buildProjectReviewInstitutionSummary/formatProjectReviewLocation/
+// formatProjectReviewLocationForMissing/buildNoArchitecturalProjectDescription/
+// buildSingleInstitutionCondominiumProjectDescription) TEK kaynağı
+// olduğundan burada düzeltmek hepsini tek seferde kapsar.
 function getProjectReviewDistrictText() {
-  return normalizeReportTitleText(state.fields.titleDistrict || state.fields.district || "").trim();
+  const district = normalizeReportTitleText(state.fields.titleDistrict || state.fields.district || "").trim();
+  if (foldTurkish(district) === "MERKEZ") {
+    const city = normalizeReportTitleText(state.fields.titleCity || state.fields.city || "").trim();
+    if (city) return city;
+  }
+  return district;
 }
 
 function formatProjectReviewLocation(institution) {
