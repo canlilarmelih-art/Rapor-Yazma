@@ -19162,12 +19162,21 @@ function createSectionExcelPanel(section) {
   const mixedParcels = hasMixedTitleUnitParcels();
   panel.classList.toggle("section-excel-panel--mixed-parcels", mixedParcels);
   panel.dataset.parcelScope = mixedParcels ? "mixed" : "shared-or-single";
+  // Kullanıcı bildirimi (2026-08-25, canlı indirilen Excel dosyası): "bu
+  // tablo çok okunaksız ve anlaşılması zor" — "Takyidat" bölümünün Excel'i
+  // her taşınmazın TÜM takyidat kayıtlarını (Beyan/Şerh/İpotek) TEK bir
+  // hücreye JSON.stringify ile basıyordu. Bu bölüm için artık AYRI, her
+  // kaydın KENDİ satırında olduğu salt-okunur bir dışa aktarım kullanılır
+  // (bkz. getEncumbranceFlattenedExcelRows) — "Yükle" YOK, aynı
+  // createEncumbranceSharedSummaryPanel'in gerekçesiyle (sınıflandırılmış/
+  // hesaplanmış veri, elle düzenlenip geri yüklenmesi güvenli değil).
+  const isEncumbranceFlattenedExport = section.id === "encumbrance";
   panel.innerHTML = `
     <div class="subsection-heading"><div><span class="eyebrow">Aktif ana bölüm</span><h3>${escapeHtml(section.title)} Excel</h3></div></div>
     <p class="muted-note">Yalnızca bu bölümün alanları aktarılır. Açılır liste alanları Excel'de de seçim listesi olarak korunur.</p>
     <div class="output-export-actions">
       <button type="button" class="secondary-button" data-section-excel-export>Excel indir</button>
-      <label class="secondary-button file-button">Excel yükle<input type="file" accept=".xlsx,.csv,text/csv" data-section-excel-import hidden /></label>
+      ${isEncumbranceFlattenedExport ? "" : `<label class="secondary-button file-button">Excel yükle<input type="file" accept=".xlsx,.csv,text/csv" data-section-excel-import hidden /></label>`}
     </div>
     <p class="export-status" data-section-excel-status aria-live="polite"></p>
   `;
@@ -19175,25 +19184,34 @@ function createSectionExcelPanel(section) {
   exportButton.className = "section-excel-icon-button";
   exportButton.innerHTML = getSectionExcelIconMarkup("download");
   exportButton.setAttribute("aria-label", `${section.title} Excel indir`);
-  exportButton.title = `${section.title} Excel indir`;
+  exportButton.title = isEncumbranceFlattenedExport
+    ? `${section.title} Excel indir (her kayıt kendi satırında, salt-okunur)`
+    : `${section.title} Excel indir`;
   const importLabel = panel.querySelector(".file-button");
-  importLabel.className = "section-excel-icon-button file-button";
-  importLabel.insertAdjacentHTML("afterbegin", getSectionExcelIconMarkup("upload"));
-  importLabel.setAttribute("aria-label", `${section.title} Excel yükle`);
-  importLabel.title = `${section.title} Excel yükle`;
+  if (importLabel) {
+    importLabel.className = "section-excel-icon-button file-button";
+    importLabel.insertAdjacentHTML("afterbegin", getSectionExcelIconMarkup("upload"));
+    importLabel.setAttribute("aria-label", `${section.title} Excel yükle`);
+    importLabel.title = `${section.title} Excel yükle`;
+  }
   panel.querySelector(".subsection-heading")?.remove();
   panel.querySelector(".muted-note")?.remove();
   const status = panel.querySelector("[data-section-excel-status]");
   panel.querySelector("[data-section-excel-export]").addEventListener("click", () => {
     try {
-      const { rows, definitions } = getSectionExcelRows(section);
-      window.RaporMultiRequestXlsx.exportRows(rows, `${buildExportBaseFileName()}-${slugifyFileName(section.id)}.xlsx`, {
-        validations: getSectionExcelValidations(definitions),
-      });
+      if (isEncumbranceFlattenedExport) {
+        const rows = getEncumbranceFlattenedExcelRows();
+        window.RaporMultiRequestXlsx.exportRows(rows, `${buildExportBaseFileName()}-${slugifyFileName(section.id)}.xlsx`);
+      } else {
+        const { rows, definitions } = getSectionExcelRows(section);
+        window.RaporMultiRequestXlsx.exportRows(rows, `${buildExportBaseFileName()}-${slugifyFileName(section.id)}.xlsx`, {
+          validations: getSectionExcelValidations(definitions),
+        });
+      }
       status.textContent = "Bölüm Excel dosyası indirildi.";
     } catch (error) { status.textContent = error.message || "Excel oluşturulamadı."; }
   });
-  panel.querySelector("[data-section-excel-import]").addEventListener("change", async (event) => {
+  panel.querySelector("[data-section-excel-import]")?.addEventListener("change", async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
     try {
@@ -19207,6 +19225,55 @@ function createSectionExcelPanel(section) {
     event.target.value = "";
   });
   return panel;
+}
+
+// Kullanıcı bildirimi (2026-08-25, devam — bkz. yukarıdaki
+// createSectionExcelPanel yorumu): "Takyidat" bölümünün Excel'i artık her
+// takyidat kaydını (Beyan/Hak-Mükellefiyet/Şerh/İpotek) KENDİ satırında
+// gösterir. "encumbrance" (birleşik/sınıflandırılmamış özet) tablosu
+// BİLEREK DIŞARIDA — encumbranceDeclarations/Annotations/Mortgages'in
+// TAMAMEN AYNI kayıtların sınıflandırılmış kopyası (bkz.
+// applyTakbisEncumbrancesToTable), üçünü DAHİL etmek her kaydı 2 KEZ
+// gösterirdi. Takyidat tarihi/saati/kaynağı artık paylaşımlı (0.0.543) —
+// state.fields'tan DOĞRUDAN, TEK SEFER okunur; getMultiRequestUnitFields
+// gibi bir per-taşınmaz gölge okuyucusu KASITLI OLARAK KULLANILMAZ (o,
+// paylaşımlı alanlar için 0.0.543'ten sonra boş/bayat gölge verisi
+// döndürür — ayrı, gerçek bir kök nedenli hata, bu vesileyle düzeltildi).
+const ENCUMBRANCE_FLATTENED_TABLE_GROUPS = [
+  { key: "encumbranceDeclarations", label: "Beyanlar - Hak ve Mükellefiyetler", hasAmountColumn: false },
+  { key: "encumbranceAnnotations", label: "Şerhler", hasAmountColumn: true },
+  { key: "encumbranceMortgages", label: "İpotekler", hasAmountColumn: true },
+];
+
+function getEncumbranceFlattenedExcelRows() {
+  const header = ["Taşınmaz", "Takyidat Tarihi", "Takyidat Saati", "Kayıt Kaynağı", "Kayıt Grubu", "Tür / Lehdar", "Açıklama / Derece", "Tutar", "Tarih", "Yevmiye No", "Kısıtlı Malik"];
+  const rows = [header];
+  const units = buildAllTitleUnitsForSummaryTable();
+  const takbisDate = dateIsoToTr(state.fields.takbisDate || "") || state.fields.takbisDate || "";
+  const takbisTime = state.fields.takbisTime || "";
+  const takbisMethod = state.fields.takbisMethod || "";
+  units.forEach((unit, index) => {
+    const label = computeTitleUnitTabLabel(unit, units);
+    const tables = getTitleUnitTablesForLabel(index) || {};
+    ENCUMBRANCE_FLATTENED_TABLE_GROUPS.forEach((group) => {
+      (tables[group.key] || []).forEach((row) => {
+        rows.push([
+          label,
+          takbisDate,
+          takbisTime,
+          takbisMethod,
+          group.label,
+          row.c0 || "",
+          row.c1 || "",
+          group.hasAmountColumn ? (row.c2 || "") : "",
+          group.hasAmountColumn ? (row.c3 || "") : (row.c2 || ""),
+          group.hasAmountColumn ? (row.c4 || "") : (row.c3 || ""),
+          group.hasAmountColumn ? (row.c5 || "") : (row.c4 || ""),
+        ]);
+      });
+    });
+  });
+  return rows;
 }
 
 // Kullanıcı talebi (2026-08-12): Takyidat kayıtlarının hangi taşınmazlarda

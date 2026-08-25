@@ -171,3 +171,97 @@ return { getEncumbranceMultiUnitSummaryRows, setState: (s) => { state = s; } };
 
   console.log("Ortak/Ayri Takyidat Ozeti (Excel) orkestrasyon testi tamam.");
 }
+
+// --- getEncumbranceFlattenedExcelRows() — "Bölüm Excel" JSON-dump ---------
+// okunaksızlığı düzeltmesi (kullanıcı bildirimi, 2026-08-25: "bu tablo çok
+// okunaksız ve anlaşılması zor" — canlıda indirilen dosyada 4 sütun her
+// taşınmazın TÜM takyidat kayıtlarını TEK hücreye JSON.stringify ile
+// basıyordu). Artık her kayıt KENDİ satırında. Paylaşımlı Takyidat tarihi/
+// saati/kaynağı (0.0.543) state.fields'tan DOĞRUDAN okunmalı — bu test
+// AYRICA bunu doğruluyor: 2. taşınmazın (A-4) KENDİ fields'ında bu 3 alan
+// HİÇ YOK (gerçek post-0.0.543 şeklini yansıtır, paylaşımlı alanlar artık
+// hiçbir taşınmazın gölgesine yazılmaz) — eski (getMultiRequentUnitFields
+// tarzı) per-taşınmaz okuma burada BOŞ dönerdi, yeni kod state.fields'tan
+// okuyarak doğru değeri getirmeli.
+{
+  const flatFunctionNames = [
+    "foldTurkish",
+    "normalizeOwnershipTypeForSectionVisibility",
+    "isCondominiumEasementOwnershipType",
+    "computeTitleUnitTabLabel",
+    "getTitleUnitCount",
+    "getTitleUnitFieldsForLabel",
+    "getTitleUnitTablesForLabel",
+    "buildAllTitleUnitsForSummaryTable",
+    "dateIsoToTr",
+    "getEncumbranceFlattenedExcelRows",
+  ];
+  const flatSandboxSource = `
+let state = null;
+const ENCUMBRANCE_FLATTENED_TABLE_GROUPS = [
+  { key: "encumbranceDeclarations", label: "Beyanlar - Hak ve Mükellefiyetler", hasAmountColumn: false },
+  { key: "encumbranceAnnotations", label: "Şerhler", hasAmountColumn: true },
+  { key: "encumbranceMortgages", label: "İpotekler", hasAmountColumn: true },
+];
+${flatFunctionNames.map(extractFunction).join("\n")}
+return { getEncumbranceFlattenedExcelRows, setState: (s) => { state = s; } };
+`;
+  // eslint-disable-next-line no-new-func
+  const flatSandbox = new Function(flatSandboxSource)();
+
+  flatSandbox.setState({
+    fields: {
+      blockNo: "709", parcelNo: "2", titleBlockName: "A", unitNo: "2",
+      takbisDate: "2026-06-12", takbisTime: "08:05", takbisMethod: "Webtapu Sistemi",
+    },
+    tables: {
+      encumbranceDeclarations: [{ c0: "Beyan", c1: "Otopark taahhüdü", c2: "26.10.2021", c3: "39154", c4: "" }],
+      encumbranceAnnotations: [],
+      encumbranceMortgages: [{ c0: "Nurol Yatırım Bankası", c1: "1", c2: "500.000,00 TL", c3: "29.05.2025", c4: "28866", c5: "" }],
+    },
+    // 2. taşınmazın KENDİ fields'ında takbisDate/Time/Method BİLEREK YOK —
+    // paylaşımlı alanlar (0.0.543 sonrası) hiçbir taşınmazın gölgesine
+    // yazılmaz, gerçek üretim şeklini yansıtır.
+    titleUnits: [
+      {
+        fields: { blockNo: "709", parcelNo: "2", titleBlockName: "A", unitNo: "4" },
+        tables: {
+          encumbranceDeclarations: [],
+          encumbranceAnnotations: [{ c0: "Haciz", c1: "İcra takibi", c2: "150.000,00 TL", c3: "01.03.2023", c4: "5000", c5: "Malik X" }],
+          encumbranceMortgages: [],
+        },
+      },
+    ],
+    activeTitleUnitIndex: 0,
+  });
+
+  const rows = flatSandbox.getEncumbranceFlattenedExcelRows();
+  assert.deepEqual(rows[0], ["Taşınmaz", "Takyidat Tarihi", "Takyidat Saati", "Kayıt Kaynağı", "Kayıt Grubu", "Tür / Lehdar", "Açıklama / Derece", "Tutar", "Tarih", "Yevmiye No", "Kısıtlı Malik"]);
+  assert.equal(rows.length, 4, "Baslik + 1 beyan (A-2) + 1 ipotek (A-2) + 1 serh (A-4) = 4 satir olmali.");
+
+  const beyanRow = rows.find((r) => r[5] === "Beyan");
+  assert.deepEqual(
+    beyanRow,
+    ["A-2", "12.06.2026", "08:05", "Webtapu Sistemi", "Beyanlar - Hak ve Mükellefiyetler", "Beyan", "Otopark taahhüdü", "", "26.10.2021", "39154", ""],
+    "5 sutunlu (Tutar'siz) beyan kaydi dogru eslenmeli."
+  );
+
+  const ipotekRow = rows.find((r) => r[4] === "İpotekler");
+  assert.deepEqual(
+    ipotekRow,
+    ["A-2", "12.06.2026", "08:05", "Webtapu Sistemi", "İpotekler", "Nurol Yatırım Bankası", "1", "500.000,00 TL", "29.05.2025", "28866", ""],
+    "6 sutunlu (Tutar'li) ipotek kaydi dogru eslenmeli."
+  );
+
+  const serhRow = rows.find((r) => r[4] === "Şerhler");
+  assert.equal(serhRow[0], "A-4", "2. tasinmazin (A-4) kaydi kendi etiketiyle satira cikmali.");
+  assert.equal(
+    serhRow[1],
+    "12.06.2026",
+    "Paylasimli Takyidat Tarihi, 2. tasinmazin KENDI (bos) golgesinden DEGIL state.fields'tan okunmali (0.0.543 paylasim duzeltmesi, JSON-dump okunabilirlik duzeltmesinin ayni vesilesiyle bulundu)."
+  );
+  assert.equal(serhRow[2], "08:05", "Paylasimli Takyidat Saati de ayni sekilde state.fields'tan okunmali.");
+  assert.equal(serhRow[7], "150.000,00 TL", "6 sutunlu serh kaydinin Tutar'i dogru sutunda olmali.");
+
+  console.log("getEncumbranceFlattenedExcelRows (Bolum Excel okunabilirlik duzeltmesi) testi tamam.");
+}
