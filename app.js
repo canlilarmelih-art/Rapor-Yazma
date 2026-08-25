@@ -33704,7 +33704,26 @@ async function applyKmlRecordsToTitleUnits(records) {
   // pahalı 2 ağ çağrısı TEKRARLANMAZ, paylaşımlı sourceValues zaten doğru
   // veriyi taşır. FARKLI ada/parsellerdeki kayıtlar (ör. Tarımsal Alan çoklu
   // parsel senaryosu) etkilenmez — her biri kendi anahtarıyla yine tam işlenir.
+  // 2026-08-25, DEVAM — ilk sürüm ("dedup + genel ada/parsel paylaşımına
+  // güven") canlıda YETERSİZ kaldı: switchActiveTitleUnit() bu döngü
+  // İÇİNDE çağrıldığında hedef taşınmazın blockNo/parcelNo'su HENÜZ
+  // güncellenmemiş oluyor (o, birazdan çalışacak applyKmlFieldsToReport'un
+  // İŞİ) — yani geçiş ANINDAKİ isKmlSourceValuesSharedByAdaParsel()/
+  // getTitleUnitScopedFieldKeys() karşılaştırması taşınmazları YANLIŞLIKLA
+  // "farklı parsel" sanıyor, paylaşımlı posta kodu/mesafe alanlarını VE
+  // sourceValues'i (nearbyPlaces dahil) SİLİYOR — dedup da tekrar
+  // getirmeyi atladığı için veri TAMAMEN kayboluyor ("yakın çevre verileri
+  // gelmiyor"). Kalıcı çözüm: bu döngü artık GENEL (state-tabanlı, mid-loop
+  // güvenilmez) paylaşım mekanizmasına GÜVENMİYOR — bunun yerine HAM KML
+  // verisinin kendi ada/parsel anahtarına (getKmlParcelMatchKey, KML
+  // içeriğinden türer, state mutasyonundan ETKİLENMEZ) göre bir önbellek
+  // tutup aynı parsel tekrar geldiğinde hem adres-mesafe alanlarını hem
+  // sourceValues'i BUNDAN doğrudan geri yazıyor.
   const processedParcelKeys = new Set();
+  const parcelFieldCache = new Map();
+  const parcelSourceValuesCache = new Map();
+  const adaParselSharedAddressLookupKeys = getAdaParselSharedAddressLookupKeys();
+  const kmlSharedSourceValueKeys = ["kml", "nearbyPlaces", "nearbyArtery", "nearbyTransport", "regionAnalysis", "localNeighborhood", "administrativeNeighborhoodFallback"];
 
   for (let recordIndex = 0; recordIndex < validRecords.length; recordIndex += 1) {
     const record = validRecords[recordIndex];
@@ -33718,9 +33737,22 @@ async function applyKmlRecordsToTitleUnits(records) {
 
     const parcelKey = getKmlParcelMatchKey(record.parsed?.fields);
     const alreadyProcessedSameParcel = Boolean(parcelKey) && processedParcelKeys.has(parcelKey);
-    if (parcelKey) processedParcelKeys.add(parcelKey);
 
-    if (!alreadyProcessedSameParcel) {
+    if (alreadyProcessedSameParcel) {
+      const cachedFields = parcelFieldCache.get(parcelKey);
+      if (cachedFields) {
+        adaParselSharedAddressLookupKeys.forEach((key) => {
+          if (cachedFields[key] !== undefined) state.fields[key] = cachedFields[key];
+        });
+      }
+      const cachedSourceValues = parcelSourceValuesCache.get(parcelKey);
+      if (cachedSourceValues) {
+        kmlSharedSourceValueKeys.forEach((key) => {
+          if (cachedSourceValues[key] !== undefined) state.sourceValues[key] = cachedSourceValues[key];
+        });
+      }
+    } else {
+      if (parcelKey) processedParcelKeys.add(parcelKey);
       await applyLocalNeighborhoodForCurrentLocation({ force: true, silent: true }).catch(() => false);
       nearbyAutoFetchStarted = false;
       state.sourceValues.nearbyPlaces = {
@@ -33731,6 +33763,18 @@ async function applyKmlRecordsToTitleUnits(records) {
           : state.sourceValues.nearbyPlaces?.center,
       };
       await fetchNearbyPlacesForCurrentLocation({ silent: true, force: true }).catch(() => false);
+      if (parcelKey) {
+        const fieldsCache = {};
+        adaParselSharedAddressLookupKeys.forEach((key) => {
+          if (state.fields[key] !== undefined) fieldsCache[key] = state.fields[key];
+        });
+        parcelFieldCache.set(parcelKey, fieldsCache);
+        const sourceValuesCache = {};
+        kmlSharedSourceValueKeys.forEach((key) => {
+          if (state.sourceValues[key] !== undefined) sourceValuesCache[key] = state.sourceValues[key];
+        });
+        parcelSourceValuesCache.set(parcelKey, sourceValuesCache);
+      }
     }
   }
   switchActiveTitleUnit(0);

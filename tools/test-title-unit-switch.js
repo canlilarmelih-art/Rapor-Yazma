@@ -791,28 +791,41 @@ assert.match(appSource, /panel\.dataset\.parcelScope = mixedParcels \? "mixed" :
 }
 
 // --- 18e) applyKmlRecordsToTitleUnits(): ayni ada/parsel anahtari batch ---
-// icinde DAHA ONCE islendiyse pahali 2 ag cagrisi TEKRARLANMAZ + --------
-// resetKmlDerivedFields() preserveShared+ayni-parselde paylasimli veriyi ---
-// SILMEZ (kaynak-duzeyi kontrol - tam pipeline async ag cagrilari --------
-// icerdiginden sandbox'ta calistirilamaz, bkz. yukaridaki 16 numarali -----
-// senaryonun ayni gerekcesi) -------------------------------------------------
+// icinde DAHA ONCE islendiyse pahali 2 ag cagrisi TEKRARLANMAZ, AMA ------
+// artik bunun icin GENEL (state-tabanli, mid-loop guvenilmez) paylasim ---
+// mekanizmasina GUVENMIYOR - kullanici bildirimi (2026-08-25, DEVAM: -----
+// "denedim su an yakin cevre verileri gelmiyor") ilk surumun canlida -----
+// YETERSIZ kaldigini gosterdi: switchActiveTitleUnit() dongu icinde ------
+// cagrildiginda hedef taşınmazin blockNo/parcelNo'su HENUZ guncellenmemis
+// oluyor, bu da isKmlSourceValuesSharedByAdaParsel()'in o ANDA yanlislikla
+// "farkli parsel" sanmasina ve paylasimli veriyi SILMESINE yol aciyordu.
+// Kalici cozum: HAM KML parsel anahtarina gore kendi onbellegini
+// (parcelFieldCache/parcelSourceValuesCache) tutup aynen geri yaziyor -
+// state-tabanli kontrole hic bagimli degil (kaynak-duzeyi kontrol - tam
+// pipeline async ag cagrilari icerdiginden sandbox'ta calistirilamaz,
+// bkz. yukaridaki 16 numarali senaryonun ayni gerekcesi).
 {
   assert.match(
     appSource,
-    /const processedParcelKeys = new Set\(\);[\s\S]{0,900}?const alreadyProcessedSameParcel = Boolean\(parcelKey\) && processedParcelKeys\.has\(parcelKey\);[\s\S]{0,50}?if \(parcelKey\) processedParcelKeys\.add\(parcelKey\);[\s\S]{0,50}?if \(!alreadyProcessedSameParcel\) \{[\s\S]{0,50}?await applyLocalNeighborhoodForCurrentLocation/,
-    "applyKmlRecordsToTitleUnits() artik ayni ada/parsel anahtarini TEKRAR islemliyor gorunuyor (dedup mantigi kaybolmus olabilir)."
+    /const parcelFieldCache = new Map\(\);\s*const parcelSourceValuesCache = new Map\(\);/,
+    "applyKmlRecordsToTitleUnits() artik ayni ada/parsel icin kendi ONBELLEGINI tutmuyor gorunuyor (state-tabanli genel paylasima geri donulmus olabilir - canlida yetersiz kalan ilk yaklasim)."
   );
   assert.match(
     appSource,
-    /function resetKmlDerivedFields\(options = \{\}\) \{[\s\S]{0,700}?const sameAdaParsel = isKmlSourceValuesSharedByAdaParsel\(\);[\s\S]{0,1600}?if \(sameAdaParsel && adaParselSharedAddressLookupKeys\.has\(key\)\) return false;/,
-    "resetKmlDerivedFields() artik ayni-ada/parsel paylasimli adres-mesafe alanlarini korumuyor gorunuyor."
+    /if \(alreadyProcessedSameParcel\) \{[\s\S]{0,80}?const cachedFields = parcelFieldCache\.get\(parcelKey\);[\s\S]{0,200}?adaParselSharedAddressLookupKeys\.forEach\(\(key\) => \{[\s\S]{0,120}?state\.fields\[key\] = cachedFields\[key\];/,
+    "applyKmlRecordsToTitleUnits() artik tekrar eden parselde onbellekten posta kodu/mesafe alanlarini DOGRUDAN geri yazmiyor gorunuyor."
   );
   assert.match(
     appSource,
-    /state\.fields\.landRoadFrontageItems = \[\];\s*if \(!preserveShared \|\| !sameAdaParsel\) \{\s*state\.sourceValues\.nearbyPlaces = \{\};/,
-    "resetKmlDerivedFields() artik ayni-ada/parselde preserveShared iken sourceValues.nearbyPlaces'i korumuyor gorunuyor."
+    /const cachedSourceValues = parcelSourceValuesCache\.get\(parcelKey\);[\s\S]{0,200}?kmlSharedSourceValueKeys\.forEach\(\(key\) => \{[\s\S]{0,140}?state\.sourceValues\[key\] = cachedSourceValues\[key\];/,
+    "applyKmlRecordsToTitleUnits() artik tekrar eden parselde onbellekten sourceValues'i (nearbyPlaces dahil) DOGRUDAN geri yazmiyor gorunuyor."
   );
-  console.log("applyKmlRecordsToTitleUnits/resetKmlDerivedFields ada/parsel dedup+koruma kaynak-duzeyi kontrolu tamam.");
+  assert.match(
+    appSource,
+    /await fetchNearbyPlacesForCurrentLocation\(\{ silent: true, force: true \}\)\.catch\(\(\) => false\);[\s\S]{0,60}?if \(parcelKey\) \{[\s\S]{0,600}?parcelFieldCache\.set\(parcelKey, fieldsCache\);[\s\S]{0,300}?parcelSourceValuesCache\.set\(parcelKey, sourceValuesCache\);/,
+    "applyKmlRecordsToTitleUnits() artik ilk basarili getirmenin ardindan onbellegi DOLDURMUYOR gorunuyor."
+  );
+  console.log("applyKmlRecordsToTitleUnits ada/parsel bazli onbellek (mid-loop guvenilmez state kontrolune bagimli DEGIL) kaynak-duzeyi kontrolu tamam.");
 }
 
 // --- 19) isPlanningScopedByAdaParsel(): tekil raporda HER ZAMAN false ----
