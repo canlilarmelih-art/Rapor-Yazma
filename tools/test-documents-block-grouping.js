@@ -92,6 +92,7 @@ const functionNames = [
   "resolveTitleUnitWriteTarget",
   "resolveTitleUnitDocumentsRowsWriteTarget",
   "syncDocumentsSharedDataToBlockSiblings",
+  "applyDocumentsDataToAllBlocks",
   // landUnitValue paylasimli-deger bindirme duzeltmesi (2026-08-22) icin -
   // getTitleUnitFieldsForLabel artik bunlara bagimli.
   "isCondominiumEasementOwnershipType",
@@ -112,6 +113,14 @@ const sandboxSource = `
   let state = {};
   function normalizeReportTitleText(value) { return String(value || ""); }
   ${constNames.map(extractConst).join("\n")}
+  // applyDocumentsDataToAllBlocks() (2026-08-25) app.js'te
+  // DOCUMENTS_BLOCK_SHARED_FIELD_KEYS.filter(...) ile TÜRETİLİR (dizi
+  // literal DEĞİL) - extractConst() yalnızca "const NAME = [" dizi
+  // literallerini yakalar, bu yüzden GERÇEK filtre ifadesi burada birebir
+  // kopyalanır (app.js'teki tanımla AYNI kalması gerekir).
+  const DOCUMENTS_APPLY_TO_ALL_BLOCKS_FIELD_KEYS = DOCUMENTS_BLOCK_SHARED_FIELD_KEYS.filter(
+    (key) => key !== "hasEkb" && !key.startsWith("ekb")
+  );
   ${functionNames.map(extractFunction).join("\n")}
   return {
     setState: (s) => { state = s; },
@@ -119,8 +128,10 @@ const sandboxSource = `
     computeDocumentsBlockGroups, computeDocumentsBlockLabel,
     isDocumentsBlockGroupingActive, isCondominiumOwnershipTypeValue,
     syncDocumentsSharedDataToBlockSiblings,
+    applyDocumentsDataToAllBlocks,
     buildAllTitleUnitsForSummaryTable,
     getSharedKeys: () => DOCUMENTS_BLOCK_SHARED_FIELD_KEYS,
+    getApplyToAllBlocksKeys: () => DOCUMENTS_APPLY_TO_ALL_BLOCKS_FIELD_KEYS,
   };
 `;
 // eslint-disable-next-line no-new-func
@@ -250,6 +261,69 @@ function freshState(overrides = {}) {
   console.log("syncDocumentsSharedDataToBlockSiblings gate kapaliyken no-op testi tamam.");
 }
 
+// --- 5b) applyDocumentsDataToAllBlocks(): kullanici talebi (2026-08-25) --
+// "ana gayrimenkuldeki tum bloklara uygula secenegini belgeler ve proje
+// bolumune uygulamak istiyorum" - syncDocumentsSharedDataToBlockSiblings()'in
+// AKSINE bu FARKLI bloktaki uyeleri de kapsamali (manuel, kullanici
+// tetikler), ama EKB alanlarini ASLA kopyalamamali (kullanici bu istekte
+// EKB'yi anmadi, EKB kendi ayri blok-atifli mekanizmasina sahip).
+{
+  fns.setState(freshState({
+    fields: {
+      requestType: "Çoklu Talep", ownershipType: "Yatay Kat İrtifakı",
+      blockNo: "100", parcelNo: "1", titleBlockName: "A Blok",
+      projectInstitution: "Belediye", projectDifference: "Evet", penaltyDecision: "Hayır",
+      staticSuitability: "Evet", buildingInspectionContractActive: "Evet",
+      hasEkb: "Evet", ekbEnergyClass: "B", ekbDocumentNo: "AKTIF-EKB-NO",
+      projectSuitabilityStatus: "AKTIF-TASINMAZIN-DEGERI", // per-unit-only, ASLA kopyalanmamali
+    },
+    tables: { documents: [{ c0: "Yeni Yapı Ruhsatı", c1: "Belediye", c2: "01.01.2020", c3: "123" }] },
+    titleUnits: [
+      // AYNI blok (A Blok) - senkron ZATEN kapsar, bu komut da kapsamali.
+      { fields: { blockNo: "100", parcelNo: "1", titleBlockName: "A Blok", projectInstitution: "ESKI-DEGER", ekbDocumentNo: "ESKI-EKB-NO", projectSuitabilityStatus: "IKINCI-TASINMAZIN-DEGERI" }, tables: {} },
+      // FARKLI blok (B Blok) - syncDocumentsSharedDataToBlockSiblings BUNU KAPSAMAZ, ama applyDocumentsDataToAllBlocks KAPSAMALI.
+      { fields: { blockNo: "100", parcelNo: "1", titleBlockName: "B Blok", projectInstitution: "B-BLOK-ESKI-DEGER", ekbDocumentNo: "B-BLOK-ESKI-EKB-NO" }, tables: {} },
+    ],
+  }));
+
+  const applied = fns.applyDocumentsDataToAllBlocks();
+  assert.equal(applied, true, "Kosullar saglaniyorken true donmeli.");
+  const state = fns.getState();
+
+  // FARKLI bloktaki (B Blok) uye de kopyalamayi ALMALI (sync'ten farkli).
+  assert.equal(state.titleUnits[1].fields.projectInstitution, "Belediye", "FARKLI bloktaki (B Blok) uyeye de projectInstitution kopyalanmali - bu, sync'ten FARKI.");
+  assert.equal(state.titleUnits[1].fields.projectDifference, "Evet", "FARKLI bloktaki uyeye projectDifference kopyalanmali.");
+  assert.equal(state.titleUnits[1].fields.penaltyDecision, "Hayır", "FARKLI bloktaki uyeye penaltyDecision kopyalanmali.");
+  assert.equal(state.titleUnits[1].fields.staticSuitability, "Evet", "FARKLI bloktaki uyeye staticSuitability kopyalanmali.");
+  assert.equal(state.titleUnits[1].fields.buildingInspectionContractActive, "Evet", "FARKLI bloktaki uyeye buildingInspectionContractActive kopyalanmali.");
+  assert.deepEqual(state.titleUnits[1].tables.documents, [{ c0: "Yeni Yapı Ruhsatı", c1: "Belediye", c2: "01.01.2020", c3: "123" }], "FARKLI bloktaki uyeye Incelenen Belgeler tablosu da kopyalanmali.");
+
+  // EKB alanlari HICBIR bloga (ayni veya farkli) kopyalanmamali.
+  assert.equal(state.titleUnits[0].fields.ekbDocumentNo, "ESKI-EKB-NO", "AYNI bloktaki uyenin EKB alani da DEGISMEMELI (EKB bu komuttan bilerek haric).");
+  assert.equal(state.titleUnits[1].fields.ekbDocumentNo, "B-BLOK-ESKI-EKB-NO", "FARKLI bloktaki uyenin EKB alani DEGISMEMELI.");
+
+  // per-unit-only alan (projectSuitabilityStatus) ASLA kopyalanmamali.
+  assert.equal(state.titleUnits[0].fields.projectSuitabilityStatus, "IKINCI-TASINMAZIN-DEGERI", "projectSuitabilityStatus per-unit-only oldugundan bu komuttan da ETKILENMEMELI.");
+
+  const applyKeys = fns.getApplyToAllBlocksKeys();
+  assert.ok(!applyKeys.some((key) => key === "hasEkb" || key.startsWith("ekb")), "DOCUMENTS_APPLY_TO_ALL_BLOCKS_FIELD_KEYS EKB alani ICERMEMELI.");
+  assert.ok(applyKeys.includes("projectInstitution") && applyKeys.includes("penaltyDecision"), "DOCUMENTS_APPLY_TO_ALL_BLOCKS_FIELD_KEYS kullanicinin istedigi alanlari ICERMELI.");
+
+  console.log("applyDocumentsDataToAllBlocks farkli-blok kopyalama + EKB haric tutma + per-unit-only koruma testi tamam.");
+}
+
+// --- 5c) applyDocumentsDataToAllBlocks(): gate kapaliyken false + no-op --
+{
+  fns.setState(freshState({
+    fields: { requestType: "Tekli Talep", ownershipType: "Yatay Kat İrtifakı", blockNo: "100", parcelNo: "1", titleBlockName: "A Blok", projectInstitution: "Belediye" },
+    titleUnits: [{ fields: { blockNo: "100", parcelNo: "1", titleBlockName: "B Blok", projectInstitution: "DEGISMEMELI" }, tables: {} }],
+  }));
+  const applied = fns.applyDocumentsDataToAllBlocks();
+  assert.equal(applied, false, "isDocumentsBlockGroupingActive false iken false donmeli.");
+  assert.equal(fns.getState().titleUnits[0].fields.projectInstitution, "DEGISMEMELI", "Gate kapaliyken no-op olmali.");
+  console.log("applyDocumentsDataToAllBlocks gate kapaliyken no-op testi tamam.");
+}
+
 // --- 6) DOCUMENTS_BLOCK_SHARED_FIELD_KEYS: per-unit-only alanlar YOK -----
 {
   const sharedKeys = fns.getSharedKeys();
@@ -312,6 +386,25 @@ function freshState(overrides = {}) {
     "createForm() artik select + EKB Yukle butonunu 'ekb-hasekb-row' ile AYNI yatay satira almiyor (select'in ALTINA dusme regresyonu olabilir)."
   );
   console.log("createEkbInlineUploadButton hasEkb yanina (ayni satirda) kablolama testi tamam.");
+}
+
+// --- 9) createDocumentsBlockTabBar(): "Tum bloklara uygula" butonu -------
+// kaynak-duzeyinde dogru kablolu - kullanici talebi (2026-08-25): "ana
+// gayrimenkuldeki tum bloklara uygula secenegini belgeler ve proje
+// bolumune uygulamak istiyorum" (bkz. test-building-block-shared-sync.js
+// senaryo 6'nin AYNI deseni, "documents" icin).
+{
+  assert.match(
+    appSource,
+    /function createDocumentsBlockTabBar\(\)[\s\S]*?outerTabs\.append\(applyAllBlocksButton\);[\s\S]*?wrap\.append\(outerTabs\);/,
+    "Tum bloklara uygula butonu Belgeler ve Proje blok sekmelerinin bulundugu satira eklenmelidir."
+  );
+  assert.match(
+    appSource,
+    /applyAllBlocksButton\.addEventListener\("click", \(\) => \{\s*\n\s*if \(!applyDocumentsDataToAllBlocks\(\)\) return;/,
+    "Tum bloklara uygula butonu applyDocumentsDataToAllBlocks()'u cagirmiyor gorunuyor."
+  );
+  console.log("createDocumentsBlockTabBar Tum bloklara uygula butonu kaynak-duzeyi kablolama testi tamam.");
 }
 
 console.log("Belgeler ve Proje blok/bagimsiz-bolum tab yapisi testleri basarili.");

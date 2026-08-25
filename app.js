@@ -1684,6 +1684,45 @@ function syncDocumentsSharedDataToBlockSiblings() {
   });
 }
 
+// Kullanıcı talebi (2026-08-25): "ana gayrimenkuldeki tüm bloklara uygula
+// seçeneğini belgeler ve proje bölümüne uygulamak istiyorum" —
+// applyBuildingDataToAllBlocks()'un (aşağıda) BİREBİR AYNI deseni,
+// "documents" (Belgeler ve Proje) için — syncDocumentsSharedDataToBlockSiblings()
+// yalnızca AYNI bloktaki bağımsız bölümler arasında OTOMATİK çalışır
+// (buton yok); bu ise kullanıcının AÇIKÇA istediği zaman FARKLI bloklara
+// da manuel olarak kopyalar. DOCUMENTS_BLOCK_SHARED_FIELD_KEYS'in
+// (yukarıda, zaten aynı blok içinde otomatik senkronize edilen alanlar)
+// EKB grubu (hasEkb/ekb*) HARİÇ tamamı — kullanıcı bu istekte EKB'yi
+// anmadı ve EKB (0.0.535) bilinçli olarak KENDİ ayrı blok-atıflı açıklama
+// mekanizmasına sahip, bu genel "tüm bloklara kopyala" komutuyla
+// KARIŞTIRILMAMALI (farklı bloklarda GERÇEKTEN farklı EKB belgeleri olabilir).
+const DOCUMENTS_APPLY_TO_ALL_BLOCKS_FIELD_KEYS = DOCUMENTS_BLOCK_SHARED_FIELD_KEYS.filter(
+  (key) => key !== "hasEkb" && !key.startsWith("ekb")
+);
+
+function applyDocumentsDataToAllBlocks() {
+  if (!isDocumentsBlockGroupingActive()) return false;
+  const units = buildAllTitleUnitsForSummaryTable();
+  if (computeDocumentsBlockGroups(units).length < 2) return false;
+
+  const sourceFields = state.fields;
+  const sourceDocumentsRows = state.tables?.documents || [];
+  units.forEach((unit, index) => {
+    if (index === state.activeTitleUnitIndex) return;
+    const targetFields = resolveTitleUnitWriteTarget(index);
+    DOCUMENTS_APPLY_TO_ALL_BLOCKS_FIELD_KEYS.forEach((key) => {
+      const value = sourceFields[key];
+      targetFields[key] = value && typeof value === "object"
+        ? (Array.isArray(value) ? [...value] : { ...value })
+        : value;
+    });
+    const targetRows = resolveTitleUnitDocumentsRowsWriteTarget(index);
+    targetRows.length = 0;
+    sourceDocumentsRows.forEach((row) => targetRows.push({ ...row }));
+  });
+  return true;
+}
+
 // Kullanıcı talebi (2026-08-20): "Ana gayrimenkul bölümünde blok bazında
 // açıklama olsun kaç adet blok var ise belgeler bölümünde yer aldığı gibi
 // blok bazında o kadar ana gayrimenkul açıklaması olsun." —
@@ -3115,6 +3154,23 @@ function createDocumentsBlockTabBar() {
     });
     outerTabs.append(button);
   });
+
+  // Kullanıcı talebi (2026-08-25): "ana gayrimenkuldeki tüm bloklara
+  // uygula seçeneğini belgeler ve proje bölümüne uygulamak istiyorum" —
+  // createBuildingBlockTabBar()'daki (aşağıda) BİREBİR aynı düğme.
+  const applyAllBlocksButton = document.createElement("button");
+  applyAllBlocksButton.type = "button";
+  applyAllBlocksButton.className = "title-unit-tab documents-apply-all-blocks-button";
+  applyAllBlocksButton.textContent = "Tüm bloklara uygula";
+  applyAllBlocksButton.title = "Seçili bloktaki belgeler ve proje bilgilerini diğer bloklara uygular";
+  applyAllBlocksButton.addEventListener("click", () => {
+    if (!applyDocumentsDataToAllBlocks()) return;
+    autosave();
+    renderValidation();
+    updateStatus();
+    renderSection();
+  });
+  outerTabs.append(applyAllBlocksButton);
 
   wrap.append(outerTabs);
 
