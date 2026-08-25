@@ -48,6 +48,16 @@ assert.doesNotMatch(result, /Basit bir tadilat/i);
 const reviewStart = appSource.indexOf("function buildProjectReviewExplanation");
 const reviewEnd = appSource.indexOf("function buildProjectSuitabilityDescription", reviewStart);
 assert(reviewStart >= 0 && reviewEnd > reviewStart, "Birlesik proje inceleme aciklamasi fonksiyonu bulunamadi.");
+// 2026-08-25: reviewStart artik "function buildProjectReviewExplanation"
+// ile baslayan İLK eslesmeyi (buildProjectReviewExplanationSingle, çünkü
+// bu ad ONUNLA baslıyor) yakalıyor - dilim artık buildProjectReviewExplanationSingle
+// + pluralizeProjectReviewSubjectText + buildProjectReviewExplanationParts
+// + (asil test edilen) buildProjectReviewExplanation sarmalayicisini
+// BİRLİKTE içeriyor (bkz. app.js, "Proje İnceleme Açıklaması" çoğullama +
+// blok bazlı ortak/ayrı cümle özelliği). Blok gruplama/çoğullama BU
+// testin odağı DEĞİL - stub'lar "kapalı" (tekil/regresyon) yolu seçtirir,
+// böylece ASIL doğrulanan "3 parçayı \n\n ile birleştirme" davranışı
+// DEĞİŞMEDEN kalır.
 const reviewContext = {
   normalizeReportDescriptionText: (value) => String(value || "").trim(),
   shouldShowArchitecturalProjectFields: () => true,
@@ -55,6 +65,9 @@ const reviewContext = {
   buildProjectReviewDescription: () => "Mevcut proje inceleme açıklaması.",
   buildBuildingFootprintAndEntranceExplanation: () => "Bina oturumu ve giriş açıklaması.",
   buildProjectSuitabilityDescription: () => "Ekspertize konu bağımsız bölüm kat, kattaki konum, alan ve mimari olarak projesine uygundur.",
+  isDocumentsBlockGroupingActive: () => false,
+  isMultiTitleUnitReportForNarrative: () => false,
+  hasMixedTitleUnitParcels: () => false,
 };
 vm.runInNewContext(appSource.slice(reviewStart, reviewEnd), reviewContext);
 assert.equal(

@@ -26333,7 +26333,13 @@ function buildProjectReviewDescription() {
   );
 }
 
-function buildProjectReviewExplanation() {
+// Tek taşınmazın/AKTİF state.fields'ın "Proje İnceleme Açıklaması"nı üretir
+// (eski, değişmemiş davranış). Blok-bazlı çoğul/ortak birleştirme
+// (buildProjectReviewExplanationParts) bu fonksiyonu HER blok için
+// state.fields'ı geçici olarak o bloğun temsilcisiyle değiştirip tekrar
+// tekrar çağırır — bu yüzden burada saf (yalnızca state.fields okuyan,
+// başka bir yan etkisi olmayan) kalması ŞART.
+function buildProjectReviewExplanationSingle() {
   if (!shouldShowArchitecturalProjectFields() && isLandProjectReview()) {
     return buildProjectReviewDescription();
   }
@@ -26346,6 +26352,115 @@ function buildProjectReviewExplanation() {
       .filter(Boolean)
       .join("\n\n")
   );
+}
+
+// pluralizeEnvironmentalSubjectText "taşınmaz"/"gayrimenkul"/"mülk"
+// ailesini çoğullar ama "bağımsız bölüm"ü bilmiyor (o kelime yalnızca
+// Proje İnceleme Açıklaması'nda geçiyor) — burada AYRI bir sarmalayıcı
+// olarak tutuluyor ki paylaşılan pluralizeEnvironmentalSubjectText diğer
+// (alakasız) çağıranları etkilenmesin. `attribution` doluysa (blok
+// atıflı birleştirme/ayrım, bkz. buildProjectReviewExplanationParts) HER
+// ZAMAN "X Blok'a ait"/"X ve Y Blok'a ait" ile BİTER
+// (formatDocumentBlockAttributionPhrase) — bu yüzden "ekspertize konu
+// taşınmaz(lar)a ait" kalıbında "taşınmaz(lar)a ait" kısmı doğrudan
+// attribution ile DEĞİŞTİRİLİR (buildEkbExplanation'daki "ait ... ait"
+// tekrarı kullanıcı şikayeti/düzeltmesiyle AYNI kural, bkz. 2026-08-23
+// yorumu), "bağımsız bölüm" kalıbında ise attribution kelimenin ÖNÜNE
+// eklenir (o kalıpta zaten "ait" yok).
+function pluralizeProjectReviewSubjectText(text, enablePlural, attribution = "") {
+  if (!text) return text;
+  let result = enablePlural ? pluralizeEnvironmentalSubjectText(text, true) : text;
+  if (enablePlural) {
+    result = result
+      .replace(/\bBağımsız Bölümün\b/g, "Bağımsız Bölümlerin")
+      .replace(/\bBağımsız Bölüme\b/g, "Bağımsız Bölümlere")
+      .replace(/\bbağımsız bölümün\b/g, "bağımsız bölümlerin")
+      .replace(/\bbağımsız bölüme\b/g, "bağımsız bölümlere")
+      .replace(/\bBağımsız Bölüm\b/g, "Bağımsız Bölümler")
+      .replace(/\bbağımsız bölüm\b/g, "bağımsız bölümler");
+  }
+  if (attribution) {
+    result = result
+      .replace(/ekspertize konu taşınmaz(?:lar)?a ait/g, `ekspertize konu ${attribution}`)
+      .replace(/Ekspertize konu taşınmaz(?:lar)?a ait/g, `Ekspertize konu ${attribution}`)
+      .replace(/ekspertize konu bağımsız bölüm/g, `ekspertize konu ${attribution} bağımsız bölüm`)
+      .replace(/Ekspertize konu bağımsız bölüm/g, `Ekspertize konu ${attribution} bağımsız bölüm`);
+  }
+  return result;
+}
+
+// Kullanıcı talebi (2026-08-25): "aynı ada parsel çoklu raporda proje
+// inceleme açıklaması ... böyle olmamalı. çoğula uygun olmalı eğer aynı
+// tarihli ve sayılı mimari proje incelendiyse açıklama ona göre
+// yapılmalı blok bazında ortak ve ayrı cümle yapıları kurulmalı" —
+// buildEkbExplanationParts/buildDocumentsOccupancyParts ile AYNI mimari
+// desen: blok gruplama aktif değilse (kat irtifakı dışı/tek blok/tekil
+// taşınmaz) davranış AYNEN korunur, yalnızca aynı ada/parselde birden
+// fazla bağımsız bölüm varsa (hasMixedTitleUnitParcels false) metin
+// çoğullanır. Blok gruplama AKTİFSE: HER blok için (state.fields GEÇİCİ
+// olarak o bloğun temsilcisinin alanlarıyla değiştirilerek —
+// switchActiveTitleUnit'e HİÇ dokunulmadan, senkron, yan etkisiz —
+// buildProjectReviewExplanationSingle() tekrar çalıştırılır. AYNI HAM
+// metni üreten bloklar (yani aynı tarihli/sayılı proje incelenmiş)
+// buildEkbExplanationParts'taki gibi TEK, blok-atıflı/çoğul cümlede
+// birleştirilir; farklı metin üreten bloklar kendi ayrı (yine blok
+// atıflı) cümlesinde kalır.
+function buildProjectReviewExplanationParts() {
+  if (!isDocumentsBlockGroupingActive()) {
+    const text = buildProjectReviewExplanationSingle();
+    if (!text) return [];
+    const shouldPluralize = isMultiTitleUnitReportForNarrative() && !hasMixedTitleUnitParcels();
+    return [pluralizeProjectReviewSubjectText(text, shouldPluralize, "")];
+  }
+
+  const units = buildAllTitleUnitsForSummaryTable();
+  const groups = computeDocumentsBlockGroups(units);
+  if (groups.length < 2) {
+    const text = buildProjectReviewExplanationSingle();
+    return text ? [text] : [];
+  }
+
+  const originalFields = state.fields;
+  const unitCountByLabel = new Map();
+  const rawTextByLabel = new Map();
+  const labelOrder = [];
+  groups.forEach((group) => {
+    const label = computeDocumentsBlockLabel(group, groups);
+    const representativeFields = units[group.unitIndices[0]]?.fields || originalFields;
+    state.fields = representativeFields;
+    let text;
+    try {
+      text = buildProjectReviewExplanationSingle();
+    } finally {
+      state.fields = originalFields;
+    }
+    if (!text) return;
+    rawTextByLabel.set(label, text);
+    unitCountByLabel.set(label, group.unitIndices.length);
+    labelOrder.push(label);
+  });
+
+  const groupsByText = new Map();
+  const textOrder = [];
+  labelOrder.forEach((label) => {
+    const text = rawTextByLabel.get(label);
+    if (!groupsByText.has(text)) {
+      groupsByText.set(text, []);
+      textOrder.push(text);
+    }
+    groupsByText.get(text).push(label);
+  });
+
+  return textOrder.map((text) => {
+    const labels = groupsByText.get(text);
+    const totalUnits = labels.reduce((sum, label) => sum + (unitCountByLabel.get(label) || 1), 0);
+    const attribution = formatDocumentBlockAttributionPhrase(labels);
+    return pluralizeProjectReviewSubjectText(text, totalUnits > 1, attribution);
+  });
+}
+
+function buildProjectReviewExplanation() {
+  return normalizeReportDescriptionText(buildProjectReviewExplanationParts().join("\n\n"));
 }
 
 function buildProjectSuitabilityDescription() {
