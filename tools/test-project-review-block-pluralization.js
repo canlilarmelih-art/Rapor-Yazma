@@ -97,6 +97,13 @@ const functionNames = [
   "formatProjectReviewLocation",
   "formatProjectReviewLocationForMissing",
   "formatProjectReference",
+  "pluralizeProjectReferenceTypeText",
+  "getProjectReviewLocationLead",
+  "getProjectReviewSimpleReferenceParts",
+  "buildProjectReviewConsolidatedReferenceSentence",
+  "buildProjectReviewConsolidatedSentences",
+  "buildProjectReviewConsolidatedParts",
+  "buildProjectReviewBlockFallbackParts",
   "formatOldAdaParcelProjectNote",
   "buildNoArchitecturalProjectDescription",
   "buildSingleInstitutionCondominiumProjectDescription",
@@ -247,8 +254,8 @@ function freshState(overrides = {}) {
   const suitabilityWithAttribution = fns.pluralizeProjectReviewSubjectText(suitabilitySentence, true, "A ve B Blok'a ait");
   assert.equal(
     suitabilityWithAttribution,
-    "Ekspertize konu A ve B Blok'a ait bağımsız bölümler kat, kattaki konum, alan ve mimari olarak projesine uygundur.",
-    `Atif 'bagimsiz bolum(ler)' kelimesinin ONUNE eklenmeli (bu kalipta zaten 'ait' yok), bulunan: ${suitabilityWithAttribution}`,
+    "Ekspertize konu A ve B Blok'a ait bağımsız bölümler kat, kattaki konum, alan ve mimari olarak projelerine uygundur.",
+    `Atif 'bagimsiz bolum(ler)' kelimesinin ONUNE eklenmeli (bu kalipta zaten 'ait' yok) VE 'projesine' -> 'projelerine' cogullanmali (2026-08-26 genisletmesi), bulunan: ${suitabilityWithAttribution}`,
   );
 
   const singleBlockAttribution = fns.pluralizeProjectReviewSubjectText(suitabilitySentence, false, "A Blok'a ait");
@@ -287,11 +294,15 @@ function freshState(overrides = {}) {
   console.log("buildProjectReviewExplanationParts() blok gruplama KAPALI (regresyon + cogullama) testi tamam.");
 }
 
-// --- 3) buildProjectReviewExplanationParts(): blok gruplama AÇIK ----------
+// --- 3) buildProjectReviewExplanationParts(): blok gruplama AÇIK, SADE ----
+// (konsolide) şekil — 2026-08-26 kullanıcı bildirimi: "çok tekrar eden
+// cümleler var ... 2-3 cümlede bu paragraf oluşabilir" — artık her blok
+// için TAM paragraf TEKRARLANMAZ; sabit giriş 1 kez, proje referansı TEK
+// (gruplanmış) cümlede, uygunluk TEK/az sayıda cümlede.
 {
-  // 3a) 2 blok AYNI proje tarihini/sayisini paylasiyor -> TEK birlesik/
-  // cogul, blok-atifli cumle (kullanicinin "ayni tarihli ve sayili mimari
-  // proje incelendiyse ortak cumle kurulmali" ornegi).
+  // 3a) 2 blok AYNI proje tarihini/sayisini VE AYNI uygunluk durumunu
+  // paylasiyor -> HEM BÜTÜN olarak "unanimous" -> blok adi HİÇ gecmemeli,
+  // duz cogul ("taşınmazlara ait" / "tüm bağımsız bölümler").
   const sameProjectState = freshState();
   sameProjectState.titleUnits = [
     unit(sameProjectState.fields, "100", "1", "B Blok"),
@@ -299,43 +310,124 @@ function freshState(overrides = {}) {
   fns.setState(sameProjectState);
   assert.equal(fns.isDocumentsBlockGroupingActive(), true, "sanity: Yatay Kat Irtifaki + 2 farkli blok -> blok gruplama aktif olmali.");
   const sameProjectParts = fns.buildProjectReviewExplanationParts();
-  assert.equal(sameProjectParts.length, 1, `Ayni proje bilgisine sahip 2 blok TEK birlesik parcada toplanmali, bulunan sayi: ${sameProjectParts.length}`);
-  assert.ok(sameProjectParts[0].includes("A ve B Blok'a ait"), `Birlesik cumle 'A ve B Blok\\'a ait' atfini icermeli, bulunan: ${sameProjectParts[0]}`);
-  assert.ok(sameProjectParts[0].includes("taşınmazlara ait") || sameProjectParts[0].includes("Blok'a ait 12.12.2024"), `Birlesik cumle atifla devam etmeli, bulunan: ${sameProjectParts[0]}`);
-  assert.ok(sameProjectParts[0].includes("bağımsız bölümler kat"), `Birlesik uygunluk cumlesi COGUL olmali (2 blok = 2 bagimsiz bolum), bulunan: ${sameProjectParts[0]}`);
-  assert.ok(!sameProjectParts[0].includes("bağımsız bölüm kat"), `Tekil 'bagimsiz bolum kat' KALMAMALI (cogul olan 'bagimsiz bolumler kat' ile catismamali icin tam eslesme kontrolu), bulunan: ${sameProjectParts[0]}`);
+  assert.equal(sameProjectParts.length, 3, `Sabit giris + proje cumlesi + uygunluk cumlesi = 3 parca beklenir (footprint bos oldugundan atlanir), bulunan sayi: ${sameProjectParts.length}, parcalar: ${JSON.stringify(sameProjectParts)}`);
+  assert.equal(sameProjectParts[0], "Ana gayrimenkulle ilgili olarak ada, parsel bazında yerinin doğruluğu parselasyon planından ve imar planından tespit edilmiştir.", "1. parca HER ZAMAN sabit giris cumlesi olmali (bir kez, tekrarsiz).");
+  assert.ok(!sameProjectParts[1].includes("Blok'a ait"), `TUM bloklar ayni proje bilgisine sahipse (unanimous) blok atfi OLMAMALI, bulunan: ${sameProjectParts[1]}`);
+  assert.ok(sameProjectParts[1].includes("taşınmazlara ait 12.12.2024 tarih 14/895 sayılı"), `Unanimous proje cumlesi duz cogul olmali, bulunan: ${sameProjectParts[1]}`);
+  assert.ok(!sameProjectParts[2].includes("Blok'a ait"), `TUM bloklar ayni uygunluk durumundaysa (unanimous) blok atfi OLMAMALI, bulunan: ${sameProjectParts[2]}`);
+  assert.ok(sameProjectParts[2].includes("tüm bağımsız bölümler kat") && sameProjectParts[2].includes("projelerine uygundur"), `Unanimous uygunluk cumlesi 'tum' onekiyle cogul olmali (bagimsiz bolumler + projelerine), bulunan: ${sameProjectParts[2]}`);
 
-  console.log("buildProjectReviewExplanationParts() blok gruplama ACIK + AYNI proje -> birlesik cogul cumle testi tamam.");
+  console.log("buildProjectReviewExplanationParts() blok gruplama ACIK + TUM bloklar unanimous -> 3 sade cumle, atifsiz testi tamam.");
 }
 {
-  // 3b) 2 blok FARKLI proje tarihine/sayisina sahip -> 2 AYRI, blok-atifli
-  // cumle (her biri kendi TEKIL - o bloktaki TEK bagimsiz bolum - metniyle).
+  // 3b) 2 blok FARKLI proje tarihine/sayisina sahip (uygunluk durumu AYNI
+  // kaliyor - varsayilan "" -> UYGUNDUR ikisinde de) -> proje cumlesi
+  // bloklara gore ATIFLI VE TEK cumlede birlesik; uygunluk cumlesi ise
+  // (kendi basina unanimous oldugundan) HALA atifsiz/duz cogul kalir -
+  // bu IKI grubun BAGIMSIZ degerlendirildigini dogrular.
   const differentProjectState = freshState();
   differentProjectState.titleUnits = [
     unit(differentProjectState.fields, "100", "1", "B Blok", { projectDate: "2020-05-05", projectNo: "9/100" }),
   ];
   fns.setState(differentProjectState);
   const differentProjectParts = fns.buildProjectReviewExplanationParts();
-  assert.equal(differentProjectParts.length, 2, `Farkli proje bilgisine sahip 2 blok 2 AYRI parca uretmeli, bulunan sayi: ${differentProjectParts.length}`);
-  const joined = differentProjectParts.join(" ||| ");
-  assert.ok(joined.includes("A Blok'a ait") && joined.includes("B Blok'a ait"), `Her iki blok da KENDI atfiyla gorunmeli, bulunan: ${joined}`);
-  assert.ok(joined.includes("12.12.2024") && joined.includes("05.05.2020"), `Her iki bloğun KENDI proje tarihi gorunmeli, bulunan: ${joined}`);
-  assert.ok(joined.includes("14/895") && joined.includes("9/100"), `Her iki bloğun KENDI proje no'su gorunmeli, bulunan: ${joined}`);
-  // Her blokta TEK bagimsiz bolum oldugundan (unitIndices.length === 1) ve
-  // farkli metin oldugundan (merge yok) COGUL OLMAMALI - yalnizca blok
-  // atfi eklenmeli.
-  assert.ok(joined.includes("bağımsız bölüm kat") && !joined.includes("bağımsız bölümler kat"), `Tek-tek bloklarda (merge YOK, her blokta 1 birim) TEKIL kalmali (yalnizca blok atifli), bulunan: ${joined}`);
+  assert.equal(differentProjectParts.length, 3, `Sabit giris + TEK (gruplanmis) proje cumlesi + TEK (unanimous) uygunluk cumlesi = 3 parca, bulunan: ${JSON.stringify(differentProjectParts)}`);
+  const reviewSentence = differentProjectParts[1];
+  assert.ok(reviewSentence.includes("A Blok'a ait 12.12.2024 tarih 14/895 sayılı") && reviewSentence.includes("B Blok'a ait 05.05.2020 tarih 9/100 sayılı"), `Farkli proje referanslari TEK cumlede, HER BIRI KENDI blok atfiyla gorunmeli, bulunan: ${reviewSentence}`);
+  assert.ok(reviewSentence.includes(" ve B Blok'a ait"), `Iki referans 'X, Y' degil 'X ve Y' ile (joinTurkishList) baglanmali, bulunan: ${reviewSentence}`);
+  assert.ok(reviewSentence.includes("kat irtifakı projeleri incelenmiştir."), `2 FARKLI referans oldugundan proje TURU cogullanmali (projesi->projeleri), TEK 'incelenmistir' ile bitmeli, bulunan: ${reviewSentence}`);
+  assert.equal((reviewSentence.match(/incelenmiştir/g) || []).length, 1, `Eski (0.0.550) davranistaki gibi HER blok icin AYRI 'incelenmistir' cumlesi OLMAMALI, TEK olmali, bulunan: ${reviewSentence}`);
+  assert.ok(!differentProjectParts[2].includes("Blok'a ait"), `Proje referansi FARKLI olsa bile uygunluk durumu unanimous ise (bu senaryoda ikisi de varsayilan UYGUNDUR) uygunluk cumlesinde blok atfi OLMAMALI, bulunan: ${differentProjectParts[2]}`);
+  assert.ok(differentProjectParts[2].includes("tüm bağımsız bölümler"), `Uygunluk unanimous kaldigindan 'tum bagimsiz bolumler' ifadesi gorunmeli, bulunan: ${differentProjectParts[2]}`);
 
-  console.log("buildProjectReviewExplanationParts() blok gruplama ACIK + FARKLI proje -> 2 ayri blok-atifli cumle testi tamam.");
+  console.log("buildProjectReviewExplanationParts() blok gruplama ACIK + proje FARKLI/uygunluk AYNI -> bagimsiz gruplama testi tamam.");
 }
 
-// --- 4) buildProjectReviewExplanation(): parts birlesimi ------------------
+// --- 4) Kullanıcının bildirdiği TAM senaryo (2026-08-26): 4 blok, A+B ----
+// ayni proje, C ve D farkli kendi projelerine sahip, HEPSI "uygundur" ----
 {
-  const differentProjectState = freshState();
-  differentProjectState.titleUnits = [
-    unit(differentProjectState.fields, "100", "1", "B Blok", { projectDate: "2020-05-05", projectNo: "9/100" }),
+  const fourBlockState = freshState({ titleBlockName: "A Blok" });
+  fourBlockState.titleUnits = [
+    unit(fourBlockState.fields, "100", "1", "B Blok"),
+    unit(fourBlockState.fields, "100", "1", "C Blok", { projectDate: "2024-10-10", projectNo: "14/2024" }),
+    unit(fourBlockState.fields, "100", "1", "D Blok", { projectDate: "2023-03-08", projectNo: "08/2023" }),
   ];
-  fns.setState(differentProjectState);
+  fns.setState(fourBlockState);
+  const parts = fns.buildProjectReviewExplanationParts();
+  assert.equal(parts.length, 3, `4 blok (2 farkli+2 tekil proje referansi, HEPSI unanimous uygunluk) icin de 3 parca (giris+proje+uygunluk) beklenir, bulunan: ${JSON.stringify(parts)}`);
+  const review = parts[1];
+  assert.ok(review.includes("A ve B Blok'a ait 12.12.2024 tarih 14/895 sayılı"), `A+B ayni proje PAYLASTIGINDAN TEK atifta birlesmeli, bulunan: ${review}`);
+  assert.ok(review.includes("C Blok'a ait 10.10.2024 tarih 14/2024 sayılı"), `C kendi AYRI atifiyla gorunmeli, bulunan: ${review}`);
+  assert.ok(review.includes("D Blok'a ait 08.03.2023 tarih 08/2023 sayılı"), `D kendi AYRI atifiyla gorunmeli, bulunan: ${review}`);
+  assert.ok(review.includes("kat irtifakı projeleri incelenmiştir."), `3 FARKLI referans grubu oldugundan proje turu cogul olmali, bulunan: ${review}`);
+  assert.equal((review.match(/incelenmiştir/g) || []).length, 1, `TUM rapor icin TEK 'incelenmistir' olmali (kullanicinin sikayet ettigi 3x tekrar ARTIK YOK), bulunan: ${review}`);
+  assert.equal((parts.join(" ").match(/Ana gayrimenkulle ilgili olarak/g) || []).length, 1, `Sabit giris cumlesi SADECE 1 KEZ gorunmeli (kullanicinin sikayet ettigi 3x tekrar ARTIK YOK), bulunan: ${JSON.stringify(parts)}`);
+  assert.ok(!parts[2].includes("Blok'a ait"), `HEPSI 'uygundur' oldugundan (unanimous) uygunluk cumlesinde blok atfi OLMAMALI, bulunan: ${parts[2]}`);
+  assert.ok(parts[2].includes("tüm bağımsız bölümler") && parts[2].includes("projelerine uygundur"), `Unanimous uygunluk cumlesi tek, cogul, atifsiz olmali, bulunan: ${parts[2]}`);
+
+  console.log("buildProjectReviewExplanationParts() kullanicinin 4-blok TAM senaryosu (A+B ortak, C/D ayri, hepsi uygun) testi tamam.");
+}
+
+// --- 5) Paylaşımlı (rapor-geneli) alanların blok hesaplaması sırasında ----
+// KAYBOLMAMASI — 2026-08-26 kullanıcı örneğinde "25.08.2026 tarihinde"
+// yalnızca SON (aktif) bloğun cümlesinde görünmüştü; kök neden:
+// appointmentDate/municipalityInspectionDate TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS'te
+// olduğundan hiçbir taşınmazın gölgesine KOPYALANMAZ — state.fields'ı
+// doğrudan gölgeyle DEĞİŞTİRMEK (eski hata) bu alanı diğer bloklar için
+// KAYBEDİYORDU. Düzeltme: `{ ...originalFields, ...representativeFields }`.
+{
+  const dateFieldState = freshState({ municipalityInspectionDate: "2026-08-25" });
+  dateFieldState.titleUnits = [
+    unit(dateFieldState.fields, "100", "1", "B Blok", { projectDate: "2020-05-05", projectNo: "9/100" }),
+  ];
+  fns.setState(dateFieldState);
+  const parts = fns.buildProjectReviewExplanationParts();
+  const review = parts[1];
+  assert.ok(review.startsWith("25.08.2026 tarihinde"), `Rapor-geneli inceleme tarihi TUM bloklarda (ilk blok DAHIL) korunmali - REGRESYON, bulunan: ${review}`);
+  assert.equal((review.match(/25\.08\.2026 tarihinde/g) || []).length, 1, `Tarih onceki SADECE-1-blok hatasinin AKSINE TUM bloklar icin AYNI/TUTARLI olmali (tek kez basta), bulunan: ${review}`);
+
+  console.log("buildProjectReviewExplanationParts() paylasimli inceleme tarihinin TUM bloklarda korunmasi (REGRESYON) testi tamam.");
+}
+
+// --- 6) Sade şekle UYMAYAN blok varsa -> ESKİ (0.0.550, ayrı tam --------
+// paragraf) davranışına güvenli GERİ DÖNÜŞ (fallback) --------------------
+{
+  // 6a) Bir blokta mimari proje YOK (hasArchitecturalProject: "Hayır") ->
+  // getProjectReviewSimpleReferenceParts() o blok icin null doner ->
+  // TUM rapor eski per-blok tam paragraf davranisina doner (disqualified).
+  const noProjectBlockState = freshState();
+  noProjectBlockState.titleUnits = [
+    unit(noProjectBlockState.fields, "100", "1", "B Blok", { hasArchitecturalProject: "Hayır" }),
+  ];
+  fns.setState(noProjectBlockState);
+  const fallbackParts = fns.buildProjectReviewExplanationParts();
+  // Eski davranis: her FARKLI ham metin ayri bir parca - burada A ve B
+  // FARKLI govdeler (biri "incelenmistir", digeri "bulunamamistir" temalı)
+  // urettiginden en az 2 parca beklenir, VE sabit giris cumlesi HER
+  // parcanin ICINDE tekrar eder (eski/uzun davranis, KASITLI olarak
+  // sadelestirilmedi).
+  assert.ok(fallbackParts.length >= 2, `Sade sekle uymayan blok varsa ESKI (coklu parca) davranisa donulmeli, bulunan sayi: ${fallbackParts.length}`);
+  const fallbackJoined = fallbackParts.join(" ||| ");
+  // Not: B bloğu "hasArchitecturalProject: Hayır" olduğundan KENDİ metni
+  // (buildNoArchitecturalProjectDescription) locationLead'i (sabit giriş
+  // cümlesini) HİÇ İÇERMEZ (bu, buildProjectReviewDescription'ın ESKİ/
+  // değişmeyen dallanma davranışı) - bu yüzden burada "HER parçada
+  // tekrar" değil, "fallback moduna GERÇEKTEN geçildi mi" (sade/konsolide
+  // tek proje cümlesi YERİNE eski çoklu-parça davranışı) doğrulanır.
+  assert.ok(fallbackJoined.includes("Ana gayrimenkulle ilgili olarak"), "A bloğunun (mimari proje VAR) parçası sabit giriş cümlesini içermeli.");
+  assert.ok(!fallbackJoined.includes("kat irtifakı projeleri incelenmiştir."), "Fallback modunda YENİ konsolide/çoğul 'projeleri incelenmiştir' cümlesi ASLA üretilmemeli (sadeleştirme atlandı).");
+
+  console.log("buildProjectReviewExplanationParts() sade sekle uymayan blok -> eski coklu-paragraf fallback testi tamam.");
+}
+
+// --- 7) buildProjectReviewExplanation(): parts birlesimi ------------------
+{
+  const fourBlockState = freshState({ titleBlockName: "A Blok" });
+  fourBlockState.titleUnits = [
+    unit(fourBlockState.fields, "100", "1", "B Blok"),
+    unit(fourBlockState.fields, "100", "1", "C Blok", { projectDate: "2024-10-10", projectNo: "14/2024" }),
+  ];
+  fns.setState(fourBlockState);
   const parts = fns.buildProjectReviewExplanationParts();
   const combined = fns.buildProjectReviewExplanation();
   assert.equal(combined, parts.join("\n\n"), "buildProjectReviewExplanation() parts'i '\\n\\n' ile birlestirmeli (eski string donus tipi korunmali).");
@@ -344,4 +436,4 @@ function freshState(overrides = {}) {
   console.log("buildProjectReviewExplanation() parts birlesimi (geriye donuk uyumluluk) testi tamam.");
 }
 
-console.log("Proje Inceleme Aciklamasi cogullama + blok bazinda ortak/ayri cumle testleri basarili.");
+console.log("Proje Inceleme Aciklamasi cogullama + blok bazinda ortak/ayri/sade cumle testleri basarili.");

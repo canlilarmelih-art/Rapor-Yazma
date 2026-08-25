@@ -26263,6 +26263,12 @@ function buildSingleInstitutionCondominiumProjectDescription(institution, projec
   return "";
 }
 
+// Bloklar arası ortak/sabit giriş cümlesi — TEK kaynak (2026-08-26,
+// buildProjectReviewConsolidatedParts da bunu paylaşıyor, aşağıda).
+function getProjectReviewLocationLead() {
+  return "Ana gayrimenkulle ilgili olarak ada, parsel bazında yerinin doğruluğu parselasyon planından ve imar planından tespit edilmiştir.";
+}
+
 function buildProjectReviewDescription() {
   const hasArchitecturalProject = normalizeYesNoChoice(state.fields.hasArchitecturalProject || "Evet") !== "Hayır";
   const selectedInstitutions = getSelectedProjectInstitutions();
@@ -26281,8 +26287,7 @@ function buildProjectReviewDescription() {
   const reviewDate = getProjectReviewDateText();
   const dateLead = reviewDate ? `${reviewDate} tarihinde ` : "";
   const oldAdaParcelNote = formatOldAdaParcelProjectNote();
-  const locationLead =
-    "Ana gayrimenkulle ilgili olarak ada, parsel bazında yerinin doğruluğu parselasyon planından ve imar planından tespit edilmiştir.";
+  const locationLead = getProjectReviewLocationLead();
 
   if (!hasArchitecturalProject) {
     return normalizeReportDescriptionText([buildNoArchitecturalProjectDescription(), oldAdaParcelNote].filter(Boolean).join("\n\n"));
@@ -26367,7 +26372,11 @@ function buildProjectReviewExplanationSingle() {
 // tekrarı kullanıcı şikayeti/düzeltmesiyle AYNI kural, bkz. 2026-08-23
 // yorumu), "bağımsız bölüm" kalıbında ise attribution kelimenin ÖNÜNE
 // eklenir (o kalıpta zaten "ait" yok).
-function pluralizeProjectReviewSubjectText(text, enablePlural, attribution = "") {
+// `useTumPrefix` (2026-08-26): blok gruplama aktifken TÜM bloklar AYNI
+// metni ürettiyse (kullanıcı: "hepsi uygunsa blok adı tekrar etmeden tek
+// genel cümle") blok atfı yerine "tüm" öneki eklenir — bkz.
+// buildProjectReviewConsolidatedSentences.
+function pluralizeProjectReviewSubjectText(text, enablePlural, attribution = "", useTumPrefix = false) {
   if (!text) return text;
   let result = enablePlural ? pluralizeEnvironmentalSubjectText(text, true) : text;
   if (enablePlural) {
@@ -26377,9 +26386,19 @@ function pluralizeProjectReviewSubjectText(text, enablePlural, attribution = "")
       .replace(/\bbağımsız bölümün\b/g, "bağımsız bölümlerin")
       .replace(/\bbağımsız bölüme\b/g, "bağımsız bölümlere")
       .replace(/\bBağımsız Bölüm\b/g, "Bağımsız Bölümler")
-      .replace(/\bbağımsız bölüm\b/g, "bağımsız bölümler");
+      .replace(/\bbağımsız bölüm\b/g, "bağımsız bölümler")
+      .replace(/\bProjesine\b/g, "Projelerine")
+      .replace(/\bprojesine\b/g, "projelerine")
+      .replace(/\bProjesi\b/g, "Projeleri")
+      .replace(/\bprojesi\b/g, "projeleri");
   }
-  if (attribution) {
+  if (useTumPrefix) {
+    result = result
+      .replace(/ekspertize konu bağımsız bölüm/g, "ekspertize konu tüm bağımsız bölüm")
+      .replace(/Ekspertize konu bağımsız bölüm/g, "Ekspertize konu tüm bağımsız bölüm")
+      .replace(/ekspertize konu taşınmaz/g, "ekspertize konu tüm taşınmaz")
+      .replace(/Ekspertize konu taşınmaz/g, "Ekspertize konu tüm taşınmaz");
+  } else if (attribution) {
     result = result
       .replace(/ekspertize konu taşınmaz(?:lar)?a ait/g, `ekspertize konu ${attribution}`)
       .replace(/Ekspertize konu taşınmaz(?:lar)?a ait/g, `Ekspertize konu ${attribution}`)
@@ -26389,37 +26408,191 @@ function pluralizeProjectReviewSubjectText(text, enablePlural, attribution = "")
   return result;
 }
 
-// Kullanıcı talebi (2026-08-25): "aynı ada parsel çoklu raporda proje
-// inceleme açıklaması ... böyle olmamalı. çoğula uygun olmalı eğer aynı
-// tarihli ve sayılı mimari proje incelendiyse açıklama ona göre
-// yapılmalı blok bazında ortak ve ayrı cümle yapıları kurulmalı" —
-// buildEkbExplanationParts/buildDocumentsOccupancyParts ile AYNI mimari
-// desen: blok gruplama aktif değilse (kat irtifakı dışı/tek blok/tekil
-// taşınmaz) davranış AYNEN korunur, yalnızca aynı ada/parselde birden
-// fazla bağımsız bölüm varsa (hasMixedTitleUnitParcels false) metin
-// çoğullanır. Blok gruplama AKTİFSE: HER blok için (state.fields GEÇİCİ
-// olarak o bloğun temsilcisinin alanlarıyla değiştirilerek —
-// switchActiveTitleUnit'e HİÇ dokunulmadan, senkron, yan etkisiz —
-// buildProjectReviewExplanationSingle() tekrar çalıştırılır. AYNI HAM
-// metni üreten bloklar (yani aynı tarihli/sayılı proje incelenmiş)
-// buildEkbExplanationParts'taki gibi TEK, blok-atıflı/çoğul cümlede
-// birleştirilir; farklı metin üreten bloklar kendi ayrı (yine blok
-// atıflı) cümlesinde kalır.
-function buildProjectReviewExplanationParts() {
-  if (!isDocumentsBlockGroupingActive()) {
-    const text = buildProjectReviewExplanationSingle();
-    if (!text) return [];
-    const shouldPluralize = isMultiTitleUnitReportForNarrative() && !hasMixedTitleUnitParcels();
-    return [pluralizeProjectReviewSubjectText(text, shouldPluralize, "")];
-  }
+// Blok atıflı/çoğul cümlelerde proje TÜRÜ metnini ("kat irtifakı",
+// "mimari proje" — kullanıcının GİRDİĞİ serbest metin) çoğullar: "...
+// projesi" -> "... projeleri". Girdi zaten küçük harfe çevrilmiş olarak
+// (formatProjectReference'ın kendi kuralıyla) bekleniyor.
+function pluralizeProjectReferenceTypeText(typeLower, enablePlural) {
+  const text = String(typeLower || "").trim();
+  if (!enablePlural || !text) return text;
+  if (/projeleri$/.test(text)) return text;
+  if (/projesi$/.test(text)) return text.replace(/projesi$/, "projeleri");
+  return `${text} projeleri`;
+}
 
-  const units = buildAllTitleUnitsForSummaryTable();
-  const groups = computeDocumentsBlockGroups(units);
-  if (groups.length < 2) {
-    const text = buildProjectReviewExplanationSingle();
-    return text ? [text] : [];
+// buildProjectReviewDescription()'ın "Tapu/Belediye Proje Farkı Var?"
+// = Hayır dalıyla AYNI referans hesaplamasını (kurum/tarih/sayı/tür)
+// yapar ama TAM CÜMLE yerine PARÇALARI döner — buildProjectReviewConsolidatedParts
+// bu parçaları bloklar arasında BİRLEŞTİRMEK için kullanır. Bu "sade"
+// şekle uymayan durumlarda (mimari proje yok, Tapu/Belediye Proje Farkı
+// Var, ya da tek-kurum-kat-irtifakı ÖZEL cümlesi tetikleniyorsa) `null`
+// döner — çağıran taraf bunu "bu bloğu birleştirme, eski/ayrı paragraf
+// davranışına dön" sinyali olarak kullanır.
+function getProjectReviewSimpleReferenceParts() {
+  const hasArchitecturalProject = normalizeYesNoChoice(state.fields.hasArchitecturalProject || "Evet") !== "Hayır";
+  if (!hasArchitecturalProject) return null;
+  if (shouldUseProjectDifferenceComparison()) return null;
+  const selectedInstitutions = getSelectedProjectInstitutions();
+  const institutions = selectedInstitutions.length ? selectedInstitutions : ["Webtapu", "Belediye"];
+  const projectReference = formatProjectReference(state.fields.projectDate, state.fields.projectNo, state.fields.projectType);
+  let placeText = "";
+  if (institutions.length === 1 && isCondominiumOwnershipType()) {
+    const singleText = buildSingleInstitutionCondominiumProjectDescription(institutions[0], projectReference, "");
+    if (singleText) return null;
+    placeText = formatProjectReviewLocation(institutions[0]);
+  } else {
+    const institutionSummary = normalizeReportTitleText(state.fields.documentReviewInstitution || buildProjectReviewInstitutionSummary()).trim();
+    placeText = institutionSummary ? `${institutionSummary} kurumlarında` : joinTurkishList(institutions.map(formatProjectReviewLocation));
   }
+  const date = dateIsoToTr(state.fields.projectDate || "").trim();
+  const no = String(state.fields.projectNo || "").trim();
+  const type = normalizeReportTitleText(state.fields.projectType || "Mimari Proje").trim() || "Mimari Proje";
+  if (!date && !no) return null;
+  return { placeText, date, no, type };
+}
 
+// Bloklara göre gruplanmış proje referanslarını (bkz.
+// getProjectReviewSimpleReferenceParts) TEK bir cümlede birleştirir.
+// TÜM bloklar AYNI tarih/sayıyı paylaşıyorsa ("unanimous") blok atfı
+// EKLENMEZ (düz çoğul "taşınmazlara ait"); FARKLI tarih/sayılı bloklar
+// varsa HER FARKLI referans kendi blok atfını alır ve TEK cümlede
+// virgül/"ve" ile art arda sıralanır (kullanıcı örneği: "A ve B Blok'a
+// ait ... , C Blok'a ait ... ve D Blok'a ait ... incelenmiştir.").
+function buildProjectReviewConsolidatedReferenceSentence(leadDateText, placeText, typeLower, refItems) {
+  const byReference = new Map();
+  const order = [];
+  refItems.forEach(({ label, date, no }) => {
+    const key = `${date}||${no}`;
+    if (!byReference.has(key)) {
+      byReference.set(key, { date, no, labels: [] });
+      order.push(key);
+    }
+    byReference.get(key).labels.push(label);
+  });
+  const unanimous = order.length === 1;
+  const clauses = order.map((key) => {
+    const { date, no, labels } = byReference.get(key);
+    const attribution = unanimous ? "" : formatDocumentBlockAttributionPhrase(labels);
+    const refPiece = [date && `${date} tarih`, no && `${no} sayılı`].filter(Boolean).join(" ");
+    return [attribution || "taşınmazlara ait", refPiece].filter(Boolean).join(" ");
+  });
+  const pluralizedType = pluralizeProjectReferenceTypeText(typeLower, !unanimous);
+  return normalizeReportDescriptionText(`${leadDateText}${placeText} ekspertize konu ${joinTurkishList(clauses)} ${pluralizedType} incelenmiştir.`);
+}
+
+// Blok bazında hesaplanan (Bina Oturumu/Giriş ve Proje Uygunluğu gibi)
+// serbest metinleri birleştirir: TÜM bloklar AYNI metni ürettiyse blok
+// atfı EKLENMEDEN "tüm" önekiyle TEK cümle (kullanıcı: "hepsi uygunsa
+// blok adı tekrar etmeden tek genel cümle kurulmalı"); FARKLI metin
+// üreten bloklar kendi (blok atıflı) cümlesinde ayrı kalır.
+function buildProjectReviewConsolidatedSentences(items) {
+  const nonEmpty = items.filter((item) => item.text);
+  if (!nonEmpty.length) return [];
+  const byText = new Map();
+  const order = [];
+  nonEmpty.forEach(({ label, text }) => {
+    if (!byText.has(text)) {
+      byText.set(text, []);
+      order.push(text);
+    }
+    byText.get(text).push(label);
+  });
+  if (order.length === 1) {
+    const labels = byText.get(order[0]);
+    const totalUnits = nonEmpty.reduce((sum, item) => sum + item.unitCount, 0);
+    const unanimous = labels.length === items.length;
+    return [pluralizeProjectReviewSubjectText(order[0], totalUnits > 1, unanimous ? "" : formatDocumentBlockAttributionPhrase(labels), unanimous)];
+  }
+  return order.map((text) => {
+    const labels = byText.get(text);
+    const totalUnits = nonEmpty
+      .filter((item) => labels.includes(item.label))
+      .reduce((sum, item) => sum + item.unitCount, 0);
+    return pluralizeProjectReviewSubjectText(text, totalUnits > 1, formatDocumentBlockAttributionPhrase(labels), false);
+  });
+}
+
+// Kullanıcı talebi (2026-08-26, önceki 0.0.550'nin canlı çıktısı
+// üzerine): "cümle bu şekilde gelmiş çok tekrar eden cümleler var ...
+// 2-3 cümlede bu paragraf oluşabilir ... bu isteği sadece aynı ada
+// parsel çoklu talep için geçerlidir." — 0.0.550, blok gruplama aktifken
+// HER blok grubu için TAM paragrafı (sabit giriş + proje referansı +
+// uygunluk cümlesi) TEKRAR ediyordu (4 blok = 4×3 satır). Bu fonksiyon
+// "sade" şekle uyan bloklar (mimari proje var, Tapu/Belediye Proje Farkı
+// Var=Hayır, tek-kurum-kat-irtifakı ÖZEL cümlesi tetiklenmiyor, TÜM
+// bloklarda AYNI kurum/proje türü) için TEK sabit giriş + TEK (bloklara
+// göre gruplanmış) proje-referansı cümlesi + (varsa) TEK/az sayıda
+// uygunluk cümlesi üretir. Herhangi bir blok bu şekle uymuyorsa YA DA
+// bloklar arası kurum/tür TUTARSIZSA `null` döner — çağıran taraf
+// (buildProjectReviewExplanationParts) ESKİ (0.0.550, her blok için ayrı
+// tam paragraf) davranışına döner; YANLIŞ bir sadeleştirme üretmektense
+// DOĞRU ama uzun metin tercih edilir.
+//
+// ÖNEMLİ DÜZELTME (2026-08-26): state.fields'ı doğrudan bloğun temsilci
+// gölgesiyle DEĞİŞTİRMEK (0.0.550'nin yaptığı gibi) rapor-geneli
+// PAYLAŞIMLI alanları (appointmentDate/municipalityInspectionDate —
+// TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS'te, hiçbir taşınmazın
+// gölgesine KOPYALANMAZ, yalnızca canlı state.fields'ta durur) o bloğun
+// hesaplamasından KAYBOLUYORDU — kullanıcının paylaştığı örnekte
+// "25.08.2026 tarihinde" ifadesi bu yüzden yalnızca (o an aktif olan)
+// SON blokta görünüyordu. Artık `{ ...originalFields, ...representativeFields }`
+// ile BİRLEŞTİRİLİYOR: paylaşımlı alanlar orijinalden korunur, bloğa özgü
+// (scoped) alanlar temsilcinin değeriyle geçersiz kılınır.
+function buildProjectReviewConsolidatedParts(units, groups) {
+  const originalFields = state.fields;
+  const refItems = [];
+  const footprintItems = [];
+  const suitabilityItems = [];
+  let oldAdaParcelNote = "";
+  let disqualified = false;
+
+  groups.forEach((group) => {
+    if (disqualified) return;
+    const label = computeDocumentsBlockLabel(group, groups);
+    const representativeFields = units[group.unitIndices[0]]?.fields || originalFields;
+    state.fields = { ...originalFields, ...representativeFields };
+    try {
+      const refParts = getProjectReviewSimpleReferenceParts();
+      if (!refParts) {
+        disqualified = true;
+        return;
+      }
+      const unitCount = group.unitIndices.length;
+      refItems.push({ label, unitCount, ...refParts });
+      footprintItems.push({ label, unitCount, text: buildBuildingFootprintAndEntranceExplanation() });
+      suitabilityItems.push({ label, unitCount, text: buildProjectSuitabilityDescription() });
+      if (!oldAdaParcelNote) oldAdaParcelNote = formatOldAdaParcelProjectNote();
+    } finally {
+      state.fields = originalFields;
+    }
+  });
+
+  if (disqualified || !refItems.length) return null;
+
+  const firstPlaceText = refItems[0].placeText;
+  const firstTypeLower = refItems[0].type.toLocaleLowerCase("tr-TR");
+  const consistentShape = refItems.every(
+    (item) => item.placeText === firstPlaceText && item.type.toLocaleLowerCase("tr-TR") === firstTypeLower
+  );
+  if (!consistentShape) return null;
+
+  const reviewDate = getProjectReviewDateText();
+  const leadDateText = reviewDate ? `${reviewDate} tarihinde ` : "";
+  const reviewSentence = buildProjectReviewConsolidatedReferenceSentence(leadDateText, firstPlaceText, firstTypeLower, refItems);
+  const footprintSentences = buildProjectReviewConsolidatedSentences(footprintItems);
+  const suitabilitySentences = buildProjectReviewConsolidatedSentences(suitabilityItems);
+
+  return [getProjectReviewLocationLead(), reviewSentence, oldAdaParcelNote, ...footprintSentences, ...suitabilitySentences].filter(Boolean);
+}
+
+// 0.0.550'nin ORİJİNAL davranışı: blok gruplama aktifken HER blok grubu
+// için TAM paragraf (buildProjectReviewExplanationSingle) üretir, AYNI
+// ham metni üreten grupları birleştirir. buildProjectReviewConsolidatedParts
+// "sade" şekle UYMAYAN raporlar için güvenli geri dönüş (fallback) olarak
+// korunuyor (bkz. yukarıdaki yorum) — aynı merkezi paylaşımlı-alan
+// düzeltmesi ({ ...originalFields, ...representativeFields }) burada da
+// uygulanıyor.
+function buildProjectReviewBlockFallbackParts(units, groups) {
   const originalFields = state.fields;
   const unitCountByLabel = new Map();
   const rawTextByLabel = new Map();
@@ -26427,7 +26600,7 @@ function buildProjectReviewExplanationParts() {
   groups.forEach((group) => {
     const label = computeDocumentsBlockLabel(group, groups);
     const representativeFields = units[group.unitIndices[0]]?.fields || originalFields;
-    state.fields = representativeFields;
+    state.fields = { ...originalFields, ...representativeFields };
     let text;
     try {
       text = buildProjectReviewExplanationSingle();
@@ -26457,6 +26630,37 @@ function buildProjectReviewExplanationParts() {
     const attribution = formatDocumentBlockAttributionPhrase(labels);
     return pluralizeProjectReviewSubjectText(text, totalUnits > 1, attribution);
   });
+}
+
+// Kullanıcı talebi (2026-08-25, genişletme 2026-08-26): "aynı ada parsel
+// çoklu raporda proje inceleme açıklaması ... çoğula uygun olmalı ...
+// blok bazında ortak ve ayrı cümle yapıları kurulmalı" + "çok tekrar eden
+// cümleler var ... 2-3 cümlede bu paragraf oluşabilir ... bu isteği
+// sadece aynı ada parsel çoklu talep için geçerlidir." Blok gruplama
+// aktif değilse (kat irtifakı dışı/tek blok/tekil taşınmaz) davranış
+// AYNEN korunur, yalnızca aynı ada/parselde birden fazla bağımsız bölüm
+// varsa metin çoğullanır. Blok gruplama AKTİFSE önce SADE/birleşik
+// (buildProjectReviewConsolidatedParts) biçim denenir; yalnızca o biçime
+// uymayan (nadir/karmaşık) raporlarda ESKİ, her blok için ayrı tam
+// paragraf üreten davranışa (buildProjectReviewBlockFallbackParts) dönülür.
+function buildProjectReviewExplanationParts() {
+  if (!isDocumentsBlockGroupingActive()) {
+    const text = buildProjectReviewExplanationSingle();
+    if (!text) return [];
+    const shouldPluralize = isMultiTitleUnitReportForNarrative() && !hasMixedTitleUnitParcels();
+    return [pluralizeProjectReviewSubjectText(text, shouldPluralize, "", false)];
+  }
+
+  const units = buildAllTitleUnitsForSummaryTable();
+  const groups = computeDocumentsBlockGroups(units);
+  if (groups.length < 2) {
+    const text = buildProjectReviewExplanationSingle();
+    return text ? [text] : [];
+  }
+
+  const consolidated = buildProjectReviewConsolidatedParts(units, groups);
+  if (consolidated) return consolidated;
+  return buildProjectReviewBlockFallbackParts(units, groups);
 }
 
 function buildProjectReviewExplanation() {
