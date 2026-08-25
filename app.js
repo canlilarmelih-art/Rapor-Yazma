@@ -26829,15 +26829,53 @@ function buildProjectReviewConsolidatedSentences(items) {
     const labels = byText.get(order[0]);
     const totalUnits = nonEmpty.reduce((sum, item) => sum + item.unitCount, 0);
     const unanimous = labels.length === items.length;
-    return [pluralizeProjectReviewSubjectText(order[0], totalUnits > 1, unanimous ? "" : formatDocumentBlockAttributionPhrase(labels), unanimous)];
+    return [pluralizeProjectReviewSubjectText(order[0], totalUnits > 1, unanimous ? "" : formatTitleUnitAttributionPhrase(labels), unanimous)];
   }
   return order.map((text) => {
     const labels = byText.get(text);
     const totalUnits = nonEmpty
       .filter((item) => labels.includes(item.label))
       .reduce((sum, item) => sum + item.unitCount, 0);
-    return pluralizeProjectReviewSubjectText(text, totalUnits > 1, formatDocumentBlockAttributionPhrase(labels), false);
+    return pluralizeProjectReviewSubjectText(text, totalUnits > 1, formatTitleUnitAttributionPhrase(labels), false);
   });
+}
+
+// Kullanıcı talebi (2026-08-26): "proje inceleme açıklamaları blok
+// bazında değil bağımsız bölüm bazında olmalıdır" — "Proje Uygunluk
+// Durumu" (projectSuitabilityStatus/projectConformity/... ve bina
+// oturumu/giriş alanları) BLOK-ORTAK DEĞİL, HER bağımsız bölüme özeldir
+// (bkz. DOCUMENTS_BLOCK_SHARED_FIELD_KEYS listesinde YOKLAR + canlı
+// paneldeki "Bu bilgi yalnızca bu bağımsız bölüme aittir" uyarısı) — bu
+// yüzden bu iki paragrafın atıf etiketi BLOK adı değil, taşınmazın kendi
+// (Blok + BB No) kimliği olmalı. formatDocumentBlockAttributionPhrase()
+// (yalnızca proje REFERANSI cümlesinde, blok-ortak alanlar için hâlâ
+// doğru) İLE KARIŞTIRILMASIN — o "Blok'a ait" son ekini varsayar, burası
+// varsaymaz (etiket zaten "Blok"/"No'lu" kelimelerini kendi içinde taşır).
+function formatTitleUnitSuitabilityLabel(fields, index) {
+  const block = String(fields?.titleBlockName || "").trim();
+  const unitNo = String(fields?.unitNo || "").trim();
+  if (block && unitNo) return `${block} ${unitNo} No'lu`;
+  if (unitNo) return `${unitNo} No'lu`;
+  if (block) return block;
+  return `${index + 1}. taşınmaz`;
+}
+
+function formatTitleUnitAttributionPhrase(labels) {
+  const clean = (labels || []).filter(Boolean);
+  if (!clean.length) return "";
+  // Etiketlerin HEPSİ salt blok adıysa (unitNo hiç girilmemiş, "X Blok"
+  // ile biten SADE etiketler — formatTitleUnitSuitabilityLabel'ın unitNo
+  // boşken döndüğü hâl) formatDocumentBlockAttributionPhrase'in zarif "A
+  // ve B Blok'a ait" birleştirmesi yeniden kullanılır (0.0.550/551'in
+  // TEST EDİLMİŞ davranışıyla TAM UYUMLU); aksi halde (en az bir etiket
+  // kendi BB No'sunu da taşıyorsa, ör. "A Blok 2 No'lu") o birleştirme
+  // GEÇERSİZ olur (yanlış yere ikinci bir "Blok'a ait" eklerdi) —
+  // etiketler sade şekilde art arda listelenir ("... bağımsız bölüm"
+  // sözcüğü ZATEN çağıran cümlede var, burada TEKRAR EDİLMEZ).
+  if (clean.every((label) => /Blok$/i.test(label.trim()))) {
+    return formatDocumentBlockAttributionPhrase(clean);
+  }
+  return joinTurkishList(clean);
 }
 
 // Kullanıcı talebi (2026-08-26, önceki 0.0.550'nin canlı çıktısı
@@ -26866,11 +26904,26 @@ function buildProjectReviewConsolidatedSentences(items) {
 // SON blokta görünüyordu. Artık `{ ...originalFields, ...representativeFields }`
 // ile BİRLEŞTİRİLİYOR: paylaşımlı alanlar orijinalden korunur, bloğa özgü
 // (scoped) alanlar temsilcinin değeriyle geçersiz kılınır.
+//
+// İKİNCİ DÜZELTME (2026-08-26, kullanıcı bildirimi): "proje inceleme
+// açıklamaları blok bazında değil bağımsız bölüm bazında olmalıdır ...
+// 'Ekspertize konu A, B ve C Blok'a ait bağımsız bölümler ... uygun
+// değildir' bu şekilde geldi." — Proje Uygunluk Durumu VE Bina Oturumu/
+// Giriş alanları BLOK-ORTAK DEĞİL (DOCUMENTS_BLOCK_SHARED_FIELD_KEYS'te
+// YOKLAR), HER bağımsız bölüme özel — ama bu iki paragraf ilk sürümde
+// (0.0.551) proje REFERANSIYLA (paragraf 2, GERÇEKTEN blok-ortak) AYNI
+// döngüde, yalnızca HER BLOĞUN TEMSİLCİ (ilk) taşınmazının alanlarıyla
+// hesaplanıyordu — bir blokta 2+ bağımsız bölüm varsa, o bloktaki DİĞER
+// bağımsız bölümlerin KENDİ (farklı olabilecek) uygunluk durumu SESSİZCE
+// yok sayılıyor, atıf da (yanlış şekilde) blok adıyla kuruluyordu. Artık
+// paragraf 2 (proje referansı) HÂLÂ blok bazında hesaplanıyor, ama
+// paragraf 3 (uygunluk) ve bina oturumu/giriş paragrafı HER taşınmaz
+// için AYRI AYRI (temsilci DEĞİL, TÜM bağımsız bölümler) hesaplanıp
+// bağımsız bölüm kimliğiyle (bkz. formatTitleUnitSuitabilityLabel) atıflı
+// şekilde birleştiriliyor.
 function buildProjectReviewConsolidatedParts(units, groups) {
   const originalFields = state.fields;
   const refItems = [];
-  const footprintItems = [];
-  const suitabilityItems = [];
   let oldAdaParcelNote = "";
   let disqualified = false;
 
@@ -26885,10 +26938,7 @@ function buildProjectReviewConsolidatedParts(units, groups) {
         disqualified = true;
         return;
       }
-      const unitCount = group.unitIndices.length;
-      refItems.push({ label, unitCount, ...refParts });
-      footprintItems.push({ label, unitCount, text: buildBuildingFootprintAndEntranceExplanation() });
-      suitabilityItems.push({ label, unitCount, text: buildProjectSuitabilityDescription() });
+      refItems.push({ label, unitCount: group.unitIndices.length, ...refParts });
       if (!oldAdaParcelNote) oldAdaParcelNote = formatOldAdaParcelProjectNote();
     } finally {
       state.fields = originalFields;
@@ -26903,6 +26953,23 @@ function buildProjectReviewConsolidatedParts(units, groups) {
     (item) => item.placeText === firstPlaceText && item.type.toLocaleLowerCase("tr-TR") === firstTypeLower
   );
   if (!consistentShape) return null;
+
+  // Paragraf 3 (uygunluk) + bina oturumu/giriş — HER bağımsız bölüm için
+  // AYRI (blok temsilcisi DEĞİL) hesaplanır, bkz. yukarıdaki "İKİNCİ
+  // DÜZELTME" yorumu.
+  const footprintItems = [];
+  const suitabilityItems = [];
+  units.forEach((unit, index) => {
+    const unitFields = unit?.fields || originalFields;
+    state.fields = { ...originalFields, ...unitFields };
+    try {
+      const label = formatTitleUnitSuitabilityLabel(unitFields, index);
+      footprintItems.push({ label, unitCount: 1, text: buildBuildingFootprintAndEntranceExplanation() });
+      suitabilityItems.push({ label, unitCount: 1, text: buildProjectSuitabilityDescription() });
+    } finally {
+      state.fields = originalFields;
+    }
+  });
 
   const reviewDate = getProjectReviewDateText();
   const leadDateText = reviewDate ? `${reviewDate} tarihinde ` : "";

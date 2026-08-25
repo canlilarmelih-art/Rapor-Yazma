@@ -137,6 +137,8 @@ const functionNames = [
   "isDocumentsBlockGroupingActive",
   "formatDocumentBlockAttributionPhrase",
   "normalizeBlockLabelPrefixForAttribution",
+  "formatTitleUnitSuitabilityLabel",
+  "formatTitleUnitAttributionPhrase",
 ];
 
 // `buildProjectSuitabilityStatusSentence` const/registerVariantGroup
@@ -193,6 +195,7 @@ const sandboxSource = `
     pluralizeProjectReviewSubjectText,
     isDocumentsBlockGroupingActive,
     computeDocumentsBlockGroups,
+    buildAllTitleUnitsForSummaryTable,
   };
 `;
 // eslint-disable-next-line no-new-func
@@ -366,6 +369,33 @@ function freshState(overrides = {}) {
   assert.ok(parts[2].includes("tüm bağımsız bölümler") && parts[2].includes("projelerine uygundur"), `Unanimous uygunluk cumlesi tek, cogul, atifsiz olmali, bulunan: ${parts[2]}`);
 
   console.log("buildProjectReviewExplanationParts() kullanicinin 4-blok TAM senaryosu (A+B ortak, C/D ayri, hepsi uygun) testi tamam.");
+}
+
+// --- 4b) REGRESYON (2026-08-26, kullanıcı bildirimi): "proje inceleme ----
+// açıklamaları blok bazında değil bağımsız bölüm bazında olmalıdır" —
+// AYNI BLOKTAKİ 2 FARKLI bağımsız bölümün FARKLI uygunluk durumu artık
+// İKİSİ DE görünmeli (eskiden blok TEMSİLCİSİNİN — yalnızca İLK
+// bağımsız bölümün — durumu kullanılıp diğeri SESSİZCE kayboluyordu).
+{
+  const sameBlockDifferentUnitsState = freshState({ titleBlockName: "A Blok", unitNo: "1" });
+  // A Blok'un 2. bağımsız bölümü (unitNo farklı, blockNo/parcelNo/titleBlockName
+  // AYNI -> proje referansı icin AYNI blok grubu) FARKLI bir uygunluk durumuna sahip.
+  sameBlockDifferentUnitsState.titleUnits = [
+    unit(sameBlockDifferentUnitsState.fields, "100", "1", "A Blok", { unitNo: "2", projectSuitabilityStatus: "mimari olarak uygun değildir." }),
+    unit(sameBlockDifferentUnitsState.fields, "100", "1", "B Blok", { unitNo: "3" }),
+  ];
+  fns.setState(sameBlockDifferentUnitsState);
+  const groups = fns.computeDocumentsBlockGroups(fns.buildAllTitleUnitsForSummaryTable());
+  assert.equal(groups.length, 2, "sanity: A Blok'un 2 bagimsiz bolumu AYNI blok grubunda (proje referansi icin) toplanmali.");
+  const parts = fns.buildProjectReviewExplanationParts();
+  assert.equal(parts.length, 4, `Giris + proje referansi (unanimous, blok bazinda) + 2 FARKLI uygunluk cumlesi (bagimsiz bolum bazinda) = 4 parca beklenir, bulunan: ${JSON.stringify(parts)}`);
+  const suitabilityText = parts.slice(2).join(" ||| ");
+  assert.ok(suitabilityText.includes("A Blok 1 No'lu ve B Blok 3 No'lu"), `Ayni durumdaki (varsayilan UYGUNDUR) 2 FARKLI bloktaki bagimsiz bolumler TEK cumlede, BAGIMSIZ BOLUM kimligiyle (blok adiyla DEGIL) birlesmeli, bulunan: ${suitabilityText}`);
+  assert.ok(suitabilityText.includes("A Blok 2 No'lu bağımsız bölüm") && !suitabilityText.includes("A Blok 2 No'lu ve"), `A Blok'un FARKLI durumdaki 2. bagimsiz bolumu KENDI (tekil) cumlesinde, kendi kimligiyle ayri kalmali - eskiden bu SESSIZCE kayboluyordu, bulunan: ${suitabilityText}`);
+  assert.ok(suitabilityText.includes("uygundur") && suitabilityText.includes("uygun değildir"), `Iki FARKLI durum da metinde gorunmeli (biri kaybolmamali), bulunan: ${suitabilityText}`);
+  assert.ok(!suitabilityText.includes("A, B Blok'a ait") && !suitabilityText.includes("A ve B Blok'a ait bağımsız bölümler"), `Atif ARTIK blok adiyla degil bagimsiz bolum kimligiyle kurulmali (kullanicinin sikayet ettigi 'A, B ve C Blok'a ait bağımsız bölümler' kalibi ARTIK olmamali), bulunan: ${suitabilityText}`);
+
+  console.log("buildProjectReviewExplanationParts() AYNI bloktaki FARKLI bagimsiz bolum uygunluk durumlari (REGRESYON) testi tamam.");
 }
 
 // --- 5) Paylaşımlı (rapor-geneli) alanların blok hesaplaması sırasında ----
