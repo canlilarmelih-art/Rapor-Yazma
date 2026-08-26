@@ -23233,6 +23233,20 @@ async function processTakbisFile(file) {
 // Tek kayıtlı bir PDF'te başlık yalnızca 1 kez bulunur → tek blok (tüm
 // rows, başlıktan ÖNCEKİ makbuz/dekont satırları dahil) döner — bu, MEVCUT
 // tek-kayıt davranışını (readTakbisPdf) BİREBİR korur, geriye dönük uyumlu.
+//
+// "Taşınmaz Kimlik No" etiketinin YANINDAKİ gerçek numarayı okur — yedek
+// ayırıcının (aşağıda) "etiket VAR mı" yerine "numara GERÇEKTEN DEĞİŞTİ
+// mi" sorusuna cevap verebilmesi için (bkz. splitMultiTakbisRowBlocks
+// 2026-08-26 düzeltmesi). `foldedWindowText` ZATEN foldTurkish'ten
+// geçmiş, boşluk-normalize edilmiş metin bekler (rakamlar foldTurkish'ten
+// ETKİLENMEZ, bu yüzden çağıran tarafın ZATEN hesapladığı folded pencere
+// doğrudan kullanılabilir — ikinci bir ayrıştırma YAPILMAZ).
+function extractTakbisIdentityNumberFromFoldedWindow(foldedWindowText) {
+  const match = String(foldedWindowText || "").match(/TASINMAZ\s+KIMLIK\s+NO\s*:?\s*(\d[\d.\s]{0,20}\d|\d)/);
+  if (!match) return "";
+  return match[1].replace(/\D/g, "");
+}
+
 function splitMultiTakbisRowBlocks(rows) {
   const startIndexes = [];
   (rows || []).forEach((row, index) => {
@@ -23250,13 +23264,37 @@ function splitMultiTakbisRowBlocks(rows) {
       .trim();
     if (/\bTAPU\s+KAYIT\s+BILGISI\b/.test(headerWindow)) startIndexes.push(index);
   });
+  // Kullanıcı bildirimi (2026-08-26, DÜZELTME): "liste birden buna
+  // dönüştü" (43 taşınmaz sekmesi) — bu yedek ayırıcı ÖNCEDEN "TAŞINMAZ
+  // KİMLİK NO" ETİKETİNİN VARLIĞINI tek başına bir sınır sayıyordu. Ama bu
+  // etiket, ÇOK SAYFALI tek bir taşınmazın TAKBİS raporunda HER SAYFADA
+  // (üstbilgi/dipnot gibi) TEKRARLANABİLİR — salt varlığı GÜVENİLİR bir
+  // sınır DEĞİLDİR. Artık etiketin YANINDAKİ GERÇEK NUMARA okunur (bkz.
+  // extractTakbisIdentityNumberFromFoldedWindow); numara BİR ÖNCEKİ
+  // sınırdakiyle AYNIYSA (aynı taşınmazın sayfa tekrarı) yeni bir sınır
+  // SAYILMAZ — yalnızca numara GERÇEKTEN DEĞİŞTİĞİNDE (farklı bir
+  // taşınmaza geçildiğinde) yeni blok başlar. Numara hiç okunamazsa
+  // (beklenmeyen bir format) ESKİ (güvenli tarafta kalan, her zaman bölen)
+  // davranış korunur.
   const identityIndexes = [];
+  let lastIdentityValue = null;
   (rows || []).forEach((row, index) => {
     const current = foldTurkish(row?.text || "")
       .replace(/[\u00A0\u2007\u202F]/g, " ")
       .replace(/\s+/g, " ")
       .trim();
-    if (/\bTASINMAZ\s+KIMLIK\s+NO\b/.test(current)) identityIndexes.push(index);
+    if (!/\bTASINMAZ\s+KIMLIK\s+NO\b/.test(current)) return;
+    const identityWindow = (rows || [])
+      .slice(index, index + 3)
+      .map((candidate) => foldTurkish(candidate?.text || ""))
+      .join(" ")
+      .replace(/[   ]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    const identityValue = extractTakbisIdentityNumberFromFoldedWindow(identityWindow);
+    if (identityValue && identityValue === lastIdentityValue) return;
+    identityIndexes.push(index);
+    if (identityValue) lastIdentityValue = identityValue;
   });
   // Bazı PDF.js çıktılarında başlık harf harf öğelere ayrıldığı için
   // readTakbisPdfRows() filtresinden sonra hiç başlık satırı kalmayabilir.

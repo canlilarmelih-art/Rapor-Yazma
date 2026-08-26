@@ -39,7 +39,7 @@ function extractFunction(name) {
   throw new Error(`Fonksiyon gövdesi kapanmadı: ${name}`);
 }
 
-const functionNames = ["foldTurkish", "splitMultiTakbisRowBlocks"];
+const functionNames = ["foldTurkish", "extractTakbisIdentityNumberFromFoldedWindow", "splitMultiTakbisRowBlocks"];
 const sandboxSource = `${functionNames.map(extractFunction).join("\n")}\nreturn { ${functionNames.join(", ")} };`;
 // eslint-disable-next-line no-new-func
 const fns = new Function(sandboxSource)();
@@ -168,6 +168,37 @@ function row(text) {
   assert.equal(blocks[0][0].text, "Taşınmaz Kimlik No: 96455493", "İlk yedek blok ilk kimlik satırından başlamalı.");
   assert.equal(blocks[1][0].text, "Taşınmaz Kimlik No: 96455499", "İkinci yedek blok ikinci kimlik satırından başlamalı.");
   console.log("Kimlik numarasi yedek ayirma testi tamam.");
+}
+
+// --- 7) REGRESYON (2026-08-26, kullanıcı bildirimi: "liste birden buna --
+// dönüştü", 43 taşınmaz sekmesi): AYNI kimlik numarası ÇOK SAYFADA -------
+// (üstbilgi/dipnot gibi) TEKRARLANIYORSA bunlar TEK bir taşınmaz sayılmalı,
+// yalnızca numara GERÇEKTEN DEĞİŞTİĞİNDE yeni blok başlamalı -------------
+{
+  const rows = [
+    row("Makbuz ve başvuru satırı"),
+    row("Taşınmaz Kimlik No: 96455493"), // 1. taşınmaz, sayfa 1
+    row("Mülkiyet Bilgileri - Sayfa 1 devamı"),
+    row("Taşınmaz Kimlik No: 96455493"), // AYNI tasinmaz, sayfa 2 (ustbilgi tekrari)
+    row("Takyidat Bilgileri - Sayfa 2 devamı"),
+    row("Taşınmaz Kimlik No: 96455493"), // AYNI tasinmaz, sayfa 3 (ustbilgi tekrari)
+    row("Ekler - Sayfa 3 devamı"),
+    row("Taşınmaz Kimlik No: 96455499"), // 2. (GERCEKTEN FARKLI) tasinmaz basliyor
+    row("Mülkiyet Bilgileri - 2. taşınmaz"),
+    row("Taşınmaz Kimlik No: 96455499"), // AYNI 2. tasinmaz, kendi sayfa tekrari
+    row("Takyidat Bilgileri - 2. taşınmaz devamı"),
+  ];
+  const blocks = fns.splitMultiTakbisRowBlocks(rows);
+  assert.equal(blocks.length, 2, `AYNI kimlik numarasinin sayfa tekrarlari YENI blok SAYILMAMALI - yalnizca GERCEKTEN farkli numaraya gecince (96455499) yeni blok baslamali, bulunan blok sayisi: ${blocks.length}`);
+  assert.ok(
+    blocks[0].every((r) => !r.text.includes("96455499")) && blocks[0].some((r) => r.text.includes("Sayfa 3 devamı")),
+    `Ilk blok 1. tasinmazin TUM sayfalarini (3 sayfa tekrari dahil) icermeli, 2. tasinmaza hic tasmamali, bulunan: ${JSON.stringify(blocks[0].map((r) => r.text))}`
+  );
+  assert.ok(
+    blocks[1].every((r) => !r.text.includes("Sayfa 1") && !r.text.includes("Sayfa 2") && !r.text.includes("Sayfa 3")),
+    `Ikinci blok yalnizca 2. tasinmazin satirlarini icermeli, bulunan: ${JSON.stringify(blocks[1].map((r) => r.text))}`
+  );
+  console.log("AYNI kimlik numarasinin cok sayfada tekrari (REGRESYON) testi tamam.");
 }
 
 console.log("Coklu TAKBIS PDF bolme testleri basarili.");
