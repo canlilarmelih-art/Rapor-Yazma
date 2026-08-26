@@ -1,5 +1,17 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.569 - 2026-08-27 - Çevre Özellikleri: TEK ortak blokta olan taşınmazlar artık site/blok adıyla belirtiliyor
+
+- Kullanıcı, 0.0.568'in düzeltmesini ("... yer almaktadır.") onayladıktan hemen sonra takip talebi verdi: "blok var ve taşınmazlar tek blokta yer alıyor ise benim örneğimde taşınmazlar bloklu bir sitede yer alıyor hepsi A blokta yer alıyor. bu durumda ... üzerinde (var ise site apartman adı) sitesi/apartmanı içinde A Blokta yer almaktadırlar şeklinde olmalı."
+- **Değişiklik**: `getSharedNarrativeParcelPhrase()`'in TEK ortak blok adı bulunan durumu (`blocks.length === 1`) artık yalnızca genel "yer almaktadır" DEĞİL, hangi blokta (ve varsa hangi site/apartmanda) olduğunu açıkça belirtiyor:
+  - Site/apartman adı YOKSA: `"... üzerinde A Blokta yer almaktadırlar."`
+  - Site/apartman adı VARSA: `"... üzerinde Nurol Sitesi içinde A Blokta yer almaktadırlar."`
+  - Site adının "Sitesi"/"Apartmanı" ekini doğru seçmesi için `buildOpenAddressText()`'in ZATEN var olan `formatOpenAddressBuildingName()` yardımcısı YENİDEN KULLANILDI — kullanıcı adı çıplak ("Nurol") ya da zaten ekli ("Nurol Sitesi"/"Nurol Apartmanı") girmiş olsun fark etmeksizin doğru sonucu üretir, yeni bir tahmin mekanizması İCAT EDİLMEDİ.
+  - 2+ FARKLI blok adı olan dal ("... A, B bloklarda yer almaktadır") ve blok adı hiç YOK dalı ("... yer almaktadır") DEĞİŞMEDİ — bu talep yalnızca "hepsi TEK/AYNI blokta" durumunu kapsıyor.
+- Test: `tools/test-multi-environment-subject.js`'e kullanıcının TAM senaryosunu (site adı olmadan + "Nurol" site adıyla) doğrulayan 2 yeni regresyon senaryosu eklendi; sandbox'a `formatOpenAddressBuildingName`/`openAddressStyleVariants`/`normalizeBlockLabelPrefixForAttribution` yeni bağımlılıkları eklendi. `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` cache-buster `?v=20260827-1000`.
+- Canlı tarayıcı testi yapılamadı — kullanıcının gerçek raporunda (hepsi A Blokta, sitesi varsa) "Çevre Özellikleri"ni yeniden ürettirip cümlenin artık "... 1 parsel üzerinde (varsa site adı) Sitesi içinde A Blokta yer almaktadırlar." şeklinde geldiğini doğrulaması gerekir.
+
 ## 0.0.568 - 2026-08-27 - Çevre Özellikleri: çoklu taşınmaz cümlesi yüklemsiz/yarım bitiyordu
 
 - Kullanıcı, gerçek bir "Çoklu Talep" raporunun "Çevre Özellikleri" çıktısını paylaştı: "Ekspertize konu taşınmazlar, Bursa ili, Osmangazi ilçesi, Yunuseli mahallesinde, 11652 ada 1 parsel üzerinde." — "ilk cümle eksik kalmış nedense." Cümle gerçekten de YÜKLEMSİZ bitiyordu ("üzerinde." — "üzerinde NE?" sorusu cevapsız kalıyor).

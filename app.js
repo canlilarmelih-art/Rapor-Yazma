@@ -6207,17 +6207,36 @@ function getSharedNarrativeParcelPhrase() {
     .map((unit) => String(unit.titleBlockName || unit.addressBlockName || unit.blockName || "").trim())
     .filter(Boolean))];
   // Kullanıcı bildirimi (2026-08-27): "ilk cümle eksik kalmış nedense" —
-  // tek/ayırt edici blok adı YOKKEN (blocks.length <= 1) bu ifade
+  // tek/ayırt edici blok adı YOKKEN (blocks.length === 0) bu ifade
   // "... parsel üzerinde" ile YÜKLEMSİZ bitiyordu; çağıran taraf
   // (formatZiraatLocationSubject) bunu sadece bir virgüllü listeye ekleyip
   // sonuna çıplak bir nokta koyduğundan cümle "... 1 parsel üzerinde."
   // şeklinde YARIM kalıyordu. 2+ farklı blok adı varken KULLANILAN "yer
-  // almaktadır" yüklemi BURADA da (tek/blok-adsız durumda) kullanılır —
-  // iki dal ARTIK HER ZAMAN tam bir yüklemle bitiyor.
-  const blockPhrase = blocks.length > 1
-    ? ` ${blocks.join(", ")} bloklarda yer almaktadır`
-    : " yer almaktadır";
-  return `${firstBlock} ada ${firstParcel} parsel üzerinde${blockPhrase}`;
+  // almaktadır" yüklemi BURADA da (blok adsız durumda) kullanılır — üç dal
+  // ARTIK HER ZAMAN tam bir yüklemle bitiyor.
+  if (blocks.length > 1) {
+    return `${firstBlock} ada ${firstParcel} parsel üzerinde ${blocks.join(", ")} bloklarda yer almaktadır`;
+  }
+  // Kullanıcı takip talebi (2026-08-27): "blok var ve taşınmazlar tek
+  // blokta yer alıyor ise ... hepsi A blokta yer alıyor ... (var ise site
+  // apartman adı) sitesi/apartmanı içinde A Blokta yer almaktadırlar
+  // şeklinde olmalı" — TÜM taşınmazlar AYNI (tek) blok adını paylaşıyorsa
+  // yalnızca genel "yer almaktadır" demek yerine, hangi site/apartmanda
+  // ve hangi blokta olduğu AÇIKÇA belirtilir. Site/apartman adının
+  // "Sitesi"/"Apartmanı" ekini doğru seçmesi için buildOpenAddressText'in
+  // ZATEN var olan formatOpenAddressBuildingName() yardımcısı (bkz. o
+  // fonksiyonun yorumu) YENİDEN KULLANILIR — kullanıcı adı çıplak
+  // ("Nurol") ya da zaten ekli ("Nurol Sitesi"/"Nurol Apartmanı")
+  // girmiş olsun fark etmeksizin doğru sonucu üretir.
+  if (blocks.length === 1) {
+    const siteNameRaw = String(
+      units.find((unit) => String(unit.addressSiteName || "").trim())?.addressSiteName || ""
+    ).trim();
+    const siteText = siteNameRaw ? `${formatOpenAddressBuildingName(siteNameRaw, openAddressStyleVariants[0])} içinde ` : "";
+    const blockPrefix = normalizeBlockLabelPrefixForAttribution(blocks[0]) || blocks[0];
+    return `${firstBlock} ada ${firstParcel} parsel üzerinde ${siteText}${blockPrefix} Blokta yer almaktadırlar`;
+  }
+  return `${firstBlock} ada ${firstParcel} parsel üzerinde yer almaktadır`;
 }
 function pluralizeEnvironmentalSubjectText(value, enabled = true) {
   if (!enabled || !value) return value;
