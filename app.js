@@ -18829,7 +18829,7 @@ function createBuildingInspectionExplanationPreview() {
   const textarea = document.createElement("textarea");
   textarea.rows = 3;
   textarea.readOnly = true;
-  textarea.value = state.fields.buildingInspectionExplanation || buildBuildingInspectionExplanation();
+  textarea.value = state.fields.buildingInspectionExplanation || normalizeReportDescriptionText(buildBuildingInspectionExplanationParts().join("\n\n"));
   label.append(textarea);
   return label;
 }
@@ -28690,6 +28690,65 @@ function buildDefaultDocumentReviewInstitution() {
   return district ? `${district} Belediyesi` : "";
 }
 
+// Kullanıcı talebi (2026-08-26): "Cezai Karar Açıklaması Statik Uygunluk
+// Açıklaması Yapı Denetim Açıklaması bu açıklamalar çoğul olmalı" — bu üç
+// açıklama DOCUMENTS_BLOCK_SHARED_FIELD_KEYS'te (blok içinde paylaşımlı),
+// ama üretimleri (buildPenaltyDecisionExplanation/buildStaticSuitabilityExplanation/
+// buildBuildingInspectionExplanation) yalnızca AKTİF bloğun alanlarını
+// okuyordu — "Çoklu Talep" + FARKLI bloklarda bu üç sorunun cevabı FARKLI
+// olabildiğinde (ör. A Blok'un yapı denetim sözleşmesi aktif, B Blok'unki
+// feshedilmiş) açıklama yalnızca aktif bloğu yansıtıyor, diğer(ler)i
+// SESSİZCE kayboluyordu — buildEkbExplanationParts/buildProjectReviewExplanationParts
+// ile AYNI sınıf kusur. Bu genel yardımcı, blok gruplama aktifken HER
+// bloğu kendi temsilcisinin alanlarıyla (state.fields GEÇİCİ değiştirilerek,
+// buildProjectReviewConsolidatedParts'taki AYNI teknik) hesaplar; AYNI
+// metni üreten bloklar TEK (atıfsız/ortak) cümlede birleşir, FARKLI metin
+// üreten bloklar "{Blok atfı}: {cümle}" biçiminde kendi ayrı cümlesinde
+// kalır. Bu üç açıklamanın (EKB/Proje İnceleme'nin aksine) "ekspertize
+// konu bağımsız bölüm/taşınmaza ait" gibi atıf eklenebilecek HAZIR bir
+// dilbilgisel yuva İÇERMEDİĞİNDEN (her biri kendi serbest cümle yapısını
+// kullanıyor, 5 varyantlı olanlar dahil), atıf öneki genel/güvenli bir
+// "Etiket: Cümle" kalıbıyla (0.0.564'ün "Kısa Etiketler: Not." kalıbıyla
+// AYNI ilke) eklenir — HER varyantın kendi grameriyle "doğal" bir atıf
+// noktası bulmaya çalışmak yerine, HER ZAMAN doğru/anlaşılır sonuç verir.
+function buildDocumentsBlockAttributedExplanationParts(buildExplanationFn) {
+  if (!isDocumentsBlockGroupingActive()) {
+    const single = buildExplanationFn();
+    return single ? [single] : [];
+  }
+  const originalFields = state.fields;
+  const units = buildAllTitleUnitsForSummaryTable();
+  const groups = computeDocumentsBlockGroups(units);
+  const byText = new Map();
+  const order = [];
+  groups.forEach((group) => {
+    const blockLabel = computeDocumentsBlockLabel(group, groups);
+    const representativeFields = units[group.unitIndices[0]]?.fields || {};
+    state.fields = { ...originalFields, ...representativeFields };
+    try {
+      const text = buildExplanationFn();
+      if (!text) return;
+      if (!byText.has(text)) {
+        byText.set(text, []);
+        order.push(text);
+      }
+      byText.get(text).push(blockLabel);
+    } finally {
+      state.fields = originalFields;
+    }
+  });
+  // TÜM bloklar (metin üreten bloklar) AYNI sonuca ulaştıysa (order.length
+  // <= 1) atıf eklenmez — blok sayısı 1'den fazla olsa bile ortak/tek
+  // cümle yeterlidir (kullanıcı: "hepsi aynıysa blok adı tekrar etmeden
+  // tek genel cümle kurulmalı", buildProjectReviewConsolidatedSentences
+  // ile AYNI ilke).
+  if (order.length <= 1) return order;
+  return order.map((text) => {
+    const attribution = formatDocumentBlockAttributionPhrase(byText.get(text));
+    return attribution ? normalizeReportDescriptionText(`${attribution}: ${text}`) : text;
+  });
+}
+
 function buildPenaltyDecisionExplanation() {
   const decision = normalizeYesNoChoice(state.fields.penaltyDecision);
   if (!["Evet", "Hayır"].includes(decision)) return "";
@@ -28739,6 +28798,12 @@ function formatPenaltyDecisionArchiveInstitution(value) {
   return institution;
 }
 
+// buildEkbExplanationParts()/buildProjectReviewExplanationParts() ile AYNI
+// desen — bkz. buildDocumentsBlockAttributedExplanationParts yorumu.
+function buildPenaltyDecisionExplanationParts() {
+  return buildDocumentsBlockAttributedExplanationParts(buildPenaltyDecisionExplanation);
+}
+
 function refreshPenaltyDecisionExplanationFromCurrentFields(changedKey = "") {
   const watchedKeys = [
     "penaltyDecision",
@@ -28755,7 +28820,7 @@ function refreshPenaltyDecisionExplanationFromCurrentFields(changedKey = "") {
     ensureDocumentReviewInstitutionDefault();
   }
 
-  state.fields.penaltyDecisionExplanation = buildPenaltyDecisionExplanation();
+  state.fields.penaltyDecisionExplanation = normalizeReportDescriptionText(buildPenaltyDecisionExplanationParts().join("\n\n"));
   const control = document.querySelector('[data-field="penaltyDecisionExplanation"]');
   if (control && control.value !== state.fields.penaltyDecisionExplanation) {
     control.value = state.fields.penaltyDecisionExplanation || "";
@@ -28806,6 +28871,11 @@ function formatStaticSuitabilityInstitution(value) {
   return buildDefaultDocumentReviewInstitution();
 }
 
+// buildPenaltyDecisionExplanationParts() ile AYNI desen.
+function buildStaticSuitabilityExplanationParts() {
+  return buildDocumentsBlockAttributedExplanationParts(buildStaticSuitabilityExplanation);
+}
+
 function refreshStaticSuitabilityExplanationFromCurrentFields(changedKey = "") {
   const watchedKeys = [
     "staticSuitability",
@@ -28819,7 +28889,7 @@ function refreshStaticSuitabilityExplanationFromCurrentFields(changedKey = "") {
     ensureDocumentReviewInstitutionDefault();
   }
 
-  state.fields.staticSuitabilityExplanation = buildStaticSuitabilityExplanation();
+  state.fields.staticSuitabilityExplanation = normalizeReportDescriptionText(buildStaticSuitabilityExplanationParts().join("\n\n"));
   const control = document.querySelector('[data-field="staticSuitabilityExplanation"]');
   if (control && control.value !== state.fields.staticSuitabilityExplanation) {
     control.value = state.fields.staticSuitabilityExplanation || "";
@@ -28919,6 +28989,11 @@ function buildBuildingInspectionTerminationExplanation() {
   return normalizeReportDescriptionText(buildingInspectionTerminatedVariants[variantIndex](dateText, municipality, terminationDate, level));
 }
 
+// buildPenaltyDecisionExplanationParts() ile AYNI desen.
+function buildBuildingInspectionExplanationParts() {
+  return buildDocumentsBlockAttributedExplanationParts(buildBuildingInspectionExplanation);
+}
+
 function refreshBuildingInspectionExplanationFromCurrentFields(changedKey = "") {
   const watchedKeys = [
     "buildingInspectionContractActive",
@@ -28931,7 +29006,7 @@ function refreshBuildingInspectionExplanationFromCurrentFields(changedKey = "") 
     "titleDistrict",
   ];
   if (changedKey && !watchedKeys.includes(changedKey)) return;
-  state.fields.buildingInspectionExplanation = buildBuildingInspectionExplanation();
+  state.fields.buildingInspectionExplanation = normalizeReportDescriptionText(buildBuildingInspectionExplanationParts().join("\n\n"));
   const control = document.querySelector('[data-field="buildingInspectionExplanation"]');
   if (control && control.value !== state.fields.buildingInspectionExplanation) {
     control.value = state.fields.buildingInspectionExplanation || "";
@@ -38980,19 +39055,19 @@ function collectGeneratedTextPlaceholders() {
       category: "Belgeler ve Proje",
       key: "penalty_decision_explanation_text",
       title: "Cezai Karar Açıklaması",
-      value: state.fields.penaltyDecisionExplanation || buildPenaltyDecisionExplanation(),
+      value: state.fields.penaltyDecisionExplanation || normalizeReportDescriptionText(buildPenaltyDecisionExplanationParts().join("\n\n")),
     },
     {
       category: "Belgeler ve Proje",
       key: "static_suitability_explanation_text",
       title: "Statik Uygunluk Açıklaması",
-      value: isLandProjectReview() ? "" : (state.fields.staticSuitabilityExplanation || buildStaticSuitabilityExplanation()),
+      value: isLandProjectReview() ? "" : (state.fields.staticSuitabilityExplanation || normalizeReportDescriptionText(buildStaticSuitabilityExplanationParts().join("\n\n"))),
     },
     {
       category: "Belgeler ve Proje",
       key: "building_inspection_explanation_text",
       title: "Yapı Denetim Açıklaması",
-      value: isLandProjectReview() ? "" : (state.fields.buildingInspectionExplanation || buildBuildingInspectionExplanation()),
+      value: isLandProjectReview() ? "" : (state.fields.buildingInspectionExplanation || normalizeReportDescriptionText(buildBuildingInspectionExplanationParts().join("\n\n"))),
     },
     {
       category: "Belgeler ve Proje",

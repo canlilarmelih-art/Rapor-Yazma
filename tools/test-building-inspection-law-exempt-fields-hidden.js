@@ -119,6 +119,16 @@ function runScenario({ documents = [], contractActive = "", landReport = false }
       return control;
     },
     refreshBuildingInspectionExplanationFromCurrentFields: () => {},
+    // Bu testin kapsami disi: blok-atifli cogullama (0.0.567,
+    // buildDocumentsBlockAttributedExplanationParts) AYRI bir testte
+    // (test-documents-block-explanation-pluralization.js) kapsanir; burada
+    // createBuildingInspectionExplanationPreview()'in fallback deger
+    // hesaplamasi icin (readOnly onizleme, bu testin ODAGI DEGIL) tekil
+    // builder'a delege eden hafif bir stub yeterli.
+    buildBuildingInspectionExplanationParts: () => {
+      const text = context.buildBuildingInspectionExplanation();
+      return text ? [text] : [];
+    },
     // Bu testin kapsami: kanun-kapsam-disi hucre gizleme mantigi.
     // Ayricalikli-kullanici gorunurlugu (sensitiveOnly) ayri bir testte
     // (test-user-approval-flow.js) kapsanir; burada her zaman gorunur kabul
