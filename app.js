@@ -2961,24 +2961,28 @@ function removeActiveTitleUnitTab() {
 // — getTakbisDuplicateKey, boş anahtarda SESSİZCE ATLANIR — devreye
 // giremez), HER kayıt AYRI bir taşınmaz sekmesi olarak eklenip GERÇEKTE
 // aynı bağımsız bölüm onlarca kez çoğalabiliyor. Bu KÖK NEDENİ (TAKBİS
-// ayrıştırma güvenilirliği) DÜZELTMEZ — bunun yerine, kullanıcının ZATEN
-// OLUŞMUŞ (canlı) yinelenen taşınmazları TEK tıkla, güvenli şekilde
+// ayrıştırma güvenilirliği, bkz. splitMultiTakbisRowBlocks 2026-08-26
+// düzeltmesi — AYRICA yapıldı) DÜZELTMEZ — bunun yerine, kullanıcının
+// ZATEN OLUŞMUŞ (canlı) yinelenen taşınmazları TEK tıkla, güvenli şekilde
 // temizlemesini sağlayan bir KURTARMA aracıdır.
 //
-// Yinelenen tespiti getTakbisDuplicateKey()'DEN (Taşınmaz Kimlik No +
-// Rapor Tarihi — GÜVENİLMEZ ÇIKTI, yukarıdaki senaryoda boş kalıyordu)
-// DAHA GENİŞ/GÜVENİLİR bir anahtar kullanır: Ada + Parsel + Bağımsız
-// Bölüm No. Gerçek bir raporda İKİ FARKLI bağımsız bölüm asla AYNI (Ada,
-// Parsel, BB No) üçlüsünü paylaşamaz — bu üçü birebir aynıysa bu,
-// KESİNLİKLE aynı fiziksel bağımsız bölümün yinelenen bir kopyasıdır.
+// DÜZELTME (2026-08-26, KRİTİK — kullanıcı bildirimi: "yinelenen taşınmaz
+// diye birşey yok ıd numaralarına baktım zaten yinelenen bir taşınmaz
+// yok" + "gayrimenkulün yinelendiğini taşınmaz ıd no dışında
+// belirleyemezsin"): İLK sürüm Ada + Parsel + Bağımsız Bölüm No
+// üçlüsünü kullanıyordu — bu YANLIŞTI ve GERÇEK VERİ KAYBINA yol açtı.
+// Aynı ada/parselde birden fazla BLOK varsa (çok yaygın bir durum) ve her
+// blok kendi BB No'larını "1"den başlatıyorsa, FARKLI bloklardaki GERÇEK,
+// birbirinden bağımsız bağımsız bölümler AYNI (Ada, Parsel, BB No)
+// üçlüsünü paylaşabilir — üçlü Blok Adını (titleBlockName) HİÇ
+// içermiyordu. Kullanıcının açıkça belirttiği gibi, bir gayrimenkulün
+// yinelendiğini GÜVENİLİR şekilde belirlemenin TEK yolu TAKBİS'in kendi
+// benzersiz kimliğidir: **Taşınmaz Kimlik No**. Bu alan BOŞSA (okunamamış/
+// eksikse) o taşınmaz ARTIK HİÇBİR ŞEYLE eşleştirilmez — yanlış
+// eşleştirip veri kaybına yol açmaktansa, hiç eşleştirmemek (temkinli
+// tarafta kalmak) tercih edilir.
 function getTitleUnitDuplicateKey(fields = {}) {
-  const parts = [
-    normalizeTakbisDuplicatePart(fields.blockNo),
-    normalizeTakbisDuplicatePart(fields.parcelNo),
-    normalizeTakbisDuplicatePart(fields.unitNo),
-  ];
-  if (!parts[0] || !parts[1] || !parts[2]) return "";
-  return parts.join("|");
+  return normalizeTakbisDuplicatePart(fields.titlePropertyId);
 }
 
 // TÜM taşınmazları getTitleUnitDuplicateKey()'e göre gruplar; 2+ üyeli
@@ -3040,18 +3044,18 @@ function createRemoveDuplicateTitleUnitsControl() {
   button.type = "button";
   button.className = "title-unit-tab-remove title-unit-remove-duplicates-button";
   button.textContent = `⚠ ${totalRemovable} Yinelenen Taşınmazı Temizle`;
-  button.title = "Aynı Ada/Parsel/Bağımsız Bölüm No'ya sahip (genellikle TAKBİS içe aktarımından kaynaklanan) yinelenen taşınmazları kaldırır.";
+  button.title = "Aynı Taşınmaz Kimlik No'ya sahip (genellikle TAKBİS içe aktarımından kaynaklanan) yinelenen taşınmazları kaldırır.";
   button.addEventListener("click", () => {
     const allUnits = buildAllTitleUnitsForSummaryTable();
     const summary = groups
       .map((group, groupIndex) => {
         const keepLabel = computeTitleUnitTabLabel(allUnits[group.keepIndex], allUnits) || group.key;
-        return `${groupIndex + 1}. ${keepLabel} — ${group.removeIndexes.length} yinelenen kopya kaldırılacak (1 tanesi korunacak).`;
+        return `${groupIndex + 1}. Taşınmaz Kimlik No ${group.key} (${keepLabel}) — ${group.removeIndexes.length} yinelenen kopya kaldırılacak (1 tanesi korunacak).`;
       })
       .join("\n");
     const remainingCount = getTitleUnitCount() - totalRemovable;
     const confirmed = window.confirm(
-      `Aşağıdaki yinelenen taşınmaz grupları bulundu:\n\n${summary}\n\nToplam ${totalRemovable} yinelenen taşınmaz KALICI OLARAK silinecek (${remainingCount} taşınmaz kalacak). Bu işlem GERİ ALINAMAZ. Devam edilsin mi?`
+      `Aşağıdaki, AYNI Taşınmaz Kimlik No'yu paylaşan yinelenen taşınmaz grupları bulundu:\n\n${summary}\n\nToplam ${totalRemovable} yinelenen taşınmaz KALICI OLARAK silinecek (${remainingCount} taşınmaz kalacak). Bu işlem GERİ ALINAMAZ. Devam edilsin mi?`
     );
     if (!confirmed) return;
     removeDuplicateTitleUnitTabs(groups);

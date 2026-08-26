@@ -1,29 +1,35 @@
 "use strict";
 
-// Yinelenen Taşınmaz Temizliği (2026-08-26) — kullanıcı bildirimi: "liste
-// birden buna dönüştü böyle bir hata aldım" (43 taşınmaz sekmesi, TAKBİS
-// içe aktarma sonrası). Kök neden (ayrı bir soruşturma konusu — bu dosya
-// KÖK NEDENİ değil, KURTARMA ARACINI test eder): TAKBİS içe aktarmanın
-// KENDİ yinelenen-önleme kontrolü (getTakbisDuplicateKey, Taşınmaz Kimlik
-// No + Rapor Tarihi) bu iki alan güvenilir okunamadığında SESSİZCE devre
-// dışı kalıyor (boş anahtar kontrolü atlanıyor) — çok sayfalı bir PDF'in
-// her sayfası/bölümü AYRI bir taşınmaz sekmesi olarak eklenebiliyor.
+// Yinelenen Taşınmaz Temizliği (2026-08-26, DÜZELTİLDİ) — kullanıcı
+// bildirimi: "liste birden buna dönüştü böyle bir hata aldım" (43
+// taşınmaz sekmesi, TAKBİS içe aktarma sonrası). Kök neden (ayrı bir
+// soruşturma konusu, splitMultiTakbisRowBlocks 2026-08-26 düzeltmesiyle
+// giderildi — bu dosya KÖK NEDENİ değil, KURTARMA ARACINI test eder).
 //
-// Bu dosya, kullanıcının ZATEN OLUŞMUŞ yinelenen taşınmazları TEK tıkla
-// temizleyebileceği KURTARMA aracını test eder:
-//  1) getTitleUnitDuplicateKey(): Ada+Parsel+BB No birleşimi, üçünden
-//     biri eksikse boş (güvenlik ağı — asla yanlışlıkla eşleştirme
-//     yapmamalı).
-//  2) findDuplicateTitleUnitGroups(): 2+ üyeli (gerçek yinelenen)
-//     gruplar; keepIndex HER ZAMAN grubun EN KÜÇÜK index'i; tekil
-//     (yinelenmeyen) taşınmazlar dönen listede YER ALMAZ.
-//  3) removeDuplicateTitleUnitTabs(): BÜYÜKTEN KÜÇÜĞE silme sırası (index
-//     kayması olmadan doğru hedefleri siler); index 0 (birincil) ASLA
-//     silinmez; kalan taşınmazların verisi BOZULMAZ.
-//  4) Kullanıcının GERÇEK senaryosuna yakın bir uçtan uca regresyon: 3
-//     GERÇEK bağımsız bölüm, her biri birkaç kez yinelenmiş (TAKBİS çok
-//     sayfalı içe aktarma benzetimi) -> temizlik sonrası TAM 3 taşınmaz
-//     kalmalı, her biri KENDİ doğru verisiyle.
+// KRİTİK DÜZELTME (aynı gün, kullanıcı bildirimi: "yinelenen taşınmaz
+// diye birşey yok ıd numaralarına baktım zaten yinelenen bir taşınmaz
+// yok" + "gayrimenkulün yinelendiğini taşınmaz ıd no dışında
+// belirleyemezsin"): İLK sürüm Ada + Parsel + Bağımsız Bölüm No üçlüsünü
+// kullanıyordu — bu, AYNI ada/parselde birden fazla blok varsa ve her
+// blok kendi BB No'larını "1"den başlatıyorsa, FARKLI bloklardaki GERÇEK
+// bağımsız bölümleri YANLIŞLIKLA yinelenen sayıp SİLİYORDU (GERÇEK VERİ
+// KAYBI, kullanıcı tarafından doğrulandı). Artık TEK güvenilir sinyal
+// kullanılıyor: **Taşınmaz Kimlik No** (titlePropertyId) — TAKBİS'in
+// kendi benzersiz kimliği. Bu alan boşsa o taşınmaz ASLA eşleştirilmez.
+//
+// Bu dosya kapsamı:
+//  1) getTitleUnitDuplicateKey(): SADECE titlePropertyId (normalize
+//     edilmiş) — boşsa boş anahtar.
+//  2) findDuplicateTitleUnitGroups(): 2+ üyeli (gerçek yinelenen, AYNI
+//     Taşınmaz Kimlik No'yu paylaşan) gruplar; keepIndex HER ZAMAN
+//     grubun EN KÜÇÜK index'i; tekil taşınmazlar dönen listede YER ALMAZ;
+//     Taşınmaz Kimlik No'su boş olan taşınmazlar ASLA eşleştirilmez.
+//  3) REGRESYON (kullanıcının bildirdiği GERÇEK hata): AYNI Ada/Parsel/BB
+//     No'ya sahip ama FARKLI bloklardaki (dolayısıyla FARKLI Taşınmaz
+//     Kimlik No'lu) GERÇEK bağımsız bölümler ARTIK yinelenen SAYILMIYOR.
+//  4) removeDuplicateTitleUnitTabs(): BÜYÜKTEN KÜÇÜĞE silme sırası; index
+//     0 (birincil) ASLA silinmez; kalan taşınmazların verisi BOZULMAZ.
+//  5) Yinelenen yoksa no-op.
 
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -113,24 +119,23 @@ function freshState(fields, titleUnits = []) {
 // --- 1) getTitleUnitDuplicateKey() ------------------------------------------
 {
   assert.equal(
-    fns.getTitleUnitDuplicateKey({ blockNo: "100", parcelNo: "5", unitNo: "3" }),
-    fns.getTitleUnitDuplicateKey({ blockNo: " 100 ", parcelNo: "5", unitNo: "3" }),
+    fns.getTitleUnitDuplicateKey({ titlePropertyId: "96455493" }),
+    fns.getTitleUnitDuplicateKey({ titlePropertyId: " 96455493 " }),
     "Bosluk farki anahtar eslesmesini bozmamali (normalizeTakbisDuplicatePart)."
   );
-  assert.equal(fns.getTitleUnitDuplicateKey({ blockNo: "100", parcelNo: "5" }), "", "BB No eksikse (guvenlik agi) bos anahtar donmeli - yanlislikla eslestirme YAPILMAMALI.");
-  assert.equal(fns.getTitleUnitDuplicateKey({ parcelNo: "5", unitNo: "3" }), "", "Ada eksikse bos anahtar donmeli.");
-  assert.equal(fns.getTitleUnitDuplicateKey({}), "", "Tum alanlar eksikse bos anahtar donmeli.");
+  assert.equal(fns.getTitleUnitDuplicateKey({}), "", "Taşınmaz Kimlik No yoksa bos anahtar donmeli - yanlislikla eslestirme YAPILMAMALI.");
+  assert.equal(fns.getTitleUnitDuplicateKey({ blockNo: "100", parcelNo: "1", unitNo: "1" }), "", "Ada/Parsel/BB No DOLU olsa bile Taşınmaz Kimlik No yoksa bos anahtar donmeli (ESKİ, YANLIŞ davranış GERİ GELMEMELİ).");
   console.log("getTitleUnitDuplicateKey() testi tamam.");
 }
 
 // --- 2) findDuplicateTitleUnitGroups() ---------------------------------------
 {
   const state = freshState(
-    { blockNo: "100", parcelNo: "1", unitNo: "2" }, // index 0 - YINELENEN (index 2 ile ayni)
+    { titlePropertyId: "96455493" }, // index 0 - YINELENEN (index 2 ile ayni Taşınmaz Kimlik No)
     [
-      { fields: { blockNo: "100", parcelNo: "1", unitNo: "5" } }, // index 1 - TEKIL (baska hicbir tasinmazla eslesmiyor)
-      { fields: { blockNo: "100", parcelNo: "1", unitNo: "2" } }, // index 2 - index 0 ile YINELENEN
-      { fields: {} }, // index 3 - anahtar bos, yok sayilmali
+      { fields: { titlePropertyId: "96455500" } }, // index 1 - TEKIL
+      { fields: { titlePropertyId: "96455493" } }, // index 2 - index 0 ile YINELENEN
+      { fields: {} }, // index 3 - Taşınmaz Kimlik No bos, yok sayilmali
     ],
   );
   fns.setState(state);
@@ -141,20 +146,43 @@ function freshState(fields, titleUnits = []) {
   console.log("findDuplicateTitleUnitGroups() testi tamam.");
 }
 
-// --- 3) removeDuplicateTitleUnitTabs(): dogru hedefleri siler, digerlerini --
+// --- 3) KRİTİK REGRESYON: AYNI Ada/Parsel/BB No'ya sahip ama FARKLI ---------
+// (farklı Taşınmaz Kimlik No'lu) GERÇEK bağımsız bölümler ARTIK yinelenen --
+// SAYILMIYOR (kullanıcının bildirdiği GERÇEK veri kaybı senaryosu) ---------
+{
+  const state = freshState(
+    // A Blok'un "1" No'lu bağımsız bölümü.
+    { blockNo: "100", parcelNo: "1", titleBlockName: "A Blok", unitNo: "1", titlePropertyId: "111111", ownerName: "GERCEK-A1" },
+    [
+      // B Blok'un KENDİ "1" No'lu bağımsız bölümü — AYNI ada/parsel/BB No,
+      // ama FARKLI blok VE FARKLI Taşınmaz Kimlik No -> GERÇEKTEN farklı,
+      // birbirinden bağımsız bir bağımsız bölüm, YİNELENEN DEĞİL.
+      { fields: { blockNo: "100", parcelNo: "1", titleBlockName: "B Blok", unitNo: "1", titlePropertyId: "222222", ownerName: "GERCEK-B1" } },
+      // C Blok'un KENDİ "1" No'lu bağımsız bölümü — aynı mantık.
+      { fields: { blockNo: "100", parcelNo: "1", titleBlockName: "C Blok", unitNo: "1", titlePropertyId: "333333", ownerName: "GERCEK-C1" } },
+    ],
+  );
+  fns.setState(state);
+  const groups = fns.findDuplicateTitleUnitGroups();
+  assert.equal(groups.length, 0, `AYNI Ada/Parsel/BB No'yu paylaşan ama FARKLI Taşınmaz Kimlik No'lu (dolayısıyla GERÇEKTEN farklı) bağımsız bölümler yinelenen SAYILMAMALI, bulunan grup sayisi: ${groups.length}`);
+  console.log("KRITIK REGRESYON: farkli bloklardaki ayni BB No'lu GERCEK bagimsiz bolumler yinelenen SAYILMIYOR testi tamam.");
+}
+
+// --- 4) removeDuplicateTitleUnitTabs(): dogru hedefleri siler, digerlerini --
 // BOZMAZ, index 0 ASLA silinmez -------------------------------------------
 {
-  // 3 GERCEK bagimsiz bolum (BB No 1/2/3), her biri 2-3 kez YINELENMIS -
-  // kullanicinin gercek senaryosunun kucultulmus hali (43 yerine 3 gercek + 5 yinelenen = 8).
+  // 3 GERCEK bagimsiz bolum (farkli Taşınmaz Kimlik No), her biri 2-3 kez
+  // YINELENMIS - kullanicinin gercek senaryosunun kucultulmus hali (43
+  // yerine 3 gercek + 4 yinelenen = 7).
   const state = freshState(
-    { blockNo: "100", parcelNo: "1", unitNo: "1", ownerName: "GERCEK-1" }, // index 0 (birincil, ASLA silinmemeli)
+    { titlePropertyId: "111111", ownerName: "GERCEK-1" }, // index 0 (birincil, ASLA silinmemeli)
     [
-      { fields: { blockNo: "100", parcelNo: "1", unitNo: "2", ownerName: "GERCEK-2" } }, // index 1
-      { fields: { blockNo: "100", parcelNo: "1", unitNo: "1", ownerName: "YINELENEN-1a" } }, // index 2 - index 0'in kopyasi
-      { fields: { blockNo: "100", parcelNo: "1", unitNo: "3", ownerName: "GERCEK-3" } }, // index 3
-      { fields: { blockNo: "100", parcelNo: "1", unitNo: "2", ownerName: "YINELENEN-2a" } }, // index 4 - index 1'in kopyasi
-      { fields: { blockNo: "100", parcelNo: "1", unitNo: "1", ownerName: "YINELENEN-1b" } }, // index 5 - index 0'in 2. kopyasi
-      { fields: { blockNo: "100", parcelNo: "1", unitNo: "3", ownerName: "YINELENEN-3a" } }, // index 6 - index 3'un kopyasi
+      { fields: { titlePropertyId: "222222", ownerName: "GERCEK-2" } }, // index 1
+      { fields: { titlePropertyId: "111111", ownerName: "YINELENEN-1a" } }, // index 2 - index 0'in kopyasi
+      { fields: { titlePropertyId: "333333", ownerName: "GERCEK-3" } }, // index 3
+      { fields: { titlePropertyId: "222222", ownerName: "YINELENEN-2a" } }, // index 4 - index 1'in kopyasi
+      { fields: { titlePropertyId: "111111", ownerName: "YINELENEN-1b" } }, // index 5 - index 0'in 2. kopyasi
+      { fields: { titlePropertyId: "333333", ownerName: "YINELENEN-3a" } }, // index 6 - index 3'un kopyasi
     ],
   );
   fns.setState(state);
@@ -181,11 +209,11 @@ function freshState(fields, titleUnits = []) {
   console.log("removeDuplicateTitleUnitTabs() kullanicinin GERCEK senaryosuna yakin uctan uca regresyon testi tamam.");
 }
 
-// --- 4) Yinelenen YOKSA -> bos dizi, hicbir sey silinmez --------------------
+// --- 5) Yinelenen YOKSA -> bos dizi, hicbir sey silinmez --------------------
 {
   const state = freshState(
-    { blockNo: "100", parcelNo: "1", unitNo: "1" },
-    [{ fields: { blockNo: "100", parcelNo: "1", unitNo: "2" } }],
+    { titlePropertyId: "111111" },
+    [{ fields: { titlePropertyId: "222222" } }],
   );
   fns.setState(state);
   const groups = fns.findDuplicateTitleUnitGroups();
@@ -196,7 +224,8 @@ function freshState(fields, titleUnits = []) {
   console.log("Yinelenen yok -> no-op guvenlik agi testi tamam.");
 }
 
-// --- 5) Kaynak-düzeyi kablolama: createTitleUnitTabBar + CSS ----------------
+// --- 6) Kaynak-düzeyi kablolama: createTitleUnitTabBar + CSS + etiket ------
+// artik "Taşınmaz Kimlik No" diyor, "Ada/Parsel/BB No" DEGIL ----------------
 {
   assert.ok(
     appSource.includes("const duplicatesControl = createRemoveDuplicateTitleUnitsControl();") && appSource.includes("if (duplicatesControl) actions.append(duplicatesControl);"),
@@ -205,9 +234,11 @@ function freshState(fields, titleUnits = []) {
   const controlSrc = extractFunction("createRemoveDuplicateTitleUnitsControl");
   assert.match(controlSrc, /if \(!groups\.length\) return null;/, "Yinelenen yoksa buton HIC render edilmemeli (null donmeli).");
   assert.match(controlSrc, /window\.confirm\(/, "Silme islemi ONCESI kullaniciya onay penceresi gosterilmeli (geri alinamaz bir eylem).");
+  assert.ok(controlSrc.includes("Taşınmaz Kimlik No"), "Buton metni/onay penceresi artik 'Tasinmaz Kimlik No'yu referans almali (ESKİ 'Ada/Parsel/BB No' metni KALMAMALI).");
+  assert.ok(!controlSrc.includes("Ada/Parsel/Bağımsız Bölüm No"), "ESKİ (yanlis) 'Ada/Parsel/Bagimsiz Bolum No' ifadesi ARTIK gorunmemeli.");
   const cssSource = fs.readFileSync(path.join(__dirname, "..", "styles.css"), "utf8");
   assert.ok(cssSource.includes(".title-unit-remove-duplicates-button"), "styles.css'te '.title-unit-remove-duplicates-button' stili tanimli olmali.");
-  console.log("Kaynak-duzeyi kablolama (tab bar butonu + CSS) testi tamam.");
+  console.log("Kaynak-duzeyi kablolama (tab bar butonu + CSS + Tasinmaz Kimlik No etiketi) testi tamam.");
 }
 
 console.log("Yinelenen Tasinmaz Temizligi testleri basarili.");
