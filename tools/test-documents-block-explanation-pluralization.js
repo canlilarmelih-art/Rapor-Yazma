@@ -208,6 +208,10 @@ function makeMarkerExplanationFn(markerToText) {
     ["refreshPenaltyDecisionExplanationFromCurrentFields", "penaltyDecisionExplanation", "buildPenaltyDecisionExplanationParts"],
     ["refreshStaticSuitabilityExplanationFromCurrentFields", "staticSuitabilityExplanation", "buildStaticSuitabilityExplanationParts"],
     ["refreshBuildingInspectionExplanationFromCurrentFields", "buildingInspectionExplanation", "buildBuildingInspectionExplanationParts"],
+    // EKB (2026-08-27, kullanıcı bildirimi): "bu şekilde geldi çoklu
+    // formata uygun olmalı" — AYNI kusur, buildEkbExplanationParts()
+    // (0.0.554'ten beri VAR olan, ayrı bir çekirdeğe sahip) ile.
+    ["refreshEkbExplanationFromCurrentFields", "ekbExplanation", "buildEkbExplanationParts"],
   ].forEach(([refreshFnName, fieldKey, partsFnName]) => {
     const body = extractFunction(refreshFnName);
     assert.ok(

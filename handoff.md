@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.571 - 2026-08-27 - EKB Açıklaması (bağımsız alan) artık blok-atıflı çoğullanıyor
+
+- Kullanıcı, gerçek "EKB Açıklaması" çıktısını paylaştı ("Konu taşınmazın yer aldığı binaya ait ... Enerji Kimlik Belgesi bulunmaktadır...") ve "bu şekilde geldi çoklu formata uygun olmalı" dedi — 0.0.567'de Cezai Karar/Statik Uygunluk/Yapı Denetim'de düzeltilen AYNI kusurun EKB'de de var olduğu ortaya çıktı.
+- **Kök neden**: `buildEkbExplanationParts()` (blok-atıflı, 0.0.554'ten beri VAR) ZATEN yalnızca `buildReviewedDocumentsDescription()` (İncelenen Belgeler Açıklaması aggregate'i) içinde kullanılıyordu — bağımsız "EKB Açıklaması" textarea alanı (`ekbExplanation`, "Açıklamalar" bölümü) hâlâ `refreshEkbExplanationFromCurrentFields()` üzerinden tekil/atıfsız `buildEkbExplanation()`'ı yazıyordu. "Çoklu Talep" + FARKLI bloklarda EKB bilgisi (belge no/tarih/sınıf) farklıysa, bu bağımsız alan yalnızca aktif bloğu yansıtıyor, diğer(ler)i SESSİZCE kayboluyordu.
+- **Düzeltme**: `refreshEkbExplanationFromCurrentFields()` artık `state.fields.ekbExplanation`'a `buildEkbExplanationParts().join("\n\n")`'ı (normalize edilmiş) yazıyor — `projectReviewDescription`/`penaltyDecisionExplanation`/vb. ile AYNI "\n\n-birleştirilmiş Parts" modeli. `collectGeneratedTextPlaceholders()`'ın ilgili girişi de tutarlılık için güncellendi. `buildEkbExplanationParts()`'ın kendisi DEĞİŞMEDİ (zaten doğru çalışıyordu, yalnızca YANLIŞ yerde kullanılıyordu).
+- Test: `tools/test-documents-block-explanation-pluralization.js`'in kaynak-düzeyi kablolama senaryosuna (5) EKB de eklendi — `refreshEkbExplanationFromCurrentFields()`'in artık `buildEkbExplanationParts()` çıktısını yazdığını doğrular. `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` cache-buster `?v=20260827-1200`.
+- Canlı tarayıcı testi yapılamadı — kullanıcının, FARKLI bloklarda farklı EKB bilgisi olan bir "Çoklu Talep" raporunda "Açıklamalar" bölümündeki "EKB Açıklaması" alanının artık HER bloğun kendi (atıflı) cümlesini içerdiğini doğrulaması gerekir.
+
 ## 0.0.570 - 2026-08-27 - Takyidat: yevmiye numarası olmayan ama birebir aynı beyanlar artık müşterek birleşiyor
 
 - Kullanıcı, ekran görüntüsüyle bir "Takyidat Açıklaması" gösterdi: aynı "Malik Bizzat Gelmeden Tasarrufu İşlem Yapılamaz..." beyanı, 4 farklı bağımsız bölüm için (A-5, A-8, A-11, A-15) BİREBİR AYNI metinle 4 KEZ art arda tekrarlanmıştı, her biri kendi "(Tarih: Bila, Yevmiye No: Bila)" ve "(A-X üzerinde)" ekiyle. Kullanıcı teşhisi: "sebebi beyanın yevmiye numarasının bulunmaması. böyle durumlarda eğer yevmiye numarası yok ise beyanlar %100 aynı ise müşterektir."

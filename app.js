@@ -29169,7 +29169,17 @@ function refreshEkbExplanationFromCurrentFields(changedKey = "") {
   ];
   if (changedKey && !watchedKeys.includes(changedKey)) return;
 
-  state.fields.ekbExplanation = buildEkbExplanation();
+  // Kullanıcı bildirimi (2026-08-27): "bu şekilde geldi çoklu formata
+  // uygun olmalı" — bağımsız "EKB Açıklaması" alanı (bu textarea) ARTIK
+  // 0.0.567'deki Cezai Karar/Statik Uygunluk/Yapı Denetim düzeltmesiyle
+  // AYNI kusuru taşıyordu: yalnızca `buildReviewedDocumentsDescription()`
+  // (İncelenen Belgeler Açıklaması aggregate'i) blok-atıflı
+  // `buildEkbExplanationParts()`'ı kullanıyordu, bu STANDALONE alan hâlâ
+  // tekil/atıfsız `buildEkbExplanation()`'ı yazıyordu — "Çoklu Talep" +
+  // FARKLI bloklarda EKB bilgisi farklıysa diğer blok(lar) SESSİZCE
+  // kayboluyordu. Artık `projectReviewDescription`/`penaltyDecisionExplanation`/
+  // vb. ile AYNI "\n\n-birleştirilmiş Parts" modeli kullanılıyor.
+  state.fields.ekbExplanation = normalizeReportDescriptionText(buildEkbExplanationParts().join("\n\n"));
   const control = document.querySelector('[data-field="ekbExplanation"]');
   if (control && control.value !== state.fields.ekbExplanation) {
     control.value = state.fields.ekbExplanation || "";
@@ -39101,7 +39111,7 @@ function collectGeneratedTextPlaceholders() {
       category: "Belgeler ve Proje",
       key: "ekb_explanation_text",
       title: "EKB Açıklaması",
-      value: state.fields.ekbExplanation || buildEkbExplanation(),
+      value: state.fields.ekbExplanation || normalizeReportDescriptionText(buildEkbExplanationParts().join("\n\n")),
     },
     {
       category: "Belgeler ve Proje",
