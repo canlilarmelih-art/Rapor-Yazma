@@ -2953,6 +2953,114 @@ function removeActiveTitleUnitTab() {
   return true;
 }
 
+// Kullanıcı bildirimi (2026-08-26): "liste birden buna dönüştü böyle bir
+// hata aldım" (43 satır/sekme) — TAKBİS/KML içe aktarma sırasında bir
+// bağımsız bölüm için birden fazla "kayıt" ayrıştırılırsa (ör. çok
+// sayfalı bir PDF'te "Taşınmaz Kimlik No" güvenilir okunamazsa,
+// importTakbisRecordsIntoTitleUnits()'in KENDİ yinelenen-önleme kontrolü
+// — getTakbisDuplicateKey, boş anahtarda SESSİZCE ATLANIR — devreye
+// giremez), HER kayıt AYRI bir taşınmaz sekmesi olarak eklenip GERÇEKTE
+// aynı bağımsız bölüm onlarca kez çoğalabiliyor. Bu KÖK NEDENİ (TAKBİS
+// ayrıştırma güvenilirliği) DÜZELTMEZ — bunun yerine, kullanıcının ZATEN
+// OLUŞMUŞ (canlı) yinelenen taşınmazları TEK tıkla, güvenli şekilde
+// temizlemesini sağlayan bir KURTARMA aracıdır.
+//
+// Yinelenen tespiti getTakbisDuplicateKey()'DEN (Taşınmaz Kimlik No +
+// Rapor Tarihi — GÜVENİLMEZ ÇIKTI, yukarıdaki senaryoda boş kalıyordu)
+// DAHA GENİŞ/GÜVENİLİR bir anahtar kullanır: Ada + Parsel + Bağımsız
+// Bölüm No. Gerçek bir raporda İKİ FARKLI bağımsız bölüm asla AYNI (Ada,
+// Parsel, BB No) üçlüsünü paylaşamaz — bu üçü birebir aynıysa bu,
+// KESİNLİKLE aynı fiziksel bağımsız bölümün yinelenen bir kopyasıdır.
+function getTitleUnitDuplicateKey(fields = {}) {
+  const parts = [
+    normalizeTakbisDuplicatePart(fields.blockNo),
+    normalizeTakbisDuplicatePart(fields.parcelNo),
+    normalizeTakbisDuplicatePart(fields.unitNo),
+  ];
+  if (!parts[0] || !parts[1] || !parts[2]) return "";
+  return parts.join("|");
+}
+
+// TÜM taşınmazları getTitleUnitDuplicateKey()'e göre gruplar; 2+ üyeli
+// (gerçekten yinelenen) gruplar döner. HER grupta İLK (en düşük index'li)
+// taşınmaz "keepIndex" olarak işaretlenir — TAKBİS içe aktarma sırası
+// kronolojik olduğundan ilk kopya genellikle en eksiksiz/orijinal olanıdır
+// (ayrıca index 0/birincil taşınmaz bir gruptaysa HER ZAMAN keepIndex
+// olur — removeActiveTitleUnitTab zaten onu silemez, bu tutarlı); diğerleri
+// "removeIndexes" olarak işaretlenir.
+function findDuplicateTitleUnitGroups() {
+  const count = getTitleUnitCount();
+  const byKey = new Map();
+  for (let index = 0; index < count; index += 1) {
+    const key = getTitleUnitDuplicateKey(getTitleUnitFieldsForLabel(index));
+    if (!key) continue;
+    if (!byKey.has(key)) byKey.set(key, []);
+    byKey.get(key).push(index);
+  }
+  const groups = [];
+  byKey.forEach((unitIndices, key) => {
+    if (unitIndices.length > 1) {
+      groups.push({ key, keepIndex: unitIndices[0], removeIndexes: unitIndices.slice(1) });
+    }
+  });
+  return groups;
+}
+
+// findDuplicateTitleUnitGroups()'un bulduğu TÜM yinelenen taşınmazları
+// kaldırır — removeActiveTitleUnitTab()'ın (switchActiveTitleUnit + splice)
+// MEVCUT, test edilmiş mekanizmasını TEKRAR TEKRAR çağırarak (yeni bir
+// silme yolu İCAT EDİLMEZ). Silme sırası HER ZAMAN BÜYÜKTEN KÜÇÜĞE (index
+// kaymasını önlemek için) — aksi halde bir index silindikten sonra ondan
+// BÜYÜK tüm index'ler bir kayar, sıradaki hedef YANLIŞ taşınmazı silerdi.
+// index 0 (birincil taşınmaz) HİÇBİR ZAMAN silinmez (removeActiveTitleUnitTab'ın
+// kendi güvenlik ağı — ayrıca yukarıdaki keepIndex kuralı gereği zaten
+// removeIndexes'e hiç girmez, `filter` yalnızca ek bir güvenlik ağı).
+function removeDuplicateTitleUnitTabs(groups) {
+  const allRemoveIndexes = groups
+    .flatMap((group) => group.removeIndexes)
+    .filter((index) => index !== 0)
+    .sort((a, b) => b - a);
+  allRemoveIndexes.forEach((index) => {
+    if (!switchActiveTitleUnit(index)) return;
+    removeActiveTitleUnitTab();
+  });
+  return allRemoveIndexes.length;
+}
+
+// Ortak tab çubuğunun (createTitleUnitTabBar, TÜM 6 çağrı yerinde) "+
+// Taşınmaz Ekle"/"Bu taşınmazı sil" ile AYNI actions satırına eklenen,
+// YALNIZCA gerçek yinelenen taşınmaz VARSA görünen bir kurtarma butonu
+// (aksi halde null — hiç render edilmez, normal raporlarda hiçbir
+// görsel/işlevsel etkisi YOK).
+function createRemoveDuplicateTitleUnitsControl() {
+  const groups = findDuplicateTitleUnitGroups();
+  if (!groups.length) return null;
+  const totalRemovable = groups.reduce((sum, group) => sum + group.removeIndexes.length, 0);
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "title-unit-tab-remove title-unit-remove-duplicates-button";
+  button.textContent = `⚠ ${totalRemovable} Yinelenen Taşınmazı Temizle`;
+  button.title = "Aynı Ada/Parsel/Bağımsız Bölüm No'ya sahip (genellikle TAKBİS içe aktarımından kaynaklanan) yinelenen taşınmazları kaldırır.";
+  button.addEventListener("click", () => {
+    const allUnits = buildAllTitleUnitsForSummaryTable();
+    const summary = groups
+      .map((group, groupIndex) => {
+        const keepLabel = computeTitleUnitTabLabel(allUnits[group.keepIndex], allUnits) || group.key;
+        return `${groupIndex + 1}. ${keepLabel} — ${group.removeIndexes.length} yinelenen kopya kaldırılacak (1 tanesi korunacak).`;
+      })
+      .join("\n");
+    const remainingCount = getTitleUnitCount() - totalRemovable;
+    const confirmed = window.confirm(
+      `Aşağıdaki yinelenen taşınmaz grupları bulundu:\n\n${summary}\n\nToplam ${totalRemovable} yinelenen taşınmaz KALICI OLARAK silinecek (${remainingCount} taşınmaz kalacak). Bu işlem GERİ ALINAMAZ. Devam edilsin mi?`
+    );
+    if (!confirmed) return;
+    removeDuplicateTitleUnitTabs(groups);
+    saveState();
+    render();
+  });
+  return button;
+}
+
 // Tab çubuğu UI'ı — yalnızca "title"/"encumbrance" sekmelerinde, EN ÜSTTE
 // (kullanıcı talimatı) render edilir (bkz. renderSection). Admin-only:
 // deneysel, gerçek rapor verisini değiştirdiği için (önizleme panelinin
@@ -3017,6 +3125,13 @@ function createTitleUnitTabBar(options = {}) {
     actions.append(removeButton);
   }
   (options.extraActions || []).forEach((node) => actions.append(node));
+  // Kullanıcı bildirimi (2026-08-26): TAKBİS/KML içe aktarma yinelenen
+  // taşınmaz üretebiliyor (bkz. createRemoveDuplicateTitleUnitsControl
+  // yorumu) — bu ortak tab çubuğunun TÜM çağrı yerlerinde (Tapu/Adres/
+  // İmar/Arsa/Değerleme/Bağımsız Bölüm + Belgeler'in nadir fallback'i)
+  // GÖRÜNÜR, ama YALNIZCA gerçek yinelenen VARSA (aksi halde null).
+  const duplicatesControl = createRemoveDuplicateTitleUnitsControl();
+  if (duplicatesControl) actions.append(duplicatesControl);
   wrap.append(actions);
 
   // 2026-08-20: BAYAT metin düzeltildi — bu ortak tab çubuğu artık Tapu/

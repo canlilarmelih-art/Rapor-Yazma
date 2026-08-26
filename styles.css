@@ -4517,6 +4517,14 @@ table {
   border-color: var(--red);
 }
 
+/* Yinelenen taşınmaz temizleme butonu (2026-08-26) — .title-unit-tab-remove
+   ile AYNI (kırmızı, yıkıcı-eylem) tabanı miras alır, yalnızca kalın
+   yazıyla biraz daha vurgulu (normal "Bu taşınmazı sil"den daha nadir ama
+   daha etkili bir toplu işlem olduğundan). */
+.title-unit-remove-duplicates-button {
+  font-weight: 700;
+}
+
 /* Kullanıcı talebi (2026-08-21): "seçili taşınmazlara kopyala butonunu
    bağımsız bölüm tablarının sonuna aynı punto ve biçimde taşı" (hemen
    ardından: "arsa özelliklerindeki butonu da taşı") — "+ Taşınmaz Ekle"/
