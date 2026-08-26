@@ -3798,6 +3798,135 @@ function openValuationCopyToSelectedModal(onDone = () => {}) {
   overlay.querySelector("[data-valuation-copy-target]")?.focus();
 }
 
+// Kullanıcı talebi (2026-08-26): "seçili taşınmazlara uygula kısmını
+// belgeler ve proje kısmında çift taraflı tablomuz için uygulayalım" —
+// "çift taraflı tablomuz" = Taşınmazlar Proje Uygunluk Özeti (bkz.
+// buildProjectSuitabilityUnitsSummaryTableData). Land/İmar/Unit/Değerleme'nin
+// AYNI "Seçili Taşınmazlara Kopyala" deseni — TEK fark: kopyalanabilir alan
+// listesi tablonun kendi 3 EDİTLENEBİLİR sütunuyla (Proje Uygunluk Durumu/
+// Açıklama/Basit Tadilat) BİREBİR SINIRLI. Bina Oturumu/Giriş
+// (buildingFootprintReference/vb.) ve "Tapu/Belediye Proje Farkı Var"
+// varyantları (titleProjectSuitability*/municipalityProjectSuitability*)
+// BİLİNÇLİ OLARAK DIŞARIDA — bu tabloda hiç GÖRÜNMÜYORLAR, kullanıcı
+// açıkça "bu tablo için" dedi, kapsam genişletmesi AYRI bir karar.
+function getDocumentsProjectSuitabilityCopyableFieldKeys() {
+  return ["projectSuitabilityStatus", "projectConformity", "projectSuitabilitySimpleRepair"];
+}
+
+// applyValuationDataToSelectedTitleUnits()'in (yukarıda) BİREBİR ikizi —
+// TAMAMEN skaler alanlar, alt-tablo yok, resolveTitleUnitWriteTarget tek
+// başına yeterli.
+function applyDocumentsProjectSuitabilityDataToSelectedTitleUnits(targetIndices) {
+  if (!Array.isArray(targetIndices) || !targetIndices.length) return 0;
+  const keys = getDocumentsProjectSuitabilityCopyableFieldKeys();
+  const snapshot = {};
+  keys.forEach((key) => { snapshot[key] = state.fields[key]; });
+  const count = getTitleUnitCount();
+  const seen = new Set();
+  let appliedCount = 0;
+  targetIndices.forEach((index) => {
+    if (!Number.isInteger(index) || index < 0 || index >= count) return;
+    if (index === state.activeTitleUnitIndex) return;
+    if (seen.has(index)) return;
+    seen.add(index);
+    const targetFields = resolveTitleUnitWriteTarget(index);
+    keys.forEach((key) => { targetFields[key] = snapshot[key]; });
+    appliedCount += 1;
+  });
+  return appliedCount;
+}
+
+// createValuationCopyToSelectedControl()'ün BİREBİR ikizi.
+function createDocumentsProjectSuitabilityCopyToSelectedControl() {
+  const wrap = document.createElement("span");
+  wrap.className = "title-unit-tab-copy-selected-wrap";
+
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "title-unit-tab-copy-selected";
+  button.textContent = "Seçili Taşınmazlara Kopyala";
+
+  const note = document.createElement("small");
+  note.className = "muted-note unit-copy-to-selected-note";
+
+  button.addEventListener("click", () => {
+    if (getTitleUnitCount() < 2) return;
+    openDocumentsProjectSuitabilityCopyToSelectedModal((appliedCount) => {
+      note.textContent = appliedCount
+        ? `${appliedCount} bağımsız bölüme kopyalandı.`
+        : "Hiçbir taşınmaz seçilmedi, kopyalama yapılmadı.";
+    });
+  });
+
+  wrap.append(button, note);
+  return wrap;
+}
+
+// openValuationCopyToSelectedModal()'ın (yukarıda) BİREBİR ikizi. Kaydet
+// sonrası hem tablo hem de "Proje İnceleme Açıklaması" tazelenir — bkz.
+// 0.0.565'in commitTitleUnitsSummaryCellEdit düzeltmesiyle AYNI gerekçe:
+// bu 3 alan TÜM taşınmazların ortak açıklamasını besliyor
+// (buildProjectReviewConsolidatedParts), toplu kopyalama sonrası da
+// AYNI şekilde ANINDA yenilenmeli.
+function openDocumentsProjectSuitabilityCopyToSelectedModal(onDone = () => {}) {
+  document.querySelector(".modal-overlay")?.remove();
+
+  const targets = getTitleUnitTabModels().filter((tab) => !tab.isActive);
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.innerHTML = `
+    <div class="modal-card modal-card-wide" role="dialog" aria-modal="true" aria-labelledby="documentsSuitabilityCopyToSelectedModalTitle">
+      <div class="modal-head">
+        <h3 id="documentsSuitabilityCopyToSelectedModalTitle">Proje Uygunluk Bilgilerini Kopyala</h3>
+        <button class="modal-close" type="button" aria-label="Kapat">×</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-lead">Aktif taşınmazın Proje Uygunluk Durumu, Açıklama ve Basit Tadilat bilgileri seçtiğiniz taşınmazlara kopyalanacak.</p>
+        <div class="checkbox-list">
+          ${targets.map((tab) => `
+            <label class="checkbox-row">
+              <input type="checkbox" value="${tab.index}" data-documents-suitability-copy-target>
+              <span>${escapeHtml(tab.label)}</span>
+            </label>
+          `).join("")}
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="secondary-button" type="button" data-documents-suitability-copy-select-all>Tümünü Seç</button>
+        <button class="secondary-button" type="button" data-documents-suitability-copy-clear>Seçimi Temizle</button>
+        <button class="secondary-button" type="button" data-documents-suitability-copy-cancel>Vazgeç</button>
+        <button class="primary-button" type="button" data-documents-suitability-copy-save>Seçilenlere Kopyala</button>
+      </div>
+    </div>
+  `;
+
+  const close = () => overlay.remove();
+  overlay.querySelector(".modal-close").addEventListener("click", close);
+  overlay.querySelector("[data-documents-suitability-copy-cancel]").addEventListener("click", close);
+  overlay.addEventListener("click", (event) => {
+    if (event.target === overlay) close();
+  });
+  overlay.querySelector("[data-documents-suitability-copy-select-all]").addEventListener("click", () => {
+    overlay.querySelectorAll("[data-documents-suitability-copy-target]").forEach((box) => { box.checked = true; });
+  });
+  overlay.querySelector("[data-documents-suitability-copy-clear]").addEventListener("click", () => {
+    overlay.querySelectorAll("[data-documents-suitability-copy-target]").forEach((box) => { box.checked = false; });
+  });
+  overlay.querySelector("[data-documents-suitability-copy-save]").addEventListener("click", () => {
+    const selectedIndices = [...overlay.querySelectorAll("[data-documents-suitability-copy-target]:checked")]
+      .map((box) => Number.parseInt(box.value, 10));
+    const appliedCount = applyDocumentsProjectSuitabilityDataToSelectedTitleUnits(selectedIndices);
+    autosave();
+    refreshProjectSuitabilityUnitsSummaryTablePreview();
+    refreshReviewedDocumentsDescriptionFromCurrentFields("projectSuitabilityStatus");
+    onDone(appliedCount);
+    close();
+  });
+
+  document.body.append(overlay);
+  overlay.querySelector("[data-documents-suitability-copy-target]")?.focus();
+}
+
 // İmar Durumu Faz B (Çift Yönlü Düzenleme, 2026-08-16) — Tapu/Adres Özeti
 // panelleriyle (yukarıda) BİREBİR AYNI desen. Tek fark: bu tablo yalnızca
 // taşınmazlar FARKLI ada/parselde iken (isPlanningScopedByAdaParsel() true)
@@ -22462,6 +22591,15 @@ function createProjectSuitabilityUnitsSummaryTablePreview() {
     wrap.append(note);
     return wrap;
   }
+  // Kullanıcı talebi (2026-08-26): "seçili taşınmazlara uygula kısmını
+  // belgeler ve proje kısmında çift taraflı tablomuz için uygulayalım" —
+  // bu tablonun tab çubuğu 3 FARKLI dalda render edilebildiğinden
+  // (createDocumentsBlockTabBar / createTitleUnitTabBar / hiçbiri — bkz.
+  // renderSection'ın "documents" gate'i), buton diğer 4 bölümdeki gibi
+  // extraActions'a DEĞİL, doğrudan bu panelin KENDİSİNE (başlığın hemen
+  // altına) eklenir — hangi tab çubuğu varyantı render edilirse edilsin
+  // çalışmaya devam eder.
+  wrap.append(createDocumentsProjectSuitabilityCopyToSelectedControl());
   const tableHtml = buildTitleUnitsSummaryTableHtmlEditable(data.headers, data.rows, data.columnMeta, state.activeTitleUnitIndex);
   const tableContainer = document.createElement("div");
   tableContainer.className = "title-units-summary-table-container";
