@@ -138,14 +138,19 @@ const functionNames = [
   "formatDocumentBlockAttributionPhrase",
   "normalizeBlockLabelPrefixForAttribution",
   "formatTitleUnitSuitabilityLabel",
+  "formatTitleUnitSuitabilityShortLabel",
+  "getProjectSuitabilityShortConformityNote",
   "formatTitleUnitAttributionPhrase",
   "replaceProjectReviewSubjectWithOtherPropertiesPhrase",
+  "pluralizeProjectConformityNoteText",
+  "renderProjectReviewGroupSentence",
   "normalizeTextForSimilarityComparison",
   "levenshteinDistance",
   "computeTextSimilarityRatio",
   "getTurkishDistributiveNumberSuffix",
   "extractNumericTokensForGroupingGuard",
   "hasMatchingNumericTokensForGroupingGuard",
+  "stripProjectSuitabilityRepairSentence",
 ];
 
 // `buildProjectSuitabilityStatusSentence` const/registerVariantGroup
@@ -196,6 +201,10 @@ const sandboxSource = `
   // eklenmesi gerekiyor (bkz. app.js'teki gerçek tanım, BİREBİR kopya).
   const TURKISH_ONES_DISTRIBUTIVE_SUFFIX = { 1: "er", 2: "şer", 3: "er", 4: "er", 5: "er", 6: "şar", 7: "şer", 8: "er", 9: "ar" };
   const TURKISH_TENS_DISTRIBUTIVE_SUFFIX = { 10: "ar", 20: "şer", 30: "ar", 40: "ar", 50: "şer", 60: "ar", 70: "er", 80: "er", 90: "ar" };
+  // NOT: PROJECT_SUITABILITY_NOTE_ACCEPTING_STATUS_KEYS burada AYRICA
+  // tanımlanmıyor - projectSuitabilityVariantsAndSentenceFnSrc dilimi
+  // (aşağıda) zaten buildProjectSuitabilityStatusSentence'ın HEMEN
+  // ÜSTÜNDEKİ bu const'u da kapsıyor (variantsStart..variantsEnd aralığı).
   function registerVariantGroup() {}
   ${functionNames.map(extractFunction).join("\n")}
   ${projectSuitabilityVariantsAndSentenceFnSrc}
@@ -210,6 +219,7 @@ const sandboxSource = `
     computeDocumentsBlockGroups,
     buildAllTitleUnitsForSummaryTable,
     getTurkishDistributiveNumberSuffix,
+    formatTitleUnitSuitabilityShortLabel,
   };
 `;
 // eslint-disable-next-line no-new-func
@@ -593,18 +603,18 @@ function freshState(overrides = {}) {
   const parts = fns.buildProjectReviewExplanationParts();
   const suitabilityText = parts.slice(2).join(" ||| ");
 
-  assert.ok(suitabilityText.includes("A Blok 12 No'lu ve B Blok 31 No'lu"), `Yazim hatasi disinda OZDES 2 azinlik metni TEK birlesik atifli cumlede toplanmali, bulunan: ${suitabilityText}`);
+  assert.ok(suitabilityText.includes("A-12 ve B-31: Yerinde yapılan incelemelerde"), `Yazim hatasi disinda OZDES 2 azinlik metni TEK KISA (Etiket: Not.) cumlede toplanmali, bulunan: ${suitabilityText}`);
   assert.equal((suitabilityText.match(/tespit edilmiştir/g) || []).length, 1, `Notun kendisi TEK KEZ gorunmeli (2 AYRI cumleye BOLUNMEMELI), bulunan: ${suitabilityText}`);
-  assert.equal((suitabilityText.match(/Basit bir tadilat/g) || []).length, 1, `Tadilat cumlesi de TEK KEZ gorunmeli, bulunan: ${suitabilityText}`);
   assert.ok(suitabilityText.includes("Diğer taşınmazlar"), `Cogunluk (3/5 > %50) hala 'Diger tasinmazlar' olarak genellenmeli, bulunan: ${suitabilityText}`);
-  // Kullanıcı talebi (2026-08-26, ucuncu ornek): "cumle bu sekilde
-  // olmali" - birlesen notun ICINDEKI serbest metin de kabaca cogul
-  // okunmali: sayi "10'ar m2" (dagitim eki), "taşınmazların" oznesi,
-  // "niteliktedirler" cogul cekim.
-  assert.ok(suitabilityText.includes("taşınmazların çatı arasına doğru 10'ar m2 büyüme"), `Notun icindeki sayi dagitim ekiyle (10'ar m2) ve 'taşınmazların' oznesiyle cogul okunmali, bulunan: ${suitabilityText}`);
-  assert.ok(suitabilityText.includes("düzeltilebilir niteliktedirler."), `Tadilat cumlesi cogul cekimlenmeli (niteliktedirler), bulunan: ${suitabilityText}`);
+  // Kullanıcı talebi (2026-08-26, dorduncu mesaj): "basit tadilat
+  // cumlesini kaldir. cumle baslangici A-12 ve B-31: ... bu sekilde
+  // olsun" - sablonlu durum cumlesi VE tadilat cumlesi TAMAMEN duser,
+  // yalnizca KISA etiket + notun kendisi (cogul okunmus hali) kalir.
+  assert.ok(suitabilityText.includes("A-12 ve B-31: Yerinde yapılan incelemelerde taşınmazların çatı arasına doğru 10'ar m2 büyüme yapıldığı tespit edilmiştir."), `Kisa cumle TAM kullanicinin istedigi bicimde olmali, bulunan: ${suitabilityText}`);
+  assert.ok(!suitabilityText.includes("Basit bir tadilat"), `Tadilat cumlesi KISA formatta TAMAMEN kaldirilmali, bulunan: ${suitabilityText}`);
+  assert.ok(!suitabilityText.includes("Ekspertize konu A-12") && !suitabilityText.includes("kullanım alanı olarak projelerine uygun değildir. Yerinde"), `Sablonlu durum cumlesi ('Ekspertize konu ... uygun degildir.') KISA formatta TAMAMEN kaldirilmali, bulunan: ${suitabilityText}`);
 
-  console.log("buildProjectReviewExplanationParts() yazim hatasi/noktalama farkli AMA ozdes azinlik notlarinin birlesmesi + cogul not metni testi tamam.");
+  console.log("buildProjectReviewExplanationParts() yazim hatasi/noktalama farkli AMA ozdes azinlik notlarinin KISA birlesik cumlede toplanmasi testi tamam.");
 }
 
 // --- 11) Kullanıcı talebi (2026-08-26, uc mesaj sonrasi ISTISNA): --------
@@ -636,13 +646,73 @@ function freshState(overrides = {}) {
   const parts = fns.buildProjectReviewExplanationParts();
   const suitabilityText = parts.slice(2).join(" ||| ");
 
-  assert.ok(!suitabilityText.includes("A Blok 12 No'lu ve B Blok 31 No'lu"), `Notlarin SAYISI FARKLI oldugundan (10 vs 9 m2) ASLA birlesik atifli TEK cumlede gorunmemeli, bulunan: ${suitabilityText}`);
-  assert.ok(suitabilityText.includes("A Blok 12 No'lu bağımsız bölüm") && suitabilityText.includes("B Blok 31 No'lu bağımsız bölüm"), `Iki farkli SAYILI not KENDI AYRI cumlelerinde kalmali, bulunan: ${suitabilityText}`);
+  assert.ok(!suitabilityText.includes("A Blok 12 No'lu ve B Blok 31 No'lu") && !suitabilityText.includes("A-12 ve B-31"), `Notlarin SAYISI FARKLI oldugundan (10 vs 9 m2) ASLA birlesik TEK cumlede gorunmemeli, bulunan: ${suitabilityText}`);
+  assert.ok(suitabilityText.includes("A-12: Yerinde yapılan incelemelerde çatı arasına doğru 10 m2 büyüme"), `A-12 KENDI (tekil, dagitim eksiz - tek basina oldugu icin coguldan gecmez) kisa cumlesinde kalmali, bulunan: ${suitabilityText}`);
+  assert.ok(suitabilityText.includes("B-31: Yerinde yapılan incelemelerde çatı arasına doğru 9 m2 büyüme"), `B-31 KENDI ayri kisa cumlesinde, kendi ozgun sayisiyla (9) kalmali, bulunan: ${suitabilityText}`);
+  assert.ok(!suitabilityText.includes("Basit bir tadilat"), `Tadilat cumlesi KISA formatta burada da kaldirilmali, bulunan: ${suitabilityText}`);
   assert.equal((suitabilityText.match(/\d+ m2 büyüme/g) || []).length, 2, `Iki AYRI (tekil, dagitim eksiz) sayi/m2 ifadesi gorunmeli (10 m2 VE 9 m2 - biri digerine BENZEMEK icin degistirilmemeli), bulunan: ${suitabilityText}`);
-  assert.ok(suitabilityText.includes("10 m2 büyüme") && suitabilityText.includes("9 m2 büyüme"), `Her ikisinin de KENDI ozgun sayisi (10 ve 9) korunmali, bulunan: ${suitabilityText}`);
   assert.ok(suitabilityText.includes("Diğer taşınmazlar"), `Cogunluk (3/5 > %50) hala 'Diger tasinmazlar' olarak genellenmeli, bulunan: ${suitabilityText}`);
 
   console.log("buildProjectReviewExplanationParts() FARKLI sayisal veri iceren notlarin ASLA birlesmemesi (istisna) testi tamam.");
+}
+
+// --- 12) Kullanıcı bildirimi (2026-08-26, dorduncu mesaj, TAM ornek): -----
+// 2 AYRI azinlik grubu (birbirinden FARKLI notlarla, her biri 2'ser
+// bagimsiz bolumden olusan) AYNI anda gorunmeli, HER İKİSİ DE kendi KISA
+// bicimiyle, cogunluktan (Diger tasinmazlar) ONCE.
+{
+  const twoMinorityGroupsState = freshState({ titleBlockName: "A Blok", unitNo: "1" });
+  twoMinorityGroupsState.titleUnits = [
+    unit(twoMinorityGroupsState.fields, "100", "1", "A Blok", {
+      unitNo: "12",
+      projectSuitabilityStatus: "kullanım alanı olarak uygun değildir.",
+      projectConformity: "Yerinde yapılan incelemelerde çatı arasına doğru 10 m2 büyüme yapıldığı tespit edilmiştir.",
+      projectSuitabilitySimpleRepair: "Evet",
+    }),
+    unit(twoMinorityGroupsState.fields, "100", "1", "B Blok", {
+      unitNo: "31",
+      projectSuitabilityStatus: "kullanım alanı olarak uygun değildir.",
+      projectConformity: "Yerinde yapılan incelemelerde çatı arasına doğru 10 m2 büyüme yapıldığı tespit edilmiştir.",
+      projectSuitabilitySimpleRepair: "Evet",
+    }),
+    unit(twoMinorityGroupsState.fields, "100", "1", "A Blok", {
+      unitNo: "17",
+      projectSuitabilityStatus: "mimari olarak uygun değildir.",
+      projectConformity: "Yerinde yapılan incelemelerde oda ve mutfak alanlarının ara duvar kırılarak birleştirildiği tespit edilmiştir.",
+      projectSuitabilitySimpleRepair: "Evet",
+    }),
+    unit(twoMinorityGroupsState.fields, "100", "1", "B Blok", {
+      unitNo: "9",
+      projectSuitabilityStatus: "mimari olarak uygun değildir.",
+      projectConformity: "Yerinde yapılan incelemelerde oda ve mutfak alanlarının ara duvar kırılarak birleştirildiği tespit edilmiştir.",
+      projectSuitabilitySimpleRepair: "Evet",
+    }),
+    unit(twoMinorityGroupsState.fields, "100", "1", "C Blok", { unitNo: "2" }),
+    unit(twoMinorityGroupsState.fields, "100", "1", "D Blok", { unitNo: "3" }),
+  ];
+  fns.setState(twoMinorityGroupsState);
+  const parts = fns.buildProjectReviewExplanationParts();
+  const suitabilityParts = parts.slice(2);
+  const suitabilityText = suitabilityParts.join(" ||| ");
+
+  assert.ok(suitabilityText.includes("A-12 ve B-31: Yerinde yapılan incelemelerde taşınmazların çatı arasına doğru 10'ar m2 büyüme yapıldığı tespit edilmiştir."), `1. azinlik grubu (cati arasi) TAM kisa/cogul bicimde gorunmeli, bulunan: ${suitabilityText}`);
+  // Not: "taşınmazların" oznesi, ICINDE herhangi bir SAYI/m2 olmayan bu
+  // 2. nota da eklenir (pluralizeProjectConformityNoteText GENEL bir
+  // kural - yalnizca "Yerinde yapılan incelemelerde" acilisina bakar,
+  // notun geri kalaniyla ILGILENMEZ) - bu TUTARLI ve DOGRU bir davranis.
+  assert.ok(suitabilityText.includes("A-17 ve B-9: Yerinde yapılan incelemelerde taşınmazların oda ve mutfak alanlarının ara duvar kırılarak birleştirildiği tespit edilmiştir."), `2. azinlik grubu (oda-mutfak) da TAM kisa/cogul bicimde ('taşınmazların' oznesiyle) gorunmeli, bulunan: ${suitabilityText}`);
+  assert.ok(!suitabilityText.includes("Basit bir tadilat"), `Tadilat cumlesi HER İKİ azinlik grubunda da kaldirilmali, bulunan: ${suitabilityText}`);
+  // Not: toplam 7 taşınmaz (1 primer + 6 titleUnits) - "uygundur" grubu
+  // 3/7 (A-1, C-2, D-3), cati-arasi grubu 2/7, oda-mutfak grubu 2/7 -
+  // HICBIR grup %50'yi (3.5) GECMIYOR (3 > 3.5 YANLIS), bu yuzden "Diger
+  // tasinmazlar" sadelestirmesi TETIKLENMEMELI - "uygundur" grubu (notu
+  // BOS oldugundan kisa format tetiklenmez) KENDI TAM cumlesiyle,
+  // atifli, ayrica gorunmeli.
+  assert.ok(!suitabilityText.includes("Diğer taşınmazlar"), `Hicbir grup %50'yi (3/7) gecmedigi icin 'Diger tasinmazlar' sadelestirmesi TETIKLENMEMELI, bulunan: ${suitabilityText}`);
+  assert.ok(suitabilityText.includes("A Blok 1 No'lu, C Blok 2 No'lu ve D Blok 3 No'lu bağımsız bölümler") && suitabilityText.includes("uygundur."), `'Uygundur' grubu (notu yok) KENDI TAM/atifli cumlesiyle gorunmeye devam etmeli, bulunan: ${suitabilityText}`);
+  assert.equal(suitabilityParts.length, 3, `3 grup (2 kisa azinlik + 1 tam 'uygundur') -> 3 AYRI cumle beklenir, bulunan: ${JSON.stringify(suitabilityParts)}`);
+
+  console.log("buildProjectReviewExplanationParts() 2 FARKLI azinlik grubunun HER İKİSİNİN DE kisa bicimde gorunmesi testi tamam.");
 }
 
 console.log("Proje Inceleme Aciklamasi cogullama + blok bazinda ortak/ayri/sade cumle testleri basarili.");

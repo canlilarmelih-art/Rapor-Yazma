@@ -26887,6 +26887,24 @@ function getTurkishDistributiveNumberSuffix(rawNumber) {
 // metni ürettiyse (kullanıcı: "hepsi uygunsa blok adı tekrar etmeden tek
 // genel cümle") blok atfı yerine "tüm" öneki eklenir — bkz.
 // buildProjectReviewConsolidatedSentences.
+// "Açıklama" (projectConformity) notunun İÇİNDEKİ serbest metni kabaca
+// çoğul okutan 2 dönüşüm — hem TAM şablonlu cümlenin (pluralizeProjectReviewSubjectText)
+// içinde HEM DE kısaltılmış "Etiket: Not." biçiminde (bkz.
+// renderProjectReviewGroupSentence) AYNI şekilde kullanılır: (a) notun
+// yaygın açılışı "Yerinde yapılan incelemelerde" bir "taşınmazların"
+// öznesi alır, (b) not içindeki YALNIZ SAYI+"m2" ifadesi (ör. "10 m2")
+// Türkçe dağıtım (distributive) ekiyle yazılır ("10'ar m2").
+function pluralizeProjectConformityNoteText(text) {
+  if (!text) return text;
+  return String(text)
+    .replace(/\bYerinde yapılan incelemelerde\b(?!\s+taşınmazların\b)/g, "Yerinde yapılan incelemelerde taşınmazların")
+    .replace(/\byerinde yapılan incelemelerde\b(?!\s+taşınmazların\b)/g, "yerinde yapılan incelemelerde taşınmazların")
+    .replace(/\b(\d+)\s?(m[²2])\b/g, (match, numberText, unitText) => {
+      const suffix = getTurkishDistributiveNumberSuffix(numberText);
+      return suffix ? `${numberText}'${suffix} ${unitText}` : match;
+    });
+}
+
 function pluralizeProjectReviewSubjectText(text, enablePlural, attribution = "", useTumPrefix = false) {
   if (!text) return text;
   let result = enablePlural ? pluralizeEnvironmentalSubjectText(text, true) : text;
@@ -26915,16 +26933,12 @@ function pluralizeProjectReviewSubjectText(text, enablePlural, attribution = "",
     // notlardaki sayısal değerler BİREBİR AYNIYSA gerçekleştiğinden (bkz.
     // hasMatchingNumericTokensForGroupingGuard) bu dönüşüm HER ZAMAN
     // güvenlidir (farklı sayılı notlar zaten hiç birleşmiyor, ayrı kalıyor).
-    result = result
-      .replace(/\bniteliktedir\b/g, "niteliktedirler")
-      .replace(/\bdurumdadır\b/g, "durumdadırlar")
-      .replace(/\bmümkündür\b/g, "mümkündürler")
-      .replace(/\bYerinde yapılan incelemelerde\b(?!\s+taşınmazların\b)/g, "Yerinde yapılan incelemelerde taşınmazların")
-      .replace(/\byerinde yapılan incelemelerde\b(?!\s+taşınmazların\b)/g, "yerinde yapılan incelemelerde taşınmazların")
-      .replace(/\b(\d+)\s?(m[²2])\b/g, (match, numberText, unitText) => {
-        const suffix = getTurkishDistributiveNumberSuffix(numberText);
-        return suffix ? `${numberText}'${suffix} ${unitText}` : match;
-      });
+    result = pluralizeProjectConformityNoteText(
+      result
+        .replace(/\bniteliktedir\b/g, "niteliktedirler")
+        .replace(/\bdurumdadır\b/g, "durumdadırlar")
+        .replace(/\bmümkündür\b/g, "mümkündürler")
+    );
   }
   if (useTumPrefix) {
     result = result
@@ -27051,16 +27065,17 @@ function buildProjectReviewConsolidatedSentences(items) {
   // düşürmüyor. Grup temsilcisi (nihai cümle metni) o gruba giren İLK
   // metin ("ne yazıldıysa o kalır" — mevcut siteyi kapsayan ilke).
   const groups = [];
-  nonEmpty.forEach(({ label, text, unitCount }) => {
+  nonEmpty.forEach(({ label, shortLabel, text, unitCount, note }) => {
     const normalized = normalizeTextForSimilarityComparison(text);
     const matchedGroup = groups.find(
       (group) => computeTextSimilarityRatio(group.normalized, normalized) >= 0.9 && hasMatchingNumericTokensForGroupingGuard(group.text, text)
     );
     if (matchedGroup) {
       matchedGroup.labels.push(label);
+      matchedGroup.shortLabels.push(shortLabel);
       matchedGroup.unitCount += unitCount;
     } else {
-      groups.push({ text, normalized, labels: [label], unitCount });
+      groups.push({ text, normalized, labels: [label], shortLabels: [shortLabel], unitCount, note });
     }
   });
   if (groups.length === 1) {
@@ -27088,17 +27103,37 @@ function buildProjectReviewConsolidatedSentences(items) {
   );
   const useOtherPropertiesSummary = majorityGroup && majorityGroup.labels.length > items.length / 2;
   if (useOtherPropertiesSummary) {
-    const minoritySentences = groupInfos
-      .filter((group) => group !== majorityGroup)
-      .map((group) => pluralizeProjectReviewSubjectText(group.text, group.unitCount > 1, formatTitleUnitAttributionPhrase(group.labels), false));
+    const minoritySentences = groupInfos.filter((group) => group !== majorityGroup).map(renderProjectReviewGroupSentence);
     const majoritySentence = replaceProjectReviewSubjectWithOtherPropertiesPhrase(
       pluralizeProjectReviewSubjectText(majorityGroup.text, true, "", false)
     );
     return [...minoritySentences, majoritySentence];
   }
-  return groupInfos.map((group) =>
-    pluralizeProjectReviewSubjectText(group.text, group.unitCount > 1, formatTitleUnitAttributionPhrase(group.labels), false)
-  );
+  return groupInfos.map(renderProjectReviewGroupSentence);
+}
+
+// Kullanıcı talebi (2026-08-26, dördüncü mesaj): "basit tadilat cümlesini
+// kaldır. cümle başlangıcı A-12 ve B-31: ... bu şekilde olsun diğer türlü
+// karakter kısıtlamasına takılacak. kısaltalım" — 2+ farklı (uyumsuz)
+// grup olduğunda HER grubun TAM şablonlu cümlesini ("Ekspertize konu ...
+// uygun değildir." + "Basit bir tadilat ile ... niteliktedir.") tekrar
+// tekrar yazmak toplam metni çok uzatıyor. Bir grubun "Açıklama" notu
+// VARSA (yalnızca uygunsuzluk türlerinde girilir, bkz.
+// PROJECT_SUITABILITY_NOTE_ACCEPTING_STATUS_KEYS), o grup ARTIK şablonlu
+// cümle yerine KISA "Kısa Etiketler: Not." biçiminde yazılır — şablonlu
+// durum cümlesi VE tadilat cümlesi TAMAMEN DÜŞER, yalnızca kimlik + asıl
+// gözlem kalır. Not YOKSA (ör. çoğunluk/"uygundur" grubu, ya da
+// hasDifferentProjects dalı — bkz. buildProjectReviewConsolidatedParts)
+// eskisi gibi TAM şablonlu cümleye güvenli şekilde geri düşer.
+function renderProjectReviewGroupSentence(group) {
+  if (group.note) {
+    const shortAttribution = joinTurkishList((group.shortLabels || []).filter(Boolean));
+    if (shortAttribution) {
+      const note = group.unitCount > 1 ? pluralizeProjectConformityNoteText(group.note) : group.note;
+      return normalizeReportDescriptionText(`${shortAttribution}: ${note}`);
+    }
+  }
+  return pluralizeProjectReviewSubjectText(group.text, group.unitCount > 1, formatTitleUnitAttributionPhrase(group.labels), false);
 }
 
 // buildProjectReviewConsolidatedSentences'ın "Diğer Taşınmazlar"
@@ -27139,6 +27174,33 @@ function formatTitleUnitSuitabilityLabel(fields, index) {
   if (unitNo) return `${unitNo} No'lu`;
   if (block) return block;
   return `${index + 1}. taşınmaz`;
+}
+
+// formatTitleUnitSuitabilityLabel'ın KISA hali — yalnızca
+// renderProjectReviewGroupSentence'ın "Kısa Etiketler: Not." biçiminde
+// kullanılır (bkz. o fonksiyonun yorumu). "A Blok" + "12" -> "A-12"
+// ("Blok"/"No'lu" sözcükleri tamamen düşer, ayraç kısa bir tire).
+function formatTitleUnitSuitabilityShortLabel(fields, index) {
+  const block = String(fields?.titleBlockName || "").trim().replace(/\s*Blok$/i, "");
+  const unitNo = String(fields?.unitNo || "").trim();
+  if (block && unitNo) return `${block}-${unitNo}`;
+  if (unitNo) return unitNo;
+  if (block) return block;
+  return `${index + 1}`;
+}
+
+// Tam şablonlu cümlenin (buildProjectSuitabilityStatusSentence) içine
+// gömülen "Açıklama" (projectConformity) notunu TEK BAŞINA (durum
+// cümlesi/tadilat cümlesi OLMADAN) döner — yalnızca notun GERÇEKTEN
+// gösterildiği durumlarda (bkz. PROJECT_SUITABILITY_NOTE_ACCEPTING_STATUS_KEYS)
+// ve YALNIZCA "basit" (hasDifferentProjects=false) dalda; aksi halde boş
+// döner ve çağıran taraf (renderProjectReviewGroupSentence) güvenli
+// şekilde ESKİ tam cümle biçimine geri düşer.
+function getProjectSuitabilityShortConformityNote() {
+  if (shouldUseProjectDifferenceComparison()) return "";
+  const statusKey = projectSuitabilityStatusKey(state.fields.projectSuitabilityStatus || "");
+  if (!PROJECT_SUITABILITY_NOTE_ACCEPTING_STATUS_KEYS.includes(statusKey)) return "";
+  return stripProjectSuitabilityRepairSentence(normalizeReportDescriptionText(state.fields.projectConformity || "").trim());
 }
 
 function formatTitleUnitAttributionPhrase(labels) {
@@ -27245,8 +27307,9 @@ function buildProjectReviewConsolidatedParts(units, groups) {
     state.fields = { ...originalFields, ...unitFields };
     try {
       const label = formatTitleUnitSuitabilityLabel(unitFields, index);
-      footprintItems.push({ label, unitCount: 1, text: buildBuildingFootprintAndEntranceExplanation() });
-      suitabilityItems.push({ label, unitCount: 1, text: buildProjectSuitabilityDescription() });
+      const shortLabel = formatTitleUnitSuitabilityShortLabel(unitFields, index);
+      footprintItems.push({ label, shortLabel, unitCount: 1, text: buildBuildingFootprintAndEntranceExplanation() });
+      suitabilityItems.push({ label, shortLabel, unitCount: 1, text: buildProjectSuitabilityDescription(), note: getProjectSuitabilityShortConformityNote() });
     } finally {
       state.fields = originalFields;
     }
@@ -27480,6 +27543,17 @@ const projectSuitabilityRepairVariants = [
 ];
 registerVariantGroup("buildProjectSuitabilityStatusSentence:repair", "Onaylı Projesine Uygunluk — Tadilat Notu (İmar Durumu)", projectSuitabilityRepairVariants.length);
 
+// Hangi uygunluk durumlarında "Açıklama" (projectConformity) notunun
+// gösterileceğini belirler — hem tam cümlede (aşağıda) hem de kısaltılmış
+// "Etiket: not." biçiminde (bkz. getProjectSuitabilityShortConformityNote,
+// buildProjectReviewConsolidatedParts) AYNI liste kullanılır.
+const PROJECT_SUITABILITY_NOTE_ACCEPTING_STATUS_KEYS = [
+  "BLOK BAZINDA KONUM OLARAK UYGUN DEGILDIR",
+  "MIMARI OLARAK UYGUN DEGILDIR",
+  "KULLANIM ALANI OLARAK UYGUN DEGILDIR",
+  "KULLANIM ALANI VE MIMARI OLARAK UYGUN DEGILDIR",
+];
+
 function buildProjectSuitabilityStatusSentence(statusValue, noteValue, repairValue, prefix = "") {
   const status = normalizeReportDescriptionText(statusValue || "").trim();
   const statusKey = projectSuitabilityStatusKey(status);
@@ -27500,12 +27574,7 @@ function buildProjectSuitabilityStatusSentence(statusValue, noteValue, repairVal
   }
 
   const additions = [];
-  const acceptsConformityNote = [
-    "BLOK BAZINDA KONUM OLARAK UYGUN DEGILDIR",
-    "MIMARI OLARAK UYGUN DEGILDIR",
-    "KULLANIM ALANI OLARAK UYGUN DEGILDIR",
-    "KULLANIM ALANI VE MIMARI OLARAK UYGUN DEGILDIR",
-  ].includes(statusKey);
+  const acceptsConformityNote = PROJECT_SUITABILITY_NOTE_ACCEPTING_STATUS_KEYS.includes(statusKey);
   const cleanNote = stripProjectSuitabilityRepairSentence(note);
   if (acceptsConformityNote && cleanNote) additions.push(cleanNote);
   if (shouldShowProjectSuitabilityRepair(status) && repair) {

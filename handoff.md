@@ -1,5 +1,17 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.564 - 2026-08-26 - Azınlık uygunluk cümleleri artık "Etiket: Not." biçiminde KISALTILIYOR, tadilat cümlesi düşüyor
+
+- Kullanıcı, 0.0.563'ün çıktısını gösterip iki net talep verdi: "basit tadilat cümlesini kaldır" ve "cümle başlangıcı A-12 ve B-31: Yerinde yapılan incelemelerde taşınmazların çatı arasına doğru 10'ar m2 büyüme yapıldığı tespit edilmiştir. bu şekilde olsun diğer türlü karakter kısıtlamasına takılacak. kısaltalım yani olabildiğince."
+- **Değişiklik**: `buildProjectReviewConsolidatedSentences()`'ın 2+ grup ürettiği HER durumda (çoğunluk sadeleştirmesi tetiklensin ya da tetiklenmesin), bir grubun "Açıklama" (`projectConformity`) notu VARSA (yalnızca uygunsuzluk türü durumlarda girilir — `PROJECT_SUITABILITY_NOTE_ACCEPTING_STATUS_KEYS`, artık `buildProjectSuitabilityStatusSentence` ile PAYLAŞILAN tek liste), o grup artık ESKİ şablonlu tam cümle ("Ekspertize konu ... uygun değildir." + "Basit bir tadilat ile ... niteliktedir.") yerine YENİ **`Kısa-Etiketler: Not.`** biçiminde yazılıyor — şablonlu durum cümlesi VE tadilat cümlesi TAMAMEN DÜŞÜYOR, yalnızca kimlik + asıl gözlem kalıyor:
+  - Yeni `formatTitleUnitSuitabilityShortLabel()`: "A Blok" + "12" → **"A-12"** ("Blok"/"No'lu" sözcükleri düşer, ayraç tire).
+  - Yeni `getProjectSuitabilityShortConformityNote()`: notu (repair cümlesi zaten hariç, `stripProjectSuitabilityRepairSentence` ile) doğrudan kaynak alandan okur — yalnızca "basit" (hasDifferentProjects=false) dalda, not gösterilen bir durumdaysa.
+  - Yeni `renderProjectReviewGroupSentence(group)`: not varsa `"{shortLabels}: {note}"`, yoksa (ör. "uygundur" çoğunluk grubu, ya da hasDifferentProjects dalı) GÜVENLİ ŞEKİLDE eski tam cümleye geri düşer — REGRESYON YOK.
+  - 0.0.563'teki not-pluralleştirme (taşınmazların öznesi + "X'ar m2" dağıtım eki) yeni `pluralizeProjectConformityNoteText()` fonksiyonuna taşındı ve HEM tam cümle HEM kısa not biçiminde ORTAK kullanılıyor.
+- Test: `tools/test-project-review-block-pluralization.js` — senaryo 10/11 yeni kısa biçime güncellendi, yeni senaryo 12 kullanıcının TAM 2-azınlık-grubu örneğini uçtan uca doğruluyor (her iki azınlık grubu kendi kısa/çoğul cümlesinde, tadilat cümlesi hiçbirinde yok, hiçbir grup %50'yi geçmediğinden "uygundur" grubu kendi tam cümlesinde kalıyor). `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` cache-buster `?v=20260826-2400`.
+- Canlı tarayıcı testi yapılamadı — kullanıcının gerçek raporunda azınlık cümlelerinin artık "A-12 ve B-31: ..." biçiminde, tadilat cümlesi olmadan kısaca göründüğünü doğrulaması gerekir.
+
 ## 0.0.563 - 2026-08-26 - Birleşen azınlık notu çoğul okunuyor + SAYISI FARKLI notlar ASLA birleşmiyor
 
 - Kullanıcı, 0.0.562'nin çıktısını ("A 12 No'lu ve B 31 No'lu ... 10 m2 büyüme ... niteliktedir.") gösterip TAM istenen hali verdi: "Yerinde yapılan incelemelerde **taşınmazların** çatı arasına doğru **10'ar** m2 büyüme yapıldığı tespit edilmiştir. Basit bir tadilat ile düzeltilebilir **niteliktedirler**." — birleşen notun içindeki serbest metnin de kabaca çoğul okunmasını istedi. Hemen ardından (aynı konuşma içinde, ikinci bir mesajla) kritik bir İSTİSNA ekledi: "açıklama içerisindeki sayısal veriler değişirse ayrı olarak yayımla, örnek biri 10 m2 biri 9 m2 burada ayrı yayınlayalım."
