@@ -12976,10 +12976,12 @@ function pluralizeMainPropertyDescriptionText(text, enablePlural) {
     .replace(/\bbağımsız bölümün bulunduğu(?=[\s.,;:!?]|$)/g, "bağımsız bölümlerin bulunduğu");
 }
 
-function buildMainPropertyDescription(options = {}) {
-  const usePlaceholderTokens = Boolean(options.usePlaceholderTokens);
+// buildMainPropertyDescription()'ın `values` inşasının KENDİSİ — 0.0.574'te
+// (2+ FARKLI blok konsolidasyonu) HER blok için AYRI AYRI çağrılabilmesi
+// için ayrı bir fonksiyona çıkarıldı; davranış BİREBİR AYNI kaldı.
+function buildMainPropertyValues(usePlaceholderTokens) {
   updateBuildingFloorTotals();
-  const values = {
+  return {
     landArea: readMainPropertyField("landArea", "ANA.TAŞINMAZ.YÜZÖLÇÜMÜ", { usePlaceholderTokens }),
     blockNo: readMainPropertyField("blockNo", "ADA", { usePlaceholderTokens }),
     parcelNo: readMainPropertyField("parcelNo", "PARSEL", { usePlaceholderTokens }),
@@ -13009,6 +13011,26 @@ function buildMainPropertyDescription(options = {}) {
     totalFloors: readMainPropertyField("totalFloors", "TOPLAM.KAT", { usePlaceholderTokens, fallbackToToken: false }),
     totalUnits: readMainPropertyField("totalUnits", "TOPLAM.BAĞIMSIZ.BÖLÜM", { usePlaceholderTokens, fallbackToToken: false }),
   };
+}
+
+function buildMainPropertyDescription(options = {}) {
+  const usePlaceholderTokens = Boolean(options.usePlaceholderTokens);
+  const values = buildMainPropertyValues(usePlaceholderTokens);
+
+  // Kullanıcı talebi (2026-08-27, TAM 4-blok örneğiyle): "2+ FARKLI blok"
+  // durumunda artık TÜM blokları TARAYAN, TEK birleşik/konsolide bir
+  // metin üretilir (hangi blok sekmesinde olursa olsun AYNI metin
+  // görünür) — bkz. buildConsolidatedMainPropertyDescription. Bu, ESKİ
+  // "her blok kendi BAĞIMSIZ paragrafını taşır" davranışının (0.0.573'e
+  // kadar geçerliydi) YERİNE geçer; blok gruplama KAPALIYKEN (tek blok/
+  // Çoklu Talep dışı) davranış DEĞİŞMEDEN kalır.
+  if (!usePlaceholderTokens && isBuildingBlockGroupingActive()) {
+    const units = buildAllTitleUnitsForSummaryTable();
+    const groups = computeDocumentsBlockGroups(units);
+    if (groups.length > 1) {
+      return buildConsolidatedMainPropertyDescription(groups, units);
+    }
+  }
 
   // usePlaceholderTokens iken (banka şablonu {{TOKEN}} üretimi) çoğullama
   // DEVRE DIŞI — değerler zaten gerçek metin değil, placeholder.
@@ -13028,13 +13050,226 @@ function buildMainPropertyDescription(options = {}) {
     joinNonEmptySentences([
       buildMainPropertyEntranceSentence(values),
       buildMainPropertyPhysicalSentence(values),
-      buildMainPropertyAmenitySentence(values),
+      buildMainPropertyAmenitySentence(values, enablePlural),
     ]),
   ]
     .map((paragraph) => normalizeReportDescriptionText(cleanComparablePunctuation(paragraph)))
     .filter(Boolean);
 
   return pluralizeMainPropertyDescriptionText(paragraphs.join("\n\n"), enablePlural);
+}
+
+// ============================================================
+// Kullanıcı talebi (2026-08-27, TAM 4-blok örneğiyle): "2+ FARKLI blok"
+// durumunda TÜM blokları birleştiren TEK konsolide Ana Gayrimenkul
+// Açıklaması. AskUserQuestion ile netleştirildi: hangi blok sekmesinde
+// olunursa olunsun AYNI (TÜM blokları kapsayan) metin görünmeli —
+// mainPropertyDescription artık BLOK-ÖZEL değil, bu durumda RAPOR-GENELİ.
+// ============================================================
+
+// "A Blok"/"B" gibi bir blok etiketini HER ZAMAN "Blok" sözcüğünü
+// İÇEREN, KENDİ başına tam bir etiket haline getirir (tek blok
+// enumerasyonu için — bkz. buildConsolidatedMainPropertyBlockPositionSentence).
+// buildMainPropertyBlockPositionSentence'ın (yukarıda, tekil dal) İÇİNDEKİ
+// AYNI satır inline mantığın çıkarılmış hali.
+function formatMainPropertyBlockLabel(label) {
+  const trimmed = String(label || "").trim();
+  if (!trimmed) return "Blok";
+  return /\bblok\b/i.test(trimmed) ? trimmed : `${trimmed} Blok`;
+}
+
+// Birden fazla bloğun AYNI bilgiyi PAYLAŞTIĞI durumlar için — "A" ve "B"
+// etiketlerinden TEK "A ve B Blok" ifadesi kurar (documents dünyasının
+// normalizeBlockLabelPrefixForAttribution'ı YENİDEN KULLANILIR — "Blok"
+// son ekini her etiketten sıyırıp TEK sefer sona ekler). `plural: true`
+// iken 2+ etikette "Blok" yerine "Bloklar" kullanılır (kullanıcının
+// proje-uyumu örneği "A B ve C Bloklar" — floor/fiziki paragraflarında
+// İSE 2+ etiket bile "Blok" TEKİL kalıyor, bkz. kullanıcı örneği "A ve B
+// Blok" — bu yüzden `plural` OPSİYONEL, varsayılan false).
+function formatMainPropertyBlockListPhrase(blockLabels, options = {}) {
+  const prefixes = (blockLabels || []).filter(Boolean).map(normalizeBlockLabelPrefixForAttribution).filter(Boolean);
+  if (!prefixes.length) return "";
+  const suffix = options.plural && prefixes.length > 1 ? "Bloklar" : "Blok";
+  return `${joinTurkishList(prefixes)} ${suffix}`;
+}
+
+// buildEkbExplanationParts/buildDocumentsBlockAttributedExplanationParts
+// (0.0.554/567) ile AYNI çekirdek algoritma: `buildTextFn(values)` HER
+// blok girdisi için çağrılır, AYNI metni üreten bloklar TEK grupta
+// toplanır (grup temsilcisi = o gruba giren İLK metin). Building
+// dünyasının KENDİ, genel amaçlı birleştirme yardımcısı.
+function groupMainPropertyBlocksByText(blockEntries, buildTextFn) {
+  const byText = new Map();
+  const order = [];
+  (blockEntries || []).forEach(({ label, values }) => {
+    const text = buildTextFn(values);
+    if (!text) return;
+    if (!byText.has(text)) {
+      byText.set(text, []);
+      order.push(text);
+    }
+    byText.get(text).push(label);
+  });
+  return order.map((text) => ({ text, blockLabels: byText.get(text) }));
+}
+
+// HER blok grubu için KENDİ temsilci (ilk üye) alanlarıyla `values`
+// nesnesini hesaplar — buildProjectReviewConsolidatedParts'ın (documents
+// dünyası) AYNI "state.fields/state.tables GEÇİCİ değiştir, try/finally
+// ile geri yükle" tekniği. `state.tables` da değiştirilir çünkü kat
+// kompozisyonu (buildMainPropertyFloorComposition/buildBuildingFloorMacroSummary)
+// state.tables.buildingFloors'u DOĞRUDAN okur (bu, group.fields'ta
+// BULUNMAYAN, `.tables` altında ayrı duran bir veri).
+function getMainPropertyBlockEntries(groups, units) {
+  const originalFields = state.fields;
+  const originalTables = state.tables;
+  try {
+    return groups.map((group) => {
+      const representativeUnit = units[group.unitIndices[0]] || {};
+      state.fields = { ...originalFields, ...(representativeUnit.fields || group.fields || {}) };
+      state.tables = { ...originalTables, ...(representativeUnit.tables || {}) };
+      const label = computeDocumentsBlockLabel(group, groups);
+      const values = buildMainPropertyValues(false);
+      state.fields = originalFields;
+      state.tables = originalTables;
+      return { label, values };
+    });
+  } finally {
+    state.fields = originalFields;
+    state.tables = originalTables;
+  }
+}
+
+// Paragraf 1 — açılış + BİRLEŞİK blok konumu cümlesi. Blok sayısı
+// (values.blockCount, kullanıcı girişi) DEĞİL `groups.length` (GERÇEK
+// grup sayısı) kullanılır — daha güvenilir.
+function buildConsolidatedMainPropertyOpeningParagraph(blockEntries, groups) {
+  const primaryValues = blockEntries[0].values;
+  const openingSentence = buildMainPropertyOpeningSentence({ ...primaryValues, blockCount: String(groups.length) });
+  const positionClauses = blockEntries
+    .filter((entry) => entry.values.blockPosition)
+    .map((entry) => `${formatMainPropertyBlockLabel(entry.label)} parselin ${toLowerText(entry.values.blockPosition)} cephesinde`);
+  const positionSentence = positionClauses.length ? `${joinTurkishList(positionClauses)} yer almaktadır.` : "";
+  return joinNonEmptySentences([openingSentence, positionSentence]);
+}
+
+// Paragraf 2 — proje uyumu. TÜM bloklar AYNI sonuca ulaştıysa TEK
+// (çoğul özneli) cümle; farklıysa HER grup kendi blok-listesi öznesiyle
+// ayrı cümle alır (buildProjectReviewConsolidatedSentences'ın attribution-
+// weaving'iyle AYNI ilke — sabit "ana taşınmazın"/"gayrimenkulün" öznesi
+// blok listesiyle DEĞİŞTİRİLİR, cümlenin GERİ KALANI AYNEN kalır).
+function buildConsolidatedMainPropertyProjectParagraph(blockEntries) {
+  const groups = groupMainPropertyBlocksByText(blockEntries, buildMainPropertyProjectSentence);
+  if (!groups.length) return "";
+  if (groups.length === 1) {
+    return groups[0].text
+      .replace(/\btaşınmazın\b/g, "taşınmazların")
+      .replace(/\bgayrimenkulün\b/g, "gayrimenkullerin");
+  }
+  return groups.map((group) => {
+    const subject = formatMainPropertyBlockListPhrase(group.blockLabels, { plural: true });
+    return group.text.replace(/\b(ana )?(taşınmazın|gayrimenkulün)\b/, subject);
+  }).join(" ");
+}
+
+// Paragraf 3+ — kat kompozisyonu + bina girişi, BİRLEŞTİRİLMİŞ. Kat
+// dağılımı METNİ birebir aynı olan bloklar TEK paragrafta ("A ve B Blok
+// ... blokların her birinde ..."), farklı olanlar kendi AYRI
+// paragraflarında ("C Blok ... binada ...", "D Blok ... binada ...").
+// AYNI kat-grubu İÇİNDE giriş bilgisi FARKLI olabileceğinden (kullanıcı
+// örneği: A/B AYNI kat kompozisyonu, FARKLI giriş yönü) giriş cümlesi
+// grup İÇİNDE TEKRAR gruplanır.
+function buildConsolidatedMainPropertyFloorParagraphs(blockEntries) {
+  const floorGroups = groupMainPropertyBlocksByText(blockEntries, buildMainPropertyFloorSentence);
+  return floorGroups.map((floorGroup) => {
+    const isMultiBlock = floorGroup.blockLabels.length > 1;
+    const blockListPhrase = formatMainPropertyBlockListPhrase(floorGroup.blockLabels);
+    let floorText = floorGroup.text.replace(/^Ana taşınmaz\b/, blockListPhrase);
+    if (isMultiBlock) floorText = floorText.replace(/\bbinada\b/, "blokların her birinde");
+
+    const memberEntries = blockEntries.filter((entry) => floorGroup.blockLabels.includes(entry.label));
+    const entranceGroups = groupMainPropertyBlocksByText(memberEntries, buildMainPropertyEntranceSentence);
+    let entranceText = "";
+    if (entranceGroups.length === 1) {
+      entranceText = isMultiBlock
+        ? entranceGroups[0].text.replace(/^Bina girişi\b/, "Bina girişleri")
+        : entranceGroups[0].text;
+    } else if (entranceGroups.length > 1) {
+      entranceText = entranceGroups.map((entranceGroup) => {
+        const entranceBlockList = formatMainPropertyBlockListPhrase(entranceGroup.blockLabels);
+        return entranceGroup.text.replace(/^Bina girişi\b/, `${entranceBlockList} bina girişi`);
+      }).join(" ");
+    }
+
+    return joinNonEmptySentences([floorText, entranceText]);
+  });
+}
+
+// Paragraf — fiziki özellikler (dış cephe/merdiven/iç duvar), kullanıcının
+// AÇIKÇA tarif ettiği kural: "Tüm Ana taşınmazların bilgileri aynı ise"
+// (TEK grup) → mevcut cümle AYNEN; "aynı değil ise aynı olanları
+// gruplandır, diğerlerini ayrı açıkla" (2+ grup) → HER grup kendi
+// "{blockList}'ta" ön ekiyle ayrı cümle alır.
+function buildConsolidatedMainPropertyPhysicalSentence(blockEntries) {
+  const groups = groupMainPropertyBlocksByText(blockEntries, buildMainPropertyPhysicalSentence);
+  if (!groups.length) return "";
+  if (groups.length === 1) return groups[0].text;
+  return groups.map((group) => `${formatMainPropertyBlockListPhrase(group.blockLabels)}'ta ${group.text}`).join(" ");
+}
+
+// Asansör — kullanıcının "1'er adet asansör" ifadesi: TÜM bloklarda
+// (elevator alanı) AYNI "{N} Adet Asansör" değeri varsa
+// getTurkishDistributiveNumberSuffix() (0.0.570, documents dünyası —
+// YENİDEN KULLANILIR) ile sayı+dağıtım eki kurulur. Farklı/eksik/"Yok"/
+// "Montaj bekliyor" karışık durumlarda (nadir, kapsam dışı) BOŞ döner —
+// çağıran taraf bu durumda per-blok asansör cümlesini ATLAR (yanlış
+// birleştirmektense hiç göstermemek tercih edilir).
+function buildConsolidatedMainPropertyElevatorSentence(blockEntries) {
+  const elevatorTexts = [...new Set(blockEntries.map((entry) => toLowerText(entry.values.elevator || "").trim()).filter(Boolean))];
+  if (elevatorTexts.length !== 1) return "";
+  const match = elevatorTexts[0].match(/^(\d+)\s*adet\s*asansör$/);
+  if (!match) return "";
+  const count = Number.parseInt(match[1], 10);
+  const suffix = getTurkishDistributiveNumberSuffix(count);
+  if (!suffix) return "";
+  return `Taşınmazların yer aldığı bloklarda ${count}'${suffix} adet asansör bulunmaktadır.`;
+}
+
+// Paragraf — otopark + sosyal imkanlar, SİTE-GENELİ (blok bazında ayrım
+// YOK — kullanıcının örneğinde de tek/ortak cümle). Asansör cümlesi
+// BİLEREK burada TEKRARLANMAZ (yukarıdaki dağıtımlı sürüm kullanılır) —
+// "asansör" içeren satırlar `buildBuildingCarparkElevatorSentences`'ın
+// döndürdüğü diziden ayıklanır (bu fonksiyonun sabit kelime dağarcığı
+// GÜVENİLİR bir ayırt edici — carpark/heating cümlelerinde "asansör"
+// kelimesi HİÇ geçmez).
+function buildConsolidatedMainPropertyAmenityParagraph(blockEntries) {
+  const primaryValues = blockEntries[0].values;
+  const context = getMainPropertyStructureContext(primaryValues);
+  const carparkAndHeatingSentences = buildBuildingCarparkElevatorSentences(primaryValues, context)
+    .filter((sentence) => !/asansör/i.test(sentence));
+  const elevatorSentence = buildConsolidatedMainPropertyElevatorSentence(blockEntries);
+  const social = String(primaryValues.socialFacilities || "").trim();
+  const socialSentence = social && social.toLocaleLowerCase("tr-TR") !== "yok"
+    ? `Taşınmazlar ${formatTurkishList(social.split(/\s*,\s*/).filter(Boolean).map(toLowerText))} gibi sosyal imkanların bulunduğu bir ${context.siteOrBuildingLocative} yer almaktadır.`
+    : "";
+  return joinNonEmptySentences([...carparkAndHeatingSentences, elevatorSentence, socialSentence]);
+}
+
+function buildConsolidatedMainPropertyDescription(groups, units) {
+  const blockEntries = getMainPropertyBlockEntries(groups, units);
+  const paragraphs = [
+    buildConsolidatedMainPropertyOpeningParagraph(blockEntries, groups),
+    buildConsolidatedMainPropertyProjectParagraph(blockEntries),
+    ...buildConsolidatedMainPropertyFloorParagraphs(blockEntries),
+    buildConsolidatedMainPropertyPhysicalSentence(blockEntries),
+    buildConsolidatedMainPropertyAmenityParagraph(blockEntries),
+  ]
+    .map((paragraph) => normalizeReportDescriptionText(cleanComparablePunctuation(paragraph)))
+    .filter(Boolean);
+
+  // enablePlural HER ZAMAN true — bu fonksiyon yalnızca 2+ FARKLI blok
+  // (dolayısıyla kesinlikle 2+ bağımsız bölüm) varken çağrılır.
+  return pluralizeMainPropertyDescriptionText(paragraphs.join("\n\n"), true);
 }
 
 function buildHorizontalMainPropertyDescription(values) {
@@ -13292,13 +13527,20 @@ function buildMainPropertyPhysicalSentence(values) {
   return `${formatTurkishList(parts)} ${tail}.`;
 }
 
-function buildMainPropertyAmenitySentence(values) {
+// `enablePlural` (2026-08-27): 0.0.573'te "güvenli regex'le
+// hedeflenemeyecek kadar belirsiz konumlu" diye KAPSAM DIŞI bırakılan
+// çıplak sentence-initial "Taşınmaz" öznesi — burada, üretim ANINDA
+// (blanket regex DEĞİL, konum SABİT olduğundan güvenle) çoğullanabilir.
+// Varsayılan `false` — mevcut TÜM çağrı noktaları (parametresiz) ESKİ
+// davranışı korur.
+function buildMainPropertyAmenitySentence(values, enablePlural = false) {
   const sentences = [];
   const context = getMainPropertyStructureContext(values);
   sentences.push(...buildBuildingCarparkElevatorSentences(values, context));
   const social = String(values.socialFacilities || "").trim();
   if (social && social.toLocaleLowerCase("tr-TR") !== "yok") {
-    sentences.push(`Taşınmaz ${formatTurkishList(social.split(/\s*,\s*/).filter(Boolean).map(toLowerText))} gibi sosyal imkanların bulunduğu bir ${context.siteOrBuildingLocative} yer almaktadır.`);
+    const subject = enablePlural ? "Taşınmazlar" : "Taşınmaz";
+    sentences.push(`${subject} ${formatTurkishList(social.split(/\s*,\s*/).filter(Boolean).map(toLowerText))} gibi sosyal imkanların bulunduğu bir ${context.siteOrBuildingLocative} yer almaktadır.`);
   }
   return sentences.join(" ");
 }

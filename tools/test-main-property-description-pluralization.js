@@ -82,7 +82,22 @@ const functionNames = [
   // Bu testin ASIL odağı - yeni fonksiyonlar.
   "getMainPropertyDescriptionUnitCount",
   "pluralizeMainPropertyDescriptionText",
+  "buildMainPropertyValues",
   "buildMainPropertyDescription",
+  // 2+ FARKLI blok konsolidasyonu (0.0.574) - yeni fonksiyonlar.
+  "formatMainPropertyBlockLabel",
+  "formatMainPropertyBlockListPhrase",
+  "groupMainPropertyBlocksByText",
+  "getMainPropertyBlockEntries",
+  "buildConsolidatedMainPropertyOpeningParagraph",
+  "buildConsolidatedMainPropertyProjectParagraph",
+  "buildConsolidatedMainPropertyFloorParagraphs",
+  "buildConsolidatedMainPropertyPhysicalSentence",
+  "buildConsolidatedMainPropertyElevatorSentence",
+  "buildConsolidatedMainPropertyAmenityParagraph",
+  "buildConsolidatedMainPropertyDescription",
+  "normalizeBlockLabelPrefixForAttribution",
+  "getTurkishDistributiveNumberSuffix",
   // buildMainPropertyDescription()'ın gerçek yardımcıları.
   "buildHorizontalMainPropertyDescription",
   "buildMainPropertyOpeningSentence",
@@ -173,10 +188,31 @@ const sandboxSource = `
   function normalizeReportTitleText(value) { return String(value || "").trim(); }
   function normalizeReportDescriptionText(value) { return String(value || "").replace(/\\s+/g, " ").trim(); }
   function updateBuildingFloorTotals() {}
-  function buildMainPropertyFloorComposition() { return ""; }
-  function buildBuildingFloorMacroSummary() { return ""; }
+  // Gercek buildMainPropertyFloorComposition/buildBuildingFloorMacroSummary
+  // state.tables.buildingFloors uzerinden karmasik bir hesaplama yapiyor
+  // (bu testin kapsami DEGIL) - bunun yerine dogrudan kontrol edilebilen
+  // test-ozel alanlar (state.fields.testFloorComposition/testFloorSummary)
+  // okunur, boylece FARKLI bloklar icin FARKLI kat metinleri kurulabilir.
+  function buildMainPropertyFloorComposition() { return state.fields.testFloorComposition || ""; }
+  function buildBuildingFloorMacroSummary() { return state.fields.testFloorSummary || ""; }
   function selectVariant() { return 0; }
   function registerVariantGroup() {}
+  // app.js'te joinTurkishList AYNI ad altinda BIRDEN FAZLA kez tanimli
+  // (script-seviyesi fonksiyon bildirimi, SONUNCUSU kazanir - o da
+  // KML'e ozgu cleanupPlaceName'e bagimli) - diger test dosyalarindaki
+  // AYNI emsal (bkz. test-documents-block-description.js) ile elle
+  // yazilmis, basit/beklenen davranisi yansitan bir kopya kullanilir.
+  function joinTurkishList(items = []) {
+    const clean = (items || []).filter(Boolean);
+    if (clean.length <= 1) return clean[0] || "";
+    if (clean.length === 2) return \`\${clean[0]} ve \${clean[1]}\`;
+    return \`\${clean.slice(0, -1).join(", ")} ve \${clean[clean.length - 1]}\`;
+  }
+  // getTurkishDistributiveNumberSuffix()'in kapatma bağımlılığı - app.js'teki
+  // gerçek tanımla BİREBİR (bkz. buildProjectReviewConsolidatedSentences'ın
+  // hemen üstü, test-project-review-block-pluralization.js'teki AYNI emsal).
+  const TURKISH_ONES_DISTRIBUTIVE_SUFFIX = { 1: "er", 2: "şer", 3: "er", 4: "er", 5: "er", 6: "şar", 7: "şer", 8: "er", 9: "ar" };
+  const TURKISH_TENS_DISTRIBUTIVE_SUFFIX = { 10: "ar", 20: "şer", 30: "ar", 40: "ar", 50: "şer", 60: "ar", 70: "er", 80: "er", 90: "ar" };
   ${constArrayNames.map(extractConstArray).join("\n")}
   ${functionNames.map(extractFunction).join("\n")}
   return {
@@ -186,6 +222,10 @@ const sandboxSource = `
     pluralizeMainPropertyDescriptionText,
     buildMainPropertyDescription,
     isBuildingBlockGroupingActive,
+    formatMainPropertyBlockListPhrase,
+    groupMainPropertyBlocksByText,
+    buildConsolidatedMainPropertyElevatorSentence,
+    getTurkishDistributiveNumberSuffix,
   };
 `;
 // eslint-disable-next-line no-new-func
@@ -339,46 +379,34 @@ function freshState(overrides = {}) {
   console.log("buildMainPropertyDescription() Coklu Talep + TEK blok, YATAY kat irtifaki dali testi tamam.");
 }
 
-// --- 6) 2+ FARKLI blok: aktif bloğun KENDİ uye sayisina gore karar --------
-// (diger bloktan BAGIMSIZ). NOT: senaryo 1c'deki AYNI gerekce ile iki
-// AYRI/kendi icinde tutarli state kurulur (state.fields HER ZAMAN aktif
-// taşınmazin kendi alanlarini tutar).
+// --- 6) 2+ FARKLI blok: ARTIK TEK KONSOLİDE metin (0.0.574, kullanıcı ----
+// talebi + AskUserQuestion netleştirmesi: "hangi blok sekmesinde olursam
+// olayım AYNI metni görmek istiyorum") — HANGİ blok aktif olursa olsun
+// AYNI (TÜM blokları kapsayan) metin dönmeli. Bu, ESKİ (0.0.573'e kadar
+// geçerli, "her blok kendi üye sayısına göre bağımsız karar verir")
+// davranışın YERİNE geçti — bkz. tools/test-main-property-description-pluralization.js
+// senaryo 8-13'teki DETAYLI konsolidasyon testleri.
 {
-  fns.setState(freshState({
+  const buildState = (activeBlockLabel, activeUnitNo) => freshState({
     fields: {
       requestType: "Çoklu Talep", ownershipType: "Dikey Kat İrtifakı",
-      blockNo: "100", parcelNo: "1", titleBlockName: "A Blok", unitNo: "1", buildingStyle: "Betonarme",
-    },
-    titleUnits: [
-      unit("100", "1", "A Blok", { unitNo: "2" }), // A Blok'un 2. uyesi
-      unit("100", "1", "B Blok", { unitNo: "5" }), // B Blok, TEK uyeli
-    ],
-    activeTitleUnitIndex: 0, // aktif = A Blok'un kendisi (2 uyeli)
-  }));
-  const aBlockText = fns.buildMainPropertyDescription();
-  assert.ok(
-    aBlockText.includes("taşınmazların yer aldığı") || aBlockText.includes("gayrimenkullerin bulunduğu"),
-    `A Blok (2 uyeli) COGUL olmali, bulunan: ${aBlockText}`
-  );
-
-  fns.setState(freshState({
-    fields: {
-      requestType: "Çoklu Talep", ownershipType: "Dikey Kat İrtifakı",
-      blockNo: "100", parcelNo: "1", titleBlockName: "B Blok", unitNo: "5", buildingStyle: "Betonarme",
+      blockNo: "100", parcelNo: "1", titleBlockName: activeBlockLabel, unitNo: activeUnitNo, buildingStyle: "Betonarme",
     },
     titleUnits: [
       unit("100", "1", "A Blok", { unitNo: "1" }),
-      unit("100", "1", "A Blok", { unitNo: "2" }),
+      unit("100", "1", "B Blok", { unitNo: "5" }),
     ],
-    activeTitleUnitIndex: 0, // aktif = B Blok'un kendisi (TEK uyeli)
-  }));
+    activeTitleUnitIndex: 0,
+  });
+
+  fns.setState(buildState("A Blok", "1"));
+  const aBlockText = fns.buildMainPropertyDescription();
+  fns.setState(buildState("B Blok", "5"));
   const bBlockText = fns.buildMainPropertyDescription();
-  assert.ok(
-    (bBlockText.includes("taşınmazın yer aldığı") || bBlockText.includes("gayrimenkulün bulunduğu"))
-    && !bBlockText.includes("taşınmazların yer aldığı") && !bBlockText.includes("gayrimenkullerin bulunduğu"),
-    `B Blok (TEK uyeli) TEKIL kalmali - A Blok'un cogul olmasi B Blok'u ETKİLEMEMELİ, bulunan: ${bBlockText}`
-  );
-  console.log("buildMainPropertyDescription() 2+ FARKLI blok - her blok KENDI uye sayisina gore testi tamam.");
+
+  assert.equal(aBlockText, bBlockText, "HANGİ blok aktif olursa olsun AYNI konsolide metin dönmeli.");
+  assert.ok(aBlockText.includes("taşınmazların yer aldığı"), `Konsolide metin COĞUL olmali, bulunan: ${aBlockText}`);
+  console.log("buildMainPropertyDescription() 2+ FARKLI blok - HANGİ blok aktif olursa olsun AYNI konsolide metin testi tamam.");
 }
 
 // --- 7) usePlaceholderTokens: true -> cogullama UYGULANMAZ ----------------
@@ -392,6 +420,83 @@ function freshState(overrides = {}) {
   const tokenText = fns.buildMainPropertyDescription({ usePlaceholderTokens: true });
   assert.ok(!tokenText.includes("taşınmazların") && !tokenText.includes("gayrimenkullerin"), `usePlaceholderTokens=true iken cogullama UYGULANMAMALI, bulunan: ${tokenText}`);
   console.log("buildMainPropertyDescription() usePlaceholderTokens ile cogullama devre-disi testi tamam.");
+}
+
+// --- 8) BÜYÜK ENTEGRASYON: kullanıcının TAM 4-blok örneği (2026-08-27) ---
+// A/B AYNI kat kompozisyonu + FARKLI giriş yönü; C/D kendi ayrı
+// paragrafları; A/B/C proje uyumlu, D uyumsuz; fiziki özellikler TÜM
+// bloklarda ORTAK; asansör TÜM bloklarda AYNI (1'er adet).
+{
+  const commonFields = {
+    requestType: "Çoklu Talep", ownershipType: "Dikey Kat İrtifakı",
+    blockNo: "0", parcelNo: "709", landArea: "21.625,77",
+    buildingOrder: "Ayrık", buildingStyle: "Betonarme Karkas", buildingClass: "3/B",
+    exteriorCladding: "Mantolama Üzeri Plastik Boyalı", stairLanding: "Seramik Kaplı", interiorWalls: "Plastik Boyalı",
+    elevator: "1 Adet Asansör", carpark: "Kapalı Ve Açık Otopark",
+    socialFacilities: "Açık Yüzme Havuzu, Spor Salonu, Basketbol Sahası",
+    mainRealEstateProjectSuitable: "Evet",
+    buildingEntranceLevel: "Zemin",
+  };
+  // floorGroup: A ve B AYNI (1) kat kompozisyonunu paylaşır (TEK
+  // paragrafta birleşmeli); C (2) ve D (3) KENDİ AYRI/farklı kat
+  // kompozisyonlarına sahiptir (her biri kendi paragrafında kalmalı).
+  const makeBlockOverrides = (blockName, blockPosition, floorGroup, projectSuitable, entranceDirection, extra = {}) => ({
+    titleBlockName: blockName,
+    buildingSubjectBlockPosition: blockPosition,
+    testFloorComposition: `bodrum + zemin + 4 normal kat + çatı katı (grup ${floorGroup})`,
+    testFloorSummary: `1. Bodrum katta Ortak Alanlar ve 4 adet dükkan (grup ${floorGroup}) olmak üzere binada toplam 14 adet bağımsız bölüm bulunmaktadır.`,
+    totalFloors: "6",
+    mainRealEstateProjectSuitable: projectSuitable,
+    buildingEntranceDirection: entranceDirection,
+    ...extra,
+  });
+
+  fns.setState(freshState({
+    fields: { ...commonFields, ...makeBlockOverrides("A Blok", "kuzey", 1, "Evet", "Batı") },
+    titleUnits: [
+      unit("0", "709", "B Blok", { ...commonFields, ...makeBlockOverrides("B Blok", "güney", 1, "Evet", "Doğu") }),
+      unit("0", "709", "C Blok", { ...commonFields, ...makeBlockOverrides("C Blok", "doğu", 2, "Evet", "Batı") }),
+      unit("0", "709", "D Blok", { ...commonFields, ...makeBlockOverrides("D Blok", "batı", 3, "Hayır", "Batı", { mainRealEstateProjectSuitabilityNote: "Çatı katına ilave yapıldığı tespit edilmiştir." }) }),
+    ],
+  }));
+
+  const text = fns.buildMainPropertyDescription();
+
+  // 1) Acilis + blok sayisi + birlesik konum cumlesi.
+  assert.ok(text.includes("taşınmazların yer aldığı site"), `Acilis coğul olmali, bulunan: ${text}`);
+  assert.ok(text.includes("4 blok olarak inşa edilmiştir"), `Blok sayisi GERCEK grup sayisindan (4) gelmeli, bulunan: ${text}`);
+  assert.ok(
+    text.includes("A Blok parselin kuzey cephesinde") && text.includes("B Blok parselin güney cephesinde")
+    && text.includes("C Blok parselin doğu cephesinde") && text.includes("D Blok parselin batı cephesinde"),
+    `Tum bloklarin konumu TEK cumlede birlesmeli, bulunan: ${text}`
+  );
+
+  // 2) Proje uyumu: A+B+C ortak (coğul ozne + blok listesi), D ayri (uyumsuz + not).
+  assert.ok(text.includes("Bloklar") && /A,?\s*B ve C Bloklar/.test(text), `A+B+C ortak proje cumlesinde blok listesi (coğul 'Bloklar') olmali, bulunan: ${text}`);
+  assert.ok(text.includes("D Blok") && /farklılık bulunduğu değerlendirilmiştir/.test(text), `D Blok kendi (uyumsuz) proje cumlesinde ayri kalmali, bulunan: ${text}`);
+  assert.ok(text.includes("Çatı katına ilave yapıldığı tespit edilmiştir"), `D Blok'un proje uygunsuzluk notu metne dahil olmali, bulunan: ${text}`);
+
+  // 3) Kat kompozisyonu + giris: A+B TEK paragrafta ("blokların her
+  // birinde"), FARKLI giris yonleri AYRI belirtilir; C ve D kendi AYRI
+  // paragraflarinda ("binada", tekil).
+  assert.ok(/A ve B Blok/.test(text) && text.includes("blokların her birinde"), `A+B TEK paragrafta 'blokların her birinde' ile birlesmeli, bulunan: ${text}`);
+  assert.ok(text.includes("A Blok bina girişi") && text.includes("batı") && text.includes("B Blok bina girişi") && text.includes("doğu"), `A/B farkli giris yonleri AYRI belirtilmeli, bulunan: ${text}`);
+  const paragraphs = text.split("\n\n");
+  const cBlokParagraph = paragraphs.find((p) => p.startsWith("C Blok"));
+  const dBlokParagraph = paragraphs.find((p) => p.startsWith("D Blok"));
+  assert.ok(cBlokParagraph && cBlokParagraph.includes("binada toplam"), `C Blok kendi AYRI ('binada', tekil) paragrafinda kalmali, bulunan: ${text}`);
+  assert.ok(dBlokParagraph && dBlokParagraph.includes("binada toplam"), `D Blok kendi AYRI ('binada', tekil) paragrafinda kalmali, bulunan: ${text}`);
+
+  // 4) Fiziki ozellikler: TUM bloklar ayni oldugundan TEK (atifsiz) cumle.
+  assert.ok(text.includes("mantolama üzeri plastik boyalı") && !text.includes("Blok'ta"), `Fiziki ozellikler TUM bloklarda ayni oldugundan atifsiz TEK cumle olmali, bulunan: ${text}`);
+
+  // 5) Asansor: TUM bloklarda ayni (1 adet) -> dagitimli "1'er adet".
+  assert.ok(text.includes("1'er adet asansör"), `Asansor dagitim ekiyle (1'er adet) belirtilmeli, bulunan: ${text}`);
+
+  // 6) Sosyal imkanlar: coğul "Taşınmazlar".
+  assert.ok(text.includes("Taşınmazlar") && text.includes("yüzme havuzu"), `Sosyal imkanlar cumlesi coğul 'Taşınmazlar' ile baslamali, bulunan: ${text}`);
+
+  console.log("buildMainPropertyDescription() TAM 4-blok entegrasyon (kullanici ornegi) testi tamam.");
 }
 
 console.log("Ana Gayrimenkul Aciklamasi (mainPropertyDescription) cogullama testleri basarili.");
