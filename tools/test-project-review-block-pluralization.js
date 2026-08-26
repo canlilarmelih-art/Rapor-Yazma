@@ -143,6 +143,9 @@ const functionNames = [
   "normalizeTextForSimilarityComparison",
   "levenshteinDistance",
   "computeTextSimilarityRatio",
+  "getTurkishDistributiveNumberSuffix",
+  "extractNumericTokensForGroupingGuard",
+  "hasMatchingNumericTokensForGroupingGuard",
 ];
 
 // `buildProjectSuitabilityStatusSentence` const/registerVariantGroup
@@ -187,6 +190,12 @@ const sandboxSource = `
     return \`\${clean.slice(0, -1).join(", ")} ve \${clean[clean.length - 1]}\`;
   }
   const imarOsbInstitutionOption = "Organize Sanayi Bölge Müdürlüğü";
+  // getTurkishDistributiveNumberSuffix()'in kapatma (closure) bağımlılığı
+  // - app.js'te fonksiyon tanımından HEMEN ÖNCE duran 2 const tablo -
+  // extractFunction yalnızca fonksiyon GÖVDESİNİ aldığından burada elle
+  // eklenmesi gerekiyor (bkz. app.js'teki gerçek tanım, BİREBİR kopya).
+  const TURKISH_ONES_DISTRIBUTIVE_SUFFIX = { 1: "er", 2: "şer", 3: "er", 4: "er", 5: "er", 6: "şar", 7: "şer", 8: "er", 9: "ar" };
+  const TURKISH_TENS_DISTRIBUTIVE_SUFFIX = { 10: "ar", 20: "şer", 30: "ar", 40: "ar", 50: "şer", 60: "ar", 70: "er", 80: "er", 90: "ar" };
   function registerVariantGroup() {}
   ${functionNames.map(extractFunction).join("\n")}
   ${projectSuitabilityVariantsAndSentenceFnSrc}
@@ -200,6 +209,7 @@ const sandboxSource = `
     isDocumentsBlockGroupingActive,
     computeDocumentsBlockGroups,
     buildAllTitleUnitsForSummaryTable,
+    getTurkishDistributiveNumberSuffix,
   };
 `;
 // eslint-disable-next-line no-new-func
@@ -530,6 +540,26 @@ function freshState(overrides = {}) {
   console.log("buildProjectReviewExplanationParts() %50/%50 esitlikte sadelestirme UYGULANMAMASI testi tamam.");
 }
 
+// --- 9c) getTurkishDistributiveNumberSuffix(): Turkce dagitim sayi -------
+// eki dogrulugu (vurgulu ornekler + kapsam-disi guvenlik agi).
+{
+  const cases = [
+    [1, "er"], [2, "şer"], [3, "er"], [4, "er"], [5, "er"],
+    [6, "şar"], [7, "şer"], [8, "er"], [9, "ar"], [10, "ar"],
+    [15, "er"], [20, "şer"], [23, "er"], [30, "ar"], [50, "şer"],
+    [90, "ar"], [100, "er"],
+  ];
+  cases.forEach(([number, expected]) => {
+    assert.equal(fns.getTurkishDistributiveNumberSuffix(number), expected, `${number} icin dagitim eki '${expected}' olmali.`);
+  });
+  assert.equal(fns.getTurkishDistributiveNumberSuffix(0), null, "0 icin ek YOK (guvenlik agi).");
+  assert.equal(fns.getTurkishDistributiveNumberSuffix(-5), null, "Negatif sayida ek YOK (guvenlik agi).");
+  assert.equal(fns.getTurkishDistributiveNumberSuffix(101), null, "Kapsam disi (100'den buyuk) sayida ek YOK (guvenlik agi).");
+  assert.equal(fns.getTurkishDistributiveNumberSuffix("10.5"), null, "Ondalikli sayida ek YOK (guvenlik agi, yanlis ek eklemektense hic eklememek tercih edilir).");
+
+  console.log("getTurkishDistributiveNumberSuffix() dogruluk + guvenlik agi testi tamam.");
+}
+
 // --- 10) Kullanıcı bildirimi (2026-08-26, ikinci örnek): "A 12 No'lu" -----
 // ve "B 31 No'lu" AYNI uygunluk durumuna VE ÖZDEŞ açıklama notuna sahip
 // olduğu halde, notlardan birinde UNUTULAN TEK BİR NOKTA ("...tespit
@@ -567,8 +597,52 @@ function freshState(overrides = {}) {
   assert.equal((suitabilityText.match(/tespit edilmiştir/g) || []).length, 1, `Notun kendisi TEK KEZ gorunmeli (2 AYRI cumleye BOLUNMEMELI), bulunan: ${suitabilityText}`);
   assert.equal((suitabilityText.match(/Basit bir tadilat/g) || []).length, 1, `Tadilat cumlesi de TEK KEZ gorunmeli, bulunan: ${suitabilityText}`);
   assert.ok(suitabilityText.includes("Diğer taşınmazlar"), `Cogunluk (3/5 > %50) hala 'Diger tasinmazlar' olarak genellenmeli, bulunan: ${suitabilityText}`);
+  // Kullanıcı talebi (2026-08-26, ucuncu ornek): "cumle bu sekilde
+  // olmali" - birlesen notun ICINDEKI serbest metin de kabaca cogul
+  // okunmali: sayi "10'ar m2" (dagitim eki), "taşınmazların" oznesi,
+  // "niteliktedirler" cogul cekim.
+  assert.ok(suitabilityText.includes("taşınmazların çatı arasına doğru 10'ar m2 büyüme"), `Notun icindeki sayi dagitim ekiyle (10'ar m2) ve 'taşınmazların' oznesiyle cogul okunmali, bulunan: ${suitabilityText}`);
+  assert.ok(suitabilityText.includes("düzeltilebilir niteliktedirler."), `Tadilat cumlesi cogul cekimlenmeli (niteliktedirler), bulunan: ${suitabilityText}`);
 
-  console.log("buildProjectReviewExplanationParts() yazim hatasi/noktalama farkli AMA ozdes azinlik notlarinin birlesmesi testi tamam.");
+  console.log("buildProjectReviewExplanationParts() yazim hatasi/noktalama farkli AMA ozdes azinlik notlarinin birlesmesi + cogul not metni testi tamam.");
+}
+
+// --- 11) Kullanıcı talebi (2026-08-26, uc mesaj sonrasi ISTISNA): --------
+// "burada istisna kural açıklama içerisindeki sayısal veriler değişirse
+// ayrı olarak yayımla örnek biri 10 m2 biri 9 m2 burada ayrı
+// yayınlayalım" — notlar SAYI DISINDA birebir ayni olsa bile (yazim/
+// noktalama farki YOK bu sefer), SAYI farkliysa ASLA birlesmemeli.
+{
+  const differentNumberState = freshState({ titleBlockName: "A Blok", unitNo: "1" });
+  differentNumberState.titleUnits = [
+    unit(differentNumberState.fields, "100", "1", "A Blok", {
+      unitNo: "12",
+      projectSuitabilityStatus: "kullanım alanı olarak uygun değildir.",
+      projectConformity: "Yerinde yapılan incelemelerde çatı arasına doğru 10 m2 büyüme yapıldığı tespit edilmiştir.",
+      projectSuitabilitySimpleRepair: "Evet",
+    }),
+    unit(differentNumberState.fields, "100", "1", "B Blok", {
+      unitNo: "31",
+      projectSuitabilityStatus: "kullanım alanı olarak uygun değildir.",
+      // Notun SAYISI farkli (9 vs 10) - metin ANLAM olarak FARKLI bir
+      // GERCEK/olcum degeri tasidigindan ASLA birlesmemeli.
+      projectConformity: "Yerinde yapılan incelemelerde çatı arasına doğru 9 m2 büyüme yapıldığı tespit edilmiştir.",
+      projectSuitabilitySimpleRepair: "Evet",
+    }),
+    unit(differentNumberState.fields, "100", "1", "C Blok", { unitNo: "2" }),
+    unit(differentNumberState.fields, "100", "1", "D Blok", { unitNo: "3" }),
+  ];
+  fns.setState(differentNumberState);
+  const parts = fns.buildProjectReviewExplanationParts();
+  const suitabilityText = parts.slice(2).join(" ||| ");
+
+  assert.ok(!suitabilityText.includes("A Blok 12 No'lu ve B Blok 31 No'lu"), `Notlarin SAYISI FARKLI oldugundan (10 vs 9 m2) ASLA birlesik atifli TEK cumlede gorunmemeli, bulunan: ${suitabilityText}`);
+  assert.ok(suitabilityText.includes("A Blok 12 No'lu bağımsız bölüm") && suitabilityText.includes("B Blok 31 No'lu bağımsız bölüm"), `Iki farkli SAYILI not KENDI AYRI cumlelerinde kalmali, bulunan: ${suitabilityText}`);
+  assert.equal((suitabilityText.match(/\d+ m2 büyüme/g) || []).length, 2, `Iki AYRI (tekil, dagitim eksiz) sayi/m2 ifadesi gorunmeli (10 m2 VE 9 m2 - biri digerine BENZEMEK icin degistirilmemeli), bulunan: ${suitabilityText}`);
+  assert.ok(suitabilityText.includes("10 m2 büyüme") && suitabilityText.includes("9 m2 büyüme"), `Her ikisinin de KENDI ozgun sayisi (10 ve 9) korunmali, bulunan: ${suitabilityText}`);
+  assert.ok(suitabilityText.includes("Diğer taşınmazlar"), `Cogunluk (3/5 > %50) hala 'Diger tasinmazlar' olarak genellenmeli, bulunan: ${suitabilityText}`);
+
+  console.log("buildProjectReviewExplanationParts() FARKLI sayisal veri iceren notlarin ASLA birlesmemesi (istisna) testi tamam.");
 }
 
 console.log("Proje Inceleme Aciklamasi cogullama + blok bazinda ortak/ayri/sade cumle testleri basarili.");

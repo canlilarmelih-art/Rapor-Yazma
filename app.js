@@ -26852,6 +26852,24 @@ function buildProjectReviewExplanationSingle() {
   );
 }
 
+// Türkçe dağıtım (distributive) sayı eki — "10 m2" gibi bir metni "10'ar
+// m2" olarak yazmak için sayının SÖYLENİŞTEKİ son sesine göre eklenmesi
+// gereken eki (yalnızca EK KISMI, apostroftan sonrası) döner. Yalnızca
+// 0-100 arası (bu bölümde gerçekçi kullanım aralığı) tanımlı; kapsam
+// dışı/negatif/ondalık sayılarda `null` döner — çağıran taraf bu durumda
+// sayıyı OLDUĞU GİBİ bırakır (yanlış ek eklemektense hiç eklememek
+// tercih edilir).
+const TURKISH_ONES_DISTRIBUTIVE_SUFFIX = { 1: "er", 2: "şer", 3: "er", 4: "er", 5: "er", 6: "şar", 7: "şer", 8: "er", 9: "ar" };
+const TURKISH_TENS_DISTRIBUTIVE_SUFFIX = { 10: "ar", 20: "şer", 30: "ar", 40: "ar", 50: "şer", 60: "ar", 70: "er", 80: "er", 90: "ar" };
+function getTurkishDistributiveNumberSuffix(rawNumber) {
+  const num = Math.trunc(Number(rawNumber));
+  if (!Number.isFinite(num) || num <= 0 || num > 100 || String(rawNumber).includes(".") || String(rawNumber).includes(",")) return null;
+  if (num === 100) return "er";
+  const lastTwo = num % 100;
+  if (lastTwo % 10 === 0) return TURKISH_TENS_DISTRIBUTIVE_SUFFIX[lastTwo] || null;
+  return TURKISH_ONES_DISTRIBUTIVE_SUFFIX[lastTwo % 10] || null;
+}
+
 // pluralizeEnvironmentalSubjectText "taşınmaz"/"gayrimenkul"/"mülk"
 // ailesini çoğullar ama "bağımsız bölüm"ü bilmiyor (o kelime yalnızca
 // Proje İnceleme Açıklaması'nda geçiyor) — burada AYRI bir sarmalayıcı
@@ -26884,6 +26902,29 @@ function pluralizeProjectReviewSubjectText(text, enablePlural, attribution = "",
       .replace(/\bprojesine\b/g, "projelerine")
       .replace(/\bProjesi\b/g, "Projeleri")
       .replace(/\bprojesi\b/g, "projeleri");
+    // Kullanıcı talebi (2026-08-26, üçüncü örnek): "cümle bu şekilde
+    // olmalı" — 2+ bağımsız bölümün ÖZDEŞ (yalnızca yazım/noktalama farklı)
+    // "Açıklama" notu TEK cümlede birleşince (bkz.
+    // buildProjectReviewConsolidatedSentences'ın benzerlik tabanlı
+    // gruplaması), o notun İÇİNDEKİ serbest metin de KABACA çoğul
+    // OKUNMALI: (a) şablonlu "Basit bir tadilat ile ... niteliktedir"
+    // (ve kardeş varyantları) çoğul çekimlenir, (b) notun yaygın açılışı
+    // "Yerinde yapılan incelemelerde" bir "taşınmazların" öznesi alır,
+    // (c) not içindeki YALNIZ SAYI (ör. "10 m2") Türkçe dağıtım
+    // (distributive) ekiyle yazılır ("10'ar m2") — birleşme YALNIZCA
+    // notlardaki sayısal değerler BİREBİR AYNIYSA gerçekleştiğinden (bkz.
+    // hasMatchingNumericTokensForGroupingGuard) bu dönüşüm HER ZAMAN
+    // güvenlidir (farklı sayılı notlar zaten hiç birleşmiyor, ayrı kalıyor).
+    result = result
+      .replace(/\bniteliktedir\b/g, "niteliktedirler")
+      .replace(/\bdurumdadır\b/g, "durumdadırlar")
+      .replace(/\bmümkündür\b/g, "mümkündürler")
+      .replace(/\bYerinde yapılan incelemelerde\b(?!\s+taşınmazların\b)/g, "Yerinde yapılan incelemelerde taşınmazların")
+      .replace(/\byerinde yapılan incelemelerde\b(?!\s+taşınmazların\b)/g, "yerinde yapılan incelemelerde taşınmazların")
+      .replace(/\b(\d+)\s?(m[²2])\b/g, (match, numberText, unitText) => {
+        const suffix = getTurkishDistributiveNumberSuffix(numberText);
+        return suffix ? `${numberText}'${suffix} ${unitText}` : match;
+      });
   }
   if (useTumPrefix) {
     result = result
@@ -26973,6 +27014,23 @@ function buildProjectReviewConsolidatedReferenceSentence(leadDateText, placeText
   return normalizeReportDescriptionText(`${leadDateText}${placeText} ekspertize konu ${joinTurkishList(clauses)} ${pluralizedType} incelenmiştir.`);
 }
 
+// Kullanıcı talebi (2026-08-26, üçüncü mesaj): "burada istisna kural
+// açıklama içerisindeki sayısal veriler değişirse ayrı olarak yayımla
+// örnek biri 10 m2 biri 9 m2 burada ayrı yayınlayalım" — %90 benzerlik
+// eşiği yazım/noktalama farklarını (nokta unutma gibi) doğru tolere
+// ediyor, AMA metindeki SAYISAL DEĞERLER farklıysa (ör. "10 m2" vs
+// "9 m2") bu bir yazım farkı DEĞİL gerçek bir veri farkıdır — bu iki
+// metin benzerlik oranı ne olursa olsun ASLA aynı grupta birleşmemeli.
+function extractNumericTokensForGroupingGuard(text) {
+  return (String(text || "").match(/\d+(?:[.,]\d+)?/g) || []).map((token) => token.replace(",", "."));
+}
+function hasMatchingNumericTokensForGroupingGuard(textA, textB) {
+  const numbersA = extractNumericTokensForGroupingGuard(textA);
+  const numbersB = extractNumericTokensForGroupingGuard(textB);
+  if (numbersA.length !== numbersB.length) return false;
+  return numbersA.every((value, index) => value === numbersB[index]);
+}
+
 // Blok bazında hesaplanan (Bina Oturumu/Giriş ve Proje Uygunluğu gibi)
 // serbest metinleri birleştirir: TÜM bloklar AYNI metni ürettiyse blok
 // atfı EKLENMEDEN "tüm" önekiyle TEK cümle (kullanıcı: "hepsi uygunsa
@@ -26995,7 +27053,9 @@ function buildProjectReviewConsolidatedSentences(items) {
   const groups = [];
   nonEmpty.forEach(({ label, text, unitCount }) => {
     const normalized = normalizeTextForSimilarityComparison(text);
-    const matchedGroup = groups.find((group) => computeTextSimilarityRatio(group.normalized, normalized) >= 0.9);
+    const matchedGroup = groups.find(
+      (group) => computeTextSimilarityRatio(group.normalized, normalized) >= 0.9 && hasMatchingNumericTokensForGroupingGuard(group.text, text)
+    );
     if (matchedGroup) {
       matchedGroup.labels.push(label);
       matchedGroup.unitCount += unitCount;
