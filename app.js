@@ -12924,6 +12924,58 @@ function refreshMainPropertyDescriptionFromCurrentFields(changedKey = "") {
   syncBuildingSharedDataToBlockSiblings();
 }
 
+// Kullanıcı talebi (2026-08-27): "ana gayrimenkul açıklamasını çokluya
+// göre düzenle" — netleştirme: "aynı blokta birden fazla bağımsız bölüm
+// var, cümle tekil kalıyor." Bu bölüm (building/"Ana Gayrimenkul
+// Özellikleri") EKB/Proje İnceleme'nin aksine ZATEN kendi blok-paylaşım
+// sistemine sahip (isBuildingBlockGroupingActive/getBuildingBlockSharedFieldKeys/
+// syncBuildingSharedDataToBlockSiblings, 2026-08-20) — HER blok kendi
+// BAĞIMSIZ mainPropertyDescription'ını taşır, "TÜM taşınmazlar için TEK
+// ortak paragraf" modeli burada YOK ve GEREKMİYOR. Eksik olan: bir
+// bloğun KENDİ paragrafı, o blokta 2+ bağımsız bölüm olduğunda hâlâ
+// TEKİL yazılıyordu. Blok gruplama aktifken (2+ FARKLI blok) yalnızca
+// AKTİF taşınmazın KENDİ blok grubundaki üye sayısı sayılır (başka bir
+// bloğun büyüklüğü BU bloğu etkilememeli); aktif değilken (tek blok/
+// Çoklu Talep dışı/kat irtifakı dışı) TÜM taşınmazlar bu açıklamayı
+// paylaşıyor sayılır.
+function getMainPropertyDescriptionUnitCount() {
+  if (isBuildingBlockGroupingActive()) {
+    const units = buildAllTitleUnitsForSummaryTable();
+    const groups = computeDocumentsBlockGroups(units);
+    const activeGroup = groups.find((group) => group.unitIndices.includes(state.activeTitleUnitIndex));
+    return activeGroup ? activeGroup.unitIndices.length : 1;
+  }
+  return getTitleUnitCount();
+}
+
+// "taşınmaz" kelimesi bu metinde İKİ FARKLI anlamda geçiyor: (1)
+// değerlemeye konu bağımsız bölüm(ler) — "taşınmazın/gayrimenkulün/
+// bağımsız bölümün YER ALDIĞI/BULUNDUĞU/KONUMLANDIĞI" (genitif + ilgi
+// cümlesi kalıbı) ÇOĞULLANMALI; (2) ana bina/site'ın KENDİSİ — çıplak
+// "Ana taşınmaz ... inşa edilmiştir", "ana taşınmazın incelenen mimari
+// projesi" (TEK proje, blok ortak), "her bir bağımsız bölüm" (idiom,
+// zaten doğru), "{N} adet bağımsız bölüm" (sayma ifadesi, Türkçe'de
+// sayıdan sonra isim çoğullanmaz) — BUNLARA DOKUNULMAMALI. Bu yüzden
+// genel pluralizeEnvironmentalSubjectText() KULLANILAMAZ (onun çıplak
+// \btaşınmaz\b kuralı "Ana taşınmaz"ı da YANLIŞLIKLA çoğullardı) — bunun
+// yerine yalnızca (1)'i hedefleyen dar/hedefli bir regex seti kullanılır.
+// ÖNEMLİ: "aldığı"/"konumlandığı" gibi kalıplar Türkçe'ye özgü "ı" ile
+// BİTİYOR — JS'in (unicode bayraksız) \b'si \w'yi YALNIZCA ASCII
+// [A-Za-z0-9_] sayar, "ı" \w SAYILMAZ; bu yüzden bu kalıpların SONUNA
+// \b eklemek asla eşleşmez (iki tarafı da "non-word" sayıldığından sınır
+// oluşmaz) — bunun yerine boşluk/noktalama/metin-sonu ile biten bir
+// ileri-bakış (lookahead) kullanılır. "bulunduğu" ASCII "u" ile bittiği
+// için bu sorunu YAŞAMAZ, ama tutarlılık için o da aynı desenle yazıldı.
+function pluralizeMainPropertyDescriptionText(text, enablePlural) {
+  if (!enablePlural || !text) return text;
+  return String(text)
+    .replace(/\b(T|t)aşınmazın yer aldığı(?=[\s.,;:!?]|$)/g, "$1aşınmazların yer aldığı")
+    .replace(/\b(T|t)aşınmazın konumlandığı(?=[\s.,;:!?]|$)/g, "$1aşınmazların konumlandığı")
+    .replace(/\b(G|g)ayrimenkulün bulunduğu(?=[\s.,;:!?]|$)/g, "$1ayrimenkullerin bulunduğu")
+    .replace(/\bbağımsız bölümün yer aldığı(?=[\s.,;:!?]|$)/g, "bağımsız bölümlerin yer aldığı")
+    .replace(/\bbağımsız bölümün bulunduğu(?=[\s.,;:!?]|$)/g, "bağımsız bölümlerin bulunduğu");
+}
+
 function buildMainPropertyDescription(options = {}) {
   const usePlaceholderTokens = Boolean(options.usePlaceholderTokens);
   updateBuildingFloorTotals();
@@ -12958,8 +13010,12 @@ function buildMainPropertyDescription(options = {}) {
     totalUnits: readMainPropertyField("totalUnits", "TOPLAM.BAĞIMSIZ.BÖLÜM", { usePlaceholderTokens, fallbackToToken: false }),
   };
 
+  // usePlaceholderTokens iken (banka şablonu {{TOKEN}} üretimi) çoğullama
+  // DEVRE DIŞI — değerler zaten gerçek metin değil, placeholder.
+  const enablePlural = !usePlaceholderTokens && getMainPropertyDescriptionUnitCount() > 1;
+
   if (shouldMentionMainPropertyOwnership(values.ownershipType)) {
-    return buildHorizontalMainPropertyDescription(values);
+    return pluralizeMainPropertyDescriptionText(buildHorizontalMainPropertyDescription(values), enablePlural);
   }
 
   const paragraphs = [
@@ -12978,7 +13034,7 @@ function buildMainPropertyDescription(options = {}) {
     .map((paragraph) => normalizeReportDescriptionText(cleanComparablePunctuation(paragraph)))
     .filter(Boolean);
 
-  return paragraphs.join("\n\n");
+  return pluralizeMainPropertyDescriptionText(paragraphs.join("\n\n"), enablePlural);
 }
 
 function buildHorizontalMainPropertyDescription(values) {
