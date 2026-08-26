@@ -31475,17 +31475,42 @@ function formatTitleUnitEncumbranceReference(fields = {}, index = 0, compact = f
   return `${index + 1}. taşınmaz`;
 }
 
+// Kullanıcı bildirimi (2026-08-27, ekran görüntüsüyle): "burada aynı
+// beyan 4 kere art arda yazılmış sebebi beyanın yevmiye numarasının
+// bulunmaması. böyle durumlarda eğer yevmiye numarası yok ise beyanlar
+// %100 aynı ise müşterektir." — yevmiye no (Bila) eksikken satırın
+// KENDİSİ (yevmiye no sütunu HARİÇ tüm sütunlar) karşılaştırma anahtarı
+// olarak kullanılır; birebir aynı içerikli satırlar (metin farkı YOKSA)
+// TEK kayıtta birleşir. Sütun sayısı tableKey'e göre değiştiğinden (Beyanlar
+// c0-c4, Şerh/İpotek satırları c0-c5) sabit bir üst-sınır (c0..c5)
+// üzerinden, yalnızca yevmiye no sütunu HARİÇ tutularak karşılaştırılır —
+// eksik sütunlar tüm satırlarda AYNI şekilde boş kalacağından zararsızdır.
+function getEncumbranceRowJournalNoColumn(tableKey) {
+  return tableKey === "encumbranceDeclarations" ? "c3" : "c4";
+}
+
+function buildEncumbranceRowContentKey(tableKey, row) {
+  const journalColumn = getEncumbranceRowJournalNoColumn(tableKey);
+  return ["c0", "c1", "c2", "c3", "c4", "c5"]
+    .filter((column) => column !== journalColumn)
+    .map((column) => encumbranceCleanText(row?.[column] || ""))
+    .join("||");
+}
+
 function groupEncumbranceRowsAcrossTitleUnits(rowsByUnit = [], tableKey = "") {
   const grouped = new Map();
   rowsByUnit.forEach(({ rows = [], fields = {}, index = 0 }) => {
     rows.forEach((row, rowIndex) => {
       const journalNo = getEncumbranceRowJournalNo(tableKey, row);
-      const key = journalNo ? `journal:${journalNo}` : `unit:${index}:row:${rowIndex}`;
+      const contentKey = buildEncumbranceRowContentKey(tableKey, row);
+      const key = journalNo ? `journal:${journalNo}` : `content:${contentKey}`;
       const existing = grouped.get(key);
       const groupEntries = journalNo
         ? rowsByUnit.filter((entry) => entry.rows.some((entryRow) => getEncumbranceRowJournalNo(tableKey, entryRow) === journalNo))
-        : [{ fields, index }];
-      const firstEntry = groupEntries[0];
+        : rowsByUnit.filter((entry) => entry.rows.some((entryRow) =>
+            !getEncumbranceRowJournalNo(tableKey, entryRow) && buildEncumbranceRowContentKey(tableKey, entryRow) === contentKey
+          ));
+      const firstEntry = groupEntries[0] || { fields, index };
       const sameParcel = groupEntries.every(
         (entry) => encumbranceCleanText(entry.fields?.blockNo) === encumbranceCleanText(firstEntry.fields?.blockNo)
           && encumbranceCleanText(entry.fields?.parcelNo) === encumbranceCleanText(firstEntry.fields?.parcelNo),

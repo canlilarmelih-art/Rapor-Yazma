@@ -34,6 +34,8 @@ function extractFunction(name) {
 const functionNames = [
   "encumbranceCleanText",
   "getEncumbranceRowJournalNo",
+  "getEncumbranceRowJournalNoColumn",
+  "buildEncumbranceRowContentKey",
   "formatTitleUnitEncumbranceReference",
   "groupEncumbranceRowsAcrossTitleUnits",
   "formatEncumbranceTitleUnitScope",
@@ -75,6 +77,48 @@ assert.equal(
 );
 console.log("Coklu takyidat ayni yevmiye gruplama testi tamam.");
 
+// --- REGRESYON (2026-08-27, kullanıcı bildirimi, ekran görüntüsüyle): ------
+// "burada aynı beyan 4 kere art arda yazılmış sebebi beyanın yevmiye
+// numarasının bulunmaması. böyle durumlarda eğer yevmiye numarası yok
+// ise beyanlar %100 aynı ise müşterektir." — yevmiye no BOŞ (Bila) olsa
+// bile, satırın (yevmiye no HARİÇ) TÜM sütunları birebir aynıysa TEK
+// kayıtta birleşmeli (eskiden HER ZAMAN ayrı, hiç birleşmeyen satırlar
+// üretiyordu — bkz. eski "unit:index:row:rowIndex" anahtarı).
+{
+  const noJournalRowsByUnit = [
+    {
+      index: 0,
+      fields: { blockNo: "0", parcelNo: "1", titleBlockName: "A", unitNo: "5" },
+      rows: [{ c0: "Belirtme", c1: "Malik bizzat gelmeden tasarrufu işlem yapılamaz.", c2: "", c3: "" }],
+    },
+    {
+      index: 1,
+      fields: { blockNo: "0", parcelNo: "1", titleBlockName: "A", unitNo: "8" },
+      rows: [{ c0: "Belirtme", c1: "Malik bizzat gelmeden tasarrufu işlem yapılamaz.", c2: "", c3: "" }],
+    },
+    {
+      index: 2,
+      fields: { blockNo: "0", parcelNo: "1", titleBlockName: "A", unitNo: "11" },
+      rows: [{ c0: "Belirtme", c1: "Malik bizzat gelmeden tasarrufu işlem yapılamaz.", c2: "", c3: "" }],
+    },
+    {
+      index: 3,
+      fields: { blockNo: "0", parcelNo: "1", titleBlockName: "A", unitNo: "15" },
+      // Metin FARKLI (gerçekten AYRI bir belirtme) - ASLA birleşmemeli.
+      rows: [{ c0: "Belirtme", c1: "Farklı bir kısıtlayıcı şerh metni.", c2: "", c3: "" }],
+    },
+  ];
+  const noJournalGrouped = fns.groupEncumbranceRowsAcrossTitleUnits(noJournalRowsByUnit, "encumbranceDeclarations");
+  assert.equal(noJournalGrouped.length, 2, `Yevmiye no yok + 3 satir BIREBIR AYNI (1 satir FARKLI) -> 2 grup beklenir, bulunan: ${noJournalGrouped.length}`);
+  const mergedGroup = noJournalGrouped.find((row) => row.c1 === "Malik bizzat gelmeden tasarrufu işlem yapılamaz.");
+  assert.ok(mergedGroup, "Birebir ayni 3 satir bulunmali.");
+  assert.deepEqual(mergedGroup.__titleUnitReferences, ["A-5", "A-8", "A-11"], "3 ozdes satirin HEPSI TEK kayitta birlesmeli.");
+  const differentGroup = noJournalGrouped.find((row) => row.c1 === "Farklı bir kısıtlayıcı şerh metni.");
+  assert.ok(differentGroup, "Farkli metinli satir AYRI kalmali.");
+  assert.deepEqual(differentGroup.__titleUnitReferences, ["A-15"], "Farkli metinli satir DIGERLERIYLE birlesmemeli.");
+  console.log("Yevmiye no YOK + metin %100 ayni -> muşterek birlesme (REGRESYON) testi tamam.");
+}
+
 // --- Ortak/Ayrı Takyidat Özeti (Excel) — kullanıcı talebi (2026-08-12) ----
 // "Excel'de de ortak/ayrı gösterelim mi" sorusuna kullanıcı "ayrı bir özet
 // sayfası/tablo" cevabını verdi: getEncumbranceMultiUnitSummaryRows() bu
@@ -112,7 +156,7 @@ function formatEncumbranceDeclarationRow(row) { return row.c1 ? \`BEYAN:\${row.c
 function formatEncumbranceAnnotationRow(row) { return row.c1 ? \`SERH:\${row.c1}\` : ""; }
 function formatEncumbranceMortgageRow(row) { return row.c0 ? \`IPOTEK:\${row.c0}\` : ""; }
 ${extractConstArray("ENCUMBRANCE_MULTI_UNIT_SUMMARY_TABLES")}
-${["encumbranceCleanText", "encumbranceTextOrBila", "getEncumbranceRowJournalNo", "formatTitleUnitEncumbranceReference", "groupEncumbranceRowsAcrossTitleUnits", "formatEncumbranceTitleUnitScope"].map(extractFunction).join("\n")}
+${["encumbranceCleanText", "encumbranceTextOrBila", "getEncumbranceRowJournalNo", "getEncumbranceRowJournalNoColumn", "buildEncumbranceRowContentKey", "formatTitleUnitEncumbranceReference", "groupEncumbranceRowsAcrossTitleUnits", "formatEncumbranceTitleUnitScope"].map(extractFunction).join("\n")}
 ${summaryFunctionNames.map(extractFunction).join("\n")}
 return { getEncumbranceMultiUnitSummaryRows, setState: (s) => { state = s; } };
 `;

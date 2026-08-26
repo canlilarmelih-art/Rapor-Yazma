@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.570 - 2026-08-27 - Takyidat: yevmiye numarası olmayan ama birebir aynı beyanlar artık müşterek birleşiyor
+
+- Kullanıcı, ekran görüntüsüyle bir "Takyidat Açıklaması" gösterdi: aynı "Malik Bizzat Gelmeden Tasarrufu İşlem Yapılamaz..." beyanı, 4 farklı bağımsız bölüm için (A-5, A-8, A-11, A-15) BİREBİR AYNI metinle 4 KEZ art arda tekrarlanmıştı, her biri kendi "(Tarih: Bila, Yevmiye No: Bila)" ve "(A-X üzerinde)" ekiyle. Kullanıcı teşhisi: "sebebi beyanın yevmiye numarasının bulunmaması. böyle durumlarda eğer yevmiye numarası yok ise beyanlar %100 aynı ise müşterektir."
+- **Kök neden**: `groupEncumbranceRowsAcrossTitleUnits()` satırları normalde yevmiye numarasına göre gruplayıp aynı yevmiye no'lu satırları TEK kayıtta birleştiriyordu (`Tüm Taşınmazlar üzerinde müştereken` / `(A, B üzerinde)`) — ama yevmiye no BOŞ (Bila) olduğunda, anahtar `unit:${index}:row:${rowIndex}` şeklinde HER taşınmaz+satır için BENZERSİZ oluyordu, yani yevmiye no'su olmayan satırlar ASLA birleşmiyordu, metinleri birebir aynı olsa bile.
+- **Düzeltme**: Yeni `buildEncumbranceRowContentKey(tableKey, row)` — yevmiye no sütunu HARİÇ satırın TÜM sütunlarından bir karşılaştırma anahtarı kurar. Yevmiye no boşken, gruplama artık bu içerik anahtarına göre yapılıyor — birebir aynı metinli satırlar TEK kayıtta (tüm referanslarıyla) birleşiyor, FARKLI metinli satırlar (yevmiye no olmasa da) ayrı kalmaya devam ediyor (yanlış birleştirme riski YOK, yalnızca kullanıcının açıkça istediği "%100 aynıysa müşterek" kuralı uygulanıyor).
+- Test: `tools/test-multi-encumbrance-grouping.js`'e kullanıcının TAM senaryosunu (yevmiye no'suz, 3 birebir aynı + 1 farklı metinli satır) doğrulayan yeni regresyon senaryosu eklendi — 3 özdeş satırın TEK kayıtta (A-5, A-8, A-11 referanslarıyla) birleştiğini, farklı metinli 4. satırın (A-15) AYRI kaldığını doğrular. `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` cache-buster `?v=20260827-1100`.
+- Canlı tarayıcı testi yapılamadı — kullanıcının aynı raporda TAKBİS'i yeniden okutup/Takyidat sekmesini yenileyip, "Malik Bizzat Gelmeden..." beyanının artık TEK kez, tüm ilgili bağımsız bölümlerin (A-5, A-8, A-11, A-15) referansıyla birlikte göründüğünü doğrulaması gerekir.
+
 ## 0.0.569 - 2026-08-27 - Çevre Özellikleri: TEK ortak blokta olan taşınmazlar artık site/blok adıyla belirtiliyor
 
 - Kullanıcı, 0.0.568'in düzeltmesini ("... yer almaktadır.") onayladıktan hemen sonra takip talebi verdi: "blok var ve taşınmazlar tek blokta yer alıyor ise benim örneğimde taşınmazlar bloklu bir sitede yer alıyor hepsi A blokta yer alıyor. bu durumda ... üzerinde (var ise site apartman adı) sitesi/apartmanı içinde A Blokta yer almaktadırlar şeklinde olmalı."
