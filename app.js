@@ -26996,13 +26996,62 @@ function buildProjectReviewConsolidatedSentences(items) {
     const unanimous = labels.length === items.length;
     return [pluralizeProjectReviewSubjectText(order[0], totalUnits > 1, unanimous ? "" : formatTitleUnitAttributionPhrase(labels), unanimous)];
   }
-  return order.map((text) => {
+  const groupInfos = order.map((text) => {
     const labels = byText.get(text);
-    const totalUnits = nonEmpty
+    const unitCount = nonEmpty
       .filter((item) => labels.includes(item.label))
       .reduce((sum, item) => sum + item.unitCount, 0);
-    return pluralizeProjectReviewSubjectText(text, totalUnits > 1, formatTitleUnitAttributionPhrase(labels), false);
+    return { text, labels, unitCount };
   });
+  // Kullanıcı talebi (2026-08-26): "eğer taşınmazların %50 sinden fazlası
+  // aynı uygunlukta ise ... bunu her bir bağımsız bölümü yazarak gösterme.
+  // ilk olarak uygun olmayanların açıklamasını belirt. kalan diğer
+  // taşınmazları Diğer Taşınmazlar olarak belirtebilirsin." — bir grup
+  // TOPLAM taşınmaz sayısının YARISINDAN FAZLASINI kapsıyorsa (ör. 43
+  // bağımsız bölümden 41'i "uygundur"), o grubun HER üyesi tek tek
+  // adlandırılmaz (kullanıcının şikayet ettiği, okunmaz 41-isimli tek
+  // cümle); bunun yerine azınlık/uyumsuz grup(lar) KENDİ tam atıflarıyla
+  // ÖNCE, çoğunluk grubu "Diğer taşınmazlar" olarak genellenmiş TEK
+  // cümleyle EN SONA eklenir. Hiçbir grup %50'yi GEÇMİYORSA (ör. 2 grup
+  // %50/%50 ya da 3+ küçük grup) sadeleştirme uygulanmaz — mevcut (her
+  // grup kendi atıflı cümlesi) davranış korunur.
+  const majorityGroup = groupInfos.reduce(
+    (best, group) => (!best || group.labels.length > best.labels.length ? group : best),
+    null
+  );
+  const useOtherPropertiesSummary = majorityGroup && majorityGroup.labels.length > items.length / 2;
+  if (useOtherPropertiesSummary) {
+    const minoritySentences = groupInfos
+      .filter((group) => group !== majorityGroup)
+      .map((group) => pluralizeProjectReviewSubjectText(group.text, group.unitCount > 1, formatTitleUnitAttributionPhrase(group.labels), false));
+    const majoritySentence = replaceProjectReviewSubjectWithOtherPropertiesPhrase(
+      pluralizeProjectReviewSubjectText(majorityGroup.text, true, "", false)
+    );
+    return [...minoritySentences, majoritySentence];
+  }
+  return groupInfos.map((group) =>
+    pluralizeProjectReviewSubjectText(group.text, group.unitCount > 1, formatTitleUnitAttributionPhrase(group.labels), false)
+  );
+}
+
+// buildProjectReviewConsolidatedSentences'ın "Diğer Taşınmazlar"
+// sadeleştirmesinde kullanılır: pluralize edilmiş bir cümlenin BAŞINDAKİ
+// ("Ekspertize konu bağımsız bölüm(ler)"/"Ekspertize konu taşınmaz(lar)")
+// öznesini TAMAMEN "Diğer taşınmazlar" ile değiştirir (attribution
+// EKLEMEZ — attribution'ın aksine "bağımsız bölüm" sözcüğünü de kendi
+// içinde taşımadığından, ${attribution} bağımsız bölüm deseniyle
+// KARIŞTIRILMAMALI). Yalnızca cümlenin EN BAŞINDA (^) eşleşir; cümle
+// içinde sonradan geçen benzer kelimelere DOKUNMAZ.
+function replaceProjectReviewSubjectWithOtherPropertiesPhrase(text) {
+  return String(text || "")
+    .replace(/^Ekspertize konu bağımsız bölümler\b/, "Diğer taşınmazlar")
+    .replace(/^ekspertize konu bağımsız bölümler\b/, "diğer taşınmazlar")
+    .replace(/^Ekspertize konu bağımsız bölüm\b/, "Diğer taşınmazlar")
+    .replace(/^ekspertize konu bağımsız bölüm\b/, "diğer taşınmazlar")
+    .replace(/^Ekspertize konu taşınmazlar\b/, "Diğer taşınmazlar")
+    .replace(/^ekspertize konu taşınmazlar\b/, "diğer taşınmazlar")
+    .replace(/^Ekspertize konu taşınmaz\b/, "Diğer taşınmazlar")
+    .replace(/^ekspertize konu taşınmaz\b/, "diğer taşınmazlar");
 }
 
 // Kullanıcı talebi (2026-08-26): "proje inceleme açıklamaları blok

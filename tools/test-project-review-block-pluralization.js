@@ -139,6 +139,7 @@ const functionNames = [
   "normalizeBlockLabelPrefixForAttribution",
   "formatTitleUnitSuitabilityLabel",
   "formatTitleUnitAttributionPhrase",
+  "replaceProjectReviewSubjectWithOtherPropertiesPhrase",
 ];
 
 // `buildProjectSuitabilityStatusSentence` const/registerVariantGroup
@@ -376,6 +377,12 @@ function freshState(overrides = {}) {
 // AYNI BLOKTAKİ 2 FARKLI bağımsız bölümün FARKLI uygunluk durumu artık
 // İKİSİ DE görünmeli (eskiden blok TEMSİLCİSİNİN — yalnızca İLK
 // bağımsız bölümün — durumu kullanılıp diğeri SESSİZCE kayboluyordu).
+// NOT (2026-08-26, ikinci güncelleme): 3 taşınmazın 2'si (>%50) AYNI
+// (varsayılan UYGUNDUR) durumda olduğundan, >%50-çoğunluk sadeleştirmesi
+// (bkz. Senaryo 8) burada da devreye girer — çoğunluk artık TEK TEK
+// isimlendirilmez, "Diğer taşınmazlar" olarak genellenir; azınlık (A Blok
+// 2 No'lu) kendi tam atıflı cümlesinde AYRI kalmaya devam eder (asıl
+// regresyon amacı — azınlığın sessizce KAYBOLMAMASI — hâlâ korunuyor).
 {
   const sameBlockDifferentUnitsState = freshState({ titleBlockName: "A Blok", unitNo: "1" });
   // A Blok'un 2. bağımsız bölümü (unitNo farklı, blockNo/parcelNo/titleBlockName
@@ -390,10 +397,12 @@ function freshState(overrides = {}) {
   const parts = fns.buildProjectReviewExplanationParts();
   assert.equal(parts.length, 4, `Giris + proje referansi (unanimous, blok bazinda) + 2 FARKLI uygunluk cumlesi (bagimsiz bolum bazinda) = 4 parca beklenir, bulunan: ${JSON.stringify(parts)}`);
   const suitabilityText = parts.slice(2).join(" ||| ");
-  assert.ok(suitabilityText.includes("A Blok 1 No'lu ve B Blok 3 No'lu"), `Ayni durumdaki (varsayilan UYGUNDUR) 2 FARKLI bloktaki bagimsiz bolumler TEK cumlede, BAGIMSIZ BOLUM kimligiyle (blok adiyla DEGIL) birlesmeli, bulunan: ${suitabilityText}`);
-  assert.ok(suitabilityText.includes("A Blok 2 No'lu bağımsız bölüm") && !suitabilityText.includes("A Blok 2 No'lu ve"), `A Blok'un FARKLI durumdaki 2. bagimsiz bolumu KENDI (tekil) cumlesinde, kendi kimligiyle ayri kalmali - eskiden bu SESSIZCE kayboluyordu, bulunan: ${suitabilityText}`);
+  assert.ok(suitabilityText.includes("Diğer taşınmazlar"), `Cogunluk (2/3 > %50, varsayilan UYGUNDUR) artik TEK TEK isimlendirilmeyip 'Diger tasinmazlar' olarak genellenmeli, bulunan: ${suitabilityText}`);
+  assert.ok(!suitabilityText.includes("A Blok 1 No'lu ve B Blok 3 No'lu"), `Cogunluk ARTIK eski gibi TEK TEK (A Blok 1 No'lu ve B Blok 3 No'lu) isimlendirilmemeli, bulunan: ${suitabilityText}`);
+  assert.ok(suitabilityText.includes("A Blok 2 No'lu bağımsız bölüm") && !suitabilityText.includes("A Blok 2 No'lu ve"), `A Blok'un FARKLI durumdaki (azinlik) 2. bagimsiz bolumu KENDI (tekil) cumlesinde, kendi kimligiyle ayri kalmali - eskiden bu SESSIZCE kayboluyordu, bulunan: ${suitabilityText}`);
   assert.ok(suitabilityText.includes("uygundur") && suitabilityText.includes("uygun değildir"), `Iki FARKLI durum da metinde gorunmeli (biri kaybolmamali), bulunan: ${suitabilityText}`);
   assert.ok(!suitabilityText.includes("A, B Blok'a ait") && !suitabilityText.includes("A ve B Blok'a ait bağımsız bölümler"), `Atif ARTIK blok adiyla degil bagimsiz bolum kimligiyle kurulmali (kullanicinin sikayet ettigi 'A, B ve C Blok'a ait bağımsız bölümler' kalibi ARTIK olmamali), bulunan: ${suitabilityText}`);
+  assert.ok(suitabilityText.indexOf("uygun değildir") < suitabilityText.indexOf("Diğer taşınmazlar"), `Azinlik cumlesi ONCE, cogunluk ('Diger tasinmazlar') cumlesi EN SONDA olmali, bulunan: ${suitabilityText}`);
 
   console.log("buildProjectReviewExplanationParts() AYNI bloktaki FARKLI bagimsiz bolum uygunluk durumlari (REGRESYON) testi tamam.");
 }
@@ -464,6 +473,58 @@ function freshState(overrides = {}) {
   assert.equal(typeof combined, "string", "buildProjectReviewExplanation() HER ZAMAN string donmeli (7 eski cagri noktasi bunu bekliyor).");
 
   console.log("buildProjectReviewExplanation() parts birlesimi (geriye donuk uyumluluk) testi tamam.");
+}
+
+// --- 8) Kullanıcı talebi (2026-08-26): "eğer taşınmazların %50 sinden --------
+// fazlası aynı uygunlukta ise ... bunu her bir bağımsız bölümü yazarak
+// gösterme. ilk olarak uygun olmayanların açıklamasını belirt. kalan
+// diğer taşınmazları Diğer Taşınmazlar olarak belirtebilirsin." — 5
+// bağımsız bölümden 3'ü (>%50) varsayılan "uygundur", 2'si (azınlık, AYNI
+// metin) "mimari olarak uygun değildir." Beklenen: azınlık ÖNCE kendi tam
+// (2 isimli) atfıyla, çoğunluk EN SONDA "Diğer taşınmazlar" ile
+// genellenmiş TEK cümle — hiçbir yerde 3 çoğunluk üyesinin adı TEK TEK
+// (A/B Blok 1/2/5 No'lu) geçmemeli.
+{
+  const majorityState = freshState({ titleBlockName: "A Blok", unitNo: "1" });
+  majorityState.titleUnits = [
+    unit(majorityState.fields, "100", "1", "A Blok", { unitNo: "2" }),
+    unit(majorityState.fields, "100", "1", "B Blok", { unitNo: "3", projectSuitabilityStatus: "mimari olarak uygun değildir." }),
+    unit(majorityState.fields, "100", "1", "C Blok", { unitNo: "4", projectSuitabilityStatus: "mimari olarak uygun değildir." }),
+    unit(majorityState.fields, "100", "1", "D Blok", { unitNo: "5" }),
+  ];
+  fns.setState(majorityState);
+  const parts = fns.buildProjectReviewExplanationParts();
+  const suitabilityText = parts.slice(2).join(" ||| ");
+
+  assert.ok(suitabilityText.includes("B Blok 3 No'lu ve C Blok 4 No'lu"), `Azinlik (2 uye, AYNI metin) TEK cumlede kendi tam atfiyla gorunmeli, bulunan: ${suitabilityText}`);
+  assert.ok(suitabilityText.includes("uygun değildir"), `Azinlik cumlesinin kendi metni (uygunsuzluk durumu) korunmali, bulunan: ${suitabilityText}`);
+  assert.ok(suitabilityText.includes("Diğer taşınmazlar") , `Cogunluk (3/5 > %50) 'Diger tasinmazlar' olarak genellenmeli, bulunan: ${suitabilityText}`);
+  assert.ok(suitabilityText.includes("Diğer taşınmazlar kat, kattaki konum, alan ve mimari olarak projelerine uygundur."), `Cogunluk cumlesi coguldan (projelerine) olusmali ve atifsiz OZNE ile baslamali, bulunan: ${suitabilityText}`);
+  ["A Blok 1", "A Blok 2", "D Blok 5"].forEach((forbidden) => {
+    assert.ok(!suitabilityText.includes(forbidden), `Cogunluk uyesi '${forbidden}' TEK TEK adlandirilmamali (kullanicinin sikayet ettigi 41-isimli cumle kalibi), bulunan: ${suitabilityText}`);
+  });
+  const minorityIndex = suitabilityText.indexOf("uygun değildir");
+  const majorityIndex = suitabilityText.indexOf("Diğer taşınmazlar");
+  assert.ok(minorityIndex >= 0 && majorityIndex > minorityIndex, `Azinlik cumlesi ONCE, cogunluk ('Diger tasinmazlar') cumlesi EN SONDA olmali, bulunan: ${suitabilityText}`);
+
+  console.log("buildProjectReviewExplanationParts() >%50 cogunluk -> 'Diger Tasinmazlar' sadelestirmesi testi tamam.");
+}
+
+// --- 9) Hicbir grup %50'yi GECMIYORSA (ör. 2 esit grup) sadelestirme -----
+// UYGULANMAMALI — mevcut (her grup kendi atifli cumlesi) davranis korunur.
+{
+  const tieState = freshState({ titleBlockName: "A Blok", unitNo: "1" });
+  tieState.titleUnits = [
+    unit(tieState.fields, "100", "1", "B Blok", { unitNo: "2", projectSuitabilityStatus: "mimari olarak uygun değildir." }),
+  ];
+  fns.setState(tieState);
+  const parts = fns.buildProjectReviewExplanationParts();
+  const suitabilityText = parts.slice(2).join(" ||| ");
+  assert.ok(!suitabilityText.includes("Diğer taşınmazlar"), `%50/%50 esitlikte 'Diger tasinmazlar' sadelestirmesi TETIKLENMEMELI, bulunan: ${suitabilityText}`);
+  assert.ok(suitabilityText.includes("A Blok 1 No'lu bağımsız bölüm"), `Esitlikte HER grup kendi tam atfiyla gorunmeye devam etmeli, bulunan: ${suitabilityText}`);
+  assert.ok(suitabilityText.includes("B Blok 2 No'lu bağımsız bölüm"), `Esitlikte HER grup kendi tam atfiyla gorunmeye devam etmeli, bulunan: ${suitabilityText}`);
+
+  console.log("buildProjectReviewExplanationParts() %50/%50 esitlikte sadelestirme UYGULANMAMASI testi tamam.");
 }
 
 console.log("Proje Inceleme Aciklamasi cogullama + blok bazinda ortak/ayri/sade cumle testleri basarili.");
