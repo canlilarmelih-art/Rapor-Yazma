@@ -10,32 +10,39 @@
 // Özeti'yle AYNI, blok-gruplamadan BAĞIMSIZ (yalnızca "2+ taşınmaz var
 // mı") bir gate kullanan AYRI bir tablo eklendi.
 //
+// Kullanıcı takip talebi (2026-08-26, BU sürüm): "tabloyu komple kaldır
+// senden istediğim tablo sütunları sıra no; blok; bb no; Proje Uygunluk
+// Durumu - Bağımsız Bölüm; Açıklama; Basit bir tadilat ile .... bu
+// sütunlar başka hiç bir sütun istemiyorum." — "Tapu/Belediye Proje
+// Farkı Var" = Evet dalının 6 sütunu (titleProjectSuitability*/
+// municipalityProjectSuitability*, ve daha önceki 0.0.553'te kaldırılan
+// Ana Gayrimenkul Projesine Uygunluk) tablodan TAMAMEN çıkarıldı — bu
+// dosya artık YALNIZCA kalan 6 sabit sütunu (columnHasData gizleme
+// mantığı olmadan, her zaman hepsi gösterilir) test eder.
+//
 // Bu test kapsamı:
-//  1) 2+ taşınmazda tablo verisi döner, sütun sırası
-//     PROJECT_SUITABILITY_UNITS_TABLE_FIELD_DEFS ile eşleşir.
+//  1) 2+ taşınmazda tablo verisi döner, sütun sırası TAM OLARAK
+//     PROJECT_SUITABILITY_UNITS_TABLE_FIELD_DEFS'in 6 sütunuyla eşleşir
+//     (Tapu/Belediye Proje Farkı dalı YOK, columnHasData gizleme
+//     mantığından ETKİLENMEZ — sütunlar HER ZAMAN sabit).
 //  2) Tekil raporda (1 taşınmaz) null döner.
-//  3) "Tapu/Belediye Proje Farkı Var" = Hayır dalı (projectSuitabilityStatus/
-//     projectConformity/projectSuitabilitySimpleRepair) doluyken Evet dalı
-//     (titleProjectSuitability*/municipalityProjectSuitability*) TÜM
-//     taşınmazlarda boş kaldığından sütunlar tamamen kaldırılır (ve tersi).
-//  4) Ana Gayrimenkul Projesine Uygunluk (mainRealEstateProjectSuitable/Note)
-//     dahil.
-//  5) columnMeta: Blok/BB No "readonly", diğer tüm alanlar "scalar".
-//  6) buildProjectSuitabilityUnitsSummaryWordTableHtml(): geçerli HTML
+//  3) columnMeta: Blok/BB No "readonly", diğer tüm alanlar "scalar".
+//  4) buildProjectSuitabilityUnitsSummaryWordTableHtml(): geçerli HTML
 //     tablo üretir, başlıkları içerir.
-//  7) getSelectOptionsForFieldKey(): yeni alanlar (projectSuitabilityStatus
-//     ailesi -> projectSuitabilityOptions, repair/mainRealEstateProjectSuitable
-//     -> ["Evet","Hayır"]) doğru seçenek listesine eşleniyor mu (kaynak-
-//     düzeyi: sections[]'te DEKLARATİF OLMADIKLARI için elle eklenen 2 yeni
-//     dal var mı).
-//  8) renderSection() "documents" gate'i: yeni tablo blok gruplama AKTİF/
+//  5) getSelectOptionsForFieldKey(): projectSuitabilityStatus ailesi
+//     -> projectSuitabilityOptions, repair alanı -> ["Evet","Hayır"]
+//     (kaynak-düzeyi: sections[]'te DEKLARATİF OLMADIKLARI için elle
+//     eklenen dal var mı — bu eşlemeler BAŞKA alanlar için de
+//     kullanıldığından KALDIRILMADI, yalnızca bu tablonun sütunlarından
+//     çıkarıldı).
+//  6) renderSection() "documents" gate'i: yeni tablo blok gruplama AKTİF/
 //     PASİF FARK ETMEKSİZİN eklendi mi (kaynak-düzeyi kablolama).
-//  9) refresh fonksiyonları + debounce + commitTitleUnitsSummaryCellEdit +
+//  7) refresh fonksiyonları + debounce + commitTitleUnitsSummaryCellEdit +
 //     createProjectSuitabilityField/createMainRealEstateProjectSuitabilityControl
 //     kancaları (kaynak-düzeyi kablolama).
-//  10) template-engine.js'te {{TASINMAZLARPROJEUYGUNLUKTABLOSU}} ve
-//      report-tables-xlsx.js'te "Taşınmazlar Proje Uygunluk Özeti" sayfası
-//      kayıtlı mı.
+//  8) template-engine.js'te {{TASINMAZLARPROJEUYGUNLUKTABLOSU}} ve
+//     report-tables-xlsx.js'te "Taşınmazlar Proje Uygunluk Özeti" sayfası
+//     kayıtlı mı.
 
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -142,7 +149,9 @@ function freshState(fields, titleUnits = []) {
   console.log("Tekil taşınmazda null donus testi tamam.");
 }
 
-// --- 2) 2+ taşınmaz, "Tapu/Belediye Proje Farkı Var" = Hayır dalı ----------
+// --- 2) 2+ taşınmaz, 6 sabit sütun (Tapu/Belediye Proje Farkı dalı ---------
+// TAMAMEN yok, columnHasData gizleme mantığından bağımsız her zaman ------
+// gösterilir) ----------------------------------------------------------
 {
   fns.setState(freshState(
     {
@@ -158,32 +167,40 @@ function freshState(fields, titleUnits = []) {
   assert.ok(data && data.rows.length === 2, "2 taşınmazda 2 satır dönmeli.");
   assert.deepEqual(
     data.headers,
-    ["Sıra No", "Blok", "BB No", "Proje Uygunluk Durumu", "Uygunluk Açıklaması", "Basit Tadilatla Düzeltilebilir mi?"],
-    `Sadece dolu dal (Hayır) sütunları kalmalı, Tapu/Belediye (Evet dalı) TÜM taşınmazlarda boş olduğundan VE Ana Gayrimenkul (2026-08-26'da bilerek kaldırıldı) kaldırılmalı, bulunan: ${JSON.stringify(data.headers)}`,
+    ["Sıra No", "Blok", "BB No", "Proje Uygunluk Durumu - Bağımsız Bölüm", "Açıklama", "Basit Bir Tadilat İle Düzeltilebilir mi?"],
+    `Yalnizca 6 sabit sutun olmali, sutun etiketleri canli paneldeki GERCEK etiketlerle BIREBIR eslesmeli, bulunan: ${JSON.stringify(data.headers)}`,
   );
   assert.deepEqual(data.rows[0], [1, "A Blok", "1", "uygundur.", "-", "-"], `1. satır (temsilci/aktif taşınmaz) beklenen degerlerle eslesmeli, bulunan: ${JSON.stringify(data.rows[0])}`);
   assert.deepEqual(data.rows[1], [2, "B Blok", "2", "mimari olarak uygun değildir.", "Balkon farklı.", "Evet"], `2. satir (titleUnits[0]) beklenen degerlerle eslesmeli, bulunan: ${JSON.stringify(data.rows[1])}`);
   assert.deepEqual(data.columnMeta.map((m) => m.kind), ["seq", "readonly", "readonly", "scalar", "scalar", "scalar"], "columnMeta: Sira No 'seq', Blok/BB No 'readonly', geri kalanı 'scalar' olmalı.");
-  console.log("2+ tasinmaz, proje farki YOK dali (Hayir) testi tamam.");
+  console.log("2+ tasinmaz, 6 sabit sutun testi tamam.");
 }
 
-// --- 3) 2+ taşınmaz, "Tapu/Belediye Proje Farkı Var" = Evet dalı -----------
+// --- 3) "Tapu/Belediye Proje Farkı Var" alanları DOLU olsa bile bu -------
+// tabloda HİÇ görünmemeli (tablodan TAMAMEN çıkarıldı, columnHasData'nın --
+// "bos oldugu icin gizlendi" durumuyla KARIŞTIRILMASIN) --------------------
 {
   fns.setState(freshState(
     {
       titleBlockName: "A Blok", unitNo: "1",
-      titleProjectSuitabilityStatus: "uygundur.", titleProjectSuitabilityNote: "",
-      municipalityProjectSuitabilityStatus: "uygundur.", municipalityProjectSuitabilityNote: "",
+      // Kept 3 alan (bu senaryonun asil odagi DEGIL) da doldurulmus - aksi
+      // halde bunlar da columnHasData tarafindan (tum tasinmazlarda bos
+      // oldugu icin) gizlenir, bu da "kaldirilan alanlar hic gorunmuyor"
+      // iddiasini yanlislikla dogrulamis gibi gosterirdi.
+      projectSuitabilityStatus: "uygundur.", projectConformity: "Not.", projectSuitabilitySimpleRepair: "Evet",
+      titleProjectSuitabilityStatus: "uygundur.", titleProjectSuitabilityNote: "Dolu bir deger",
+      municipalityProjectSuitabilityStatus: "uygundur.", municipalityProjectSuitabilityNote: "Dolu bir deger",
+      mainRealEstateProjectSuitable: "Hayır", mainRealEstateProjectSuitabilityNote: "Dolu bir deger",
     },
     [unit({ titleBlockName: "B Blok", unitNo: "2" })],
   ));
   const data = fns.buildProjectSuitabilityUnitsSummaryTableData();
   assert.deepEqual(
     data.headers,
-    ["Sıra No", "Blok", "BB No", "Tapu Projesi Uygunluk Durumu", "Belediye Projesi Uygunluk Durumu"],
-    `Evet dalı sütunları kalmalı, Hayır dalı (projectSuitabilityStatus vb.) TÜM taşınmazlarda boş olduğundan VE Ana Gayrimenkul (2026-08-26'da bilerek kaldırıldı) kaldırılmalı, bulunan: ${JSON.stringify(data.headers)}`,
+    ["Sıra No", "Blok", "BB No", "Proje Uygunluk Durumu - Bağımsız Bölüm", "Açıklama", "Basit Bir Tadilat İle Düzeltilebilir mi?"],
+    `Tapu/Belediye Proje Farki VE Ana Gayrimenkul alanlari DOLU olsa bile bu tabloda GORUNMEMELI (kullanicinin 'başka hiç bir sütun istemiyorum' talebi), bulunan: ${JSON.stringify(data.headers)}`,
   );
-  console.log("2+ tasinmaz, proje farki VAR dali (Evet) testi tamam.");
+  console.log("Tapu/Belediye Proje Farki + Ana Gayrimenkul alanlari DOLU olsa bile GORUNMEZ testi tamam.");
 }
 
 // --- 4) buildProjectSuitabilityUnitsSummaryWordTableHtml() -----------------

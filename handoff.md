@@ -1,5 +1,15 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.558 - 2026-08-26 - Proje Uygunluk Özeti: yalnızca 6 sabit sütun kaldı
+
+- Kullanıcı: "bak burada bir yanlış anlaşılma var yinelenen taşınmaz yok baktım kontrol ettim. tabloyu komple kaldır senden istediğim tablo sütunları sıra no; blok;bb no;Proje Uygunluk Durumu - Bağımsız Bölüm; Açıklama; Basit bir tadilat ile .... bu sütunlar başka hiç bir sütun istemiyorum." — 0.0.552-556'daki 43-taşınmaz soruşturması ile İLGİSİZ, ayrı bir netleştirme: kullanıcı raporunda yinelenen taşınmaz olmadığını doğruladı (o soruşturma/kurtarma aracı/kök-neden düzeltmesi dokunulmadan kalıyor, gerekirse ayrıca ele alınır).
+- **"Tapu/Belediye Proje Farkı Var" = Evet dalının 6 sütunu TAMAMEN kaldırıldı**: Tapu Projesi Uygunluk Durumu/Açıklaması/Basit Tadilat, Belediye Projesi Uygunluk Durumu/Açıklaması/Basit Tadilat. Önceki tasarım her iki dalı da tanımlayıp boş kalanı otomatik gizliyordu (diğer 7 özet tablosuyla aynı kural) — kullanıcı bu dalı HİÇ kullanmadığından ve "başka hiç bir sütun istemiyorum" dediğinden, artık bu 6 alan tabloya HİÇ dahil değil (dolu olsalar bile görünmezler, "boş olduğu için gizlenme" ile karıştırılmasın).
+- Tablo artık TAM OLARAK 6 sabit sütun: Sıra No, Blok, BB No, **Proje Uygunluk Durumu - Bağımsız Bölüm**, **Açıklama**, **Basit Bir Tadilat İle Düzeltilebilir mi?** — son 3 sütunun etiketleri artık canlı paneldeki (`createProjectSuitabilityField`/`openProjectSuitabilityDetailModal`) GERÇEK metinlerle birebir aynı (önceden kısaltılmış "Proje Uygunluk Durumu"/"Uygunluk Açıklaması"/"Basit Tadilatla Düzeltilebilir mi?" idi).
+- "≈ Benzer Metinleri Birleştir" düğmesi (0.0.554) "Açıklama" sütununda (yeni etiketiyle) DEĞİŞMEDEN çalışmaya devam ediyor.
+- Test: `tools/test-project-suitability-units-summary-table.js` güncellendi — "Evet dalı" senaryosu kaldırıldı, yerine "Evet dalı + Ana Gayrimenkul alanları DOLU olsa bile bu tabloda hiç görünmüyor" regresyonu eklendi; kalan 6 sütunun etiketleri canlı panelle birebir doğrulanıyor. `tools/test-similar-text-merge.js`'teki eski etiket referansı güncellendi. `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` cache-buster `?v=20260826-1800`.
+- Canlı tarayıcı testi yapılamadı — kullanıcının "Taşınmazlar Proje Uygunluk Özeti" tablosunda artık YALNIZCA 6 sütun (Sıra No, Blok, BB No, Proje Uygunluk Durumu - Bağımsız Bölüm, Açıklama, Basit Bir Tadilat İle Düzeltilebilir mi?) gördüğünü, başka hiçbir sütun görünmediğini doğrulaması gerekir.
+
 ## 0.0.557 - 2026-08-26 - KÖK NEDEN DÜZELTİLDİ: TAKBİS çok sayfalı PDF'te tek taşınmazı onlarca "kayıt" sanıyordu
 
 - Kullanıcı talebi: "TAKBİS ayrıştırma kök nedenini araştır" — 0.0.556'nın kurtarma aracı YALNIZCA belirtiydi (zaten oluşmuş yinelenenleri temizler), kök neden hâlâ düzeltilmemişti.

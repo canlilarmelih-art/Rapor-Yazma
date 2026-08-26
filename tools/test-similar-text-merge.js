@@ -234,7 +234,7 @@ const fns = new Function(sandboxSource)();
     appSource.indexOf("];", appSource.indexOf("const PROJECT_SUITABILITY_UNITS_TABLE_FIELD_DEFS = ["))
   );
   assert.ok(
-    fieldDefsSrc.includes('{ key: "projectConformity", label: "Uygunluk Açıklaması", kind: "scalar", mergeSimilar: true }'),
+    fieldDefsSrc.includes('{ key: "projectConformity", label: "Açıklama", kind: "scalar", mergeSimilar: true }'),
     "PROJECT_SUITABILITY_UNITS_TABLE_FIELD_DEFS'te projectConformity 'mergeSimilar: true' ile isaretli olmali."
   );
 

@@ -22324,27 +22324,29 @@ function buildUnitUnitsSummaryWordTableHtml() {
 // nadir fallback'inde render ediliyordu, bkz. renderSection) — bu yüzden
 // bu alan grubu için Değerleme/Bağımsız Bölüm Özeti'yle AYNI, blok-
 // gruplamadan BAĞIMSIZ (yalnızca "2+ taşınmaz var mı") bir gate kullanan
-// AYRI bir tablo eklendi. Hem "Tapu/Belediye Proje Farkı Var" = Evet
-// (titleProjectSuitability*/municipalityProjectSuitability*) HEM Hayır
-// (projectSuitabilityStatus/projectConformity/projectSuitabilitySimpleRepair)
-// dallarının sütunları BİRLİKTE tanımlanır — hangi dal kullanılmıyorsa
-// (TÜM taşınmazlarda boş kalır) mevcut columnHasData mekanizmasıyla
-// otomatik gizlenir (diğer 7 özet tablosuyla AYNI kural). "Proje İnceleme
-// Açıklaması" (projectReviewDescription, uzun otomatik-üretilen paragraf)
-// diğer özet tablolarındaki AYNI kuralla (Bağımsız Bölüm'ün
-// unitInteriorDescription'ı gibi) BİLEREK dışarıda bırakıldı.
+// AYRI bir tablo eklendi.
 //
-// Kullanıcı takip talebi (2026-08-26): "ANA GAYRİMENKUL PROJESİNE UYGUN
-// MU? bu kısmı kaldır." — Ana Gayrimenkul Projesine Uygunluk
-// (mainRealEstateProjectSuitable/Note) BAŞLANGIÇTA "aynı panelin parçası"
-// gerekçesiyle dahil edilmişti, kullanıcı bunun bu tabloda YER ALMASINI
-// istemedi — KALDIRILDI (canlı panelden, createMainRealEstateProjectSuitabilityControl
-// ile, DEĞİŞMEDEN düzenlenmeye devam ediyor; yalnızca BU tablonun
-// sütunlarından çıkarıldı).
+// Kullanıcı takip talebi #1 (2026-08-26): "ANA GAYRİMENKUL PROJESİNE
+// UYGUN MU? bu kısmı kaldır." — Ana Gayrimenkul Projesine Uygunluk
+// (mainRealEstateProjectSuitable/Note) KALDIRILDI (canlı paneldeki
+// createMainRealEstateProjectSuitabilityControl DEĞİŞMEDEN devam ediyor,
+// yalnızca BU tablonun sütunlarından çıkarıldı).
+//
+// Kullanıcı takip talebi #2 (2026-08-26, BU sürüm): "tabloyu komple
+// kaldır senden istediğim tablo sütunları sıra no; blok; bb no; Proje
+// Uygunluk Durumu - Bağımsız Bölüm; Açıklama; Basit bir tadilat ile ....
+// bu sütunlar başka hiç bir sütun istemiyorum." — "Tapu/Belediye Proje
+// Farkı Var" = Evet dalının 6 sütunu (titleProjectSuitability*/
+// municipalityProjectSuitability*) BİLEREK/AÇIKÇA kaldırıldı — kullanıcı
+// bu dalı HİÇ kullanmıyor, önceki "her iki dal da tanımlansın, boş kalan
+// otomatik gizlensin" yaklaşımı istenmedi. Sütun etiketleri artık canlı
+// paneldeki GERÇEK etiketlerle BİREBİR (createProjectSuitabilityField'ın
+// "Proje Uygunluk Durumu - Bağımsız Bölüm" ve openProjectSuitabilityDetailModal'ın
+// "Basit Bir Tadilat İle Düzeltilebilir mi?" ifadeleri).
 const PROJECT_SUITABILITY_UNITS_TABLE_FIELD_DEFS = [
   { key: "titleBlockName", label: "Blok", kind: "readonly", narrow: true },
   { key: "unitNo", label: "BB No", kind: "readonly", narrow: true },
-  { key: "projectSuitabilityStatus", label: "Proje Uygunluk Durumu", kind: "scalar" },
+  { key: "projectSuitabilityStatus", label: "Proje Uygunluk Durumu - Bağımsız Bölüm", kind: "scalar" },
   // Kullanıcı talebi (2026-08-26): "uygunluk açıklaması normalde
   // kullanıcının elle girdiği değerler ... bunu metinlerin yüzde doksanı
   // aynı ise ile bunu kastediyorum" — birden fazla taşınmazın açıklaması
@@ -22353,14 +22355,8 @@ const PROJECT_SUITABILITY_UNITS_TABLE_FIELD_DEFS = [
   // buildTitleUnitsSummaryTableHtmlEditable'ın bu sütunun başlığına
   // "≈ Benzer Metinleri Birleştir" butonunu (bkz. findSimilarTitleUnitsSummaryTextGroups/
   // mergeSimilarTitleUnitsSummaryTextValues) eklemesini sağlar.
-  { key: "projectConformity", label: "Uygunluk Açıklaması", kind: "scalar", mergeSimilar: true },
-  { key: "projectSuitabilitySimpleRepair", label: "Basit Tadilatla Düzeltilebilir mi?", kind: "scalar" },
-  { key: "titleProjectSuitabilityStatus", label: "Tapu Projesi Uygunluk Durumu", kind: "scalar" },
-  { key: "titleProjectSuitabilityNote", label: "Tapu Projesi Uygunluk Açıklaması", kind: "scalar" },
-  { key: "titleProjectSuitabilitySimpleRepair", label: "Tapu Projesi Basit Tadilatla Düzeltilebilir mi?", kind: "scalar" },
-  { key: "municipalityProjectSuitabilityStatus", label: "Belediye Projesi Uygunluk Durumu", kind: "scalar" },
-  { key: "municipalityProjectSuitabilityNote", label: "Belediye Projesi Uygunluk Açıklaması", kind: "scalar" },
-  { key: "municipalityProjectSuitabilitySimpleRepair", label: "Belediye Projesi Basit Tadilatla Düzeltilebilir mi?", kind: "scalar" },
+  { key: "projectConformity", label: "Açıklama", kind: "scalar", mergeSimilar: true },
+  { key: "projectSuitabilitySimpleRepair", label: "Basit Bir Tadilat İle Düzeltilebilir mi?", kind: "scalar" },
 ];
 
 function buildProjectSuitabilityUnitsSummaryTableData() {
