@@ -26981,28 +26981,35 @@ function buildProjectReviewConsolidatedReferenceSentence(leadDateText, placeText
 function buildProjectReviewConsolidatedSentences(items) {
   const nonEmpty = items.filter((item) => item.text);
   if (!nonEmpty.length) return [];
-  const byText = new Map();
-  const order = [];
-  nonEmpty.forEach(({ label, text }) => {
-    if (!byText.has(text)) {
-      byText.set(text, []);
-      order.push(text);
+  // Kullanıcı bildirimi (2026-08-26, ikinci örnek): "A 12 No'lu" ve
+  // "B 31 No'lu" AYNI uygunluk durumuna VE aynı açıklama notuna sahip
+  // olduğu halde 2 AYRI cümlede kalmıştı — kök neden, notlardan birinde
+  // unutulan TEK bir nokta ("...tespit edilmiştir." vs "...tespit
+  // edilmiştir Basit...") yüzünden metinlerin TAM (===) eşleşmemesiydi.
+  // Gruplama artık TAM metin eşleşmesi yerine "Benzer Metinleri
+  // Birleştir" (0.0.554) ile AYNI normalize+Levenshtein benzerlik eşiğini
+  // (%90, bkz. normalizeTextForSimilarityComparison/computeTextSimilarityRatio)
+  // kullanıyor — ufak yazım/noktalama farkları ARTIK ayrı gruplara
+  // düşürmüyor. Grup temsilcisi (nihai cümle metni) o gruba giren İLK
+  // metin ("ne yazıldıysa o kalır" — mevcut siteyi kapsayan ilke).
+  const groups = [];
+  nonEmpty.forEach(({ label, text, unitCount }) => {
+    const normalized = normalizeTextForSimilarityComparison(text);
+    const matchedGroup = groups.find((group) => computeTextSimilarityRatio(group.normalized, normalized) >= 0.9);
+    if (matchedGroup) {
+      matchedGroup.labels.push(label);
+      matchedGroup.unitCount += unitCount;
+    } else {
+      groups.push({ text, normalized, labels: [label], unitCount });
     }
-    byText.get(text).push(label);
   });
-  if (order.length === 1) {
-    const labels = byText.get(order[0]);
-    const totalUnits = nonEmpty.reduce((sum, item) => sum + item.unitCount, 0);
+  if (groups.length === 1) {
+    const labels = groups[0].labels;
+    const totalUnits = groups[0].unitCount;
     const unanimous = labels.length === items.length;
-    return [pluralizeProjectReviewSubjectText(order[0], totalUnits > 1, unanimous ? "" : formatTitleUnitAttributionPhrase(labels), unanimous)];
+    return [pluralizeProjectReviewSubjectText(groups[0].text, totalUnits > 1, unanimous ? "" : formatTitleUnitAttributionPhrase(labels), unanimous)];
   }
-  const groupInfos = order.map((text) => {
-    const labels = byText.get(text);
-    const unitCount = nonEmpty
-      .filter((item) => labels.includes(item.label))
-      .reduce((sum, item) => sum + item.unitCount, 0);
-    return { text, labels, unitCount };
-  });
+  const groupInfos = groups;
   // Kullanıcı talebi (2026-08-26): "eğer taşınmazların %50 sinden fazlası
   // aynı uygunlukta ise ... bunu her bir bağımsız bölümü yazarak gösterme.
   // ilk olarak uygun olmayanların açıklamasını belirt. kalan diğer

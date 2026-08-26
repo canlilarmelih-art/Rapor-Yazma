@@ -140,6 +140,9 @@ const functionNames = [
   "formatTitleUnitSuitabilityLabel",
   "formatTitleUnitAttributionPhrase",
   "replaceProjectReviewSubjectWithOtherPropertiesPhrase",
+  "normalizeTextForSimilarityComparison",
+  "levenshteinDistance",
+  "computeTextSimilarityRatio",
 ];
 
 // `buildProjectSuitabilityStatusSentence` const/registerVariantGroup
@@ -525,6 +528,47 @@ function freshState(overrides = {}) {
   assert.ok(suitabilityText.includes("B Blok 2 No'lu bağımsız bölüm"), `Esitlikte HER grup kendi tam atfiyla gorunmeye devam etmeli, bulunan: ${suitabilityText}`);
 
   console.log("buildProjectReviewExplanationParts() %50/%50 esitlikte sadelestirme UYGULANMAMASI testi tamam.");
+}
+
+// --- 10) Kullanıcı bildirimi (2026-08-26, ikinci örnek): "A 12 No'lu" -----
+// ve "B 31 No'lu" AYNI uygunluk durumuna VE ÖZDEŞ açıklama notuna sahip
+// olduğu halde, notlardan birinde UNUTULAN TEK BİR NOKTA ("...tespit
+// edilmiştir." vs "...tespit edilmiştir Basit...") yüzünden 2 AYRI
+// cümlede kalmıştı: "sence burada yer alan uygundur olmayan taşınmazlar
+// için bir sadeleştirme yapılması gerekmez mi?" — gruplama artık TAM
+// metin eşleşmesi yerine "Benzer Metinleri Birleştir" ile AYNI %90
+// benzerlik eşiğini kullandığından bu 2 taşınmaz TEK (birleşik atıflı)
+// cümlede toplanmalı.
+{
+  const typoNoteState = freshState({ titleBlockName: "A Blok", unitNo: "1" });
+  typoNoteState.titleUnits = [
+    unit(typoNoteState.fields, "100", "1", "A Blok", {
+      unitNo: "12",
+      projectSuitabilityStatus: "kullanım alanı olarak uygun değildir.",
+      projectConformity: "Yerinde yapılan incelemelerde çatı arasına doğru 10 m2 büyüme yapıldığı tespit edilmiştir.",
+      projectSuitabilitySimpleRepair: "Evet",
+    }),
+    unit(typoNoteState.fields, "100", "1", "B Blok", {
+      unitNo: "31",
+      projectSuitabilityStatus: "kullanım alanı olarak uygun değildir.",
+      // KASITLI yazim hatasi: cumle sonu noktasi UNUTULMUS (kullanicinin
+      // gercek ornegindeki TAM ayni kusur) - metin ANLAM olarak ozdes.
+      projectConformity: "Yerinde yapılan incelemelerde çatı arasına doğru 10 m2 büyüme yapıldığı tespit edilmiştir",
+      projectSuitabilitySimpleRepair: "Evet",
+    }),
+    unit(typoNoteState.fields, "100", "1", "C Blok", { unitNo: "2" }),
+    unit(typoNoteState.fields, "100", "1", "D Blok", { unitNo: "3" }),
+  ];
+  fns.setState(typoNoteState);
+  const parts = fns.buildProjectReviewExplanationParts();
+  const suitabilityText = parts.slice(2).join(" ||| ");
+
+  assert.ok(suitabilityText.includes("A Blok 12 No'lu ve B Blok 31 No'lu"), `Yazim hatasi disinda OZDES 2 azinlik metni TEK birlesik atifli cumlede toplanmali, bulunan: ${suitabilityText}`);
+  assert.equal((suitabilityText.match(/tespit edilmiştir/g) || []).length, 1, `Notun kendisi TEK KEZ gorunmeli (2 AYRI cumleye BOLUNMEMELI), bulunan: ${suitabilityText}`);
+  assert.equal((suitabilityText.match(/Basit bir tadilat/g) || []).length, 1, `Tadilat cumlesi de TEK KEZ gorunmeli, bulunan: ${suitabilityText}`);
+  assert.ok(suitabilityText.includes("Diğer taşınmazlar"), `Cogunluk (3/5 > %50) hala 'Diger tasinmazlar' olarak genellenmeli, bulunan: ${suitabilityText}`);
+
+  console.log("buildProjectReviewExplanationParts() yazim hatasi/noktalama farkli AMA ozdes azinlik notlarinin birlesmesi testi tamam.");
 }
 
 console.log("Proje Inceleme Aciklamasi cogullama + blok bazinda ortak/ayri/sade cumle testleri basarili.");
