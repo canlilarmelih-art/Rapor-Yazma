@@ -270,6 +270,32 @@ function freshState(fields, titleUnits = []) {
   console.log("Refresh/debounce/commit/field-handler kablolamasi (kaynak-duzeyi) testi tamam.");
 }
 
+// --- 7b) REGRESYON (2026-08-26, kullanıcı bildirimi: "basit bir tadilat --
+// durumunu tümüne uygula dediğim anda ekran görüntüsündeki [Belgeler ------
+// Özeti] tabloya dönüştü"): "documents" bölümünde İKİ panel (Belgeler -----
+// Özeti + Proje Uygunluk Özeti) AYNI ANDA var olabildiğinden, İKİSİ DE ----
+// BENZERSİZ (paylaşılan ".title-units-summary-table-preview" DIŞINDA) -----
+// sınıflarla sorgulanmalı — aksi halde refreshDocumentsUnitsSummaryTablePreview()
+// (genel sınıfla sorgulayan ESKİ hali) Proje Uygunluk panelini YANLIŞLIKLA
+// bulup KENDİSİYLE DEĞİŞTİRİYORDU (kullanıcının gördüğü hata BUYDU) -------
+{
+  assert.ok(
+    appSource.includes('wrap.className = "title-units-summary-table-preview documents-units-summary-table-preview";'),
+    "createDocumentsUnitsSummaryTablePreview() artık paylaşılan sınıfın YANINDA benzersiz '.documents-units-summary-table-preview' sınıfını taşımıyor."
+  );
+  const refreshDocsStart = appSource.indexOf("function refreshDocumentsUnitsSummaryTablePreview()");
+  const refreshDocsEnd = appSource.indexOf("\n}", refreshDocsStart);
+  assert.ok(
+    appSource.slice(refreshDocsStart, refreshDocsEnd).includes('document.querySelector(".documents-units-summary-table-preview")'),
+    "refreshDocumentsUnitsSummaryTablePreview() artık BENZERSİZ sınıfla sorgulamıyor (genel sınıfla sorgulasaydı 'documents' bölümündeki DİĞER panelle - Proje Uygunluk Özeti - çakışırdı)."
+  );
+  assert.ok(
+    !appSource.slice(refreshDocsStart, refreshDocsEnd).includes('document.querySelector(".title-units-summary-table-preview")'),
+    "refreshDocumentsUnitsSummaryTablePreview() ESKİ (yanlış, çakışan) genel sınıf sorgusunu HİÇ İÇERMEMELİ."
+  );
+  console.log("REGRESYON: Belgeler Ozeti + Proje Uygunluk Ozeti panel-cakismasi duzeltmesi testi tamam.");
+}
+
 // --- 8) template-engine.js + report-tables-xlsx.js kayitlari ---------------
 {
   assert.ok(

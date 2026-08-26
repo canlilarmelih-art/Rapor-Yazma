@@ -3874,7 +3874,19 @@ function createLandUnitsSummaryTablePreview() {
 // ve metin farkı.
 function createDocumentsUnitsSummaryTablePreview() {
   const wrap = document.createElement("div");
-  wrap.className = "title-units-summary-table-preview";
+  // Kullanıcı bildirimi (2026-08-26): "basit bir tadilat durumunu tümüne
+  // uygula dediğim anda ekran görüntüsündeki tabloya dönüştü" — bu panel
+  // "documents" bölümünde artık "Taşınmazlar Proje Uygunluk Özeti"
+  // (createProjectSuitabilityUnitsSummaryTablePreview) ile AYNI ANDA
+  // görünebiliyor (isDocumentsScopedByBlock true iken); paylaşılan
+  // ".title-units-summary-table-preview" sınıfının YANINDA benzersiz bir
+  // ikinci sınıf taşımalı ki refreshDocumentsUnitsSummaryTablePreview()
+  // DOĞRU paneli hedefleyebilsin (querySelector ilk eşleşeni döner — bu
+  // panel HİÇ RENDER EDİLMEMİŞ olsa bile [isDocumentsScopedByBlock false],
+  // genel sınıfla sorgulayan eski kod Proje Uygunluk panelini YANLIŞLIKLA
+  // BULUP KENDİSİYLE DEĞİŞTİRİYORDU — kullanıcının gördüğü "tablo
+  // dönüştü" hatası BUYDU).
+  wrap.className = "title-units-summary-table-preview documents-units-summary-table-preview";
   const heading = document.createElement("h5");
   heading.textContent = "Taşınmazlar Belgeler Özeti";
   wrap.append(heading);
@@ -4015,7 +4027,7 @@ function refreshLandUnitsSummaryTablePreview() {
 // Belgeler ve Proje (2026-08-19) — yukarıdakilerle AYNI desen.
 function refreshDocumentsUnitsSummaryTablePreview() {
   if (activeSectionId !== "documents") return;
-  const host = document.querySelector(".title-units-summary-table-preview");
+  const host = document.querySelector(".documents-units-summary-table-preview");
   if (!host) return;
   host.replaceWith(createDocumentsUnitsSummaryTablePreview());
 }
