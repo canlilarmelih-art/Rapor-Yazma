@@ -49,6 +49,8 @@ function extractFunction(name) {
 const functionNames = [
   "getEkbInspectionDateIso",
   "getEkbInspectionLead",
+  "isMultiTitleUnitReportForNarrative",
+  "pluralizeEnvironmentalSubjectText",
   "buildEkbExplanation",
   "stripEkbExplanationFromReviewedDocumentsText",
 ];
@@ -77,6 +79,7 @@ const sandboxSource = `
     getEkbInspectionLead,
     buildEkbExplanation,
     stripEkbExplanationFromReviewedDocumentsText,
+    isMultiTitleUnitReportForNarrative,
   };
 `;
 // eslint-disable-next-line no-new-func
@@ -163,6 +166,47 @@ const fns = new Function(sandboxSource)();
   assert.ok(stripped2.includes("Bazı ilgisiz cümle") && stripped2.includes("Başka bir ilgisiz cümle"), "Ilgisiz cumleler KORUNMALI (blok-atifli varyantta da).");
 
   console.log("stripEkbExplanationFromReviewedDocumentsText blok-atifli varyant testi tamam.");
+}
+
+// --- 5) REGRESYON (2026-08-27, kullanıcı bildirimi): "bu şekilde geldi ----
+// çoklu formata uygun olmalı" — blockAttribution YOKKEN (kullanıcının
+// raporu isDocumentsBlockGroupingActive() dar koşulunu karşılamıyordu),
+// rapor 2+ bağımsız bölüm içeriyorsa "taşınmaz" ailesi ARTIK çoğullanır
+// ("bina" TEKİL kalır - bina tek, birden fazla bağımsız bölüm barındırır).
+{
+  // 5a) "found" (geçerli EKB), coklu tasinmaz (state.titleUnits doluyken
+  // isMultiTitleUnitReportForNarrative gercek app.js mantigiyla true doner).
+  fns.setState({
+    fields: { hasEkb: "Evet", appointmentDate: "10.03.2026", ekbDocumentNo: "y221", ekbIssueDate: "31.01.2023", ekbValidUntil: "31.01.2033", ekbEnergyClass: "C" },
+    titleUnits: [{}],
+  });
+  const pluralFound = fns.buildEkbExplanation();
+  assert.ok(pluralFound.includes("Konu taşınmazların yer aldığı binaya ait"), `Coklu rapor + blok atfi YOKKEN 'taşınmazların' (çoğul) kullanilmali, bulunan: ${pluralFound}`);
+  assert.ok(pluralFound.includes("taşınmazların yer aldığı binanın enerji performans sınıfı"), `Enerji sinifi cumlesi de coğullanmali ('bina' TEKIL kalmali), bulunan: ${pluralFound}`);
+  assert.ok(!pluralFound.includes("taşınmazın yer aldığı"), `Eski TEKIL ifade ARTIK gorunmemeli, bulunan: ${pluralFound}`);
+
+  // 5b) Tekil rapor (titleUnits YOK) -> ESKI/degismeyen tekil metin (regresyon).
+  fns.setState({
+    fields: { hasEkb: "Evet", appointmentDate: "10.03.2026", ekbDocumentNo: "y221", ekbIssueDate: "31.01.2023", ekbValidUntil: "31.01.2033", ekbEnergyClass: "C" },
+  });
+  const singularFound = fns.buildEkbExplanation();
+  assert.ok(singularFound.includes("Konu taşınmazın yer aldığı binaya ait"), `Tekil raporda ESKI tekil ifade DEGISMEMELI, bulunan: ${singularFound}`);
+
+  // 5c) "Hayır" (bulunamadı) + coklu rapor -> "taşınmazlara ait" (coğul).
+  fns.setState({ fields: { hasEkb: "Hayır", appointmentDate: "" }, titleUnits: [{}] });
+  const pluralMissing = fns.buildEkbExplanation();
+  assert.ok(pluralMissing.includes("taşınmazlara ait"), `Coklu rapor + 'bulunamadi' durumunda 'taşınmazlara ait' (çoğul) kullanilmali, bulunan: ${pluralMissing}`);
+
+  // 5d) Blok atfi VARKEN coğullama devre disi (attribution zaten "taşınmaz"
+  // kelimesinin YERINE geciyor, coğullamaya GEREK/YER yok).
+  fns.setState({
+    fields: { hasEkb: "Evet", appointmentDate: "10.03.2026", ekbDocumentNo: "y221", ekbIssueDate: "31.01.2023", ekbValidUntil: "31.01.2033", ekbEnergyClass: "C" },
+    titleUnits: [{}],
+  });
+  const attributedFound = fns.buildEkbExplanation({ hasEkb: "Evet", ekbDocumentNo: "y221", ekbIssueDate: "31.01.2023", ekbValidUntil: "31.01.2033", ekbEnergyClass: "C" }, "A Blok'a ait");
+  assert.ok(!attributedFound.includes("taşınmazların") && !attributedFound.includes("taşınmazın"), `Blok atfi VARKEN 'taşınmaz' kelimesi (tekil ya da coğul) HIC gecmemeli, bulunan: ${attributedFound}`);
+
+  console.log("buildEkbExplanation() coklu rapor + blok atfi YOK -> cogullama (REGRESYON) testi tamam.");
 }
 
 console.log("EKB Aciklamasi blok-atifli cumle uretimi testleri basarili.");

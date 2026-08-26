@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.572 - 2026-08-27 - KRİTİK DÜZELTME: EKB Açıklaması hâlâ tekildi — 0.0.571 yanlış kök nedeni düzeltmişti
+
+- Kullanıcı, 0.0.571'i canlıda test edip "düzelmemiş" dedi. Yeniden inceleme: 0.0.571 YANLIŞ teşhis edilmişti — `buildEkbExplanationParts()` yalnızca `isDocumentsBlockGroupingActive()` (Kat İrtifakı + 2+ FARKLI blok) doğruyken blok-atıflı metin üretiyor; kullanıcının raporu bu DAR koşulu karşılamadığından (tek blok/farklı mülkiyet türü/blok kavramı yok gibi "Çoklu Talep"in BÜYÜK ÇOĞUNLUĞU) `blockAttribution` hep boş kalıyor ve `buildEkbExplanation()` her zaman ESKİ TEKİL metni ("Konu taşınmazın yer aldığı binaya ait...") üretmeye devam ediyordu — 0.0.571'in yönlendirdiği "doğru fonksiyona git" düzeltmesi bu durumda HİÇBİR ŞEYİ değiştirmiyordu.
+- **Gerçek kök neden**: `buildEkbExplanation()`'ın KENDİSİ hiçbir zaman "taşınmaz" ailesini çoğullamıyordu — blok atfı olsun ya da olmasın, rapor 2+ bağımsız bölüm içerse bile metin HER ZAMAN tekildi.
+- **Düzeltme**: `buildEkbExplanation(fields, blockAttribution)`'a `enablePlural = !blockAttribution && isMultiTitleUnitReportForNarrative()` eklendi — blok atfı YOKKEN (ki bu durumların büyük çoğunluğu) VE rapor 2+ bağımsız bölüm içeriyorsa, ÜÇ döndürülen metnin (found/expired/missing) tamamı `pluralizeEnvironmentalSubjectText()` ile çoğullanıyor: "Konu taşınmazın yer aldığı binaya ait" → **"Konu taşınmazların yer aldığı binaya ait"**, "taşınmazın yer aldığı binanın enerji performans sınıfı" → **"taşınmazların yer aldığı binanın enerji performans sınıfı"** ("bina" TEKİL kalıyor — doğru, bina tek, birden fazla bağımsız bölüm barındırabilir). Blok atfı VARKEN (gerçek çoklu-blok senaryosu) çoğullama devre dışı — attribution zaten "taşınmaz" kelimesinin YERİNE geçiyor.
+- Test: `tools/test-ekb-explanation-block-attribution.js`'e kullanıcının TAM senaryosunu (blok atfı yok + çoklu taşınmaz → çoğul; tekil rapor → değişmeyen tekil; blok atfı varken çoğullama devre dışı) doğrulayan yeni senaryo 5 eklendi; sandbox'a gerçek `isMultiTitleUnitReportForNarrative`/`pluralizeEnvironmentalSubjectText` eklendi. `tools/check-basic.js`'in eski, artık geçersiz bir kod-şekli varsayan bir string-eşleşme kontrolü yeni şekle güncellendi. `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` cache-buster `?v=20260827-1300`.
+- Canlı tarayıcı testi yapılamadı — kullanıcının aynı "Çoklu Talep" raporunda "EKB Açıklaması"nı yeniden ürettirip artık "Konu taşınmazların yer aldığı binaya ait..." (çoğul) geldiğini doğrulaması gerekir.
+
 ## 0.0.571 - 2026-08-27 - EKB Açıklaması (bağımsız alan) artık blok-atıflı çoğullanıyor
 
 - Kullanıcı, gerçek "EKB Açıklaması" çıktısını paylaştı ("Konu taşınmazın yer aldığı binaya ait ... Enerji Kimlik Belgesi bulunmaktadır...") ve "bu şekilde geldi çoklu formata uygun olmalı" dedi — 0.0.567'de Cezai Karar/Statik Uygunluk/Yapı Denetim'de düzeltilen AYNI kusurun EKB'de de var olduğu ortaya çıktı.

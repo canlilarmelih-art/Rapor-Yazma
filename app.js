@@ -29067,8 +29067,25 @@ function getEkbInspectionLead() {
 function buildEkbExplanation(fields = state.fields, blockAttribution = "") {
   const hasEkb = normalizeYesNoChoice(fields.hasEkb);
   const inspectionLead = getEkbInspectionLead();
+  // Kullanıcı bildirimi (2026-08-27): "bu şekilde geldi çoklu formata
+  // uygun olmalı" — 0.0.571 yalnızca STANDALONE "EKB Açıklaması" alanının
+  // buildEkbExplanationParts()'ı KULLANMASINI sağladı, ama o fonksiyon
+  // yalnızca `isDocumentsBlockGroupingActive()` (Kat İrtifakı + 2+ FARKLI
+  // blok) doğruyken blok-atıflı cümle üretiyor — kullanıcının raporu bu
+  // dar koşulu karşılamadığından (tek blok/blok kavramı yok/farklı
+  // mülkiyet türü) hâlâ blockAttribution="" ile ESKİ TEKİL metni
+  // üretiyordu. Asıl eksik, buildEkbExplanation()'ın KENDİSİNİN hiçbir
+  // zaman "taşınmaz" ailesini çoğullamamasıydı — blok atfı YOKKEN (bu,
+  // "Çoklu Talep"in BÜYÜK ÇOĞUNLUĞUNU kapsar) rapor 2+ bağımsız bölüm
+  // içeriyorsa metin ARTIK "taşınmazların" olarak çoğullanır (buildingLead/
+  // expiredLead'in KENDİSİ "bina" referansını İÇERMEDİĞİNDEN "bina" tekil
+  // kalır — doğru, bina TEK, birden fazla bağımsız bölüm içerebilir).
+  const enablePlural = !blockAttribution && isMultiTitleUnitReportForNarrative();
   if (hasEkb === "Hayır") {
-    return `${inspectionLead} EKB sistemi, E Devlet, resmi kurumlar ve saha araştırması sonucunda taşınmaza ait Enerji Kimlik Belgesi bulunamamıştır.`;
+    return pluralizeEnvironmentalSubjectText(
+      `${inspectionLead} EKB sistemi, E Devlet, resmi kurumlar ve saha araştırması sonucunda taşınmaza ait Enerji Kimlik Belgesi bulunamamıştır.`,
+      enablePlural
+    );
   }
   if (hasEkb !== "Evet") return "";
 
@@ -29085,7 +29102,10 @@ function buildEkbExplanation(fields = state.fields, blockAttribution = "") {
     if (validUntilText) dateParts.push(`geçerlilik tarihi ${validUntilText}`);
     const certificateDateText = dateParts.length ? ` ${dateParts.join(", ")}` : "";
     const certificateDateSuffix = certificateDateText ? `${certificateDateText} olan` : "";
-    return normalizeReportDescriptionText(`${inspectionLead} ${expiredLead}${certificateDateSuffix} Enerji Kimlik Belgesi incelenmiştir. Enerji Kimlik Belgesinin son geçerlilik tarihi sona erdiği için değerleme raporunda dikkate alınmamıştır.`);
+    return pluralizeEnvironmentalSubjectText(
+      normalizeReportDescriptionText(`${inspectionLead} ${expiredLead}${certificateDateSuffix} Enerji Kimlik Belgesi incelenmiştir. Enerji Kimlik Belgesinin son geçerlilik tarihi sona erdiği için değerleme raporunda dikkate alınmamıştır.`),
+      enablePlural
+    );
   }
 
   const documentNo = toTitleFieldUppercase(fields.ekbDocumentNo || "").trim();
@@ -29111,7 +29131,7 @@ function buildEkbExplanation(fields = state.fields, blockAttribution = "") {
     const buildingReference = blockAttribution ? `${blockAttribution} binanın` : "taşınmazın yer aldığı binanın";
     sentences.push(`Belgeye göre ${buildingReference} enerji performans sınıfı ${energyClass} sınıfıdır.`);
   }
-  return normalizeReportDescriptionText(sentences.join(" "));
+  return pluralizeEnvironmentalSubjectText(normalizeReportDescriptionText(sentences.join(" ")), enablePlural);
 }
 
 // Kullanıcı talebi (2026-08-23): "burada incelenen belgelerde ortak

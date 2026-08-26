@@ -848,7 +848,12 @@ function main() {
       // buildEkbExplanationParts, blok-bazli EKB aciklamasi) - ayni
       // hesaplama artik bir "return" ifadesi.
       appJs.includes("return inspectionDateText ? `${inspectionDateText} tarihinde` : \"İnceleme tarihinde\";") &&
-      appJs.includes("return `${inspectionLead} EKB sistemi, E Devlet, resmi kurumlar") &&
+      // 2026-08-27: "return `${inspectionLead} EKB sistemi..." artik
+      // dogrudan degil, coklu-tasinmaz raporlarinda "tasinmaz" ailesini
+      // cogullayan pluralizeEnvironmentalSubjectText(...) sarmalayicisi
+      // ICINDE donuyor (kullanici bildirimi: "bu sekilde geldi coklu
+      // formata uygun olmali").
+      appJs.includes("return pluralizeEnvironmentalSubjectText(\n      `${inspectionLead} EKB sistemi, E Devlet, resmi kurumlar") &&
       appJs.includes("olan` : \"\"") &&
       appJs.includes("return state.fields.appointmentDate || \"\";") &&
       // 2026-08-23: EKB aciklamasi artik TEK bir "ekbExplanation" degil,
