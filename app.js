@@ -13099,26 +13099,36 @@ function formatMainPropertyBlockListPhrase(blockLabels, options = {}) {
 // toplanır (grup temsilcisi = o gruba giren İLK metin). Building
 // dünyasının KENDİ, genel amaçlı birleştirme yardımcısı.
 //
-// 0.0.575 DÜZELTMESİ: gruplama KARARI ham (`buildTextFn` çıktısı,
-// normalize EDİLMEMİŞ) metin yerine `normalizeReportDescriptionText(
-// cleanComparablePunctuation(text))` ile normalize edilmiş bir ANAHTAR
-// üzerinden veriliyor — kullanıcının bildirdiği gerçek örnek: A ve B
-// Blok'un serbest-metin kat/kullanım verisi İÇERİK olarak birebir aynı
-// ama biri "Ortak Alanlar Ve Otopark" (büyük "V"), diğeri küçük "v" ile
-// girilmişti; bu kozmetik fark `buildConsolidatedMainPropertyDescription`
-// zaten HER paragrafın SONUNDA bu AYNI iki fonksiyonla temizlediği için
-// NİHAİ metinde görünmüyordu, ama gruplama KARARI bu temizlikten ÖNCE,
-// ham metin üzerinde verildiğinden iki blok YANLIŞLIKLA ayrı paragraflara
-// düşüyordu. Anahtar normalize edilir, GÖSTERİLEN metin (`.text`) yine
-// gruba giren İLK bloğun ham metnidir (zaten sonda aynı normalizasyondan
-// geçiyor).
+// 0.0.575 DÜZELTMESİ (YETERSİZ ÇIKTI, bkz. 0.0.576): gruplama KARARI
+// ham (`buildTextFn` çıktısı, normalize EDİLMEMİŞ) metin yerine
+// `normalizeReportDescriptionText(cleanComparablePunctuation(text))`
+// ile normalize edilmiş bir anahtar üzerinden verilmeye başlanmıştı —
+// ama bu ikisi yalnızca boşluk/noktalama temizliyor VE TÜMÜ-BÜYÜK-HARF
+// satırları küçültüyor; "Ortak Alanlar Ve Otopark" (Baş Harfleri Büyük)
+// ile "Ortak alanlar ve otopark" (düz cümle) gibi KELİME-DÜZEYİNDE
+// karışık büyük/küçük harf farklarını KATLAMIYOR (ne ALL-CAPS ne de
+// cümle-başı durumunda değiller). Kullanıcı "Tüm Bloklara Uygula"yı
+// kullanıp verinin İÇERİK olarak birebir aynı olduğunu doğruladığı
+// halde blokların YİNE ayrı paragraflara düştüğünü bildirdi.
+//
+// 0.0.576 DÜZELTMESİ: anahtar artık `normalizeTextForSimilarityComparison()`
+// (mevcut, "Benzer Metinleri Birleştir" özelliğinin — bkz.
+// tools/test-similar-text-merge.js — ZATEN kullandığı, `foldTurkish` ile
+// TAM büyük/küçük harf + Türkçe aksan katlaması yapan yardımcı) ile
+// kuruluyor — kelime-düzeyinde HERHANGİ bir büyük/küçük harf farkını
+// (ALL-CAPS, Baş Harfleri Büyük, düz cümle, karışık) güvenle KATLAR;
+// rakamlar katlamadan ETKİLENMEDİĞİNDEN (0.0.563'ün "10 m2 ≠ 9 m2 asla
+// birleşmesin" kuralı) sayısal içerik farklı olan bloklar yine AYRI
+// kalmaya devam eder. GÖSTERİLEN metin (`.text`) yine gruba giren İLK
+// bloğun ham (katlanmamış) metnidir — zaten sonda
+// normalizeReportDescriptionText/cleanComparablePunctuation'dan geçiyor.
 function groupMainPropertyBlocksByText(blockEntries, buildTextFn) {
   const byKey = new Map();
   const order = [];
   (blockEntries || []).forEach(({ label, values }) => {
     const text = buildTextFn(values);
     if (!text) return;
-    const key = normalizeReportDescriptionText(cleanComparablePunctuation(text));
+    const key = normalizeTextForSimilarityComparison(text);
     if (!key) return;
     if (!byKey.has(key)) {
       byKey.set(key, { text, blockLabels: [] });

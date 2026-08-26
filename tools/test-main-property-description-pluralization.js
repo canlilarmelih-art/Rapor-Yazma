@@ -125,6 +125,10 @@ const functionNames = [
   "cleanComparablePunctuation",
   "normalizeYesNoChoice",
   "parseBuildingFloorCount",
+  // groupMainPropertyBlocksByText'in 0.0.576'daki gercek karsilastirma
+  // anahtari - foldTurkish'e bagimli (zaten yukarida gercek/tam olarak
+  // extract ediliyor).
+  "normalizeTextForSimilarityComparison",
 ];
 
 // mainPropertyOpeningVariants/vb. `const X = [...]` cümle-varyant
@@ -499,20 +503,10 @@ function freshState(overrides = {}) {
   console.log("buildMainPropertyDescription() TAM 4-blok entegrasyon (kullanici ornegi) testi tamam.");
 }
 
-// --- 9) KRITIK REGRESYON (2026-08-27, kullanici canli raporunda yakaladi): -
-// A ve B Blok'un serbest-metin kat/kullanim verisi ICERIK olarak birebir
-// ayni ama kozmetik olarak (fazladan bosluk) farkli girilmisse, gruplama
-// KARARI hala TEK (birlesik "A ve B Blok ...") paragraf uretmeli. Onceki
-// (0.0.574) davranis ham metni birebir karsilastirdigindan bu durumda
-// YANLISLIKLA IKI AYRI paragraf uretiyordu - gorunen NIHAI metin
-// (normalizeReportDescriptionText/cleanComparablePunctuation SADECE en
-// sonda, PARAGRAF bazinda uygulandigindan) ozdes GORUNSE bile birlesme
-// gerceklesmiyordu. NOT: bu test dosyasinin normalizeReportDescriptionText
-// stub'u yalnizca bosluk sikistirma yapiyor (buyuk/kucuk harf katlamasi
-// YAPMIYOR, bkz. satir ~189) - kullanicinin gercek raporundaki "Ve"/"ve"
-// buyuk harf farkini GERCEK app.js'teki tam fonksiyon (bu testin kapsami
-// disinda tutulan agir bagimlilik) ele aliyor; burada AYNI duzeltme
-// mekanizmasi (anahtar normalizasyonu) bosluk farkiyla dogrulanir.
+// --- 9) REGRESYON (2026-08-27, ilk duzeltme denemesi): A ve B Blok'un ------
+// serbest-metin kat/kullanim verisi ICERIK olarak birebir ayni ama
+// kozmetik olarak (fazladan bosluk) farkli girilmisse, gruplama KARARI
+// hala TEK (birlesik "A ve B Blok ...") paragraf uretmeli.
 {
   const commonFields = {
     requestType: "Çoklu Talep", ownershipType: "Dikey Kat İrtifakı",
@@ -549,6 +543,55 @@ function freshState(overrides = {}) {
   assert.ok(!/A Blok[^.]*\n\n[^.]*B Blok bodrum/.test(text), `A ve B AYRI paragraflara DUSMEMELI, bulunan: ${text}`);
 
   console.log("groupMainPropertyBlocksByText() kozmetik-fark (bosluk) normalizasyon REGRESYONU testi tamam.");
+}
+
+// --- 10) KRITIK REGRESYON (2026-08-27, kullanicinin "Tum Bloklara Uygula" --
+// sonrasi bildirdigi GERCEK canli senaryo): "Tum Bloklara Uygula" ile
+// icerik BIREBIR ayni hale getirilmis olsa bile, A Blok'un KENDI
+// orijinal (kucuk harfli: "Ortak alanlar ve otopark", "Normal katta yer
+// alan bagimsiz bolumlerin devami") serbest-metin verisi ile B/C/D'ye
+// kopyalanan/orada TITLE CASE olarak duran ("Ortak Alanlar Ve Otopark",
+// "Normal Katta Yer Alan Bagimsiz Bolumlerin Devami") verisi SADECE
+// KELIME-DUZEYINDE buyuk/kucuk harfle farklidir. 0.0.575'in
+// normalizeReportDescriptionText+cleanComparablePunctuation anahtari BU
+// FARKI YAKALAYAMADI (yalnizca TUMU-BUYUK-HARF satirlari kucultuyor,
+// Bas Harfleri Buyuk bicimi degil) - A hala YANLISLIKLA B/C/D'den ayri
+// kaliyordu. 0.0.576 duzeltmesi (normalizeTextForSimilarityComparison,
+// foldTurkish ile TAM harf katlamasi) sonrasi DORDU DE "A, B, C ve D
+// Blok ..." TEK paragrafta birlesmeli.
+{
+  const commonFields = {
+    requestType: "Çoklu Talep", ownershipType: "Dikey Kat İrtifakı",
+    blockNo: "0", parcelNo: "709",
+    buildingOrder: "Ayrık", buildingStyle: "Betonarme Karkas",
+    elevator: "1 Adet Asansör", carpark: "Kapalı Otopark",
+    socialFacilities: "Açık Yüzme Havuzu",
+    mainRealEstateProjectSuitable: "Evet",
+    buildingEntranceLevel: "Zemin", buildingEntranceDirection: "Güney",
+    totalFloors: "6",
+  };
+  const lowerCaseFloorSummary = "1. Bodrum katta Ortak alanlar ve otopark ve 8 adet dükkan olmak üzere binada toplam 32 adet bağımsız bölüm bulunmaktadır.";
+  const titleCaseFloorSummary = "1. Bodrum katta Ortak Alanlar Ve Otopark ve 8 adet dükkan olmak üzere binada toplam 32 adet bağımsız bölüm bulunmaktadır.";
+
+  fns.setState(freshState({
+    fields: {
+      ...commonFields,
+      titleBlockName: "A Blok",
+      testFloorComposition: "bodrum + zemin + 4 normal kat + çatı katı",
+      testFloorSummary: lowerCaseFloorSummary, // A'nin KENDI orijinal (kucuk harfli) verisi.
+    },
+    titleUnits: [
+      unit("0", "709", "B Blok", { ...commonFields, titleBlockName: "B Blok", testFloorComposition: "bodrum + zemin + 4 normal kat + çatı katı", testFloorSummary: titleCaseFloorSummary }),
+      unit("0", "709", "C Blok", { ...commonFields, titleBlockName: "C Blok", testFloorComposition: "bodrum + zemin + 4 normal kat + çatı katı", testFloorSummary: titleCaseFloorSummary }),
+      unit("0", "709", "D Blok", { ...commonFields, titleBlockName: "D Blok", testFloorComposition: "bodrum + zemin + 4 normal kat + çatı katı", testFloorSummary: titleCaseFloorSummary }),
+    ],
+  }));
+
+  const text = fns.buildMainPropertyDescription();
+  assert.ok(/A,?\s*B,?\s*C ve D Blok/.test(text), `Kelime-duzeyinde BUYUK/kucuk harf farki OLAN ama ICERIK ayni A/B/C/D TEK 'A, B, C ve D Blok' paragrafinda birlesmeli, bulunan: ${text}`);
+  assert.equal((text.match(/bodrum \+ zemin/g) || []).length, 1, `TEK birlesik paragraf olmali (kat kompozisyonu yalnizca 1 kez gecmeli), bulunan: ${text}`);
+
+  console.log("groupMainPropertyBlocksByText() kelime-duzeyinde buyuk/kucuk harf normalizasyon REGRESYONU (Tum Bloklara Uygula senaryosu) testi tamam.");
 }
 
 console.log("Ana Gayrimenkul Aciklamasi (mainPropertyDescription) cogullama testleri basarili.");
