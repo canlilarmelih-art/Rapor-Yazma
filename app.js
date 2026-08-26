@@ -6206,9 +6206,17 @@ function getSharedNarrativeParcelPhrase() {
   const blocks = [...new Set(units
     .map((unit) => String(unit.titleBlockName || unit.addressBlockName || unit.blockName || "").trim())
     .filter(Boolean))];
+  // Kullanıcı bildirimi (2026-08-27): "ilk cümle eksik kalmış nedense" —
+  // tek/ayırt edici blok adı YOKKEN (blocks.length <= 1) bu ifade
+  // "... parsel üzerinde" ile YÜKLEMSİZ bitiyordu; çağıran taraf
+  // (formatZiraatLocationSubject) bunu sadece bir virgüllü listeye ekleyip
+  // sonuna çıplak bir nokta koyduğundan cümle "... 1 parsel üzerinde."
+  // şeklinde YARIM kalıyordu. 2+ farklı blok adı varken KULLANILAN "yer
+  // almaktadır" yüklemi BURADA da (tek/blok-adsız durumda) kullanılır —
+  // iki dal ARTIK HER ZAMAN tam bir yüklemle bitiyor.
   const blockPhrase = blocks.length > 1
     ? ` ${blocks.join(", ")} bloklarda yer almaktadır`
-    : "";
+    : " yer almaktadır";
   return `${firstBlock} ada ${firstParcel} parsel üzerinde${blockPhrase}`;
 }
 function pluralizeEnvironmentalSubjectText(value, enabled = true) {

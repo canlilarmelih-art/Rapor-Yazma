@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.568 - 2026-08-27 - Çevre Özellikleri: çoklu taşınmaz cümlesi yüklemsiz/yarım bitiyordu
+
+- Kullanıcı, gerçek bir "Çoklu Talep" raporunun "Çevre Özellikleri" çıktısını paylaştı: "Ekspertize konu taşınmazlar, Bursa ili, Osmangazi ilçesi, Yunuseli mahallesinde, 11652 ada 1 parsel üzerinde." — "ilk cümle eksik kalmış nedense." Cümle gerçekten de YÜKLEMSİZ bitiyordu ("üzerinde." — "üzerinde NE?" sorusu cevapsız kalıyor).
+- **Kök neden**: `getSharedNarrativeParcelPhrase()` (aynı ada/parseldeki TÜM taşınmazlar için ortak "X ada Y parsel üzerinde ..." ifadesini kuran fonksiyon), taşınmazlar 2+ FARKLI blok adı paylaşıyorsa doğru şekilde "... üzerinde A, B bloklarda yer almaktadır" (yüklemli) döndürüyordu — ama taşınmazlar AYNI (ya da hiç girilmemiş, ayırt edici olmayan) TEK blok adını paylaştığında `blockPhrase` boş string'e düşüyor, ifade çıplak "... üzerinde" ile YÜKLEMSİZ bitiyordu. Çağıran taraf (`formatZiraatLocationSubject`) bunu diğer adres parçalarıyla virgülle birleştirip sonuna çıplak bir nokta koyduğundan, nihai cümle "... 1 parsel üzerinde." şeklinde yarım kalıyordu.
+- **Düzeltme**: `blocks.length > 1` dalındaki AYNI "yer almaktadır" yüklemi, artık `blocks.length <= 1` (tek/ayırt edici olmayan/boş blok adı) durumunda da kullanılıyor — iki dal da HER ZAMAN tam bir yüklemle bitiyor.
+- Test: `tools/test-multi-environment-subject.js`'e kullanıcının TAM senaryosunu (aynı blok adını paylaşan 2 taşınmaz + blok adı hiç girilmemiş durumu) doğrulayan 2 yeni regresyon senaryosu eklendi. `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` cache-buster `?v=20260827-0900`.
+- Canlı tarayıcı testi yapılamadı — kullanıcının aynı raporda "Çevre Özellikleri"ni yeniden ürettirip ilk cümlenin artık "... 1 parsel üzerinde yer almaktadır." şeklinde tam bittiğini doğrulaması gerekir.
+
 ## 0.0.567 - 2026-08-26 - Cezai Karar/Statik Uygunluk/Yapı Denetim Açıklamaları artık blok-atıflı çoğullanıyor
 
 - Kullanıcı talebi (kısa): "Cezai Karar Açıklaması Statik Uygunluk Açıklaması Yapı Denetim Açıklaması bu açıklamalar çoğul olmalı."

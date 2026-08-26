@@ -80,4 +80,45 @@ const differentParcelSubject = context.formatZiraatLocationSubject({
 });
 assert.ok(!differentParcelSubject.includes("0 ada 709 parsel"));
 
+// REGRESYON (2026-08-27, kullanıcı bildirimi): "ilk cümle eksik kalmış
+// nedense" — TÜM taşınmazlar AYNI (ayırt edici olmayan/tek) blok adını
+// paylaştığında (bkz. Set → blocks.length <= 1 dalı) cümle "... parsel
+// üzerinde." ile YÜKLEMSİZ/YARIM bitiyordu (kullanıcının gerçek örneği:
+// "...11652 ada 1 parsel üzerinde." — "yer almaktadır"/"konumludur" gibi
+// bir yüklem HİÇ yoktu). Artık 2+ farklı blok adı olan daldaki ("...
+// bloklarda yer almaktadır") AYNI yüklem, blok adı ayırt edici
+// olmadığında da kullanılıyor.
+context.state.fields = { blockNo: "11652", parcelNo: "1", titleBlockName: "A" };
+context.state.titleUnits = [
+  { fields: { blockNo: "11652", parcelNo: "1", titleBlockName: "A" } },
+  { fields: { blockNo: "11652", parcelNo: "1", titleBlockName: "A" } },
+];
+const sameSingleBlockSubject = context.formatZiraatLocationSubject({
+  city: "Bursa",
+  district: "Osmangazi",
+  neighborhood: "Yunuseli",
+});
+assert.equal(
+  sameSingleBlockSubject,
+  "Ekspertize konu taşınmazlar, Bursa ili, Osmangazi ilçesi, Yunuseli mahallesi, 11652 ada 1 parsel üzerinde yer almaktadır.",
+  "TEK/ayirt edici olmayan blok adinda cumle YUKLEMSIZ (sadece '... uzerinde.') bitmemeli, 'yer almaktadir' yuklemini icermeli."
+);
+
+// Blok adı hiç girilmemişse (boş) de AYNI yüklem korunmalı.
+context.state.fields = { blockNo: "11652", parcelNo: "1", titleBlockName: "" };
+context.state.titleUnits = [
+  { fields: { blockNo: "11652", parcelNo: "1", titleBlockName: "" } },
+  { fields: { blockNo: "11652", parcelNo: "1", titleBlockName: "" } },
+];
+const noBlockNameSubject = context.formatZiraatLocationSubject({
+  city: "Bursa",
+  district: "Osmangazi",
+  neighborhood: "Yunuseli",
+});
+assert.equal(
+  noBlockNameSubject,
+  "Ekspertize konu taşınmazlar, Bursa ili, Osmangazi ilçesi, Yunuseli mahallesi, 11652 ada 1 parsel üzerinde yer almaktadır.",
+  "Blok adi hic girilmemisken de cumle 'yer almaktadir' yuklemiyle tam bitmeli."
+);
+
 console.log("Coklu cevre aciklamalarinda tasinmaz cogullastirma testi tamam.");
