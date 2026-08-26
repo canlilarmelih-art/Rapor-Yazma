@@ -499,4 +499,56 @@ function freshState(overrides = {}) {
   console.log("buildMainPropertyDescription() TAM 4-blok entegrasyon (kullanici ornegi) testi tamam.");
 }
 
+// --- 9) KRITIK REGRESYON (2026-08-27, kullanici canli raporunda yakaladi): -
+// A ve B Blok'un serbest-metin kat/kullanim verisi ICERIK olarak birebir
+// ayni ama kozmetik olarak (fazladan bosluk) farkli girilmisse, gruplama
+// KARARI hala TEK (birlesik "A ve B Blok ...") paragraf uretmeli. Onceki
+// (0.0.574) davranis ham metni birebir karsilastirdigindan bu durumda
+// YANLISLIKLA IKI AYRI paragraf uretiyordu - gorunen NIHAI metin
+// (normalizeReportDescriptionText/cleanComparablePunctuation SADECE en
+// sonda, PARAGRAF bazinda uygulandigindan) ozdes GORUNSE bile birlesme
+// gerceklesmiyordu. NOT: bu test dosyasinin normalizeReportDescriptionText
+// stub'u yalnizca bosluk sikistirma yapiyor (buyuk/kucuk harf katlamasi
+// YAPMIYOR, bkz. satir ~189) - kullanicinin gercek raporundaki "Ve"/"ve"
+// buyuk harf farkini GERCEK app.js'teki tam fonksiyon (bu testin kapsami
+// disinda tutulan agir bagimlilik) ele aliyor; burada AYNI duzeltme
+// mekanizmasi (anahtar normalizasyonu) bosluk farkiyla dogrulanir.
+{
+  const commonFields = {
+    requestType: "Çoklu Talep", ownershipType: "Dikey Kat İrtifakı",
+    blockNo: "0", parcelNo: "709",
+    buildingOrder: "Ayrık", buildingStyle: "Betonarme Karkas",
+    elevator: "1 Adet Asansör", carpark: "Kapalı Otopark",
+    socialFacilities: "Açık Yüzme Havuzu",
+    mainRealEstateProjectSuitable: "Evet",
+    buildingEntranceLevel: "Zemin", buildingEntranceDirection: "Güney",
+    totalFloors: "6",
+  };
+
+  fns.setState(freshState({
+    fields: {
+      ...commonFields,
+      titleBlockName: "A Blok",
+      // Fazladan bosluk/kirli bicimlendirme - ICERIK B Blok ile AYNI.
+      testFloorComposition: "bodrum + zemin + 4 normal kat + çatı katı",
+      testFloorSummary: "1. Bodrum katta  Ortak Alanlar Ve Otopark ve 8 adet dükkan olmak üzere binada toplam 32 adet bağımsız bölüm bulunmaktadır.",
+    },
+    titleUnits: [
+      unit("0", "709", "B Blok", {
+        ...commonFields,
+        titleBlockName: "B Blok",
+        testFloorComposition: "bodrum + zemin + 4 normal kat + çatı katı",
+        testFloorSummary: "1. Bodrum katta Ortak Alanlar Ve Otopark ve 8 adet dükkan olmak üzere binada toplam 32 adet bağımsız bölüm bulunmaktadır.",
+      }),
+    ],
+  }));
+
+  const text = fns.buildMainPropertyDescription();
+  assert.ok(/A ve B Blok/.test(text), `Kozmetik (bosluk) farki OLAN ama ICERIK ayni A/B TEK 'A ve B Blok' paragrafinda birlesmeli, bulunan: ${text}`);
+  assert.ok(text.includes("blokların her birinde"), `Birlesik paragraf 'blokların her birinde' kullanmali, bulunan: ${text}`);
+  assert.ok(!/A Blok[^.]*\n\n[^.]*B Blok bodrum/.test(text), `A ve B AYRI paragraflara DUSMEMELI, bulunan: ${text}`);
+
+  console.log("groupMainPropertyBlocksByText() kozmetik-fark (bosluk) normalizasyon REGRESYONU testi tamam.");
+}
+
 console.log("Ana Gayrimenkul Aciklamasi (mainPropertyDescription) cogullama testleri basarili.");

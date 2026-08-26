@@ -13098,19 +13098,35 @@ function formatMainPropertyBlockListPhrase(blockLabels, options = {}) {
 // blok girdisi için çağrılır, AYNI metni üreten bloklar TEK grupta
 // toplanır (grup temsilcisi = o gruba giren İLK metin). Building
 // dünyasının KENDİ, genel amaçlı birleştirme yardımcısı.
+//
+// 0.0.575 DÜZELTMESİ: gruplama KARARI ham (`buildTextFn` çıktısı,
+// normalize EDİLMEMİŞ) metin yerine `normalizeReportDescriptionText(
+// cleanComparablePunctuation(text))` ile normalize edilmiş bir ANAHTAR
+// üzerinden veriliyor — kullanıcının bildirdiği gerçek örnek: A ve B
+// Blok'un serbest-metin kat/kullanım verisi İÇERİK olarak birebir aynı
+// ama biri "Ortak Alanlar Ve Otopark" (büyük "V"), diğeri küçük "v" ile
+// girilmişti; bu kozmetik fark `buildConsolidatedMainPropertyDescription`
+// zaten HER paragrafın SONUNDA bu AYNI iki fonksiyonla temizlediği için
+// NİHAİ metinde görünmüyordu, ama gruplama KARARI bu temizlikten ÖNCE,
+// ham metin üzerinde verildiğinden iki blok YANLIŞLIKLA ayrı paragraflara
+// düşüyordu. Anahtar normalize edilir, GÖSTERİLEN metin (`.text`) yine
+// gruba giren İLK bloğun ham metnidir (zaten sonda aynı normalizasyondan
+// geçiyor).
 function groupMainPropertyBlocksByText(blockEntries, buildTextFn) {
-  const byText = new Map();
+  const byKey = new Map();
   const order = [];
   (blockEntries || []).forEach(({ label, values }) => {
     const text = buildTextFn(values);
     if (!text) return;
-    if (!byText.has(text)) {
-      byText.set(text, []);
-      order.push(text);
+    const key = normalizeReportDescriptionText(cleanComparablePunctuation(text));
+    if (!key) return;
+    if (!byKey.has(key)) {
+      byKey.set(key, { text, blockLabels: [] });
+      order.push(key);
     }
-    byText.get(text).push(label);
+    byKey.get(key).blockLabels.push(label);
   });
-  return order.map((text) => ({ text, blockLabels: byText.get(text) }));
+  return order.map((key) => byKey.get(key));
 }
 
 // HER blok grubu için KENDİ temsilci (ilk üye) alanlarıyla `values`
