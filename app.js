@@ -21275,6 +21275,22 @@ function commitTitleUnitsSummaryCellEdit(fieldKey, rawValue, unitIndex) {
   refreshValuationUnitsSummaryTablePreview();
   refreshUnitUnitsSummaryTablePreview();
   refreshProjectSuitabilityUnitsSummaryTablePreview();
+  // Kullanıcı bildirimi (2026-08-26): "tabloda düzeltme yapınca dinamik
+  // olarak açıklama değişmiyor, proje tarihi veya başka bir kısmı
+  // değiştirince değişiyor" — kök neden: AKTİF taşınmazın hücresi
+  // düzenlendiğinde yukarıdaki `dispatchEvent(new Event("input"))` canlı
+  // formun genel "input" dinleyicisini (createForm) TETİKLİYOR, o da
+  // refreshReviewedDocumentsDescriptionFromCurrentFields'ı çağırıyor —
+  // ama tablo AKTİF OLMAYAN bir taşınmazın satırını düzenlerken
+  // (setTitleUnitFieldValue ile DOĞRUDAN yazan dal) HİÇBİR event
+  // dispatch edilmiyordu, bu yüzden "Proje İnceleme Açıklaması" (ve
+  // "Okunan Belgeler" özet metni) o durumda HİÇ yenilenmiyordu. Diğer
+  // taşınmazların Proje Uygunluk Durumu/Açıklama/Tadilat alanları da bu
+  // açıklamayı beslediğinden (bkz. buildProjectReviewConsolidatedParts),
+  // HANGİ taşınmazın hücresi düzenlenirse düzenlensin burada AYRICA
+  // (koşulsuz, ucuz — fonksiyon kendi içinde watchedKeys ile alakasız
+  // alanlar için erken çıkar) tetiklenir.
+  refreshReviewedDocumentsDescriptionFromCurrentFields(fieldKey);
   // Faz 3: Ada/Parsel/Blok/Bağımsız Bölüm No gibi alanlar tab çubuğu
   // etiketlerini (computeTitleUnitTabLabel) etkileyebilir — hangi alan
   // düzenlendiğinden bağımsız olarak HER commit'te tab çubuğu da

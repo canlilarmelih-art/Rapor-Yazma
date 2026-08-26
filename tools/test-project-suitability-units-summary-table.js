@@ -296,6 +296,33 @@ function freshState(fields, titleUnits = []) {
   console.log("REGRESYON: Belgeler Ozeti + Proje Uygunluk Ozeti panel-cakismasi duzeltmesi testi tamam.");
 }
 
+// --- 7c) REGRESYON (2026-08-26, kullanıcı bildirimi): "tabloda düzeltme --
+// yapınca dinamik olarak açıklama değişmiyor, proje tarihi veya başka bir
+// kısmı değiştirince değişiyor. bu dinamik olarak tetiklenmeli" — kök
+// neden: commitTitleUnitsSummaryCellEdit() AKTİF OLMAYAN bir taşınmazın
+// hücresini düzenlerken (setTitleUnitFieldValue ile DOĞRUDAN yazan dal)
+// hiçbir "input" event dispatch ETMİYORDU, bu yüzden "Proje İnceleme
+// Açıklaması"nı besleyen refreshReviewedDocumentsDescriptionFromCurrentFields
+// hiç tetiklenmiyordu (yalnızca AKTİF taşınmazın hücresi, sentetik input
+// event'i sayesinde, DOLAYLI olarak tetikleniyordu).
+{
+  const commitStart = appSource.indexOf("function commitTitleUnitsSummaryCellEdit(");
+  const commitEnd = appSource.indexOf("\n}", commitStart);
+  const commitBody = appSource.slice(commitStart, commitEnd);
+  assert.ok(
+    commitBody.includes("refreshReviewedDocumentsDescriptionFromCurrentFields(fieldKey);"),
+    "commitTitleUnitsSummaryCellEdit() artık HANGİ taşınmazın hücresi düzenlenirse düzenlensin (aktif olsun ya da olmasın) Proje İnceleme Açıklaması'nı da tazelemeli."
+  );
+  // Sıralama önemli: refreshReviewedDocumentsDescriptionFromCurrentFields
+  // çağrısı, alan yazma dallarından (if/else if/else) SONRA gelmeli - aksi
+  // halde henüz yazılmamış ESKİ değeri okurdu.
+  const writeIndex = commitBody.indexOf("setTitleUnitFieldValue(unitIndex, fieldKey,");
+  const refreshIndex = commitBody.indexOf("refreshReviewedDocumentsDescriptionFromCurrentFields(fieldKey);");
+  assert.ok(writeIndex >= 0 && refreshIndex > writeIndex, "Aciklama tazeleme cagrisi alan YAZILDIKTAN SONRA gelmeli (guncel degeri okusun).");
+
+  console.log("REGRESYON: commitTitleUnitsSummaryCellEdit() Proje Inceleme Aciklamasini AKTIF-OLMAYAN tasinmaz duzenlemesinde de tetikliyor testi tamam.");
+}
+
 // --- 8) template-engine.js + report-tables-xlsx.js kayitlari ---------------
 {
   assert.ok(

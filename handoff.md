@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.565 - 2026-08-26 - "Proje Uygunluk Özeti" tablosunda düzeltme yapınca Açıklama artık DİNAMİK güncelleniyor
+
+- Kullanıcı, 0.0.564'ü canlıda test edip "çok güzel olmuş" dedi, tek sorunu bildirdi: "tabloda düzeltme yapınca dinamik olarak açıklama değişmiyor, proje tarihi veya başka bir kısmı değiştirince değişiyor. bu dinamik olarak tetiklenmeli."
+- **Kök neden**: `commitTitleUnitsSummaryCellEdit()` (tablo hücre düzenlemelerinin ortak commit noktası) AKTİF taşınmazın hücresi düzenlenince gerçek bir DOM `input` event'i dispatch ediyordu — bu, canlı formun genel "input" dinleyicisini (`createForm`) tetikleyip `refreshReviewedDocumentsDescriptionFromCurrentFields()`'ı DOLAYLI olarak çağırıyordu. Ama AKTİF OLMAYAN bir taşınmazın satırı düzenlenince (`setTitleUnitFieldValue` ile DOĞRUDAN yazan dal) HİÇBİR event dispatch edilmiyordu — bu yüzden "Proje İnceleme Açıklaması" (Proje Uygunluk Durumu/Açıklama/Tadilat sütunları TÜM taşınmazları etkilediği halde) yalnızca AKTİF taşınmazın hücresi düzenlendiğinde "tesadüfen" güncelleniyordu; diğer satırlarda hiç.
+- **Düzeltme**: `commitTitleUnitsSummaryCellEdit()`'in sonuna (8 tablo-önizleme refresh'i + tab çubuğu refresh'iyle AYNI "koşulsuz, ucuz" desende) `refreshReviewedDocumentsDescriptionFromCurrentFields(fieldKey)` çağrısı eklendi — artık HANGİ taşınmazın hücresi düzenlenirse düzenlensin (aktif olsun ya da olmasın) açıklama tazeleniyor. Bu fonksiyon zaten kendi içinde `watchedKeys` ile alakasız alanlar için erken çıktığından (projectSuitabilityStatus/projectConformity/projectSuitabilitySimpleRepair zaten bu listede), ilgisiz sütun düzenlemelerinde ekstra maliyeti yok. "Tümüne Uygula" (bulk) işlemi de `commitTitleUnitsSummaryCellEdit`'i döngüyle çağırdığından bu düzeltmeden otomatik olarak faydalanıyor.
+- Test: `tools/test-project-suitability-units-summary-table.js`'e yeni kaynak-düzeyi regresyon senaryosu (7c) eklendi — `commitTitleUnitsSummaryCellEdit()`'in gövdesinin yeni çağrıyı içerdiğini VE bu çağrının alan yazma dalından SONRA geldiğini (güncel değeri okusun diye) doğrular. `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` cache-buster `?v=20260826-2500`.
+- Canlı tarayıcı testi yapılamadı — kullanıcının "Proje Uygunluk Özeti" tablosunda AKTİF OLMAYAN bir taşınmazın satırında Proje Uygunluk Durumu/Açıklama değiştirdiğinde "Proje İnceleme Açıklaması"nın artık ANINDA güncellendiğini doğrulaması gerekir.
+
 ## 0.0.564 - 2026-08-26 - Azınlık uygunluk cümleleri artık "Etiket: Not." biçiminde KISALTILIYOR, tadilat cümlesi düşüyor
 
 - Kullanıcı, 0.0.563'ün çıktısını gösterip iki net talep verdi: "basit tadilat cümlesini kaldır" ve "cümle başlangıcı A-12 ve B-31: Yerinde yapılan incelemelerde taşınmazların çatı arasına doğru 10'ar m2 büyüme yapıldığı tespit edilmiştir. bu şekilde olsun diğer türlü karakter kısıtlamasına takılacak. kısaltalım yani olabildiğince."
