@@ -98,6 +98,8 @@ const functionNames = [
   "getTitleUnitFieldsForLabel",
   "getTitleUnitTablesForLabel",
   "buildAllTitleUnitsForSummaryTable",
+  // TÜM 8 "çift taraflı" özet tablosunun PAYLAŞTIĞI son adım (2026-08-27).
+  "finalizeTitleUnitsSummaryTableData",
   "buildAddressUnitsSummaryTableData",
   "buildAddressUnitsSummaryWordTableHtml",
   "splitTableHeaderLabelIntoTwoLines",
@@ -107,6 +109,9 @@ const functionNames = [
   // aynı isimli yorum: export'tan AYRI, yalnızca ekran-içi düzenlenebilir
   // önizleme için kullanılan (Tapu VE Adres tablosunca PAYLAŞILAN) renderer.
   "buildTitleUnitsSummaryTableHtmlEditable",
+  // buildTitleUnitsSummaryTableHtmlEditable() 2026-08-27'den itibaren bu
+  // fonksiyonu KOŞULSUZ çağırıyor (commonFields banner'ı, bkz. app.js).
+  "buildTitleUnitsSummaryTableCommonFieldsHtml",
   "getReportThemeToken",
   "formatWordCell",
   "escapeHtml",
@@ -137,11 +142,15 @@ const sandboxSource = `
 // eslint-disable-next-line no-new-func
 const fns = new Function(sandboxSource)();
 
-// --- 1) İl/İlçe/İdari Mahalle/Sokak-Cadde/Site-Apartman + diğer bölümler --
-// HER ZAMAN gösterilir — AYNI olsalar bile GİZLENMEZ. Kullanıcı talebi
-// (2026-08-15, devam): "Aynı ise gizlensin: İl, İlçe, İdari Mahalle,
-// Sokak/Cadde, Site/Apartman bu madde adres tablosu için iptal edilsin" —
-// bu, Tapu tablosundaki "aynı ise gizle" davranışından KASITLI bir SAPMA.
+// --- 1) İl/İlçe/İdari Mahalle/Sokak-Cadde/Site-Apartman: TÜM taşınmazlarda
+// BİREBİR aynıysa artık SÜTUN OLARAK KALDIRILIP tablonun ÜSTÜNDE "Ortak
+// Bilgiler" satırında gösterilir (0.0.581, kullanıcı talebi: "TÜM ÇİFT
+// TARAFLI tabloların en üstünde ortak değerleri belirt örnek il ilçe
+// mahalle gibi"). ESKİ davranış (2026-08-15: "Aynı ise gizlensin ... adres
+// tablosu için iptal edilsin" — o zamanki "gizlensin" şikayeti, hiçbir
+// yerde GÖSTERİLMEDEN sessizce kaybolmaktı) artık GEÇERSİZ — bilgi HÂLÂ
+// görünür, yalnızca satır satır TEKRARLANMAK yerine ÜSTTE TEK satırda.
+// Diğer (satır satır FARKLI olan) bölümler AYNI şekilde sütun olarak kalır.
 {
   const shared = { city: "Bursa", district: "Nilüfer", neighborhood: "Özlüce", street: "Atatürk Caddesi", addressSiteName: "Yeşil Vadi Sitesi" };
   fns.setState({
@@ -156,10 +165,20 @@ const fns = new Function(sandboxSource)();
   const data = fns.buildAddressUnitsSummaryTableData();
   assert.ok(data, "3 taşınmazlı raporda tablo verisi dönmeli.");
   assert.equal(data.rows.length, 3, "3 satır (3 taşınmaz) bekleniyordu.");
-  // İl/İlçe/İdari Mahalle/Sokak-Cadde/Site-Apartman TAMAMI AYNI olmasına
-  // RAĞMEN hepsi GÖSTERİLMELİ (artık gizlenmiyorlar).
-  ["Sıra No", "UAVT", "İl", "İlçe", "İdari Mahalle", "Sokak / Cadde", "Site / Apartman", "Blok", "Giriş", "Dış Kapı No", "Kat", "İç Kapı No"].forEach((col) => {
-    assert.ok(data.headers.includes(col), `"${col}" sütunu HER ZAMAN gösterilmeliydi (aynı olsa bile), bulunan başlıklar: ${data.headers.join(", ")}`);
+  // İl/İlçe/İdari Mahalle/Sokak-Cadde/Site-Apartman TAMAMI AYNI olduğundan
+  // artık SÜTUN OLARAK KALKMALI (commonFields'e taşınmalı).
+  ["İl", "İlçe", "İdari Mahalle", "Sokak / Cadde", "Site / Apartman"].forEach((col) => {
+    assert.ok(!data.headers.includes(col), `"${col}" sütunu (TÜM taşınmazlarda aynı) KALDIRILIP commonFields'e taşınmalıydı, bulunan başlıklar: ${data.headers.join(", ")}`);
+  });
+  const commonLabels = data.commonFields.map((field) => field.label);
+  ["İl", "İlçe", "İdari Mahalle", "Sokak / Cadde", "Site / Apartman"].forEach((label) => {
+    assert.ok(commonLabels.includes(label), `"${label}" commonFields'te OLMALI, bulunan: ${commonLabels.join(", ")}`);
+  });
+  assert.equal(data.commonFields.find((field) => field.label === "İl")?.value, "Bursa", "\"İl\" ortak değeri doğru olmalı.");
+  // Blok/Giriş/Dış Kapı No/Kat/İç Kapı No taşınmaz başına FARKLI olduğundan
+  // normal sütun olarak KALMALI.
+  ["Sıra No", "UAVT", "Blok", "Giriş", "Dış Kapı No", "Kat", "İç Kapı No"].forEach((col) => {
+    assert.ok(data.headers.includes(col), `"${col}" sütunu (taşınmaz başına farklı) HER ZAMAN gösterilmeliydi, bulunan başlıklar: ${data.headers.join(", ")}`);
   });
   assert.equal(data.headers[0], "Sıra No", "\"Sıra No\" EN SOL sütun olmalı.");
   assert.equal(data.headers[1], "UAVT", "\"UAVT\" Sıra No'nun HEMEN ardından gelmeli (Tapu tablosunun Taşınmaz Kimlik No deseniyle AYNI).");
@@ -167,12 +186,9 @@ const fns = new Function(sandboxSource)();
   const uavtColumnIndex = data.headers.indexOf("UAVT");
   assert.equal(data.rows[0][uavtColumnIndex], "123456789", "1. taşınmazın UAVT'si doğru sütunda olmalı.");
   assert.equal(data.rows[2][uavtColumnIndex], "123456791", "3. taşınmazın UAVT'si doğru sütunda olmalı.");
-  const cityColumnIndex = data.headers.indexOf("İl");
-  assert.equal(data.rows[0][cityColumnIndex], "Bursa", "1. taşınmazın İl'i (aynı olsa bile) doğru sütunda olmalı.");
-  assert.equal(data.rows[2][cityColumnIndex], "Bursa", "3. taşınmazın İl'i (aynı olsa bile) doğru sütunda olmalı.");
   const outerDoorColumnIndex = data.headers.indexOf("Dış Kapı No");
   assert.equal(data.rows[1][outerDoorColumnIndex], "4", "2. taşınmazın Dış Kapı No'su doğru sütunda olmalı.");
-  console.log("Il/Ilce/Idari Mahalle/Sokak-Cadde/Site-Apartman (ayni olsa bile) + diger bolumler her zaman var kurali testi tamam.");
+  console.log("Il/Ilce/Idari Mahalle/Sokak-Cadde/Site-Apartman (ayni oldugundan ortak bilgi olarak ustte) + farkli bolumler sutun olarak kalma kurali testi tamam.");
 }
 
 // --- 1b) Mevkii/Ada/Parsel: Tapu ve Mülkiyet'in KENDİ alanlarından ---------
@@ -185,13 +201,20 @@ const fns = new Function(sandboxSource)();
 // tablosunda kullanılan AYNI anahtarları (locationName/blockNo/parcelNo)
 // okumalı — iki ayrı kopya YOK, TEK kaynak.
 {
-  const shared = { city: "Bursa", district: "Nilüfer", neighborhood: "Özlüce", street: "Atatürk Caddesi", addressSiteName: "Yeşil Vadi Sitesi" };
+  // NOT (2026-08-27): Mevkii/Ada/İdari Mahalle/Sokak-Cadde burada BİLEREK
+  // taşınmaz başına FARKLI tutuldu (yalnızca Parsel değil) — aksi halde
+  // "TÜM taşınmazlarda aynı" hoisting kuralı (bkz. finalizeTitleUnitsSummaryTableData)
+  // bunları commonFields'e taşır, bu senaryonun ASIL amacı olan "sütun
+  // sırası (İdari Mahalle ile Sokak/Cadde ARASINDA) + doğru kaynaktan
+  // okuma" kontrolünü test edemez hale gelirdi (o iki anchor sütunun
+  // kendisi de tabloda GÖRÜNMESİ gerekiyor).
+  const shared = { city: "Bursa", district: "Nilüfer", addressSiteName: "Yeşil Vadi Sitesi" };
   fns.setState({
     activeTitleUnitIndex: 0,
-    fields: { ...shared, uavt: "123456789", locationName: "Karaağaç Mevkii", blockNo: "1010", parcelNo: "5" },
+    fields: { ...shared, uavt: "123456789", neighborhood: "Özlüce", street: "Atatürk Caddesi", locationName: "Karaağaç Mevkii", blockNo: "1010", parcelNo: "5" },
     tables: {},
     titleUnits: [
-      { fields: { ...shared, uavt: "123456790", locationName: "Karaağaç Mevkii", blockNo: "1010", parcelNo: "6" }, tables: {} },
+      { fields: { ...shared, uavt: "123456790", neighborhood: "Görükle", street: "İnönü Caddesi", locationName: "Sahil Mevkii", blockNo: "1011", parcelNo: "6" }, tables: {} },
     ],
   });
   const data = fns.buildAddressUnitsSummaryTableData();
@@ -242,11 +265,15 @@ const fns = new Function(sandboxSource)();
     assert.ok(!data.headers.includes(col), `Farklı ada/parselde, tüm taşınmazlarda BOŞ olan "${col}" sütunu KALDIRILMALIYDI, bulunan başlıklar: ${data.headers.join(", ")}`);
   });
   // İl/İlçe/İdari Mahalle DOLU ve TÜM taşınmazlarda AYNI ("İzmir"/"Bornova"/
-  // "Erzene") — yine de GİZLENMEMELİ (artık "aynı ise gizle" kuralı yok).
-  ["Sıra No", "UAVT", "İl", "İlçe", "İdari Mahalle", "Blok", "Dış Kapı No", "Kat"].forEach((col) => {
-    assert.ok(data.headers.includes(col), `Dolu olan "${col}" sütunu KORUNMALIYDI, bulunan başlıklar: ${data.headers.join(", ")}`);
+  // "Erzene") — artık (0.0.581) sütun olarak KALKAR, commonFields'e taşınır.
+  ["İl", "İlçe", "İdari Mahalle"].forEach((label) => {
+    assert.ok(!data.headers.includes(label), `Dolu AMA TÜM taşınmazlarda aynı "${label}" sütunu commonFields'e taşınmalıydı, bulunan başlıklar: ${data.headers.join(", ")}`);
+    assert.ok(data.commonFields.some((field) => field.label === label), `"${label}" commonFields'te bulunamadı.`);
   });
-  console.log("Tum tasinmazlarda bos olan sutunun kaldirilma testi tamam.");
+  ["Sıra No", "UAVT", "Blok", "Dış Kapı No", "Kat"].forEach((col) => {
+    assert.ok(data.headers.includes(col), `Dolu VE taşınmaz başına farklı "${col}" sütunu KORUNMALIYDI, bulunan başlıklar: ${data.headers.join(", ")}`);
+  });
+  console.log("Tum tasinmazlarda bos olan sutunun kaldirilma + ayni-dolu sutunun ortak-bilgiye tasinma testi tamam.");
 }
 
 // --- 2b) YENİ (2026-08-22, ekran görüntüsüyle): "görselde mavi kutucuk ----
@@ -328,8 +355,12 @@ const fns = new Function(sandboxSource)();
   const uavtColumnIndex = data.headers.indexOf("UAVT");
   assert.equal(data.columnMeta[uavtColumnIndex].kind, "scalar", "UAVT 'scalar' olmali.");
   assert.equal(data.columnMeta[uavtColumnIndex].fieldKey, "uavt", "UAVT -> uavt eslesmeli.");
-  const cityColumnIndex = data.headers.indexOf("İl");
-  assert.equal(data.columnMeta[cityColumnIndex].fieldKey, "city", "Il -> city eslesmeli.");
+  // NOT: "İl" burada KULLANILMIYOR — fixture'daki tüm taşınmazlarda aynı
+  // olduğundan artık commonFields'e taşınıyor (bkz. finalizeTitleUnitsSummaryTableData);
+  // fieldKey eşleme kontrolü için her zaman sütun olarak kalan (hoist-exempt)
+  // "Blok" kullanılıyor.
+  const blockColumnIndex = data.headers.indexOf("Blok");
+  assert.equal(data.columnMeta[blockColumnIndex].fieldKey, "addressBlockName", "Blok -> addressBlockName eslesmeli.");
   assert.ok(data.columnMeta.every((meta) => meta.kind === "seq" || meta.kind === "scalar"), "Adres tablosunda 'owner'/'computed' turu OLMAMALI (tumu seq/scalar).");
   const html = fns.buildTitleUnitsSummaryTableHtmlEditable(data.headers, data.rows, data.columnMeta, 0);
   // Çift Yönlü Düzenleme, Faz 3 (2026-08-15): "yalnızca aktif satır"

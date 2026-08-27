@@ -87,6 +87,10 @@ const functionNames = [
   "buildAllTitleUnitsForSummaryTable",
   "joinTitleUnitOwnerColumn",
   "computeTitleUnitShareOfLandArea",
+  // TÜM 8 "çift taraflı" özet tablosunun PAYLAŞTIĞI son adım (2026-08-27) -
+  // "eğer veri yoksa/TÜM taşınmazlarda aynıysa" sütun filtreleme +
+  // ortak-deger (commonFields) hoisting.
+  "finalizeTitleUnitsSummaryTableData",
   "buildTitleUnitsSummaryTableData",
   "buildTitleUnitsSummaryWordTableHtml",
   "splitTableHeaderLabelIntoTwoLines",
@@ -96,6 +100,9 @@ const functionNames = [
   // export'tan (buildTitleUnitsSummaryTableHtmlFromData, yukarıda) TAMAMEN
   // AYRI, yalnızca ekran-içi düzenlenebilir önizleme için kullanılan renderer.
   "buildTitleUnitsSummaryTableHtmlEditable",
+  // buildTitleUnitsSummaryTableHtmlEditable() 2026-08-27'den itibaren bu
+  // fonksiyonu KOŞULSUZ çağırıyor (commonFields banner'ı, bkz. app.js).
+  "buildTitleUnitsSummaryTableCommonFieldsHtml",
   // Çift Yönlü Düzenleme, Faz 3 (2026-08-15) — bkz. app.js'teki yorum:
   // aktif OLMAYAN taşınmazların gölge yuvasına hedefli yazma yardımcıları.
   // createEmptyTitleUnit, resolveTitleUnitWriteTarget'ın index>0 dalının

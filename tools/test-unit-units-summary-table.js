@@ -136,12 +136,14 @@ const functionNames = [
   "getTitleUnitFieldsForLabel",
   "getTitleUnitTablesForLabel",
   "buildAllTitleUnitsForSummaryTable",
+  "finalizeTitleUnitsSummaryTableData",
   "buildUnitUnitsSummaryTableData",
   "buildUnitUnitsSummaryWordTableHtml",
   "splitTableHeaderLabelIntoTwoLines",
   "toTitleFieldUppercase",
   "buildTitleUnitsSummaryTableHtmlFromData",
   "buildTitleUnitsSummaryTableHtmlEditable",
+  "buildTitleUnitsSummaryTableCommonFieldsHtml",
   "getReportThemeToken",
   "formatWordCell",
   "escapeHtml",
@@ -232,6 +234,17 @@ function fullUnitFields(overrides = {}) {
   return { ...fields, ...overrides };
 }
 
+// 2026-08-27: "TÜM taşınmazlarda aynı" hoisting kuralı (bkz.
+// finalizeTitleUnitsSummaryTableData) eklendiğinden, fullUnitFields()'in
+// SABİT "S{index}"/"M{index}" varsayılanları YÜZÜNDEN override edilmeyen
+// TÜM scalar/mirror alanlar İKİ taşınmazda da BİREBİR aynı olurdu — bu da
+// yapısal (columnMeta/HTML şekli) kontrol yapan senaryolarda TÜM scalar
+// sütunların commonFields'e taşınıp testi anlamsız hale getirmesine yol
+// açardı. Bu sabit, "2. taşınmaz gerçekçi ama farklı" fixture'ı için TEK
+// ortak kaynak.
+const DIFFERENTIATING_UNIT_OVERRIDES = {};
+[...IDENTITY_KEYS, ...SCALAR_KEYS, ...MIRROR_KEYS].forEach((key, index) => { DIFFERENTIATING_UNIT_OVERRIDES[key] = `X${index}`; });
+
 // --- 1) 2+ taşınmazda tablo verisi döner, sütun sırası (Blok-Kat-BB No) --
 {
   fns.setState({
@@ -299,7 +312,7 @@ function fullUnitFields(overrides = {}) {
     activeTitleUnitIndex: 0,
     fields: fieldsWithDecorative,
     tables: {},
-    titleUnits: [unit(fullUnitFields())],
+    titleUnits: [unit(fullUnitFields(DIFFERENTIATING_UNIT_OVERRIDES))],
   });
   const data = fns.buildUnitUnitsSummaryTableData();
   const defs = fns.getFieldDefs();
@@ -320,13 +333,19 @@ function fullUnitFields(overrides = {}) {
 }
 
 // --- 5) Tüm taşınmazlarda BOŞ olan (genel) sütun tamamen kaldırılır -------
+// NOT (2026-08-27): 2. taşınmazın unitUsageStatus'u BİLEREK FARKLI ("S0"
+// yerine "S0-2") — fullUnitFields()'in varsayılanı SCALAR_KEYS'in HER
+// birine sabit "S{index}" değeri verdiğinden, override edilmeyen tüm
+// scalar alanlar İKİ taşınmazda da BİREBİR aynı olurdu; bu da "TÜM
+// taşınmazlarda aynı" hoisting kuralıyla "Kullanım Durumu"nun (asıl test
+// hedefi: dolu sütun KORUNMALI) commonFields'e taşınmasına yol açardı.
 {
   const fieldsSparse = fullUnitFields({ unitShopFrontage: "", unitShopDepth: "" });
   fns.setState({
     activeTitleUnitIndex: 0,
     fields: fieldsSparse,
     tables: {},
-    titleUnits: [unit(fullUnitFields({ unitShopFrontage: "", unitShopDepth: "" }))],
+    titleUnits: [unit(fullUnitFields({ unitShopFrontage: "", unitShopDepth: "", unitUsageStatus: "S0-2" }))],
   });
   const data = fns.buildUnitUnitsSummaryTableData();
   assert.ok(!data.headers.includes("Cephe (m)"), "Tüm taşınmazlarda BOŞ olan \"Cephe (m)\" sütunu KALDIRILMALIYDI.");
@@ -342,7 +361,7 @@ function fullUnitFields(overrides = {}) {
     activeTitleUnitIndex: 0,
     fields: fullUnitFields(),
     tables: {},
-    titleUnits: [unit(fullUnitFields())],
+    titleUnits: [unit(fullUnitFields(DIFFERENTIATING_UNIT_OVERRIDES))],
   });
   const data = fns.buildUnitUnitsSummaryTableData();
   const defs = fns.getFieldDefs();
@@ -456,7 +475,7 @@ function fullUnitFields(overrides = {}) {
         { floor: "1. Kat", legalArea: "80", areaReductionRate: "80", legalTerrace: "0", terraceReductionRate: "100", currentArea: "75", currentTerrace: "0" },
       ],
     },
-    titleUnits: [unit(fullUnitFields())],
+    titleUnits: [unit(fullUnitFields(DIFFERENTIATING_UNIT_OVERRIDES))],
   });
   fns.getState().titleUnits[0].tables = { unitFloors: [] };
   const data = fns.buildUnitUnitsSummaryTableData();
@@ -510,7 +529,7 @@ function fullUnitFields(overrides = {}) {
     activeTitleUnitIndex: 0,
     fields: fullUnitFields(),
     tables: {},
-    titleUnits: [unit(fullUnitFields())],
+    titleUnits: [unit(fullUnitFields(DIFFERENTIATING_UNIT_OVERRIDES))],
   });
   const data = fns.buildUnitUnitsSummaryTableData();
   assert.ok(data.headers.includes("Diğer"), "Hiçbir taşınmazda 'Diğer' kalemi olmasa bile sütun GÖRÜNMELİ (0 dahil).");

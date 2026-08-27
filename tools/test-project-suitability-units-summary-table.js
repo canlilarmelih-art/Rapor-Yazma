@@ -104,11 +104,13 @@ const functionNames = [
   "getTitleUnitFieldsForLabel",
   "getTitleUnitTablesForLabel",
   "buildAllTitleUnitsForSummaryTable",
+  "finalizeTitleUnitsSummaryTableData",
   "buildProjectSuitabilityUnitsSummaryTableData",
   "buildProjectSuitabilityUnitsSummaryWordTableHtml",
   "splitTableHeaderLabelIntoTwoLines",
   "toTitleFieldUppercase",
   "buildTitleUnitsSummaryTableHtmlFromData",
+  "buildTitleUnitsSummaryTableCommonFieldsHtml",
   "escapeHtml",
   "formatWordCell",
   "getReportThemeToken",
@@ -204,10 +206,14 @@ function freshState(fields, titleUnits = []) {
 }
 
 // --- 4) buildProjectSuitabilityUnitsSummaryWordTableHtml() -----------------
+// NOT (2026-08-27): 2. taşınmazın projectSuitabilityStatus'u BİLEREK
+// FARKLI — aksi halde "TÜM taşınmazlarda aynı" hoisting kuralı bu sütunu
+// commonFields'e taşır ve başlığı (bu senaryonun asıl kontrolü) tabloda
+// HİÇ görünmezdi.
 {
   fns.setState(freshState(
     { titleBlockName: "A Blok", unitNo: "1", projectSuitabilityStatus: "uygundur." },
-    [unit({ titleBlockName: "B Blok", unitNo: "2", projectSuitabilityStatus: "uygundur." })],
+    [unit({ titleBlockName: "B Blok", unitNo: "2", projectSuitabilityStatus: "uygun degildir." })],
   ));
   const html = fns.buildProjectSuitabilityUnitsSummaryWordTableHtml();
   assert.ok(html.includes("<table"), "Gecerli bir HTML tablosu uretilmeli.");

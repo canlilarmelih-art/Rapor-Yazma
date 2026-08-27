@@ -97,6 +97,8 @@ const functionNames = [
   "getTitleUnitFieldsForLabel",
   "getTitleUnitTablesForLabel",
   "buildAllTitleUnitsForSummaryTable",
+  "finalizeTitleUnitsSummaryTableData",
+  "buildTitleUnitsSummaryTableCommonFieldsHtml",
   "buildValuationUnitsSummaryTableData",
   "getValuationUnitsSummaryHeaderGroup",
   "getValuationUnitsSummarySubheader",
@@ -182,6 +184,22 @@ function fullFixtureFields(overrides = {}) {
   };
 }
 
+// 2026-08-27: "TÜM taşınmazlarda aynı" hoisting kuralı (bkz.
+// finalizeTitleUnitsSummaryTableData) eklendiğinden, bu dosyanın birçok
+// senaryosu titleUnits[0]'ı `fullFixtureFields()`'in (sıfır override ile,
+// AKTİF taşınmazla BİREBİR aynı) kopyasıyla kuruyordu — asıl amaçları
+// hoisting/aynı-değer davranışını test etmek DEĞİL (HTML şekli/grup
+// başlığı/columnMeta gibi yapısal kontroller), ama artık TÜM scalar
+// sütunlar commonFields'e taşınıp bu yapısal kontrolleri anlamsız hale
+// getiriyordu. Bu sabit, o senaryolarda "2. taşınmaz gerçekçi ama farklı"
+// fixture'ı için TEK ortak kaynak.
+const DIFFERENTIATING_OVERRIDES = {
+  legalValueArea: "100", currentValueArea: "100",
+  landUnitValue: "21000", legalBuildingUnitCost: "22000", legalBuildingDepreciationRate: "8",
+  share: "5212", denominator: "2162578", landValue: "1303000",
+  legalValue: "4000000", legalRent: "20000",
+};
+
 // --- 1) TAM sütun sırası, kullanıcının hedef ekran görüntüsüyle BİREBİR --
 {
   fns.setState({
@@ -203,11 +221,17 @@ function fullFixtureFields(overrides = {}) {
   });
   const data = fns.buildValuationUnitsSummaryTableData();
   assert.ok(data, "2 taşınmazlı raporda tablo verisi dönmeli.");
+  // NOT (2026-08-27): fixture'da landUnitValue/legalBuildingUnitCost/
+  // legalBuildingDepreciationRate/denominator (Arsa Birim Değeri/Yapı
+  // Birim Değeri/Yıpranma Payı/Arsa Payda) İKİ taşınmazda da BİREBİR aynı
+  // (gerçek ekran görüntüsündeki, ayrı binalarda GERÇEKTEN sık rastlanan
+  // bir durum) — bu 4 scalar sütun artık (0.0.581) tablodan kalkıp
+  // commonFields'e taşınıyor.
   assert.deepEqual(data.headers, [
     "No", "BL.", "BB No",
     "Yasal Alan", "Mevcut Alan",
-    "Arsa Birim Değeri", "Yapı Birim Değeri", "Yıpranma Payı", "İnş. Sev.",
-    "Arsa Payı", "Arsa Payda", "Hissesine Düşen Arsa Payı", "Arsa Değeri",
+    "İnş. Sev.",
+    "Arsa Payı", "Hissesine Düşen Arsa Payı", "Arsa Değeri",
     "Yasal Eksik İmalat Tutarı", "Yasal Yapı Değeri",
     "Mevcut Eksik İmalat Tutarı", "Mevcut Yapı Değeri",
     "Yasal Şerefiye", "Mevcut Şerefiye", "Sigortaya Esas Değer",
@@ -217,8 +241,13 @@ function fullFixtureFields(overrides = {}) {
     "Natamam Mevcut Durum Değeri - M2 Birim Değeri", "Natamam Mevcut Durum Değeri",
     "Yasal Kira Değeri - M2 Birim Değeri", "Yasal Kira Değeri",
     "Mevcut Kira Değeri - M2 Birim Değeri", "Mevcut Kira Değeri",
-  ], "Sütun sırası kullanıcının hedef ekran görüntüsüyle BİREBİR eşleşmeli.");
-  console.log("TAM sutun sirasi (hedef ekran goruntusu) testi tamam.");
+  ], "Sütun sırası kullanıcının hedef ekran görüntüsüyle BİREBİR eşleşmeli (aynı-degerli 4 sutun HARIC).");
+  const commonLabels = data.commonFields.map((field) => field.label);
+  ["Arsa Birim Değeri", "Yapı Birim Değeri", "Yıpranma Payı", "Arsa Payda"].forEach((label) => {
+    assert.ok(commonLabels.includes(label), `"${label}" commonFields'te OLMALI, bulunan: ${commonLabels.join(", ")}`);
+  });
+  assert.equal(data.commonFields.find((field) => field.label === "Arsa Birim Değeri")?.value, "20000", "\"Arsa Birim Değeri\" ortak degeri dogru olmali.");
+  console.log("TAM sutun sirasi (hedef ekran goruntusu) + ayni-degerli 4 sutunun commonFields'e tasinmasi testi tamam.");
 }
 
 // --- 2) Tekil raporda (1 taşınmaz) null döner ------------------------------
@@ -247,13 +276,23 @@ function fullFixtureFields(overrides = {}) {
 }
 
 // --- 4) columnMeta: her grubun kind'ı gerçek panel alanının readOnly ------
-// durumuyla BİREBİR eşleşir.
+// durumuyla BİREBİR eşleşir. NOT (2026-08-27): 2. taşınmazın landUnitValue/
+// legalBuildingUnitCost/legalBuildingDepreciationRate/denominator BİLEREK
+// FARKLI — aksi halde "TÜM taşınmazlarda aynı" hoisting kuralı bu 4 scalar
+// sütunu commonFields'e taşır ve aşağıdaki kindOf() kontrolleri (sütun
+// artık YOK) başarısız olurdu; bu senaryonun amacı kind eşlemesi, aynı/
+// farklı deger davranışı DEĞİL.
 {
   fns.setState({
     activeTitleUnitIndex: 0,
     fields: fullFixtureFields(),
     tables: {},
-    titleUnits: [unit(fullFixtureFields())],
+    titleUnits: [unit(fullFixtureFields({
+      legalValueArea: "100", currentValueArea: "100",
+      landUnitValue: "21000", legalBuildingUnitCost: "22000", legalBuildingDepreciationRate: "5",
+      share: "5212", denominator: "2162578", landValue: "1303000",
+      legalValue: "4000000", legalRent: "20000",
+    }))],
   });
   const data = fns.buildValuationUnitsSummaryTableData();
   const kindOf = (label) => data.columnMeta[data.headers.indexOf(label)]?.kind;
@@ -287,7 +326,7 @@ function fullFixtureFields(overrides = {}) {
     activeTitleUnitIndex: 0,
     fields: fullFixtureFields(),
     tables: {},
-    titleUnits: [unit(fullFixtureFields())],
+    titleUnits: [unit(fullFixtureFields(DIFFERENTIATING_OVERRIDES))],
   });
   const data = fns.buildValuationUnitsSummaryTableData();
   const html = fns.buildTitleUnitsSummaryTableHtmlEditable(data.headers, data.rows, data.columnMeta, 0);
@@ -301,12 +340,15 @@ function fullFixtureFields(overrides = {}) {
 }
 
 // --- 6) Gerçek HTML üretimi: dinamik genişlik + tam ortalama --------------
+// NOT (2026-08-27): legalValueArea/currentValueArea BİLEREK FARKLI —
+// aksi halde "Alan" (İKİ taşınmazda aynı) commonFields'e taşınır ve
+// "YASAL ALAN"/"MEVCUT ALAN" grup başlıkları hiç ÜRETİLMEZ hale gelirdi.
 {
   fns.setState({
     activeTitleUnitIndex: 0,
     fields: fullFixtureFields(),
     tables: {},
-    titleUnits: [unit(fullFixtureFields())],
+    titleUnits: [unit(fullFixtureFields({ legalValueArea: "100", currentValueArea: "100" }))],
   });
   const html = fns.buildValuationUnitsSummaryWordTableHtml();
   assert.ok(html.includes("<table"), "Geçerli bir <table> HTML'i üretilmeli.");
@@ -398,7 +440,7 @@ function fullFixtureFields(overrides = {}) {
   );
   assert.match(
     appSource,
-    /function createTitleUnitsSummaryTablePreview\(\)[\s\S]*?buildTitleUnitsSummaryTableHtmlEditable\(data\.headers, data\.rows, data\.columnMeta, state\.activeTitleUnitIndex\)/,
+    /function createTitleUnitsSummaryTablePreview\(\)[\s\S]*?buildTitleUnitsSummaryTableHtmlEditable\(data\.headers, data\.rows, data\.columnMeta, state\.activeTitleUnitIndex, data\.commonFields\)/,
     "Tapu özeti değerleme tablosuna özgü renderer'a yönlendirilmemelidir."
   );
   console.log("Değerleme iki katmanlı başlık renderer kablolama testi tamam.");
@@ -498,11 +540,15 @@ function fullFixtureFields(overrides = {}) {
 // testi: gerçek HTML çıktısında 15 grup başlığı (colspan'lı <th>) TAM
 // hedef sırayla render edilir.
 {
+  // NOT (2026-08-27): legalValueArea/currentValueArea BİLEREK FARKLI —
+  // bkz. senaryo 1/6'daki AYNI not (aksi halde "YASAL"/"MEVCUT" (Alan)
+  // grubu commonFields'e taşınıp bu 15-grup-başlığı testinden TAMAMEN
+  // KAYBOLURDU).
   fns.setState({
     activeTitleUnitIndex: 0,
     fields: fullFixtureFields(),
     tables: {},
-    titleUnits: [unit(fullFixtureFields({ titleBlockName: "A", unitNo: "4" }))],
+    titleUnits: [unit(fullFixtureFields({ titleBlockName: "A", unitNo: "4", legalValueArea: "100", currentValueArea: "100" }))],
   });
   const html = fns.buildValuationUnitsSummaryWordTableHtml();
   const topThCells = [...html.matchAll(/<th[^>]*colspan[^>]*>([\s\S]*?)<\/th>/g)].map((m) => m[1]);
@@ -522,12 +568,15 @@ function fullFixtureFields(overrides = {}) {
 
 // --- 15) Alan artık BAĞIMSIZ "Yasal"/"Mevcut" tek-sütunluk gruplarında ----
 // (önceden Durum Değeri grubunun İÇİNDE bir "- Alan" soneki idi).
+// NOT (2026-08-27): legalValueArea BİLEREK FARKLI — "Yasal Alan"ın
+// KENDİSİ sütun olarak kalmalı (asıl test amacı), aksi halde her iki
+// taşınmazda da aynı olduğundan commonFields'e taşınıp headers'tan kalkardı.
 {
   fns.setState({
     activeTitleUnitIndex: 0,
     fields: fullFixtureFields(),
     tables: {},
-    titleUnits: [unit(fullFixtureFields())],
+    titleUnits: [unit(fullFixtureFields({ legalValueArea: "100" }))],
   });
   const data = fns.buildValuationUnitsSummaryTableData();
   assert.ok(!data.headers.includes("Yasal Durum Değeri - Alan"), "'Yasal Durum Değeri - Alan' ARTIK bulunmamalı (Alan öne taşındı).");
@@ -549,7 +598,7 @@ function fullFixtureFields(overrides = {}) {
     activeTitleUnitIndex: 0,
     fields: fullFixtureFields({ landUnitValue: "20000", legalBuildingUnitCost: "21050", legalBuildingDepreciationRate: "5,00", legalBuildingConstructionLevel: "90,00" }),
     tables: {},
-    titleUnits: [unit(fullFixtureFields())],
+    titleUnits: [unit(fullFixtureFields(DIFFERENTIATING_OVERRIDES))],
   });
   const data = fns.buildValuationUnitsSummaryTableData();
   assert.equal(fns.getValuationUnitsSummaryHeaderGroup("Arsa Birim Değeri"), "Parametreler");
@@ -622,7 +671,7 @@ function fullFixtureFields(overrides = {}) {
     activeTitleUnitIndex: 0,
     fields: fullFixtureFields(),
     tables: {},
-    titleUnits: [unit(fullFixtureFields())],
+    titleUnits: [unit(fullFixtureFields(DIFFERENTIATING_OVERRIDES))],
   });
   const data = fns.buildValuationUnitsSummaryTableData();
   const arsaIndex = data.headers.indexOf("Arsa Değeri");
@@ -651,7 +700,7 @@ function fullFixtureFields(overrides = {}) {
     activeTitleUnitIndex: 0,
     fields: fullFixtureFields(),
     tables: {},
-    titleUnits: [unit(fullFixtureFields())],
+    titleUnits: [unit(fullFixtureFields(DIFFERENTIATING_OVERRIDES))],
   });
   assert.equal(fns.getValuationUnitsSummaryHeaderGroup("Yasal Şerefiye"), "Yasal Şerefiye", "Yasal Şerefiye ARTIK 'Diğer'e DÜŞMEMELİ, kendi grubu olmalı.");
   assert.equal(fns.getValuationUnitsSummaryHeaderGroup("Mevcut Şerefiye"), "Mevcut Şerefiye");
@@ -675,7 +724,7 @@ function fullFixtureFields(overrides = {}) {
     activeTitleUnitIndex: 0,
     fields: fullFixtureFields(),
     tables: {},
-    titleUnits: [unit(fullFixtureFields())],
+    titleUnits: [unit(fullFixtureFields(DIFFERENTIATING_OVERRIDES))],
   });
   const data = fns.buildValuationUnitsSummaryTableData();
   assert.ok(!data.headers.includes("Yasal Durum Değeri - Alan"));
@@ -729,7 +778,7 @@ function fullFixtureFields(overrides = {}) {
     activeTitleUnitIndex: 0,
     fields: fullFixtureFields(),
     tables: {},
-    titleUnits: [unit(fullFixtureFields())],
+    titleUnits: [unit(fullFixtureFields(DIFFERENTIATING_OVERRIDES))],
   });
   assert.equal(fns.getValuationUnitsSummaryHeaderGroup("Yasal Kira Değeri"), "Yasal Kira Değeri", "Kira Değeri ARTIK 'Yasal Durum Değeri' grubuna KARIŞMAMALI.");
   assert.equal(fns.getValuationUnitsSummaryHeaderGroup("Yasal Kira Değeri - M2 Birim Değeri"), "Yasal Kira Değeri");
@@ -752,7 +801,7 @@ function fullFixtureFields(overrides = {}) {
     activeTitleUnitIndex: 0,
     fields: fullFixtureFields({ legalBuildingDepreciationRate: "5,00", legalBuildingConstructionLevel: "90,00" }),
     tables: {},
-    titleUnits: [unit(fullFixtureFields())],
+    titleUnits: [unit(fullFixtureFields(DIFFERENTIATING_OVERRIDES))],
   });
   const data = fns.buildValuationUnitsSummaryTableData();
   // Word/export çıktısı ("buildValuationUnitsSummaryWordTableHtml", editable=false
@@ -886,11 +935,15 @@ function fullFixtureFields(overrides = {}) {
 // sütunlarda görünmeli; export/banka-şablonu modunda (editable:false,
 // varsayılan) HİÇ görünmemeli.
 {
+  // NOT (2026-08-27): 2. taşınmaz DIFFERENTIATING_OVERRIDES ile FARKLI —
+  // aksi halde (ikisi de sıfır override'lı fullFixtureFields() TABANLI
+  // olduğundan) TÜM scalar sütunlar (landUnitValue DAHİL) commonFields'e
+  // taşınır, "en az 1 scalar sütun" kontrolü ANLAMSIZ hale gelirdi.
   fns.setState({
     activeTitleUnitIndex: 0,
     fields: fullFixtureFields({ landUnitValue: "40.000" }),
     tables: {},
-    titleUnits: [unit(fullFixtureFields({ landUnitValue: "40.000" }))],
+    titleUnits: [unit(fullFixtureFields({ ...DIFFERENTIATING_OVERRIDES, landUnitValue: "45.000" }))],
   });
   const data = fns.buildValuationUnitsSummaryTableData();
 

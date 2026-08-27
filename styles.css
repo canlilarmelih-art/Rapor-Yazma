@@ -4621,6 +4621,24 @@ table {
   line-height: 1.25;
 }
 
+/* Kullanıcı talebi (2026-08-27): "TÜM ÇİFT TARAFLI tabloların en üstünde
+   ortak değerleri belirt örnek il ilçe mahalle gibi" — TÜM taşınmazlarda
+   birebir aynı olan (bkz. finalizeTitleUnitsSummaryTableData'nın
+   commonFields'i) sütunlar satır satır tekrarlanmak yerine tablonun
+   HEMEN ÜSTÜNDE tek bir satırda gösterilir; boşken (commonFields=[])
+   hiç eklenmez, bu yüzden :empty guard'ına gerek YOK (buildTitleUnitsSummaryTableCommonFieldsHtml
+   zaten boşsa "" döner). */
+.title-units-summary-common-fields {
+  margin: 0 0 6px;
+  padding: 6px 8px;
+  background: var(--surface-muted, #eef2fa);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 0.78em;
+  line-height: 1.4;
+  color: var(--ink);
+}
+
 .title-units-summary-table-container {
   overflow-x: auto;
 }

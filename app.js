@@ -3684,7 +3684,7 @@ function createTitleUnitsSummaryTablePreview() {
     wrap.append(note);
     return wrap;
   }
-  const tableHtml = buildTitleUnitsSummaryTableHtmlEditable(data.headers, data.rows, data.columnMeta, state.activeTitleUnitIndex);
+  const tableHtml = buildTitleUnitsSummaryTableHtmlEditable(data.headers, data.rows, data.columnMeta, state.activeTitleUnitIndex, data.commonFields);
   const tableContainer = document.createElement("div");
   tableContainer.className = "title-units-summary-table-container";
   tableContainer.innerHTML = tableHtml;
@@ -3719,7 +3719,7 @@ function createAddressUnitsSummaryTablePreview() {
     wrap.append(note);
     return wrap;
   }
-  const tableHtml = buildTitleUnitsSummaryTableHtmlEditable(data.headers, data.rows, data.columnMeta, state.activeTitleUnitIndex);
+  const tableHtml = buildTitleUnitsSummaryTableHtmlEditable(data.headers, data.rows, data.columnMeta, state.activeTitleUnitIndex, data.commonFields);
   const tableContainer = document.createElement("div");
   tableContainer.className = "title-units-summary-table-container";
   tableContainer.innerHTML = tableHtml;
@@ -4189,7 +4189,7 @@ function createImarUnitsSummaryTablePreview() {
     wrap.append(note);
     return wrap;
   }
-  const tableHtml = buildTitleUnitsSummaryTableHtmlEditable(data.headers, data.rows, data.columnMeta, state.activeTitleUnitIndex);
+  const tableHtml = buildTitleUnitsSummaryTableHtmlEditable(data.headers, data.rows, data.columnMeta, state.activeTitleUnitIndex, data.commonFields);
   const tableContainer = document.createElement("div");
   tableContainer.className = "title-units-summary-table-container";
   tableContainer.innerHTML = tableHtml;
@@ -4222,7 +4222,7 @@ function createLandUnitsSummaryTablePreview() {
     wrap.append(note);
     return wrap;
   }
-  const tableHtml = buildTitleUnitsSummaryTableHtmlEditable(data.headers, data.rows, data.columnMeta, state.activeTitleUnitIndex);
+  const tableHtml = buildTitleUnitsSummaryTableHtmlEditable(data.headers, data.rows, data.columnMeta, state.activeTitleUnitIndex, data.commonFields);
   const tableContainer = document.createElement("div");
   tableContainer.className = "title-units-summary-table-container";
   tableContainer.innerHTML = tableHtml;
@@ -4268,7 +4268,7 @@ function createDocumentsUnitsSummaryTablePreview() {
     wrap.append(note);
     return wrap;
   }
-  const tableHtml = buildTitleUnitsSummaryTableHtmlEditable(data.headers, data.rows, data.columnMeta, state.activeTitleUnitIndex);
+  const tableHtml = buildTitleUnitsSummaryTableHtmlEditable(data.headers, data.rows, data.columnMeta, state.activeTitleUnitIndex, data.commonFields);
   const tableContainer = document.createElement("div");
   tableContainer.className = "title-units-summary-table-container";
   tableContainer.innerHTML = tableHtml;
@@ -4337,7 +4337,7 @@ function createUnitUnitsSummaryTablePreview() {
     wrap.append(note);
     return wrap;
   }
-  const tableHtml = buildTitleUnitsSummaryTableHtmlEditable(data.headers, data.rows, data.columnMeta, state.activeTitleUnitIndex);
+  const tableHtml = buildTitleUnitsSummaryTableHtmlEditable(data.headers, data.rows, data.columnMeta, state.activeTitleUnitIndex, data.commonFields);
   const tableContainer = document.createElement("div");
   tableContainer.className = "title-units-summary-table-container";
   tableContainer.innerHTML = tableHtml;
@@ -7925,17 +7925,7 @@ function buildValuationUnitsSummaryTableData() {
   // raporlarında Kira satırları zaten boş kalacağından, createValuationMarketTable'ın
   // KENDİ `landOwnership` filtresiyle TUTARLI şekilde bu sütunlar OTOMATİK
   // kalkar) — TÜM taşınmazlarda boş ("-") kalan bir sütun tamamen kaldırılır.
-  const columnHasData = headers.map((_, columnIndex) => (
-    columnIndex === 0 || rows.some((row) => {
-      const value = row[columnIndex];
-      return value !== undefined && value !== null && String(value).trim() !== "" && String(value).trim() !== "-";
-    })
-  ));
-  const filteredHeaders = headers.filter((_, columnIndex) => columnHasData[columnIndex]);
-  const filteredRows = rows.map((row) => row.filter((_, columnIndex) => columnHasData[columnIndex]));
-  const filteredColumnMeta = columnMeta.filter((_, columnIndex) => columnHasData[columnIndex]);
-
-  return { headers: filteredHeaders, rows: filteredRows, columnMeta: filteredColumnMeta };
+  return finalizeTitleUnitsSummaryTableData(headers, rows, columnMeta);
 }
 
 // Kullanıcı talebi (2026-08-21/22, ekran görüntüsüyle): "tablo yapısının
@@ -8224,7 +8214,16 @@ function buildValuationUnitsSummaryTableHtml(data, activeRowIndex, { editable = 
   }).join("");
   const totalsRowHtml = `<tr>${totalsCellsHtml}</tr>`;
 
-  return `<table class="word-table title-units-summary-table title-units-summary-table${editable ? " title-units-summary-table-editable" : ""}" style="border-collapse:collapse;width:100%;margin:5pt 0 12pt;table-layout:auto;">
+  // Kullanıcı talebi (2026-08-27): "TÜM ÇİFT TARAFLI tabloların en üstünde
+  // ortak değerleri belirt" — bu bespoke (iki-katmanlı başlıklı) renderer
+  // buildTitleUnitsSummaryTableHtmlEditable'ı KULLANMADIĞI için AYNI
+  // banner burada AYRICA eklenir (bkz. buildTitleUnitsSummaryTableCommonFieldsHtml).
+  // HER ZAMAN render edilir (editable VEYA export fark etmez) — aksi
+  // halde export/banka şablonu HTML'inde (editable=false) TÜM
+  // taşınmazlarda aynı olan bir sütun (ör. Arsa Birim Değeri) HİÇBİR
+  // YERDE görünmez, veri KAYBI olurdu (diğer 7 tablonun export yolu da
+  // AYNI nedenle güncellendi, bkz. buildTitleUnitsSummaryTableHtmlFromData).
+  return `${buildTitleUnitsSummaryTableCommonFieldsHtml(data?.commonFields)}<table class="word-table title-units-summary-table title-units-summary-table${editable ? " title-units-summary-table-editable" : ""}" style="border-collapse:collapse;width:100%;margin:5pt 0 12pt;table-layout:auto;">
     <thead>${topHeaderHtml}${subHeaderHtml}</thead>
     <tbody>${bodyHtml}${totalsRowHtml}</tbody>
   </table>`;
@@ -21316,6 +21315,77 @@ function joinTitleUnitOwnerColumn(ownerRows, pick) {
   return values.length ? values.join("\n") : "-";
 }
 
+// Kullanıcı talebi (2026-08-27): "TÜM ÇİFT TARAFLI tabloların en üstünde
+// ortak değerleri belirt örnek il ilçe mahalle gibi en üstte belirtilsin."
+// TÜM 8 "çift taraflı" özet tablosunun (Tapu/Adres/İmar/Arsa/Değerleme/
+// Belgeler/Bağımsız Bölüm/Proje Uygunluk) PAYLAŞTIĞI SON adım — önceden
+// her builder'da AYNI kopya-yapıştır blok olarak tekrarlanan "hiçbir
+// taşınmazda veri yoksa sütunu kaldır" kuralı ARTIK TEK yerden, YENİ bir
+// ikinci adımla BİRLİKTE: TÜM taşınmazlarda BİREBİR AYNI (boş olmayan)
+// değere sahip "scalar" sütunlar satır satır TEKRARLANMAK yerine
+// `commonFields`e taşınır — çağıran taraf (buildTitleUnitsSummaryTableHtmlEditable)
+// bunları tablonun ÜSTÜNDE tek bir "Ortak Bilgiler" satırında gösterir.
+// Yalnızca `kind: "scalar"` sütunlar ortak-değer adayı olabilir — "seq"
+// (Sıra No, tanım gereği HER ZAMAN farklı), "owner" (Malik(ler) popover'ı,
+// satır-bazlı tıklama hedefi) ve "computed"/"readonly" (hesaplanan/tıklanamaz)
+// sütunlar HİÇBİR ZAMAN hoisting'e girmez — bunları tablodan çıkarmak
+// düzenleme/popover mekanizmasını (data-unit-index'e dayanan tıklama
+// hedefleri) BOZAR. İki AYRI istisna seçeneği var (options, opsiyonel),
+// KASITLI olarak BİRBİRİNDEN BAĞIMSIZ (bir sütun ikisine de, yalnızca
+// birine, ya da hiçbirine tabi olabilir):
+// - `alwaysKeepFieldKeys` (Set) — YALNIZCA boş-kaldırma kuralından muaf
+//   tutar (Adres Özeti'nin "aynı ada/parselde bu alanlar boş bile olsa
+//   sütun olarak gözükmeli" istisnası, ADDRESS_UNITS_TABLE_ALWAYS_VISIBLE_WHEN_SAME_ADA_PARSEL_KEYS,
+//   2026-08-22). Hoisting'den MUAF DEĞİLDİR — gerçekten dolu VE TÜM
+//   taşınmazlarda birebir aynıysa yine üste taşınır (2026-08-27'nin YENİ
+//   kuralı bu istisnadan ETKİLENMEZ, ikisi FARKLI sorunlara çözüm).
+// - `hoistExemptFieldKeys` (Set) — YALNIZCA hoisting'den muaf tutar
+//   (Tapu'nun "Ana Taşınmaz Niteliği" gibi HER ZAMAN gösterilen kimlik
+//   sütunları, 2026-08-15: "farklı parsellerde bu alan ÖNEMLİDİR, yalnızca
+//   'aynı metin' diye kaybolmamalı"). Boş-kaldırma kuralına HÂLÂ tabidir
+//   (boşsa yine kaldırılır — davranış DEĞİŞMEDİ).
+function finalizeTitleUnitsSummaryTableData(headers, rows, columnMeta, options = {}) {
+  const alwaysKeepFieldKeys = options.alwaysKeepFieldKeys || null;
+  const hoistExemptFieldKeys = options.hoistExemptFieldKeys || null;
+  const isAlwaysKept = (meta) => Boolean(alwaysKeepFieldKeys && meta?.fieldKey && alwaysKeepFieldKeys.has(meta.fieldKey));
+  const isHoistExempt = (meta) => Boolean(hoistExemptFieldKeys && meta?.fieldKey && hoistExemptFieldKeys.has(meta.fieldKey));
+
+  const columnHasData = headers.map((_, columnIndex) => (
+    columnIndex === 0 || isAlwaysKept(columnMeta[columnIndex]) || rows.some((row) => {
+      const value = row[columnIndex];
+      return value !== undefined && value !== null && String(value).trim() !== "" && String(value).trim() !== "-";
+    })
+  ));
+  const survivingIndices = headers.map((_, index) => index).filter((index) => columnHasData[index]);
+  const dataHeaders = survivingIndices.map((index) => headers[index]);
+  const dataRows = rows.map((row) => survivingIndices.map((index) => row[index]));
+  const dataColumnMeta = survivingIndices.map((index) => columnMeta[index]);
+
+  const commonFields = [];
+  const keptIndices = [];
+  dataHeaders.forEach((label, columnIndex) => {
+    const meta = dataColumnMeta[columnIndex];
+    if (columnIndex === 0 || !meta || meta.kind !== "scalar" || dataRows.length < 2 || isHoistExempt(meta)) {
+      keptIndices.push(columnIndex);
+      return;
+    }
+    const values = dataRows.map((row) => String(row[columnIndex] ?? "").trim());
+    const allSameNonEmpty = values.every((value) => value && value !== "-" && value === values[0]);
+    if (allSameNonEmpty) {
+      commonFields.push({ label, value: values[0], fieldKey: meta.fieldKey });
+    } else {
+      keptIndices.push(columnIndex);
+    }
+  });
+
+  return {
+    headers: keptIndices.map((index) => dataHeaders[index]),
+    rows: dataRows.map((row) => keptIndices.map((index) => row[index])),
+    columnMeta: keptIndices.map((index) => dataColumnMeta[index]),
+    commonFields,
+  };
+}
+
 // Tabloyu (başlıklar + satırlar) hesaplar; YALNIZCA 2+ taşınmaz varsa
 // (tekil raporda "aynı/farklı" karşılaştırması anlamsız) bir sonuç
 // döner, aksi halde null.
@@ -21345,14 +21415,19 @@ function buildTitleUnitsSummaryTableData() {
   const allSameAdaParsel = computeTitleUnitsShareSameAdaParsel(units);
   const HIDE_WHEN_SAME_ADA_PARSEL_KEYS = new Set(["titleCity", "titleDistrict", "titleNeighborhood", "sheetNo"]);
 
-  // "aynı ise tabloda gözükmeyecek" — TÜM taşınmazlarda BİREBİR aynı
-  // (boşluk arındırılmış) değere sahip alanlar sütun listesinden
-  // tamamen ÇIKARILIR.
-  const sharedFieldsToShow = TITLE_UNITS_TABLE_SHARED_FIELD_DEFS.filter((def) => {
-    if (HIDE_WHEN_SAME_ADA_PARSEL_KEYS.has(def.key) && allSameAdaParsel) return false;
-    const values = units.map((unit) => String(unit.fields?.[def.key] || "").trim());
-    return !values.every((value) => value === values[0]);
-  });
+  // 0.0.581 DEĞİŞİKLİĞİ: "aynı ise tabloda gözükmeyecek" kuralı ARTIK
+  // burada UYGULANMIYOR — bu alanlar (İl/İlçe/Mahalle/Pafta/Ada/Parsel/
+  // Yüzölçümü) TÜM taşınmazlarda birebir aynıysa (bkz. AŞAĞIDA
+  // finalizeTitleUnitsSummaryTableData) artık SESSİZCE kaybolmuyor,
+  // tablonun ÜSTÜNDE "Ortak Bilgiler" satırında GÖSTERİLİYOR (kullanıcı
+  // talebi: "TÜM ÇİFT TARAFLI tabloların en üstünde ortak değerleri
+  // belirt örnek il ilçe mahalle gibi"). Ada/parsel eşitliğine dayalı
+  // ÖZEL gizleme (HIDE_WHEN_SAME_ADA_PARSEL_KEYS — metin farklı görünse
+  // BİLE ada/parsel tanımı gereği aynı sayılır) DEĞİŞMEDİ, tek istisna
+  // budur.
+  const sharedFieldsToShow = TITLE_UNITS_TABLE_SHARED_FIELD_DEFS.filter((def) => (
+    !(HIDE_WHEN_SAME_ADA_PARSEL_KEYS.has(def.key) && allSameAdaParsel)
+  ));
 
   // Kullanıcı talebi (2026-08-14, devam): "Taşınmaz Kimlik No arsa pay
   // payda cilt sayfa eksik" — bu alanlar "aynı ise gizlensin" listesinde
@@ -21454,31 +21529,31 @@ function buildTitleUnitsSummaryTableData() {
     { kind: "scalar", fieldKey: "registryPage" },
   ];
 
-  // Kullanıcı talebi (2026-08-15): "eğer sistemde hücrede veri yoksa.
-  // örnek tarla raporu bb no kat bölümler boş o zaman tabloda bu
-  // sütunlar gözükmemeli" — ör. tarla/arazi raporlarında Kat/Bağımsız
-  // Bölüm No gibi "diğer bölümler" sütunları TÜM taşınmazlarda boş ("-")
-  // kalabilir (arazinin katı/bağımsız bölümü yoktur). Böyle bir sütun,
-  // TÜM taşınmazlarda boşsa TAMAMEN KALDIRILIR. "Sıra No" (index 0)
-  // hiçbir zaman boş olmadığından (her zaman 1'den başlayan sayı)
-  // filtreden etkilenmez — yine de niyeti netleştirmek için elle korunur.
-  const columnHasData = headers.map((_, columnIndex) => (
-    columnIndex === 0 || rows.some((row) => {
-      const value = row[columnIndex];
-      return value !== undefined && value !== null && String(value).trim() !== "" && String(value).trim() !== "-";
-    })
-  ));
-  const filteredHeaders = headers.filter((_, columnIndex) => columnHasData[columnIndex]);
-  const filteredRows = rows.map((row) => row.filter((_, columnIndex) => columnHasData[columnIndex]));
-  const filteredColumnMeta = columnMeta.filter((_, columnIndex) => columnHasData[columnIndex]);
-  // sharedFieldsToShow sütunları headers'ta index 2..2+sharedFieldsToShow.length
-  // aralığında (0=Sıra No, 1=Taşınmaz Kimlik No — "sıra nodan sonra
-  // gelsin" değişikliğiyle kaydı, bkz. yukarıdaki headers dizisi);
-  // sharedColumnCount de bu filtreden SONRA gerçekten kalan sayıyı
-  // yansıtmalı (aksi halde tüketiciler yanlış bölme noktası kullanır).
-  const survivingSharedColumnCount = columnHasData.slice(2, 2 + sharedFieldsToShow.length).filter(Boolean).length;
+  // "eğer sistemde hücrede veri yoksa ... tabloda bu sütunlar gözükmemeli"
+  // (ör. tarla raporunda Kat/Bağımsız Bölüm No boş) VE "TÜM taşınmazlarda
+  // birebir aynıysa üstte ortak bilgi olarak göster" (0.0.581) — ikisi de
+  // artık TEK, paylaşımlı fonksiyonda (bkz. yukarıda). YALNIZCA hoisting
+  // (aynı-metin → üste taşıma), TITLE_UNITS_TABLE_SHARED_FIELD_DEFS
+  // DIŞINDAKİ sütunlarda (Taşınmaz Kimlik No/Blok/Kat/BB No/BB Niteliği/
+  // "Ana Taşınmaz Niteliği" — 0.0.15'te BİLEREK "aynı-ise-gizle"
+  // listesinden çıkarılmıştı, "farklı parsellerde bu alan ÖNEMLİDİR,
+  // yalnızca 'aynı metin' diye kaybolmamalı" — /Arsa Payı/Payda/Malik
+  // sütunları) MUAF tutulur (hoistExemptFieldKeys) — boş-kaldırma kuralı
+  // bu sütunlarda HÂLÂ ESKİSİ GİBİ çalışır, yalnızca "aynı metin diye
+  // kaybolma" kuralından muaflar.
+  const sharedFieldKeySet = new Set(sharedFieldsToShow.map((def) => def.key));
+  const hoistExemptFieldKeys = new Set(
+    columnMeta.filter((meta) => meta.kind === "scalar" && !sharedFieldKeySet.has(meta.fieldKey)).map((meta) => meta.fieldKey)
+  );
+  const result = finalizeTitleUnitsSummaryTableData(headers, rows, columnMeta, { hoistExemptFieldKeys });
+  // sharedColumnCount: sharedFieldKeySet'ten hâlâ TABLODA (commonFields'e
+  // TAŞINMAMIŞ, gerçekten sütun olarak farklı) kalan sayı — eskiden "aynı
+  // ise gizle" filtresinden SONRAKİ hayatta kalan sayıydı, artık
+  // finalizeTitleUnitsSummaryTableData'nın sonucundan AYNI anlamla
+  // türetiliyor (dış davranış/testler DEĞİŞMEDİ).
+  const sharedColumnCount = result.columnMeta.filter((meta) => meta?.fieldKey && sharedFieldKeySet.has(meta.fieldKey)).length;
 
-  return { headers: filteredHeaders, rows: filteredRows, columnMeta: filteredColumnMeta, sharedColumnCount: survivingSharedColumnCount };
+  return { ...result, sharedColumnCount };
 }
 
 // "her bir taşınmazın 'Hissesine Düşen Arsa Payı' bölümünü hesapla.
@@ -21509,7 +21584,7 @@ function computeTitleUnitShareOfLandArea(fields) {
 function buildTitleUnitsSummaryWordTableHtml() {
   const data = buildTitleUnitsSummaryTableData();
   if (!data || !data.rows.length) return "";
-  return buildTitleUnitsSummaryTableHtmlFromData(data.headers, data.rows);
+  return buildTitleUnitsSummaryTableHtmlFromData(data.headers, data.rows, data.commonFields);
 }
 
 // "sütun başlıklarını 2 satır yap böylelikle hücre genişliği bir nebze
@@ -21557,7 +21632,7 @@ function splitTableHeaderLabelIntoTwoLines(label) {
 // yeniden kullanılıyor, tekrar yazılmadı. Sayılar (Sıra No vb.)
 // büyük/küçük harften etkilenmediğinden zararsız şekilde string'e
 // çevrilir.
-function buildTitleUnitsSummaryTableHtmlFromData(headers, rows) {
+function buildTitleUnitsSummaryTableHtmlFromData(headers, rows, commonFields = []) {
   const ink = getReportThemeToken("--ink", "#152238");
   const line = getReportThemeToken("--line", "#dde3ef");
   const blue = getReportThemeToken("--blue", "#3a5691");
@@ -21574,7 +21649,7 @@ function buildTitleUnitsSummaryTableHtmlFromData(headers, rows) {
     return `<tr>${row.map((cell) => `<td style="${cellStyle}">${formatWordCell(toTitleFieldUppercase(cell))}</td>`).join("")}</tr>`;
   }).join("");
 
-  return `<table class="word-table title-units-summary-table" style="border-collapse:collapse;width:100%;margin:5pt 0 12pt;table-layout:auto;">
+  return `${buildTitleUnitsSummaryTableCommonFieldsHtml(commonFields)}<table class="word-table title-units-summary-table" style="border-collapse:collapse;width:100%;margin:5pt 0 12pt;table-layout:auto;">
     <thead>${headerHtml}</thead>
     <tbody>${bodyHtml}</tbody>
   </table>`;
@@ -21600,7 +21675,35 @@ function buildTitleUnitsSummaryTableHtmlFromData(headers, rows) {
 // ile aktif OLMAYAN taşınmazların satırları (Faz 3'ü bekliyor) düz metin
 // kalır. Tıklama/klavye kancası attachTitleUnitsSummaryTableEditing()
 // içinde (aşağıda) ayrıca bağlanır.
-function buildTitleUnitsSummaryTableHtmlEditable(headers, rows, columnMeta, activeRowIndex) {
+// Kullanıcı talebi (2026-08-27): "TÜM ÇİFT TARAFLI tabloların en üstünde
+// ortak değerleri belirt örnek il ilçe mahalle gibi en üstte belirtilsin"
+// — commonFields (bkz. finalizeTitleUnitsSummaryTableData, TÜM 8 builder'ın
+// PAYLAŞTIĞI adım) tablonun HEMEN ÜSTÜNDE tek bir "Ortak Bilgiler"
+// satırında gösterilir. `commonFields` boşsa (hiç ortak/aynı-değerli
+// sütun yoksa) HİÇBİR ŞEY eklenmez. KRİTİK: bu fonksiyon hem ekran-içi
+// düzenlenebilir önizleme (buildTitleUnitsSummaryTableHtmlEditable) HEM
+// DE Word/banka şablonu export'u (buildTitleUnitsSummaryTableHtmlFromData/
+// buildValuationUnitsSummaryTableHtml) tarafından çağrılır — export
+// bağlamı app.js'in CSS sınıflarını (styles.css) YÜKLEMEDİĞİNDEN stil
+// SATIR-İÇİ (`style=`) verilir (tablonun kendisiyle AYNI ilke); CSS
+// sınıfı (`title-units-summary-common-fields`) yalnızca ekran-içi ek
+// bir kanca olarak KALIR. Bu banner OLMADAN, TÜM taşınmazlarda aynı olan
+// bir sütun (ör. İl) export'ta HİÇBİR YERDE görünmez, veri KAYBI olurdu —
+// bu yüzden export yolunda da (editable=false/parametresiz) HER ZAMAN
+// render edilir.
+function buildTitleUnitsSummaryTableCommonFieldsHtml(commonFields) {
+  if (!Array.isArray(commonFields) || !commonFields.length) return "";
+  const ink = getReportThemeToken("--ink", "#152238");
+  const line = getReportThemeToken("--line", "#dde3ef");
+  const surfaceMuted = getReportThemeToken("--surface-muted", "#eef2fa");
+  const style = `margin:0 0 6pt;padding:4pt 6pt;background:${surfaceMuted};border:1pt solid ${line};border-radius:4pt;font-size:6.5pt;line-height:1.4;color:${ink};`;
+  const items = commonFields
+    .map((field) => `<strong>${escapeHtml(field.label)}:</strong> ${escapeHtml(field.value)}`)
+    .join(" &nbsp;·&nbsp; ");
+  return `<p class="title-units-summary-common-fields" style="${style}">Ortak Bilgiler: ${items}</p>`;
+}
+
+function buildTitleUnitsSummaryTableHtmlEditable(headers, rows, columnMeta, activeRowIndex, commonFields = []) {
   const ink = getReportThemeToken("--ink", "#152238");
   const line = getReportThemeToken("--line", "#dde3ef");
   const blue = getReportThemeToken("--blue", "#3a5691");
@@ -21685,7 +21788,7 @@ function buildTitleUnitsSummaryTableHtmlEditable(headers, rows, columnMeta, acti
     return `<tr${rowAttr}>${cellsHtml}</tr>`;
   }).join("");
 
-  return `<table class="word-table title-units-summary-table title-units-summary-table-editable" style="border-collapse:collapse;width:100%;margin:5pt 0 12pt;table-layout:auto;">
+  return `${buildTitleUnitsSummaryTableCommonFieldsHtml(commonFields)}<table class="word-table title-units-summary-table title-units-summary-table-editable" style="border-collapse:collapse;width:100%;margin:5pt 0 12pt;table-layout:auto;">
     <thead>${headerHtml}</thead>
     <tbody>${bodyHtml}</tbody>
   </table>`;
@@ -22476,21 +22579,26 @@ function buildAddressUnitsSummaryTableData() {
     { kind: "scalar", fieldKey: "innerDoor" },
   ];
 
-  // bkz. ADDRESS_UNITS_TABLE_ALWAYS_VISIBLE_WHEN_SAME_ADA_PARSEL_KEYS yorumu.
+  // bkz. ADDRESS_UNITS_TABLE_ALWAYS_VISIBLE_WHEN_SAME_ADA_PARSEL_KEYS yorumu
+  // — yalnızca AYNI ada/parselde bu alanlar BOŞ olsa BİLE HER ZAMAN sütun
+  // olarak kalır (2026-08-22'nin ESKİ kuralı, DEĞİŞMEDİ). YENİ (0.0.581):
+  // hoisting ("TÜM taşınmazlarda aynı" → üste ortak bilgi) YALNIZCA
+  // ADDRESS_UNITS_TABLE_SHARED_FIELD_DEFS sütunlarına (İl/İlçe/İdari
+  // Mahalle/Mevkii/Ada/Parsel/Sokak-Cadde/Site-Apartman) uygulanır — UAVT/
+  // Blok/Giriş/Dış Kapı No/Kat/İç Kapı No gibi taşınmaza-özgü KİMLİK
+  // sütunları (Tapu tablosundaki Blok/Kat/BB No/Niteliği ile AYNI ilke)
+  // tesadüfen aynı metne sahip olsalar BİLE ortak bilgiye taşınıp
+  // kaybolmaz — bu sütunlar HANGİ taşınmazın hangisi olduğunu ayırt eden
+  // kimlik bilgisidir, "ortak bağlam" (İl/İlçe gibi) değildir.
   const sameAdaParsel = computeTitleUnitsShareSameAdaParsel(units);
-  const columnHasData = headers.map((_, columnIndex) => (
-    columnIndex === 0
-    || (sameAdaParsel && ADDRESS_UNITS_TABLE_ALWAYS_VISIBLE_WHEN_SAME_ADA_PARSEL_KEYS.has(columnMeta[columnIndex]?.fieldKey))
-    || rows.some((row) => {
-      const value = row[columnIndex];
-      return value !== undefined && value !== null && String(value).trim() !== "" && String(value).trim() !== "-";
-    })
-  ));
-  const filteredHeaders = headers.filter((_, columnIndex) => columnHasData[columnIndex]);
-  const filteredRows = rows.map((row) => row.filter((_, columnIndex) => columnHasData[columnIndex]));
-  const filteredColumnMeta = columnMeta.filter((_, columnIndex) => columnHasData[columnIndex]);
-
-  return { headers: filteredHeaders, rows: filteredRows, columnMeta: filteredColumnMeta };
+  const sharedFieldKeySet = new Set(ADDRESS_UNITS_TABLE_SHARED_FIELD_DEFS.map((def) => def.key));
+  const hoistExemptFieldKeys = new Set(
+    columnMeta.filter((meta) => meta.kind === "scalar" && !sharedFieldKeySet.has(meta.fieldKey)).map((meta) => meta.fieldKey)
+  );
+  return finalizeTitleUnitsSummaryTableData(headers, rows, columnMeta, {
+    alwaysKeepFieldKeys: sameAdaParsel ? ADDRESS_UNITS_TABLE_ALWAYS_VISIBLE_WHEN_SAME_ADA_PARSEL_KEYS : null,
+    hoistExemptFieldKeys,
+  });
 }
 
 // Banka şablonlarına {{TASINMAZLARADRESTABLOSU}} ile enjekte edilecek
@@ -22499,7 +22607,7 @@ function buildAddressUnitsSummaryTableData() {
 function buildAddressUnitsSummaryWordTableHtml() {
   const data = buildAddressUnitsSummaryTableData();
   if (!data || !data.rows.length) return "";
-  return buildTitleUnitsSummaryTableHtmlFromData(data.headers, data.rows);
+  return buildTitleUnitsSummaryTableHtmlFromData(data.headers, data.rows, data.commonFields);
 }
 
 // İmar Durumu Faz B (Çift Yönlü Düzenleme, 2026-08-16) — kullanıcı talebi:
@@ -22570,17 +22678,7 @@ function buildImarUnitsSummaryTableData() {
   // "eğer sistemde hücrede veri yoksa ... tabloda bu sütunlar gözükmemeli"
   // (Tapu/Adres tablolarındaki AYNI kural) — TÜM taşınmazlarda boş ("-")
   // kalan bir sütun tamamen kaldırılır.
-  const columnHasData = headers.map((_, columnIndex) => (
-    columnIndex === 0 || rows.some((row) => {
-      const value = row[columnIndex];
-      return value !== undefined && value !== null && String(value).trim() !== "" && String(value).trim() !== "-";
-    })
-  ));
-  const filteredHeaders = headers.filter((_, columnIndex) => columnHasData[columnIndex]);
-  const filteredRows = rows.map((row) => row.filter((_, columnIndex) => columnHasData[columnIndex]));
-  const filteredColumnMeta = columnMeta.filter((_, columnIndex) => columnHasData[columnIndex]);
-
-  return { headers: filteredHeaders, rows: filteredRows, columnMeta: filteredColumnMeta };
+  return finalizeTitleUnitsSummaryTableData(headers, rows, columnMeta);
 }
 
 // Banka şablonlarına {{TASINMAZLARIMARTABLOSU}} ile enjekte edilecek
@@ -22589,7 +22687,7 @@ function buildImarUnitsSummaryTableData() {
 function buildImarUnitsSummaryWordTableHtml() {
   const data = buildImarUnitsSummaryTableData();
   if (!data || !data.rows.length) return "";
-  return buildTitleUnitsSummaryTableHtmlFromData(data.headers, data.rows);
+  return buildTitleUnitsSummaryTableHtmlFromData(data.headers, data.rows, data.commonFields);
 }
 
 // Kullanıcı talebi (2026-08-17): "Çoklu çalışmalarda ada parsel farklı
@@ -22699,17 +22797,7 @@ function buildLandUnitsSummaryTableData() {
   // (Tapu/Adres/İmar tablolarındaki AYNI kural) — TÜM taşınmazlarda boş
   // ("-") kalan bir sütun tamamen kaldırılır (hem sabit hem dinamik
   // sütunlar için TEK geçişte).
-  const columnHasData = headers.map((_, columnIndex) => (
-    columnIndex === 0 || rows.some((row) => {
-      const value = row[columnIndex];
-      return value !== undefined && value !== null && String(value).trim() !== "" && String(value).trim() !== "-";
-    })
-  ));
-  const filteredHeaders = headers.filter((_, columnIndex) => columnHasData[columnIndex]);
-  const filteredRows = rows.map((row) => row.filter((_, columnIndex) => columnHasData[columnIndex]));
-  const filteredColumnMeta = columnMeta.filter((_, columnIndex) => columnHasData[columnIndex]);
-
-  return { headers: filteredHeaders, rows: filteredRows, columnMeta: filteredColumnMeta };
+  return finalizeTitleUnitsSummaryTableData(headers, rows, columnMeta);
 }
 
 // Banka şablonlarına {{TASINMAZLARARSATABLOSU}} ile enjekte edilecek
@@ -22718,7 +22806,7 @@ function buildLandUnitsSummaryTableData() {
 function buildLandUnitsSummaryWordTableHtml() {
   const data = buildLandUnitsSummaryTableData();
   if (!data || !data.rows.length) return "";
-  return buildTitleUnitsSummaryTableHtmlFromData(data.headers, data.rows);
+  return buildTitleUnitsSummaryTableHtmlFromData(data.headers, data.rows, data.commonFields);
 }
 
 // Kullanıcı talebi (2026-08-19): "BELGELER ve proje bölümünü incele bu
@@ -22833,17 +22921,7 @@ function buildDocumentsUnitsSummaryTableData() {
   // "eğer sistemde hücrede veri yoksa ... tabloda bu sütunlar gözükmemeli"
   // (Tapu/Adres/İmar/Arsa tablolarındaki AYNI kural) — TÜM taşınmazlarda
   // boş ("-") kalan bir sütun tamamen kaldırılır.
-  const columnHasData = headers.map((_, columnIndex) => (
-    columnIndex === 0 || rows.some((row) => {
-      const value = row[columnIndex];
-      return value !== undefined && value !== null && String(value).trim() !== "" && String(value).trim() !== "-";
-    })
-  ));
-  const filteredHeaders = headers.filter((_, columnIndex) => columnHasData[columnIndex]);
-  const filteredRows = rows.map((row) => row.filter((_, columnIndex) => columnHasData[columnIndex]));
-  const filteredColumnMeta = columnMeta.filter((_, columnIndex) => columnHasData[columnIndex]);
-
-  return { headers: filteredHeaders, rows: filteredRows, columnMeta: filteredColumnMeta };
+  return finalizeTitleUnitsSummaryTableData(headers, rows, columnMeta);
 }
 
 // Banka şablonlarına {{TASINMAZLARBELGETABLOSU}} ile enjekte edilecek
@@ -22852,7 +22930,7 @@ function buildDocumentsUnitsSummaryTableData() {
 function buildDocumentsUnitsSummaryWordTableHtml() {
   const data = buildDocumentsUnitsSummaryTableData();
   if (!data || !data.rows.length) return "";
-  return buildTitleUnitsSummaryTableHtmlFromData(data.headers, data.rows);
+  return buildTitleUnitsSummaryTableHtmlFromData(data.headers, data.rows, data.commonFields);
 }
 
 // Kullanıcı talebi (2026-08-21): "çift taraflı tablo mantığını dekoratif
@@ -23060,17 +23138,7 @@ function buildUnitUnitsSummaryTableData() {
   // "eğer sistemde hücrede veri yoksa ... tabloda bu sütunlar gözükmemeli"
   // (diğer 6 bölümdeki AYNI kural) — TÜM taşınmazlarda boş ("-") kalan bir
   // sütun tamamen kaldırılır.
-  const columnHasData = headers.map((_, columnIndex) => (
-    columnIndex === 0 || rows.some((row) => {
-      const value = row[columnIndex];
-      return value !== undefined && value !== null && String(value).trim() !== "" && String(value).trim() !== "-";
-    })
-  ));
-  const filteredHeaders = headers.filter((_, columnIndex) => columnHasData[columnIndex]);
-  const filteredRows = rows.map((row) => row.filter((_, columnIndex) => columnHasData[columnIndex]));
-  const filteredColumnMeta = columnMeta.filter((_, columnIndex) => columnHasData[columnIndex]);
-
-  return { headers: filteredHeaders, rows: filteredRows, columnMeta: filteredColumnMeta };
+  return finalizeTitleUnitsSummaryTableData(headers, rows, columnMeta);
 }
 
 // Banka şablonlarına {{TASINMAZLARBAGIMSIZBOLUMTABLOSU}} ile enjekte
@@ -23079,7 +23147,7 @@ function buildUnitUnitsSummaryTableData() {
 function buildUnitUnitsSummaryWordTableHtml() {
   const data = buildUnitUnitsSummaryTableData();
   if (!data || !data.rows.length) return "";
-  return buildTitleUnitsSummaryTableHtmlFromData(data.headers, data.rows);
+  return buildTitleUnitsSummaryTableHtmlFromData(data.headers, data.rows, data.commonFields);
 }
 
 // Proje Uygunluk Durumu (2026-08-26) — kullanıcı talebi: "uygunluk durumu
@@ -23153,17 +23221,7 @@ function buildProjectSuitabilityUnitsSummaryTableData() {
   // "Tapu/Belediye Proje Farkı Var" = Evet/Hayır dallarından SADECE BİRİ
   // herhangi bir raporda dolu olur, diğeri her zaman boş kalıp otomatik
   // gizlenir).
-  const columnHasData = headers.map((_, columnIndex) => (
-    columnIndex === 0 || rows.some((row) => {
-      const value = row[columnIndex];
-      return value !== undefined && value !== null && String(value).trim() !== "" && String(value).trim() !== "-";
-    })
-  ));
-  const filteredHeaders = headers.filter((_, columnIndex) => columnHasData[columnIndex]);
-  const filteredRows = rows.map((row) => row.filter((_, columnIndex) => columnHasData[columnIndex]));
-  const filteredColumnMeta = columnMeta.filter((_, columnIndex) => columnHasData[columnIndex]);
-
-  return { headers: filteredHeaders, rows: filteredRows, columnMeta: filteredColumnMeta };
+  return finalizeTitleUnitsSummaryTableData(headers, rows, columnMeta);
 }
 
 // Banka şablonlarına {{TASINMAZLARPROJEUYGUNLUKTABLOSU}} ile enjekte
@@ -23172,7 +23230,7 @@ function buildProjectSuitabilityUnitsSummaryTableData() {
 function buildProjectSuitabilityUnitsSummaryWordTableHtml() {
   const data = buildProjectSuitabilityUnitsSummaryTableData();
   if (!data || !data.rows.length) return "";
-  return buildTitleUnitsSummaryTableHtmlFromData(data.headers, data.rows);
+  return buildTitleUnitsSummaryTableHtmlFromData(data.headers, data.rows, data.commonFields);
 }
 
 // Kullanıcı talebi (2026-08-26). Diğer 7 özet tablosuyla (Tapu/Adres/
@@ -23210,7 +23268,7 @@ function createProjectSuitabilityUnitsSummaryTablePreview() {
   // altına) eklenir — hangi tab çubuğu varyantı render edilirse edilsin
   // çalışmaya devam eder.
   wrap.append(createDocumentsProjectSuitabilityCopyToSelectedControl());
-  const tableHtml = buildTitleUnitsSummaryTableHtmlEditable(data.headers, data.rows, data.columnMeta, state.activeTitleUnitIndex);
+  const tableHtml = buildTitleUnitsSummaryTableHtmlEditable(data.headers, data.rows, data.columnMeta, state.activeTitleUnitIndex, data.commonFields);
   const tableContainer = document.createElement("div");
   tableContainer.className = "title-units-summary-table-container";
   tableContainer.innerHTML = tableHtml;

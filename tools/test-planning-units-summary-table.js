@@ -88,12 +88,14 @@ const functionNames = [
   "buildAllTitleUnitsForSummaryTable",
   "computeTitleUnitsShareSameAdaParsel",
   "isPlanningScopedByAdaParsel",
+  "finalizeTitleUnitsSummaryTableData",
   "buildImarUnitsSummaryTableData",
   "buildImarUnitsSummaryWordTableHtml",
   "splitTableHeaderLabelIntoTwoLines",
   "toTitleFieldUppercase",
   "buildTitleUnitsSummaryTableHtmlFromData",
   "buildTitleUnitsSummaryTableHtmlEditable",
+  "buildTitleUnitsSummaryTableCommonFieldsHtml",
   "getReportThemeToken",
   "formatWordCell",
   "escapeHtml",
@@ -203,13 +205,20 @@ function unit(blockNo, parcelNo, overrides = {}) {
   assert.ok(!defs.some((d) => d.key === "roadSetback"), "\"Yola Terk\" artik tabloda OLMAMALI (kullanici listesinde yok).");
   assert.ok(!defs.some((d) => /Condition$|Applied$|TransformationArea$|Obstacle$/.test(d.key)), "conditionalYesNo alanlari (Plan Iptali/Cephe/Tevhid/18. Madde/Kentsel Donusum/Ruhsat) tabloda OLMAMALI.");
 
+  // NOT (2026-08-27): 2. taşınmazın değerleri BİLEREK FARKLI ("-2" son eki)
+  // — aksi halde "TÜM taşınmazlarda aynı" hoisting kuralı (bkz.
+  // finalizeTitleUnitsSummaryTableData) 13 sütunun TAMAMINI commonFields'e
+  // taşır, bu senaryonun ASIL amacı olan "13 scalar sütun" yapısal
+  // kontrolünü test edemez hale gelirdi.
   const fieldsObj = {};
   defs.forEach((d) => { fieldsObj[d.key] = `deger-${d.key}`; });
+  const fieldsObj2 = {};
+  defs.forEach((d) => { fieldsObj2[d.key] = `deger-${d.key}-2`; });
   fns.setState({
     activeTitleUnitIndex: 0,
     fields: { blockNo: "100", parcelNo: "1", ...fieldsObj },
     tables: {},
-    titleUnits: [unit("200", "9", fieldsObj)],
+    titleUnits: [unit("200", "9", fieldsObj2)],
   });
   const data = fns.buildImarUnitsSummaryTableData();
   assert.equal(data.columnMeta.length, data.headers.length, "columnMeta, headers ile AYNI uzunlukta olmali.");
@@ -223,14 +232,21 @@ function unit(blockNo, parcelNo, overrides = {}) {
 // --- 6) buildTitleUnitsSummaryTableHtmlEditable(): TUM sutunlar TUM ------
 // satirlarda duzenlenebilir (hepsi scalar, readonly turu artik yok) -------
 {
+  // NOT (2026-08-27): bkz. yukarıdaki AYNI not — 2. taşınmazın değerleri
+  // BİLEREK FARKLI, aksi halde TÜM sütunlar hoisting ile commonFields'e
+  // taşınır ve bu senaryonun "her satırda düzenlenebilir" kontrolü
+  // (scalarCount üzerinden hesaplanan expectedEditableCount) anlamsız
+  // (0 === 0) hale gelirdi.
   const defs = fns.getFieldDefs();
   const fieldsObj = {};
   defs.forEach((d) => { fieldsObj[d.key] = `deger-${d.key}`; });
+  const fieldsObj2 = {};
+  defs.forEach((d) => { fieldsObj2[d.key] = `deger-${d.key}-2`; });
   fns.setState({
     activeTitleUnitIndex: 0,
     fields: { blockNo: "100", parcelNo: "1", ...fieldsObj },
     tables: {},
-    titleUnits: [unit("200", "9", fieldsObj)],
+    titleUnits: [unit("200", "9", fieldsObj2)],
   });
   const data = fns.buildImarUnitsSummaryTableData();
   const html = fns.buildTitleUnitsSummaryTableHtmlEditable(data.headers, data.rows, data.columnMeta, 0);
