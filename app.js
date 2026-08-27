@@ -7980,7 +7980,15 @@ function buildValuationUnitsSummaryTableData() {
   // raporlarında Kira satırları zaten boş kalacağından, createValuationMarketTable'ın
   // KENDİ `landOwnership` filtresiyle TUTARLI şekilde bu sütunlar OTOMATİK
   // kalkar) — TÜM taşınmazlarda boş ("-") kalan bir sütun tamamen kaldırılır.
-  return finalizeTitleUnitsSummaryTableData(headers, rows, columnMeta);
+  //
+  // Kullanıcı takip talebi (2026-08-27): "arsa payda değerleme tablosunda
+  // alt kısımda gözüksün her zaman" — "Arsa Payda" (denominator) TÜM
+  // taşınmazlarda tesadüfen aynı olsa bile HER ZAMAN sütun olarak kalmalı
+  // (Tapu tablosundaki Blok/Kat/BB No ile AYNI ilke — bağımsız bölümün
+  // KENDİ payına ait bir değer, "ortak bağlam" değil). Boş-kaldırma
+  // kuralına HÂLÂ tabidir (tüm taşınmazlarda gerçekten boşsa yine kalkar).
+  const hoistExemptFieldKeys = new Set(["denominator"]);
+  return finalizeTitleUnitsSummaryTableData(headers, rows, columnMeta, { hoistExemptFieldKeys });
 }
 
 // Kullanıcı talebi (2026-08-21/22, ekran görüntüsüyle): "tablo yapısının

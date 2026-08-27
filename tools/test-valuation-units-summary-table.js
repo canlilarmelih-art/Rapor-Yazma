@@ -225,14 +225,17 @@ const DIFFERENTIATING_OVERRIDES = {
   // legalBuildingDepreciationRate/denominator (Arsa Birim Değeri/Yapı
   // Birim Değeri/Yıpranma Payı/Arsa Payda) İKİ taşınmazda da BİREBİR aynı
   // (gerçek ekran görüntüsündeki, ayrı binalarda GERÇEKTEN sık rastlanan
-  // bir durum) — bu 4 scalar sütun (0.0.581) tablodan kalkıp commonFields'e
-  // taşınıyor. (0.0.587'nin bu davranışı "kalır + kopyalanır"a çevirme
-  // denemesi, BEŞİNCİ/son tur "eskiye dön" talebiyle GERİ ALINDI.)
+  // bir durum) — Arsa Birim Değeri/Yapı Birim Değeri/Yıpranma Payı (0.0.581)
+  // tablodan kalkıp commonFields'e taşınıyor. "Arsa Payda" (denominator)
+  // ise kullanıcı takip talebiyle (2026-08-27: "arsa payda değerleme
+  // tablosunda alt kısımda gözüksün her zaman") artık hoistExempt — HER
+  // ZAMAN sütun olarak kalır (Tapu'nun Blok/Kat/BB No ile AYNI ilke,
+  // bağımsız bölümün KENDİ payına ait bir değer).
   assert.deepEqual(data.headers, [
     "No", "BL.", "BB No",
     "Yasal Alan", "Mevcut Alan",
     "İnş. Sev.",
-    "Arsa Payı", "Hissesine Düşen Arsa Payı", "Arsa Değeri",
+    "Arsa Payı", "Arsa Payda", "Hissesine Düşen Arsa Payı", "Arsa Değeri",
     "Yasal Eksik İmalat Tutarı", "Yasal Yapı Değeri",
     "Mevcut Eksik İmalat Tutarı", "Mevcut Yapı Değeri",
     "Yasal Şerefiye", "Mevcut Şerefiye", "Sigortaya Esas Değer",
@@ -242,13 +245,15 @@ const DIFFERENTIATING_OVERRIDES = {
     "Natamam Mevcut Durum Değeri - M2 Birim Değeri", "Natamam Mevcut Durum Değeri",
     "Yasal Kira Değeri - M2 Birim Değeri", "Yasal Kira Değeri",
     "Mevcut Kira Değeri - M2 Birim Değeri", "Mevcut Kira Değeri",
-  ], "Sütun sırası kullanıcının hedef ekran görüntüsüyle BİREBİR eşleşmeli (aynı-degerli 4 sutun HARIC).");
+  ], "Sütun sırası kullanıcının hedef ekran görüntüsüyle BİREBİR eşleşmeli (Arsa Payda HER ZAMAN sütun, diğer 3 aynı-degerli sutun HARIC).");
+  assert.ok(data.headers.includes("Arsa Payda"), "\"Arsa Payda\" HER ZAMAN (aynı olsa da) sütun olarak kalmalı.");
   const commonLabels = data.commonFields.map((field) => field.label);
-  ["Arsa Birim Değeri", "Yapı Birim Değeri", "Yıpranma Payı", "Arsa Payda"].forEach((label) => {
+  ["Arsa Birim Değeri", "Yapı Birim Değeri", "Yıpranma Payı"].forEach((label) => {
     assert.ok(commonLabels.includes(label), `"${label}" commonFields'te OLMALI, bulunan: ${commonLabels.join(", ")}`);
   });
+  assert.ok(!commonLabels.includes("Arsa Payda"), "\"Arsa Payda\" ASLA commonFields'e taşınmamalı (artik hoistExempt).");
   assert.equal(data.commonFields.find((field) => field.label === "Arsa Birim Değeri")?.value, "20000", "\"Arsa Birim Değeri\" ortak degeri dogru olmali.");
-  console.log("TAM sutun sirasi (hedef ekran goruntusu) + ayni-degerli 4 sutunun commonFields'e tasinmasi testi tamam.");
+  console.log("TAM sutun sirasi (hedef ekran goruntusu) + Arsa Payda HER ZAMAN sutun + diger 3 ayni-degerli sutunun commonFields'e tasinmasi testi tamam.");
 }
 
 // --- 2) Tekil raporda (1 taşınmaz) null döner ------------------------------

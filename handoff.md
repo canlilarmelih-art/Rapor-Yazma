@@ -1,5 +1,13 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.590 - 2026-08-27 - Değerleme tablosunda Arsa Payda artık her zaman sütun
+
+- Kullanıcı talebi: "arsa payda değerleme tablosunda alt kısımda gözüksün her zaman."
+- `buildValuationUnitsSummaryTableData()`'ya `hoistExemptFieldKeys: new Set(["denominator"])` eklendi — Tapu Özeti tablosundaki Blok/Kat/BB No ile AYNI ilke: "Arsa Payda" artık TÜM taşınmazlarda tesadüfen aynı olsa bile Ortak Bilgiler'e taşınmaz, HER ZAMAN sütun olarak kalır (yalnızca gerçekten tümü boşsa hâlâ kalkar — 0.0.451 orijinal kuralı, değişmedi). Arsa Birim Değeri/Yapı Birim Değeri/Yıpranma Payı davranışı DEĞİŞMEDİ (hâlâ aynı+doluysa Ortak Bilgiler'e taşınıyorlar).
+- Test: `tools/test-valuation-units-summary-table.js`'in "TAM sütun sırası" senaryosu güncellendi — Arsa Payda artık sütun listesinde HER ZAMAN var, commonFields'te YOK. `npm run verify` tam paket (647 test) EXIT:0.
+- `index.html`: `app.js` cache-buster `?v=20260827-3100`.
+- **Ayrıca**: kullanıcı "Arsa M2 Birim Değeri'ni herhangi bir tabda yazdığımda diğer tüm tablar da otomatik dolsun" istedi — derin bir kod incelemesinden sonra bu özelliğin (Mülkiyet: Yatay/Dikey Kat İrtifakı için) **zaten 2026-08-21'den beri mevcut ve iyi test edilmiş** olduğu doğrulandı (`isCondominiumEasementOwnershipType()` + `getTitleUnitScopedFieldKeys()`'in landUnitValue istisnası + her render'da koşulsuz çalışan `syncMultiTitleUnitOwnershipType()`, bkz. `tools/test-title-unit-switch.js` senaryo 29b/29c) — kod değişikliği YAPILMADI, kullanıcıya doğrudan açıklandı (bkz. sohbet).
+
 ## 0.0.589 - 2026-08-27 - KRİTİK DÜZELTME: TEK blokta Ana Gayrimenkul/Belgeler verisi bağımsız bölümler arasında senkronize olmuyordu
 
 - Kullanıcı ekran görüntüsüyle bildirdi ("YUNUSELİ 4 ADET MESKEN", 4 bağımsız bölüm, TEK blok "A"): "ana gayrimenkul blok bazında ancak aynı bloktaki diğer bağımsız bölümlerde boş olarak geliyor. hepsi bir olmalı bu sebeple değerleme tablosunda yapı birim değeri yıpranma payı oranları gelmiyor."
