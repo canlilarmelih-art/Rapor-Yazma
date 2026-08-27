@@ -2407,6 +2407,25 @@ function applyValuationDataToSelectedTitleUnits(targetIndices) {
 // ZAMAN taşınmaza-özgü (blok kavramı burada anlamsız — aynı bloktaki iki
 // bağımsız bölüm bile doğası gereği farklı alan/iç mekan/dekorasyon bilgisine
 // sahiptir) — KOŞULSUZ eklenir.
+// "Dekoratif Özellikler" panelinin (createUnitDecorativePanel) TÜM alan
+// anahtarları — TEK kaynak: panelin KENDİSİNİN render ettiği
+// unitWallFloorRows/unitGeneralDecorativeFields/unitBathroomFixtureFields
+// dizileri + ürettiği açıklama. getUnitSectionFieldKeys() (aşağıda) bu
+// listeyi DOĞRUDAN kullanır — elle yazılmış İKİNCİ bir kopya YOK (bu
+// projenin "iki ayrı, elle senkron tutulan liste" hata sınıfına düşmemek
+// için, bkz. AGENTS.md). Kullanıcı talebi (2026-08-27): "Dekoratif
+// Özellikler kısmına seçilenlere uygula seçeneği ekleyebilir miyiz" —
+// applyUnitDecorativeDataToSelectedTitleUnits() (aşağıda) bu listeyi
+// KENDİ, DAR kopyalama kapsamı için kullanır.
+function getUnitDecorativeFieldKeys() {
+  return [
+    ...unitWallFloorRows.flatMap((row) => [row.floorKey, row.wallKey]),
+    ...unitGeneralDecorativeFields.map((field) => field.key),
+    ...unitBathroomFixtureFields.map((field) => field.key),
+    "unitDecorativeDescription", "unitDecorativeDescriptionManual",
+  ];
+}
+
 function getUnitSectionFieldKeys() {
   const section = sections.find((item) => item.id === "unit");
   const keys = (section?.fields || [])
@@ -2420,13 +2439,10 @@ function getUnitSectionFieldKeys() {
     "unitShopFrontage", "unitShopDepth",
     // Alan/iç mekan özeti (syncUnitFloorSummaryFields, unitFloors[0]'dan türetilir)
     "unitFloor", "unitAreaReductionRate", "unitLegalTerrace", "unitCurrentTerrace", "unitTerraceReductionRate", "interiorFeatures",
-    // Dekoratif panel (applyUnitDecorativeFieldChange)
-    "unitSalonFloor", "unitSalonWall", "unitRoomFloor", "unitRoomWall", "unitHallFloor", "unitHallWall",
-    "unitKitchenFloor", "unitKitchenWall", "unitWetFloor", "unitWetWall", "unitBalconyFloor", "unitBalconyWall",
-    "unitWindows", "unitExteriorDoor", "unitInteriorDoors", "unitKitchenCabinet", "unitKitchenCounter",
-    "unitMaterialQuality", "unitBathroomFixture1", "unitBathroomFixture2", "unitBathroomFixture3",
+    // Dekoratif panel (applyUnitDecorativeFieldChange) - bkz. getUnitDecorativeFieldKeys().
+    ...getUnitDecorativeFieldKeys(),
     // Açıklama alanları
-    "unitInteriorDescription", "unitInteriorDescriptionManual", "unitDecorativeDescription", "unitDecorativeDescriptionManual",
+    "unitInteriorDescription", "unitInteriorDescriptionManual",
     // Eski/dormant fallback alanları (yalnızca unitFloors tablosu henüz
     // migrate edilmemişse getUnitFloorRows() tarafından okunur, bugünün
     // arayüzü artık yazmıyor ama tam koruma için dahil edildi)
@@ -2481,6 +2497,39 @@ function applyUnitDataToSelectedTitleUnits(targetIndices) {
     const targetRows = resolveTitleUnitUnitFloorsRowsWriteTarget(index);
     targetRows.length = 0;
     sourceUnitFloorRows.forEach((row) => targetRows.push({ ...row }));
+
+    appliedCount += 1;
+  });
+
+  return appliedCount;
+}
+
+// applyUnitDataToSelectedTitleUnits()'in (yukarıda) BİREBİR AYNI deseni —
+// TEK fark: TÜM "Bağımsız Bölüm Özellikleri" (genel/alan-iç mekan/Katlar
+// tablosu dahil) DEĞİL, yalnızca "Dekoratif Özellikler" panelinin kendi
+// alanları (getUnitDecorativeFieldKeys()) kopyalanır — ilişkili bir tablo
+// YOK (Katlar/Alanlar/İç Hacimler tablosu bu panelin kapsamı DIŞINDA,
+// dokunulmaz). Kullanıcı talebi (2026-08-27): "Dekoratif Özellikler
+// kısmına seçilenlere uygula seçeneği ekleyebilir miyiz."
+function applyUnitDecorativeDataToSelectedTitleUnits(targetIndices) {
+  if (!Array.isArray(targetIndices) || !targetIndices.length) return 0;
+
+  const keys = getUnitDecorativeFieldKeys();
+  const snapshot = {};
+  keys.forEach((key) => { snapshot[key] = state.fields[key]; });
+
+  const count = getTitleUnitCount();
+  const seen = new Set();
+  let appliedCount = 0;
+
+  targetIndices.forEach((index) => {
+    if (!Number.isInteger(index) || index < 0 || index >= count) return;
+    if (index === state.activeTitleUnitIndex) return;
+    if (seen.has(index)) return;
+    seen.add(index);
+
+    const targetFields = resolveTitleUnitWriteTarget(index);
+    keys.forEach((key) => { targetFields[key] = snapshot[key]; });
 
     appliedCount += 1;
   });
@@ -3278,6 +3327,98 @@ function openUnitCopyToSelectedModal(onDone = () => {}) {
 
   document.body.append(overlay);
   overlay.querySelector("[data-unit-copy-target]")?.focus();
+}
+
+// Kullanıcı talebi (2026-08-27): "Dekoratif Özellikler kısmına seçilenlere
+// uygula seçeneği ekleyebilir miyiz" — createUnitCopyToSelectedControl()/
+// openUnitCopyToSelectedModal()'ın (yukarıda, TÜM "Bağımsız Bölüm
+// Özellikleri" için) BİREBİR AYNI deseni, TEK fark: kapsam yalnızca
+// "Dekoratif Özellikler" paneli (applyUnitDecorativeDataToSelectedTitleUnits).
+// createUnitDecorativePanel()'in İÇİNE (tab çubuğu DEĞİL) yerleştirilir —
+// kullanıcı bu paneldeyken doğrudan erişebilsin diye.
+function createUnitDecorativeCopyToSelectedControl() {
+  const wrap = document.createElement("div");
+  wrap.className = "unit-decorative-copy-selected-wrap";
+
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "secondary-button unit-decorative-copy-selected";
+  button.textContent = "Seçili Taşınmazlara Kopyala";
+
+  const note = document.createElement("small");
+  note.className = "muted-note unit-decorative-copy-selected-note";
+
+  button.addEventListener("click", () => {
+    if (getTitleUnitCount() < 2) return;
+    openUnitDecorativeCopyToSelectedModal((appliedCount) => {
+      note.textContent = appliedCount
+        ? `${appliedCount} bağımsız bölüme kopyalandı.`
+        : "Hiçbir taşınmaz seçilmedi, kopyalama yapılmadı.";
+    });
+  });
+
+  wrap.append(button, note);
+  return wrap;
+}
+
+// openUnitCopyToSelectedModal()'ın (yukarıda) BİREBİR şablonu — yalnızca
+// başlık/açıklama metni ve çağırdığı apply fonksiyonu farklı.
+function openUnitDecorativeCopyToSelectedModal(onDone = () => {}) {
+  document.querySelector(".modal-overlay")?.remove();
+
+  const targets = getTitleUnitTabModels().filter((tab) => !tab.isActive);
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.innerHTML = `
+    <div class="modal-card modal-card-wide" role="dialog" aria-modal="true" aria-labelledby="unitDecorativeCopyToSelectedModalTitle">
+      <div class="modal-head">
+        <h3 id="unitDecorativeCopyToSelectedModalTitle">Dekoratif Özellikleri Kopyala</h3>
+        <button class="modal-close" type="button" aria-label="Kapat">×</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-lead">Aktif taşınmazın Dekoratif Özellikler bilgileri (duvar/zemin, kapı-pencere, mutfak, vitrifiye ve Dekoratif Özellikler Açıklaması) seçtiğiniz taşınmazlara kopyalanacak.</p>
+        <div class="checkbox-list">
+          ${targets.map((tab) => `
+            <label class="checkbox-row">
+              <input type="checkbox" value="${tab.index}" data-unit-decorative-copy-target>
+              <span>${escapeHtml(tab.label)}</span>
+            </label>
+          `).join("")}
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="secondary-button" type="button" data-unit-decorative-copy-select-all>Tümünü Seç</button>
+        <button class="secondary-button" type="button" data-unit-decorative-copy-clear>Seçimi Temizle</button>
+        <button class="secondary-button" type="button" data-unit-decorative-copy-cancel>Vazgeç</button>
+        <button class="primary-button" type="button" data-unit-decorative-copy-save>Seçilenlere Kopyala</button>
+      </div>
+    </div>
+  `;
+
+  const close = () => overlay.remove();
+  overlay.querySelector(".modal-close").addEventListener("click", close);
+  overlay.querySelector("[data-unit-decorative-copy-cancel]").addEventListener("click", close);
+  overlay.addEventListener("click", (event) => {
+    if (event.target === overlay) close();
+  });
+  overlay.querySelector("[data-unit-decorative-copy-select-all]").addEventListener("click", () => {
+    overlay.querySelectorAll("[data-unit-decorative-copy-target]").forEach((box) => { box.checked = true; });
+  });
+  overlay.querySelector("[data-unit-decorative-copy-clear]").addEventListener("click", () => {
+    overlay.querySelectorAll("[data-unit-decorative-copy-target]").forEach((box) => { box.checked = false; });
+  });
+  overlay.querySelector("[data-unit-decorative-copy-save]").addEventListener("click", () => {
+    const selectedIndices = [...overlay.querySelectorAll("[data-unit-decorative-copy-target]:checked")]
+      .map((box) => Number.parseInt(box.value, 10));
+    const appliedCount = applyUnitDecorativeDataToSelectedTitleUnits(selectedIndices);
+    saveState();
+    render();
+    onDone(appliedCount);
+    close();
+  });
+
+  document.body.append(overlay);
+  overlay.querySelector("[data-unit-decorative-copy-target]")?.focus();
 }
 
 // "Belgeler ve Proje"nin YENİ 2 katmanlı (Blok → Bağımsız Bölüm) tab
@@ -15366,6 +15507,13 @@ function createUnitFloorDeleteButton(index) {
 function createUnitDecorativePanel() {
   migrateUnitDecorativeFields();
   const panel = createUnitSubsection("Dekoratif Özellikler", "Duvar, zemin, kapı-pencere, mutfak, vitrifiye ve işçilik bilgileri makro mantığıyla gruplandırılır.");
+  // Kullanıcı talebi (2026-08-27): "Dekoratif Özellikler kısmına seçilenlere
+  // uygula seçeneği ekleyebilir miyiz" — yalnızca gerçekten anlamlıyken
+  // (2+ taşınmaz) gösterilir, tek taşınmazlı raporlarda gereksiz gürültü
+  // yaratmaz.
+  if (state.fields.requestType === "Çoklu Talep" && getTitleUnitCount() > 1) {
+    panel.append(createUnitDecorativeCopyToSelectedControl());
+  }
   const wrapper = document.createElement("div");
   wrapper.className = "unit-decorative-groups";
   wrapper.append(

@@ -80,6 +80,7 @@ const PER_UNIT_KEY_FUNCTIONS = [
   "getValuationCopyableFieldKeys",
   "getDocumentsPerUnitOnlyFieldKeys",
   "getUnitSectionFieldKeys",
+  "getUnitDecorativeFieldKeys",
   "getBuildingSectionFieldKeys",
   "getLandSectionFieldKeys",
   "getImarSectionFieldKeys",
@@ -93,6 +94,25 @@ for (const fnName of PER_UNIT_KEY_FUNCTIONS) {
   const braceStart = appSource.indexOf("{", idx);
   const body = extractBalanced(appSource, braceStart, "{", "}");
   for (const m of body.matchAll(/"([A-Za-z_$][\w$]*)"/g)) perUnitKeys.add(m[1]);
+}
+
+// 3b) getUnitDecorativeFieldKeys() (2026-08-27, "Dekoratif Ozellikler
+// secili tasinmazlara kopyala" ile TEK-kaynak yapildi) KENDI govdesinde
+// alan anahtarlarini LITERAL string OLARAK tasimiyor - unitWallFloorRows/
+// unitGeneralDecorativeFields/unitBathroomFixtureFields adli DIS sabit
+// dizilere (.floorKey/.wallKey/.key) REFERANS veriyor. Yukaridaki fonksiyon-
+// govdesi taramasi bu durumda hicbir sey bulamaz (migrateUnitDecorativeFields()'in
+// literal-nokta-erisimli "state.fields.unitHallWall = ..." gibi yazdigi
+// alanlar YANLISLIKLA "aciklanamamis" cikardi) - bu 3 sabit dizi AYRICA
+// taranir.
+const DECORATIVE_KEY_ARRAY_NAMES = ["unitWallFloorRows", "unitGeneralDecorativeFields", "unitBathroomFixtureFields"];
+for (const arrayName of DECORATIVE_KEY_ARRAY_NAMES) {
+  const marker = `const ${arrayName} = [`;
+  const idx = appSource.indexOf(marker);
+  assert(idx >= 0, `Sabit dizi bulunamadi: ${arrayName} (DECORATIVE_KEY_ARRAY_NAMES listesi bayatlamis olabilir).`);
+  const bracketStart = appSource.indexOf("[", idx);
+  const body = extractBalanced(appSource, bracketStart, "[", "]");
+  for (const m of body.matchAll(/(?:key|floorKey|wallKey):\s*"([A-Za-z_$][\w$]*)"/g)) perUnitKeys.add(m[1]);
 }
 
 // 4) TUM "state.fields.KEY = " (literal nokta-erisimli; "==", "===" DEGIL -

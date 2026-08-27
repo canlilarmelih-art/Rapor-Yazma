@@ -51,6 +51,26 @@ function extractFunction(name) {
   throw new Error(`Fonksiyon gövdesi kapanmadı: ${name}`);
 }
 
+function extractConstArray(name) {
+  const marker = `const ${name} = [`;
+  const start = appSource.indexOf(marker);
+  assert(start >= 0, `Sabit dizi bulunamadı: ${name}`);
+  const bracketStart = appSource.indexOf("[", start);
+  let depth = 0;
+  let index = bracketStart;
+  for (; index < appSource.length; index += 1) {
+    const char = appSource[index];
+    if (char === "[") depth += 1;
+    if (char === "]") {
+      depth -= 1;
+      if (depth === 0) break;
+    }
+  }
+  assert(depth === 0, `Sabit dizi kapanmadı: ${name}`);
+  const semicolonIndex = appSource.indexOf(";", index);
+  return appSource.slice(start, semicolonIndex + 1);
+}
+
 // GERÇEK TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS'i metinden çıkar (kopyalamak yerine).
 const sharedKeysStart = appSource.indexOf("const TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS = new Set([");
 assert(sharedKeysStart >= 0, "TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS bulunamadı.");
@@ -136,6 +156,7 @@ const functionNames = [
   // Bağımsız Bölüm/Ana Gayrimenkul scoping-gap-fix (2026-08-20) -
   // getTitleUnitScopedFieldKeys() artik bunlara da KOSULSUZ bagimli.
   "getUnitSectionFieldKeys",
+  "getUnitDecorativeFieldKeys",
   "getBuildingSectionFieldKeys",
   // landUnitValue paylasimli-deger bindirme duzeltmesi (2026-08-22) icin -
   // getTitleUnitFieldsForLabel artik bunlara bagimli.
@@ -156,6 +177,15 @@ let state = null;
 const TITLE_UNIT_SCOPED_SECTION_IDS = ["address", "title"];
 const TITLE_UNIT_SCOPED_TABLE_KEYS_BASE = ["title", "comparables"];
 ${sharedKeysSource}
+// getUnitDecorativeFieldKeys()'in bagimliligi - secenek dizilerinin ICERIGI
+// bu testin kapsami DEGIL, hafif bos-dizi stub'lariyla degistirilir.
+const unitKitchenCabinetOptions = [];
+const unitKitchenCounterOptions = [];
+const unitBathroomFixtureOptions = [];
+const unitMaterialQualityOptions = [];
+${extractConstArray("unitWallFloorRows")}
+${extractConstArray("unitGeneralDecorativeFields")}
+${extractConstArray("unitBathroomFixtureFields")}
 ${functionNames.map(extractFunction).join("\n")}
 return {
   fns: { ${functionNames.join(", ")} },

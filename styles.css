@@ -1656,6 +1656,20 @@ td .free-lookup input {
   display: none;
 }
 
+/* Dekoratif Özellikler "Seçili Taşınmazlara Kopyala" (2026-08-27) — panel
+   başlığının hemen altında, alan gruplarından ÖNCE tek satır; not boşken
+   görünmesin (yukarıdaki AYNI ilke). */
+.unit-decorative-copy-selected-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 4px 10px 10px;
+}
+
+.unit-decorative-copy-selected-note:empty {
+  display: none;
+}
+
 /* KML "tek dosya -> tüm taşınmazlara uygula" kutucuğu (2026-08-15) — aynı
    görsel dil (title-record-change-apply-all) ama upload-card içinde.
    ÖNEMLİ (2026-08-15 hotfix): "ŞU AN KML YÜKLEME BUTONU ÇALIŞMIYOR" —

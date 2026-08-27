@@ -56,6 +56,26 @@ function extractFunction(name) {
   throw new Error(`Fonksiyon gövdesi kapanmadı: ${name}`);
 }
 
+function extractConstArray(name) {
+  const marker = `const ${name} = [`;
+  const start = appSource.indexOf(marker);
+  assert(start >= 0, `Sabit dizi bulunamadı: ${name}`);
+  const bracketStart = appSource.indexOf("[", start);
+  let depth = 0;
+  let index = bracketStart;
+  for (; index < appSource.length; index += 1) {
+    const char = appSource[index];
+    if (char === "[") depth += 1;
+    if (char === "]") {
+      depth -= 1;
+      if (depth === 0) break;
+    }
+  }
+  assert(depth === 0, `Sabit dizi kapanmadı: ${name}`);
+  const semicolonIndex = appSource.indexOf(";", index);
+  return appSource.slice(start, semicolonIndex + 1);
+}
+
 const functionNames = [
   "createEmptyTitleUnit",
   "getTitleUnitCount",
@@ -63,14 +83,29 @@ const functionNames = [
   "resolveTitleUnitUnitFloorsRowsWriteTarget",
   "getUnitSectionFieldKeys",
   "applyUnitDataToSelectedTitleUnits",
+  // Dekoratif Ozellikler "Secili Tasinmazlara Kopyala" (2026-08-27).
+  "getUnitDecorativeFieldKeys",
+  "applyUnitDecorativeDataToSelectedTitleUnits",
 ];
 
+// unitGeneralDecorativeFields/unitBathroomFixtureFields KENDI icinde
+// unitKitchenCabinetOptions/vb. secenek dizilerine bagli - bu testin
+// kapsami DEGIL (yalnizca .key okunuyor), hafif bos-dizi stub'lariyla
+// degistirilir (diger test dosyalarindaki AYNI "kapsam disi agir
+// bagimlilik" ilkesi).
 const sandboxSource = `
   let state = {};
   let sections = [
     { id: "unit", fields: [{ key: "legalArea" }, { key: "currentArea" }] },
   ];
   const TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS = new Set(["transport", "nearby", "environmentDescription"]);
+  const unitKitchenCabinetOptions = [];
+  const unitKitchenCounterOptions = [];
+  const unitBathroomFixtureOptions = [];
+  const unitMaterialQualityOptions = [];
+  ${extractConstArray("unitWallFloorRows")}
+  ${extractConstArray("unitGeneralDecorativeFields")}
+  ${extractConstArray("unitBathroomFixtureFields")}
   ${functionNames.map(extractFunction).join("\n")}
   return {
     setState: (s) => { state = s; },
@@ -79,6 +114,8 @@ const sandboxSource = `
     getUnitSectionFieldKeys,
     resolveTitleUnitUnitFloorsRowsWriteTarget,
     applyUnitDataToSelectedTitleUnits,
+    getUnitDecorativeFieldKeys,
+    applyUnitDecorativeDataToSelectedTitleUnits,
   };
 `;
 // eslint-disable-next-line no-new-func
@@ -233,6 +270,119 @@ function freshState(overrides = {}) {
     "renderSection() 'unit' icin createUnitCopyToSelectedControl()'u createTitleUnitTabBar()'in extraActions'ina eklemiyor."
   );
   console.log("renderSection unit seciliye-kopyala gate kaynak-duzeyi kablolama testi tamam.");
+}
+
+// --- 8) getUnitDecorativeFieldKeys(): Dekoratif Ozellikler panelinin ------
+// TUM alanlarini (duvar/zemin + genel dekoratif + vitrifiye + aciklama)
+// icerir, "unit" bolumunun DIGER (genel/alan-ic mekan) alanlarini ICERMEZ.
+{
+  const keys = fns.getUnitDecorativeFieldKeys();
+  [
+    "unitSalonFloor", "unitSalonWall", "unitRoomFloor", "unitRoomWall", "unitHallFloor", "unitHallWall",
+    "unitKitchenFloor", "unitKitchenWall", "unitWetFloor", "unitWetWall", "unitBalconyFloor", "unitBalconyWall",
+    "unitWindows", "unitExteriorDoor", "unitInteriorDoors", "unitKitchenCabinet", "unitKitchenCounter", "unitMaterialQuality",
+    "unitBathroomFixture1", "unitBathroomFixture2", "unitBathroomFixture3",
+    "unitDecorativeDescription", "unitDecorativeDescriptionManual",
+  ].forEach((key) => {
+    assert.ok(keys.includes(key), `"${key}" getUnitDecorativeFieldKeys()'te OLMALI.`);
+  });
+  ["unitUsageStatus", "facades", "unitFloor", "unitInteriorDescription", "legalArea"].forEach((key) => {
+    assert.ok(!keys.includes(key), `"${key}" Dekoratif Ozellikler paneline AIT DEGIL, getUnitDecorativeFieldKeys()'te OLMAMALI.`);
+  });
+  // getUnitSectionFieldKeys() bu listeyi TEK kaynaktan (spread) kullanmali -
+  // ikisi arasinda drift olmamali (AGENTS.md'deki "iki ayri liste" uyarisi).
+  const sectionKeys = fns.getUnitSectionFieldKeys();
+  keys.forEach((key) => {
+    assert.ok(sectionKeys.includes(key), `getUnitSectionFieldKeys() getUnitDecorativeFieldKeys()'in TAMAMINI icermeli - "${key}" eksik.`);
+  });
+  console.log("getUnitDecorativeFieldKeys() icerik + getUnitSectionFieldKeys() ile TEK-kaynak testi tamam.");
+}
+
+// --- 9) applyUnitDecorativeDataToSelectedTitleUnits(): yalnizca Dekoratif -
+// Ozellikler alanlari kopyalanir, DIGER "unit" alanlari (facades vb.)
+// ETKILENMEZ, unitFloors tablosuna DOKUNULMAZ.
+{
+  const state = freshState({
+    fields: {
+      requestType: "Çoklu Talep",
+      unitUsageStatus: "ESKI-AKTIF", facades: "ESKI-AKTIF-CEPHE",
+      unitSalonFloor: "Seramik", unitSalonWall: "Saten Boya",
+      unitWindows: "PVC", unitKitchenCabinet: "Lake",
+      unitBathroomFixture1: "Lavabo",
+      unitDecorativeDescription: "Aktif tasinmazin dekoratif aciklamasi.", unitDecorativeDescriptionManual: "Evet",
+    },
+    tables: { unitFloors: [{ floorName: "Zemin", legalArea: "100" }] },
+    titleUnits: [
+      {
+        fields: {
+          unitUsageStatus: "HEDEF-ESKI", facades: "HEDEF-ESKI-CEPHE",
+          unitSalonFloor: "ESKI", unitWindows: "ESKI",
+        },
+        tables: { unitFloors: [{ floorName: "HEDEF-ESKI" }] },
+      },
+    ],
+    activeTitleUnitIndex: 0,
+  });
+  fns.setState(state);
+
+  const appliedCount = fns.applyUnitDecorativeDataToSelectedTitleUnits([1]);
+  assert.equal(appliedCount, 1, "Tek hedefe uygulanmali.");
+
+  const afterState = fns.getState();
+  assert.equal(afterState.titleUnits[0].fields.unitSalonFloor, "Seramik", "Dekoratif alan (unitSalonFloor) kopyalanmali.");
+  assert.equal(afterState.titleUnits[0].fields.unitSalonWall, "Saten Boya", "Dekoratif alan (unitSalonWall) kopyalanmali.");
+  assert.equal(afterState.titleUnits[0].fields.unitWindows, "PVC", "Dekoratif alan (unitWindows) kopyalanmali.");
+  assert.equal(afterState.titleUnits[0].fields.unitKitchenCabinet, "Lake", "Dekoratif alan (unitKitchenCabinet) kopyalanmali.");
+  assert.equal(afterState.titleUnits[0].fields.unitBathroomFixture1, "Lavabo", "Dekoratif alan (unitBathroomFixture1) kopyalanmali.");
+  assert.equal(afterState.titleUnits[0].fields.unitDecorativeDescription, "Aktif tasinmazin dekoratif aciklamasi.", "Uretilen aciklama da kopyalanmali.");
+  assert.equal(afterState.titleUnits[0].fields.unitDecorativeDescriptionManual, "Evet", "Manuel-gecersiz-kilma bayragi da (deger ile birlikte) kopyalanmali.");
+
+  assert.equal(afterState.titleUnits[0].fields.unitUsageStatus, "HEDEF-ESKI", "REGRESYON: Dekoratif OLMAYAN alan (unitUsageStatus) ETKILENMEMELI.");
+  assert.equal(afterState.titleUnits[0].fields.facades, "HEDEF-ESKI-CEPHE", "REGRESYON: Dekoratif OLMAYAN alan (facades) ETKILENMEMELI.");
+  assert.deepEqual(afterState.titleUnits[0].tables.unitFloors, [{ floorName: "HEDEF-ESKI" }], "REGRESYON: unitFloors tablosuna DOKUNULMAMALI (bu panelin kapsami DISINDA).");
+
+  console.log("applyUnitDecorativeDataToSelectedTitleUnits() secili-hedef + kapsam-disi korunma testi tamam.");
+}
+
+// --- 10) applyUnitDecorativeDataToSelectedTitleUnits(): aktif/kaynak ------
+// tasinmaz kendine kopyalamada etkilenmez; bos/undefined girdide 0.
+{
+  const state = freshState({
+    fields: { requestType: "Çoklu Talep", unitSalonFloor: "Seramik" },
+    titleUnits: [{ fields: { unitSalonFloor: "ESKI" }, tables: {} }],
+    activeTitleUnitIndex: 0,
+  });
+  fns.setState(state);
+
+  const appliedCount = fns.applyUnitDecorativeDataToSelectedTitleUnits([0, 1]);
+  assert.equal(appliedCount, 1, "Aktif/kaynak index (0) sayilmamali, yalnizca gercek hedef (1) sayilmali.");
+  assert.equal(fns.getState().fields.unitSalonFloor, "Seramik", "REGRESYON: Aktif/kaynak tasinmazin KENDI verisi degismemeli.");
+
+  assert.equal(fns.applyUnitDecorativeDataToSelectedTitleUnits([]), 0, "Bos dizi girdisinde 0 donmeli.");
+  assert.equal(fns.applyUnitDecorativeDataToSelectedTitleUnits(undefined), 0, "undefined girdisinde 0 donmeli.");
+
+  console.log("applyUnitDecorativeDataToSelectedTitleUnits() aktif-tasinmaz-korumasi + bos-girdi testi tamam.");
+}
+
+// --- 11) Kaynak-duzeyi kablolama: buton, modal ve createUnitDecorativePanel'e
+// ekleme dogru mu? ------------------------------------------------------
+{
+  assert.match(
+    appSource,
+    /function createUnitDecorativePanel\(\)[\s\S]*?if \(state\.fields\.requestType === "Çoklu Talep" && getTitleUnitCount\(\) > 1\) \{\s*\n\s*panel\.append\(createUnitDecorativeCopyToSelectedControl\(\)\);/,
+    "createUnitDecorativePanel() createUnitDecorativeCopyToSelectedControl()'u (2+ tasinmazken) eklemiyor."
+  );
+  assert.match(
+    appSource,
+    /createUnitDecorativeCopyToSelectedControl[\s\S]{0,600}openUnitDecorativeCopyToSelectedModal/,
+    "createUnitDecorativeCopyToSelectedControl() openUnitDecorativeCopyToSelectedModal()'u acmiyor."
+  );
+  assert.match(
+    appSource,
+    /data-unit-decorative-copy-save[\s\S]{0,300}applyUnitDecorativeDataToSelectedTitleUnits/,
+    "openUnitDecorativeCopyToSelectedModal()'in Kaydet butonu applyUnitDecorativeDataToSelectedTitleUnits()'i cagirmiyor."
+  );
+  console.log("Dekoratif Ozellikler secili-tasinmazlara-kopyala kaynak-duzeyi kablolama testi tamam.");
 }
 
 console.log("Bagimsiz Bolum secili-tasinmazlara-kopyala testleri basarili.");

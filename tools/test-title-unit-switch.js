@@ -55,6 +55,31 @@ function extractFunction(name) {
   throw new Error(`Fonksiyon gövdesi kapanmadı: ${name}`);
 }
 
+// getUnitDecorativeFieldKeys()'in bagimliligi (unitWallFloorRows/vb., "const
+// X = [...]" seklinde) - kose parantez derinligi sayilarak GERCEK eslesen
+// "]" bulunur (extractFunction'in suslu parantez sayma teknigiyle AYNI
+// ilke, bkz. tools/test-main-property-description-pluralization.js'teki
+// AYNI emsal).
+function extractConstArray(name) {
+  const marker = `const ${name} = [`;
+  const start = appSource.indexOf(marker);
+  assert(start >= 0, `Sabit dizi bulunamadı: ${name}`);
+  const bracketStart = appSource.indexOf("[", start);
+  let depth = 0;
+  let index = bracketStart;
+  for (; index < appSource.length; index += 1) {
+    const char = appSource[index];
+    if (char === "[") depth += 1;
+    if (char === "]") {
+      depth -= 1;
+      if (depth === 0) break;
+    }
+  }
+  assert(depth === 0, `Sabit dizi kapanmadı: ${name}`);
+  const semicolonIndex = appSource.indexOf(";", index);
+  return appSource.slice(start, semicolonIndex + 1);
+}
+
 const functionNames = [
   "createEmptyTitleUnit",
   "computeTitleUnitTabLabel",
@@ -127,6 +152,10 @@ const functionNames = [
   // getTitleUnitScopedFieldKeys() artik getUnitSectionFieldKeys()'e ve
   // getBuildingSectionFieldKeys()'e KOSULSUZ bagimli.
   "getUnitSectionFieldKeys",
+  // getUnitSectionFieldKeys() 0.0.579'dan itibaren getUnitDecorativeFieldKeys()'e
+  // KOSULSUZ bagimli (Dekoratif Ozellikler "Secili Tasinmazlara Kopyala"
+  // ile TEK-kaynak yapildi, bkz. tools/test-unit-copy-to-selected.js).
+  "getUnitDecorativeFieldKeys",
   "getBuildingSectionFieldKeys",
   // Degerleme ozet tablosu: TUM tasinmazlar icin otomatik hesaplama
   // (2026-08-21, devam) - computeValuationFieldsForAllTitleUnits()
@@ -235,6 +264,16 @@ let suppressValuationSideEffects = false;
 function refreshValuationComputedFields() {
   state.fields.legalValue = "HESAPLANDI-" + state.activeTitleUnitIndex;
 }
+// getUnitDecorativeFieldKeys()'in bagimliligi - secenek dizilerinin ICERIGI
+// bu testin kapsami DEGIL (yalnizca .key okunuyor), hafif bos-dizi
+// stub'lariyla degistirilir.
+const unitKitchenCabinetOptions = [];
+const unitKitchenCounterOptions = [];
+const unitBathroomFixtureOptions = [];
+const unitMaterialQualityOptions = [];
+${extractConstArray("unitWallFloorRows")}
+${extractConstArray("unitGeneralDecorativeFields")}
+${extractConstArray("unitBathroomFixtureFields")}
 ${functionNames.map(extractFunction).join("\n")}
 return {
   fns: { ${functionNames.join(", ")} },
