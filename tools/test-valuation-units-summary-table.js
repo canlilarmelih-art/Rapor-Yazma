@@ -225,15 +225,14 @@ const DIFFERENTIATING_OVERRIDES = {
   // legalBuildingDepreciationRate/denominator (Arsa Birim Değeri/Yapı
   // Birim Değeri/Yıpranma Payı/Arsa Payda) İKİ taşınmazda da BİREBİR aynı
   // (gerçek ekran görüntüsündeki, ayrı binalarda GERÇEKTEN sık rastlanan
-  // bir durum) — bu 4 scalar sütun (2026-08-27 DÖRDÜNCÜ/son tur: "sil ve
-  // taşı" davranışı TAMAMEN KALDIRILDI) artık sütun olarak KALIYOR, AYRICA
-  // commonFields'e de kopyalanıyor.
+  // bir durum) — bu 4 scalar sütun (0.0.581) tablodan kalkıp commonFields'e
+  // taşınıyor. (0.0.587'nin bu davranışı "kalır + kopyalanır"a çevirme
+  // denemesi, BEŞİNCİ/son tur "eskiye dön" talebiyle GERİ ALINDI.)
   assert.deepEqual(data.headers, [
     "No", "BL.", "BB No",
     "Yasal Alan", "Mevcut Alan",
-    "Arsa Birim Değeri", "Yapı Birim Değeri", "Yıpranma Payı",
     "İnş. Sev.",
-    "Arsa Payı", "Arsa Payda", "Hissesine Düşen Arsa Payı", "Arsa Değeri",
+    "Arsa Payı", "Hissesine Düşen Arsa Payı", "Arsa Değeri",
     "Yasal Eksik İmalat Tutarı", "Yasal Yapı Değeri",
     "Mevcut Eksik İmalat Tutarı", "Mevcut Yapı Değeri",
     "Yasal Şerefiye", "Mevcut Şerefiye", "Sigortaya Esas Değer",
@@ -243,14 +242,13 @@ const DIFFERENTIATING_OVERRIDES = {
     "Natamam Mevcut Durum Değeri - M2 Birim Değeri", "Natamam Mevcut Durum Değeri",
     "Yasal Kira Değeri - M2 Birim Değeri", "Yasal Kira Değeri",
     "Mevcut Kira Değeri - M2 Birim Değeri", "Mevcut Kira Değeri",
-  ], "Sütun sırası kullanıcının hedef ekran görüntüsüyle BİREBİR eşleşmeli (aynı-degerli 4 sutun DAHİL, artık hiçbiri kalkmıyor).");
+  ], "Sütun sırası kullanıcının hedef ekran görüntüsüyle BİREBİR eşleşmeli (aynı-degerli 4 sutun HARIC).");
   const commonLabels = data.commonFields.map((field) => field.label);
   ["Arsa Birim Değeri", "Yapı Birim Değeri", "Yıpranma Payı", "Arsa Payda"].forEach((label) => {
-    assert.ok(data.headers.includes(label), `"${label}" (aynı olsa da) sütun olarak KALMALIYDI, bulunan: ${data.headers.join(", ")}`);
-    assert.ok(commonLabels.includes(label), `"${label}" AYRICA commonFields'te OLMALI, bulunan: ${commonLabels.join(", ")}`);
+    assert.ok(commonLabels.includes(label), `"${label}" commonFields'te OLMALI, bulunan: ${commonLabels.join(", ")}`);
   });
   assert.equal(data.commonFields.find((field) => field.label === "Arsa Birim Değeri")?.value, "20000", "\"Arsa Birim Değeri\" ortak degeri dogru olmali.");
-  console.log("TAM sutun sirasi (hedef ekran goruntusu) + ayni-degerli 4 sutunun sutun olarak kalip AYRICA commonFields'e kopyalanmasi testi tamam.");
+  console.log("TAM sutun sirasi (hedef ekran goruntusu) + ayni-degerli 4 sutunun commonFields'e tasinmasi testi tamam.");
 }
 
 // --- 2) Tekil raporda (1 taşınmaz) null döner ------------------------------

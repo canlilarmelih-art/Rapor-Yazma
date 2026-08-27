@@ -216,18 +216,16 @@ function unit(fields, ownerRows) {
   assert.ok(!data.headers.includes("İl"), "\"İl\" (aynı ada/parsel) sütunu GİZLENMELİYDİ.");
   // "Diğer bölümler" HER ZAMAN var (Arsa Payı/Payda/Hissesine Düşen Arsa
   // Payı DAHİL — TÜM taşınmazlar AYNI ada/parselde olduğundan; farklı
-  // ada/parselde bu üçü kaldırılır, bkz. senaryo 2d). Blok/Kat/BB No/BB
-  // Niteliği/Malik(ler)/Hisse Payı/Edinme Sebebi/Tapu Tarihi/Yevmiye No bu
-  // fixture'da taşınmaz başına FARKLI olduğundan (bkz. aşağıdaki fixture)
-  // sütun olarak kalıyor. "Ana Taşınmaz Niteliği" TÜM taşınmazlarda aynı
-  // ("Arsa") olmasına RAĞMEN (2026-08-27 son tur: "diğer 7 tabloya da
-  // uygula ancak alt tabloda ortak olan değerler gözükmüyor" — "sil ve
-  // taşı" davranışı TAMAMEN KALDIRILDI) sütun olarak KALIYOR, AYRICA
-  // commonFields'e de kopyalanıyor — bkz. aşağıdaki assertion.
+  // ada/parselde bu üçü kaldırılır, bkz. senaryo 2d). "Ana Taşınmaz
+  // Niteliği" HER ZAMAN gösterilen sabit bir sütun (2026-08-27, BEŞİNCİ
+  // ve son tur: "sadece il ilçe mahalle mevkii pafta ada parsel ortak
+  // olsun, diğerleri ortak olmasın eskiye dön" — 0.0.585'in "ortak"
+  // yapma denemesi GERİ ALINDI, TÜM taşınmazlarda aynı ("Arsa") olsa BİLE
+  // ASLA commonFields'e taşınmaz).
   ["Sıra No", "Taşınmaz Kimlik No", "Blok", "Kat", "Bağımsız Bölüm No", "Bağımsız Bölüm Niteliği", "Ana Taşınmaz Niteliği", "Arsa Payı", "Arsa Payda", "Hissesine Düşen Arsa Payı", "Malik(ler)", "Hisse Payı", "Edinme Sebebi", "Tapu Tarihi", "Yevmiye No", "Cilt", "Sayfa"].forEach((col) => {
     assert.ok(data.headers.includes(col), `"${col}" sütunu HER ZAMAN gösterilmeliydi.`);
   });
-  assert.equal(data.commonFields.find((f) => f.label === "Ana Taşınmaz Niteliği")?.value, "Arsa", "\"Ana Taşınmaz Niteliği\" sütun olarak KALIRKEN AYRICA commonFields'te de \"Arsa\" olarak görünmeli.");
+  assert.equal(data.commonFields.find((f) => f.label === "Ana Taşınmaz Niteliği"), undefined, "\"Ana Taşınmaz Niteliği\" ASLA commonFields'e taşınmamalı (artık \"ortak\" değil).");
   // "en sola Sıra No sütunu ekle 1 den başla saymaya" — EN SOL sütun,
   // 1'den başlayan sıra numarası. "taşınmaz kimlik no sıra nodan sonra
   // gelsin" (2026-08-15) — Taşınmaz Kimlik No HEMEN ardından gelmeli
@@ -461,27 +459,18 @@ function unit(fields, ownerRows) {
   ["Blok", "Kat", "Bağımsız Bölüm No", "Arsa Payı", "Arsa Payda", "Hissesine Düşen Arsa Payı"].forEach((col) => {
     assert.ok(!data.headers.includes(col), `Bu sutun (bos veya farkli-parsel kurali geregi) KALDIRILMALIYDI: "${col}", bulunan basliklar: ${data.headers.join(", ")}`);
   });
-  ["Sıra No", "Taşınmaz Kimlik No", "Bağımsız Bölüm Niteliği", "Malik(ler)", "Edinme Sebebi", "Cilt", "Sayfa"].forEach((col) => {
+  ["Sıra No", "Taşınmaz Kimlik No", "Bağımsız Bölüm Niteliği", "Ana Taşınmaz Niteliği", "Malik(ler)", "Hisse Payı", "Edinme Sebebi", "Cilt", "Sayfa"].forEach((col) => {
     assert.ok(data.headers.includes(col), `Dolu olan "${col}" sutunu KORUNMALIYDI, bulunan basliklar: ${data.headers.join(", ")}`);
   });
-  // "Ana Taşınmaz Niteliği" ("Tarla") VE "Hisse Payı" ("1/1") HER IKI
-  // tasinmazda da BIREBIR AYNI - (2026-08-27 son tur: "sil ve tasi"
-  // davranisi TAMAMEN KALDIRILDI) sutun olarak KALIYOR, AYRICA
-  // commonFields'e de kopyalaniyor.
-  assert.ok(data.headers.includes("Ana Taşınmaz Niteliği"), "\"Ana Taşınmaz Niteliği\" (aynı olsa da) sütun olarak KALMALIYDI.");
-  assert.ok(data.headers.includes("Hisse Payı"), "\"Hisse Payı\" (aynı olsa da) sütun olarak KALMALIYDI.");
-  assert.equal(data.commonFields.find((f) => f.label === "Ana Taşınmaz Niteliği")?.value, "Tarla", "\"Ana Taşınmaz Niteliği\" AYRICA commonFields'te \"Tarla\" olarak görünmeli.");
-  assert.equal(data.commonFields.find((f) => f.label === "Hisse Payı")?.value, "1/1", "\"Hisse Payı\" AYRICA commonFields'te \"1/1\" olarak görünmeli.");
-  // Cilt (registryVolume, "7") HER IKI tasinmazda da ayni - ama hoistExempt
-  // (Blok/Kat/BB No gibi bagimsiz-boluma-ozgu bir kimlik sutunu) oldugundan
-  // sutun olarak KALIR (yukaridaki "korunmalı" listesinde de var); YENI
-  // (2026-08-27, ucuncu takip talebi: "bagimsiz bolumler ile ilgili
-  // bolumler ortak olsa dahi ... hem ortak bolumde hem de alt kisimda
-  // gozuksun") - AYRICA commonFields'e de bir KOPYASI eklenir (sutun
-  // KALKMADAN, "hem ustte hem altta" gorunur). Sayfa ("20"/"21") ise
-  // FARKLI oldugundan commonFields'e eklenmez.
-  assert.equal(data.commonFields.find((f) => f.label === "Cilt")?.value, "7", "\"Cilt\" (ayni+dolu, hoistExempt) sutun KALIRKEN AYRICA commonFields'e de KOPYALANMALIYDI.");
-  assert.equal(data.commonFields.find((f) => f.label === "Sayfa"), undefined, "\"Sayfa\" farkli oldugundan commonFields'e eklenmemeliydi.");
+  // "Ana Taşınmaz Niteliği" ("Tarla"), "Hisse Payı" ("1/1") VE Cilt ("7")
+  // HER IKI tasinmazda da BIREBIR AYNI olsa da (2026-08-27, BESINCI/son
+  // tur: "sadece il ilce mahalle mevkii pafta ada parsel ortak olsun,
+  // digerleri ortak olmasin eskiye don") HICBIRI commonFields'e
+  // tasinmaz - HER ZAMAN normal sutun olarak kalirlar. Sayfa ("20"/"21")
+  // zaten FARKLI oldugundan da eklenmez.
+  ["Ana Taşınmaz Niteliği", "Hisse Payı", "Cilt", "Sayfa"].forEach((label) => {
+    assert.equal(data.commonFields.find((f) => f.label === label), undefined, `"${label}" ASLA commonFields'e tasinmamali (artik "ortak" degil).`);
+  });
   // "Parsel" farkli (12 vs 13) oldugundan paylasimli sutun olarak kalmali.
   assert.ok(data.headers.includes("Parsel"), "\"Parsel\" (farkli olan paylasimli alan) sutunu kalmali.");
   assert.equal(data.sharedColumnCount, 1, `sharedColumnCount filtreden SONRA da dogru sayilmali (yalnizca Parsel), bulunan: ${data.sharedColumnCount}`);
@@ -760,13 +749,14 @@ function unit(fields, ownerRows) {
 }
 
 // --- Eski Ada/Eski Parsel (2026-08-27, kullanici talebi: "TAPU BOLUMUNDE ---
-// IL ILCE MAHALLE MEVKII PAFTA ESKI ADA ESKI PARSEL BOLUMLERINI
-// EKLEYELIM") - oldBlockNo/oldParcelNo TITLE_UNITS_TABLE_SHARED_FIELD_DEFS'e
-// eklendi (Tapu bolumunde ZATEN var olan form alanlari, tabloya hic
-// yansimiyordu). Diger 5 paylasimli alanla (Il/Ilce/Mahalle/Mevkii/Pafta)
-// AYNI genel kural: farkliysa normal sutun, TUM tasinmazlarda ayni VE
-// doluysa "Ortak Bilgiler"e tasinir - Ada/Parsel'in ozel zorla-gizleme
-// kuralina (HIDE_WHEN_SAME_ADA_PARSEL_KEYS) DAHIL EDILMEDI.
+// IL ILCE MAHALLE MEVKII PAFTA ESKI ADA ESKI PARSEL BOLUMLERINI EKLEYELIM")
+// - oldBlockNo/oldParcelNo tabloya eklendi (Tapu bolumunde ZATEN var olan
+// form alanlari, tabloya hic yansimiyordu). BESINCI/SON tur (2026-08-27):
+// "sadece il ilce mahalle mevkii pafta, ada parsel ortak olsun. digerleri
+// ortak olmasin eskiye don" - kullanici Eski Ada/Eski Parsel'i bu listeye
+// DAHIL ETMEDI, bu yuzden artik Blok/Kat/BB No gibi HER ZAMAN normal
+// sutun (asla "ortak"a tasinmayan) oldular - ne aynı olsalar bile
+// commonFields'e tasinirlar.
 {
   // 1) Farkli "Eski Ada"/"Eski Parsel" -> normal sutun olarak kalir.
   fns.setState({
@@ -787,11 +777,9 @@ function unit(fields, ownerRows) {
   assert.equal(dataDiff.columnMeta[oldBlockIdx].fieldKey, "oldBlockNo", "Eski Ada -> oldBlockNo eslesmeli.");
   assert.equal(dataDiff.columnMeta[oldParcelIdx].fieldKey, "oldParcelNo", "Eski Parsel -> oldParcelNo eslesmeli.");
 
-  // 2) Ayni (dolu) "Eski Ada"/"Eski Parsel" -> sutun olarak KALIR (2026-08-27
-  // son tur: "sil ve tasi" davranisi TAMAMEN KALDIRILDI) AYRICA
-  // commonFields'e de kopyalanir (Ada/Parsel BILEREK farkli tutuldu ki
-  // zorla-gizleme kurali devreye girmesin, yalnizca genel "kalir +
-  // kopyalanir" kurali test edilsin).
+  // 2) Ayni (dolu) "Eski Ada"/"Eski Parsel" -> ARTIK sutun olarak KALIR,
+  // commonFields'e HICBIR ZAMAN tasinmaz (Ada/Parsel BILEREK farkli
+  // tutuldu ki zorla-gizleme kurali devreye girmesin).
   fns.setState({
     activeTitleUnitIndex: 0,
     fields: { titlePropertyId: "1", blockNo: "500", parcelNo: "10", oldBlockNo: "12", oldParcelNo: "3" },
@@ -801,13 +789,12 @@ function unit(fields, ownerRows) {
     ],
   });
   const dataSame = fns.buildTitleUnitsSummaryTableData();
-  assert.ok(dataSame.headers.includes("Eski Ada"), "\"Eski Ada\" (aynı olsa da) sütun olarak KALMALI.");
-  assert.ok(dataSame.headers.includes("Eski Parsel"), "\"Eski Parsel\" (aynı olsa da) sütun olarak KALMALI.");
+  assert.ok(dataSame.headers.includes("Eski Ada"), "\"Eski Ada\" TUM tasinmazlarda ayni olsa bile sutun olarak KALMALI.");
+  assert.ok(dataSame.headers.includes("Eski Parsel"), "\"Eski Parsel\" TUM tasinmazlarda ayni olsa bile sutun olarak KALMALI.");
   const commonLabels = dataSame.commonFields.map((field) => field.label);
-  assert.ok(commonLabels.includes("Eski Ada"), "\"Eski Ada\" commonFields'te OLMALI.");
-  assert.ok(commonLabels.includes("Eski Parsel"), "\"Eski Parsel\" commonFields'te OLMALI.");
-  assert.equal(dataSame.commonFields.find((f) => f.label === "Eski Ada")?.value, "12", "\"Eski Ada\" ortak degeri dogru olmali.");
-  console.log("Eski Ada/Eski Parsel (TITLE_UNITS_TABLE_SHARED_FIELD_DEFS'e eklendi) testi tamam.");
+  assert.ok(!commonLabels.includes("Eski Ada"), "\"Eski Ada\" ASLA commonFields'e tasinmamali (artik \"ortak\" degil).");
+  assert.ok(!commonLabels.includes("Eski Parsel"), "\"Eski Parsel\" ASLA commonFields'e tasinmamali (artik \"ortak\" degil).");
+  console.log("Eski Ada/Eski Parsel (artik HER ZAMAN normal sutun, asla ortak olmaz) testi tamam.");
 }
 
 console.log("Tasinmazlar tapu ozeti tablosu testleri basarili.");

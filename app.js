@@ -21336,54 +21336,39 @@ function joinTitleUnitOwnerColumn(ownerRows, pick) {
 // taşınmazda veri yoksa sütunu kaldır" kuralı ARTIK TEK yerden, YENİ bir
 // ikinci adımla BİRLİKTE.
 //
-// MİMARİ (2026-08-27, DÖRDÜNCÜ ve SON tur): kullanıcı geri bildirim
-// döngüsü şöyle işledi — (1) "TÜM taşınmazlarda aynı sütun üste taşınsın"
-// (0.0.581, "sil ve taşı" — sütun tablodan KALKARDI), (2) "malik/hisse
-// payı/ana taşınmaz niteliği de böyle olsun" (0.0.585, aynı "sil ve taşı"
-// davranışını owner sütunlarına + Ana Taşınmaz Niteliği'ne genişletti),
-// (3) "bağımsız bölümle ilgili sütunlar hem üstte hem altta gözüksün"
-// (0.0.586, YALNIZCA hoistExemptFieldKeys için AYRI bir "kalır +
-// kopyalanır" seçeneği eklendi), (4) BU TUR: "diğer 7 tabloya da aynı
-// mantığı uygula ancak alt tabloda ortak olan değerler gözükmüyor" —
-// kullanıcı ASLINDA TÜM sütunların (yalnızca bağımsız-bölüm kimlik
-// sütunlarının DEĞİL) "kalır + kopyalanır" davranışına tabi olmasını
-// istiyor. SONUÇ, İKİ AYRI durumu KASITLI olarak FARKLI ele alır:
-// (a) TÜM taşınmazlarda birebir AYNI VE DOLU bir "scalar"/"owner" sütun
-//     ARTIK HİÇBİR ZAMAN tablodan kalkmıyor — sütun KALIR VE AYRICA
-//     "Ortak Bilgiler"e bir KOPYASI eklenir ("kalır + kopyalanır",
-//     ÖNCEKİ "sil ve taşı" davranışının YERİNE geçti).
-// (b) TÜM taşınmazlarda birebir AYNI VE BOŞ olan bir "genel scalar" sütun
-//     (0.0.584'ün "boş olanları da göster" kuralı) — bunun İÇİN
-//     gösterilecek GERÇEK bir değer OLMADIĞINDAN, ORİJİNAL 0.0.584
-//     tasarımı KORUNUYOR: sütun tablodan KALKAR (satır satır N kez
-//     tekrarlanan anlamsız bir "-" sütunu yerine), "Ortak Bilgiler"de TEK
-//     bir "-" olarak gösterilir ("sil ve taşı", YALNIZCA bu dar duruma
-//     özel — (a)'dan BİLİNÇLİ OLARAK FARKLI).
-// Bu, 8 builder'ın TAMAMINI OTOMATİK olarak etkiler (hepsi bu fonksiyonu
-// paylaşıyor) — ayrı bir "diğer 7 tabloya uygula" değişikliği GEREKMEDİ.
-//
-// `kind: "scalar"` VE `kind: "owner"` sütunlar ortak-değer adayı olabilir;
-// yalnızca "seq" (Sıra No) ve "computed"/"readonly" (hesaplanan/tıklanamaz)
-// sütunlar hiçbir zaman commonFields'e KOPYALANMAZ/TAŞINMAZ.
-//
-// Sütunun TABLODAN TAMAMEN KALKMASI iki YOLLA olabilir: (b)'deki "aynı+boş"
-// durumu (yukarıda) VEYA "hiçbir taşınmazda GERÇEK veri yok" durumu
-// (0.0.451'in ORİJİNAL kuralı, "aynı değer" kuralından TAMAMEN BAĞIMSIZ) —
-// bu ikincisinde iki istisna seçeneği (options, opsiyonel, BİRBİRİNDEN
-// BAĞIMSIZ) geçerlidir:
-// - `alwaysKeepFieldKeys` (Set) — boş olsa BİLE sütun olarak kalmaya
-//   devam eder (Adres Özeti'nin "aynı ada/parselde bu alanlar boş bile
-//   olsa sütun olarak gözükmeli" istisnası,
-//   ADDRESS_UNITS_TABLE_ALWAYS_VISIBLE_WHEN_SAME_ADA_PARSEL_KEYS, 2026-08-22).
-//   Boş+aynıyken commonFields'e "-" KOPYALANMAZ (anlamsız tekrar olurdu),
-//   dolu+aynıyken NORMAL şekilde (a)'ya girer (kalır + kopyalanır).
-// - `hoistExemptFieldKeys` (Set) — TÜM taşınmazlarda boşsa YİNE DE
-//   KALDIRILIR (0.0.584'ün "boş olanları da göster" genel-scalar kuralına
-//   GİRMEZ) — Tapu'nun Tarla raporunda Kat/Bağımsız Bölüm No'nun boşken
-//   hâlâ tamamen kalkması gibi ("bu alanın burada karşılığı yok" anlamı
-//   taşıyan sütunlar). Dolu+aynıyken bu istisnadan ETKİLENMEZ, normal
-//   şekilde (a)'ya girer (Tapu'nun Blok/Kat/BB No/Ana Taşınmaz Niteliği
-//   örnekleri).
+// GERİ ALMA (2026-08-27, BEŞİNCİ ve SON tur): kullanıcı geri bildirim
+// döngüsü (0.0.581→0.0.585→0.0.586→0.0.587) bu fonksiyonun kapsamını
+// giderek genişletmişti (owner sütunları, hoistExempt sütunları, TÜM
+// sütunlar dahil edilene kadar) — ama SON test sonrası kullanıcı net bir
+// şekilde geri adım attı: "düzgün çalışmıyor sadece il ilçe mahalle
+// mevkii pafta, ada parsel ortak olsun. diğerleri ortak olmasın eskiye
+// dön." Bu yüzden 0.0.585/586/587'nin TÜM genişletmeleri GERİ ALINDI —
+// fonksiyon ARTIK BİREBİR 0.0.584'teki (owner hoisting'e girmeden önceki)
+// hâline döndü: YALNIZCA `kind: "scalar"` sütunlar ortak-değer adayı
+// olabilir; "owner" (Malik(ler)/Hisse Payı/vb.) HİÇBİR ZAMAN commonFields'e
+// girmez. Her builder, "ortak olabilir" alanları (Tapu'da artık SADECE
+// İl/İlçe/Mahalle/Mevkii/Pafta/Ada/Parsel — Eski Ada/Eski Parsel/
+// Yüzölçümü/Ana Taşınmaz Niteliği DAHİL değil) `hoistExemptFieldKeys`
+// DIŞINDA bırakarak KENDİSİ seçer (bkz. buildTitleUnitsSummaryTableData).
+// TÜM taşınmazlarda birebir aynı olan böyle bir sütun (boş DAHİL, 0.0.584'ün
+// "boş olanları da göster" kuralı) satır satır TEKRARLANMAK yerine
+// `commonFields`e taşınır (SİL VE TAŞI — sütun tablodan KALKAR); çağıran
+// taraf (buildTitleUnitsSummaryTableHtmlEditable) bunları tablonun
+// ÜSTÜNDE tek bir "Ortak Bilgiler" satırında gösterir. İki AYRI istisna
+// seçeneği var (options, opsiyonel), KASITLI olarak BİRBİRİNDEN BAĞIMSIZ
+// (bir sütun ikisine de, yalnızca birine, ya da hiçbirine tabi olabilir):
+// - `alwaysKeepFieldKeys` (Set) — YALNIZCA boş-kaldırma kuralından muaf
+//   tutar (Adres Özeti'nin "aynı ada/parselde bu alanlar boş bile olsa
+//   sütun olarak gözükmeli" istisnası, ADDRESS_UNITS_TABLE_ALWAYS_VISIBLE_WHEN_SAME_ADA_PARSEL_KEYS,
+//   2026-08-22). Hoisting'den MUAF DEĞİLDİR — gerçekten dolu VE TÜM
+//   taşınmazlarda birebir aynıysa yine üste taşınır.
+// - `hoistExemptFieldKeys` (Set) — YALNIZCA hoisting'den muaf tutar (Tapu'da
+//   artık İl/İlçe/Mahalle/Mevkii/Pafta/Ada/Parsel DIŞINDAKİ HER ŞEY —
+//   Eski Ada/Eski Parsel/Yüzölçümü/Blok/Kat/BB No/BB Niteliği/Ana Taşınmaz
+//   Niteliği/Arsa Payı/Payda/Cilt/Sayfa. Bu sütunlar tesadüfen aynı metne
+//   sahip olsalar BİLE ortak bilgiye taşınıp kaybolmaz — HER ZAMAN normal
+//   sütun olarak kalır). Boş-kaldırma kuralına HÂLÂ tabidir (boşsa yine
+//   kaldırılır — davranış DEĞİŞMEDİ).
 function finalizeTitleUnitsSummaryTableData(headers, rows, columnMeta, options = {}) {
   const alwaysKeepFieldKeys = options.alwaysKeepFieldKeys || null;
   const hoistExemptFieldKeys = options.hoistExemptFieldKeys || null;
@@ -21393,14 +21378,14 @@ function finalizeTitleUnitsSummaryTableData(headers, rows, columnMeta, options =
   // giriş gibi" — "genel" bir scalar sütun (ne alwaysKeepFieldKeys ne
   // hoistExemptFieldKeys — Mevkii/Giriş gibi paylaşımlı alanların BÜYÜK
   // ÇOĞUNLUĞU) artık TÜM taşınmazlarda BOŞ olduğunda da (0.0.451'in eski
-  // "sessizce tamamen kaldır" kuralı GİBİ değil) kaldırılmaz — TÜM
-  // taşınmazlarda AYNI (boş DAHİL) değer, "Ortak Bilgiler"de TEK bir "-"
-  // olarak da AYRICA gösterilir (satır satır N kez tekrarlanan "-" yerine
-  // DEĞİL, ONUNLA BİRLİKTE — sütun kendisi de KALIR). "owner"/"computed"/
-  // "readonly" sütunlar ile alwaysKeepFieldKeys/hoistExemptFieldKeys
-  // işaretli sütunler BU YENİ davranışa GİRMEZ — eskisi gibi ya HER ZAMAN
-  // kalır (alwaysKeep) ya boşsa KALDIRILIR (hoistExempt/diğerleri,
-  // davranış DEĞİŞMEDİ).
+  // "sessizce tamamen kaldır" kuralı GİBİ değil) kaldırılmaz — "TÜM
+  // taşınmazlarda AYNI" hoisting kuralına, boş bir değer DE "aynı" sayılarak
+  // girer ve "Ortak Bilgiler"de TEK bir "-" olarak gösterilir (satır satır
+  // N kez tekrarlanan "-" yerine, hiç görünmemek yerine). "owner"/"computed"/
+  // "readonly" (hesaplanan/popover) sütunlar ile alwaysKeepFieldKeys/
+  // hoistExemptFieldKeys işaretli sütunler BU YENİ davranışa GİRMEZ —
+  // eskisi gibi ya HER ZAMAN kalır (alwaysKeep) ya boşsa kaldırılır
+  // (diğerleri, davranış DEĞİŞMEDİ).
   const isGenericScalar = (meta) => meta?.kind === "scalar" && !isAlwaysKept(meta) && !isHoistExempt(meta);
 
   const columnHasData = headers.map((_, columnIndex) => {
@@ -21416,23 +21401,11 @@ function finalizeTitleUnitsSummaryTableData(headers, rows, columnMeta, options =
   const dataRows = rows.map((row) => survivingIndices.map((index) => row[index]));
   const dataColumnMeta = survivingIndices.map((index) => columnMeta[index]);
 
-  // İKİ AYRI durum var, KASITLI olarak FARKLI davranıyor:
-  // (a) TÜM taşınmazlarda BİREBİR AYNI VE DOLU — sütun ARTIK HİÇBİR ZAMAN
-  //     tablodan kalkmıyor (2026-08-27 dördüncü/son tur), AYRICA
-  //     "Ortak Bilgiler"e de bir KOPYASI ekleniyor ("kalır + kopyalanır").
-  // (b) TÜM taşınmazlarda BİREBİR AYNI VE BOŞ (yalnızca "genel scalar"
-  //     sütunlarda mümkün — columnHasData adımı hoistExempt/diğer
-  //     sütunları zaten daha önce elemiş olurdu) — bu durumda 0.0.584'ün
-  //     ORİJİNAL tasarımı KORUNUYOR: sütun tablodan KALKAR (satır satır N
-  //     kez tekrarlanan anlamsız bir "-" sütunu yerine), "Ortak Bilgiler"de
-  //     TEK bir "-" olarak gösterilir ("sil ve taşı" — YALNIZCA bu dar,
-  //     "gösterilecek gerçek bir değer YOK" durumu için, (a)'dan FARKLI).
   const commonFields = [];
   const keptIndices = [];
   dataHeaders.forEach((label, columnIndex) => {
     const meta = dataColumnMeta[columnIndex];
-    const isCopyCandidateKind = meta && (meta.kind === "scalar" || meta.kind === "owner");
-    if (columnIndex === 0 || !isCopyCandidateKind || dataRows.length < 2) {
+    if (columnIndex === 0 || !meta || meta.kind !== "scalar" || dataRows.length < 2 || isHoistExempt(meta)) {
       keptIndices.push(columnIndex);
       return;
     }
@@ -21441,30 +21414,16 @@ function finalizeTitleUnitsSummaryTableData(headers, rows, columnMeta, options =
       return trimmed === "-" ? "" : trimmed;
     });
     const allSame = values.every((value) => value === values[0]);
-    if (!allSame) {
+    // alwaysKeepFieldKeys sütunları hoisting'e HÂLÂ tabidir (bkz.
+    // yukarıdaki fonksiyon yorumu) — ama YALNIZCA dolu+aynıysa; boş+aynı
+    // ise (zaten boş-kaldırmadan muaf kaldıkları için) normal (boş) sütun
+    // olarak KALMAYA devam eder, "-" olarak commonFields'e TAŞINMAZ.
+    const eligible = allSame && (values[0] !== "" || !isAlwaysKept(meta));
+    if (eligible) {
+      commonFields.push({ label, value: values[0] || "-", fieldKey: meta.fieldKey });
+    } else {
       keptIndices.push(columnIndex);
-      return;
     }
-    if (values[0] === "") {
-      // Boş+aynı: alwaysKeepFieldKeys sütunları normal (boş) sütun olarak
-      // KALMAYA devam eder, "-" olarak commonFields'e KOPYALANMAZ (anlamsız
-      // tekrar olurdu) — davranış DEĞİŞMEDİ. Diğerleri (genel scalar —
-      // buraya ULAŞABİLEN TEK grup, çünkü hoistExempt/owner boşsa zaten
-      // columnHasData'da elenmiş olurdu) (b) durumuna göre KALKAR.
-      if (isAlwaysKept(meta)) {
-        keptIndices.push(columnIndex);
-        return;
-      }
-      commonFields.push({ label, value: "-", fieldKey: meta.fieldKey || meta.ownerColumn });
-      return;
-    }
-    // Dolu+aynı: (a) durumu — sütun KALIR VE AYRICA kopyalanır.
-    keptIndices.push(columnIndex);
-    // "owner" sütunlarının fieldKey'i YOK (bkz. columnMeta tanımı,
-    // { kind: "owner", ownerColumn: "c0" } gibi) — commonFields salt
-    // gösterim amaçlı (label/value) olduğundan bu sorun değil, ama
-    // ileride bir tanımlayıcı gerekirse diye ownerColumn'a düşülür.
-    commonFields.push({ label, value: values[0], fieldKey: meta.fieldKey || meta.ownerColumn });
   });
 
   return {
@@ -21619,41 +21578,33 @@ function buildTitleUnitsSummaryTableData() {
   ];
 
   // "eğer sistemde hücrede veri yoksa ... tabloda bu sütunlar gözükmemeli"
-  // (ör. tarla raporunda Kat/Bağımsız Bölüm No boş) — bu kural (0.0.451)
-  // hâlâ geçerli, TITLE_UNITS_TABLE_SHARED_FIELD_DEFS DIŞINDAKİ sütunlarda
-  // (Taşınmaz Kimlik No/Blok/Kat/BB No/BB Niteliği/Arsa Payı/Payda/Cilt/
-  // Sayfa — bağımsız bölümün KENDİ kimlik/veri sütunları) `hoistExemptFieldKeys`
-  // ile işaretlenir (bkz. finalizeTitleUnitsSummaryTableData yorumu — 2026-08-27
-  // üçüncü turdan sonra bu Set'in TEK işlevi budur; "aynı-ise-gizle/taşı"
-  // kuralı ARTIK YOK, HİÇBİR sütun aynı değer yüzünden tablodan kalkmıyor).
-  const sharedFieldKeySet = new Set(sharedFieldsToShow.map((def) => def.key));
+  // (ör. tarla raporunda Kat/Bağımsız Bölüm No boş) VE "TÜM taşınmazlarda
+  // birebir aynıysa üstte ortak bilgi olarak göster" (0.0.581) — ikisi de
+  // artık TEK, paylaşımlı fonksiyonda (bkz. yukarıda).
+  //
+  // KAPSAM DARALTMA (2026-08-27, BEŞİNCİ ve SON tur — geri bildirim
+  // döngüsü 0.0.581→0.0.585→0.0.586→0.0.587 giderek GENİŞLEMİŞTİ, son
+  // testte kullanıcı NET bir kapsam belirledi): "düzgün çalışmıyor sadece
+  // il ilçe mahalle mevkii pafta, ada parsel ortak olsun. diğerleri ortak
+  // olmasın eskiye dön." "Ortak" (hoisting'e — Ortak Bilgiler'e taşınmaya
+  // — aday) sütunlar artık TITLE_UNITS_TABLE_SHARED_FIELD_DEFS'in (10
+  // alan) TAMAMI DEĞİL, YALNIZCA bu 7 alan: İl/İlçe/Mahalle/Mevkii/Pafta/
+  // Ada/Parsel. Eski Ada/Eski Parsel (0.0.582) VE Yüzölçümü (ORİJİNAL
+  // 0.0.581'den beri sharedFieldsToShow'daydı) BİLEREK ÇIKARILDI —
+  // kullanıcı bunları listesine DAHİL ETMEDİ; artık Blok/Kat/BB No gibi
+  // HER ZAMAN normal sütun olarak kalan (hiçbir zaman "ortak"a taşınmayan)
+  // alanlar oldular. "Ana Taşınmaz Niteliği"/Malik(ler)/Hisse Payı/vb.
+  // (0.0.585'te "ortak" yapılmıştı) de AYNI şekilde GERİ ALINDI.
+  const COMMON_ELIGIBLE_SHARED_FIELD_KEYS = new Set(["titleCity", "titleDistrict", "titleNeighborhood", "locationName", "sheetNo", "blockNo", "parcelNo"]);
+  const sharedFieldKeySet = new Set(sharedFieldsToShow.filter((def) => COMMON_ELIGIBLE_SHARED_FIELD_KEYS.has(def.key)).map((def) => def.key));
   const hoistExemptFieldKeys = new Set(
     columnMeta.filter((meta) => meta.kind === "scalar" && !sharedFieldKeySet.has(meta.fieldKey)).map((meta) => meta.fieldKey)
   );
-  // "Ana Taşınmaz Niteliği" (mainPropertyQuality) BİLEREK bu Set'te DEĞİL
-  // — o da diğer generic scalar sütunlar gibi, tümü boşken bile sütun
-  // olarak kalır ve "-" olarak da Ortak Bilgiler'e kopyalanır (2026-08-27
-  // takip talebi: "ana gayrimenkul ... bunlar ortak").
-  //
-  // Kullanıcı geri bildirim döngüsü (2026-08-27, aynı gün, ÜÇ tur):
-  // (1) "malik hisse payı ana gayrimenkul de ortak olsun" (0.0.585),
-  // (2) "bağımsız bölümle ilgili sütunlar hem üstte hem altta gözüksün"
-  // (0.0.586, o turda YALNIZCA hoistExemptFieldKeys için özel bir "kalır +
-  // kopyalanır" seçeneği eklenmişti), (3) BU TUR: "diğer 7 tabloya da
-  // uygula ancak alt tabloda ortak olan değerler gözükmüyor" — sonuç:
-  // "sil ve taşı" (hoisting) davranışı finalizeTitleUnitsSummaryTableData'dan
-  // TAMAMEN KALDIRILDI, artık HİÇBİR sütun (Malik(ler)/Hisse Payı/Ana
-  // Taşınmaz Niteliği/İl/İlçe/Mahalle/vb. DAHİL) "aynı değer" yüzünden
-  // tablodan SİLİNMİYOR — yalnızca uygun olanların Ortak Bilgiler'e bir
-  // KOPYASI ekleniyor. Bu, TÜM 8 tabloyu (hepsi bu fonksiyonu paylaştığı
-  // için) OTOMATİK etkiler.
   const result = finalizeTitleUnitsSummaryTableData(headers, rows, columnMeta, { hoistExemptFieldKeys });
-  // sharedColumnCount: sharedFieldKeySet'ten GERÇEKTEN FARKLI (yani
-  // commonFields'e KOPYALANMAMIŞ — aynı olsaydı zaten kopyalanırdı) kalan
-  // sayı. Sütunun kendisi ARTIK hiçbir zaman tablodan kalkmıyor (bkz.
-  // yukarıdaki yorum), ama bu sayı hâlâ "kaç tanesi GERÇEKTEN farklı"
-  // sorusuna eskisiyle AYNI cevabı veriyor (dış davranış/testler DEĞİŞMEDİ).
-  const sharedColumnCount = sharedFieldsToShow.filter((def) => !result.commonFields.some((field) => field.fieldKey === def.key)).length;
+  // sharedColumnCount: sharedFieldKeySet'ten hâlâ TABLODA (commonFields'e
+  // TAŞINMAMIŞ, gerçekten sütun olarak farklı) kalan sayı — "aynı ise
+  // gizle" filtresinden SONRAKİ hayatta kalan sayı.
+  const sharedColumnCount = result.columnMeta.filter((meta) => meta?.fieldKey && sharedFieldKeySet.has(meta.fieldKey)).length;
 
   // KRİTİK DÜZELTME (2026-08-27, kullanıcı bulgusu: "pafta ortak olmasına
   // rağmen gözükmüyor") — HIDE_WHEN_SAME_ADA_PARSEL_KEYS (İl/İlçe/Mahalle/
@@ -22735,17 +22686,17 @@ function buildAddressUnitsSummaryTableData() {
 
   // bkz. ADDRESS_UNITS_TABLE_ALWAYS_VISIBLE_WHEN_SAME_ADA_PARSEL_KEYS yorumu
   // — yalnızca AYNI ada/parselde bu alanlar BOŞ olsa BİLE HER ZAMAN sütun
-  // olarak kalır (2026-08-22'nin ESKİ kuralı, DEĞİŞMEDİ). hoistExemptFieldKeys
-  // (UAVT/Blok/Giriş/Dış Kapı No/Kat/İç Kapı No — Tapu'nun Blok/Kat/BB No
-  // ile AYNI ilke, taşınmaza-özgü KİMLİK sütunları) artık YALNIZCA "tümü
-  // boşsa kaldır" kuralını etkiler (2026-08-27 üçüncü tur: "sil ve taşı"
-  // davranışı finalizeTitleUnitsSummaryTableData'dan TAMAMEN KALDIRILDI —
-  // bkz. o fonksiyonun yorumu). Bu sütunlar tesadüfen TÜM taşınmazlarda
-  // aynı VE doluysa artık ARTIK sütun olarak KALIRKEN AYRICA "Ortak
-  // Bilgiler"e de bir KOPYASI eklenir (Tapu'nun Blok/Kat/BB No'suyla
-  // BİREBİR AYNI davranış) — eskiden (2026-08-22'den bu yana) bu sütunlar
-  // hoisting'den TAMAMEN muaf olduğu için commonFields'e HİÇ girmiyorlardı,
-  // artık girer.
+  // olarak kalır (2026-08-22'nin ESKİ kuralı, DEĞİŞMEDİ). hoisting ("TÜM
+  // taşınmazlarda aynı" → üste ortak bilgi) YALNIZCA ADDRESS_UNITS_TABLE_SHARED_FIELD_DEFS
+  // sütunlarına (İl/İlçe/İdari Mahalle/Mevkii/Ada/Parsel/Sokak-Cadde/Site-
+  // Apartman) uygulanır — UAVT/Blok/Giriş/Dış Kapı No/Kat/İç Kapı No gibi
+  // taşınmaza-özgü KİMLİK sütunları (Tapu tablosundaki Blok/Kat/BB No/
+  // Niteliği ile AYNI ilke) tesadüfen aynı metne sahip olsalar BİLE ortak
+  // bilgiye taşınıp kaybolmaz — bu sütunlar HANGİ taşınmazın hangisi
+  // olduğunu ayırt eden kimlik bilgisidir, "ortak bağlam" (İl/İlçe gibi)
+  // değildir. (2026-08-27, BEŞİNCİ/son tur: 0.0.586/587'nin "hem üstte
+  // hem altta göster" genişletmesi kullanıcı talebiyle GERİ ALINDI —
+  // "diğerleri ortak olmasın eskiye dön".)
   const sameAdaParsel = computeTitleUnitsShareSameAdaParsel(units);
   const sharedFieldKeySet = new Set(ADDRESS_UNITS_TABLE_SHARED_FIELD_DEFS.map((def) => def.key));
   const hoistExemptFieldKeys = new Set(
