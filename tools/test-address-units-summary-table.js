@@ -142,7 +142,7 @@ const sandboxSource = `
 // eslint-disable-next-line no-new-func
 const fns = new Function(sandboxSource)();
 
-// --- 1) İl/İlçe/Sokak-Cadde: TÜM taşınmazlarda BİREBİR aynıysa artık -------
+// --- 1) İl/İlçe/İdari Mahalle: TÜM taşınmazlarda BİREBİR aynıysa artık -----
 // SÜTUN OLARAK KALDIRILIP tablonun ÜSTÜNDE "Ortak Bilgiler" satırında
 // gösterilir (0.0.581, kullanıcı talebi: "TÜM ÇİFT TARAFLI tabloların en
 // üstünde ortak değerleri belirt örnek il ilçe mahalle gibi"). 0.0.585-
@@ -158,7 +158,10 @@ const fns = new Function(sandboxSource)();
 // "Mevkii" (bkz. senaryo 1b) artık bu hoisting'den TAMAMEN MUAF — kullanıcı
 // bunların Ortak Bilgiler panelinde (boş/"-" değerle) göründüğünü işaretleyip
 // "bu kısımları ortak listeden kaldır. alttaki listede olsun sadece" dedi.
-// İl/İlçe/İdari Mahalle/Sokak-Cadde davranışı DEĞİŞMEDİ.
+//
+// YEDİNCİ tur (2026-08-27, takip talebi: "Sokak / Cadde kısmını kaldır tek
+// satıra ortak alanları kaldır") — "Sokak / Cadde" de AYNI şekilde hoisting'den
+// MUAF oldu. İl/İlçe/İdari Mahalle/Ada/Parsel davranışı DEĞİŞMEDİ.
 {
   const shared = { city: "Bursa", district: "Nilüfer", neighborhood: "Özlüce", street: "Atatürk Caddesi", addressSiteName: "Yeşil Vadi Sitesi" };
   fns.setState({
@@ -173,18 +176,23 @@ const fns = new Function(sandboxSource)();
   const data = fns.buildAddressUnitsSummaryTableData();
   assert.ok(data, "3 taşınmazlı raporda tablo verisi dönmeli.");
   assert.equal(data.rows.length, 3, "3 satır (3 taşınmaz) bekleniyordu.");
-  // İl/İlçe/İdari Mahalle/Sokak-Cadde TAMAMI AYNI olduğundan artık SÜTUN
-  // OLARAK KALKMALI (commonFields'e taşınmalı) — Site/Apartman (2026-08-27,
-  // ALTINCI tur) İSE hoisting'den MUAF olduğundan sütun olarak KALMALI.
-  ["İl", "İlçe", "İdari Mahalle", "Sokak / Cadde"].forEach((col) => {
+  // İl/İlçe/İdari Mahalle TAMAMI AYNI olduğundan artık SÜTUN OLARAK
+  // KALKMALI (commonFields'e taşınmalı) — Site/Apartman VE Sokak/Cadde İSE
+  // (2026-08-27, ALTINCI+YEDİNCİ tur) hoisting'den MUAF olduğundan sütun
+  // olarak KALMALI.
+  ["İl", "İlçe", "İdari Mahalle"].forEach((col) => {
     assert.ok(!data.headers.includes(col), `"${col}" sütunu (TÜM taşınmazlarda aynı) KALDIRILIP commonFields'e taşınmalıydı, bulunan başlıklar: ${data.headers.join(", ")}`);
   });
-  assert.ok(data.headers.includes("Site / Apartman"), `"Site / Apartman" ARTIK hoisting'den muaf, TÜM taşınmazlarda aynı olsa bile sütun olarak KALMALI (kullanıcı talebi), bulunan başlıklar: ${data.headers.join(", ")}`);
+  ["Site / Apartman", "Sokak / Cadde"].forEach((col) => {
+    assert.ok(data.headers.includes(col), `"${col}" ARTIK hoisting'den muaf, TÜM taşınmazlarda aynı olsa bile sütun olarak KALMALI (kullanıcı talebi), bulunan başlıklar: ${data.headers.join(", ")}`);
+  });
   const commonLabels = data.commonFields.map((field) => field.label);
-  ["İl", "İlçe", "İdari Mahalle", "Sokak / Cadde"].forEach((label) => {
+  ["İl", "İlçe", "İdari Mahalle"].forEach((label) => {
     assert.ok(commonLabels.includes(label), `"${label}" commonFields'te OLMALI, bulunan: ${commonLabels.join(", ")}`);
   });
-  assert.ok(!commonLabels.includes("Site / Apartman"), `"Site / Apartman" ARTIK commonFields'te OLMAMALI (kullanıcı talebi: "bu kısımları ortak listeden kaldır"), bulunan: ${commonLabels.join(", ")}`);
+  ["Site / Apartman", "Sokak / Cadde"].forEach((label) => {
+    assert.ok(!commonLabels.includes(label), `"${label}" ARTIK commonFields'te OLMAMALI (kullanıcı talebi: "bu kısımları ortak listeden kaldır"), bulunan: ${commonLabels.join(", ")}`);
+  });
   assert.equal(data.commonFields.find((field) => field.label === "İl")?.value, "Bursa", "\"İl\" ortak değeri doğru olmalı.");
   // Blok/Giriş/Dış Kapı No/Kat/İç Kapı No taşınmaz başına FARKLI olduğundan
   // normal sütun olarak KALMALI.
@@ -199,7 +207,7 @@ const fns = new Function(sandboxSource)();
   assert.equal(data.rows[2][uavtColumnIndex], "123456791", "3. taşınmazın UAVT'si doğru sütunda olmalı.");
   const outerDoorColumnIndex = data.headers.indexOf("Dış Kapı No");
   assert.equal(data.rows[1][outerDoorColumnIndex], "4", "2. taşınmazın Dış Kapı No'su doğru sütunda olmalı.");
-  console.log("Il/Ilce/Idari Mahalle/Sokak-Cadde (ayni oldugundan ortak bilgi olarak ustte) + Site/Apartman (hoisting'den muaf, HER ZAMAN sutun) + farkli bolumler sutun olarak kalma kurali testi tamam.");
+  console.log("Il/Ilce/Idari Mahalle (ayni oldugundan ortak bilgi olarak ustte) + Site/Apartman+Sokak-Cadde (hoisting'den muaf, HER ZAMAN sutun) + farkli bolumler sutun olarak kalma kurali testi tamam.");
 }
 
 // --- 1b) Mevkii/Ada/Parsel: Tapu ve Mülkiyet'in KENDİ alanlarından ---------
@@ -386,12 +394,15 @@ const fns = new Function(sandboxSource)();
   console.log("buildAddressUnitsSummaryTableData columnMeta esleme + buildTitleUnitsSummaryTableHtmlEditable isaretleme testi tamam.");
 }
 
-// --- 4c) REGRESYON (2026-08-27, ekran görüntüsüyle): "Mevkii" de aynı ise ---
-// Ortak Bilgiler'e taşınmamalı — kullanıcının GERÇEK raporunda hem
-// "Site / Apartman" hem "Mevkii" BOŞ ("-") ve TÜM taşınmazlarda aynı
-// olduğundan (hoisting kuralı gereği) Ortak Bilgiler panelinde
-// görünüyordu; "bu kısımları ortak listeden kaldır. alttaki listede
-// olsun sadece" talebiyle ikisi de artık hoisting'den muaf.
+// --- 4c) REGRESYON (2026-08-27, ekran görüntüsüyle + takip talebi): -------
+// "Mevkii"/"Site / Apartman" de aynı ise Ortak Bilgiler'e taşınmamalı —
+// kullanıcının GERÇEK raporunda hem "Site / Apartman" hem "Mevkii" BOŞ
+// ("-") ve TÜM taşınmazlarda aynı olduğundan (hoisting kuralı gereği)
+// Ortak Bilgiler panelinde görünüyordu; "bu kısımları ortak listeden
+// kaldır. alttaki listede olsun sadece" talebiyle ikisi de artık
+// hoisting'den muaf. Takip talebi ("Sokak / Cadde kısmını kaldır tek
+// satıra ortak alanları kaldır") ile "street" (DOLU VE aynı, "İstiklal
+// Caddesi") de AYNI kuralın kapsamına alındı.
 {
   const shared = { city: "Konya", district: "Selçuklu", neighborhood: "Sancak", street: "İstiklal Caddesi", addressSiteName: "-", locationName: "-", blockNo: "150", parcelNo: "8" };
   fns.setState({
@@ -405,8 +416,8 @@ const fns = new Function(sandboxSource)();
   const data = fns.buildAddressUnitsSummaryTableData();
   assert.ok(data, "2 taşınmazlı raporda tablo verisi dönmeli.");
   const commonLabels = data.commonFields.map((field) => field.label);
-  ["Site / Apartman", "Mevkii"].forEach((label) => {
-    assert.ok(data.headers.includes(label), `"${label}" BOŞ ve TÜM taşınmazlarda aynı olsa bile ARTIK sütun olarak kalmalı (Ortak Bilgiler'e taşınmamalı), bulunan başlıklar: ${data.headers.join(", ")}`);
+  ["Site / Apartman", "Mevkii", "Sokak / Cadde"].forEach((label) => {
+    assert.ok(data.headers.includes(label), `"${label}" TÜM taşınmazlarda aynı (veya bos) olsa bile ARTIK sütun olarak kalmalı (Ortak Bilgiler'e taşınmamalı), bulunan başlıklar: ${data.headers.join(", ")}`);
     assert.ok(!commonLabels.includes(label), `"${label}" ARTIK commonFields'te OLMAMALI, bulunan: ${commonLabels.join(", ")}`);
   });
   // Ada/Parsel (TÜM taşınmazlarda aynı, kullanıcı bu ikisini işaretlemedi) —
@@ -415,7 +426,7 @@ const fns = new Function(sandboxSource)();
     assert.ok(!data.headers.includes(label), `"${label}" hâlâ (kullanıcı işaretlemediği için) commonFields'e taşınmalı, bulunan başlıklar: ${data.headers.join(", ")}`);
     assert.ok(commonLabels.includes(label), `"${label}" commonFields'te bulunamadı.`);
   });
-  console.log("Mevkii + Site/Apartman (ikisi de bos/ayni oldugunda bile) Ortak Bilgiler'e TASINMAMA REGRESYON testi tamam.");
+  console.log("Mevkii + Site/Apartman + Sokak/Cadde (ucu de bos/ayni oldugunda bile) Ortak Bilgiler'e TASINMAMA REGRESYON testi tamam.");
 }
 
 // --- 5) template-engine.js'te {{TASINMAZLARADRESTABLOSU}} kayıtlı mı -------

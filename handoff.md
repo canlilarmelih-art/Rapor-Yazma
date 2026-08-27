@@ -1,5 +1,13 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.595 - 2026-08-27 - Taşınmazlar Adres Özeti: Sokak / Cadde de artık Ortak Bilgiler'e taşınmıyor
+
+- Kullanıcı takip talebi (0.0.594'ün hemen ardından): "Sokak / Cadde kısmını kaldır tek satıra ortak alanları kaldır."
+- **Düzeltme**: 0.0.594'te Site/Apartman ve Mevkii için uygulanan AYNI desen "Sokak / Cadde" (`street`) alanına da uygulandı — `buildAddressUnitsSummaryTableData()`'daki `NEVER_HOIST_FIELD_KEYS`'e eklendi (zaten `ADDRESS_UNITS_TABLE_ALWAYS_VISIBLE_WHEN_SAME_ADA_PARSEL_KEYS`'teydi, yalnızca hoisting'den muaf değildi). Artık "Sokak / Cadde" TÜM taşınmazlarda aynı (veya boş) olsa bile Ortak Bilgiler'e taşınmıyor, her zaman alttaki taşınmaz-bazlı tabloda kalıyor. İl/İlçe/İdari Mahalle/Ada/Parsel davranışı DEĞİŞMEDİ.
+- Test: `tools/test-address-units-summary-table.js`'in 1. ve 4c. senaryoları "Sokak / Cadde"yi de kapsayacak şekilde güncellendi. Düzeltmeden önce (gate geçici olarak eski haline geri alınarak) testin gerçekten BAŞARISIZ olduğu doğrulanıp sonra düzeltme geri konuldu. `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` cache-buster `?v=20260827-3600`.
+- Canlı tarayıcı testi yapılamadı — kullanıcının gerçek raporunda Ortak Bilgiler panelinde artık "Sokak / Cadde"nin de görünmediğini, alttaki tabloda sütun olarak kaldığını doğrulaması gerekir.
+
 ## 0.0.594 - 2026-08-27 - Taşınmazlar Adres Özeti: Site/Apartman + Mevkii artık Ortak Bilgiler'e taşınmıyor
 
 - Kullanıcı, gerçek raporundan ekran görüntüsüyle işaretledi: "Taşınmazlar Adres Özeti" tablosunun üstündeki "Ortak Bilgiler" panelinde "SİTE / APARTMAN" ve "MEVKİİ" (ikisi de o raporda boş, "-") görünüyordu — talep: "bu kısımları ortak listeden kaldır. alttaki listede olsun sadece."

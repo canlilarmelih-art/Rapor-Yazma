@@ -22759,16 +22759,17 @@ function buildAddressUnitsSummaryTableData() {
   // bkz. ADDRESS_UNITS_TABLE_ALWAYS_VISIBLE_WHEN_SAME_ADA_PARSEL_KEYS yorumu
   // — yalnızca AYNI ada/parselde bu alanlar BOŞ olsa BİLE HER ZAMAN sütun
   // olarak kalır (2026-08-22'nin ESKİ kuralı, DEĞİŞMEDİ). hoisting ("TÜM
-  // taşınmazlarda aynı" → üste ortak bilgi) YALNIZCA ADDRESS_UNITS_TABLE_SHARED_FIELD_DEFS
-  // sütunlarına (İl/İlçe/İdari Mahalle/Mevkii/Ada/Parsel/Sokak-Cadde/Site-
-  // Apartman) uygulanır — UAVT/Blok/Giriş/Dış Kapı No/Kat/İç Kapı No gibi
-  // taşınmaza-özgü KİMLİK sütunları (Tapu tablosundaki Blok/Kat/BB No/
-  // Niteliği ile AYNI ilke) tesadüfen aynı metne sahip olsalar BİLE ortak
-  // bilgiye taşınıp kaybolmaz — bu sütunlar HANGİ taşınmazın hangisi
-  // olduğunu ayırt eden kimlik bilgisidir, "ortak bağlam" (İl/İlçe gibi)
-  // değildir. (2026-08-27, BEŞİNCİ/son tur: 0.0.586/587'nin "hem üstte
-  // hem altta göster" genişletmesi kullanıcı talebiyle GERİ ALINDI —
-  // "diğerleri ortak olmasın eskiye dön".)
+  // taşınmazlarda aynı" → üste ortak bilgi) YALNIZCA ADDRESS_UNITS_TABLE_SHARED_FIELD_DEFS'in
+  // NEVER_HOIST_FIELD_KEYS'te OLMAYAN sütunlarına (İl/İlçe/İdari Mahalle/
+  // Ada/Parsel) uygulanır — UAVT/Blok/Giriş/Dış Kapı No/Kat/İç Kapı No/
+  // Mevkii/Site-Apartman/Sokak-Cadde gibi taşınmaza-özgü KİMLİK sütunları
+  // (Tapu tablosundaki Blok/Kat/BB No/Niteliği ile AYNI ilke) tesadüfen
+  // aynı metne sahip olsalar BİLE ortak bilgiye taşınıp kaybolmaz — bu
+  // sütunlar HANGİ taşınmazın hangisi olduğunu ayırt eden kimlik
+  // bilgisidir, "ortak bağlam" (İl/İlçe gibi) değildir. (2026-08-27,
+  // BEŞİNCİ/son tur: 0.0.586/587'nin "hem üstte hem altta göster"
+  // genişletmesi kullanıcı talebiyle GERİ ALINDI — "diğerleri ortak
+  // olmasın eskiye dön".)
   //
   // ALTINCI TUR (2026-08-27, ekran görüntüsüyle): "bu kısımları ortak
   // listeden kaldır. alttaki listede olsun sadece" — kullanıcı, "Site /
@@ -22777,12 +22778,17 @@ function buildAddressUnitsSummaryTableData() {
   // ADDRESS_UNITS_TABLE_ALWAYS_VISIBLE_WHEN_SAME_ADA_PARSEL_KEYS'teki
   // UAVT/Blok/Giriş/Dış Kapı No/İç Kapı No ile AYNI muameleyi görüyor:
   // hoisting'den TAMAMEN muaf, HER ZAMAN alttaki taşınmaz-bazlı tabloda
-  // kalır. İl/İlçe/İdari Mahalle/Ada/Parsel/Sokak-Cadde DAVRANIŞI DEĞİŞMEDİ
-  // (kullanıcı yalnızca bu iki alanı işaretledi) — hâlâ tümü aynıysa Ortak
-  // Bilgiler'e taşınabilirler.
+  // kalır. İl/İlçe/İdari Mahalle/Ada/Parsel DAVRANIŞI DEĞİŞMEDİ (kullanıcı
+  // yalnızca bu iki alanı işaretledi) — hâlâ tümü aynıysa Ortak Bilgiler'e
+  // taşınabilirler.
+  //
+  // YEDİNCİ TUR (2026-08-27, takip talebi): "Sokak / Cadde kısmını kaldır
+  // tek satıra ortak alanları kaldır" — "street" de AYNI gerekçeyle (zaten
+  // ADDRESS_UNITS_TABLE_ALWAYS_VISIBLE_WHEN_SAME_ADA_PARSEL_KEYS'te vardı,
+  // yalnızca hoisting'den MUAF DEĞİLDİ) NEVER_HOIST_FIELD_KEYS'e eklendi.
   const sameAdaParsel = computeTitleUnitsShareSameAdaParsel(units);
   const sharedFieldKeySet = new Set(ADDRESS_UNITS_TABLE_SHARED_FIELD_DEFS.map((def) => def.key));
-  const NEVER_HOIST_FIELD_KEYS = new Set(["addressSiteName", "locationName"]);
+  const NEVER_HOIST_FIELD_KEYS = new Set(["addressSiteName", "locationName", "street"]);
   const hoistExemptFieldKeys = new Set(
     columnMeta
       .filter((meta) => meta.kind === "scalar" && (!sharedFieldKeySet.has(meta.fieldKey) || NEVER_HOIST_FIELD_KEYS.has(meta.fieldKey)))
