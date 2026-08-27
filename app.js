@@ -21362,13 +21362,28 @@ function finalizeTitleUnitsSummaryTableData(headers, rows, columnMeta, options =
   const hoistExemptFieldKeys = options.hoistExemptFieldKeys || null;
   const isAlwaysKept = (meta) => Boolean(alwaysKeepFieldKeys && meta?.fieldKey && alwaysKeepFieldKeys.has(meta.fieldKey));
   const isHoistExempt = (meta) => Boolean(hoistExemptFieldKeys && meta?.fieldKey && hoistExemptFieldKeys.has(meta.fieldKey));
+  // Kullanıcı takip talebi (2026-08-27): "boş olanlarıda göster mevkii
+  // giriş gibi" — "genel" bir scalar sütun (ne alwaysKeepFieldKeys ne
+  // hoistExemptFieldKeys — Mevkii/Giriş gibi paylaşımlı alanların BÜYÜK
+  // ÇOĞUNLUĞU) artık TÜM taşınmazlarda BOŞ olduğunda da (0.0.451'in eski
+  // "sessizce tamamen kaldır" kuralı GİBİ değil) kaldırılmaz — "TÜM
+  // taşınmazlarda AYNI" hoisting kuralına, boş bir değer DE "aynı" sayılarak
+  // girer ve "Ortak Bilgiler"de TEK bir "-" olarak gösterilir (satır satır
+  // N kez tekrarlanan "-" yerine, hiç görünmemek yerine). "owner"/"computed"/
+  // "readonly" (hesaplanan/popover) sütunlar ile alwaysKeepFieldKeys/
+  // hoistExemptFieldKeys işaretli sütunler BU YENİ davranışa GİRMEZ —
+  // eskisi gibi ya HER ZAMAN kalır (alwaysKeep) ya boşsa kaldırılır
+  // (diğerleri, davranış DEĞİŞMEDİ).
+  const isGenericScalar = (meta) => meta?.kind === "scalar" && !isAlwaysKept(meta) && !isHoistExempt(meta);
 
-  const columnHasData = headers.map((_, columnIndex) => (
-    columnIndex === 0 || isAlwaysKept(columnMeta[columnIndex]) || rows.some((row) => {
+  const columnHasData = headers.map((_, columnIndex) => {
+    const meta = columnMeta[columnIndex];
+    if (columnIndex === 0 || isAlwaysKept(meta) || isGenericScalar(meta)) return true;
+    return rows.some((row) => {
       const value = row[columnIndex];
       return value !== undefined && value !== null && String(value).trim() !== "" && String(value).trim() !== "-";
-    })
-  ));
+    });
+  });
   const survivingIndices = headers.map((_, index) => index).filter((index) => columnHasData[index]);
   const dataHeaders = survivingIndices.map((index) => headers[index]);
   const dataRows = rows.map((row) => survivingIndices.map((index) => row[index]));
@@ -21382,10 +21397,18 @@ function finalizeTitleUnitsSummaryTableData(headers, rows, columnMeta, options =
       keptIndices.push(columnIndex);
       return;
     }
-    const values = dataRows.map((row) => String(row[columnIndex] ?? "").trim());
-    const allSameNonEmpty = values.every((value) => value && value !== "-" && value === values[0]);
-    if (allSameNonEmpty) {
-      commonFields.push({ label, value: values[0], fieldKey: meta.fieldKey });
+    const values = dataRows.map((row) => {
+      const trimmed = String(row[columnIndex] ?? "").trim();
+      return trimmed === "-" ? "" : trimmed;
+    });
+    const allSame = values.every((value) => value === values[0]);
+    // alwaysKeepFieldKeys sütunları hoisting'e HÂLÂ tabidir (bkz.
+    // yukarıdaki fonksiyon yorumu) — ama YALNIZCA dolu+aynıysa; boş+aynı
+    // ise (zaten boş-kaldırmadan muaf kaldıkları için) normal (boş) sütun
+    // olarak KALMAYA devam eder, "-" olarak commonFields'e TAŞINMAZ.
+    const eligible = allSame && (values[0] !== "" || !isAlwaysKept(meta));
+    if (eligible) {
+      commonFields.push({ label, value: values[0] || "-", fieldKey: meta.fieldKey });
     } else {
       keptIndices.push(columnIndex);
     }
@@ -21566,7 +21589,26 @@ function buildTitleUnitsSummaryTableData() {
   // türetiliyor (dış davranış/testler DEĞİŞMEDİ).
   const sharedColumnCount = result.columnMeta.filter((meta) => meta?.fieldKey && sharedFieldKeySet.has(meta.fieldKey)).length;
 
-  return { ...result, sharedColumnCount };
+  // KRİTİK DÜZELTME (2026-08-27, kullanıcı bulgusu: "pafta ortak olmasına
+  // rağmen gözükmüyor") — HIDE_WHEN_SAME_ADA_PARSEL_KEYS (İl/İlçe/Mahalle/
+  // Pafta, ada/parsel eşitliği yüzünden yukarıda sharedFieldsToShow'dan
+  // TAMAMEN ÇIKARILDI) hiçbir zaman headers/rows/columnMeta'ya girmediği
+  // için finalizeTitleUnitsSummaryTableData'nın commonFields hoisting'ine
+  // de HİÇ ULAŞAMIYORDU — "ortak" oldukları HALDE "Ortak Bilgiler"de de
+  // gösterilmiyor, sessizce KAYBOLUYORLARDI. Ada/parsel eşitse bu 4 alan
+  // (KENDİ metin değerleri birbirinden farklı görünse BİLE, bkz. yukarıki
+  // yorum) BURADA doğrudan commonFields'e (temsilci — ilk — taşınmazın
+  // değeriyle) eklenir.
+  const forcedCommonFields = allSameAdaParsel
+    ? TITLE_UNITS_TABLE_SHARED_FIELD_DEFS
+      .filter((def) => HIDE_WHEN_SAME_ADA_PARSEL_KEYS.has(def.key))
+      .map((def) => ({ label: def.label, value: String(units[0]?.fields?.[def.key] || "").trim() || "-", fieldKey: def.key }))
+    : [];
+  const defOrder = new Map(TITLE_UNITS_TABLE_SHARED_FIELD_DEFS.map((def, index) => [def.key, index]));
+  const commonFields = [...forcedCommonFields, ...result.commonFields]
+    .sort((a, b) => (defOrder.has(a.fieldKey) ? defOrder.get(a.fieldKey) : 999) - (defOrder.has(b.fieldKey) ? defOrder.get(b.fieldKey) : 999));
+
+  return { ...result, commonFields, sharedColumnCount };
 }
 
 // "her bir taşınmazın 'Hissesine Düşen Arsa Payı' bölümünü hesapla.
@@ -22561,15 +22603,18 @@ const ADDRESS_UNITS_TABLE_SHARED_FIELD_DEFS = [
 // olması gereken alanlar ancak bu kısımlar ilk başta dolu gelmediği için
 // tabloda gösterilmiyor ... bu alanlar tamamı boş olsa bile aynı ada
 // parsel çoklu taleplerinde sütun olarak gözükmeli" — Sokak/Cadde, Blok,
-// Dış Kapı No, İç Kapı No, UAVT; AYNI ada/parseldeki (tipik: Dikey/Yatay
-// Kat İrtifakı, aynı bina/parsel içindeki farklı bağımsız bölümler)
+// Giriş, Dış Kapı No, İç Kapı No, UAVT; AYNI ada/parseldeki (tipik: Dikey/
+// Yatay Kat İrtifakı, aynı bina/parsel içindeki farklı bağımsız bölümler)
 // taşınmazları BİRBİRİNDEN AYIRAN TEK kimlik alanlarıdır — bu yüzden
 // aşağıdaki "boş sütun kaldırılır" (0.0.451) kuralının TEK istisnası:
-// taşınmazların TÜMÜ aynı ada/parseldeyse bu 5 alan TÜMÜ boş olsa bile
+// taşınmazların TÜMÜ aynı ada/parseldeyse bu 6 alan TÜMÜ boş olsa bile
 // (veri girişi hatırlatıcısı olarak) HER ZAMAN sütun olarak kalır.
 // Farklı ada/parselli taşınmazlarda (bu alanlar daha az kritik bir ayrım
-// taşıdığından) ESKİ davranış (tümü boşsa gizlenir) korunur.
-const ADDRESS_UNITS_TABLE_ALWAYS_VISIBLE_WHEN_SAME_ADA_PARSEL_KEYS = new Set(["uavt", "street", "addressBlockName", "outerDoor", "innerDoor"]);
+// taşıdığından) ESKİ davranış (tümü boşsa gizlenir) korunur. "addressEntrance"
+// (Giriş) 2026-08-27'de eklendi — kullanıcı takip talebi: "boş olanlarıda
+// göster mevkii giriş gibi" (Giriş, ilk listede BİLİNÇSİZCE dışarıda
+// kalmıştı — Blok/Dış Kapı No/İç Kapı No ile AYNI sınıf kimlik alanı).
+const ADDRESS_UNITS_TABLE_ALWAYS_VISIBLE_WHEN_SAME_ADA_PARSEL_KEYS = new Set(["uavt", "street", "addressBlockName", "addressEntrance", "outerDoor", "innerDoor"]);
 
 // Tabloyu (başlıklar + satırlar) hesaplar; YALNIZCA 2+ taşınmaz varsa bir
 // sonuç döner, aksi halde null (Tapu tablosuyla AYNI kural).

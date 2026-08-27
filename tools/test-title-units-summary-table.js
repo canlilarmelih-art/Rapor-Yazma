@@ -272,7 +272,18 @@ function unit(fields, ownerRows) {
   assert.ok(!data.headers.includes("İlçe"), "Ayni ada/parselde Ilce metni farkli OLSA BILE 'Ilce' sutunu GIZLENMELIYDI.");
   assert.ok(!data.headers.includes("Mahalle"), "Ayni ada/parselde Mahalle metni farkli OLSA BILE 'Mahalle' sutunu GIZLENMELIYDI.");
   assert.ok(!data.headers.includes("Pafta"), "Ayni ada/parselde Pafta metni farkli OLSA BILE 'Pafta' sutunu GIZLENMELIYDI.");
-  console.log("Il/Ilce/Mahalle/Pafta: ayni ada/parselde kendi metni farkli olsa bile gizlenme kurali testi tamam.");
+  // KRITIK REGRESYON (2026-08-27, kullanici bulgusu: "pafta ortak olmasina
+  // ragmen gozukmuyor") - "gizlenen" bu 4 alan artik SESSIZCE kaybolmuyor,
+  // temsilci (ilk) tasinmazin degeriyle commonFields'e (Ortak Bilgiler)
+  // TASINIYOR - metinleri KML/TAKBIS tutarsizligi yuzunden farkli gorunse
+  // BILE (ada/parsel esitligi bunlarin GERCEKTEN ayni oldugunu garanti eder).
+  const commonLabels = data.commonFields.map((f) => f.label);
+  ["İl", "İlçe", "Mahalle", "Pafta"].forEach((label) => {
+    assert.ok(commonLabels.includes(label), `"${label}" ayni ada/parselde commonFields'e TASINMALIYDI (sessizce kaybolmamali), bulunan: ${commonLabels.join(", ")}`);
+  });
+  assert.equal(data.commonFields.find((f) => f.label === "İl")?.value, "Bursa", "\"İl\" ortak degeri temsilci (ilk) tasinmazin KENDI metniyle (kirpilmemis \"BURSA \" DEGIL) olmali.");
+  assert.equal(data.commonFields.find((f) => f.label === "Pafta")?.value, "F21", "\"Pafta\" ortak degeri temsilci tasinmazin KENDI metniyle olmali.");
+  console.log("Il/Ilce/Mahalle/Pafta: ayni ada/parselde kendi metni farkli olsa bile commonFields'e tasinma (sessizce kaybolmama) testi tamam.");
 }
 
 // --- 2c) İl/İlçe/Mahalle/Pafta: FARKLI ada/parselde, kendi metni de ------

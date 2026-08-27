@@ -276,13 +276,15 @@ const fns = new Function(sandboxSource)();
   console.log("Tum tasinmazlarda bos olan sutunun kaldirilma + ayni-dolu sutunun ortak-bilgiye tasinma testi tamam.");
 }
 
-// --- 2b) YENİ (2026-08-22, ekran görüntüsüyle): "görselde mavi kutucuk ----
-// ile işaretlenen alanlar aynı ada parsel taleplerinde mutlaka olması
-// gereken alanlar ... bu alanlar tamamı boş olsa bile aynı ada parsel
-// çoklu taleplerinde sütun olarak gözükmeli" — Sokak/Cadde, Blok, Dış
-// Kapı No, İç Kapı No, UAVT AYNI ada/parselde TÜMÜ BOŞ olsa bile HER ZAMAN
-// gösterilmeli (veri girişi hatırlatıcısı); "Giriş" (bu istisnaya DAHİL
-// DEĞİL) yine de kaldırılmalı.
+// --- 2b) YENİ (2026-08-22, ekran görüntüsüyle, 2026-08-27'de "Giriş" -----
+// eklendi): "görselde mavi kutucuk ile işaretlenen alanlar aynı ada parsel
+// taleplerinde mutlaka olması gereken alanlar ... bu alanlar tamamı boş
+// olsa bile aynı ada parsel çoklu taleplerinde sütun olarak gözükmeli" —
+// Sokak/Cadde, Blok, Giriş, Dış Kapı No, İç Kapı No, UAVT AYNI ada/parselde
+// TÜMÜ BOŞ olsa bile HER ZAMAN gösterilmeli (veri girişi hatırlatıcısı).
+// Kullanıcı takip talebi (2026-08-27): "boş olanlarıda göster mevkii giriş
+// gibi" — "Giriş" ilk listede (2026-08-22) BİLİNÇSİZCE dışarıda kalmıştı,
+// artık DAHİL (bkz. ADDRESS_UNITS_TABLE_ALWAYS_VISIBLE_WHEN_SAME_ADA_PARSEL_KEYS).
 {
   const shared = { city: "Düzce", district: "Merkez", neighborhood: "Sancaklar", street: "", addressSiteName: "-", blockNo: "0", parcelNo: "709" };
   fns.setState({
@@ -295,12 +297,11 @@ const fns = new Function(sandboxSource)();
   });
   const data = fns.buildAddressUnitsSummaryTableData();
   assert.ok(data, "2 taşınmazlı (aynı ada/parsel) raporda tablo verisi dönmeli.");
-  ["UAVT", "Sokak / Cadde", "Blok", "Dış Kapı No", "İç Kapı No"].forEach((col) => {
+  ["UAVT", "Sokak / Cadde", "Blok", "Giriş", "Dış Kapı No", "İç Kapı No"].forEach((col) => {
     assert.ok(data.headers.includes(col), `Aynı ada/parselde, "${col}" sütunu TÜMÜ BOŞ olsa bile HER ZAMAN gösterilmeliydi, bulunan başlıklar: ${data.headers.join(", ")}`);
   });
-  assert.ok(!data.headers.includes("Giriş"), "\"Giriş\" (istisna listesine DAHİL DEĞİL) tümü boşken yine de kaldırılmalıydı.");
   assert.ok(data.headers.includes("Kat"), "Dolu olan \"Kat\" sütunu KORUNMALIYDI.");
-  console.log("Ayni ada/parselde 5 kimlik alani (UAVT/Sokak-Cadde/Blok/Dis Kapi No/Ic Kapi No) tumu bos olsa bile HER ZAMAN gosterilir testi tamam.");
+  console.log("Ayni ada/parselde 6 kimlik alani (UAVT/Sokak-Cadde/Blok/Giris/Dis Kapi No/Ic Kapi No) tumu bos olsa bile HER ZAMAN gosterilir testi tamam.");
 }
 
 // --- 3) Tekil raporda (1 taşınmaz) tablo üretilmemeli ----------------------

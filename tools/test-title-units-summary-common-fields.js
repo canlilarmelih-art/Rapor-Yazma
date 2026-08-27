@@ -9,17 +9,24 @@
 // tablonun kendi test dosyasındaki dolaylı kapsam) — bu dosya fonksiyonun
 // KENDİSİNİ, 8 builder'dan BAĞIMSIZ, izole bir sandbox'ta test eder.
 //
+// Takip talebi (2026-08-27): "boş olanlarıda göster mevkii giriş gibi" —
+// bir "genel" scalar sütun (ne alwaysKeepFieldKeys ne hoistExemptFieldKeys)
+// TÜM taşınmazlarda BOŞ olduğunda artık SESSİZCE KALDIRILMIYOR, "-"
+// değeriyle commonFields'e taşınıyor (boş bir değer de "aynı" sayılıyor).
+//
 // Kapsam:
-//  1) Temel hoisting: TÜM satırlarda BİREBİR aynı, boş-olmayan "scalar"
+//  1) Temel hoisting: TÜM satırlarda BİREBİR aynı (boş DAHİL) "scalar"
 //     sütun commonFields'e taşınır, headers/rows/columnMeta'dan kalkar.
-//  2) Boş-sütun kaldırma (ÖNCEDEN var olan kural) hoisting'den BAĞIMSIZ
-//     çalışmaya devam eder.
+//  2) TÜM satırlarda BOŞ olan genel-scalar sütun artık KALDIRILMAZ, "-"
+//     değeriyle commonFields'e taşınır (2026-08-27 takip talebi).
 //  3) "seq"/"owner"/"computed"/"readonly" kind'lar HİÇBİR ZAMAN hoisting'e
 //     girmez (yalnızca "scalar").
 //  4) Tek satırlı (1 taşınmaz) girdide hoisting uygulanmaz (karşılaştırma
 //     anlamsız).
-//  5) alwaysKeepFieldKeys: YALNIZCA boş-kaldırmadan muaf tutar, hoisting'i
-//     ENGELLEMEZ.
+//  5) alwaysKeepFieldKeys: dolu+aynıysa hoisting'e HÂLÂ tabidir; boş+aynı
+//     ise (zaten boş-kaldırmadan muaf) normal (boş) sütun olarak KALIR,
+//     "-" olarak commonFields'e TAŞINMAZ (Adres'in "aynı ada/parselde bu
+//     alanlar boş bile olsa sütun olarak gözükmeli" istisnasıyla tutarlı).
 //  6) hoistExemptFieldKeys: YALNIZCA hoisting'den muaf tutar, boş-kaldırmayı
 //     ENGELLEMEZ.
 //  7) commonFields'in gösterilen `.text`/değeri gruba giren İLK satırın
@@ -91,9 +98,25 @@ const fns = new Function(sandboxSource)();
   ];
   const columnMeta = [{ kind: "seq" }, { kind: "scalar", fieldKey: "city" }, { kind: "scalar", fieldKey: "entrance" }];
   const result = fns.finalizeTitleUnitsSummaryTableData(headers, rows, columnMeta);
-  assert.deepEqual(result.headers, ["Sıra No", "İl"], "TUM satirlarda BOS olan 'Giris' kaldirilmali, farkli-dolu 'Il' kalmali.");
-  assert.deepEqual(result.commonFields, [], "Bos sutun commonFields'e TASINMAZ, dogrudan KALDIRILIR.");
-  console.log("Bos-sutun kaldirma (hoisting'den bagimsiz) testi tamam.");
+  assert.deepEqual(result.headers, ["Sıra No", "İl"], "TUM satirlarda BOS olan 'Giris' sutun olarak KALKMALI (commonFields'e tasinmis olmali).");
+  assert.deepEqual(result.commonFields, [{ label: "Giriş", value: "-", fieldKey: "entrance" }], "TUM satirlarda BOS olan genel-scalar sutun artik KALDIRILMAZ, \"-\" degeriyle commonFields'e TASINIR (2026-08-27: \"bos olanlarida goster\").");
+  console.log("Bos genel-scalar sutun artik kaldirilmiyor, \"-\" ile commonFields'e tasiniyor testi tamam.");
+}
+
+// --- 2b) TUM satirlarda BOS olan sutun, dolu-farkli sutunla BIRLIKTE -------
+// (2b'nin ayni-boslugu tek basina test etmesine ek olarak, gercek
+// coklu-sutun senaryosunu da dogrula).
+{
+  const headers = ["Sıra No", "Mevkii", "Blok"];
+  const rows = [
+    [1, "", "A"],
+    [2, "-", "B"],
+  ];
+  const columnMeta = [{ kind: "seq" }, { kind: "scalar", fieldKey: "locationName" }, { kind: "scalar", fieldKey: "blockName" }];
+  const result = fns.finalizeTitleUnitsSummaryTableData(headers, rows, columnMeta);
+  assert.deepEqual(result.headers, ["Sıra No", "Blok"], "Bos 'Mevkii' kalkmali, farkli-dolu 'Blok' kalmali.");
+  assert.deepEqual(result.commonFields, [{ label: "Mevkii", value: "-", fieldKey: "locationName" }], "Bos 'Mevkii' \"-\" ile commonFields'e tasinmali.");
+  console.log("Bos sutun + farkli-dolu sutun birlikte (yalniz bos olan commonFields'e tasinir) testi tamam.");
 }
 
 // --- 3) "seq"/"owner"/"computed"/"readonly" hicbir zaman hoisting'e girmez -
