@@ -369,8 +369,8 @@ function freshState(overrides = {}) {
 {
   assert.match(
     appSource,
-    /function createUnitDecorativePanel\(\)[\s\S]*?if \(state\.fields\.requestType === "Çoklu Talep" && getTitleUnitCount\(\) > 1\) \{\s*\n\s*panel\.append\(createUnitDecorativeCopyToSelectedControl\(\)\);/,
-    "createUnitDecorativePanel() createUnitDecorativeCopyToSelectedControl()'u (2+ tasinmazken) eklemiyor."
+    /function createUnitDecorativePanel\(\)[\s\S]*?if \(state\.fields\.requestType === "Çoklu Talep" && getTitleUnitCount\(\) > 1\) \{[\s\S]*?titleRow\.append\(textGroup, createUnitDecorativeCopyToSelectedControl\(\)\);/,
+    "createUnitDecorativePanel() createUnitDecorativeCopyToSelectedControl()'u (2+ tasinmazken, baslik satirinin SAGINA) eklemiyor."
   );
   assert.match(
     appSource,

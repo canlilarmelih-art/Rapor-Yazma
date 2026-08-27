@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.580 - 2026-08-27 - DÜZELTME: Dekoratif Özellikler düğmesi başlığın sağına taşındı
+
+- Kullanıcı 0.0.579'u canlıda test etti: "DÜĞMENİN ui tasarımı berbat olmuş dekoratif özellikler başlık kısmının sağına al" — düğme panelin başlık satırının ALTINDA ayrı bir satır olarak duruyordu, kullanıcı bunun yerine "Fotoğraflar" panelindeki gibi başlığın SAĞINDA aynı satırda olmasını istedi.
+- **Değişiklik**: `createUnitDecorativePanel()` artık `createUnitSubsection()`'ın ürettiği `.subsection-title-row`u (zaten `createReportPhotosPanel`'in kullandığı "başlık/açıklama solda + eylem düğmesi sağda" flex deseni) yeniden düzenliyor — h4+p tek bir `.unit-decorative-panel-title-group` alt div'ine taşınıyor, düğme o div'in YANINA (ikinci flex öğe) ekleniyor. `createUnitSubsection()`'ın KENDİSİ (başka birçok panel tarafından paylaşılıyor) DEĞİŞTİRİLMEDİ — yalnızca BU panelin çıktısı sonradan DOM'da yeniden düzenlendi.
+- **Kendi kendime yakaladığım bir kusur (canlı teste gitmeden önce)**: ilk denemede (`flex-shrink: 0` + wrap yok) gerçek bir görsel doğrulama (yerel önizleme sunucusunda izole bir HTML ile `getBoundingClientRect`/`scrollWidth` ölçümü) yaptım ve dar konteynerlerde (~400px) satırın TAŞTIĞINI, başlık metninin sıfıra kadar sıkıştığını tespit ettim. Düzeltme: `.unit-decorative-panel-title-group`'a `min-width`+`flex: 1 1 auto` (dar ekranda büzülebilsin) ve `.unit-decorative-copy-selected-wrap`'a `flex-wrap: wrap` (gerekirse düğme+not 2 satıra düşsün) eklendi — hem 700px hem 400px'te taşma OLMADIĞI doğrulandı.
+- Test: `tools/test-unit-copy-to-selected.js`'in kaynak-düzeyi kablolama senaryosu yeni DOM yapısını (`titleRow.append(textGroup, createUnitDecorativeCopyToSelectedControl())`) doğrulayacak şekilde güncellendi. `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js`/`styles.css` cache-buster `?v=20260827-2100`.
+- Canlı tarayıcı testi (görsel) yapılamadı (bu ortamda geçerli bir oturum yok) — ama DOM/CSS'in kendisi izole bir önizlemede ÖLÇÜLEREK doğrulandı. Kullanıcının gerçek raporunda düğmenin artık "Dekoratif Özellikler" başlığının sağında, aynı satırda göründüğünü ve dar pencerede (mobil/daraltılmış tarayıcı) taşma olmadığını doğrulaması gerekir.
+
 ## 0.0.579 - 2026-08-27 - Dekoratif Özellikler: "Seçili Taşınmazlara Kopyala" eklendi
 
 - Kullanıcı talebi: "Dekoratif Özellikler kısmına seçilenlere uygula seçeneği ekleyebilir miyiz."

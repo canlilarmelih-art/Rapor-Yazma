@@ -1656,14 +1656,28 @@ td .free-lookup input {
   display: none;
 }
 
-/* Dekoratif Özellikler "Seçili Taşınmazlara Kopyala" (2026-08-27) — panel
-   başlığının hemen altında, alan gruplarından ÖNCE tek satır; not boşken
-   görünmesin (yukarıdaki AYNI ilke). */
+/* Dekoratif Özellikler "Seçili Taşınmazlara Kopyala" (2026-08-27, sonra
+   "başlık kısmının sağına al" düzeltmesi) — .subsection-title-row'un
+   (createReportPhotosPanel'in AYNI "başlık solda + eylem sağda" flex/
+   space-between deseni) ikinci flex öğesi. .unit-decorative-panel-title-group
+   (h4+p'yi saran YENİ alt div — .subsection-title-row'un KENDİSİ
+   DEĞİŞTİRİLMEDİ, yalnızca bu panele özel) `min-width` + `flex: 1 1 auto`
+   ile dar ekranlarda BÜZÜLEBİLİR; düğme+not grubu `flex-wrap: wrap` ile
+   gerektiğinde 2 satıra düşer — aksi halde (flex-shrink:0 + wrap yok)
+   dar konteynerlerde satır TAŞIYOR ve başlık metni sıfıra kadar
+   sıkışıyordu (canlı bulgu, ilk sürümde). Not boşken görünmesin
+   (yukarıdaki AYNI ilke). */
+.unit-decorative-panel-title-group {
+  min-width: 160px;
+  flex: 1 1 auto;
+}
+
 .unit-decorative-copy-selected-wrap {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 10px;
-  margin: 4px 10px 10px;
 }
 
 .unit-decorative-copy-selected-note:empty {

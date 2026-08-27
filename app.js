@@ -15508,11 +15508,23 @@ function createUnitDecorativePanel() {
   migrateUnitDecorativeFields();
   const panel = createUnitSubsection("Dekoratif Özellikler", "Duvar, zemin, kapı-pencere, mutfak, vitrifiye ve işçilik bilgileri makro mantığıyla gruplandırılır.");
   // Kullanıcı talebi (2026-08-27): "Dekoratif Özellikler kısmına seçilenlere
-  // uygula seçeneği ekleyebilir miyiz" — yalnızca gerçekten anlamlıyken
-  // (2+ taşınmaz) gösterilir, tek taşınmazlı raporlarda gereksiz gürültü
-  // yaratmaz.
+  // uygula seçeneği ekleyebilir miyiz", sonra: "düğmenin ui tasarımı berbat
+  // olmuş dekoratif özellikler başlık kısmının sağına al" — createUnitSubsection()'ın
+  // ürettiği `.subsection-title-row` (createReportPhotosPanel'in ZATEN
+  // kullandığı, "başlık/açıklama solda + eylem düğmesi sağda" flex/
+  // space-between deseni) yalnızca ÇIPLAK h4+p içeriyor; üçüncü bir flex
+  // öğe olarak düğme eklemek h4/p'yi birbirinden AYIRIRDI (space-between
+  // 3 öğeyi eşit aralıklı dağıtır). Bunun yerine h4+p TEK bir alt div'e
+  // taşınır, düğme o div'in YANINA (ikinci flex öğe olarak) eklenir —
+  // createUnitSubsection()'ın KENDİSİ (başka birçok panel tarafından
+  // paylaşılıyor) DEĞİŞTİRİLMEDİ, yalnızca BU panelin çıktısı sonradan
+  // yeniden düzenlendi.
   if (state.fields.requestType === "Çoklu Talep" && getTitleUnitCount() > 1) {
-    panel.append(createUnitDecorativeCopyToSelectedControl());
+    const titleRow = panel.querySelector(".subsection-title-row");
+    const textGroup = document.createElement("div");
+    textGroup.className = "unit-decorative-panel-title-group";
+    textGroup.append(...titleRow.childNodes);
+    titleRow.append(textGroup, createUnitDecorativeCopyToSelectedControl());
   }
   const wrapper = document.createElement("div");
   wrapper.className = "unit-decorative-groups";
