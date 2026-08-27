@@ -135,6 +135,12 @@ const functionNames = [
   "computeDocumentsBlockGroups",
   "computeDocumentsBlockLabel",
   "isDocumentsBlockGroupingActive",
+  // 2026-08-27: buildProjectReviewExplanationParts()'ın gate'i artık
+  // isDocumentsBlockGroupingActive() (2+ FARKLI blok şartı, yalnızca
+  // blok TAB ÇUBUĞU için anlamlı) DEĞİL, isDocumentsBlockSharingApplicable()
+  // (Çoklu Talep + 2+ taşınmaz + Kat İrtifakı, TEK blokta da true) — bkz.
+  // app.js'teki fonksiyon yorumu ("BB 15 uygun değil" kullanıcı bulgusu).
+  "isDocumentsBlockSharingApplicable",
   "formatDocumentBlockAttributionPhrase",
   "normalizeBlockLabelPrefixForAttribution",
   "formatTitleUnitSuitabilityLabel",
@@ -216,6 +222,7 @@ const sandboxSource = `
     buildProjectReviewExplanationSingle,
     pluralizeProjectReviewSubjectText,
     isDocumentsBlockGroupingActive,
+    isDocumentsBlockSharingApplicable,
     computeDocumentsBlockGroups,
     buildAllTitleUnitsForSummaryTable,
     getTurkishDistributiveNumberSuffix,
@@ -713,6 +720,40 @@ function freshState(overrides = {}) {
   assert.equal(suitabilityParts.length, 3, `3 grup (2 kisa azinlik + 1 tam 'uygundur') -> 3 AYRI cumle beklenir, bulunan: ${JSON.stringify(suitabilityParts)}`);
 
   console.log("buildProjectReviewExplanationParts() 2 FARKLI azinlik grubunun HER İKİSİNİN DE kisa bicimde gorunmesi testi tamam.");
+}
+
+// --- 10) REGRESYON (2026-08-27, kullanıcı bildirimi): "yukarıdaki -------
+// listede 15 nolu b.b. kullanım alanı olarak uygun değil iken açıklamada
+// bunun belirtilmemesi" — kullanıcının GERÇEK raporu TEK bloklu (A Blok,
+// 4 bağımsız bölüm) — 4b/8 senaryolarının AKSİNE burada
+// isDocumentsBlockGroupingActive() FALSE kalır (computeDocumentsBlockGroups
+// TEK grup döner, "2+ FARKLI blok" şartı sağlanmaz). Düzeltmeden ÖNCE bu
+// durumda buildProjectReviewExplanationParts() ilk (isDocumentsBlockGroupingActive
+// kapalı) dala düşüp SADECE aktif bağımsız bölümün durumunu yazıyor, diğer
+// 3 taşınmazın (BB 15 dahil) FARKLI durumu tamamen KAYBOLUYORDU. Artık gate
+// isDocumentsBlockSharingApplicable() (TEK blokta da true) olduğundan akış
+// buildProjectReviewConsolidatedParts'a girmeli — TEK bloklu raporlarda da
+// bağımsız bölüm bazında FARKLI durumlar ayrı ayrı görünmeli.
+{
+  const singleBlockState = freshState({ titleBlockName: "A Blok", unitNo: "12" });
+  singleBlockState.titleUnits = [
+    unit(singleBlockState.fields, "100", "1", "A Blok", { unitNo: "13" }),
+    unit(singleBlockState.fields, "100", "1", "A Blok", { unitNo: "14" }),
+    unit(singleBlockState.fields, "100", "1", "A Blok", { unitNo: "15", projectSuitabilityStatus: "kullanım alanı olarak uygun değildir." }),
+  ];
+  fns.setState(singleBlockState);
+  const groups = fns.computeDocumentsBlockGroups(fns.buildAllTitleUnitsForSummaryTable());
+  assert.equal(groups.length, 1, "sanity: kullanicinin raporu TEK bloklu (4 bagimsiz bolum, AYNI A Blok).");
+  assert.equal(fns.isDocumentsBlockGroupingActive(), false, "sanity: TEK blokta isDocumentsBlockGroupingActive() FALSE kalir (2+ FARKLI blok sarti yok).");
+  assert.equal(fns.isDocumentsBlockSharingApplicable(), true, "sanity: TEK blokta bile isDocumentsBlockSharingApplicable() TRUE olmali (Coklu Talep + 2+ tasinmaz + Kat Irtifaki).");
+
+  const parts = fns.buildProjectReviewExplanationParts();
+  const suitabilityText = parts.slice(2).join(" ||| ");
+  assert.ok(suitabilityText.includes("A Blok 15 No'lu bağımsız bölüm") && suitabilityText.includes("uygun değildir"), `TEK bloklu raporda bile BB 15'in FARKLI (uygun degil) durumu ACIKLAMADA gorunmeli - kullanicinin bildirdigi kusur ARTIK DUZELTILMIS olmali, bulunan: ${suitabilityText}`);
+  assert.ok(suitabilityText.includes("uygundur"), `Diger 3 tasinmazin (12/13/14) varsayilan UYGUNDUR durumu da metinde yer almali, bulunan: ${suitabilityText}`);
+  assert.ok(!suitabilityText.includes("Blok'a ait bağımsız bölümler kat, kattaki konum, alan ve mimari olarak projesine uygundur.") || suitabilityText.includes("uygun değildir"), `Eski hata: TEK bloklu raporda hepsi 'uygundur' diye YAZILIP azinligin (BB 15) SESSIZCE kaybolmasi ARTIK OLMAMALI, bulunan: ${suitabilityText}`);
+
+  console.log("buildProjectReviewExplanationParts() TEK bloklu raporda FARKLI bagimsiz bolum uygunluk durumu (kullanici bulgusu, BB 15) REGRESYON testi tamam.");
 }
 
 console.log("Proje Inceleme Aciklamasi cogullama + blok bazinda ortak/ayri/sade cumle testleri basarili.");

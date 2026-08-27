@@ -28420,8 +28420,28 @@ function buildProjectReviewBlockFallbackParts(units, groups) {
 // (buildProjectReviewConsolidatedParts) biçim denenir; yalnızca o biçime
 // uymayan (nadir/karmaşık) raporlarda ESKİ, her blok için ayrı tam
 // paragraf üreten davranışa (buildProjectReviewBlockFallbackParts) dönülür.
+//
+// DÜZELTME (2026-08-27, kullanıcı bulgusu): "yukarıdaki listede 15 nolu
+// b.b. kullanım alanı olarak uygun değil iken açıklamada bunun
+// belirtilmemesi" — TEK bloklu (groups.length === 1, en yaygın senaryo)
+// raporlarda gate `isDocumentsBlockGroupingActive()` (2+ FARKLI blok
+// şartı) FALSE döndüğü için akış hep ilk dala düşüyor: sadece AKTİF
+// bağımsız bölümün projectSuitabilityStatus'üyle TEK paragraf üretilip
+// yalnızca SÖZCÜK düzeyinde ("...proje(ler)ine uygundur") çoğullanıyordu
+// — diğer bağımsız bölümlerin (BB 15 gibi) FARKLI durumu tamamen
+// kayboluyordu. Oysa buildProjectReviewConsolidatedParts zaten HER
+// bağımsız bölümü AYRI AYRI (units.forEach, blok sayısından bağımsız,
+// bkz. o fonksiyonun "İKİNCİ DÜZELTME" yorumu) işliyor — groups.length
+// === 1 iken de doğru çalışır (refItems tek elemanlı, consistentShape
+// otomatik true). Gate artık isDocumentsBlockGroupingActive() (yalnızca
+// blok TAB ÇUBUĞU için anlamlı) DEĞİL, isDocumentsBlockSharingApplicable()
+// (Çoklu Talep + 2+ taşınmaz + Kat İrtifakı, "2+ FARKLI blok" şartı YOK
+// — 2026-08-27'de senkron fonksiyonları için AYNI kökten ayrılan gate,
+// bkz. o fonksiyonun yorumu) — "groups.length < 2" dalı artık gereksiz
+// (dead code'du zaten, isDocumentsBlockGroupingActive() true iken hiç
+// tetiklenemiyordu) ve kaldırıldı.
 function buildProjectReviewExplanationParts() {
-  if (!isDocumentsBlockGroupingActive()) {
+  if (!isDocumentsBlockSharingApplicable()) {
     const text = buildProjectReviewExplanationSingle();
     if (!text) return [];
     const shouldPluralize = isMultiTitleUnitReportForNarrative() && !hasMixedTitleUnitParcels();
@@ -28430,10 +28450,6 @@ function buildProjectReviewExplanationParts() {
 
   const units = buildAllTitleUnitsForSummaryTable();
   const groups = computeDocumentsBlockGroups(units);
-  if (groups.length < 2) {
-    const text = buildProjectReviewExplanationSingle();
-    return text ? [text] : [];
-  }
 
   const consolidated = buildProjectReviewConsolidatedParts(units, groups);
   if (consolidated) return consolidated;

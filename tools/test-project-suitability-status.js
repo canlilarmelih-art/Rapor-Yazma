@@ -66,6 +66,12 @@ const reviewContext = {
   buildBuildingFootprintAndEntranceExplanation: () => "Bina oturumu ve giriş açıklaması.",
   buildProjectSuitabilityDescription: () => "Ekspertize konu bağımsız bölüm kat, kattaki konum, alan ve mimari olarak projesine uygundur.",
   isDocumentsBlockGroupingActive: () => false,
+  // 2026-08-27: buildProjectReviewExplanationParts()'ın gate'i artık
+  // isDocumentsBlockGroupingActive() DEĞİL, isDocumentsBlockSharingApplicable()
+  // (bkz. app.js yorumu, "BB 15" kullanıcı bulgusu) — bu test blok
+  // gruplama/çoğullamayı DEĞİL, "3 parçayı \n\n ile birleştirme" davranışını
+  // doğruladığından burada da "kapalı" (tekil) yol seçtirilir.
+  isDocumentsBlockSharingApplicable: () => false,
   isMultiTitleUnitReportForNarrative: () => false,
   hasMixedTitleUnitParcels: () => false,
 };
