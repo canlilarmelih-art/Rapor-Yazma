@@ -219,16 +219,15 @@ function unit(fields, ownerRows) {
   // ada/parselde bu üçü kaldırılır, bkz. senaryo 2d). Blok/Kat/BB No/BB
   // Niteliği/Malik(ler)/Hisse Payı/Edinme Sebebi/Tapu Tarihi/Yevmiye No bu
   // fixture'da taşınmaz başına FARKLI olduğundan (bkz. aşağıdaki fixture)
-  // sütun olarak kalıyor. "Ana Taşınmaz Niteliği" BU listede YOK — bkz.
-  // aşağıdaki assertion, artık commonFields'e taşınıyor (2026-08-27 takip
-  // talebi: "ana gayrimenkul ... bunlar ortak ... üstte yazmalı" — 2026-08-15'in
-  // "hiçbir zaman gizlenmez" kararı geri alındı, artık diğer paylaşımlı
-  // alanlarla AYNI genel kurala tabi).
-  ["Sıra No", "Taşınmaz Kimlik No", "Blok", "Kat", "Bağımsız Bölüm No", "Bağımsız Bölüm Niteliği", "Arsa Payı", "Arsa Payda", "Hissesine Düşen Arsa Payı", "Malik(ler)", "Hisse Payı", "Edinme Sebebi", "Tapu Tarihi", "Yevmiye No", "Cilt", "Sayfa"].forEach((col) => {
+  // sütun olarak kalıyor. "Ana Taşınmaz Niteliği" TÜM taşınmazlarda aynı
+  // ("Arsa") olmasına RAĞMEN (2026-08-27 son tur: "diğer 7 tabloya da
+  // uygula ancak alt tabloda ortak olan değerler gözükmüyor" — "sil ve
+  // taşı" davranışı TAMAMEN KALDIRILDI) sütun olarak KALIYOR, AYRICA
+  // commonFields'e de kopyalanıyor — bkz. aşağıdaki assertion.
+  ["Sıra No", "Taşınmaz Kimlik No", "Blok", "Kat", "Bağımsız Bölüm No", "Bağımsız Bölüm Niteliği", "Ana Taşınmaz Niteliği", "Arsa Payı", "Arsa Payda", "Hissesine Düşen Arsa Payı", "Malik(ler)", "Hisse Payı", "Edinme Sebebi", "Tapu Tarihi", "Yevmiye No", "Cilt", "Sayfa"].forEach((col) => {
     assert.ok(data.headers.includes(col), `"${col}" sütunu HER ZAMAN gösterilmeliydi.`);
   });
-  assert.ok(!data.headers.includes("Ana Taşınmaz Niteliği"), "\"Ana Taşınmaz Niteliği\" TÜM taşınmazlarda aynı (\"Arsa\") olduğundan artık sütun olarak KALKMALI (commonFields'e taşınmalı).");
-  assert.equal(data.commonFields.find((f) => f.label === "Ana Taşınmaz Niteliği")?.value, "Arsa", "\"Ana Taşınmaz Niteliği\" ortak değeri commonFields'te \"Arsa\" olmalı.");
+  assert.equal(data.commonFields.find((f) => f.label === "Ana Taşınmaz Niteliği")?.value, "Arsa", "\"Ana Taşınmaz Niteliği\" sütun olarak KALIRKEN AYRICA commonFields'te de \"Arsa\" olarak görünmeli.");
   // "en sola Sıra No sütunu ekle 1 den başla saymaya" — EN SOL sütun,
   // 1'den başlayan sıra numarası. "taşınmaz kimlik no sıra nodan sonra
   // gelsin" (2026-08-15) — Taşınmaz Kimlik No HEMEN ardından gelmeli
@@ -466,12 +465,13 @@ function unit(fields, ownerRows) {
     assert.ok(data.headers.includes(col), `Dolu olan "${col}" sutunu KORUNMALIYDI, bulunan basliklar: ${data.headers.join(", ")}`);
   });
   // "Ana Taşınmaz Niteliği" ("Tarla") VE "Hisse Payı" ("1/1") HER IKI
-  // tasinmazda da BIREBIR AYNI - artik (2026-08-27 takip talebi) sutun
-  // olarak KALKIP commonFields'e tasinmali (hoisting: sil + tasi).
-  assert.ok(!data.headers.includes("Ana Taşınmaz Niteliği"), "\"Ana Taşınmaz Niteliği\" iki tasinmazda da ayni (\"Tarla\") oldugundan sutun olarak KALKMALIYDI.");
-  assert.ok(!data.headers.includes("Hisse Payı"), "\"Hisse Payı\" iki tasinmazda da ayni (\"1/1\") oldugundan sutun olarak KALKMALIYDI.");
-  assert.equal(data.commonFields.find((f) => f.label === "Ana Taşınmaz Niteliği")?.value, "Tarla", "\"Ana Taşınmaz Niteliği\" ortak degeri \"Tarla\" olmali.");
-  assert.equal(data.commonFields.find((f) => f.label === "Hisse Payı")?.value, "1/1", "\"Hisse Payı\" ortak degeri \"1/1\" olmali.");
+  // tasinmazda da BIREBIR AYNI - (2026-08-27 son tur: "sil ve tasi"
+  // davranisi TAMAMEN KALDIRILDI) sutun olarak KALIYOR, AYRICA
+  // commonFields'e de kopyalaniyor.
+  assert.ok(data.headers.includes("Ana Taşınmaz Niteliği"), "\"Ana Taşınmaz Niteliği\" (aynı olsa da) sütun olarak KALMALIYDI.");
+  assert.ok(data.headers.includes("Hisse Payı"), "\"Hisse Payı\" (aynı olsa da) sütun olarak KALMALIYDI.");
+  assert.equal(data.commonFields.find((f) => f.label === "Ana Taşınmaz Niteliği")?.value, "Tarla", "\"Ana Taşınmaz Niteliği\" AYRICA commonFields'te \"Tarla\" olarak görünmeli.");
+  assert.equal(data.commonFields.find((f) => f.label === "Hisse Payı")?.value, "1/1", "\"Hisse Payı\" AYRICA commonFields'te \"1/1\" olarak görünmeli.");
   // Cilt (registryVolume, "7") HER IKI tasinmazda da ayni - ama hoistExempt
   // (Blok/Kat/BB No gibi bagimsiz-boluma-ozgu bir kimlik sutunu) oldugundan
   // sutun olarak KALIR (yukaridaki "korunmalı" listesinde de var); YENI
@@ -787,9 +787,11 @@ function unit(fields, ownerRows) {
   assert.equal(dataDiff.columnMeta[oldBlockIdx].fieldKey, "oldBlockNo", "Eski Ada -> oldBlockNo eslesmeli.");
   assert.equal(dataDiff.columnMeta[oldParcelIdx].fieldKey, "oldParcelNo", "Eski Parsel -> oldParcelNo eslesmeli.");
 
-  // 2) Ayni (dolu) "Eski Ada"/"Eski Parsel" -> commonFields'e tasinir
-  // (Ada/Parsel BILEREK farkli tutuldu ki zorla-gizleme kurali devreye
-  // girmesin, yalnizca genel "ayni ise uste tasi" kurali test edilsin).
+  // 2) Ayni (dolu) "Eski Ada"/"Eski Parsel" -> sutun olarak KALIR (2026-08-27
+  // son tur: "sil ve tasi" davranisi TAMAMEN KALDIRILDI) AYRICA
+  // commonFields'e de kopyalanir (Ada/Parsel BILEREK farkli tutuldu ki
+  // zorla-gizleme kurali devreye girmesin, yalnizca genel "kalir +
+  // kopyalanir" kurali test edilsin).
   fns.setState({
     activeTitleUnitIndex: 0,
     fields: { titlePropertyId: "1", blockNo: "500", parcelNo: "10", oldBlockNo: "12", oldParcelNo: "3" },
@@ -799,8 +801,8 @@ function unit(fields, ownerRows) {
     ],
   });
   const dataSame = fns.buildTitleUnitsSummaryTableData();
-  assert.ok(!dataSame.headers.includes("Eski Ada"), "\"Eski Ada\" TUM tasinmazlarda ayni oldugunda sutun olarak KALKMALI.");
-  assert.ok(!dataSame.headers.includes("Eski Parsel"), "\"Eski Parsel\" TUM tasinmazlarda ayni oldugunda sutun olarak KALKMALI.");
+  assert.ok(dataSame.headers.includes("Eski Ada"), "\"Eski Ada\" (aynı olsa da) sütun olarak KALMALI.");
+  assert.ok(dataSame.headers.includes("Eski Parsel"), "\"Eski Parsel\" (aynı olsa da) sütun olarak KALMALI.");
   const commonLabels = dataSame.commonFields.map((field) => field.label);
   assert.ok(commonLabels.includes("Eski Ada"), "\"Eski Ada\" commonFields'te OLMALI.");
   assert.ok(commonLabels.includes("Eski Parsel"), "\"Eski Parsel\" commonFields'te OLMALI.");

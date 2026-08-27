@@ -9,44 +9,56 @@
 // tablonun kendi test dosyasındaki dolaylı kapsam) — bu dosya fonksiyonun
 // KENDİSİNİ, 8 builder'dan BAĞIMSIZ, izole bir sandbox'ta test eder.
 //
-// Takip talebi (2026-08-27): "boş olanlarıda göster mevkii giriş gibi" —
-// bir "genel" scalar sütun (ne alwaysKeepFieldKeys ne hoistExemptFieldKeys)
-// TÜM taşınmazlarda BOŞ olduğunda artık SESSİZCE KALDIRILMIYOR, "-"
-// değeriyle commonFields'e taşınıyor (boş bir değer de "aynı" sayılıyor).
+// Aynı gün İÇİNDE dört geri bildirim turu yaşandı, sonuncusu MİMARİYİ
+// KÖKTEN DEĞİŞTİRDİ — eskisi (turlar 1-3) YERİNE ARTIK GEÇERLİ OLAN NİHAİ
+// TASARIM budur:
+//  Tur 1: "boş olanlarıda göster mevkii giriş gibi" — tümü boş olan genel
+//         scalar sütun "-" ile commonFields'e taşınıyor (sütun KALKIYOR —
+//         bu davranış SON turda da KORUNDU, bkz. aşağıda (b)).
+//  Tur 2: "ana gayrimenkul malik hisse payı bunlar ortak ... üstte
+//         yazmalı" — "owner" kind'ı da (Malik(ler)/Hisse Payı/vb.)
+//         "scalar" ile AYNI "sil ve taşı" (hoisting) kuralına girdi.
+//  Tur 3: "bağımsız bölümle ilgili sütunlar hem üstte hem altta gözüksün"
+//         — YALNIZCA hoistExemptFieldKeys için AYRI bir "kalır + kopyalanır"
+//         (duplicateToCommonFieldKeys) seçeneği eklendi.
+//  Tur 4 (BU TASARIM): "diğer 7 tabloya da uygula ancak alt tabloda ortak
+//         olan değerler gözükmüyor" — kullanıcı ASLINDA DOLU+aynı olan
+//         sütunların (yalnızca bağımsız-bölüm kimlik sütunlarının DEĞİL,
+//         Ana Taşınmaz Niteliği/Malik/İl/İlçe/vb. DAHİL) "kalır +
+//         kopyalanır" davranışına tabi olmasını istedi. `duplicateToCommonFieldKeys`
+//         seçeneği KALDIRILDI (artık GEREKSİZ — bu davranış DOLU+aynı her
+//         sütun için otomatik/evrensel).
 //
-// İkinci takip talebi (2026-08-27, aynı gün): "ana gayrimenkul malik hisse
-// payı bunlar ortak ... diğer ortak bölümlerde üstte yazmalı" — "owner"
-// kind'ı (Malik(ler)/Hisse Payı/Edinme Sebebi/Tapu Tarihi/Yevmiye No) artık
-// "scalar" ile AYNI şekilde hoisting adayı (bkz. senaryo 3b) — ÖNCEKİ
-// "owner asla hoisting'e girmez" kuralı GERİ ALINDI.
-//
-// Üçüncü takip talebi (2026-08-27, aynı gün): "haklısın bağımsız bölümler
-// ile ilgili bölümler ortak olsa dahi tabloda hem ortak bölümde hem de alt
-// kısımda gözüksün" — YENİ `duplicateToCommonFieldKeys` seçeneği (bkz.
-// senaryo 7): hoistExemptFieldKeys (Blok/Kat/BB No gibi bağımsız bölümün
-// KENDİ kimlik sütunları) sütun olarak KALMAYA devam ederken, aynı+doluysa
-// AYRICA commonFields'e bir KOPYASI eklenir — hoisting'in "sil ve taşı"
-// davranışından TAMAMEN FARKLI ("kalır VE kopyalanır").
+// NİHAİ KURAL — İKİ AYRI durum, KASITLI olarak FARKLI:
+//  (a) TÜM taşınmazlarda birebir AYNI VE DOLU bir "scalar"/"owner" sütun
+//      ARTIK HİÇBİR ZAMAN tablodan kalkmıyor — KALIR VE AYRICA
+//      commonFields'e bir KOPYASI eklenir.
+//  (b) TÜM taşınmazlarda birebir AYNI VE BOŞ olan bir "genel scalar" sütun
+//      (0.0.584'ün "boş olanları da göster" kuralı) — gösterilecek GERÇEK
+//      bir değer OLMADIĞINDAN, ORİJİNAL 0.0.584 tasarımı KORUNUYOR: sütun
+//      tablodan KALKAR, "-" olarak commonFields'e TAŞINIR (tek başına
+//      "kalır + kopyalanır" DEĞİL, "sil ve taşı" — bilinçli farklılık).
 //
 // Kapsam:
-//  1) Temel hoisting: TÜM satırlarda BİREBİR aynı (boş DAHİL) "scalar"
-//     sütun commonFields'e taşınır, headers/rows/columnMeta'dan kalkar.
-//  2) TÜM satırlarda BOŞ olan genel-scalar sütun artık KALDIRILMAZ, "-"
-//     değeriyle commonFields'e taşınır (2026-08-27 takip talebi).
-//  3) "seq"/"computed"/"readonly" kind'lar HİÇBİR ZAMAN hoisting'e girmez;
-//     "owner" artık "scalar" gibi (bağımsız sütun bazında) hoisting adayı.
-//  4) Tek satırlı (1 taşınmaz) girdide hoisting uygulanmaz (karşılaştırma
+//  1) Temel "kalır + kopyalanır" — (a): TÜM satırlarda birebir aynı VE
+//     DOLU "scalar"/"owner" sütun tablodan KALKMAZ, AYRICA commonFields'e
+//     kopyalanır.
+//  2) "sil ve taşı" — (b): TÜM satırlarda BOŞ olan genel-scalar sütun
+//     tablodan KALKAR, "-" değeriyle commonFields'e TAŞINIR.
+//  3) "seq"/"computed"/"readonly" hiçbir zaman commonFields'e kopyalanmaz/
+//     taşınmaz (ama zaten "aynı değer" yüzünden kalkmazlar).
+//  4) Tek satırlı (1 taşınmaz) girdide kopyalama uygulanmaz (karşılaştırma
 //     anlamsız).
-//  8) duplicateToCommonFieldKeys: sütun KALKMAZ, ama aynı+doluysa AYRICA
-//     commonFields'e bir KOPYASI eklenir (bkz. senaryo 7).
-//  5) alwaysKeepFieldKeys: dolu+aynıysa hoisting'e HÂLÂ tabidir; boş+aynı
-//     ise (zaten boş-kaldırmadan muaf) normal (boş) sütun olarak KALIR,
-//     "-" olarak commonFields'e TAŞINMAZ (Adres'in "aynı ada/parselde bu
-//     alanlar boş bile olsa sütun olarak gözükmeli" istisnasıyla tutarlı).
-//  6) hoistExemptFieldKeys: YALNIZCA hoisting'den muaf tutar, boş-kaldırmayı
-//     ENGELLEMEZ.
-//  7) commonFields'in gösterilen `.text`/değeri gruba giren İLK satırın
-//     ham değeridir; `.fieldKey` doğru taşınır.
+//  5) alwaysKeepFieldKeys: boşsa sütun HER ZAMAN kalır (zaten geçerliydi);
+//     boş+aynı iken commonFields'e "-" KOPYALANMAZ (anlamsız tekrar);
+//     dolu+aynıyken normal şekilde (a)'ya girer.
+//  6) hoistExemptFieldKeys: YALNIZCA "hiçbir taşınmazda veri yok" durumunda
+//     sütunun TAMAMEN KALKMASINI sağlar (0.0.451 orijinal kuralı) — genel
+//     scalar sütunların (b) davranışına GİRMEZ; dolu+aynıyken bu
+//     istisnadan ETKİLENMEZ, normal şekilde (a)'ya girer.
+//  7) commonFields'in gösterilen `.value`'su gruba giren İLK satırın ham
+//     değeridir; `.fieldKey` doğru taşınır (owner sütunlarında ownerColumn'a
+//     düşülür).
 
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -89,7 +101,7 @@ const sandboxSource = `
 // eslint-disable-next-line no-new-func
 const fns = new Function(sandboxSource)();
 
-// --- 1) Temel hoisting: SADECE bir sutun ayni ------------------------------
+// --- 1) Temel "kalır + kopyalanır": SADECE bir sütun aynı ------------------
 {
   const headers = ["Sıra No", "İl", "İlçe"];
   const rows = [
@@ -98,14 +110,15 @@ const fns = new Function(sandboxSource)();
   ];
   const columnMeta = [{ kind: "seq" }, { kind: "scalar", fieldKey: "city" }, { kind: "scalar", fieldKey: "district" }];
   const result = fns.finalizeTitleUnitsSummaryTableData(headers, rows, columnMeta);
-  assert.deepEqual(result.headers, ["Sıra No", "İlçe"], "\"İl\" (aynı) kalkmalı, \"İlçe\" (farklı) kalmalı.");
-  assert.deepEqual(result.rows, [[1, "Nilüfer"], [2, "Osmangazi"]], "rows da aynı sütunu kaybetmeli.");
-  assert.deepEqual(result.columnMeta, [{ kind: "seq" }, { kind: "scalar", fieldKey: "district" }], "columnMeta da hizali kalmali.");
-  assert.deepEqual(result.commonFields, [{ label: "İl", value: "Bursa", fieldKey: "city" }], "commonFields dogru label/value/fieldKey tasimali.");
-  console.log("Temel hoisting (ayni+dolu scalar sutun commonFields'e tasinir) testi tamam.");
+  assert.deepEqual(result.headers, headers, "\"İl\" (aynı) DAHİL hiçbir sütun tablodan KALKMAMALI.");
+  assert.deepEqual(result.rows, rows, "rows AYNEN KORUNMALI (hiçbir sütun silinmedi).");
+  assert.deepEqual(result.columnMeta, columnMeta, "columnMeta AYNEN KORUNMALI.");
+  assert.deepEqual(result.commonFields, [{ label: "İl", value: "Bursa", fieldKey: "city" }], "Yalnızca aynı olan \"İl\" commonFields'e KOPYALANMALI, farklı \"İlçe\" eklenmemeli.");
+  console.log("Temel \"kalır + kopyalanır\" (ayni+dolu scalar sutun sutun olarak kalir + commonFields'e kopyalanir) testi tamam.");
 }
 
-// --- 2) Bos-sutun kaldirma hoisting'den BAGIMSIZ calisir ------------------
+// --- 2) TÜM satırlarda BOŞ olan genel-scalar sütun "SİL VE TAŞI" (b) -------
+// davranışını KORUR (dolu+aynı olan (a) davranışından BİLİNÇLİ FARKLI).
 {
   const headers = ["Sıra No", "İl", "Giriş"];
   const rows = [
@@ -114,14 +127,12 @@ const fns = new Function(sandboxSource)();
   ];
   const columnMeta = [{ kind: "seq" }, { kind: "scalar", fieldKey: "city" }, { kind: "scalar", fieldKey: "entrance" }];
   const result = fns.finalizeTitleUnitsSummaryTableData(headers, rows, columnMeta);
-  assert.deepEqual(result.headers, ["Sıra No", "İl"], "TUM satirlarda BOS olan 'Giris' sutun olarak KALKMALI (commonFields'e tasinmis olmali).");
-  assert.deepEqual(result.commonFields, [{ label: "Giriş", value: "-", fieldKey: "entrance" }], "TUM satirlarda BOS olan genel-scalar sutun artik KALDIRILMAZ, \"-\" degeriyle commonFields'e TASINIR (2026-08-27: \"bos olanlarida goster\").");
-  console.log("Bos genel-scalar sutun artik kaldirilmiyor, \"-\" ile commonFields'e tasiniyor testi tamam.");
+  assert.deepEqual(result.headers, ["Sıra No", "İl"], "TÜM satırlarda BOŞ olan \"Giriş\" (genel-scalar) sütun olarak KALKMALI (commonFields'e taşınmış olmalı).");
+  assert.deepEqual(result.commonFields, [{ label: "Giriş", value: "-", fieldKey: "entrance" }], "TÜM satırlarda BOŞ olan genel-scalar sütun \"-\" değeriyle commonFields'e TAŞINIR (sütun KALKARAK).");
+  console.log("Bos genel-scalar sutun sutun olarak kalkip \"-\" ile commonFields'e tasinir (sil ve tasi) testi tamam.");
 }
 
 // --- 2b) TUM satirlarda BOS olan sutun, dolu-farkli sutunla BIRLIKTE -------
-// (2b'nin ayni-boslugu tek basina test etmesine ek olarak, gercek
-// coklu-sutun senaryosunu da dogrula).
 {
   const headers = ["Sıra No", "Mevkii", "Blok"];
   const rows = [
@@ -131,14 +142,11 @@ const fns = new Function(sandboxSource)();
   const columnMeta = [{ kind: "seq" }, { kind: "scalar", fieldKey: "locationName" }, { kind: "scalar", fieldKey: "blockName" }];
   const result = fns.finalizeTitleUnitsSummaryTableData(headers, rows, columnMeta);
   assert.deepEqual(result.headers, ["Sıra No", "Blok"], "Bos 'Mevkii' kalkmali, farkli-dolu 'Blok' kalmali.");
-  assert.deepEqual(result.commonFields, [{ label: "Mevkii", value: "-", fieldKey: "locationName" }], "Bos 'Mevkii' \"-\" ile commonFields'e tasinmali.");
-  console.log("Bos sutun + farkli-dolu sutun birlikte (yalniz bos olan commonFields'e tasinir) testi tamam.");
+  assert.deepEqual(result.commonFields, [{ label: "Mevkii", value: "-", fieldKey: "locationName" }], "Yalniz bos 'Mevkii' \"-\" ile commonFields'e tasinmali, farkli 'Blok' eklenmemeli.");
+  console.log("Bos sutun + farkli-dolu sutun birlikte (bos olan kalkar, farkli-dolu kalir) testi tamam.");
 }
 
-// --- 3) "seq"/"computed"/"readonly" hicbir zaman hoisting'e girmez ---------
-// (2026-08-27 takip talebi: "ana gayrimenkul malik hisse payı bunlar ortak
-// ... diğer ortak bölümlerde üstte yazmalı" ile "owner" bu istisnadan
-// CIKARILDI - bkz. asagidaki senaryo 3b).
+// --- 3) "seq"/"computed"/"readonly" hicbir zaman commonFields'e kopyalanmaz
 {
   const headers = ["Sıra No", "Hissesine Düşen Arsa Payı", "İnş. Sev."];
   const rows = [
@@ -151,17 +159,15 @@ const fns = new Function(sandboxSource)();
     { kind: "readonly", fieldKey: "constructionLevel" },
   ];
   const result = fns.finalizeTitleUnitsSummaryTableData(headers, rows, columnMeta);
-  assert.deepEqual(result.headers, headers, "seq/computed/readonly TUM satirlarda ayni olsa BILE hicbiri hoisting'e girmemeli.");
-  assert.deepEqual(result.commonFields, [], "commonFields BOS olmali (hicbir scalar/owner sutun yok).");
-  console.log("seq/computed/readonly hoisting-muafiyeti testi tamam.");
+  assert.deepEqual(result.headers, headers, "seq/computed/readonly TUM satirlarda ayni olsa BILE hicbiri tablodan kalkmamali (zaten hicbir sutun kalkmiyor).");
+  assert.deepEqual(result.commonFields, [], "commonFields BOS olmali (seq/computed/readonly hicbiri kopyalanmaz).");
+  console.log("seq/computed/readonly commonFields'e kopyalanmama testi tamam.");
 }
 
-// --- 3b) "owner" sutunu artik "scalar" ile AYNI sekilde hoisting adayi ----
-// (2026-08-27 takip talebi, kullanicinin gercek Tapu ornegi: "malik hisse
-// payı bunlar ortak ... diğer ortak bölümlerde üstte yazmalı").
+// --- 3b) "owner" sutunu "scalar" ile AYNI sekilde "kalir + kopyalanir" ----
 {
   const headers = ["Sıra No", "Malik(ler)", "Hisse Payı"];
-  // 3b-i) TUM satirlarda AYNI ve DOLU -> commonFields'e tasinir.
+  // 3b-i) TUM satirlarda AYNI ve DOLU -> sutun KALIR + commonFields'e kopyalanir.
   const rowsSame = [
     [1, "Ahmet Yılmaz", "1/1"],
     [2, "Ahmet Yılmaz", "1/1"],
@@ -172,117 +178,85 @@ const fns = new Function(sandboxSource)();
     { kind: "owner", ownerColumn: "c1" },
   ];
   const resultSame = fns.finalizeTitleUnitsSummaryTableData(headers, rowsSame, columnMeta);
-  assert.deepEqual(resultSame.headers, ["Sıra No"], "\"Malik(ler)\"/\"Hisse Payı\" (owner, ayni+dolu) tablodan kalkmali.");
+  assert.deepEqual(resultSame.headers, headers, "\"Malik(ler)\"/\"Hisse Payı\" (owner, ayni+dolu) DAHIL hicbir sutun tablodan KALKMAMALI.");
   assert.deepEqual(
     resultSame.commonFields,
     [
       { label: "Malik(ler)", value: "Ahmet Yılmaz", fieldKey: "c0" },
       { label: "Hisse Payı", value: "1/1", fieldKey: "c1" },
     ],
-    "\"Malik(ler)\"/\"Hisse Payı\" commonFields'e (fieldKey yerine ownerColumn ile) taşınmalı."
+    "\"Malik(ler)\"/\"Hisse Payı\" AYRICA commonFields'e (fieldKey yerine ownerColumn ile) kopyalanmali."
   );
 
-  // 3b-ii) Malik FARKLI, Hisse Payı AYNI -> yalnizca Hisse Payı tasinir
-  // (kullanicinin "malik ve hisse payı aynı grup her zaman" notu bir
-  // ZORUNLULUK degil, GOZLEM - her owner sutunu BAGIMSIZ degerlendirilir).
+  // 3b-ii) Malik FARKLI, Hisse Payı AYNI -> yalnizca Hisse Payı kopyalanir
+  // (her owner sutunu BAGIMSIZ degerlendirilir).
   const rowsMixed = [
     [1, "Ahmet Yılmaz", "1/1"],
     [2, "Ayşe Yılmaz", "1/1"],
   ];
   const resultMixed = fns.finalizeTitleUnitsSummaryTableData(headers, rowsMixed, columnMeta);
-  assert.deepEqual(resultMixed.headers, ["Sıra No", "Malik(ler)"], "Farkli olan \"Malik(ler)\" sutun olarak KALMALI.");
-  assert.deepEqual(resultMixed.commonFields, [{ label: "Hisse Payı", value: "1/1", fieldKey: "c1" }], "Ayni olan \"Hisse Payı\" commonFields'e tasinmali.");
-  console.log("\"owner\" sutunu artik \"scalar\" gibi hoisting adayi (bagimsiz sutun bazinda) testi tamam.");
+  assert.deepEqual(resultMixed.headers, headers, "Farkli olan \"Malik(ler)\" DAHIL hicbir sutun tablodan KALKMAMALI.");
+  assert.deepEqual(resultMixed.commonFields, [{ label: "Hisse Payı", value: "1/1", fieldKey: "c1" }], "Yalniz ayni olan \"Hisse Payı\" commonFields'e kopyalanmali.");
+  console.log("\"owner\" sutunu \"scalar\" gibi \"kalir + kopyalanir\" (bagimsiz sutun bazinda) testi tamam.");
 }
 
-// --- 4) Tek satirli (1 tasinmaz) girdide hoisting UYGULANMAZ ---------------
+// --- 4) Tek satirli (1 tasinmaz) girdide kopyalama UYGULANMAZ --------------
 {
   const headers = ["Sıra No", "İl"];
   const rows = [[1, "Bursa"]];
   const columnMeta = [{ kind: "seq" }, { kind: "scalar", fieldKey: "city" }];
   const result = fns.finalizeTitleUnitsSummaryTableData(headers, rows, columnMeta);
-  assert.deepEqual(result.headers, ["Sıra No", "İl"], "Tek satirda karsilastirma anlamsiz - hoisting uygulanmamali.");
+  assert.deepEqual(result.headers, ["Sıra No", "İl"], "Tek satirda karsilastirma anlamsiz - kopyalama uygulanmamali.");
   assert.deepEqual(result.commonFields, [], "Tek satirda commonFields BOS olmali.");
-  console.log("Tek-satirli girdide hoisting no-op testi tamam.");
+  console.log("Tek-satirli girdide kopyalama no-op testi tamam.");
 }
 
-// --- 5) alwaysKeepFieldKeys: YALNIZCA bos-kaldirmadan muaf, hoisting'i ------
-// ENGELLEMEZ (Adres Ozeti'nin ADDRESS_UNITS_TABLE_ALWAYS_VISIBLE_WHEN_SAME_ADA_PARSEL_KEYS
-// emsali).
+// --- 5) alwaysKeepFieldKeys: boş+aynıyken "-" KOPYALANMAZ (anlamsız tekrar) -
+// (Adres Ozeti'nin ADDRESS_UNITS_TABLE_ALWAYS_VISIBLE_WHEN_SAME_ADA_PARSEL_KEYS emsali).
 {
   const headers = ["Sıra No", "UAVT", "İl"];
   const rowsEmpty = [[1, "", "Bursa"], [2, "-", "Bursa"]];
   const columnMeta = [{ kind: "seq" }, { kind: "scalar", fieldKey: "uavt" }, { kind: "scalar", fieldKey: "city" }];
   const alwaysKeepFieldKeys = new Set(["uavt"]);
 
-  // 5a) UAVT bos olsa bile alwaysKeepFieldKeys sayesinde KALIR.
+  // 5a) UAVT bos -> sutun KALIR (zaten her zaman kalir), ama commonFields'e
+  // "-" KOPYALANMAZ (alwaysKeepFieldKeys'in boş+aynı istisnası).
   const resultEmpty = fns.finalizeTitleUnitsSummaryTableData(headers, rowsEmpty, columnMeta, { alwaysKeepFieldKeys });
-  assert.ok(resultEmpty.headers.includes("UAVT"), "alwaysKeepFieldKeys: bos olsa bile UAVT KALMALI.");
+  assert.ok(resultEmpty.headers.includes("UAVT"), "alwaysKeepFieldKeys: bos olsa bile UAVT sutun olarak KALMALI.");
+  assert.ok(!resultEmpty.commonFields.some((f) => f.fieldKey === "uavt"), "Bos+ayni UAVT commonFields'e \"-\" ile KOPYALANMAMALI (alwaysKeepFieldKeys'in ozel istisnasi).");
 
-  // 5b) UAVT DOLU ve TUM satirlarda AYNI ise, alwaysKeepFieldKeys onu
-  // hoisting'den KORUMAZ - yine commonFields'e tasinir.
+  // 5b) UAVT DOLU ve TUM satirlarda AYNI ise, sutun KALIR + commonFields'e KOPYALANIR.
   const rowsSame = [[1, "123", "Bursa"], [2, "123", "İzmir"]];
   const resultSame = fns.finalizeTitleUnitsSummaryTableData(headers, rowsSame, columnMeta, { alwaysKeepFieldKeys });
-  assert.ok(!resultSame.headers.includes("UAVT"), "alwaysKeepFieldKeys hoisting'den MUAF TUTMAZ - dolu+ayni UAVT yine commonFields'e tasinmali.");
-  assert.ok(resultSame.commonFields.some((f) => f.label === "UAVT"), "UAVT commonFields'te olmali.");
-  console.log("alwaysKeepFieldKeys (yalnizca bos-kaldirmadan muaf) testi tamam.");
+  assert.ok(resultSame.headers.includes("UAVT"), "Dolu+ayni UAVT de sutun olarak KALMALI (hicbir sutun aynı deger yuzunden kalkmiyor).");
+  assert.ok(resultSame.commonFields.some((f) => f.label === "UAVT" && f.value === "123"), "Dolu+ayni UAVT AYRICA commonFields'e KOPYALANMALI.");
+  console.log("alwaysKeepFieldKeys (bos+ayniyken \"-\" kopyalanmaz, dolu+ayniyken kopyalanir) testi tamam.");
 }
 
-// --- 6) hoistExemptFieldKeys: YALNIZCA hoisting'den muaf, bos-kaldirmayi ---
-// ENGELLEMEZ (Tapu'nun "Ana Taşınmaz Niteliği" emsali).
+// --- 6) hoistExemptFieldKeys: YALNIZCA "hicbir tasinmazda veri yok" -------
+// durumunda sutunun TAMAMEN KALKMASINI saglar (0.0.451 orijinal kurali) —
+// dolu+ayniyken normal sekilde KALIR + commonFields'e KOPYALANIR (Tapu'nun
+// Blok/Kat/Bagimsiz Bolum No/Ana Tasinmaz Niteligi emsali).
 {
   const headers = ["Sıra No", "Ana Taşınmaz Niteliği"];
   const columnMeta = [{ kind: "seq" }, { kind: "scalar", fieldKey: "mainPropertyQuality" }];
   const hoistExemptFieldKeys = new Set(["mainPropertyQuality"]);
 
-  // 6a) TUM satirlarda AYNI ve DOLU ise, hoistExemptFieldKeys sayesinde
-  // hoisting'e GIRMEZ, normal sutun olarak KALIR.
+  // 6a) TUM satirlarda AYNI ve DOLU ise, sutun KALIR + commonFields'e KOPYALANIR
+  // (hoistExemptFieldKeys "aynı değer" kuralını ARTIK ETKİLEMEZ).
   const rowsSame = [[1, "Arsa"], [2, "Arsa"]];
   const resultSame = fns.finalizeTitleUnitsSummaryTableData(headers, rowsSame, columnMeta, { hoistExemptFieldKeys });
-  assert.ok(resultSame.headers.includes("Ana Taşınmaz Niteliği"), "hoistExemptFieldKeys: ayni-metin sutun KALMALI, commonFields'e TASINMAMALI.");
-  assert.deepEqual(resultSame.commonFields, [], "commonFields BOS olmali.");
+  assert.ok(resultSame.headers.includes("Ana Taşınmaz Niteliği"), "hoistExemptFieldKeys: ayni-metin sutun HER ZAMAN KALIR.");
+  assert.deepEqual(resultSame.commonFields, [{ label: "Ana Taşınmaz Niteliği", value: "Arsa", fieldKey: "mainPropertyQuality" }], "Dolu+ayni sutun AYRICA commonFields'e KOPYALANMALI.");
 
-  // 6b) TUM satirlarda BOS ise, hoistExemptFieldKeys onu bos-kaldirmadan
-  // KORUMAZ - yine kaldirilir (bu istisna alwaysKeepFieldKeys DEGIL).
+  // 6b) TUM satirlarda BOS ise, hoistExemptFieldKeys sutunun TAMAMEN
+  // KALKMASINI saglar (0.0.451 orijinal kurali, "boş olanları da göster"
+  // genel-scalar davranışına GİRMEZ).
   const rowsEmpty = [[1, "-"], [2, ""]];
   const resultEmpty = fns.finalizeTitleUnitsSummaryTableData(headers, rowsEmpty, columnMeta, { hoistExemptFieldKeys });
-  assert.ok(!resultEmpty.headers.includes("Ana Taşınmaz Niteliği"), "hoistExemptFieldKeys bos-kaldirmadan MUAF TUTMAZ - tumu bos ise yine kaldirilmali.");
-  console.log("hoistExemptFieldKeys (yalnizca hoisting'den muaf) testi tamam.");
-}
-
-// --- 7) duplicateToCommonFieldKeys: sutun KALKMAZ, ama ayni+doluysa AYRICA -
-// commonFields'e bir KOPYASI eklenir (2026-08-27, ucuncu takip talebi:
-// "haklısın bağımsız bölümler ile ilgili bölümler ortak olsa dahi tabloda
-// hem ortak bölümde hem de alt kısımda gözüksün" - Tapu'nun Blok/Kat/
-// Bağımsız Bölüm No emsali).
-{
-  // Gerçek kullanımda (buildTitleUnitsSummaryTableData) duplicateToCommonFieldKeys
-  // HER ZAMAN hoistExemptFieldKeys ile AYNI Set olarak geçilir (bkz. app.js) —
-  // bu fixture'da da aynı ilişki kuruluyor, aksi halde "boş" senaryosu
-  // 0.0.584'ün ilgisiz "genel-scalar boş göster" kuralıyla karışır.
-  const headers = ["Sıra No", "Blok", "Kat"];
-  const columnMeta = [{ kind: "seq" }, { kind: "scalar", fieldKey: "titleBlockName" }, { kind: "scalar", fieldKey: "titleFloor" }];
-  const hoistExemptFieldKeys = new Set(["titleBlockName", "titleFloor"]);
-  const duplicateToCommonFieldKeys = hoistExemptFieldKeys;
-
-  // 7a) "Blok" TUM satirlarda AYNI ve DOLU -> sutun KALIR (hoisting YOK,
-  // duplicateToCommonFieldKeys hoisting'den TAMAMEN FARKLI bir mekanizma)
-  // AYRICA commonFields'e de KOPYALANIR. "Kat" FARKLI -> ne sutun kalkar
-  // ne de commonFields'e eklenir (yalniz sutun olarak kalir).
-  const rowsSame = [[1, "A", "1"], [2, "A", "2"]];
-  const resultSame = fns.finalizeTitleUnitsSummaryTableData(headers, rowsSame, columnMeta, { hoistExemptFieldKeys, duplicateToCommonFieldKeys });
-  assert.deepEqual(resultSame.headers, headers, "duplicateToCommonFieldKeys: ne \"Blok\" ne \"Kat\" sutun olarak KALKMAMALI (hoisting YOK).");
-  assert.deepEqual(resultSame.commonFields, [{ label: "Blok", value: "A", fieldKey: "titleBlockName" }], "Yalnizca ayni+dolu \"Blok\" commonFields'e KOPYALANMALI, farkli \"Kat\" eklenmemeli.");
-
-  // 7b) TUMU BOS -> hoistExemptFieldKeys'in "boş-kaldırma kuralına HÂLÂ
-  // tabidir" davranışı geçerli (bu istisna alwaysKeepFieldKeys DEĞİL) —
-  // sütun TAMAMEN KALKAR, dolayısıyla duplicateToCommonFieldKeys'in
-  // görebileceği bir veri de KALMAZ (commonFields'e "-" KOPYALANMAZ).
-  const rowsEmpty = [[1, "", "1"], [2, "-", "1"]];
-  const resultEmpty = fns.finalizeTitleUnitsSummaryTableData(headers, rowsEmpty, columnMeta, { hoistExemptFieldKeys, duplicateToCommonFieldKeys });
-  assert.ok(!resultEmpty.headers.includes("Blok"), "TUMU BOS olan \"Blok\" (hoistExempt) sutun olarak KALKMALIYDI (davranis DEGISMEDI).");
-  assert.ok(!resultEmpty.commonFields.some((f) => f.fieldKey === "titleBlockName"), "TUMU BOS olan \"Blok\" commonFields'e KOPYALANMAMALI (bos deger anlamsiz, kopyalanacak veri de yok).");
-  console.log("duplicateToCommonFieldKeys (sutun kalir + ayni+doluysa AYRICA commonFields'e kopyalanir) testi tamam.");
+  assert.ok(!resultEmpty.headers.includes("Ana Taşınmaz Niteliği"), "hoistExemptFieldKeys: TUMU BOS ise sutun TAMAMEN KALKMALI.");
+  assert.deepEqual(resultEmpty.commonFields, [], "Kalkan sutun icin commonFields'e de hicbir sey eklenmemeli.");
+  console.log("hoistExemptFieldKeys (yalnizca \"hicbir veri yok\" durumunda tamamen kalkma) testi tamam.");
 }
 
 console.log("finalizeTitleUnitsSummaryTableData() (commonFields hoisting) testleri basarili.");
