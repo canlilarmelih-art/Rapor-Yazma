@@ -914,6 +914,21 @@
         fields: cloudData.payload.fields || {},
         tables: cloudData.payload.tables || {},
         lookupOptions: cloudData.payload.lookupOptions || {},
+        // KRİTİK (2026-08-27 bulundu): cloud-sync.js'in CLOUD_WHITELIST'i
+        // (bkz. applyPayloadToState) titleUnits/activeTitleUnitIndex/
+        // primaryTitleUnitShadow'u ZATEN buluta gönderiyor/geri yazıyordu —
+        // ama BU (başka bir cihazdan "buluttan getir" ile açma) yolu blob.state'i
+        // elle, ayrı bir alan listesiyle kuruyordu ve bu üçünü UNUTMUŞTU.
+        // restoreStateFromImportedJson()'daki `{...fallback, ...imported}`
+        // birleşimi, `imported`de HİÇ olmayan bir anahtarı fallback'in BOŞ
+        // varsayılanıyla (titleUnits: []) bırakıyor — sonuç: kullanıcı
+        // başka bir cihazdan rapor açtığında TÜM ek taşınmaz tabları
+        // (yalnızca birincil taşınmaz kalarak) kayboluyordu.
+        titleUnits: Array.isArray(cloudData.payload.titleUnits) ? cloudData.payload.titleUnits : [],
+        activeTitleUnitIndex: Number.isInteger(cloudData.payload.activeTitleUnitIndex) ? cloudData.payload.activeTitleUnitIndex : 0,
+        primaryTitleUnitShadow: cloudData.payload.primaryTitleUnitShadow && typeof cloudData.payload.primaryTitleUnitShadow === "object"
+          ? cloudData.payload.primaryTitleUnitShadow
+          : null,
         sourceValues: {
           kml: cloudData.payload.mapState?.kml || {},
           reportImages: cloudData.payload.mapState?.reportImages || {},
