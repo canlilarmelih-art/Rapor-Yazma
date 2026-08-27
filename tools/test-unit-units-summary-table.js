@@ -32,6 +32,15 @@
 //    getUnitFloorInteriorTableGroupCounts — GABIM Veri Seti'nin KENDİ
 //    6-gruplu sözleşmesinden İZOLE, ayrı bir sınıflandırma).
 //
+// Takip talebi #4 (2026-08-27, dubleks örneğiyle bulunan kusur): "yasal
+// alanda sadece tek katın alanı gözüküyor ... çatı kat alanı gözükmüyor"
+// → "toplam alanları yaz ilk kat alanı yazılmayacak ... bu satır çift
+// taraflı çalışmayacak" — "Yasal Alan"/"Mevcut Alan" artık unitFloors[0]'un
+// (İLK kat satırının) basit aynası DEĞİL; panelin TÜM kat satırlarının HAM
+// (indirgeme oranı/teras UYGULANMADAN) toplamı, "readonly" (İndirgenmiş
+// Toplam sütunlarıyla AYNI ilke — bir TOPLAM tek bir kaynak satıra geri
+// yazılamaz).
+//
 // Bu test kapsamı:
 //  1) 2+ taşınmazda tablo verisi döner, sütun sırası UNIT_UNITS_TABLE_FIELD_DEFS
 //     ile eşleşir (Blok - Kat - Bağımsız Bölüm No sırası dahil).
@@ -39,8 +48,9 @@
 //  3) Dekoratif Özellikler'in 20 alanı hiçbir yerde görünmez.
 //  4) Açıklama + eski/dormant fallback alanları (17 alan) da görünmez.
 //  5) Tüm taşınmazlarda BOŞ olan (genel) sütun tamamen kaldırılır.
-//  6) columnMeta: Blok/Bağımsız Bölüm No "readonly", diğer 17 alan (Genel
-//     panel 10 + aynalı 7, Kat dahil) "scalar".
+//  6) columnMeta: Blok/Bağımsız Bölüm No "readonly", "Yasal Alan"/"Mevcut
+//     Alan" ARTIK "readonly" (HAM toplam, çift taraflı DEĞİL), diğer 15
+//     alan (Genel panel 10 + aynalı 5, Kat dahil) "scalar".
 //  7) applyUnitFloorMirrorFieldEdit(): tekil-anahtar yazma, no-op, lazy
 //     row-oluşturma, inactive taşınmaz hedefi.
 //  8) REGRESYON: mirror-edit sonrası alakasız satır değişikliğinde veri
@@ -155,6 +165,9 @@ const functionNames = [
   "calculateReducedUnitFloorArea",
   "parseUnitReductionRate",
   "formatUnitReducedAreaValue",
+  // 2026-08-27 takip talebi: "Yasal Alan"/"Mevcut Alan" artik ilk kat
+  // satirinin aynasi DEGIL, TUM kat satirlarinin HAM toplami.
+  "calculateRawUnitFloorAreaTotal",
   "parseReportNumber",
   "classifyUnitFloorInteriorItemGroup",
   "getUnitFloorInteriorTableGroupCounts",
@@ -224,6 +237,12 @@ const MIRROR_KEYS = [
   "unitFloor", "legalArea", "currentArea", "unitAreaReductionRate",
   "unitLegalTerrace", "unitCurrentTerrace", "unitTerraceReductionRate",
 ];
+// 2026-08-27 takip talebi: "legalArea"/"currentArea" MIRROR_KEYS'te (fixture
+// üretimi + applyUnitFloorMirrorFieldEdit() testleri için) KALDI, ama
+// tablonun KENDİ columnMeta.kind'i artık "scalar" DEĞİL "readonly" — bu iki
+// alan bu Set'te, MIRROR_KEYS'in "scalar olmalı" kontrolünden (senaryo 6)
+// AYRI tutulur.
+const MIRROR_KEYS_NOW_READONLY = new Set(["legalArea", "currentArea"]);
 const IDENTITY_KEYS = ["titleBlockName", "unitNo"];
 
 function fullUnitFields(overrides = {}) {
@@ -354,8 +373,8 @@ const DIFFERENTIATING_UNIT_OVERRIDES = {};
   console.log("Tum tasinmazlarda bos olan sutunun kaldirilma testi tamam.");
 }
 
-// --- 6) columnMeta: Blok/Bağımsız Bölüm No "readonly", diğer 17 alan ------
-// "scalar" (Kat dahil)
+// --- 6) columnMeta: Blok/Bağımsız Bölüm No + Yasal/Mevcut Alan "readonly", -
+// diğer 15 alan "scalar" (Kat dahil)
 {
   fns.setState({
     activeTitleUnitIndex: 0,
@@ -370,7 +389,14 @@ const DIFFERENTIATING_UNIT_OVERRIDES = {};
     assert.equal(def.kind, "readonly", `"${key}" sütunu readonly olmalı (Tapu bölümünün alanı, burada yalnızca kimlik/tanıma amaçlı).`);
     assert.equal(def.narrow, true, `"${key}" sütunu narrow:true olmalı (kullanıcı talebi: mümkün olduğunca daralt).`);
   });
-  [...SCALAR_KEYS, ...MIRROR_KEYS].forEach((key) => {
+  // 2026-08-27 takip talebi: "legalArea"/"currentArea" ARTIK "readonly"
+  // (HAM toplam, çift taraflı DEĞİL) — MIRROR_KEYS'in geri kalanı (5 alan)
+  // hâlâ "scalar".
+  MIRROR_KEYS_NOW_READONLY.forEach((key) => {
+    const def = defs.find((item) => item.key === key);
+    assert.equal(def.kind, "readonly", `"${key}" sütunu artık readonly olmalı (ilk kat aynası DEĞİL, TÜM kat satırlarının HAM toplamı).`);
+  });
+  [...SCALAR_KEYS, ...MIRROR_KEYS.filter((key) => !MIRROR_KEYS_NOW_READONLY.has(key))].forEach((key) => {
     const def = defs.find((item) => item.key === key);
     assert.equal(def.kind, "scalar", `"${key}" sütunu scalar (düzenlenebilir) olmalı.`);
   });
@@ -382,7 +408,7 @@ const DIFFERENTIATING_UNIT_OVERRIDES = {};
   const expectedEditableCount = scalarCount * data.rows.length;
   const actualEditableCount = (html.match(/tus-editable-cell/g) || []).length;
   assert.equal(actualEditableCount, expectedEditableCount, `Yalnızca scalar sütunlar (${expectedEditableCount} adet) düzenlenebilir işaretlenmeliydi, bulunan: ${actualEditableCount}.`);
-  assert.equal(scalarCount, SCALAR_KEYS.length + MIRROR_KEYS.length, "Scalar sütun sayısı Genel panel + aynalı alan sayısıyla eşleşmeli.");
+  assert.equal(scalarCount, SCALAR_KEYS.length + MIRROR_KEYS.length - MIRROR_KEYS_NOW_READONLY.size, "Scalar sütun sayısı Genel panel + (artık readonly olan 2 alan HARİÇ) aynalı alan sayısıyla eşleşmeli.");
 
   // Kullanıcı takip talebi (2026-08-21): "sıra no blok ve bağımsız bölüm
   // no sütunları olabildiğince daralt" — Sıra No (seq) + Blok/BB No
@@ -488,6 +514,39 @@ const DIFFERENTIATING_UNIT_OVERRIDES = {};
   assert.equal(data.rows[0][legalIndex], "174", "1. taşınmazın İndirgenmiş Toplam Yasal Alanı doğru hesaplanmalı (100*1 + 20*0.5 + 80*0.8 + 0*1 = 174).");
   assert.equal(data.rows[1][legalIndex], "-", "unitFloors'u boş olan 2. taşınmazda '-' görünmeli.");
   console.log("Indirgenmis Toplam Yasal-Mevcut Alan sutunlari testi tamam.");
+}
+
+// --- 9b) KULLANICI BULGUSU (2026-08-27, dubleks ekran görüntüsü): --------
+// "Yasal Alan"/"Mevcut Alan" ARTIK ilk kat satırının (unitFloors[0]) HAM
+// alanı DEĞİL, panelin TÜM kat satırlarının HAM (indirgeme oranı/teras
+// UYGULANMADAN) toplamı - "İndirgenmiş Toplam"dan (rate+teras dahil, 9.
+// senaryodaki AYNI fixture'da 174) BİLİNÇLİ OLARAK FARKLI bir sayı.
+{
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: fullUnitFields(),
+    tables: {
+      unitFloors: [
+        { floor: "Zemin", legalArea: "100", areaReductionRate: "100", legalTerrace: "20", terraceReductionRate: "50", currentArea: "95", currentTerrace: "20" },
+        { floor: "Çatı", legalArea: "80", areaReductionRate: "80", legalTerrace: "0", terraceReductionRate: "100", currentArea: "75", currentTerrace: "0" },
+      ],
+    },
+    titleUnits: [unit(fullUnitFields(DIFFERENTIATING_UNIT_OVERRIDES))],
+  });
+  const data = fns.buildUnitUnitsSummaryTableData();
+  const legalAreaIndex = data.headers.indexOf("Yasal Alan (m²)");
+  const currentAreaIndex = data.headers.indexOf("Mevcut Alan (m²)");
+  assert.ok(legalAreaIndex >= 0 && currentAreaIndex >= 0, "'Yasal Alan (m²)'/'Mevcut Alan (m²)' sütunları bulunmalı.");
+  assert.equal(data.columnMeta[legalAreaIndex].kind, "readonly", "'Yasal Alan (m²)' artık readonly olmalı (çift taraflı çalışmaz).");
+  assert.equal(data.columnMeta[currentAreaIndex].kind, "readonly", "'Mevcut Alan (m²)' artık readonly olmalı (çift taraflı çalışmaz).");
+  // HAM toplam: Zemin (100) + Çatı (80) = 180 - "İndirgenmiş Toplam"daki
+  // 174'ten (indirgeme oranı + teras dahil) BİLİNÇLİ OLARAK FARKLI.
+  assert.equal(data.rows[0][legalAreaIndex], "180", "'Yasal Alan' iki kat satırının HAM toplamı olmalı (100+80=180), yalnızca ilk katın (100) DEĞİL.");
+  assert.equal(data.rows[0][currentAreaIndex], "170", "'Mevcut Alan' iki kat satırının HAM toplamı olmalı (95+75=170).");
+  const html = fns.buildTitleUnitsSummaryTableHtmlEditable(data.headers, data.rows, data.columnMeta, 0);
+  assert.ok(!html.includes(`data-field-key="legalArea"`), "'Yasal Alan' hücresi ARTIK tıkla-düzenle (data-field-key) İŞARETLİ OLMAMALI.");
+  assert.ok(!html.includes(`data-field-key="currentArea"`), "'Mevcut Alan' hücresi ARTIK tıkla-düzenle (data-field-key) İŞARETLİ OLMAMALI.");
+  console.log("KULLANICI BULGUSU: Yasal Alan/Mevcut Alan artik TUM kat satirlarinin HAM toplami (readonly) testi tamam.");
 }
 
 // --- 10) getUnitFloorInteriorTableGroupCounts / classify -------------------

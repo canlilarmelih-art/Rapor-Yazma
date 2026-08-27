@@ -23181,8 +23181,21 @@ const UNIT_UNITS_TABLE_FIELD_DEFS = [
   { key: "unitHeatingMounted", label: "Isıtma Monte mi?", kind: "scalar" },
   { key: "unitShopFrontage", label: "Cephe (m)", kind: "scalar" },
   { key: "unitShopDepth", label: "Derinlik (m)", kind: "scalar" },
-  { key: "legalArea", label: "Yasal Alan (m²)", kind: "scalar" },
-  { key: "currentArea", label: "Mevcut Alan (m²)", kind: "scalar" },
+  // Kullanıcı bulgusu + takip talebi (2026-08-27, dubleks örneğiyle):
+  // "yasal alanda sadece tek katın alanı gözüküyor ... çatı kat alanı
+  // gözükmüyor" → "toplam alanları yaz ilk kat alanı yazılmayacak ...
+  // bu satır çift taraflı çalışmayacak" — bu iki alan ESKİDEN unitFloors[0]'un
+  // (İLK kat satırının) basit aynasıydı (dubleks/çok katlı bağımsız
+  // bölümlerde YANILTICI: yalnızca 1. katı gösterip diğer katları
+  // sessizce atlıyordu). Artık `kind: "readonly"` — panelin TÜM kat
+  // satırlarının HAM (indirgeme oranı/teras UYGULANMADAN — bu,
+  // "İndirgenmiş Toplam Yasal/Mevcut Alan"ın işi, aşağıda AYRI bir
+  // sütun) toplamını gösterir (bkz. calculateRawUnitFloorAreaTotal,
+  // aşağıda) ve BİLEREK artık çift taraflı DÜZENLENEMEZ (bir TOPLAM tek
+  // bir kaynak satıra geri yazılamaz) — "İndirgenmiş Toplam" sütunlarıyla
+  // AYNI ilke.
+  { key: "legalArea", label: "Yasal Alan (m²)", kind: "readonly" },
+  { key: "currentArea", label: "Mevcut Alan (m²)", kind: "readonly" },
   { key: "unitAreaReductionRate", label: "Alan İnd. Oranı", kind: "scalar" },
   { key: "unitLegalTerrace", label: "Yasal Teras (m²)", kind: "scalar" },
   { key: "unitCurrentTerrace", label: "Mevcut Teras (m²)", kind: "scalar" },
@@ -23196,6 +23209,20 @@ const UNIT_UNITS_TABLE_REDUCED_AREA_DEFS = [
   { label: "İndirgenmiş Toplam Yasal Alan (m²)", mode: "legal" },
   { label: "İndirgenmiş Toplam Mevcut Alan (m²)", mode: "current" },
 ];
+
+// "Yasal Alan (m²)"/"Mevcut Alan (m²)" (UNIT_UNITS_TABLE_FIELD_DEFS, YUKARIDA)
+// için 2026-08-27 takip talebi: HAM (indirgeme oranı UYGULANMADAN, teras
+// EKLENMEDEN) toplam — calculateReducedUnitFloorTotal'dan (İndirgenmiş
+// Toplam sütunları için) BİLEREK FARKLI, bu ikisi artık AYRI, anlamlı iki
+// kavram: "Yasal Alan" = panelin TÜM kat satırlarının HAM alan toplamı,
+// "İndirgenmiş Toplam Yasal Alan" = indirgeme oranı + teras eklenmiş hâli.
+function calculateRawUnitFloorAreaTotal(rows = [], mode = "legal") {
+  const areaKey = mode === "current" ? "currentArea" : "legalArea";
+  return (rows || []).reduce((total, row) => {
+    const area = parseReportNumber(row?.[areaKey]);
+    return total + (Number.isFinite(area) ? area : 0);
+  }, 0);
+}
 
 // İç Hacimler grup sayıları — SABİT 8 sütun (Antre AYRI, Diğer dahil).
 const UNIT_UNITS_TABLE_INTERIOR_GROUP_DEFS = [
@@ -23294,7 +23321,14 @@ function buildUnitUnitsSummaryTableData() {
     const interiorCounts = getUnitFloorInteriorTableGroupCounts(floorRows);
     return [
       index + 1,
-      ...UNIT_UNITS_TABLE_FIELD_DEFS.map((def) => String(fields[def.key] || "").trim() || "-"),
+      ...UNIT_UNITS_TABLE_FIELD_DEFS.map((def) => {
+        // "Yasal Alan"/"Mevcut Alan" (2026-08-27 takip talebi, bkz.
+        // yukarıdaki def yorumu) — ARTIK ilk kat satırının aynası DEĞİL,
+        // panelin TÜM kat satırlarının HAM toplamı.
+        if (def.key === "legalArea") return formatUnitReducedAreaValue(calculateRawUnitFloorAreaTotal(floorRows, "legal")) || "-";
+        if (def.key === "currentArea") return formatUnitReducedAreaValue(calculateRawUnitFloorAreaTotal(floorRows, "current")) || "-";
+        return String(fields[def.key] || "").trim() || "-";
+      }),
       ...UNIT_UNITS_TABLE_REDUCED_AREA_DEFS.map((def) => (
         formatUnitReducedAreaValue(calculateReducedUnitFloorTotal(floorRows, def.mode)) || "-"
       )),

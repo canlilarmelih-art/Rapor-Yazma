@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.591 - 2026-08-27 - Bağımsız Bölüm Özeti: Yasal/Mevcut Alan artık TÜM kat satırlarının toplamı
+
+- Kullanıcı, dubleks bir bağımsız bölüm (BB 15, "4. Normal" + çatı katı) örneğiyle bildirdi: "bağımsız bölüm tablosunda yasal alanda sadece tek katın alanı gözüküyor örnekteki dubleks dairenin çatı kat alanı gözükmüyor." Sonrasında netleştirdi: "toplam alanları yaz ilk kat alanı yazılmayacak toplam alanlar yazacak tabloda böyle taşınmazlarda bu satır çift taraflı çalışmayacak."
+- **Kök neden**: "Yasal Alan (m²)"/"Mevcut Alan (m²)" sütunları `fields.legalArea`/`fields.currentArea`'yı gösteriyordu — bu iki alan, taşınmazın "Katlar, Alanlar ve İç Hacimler" panelindeki **yalnızca İLK kat satırının** (unitFloors[0]) basit bir aynasıydı (çift taraflı hızlı-düzenleme için). Tek katlı bağımsız bölümlerde bu ile gerçek toplam aynı olduğundan sorun görünmüyordu; dubleks/çok katlı bölümlerde ise 2./3. kat satırlarının alanı bu sütuna hiç yansımıyordu — tablonun kendi altındaki not bunu belirtiyordu ("ilk kat satırıyla eşlenir") ama kullanıcı deneyiminde kafa karıştırıcıydı.
+- **Düzeltme**: "Yasal Alan"/"Mevcut Alan" artık `kind: "readonly"` — panelin TÜM kat satırlarının HAM (indirgeme oranı/teras UYGULANMADAN — bu, yanındaki "İndirgenmiş Toplam Yasal/Mevcut Alan" sütunlarının işi, ayrı ve değişmedi) toplamını gösteriyor (yeni `calculateRawUnitFloorAreaTotal()`). Kullanıcının istediği gibi artık **çift taraflı çalışmıyor** (tıkla-düzenle kaldırıldı) — bir TOPLAM tek bir kaynak satıra geri yazılamaz, "İndirgenmiş Toplam" sütunlarıyla AYNI ilke. `fields.legalArea`/`currentArea`'nın kendisi (GABIM export gibi başka tüketiciler için) DEĞİŞMEDİ — yalnızca bu tablonun GÖSTERDİĞİ değer değişti.
+- Test: `tools/test-unit-units-summary-table.js`'in columnMeta senaryosu güncellendi (Yasal/Mevcut Alan artık readonly) ve yeni bir senaryo (9b) eklendi — dubleks fixture'ıyla (Zemin 100 + Çatı 80 = 180 HAM toplam, İndirgenmiş Toplam'daki 174'ten BİLİNÇLİ OLARAK farklı) doğrulandı; düzeltmeden önce test'in gerçekten başarısız olduğu (eski mirror değeri "M1" dönüyordu) doğrulanıp sonra düzeltme geri konuldu. `npm run verify` tam paket (648 test) EXIT:0.
+- `index.html`: `app.js` cache-buster `?v=20260827-3200`.
+- Canlı tarayıcı testi yapılamadı — kullanıcının dubleks/çok katlı bağımsız bölümü olan gerçek raporunda "Bağımsız Bölüm Özeti" tablosunda "Yasal Alan"/"Mevcut Alan" sütunlarının artık TÜM kat satırlarının toplamını gösterdiğini (örn. 85+81,25 gibi) ve hücrelerin artık tıklanıp düzenlenemediğini doğrulaması gerekir.
+
 ## 0.0.590 - 2026-08-27 - Değerleme tablosunda Arsa Payda artık her zaman sütun
 
 - Kullanıcı talebi: "arsa payda değerleme tablosunda alt kısımda gözüksün her zaman."
