@@ -216,13 +216,19 @@ function unit(fields, ownerRows) {
   assert.ok(!data.headers.includes("İl"), "\"İl\" (aynı ada/parsel) sütunu GİZLENMELİYDİ.");
   // "Diğer bölümler" HER ZAMAN var (Arsa Payı/Payda/Hissesine Düşen Arsa
   // Payı DAHİL — TÜM taşınmazlar AYNI ada/parselde olduğundan; farklı
-  // ada/parselde bu üçü kaldırılır, bkz. senaryo 2d). "Ana Taşınmaz
-  // Niteliği" artık ayrı, HER ZAMAN gösterilen sabit bir sütun (aynı-ise-
-  // gizle listesinden 2026-08-15'te ÇIKARILDI — kullanıcı talebi "Ana
-  // taşınmaz niteliği bölümünü ekle").
-  ["Sıra No", "Taşınmaz Kimlik No", "Blok", "Kat", "Bağımsız Bölüm No", "Bağımsız Bölüm Niteliği", "Ana Taşınmaz Niteliği", "Arsa Payı", "Arsa Payda", "Hissesine Düşen Arsa Payı", "Malik(ler)", "Hisse Payı", "Edinme Sebebi", "Tapu Tarihi", "Yevmiye No", "Cilt", "Sayfa"].forEach((col) => {
+  // ada/parselde bu üçü kaldırılır, bkz. senaryo 2d). Blok/Kat/BB No/BB
+  // Niteliği/Malik(ler)/Hisse Payı/Edinme Sebebi/Tapu Tarihi/Yevmiye No bu
+  // fixture'da taşınmaz başına FARKLI olduğundan (bkz. aşağıdaki fixture)
+  // sütun olarak kalıyor. "Ana Taşınmaz Niteliği" BU listede YOK — bkz.
+  // aşağıdaki assertion, artık commonFields'e taşınıyor (2026-08-27 takip
+  // talebi: "ana gayrimenkul ... bunlar ortak ... üstte yazmalı" — 2026-08-15'in
+  // "hiçbir zaman gizlenmez" kararı geri alındı, artık diğer paylaşımlı
+  // alanlarla AYNI genel kurala tabi).
+  ["Sıra No", "Taşınmaz Kimlik No", "Blok", "Kat", "Bağımsız Bölüm No", "Bağımsız Bölüm Niteliği", "Arsa Payı", "Arsa Payda", "Hissesine Düşen Arsa Payı", "Malik(ler)", "Hisse Payı", "Edinme Sebebi", "Tapu Tarihi", "Yevmiye No", "Cilt", "Sayfa"].forEach((col) => {
     assert.ok(data.headers.includes(col), `"${col}" sütunu HER ZAMAN gösterilmeliydi.`);
   });
+  assert.ok(!data.headers.includes("Ana Taşınmaz Niteliği"), "\"Ana Taşınmaz Niteliği\" TÜM taşınmazlarda aynı (\"Arsa\") olduğundan artık sütun olarak KALKMALI (commonFields'e taşınmalı).");
+  assert.equal(data.commonFields.find((f) => f.label === "Ana Taşınmaz Niteliği")?.value, "Arsa", "\"Ana Taşınmaz Niteliği\" ortak değeri commonFields'te \"Arsa\" olmalı.");
   // "en sola Sıra No sütunu ekle 1 den başla saymaya" — EN SOL sütun,
   // 1'den başlayan sıra numarası. "taşınmaz kimlik no sıra nodan sonra
   // gelsin" (2026-08-15) — Taşınmaz Kimlik No HEMEN ardından gelmeli
@@ -456,9 +462,18 @@ function unit(fields, ownerRows) {
   ["Blok", "Kat", "Bağımsız Bölüm No", "Arsa Payı", "Arsa Payda", "Hissesine Düşen Arsa Payı"].forEach((col) => {
     assert.ok(!data.headers.includes(col), `Bu sutun (bos veya farkli-parsel kurali geregi) KALDIRILMALIYDI: "${col}", bulunan basliklar: ${data.headers.join(", ")}`);
   });
-  ["Sıra No", "Taşınmaz Kimlik No", "Bağımsız Bölüm Niteliği", "Ana Taşınmaz Niteliği", "Malik(ler)", "Edinme Sebebi", "Cilt", "Sayfa"].forEach((col) => {
+  ["Sıra No", "Taşınmaz Kimlik No", "Bağımsız Bölüm Niteliği", "Malik(ler)", "Edinme Sebebi", "Cilt", "Sayfa"].forEach((col) => {
     assert.ok(data.headers.includes(col), `Dolu olan "${col}" sutunu KORUNMALIYDI, bulunan basliklar: ${data.headers.join(", ")}`);
   });
+  // "Ana Taşınmaz Niteliği" ("Tarla") VE "Hisse Payı" ("1/1") HER IKI
+  // tasinmazda da BIREBIR AYNI - artik (2026-08-27 takip talebi) sutun
+  // olarak KALKIP commonFields'e tasinmali; Cilt (registryVolume, "7") ise
+  // AYNI olsa da HALA hoistExempt (Blok/Kat/BB No gibi kimlik sutunu) -
+  // yukaridaki "korunmalı" listesinde kaldigi gibi sutun olarak kalir.
+  assert.ok(!data.headers.includes("Ana Taşınmaz Niteliği"), "\"Ana Taşınmaz Niteliği\" iki tasinmazda da ayni (\"Tarla\") oldugundan sutun olarak KALKMALIYDI.");
+  assert.ok(!data.headers.includes("Hisse Payı"), "\"Hisse Payı\" iki tasinmazda da ayni (\"1/1\") oldugundan sutun olarak KALKMALIYDI.");
+  assert.equal(data.commonFields.find((f) => f.label === "Ana Taşınmaz Niteliği")?.value, "Tarla", "\"Ana Taşınmaz Niteliği\" ortak degeri \"Tarla\" olmali.");
+  assert.equal(data.commonFields.find((f) => f.label === "Hisse Payı")?.value, "1/1", "\"Hisse Payı\" ortak degeri \"1/1\" olmali.");
   // "Parsel" farkli (12 vs 13) oldugundan paylasimli sutun olarak kalmali.
   assert.ok(data.headers.includes("Parsel"), "\"Parsel\" (farkli olan paylasimli alan) sutunu kalmali.");
   assert.equal(data.sharedColumnCount, 1, `sharedColumnCount filtreden SONRA da dogru sayilmali (yalnizca Parsel), bulunan: ${data.sharedColumnCount}`);

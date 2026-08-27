@@ -14,13 +14,19 @@
 // TÜM taşınmazlarda BOŞ olduğunda artık SESSİZCE KALDIRILMIYOR, "-"
 // değeriyle commonFields'e taşınıyor (boş bir değer de "aynı" sayılıyor).
 //
+// İkinci takip talebi (2026-08-27, aynı gün): "ana gayrimenkul malik hisse
+// payı bunlar ortak ... diğer ortak bölümlerde üstte yazmalı" — "owner"
+// kind'ı (Malik(ler)/Hisse Payı/Edinme Sebebi/Tapu Tarihi/Yevmiye No) artık
+// "scalar" ile AYNI şekilde hoisting adayı (bkz. senaryo 3b) — ÖNCEKİ
+// "owner asla hoisting'e girmez" kuralı GERİ ALINDI.
+//
 // Kapsam:
 //  1) Temel hoisting: TÜM satırlarda BİREBİR aynı (boş DAHİL) "scalar"
 //     sütun commonFields'e taşınır, headers/rows/columnMeta'dan kalkar.
 //  2) TÜM satırlarda BOŞ olan genel-scalar sütun artık KALDIRILMAZ, "-"
 //     değeriyle commonFields'e taşınır (2026-08-27 takip talebi).
-//  3) "seq"/"owner"/"computed"/"readonly" kind'lar HİÇBİR ZAMAN hoisting'e
-//     girmez (yalnızca "scalar").
+//  3) "seq"/"computed"/"readonly" kind'lar HİÇBİR ZAMAN hoisting'e girmez;
+//     "owner" artık "scalar" gibi (bağımsız sütun bazında) hoisting adayı.
 //  4) Tek satırlı (1 taşınmaz) girdide hoisting uygulanmaz (karşılaştırma
 //     anlamsız).
 //  5) alwaysKeepFieldKeys: dolu+aynıysa hoisting'e HÂLÂ tabidir; boş+aynı
@@ -119,23 +125,64 @@ const fns = new Function(sandboxSource)();
   console.log("Bos sutun + farkli-dolu sutun birlikte (yalniz bos olan commonFields'e tasinir) testi tamam.");
 }
 
-// --- 3) "seq"/"owner"/"computed"/"readonly" hicbir zaman hoisting'e girmez -
+// --- 3) "seq"/"computed"/"readonly" hicbir zaman hoisting'e girmez ---------
+// (2026-08-27 takip talebi: "ana gayrimenkul malik hisse payı bunlar ortak
+// ... diğer ortak bölümlerde üstte yazmalı" ile "owner" bu istisnadan
+// CIKARILDI - bkz. asagidaki senaryo 3b).
 {
-  const headers = ["Sıra No", "Malik(ler)", "Hissesine Düşen Arsa Payı", "İnş. Sev."];
+  const headers = ["Sıra No", "Hissesine Düşen Arsa Payı", "İnş. Sev."];
   const rows = [
-    [1, "Ahmet", "%50", "90"],
-    [2, "Ahmet", "%50", "90"],
+    [1, "%50", "90"],
+    [2, "%50", "90"],
   ];
   const columnMeta = [
     { kind: "seq" },
-    { kind: "owner", ownerColumn: "c0" },
     { kind: "computed" },
     { kind: "readonly", fieldKey: "constructionLevel" },
   ];
   const result = fns.finalizeTitleUnitsSummaryTableData(headers, rows, columnMeta);
-  assert.deepEqual(result.headers, headers, "seq/owner/computed/readonly TUM satirlarda ayni olsa BILE hicbiri hoisting'e girmemeli.");
-  assert.deepEqual(result.commonFields, [], "commonFields BOS olmali (hicbir scalar sutun yok).");
-  console.log("seq/owner/computed/readonly hoisting-muafiyeti testi tamam.");
+  assert.deepEqual(result.headers, headers, "seq/computed/readonly TUM satirlarda ayni olsa BILE hicbiri hoisting'e girmemeli.");
+  assert.deepEqual(result.commonFields, [], "commonFields BOS olmali (hicbir scalar/owner sutun yok).");
+  console.log("seq/computed/readonly hoisting-muafiyeti testi tamam.");
+}
+
+// --- 3b) "owner" sutunu artik "scalar" ile AYNI sekilde hoisting adayi ----
+// (2026-08-27 takip talebi, kullanicinin gercek Tapu ornegi: "malik hisse
+// payı bunlar ortak ... diğer ortak bölümlerde üstte yazmalı").
+{
+  const headers = ["Sıra No", "Malik(ler)", "Hisse Payı"];
+  // 3b-i) TUM satirlarda AYNI ve DOLU -> commonFields'e tasinir.
+  const rowsSame = [
+    [1, "Ahmet Yılmaz", "1/1"],
+    [2, "Ahmet Yılmaz", "1/1"],
+  ];
+  const columnMeta = [
+    { kind: "seq" },
+    { kind: "owner", ownerColumn: "c0" },
+    { kind: "owner", ownerColumn: "c1" },
+  ];
+  const resultSame = fns.finalizeTitleUnitsSummaryTableData(headers, rowsSame, columnMeta);
+  assert.deepEqual(resultSame.headers, ["Sıra No"], "\"Malik(ler)\"/\"Hisse Payı\" (owner, ayni+dolu) tablodan kalkmali.");
+  assert.deepEqual(
+    resultSame.commonFields,
+    [
+      { label: "Malik(ler)", value: "Ahmet Yılmaz", fieldKey: "c0" },
+      { label: "Hisse Payı", value: "1/1", fieldKey: "c1" },
+    ],
+    "\"Malik(ler)\"/\"Hisse Payı\" commonFields'e (fieldKey yerine ownerColumn ile) taşınmalı."
+  );
+
+  // 3b-ii) Malik FARKLI, Hisse Payı AYNI -> yalnizca Hisse Payı tasinir
+  // (kullanicinin "malik ve hisse payı aynı grup her zaman" notu bir
+  // ZORUNLULUK degil, GOZLEM - her owner sutunu BAGIMSIZ degerlendirilir).
+  const rowsMixed = [
+    [1, "Ahmet Yılmaz", "1/1"],
+    [2, "Ayşe Yılmaz", "1/1"],
+  ];
+  const resultMixed = fns.finalizeTitleUnitsSummaryTableData(headers, rowsMixed, columnMeta);
+  assert.deepEqual(resultMixed.headers, ["Sıra No", "Malik(ler)"], "Farkli olan \"Malik(ler)\" sutun olarak KALMALI.");
+  assert.deepEqual(resultMixed.commonFields, [{ label: "Hisse Payı", value: "1/1", fieldKey: "c1" }], "Ayni olan \"Hisse Payı\" commonFields'e tasinmali.");
+  console.log("\"owner\" sutunu artik \"scalar\" gibi hoisting adayi (bagimsiz sutun bazinda) testi tamam.");
 }
 
 // --- 4) Tek satirli (1 tasinmaz) girdide hoisting UYGULANMAZ ---------------

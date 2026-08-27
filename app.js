@@ -21338,14 +21338,20 @@ function joinTitleUnitOwnerColumn(ownerRows, pick) {
 // değere sahip "scalar" sütunlar satır satır TEKRARLANMAK yerine
 // `commonFields`e taşınır — çağıran taraf (buildTitleUnitsSummaryTableHtmlEditable)
 // bunları tablonun ÜSTÜNDE tek bir "Ortak Bilgiler" satırında gösterir.
-// Yalnızca `kind: "scalar"` sütunlar ortak-değer adayı olabilir — "seq"
-// (Sıra No, tanım gereği HER ZAMAN farklı), "owner" (Malik(ler) popover'ı,
-// satır-bazlı tıklama hedefi) ve "computed"/"readonly" (hesaplanan/tıklanamaz)
-// sütunlar HİÇBİR ZAMAN hoisting'e girmez — bunları tablodan çıkarmak
-// düzenleme/popover mekanizmasını (data-unit-index'e dayanan tıklama
-// hedefleri) BOZAR. İki AYRI istisna seçeneği var (options, opsiyonel),
-// KASITLI olarak BİRBİRİNDEN BAĞIMSIZ (bir sütun ikisine de, yalnızca
-// birine, ya da hiçbirine tabi olabilir):
+// `kind: "scalar"` VE `kind: "owner"` sütunlar ortak-değer adayı olabilir
+// (2026-08-27 takip talebi: "ana gayrimenkul malik hisse payı bunlar ortak
+// ... diğer ortak bölümlerde üstte yazmalı" — Malik(ler)/Hisse Payı/Edinme
+// Sebebi/Tapu Tarihi/Yevmiye No gibi "owner" sütunları da, tıpkı scalar
+// sütunlar gibi, TÜM taşınmazlarda birebir aynı VE doluysa artık
+// commonFields'e taşınır; ÖNCEKİ "owner asla hoisting'e girmez" kuralı
+// GERİ ALINDI — hoisting'e giren bir owner sütunu tablodan kalktığı için
+// popover'ı da kalkar, ama bu tıpkı hoisting'e giren bir scalar sütunun
+// tıkla-düzenle özelliğini kaybetmesiyle AYNI, ZATEN VAR OLAN bir
+// davranıştır, yeni bir tutarsızlık değildir). Yalnızca "seq" (Sıra No,
+// tanım gereği HER ZAMAN farklı) ve "computed"/"readonly" (hesaplanan/
+// tıklanamaz) sütunlar HİÇBİR ZAMAN hoisting'e girmez. İki AYRI istisna
+// seçeneği var (options, opsiyonel), KASITLI olarak BİRBİRİNDEN BAĞIMSIZ
+// (bir sütun ikisine de, yalnızca birine, ya da hiçbirine tabi olabilir):
 // - `alwaysKeepFieldKeys` (Set) — YALNIZCA boş-kaldırma kuralından muaf
 //   tutar (Adres Özeti'nin "aynı ada/parselde bu alanlar boş bile olsa
 //   sütun olarak gözükmeli" istisnası, ADDRESS_UNITS_TABLE_ALWAYS_VISIBLE_WHEN_SAME_ADA_PARSEL_KEYS,
@@ -21353,10 +21359,12 @@ function joinTitleUnitOwnerColumn(ownerRows, pick) {
 //   taşınmazlarda birebir aynıysa yine üste taşınır (2026-08-27'nin YENİ
 //   kuralı bu istisnadan ETKİLENMEZ, ikisi FARKLI sorunlara çözüm).
 // - `hoistExemptFieldKeys` (Set) — YALNIZCA hoisting'den muaf tutar
-//   (Tapu'nun "Ana Taşınmaz Niteliği" gibi HER ZAMAN gösterilen kimlik
-//   sütunları, 2026-08-15: "farklı parsellerde bu alan ÖNEMLİDİR, yalnızca
-//   'aynı metin' diye kaybolmamalı"). Boş-kaldırma kuralına HÂLÂ tabidir
-//   (boşsa yine kaldırılır — davranış DEĞİŞMEDİ).
+//   (Tapu'nun Blok/Kat/Bağımsız Bölüm No/Niteliği gibi, bağımsız bölümün
+//   KENDİ kimliğini taşıyan ve bu yüzden HER ZAMAN gösterilmesi gereken
+//   sütunları — "Ana Taşınmaz Niteliği" 2026-08-27'de bu listeden BİLEREK
+//   ÇIKARILDI, çünkü o bağımsız bölümün değil TÜM ana taşınmazın
+//   niteliğidir, bkz. buildTitleUnitsSummaryTableData). Boş-kaldırma
+//   kuralına HÂLÂ tabidir (boşsa yine kaldırılır — davranış DEĞİŞMEDİ).
 function finalizeTitleUnitsSummaryTableData(headers, rows, columnMeta, options = {}) {
   const alwaysKeepFieldKeys = options.alwaysKeepFieldKeys || null;
   const hoistExemptFieldKeys = options.hoistExemptFieldKeys || null;
@@ -21393,7 +21401,11 @@ function finalizeTitleUnitsSummaryTableData(headers, rows, columnMeta, options =
   const keptIndices = [];
   dataHeaders.forEach((label, columnIndex) => {
     const meta = dataColumnMeta[columnIndex];
-    if (columnIndex === 0 || !meta || meta.kind !== "scalar" || dataRows.length < 2 || isHoistExempt(meta)) {
+    // 2026-08-27 takip talebi: "owner" sütunları (Malik(ler)/Hisse Payı/
+    // Edinme Sebebi/Tapu Tarihi/Yevmiye No) artık "scalar" ile AYNI şekilde
+    // hoisting adayı — bkz. yukarıdaki fonksiyon yorumu.
+    const isHoistCandidateKind = meta && (meta.kind === "scalar" || meta.kind === "owner");
+    if (columnIndex === 0 || !isHoistCandidateKind || dataRows.length < 2 || isHoistExempt(meta)) {
       keptIndices.push(columnIndex);
       return;
     }
@@ -21408,7 +21420,11 @@ function finalizeTitleUnitsSummaryTableData(headers, rows, columnMeta, options =
     // olarak KALMAYA devam eder, "-" olarak commonFields'e TAŞINMAZ.
     const eligible = allSame && (values[0] !== "" || !isAlwaysKept(meta));
     if (eligible) {
-      commonFields.push({ label, value: values[0] || "-", fieldKey: meta.fieldKey });
+      // "owner" sütunlarının fieldKey'i YOK (bkz. columnMeta tanımı,
+      // { kind: "owner", ownerColumn: "c0" } gibi) — commonFields salt
+      // gösterim amaçlı (label/value) olduğundan bu sorun değil, ama
+      // ileride bir tanımlayıcı gerekirse diye ownerColumn'a düşülür.
+      commonFields.push({ label, value: values[0] || "-", fieldKey: meta.fieldKey || meta.ownerColumn });
     } else {
       keptIndices.push(columnIndex);
     }
@@ -21581,6 +21597,26 @@ function buildTitleUnitsSummaryTableData() {
   const hoistExemptFieldKeys = new Set(
     columnMeta.filter((meta) => meta.kind === "scalar" && !sharedFieldKeySet.has(meta.fieldKey)).map((meta) => meta.fieldKey)
   );
+  // Kullanıcı takip talebi (2026-08-27): "ana gayrimenkul malik hisse payı
+  // bunlar ortak ... diğer ortak bölümlerde üstte yazmalı" — "Ana Taşınmaz
+  // Niteliği" (mainPropertyQuality), yukarıdaki genel kuralın kapsadığı
+  // Blok/Kat/BB No/BB Niteliği/Taşınmaz Kimlik No'nun AKSİNE, bağımsız
+  // bölümün DEĞİL TÜM ana taşınmazın (binanın) niteliğidir — taşınmazlar
+  // AYNI ana taşınmaza aitse bu değer GERÇEKTEN ortaktır, bir "kimlik"
+  // sütunu değildir. 2026-08-15'teki "hiçbir zaman hoisting'e girmez"
+  // kararı BİLEREK GERİ ALINDI — artık diğer paylaşımlı alanlarla (İl/
+  // İlçe/vb.) AYNI genel kurala tabi: aynı+doluysa Ortak Bilgiler'e
+  // taşınır, farklıysa (ör. farklı parsellerden oluşan bir raporda) sütun
+  // olarak kalır (davranış DEĞİŞMEDİ, yalnızca hoisting muafiyeti kalktı).
+  hoistExemptFieldKeys.delete("mainPropertyQuality");
+  // "Malik(ler)/Hisse Payı/Edinme Sebebi/Tapu Tarihi/Yevmiye No" (owner
+  // sütunları) zaten yukarıdaki filter'a (kind === "scalar") hiç girmiyor,
+  // dolayısıyla hoistExemptFieldKeys'e HİÇ eklenmiyorlar — bu, onların
+  // artık finalizeTitleUnitsSummaryTableData'nın "owner" kind'i için de
+  // AÇTIĞI genel hoisting kuralına (bkz. o fonksiyonun yorumu) TABİ
+  // olmaları için YETERLİ ve KASITLI (kullanıcının "malik ve hisse payı
+  // aynı grup her zaman" notuyla tutarlı — beşi de bağımsız olarak, TÜM
+  // taşınmazlarda birebir aynı VE doluysa Ortak Bilgiler'e taşınır).
   const result = finalizeTitleUnitsSummaryTableData(headers, rows, columnMeta, { hoistExemptFieldKeys });
   // sharedColumnCount: sharedFieldKeySet'ten hâlâ TABLODA (commonFields'e
   // TAŞINMAMIŞ, gerçekten sütun olarak farklı) kalan sayı — eskiden "aynı
