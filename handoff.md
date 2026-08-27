@@ -1,5 +1,16 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.583 - 2026-08-27 - DÜZELTME: "Ortak Bilgiler" başlık + kutucuk ızgarası oldu
+
+- Kullanıcı 0.0.581'i canlıda test etti: "ORTAK BİLGİLER başlık ve kutucuk şeklinde olmalı şu an puntolar çok küçük 4 x 2 sütuna bölebilirsin."
+- **Eski tasarım**: tek satır düz metin ("Ortak Bilgiler: İl: Bursa · İlçe: Osmangazi · ..."), tablo hücreleriyle AYNI küçük punto (6.5pt).
+- **Yeni tasarım**: `buildTitleUnitsSummaryTableCommonFieldsHtml()` artık (1) ayrı, belirgin bir "ORTAK BİLGİLER" başlığı, (2) her alan KENDİ kutucuğunda — üstte küçük/mavi ETİKET (7.5pt), altta büyük/kalın DEĞER (10pt, eskisinden ~%54 daha büyük) — bir istatistik kartı gibi, (3) satır başına EN FAZLA 4 kutucuk (kullanıcının "4 x 2" tarifi — Tapu'nun 7 ortak alanlı örneğinde 4+3 olarak sarıyor) üretiyor. Izgara CSS grid/flex İLE DEĞİL bir `<table>` ile kuruldu — bu banner hem ekran-içi önizlemede HEM DE Word/banka şablonu export'unda kullanıldığından, Word'ün HTML dönüştürücüsü modern CSS grid/flex'i güvenilir render etmiyor (tablonun kendisinin `<table>` kullanmasıyla AYNI gerekçe).
+- **Doğrulama yöntemi**: gerçek fonksiyonu izole bir sandbox'ta çalıştırıp çıktısını yerel önizleme sunucusunda açtım, `getBoundingClientRect`/`getComputedStyle` ile ÖLÇEREK doğruladım: 4 kutucuk üst satırda (aynı `top`, eşit aralıklı `left`), 3 kutucuk alt satırda (aynı sütun konumlarında) — gerçek bir 4-sütunlu ızgara; etiket punto 10px (~7.5pt), değer punto 13.3px (~10pt) — eskisinin (6.5pt) belirgin şekilde üzerinde.
+- CSS sınıfı `.title-units-summary-common-fields` artık yalnızca bir kanca (görsel kuralları KALDIRILDI — tasarımın TAMAMI satır-içi `style=`, export uyumluluğu için).
+- Test: mevcut testlerin hiçbiri render edilen HTML'in TAM metnini doğrulamıyordu (yalnızca `data.commonFields` dizisini), bu yüzden hiçbiri değişmedi — `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js`/`styles.css` cache-buster `?v=20260827-2400`.
+- Canlı tarayıcı testi (görsel) yapılamadı ama DOM/CSS izole bir önizlemede ölçülerek doğrulandı. Kullanıcının gerçek raporunda "Ortak Bilgiler" bölümünün artık başlıklı, kutucuklu ve daha büyük puntolu göründüğünü doğrulaması gerekir.
+
 ## 0.0.582 - 2026-08-27 - Tapu Özeti tablosuna Eski Ada/Eski Parsel eklendi
 
 - Kullanıcı talebi: "TAPU BÖLÜMÜNDE İL İLÇE MAHALLE MEVKİİ PAFTA ESKİ ADA ESKİ PARSEL BÖLÜMLERİNİ EKLEYELİM."

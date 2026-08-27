@@ -21704,16 +21704,46 @@ function buildTitleUnitsSummaryTableHtmlFromData(headers, rows, commonFields = [
 // bir sütun (ör. İl) export'ta HİÇBİR YERDE görünmez, veri KAYBI olurdu —
 // bu yüzden export yolunda da (editable=false/parametresiz) HER ZAMAN
 // render edilir.
+// Kullanıcı takip talebi (2026-08-27): "ORTAK BİLGİLER başlık ve kutucuk
+// şeklinde olmalı şu an puntolar çok küçük 4 x 2 sütuna bölebilirsin" —
+// ilk sürüm (tek satır, "Etiket: Değer · Etiket: Değer") çok küçük punto
+// (tablo hücreleriyle AYNI 6.5pt) ve düz-metin görünümündeydi. Artık: (1)
+// ayrı, belirgin bir "ORTAK BİLGİLER" başlığı, (2) her alan kendi
+// kutucuğunda (üstte küçük/mavi ETİKET, altta büyük/kalın DEĞER — bir
+// istatistik kartı gibi), (3) satır başına EN FAZLA 4 kutucuk, gerekirse
+// yeni satıra sarar (7 alanlı Tapu örneğinde 4+3 — kullanıcının "4 x 2"
+// tarifiyle eşleşir). Izgara CSS grid/flex İLE DEĞİL bir `<table>` ile
+// kurulur — bu banner hem ekran-içi önizlemede HEM DE Word/banka şablonu
+// export'unda kullanılıyor, Word'ün HTML dönüştürücüsü modern CSS grid/
+// flex'i GÜVENİLİR render ETMEZ (tablonun kendisinin de AYNI nedenle
+// `<table>` kullanması gibi).
 function buildTitleUnitsSummaryTableCommonFieldsHtml(commonFields) {
   if (!Array.isArray(commonFields) || !commonFields.length) return "";
   const ink = getReportThemeToken("--ink", "#152238");
   const line = getReportThemeToken("--line", "#dde3ef");
+  const blue = getReportThemeToken("--blue", "#3a5691");
+  const surface = getReportThemeToken("--surface", "#ffffff");
   const surfaceMuted = getReportThemeToken("--surface-muted", "#eef2fa");
-  const style = `margin:0 0 6pt;padding:4pt 6pt;background:${surfaceMuted};border:1pt solid ${line};border-radius:4pt;font-size:6.5pt;line-height:1.4;color:${ink};`;
-  const items = commonFields
-    .map((field) => `<strong>${escapeHtml(field.label)}:</strong> ${escapeHtml(field.value)}`)
-    .join(" &nbsp;·&nbsp; ");
-  return `<p class="title-units-summary-common-fields" style="${style}">Ortak Bilgiler: ${items}</p>`;
+  const COLUMNS = 4;
+  const boxCell = `border:1pt solid ${line};background:${surface};padding:5pt 7pt;text-align:left;vertical-align:top;width:${Math.floor(100 / COLUMNS)}%;`;
+  const labelStyle = `font-size:7.5pt;font-weight:800;letter-spacing:0.3pt;color:${blue};text-transform:uppercase;margin:0 0 2pt;`;
+  const valueStyle = `font-size:10pt;font-weight:700;color:${ink};word-break:break-word;`;
+
+  const cellsHtml = commonFields.map((field) => (
+    `<td style="${boxCell}"><div style="${labelStyle}">${escapeHtml(field.label)}</div><div style="${valueStyle}">${escapeHtml(field.value)}</div></td>`
+  ));
+  const rowsHtml = [];
+  for (let index = 0; index < cellsHtml.length; index += COLUMNS) {
+    const rowCells = cellsHtml.slice(index, index + COLUMNS);
+    const padCount = COLUMNS - rowCells.length;
+    const padHtml = padCount > 0 ? `<td style="border:none;background:transparent;" colspan="${padCount}"></td>` : "";
+    rowsHtml.push(`<tr>${rowCells.join("")}${padHtml}</tr>`);
+  }
+
+  return `<div class="title-units-summary-common-fields" style="margin:0 0 8pt;">
+    <div style="font-size:9pt;font-weight:800;letter-spacing:0.3pt;color:${blue};margin:0 0 4pt;">ORTAK BİLGİLER</div>
+    <table style="width:100%;border-collapse:collapse;background:${surfaceMuted};border:1pt solid ${line};border-radius:4pt;">${rowsHtml.join("")}</table>
+  </div>`;
 }
 
 function buildTitleUnitsSummaryTableHtmlEditable(headers, rows, columnMeta, activeRowIndex, commonFields = []) {

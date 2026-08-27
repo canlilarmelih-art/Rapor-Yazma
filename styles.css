@@ -4621,22 +4621,19 @@ table {
   line-height: 1.25;
 }
 
-/* Kullanıcı talebi (2026-08-27): "TÜM ÇİFT TARAFLI tabloların en üstünde
-   ortak değerleri belirt örnek il ilçe mahalle gibi" — TÜM taşınmazlarda
-   birebir aynı olan (bkz. finalizeTitleUnitsSummaryTableData'nın
+/* Kullanıcı talebi (2026-08-27, sonra "başlık ve kutucuk şeklinde olmalı
+   şu an puntolar çok küçük 4 x 2 sütuna bölebilirsin" takip düzeltmesi) —
+   TÜM taşınmazlarda birebir aynı olan (bkz. finalizeTitleUnitsSummaryTableData'nın
    commonFields'i) sütunlar satır satır tekrarlanmak yerine tablonun
-   HEMEN ÜSTÜNDE tek bir satırda gösterilir; boşken (commonFields=[])
-   hiç eklenmez, bu yüzden :empty guard'ına gerek YOK (buildTitleUnitsSummaryTableCommonFieldsHtml
-   zaten boşsa "" döner). */
+   HEMEN ÜSTÜNDE "ORTAK BİLGİLER" başlığı + satır başına 4 kutucuklu bir
+   ızgarada gösterilir; boşken (commonFields=[]) hiç eklenmez. Görsel
+   tasarımın TAMAMI (başlık, kutucuk, punto) `buildTitleUnitsSummaryTableCommonFieldsHtml`'de
+   SATIR-İÇİ (`style=`) veriliyor — bu banner hem ekran-içi önizlemede HEM
+   DE Word/banka şablonu export'unda kullanıldığından (export app.js'in
+   CSS'ini YÜKLEMEZ); bu sınıf yalnızca dış kapsayıcı için bir kanca,
+   KENDİ görsel kuralı YOK. */
 .title-units-summary-common-fields {
-  margin: 0 0 6px;
-  padding: 6px 8px;
-  background: var(--surface-muted, #eef2fa);
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  font-size: 0.78em;
-  line-height: 1.4;
-  color: var(--ink);
+  overflow-x: auto;
 }
 
 .title-units-summary-table-container {
