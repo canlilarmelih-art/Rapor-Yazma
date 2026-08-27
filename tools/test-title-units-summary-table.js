@@ -725,4 +725,53 @@ function unit(fields, ownerRows) {
   console.log("buildTitleUnitsSummaryTableHtmlEditable 'sutunun tumune uygula' butonu (yalnizca scalar sutunlar) testi tamam.");
 }
 
+// --- Eski Ada/Eski Parsel (2026-08-27, kullanici talebi: "TAPU BOLUMUNDE ---
+// IL ILCE MAHALLE MEVKII PAFTA ESKI ADA ESKI PARSEL BOLUMLERINI
+// EKLEYELIM") - oldBlockNo/oldParcelNo TITLE_UNITS_TABLE_SHARED_FIELD_DEFS'e
+// eklendi (Tapu bolumunde ZATEN var olan form alanlari, tabloya hic
+// yansimiyordu). Diger 5 paylasimli alanla (Il/Ilce/Mahalle/Mevkii/Pafta)
+// AYNI genel kural: farkliysa normal sutun, TUM tasinmazlarda ayni VE
+// doluysa "Ortak Bilgiler"e tasinir - Ada/Parsel'in ozel zorla-gizleme
+// kuralina (HIDE_WHEN_SAME_ADA_PARSEL_KEYS) DAHIL EDILMEDI.
+{
+  // 1) Farkli "Eski Ada"/"Eski Parsel" -> normal sutun olarak kalir.
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: { titlePropertyId: "1", blockNo: "500", parcelNo: "10", oldBlockNo: "12", oldParcelNo: "3" },
+    tables: {},
+    titleUnits: [
+      unit({ titlePropertyId: "2", blockNo: "500", parcelNo: "10", oldBlockNo: "13", oldParcelNo: "4" }),
+    ],
+  });
+  const dataDiff = fns.buildTitleUnitsSummaryTableData();
+  assert.ok(dataDiff.headers.includes("Eski Ada"), "\"Eski Ada\" farkli oldugunda sutun olarak KALMALI.");
+  assert.ok(dataDiff.headers.includes("Eski Parsel"), "\"Eski Parsel\" farkli oldugunda sutun olarak KALMALI.");
+  const oldBlockIdx = dataDiff.headers.indexOf("Eski Ada");
+  const oldParcelIdx = dataDiff.headers.indexOf("Eski Parsel");
+  assert.equal(dataDiff.rows[0][oldBlockIdx], "12", "1. tasinmazin Eski Ada degeri dogru sutunda olmali.");
+  assert.equal(dataDiff.rows[1][oldParcelIdx], "4", "2. tasinmazin Eski Parsel degeri dogru sutunda olmali.");
+  assert.equal(dataDiff.columnMeta[oldBlockIdx].fieldKey, "oldBlockNo", "Eski Ada -> oldBlockNo eslesmeli.");
+  assert.equal(dataDiff.columnMeta[oldParcelIdx].fieldKey, "oldParcelNo", "Eski Parsel -> oldParcelNo eslesmeli.");
+
+  // 2) Ayni (dolu) "Eski Ada"/"Eski Parsel" -> commonFields'e tasinir
+  // (Ada/Parsel BILEREK farkli tutuldu ki zorla-gizleme kurali devreye
+  // girmesin, yalnizca genel "ayni ise uste tasi" kurali test edilsin).
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: { titlePropertyId: "1", blockNo: "500", parcelNo: "10", oldBlockNo: "12", oldParcelNo: "3" },
+    tables: {},
+    titleUnits: [
+      unit({ titlePropertyId: "2", blockNo: "600", parcelNo: "20", oldBlockNo: "12", oldParcelNo: "3" }),
+    ],
+  });
+  const dataSame = fns.buildTitleUnitsSummaryTableData();
+  assert.ok(!dataSame.headers.includes("Eski Ada"), "\"Eski Ada\" TUM tasinmazlarda ayni oldugunda sutun olarak KALKMALI.");
+  assert.ok(!dataSame.headers.includes("Eski Parsel"), "\"Eski Parsel\" TUM tasinmazlarda ayni oldugunda sutun olarak KALKMALI.");
+  const commonLabels = dataSame.commonFields.map((field) => field.label);
+  assert.ok(commonLabels.includes("Eski Ada"), "\"Eski Ada\" commonFields'te OLMALI.");
+  assert.ok(commonLabels.includes("Eski Parsel"), "\"Eski Parsel\" commonFields'te OLMALI.");
+  assert.equal(dataSame.commonFields.find((f) => f.label === "Eski Ada")?.value, "12", "\"Eski Ada\" ortak degeri dogru olmali.");
+  console.log("Eski Ada/Eski Parsel (TITLE_UNITS_TABLE_SHARED_FIELD_DEFS'e eklendi) testi tamam.");
+}
+
 console.log("Tasinmazlar tapu ozeti tablosu testleri basarili.");

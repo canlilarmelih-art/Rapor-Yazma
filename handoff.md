@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.582 - 2026-08-27 - Tapu Özeti tablosuna Eski Ada/Eski Parsel eklendi
+
+- Kullanıcı talebi: "TAPU BÖLÜMÜNDE İL İLÇE MAHALLE MEVKİİ PAFTA ESKİ ADA ESKİ PARSEL BÖLÜMLERİNİ EKLEYELİM."
+- **Durum tespiti**: İl/İlçe/Mahalle/Mevkii/Pafta zaten `TITLE_UNITS_TABLE_SHARED_FIELD_DEFS`'te (Tapu Özeti çift taraflı tablosunun paylaşımlı-alan listesi) vardı. Yalnızca "Eski Ada"/"Eski Parsel" (`oldBlockNo`/`oldParcelNo` — Tapu bölümünde ZATEN var olan form alanları) tabloya HİÇ yansımıyordu.
+- **Düzeltme**: `oldBlockNo`/`oldParcelNo` bu listeye (Pafta'dan hemen sonra, kullanıcının verdiği sırayla) eklendi. Diğer 5 paylaşımlı alanla AYNI genel kural geçerli (0.0.581'in `finalizeTitleUnitsSummaryTableData`'sı sayesinde): taşınmaz başına farklıysa normal sütun olarak kalır, TÜM taşınmazlarda birebir aynı VE doluysa tablonun üstündeki "Ortak Bilgiler" satırına taşınır. Ada/Parsel'in kendine özgü "ada/parsel eşitliğine göre ZORLA gizle" kuralına (`HIDE_WHEN_SAME_ADA_PARSEL_KEYS`) BİLİNÇLİ OLARAK dahil edilmedi — kullanıcı yalnızca "ekleyelim" dedi, bu ek/daha güçlü kural istenmedi.
+- Test: `tools/test-title-units-summary-table.js`'e yeni senaryo eklendi — Eski Ada/Eski Parsel farklıyken normal sütun (doğru fieldKey eşlemesiyle), aynı+doluyken commonFields'e taşınma. `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` cache-buster `?v=20260827-2300`.
+- Canlı tarayıcı testi yapılamadı — kullanıcının çok taşınmazlı bir raporda Tapu Özeti tablosunu yeniden açıp "Eski Ada"/"Eski Parsel" bilgisinin artık (farklıysa sütun, aynıysa üstteki Ortak Bilgiler satırında) göründüğünü doğrulaması gerekir.
+
 ## 0.0.581 - 2026-08-27 - TÜM çift taraflı özet tablolarının üstünde "Ortak Bilgiler" satırı
 
 - Kullanıcı talebi: "TÜM ÇİFT TARAFLI tabloların en üstinde ortak değerleri belirt örnek il ilçe mahalle gibien üstte belirtilsin."

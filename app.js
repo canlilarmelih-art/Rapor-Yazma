@@ -21301,6 +21301,19 @@ const TITLE_UNITS_TABLE_SHARED_FIELD_DEFS = [
   { key: "titleNeighborhood", label: "Mahalle" },
   { key: "locationName", label: "Mevkii" },
   { key: "sheetNo", label: "Pafta" },
+  // Kullanıcı talebi (2026-08-27): "TAPU BÖLÜMÜNDE İL İLÇE MAHALLE MEVKİİ
+  // PAFTA ESKİ ADA ESKİ PARSEL BÖLÜMLERİNİ EKLEYELİM" — ilk 5'i ZATEN
+  // burada vardı, Eski Ada/Eski Parsel (oldBlockNo/oldParcelNo — Tapu
+  // bölümünde ZATEN var olan form alanları, bkz. sections[] "title")
+  // tabloya HİÇ YANSIMIYORDU, şimdi eklendi. AYNI ise (0.0.581'in
+  // finalizeTitleUnitsSummaryTableData'sı sayesinde) tablodan kalkıp
+  // "Ortak Bilgiler" satırına taşınır, farklıysa normal sütun olarak
+  // kalır — İl/İlçe/Mahalle/Pafta ile AYNI davranış (Ada/Parsel'in
+  // BİLEREK ada/parsel-eşitliğine göre ZORLA gizlenen özel durumuna
+  // — HIDE_WHEN_SAME_ADA_PARSEL_KEYS, aşağıda — DAHİL EDİLMEDİ, çünkü
+  // kullanıcı yalnızca "ekleyelim" dedi, bu ek kural İSTENMEDİ).
+  { key: "oldBlockNo", label: "Eski Ada" },
+  { key: "oldParcelNo", label: "Eski Parsel" },
   { key: "blockNo", label: "Ada" },
   { key: "parcelNo", label: "Parsel" },
   { key: "landArea", label: "Yüzölçümü" },
