@@ -1,5 +1,13 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.592 - 2026-08-27 - Taşınmazlar Proje Uygunluk Özeti: Ortak Bilgiler banner'ı kaldırıldı
+
+- Kullanıcı talebi: "Taşınmazlar Proje Uygunluk Özeti ortak birimler kısmını komple kaldır."
+- `buildProjectSuitabilityUnitsSummaryTableData()`'ya, TÜM scalar sütunları (Proje Uygunluk Durumu - Bağımsız Bölüm/Açıklama/Basit Bir Tadilat İle Düzeltilebilir mi?) kapsayan `hoistExemptFieldKeys` eklendi — bu tabloda artık HİÇBİR sütun (tesadüfen tüm taşınmazlarda aynı olsa bile) Ortak Bilgiler'e taşınmıyor, HER ZAMAN normal sütun olarak kalıyor. "Boş sütun kaldırılır" (0.0.451) kuralı DEĞİŞMEDİ — tümü boş bir sütun hâlâ kalkıyor, yalnızca "aynı değer → Ortak Bilgiler'e taşı" davranışı bu tabloda tamamen devre dışı. Diğer 7 tabloya dokunulmadı.
+- Test: `tools/test-project-suitability-units-summary-table.js`'e yeni bir senaryo eklendi — tüm sütunlar aynı+dolu olsa bile `commonFields` her zaman boş, sütunlar hep kalıyor. `npm run verify` tam paket (649 test) EXIT:0.
+- `index.html`: `app.js` cache-buster `?v=20260827-3300`.
+- Canlı tarayıcı testi yapılamadı — kullanıcının gerçek raporunda "Taşınmazlar Proje Uygunluk Özeti" tablosunun artık hiçbir zaman "Ortak Bilgiler" satırı göstermediğini doğrulaması gerekir.
+
 ## 0.0.591 - 2026-08-27 - Bağımsız Bölüm Özeti: Yasal/Mevcut Alan artık TÜM kat satırlarının toplamı
 
 - Kullanıcı, dubleks bir bağımsız bölüm (BB 15, "4. Normal" + çatı katı) örneğiyle bildirdi: "bağımsız bölüm tablosunda yasal alanda sadece tek katın alanı gözüküyor örnekteki dubleks dairenin çatı kat alanı gözükmüyor." Sonrasında netleştirdi: "toplam alanları yaz ilk kat alanı yazılmayacak toplam alanlar yazacak tabloda böyle taşınmazlarda bu satır çift taraflı çalışmayacak."

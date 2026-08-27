@@ -178,6 +178,31 @@ function freshState(fields, titleUnits = []) {
   console.log("2+ tasinmaz, 6 sabit sutun testi tamam.");
 }
 
+// --- 2b) KULLANICI TALEBİ (2026-08-27): "Taşınmazlar Proje Uygunluk ------
+// Özeti ortak birimler kısmını komple kaldır" — bu tabloda "Ortak
+// Bilgiler" banner'ı HİÇBİR ZAMAN gösterilmemeli; TÜM taşınmazlarda
+// birebir aynı VE dolu bir scalar sütun (ör. projectSuitabilityStatus)
+// bile HER ZAMAN normal sütun olarak kalmalı, commonFields'e ASLA
+// taşınmamalı (diğer 7 tablonun aksine).
+{
+  fns.setState(freshState(
+    {
+      titleBlockName: "A Blok", unitNo: "1",
+      projectSuitabilityStatus: "uygundur.", projectConformity: "Aynı açıklama.", projectSuitabilitySimpleRepair: "Evet",
+    },
+    [unit({
+      titleBlockName: "B Blok", unitNo: "2",
+      projectSuitabilityStatus: "uygundur.", projectConformity: "Aynı açıklama.", projectSuitabilitySimpleRepair: "Evet",
+    })],
+  ));
+  const data = fns.buildProjectSuitabilityUnitsSummaryTableData();
+  assert.deepEqual(data.commonFields, [], "commonFields HER ZAMAN BOŞ olmalı - bu tabloda 'Ortak Bilgiler' banner'ı istenmiyor.");
+  ["Proje Uygunluk Durumu - Bağımsız Bölüm", "Açıklama", "Basit Bir Tadilat İle Düzeltilebilir mi?"].forEach((label) => {
+    assert.ok(data.headers.includes(label), `"${label}" sütunu (TÜM taşınmazlarda aynı olsa da) sütun olarak KALMALIYDI, bulunan: ${data.headers.join(", ")}`);
+  });
+  console.log("KULLANICI TALEBI: Ortak Bilgiler banner'i tamamen kaldirildi (TUM sutunlar hoistExempt) testi tamam.");
+}
+
 // --- 3) "Tapu/Belediye Proje Farkı Var" alanları DOLU olsa bile bu -------
 // tabloda HİÇ görünmemeli (tablodan TAMAMEN çıkarıldı, columnHasData'nın --
 // "bos oldugu icin gizlendi" durumuyla KARIŞTIRILMASIN) --------------------

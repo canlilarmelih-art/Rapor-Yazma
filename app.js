@@ -23425,7 +23425,19 @@ function buildProjectSuitabilityUnitsSummaryTableData() {
   // "Tapu/Belediye Proje Farkı Var" = Evet/Hayır dallarından SADECE BİRİ
   // herhangi bir raporda dolu olur, diğeri her zaman boş kalıp otomatik
   // gizlenir).
-  return finalizeTitleUnitsSummaryTableData(headers, rows, columnMeta);
+  //
+  // Kullanıcı talebi (2026-08-27): "Taşınmazlar Proje Uygunluk Özeti ortak
+  // birimler kısmını komple kaldır" — bu tabloda "Ortak Bilgiler" banner'ı
+  // İSTENMİYOR; TÜM scalar sütunlar (projectSuitabilityStatus/
+  // projectConformity/projectSuitabilitySimpleRepair) hoistExemptFieldKeys
+  // ile işaretlenerek "aynı değer → Ortak Bilgiler'e taşı" kuralından
+  // TAMAMEN muaf tutulur — tesadüfen TÜM taşınmazlarda aynı olsalar bile
+  // HER ZAMAN normal sütun olarak kalırlar (boş-kaldırma kuralı, yukarıdaki
+  // yorum, DEĞİŞMEDİ). Diğer 7 tabloya dokunulmadı.
+  const hoistExemptFieldKeys = new Set(
+    columnMeta.filter((meta) => meta.kind === "scalar").map((meta) => meta.fieldKey)
+  );
+  return finalizeTitleUnitsSummaryTableData(headers, rows, columnMeta, { hoistExemptFieldKeys });
 }
 
 // Banka şablonlarına {{TASINMAZLARPROJEUYGUNLUKTABLOSU}} ile enjekte
