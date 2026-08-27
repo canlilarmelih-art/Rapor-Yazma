@@ -22687,14 +22687,23 @@ const ADDRESS_UNITS_TABLE_SHARED_FIELD_DEFS = [
 // Yatay Kat İrtifakı, aynı bina/parsel içindeki farklı bağımsız bölümler)
 // taşınmazları BİRBİRİNDEN AYIRAN TEK kimlik alanlarıdır — bu yüzden
 // aşağıdaki "boş sütun kaldırılır" (0.0.451) kuralının TEK istisnası:
-// taşınmazların TÜMÜ aynı ada/parseldeyse bu 6 alan TÜMÜ boş olsa bile
+// taşınmazların TÜMÜ aynı ada/parseldeyse bu alanlar TÜMÜ boş olsa bile
 // (veri girişi hatırlatıcısı olarak) HER ZAMAN sütun olarak kalır.
 // Farklı ada/parselli taşınmazlarda (bu alanlar daha az kritik bir ayrım
 // taşıdığından) ESKİ davranış (tümü boşsa gizlenir) korunur. "addressEntrance"
 // (Giriş) 2026-08-27'de eklendi — kullanıcı takip talebi: "boş olanlarıda
 // göster mevkii giriş gibi" (Giriş, ilk listede BİLİNÇSİZCE dışarıda
 // kalmıştı — Blok/Dış Kapı No/İç Kapı No ile AYNI sınıf kimlik alanı).
-const ADDRESS_UNITS_TABLE_ALWAYS_VISIBLE_WHEN_SAME_ADA_PARSEL_KEYS = new Set(["uavt", "street", "addressBlockName", "addressEntrance", "outerDoor", "innerDoor"]);
+// "locationName" (Mevkii, o gün kullanıcının ÖRNEK gösterdiği alanın
+// KENDİSİ) VE "addressSiteName" (Site/Apartman) 2026-08-27'de (AYNI gün,
+// ekran görüntüsüyle takip talebi: "bu kısımları ortak listeden kaldır.
+// alttaki listede olsun sadece") eklendi — ikisi de artık hoistExemptFieldKeys'te
+// (buildAddressUnitsSummaryTableData) olduğundan, bu sette OLMASALARDI
+// genuinely-boş oldukları TEK-ada/parsel raporlarda sütun tamamen KALKARDI
+// (Giriş'in Site/Apartman eklenmeden ÖNCEki hâli gibi) — kullanıcı "alttaki
+// listede olsun" dediğinden bu iki alan da diğer 6 kimlik alanıyla AYNI
+// muameleyi görüyor.
+const ADDRESS_UNITS_TABLE_ALWAYS_VISIBLE_WHEN_SAME_ADA_PARSEL_KEYS = new Set(["uavt", "street", "addressBlockName", "addressEntrance", "outerDoor", "innerDoor", "locationName", "addressSiteName"]);
 
 // Tabloyu (başlıklar + satırlar) hesaplar; YALNIZCA 2+ taşınmaz varsa bir
 // sonuç döner, aksi halde null (Tapu tablosuyla AYNI kural).
@@ -22760,10 +22769,24 @@ function buildAddressUnitsSummaryTableData() {
   // değildir. (2026-08-27, BEŞİNCİ/son tur: 0.0.586/587'nin "hem üstte
   // hem altta göster" genişletmesi kullanıcı talebiyle GERİ ALINDI —
   // "diğerleri ortak olmasın eskiye dön".)
+  //
+  // ALTINCI TUR (2026-08-27, ekran görüntüsüyle): "bu kısımları ortak
+  // listeden kaldır. alttaki listede olsun sadece" — kullanıcı, "Site /
+  // Apartman" ve "Mevkii" hücrelerinin (her ikisi de o raporda BOŞ, "-")
+  // Ortak Bilgiler panelinde göründüğünü işaretledi. Bu iki alan artık
+  // ADDRESS_UNITS_TABLE_ALWAYS_VISIBLE_WHEN_SAME_ADA_PARSEL_KEYS'teki
+  // UAVT/Blok/Giriş/Dış Kapı No/İç Kapı No ile AYNI muameleyi görüyor:
+  // hoisting'den TAMAMEN muaf, HER ZAMAN alttaki taşınmaz-bazlı tabloda
+  // kalır. İl/İlçe/İdari Mahalle/Ada/Parsel/Sokak-Cadde DAVRANIŞI DEĞİŞMEDİ
+  // (kullanıcı yalnızca bu iki alanı işaretledi) — hâlâ tümü aynıysa Ortak
+  // Bilgiler'e taşınabilirler.
   const sameAdaParsel = computeTitleUnitsShareSameAdaParsel(units);
   const sharedFieldKeySet = new Set(ADDRESS_UNITS_TABLE_SHARED_FIELD_DEFS.map((def) => def.key));
+  const NEVER_HOIST_FIELD_KEYS = new Set(["addressSiteName", "locationName"]);
   const hoistExemptFieldKeys = new Set(
-    columnMeta.filter((meta) => meta.kind === "scalar" && !sharedFieldKeySet.has(meta.fieldKey)).map((meta) => meta.fieldKey)
+    columnMeta
+      .filter((meta) => meta.kind === "scalar" && (!sharedFieldKeySet.has(meta.fieldKey) || NEVER_HOIST_FIELD_KEYS.has(meta.fieldKey)))
+      .map((meta) => meta.fieldKey)
   );
   return finalizeTitleUnitsSummaryTableData(headers, rows, columnMeta, {
     alwaysKeepFieldKeys: sameAdaParsel ? ADDRESS_UNITS_TABLE_ALWAYS_VISIBLE_WHEN_SAME_ADA_PARSEL_KEYS : null,
