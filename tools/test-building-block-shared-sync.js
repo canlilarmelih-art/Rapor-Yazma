@@ -78,6 +78,8 @@ const functionNames = [
   // getTitleUnitFieldsForLabel artik bunlara bagimli.
   "isCondominiumEasementOwnershipType",
   "normalizeOwnershipTypeForSectionVisibility",
+  // "Tum Bloklara Uygula" -> "Secili Bloklara Uygula" (2026-08-27).
+  "applyBuildingDataToSelectedBlocks",
 ];
 
 // bkz. test-documents-block-grouping.js'teki AYNI emsal: normalizeReportTitleText
@@ -99,6 +101,7 @@ const sandboxSource = `
     syncBuildingSharedDataToBlockSiblings,
     buildAllTitleUnitsForSummaryTable,
     getBuildingSectionFieldKeys, getBuildingBlockSharedFieldKeys,
+    applyBuildingDataToSelectedBlocks,
   };
 `;
 // eslint-disable-next-line no-new-func
@@ -238,13 +241,18 @@ function freshState(overrides = {}) {
   );
   assert.match(
     appSource,
-    /function createBuildingBlockTabBar\(\)[\s\S]*?outerTabs\.append\(applyAllBlocksButton\);[\s\S]*?wrap\.append\(outerTabs\);/,
-    "Tum bloklara uygula butonu blok sekmelerinin bulundugu satira eklenmelidir."
+    /function createBuildingBlockTabBar\(\)[\s\S]*?outerTabs\.append\(applySelectedBlocksButton\);[\s\S]*?wrap\.append\(outerTabs\);/,
+    "Secili bloklara uygula butonu blok sekmelerinin bulundugu satira eklenmelidir."
   );
   assert.doesNotMatch(
     appSource,
-    /function createBuildingTechnicalOptionsPanel\(\)[\s\S]*?building-apply-all-blocks-button/,
-    "Tum bloklara uygula butonu teknik bilgiler basliginda yinelenmemelidir."
+    /function createBuildingTechnicalOptionsPanel\(\)[\s\S]*?building-apply-selected-blocks-button/,
+    "Secili bloklara uygula butonu teknik bilgiler basliginda yinelenmemelidir."
+  );
+  assert.match(
+    appSource,
+    /applySelectedBlocksButton\.addEventListener\("click", \(\) => \{\s*\n\s*openBuildingCopyToSelectedBlocksModal\(\);/,
+    "Secili bloklara uygula butonu openBuildingCopyToSelectedBlocksModal()'u acmali (2026-08-27, KOSULSUZ 'tum bloklara uygula' yerine)."
   );
   console.log("renderSection building blok-tab gate kaynak-duzeyi kablolama testi tamam.");
 }
@@ -315,6 +323,70 @@ function freshState(overrides = {}) {
     "refreshBuildingCompletionFromCurrentFields() belge tarihi bulundugunda (result.isoDate) senkron cagirmiyor."
   );
   console.log("refreshBuildingCompletionFromCurrentFields guardli senkron kaynak-duzeyi kablolama testi tamam.");
+}
+
+// --- 9) applyBuildingDataToSelectedBlocks() (2026-08-27): "ana ---------
+// gayrimenkuldeki tum bloklara uygula butonunu secili bloklara uygula
+// seklinde yapalim" - eskiden KOSULSUZ tum diger bloklara uygulayan
+// applyBuildingDataToAllBlocks() yerine, cagiranin verdigi grup
+// anahtarlariyla (computeDocumentsBlockGroups().key) SINIRLI bir alt
+// kumeye uygular.
+{
+  const threeBlockState = () => freshState({
+    fields: {
+      requestType: "Çoklu Talep", ownershipType: "Yatay Kat İrtifakı",
+      blockNo: "100", parcelNo: "1", titleBlockName: "A Blok",
+      buildingStyle: "Betonarme", mainPropertyDescription: "A Blok aciklamasi.",
+    },
+    tables: { buildingFloors: [{ floorName: "Zemin", residential: "2" }] },
+    titleUnits: [
+      { fields: { blockNo: "100", parcelNo: "1", titleBlockName: "B Blok", buildingStyle: "ESKI-B" }, tables: {} },
+      // C Blok 2 bagimsiz bolumden olusuyor - ikisi de guncellenmeli.
+      { fields: { blockNo: "100", parcelNo: "1", titleBlockName: "C Blok", buildingStyle: "ESKI-C-1" }, tables: {} },
+      { fields: { blockNo: "100", parcelNo: "1", titleBlockName: "C Blok", buildingStyle: "ESKI-C-2" }, tables: {} },
+    ],
+  });
+
+  // 9a) Yalnizca C Blok secilirse: B Blok ETKILENMEMELI, C Blok'un HER
+  // İKİ uyesi de guncellenmeli.
+  fns.setState(threeBlockState());
+  const groupsForKey = fns.computeDocumentsBlockGroups(fns.buildAllTitleUnitsForSummaryTable());
+  const cBlokKey = groupsForKey.find((group) => group.fields.titleBlockName === "C Blok").key;
+  const appliedCount = fns.applyBuildingDataToSelectedBlocks([cBlokKey]);
+  assert.equal(appliedCount, 1, "Yalnizca 1 blok (C Blok) secildiginden 1 donmeli.");
+  let state = fns.getState();
+  assert.equal(state.titleUnits[0].fields.buildingStyle, "ESKI-B", "Secilmeyen B Blok ETKILENMEMELI.");
+  assert.equal(state.titleUnits[1].fields.buildingStyle, "Betonarme", "C Blok'un 1. uyesine kopyalanmali.");
+  assert.equal(state.titleUnits[2].fields.buildingStyle, "Betonarme", "C Blok'un 2. uyesine de kopyalanmali (blok icindeki TUM uyeler).");
+  assert.deepEqual(state.titleUnits[1].tables.buildingFloors, [{ floorName: "Zemin", residential: "2" }], "buildingFloors tablosu da kopyalanmali.");
+
+  // 9b) Bos/undefined/gecersiz anahtar -> 0, hicbir sey degismez.
+  fns.setState(threeBlockState());
+  assert.equal(fns.applyBuildingDataToSelectedBlocks([]), 0, "Bos dizi -> 0.");
+  assert.equal(fns.applyBuildingDataToSelectedBlocks(undefined), 0, "undefined -> 0.");
+  assert.equal(fns.applyBuildingDataToSelectedBlocks(["olmayan-anahtar"]), 0, "Gecersiz anahtar -> 0.");
+  state = fns.getState();
+  assert.equal(state.titleUnits[0].fields.buildingStyle, "ESKI-B", "Gecersiz/bos secimde HICBIR blok etkilenmemeli.");
+
+  // 9c) Aktif/kaynak blogun kendi anahtari YANLISLIKLA secilse bile
+  // sayilmaz/etkilenmez (kaynaga kendine kopyalama yok).
+  fns.setState(threeBlockState());
+  const aBlokKey = groupsForKey.find((group) => group.fields.titleBlockName === "A Blok").key;
+  const bBlokKey = groupsForKey.find((group) => group.fields.titleBlockName === "B Blok").key;
+  const mixedCount = fns.applyBuildingDataToSelectedBlocks([aBlokKey, bBlokKey]);
+  assert.equal(mixedCount, 1, "Aktif blogun (A) anahtari sayilmamali, yalnizca gercek hedef (B) sayilmali.");
+  state = fns.getState();
+  assert.equal(state.titleUnits[0].fields.buildingStyle, "Betonarme", "B Blok'a yine de dogru uygulanmali.");
+
+  // 9d) Gate kapaliyken (Tekli Talep) -> 0.
+  fns.setState(freshState({
+    fields: { requestType: "Tekli Talep", ownershipType: "Yatay Kat İrtifakı", blockNo: "100", parcelNo: "1", titleBlockName: "A Blok", buildingStyle: "Betonarme" },
+    titleUnits: [{ fields: { blockNo: "100", parcelNo: "1", titleBlockName: "B Blok", buildingStyle: "DEGISMEMELI" }, tables: {} }],
+  }));
+  assert.equal(fns.applyBuildingDataToSelectedBlocks(["100|1|B Blok"]), 0, "isBuildingBlockGroupingActive false iken 0 donmeli.");
+  assert.equal(fns.getState().titleUnits[0].fields.buildingStyle, "DEGISMEMELI", "Gate kapaliyken hicbir sey degismemeli.");
+
+  console.log("applyBuildingDataToSelectedBlocks() secili-blok-alt-kumesi testi tamam.");
 }
 
 console.log("Ana Gayrimenkul Ozellikleri blok bazli paylasim/tab yapisi testleri basarili.");

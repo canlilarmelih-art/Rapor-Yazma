@@ -1,5 +1,16 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.577 - 2026-08-27 - Ana Gayrimenkul: "Tüm Bloklara Uygula" → "Seçili Bloklara Uygula"
+
+- Kullanıcı talebi: "ana gayrimenkuldeki tüm bloklara uygula butonunu seçili bloklara uygula şeklinde yapalım."
+- **Değişiklik**: `createBuildingBlockTabBar()`'daki "Tüm bloklara uygula" düğmesi artık KOŞULSUZ tüm diğer bloklara uygulamak yerine, `openUnitCopyToSelectedModal()`'ın (bkz. "Bağımsız Bölüm Özellikleri", 2026-08-20/21) BİREBİR AYNI checkbox-listesi + "Tümünü Seç"/"Seçimi Temizle"/"Seçilenlere Uygula" desenini kullanan yeni `openBuildingCopyToSelectedBlocksModal()`'ı açıyor. TEK fark: hedef listesi bağımsız bölüm değil **BLOK** (aktif bloğun kendisi hariç diğer tüm blok grupları, `computeDocumentsBlockGroups`) — bir blok işaretlenince o bloktaki TÜM bağımsız bölümlere uygulanır (blok içi paylaşım zaten `syncBuildingSharedDataToBlockSiblings()` ile otomatik).
+- **Uygulama fonksiyonu**: eski `applyBuildingDataToAllBlocks()` (KOŞULSUZ, dönüş `boolean`) yerine yeni `applyBuildingDataToSelectedBlocks(selectedGroupKeys)` — çağıranın verdiği `group.key` listesine SINIRLI uygular, aktif/kaynak blok yanlışlıkla seçilse bile hariç tutulur, dönüş değeri uygulanan BLOK sayısı (modal notunda "X bloğa uygulandı" göstermek için). Modal'ın "Tümünü Seç" butonuyla eski "hepsine uygula" davranışı hâlâ tek ek tıkla erişilebilir — sadece artık bilinçli bir seçim adımından geçiyor.
+- **Bilinçli KAPSAM DIŞI**: Belgeler ve Proje bölümündeki AYNI görünen "Tüm bloklara uygula" düğmesi (`applyDocumentsDataToAllBlocks`, `createDocumentsBlockTabBar`) DEĞİŞTİRİLMEDİ — kullanıcı yalnızca Ana Gayrimenkul'den bahsetti.
+- CSS: `.building-apply-all-blocks-button` → `.building-apply-selected-blocks-button` (styles.css); `.documents-apply-all-blocks-button` dokunulmadı.
+- Test: `tools/test-building-block-shared-sync.js`'e yeni 9. senaryo eklendi — yalnızca seçilen bloğun (ve o bloktaki TÜM bağımsız bölümlerin) güncellendiğini, seçilmeyen bloğun etkilenmediğini, aktif/kaynak bloğun yanlışlıkla seçilse bile sayılmadığını, boş/geçersiz seçimde 0 döndüğünü, gate kapalıyken no-op olduğunu doğruluyor; kaynak-düzeyi kablolama testleri (buton → modal açılışı) güncellendi. `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` cache-buster `?v=20260827-1800`, `styles.css` cache-buster `?v=20260827-1800` (bu değişiklik CSS'i de etkiliyor).
+- Canlı tarayıcı testi yapılamadı (bu ortamda geçerli bir oturum çerezi yok, giriş bilgisi girilemez) — kullanıcının Ana Gayrimenkul bölümündeki blok sekmelerinin yanında artık "Seçili bloklara uygula" düğmesinin göründüğünü, tıklandığında diğer blokları listeleyen bir onay kutusu modalinin açıldığını ve yalnızca işaretlenen blok(lar)a uygulandığını doğrulaması gerekir.
+
 ## 0.0.576 - 2026-08-27 - KRİTİK DÜZELTME #2: 0.0.575'in normalizasyonu KELİME-düzeyinde büyük/küçük harf farkını yakalayamıyordu
 
 - Kullanıcı 0.0.575'i canlıda test etti: "Tüm Bloklara Uygula" ile A/B/C/D bloklarının kat/kullanım verisini İÇERİK olarak birebir aynı hale getirdi, ama çıktı yine **A Blok ayrı**, **"B, C ve D Blok" ayrı** (iki gruba bölünmüş) geldi — "A B C ve D Blok .... şeklinde olmalıydı."

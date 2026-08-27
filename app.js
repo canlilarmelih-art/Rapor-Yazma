@@ -1706,9 +1706,10 @@ function syncDocumentsSharedDataToBlockSiblings() {
 }
 
 // Kullanıcı talebi (2026-08-25): "ana gayrimenkuldeki tüm bloklara uygula
-// seçeneğini belgeler ve proje bölümüne uygulamak istiyorum" —
-// applyBuildingDataToAllBlocks()'un (aşağıda) BİREBİR AYNI deseni,
-// "documents" (Belgeler ve Proje) için — syncDocumentsSharedDataToBlockSiblings()
+// seçeneğini belgeler ve proje bölümüne uygulamak istiyorum" — o anki
+// applyBuildingDataToAllBlocks()'un (0.0.577'de applyBuildingDataToSelectedBlocks()'a
+// dönüştürüldü, bkz. aşağıda) BİREBİR AYNI deseni, "documents" (Belgeler
+// ve Proje) için — syncDocumentsSharedDataToBlockSiblings()
 // yalnızca AYNI bloktaki bağımsız bölümler arasında OTOMATİK çalışır
 // (buton yok); bu ise kullanıcının AÇIKÇA istediği zaman FARKLI bloklara
 // da manuel olarak kopyalar. DOCUMENTS_BLOCK_SHARED_FIELD_KEYS'in
@@ -1789,31 +1790,51 @@ function syncBuildingSharedDataToBlockSiblings() {
   });
 }
 
-// Seçili blokta girilen ana gayrimenkul verisini diğer bloklara da uygular.
-// Aynı blok içi otomatik senkron korunur; bu komut yalnızca kullanıcı
-// istediğinde blok sınırını aşar.
-function applyBuildingDataToAllBlocks() {
-  if (!isBuildingBlockGroupingActive()) return false;
+// Seçili blokta girilen ana gayrimenkul verisini KULLANICININ SEÇTİĞİ
+// blok alt kümesine uygular. Aynı blok içi otomatik senkron
+// (syncBuildingSharedDataToBlockSiblings) korunur; bu komut yalnızca
+// kullanıcı istediğinde blok sınırını aşar.
+//
+// 0.0.577 DEĞİŞİKLİĞİ: kullanıcı talebi "ana gayrimenkuldeki tüm
+// bloklara uygula butonunu seçili bloklara uygula şeklinde yapalım" —
+// eskiden (applyBuildingDataToAllBlocks) KOŞULSUZ TÜM diğer bloklara
+// uygulanıyordu; artık çağıran taraf (openBuildingCopyToSelectedBlocksModal)
+// kullanıcının işaretlediği blok GRUP ANAHTARLARINI (`group.key`,
+// computeDocumentsBlockGroups) veriyor — yalnızca o gruplardaki (aktif
+// blok HARİÇ) bağımsız bölümlere uygulanır. "Tümünü Seç" ile modal
+// üzerinden eski "tüm bloklara uygula" davranışı hâlâ TEK tıkla
+// erişilebilir, ama artık BİLİNÇLİ bir seçim adımından geçiyor.
+function applyBuildingDataToSelectedBlocks(selectedGroupKeys) {
+  if (!isBuildingBlockGroupingActive()) return 0;
   const units = buildAllTitleUnitsForSummaryTable();
-  if (computeDocumentsBlockGroups(units).length < 2) return false;
+  const groups = computeDocumentsBlockGroups(units);
+  if (groups.length < 2) return 0;
+
+  const keys = new Set((selectedGroupKeys || []).filter((key) => typeof key === "string"));
+  if (!keys.size) return 0;
+  const activeGroup = groups.find((group) => group.unitIndices.includes(state.activeTitleUnitIndex));
+  const targetGroups = groups.filter((group) => group !== activeGroup && keys.has(group.key));
+  if (!targetGroups.length) return 0;
 
   const sourceFields = state.fields;
   const sharedKeys = getBuildingBlockSharedFieldKeys();
   const sourceBuildingFloorRows = state.tables?.buildingFloors || [];
-  units.forEach((unit, index) => {
-    if (index === state.activeTitleUnitIndex) return;
-    const targetFields = resolveTitleUnitWriteTarget(index);
-    sharedKeys.forEach((key) => {
-      const value = sourceFields[key];
-      targetFields[key] = value && typeof value === "object"
-        ? (Array.isArray(value) ? [...value] : { ...value })
-        : value;
+  targetGroups.forEach((group) => {
+    group.unitIndices.forEach((index) => {
+      if (index === state.activeTitleUnitIndex) return;
+      const targetFields = resolveTitleUnitWriteTarget(index);
+      sharedKeys.forEach((key) => {
+        const value = sourceFields[key];
+        targetFields[key] = value && typeof value === "object"
+          ? (Array.isArray(value) ? [...value] : { ...value })
+          : value;
+      });
+      const targetRows = resolveTitleUnitBuildingFloorsRowsWriteTarget(index);
+      targetRows.length = 0;
+      sourceBuildingFloorRows.forEach((row) => targetRows.push({ ...row }));
     });
-    const targetRows = resolveTitleUnitBuildingFloorsRowsWriteTarget(index);
-    targetRows.length = 0;
-    sourceBuildingFloorRows.forEach((row) => targetRows.push({ ...row }));
   });
-  return true;
+  return targetGroups.length;
 }
 
 // "İmar Durumu" (planning) bölümünün TÜM taşınmaza-özgü olabilecek alan
@@ -3373,19 +3394,25 @@ function createBuildingBlockTabBar() {
     outerTabs.append(button);
   });
 
-  const applyAllBlocksButton = document.createElement("button");
-  applyAllBlocksButton.type = "button";
-  applyAllBlocksButton.className = "title-unit-tab building-apply-all-blocks-button";
-  applyAllBlocksButton.textContent = "Tüm bloklara uygula";
-  applyAllBlocksButton.title = "Seçili bloktaki ana gayrimenkul özelliklerini diğer bloklara uygular";
-  applyAllBlocksButton.addEventListener("click", () => {
-    if (!applyBuildingDataToAllBlocks()) return;
-    autosave();
-    renderValidation();
-    updateStatus();
-    renderSection();
+  // Kullanıcı talebi (2026-08-27): "ana gayrimenkuldeki tüm bloklara
+  // uygula butonunu seçili bloklara uygula şeklinde yapalım" — eskiden
+  // (0.0.298'den beri) applyBuildingDataToAllBlocks() KOŞULSUZ TÜM diğer
+  // bloklara uyguluyordu; artık openUnitCopyToSelectedModal()'ın (bkz.
+  // "unit" bölümü) AYNI checkbox-listesi + Kaydet deseniyle kullanıcının
+  // seçtiği BLOK ALT KÜMESİNE uygulanıyor (bkz. openBuildingCopyToSelectedBlocksModal,
+  // applyBuildingDataToSelectedBlocks). Belgeler ve Proje'nin AYNI
+  // görünen "Tüm bloklara uygula" düğmesi (applyDocumentsDataToAllBlocks,
+  // createDocumentsBlockTabBar) BİLEREK DEĞİŞTİRİLMEDİ — bu talep
+  // yalnızca Ana Gayrimenkul bölümü içindi.
+  const applySelectedBlocksButton = document.createElement("button");
+  applySelectedBlocksButton.type = "button";
+  applySelectedBlocksButton.className = "title-unit-tab building-apply-selected-blocks-button";
+  applySelectedBlocksButton.textContent = "Seçili bloklara uygula";
+  applySelectedBlocksButton.title = "Aktif bloktaki ana gayrimenkul özelliklerini seçeceğiniz bloklara uygular";
+  applySelectedBlocksButton.addEventListener("click", () => {
+    openBuildingCopyToSelectedBlocksModal();
   });
-  outerTabs.append(applyAllBlocksButton);
+  outerTabs.append(applySelectedBlocksButton);
 
   wrap.append(outerTabs);
 
@@ -3416,6 +3443,78 @@ function createBuildingBlockTabBar() {
   wrap.append(note);
 
   return wrap;
+}
+
+// openUnitCopyToSelectedModal()'ın (bkz. "unit" bölümü) BİREBİR şablonu —
+// TEK fark: hedef listesi bağımsız bölüm DEĞİL, aktif bloğun KENDİSİ
+// HARİÇ diğer TÜM blok gruplarıdır (computeDocumentsBlockGroups). Bir
+// blok işaretlenirse o bloktaki TÜM bağımsız bölümlere uygulanır —
+// applyBuildingDataToSelectedBlocks() zaten grup içindeki her üyeye
+// yayıyor, burada tek tek bağımsız bölüm seçtirmeye GEREK YOK (blok
+// içi paylaşım zaten syncBuildingSharedDataToBlockSiblings() ile otomatik).
+function openBuildingCopyToSelectedBlocksModal(onDone = () => {}) {
+  document.querySelector(".modal-overlay")?.remove();
+
+  const units = buildAllTitleUnitsForSummaryTable();
+  const groups = computeDocumentsBlockGroups(units);
+  const activeGroup = groups.find((group) => group.unitIndices.includes(state.activeTitleUnitIndex));
+  const targets = groups.filter((group) => group !== activeGroup);
+
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.innerHTML = `
+    <div class="modal-card modal-card-wide" role="dialog" aria-modal="true" aria-labelledby="buildingCopyToSelectedBlocksModalTitle">
+      <div class="modal-head">
+        <h3 id="buildingCopyToSelectedBlocksModalTitle">Ana Gayrimenkul Bilgilerini Bloklara Uygula</h3>
+        <button class="modal-close" type="button" aria-label="Kapat">×</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-lead">Aktif bloğun Ana Gayrimenkul Özellikleri bilgileri (teknik özellikler ve Kat Satırları tablosu) seçtiğiniz bloklardaki TÜM bağımsız bölümlere uygulanacak.</p>
+        <div class="checkbox-list">
+          ${targets.map((group) => `
+            <label class="checkbox-row">
+              <input type="checkbox" value="${escapeHtml(group.key)}" data-building-copy-target>
+              <span>${escapeHtml(computeDocumentsBlockLabel(group, groups))}</span>
+            </label>
+          `).join("")}
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="secondary-button" type="button" data-building-copy-select-all>Tümünü Seç</button>
+        <button class="secondary-button" type="button" data-building-copy-clear>Seçimi Temizle</button>
+        <button class="secondary-button" type="button" data-building-copy-cancel>Vazgeç</button>
+        <button class="primary-button" type="button" data-building-copy-save>Seçilenlere Uygula</button>
+      </div>
+    </div>
+  `;
+
+  const close = () => overlay.remove();
+  overlay.querySelector(".modal-close").addEventListener("click", close);
+  overlay.querySelector("[data-building-copy-cancel]").addEventListener("click", close);
+  overlay.addEventListener("click", (event) => {
+    if (event.target === overlay) close();
+  });
+  overlay.querySelector("[data-building-copy-select-all]").addEventListener("click", () => {
+    overlay.querySelectorAll("[data-building-copy-target]").forEach((box) => { box.checked = true; });
+  });
+  overlay.querySelector("[data-building-copy-clear]").addEventListener("click", () => {
+    overlay.querySelectorAll("[data-building-copy-target]").forEach((box) => { box.checked = false; });
+  });
+  overlay.querySelector("[data-building-copy-save]").addEventListener("click", () => {
+    const selectedKeys = [...overlay.querySelectorAll("[data-building-copy-target]:checked")].map((box) => box.value);
+    const appliedBlockCount = applyBuildingDataToSelectedBlocks(selectedKeys);
+    if (appliedBlockCount) {
+      autosave();
+      renderValidation();
+      updateStatus();
+      renderSection();
+    }
+    onDone(appliedBlockCount);
+    close();
+  });
+
+  document.body.append(overlay);
+  overlay.querySelector("[data-building-copy-target]")?.focus();
 }
 
 // "Tapu ve Mülkiyet" sekmesinde, tab çubuğunun hemen altında — TÜM

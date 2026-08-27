@@ -3236,7 +3236,7 @@ td .free-lookup input {
   gap: 12px;
 }
 
-.building-apply-all-blocks-button,
+.building-apply-selected-blocks-button,
 .documents-apply-all-blocks-button {
   white-space: nowrap;
 }
