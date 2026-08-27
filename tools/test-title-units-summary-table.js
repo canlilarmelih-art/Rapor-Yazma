@@ -467,13 +467,21 @@ function unit(fields, ownerRows) {
   });
   // "Ana Taşınmaz Niteliği" ("Tarla") VE "Hisse Payı" ("1/1") HER IKI
   // tasinmazda da BIREBIR AYNI - artik (2026-08-27 takip talebi) sutun
-  // olarak KALKIP commonFields'e tasinmali; Cilt (registryVolume, "7") ise
-  // AYNI olsa da HALA hoistExempt (Blok/Kat/BB No gibi kimlik sutunu) -
-  // yukaridaki "korunmalı" listesinde kaldigi gibi sutun olarak kalir.
+  // olarak KALKIP commonFields'e tasinmali (hoisting: sil + tasi).
   assert.ok(!data.headers.includes("Ana Taşınmaz Niteliği"), "\"Ana Taşınmaz Niteliği\" iki tasinmazda da ayni (\"Tarla\") oldugundan sutun olarak KALKMALIYDI.");
   assert.ok(!data.headers.includes("Hisse Payı"), "\"Hisse Payı\" iki tasinmazda da ayni (\"1/1\") oldugundan sutun olarak KALKMALIYDI.");
   assert.equal(data.commonFields.find((f) => f.label === "Ana Taşınmaz Niteliği")?.value, "Tarla", "\"Ana Taşınmaz Niteliği\" ortak degeri \"Tarla\" olmali.");
   assert.equal(data.commonFields.find((f) => f.label === "Hisse Payı")?.value, "1/1", "\"Hisse Payı\" ortak degeri \"1/1\" olmali.");
+  // Cilt (registryVolume, "7") HER IKI tasinmazda da ayni - ama hoistExempt
+  // (Blok/Kat/BB No gibi bagimsiz-boluma-ozgu bir kimlik sutunu) oldugundan
+  // sutun olarak KALIR (yukaridaki "korunmalı" listesinde de var); YENI
+  // (2026-08-27, ucuncu takip talebi: "bagimsiz bolumler ile ilgili
+  // bolumler ortak olsa dahi ... hem ortak bolumde hem de alt kisimda
+  // gozuksun") - AYRICA commonFields'e de bir KOPYASI eklenir (sutun
+  // KALKMADAN, "hem ustte hem altta" gorunur). Sayfa ("20"/"21") ise
+  // FARKLI oldugundan commonFields'e eklenmez.
+  assert.equal(data.commonFields.find((f) => f.label === "Cilt")?.value, "7", "\"Cilt\" (ayni+dolu, hoistExempt) sutun KALIRKEN AYRICA commonFields'e de KOPYALANMALIYDI.");
+  assert.equal(data.commonFields.find((f) => f.label === "Sayfa"), undefined, "\"Sayfa\" farkli oldugundan commonFields'e eklenmemeliydi.");
   // "Parsel" farkli (12 vs 13) oldugundan paylasimli sutun olarak kalmali.
   assert.ok(data.headers.includes("Parsel"), "\"Parsel\" (farkli olan paylasimli alan) sutunu kalmali.");
   assert.equal(data.sharedColumnCount, 1, `sharedColumnCount filtreden SONRA da dogru sayilmali (yalnizca Parsel), bulunan: ${data.sharedColumnCount}`);

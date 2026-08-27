@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.586 - 2026-08-27 - Tapu Özeti: bağımsız bölüm kimlik sütunları artık HEM Ortak Bilgiler'de HEM tabloda gözükebiliyor
+
+- Kullanıcı 0.0.585'i değerlendirdi: "haklısın bağımsız bölümler ile ilgili bölümler ortak olsa dahi tabloda hem ortak bölümde hemde alt kısımda gözüksün." Yani: Blok/Kat/Bağımsız Bölüm No/Bağımsız Bölüm Niteliği/Taşınmaz Kimlik No/Arsa Payı/Payda/Cilt/Sayfa gibi bağımsız bölümün KENDİ kimlik sütunları — 0.0.585'te (bilerek) hoisting'e sokulmamıştı çünkü bunlar Ana Taşınmaz Niteliği'nin aksine gerçek bağımsız-bölüm kimlik bilgisi — ama kullanıcı bunların, tesadüfen aynı olduklarında, hem Ortak Bilgiler'de HEM DE tablo satırlarında (silinip taşınmadan, bir KOPYA olarak) görünmesini istiyor.
+- **Yeni mekanizma**: `finalizeTitleUnitsSummaryTableData()`'ya `hoistExemptFieldKeys`'ten TAMAMEN BAĞIMSIZ, yeni bir `duplicateToCommonFieldKeys` seçeneği eklendi — hoisting'in "sil ve taşı" davranışının AKSİNE, bu sütunlar tablodan HİÇ kalkmaz; yalnızca TÜM taşınmazlarda birebir aynı VE doluysa Ortak Bilgiler'e AYRICA bir kopyası eklenir. `buildTitleUnitsSummaryTableData()` artık aynı Set'i (`hoistExemptFieldKeys`) hem `hoistExemptFieldKeys` hem `duplicateToCommonFieldKeys` olarak geçiriyor — yani Tapu'nun "diğer bölümler" (Taşınmaz Kimlik No/Blok/Kat/BB No/BB Niteliği/Arsa Payı/Payda/Cilt/Sayfa) hepsi bu yeni "kalır + kopyalanır" davranışına tabi oldu.
+- Boş sütunlar bu yeni davranışa girmez (hoistExempt'in "boş-kaldırma kuralına hâlâ tabidir" ilkesi değişmedi — tümü boşsa sütun yine tamamen kalkar, "-" olarak commonFields'e kopyalanmaz).
+- Test: `tools/test-title-units-summary-common-fields.js`'e yeni bir senaryo (duplicateToCommonFieldKeys — sütun kalır + aynı+doluysa kopyalanır, tümü boşken hem sütun hem kopya kalkar) eklendi. `tools/test-title-units-summary-table.js`'in tarla senaryosuna Cilt'in artık (aynı olduğunda) hem sütun olarak kaldığını HEM DE commonFields'e kopyalandığını, farklı olan Sayfa'nın eklenmediğini doğrulayan assertion'lar eklendi. `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` cache-buster `?v=20260827-2700`.
+- Canlı tarayıcı testi yapılamadı — kullanıcının gerçek raporunda Tapu Özeti'nde Blok/Kat/Bağımsız Bölüm No/Niteliği gibi bir alan tesadüfen tüm taşınmazlarda aynıysa artık HEM Ortak Bilgiler'de HEM DE ilgili tablo sütununda göründüğünü doğrulaması gerekir.
+
 ## 0.0.585 - 2026-08-27 - Tapu Özeti: Ana Taşınmaz Niteliği + Malik/Hisse Payı da artık Ortak Bilgiler'e taşınabiliyor
 
 - Kullanıcı 0.0.584'ü canlıda test etti, gerçek bir "YUNUSELİ 4 ADET MESKEN" raporunun ekran görüntüsüyle: "ama mesela burada ana gayrimenkul malik hisse payı bunlar ortak. (malik ve hisse payı aynı grup her zaman) diğer ortak bölümlerde üstte yazmalı." Ekran görüntüsünde 4 bağımsız bölümün TÜMÜNDE "Ana Taşınmaz Niteliği", "Malik(ler)" ve "Hisse Payı" birebir aynıydı, ama hâlâ her satırda tekrarlanıyorlardı.

@@ -20,6 +20,14 @@
 // "scalar" ile AYNI şekilde hoisting adayı (bkz. senaryo 3b) — ÖNCEKİ
 // "owner asla hoisting'e girmez" kuralı GERİ ALINDI.
 //
+// Üçüncü takip talebi (2026-08-27, aynı gün): "haklısın bağımsız bölümler
+// ile ilgili bölümler ortak olsa dahi tabloda hem ortak bölümde hem de alt
+// kısımda gözüksün" — YENİ `duplicateToCommonFieldKeys` seçeneği (bkz.
+// senaryo 7): hoistExemptFieldKeys (Blok/Kat/BB No gibi bağımsız bölümün
+// KENDİ kimlik sütunları) sütun olarak KALMAYA devam ederken, aynı+doluysa
+// AYRICA commonFields'e bir KOPYASI eklenir — hoisting'in "sil ve taşı"
+// davranışından TAMAMEN FARKLI ("kalır VE kopyalanır").
+//
 // Kapsam:
 //  1) Temel hoisting: TÜM satırlarda BİREBİR aynı (boş DAHİL) "scalar"
 //     sütun commonFields'e taşınır, headers/rows/columnMeta'dan kalkar.
@@ -29,6 +37,8 @@
 //     "owner" artık "scalar" gibi (bağımsız sütun bazında) hoisting adayı.
 //  4) Tek satırlı (1 taşınmaz) girdide hoisting uygulanmaz (karşılaştırma
 //     anlamsız).
+//  8) duplicateToCommonFieldKeys: sütun KALKMAZ, ama aynı+doluysa AYRICA
+//     commonFields'e bir KOPYASI eklenir (bkz. senaryo 7).
 //  5) alwaysKeepFieldKeys: dolu+aynıysa hoisting'e HÂLÂ tabidir; boş+aynı
 //     ise (zaten boş-kaldırmadan muaf) normal (boş) sütun olarak KALIR,
 //     "-" olarak commonFields'e TAŞINMAZ (Adres'in "aynı ada/parselde bu
@@ -238,6 +248,41 @@ const fns = new Function(sandboxSource)();
   const resultEmpty = fns.finalizeTitleUnitsSummaryTableData(headers, rowsEmpty, columnMeta, { hoistExemptFieldKeys });
   assert.ok(!resultEmpty.headers.includes("Ana Taşınmaz Niteliği"), "hoistExemptFieldKeys bos-kaldirmadan MUAF TUTMAZ - tumu bos ise yine kaldirilmali.");
   console.log("hoistExemptFieldKeys (yalnizca hoisting'den muaf) testi tamam.");
+}
+
+// --- 7) duplicateToCommonFieldKeys: sutun KALKMAZ, ama ayni+doluysa AYRICA -
+// commonFields'e bir KOPYASI eklenir (2026-08-27, ucuncu takip talebi:
+// "haklısın bağımsız bölümler ile ilgili bölümler ortak olsa dahi tabloda
+// hem ortak bölümde hem de alt kısımda gözüksün" - Tapu'nun Blok/Kat/
+// Bağımsız Bölüm No emsali).
+{
+  // Gerçek kullanımda (buildTitleUnitsSummaryTableData) duplicateToCommonFieldKeys
+  // HER ZAMAN hoistExemptFieldKeys ile AYNI Set olarak geçilir (bkz. app.js) —
+  // bu fixture'da da aynı ilişki kuruluyor, aksi halde "boş" senaryosu
+  // 0.0.584'ün ilgisiz "genel-scalar boş göster" kuralıyla karışır.
+  const headers = ["Sıra No", "Blok", "Kat"];
+  const columnMeta = [{ kind: "seq" }, { kind: "scalar", fieldKey: "titleBlockName" }, { kind: "scalar", fieldKey: "titleFloor" }];
+  const hoistExemptFieldKeys = new Set(["titleBlockName", "titleFloor"]);
+  const duplicateToCommonFieldKeys = hoistExemptFieldKeys;
+
+  // 7a) "Blok" TUM satirlarda AYNI ve DOLU -> sutun KALIR (hoisting YOK,
+  // duplicateToCommonFieldKeys hoisting'den TAMAMEN FARKLI bir mekanizma)
+  // AYRICA commonFields'e de KOPYALANIR. "Kat" FARKLI -> ne sutun kalkar
+  // ne de commonFields'e eklenir (yalniz sutun olarak kalir).
+  const rowsSame = [[1, "A", "1"], [2, "A", "2"]];
+  const resultSame = fns.finalizeTitleUnitsSummaryTableData(headers, rowsSame, columnMeta, { hoistExemptFieldKeys, duplicateToCommonFieldKeys });
+  assert.deepEqual(resultSame.headers, headers, "duplicateToCommonFieldKeys: ne \"Blok\" ne \"Kat\" sutun olarak KALKMAMALI (hoisting YOK).");
+  assert.deepEqual(resultSame.commonFields, [{ label: "Blok", value: "A", fieldKey: "titleBlockName" }], "Yalnizca ayni+dolu \"Blok\" commonFields'e KOPYALANMALI, farkli \"Kat\" eklenmemeli.");
+
+  // 7b) TUMU BOS -> hoistExemptFieldKeys'in "boş-kaldırma kuralına HÂLÂ
+  // tabidir" davranışı geçerli (bu istisna alwaysKeepFieldKeys DEĞİL) —
+  // sütun TAMAMEN KALKAR, dolayısıyla duplicateToCommonFieldKeys'in
+  // görebileceği bir veri de KALMAZ (commonFields'e "-" KOPYALANMAZ).
+  const rowsEmpty = [[1, "", "1"], [2, "-", "1"]];
+  const resultEmpty = fns.finalizeTitleUnitsSummaryTableData(headers, rowsEmpty, columnMeta, { hoistExemptFieldKeys, duplicateToCommonFieldKeys });
+  assert.ok(!resultEmpty.headers.includes("Blok"), "TUMU BOS olan \"Blok\" (hoistExempt) sutun olarak KALKMALIYDI (davranis DEGISMEDI).");
+  assert.ok(!resultEmpty.commonFields.some((f) => f.fieldKey === "titleBlockName"), "TUMU BOS olan \"Blok\" commonFields'e KOPYALANMAMALI (bos deger anlamsiz, kopyalanacak veri de yok).");
+  console.log("duplicateToCommonFieldKeys (sutun kalir + ayni+doluysa AYRICA commonFields'e kopyalanir) testi tamam.");
 }
 
 console.log("finalizeTitleUnitsSummaryTableData() (commonFields hoisting) testleri basarili.");

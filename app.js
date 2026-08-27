@@ -21368,8 +21368,21 @@ function joinTitleUnitOwnerColumn(ownerRows, pick) {
 function finalizeTitleUnitsSummaryTableData(headers, rows, columnMeta, options = {}) {
   const alwaysKeepFieldKeys = options.alwaysKeepFieldKeys || null;
   const hoistExemptFieldKeys = options.hoistExemptFieldKeys || null;
+  // Kullanıcı takip talebi (2026-08-27, üçüncü tur): "haklısın bağımsız
+  // bölümler ile ilgili bölümler ortak olsa dahi tabloda hem ortak bölümde
+  // hem de alt kısımda gözüksün" — hoistExemptFieldKeys (Blok/Kat/Bağımsız
+  // Bölüm No/Niteliği/Taşınmaz Kimlik No gibi bağımsız bölümün KENDİ
+  // kimlik sütunları) hâlâ ASLA tablodan KALKMAZ (hoisting'e girmez), ama
+  // artık TÜM taşınmazlarda tesadüfen birebir aynı VE doluysa AYRICA
+  // (sütunu KALDIRMADAN, bir KOPYASI) "Ortak Bilgiler"e de eklenebilir —
+  // `duplicateToCommonFieldKeys` (Set, opsiyonel, hoistExemptFieldKeys'ten
+  // BAĞIMSIZ) bunu işaretler. Bu, `hoistExemptFieldKeys`ten TAMAMEN FARKLI
+  // bir davranış: hoisting SÜTUNU KALDIRIR, duplicateToCommon SÜTUNU
+  // KORUYUP salt "Ortak Bilgiler"e bir KOPYA ekler.
+  const duplicateToCommonFieldKeys = options.duplicateToCommonFieldKeys || null;
   const isAlwaysKept = (meta) => Boolean(alwaysKeepFieldKeys && meta?.fieldKey && alwaysKeepFieldKeys.has(meta.fieldKey));
   const isHoistExempt = (meta) => Boolean(hoistExemptFieldKeys && meta?.fieldKey && hoistExemptFieldKeys.has(meta.fieldKey));
+  const isDuplicateToCommon = (meta) => Boolean(duplicateToCommonFieldKeys && meta?.fieldKey && duplicateToCommonFieldKeys.has(meta.fieldKey));
   // Kullanıcı takip talebi (2026-08-27): "boş olanlarıda göster mevkii
   // giriş gibi" — "genel" bir scalar sütun (ne alwaysKeepFieldKeys ne
   // hoistExemptFieldKeys — Mevkii/Giriş gibi paylaşımlı alanların BÜYÜK
@@ -21427,6 +21440,27 @@ function finalizeTitleUnitsSummaryTableData(headers, rows, columnMeta, options =
       commonFields.push({ label, value: values[0] || "-", fieldKey: meta.fieldKey || meta.ownerColumn });
     } else {
       keptIndices.push(columnIndex);
+    }
+  });
+
+  // duplicateToCommonFieldKeys (bkz. yukarıdaki fonksiyon yorumu) — bu
+  // sütunlar YUKARIDAKİ döngüde `isHoistExempt` sayesinde zaten HER ZAMAN
+  // `keptIndices`e girdi (tablodan KALKMADI). Burada AYRICA: TÜM
+  // taşınmazlarda birebir aynı VE doluysa "Ortak Bilgiler"e bir KOPYA
+  // eklenir (sütun SİLİNMEZ, yalnızca ÇOĞALTILIR). Boşsa hiçbir şey
+  // eklenmez (bu istisna alwaysKeepFieldKeys DEĞİL — boş-kaldırma kuralı
+  // buradan etkilenmez, o zaten yukarıdaki columnHasData adımında karara
+  // bağlandı).
+  dataHeaders.forEach((label, columnIndex) => {
+    const meta = dataColumnMeta[columnIndex];
+    if (!isDuplicateToCommon(meta)) return;
+    const values = dataRows.map((row) => {
+      const trimmed = String(row[columnIndex] ?? "").trim();
+      return trimmed === "-" ? "" : trimmed;
+    });
+    const allSame = dataRows.length >= 2 && values[0] !== "" && values.every((value) => value === values[0]);
+    if (allSame && !commonFields.some((field) => field.fieldKey === meta.fieldKey)) {
+      commonFields.push({ label, value: values[0], fieldKey: meta.fieldKey });
     }
   });
 
@@ -21617,7 +21651,22 @@ function buildTitleUnitsSummaryTableData() {
   // olmaları için YETERLİ ve KASITLI (kullanıcının "malik ve hisse payı
   // aynı grup her zaman" notuyla tutarlı — beşi de bağımsız olarak, TÜM
   // taşınmazlarda birebir aynı VE doluysa Ortak Bilgiler'e taşınır).
-  const result = finalizeTitleUnitsSummaryTableData(headers, rows, columnMeta, { hoistExemptFieldKeys });
+  //
+  // Kullanıcı takip talebi (2026-08-27, üçüncü tur): "haklısın bağımsız
+  // bölümler ile ilgili bölümler ortak olsa dahi tabloda hem ortak bölümde
+  // hem de alt kısımda gözüksün" — hoistExemptFieldKeys'teki sütunlar
+  // (Taşınmaz Kimlik No/Blok/Kat/BB No/BB Niteliği/Arsa Payı/Payda/Cilt/
+  // Sayfa — bağımsız bölümün KENDİ kimlik/veri sütunları) hâlâ tablodan
+  // ASLA kalkmaz, ama artık AYNI Set `duplicateToCommonFieldKeys` olarak
+  // da geçiliyor: tesadüfen TÜM taşınmazlarda birebir aynı VE doluysa,
+  // sütun KALMAYA devam ederken AYRICA "Ortak Bilgiler"e bir KOPYASI da
+  // eklenir (hem üstte hem altta görünür — hoisting'in "SİL VE taşı"
+  // davranışından BİLİNÇLİ OLARAK farklı, bkz. finalizeTitleUnitsSummaryTableData
+  // yorumu).
+  const result = finalizeTitleUnitsSummaryTableData(headers, rows, columnMeta, {
+    hoistExemptFieldKeys,
+    duplicateToCommonFieldKeys: hoistExemptFieldKeys,
+  });
   // sharedColumnCount: sharedFieldKeySet'ten hâlâ TABLODA (commonFields'e
   // TAŞINMAMIŞ, gerçekten sütun olarak farklı) kalan sayı — eskiden "aynı
   // ise gizle" filtresinden SONRAKİ hayatta kalan sayıydı, artık
