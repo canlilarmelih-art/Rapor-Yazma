@@ -3774,7 +3774,12 @@ function createAddressUnitsSummaryTablePreview() {
     wrap.append(note);
     return wrap;
   }
-  const tableHtml = buildTitleUnitsSummaryTableHtmlEditable(data.headers, data.rows, data.columnMeta, state.activeTitleUnitIndex, data.commonFields);
+  // Kullanıcı talebi (2026-08-27): "ortak bilgileri adres ve konum
+  // kısmında tek satıra sığdır. 5 sütun olabilir" — bu tablonun Ortak
+  // Bilgiler'i tam olarak 5 alan (İl/İlçe/İdari Mahalle/Ada/Parsel)
+  // içerdiğinden, diğer tabloların varsayılan 4 sütunu YERİNE 5 geçiliyor
+  // (bkz. buildTitleUnitsSummaryTableCommonFieldsHtml yorumu).
+  const tableHtml = buildTitleUnitsSummaryTableHtmlEditable(data.headers, data.rows, data.columnMeta, state.activeTitleUnitIndex, data.commonFields, 5);
   const tableContainer = document.createElement("div");
   tableContainer.className = "title-units-summary-table-container";
   tableContainer.innerHTML = tableHtml;
@@ -21568,9 +21573,18 @@ function buildTitleUnitsSummaryTableData() {
   // farklı parsellerde bu alan ayrıca ÖNEMLİDİR (ör. biri Tarla, biri
   // Arsa olabilir) ve yalnızca "aynı metin" diye kaybolmamalı.
   const showShareColumns = allSameAdaParsel;
+  // "UAVT kodları aynı zamanda tapu excel tablosunda da gözüksün"
+  // (2026-08-27) — UAVT, Adres ve Konum Özeti tablosunda ZATEN Sıra
+  // No'nun hemen ardından gösteriliyordu (bkz. buildAddressUnitsSummaryTableData);
+  // bu tablonun (Excel export'u DAHİL, bkz. report-tables-xlsx.js'in
+  // "Taşınmazlar Tapu Özeti" sayfası — buildTitleUnitsSummaryWordTableHtml'in
+  // AYNI hücre ızgarasını kullanır) Taşınmaz Kimlik No'nun HEMEN ardından
+  // AYNI kaynak alandan (`fields.uavt`, ikinci bir kopya YOK) eklenmesiyle
+  // artık her iki tabloda da (ve dolayısıyla Excel'de de) görünüyor.
   const headers = [
     "Sıra No",
     "Taşınmaz Kimlik No",
+    "UAVT",
     ...sharedFieldsToShow.map((def) => def.label),
     "Blok", "Kat", "Bağımsız Bölüm No", "Bağımsız Bölüm Niteliği", "Ana Taşınmaz Niteliği",
     ...(showShareColumns ? ["Arsa Payı", "Arsa Payda", "Hissesine Düşen Arsa Payı"] : []),
@@ -21585,6 +21599,7 @@ function buildTitleUnitsSummaryTableData() {
     return [
       index + 1,
       String(fields.titlePropertyId || "").trim() || "-",
+      String(fields.uavt || "").trim() || "-",
       ...sharedFieldsToShow.map((def) => String(fields[def.key] || "").trim() || "-"),
       String(fields.titleBlockName || "").trim() || "-",
       String(fields.titleFloor || "").trim() || "-",
@@ -21620,6 +21635,7 @@ function buildTitleUnitsSummaryTableData() {
   const columnMeta = [
     { kind: "seq" },
     { kind: "scalar", fieldKey: "titlePropertyId" },
+    { kind: "scalar", fieldKey: "uavt" },
     ...sharedFieldsToShow.map((def) => ({ kind: "scalar", fieldKey: def.key })),
     { kind: "scalar", fieldKey: "titleBlockName" },
     { kind: "scalar", fieldKey: "titleFloor" },
@@ -21767,7 +21783,7 @@ function splitTableHeaderLabelIntoTwoLines(label) {
 // yeniden kullanılıyor, tekrar yazılmadı. Sayılar (Sıra No vb.)
 // büyük/küçük harften etkilenmediğinden zararsız şekilde string'e
 // çevrilir.
-function buildTitleUnitsSummaryTableHtmlFromData(headers, rows, commonFields = []) {
+function buildTitleUnitsSummaryTableHtmlFromData(headers, rows, commonFields = [], commonFieldsMaxColumns = 4) {
   const ink = getReportThemeToken("--ink", "#152238");
   const line = getReportThemeToken("--line", "#dde3ef");
   const blue = getReportThemeToken("--blue", "#3a5691");
@@ -21784,7 +21800,7 @@ function buildTitleUnitsSummaryTableHtmlFromData(headers, rows, commonFields = [
     return `<tr>${row.map((cell) => `<td style="${cellStyle}">${formatWordCell(toTitleFieldUppercase(cell))}</td>`).join("")}</tr>`;
   }).join("");
 
-  return `${buildTitleUnitsSummaryTableCommonFieldsHtml(commonFields)}<table class="word-table title-units-summary-table" style="border-collapse:collapse;width:100%;margin:5pt 0 12pt;table-layout:auto;">
+  return `${buildTitleUnitsSummaryTableCommonFieldsHtml(commonFields, commonFieldsMaxColumns)}<table class="word-table title-units-summary-table" style="border-collapse:collapse;width:100%;margin:5pt 0 12pt;table-layout:auto;">
     <thead>${headerHtml}</thead>
     <tbody>${bodyHtml}</tbody>
   </table>`;
@@ -21832,21 +21848,30 @@ function buildTitleUnitsSummaryTableHtmlFromData(headers, rows, commonFields = [
 // (tablo hücreleriyle AYNI 6.5pt) ve düz-metin görünümündeydi. Artık: (1)
 // ayrı, belirgin bir "ORTAK BİLGİLER" başlığı, (2) her alan kendi
 // kutucuğunda (üstte küçük/mavi ETİKET, altta büyük/kalın DEĞER — bir
-// istatistik kartı gibi), (3) satır başına EN FAZLA 4 kutucuk, gerekirse
-// yeni satıra sarar (7 alanlı Tapu örneğinde 4+3 — kullanıcının "4 x 2"
-// tarifiyle eşleşir). Izgara CSS grid/flex İLE DEĞİL bir `<table>` ile
-// kurulur — bu banner hem ekran-içi önizlemede HEM DE Word/banka şablonu
-// export'unda kullanılıyor, Word'ün HTML dönüştürücüsü modern CSS grid/
-// flex'i GÜVENİLİR render ETMEZ (tablonun kendisinin de AYNI nedenle
-// `<table>` kullanması gibi).
-function buildTitleUnitsSummaryTableCommonFieldsHtml(commonFields) {
+// istatistik kartı gibi), (3) satır başına EN FAZLA `maxColumns` kutucuk
+// (varsayılan 4, gerekirse yeni satıra sarar — 7 alanlı Tapu örneğinde
+// 4+3, kullanıcının "4 x 2" tarifiyle eşleşir). Izgara CSS grid/flex İLE
+// DEĞİL bir `<table>` ile kurulur — bu banner hem ekran-içi önizlemede
+// HEM DE Word/banka şablonu export'unda kullanılıyor, Word'ün HTML
+// dönüştürücüsü modern CSS grid/flex'i GÜVENİLİR render ETMEZ (tablonun
+// kendisinin de AYNI nedenle `<table>` kullanması gibi).
+//
+// `maxColumns` (2026-08-27, takip talebi: "ortak bilgileri adres ve konum
+// kısmında tek satıra sığdır. 5 sütun olabilir") — Adres ve Konum
+// tablosunun Ortak Bilgiler'i (0.0.594/595'ten sonra) TAM OLARAK 5 alan
+// (İl/İlçe/İdari Mahalle/Ada/Parsel) içeriyor; varsayılan 4 sütunla bu
+// 4+1'e bölünüp gereksiz ikinci bir satır açıyordu. Bu tabloya özel çağrı
+// noktası artık `maxColumns: 5` geçiyor (bkz. buildAddressUnitsSummaryWordTableHtml
+// + createAddressUnitsSummaryTablePreview) — DİĞER tabloların (Tapu,
+// Proje Uygunluk, vb.) varsayılan 4 sütunlu davranışı DEĞİŞMEDİ.
+function buildTitleUnitsSummaryTableCommonFieldsHtml(commonFields, maxColumns = 4) {
   if (!Array.isArray(commonFields) || !commonFields.length) return "";
   const ink = getReportThemeToken("--ink", "#152238");
   const line = getReportThemeToken("--line", "#dde3ef");
   const blue = getReportThemeToken("--blue", "#3a5691");
   const surface = getReportThemeToken("--surface", "#ffffff");
   const surfaceMuted = getReportThemeToken("--surface-muted", "#eef2fa");
-  const COLUMNS = 4;
+  const COLUMNS = Number.isFinite(maxColumns) && maxColumns > 0 ? Math.floor(maxColumns) : 4;
   const boxCell = `border:1pt solid ${line};background:${surface};padding:5pt 7pt;text-align:left;vertical-align:top;width:${Math.floor(100 / COLUMNS)}%;`;
   const labelStyle = `font-size:7.5pt;font-weight:800;letter-spacing:0.3pt;color:${blue};text-transform:uppercase;margin:0 0 2pt;`;
   const valueStyle = `font-size:10pt;font-weight:700;color:${ink};word-break:break-word;`;
@@ -21868,7 +21893,7 @@ function buildTitleUnitsSummaryTableCommonFieldsHtml(commonFields) {
   </div>`;
 }
 
-function buildTitleUnitsSummaryTableHtmlEditable(headers, rows, columnMeta, activeRowIndex, commonFields = []) {
+function buildTitleUnitsSummaryTableHtmlEditable(headers, rows, columnMeta, activeRowIndex, commonFields = [], commonFieldsMaxColumns = 4) {
   const ink = getReportThemeToken("--ink", "#152238");
   const line = getReportThemeToken("--line", "#dde3ef");
   const blue = getReportThemeToken("--blue", "#3a5691");
@@ -21953,7 +21978,7 @@ function buildTitleUnitsSummaryTableHtmlEditable(headers, rows, columnMeta, acti
     return `<tr${rowAttr}>${cellsHtml}</tr>`;
   }).join("");
 
-  return `${buildTitleUnitsSummaryTableCommonFieldsHtml(commonFields)}<table class="word-table title-units-summary-table title-units-summary-table-editable" style="border-collapse:collapse;width:100%;margin:5pt 0 12pt;table-layout:auto;">
+  return `${buildTitleUnitsSummaryTableCommonFieldsHtml(commonFields, commonFieldsMaxColumns)}<table class="word-table title-units-summary-table title-units-summary-table-editable" style="border-collapse:collapse;width:100%;margin:5pt 0 12pt;table-layout:auto;">
     <thead>${headerHtml}</thead>
     <tbody>${bodyHtml}</tbody>
   </table>`;
@@ -22806,7 +22831,9 @@ function buildAddressUnitsSummaryTableData() {
 function buildAddressUnitsSummaryWordTableHtml() {
   const data = buildAddressUnitsSummaryTableData();
   if (!data || !data.rows.length) return "";
-  return buildTitleUnitsSummaryTableHtmlFromData(data.headers, data.rows, data.commonFields);
+  // bkz. createAddressUnitsSummaryTablePreview() yorumu — bu tablonun
+  // Ortak Bilgiler'i 5 sütuna sığdırılıyor, diğer tabloların 4'ü DEĞİL.
+  return buildTitleUnitsSummaryTableHtmlFromData(data.headers, data.rows, data.commonFields, 5);
 }
 
 // İmar Durumu Faz B (Çift Yönlü Düzenleme, 2026-08-16) — kullanıcı talebi:

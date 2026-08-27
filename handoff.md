@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.596 - 2026-08-27 - Ortak Bilgiler (Adres) tek satıra sığdı + UAVT artık Tapu tablosunda/Excel'de de
+
+- Kullanıcı talebi: (1) "ortak bilgileri adres ve konum kısmında tek satıra sığdır. 5 sütun olabilir." (2) "UAVT kodları aynı zamanda tapu excel tablosunda da gözüksün."
+- **1) Ortak Bilgiler tek satır**: 0.0.594/595'ten sonra Adres ve Konum tablosunun Ortak Bilgiler'inde kalabilecek TEK olası küme tam olarak 5 alan (İl/İlçe/İdari Mahalle/Ada/Parsel) — paylaşılan `buildTitleUnitsSummaryTableCommonFieldsHtml()` fonksiyonunun sabit 4 sütunluk ızgarasıyla bu 4+1'e bölünüp gereksiz bir 2. satır açıyordu. Fonksiyona artık opsiyonel bir `maxColumns` parametresi eklendi (varsayılan 4, DİĞER 7 tablonun davranışı DEĞİŞMEDİ) ve `buildTitleUnitsSummaryTableHtmlFromData()`/`buildTitleUnitsSummaryTableHtmlEditable()` üzerinden ikisi de bu parametreyi ÇAĞIRANA bırakacak şekilde güncellendi; yalnızca Adres tablosunun 2 çağrı noktası (`createAddressUnitsSummaryTablePreview` + `buildAddressUnitsSummaryWordTableHtml`) artık `5` geçiyor.
+- **2) UAVT → Tapu tablosu + Excel**: `buildTitleUnitsSummaryTableData()`'ya (Taşınmazlar Tapu Özeti — Excel export'u DAHİL, `report-tables-xlsx.js`'in "Taşınmazlar Tapu Özeti" sayfası bu tablonun AYNI HTML hücre ızgarasını okur) "Taşınmaz Kimlik No"nun hemen ardından yeni bir "UAVT" sütunu eklendi — AYNI kaynak alandan (`fields.uavt`, Adres tablosuyla PAYLAŞILAN, ikinci bir kopya YOK). Genuinely boşsa (tüm taşınmazlarda) diğer taşınmaza-özgü kimlik sütunları gibi sessizce kalkar.
+- Test: `tools/test-address-units-summary-table.js`'e yeni bir senaryo (4d) eklendi — 5 ortak alanın TEK satıra (5 hücre, %20 genişlik) sığdığını doğruluyor. `tools/test-title-units-summary-table.js`'e yeni bir senaryo (2c) eklendi — UAVT'nin doğru sırada/anahtarda olduğunu VE `buildTitleUnitsSummaryWordTableHtml()`'in (Excel export'unun kaynağı) HTML çıktısında da göründüğünü doğruluyor. Her iki değişiklik de düzeltmeden önce (geçici geri alma ile) testlerin gerçekten BAŞARISIZ olduğu doğrulanıp sonra geri konuldu. `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` cache-buster `?v=20260827-3700`.
+- Canlı tarayıcı testi yapılamadı — kullanıcının gerçek raporunda Adres ve Konum'un Ortak Bilgiler panelinin artık TEK satırda (5 kutu) göründüğünü, Tapu Özeti tablosunda (ve indirdiği Excel dosyasındaki "Taşınmazlar Tapu Özeti" sayfasında) artık bir "UAVT" sütunu bulunduğunu doğrulaması gerekir.
+
 ## 0.0.595 - 2026-08-27 - Taşınmazlar Adres Özeti: Sokak / Cadde de artık Ortak Bilgiler'e taşınmıyor
 
 - Kullanıcı takip talebi (0.0.594'ün hemen ardından): "Sokak / Cadde kısmını kaldır tek satıra ortak alanları kaldır."

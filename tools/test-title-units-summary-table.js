@@ -248,6 +248,40 @@ function unit(fields, ownerRows) {
   console.log("\"Ayni ise gizlensin\" + \"diger bolumler her zaman var\" (Kimlik No/Arsa Payi/Payda/Cilt/Sayfa dahil) kurali testi tamam.");
 }
 
+// --- 2c) YENİ (2026-08-27, kullanıcı talebi): "UAVT kodları aynı zamanda --
+// tapu excel tablosunda da gözüksün" — UAVT, Adres ve Konum Özeti
+// tablosunda ZATEN gösteriliyordu; artık AYNI kaynak alandan (`fields.uavt`,
+// ikinci bir kopya YOK) Tapu Özeti tablosuna da (ve dolayısıyla onun
+// hücre ızgarasını yeniden kullanan Excel export'una da, bkz.
+// report-tables-xlsx.js "Taşınmazlar Tapu Özeti" sayfası) Taşınmaz Kimlik
+// No'nun HEMEN ardından ekleniyor.
+{
+  const shared = { titleCity: "Bursa", titleDistrict: "Nilüfer", titleNeighborhood: "Özlüce", sheetNo: "F21", blockNo: "4834", parcelNo: "1" };
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: { ...shared, titlePropertyId: "123456", uavt: "999111222", titleBlockName: "A", titleFloor: "3", unitNo: "5", titleQuality: "Daire" },
+    tables: { title: [{ c0: "Ahmet Yılmaz", c1: "1/2" }] },
+    titleUnits: [
+      { fields: { ...shared, titlePropertyId: "123457", uavt: "999111333", titleBlockName: "A", titleFloor: "4", unitNo: "6", titleQuality: "Daire" }, tables: { title: [{ c0: "Ayşe Yılmaz", c1: "1/2" }] } },
+    ],
+  });
+  const data = fns.buildTitleUnitsSummaryTableData();
+  assert.ok(data, "2 taşınmazlı raporda tablo verisi dönmeli.");
+  assert.equal(data.headers[2], "UAVT", "\"UAVT\" \"Taşınmaz Kimlik No\"nun HEMEN ardından (index 2) gelmeli.");
+  assert.equal(data.columnMeta[2].fieldKey, "uavt", "\"UAVT\" sütunu -> uavt eslesmeli.");
+  assert.equal(data.columnMeta[2].kind, "scalar", "\"UAVT\" sütunu 'scalar' (düzenlenebilir) olmalı.");
+  const uavtColumnIndex = data.headers.indexOf("UAVT");
+  assert.equal(data.rows[0][uavtColumnIndex], "999111222", "1. taşınmazın UAVT'si doğru sütunda olmalı.");
+  assert.equal(data.rows[1][uavtColumnIndex], "999111333", "2. taşınmazın UAVT'si doğru sütunda olmalı.");
+  // Excel export'unun DOĞRUDAN okuduğu HTML (bkz. report-tables-xlsx.js'in
+  // "buildTitleUnitsSummaryWordTableHtml" hücre ızgarası) UAVT'yi de
+  // içermeli — ikinci bir kopya/ayrı üretici YOK.
+  const html = fns.buildTitleUnitsSummaryWordTableHtml();
+  assert.ok(html.includes(">UAVT<") || html.includes(">UAVT</th>"), `Excel export'unun kaynağı olan HTML'de "UAVT" başlığı bulunmalı, bulunan HTML parçası yok.`);
+  assert.ok(html.includes("999111222") && html.includes("999111333"), "UAVT değerleri HTML çıktısında görünmeli.");
+  console.log("UAVT sutunu (Tasinmaz Kimlik No'nun hemen ardinda, Excel export'una da yansiyan) YENI testi tamam.");
+}
+
 // --- 2b) İl/İlçe/Mahalle/Pafta: AYNI ada/parselde, KENDİ metni FARKLI ----
 // olsa bile GİZLENİR. Kullanıcı talebi: "İl İlçe Mahalle Pafta bunlar
 // aynı ada parsel taleplerinde tabloda yer almamalı" / "pafta bölümünü

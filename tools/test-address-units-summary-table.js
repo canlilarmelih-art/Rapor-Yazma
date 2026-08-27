@@ -429,6 +429,37 @@ const fns = new Function(sandboxSource)();
   console.log("Mevkii + Site/Apartman + Sokak/Cadde (ucu de bos/ayni oldugunda bile) Ortak Bilgiler'e TASINMAMA REGRESYON testi tamam.");
 }
 
+// --- 4d) REGRESYON (2026-08-27, takip talebi): "ortak bilgileri adres ve --
+// konum kısmında tek satıra sığdır. 5 sütun olabilir" — bu tabloda hoisting
+// sonrası kalan TEK olası commonFields kümesi (İl/İlçe/İdari Mahalle/Ada/
+// Parsel) TAM OLARAK 5 alan; diğer 7 tablonun varsayılan 4 sütunuyla bu
+// 4+1'e bölünüp gereksiz 2. bir satır açardı — artık TEK satırda (5 sütun)
+// sığmalı.
+{
+  const shared = { city: "Trabzon", district: "Ortahisar", neighborhood: "Boztepe", street: "Farklı Sokak", blockNo: "40", parcelNo: "12" };
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: { ...shared, uavt: "777001", street: "1. Sokak", addressSiteName: "A Sitesi", addressBlockName: "A", outerDoor: "1", addressFloor: "1" },
+    tables: {},
+    titleUnits: [
+      { fields: { ...shared, uavt: "777002", street: "2. Sokak", addressSiteName: "B Sitesi", addressBlockName: "B", outerDoor: "2", addressFloor: "2" }, tables: {} },
+    ],
+  });
+  const data = fns.buildAddressUnitsSummaryTableData();
+  assert.ok(data, "2 taşınmazlı raporda tablo verisi dönmeli.");
+  assert.equal(data.commonFields.length, 5, `Bu senaryoda tam 5 ortak alan (İl/İlçe/İdari Mahalle/Ada/Parsel) beklenir, bulunan: ${data.commonFields.map((f) => f.label).join(", ")}`);
+  const html = fns.buildAddressUnitsSummaryWordTableHtml();
+  const bannerMatch = html.match(/ORTAK BİLGİLER[\s\S]*?<\/table>/);
+  assert.ok(bannerMatch, "Ortak Bilgiler banner'ı HTML'de bulunamadı.");
+  const bannerHtml = bannerMatch[0];
+  const rowCount = (bannerHtml.match(/<tr>/g) || []).length;
+  const cellCount = (bannerHtml.match(/<td /g) || []).length;
+  assert.equal(rowCount, 1, `5 ortak alan TEK satıra sığmalı (kullanıcı talebi), bulunan satır sayısı: ${rowCount}, HTML: ${bannerHtml}`);
+  assert.equal(cellCount, 5, `TEK satırda 5 hücre olmalı (dolgu/pad hücresi OLMAMALI), bulunan: ${cellCount}`);
+  assert.ok(bannerHtml.includes("width:20%"), `Sütun genişliği 100/5=20% olmalı, bulunan HTML: ${bannerHtml}`);
+  console.log("Ortak Bilgiler (Adres tablosu, 5 alan) TEK satira sigma REGRESYON testi tamam.");
+}
+
 // --- 5) template-engine.js'te {{TASINMAZLARADRESTABLOSU}} kayıtlı mı -------
 {
   const templateEngineSource = fs.readFileSync(path.join(__dirname, "..", "src", "templates", "template-engine.js"), "utf8");
