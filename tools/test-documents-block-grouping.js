@@ -89,6 +89,11 @@ const functionNames = [
   "isCondominiumOwnershipTypeValue",
   "isCondominiumOwnershipType",
   "isDocumentsBlockGroupingActive",
+  // 2026-08-27: syncDocumentsSharedDataToBlockSiblings() artik
+  // isDocumentsBlockGroupingActive() DEGIL, bu YENI (daha gevsek: "2+
+  // FARKLI blok" sarti YOK) gate'i kullaniyor - bkz. isBuildingBlockSharingApplicable
+  // (ayni kusurun "building" ikizi, kullanici bulgusu) yorumu.
+  "isDocumentsBlockSharingApplicable",
   "resolveTitleUnitWriteTarget",
   "resolveTitleUnitDocumentsRowsWriteTarget",
   "syncDocumentsSharedDataToBlockSiblings",
@@ -126,7 +131,7 @@ const sandboxSource = `
     setState: (s) => { state = s; },
     getState: () => state,
     computeDocumentsBlockGroups, computeDocumentsBlockLabel,
-    isDocumentsBlockGroupingActive, isCondominiumOwnershipTypeValue,
+    isDocumentsBlockGroupingActive, isDocumentsBlockSharingApplicable, isCondominiumOwnershipTypeValue,
     syncDocumentsSharedDataToBlockSiblings,
     applyDocumentsDataToAllBlocks,
     buildAllTitleUnitsForSummaryTable,
@@ -272,6 +277,18 @@ function freshState(overrides = {}) {
   console.log("isDocumentsBlockGroupingActive gate kosullari testi tamam.");
 }
 
+// --- 3f) isDocumentsBlockSharingApplicable(): isDocumentsBlockGroupingActive()'ten
+// TEK FARKI - "2+ FARKLI blok" sarti YOK (2026-08-27, "building" ikizinde
+// kullanicinin bulup bildirdigi kusurun proaktif duzeltmesi).
+{
+  fns.setState(freshState({
+    titleUnits: [{ fields: { blockNo: "100", parcelNo: "1", titleBlockName: "A Blok" }, tables: {} }],
+  }));
+  assert.equal(fns.isDocumentsBlockGroupingActive(), false, "AYNI blokta isDocumentsBlockGroupingActive() hala false olmali (blok TAB CUBUGU icin anlamli degil).");
+  assert.equal(fns.isDocumentsBlockSharingApplicable(), true, "AYNI blokta isDocumentsBlockSharingApplicable() TRUE olmali - senkron CALISMALI.");
+  console.log("isDocumentsBlockSharingApplicable (2+ FARKLI blok sarti OLMADAN) testi tamam.");
+}
+
 // --- 4) syncDocumentsSharedDataToBlockSiblings(): ortak alanlar kopyalanir,
 // per-unit-only ASLA kopyalanmaz, farkli bloktaki uyeler ETKILENMEZ -------
 {
@@ -307,6 +324,30 @@ function freshState(overrides = {}) {
   assert.equal(state.titleUnits[1].fields.projectInstitution, "B-BLOK-DEGERI", "FARKLI bloktaki uye senkrondan ETKILENMEMELI.");
 
   console.log("syncDocumentsSharedDataToBlockSiblings ortak alan kopyalama + per-unit-only koruma + farkli blok izolasyonu testi tamam.");
+}
+
+// --- 4b) TEK blokta (rapordaki TUM bagimsiz bolumler AYNI tek blokta) ----
+// senkron artik CALISMALI - "building" ikizindeki kullanici bulgusuyla
+// AYNI kok neden, proaktif duzeltildi.
+{
+  fns.setState(freshState({
+    fields: {
+      requestType: "Çoklu Talep", ownershipType: "Yatay Kat İrtifakı",
+      blockNo: "11652", parcelNo: "1", titleBlockName: "A",
+      projectInstitution: "Belediye", hasEkb: "Evet",
+    },
+    tables: {},
+    titleUnits: [
+      { fields: { blockNo: "11652", parcelNo: "1", titleBlockName: "A" }, tables: {} },
+      { fields: { blockNo: "11652", parcelNo: "1", titleBlockName: "A" }, tables: {} },
+    ],
+  }));
+  assert.equal(fns.computeDocumentsBlockGroups(fns.buildAllTitleUnitsForSummaryTable()).length, 1, "Fixture: tum tasinmazlar TEK blokta olmali.");
+  fns.syncDocumentsSharedDataToBlockSiblings();
+  const state = fns.getState();
+  assert.equal(state.titleUnits[0].fields.projectInstitution, "Belediye", "TEK bloktaki 2. bagimsiz boluma projectInstitution artik kopyalanmali (eskiden bos kalirdi).");
+  assert.equal(state.titleUnits[1].fields.hasEkb, "Evet", "TEK bloktaki 3. bagimsiz boluma hasEkb artik kopyalanmali.");
+  console.log("TEK blokta syncDocumentsSharedDataToBlockSiblings artik CALISIR testi tamam.");
 }
 
 // --- 5) syncDocumentsSharedDataToBlockSiblings(): gate kapaliyken no-op --

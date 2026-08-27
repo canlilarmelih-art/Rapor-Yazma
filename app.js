@@ -1645,6 +1645,21 @@ function isDocumentsBlockGroupingActive() {
   return computeDocumentsBlockGroups(units).length > 1;
 }
 
+// isBuildingBlockSharingApplicable()'ın (aşağıda, "building" bölümü için)
+// BİREBİR ikizi — "documents" (Belgeler ve Proje) için. 2026-08-27'de
+// isDocumentsBlockGroupingActive()'ten (yukarıda, "2+ FARKLI blok" şartı
+// yalnızca blok TAB ÇUBUĞU createDocumentsBlockTabBar için anlamlı) AYRILDI
+// — kullanıcının building bölümünde bulduğu (bkz. isBuildingBlockSharingApplicable
+// yorumu) "TEK blokta senkron hiç çalışmıyor" kusuru AYNI mimariyi
+// paylaşan syncDocumentsSharedDataToBlockSiblings() için de geçerliydi;
+// proaktif olarak burada da düzeltildi.
+function isDocumentsBlockSharingApplicable() {
+  if (state.fields.requestType !== "Çoklu Talep") return false;
+  const units = buildAllTitleUnitsForSummaryTable();
+  if (units.length < 2) return false;
+  return isCondominiumOwnershipTypeValue(units[0]?.fields?.ownershipType);
+}
+
 // "Belgeler ve Proje"de BLOK BAZINDA ORTAK (bir kez girilip bloktaki TÜM
 // bağımsız bölümlere otomatik uygulanan) alanlar — kullanıcının verdiği
 // TAM liste (2026-08-19): İncelenen Belgeler (ayrı ele alınır, bkz.
@@ -1683,9 +1698,12 @@ const DOCUMENTS_BLOCK_SHARED_FIELD_KEYS = [
 // ile) kopyalanır — küçük blok boyutları için ucuz, tek-alan senkronundan
 // (İmar/Arsa) daha basit ve hatasız. Çağrı noktaları: bkz. plan, madde 7
 // (çoğu zaten var olan "no-op'a düşebilen refresh" hub çağrılarının
-// yanına tek satır olarak eklenir).
+// yanına tek satır olarak eklenir). Gate `isDocumentsBlockSharingApplicable()`
+// — 2026-08-27'de isDocumentsBlockGroupingActive()'ten AYRILDI (bkz. o
+// fonksiyonun ve isBuildingBlockSharingApplicable()'ın yorumu), çünkü TEK
+// blokta 2+ bağımsız bölüm olan (en yaygın) senaryoda da senkron ÇALIŞMALI.
 function syncDocumentsSharedDataToBlockSiblings() {
-  if (!isDocumentsBlockGroupingActive()) return;
+  if (!isDocumentsBlockSharingApplicable()) return;
   const units = buildAllTitleUnitsForSummaryTable();
   const groups = computeDocumentsBlockGroups(units);
   const activeGroup = groups.find((group) => group.unitIndices.includes(state.activeTitleUnitIndex));
@@ -1760,6 +1778,40 @@ function isBuildingBlockGroupingActive() {
   return computeDocumentsBlockGroups(units).length > 1;
 }
 
+// Kullanıcı bulgusu (2026-08-27, ekran görüntüsü — "YUNUSELİ 4 ADET
+// MESKEN", TEK blokta 4 bağımsız bölüm): "ana gayrimenkul blok bazında
+// ancak aynı bloktaki diğer bağımsız bölümlerde boş olarak geliyor. hepsi
+// bir olmalı bu sebeple değerleme tablosunda yapı birim değeri yıpranma
+// payı oranları gelmiyor." Kök neden: `isBuildingBlockGroupingActive()`nin
+// "2+ FARKLI blok" şartı — yalnızca blok TAB ÇUBUĞU (createBuildingBlockTabBar)
+// VE "2+ FARKLI blok" konsolide Ana Gayrimenkul Açıklaması metni
+// (buildMainPropertyDescription'ın 3. dalı) için anlamlı bir kısıt — AYNI
+// ZAMANDA `syncBuildingSharedDataToBlockSiblings()`nin de TEK gate'iydi.
+// Sonuç: raporun EN YAYGIN senaryosunda (sıradan bir apartman, TÜM
+// bağımsız bölümler AYNI TEK blokta) bu senkron HİÇ ÇALIŞMIYORDU — her
+// bağımsız bölüm tabı "Ana Gayrimenkul Özellikleri"nin (Bina Yapı Tarzı/
+// Yaşı/Sınıfı/Asansör/vb. — fiziksel olarak TÜM bina için AYNI olması
+// gereken veriler) KENDİ boş gölge kopyasını gösteriyordu; kullanıcı AYNI
+// veriyi HER tabda ELLE tekrar girmek zorunda kalıyordu. Bu da Değerleme'nin
+// buildingClass/buildingAge'e bağımlı otomatik alanlarını (Yapı Birim
+// Değeri/Yıpranma Payı — bkz. syncBuildingValueDefaults/getBuildingDepreciationRate)
+// diğer bağımsız bölümlerde BOŞ bırakıyordu (kaynak alanlar boş olduğundan).
+// `isBuildingBlockGroupingActive()`ten TEK FARKI: "2+ FARKLI blok" şartı
+// YOK — yalnızca "AYNI bloktaki senkron" (syncBuildingSharedDataToBlockSiblings)
+// için kullanılır; TEK blokta 2+ üye varsa BİLE true döner (o zaman bloğun
+// TEK ÜYESİ olmadığı için senkron gerçekten anlamlıdır — 2. bir bağımsız
+// bölüm olmadan senkronlanacak bir "kardeş" zaten yok, bu durum
+// syncBuildingSharedDataToBlockSiblings'in KENDİ "activeGroup.unitIndices.length < 2"
+// kontrolüyle ZATEN ayrıca ele alınıyor). Blok TAB ÇUBUĞU/konsolide metin
+// üretimi (BİRDEN FAZLA FARKLI blok gerektiren UI/metin kararları) hâlâ
+// isBuildingBlockGroupingActive()'i kullanmaya devam eder, DEĞİŞMEDİ.
+function isBuildingBlockSharingApplicable() {
+  if (state.fields.requestType !== "Çoklu Talep") return false;
+  const units = buildAllTitleUnitsForSummaryTable();
+  if (units.length < 2) return false;
+  return isCondominiumOwnershipTypeValue(units[0]?.fields?.ownershipType);
+}
+
 // syncDocumentsSharedDataToBlockSiblings()'in (yukarıda) BİREBİR ikizi —
 // "building" (Ana Gayrimenkul Özellikleri) alanları için. getBuildingSectionFieldKeys()'in
 // TAMAMI (mainPropertyDescription/mainPropertyFloorCountText DAHİL — bkz.
@@ -1767,9 +1819,12 @@ function isBuildingBlockGroupingActive() {
 // (Kat Satırları — "aynı bina" kavramının parçası) aktif taşınmazdan AYNI
 // bloktaki diğer bağımsız bölümlere kopyalanır. FARKLI bloklar bağımsız
 // kalır. Çağrı noktaları: building bölümünün her commit noktası (bkz. plan,
-// "her input/change/save/refresh handler'ın sonuna eklenir").
+// "her input/change/save/refresh handler'ın sonuna eklenir"). Gate
+// `isBuildingBlockSharingApplicable()` — 2026-08-27'de `isBuildingBlockGroupingActive()`den
+// AYRILDI (bkz. o fonksiyonun yorumu), çünkü TEK blokta 2+ bağımsız
+// bölüm olan (en yaygın) senaryoda da senkron ÇALIŞMALI.
 function syncBuildingSharedDataToBlockSiblings() {
-  if (!isBuildingBlockGroupingActive()) return;
+  if (!isBuildingBlockSharingApplicable()) return;
   const units = buildAllTitleUnitsForSummaryTable();
   const groups = computeDocumentsBlockGroups(units);
   const activeGroup = groups.find((group) => group.unitIndices.includes(state.activeTitleUnitIndex));

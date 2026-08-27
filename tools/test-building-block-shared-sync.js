@@ -69,6 +69,11 @@ const functionNames = [
   "isCondominiumOwnershipTypeValue",
   "isCondominiumOwnershipType",
   "isBuildingBlockGroupingActive",
+  // 2026-08-27 kullanici bulgusu: "ana gayrimenkul blok bazinda ancak
+  // ayni bloktaki diger bagimsiz bolumlerde bos geliyor" - senkron artik
+  // isBuildingBlockGroupingActive() DEGIL, bu YENI (daha gevsek: "2+
+  // FARKLI blok" sarti YOK) gate'i kullaniyor.
+  "isBuildingBlockSharingApplicable",
   "resolveTitleUnitWriteTarget",
   "resolveTitleUnitBuildingFloorsRowsWriteTarget",
   "getBuildingSectionFieldKeys",
@@ -97,7 +102,7 @@ const sandboxSource = `
     setState: (s) => { state = s; },
     getState: () => state,
     computeDocumentsBlockGroups, computeDocumentsBlockLabel,
-    isBuildingBlockGroupingActive, isCondominiumOwnershipTypeValue,
+    isBuildingBlockGroupingActive, isBuildingBlockSharingApplicable, isCondominiumOwnershipTypeValue,
     syncBuildingSharedDataToBlockSiblings,
     buildAllTitleUnitsForSummaryTable,
     getBuildingSectionFieldKeys, getBuildingBlockSharedFieldKeys,
@@ -180,6 +185,39 @@ function freshState(overrides = {}) {
   console.log("isBuildingBlockGroupingActive gate kosullari testi tamam.");
 }
 
+// --- 3f) isBuildingBlockSharingApplicable(): isBuildingBlockGroupingActive()'ten
+// TEK FARKI - "2+ FARKLI blok" sarti YOK (2026-08-27, kullanici bulgusu:
+// "ana gayrimenkul blok bazinda ancak ayni bloktaki diger bagimsiz
+// bolumlerde bos geliyor. hepsi bir olmali").
+{
+  // AYNI blok (2+ tasinmaz) -> isBuildingBlockGroupingActive() FALSE ama
+  // isBuildingBlockSharingApplicable() TRUE olmali (senkron CALISMALI).
+  fns.setState(freshState({
+    titleUnits: [{ fields: { blockNo: "100", parcelNo: "1", titleBlockName: "A Blok" }, tables: {} }],
+  }));
+  assert.equal(fns.isBuildingBlockGroupingActive(), false, "AYNI blokta isBuildingBlockGroupingActive() hala false olmali (blok TAB CUBUGU icin anlamli degil).");
+  assert.equal(fns.isBuildingBlockSharingApplicable(), true, "AYNI blokta isBuildingBlockSharingApplicable() TRUE olmali - senkron CALISMALI.");
+
+  // Musteakil Bina/Tekli Talep/tekil tasinmaz - HER IKI gate icin de false
+  // (bu 3 sart ORTAK, degismedi).
+  fns.setState(freshState({
+    fields: { requestType: "Çoklu Talep", ownershipType: "Müstakil Bina", blockNo: "100", parcelNo: "1", titleBlockName: "" },
+    titleUnits: [{ fields: { blockNo: "200", parcelNo: "9", titleBlockName: "" }, tables: {} }],
+  }));
+  assert.equal(fns.isBuildingBlockSharingApplicable(), false, "Musteakil Bina raporunda isBuildingBlockSharingApplicable() de false olmali.");
+
+  fns.setState(freshState({
+    fields: { requestType: "Tekli Talep", ownershipType: "Yatay Kat İrtifakı", blockNo: "100", parcelNo: "1", titleBlockName: "A Blok" },
+    titleUnits: [{ fields: { blockNo: "100", parcelNo: "1", titleBlockName: "A Blok" }, tables: {} }],
+  }));
+  assert.equal(fns.isBuildingBlockSharingApplicable(), false, "Tekli Talep'te isBuildingBlockSharingApplicable() de false olmali.");
+
+  fns.setState(freshState({ titleUnits: [] }));
+  assert.equal(fns.isBuildingBlockSharingApplicable(), false, "Tekil tasinmazli raporda isBuildingBlockSharingApplicable() de false olmali.");
+
+  console.log("isBuildingBlockSharingApplicable (2+ FARKLI blok sarti OLMADAN) gate kosullari testi tamam.");
+}
+
 // --- 4) syncBuildingSharedDataToBlockSiblings(): ortak alanlar (mainPropertyDescription
 // DAHIL) + buildingFloors tablosu kopyalanir, farkli bloktaki uyeler ETKILENMEZ --
 {
@@ -218,6 +256,42 @@ function freshState(overrides = {}) {
   assert.equal(state.titleUnits[1].fields.mainPropertyDescription, "B Blok'un KENDI aciklamasi.", "FARKLI bloktaki uyenin KENDI Ana Gayrimenkul Aciklamasi degismemeli (kac blok varsa o kadar bagimsiz aciklama).");
 
   console.log("syncBuildingSharedDataToBlockSiblings ortak alan + mainPropertyDescription kopyalama + farkli blok izolasyonu testi tamam.");
+}
+
+// --- 4b) KULLANICI BULGUSU (2026-08-27, "YUNUSELİ 4 ADET MESKEN" ekran ----
+// goruntusu): TEK blokta (rapordaki TUM bagimsiz bolumler AYNI tek
+// blokta - en yaygin senaryo, sıradan bir apartman) senkron artik
+// CALISMALI - eskiden (isBuildingBlockGroupingActive'in "2+ FARKLI blok"
+// sarti yuzunden) TAMAMEN no-op'tu.
+{
+  fns.setState(freshState({
+    fields: {
+      requestType: "Çoklu Talep", ownershipType: "Yatay Kat İrtifakı",
+      blockNo: "11652", parcelNo: "1", titleBlockName: "A",
+      buildingClass: "3/B", buildingAge: "3 yıl", elevator: "1 Adet Asansör",
+    },
+    tables: {},
+    titleUnits: [
+      // AYNI (TEK) blok - 2., 3., 4. bagimsiz bolumler, HEPSI bos basliyor
+      // (kullanicinin bildirdigi GERCEK senaryo: her tab kendi bos golge
+      // kopyasini gosteriyordu).
+      { fields: { blockNo: "11652", parcelNo: "1", titleBlockName: "A" }, tables: {} },
+      { fields: { blockNo: "11652", parcelNo: "1", titleBlockName: "A" }, tables: {} },
+      { fields: { blockNo: "11652", parcelNo: "1", titleBlockName: "A" }, tables: {} },
+    ],
+  }));
+  // Baska HICBIR blok yok - computeDocumentsBlockGroups tek bir grup doner.
+  assert.equal(fns.computeDocumentsBlockGroups(fns.buildAllTitleUnitsForSummaryTable()).length, 1, "Fixture: tum tasinmazlar TEK blokta olmali.");
+  assert.equal(fns.isBuildingBlockGroupingActive(), false, "TEK blokta isBuildingBlockGroupingActive() false (beklenen, DEGISMEDI).");
+
+  fns.syncBuildingSharedDataToBlockSiblings();
+  const state = fns.getState();
+  [0, 1, 2].forEach((index) => {
+    assert.equal(state.titleUnits[index].fields.buildingClass, "3/B", `TEK bloktaki ${index + 2}. bagimsiz boluma buildingClass artik kopyalanmali (eskiden bos kalirdi).`);
+    assert.equal(state.titleUnits[index].fields.buildingAge, "3 yıl", `TEK bloktaki ${index + 2}. bagimsiz boluma buildingAge artik kopyalanmali.`);
+    assert.equal(state.titleUnits[index].fields.elevator, "1 Adet Asansör", `TEK bloktaki ${index + 2}. bagimsiz boluma elevator artik kopyalanmali.`);
+  });
+  console.log("KULLANICI BULGUSU: TEK blokta (2+ bagimsiz bolum) syncBuildingSharedDataToBlockSiblings artik CALISIR testi tamam.");
 }
 
 // --- 5) syncBuildingSharedDataToBlockSiblings(): gate kapaliyken no-op ----
