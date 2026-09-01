@@ -25644,7 +25644,7 @@ function buildTakbisEncumbranceScopes(entries, sectionKey) {
       return;
     }
 
-    if (entry.type && shouldStartNewTakbisEncumbranceScope(current, entry)) {
+    if (entry.type && shouldStartNewTakbisEncumbranceScope(current, entry, sectionKey)) {
       openScope(entry);
       return;
     }
@@ -25732,9 +25732,27 @@ function cleanTakbisEmbeddedMortgageAnnotationDescription(value, dateInfo = {}) 
     .trim();
 }
 
-function shouldStartNewTakbisEncumbranceScope(currentScope, entry) {
+function shouldStartNewTakbisEncumbranceScope(currentScope, entry, sectionKey = "") {
   const currentEntries = currentScope?.entries || [];
   if (!currentEntries.length) return true;
+
+  // KRİTİK KORUMA (2026-09-01, kullanıcı bulgusu: gerçek bir haciz kaydı
+  // "İpotekler" tablosunda, garip bir "İpotek Lehdarı" ("Haciz Yazısı
+  // Sayılı Yazıları İle") ve yanlış tutarla çıktı) — "Şerh" bölümünde
+  // (sectionKey === "serh") satır sarmasında sola taşan "Haciz Yazısı..."
+  // gibi kelimeler getTakbisEncumbranceStartType() tarafından KASITLI
+  // OLARAK Rehin/İpotek tipi üretir (TAKBİS'te Haciz her zaman Şerh
+  // alt-türüdür, gerçek bir Ş/B/İ etiketi DEĞİLDİR) — bu SAHTE tip aşağıdaki
+  // hasCompleteTakbisEncumbranceDateInfo KISAYOLUNDAN ÖNCE elenmeli, aksi
+  // halde o kısayol (haciz kaydının tarih-yevmiyesi genellikle satırın
+  // İLK bölümünde tamamlandığından neredeyse HER ZAMAN erken devreye girip)
+  // bu korumayı BAYPAS EDİYOR ve kaydı ortasından ikiye bölüp ikinci
+  // yarısını (garbled açıklama + yanlış tarih/yevmiye ile) sahte bir
+  // Rehin/İpotek kaydı olarak açıyordu. Bu koruma YALNIZCA "serh" bölümünde
+  // uygulanır — gerçek "REHİN"/"İPOTEK BİLGİLERİ" bölümlerinde (sectionKey
+  // "rehin"/"ipotek") bu tipler GERÇEK kayıt başlangıçlarıdır, engellenmemeli.
+  if (sectionKey === "serh" && entry?.type && !isTakbisSbiStartType(entry.type)) return false;
+
   if (hasCompleteTakbisEncumbranceDateInfo(currentEntries)) return true;
 
   const hasExistingDescription = currentEntries.some((item, index) => getTakbisEncumbranceScopeDescription(item, index === 0));
