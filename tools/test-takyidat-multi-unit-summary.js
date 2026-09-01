@@ -274,7 +274,12 @@ function parseSimpleTable(html) {
   assert.ok(emptyRow, `Bos tasinmaz (1955/3) icin "kayit yok" satiri bulunamadi, bulunan: ${JSON.stringify(parsed.rows)}`);
   assert.equal(emptyRow[0], "Herhangi bir kayıt bulunmamaktadır.", `Bos tasinmazin ilk sutununda "Herhangi bir kayit bulunmamaktadir." metni olmali, bulunan: ${emptyRow[0]}`);
   assert.deepEqual(emptyRow.slice(1, 5), ["-", "-", "-", "-"], "Bos tasinmaz satirinin diger sutunlari '-' olmali.");
-  console.log("Beyanlar ozet tablosu (Ada/Parsel sutunu + bos tasinmaz icin 'kayit yok' satiri) testi tamam.");
+  // Kullanıcı takip talebi (2026-09-01): "üzerinde takyidat bulunmayan
+  // taşınmazlar en üstte belirtilsin" — "kayıt yok" satırı gerçek kayıttan
+  // ÖNCE (index 0) gelmeli.
+  assert.equal(parsed.rows[0][5], "1955 ada 3 parsel", `"Kayit yok" satiri EN USTTE olmali, bulunan sira: ${JSON.stringify(parsed.rows.map((r) => r[5]))}`);
+  assert.equal(parsed.rows[0][0], "Herhangi bir kayıt bulunmamaktadır.");
+  console.log("Beyanlar ozet tablosu (Ada/Parsel sutunu + bos tasinmaz icin EN USTTE 'kayit yok' satiri) testi tamam.");
 }
 
 // --- 5) REGRESYON (2026-09-01, kullanıcının gerçek 7 taşınmazlı raporuyla) -
@@ -338,7 +343,21 @@ function parseSimpleTable(html) {
   );
   const emptyRows = parsed.rows.filter((row) => row[0] === "Herhangi bir kayıt bulunmamaktadır.");
   assert.equal(emptyRows.length, 4, `4 kayitsiz tasinmaz icin 4 "kayit yok" satiri beklenir, bulunan: ${emptyRows.length}`);
-  console.log("7 tasinmazli GERCEK senaryo (3'unde kayit, 4'unde yok) - TUMU tek sayfada temsil ediliyor REGRESYON testi tamam.");
+  // Kullanıcı takip talebi (2026-09-01): "üzerinde takyidat bulunmayan
+  // taşınmazlar en üstte belirtilsin. şu an biraz arada kaynıyor gibiler" —
+  // 4 "kayıt yok" satırı, 3 gerçek kayıttan ÖNCE (tablonun İLK 4 satırı)
+  // gelmeli.
+  assert.deepEqual(
+    parsed.rows.slice(0, 4).map((row) => row[0]),
+    ["Herhangi bir kayıt bulunmamaktadır.", "Herhangi bir kayıt bulunmamaktadır.", "Herhangi bir kayıt bulunmamaktadır.", "Herhangi bir kayıt bulunmamaktadır."],
+    `Ilk 4 satirin TUMU "kayit yok" olmali (en ustte), bulunan: ${JSON.stringify(parsed.rows.map((r) => r[0]))}`,
+  );
+  assert.deepEqual(
+    parsed.rows.slice(4).map((row) => row[0]).sort(),
+    ["İcrai Haciz", "İcrai Haciz", "Serh"].sort(),
+    `Son 3 satirin TUMU gercek kayit olmali, bulunan: ${JSON.stringify(parsed.rows.slice(4).map((r) => r[0]))}`,
+  );
+  console.log("7 tasinmazli GERCEK senaryo (3'unde kayit, 4'unde yok) - kayitsiz tasinmazlar EN USTTE testi tamam.");
 }
 
 console.log("Takyidat coklu tasinmaz ozet tablosu (Ada/Parsel sutunu) testleri basarili.");

@@ -23639,7 +23639,14 @@ function buildTakyidatCategoryUnitsSummaryTableHtml(tableKey, columns) {
     const placeholderCells = columns.map((_, columnIndex) => (columnIndex === 0 ? "Herhangi bir kayıt bulunmamaktadır." : "-"));
     emptyUnitRows.push([...placeholderCells, reference]);
   }
-  return buildCompactReportWordTableHtml(headers, [...rows, ...emptyUnitRows]);
+  // Kullanıcı takip talebi (2026-09-01): "üzerinde takyidat bulunmayan
+  // taşınmazlar en üstte belirtilsin. şu an biraz arada kaynıyor gibiler" —
+  // "kayıt yok" satırları gerçek kayıtların ARASINA/SONUNA karışıp
+  // (özellikle onlarca gerçek haciz satırı olan raporlarda) fark
+  // edilmiyordu. Artık ÖNCE "temiz" taşınmazlar (kayıt yok), SONRA gerçek
+  // kayıtlar listeleniyor — böylece hangi taşınmazların üzerinde HİÇ
+  // takyidat olmadığı tablonun en tepesinde tek bakışta görülüyor.
+  return buildCompactReportWordTableHtml(headers, [...emptyUnitRows, ...rows]);
 }
 
 function buildTakyidatDeclarationsUnitsSummaryWordTableHtml() {

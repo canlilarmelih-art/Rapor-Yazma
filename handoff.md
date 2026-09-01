@@ -1,5 +1,13 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.600 - 2026-09-01 - Takyidat özet tablosunda kayıtsız taşınmazlar artık EN ÜSTTE
+
+- Kullanıcı talebi: "üzerinde takyidat bulunmayan taşınmazlar en üstte belirtilsin. şu an biraz arada kaynıyor gibiler" — 0.0.598'in eklediği "Herhangi bir kayıt bulunmamaktadır." satırları gerçek kayıtların (özellikle onlarca haciz satırı olan raporlarda) ARASINA/SONUNA karışıyor, fark edilmiyordu.
+- **Düzeltme**: `buildTakyidatCategoryUnitsSummaryTableHtml()`'de satır sırası değiştirildi — artık ÖNCE "kayıt yok" (temiz) taşınmazlar, SONRA gerçek kayıtlar listeleniyor. Böylece hangi taşınmazların üzerinde hiç takyidat olmadığı tablonun en tepesinde tek bakışta görülüyor.
+- Test: `tools/test-takyidat-multi-unit-summary.js`'teki mevcut senaryolara sıra doğrulaması eklendi (kayıt-yok satırları her zaman ilk sırada). Düzeltmeden önce (geçici geri alma ile) testin gerçekten BAŞARISIZ olduğu doğrulanıp sonra geri konuldu. `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` cache-buster `?v=20260901-1100`.
+- Canlı tarayıcı testi yapılamadı — kullanıcının gerçek raporunda Takyidat sayfasını tekrar indirip kayıtsız taşınmazların artık her tablonun (Beyanlar/Şerhler/İpotekler) en üstünde göründüğünü doğrulaması gerekir.
+
 ## 0.0.599 - 2026-09-01 - KRİTİK DÜZELTME: TAKBİS PDF'inde bazı haciz kayıtları yanlışlıkla "İpotek" olarak sınıflandırılıyordu
 
 - Kullanıcı bulgusu: gerçek bir raporun indirdiği Excel'inde "İpotekler" tablosunda 3 satır çıktı, ama TAKBİS'te hiç ipotek yoktu. İncelemede satırların "İpotek Lehdarı" hücresinde "Haciz Yazısı Sayılı Yazıları İle" gibi bir açıklama parçası, "İpotek Tutarı" hücresinde ise gerçek tutar yerine YEVMİYE NUMARASI ("3.699 TL") görüldü — bu, benim Takyidat Excel değişikliğimle (0.0.597/598) İLGİSİZ, çok daha köklü bir TAKBİS PDF ayrıştırma hatasıydı.
