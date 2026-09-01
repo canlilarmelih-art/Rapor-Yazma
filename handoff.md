@@ -1,5 +1,13 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.598 - 2026-09-01 - Takyidat özet tablosunda kaydı OLMAYAN taşınmazlar da artık "kayıt yok" satırıyla görünüyor
+
+- Kullanıcı, 0.0.597'nin ürettiği gerçek Excel dosyasını indirip inceledi ve "bence olmamış tüm takyidatlar tüm tapular üzerine olan tek sayfada yer almalı" dedi. İncelemede: 7 taşınmazlı raporda Şerhler tablosu yalnızca 3 taşınmazı (1955/3, 1135/7, 1955/4) gösteriyordu — diğer 4'ü (166/7, 1605/4, 166/17, 1141/3) tabloda HİÇ görünmüyordu, çünkü bu 4 taşınmazın gerçekten hiç şerh kaydı yok. Teknik olarak tablo zaten tek sayfada birleşikti (0.0.597 doğru çalışıyordu) ama bu "sessiz yokluk" kullanıcıda "bu 4 tapu kontrol edilmedi mi?" belirsizliği yaratıyordu.
+- **Düzeltme**: `buildTakyidatCategoryUnitsSummaryTableHtml()`'e (app.js) yeni bir adım eklendi — kategori genel olarak dolu iken (en az 1 taşınmazda gerçek kayıt varken) bu kategoride (Beyanlar/Şerhler/İpotekler ayrı ayrı) HİÇ kaydı olmayan taşınmazlar artık "Herhangi bir kayıt bulunmamaktadır." satırıyla (kendi Ada/Parsel bilgisiyle) AÇIKÇA temsil ediliyor — sessizce atlanmıyor. Kategori TÜMÜYLE boşsa (hiçbir taşınmazda kayıt yoksa) davranış DEĞİŞMEDİ — o kategori hâlâ tamamen atlanıyor (diğer 7 tabloyla AYNI "boş tablo sayfaya eklenmez" ilkesi).
+- Test: `tools/test-takyidat-multi-unit-summary.js`'e yeni bir regresyon senaryosu eklendi — kullanıcının GERÇEK 7 taşınmazlı senaryosunu (3'ünde kayıt, 4'ünde yok) birebir üretip tüm 7 taşınmazın (4'ü "kayıt yok" olarak) tabloda temsil edildiğini doğruluyor; mevcut Beyanlar senaryosu da güncellendi (artık boş taşınmaz için "kayıt yok" satırı bekleniyor). Düzeltmeden önce (geçici geri alma ile) testin gerçekten BAŞARISIZ olduğu doğrulanıp sonra geri konuldu. `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` cache-buster `?v=20260827-3900`.
+- Canlı tarayıcı testi yapılamadı — kullanıcının gerçek 7 taşınmazlı raporunda "Tüm Tablolar" Excel'ini tekrar indirip Takyidat sayfasının artık TÜM 7 taşınmazı (kayıtlı olanları gerçek verileriyle, kayıtsız olanları "Herhangi bir kayıt bulunmamaktadır." satırıyla) gösterdiğini doğrulaması gerekir.
+
 ## 0.0.597 - 2026-08-31 - Çoklu taleplerde Takyidat Excel sayfası artık TÜM taşınmazları kapsıyor
 
 - Kullanıcı talebi (gerçek bir çok-parselli TAKBİS PDF'iyle): "ada parseli ayrı çoklu taleplerde takyidat excel export tablosu daha okunaklı ve kullanıcı dostu olmalı şerh türü tarih yevmiye no kısıtlı malik var ise haciz tutarı kapsadığı ada parsel sütunları bulunmalı" — ardından kullanıcı, TEK taşınmazlı bir raporda ZATEN var olan "Beyanlar/Şerhler/İpotekler" Excel tablosunun (Şerh Türü/Açıklama/Haciz Tutarı/Tarih/Yevmiye No/Kısıtlı Malik sütunlu) ekran görüntüsünü paylaşıp "örnek tablo bu şekilde düzenli olmalı" dedi.

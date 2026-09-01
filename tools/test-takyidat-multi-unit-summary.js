@@ -243,6 +243,10 @@ function parseSimpleTable(html) {
 
 // --- 4) Beyanlar tablosu: haciz-tutari-benzeri bir sutunu YOK, ama Ada/ ---
 // Parsel sutunu ayni sekilde eklenmeli (encumbranceReportColumns fallback'i).
+// AYRICA (2026-09-01, kullanici bulgusu): kategori GENEL OLARAK dolu iken
+// (en az 1 tasinmazda kayit varken) kaydi OLMAYAN diger tasinmaz(lar)
+// SESSIZCE atlanmamali - "Herhangi bir kayit bulunmamaktadir." satiriyla
+// ACIKCA temsil edilmeli.
 {
   fns.setState({
     fields: { blockNo: "166", parcelNo: "7" },
@@ -262,9 +266,79 @@ function parseSimpleTable(html) {
   assert.ok(html, "Beyanlar HTML'i DOLU donmeli.");
   const parsed = parseSimpleTable(html);
   assert.deepEqual(parsed.headers, ["Tür", "Açıklama", "Tarih", "Yevmiye No", "Kısıtlı Malik", "Ada / Parsel"]);
-  assert.equal(parsed.rows.length, 1);
-  assert.equal(parsed.rows[0][5], "166 ada 7 parsel");
-  console.log("Beyanlar ozet tablosu (Ada/Parsel sutunu DAHIL, haciz tutari sutunu OLMADAN) testi tamam.");
+  assert.equal(parsed.rows.length, 2, `Gercek kayit (166/7) + bos tasinmaz icin "kayit yok" satiri (1955/3) = 2 satir beklenir, bulunan: ${JSON.stringify(parsed.rows)}`);
+  const realRow = parsed.rows.find((row) => row[5] === "166 ada 7 parsel");
+  assert.ok(realRow, "166/7 parselinin gercek beyan kaydi bulunamadi.");
+  assert.equal(realRow[1], "Yönetim Planı Belirtilmesi");
+  const emptyRow = parsed.rows.find((row) => row[5] === "1955 ada 3 parsel");
+  assert.ok(emptyRow, `Bos tasinmaz (1955/3) icin "kayit yok" satiri bulunamadi, bulunan: ${JSON.stringify(parsed.rows)}`);
+  assert.equal(emptyRow[0], "Herhangi bir kayıt bulunmamaktadır.", `Bos tasinmazin ilk sutununda "Herhangi bir kayit bulunmamaktadir." metni olmali, bulunan: ${emptyRow[0]}`);
+  assert.deepEqual(emptyRow.slice(1, 5), ["-", "-", "-", "-"], "Bos tasinmaz satirinin diger sutunlari '-' olmali.");
+  console.log("Beyanlar ozet tablosu (Ada/Parsel sutunu + bos tasinmaz icin 'kayit yok' satiri) testi tamam.");
+}
+
+// --- 5) REGRESYON (2026-09-01, kullanıcının gerçek 7 taşınmazlı raporuyla) -
+// "bence olmamış tüm takyidatlar tüm tapular üzerine olan tek sayfada yer
+// almalı" — kullanıcı, indirdiği Excel'in Şerhler tablosunda YALNIZCA 3/7
+// taşınmazın (1955/3, 1135/7, 1955/4) göründüğünü, diğer 4'ünün (166/7,
+// 1605/4, 166/17, 1141/3 — gerçekten hiç şerh kaydı olmayan taşınmazlar)
+// HİÇ görünmediğini fark etti. 7 taşınmazlı, 3'ünde gerçek kayıt olan bir
+// senaryoda TÜM 7 taşınmazın (4'ü "kayıt yok" olarak) tabloda temsil
+// edildiği doğrulanıyor.
+{
+  const noRecordUnit = () => ({ tables: { encumbranceDeclarations: [], encumbranceAnnotations: [], encumbranceMortgages: [] } });
+  fns.setState({
+    fields: { blockNo: "166", parcelNo: "7" }, // taşınmaz 1: kayıt YOK
+    tables: { encumbranceDeclarations: [], encumbranceAnnotations: [], encumbranceMortgages: [] },
+    titleUnits: [
+      { fields: { blockNo: "1605", parcelNo: "4" }, ...noRecordUnit() }, // taşınmaz 2: kayıt YOK
+      {
+        fields: { blockNo: "1955", parcelNo: "3" }, // taşınmaz 3: kayıt VAR
+        tables: {
+          encumbranceDeclarations: [],
+          encumbranceAnnotations: [
+            { c0: "İcrai Haciz", c1: "Musa Uğur lehine haciz.", c2: "37.995,32 TL", c3: "27.12.2021", c4: "3694", c5: "" },
+          ],
+          encumbranceMortgages: [],
+        },
+      },
+      {
+        fields: { blockNo: "1135", parcelNo: "7" }, // taşınmaz 4: kayıt VAR
+        tables: {
+          encumbranceDeclarations: [],
+          encumbranceAnnotations: [
+            { c0: "Serh", c1: "Kamulaştırma şerhi.", c2: "", c3: "26.08.2026", c4: "3062", c5: "Müzeyyen Dönmez" },
+          ],
+          encumbranceMortgages: [],
+        },
+      },
+      {
+        fields: { blockNo: "1955", parcelNo: "4" }, // taşınmaz 5: kayıt VAR
+        tables: {
+          encumbranceDeclarations: [],
+          encumbranceAnnotations: [
+            { c0: "İcrai Haciz", c1: "Ayrı bir haciz kaydı.", c2: "5.000,00 TL", c3: "01.01.2026", c4: "999", c5: "" },
+          ],
+          encumbranceMortgages: [],
+        },
+      },
+      { fields: { blockNo: "166", parcelNo: "17" }, ...noRecordUnit() }, // taşınmaz 6: kayıt YOK
+      { fields: { blockNo: "1141", parcelNo: "3" }, ...noRecordUnit() }, // taşınmaz 7: kayıt YOK
+    ],
+  });
+  const html = fns.buildTakyidatAnnotationsUnitsSummaryWordTableHtml();
+  assert.ok(html, "Serhler HTML'i DOLU donmeli.");
+  const parsed = parseSimpleTable(html);
+  assert.equal(parsed.rows.length, 7, `3 gercek kayit (farkli yevmiye, birlesmez) + 4 "kayit yok" satiri = 7 tasinmaz = 7 satir beklenir, bulunan: ${JSON.stringify(parsed.rows.map((r) => r[6]))}`);
+  const allAdaParsels = parsed.rows.map((row) => row[6]).sort();
+  assert.deepEqual(
+    allAdaParsels,
+    ["1135 ada 7 parsel", "166 ada 17 parsel", "166 ada 7 parsel", "1605 ada 4 parsel", "1955 ada 3 parsel", "1955 ada 4 parsel", "1141 ada 3 parsel"].sort(),
+    `TUM 7 tasinmaz (kayitli VEYA "kayit yok") bu tabloda temsil edilmeli, bulunan: ${JSON.stringify(allAdaParsels)}`,
+  );
+  const emptyRows = parsed.rows.filter((row) => row[0] === "Herhangi bir kayıt bulunmamaktadır.");
+  assert.equal(emptyRows.length, 4, `4 kayitsiz tasinmaz icin 4 "kayit yok" satiri beklenir, bulunan: ${emptyRows.length}`);
+  console.log("7 tasinmazli GERCEK senaryo (3'unde kayit, 4'unde yok) - TUMU tek sayfada temsil ediliyor REGRESYON testi tamam.");
 }
 
 console.log("Takyidat coklu tasinmaz ozet tablosu (Ada/Parsel sutunu) testleri basarili.");

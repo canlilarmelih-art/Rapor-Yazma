@@ -23603,8 +23603,25 @@ function buildTakyidatWordTableHtml() {
 // parselde DOLU ada/parsel gösterir, aynı parselde blok-BB kısaltmasına
 // döner).
 function buildTakyidatCategoryUnitsSummaryTableHtml(tableKey, columns) {
-  if (getTitleUnitCount() < 2) return "";
+  const unitCount = getTitleUnitCount();
+  if (unitCount < 2) return "";
   const groupedRows = getMultiTitleUnitEncumbranceRows(tableKey);
+  // Kullanıcı bulgusu (2026-09-01, gerçek 7 taşınmazlı raporun indirilen
+  // Excel'ini inceleyerek): "bence olmamış tüm takyidatlar tüm tapular
+  // üzerine olan tek sayfada yer almalı" — bu kategoride (Beyanlar/Şerhler/
+  // İpotekler) HİÇBİR taşınmazda kayıt yoksa (groupedRows tamamen boş)
+  // ESKİ davranış korunur (kategori TAMAMEN atlanır — "Bos 'Beyanlar' alt
+  // tablosu icin baslik satiri eklenmemeli" kuralı, diğer 7 tabloyla AYNI
+  // ilke). AMA kategori GENEL OLARAK doluyken (en az 1 taşınmazda kayıt
+  // varken) bazı taşınmazların bu kategoride HİÇ kaydı yoksa (kullanıcının
+  // 7 taşınmazlı örneğinde 4'ü — 166/7, 1605/4, 166/17, 1141/3 — hiç
+  // görünmüyordu) bu artık SESSİZCE atlanmaz: o taşınmaz(lar) için "Herhangi
+  // bir kayıt bulunmamaktadır." satırı EKLENİR (buildTakyidatWordTableHtml'in
+  // tek-taşınmazlı fallback metniyle AYNI ifade) — aksi halde tabloya
+  // bakan kullanıcı "bu taşınmaz kontrol edilmedi mi, yoksa gerçekten temiz
+  // mi?" sorusuyla baş başa kalıyordu. Bu, "tüm takyidatlar TÜM tapular
+  // üzerine [temsil edilmiş şekilde] tek sayfada yer almalı" talebinin
+  // karşılığıdır.
   if (!groupedRows.length) return "";
   const headers = [...columns, "Ada / Parsel"];
   const rows = groupedRows.map((row) => {
@@ -23612,7 +23629,17 @@ function buildTakyidatCategoryUnitsSummaryTableHtml(tableKey, columns) {
     const references = Array.isArray(row.__titleUnitReferences) ? row.__titleUnitReferences.filter(Boolean) : [];
     return [...cells, references.length ? references.join(", ") : "-"];
   });
-  return buildCompactReportWordTableHtml(headers, rows);
+  const emptyUnitRows = [];
+  for (let index = 0; index < unitCount; index += 1) {
+    const unitTables = getTitleUnitTablesForLabel(index) || {};
+    const hasAnyRow = (unitTables[tableKey] || []).some((row) => hasMeaningfulEncumbranceTableRow(tableKey, row));
+    if (hasAnyRow) continue;
+    const fields = getTitleUnitFieldsForLabel(index) || {};
+    const reference = formatTitleUnitEncumbranceReference(fields, index, false);
+    const placeholderCells = columns.map((_, columnIndex) => (columnIndex === 0 ? "Herhangi bir kayıt bulunmamaktadır." : "-"));
+    emptyUnitRows.push([...placeholderCells, reference]);
+  }
+  return buildCompactReportWordTableHtml(headers, [...rows, ...emptyUnitRows]);
 }
 
 function buildTakyidatDeclarationsUnitsSummaryWordTableHtml() {
