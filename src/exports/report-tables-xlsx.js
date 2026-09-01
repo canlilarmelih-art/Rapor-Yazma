@@ -763,7 +763,26 @@
       sheets.push({ name: sanitizeSheetName(def.title, usedNames), sheetXml: buildSheetXmlFromCellGrid(styleRegistry, cellGrid) });
     });
 
-    const takyidatCombined = combineNamedGrids(
+    // Kullanıcı talebi (2026-08-31, ekran görüntüsüyle): "ada parseli ayrı
+    // çoklu taleplerde takyidat excel export tablosu daha okunaklı ve
+    // kullanıcı dostu olmalı şerh türü tarih yevmiye no kısıtlı malik var
+    // ise haciz tutarı kapsadığı ada parsel sütunları bulunmalı" —
+    // rawGridCellGridFor (yukarıda) yalnızca AKTİF taşınmazın ham
+    // ızgarasını okuduğundan, Çoklu Talep'te (2+ taşınmaz) diğer
+    // taşınmazların şerh/beyan/ipotek kayıtları bu sayfaya HİÇ YANSIMIYORDU.
+    // buildTakyidat*UnitsSummaryWordTableHtml (app.js) — diğer 8
+    // "Taşınmazlar ... Özeti" sayfasıyla AYNI generatedCellGridFor()
+    // deseninde — 2+ taşınmazda TÜM taşınmazların kayıtlarını, "Ada /
+    // Parsel" (hangi taşınmaz(lar)ı kapsadığı) sütunuyla BİRLEŞTİRİP
+    // döner; boş dönerse (tekil rapor) ESKİ rawGridCellGridFor davranışına
+    // (yalnızca aktif taşınmazın ızgarası) düşülür — kullanıcının paylaştığı
+    // TEK taşınmazlı örnek ekran görüntüsündeki düzen AYNEN korunur.
+    const multiUnitTakyidatCombined = combineNamedGrids([
+      { title: "Beyanlar - Hak ve Mükellefiyetler", cellGrid: generatedCellGridFor("buildTakyidatDeclarationsUnitsSummaryWordTableHtml") },
+      { title: "Şerhler", cellGrid: generatedCellGridFor("buildTakyidatAnnotationsUnitsSummaryWordTableHtml") },
+      { title: "İpotekler", cellGrid: generatedCellGridFor("buildTakyidatMortgagesUnitsSummaryWordTableHtml") },
+    ]);
+    const takyidatCombined = multiUnitTakyidatCombined || combineNamedGrids(
       takyidatDefs.map((def) => ({ title: def.title, cellGrid: rawGridCellGridFor(def) }))
     );
     if (takyidatCombined) {

@@ -23568,6 +23568,67 @@ function buildTakyidatWordTableHtml() {
   );
 }
 
+// Kullanıcı talebi (2026-08-31, ekran görüntüsüyle): "ada parseli ayrı
+// çoklu taleplerde takyidat excel export tablosu daha okunaklı ve
+// kullanıcı dostu olmalı şerh türü tarih yevmiye no kısıtlı malik var ise
+// haciz tutarı kapsadığı ada parsel sütunları bulunmalı" — kullanıcı TEK
+// taşınmazlı raporlarda ZATEN var olan "Beyanlar/Şerhler/İpotekler"
+// tablosunun (Şerh Türü/Açıklama/Haciz Tutarı/Tarih/Yevmiye No/Kısıtlı
+// Malik sütunlu, ekran görüntüsüyle gösterdiği) AYNI düzeninin çoklu
+// taleplerde de korunmasını, yalnızca "hangi ada/parseli kapsadığı"
+// bilgisinin eklenmesini istedi.
+//
+// KÖK NEDEN: "Tüm Tablolar" Excel export'undaki "Takyidat" sayfası
+// (report-tables-xlsx.js, rawGridCellGridFor) şimdiye kadar YALNIZCA
+// AKTİF taşınmazın kendi ham Beyanlar/Şerhler/İpotekler ızgarasını
+// (state.tables[...]) okuyordu — diğer 8 "Taşınmazlar ... Özeti"
+// sayfasının AKSİNE (buildTitleUnitsSummaryWordTableHtml vb.,
+// buildAllTitleUnitsForSummaryTable ile TÜM taşınmazları dolaşır), bu
+// sayfa ÇOKLU TALEP (özellikle farklı ada/parsel) raporlarında DİĞER
+// taşınmazların şerh/beyan/ipotek kayıtlarını Excel'e HİÇ YANSITMIYORDU
+// — veri kaybı.
+//
+// DÜZELTME: TEK taşınmazlı raporlarda davranış DEĞİŞMEDİ
+// (rawGridCellGridFor hâlâ birincil yol, report-tables-xlsx.js'te bu üç
+// fonksiyon boş dönünce eski davranışa düşülür). 2+ taşınmazlı
+// raporlarda ZATEN VAR OLAN, test edilmiş getMultiTitleUnitEncumbranceRows()
+// (aynı yevmiye no'ya — ya da yevmiye yoksa birebir aynı içeriğe sahip
+// kayıtları TEK satırda birleştirip __titleUnitReferences ekleyen
+// fonksiyon, bkz. groupEncumbranceRowsAcrossTitleUnits) yeniden
+// kullanılır — YENİ bir gruplama/eşleştirme mantığı YAZILMADI. Her
+// kategori kendi MEVCUT sütun düzenini (encumbranceReportTables/
+// encumbranceReportColumns) korur, yalnızca sona "Ada / Parsel" (hangi
+// taşınmaz(lar)ı kapsadığı) sütunu eklenir — formatTitleUnitEncumbranceReference
+// zaten "166 ada 7 parsel[, N no.lu B.B.]" biçiminde döner (farklı ada/
+// parselde DOLU ada/parsel gösterir, aynı parselde blok-BB kısaltmasına
+// döner).
+function buildTakyidatCategoryUnitsSummaryTableHtml(tableKey, columns) {
+  if (getTitleUnitCount() < 2) return "";
+  const groupedRows = getMultiTitleUnitEncumbranceRows(tableKey);
+  if (!groupedRows.length) return "";
+  const headers = [...columns, "Ada / Parsel"];
+  const rows = groupedRows.map((row) => {
+    const cells = columns.map((_, columnIndex) => encumbranceCleanText(row[`c${columnIndex}`]) || "-");
+    const references = Array.isArray(row.__titleUnitReferences) ? row.__titleUnitReferences.filter(Boolean) : [];
+    return [...cells, references.length ? references.join(", ") : "-"];
+  });
+  return buildCompactReportWordTableHtml(headers, rows);
+}
+
+function buildTakyidatDeclarationsUnitsSummaryWordTableHtml() {
+  return buildTakyidatCategoryUnitsSummaryTableHtml("encumbranceDeclarations", encumbranceReportColumns);
+}
+
+function buildTakyidatAnnotationsUnitsSummaryWordTableHtml() {
+  const table = encumbranceReportTables.find((def) => def.key === "encumbranceAnnotations");
+  return buildTakyidatCategoryUnitsSummaryTableHtml("encumbranceAnnotations", table.columns);
+}
+
+function buildTakyidatMortgagesUnitsSummaryWordTableHtml() {
+  const table = encumbranceReportTables.find((def) => def.key === "encumbranceMortgages");
+  return buildTakyidatCategoryUnitsSummaryTableHtml("encumbranceMortgages", table.columns);
+}
+
 // Tum uretilen tablolar (banka sablonlarina {{...}} ile enjekte edilenler
 // dahil) SATIR ICI stille boyanir; boylece hangi banka sablonuna
 // yerlestirilirse yerlestirilsin uygulamanin GERCEK ekran-ici renkleriyle

@@ -317,6 +317,32 @@ assert(!resultSingleUnit.sheetNames.includes("Taşınmazlar Tapu Özeti"), "Fonk
 assert(!resultSingleUnit.sheetNames.includes("Taşınmazlar Adres Özeti"), "Fonksiyon bos string donunce (tekil tasinmaz) 'Taşınmazlar Adres Özeti' sayfasi OLUSMAMALIYDI.");
 console.log("Tasinmazlar Tapu/Adres Ozeti Excel sayfasi olusturma + konum + tekil-tasinmazda-yok testi tamam.");
 
+// --- 2c) Coklu tasinmazli (farkli ada/parsel) Takyidat sayfasi (2026-08-31) -
+// Kullanici talebi: "ada parseli ayri coklu taleplerde takyidat excel
+// export tablosu daha okunakli ve kullanici dostu olmali ... kapsadigi
+// ada parsel sutunlari bulunmali" — app.js'teki buildTakyidat*UnitsSummaryWordTableHtml
+// (diger 8 "Tasinmazlar ... Ozeti" sayfasiyla AYNI generatedCellGridFor()
+// deseninde) DOLU HTML dondugunde, "Takyidat" sayfasi ESKI (yalnizca aktif
+// tasinmazin ham izgarasini okuyan) rawGridCellGridFor davranisini DEGIL,
+// bu YENI, TUM tasinmazlari kapsayan tabloyu kullanmali. `{ download: false }`
+// cagrisi (yukaridaki resultWithUnitSummaries/resultSingleUnit ile AYNI
+// teknik) kendi blob'unu DOGRUDAN sonuc nesnesinde dondurur - paylasimli
+// `capturedBlob` degiskenini ETKİLEMEZ, bu yuzden asagidaki asil
+// verifyBlob() (result/capturedBlob'a dayanan) senaryosunu BOZMAZ.
+global.window.buildTakyidatDeclarationsUnitsSummaryWordTableHtml = () => "";
+global.window.buildTakyidatAnnotationsUnitsSummaryWordTableHtml = () => `<table>
+  <thead><tr><th>Şerh Türü</th><th>Açıklama</th><th>Haciz Tutarı</th><th>Tarih</th><th>Yevmiye No</th><th>Kısıtlı Malik</th><th>Ada / Parsel</th></tr></thead>
+  <tbody><tr><td>İcrai Haciz</td><td>Çoklu taşınmaz haciz kaydı</td><td>37.995,32 TL</td><td>27.12.2021</td><td>3694</td><td>-</td><td>166 ada 7 parsel, 1955 ada 3 parsel</td></tr></tbody>
+</table>`;
+global.window.buildTakyidatMortgagesUnitsSummaryWordTableHtml = () => "";
+const resultMultiUnitTakyidat = ReportTablesXlsx.exportAllTables({ download: false });
+assert(resultMultiUnitTakyidat.sheetNames.includes("Takyidat"), "Coklu tasinmazli Takyidat sayfasi olusmali.");
+// Sonraki senaryolarin (tekil tasinmaz varsayimlı) etkilenmemesi icin
+// stub'lar hemen geri alinir - rawGridCellGridFor fallback'i tekrar devrede.
+delete global.window.buildTakyidatDeclarationsUnitsSummaryWordTableHtml;
+delete global.window.buildTakyidatAnnotationsUnitsSummaryWordTableHtml;
+delete global.window.buildTakyidatMortgagesUnitsSummaryWordTableHtml;
+
 async function verifyBlob() {
   const buf = await capturedBlob.blob.arrayBuffer();
   const entries = XlsxFill.readStoredZip(buf);
@@ -411,6 +437,24 @@ async function verifyBlob() {
   assert(tapuOzetXml && tapuOzetXml.includes("<t>Taşınmaz Kimlik No</t>") && tapuOzetXml.includes("<t>123456</t>") && tapuOzetXml.includes("<t>123457</t>"), "Taşınmazlar Tapu Özeti sayfasinda beklenen hucre icerigi eksik.");
   const adresOzetXml = unitSummarySheetXmlByName.get("Taşınmazlar Adres Özeti");
   assert(adresOzetXml && adresOzetXml.includes("<t>UAVT</t>") && adresOzetXml.includes("<t>111</t>") && adresOzetXml.includes("<t>222</t>"), "Taşınmazlar Adres Özeti sayfasinda beklenen hucre icerigi eksik.");
+
+  // --- Coklu tasinmazli (farkli ada/parsel) Takyidat sayfasinin GERCEK ----
+  // icerigi (resultMultiUnitTakyidat, scenario 2c'de olusturuldu) — sayfa
+  // varligi zaten dogrulandi, burada "Ada / Parsel" sutununun ve YENI ozet
+  // tablonun icerigin (ESKI ham-izgara icerigi YERINE) dogru aktarildigi
+  // dogrulaniyor.
+  const multiUnitTakyidatBuf = await resultMultiUnitTakyidat.blob.arrayBuffer();
+  const multiUnitTakyidatEntries = XlsxFill.readStoredZip(multiUnitTakyidatBuf);
+  const multiUnitTakyidatWorkbookXml = dec.decode(multiUnitTakyidatEntries.find((entry) => entry.name === "xl/workbook.xml").bytes);
+  const multiUnitTakyidatSheetNames = [...multiUnitTakyidatWorkbookXml.matchAll(/<sheet name="([^"]*)"/g)].map((m) => m[1]);
+  const multiUnitTakyidatIndex = multiUnitTakyidatSheetNames.indexOf("Takyidat");
+  assert(multiUnitTakyidatIndex >= 0, "Coklu tasinmazli export'ta Takyidat sayfasi bulunamadi.");
+  const multiUnitTakyidatSheetEntry = multiUnitTakyidatEntries.find((entry) => entry.name === `xl/worksheets/sheet${multiUnitTakyidatIndex + 1}.xml`);
+  const multiUnitTakyidatXml = dec.decode(multiUnitTakyidatSheetEntry.bytes);
+  assert(multiUnitTakyidatXml.includes("<t>Ada / Parsel</t>"), "Coklu tasinmazli Takyidat sayfasinda 'Ada / Parsel' sutun basligi eksik.");
+  assert(multiUnitTakyidatXml.includes("<t>166 ada 7 parsel, 1955 ada 3 parsel</t>"), "Coklu tasinmazli Takyidat sayfasinda 'kapsadigi ada/parsel' hucresi eksik/yanlis.");
+  assert(multiUnitTakyidatXml.includes("<t>Çoklu taşınmaz haciz kaydı</t>"), "Coklu tasinmazli Takyidat sayfasinda YENI ozet tablonun icerigi eksik.");
+  assert(!multiUnitTakyidatXml.includes("<t>Test Açıklama</t>"), "Coklu tasinmazli Takyidat sayfasi ESKI (aktif tasinmazin ham izgarasi) icerigi ICERMEMELI - YENI ozet tablo onu TAMAMEN degistirmeli.");
 
   if (failures.length) {
     console.error("Tum tablolar Excel disa aktarma testi BASARISIZ:");
