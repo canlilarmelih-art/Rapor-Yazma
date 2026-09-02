@@ -39,7 +39,7 @@
 //     ile bağlanır.
 //  4) AYNI ada/parsel, TEK sokak, BLOK VAR: kullanıcının BLOK örneğiyle
 //     BİREBİR ("Asya Sitesi A Blok D:... ve B Blok D:...").
-//  5) formatDaireRangeList(): sayısal sıralama + min-max aralığı,
+//  5) formatDaireListText(): sayısal sıralama + TAM liste (min-max DEĞİL),
 //     tek değer, sayısal olmayan değerler için ilk-son.
 //  6) FARKLI ada/parsel: HER taşınmaz KENDİ Ada Parsel etiketiyle ayrı
 //     satırda (DEĞİŞMEDİ — bu dal henüz kullanıcı tarafından
@@ -119,7 +119,7 @@ const functionNames = [
   "formatOpenAddressNeighborhood",
   "formatOpenAddressBuildingName",
   "joinAddressGroupTexts",
-  "formatDaireRangeList",
+  "formatDaireListText",
   "buildSameAdaParselOpenAddressText",
   "buildMultiUnitOpenAddressText",
 ];
@@ -144,7 +144,7 @@ const sandboxSource = `
     setState: (s) => { state = s; },
     getState: () => state,
     buildMultiUnitOpenAddressText,
-    formatDaireRangeList,
+    formatDaireListText,
   };
 `;
 // eslint-disable-next-line no-new-func
@@ -253,19 +253,58 @@ function unit(overrides = {}) {
   console.log("KULLANICI BLOK ORNEGI: AYNI sokak + BLOK VAR -> site bir kez + blok basina daire araligi testi tamam.");
 }
 
-// --- 5) formatDaireRangeList(): sayısal aralık / tek değer / sayısal ------
-// olmayan değerler.
+// --- 5) formatDaireListText(): sayısal sıralama + TAM liste, tek değer, --
+// sayısal olmayan değerler.
+// KULLANICI DÜZELTMESİ (2026-09-02, GERÇEK 4-taşınmazlı rapor örneğiyle):
+// "aynı blok 4 bağımsız bölümden oluşan bir raporda adres bölümünde 5-15
+// şeklinde gelmiş 5-10-11-15 olarak gelmeliydi" — İLK sürüm (formatDaireRangeList,
+// bkz. eski isim) YALNIZCA en küçük-en büyük İKİ değeri birleştiriyordu
+// ("min-max aralığı"); DOĞRUSU TÜM benzersiz değerlerin SIRALANIP HEPSİNİN
+// "-" ile birleştirilmesi.
 {
-  assert.equal(fns.formatDaireRangeList(["7", "16"]), "7-16", "İki sayısal değer küçükten büyüğe 'min-max' olmalı.");
-  assert.equal(fns.formatDaireRangeList(["16", "7"]), "7-16", "Sıra ne olursa olsun SIRALANMALI (min-max).");
-  assert.equal(fns.formatDaireRangeList(["7", "16", "8", "12"]), "7-16", "3+ değerde de yalnızca EN KÜÇÜK-EN BÜYÜK kullanılmalı.");
-  assert.equal(fns.formatDaireRangeList(["7"]), "7", "TEK değer aynen dönmeli (aralık YOK).");
-  assert.equal(fns.formatDaireRangeList([]), "", "Boş girdi boş string dönmeli.");
-  assert.equal(fns.formatDaireRangeList(["7A", "3B"]), "7A-3B", "Sayısal OLMAYAN değerlerde sıralama YAPILMADAN ilk-son '-' ile birleşmeli.");
-  console.log("formatDaireRangeList() testi tamam.");
+  assert.equal(fns.formatDaireListText(["7", "16"]), "7-16", "İki değerde (min-max ile TAM liste AYNI sonucu verdiğinden) fark edilmemişti.");
+  assert.equal(fns.formatDaireListText(["5", "10", "11", "15"]), "5-10-11-15", "KULLANICI BULGUSU: 4 değerde TÜM benzersiz daire numaraları sıralanıp listelenmeli, yalnızca ilk-son (5-15) DEĞİL.");
+  assert.equal(fns.formatDaireListText(["15", "5", "11", "10"]), "5-10-11-15", "Sıra ne olursa olsun SIRALANMALI.");
+  assert.equal(fns.formatDaireListText(["7", "7", "16"]), "7-16", "Tekrarlanan (aynı) değerler TEKRAR EDİLMEMELİ (benzersizleştirilir).");
+  assert.equal(fns.formatDaireListText(["7"]), "7", "TEK değer aynen dönmeli (liste/aralık YOK).");
+  assert.equal(fns.formatDaireListText([]), "", "Boş girdi boş string dönmeli.");
+  assert.equal(fns.formatDaireListText(["7A", "3B"]), "7A-3B", "Sayısal OLMAYAN değerlerde sıralama YAPILMADAN, verilen sırayla '-' ile birleşmeli.");
+  console.log("formatDaireListText() testi tamam.");
 }
 
-// --- 6) FARKLI ada/parsel: HER taşınmaz KENDİ Ada Parsel etiketiyle -------
+// --- 6) KULLANICI BULGUSU (GERÇEK 4-taşınmazlı rapor, TAM örnekle): -------
+// "Yunuseli Mahallesi, 792. Sokak, Sema Hatun Konakları Sitesi, A Blok D:
+// 5-15, Osmangazi / Bursa ... aynı blok 4 bağımsız bölümden oluşan bir
+// raporda adres bölümünde 5-15 şeklinde gelmiş 5-10-11-15 olarak
+// gelmeliydi." Uçtan uca buildMultiUnitOpenAddressText() ile doğrulanır
+// (yalnızca formatDaireListText() birim testi DEĞİL — gerçek 4-taşınmazlı
+// entegrasyon).
+{
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: {
+      blockNo: "100", parcelNo: "5",
+      neighborhood: "Yunuseli", street: "792. Sokak", addressSiteName: "Sema Hatun Konakları Sitesi",
+      addressBlockName: "A", innerDoor: "5",
+      district: "Osmangazi", city: "Bursa",
+    },
+    tables: {},
+    titleUnits: [
+      unit({ blockNo: "100", parcelNo: "5", neighborhood: "Yunuseli", street: "792. Sokak", addressBlockName: "A", innerDoor: "10" }),
+      unit({ blockNo: "100", parcelNo: "5", neighborhood: "Yunuseli", street: "792. Sokak", addressBlockName: "A", innerDoor: "11" }),
+      unit({ blockNo: "100", parcelNo: "5", neighborhood: "Yunuseli", street: "792. Sokak", addressBlockName: "A", innerDoor: "15" }),
+    ],
+  });
+  const result = fns.buildMultiUnitOpenAddressText();
+  assert.equal(
+    result,
+    "Yunuseli Mahallesi, 792. Sokak, Sema Hatun Konakları Sitesi, A Blok D: 5-10-11-15, Osmangazi / Bursa",
+    `4 bağımsız bölümün TÜM daire numaraları (5,10,11,15) listelenmeli, yalnızca ilk-son (5-15) DEĞİL. Bulunan: ${result}`
+  );
+  console.log("KULLANICI BULGUSU: 4-tasinmazli GERCEK rapor ornegiyle TAM daire listesi (min-max DEGIL) testi tamam.");
+}
+
+// --- 7) FARKLI ada/parsel: HER taşınmaz KENDİ Ada Parsel etiketiyle -------
 // ayrı satırda (DEĞİŞMEDİ — "önce aynı ada parsel yapalım").
 {
   fns.setState({
@@ -282,7 +321,7 @@ function unit(overrides = {}) {
   console.log("FARKLI ada/parsel -> Ada Parsel etiketiyle ayri satirlar testi tamam (degismedi).");
 }
 
-// --- 7) "explanations" bölümünde yeni alan tanımlı mı (kaynak-düzeyi) -----
+// --- 8) "explanations" bölümünde yeni alan tanımlı mı (kaynak-düzeyi) -----
 {
   assert.match(
     appSource,
@@ -292,7 +331,7 @@ function unit(overrides = {}) {
   console.log("explanations bolumunde yeni alan tanimi testi tamam.");
 }
 
-// --- 8) refreshMultiUnitOpenAddressTextFromCurrentFields merkezi ----------
+// --- 9) refreshMultiUnitOpenAddressTextFromCurrentFields merkezi ----------
 // dispatcher'a kablolanmış mı (2 çağrı noktası).
 {
   const matches = appSource.match(/refreshMultiUnitOpenAddressTextFromCurrentFields\(field\.key\);/g) || [];
@@ -305,7 +344,7 @@ function unit(overrides = {}) {
   console.log("refreshMultiUnitOpenAddressTextFromCurrentFields kaynak-duzeyi kablolama testi tamam.");
 }
 
-// --- 9) KULLANICI BULGUSU (2026-09-02): canlıda üretilen metin bir --------
+// --- 10) KULLANICI BULGUSU (2026-09-02): canlıda üretilen metin bir -------
 // taşınmazın Blok bilgisini kaybediyordu — kök neden muhtemelen
 // refreshMultiUnitOpenAddressTextFromCurrentFields()'in yalnızca CANLI
 // alan-değişikliği olayına bağlı olması (Excel/JSON/KML/TAKBİS içe

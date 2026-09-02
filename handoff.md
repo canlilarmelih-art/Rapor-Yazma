@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.621 - 2026-09-02 - Açık Adres (Çoklu): Daire numaraları artık TAM liste, "min-max aralığı" DEĞİL
+
+- Kullanıcı bulgusu (GERÇEK 4-taşınmazlı rapor, aynı blok): "Yunuseli Mahallesi, 792. Sokak, Sema Hatun Konakları Sitesi, A Blok D: 5-15, Osmangazi / Bursa ... adres bölümünde 5-15 şeklinde gelmiş 5-10-11-15 olarak gelmeliydi."
+- **Kök neden**: 0.0.619'da eklenen `formatDaireRangeList()` daire numaralarını yalnızca EN KÜÇÜK-EN BÜYÜK iki değere indirgiyordu ("min-max aralığı" — "1-8 arası daireler" tarzı bir KISALTMA). Önceki test örnekleri (2 daire: 7,16 → "7-16") bu min-max yaklaşımıyla TAM LİSTE yaklaşımı arasında bir fark GÖSTERMEDİĞİNDEN hata fark edilmemişti — kullanıcının 4-taşınmazlı GERÇEK raporunda (5,10,11,15) ortadaki iki değer (10,11) SESSİZCE KAYBOLDU.
+- **Düzeltme**: Fonksiyon `formatDaireListText()` olarak yeniden adlandırıldı ve mantığı değiştirildi — artık TÜM benzersiz daire numaraları SIRALANIP HEPSİ "-" ile birleştiriliyor (min-max DEĞİL, TAM liste): `["5","10","11","15"]` → `"5-10-11-15"`.
+- Test: `tools/test-multi-unit-open-address.js`'e (a) `formatDaireListText()`'in 4 değerde TÜM listeyi ürettiğini doğrulayan birim testi, (b) kullanıcının GERÇEK 4-taşınmazlı rapor örneğiyle uçtan uca (`buildMultiUnitOpenAddressText()`) BİREBİR eşleşen bir entegrasyon senaryosu eklendi. Geçici geri alma ile testin gerçekten BAŞARISIZ olduğu doğrulanıp sonra geri konuldu. `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` cache-buster `?v=20260902-3000`.
+- Canlı tarayıcı testi yapılamadı — kullanıcının aynı 4-taşınmazlı (veya benzer, 3+ birimli aynı blok) raporda "Açıklamalar" sekmesini açıp metnin artık TÜM daire numaralarını (5-10-11-15 gibi) doğru gösterdiğini doğrulaması gerekiyor.
+
 ## 0.0.620 - 2026-09-02 - Açık Adres (Çoklu): "Açıklamalar" bölümü her render'da KOŞULSUZ tazelenir (Blok bilgisi kaybı düzeltmesi)
 
 - Kullanıcı bulgusu: canlıda üretilen metin "Teferrüç Mahallesi, 2.Aydın Caddesi, Asya Apartmanı, A Blok D: 7 ve D: 16, Yıldırım / Bursa" idi (B Blok bilgisi TAMAMEN KAYBOLMUŞTU) — "ancak taşınmazlardan biri a blokta biri b blokta. istediğim sonuç: Teferrüç Mahallesi, 2.Aydın Caddesi, Asya Apartmanı, A Blok D:7, B Blok, D:16."

@@ -32559,26 +32559,23 @@ function joinAddressGroupTexts(items) {
 }
 
 // Bir grubun taşınmazlarına ait daire (innerDoor) değerlerini KISA bir
-// aralık/liste metnine indirger — kullanıcı talebi (2026-09-02, GERÇEK
-// çıktı örneğiyle): "kat bölümünü yazmana gerek yok ... D:7-16 ... D:8-12
-// şeklinde olmalı" (yani HER taşınmazın dairesini AYRI AYRI tekrar
-// tekrar yazmak yerine, TÜM daire numaraları TEK bir "min-max" aralığına
-// sıkıştırılır). Değerler sayısalsa (BÜYÜK ÇOĞUNLUK) küçükten büyüğe
-// sıralanıp yalnızca EN KÜÇÜK-EN BÜYÜK ikisi "-" ile birleştirilir
-// (aradaki numaraların GERÇEKTEN var olup olmadığı KONTROL EDİLMEZ —
-// gerçek hayattaki "1-8 arası daireler" tarzı KISALTMA ile AYNI ilke).
-// Sayısal değilse (nadir, ör. "7A") sıralamadan, ilk ve son değer "-" ile
-// birleştirilir.
-function formatDaireRangeList(values) {
+// listeye indirger. KULLANICI DÜZELTMESİ (2026-09-02, GERÇEK 4-taşınmazlı
+// rapor örneğiyle): "aynı blok 4 bağımsız bölümden oluşan bir raporda
+// adres bölümünde 5-15 şeklinde gelmiş 5-10-11-15 olarak gelmeliydi" —
+// İLK sürüm YALNIZCA en küçük-en büyük İKİ değeri "-" ile birleştiriyordu
+// ("min-max aralığı", 2 değerde doğru sonucu verdiği için fark
+// edilmemişti); DOĞRUSU TÜM (benzersiz) daire numaralarının SIRALANIP
+// HEPSİNİN "-" ile birleştirilmesi — "1-8 arası" tarzı bir ARALIK
+// KISALTMASI DEĞİL, taşınmazların GERÇEK daire numaralarının TAM listesi.
+function formatDaireListText(values) {
   const clean = Array.from(new Set((values || []).map((value) => String(value || "").trim()).filter(Boolean)));
   if (!clean.length) return "";
   if (clean.length === 1) return clean[0];
   const numeric = clean.map((value) => Number(value));
   if (numeric.every((value) => Number.isFinite(value))) {
-    const sorted = [...numeric].sort((a, b) => a - b);
-    return `${sorted[0]}-${sorted[sorted.length - 1]}`;
+    return [...numeric].sort((a, b) => a - b).join("-");
   }
-  return `${clean[0]}-${clean[clean.length - 1]}`;
+  return clean.join("-");
 }
 
 // KULLANICI TALEBİ (2026-09-02, TAM örnekle, İKİNCİ tur — gerçek çıktı
@@ -32596,12 +32593,14 @@ function formatDaireRangeList(values) {
 //  3) HER sokak grubu İÇİNDE: Site/Apartman adı VE Kapı No (varsa) SADECE
 //     BİR KEZ yazılır (taşınmaz sayısı kadar TEKRARLANMAZ).
 //  4) Kat (floor) HİÇ YAZILMAZ.
-//  5) Blok YOKSA: Site, No, ardından TÜM taşınmazların daire
-//     numaraları formatDaireRangeList() ile TEK bir "D:min-max" aralığına
-//     indirgenir.
+//  5) Blok YOKSA: Site, No, ardından TÜM taşınmazların daire numaraları
+//     formatDaireListText() ile SIRALANIP "-" ile birleştirilen TEK bir
+//     listeye indirgenir (ör. 4 taşınmaz: "D:5-10-11-15" — min-max
+//     aralığı DEĞİL, TÜM benzersiz daire numaralarının TAM listesi).
 //  6) Blok VARSA: Site bir kez yazılır, ardından HER blok kendi "{Blok}
-//     Blok D:{o bloktaki daireler aralığı}" metnini alır, bloklar " ve "
-//     ile bağlanır — No: bu durumda YAZILMAZ (site+blok kimliği yeterli).
+//     Blok D:{o bloktaki daire numaraları listesi}" metnini alır, bloklar
+//     " ve " ile bağlanır — No: bu durumda YAZILMAZ (site+blok kimliği
+//     yeterli).
 //  7) İlçe / İl: rapor genelinde ortak olduğundan EN SONA, TEK kez eklenir.
 function buildSameAdaParselOpenAddressText(units) {
   const get = (fields, ...keys) => {
@@ -32657,12 +32656,12 @@ function buildSameAdaParselOpenAddressText(units) {
     if (hasRealBlocks) {
       const blockTexts = blockGroups.map(({ blockName, innerDoors }) => {
         const blockLabel = blockName ? (/blok/i.test(blockName) ? blockName : `${blockName}${style.blokSuffix}`) : "";
-        const daireRange = formatDaireRangeList(innerDoors);
+        const daireRange = formatDaireListText(innerDoors);
         return [blockLabel, daireRange ? `${style.daireLabel}${daireRange}` : ""].filter(Boolean).join(" ");
       });
       bodySegments = [siteSegment, joinAddressGroupTexts(blockTexts)].filter(Boolean);
     } else {
-      const daireRange = formatDaireRangeList(unitFieldsList.map((fields) => get(fields, "innerDoor")));
+      const daireRange = formatDaireListText(unitFieldsList.map((fields) => get(fields, "innerDoor")));
       const siteAndNo = [siteSegment, outerDoor ? `${style.noLabel}${outerDoor}` : ""].filter(Boolean).join(", ");
       bodySegments = [siteAndNo, daireRange ? `${style.daireLabel}${daireRange}` : ""].filter(Boolean);
     }
