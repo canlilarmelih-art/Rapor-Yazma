@@ -1,5 +1,17 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.617 - 2026-09-02 - Yeni: "Açık Adres (Çoklu Taşınmaz)" — Açıklamalar bölümü + {{ACIKADRESCOKLU}} placeholder
+
+- Kullanıcı talebi: "çoklu taleplerde açık adres aynı ada parsel ve farklı ada parselli raporlarda nasıl yazılmalı. öncelikle açık adres çoklu olarak açıklamalar kısmına yeni bir bölüm oluştur ve bu bölüme placeholder ata."
+- **Yeni alan**: "Açıklamalar" bölümüne `multiUnitOpenAddressText` ("Açık Adres (Çoklu Taşınmaz)", textarea) eklendi.
+- **Yeni fonksiyon**: `buildMultiUnitOpenAddressText()` (app.js, `buildOpenAddressText()`'in hemen ardında) — tekil raporda (veya Çoklu Talep dışında) mevcut `buildOpenAddressText()` sonucunu AYNEN döner (davranış değişmedi). 2+ taşınmazda: HER taşınmazın KENDİ açık adresi (state.fields geçici değiştirilerek, GABİM/Değerleme'deki AYNI teknik) hesaplanıp `groupMainPropertyBlocksByText()` (Ana Gayrimenkul Açıklaması'nın KULLANDIĞI, metin bazlı genel-amaçlı gruplama çekirdeği) ile gruplanır: TÜM taşınmazların adresi BİREBİR AYNIYSA TEK atıfsız satır; farklıysa HER taşınmaz `computeTitleUnitTabLabel()`'in ürettiği etiketle (AYNI ada/parselde "Blok-BB No", FARKLI ada/parselde "Ada Parsel") kendi ayrı satırında listelenir.
+- **v1 kapsam notu**: Bu, "aynı ada/parselde kat/daire farklarını TEK birleşik cümlede listeleme" yerine, kanıtlanmış genel metin-gruplama altyapısını yeniden kullanan DAHA BASİT bir ilk sürüm — kullanıcı gerçek bir çoklu taşınmaz raporunda tam istediği biçimi (tek cümle mi, etiketli ayrı satırlar mı, hangi etiket biçimi) görüp geri bildirirse buna göre inceltilecek.
+- **Placeholder**: `{{ACIKADRESCOKLU}}` (template-engine.js, `GABIMVERISETI`nin TEK-taşınmaz `ACIKADRES`inden AYRI — diğer editable açıklama alanlarıyla AYNI desen: önce depolanan `multiUnitOpenAddressText` alanı, yoksa yeniden üretilir); ayrıca `collectGeneratedTextPlaceholders()` katalogunda "Adres ve Konum" kategorisinde listelendi.
+- **Otomatik tazeleme**: `refreshMultiUnitOpenAddressTextFromCurrentFields()` merkezi alan-değişikliği dispatcher'ının İKİ çağrı noktasına da eklendi (diğer `refresh*FromCurrentFields` fonksiyonlarıyla AYNI desen) — İl/İlçe/Mahalle/Sokak/Site/Blok/Dış Kapı/Kat/İç Kapı/Ada/Parsel/UAVT/requestType/ownershipType değiştiğinde otomatik yeniden üretilir.
+- Test: yeni `tools/test-multi-unit-open-address.js` (8 senaryo — tekil rapor davranış korunumu, tüm-adresler-aynı → tek satır, aynı ada/parsel+farklı adres → Blok-BB No etiketli ayrı satırlar, farklı ada/parsel → Ada Parsel etiketli ayrı satırlar, alan tanımı, dispatcher kablolaması, placeholder kablolaması, katalog kaydı). `buildOpenAddressText()` (geniş bağımlılık ağacı) BİLİNÇLİ OLARAK davranış-koruyan basit bir SAHTE ile değiştirildi (proje konvansiyonu). Geçici geri alma ile testin gerçekten BAŞARISIZ olduğu doğrulanıp sonra geri konuldu. `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js`/`src/templates/template-engine.js` cache-buster `?v=20260902-2600`.
+- Canlı tarayıcı testi yapılamadı — kullanıcının "Açıklamalar" bölümünde yeni "Açık Adres (Çoklu Taşınmaz)" alanını görüp, çoklu taleplerde (aynı ve farklı ada/parsel senaryolarında ayrı ayrı) ürettiği metnin gerçekte istediği biçimde olup olmadığını değerlendirmesi ve gerekiyorsa tam istediği cümle/etiket biçimini örnekle bildirmesi gerekiyor.
+
 ## 0.0.616 - 2026-09-02 - GABİM: aynı ada/parselde Enlem/Boylam artık ZORLA "Ortak Bilgiler"e taşınıyor
 
 - Kullanıcı takip talebi: "aynı ada parseldeki çoklu talepte her bağımsız bölümün enlem ve boylam bilgisi ortak olmalı şu an neden ayrı."

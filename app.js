@@ -813,6 +813,11 @@ const sections = [
       "Rapor genelinde seçilen koşullara göre kullanılacak ek açıklama metinleri burada toplanır. Hisseli mülkiyet, imar, takyidat, belge ve benzeri özel durum açıklamaları bu bölümden yönetilir.",
     fields: [
       { key: "shareExplanation", label: "Hisse Açıklaması", type: "textarea", wide: true, hidden: true },
+      // Kullanıcı talebi (2026-09-02): "çoklu taleplerde açık adres aynı
+      // ada parsel ve farklı ada parselli raporlarda nasıl yazılmalı ...
+      // öncelikle açık adres çoklu olarak açıklamalar kısmına yeni bir
+      // bölüm oluştur" — bkz. buildMultiUnitOpenAddressText() (aşağıda).
+      { key: "multiUnitOpenAddressText", label: "Açık Adres (Çoklu Taşınmaz)", type: "textarea", wide: true },
       {
         key: "ekbEmissionClass",
         label: "Sera Gazı Emisyon Sınıfı",
@@ -6075,6 +6080,7 @@ function createForm(section) {
       refreshPenaltyDecisionExplanationFromCurrentFields(field.key);
       refreshStaticSuitabilityExplanationFromCurrentFields(field.key);
       refreshBuildingInspectionExplanationFromCurrentFields(field.key);
+      refreshMultiUnitOpenAddressTextFromCurrentFields(field.key);
       refreshEkbExplanationFromCurrentFields(field.key);
       refreshLandDescriptionFromCurrentFields(field.key);
       refreshClimateEarthquakeExplanationFromCurrentFields(field.key);
@@ -6207,6 +6213,7 @@ function createForm(section) {
       refreshPenaltyDecisionExplanationFromCurrentFields(field.key);
       refreshStaticSuitabilityExplanationFromCurrentFields(field.key);
       refreshBuildingInspectionExplanationFromCurrentFields(field.key);
+      refreshMultiUnitOpenAddressTextFromCurrentFields(field.key);
       refreshEkbExplanationFromCurrentFields(field.key);
       refreshLandDescriptionFromCurrentFields(field.key);
       refreshClimateEarthquakeExplanationFromCurrentFields(field.key);
@@ -30336,6 +30343,29 @@ function refreshBuildingInspectionExplanationFromCurrentFields(changedKey = "") 
   }
 }
 
+// Kullanıcı talebi (2026-09-02): "açık adres çoklu olarak açıklamalar
+// kısmına yeni bir bölüm oluştur" — bkz. buildMultiUnitOpenAddressText()
+// (üstünde, buildOpenAddressText()'in hemen ardında). Diğer
+// refresh*FromCurrentFields fonksiyonlarıyla AYNI desen — watchedKeys
+// Adres bölümünün açık adres metnine giren TÜM alanları (buildOpenAddressText()'in
+// okuduğu 10 alan) + ada/parsel (gruplama anahtarı) + requestType (tekil/
+// çoklu geçişi) kapsar.
+function refreshMultiUnitOpenAddressTextFromCurrentFields(changedKey = "") {
+  const watchedKeys = [
+    "neighborhood", "titleNeighborhood", "street", "addressSiteName",
+    "addressBlockName", "titleBlockName", "outerDoor", "addressFloor",
+    "titleFloor", "innerDoor", "district", "titleDistrict", "city",
+    "titleCity", "uavt", "locationName", "blockNo", "parcelNo",
+    "requestType", "ownershipType",
+  ];
+  if (changedKey && !watchedKeys.includes(changedKey)) return;
+  state.fields.multiUnitOpenAddressText = normalizeReportDescriptionText(buildMultiUnitOpenAddressText());
+  const control = document.querySelector('[data-field="multiUnitOpenAddressText"]');
+  if (control && control.value !== state.fields.multiUnitOpenAddressText) {
+    control.value = state.fields.multiUnitOpenAddressText || "";
+  }
+}
+
 function getEkbInspectionDateIso() {
   return state.fields.appointmentDate || "";
 }
@@ -32503,6 +32533,60 @@ function buildLandOpenAddressText() {
   if (districtCity) segments.push(districtCity);
   return segments.join(", ");
 }
+
+// Kullanıcı talebi (2026-09-02): "çoklu taleplerde açık adres aynı ada
+// parsel ve farklı ada parselli raporlarda nasıl yazılmalı ... öncelikle
+// açık adres çoklu olarak açıklamalar kısmına yeni bir bölüm oluştur ve
+// bu bölüme placeholder ata" — Tekil raporda (veya Çoklu Talep dışında)
+// DEĞİŞMEZ: mevcut buildOpenAddressText() ne üretiyorsa AYNEN döner.
+//
+// 2+ taşınmazda: HER taşınmazın KENDİ açık adresi (state.fields geçici
+// değiştirilerek, computeValuationFieldsForAllTitleUnits/
+// getMainPropertyBlockEntries İLE AYNI teknik) hesaplanıp
+// groupMainPropertyBlocksByText() (Ana Gayrimenkul Açıklaması'nın
+// KULLANDIĞI, metin bazlı, genel-amaçlı gruplama çekirdeği) ile
+// gruplanır — AYNI metni üreten taşınmazlar TEK (atıfsız) satırda
+// birleşir, FARKLI üretenler kendi etiketiyle (computeTitleUnitTabLabel:
+// AYNI ada/parselde Blok-BB No, FARKLI ada/parselde Ada Parsel) AYRI
+// satırda kalır. Pratikte: TÜM taşınmazlar AYNI ada/parselde VE açık
+// adresleri (kat/daire no dahil) BİREBİR aynıysa TEK satır; aynı ada/
+// parselde ama kat/daire farklıysa HER taşınmaz kendi Blok-BB No
+// etiketiyle ayrı satırda (temel adres tekrar eder, yalnızca son kısmı
+// değişir); FARKLI ada/parselde ise her taşınmaz kendi Ada/Parsel
+// etiketiyle TAMAMEN AYRI bir satırda.
+//
+// NOT (v1, kullanıcı incelemesi bekleniyor): bu, "aynı ada/parselde TEK
+// birleşik cümle" (temel adresi bir kez yazıp yalnızca kat/daire
+// farklarını tek cümlede listeleme) yerine, kanıtlanmış/test edilmiş
+// genel metin-gruplama altyapısını yeniden kullanan DAHA BASİT bir ilk
+// sürüm — kullanıcı gerçek bir çoklu taşınmaz raporunda tam istediği
+// biçimi (tek cümle mi, etiketli ayrı satırlar mı) görüp geri bildirirse
+// buna göre inceltilecek.
+function buildMultiUnitOpenAddressText() {
+  const units = buildAllTitleUnitsForSummaryTable();
+  if (units.length < 2) return buildOpenAddressText();
+
+  const originalFields = state.fields;
+  let entries;
+  try {
+    entries = units.map((unit) => ({
+      label: computeTitleUnitTabLabel(unit, units),
+      values: (() => {
+        state.fields = unit.fields || {};
+        return buildOpenAddressText();
+      })(),
+    }));
+  } finally {
+    state.fields = originalFields;
+  }
+
+  const groups = groupMainPropertyBlocksByText(entries, (text) => text);
+  if (!groups.length) return "";
+  if (groups.length === 1) return groups[0].text;
+
+  return groups.map((group) => `${group.blockLabels.join(", ")}: ${group.text}`).join("\n");
+}
+
 function createOpenAddressPanel() {
   const address = buildOpenAddressText();
   state.fields.openAddress = address;
@@ -40498,6 +40582,12 @@ function collectGeneratedTextPlaceholders() {
       key: "environmental_agricultural_template",
       title: "Çevresel Özellikler - Tarımsal Alan Şablonu",
       value: buildEnvironmentalDescription("Tarımsal Alan", { usePlaceholderTokens: true }),
+    },
+    {
+      category: "Adres ve Konum",
+      key: "multi_unit_open_address_text",
+      title: "Açık Adres (Çoklu Taşınmaz)",
+      value: state.fields.multiUnitOpenAddressText || buildMultiUnitOpenAddressText(),
     },
     {
       category: "Açıklamalar",

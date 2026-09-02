@@ -472,6 +472,15 @@
     ADRES2025: { fn: () => safeCall("buildOpenAddressText") },
     ACIKADRES: { fn: () => safeCall("buildOpenAddressText") },
     LANDOPENADDRESSTEXT: { fn: () => safeCall("buildLandOpenAddressText") },
+    // Çoklu taşınmaz açık adres özeti (2026-09-02) — kullanıcı talebi:
+    // "çoklu taleplerde açık adres ... açıklamalar kısmına yeni bir
+    // bölüm oluştur ve bu bölüme placeholder ata". ACIKADRES'ten FARKLI:
+    // o her zaman YALNIZCA aktif taşınmazın adresini üretir; bu, 2+
+    // taşınmazda aynı/farklı ada-parsel durumuna göre metni birleştirir
+    // (bkz. buildMultiUnitOpenAddressText, app.js). Diğer editable
+    // açıklama alanlarıyla AYNI desen (t: önce depolanan alan, yoksa
+    // yeniden üret).
+    ACIKADRESCOKLU: { t: () => field("multiUnitOpenAddressText") || safeCall("buildMultiUnitOpenAddressText") },
     LOCATIONMAPIMAGE: { h: () => reportImageHtml("location") },
     KONUMHARITASI: { h: () => reportImageHtml("location") },
     COMPARABLESKETCHIMAGE: { h: () => reportImageHtml("comparables") },
