@@ -32737,6 +32737,66 @@ function buildSameAdaParselOpenAddressText(units) {
   return [neighborhoodSegment, combinedGroups, districtCitySegment].filter(Boolean).join(", ");
 }
 
+// KULLANICI TALEBİ (2026-09-02, Arsa/Tarla — FARKLI ada/parsel): "farklı
+// ada parselde yer alan çoklu talepte adres şu şekilde çıkıyor: 0 56:
+// Canbazlarköyü Mahallesi, Mevkii SAZLIK, 0 Ada 56 Parsel, Gürsu / Bursa
+// ... oysa benim istediğim yine gruplandırma Canbazlarköyü Mahallesi
+// Sazlık Mevkii 56 Parsel ve Sarıtaş Mevkii 315 parsel, gürsu/bursa
+// şeklinde 0 Ada yazmaya gerek yok ada numarası yoksa, aynı mevkiide yer
+// alsaydı taşınmazlar mevkii 1 kere yazıp daha sonra ada parselleri
+// yazacaktık" — buildSameAdaParselOpenAddressText()'in Sokak/Cadde
+// bazlı gruplamasıyla AYNI İLKE, ama Arsa/Tarla raporlarında birincil
+// konum alanı Sokak DEĞİL Mevkii'dir: Mahalle TEK KEZ en başta; taşınmazlar
+// Mevkii'ye göre gruplanır (AYNI mevkiideyseler TEK kez yazılıp ardından
+// TÜM ada/parselleri listelenir; FARKLI mevkiideyseler HER mevkii kendi
+// "{Mevkii} Mevkii {ada/parsel listesi}" metnini alır, gruplar " ve "
+// ile bağlanır); Ada "0" veya BOŞSA (gerçek bir ada numarası YOKSA) HİÇ
+// yazılmaz, yalnızca "{Parsel} Parsel" kalır; İlçe/İl EN SONA TEK kez
+// eklenir.
+function buildDifferentAdaParselLandOpenAddressText(units) {
+  const get = (fields, ...keys) => {
+    for (const key of keys) {
+      const value = String(fields?.[key] || "").trim();
+      if (value) return value;
+    }
+    return "";
+  };
+  const style = openAddressStyleVariants[selectVariant("buildOpenAddressText:style", openAddressStyleVariants.length)];
+
+  const neighborhood = units.map((unit) => get(unit.fields, "neighborhood", "titleNeighborhood")).find(Boolean) || "";
+  const district = units.map((unit) => get(unit.fields, "district", "titleDistrict")).find(Boolean) || "";
+  const city = units.map((unit) => get(unit.fields, "city", "titleCity")).find(Boolean) || "";
+
+  // Mevkii'ye göre grupla (AYNI metin -> AYNI grup, ilk görülme sırası korunur).
+  const mevkiiGroups = [];
+  const mevkiiIndexByKey = new Map();
+  units.forEach((unit) => {
+    const locationName = get(unit.fields, "locationName");
+    const key = normalizeTextForSimilarityComparison(locationName);
+    if (!mevkiiIndexByKey.has(key)) {
+      mevkiiIndexByKey.set(key, mevkiiGroups.length);
+      mevkiiGroups.push({ locationName, unitFieldsList: [] });
+    }
+    mevkiiGroups[mevkiiIndexByKey.get(key)].unitFieldsList.push(unit.fields || {});
+  });
+
+  const groupTexts = mevkiiGroups.map(({ locationName, unitFieldsList }) => {
+    const mevkiiSegment = locationName ? `${normalizeReportTitleText(locationName)} Mevkii` : "";
+    const parcelTexts = unitFieldsList.map((fields) => {
+      const blockNo = get(fields, "blockNo");
+      const parcelNo = get(fields, "parcelNo");
+      const hasRealBlock = blockNo && blockNo !== "0";
+      return [hasRealBlock ? `${blockNo} Ada` : "", parcelNo ? `${parcelNo} Parsel` : ""].filter(Boolean).join(" ");
+    }).filter(Boolean);
+    return [mevkiiSegment, joinAddressGroupTexts(parcelTexts)].filter(Boolean).join(" ");
+  }).filter(Boolean);
+
+  const combinedGroups = joinAddressGroupTexts(groupTexts);
+  const neighborhoodSegment = neighborhood ? formatOpenAddressNeighborhood(neighborhood, style) : "";
+  const districtCitySegment = [district, city].filter(Boolean).join(" / ");
+  return [neighborhoodSegment, combinedGroups, districtCitySegment].filter(Boolean).join(", ");
+}
+
 // Kullanıcı talebi (2026-09-02): "çoklu taleplerde açık adres aynı ada
 // parsel ve farklı ada parselli raporlarda nasıl yazılmalı ... öncelikle
 // açık adres çoklu olarak açıklamalar kısmına yeni bir bölüm oluştur ve
@@ -32747,19 +32807,24 @@ function buildSameAdaParselOpenAddressText(units) {
 // kullanıcının TAM örnekle verdiği "mahalle ortak + sokak/cadde bazlı
 // gruplama" kuralı).
 //
-// FARKLI ada/parselde (henüz kullanıcı tarafından NETLEŞTİRİLMEDİ —
-// "önce aynı ada parsel yapalım" — bu dal DEĞİŞMEDİ, bir sonraki turda
-// ele alınacak): HER taşınmazın KENDİ açık adresi (state.fields geçici
-// değiştirilerek hesaplanıp) groupMainPropertyBlocksByText() ile
-// gruplanır — AYNI metni üreten taşınmazlar TEK (atıfsız) satırda
-// birleşir, FARKLI üretenler kendi Ada/Parsel etiketiyle AYRI satırda
-// kalır.
+// FARKLI ada/parselde, Arsa/Tarla (isLandPropertyForBankTemplate()/
+// isLandProjectReview() — buildOpenAddressText()'in KENDİSİNİN Land/Bina
+// ayrımı için kullandığı AYNI kontrol): buildDifferentAdaParselLandOpenAddressText()
+// (yukarıda, Mevkii bazlı gruplama). DİĞER (bina) mülkiyet türlerinde
+// HENÜZ kullanıcı tarafından netleştirilmedi — HER taşınmazın KENDİ açık
+// adresi groupMainPropertyBlocksByText() ile gruplanır — AYNI metni
+// üreten taşınmazlar TEK (atıfsız) satırda birleşir, FARKLI üretenler
+// kendi Ada/Parsel etiketiyle AYRI satırda kalır.
 function buildMultiUnitOpenAddressText() {
   const units = buildAllTitleUnitsForSummaryTable();
   if (units.length < 2) return buildOpenAddressText();
 
   if (computeTitleUnitsShareSameAdaParsel(units)) {
     return buildSameAdaParselOpenAddressText(units);
+  }
+
+  if (isLandPropertyForBankTemplate() || isLandProjectReview()) {
+    return buildDifferentAdaParselLandOpenAddressText(units);
   }
 
   const originalFields = state.fields;

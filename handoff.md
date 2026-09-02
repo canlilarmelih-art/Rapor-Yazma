@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.624 - 2026-09-02 - Açık Adres (Çoklu): FARKLI ada/parsel + Arsa/Tarla için Mevkii bazlı gruplama
+
+- Kullanıcı, "farklı ada parsel" dalına geçip GERÇEK bir Arsa/Tarla raporu örneği paylaştı: "0 56: Canbazlarköyü Mahallesi, Mevkii SAZLIK, 0 Ada 56 Parsel, Gürsu / Bursa / 0 315: Canbazlarköyü Mahallesi, Mevkii SARITAŞ, 0 Ada 315 Parsel, Gürsu / Bursa oysa benim istediğim yine gruplandırma Canbazlarköyü Mahallesi Sazlık Mevkii 56 Parsel ve Sarıtaş Mevkii 315 parsel, gürsu/bursa şeklinde 0 Ada yazmaya gerek yok ada numarası yoksa, aynı mevkiide yer alsaydı taşınmazlar mevkii 1 kere yazıp daha sonra ada parselleri yazacaktık."
+- **Kök durum**: 0.0.617'nin FARKLI-ada/parsel dalı (genel metin-gruplama, `buildOpenAddressText()` + `computeTitleUnitTabLabel()` etiketi) Arsa/Tarla raporları için de kullanılıyordu — kullanıcının AYNI-ada/parsel dalında zaten kurduğu "ortak alan + gruplama" ilkesini (0.0.618) Arsa/Tarla'nın birincil konum alanı olan Mevkii için HİÇ uygulamıyordu.
+- **Düzeltme**: Yeni `buildDifferentAdaParselLandOpenAddressText()` (app.js) — `buildMultiUnitOpenAddressText()` artık FARKLI ada/parselde, Arsa/Tarla raporlarında (`isLandPropertyForBankTemplate()`/`isLandProjectReview()` — `buildOpenAddressText()`'in KENDİSİNİN kullandığı AYNI kontrol) bu YENİ fonksiyonu çağırıyor: Mahalle TEK KEZ en başta; taşınmazlar Mevkii'ye göre gruplanır (AYNI mevkiideyseler TEK kez yazılıp ardından TÜM parselleri listelenir; FARKLIYSA HER mevkii kendi "{Mevkii} Mevkii {ada/parsel listesi}" metnini alır, " ve " ile bağlanır); Ada "0" veya BOŞSA (gerçek bir ada numarası YOKSA) HİÇ yazılmaz; İlçe/İl EN SONA TEK kez eklenir. Diğer (bina) mülkiyet türlerinde davranış DEĞİŞMEDİ.
+- Test: `tools/test-multi-unit-open-address.js`'e kullanıcının TAM örneğiyle BİREBİR eşleşen (a) farklı mevkii + Ada "0", (b) aynı mevkii + farklı parsel, (c) gerçek Ada numarası varken normal gösterim senaryoları eklendi. Geçici geri alma ile testin gerçekten BAŞARISIZ olduğu doğrulanıp sonra geri konuldu. `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` cache-buster `?v=20260902-3300`.
+- Canlı tarayıcı testi yapılamadı — kullanıcının farklı ada/parselli bir Arsa/Tarla raporunda metnin artık Mahalle'yi bir kez yazıp Mevkii'ye göre doğru gruplandığını, gerçek Ada numarası olmayan taşınmazlarda "Ada" kelimesinin hiç görünmediğini doğrulaması gerekiyor.
+
 ## 0.0.623 - 2026-09-02 - Açık Adres (Çoklu): Blok bazında farklı ama SAYISAL kısmı aynı Dış Kapı No'lar TEK yazılıyor
 
 - Kullanıcı takip talebi: "dış kapı no blok bazında farklı olabilir örnek a blok no: 13a b blok no:13b bunlar eğer sayısal değer aynı ise yani taşınmazların dış kapı numaraları 13a 13b 13c ise Dış Kapı no: 13 A Blok D: 5, B Blok D: 16 şeklinde yazılabilir."

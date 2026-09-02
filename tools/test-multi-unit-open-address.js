@@ -130,6 +130,19 @@ const functionNames = [
   "buildAddressBlockAndDaireText",
   "buildAddressDoorAndBlockText",
   "buildSameAdaParselOpenAddressText",
+  // KULLANICI TAKİP TALEBİ (2026-09-02, FARKLI ada/parsel, Arsa/Tarla):
+  // buildMultiUnitOpenAddressText() artık Arsa/Tarla raporlarında
+  // isLandPropertyForBankTemplate()/isLandProjectReview()'e (ve onların
+  // bağımlılıklarına) bağımlı.
+  "isLandOwnershipType",
+  "isLandPropertyForBankTemplate",
+  "isLandProjectReview",
+  "normalizeReportWhitespace",
+  "toTitleCaseTr",
+  "preserveReportSpecialWords",
+  "escapeRegExp",
+  "normalizeReportTitleText",
+  "buildDifferentAdaParselLandOpenAddressText",
   "buildMultiUnitOpenAddressText",
 ];
 const constArrayNames = ["openAddressStyleVariants"];
@@ -400,8 +413,9 @@ function unit(overrides = {}) {
   console.log("KULLANICI BULGUSU: 4-tasinmazli GERCEK rapor ornegiyle TAM daire listesi (min-max DEGIL) testi tamam.");
 }
 
-// --- 7) FARKLI ada/parsel: HER taşınmaz KENDİ Ada Parsel etiketiyle -------
-// ayrı satırda (DEĞİŞMEDİ — "önce aynı ada parsel yapalım").
+// --- 7) FARKLI ada/parsel, BİNA (Arsa/Tarla DEĞİL): HER taşınmaz KENDİ --
+// Ada Parsel etiketiyle ayrı satırda (DEĞİŞMEDİ — henüz kullanıcı
+// tarafından netleştirilmedi).
 {
   fns.setState({
     activeTitleUnitIndex: 0,
@@ -414,7 +428,86 @@ function unit(overrides = {}) {
   assert.equal(lines.length, 2, "FARKLI ada/parselde 2 AYRI satır olmalı.");
   assert.ok(lines[0].startsWith("100 5:"), `1. satır 'Ada Parsel' etiketiyle başlamalı, bulunan: ${lines[0]}`);
   assert.ok(lines[1].startsWith("200 9:"), `2. satır 'Ada Parsel' etiketiyle başlamalı, bulunan: ${lines[1]}`);
-  console.log("FARKLI ada/parsel -> Ada Parsel etiketiyle ayri satirlar testi tamam (degismedi).");
+  console.log("FARKLI ada/parsel, BINA -> Ada Parsel etiketiyle ayri satirlar testi tamam (degismedi).");
+}
+
+// --- 7b) KULLANICI TAKİP TALEBİ (2026-09-02, GERÇEK örnekle, Arsa/Tarla, -
+// FARKLI ada/parsel): "farklı ada parselde yer alan çoklu talepte adres
+// şu şekilde çıkıyor: 0 56: Canbazlarköyü Mahallesi, Mevkii SAZLIK, 0 Ada
+// 56 Parsel, Gürsu / Bursa / 0 315: Canbazlarköyü Mahallesi, Mevkii
+// SARITAŞ, 0 Ada 315 Parsel, Gürsu / Bursa oysa benim istediğim yine
+// gruplandırma Canbazlarköyü Mahallesi Sazlık Mevkii 56 Parsel ve
+// Sarıtaş Mevkii 315 parsel, gürsu/bursa şeklinde 0 Ada yazmaya gerek
+// yok ada numarası yoksa, aynı mevkiide yer alsaydı taşınmazlar mevkii 1
+// kere yazıp daha sonra ada parselleri yazacaktık."
+{
+  // (a) kullanıcının TAM örneği: FARKLI mevkii (SAZLIK/SARITAŞ), Ada "0"
+  // (gerçek ada YOK).
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: {
+      ownershipType: "Arsa",
+      neighborhood: "Canbazlarköyü", locationName: "SAZLIK", blockNo: "0", parcelNo: "56",
+      district: "Gürsu", city: "Bursa",
+    },
+    tables: {},
+    titleUnits: [
+      unit({ neighborhood: "Canbazlarköyü", locationName: "SARITAŞ", blockNo: "0", parcelNo: "315" }),
+    ],
+  });
+  const result = fns.buildMultiUnitOpenAddressText();
+  assert.equal(
+    result,
+    "Canbazlarköyü Mahallesi, Sazlık Mevkii 56 Parsel ve Sarıtaş Mevkii 315 Parsel, Gürsu / Bursa",
+    `Mahalle bir kez, FARKLI mevkiiler ' ve ' ile ayrı gruplanmalı, Ada "0" iken HİÇ yazılmamalı. Bulunan: ${result}`
+  );
+  assert.ok(!result.includes("Ada"), "Gerçek bir Ada numarası YOKSA (\"0\") 'Ada' kelimesi HİÇ görünmemeli.");
+  console.log("KULLANICI TAKIP TALEBI: Arsa/Tarla FARKLI ada/parsel - mahalle ortak + Mevkii bazli gruplama + 0 Ada gizleme testi tamam.");
+
+  // (b) AYNI mevkii, FARKLI parsel — kullanıcı: "aynı mevkiide yer
+  // alsaydı taşınmazlar mevkii 1 kere yazıp daha sonra ada parselleri
+  // yazacaktık".
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: {
+      ownershipType: "Arsa",
+      neighborhood: "Canbazlarköyü", locationName: "SAZLIK", blockNo: "0", parcelNo: "56",
+      district: "Gürsu", city: "Bursa",
+    },
+    tables: {},
+    titleUnits: [
+      unit({ neighborhood: "Canbazlarköyü", locationName: "SAZLIK", blockNo: "0", parcelNo: "78" }),
+    ],
+  });
+  const sameMevkiiResult = fns.buildMultiUnitOpenAddressText();
+  assert.equal(
+    sameMevkiiResult,
+    "Canbazlarköyü Mahallesi, Sazlık Mevkii 56 Parsel ve 78 Parsel, Gürsu / Bursa",
+    `AYNI mevkii TEK kez yazılıp ardından TÜM parseller listelenmeli. Bulunan: ${sameMevkiiResult}`
+  );
+  console.log("KULLANICI TAKIP TALEBI: Arsa/Tarla FARKLI ada/parsel, AYNI mevkii - mevkii bir kez + parseller listelenir testi tamam.");
+
+  // (c) GERÇEK bir Ada numarası VARSA (\"0\" veya boş DEĞİLSE) normal
+  // şekilde gösterilmeli.
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: {
+      ownershipType: "Arsa",
+      neighborhood: "Canbazlarköyü", locationName: "SAZLIK", blockNo: "12", parcelNo: "56",
+      district: "Gürsu", city: "Bursa",
+    },
+    tables: {},
+    titleUnits: [
+      unit({ neighborhood: "Canbazlarköyü", locationName: "SARITAŞ", blockNo: "34", parcelNo: "315" }),
+    ],
+  });
+  const realBlockResult = fns.buildMultiUnitOpenAddressText();
+  assert.equal(
+    realBlockResult,
+    "Canbazlarköyü Mahallesi, Sazlık Mevkii 12 Ada 56 Parsel ve Sarıtaş Mevkii 34 Ada 315 Parsel, Gürsu / Bursa",
+    `GERÇEK bir Ada numarası varsa normal şekilde ("X Ada Y Parsel") gösterilmeli. Bulunan: ${realBlockResult}`
+  );
+  console.log("Arsa/Tarla FARKLI ada/parsel, GERCEK Ada numarasi varsa normal gosterilir testi tamam.");
 }
 
 // --- 8) "explanations" bölümünde yeni alan tanımlı mı (kaynak-düzeyi) -----
