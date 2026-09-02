@@ -1,5 +1,18 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.619 - 2026-09-02 - Açık Adres (Çoklu): Kat kaldırıldı, Site/No bir kez, daireler "min-max" aralığına indirgendi (kullanıcının GERÇEK çıktı düzeltmesiyle)
+
+- Kullanıcı, 0.0.618'in ürettiği GERÇEK çıktıyı paylaşıp düzeltti: "Teferrüç Mahallesi, 2.Aydın Caddesi, Asya Apartmanı, No: 1-3, Kat: 2, D: 7, Asya Apartmanı, No: 1-3, Kat: 3.+ Çatı, D: 16 bu sistemin oluşturduğu. ancak benim istediğim farklı. Benim istediğim çıktı: Teferrüç Mahallesi, 2.Aydın Caddesi, Asya Apartmanı, No: 1-3, D:7-16, Yıldırım / Bursa ... çoklu aynı ada parsel taleplerinde kat bölümünü yazmana gerek yok blok olsaydı Asya Sitesi A Blok D: 7-16 ve B Blok, D:8-12 şeklinde olmalı."
+- **Düzeltme** (`buildSameAdaParselOpenAddressText()`, app.js — tamamen yeniden yazıldı):
+  1. Site/Apartman adı VE Kapı No (varsa) artık HER sokak grubu için SADECE BİR KEZ yazılıyor (önceden HER taşınmaz için TEKRARLANIYORDU).
+  2. Kat (floor) ARTIK HİÇ YAZILMIYOR.
+  3. Blok YOKSA: TÜM taşınmazların daire numaraları yeni `formatDaireRangeList()` ile TEK bir "D:min-max" aralığına indirgeniyor (sayısal değilse ilk-son değer "-" ile birleştiriliyor, aradaki değerlerin GERÇEKTEN var olup olmadığı kontrol edilmiyor — "1-8 arası daireler" tarzı kısaltmayla AYNI ilke).
+  4. Blok VARSA: Site bir kez yazılıyor, HER blok kendi "{Blok} Blok D:{o bloktaki daireler aralığı}" metnini alıyor, bloklar " ve " ile bağlanıyor; bu durumda "No:" (dış kapı) hiç YAZILMIYOR (site+blok kimliği yeterli).
+  5. İlçe / İl artık rapor genelinde ortak olduğundan, mahalle gibi ama METNİN EN SONUNA, TEK kez ekleniyor (0.0.618'de hiç yoktu).
+- Test: `tools/test-multi-unit-open-address.js`'in AYNI-ada/parsel senaryoları kullanıcının GERÇEK/güncel örnekleriyle (hem blok YOK hem blok VAR durumu) BİREBİR eşleşecek şekilde yeniden yazıldı; yeni `formatDaireRangeList()` için ayrı bir birim testi (sayısal sıralama, tek değer, sayısal olmayan değerler) eklendi. Geçici geri alma ile testin gerçekten BAŞARISIZ olduğu doğrulanıp sonra geri konuldu. `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` cache-buster `?v=20260902-2800`.
+- Canlı tarayıcı testi yapılamadı — kullanıcının aynı ada/parseldeki gerçek bir çoklu taşınmaz raporunda (hem blok yok hem blok var senaryosunda) üretilen metni tekrar kontrol edip, "D: 7-16" (uygulamanın stil sisteminin ürettiği, iki nokta üst üsstenn sonra boşluklu hali) ile kendi yazdığı "D:7-16" (boşluksuz) arasındaki kozmetik farkın kabul edilebilir olup olmadığını, ve FARKLI ada/parsel durumu için de benzer bir netleştirme yapmak isteyip istemediğini bildirmesi gerekiyor.
+
 ## 0.0.618 - 2026-09-02 - Açık Adres (Çoklu): AYNI ada/parselde mahalle ortak + sokak/cadde bazlı gruplama (kullanıcının TAM örneğiyle)
 
 - Kullanıcı takip talebi (TAM örnekle): "önce aynı ada parsel yapalım. aynı ada parselde mahalle ortak olacak, tüm taşınmazlar aynı sokak yada cadde üzerinde ise sokak ismi yazılacak, farklı sokak yada caddede ise sokak/cadde bölümlerine göre gruplanacak (Örnek: Osmaniye Mahallesi, Kılıç Sokak, Asya Sitesi, No: 13A, A Blok K:1, D: 3 ve Kalkan Caddesi B Blok No: 13B, D:11)."

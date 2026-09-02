@@ -32547,29 +32547,51 @@ function joinAddressGroupTexts(items) {
   return `${clean.slice(0, -1).join(", ")} ve ${clean[clean.length - 1]}`;
 }
 
-// KULLANICI TALEBİ (2026-09-02, TAM örnekle): "aynı ada parselde mahalle
-// ortak olacak, tüm taşınmazlar aynı sokak yada cadde üzerinde ise sokak
-// ismi yazılacak, farklı sokak yada caddede ise sokak/cadde bölümlerine
-// göre gruplanacak." Örnek (birebir): "Osmaniye Mahallesi, Kılıç Sokak,
-// Asya Sitesi, No: 13A, A Blok K:1, D: 3 ve Kalkan Caddesi B Blok No:
-// 13B, D:11" — Mahalle EN BAŞTA TEK KEZ; taşınmazlar "street" alanına
-// göre gruplanıp HER grup kendi Sokak/Cadde adıyla başlıyor, gruplar
-// " ve " ile bağlanıyor (2'den fazla grup varsa joinAddressGroupTexts'in
-// "A, B ve C" biçimi). Grup İÇİNDE her taşınmazın KENDİ site/blok/kat/
-// daire bilgisi (buildOpenAddressText()'in AYNI stil sistemi —
-// openAddressStyleVariants/formatOpenAddressBuildingName/style.noLabel/
-// katLabel/daireLabel — rapor genelindeki stil seçimiyle TUTARLI kalır)
-// virgülle ayrı segmentler halinde listelenir; Blok+Kat TEK segmentte
-// birleşir ("A Blok Kat: 1"), örnekteki "A Blok K:1" ile aynı ilkeyi
-// yansıtır.
-//
-// NOT (v1, kullanıcı incelemesi bekleniyor): site adı MAHALLE gibi
-// rapor-geneli TEK bir kez değil, HER taşınmazın KENDİ grubu İÇİNDE
-// ayrı ayrı yazılır (örnekte 2. grupta site adı hiç geçmiyor — kullanıcı
-// muhtemelen yalnızca o taşınmaz için site adını hiç girmemiş/farklı
-// olabilir; site adının TÜM gruplarda AYNI olduğu durumda da MAHALLE
-// gibi TEK kez mi yazılmalı, yoksa HER grupta tekrar mı etmeli — bu emin
-// olunamayan tek nokta, kullanıcı geri bildirirse netleştirilecek).
+// Bir grubun taşınmazlarına ait daire (innerDoor) değerlerini KISA bir
+// aralık/liste metnine indirger — kullanıcı talebi (2026-09-02, GERÇEK
+// çıktı örneğiyle): "kat bölümünü yazmana gerek yok ... D:7-16 ... D:8-12
+// şeklinde olmalı" (yani HER taşınmazın dairesini AYRI AYRI tekrar
+// tekrar yazmak yerine, TÜM daire numaraları TEK bir "min-max" aralığına
+// sıkıştırılır). Değerler sayısalsa (BÜYÜK ÇOĞUNLUK) küçükten büyüğe
+// sıralanıp yalnızca EN KÜÇÜK-EN BÜYÜK ikisi "-" ile birleştirilir
+// (aradaki numaraların GERÇEKTEN var olup olmadığı KONTROL EDİLMEZ —
+// gerçek hayattaki "1-8 arası daireler" tarzı KISALTMA ile AYNI ilke).
+// Sayısal değilse (nadir, ör. "7A") sıralamadan, ilk ve son değer "-" ile
+// birleştirilir.
+function formatDaireRangeList(values) {
+  const clean = Array.from(new Set((values || []).map((value) => String(value || "").trim()).filter(Boolean)));
+  if (!clean.length) return "";
+  if (clean.length === 1) return clean[0];
+  const numeric = clean.map((value) => Number(value));
+  if (numeric.every((value) => Number.isFinite(value))) {
+    const sorted = [...numeric].sort((a, b) => a - b);
+    return `${sorted[0]}-${sorted[sorted.length - 1]}`;
+  }
+  return `${clean[0]}-${clean[clean.length - 1]}`;
+}
+
+// KULLANICI TALEBİ (2026-09-02, TAM örnekle, İKİNCİ tur — gerçek çıktı
+// üzerinden düzeltme): "Teferrüç Mahallesi, 2.Aydın Caddesi, Asya
+// Apartmanı, No: 1-3, Kat: 2, D: 7, Asya Apartmanı, No: 1-3, Kat: 3.+
+// Çatı, D: 16 bu sistemin oluşturduğu. ancak benim istediğim farklı.
+// Benim istediğim çıktı: Teferrüç Mahallesi, 2.Aydın Caddesi, Asya
+// Apartmanı, No: 1-3, D:7-16, Yıldırım / Bursa ... çoklu aynı ada parsel
+// taleplerinde kat bölümünü yazmana gerek yok blok olsaydı Asya Sitesi A
+// Blok D: 7-16 ve B Blok, D:8-12 şeklinde olmalı." Bu, İLK turdaki
+// (her taşınmazın site/no/kat/daire'sini AYRI AYRI tekrarlayan) basit
+// yaklaşımın YERİNE geçen KESİN kurallar:
+//  1) Mahalle: HER ZAMAN tek kez, en başta (DEĞİŞMEDİ).
+//  2) Sokak/Cadde'ye göre grupla, gruplar " ve " ile bağlanır (DEĞİŞMEDİ).
+//  3) HER sokak grubu İÇİNDE: Site/Apartman adı VE Kapı No (varsa) SADECE
+//     BİR KEZ yazılır (taşınmaz sayısı kadar TEKRARLANMAZ).
+//  4) Kat (floor) HİÇ YAZILMAZ.
+//  5) Blok YOKSA: Site, No, ardından TÜM taşınmazların daire
+//     numaraları formatDaireRangeList() ile TEK bir "D:min-max" aralığına
+//     indirgenir.
+//  6) Blok VARSA: Site bir kez yazılır, ardından HER blok kendi "{Blok}
+//     Blok D:{o bloktaki daireler aralığı}" metnini alır, bloklar " ve "
+//     ile bağlanır — No: bu durumda YAZILMAZ (site+blok kimliği yeterli).
+//  7) İlçe / İl: rapor genelinde ortak olduğundan EN SONA, TEK kez eklenir.
 function buildSameAdaParselOpenAddressText(units) {
   const get = (fields, ...keys) => {
     for (const key of keys) {
@@ -32580,8 +32602,11 @@ function buildSameAdaParselOpenAddressText(units) {
   };
   const style = openAddressStyleVariants[selectVariant("buildOpenAddressText:style", openAddressStyleVariants.length)];
 
-  // Mahalle: AYNI ada/parselde zaten ortak olduğundan, İLK dolu değer yeterli.
+  // Mahalle/İlçe/İl: AYNI ada/parselde zaten ortak olduğundan, İLK dolu
+  // değer yeterli.
   const neighborhood = units.map((unit) => get(unit.fields, "neighborhood", "titleNeighborhood")).find(Boolean) || "";
+  const district = units.map((unit) => get(unit.fields, "district", "titleDistrict")).find(Boolean) || "";
+  const city = units.map((unit) => get(unit.fields, "city", "titleCity")).find(Boolean) || "";
 
   // Sokak/Cadde'ye göre grupla (AYNI metin -> AYNI grup, ilk görülme sırası korunur).
   const streetGroups = [];
@@ -32597,32 +32622,47 @@ function buildSameAdaParselOpenAddressText(units) {
   });
 
   const groupTexts = streetGroups.map(({ street, unitFieldsList }) => {
-    const unitSegments = unitFieldsList.map((fields) => {
-      const siteName = get(fields, "addressSiteName");
+    const siteName = unitFieldsList.map((fields) => get(fields, "addressSiteName")).find(Boolean) || "";
+    const outerDoor = unitFieldsList.map((fields) => get(fields, "outerDoor")).find(Boolean) || "";
+    const siteSegment = siteName ? formatOpenAddressBuildingName(siteName, style) : "";
+
+    // Blok'a göre AYRICA grupla (grup içinde blok GERÇEKTEN varsa —
+    // kural #6 — farklı bir biçim kullanılır).
+    const blockGroups = [];
+    const blockIndexByKey = new Map();
+    unitFieldsList.forEach((fields) => {
       const blockName = get(fields, "addressBlockName", "titleBlockName");
-      const outerDoor = get(fields, "outerDoor");
-      const floor = get(fields, "addressFloor", "titleFloor");
+      const key = normalizeTextForSimilarityComparison(blockName);
+      if (!blockIndexByKey.has(key)) {
+        blockIndexByKey.set(key, blockGroups.length);
+        blockGroups.push({ blockName, innerDoors: [] });
+      }
       const innerDoor = get(fields, "innerDoor");
+      if (innerDoor) blockGroups[blockIndexByKey.get(key)].innerDoors.push(innerDoor);
+    });
+    const hasRealBlocks = blockGroups.some((group) => group.blockName);
 
-      const blockAndFloor = [
-        blockName ? (/blok/i.test(blockName) ? blockName : `${blockName}${style.blokSuffix}`) : "",
-        floor ? `${style.katLabel}${floor}` : "",
-      ].filter(Boolean).join(" ");
+    let bodySegments;
+    if (hasRealBlocks) {
+      const blockTexts = blockGroups.map(({ blockName, innerDoors }) => {
+        const blockLabel = blockName ? (/blok/i.test(blockName) ? blockName : `${blockName}${style.blokSuffix}`) : "";
+        const daireRange = formatDaireRangeList(innerDoors);
+        return [blockLabel, daireRange ? `${style.daireLabel}${daireRange}` : ""].filter(Boolean).join(" ");
+      });
+      bodySegments = [siteSegment, joinAddressGroupTexts(blockTexts)].filter(Boolean);
+    } else {
+      const daireRange = formatDaireRangeList(unitFieldsList.map((fields) => get(fields, "innerDoor")));
+      const siteAndNo = [siteSegment, outerDoor ? `${style.noLabel}${outerDoor}` : ""].filter(Boolean).join(", ");
+      bodySegments = [siteAndNo, daireRange ? `${style.daireLabel}${daireRange}` : ""].filter(Boolean);
+    }
 
-      return [
-        siteName ? formatOpenAddressBuildingName(siteName, style) : "",
-        outerDoor ? `${style.noLabel}${outerDoor}` : "",
-        blockAndFloor,
-        innerDoor ? `${style.daireLabel}${innerDoor}` : "",
-      ].filter(Boolean).join(", ");
-    }).filter(Boolean);
-
-    return [street, ...unitSegments].filter(Boolean).join(", ");
+    return [street, ...bodySegments].filter(Boolean).join(", ");
   }).filter(Boolean);
 
   const combinedGroups = joinAddressGroupTexts(groupTexts);
   const neighborhoodSegment = neighborhood ? formatOpenAddressNeighborhood(neighborhood, style) : "";
-  return [neighborhoodSegment, combinedGroups].filter(Boolean).join(", ");
+  const districtCitySegment = [district, city].filter(Boolean).join(" / ");
+  return [neighborhoodSegment, combinedGroups, districtCitySegment].filter(Boolean).join(", ");
 }
 
 // Kullanıcı talebi (2026-09-02): "çoklu taleplerde açık adres aynı ada
