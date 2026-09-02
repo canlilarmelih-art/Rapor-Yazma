@@ -713,7 +713,36 @@
     }
   }
 
+  // Kullanıcı talebi (2026-09-03): "çoklu çalışmalarda [İncelenen Belgeler]
+  // tabloya blok bölümü ekleyelim eğer aynı tarih ve sayılı belge var ise
+  // en sol sütunda blok sütunu A ve B Blok gibi yazsın. farklılık var ise
+  // satır olarak ayırsın." — app.js'teki buildDocumentsRowsWithBlockColumn()
+  // (blok-özgü "documents" tablosunu TÜM bloklardan toplayıp aynı Tarih+No'lu
+  // satırları birleştirir) yalnızca taşınmazlar GERÇEKTEN farklı bloklardaysa
+  // (isDocumentsScopedByBlock) `null` DIŞINDA bir değer döner — tek-bloklu/
+  // tekil raporlarda `null` dönüp aşağıdaki ESKİ (tek taşınmazlı) yola düşülür.
+  function documentsRowsWithBlockColumn() {
+    if (typeof window === "undefined" || typeof window.buildDocumentsRowsWithBlockColumn !== "function") return null;
+    try {
+      return window.buildDocumentsRowsWithBlockColumn();
+    } catch (error) {
+      return null;
+    }
+  }
+
   function rawGridCellGridFor(def) {
+    if (def.key === "documents") {
+      const blockRows = documentsRowsWithBlockColumn();
+      if (blockRows) {
+        if (!blockRows.length) return null;
+        const columns = ["Blok", ...def.columns];
+        const rows = blockRows.map(({ blockText, row }) => [
+          blockText,
+          ...def.columns.map((_, columnIndex) => toTrDate(row[`c${columnIndex}`] || "")),
+        ]);
+        return rawGridToCellGrid(columns, rows);
+      }
+    }
     const tableState = (typeof state !== "undefined" && state.tables && state.tables[def.key]) || [];
     let filledRows = tableState.filter(isRowFilled);
     if (!filledRows.length) return null;

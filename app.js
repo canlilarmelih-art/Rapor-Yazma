@@ -1632,6 +1632,106 @@ function computeDocumentsBlockLabel(group, allGroups) {
   return `${fallbackIndex > 0 ? fallbackIndex : 1}. Blok`;
 }
 
+// computeDocumentsBlockLabel() bazen çıplak blok adını ("A"), bazen
+// HAZIR "Blok" son ekli bir yedek etiketi ("1. Blok") döndürür — bu
+// fonksiyon birleştirme öncesi son eki tekrar SIYIRIR ki
+// formatDocumentsBlockColumnValue() son eki TEK sefer, doğru yerde
+// ekleyebilsin ("1. Blok"+"2. Blok" -> "1. ve 2. Blok", "1. ve 2. Blok"
+// DEĞİL).
+function stripTrailingBlokSuffixForDocumentsColumn(label) {
+  return String(label || "").replace(/\s*Blok$/i, "").trim();
+}
+
+// Kullanıcı talebi (2026-09-03): "...en sol sütunda blok sütunu A ve B
+// Blok gibi yazsın" — TEK blok kapsıyorsa "A Blok", 2+ blok kapsıyorsa
+// "A ve B Blok"/"A, B ve C Blok" (joinAddressGroupTexts'in Türkçe liste
+// kuralı, "Açık Adres (Çoklu Taşınmaz)" özelliğiyle PAYLAŞILAN aynı
+// izole yardımcı — bkz. joinTurkishList çakışma uyarısı, aşağıda
+// TEKRARLANMADI, doğrudan yeniden kullanılıyor).
+function formatDocumentsBlockColumnValue(blockLabels) {
+  const bareNames = Array.from(new Set((blockLabels || [])
+    .map(stripTrailingBlokSuffixForDocumentsColumn)
+    .filter(Boolean)));
+  if (!bareNames.length) return "";
+  return `${joinAddressGroupTexts(bareNames)} Blok`;
+}
+
+// Kullanıcı talebi (2026-09-03): "belgeler ve projeler bölümünde
+// incelenen belgeler bölümü excele tablo olarak aktarılıyor. çoklu
+// çalışmalarda tabloya blok bölümü ekleyelim eğer aynı tarih ve sayılı
+// belge var ise en sol sütunda blok sütunu A ve B Blok gibi yazsın.
+// farklılık var ise satır olarak ayırsın."
+//
+// KÖK NEDEN: "İncelenen Belgeler" tablosunun Excel export'u
+// (report-tables-xlsx.js, rawGridCellGridFor) şimdiye kadar YALNIZCA
+// AKTİF taşınmazın/bloğun kendi ham ızgarasını (state.tables.documents)
+// okuyordu — Takyidat ve 8 "Taşınmazlar ... Özeti" sayfasının AKSİNE,
+// çoklu BLOKLU raporlarda diğer blokların belgeleri Excel'e HİÇ
+// YANSIMIYORDU (bu tablo BİLEREK blok-özgü, bkz.
+// isDocumentsBlockGroupingActive/computeDocumentsBlockGroups yorumu,
+// 2026-08-19 — her blok kendi ruhsat/iskan/proje belgelerini
+// inceleyebilir).
+//
+// DÜZELTME: isDocumentsScopedByBlock() (zaten var, blok tab çubuğunun
+// KENDİSİNİN görünürlük kontrolü — 2+ taşınmaz VE gerçekten FARKLI
+// bloklarda) doğruysa computeDocumentsBlockGroups() ile TÜM blokları
+// dolaşıp her bloğun (temsilci taşınmazının) state.tables.documents
+// ızgarasını toplar. Aynı Tarih+No'ya (c2+c3, kullanıcının "aynı tarih
+// ve sayılı belge" tanımı) sahip satırlar TEK kayıtta birleşip Blok
+// sütununda TÜM kapsayan blokları listeler; Tarih VE No'nun İKİSİ DE
+// boşsa (güvenilir bir eşleştirme anahtarı yok) birleştirme
+// DENENMEZ — yanlışlıkla farklı belge türlerini birbirine karıştırmamak
+// için o satır yalnızca KENDİ bloğuyla ayrı kalır. Tek-bloklu/tekil
+// raporlarda `null` döner (report-tables-xlsx.js eski, tek-taşınmazlı
+// davranışına düşer — DEĞİŞMEDİ).
+function buildDocumentsRowsWithBlockColumn() {
+  if (!isDocumentsScopedByBlock()) return null;
+  const units = buildAllTitleUnitsForSummaryTable();
+  const blockGroups = computeDocumentsBlockGroups(units);
+  if (blockGroups.length < 2) return null;
+
+  const entries = [];
+  blockGroups.forEach((group) => {
+    const blockLabel = computeDocumentsBlockLabel(group, blockGroups);
+    const representativeIndex = group.unitIndices[0];
+    const rows = ((units[representativeIndex] && units[representativeIndex].tables && units[representativeIndex].tables.documents) || [])
+      .filter((row) => Object.values(row || {}).some((value) => String(value || "").trim()));
+    rows.forEach((row) => entries.push({ blockLabel, row }));
+  });
+  if (!entries.length) return [];
+
+  const merged = [];
+  const byKey = new Map();
+  entries.forEach((entry) => {
+    const date = String(entry.row.c2 || "").trim();
+    const no = String(entry.row.c3 || "").trim();
+    const key = (date || no) ? `${date}|${no}` : null;
+    if (key && byKey.has(key)) {
+      const existing = byKey.get(key);
+      if (!existing.blockLabels.includes(entry.blockLabel)) existing.blockLabels.push(entry.blockLabel);
+      return;
+    }
+    const record = { row: entry.row, blockLabels: [entry.blockLabel], sortIndex: merged.length };
+    merged.push(record);
+    if (key) byKey.set(key, record);
+  });
+
+  return merged
+    .map((record) => ({
+      blockText: formatDocumentsBlockColumnValue(record.blockLabels),
+      row: record.row,
+      date: parseReviewedDocumentDate(record.row.c2),
+      sortIndex: record.sortIndex,
+    }))
+    .sort((left, right) => {
+      if (left.date && right.date && left.date !== right.date) return left.date.localeCompare(right.date);
+      if (left.date && !right.date) return -1;
+      if (!left.date && right.date) return 1;
+      return left.sortIndex - right.sortIndex;
+    })
+    .map(({ blockText, row }) => ({ blockText, row }));
+}
+
 // "Belgeler ve Proje"nin YENİ 2 katmanlı (Blok → Bağımsız Bölüm) tab
 // yapısı ŞU AN anlamlı mı? Kullanıcı netleştirmesi (2026-08-19): bu yapı
 // YALNIZCA Dikey/Yatay Kat İrtifakı raporlarında geçerli ("bu bölümler
