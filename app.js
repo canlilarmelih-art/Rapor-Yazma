@@ -32607,10 +32607,72 @@ function formatDaireListText(values) {
 //  7) Blok VARSA: HER blok kendi "{Blok} Blok D:{o bloktaki daire
 //     numaraları listesi}" metnini alır, bloklar " ve " ile bağlanır.
 //  8) İlçe / İl: rapor genelinde ortak olduğundan EN SONA, TEK kez eklenir.
+// Dış Kapı No metnindeki BAŞTAKİ sayısal kısmı çıkarır (ör. "13A" -> "13",
+// "13" -> "13", "A13" -> "" — yalnızca RAKAMLA BAŞLAYAN değerler
+// desteklenir, bu da gerçek dış kapı numaralarının BÜYÜK ÇOĞUNLUĞUyla
+// örtüşür).
+function extractLeadingDoorNumber(value) {
+  const match = String(value || "").trim().match(/^(\d+)/);
+  return match ? match[1] : "";
+}
+
+// Bir birim grubunun (aynı Dış Kapı No'ya sahip taşınmazlar) Blok/Daire
+// metnini üretir — Blok GERÇEKTEN varsa HER blok kendi "{Blok} Blok
+// D:{aralık}" metnini alır (kural #7), yoksa TÜM dairelerin TEK listesi
+// (kural #6).
+function buildAddressBlockAndDaireText(fieldsList, get, style) {
+  const blockGroups = [];
+  const blockIndexByKey = new Map();
+  fieldsList.forEach((fields) => {
+    const blockName = get(fields, "addressBlockName", "titleBlockName");
+    const key = normalizeTextForSimilarityComparison(blockName);
+    if (!blockIndexByKey.has(key)) {
+      blockIndexByKey.set(key, blockGroups.length);
+      blockGroups.push({ blockName, innerDoors: [] });
+    }
+    const innerDoor = get(fields, "innerDoor");
+    if (innerDoor) blockGroups[blockIndexByKey.get(key)].innerDoors.push(innerDoor);
+  });
+  const hasRealBlocks = blockGroups.some((group) => group.blockName);
+
+  if (hasRealBlocks) {
+    const blockTexts = blockGroups.map(({ blockName, innerDoors }) => {
+      const blockLabel = blockName ? (/blok/i.test(blockName) ? blockName : `${blockName}${style.blokSuffix}`) : "";
+      const daireRange = formatDaireListText(innerDoors);
+      return [blockLabel, daireRange ? `${style.daireLabel}${daireRange}` : ""].filter(Boolean).join(" ");
+    });
+    return joinAddressGroupTexts(blockTexts);
+  }
+  const daireRange = formatDaireListText(fieldsList.map((fields) => get(fields, "innerDoor")));
+  return daireRange ? `${style.daireLabel}${daireRange}` : "";
+}
+
 function buildAddressDoorAndBlockText(unitFieldsList, get, style) {
+  // KULLANICI TALEBİ (2026-09-02): "dış kapı no blok bazında farklı
+  // olabilir örnek a blok no: 13a b blok no:13b bunlar eğer sayısal
+  // değer aynı ise yani taşınmazların dış kapı numaraları 13a 13b 13c
+  // ise Dış Kapı no: 13 A Blok D: 5, B Blok D: 16 şeklinde yazılabilir"
+  // — dış kapı METİN OLARAK farklı ("13A" vs "13B") ama SAYISAL kısmı
+  // (baştaki rakamlar) AYNIYSA (blok harfine göre değişen bir sonek
+  // dışında), tek tek "No: 13A ve No: 13B" yerine TEK bir "No: 13"
+  // yazılıp Blok'a göre normal şekilde devam edilir.
+  const outerDoors = unitFieldsList.map((fields) => get(fields, "outerDoor"));
+  const nonEmptyDoors = outerDoors.filter(Boolean);
+  const distinctDoorTextCount = new Set(nonEmptyDoors.map((value) => normalizeTextForSimilarityComparison(value))).size;
+  const leadingNumbers = nonEmptyDoors.map(extractLeadingDoorNumber);
+  const allHaveLeadingNumber = nonEmptyDoors.length > 0 && leadingNumbers.every(Boolean);
+  const distinctLeadingNumberCount = new Set(leadingNumbers).size;
+  const useSharedNumericDoor = distinctDoorTextCount > 1 && allHaveLeadingNumber && distinctLeadingNumberCount === 1;
+
+  if (useSharedNumericDoor) {
+    const noSegment = `${style.noLabel}${leadingNumbers[0]}`;
+    const blockOrDaireText = buildAddressBlockAndDaireText(unitFieldsList, get, style);
+    return [noSegment, blockOrDaireText].filter(Boolean).join(", ");
+  }
+
   // Dış Kapı No'ya göre grupla (AYNI metin -> AYNI grup) — Blok'la AYNI
   // ilke (kural #6/#7): TÜM taşınmazlarda aynıysa TEK kez, farklıysa
-  // HER dış kapı kendi grubunu alır.
+  // (ve sayısal kısımları da UYUŞMUYORSA) HER dış kapı kendi grubunu alır.
   const doorGroups = [];
   const doorIndexByKey = new Map();
   unitFieldsList.forEach((fields) => {
@@ -32625,36 +32687,7 @@ function buildAddressDoorAndBlockText(unitFieldsList, get, style) {
 
   const doorTexts = doorGroups.map(({ outerDoor, unitFieldsList: doorUnitFieldsList }) => {
     const noSegment = outerDoor ? `${style.noLabel}${outerDoor}` : "";
-
-    // Blok'a göre AYRICA grupla (grup içinde blok GERÇEKTEN varsa —
-    // kural #6 — farklı bir biçim kullanılır).
-    const blockGroups = [];
-    const blockIndexByKey = new Map();
-    doorUnitFieldsList.forEach((fields) => {
-      const blockName = get(fields, "addressBlockName", "titleBlockName");
-      const key = normalizeTextForSimilarityComparison(blockName);
-      if (!blockIndexByKey.has(key)) {
-        blockIndexByKey.set(key, blockGroups.length);
-        blockGroups.push({ blockName, innerDoors: [] });
-      }
-      const innerDoor = get(fields, "innerDoor");
-      if (innerDoor) blockGroups[blockIndexByKey.get(key)].innerDoors.push(innerDoor);
-    });
-    const hasRealBlocks = blockGroups.some((group) => group.blockName);
-
-    let blockOrDaireText;
-    if (hasRealBlocks) {
-      const blockTexts = blockGroups.map(({ blockName, innerDoors }) => {
-        const blockLabel = blockName ? (/blok/i.test(blockName) ? blockName : `${blockName}${style.blokSuffix}`) : "";
-        const daireRange = formatDaireListText(innerDoors);
-        return [blockLabel, daireRange ? `${style.daireLabel}${daireRange}` : ""].filter(Boolean).join(" ");
-      });
-      blockOrDaireText = joinAddressGroupTexts(blockTexts);
-    } else {
-      const daireRange = formatDaireListText(doorUnitFieldsList.map((fields) => get(fields, "innerDoor")));
-      blockOrDaireText = daireRange ? `${style.daireLabel}${daireRange}` : "";
-    }
-
+    const blockOrDaireText = buildAddressBlockAndDaireText(doorUnitFieldsList, get, style);
     return [noSegment, blockOrDaireText].filter(Boolean).join(", ");
   });
 

@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.623 - 2026-09-02 - Açık Adres (Çoklu): Blok bazında farklı ama SAYISAL kısmı aynı Dış Kapı No'lar TEK yazılıyor
+
+- Kullanıcı takip talebi: "dış kapı no blok bazında farklı olabilir örnek a blok no: 13a b blok no:13b bunlar eğer sayısal değer aynı ise yani taşınmazların dış kapı numaraları 13a 13b 13c ise Dış Kapı no: 13 A Blok D: 5, B Blok D: 16 şeklinde yazılabilir."
+- **Düzeltme**: Yeni `extractLeadingDoorNumber(value)` (dış kapı metninin BAŞTAKİ sayısal kısmını çıkarır, ör. "13A" -> "13") + `buildAddressDoorAndBlockText()`'e eklenen kontrol — dış kapı METİN OLARAK taşınmazlar arasında FARKLI olsa bile ("13A" vs "13B") TÜMÜNÜN baştaki sayısal kısmı AYNIYSA ("13"), tek tek "No: 13A ve No: 13B" yerine TEK bir "No: 13" yazılıp Blok'a göre normal (0.0.622'deki) mantıkla devam ediliyor. Sayısal kısımlar da FARKLIYSA (ör. "13"/"25") davranış DEĞİŞMEDİ — her dış kapı kendi grubunu alır.
+- Ortak blok/daire üretim mantığı `buildAddressBlockAndDaireText()` olarak ayrı bir yardımcıya çıkarıldı (hem "tek sayısal No" hem "farklı No grupları" yolu bunu paylaşıyor — kod tekrarı önlendi).
+- Test: `tools/test-multi-unit-open-address.js`'e (a) sayısal kısmı da FARKLI dış kapı (mevcut senaryo, "13"/"25" olarak güncellendi), (b) kullanıcının TAM örneğiyle ("13A"/"13B" → "No: 13") BİREBİR eşleşen yeni senaryo, (c) `extractLeadingDoorNumber()` için ayrı birim testi eklendi. Geçici geri alma ile testin gerçekten BAŞARISIZ olduğu doğrulanıp sonra geri konuldu. `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` cache-buster `?v=20260902-3200`.
+- Canlı tarayıcı testi yapılamadı — kullanıcının blok bazında farklı ama sayısal kısmı aynı dış kapı numaraları (13A/13B/13C gibi) girdiği bir raporda metnin artık TEK bir "No: 13" şeklinde göründüğünü doğrulaması gerekiyor.
+
 ## 0.0.622 - 2026-09-02 - Açık Adres (Çoklu): Dış Kapı No artık HER ZAMAN gösteriliyor, Blok'tan hemen önce
 
 - Kullanıcı bulgusu: "adreste dış kapı no yazmıyor. bloktan önce yazmalı farklı ise bloktaki mantıkta farklı olarak yazılmalı."

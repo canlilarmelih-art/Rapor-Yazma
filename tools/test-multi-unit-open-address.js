@@ -126,6 +126,8 @@ const functionNames = [
   "formatOpenAddressBuildingName",
   "joinAddressGroupTexts",
   "formatDaireListText",
+  "extractLeadingDoorNumber",
+  "buildAddressBlockAndDaireText",
   "buildAddressDoorAndBlockText",
   "buildSameAdaParselOpenAddressText",
   "buildMultiUnitOpenAddressText",
@@ -152,6 +154,7 @@ const sandboxSource = `
     getState: () => state,
     buildMultiUnitOpenAddressText,
     formatDaireListText,
+    extractLeadingDoorNumber,
   };
 `;
 // eslint-disable-next-line no-new-func
@@ -288,27 +291,62 @@ function unit(overrides = {}) {
     `AYNI dış kapı ("No: 13A") BİR KEZ, Blok'tan HEMEN ÖNCE gelmeli. Bulunan: ${sameDoorResult}`
   );
 
-  // (b) FARKLI dış kapı ("13A"/"13B"), FARKLI blok — kullanıcı: "farklı
-  // ise bloktaki mantıkta farklı olarak yazılmalı".
+  // (b) FARKLI dış kapı, SAYISAL kısmı da UYUŞMUYOR ("13"/"25") — TAM
+  // FARKLI kabul edilip blok'la AYNI mantıkla (kendi grubuna göre) ayrılmalı.
   fns.setState({
     activeTitleUnitIndex: 0,
     fields: {
       blockNo: "100", parcelNo: "5",
       neighborhood: "Osmaniye", street: "Kılıç Sokak", addressSiteName: "Asya Sitesi",
-      addressBlockName: "A", outerDoor: "13A", innerDoor: "7",
+      addressBlockName: "A", outerDoor: "13", innerDoor: "7",
     },
     tables: {},
     titleUnits: [
-      unit({ blockNo: "100", parcelNo: "5", neighborhood: "Osmaniye", street: "Kılıç Sokak", addressBlockName: "B", outerDoor: "13B", innerDoor: "8" }),
+      unit({ blockNo: "100", parcelNo: "5", neighborhood: "Osmaniye", street: "Kılıç Sokak", addressBlockName: "B", outerDoor: "25", innerDoor: "8" }),
     ],
   });
   const diffDoorResult = fns.buildMultiUnitOpenAddressText();
   assert.equal(
     diffDoorResult,
-    "Osmaniye Mahallesi, Kılıç Sokak, Asya Sitesi, No: 13A, A Blok D: 7 ve No: 13B, B Blok D: 8",
-    `FARKLI dış kapı, blok'la AYNI mantıkla (kendi grubuna göre) ayrılmalı. Bulunan: ${diffDoorResult}`
+    "Osmaniye Mahallesi, Kılıç Sokak, Asya Sitesi, No: 13, A Blok D: 7 ve No: 25, B Blok D: 8",
+    `SAYISAL kısmı da FARKLI dış kapı, blok'la AYNI mantıkla (kendi grubuna göre) ayrılmalı. Bulunan: ${diffDoorResult}`
   );
-  console.log("KULLANICI DUZELTMESI: Dis Kapi No artik HER ZAMAN gosterilir, bloktan once gelir, farkliysa blok mantigiyla ayrilir testi tamam.");
+
+  // (c) KULLANICI TALEBİ (2026-09-02): "dış kapı no blok bazında farklı
+  // olabilir örnek a blok no: 13a b blok no:13b bunlar eğer sayısal değer
+  // aynı ise yani taşınmazların dış kapı numaraları 13a 13b 13c ise Dış
+  // Kapı no: 13 A Blok D: 5, B Blok D: 16 şeklinde yazılabilir" — dış
+  // kapı METİN OLARAK farklı ("13A"/"13B") ama SAYISAL kısmı (13) AYNIYSA
+  // TEK bir "No: 13" yazılıp bloklar normal şekilde devam etmeli.
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: {
+      blockNo: "100", parcelNo: "5",
+      neighborhood: "Osmaniye", street: "Kılıç Sokak", addressSiteName: "Asya Sitesi",
+      addressBlockName: "A", outerDoor: "13A", innerDoor: "5",
+    },
+    tables: {},
+    titleUnits: [
+      unit({ blockNo: "100", parcelNo: "5", neighborhood: "Osmaniye", street: "Kılıç Sokak", addressBlockName: "B", outerDoor: "13B", innerDoor: "16" }),
+    ],
+  });
+  const sharedNumericDoorResult = fns.buildMultiUnitOpenAddressText();
+  assert.equal(
+    sharedNumericDoorResult,
+    "Osmaniye Mahallesi, Kılıç Sokak, Asya Sitesi, No: 13, A Blok D: 5 ve B Blok D: 16",
+    `Dış kapı METİN olarak farklı ("13A"/"13B") ama SAYISAL kısmı (13) AYNIYSA TEK "No: 13" yazılıp bloklar normal devam etmeli. Bulunan: ${sharedNumericDoorResult}`
+  );
+  console.log("KULLANICI DUZELTMESI: Dis Kapi No artik HER ZAMAN gosterilir, bloktan once gelir, farkliysa blok mantigiyla ayrilir, sayisal kismi ayniysa TEK No: yazilir testi tamam.");
+}
+
+// --- 4d) extractLeadingDoorNumber(): baştaki sayısal kısmı çıkarır -------
+{
+  assert.equal(fns.extractLeadingDoorNumber("13A"), "13", "'13A' -> '13' (baştaki sayısal kısım).");
+  assert.equal(fns.extractLeadingDoorNumber("13"), "13", "Salt sayısal değer aynen dönmeli.");
+  assert.equal(fns.extractLeadingDoorNumber("A13"), "", "RAKAMLA BAŞLAMAYAN değerlerde boş string dönmeli.");
+  assert.equal(fns.extractLeadingDoorNumber(""), "", "Boş girdi boş string dönmeli.");
+  assert.equal(fns.extractLeadingDoorNumber("13/A"), "13", "Rakamdan SONRAKİ her şey (harf, ayraç vb.) yok sayılmalı.");
+  console.log("extractLeadingDoorNumber() testi tamam.");
 }
 
 // --- 5) formatDaireListText(): sayısal sıralama + TAM liste, tek değer, --
