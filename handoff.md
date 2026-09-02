@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.601 - 2026-09-02 - "Herhangi bir kayıt bulunmamaktadır." artık Açıklama sütununda (Tür sütununda değil)
+
+- Kullanıcı talebi: "Herhangi bir kayıt bulunmamaktadır. ifadesi açıklama sütunlarında yazmalı. Mevcut durumda türde yazıyor." — 0.0.598'in eklediği "kayıt yok" placeholder satırı, metni her zaman sabit 0. sütuna (Tür / Şerh Türü / İpotek Lehdarı) yazıyordu; kullanıcı bunun yerine "Açıklama" sütununda görünmesini istedi.
+- **Düzeltme**: `buildTakyidatCategoryUnitsSummaryTableHtml()`'de placeholder metninin yazılacağı sütun artık `columns.indexOf("Açıklama")` ile bulunuyor (Beyanlar/Şerhler'de bu "Açıklama" sütunu var → oraya yazılıyor). İpotekler tablosunda "Açıklama" sütunu HİÇ yok (İpotek Lehdarı/Derecesi/Tutarı var) — bu kategoride uygun bir alternatif olmadığından eski davranışa (0. sütun) düşülüyor.
+- **"Ada / Parsel" sütunu**: kod incelemesinde bu sütunun ZATEN her üç tabloda da (Beyanlar/Şerhler/İpotekler) en son sütun olarak eklendiği doğrulandı (`headers = [...columns, "Ada / Parsel"]`, hem başlıkta hem her satırda) — ek bir değişiklik gerekmedi. Kullanıcı hâlâ farklı bir yerde görüyorsa (örn. eski/önbelleklenmiş bir indirme) yeniden indirip kontrol etmesi gerekiyor.
+- Test: `tools/test-takyidat-multi-unit-summary.js`'teki Beyanlar (senaryo 4) ve 7-taşınmazlı Şerhler (senaryo 5) senaryolarındaki placeholder-sütun kontrolleri "Açıklama" sütununa (Beyanlar'da index 1, Şerhler'de index 1) taşındı; "kayıt yok" satırının diğer sütunlarının ("Açıklama" hariç) hâlâ "-" olduğu ve "Şerh Türü" sütununun da "-" olduğu ayrıca doğrulandı. Düzeltmeden önce (geçici geri alma ile) testin gerçekten BAŞARISIZ olduğu doğrulanıp sonra geri konuldu. `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` cache-buster `?v=20260902-1000`.
+- Canlı tarayıcı testi yapılamadı — kullanıcının "Tüm Tablolar" Excel'ini yeniden indirip Beyanlar/Şerhler tablolarında "kayıt yok" satırının artık "Açıklama" sütununda (Tür/Şerh Türü sütunu "-" olarak) göründüğünü, "Ada / Parsel" sütununun da her satırda en sonda kaldığını doğrulaması gerekir.
+
 ## 0.0.600 - 2026-09-01 - Takyidat özet tablosunda kayıtsız taşınmazlar artık EN ÜSTTE
 
 - Kullanıcı talebi: "üzerinde takyidat bulunmayan taşınmazlar en üstte belirtilsin. şu an biraz arada kaynıyor gibiler" — 0.0.598'in eklediği "Herhangi bir kayıt bulunmamaktadır." satırları gerçek kayıtların (özellikle onlarca haciz satırı olan raporlarda) ARASINA/SONUNA karışıyor, fark edilmiyordu.

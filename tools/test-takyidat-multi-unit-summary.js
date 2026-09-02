@@ -272,13 +272,16 @@ function parseSimpleTable(html) {
   assert.equal(realRow[1], "Yönetim Planı Belirtilmesi");
   const emptyRow = parsed.rows.find((row) => row[5] === "1955 ada 3 parsel");
   assert.ok(emptyRow, `Bos tasinmaz (1955/3) icin "kayit yok" satiri bulunamadi, bulunan: ${JSON.stringify(parsed.rows)}`);
-  assert.equal(emptyRow[0], "Herhangi bir kayıt bulunmamaktadır.", `Bos tasinmazin ilk sutununda "Herhangi bir kayit bulunmamaktadir." metni olmali, bulunan: ${emptyRow[0]}`);
-  assert.deepEqual(emptyRow.slice(1, 5), ["-", "-", "-", "-"], "Bos tasinmaz satirinin diger sutunlari '-' olmali.");
+  // Kullanıcı bulgusu (2026-09-02): "Herhangi bir kayıt bulunmamaktadır.
+  // ifadesi açıklama sütunlarında yazmalı. Mevcut durumda türde yazıyor." —
+  // Beyanlar'da "Açıklama" 1. sütun (index 1), 0. sütun ("Tür") artık "-".
+  assert.equal(emptyRow[1], "Herhangi bir kayıt bulunmamaktadır.", `Bos tasinmazin "Aciklama" sutununda "Herhangi bir kayit bulunmamaktadir." metni olmali, bulunan: ${emptyRow[1]}`);
+  assert.deepEqual([emptyRow[0], emptyRow[2], emptyRow[3], emptyRow[4]], ["-", "-", "-", "-"], "Bos tasinmaz satirinin 'Aciklama' DISINDAKI sutunlari '-' olmali.");
   // Kullanıcı takip talebi (2026-09-01): "üzerinde takyidat bulunmayan
   // taşınmazlar en üstte belirtilsin" — "kayıt yok" satırı gerçek kayıttan
   // ÖNCE (index 0) gelmeli.
   assert.equal(parsed.rows[0][5], "1955 ada 3 parsel", `"Kayit yok" satiri EN USTTE olmali, bulunan sira: ${JSON.stringify(parsed.rows.map((r) => r[5]))}`);
-  assert.equal(parsed.rows[0][0], "Herhangi bir kayıt bulunmamaktadır.");
+  assert.equal(parsed.rows[0][1], "Herhangi bir kayıt bulunmamaktadır.");
   console.log("Beyanlar ozet tablosu (Ada/Parsel sutunu + bos tasinmaz icin EN USTTE 'kayit yok' satiri) testi tamam.");
 }
 
@@ -341,16 +344,21 @@ function parseSimpleTable(html) {
     ["1135 ada 7 parsel", "166 ada 17 parsel", "166 ada 7 parsel", "1605 ada 4 parsel", "1955 ada 3 parsel", "1955 ada 4 parsel", "1141 ada 3 parsel"].sort(),
     `TUM 7 tasinmaz (kayitli VEYA "kayit yok") bu tabloda temsil edilmeli, bulunan: ${JSON.stringify(allAdaParsels)}`,
   );
-  const emptyRows = parsed.rows.filter((row) => row[0] === "Herhangi bir kayıt bulunmamaktadır.");
+  // Kullanıcı bulgusu (2026-09-02): "Herhangi bir kayıt bulunmamaktadır.
+  // ifadesi açıklama sütunlarında yazmalı. Mevcut durumda türde yazıyor." —
+  // Şerhler'de "Açıklama" 1. sütun (index 1), 0. sütun ("Şerh Türü") artık
+  // gerçek kayıtlarda olduğu gibi kalır, ama "kayıt yok" satırında "-" olur.
+  const emptyRows = parsed.rows.filter((row) => row[1] === "Herhangi bir kayıt bulunmamaktadır.");
   assert.equal(emptyRows.length, 4, `4 kayitsiz tasinmaz icin 4 "kayit yok" satiri beklenir, bulunan: ${emptyRows.length}`);
+  assert.ok(emptyRows.every((row) => row[0] === "-"), `"Kayit yok" satirlarinin "Serh Turu" sutunu "-" olmali, bulunan: ${JSON.stringify(emptyRows.map((r) => r[0]))}`);
   // Kullanıcı takip talebi (2026-09-01): "üzerinde takyidat bulunmayan
   // taşınmazlar en üstte belirtilsin. şu an biraz arada kaynıyor gibiler" —
   // 4 "kayıt yok" satırı, 3 gerçek kayıttan ÖNCE (tablonun İLK 4 satırı)
   // gelmeli.
   assert.deepEqual(
-    parsed.rows.slice(0, 4).map((row) => row[0]),
+    parsed.rows.slice(0, 4).map((row) => row[1]),
     ["Herhangi bir kayıt bulunmamaktadır.", "Herhangi bir kayıt bulunmamaktadır.", "Herhangi bir kayıt bulunmamaktadır.", "Herhangi bir kayıt bulunmamaktadır."],
-    `Ilk 4 satirin TUMU "kayit yok" olmali (en ustte), bulunan: ${JSON.stringify(parsed.rows.map((r) => r[0]))}`,
+    `Ilk 4 satirin TUMU "kayit yok" olmali (en ustte), bulunan: ${JSON.stringify(parsed.rows.map((r) => r[1]))}`,
   );
   assert.deepEqual(
     parsed.rows.slice(4).map((row) => row[0]).sort(),

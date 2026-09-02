@@ -23629,6 +23629,14 @@ function buildTakyidatCategoryUnitsSummaryTableHtml(tableKey, columns) {
     const references = Array.isArray(row.__titleUnitReferences) ? row.__titleUnitReferences.filter(Boolean) : [];
     return [...cells, references.length ? references.join(", ") : "-"];
   });
+  // Kullanıcı bulgusu (2026-09-02): "Herhangi bir kayıt bulunmamaktadır.
+  // ifadesi açıklama sütunlarında yazmalı. Mevcut durumda türde yazıyor." —
+  // metin sabit 0. sütuna (Tür / Şerh Türü / İpotek Lehdarı) DEĞİL, varsa
+  // "Açıklama" sütununa yazılmalı (Beyanlar/Şerhler'de bu sütun var;
+  // İpotekler'de "Açıklama" sütunu HİÇ yok — o kategori için 0. sütuna
+  // (İpotek Lehdarı) düşülür, çünkü yazılacak başka uygun bir metin sütunu
+  // bulunmuyor).
+  const placeholderColumnIndex = Math.max(columns.indexOf("Açıklama"), 0);
   const emptyUnitRows = [];
   for (let index = 0; index < unitCount; index += 1) {
     const unitTables = getTitleUnitTablesForLabel(index) || {};
@@ -23636,7 +23644,7 @@ function buildTakyidatCategoryUnitsSummaryTableHtml(tableKey, columns) {
     if (hasAnyRow) continue;
     const fields = getTitleUnitFieldsForLabel(index) || {};
     const reference = formatTitleUnitEncumbranceReference(fields, index, false);
-    const placeholderCells = columns.map((_, columnIndex) => (columnIndex === 0 ? "Herhangi bir kayıt bulunmamaktadır." : "-"));
+    const placeholderCells = columns.map((_, columnIndex) => (columnIndex === placeholderColumnIndex ? "Herhangi bir kayıt bulunmamaktadır." : "-"));
     emptyUnitRows.push([...placeholderCells, reference]);
   }
   // Kullanıcı takip talebi (2026-09-01): "üzerinde takyidat bulunmayan
