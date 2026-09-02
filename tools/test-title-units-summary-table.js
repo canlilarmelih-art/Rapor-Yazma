@@ -92,6 +92,7 @@ const functionNames = [
   // ortak-deger (commonFields) hoisting.
   "finalizeTitleUnitsSummaryTableData",
   "buildTitleUnitsSummaryTableData",
+  "buildUnitsSummaryTableHeadingHtml",
   "buildTitleUnitsSummaryWordTableHtml",
   "splitTableHeaderLabelIntoTwoLines",
   "toTitleFieldUppercase",
@@ -475,6 +476,15 @@ function unit(fields, ownerRows) {
   // Bağımsız Bölüm Niteliği vb.) artik TÜRKÇE BÜYÜK HARFLE cikiyor.
   assert.ok(html.includes("BAĞIMSIZ BÖLÜM<br>NİTELİĞİ"), "'Bağımsız Bölüm Niteliği' basligi BUYUK harfle VE <br> ile 2 satira bolunmus olmali.");
   assert.ok(html.includes("HİSSESİNE DÜŞEN<br>ARSA PAYI"), "'Hissesine Düşen Arsa Payı' basligi BUYUK harfle VE <br> ile 2 satira bolunmus olmali.");
+  // Kullanıcı talebi (2026-09-02): "rapor template bölümlerinde çoklu
+  // raporlarda oluşturulan çift taraflı tabloları template bölümünde
+  // ilgili bölümün altına koy" — bu tablo artık banka şablonlarına
+  // dogrudan gömülüyor (bkz. templates/*.html), bu yüzden kendini
+  // tanıtan bir başlık İÇERMELİ (tabloyu bağlamsız bırakmamak için).
+  // Başlık <table> DIŞINDA bir <p> olduğundan Excel export'unu (bkz.
+  // parseHtmlTables, yalnızca <table> okur) ETKİLEMEMELİ.
+  assert.ok(html.startsWith("<p"), `HTML, tabloyu tanitan bir baslikla BASLAMALI, bulunan basi: ${html.slice(0, 40)}`);
+  assert.ok(html.includes("Taşınmazlar Tapu Özeti"), "\"Taşınmazlar Tapu Özeti\" basligi HTML'de bulunmali.");
   console.log("buildTitleUnitsSummaryWordTableHtml gercek HTML uretimi (dinamik genislik + ortalama + 2 satirli baslik + daima BUYUK harf) testi tamam.");
 }
 

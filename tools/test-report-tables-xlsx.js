@@ -336,7 +336,13 @@ assert(!result.sheetNames.includes("Beyanlar - Hak ve Mükellefiyetler"), "Tamam
 assert(!result.sheetNames.includes("Taşınmazlar Tapu Özeti"), "buildTitleUnitsSummaryWordTableHtml tanimsizken (tek tasinmazli rapor benzeri) sayfa OLUSMAMALIYDI.");
 assert(!result.sheetNames.includes("Taşınmazlar Adres Özeti"), "buildAddressUnitsSummaryWordTableHtml tanimsizken sayfa OLUSMAMALIYDI.");
 
-global.window.buildTitleUnitsSummaryWordTableHtml = () => `<table class="word-table title-units-summary-table">
+// Kullanıcı talebi (2026-09-02): "rapor template bölümlerinde ... ilgili
+// bölümün altına koy" — bu fonksiyon artık (bkz. app.js
+// buildUnitsSummaryTableHeadingHtml) tablonun ÖNÜNE <table> DIŞINDA bir
+// <p> başlık ekliyor (banka şablonuna gömülünce bağlamsız kalmasın diye).
+// Bu başlık, aşağıdaki fixture'a da eklenip parseHtmlTables'ın (yalnızca
+// <table> okur) bunu Excel hücrelerine HİÇ karıştırmadığı doğrulanıyor.
+global.window.buildTitleUnitsSummaryWordTableHtml = () => `<p style="color:#3a5691;">Taşınmazlar Tapu Özeti</p><table class="word-table title-units-summary-table">
   <thead><tr><th>Sıra No</th><th>Taşınmaz Kimlik No</th></tr></thead>
   <tbody><tr><td>1</td><td>123456</td></tr><tr><td>2</td><td>123457</td></tr></tbody>
 </table>`;
@@ -480,6 +486,9 @@ async function verifyBlob() {
   });
   const tapuOzetXml = unitSummarySheetXmlByName.get("Taşınmazlar Tapu Özeti");
   assert(tapuOzetXml && tapuOzetXml.includes("<t>Taşınmaz Kimlik No</t>") && tapuOzetXml.includes("<t>123456</t>") && tapuOzetXml.includes("<t>123457</t>"), "Taşınmazlar Tapu Özeti sayfasinda beklenen hucre icerigi eksik.");
+  // <table> DISINDAKI <p> basligi (bkz. yukaridaki fixture) parseHtmlTables
+  // tarafindan HIC okunmamali - Excel hucrelerine karismamali.
+  assert(!tapuOzetXml.includes("<t>Taşınmazlar Tapu Özeti</t>"), "<table> disindaki baslik metni YANLISLIKLA Excel hucresi olarak yazilmis.");
   const adresOzetXml = unitSummarySheetXmlByName.get("Taşınmazlar Adres Özeti");
   assert(adresOzetXml && adresOzetXml.includes("<t>UAVT</t>") && adresOzetXml.includes("<t>111</t>") && adresOzetXml.includes("<t>222</t>"), "Taşınmazlar Adres Özeti sayfasinda beklenen hucre icerigi eksik.");
 

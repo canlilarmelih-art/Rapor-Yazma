@@ -105,6 +105,7 @@ const functionNames = [
   "buildTitleUnitsDynamicColumnGroup",
   "finalizeTitleUnitsSummaryTableData",
   "buildLandUnitsSummaryTableData",
+  "buildUnitsSummaryTableHeadingHtml",
   "buildLandUnitsSummaryWordTableHtml",
   "splitTableHeaderLabelIntoTwoLines",
   "toTitleFieldUppercase",

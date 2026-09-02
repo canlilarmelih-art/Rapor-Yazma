@@ -94,6 +94,7 @@ const functionNames = [
   "formatReviewedDocumentSummaryLine",
   "finalizeTitleUnitsSummaryTableData",
   "buildDocumentsUnitsSummaryTableData",
+  "buildUnitsSummaryTableHeadingHtml",
   "buildDocumentsUnitsSummaryWordTableHtml",
   "splitTableHeaderLabelIntoTwoLines",
   "toTitleFieldUppercase",

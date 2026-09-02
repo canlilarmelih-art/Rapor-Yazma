@@ -107,6 +107,7 @@ const functionNames = [
   // artik hangi sutunlarin toplanabilir oldugunu bununla belirliyor.
   "isValuationUnitsSummaryColumnSummable",
   "buildValuationUnitsSummaryTableHtml",
+  "buildUnitsSummaryTableHeadingHtml",
   "buildValuationUnitsSummaryWordTableHtml",
   "splitTableHeaderLabelIntoTwoLines",
   "toTitleFieldUppercase",

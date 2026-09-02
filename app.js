@@ -8307,7 +8307,7 @@ function buildValuationUnitsSummaryWordTableHtml() {
   computeValuationFieldsForAllTitleUnits();
   const data = buildValuationUnitsSummaryTableData();
   if (!data || !data.rows.length) return "";
-  return buildValuationUnitsSummaryTableHtml(data);
+  return buildUnitsSummaryTableHeadingHtml("Taşınmazlar Değerleme Özeti") + buildValuationUnitsSummaryTableHtml(data);
 }
 
 // Kullanıcı takip talebi (2026-08-21): "eksik imalat bölümünü ekledin mi"
@@ -21756,10 +21756,28 @@ function computeTitleUnitShareOfLandArea(fields) {
 // olsun" — bu tabloya ÖZEL, KENDİ HTML üretici fonksiyonu var
 // (buildCompactReportWordTableHtml PAYLAŞILAN/başka raporlarda da
 // kullanılan bir fonksiyon — onu değiştirmek DİĞER tabloları etkilerdi).
+// Kullanıcı talebi (2026-09-02): "rapor template bölümlerinde çoklu
+// raporlarda oluşturulan çift taraflı tabloları template bölümünde
+// ilgili bölümün altına koy" — bu 8 "çift taraflı" (Tapu/Adres/İmar/
+// Arsa/Belgeler/Değerleme/Bağımsız Bölüm/Proje Uygunluk) özet tablosunun
+// {{TOKEN}}'ı artık banka şablonlarına (templates/*.html) doğrudan
+// gömülü — ama şablon HTML'inde tabloyu TANITAN sabit bir başlık
+// YAZILAMAZ: token tekil raporda "" döner, sabit başlık o zaman
+// "asılı" (altında tablo olmayan) kalırdı. Bu yüzden başlık, tablo
+// içeriğiyle AYNI koşula bağlı olarak BURADA (fonksiyonun İÇİNDE, veri
+// varken) üretiliyor. report-tables-xlsx.js'in parseHtmlTables'ı yalnızca
+// <table> etiketlerini okuduğundan (bkz. findInnermostTableBlocks), bu
+// başlık paragrafı Excel export'una HİÇ karışmıyor — o sayfa zaten kendi
+// sekme adını (ör. "Taşınmazlar Tapu Özeti") taşıyor.
+function buildUnitsSummaryTableHeadingHtml(label) {
+  const blue = getReportThemeToken("--blue", "#3a5691");
+  return `<p style="font-family:Arial,sans-serif;font-size:9pt;font-weight:800;letter-spacing:0.2pt;color:${blue};margin:10pt 0 4pt;">${escapeHtml(label)}</p>`;
+}
+
 function buildTitleUnitsSummaryWordTableHtml() {
   const data = buildTitleUnitsSummaryTableData();
   if (!data || !data.rows.length) return "";
-  return buildTitleUnitsSummaryTableHtmlFromData(data.headers, data.rows, data.commonFields);
+  return buildUnitsSummaryTableHeadingHtml("Taşınmazlar Tapu Özeti") + buildTitleUnitsSummaryTableHtmlFromData(data.headers, data.rows, data.commonFields);
 }
 
 // "sütun başlıklarını 2 satır yap böylelikle hücre genişliği bir nebze
@@ -22857,7 +22875,7 @@ function buildAddressUnitsSummaryWordTableHtml() {
   if (!data || !data.rows.length) return "";
   // bkz. createAddressUnitsSummaryTablePreview() yorumu — bu tablonun
   // Ortak Bilgiler'i 5 sütuna sığdırılıyor, diğer tabloların 4'ü DEĞİL.
-  return buildTitleUnitsSummaryTableHtmlFromData(data.headers, data.rows, data.commonFields, 5);
+  return buildUnitsSummaryTableHeadingHtml("Taşınmazlar Adres Özeti") + buildTitleUnitsSummaryTableHtmlFromData(data.headers, data.rows, data.commonFields, 5);
 }
 
 // İmar Durumu Faz B (Çift Yönlü Düzenleme, 2026-08-16) — kullanıcı talebi:
@@ -22937,7 +22955,7 @@ function buildImarUnitsSummaryTableData() {
 function buildImarUnitsSummaryWordTableHtml() {
   const data = buildImarUnitsSummaryTableData();
   if (!data || !data.rows.length) return "";
-  return buildTitleUnitsSummaryTableHtmlFromData(data.headers, data.rows, data.commonFields);
+  return buildUnitsSummaryTableHeadingHtml("Taşınmazlar İmar Özeti") + buildTitleUnitsSummaryTableHtmlFromData(data.headers, data.rows, data.commonFields);
 }
 
 // Kullanıcı talebi (2026-08-17): "Çoklu çalışmalarda ada parsel farklı
@@ -23056,7 +23074,7 @@ function buildLandUnitsSummaryTableData() {
 function buildLandUnitsSummaryWordTableHtml() {
   const data = buildLandUnitsSummaryTableData();
   if (!data || !data.rows.length) return "";
-  return buildTitleUnitsSummaryTableHtmlFromData(data.headers, data.rows, data.commonFields);
+  return buildUnitsSummaryTableHeadingHtml("Taşınmazlar Arsa Özeti") + buildTitleUnitsSummaryTableHtmlFromData(data.headers, data.rows, data.commonFields);
 }
 
 // Kullanıcı talebi (2026-08-19): "BELGELER ve proje bölümünü incele bu
@@ -23180,7 +23198,7 @@ function buildDocumentsUnitsSummaryTableData() {
 function buildDocumentsUnitsSummaryWordTableHtml() {
   const data = buildDocumentsUnitsSummaryTableData();
   if (!data || !data.rows.length) return "";
-  return buildTitleUnitsSummaryTableHtmlFromData(data.headers, data.rows, data.commonFields);
+  return buildUnitsSummaryTableHeadingHtml("Taşınmazlar Belgeler Özeti") + buildTitleUnitsSummaryTableHtmlFromData(data.headers, data.rows, data.commonFields);
 }
 
 // Kullanıcı talebi (2026-08-21): "çift taraflı tablo mantığını dekoratif
@@ -23431,7 +23449,7 @@ function buildUnitUnitsSummaryTableData() {
 function buildUnitUnitsSummaryWordTableHtml() {
   const data = buildUnitUnitsSummaryTableData();
   if (!data || !data.rows.length) return "";
-  return buildTitleUnitsSummaryTableHtmlFromData(data.headers, data.rows, data.commonFields);
+  return buildUnitsSummaryTableHeadingHtml("Taşınmazlar Bağımsız Bölüm Özeti") + buildTitleUnitsSummaryTableHtmlFromData(data.headers, data.rows, data.commonFields);
 }
 
 // Proje Uygunluk Durumu (2026-08-26) — kullanıcı talebi: "uygunluk durumu
@@ -23526,7 +23544,7 @@ function buildProjectSuitabilityUnitsSummaryTableData() {
 function buildProjectSuitabilityUnitsSummaryWordTableHtml() {
   const data = buildProjectSuitabilityUnitsSummaryTableData();
   if (!data || !data.rows.length) return "";
-  return buildTitleUnitsSummaryTableHtmlFromData(data.headers, data.rows, data.commonFields);
+  return buildUnitsSummaryTableHeadingHtml("Taşınmazlar Proje Uygunluk Özeti") + buildTitleUnitsSummaryTableHtmlFromData(data.headers, data.rows, data.commonFields);
 }
 
 // Kullanıcı talebi (2026-08-26). Diğer 7 özet tablosuyla (Tapu/Adres/

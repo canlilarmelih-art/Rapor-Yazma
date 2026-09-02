@@ -90,6 +90,7 @@ const functionNames = [
   "isPlanningScopedByAdaParsel",
   "finalizeTitleUnitsSummaryTableData",
   "buildImarUnitsSummaryTableData",
+  "buildUnitsSummaryTableHeadingHtml",
   "buildImarUnitsSummaryWordTableHtml",
   "splitTableHeaderLabelIntoTwoLines",
   "toTitleFieldUppercase",

@@ -101,6 +101,7 @@ const functionNames = [
   // TÜM 8 "çift taraflı" özet tablosunun PAYLAŞTIĞI son adım (2026-08-27).
   "finalizeTitleUnitsSummaryTableData",
   "buildAddressUnitsSummaryTableData",
+  "buildUnitsSummaryTableHeadingHtml",
   "buildAddressUnitsSummaryWordTableHtml",
   "splitTableHeaderLabelIntoTwoLines",
   "toTitleFieldUppercase",
