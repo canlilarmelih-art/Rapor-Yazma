@@ -93,6 +93,7 @@ const functionNames = [
   "finalizeTitleUnitsSummaryTableData",
   "buildTitleUnitsSummaryTableData",
   "buildUnitsSummaryTableHeadingHtml",
+  "hoistUniformColumnsForWordTable",
   "buildTitleUnitsSummaryWordTableHtml",
   "splitTableHeaderLabelIntoTwoLines",
   "toTitleFieldUppercase",
@@ -486,6 +487,39 @@ function unit(fields, ownerRows) {
   assert.ok(html.startsWith("<p"), `HTML, tabloyu tanitan bir baslikla BASLAMALI, bulunan basi: ${html.slice(0, 40)}`);
   assert.ok(html.includes("Taşınmazlar Tapu Özeti"), "\"Taşınmazlar Tapu Özeti\" basligi HTML'de bulunmali.");
   console.log("buildTitleUnitsSummaryWordTableHtml gercek HTML uretimi (dinamik genislik + ortalama + 2 satirli baslik + daima BUYUK harf) testi tamam.");
+}
+
+// --- 6) YENİ (2026-09-02, kullanıcı bulgusu): "bazı tablolar sayfaya ------
+// sığmıyor ve sayfadan taşıyor... tabloda gözüken tüm hücrelerde ortak
+// olan yüzölçümü ve ana taşınmaz niteliği gibi bölümleri sadece template
+// bölümünde ortak değerler bölümüne taşı" — banka şablonuna gömülen Word
+// HTML çıktısında (buildTitleUnitsSummaryWordTableHtml), TÜM taşınmazlarda
+// BİREBİR AYNI olan HERHANGİ bir sütun (Yüzölçümü/Ana Taşınmaz Niteliği
+// DAHİL — bunlar normalde "ortak"a taşınabilecek 7 alanlık dar listede
+// YOK, bkz. COMMON_ELIGIBLE_SHARED_FIELD_KEYS) artık "Ortak Bilgiler"
+// banner'ına taşınıyor; EKRANDAKİ düzenlenebilir önizlemenin verisi
+// (buildTitleUnitsSummaryTableData, 0.0.587'nin BİLİNÇLİ dar kapsamı)
+// DEĞİŞMİYOR — yalnızca Word/şablon çıktısı için EK bir geçiş var.
+{
+  const shared = { titleCity: "Bursa", titleDistrict: "Nilüfer", titleNeighborhood: "Özlüce", locationName: "-", sheetNo: "F21", landArea: "1200", mainPropertyQuality: "Arsa" };
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: { ...shared, blockNo: "4834", parcelNo: "1", titlePropertyId: "1", titleBlockName: "A", titleFloor: "1", unitNo: "1", titleQuality: "Daire" },
+    tables: { title: [] },
+    titleUnits: [
+      { fields: { ...shared, blockNo: "4834", parcelNo: "2", titlePropertyId: "2", titleBlockName: "A", titleFloor: "2", unitNo: "2", titleQuality: "Daire" }, tables: { title: [] } },
+    ],
+  });
+  const data = fns.buildTitleUnitsSummaryTableData();
+  assert.ok(data.headers.includes("Yüzölçümü"), "Ekrandaki (data) sütun listesinde Yüzölçümü NORMAL sütun olarak kalmalı (0.0.587 kapsamı değişmedi).");
+  assert.equal(data.commonFields.find((f) => f.label === "Yüzölçümü"), undefined, "buildTitleUnitsSummaryTableData()'nın commonFields'i DEĞİŞMEMELİ (ekran önizlemesi için).");
+
+  const html = fns.buildTitleUnitsSummaryWordTableHtml();
+  assert.ok(!html.includes("YÜZÖLÇÜMÜ"), "Banka şablonuna gömülen Word HTML'inde Yüzölçümü ARTIK ayrı bir sütun BAŞLIĞI olarak GÖRÜNMEMELİ.");
+  assert.ok(!html.includes("ANA TAŞINMAZ<br>NİTELİĞİ") && !html.includes("ANA TAŞINMAZ NİTELİĞİ"), "Ana Taşınmaz Niteliği de aynı şekilde sütun BAŞLIĞI olarak GÖRÜNMEMELİ.");
+  assert.ok(html.includes("Yüzölçümü") && html.includes("1200"), "Yüzölçümü 'Ortak Bilgiler' banner'ında etiket+değer olarak görünmeli.");
+  assert.ok(html.includes("Ana Taşınmaz Niteliği") && html.includes("Arsa"), "Ana Taşınmaz Niteliği de 'Ortak Bilgiler' banner'ında etiket+değer olarak görünmeli.");
+  console.log("hoistUniformColumnsForWordTable: Yüzölçümü/Ana Taşınmaz Niteliği gibi HER ZAMAN-aynı sütunlar SADECE Word/şablon çıktısında Ortak Bilgiler'e taşınıyor testi tamam.");
 }
 
 // --- 17) Farkli parselli tarla raporunda: BOS sutun kurali VE "farkli ----

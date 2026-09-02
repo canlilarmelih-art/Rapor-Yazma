@@ -149,6 +149,7 @@ const functionNames = [
   "finalizeTitleUnitsSummaryTableData",
   "buildUnitUnitsSummaryTableData",
   "buildUnitsSummaryTableHeadingHtml",
+  "hoistUniformColumnsForWordTable",
   "buildUnitUnitsSummaryWordTableHtml",
   "splitTableHeaderLabelIntoTwoLines",
   "toTitleFieldUppercase",

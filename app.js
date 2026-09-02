@@ -21774,10 +21774,59 @@ function buildUnitsSummaryTableHeadingHtml(label) {
   return `<p style="font-family:Arial,sans-serif;font-size:9pt;font-weight:800;letter-spacing:0.2pt;color:${blue};margin:10pt 0 4pt;">${escapeHtml(label)}</p>`;
 }
 
+// Kullanıcı bulgusu (2026-09-02, gerçek banka şablonu incelemesi): "bazı
+// tablolar sayfaya sığmıyor ve sayfadan taşıyor... tabloda gözüken tüm
+// hücrelerde ortak olan yüzölçümü ve ana taşınmaz niteliği gibi bölümleri
+// SADECE TEMPLATE BÖLÜMÜNDE ortak değerler bölümüne taşı" — bu 8 özet
+// tablosunun sütun listesi ("ortak"a taşınabilecekler yalnızca 7 alanla
+// SINIRLI, bkz. 0.0.587: "diğerleri ortak olmasın eskiye dön") EKRANDAKİ
+// düzenlenebilir önizleme (buildTitleUnitsSummaryTableHtmlEditable) İÇİN
+// BİLİNÇLİ OLARAK dar tutulmuştu — o karar BURADA GERİ ALINMIYOR (ekran
+// önizlemesi hâlâ eski/dar davranışı kullanıyor, buildXUnitsSummaryTableData
+// DEĞİŞMEDİ). Ama banka şablonuna gömülen Word/Excel çıktısı (bu
+// fonksiyonu çağıran build*UnitsSummaryWordTableHtml sarmalayıcıları)
+// SAYFA GENİŞLİĞİ kısıtına tabi olduğundan, BURADA EK bir geçiş
+// uygulanıyor: Sıra No ("seq") ve Malik(ler) gibi birleştirilmiş çok
+// satırlı ("owner") sütunlar HARİÇ, TÜM taşınmazlarda BİREBİR AYNI
+// (ve boş/"-" olmayan) değere sahip HERHANGİ bir sütun — Yüzölçümü/Ana
+// Taşınmaz Niteliği'nin ÖZEL DURUM olarak kodlanması YERİNE, hangi
+// sütun olduğuna bakılmaksızın DİNAMİK olarak — tablodan çıkarılıp
+// "Ortak Bilgiler" banner'ına taşınır. Değerleme tablosu (kendi iki
+// katmanlı — Yasal/Mevcut çift sütun — özel renderer'ı, bkz.
+// buildValuationUnitsSummaryTableHtml) BİLEREK bu geçişe DAHİL EDİLMEDİ:
+// keyfi sütun kaldırma o özel eşleştirme mantığını bozabilirdi.
+function hoistUniformColumnsForWordTable(data) {
+  const { headers, rows, commonFields, columnMeta } = data;
+  if (!Array.isArray(rows) || rows.length < 2 || headers.length <= 1) return { headers, rows, commonFields };
+  const newCommonFields = Array.isArray(commonFields) ? [...commonFields] : [];
+  const keepIndexes = [];
+  headers.forEach((label, index) => {
+    const kind = columnMeta?.[index]?.kind;
+    if (kind === "owner" || kind === "seq") {
+      keepIndexes.push(index);
+      return;
+    }
+    const firstValue = String(rows[0][index] ?? "");
+    const allSame = firstValue && firstValue !== "-" && rows.every((row) => String(row[index] ?? "") === firstValue);
+    if (allSame) {
+      newCommonFields.push({ label, value: firstValue });
+    } else {
+      keepIndexes.push(index);
+    }
+  });
+  if (keepIndexes.length === headers.length) return { headers, rows, commonFields };
+  return {
+    headers: keepIndexes.map((i) => headers[i]),
+    rows: rows.map((row) => keepIndexes.map((i) => row[i])),
+    commonFields: newCommonFields,
+  };
+}
+
 function buildTitleUnitsSummaryWordTableHtml() {
   const data = buildTitleUnitsSummaryTableData();
   if (!data || !data.rows.length) return "";
-  return buildUnitsSummaryTableHeadingHtml("Taşınmazlar Tapu Özeti") + buildTitleUnitsSummaryTableHtmlFromData(data.headers, data.rows, data.commonFields);
+  const hoisted = hoistUniformColumnsForWordTable(data);
+  return buildUnitsSummaryTableHeadingHtml("Taşınmazlar Tapu Özeti") + buildTitleUnitsSummaryTableHtmlFromData(hoisted.headers, hoisted.rows, hoisted.commonFields);
 }
 
 // "sütun başlıklarını 2 satır yap böylelikle hücre genişliği bir nebze
@@ -22875,7 +22924,8 @@ function buildAddressUnitsSummaryWordTableHtml() {
   if (!data || !data.rows.length) return "";
   // bkz. createAddressUnitsSummaryTablePreview() yorumu — bu tablonun
   // Ortak Bilgiler'i 5 sütuna sığdırılıyor, diğer tabloların 4'ü DEĞİL.
-  return buildUnitsSummaryTableHeadingHtml("Taşınmazlar Adres Özeti") + buildTitleUnitsSummaryTableHtmlFromData(data.headers, data.rows, data.commonFields, 5);
+  const hoisted = hoistUniformColumnsForWordTable(data);
+  return buildUnitsSummaryTableHeadingHtml("Taşınmazlar Adres Özeti") + buildTitleUnitsSummaryTableHtmlFromData(hoisted.headers, hoisted.rows, hoisted.commonFields, 5);
 }
 
 // İmar Durumu Faz B (Çift Yönlü Düzenleme, 2026-08-16) — kullanıcı talebi:
@@ -22955,7 +23005,8 @@ function buildImarUnitsSummaryTableData() {
 function buildImarUnitsSummaryWordTableHtml() {
   const data = buildImarUnitsSummaryTableData();
   if (!data || !data.rows.length) return "";
-  return buildUnitsSummaryTableHeadingHtml("Taşınmazlar İmar Özeti") + buildTitleUnitsSummaryTableHtmlFromData(data.headers, data.rows, data.commonFields);
+  const hoisted = hoistUniformColumnsForWordTable(data);
+  return buildUnitsSummaryTableHeadingHtml("Taşınmazlar İmar Özeti") + buildTitleUnitsSummaryTableHtmlFromData(hoisted.headers, hoisted.rows, hoisted.commonFields);
 }
 
 // Kullanıcı talebi (2026-08-17): "Çoklu çalışmalarda ada parsel farklı
@@ -23074,7 +23125,8 @@ function buildLandUnitsSummaryTableData() {
 function buildLandUnitsSummaryWordTableHtml() {
   const data = buildLandUnitsSummaryTableData();
   if (!data || !data.rows.length) return "";
-  return buildUnitsSummaryTableHeadingHtml("Taşınmazlar Arsa Özeti") + buildTitleUnitsSummaryTableHtmlFromData(data.headers, data.rows, data.commonFields);
+  const hoisted = hoistUniformColumnsForWordTable(data);
+  return buildUnitsSummaryTableHeadingHtml("Taşınmazlar Arsa Özeti") + buildTitleUnitsSummaryTableHtmlFromData(hoisted.headers, hoisted.rows, hoisted.commonFields);
 }
 
 // Kullanıcı talebi (2026-08-19): "BELGELER ve proje bölümünü incele bu
@@ -23198,7 +23250,8 @@ function buildDocumentsUnitsSummaryTableData() {
 function buildDocumentsUnitsSummaryWordTableHtml() {
   const data = buildDocumentsUnitsSummaryTableData();
   if (!data || !data.rows.length) return "";
-  return buildUnitsSummaryTableHeadingHtml("Taşınmazlar Belgeler Özeti") + buildTitleUnitsSummaryTableHtmlFromData(data.headers, data.rows, data.commonFields);
+  const hoisted = hoistUniformColumnsForWordTable(data);
+  return buildUnitsSummaryTableHeadingHtml("Taşınmazlar Belgeler Özeti") + buildTitleUnitsSummaryTableHtmlFromData(hoisted.headers, hoisted.rows, hoisted.commonFields);
 }
 
 // Kullanıcı talebi (2026-08-21): "çift taraflı tablo mantığını dekoratif
@@ -23449,7 +23502,8 @@ function buildUnitUnitsSummaryTableData() {
 function buildUnitUnitsSummaryWordTableHtml() {
   const data = buildUnitUnitsSummaryTableData();
   if (!data || !data.rows.length) return "";
-  return buildUnitsSummaryTableHeadingHtml("Taşınmazlar Bağımsız Bölüm Özeti") + buildTitleUnitsSummaryTableHtmlFromData(data.headers, data.rows, data.commonFields);
+  const hoisted = hoistUniformColumnsForWordTable(data);
+  return buildUnitsSummaryTableHeadingHtml("Taşınmazlar Bağımsız Bölüm Özeti") + buildTitleUnitsSummaryTableHtmlFromData(hoisted.headers, hoisted.rows, hoisted.commonFields);
 }
 
 // Proje Uygunluk Durumu (2026-08-26) — kullanıcı talebi: "uygunluk durumu
@@ -23544,6 +23598,10 @@ function buildProjectSuitabilityUnitsSummaryTableData() {
 function buildProjectSuitabilityUnitsSummaryWordTableHtml() {
   const data = buildProjectSuitabilityUnitsSummaryTableData();
   if (!data || !data.rows.length) return "";
+  // 0.0.599 (2026-08-27) kullanıcı talebi: "Taşınmazlar Proje Uygunluk
+  // Özeti ortak birimler kısmını komple kaldır" — bu tabloda "Ortak
+  // Bilgiler" banner'ı HİÇBİR ZAMAN gösterilmemeli, bu yüzden diğer 6
+  // tablonun aksine hoistUniformColumnsForWordTable BİLEREK UYGULANMIYOR.
   return buildUnitsSummaryTableHeadingHtml("Taşınmazlar Proje Uygunluk Özeti") + buildTitleUnitsSummaryTableHtmlFromData(data.headers, data.rows, data.commonFields);
 }
 
