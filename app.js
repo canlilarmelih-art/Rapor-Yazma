@@ -23624,32 +23624,42 @@ function buildTakyidatCategoryUnitsSummaryTableHtml(tableKey, columns) {
   // üzerine [temsil edilmiş şekilde] tek sayfada yer almalı" talebinin
   // karşılığıdır.
   if (!groupedRows.length) return "";
-  // Kullanıcı takip talebi (2026-09-02): "Ada / Parsel sütununu en başa
-  // al" — hangi taşınmaz(lar)ı kapsadığı bilgisi artık tablonun SONUNDA
-  // değil, EN BAŞINDA (ilk sütun) gösteriliyor.
-  const headers = ["Ada / Parsel", ...columns];
+  // Kullanıcı bulgusu (2026-09-02, kırmızı çizgili ekran görüntüsü):
+  // "kırmızı çizgilerdeki hizalama olmalı sorun burada" — Beyanlar (5 gerçek
+  // sütun: Tür/Açıklama/Tarih/Yevmiye No/Kısıtlı Malik) ile Şerhler/
+  // İpotekler (6 gerçek sütun: ...Türü/Açıklama-veya-Derece/Haciz-veya-
+  // İpotek-Tutarı/Tarih/Yevmiye No/Kısıtlı Malik) arasında sütun sınırları
+  // HİZASIZDI — Şerhler/İpotekler'in Açıklama ile Tarih ARASINDAKİ 3.
+  // sütunu (Haciz Tutarı / İpotek Tutarı) Beyanlar'da HİÇ olmadığından, o
+  // noktadan sonraki TÜM sütunlar (Tarih/Yevmiye No/Kısıtlı Malik)
+  // birbirine göre kayıyordu. Çözüm: Beyanlar'a da AYNI pozisyonda
+  // (Açıklama'dan hemen sonra) GÖRÜNMEZ/BOŞ bir "hizalama" sütunu eklenip
+  // ÜÇ tablonun da AYNI 7-bölgeli iskeleti (Ada/Parsel, Tür/Şerh Türü/
+  // İpotek Lehdarı, Açıklama/İpotek Derecesi, [boş]/Haciz Tutarı/İpotek
+  // Tutarı, Tarih, Yevmiye No, Kısıtlı Malik) paylaşması sağlanıyor — AYNI
+  // (bölge bazlı, sütun ADI değil POZİSYON bazlı) ağırlıklar kullanıldığı
+  // için sütun sınırları artık üç tabloda da TAM olarak aynı X konumuna
+  // denk geliyor.
+  const needsAlignmentSpacer = columns.length === encumbranceReportColumns.length; // yalnızca Beyanlar (5 gerçek sütun)
+  const toVisualColumns = (values, spacerValue) =>
+    needsAlignmentSpacer ? [values[0], values[1], spacerValue, values[2], values[3], values[4]] : values;
+  const headers = ["Ada / Parsel", ...toVisualColumns(columns, "")];
   // Kullanıcı bulgusu (2026-09-02, ekran görüntüsü): "tarih ve yevmiye no
   // sütunlarını %50 oranında küçült açıklama sütununu %100 oranında büyüt.
-  // görseldeki sütunların hizasızlığı sorununu çöz." — 0.0.603'te Açıklama
-  // ×2 yapılmıştı, ama kullanıcı ARDINDAN "istediğim görsel" ile çok DAHA
-  // GENİŞ bir Açıklama sütunu gösterdi (haciz açıklamaları gibi uzun
-  // metinlerin çok daha az satıra sarılması için) — bu yüzden çarpan ×4'e
-  // yükseltildi. Tarih/Yevmiye No hâlâ ×0.5 (yarıya), diğerleri (Ada/Parsel,
-  // Tür/Şerh Türü/İpotek Lehdarı, Haciz Tutarı/İpotek Derecesi/İpotek
-  // Tutarı, Kısıtlı Malik) değişmedi (×1). Bu yüzdeler `colgroup`/
-  // `colWidthsPercent` üzerinden report-tables-xlsx.js'in ince-sütun
-  // ızgarasına (bkz. remapCellGridToFineColumns) taşınıyor.
-  const columnWidthWeights = headers.map((label) => {
-    if (label === "Tarih" || label === "Yevmiye No") return 0.5;
-    if (label === "Açıklama") return 4;
-    return 1;
-  });
-  const columnWidthWeightSum = columnWidthWeights.reduce((sum, weight) => sum + weight, 0) || headers.length;
-  const columnWidths = columnWidthWeights.map((weight) => `${((weight / columnWidthWeightSum) * 100).toFixed(2)}%`);
+  // görseldeki sütunların hizasızlığı sorununu çöz." — ağırlıklar artık
+  // sütun ADINA değil, YEDİ SABİT BÖLGEYE (Ada/Parsel, Tür, Açıklama,
+  // [boş]/Haciz Tutarı/İpotek Tutarı, Tarih, Yevmiye No, Kısıtlı Malik)
+  // göre atanıyor — bu, hem genişlik oranını (Tarih/Yevmiye No yarım,
+  // Açıklama dört kat) hem de YUKARIDAKİ hizalama düzeltmesini AYNI ANDA
+  // sağlıyor (her üç tablonun ağırlık TOPLAMI artık AYNI olduğundan, aynı
+  // bölgenin yüzdesi üç tabloda da BİREBİR eşit çıkıyor).
+  const ZONE_WEIGHTS = [1, 1, 4, 1, 0.5, 0.5, 1];
+  const columnWidthWeightSum = ZONE_WEIGHTS.reduce((sum, weight) => sum + weight, 0);
+  const columnWidths = ZONE_WEIGHTS.map((weight) => `${((weight / columnWidthWeightSum) * 100).toFixed(2)}%`);
   const rows = groupedRows.map((row) => {
     const cells = columns.map((_, columnIndex) => encumbranceCleanText(row[`c${columnIndex}`]) || "-");
     const references = Array.isArray(row.__titleUnitReferences) ? row.__titleUnitReferences.filter(Boolean) : [];
-    return [references.length ? references.join(", ") : "-", ...cells];
+    return [references.length ? references.join(", ") : "-", ...toVisualColumns(cells, "-")];
   });
   // Kullanıcı bulgusu (2026-09-02): "Herhangi bir kayıt bulunmamaktadır.
   // ifadesi açıklama sütunlarında yazmalı. Mevcut durumda türde yazıyor." —
@@ -23667,7 +23677,7 @@ function buildTakyidatCategoryUnitsSummaryTableHtml(tableKey, columns) {
     const fields = getTitleUnitFieldsForLabel(index) || {};
     const reference = formatTitleUnitEncumbranceReference(fields, index, false);
     const placeholderCells = columns.map((_, columnIndex) => (columnIndex === placeholderColumnIndex ? "Herhangi bir kayıt bulunmamaktadır." : "-"));
-    emptyUnitRows.push([reference, ...placeholderCells]);
+    emptyUnitRows.push([reference, ...toVisualColumns(placeholderCells, "-")]);
   }
   // Kullanıcı takip talebi (2026-09-01): "üzerinde takyidat bulunmayan
   // taşınmazlar en üstte belirtilsin. şu an biraz arada kaynıyor gibiler" —

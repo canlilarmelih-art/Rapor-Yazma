@@ -272,25 +272,30 @@ function parseSimpleTable(html) {
   assert.ok(html, "Beyanlar HTML'i DOLU donmeli.");
   const parsed = parseSimpleTable(html);
   // 2026-09-02 kullanıcı talebi: "Ada / Parsel sütununu en başa al".
-  assert.deepEqual(parsed.headers, ["Ada / Parsel", "Tür", "Açıklama", "Tarih", "Yevmiye No", "Kısıtlı Malik"]);
+  // 2026-09-02 (kırmızı çizgili ekran görüntüsü, "hizalama... sorun
+  // burada"): Şerhler/İpotekler'in Açıklama-Tarih ARASINDAKİ 3. sütununu
+  // (Haciz Tutarı/İpotek Tutarı) Beyanlar'da karşılamak için BOŞ bir
+  // hizalama sütunu ("") eklendi — üç tablonun da sütun sınırları AYNI
+  // konuma denk gelsin diye.
+  assert.deepEqual(parsed.headers, ["Ada / Parsel", "Tür", "Açıklama", "", "Tarih", "Yevmiye No", "Kısıtlı Malik"]);
   assert.equal(parsed.rows.length, 2, `Gercek kayit (166/7) + bos tasinmaz icin "kayit yok" satiri (1955/3) = 2 satir beklenir, bulunan: ${JSON.stringify(parsed.rows)}`);
   const realRow = parsed.rows.find((row) => row[0] === "166 ada 7 parsel");
   assert.ok(realRow, "166/7 parselinin gercek beyan kaydi bulunamadi.");
   assert.equal(realRow[2], "Yönetim Planı Belirtilmesi");
+  assert.equal(realRow[3], "-", "Hizalama (bos) sutunu gercek satirlarda da '-' olmali.");
   const emptyRow = parsed.rows.find((row) => row[0] === "1955 ada 3 parsel");
   assert.ok(emptyRow, `Bos tasinmaz (1955/3) icin "kayit yok" satiri bulunamadi, bulunan: ${JSON.stringify(parsed.rows)}`);
   // Kullanıcı bulgusu (2026-09-02): "Herhangi bir kayıt bulunmamaktadır.
   // ifadesi açıklama sütunlarında yazmalı. Mevcut durumda türde yazıyor." —
-  // Beyanlar'da "Açıklama" artik 2. sütun (index 2, Ada/Parsel'in en basa
-  // eklenmesiyle bir sağa kaydı), 1. sütun ("Tür") artık "-".
+  // Beyanlar'da "Açıklama" sütun index 2 (Ada/Parsel + Tür'den sonra).
   assert.equal(emptyRow[2], "Herhangi bir kayıt bulunmamaktadır.", `Bos tasinmazin "Aciklama" sutununda "Herhangi bir kayit bulunmamaktadir." metni olmali, bulunan: ${emptyRow[2]}`);
-  assert.deepEqual([emptyRow[1], emptyRow[3], emptyRow[4], emptyRow[5]], ["-", "-", "-", "-"], "Bos tasinmaz satirinin 'Aciklama'/'Ada-Parsel' DISINDAKI sutunlari '-' olmali.");
+  assert.deepEqual([emptyRow[1], emptyRow[3], emptyRow[4], emptyRow[5], emptyRow[6]], ["-", "-", "-", "-", "-"], "Bos tasinmaz satirinin 'Aciklama' DISINDAKI sutunlari (hizalama sutunu dahil) '-' olmali.");
   // Kullanıcı takip talebi (2026-09-01): "üzerinde takyidat bulunmayan
   // taşınmazlar en üstte belirtilsin" — "kayıt yok" satırı gerçek kayıttan
   // ÖNCE (index 0) gelmeli.
   assert.equal(parsed.rows[0][0], "1955 ada 3 parsel", `"Kayit yok" satiri EN USTTE olmali, bulunan sira: ${JSON.stringify(parsed.rows.map((r) => r[0]))}`);
   assert.equal(parsed.rows[0][2], "Herhangi bir kayıt bulunmamaktadır.");
-  console.log("Beyanlar ozet tablosu (Ada/Parsel sutunu EN BASTA + bos tasinmaz icin EN USTTE 'kayit yok' satiri) testi tamam.");
+  console.log("Beyanlar ozet tablosu (Ada/Parsel sutunu EN BASTA + hizalama sutunu + EN USTTE 'kayit yok' satiri) testi tamam.");
 }
 
 // --- 5) REGRESYON (2026-09-01, kullanıcının gerçek 7 taşınmazlı raporuyla) -
@@ -382,13 +387,13 @@ function parseSimpleTable(html) {
 // --- 6) REGRESYON (2026-09-02, ekran görüntüsü): "tarih ve yevmiye no ------
 // sütunlarını %50 oranında küçült açıklama sütununu %100 oranında büyüt" —
 // SONRASINDA (aynı gün, ikinci ekran görüntüsüyle) Açıklama çarpanı ×2'den
-// ×4'e yükseltildi (kullanıcının "istediğim görsel" örneğine uyacak şekilde,
-// haciz açıklamaları gibi uzun metinlerin daha az satıra sarılması için).
-// Beyanlar (Ada/Parsel, Tür, Açıklama, Tarih, Yevmiye No, Kısıtlı Malik) ve
-// Şerhler (+ Haciz Tutarı) tablolarında üretilen colgroup yüzdelerinin bu
-// oranı doğru yansıttığı doğrulanıyor. Referans: Ada/Parsel/Tür/Kısıtlı
-// Malik/Haciz Tutarı DEĞİŞMEDİ (×1) sütunlar birbirine EŞİT kalmalı; Tarih
-// ve Yevmiye No bunların YARISI, Açıklama bunların DÖRT KATI olmalı.
+// ×4'e yükseltildi. EN SONUNDA (üçüncü, kırmızı çizgili ekran görüntüsü,
+// "kırmızı çizgilerdeki hizalama olmalı sorun burada"): Beyanlar'a (5
+// gerçek sütun) Şerhler/İpotekler'in (6 gerçek sütun) Açıklama-Tarih
+// ARASINDAKİ 3. sütununu (Haciz Tutarı/İpotek Tutarı) karşılayan BOŞ bir
+// hizalama sütunu eklendi — böylece HER İKİ tablonun da 7 bölgesi
+// (Ada/Parsel, Tür, Açıklama, [boş/Haciz Tutarı], Tarih, Yevmiye No,
+// Kısıtlı Malik) BİREBİR AYNI yüzdeyi almalı (sütun sınırları hizalı).
 {
   fns.setState({
     fields: { blockNo: "166", parcelNo: "7" },
@@ -401,10 +406,13 @@ function parseSimpleTable(html) {
   });
 
   const beyanlarParsed = parseSimpleTable(fns.buildTakyidatDeclarationsUnitsSummaryWordTableHtml());
-  assert.ok(Array.isArray(beyanlarParsed.columnWidthPercents) && beyanlarParsed.columnWidthPercents.length === 6, "Beyanlar tablosunda colgroup yuzdeleri (6 sutun) eksik.");
-  // Beyanlar basliklari: [Ada/Parsel, Tur, Aciklama, Tarih, Yevmiye No, Kisitli Malik]
-  const [bAdaParsel, bTur, bAciklama, bTarih, bYevmiyeNo, bMalik] = beyanlarParsed.columnWidthPercents;
-  assert.ok(Math.abs(bAdaParsel - bTur) < 0.02 && Math.abs(bTur - bMalik) < 0.02, `Ada/Parsel, Tur ve Kisitli Malik EŞİT kalmali, bulunan: ${JSON.stringify(beyanlarParsed.columnWidthPercents)}`);
+  assert.ok(Array.isArray(beyanlarParsed.columnWidthPercents) && beyanlarParsed.columnWidthPercents.length === 7, "Beyanlar tablosunda colgroup yuzdeleri (7 sutun, hizalama sutunu dahil) eksik.");
+  // Beyanlar basliklari: [Ada/Parsel, Tur, Aciklama, [BOS-hizalama], Tarih, Yevmiye No, Kisitli Malik]
+  const [bAdaParsel, bTur, bAciklama, bBosHizalama, bTarih, bYevmiyeNo, bMalik] = beyanlarParsed.columnWidthPercents;
+  assert.ok(
+    [bTur, bBosHizalama, bMalik].every((w) => Math.abs(w - bAdaParsel) < 0.02),
+    `Ada/Parsel, Tur, [bos hizalama] ve Kisitli Malik EŞİT kalmali, bulunan: ${JSON.stringify(beyanlarParsed.columnWidthPercents)}`,
+  );
   assert.ok(Math.abs(bTarih - bYevmiyeNo) < 0.02, "Tarih ve Yevmiye No birbirine esit kalmali.");
   assert.ok(Math.abs(bTarih - bAdaParsel / 2) < 0.02, `Tarih, degismeyen bir sutunun YARISI olmali (beklenen ${bAdaParsel / 2}, bulunan ${bTarih}).`);
   assert.ok(Math.abs(bAciklama - bAdaParsel * 4) < 0.02, `Aciklama, degismeyen bir sutunun DORT KATI olmali (beklenen ${bAdaParsel * 4}, bulunan ${bAciklama}).`);
@@ -421,6 +429,17 @@ function parseSimpleTable(html) {
   assert.ok(Math.abs(sTarih - sAdaParsel / 2) < 0.02, `Tarih, degismeyen bir sutunun YARISI olmali (beklenen ${sAdaParsel / 2}, bulunan ${sTarih}).`);
   assert.ok(Math.abs(sAciklama - sAdaParsel * 4) < 0.02, `Aciklama, degismeyen bir sutunun DORT KATI olmali (beklenen ${sAdaParsel * 4}, bulunan ${sAciklama}).`);
   console.log("Sutun genislik oranlari (Tarih/Yevmiye No yarim, Aciklama dort kat) testi tamam.");
+
+  // KIRMIZI ÇİZGİ REGRESYONU: Beyanlar ve Şerhler'in HER BÖLGESİ (Ada/Parsel,
+  // Tür/Şerh Türü, Açıklama, [boş]/Haciz Tutarı, Tarih, Yevmiye No, Kısıtlı
+  // Malik) BİREBİR AYNI yüzdeyi almalı — bu, iki tablonun sütun sınırlarının
+  // Excel'de TAM olarak aynı X konumuna denk geldiği anlamına gelir.
+  assert.deepEqual(
+    beyanlarParsed.columnWidthPercents.map((p) => Number(p.toFixed(2))),
+    serhlerParsed.columnWidthPercents.map((p) => Number(p.toFixed(2))),
+    `Beyanlar ve Serhler'in sutun genislik yuzdeleri BIREBIR AYNI olmali (hizalama), bulunan Beyanlar: ${JSON.stringify(beyanlarParsed.columnWidthPercents)}, Serhler: ${JSON.stringify(serhlerParsed.columnWidthPercents)}`,
+  );
+  console.log("Beyanlar/Serhler sutun sinirlarinin HIZALI olmasi (kirmizi cizgi) REGRESYON testi tamam.");
 }
 
 console.log("Takyidat coklu tasinmaz ozet tablosu (Ada/Parsel sutunu) testleri basarili.");
