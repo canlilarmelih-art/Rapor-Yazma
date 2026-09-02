@@ -39796,18 +39796,31 @@ function buildGabimDataSetWordHtml() {
 // varsayımıyla ATLADIĞI, 0.0.613'te İnş. Sev. için bayat-veri hatasına
 // yol açtığı tespit edilen desene BİLEREK DÜŞÜLMEDİ).
 //
-// NOT (bilinçli v1 kapsam kararı): tüm ~50 sütun ŞİMDİLİK "readonly"
-// (hiçbiri "Ortak Bilgiler"e otomatik taşınmıyor) — Değerleme/Bağımsız
-// Bölüm tablolarında ("Arsa Payı/Payda", "Mutfak/Wc/Diğer" gibi alanların
-// YANLIŞLIKLA otomatik hoistlenmesi) kullanıcı tarafından AYRI AYRI
-// düzeltilmek zorunda kalındı (0.0.611/0.0.613); GABİM'in 9 grup/~50
-// alanından HANGİLERİNİN gerçekten "bina/parsel geneli ortak" (İl/İlçe/
-// Mahalle, çevresel-analiz metinleri gibi) HANGİLERİNİN "taşınmaza özgü"
-// (BB No, alanlar, oda sayıları gibi) olduğunu ÖNCEDEN yanlış tahmin
-// etmektense, kullanıcının GERÇEK bir raporda hangi alanların yanlış
-// ayrı/yanlış ortak göründüğünü bildirmesi beklenip SONRA (diğer
-// tablolardaki gibi) hedefli kind:"scalar"/exemptFieldKeys düzeltmesi
-// yapılacak.
+// KULLANICI TAKİP TALEBİ (2026-09-02): "ortak değerler yine üst kısımda
+// belirtilmeli" — v1'de (bkz. eski yorum) BİLİNÇLİ OLARAK hiçbir sütun
+// hoistlenmiyordu; kullanıcı diğer 8 tablodaki ("Ortak Bilgiler" banner'ı)
+// AYNI davranışı GABİM için de istiyor. Genel kural artık "scalar"
+// (TÜM taşınmazlarda aynıysa hoistlenir, diğer tablolarla AYNI mekanizma
+// — finalizeTitleUnitsSummaryTableData) — AMA Değerleme/Bağımsız Bölüm'de
+// İKİ KEZ öğrenilen ders (0.0.611/0.0.613: "Arsa Payı/Payda", "Mutfak/Wc/
+// Diğer" gibi GERÇEKTEN taşınmaza-özgü alanların YANLIŞLIKLA hoistlenmesi)
+// burada TEKRARLANMASIN diye, AYNI TÜRDEKİ GABİM alanları (bağımsız bölüm
+// kimliği: BB No/Blok/Arsa Payı/Paydası/Hisseli mi/Halihazır Kullanım
+// Durumu; TÜM "Bağımsız Bölüm/Taşınmaz Özellikleri" grubu: alanlar/para
+// değerleri/oda sayıları/Fiili Kullanım Amacı; "Adres Bilgisi" — kapı/kat
+// numarası içerdiğinden taşınmaza özgü) PROAKTİF OLARAK "readonly"
+// (ASLA hoistlenmez) bırakıldı — geri kalan ~35 alan (İl/İlçe/Mahalle,
+// çevresel-analiz metinleri, Yapı Sınıfı/Cinsi/Kat Sayısı/Yapım Yılı,
+// Yönetici/Otopark/Asansör/Güvenlik/Isınma gibi bina/parsel geneli
+// gerçekler) artık "scalar". Kullanıcı GERÇEK bir raporda hâlâ yanlış
+// ayrı/yanlış ortak gördüğü BAŞKA bir alan bildirirse (diğer tablolardaki
+// gibi) hedefli düzeltme yapılacak.
+const GABIM_UNITS_TABLE_NEVER_HOIST_LABELS = new Set([
+  "Bağımsız Bölüm Numarası", "Blok", "Arsa Payı", "Arsa Paydası",
+  "Hisseli mi?", "Halihazır Kullanım Durumu", "Adres Bilgisi",
+]);
+const GABIM_UNITS_TABLE_NEVER_HOIST_GROUPS = new Set(["Bağımsız Bölüm / Taşınmaz Özellikleri"]);
+
 function buildGabimUnitsSummaryTableData() {
   const count = getTitleUnitCount();
   if (count < 2) return null;
@@ -39827,9 +39840,11 @@ function buildGabimUnitsSummaryTableData() {
   const headers = ["No"];
   const columnMeta = [{ kind: "seq" }];
   perUnitGroups[0].forEach((group) => {
+    const neverHoistGroup = GABIM_UNITS_TABLE_NEVER_HOIST_GROUPS.has(group.title);
     group.rows.forEach(([label]) => {
       headers.push(label);
-      columnMeta.push({ kind: "readonly" });
+      const neverHoist = neverHoistGroup || GABIM_UNITS_TABLE_NEVER_HOIST_LABELS.has(label);
+      columnMeta.push({ kind: neverHoist ? "readonly" : "scalar" });
     });
   });
 

@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.615 - 2026-09-02 - GABİM Veri Seti tablosunda genel hoisting açıldı ("ortak değerler yine üst kısımda belirtilmeli")
+
+- Kullanıcı takip talebi: "ortak değerler yine üst kısımda brlirtilmeli" — 0.0.614'te GABİM karşılaştırma tablosu BİLİNÇLİ OLARAK v1'de hiçbir sütunu hoistlemiyordu (diğer tablolarda yaşanan yanlış-hoisting derslerinden çekinilerek); kullanıcı diğer 8 tablodaki "Ortak Bilgiler" davranışını GABİM için de istedi.
+- **Düzeltme**: `buildGabimUnitsSummaryTableData()`'daki sütun `columnMeta.kind` varsayılanı "readonly"'den "scalar"'a çevrildi — TÜM taşınmazlarda BİREBİR AYNI (ve boş olmayan) değerdeki sütunlar artık diğer tablolarla AYNI mekanizmayla (`finalizeTitleUnitsSummaryTableData`) "Ortak Bilgiler"e taşınıyor.
+- **Proaktif istisna** (0.0.611/0.0.613'te İKİ KEZ öğrenilen dersin BURADA TEKRARLANMAMASI için): yeni `GABIM_UNITS_TABLE_NEVER_HOIST_LABELS` (Bağımsız Bölüm Numarası, Blok, Arsa Payı, Arsa Paydası, Hisseli mi?, Halihazır Kullanım Durumu, Adres Bilgisi) ve `GABIM_UNITS_TABLE_NEVER_HOIST_GROUPS` ("Bağımsız Bölüm / Taşınmaz Özellikleri" grubunun TÜMÜ — alanlar/para değerleri/oda sayıları/Fiili Kullanım Amacı) — bu alanlar TÜM taşınmazlarda AYNI görünse BİLE ASLA hoistlenmez, çünkü GERÇEKTEN taşınmaza-özgü olmaları GEREKEN alanlar (Değerleme'deki "Arsa Payı/Payda", Bağımsız Bölüm'deki "Mutfak/Wc/Diğer" ile AYNI mantık). Geri kalan ~35 alan (İl/İlçe/Mahalle, çevresel-analiz metinleri, Yapı Sınıfı/Cinsi/Kat Sayısı/Yapım Yılı, Yönetici/Otopark/Asansör/Güvenlik/Isınma gibi bina/parsel geneli gerçekler) artık hoistlenebiliyor.
+- Test: `tools/test-gabim-units-summary-table.js`'deki "v1'de hiçbir sütun hoistlenmez" senaryosu, genel hoisting'in AÇIK olduğunu VE proaktif istisnaların (yeni mock'a eklenen "Blok" etiketi + "Bağımsız Bölüm / Taşınmaz Özellikleri" grubu) HÂLÂ hoistlenmediğini doğrulayan bir REGRESYONA güncellendi; sütun-sırası senaryosu artık `sharedValue`'yu BİLEREK farklı tutuyor (aksi halde hoistlenip testten kaybolurdu). Geçici geri alma ile testin gerçekten BAŞARISIZ olduğu doğrulanıp sonra geri konuldu. `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` cache-buster `?v=20260902-2400`.
+- Canlı tarayıcı testi yapılamadı — kullanıcının çoklu taşınmazlı bir raporda "GABİM Veri Seti" tablosunda artık İl/İlçe/Mahalle gibi bina geneli alanların "Ortak Bilgiler"e taşındığını, BB No/Blok/alan/oda-sayısı gibi taşınmaza-özgü alanların ise (aynı görünse bile) kendi sütununda kaldığını doğrulaması, başka yanlış ayrı/yanlış ortak gördüğü bir alan varsa bildirmesi gerekiyor.
+
 ## 0.0.614 - 2026-09-02 - Değerleme "İnş. Sev." bayat-veri düzeltmesi + GABİM Veri Seti için çift taraflı karşılaştırma tablosu
 
 - Kullanıcı bulgusu: "değerleme tablosunda ortak değer olmasına rağmen taşınmadı ortak bilgilere bu sorunu hallet" — 0.0.613'ün İnş. Sev. hoisting düzeltmesi bazı raporlarda ÇALIŞMIYORDU.

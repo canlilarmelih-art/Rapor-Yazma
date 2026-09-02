@@ -74,6 +74,21 @@ function extractFunction(name) {
   throw new Error(`Fonksiyon gövdesi kapanmadı: ${name}`);
 }
 
+// GABIM_UNITS_TABLE_NEVER_HOIST_LABELS/GROUPS "const NAME = new Set([...]);"
+// biçiminde — tek satırlık ifadenin sonundaki ";" ile biter (extractFunction'in
+// süslü parantez sayma tekniğine benzer ama burada basitçe ilk ";" yeterli,
+// içeride iç içe ";" yok).
+function extractConstStatement(name) {
+  const marker = `const ${name} = `;
+  const start = appSource.indexOf(marker);
+  assert(start >= 0, `Sabit bulunamadı: ${name}`);
+  const semicolonIndex = appSource.indexOf(";", start);
+  assert(semicolonIndex >= 0, `Sabit sonu (;) bulunamadı: ${name}`);
+  return appSource.slice(start, semicolonIndex + 1);
+}
+
+const constStatementNames = ["GABIM_UNITS_TABLE_NEVER_HOIST_LABELS", "GABIM_UNITS_TABLE_NEVER_HOIST_GROUPS"];
+
 const functionNames = [
   "getTitleUnitCount",
   "buildGabimUnitsSummaryTableData",
@@ -133,6 +148,9 @@ const sandboxSource = `
         rows: [
           ["Alan1", state.fields.alan1 !== undefined ? state.fields.alan1 : ("DEGER-A1-" + idx)],
           ["Alan2 (Ortak)", state.fields.sharedValue || ""],
+          // "Blok" GABIM_UNITS_TABLE_NEVER_HOIST_LABELS'te (etiketle
+          // istisna) - TUM tasinmazlarda AYNI olsa BILE hoistlenmemeli.
+          ["Blok", state.fields.blok || ""],
         ],
       },
       {
@@ -141,8 +159,18 @@ const sandboxSource = `
           ["Alan3", state.fields.alan3 !== undefined ? state.fields.alan3 : ("DEGER-B1-" + idx)],
         ],
       },
+      {
+        // GABIM_UNITS_TABLE_NEVER_HOIST_GROUPS'ta (grupla istisna) - bu
+        // grubun TUM alanlari TUM tasinmazlarda AYNI olsa BILE hicbiri
+        // hoistlenmemeli.
+        title: "Bağımsız Bölüm / Taşınmaz Özellikleri",
+        rows: [
+          ["FiiliKullanim", state.fields.fiiliKullanim || ""],
+        ],
+      },
     ];
   }
+  ${constStatementNames.map(extractConstStatement).join("\n")}
   ${functionNames.map(extractFunction).join("\n")}
   return {
     setState: (s) => { state = s; },
@@ -179,13 +207,16 @@ function freshState(overrides = {}) {
 
 // --- 2) 2+ taşınmaz: "No" ilk sütun, GABİM gruplarının TÜM satırları -------
 // düzleştirilip sütun olarak eklenir, sıra korunur.
+// NOT: sharedValue BİLEREK FARKLI ("Z"/"W") — aksi halde artık "scalar"
+// olduğundan (kullanıcı takip talebi) hoistlenip bu sütun-sırası testinden
+// KAYBOLURDU; hoisting davranışı AYRICA senaryo 4'te test ediliyor.
 {
   globalThis.__gabimCallLog = [];
   fns.setState({
     activeTitleUnitIndex: 0,
     fields: { alan1: "100", alan3: "X", sharedValue: "Z" },
     tables: {},
-    titleUnits: [unit({ alan1: "200", alan3: "Y", sharedValue: "Z" })],
+    titleUnits: [unit({ alan1: "200", alan3: "Y", sharedValue: "W" })],
   });
   const data = fns.buildGabimUnitsSummaryTableData();
   assert.ok(data, "2 taşınmazlı raporda tablo verisi dönmeli.");
@@ -217,19 +248,32 @@ function freshState(overrides = {}) {
   console.log("switchActiveTitleUnit+buildGabimDataGroups AKTIF birim dahil TUM birimler icin cagrilir testi tamam.");
 }
 
-// --- 4) TÜM sütunlar "readonly" — TÜM taşınmazlarda AYNI değer olsa -------
-// BİLE "Ortak Bilgiler"e taşınmaz (bilinçli v1 kapsam kararı).
+// --- 4) KULLANICI TAKİP TALEBİ (2026-09-02): "ortak değerler yine üst -----
+// kısımda belirtilmeli" — genel kural artık "scalar": TÜM taşınmazlarda
+// AYNI (ve boş olmayan) değerdeki sütunlar "Ortak Bilgiler"e taşınır.
+// AMA GABIM_UNITS_TABLE_NEVER_HOIST_LABELS/GROUPS'taki (taşınmaza-özgü
+// olması GEREKEN) alanlar TÜM taşınmazlarda AYNI olsa BİLE ASLA
+// hoistlenmez ("Blok" etiketle, "Bağımsız Bölüm / Taşınmaz Özellikleri"
+// grubu grupla istisna — Değerleme/Bağımsız Bölüm'de 0.0.611/0.0.613'te
+// öğrenilen dersin GABİM'e TEKRARLANMAMASI için PROAKTİF istisna).
 {
   fns.setState({
     activeTitleUnitIndex: 0,
-    fields: { alan1: "AYNI", alan3: "AYNI3", sharedValue: "ORTAK" },
+    fields: { alan1: "AYNI", alan3: "AYNI3", sharedValue: "ORTAK", blok: "AYNI-BLOK", fiiliKullanim: "AYNI-KULLANIM" },
     tables: {},
-    titleUnits: [unit({ alan1: "AYNI", alan3: "AYNI3", sharedValue: "ORTAK" })],
+    titleUnits: [unit({ alan1: "AYNI", alan3: "AYNI3", sharedValue: "ORTAK", blok: "AYNI-BLOK", fiiliKullanim: "AYNI-KULLANIM" })],
   });
   const data = fns.buildGabimUnitsSummaryTableData();
-  assert.ok(data.headers.includes("Alan1") && data.headers.includes("Alan3") && data.headers.includes("Alan2 (Ortak)"), "TÜM taşınmazlarda AYNI olsa bile sütunlar (v1'de) kendi yerinde kalmalı.");
-  assert.equal(data.commonFields.length, 0, "v1'de HİÇBİR sütun 'Ortak Bilgiler'e taşınmamalı (tüm columnMeta 'readonly').");
-  console.log("KULLANICI/MIMARI KARARI: v1'de hicbir GABIM sutunu hoistlenmez testi tamam.");
+  const commonLabels = data.commonFields.map((field) => field.label);
+  ["Alan1", "Alan2 (Ortak)", "Alan3"].forEach((label) => {
+    assert.ok(commonLabels.includes(label), `TÜM taşınmazlarda AYNI olan "${label}" artık 'Ortak Bilgiler'e taşınmalı, bulunan: ${commonLabels.join(", ")}`);
+    assert.ok(!data.headers.includes(label), `"${label}" hoistlendiğinden HEADERS'ta kendi sütunu KALMAMALI.`);
+  });
+  ["Blok", "FiiliKullanim"].forEach((label) => {
+    assert.ok(!commonLabels.includes(label), `"${label}" (proaktif istisna) TÜM taşınmazlarda AYNI olsa BİLE 'Ortak Bilgiler'e TAŞINMAMALI.`);
+    assert.ok(data.headers.includes(label), `"${label}" hoistlenmediğinden HEADERS'ta kendi sütununda KALMALI.`);
+  });
+  console.log("KULLANICI TAKIP TALEBI: genel GABIM sutunlari artik hoistlenir, proaktif istisnalar (Blok/Bagimsiz Bolum grubu) HALA hoistlenmez testi tamam.");
 }
 
 // --- 5) TÜM taşınmazlarda BOŞ olan sütun kaldırılır ------------------------
