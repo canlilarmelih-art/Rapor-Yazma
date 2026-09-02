@@ -1,5 +1,16 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.618 - 2026-09-02 - Açık Adres (Çoklu): AYNI ada/parselde mahalle ortak + sokak/cadde bazlı gruplama (kullanıcının TAM örneğiyle)
+
+- Kullanıcı takip talebi (TAM örnekle): "önce aynı ada parsel yapalım. aynı ada parselde mahalle ortak olacak, tüm taşınmazlar aynı sokak yada cadde üzerinde ise sokak ismi yazılacak, farklı sokak yada caddede ise sokak/cadde bölümlerine göre gruplanacak (Örnek: Osmaniye Mahallesi, Kılıç Sokak, Asya Sitesi, No: 13A, A Blok K:1, D: 3 ve Kalkan Caddesi B Blok No: 13B, D:11)."
+- 0.0.617'nin AYNI-ada/parsel dalı (genel metin-gruplama, tüm adres BİREBİR aynı değilse taşınmazı Blok-BB No etiketiyle ayırma) kullanıcının bu TAM örneğini KARŞILAMIYORDU — o mekanizma "mahalle ortak" ilkesini hiç uygulamıyor, sokak/cadde ile diğer alanları (site/blok/kat/daire) AYRIŞTIRMIYORDU.
+- **Yeni fonksiyon**: `buildSameAdaParselOpenAddressText(units)` (app.js, `buildMultiUnitOpenAddressText()`'in AYNI-ada/parsel dalında artık BUNU çağırıyor) — Mahalle TÜM taşınmazlar için TEK KEZ en başta yazılır (`formatOpenAddressNeighborhood`, buildOpenAddressText() ile AYNI stil sistemi). Taşınmazlar `street` alanına göre gruplanır: TEK grup varsa (tüm taşınmazlar aynı sokakta) sokak adı BİR KEZ yazılıp ardından HER taşınmazın kendi site/blok/kat/daire bilgisi virgülle listelenir; 2+ FARKLI sokak/cadde grubu varsa HER grup kendi sokak adıyla başlar, gruplar yeni `joinAddressGroupTexts()` ile (`app.js`'te `joinTurkishList` adında ÇAKIŞAN/birbirini ezen 4 AYRI tanım olduğundan BİLEREK o isim KULLANILMADI, kendi izole eşdeğeri tanımlandı) "A ve B" / "A, B ve C" biçiminde bağlanır.
+- FARKLI ada/parsel dalı (henüz kullanıcı tarafından netleştirilmedi — "önce aynı ada parsel yapalım") DEĞİŞMEDİ.
+- Test: `tools/test-multi-unit-open-address.js`'in AYNI-ada/parsel senaryoları TAMAMEN YENİDEN yazıldı — (a) tüm taşınmazlar aynı sokakta (tek grup), (b) kullanıcının TAM örneği (2 farklı sokak/cadde grubu) BİREBİR (yalnızca stil-varyantı kaynaklı "Kat:" vs "K:" gibi kozmetik farklarla) doğrulanıyor. Geçici geri alma ile testin gerçekten BAŞARISIZ olduğu doğrulanıp sonra geri konuldu. `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` cache-buster `?v=20260902-2700`.
+- **Açık nokta (kullanıcı geri bildirimi bekleniyor)**: site adının (Asya Sitesi gibi) TÜM sokak gruplarında AYNI olduğu durumda MAHALLE gibi TEK KEZ mi yazılmalı, yoksa HER taşınmazın kendi grubunda mı tekrar etmeli (şu an: HER grupta tekrar eder, kullanıcının örneğinin 2. grubunda site adı hiç geçmiyordu ama bu, site adı gerçekten farklı/boş olduğu için mi yoksa yalnızca örnekte atlandığı için mi belirsiz).
+- Canlı tarayıcı testi yapılamadı — kullanıcının aynı ada/parseldeki gerçek bir çoklu taşınmaz raporunda (hem tek sokak hem birden fazla sokak/cadde senaryosunda) üretilen metni görüp tam istediği noktalama/sıralamayla (özellikle site adının tekrar edip etmeyeceği ve "Blok K:" vs "Blok No:" sıralaması) karşılaştırması gerekiyor.
+
 ## 0.0.617 - 2026-09-02 - Yeni: "Açık Adres (Çoklu Taşınmaz)" — Açıklamalar bölümü + {{ACIKADRESCOKLU}} placeholder
 
 - Kullanıcı talebi: "çoklu taleplerde açık adres aynı ada parsel ve farklı ada parselli raporlarda nasıl yazılmalı. öncelikle açık adres çoklu olarak açıklamalar kısmına yeni bir bölüm oluştur ve bu bölüme placeholder ata."

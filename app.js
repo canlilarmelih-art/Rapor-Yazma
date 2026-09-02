@@ -32534,37 +32534,121 @@ function buildLandOpenAddressText() {
   return segments.join(", ");
 }
 
+// joinTurkishList() app.js'te BİRDEN FAZLA (4 farklı) yerde AYNI adla
+// `function` bildirimiyle tanımlı — JS'te fonksiyon bildirimleri
+// BİRBİRİNİ EZER (en son tanım TÜM çağrı noktalarını etkiler), yani
+// "aktif" olan hangisi KIRILGAN/gizli bir bağımlılık. Burada BİLEREK
+// KULLANILMAZ; basit/izole bir eşdeğeri (davranışı diğerleriyle AYNI:
+// 2 öğe "A ve B", 3+ öğe "A, B ve C") kendi adıyla tanımlanır.
+function joinAddressGroupTexts(items) {
+  const clean = (items || []).filter(Boolean);
+  if (clean.length <= 1) return clean[0] || "";
+  if (clean.length === 2) return `${clean[0]} ve ${clean[1]}`;
+  return `${clean.slice(0, -1).join(", ")} ve ${clean[clean.length - 1]}`;
+}
+
+// KULLANICI TALEBİ (2026-09-02, TAM örnekle): "aynı ada parselde mahalle
+// ortak olacak, tüm taşınmazlar aynı sokak yada cadde üzerinde ise sokak
+// ismi yazılacak, farklı sokak yada caddede ise sokak/cadde bölümlerine
+// göre gruplanacak." Örnek (birebir): "Osmaniye Mahallesi, Kılıç Sokak,
+// Asya Sitesi, No: 13A, A Blok K:1, D: 3 ve Kalkan Caddesi B Blok No:
+// 13B, D:11" — Mahalle EN BAŞTA TEK KEZ; taşınmazlar "street" alanına
+// göre gruplanıp HER grup kendi Sokak/Cadde adıyla başlıyor, gruplar
+// " ve " ile bağlanıyor (2'den fazla grup varsa joinAddressGroupTexts'in
+// "A, B ve C" biçimi). Grup İÇİNDE her taşınmazın KENDİ site/blok/kat/
+// daire bilgisi (buildOpenAddressText()'in AYNI stil sistemi —
+// openAddressStyleVariants/formatOpenAddressBuildingName/style.noLabel/
+// katLabel/daireLabel — rapor genelindeki stil seçimiyle TUTARLI kalır)
+// virgülle ayrı segmentler halinde listelenir; Blok+Kat TEK segmentte
+// birleşir ("A Blok Kat: 1"), örnekteki "A Blok K:1" ile aynı ilkeyi
+// yansıtır.
+//
+// NOT (v1, kullanıcı incelemesi bekleniyor): site adı MAHALLE gibi
+// rapor-geneli TEK bir kez değil, HER taşınmazın KENDİ grubu İÇİNDE
+// ayrı ayrı yazılır (örnekte 2. grupta site adı hiç geçmiyor — kullanıcı
+// muhtemelen yalnızca o taşınmaz için site adını hiç girmemiş/farklı
+// olabilir; site adının TÜM gruplarda AYNI olduğu durumda da MAHALLE
+// gibi TEK kez mi yazılmalı, yoksa HER grupta tekrar mı etmeli — bu emin
+// olunamayan tek nokta, kullanıcı geri bildirirse netleştirilecek).
+function buildSameAdaParselOpenAddressText(units) {
+  const get = (fields, ...keys) => {
+    for (const key of keys) {
+      const value = String(fields?.[key] || "").trim();
+      if (value) return value;
+    }
+    return "";
+  };
+  const style = openAddressStyleVariants[selectVariant("buildOpenAddressText:style", openAddressStyleVariants.length)];
+
+  // Mahalle: AYNI ada/parselde zaten ortak olduğundan, İLK dolu değer yeterli.
+  const neighborhood = units.map((unit) => get(unit.fields, "neighborhood", "titleNeighborhood")).find(Boolean) || "";
+
+  // Sokak/Cadde'ye göre grupla (AYNI metin -> AYNI grup, ilk görülme sırası korunur).
+  const streetGroups = [];
+  const streetIndexByKey = new Map();
+  units.forEach((unit) => {
+    const street = get(unit.fields, "street");
+    const key = normalizeTextForSimilarityComparison(street);
+    if (!streetIndexByKey.has(key)) {
+      streetIndexByKey.set(key, streetGroups.length);
+      streetGroups.push({ street, unitFieldsList: [] });
+    }
+    streetGroups[streetIndexByKey.get(key)].unitFieldsList.push(unit.fields || {});
+  });
+
+  const groupTexts = streetGroups.map(({ street, unitFieldsList }) => {
+    const unitSegments = unitFieldsList.map((fields) => {
+      const siteName = get(fields, "addressSiteName");
+      const blockName = get(fields, "addressBlockName", "titleBlockName");
+      const outerDoor = get(fields, "outerDoor");
+      const floor = get(fields, "addressFloor", "titleFloor");
+      const innerDoor = get(fields, "innerDoor");
+
+      const blockAndFloor = [
+        blockName ? (/blok/i.test(blockName) ? blockName : `${blockName}${style.blokSuffix}`) : "",
+        floor ? `${style.katLabel}${floor}` : "",
+      ].filter(Boolean).join(" ");
+
+      return [
+        siteName ? formatOpenAddressBuildingName(siteName, style) : "",
+        outerDoor ? `${style.noLabel}${outerDoor}` : "",
+        blockAndFloor,
+        innerDoor ? `${style.daireLabel}${innerDoor}` : "",
+      ].filter(Boolean).join(", ");
+    }).filter(Boolean);
+
+    return [street, ...unitSegments].filter(Boolean).join(", ");
+  }).filter(Boolean);
+
+  const combinedGroups = joinAddressGroupTexts(groupTexts);
+  const neighborhoodSegment = neighborhood ? formatOpenAddressNeighborhood(neighborhood, style) : "";
+  return [neighborhoodSegment, combinedGroups].filter(Boolean).join(", ");
+}
+
 // Kullanıcı talebi (2026-09-02): "çoklu taleplerde açık adres aynı ada
 // parsel ve farklı ada parselli raporlarda nasıl yazılmalı ... öncelikle
 // açık adres çoklu olarak açıklamalar kısmına yeni bir bölüm oluştur ve
 // bu bölüme placeholder ata" — Tekil raporda (veya Çoklu Talep dışında)
 // DEĞİŞMEZ: mevcut buildOpenAddressText() ne üretiyorsa AYNEN döner.
 //
-// 2+ taşınmazda: HER taşınmazın KENDİ açık adresi (state.fields geçici
-// değiştirilerek, computeValuationFieldsForAllTitleUnits/
-// getMainPropertyBlockEntries İLE AYNI teknik) hesaplanıp
-// groupMainPropertyBlocksByText() (Ana Gayrimenkul Açıklaması'nın
-// KULLANDIĞI, metin bazlı, genel-amaçlı gruplama çekirdeği) ile
-// gruplanır — AYNI metni üreten taşınmazlar TEK (atıfsız) satırda
-// birleşir, FARKLI üretenler kendi etiketiyle (computeTitleUnitTabLabel:
-// AYNI ada/parselde Blok-BB No, FARKLI ada/parselde Ada Parsel) AYRI
-// satırda kalır. Pratikte: TÜM taşınmazlar AYNI ada/parselde VE açık
-// adresleri (kat/daire no dahil) BİREBİR aynıysa TEK satır; aynı ada/
-// parselde ama kat/daire farklıysa HER taşınmaz kendi Blok-BB No
-// etiketiyle ayrı satırda (temel adres tekrar eder, yalnızca son kısmı
-// değişir); FARKLI ada/parselde ise her taşınmaz kendi Ada/Parsel
-// etiketiyle TAMAMEN AYRI bir satırda.
+// AYNI ada/parselde: buildSameAdaParselOpenAddressText() (yukarıda,
+// kullanıcının TAM örnekle verdiği "mahalle ortak + sokak/cadde bazlı
+// gruplama" kuralı).
 //
-// NOT (v1, kullanıcı incelemesi bekleniyor): bu, "aynı ada/parselde TEK
-// birleşik cümle" (temel adresi bir kez yazıp yalnızca kat/daire
-// farklarını tek cümlede listeleme) yerine, kanıtlanmış/test edilmiş
-// genel metin-gruplama altyapısını yeniden kullanan DAHA BASİT bir ilk
-// sürüm — kullanıcı gerçek bir çoklu taşınmaz raporunda tam istediği
-// biçimi (tek cümle mi, etiketli ayrı satırlar mı) görüp geri bildirirse
-// buna göre inceltilecek.
+// FARKLI ada/parselde (henüz kullanıcı tarafından NETLEŞTİRİLMEDİ —
+// "önce aynı ada parsel yapalım" — bu dal DEĞİŞMEDİ, bir sonraki turda
+// ele alınacak): HER taşınmazın KENDİ açık adresi (state.fields geçici
+// değiştirilerek hesaplanıp) groupMainPropertyBlocksByText() ile
+// gruplanır — AYNI metni üreten taşınmazlar TEK (atıfsız) satırda
+// birleşir, FARKLI üretenler kendi Ada/Parsel etiketiyle AYRI satırda
+// kalır.
 function buildMultiUnitOpenAddressText() {
   const units = buildAllTitleUnitsForSummaryTable();
   if (units.length < 2) return buildOpenAddressText();
+
+  if (computeTitleUnitsShareSameAdaParsel(units)) {
+    return buildSameAdaParselOpenAddressText(units);
+  }
 
   const originalFields = state.fields;
   let entries;
