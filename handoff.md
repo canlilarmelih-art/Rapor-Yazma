@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.607 - 2026-09-02 - Takyidat: Beyanlar'da Açıklama+hizalama sütunu birleştirildi, Tarih genişletildi
+
+- Kullanıcı, oklarla işaretlenmiş bir ekran görüntüsü paylaştı: "bu bölümde 2 sütunu birleştir. Açıklama bölümü burada daha geniş olabilir." (0.0.606'da Beyanlar'a eklenen görünmez/boş hizalama sütununu işaret ediyor) ve "Tarih sütununu genişlet." (tarihlerin "27.12.202" / "1" şeklinde 2 satıra bölündüğünü işaret ediyor).
+- **Düzeltme 1 (sütun birleştirme)**: `buildCompactReportWordTableHtml()`'e yeni bir `options.mergedColumns` desteği eklendi (`[{ start, span }]`) — belirtilen başlangıç index'indeki hücreye `colspan` verilir, kapsadığı diğer hücreler hiç render edilmez. Beyanlar'da bu, Açıklama (index 2) ile hemen yanındaki görünmez hizalama sütununu (index 3) GÖRSEL olarak birleştirmek için kullanılıyor — Açıklama artık bu iki bölgenin TOPLAM genişliğini kaplıyor. Alttaki `colgroup` (gerçek sütun genişlik yüzdeleri) DEĞİŞMEDEN kalıyor, bu yüzden Şerhler/İpotekler ile olan hizalama (0.0.606) BOZULMUYOR — yalnızca GÖRÜNÜM birleşiyor.
+- **Düzeltme 2 (Tarih genişliği)**: "GG.AA.YYYY" biçimindeki 10 karakterlik tarih metni, %50 küçültülmüş sütuna tam sığmıyordu. Tarih'in bölge ağırlığı 0.5'ten **0.8**'e yükseltildi (Yevmiye No, genelde daha kısa/3-5 haneli olduğundan ve sarma sorunu gözlenmediğinden hâlâ 0.5).
+- Test: `tools/test-takyidat-multi-unit-summary.js`'e Beyanlar'ın Açıklama başlığının `colspan="2"` içerdiğini doğrulayan yeni bir kontrol eklendi; sütun genişlik oranı testleri (Tarih artık Yevmiye No'dan geniş, 0.8 kat) güncellendi. Her iki düzeltme için de geçici geri alma ile testlerin gerçekten BAŞARISIZ olduğu doğrulanıp sonra geri konuldu. `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` cache-buster `?v=20260902-1600`.
+- Canlı tarayıcı testi yapılamadı — kullanıcının "Tüm Tablolar" Excel'ini yeniden indirip Beyanlar tablosunda Açıklama sütununun artık daha geniş (ayrı boş bir sütun görünmediğini) ve Tarih değerlerinin artık tek satırda (sarılmadan) göründüğünü doğrulaması gerekiyor.
+
 ## 0.0.606 - 2026-09-02 - Takyidat: Beyanlar ile Şerhler/İpotekler'in sütun sınırları artık TAM HİZALI
 
 - Kullanıcı, üzerine kırmızı dikey çizgiler çizdiği bir ekran görüntüsü paylaşıp "kırmızı çizgilerdeki hizalama olmalı sorun burada" dedi — çizgiler, Beyanlar tablosunun sütun sınırlarının Şerhler tablosunun sütun sınırlarıyla ÖRTÜŞMEDİĞİNİ gösteriyordu.

@@ -21281,6 +21281,19 @@ function formatComparableValuationWordRow(row, landMode = false) {
 function buildCompactReportWordTableHtml(headers, rows, options = {}) {
   const columnWidths = Array.isArray(options.columnWidths) ? options.columnWidths : [];
   const safeRows = (Array.isArray(rows) ? rows : []).filter((row) => Array.isArray(row));
+  // Kullanıcı bulgusu (2026-09-02, ekran görüntüsü + oklarla işaretlenmiş
+  // talimat): "bu bölümde 2 sütunu birleştir. Açıklama bölümü burada daha
+  // geniş olabilir." — bazı çağrı yerlerinde (ör. Takyidat Beyanlar tablosu,
+  // yalnızca sütun HİZALAMASI için eklenmiş görünmez/boş bir sütunu, komşu
+  // bir sütunla GÖRSEL olarak birleştirmesi gerekiyor. `options.mergedColumns`
+  // — `[{ start, span }]` — HER satırda (başlık dahil) `start` index'indeki
+  // hücreye `colspan=span` verir, `start+1..start+span-1` arasındaki
+  // hücreleri ATLAR (render etmez). Alttaki `colgroup` genişlikleri
+  // DEĞİŞMEDEN kalır — yalnızca GÖRÜNÜM birleşiyor, sütun genişlik
+  // hesabı (ve dolayısıyla başka tablolarla hizalama) ETKİLENMEZ.
+  const mergedColumns = Array.isArray(options.mergedColumns) ? options.mergedColumns : [];
+  const colspanAt = (index) => (mergedColumns.find((m) => m.start === index) || { span: 1 }).span;
+  const isMergedAway = (index) => mergedColumns.some((m) => index > m.start && index < m.start + m.span);
   const outer = "border:2pt solid #1f2a32;";
   const inner = "border:0.5pt solid #b8c4d8;";
   // Word'de satir yuksekligi, hem sabit yukseklik hem de "exactly" kuralinda
@@ -21294,14 +21307,14 @@ function buildCompactReportWordTableHtml(headers, rows, options = {}) {
   const columnGroup = columnWidths.length
     ? `<colgroup>${columnWidths.map((width) => `<col style="width:${escapeHtml(width)};">`).join("")}</colgroup>`
     : "";
-  const headerHtml = `<tr height="25" style="height:0.66cm;mso-height-source:userset;mso-height-rule:at-least;">${headers.map((label) => `<th style="${header}">${escapeHtml(label)}</th>`).join("")}</tr>`;
+  const headerHtml = `<tr height="25" style="height:0.66cm;mso-height-source:userset;mso-height-rule:at-least;">${headers.map((label, index) => (isMergedAway(index) ? "" : `<th${colspanAt(index) > 1 ? ` colspan="${colspanAt(index)}"` : ""} style="${header}">${escapeHtml(label)}</th>`)).join("")}</tr>`;
   const bodyHtml = safeRows.map((row, index) => {
     const isSection = Boolean(row.__section);
     if (isSection) {
       return `<tr height="23" style="height:0.6cm;mso-height-source:userset;mso-height-rule:at-least;"><td colspan="${headers.length}" style="${section}">${formatWordCell(row[0])}</td></tr>`;
     }
     const cellStyle = index % 2 ? zebra : plain;
-    return `<tr height="23" style="height:0.6cm;mso-height-source:userset;mso-height-rule:at-least;">${headers.map((_, cellIndex) => `<td style="${cellStyle}">${formatWordCell(row[cellIndex])}</td>`).join("")}</tr>`;
+    return `<tr height="23" style="height:0.6cm;mso-height-source:userset;mso-height-rule:at-least;">${headers.map((_, cellIndex) => (isMergedAway(cellIndex) ? "" : `<td${colspanAt(cellIndex) > 1 ? ` colspan="${colspanAt(cellIndex)}"` : ""} style="${cellStyle}">${formatWordCell(row[cellIndex])}</td>`)).join("")}</tr>`;
   }).join("");
 
   return `<table class="word-table word-table-compact-report" style="border-collapse:collapse;width:100%;margin:6pt 0 12pt;table-layout:fixed;${outer}">
@@ -23649,13 +23662,27 @@ function buildTakyidatCategoryUnitsSummaryTableHtml(tableKey, columns) {
   // görseldeki sütunların hizasızlığı sorununu çöz." — ağırlıklar artık
   // sütun ADINA değil, YEDİ SABİT BÖLGEYE (Ada/Parsel, Tür, Açıklama,
   // [boş]/Haciz Tutarı/İpotek Tutarı, Tarih, Yevmiye No, Kısıtlı Malik)
-  // göre atanıyor — bu, hem genişlik oranını (Tarih/Yevmiye No yarım,
-  // Açıklama dört kat) hem de YUKARIDAKİ hizalama düzeltmesini AYNI ANDA
-  // sağlıyor (her üç tablonun ağırlık TOPLAMI artık AYNI olduğundan, aynı
-  // bölgenin yüzdesi üç tabloda da BİREBİR eşit çıkıyor).
-  const ZONE_WEIGHTS = [1, 1, 4, 1, 0.5, 0.5, 1];
+  // göre atanıyor — bu, hem genişlik oranını (Açıklama dört kat) hem de
+  // YUKARIDAKİ hizalama düzeltmesini AYNI ANDA sağlıyor (her üç tablonun
+  // ağırlık TOPLAMI artık AYNI olduğundan, aynı bölgenin yüzdesi üç
+  // tabloda da BİREBİR eşit çıkıyor). Tarih ağırlığı, kullanıcının SONRAKİ
+  // bulgusuyla (2026-09-02, ekran görüntüsü: "tarih sütununu genişlet" —
+  // "DD.AA.YYYY" 10 karakterlik tarih metni tam da %50 küçültülmüş sütuna
+  // sığmayıp "27.12.202" / "1" şeklinde 2 satıra bölünüyordu) 0.5'ten
+  // 0.8'e yükseltildi; Yevmiye No (genelde 3-5 haneli, sarma sorunu
+  // gözlenmedi) hâlâ 0.5.
+  const ZONE_WEIGHTS = [1, 1, 4, 1, 0.8, 0.5, 1];
   const columnWidthWeightSum = ZONE_WEIGHTS.reduce((sum, weight) => sum + weight, 0);
   const columnWidths = ZONE_WEIGHTS.map((weight) => `${((weight / columnWidthWeightSum) * 100).toFixed(2)}%`);
+  // Kullanıcı bulgusu (2026-09-02, oklarla işaretlenmiş ekran görüntüsü):
+  // "bu bölümde 2 sütunu birleştir. Açıklama bölümü burada daha geniş
+  // olabilir." — Beyanlar'daki [boş] hizalama sütunu (yalnızca Şerhler/
+  // İpotekler'deki Haciz Tutarı/İpotek Tutarı ile aynı sınıra denk gelmesi
+  // için eklenmişti) artık Açıklama ile GÖRSEL olarak birleştiriliyor
+  // (colspan=2) — Açıklama Beyanlar'da fiilen bu iki bölgenin TOPLAM
+  // genişliğini kaplıyor. `colgroup` (columnWidths) DEĞİŞMİYOR, yalnızca
+  // görünüm birleşiyor — Şerhler/İpotekler ile olan hizalama BOZULMUYOR.
+  const mergedColumns = needsAlignmentSpacer ? [{ start: 2, span: 2 }] : [];
   const rows = groupedRows.map((row) => {
     const cells = columns.map((_, columnIndex) => encumbranceCleanText(row[`c${columnIndex}`]) || "-");
     const references = Array.isArray(row.__titleUnitReferences) ? row.__titleUnitReferences.filter(Boolean) : [];
@@ -23686,7 +23713,7 @@ function buildTakyidatCategoryUnitsSummaryTableHtml(tableKey, columns) {
   // edilmiyordu. Artık ÖNCE "temiz" taşınmazlar (kayıt yok), SONRA gerçek
   // kayıtlar listeleniyor — böylece hangi taşınmazların üzerinde HİÇ
   // takyidat olmadığı tablonun en tepesinde tek bakışta görülüyor.
-  return buildCompactReportWordTableHtml(headers, [...emptyUnitRows, ...rows], { columnWidths });
+  return buildCompactReportWordTableHtml(headers, [...emptyUnitRows, ...rows], { columnWidths, mergedColumns });
 }
 
 function buildTakyidatDeclarationsUnitsSummaryWordTableHtml() {
