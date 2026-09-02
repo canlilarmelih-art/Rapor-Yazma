@@ -381,11 +381,14 @@ function parseSimpleTable(html) {
 
 // --- 6) REGRESYON (2026-09-02, ekran görüntüsü): "tarih ve yevmiye no ------
 // sütunlarını %50 oranında küçült açıklama sütununu %100 oranında büyüt" —
+// SONRASINDA (aynı gün, ikinci ekran görüntüsüyle) Açıklama çarpanı ×2'den
+// ×4'e yükseltildi (kullanıcının "istediğim görsel" örneğine uyacak şekilde,
+// haciz açıklamaları gibi uzun metinlerin daha az satıra sarılması için).
 // Beyanlar (Ada/Parsel, Tür, Açıklama, Tarih, Yevmiye No, Kısıtlı Malik) ve
 // Şerhler (+ Haciz Tutarı) tablolarında üretilen colgroup yüzdelerinin bu
 // oranı doğru yansıttığı doğrulanıyor. Referans: Ada/Parsel/Tür/Kısıtlı
 // Malik/Haciz Tutarı DEĞİŞMEDİ (×1) sütunlar birbirine EŞİT kalmalı; Tarih
-// ve Yevmiye No bunların YARISI, Açıklama bunların İKİ KATI olmalı.
+// ve Yevmiye No bunların YARISI, Açıklama bunların DÖRT KATI olmalı.
 {
   fns.setState({
     fields: { blockNo: "166", parcelNo: "7" },
@@ -404,7 +407,7 @@ function parseSimpleTable(html) {
   assert.ok(Math.abs(bAdaParsel - bTur) < 0.02 && Math.abs(bTur - bMalik) < 0.02, `Ada/Parsel, Tur ve Kisitli Malik EŞİT kalmali, bulunan: ${JSON.stringify(beyanlarParsed.columnWidthPercents)}`);
   assert.ok(Math.abs(bTarih - bYevmiyeNo) < 0.02, "Tarih ve Yevmiye No birbirine esit kalmali.");
   assert.ok(Math.abs(bTarih - bAdaParsel / 2) < 0.02, `Tarih, degismeyen bir sutunun YARISI olmali (beklenen ${bAdaParsel / 2}, bulunan ${bTarih}).`);
-  assert.ok(Math.abs(bAciklama - bAdaParsel * 2) < 0.02, `Aciklama, degismeyen bir sutunun IKI KATI olmali (beklenen ${bAdaParsel * 2}, bulunan ${bAciklama}).`);
+  assert.ok(Math.abs(bAciklama - bAdaParsel * 4) < 0.02, `Aciklama, degismeyen bir sutunun DORT KATI olmali (beklenen ${bAdaParsel * 4}, bulunan ${bAciklama}).`);
 
   const serhlerParsed = parseSimpleTable(fns.buildTakyidatAnnotationsUnitsSummaryWordTableHtml());
   assert.ok(Array.isArray(serhlerParsed.columnWidthPercents) && serhlerParsed.columnWidthPercents.length === 7, "Serhler tablosunda colgroup yuzdeleri (7 sutun) eksik.");
@@ -416,8 +419,8 @@ function parseSimpleTable(html) {
   );
   assert.ok(Math.abs(sTarih - sYevmiyeNo) < 0.02, "Tarih ve Yevmiye No birbirine esit kalmali.");
   assert.ok(Math.abs(sTarih - sAdaParsel / 2) < 0.02, `Tarih, degismeyen bir sutunun YARISI olmali (beklenen ${sAdaParsel / 2}, bulunan ${sTarih}).`);
-  assert.ok(Math.abs(sAciklama - sAdaParsel * 2) < 0.02, `Aciklama, degismeyen bir sutunun IKI KATI olmali (beklenen ${sAdaParsel * 2}, bulunan ${sAciklama}).`);
-  console.log("Sutun genislik oranlari (Tarih/Yevmiye No yarim, Aciklama iki kat) testi tamam.");
+  assert.ok(Math.abs(sAciklama - sAdaParsel * 4) < 0.02, `Aciklama, degismeyen bir sutunun DORT KATI olmali (beklenen ${sAdaParsel * 4}, bulunan ${sAciklama}).`);
+  console.log("Sutun genislik oranlari (Tarih/Yevmiye No yarim, Aciklama dort kat) testi tamam.");
 }
 
 console.log("Takyidat coklu tasinmaz ozet tablosu (Ada/Parsel sutunu) testleri basarili.");

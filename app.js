@@ -23630,17 +23630,18 @@ function buildTakyidatCategoryUnitsSummaryTableHtml(tableKey, columns) {
   const headers = ["Ada / Parsel", ...columns];
   // Kullanıcı bulgusu (2026-09-02, ekran görüntüsü): "tarih ve yevmiye no
   // sütunlarını %50 oranında küçült açıklama sütununu %100 oranında büyüt.
-  // görseldeki sütunların hizasızlığı sorununu çöz." — önceden tüm sütunlar
-  // EŞİT pay alıyordu (100 / sütun sayısı). Şimdi her sütun, kendi MEVCUT
-  // eşit-pay genişliğine göre bir ağırlık çarpanı alıyor: Tarih/Yevmiye No
-  // ×0.5 (yarıya), Açıklama ×2 (iki katı), diğerleri (Ada/Parsel, Tür/Şerh
-  // Türü/İpotek Lehdarı, Haciz Tutarı/İpotek Derecesi/İpotek Tutarı,
-  // Kısıtlı Malik) değişmedi (×1). Bu yüzdeler `colgroup`/`colWidthsPercent`
-  // üzerinden report-tables-xlsx.js'in ince-sütun ızgarasına (bkz.
-  // remapCellGridToFineColumns) taşınıyor.
+  // görseldeki sütunların hizasızlığı sorununu çöz." — 0.0.603'te Açıklama
+  // ×2 yapılmıştı, ama kullanıcı ARDINDAN "istediğim görsel" ile çok DAHA
+  // GENİŞ bir Açıklama sütunu gösterdi (haciz açıklamaları gibi uzun
+  // metinlerin çok daha az satıra sarılması için) — bu yüzden çarpan ×4'e
+  // yükseltildi. Tarih/Yevmiye No hâlâ ×0.5 (yarıya), diğerleri (Ada/Parsel,
+  // Tür/Şerh Türü/İpotek Lehdarı, Haciz Tutarı/İpotek Derecesi/İpotek
+  // Tutarı, Kısıtlı Malik) değişmedi (×1). Bu yüzdeler `colgroup`/
+  // `colWidthsPercent` üzerinden report-tables-xlsx.js'in ince-sütun
+  // ızgarasına (bkz. remapCellGridToFineColumns) taşınıyor.
   const columnWidthWeights = headers.map((label) => {
     if (label === "Tarih" || label === "Yevmiye No") return 0.5;
-    if (label === "Açıklama") return 2;
+    if (label === "Açıklama") return 4;
     return 1;
   });
   const columnWidthWeightSum = columnWidthWeights.reduce((sum, weight) => sum + weight, 0) || headers.length;

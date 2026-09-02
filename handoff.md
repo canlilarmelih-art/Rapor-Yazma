@@ -1,5 +1,15 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.604 - 2026-09-02 - Takyidat: satır taşması KÖKTEN düzeltildi (Excel merge edilmiş hücrelerde otomatik büyümez) + Açıklama sütunu DAHA DA genişletildi
+
+- Kullanıcı, 0.0.603'ten sonra İKİ ekran görüntüsü paylaştı: "1. görsel senden gelen görsel" (0.0.603 sonrası hâlâ AYNI satır çakışması sorunu) ve "2. görsel benim istediğim görsel" (Açıklama sütunu çok daha geniş, satırlar birbirine karışmıyor).
+- **Gerçek kök neden bulundu**: 0.0.603'te "birleşik sayfalarda satır yüksekliğini hiç zorlama, Excel otomatik büyütsün" yaklaşımı denenmişti — ama bu işe yaramadı, çünkü **Excel, BİRLEŞTİRİLMİŞ (merge edilmiş) hücreler için satır yüksekliğini ASLA otomatik hesaplamaz** (resmi, bilinen bir Excel kısıtlaması). Bu sayfadaki HER veri hücresi ince-sütun ızgarasında (`remapCellGridToFineColumns`) birleştirilmiş olduğundan, satırlar hep tek-satırlık varsayılan yükseklikte kalıyor, uzun metinler taşıp altındaki satırla çakışıyordu.
+- **Gerçek düzeltme**: `report-tables-xlsx.js`'e yeni `estimateMergedRowHeightPt`/`estimateWrappedLineCount` eklendi — her satırın yüksekliği, o satırdaki her hücrenin GERÇEK (remap sonrası, kaç ince sütun birleştirdiğine göre) genişliğine bakılarak kaç satıra sarılacağı tahmin edilip HESAPLANIYOR, ardından `customHeight` ile bu hesaplanan değer yazılıyor. Diğer (birleşik olmayan) sayfaların davranışı DEĞİŞMEDİ.
+- **Açıklama sütunu daha da genişletildi**: kullanıcının "istediğim görsel" örneğine uyacak şekilde `app.js`'teki ağırlık çarpanı ×2'den **×4**'e yükseltildi (Tarih/Yevmiye No hâlâ ×0.5, diğerleri değişmedi).
+- Test: `tools/test-report-tables-xlsx.js`'teki satır-yüksekliği senaryosu, artık uzun metnin kısa metinden BELİRGİN şekilde daha yüksek bir satır ürettiğini doğruluyor (önceki "hiç zorlama" testi tamamen değiştirildi); `tools/test-takyidat-multi-unit-summary.js`'teki sütun genişliği oranı testi ×2 yerine ×4 bekleyecek şekilde güncellendi. Her iki düzeltme için de geçici geri alma ile testlerin gerçekten BAŞARISIZ olduğu doğrulanıp sonra geri konuldu. `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` ve `src/exports/report-tables-xlsx.js` cache-buster'ları `?v=20260902-1300`.
+- Canlı tarayıcı testi yapılamadı — kullanıcının "Tüm Tablolar" Excel'ini yeniden indirip Beyanlar/Şerhler tablolarında artık satırların birbirine karışmadığını (her satır kendi içeriğine göre doğru yükseklikte büyüdüğünü) ve Açıklama sütununun belirgin şekilde daha geniş olduğunu doğrulaması gerekiyor.
+
 ## 0.0.603 - 2026-09-02 - Takyidat: Tarih/Yevmiye No sütunları daraltıldı, Açıklama genişletildi + Excel'de satırlar artık taşmıyor
 
 - Kullanıcı talebi (ekran görüntüsüyle): "tarih ve yevmiye no sütunlarını %50 oranında küçültü açıklama sütununu %100 oranında büyüt. görseldeki sütunların hizasızlığı sorununu çöz."

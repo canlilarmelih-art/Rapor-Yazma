@@ -258,27 +258,37 @@ assert(
 const longTextTotalWidth = longTextWidths.reduce((a, b) => a + b, 0);
 assert(longTextTotalWidth <= 200, `Birleşik sayfanın toplam genişliği kompakt değil: ${longTextTotalWidth}`);
 
-// --- 1e) REGRESYON (2026-09-02, ekran görüntüsü): birleşik sayfalarda -----
-// satır yüksekliği ZORLANMAMALI. HTML kaynağındaki (buildCompactReportWordTableHtml)
-// satır yüksekliği Word için SADECE bir ALT SINIR ("mso-height-rule:at-least"),
-// ama önceden bu değer Excel'e customHeight="1" ile KESİN/SABİT yükseklik
-// olarak yazılıyordu — Excel bu durumda satırı otomatik büyütmüyor, uzun
-// (Açıklama/haciz açıklaması gibi) metinler satır sınırının dışına taşıp
-// alttaki satırla çakışıyordu (kullanıcının "sütunların hizasızlığı" olarak
-// gördüğü asıl neden).
-const heightedTableHtml = `<table><tbody><tr height="23" style="height:0.6cm;"><td>Uzun bir açıklama metni burada olacak</td></tr></tbody></table>`;
+// --- 1e) REGRESYON (2026-09-02, İKİNCİ ekran görüntüsü): birleşik --------
+// sayfalarda satır yüksekliği artık İÇERİĞE göre HESAPLANIYOR. 0.0.603'ün
+// "satır yüksekliğini hiç zorlama, Excel otomatik büyütsün" denemesi AYNI
+// çakışma görüntüsünü vermeye devam etmişti — çünkü Excel, BİRLEŞTİRİLMİŞ
+// (merge edilmiş) hücreler için satır yüksekliğini ASLA otomatik hesaplamaz
+// (bilinen bir Excel kısıtlaması). Bu yüzden artık estimateMergedRowHeightPt
+// ile hücrenin GERÇEK (remap sonrası) genişliğine göre kaç satıra
+// sarılacağı tahmin edilip customHeight ile YAZILIYOR: uzun bir metin, aynı
+// sütun genişliğindeki kısa bir metinden DAHA YÜKSEK bir satır üretmeli.
+const shortTextHtml = `<table><tbody><tr><td>Kısa</td></tr></tbody></table>`;
+const longTextRowHtml = `<table><tbody><tr><td>${"Uzun bir haciz açıklaması metni burada tekrar tekrar yer alacak. ".repeat(6)}</td></tr></tbody></table>`;
+const shortCombined = ReportTablesXlsx.combineNamedGrids([{ title: "Test", cellGrid: ReportTablesXlsx.parseHtmlTables(shortTextHtml) }]);
+const longCombined = ReportTablesXlsx.combineNamedGrids([{ title: "Test", cellGrid: ReportTablesXlsx.parseHtmlTables(longTextRowHtml) }]);
+const shortXml = ReportTablesXlsx.buildSheetXmlFromCellGrid(ReportTablesXlsx.createStyleRegistry(), shortCombined, { uniformColumnWidth: ReportTablesXlsx.COMBINED_SHEET_FINE_COLUMN_WIDTH });
+const longXml = ReportTablesXlsx.buildSheetXmlFromCellGrid(ReportTablesXlsx.createStyleRegistry(), longCombined, { uniformColumnWidth: ReportTablesXlsx.COMBINED_SHEET_FINE_COLUMN_WIDTH });
+assert(shortXml.includes('customHeight="1"'), "Birlesik sayfada satir yuksekligi artik HESAPLANARAK (customHeight ile) yazilmali.");
+const shortHeight = Number((shortXml.match(/<row r="2" ht="([\d.]+)"/) || [])[1]);
+const longHeight = Number((longXml.match(/<row r="2" ht="([\d.]+)"/) || [])[1]);
+assert(Number.isFinite(shortHeight) && Number.isFinite(longHeight), `Satir yukseklikleri parse edilemedi (short=${shortHeight}, long=${longHeight}).`);
+assert(longHeight > shortHeight + 10, `Uzun metin, KISA metinden BELIRGIN sekilde daha yuksek bir satir uretmeli (kisa=${shortHeight}, uzun=${longHeight}).`);
+// Ayni hucre-izgarasi, uniformColumnWidth OLMADAN (tekil/birlesik-olmayan
+// sayfa) cagrilirsa ESKI davranis (HTML kaynagindaki SABIT yukseklik)
+// DEGISMEMELI - bu duzeltme SADECE birlesik ("Tum Tablolar") sayfalari icin.
+const heightedTableHtml = `<table><tbody><tr height="23" style="height:0.6cm;"><td>Kısa</td></tr></tbody></table>`;
 const heightedCellGrid = ReportTablesXlsx.parseHtmlTables(heightedTableHtml);
 assert(heightedCellGrid.rowHeights[0] > 0, "Test kurulumu: satir yuksekligi parse edilememis.");
-const heightedCombined = ReportTablesXlsx.combineNamedGrids([{ title: "Test", cellGrid: heightedCellGrid }]);
-const heightedCombinedXml = ReportTablesXlsx.buildSheetXmlFromCellGrid(ReportTablesXlsx.createStyleRegistry(), heightedCombined, {
-  uniformColumnWidth: ReportTablesXlsx.COMBINED_SHEET_FINE_COLUMN_WIDTH,
-});
-assert(!heightedCombinedXml.includes('customHeight="1"'), "Birlesik (uniformColumnWidth) sayfada satir yuksekligi ZORLANMAMALI - Excel otomatik buyutmeli.");
-// Ayni hucre-izgarasi, uniformColumnWidth OLMADAN (tekil/birlesik-olmayan
-// sayfa) cagrilirsa ESKI davranis (customHeight ile SABIT yukseklik)
-// DEGISMEMELI - bu duzeltme SADECE birlesik ("Tum Tablolar") sayfalari icin.
 const nonCombinedXml = ReportTablesXlsx.buildSheetXmlFromCellGrid(ReportTablesXlsx.createStyleRegistry(), heightedCellGrid);
-assert(nonCombinedXml.includes('customHeight="1"'), "Tekil (birlesik olmayan) sayfada satir yuksekligi davranisi DEGISMEMELI (REGRESYON).");
+assert(
+  nonCombinedXml.includes(`ht="${heightedCellGrid.rowHeights[0].toFixed(2)}"`),
+  "Tekil (birlesik olmayan) sayfada satir yuksekligi davranisi DEGISMEMELI (REGRESYON) - HTML kaynagindaki sabit deger kullanilmali.",
+);
 
 // --- 2) Tam disa aktarma calistir -----------------------------------------
 // Kullanici talebi: Takyidat alt tablolari (Beyanlar/Serhler/Ipotekler) TEK

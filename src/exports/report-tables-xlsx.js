@@ -438,6 +438,40 @@
     return { grid, merges, rowHeights, colCount: COMBINED_SHEET_FINE_COLUMNS, colWidthsPercent: null };
   }
 
+  // Kullanıcı bulgusu (2026-09-02, İKİNCİ ekran görüntüsü): 0.0.603'ün
+  // "birleşik sayfalarda satır yüksekliğini HİÇ zorlama, Excel otomatik
+  // büyütsün" denemesi AYNI çakışma görüntüsünü vermeye devam etti. KÖK
+  // NEDEN: Excel, BİRLEŞTİRİLMİŞ (merge edilmiş) hücreler için satır
+  // yüksekliğini ASLA otomatik hesaplamaz — bu resmi, bilinen bir Excel
+  // kısıtlamasıdır. Bu sayfadaki HER veri hücresi ince-sütun ızgarasında
+  // birleştirilmiş olduğundan, satır yüksekliğini KENDİMİZ hesaplayıp
+  // yazmamız gerekiyor — ama HTML'den gelen SABİT (Word'e özgü "en az")
+  // değeri DEĞİL, hücrenin GERÇEK (remap sonrası) genişliğine göre KAÇ
+  // SATIRA SARILACAĞINI tahmin ederek.
+  function estimateWrappedLineCount(text, widthUnits) {
+    if (!text) return 1;
+    // Excel'in sütun "genişlik" birimi, standart (10pt) hücre yazı tipiyle
+    // kabaca 1 karaktere denk gelir.
+    const CHARS_PER_UNIT = 1;
+    const charsPerLine = Math.max(4, Math.floor(widthUnits * CHARS_PER_UNIT));
+    return text
+      .split("\n")
+      .reduce((sum, line) => sum + Math.max(1, Math.ceil(line.length / charsPerLine)), 0);
+  }
+
+  function estimateMergedRowHeightPt(rowCells, fineColWidth) {
+    const LINE_HEIGHT_PT = 13;
+    const PADDING_PT = 3;
+    let maxLines = 1;
+    rowCells.forEach((cell) => {
+      const text = String(cell.text ?? "");
+      if (!text) return;
+      const widthUnits = Math.max(1, (cell.colspan || 1) * fineColWidth);
+      maxLines = Math.max(maxLines, estimateWrappedLineCount(text, widthUnits));
+    });
+    return PADDING_PT + maxLines * LINE_HEIGHT_PT;
+  }
+
   function buildSheetXmlFromCellGrid(styleRegistry, parsed, options = {}) {
     const { grid, merges, rowHeights, colCount } = parsed;
     const contentWidths = Array.from({ length: colCount }, () => 0);
@@ -463,20 +497,15 @@
             return `<c r="${columnLetter(cell.col)}${r}" s="${xf}" t="inlineStr"><is><t${preserve}>${xmlEscape(text)}</t></is></c>`;
           })
           .join("");
-        // Kullanıcı bulgusu (2026-09-02, ekran görüntüsü): birleşik ("Tüm
-        // Tablolar") sayfalarında (Takyidat, Değerleme ve Emsaller —
-        // options.uniformColumnWidth ile işaretli) satır yüksekliği HTML
-        // kaynağından (buildCompactReportWordTableHtml) geliyor; orada bu
-        // değer Word için "mso-height-rule:at-least" — yani bir ALT SINIR,
-        // uzun metin satırı BÜYÜTEBİLİR. Ama burada aynı değer Excel'e
-        // customHeight="1" ile KESİN/SABİT yükseklik olarak yazılıyordu —
-        // Excel bu durumda satırı OTOMATİK BÜYÜTMÜYOR, uzun (özellikle
-        // Açıklama/haciz açıklaması) metinler satır sınırının dışına taşıp
-        // bir alttaki satırla ÇAKIŞIYOR (kullanıcının "sütunların
-        // hizasızlığı" olarak gördüğü asıl neden). Bu yüzden birleşik
-        // sayfalarda satır yüksekliği HİÇ zorlanmıyor — Excel, wrapText
-        // açık hücreler için satırı içeriğe göre otomatik büyütüyor.
-        const heightPt = options.uniformColumnWidth ? null : rowHeights[rowIndex];
+        // Birleşik ("Tüm Tablolar") sayfalarında (options.uniformColumnWidth
+        // ile işaretli) satır yüksekliği, yukarıdaki estimateMergedRowHeightPt
+        // ile GERÇEK (remap sonrası) hücre genişliğine göre hesaplanır — bkz.
+        // fonksiyonun üstündeki açıklama (Excel merge edilmiş hücreler için
+        // satırı otomatik büyütmez). Diğer (birleşik olmayan) sayfalarda
+        // davranış DEĞİŞMEDİ: HTML kaynağından gelen sabit yükseklik kullanılır.
+        const heightPt = Number.isFinite(options.uniformColumnWidth)
+          ? estimateMergedRowHeightPt(rowCells, options.uniformColumnWidth)
+          : rowHeights[rowIndex];
         const heightAttr = heightPt ? ` ht="${heightPt.toFixed(2)}" customHeight="1"` : "";
         return `<row r="${r}"${heightAttr}>${cellsXml}</row>`;
       })
