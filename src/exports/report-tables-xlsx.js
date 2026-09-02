@@ -133,7 +133,16 @@
       const bordersXml = borders.map((b) => (b.thin ? `<border>${thin}</border>` : `<border><left/><right/><top/><bottom/></border>`)).join("");
       const xfsXml = xfs
         .map((xf) => {
-          const alignXml = xf.halign ? `<alignment horizontal="${xf.halign}" vertical="center" wrapText="1"/>` : `<alignment vertical="center" wrapText="1"/>`;
+          // Kullanıcı bulgusu (2026-09-02, ekran görüntüsü): "hizalama...
+          // bence olmamış" — satır yükseklikleri artık içeriğe göre büyük
+          // ölçüde değişiyor (bkz. estimateMergedRowHeightPt), bu yüzden
+          // dikey "center" hizalama, kısa değerleri (Tarih/Yevmiye No/
+          // Kısıtlı Malik gibi) çok uzun bir Açıklama'nın yanında satırın
+          // ORTASINDA "yüzer" gösterip satırı bütünlüksüz/hizasız
+          // gösteriyordu. Dikey hizalama "top" yapıldı — böylece aynı
+          // satırdaki TÜM sütunlar üst kenardan başlıyor, satır ne kadar
+          // uzasa da bir bütün olarak okunuyor.
+          const alignXml = xf.halign ? `<alignment horizontal="${xf.halign}" vertical="top" wrapText="1"/>` : `<alignment vertical="top" wrapText="1"/>`;
           return `<xf numFmtId="0" fontId="${xf.fontId}" fillId="${xf.fillId}" borderId="${xf.borderId}" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">${alignXml}</xf>`;
         })
         .join("");

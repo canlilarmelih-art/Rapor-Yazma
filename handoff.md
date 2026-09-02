@@ -1,5 +1,13 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.605 - 2026-09-02 - Takyidat: hücreler artık dikeyde ÜSTTEN hizalı (ortadan değil)
+
+- Kullanıcı, 0.0.604 sonrası ekran görüntüsü paylaşıp "sence olmuş mu hizalama. bence olmamış" dedi. Görüntüde satır taşması sorunu (0.0.604'ün asıl hedefi) düzelmişti, ama satır yükseklikleri artık içerik uzunluğuna göre çok değişken olduğundan (bazı satırlar 1 satır, bazıları 7+ satır), kısa değerler (Tarih/Yevmiye No/Kısıtlı Malik gibi) çok uzun bir Açıklama'nın yanında satırın TAM ORTASINDA "yüzüyor" gibi görünüyordu — bu da tabloyu bütünlüksüz/hizasız gösteriyordu.
+- **Düzeltme**: `report-tables-xlsx.js`'teki hücre stil kaydının (`createStyleRegistry`/`buildStylesXml`) dikey hizalaması "center"'dan **"top"**'a çevrildi — artık aynı satırdaki TÜM sütunlar üst kenardan başlıyor, satır ne kadar uzasa da (uzun bir Açıklama nedeniyle) bir bütün olarak okunuyor. Bu değişiklik TÜM sayfalar için geçerli (yalnızca Takyidat değil) — kısa/tek-satırlı içerikte görsel fark yaratmaz, sadece değişken satır yüksekliği olan yerlerde (Takyidat, Değerleme ve Emsaller) fark yaratır.
+- Test: `tools/test-report-tables-xlsx.js`'e hücre stillerinde artık `vertical="center"` OLMADIĞINI ve `vertical="top"` OLDUĞUNU doğrulayan yeni bir REGRESYON senaryosu eklendi. Geçici geri alma ile testin gerçekten BAŞARISIZ olduğu doğrulanıp sonra geri konuldu. `npm run verify` tam paket EXIT:0.
+- `index.html`: `src/exports/report-tables-xlsx.js` cache-buster `?v=20260902-1400`.
+- Canlı tarayıcı testi yapılamadı — kullanıcının "Tüm Tablolar" Excel'ini yeniden indirip Beyanlar/Şerhler tablolarında artık tüm sütunların (Tarih/Yevmiye No/Kısıtlı Malik dahil) satırın ÜST kenarından hizalı göründüğünü doğrulaması gerekiyor.
+
 ## 0.0.604 - 2026-09-02 - Takyidat: satır taşması KÖKTEN düzeltildi (Excel merge edilmiş hücrelerde otomatik büyümez) + Açıklama sütunu DAHA DA genişletildi
 
 - Kullanıcı, 0.0.603'ten sonra İKİ ekran görüntüsü paylaştı: "1. görsel senden gelen görsel" (0.0.603 sonrası hâlâ AYNI satır çakışması sorunu) ve "2. görsel benim istediğim görsel" (Açıklama sütunu çok daha geniş, satırlar birbirine karışmıyor).

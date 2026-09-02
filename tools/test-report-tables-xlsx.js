@@ -290,6 +290,19 @@ assert(
   "Tekil (birlesik olmayan) sayfada satir yuksekligi davranisi DEGISMEMELI (REGRESYON) - HTML kaynagindaki sabit deger kullanilmali.",
 );
 
+// --- 1f) REGRESYON (2026-09-02, ekran görüntüsü): "hizalama... bence -----
+// olmamış" — satır yükseklikleri artık içeriğe göre büyük ölçüde değişiyor
+// (bkz. 1e), bu yüzden dikey "center" hizalama kısa değerleri (Tarih/
+// Yevmiye No/Kısıtlı Malik gibi) çok uzun bir Açıklama'nın yanında satırın
+// ORTASINDA "yüzer" gösterip satırı bütünlüksüz gösteriyordu. Hücre
+// stilleri artık dikeyde "top" hizalanmalı.
+const alignmentRegistry = ReportTablesXlsx.createStyleRegistry();
+alignmentRegistry.getXfId({ bold: false, bg: null, align: null });
+alignmentRegistry.getXfId({ bold: true, bg: "#D9D9D9", align: "center" });
+const stylesXml = alignmentRegistry.buildStylesXml();
+assert(!stylesXml.includes('vertical="center"'), "Hucre stillerinde ARTIK dikey 'center' hizalama OLMAMALI.");
+assert(stylesXml.includes('vertical="top"'), "Hucre stilleri dikeyde 'top' hizalanmali.");
+
 // --- 2) Tam disa aktarma calistir -----------------------------------------
 // Kullanici talebi: Takyidat alt tablolari (Beyanlar/Serhler/Ipotekler) TEK
 // sayfada alt alta; Degerleme ve Emsal tablolari da TEK sayfada alt alta.
