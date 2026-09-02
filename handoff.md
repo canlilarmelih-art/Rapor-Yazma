@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.622 - 2026-09-02 - Açık Adres (Çoklu): Dış Kapı No artık HER ZAMAN gösteriliyor, Blok'tan hemen önce
+
+- Kullanıcı bulgusu: "adreste dış kapı no yazmıyor. bloktan önce yazmalı farklı ise bloktaki mantıkta farklı olarak yazılmalı."
+- **Kök neden**: 0.0.619'da Blok VARKEN "No:" (dış kapı) BİLİNÇLİ OLARAK tamamen kaldırılmıştı ("site+blok kimliği yeterli" varsayımıyla) — kullanıcı bunun YANLIŞ olduğunu belirtti.
+- **Düzeltme**: Yeni `buildAddressDoorAndBlockText()` (app.js) — Dış Kapı No artık Site'den SONRA, Blok'tan HEMEN ÖNCE HER ZAMAN gösteriliyor: TÜM taşınmazlarda AYNIYSA TEK kez ("No: 13A, A Blok D: 7 ve B Blok D: 8"), FARKLIYSA Blok'la AYNI gruplama mantığıyla kendi grubuna göre ayrılıyor ("No: 13A, A Blok D: 7 ve No: 13B, B Blok D: 8"). Blok YOKSA davranış DEĞİŞMEDİ (No zaten gösteriliyordu).
+- Test: `tools/test-multi-unit-open-address.js`'e (a) AYNI dış kapı + FARKLI blok, (b) FARKLI dış kapı + FARKLI blok senaryoları eklendi; mevcut blok örneği (dış kapı hiç girilmemiş durum) korunuyor. Geçici geri alma ile testin gerçekten BAŞARISIZ olduğu doğrulanıp sonra geri konuldu. `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` cache-buster `?v=20260902-3100`.
+- Canlı tarayıcı testi yapılamadı — kullanıcının blok içeren bir raporda dış kapı numaralarının artık Blok'tan önce doğru göründüğünü doğrulaması gerekiyor.
+
 ## 0.0.621 - 2026-09-02 - Açık Adres (Çoklu): Daire numaraları artık TAM liste, "min-max aralığı" DEĞİL
 
 - Kullanıcı bulgusu (GERÇEK 4-taşınmazlı rapor, aynı blok): "Yunuseli Mahallesi, 792. Sokak, Sema Hatun Konakları Sitesi, A Blok D: 5-15, Osmangazi / Bursa ... adres bölümünde 5-15 şeklinde gelmiş 5-10-11-15 olarak gelmeliydi."

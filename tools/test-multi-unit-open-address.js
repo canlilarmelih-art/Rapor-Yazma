@@ -18,6 +18,9 @@
 // D:7-16, Yıldırım / Bursa ... çoklu aynı ada parsel taleplerinde kat
 // bölümünü yazmana gerek yok blok olsaydı Asya Sitesi A Blok D: 7-16 ve
 // B Blok, D:8-12 şeklinde olmalı."
+// Kullanıcı takip talebi #4 (ÜÇÜNCÜ tur): "adreste dış kapı no yazmıyor.
+// bloktan önce yazmalı farklı ise bloktaki mantıkta farklı olarak
+// yazılmalı."
 //
 // buildOpenAddressText() (GERÇEK fonksiyon, isLandPropertyForBankTemplate
 // gibi geniş bir bağımlılık ağacına sahip) FARKLI-ada/parsel dalında
@@ -37,8 +40,11 @@
 //     en sona eklenir.
 //  3) AYNI ada/parsel, FARKLI sokak/caddede, BLOK YOK: gruplar " ve "
 //     ile bağlanır.
-//  4) AYNI ada/parsel, TEK sokak, BLOK VAR: kullanıcının BLOK örneğiyle
-//     BİREBİR ("Asya Sitesi A Blok D:... ve B Blok D:...").
+//  4) AYNI ada/parsel, TEK sokak, BLOK VAR, dış kapı YOK: kullanıcının
+//     BLOK örneğiyle BİREBİR ("Asya Sitesi A Blok D:... ve B Blok D:...").
+//  4b) Dış Kapı No artık HER ZAMAN gösterilir, Blok'tan HEMEN ÖNCE gelir;
+//     AYNIYSA BİR KEZ, FARKLIYSA blok'la AYNI mantıkla kendi grubuna
+//     göre ayrılır (ÜÇÜNCÜ tur düzeltmesi).
 //  5) formatDaireListText(): sayısal sıralama + TAM liste (min-max DEĞİL),
 //     tek değer, sayısal olmayan değerler için ilk-son.
 //  6) FARKLI ada/parsel: HER taşınmaz KENDİ Ada Parsel etiketiyle ayrı
@@ -120,6 +126,7 @@ const functionNames = [
   "formatOpenAddressBuildingName",
   "joinAddressGroupTexts",
   "formatDaireListText",
+  "buildAddressDoorAndBlockText",
   "buildSameAdaParselOpenAddressText",
   "buildMultiUnitOpenAddressText",
 ];
@@ -224,17 +231,18 @@ function unit(overrides = {}) {
   console.log("AYNI ada/parsel + FARKLI sokak/cadde, BLOK YOK -> mahalle ortak + sokak bazli gruplama testi tamam.");
 }
 
-// --- 4) AYNI ada/parsel, TEK sokak, BLOK VAR: kullanıcının BLOK örneği ----
-// ("blok olsaydı Asya Sitesi A Blok D: 7-16 ve B Blok, D:8-12 şeklinde
-// olmalı" — Site BİR KEZ, HER blok kendi "X Blok D:aralık" metnini alır,
-// bloklar ' ve ' ile bağlanır, No: YAZILMAZ).
+// --- 4) AYNI ada/parsel, TEK sokak, BLOK VAR, Dış Kapı No YOK: -----------
+// kullanıcının BLOK örneği ("blok olsaydı Asya Sitesi A Blok D: 7-16 ve B
+// Blok, D:8-12 şeklinde olmalı" — Site BİR KEZ, HER blok kendi "X Blok
+// D:aralık" metnini alır, bloklar ' ve ' ile bağlanır; dış kapı no HİÇ
+// girilmediğinden "No:" de HİÇ görünmez).
 {
   fns.setState({
     activeTitleUnitIndex: 0,
     fields: {
       blockNo: "100", parcelNo: "5",
       neighborhood: "Osmaniye", street: "Kılıç Sokak", addressSiteName: "Asya Sitesi",
-      addressBlockName: "A", outerDoor: "13A", innerDoor: "7",
+      addressBlockName: "A", innerDoor: "7",
     },
     tables: {},
     titleUnits: [
@@ -247,10 +255,60 @@ function unit(overrides = {}) {
   assert.equal(
     result,
     "Osmaniye Mahallesi, Kılıç Sokak, Asya Sitesi, A Blok D: 7-16 ve B Blok D: 8-12",
-    `Site BİR KEZ, HER blok kendi 'X Blok D:aralık' metnini almalı, bloklar ' ve ' ile bağlanmalı, No: YAZILMAMALI. Bulunan: ${result}`
+    `Site BİR KEZ, HER blok kendi 'X Blok D:aralık' metnini almalı, bloklar ' ve ' ile bağlanmalı. Bulunan: ${result}`
   );
-  assert.ok(!result.includes("No:"), "Blok VARKEN 'No:' (dış kapı) YAZILMAMALI (site+blok kimliği yeterli).");
-  console.log("KULLANICI BLOK ORNEGI: AYNI sokak + BLOK VAR -> site bir kez + blok basina daire araligi testi tamam.");
+  assert.ok(!result.includes("No:"), "Dış kapı no HİÇ girilmediyse 'No:' de HİÇ görünmemeli.");
+  console.log("KULLANICI BLOK ORNEGI: AYNI sokak + BLOK VAR, dis kapi yok -> site bir kez + blok basina daire araligi testi tamam.");
+}
+
+// --- 4b) KULLANICI DÜZELTMESİ (2026-09-02): "adreste dış kapı no --------
+// yazmıyor. bloktan önce yazmalı farklı ise bloktaki mantıkta farklı
+// olarak yazılmalı" — Dış Kapı No artık HER ZAMAN gösterilir, Blok'tan
+// HEMEN ÖNCE gelir. (a) TÜM taşınmazlarda AYNI dış kapı + BLOK VAR: "No:"
+// BİR KEZ, ardından blok grupları. (b) Dış kapı FARKLIYSA: blok'la AYNI
+// mantıkla (kendi grubuna göre) ayrılır.
+{
+  // (a) AYNI dış kapı ("13A"), FARKLI blok.
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: {
+      blockNo: "100", parcelNo: "5",
+      neighborhood: "Osmaniye", street: "Kılıç Sokak", addressSiteName: "Asya Sitesi",
+      addressBlockName: "A", outerDoor: "13A", innerDoor: "7",
+    },
+    tables: {},
+    titleUnits: [
+      unit({ blockNo: "100", parcelNo: "5", neighborhood: "Osmaniye", street: "Kılıç Sokak", addressBlockName: "B", outerDoor: "13A", innerDoor: "8" }),
+    ],
+  });
+  const sameDoorResult = fns.buildMultiUnitOpenAddressText();
+  assert.equal(
+    sameDoorResult,
+    "Osmaniye Mahallesi, Kılıç Sokak, Asya Sitesi, No: 13A, A Blok D: 7 ve B Blok D: 8",
+    `AYNI dış kapı ("No: 13A") BİR KEZ, Blok'tan HEMEN ÖNCE gelmeli. Bulunan: ${sameDoorResult}`
+  );
+
+  // (b) FARKLI dış kapı ("13A"/"13B"), FARKLI blok — kullanıcı: "farklı
+  // ise bloktaki mantıkta farklı olarak yazılmalı".
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: {
+      blockNo: "100", parcelNo: "5",
+      neighborhood: "Osmaniye", street: "Kılıç Sokak", addressSiteName: "Asya Sitesi",
+      addressBlockName: "A", outerDoor: "13A", innerDoor: "7",
+    },
+    tables: {},
+    titleUnits: [
+      unit({ blockNo: "100", parcelNo: "5", neighborhood: "Osmaniye", street: "Kılıç Sokak", addressBlockName: "B", outerDoor: "13B", innerDoor: "8" }),
+    ],
+  });
+  const diffDoorResult = fns.buildMultiUnitOpenAddressText();
+  assert.equal(
+    diffDoorResult,
+    "Osmaniye Mahallesi, Kılıç Sokak, Asya Sitesi, No: 13A, A Blok D: 7 ve No: 13B, B Blok D: 8",
+    `FARKLI dış kapı, blok'la AYNI mantıkla (kendi grubuna göre) ayrılmalı. Bulunan: ${diffDoorResult}`
+  );
+  console.log("KULLANICI DUZELTMESI: Dis Kapi No artik HER ZAMAN gosterilir, bloktan once gelir, farkliysa blok mantigiyla ayrilir testi tamam.");
 }
 
 // --- 5) formatDaireListText(): sayısal sıralama + TAM liste, tek değer, --
