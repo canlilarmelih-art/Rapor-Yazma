@@ -21,7 +21,8 @@
 //     fallback'i tetiklemesi için, bkz. report-tables-xlsx.js).
 //  2) 2+ taşınmazlı, FARKLI ada/parselli bir raporda: her kategori kendi
 //     MEVCUT sütunlarını (Şerh Türü/Açıklama/Haciz Tutarı/Tarih/Yevmiye
-//     No/Kısıtlı Malik gibi) korur, sona "Ada / Parsel" sütunu eklenir,
+//     No/Kısıtlı Malik gibi) korur, EN BAŞA "Ada / Parsel" sütunu eklenir
+//     (2026-09-02 kullanıcı talebiyle sondan başa taşındı),
 //     ve bu sütun formatTitleUnitEncumbranceReference'ın ürettiği "166
 //     ada 7 parsel" biçimli metni taşır (ZATEN test edilmiş
 //     getMultiTitleUnitEncumbranceRows yeniden kullanılıyor, yeni bir
@@ -156,9 +157,10 @@ function parseSimpleTable(html) {
 
 // --- 2) 2 taşınmazlı, FARKLI ada/parselli rapor: Şerhler tablosu ----------
 // mevcut sütunları (Şerh Türü/Açıklama/Haciz Tutarı/Tarih/Yevmiye No/
-// Kısıtlı Malik) korur, sona "Ada / Parsel" eklenir ve doğru ada/parsel
-// metnini taşır (kullanıcının PDF örneğindeki "166/7" ve "1955/3" gibi
-// FARKLI parseller).
+// Kısıtlı Malik) korur, EN BAŞA "Ada / Parsel" eklenir (2026-09-02
+// kullanıcı talebiyle sondan başa taşındı) ve doğru ada/parsel metnini
+// taşır (kullanıcının PDF örneğindeki "166/7" ve "1955/3" gibi FARKLI
+// parseller).
 {
   fns.setState({
     fields: { blockNo: "166", parcelNo: "7", titleBlockName: "", unitNo: "" },
@@ -187,20 +189,20 @@ function parseSimpleTable(html) {
   const parsed = parseSimpleTable(html);
   assert.deepEqual(
     parsed.headers,
-    ["Şerh Türü", "Açıklama", "Haciz Tutarı", "Tarih", "Yevmiye No", "Kısıtlı Malik", "Ada / Parsel"],
-    `Basliklar mevcut Serhler duzenini korumali + sona "Ada / Parsel" eklemeli, bulunan: ${parsed.headers.join(", ")}`,
+    ["Ada / Parsel", "Şerh Türü", "Açıklama", "Haciz Tutarı", "Tarih", "Yevmiye No", "Kısıtlı Malik"],
+    `Basliklar mevcut Serhler duzenini korumali + en basa "Ada / Parsel" eklemeli, bulunan: ${parsed.headers.join(", ")}`,
   );
   assert.equal(parsed.rows.length, 2, "2 FARKLI yevmiyeli kayit -> 2 ayri satir beklenir.");
-  const row166 = parsed.rows.find((row) => row[4] === "3694");
+  const row166 = parsed.rows.find((row) => row[5] === "3694");
   assert.ok(row166, "166/7 parselinin haciz kaydi bulunamadi.");
-  assert.equal(row166[0], "İcrai Haciz");
-  assert.equal(row166[2], "37.995,32 TL", "Haciz Tutari sutunu korunmali.");
-  assert.equal(row166[6], "166 ada 7 parsel", `"Ada / Parsel" sutunu dogru taşınmazi gostermeli, bulunan: ${row166[6]}`);
-  const row1955 = parsed.rows.find((row) => row[4] === "5213");
+  assert.equal(row166[1], "İcrai Haciz");
+  assert.equal(row166[3], "37.995,32 TL", "Haciz Tutari sutunu korunmali.");
+  assert.equal(row166[0], "166 ada 7 parsel", `"Ada / Parsel" sutunu dogru taşınmazi gostermeli, bulunan: ${row166[0]}`);
+  const row1955 = parsed.rows.find((row) => row[5] === "5213");
   assert.ok(row1955, "1955/3 parselinin haciz kaydi bulunamadi.");
-  assert.equal(row1955[5], "Vergül Erdem", "Kisitli Malik sutunu korunmali.");
-  assert.equal(row1955[6], "1955 ada 3 parsel", `"Ada / Parsel" sutunu dogru taşınmazi gostermeli, bulunan: ${row1955[6]}`);
-  console.log("2 FARKLI ada/parselli raporda Serhler ozet tablosu (Ada/Parsel sutunu DAHIL) testi tamam.");
+  assert.equal(row1955[6], "Vergül Erdem", "Kisitli Malik sutunu korunmali.");
+  assert.equal(row1955[0], "1955 ada 3 parsel", `"Ada / Parsel" sutunu dogru taşınmazi gostermeli, bulunan: ${row1955[0]}`);
+  console.log("2 FARKLI ada/parselli raporda Serhler ozet tablosu (Ada/Parsel sutunu EN BASTA) testi tamam.");
 }
 
 // --- 3) REGRESYON: aynı yevmiye no'lu (ortak) kayıt 2 taşınmazda da ------
@@ -234,9 +236,9 @@ function parseSimpleTable(html) {
   const parsed = parseSimpleTable(html);
   assert.equal(parsed.rows.length, 1, "Ayni yevmiye no'lu (999) kayit TEK satirda birlesmeli.");
   assert.equal(
-    parsed.rows[0][6],
+    parsed.rows[0][0],
     "166 ada 7 parsel, 1955 ada 3 parsel",
-    `Ortak kayit HER IKI ada/parseli de listelemeli, bulunan: ${parsed.rows[0][6]}`,
+    `Ortak kayit HER IKI ada/parseli de listelemeli, bulunan: ${parsed.rows[0][0]}`,
   );
   console.log("Ortak (ayni yevmiyeli) kaydin Ada/Parsel sutununda BIRLESIK gosterilmesi REGRESYON testi tamam.");
 }
@@ -265,24 +267,26 @@ function parseSimpleTable(html) {
   const html = fns.buildTakyidatDeclarationsUnitsSummaryWordTableHtml();
   assert.ok(html, "Beyanlar HTML'i DOLU donmeli.");
   const parsed = parseSimpleTable(html);
-  assert.deepEqual(parsed.headers, ["Tür", "Açıklama", "Tarih", "Yevmiye No", "Kısıtlı Malik", "Ada / Parsel"]);
+  // 2026-09-02 kullanıcı talebi: "Ada / Parsel sütununu en başa al".
+  assert.deepEqual(parsed.headers, ["Ada / Parsel", "Tür", "Açıklama", "Tarih", "Yevmiye No", "Kısıtlı Malik"]);
   assert.equal(parsed.rows.length, 2, `Gercek kayit (166/7) + bos tasinmaz icin "kayit yok" satiri (1955/3) = 2 satir beklenir, bulunan: ${JSON.stringify(parsed.rows)}`);
-  const realRow = parsed.rows.find((row) => row[5] === "166 ada 7 parsel");
+  const realRow = parsed.rows.find((row) => row[0] === "166 ada 7 parsel");
   assert.ok(realRow, "166/7 parselinin gercek beyan kaydi bulunamadi.");
-  assert.equal(realRow[1], "Yönetim Planı Belirtilmesi");
-  const emptyRow = parsed.rows.find((row) => row[5] === "1955 ada 3 parsel");
+  assert.equal(realRow[2], "Yönetim Planı Belirtilmesi");
+  const emptyRow = parsed.rows.find((row) => row[0] === "1955 ada 3 parsel");
   assert.ok(emptyRow, `Bos tasinmaz (1955/3) icin "kayit yok" satiri bulunamadi, bulunan: ${JSON.stringify(parsed.rows)}`);
   // Kullanıcı bulgusu (2026-09-02): "Herhangi bir kayıt bulunmamaktadır.
   // ifadesi açıklama sütunlarında yazmalı. Mevcut durumda türde yazıyor." —
-  // Beyanlar'da "Açıklama" 1. sütun (index 1), 0. sütun ("Tür") artık "-".
-  assert.equal(emptyRow[1], "Herhangi bir kayıt bulunmamaktadır.", `Bos tasinmazin "Aciklama" sutununda "Herhangi bir kayit bulunmamaktadir." metni olmali, bulunan: ${emptyRow[1]}`);
-  assert.deepEqual([emptyRow[0], emptyRow[2], emptyRow[3], emptyRow[4]], ["-", "-", "-", "-"], "Bos tasinmaz satirinin 'Aciklama' DISINDAKI sutunlari '-' olmali.");
+  // Beyanlar'da "Açıklama" artik 2. sütun (index 2, Ada/Parsel'in en basa
+  // eklenmesiyle bir sağa kaydı), 1. sütun ("Tür") artık "-".
+  assert.equal(emptyRow[2], "Herhangi bir kayıt bulunmamaktadır.", `Bos tasinmazin "Aciklama" sutununda "Herhangi bir kayit bulunmamaktadir." metni olmali, bulunan: ${emptyRow[2]}`);
+  assert.deepEqual([emptyRow[1], emptyRow[3], emptyRow[4], emptyRow[5]], ["-", "-", "-", "-"], "Bos tasinmaz satirinin 'Aciklama'/'Ada-Parsel' DISINDAKI sutunlari '-' olmali.");
   // Kullanıcı takip talebi (2026-09-01): "üzerinde takyidat bulunmayan
   // taşınmazlar en üstte belirtilsin" — "kayıt yok" satırı gerçek kayıttan
   // ÖNCE (index 0) gelmeli.
-  assert.equal(parsed.rows[0][5], "1955 ada 3 parsel", `"Kayit yok" satiri EN USTTE olmali, bulunan sira: ${JSON.stringify(parsed.rows.map((r) => r[5]))}`);
-  assert.equal(parsed.rows[0][1], "Herhangi bir kayıt bulunmamaktadır.");
-  console.log("Beyanlar ozet tablosu (Ada/Parsel sutunu + bos tasinmaz icin EN USTTE 'kayit yok' satiri) testi tamam.");
+  assert.equal(parsed.rows[0][0], "1955 ada 3 parsel", `"Kayit yok" satiri EN USTTE olmali, bulunan sira: ${JSON.stringify(parsed.rows.map((r) => r[0]))}`);
+  assert.equal(parsed.rows[0][2], "Herhangi bir kayıt bulunmamaktadır.");
+  console.log("Beyanlar ozet tablosu (Ada/Parsel sutunu EN BASTA + bos tasinmaz icin EN USTTE 'kayit yok' satiri) testi tamam.");
 }
 
 // --- 5) REGRESYON (2026-09-01, kullanıcının gerçek 7 taşınmazlı raporuyla) -
@@ -337,8 +341,10 @@ function parseSimpleTable(html) {
   const html = fns.buildTakyidatAnnotationsUnitsSummaryWordTableHtml();
   assert.ok(html, "Serhler HTML'i DOLU donmeli.");
   const parsed = parseSimpleTable(html);
-  assert.equal(parsed.rows.length, 7, `3 gercek kayit (farkli yevmiye, birlesmez) + 4 "kayit yok" satiri = 7 tasinmaz = 7 satir beklenir, bulunan: ${JSON.stringify(parsed.rows.map((r) => r[6]))}`);
-  const allAdaParsels = parsed.rows.map((row) => row[6]).sort();
+  assert.equal(parsed.rows.length, 7, `3 gercek kayit (farkli yevmiye, birlesmez) + 4 "kayit yok" satiri = 7 tasinmaz = 7 satir beklenir, bulunan: ${JSON.stringify(parsed.rows.map((r) => r[0]))}`);
+  // 2026-09-02 kullanıcı talebi: "Ada / Parsel sütununu en başa al" —
+  // referans sütunu artık index 0.
+  const allAdaParsels = parsed.rows.map((row) => row[0]).sort();
   assert.deepEqual(
     allAdaParsels,
     ["1135 ada 7 parsel", "166 ada 17 parsel", "166 ada 7 parsel", "1605 ada 4 parsel", "1955 ada 3 parsel", "1955 ada 4 parsel", "1141 ada 3 parsel"].sort(),
@@ -346,24 +352,25 @@ function parseSimpleTable(html) {
   );
   // Kullanıcı bulgusu (2026-09-02): "Herhangi bir kayıt bulunmamaktadır.
   // ifadesi açıklama sütunlarında yazmalı. Mevcut durumda türde yazıyor." —
-  // Şerhler'de "Açıklama" 1. sütun (index 1), 0. sütun ("Şerh Türü") artık
-  // gerçek kayıtlarda olduğu gibi kalır, ama "kayıt yok" satırında "-" olur.
-  const emptyRows = parsed.rows.filter((row) => row[1] === "Herhangi bir kayıt bulunmamaktadır.");
+  // Şerhler'de "Açıklama" artık 2. sütun (index 2, Ada/Parsel'in en basa
+  // eklenmesiyle bir sağa kaydı), 1. sütun ("Şerh Türü") gerçek kayıtlarda
+  // olduğu gibi kalır, ama "kayıt yok" satırında "-" olur.
+  const emptyRows = parsed.rows.filter((row) => row[2] === "Herhangi bir kayıt bulunmamaktadır.");
   assert.equal(emptyRows.length, 4, `4 kayitsiz tasinmaz icin 4 "kayit yok" satiri beklenir, bulunan: ${emptyRows.length}`);
-  assert.ok(emptyRows.every((row) => row[0] === "-"), `"Kayit yok" satirlarinin "Serh Turu" sutunu "-" olmali, bulunan: ${JSON.stringify(emptyRows.map((r) => r[0]))}`);
+  assert.ok(emptyRows.every((row) => row[1] === "-"), `"Kayit yok" satirlarinin "Serh Turu" sutunu "-" olmali, bulunan: ${JSON.stringify(emptyRows.map((r) => r[1]))}`);
   // Kullanıcı takip talebi (2026-09-01): "üzerinde takyidat bulunmayan
   // taşınmazlar en üstte belirtilsin. şu an biraz arada kaynıyor gibiler" —
   // 4 "kayıt yok" satırı, 3 gerçek kayıttan ÖNCE (tablonun İLK 4 satırı)
   // gelmeli.
   assert.deepEqual(
-    parsed.rows.slice(0, 4).map((row) => row[1]),
+    parsed.rows.slice(0, 4).map((row) => row[2]),
     ["Herhangi bir kayıt bulunmamaktadır.", "Herhangi bir kayıt bulunmamaktadır.", "Herhangi bir kayıt bulunmamaktadır.", "Herhangi bir kayıt bulunmamaktadır."],
-    `Ilk 4 satirin TUMU "kayit yok" olmali (en ustte), bulunan: ${JSON.stringify(parsed.rows.map((r) => r[1]))}`,
+    `Ilk 4 satirin TUMU "kayit yok" olmali (en ustte), bulunan: ${JSON.stringify(parsed.rows.map((r) => r[2]))}`,
   );
   assert.deepEqual(
-    parsed.rows.slice(4).map((row) => row[0]).sort(),
+    parsed.rows.slice(4).map((row) => row[1]).sort(),
     ["İcrai Haciz", "İcrai Haciz", "Serh"].sort(),
-    `Son 3 satirin TUMU gercek kayit olmali, bulunan: ${JSON.stringify(parsed.rows.slice(4).map((r) => r[0]))}`,
+    `Son 3 satirin TUMU gercek kayit olmali, bulunan: ${JSON.stringify(parsed.rows.slice(4).map((r) => r[1]))}`,
   );
   console.log("7 tasinmazli GERCEK senaryo (3'unde kayit, 4'unde yok) - kayitsiz tasinmazlar EN USTTE testi tamam.");
 }

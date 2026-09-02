@@ -1,5 +1,13 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.602 - 2026-09-02 - Takyidat özet tablosunda "Ada / Parsel" sütunu artık EN BAŞTA
+
+- Kullanıcı talebi: "Ada / Parsel sütununu en başa al" — 0.0.597'den beri bu sütun tablonun EN SONUNDA (sağ uçta) ekleniyordu; kullanıcı bunun yerine ilk sütun (en solda) olmasını istedi.
+- **Düzeltme**: `buildTakyidatCategoryUnitsSummaryTableHtml()`'de hem başlık dizisi (`headers = ["Ada / Parsel", ...columns]`) hem de her satır (gerçek kayıt + "kayıt yok" placeholder satırları) artık "Ada / Parsel" referansını EN BAŞA koyacak şekilde yeniden sıralandı — diğer tüm sütunlar (Tür/Şerh Türü/Açıklama/Tarih/Yevmiye No/Kısıtlı Malik/vb.) bir sağa kaydı, kendi aralarındaki sıra DEĞİŞMEDİ.
+- Test: `tools/test-takyidat-multi-unit-summary.js`'teki TÜM senaryolardaki sütun-index referansları yeni sıraya (Ada/Parsel=0, diğerleri +1 kaymış) güncellendi. Düzeltmeden önce (geçici geri alma ile) testin gerçekten BAŞARISIZ olduğu doğrulanıp sonra geri konuldu. `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` cache-buster `?v=20260902-1100`.
+- Canlı tarayıcı testi yapılamadı — kullanıcının "Tüm Tablolar" Excel'ini yeniden indirip Beyanlar/Şerhler/İpotekler tablolarında "Ada / Parsel" sütununun artık EN SOLDA (ilk sütun) göründüğünü doğrulaması gerekir.
+
 ## 0.0.601 - 2026-09-02 - "Herhangi bir kayıt bulunmamaktadır." artık Açıklama sütununda (Tür sütununda değil)
 
 - Kullanıcı talebi: "Herhangi bir kayıt bulunmamaktadır. ifadesi açıklama sütunlarında yazmalı. Mevcut durumda türde yazıyor." — 0.0.598'in eklediği "kayıt yok" placeholder satırı, metni her zaman sabit 0. sütuna (Tür / Şerh Türü / İpotek Lehdarı) yazıyordu; kullanıcı bunun yerine "Açıklama" sütununda görünmesini istedi.

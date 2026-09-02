@@ -23597,8 +23597,9 @@ function buildTakyidatWordTableHtml() {
 // fonksiyon, bkz. groupEncumbranceRowsAcrossTitleUnits) yeniden
 // kullanılır — YENİ bir gruplama/eşleştirme mantığı YAZILMADI. Her
 // kategori kendi MEVCUT sütun düzenini (encumbranceReportTables/
-// encumbranceReportColumns) korur, yalnızca sona "Ada / Parsel" (hangi
-// taşınmaz(lar)ı kapsadığı) sütunu eklenir — formatTitleUnitEncumbranceReference
+// encumbranceReportColumns) korur, yalnızca en başa "Ada / Parsel" (hangi
+// taşınmaz(lar)ı kapsadığı) sütunu eklenir (2026-09-02 kullanıcı talebiyle
+// sondan başa taşındı) — formatTitleUnitEncumbranceReference
 // zaten "166 ada 7 parsel[, N no.lu B.B.]" biçiminde döner (farklı ada/
 // parselde DOLU ada/parsel gösterir, aynı parselde blok-BB kısaltmasına
 // döner).
@@ -23623,11 +23624,14 @@ function buildTakyidatCategoryUnitsSummaryTableHtml(tableKey, columns) {
   // üzerine [temsil edilmiş şekilde] tek sayfada yer almalı" talebinin
   // karşılığıdır.
   if (!groupedRows.length) return "";
-  const headers = [...columns, "Ada / Parsel"];
+  // Kullanıcı takip talebi (2026-09-02): "Ada / Parsel sütununu en başa
+  // al" — hangi taşınmaz(lar)ı kapsadığı bilgisi artık tablonun SONUNDA
+  // değil, EN BAŞINDA (ilk sütun) gösteriliyor.
+  const headers = ["Ada / Parsel", ...columns];
   const rows = groupedRows.map((row) => {
     const cells = columns.map((_, columnIndex) => encumbranceCleanText(row[`c${columnIndex}`]) || "-");
     const references = Array.isArray(row.__titleUnitReferences) ? row.__titleUnitReferences.filter(Boolean) : [];
-    return [...cells, references.length ? references.join(", ") : "-"];
+    return [references.length ? references.join(", ") : "-", ...cells];
   });
   // Kullanıcı bulgusu (2026-09-02): "Herhangi bir kayıt bulunmamaktadır.
   // ifadesi açıklama sütunlarında yazmalı. Mevcut durumda türde yazıyor." —
@@ -23645,7 +23649,7 @@ function buildTakyidatCategoryUnitsSummaryTableHtml(tableKey, columns) {
     const fields = getTitleUnitFieldsForLabel(index) || {};
     const reference = formatTitleUnitEncumbranceReference(fields, index, false);
     const placeholderCells = columns.map((_, columnIndex) => (columnIndex === placeholderColumnIndex ? "Herhangi bir kayıt bulunmamaktadır." : "-"));
-    emptyUnitRows.push([...placeholderCells, reference]);
+    emptyUnitRows.push([reference, ...placeholderCells]);
   }
   // Kullanıcı takip talebi (2026-09-01): "üzerinde takyidat bulunmayan
   // taşınmazlar en üstte belirtilsin. şu an biraz arada kaynıyor gibiler" —
