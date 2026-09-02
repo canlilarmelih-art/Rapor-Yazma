@@ -23383,9 +23383,16 @@ const UNIT_UNITS_TABLE_FIELD_DEFS = [
 // İndirgenmiş Toplam Yasal/Mevcut Alan — computed, editable DEĞİL (satır
 // panelindeki "İndirgenmiş Toplam ... Alanı" alanlarıyla AYNI hesap,
 // calculateReducedUnitFloorTotal, TÜM unitFloors satırlarının toplamı).
+// Kullanıcı talebi (2026-09-02, iki ekran görüntüsü karşılaştırması):
+// "gerekirse tabloların başlıklarında kısaltmalar kullanabilirsin.
+// anlaşılması önemli" — bu tablo (Bağımsız Bölüm Özeti) banka
+// şablonuna gömülünce sütun sayısı fazla olduğundan sayfayı taşıyordu;
+// "İndirgenmiş Toplam ..." gibi uzun başlıklar "İnd Top ..." olarak
+// kısaltıldı (anlaşılırlık korunuyor, yalnızca tekrarlanan "Toplam"
+// kelimesi kısaltıldı).
 const UNIT_UNITS_TABLE_REDUCED_AREA_DEFS = [
-  { label: "İndirgenmiş Toplam Yasal Alan (m²)", mode: "legal" },
-  { label: "İndirgenmiş Toplam Mevcut Alan (m²)", mode: "current" },
+  { label: "İnd Top Yasal Alan (m²)", mode: "legal" },
+  { label: "İnd Top Mevcut Alan (m²)", mode: "current" },
 ];
 
 // "Yasal Alan (m²)"/"Mevcut Alan (m²)" (UNIT_UNITS_TABLE_FIELD_DEFS, YUKARIDA)
@@ -23403,15 +23410,23 @@ function calculateRawUnitFloorAreaTotal(rows = [], mode = "legal") {
 }
 
 // İç Hacimler grup sayıları — SABİT 8 sütun (Antre AYRI, Diğer dahil).
+// Kullanıcı talebi (2026-09-02, iki ekran görüntüsü karşılaştırması):
+// "gerekirse tabloların başlıklarında kısaltmalar kullanabilirsin.
+// anlaşılması önemli" — bu tablo banka şablonuna gömülünce 8 sütun +
+// diğer alanlarla birlikte sayfayı taşıyordu; başlıklar kısaltıldı
+// (anlaşılırlık korunacak şekilde: tek harfe indirilmedi, "Salon"→"Sl",
+// "Mutfak"→"Mu" gibi tanınabilir kısaltmalar). "Oda"/"Wc" zaten kısa
+// olduğundan değiştirilmedi. `key` alanları (sınıflandırma için
+// kullanılıyor, bkz. classifyUnitFloorInteriorItemGroup) DEĞİŞMEDİ.
 const UNIT_UNITS_TABLE_INTERIOR_GROUP_DEFS = [
-  { key: "salon", label: "Salon" },
+  { key: "salon", label: "Sl" },
   { key: "oda", label: "Oda" },
-  { key: "mutfak", label: "Mutfak" },
-  { key: "banyo", label: "Banyo" },
+  { key: "mutfak", label: "Mu" },
+  { key: "banyo", label: "Ban" },
   { key: "wc", label: "Wc" },
-  { key: "antre", label: "Antre" },
-  { key: "balkon", label: "Balkon" },
-  { key: "diger", label: "Diğer" },
+  { key: "antre", label: "Ant" },
+  { key: "balkon", label: "Bal" },
+  { key: "diger", label: "Diğ" },
 ];
 
 // TEK bir iç hacim kalemi adını (parseUnitInteriorItem'dan gelen, normalize

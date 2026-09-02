@@ -507,8 +507,8 @@ const DIFFERENTIATING_UNIT_OVERRIDES = {};
   });
   fns.getState().titleUnits[0].tables = { unitFloors: [] };
   const data = fns.buildUnitUnitsSummaryTableData();
-  const legalIndex = data.headers.indexOf("İndirgenmiş Toplam Yasal Alan (m²)");
-  assert.ok(legalIndex >= 0, "'İndirgenmiş Toplam Yasal Alan (m²)' sütunu bulunmalı.");
+  const legalIndex = data.headers.indexOf("İnd Top Yasal Alan (m²)");
+  assert.ok(legalIndex >= 0, "'İnd Top Yasal Alan (m²)' sütunu bulunmalı.");
   assert.equal(data.columnMeta[legalIndex].kind, "readonly", "İndirgenmiş toplam alan sütunu readonly olmalı.");
   // calculateReducedUnitFloorTotal(rows, "legal") ile AYNI formül (satır
   // panelindeki hesapla TUTARLI, TEK kaynak): (100*1.00 + 20*0.50) satır 1
@@ -582,7 +582,7 @@ const DIFFERENTIATING_UNIT_OVERRIDES = {};
 
   const interiorDefs = fns.getInteriorGroupDefs();
   assert.equal(interiorDefs.length, 8, "8 SABİT İç Hacimler sütunu olmalı (Antre AYRI, Diğer dahil).");
-  assert.deepEqual(interiorDefs.map((d) => d.label), ["Salon", "Oda", "Mutfak", "Banyo", "Wc", "Antre", "Balkon", "Diğer"]);
+  assert.deepEqual(interiorDefs.map((d) => d.label), ["Sl", "Oda", "Mu", "Ban", "Wc", "Ant", "Bal", "Diğ"]);
 
   // Tüm taşınmazlarda "0" olsa bile İç Hacimler sütunları GÖSTERİLMEYE
   // devam eder (columnHasData'nın "-" / boş varsayımından muaf).
@@ -593,8 +593,8 @@ const DIFFERENTIATING_UNIT_OVERRIDES = {};
     titleUnits: [unit(fullUnitFields(DIFFERENTIATING_UNIT_OVERRIDES))],
   });
   const data = fns.buildUnitUnitsSummaryTableData();
-  assert.ok(data.headers.includes("Diğer"), "Hiçbir taşınmazda 'Diğer' kalemi olmasa bile sütun GÖRÜNMELİ (0 dahil).");
-  const digerIndex = data.headers.indexOf("Diğer");
+  assert.ok(data.headers.includes("Diğ"), "Hiçbir taşınmazda 'Diğer' kalemi olmasa bile sütun GÖRÜNMELİ (0 dahil).");
+  const digerIndex = data.headers.indexOf("Diğ");
   assert.equal(data.rows[0][digerIndex], "0", "Boş İç Hacimler için '0' gösterilmeli, '-' DEĞİL.");
   assert.equal(data.columnMeta[digerIndex].kind, "readonly", "İç Hacimler grup sütunları readonly olmalı.");
   console.log("Ic Hacimler grup sutunlarinin '0' dahil her zaman gosterilmesi testi tamam.");
@@ -617,7 +617,7 @@ const DIFFERENTIATING_UNIT_OVERRIDES = {};
     titleUnits: [unit(fullUnitFields({ unitUsageStatus: "Kiracı", titleBlockName: "B", unitFloor: "Zemin", unitNo: "7" }))],
   });
   const html = fns.buildUnitUnitsSummaryWordTableHtml();
-  ["Mutfak", "Wc", "Diğer"].forEach((label) => {
+  ["Mu", "Wc", "Diğ"].forEach((label) => {
     assert.ok(html.includes(label.toLocaleUpperCase("tr-TR")), `"${label}" sütunu (İç Hacimler, readonly) hoistlenmemeli, banka şablonu HTML'inde kendi sütun BAŞLIĞI olarak kalmalı, bulunan HTML'de yok.`);
   });
   console.log("hoistUniformColumnsForWordTable: Ic Hacimler (Mutfak/Wc/Diger) readonly sutunlari ASLA hoistlenmez (kullanici duzeltmesi) testi tamam.");
