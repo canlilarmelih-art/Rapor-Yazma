@@ -1,5 +1,16 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.603 - 2026-09-02 - Takyidat: Tarih/Yevmiye No sütunları daraltıldı, Açıklama genişletildi + Excel'de satırlar artık taşmıyor
+
+- Kullanıcı talebi (ekran görüntüsüyle): "tarih ve yevmiye no sütunlarını %50 oranında küçültü açıklama sütununu %100 oranında büyüt. görseldeki sütunların hizasızlığı sorununu çöz."
+- **Sütun genişliği**: `buildTakyidatCategoryUnitsSummaryTableHtml()`'de artık her sütun, kendi MEVCUT eşit-pay genişliğine göre bir ağırlık çarpanı alıyor — Tarih/Yevmiye No ×0.5 (yarıya), Açıklama ×2 (iki katı), diğerleri (Ada/Parsel, Tür/Şerh Türü/İpotek Lehdarı, Haciz Tutarı/İpotek Derecesi/İpotek Tutarı, Kısıtlı Malik) değişmedi. Bu yüzdeler `buildCompactReportWordTableHtml`'e `columnWidths` (colgroup) olarak veriliyor, oradan `report-tables-xlsx.js`'in ince-sütun ızgarasına (`remapCellGridToFineColumns`) taşınıyor.
+- **Kök neden (asıl "hizasızlık")**: ekran görüntüsünde metnin satır sınırının dışına taşıp bir alttaki satırla çakıştığı görüldü. Sebebi: `buildCompactReportWordTableHtml`'in ürettiği satır yüksekliği Word için SADECE bir ALT SINIR (`mso-height-rule:at-least` — uzun metin satırı büyütebilir), ama `report-tables-xlsx.js`'teki `buildSheetXmlFromCellGrid` bu değeri Excel'e `customHeight="1"` ile KESİN/SABİT yükseklik olarak yazıyordu. Excel bu durumda satırı OTOMATİK BÜYÜTMÜYOR — uzun Açıklama/haciz açıklaması metinleri satır sınırının dışına taşıp alttaki satırla görsel olarak çakışıyordu.
+- **Düzeltme**: birleşik ("Tüm Tablolar") sayfalarında (Takyidat + Değerleme ve Emsaller — `options.uniformColumnWidth` ile işaretli çağrılar) satır yüksekliği artık HİÇ zorlanmıyor; Excel, wrapText açık hücreler için satırı içeriğe göre otomatik büyütüyor. Diğer 8+ tekil "Taşınmazlar ... Özeti" sayfalarının davranışı DEĞİŞMEDİ (regresyon testiyle korundu).
+- **Bilinen sınırlama**: Beyanlar (6 sütun) ile Şerhler/İpotekler (7 sütun) arasında "Ada / Parsel" gibi ortak sütunların genişliği yine de birebir aynı olmayabilir (sütun sayıları farklı olduğundan) — ama bu fark artık çok daha küçük, ve asıl büyük görsel bozukluk (satır taşması) tamamen giderildi.
+- Test: `tools/test-takyidat-multi-unit-summary.js`'e sütun genişlik oranlarını doğrulayan yeni senaryo eklendi; `tools/test-report-tables-xlsx.js`'e birleşik sayfalarda satır yüksekliğinin zorlanmadığını (ve tekil sayfalarda ESKİ davranışın korunduğunu) doğrulayan REGRESYON senaryosu eklendi. Her iki düzeltme için de geçici geri alma ile testlerin gerçekten BAŞARISIZ olduğu doğrulanıp sonra geri konuldu. `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` ve `src/exports/report-tables-xlsx.js` cache-buster'ları `?v=20260902-1200`.
+- Canlı tarayıcı testi yapılamadı — kullanıcının "Tüm Tablolar" Excel'ini yeniden indirip Beyanlar/Şerhler tablolarında Açıklama sütununun daha geniş, Tarih/Yevmiye No sütunlarının daha dar olduğunu ve satırların artık birbirine karışmadan (her satır kendi içeriğine göre büyüyerek) göründüğünü doğrulaması gerekiyor.
+
 ## 0.0.602 - 2026-09-02 - Takyidat özet tablosunda "Ada / Parsel" sütunu artık EN BAŞTA
 
 - Kullanıcı talebi: "Ada / Parsel sütununu en başa al" — 0.0.597'den beri bu sütun tablonun EN SONUNDA (sağ uçta) ekleniyordu; kullanıcı bunun yerine ilk sütun (en solda) olmasını istedi.

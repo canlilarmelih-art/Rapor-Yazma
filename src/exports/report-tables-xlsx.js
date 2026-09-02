@@ -463,7 +463,20 @@
             return `<c r="${columnLetter(cell.col)}${r}" s="${xf}" t="inlineStr"><is><t${preserve}>${xmlEscape(text)}</t></is></c>`;
           })
           .join("");
-        const heightPt = rowHeights[rowIndex];
+        // Kullanıcı bulgusu (2026-09-02, ekran görüntüsü): birleşik ("Tüm
+        // Tablolar") sayfalarında (Takyidat, Değerleme ve Emsaller —
+        // options.uniformColumnWidth ile işaretli) satır yüksekliği HTML
+        // kaynağından (buildCompactReportWordTableHtml) geliyor; orada bu
+        // değer Word için "mso-height-rule:at-least" — yani bir ALT SINIR,
+        // uzun metin satırı BÜYÜTEBİLİR. Ama burada aynı değer Excel'e
+        // customHeight="1" ile KESİN/SABİT yükseklik olarak yazılıyordu —
+        // Excel bu durumda satırı OTOMATİK BÜYÜTMÜYOR, uzun (özellikle
+        // Açıklama/haciz açıklaması) metinler satır sınırının dışına taşıp
+        // bir alttaki satırla ÇAKIŞIYOR (kullanıcının "sütunların
+        // hizasızlığı" olarak gördüğü asıl neden). Bu yüzden birleşik
+        // sayfalarda satır yüksekliği HİÇ zorlanmıyor — Excel, wrapText
+        // açık hücreler için satırı içeriğe göre otomatik büyütüyor.
+        const heightPt = options.uniformColumnWidth ? null : rowHeights[rowIndex];
         const heightAttr = heightPt ? ` ht="${heightPt.toFixed(2)}" customHeight="1"` : "";
         return `<row r="${r}"${heightAttr}>${cellsXml}</row>`;
       })
