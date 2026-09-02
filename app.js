@@ -39821,9 +39821,54 @@ const GABIM_UNITS_TABLE_NEVER_HOIST_LABELS = new Set([
 ]);
 const GABIM_UNITS_TABLE_NEVER_HOIST_GROUPS = new Set(["Bağımsız Bölüm / Taşınmaz Özellikleri"]);
 
+// KULLANICI TAKİP TALEBİ (2026-09-02): "aynı ada parseldeki çoklu talepte
+// her bağımsız bölümün enlem ve boylam bilgisi ortak olmalı şu an neden
+// ayrı" — "Enlem"/"Boylam" (latitude/longitude) BİLİNÇLİ OLARAK
+// getAdaParselSharedAddressLookupKeys()'e (Adres bölümünün "aynı ada/
+// parselde paylaşımlı" listesi) HİÇ dahil edilmedi — "latitude gerçek
+// harita pini, hiçbir koşulda paylaşılmaz" (bkz. o fonksiyonun/
+// test-title-unit-switch.js'in yorumu) — YANİ HER taşınmazın KENDİ
+// state.fields.latitude/longitude'u bağımsız girilebilir/farklı olabilir
+// (harita üzerinde ayrı ayrı pinlenmiş olabilir). Genel "scalar" hoisting
+// (yukarıda) bu yüzden TAM AYNI METİN olmadıkça (ör. hassasiyet/yuvarlama
+// farkı) bu iki sütunu ASLA hoistlemez. Kullanıcı, AYNI ada/parseldeki
+// taşınmazlar için bunun KAVRAMSAL OLARAK yanlış olduğunu belirtti — aynı
+// parseldeki bağımsız bölümler için konum TEK bir gerçektir, küçük giriş
+// farkları göz ardı edilip HER ZAMAN TEK bir "Ortak Bilgiler" değeri
+// gösterilmeli (Ada/Parsel/Yüzölçümü'nün Tapu tablosundaki ZORLA-ortak
+// davranışıyla AYNI ilke — bkz. buildTitleUnitsSummaryTableData'daki
+// HIDE_WHEN_SAME_ADA_PARSEL_KEYS). Bu yüzden genel değer-eşitliği
+// hoisting'inden BAĞIMSIZ, AYRI bir zorunlu-hoisting geçişi uygulanır.
+const GABIM_UNITS_TABLE_ADA_PARSEL_FORCED_COMMON_LABELS = ["Enlem", "Boylam"];
+
+function forceHoistAdaParselSharedGabimFields(data, sameAdaParsel) {
+  if (!sameAdaParsel) return data;
+  const { headers, rows, commonFields, columnMeta } = data;
+  const newCommonFields = Array.isArray(commonFields) ? [...commonFields] : [];
+  let keepIndexes = headers.map((_, index) => index);
+  let changed = false;
+  GABIM_UNITS_TABLE_ADA_PARSEL_FORCED_COMMON_LABELS.forEach((label) => {
+    const columnIndex = headers.indexOf(label);
+    if (columnIndex < 0) return;
+    const value = rows.map((row) => row[columnIndex]).find((cell) => cell !== undefined && cell !== null && String(cell).trim() !== "" && cell !== "-");
+    if (!value) return;
+    newCommonFields.push({ label, value });
+    keepIndexes = keepIndexes.filter((index) => index !== columnIndex);
+    changed = true;
+  });
+  if (!changed) return data;
+  return {
+    headers: keepIndexes.map((index) => headers[index]),
+    rows: rows.map((row) => keepIndexes.map((index) => row[index])),
+    columnMeta: keepIndexes.map((index) => columnMeta[index]),
+    commonFields: newCommonFields,
+  };
+}
+
 function buildGabimUnitsSummaryTableData() {
   const count = getTitleUnitCount();
   if (count < 2) return null;
+  const sameAdaParsel = computeTitleUnitsShareSameAdaParsel(buildAllTitleUnitsForSummaryTable());
   const originalActiveIndex = state.activeTitleUnitIndex;
   const perUnitGroups = [];
   suppressValuationSideEffects = true;
@@ -39858,7 +39903,8 @@ function buildGabimUnitsSummaryTableData() {
     return row;
   });
 
-  return finalizeTitleUnitsSummaryTableData(headers, rows, columnMeta);
+  const finalized = finalizeTitleUnitsSummaryTableData(headers, rows, columnMeta);
+  return forceHoistAdaParselSharedGabimFields(finalized, sameAdaParsel);
 }
 
 // Banka şablonlarına {{TASINMAZLARGABIMTABLOSU}} ile enjekte edilecek

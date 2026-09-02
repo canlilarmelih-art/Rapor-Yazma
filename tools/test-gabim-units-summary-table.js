@@ -87,10 +87,23 @@ function extractConstStatement(name) {
   return appSource.slice(start, semicolonIndex + 1);
 }
 
-const constStatementNames = ["GABIM_UNITS_TABLE_NEVER_HOIST_LABELS", "GABIM_UNITS_TABLE_NEVER_HOIST_GROUPS"];
+const constStatementNames = ["GABIM_UNITS_TABLE_NEVER_HOIST_LABELS", "GABIM_UNITS_TABLE_NEVER_HOIST_GROUPS", "GABIM_UNITS_TABLE_ADA_PARSEL_FORCED_COMMON_LABELS"];
 
 const functionNames = [
   "getTitleUnitCount",
+  // KULLANICI TAKİP TALEBİ (2026-09-02): "aynı ada parseldeki çoklu
+  // talepte her bağımsız bölümün enlem ve boylam bilgisi ortak olmalı" —
+  // buildGabimUnitsSummaryTableData() artık computeTitleUnitsShareSameAdaParsel()/
+  // buildAllTitleUnitsForSummaryTable()'a (ve onların bağımlılıklarına)
+  // bağımlı.
+  "computeTitleUnitsShareSameAdaParsel",
+  "buildAllTitleUnitsForSummaryTable",
+  "getTitleUnitFieldsForLabel",
+  "getTitleUnitTablesForLabel",
+  "isCondominiumEasementOwnershipType",
+  "normalizeOwnershipTypeForSectionVisibility",
+  "foldTurkish",
+  "forceHoistAdaParselSharedGabimFields",
   "buildGabimUnitsSummaryTableData",
   "buildGabimUnitsSummaryWordTableHtml",
   "finalizeTitleUnitsSummaryTableData",
@@ -166,6 +179,16 @@ const sandboxSource = `
         title: "Bağımsız Bölüm / Taşınmaz Özellikleri",
         rows: [
           ["FiiliKullanim", state.fields.fiiliKullanim || ""],
+        ],
+      },
+      {
+        // "Enlem"/"Boylam" GABIM_UNITS_TABLE_ADA_PARSEL_FORCED_COMMON_LABELS'te
+        // - aynı ada/parselde TEXT OLARAK FARKLI olsalar bile ZORLA ortak
+        // gösterilmeli (senaryo 10/11).
+        title: "Tapuya Özel Bilgiler",
+        rows: [
+          ["Enlem", state.fields.latitude || ""],
+          ["Boylam", state.fields.longitude || ""],
         ],
       },
     ];
@@ -308,7 +331,41 @@ function freshState(overrides = {}) {
   console.log("Baslik (buildUnitsSummaryTableHeadingHtml) + Excel-guvenligi testi tamam.");
 }
 
-// --- 7) renderSection() "gabimData" gate'i kaynak-düzeyi kablolama --------
+// --- 7) KULLANICI TAKİP TALEBİ (2026-09-02): "aynı ada parseldeki çoklu --
+// talepte her bağımsız bölümün enlem ve boylam bilgisi ortak olmalı şu an
+// neden ayrı" — AYNI ada/parselde iken "Enlem"/"Boylam" METİN OLARAK
+// FARKLI olsa BİLE ZORLA "Ortak Bilgiler"e taşınmalı (genel değer-eşitliği
+// hoisting'inden BAĞIMSIZ bir kural).
+{
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: { blockNo: "100", parcelNo: "5", latitude: "40.123456", longitude: "29.654321" },
+    tables: {},
+    titleUnits: [unit({ blockNo: "100", parcelNo: "5", latitude: "40.123457", longitude: "29.654322" })],
+  });
+  const data = fns.buildGabimUnitsSummaryTableData();
+  const commonLabels = data.commonFields.map((field) => field.label);
+  assert.ok(!data.headers.includes("Enlem") && !data.headers.includes("Boylam"), "AYNI ada/parselde 'Enlem'/'Boylam' ARTIK kendi sütunu OLMAMALI (metin FARKLI olsa bile).");
+  assert.ok(commonLabels.includes("Enlem") && commonLabels.includes("Boylam"), "'Enlem'/'Boylam' 'Ortak Bilgiler'e ZORLA taşınmalı.");
+  assert.equal(data.commonFields.find((f) => f.label === "Enlem")?.value, "40.123456", "'Enlem' için İLK (dolu) değer kullanılmalı.");
+  console.log("KULLANICI TAKIP TALEBI: ayni ada/parselde Enlem/Boylam metin farkli olsa bile ZORLA ortak taşınır testi tamam.");
+}
+
+// --- 8) FARKLI ada/parselde İSE "Enlem"/"Boylam" ZORLA hoistlenmez --------
+// (her taşınmaz GERÇEKTEN farklı bir parselde, konumları da farklı olmalı).
+{
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: { blockNo: "100", parcelNo: "5", latitude: "40.123456", longitude: "29.654321" },
+    tables: {},
+    titleUnits: [unit({ blockNo: "200", parcelNo: "9", latitude: "40.999999", longitude: "29.111111" })],
+  });
+  const data = fns.buildGabimUnitsSummaryTableData();
+  assert.ok(data.headers.includes("Enlem") && data.headers.includes("Boylam"), "FARKLI ada/parselde 'Enlem'/'Boylam' HÂLÂ kendi sütununda olmalı (zorla hoistlenmemeli).");
+  console.log("FARKLI ada/parselde Enlem/Boylam zorla hoistlenmez testi tamam.");
+}
+
+// --- 9) renderSection() "gabimData" gate'i kaynak-düzeyi kablolama --------
 {
   assert.match(
     appSource,
@@ -318,7 +375,7 @@ function freshState(overrides = {}) {
   console.log("renderSection gabimData gate kaynak-duzeyi kablolama testi tamam.");
 }
 
-// --- 8) template-engine.js'te {{TASINMAZLARGABIMTABLOSU}} kayıtlı mı ------
+// --- 10) template-engine.js'te {{TASINMAZLARGABIMTABLOSU}} kayıtlı mı -----
 {
   const templateEngineSource = fs.readFileSync(path.join(__dirname, "..", "src", "templates", "template-engine.js"), "utf8");
   assert.match(
@@ -329,7 +386,7 @@ function freshState(overrides = {}) {
   console.log("{{TASINMAZLARGABIMTABLOSU}} template-engine.js kablolama testi tamam.");
 }
 
-// --- 9) report-tables-xlsx.js'te "Taşınmazlar GABİM Özeti" sayfası kayıtlı mı
+// --- 11) report-tables-xlsx.js'te "Taşınmazlar GABİM Özeti" sayfası kayıtlı mı
 {
   const xlsxSource = fs.readFileSync(path.join(__dirname, "..", "src", "exports", "report-tables-xlsx.js"), "utf8");
   assert.match(

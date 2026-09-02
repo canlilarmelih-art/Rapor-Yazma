@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.616 - 2026-09-02 - GABİM: aynı ada/parselde Enlem/Boylam artık ZORLA "Ortak Bilgiler"e taşınıyor
+
+- Kullanıcı takip talebi: "aynı ada parseldeki çoklu talepte her bağımsız bölümün enlem ve boylam bilgisi ortak olmalı şu an neden ayrı."
+- **Kök neden**: "Enlem"/"Boylam" (latitude/longitude), Adres bölümünün BİLİNÇLİ OLARAK `getAdaParselSharedAddressLookupKeys()`'e (aynı ada/parselde paylaşımlı sayılan alanlar) dahil edilmeyen tek alanlarıdır — "gerçek harita pini, hiçbir koşulda paylaşılmaz" ilkesiyle her taşınmazın KENDİ `state.fields.latitude/longitude`'u bağımsız girilebilir kalır (harita üzerinde ayrı ayrı pinlenebilir). 0.0.615'teki genel "scalar" hoisting bu yüzden bu iki sütunu YALNIZCA metin TAM AYNIYSA (hassasiyet/yuvarlama farkı bile olmadan) taşıyordu — gerçek raporlarda taşınmazlar arasında küçük giriş farkları olduğunda hiç hoistlenmiyordu.
+- **Düzeltme**: Yeni `forceHoistAdaParselSharedGabimFields(data, sameAdaParsel)` (app.js) — TÜM taşınmazlar AYNI ada/parselde ise (`computeTitleUnitsShareSameAdaParsel`, Tapu/Adres/İmar tablolarındaki AYNI kontrol), "Enlem"/"Boylam" METİN OLARAK FARKLI olsalar BİLE genel değer-eşitliği hoisting'inden BAĞIMSIZ olarak ZORLA "Ortak Bilgiler"e taşınır (ilk dolu değer kullanılır) — Ada/Parsel/Yüzölçümü'nün Tapu tablosundaki ZORLA-ortak davranışıyla (`HIDE_WHEN_SAME_ADA_PARSEL_KEYS`) AYNI ilke. Taşınmazlar FARKLI ada/parselde ise bu zorlama uygulanmaz, alanlar normal (metin-eşitliğine bağlı) davranışına döner.
+- Test: `tools/test-gabim-units-summary-table.js`'e (a) aynı ada/parselde metin FARKLI olsa bile "Enlem"/"Boylam"ın ZORLA hoistlendiğini, (b) FARKLI ada/parselde bu zorlamanın uygulanmadığını doğrulayan iki yeni senaryo eklendi. Geçici geri alma ile testin gerçekten BAŞARISIZ olduğu doğrulanıp sonra geri konuldu. `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` cache-buster `?v=20260902-2500`.
+- Canlı tarayıcı testi yapılamadı — kullanıcının aynı ada/parseldeki çoklu taşınmazlı bir raporda (Enlem/Boylam değerleri metin olarak birebir aynı olmasa bile) "GABİM Veri Seti" tablosunda artık TEK bir Enlem/Boylam değerinin "Ortak Bilgiler"de göründüğünü, farklı ada/parsellerde ise HÂLÂ ayrı sütun olarak kaldığını doğrulaması gerekiyor.
+
 ## 0.0.615 - 2026-09-02 - GABİM Veri Seti tablosunda genel hoisting açıldı ("ortak değerler yine üst kısımda belirtilmeli")
 
 - Kullanıcı takip talebi: "ortak değerler yine üst kısımda brlirtilmeli" — 0.0.614'te GABİM karşılaştırma tablosu BİLİNÇLİ OLARAK v1'de hiçbir sütunu hoistlemiyordu (diğer tablolarda yaşanan yanlış-hoisting derslerinden çekinilerek); kullanıcı diğer 8 tablodaki "Ortak Bilgiler" davranışını GABİM için de istedi.
