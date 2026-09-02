@@ -125,6 +125,12 @@ const functionNames = [
   // buildValuationUnitsSummaryTableHtml artik hucre metnini negatiflik
   // kontrolu icin bununla parse ediyor.
   "parseValuationNumber",
+  // KULLANICI BULGUSU (2026-09-02): buildValuationUnitsSummaryTableData()
+  // artik "Ins. Sev." hucresini fields.legalBuildingConstructionLevel
+  // (bayat olabilir) yerine dogrudan fields.unitConstructionLevel'dan
+  // normalizeConstructionLevelValue ile YENIDEN hesapliyor.
+  "normalizeConstructionLevelValue",
+  "formatValuationMoney",
   // landUnitValue paylasimli-deger bindirme duzeltmesi (2026-08-22) icin -
   // getTitleUnitFieldsForLabel artik buna (ve bagimliliklarina) bagimli.
   "isCondominiumEasementOwnershipType",
@@ -171,7 +177,7 @@ function fullFixtureFields(overrides = {}) {
   return {
     blockNo: "100", parcelNo: "5", titleBlockName: "A", unitNo: "2",
     legalValueArea: "120", currentValueArea: "120",
-    landUnitValue: "20000", legalBuildingUnitCost: "21050", legalBuildingDepreciationRate: "0", legalBuildingConstructionLevel: "90",
+    landUnitValue: "20000", legalBuildingUnitCost: "21050", legalBuildingDepreciationRate: "0", unitConstructionLevel: "90",
     share: "5044", denominator: "2162577", landArea: "2162577", landValue: "1261000",
     legalIncompleteDeductionValue: "250000", legalBuildingValue: "2273400",
     currentIncompleteDeductionValue: "250000", currentBuildingValue: "2273400",
@@ -211,7 +217,7 @@ const DIFFERENTIATING_OVERRIDES = {
     titleUnits: [unit(fullFixtureFields({
       titleBlockName: "A", unitNo: "4",
       legalValueArea: "100", currentValueArea: "100",
-      legalBuildingConstructionLevel: "100",
+      unitConstructionLevel: "100",
       share: "5212", landValue: "1303000",
       legalIncompleteDeductionValue: "", legalIncompleteValue: "", legalIncompleteValueUnit: "",
       currentIncompleteDeductionValue: "", currentIncompleteValue: "", currentIncompleteValueUnit: "",
@@ -564,7 +570,7 @@ const DIFFERENTIATING_OVERRIDES = {
   // bkz. senaryo 1/6'daki AYNI not (aksi halde "YASAL"/"MEVCUT" (Alan)
   // grubu commonFields'e taşınıp bu 15-grup-başlığı testinden TAMAMEN
   // KAYBOLURDU).
-  // NOT (2026-09-02): legalBuildingConstructionLevel de BİLEREK FARKLI —
+  // NOT (2026-09-02): unitConstructionLevel de BİLEREK FARKLI —
   // aksi halde "İnş. Sev." (TÜM taşınmazlarda aynı olduğunda artık export'ta
   // hoistValuationConstructionLevelForWordTable ile Ortak Bilgiler'e
   // taşınıyor, bkz. buildValuationUnitsSummaryWordTableHtml) Parametreler
@@ -574,7 +580,7 @@ const DIFFERENTIATING_OVERRIDES = {
     activeTitleUnitIndex: 0,
     fields: fullFixtureFields(),
     tables: {},
-    titleUnits: [unit(fullFixtureFields({ titleBlockName: "A", unitNo: "4", legalValueArea: "100", currentValueArea: "100", legalBuildingConstructionLevel: "80" }))],
+    titleUnits: [unit(fullFixtureFields({ titleBlockName: "A", unitNo: "4", legalValueArea: "100", currentValueArea: "100", unitConstructionLevel: "80" }))],
   });
   const html = fns.buildValuationUnitsSummaryWordTableHtml();
   const topThCells = [...html.matchAll(/<th[^>]*colspan[^>]*>([\s\S]*?)<\/th>/g)].map((m) => m[1]);
@@ -622,7 +628,7 @@ const DIFFERENTIATING_OVERRIDES = {
 {
   fns.setState({
     activeTitleUnitIndex: 0,
-    fields: fullFixtureFields({ landUnitValue: "20000", legalBuildingUnitCost: "21050", legalBuildingDepreciationRate: "5,00", legalBuildingConstructionLevel: "90,00" }),
+    fields: fullFixtureFields({ landUnitValue: "20000", legalBuildingUnitCost: "21050", legalBuildingDepreciationRate: "5,00", unitConstructionLevel: "90,00" }),
     tables: {},
     titleUnits: [unit(fullFixtureFields(DIFFERENTIATING_OVERRIDES))],
   });
@@ -825,7 +831,7 @@ const DIFFERENTIATING_OVERRIDES = {
 {
   fns.setState({
     activeTitleUnitIndex: 0,
-    fields: fullFixtureFields({ legalBuildingDepreciationRate: "5,00", legalBuildingConstructionLevel: "90,00" }),
+    fields: fullFixtureFields({ legalBuildingDepreciationRate: "5,00", unitConstructionLevel: "90,00" }),
     tables: {},
     titleUnits: [unit(fullFixtureFields(DIFFERENTIATING_OVERRIDES))],
   });
@@ -1010,9 +1016,9 @@ const DIFFERENTIATING_OVERRIDES = {
   // "Ortak Bilgiler"e taşınır; ekran önizlemesi ETKİLENMEZ.
   fns.setState({
     activeTitleUnitIndex: 0,
-    fields: fullFixtureFields({ legalBuildingConstructionLevel: "90" }),
+    fields: fullFixtureFields({ unitConstructionLevel: "90" }),
     tables: {},
-    titleUnits: [unit(fullFixtureFields({ ...DIFFERENTIATING_OVERRIDES, legalBuildingConstructionLevel: "90" }))],
+    titleUnits: [unit(fullFixtureFields({ ...DIFFERENTIATING_OVERRIDES, unitConstructionLevel: "90" }))],
   });
   const wordHtml = fns.buildValuationUnitsSummaryWordTableHtml();
   assert.ok(!wordHtml.includes(">İNŞ. SEV.<") && !wordHtml.includes(">İnş. Sev.<"), "TÜM taşınmazlarda AYNI İnş. Sev. iken export'ta ARTIK kendi sütunu OLMAMALI.");
@@ -1027,15 +1033,45 @@ const DIFFERENTIATING_OVERRIDES = {
   // 29b) FARKLI İnş. Sev. -> export'ta da HÂLÂ kendi sütunu (hoistlenmez).
   fns.setState({
     activeTitleUnitIndex: 0,
-    fields: fullFixtureFields({ legalBuildingConstructionLevel: "90" }),
+    fields: fullFixtureFields({ unitConstructionLevel: "90" }),
     tables: {},
-    titleUnits: [unit(fullFixtureFields({ ...DIFFERENTIATING_OVERRIDES, legalBuildingConstructionLevel: "80" }))],
+    titleUnits: [unit(fullFixtureFields({ ...DIFFERENTIATING_OVERRIDES, unitConstructionLevel: "80" }))],
   });
   const diffWordHtml = fns.buildValuationUnitsSummaryWordTableHtml();
   assert.ok(diffWordHtml.includes(">İNŞ. SEV.<") || diffWordHtml.includes(">İnş. Sev.<"), "FARKLI İnş. Sev. değerlerinde export'ta HÂLÂ kendi sütunu olmalı (hoistlenmemeli).");
   assert.ok(!diffWordHtml.includes("İnşaat Seviyesi"), "FARKLI değerlerde 'Ortak Bilgiler'e TAŞINMAMALI.");
 
   console.log("hoistValuationConstructionLevelForWordTable: sadece export + yalnizca ayni-ise hoistleme testi tamam.");
+}
+
+// --- 29c) KULLANICI BULGUSU (2026-09-02): "değerleme tablosunda ortak -----
+// değer olmasına rağmen taşınmadı ortak bilgilere" — Kök neden: eskiden
+// tablo `fields.legalBuildingConstructionLevel` (YALNIZCA Değerleme sekmesi
+// AKTİF taşınmaz için render edildiğinde/computeValuationFieldsForAllTitleUnits()
+// DİĞER taşınmazlar için tazelendiğinde senkronlanan bir KOPYA) okuyordu.
+// AKTİF taşınmaz bu senkron döngüsünden BİLEREK muaf olduğundan
+// ("zaten güncel" varsayımı), hiç Değerleme sekmesi render edilmemiş bir
+// aktif taşınmazda bu alan BOŞ/BAYAT kalabiliyor, DİĞER taşınmazlarınki
+// ise tazeleniyor -> ikisi FARKLI görünüp hoistlenmiyordu, HALBUKİ
+// GERÇEK kaynak alanları (unitConstructionLevel) TÜM taşınmazlarda AYNI
+// veya BOŞ (ikisi de varsayılan "100"e düşer).
+{
+  // legalBuildingConstructionLevel (bayat senkron kopyası) HİÇ set
+  // edilmedi (tam da "bu taşınmaz için Değerleme sekmesi hiç render
+  // edilmedi" senaryosu) — yalnızca GERÇEK kaynak (unitConstructionLevel)
+  // TÜM taşınmazlarda AYNI ("90"). computeValuationFieldsForAllTitleUnits()
+  // BİLEREK ÇAĞRILMADI (gerçek export akışında da tetiklenir ama BU
+  // testin amacı, o senkron hiç ÇALIŞMASA BİLE doğru sonucu kanıtlamak).
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: fullFixtureFields({ unitConstructionLevel: "90" }),
+    tables: {},
+    titleUnits: [unit(fullFixtureFields({ ...DIFFERENTIATING_OVERRIDES, unitConstructionLevel: "90" }))],
+  });
+  const html = fns.buildValuationUnitsSummaryWordTableHtml();
+  assert.ok(!html.includes(">İNŞ. SEV.<") && !html.includes(">İnş. Sev.<"), "legalBuildingConstructionLevel HİÇ senkronlanmamış olsa BİLE, GERÇEK kaynak (unitConstructionLevel) aynıysa export'ta hoistlenmeli.");
+  assert.ok(html.includes("İnşaat Seviyesi") && html.includes(">90<"), "'Ortak Bilgiler'e (İnşaat Seviyesi, 90) taşınmalı.");
+  console.log("KULLANICI BULGUSU: Ins. Sev. artik dogrudan unitConstructionLevel'dan hesaplaniyor (bayat senkron kopyasina bagimli degil) testi tamam.");
 }
 
 console.log("Tasinmazlar degerleme ozeti tablosu testleri basarili.");

@@ -5704,6 +5704,13 @@ function renderSection() {
     body.append(createGabimDataSetPanel());
   }
 
+  // Kullanıcı talebi (2026-09-02): "gabim veri bölümü için çift taraflı
+  // tablo yapalım" — gate diğer 8 tabloyla AYNI (Değerleme/Bağımsız
+  // Bölüm ile BİREBİR: yalnızca "2+ taşınmaz" + admin + Çoklu Talep).
+  if (section.id === "gabimData" && isCurrentUserAdmin() && state.fields.requestType === "Çoklu Talep") {
+    body.append(createGabimUnitsSummaryTablePreview());
+  }
+
   if (section.id === "valuation") {
     body.append(createValuationEditor());
   }
@@ -7955,9 +7962,28 @@ function buildValuationUnitsSummaryTableData() {
       const text = String(fields[key] || "").trim();
       return text ? text.split(",")[0] : "-";
     };
+    // KULLANICI BULGUSU (2026-09-02): "değerleme tablosunda ortak değer
+    // olmasına rağmen taşınmadı ortak bilgilere" — Kök neden:
+    // `fields.legalBuildingConstructionLevel` YALNIZCA refreshValuationComputedFields()
+    // ÇALIŞTIĞINDA `unitConstructionLevel`'dan (Bağımsız Bölüm'ün GERÇEK
+    // kaynak alanı) senkronize edilir; computeValuationFieldsForAllTitleUnits()
+    // ise AKTİF taşınmazı BİLEREK bu döngüden ATLAR ("zaten güncel"
+    // varsayımıyla, bkz. o fonksiyonun yorumu) — AKTİF taşınmaz bu raporda
+    // hiç Değerleme sekmesinden geçmediyse `legalBuildingConstructionLevel`
+    // BAYAT/boş kalabilir, DİĞER taşınmazlarınki (döngüde tazelenmiş) "100"
+    // gibi bir değere sahip olur ve ikisi FARKLI görünüp hoistlenmez. Diğer
+    // 3 Parametreler sütunu (Arsa/Yapı Birim Değeri, Yıpranma Payı) bu
+    // sorunu YAŞAMAZ çünkü DOĞRUDAN kullanıcı girdisi (kalıcı, senkron
+    // gerektirmez) — yalnızca İnş. Sev. TÜRETİLMİŞ bir alan. Düzeltme:
+    // senkronlanmış kopyaya (`legalBuildingConstructionLevel`) GÜVENMEK
+    // yerine, HER taşınmaz için değeri doğrudan GERÇEK kaynaktan
+    // (`unitConstructionLevel`) `normalizeConstructionLevelValue` ile AYNI
+    // formülle YENİDEN hesapla — senkron çalışmış olsun olmasın HER ZAMAN
+    // doğru/tutarlı sonuç verir.
+    const constructionLevelText = normalizeConstructionLevelValue(fields.unitConstructionLevel).split(",")[0];
     const row = [index + 1, ...VALUATION_UNITS_TABLE_IDENTITY_DEFS.map((def) => String(fields[def.key] || "").trim() || "-")];
     row.push(cell("legalValueArea"), cell("currentValueArea"));
-    row.push(cell("landUnitValue"), cell("legalBuildingUnitCost"), cellInteger("legalBuildingDepreciationRate"), cellInteger("legalBuildingConstructionLevel"));
+    row.push(cell("landUnitValue"), cell("legalBuildingUnitCost"), cellInteger("legalBuildingDepreciationRate"), constructionLevelText);
     if (showLandShareColumns) {
       // Kullanıcı takip talebi (2026-08-22): "HİSSESİNE DÜŞEN ARSA PAYI
       // bölümünde rakamların yanında m2 yazıyor ... hücrelerde yazmasın"
@@ -39748,6 +39774,117 @@ function buildGabimDataSetWordHtml() {
     .join("");
 
   return `<div class="gdys-gabim-sheet">${groupsHtml}</div>`;
+}
+
+// Kullanıcı talebi (2026-09-02): "gabim veri bölümü için çift taraflı
+// tablo yapalım" — GABİM Veri Seti panelinin (createGabimDataSetPanel/
+// buildGabimDataGroups, YUKARIDA) diğer 8 "Taşınmazlar ... Özeti"
+// tablosuyla (Tapu/Adres/İmar/Arsa/Belgeler/Değerleme/Bağımsız Bölüm/
+// Proje Uygunluk) AYNI PAYLAŞIMLI altyapıyı (finalizeTitleUnitsSummaryTableData/
+// buildTitleUnitsSummaryTableHtmlFromData) kullanan bir çoklu-taşınmaz
+// karşılaştırma tablosu. buildGabimDataGroups() TÜR-BAĞIMSIZ HER ZAMAN
+// aynı 9 grup/TÜM alanları döndürdüğünden (bkz. o fonksiyonun yorumu —
+// buildGabimExportGroups()'un TÜRE göre budayan filtresi BİLEREK
+// KULLANILMADI, aksi halde farklı türdeki taşınmazlar arasında sütun
+// kümesi UYUŞMAZDI), her birim İÇİN AYNI yapıda bir grup dizisi üretilir.
+//
+// switchActiveTitleUnit() ile GERÇEK birimler arasında gezinilip (bkz.
+// computeValuationFieldsForAllTitleUnits() İLE AYNI teknik) her birimin
+// KENDİ GABİM değerleri okunur — ama BİLEREK AKTİF birim de dahil TÜM
+// birimler için switchActiveTitleUnit()/buildGabimDataGroups() çağrılır
+// (computeValuationFieldsForAllTitleUnits()'in "aktif birim zaten güncel"
+// varsayımıyla ATLADIĞI, 0.0.613'te İnş. Sev. için bayat-veri hatasına
+// yol açtığı tespit edilen desene BİLEREK DÜŞÜLMEDİ).
+//
+// NOT (bilinçli v1 kapsam kararı): tüm ~50 sütun ŞİMDİLİK "readonly"
+// (hiçbiri "Ortak Bilgiler"e otomatik taşınmıyor) — Değerleme/Bağımsız
+// Bölüm tablolarında ("Arsa Payı/Payda", "Mutfak/Wc/Diğer" gibi alanların
+// YANLIŞLIKLA otomatik hoistlenmesi) kullanıcı tarafından AYRI AYRI
+// düzeltilmek zorunda kalındı (0.0.611/0.0.613); GABİM'in 9 grup/~50
+// alanından HANGİLERİNİN gerçekten "bina/parsel geneli ortak" (İl/İlçe/
+// Mahalle, çevresel-analiz metinleri gibi) HANGİLERİNİN "taşınmaza özgü"
+// (BB No, alanlar, oda sayıları gibi) olduğunu ÖNCEDEN yanlış tahmin
+// etmektense, kullanıcının GERÇEK bir raporda hangi alanların yanlış
+// ayrı/yanlış ortak göründüğünü bildirmesi beklenip SONRA (diğer
+// tablolardaki gibi) hedefli kind:"scalar"/exemptFieldKeys düzeltmesi
+// yapılacak.
+function buildGabimUnitsSummaryTableData() {
+  const count = getTitleUnitCount();
+  if (count < 2) return null;
+  const originalActiveIndex = state.activeTitleUnitIndex;
+  const perUnitGroups = [];
+  suppressValuationSideEffects = true;
+  try {
+    for (let index = 0; index < count; index += 1) {
+      switchActiveTitleUnit(index);
+      perUnitGroups.push(buildGabimDataGroups());
+    }
+  } finally {
+    switchActiveTitleUnit(originalActiveIndex);
+    suppressValuationSideEffects = false;
+  }
+
+  const headers = ["No"];
+  const columnMeta = [{ kind: "seq" }];
+  perUnitGroups[0].forEach((group) => {
+    group.rows.forEach(([label]) => {
+      headers.push(label);
+      columnMeta.push({ kind: "readonly" });
+    });
+  });
+
+  const rows = perUnitGroups.map((groups, index) => {
+    const row = [index + 1];
+    groups.forEach((group) => {
+      group.rows.forEach(([, value]) => {
+        row.push(String(value ?? "").trim() || "-");
+      });
+    });
+    return row;
+  });
+
+  return finalizeTitleUnitsSummaryTableData(headers, rows, columnMeta);
+}
+
+// Banka şablonlarına {{TASINMAZLARGABIMTABLOSU}} ile enjekte edilecek
+// gerçek HTML tablo — diğer 8 tabloyla AYNI desen (bkz. o tabloların
+// build*UnitsSummaryWordTableHtml() sarmalayıcıları).
+function buildGabimUnitsSummaryWordTableHtml() {
+  const data = buildGabimUnitsSummaryTableData();
+  if (!data || !data.rows.length) return "";
+  return buildUnitsSummaryTableHeadingHtml("Taşınmazlar GABİM Özeti") + buildTitleUnitsSummaryTableHtmlFromData(data.headers, data.rows, data.commonFields);
+}
+
+// Ekrandaki önizleme — diğer 8 tabloyla AYNI desen. Tüm sütunlar
+// "readonly" olduğundan (bkz. buildGabimUnitsSummaryTableData yorumu)
+// hiçbir hücre tıkla-düzenle işaretlenmez — tablo doğası gereği
+// salt-okunur (GABİM alanları diğer bölümlerden otomatik dolar).
+function createGabimUnitsSummaryTablePreview() {
+  const wrap = document.createElement("div");
+  wrap.className = "title-units-summary-table-preview";
+  const heading = document.createElement("h5");
+  heading.textContent = "Taşınmazlar GABİM Özeti";
+  wrap.append(heading);
+
+  const data = buildGabimUnitsSummaryTableData();
+  if (!data || !data.rows.length) {
+    const note = document.createElement("p");
+    note.className = "muted-note";
+    note.textContent = "Bu tablo yalnızca birden fazla taşınmaz eklendiğinde görünür. Banka şablonlarında {{TASINMAZLARGABIMTABLOSU}} olarak kullanılabilir.";
+    wrap.append(note);
+    return wrap;
+  }
+  const tableHtml = buildTitleUnitsSummaryTableHtmlEditable(data.headers, data.rows, data.columnMeta, state.activeTitleUnitIndex, data.commonFields);
+  const tableContainer = document.createElement("div");
+  tableContainer.className = "title-units-summary-table-container";
+  tableContainer.innerHTML = tableHtml;
+  wrap.append(tableContainer);
+  attachTitleUnitsSummaryTableEditing(tableContainer);
+  const hint = document.createElement("p");
+  hint.className = "muted-note";
+  hint.textContent = "Bu tablo salt-okunurdur (GABİM alanları diğer bölümlerden otomatik dolar) — düzenlemek için ilgili taşınmazın kendi sekmesine gidin. Banka şablonlarında {{TASINMAZLARGABIMTABLOSU}} olarak kullanılabilir.";
+  wrap.append(hint);
+  return wrap;
 }
 
 function buildGabimGeneralExtraInfoRows() {

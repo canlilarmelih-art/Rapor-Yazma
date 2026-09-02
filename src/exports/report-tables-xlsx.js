@@ -802,6 +802,12 @@
     if (projectSuitabilityUnitsSummaryCellGrid) {
       sheets.push({ name: sanitizeSheetName("Taşınmazlar Proje Uygunluk Özeti", usedNames), sheetXml: buildSheetXmlFromCellGrid(styleRegistry, projectSuitabilityUnitsSummaryCellGrid) });
     }
+    // GABİM Veri Seti (2026-09-02) — yukarıdakilerle AYNI desen; yalnızca
+    // 2+ taşınmaz varsa dolu döner (bkz. buildGabimUnitsSummaryTableData, app.js).
+    const gabimUnitsSummaryCellGrid = generatedCellGridFor("buildGabimUnitsSummaryWordTableHtml");
+    if (gabimUnitsSummaryCellGrid) {
+      sheets.push({ name: sanitizeSheetName("Taşınmazlar GABİM Özeti", usedNames), sheetXml: buildSheetXmlFromCellGrid(styleRegistry, gabimUnitsSummaryCellGrid) });
+    }
 
     const rawGridDefs = collectRawGridDefs();
     const takyidatDefs = rawGridDefs.filter((def) => TAKYIDAT_KEYS.includes(def.key));

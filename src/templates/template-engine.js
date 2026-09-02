@@ -632,6 +632,12 @@
     // taşınmaz, bkz. buildProjectSuitabilityUnitsSummaryTableData, app.js).
     TASINMAZLARPROJEUYGUNLUKTABLOSU: { h: () => safeCall("buildProjectSuitabilityUnitsSummaryWordTableHtml") },
     GABIMVERISETI: { h: () => safeCall("buildGabimDataSetWordHtml") },
+    // GABİM çoklu-taşınmaz karşılaştırma tablosu (2026-09-02) —
+    // yukarıdakilerle AYNI desen; görünürlük kuralı Değerleme/Bağımsız
+    // Bölüm ile AYNI (yalnızca 2+ taşınmaz, bkz. buildGabimUnitsSummaryTableData,
+    // app.js). GABIMVERISETI (TEK aktif taşınmazın form görünümü) İLE
+    // KARIŞTIRILMASIN — bu, TÜM taşınmazları karşılaştıran AYRI bir tablo.
+    TASINMAZLARGABIMTABLOSU: { h: () => safeCall("buildGabimUnitsSummaryWordTableHtml") },
     HISSEACIKLAMASI: { t: () => field("shareExplanation"), paragraphClass: "share-explanation" },
     EKLENTI: { f: ["titleAttachment"] },
 
