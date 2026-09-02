@@ -21594,12 +21594,21 @@ function buildTitleUnitsSummaryTableData() {
   // AYNI hücre ızgarasını kullanır) Taşınmaz Kimlik No'nun HEMEN ardından
   // AYNI kaynak alandan (`fields.uavt`, ikinci bir kopya YOK) eklenmesiyle
   // artık her iki tabloda da (ve dolayısıyla Excel'de de) görünüyor.
+  // Kullanıcı sorusu (2026-09-02): "aynı ada parsel çoklu taleplerde
+  // eklenti bölümüne herhangi bir veri girişi olduğunda bu nerede
+  // gözükecek" → "o zaman tapu tablosunda eklenti bölümünün gözükmesi
+  // gerekmiyor mu?" — Eklenti (titleAttachment) taşınmaza özgü bir alan
+  // olmasına rağmen bu özet tabloda HİÇ sütunu yoktu (girilen veri
+  // hiçbir yerde görünmüyordu). Blok/Kat/BB No/Ana Taşınmaz Niteliği ile
+  // AYNI davranışla (HER ZAMAN gösterilen, "ortak"a taşınmayan normal bir
+  // sütun — 0.0.587'nin "ortak" listesini yalnızca 7 alanla sınırlayan
+  // kararına dokunulmadı) Ana Taşınmaz Niteliği'nden hemen sonra eklendi.
   const headers = [
     "Sıra No",
     "Taşınmaz Kimlik No",
     "UAVT",
     ...sharedFieldsToShow.map((def) => def.label),
-    "Blok", "Kat", "Bağımsız Bölüm No", "Bağımsız Bölüm Niteliği", "Ana Taşınmaz Niteliği",
+    "Blok", "Kat", "Bağımsız Bölüm No", "Bağımsız Bölüm Niteliği", "Ana Taşınmaz Niteliği", "Eklenti",
     ...(showShareColumns ? ["Arsa Payı", "Arsa Payda", "Hissesine Düşen Arsa Payı"] : []),
     "Malik(ler)", "Hisse Payı",
     "Edinme Sebebi", "Tapu Tarihi", "Yevmiye No", "Cilt", "Sayfa",
@@ -21619,6 +21628,7 @@ function buildTitleUnitsSummaryTableData() {
       String(fields.unitNo || "").trim() || "-",
       String(fields.titleQuality || "").trim() || "-",
       String(fields.mainPropertyQuality || "").trim() || "-",
+      String(fields.titleAttachment || "").trim() || "-",
       ...(showShareColumns ? [
         String(fields.share || "").trim() || "-",
         String(fields.denominator || "").trim() || "-",
@@ -21655,6 +21665,7 @@ function buildTitleUnitsSummaryTableData() {
     { kind: "scalar", fieldKey: "unitNo" },
     { kind: "scalar", fieldKey: "titleQuality" },
     { kind: "scalar", fieldKey: "mainPropertyQuality" },
+    { kind: "scalar", fieldKey: "titleAttachment" },
     ...(showShareColumns ? [
       { kind: "scalar", fieldKey: "share" },
       { kind: "scalar", fieldKey: "denominator" },

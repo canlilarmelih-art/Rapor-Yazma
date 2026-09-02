@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.608 - 2026-09-02 - "Taşınmazlar Tapu Özeti" tablosuna "Eklenti" sütunu eklendi
+
+- Kullanıcı sorusu: "aynı ada parsel çoklu taleplerde eklenti bölümüne herhangi bir veri girişi olduğunda bu nerede gözükecek" → araştırma sonucu "Eklenti" (titleAttachment) alanının çoklu-taşınmazlı raporlardaki "Taşınmazlar Tapu Özeti" karşılaştırma tablosunda (ekran önizlemesi + Excel export, ikisi de AYNI `buildTitleUnitsSummaryTableData()`'yı kullanıyor) HİÇ sütunu olmadığı, girilen verinin hiçbir yerde görünmediği ortaya çıktı. Kullanıcı bunu doğruladı: "o zaman tapu tablosunda eklenti bölümünün gözükmesi gerekmiyor mu?"
+- **Düzeltme**: `buildTitleUnitsSummaryTableData()`'ya "Ana Taşınmaz Niteliği"nden hemen sonra yeni bir "Eklenti" sütunu eklendi (headers/rows/columnMeta üçü de güncellendi) — Blok/Kat/BB No/Ana Taşınmaz Niteliği ile AYNI davranışla: HER ZAMAN gösterilen, taşınmaza özgü, "ortak"a (commonFields) ASLA taşınmayan normal bir sütun (0.0.587'nin "ortak" listesini yalnızca İl/İlçe/Mahalle/Mevkii/Pafta/Ada/Parsel ile sınırlayan kararına dokunulmadı).
+- Bu tek fonksiyon değişikliği hem ekran önizlemesine (`buildTitleUnitsSummaryTableHtmlEditable`) hem export'a (`buildTitleUnitsSummaryWordTableHtml`, ve onun üzerinden Excel'deki "Taşınmazlar Tapu Özeti" sayfasına, report-tables-xlsx.js) otomatik yansıyor — ikisi de aynı veriyi paylaşıyor.
+- Test: `tools/test-title-units-summary-table.js`'e "Eklenti" sütununun HER ZAMAN göründüğünü, ASLA commonFields'e taşınmadığını ve her taşınmazın kendi değerini (boşsa "-") doğru sütunda gösterdiğini doğrulayan yeni assertion'lar eklendi. Geçici geri alma ile testin gerçekten BAŞARISIZ olduğu doğrulanıp sonra geri konuldu (ilginç bir yan bulgu: satır değerini sabit "-" yapınca sütunun TAMAMI boş sayılıp mevcut "boş sütun kaldır" kuralıyla sütun tamamen kayboluyor — bu da veri bağlantısının gerçekten çalıştığının ayrı bir kanıtı). `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` cache-buster `?v=20260902-1700`.
+- Canlı tarayıcı testi yapılamadı — kullanıcının çoklu taşınmazlı (aynı ada/parsel) bir raporda bir taşınmazın Eklenti alanına veri girip "Taşınmazlar Tapu Özeti" tablosunda (hem ekran önizlemesi hem Excel export) yeni "Eklenti" sütununda bu değerin doğru göründüğünü doğrulaması gerekiyor.
+
 ## 0.0.607 - 2026-09-02 - Takyidat: Beyanlar'da Açıklama+hizalama sütunu birleştirildi, Tarih genişletildi
 
 - Kullanıcı, oklarla işaretlenmiş bir ekran görüntüsü paylaştı: "bu bölümde 2 sütunu birleştir. Açıklama bölümü burada daha geniş olabilir." (0.0.606'da Beyanlar'a eklenen görünmez/boş hizalama sütununu işaret ediyor) ve "Tarih sütununu genişlet." (tarihlerin "27.12.202" / "1" şeklinde 2 satıra bölündüğünü işaret ediyor).

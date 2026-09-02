@@ -198,11 +198,11 @@ function unit(fields, ownerRows) {
   const shared = { titleCity: "Bursa", titleDistrict: "Nilüfer", titleNeighborhood: "Özlüce", locationName: "-", sheetNo: "F21", blockNo: "4834", parcelNo: "1", landArea: "1200", mainPropertyQuality: "Arsa" };
   fns.setState({
     activeTitleUnitIndex: 0,
-    fields: { ...shared, titlePropertyId: "123456", titleBlockName: "A", titleFloor: "3", unitNo: "5", titleQuality: "Daire", share: "50", denominator: "1000", registryVolume: "12", registryPage: "34" },
+    fields: { ...shared, titlePropertyId: "123456", titleBlockName: "A", titleFloor: "3", unitNo: "5", titleQuality: "Daire", share: "50", denominator: "1000", registryVolume: "12", registryPage: "34", titleAttachment: "Kömürlük" },
     tables: { title: [{ c0: "Ahmet Yılmaz", c1: "1/2", c2: "Satın Alma", c3: "01.01.2020", c4: "1234" }] },
     titleUnits: [
-      { fields: { ...shared, titlePropertyId: "123457", titleBlockName: "A", titleFloor: "4", unitNo: "6", titleQuality: "Daire", share: "60", denominator: "1000", registryVolume: "12", registryPage: "35" }, tables: { title: [{ c0: "Ayşe Yılmaz", c1: "1/2" }] } },
-      { fields: { ...shared, locationName: "Sahil Kesimi", titlePropertyId: "123458", titleBlockName: "B", titleFloor: "1", unitNo: "1", titleQuality: "Dükkan", share: "40", denominator: "1000", registryVolume: "13", registryPage: "1" }, tables: { title: [] } },
+      { fields: { ...shared, titlePropertyId: "123457", titleBlockName: "A", titleFloor: "4", unitNo: "6", titleQuality: "Daire", share: "60", denominator: "1000", registryVolume: "12", registryPage: "35", titleAttachment: "" }, tables: { title: [{ c0: "Ayşe Yılmaz", c1: "1/2" }] } },
+      { fields: { ...shared, locationName: "Sahil Kesimi", titlePropertyId: "123458", titleBlockName: "B", titleFloor: "1", unitNo: "1", titleQuality: "Dükkan", share: "40", denominator: "1000", registryVolume: "13", registryPage: "1", titleAttachment: "Otopark" }, tables: { title: [] } },
     ],
   });
   const data = fns.buildTitleUnitsSummaryTableData();
@@ -222,10 +222,24 @@ function unit(fields, ownerRows) {
   // olsun, diğerleri ortak olmasın eskiye dön" — 0.0.585'in "ortak"
   // yapma denemesi GERİ ALINDI, TÜM taşınmazlarda aynı ("Arsa") olsa BİLE
   // ASLA commonFields'e taşınmaz).
-  ["Sıra No", "Taşınmaz Kimlik No", "Blok", "Kat", "Bağımsız Bölüm No", "Bağımsız Bölüm Niteliği", "Ana Taşınmaz Niteliği", "Arsa Payı", "Arsa Payda", "Hissesine Düşen Arsa Payı", "Malik(ler)", "Hisse Payı", "Edinme Sebebi", "Tapu Tarihi", "Yevmiye No", "Cilt", "Sayfa"].forEach((col) => {
+  ["Sıra No", "Taşınmaz Kimlik No", "Blok", "Kat", "Bağımsız Bölüm No", "Bağımsız Bölüm Niteliği", "Ana Taşınmaz Niteliği", "Eklenti", "Arsa Payı", "Arsa Payda", "Hissesine Düşen Arsa Payı", "Malik(ler)", "Hisse Payı", "Edinme Sebebi", "Tapu Tarihi", "Yevmiye No", "Cilt", "Sayfa"].forEach((col) => {
     assert.ok(data.headers.includes(col), `"${col}" sütunu HER ZAMAN gösterilmeliydi.`);
   });
   assert.equal(data.commonFields.find((f) => f.label === "Ana Taşınmaz Niteliği"), undefined, "\"Ana Taşınmaz Niteliği\" ASLA commonFields'e taşınmamalı (artık \"ortak\" değil).");
+  // Kullanıcı sorusu (2026-09-02): "aynı ada parsel çoklu taleplerde
+  // eklenti bölümüne herhangi bir veri girişi olduğunda bu nerede
+  // gözükecek" → "Eklenti" (titleAttachment) sütunu eklendi — TÜM
+  // taşınmazlarda AYNI olsa bile ASLA commonFields'e taşınmamalı (Ana
+  // Taşınmaz Niteliği ile AYNI davranış, taşınmaza özgü kalmalı) ve her
+  // taşınmazın KENDİ değerini (boşsa "-") doğru sütunda göstermeli.
+  assert.equal(data.commonFields.find((f) => f.label === "Eklenti"), undefined, "\"Eklenti\" ASLA commonFields'e taşınmamalı (taşınmaza özgü kalmalı).");
+  const attachmentColumnIndex = data.headers.indexOf("Eklenti");
+  assert.ok(attachmentColumnIndex >= 0, "\"Eklenti\" sütunu bulunamadı.");
+  assert.deepEqual(
+    data.rows.map((row) => row[attachmentColumnIndex]),
+    ["Kömürlük", "-", "Otopark"],
+    `Her taşınmazın kendi Eklenti değeri (bos olan icin "-") dogru sutunda olmali, bulunan: ${JSON.stringify(data.rows.map((row) => row[attachmentColumnIndex]))}`,
+  );
   // "en sola Sıra No sütunu ekle 1 den başla saymaya" — EN SOL sütun,
   // 1'den başlayan sıra numarası. "taşınmaz kimlik no sıra nodan sonra
   // gelsin" (2026-08-15) — Taşınmaz Kimlik No HEMEN ardından gelmeli
