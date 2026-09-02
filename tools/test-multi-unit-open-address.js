@@ -305,7 +305,25 @@ function unit(overrides = {}) {
   console.log("refreshMultiUnitOpenAddressTextFromCurrentFields kaynak-duzeyi kablolama testi tamam.");
 }
 
-// --- 9) template-engine.js'te {{ACIKADRESCOKLU}} kayıtlı mı ---------------
+// --- 9) KULLANICI BULGUSU (2026-09-02): canlıda üretilen metin bir --------
+// taşınmazın Blok bilgisini kaybediyordu — kök neden muhtemelen
+// refreshMultiUnitOpenAddressTextFromCurrentFields()'in yalnızca CANLI
+// alan-değişikliği olayına bağlı olması (Excel/JSON/KML/TAKBİS içe
+// aktarma gibi programatik veri girişleri bunu HİÇ tetiklemez — 0.0.613/
+// 0.0.614'teki AYNI sınıf İnş. Sev. hatası). Düzeltme: "Açıklamalar"
+// bölümü HER render edildiğinde (refreshAllVariantDependentExplanationFields())
+// KOŞULSUZ (argümansız) bir çağrı EKLENDİ — diğer refresh*FromCurrentFields
+// fonksiyonlarıyla AYNI desen.
+{
+  assert.match(
+    appSource,
+    /\(\) => refreshMultiUnitOpenAddressTextFromCurrentFields\(\),\s*\n\s*\];\s*\n\s*refreshers\.forEach/,
+    "refreshMultiUnitOpenAddressTextFromCurrentFields() 'Açıklamalar' bölümü HER render edildiğinde KOŞULSUZ çağrılan refreshAllVariantDependentExplanationFields() listesine eklenmemiş."
+  );
+  console.log("KULLANICI BULGUSU: Acik Adres (Coklu) her bolum render'inda KOSULSUZ tazelenir (programatik veri girisi guvenligi) testi tamam.");
+}
+
+// --- 11) template-engine.js'te {{ACIKADRESCOKLU}} kayıtlı mı --------------
 {
   const templateEngineSource = fs.readFileSync(path.join(__dirname, "..", "src", "templates", "template-engine.js"), "utf8");
   assert.match(
@@ -316,7 +334,7 @@ function unit(overrides = {}) {
   console.log("{{ACIKADRESCOKLU}} template-engine.js kablolama testi tamam.");
 }
 
-// --- 10) collectGeneratedTextPlaceholders() katalogunda kayıtlı mı --------
+// --- 12) collectGeneratedTextPlaceholders() katalogunda kayıtlı mı --------
 {
   assert.match(
     appSource,

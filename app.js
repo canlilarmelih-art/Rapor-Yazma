@@ -5103,6 +5103,17 @@ function refreshAllVariantDependentExplanationFields() {
     () => refreshValuationSaleabilityExplanation(),
     () => refreshValuationRentExplanation(),
     () => refreshPropertyTaxDeclarationExplanation(),
+    // KULLANICI BULGUSU (2026-09-02): canlıda üretilen "Açık Adres
+    // (Çoklu)" metni bir taşınmazın Blok bilgisini kaybediyordu — kök
+    // neden muhtemelen refreshMultiUnitOpenAddressTextFromCurrentFields()'in
+    // yalnızca CANLI alan-değişikliği (input) olayına bağlı olması: Excel/
+    // JSON/KML/TAKBİS içe aktarma gibi PROGRAMATİK veri girişleri (bkz.
+    // 0.0.613/0.0.614'teki AYNI sınıf İnş. Sev. bayat-veri hatası) bu
+    // olayı HİÇ tetiklemez. Diğer refresh*FromCurrentFields fonksiyonlarıyla
+    // AYNI desen: "Açıklamalar" bölümü HER render edildiğinde (argümansız
+    // çağrı — watchedKeys filtresini atlar) KOŞULSUZ yeniden hesaplanır,
+    // veri NASIL girilmiş olursa olsun HER ZAMAN güncel kalır.
+    () => refreshMultiUnitOpenAddressTextFromCurrentFields(),
   ];
   refreshers.forEach((refresher) => {
     try {
