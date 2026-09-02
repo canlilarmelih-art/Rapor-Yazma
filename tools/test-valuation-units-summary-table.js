@@ -109,6 +109,7 @@ const functionNames = [
   "buildValuationUnitsSummaryTableHtml",
   "buildUnitsSummaryTableHeadingHtml",
   "buildValuationUnitsSummaryWordTableHtml",
+  "hoistValuationConstructionLevelForWordTable",
   "splitTableHeaderLabelIntoTwoLines",
   "toTitleFieldUppercase",
   "buildTitleUnitsSummaryTableHtmlFromData",
@@ -563,11 +564,17 @@ const DIFFERENTIATING_OVERRIDES = {
   // bkz. senaryo 1/6'daki AYNI not (aksi halde "YASAL"/"MEVCUT" (Alan)
   // grubu commonFields'e taşınıp bu 15-grup-başlığı testinden TAMAMEN
   // KAYBOLURDU).
+  // NOT (2026-09-02): legalBuildingConstructionLevel de BİLEREK FARKLI —
+  // aksi halde "İnş. Sev." (TÜM taşınmazlarda aynı olduğunda artık export'ta
+  // hoistValuationConstructionLevelForWordTable ile Ortak Bilgiler'e
+  // taşınıyor, bkz. buildValuationUnitsSummaryWordTableHtml) Parametreler
+  // grubunun SON kalan sütunu olduğundan, o da hoistlenince "PARAMETRELER"
+  // grup başlığı HİÇ ÜRETİLMEZ hale gelirdi.
   fns.setState({
     activeTitleUnitIndex: 0,
     fields: fullFixtureFields(),
     tables: {},
-    titleUnits: [unit(fullFixtureFields({ titleBlockName: "A", unitNo: "4", legalValueArea: "100", currentValueArea: "100" }))],
+    titleUnits: [unit(fullFixtureFields({ titleBlockName: "A", unitNo: "4", legalValueArea: "100", currentValueArea: "100", legalBuildingConstructionLevel: "80" }))],
   });
   const html = fns.buildValuationUnitsSummaryWordTableHtml();
   const topThCells = [...html.matchAll(/<th[^>]*colspan[^>]*>([\s\S]*?)<\/th>/g)].map((m) => m[1]);
@@ -990,6 +997,45 @@ const DIFFERENTIATING_OVERRIDES = {
   assert.ok(!exportHtml.includes("tus-apply-column-btn"), "Export/banka-sablonu modunda (editable:false) 'tumune uygula' butonu HIC gorunmemeli.");
 
   console.log("buildValuationUnitsSummaryTableHtml 'sutunun tumune uygula' butonu (yalnizca editable+scalar) testi tamam.");
+}
+
+// --- 29) YENİ (2026-09-02, kullanıcı ekran görüntüsü + ok işareti): --------
+// "sadece templatete gözükecek şekilde eğer inşa seviye ortak ise ortak
+// bilgilere taşı" — "İnş. Sev." TÜM taşınmazlarda BİREBİR AYNI ise
+// YALNIZCA export/banka şablonu çıktısında "Ortak Bilgiler"e taşınır;
+// EKRANDAKİ düzenlenebilir önizleme (KENDİ AYRI buildValuationUnitsSummaryTableData()
+// çağrısı) ETKİLENMEZ.
+{
+  // 29a) TÜM taşınmazlarda AYNI İnş. Sev. -> export'ta sütun kalkar,
+  // "Ortak Bilgiler"e taşınır; ekran önizlemesi ETKİLENMEZ.
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: fullFixtureFields({ legalBuildingConstructionLevel: "90" }),
+    tables: {},
+    titleUnits: [unit(fullFixtureFields({ ...DIFFERENTIATING_OVERRIDES, legalBuildingConstructionLevel: "90" }))],
+  });
+  const wordHtml = fns.buildValuationUnitsSummaryWordTableHtml();
+  assert.ok(!wordHtml.includes(">İNŞ. SEV.<") && !wordHtml.includes(">İnş. Sev.<"), "TÜM taşınmazlarda AYNI İnş. Sev. iken export'ta ARTIK kendi sütunu OLMAMALI.");
+  assert.ok(wordHtml.includes("İnşaat Seviyesi") && wordHtml.includes(">90<"), "İnş. Sev. 'Ortak Bilgiler' banner'ına (İnşaat Seviyesi, 90) taşınmalı.");
+
+  const screenData = fns.buildValuationUnitsSummaryTableData();
+  const screenIndex = screenData.headers.indexOf("İnş. Sev.");
+  assert.ok(screenIndex >= 0, "EKRANDAKİ buildValuationUnitsSummaryTableData() ETKİLENMEMELİ, 'İnş. Sev.' HÂLÂ kendi sütununda olmalı.");
+  const screenHtml = fns.buildValuationUnitsSummaryTableHtml(screenData, 0, { editable: true });
+  assert.ok(screenHtml.includes(">İNŞ. SEV.<") || screenHtml.includes(">İnş. Sev.<"), "EKRANDAKİ düzenlenebilir önizlemede 'İnş. Sev.' HÂLÂ kendi sütun başlığı olarak görünmeli.");
+
+  // 29b) FARKLI İnş. Sev. -> export'ta da HÂLÂ kendi sütunu (hoistlenmez).
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: fullFixtureFields({ legalBuildingConstructionLevel: "90" }),
+    tables: {},
+    titleUnits: [unit(fullFixtureFields({ ...DIFFERENTIATING_OVERRIDES, legalBuildingConstructionLevel: "80" }))],
+  });
+  const diffWordHtml = fns.buildValuationUnitsSummaryWordTableHtml();
+  assert.ok(diffWordHtml.includes(">İNŞ. SEV.<") || diffWordHtml.includes(">İnş. Sev.<"), "FARKLI İnş. Sev. değerlerinde export'ta HÂLÂ kendi sütunu olmalı (hoistlenmemeli).");
+  assert.ok(!diffWordHtml.includes("İnşaat Seviyesi"), "FARKLI değerlerde 'Ortak Bilgiler'e TAŞINMAMALI.");
+
+  console.log("hoistValuationConstructionLevelForWordTable: sadece export + yalnizca ayni-ise hoistleme testi tamam.");
 }
 
 console.log("Tasinmazlar degerleme ozeti tablosu testleri basarili.");

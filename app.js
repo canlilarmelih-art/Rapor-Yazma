@@ -8309,6 +8309,37 @@ function buildValuationUnitsSummaryTableHtml(data, activeRowIndex, { editable = 
   </table>`;
 }
 
+// Kullanıcı talebi (2026-09-02, ekran görüntüsü + ok işareti "İNŞ. SEV."
+// sütunundan "ORTAK BİLGİLER" banner'ına doğru): "sadece templatete
+// gözükecek şekilde eğer inşa seviye ortak ise ortak bilgilere taşı" —
+// "İnş. Sev." (İnşaat Seviyesi) sütunu `buildValuationUnitsSummaryTableData()`'da
+// BİLEREK "scalar" değil "readonly" (bkz. o fonksiyonun columnMeta.push'u)
+// olduğundan `finalizeTitleUnitsSummaryTableData()`'nın genel hoisting'i
+// (yalnızca "scalar" hoistler, Yıpranma Payı/Arsa-Yapı Birim Değeri gibi)
+// bunu ZATEN atlıyor. Kullanıcı BU TEK sütun için, YALNIZCA banka
+// şablonuna gömülen export'ta (ekrandaki düzenlenebilir önizleme,
+// createValuationUnitsSummaryTablePreview, KENDİ AYRI
+// buildValuationUnitsSummaryTableData() çağrısını kullanır ve bu
+// fonksiyona hiç uğramaz — ETKİLENMEZ) istisna istedi.
+function hoistValuationConstructionLevelForWordTable(data) {
+  const { headers, rows, commonFields, columnMeta } = data;
+  const columnIndex = headers.indexOf("İnş. Sev.");
+  if (columnIndex < 0 || !Array.isArray(rows) || rows.length < 2) return data;
+  const values = rows.map((row) => String(row[columnIndex] ?? "").trim());
+  const firstValue = values[0];
+  const allSame = firstValue && firstValue !== "-" && values.every((value) => value === firstValue);
+  if (!allSame) return data;
+  const keepIndexes = headers.map((_, index) => index).filter((index) => index !== columnIndex);
+  return {
+    headers: keepIndexes.map((index) => headers[index]),
+    rows: rows.map((row) => keepIndexes.map((index) => row[index])),
+    columnMeta: keepIndexes.map((index) => columnMeta[index]),
+    // Banner'da genişlik kısıtı olmadığından, tablo başlığındaki dar
+    // kısaltma ("İnş. Sev.") yerine anlaşılır tam adı kullanılıyor.
+    commonFields: [...(Array.isArray(commonFields) ? commonFields : []), { label: "İnşaat Seviyesi", value: firstValue }],
+  };
+}
+
 // Banka şablonlarına {{TASINMAZLARDEGERLEMETABLOSU}} ile enjekte edilecek
 // gerçek HTML tablo (bkz. template-engine.js) — ekran önizlemesi ile aynı
 // Yasal/Mevcut durum grup başlıklarını kullanır.
@@ -8319,7 +8350,8 @@ function buildValuationUnitsSummaryWordTableHtml() {
   computeValuationFieldsForAllTitleUnits();
   const data = buildValuationUnitsSummaryTableData();
   if (!data || !data.rows.length) return "";
-  return buildUnitsSummaryTableHeadingHtml("Taşınmazlar Değerleme Özeti") + buildValuationUnitsSummaryTableHtml(data);
+  const hoisted = hoistValuationConstructionLevelForWordTable(data);
+  return buildUnitsSummaryTableHeadingHtml("Taşınmazlar Değerleme Özeti") + buildValuationUnitsSummaryTableHtml(hoisted);
 }
 
 // Kullanıcı takip talebi (2026-08-21): "eksik imalat bölümünü ekledin mi"
