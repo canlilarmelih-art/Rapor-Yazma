@@ -143,6 +143,7 @@ const functionNames = [
   "escapeRegExp",
   "normalizeReportTitleText",
   "buildDifferentAdaParselLandOpenAddressText",
+  "isUnitFieldsLandType",
   "buildMultiUnitOpenAddressText",
 ];
 const constArrayNames = ["openAddressStyleVariants"];
@@ -508,6 +509,36 @@ function unit(overrides = {}) {
     `GERÇEK bir Ada numarası varsa normal şekilde ("X Ada Y Parsel") gösterilmeli. Bulunan: ${realBlockResult}`
   );
   console.log("Arsa/Tarla FARKLI ada/parsel, GERCEK Ada numarasi varsa normal gosterilir testi tamam.");
+}
+
+// --- 7c) KULLANICI BULGUSU (2026-09-02): "sonuç değişmedi" — Arsa/Tarla -
+// dalı HİÇ TETİKLENMİYORDU. Kök neden: isLandPropertyForBankTemplate()/
+// isLandProjectReview() YALNIZCA AKTİF taşınmazı (state.fields) okur;
+// "ownershipType" ise BİLEREK taşınmaza-özgüdür — AKTİF taşınmaz "Arsa"
+// DEĞİLSE (veya hiç girilmemişse) bu kontrol state.fields hiç
+// DEĞİŞTİRİLMEDEN çağrıldığından yanlışlıkla "false" dönüyordu. Bu
+// senaryo TAM O DURUMU simüle eder: AKTİF taşınmazın ownershipType'ı
+// BOŞ, yalnızca İKİNCİ (aktif OLMAYAN) taşınmazın "Arsa".
+{
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: {
+      // ownershipType BİLEREK YOK — tam da kullanıcının bulduğu hata.
+      neighborhood: "Canbazlarköyü", locationName: "SAZLIK", blockNo: "0", parcelNo: "56",
+      district: "Gürsu", city: "Bursa",
+    },
+    tables: {},
+    titleUnits: [
+      unit({ ownershipType: "Arsa", neighborhood: "Canbazlarköyü", locationName: "SARITAŞ", blockNo: "0", parcelNo: "315" }),
+    ],
+  });
+  const result = fns.buildMultiUnitOpenAddressText();
+  assert.equal(
+    result,
+    "Canbazlarköyü Mahallesi, Sazlık Mevkii 56 Parsel ve Sarıtaş Mevkii 315 Parsel, Gürsu / Bursa",
+    `AKTİF taşınmazın ownershipType'ı BOŞ olsa bile, DİĞER taşınmaz "Arsa" ise Mevkii bazlı composer TETİKLENMELİ. Bulunan: ${result}`
+  );
+  console.log("KULLANICI BULGUSU: aktif tasinmaz Arsa DEGILSE bile, diger tasinmaz Arsa ise Mevkii composer tetiklenir testi tamam.");
 }
 
 // --- 8) "explanations" bölümünde yeni alan tanımlı mı (kaynak-düzeyi) -----

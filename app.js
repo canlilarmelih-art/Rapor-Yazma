@@ -32807,14 +32807,34 @@ function buildDifferentAdaParselLandOpenAddressText(units) {
 // kullanıcının TAM örnekle verdiği "mahalle ortak + sokak/cadde bazlı
 // gruplama" kuralı).
 //
-// FARKLI ada/parselde, Arsa/Tarla (isLandPropertyForBankTemplate()/
-// isLandProjectReview() — buildOpenAddressText()'in KENDİSİNİN Land/Bina
-// ayrımı için kullandığı AYNI kontrol): buildDifferentAdaParselLandOpenAddressText()
+// FARKLI ada/parselde, Arsa/Tarla: buildDifferentAdaParselLandOpenAddressText()
 // (yukarıda, Mevkii bazlı gruplama). DİĞER (bina) mülkiyet türlerinde
 // HENÜZ kullanıcı tarafından netleştirilmedi — HER taşınmazın KENDİ açık
 // adresi groupMainPropertyBlocksByText() ile gruplanır — AYNI metni
 // üreten taşınmazlar TEK (atıfsız) satırda birleşir, FARKLI üretenler
 // kendi Ada/Parsel etiketiyle AYRI satırda kalır.
+//
+// KULLANICI BULGUSU (2026-09-02): "sonuç değişmedi" — Arsa/Tarla dalı
+// HİÇ tetiklenmiyordu. Kök neden: isLandPropertyForBankTemplate()/
+// isLandProjectReview() (buildOpenAddressText()'in KENDİSİNİN kullandığı
+// kontrol) YALNIZCA state.fields'i (yani AKTİF taşınmazı) okur —
+// "ownershipType" ise BİLEREK taşınmaza-özgü (paylaşımlı DEĞİL, bkz.
+// getTitleUnitScopedFieldKeys() yorumu), yani FARKLI ada/parseldeki
+// taşınmazlardan yalnızca AKTİF OLMAYANI "Arsa" olabilir — AKTİF
+// taşınmazın KENDİSİ "Arsa" değilse (veya boşsa) bu kontrol state.fields
+// hiç değiştirilmeden çağrıldığından YANLIŞLIKLA "false" dönüyordu.
+// Düzeltme: her taşınmazın KENDİ fields'ı (state.fields'i DEĞİŞTİRMEDEN,
+// isUnitFieldsLandType() ile) tek tek kontrol edilir — HERHANGİ biri
+// Arsa/Tarla ise TÜM grup Mevkii bazlı composer'ı kullanır.
+function isUnitFieldsLandType(fields) {
+  const ownershipType = normalizeOwnershipTypeForSectionVisibility(fields?.ownershipType);
+  if (["ARSA", "TARLA"].includes(ownershipType)) return true;
+  const usageNature = foldTurkish(fields?.legalUsageNature || "").replace(/\s+/g, " ").trim();
+  const titleQuality = foldTurkish(fields?.titleQuality || "").replace(/\s+/g, " ").trim();
+  if (["ARSA", "TARLA", "ARAZI"].includes(usageNature) || ["ARSA", "TARLA", "ARAZI"].includes(titleQuality)) return true;
+  return ["ARAZI", "ARSA"].includes(foldTurkish(fields?.currentUsageNature || ""));
+}
+
 function buildMultiUnitOpenAddressText() {
   const units = buildAllTitleUnitsForSummaryTable();
   if (units.length < 2) return buildOpenAddressText();
@@ -32823,7 +32843,7 @@ function buildMultiUnitOpenAddressText() {
     return buildSameAdaParselOpenAddressText(units);
   }
 
-  if (isLandPropertyForBankTemplate() || isLandProjectReview()) {
+  if (units.some((unit) => isUnitFieldsLandType(unit.fields))) {
     return buildDifferentAdaParselLandOpenAddressText(units);
   }
 

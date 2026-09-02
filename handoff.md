@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.625 - 2026-09-02 - Açık Adres (Çoklu): Arsa/Tarla tespiti artık AKTİF OLMAYAN taşınmazları da kapsıyor
+
+- Kullanıcı bulgusu: 0.0.624'ün ürettiği metin AYNEN aynı kaldı — "0 56: Canbazlarköyü Mahallesi, Mevkii SAZLIK, 0 Ada 56 Parsel, Gürsu / Bursa / 0 315: ..." (Mevkii composer HİÇ tetiklenmedi).
+- **Kök neden**: `isLandPropertyForBankTemplate()`/`isLandProjectReview()` (`buildOpenAddressText()`'in KENDİSİNİN kullandığı kontrol) YALNIZCA `state.fields`'i (yani o an AKTİF taşınmazı) okur. "ownershipType" ise BİLEREK taşınmaza-özgüdür (paylaşımlı DEĞİL — bkz. `getTitleUnitScopedFieldKeys()` yorumu), yani FARKLI ada/parseldeki taşınmazlardan yalnızca AKTİF OLMAYANI "Arsa" olabilir. `buildMultiUnitOpenAddressText()`'in bu kontrolü `state.fields` hiç değiştirmeden ÇAĞIRMASI, AKTİF taşınmaz "Arsa" değilse (veya ownershipType hiç girilmemişse) TÜM grubu YANLIŞLIKLA "bina" sayıp Mevkii composer'ı hiç tetiklememesine yol açıyordu.
+- **Düzeltme**: Yeni `isUnitFieldsLandType(fields)` — `isLandPropertyForBankTemplate`/`isLandProjectReview`'in AYNI mantığını, GLOBAL `state.fields` yerine VERİLEN herhangi bir `fields` nesnesine (state.fields'i DEĞİŞTİRMEDEN) uygular. `buildMultiUnitOpenAddressText()` artık `units.some((unit) => isUnitFieldsLandType(unit.fields))` ile HER taşınmazın KENDİ fields'ını tek tek kontrol ediyor — gruptaki HERHANGİ bir taşınmaz Arsa/Tarla ise TÜM grup Mevkii bazlı composer'ı kullanıyor.
+- Test: `tools/test-multi-unit-open-address.js`'e AKTİF taşınmazın ownershipType'ı BOŞ, yalnızca aktif OLMAYAN taşınmazın "Arsa" olduğu (tam da kullanıcının bulduğu senaryo) yeni bir REGRESYON eklendi. Geçici geri alma ile testin gerçekten BAŞARISIZ olduğu doğrulanıp sonra geri konuldu. `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` cache-buster `?v=20260902-3400`.
+- Canlı tarayıcı testi yapılamadı — kullanıcının AYNI raporla (aktif taşınmaz "Arsa" olarak işaretli olsun ya da olmasın) tekrar denk gelip metnin artık Mevkii bazlı gruplandığını doğrulaması gerekiyor.
+
 ## 0.0.624 - 2026-09-02 - Açık Adres (Çoklu): FARKLI ada/parsel + Arsa/Tarla için Mevkii bazlı gruplama
 
 - Kullanıcı, "farklı ada parsel" dalına geçip GERÇEK bir Arsa/Tarla raporu örneği paylaştı: "0 56: Canbazlarköyü Mahallesi, Mevkii SAZLIK, 0 Ada 56 Parsel, Gürsu / Bursa / 0 315: Canbazlarköyü Mahallesi, Mevkii SARITAŞ, 0 Ada 315 Parsel, Gürsu / Bursa oysa benim istediğim yine gruplandırma Canbazlarköyü Mahallesi Sazlık Mevkii 56 Parsel ve Sarıtaş Mevkii 315 parsel, gürsu/bursa şeklinde 0 Ada yazmaya gerek yok ada numarası yoksa, aynı mevkiide yer alsaydı taşınmazlar mevkii 1 kere yazıp daha sonra ada parselleri yazacaktık."
