@@ -522,6 +522,33 @@ function unit(fields, ownerRows) {
   console.log("hoistUniformColumnsForWordTable: Yüzölçümü/Ana Taşınmaz Niteliği gibi HER ZAMAN-aynı sütunlar SADECE Word/şablon çıktısında Ortak Bilgiler'e taşınıyor testi tamam.");
 }
 
+// --- 6b) DÜZELTME (2026-09-02, kullanıcı geri bildirimi): "Tapu -----------
+// bölümünde arsa payda kısmını... ortak kısımlarda yer almamalı. bunlar
+// çift taraflı tablolarda gözükmeli" — Arsa Payı/Payda AYNI ada/parselde
+// (showShareColumns=true) rastlantısal olarak TÜM taşınmazlarda BİREBİR
+// AYNI olsa BİLE (ör. eşit paylı bir sitede) hoistlenmemeli, HER ZAMAN
+// kendi sütununda kalmalı.
+{
+  const shared = { titleCity: "Bursa", titleDistrict: "Nilüfer", titleNeighborhood: "Özlüce", locationName: "-", sheetNo: "F21", blockNo: "4834", parcelNo: "1", landArea: "1200", mainPropertyQuality: "Arsa", share: "50", denominator: "1000" };
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: { ...shared, titlePropertyId: "1", titleBlockName: "A", titleFloor: "1", unitNo: "1", titleQuality: "Daire" },
+    tables: { title: [] },
+    titleUnits: [
+      { fields: { ...shared, titlePropertyId: "2", titleBlockName: "A", titleFloor: "2", unitNo: "2", titleQuality: "Daire" }, tables: { title: [] } },
+    ],
+  });
+  const html = fns.buildTitleUnitsSummaryWordTableHtml();
+  // Basliklar BUYUK harfle cikiyor (bkz. senaryo 5) - "ARSA PAYI"/"ARSA
+  // PAYDA" (2 kelimeli basliklar <br> ile 2 satira bolunebilir, bkz.
+  // splitTableHeaderLabelIntoTwoLines) sutun basligi olarak gorunmesi,
+  // hoistlenmeyip HALA kendi sutununda kaldigini kanitlar (Ortak
+  // Bilgiler banner'i mixed-case kullanir, boyle bolunmez).
+  assert.ok(html.includes("ARSA PAYI") || html.includes("ARSA<br>PAYI"), "Arsa Payı, TÜM taşınmazlarda ayni olsa bile ARTIK kendi sütun BAŞLIĞI olarak kalmalı, hoistlenmemeli.");
+  assert.ok(html.includes("ARSA PAYDA") || html.includes("ARSA<br>PAYDA"), "Arsa Payda, TÜM taşınmazlarda ayni olsa bile ARTIK kendi sütun BAŞLIĞI olarak kalmalı, hoistlenmemeli.");
+  console.log("hoistUniformColumnsForWordTable: Arsa Payi/Payda ASLA hoistlenmez (kullanici duzeltmesi) testi tamam.");
+}
+
 // --- 17) Farkli parselli tarla raporunda: BOS sutun kurali VE "farkli ----
 // ada/parselde Arsa Payi/Payda" kurali BIRLIKTE uygulanir ------------------
 // Kullanici talebi: "eğer sistemde hücrede veri yoksa. örnek tarla raporu

@@ -600,6 +600,29 @@ const DIFFERENTIATING_UNIT_OVERRIDES = {};
   console.log("Ic Hacimler grup sutunlarinin '0' dahil her zaman gosterilmesi testi tamam.");
 }
 
+// --- 10b) DÜZELTME (2026-09-02, kullanıcı geri bildirimi): "bağımsız -----
+// bölüm özellikleri tablosunda mutfak wc diğer gibi bölüm türlerini ortak
+// kısımlarda yer almamalı. bunlar çift taraflı tablolarda gözükmeli" —
+// İç Hacimler grup sütunları (Salon/Oda/Mutfak/Banyo/Wc/Antre/Balkon/
+// Diğer, "readonly" kind) unitFloors HİÇ girilmediğinde TÜM taşınmazlarda
+// rastlantısal olarak "0" (BİREBİR AYNI) olur — ama banka şablonuna
+// gömülen Word HTML'inde YİNE DE hoistlenip "Ortak Bilgiler"e
+// TAŞINMAMALI, HER ZAMAN kendi sütununda kalmalı (hoistUniformColumnsForWordTable
+// yalnızca "scalar" kind'i hoist adayı sayar, "readonly" ASLA).
+{
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: fullUnitFields({ unitUsageStatus: "Boş (Hiç Kullanılmamış)", titleBlockName: "A", unitFloor: "1. Normal", unitNo: "3" }),
+    tables: {},
+    titleUnits: [unit(fullUnitFields({ unitUsageStatus: "Kiracı", titleBlockName: "B", unitFloor: "Zemin", unitNo: "7" }))],
+  });
+  const html = fns.buildUnitUnitsSummaryWordTableHtml();
+  ["Mutfak", "Wc", "Diğer"].forEach((label) => {
+    assert.ok(html.includes(label.toLocaleUpperCase("tr-TR")), `"${label}" sütunu (İç Hacimler, readonly) hoistlenmemeli, banka şablonu HTML'inde kendi sütun BAŞLIĞI olarak kalmalı, bulunan HTML'de yok.`);
+  });
+  console.log("hoistUniformColumnsForWordTable: Ic Hacimler (Mutfak/Wc/Diger) readonly sutunlari ASLA hoistlenmez (kullanici duzeltmesi) testi tamam.");
+}
+
 // --- 11) renderSection() "unit" gate'i doğru sırayla genişletildi ---------
 // (2026-08-21 devam: "Seçili Taşınmazlara Kopyala" butonu artık AYRI bir
 // body.append(...) DEĞİL, createTitleUnitTabBar()'a extraActions olarak

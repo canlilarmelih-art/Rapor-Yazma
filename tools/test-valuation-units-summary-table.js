@@ -364,7 +364,19 @@ const DIFFERENTIATING_OVERRIDES = {
   assert.ok(html.includes('rowspan="2"') && html.includes("YASAL DURUM DEĞERİ") && html.includes("MEVCUT DURUM DEĞERİ"), "Değerleme tablosu yasal/mevcut durum için iki katmanlı grup başlıkları kullanmalı.");
   assert.ok(html.includes("ALAN<br>(M²)"), "Alan (artık kendi 'YASAL'/'MEVCUT' grubunda) alt başlığı ikinci satırda gösterilmelidir.");
   assert.ok(html.includes("4800000") && html.includes("2273400"), "Değerler HTML'de gözükmeli.");
-  console.log("buildValuationUnitsSummaryWordTableHtml gercek HTML uretimi testi tamam.");
+  // Kullanıcı talebi (2026-09-02): "değerleme tablosunda yazı puntolarını
+  // azalt tablo yine sığmıyor" — banka şablonuna gömülen (editable=false)
+  // çıktıda punto/dolgu KÜÇÜLTÜLMELİ; EKRANDAKİ düzenlenebilir önizleme
+  // (editable=true) okunabilirlik için AYNI (6.5pt) KALMALI.
+  assert.ok(html.includes("font-size:5pt;"), "Banka sablonu (export) ciktisinda hucre puntosu 5pt'ye kucultulmus olmali.");
+  assert.ok(!html.includes("font-size:6.5pt;"), "Banka sablonu (export) ciktisinda ESKI 6.5pt punto ARTIK gorunmemeli.");
+  // EKRANDAKİ düzenlenebilir önizleme (editable:true) okunabilirlik için
+  // ESKİ (6.5pt) puntoda KALMALI - yalnızca export/banka şablonu küçüldü.
+  const editableData = fns.buildValuationUnitsSummaryTableData();
+  const editableHtml = fns.buildValuationUnitsSummaryTableHtml(editableData, 0, { editable: true });
+  assert.ok(editableHtml.includes("font-size:6.5pt;"), "Ekrandaki duzenlenebilir onizleme HALA 6.5pt punto kullanmali (kucultme SADECE export icin).");
+  assert.ok(!editableHtml.includes("font-size:5pt;"), "Ekrandaki duzenlenebilir onizlemede 5pt punto GORUNMEMELI.");
+  console.log("buildValuationUnitsSummaryWordTableHtml gercek HTML uretimi (5pt kucultulmus punto, ekran onizlemesi 6.5pt'de kaldi) testi tamam.");
 }
 
 // --- 7) template-engine.js'te {{TASINMAZLARDEGERLEMETABLOSU}} kayıtlı mı --

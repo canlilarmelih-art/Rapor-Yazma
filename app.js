@@ -8151,7 +8151,19 @@ function buildValuationUnitsSummaryTableHtml(data, activeRowIndex, { editable = 
   const surface = getReportThemeToken("--surface", "#ffffff");
   const surfaceMuted = getReportThemeToken("--surface-muted", "#eef2fa");
   const border = `border:1pt solid ${line};`;
-  const baseCell = `${border}padding:3pt 4pt;text-align:center;vertical-align:middle;line-height:1.15;color:${ink};background:${surface};font-size:6.5pt;white-space:normal;`;
+  // Kullanıcı talebi (2026-09-02): "değerleme tablosunda yazı puntolarını
+  // azalt tablo yine sığmıyor" — bu tablo, sütun sayısı fazla olduğunda
+  // (çoklu taleplerde Yasal/Mevcut Alan/Değer grupları yan yana) banka
+  // şablonuna gömülünce sayfa genişliğini aşıyordu. Hücreler kendi
+  // İNLİNE stiliyle punto/dolgu belirlediğinden (şablonun kendi
+  // ".pg-section .word-table td" CSS küçültmesi inline stilin ÜZERİNE
+  // YAZAMAZ — inline stil her zaman kazanır), küçültme BURADA, kaynakta
+  // yapılmalı. Yalnızca export/banka şablonu (editable=false) için
+  // küçültülür — EKRANDAKİ düzenlenebilir önizleme (editable=true)
+  // okunabilirlik için AYNI (6.5pt) kalır.
+  const baseFontSize = editable ? "6.5pt" : "5pt";
+  const basePadding = editable ? "3pt 4pt" : "1.5pt 2pt";
+  const baseCell = `${border}padding:${basePadding};text-align:center;vertical-align:middle;line-height:1.15;color:${ink};background:${surface};font-size:${baseFontSize};white-space:normal;`;
   const headerCell = `${baseCell}background:${surfaceMuted};color:${blue};font-weight:800;`;
   const zebraCell = `${baseCell}background:${surfaceMuted};`;
   // Kullanıcı bildirimi (2026-08-21, ekran görüntüsü): "sütun başlıkları
@@ -21786,23 +21798,32 @@ function buildUnitsSummaryTableHeadingHtml(label) {
 // DEĞİŞMEDİ). Ama banka şablonuna gömülen Word/Excel çıktısı (bu
 // fonksiyonu çağıran build*UnitsSummaryWordTableHtml sarmalayıcıları)
 // SAYFA GENİŞLİĞİ kısıtına tabi olduğundan, BURADA EK bir geçiş
-// uygulanıyor: Sıra No ("seq") ve Malik(ler) gibi birleştirilmiş çok
-// satırlı ("owner") sütunlar HARİÇ, TÜM taşınmazlarda BİREBİR AYNI
-// (ve boş/"-" olmayan) değere sahip HERHANGİ bir sütun — Yüzölçümü/Ana
-// Taşınmaz Niteliği'nin ÖZEL DURUM olarak kodlanması YERİNE, hangi
-// sütun olduğuna bakılmaksızın DİNAMİK olarak — tablodan çıkarılıp
-// "Ortak Bilgiler" banner'ına taşınır. Değerleme tablosu (kendi iki
-// katmanlı — Yasal/Mevcut çift sütun — özel renderer'ı, bkz.
-// buildValuationUnitsSummaryTableHtml) BİLEREK bu geçişe DAHİL EDİLMEDİ:
-// keyfi sütun kaldırma o özel eşleştirme mantığını bozabilirdi.
-function hoistUniformColumnsForWordTable(data) {
+// uygulanıyor. Değerleme tablosu (kendi iki katmanlı — Yasal/Mevcut çift
+// sütun — özel renderer'ı, bkz. buildValuationUnitsSummaryTableHtml)
+// BİLEREK bu geçişe DAHİL EDİLMEDİ: keyfi sütun kaldırma o özel
+// eşleştirme mantığını bozabilirdi.
+//
+// KULLANICI DÜZELTMESİ (2026-09-02, ikinci tur): "Tapu bölümünde arsa
+// payda kısmını, bağımsız bölüm özellikleri tablosunda mutfak wc diğer
+// gibi bölüm türlerini ortak kısımlarda yer almamalı. bunlar çift taraflı
+// tablolarda gözükmeli" — İLK sürüm HERHANGİ bir aynı-değerli sütunu
+// (kind'ına bakmaksızın) hoistliyordu; bu ÇOK GENİŞTİ. Artık yalnızca
+// "scalar" (doğrudan girilen, sabit bir gerçek — Yüzölçümü/Ana Taşınmaz
+// Niteliği gibi) sütunlar hoist ADAYI; "readonly"/"computed" (TÜRETİLEN,
+// HER ZAMAN anlamlı bir taşınmaza-özgü değer — oda-türü sayıları/
+// indirgenmiş alan gibi) ve "owner"/"seq" ASLA hoistlenmez. Arsa Payı/
+// Payda ("scalar" olsa da, farklı bağımsız bölümlerde İLKE OLARAK
+// farklı olabilen bir pay/payda oranı) `exemptFieldKeys` ile AYRICA
+// hariç tutulur (bkz. Tapu sarmalayıcısındaki çağrı).
+function hoistUniformColumnsForWordTable(data, exemptFieldKeys) {
   const { headers, rows, commonFields, columnMeta } = data;
   if (!Array.isArray(rows) || rows.length < 2 || headers.length <= 1) return { headers, rows, commonFields };
+  const exempt = exemptFieldKeys instanceof Set ? exemptFieldKeys : new Set(exemptFieldKeys || []);
   const newCommonFields = Array.isArray(commonFields) ? [...commonFields] : [];
   const keepIndexes = [];
   headers.forEach((label, index) => {
-    const kind = columnMeta?.[index]?.kind;
-    if (kind === "owner" || kind === "seq") {
+    const meta = columnMeta?.[index];
+    if (meta?.kind !== "scalar" || exempt.has(meta.fieldKey)) {
       keepIndexes.push(index);
       return;
     }
@@ -21825,7 +21846,13 @@ function hoistUniformColumnsForWordTable(data) {
 function buildTitleUnitsSummaryWordTableHtml() {
   const data = buildTitleUnitsSummaryTableData();
   if (!data || !data.rows.length) return "";
-  const hoisted = hoistUniformColumnsForWordTable(data);
+  // Kullanıcı talebi (2026-09-02): "Tapu bölümünde arsa payda kısmını...
+  // ortak kısımlarda yer almamalı. bunlar çift taraflı tablolarda
+  // gözükmeli" — Arsa Payı/Payda ("scalar" olsa da) farklı bağımsız
+  // bölümlerde İLKE OLARAK farklı olabileceğinden, TÜM taşınmazlarda
+  // rastlantısal olarak aynı çıksa BİLE hoistlenmemesi için hariç
+  // tutuldu.
+  const hoisted = hoistUniformColumnsForWordTable(data, ["share", "denominator"]);
   return buildUnitsSummaryTableHeadingHtml("Taşınmazlar Tapu Özeti") + buildTitleUnitsSummaryTableHtmlFromData(hoisted.headers, hoisted.rows, hoisted.commonFields);
 }
 
