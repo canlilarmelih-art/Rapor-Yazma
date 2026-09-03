@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.634 - 2026-09-03 - templates/emlakkatilim.docx: Word'de elle düzenlendikten sonra STORED zip + run birleştirme onarımı
+
+- Kullanıcı talebi: "emlak katılım template dosyasında manuel güncelleme yaptım commit push ve deploy yaparmısın."
+- **Kök durum**: `templates/emlakkatilim.docx` MUTLAKA STORED (sıkıştırmasız) zip olarak paketli kalmalı (bkz. CLAUDE.md/AGENTS.md, 0.0.315) — `src/exports/docx-fill.js`'in `readStoredZip`'i bağımlılıksız çalışmak için DEFLATE girişte kasıtlı hata fırlatır. Kullanıcının Word'de yaptığı manuel düzenleme dosyayı (a) DEFLATE ile yeniden paketlemiş (26 girişten 22'si sıkıştırılmış) VE (b) Word'ün otomatik yazım/dilbilgisi denetimi (`<w:proofErr/>` işaretleri) birkaç `{{BOLD:...}}`/`{{CURRENT_VALUE}}` gibi token'ı birden fazla `<w:r>` run'ına BÖLMÜŞ (0.0.313'ün "Word run bölme sorunu" — merge_runs.py ile önceden onarılmış AYNI kusur, manuel düzenleme SIRASINDA tekrar oluşmuş).
+- **Düzeltme**: STORED zip'e yeniden paketleme (CLAUDE.md'deki standart Python betiği) TEK BAŞINA yetmedi — `tools/test-docx-fill.js` "beklenenden az {{BOLD:...}}" ve "{{ ve }} sayıları eşit değil" hatalarıyla BAŞARISIZ olmaya devam etti. `merge_runs.py` (0.0.313'ün hazırlık betiği) repoya commit edilmediğinden, AYNI onarımı yapan yeni bir betik yazıldı: (1) TÜM `<w:proofErr .../>` işaretlerini kaldırır (kozmetik, görünürlük etkisi YOK), (2) proofErr kaldırıldıktan sonra TAM BİTİŞİK hale gelen `<w:r>` run'larını — `<w:r>`'ın KENDİSİ `w:rsidR`/`w:rsidRPr` gibi öznitelikler TAŞISA BİLE, AYNI `<w:rPr>` (biçimlendirme) paylaşıyorlarsa — TEK run'da birleştirir; herhangi bir parça `xml:space="preserve"` taşıyorsa birleşik run da bunu KORUR (boşluk kaybı YOK). Görünür metin İÇERİĞİ (etiketler hariç) onarım ÖNCESİ/SONRASI BİREBİR aynı doğrulandı.
+- Test: `node tools/test-docx-fill.js` (yapısal sağlık: {{TOKEN}} sayısı/dengesi, {{BOLD:...}} işaret sayısı, bozuk-token taraması, media/header/footer bütünlüğü) + `node tools/test-emlakkatilim-photo-embed.js` ("8. Ekler" fotoğraf gömme + kapak fotoğrafı yer tutucusu) DAHİL `npm run verify` tam paket EXIT:0.
+- `index.html` DEĞİŞMEDİ — bu ikili şablon dosyası sunucu API'siyle (`/api/report-template-docx`) her istekte TAZE okunuyor, statik bir `?v=` cache-buster'a bağlı DEĞİL.
+- Canlı tarayıcı testi yapılamadı — kullanıcının Emlak Katılım şablonuyla gerçek bir rapor export edip hem kendi manuel değişikliğinin (metin/tablo güncellemesi) hem de {{BOLD:...}} işaretli çoktan-seçmeli alanların (Çevre Analizi/Kira Kabiliyeti vb.) hâlâ doğru çalıştığını doğrulaması gerekiyor.
+
 ## 0.0.633 - 2026-09-03 - İç Hacimler Açıklaması (Çoklu Taşınmaz): 2+ taşınmaz birleşince metin ÇOĞULLANIYOR
 
 - Kullanıcı bulgusu (üçüncü işaretli GERÇEK örnekle, kırmızı renk kodlu): "A5, A10 ve A11: Taşınmazlar 131 m2... oluşmaktadırlar." — "-lar" ekleri kırmızıyla işaretlenmişti. AskUserQuestion ile netleştirildi: "Evet, çoğullansın."
