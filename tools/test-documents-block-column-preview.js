@@ -80,12 +80,42 @@ function extractFunction(name) {
   console.log("createDocumentsBlockColumnTablePreview() içerik + salt-okunur karar testi tamam.");
 }
 
-// --- 3) renderSection: "documents" bölümünde, isDocumentsScopedByBlock() dalında,
-//     createDocumentsUnitsSummaryTablePreview()'in HEMEN ardından ------------
+// --- 3) renderSection: "documents" bölümünde, createDocumentsBlockColumnTablePreview()
+//     İKİ dalın (isDocumentsBlockGroupingActive tab-bar / isDocumentsScopedByBlock
+//     fallback) DIŞINDA, KENDİ isDocumentsScopedByBlock() koşuluyla ekleniyor mu ---
+// KULLANICI BULGUSU (2026-09-03): "GÖZÜKMÜYOR baktım tablo yok dediğin
+// kısımda" — panel ÖNCE yanlışlıkla yalnızca "else if (isDocumentsScopedByBlock())"
+// dalının İÇİNE eklenmişti, yani Dikey/Yatay Kat İrtifakı raporlarında
+// (isDocumentsBlockGroupingActive() true -> createDocumentsBlockTabBar dalı)
+// panel HİÇ görünmüyordu. Bu REGRESYON testi: panel çağrısının
+// createDocumentsBlockTabBar() çağrısından SONRA, "} else if" bloğunun
+// KAPANIŞINDAN SONRA (yani her iki dalın da DIŞINDA) yer aldığını doğrular.
 {
-  const marker = /createDocumentsUnitsSummaryTablePreview\(\)\);\s*\r?\n\s*body\.append\(createDocumentsBlockColumnTablePreview\(\)\);/;
-  assert.ok(marker.test(appSource), "createDocumentsBlockColumnTablePreview() createDocumentsUnitsSummaryTablePreview()'in HEMEN ardından eklenmeli.");
-  console.log("renderSection kablolama (Belgeler ve Proje bölümü) testi tamam.");
+  const documentsSectionMarker = 'if (section.id === "documents" && isCurrentUserAdmin() && state.fields.requestType === "Çoklu Talep") {';
+  const sectionStart = appSource.indexOf(documentsSectionMarker);
+  assert.ok(sectionStart >= 0, "renderSection'daki 'documents' bölüm bloğu bulunamadı.");
+  const sectionSlice = appSource.slice(sectionStart, sectionStart + 2500);
+
+  const tabBarIndex = sectionSlice.indexOf("createDocumentsBlockTabBar()");
+  const elseIfCloseIndex = sectionSlice.indexOf("}", sectionSlice.indexOf("body.append(createDocumentsUnitsSummaryTablePreview());"));
+  // Bare fonksiyon adı yerine GERÇEK çağrı kalıbı aranıyor — bu dosyanın
+  // KENDİ regresyon yorumu fonksiyon adını DÜZ METİN olarak da geçiriyor
+  // (yukarıdaki kullanıcı bulgusu açıklaması), bare ad aramak YANLIŞLIKLA
+  // o yorum metnini eşleştirirdi.
+  const previewCallIndex = sectionSlice.indexOf("body.append(createDocumentsBlockColumnTablePreview());");
+  assert.ok(tabBarIndex >= 0 && elseIfCloseIndex >= 0 && previewCallIndex >= 0, "Beklenen çağrılar bulunamadı.");
+  assert.ok(
+    previewCallIndex > elseIfCloseIndex,
+    "createDocumentsBlockColumnTablePreview() 'if/else if' bloğunun (tab-bar VE fallback dallarının) DIŞINDA olmalı — REGRESYON: kullanıcının GERÇEK (Kat İrtifakı, tab-bar) raporlarında panel görünmüyordu."
+  );
+  // Kendi bağımsız isDocumentsScopedByBlock() koşuluyla sarmalanmış olmalı
+  // (if/else-if zincirinin bir PARÇASI DEĞİL, ayrı bir "if").
+  const guardSlice = sectionSlice.slice(elseIfCloseIndex, previewCallIndex);
+  assert.ok(
+    /if \(isDocumentsScopedByBlock\(\)\) \{/.test(guardSlice),
+    "createDocumentsBlockColumnTablePreview() KENDİ ayrı 'if (isDocumentsScopedByBlock())' koşuluyla sarmalanmalı (tab-bar dalıyla İÇ İÇE olmamalı)."
+  );
+  console.log("renderSection kablolama (İKİ daldan BAĞIMSIZ, her zaman görünür) REGRESYON testi tamam.");
 }
 
 // --- 4) Refresh fonksiyonu + debounce + 3 tetikleyici noktaya kablolama -----

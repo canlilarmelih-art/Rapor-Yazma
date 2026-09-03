@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.628 - 2026-09-03 - DÜZELTME: İncelenen Belgeler (Blok Bazında) paneli HİÇ görünmüyordu
+
+- Kullanıcı bulgusu: "GÖZÜKMÜYOR baktım tablo yok dediğin kısımda" — 0.0.627'de eklenen "İncelenen Belgeler (Blok Bazında)" paneli, kullanıcının GERÇEK raporunda hiç görünmedi.
+- **Kök neden**: `renderSection()`'daki "documents" bölümü kodu, `isDocumentsBlockGroupingActive()` (Dikey/Yatay Kat İrtifakı, adlandırılmış bloklu — `createDocumentsBlockTabBar()` ile 2 katmanlı tab yapısı) ile `isDocumentsScopedByBlock()` (diğer, nadir Müstakil Bina/Arsa/Tarla — düz tab + özet tablo FALLBACK'i) arasında dallanıyor. `createDocumentsBlockColumnTablePreview()` çağrısı yanlışlıkla YALNIZCA "else if (isDocumentsScopedByBlock())" (nadir FALLBACK) dalının İÇİNE eklenmişti — kullanıcının GERÇEK raporu (adlandırılmış A/B/C bloklu, tipik Kat İrtifakı senaryosu) `isDocumentsBlockGroupingActive()` dalına girdiğinden panel hiç render edilmiyordu.
+- **Düzeltme**: `body.append(createDocumentsBlockColumnTablePreview());` iki dalın (if/else if) DIŞINA, kendi bağımsız `if (isDocumentsScopedByBlock())` koşuluyla taşındı — artık hangi tab/özet-tablo yapısı (2 katmanlı blok-tab çubuğu VEYA düz-tab fallback) gösterilirse gösterilsin, belgeler blok bazında farklıysa panel HER ZAMAN görünür.
+- Test: `tools/test-documents-block-column-preview.js`'deki kaynak-düzeyi kablolama kontrolü GÜÇLENDİRİLDİ — artık panelin `if/else if` zincirinin DIŞINDA, kendi ayrı koşuluyla eklendiğini doğrulayan GERÇEK bir REGRESYON testi (eski, hatalı koda karşı çalıştırılıp GERÇEKTEN BAŞARISIZ olduğu doğrulandı, sonra düzeltme geri konuldu). `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` cache-buster `?v=20260903-0300`.
+- Canlı tarayıcı testi yapılamadı — kullanıcının AYNI (bloklu, Kat İrtifakı) raporunda "Belgeler ve Proje" bölümünü yeniden açıp panelin artık göründüğünü doğrulaması gerekiyor.
+
 ## 0.0.627 - 2026-09-03 - İncelenen Belgeler (Blok Bazında): "Belgeler ve Proje" bölümüne salt-okunur önizleme
 
 - Kullanıcı takip talebi: "bu tabloyu aynı zamanda çift taraflı olarak belgeler ve proje bölümüne koyabilir miyiz?" — 0.0.626'da Excel export'una eklenen blok bazlı "İncelenen Belgeler" birleşimi artık "Belgeler ve Proje" bölümünde de canlı önizleniyor.

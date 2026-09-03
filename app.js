@@ -5727,6 +5727,18 @@ function renderSection() {
     } else if (isDocumentsScopedByBlock()) {
       body.append(createTitleUnitTabBar());
       body.append(createDocumentsUnitsSummaryTablePreview());
+    }
+    // Kullanıcı bulgusu (2026-09-03): "GÖZÜKMÜYOR baktım tablo yok
+    // dediğin kısımda" — createDocumentsBlockColumnTablePreview() ÖNCE
+    // yanlışlıkla yukarıdaki "else if" dalının İÇİNE eklenmişti, yani
+    // yalnızca Dikey/Yatay Kat İrtifakı OLMAYAN (nadir fallback) raporlarda
+    // görünüyordu — kullanıcının GERÇEK raporları (adlandırılmış bloklu,
+    // yani isDocumentsBlockGroupingActive() true olan, YUKARIDAKİ "if"
+    // dalına giren tipik durum) bu paneli HİÇ görmüyordu. Düzeltme: panel
+    // artık İKİ dalın DIŞINDA, yalnızca isDocumentsScopedByBlock()'a bakan
+    // KENDİ koşuluyla ekleniyor — hangi tab/özet-tablo yapısı gösterilirse
+    // gösterilsin, belgeler blok bazında farklıysa panel HER ZAMAN görünür.
+    if (isDocumentsScopedByBlock()) {
       body.append(createDocumentsBlockColumnTablePreview());
     }
     // Kullanıcı talebi (2026-08-26): "uygunluk durumu ile ilgili bu
