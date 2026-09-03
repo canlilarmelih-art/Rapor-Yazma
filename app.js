@@ -818,6 +818,15 @@ const sections = [
       // öncelikle açık adres çoklu olarak açıklamalar kısmına yeni bir
       // bölüm oluştur" — bkz. buildMultiUnitOpenAddressText() (aşağıda).
       { key: "multiUnitOpenAddressText", label: "Açık Adres (Çoklu Taşınmaz)", type: "textarea", wide: true },
+      // Kullanıcı talebi (2026-09-03): "geçelim aynı ada parsel bağımsız
+      // bölüm özellikleri çoklu çalışma açıklamalarına" — netleştirme
+      // (AskUserQuestion): İç Hacimler Açıklaması (unitInteriorDescription,
+      // "unit" bölümü — her bağımsız bölümün KENDİ oda/salon/mutfak vb.
+      // bileşimini anlatan, taşınmaza-özgü metin), "aynı/benzer metinleri
+      // TEK cümlede birleştir" — bkz. buildMultiUnitInteriorDescriptionText()
+      // (aşağıda, "Açık Adres (Çoklu Taşınmaz)" ile AYNI "Açıklamalar"a
+      // yeni bir alan ekleme deseni).
+      { key: "unitInteriorDescriptionMulti", label: "İç Hacimler Açıklaması (Çoklu Taşınmaz)", type: "textarea", wide: true },
       {
         key: "ekbEmissionClass",
         label: "Sera Gazı Emisyon Sınıfı",
@@ -5353,6 +5362,11 @@ function refreshAllVariantDependentExplanationFields() {
     // AYNI desen: "Açıklamalar" bölümü HER render edildiğinde (argümansız
     // çağrı — watchedKeys filtresini atlar) KOŞULSUZ yeniden hesaplanır,
     // veri NASIL girilmiş olursa olsun HER ZAMAN güncel kalır.
+    // "İç Hacimler Açıklaması (Çoklu Taşınmaz)" (2026-09-03) — AŞAĞIDAKİ
+    // "Açık Adres (Çoklu)" ile AYNI gerekçe: veri NASIL girilmiş olursa
+    // olsun (canlı input, içe aktarma, taşınmaz sekmesi geçişi) HER
+    // "Açıklamalar" render'ında KOŞULSUZ güncel kalır.
+    () => refreshMultiUnitInteriorDescriptionTextFromCurrentFields(),
     () => refreshMultiUnitOpenAddressTextFromCurrentFields(),
   ];
   refreshers.forEach((refresher) => {
@@ -6353,6 +6367,7 @@ function createForm(section) {
       refreshStaticSuitabilityExplanationFromCurrentFields(field.key);
       refreshBuildingInspectionExplanationFromCurrentFields(field.key);
       refreshMultiUnitOpenAddressTextFromCurrentFields(field.key);
+      refreshMultiUnitInteriorDescriptionTextFromCurrentFields(field.key);
       refreshEkbExplanationFromCurrentFields(field.key);
       refreshLandDescriptionFromCurrentFields(field.key);
       refreshClimateEarthquakeExplanationFromCurrentFields(field.key);
@@ -6487,6 +6502,7 @@ function createForm(section) {
       refreshStaticSuitabilityExplanationFromCurrentFields(field.key);
       refreshBuildingInspectionExplanationFromCurrentFields(field.key);
       refreshMultiUnitOpenAddressTextFromCurrentFields(field.key);
+      refreshMultiUnitInteriorDescriptionTextFromCurrentFields(field.key);
       refreshEkbExplanationFromCurrentFields(field.key);
       refreshLandDescriptionFromCurrentFields(field.key);
       refreshClimateEarthquakeExplanationFromCurrentFields(field.key);
@@ -30821,6 +30837,21 @@ function refreshMultiUnitOpenAddressTextFromCurrentFields(changedKey = "") {
   }
 }
 
+// buildMultiUnitInteriorDescriptionText()'in (yukarıda) canlı tazeleyicisi
+// — refreshMultiUnitOpenAddressTextFromCurrentFields ile AYNI desen.
+// watchedKeys: metnin GİRDİSİ olan unitInteriorDescription'ın KENDİSİ +
+// atıf etiketlerini (formatTitleUnitSuitabilityLabel) etkileyen
+// titleBlockName/unitNo.
+function refreshMultiUnitInteriorDescriptionTextFromCurrentFields(changedKey = "") {
+  const watchedKeys = ["unitInteriorDescription", "titleBlockName", "unitNo"];
+  if (changedKey && !watchedKeys.includes(changedKey)) return;
+  state.fields.unitInteriorDescriptionMulti = normalizeReportDescriptionText(buildMultiUnitInteriorDescriptionText());
+  const control = document.querySelector('[data-field="unitInteriorDescriptionMulti"]');
+  if (control && control.value !== state.fields.unitInteriorDescriptionMulti) {
+    control.value = state.fields.unitInteriorDescriptionMulti || "";
+  }
+}
+
 function getEkbInspectionDateIso() {
   return state.fields.appointmentDate || "";
 }
@@ -33310,6 +33341,67 @@ function buildMultiUnitOpenAddressText() {
   if (groups.length === 1) return groups[0].text;
 
   return groups.map((group) => `${group.blockLabels.join(", ")}: ${group.text}`).join("\n");
+}
+
+// Kullanıcı talebi (2026-09-03): "geçelim aynı ada parsel bağımsız bölüm
+// özellikleri çoklu çalışma açıklamalarına" — AskUserQuestion ile
+// netleştirildi: İç Hacimler Açıklaması (unitInteriorDescription — HER
+// bağımsız bölümün KENDİ oda/salon/mutfak vb. bileşimini anlatan,
+// taşınmaza-özgü bir metin, "Ana Gayrimenkul Açıklaması"nın AKSİNE blok/
+// rapor-geneli PAYLAŞIMLI DEĞİL) için "aynı/benzer metinleri TEK cümlede
+// birleştir" (kullanıcının seçtiği davranış).
+//
+// Kapsam kararı: ada/parsel eşitliğine BAKILMAZ (yalnızca "2+ taşınmaz
+// var mı") — İç Hacimler bileşimi ada/parsel'e değil bağımsız bölümün
+// KENDİSİNE bağlı olduğundan (Bağımsız Bölüm Özeti tablosunun kendisi de
+// ada/parsel-koşullu DEĞİL, bkz. buildUnitUnitsSummaryTableData), bu
+// tutarlılıkla uyumludur.
+//
+// Gruplama: findSimilarTitleUnitsSummaryTextGroups()'un (0.0.554, "≈
+// Benzer Metinleri Birleştir" butonu) AYNI %90 benzerlik eşiği/algoritması
+// (normalizeTextForSimilarityComparison + Levenshtein) — ama o fonksiyon
+// yalnızca 2+ ÜYELİ (gerçekten birleşecek) grupları döner, burada TEK
+// üyeli (benzersiz) metinler de kendi ayrı cümlesinde GÖSTERİLMESİ
+// gerektiğinden TAM bölüntü (partition) kendi döngüsüyle hesaplanır.
+// Atıf metni formatTitleUnitAttributionPhrase() ile — "Proje Uygunluk
+// Durumu"nun (buildProjectReviewConsolidatedSentences) AYNI atıf
+// yardımcısı, ama pluralizeProjectReviewSubjectText'in Proje Uygunluk'a
+// ÖZGÜ regex'leri (ör. "Projesine" -> "Projelerine") BİLEREK
+// kullanılmadı — İç Hacimler metninin cümle yapısı bambaşka, o regex'ler
+// burada YANLIŞ sonuç üretirdi.
+function buildMultiUnitInteriorDescriptionText() {
+  const units = buildAllTitleUnitsForSummaryTable();
+  if (units.length < 2) return state.fields.unitInteriorDescription || "";
+
+  const entries = units
+    .map((unit, index) => ({ index, fields: unit.fields || {}, value: normalizeReportDescriptionText(unit.fields?.unitInteriorDescription || "").trim() }))
+    .filter((entry) => entry.value);
+  if (!entries.length) return "";
+
+  const groups = [];
+  entries.forEach((entry) => {
+    const normalized = normalizeTextForSimilarityComparison(entry.value);
+    const matchedGroup = groups.find(
+      (group) => computeTextSimilarityRatio(group.normalized, normalized) >= 0.9
+    );
+    if (matchedGroup) {
+      matchedGroup.entries.push(entry);
+    } else {
+      groups.push({ normalized, canonicalValue: entry.value, entries: [entry] });
+    }
+  });
+
+  // TÜM bağımsız bölümler AYNI/BENZER metni ürettiyse (TEK grup) atıf
+  // eklenmeden TEK, ortak metin döner (buildDocumentsBlockAttributedExplanationParts/
+  // buildProjectReviewConsolidatedSentences ile AYNI ilke: "hepsi aynıysa
+  // taşınmaz adı tekrar etmeden tek genel cümle kurulmalı").
+  if (groups.length === 1) return groups[0].canonicalValue;
+
+  return groups.map((group) => {
+    const labels = group.entries.map((entry) => formatTitleUnitSuitabilityLabel(entry.fields, entry.index));
+    const attribution = formatTitleUnitAttributionPhrase(labels);
+    return attribution ? normalizeReportDescriptionText(`${attribution}: ${group.canonicalValue}`) : group.canonicalValue;
+  }).join("\n");
 }
 
 function createOpenAddressPanel() {
@@ -41487,6 +41579,12 @@ function collectGeneratedTextPlaceholders() {
       key: "unit_interior_description_text",
       title: "Kat, Alan ve İç Hacimler Açıklaması",
       value: composeUnitInteriorDescription(),
+    },
+    {
+      category: "Bağımsız Bölüm Özellikleri",
+      key: "unit_interior_description_multi_text",
+      title: "İç Hacimler Açıklaması (Çoklu Taşınmaz)",
+      value: state.fields.unitInteriorDescriptionMulti || buildMultiUnitInteriorDescriptionText(),
     },
     {
       category: "Bağımsız Bölüm Özellikleri",

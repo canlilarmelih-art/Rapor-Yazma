@@ -481,6 +481,9 @@
     // açıklama alanlarıyla AYNI desen (t: önce depolanan alan, yoksa
     // yeniden üret).
     ACIKADRESCOKLU: { t: () => field("multiUnitOpenAddressText") || safeCall("buildMultiUnitOpenAddressText") },
+    // "İç Hacimler Açıklaması (Çoklu Taşınmaz)" (2026-09-03) — ACIKADRESCOKLU
+    // ile AYNI desen.
+    ICHACIMLERACIKLAMASICOKLU: { t: () => field("unitInteriorDescriptionMulti") || safeCall("buildMultiUnitInteriorDescriptionText") },
     LOCATIONMAPIMAGE: { h: () => reportImageHtml("location") },
     KONUMHARITASI: { h: () => reportImageHtml("location") },
     COMPARABLESKETCHIMAGE: { h: () => reportImageHtml("comparables") },
