@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.630 - 2026-09-03 - DÜZELTME: "Bloklar Ana Gayrimenkul Özeti"ne Kat Adedi + Toplam Bağımsız Bölüm sütunları eklendi
+
+- Kullanıcı bulgusu: "ana gayrimenkul kat adedi (bodrum ayrı zemin ayrı normal ve çatı katlar ayrı) toplam bağımsız bölüm sayısı bu sütunlar nerede."
+- **Kök neden**: 0.0.629'da `mainPropertyFloorCountText` ("Ana Gayrimenkul Kat Adedi") YANLIŞLIKLA `mainPropertyDescription` ile AYNI kategoriye ("2+ FARKLI blok varken RAPOR-GENELİ konsolide") konup tablodan dışarıda bırakılmıştı — bu YANLIŞTI. Yalnızca `mainPropertyDescription` (`buildConsolidatedMainPropertyDescription`, idempotent-launching-kernighan.md planı) GERÇEKTEN rapor-geneli konsolide oluyor; `mainPropertyFloorCountText`'in KENDİ input'u (`createMainPropertyFloorCountTextControl`) hâlâ SADECE `syncBuildingSharedDataToBlockSiblings()` (AYNI-blok senkronu) çağırıyor — yani GERÇEKTEN blok bazında farklı olabilen (kullanıcının kendi placeholder'ı: "BODRUM + ZEMİN + 5 NORMAL"), SIRADAN bir blok-paylaşımlı skaler alan. `totalFloors`/`totalUnits` ("Toplam Kat Sayısı"/"Toplam Bağımsız Bölüm Sayısı") de aynı şekilde hiç eklenmemişti — bunlar `buildingFloors` (Kat Satırları) tablosundan TÜRETİLMİŞ ama BLOK BAZINDA GERÇEKTEN FARKLI olabilen, `getBuildingBlockSharedFieldKeys()` listesinde ZATEN bulunan (dolayısıyla ZATEN blok-arkadaşlarına senkronlanan) değerler.
+- **Düzeltme**: `BUILDING_BLOCK_UNITS_TABLE_FIELD_DEFS`'e 3 sütun eklendi: `mainPropertyFloorCountText` (DÜZENLENEBİLİR — diğer 15 sütunla AYNI mekanizma), `totalFloors`/`totalUnits` (SALT-OKUNUR — Bağımsız Bölüm Özeti'ndeki `legalArea`/`currentArea` ile AYNI ilke: bir TOPLAM tek bir kaynak satıra geri yazılamaz, kaynağı Katlar/Alanlar panelidir). `mainPropertyDescription`/`buildingFloorCounts`/`buildingAge`/vb. GERÇEKTEN türetilmiş/konsolide alanlar HÂLÂ dışarıda (davranış DEĞİŞMEDİ).
+- Test: `tools/test-building-block-units-summary-table.js` güncellendi — yeni 3 sütunun varlığı, doğru değerleri (blok-özgü) ve doğru `kind`i (scalar/readonly) doğrulanıyor; GERÇEKTEN dışarıda kalması gereken alanların (mainPropertyDescription vb.) hâlâ dışarıda olduğu ayrıca doğrulandı. Geçici geri alma ile testin gerçekten BAŞARISIZ olduğu doğrulanıp sonra geri konuldu. `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` cache-buster `?v=20260903-0500`.
+- Canlı tarayıcı testi yapılamadı — kullanıcının 2+ farklı bloklu raporunda "Bloklar Ana Gayrimenkul Özeti" panelini yeniden açıp Ana Gayrimenkul Kat Adedi/Toplam Kat Sayısı/Toplam Bağımsız Bölüm Sayısı sütunlarının artık göründüğünü doğrulaması gerekiyor.
+
 ## 0.0.629 - 2026-09-03 - Ana Gayrimenkul: "Bloklar Ana Gayrimenkul Özeti" (satır başına BLOK, çift taraflı)
 
 - Kullanıcı talebi: "ana gayrimenkul bölümünde 1'den fazla blok var ise her blok bir satır olacak şekilde çift taraflı tablo yapalım."

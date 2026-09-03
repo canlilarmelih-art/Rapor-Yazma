@@ -206,6 +206,7 @@ function freshState(overrides = {}) {
         ownershipType: "Yatay Kat İrtifakı",
         blockNo: "100", parcelNo: "1", titleBlockName: "A",
         buildingStyle: "Betonarme Karkas", carpark: "Açık Otopark", elevator: "1 Adet Asansör",
+        mainPropertyFloorCountText: "1 BODRUM + ZEMİN + 4 NORMAL + ÇATI KATI", totalFloors: "6", totalUnits: "20",
       },
     },
     titleUnits: [
@@ -226,18 +227,39 @@ function freshState(overrides = {}) {
   assert.deepEqual(data.rowUnitIndices, [0, 1], `rowUnitIndices her bloğun İLK üyesinin GERÇEK index'i olmalı. Bulunan: ${JSON.stringify(data.rowUnitIndices)}`);
   // activeRowIndex: aktif taşınmaz (index 2) B bloğunda -> B'nin satırı (1. index).
   assert.equal(data.activeRowIndex, 1, `activeRowIndex aktif taşınmazın BULUNDUĞU bloğun satırı olmalı. Bulunan: ${data.activeRowIndex}`);
-  console.log("2 farklı blok: satır=blok, temsilci kaynak, rowUnitIndices/activeRowIndex doğru testi tamam.");
+  // KULLANICI DÜZELTMESİ (2026-09-03): "ana gayrimenkul kat adedi (bodrum
+  // ayrı zemin ayrı normal ve çatı katlar ayrı) toplam bağımsız bölüm
+  // sayısı bu sütunlar nerede" — bu 3 sütun GERİ eklendi.
+  const floorCountColumn = data.headers.indexOf("Ana Gayrimenkul Kat Adedi");
+  const totalFloorsColumn = data.headers.indexOf("Toplam Kat Sayısı");
+  const totalUnitsColumn = data.headers.indexOf("Toplam Bağımsız Bölüm Sayısı");
+  assert.ok(floorCountColumn >= 0 && totalFloorsColumn >= 0 && totalUnitsColumn >= 0, "Ana Gayrimenkul Kat Adedi/Toplam Kat Sayısı/Toplam Bağımsız Bölüm Sayısı sütunları OLMALI.");
+  assert.equal(data.rows[0][floorCountColumn], "1 BODRUM + ZEMİN + 4 NORMAL + ÇATI KATI", "A bloğunun kendi Kat Adedi metni gösterilmeli.");
+  assert.equal(data.rows[0][totalFloorsColumn], "6", "A bloğunun Toplam Kat Sayısı gösterilmeli.");
+  assert.equal(data.rows[0][totalUnitsColumn], "20", "A bloğunun Toplam Bağımsız Bölüm Sayısı gösterilmeli.");
+  const totalFloorsMeta = data.columnMeta[totalFloorsColumn];
+  const totalUnitsMeta = data.columnMeta[totalUnitsColumn];
+  assert.equal(totalFloorsMeta.kind, "readonly", "Toplam Kat Sayısı SALT-OKUNUR olmalı (Katlar/Alanlar panelinden türetilir, tek hücreye geri yazılamaz).");
+  assert.equal(totalUnitsMeta.kind, "readonly", "Toplam Bağımsız Bölüm Sayısı SALT-OKUNUR olmalı (aynı gerekçe).");
+  const floorCountMeta = data.columnMeta[floorCountColumn];
+  assert.equal(floorCountMeta.kind, "scalar", "Ana Gayrimenkul Kat Adedi DÜZENLENEBİLİR olmalı (mainPropertyDescription'ın AKSİNE gerçekten blok-bazlı, rapor-geneli konsolide DEĞİL).");
+  console.log("2 farklı blok: satır=blok, temsilci kaynak, rowUnitIndices/activeRowIndex + Kat Adedi/Toplam sütunları doğru testi tamam.");
 }
 
-// --- 1d) mainPropertyDescription/mainPropertyFloorCountText/buildingAge
-// gibi türetilmiş-veya-konsolide alanlar BİLEREK sütun DEĞİL --------------
+// --- 1d) mainPropertyDescription/buildingFloorCounts/buildingAge gibi
+// GERÇEKTEN türetilmiş-veya-konsolide alanlar BİLEREK sütun DEĞİL;
+// mainPropertyFloorCountText/totalFloors/totalUnits İSE (kullanıcı
+// düzeltmesi sonrası) sütun OLMALI --------------------------------------
 {
   const keys = fns.BUILDING_BLOCK_UNITS_TABLE_FIELD_DEFS.map((def) => def.key);
-  ["mainPropertyDescription", "mainPropertyFloorCountText", "buildingAge", "buildingCompletionDate",
-    "buildingConstructionYear", "buildingDepreciationRate", "totalFloors", "totalUnits", "buildingFloorCounts"].forEach((key) => {
-    assert.ok(!keys.includes(key), `"${key}" bu tabloda sütun OLMAMALI (türetilmiş/konsolide, section.fields tanımının üstündeki istisna listesiyle AYNI).`);
+  ["mainPropertyDescription", "buildingAge", "buildingCompletionDate",
+    "buildingConstructionYear", "buildingDepreciationRate", "buildingFloorCounts", "mainPropertyFloorSummary"].forEach((key) => {
+    assert.ok(!keys.includes(key), `"${key}" bu tabloda sütun OLMAMALI (GERÇEKTEN türetilmiş/konsolide).`);
   });
-  console.log("Türetilmiş/konsolide alanların DIŞARIDA bırakılması testi tamam.");
+  ["mainPropertyFloorCountText", "totalFloors", "totalUnits"].forEach((key) => {
+    assert.ok(keys.includes(key), `"${key}" bu tabloda sütun OLMALI (kullanıcı düzeltmesi: 'bu sütunlar nerede').`);
+  });
+  console.log("GERÇEKTEN türetilmiş/konsolide alanların dışarıda, blok-bazlı kat özet alanlarının İÇERİDE olması testi tamam.");
 }
 
 // --- 2a) buildTitleUnitsSummaryTableHtmlEditable: rowUnitIndices=null ->

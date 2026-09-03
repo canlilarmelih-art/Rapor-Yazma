@@ -4559,7 +4559,7 @@ function createBuildingBlockUnitsSummaryTablePreview() {
   attachTitleUnitsSummaryTableEditing(tableContainer);
   const hint = document.createElement("p");
   hint.className = "muted-note";
-  hint.textContent = "Her satır bir bloğu temsil eder; hücrelere tıklayarak düzenleyebilirsiniz — değişiklik o bloktaki TÜM bağımsız bölümlere otomatik uygulanır (Blok sütunu tıklanamaz). Banka şablonlarında {{TASINMAZLARANAGAYRIMENKULTABLOSU}} olarak kullanılabilir.";
+  hint.textContent = "Her satır bir bloğu temsil eder; hücrelere tıklayarak düzenleyebilirsiniz — değişiklik o bloktaki TÜM bağımsız bölümlere otomatik uygulanır (Blok/Toplam Kat Sayısı/Toplam Bağımsız Bölüm Sayısı sütunları tıklanamaz — Katlar/Alanlar panelinden otomatik hesaplanır). Banka şablonlarında {{TASINMAZLARANAGAYRIMENKULTABLOSU}} olarak kullanılabilir.";
   wrap.append(hint);
   return wrap;
 }
@@ -24106,20 +24106,41 @@ function createProjectSuitabilityUnitsSummaryTablePreview() {
 // TEMSİLCİ (ilk) taşınmazının fields'ı kaynak.
 //
 // Sütunlar section.fields'taki (building, hidden:true) 15 GERÇEK
-// düzenlenebilir/skaler alan — section.fields tanımının HEMEN üstündeki
-// yorumda BİLEREK DIŞARIDA bırakılan alanlar (buildingFloorCounts/
-// totalFloors/totalUnits/mainPropertyFloorSummary — buildingFloors
-// tablosundan TÜRETİLMİŞ; buildingAge/buildingCompletionDate/
-// buildingConstructionYear/buildingCompletionExplanation/
-// buildingDepreciationType/buildingDepreciationRate — HER render'da
-// KOŞULSUZ yeniden hesaplanır) BURADA DA dışarıda — Excel panelinin
-// (createSectionExcelPanel) AYNI istisna listesi. `mainPropertyDescription`/
-// `mainPropertyFloorCountText` de BİLEREK YOK: 2+ FARKLI blok varken
-// (idempotent-launching-kernighan.md planı, 0.0.573+) bu ikisi artık
-// RAPOR-GENELİ TEK bir konsolide metin/değer — HER blok satırında AYNI
-// metni tekrar göstermek "her blok bir satır" karşılaştırma amacına
-// aykırı olurdu; bu ikisinin KENDİ düzenleme arayüzü (Ana Gayrimenkul
-// Açıklaması paneli) zaten mevcut, DEĞİŞMEDİ.
+// düzenlenebilir/skaler alan + 3 TÜRETİLMİŞ (readonly) kat/bağımsız bölüm
+// özet alanı.
+//
+// KULLANICI DÜZELTMESİ (2026-09-03): "ana gayrimenkul kat adedi (bodrum
+// ayrı zemin ayrı normal ve çatı katlar ayrı) toplam bağımsız bölüm
+// sayısı bu sütunlar nerede" — İLK sürümde `mainPropertyFloorCountText`
+// ("Ana Gayrimenkul Kat Adedi") YANLIŞLIKLA `mainPropertyDescription`
+// ile AYNI kategoriye ("2+ FARKLI blok varken RAPOR-GENELİ konsolide")
+// konup dışarıda bırakılmıştı — bu YANLIŞTI: yalnızca `mainPropertyDescription`
+// (buildConsolidatedMainPropertyDescription, idempotent-launching-kernighan.md
+// planı) GERÇEKTEN rapor-geneli konsolide oluyor; `mainPropertyFloorCountText`
+// KENDİ input'unun (createMainPropertyFloorCountTextControl) HER
+// değişikliğinde hâlâ SADECE syncBuildingSharedDataToBlockSiblings()
+// (AYNI-blok senkronu) çağırıyor — yani GERÇEKTEN blok bazında farklı
+// olabilen (kullanıcının placeholder örneği: "BODRUM + ZEMİN + 5 NORMAL"),
+// SIRADAN bir blok-paylaşımlı skaler alan. Buraya GERİ eklendi.
+// `totalFloors`/`totalUnits` de eklendi — `buildingFloors` (Kat
+// Satırları) tablosundan TÜRETİLMİŞ (updateBuildingFloorTotals) ama
+// BLOK BAZINDA GERÇEKTEN FARKLI olabilen, `getBuildingBlockSharedFieldKeys()`
+// listesinde ZATEN bulunan (dolayısıyla ZATEN blok-arkadaşlarına
+// senkronlanan) değerler — Bağımsız Bölüm Özeti'ndeki `legalArea`/
+// `currentArea` (`kind: "readonly"`, "bir TOPLAM tek bir kaynak satıra
+// geri yazılamaz") ile AYNI ilkeyle salt-okunur (hücreden DÜZENLENEMEZ,
+// kaynağı Katlar/Alanlar panelidir).
+//
+// HÂLÂ BİLİNÇLİ OLARAK DIŞARIDA bırakılanlar: `mainPropertyDescription`
+// (yukarıda açıklanan GERÇEK rapor-geneli konsolidasyon — HER blok
+// satırında AYNI metni tekrar göstermek anlamsız, kendi düzenleme
+// arayüzü zaten mevcut), `buildingFloorCounts` (obje, düz metin sütunu
+// OLARAK ifade edilemez — `mainPropertyFloorCountText` zaten bunun
+// insan-okunur özeti), `mainPropertyFloorSummary`/`buildingAge`/
+// `buildingCompletionDate`/`buildingConstructionYear`/
+// `buildingCompletionExplanation`/`buildingDepreciationType`/
+// `buildingDepreciationRate` (HER render'da KOŞULSUZ yeniden hesaplanır
+// — section.fields tanımının hemen üstündeki yorumdaki AYNI istisna).
 const BUILDING_BLOCK_UNITS_TABLE_FIELD_DEFS = [
   { key: "buildingStyle", label: "Bina Yapı Tarzı" },
   { key: "buildingOrder", label: "Mevcut Yapı Nizamı" },
@@ -24136,6 +24157,9 @@ const BUILDING_BLOCK_UNITS_TABLE_FIELD_DEFS = [
   { key: "socialFacilities", label: "Sosyal Tesisler" },
   { key: "buildingBlockCount", label: "Blok Adedi - Konumu" },
   { key: "buildingSubjectBlockPosition", label: "Konu Taşınmazın Yer Aldığı Blokun Parsel Üzerindeki Konumu" },
+  { key: "mainPropertyFloorCountText", label: "Ana Gayrimenkul Kat Adedi" },
+  { key: "totalFloors", label: "Toplam Kat Sayısı", readonly: true },
+  { key: "totalUnits", label: "Toplam Bağımsız Bölüm Sayısı", readonly: true },
 ];
 
 // Görünürlük: isBuildingBlockGroupingActive() ("1'den fazla blok" —
@@ -24162,7 +24186,7 @@ function buildBuildingBlockUnitsSummaryTableData() {
   const columnMeta = [
     { kind: "seq", narrow: true },
     { kind: "readonly", narrow: true },
-    ...BUILDING_BLOCK_UNITS_TABLE_FIELD_DEFS.map((def) => ({ kind: "scalar", fieldKey: def.key })),
+    ...BUILDING_BLOCK_UNITS_TABLE_FIELD_DEFS.map((def) => ({ kind: def.readonly ? "readonly" : "scalar", fieldKey: def.key })),
   ];
 
   const rowUnitIndices = blockGroups.map((group) => group.unitIndices[0]);
