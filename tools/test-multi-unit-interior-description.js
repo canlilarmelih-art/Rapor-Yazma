@@ -34,6 +34,18 @@
 // KENDİSİNE bağlı olduğundan Bağımsız Bölüm Özeti tablosunun kendisiyle
 // (o da ada/parsel-koşullu DEĞİL) TUTARLIDIR.
 //
+// Kullanıcı DÜZELTMESİ #3 (üçüncü işaretli GERÇEK örnekle, RENK kodlu):
+// "A5, A10 ve A11: Taşınmazlar 131 m2... oluşmaktadırlar." — "-lar"
+// ekleri KIRMIZI ile işaretlenmişti. AskUserQuestion ile netleştirildi:
+// "Evet, çoğullansın" — 2+ bağımsız bölüm TEK grupta birleşince (atıflı
+// olsun ya da olmasın) metin gramer olarak ÇOĞULLANMALI. Kapsam BİLİNÇLİ
+// OLARAK dar: yalnızca cümlenin ÇIPLAK "Taşınmaz" ÖZNESİYLE başladığı
+// durumlar (bkz. pluralizeUnitInteriorAreaSentence yorumu) — kat adı
+// öznesiyle başlayan çok-katlı cümleler VE "Taşınmazın"/"Taşınmazda"
+// (genitif/lokatif) ile başlayan teras/dükkan cümleleri kendi doğru
+// Türkçe gramerini KORUR (bkz. UNIT_INTERIOR_AREA_VERB_ENDING_PLURAL_MAP
+// yorumu).
+//
 // LANDMINE UYARISI (test-multi-unit-open-address.js'teki AYNI uyarı):
 // app.js'te 4 ayrı `function joinTurkishList(...)` var, aynı isim aynı
 // scope'ta olduğundan SONUNCUSU (cleanupPlaceName() ile KML'e özgü
@@ -118,6 +130,25 @@ function extractFunctionBodyFrom(start) {
   throw new Error("Fonksiyon gövdesi kapanmadı.");
 }
 
+// app.js CRLF satır sonlarıyla saklanıyor — "[" / "]" derinliğine göre
+// sabitin GERÇEK sonunu bulan yöntem (diğer test dosyalarındaki AYNI emsal).
+function extractConstArray(name) {
+  const marker = `const ${name} = [`;
+  const start = appSource.indexOf(marker);
+  assert.ok(start >= 0, `Sabit bulunamadı: ${name}`);
+  let index = start + marker.length - 1;
+  let depth = 0;
+  for (; index < appSource.length; index += 1) {
+    const char = appSource[index];
+    if (char === "[") depth += 1;
+    if (char === "]") {
+      depth -= 1;
+      if (depth === 0) return `${appSource.slice(start, index + 1)};`;
+    }
+  }
+  throw new Error(`Sabit sonu bulunamadı: ${name}`);
+}
+
 const functionNames = [
   "getTitleUnitCount",
   "getTitleUnitFieldsForLabel",
@@ -134,8 +165,12 @@ const functionNames = [
   "formatDocumentBlockAttributionPhrase",
   "formatTitleUnitAttributionPhrase",
   "cleanupPlaceName",
+  "pluralizeEnvironmentalSubjectText",
+  "pluralizeUnitInteriorAreaSentence",
+  "pluralizeUnitInteriorAreaDetailsText",
   "buildMultiUnitInteriorDescriptionText",
 ];
+const constArrayNames = ["UNIT_INTERIOR_AREA_VERB_ENDING_PLURAL_MAP"];
 
 const sandboxSource = `
   let state = {};
@@ -156,6 +191,7 @@ const sandboxSource = `
     return { areaDetails: state.fields.mockAreaDetails || "" };
   }
   ${extractLastFunction("joinTurkishList")}
+  ${constArrayNames.map(extractConstArray).join("\n")}
   ${functionNames.map(extractFunction).join("\n")}
   return {
     setState: (s) => { state = s; },
@@ -163,6 +199,8 @@ const sandboxSource = `
     resetStateSwapLog: () => { stateSwapLog = []; },
     getState: () => state,
     buildMultiUnitInteriorDescriptionText,
+    pluralizeUnitInteriorAreaSentence,
+    pluralizeUnitInteriorAreaDetailsText,
   };
 `;
 // eslint-disable-next-line no-new-func
@@ -172,8 +210,13 @@ function unit(overrides = {}) {
   return { fields: { ...overrides }, tables: {} };
 }
 
-const SALON_2_ODA = "Bağımsız bölüm; 1 salon, 2 oda, 1 mutfak, 1 banyo, 1 wc hacimlerinden oluşmaktadır.";
-const SALON_2_ODA_TYPO = "Bağımsız bölüm; 1 salon, 2 oda, 1 mutfak, 1 banyo,1 wc hacimlerinden oluşmaktadır"; // eksik boşluk + nokta yok
+// Kullanıcının GERÇEK örneğiyle BİREBİR (composeSingleUnitFloorInteriorParagraph'ın
+// ÇIPLAK "Taşınmaz" öznesiyle başlayan, "hacimlerinden oluşmaktadır." ile
+// biten şablonu) — pluralizasyon testlerinin ÇIPLAK özneyi doğru tespit
+// ettiğini doğrulamak için BİLEREK bu GERÇEK kalıpla yazıldı.
+const SALON_2_ODA = "Taşınmaz projesine ve mevcut duruma göre 131 m2 kullanım alanına sahip olup, antre-hol, salon, 3 oda, mutfak, banyo, wc, duş ve 3 balkon hacimlerinden oluşmaktadır.";
+const SALON_2_ODA_PLURAL = "Taşınmazlar projesine ve mevcut duruma göre 131 m2 kullanım alanına sahip olup, antre-hol, salon, 3 oda, mutfak, banyo, wc, duş ve 3 balkon hacimlerinden oluşmaktadırlar.";
+const SALON_2_ODA_TYPO = "Taşınmaz projesine ve mevcut duruma göre 131 m2 kullanım alanına sahip olup, antre-hol, salon, 3 oda, mutfak, banyo,wc, duş ve 3 balkon hacimlerinden oluşmaktadır"; // eksik boşluk + nokta yok
 const SALON_3_ODA = "Dubleks bağımsız bölüm zemin katta 1 salon ve mutfaktan, üst katta 3 yatak odası ile 2 banyodan meydana gelmektedir.";
 
 // --- 1) Tekil rapor: mevcut unitInteriorDescription AYNEN döner ------------
@@ -189,7 +232,8 @@ const SALON_3_ODA = "Dubleks bağımsız bölüm zemin katta 1 salon ve mutfakta
   console.log("Tekil rapor (davranış değişmedi) testi tamam.");
 }
 
-// --- 2) 2+ taşınmaz, TÜM areaDetails BİREBİR AYNI: atıfsız TEK ortak metin -
+// --- 2) 2+ taşınmaz, TÜM areaDetails BİREBİR AYNI: atıfsız TEK, ÇOĞUL metin
+// (kullanıcı düzeltmesi #3: "Evet, çoğullansın") ------------------------
 {
   fns.setState({
     activeTitleUnitIndex: 0,
@@ -198,13 +242,13 @@ const SALON_3_ODA = "Dubleks bağımsız bölüm zemin katta 1 salon ve mutfakta
     titleUnits: [unit({ titleBlockName: "B", unitNo: "5", mockAreaDetails: SALON_2_ODA })],
   });
   const result = fns.buildMultiUnitInteriorDescriptionText();
-  assert.equal(result, SALON_2_ODA, "Tüm bağımsız bölümler AYNI areaDetails ürettiyse atıf EKLENMEDEN TEK ortak metin dönmeli.");
+  assert.equal(result, SALON_2_ODA_PLURAL, "2+ bağımsız bölüm AYNI areaDetails ürettiyse atıf EKLENMEDEN TEK, ÇOĞUL ('Taşınmazlar ... oluşmaktadırlar') metin dönmeli.");
   assert.ok(!result.includes("No'lu"), "Atıf etiketi (ör. 'No'lu') HİÇ görünmemeli (tek grup = atıfsız).");
-  console.log("2+ taşınmaz, TÜM areaDetails AYNI -> atıfsız TEK ortak metin testi tamam.");
+  console.log("2+ taşınmaz, TÜM areaDetails AYNI -> atıfsız TEK ÇOĞUL ortak metin testi tamam.");
 }
 
 // --- 3) 2+ taşınmaz, TÜM areaDetails %90+ BENZER (yazım/noktalama farkı) --
-// -> YİNE TEK ortak metin.
+// -> YİNE TEK, ÇOĞUL ortak metin.
 {
   fns.setState({
     activeTitleUnitIndex: 0,
@@ -213,11 +257,12 @@ const SALON_3_ODA = "Dubleks bağımsız bölüm zemin katta 1 salon ve mutfakta
     titleUnits: [unit({ titleBlockName: "B", unitNo: "5", mockAreaDetails: SALON_2_ODA_TYPO })],
   });
   const result = fns.buildMultiUnitInteriorDescriptionText();
-  assert.equal(result, SALON_2_ODA, "Yazım/noktalama farkı OLAN ama %90+ BENZER areaDetails de TEK ortak (İLK yazılan) metinde birleşmeli.");
-  console.log("2+ taşınmaz, %90+ BENZER (yazım/noktalama farklı) areaDetails -> TEK ortak metin testi tamam.");
+  assert.equal(result, SALON_2_ODA_PLURAL, "Yazım/noktalama farkı OLAN ama %90+ BENZER areaDetails de TEK, ÇOĞUL (İLK yazılan tabana dayalı) ortak metinde birleşmeli.");
+  console.log("2+ taşınmaz, %90+ BENZER (yazım/noktalama farklı) areaDetails -> TEK ÇOĞUL ortak metin testi tamam.");
 }
 
-// --- 4) 2+ taşınmaz, 2 FARKLI grup: HER grup KENDİ atıflı cümlesinde -------
+// --- 4) 2+ taşınmaz, 2 FARKLI grup, HER İKİ grup da TEK üyeli: HER grup
+// KENDİ atıflı ama TEKİL cümlesinde (tek üyeli grup ÇOĞULLANMAZ) --------
 {
   fns.setState({
     activeTitleUnitIndex: 0,
@@ -228,9 +273,83 @@ const SALON_3_ODA = "Dubleks bağımsız bölüm zemin katta 1 salon ve mutfakta
   const result = fns.buildMultiUnitInteriorDescriptionText();
   const lines = result.split("\n");
   assert.equal(lines.length, 2, `2 FARKLI grup -> 2 ayrı satır beklenir. Bulunan: ${JSON.stringify(lines)}`);
-  assert.ok(lines.some((line) => line.includes("A 2 No'lu") && line.includes(SALON_2_ODA)), `A 2 No'lu atıflı satır bulunamadı. Bulunan: ${JSON.stringify(lines)}`);
-  assert.ok(lines.some((line) => line.includes("B 5 No'lu") && line.includes(SALON_3_ODA)), `B 5 No'lu atıflı satır bulunamadı. Bulunan: ${JSON.stringify(lines)}`);
-  console.log("2+ taşınmaz, 2 FARKLI grup -> her grup kendi atıflı cümlesinde testi tamam.");
+  assert.ok(lines.some((line) => line.includes("A 2 No'lu") && line.includes(SALON_2_ODA)), `A 2 No'lu atıflı TEKİL satır bulunamadı. Bulunan: ${JSON.stringify(lines)}`);
+  assert.ok(lines.some((line) => line.includes("B 5 No'lu") && line.includes(SALON_3_ODA)), `B 5 No'lu atıflı TEKİL satır bulunamadı. Bulunan: ${JSON.stringify(lines)}`);
+  console.log("2+ taşınmaz, 2 FARKLI TEK-üyeli grup -> her grup kendi atıflı TEKİL cümlesinde testi tamam.");
+}
+
+// --- 4b) KULLANICININ GERÇEK ÖRNEĞİ: 3 üyeli grup (A5/A10/A11) + 1 üyeli
+// FARKLI grup (A15) — 3 üyeli grup ATIFLI VE ÇOĞUL, 1 üyeli grup atıflı
+// ama TEKİL (birebir kullanıcının işaretlediği senaryo) --------------------
+{
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: { titleBlockName: "A", unitNo: "5", mockAreaDetails: SALON_2_ODA },
+    tables: {},
+    titleUnits: [
+      unit({ titleBlockName: "A", unitNo: "10", mockAreaDetails: SALON_2_ODA }),
+      unit({ titleBlockName: "A", unitNo: "11", mockAreaDetails: SALON_2_ODA }),
+      unit({ titleBlockName: "A", unitNo: "15", mockAreaDetails: SALON_3_ODA }),
+    ],
+  });
+  const result = fns.buildMultiUnitInteriorDescriptionText();
+  const lines = result.split("\n");
+  assert.equal(lines.length, 2, `3-üyeli + 1-üyeli grup -> 2 satır beklenir. Bulunan: ${JSON.stringify(lines)}`);
+  const groupLine = lines.find((line) => line.includes(SALON_2_ODA_PLURAL));
+  assert.ok(groupLine, `3 üyeli grubun ÇOĞUL metni bulunamadı. Bulunan: ${JSON.stringify(lines)}`);
+  assert.ok(groupLine.includes("A 5 No'lu, A 10 No'lu ve A 11 No'lu"), `3 üyeli grubun atfı kullanıcının GERÇEK örneğiyle BİREBİR eşleşmeli. Bulunan: ${groupLine}`);
+  assert.ok(lines.some((line) => line.includes("A 15 No'lu") && line.includes(SALON_3_ODA)), `Tek üyeli (A15) grup atıflı ama TEKİL kalmalı. Bulunan: ${JSON.stringify(lines)}`);
+  console.log("KULLANICI ÖRNEĞİ: 3 üyeli grup ATIFLI+ÇOĞUL, 1 üyeli grup atıflı+TEKİL testi tamam.");
+}
+
+// --- 4c) pluralizeUnitInteriorAreaSentence(): ÇIPLAK "Taşınmaz" öznesi
+// hem KENDİSİ hem SONUNDAKİ fiil çoğullanır -------------------------------
+{
+  assert.equal(
+    fns.pluralizeUnitInteriorAreaSentence(SALON_2_ODA),
+    SALON_2_ODA_PLURAL,
+    "Çıplak 'Taşınmaz' öznesiyle başlayan cümlenin HEM öznesi HEM fiili çoğullanmalı."
+  );
+  assert.equal(
+    fns.pluralizeUnitInteriorAreaSentence("Taşınmaz kullanım alanına haizdir."),
+    "Taşınmazlar kullanım alanına haizdirler.",
+    "'haizdir.' sonu 'haizdirler.' olarak çoğullanmalı."
+  );
+  assert.equal(
+    fns.pluralizeUnitInteriorAreaSentence("Taşınmaz oda hacimlerinden oluşmaktadır."),
+    "Taşınmazlar oda hacimlerinden oluşmaktadırlar.",
+    "'oluşmaktadır.' sonu 'oluşmaktadırlar.' olarak çoğullanmalı."
+  );
+  console.log("pluralizeUnitInteriorAreaSentence(): çıplak 'Taşınmaz' öznesi + fiil çoğullama testi tamam.");
+}
+
+// --- 4d) pluralizeUnitInteriorAreaSentence(): GENİTİF/LOKATİF ("Taşınmazın"/
+// "Taşınmazda") ile başlayan cümlelerde YALNIZCA özne çoğullanır, fiil
+// DOKUNULMAZ (fiil "alan/uzunluk" gibi BAŞKA bir isme bağlı, doğru gramer
+// tekil kalmasıdır) -----------------------------------------------------
+{
+  const terraceSentence = "Taşınmazın 13 m2 yasal ve mevcut teras alanı bulunmaktadır.";
+  const expected = "Taşınmazların 13 m2 yasal ve mevcut teras alanı bulunmaktadır.";
+  assert.equal(fns.pluralizeUnitInteriorAreaSentence(terraceSentence), expected, "'Taşınmazın ...' cümlesinde özne çoğullanır AMA fiil ('bulunmaktadır') DOKUNULMAZ.");
+  console.log("pluralizeUnitInteriorAreaSentence(): genitif özne + tekil fiil (dokunulmaz) testi tamam.");
+}
+
+// --- 4e) pluralizeUnitInteriorAreaSentence(): KAT ADI öznesiyle başlayan
+// çok-katlı BB cümlesi HİÇ DEĞİŞTİRİLMEZ (composeMultiUnitFloorInteriorSentence,
+// A15'in GERÇEK örneği — kendi doğru grameri, taşınmaz sayısından bağımsız)
+{
+  const floorLedSentence = "4. Normal Kat projesine göre 85 m2 kullanım alanına sahip olup, antre-hol, salon, oda, mutfak, banyo ve 2 balkon iç hacimlerinden oluşmaktadır.";
+  assert.equal(fns.pluralizeUnitInteriorAreaSentence(floorLedSentence), floorLedSentence, "Kat adı öznesiyle başlayan cümle HİÇ DEĞİŞTİRİLMEMELİ (ne özne ne fiil).");
+  console.log("pluralizeUnitInteriorAreaSentence(): kat-adı-öznesi cümlesi DOKUNULMAZ testi tamam.");
+}
+
+// --- 4f) pluralizeUnitInteriorAreaDetailsText(): ÇOK CÜMLELİ metinde HER
+// cümle BAĞIMSIZ değerlendirilir (biri çoğullanır, diğeri dokunulmaz) ------
+{
+  const multi = `${SALON_2_ODA} Taşınmazın 13 m2 yasal ve mevcut teras alanı bulunmaktadır. Teras alanları kullanım alanına dahil edilmemiştir.`;
+  const expected = `${SALON_2_ODA_PLURAL} Taşınmazların 13 m2 yasal ve mevcut teras alanı bulunmaktadır. Teras alanları kullanım alanına dahil edilmemiştir.`;
+  assert.equal(fns.pluralizeUnitInteriorAreaDetailsText(multi), expected, "Çok cümleli metinde HER cümle kendi kuralına göre BAĞIMSIZ çoğullanmalı/dokunulmamalı.");
+  console.log("pluralizeUnitInteriorAreaDetailsText(): çok cümleli bağımsız değerlendirme testi tamam.");
 }
 
 // --- 5) Boş/whitespace-only areaDetails gruplamaya KATILMAZ ----------------
@@ -283,7 +402,9 @@ const SALON_3_ODA = "Dubleks bağımsız bölüm zemin katta 1 salon ve mutfakta
   const realBody = extractFunction("buildMultiUnitInteriorDescriptionText");
   assert.ok(realBody.includes("buildUnitInteriorDescriptionParts().areaDetails"), "Çoklu-taşınmaz kaynağı buildUnitInteriorDescriptionParts().areaDetails OLMALI.");
   assert.ok(!realBody.includes("unit.fields?.unitInteriorDescription") && !realBody.includes("unit.fields.unitInteriorDescription"), "REGRESYON: unitInteriorDescription (dekoratif+kat DAHİL tam metin) artık ÇOKLU-taşınmaz döngüsünde DOĞRUDAN okunmamalı.");
-  console.log("buildMultiUnitInteriorDescriptionText() .areaDetails kaynağı (dekoratif/kat sızıntısı REGRESYONU) testi tamam.");
+  assert.ok(realBody.includes("pluralizeUnitInteriorAreaDetailsText"), "2+ üyeli gruplar için pluralizeUnitInteriorAreaDetailsText() çağrılmalı (kullanıcı düzeltmesi #3: 'Evet, çoğullansın').");
+  assert.ok(/entries\.length > 1/.test(realBody), "Çoğullama YALNIZCA 2+ üyeli gruplara uygulanmalı (tek üyeli gruplar tekil kalmalı).");
+  console.log("buildMultiUnitInteriorDescriptionText() .areaDetails kaynağı (dekoratif/kat sızıntısı REGRESYONU) + çoğullama kablolaması testi tamam.");
 }
 
 // --- 9) explanations bölümünde yeni alan tanımı (kaynak-düzeyi) ------------

@@ -33415,7 +33415,63 @@ function buildMultiUnitOpenAddressText() {
 // yardımcısı, ama pluralizeProjectReviewSubjectText'in Proje Uygunluk'a
 // ÖZGÜ regex'leri (ör. "Projesine" -> "Projelerine") BİLEREK
 // kullanılmadı — İç Hacimler metninin cümle yapısı bambaşka, o regex'ler
-// burada YANLIŞ sonuç üretirdi.
+// burada YANLIŞ sonuç üretirdi. Bunun yerine, kullanıcının işaretli
+// örneğiyle (2026-09-03, AskUserQuestion ile "Evet, çoğullansın" onayı)
+// doğrulanan KENDİ (aşağıdaki) çoğullama yardımcısı kullanılır.
+
+// "Taşınmaz [fiil]" (ÇIPLAK/nominatif özne) kalıbının SONUNDA görülen,
+// bu alanın (İç Hacimler) sabit şablonlarındaki (composeSingleUnitFloorInteriorParagraph/
+// composeUnitTotalAreaTerraceSentence/composeUnitTerraceTotalSentence)
+// KAPALI/SONLU fiil sonu kümesi — en UZUN/özgül eşleşme ÖNCE denenecek
+// şekilde sıralı. composeMultiUnitFloorInteriorSentence'ın (çok katlı BB,
+// KAT ADI öznesiyle başlar — ör. "4. Normal Kat ... oluşmaktadır") AYNI
+// fiil sonlarını kullanması SORUN DEĞİL: bu liste yalnızca ÇIPLAK
+// "Taşınmaz" ile BAŞLAYAN cümlelere uygulanır (bkz. pluralizeUnitInteriorAreaSentence),
+// kat-adı-öznesiyle başlayan cümleler HİÇ dokunulmadan bırakılır (o
+// KATIN kendisi HER ZAMAN tekildir, birleşen taşınmaz sayısından
+// bağımsız — doğru Türkçe budur).
+const UNIT_INTERIOR_AREA_VERB_ENDING_PLURAL_MAP = [
+  [" kullanım alanına sahip olduğu tespit edilmiştir.", " kullanım alanına sahip oldukları tespit edilmiştir."],
+  [" kullanım alanına sahip olduğu belirlenmiştir.", " kullanım alanına sahip oldukları belirlenmiştir."],
+  [" kullanım alanına haizdir.", " kullanım alanına haizdirler."],
+  [" kullanım alanına sahiptir.", " kullanım alanına sahiptirler."],
+  [" hacimlerinden oluşmaktadır.", " hacimlerinden oluşmaktadırlar."],
+  [" bölümlerinden meydana gelmektedir.", " bölümlerinden meydana gelmektedirler."],
+  [" mahallerinden teşekkül etmektedir.", " mahallerinden teşekkül etmektedirler."],
+  ["na sahiptir.", "na sahiptirler."],
+];
+
+// Terasla ilgili cümlelerde ("Taşınmazın {alan} yasal ve mevcut teras
+// alanı bulunmaktadır."/composeUnitShopFrontageDepthSentence'ın dükkan
+// cephe cümleleri) fiil "Taşınmaz"a DEĞİL, "alanı"/"uzunluğu" gibi BAŞKA
+// bir isme bağlıdır — bu yüzden BİLİNÇLİ OLARAK yalnızca özne kelimesi
+// (pluralizeEnvironmentalSubjectText ile, "Taşınmazın" -> "Taşınmazların"
+// vb.) çoğullanır, fiil DOKUNULMAZ (doğru Türkçe budur: "Taşınmazların
+// {alan} teras alanı bulunmaktadır" — "alan" tekil kaldığı için fiil de
+// tekil kalır).
+function pluralizeUnitInteriorAreaSentence(sentence) {
+  const isBareSubjectSentence = /^Taşınmaz[\s,]/.test(sentence);
+  let result = pluralizeEnvironmentalSubjectText(sentence, true);
+  if (!isBareSubjectSentence) return result;
+  for (const [singular, plural] of UNIT_INTERIOR_AREA_VERB_ENDING_PLURAL_MAP) {
+    if (result.endsWith(singular)) {
+      result = result.slice(0, result.length - singular.length) + plural;
+      break;
+    }
+  }
+  return result;
+}
+
+// buildUnitInteriorDescriptionParts()'ın (bkz. joinNonEmptySentences)
+// ürettiği metinler HER ZAMAN "Cümle. Cümle. Cümle." biçiminde (her
+// parça "."yla biter, TEK boşlukla birleştirilir) — bu yüzden cümlelere
+// güvenle ". " sınırından ayrılıp her biri BAĞIMSIZ değerlendirilebilir
+// (bir cümlenin öznesi/fiili diğerini ETKİLEMEZ).
+function pluralizeUnitInteriorAreaDetailsText(text) {
+  if (!text) return text;
+  return text.split(/(?<=\.) /).map(pluralizeUnitInteriorAreaSentence).join(" ");
+}
+
 function buildMultiUnitInteriorDescriptionText() {
   const units = buildAllTitleUnitsForSummaryTable();
   if (units.length < 2) return state.fields.unitInteriorDescription || "";
@@ -33452,13 +33508,21 @@ function buildMultiUnitInteriorDescriptionText() {
   // TÜM bağımsız bölümler AYNI/BENZER metni ürettiyse (TEK grup) atıf
   // eklenmeden TEK, ortak metin döner (buildDocumentsBlockAttributedExplanationParts/
   // buildProjectReviewConsolidatedSentences ile AYNI ilke: "hepsi aynıysa
-  // taşınmaz adı tekrar etmeden tek genel cümle kurulmalı").
-  if (groups.length === 1) return groups[0].canonicalValue;
+  // taşınmaz adı tekrar etmeden tek genel cümle kurulmalı"). Kullanıcı
+  // talebi (2026-09-03, işaretli örnekle onaylandı): grup 2+ taşınmazı
+  // KAPSIYORSA (atıflı olsun ya da olmasın) metin ÇOĞULLANIR — "hepsi
+  // aynı" (bu dal) İÇİN DE geçerli: TEK grup ama 2+ üyeliyse hâlâ çoğul
+  // olmalı.
+  if (groups.length === 1) {
+    const soleGroup = groups[0];
+    return soleGroup.entries.length > 1 ? pluralizeUnitInteriorAreaDetailsText(soleGroup.canonicalValue) : soleGroup.canonicalValue;
+  }
 
   return groups.map((group) => {
+    const text = group.entries.length > 1 ? pluralizeUnitInteriorAreaDetailsText(group.canonicalValue) : group.canonicalValue;
     const labels = group.entries.map((entry) => formatTitleUnitSuitabilityLabel(entry.fields, entry.index));
     const attribution = formatTitleUnitAttributionPhrase(labels);
-    return attribution ? normalizeReportDescriptionText(`${attribution}: ${group.canonicalValue}`) : group.canonicalValue;
+    return attribution ? normalizeReportDescriptionText(`${attribution}: ${text}`) : text;
   }).join("\n");
 }
 
