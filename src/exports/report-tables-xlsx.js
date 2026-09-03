@@ -837,6 +837,14 @@
     if (gabimUnitsSummaryCellGrid) {
       sheets.push({ name: sanitizeSheetName("Taşınmazlar GABİM Özeti", usedNames), sheetXml: buildSheetXmlFromCellGrid(styleRegistry, gabimUnitsSummaryCellGrid) });
     }
+    // Bloklar Ana Gayrimenkul Özeti (2026-09-03) — yukarıdakilerle AYNI
+    // desen; yalnızca 1'den fazla FARKLI blok varsa dolu döner (bkz.
+    // buildBuildingBlockUnitsSummaryTableData, app.js) — TEK fark satır
+    // başına TAŞINMAZ değil BLOK.
+    const buildingBlockUnitsSummaryCellGrid = generatedCellGridFor("buildBuildingBlockUnitsSummaryWordTableHtml");
+    if (buildingBlockUnitsSummaryCellGrid) {
+      sheets.push({ name: sanitizeSheetName("Bloklar Ana Gayrimenkul Özeti", usedNames), sheetXml: buildSheetXmlFromCellGrid(styleRegistry, buildingBlockUnitsSummaryCellGrid) });
+    }
 
     const rawGridDefs = collectRawGridDefs();
     const takyidatDefs = rawGridDefs.filter((def) => TAKYIDAT_KEYS.includes(def.key));

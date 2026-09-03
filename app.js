@@ -1950,6 +1950,34 @@ function syncBuildingSharedDataToBlockSiblings() {
   });
 }
 
+// syncBuildingSharedDataToBlockSiblings()'in GENELLEŞTİRİLMİŞ hâli —
+// KAYNAK olarak HER ZAMAN state.fields/activeTitleUnitIndex'i varsayan
+// o fonksiyonun AKSİNE, burada KAYNAK herhangi bir `sourceUnitIndex`
+// olabilir (TEK bir `fieldKey`+`value` çifti için). "Bloklar Ana
+// Gayrimenkul Özeti" (2026-09-03) tablosunun AKTİF OLMAYAN bir satırı
+// (bir bloğun temsilci taşınmazı, o an ekrandaki taşınmaz OLMAYABİLİR)
+// düzenlendiğinde commitTitleUnitsSummaryCellEdit() tarafından çağrılır
+// — kaynak taşınmazın KENDİ bloğundaki DİĞER üyelere değeri kopyalar.
+// Hedef üyelerden biri AKTİF taşınmazsa (kaynak taşınmaz o bloğun İLK
+// üyesi DEĞİLSE bu mümkündür — bkz. çağrı yerindeki yorum), yalnızca
+// gölgeye yazmak YETMEZ: canlı DOM kontrolü (varsa) da güncellenir, aksi
+// halde ekranda GEÇİCİ OLARAK eski değer görünmeye devam ederdi (bir
+// sonraki tam render'a kadar).
+function syncBuildingFieldToBlockSiblings(sourceUnitIndex, fieldKey, value) {
+  if (!isBuildingBlockSharingApplicable()) return;
+  const units = buildAllTitleUnitsForSummaryTable();
+  const group = computeDocumentsBlockGroups(units).find((item) => item.unitIndices.includes(sourceUnitIndex));
+  if (!group || group.unitIndices.length < 2) return;
+  group.unitIndices.forEach((index) => {
+    if (index === sourceUnitIndex) return;
+    resolveTitleUnitWriteTarget(index)[fieldKey] = value;
+    if (index === state.activeTitleUnitIndex) {
+      const control = document.querySelector(`[data-field="${fieldKey}"]`);
+      if (control) control.value = value;
+    }
+  });
+}
+
 // Seçili blokta girilen ana gayrimenkul verisini KULLANICININ SEÇTİĞİ
 // blok alt kümesine uygular. Aynı blok içi otomatik senkron
 // (syncBuildingSharedDataToBlockSiblings) korunur; bu komut yalnızca
@@ -4498,6 +4526,44 @@ function createDocumentsBlockColumnTablePreview() {
   return wrap;
 }
 
+// Kullanıcı talebi (2026-09-03): "ana gayrimenkul bölümünde 1'den fazla
+// blok var ise her blok bir satır olacak şekilde çift taraflı tablo
+// yapalım" — diğer 9 özet tablosuyla AYNI önizleme/düzenleme deseni, TEK
+// mimari fark: satır başına TAŞINMAZ değil BLOK (bkz.
+// buildBuildingBlockUnitsSummaryTableData yorumu). Görünürlük
+// isBuildingBlockGroupingActive() — kullanıcının kendi "1'den fazla
+// blok" ifadesiyle BİREBİR (data null dönerse zaten bu koşul sağlanmamış
+// demektir).
+function createBuildingBlockUnitsSummaryTablePreview() {
+  const wrap = document.createElement("div");
+  wrap.className = "title-units-summary-table-preview building-block-units-summary-table-preview";
+  const heading = document.createElement("h5");
+  heading.textContent = "Bloklar Ana Gayrimenkul Özeti";
+  wrap.append(heading);
+
+  const data = buildBuildingBlockUnitsSummaryTableData();
+  if (!data || !data.rows.length) {
+    const note = document.createElement("p");
+    note.className = "muted-note";
+    note.textContent = "Bu tablo yalnızca taşınmazlar 1'den fazla FARKLI blokta olduğunda görünür. Banka şablonlarında {{TASINMAZLARANAGAYRIMENKULTABLOSU}} olarak kullanılabilir.";
+    wrap.append(note);
+    return wrap;
+  }
+  const tableHtml = buildTitleUnitsSummaryTableHtmlEditable(
+    data.headers, data.rows, data.columnMeta, data.activeRowIndex, data.commonFields, 4, data.rowUnitIndices
+  );
+  const tableContainer = document.createElement("div");
+  tableContainer.className = "title-units-summary-table-container";
+  tableContainer.innerHTML = tableHtml;
+  wrap.append(tableContainer);
+  attachTitleUnitsSummaryTableEditing(tableContainer);
+  const hint = document.createElement("p");
+  hint.className = "muted-note";
+  hint.textContent = "Her satır bir bloğu temsil eder; hücrelere tıklayarak düzenleyebilirsiniz — değişiklik o bloktaki TÜM bağımsız bölümlere otomatik uygulanır (Blok sütunu tıklanamaz). Banka şablonlarında {{TASINMAZLARANAGAYRIMENKULTABLOSU}} olarak kullanılabilir.";
+  wrap.append(hint);
+  return wrap;
+}
+
 // Değerleme (2026-08-19) — Tapu/Adres/İmar/Arsa/Belgeler ile BİREBİR aynı
 // desen. Kullanıcı: "değerleme kısmında tab mantığı ve çift taraflı tablo
 // mantığı olmalı" — TEK fark: gate koşulu ada/parsel veya bloğa DEĞİL,
@@ -4625,6 +4691,19 @@ function refreshDocumentsUnitsSummaryTablePreview() {
   host.replaceWith(createDocumentsUnitsSummaryTablePreview());
 }
 
+// Ana Gayrimenkul (2026-09-03) — yukarıdakilerle AYNI desen; kendi
+// benzersiz sınıfı (documents-units-summary-table-preview'un AYNI
+// gerekçesiyle — ".title-units-summary-table-preview" genel sınıfı bu
+// bölümde YALNIZCA bir panel olduğundan aslında ÇAKIŞMA riski yok, ama
+// gelecekte bu bölüme başka bir özet panel eklenirse tutarlılık için
+// YİNE DE benzersiz sınıf tercih edildi).
+function refreshBuildingBlockUnitsSummaryTablePreview() {
+  if (activeSectionId !== "building") return;
+  const host = document.querySelector(".building-block-units-summary-table-preview");
+  if (!host) return;
+  host.replaceWith(createBuildingBlockUnitsSummaryTablePreview());
+}
+
 // Değerleme (2026-08-19, devam) — yukarıdakilerle AYNI desen.
 function refreshValuationUnitsSummaryTablePreview() {
   if (activeSectionId !== "valuation") return;
@@ -4692,6 +4771,7 @@ const refreshDocumentsBlockColumnTablePreviewDebounced = debounce(refreshDocumen
 const refreshValuationUnitsSummaryTablePreviewDebounced = debounce(refreshValuationUnitsSummaryTablePreview, 350);
 const refreshUnitUnitsSummaryTablePreviewDebounced = debounce(refreshUnitUnitsSummaryTablePreview, 350);
 const refreshProjectSuitabilityUnitsSummaryTablePreviewDebounced = debounce(refreshProjectSuitabilityUnitsSummaryTablePreview, 350);
+const refreshBuildingBlockUnitsSummaryTablePreviewDebounced = debounce(refreshBuildingBlockUnitsSummaryTablePreview, 350);
 
 function loadUserDefaults() {
   try {
@@ -5815,6 +5895,14 @@ function renderSection() {
   // eklenmez.
   if (section.id === "building" && isCurrentUserAdmin() && state.fields.requestType === "Çoklu Talep" && isBuildingBlockGroupingActive()) {
     body.append(createBuildingBlockTabBar());
+    // Kullanıcı talebi (2026-09-03): "ana gayrimenkul bölümünde 1'den
+    // fazla blok var ise her blok bir satır olacak şekilde çift taraflı
+    // tablo yapalım" — bu gate ZATEN "1'den fazla blok" (isBuildingBlockGroupingActive)
+    // koşulunu birebir karşılıyor, bu yüzden EK bir if/else-if dalı
+    // GEREKMEDİ (0.0.628'in "İncelenen Belgeler (Blok Bazında)" panelinin
+    // yanlışlıkla bir else-if dalına hapsolup hiç görünmediği HATASI
+    // burada tekrarlanmıyor — bkz. o commit'in yorumu).
+    body.append(createBuildingBlockUnitsSummaryTablePreview());
   }
 
   const sectionVariantGroups = isCurrentUserAdmin() ? getVariantGroupsForSection(section.id) : [];
@@ -13491,6 +13579,11 @@ function refreshMainPropertyDescriptionFromCurrentFields(changedKey = "") {
   // alanları, sosyal tesisler, blok adedi/konumu, kat satırı düzenlemeleri)
   // TEK yerden kapsar.
   syncBuildingSharedDataToBlockSiblings();
+  // "Bloklar Ana Gayrimenkul Özeti" (2026-09-03) — YUKARIDAKİ 15 alanın
+  // TAMAMI bu özet tablonun sütunları; canlı panelden (bu fonksiyonun
+  // KENDİSİ üzerinden) yapılan HERHANGİ bir değişiklik sonrası tablo da
+  // güncel kalsın diye AYNI TEK çağrı noktasından tazelenir.
+  refreshBuildingBlockUnitsSummaryTablePreviewDebounced();
 }
 
 // Kullanıcı talebi (2026-08-27): "ana gayrimenkul açıklamasını çokluya
@@ -22261,7 +22354,17 @@ function buildTitleUnitsSummaryTableCommonFieldsHtml(commonFields, maxColumns = 
   </div>`;
 }
 
-function buildTitleUnitsSummaryTableHtmlEditable(headers, rows, columnMeta, activeRowIndex, commonFields = [], commonFieldsMaxColumns = 4) {
+// Kullanıcı talebi (2026-09-03): "ana gayrimenkul bölümünde 1'den fazla
+// blok var ise her blok bir satır olacak şekilde çift taraflı tablo
+// yapalım" — diğer 9 çağrı yerinde satır dizi konumu==taşınmaz index'i
+// (rows, `units.map((unit, index) => ...)` ile BİREBİR sırayla üretilir)
+// olduğundan `data-unit-index`e doğrudan `rowIndex` yazmak yeterliydi.
+// "Bloklar Ana Gayrimenkul Özeti"nde ise satır sayısı BLOK sayısı kadar
+// (taşınmaz sayısından AZ) — bu YENİ, OPSİYONEL 7. parametre (`rowUnitIndices`)
+// verilmişse HER satırın GERÇEK taşınmaz index'ini (o bloğun temsilci
+// taşınmazı) taşır; `null` (varsayılan) İSE davranış AYNEN korunur
+// (`rowIndex` kullanılır) — mevcut 9 çağrı yeri HİÇ ETKİLENMEZ.
+function buildTitleUnitsSummaryTableHtmlEditable(headers, rows, columnMeta, activeRowIndex, commonFields = [], commonFieldsMaxColumns = 4, rowUnitIndices = null) {
   const ink = getReportThemeToken("--ink", "#152238");
   const line = getReportThemeToken("--line", "#dde3ef");
   const blue = getReportThemeToken("--blue", "#3a5691");
@@ -22306,6 +22409,7 @@ function buildTitleUnitsSummaryTableHtmlEditable(headers, rows, columnMeta, acti
     return `<th style="${style}">${splitTableHeaderLabelIntoTwoLines(toTitleFieldUppercase(label))}${applyButton}${mergeSimilarButton}</th>`;
   }).join("")}</tr>`;
   const bodyHtml = rows.map((row, rowIndex) => {
+    const unitIndexForRow = rowUnitIndices ? rowUnitIndices[rowIndex] : rowIndex;
     const cellStyle = rowIndex % 2 === 1 ? zebraCell : baseCell;
     const cellsHtml = row.map((cell, columnIndex) => {
       const meta = (columnMeta && columnMeta[columnIndex]) || null;
@@ -22329,13 +22433,13 @@ function buildTitleUnitsSummaryTableHtmlEditable(headers, rows, columnMeta, acti
       // Düşen Arsa Payı) tek istisna: satır farketmeksizin HİÇBİR ZAMAN
       // tıklanabilir değil.
       if (meta && meta.kind === "owner") {
-        return `<td style="${style}cursor:pointer;" class="tus-owner-cell" data-unit-index="${rowIndex}" title="Malik(ler) bilgilerini düzenlemek için tıklayın">${formatWordCell(toTitleFieldUppercase(cell))}</td>`;
+        return `<td style="${style}cursor:pointer;" class="tus-owner-cell" data-unit-index="${unitIndexForRow}" title="Malik(ler) bilgilerini düzenlemek için tıklayın">${formatWordCell(toTitleFieldUppercase(cell))}</td>`;
       }
       const isEditable = Boolean(meta) && meta.kind === "scalar";
       if (!isEditable) {
         return `<td style="${style}">${formatWordCell(toTitleFieldUppercase(cell))}</td>`;
       }
-      return `<td style="${style}cursor:text;" class="tus-editable-cell" data-unit-index="${rowIndex}" data-field-key="${escapeHtml(meta.fieldKey)}" title="Düzenlemek için tıklayın">${formatWordCell(toTitleFieldUppercase(cell))}</td>`;
+      return `<td style="${style}cursor:text;" class="tus-editable-cell" data-unit-index="${unitIndexForRow}" data-field-key="${escapeHtml(meta.fieldKey)}" title="Düzenlemek için tıklayın">${formatWordCell(toTitleFieldUppercase(cell))}</td>`;
     }).join("");
     // "activeRowIndex" artık düzenlenebilirliği DEĞİL, yalnızca hangi
     // satırın şu an ekranda açık olan tab'a karşılık geldiğini görsel
@@ -22517,6 +22621,32 @@ function getSelectOptionsForFieldKey(fieldKey) {
   ].includes(fieldKey)) {
     return ["Evet", "Hayır"];
   }
+  // "Bloklar Ana Gayrimenkul Özeti" (2026-09-03) — "building" bölümünün
+  // select alanları da (yukarıdaki Bağımsız Bölüm/Proje Uygunluk
+  // istisnalarıyla AYNI sınıf sorun, bkz. section.fields tanımının
+  // hemen üstündeki "inline options BİLİNÇLİ OLARAK verilmedi" yorumu)
+  // sections[]'te statik `options` dizisi TAŞIMIYOR — canlı kontrollerin
+  // (createBuildingSelectField çağrı yerleri) KENDİ kullandığı GERÇEK
+  // seçenek listeleri burada elle eşlenir, yoksa bu 6 alan tabloda
+  // düz-metin girişine düşerdi. "elevator" TEK istisna: canlı kontrolde
+  // de AYRI bir sabit YOK, doğrudan inline dizi kullanılıyor — burada
+  // AYNEN kopyalanmıştır (drift riskini not etmek için: canlı kontrol
+  // değişirse burası da elle güncellenmeli).
+  if (fieldKey === "buildingStyle") return buildingStructureStyleOptions;
+  if (fieldKey === "buildingOrder") return buildingOrderOptions;
+  if (fieldKey === "buildingClass") return buildingClassOptions;
+  if (fieldKey === "carpark") return buildingCarparkOptions;
+  if (fieldKey === "exteriorCladding") return buildingExteriorCladdingOptions;
+  if (fieldKey === "stairLanding") return buildingStairLandingOptions;
+  if (fieldKey === "interiorWalls") return buildingInteriorWallOptions;
+  if (fieldKey === "buildingEntranceDoor") return buildingEntranceDoorOptions;
+  if (fieldKey === "buildingFootprintReference") return buildingFootprintReferenceOptions;
+  if (fieldKey === "buildingEntranceLevel") return buildingEntranceLevelOptions;
+  if (fieldKey === "buildingEntranceDirection") return buildingEntranceDirectionOptions;
+  if (fieldKey === "buildingBlockCount") return buildingBlockCountOptions;
+  if (fieldKey === "elevator") {
+    return ["", "Yok", "1 Adet Asansör", "2 Adet Asansör", "3 Adet Asansör", "4 Adet Asansör", "Montajı henüz yapılmamıştır"];
+  }
   for (const section of sections) {
     const field = (section.fields || []).find((item) => item.key === fieldKey);
     if (field && field.type === "select" && Array.isArray(field.options) && field.options.length) {
@@ -22655,6 +22785,19 @@ function commitTitleUnitsSummaryCellEdit(fieldKey, rawValue, unitIndex) {
   } else {
     setTitleUnitFieldValue(unitIndex, fieldKey, normalizeReportFieldValue(fieldKey, rawValue));
     autosave();
+    // Kullanıcı talebi (2026-09-03, "Bloklar Ana Gayrimenkul Özeti"): bu
+    // özet tablonun satırı BİR BLOĞUN TEMSİLCİ taşınmazına karşılık gelir
+    // — temsilci, o bloğun İLK üyesi (group.unitIndices[0]) olduğundan,
+    // AKTİF taşınmaz o bloğun İLK üyesi OLMASA BİLE (ör. aktif taşınmaz
+    // bloğun 2. veya 3. bağımsız bölümüyse) bu satırın düzenlenmesi YİNE
+    // DE bu "else" (aktif OLMAYAN) dalına düşer. syncBuildingSharedDataToBlockSiblings()
+    // YALNIZCA state.fields/activeTitleUnitIndex'ten kaynaklandığından bu
+    // durumu KAPSAMAZ — building alanları (getBuildingBlockSharedFieldKeys)
+    // için AYRICA, VERİLEN unitIndex'ten kaynaklanan genel bir senkron
+    // gerekir.
+    if (getBuildingBlockSharedFieldKeys().includes(fieldKey)) {
+      syncBuildingFieldToBlockSiblings(unitIndex, fieldKey, normalizeReportFieldValue(fieldKey, rawValue));
+    }
   }
   // Bağımsız Bölüm'ün 7 aynalı alanı (unitFloor/legalArea/currentArea/...)
   // için KAYNAK satırı (unitFloors[0]) da günceller — bkz. yorum,
@@ -22676,6 +22819,7 @@ function commitTitleUnitsSummaryCellEdit(fieldKey, rawValue, unitIndex) {
   refreshValuationUnitsSummaryTablePreview();
   refreshUnitUnitsSummaryTablePreview();
   refreshProjectSuitabilityUnitsSummaryTablePreview();
+  refreshBuildingBlockUnitsSummaryTablePreview();
   // Kullanıcı bildirimi (2026-08-26): "tabloda düzeltme yapınca dinamik
   // olarak açıklama değişmiyor, proje tarihi veya başka bir kısmı
   // değiştirince değişiyor" — kök neden: AKTİF taşınmazın hücresi
@@ -23944,6 +24088,107 @@ function createProjectSuitabilityUnitsSummaryTablePreview() {
   hint.textContent = "Aktif taşınmazın hücrelerine tıklayarak doğrudan düzenleyebilirsiniz (Blok/Bağımsız Bölüm No sütunları tıklanamaz — ilgili taşınmazın kendi sekmesinden düzenlenir). Banka şablonlarında {{TASINMAZLARPROJEUYGUNLUKTABLOSU}} olarak kullanılabilir.";
   wrap.append(hint);
   return wrap;
+}
+
+// Kullanıcı talebi (2026-09-03): "ana gayrimenkul bölümünde 1'den fazla
+// blok var ise her blok bir satır olacak şekilde çift taraflı tablo
+// yapalım." — diğer 9 özet tablosunun (Tapu/Adres/İmar/Arsa/Belgeler/
+// Değerleme/Bağımsız Bölüm/Proje Uygunluk/GABİM) TÜMÜ satır başına BİR
+// TAŞINMAZ — bu BİLEREK FARKLI: "Ana Gayrimenkul" alanları ZATEN blok
+// bazında paylaşımlı (bkz. syncBuildingSharedDataToBlockSiblings,
+// getBuildingBlockSharedFieldKeys) — taşınmaz bazlı bir tablo AYNI
+// bloktaki her bağımsız bölüm için BİREBİR AYNI satırı tekrar tekrar
+// gösterirdi (kullanıcının "Belgeler ve Proje"de daha önce yaşadığı
+// "basit bir tadilat durumunu tümüne uygula dediğim anda ekran
+// görüntüsündeki tabloya dönüştü" sınıfı kafa karışıklığı). Bu yüzden
+// satır başına BİR BLOK (computeDocumentsBlockGroups — blok tab
+// çubuğunun/senkronun KENDİSİNİN kullandığı AYNI gruplama), her bloğun
+// TEMSİLCİ (ilk) taşınmazının fields'ı kaynak.
+//
+// Sütunlar section.fields'taki (building, hidden:true) 15 GERÇEK
+// düzenlenebilir/skaler alan — section.fields tanımının HEMEN üstündeki
+// yorumda BİLEREK DIŞARIDA bırakılan alanlar (buildingFloorCounts/
+// totalFloors/totalUnits/mainPropertyFloorSummary — buildingFloors
+// tablosundan TÜRETİLMİŞ; buildingAge/buildingCompletionDate/
+// buildingConstructionYear/buildingCompletionExplanation/
+// buildingDepreciationType/buildingDepreciationRate — HER render'da
+// KOŞULSUZ yeniden hesaplanır) BURADA DA dışarıda — Excel panelinin
+// (createSectionExcelPanel) AYNI istisna listesi. `mainPropertyDescription`/
+// `mainPropertyFloorCountText` de BİLEREK YOK: 2+ FARKLI blok varken
+// (idempotent-launching-kernighan.md planı, 0.0.573+) bu ikisi artık
+// RAPOR-GENELİ TEK bir konsolide metin/değer — HER blok satırında AYNI
+// metni tekrar göstermek "her blok bir satır" karşılaştırma amacına
+// aykırı olurdu; bu ikisinin KENDİ düzenleme arayüzü (Ana Gayrimenkul
+// Açıklaması paneli) zaten mevcut, DEĞİŞMEDİ.
+const BUILDING_BLOCK_UNITS_TABLE_FIELD_DEFS = [
+  { key: "buildingStyle", label: "Bina Yapı Tarzı" },
+  { key: "buildingOrder", label: "Mevcut Yapı Nizamı" },
+  { key: "buildingClass", label: "Yapı Sınıfı" },
+  { key: "carpark", label: "Otopark" },
+  { key: "elevator", label: "Asansör" },
+  { key: "exteriorCladding", label: "Dış Cephe Kaplama" },
+  { key: "stairLanding", label: "Apartman Merdiven Ve Sahanlık" },
+  { key: "interiorWalls", label: "Apartman İç Duvarlar" },
+  { key: "buildingEntranceDoor", label: "Bina Giriş Kapısı" },
+  { key: "buildingFootprintReference", label: "Bina Oturumu Referansı" },
+  { key: "buildingEntranceLevel", label: "Bina Giriş Kat Seviyesi" },
+  { key: "buildingEntranceDirection", label: "Bina Giriş Yönü" },
+  { key: "socialFacilities", label: "Sosyal Tesisler" },
+  { key: "buildingBlockCount", label: "Blok Adedi - Konumu" },
+  { key: "buildingSubjectBlockPosition", label: "Konu Taşınmazın Yer Aldığı Blokun Parsel Üzerindeki Konumu" },
+];
+
+// Görünürlük: isBuildingBlockGroupingActive() ("1'den fazla blok" —
+// kullanıcının kendi ifadesi) — isBuildingBlockSharingApplicable()'ın
+// AKSİNE burada TEK bloklu senaryo (2+ bağımsız bölüm ama HEPSİ AYNI
+// blokta) BİLİNÇLİ OLARAK hariç: tek satırlık bir "karşılaştırma"
+// tablosunun hiçbir anlamı yoktur (bkz. renderSection kablolaması, AYNI
+// gate zaten createBuildingBlockTabBar()'ı da kapsıyor).
+//
+// `rowUnitIndices`/`activeRowIndex` — buildTitleUnitsSummaryTableHtmlEditable()'ın
+// (2026-09-03'te eklenen opsiyonel 7. parametre) satır-dizi-konumu YERİNE
+// GERÇEK taşınmaz index'ini `data-unit-index`e yazmasını sağlar; diğer 9
+// tabloda satır konumu==taşınmaz index'i olduğundan bu YENİ mekanizmaya
+// hiç ihtiyaç duymuyorlardı, ama burada satır sayısı taşınmaz sayısından
+// AZ (blok sayısı kadar) olduğundan satır konumu ARTIK gerçek taşınmaz
+// index'i DEĞİL.
+function buildBuildingBlockUnitsSummaryTableData() {
+  if (!isBuildingBlockGroupingActive()) return null;
+  const units = buildAllTitleUnitsForSummaryTable();
+  const blockGroups = computeDocumentsBlockGroups(units);
+  if (blockGroups.length < 2) return null;
+
+  const headers = ["Sıra No", "Blok", ...BUILDING_BLOCK_UNITS_TABLE_FIELD_DEFS.map((def) => def.label)];
+  const columnMeta = [
+    { kind: "seq", narrow: true },
+    { kind: "readonly", narrow: true },
+    ...BUILDING_BLOCK_UNITS_TABLE_FIELD_DEFS.map((def) => ({ kind: "scalar", fieldKey: def.key })),
+  ];
+
+  const rowUnitIndices = blockGroups.map((group) => group.unitIndices[0]);
+  const activeRowIndex = blockGroups.findIndex((group) => group.unitIndices.includes(state.activeTitleUnitIndex));
+
+  const rows = blockGroups.map((group, index) => {
+    const fields = units[group.unitIndices[0]]?.fields || {};
+    return [
+      index + 1,
+      computeDocumentsBlockLabel(group, blockGroups),
+      ...BUILDING_BLOCK_UNITS_TABLE_FIELD_DEFS.map((def) => String(fields[def.key] || "").trim() || "-"),
+    ];
+  });
+
+  const finalized = finalizeTitleUnitsSummaryTableData(headers, rows, columnMeta);
+  return { ...finalized, rowUnitIndices, activeRowIndex };
+}
+
+// Banka şablonlarına {{TASINMAZLARANAGAYRIMENKULTABLOSU}} ile enjekte
+// edilecek gerçek HTML tablo (bkz. template-engine.js) — diğer 9 bölümün
+// export akışıyla BİREBİR AYNI desen.
+function buildBuildingBlockUnitsSummaryWordTableHtml() {
+  const data = buildBuildingBlockUnitsSummaryTableData();
+  if (!data || !data.rows.length) return "";
+  const hoisted = hoistUniformColumnsForWordTable(data);
+  return buildUnitsSummaryTableHeadingHtml("Bloklar Ana Gayrimenkul Özeti") + buildTitleUnitsSummaryTableHtmlFromData(hoisted.headers, hoisted.rows, hoisted.commonFields);
 }
 
 function buildTakyidatWordTableHtml() {

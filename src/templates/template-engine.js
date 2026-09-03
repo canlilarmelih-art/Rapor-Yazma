@@ -647,6 +647,11 @@
     // app.js). GABIMVERISETI (TEK aktif taşınmazın form görünümü) İLE
     // KARIŞTIRILMASIN — bu, TÜM taşınmazları karşılaştıran AYRI bir tablo.
     TASINMAZLARGABIMTABLOSU: { h: () => safeCall("buildGabimUnitsSummaryWordTableHtml") },
+    // "Bloklar Ana Gayrimenkul Özeti" (2026-09-03) — diğerleriyle AYNI
+    // desen; TEK fark satır başına TAŞINMAZ değil BLOK (görünürlük
+    // isBuildingBlockGroupingActive — "1'den fazla blok", bkz.
+    // buildBuildingBlockUnitsSummaryTableData, app.js).
+    TASINMAZLARANAGAYRIMENKULTABLOSU: { h: () => safeCall("buildBuildingBlockUnitsSummaryWordTableHtml") },
     HISSEACIKLAMASI: { t: () => field("shareExplanation"), paragraphClass: "share-explanation" },
     EKLENTI: { f: ["titleAttachment"] },
 
