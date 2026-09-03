@@ -4446,6 +4446,58 @@ function createDocumentsUnitsSummaryTablePreview() {
   return wrap;
 }
 
+// Kullanıcı talebi (2026-09-03): "bu tabloyu aynı zamanda çift taraflı
+// olarak belgeler ve proje bölümüne koyabilir miyiz?" — 0.0.626'da Excel
+// export'una eklenen "İncelenen Belgeler" + Blok sütunu birleşimi
+// (buildDocumentsRowsWithBlockColumn) burada "Belgeler ve Proje"
+// bölümünde de canlı önizlenir. AskUserQuestion ile netleştirildi:
+// SALT-OKUNUR önizleme — yukarıdaki "Taşınmazlar Belgeler Özeti"nin
+// (createDocumentsUnitsSummaryTablePreview) AKSİNE bu tablonun satırları
+// TAŞINMAZ değil BELGE bazlı ve bazı satırlar 2+ bloğu AYNI ANDA temsil
+// ediyor — Tapu/Adres/Değerleme'nin "hücreye tıkla, aktif taşınmazı
+// düzenle" ÇİFT YÖNLÜ mekanizması (attachTitleUnitsSummaryTableEditing)
+// burada BİLİNÇLİ OLARAK KULLANILMADI: birleşik bir satırda "hangi bloğu
+// düzenliyorum" belirsizliği hiç oluşmasın diye. Asıl düzenleme yine
+// ilgili taşınmazın kendi "İncelenen Belgeler" tablosundan yapılır (bu
+// panel salt-okunur bir HTML tablosu, buildSimpleHtmlTable ile üretilir —
+// diğer panellerin editable render'ından FARKLI).
+function createDocumentsBlockColumnTablePreview() {
+  const wrap = document.createElement("div");
+  wrap.className = "title-units-summary-table-preview documents-block-column-table-preview";
+  const heading = document.createElement("h5");
+  heading.textContent = "İncelenen Belgeler (Blok Bazında)";
+  wrap.append(heading);
+
+  const rows = buildDocumentsRowsWithBlockColumn();
+  if (!rows || !rows.length) {
+    const note = document.createElement("p");
+    note.className = "muted-note";
+    note.textContent = "Bu tablo yalnızca farklı bloklardaki taşınmazlarda İncelenen Belgeler girildiğinde görünür.";
+    wrap.append(note);
+    return wrap;
+  }
+  const formatDocumentDate = (value) => {
+    const text = String(value || "").trim();
+    const match = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    return match ? `${match[3]}.${match[2]}.${match[1]}` : text;
+  };
+  const tableRows = rows.map(({ blockText, row }) => [
+    blockText, row.c0 || "", row.c1 || "", formatDocumentDate(row.c2), row.c3 || "", row.c4 || "",
+  ]);
+  const tableContainer = document.createElement("div");
+  tableContainer.className = "title-units-summary-table-container";
+  tableContainer.innerHTML = buildSimpleHtmlTable(
+    ["Blok", "Belge Türü", "İncelenen Kurum", "Tarih", "No", "Kapsam"],
+    tableRows,
+  );
+  wrap.append(tableContainer);
+  const hint = document.createElement("p");
+  hint.className = "muted-note";
+  hint.textContent = "Salt okunur önizlemedir; düzenlemek için ilgili taşınmazın kendi \"İncelenen Belgeler\" tablosunu kullanın. Aynı Tarih+No'ya sahip belgeler tek satırda birleştirilmiştir.";
+  wrap.append(hint);
+  return wrap;
+}
+
 // Değerleme (2026-08-19) — Tapu/Adres/İmar/Arsa/Belgeler ile BİREBİR aynı
 // desen. Kullanıcı: "değerleme kısmında tab mantığı ve çift taraflı tablo
 // mantığı olmalı" — TEK fark: gate koşulu ada/parsel veya bloğa DEĞİL,
@@ -4559,6 +4611,13 @@ function refreshLandUnitsSummaryTablePreview() {
 }
 
 // Belgeler ve Proje (2026-08-19) — yukarıdakilerle AYNI desen.
+function refreshDocumentsBlockColumnTablePreview() {
+  if (activeSectionId !== "documents") return;
+  const host = document.querySelector(".documents-block-column-table-preview");
+  if (!host) return;
+  host.replaceWith(createDocumentsBlockColumnTablePreview());
+}
+
 function refreshDocumentsUnitsSummaryTablePreview() {
   if (activeSectionId !== "documents") return;
   const host = document.querySelector(".documents-units-summary-table-preview");
@@ -4629,6 +4688,7 @@ const refreshAddressUnitsSummaryTablePreviewDebounced = debounce(refreshAddressU
 const refreshImarUnitsSummaryTablePreviewDebounced = debounce(refreshImarUnitsSummaryTablePreview, 350);
 const refreshLandUnitsSummaryTablePreviewDebounced = debounce(refreshLandUnitsSummaryTablePreview, 350);
 const refreshDocumentsUnitsSummaryTablePreviewDebounced = debounce(refreshDocumentsUnitsSummaryTablePreview, 350);
+const refreshDocumentsBlockColumnTablePreviewDebounced = debounce(refreshDocumentsBlockColumnTablePreview, 350);
 const refreshValuationUnitsSummaryTablePreviewDebounced = debounce(refreshValuationUnitsSummaryTablePreview, 350);
 const refreshUnitUnitsSummaryTablePreviewDebounced = debounce(refreshUnitUnitsSummaryTablePreview, 350);
 const refreshProjectSuitabilityUnitsSummaryTablePreviewDebounced = debounce(refreshProjectSuitabilityUnitsSummaryTablePreview, 350);
@@ -5667,6 +5727,7 @@ function renderSection() {
     } else if (isDocumentsScopedByBlock()) {
       body.append(createTitleUnitTabBar());
       body.append(createDocumentsUnitsSummaryTablePreview());
+      body.append(createDocumentsBlockColumnTablePreview());
     }
     // Kullanıcı talebi (2026-08-26): "uygunluk durumu ile ilgili bu
     // bölüme çift taraflı tablo oluşturalım." "Proje Uygunluk Durumu -
@@ -6262,6 +6323,7 @@ function createForm(section) {
         refreshImarUnitsSummaryTablePreviewDebounced();
         refreshLandUnitsSummaryTablePreviewDebounced();
         refreshDocumentsUnitsSummaryTablePreviewDebounced();
+        refreshDocumentsBlockColumnTablePreviewDebounced();
         refreshProjectSuitabilityUnitsSummaryTablePreviewDebounced();
       }
       // Belgeler ve Proje blok-senkronu (2026-08-19) — declaratif ortak
@@ -22598,6 +22660,7 @@ function commitTitleUnitsSummaryCellEdit(fieldKey, rawValue, unitIndex) {
   refreshImarUnitsSummaryTablePreview();
   refreshLandUnitsSummaryTablePreview();
   refreshDocumentsUnitsSummaryTablePreview();
+  refreshDocumentsBlockColumnTablePreview();
   refreshValuationUnitsSummaryTablePreview();
   refreshUnitUnitsSummaryTablePreview();
   refreshProjectSuitabilityUnitsSummaryTablePreview();
@@ -45197,6 +45260,7 @@ function createTable(section) {
             // özet tabloyu da içerir), diğer sütunlar için debounce'lu
             // tazeleme yeterli (isOwnersTable'ın AYNI ilkesi).
             refreshDocumentsUnitsSummaryTablePreviewDebounced();
+            refreshDocumentsBlockColumnTablePreviewDebounced();
           }
         }
         // Kullanıcı talebi (2026-08-15): "tab üzerinden değiştirince
@@ -45242,6 +45306,7 @@ function createTable(section) {
           renderSection();
         } else if (isDocumentsTable) {
           refreshDocumentsUnitsSummaryTablePreviewDebounced();
+          refreshDocumentsBlockColumnTablePreviewDebounced();
         }
       });
       td.append(input);
