@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.637 - 2026-09-03 - İç Hacimler/Dekoratif Özellikler (Çoklu Taşınmaz): atıf artık ':' YERİNE VİRGÜLLE bağlanıyor
+
+- Kullanıcı talebi: "':' işareti yerine cümle virgülle ya da noktalı virgülle bağlanmalı."
+- `composeMultiUnitInteriorGroupedText()`'in (0.0.635/636'da eklenen, İç Hacimler Açıklaması + Dekoratif Özellikler Çoklu Taşınmaz birleştirme çekirdeği) atıf ayracı `${attribution}: ${text}` (ör. "A 2 No'lu: ...") -> `${attribution}, ${text}` (ör. "A 2 No'lu, ...") olarak değiştirildi.
+- **Kapsam BİLİNÇLİ OLARAK dar**: yalnızca bu fonksiyon (İç Hacimler/Dekoratif Özellikler Çoklu Taşınmaz). app.js'teki BAŞKA, ÖNCEDEN VAR olan AYNI "{attribution}: {text}" deseni (`buildDocumentsBlockAttributedExplanationParts` — EKB/Cezai Karar/Yapı Kullanma İzin vb. çoklu-blok açıklama birleştirmelerinde kullanılıyor) BİLEREK DOKUNULMADI; kullanıcı o alanları da kastediyorsa ayrı bir talep gerekir.
+- Test: `tools/test-multi-unit-interior-description.js`'deki TÜM atıflı senaryolar (2 farklı grup, 3+1 üyeli kullanıcı örneği, Dekoratif slot farkı) artık virgüllü tam-metin eşleşmesi + `!result.includes(":")` regresyon kontrolüyle güncellendi; YENİ bir kaynak-düzeyi test `${attribution}, ${text}` deseninin (VE ESKİ `${attribution}: ${text}`'in GERİ GELMEDİĞİNİN) doğrulanması için eklendi. Geçici geri alma ile testin gerçekten BAŞARISIZ olduğu doğrulanıp sonra geri konuldu. `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` cache-buster `?v=20260903-1100`.
+- Canlı tarayıcı testi yapılamadı — kullanıcının GERÇEK çoklu taşınmaz raporunda atıflı satırların artık "A 2 No'lu, ..." biçiminde (':' OLMADAN) göründüğünü doğrulaması gerekiyor.
+
 ## 0.0.636 - 2026-09-03 - Dekoratif Özellikler: SLOT-bazlı birleştirme (yalnızca farklı olan tek alt-cümle tekrarlanır) + çoğullama
 
 - Kullanıcı GERÇEK Dekoratif Özellikler paragrafını gönderip talep etti: "bu paragraf çoğula uygun bir şekilde yazılmalı ayrıca farklı iç özellikler var ise birinin duvarları plastik boyalı birinin duvar kağıdı kaplı bu çok fazla karakter harcanmadan tek paragrafta belirtilmeli." Bu, 0.0.635'in tasarımını KÖKTEN değiştirdi.

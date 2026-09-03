@@ -33625,11 +33625,18 @@ function composeMultiUnitInteriorGroupedText(groups, { pluralize = null, joiner 
     const soleGroup = groups[0];
     return soleGroup.entries.length > 1 ? applyPlural(soleGroup.canonicalValue) : soleGroup.canonicalValue;
   }
+  // Kullanıcı talebi (2026-09-03): "':' işareti yerine cümle virgülle
+  // ya da noktalı virgülle bağlanmalı" — bu, YALNIZCA bu fonksiyonun
+  // (İç Hacimler/Dekoratif Özellikler Çoklu Taşınmaz) atıf ayracı için
+  // geçerli; app.js'teki BAŞKA, ÖNCEDEN VAR olan "{attribution}: {text}"
+  // deseni (ör. buildDocumentsBlockAttributedExplanationParts, EKB/Cezai
+  // Karar/Yapı Kullanma İzin vb.) BİLİNÇLİ OLARAK dokunulmadı — kapsam
+  // dışı, ayrı bir talep gerektirir.
   return groups.map((group) => {
     const text = group.entries.length > 1 ? applyPlural(group.canonicalValue) : group.canonicalValue;
     const labels = group.entries.map((entry) => formatTitleUnitSuitabilityLabel(entry.fields, entry.index));
     const attribution = formatTitleUnitAttributionPhrase(labels);
-    return attribution ? normalizeReportDescriptionText(`${attribution}: ${text}`) : text;
+    return attribution ? normalizeReportDescriptionText(`${attribution}, ${text}`) : text;
   }).join(joiner);
 }
 

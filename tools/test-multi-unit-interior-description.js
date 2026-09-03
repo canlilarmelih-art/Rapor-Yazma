@@ -89,6 +89,16 @@
 //     "\n" ile PARAGRAF BÖLMEZ, "tek paragrafta belirtilmeli" talebine
 //     uyar.
 //
+// Kullanıcı DÜZELTMESİ #6 (2026-09-03): "':' işareti yerine cümle
+// virgülle ya da noktalı virgülle bağlanmalı" — composeMultiUnitInteriorGroupedText()'in
+// atıf ayracı ("A 2 No'lu: ...") ':'DEN VİRGÜLE (", ") değiştirildi
+// ("A 2 No'lu, ..."). Kapsam BİLİNÇLİ OLARAK YALNIZCA bu fonksiyon (İç
+// Hacimler/Dekoratif Özellikler Çoklu Taşınmaz) — app.js'teki BAŞKA,
+// ÖNCEDEN VAR olan "{attribution}: {text}" deseni (ör.
+// buildDocumentsBlockAttributedExplanationParts, EKB/Cezai Karar/Yapı
+// Kullanma İzin vb.) BİLİNÇLİ OLARAK dokunulmadı — ayrı bir talep
+// gerektirir.
+//
 // Kapsanan senaryolar:
 //  1) Tekil rapor (1 taşınmaz): state.fields.unitInteriorDescription
 //     AYNEN döner (davranış DEĞİŞMEDİ — İÇ HACİMLER Açıklaması'nın TEK
@@ -97,7 +107,7 @@
 //  3) 2+ taşınmaz, TÜM areaDetails %90+ BENZER (yazım/noktalama farkı):
 //     YİNE TEK, ortak (İLK yazılan) metin.
 //  4) 2+ taşınmaz, 2 FARKLI (birbirine benzemeyen) areaDetails grubu:
-//     HER grup KENDİ atıflı ("A 2 No'lu: ...") cümlesinde ayrı kalır.
+//     HER grup KENDİ atıflı ("A 2 No'lu, ...") cümlesinde ayrı kalır.
 //  5) Boş/whitespace-only areaDetails dışarıda bırakılır (gruplamaya
 //     KATILMAZ).
 //  6) HER taşınmaz için state.fields/state.tables GEÇİCİ değiştirilip
@@ -354,9 +364,10 @@ const SALON_3_ODA = "Dubleks bağımsız bölüm zemin katta 1 salon ve mutfakta
   const result = fns.buildMultiUnitInteriorDescriptionText();
   const lines = result.split("\n");
   assert.equal(lines.length, 2, `2 FARKLI grup -> 2 ayrı satır beklenir. Bulunan: ${JSON.stringify(lines)}`);
-  assert.ok(lines.some((line) => line.includes("A 2 No'lu") && line.includes(SALON_2_ODA)), `A 2 No'lu atıflı TEKİL satır bulunamadı. Bulunan: ${JSON.stringify(lines)}`);
-  assert.ok(lines.some((line) => line.includes("B 5 No'lu") && line.includes(SALON_3_ODA)), `B 5 No'lu atıflı TEKİL satır bulunamadı. Bulunan: ${JSON.stringify(lines)}`);
-  console.log("2+ taşınmaz, 2 FARKLI TEK-üyeli grup -> her grup kendi atıflı TEKİL cümlesinde testi tamam.");
+  assert.ok(lines.some((line) => line.includes("A 2 No'lu, " + SALON_2_ODA)), `A 2 No'lu atıflı TEKİL satır bulunamadı (VİRGÜLLE bağlanmalı, ':' DEĞİL). Bulunan: ${JSON.stringify(lines)}`);
+  assert.ok(lines.some((line) => line.includes("B 5 No'lu, " + SALON_3_ODA)), `B 5 No'lu atıflı TEKİL satır bulunamadı (VİRGÜLLE bağlanmalı, ':' DEĞİL). Bulunan: ${JSON.stringify(lines)}`);
+  assert.ok(!result.includes(":"), "Kullanıcı talebi (2026-09-03): atıf ':' işaretiyle DEĞİL, virgülle bağlanmalı — sonuçta HİÇ ':' olmamalı.");
+  console.log("2+ taşınmaz, 2 FARKLI TEK-üyeli grup -> her grup kendi atıflı, VİRGÜLLE bağlı TEKİL cümlesinde testi tamam.");
 }
 
 // --- 4b) KULLANICININ GERÇEK ÖRNEĞİ: 3 üyeli grup (A5/A10/A11) + 1 üyeli
@@ -378,8 +389,9 @@ const SALON_3_ODA = "Dubleks bağımsız bölüm zemin katta 1 salon ve mutfakta
   assert.equal(lines.length, 2, `3-üyeli + 1-üyeli grup -> 2 satır beklenir. Bulunan: ${JSON.stringify(lines)}`);
   const groupLine = lines.find((line) => line.includes(SALON_2_ODA_PLURAL));
   assert.ok(groupLine, `3 üyeli grubun ÇOĞUL metni bulunamadı. Bulunan: ${JSON.stringify(lines)}`);
-  assert.ok(groupLine.includes("A 5 No'lu, A 10 No'lu ve A 11 No'lu"), `3 üyeli grubun atfı kullanıcının GERÇEK örneğiyle BİREBİR eşleşmeli. Bulunan: ${groupLine}`);
-  assert.ok(lines.some((line) => line.includes("A 15 No'lu") && line.includes(SALON_3_ODA)), `Tek üyeli (A15) grup atıflı ama TEKİL kalmalı. Bulunan: ${JSON.stringify(lines)}`);
+  assert.ok(groupLine.includes(`A 5 No'lu, A 10 No'lu ve A 11 No'lu, ${SALON_2_ODA_PLURAL}`), `3 üyeli grubun atfı kullanıcının GERÇEK örneğiyle BİREBİR eşleşmeli (VİRGÜLLE bağlı, ':' DEĞİL). Bulunan: ${groupLine}`);
+  assert.ok(lines.some((line) => line.includes("A 15 No'lu, " + SALON_3_ODA)), `Tek üyeli (A15) grup atıflı ama TEKİL kalmalı (VİRGÜLLE bağlı). Bulunan: ${JSON.stringify(lines)}`);
+  assert.ok(!result.includes(":"), "Kullanıcı talebi (2026-09-03): atıf ':' işaretiyle DEĞİL, virgülle bağlanmalı.");
   console.log("KULLANICI ÖRNEĞİ: 3 üyeli grup ATIFLI+ÇOĞUL, 1 üyeli grup atıflı+TEKİL testi tamam.");
 }
 
@@ -531,13 +543,14 @@ function decorativePartsCommon(mainRoomValue) {
   const lines = result.split("\n");
   assert.equal(lines.length, 2, `Alan paragrafı (1) + Dekoratif TEK paragraf (1, "\\n" içermemeli) -> TAM 2 satır beklenir. Bulunan: ${JSON.stringify(lines)}`);
   const decorativeParagraph = lines[1];
-  assert.ok(decorativeParagraph.includes("A 2 No'lu") && decorativeParagraph.includes(DEKORATIF_MAIN_ROOM_A), "A 2 No'lu atıflı mainRoom varyantı eksik.");
-  assert.ok(decorativeParagraph.includes("B 5 No'lu") && decorativeParagraph.includes(DEKORATIF_MAIN_ROOM_B), "B 5 No'lu atıflı mainRoom varyantı eksik.");
+  assert.ok(decorativeParagraph.includes("A 2 No'lu, " + DEKORATIF_MAIN_ROOM_A), "A 2 No'lu atıflı mainRoom varyantı eksik (VİRGÜLLE bağlanmalı, ':' DEĞİL).");
+  assert.ok(decorativeParagraph.includes("B 5 No'lu, " + DEKORATIF_MAIN_ROOM_B), "B 5 No'lu atıflı mainRoom varyantı eksik (VİRGÜLLE bağlanmalı, ':' DEĞİL).");
+  assert.ok(!decorativeParagraph.includes(":"), "Kullanıcı talebi (2026-09-03): atıf ':' işaretiyle DEĞİL, virgülle bağlanmalı — Dekoratif paragrafta HİÇ ':' olmamalı.");
   [DEKORATIF_WET_AREA, DEKORATIF_OUTDOOR, DEKORATIF_BATHROOM, DEKORATIF_DOORS_WINDOWS, DEKORATIF_KITCHEN, DEKORATIF_MATERIAL_QUALITY, DEKORATIF_HEATING].forEach((slotText) => {
     const occurrences = decorativeParagraph.split(slotText).length - 1;
     assert.equal(occurrences, 1, `Paylaşılan slot ("${slotText.slice(0, 30)}...") TAM 1 kez geçmeli (tekrar EDİLMEMELİ), bulunan: ${occurrences}.`);
   });
-  console.log("KULLANICI ÖRNEĞİ: yalnızca 1 slot FARKLI, diğerleri PAYLAŞIMLI, TEK PARAGRAFTA (karaktersiz tekrarsız) testi tamam.");
+  console.log("KULLANICI ÖRNEĞİ: yalnızca 1 slot FARKLI, diğerleri PAYLAŞIMLI, VİRGÜLLE bağlı, TEK PARAGRAFTA (karaktersiz tekrarsız) testi tamam.");
 }
 
 // --- 15) Dekoratif Özellikler tüm taşınmazlarda boşsa yalnızca alan/oda
@@ -602,6 +615,15 @@ function decorativePartsCommon(mainRoomValue) {
   assert.ok(/entries\.length > 1/.test(realBody), "Çoğullama YALNIZCA 2+ üyeli gruplara uygulanmalı (tek üyeli gruplar tekil kalmalı).");
   assert.ok(/joiner\s*=\s*"\\n"/.test(realBody), "`joiner` parametresi varsayılan olarak \"\\n\" (alan/oda paragrafının ESKİ/DEĞİŞMEYEN davranışı) olmalı.");
   console.log("composeMultiUnitInteriorGroupedText() genel çoğullama+joiner kablolaması testi tamam.");
+}
+
+// --- 8d) composeMultiUnitInteriorGroupedText() GERÇEK gövdesi atfı ':'
+// İLE DEĞİL virgülle bağlıyor mu (kullanıcı düzeltmesi #6, kaynak-düzeyi) ----
+{
+  const realBody = extractFunction("composeMultiUnitInteriorGroupedText");
+  assert.ok(realBody.includes("`${attribution}, ${text}`"), "Atıf + metin ':' YERİNE VİRGÜLLE (`${attribution}, ${text}`) birleştirilmeli.");
+  assert.ok(!realBody.includes("`${attribution}: ${text}`"), "REGRESYON: eski ':' ayracı GERİ GELMEMELİ.");
+  console.log("composeMultiUnitInteriorGroupedText(): atıf VİRGÜLLE bağlanıyor (':' DEĞİL) kaynak-düzeyi testi tamam.");
 }
 
 // --- 8c) buildMultiUnitInteriorDescriptionText() GERÇEK gövdesi Dekoratif
