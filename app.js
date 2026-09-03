@@ -15224,6 +15224,30 @@ function composeUnitDescriptionIntroForReport() {
   return normalizeReportDescriptionText(buildUnitInteriorDescriptionParts().intro);
 }
 
+// buildMultiUnitInteriorDescriptionText()'in (aşağıda) SLOT-BAZINDA
+// birleştirmesi için — getUnitDecorativeDescriptionForCombinedText()
+// (DEĞİŞMEDİ, tek metin döner) bu listeyi birleştirip döndürür. Elle
+// manuel override (unitDecorativeDescriptionManual==="Evet") KENDİ, TEK
+// bir "manualOverride" slotu olarak işaretlenir — programatik 10
+// alt-cümleyle ASLA karışmaz (farklı bir slot anahtarı kullanıldığından
+// groupUnitInteriorTextEntries hiçbir zaman ikisini aynı grupta
+// birleştirmeye çalışmaz).
+function getUnitDecorativeDescriptionPartsForCombinedText() {
+  if (shouldUseExternalUnitInspectionText()) return [];
+  if (state.fields.unitDecorativeDescriptionManual === "Evet" && state.fields.unitDecorativeDescription) {
+    return [{ key: "manualOverride", value: state.fields.unitDecorativeDescription }];
+  }
+  return buildUnitDecorativeDescriptionPartsList();
+}
+
+// DEĞİŞMEDİ (davranış-koruma) — getUnitDecorativeDescriptionPartsForCombinedText()'in
+// ("value" alanlarını birleştirse) ÜRETECEĞİ metinle BİREBİR AYNI, ama
+// BİLEREK ayrı tutuldu: manuel override dalı burada normalizeReportDescriptionText'TEN
+// GEÇMEDEN (ham) döner — parts listesi versiyonu (yeni tüketici:
+// buildMultiUnitInteriorDescriptionText) bunu normalize ETTİĞİNDEN iki
+// dalın çıktısı manuel override durumunda ÇOK HAFİF farklı olabilirdi;
+// bu fonksiyonun MEVCUT tüketicileri (buildUnitInteriorDescriptionParts
+// vb.) etkilenmesin diye TEK SATIR bile değiştirilmedi.
 function getUnitDecorativeDescriptionForCombinedText() {
   if (shouldUseExternalUnitInspectionText()) return "";
   if (state.fields.unitDecorativeDescriptionManual === "Evet" && state.fields.unitDecorativeDescription) {
@@ -16209,21 +16233,35 @@ function getOutdoorInteriorPrefix(presence) {
   return "";
 }
 
-function composeUnitDecorativeDescription() {
-  if (shouldUseExternalUnitInspectionText()) return "";
+// Kullanıcı talebi (2026-09-03): "farklı iç özellikler var ise birinin
+// duvarları plastik boyalı birinin duvar kağıdı kaplı bu çok fazla
+// karakter harcanmadan tek paragrafta belirtilmeli" — Çoklu Taşınmaz
+// birleştirmesinin (bkz. buildMultiUnitInteriorDescriptionText) SADECE
+// GERÇEKTEN FARKLI olan alt-cümleyi (ör. yalnızca duvar malzemesi
+// farklıysa SADECE o cümleyi atıflı tekrar etmesi, TÜM 10 cümleyi
+// DEĞİL) yazabilmesi için bu fonksiyonun ürettiği 10 alt-cümle artık TEK
+// KAYNAKTAN (bu liste, sabit anahtarlarla) üretiliyor —
+// composeUnitDecorativeDescription() (TEK taşınmaz/canlı panel, davranışı
+// DEĞİŞMEDİ) bu listeyi AYNI SIRAYLA birleştirip döndürür.
+function buildUnitDecorativeDescriptionPartsList() {
+  if (shouldUseExternalUnitInspectionText()) return [];
   const presence = getUnitInteriorPresence();
-  return normalizeReportDescriptionText(joinNonEmptySentences([
-    composeMainRoomDecorativeSentence(presence),
-    hasWetAreaInterior(presence) ? composeSingleAreaDecorativeSentence("Islak hacimlerde", state.fields.unitWetFloor, state.fields.unitWetWall) : "",
-    getOutdoorInteriorPrefix(presence) ? composeSingleAreaDecorativeSentence(getOutdoorInteriorPrefix(presence), state.fields.unitBalconyFloor, state.fields.unitBalconyWall) : "",
-    hasWetAreaInterior(presence) ? composeBathroomFixtureSentence() : "",
-    composeDoorsWindowsSentence(),
-    hasKitchenInterior(presence) ? composeKitchenCabinetCounterSentence() : "",
-    composeMaterialQualitySentence(),
-    composeUnitViewSentence(),
-    composeUnitHeatingSentence(),
-    composeUnitConstructionLevelSentence(),
-  ]));
+  return [
+    { key: "mainRoom", value: composeMainRoomDecorativeSentence(presence) },
+    { key: "wetArea", value: hasWetAreaInterior(presence) ? composeSingleAreaDecorativeSentence("Islak hacimlerde", state.fields.unitWetFloor, state.fields.unitWetWall) : "" },
+    { key: "outdoor", value: getOutdoorInteriorPrefix(presence) ? composeSingleAreaDecorativeSentence(getOutdoorInteriorPrefix(presence), state.fields.unitBalconyFloor, state.fields.unitBalconyWall) : "" },
+    { key: "bathroomFixture", value: hasWetAreaInterior(presence) ? composeBathroomFixtureSentence() : "" },
+    { key: "doorsWindows", value: composeDoorsWindowsSentence() },
+    { key: "kitchen", value: hasKitchenInterior(presence) ? composeKitchenCabinetCounterSentence() : "" },
+    { key: "materialQuality", value: composeMaterialQualitySentence() },
+    { key: "view", value: composeUnitViewSentence() },
+    { key: "heating", value: composeUnitHeatingSentence() },
+    { key: "constructionLevel", value: composeUnitConstructionLevelSentence() },
+  ];
+}
+
+function composeUnitDecorativeDescription() {
+  return normalizeReportDescriptionText(joinNonEmptySentences(buildUnitDecorativeDescriptionPartsList().map((part) => part.value)));
 }
 
 const unitViewSentenceVariants = [
@@ -33484,6 +33522,57 @@ function pluralizeUnitInteriorAreaDetailsText(text) {
   return text.split(/(?<=\.) /).map(pluralizeUnitInteriorAreaSentence).join(" ");
 }
 
+// Kullanıcı talebi (2026-09-03): "bu paragraf çoğula uygun bir şekilde
+// yazılmalı" — Dekoratif Özellikler cümleleri (composeMainRoomDecorativeSentence/
+// composeSingleAreaDecorativeSentence/composeBathroomFixtureSentence/
+// composeDoorsWindowsSentence/composeKitchenCabinetCounterSentence/
+// composeMaterialQualitySentence) ÇIPLAK "taşınmaz" öznesi HİÇ KULLANMAZ
+// (hepsi "salon zeminleri...", "banyo bölümünde...", "dış kapı..." gibi
+// KİŞİSİZ/nesnel ifadeler) — bu yüzden UNIT_INTERIOR_AREA_VERB_ENDING_PLURAL_MAP'in
+// (alan/oda paragrafına özgü) KAPSAMI dışındalar ve dokunulmadan
+// bırakılırlar (zaten kişisiz oldukları için tekil/çoğul ayrımı YOK).
+// Yalnızca composeUnitViewSentence/composeUnitHeatingSentence/
+// composeUnitConstructionLevelSentence'ın BAZI varyantları "taşınmaz"
+// sözcüğünü (bare/nominatif VEYA "Taşınmazın"/"Taşınmazda" durum ekli)
+// içerir — TÜM bu varyantlar TEK TEK okunup katalog edildi:
+// - "Taşınmazın"/"Taşınmazda" ile başlayan (heating[1]/[3],
+//   constructionLevel[0..3]) → fiil HER ZAMAN "taşınmaz"a DEĞİL başka bir
+//   isme (sistem/inşaat/olduğu) bağlı, bu yüzden pluralizeEnvironmentalSubjectText'in
+//   (yalnızca özne, fiile DOKUNMAYAN) varsayılan davranışı GÜVENLİDİR.
+// - view[0] "...sahip olan taşınmaz bu yönüyle manzara şerefiyesine
+//   sahiptir." VE view[3] "...taşınmaz manzara şerefiyesinden
+//   faydalanmaktadır." → BU İKİSİNDE "taşınmaz" ÇIPLAK/nominatif VE
+//   cümlenin GERÇEK öznesi (fiille UYUMLU olmalı) — sözcük cümlenin
+//   ORTASINDA geçtiği için pluralizeUnitInteriorAreaSentence'ın "yalnızca
+//   cümle BAŞINDA" kısıtlaması burada UYGULANAMAZ; bunun yerine bu İKİ
+//   GERÇEK/somut cümle sonu KAPALI bir eşleme kümesinde (aşağıda) elle
+//   düzeltiliyor. view[1]/[2] ("taşınmaza"/"gayrimenkul") zaten
+//   pluralizeEnvironmentalSubjectText'in ya doğru (dative, fiil ayrı
+//   isme bağlı) ya da hiç dokunmadığı (bare "gayrimenkul" haritalı
+//   değil, DEĞİŞMEDEN kalır — yanlış değil, sadece çoğullanmaz) durumlar.
+const UNIT_DECORATIVE_BARE_SUBJECT_VERB_ENDING_PLURAL_MAP = [
+  [" bu yönüyle manzara şerefiyesine sahiptir.", " bu yönüyle manzara şerefiyesine sahiptirler."],
+  [" manzara şerefiyesinden faydalanmaktadır.", " manzara şerefiyesinden faydalanmaktadırlar."],
+];
+
+function pluralizeUnitDecorativeSentence(sentence) {
+  const hasBareTasinmazSubject = /\btaşınmaz\b/i.test(sentence);
+  let result = pluralizeEnvironmentalSubjectText(sentence, true);
+  if (!hasBareTasinmazSubject) return result;
+  for (const [singular, plural] of UNIT_DECORATIVE_BARE_SUBJECT_VERB_ENDING_PLURAL_MAP) {
+    if (result.endsWith(singular)) {
+      result = result.slice(0, result.length - singular.length) + plural;
+      break;
+    }
+  }
+  return result;
+}
+
+function pluralizeUnitDecorativeText(text) {
+  if (!text) return text;
+  return text.split(/(?<=\.) /).map(pluralizeUnitDecorativeSentence).join(" ");
+}
+
 // %90 benzerlik eşiğiyle (normalizeTextForSimilarityComparison +
 // computeTextSimilarityRatio) {index, fields, value} girdilerini
 // gruplar — buildMultiUnitInteriorDescriptionText()'in HEM alan/oda-
@@ -33514,18 +33603,24 @@ function groupUnitInteriorTextEntries(entries) {
 // buildProjectReviewConsolidatedSentences ile AYNI ilke: "hepsi aynıysa
 // taşınmaz adı tekrar etmeden tek genel cümle kurulmalı"), farklıysa
 // HER grup kendi atfıyla (formatTitleUnitAttributionPhrase) ayrı satırda
-// döner. `pluralize` (yalnızca alan/oda-hacim metni için `true`, bkz.
-// çağıran) 2+ üyeli bir grubun metnini pluralizeUnitInteriorAreaDetailsText
-// ile çoğullar — Dekoratif Özellikler cümleleri (composeUnitViewSentence/
-// composeUnitHeatingSentence/composeMainRoomDecorativeSentence vb.) BU
-// KAPALI/SONLU fiil-sonu kümesinin KAPSAMI DIŞINDA çok daha çeşitli özne/
-// fiil kalıpları kullandığından (ör. "taşınmaz" sözcüğü cümlenin
-// ORTASINDA geçebilir) buraya pluralize=true UYGULANMAZ — yanlış çoğul
-// eki riski, "ortak/benzer metni TEK PARAGRAFTA birleştir" kazanımından
-// daha ağır basar.
-function composeMultiUnitInteriorGroupedText(groups, { pluralize = false } = {}) {
+// döner. `pluralize` — VERİLİRSE (bir FONKSİYON: alan/oda için
+// pluralizeUnitInteriorAreaDetailsText, Dekoratif Özellikler slotları
+// için pluralizeUnitDecorativeText, bkz. çağıranlar) 2+ üyeli bir grubun
+// metnine uygulanır; VERİLMEZSE (null/undefined) metin OLDUĞU GİBİ kalır.
+// `joiner` — 2+ FARKLI grup varsa aralarına konan ayraç: alan/oda paragrafı
+// için VARSAYILAN "\n" (bu proje kuralında "\n" = YENİ PARAGRAF, bkz.
+// buildUnitInteriorDescriptionParts'ın intro/details ayrımı — her FARKLI
+// grup zaten kendi başına büyük/bağımsız bir anlatım olduğundan ayrı
+// paragraf DOĞRU). Dekoratif Özellikler'in SLOT-bazlı çağrısı (bkz.
+// buildMultiUnitInteriorDescriptionText) bunun yerine `joiner: " "`
+// GEÇER — kullanıcı talebi "tek paragrafta belirtilmeli": tek bir
+// alt-cümle (ör. yalnızca duvar malzemesi) FARKLI olduğunda bile TÜM
+// Dekoratif Özellikler metni "\n" ile PARÇALANIP AYRI paragraflara
+// BÖLÜNMEMELİ, yalnızca o TEK alt-cümlenin kısa atıflı varyantları AYNI
+// paragraf İÇİNDE art arda gelmeli.
+function composeMultiUnitInteriorGroupedText(groups, { pluralize = null, joiner = "\n" } = {}) {
   if (!groups.length) return "";
-  const applyPlural = (text) => (pluralize ? pluralizeUnitInteriorAreaDetailsText(text) : text);
+  const applyPlural = (text) => (pluralize ? pluralize(text) : text);
   if (groups.length === 1) {
     const soleGroup = groups[0];
     return soleGroup.entries.length > 1 ? applyPlural(soleGroup.canonicalValue) : soleGroup.canonicalValue;
@@ -33535,8 +33630,19 @@ function composeMultiUnitInteriorGroupedText(groups, { pluralize = false } = {})
     const labels = group.entries.map((entry) => formatTitleUnitSuitabilityLabel(entry.fields, entry.index));
     const attribution = formatTitleUnitAttributionPhrase(labels);
     return attribution ? normalizeReportDescriptionText(`${attribution}: ${text}`) : text;
-  }).join("\n");
+  }).join(joiner);
 }
+
+// getUnitDecorativeDescriptionPartsForCombinedText()'in sabit
+// anahtarlarıyla (bkz. buildUnitDecorativeDescriptionPartsList) BİREBİR
+// AYNI SIRA + "manualOverride" en sonda — buildMultiUnitInteriorDescriptionText()'in
+// slot-bazlı çıktısının HER ZAMAN composeUnitDecorativeDescription()'ın
+// (tek taşınmaz) ürettiğiyle AYNI CÜMLE SIRASINDA olmasını garantiler.
+const UNIT_DECORATIVE_SLOT_KEY_ORDER = [
+  "mainRoom", "wetArea", "outdoor", "bathroomFixture", "doorsWindows",
+  "kitchen", "materialQuality", "view", "heating", "constructionLevel",
+  "manualOverride",
+];
 
 // Kullanıcı talebi (2026-09-03): "aynı ada parselde yer alan çoklu
 // çalışmalarda bağımsız bölüm özelliklerinde dekoratif özellikler
@@ -33546,8 +33652,26 @@ function composeMultiUnitInteriorGroupedText(groups, { pluralize = false } = {})
 // (unitInteriorDescriptionMulti) SONUNA yeni bir paragraf olarak eklenir
 // ("Önerilen" seçenek). Kat/alan paragrafıyla AYNI %90-benzerlik
 // gruplama çekirdeği (groupUnitInteriorTextEntries) + atıf biçimi
-// (composeMultiUnitInteriorGroupedText) kullanılır, ama ÇOĞULLAMA
-// UYGULANMAZ (bkz. composeMultiUnitInteriorGroupedText'in yorumu).
+// (composeMultiUnitInteriorGroupedText) kullanılır.
+//
+// KULLANICI DÜZELTMESİ (2026-09-03, GERÇEK Dekoratif Özellikler
+// örneğiyle): "bu paragraf çoğula uygun bir şekilde yazılmalı ayrıca
+// farklı iç özellikler var ise birinin duvarları plastik boyalı birinin
+// duvar kağıdı kaplı bu çok fazla karakter harcanmadan tek paragrafta
+// belirtilmeli." İKİ ayrı düzeltme: (1) çoğullama artık Dekoratif
+// Özellikler'e de uygulanıyor (pluralizeUnitDecorativeText, bkz. o
+// fonksiyonun yorumu — GÜVENLİ, çünkü decorative cümlelerinin neredeyse
+// tamamı kişisiz/nesnel). (2) Dekoratif Özellikler ARTIK TEK BİR bütün
+// metin olarak DEĞİL, getUnitDecorativeDescriptionPartsForCombinedText()'in
+// 10 SABİT alt-cümle SLOTU (+ manuel override) bazında AYRI AYRI
+// birleştiriliyor — böylece yalnızca GERÇEKTEN farklı olan TEK alt-cümle
+// (ör. yalnızca duvar malzemesi) kendi kısa atıflı varyantlarıyla
+// tekrarlanır, PAYLAŞILAN diğer 9 alt-cümle (kapı/pencere, mutfak,
+// ısınma, manzara vb.) TEK SEFER yazılır — kullanıcının "çok fazla
+// karakter harcanmadan" talebinin doğrudan karşılığı (ESKİ tasarım TÜM
+// 10 cümleyi WHOLE-TEXT benzerliğine göre kıyaslıyordu; tek kelimelik
+// bir fark bile TÜM paragrafın atıflı olarak İKİ KEZ yazılmasına yol
+// açardı).
 function buildMultiUnitInteriorDescriptionText() {
   const units = buildAllTitleUnitsForSummaryTable();
   if (units.length < 2) return state.fields.unitInteriorDescription || "";
@@ -33555,23 +33679,30 @@ function buildMultiUnitInteriorDescriptionText() {
   const originalFields = state.fields;
   const originalTables = state.tables;
   const areaEntries = [];
-  const decorativeEntries = [];
+  const decorativeEntriesBySlot = {};
   try {
     units.forEach((unit, index) => {
       state.fields = { ...originalFields, ...(unit.fields || {}) };
       state.tables = { ...originalTables, ...(unit.tables || {}) };
       const areaValue = normalizeReportDescriptionText(buildUnitInteriorDescriptionParts().areaDetails || "").trim();
       if (areaValue) areaEntries.push({ index, fields: state.fields, value: areaValue });
-      const decorativeValue = normalizeReportDescriptionText(getUnitDecorativeDescriptionForCombinedText() || "").trim();
-      if (decorativeValue) decorativeEntries.push({ index, fields: state.fields, value: decorativeValue });
+      getUnitDecorativeDescriptionPartsForCombinedText().forEach((part) => {
+        const value = normalizeReportDescriptionText(part.value || "").trim();
+        if (!value) return;
+        if (!decorativeEntriesBySlot[part.key]) decorativeEntriesBySlot[part.key] = [];
+        decorativeEntriesBySlot[part.key].push({ index, fields: state.fields, value });
+      });
     });
   } finally {
     state.fields = originalFields;
     state.tables = originalTables;
   }
 
-  const areaText = composeMultiUnitInteriorGroupedText(groupUnitInteriorTextEntries(areaEntries), { pluralize: true });
-  const decorativeText = composeMultiUnitInteriorGroupedText(groupUnitInteriorTextEntries(decorativeEntries));
+  const areaText = composeMultiUnitInteriorGroupedText(groupUnitInteriorTextEntries(areaEntries), { pluralize: pluralizeUnitInteriorAreaDetailsText });
+  const decorativeSlotTexts = UNIT_DECORATIVE_SLOT_KEY_ORDER
+    .filter((key) => decorativeEntriesBySlot[key]?.length)
+    .map((key) => composeMultiUnitInteriorGroupedText(groupUnitInteriorTextEntries(decorativeEntriesBySlot[key]), { pluralize: pluralizeUnitDecorativeText, joiner: " " }));
+  const decorativeText = joinNonEmptySentences(decorativeSlotTexts);
   return [areaText, decorativeText].filter(Boolean).join("\n");
 }
 

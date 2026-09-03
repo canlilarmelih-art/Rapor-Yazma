@@ -59,14 +59,35 @@
 // olarak yazmamız gerekiyor" — #2'de BİLEREK dışlanan Dekoratif Özellikler
 // artık AYRI bir alan DEĞİL (AskUserQuestion: "Önerilen" seçenek), BU
 // ALANIN (unitInteriorDescriptionMulti) SONUNA YENİ BİR PARAGRAF olarak
-// geri eklendi. Kaynak `getUnitDecorativeDescriptionForCombinedText()`
-// (HER taşınmaz için AYNI state-swap tekniğiyle) — %90-benzerlik gruplama
-// çekirdeği areaDetails İLE PAYLAŞIMLI hale getirildi
-// (groupUnitInteriorTextEntries/composeMultiUnitInteriorGroupedText, YENİ
-// çıkarılan ortak yardımcılar) ama ÇOĞULLAMA UYGULANMAZ (Dekoratif
-// Özellikler cümleleri UNIT_INTERIOR_AREA_VERB_ENDING_PLURAL_MAP'in
-// kapalı fiil-sonu kümesinin kapsamı DIŞINDA çok daha çeşitli özne/fiil
-// kalıpları kullanır — yanlış çoğul eki riski).
+// geri eklendi.
+//
+// Kullanıcı DÜZELTMESİ #5 (2026-09-03, GERÇEK Dekoratif Özellikler
+// paragrafıyla): "bu paragraf çoğula uygun bir şekilde yazılmalı ayrıca
+// farklı iç özellikler var ise birinin duvarları plastik boyalı birinin
+// duvar kağıdı kaplı bu çok fazla karakter harcanmadan tek paragrafta
+// belirtilmeli." Bu, #4'ün TASARIMINI KÖKTEN değiştirdi:
+// (a) Çoğullama artık Dekoratif Özellikler'e de UYGULANIYOR —
+//     pluralizeUnitDecorativeText/pluralizeUnitDecorativeSentence
+//     (kapsamlı GÜVENLİ, çünkü composeMainRoomDecorativeSentence/
+//     composeSingleAreaDecorativeSentence/composeBathroomFixtureSentence/
+//     composeDoorsWindowsSentence/composeKitchenCabinetCounterSentence/
+//     composeMaterialQualitySentence HİÇBİRİ "taşınmaz" öznesi
+//     kullanmıyor — kişisiz ifadeler; yalnızca composeUnitViewSentence/
+//     composeUnitHeatingSentence/composeUnitConstructionLevelSentence'ın
+//     BAZI varyantları "taşınmaz" içeriyor, TEK TEK katalog edilip
+//     UNIT_DECORATIVE_BARE_SUBJECT_VERB_ENDING_PLURAL_MAP'e işlendi).
+// (b) Dekoratif Özellikler artık TEK BÜTÜN metin olarak DEĞİL,
+//     getUnitDecorativeDescriptionPartsForCombinedText()'in 10 SABİT
+//     alt-cümle SLOTU (+ manuel override) bazında AYRI AYRI (her slot
+//     kendi groupUnitInteriorTextEntries çağrısıyla) birleştiriliyor —
+//     yalnızca GERÇEKTEN FARKLI olan slot (ör. yalnızca duvar malzemesi)
+//     kendi kısa atıflı varyantlarıyla tekrarlanır, PAYLAŞILAN diğer
+//     slotlar TEK SEFER yazılır ("çok fazla karakter harcanmadan").
+//     composeMultiUnitInteriorGroupedText'e YENİ bir `joiner` seçeneği
+//     eklendi ("\n" varsayılan/alan-oda İÇİN, decorative slotları İSE
+//     `joiner: " "` KULLANIR) — böylece 2+ FARKLI varyantlı bir slot bile
+//     "\n" ile PARAGRAF BÖLMEZ, "tek paragrafta belirtilmeli" talebine
+//     uyar.
 //
 // Kapsanan senaryolar:
 //  1) Tekil rapor (1 taşınmaz): state.fields.unitInteriorDescription
@@ -95,19 +116,34 @@
 //      field.key ÜRETMEYEN TEK gerçek tetikleyici) kablolanmış mı.
 //  11) template-engine.js'te {{ICHACIMLERACIKLAMASICOKLU}} kayıtlı mı.
 //  12) collectGeneratedTextPlaceholders() katalogunda kayıtlı mı.
-//  13) Dekoratif Özellikler: 2+ taşınmaz AYNI dekoratif metni ürettiyse
-//      ortak (atıfsız, ÇOĞULLANMAMIŞ) TEK paragraf, alan/oda paragrafının
-//      HEMEN ALTINDA ("\n" ile ayrı) eklenir.
-//  14) Dekoratif Özellikler: 2 FARKLI grup -> HER grup kendi atıflı
-//      cümlesinde ayrı satırda kalır (ÇOĞULLANMADAN).
+//  13) Dekoratif Özellikler: 2+ taşınmaz bir SLOTTA (ör. "doorsWindows")
+//      AYNI değeri ürettiyse ortak (atıfsız) TEK paragraf, alan/oda
+//      paragrafının HEMEN ALTINDA ("\n" ile ayrı, TEK "\n") eklenir.
+//  14) Dekoratif Özellikler: TEK BİR slot ("mainRoom") 2 FARKLI değer
+//      üretirken DİĞER TÜM slotlar AYNIYSA — yalnızca o TEK slot kendi
+//      kısa atıflı varyantlarıyla (BOŞLUKLA birleşik, "\n" YOK) belirir,
+//      paylaşılan diğer slotlar TEK SEFER yazılır, HEPSİ TEK PARAGRAF
+//      (decorativeText içinde HİÇ "\n" yok) — kullanıcının GERÇEK
+//      duvar-malzemesi örneği.
 //  15) Dekoratif Özellikler boşsa (tüm taşınmazlarda) yalnızca alan/oda
 //      paragrafı döner (davranış-koruma regresyonu).
-//  16) buildMultiUnitInteriorDescriptionText() GERÇEK gövdesi hem
-//      areaDetails hem getUnitDecorativeDescriptionForCombinedText()
-//      kaynaklarını okuyor mu + composeMultiUnitInteriorGroupedText'e
-//      dekoratif için pluralize:true GEÇMİYOR mu (kaynak-düzeyi).
+//  16) buildMultiUnitInteriorDescriptionText() GERÇEK gövdesi
+//      getUnitDecorativeDescriptionPartsForCombinedText()'i SLOT bazında
+//      okuyor, UNIT_DECORATIVE_SLOT_KEY_ORDER'ı kullanıyor, alan/oda için
+//      pluralizeUnitInteriorAreaDetailsText / dekoratif için
+//      pluralizeUnitDecorativeText + joiner:" " GEÇİYOR mu (kaynak-düzeyi).
 //  17) refreshMultiUnitInteriorDescriptionTextFromCurrentFields artık
 //      getUnitDecorativeFieldKeys()'i watchedKeys'e dahil ediyor mu.
+//  18) Dekoratif Özellikler: bir slot 2+ taşınmazda AYNI VE "taşınmaz"
+//      çıplak öznesi içeriyorsa (composeUnitViewSentence'ın bilinen 2
+//      riskli varyantı) ÇOĞULLANIR; "taşınmaz" hiç geçmeyen (çoğu
+//      decorative cümlesi) DEĞİŞMEDEN kalır.
+//  19) pluralizeUnitDecorativeSentence(): çıplak özne+fiil (2 GERÇEK
+//      varyant), genitif özne (fiil dokunulmaz), "taşınmaz" hiç
+//      geçmeyen kişisiz cümle (TAMAMEN DOKUNULMAZ) birim testleri.
+//  20) Dekoratif Özellikler: manuel override'lı bir taşınmaz KENDİ ayrı
+//      "manualOverride" slotunda kalır, programatik 10 alt-cümleyle ASLA
+//      karışmaz (kaynak-düzeyi + davranışsal).
 
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -194,11 +230,14 @@ const functionNames = [
   "pluralizeEnvironmentalSubjectText",
   "pluralizeUnitInteriorAreaSentence",
   "pluralizeUnitInteriorAreaDetailsText",
+  "pluralizeUnitDecorativeSentence",
+  "pluralizeUnitDecorativeText",
+  "joinNonEmptySentences",
   "groupUnitInteriorTextEntries",
   "composeMultiUnitInteriorGroupedText",
   "buildMultiUnitInteriorDescriptionText",
 ];
-const constArrayNames = ["UNIT_INTERIOR_AREA_VERB_ENDING_PLURAL_MAP"];
+const constArrayNames = ["UNIT_INTERIOR_AREA_VERB_ENDING_PLURAL_MAP", "UNIT_DECORATIVE_BARE_SUBJECT_VERB_ENDING_PLURAL_MAP", "UNIT_DECORATIVE_SLOT_KEY_ORDER"];
 
 const sandboxSource = `
   let state = {};
@@ -218,14 +257,15 @@ const sandboxSource = `
     stateSwapLog.push(state.fields);
     return { areaDetails: state.fields.mockAreaDetails || "" };
   }
-  // getUnitDecorativeDescriptionForCombinedText() (GERÇEK fonksiyon,
-  // composeUnitDecorativeDescription/getUnitInteriorPresence zincirine
-  // bağımlı, bu testin kapsamı DIŞINDA) — AYNI davranış-koruyan SAHTE
-  // desen: state.fields.mockDecorativeDetails'i AYNEN döner. Varsayılan
-  // "" (tanımsız) OLDUĞUNDAN dekoratif katkısı EKLEMEYEN eski senaryular
-  // (1-12) davranışı BOZULMADAN aynen geçmeye devam eder.
-  function getUnitDecorativeDescriptionForCombinedText() {
-    return state.fields.mockDecorativeDetails || "";
+  // getUnitDecorativeDescriptionPartsForCombinedText() (GERÇEK fonksiyon,
+  // buildUnitDecorativeDescriptionPartsList/composeUnitViewSentence vb.
+  // 10 alt-cümle composer'ına bağımlı, bu testin kapsamı DIŞINDA) — AYNI
+  // davranış-koruyan SAHTE desen: state.fields.mockDecorativeParts
+  // (bir [{key, value}] DİZİSİ) AYNEN döner. Varsayılan [] (tanımsız)
+  // OLDUĞUNDAN dekoratif katkısı EKLEMEYEN eski senaryolar (1-12)
+  // davranışı BOZULMADAN aynen geçmeye devam eder.
+  function getUnitDecorativeDescriptionPartsForCombinedText() {
+    return state.fields.mockDecorativeParts || [];
   }
   ${extractLastFunction("joinTurkishList")}
   ${constArrayNames.map(extractConstArray).join("\n")}
@@ -238,6 +278,8 @@ const sandboxSource = `
     buildMultiUnitInteriorDescriptionText,
     pluralizeUnitInteriorAreaSentence,
     pluralizeUnitInteriorAreaDetailsText,
+    pluralizeUnitDecorativeSentence,
+    pluralizeUnitDecorativeText,
     groupUnitInteriorTextEntries,
     composeMultiUnitInteriorGroupedText,
   };
@@ -427,47 +469,80 @@ const SALON_3_ODA = "Dubleks bağımsız bölüm zemin katta 1 salon ve mutfakta
   console.log("Her taşınmaz için state.fields GEÇİCİ değiştirilip sonra orijinaline dönme testi tamam.");
 }
 
-// --- 13) Dekoratif Özellikler: 2 taşınmaz AYNI dekoratif metni ürettiyse
-// ortak (atıfsız, ÇOĞULLANMAMIŞ) TEK paragraf, alan/oda paragrafının
-// HEMEN ALTINDA ("\n" ile ayrı) eklenir --------------------------------------
-{
-  const DEKORATIF_ORTAK = "Salon, oda ve mutfak zeminleri seramik kaplı vaziyette olup, duvarlar saten boyalıdır.";
-  fns.setState({
-    activeTitleUnitIndex: 0,
-    fields: { titleBlockName: "A", unitNo: "2", mockAreaDetails: SALON_2_ODA, mockDecorativeDetails: DEKORATIF_ORTAK },
-    tables: {},
-    titleUnits: [unit({ titleBlockName: "B", unitNo: "5", mockAreaDetails: SALON_2_ODA, mockDecorativeDetails: DEKORATIF_ORTAK })],
-  });
-  const result = fns.buildMultiUnitInteriorDescriptionText();
-  const lines = result.split("\n");
-  assert.equal(lines.length, 2, `Alan paragrafı + ortak dekoratif paragrafı -> 2 satır beklenir. Bulunan: ${JSON.stringify(lines)}`);
-  assert.equal(lines[0], SALON_2_ODA_PLURAL, "1. satır (alan/oda) her zamanki gibi ÇOĞUL ortak metin olmalı.");
-  assert.equal(lines[1], DEKORATIF_ORTAK, "2. satır (Dekoratif Özellikler) AYNI olduğu için atıfsız VE ÇOĞULLANMADAN (tekil) ortak metin olmalı.");
-  console.log("Dekoratif Özellikler: 2 taşınmaz AYNI -> atıfsız, ÇOĞULLANMAMIŞ ortak paragraf testi tamam.");
+// Kullanıcının GERÇEK Dekoratif Özellikler paragrafından alınan slot
+// değerleri — 8 slot (view/constructionLevel BOŞ bırakıldı, örnekte yok).
+const DEKORATIF_MAIN_ROOM_A = "Salon ve oda zeminleri laminant parke kaplı, antre-hol ve mutfak zeminleri seramik kaplı vaziyette olup, salon, oda, antre-hol ve mutfak duvarları alçı sıva üzeri saten boyalıdır.";
+const DEKORATIF_MAIN_ROOM_B = "Salon ve oda zeminleri laminant parke kaplı, antre-hol ve mutfak zeminleri seramik kaplı vaziyette olup, salon, oda, antre-hol ve mutfak duvarları duvar kağıdı kaplıdır.";
+const DEKORATIF_WET_AREA = "Islak hacimlerde zeminler ve duvarlar seramik kaplıdır.";
+const DEKORATIF_OUTDOOR = "Balkon bölümünde zeminler seramik kaplı, duvarlar ise plastik boyalıdır.";
+const DEKORATIF_BATHROOM = "Banyo bölümünde hilton lavabo, asma klozet ve duşakabin vitrifiye elemanları bulunmaktadır.";
+const DEKORATIF_DOORS_WINDOWS = "Dış kapı çelik, iç kapılar ahşap panel ve pencereler PVC doğramadır.";
+const DEKORATIF_KITCHEN = "Mutfak dolapları akrilik dolap olup, tezgahı çimstone olarak düzenlenmiştir.";
+const DEKORATIF_MATERIAL_QUALITY = "İç mekân özellikleri standart seviyede olup, tadilat ihtiyacı bulunmamaktadır.";
+const DEKORATIF_HEATING = "Isınma ihtiyacı yerden ısıtma doğalgaz kombi ile karşılanacak şekilde tesisatlandırılmış olup, ısıtma sistemi halihazırda monte edilmiştir.";
+function decorativePartsCommon(mainRoomValue) {
+  return [
+    { key: "mainRoom", value: mainRoomValue },
+    { key: "wetArea", value: DEKORATIF_WET_AREA },
+    { key: "outdoor", value: DEKORATIF_OUTDOOR },
+    { key: "bathroomFixture", value: DEKORATIF_BATHROOM },
+    { key: "doorsWindows", value: DEKORATIF_DOORS_WINDOWS },
+    { key: "kitchen", value: DEKORATIF_KITCHEN },
+    { key: "materialQuality", value: DEKORATIF_MATERIAL_QUALITY },
+    { key: "heating", value: DEKORATIF_HEATING },
+  ];
 }
 
-// --- 14) Dekoratif Özellikler: 2 FARKLI grup -> her grup kendi atıflı
-// (ÇOĞULLANMAMIŞ) cümlesinde ayrı satırda kalır ------------------------------
+// --- 13) Dekoratif Özellikler: TÜM slotlar (mainRoom DAHİL) 2 taşınmazda
+// BİREBİR AYNI -> atıfsız TEK paragraf, alan/oda paragrafının HEMEN
+// ALTINDA (TEK "\n" ile ayrı) eklenir ----------------------------------------
 {
-  const DEKORATIF_A = "Salon ve oda zeminleri seramik kaplı vaziyette olup, duvarlar saten boyalıdır.";
-  const DEKORATIF_B = "Salon ve oda zeminleri laminat parke kaplı vaziyette olup, duvarlar saten boyalıdır.";
   fns.setState({
     activeTitleUnitIndex: 0,
-    fields: { titleBlockName: "A", unitNo: "2", mockAreaDetails: SALON_2_ODA, mockDecorativeDetails: DEKORATIF_A },
+    fields: { titleBlockName: "A", unitNo: "2", mockAreaDetails: SALON_2_ODA, mockDecorativeParts: decorativePartsCommon(DEKORATIF_MAIN_ROOM_A) },
     tables: {},
-    titleUnits: [unit({ titleBlockName: "B", unitNo: "5", mockAreaDetails: SALON_2_ODA, mockDecorativeDetails: DEKORATIF_B })],
+    titleUnits: [unit({ titleBlockName: "B", unitNo: "5", mockAreaDetails: SALON_2_ODA, mockDecorativeParts: decorativePartsCommon(DEKORATIF_MAIN_ROOM_A) })],
   });
   const result = fns.buildMultiUnitInteriorDescriptionText();
   const lines = result.split("\n");
-  assert.equal(lines.length, 3, `Alan paragrafı (1) + 2 FARKLI dekoratif grup (2) -> 3 satır beklenir. Bulunan: ${JSON.stringify(lines)}`);
-  assert.ok(lines.some((line) => line.includes("A 2 No'lu") && line.includes(DEKORATIF_A)), `A 2 No'lu atıflı dekoratif satır bulunamadı. Bulunan: ${JSON.stringify(lines)}`);
-  assert.ok(lines.some((line) => line.includes("B 5 No'lu") && line.includes(DEKORATIF_B)), `B 5 No'lu atıflı dekoratif satır bulunamadı. Bulunan: ${JSON.stringify(lines)}`);
-  console.log("Dekoratif Özellikler: 2 FARKLI grup -> her biri kendi atıflı satırında testi tamam.");
+  assert.equal(lines.length, 2, `Alan paragrafı + ortak dekoratif paragrafı -> TAM 2 satır (TEK "\\n") beklenir. Bulunan: ${JSON.stringify(lines)}`);
+  assert.equal(lines[0], SALON_2_ODA_PLURAL, "1. satır (alan/oda) her zamanki gibi ÇOĞUL ortak metin olmalı.");
+  assert.ok(!lines[1].includes("No'lu"), "TÜM slotlar aynı olduğundan hiçbir atıf etiketi görünmemeli.");
+  assert.ok(lines[1].startsWith(DEKORATIF_MAIN_ROOM_A), "Dekoratif paragraf mainRoom slotuyla başlamalı (UNIT_DECORATIVE_SLOT_KEY_ORDER sırası).");
+  [DEKORATIF_WET_AREA, DEKORATIF_OUTDOOR, DEKORATIF_BATHROOM, DEKORATIF_DOORS_WINDOWS, DEKORATIF_KITCHEN, DEKORATIF_MATERIAL_QUALITY, DEKORATIF_HEATING].forEach((slotText) => {
+    assert.ok(lines[1].includes(slotText), `Paylaşılan slot metni ("${slotText.slice(0, 30)}...") dekoratif paragrafta eksik.`);
+  });
+  console.log("Dekoratif Özellikler: TÜM slotlar AYNI -> atıfsız TEK paragraf testi tamam.");
+}
+
+// --- 14) KULLANICININ GERÇEK ÖRNEĞİ: yalnızca "mainRoom" (duvar
+// malzemesi) 2 FARKLI değer, DİĞER 7 slot AYNI -> SADECE mainRoom kendi
+// KISA atıflı varyantlarıyla (BOŞLUKLA birleşik, "\n" YOK) belirir, diğer
+// 7 slot TEK SEFER yazılır, TÜMÜ TEK PARAGRAF (decorativeText'te HİÇ
+// "\n" yok) — "çok fazla karakter harcanmadan tek paragrafta belirtilmeli" -
+{
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: { titleBlockName: "A", unitNo: "2", mockAreaDetails: SALON_2_ODA, mockDecorativeParts: decorativePartsCommon(DEKORATIF_MAIN_ROOM_A) },
+    tables: {},
+    titleUnits: [unit({ titleBlockName: "B", unitNo: "5", mockAreaDetails: SALON_2_ODA, mockDecorativeParts: decorativePartsCommon(DEKORATIF_MAIN_ROOM_B) })],
+  });
+  const result = fns.buildMultiUnitInteriorDescriptionText();
+  const lines = result.split("\n");
+  assert.equal(lines.length, 2, `Alan paragrafı (1) + Dekoratif TEK paragraf (1, "\\n" içermemeli) -> TAM 2 satır beklenir. Bulunan: ${JSON.stringify(lines)}`);
+  const decorativeParagraph = lines[1];
+  assert.ok(decorativeParagraph.includes("A 2 No'lu") && decorativeParagraph.includes(DEKORATIF_MAIN_ROOM_A), "A 2 No'lu atıflı mainRoom varyantı eksik.");
+  assert.ok(decorativeParagraph.includes("B 5 No'lu") && decorativeParagraph.includes(DEKORATIF_MAIN_ROOM_B), "B 5 No'lu atıflı mainRoom varyantı eksik.");
+  [DEKORATIF_WET_AREA, DEKORATIF_OUTDOOR, DEKORATIF_BATHROOM, DEKORATIF_DOORS_WINDOWS, DEKORATIF_KITCHEN, DEKORATIF_MATERIAL_QUALITY, DEKORATIF_HEATING].forEach((slotText) => {
+    const occurrences = decorativeParagraph.split(slotText).length - 1;
+    assert.equal(occurrences, 1, `Paylaşılan slot ("${slotText.slice(0, 30)}...") TAM 1 kez geçmeli (tekrar EDİLMEMELİ), bulunan: ${occurrences}.`);
+  });
+  console.log("KULLANICI ÖRNEĞİ: yalnızca 1 slot FARKLI, diğerleri PAYLAŞIMLI, TEK PARAGRAFTA (karaktersiz tekrarsız) testi tamam.");
 }
 
 // --- 15) Dekoratif Özellikler tüm taşınmazlarda boşsa yalnızca alan/oda
 // paragrafı döner (davranış-koruma regresyonu — 1-12 numaralı eski
-// senaryoların hiçbiri mockDecorativeDetails TANIMLAMIYOR, bu da AYNI
+// senaryoların hiçbiri mockDecorativeParts TANIMLAMIYOR, bu da AYNI
 // koşulu örtük olarak zaten doğruluyor; burada AÇIKÇA da doğrulanıyor) ------
 {
   fns.setState({
@@ -479,6 +554,24 @@ const SALON_3_ODA = "Dubleks bağımsız bölüm zemin katta 1 salon ve mutfakta
   const result = fns.buildMultiUnitInteriorDescriptionText();
   assert.equal(result, SALON_2_ODA_PLURAL, "Dekoratif Özellikler tüm taşınmazlarda boşsa sonuç yalnızca alan/oda paragrafından ibaret olmalı (ekstra '\\n' veya boş satır YOK).");
   console.log("Dekoratif Özellikler tümüyle boş -> yalnızca alan/oda paragrafı (regresyon) testi tamam.");
+}
+
+// --- 18) Dekoratif Özellikler: "view" slotu 2 taşınmazda AYNI VE "taşınmaz"
+// ÇIPLAK öznesi içeriyorsa (composeUnitViewSentence'ın GERÇEK riskli
+// varyantı) ÇOĞULLANIR ------------------------------------------------------
+{
+  const VIEW_BARE_SUBJECT = "Boğaz manzarasına sahip olan taşınmaz bu yönüyle manzara şerefiyesine sahiptir.";
+  const VIEW_BARE_SUBJECT_PLURAL = "Boğaz manzarasına sahip olan taşınmazlar bu yönüyle manzara şerefiyesine sahiptirler.";
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: { titleBlockName: "A", unitNo: "2", mockAreaDetails: SALON_2_ODA, mockDecorativeParts: [{ key: "view", value: VIEW_BARE_SUBJECT }] },
+    tables: {},
+    titleUnits: [unit({ titleBlockName: "B", unitNo: "5", mockAreaDetails: SALON_2_ODA, mockDecorativeParts: [{ key: "view", value: VIEW_BARE_SUBJECT }] })],
+  });
+  const result = fns.buildMultiUnitInteriorDescriptionText();
+  const lines = result.split("\n");
+  assert.equal(lines[1], VIEW_BARE_SUBJECT_PLURAL, `"view" slotu AYNI VE çıplak "taşınmaz" özneli olduğundan ÇOĞULLANMALI. Bulunan: ${lines[1]}`);
+  console.log("Dekoratif Özellikler: AYNI + çıplak 'taşınmaz' özneli slot -> ÇOĞULLANIR testi tamam.");
 }
 
 // --- 7) buildUnitInteriorDescriptionParts() GERÇEK gövdesi areaDetails döndürüyor mu
@@ -499,24 +592,80 @@ const SALON_3_ODA = "Dubleks bağımsız bölüm zemin katta 1 salon ve mutfakta
 }
 
 // --- 8b) composeMultiUnitInteriorGroupedText() GERÇEK gövdesi çoğullamayı
-// (kullanıcı düzeltmesi #3) taşıyor mu (kaynak-düzeyi) -----------------------
+// GENEL bir `pluralize` FONKSİYON parametresi olarak taşıyor mu
+// (kaynak-düzeyi — kullanıcı düzeltmesi #3'ün alan/oda çoğullaması VE
+// düzeltme #5'in dekoratif çoğullaması AYNI genel mekanizmayı paylaşır) ------
 {
   const realBody = extractFunction("composeMultiUnitInteriorGroupedText");
-  assert.ok(realBody.includes("pluralizeUnitInteriorAreaDetailsText"), "2+ üyeli gruplar için pluralizeUnitInteriorAreaDetailsText() çağrılmalı (kullanıcı düzeltmesi #3: 'Evet, çoğullansın').");
+  assert.ok(/pluralize\s*=\s*null/.test(realBody), "`pluralize` parametresi varsayılan olarak null (çoğullama YOK) olmalı.");
+  assert.ok(/pluralize\s*\?\s*pluralize\(text\)\s*:\s*text/.test(realBody), "`pluralize` VERİLDİĞİNDE (bir fonksiyon) metne uygulanmalı, VERİLMEDİĞİNDE metin OLDUĞU GİBİ kalmalı.");
   assert.ok(/entries\.length > 1/.test(realBody), "Çoğullama YALNIZCA 2+ üyeli gruplara uygulanmalı (tek üyeli gruplar tekil kalmalı).");
-  console.log("composeMultiUnitInteriorGroupedText() çoğullama kablolaması testi tamam.");
+  assert.ok(/joiner\s*=\s*"\\n"/.test(realBody), "`joiner` parametresi varsayılan olarak \"\\n\" (alan/oda paragrafının ESKİ/DEĞİŞMEYEN davranışı) olmalı.");
+  console.log("composeMultiUnitInteriorGroupedText() genel çoğullama+joiner kablolaması testi tamam.");
 }
 
 // --- 8c) buildMultiUnitInteriorDescriptionText() GERÇEK gövdesi Dekoratif
-// Özellikler'i (kullanıcı düzeltmesi #4) OKUYOR, ama pluralize:true İLE
-// ÇAĞIRMIYOR (kaynak-düzeyi) -------------------------------------------------
+// Özellikler'i (kullanıcı düzeltmesi #5) SLOT BAZINDA okuyor, alan/oda
+// için pluralizeUnitInteriorAreaDetailsText / dekoratif için
+// pluralizeUnitDecorativeText + joiner:" " GEÇİYOR (kaynak-düzeyi) ------------
 {
   const realBody = extractFunction("buildMultiUnitInteriorDescriptionText");
-  assert.ok(realBody.includes("getUnitDecorativeDescriptionForCombinedText()"), "Çoklu-taşınmaz Dekoratif Özellikler kaynağı getUnitDecorativeDescriptionForCombinedText() OLMALI.");
-  const decorativeCallMatch = realBody.match(/composeMultiUnitInteriorGroupedText\(groupUnitInteriorTextEntries\(decorativeEntries\)\)/);
-  assert.ok(decorativeCallMatch, "Dekoratif metin composeMultiUnitInteriorGroupedText'e pluralize SEÇENEĞİ OLMADAN (varsayılan false) geçmeli.");
-  assert.ok(/composeMultiUnitInteriorGroupedText\(groupUnitInteriorTextEntries\(areaEntries\), \{ pluralize: true \}\)/.test(realBody), "Alan/oda metni composeMultiUnitInteriorGroupedText'e { pluralize: true } İLE geçmeli.");
-  console.log("buildMultiUnitInteriorDescriptionText(): Dekoratif Özellikler kablolaması + ÇOĞULLANMAMA (kaynak-düzeyi) testi tamam.");
+  assert.ok(realBody.includes("getUnitDecorativeDescriptionPartsForCombinedText()"), "Çoklu-taşınmaz Dekoratif Özellikler kaynağı getUnitDecorativeDescriptionPartsForCombinedText() (SLOT bazlı) OLMALI.");
+  assert.ok(realBody.includes("UNIT_DECORATIVE_SLOT_KEY_ORDER"), "Dekoratif slotlar UNIT_DECORATIVE_SLOT_KEY_ORDER sabit sırasıyla işlenmeli.");
+  assert.ok(
+    /composeMultiUnitInteriorGroupedText\(groupUnitInteriorTextEntries\(decorativeEntriesBySlot\[key\]\), \{ pluralize: pluralizeUnitDecorativeText, joiner: " " \}\)/.test(realBody),
+    "Dekoratif SLOT metni composeMultiUnitInteriorGroupedText'e { pluralize: pluralizeUnitDecorativeText, joiner: \" \" } İLE geçmeli (tek paragraf, kullanıcı düzeltmesi #5)."
+  );
+  assert.ok(
+    /composeMultiUnitInteriorGroupedText\(groupUnitInteriorTextEntries\(areaEntries\), \{ pluralize: pluralizeUnitInteriorAreaDetailsText \}\)/.test(realBody),
+    "Alan/oda metni composeMultiUnitInteriorGroupedText'e { pluralize: pluralizeUnitInteriorAreaDetailsText } İLE (varsayılan '\\n' joiner'la) geçmeli."
+  );
+  console.log("buildMultiUnitInteriorDescriptionText(): Dekoratif Özellikler SLOT-bazlı kablolama + çoğullama (kaynak-düzeyi) testi tamam.");
+}
+
+// --- 19) pluralizeUnitDecorativeSentence(): çıplak özne+fiil (2 GERÇEK
+// varyant), genitif özne (fiil dokunulmaz), "taşınmaz" hiç geçmeyen
+// kişisiz cümle (TAMAMEN DOKUNULMAZ) -----------------------------------------
+{
+  assert.equal(
+    fns.pluralizeUnitDecorativeSentence("Boğaz manzarasına sahip olan taşınmaz bu yönüyle manzara şerefiyesine sahiptir."),
+    "Boğaz manzarasına sahip olan taşınmazlar bu yönüyle manzara şerefiyesine sahiptirler.",
+    "composeUnitViewSentence varyant[0]: çıplak 'taşınmaz' ORTADA olsa bile özne+fiil BİRLİKTE çoğullanmalı."
+  );
+  assert.equal(
+    fns.pluralizeUnitDecorativeSentence("Boğaz manzarasına sahip olması nedeniyle taşınmaz manzara şerefiyesinden faydalanmaktadır."),
+    "Boğaz manzarasına sahip olması nedeniyle taşınmazlar manzara şerefiyesinden faydalanmaktadırlar.",
+    "composeUnitViewSentence varyant[3]: çıplak 'taşınmaz' + 'faydalanmaktadır.' -> 'faydalanmaktadırlar.' olmalı."
+  );
+  assert.equal(
+    fns.pluralizeUnitDecorativeSentence("Taşınmazın ısınma ihtiyacı doğalgaz kombi ile karşılanmak üzere tesisatlandırılmış olup, ısıtma sistemi halihazırda monte edilmiştir."),
+    "Taşınmazların ısınma ihtiyacı doğalgaz kombi ile karşılanmak üzere tesisatlandırılmış olup, ısıtma sistemi halihazırda monte edilmiştir.",
+    "composeUnitHeatingSentence varyant[1]: genitif 'Taşınmazın' özne çoğullanır AMA fiil ('sistemi ... monte edilmiştir', taşınmaza değil sisteme bağlı) DOKUNULMAZ."
+  );
+  const impersonal = "Salon ve oda zeminleri laminant parke kaplı, antre-hol ve mutfak zeminleri seramik kaplı vaziyette olup, salon, oda, antre-hol ve mutfak duvarları alçı sıva üzeri saten boyalıdır.";
+  assert.equal(fns.pluralizeUnitDecorativeSentence(impersonal), impersonal, "'taşınmaz' hiç geçmeyen kişisiz Dekoratif cümle HİÇ DEĞİŞTİRİLMEMELİ.");
+  console.log("pluralizeUnitDecorativeSentence(): çıplak özne+fiil / genitif özne+tekil fiil / kişisiz cümle (dokunulmaz) testleri tamam.");
+}
+
+// --- 20) Dekoratif Özellikler: manuel override'lı bir taşınmaz KENDİ ayrı
+// "manualOverride" slotunda kalır, programatik 10 alt-cümleyle ASLA
+// karışmaz (davranışsal + kaynak-düzeyi) -------------------------------------
+{
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: { titleBlockName: "A", unitNo: "2", mockAreaDetails: SALON_2_ODA, mockDecorativeParts: [{ key: "manualOverride", value: "Elle yazılmış TAMAMEN farklı bir dekoratif metin." }] },
+    tables: {},
+    titleUnits: [unit({ titleBlockName: "B", unitNo: "5", mockAreaDetails: SALON_2_ODA, mockDecorativeParts: [{ key: "mainRoom", value: DEKORATIF_MAIN_ROOM_A }] })],
+  });
+  const result = fns.buildMultiUnitInteriorDescriptionText();
+  const lines = result.split("\n");
+  const decorativeParagraph = lines[1];
+  assert.ok(decorativeParagraph.includes("Elle yazılmış TAMAMEN farklı bir dekoratif metin."), "manualOverride slotunun metni sonuçta bulunmalı.");
+  assert.ok(decorativeParagraph.includes(DEKORATIF_MAIN_ROOM_A), "mainRoom slotunun metni sonuçta bulunmalı.");
+  assert.ok(!decorativeParagraph.includes("No'lu"), "Her slotun TEK katkı sahibi olduğundan (grup içi tek üye) hiçbir atıf etiketi görünmemeli — İKİ AYRI/benzemeyen slot içeriği YANLIŞLIKLA AYNI grupta BİRLEŞMEMELİ.");
+  const realBody = extractFunction("getUnitDecorativeDescriptionPartsForCombinedText");
+  assert.ok(realBody.includes('key: "manualOverride"'), "Manuel override KENDİ, AYRI \"manualOverride\" anahtarıyla işaretlenmeli (programatik slotlarla KARIŞMASIN).");
+  console.log("Dekoratif Özellikler: manuel override KENDİ ayrı slotunda, programatik slotlarla karışmıyor testi tamam.");
 }
 
 // --- 9) explanations bölümünde yeni alan tanımı (kaynak-düzeyi) ------------
