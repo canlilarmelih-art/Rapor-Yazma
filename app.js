@@ -825,7 +825,12 @@ const sections = [
       // bileşimini anlatan, taşınmaza-özgü metin), "aynı/benzer metinleri
       // TEK cümlede birleştir" — bkz. buildMultiUnitInteriorDescriptionText()
       // (aşağıda, "Açık Adres (Çoklu Taşınmaz)" ile AYNI "Açıklamalar"a
-      // yeni bir alan ekleme deseni).
+      // yeni bir alan ekleme deseni). 0.0.632/633'te DEKORATİF özellikler
+      // ve kat referansı bilerek dışlandı; 0.0.635'te kullanıcı talebiyle
+      // ("dekoratif özellikleri ortak olarak yazmamız gerekiyor")
+      // Dekoratif Özellikler AYRI bir paragraf olarak BU ALANIN SONUNA
+      // geri eklendi (AYRI bir alan DEĞİL, AskUserQuestion'da "Önerilen"
+      // seçilen davranış).
       { key: "unitInteriorDescriptionMulti", label: "İç Hacimler Açıklaması (Çoklu Taşınmaz)", type: "textarea", wide: true },
       {
         key: "ekbEmissionClass",
@@ -30858,19 +30863,26 @@ function refreshMultiUnitOpenAddressTextFromCurrentFields(changedKey = "") {
 
 // buildMultiUnitInteriorDescriptionText()'in (yukarıda) canlı tazeleyicisi
 // — refreshMultiUnitOpenAddressTextFromCurrentFields ile AYNI desen.
-// watchedKeys: metnin GİRDİSİ olan unitInteriorDescription'ın KENDİSİ +
-// atıf etiketlerini (formatTitleUnitSuitabilityLabel) etkileyen
-// titleBlockName/unitNo.
+// watchedKeys: metnin GİRDİSİ olan alan/oda-hacim bileşimi (kat satırı
+// TABLOSU HARİÇ, aşağıda) + atıf etiketlerini (formatTitleUnitSuitabilityLabel)
+// etkileyen titleBlockName/unitNo + (2026-09-03 eklendi) Dekoratif
+// Özellikler panelinin TÜM alanları — getUnitDecorativeFieldKeys() TEK
+// KAYNAK olarak kullanılır (elle ikinci bir liste TUTULMAZ, bkz.
+// AGENTS.md "iki ayrı senkron liste" uyarısı).
 function refreshMultiUnitInteriorDescriptionTextFromCurrentFields(changedKey = "") {
   // buildMultiUnitInteriorDescriptionText() artık unitInteriorDescription
   // alanının KENDİSİNİ DEĞİL, buildUnitInteriorDescriptionParts().areaDetails'ı
   // (kat satırları + dükkan cephe/derinlik + dışarıdan-ekspertiz cümlesi)
-  // okur — bu yüzden watchedKeys de o girdilere karşılık gelir. Kat
-  // satırı (unitFloors TABLOSU) düzenlemeleri field.key ÜRETMEDİĞİNDEN
+  // + getUnitDecorativeDescriptionForCombinedText()'i (Dekoratif Özellikler
+  // paragrafı) okur — bu yüzden watchedKeys de o girdilere karşılık gelir.
+  // Kat satırı (unitFloors TABLOSU) düzenlemeleri field.key ÜRETMEDİĞİNDEN
   // (bir TABLO, deklaratif alan DEĞİL) bu listeye giremez — bu durum,
   // refreshAllVariantDependentExplanationFields()'ın KOŞULSUZ (her
   // "Açıklamalar" render'ında) çağrısıyla ZATEN telafi edilir.
-  const watchedKeys = ["unitShopFrontage", "unitShopDepth", "appointmentType", "externalAppraisalReason", "titleBlockName", "unitNo"];
+  const watchedKeys = [
+    "unitShopFrontage", "unitShopDepth", "appointmentType", "externalAppraisalReason", "titleBlockName", "unitNo",
+    ...getUnitDecorativeFieldKeys(),
+  ];
   if (changedKey && !watchedKeys.includes(changedKey)) return;
   state.fields.unitInteriorDescriptionMulti = normalizeReportDescriptionText(buildMultiUnitInteriorDescriptionText());
   const control = document.querySelector('[data-field="unitInteriorDescriptionMulti"]');
@@ -33472,26 +33484,15 @@ function pluralizeUnitInteriorAreaDetailsText(text) {
   return text.split(/(?<=\.) /).map(pluralizeUnitInteriorAreaSentence).join(" ");
 }
 
-function buildMultiUnitInteriorDescriptionText() {
-  const units = buildAllTitleUnitsForSummaryTable();
-  if (units.length < 2) return state.fields.unitInteriorDescription || "";
-
-  const originalFields = state.fields;
-  const originalTables = state.tables;
-  const entries = [];
-  try {
-    units.forEach((unit, index) => {
-      state.fields = { ...originalFields, ...(unit.fields || {}) };
-      state.tables = { ...originalTables, ...(unit.tables || {}) };
-      const value = normalizeReportDescriptionText(buildUnitInteriorDescriptionParts().areaDetails || "").trim();
-      if (value) entries.push({ index, fields: state.fields, value });
-    });
-  } finally {
-    state.fields = originalFields;
-    state.tables = originalTables;
-  }
-  if (!entries.length) return "";
-
+// %90 benzerlik eşiğiyle (normalizeTextForSimilarityComparison +
+// computeTextSimilarityRatio) {index, fields, value} girdilerini
+// gruplar — buildMultiUnitInteriorDescriptionText()'in HEM alan/oda-
+// hacim (areaDetails) HEM DE (2026-09-03 eklendi) Dekoratif Özellikler
+// birleştirmesi için PAYLAŞIMLI çekirdek. Not: `groupMainPropertyBlocksByText()`
+// (Ana Gayrimenkul/Açık Adres'in kullandığı) BİLEREK kullanılmadı —
+// burada atıf `formatTitleUnitAttributionPhrase` ile (entry.fields/
+// entry.index gerektirir), o fonksiyon ise blok-adı listesi döndürür.
+function groupUnitInteriorTextEntries(entries) {
   const groups = [];
   entries.forEach((entry) => {
     const normalized = normalizeTextForSimilarityComparison(entry.value);
@@ -33504,26 +33505,74 @@ function buildMultiUnitInteriorDescriptionText() {
       groups.push({ normalized, canonicalValue: entry.value, entries: [entry] });
     }
   });
+  return groups;
+}
 
-  // TÜM bağımsız bölümler AYNI/BENZER metni ürettiyse (TEK grup) atıf
-  // eklenmeden TEK, ortak metin döner (buildDocumentsBlockAttributedExplanationParts/
-  // buildProjectReviewConsolidatedSentences ile AYNI ilke: "hepsi aynıysa
-  // taşınmaz adı tekrar etmeden tek genel cümle kurulmalı"). Kullanıcı
-  // talebi (2026-09-03, işaretli örnekle onaylandı): grup 2+ taşınmazı
-  // KAPSIYORSA (atıflı olsun ya da olmasın) metin ÇOĞULLANIR — "hepsi
-  // aynı" (bu dal) İÇİN DE geçerli: TEK grup ama 2+ üyeliyse hâlâ çoğul
-  // olmalı.
+// groupUnitInteriorTextEntries()'in ürettiği gruplardan nihai metni
+// kurar — TÜM bağımsız bölümler AYNI/BENZER metni ürettiyse (TEK grup)
+// atıf eklenmeden TEK, ortak metin döner (buildDocumentsBlockAttributedExplanationParts/
+// buildProjectReviewConsolidatedSentences ile AYNI ilke: "hepsi aynıysa
+// taşınmaz adı tekrar etmeden tek genel cümle kurulmalı"), farklıysa
+// HER grup kendi atfıyla (formatTitleUnitAttributionPhrase) ayrı satırda
+// döner. `pluralize` (yalnızca alan/oda-hacim metni için `true`, bkz.
+// çağıran) 2+ üyeli bir grubun metnini pluralizeUnitInteriorAreaDetailsText
+// ile çoğullar — Dekoratif Özellikler cümleleri (composeUnitViewSentence/
+// composeUnitHeatingSentence/composeMainRoomDecorativeSentence vb.) BU
+// KAPALI/SONLU fiil-sonu kümesinin KAPSAMI DIŞINDA çok daha çeşitli özne/
+// fiil kalıpları kullandığından (ör. "taşınmaz" sözcüğü cümlenin
+// ORTASINDA geçebilir) buraya pluralize=true UYGULANMAZ — yanlış çoğul
+// eki riski, "ortak/benzer metni TEK PARAGRAFTA birleştir" kazanımından
+// daha ağır basar.
+function composeMultiUnitInteriorGroupedText(groups, { pluralize = false } = {}) {
+  if (!groups.length) return "";
+  const applyPlural = (text) => (pluralize ? pluralizeUnitInteriorAreaDetailsText(text) : text);
   if (groups.length === 1) {
     const soleGroup = groups[0];
-    return soleGroup.entries.length > 1 ? pluralizeUnitInteriorAreaDetailsText(soleGroup.canonicalValue) : soleGroup.canonicalValue;
+    return soleGroup.entries.length > 1 ? applyPlural(soleGroup.canonicalValue) : soleGroup.canonicalValue;
   }
-
   return groups.map((group) => {
-    const text = group.entries.length > 1 ? pluralizeUnitInteriorAreaDetailsText(group.canonicalValue) : group.canonicalValue;
+    const text = group.entries.length > 1 ? applyPlural(group.canonicalValue) : group.canonicalValue;
     const labels = group.entries.map((entry) => formatTitleUnitSuitabilityLabel(entry.fields, entry.index));
     const attribution = formatTitleUnitAttributionPhrase(labels);
     return attribution ? normalizeReportDescriptionText(`${attribution}: ${text}`) : text;
   }).join("\n");
+}
+
+// Kullanıcı talebi (2026-09-03): "aynı ada parselde yer alan çoklu
+// çalışmalarda bağımsız bölüm özelliklerinde dekoratif özellikler
+// dışında kalan kısımları yazdık [0.0.632/633]. şimdi dekoratif
+// özellikleri ortak olarak yazmamız gerekiyor." AskUserQuestion ile
+// netleştirildi: dekoratif metin AYRI bir alan DEĞİL, bu alanın
+// (unitInteriorDescriptionMulti) SONUNA yeni bir paragraf olarak eklenir
+// ("Önerilen" seçenek). Kat/alan paragrafıyla AYNI %90-benzerlik
+// gruplama çekirdeği (groupUnitInteriorTextEntries) + atıf biçimi
+// (composeMultiUnitInteriorGroupedText) kullanılır, ama ÇOĞULLAMA
+// UYGULANMAZ (bkz. composeMultiUnitInteriorGroupedText'in yorumu).
+function buildMultiUnitInteriorDescriptionText() {
+  const units = buildAllTitleUnitsForSummaryTable();
+  if (units.length < 2) return state.fields.unitInteriorDescription || "";
+
+  const originalFields = state.fields;
+  const originalTables = state.tables;
+  const areaEntries = [];
+  const decorativeEntries = [];
+  try {
+    units.forEach((unit, index) => {
+      state.fields = { ...originalFields, ...(unit.fields || {}) };
+      state.tables = { ...originalTables, ...(unit.tables || {}) };
+      const areaValue = normalizeReportDescriptionText(buildUnitInteriorDescriptionParts().areaDetails || "").trim();
+      if (areaValue) areaEntries.push({ index, fields: state.fields, value: areaValue });
+      const decorativeValue = normalizeReportDescriptionText(getUnitDecorativeDescriptionForCombinedText() || "").trim();
+      if (decorativeValue) decorativeEntries.push({ index, fields: state.fields, value: decorativeValue });
+    });
+  } finally {
+    state.fields = originalFields;
+    state.tables = originalTables;
+  }
+
+  const areaText = composeMultiUnitInteriorGroupedText(groupUnitInteriorTextEntries(areaEntries), { pluralize: true });
+  const decorativeText = composeMultiUnitInteriorGroupedText(groupUnitInteriorTextEntries(decorativeEntries));
+  return [areaText, decorativeText].filter(Boolean).join("\n");
 }
 
 function createOpenAddressPanel() {
