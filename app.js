@@ -15025,6 +15025,13 @@ function setUnitFloorRows(rows) {
   syncUnitFloorSummaryFields(rows);
   refreshUnitUnitsSummaryTablePreviewDebounced();
   updateUnitInteriorDescription();
+  // "İç Hacimler Açıklaması (Çoklu Taşınmaz)" (2026-09-03) —
+  // buildMultiUnitInteriorDescriptionText() kat satırlarından (bu
+  // fonksiyonun KENDİSİ) türetilen areaDetails'ı okuyor; field.key
+  // ÜRETMEYEN bu TABLO değişikliği merkezi dispatcher'a hiç ulaşmadığından
+  // burada AYRICA (koşulsuz — "Açıklamalar" bölümünde değilse zaten
+  // no-op) çağrılır.
+  refreshMultiUnitInteriorDescriptionTextFromCurrentFields();
   autosave();
   renderValidation();
   updateStatus();
@@ -15143,7 +15150,7 @@ function buildUnitInteriorDescriptionParts() {
     .map((row) => normalizeUnitFloorDescriptionRow(row))
     .filter((row) => row.floor || row.legalArea || row.currentArea || row.legalTerrace || row.currentTerrace || row.interiorText);
   const intro = composeUnitDescriptionIntro(rows);
-  if (!rows.length) return { intro, details: "" };
+  if (!rows.length) return { intro, areaDetails: "", details: "" };
 
   let areaDescription = "";
   if (rows.length === 1) {
@@ -15183,6 +15190,18 @@ function buildUnitInteriorDescriptionParts() {
   // ise her satır sonunu ayrı <p> yapıyor.
   return {
     intro,
+    // `areaDetails` (2026-09-03 eklendi, YENİ) — `details`in dekoratif
+    // ÖNCESİ hali, YALNIZCA alan/oda-hacim kompozisyonu (kat cümleleri +
+    // dükkan cephe/derinlik + dışarıdan-ekspertiz cümlesi). Tüketicisi:
+    // buildMultiUnitInteriorDescriptionText() (bkz. aşağıda) — kullanıcı
+    // talebi "İç Hacimler Açıklaması (Çoklu Taşınmaz) bölümünde DEKORATİF
+    // özellikler olmasın" + kat referansının (intro'nun İÇİNDE, "binanın
+    // X Katında yer alan" gibi) taşınmaza-özgü olup ÇOKLU-taşınmaz
+    // birleştirmede YANILTICI olabileceği bulgusu — bu iki BİLİNÇLİ
+    // dışlamayla (ne intro ne decorative) sadece KIYASLANABİLİR/GERÇEKTEN
+    // ortak olan alan/oda bilgisini taşır. Mevcut `details` (decorative
+    // DAHİL) davranışı DEĞİŞMEDİ, bu yalnızca YENİ bir alan.
+    areaDetails,
     details: [areaDetails, String(decorativeDescription || "").trim()].filter(Boolean).join("\n"),
   };
 }
@@ -30843,7 +30862,15 @@ function refreshMultiUnitOpenAddressTextFromCurrentFields(changedKey = "") {
 // atıf etiketlerini (formatTitleUnitSuitabilityLabel) etkileyen
 // titleBlockName/unitNo.
 function refreshMultiUnitInteriorDescriptionTextFromCurrentFields(changedKey = "") {
-  const watchedKeys = ["unitInteriorDescription", "titleBlockName", "unitNo"];
+  // buildMultiUnitInteriorDescriptionText() artık unitInteriorDescription
+  // alanının KENDİSİNİ DEĞİL, buildUnitInteriorDescriptionParts().areaDetails'ı
+  // (kat satırları + dükkan cephe/derinlik + dışarıdan-ekspertiz cümlesi)
+  // okur — bu yüzden watchedKeys de o girdilere karşılık gelir. Kat
+  // satırı (unitFloors TABLOSU) düzenlemeleri field.key ÜRETMEDİĞİNDEN
+  // (bir TABLO, deklaratif alan DEĞİL) bu listeye giremez — bu durum,
+  // refreshAllVariantDependentExplanationFields()'ın KOŞULSUZ (her
+  // "Açıklamalar" render'ında) çağrısıyla ZATEN telafi edilir.
+  const watchedKeys = ["unitShopFrontage", "unitShopDepth", "appointmentType", "externalAppraisalReason", "titleBlockName", "unitNo"];
   if (changedKey && !watchedKeys.includes(changedKey)) return;
   state.fields.unitInteriorDescriptionMulti = normalizeReportDescriptionText(buildMultiUnitInteriorDescriptionText());
   const control = document.querySelector('[data-field="unitInteriorDescriptionMulti"]');
@@ -33357,6 +33384,26 @@ function buildMultiUnitOpenAddressText() {
 // ada/parsel-koşullu DEĞİL, bkz. buildUnitUnitsSummaryTableData), bu
 // tutarlılıkla uyumludur.
 //
+// KULLANICI DÜZELTMESİ (2026-09-03, iki işaretli gerçek örnekle): "İç
+// Hacimler Açıklaması (Çoklu Taşınmaz) bölümünde DEKORATİF özellikler
+// olmasın." — İLK sürüm kaynak olarak DOĞRUDAN `unit.fields.unitInteriorDescription`
+// (canlı panelin GÖSTERDİĞİ, TAMAMI birleşik metin) okuyordu — bu metin
+// composeUnitInteriorDescription()'ın ürettiği `intro + areaDetails +
+// decorativeDescription` ÜÇLÜSÜNÜN TAMAMI. Kullanıcının işaretlediği
+// örnekte HEM Dekoratif Özellikler Açıklaması HEM DE `intro`'nun İÇİNDEKİ
+// "binanın 1. Normal Katında yer alan," gibi KAT referansı (bkz.
+// formatUnitFloorsIntroPhrase) çizilmişti — kat bilgisi HER bağımsız
+// bölüme özgüdür, benzer oda/alan bileşimine sahip ama FARKLI kattaki
+// bağımsız bölümler TEK grupta birleşince bu ifade YANILTICI olurdu.
+// Düzeltme: artık `unitInteriorDescription`'ın KENDİSİ DEĞİL, sadece
+// `buildUnitInteriorDescriptionParts()`'ın YENİ `areaDetails` alanı
+// (ne `intro` ne `decorativeDescription` — yalnızca kat/alan/oda-hacim
+// kompozisyonu) kaynak alınıyor; bu, HER taşınmaz için `state.fields`/
+// `state.tables` GEÇİCİ olarak o taşınmazınkiyle değiştirilerek TEKRAR
+// hesaplanır (buildProjectReviewConsolidatedParts'taki AYNI "temsilci
+// alanlarıyla geçici değiştirme" tekniği — ama blok temsilcisi DEĞİL,
+// HER taşınmaz kendi hesaplanır, çünkü İç Hacimler taşınmaza-özgüdür).
+//
 // Gruplama: findSimilarTitleUnitsSummaryTextGroups()'un (0.0.554, "≈
 // Benzer Metinleri Birleştir" butonu) AYNI %90 benzerlik eşiği/algoritması
 // (normalizeTextForSimilarityComparison + Levenshtein) — ama o fonksiyon
@@ -33373,9 +33420,20 @@ function buildMultiUnitInteriorDescriptionText() {
   const units = buildAllTitleUnitsForSummaryTable();
   if (units.length < 2) return state.fields.unitInteriorDescription || "";
 
-  const entries = units
-    .map((unit, index) => ({ index, fields: unit.fields || {}, value: normalizeReportDescriptionText(unit.fields?.unitInteriorDescription || "").trim() }))
-    .filter((entry) => entry.value);
+  const originalFields = state.fields;
+  const originalTables = state.tables;
+  const entries = [];
+  try {
+    units.forEach((unit, index) => {
+      state.fields = { ...originalFields, ...(unit.fields || {}) };
+      state.tables = { ...originalTables, ...(unit.tables || {}) };
+      const value = normalizeReportDescriptionText(buildUnitInteriorDescriptionParts().areaDetails || "").trim();
+      if (value) entries.push({ index, fields: state.fields, value });
+    });
+  } finally {
+    state.fields = originalFields;
+    state.tables = originalTables;
+  }
   if (!entries.length) return "";
 
   const groups = [];
