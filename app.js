@@ -15237,7 +15237,7 @@ function getUnitDecorativeDescriptionPartsForCombinedText() {
   if (state.fields.unitDecorativeDescriptionManual === "Evet" && state.fields.unitDecorativeDescription) {
     return [{ key: "manualOverride", value: state.fields.unitDecorativeDescription }];
   }
-  return buildUnitDecorativeDescriptionPartsList();
+  return buildUnitDecorativeDescriptionPartsList({ splitMainRoomAndOutdoor: true });
 }
 
 // DEĞİŞMEDİ (davranış-koruma) — getUnitDecorativeDescriptionPartsForCombinedText()'in
@@ -16243,13 +16243,38 @@ function getOutdoorInteriorPrefix(presence) {
 // KAYNAKTAN (bu liste, sabit anahtarlarla) üretiliyor —
 // composeUnitDecorativeDescription() (TEK taşınmaz/canlı panel, davranışı
 // DEĞİŞMEDİ) bu listeyi AYNI SIRAYLA birleştirip döndürür.
-function buildUnitDecorativeDescriptionPartsList() {
+//
+// Kullanıcı DÜZELTMESİ (2026-09-05): "mainRoom"/"outdoor" TEK cümlede
+// zemin+duvar / tip+malzeme bilgisini BİRLEŞTİRDİĞİNDEN, bu ikisinden
+// yalnızca BİR kısmı (ör. duvar malzemesi, ya da balkon/teras bilgisi)
+// farklı olduğunda bile ÇOKLU TAŞINMAZ birleştirmesi TÜM cümleyi atıflı
+// tekrarlıyordu. `splitMainRoomAndOutdoor: true` (SADECE çoklu-taşınmaz
+// tüketicisi kullanır, bkz. getUnitDecorativeDescriptionPartsForCombinedText)
+// bu ikisini KENDİ bağımsız 2'şer alt-parçasına ("mainRoomFloor"+
+// "mainRoomWall", "outdoorType"+"outdoorMaterial") ayırır — varsayılan
+// `false` (TEK taşınmaz/composeUnitDecorativeDescription) davranışı
+// BİREBİR KORUNUR (aynı selectVariant çağrı sayısı/sırası, aynı 10-elemanlı
+// dizi şekli).
+function buildUnitDecorativeDescriptionPartsList({ splitMainRoomAndOutdoor = false } = {}) {
   if (shouldUseExternalUnitInspectionText()) return [];
   const presence = getUnitInteriorPresence();
+  const mainRoomEntries = splitMainRoomAndOutdoor
+    ? (({ floorSentence, wallSentence }) => [
+        { key: "mainRoomFloor", value: floorSentence },
+        { key: "mainRoomWall", value: wallSentence },
+      ])(buildMainRoomDecorativeMultiUnitParts(presence))
+    : [{ key: "mainRoom", value: composeMainRoomDecorativeSentence(presence) }];
+  const outdoorPrefix = getOutdoorInteriorPrefix(presence);
+  const outdoorEntries = splitMainRoomAndOutdoor
+    ? (({ presenceSentence, materialSentence }) => [
+        { key: "outdoorType", value: presenceSentence },
+        { key: "outdoorMaterial", value: materialSentence },
+      ])(outdoorPrefix ? buildOutdoorDecorativeMultiUnitParts(presence) : { presenceSentence: "", materialSentence: "" })
+    : [{ key: "outdoor", value: outdoorPrefix ? composeSingleAreaDecorativeSentence(outdoorPrefix, state.fields.unitBalconyFloor, state.fields.unitBalconyWall) : "" }];
   return [
-    { key: "mainRoom", value: composeMainRoomDecorativeSentence(presence) },
+    ...mainRoomEntries,
     { key: "wetArea", value: hasWetAreaInterior(presence) ? composeSingleAreaDecorativeSentence("Islak hacimlerde", state.fields.unitWetFloor, state.fields.unitWetWall) : "" },
-    { key: "outdoor", value: getOutdoorInteriorPrefix(presence) ? composeSingleAreaDecorativeSentence(getOutdoorInteriorPrefix(presence), state.fields.unitBalconyFloor, state.fields.unitBalconyWall) : "" },
+    ...outdoorEntries,
     { key: "bathroomFixture", value: hasWetAreaInterior(presence) ? composeBathroomFixtureSentence() : "" },
     { key: "doorsWindows", value: composeDoorsWindowsSentence() },
     { key: "kitchen", value: hasKitchenInterior(presence) ? composeKitchenCabinetCounterSentence() : "" },
@@ -16309,7 +16334,18 @@ function composeUnitConstructionLevelSentence() {
   return unitConstructionLevelSentenceVariants[selectVariant("composeUnitConstructionLevelSentence", unitConstructionLevelSentenceVariants.length)](formattedLevel);
 }
 
-function composeMainRoomDecorativeSentence(presence = getUnitInteriorPresence()) {
+// Kullanıcı talebi (2026-09-05): "mainRoom zemin+duvar cümlesi" — zemin
+// AYNI olduğu halde yalnızca duvar malzemesi farklı diye ÇOKLU TAŞINMAZ
+// birleştirmesinde TÜM cümle atıflı tekrarlanıyordu. Bu ara-hesaplamayı
+// (floorGroups/wallGroups/floorText/floorTail/wallText) composeMainRoomDecorativeSentence
+// (TEK taşınmaz, AŞAĞIDA, DEĞİŞMEDİ) İLE buildMainRoomDecorativeMultiUnitParts
+// (Çoklu Taşınmaz, aşağıda YENİ) arasında PAYLAŞIMLI hale getirir — TEK
+// KAYNAK, iki tüketici. Boş-durum early-return (floorGroups/wallGroups
+// ikisi de boş) selectVariant çağrısı YAPMADAN döner — çağıran tarafların
+// (composeMainRoomDecorativeSentence'ın joiner seçimi DAHİL) mevcut
+// selectVariant çağrı SAYISI/SIRASI (varyant rotasyonunu etkileyen)
+// BİREBİR KORUNUR.
+function buildMainRoomDecorativeParts(presence = getUnitInteriorPresence()) {
   const areas = [
     { key: "salon", name: "salon", floor: state.fields.unitSalonFloor, wall: state.fields.unitSalonWall },
     { key: "oda", name: "oda", floor: state.fields.unitRoomFloor, wall: state.fields.unitRoomWall },
@@ -16321,14 +16357,74 @@ function composeMainRoomDecorativeSentence(presence = getUnitInteriorPresence())
   const wallValues = areas.map((area) => area.wall);
   const floorGroups = groupDecorativeAreasByValue(areaNames, floorValues);
   const wallGroups = groupDecorativeAreasByValue(areaNames, wallValues);
-  if (!floorGroups.length && !wallGroups.length) return "";
+  if (!floorGroups.length && !wallGroups.length) {
+    return { floorGroups, wallGroups, floorText: "", floorTail: "", wallText: "" };
+  }
+  const floorTail = floorGroups.length
+    ? mainRoomDecorativeFloorTailVariants[selectVariant("composeMainRoomDecorativeSentence:floorTail", mainRoomDecorativeFloorTailVariants.length)]
+    : "";
   const floorText = floorGroups.length
-    ? `${floorGroups.map((group) => `${formatTurkishList(group.names)} zeminleri ${toLowerText(group.value)} kaplı`).join(", ")} ${mainRoomDecorativeFloorTailVariants[selectVariant("composeMainRoomDecorativeSentence:floorTail", mainRoomDecorativeFloorTailVariants.length)]}`
+    ? `${floorGroups.map((group) => `${formatTurkishList(group.names)} zeminleri ${toLowerText(group.value)} kaplı`).join(", ")} ${floorTail}`
     : `${formatTurkishList(areaNames)} ${mainRoomDecorativeAreaTailVariants[selectVariant("composeMainRoomDecorativeSentence:areaTail", mainRoomDecorativeAreaTailVariants.length)]}`;
   const wallText = wallGroups.length ? formatDecorativeWallGroups(wallGroups) : "";
+  return { floorGroups, wallGroups, floorText, floorTail, wallText };
+}
+
+function composeMainRoomDecorativeSentence(presence = getUnitInteriorPresence()) {
+  const { floorGroups, wallGroups, floorText, wallText } = buildMainRoomDecorativeParts(presence);
+  if (!floorGroups.length && !wallGroups.length) return "";
   const joiner = mainRoomDecorativeJoinerVariants[selectVariant("composeMainRoomDecorativeSentence:joiner", mainRoomDecorativeJoinerVariants.length)];
   return [floorText, wallText].filter(Boolean).join(joiner) + ".";
 }
+
+// buildMainRoomDecorativeParts()'ın PAYLAŞIMLI ara verisinden BAĞIMSIZ,
+// STANDALONE zemin/duvar cümleleri üretir — yalnızca ÇOKLU TAŞINMAZ
+// birleştirmesi (bkz. buildUnitDecorativeDescriptionPartsList'in
+// splitMainRoomAndOutdoor=true dalı) TÜKETİR. floorTail ("vaziyette"/
+// "durumda") mid-cümle kullanım için çekim eki TAŞIMAZ — standalone
+// cümle olması için Türkçe ünlü uyumuna göre ek eklenir (KAPALI, 2
+// üyeli sabit eşleme — floorGroups.length===0 dalında (yalnızca
+// alan-adı + "bölümlerinde"/"hacimlerinde" fallback) STANDALONE anlamlı
+// bir zemin cümlesi OLUŞTURMADIĞINDAN o dal BİLEREK dışarıda bırakılır).
+const MAIN_ROOM_FLOOR_TAIL_STANDALONE_SUFFIX_MAP = { "vaziyette": "dir", "durumda": "dır" };
+function buildMainRoomDecorativeMultiUnitParts(presence = getUnitInteriorPresence()) {
+  const { floorGroups, wallGroups, floorText, floorTail, wallText } = buildMainRoomDecorativeParts(presence);
+  const floorSentence = floorGroups.length
+    ? `${capitalizeSentence(floorText)}${MAIN_ROOM_FLOOR_TAIL_STANDALONE_SUFFIX_MAP[floorTail] || ""}.`
+    : "";
+  const wallSentence = wallGroups.length ? `${capitalizeSentence(wallText)}.` : "";
+  return { floorSentence, wallSentence };
+}
+
+// Kullanıcı talebi (2026-09-05): "outdoor balkon/teras cümlesi" — zemin/
+// duvar malzemesi AYNI olduğu halde yalnızca "hangi bölüm var" (balkon
+// mı, teras mı, ikisi mi) bilgisi farklı diye ÇOKLU TAŞINMAZ
+// birleştirmesinde TÜM cümle atıflı tekrarlanıyordu.
+// getOutdoorInteriorPrefix()'in KAPALI/SONLU çıktı kümesi (3 gerçek +
+// presence.hasAny false iken kullanılan 1 nadir fallback) için standalone
+// karşılıkları.
+const OUTDOOR_PRESENCE_SENTENCE_MAP = {
+  "Balkon bölümünde": "Balkon bölümü mevcuttur.",
+  "Teras bölümünde": "Teras bölümü mevcuttur.",
+  "Balkon ve teras bölümlerinde": "Balkon ve teras bölümleri mevcuttur.",
+  "Balkon/teras bölümlerinde": "Balkon/teras bölümü mevcuttur.",
+};
+// composeSingleAreaDecorativeSentence(prefix, ...)'in ÜRETTİĞİ TEK
+// cümleyi (KENDİSİNİ İKİNCİ KEZ ÇAĞIRMADAN — selectVariant rotasyonunu
+// BOZMAMAK için) prefix'i (HER ZAMAN cümlenin BAŞINDA, bkz. singleAreaDecorativeXxxVariants)
+// koparıp "malzeme" kısmını STANDALONE cümleye çevirir.
+function buildOutdoorDecorativeMultiUnitParts(presence = getUnitInteriorPresence()) {
+  const prefix = getOutdoorInteriorPrefix(presence);
+  if (!prefix) return { presenceSentence: "", materialSentence: "" };
+  const combined = composeSingleAreaDecorativeSentence(prefix, state.fields.unitBalconyFloor, state.fields.unitBalconyWall);
+  if (!combined) return { presenceSentence: "", materialSentence: "" };
+  const materialText = combined.startsWith(prefix) ? combined.slice(prefix.length).trim() : combined;
+  return {
+    presenceSentence: OUTDOOR_PRESENCE_SENTENCE_MAP[prefix] || "",
+    materialSentence: capitalizeSentence(materialText),
+  };
+}
+
 const mainRoomDecorativeFloorTailVariants = ["vaziyette", "durumda"];
 const mainRoomDecorativeAreaTailVariants = ["bölümlerinde", "hacimlerinde"];
 const mainRoomDecorativeJoinerVariants = [" olup, ", " olmak üzere, "];
@@ -33640,15 +33736,18 @@ function composeMultiUnitInteriorGroupedText(groups, { pluralize = null, joiner 
   }).join(joiner);
 }
 
-// getUnitDecorativeDescriptionPartsForCombinedText()'in sabit
-// anahtarlarıyla (bkz. buildUnitDecorativeDescriptionPartsList) BİREBİR
-// AYNI SIRA + "manualOverride" en sonda — buildMultiUnitInteriorDescriptionText()'in
+// getUnitDecorativeDescriptionPartsForCombinedText()'in ({ splitMainRoomAndOutdoor:
+// true } ile üretilen) sabit anahtarlarıyla BİREBİR AYNI SIRA +
+// "manualOverride" en sonda — buildMultiUnitInteriorDescriptionText()'in
 // slot-bazlı çıktısının HER ZAMAN composeUnitDecorativeDescription()'ın
 // (tek taşınmaz) ürettiğiyle AYNI CÜMLE SIRASINDA olmasını garantiler.
+// "mainRoom" -> "mainRoomFloor"+"mainRoomWall", "outdoor" ->
+// "outdoorType"+"outdoorMaterial" (kullanıcı talebi 2026-09-05: "yalnızca
+// duvar/teras farklıysa SADECE o kısım tekrarlanmalı").
 const UNIT_DECORATIVE_SLOT_KEY_ORDER = [
-  "mainRoom", "wetArea", "outdoor", "bathroomFixture", "doorsWindows",
-  "kitchen", "materialQuality", "view", "heating", "constructionLevel",
-  "manualOverride",
+  "mainRoomFloor", "mainRoomWall", "wetArea", "outdoorType", "outdoorMaterial",
+  "bathroomFixture", "doorsWindows", "kitchen", "materialQuality", "view",
+  "heating", "constructionLevel", "manualOverride",
 ];
 
 // Kullanıcı talebi (2026-09-03): "aynı ada parselde yer alan çoklu

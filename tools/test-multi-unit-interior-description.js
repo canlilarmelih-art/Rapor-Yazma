@@ -221,6 +221,26 @@ function extractConstArray(name) {
   throw new Error(`Sabit sonu bulunamadı: ${name}`);
 }
 
+// extractConstArray'in "{" / "}" derinliğine göre GERÇEK sonu bulan
+// nesne-literal (object) eşdeğeri (MAIN_ROOM_FLOOR_TAIL_STANDALONE_SUFFIX_MAP/
+// OUTDOOR_PRESENCE_SENTENCE_MAP için — dizi DEĞİL, `{ ... }` nesne).
+function extractConstObject(name) {
+  const marker = `const ${name} = {`;
+  const start = appSource.indexOf(marker);
+  assert.ok(start >= 0, `Sabit bulunamadı: ${name}`);
+  let index = start + marker.length - 1;
+  let depth = 0;
+  for (; index < appSource.length; index += 1) {
+    const char = appSource[index];
+    if (char === "{") depth += 1;
+    if (char === "}") {
+      depth -= 1;
+      if (depth === 0) return `${appSource.slice(start, index + 1)};`;
+    }
+  }
+  throw new Error(`Sabit sonu bulunamadı: ${name}`);
+}
+
 const functionNames = [
   "getTitleUnitCount",
   "getTitleUnitFieldsForLabel",
@@ -246,8 +266,30 @@ const functionNames = [
   "groupUnitInteriorTextEntries",
   "composeMultiUnitInteriorGroupedText",
   "buildMultiUnitInteriorDescriptionText",
+  // Kullanıcı talebi (2026-09-05): mainRoom (zemin/duvar) + outdoor
+  // (balkon/teras tipi/malzemesi) SLOT-BÖLME testleri için GERÇEK
+  // fonksiyonlar (bkz. aşağıdaki senaryolar 21-24).
+  "shouldUseInteriorDecorativeArea",
+  "groupDecorativeAreasByValue",
+  "formatTurkishList",
+  "toLowerText",
+  "normalizeDecorativeMaterial",
+  "formatDecorativeWallGroups",
+  "formatWallMaterialPhrase",
+  "capitalizeSentence",
+  "composeSingleAreaDecorativeSentence",
+  "buildMainRoomDecorativeParts",
+  "composeMainRoomDecorativeSentence",
+  "buildMainRoomDecorativeMultiUnitParts",
+  "getOutdoorInteriorPrefix",
+  "buildOutdoorDecorativeMultiUnitParts",
 ];
-const constArrayNames = ["UNIT_INTERIOR_AREA_VERB_ENDING_PLURAL_MAP", "UNIT_DECORATIVE_BARE_SUBJECT_VERB_ENDING_PLURAL_MAP", "UNIT_DECORATIVE_SLOT_KEY_ORDER"];
+const constArrayNames = [
+  "UNIT_INTERIOR_AREA_VERB_ENDING_PLURAL_MAP", "UNIT_DECORATIVE_BARE_SUBJECT_VERB_ENDING_PLURAL_MAP", "UNIT_DECORATIVE_SLOT_KEY_ORDER",
+  "mainRoomDecorativeFloorTailVariants", "mainRoomDecorativeAreaTailVariants", "mainRoomDecorativeJoinerVariants",
+  "singleAreaDecorativeBothSameVariants", "singleAreaDecorativeBothDiffVariants", "singleAreaDecorativeFloorOnlyVariants", "singleAreaDecorativeWallOnlyVariants",
+];
+const constObjectNames = ["MAIN_ROOM_FLOOR_TAIL_STANDALONE_SUFFIX_MAP", "OUTDOOR_PRESENCE_SENTENCE_MAP"];
 
 const sandboxSource = `
   let state = {};
@@ -277,8 +319,21 @@ const sandboxSource = `
   function getUnitDecorativeDescriptionPartsForCombinedText() {
     return state.fields.mockDecorativeParts || [];
   }
+  // selectVariant/registerVariantGroup (GERÇEK varyant-rotasyon
+  // altyapısı, bu testin kapsamı DIŞINDA) — diğer test dosyalarındaki
+  // AYNI emsal (bkz. test-main-property-description-pluralization.js):
+  // selectVariant HER ZAMAN İLK (index 0) varyantı seçer, deterministik.
+  function selectVariant() { return 0; }
+  function registerVariantGroup() {}
+  // normalizeReportTitleText (GERÇEK fonksiyon, toTitleCaseTr/
+  // preserveReportSpecialWords/normalizeReportWhitespace zincirine
+  // bağımlı, bu testin kapsamı DIŞINDA) — davranış-koruyan basit bir
+  // SAHTE: yalnızca trim (test girdileri zaten büyük/küçük harf
+  // duyarlılığı GEREKTİRMEYEN sabit malzeme adları kullanıyor).
+  function normalizeReportTitleText(value) { return String(value || "").trim(); }
   ${extractLastFunction("joinTurkishList")}
   ${constArrayNames.map(extractConstArray).join("\n")}
+  ${constObjectNames.map(extractConstObject).join("\n")}
   ${functionNames.map(extractFunction).join("\n")}
   return {
     setState: (s) => { state = s; },
@@ -292,6 +347,11 @@ const sandboxSource = `
     pluralizeUnitDecorativeText,
     groupUnitInteriorTextEntries,
     composeMultiUnitInteriorGroupedText,
+    composeMainRoomDecorativeSentence,
+    buildMainRoomDecorativeMultiUnitParts,
+    getOutdoorInteriorPrefix,
+    buildOutdoorDecorativeMultiUnitParts,
+    composeSingleAreaDecorativeSentence,
   };
 `;
 // eslint-disable-next-line no-new-func
@@ -494,9 +554,9 @@ const DEKORATIF_MATERIAL_QUALITY = "İç mekân özellikleri standart seviyede o
 const DEKORATIF_HEATING = "Isınma ihtiyacı yerden ısıtma doğalgaz kombi ile karşılanacak şekilde tesisatlandırılmış olup, ısıtma sistemi halihazırda monte edilmiştir.";
 function decorativePartsCommon(mainRoomValue) {
   return [
-    { key: "mainRoom", value: mainRoomValue },
+    { key: "mainRoomWall", value: mainRoomValue },
     { key: "wetArea", value: DEKORATIF_WET_AREA },
-    { key: "outdoor", value: DEKORATIF_OUTDOOR },
+    { key: "outdoorMaterial", value: DEKORATIF_OUTDOOR },
     { key: "bathroomFixture", value: DEKORATIF_BATHROOM },
     { key: "doorsWindows", value: DEKORATIF_DOORS_WINDOWS },
     { key: "kitchen", value: DEKORATIF_KITCHEN },
@@ -677,7 +737,7 @@ function decorativePartsCommon(mainRoomValue) {
     activeTitleUnitIndex: 0,
     fields: { titleBlockName: "A", unitNo: "2", mockAreaDetails: SALON_2_ODA, mockDecorativeParts: [{ key: "manualOverride", value: "Elle yazılmış TAMAMEN farklı bir dekoratif metin." }] },
     tables: {},
-    titleUnits: [unit({ titleBlockName: "B", unitNo: "5", mockAreaDetails: SALON_2_ODA, mockDecorativeParts: [{ key: "mainRoom", value: DEKORATIF_MAIN_ROOM_A }] })],
+    titleUnits: [unit({ titleBlockName: "B", unitNo: "5", mockAreaDetails: SALON_2_ODA, mockDecorativeParts: [{ key: "mainRoomWall", value: DEKORATIF_MAIN_ROOM_A }] })],
   });
   const result = fns.buildMultiUnitInteriorDescriptionText();
   const lines = result.split("\n");
@@ -688,6 +748,138 @@ function decorativePartsCommon(mainRoomValue) {
   const realBody = extractFunction("getUnitDecorativeDescriptionPartsForCombinedText");
   assert.ok(realBody.includes('key: "manualOverride"'), "Manuel override KENDİ, AYRI \"manualOverride\" anahtarıyla işaretlenmeli (programatik slotlarla KARIŞMASIN).");
   console.log("Dekoratif Özellikler: manuel override KENDİ ayrı slotunda, programatik slotlarla karışmıyor testi tamam.");
+}
+
+// Kullanıcının GERÇEK Dekoratif Özellikler örneğindeki 4 taşınmaz
+// (A5/A10/A11/A15) alan değerleri — mainRoom (zemin AYNI, duvar A5'te
+// FARKLI) + outdoor (malzeme AYNI, A15'te EK teras VAR) senaryolarını
+// GERÇEK composer fonksiyonlarıyla (SAHTE DEĞİL) doğrulamak için.
+const REAL_MAIN_ROOM_FIELDS_COMMON = {
+  unitSalonFloor: "Laminant Parke", unitRoomFloor: "Laminant Parke",
+  unitHallFloor: "Seramik", unitKitchenFloor: "Seramik",
+};
+const REAL_MAIN_ROOM_WALL_A = "Saten Boya"; // A10/A11/A15
+const REAL_MAIN_ROOM_WALL_B = "Duvar Kağıdı"; // A5
+function realMainRoomFields(wallValue) {
+  return {
+    ...REAL_MAIN_ROOM_FIELDS_COMMON,
+    unitSalonWall: wallValue, unitRoomWall: wallValue, unitHallWall: wallValue, unitKitchenWall: wallValue,
+  };
+}
+const REAL_OUTDOOR_FIELDS_COMMON = { unitBalconyFloor: "Seramik", unitBalconyWall: "Plastik Boya" };
+const PRESENCE_BALCONY_ONLY = { hasAny: true, balcony: true, terrace: false };
+const PRESENCE_BALCONY_AND_TERRACE = { hasAny: true, balcony: true, terrace: true };
+
+// --- 21) composeMainRoomDecorativeSentence() (TEK taşınmaz, DEĞİŞMEDİ) —
+// zemin+duvar hâlâ TEK BİRLEŞİK cümlede, GERÇEK fonksiyonla üretilen
+// metin kullanıcının GERÇEK örneğiyle BİREBİR eşleşiyor mu (regresyon-kilidi) -
+{
+  fns.setState({ fields: realMainRoomFields(REAL_MAIN_ROOM_WALL_A) });
+  const combined = fns.composeMainRoomDecorativeSentence({ hasAny: false });
+  assert.equal(
+    combined,
+    "salon ve oda zeminleri laminant parke kaplı, antre-hol ve mutfak zeminleri seramik kaplı vaziyette olup, salon, oda, antre-hol ve mutfak duvarları saten boyalıdır.",
+    `composeMainRoomDecorativeSentence() (TEK taşınmaz) GERÇEK çıktısı beklenenden farklı: ${combined}`
+  );
+  console.log("composeMainRoomDecorativeSentence() (TEK taşınmaz, DEĞİŞMEDİ) GERÇEK çıktı regresyon-kilidi testi tamam.");
+}
+
+// --- 22) buildMainRoomDecorativeMultiUnitParts(): zemin AYNIYSA floorSentence
+// AYNI (paylaşıma uygun), yalnızca duvar FARKLIYSA wallSentence FARKLI —
+// kullanıcının GERÇEK duvar-malzemesi örneğiyle BİREBİR eşleşiyor mu -----
+{
+  fns.setState({ fields: realMainRoomFields(REAL_MAIN_ROOM_WALL_A) });
+  const partsA = fns.buildMainRoomDecorativeMultiUnitParts({ hasAny: false });
+  fns.setState({ fields: realMainRoomFields(REAL_MAIN_ROOM_WALL_B) });
+  const partsB = fns.buildMainRoomDecorativeMultiUnitParts({ hasAny: false });
+  assert.equal(
+    partsA.floorSentence,
+    "Salon ve oda zeminleri laminant parke kaplı, antre-hol ve mutfak zeminleri seramik kaplı vaziyettedir.",
+    `Standalone floorSentence GERÇEK çıktısı beklenenden farklı: ${partsA.floorSentence}`
+  );
+  assert.equal(partsA.floorSentence, partsB.floorSentence, "Zemin AYNIYSA (yalnızca duvar farklı) floorSentence de AYNI olmalı (paylaşıma uygun tek metin).");
+  assert.equal(
+    partsA.wallSentence,
+    "Salon, oda, antre-hol ve mutfak duvarları saten boyalıdır.",
+    `Standalone wallSentence (A10/A11/A15) GERÇEK çıktısı beklenenden farklı: ${partsA.wallSentence}`
+  );
+  assert.equal(
+    partsB.wallSentence,
+    "Salon, oda, antre-hol ve mutfak duvarları duvar kağıdı kaplıdır.",
+    `Standalone wallSentence (A5) GERÇEK çıktısı beklenenden farklı: ${partsB.wallSentence}`
+  );
+  assert.notEqual(partsA.wallSentence, partsB.wallSentence, "Duvar FARKLIYSA wallSentence de FARKLI olmalı.");
+  console.log("buildMainRoomDecorativeMultiUnitParts(): zemin PAYLAŞIMLI + yalnızca duvar FARKLI (GERÇEK örnek) testi tamam.");
+}
+
+// --- 23) buildOutdoorDecorativeMultiUnitParts(): malzeme AYNIYSA materialSentence
+// AYNI, yalnızca balkon/teras VARLIĞI FARKLIYSA presenceSentence FARKLI —
+// kullanıcının GERÇEK balkon/teras örneğiyle BİREBİR eşleşiyor mu -------------
+{
+  fns.setState({ fields: REAL_OUTDOOR_FIELDS_COMMON });
+  const prefixBalconyOnly = fns.getOutdoorInteriorPrefix(PRESENCE_BALCONY_ONLY);
+  const prefixBoth = fns.getOutdoorInteriorPrefix(PRESENCE_BALCONY_AND_TERRACE);
+  assert.equal(prefixBalconyOnly, "Balkon bölümünde", "Yalnızca balkon varsa prefix 'Balkon bölümünde' olmalı.");
+  assert.equal(prefixBoth, "Balkon ve teras bölümlerinde", "Balkon VE teras varsa prefix 'Balkon ve teras bölümlerinde' olmalı.");
+  const outdoorBalconyOnly = fns.buildOutdoorDecorativeMultiUnitParts(PRESENCE_BALCONY_ONLY);
+  const outdoorBoth = fns.buildOutdoorDecorativeMultiUnitParts(PRESENCE_BALCONY_AND_TERRACE);
+  assert.equal(
+    outdoorBalconyOnly.materialSentence,
+    "Zeminler seramik kaplı, duvarlar ise plastik boyalıdır.",
+    `Standalone materialSentence (balkon-yalnız) GERÇEK çıktısı beklenenden farklı: ${outdoorBalconyOnly.materialSentence}`
+  );
+  assert.equal(outdoorBalconyOnly.materialSentence, outdoorBoth.materialSentence, "Malzeme AYNIYSA (yalnızca balkon/teras varlığı farklı) materialSentence de AYNI olmalı (paylaşıma uygun tek metin).");
+  assert.equal(outdoorBalconyOnly.presenceSentence, "Balkon bölümü mevcuttur.", `presenceSentence (balkon-yalnız) beklenenden farklı: ${outdoorBalconyOnly.presenceSentence}`);
+  assert.equal(outdoorBoth.presenceSentence, "Balkon ve teras bölümleri mevcuttur.", `presenceSentence (balkon+teras) beklenenden farklı: ${outdoorBoth.presenceSentence}`);
+  assert.notEqual(outdoorBalconyOnly.presenceSentence, outdoorBoth.presenceSentence, "Balkon/teras varlığı FARKLIYSA presenceSentence de FARKLI olmalı.");
+  console.log("buildOutdoorDecorativeMultiUnitParts(): malzeme PAYLAŞIMLI + yalnızca tip FARKLI (GERÇEK örnek) testi tamam.");
+}
+
+// --- 24) UÇTAN UCA (GERÇEK fonksiyonlarla, SAHTE DEĞİL): kullanıcının TAM
+// 4 taşınmazlı örneği (A5 duvar FARKLI, A15 EK teras VAR) — mainRoomFloor +
+// outdoorMaterial PAYLAŞIMLI (atıfsız TEK SEFER), mainRoomWall + outdoorType
+// AYRI ATIFLI gruplarda, HEPSİ TEK PARAGRAFTA ("\n" YOK) ----------------------
+{
+  function realDecorativeParts(wallValue, outdoorPresence) {
+    fns.setState({ fields: { ...realMainRoomFields(wallValue), ...REAL_OUTDOOR_FIELDS_COMMON } });
+    // mainRoom kendi "hangi ODALAR var" (salon/oda/antreHol/mutfak)
+    // varlığına bakar, outdoor'un "balkon/teras var mı" bilgisine DEĞİL —
+    // { hasAny: false } (senaryo 21/22'deki İLE AYNI) bu odalara-özgü
+    // filtreyi bypass eder (yalnızca fields'taki zemin/duvar değerlerine
+    // bakılır), tıpkı GERÇEK raporlarda presence.hasAny=false olduğunda.
+    const mainRoom = fns.buildMainRoomDecorativeMultiUnitParts({ hasAny: false });
+    const outdoor = fns.buildOutdoorDecorativeMultiUnitParts(outdoorPresence);
+    return [
+      { key: "mainRoomFloor", value: mainRoom.floorSentence },
+      { key: "mainRoomWall", value: mainRoom.wallSentence },
+      { key: "outdoorType", value: outdoor.presenceSentence },
+      { key: "outdoorMaterial", value: outdoor.materialSentence },
+    ];
+  }
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: { titleBlockName: "A", unitNo: "5", mockAreaDetails: SALON_2_ODA, mockDecorativeParts: realDecorativeParts(REAL_MAIN_ROOM_WALL_B, PRESENCE_BALCONY_ONLY) },
+    tables: {},
+    titleUnits: [
+      unit({ titleBlockName: "A", unitNo: "10", mockAreaDetails: SALON_2_ODA, mockDecorativeParts: realDecorativeParts(REAL_MAIN_ROOM_WALL_A, PRESENCE_BALCONY_ONLY) }),
+      unit({ titleBlockName: "A", unitNo: "11", mockAreaDetails: SALON_2_ODA, mockDecorativeParts: realDecorativeParts(REAL_MAIN_ROOM_WALL_A, PRESENCE_BALCONY_ONLY) }),
+      unit({ titleBlockName: "A", unitNo: "15", mockAreaDetails: SALON_2_ODA, mockDecorativeParts: realDecorativeParts(REAL_MAIN_ROOM_WALL_A, PRESENCE_BALCONY_AND_TERRACE) }),
+    ],
+  });
+  const result = fns.buildMultiUnitInteriorDescriptionText();
+  const lines = result.split("\n");
+  assert.equal(lines.length, 2, `Alan paragrafı (1) + Dekoratif TEK paragraf (1) -> TAM 2 satır beklenir. Bulunan: ${JSON.stringify(lines)}`);
+  const decorativeParagraph = lines[1];
+  const floorText = "Salon ve oda zeminleri laminant parke kaplı, antre-hol ve mutfak zeminleri seramik kaplı vaziyettedir.";
+  const materialText = "Zeminler seramik kaplı, duvarlar ise plastik boyalıdır.";
+  assert.equal(decorativeParagraph.split(floorText).length - 1, 1, "mainRoomFloor (4 taşınmazda da AYNI) TAM 1 kez geçmeli — TEKRARLANMAMALI.");
+  assert.equal(decorativeParagraph.split(materialText).length - 1, 1, "outdoorMaterial (4 taşınmazda da AYNI) TAM 1 kez geçmeli — TEKRARLANMAMALI.");
+  assert.ok(decorativeParagraph.includes("A 5 No'lu, Salon, oda, antre-hol ve mutfak duvarları duvar kağıdı kaplıdır."), "A5'in atıflı duvar cümlesi (VİRGÜLLE bağlı) bulunamadı.");
+  assert.ok(decorativeParagraph.includes("A 10 No'lu, A 11 No'lu ve A 15 No'lu, Salon, oda, antre-hol ve mutfak duvarları saten boyalıdır."), "A10/A11/A15'in ORTAK atıflı duvar cümlesi bulunamadı.");
+  assert.ok(decorativeParagraph.includes("A 5 No'lu, A 10 No'lu ve A 11 No'lu, Balkon bölümü mevcuttur."), "A5/A10/A11'in ORTAK atıflı 'yalnızca balkon' cümlesi bulunamadı.");
+  assert.ok(decorativeParagraph.includes("A 15 No'lu, Balkon ve teras bölümleri mevcuttur."), "A15'in atıflı 'balkon ve teras' cümlesi bulunamadı.");
+  assert.ok(!decorativeParagraph.includes(":"), "Atıf ':' işaretiyle DEĞİL virgülle bağlanmalı.");
+  console.log("UÇTAN UCA (GERÇEK fonksiyonlar): kullanıcının TAM 4-taşınmazlı örneği — yalnızca GERÇEKTEN farklı olan duvar/tip slotları atıflı, zemin/malzeme PAYLAŞIMLI, TEK PARAGRAFTA testi tamam.");
 }
 
 // --- 9) explanations bölümünde yeni alan tanımı (kaynak-düzeyi) ------------
