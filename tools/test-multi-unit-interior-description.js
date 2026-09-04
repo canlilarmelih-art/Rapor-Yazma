@@ -265,6 +265,7 @@ const functionNames = [
   "joinNonEmptySentences",
   "groupUnitInteriorTextEntries",
   "composeMultiUnitInteriorGroupedText",
+  "resolveAdaptiveCombinedOrSplitDecorativeSlot",
   "buildMultiUnitInteriorDescriptionText",
   // Kullanıcı talebi (2026-09-05): mainRoom (zemin/duvar) + outdoor
   // (balkon/teras tipi/malzemesi) SLOT-BÖLME testleri için GERÇEK
@@ -280,9 +281,9 @@ const functionNames = [
   "composeSingleAreaDecorativeSentence",
   "buildMainRoomDecorativeParts",
   "composeMainRoomDecorativeSentence",
-  "buildMainRoomDecorativeMultiUnitParts",
+  "buildMainRoomDecorativeAllRepresentations",
   "getOutdoorInteriorPrefix",
-  "buildOutdoorDecorativeMultiUnitParts",
+  "buildOutdoorDecorativeAllRepresentations",
 ];
 const constArrayNames = [
   "UNIT_INTERIOR_AREA_VERB_ENDING_PLURAL_MAP", "UNIT_DECORATIVE_BARE_SUBJECT_VERB_ENDING_PLURAL_MAP", "UNIT_DECORATIVE_SLOT_KEY_ORDER",
@@ -347,10 +348,11 @@ const sandboxSource = `
     pluralizeUnitDecorativeText,
     groupUnitInteriorTextEntries,
     composeMultiUnitInteriorGroupedText,
+    resolveAdaptiveCombinedOrSplitDecorativeSlot,
     composeMainRoomDecorativeSentence,
-    buildMainRoomDecorativeMultiUnitParts,
+    buildMainRoomDecorativeAllRepresentations,
     getOutdoorInteriorPrefix,
-    buildOutdoorDecorativeMultiUnitParts,
+    buildOutdoorDecorativeAllRepresentations,
     composeSingleAreaDecorativeSentence,
   };
 `;
@@ -784,14 +786,14 @@ const PRESENCE_BALCONY_AND_TERRACE = { hasAny: true, balcony: true, terrace: tru
   console.log("composeMainRoomDecorativeSentence() (TEK taşınmaz, DEĞİŞMEDİ) GERÇEK çıktı regresyon-kilidi testi tamam.");
 }
 
-// --- 22) buildMainRoomDecorativeMultiUnitParts(): zemin AYNIYSA floorSentence
+// --- 22) buildMainRoomDecorativeAllRepresentations(): zemin AYNIYSA floorSentence
 // AYNI (paylaşıma uygun), yalnızca duvar FARKLIYSA wallSentence FARKLI —
 // kullanıcının GERÇEK duvar-malzemesi örneğiyle BİREBİR eşleşiyor mu -----
 {
   fns.setState({ fields: realMainRoomFields(REAL_MAIN_ROOM_WALL_A) });
-  const partsA = fns.buildMainRoomDecorativeMultiUnitParts({ hasAny: false });
+  const partsA = fns.buildMainRoomDecorativeAllRepresentations({ hasAny: false });
   fns.setState({ fields: realMainRoomFields(REAL_MAIN_ROOM_WALL_B) });
-  const partsB = fns.buildMainRoomDecorativeMultiUnitParts({ hasAny: false });
+  const partsB = fns.buildMainRoomDecorativeAllRepresentations({ hasAny: false });
   assert.equal(
     partsA.floorSentence,
     "Salon ve oda zeminleri laminant parke kaplı, antre-hol ve mutfak zeminleri seramik kaplı vaziyettedir.",
@@ -809,10 +811,10 @@ const PRESENCE_BALCONY_AND_TERRACE = { hasAny: true, balcony: true, terrace: tru
     `Standalone wallSentence (A5) GERÇEK çıktısı beklenenden farklı: ${partsB.wallSentence}`
   );
   assert.notEqual(partsA.wallSentence, partsB.wallSentence, "Duvar FARKLIYSA wallSentence de FARKLI olmalı.");
-  console.log("buildMainRoomDecorativeMultiUnitParts(): zemin PAYLAŞIMLI + yalnızca duvar FARKLI (GERÇEK örnek) testi tamam.");
+  console.log("buildMainRoomDecorativeAllRepresentations(): zemin PAYLAŞIMLI + yalnızca duvar FARKLI (GERÇEK örnek) testi tamam.");
 }
 
-// --- 23) buildOutdoorDecorativeMultiUnitParts(): malzeme AYNIYSA materialSentence
+// --- 23) buildOutdoorDecorativeAllRepresentations(): malzeme AYNIYSA materialSentence
 // AYNI, yalnızca balkon/teras VARLIĞI FARKLIYSA presenceSentence FARKLI —
 // kullanıcının GERÇEK balkon/teras örneğiyle BİREBİR eşleşiyor mu -------------
 {
@@ -821,8 +823,8 @@ const PRESENCE_BALCONY_AND_TERRACE = { hasAny: true, balcony: true, terrace: tru
   const prefixBoth = fns.getOutdoorInteriorPrefix(PRESENCE_BALCONY_AND_TERRACE);
   assert.equal(prefixBalconyOnly, "Balkon bölümünde", "Yalnızca balkon varsa prefix 'Balkon bölümünde' olmalı.");
   assert.equal(prefixBoth, "Balkon ve teras bölümlerinde", "Balkon VE teras varsa prefix 'Balkon ve teras bölümlerinde' olmalı.");
-  const outdoorBalconyOnly = fns.buildOutdoorDecorativeMultiUnitParts(PRESENCE_BALCONY_ONLY);
-  const outdoorBoth = fns.buildOutdoorDecorativeMultiUnitParts(PRESENCE_BALCONY_AND_TERRACE);
+  const outdoorBalconyOnly = fns.buildOutdoorDecorativeAllRepresentations(PRESENCE_BALCONY_ONLY);
+  const outdoorBoth = fns.buildOutdoorDecorativeAllRepresentations(PRESENCE_BALCONY_AND_TERRACE);
   assert.equal(
     outdoorBalconyOnly.materialSentence,
     "Zeminler seramik kaplı, duvarlar ise plastik boyalıdır.",
@@ -832,7 +834,7 @@ const PRESENCE_BALCONY_AND_TERRACE = { hasAny: true, balcony: true, terrace: tru
   assert.equal(outdoorBalconyOnly.presenceSentence, "Balkon bölümü mevcuttur.", `presenceSentence (balkon-yalnız) beklenenden farklı: ${outdoorBalconyOnly.presenceSentence}`);
   assert.equal(outdoorBoth.presenceSentence, "Balkon ve teras bölümleri mevcuttur.", `presenceSentence (balkon+teras) beklenenden farklı: ${outdoorBoth.presenceSentence}`);
   assert.notEqual(outdoorBalconyOnly.presenceSentence, outdoorBoth.presenceSentence, "Balkon/teras varlığı FARKLIYSA presenceSentence de FARKLI olmalı.");
-  console.log("buildOutdoorDecorativeMultiUnitParts(): malzeme PAYLAŞIMLI + yalnızca tip FARKLI (GERÇEK örnek) testi tamam.");
+  console.log("buildOutdoorDecorativeAllRepresentations(): malzeme PAYLAŞIMLI + yalnızca tip FARKLI (GERÇEK örnek) testi tamam.");
 }
 
 // --- 24) UÇTAN UCA (GERÇEK fonksiyonlarla, SAHTE DEĞİL): kullanıcının TAM
@@ -847,11 +849,18 @@ const PRESENCE_BALCONY_AND_TERRACE = { hasAny: true, balcony: true, terrace: tru
     // { hasAny: false } (senaryo 21/22'deki İLE AYNI) bu odalara-özgü
     // filtreyi bypass eder (yalnızca fields'taki zemin/duvar değerlerine
     // bakılır), tıpkı GERÇEK raporlarda presence.hasAny=false olduğunda.
-    const mainRoom = fns.buildMainRoomDecorativeMultiUnitParts({ hasAny: false });
-    const outdoor = fns.buildOutdoorDecorativeMultiUnitParts(outdoorPresence);
+    const mainRoom = fns.buildMainRoomDecorativeAllRepresentations({ hasAny: false });
+    const outdoor = fns.buildOutdoorDecorativeAllRepresentations(outdoorPresence);
+    // combined'ı da (GERÇEK buildUnitDecorativeDescriptionPartsListForMultiUnitMerge
+    // ile AYNI ŞEKİLDE) DAHİL ediyoruz ki resolveAdaptiveCombinedOrSplitDecorativeSlot
+    // GERÇEKTEN devreye girsin (yoksa "mainRoomCombined" hiç yoksa fonksiyon
+    // no-op yapar, split'i sanki zaten seçilmiş gibi bırakır — bu test bilerek
+    // GERÇEK adaptif karar mekanizmasını da çalıştırıyor).
     return [
+      { key: "mainRoomCombined", value: mainRoom.combined },
       { key: "mainRoomFloor", value: mainRoom.floorSentence },
       { key: "mainRoomWall", value: mainRoom.wallSentence },
+      { key: "outdoorCombined", value: outdoor.combined },
       { key: "outdoorType", value: outdoor.presenceSentence },
       { key: "outdoorMaterial", value: outdoor.materialSentence },
     ];
@@ -880,6 +889,75 @@ const PRESENCE_BALCONY_AND_TERRACE = { hasAny: true, balcony: true, terrace: tru
   assert.ok(decorativeParagraph.includes("A 15 No'lu, Balkon ve teras bölümleri mevcuttur."), "A15'in atıflı 'balkon ve teras' cümlesi bulunamadı.");
   assert.ok(!decorativeParagraph.includes(":"), "Atıf ':' işaretiyle DEĞİL virgülle bağlanmalı.");
   console.log("UÇTAN UCA (GERÇEK fonksiyonlar): kullanıcının TAM 4-taşınmazlı örneği — yalnızca GERÇEKTEN farklı olan duvar/tip slotları atıflı, zemin/malzeme PAYLAŞIMLI, TEK PARAGRAFTA testi tamam.");
+}
+
+// --- 25) UÇTAN UCA (GERÇEK fonksiyonlarla, SAHTE DEĞİL) — KULLANICI
+// DÜZELTMESİ #2 (2026-09-05, İKİNCİ GERÇEK örnekle): "hala kat etmemiz
+// gereken yol var" — mainRoom VE outdoor TÜM taşınmazlarda ZATEN AYNIYSA
+// (GERÇEK bir fark YOKSA) split'e HİÇ düşülmemeli, TEK doğal BİRLEŞİK
+// cümle ("...vaziyette olup, ...boyalıdır." / "{prefix} zeminler ...
+// kaplı, duvarlar ise ....") KULLANILMALI — gereksiz yere ikiye
+// BÖLÜNMEMELİ ------------------------------------------------------------
+{
+  function identicalRealDecorativeParts() {
+    fns.setState({ fields: { ...realMainRoomFields(REAL_MAIN_ROOM_WALL_A), ...REAL_OUTDOOR_FIELDS_COMMON } });
+    const mainRoom = fns.buildMainRoomDecorativeAllRepresentations({ hasAny: false });
+    const outdoor = fns.buildOutdoorDecorativeAllRepresentations(PRESENCE_BALCONY_ONLY);
+    return [
+      { key: "mainRoomCombined", value: mainRoom.combined },
+      { key: "mainRoomFloor", value: mainRoom.floorSentence },
+      { key: "mainRoomWall", value: mainRoom.wallSentence },
+      { key: "outdoorCombined", value: outdoor.combined },
+      { key: "outdoorType", value: outdoor.presenceSentence },
+      { key: "outdoorMaterial", value: outdoor.materialSentence },
+    ];
+  }
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: { titleBlockName: "A", unitNo: "2", mockAreaDetails: SALON_2_ODA, mockDecorativeParts: identicalRealDecorativeParts() },
+    tables: {},
+    titleUnits: [unit({ titleBlockName: "B", unitNo: "5", mockAreaDetails: SALON_2_ODA, mockDecorativeParts: identicalRealDecorativeParts() })],
+  });
+  const result = fns.buildMultiUnitInteriorDescriptionText();
+  const lines = result.split("\n");
+  assert.equal(lines.length, 2, `Alan paragrafı (1) + Dekoratif TEK paragraf (1) -> TAM 2 satır beklenir. Bulunan: ${JSON.stringify(lines)}`);
+  const decorativeParagraph = lines[1];
+  assert.ok(!decorativeParagraph.includes("No'lu"), "TÜM taşınmazlar AYNI olduğundan hiçbir atıf etiketi görünmemeli.");
+  assert.ok(
+    decorativeParagraph.includes("salon ve oda zeminleri laminant parke kaplı, antre-hol ve mutfak zeminleri seramik kaplı vaziyette olup, salon, oda, antre-hol ve mutfak duvarları saten boyalıdır."),
+    `mainRoom AYNIYSA TEK BİRLEŞİK (combined) cümle kullanılmalı, İKİYE BÖLÜNMEMELİ. Bulunan: ${decorativeParagraph}`
+  );
+  assert.ok(
+    decorativeParagraph.includes("Balkon bölümünde zeminler seramik kaplı, duvarlar ise plastik boyalıdır."),
+    `outdoor AYNIYSA TEK BİRLEŞİK (combined) cümle kullanılmalı, İKİYE BÖLÜNMEMELİ. Bulunan: ${decorativeParagraph}`
+  );
+  assert.ok(!decorativeParagraph.includes("Balkon bölümü mevcuttur."), "outdoor AYNIYSA 'Balkon bölümü mevcuttur.' (SPLIT'in presence cümlesi) HİÇ görünmemeli.");
+  console.log("UÇTAN UCA (GERÇEK fonksiyonlar): mainRoom/outdoor TÜM taşınmazlarda AYNIYSA TEK doğal BİRLEŞİK cümle kullanılır (gereksiz split YOK) testi tamam.");
+}
+
+// --- 26) resolveAdaptiveCombinedOrSplitDecorativeSlot() (kaynak-düzeyi) —
+// KARAR combinedKey'in KENDİ grubuna DEĞİL, splitKeys'in HER BİRİNİN
+// KENDİ grubuna göre verilir (bkz. fonksiyonun yorumu — combinedKey'e
+// bakmak, UZUN ortak bir kısım kısa bir farkı %90 eşiğinin ÜSTÜNDE
+// "gizleyebildiğinden" GÜVENİLİR DEĞİL, GERÇEKTEN BULUNMUŞ bir kusur).
+// splitKeys'in HİÇBİRİ 2+ grup ÜRETMİYORSA split SİLİNİR (combined
+// kalır); EN AZ BİRİ 2+ grup üretiyorsa combined SİLİNİR (split kalır);
+// combinedKey hiç yoksa (veri YOK) İKİSİNE de dokunulmaz -------------------
+{
+  const bySlotSame = { combinedKey: [{ index: 0, fields: {}, value: "aynı metin" }], splitA: [{ index: 0, fields: {}, value: "a" }, { index: 1, fields: {}, value: "a" }], splitB: [{ index: 0, fields: {}, value: "b" }, { index: 1, fields: {}, value: "b" }] };
+  fns.resolveAdaptiveCombinedOrSplitDecorativeSlot(bySlotSame, "combinedKey", ["splitA", "splitB"]);
+  assert.ok(!("splitA" in bySlotSame) && !("splitB" in bySlotSame), "splitA/splitB'nin İKİSİ DE TEK grup (fark YOK) durumunda split anahtarları SİLİNMELİ.");
+  assert.ok("combinedKey" in bySlotSame, "Fark YOK durumunda combinedKey KALMALI.");
+
+  const bySlotDiff = { combinedKey: [{ index: 0, fields: {}, value: "metin A" }], splitA: [{ index: 0, fields: {}, value: "a" }, { index: 1, fields: {}, value: "a" }], splitB: [{ index: 0, fields: {}, value: "b1" }, { index: 1, fields: {}, value: "tamamen farklı b2" }] };
+  fns.resolveAdaptiveCombinedOrSplitDecorativeSlot(bySlotDiff, "combinedKey", ["splitA", "splitB"]);
+  assert.ok(!("combinedKey" in bySlotDiff), "splitB 2+ grup ÜRETİYORSA (GERÇEK fark VAR) combinedKey SİLİNMELİ (splitA TEK grup olsa BİLE).");
+  assert.ok("splitA" in bySlotDiff && "splitB" in bySlotDiff, "GERÇEK fark VARSA split anahtarları KALMALI.");
+
+  const bySlotEmpty = { splitA: [{ index: 0, fields: {}, value: "a" }] };
+  fns.resolveAdaptiveCombinedOrSplitDecorativeSlot(bySlotEmpty, "combinedKey", ["splitA"]);
+  assert.ok("splitA" in bySlotEmpty, "combinedKey hiç yoksa (veri YOK) mevcut splitA'ya DOKUNULMAMALI.");
+  console.log("resolveAdaptiveCombinedOrSplitDecorativeSlot(): karar splitKeys'in KENDİ gruplarına göre verilir (combinedKey'e DEĞİL) testi tamam.");
 }
 
 // --- 9) explanations bölümünde yeni alan tanımı (kaynak-düzeyi) ------------
