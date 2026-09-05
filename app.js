@@ -16265,20 +16265,22 @@ function composeUnitDecorativeDescription() {
   return normalizeReportDescriptionText(joinNonEmptySentences(buildUnitDecorativeDescriptionPartsList().map((part) => part.value)));
 }
 
-// Kullanıcı DÜZELTMESİ (2026-09-05): "mainRoom"/"outdoor" TEK cümlede
-// zemin+duvar / tip+malzeme bilgisini BİRLEŞTİRDİĞİNDEN, bu ikisinden
-// yalnızca BİR kısmı (ör. duvar malzemesi, ya da balkon/teras bilgisi)
-// farklı olduğunda ÇOKLU TAŞINMAZ birleştirmesi TÜM cümleyi atıflı
-// tekrarlıyordu — ama TÜM taşınmazlarda HER İKİ kısım da AYNIYSA (en
-// YAYGIN durum) split'e gitmek SADECE gereksiz yere TEK doğal cümleyi
-// ikiye bölüyordu, hiçbir kazanç SAĞLAMADAN. Bu yüzden bu fonksiyon HEM
-// "mainRoomCombined"/"outdoorCombined" (TEK doğal cümle) HEM
-// "mainRoomFloor"+"mainRoomWall"/"outdoorType"+"outdoorMaterial" (SPLIT)
-// temsillerini AYNI ANDA döner — buildMultiUnitInteriorDescriptionText
-// (aşağıda) hangisinin kullanılacağına TÜM taşınmazların verisini
-// gördükten SONRA (adaptif) karar verir: combined'a göre gruplama TEK
-// grup veriyorsa (fark YOK) combined kullanılır, 2+ grup veriyorsa
-// (GERÇEK fark VAR) split'e düşülür. SADECE bu ÇOKLU TAŞINMAZ tüketicisi
+// Kullanıcı DÜZELTMESİ (2026-09-05): "mainRoom" TEK cümlede zemin+duvar
+// bilgisini BİRLEŞTİRDİĞİNDEN, yalnızca duvar malzemesi farklı olduğunda
+// ÇOKLU TAŞINMAZ birleştirmesi TÜM cümleyi atıflı tekrarlıyordu — ama
+// TÜM taşınmazlarda zemin+duvar AYNIYSA (en YAYGIN durum) split'e
+// gitmek SADECE gereksiz yere TEK doğal cümleyi ikiye bölüyordu, hiçbir
+// kazanç SAĞLAMADAN. Bu yüzden bu fonksiyon hem "mainRoomCombined" (TEK
+// doğal cümle) hem "mainRoomFloor"+"mainRoomWall" (SPLIT) temsillerini
+// AYNI ANDA döner — buildMultiUnitInteriorDescriptionText (aşağıda)
+// resolveAdaptiveCombinedOrSplitDecorativeSlot() ile TÜM taşınmazların
+// verisini gördükten SONRA (adaptif) karar verir. "outdoor" (balkon/
+// teras) İSE FARKLI bir kurala tabi — bkz. resolveOutdoorCombinedIgnoringTypeDifferences()'ın
+// yorumu: "tip" (balkon/teras) farkı HİÇ AYRI CÜMLE OLARAK
+// gösterilmiyor (zaten alan/oda kompozisyonunda belirtiliyor, kullanıcı
+// bulgusu 2026-09-05), yalnızca "outdoorMaterial" (malzeme, ASLA
+// doğrudan gösterilmez) kararı ETKİLER — "outdoorCombined" (prefix'Lİ,
+// GÖSTERİLEN) HER ZAMAN kalır. SADECE bu ÇOKLU TAŞINMAZ tüketicisi
 // (getUnitDecorativeDescriptionPartsForCombinedText) kullanır —
 // composeUnitDecorativeDescription() (TEK taşınmaz, YUKARIDA) ETKİLENMEDİ.
 function buildUnitDecorativeDescriptionPartsListForMultiUnitMerge() {
@@ -16286,14 +16288,16 @@ function buildUnitDecorativeDescriptionPartsListForMultiUnitMerge() {
   const presence = getUnitInteriorPresence();
   const mainRoom = buildMainRoomDecorativeAllRepresentations(presence);
   const outdoorPrefix = getOutdoorInteriorPrefix(presence);
-  const outdoor = outdoorPrefix ? buildOutdoorDecorativeAllRepresentations(presence) : { combined: "", presenceSentence: "", materialSentence: "" };
+  const outdoor = outdoorPrefix ? buildOutdoorDecorativeAllRepresentations(presence) : { combined: "", materialSentence: "" };
   return [
     { key: "mainRoomCombined", value: mainRoom.combined },
     { key: "mainRoomFloor", value: mainRoom.floorSentence },
     { key: "mainRoomWall", value: mainRoom.wallSentence },
     { key: "wetArea", value: hasWetAreaInterior(presence) ? composeSingleAreaDecorativeSentence("Islak hacimlerde", state.fields.unitWetFloor, state.fields.unitWetWall) : "" },
     { key: "outdoorCombined", value: outdoor.combined },
-    { key: "outdoorType", value: outdoor.presenceSentence },
+    // "outdoorMaterial" YALNIZCA resolveOutdoorCombinedIgnoringTypeDifferences()'ın
+    // (aşağıda) tip-farkını YOKSAYAN adaptif kararı İÇİN — ASLA doğrudan
+    // gösterilmez (UNIT_DECORATIVE_SLOT_KEY_ORDER'da YOK).
     { key: "outdoorMaterial", value: outdoor.materialSentence },
     { key: "bathroomFixture", value: hasWetAreaInterior(presence) ? composeBathroomFixtureSentence() : "" },
     { key: "doorsWindows", value: composeDoorsWindowsSentence() },
@@ -16428,34 +16432,28 @@ function buildMainRoomDecorativeAllRepresentations(presence = getUnitInteriorPre
 // duvar malzemesi AYNI olduğu halde yalnızca "hangi bölüm var" (balkon
 // mı, teras mı, ikisi mi) bilgisi farklı diye ÇOKLU TAŞINMAZ
 // birleştirmesinde TÜM cümle atıflı tekrarlanıyordu.
-// getOutdoorInteriorPrefix()'in KAPALI/SONLU çıktı kümesi (3 gerçek +
-// presence.hasAny false iken kullanılan 1 nadir fallback) için standalone
-// karşılıkları.
-const OUTDOOR_PRESENCE_SENTENCE_MAP = {
-  "Balkon bölümünde": "Balkon bölümü mevcuttur.",
-  "Teras bölümünde": "Teras bölümü mevcuttur.",
-  "Balkon ve teras bölümlerinde": "Balkon ve teras bölümleri mevcuttur.",
-  "Balkon/teras bölümlerinde": "Balkon/teras bölümü mevcuttur.",
-};
-// composeSingleAreaDecorativeSentence(prefix, ...)'in ÜRETTİĞİ TEK
-// cümleyi (KENDİSİNİ İKİNCİ KEZ ÇAĞIRMADAN — selectVariant rotasyonunu
-// BOZMAMAK için) prefix'i (HER ZAMAN cümlenin BAŞINDA, bkz. singleAreaDecorativeXxxVariants)
-// koparıp "malzeme" kısmını STANDALONE cümleye çevirir; `combined`'ı
-// (HAM, DEĞİŞTİRİLMEMİŞ) da AYNI yanıtta döner — buildMainRoomDecorativeAllRepresentations
-// ile AYNI ilke: buildMultiUnitInteriorDescriptionText ÖNCE combined'a
-// göre gruplar, yalnızca GERÇEK bir fark varsa presenceSentence/
-// materialSentence SPLIT'ine düşer.
+//
+// KULLANICI DÜZELTMESİ (2026-09-05, ÜÇÜNCÜ GERÇEK örnekle): "burada
+// balkon teras bölümlerinin olduğunun söylenmesi saçma zaten yukarıda
+// bu belirtiliyor" — ilk sürüm (bkz. eski OUTDOOR_PRESENCE_SENTENCE_MAP,
+// KALDIRILDI) "Balkon bölümü mevcuttur."/"Balkon ve teras bölümleri
+// mevcuttur." gibi YAPAY, VAROLUŞSAL bir "tip" cümlesi üretiyordu —
+// ama balkon/teras VARLIĞI zaten alan/oda kompozisyon cümlesinde
+// ("...ve 3 balkon hacimlerinden oluşmaktadır." gibi, bkz. areaText)
+// belirtiliyor; bunu Dekoratif Özellikler'de TEKRAR "mevcuttur" diye
+// AYRI bir cümlede belirtmek doğal OKUNMUYOR. Düzeltme: "tip" bilgisi
+// (balkon mu, teras mı, ikisi mi) ARTIK HİÇ AYRI CÜMLE OLARAK
+// ÜRETİLMİYOR — yalnızca `materialSentence` (prefix'siz, "Zeminler ...
+// duvarlar ..." tekrar niyet TAŞIMAYAN, resolveOutdoorCombinedIgnoringTypeDifferences'ın
+// (aşağıda) ADAPTİF KARARI İÇİN kullanılan, ASLA doğrudan gösterilmeyen
+// bir ARA değer) ve `combined` (prefix'Lİ TAM cümle, GÖSTERİLEN) döner.
 function buildOutdoorDecorativeAllRepresentations(presence = getUnitInteriorPresence()) {
   const prefix = getOutdoorInteriorPrefix(presence);
-  if (!prefix) return { combined: "", presenceSentence: "", materialSentence: "" };
+  if (!prefix) return { combined: "", materialSentence: "" };
   const combined = composeSingleAreaDecorativeSentence(prefix, state.fields.unitBalconyFloor, state.fields.unitBalconyWall);
-  if (!combined) return { combined: "", presenceSentence: "", materialSentence: "" };
+  if (!combined) return { combined: "", materialSentence: "" };
   const materialText = combined.startsWith(prefix) ? combined.slice(prefix.length).trim() : combined;
-  return {
-    combined,
-    presenceSentence: OUTDOOR_PRESENCE_SENTENCE_MAP[prefix] || "",
-    materialSentence: capitalizeSentence(materialText),
-  };
+  return { combined, materialSentence: capitalizeSentence(materialText) };
 }
 
 const mainRoomDecorativeFloorTailVariants = ["vaziyette", "durumda"];
@@ -33769,23 +33767,28 @@ function composeMultiUnitInteriorGroupedText(groups, { pluralize = null, joiner 
   }).join(joiner);
 }
 
-// getUnitDecorativeDescriptionPartsForCombinedText()'in ({ splitMainRoomAndOutdoor:
-// true } ile üretilen) sabit anahtarlarıyla BİREBİR AYNI SIRA +
-// "manualOverride" en sonda — buildMultiUnitInteriorDescriptionText()'in
-// slot-bazlı çıktısının HER ZAMAN composeUnitDecorativeDescription()'ın
-// (tek taşınmaz) ürettiğiyle AYNI CÜMLE SIRASINDA olmasını garantiler.
-// "mainRoom" -> "mainRoomFloor"+"mainRoomWall", "outdoor" ->
-// "outdoorType"+"outdoorMaterial" (kullanıcı talebi 2026-09-05: "yalnızca
-// duvar/teras farklıysa SADECE o kısım tekrarlanmalı").
-// "mainRoomCombined"/"outdoorCombined" ve karşılık gelen SPLIT
-// anahtarları ("mainRoomFloor"+"mainRoomWall", "outdoorType"+
-// "outdoorMaterial") AYNI ANDA listede — resolveAdaptiveCombinedOrSplitDecorativeSlot()
-// (aşağıda) HER RAPOR için ikisinden yalnızca BİRİNİN hayatta kalmasını
-// (diğerinin decorativeEntriesBySlot'tan SİLİNMESİNİ) sağlar, bu yüzden
-// aynı anda İKİSİ BİRDEN çıktıda görünmez.
+// buildUnitDecorativeDescriptionPartsListForMultiUnitMerge()'ün ürettiği
+// sabit anahtarlarla BİREBİR AYNI SIRA + "manualOverride" en sonda —
+// buildMultiUnitInteriorDescriptionText()'in slot-bazlı çıktısının HER
+// ZAMAN composeUnitDecorativeDescription()'ın (tek taşınmaz) ürettiğiyle
+// AYNI CÜMLE SIRASINDA olmasını garantiler.
+// "mainRoomCombined" + "mainRoomFloor"+"mainRoomWall" AYNI ANDA listede
+// — resolveAdaptiveCombinedOrSplitDecorativeSlot() (aşağıda) HER RAPOR
+// için ikisinden yalnızca BİRİNİN hayatta kalmasını (diğerinin
+// decorativeEntriesBySlot'tan SİLİNMESİNİ) sağlar (kullanıcı talebi
+// 2026-09-05: "yalnızca duvar farklıysa SADECE o kısım tekrarlanmalı",
+// AMA "tüm taşınmazlarda zaten aynıysa gereksiz yere ikiye BÖLÜNMEMELİ").
+// "outdoorCombined" İSE HER ZAMAN bu listede (silinmez) — yalnızca
+// resolveOutdoorCombinedIgnoringTypeDifferences() (aşağıda) İÇERİĞİNİ
+// (tüm birimler AYNI temsilci cümleye mi yoksa KENDİ gerçek cümlesine
+// mi sahip olacağını) değiştirir. "outdoorMaterial" BİLİNÇLİ OLARAK bu
+// listede YOK — yalnızca o fonksiyonun ADAPTİF karar kriteri, HİÇBİR
+// ZAMAN doğrudan gösterilmez (kullanıcı talebi 2026-09-05: balkon/teras
+// "tip" bilgisi Dekoratif Özellikler'de AYRI bir cümle olarak ASLA
+// belirtilmemeli — zaten alan/oda kompozisyonunda mevcut).
 const UNIT_DECORATIVE_SLOT_KEY_ORDER = [
   "mainRoomCombined", "mainRoomFloor", "mainRoomWall", "wetArea",
-  "outdoorCombined", "outdoorType", "outdoorMaterial",
+  "outdoorCombined",
   "bathroomFixture", "doorsWindows", "kitchen", "materialQuality", "view",
   "heating", "constructionLevel", "manualOverride",
 ];
@@ -33828,6 +33831,38 @@ function resolveAdaptiveCombinedOrSplitDecorativeSlot(entriesBySlot, combinedKey
   } else {
     splitKeys.forEach((key) => { delete entriesBySlot[key]; });
   }
+}
+
+// Kullanıcı DÜZELTMESİ (2026-09-05, ÜÇÜNCÜ GERÇEK örnekle): "burada
+// balkon teras bölümlerinin olduğunun söylenmesi saçma zaten yukarıda
+// bu belirtiliyor" — "outdoor" (balkon/teras) resolveAdaptiveCombinedOrSplitDecorativeSlot'un
+// GENEL split desenini KULLANMAZ (o zaten "outdoorType"/"outdoorMaterial"
+// AYRI cümleler olarak GÖSTERİLMESİNİ varsayardı — kaldırıldı). Bunun
+// yerine bu ÖZEL fonksiyon "tip" farkını (balkon mu, teras mı, ikisi
+// mi) TAMAMEN YOKSAYAR — çünkü bu bilgi zaten alan/oda kompozisyon
+// cümlesinde (areaText) mevcuttur, Dekoratif Özellikler'de AYRI bir
+// "mevcuttur" cümlesiyle TEKRARLANMASI yapay durur (kullanıcı bulgusu).
+// Karar YALNIZCA `outdoorMaterial`'in (prefix'siz, malzeme-yalnız) KENDİ
+// %90-grubuna bakılarak verilir: malzeme TÜM taşınmazlarda AYNIYSA (tip
+// farklı olsa BİLE) TEK temsilci (ilk taşınmazın) `outdoorCombined`
+// cümlesi (kendi prefix'iyle, ör. "Balkon bölümünde...") TÜM taşınmazlara
+// atıfsız uygulanır — tip GÖRMEZDEN gelinir. Malzeme GERÇEKTEN farklıysa
+// `outdoorCombined` OLDUĞU GİBİ bırakılır — UNIT_DECORATIVE_SLOT_KEY_ORDER
+// döngüsündeki normal groupUnitInteriorTextEntries TAM-CÜMLE benzerliğine
+// göre kendi (bu durumda genelde birden fazla) grubunu oluşturur; HER
+// grup kendi GERÇEK prefix'ini (balkon/teras farkı DAHİL) taşıyabilir —
+// bu artık SORUN DEĞİL çünkü malzeme GERÇEKTEN farklı olduğundan zaten
+// ayrı cümleler gerekiyor, tip bilgisinin cümlenin İÇİNDE (ayrı bir
+// cümle olarak DEĞİL) doğal şekilde geçmesi rahatsız edici değildir.
+function resolveOutdoorCombinedIgnoringTypeDifferences(entriesBySlot) {
+  const combinedEntries = entriesBySlot.outdoorCombined;
+  const materialEntries = entriesBySlot.outdoorMaterial;
+  delete entriesBySlot.outdoorMaterial;
+  if (!combinedEntries || !combinedEntries.length) return;
+  const materialGroups = materialEntries && materialEntries.length ? groupUnitInteriorTextEntries(materialEntries) : [];
+  if (materialGroups.length > 1) return;
+  const representativeValue = combinedEntries[0].value;
+  entriesBySlot.outdoorCombined = combinedEntries.map((entry) => ({ ...entry, value: representativeValue }));
 }
 
 // Kullanıcı talebi (2026-09-03): "aynı ada parselde yer alan çoklu
@@ -33895,7 +33930,7 @@ function buildMultiUnitInteriorDescriptionText() {
   }
 
   resolveAdaptiveCombinedOrSplitDecorativeSlot(decorativeEntriesBySlot, "mainRoomCombined", ["mainRoomFloor", "mainRoomWall"]);
-  resolveAdaptiveCombinedOrSplitDecorativeSlot(decorativeEntriesBySlot, "outdoorCombined", ["outdoorType", "outdoorMaterial"]);
+  resolveOutdoorCombinedIgnoringTypeDifferences(decorativeEntriesBySlot);
 
   const areaText = composeMultiUnitInteriorGroupedText(groupUnitInteriorTextEntries(areaEntries), { pluralize: pluralizeUnitInteriorAreaDetailsText });
   const decorativeSlotTexts = UNIT_DECORATIVE_SLOT_KEY_ORDER
