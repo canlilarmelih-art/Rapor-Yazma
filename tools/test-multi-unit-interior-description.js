@@ -114,9 +114,21 @@
 // "outdoorType" SİLİNDİ) — bu bilgi zaten alan/oda kompozisyon
 // cümlesinde mevcut. Yeni `resolveOutdoorCombinedIgnoringTypeDifferences()`
 // tip farkını TAMAMEN YOKSAYAR: malzeme AYNIYSA (tip farklı olsa BİLE)
-// TEK, atıfsız, GERÇEK (prefix'Lİ) combined cümle; malzeme GERÇEKTEN
-// farklıysa HER grup KENDİ GERÇEK prefix'ini (tip farkı DAHİL, ama AYRI
-// bir cümle OLARAK DEĞİL, doğal cümlenin İÇİNDE) taşır.
+// TEK, GERÇEK (prefix'Lİ) combined cümle; malzeme GERÇEKTEN farklıysa
+// HER grup KENDİ GERÇEK prefix'ini (tip farkı DAHİL, ama AYRI bir cümle
+// OLARAK DEĞİL, doğal cümlenin İÇİNDE) taşır.
+//
+// Kullanıcı DÜZELTMESİ #8 (2026-09-05): "dekoratif özellikler
+// paragrafında ortak değerlerin başına tüm taşınmazların kelime
+// grubunu ekle" — 2+ taşınmaz AYNI/BENZER bir Dekoratif Özellikler
+// slotu ürettiğinde (TEK grup, entries.length>1) bile artık o slotu
+// paylaşan TÜM taşınmazların atfı ("A 5 No'lu, A 10 No'lu ve A 11
+// No'lu, ...") BAŞINA eklenir — YENİ `attributeMultiUnitGroupedText()`
+// yardımcısı + `composeMultiUnitInteriorGroupedText`'in YENİ
+// `alwaysAttribute` seçeneği (SADECE Dekoratif Özellikler slotları
+// KULLANIR — kullanıcı talebi AÇIKÇA "dekoratif özellikler
+// paragrafında" diyordu; alan/oda paragrafı — İç Hacimler Açıklaması —
+// BU TALEBİN KAPSAMI DIŞINDA, DEĞİŞMEDEN atıfsız kalır).
 //
 // Kapsanan senaryolar:
 //  1) Tekil rapor (1 taşınmaz): state.fields.unitInteriorDescription
@@ -193,6 +205,11 @@
 //  28) resolveOutdoorCombinedIgnoringTypeDifferences(): malzeme AYNIYSA
 //      temsilciye zorlanır / farklıysa dokunulmaz / outdoorMaterial hiç
 //      gösterilmez (kaynak-düzeyi).
+//  29) attributeMultiUnitGroupedText()/composeMultiUnitInteriorGroupedText()
+//      `alwaysAttribute`: Dekoratif Özellikler'in TÜM ortak (TEK grup,
+//      2+ üyeli) slotları artık "TÜM taşınmazların" atfını BAŞINDA
+//      taşır; alan/oda (İç Hacimler) paragrafı BU TALEBİN KAPSAMI
+//      DIŞINDA, atıfsız kalmaya devam eder (kaynak-düzeyi + davranışsal).
 
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -303,6 +320,7 @@ const functionNames = [
   "pluralizeUnitDecorativeText",
   "joinNonEmptySentences",
   "groupUnitInteriorTextEntries",
+  "attributeMultiUnitGroupedText",
   "composeMultiUnitInteriorGroupedText",
   "resolveAdaptiveCombinedOrSplitDecorativeSlot",
   "resolveOutdoorCombinedIgnoringTypeDifferences",
@@ -609,8 +627,10 @@ function decorativePartsCommon(mainRoomValue) {
 }
 
 // --- 13) Dekoratif Özellikler: TÜM slotlar (mainRoom DAHİL) 2 taşınmazda
-// BİREBİR AYNI -> atıfsız TEK paragraf, alan/oda paragrafının HEMEN
-// ALTINDA (TEK "\n" ile ayrı) eklenir ----------------------------------------
+// BİREBİR AYNI -> her ORTAK slot artık kendi BAŞINA "TÜM taşınmazların"
+// atfını taşır (kullanıcı talebi 2026-09-05: "ortak değerlerin başına
+// tüm taşınmazların kelime grubunu ekle") — alan/oda paragrafı (İç
+// Hacimler) BU TALEBİN KAPSAMI DIŞINDA, DEĞİŞMEDEN atıfsız kalır --------
 {
   fns.setState({
     activeTitleUnitIndex: 0,
@@ -621,13 +641,13 @@ function decorativePartsCommon(mainRoomValue) {
   const result = fns.buildMultiUnitInteriorDescriptionText();
   const lines = result.split("\n");
   assert.equal(lines.length, 2, `Alan paragrafı + ortak dekoratif paragrafı -> TAM 2 satır (TEK "\\n") beklenir. Bulunan: ${JSON.stringify(lines)}`);
-  assert.equal(lines[0], SALON_2_ODA_PLURAL, "1. satır (alan/oda) her zamanki gibi ÇOĞUL ortak metin olmalı.");
-  assert.ok(!lines[1].includes("No'lu"), "TÜM slotlar aynı olduğundan hiçbir atıf etiketi görünmemeli.");
-  assert.ok(lines[1].startsWith(DEKORATIF_MAIN_ROOM_A), "Dekoratif paragraf mainRoom slotuyla başlamalı (UNIT_DECORATIVE_SLOT_KEY_ORDER sırası).");
+  assert.equal(lines[0], SALON_2_ODA_PLURAL, "1. satır (alan/oda) HÂLÂ atıfsız (bu talebin kapsamı DIŞINDA) ÇOĞUL ortak metin olmalı.");
+  assert.ok(!lines[0].includes("No'lu"), "Alan/oda (İç Hacimler) paragrafı BU TALEBİN kapsamı dışında — atıfsız KALMALI.");
+  assert.ok(lines[1].startsWith("A 2 No'lu ve B 5 No'lu, " + DEKORATIF_MAIN_ROOM_A), `Dekoratif paragrafın İLK (mainRoom) slotu "TÜM taşınmazların" atfıyla BAŞLAMALI. Bulunan: ${lines[1].slice(0, 80)}`);
   [DEKORATIF_WET_AREA, DEKORATIF_OUTDOOR, DEKORATIF_BATHROOM, DEKORATIF_DOORS_WINDOWS, DEKORATIF_KITCHEN, DEKORATIF_MATERIAL_QUALITY, DEKORATIF_HEATING].forEach((slotText) => {
-    assert.ok(lines[1].includes(slotText), `Paylaşılan slot metni ("${slotText.slice(0, 30)}...") dekoratif paragrafta eksik.`);
+    assert.ok(lines[1].includes("A 2 No'lu ve B 5 No'lu, " + slotText), `Paylaşılan slot ("${slotText.slice(0, 30)}...") kendi "TÜM taşınmazların" atfını taşımıyor.`);
   });
-  console.log("Dekoratif Özellikler: TÜM slotlar AYNI -> atıfsız TEK paragraf testi tamam.");
+  console.log("Dekoratif Özellikler: TÜM slotlar AYNI -> HER ORTAK slot kendi 'TÜM taşınmazların' atfını taşır testi tamam.");
 }
 
 // --- 14) KULLANICININ GERÇEK ÖRNEĞİ: yalnızca "mainRoom" (duvar
@@ -686,7 +706,7 @@ function decorativePartsCommon(mainRoomValue) {
   });
   const result = fns.buildMultiUnitInteriorDescriptionText();
   const lines = result.split("\n");
-  assert.equal(lines[1], VIEW_BARE_SUBJECT_PLURAL, `"view" slotu AYNI VE çıplak "taşınmaz" özneli olduğundan ÇOĞULLANMALI. Bulunan: ${lines[1]}`);
+  assert.equal(lines[1], "A 2 No'lu ve B 5 No'lu, " + VIEW_BARE_SUBJECT_PLURAL, `"view" slotu AYNI VE çıplak "taşınmaz" özneli olduğundan ÇOĞULLANMALI + "TÜM taşınmazların" atfını taşımalı. Bulunan: ${lines[1]}`);
   console.log("Dekoratif Özellikler: AYNI + çıplak 'taşınmaz' özneli slot -> ÇOĞULLANIR testi tamam.");
 }
 
@@ -720,13 +740,24 @@ function decorativePartsCommon(mainRoomValue) {
   console.log("composeMultiUnitInteriorGroupedText() genel çoğullama+joiner kablolaması testi tamam.");
 }
 
-// --- 8d) composeMultiUnitInteriorGroupedText() GERÇEK gövdesi atfı ':'
-// İLE DEĞİL virgülle bağlıyor mu (kullanıcı düzeltmesi #6, kaynak-düzeyi) ----
+// --- 8d) attributeMultiUnitGroupedText() GERÇEK gövdesi atfı ':' İLE
+// DEĞİL virgülle bağlıyor mu (kullanıcı düzeltmesi #6, kaynak-düzeyi) --------
 {
-  const realBody = extractFunction("composeMultiUnitInteriorGroupedText");
+  const realBody = extractFunction("attributeMultiUnitGroupedText");
   assert.ok(realBody.includes("`${attribution}, ${text}`"), "Atıf + metin ':' YERİNE VİRGÜLLE (`${attribution}, ${text}`) birleştirilmeli.");
   assert.ok(!realBody.includes("`${attribution}: ${text}`"), "REGRESYON: eski ':' ayracı GERİ GELMEMELİ.");
-  console.log("composeMultiUnitInteriorGroupedText(): atıf VİRGÜLLE bağlanıyor (':' DEĞİL) kaynak-düzeyi testi tamam.");
+  console.log("attributeMultiUnitGroupedText(): atıf VİRGÜLLE bağlanıyor (':' DEĞİL) kaynak-düzeyi testi tamam.");
+}
+
+// --- 8e) composeMultiUnitInteriorGroupedText() GERÇEK gövdesi `alwaysAttribute`
+// TEK grup + entries.length>1 durumunda attributeMultiUnitGroupedText'i
+// ÇAĞIRIYOR mu (kullanıcı talebi 2026-09-05: "ortak değerlerin başına
+// tüm taşınmazların kelime grubunu ekle", kaynak-düzeyi) --------------------
+{
+  const realBody = extractFunction("composeMultiUnitInteriorGroupedText");
+  assert.ok(/alwaysAttribute\s*=\s*false/.test(realBody), "`alwaysAttribute` parametresi varsayılan olarak false (alan/oda paragrafının ESKİ/DEĞİŞMEYEN davranışı) olmalı.");
+  assert.ok(/alwaysAttribute\s*\?\s*attributeMultiUnitGroupedText\(soleGroup, text\)\s*:\s*text/.test(realBody), "TEK grup + entries.length>1 durumunda `alwaysAttribute` TRUE ise attributeMultiUnitGroupedText ÇAĞRILMALI.");
+  console.log("composeMultiUnitInteriorGroupedText(): alwaysAttribute kablolaması (kaynak-düzeyi) testi tamam.");
 }
 
 // --- 8c) buildMultiUnitInteriorDescriptionText() GERÇEK gövdesi Dekoratif
@@ -738,8 +769,8 @@ function decorativePartsCommon(mainRoomValue) {
   assert.ok(realBody.includes("getUnitDecorativeDescriptionPartsForCombinedText()"), "Çoklu-taşınmaz Dekoratif Özellikler kaynağı getUnitDecorativeDescriptionPartsForCombinedText() (SLOT bazlı) OLMALI.");
   assert.ok(realBody.includes("UNIT_DECORATIVE_SLOT_KEY_ORDER"), "Dekoratif slotlar UNIT_DECORATIVE_SLOT_KEY_ORDER sabit sırasıyla işlenmeli.");
   assert.ok(
-    /composeMultiUnitInteriorGroupedText\(groupUnitInteriorTextEntries\(decorativeEntriesBySlot\[key\]\), \{ pluralize: pluralizeUnitDecorativeText, joiner: " " \}\)/.test(realBody),
-    "Dekoratif SLOT metni composeMultiUnitInteriorGroupedText'e { pluralize: pluralizeUnitDecorativeText, joiner: \" \" } İLE geçmeli (tek paragraf, kullanıcı düzeltmesi #5)."
+    /composeMultiUnitInteriorGroupedText\(groupUnitInteriorTextEntries\(decorativeEntriesBySlot\[key\]\), \{ pluralize: pluralizeUnitDecorativeText, joiner: " ", alwaysAttribute: true \}\)/.test(realBody),
+    "Dekoratif SLOT metni composeMultiUnitInteriorGroupedText'e { pluralize: pluralizeUnitDecorativeText, joiner: \" \", alwaysAttribute: true } İLE geçmeli (tek paragraf + TÜM taşınmazların atfı, kullanıcı düzeltmesi #5/#8)."
   );
   assert.ok(
     /composeMultiUnitInteriorGroupedText\(groupUnitInteriorTextEntries\(areaEntries\), \{ pluralize: pluralizeUnitInteriorAreaDetailsText \}\)/.test(realBody),
@@ -883,10 +914,11 @@ const PRESENCE_BALCONY_AND_TERRACE = { hasAny: true, balcony: true, terrace: tru
 
 // --- 24) UÇTAN UCA (GERÇEK fonksiyonlarla, SAHTE DEĞİL): kullanıcının
 // İKİNCİ GERÇEK örneği (A5 duvar FARKLI, A15 EK teras VAR AMA outdoor
-// MALZEMESİ 4 taşınmazda da AYNI) — mainRoomFloor PAYLAŞIMLI, mainRoomWall
-// AYRI ATIFLI, outdoor İSE (malzeme AYNI olduğundan "tip" farkı BİLEREK
-// YOKSAYILIR) TEK PAYLAŞIMLI, ATIFSIZ combined cümle — "mevcuttur" gibi
-// bir varoluşsal cümle HİÇ ÜRETİLMEZ ------------------------------------
+// MALZEMESİ 4 taşınmazda da AYNI) — mainRoomFloor + outdoor (malzeme
+// AYNI olduğundan "tip" farkı BİLEREK YOKSAYILIR) İKİSİ DE TEK, PAYLAŞIMLI
+// combined cümle — ama artık (kullanıcı DÜZELTMESİ #8) "TÜM taşınmazların"
+// atfını TAŞIR; mainRoomWall İSE GERÇEKTEN farklı olduğundan AYRI ATIFLI
+// kalır; "mevcuttur" gibi bir varoluşsal cümle HİÇ ÜRETİLMEZ --------------
 {
   function realDecorativeParts(wallValue, outdoorPresence) {
     fns.setState({ fields: { ...realMainRoomFields(wallValue), ...REAL_OUTDOOR_FIELDS_COMMON } });
@@ -924,14 +956,22 @@ const PRESENCE_BALCONY_AND_TERRACE = { hasAny: true, balcony: true, terrace: tru
   const decorativeParagraph = lines[1];
   const floorText = "Salon ve oda zeminleri laminant parke kaplı, antre-hol ve mutfak zeminleri seramik kaplı vaziyettedir.";
   const outdoorCombinedText = "Balkon bölümünde zeminler seramik kaplı, duvarlar ise plastik boyalıdır.";
+  const allFourAttribution = "A 5 No'lu, A 10 No'lu, A 11 No'lu ve A 15 No'lu";
   assert.equal(decorativeParagraph.split(floorText).length - 1, 1, "mainRoomFloor (4 taşınmazda da AYNI) TAM 1 kez geçmeli — TEKRARLANMAMALI.");
+  assert.ok(
+    decorativeParagraph.includes(`${allFourAttribution}, ${floorText}`),
+    `mainRoomFloor (4 taşınmazda da AYNI) artık "TÜM taşınmazların" atfını taşımalı (kullanıcı talebi 2026-09-05). Bulunan: ${decorativeParagraph}`
+  );
   assert.ok(decorativeParagraph.includes("A 5 No'lu, Salon, oda, antre-hol ve mutfak duvarları duvar kağıdı kaplıdır."), "A5'in atıflı duvar cümlesi (VİRGÜLLE bağlı) bulunamadı.");
   assert.ok(decorativeParagraph.includes("A 10 No'lu, A 11 No'lu ve A 15 No'lu, Salon, oda, antre-hol ve mutfak duvarları saten boyalıdır."), "A10/A11/A15'in ORTAK atıflı duvar cümlesi bulunamadı.");
-  assert.equal(decorativeParagraph.split(outdoorCombinedText).length - 1, 1, `outdoor malzemesi 4 taşınmazda da AYNI olduğundan (tip farkı YOKSAYILIR) TEK, ATIFSIZ combined cümle TAM 1 kez geçmeli. Bulunan: ${decorativeParagraph}`);
-  assert.ok(!decorativeParagraph.includes("No'lu, Balkon"), "outdoor cümlesi ATIFSIZ olmalı (malzeme AYNI olduğundan tip farkı için atıf YOK).");
+  assert.equal(decorativeParagraph.split(outdoorCombinedText).length - 1, 1, `outdoor malzemesi 4 taşınmazda da AYNI olduğundan (tip farkı YOKSAYILIR) TEK combined cümle TAM 1 kez geçmeli. Bulunan: ${decorativeParagraph}`);
+  assert.ok(
+    decorativeParagraph.includes(`${allFourAttribution}, ${outdoorCombinedText}`),
+    `outdoor (4 taşınmazda malzeme AYNI, tip farkı YOKSAYILIR) artık "TÜM taşınmazların" atfını taşımalı. Bulunan: ${decorativeParagraph}`
+  );
   assert.ok(!decorativeParagraph.includes("mevcuttur"), "Kullanıcı bulgusu (2026-09-05): 'X bölümü mevcuttur.' gibi varoluşsal bir cümle HİÇ ÜRETİLMEMELİ (zaten alan/oda kompozisyonunda belirtiliyor).");
   assert.ok(!decorativeParagraph.includes(":"), "Atıf ':' işaretiyle DEĞİL virgülle bağlanmalı.");
-  console.log("UÇTAN UCA (GERÇEK fonksiyonlar): mainRoomWall GERÇEKTEN farklı (atıflı) + outdoor malzemesi AYNI (tip YOKSAYILIR, TEK atıfsız cümle, 'mevcuttur' YOK) testi tamam.");
+  console.log("UÇTAN UCA (GERÇEK fonksiyonlar): mainRoomWall GERÇEKTEN farklı (atıflı) + outdoor malzemesi AYNI (tip YOKSAYILIR, TEK cümle + TÜM taşınmazların atfı, 'mevcuttur' YOK) testi tamam.");
 }
 
 // --- 27) UÇTAN UCA (GERÇEK fonksiyonlarla, SAHTE DEĞİL) — KULLANICI
@@ -977,7 +1017,9 @@ const PRESENCE_BALCONY_AND_TERRACE = { hasAny: true, balcony: true, terrace: tru
 // (GERÇEK bir fark YOKSA) split'e HİÇ düşülmemeli, TEK doğal BİRLEŞİK
 // cümle ("...vaziyette olup, ...boyalıdır." / "{prefix} zeminler ...
 // kaplı, duvarlar ise ....") KULLANILMALI — gereksiz yere ikiye
-// BÖLÜNMEMELİ ------------------------------------------------------------
+// BÖLÜNMEMELİ. Bu TEK doğal cümle ARTIK (kullanıcı DÜZELTMESİ #8 —
+// "ortak değerlerin başına tüm taşınmazların kelime grubunu ekle")
+// "TÜM taşınmazların" atfını da (BAŞINA) taşır ------------------------
 {
   function identicalRealDecorativeParts() {
     fns.setState({ fields: { ...realMainRoomFields(REAL_MAIN_ROOM_WALL_A), ...REAL_OUTDOOR_FIELDS_COMMON } });
@@ -1001,14 +1043,18 @@ const PRESENCE_BALCONY_AND_TERRACE = { hasAny: true, balcony: true, terrace: tru
   const lines = result.split("\n");
   assert.equal(lines.length, 2, `Alan paragrafı (1) + Dekoratif TEK paragraf (1) -> TAM 2 satır beklenir. Bulunan: ${JSON.stringify(lines)}`);
   const decorativeParagraph = lines[1];
-  assert.ok(!decorativeParagraph.includes("No'lu"), "TÜM taşınmazlar AYNI olduğundan hiçbir atıf etiketi görünmemeli.");
+  // Kullanıcı talebi (2026-09-05, SONRAKİ mesaj): "ortak değerlerin
+  // başına tüm taşınmazların kelime grubunu ekle" — TÜM taşınmazlar
+  // AYNI olsa BİLE artık "A 2 No'lu ve B 5 No'lu, ..." atfı BAŞINA
+  // eklenir (ESKİ "hiçbir atıf etiketi görünmemeli" beklentisi TERS
+  // ÇEVRİLDİ, bkz. senaryo 13/18).
   assert.ok(
-    decorativeParagraph.includes("salon ve oda zeminleri laminant parke kaplı, antre-hol ve mutfak zeminleri seramik kaplı vaziyette olup, salon, oda, antre-hol ve mutfak duvarları saten boyalıdır."),
-    `mainRoom AYNIYSA TEK BİRLEŞİK (combined) cümle kullanılmalı, İKİYE BÖLÜNMEMELİ. Bulunan: ${decorativeParagraph}`
+    decorativeParagraph.includes("A 2 No'lu ve B 5 No'lu, salon ve oda zeminleri laminant parke kaplı, antre-hol ve mutfak zeminleri seramik kaplı vaziyette olup, salon, oda, antre-hol ve mutfak duvarları saten boyalıdır."),
+    `mainRoom AYNIYSA TEK BİRLEŞİK (combined) cümle + "TÜM taşınmazların" atfı kullanılmalı, İKİYE BÖLÜNMEMELİ. Bulunan: ${decorativeParagraph}`
   );
   assert.ok(
-    decorativeParagraph.includes("Balkon bölümünde zeminler seramik kaplı, duvarlar ise plastik boyalıdır."),
-    `outdoor AYNIYSA TEK BİRLEŞİK (combined) cümle kullanılmalı, İKİYE BÖLÜNMEMELİ. Bulunan: ${decorativeParagraph}`
+    decorativeParagraph.includes("A 2 No'lu ve B 5 No'lu, Balkon bölümünde zeminler seramik kaplı, duvarlar ise plastik boyalıdır."),
+    `outdoor AYNIYSA TEK BİRLEŞİK (combined) cümle + "TÜM taşınmazların" atfı kullanılmalı, İKİYE BÖLÜNMEMELİ. Bulunan: ${decorativeParagraph}`
   );
   assert.ok(!decorativeParagraph.includes("mevcuttur"), "outdoor AYNIYSA varoluşsal bir 'mevcuttur' cümlesi HİÇ görünmemeli.");
   console.log("UÇTAN UCA (GERÇEK fonksiyonlar): mainRoom/outdoor TÜM taşınmazlarda AYNIYSA TEK doğal BİRLEŞİK cümle kullanılır (gereksiz split YOK) testi tamam.");

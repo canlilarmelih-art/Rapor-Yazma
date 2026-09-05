@@ -33745,25 +33745,44 @@ function groupUnitInteriorTextEntries(entries) {
 // Dekoratif Özellikler metni "\n" ile PARÇALANIP AYRI paragraflara
 // BÖLÜNMEMELİ, yalnızca o TEK alt-cümlenin kısa atıflı varyantları AYNI
 // paragraf İÇİNDE art arda gelmeli.
-function composeMultiUnitInteriorGroupedText(groups, { pluralize = null, joiner = "\n" } = {}) {
+// Kullanıcı talebi (2026-09-03): "':' işareti yerine cümle virgülle ya
+// da noktalı virgülle bağlanmalı" — bu, YALNIZCA bu fonksiyonun (İç
+// Hacimler/Dekoratif Özellikler Çoklu Taşınmaz) atıf ayracı için
+// geçerli; app.js'teki BAŞKA, ÖNCEDEN VAR olan "{attribution}: {text}"
+// deseni (ör. buildDocumentsBlockAttributedExplanationParts, EKB/Cezai
+// Karar/Yapı Kullanma İzin vb.) BİLİNÇLİ OLARAK dokunulmadı — kapsam
+// dışı, ayrı bir talep gerektirir.
+function attributeMultiUnitGroupedText(group, text) {
+  const labels = group.entries.map((entry) => formatTitleUnitSuitabilityLabel(entry.fields, entry.index));
+  const attribution = formatTitleUnitAttributionPhrase(labels);
+  return attribution ? normalizeReportDescriptionText(`${attribution}, ${text}`) : text;
+}
+
+// Kullanıcı talebi (2026-09-05): "dekoratif özellikler paragrafında
+// ortak değerlerin başına tüm taşınmazların kelime grubunu ekle" —
+// TÜM taşınmazlar AYNI/BENZER değeri ürettiğinde (TEK grup) bile o
+// değerin katkı sahibi TÜM taşınmazların atfı ("A 5 No'lu, A 10 No'lu,
+// A 11 No'lu ve A 15 No'lu, ...") BAŞINA eklenmeli — `alwaysAttribute:
+// true` (SADECE Dekoratif Özellikler slotları KULLANIR, bkz. çağıran)
+// bunu sağlar. `alwaysAttribute` VARSAYILAN false — alan/oda paragrafı
+// (İç Hacimler Açıklaması) İÇİN davranış BİLİNÇLİ OLARAK DEĞİŞMEDİ
+// (kullanıcı talebi AÇIKÇA "dekoratif özellikler paragrafında" diyordu,
+// alan/oda paragrafını KAPSAMIYOR — o hâlâ TÜM aynıysa atıfsız kalır).
+// Katkı sahibi TEK bir taşınmazsa (entries.length===1) atıf EKLENMEZ —
+// "tüm taşınmazların" listesi ancak GERÇEKTEN birden fazla taşınmaz o
+// değere katkı yaptığında anlamlıdır.
+function composeMultiUnitInteriorGroupedText(groups, { pluralize = null, joiner = "\n", alwaysAttribute = false } = {}) {
   if (!groups.length) return "";
   const applyPlural = (text) => (pluralize ? pluralize(text) : text);
   if (groups.length === 1) {
     const soleGroup = groups[0];
-    return soleGroup.entries.length > 1 ? applyPlural(soleGroup.canonicalValue) : soleGroup.canonicalValue;
+    if (soleGroup.entries.length <= 1) return soleGroup.canonicalValue;
+    const text = applyPlural(soleGroup.canonicalValue);
+    return alwaysAttribute ? attributeMultiUnitGroupedText(soleGroup, text) : text;
   }
-  // Kullanıcı talebi (2026-09-03): "':' işareti yerine cümle virgülle
-  // ya da noktalı virgülle bağlanmalı" — bu, YALNIZCA bu fonksiyonun
-  // (İç Hacimler/Dekoratif Özellikler Çoklu Taşınmaz) atıf ayracı için
-  // geçerli; app.js'teki BAŞKA, ÖNCEDEN VAR olan "{attribution}: {text}"
-  // deseni (ör. buildDocumentsBlockAttributedExplanationParts, EKB/Cezai
-  // Karar/Yapı Kullanma İzin vb.) BİLİNÇLİ OLARAK dokunulmadı — kapsam
-  // dışı, ayrı bir talep gerektirir.
   return groups.map((group) => {
     const text = group.entries.length > 1 ? applyPlural(group.canonicalValue) : group.canonicalValue;
-    const labels = group.entries.map((entry) => formatTitleUnitSuitabilityLabel(entry.fields, entry.index));
-    const attribution = formatTitleUnitAttributionPhrase(labels);
-    return attribution ? normalizeReportDescriptionText(`${attribution}, ${text}`) : text;
+    return attributeMultiUnitGroupedText(group, text);
   }).join(joiner);
 }
 
@@ -33935,7 +33954,7 @@ function buildMultiUnitInteriorDescriptionText() {
   const areaText = composeMultiUnitInteriorGroupedText(groupUnitInteriorTextEntries(areaEntries), { pluralize: pluralizeUnitInteriorAreaDetailsText });
   const decorativeSlotTexts = UNIT_DECORATIVE_SLOT_KEY_ORDER
     .filter((key) => decorativeEntriesBySlot[key]?.length)
-    .map((key) => composeMultiUnitInteriorGroupedText(groupUnitInteriorTextEntries(decorativeEntriesBySlot[key]), { pluralize: pluralizeUnitDecorativeText, joiner: " " }));
+    .map((key) => composeMultiUnitInteriorGroupedText(groupUnitInteriorTextEntries(decorativeEntriesBySlot[key]), { pluralize: pluralizeUnitDecorativeText, joiner: " ", alwaysAttribute: true }));
   const decorativeText = joinNonEmptySentences(decorativeSlotTexts);
   return [areaText, decorativeText].filter(Boolean).join("\n");
 }
