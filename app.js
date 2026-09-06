@@ -10282,11 +10282,74 @@ function formatValuationRentExplanationMoney(value) {
   return Math.round(number).toLocaleString("tr-TR");
 }
 
+// Kullanıcı talebi (2026-09-07): "Kira Açıklamasını da aynı mantıkla
+// çoğul yap ama burada cümleyi şöyle kuralım." — legalRent/currentRent
+// ARTIK taşınmaza-özgü olduğundan buildValuationRentExplanation() çoklu
+// taşınmazlı raporlarda YALNIZCA AKTİF taşınmazı yansıtıyordu. Kullanıcı,
+// Satış Kabiliyeti/Değerleme Yöntemi'nin "aynı-değeri-üreten taşınmazları
+// grupla" mimarisini BİLEREK KULLANMADI (kira TUTARLARI neredeyse HER
+// ZAMAN taşınmaza göre farklı olduğundan gruplama anlamsız olurdu) —
+// bunun yerine TAŞINMAZ SAYISINA göre İKİ AYRI, YENİ (önceki varyantlarla
+// AKRABA olmayan, kullanıcının BİZZAT verdiği) cümle kalıbı istedi:
+//  - **6+ taşınmaz** ("5 adet tapudan çok"): TEK bir ÖZET cümlesi, TÜM
+//    taşınmazların TOPLAM (sum) yasal/mevcut kira değerleriyle + rapor
+//    ekindeki detaylı tabloya yönlendirme — HER taşınmazı TEK TEK saymak
+//    yerine (6+ satır çok uzardı) toplu bir özet tercih edilir.
+//  - **2-5 taşınmaz**: HER taşınmaz KENDİ SATIRINDA ("A-5: Yasal kira
+//    değerinin ... mevcut kira değerinin ... olacağı düşünülmektedir."),
+//    satırlar "\n" ile ayrılır (kullanıcı: "alt satıra geç"). Etiket
+//    formatı ("A-5") formatTitleUnitSuitabilityShortLabel()'in KENDİSİ —
+//    "Kısa Etiketler: Not." deseninde ZATEN kullanılan, taşınmaza-özgü
+//    kısa (Blok-No) biçim, YENİDEN İCAT EDİLMEDİ.
+function buildValuationRentPerUnitLine(entry) {
+  const label = formatTitleUnitSuitabilityShortLabel(entry.fields, entry.index);
+  const { legalRent, currentRent } = entry;
+  let body;
+  if (Number.isFinite(legalRent) && Number.isFinite(currentRent) && areValuationAreasEqual(legalRent, currentRent)) {
+    body = `Yasal ve mevcut kira değerinin ${formatValuationRentExplanationMoney(legalRent)} TL/ay olacağı düşünülmektedir.`;
+  } else if (Number.isFinite(legalRent) && Number.isFinite(currentRent)) {
+    body = `Yasal kira değerinin ${formatValuationRentExplanationMoney(legalRent)} TL/ay, mevcut kira değerinin ${formatValuationRentExplanationMoney(currentRent)} TL/ay olacağı düşünülmektedir.`;
+  } else if (Number.isFinite(legalRent)) {
+    body = `Yasal kira değerinin ${formatValuationRentExplanationMoney(legalRent)} TL/ay olacağı düşünülmektedir.`;
+  } else {
+    body = `Mevcut kira değerinin ${formatValuationRentExplanationMoney(currentRent)} TL/ay olacağı düşünülmektedir.`;
+  }
+  return `${label}: ${body}`;
+}
+
+function buildValuationRentSummarySentenceForAllTitleUnits(entries) {
+  const totalLegal = entries.reduce((sum, entry) => sum + (Number.isFinite(entry.legalRent) ? entry.legalRent : 0), 0);
+  const totalCurrent = entries.reduce((sum, entry) => sum + (Number.isFinite(entry.currentRent) ? entry.currentRent : 0), 0);
+  return `Ekspertize konu taşınmazların toplam yasal kira değerinin ${formatValuationRentExplanationMoney(totalLegal)} TL/ay, mevcut kira değerinin ${formatValuationRentExplanationMoney(totalCurrent)} TL/ay olduğu düşünülmektedir. Detaylı değerleme tablosu rapor ekinde tarafınıza sunulmuştur.`;
+}
+
+function buildValuationRentExplanationForAllTitleUnits() {
+  const count = getTitleUnitCount();
+  if (count < 2) return buildValuationRentExplanation();
+
+  const originalFields = state.fields;
+  const units = buildAllTitleUnitsForSummaryTable();
+  const entries = units.map((unit, index) => {
+    state.fields = { ...originalFields, ...unit.fields };
+    try {
+      const legalRent = parseValuationNumber(state.fields.legalRent);
+      const currentRent = parseValuationNumber(state.fields.currentRent);
+      return { index, fields: unit.fields, legalRent, currentRent };
+    } finally {
+      state.fields = originalFields;
+    }
+  }).filter((entry) => Number.isFinite(entry.legalRent) || Number.isFinite(entry.currentRent));
+
+  if (!entries.length) return "";
+  if (count > 5) return buildValuationRentSummarySentenceForAllTitleUnits(entries);
+  return entries.map((entry) => buildValuationRentPerUnitLine(entry)).join("\n");
+}
+
 const valuationRentExplanationFallback = "Yasal ve mevcut kira değerleri girildiğinde kira açıklaması otomatik oluşacaktır.";
 
 function refreshValuationRentExplanation() {
   if (suppressValuationSideEffects) return;
-  state.fields.valuationRentExplanation = buildValuationRentExplanation();
+  state.fields.valuationRentExplanation = buildValuationRentExplanationForAllTitleUnits();
   const text = document.querySelector("[data-valuation-rent-explanation-text]");
   if (text) text.textContent = state.fields.valuationRentExplanation || valuationRentExplanationFallback;
 }
