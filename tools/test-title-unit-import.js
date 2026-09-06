@@ -379,4 +379,55 @@ function recordWithParcel(id, blockNo, parcelNo, owners = [{ name: "MALİK" }]) 
   console.log("takbisDate/takbisMethod/takbisTime paylasim + en erken saat hesaplamasi testi tamam.");
 }
 
+// --- 9) Kullanici bulgusu (2026-09-07): "coklu takbis yuklemede takyidat
+// tarihi bos geliyor" - HAKLI: takbisTime icin yukarida (senaryo 8)
+// uygulanan "en erken" duzeltmesi takbisDate icin HIC YAPILMAMISTI. Her
+// applyTakbisEncumbranceFieldsToReport({force:true}) cagrisi paylasimli
+// takbisDate'in UZERINE, o tasinmazin KENDI (bos olsa BILE) tarihini
+// KOSULSUZ yaziyordu - bir kaydin tarihi hic okunamamissa (ornegin farkli
+// sayfa duzeni), DIGER tasinmazlarda tarih dogru okunmus olsa BILE
+// paylasimli alan SESSIZCE bosa donuyordu. -----------------------------
+{
+  // 9a) Farkli tarihli 3 kayit -> paylasimli takbisDate EN ERKENIni
+  // ("2026-08-05") almali, hangi sirada geldigi ONEMLI DEGIL (senaryo
+  // 8a'nin takbisTime icin yaptigi AYNI dogrulama, takbisDate icin).
+  const withDate = (id, blockNo, date) => ({
+    fields: { titlePropertyId: id, blockNo, takbisReportDate: date, takbisReportTime: "09:00" },
+    owners: [{ name: "MALİK" }],
+    encumbrances: [],
+    sourceFile: `${id}.pdf`,
+  });
+  const state9a = freshState();
+  sandbox.setState(state9a);
+  sandbox.resetApplyCalls();
+  const count9a = sandbox.fns.importTakbisRecordsIntoTitleUnits([
+    withDate("666", "1", "2026-08-10"),
+    withDate("777", "2", "2026-08-05"), // en erken - ortada geliyor, siralamadan bagimsiz olmali
+    withDate("888", "3", "2026-08-12"),
+  ]);
+  assert.equal(count9a, 3, "3 kayit da aktarilmali.");
+  assert.equal(sandbox.getState().fields.takbisDate, "2026-08-05", "Paylasimli takbisDate, 3 kaydin EN ERKEN tarihini (2026-08-05) almali - hangi sirada geldigi onemli degil.");
+
+  // 9b) BIZZAT KULLANICININ BULDUGU senaryo: SON islenen kaydin tarihi
+  // HIC OKUNAMAMIS (bos) - paylasimli takbisDate, DIGER (dolu) kaydin
+  // tarihine SESSIZCE "" YAZILMAMALI, dolu olan tek adayin tarihini almali.
+  const state9b = freshState();
+  sandbox.setState(state9b);
+  sandbox.resetApplyCalls();
+  sandbox.fns.importTakbisRecordsIntoTitleUnits([
+    withDate("999", "1", "2026-08-11"),
+    { fields: { titlePropertyId: "000", blockNo: "2", takbisReportDate: "", takbisReportTime: "" }, owners: [], encumbrances: [], sourceFile: "000.pdf" },
+  ]);
+  assert.equal(
+    sandbox.getState().fields.takbisDate,
+    "2026-08-11",
+    "SON islenen kaydin tarihi bos OLSA BILE, paylasimli takbisDate DIGER kaydin dolu tarihini (2026-08-11) korumali - BOS OLMAMALI (kullanicinin bildirdigi kusur)."
+  );
+  // Paylasimli alan oldugundan (TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS)
+  // baska bir tasinmaza gecince de AYNI deger gorunmeli (round-trip).
+  sandbox.fns.switchActiveTitleUnit(1);
+  assert.equal(sandbox.getState().fields.takbisDate, "2026-08-11", "2. tasinmaza (tarihi bos okunan) gecince de AYNI (paylasimli, DOLU) tarih gorunmeli.");
+  console.log("takbisDate paylasim + en erken tarih hesaplamasi (kullanici bulgusu: bos tarih kaydi diger tasinmazin tarihini bozmamali) testi tamam.");
+}
+
 console.log("Coklu TAKBIS Faz 2 rapora aktar orkestrasyonu testleri basarili.");

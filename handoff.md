@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.647 - 2026-09-07 - Çoklu TAKBİS yüklemede paylaşımlı "Takyidat tarihi" (takbisDate) artık SESSİZCE boşa dönmüyor
+
+- Kullanıcı bulgusu: "çoklu takbis yüklemede takyidat tarihi boş geliyor."
+- **Kök neden**: 0.0.543 (2026-08-25, "takyidat saati taşınmazlarda farklı ise en erken saati baz al ve ortak olarak uygula" talebi) `takbisDate`/`takbisMethod`/`takbisTime`'ı paylaşımlı (`TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS`) yaptığında, `importTakbisRecordsIntoTitleUnits()` döngüsü bittikten SONRA yalnızca `takbisTime` İÇİN "TÜM kayıtların EN ERKENİ" düzeltmesi eklenmişti — `takbisDate` İÇİN AYNI düzeltme HİÇ YAPILMAMIŞTI. Döngü İÇİNDE HER taşınmaz için `applyTakbisEncumbranceFieldsToReport({force:true})` paylaşımlı `takbisDate` alanının ÜZERİNE o taşınmazın KENDİ (BOŞ OLSA BİLE) tarihini KOŞULSUZ yazıyordu — bir taşınmazın TAKBİS sayfasında tarih satırı farklı bir düzende olup `extractTakbisReportDateTime` HİÇ EŞLEŞMEZSE (""), paylaşımlı alan SESSİZCE boşa dönüyordu; DİĞER taşınmazlarda tarih doğru okunmuş olsa BİLE (0.0.543 zaten `takbisTime` İÇİN AYNI kusuru düzeltmişti, `takbisDate` gözden kaçmıştı).
+- **Düzeltme**: `importTakbisRecordsIntoTitleUnits()`'e `takbisTime`'ın HEMEN ALTINA, BİREBİR AYNI desen eklendi — döngü bittikten SONRA TÜM kayıtların KENDİ ham (state mutasyonundan etkilenmeyen) `fields.takbisReportDate`'lerinden EN ERKENİ (ISO "YYYY-MM-DD" biçimi sıfır dolgulu olduğundan düz string karşılaştırması kronolojik sıralamayla birebir örtüşür) hesaplanıp paylaşımlı alana SON KEZ yazılır. Normal durumda (TÜM taşınmazlar AYNI gün sorgulandığından) tarihler zaten AYNIDIR — bu düzeltme yalnızca "bir kaydın tarihi okunamadı" durumunda DİĞER kayıtların doğru tarihinin KORUNMASINI sağlar (boş değer asla "en erken" sayılmaz, `takbisTime`'ın 8b senaryosuyla AYNI güvenlik ağı).
+- Test: `tools/test-title-unit-import.js`'e YENİ senaryo 9 eklendi — (9a) farklı tarihli 3 kayıttan EN ERKENİnin (sıradan bağımsız) paylaşımlı alana yazıldığını, (9b) BİZZAT kullanıcının bulduğu senaryoyu (SON işlenen kaydın tarihi HİÇ OKUNAMAMIŞ/boş — paylaşımlı `takbisDate` DİĞER kaydın DOLU tarihini KORUMALI, boşa DÖNMEMELİ) doğruluyor. Geçici geri alma ile YENİ testin gerçekten BAŞARISIZ olduğu doğrulanıp (eski kod `takbisDate`'i `undefined` bırakıyordu) sonra geri konuldu. `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` cache-buster `?v=20260907-0057`.
+- Canlı tarayıcı testi yapılamadı — kullanıcının GERÇEK çoklu TAKBİS yüklemesinde artık "Takyidat tarihi" alanının (en az bir taşınmazın tarihi doğru okunduğu sürece) DOLU geldiğini doğrulaması gerekiyor.
+
 ## 0.0.646 - 2026-09-06 - "Banka" seçim listesinde "Emlak Katılım Bankası A.Ş." artık "Emlak Katılım Tasarruf Finansman Fonu"
 
 - Kullanıcı talebi: "banka seçimi listesinde emlak katılım bankası as yi Emlak Katılım Tasrruf Finansman Fonu olarak değiştir" (yazım: "Tasarruf" olarak düzeltildi).

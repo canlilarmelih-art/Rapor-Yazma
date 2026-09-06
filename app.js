@@ -25651,6 +25651,32 @@ function importTakbisRecordsIntoTitleUnits(records) {
     state.fields.takbisTime = parsedTakbisTimes.reduce((earliest, time) => (time < earliest ? time : earliest));
   }
 
+  // Kullanıcı bulgusu (2026-09-07): "çoklu takbis yüklemede takyidat
+  // tarihi boş geliyor" — takbisTime İÇİN yukarıda uygulanan "en erken"
+  // düzeltmesi takbisDate İÇİN HİÇ YAPILMAMIŞTI. Kök neden AYNI: her
+  // taşınmaz için applyTakbisEncumbranceFieldsToReport({force:true})
+  // paylaşımlı takbisDate alanının ÜZERİNE, o taşınmazın KENDİ ham
+  // PDF'inden okunan tarihle (BOŞ OLSA BİLE) KOŞULSUZ yazıyordu — bir
+  // sonraki (veya blok sıralamasına göre SON işlenen) taşınmazın
+  // TAKBİS sayfasında tarih satırı farklı bir düzende olup HİÇ
+  // OKUNAMAZSA (extractTakbisReportDateTime eşleşmezse ""), paylaşımlı
+  // alan SESSİZCE boşa dönüyordu — DİĞER taşınmazlarda tarih doğru
+  // okunmuş olsa BİLE. Düzeltme: takbisTime İLE AYNI desen — döngü
+  // bittikten SONRA TÜM kayıtların KENDİ ham (state mutasyonundan
+  // etkilenmeyen) takbisReportDate'lerinden EN ERKENİ hesaplanıp
+  // paylaşımlı alana son kez yazılır (ISO "YYYY-MM-DD" biçimi zaten
+  // sıfır dolgulu olduğundan düz string karşılaştırması kronolojik
+  // sıralamayla birebir örtüşür) — normal durumda (TÜM taşınmazlar AYNI
+  // gün sorgulandığından) tarihler zaten AYNIDIR, bu yalnızca "bir kaydın
+  // tarihi okunamadı" durumunda DİĞER kayıtların doğru tarihinin
+  // KORUNMASINI sağlar.
+  const parsedTakbisDates = validRecords
+    .map((record) => String(record?.fields?.takbisReportDate || "").trim())
+    .filter(Boolean);
+  if (parsedTakbisDates.length) {
+    state.fields.takbisDate = parsedTakbisDates.reduce((earliest, date) => (date < earliest ? date : earliest));
+  }
+
   if (getTitleUnitCount() > 1) state.fields.requestType = "Çoklu Talep";
   switchActiveTitleUnit(0);
   return validRecords.length;
