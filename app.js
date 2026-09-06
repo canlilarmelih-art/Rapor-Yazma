@@ -9681,11 +9681,144 @@ function buildValuationSaleabilityExplanation() {
   return [userNote, conclusion].filter(Boolean).join(" ");
 }
 
+// Kullanıcı talebi (2026-09-07): "benim istediğim değerleme ile ilgili
+// açıklamaların çoğullanması eğer tüm taşınmazlar satılabilir ise cümleyi
+// çoğullamamız lazım. yada satış kabiliyetine göre taşınmazlara gruplayıp
+// cümle yapılarını kurmamız gerekiyor." — "saleability"/"saleabilityNote"
+// ARTIK taşınmaza-özgü (rapor-geneli paylaşım ÇIKARILDI) olduğundan,
+// buildValuationSaleabilityExplanation() ÇOKLU taşınmazlı raporlarda
+// YALNIZCA AKTİF taşınmazı yansıtıyordu — diğer taşınmazların (farklı
+// olabilecek) satış kabiliyeti TAMAMEN GÖRMEZDEN geliniyordu. Kullanıcı
+// takip talebiyle (2026-09-07) TAM davranış netleşti: (1) TÜM taşınmazlar
+// AYNI ise (Satılabilir DAHİL) atıfsız TEK çoğul cümle — kullanıcının
+// BİZZAT verdiği örnek: "Değerlemeye konu taşınmazlar ... SATILABİLİR
+// oldukları kanaatine varılmıştır."; (2) bir GRUP Satılabilir ise o grup
+// "X, Y, Z bağımsız bölümlerin satış kabiliyetinin Satılabilir olduğu
+// değerlendirilmiştir." biçiminde atıflı "matbu" (şablon) cümleyle
+// belirtilir (Satılabilir'in kendi "hikaye" varyantları YALNIZCA TÜM
+// taşınmazlar ortaksa kullanılır, karma durumda TÜM gruplar İÇİN aynı
+// sade şablon kullanılır); (3) KALAN (Satılabilir OLMAYAN) taşınmazlar da
+// KENDİ ARALARINDA (satış kabiliyeti + not birlikte) aynı mantıkla
+// gruplanır — İç Hacimler/Dekoratif Özellikler'in ZATEN kanıtlanmış
+// "aynı-değeri-üreten taşınmazları TEK grupta birleştir" ilkesiyle AYNI,
+// ama burada gruplama SERBEST METİN benzerliği yerine (saleability, note)
+// çiftinin TAM eşitliğiyle yapılır (kategorik alanlar için daha güvenilir).
+function groupValuationSaleabilityEntries(entries) {
+  const groups = [];
+  const byKey = new Map();
+  entries.forEach((entry) => {
+    const key = `${entry.saleability}||${entry.note}`;
+    if (byKey.has(key)) {
+      byKey.get(key).entries.push(entry);
+      return;
+    }
+    const group = { key, saleability: entry.saleability, note: entry.note, entries: [entry] };
+    byKey.set(key, group);
+    groups.push(group);
+  });
+  return groups;
+}
+
+// composeSoleRestDecorativeSentence()'ın "1'e-1 basit fark" düzeltmesiyle
+// (0.0.643/0.0.645) AYNI ilke: TAM İKİ grup varsa VE bu grubun 2+ üyesi,
+// ÖTEKİ grubun İSE tam 1 üyesi varsa BU grup jenerik "Diğer" adlandırması
+// alır (öteki grup zaten KENDİ tekil etiketiyle anılacağından belirsizlik
+// yok); aksi halde (3+ grup, ya da iki taraf da tekil/çoğul) HER grup
+// KENDİ özel etiketleriyle anılır — "Diğer" YALNIZCA gerçekten "geri kalan
+// HERKES" anlamına geldiğinde kullanılır.
+function shouldUseGenericOtherLabelForValuationGroup(groups, index) {
+  if (groups.length !== 2) return false;
+  const thisGroup = groups[index];
+  const otherGroup = groups[1 - index];
+  return thisGroup.entries.length >= 2 && otherGroup.entries.length === 1;
+}
+
+// Karma (2+ grup) durumda HER grup için kullanılan sade/tutarlı "matbu"
+// şablon — Satılabilir'in "hikaye" varyantları (valuationSaleabilityExplanationVariants)
+// atıf öneki eklemeye UYGUN bir dilbilgisel yuva içermediğinden (üçü de
+// KENDİ farklı, serbest nominatif özneleriyle başlıyor) BİLEREK
+// KULLANILMAZ — bunun yerine, non-Satılabilir sonuç cümlesiyle (taşınmazın
+// satış kabiliyetinin ... olacağı) AYNI dilbilgisel iskelet, öznesi
+// "{etiket} bağımsız bölüm(ler)in" ile değiştirilerek HER grup (Satılabilir
+// DAHİL) için tutarlı biçimde kurulur.
+function buildValuationSaleabilityGroupSentence(group, useGenericOther) {
+  const isPlural = group.entries.length > 1;
+  const labels = group.entries.map((entry) => formatTitleUnitSuitabilityLabel(entry.fields, entry.index));
+  const labelPhrase = useGenericOther ? "Diğer" : (isPlural ? joinTurkishList(labels) : labels[0]);
+  const unitWord = isPlural ? "bağımsız bölümlerin" : "bağımsız bölümünün";
+  const kabiliyetWord = isPlural ? "kabiliyetlerinin" : "kabiliyetinin";
+  if (group.saleability === "Satılabilir") {
+    return `${labelPhrase} ${unitWord} satış ${kabiliyetWord} Satılabilir olduğu değerlendirilmiştir.`;
+  }
+  const conclusion = `Bu sebeple ${labelPhrase} ${unitWord} satış ${kabiliyetWord} ${group.saleability} olacağı görüş ve kanaatindeyiz.`;
+  return [group.note, conclusion].filter(Boolean).join(" ");
+}
+
+// TÜM taşınmazlar (Satılabilir DAHİL) AYNI ise TEK, atıfsız cümle döner —
+// Satılabilir için valuationSaleabilityExplanationVariants'ın "hikaye"
+// varyantlarının ÇOĞUL hali (kullanıcının BİZZAT onayladığı örnek metin),
+// non-Satılabilir için mevcut sonuç cümlesinin ÇOĞUL hali. Bkz.
+// pluralizeValuationSaleabilityNarrativeText yorumu.
+const VALUATION_SALEABILITY_EXPLANATION_PLURAL_MAP = new Map([
+  [
+    valuationSaleabilityExplanationVariants[0],
+    "Değerlemeye konu taşınmazlar yukarıdaki özellikleri sebebiyle tercih edilmektedir. Konumları, ulaşım imkânları ve diğer özellikleri dikkate alındığında SATILABİLİR oldukları kanaatine varılmıştır.",
+  ],
+  [
+    valuationSaleabilityExplanationVariants[1],
+    "Söz konusu gayrimenkuller yukarıda belirtilen özellikleri nedeniyle tercih edilen taşınmazlar niteliğindedir. Konumları, ulaşım olanakları ve diğer nitelikleri birlikte değerlendirildiğinde SATILABİLİR oldukları görüş ve kanaatine varılmıştır.",
+  ],
+  [
+    valuationSaleabilityExplanationVariants[2],
+    "Rapor konusu mülkler, sahip oldukları yukarıdaki özellikler nedeniyle talep gören gayrimenkuller niteliğindedir. Konumları, ulaşım imkânları ve diğer nitelikleri birlikte ele alındığında SATILABİLİR nitelikte oldukları değerlendirilmiştir.",
+  ],
+]);
+
+function pluralizeValuationSaleabilityNarrativeText(text) {
+  return VALUATION_SALEABILITY_EXPLANATION_PLURAL_MAP.get(text) || text;
+}
+
+function buildValuationSaleabilityExplanationForAllTitleUnits() {
+  const count = getTitleUnitCount();
+  if (count < 2) return buildValuationSaleabilityExplanation();
+
+  const originalFields = state.fields;
+  const units = buildAllTitleUnitsForSummaryTable();
+  const entries = units.map((unit, index) => {
+    state.fields = { ...originalFields, ...unit.fields };
+    try {
+      const saleability = saleabilityOptions.includes(state.fields.saleability) ? state.fields.saleability : "Satılabilir";
+      const note = saleability === "Satılabilir" ? "" : normalizeReportDescriptionText(state.fields.saleabilityNote || "");
+      return { index, fields: unit.fields, saleability, note };
+    } finally {
+      state.fields = originalFields;
+    }
+  });
+
+  const groups = groupValuationSaleabilityEntries(entries);
+  if (groups.length <= 1) {
+    const group = groups[0];
+    if (!group) return "";
+    if (group.saleability === "Satılabilir") {
+      const variantIndex = selectVariant("buildValuationSaleabilityExplanation", valuationSaleabilityExplanationVariants.length);
+      return pluralizeValuationSaleabilityNarrativeText(valuationSaleabilityExplanationVariants[variantIndex]);
+    }
+    const conclusion = `Bu sebeple taşınmazların satış kabiliyetlerinin ${group.saleability} olacağı görüş ve kanaatindeyiz.`;
+    return normalizeReportDescriptionText([group.note, conclusion].filter(Boolean).join(" "));
+  }
+
+  return normalizeReportDescriptionText(
+    groups
+      .map((group, index) => buildValuationSaleabilityGroupSentence(group, shouldUseGenericOtherLabelForValuationGroup(groups, index)))
+      .join(" ")
+  );
+}
+
 const valuationSaleabilityExplanationFallback = "Satış kabiliyeti seçildiğinde açıklama otomatik oluşacaktır.";
 
 function refreshValuationSaleabilityExplanation() {
   if (suppressValuationSideEffects) return;
-  state.fields.valuationSaleabilityExplanation = buildValuationSaleabilityExplanation();
+  state.fields.valuationSaleabilityExplanation = buildValuationSaleabilityExplanationForAllTitleUnits();
   const text = document.querySelector("[data-valuation-saleability-explanation-text]");
   if (text) text.textContent = state.fields.valuationSaleabilityExplanation || valuationSaleabilityExplanationFallback;
 }
