@@ -53,7 +53,7 @@ const industrialRegionUsePurposeOptions = [
 const caseBankOptions = [
   "",
   "Akbank T.A.Ş.",
-  "Emlak Katılım Bankası A.Ş.",
+  "Emlak Katılım Tasarruf Finansman Fonu",
   "Türkiye Halk Bankası A.Ş.",
   "Türkiye İş Bankası A.Ş.",
   "Kuveyt Türk Katılım Bankası A.Ş.",

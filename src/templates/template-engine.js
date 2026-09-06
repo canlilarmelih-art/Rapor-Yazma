@@ -35,7 +35,7 @@
     // exportTemplate() bu bayrağı görünce sunucunun HTML-render API'sini
     // ATLAYIP /api/report-template-docx'ten ham baytları çeker ve
     // src/exports/docx-fill.js ile yerelde doldurur.
-    { key: "emlakkatilim", file: "templates/emlakkatilim.docx", format: "docx", title: "Emlak Katılım Rapor Formatı", bank: "Emlak Katılım Bankası A.Ş." },
+    { key: "emlakkatilim", file: "templates/emlakkatilim.docx", format: "docx", title: "Emlak Katılım Rapor Formatı", bank: "Emlak Katılım Tasarruf Finansman Fonu" },
     { key: "halkbank", file: "templates/halkbank.html", title: "Halkbank Rapor Formatı", bank: "Türkiye Halk Bankası A.Ş." },
     { key: "isbankasi", file: "templates/isbankasi.html", title: "İş Bankası Rapor Formatı", bank: "Türkiye İş Bankası A.Ş." },
     { key: "isbankasi-masraf", file: "templates/isbankasi-masraf.html", title: "İş Bankası Masraf Yazısı", bank: "" },
