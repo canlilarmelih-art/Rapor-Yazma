@@ -9688,21 +9688,28 @@ function buildValuationSaleabilityExplanation() {
 // ARTIK taşınmaza-özgü (rapor-geneli paylaşım ÇIKARILDI) olduğundan,
 // buildValuationSaleabilityExplanation() ÇOKLU taşınmazlı raporlarda
 // YALNIZCA AKTİF taşınmazı yansıtıyordu — diğer taşınmazların (farklı
-// olabilecek) satış kabiliyeti TAMAMEN GÖRMEZDEN geliniyordu. Kullanıcı
-// takip talebiyle (2026-09-07) TAM davranış netleşti: (1) TÜM taşınmazlar
-// AYNI ise (Satılabilir DAHİL) atıfsız TEK çoğul cümle — kullanıcının
-// BİZZAT verdiği örnek: "Değerlemeye konu taşınmazlar ... SATILABİLİR
-// oldukları kanaatine varılmıştır."; (2) bir GRUP Satılabilir ise o grup
-// "X, Y, Z bağımsız bölümlerin satış kabiliyetinin Satılabilir olduğu
-// değerlendirilmiştir." biçiminde atıflı "matbu" (şablon) cümleyle
-// belirtilir (Satılabilir'in kendi "hikaye" varyantları YALNIZCA TÜM
-// taşınmazlar ortaksa kullanılır, karma durumda TÜM gruplar İÇİN aynı
-// sade şablon kullanılır); (3) KALAN (Satılabilir OLMAYAN) taşınmazlar da
-// KENDİ ARALARINDA (satış kabiliyeti + not birlikte) aynı mantıkla
-// gruplanır — İç Hacimler/Dekoratif Özellikler'in ZATEN kanıtlanmış
-// "aynı-değeri-üreten taşınmazları TEK grupta birleştir" ilkesiyle AYNI,
-// ama burada gruplama SERBEST METİN benzerliği yerine (saleability, note)
-// çiftinin TAM eşitliğiyle yapılır (kategorik alanlar için daha güvenilir).
+// olabilecek) satış kabiliyeti TAMAMEN GÖRMEZDEN geliniyordu.
+//
+// KULLANICI DÜZELTMESİ (2026-09-07, GERÇEK üretilen/talep edilen paragraf
+// karşılaştırmasıyla): İLK denemenin (bu commit'ten ÖNCEki hali) karma
+// durumda Satılabilir için icat edilen sade "matbu" şablon ("X bağımsız
+// bölümlerin satış kabiliyetinin Satılabilir olduğu değerlendirilmiştir.")
+// TAMAMEN YANLIŞTI — kullanıcı Satılabilir grubu için GERÇEK "hikaye"
+// varyant cümlesinin (valuationSaleabilityExplanationVariants) ÖZNESİ
+// atıfla DEĞİŞTİRİLMİŞ halini istiyor ("Diğer tüm taşınmazlar yukarıdaki
+// özellikleri sebebiyle tercih edilmektedir. ... SATILABİLİR oldukları
+// kanaatine varılmıştır." — "Değerlemeye konu taşınmazlar" ÖZNESİ "Diğer
+// tüm taşınmazlar" ile DEĞİŞTİ, cümlenin GERİ KALANI AYNEN kaldı).
+// Satılabilir-OLMAYAN grup İÇİN İSE etiket, cümlenin İÇİNE GRAMER OLARAK
+// ÖRÜLMEZ — sadece BAŞINA eklenir, cümlenin KENDİSİ (not + "Bu sebeple
+// taşınmazın satış kabiliyetinin ... olacağı") HİÇ DEĞİŞMEDEN kalır:
+// "A 8 No'lu Yapı denetim sözleşme feshi bulunmaktadır. Bu sebeple
+// taşınmazın satış kabiliyetinin Alıcısı Az olacağı görüş ve
+// kanaatindeyiz." (dikkat: "taşınmazın" DEĞİŞMEDİ, "A 8 No'lu" sadece
+// ÖNÜNE eklendi). AYRICA sıralama da düzeltildi: ÖZEL etiketli (azınlık/
+// sorunlu) grup(lar) ÖNCE, jenerik "Diğer" (çoğunluk) grubu HER ZAMAN EN
+// SONA gelir (ilk deneme title-unit index sırasını kullanıyordu, bu
+// yüzden "Diğer" grubu YANLIŞLIKLA başa gelebiliyordu).
 function groupValuationSaleabilityEntries(entries) {
   const groups = [];
   const byKey = new Map();
@@ -9733,25 +9740,63 @@ function shouldUseGenericOtherLabelForValuationGroup(groups, index) {
   return thisGroup.entries.length >= 2 && otherGroup.entries.length === 1;
 }
 
-// Karma (2+ grup) durumda HER grup için kullanılan sade/tutarlı "matbu"
-// şablon — Satılabilir'in "hikaye" varyantları (valuationSaleabilityExplanationVariants)
-// atıf öneki eklemeye UYGUN bir dilbilgisel yuva içermediğinden (üçü de
-// KENDİ farklı, serbest nominatif özneleriyle başlıyor) BİLEREK
-// KULLANILMAZ — bunun yerine, non-Satılabilir sonuç cümlesiyle (taşınmazın
-// satış kabiliyetinin ... olacağı) AYNI dilbilgisel iskelet, öznesi
-// "{etiket} bağımsız bölüm(ler)in" ile değiştirilerek HER grup (Satılabilir
-// DAHİL) için tutarlı biçimde kurulur.
-function buildValuationSaleabilityGroupSentence(group, useGenericOther) {
+// valuationSaleabilityExplanationVariants'ın (3 "hikaye" varyantı) ATIF-
+// UYUMLU halleri — her varyantın KENDİ özgün öznesi ("Değerlemeye konu
+// taşınmaz(lar)"/"Söz konusu gayrimenkul(ler)"/"Rapor konusu mülk(ler)")
+// ÇIKARILIP yerine PARAMETRE olarak verilen `subject` ("Diğer tüm
+// taşınmazlar" / "{etiket} taşınmaz(lar)") konur; 2. ve 3. varyantların
+// ORİJİNAL metninde "taşınmaz"/"gayrimenkul" kelimesi cümle İÇİNDE TEKRAR
+// geçtiğinden (ör. "... tercih edilen BİR TAŞINMAZ niteliğindedir"), bu
+// atıf-uyumlu hallerde o TEKRARLI nitelik cümleciği ÇIKARILDI (aksi halde
+// "{etiket} taşınmaz ... tercih edilen bir taşınmaz niteliğindedir" gibi
+// öznenin KENDİSİYLE ÇELİŞEN/tekrarlayan bir cümle ortaya çıkardı) —
+// yalnızca 1. varyant (kullanıcının BİZZAT onayladığı) ORİJİNAL yapısını
+// BİREBİR korur, 2/3. varyantlar EŞDEĞER ama SADELEŞTİRİLMİŞ (henüz
+// kullanıcı tarafından TEYİT EDİLMEMİŞ) hallerdir.
+const VALUATION_SALEABILITY_ATTRIBUTED_NARRATIVE_TEMPLATES = [
+  {
+    singular: (subject) => `${subject} yukarıdaki özellikleri sebebiyle tercih edilmektedir. Konumu, ulaşım imkânları ve diğer özellikleri dikkate alındığında SATILABİLİR olduğu kanaatine varılmıştır.`,
+    plural: (subject) => `${subject} yukarıdaki özellikleri sebebiyle tercih edilmektedir. Konumları, ulaşım imkânları ve diğer özellikleri dikkate alındığında SATILABİLİR oldukları kanaatine varılmıştır.`,
+  },
+  {
+    singular: (subject) => `${subject} yukarıda belirtilen özellikleri nedeniyle tercih edilmektedir. Konumu, ulaşım olanakları ve diğer nitelikleri birlikte değerlendirildiğinde SATILABİLİR olduğu görüş ve kanaatine varılmıştır.`,
+    plural: (subject) => `${subject} yukarıda belirtilen özellikleri nedeniyle tercih edilmektedir. Konumları, ulaşım olanakları ve diğer nitelikleri birlikte değerlendirildiğinde SATILABİLİR oldukları görüş ve kanaatine varılmıştır.`,
+  },
+  {
+    singular: (subject) => `${subject}, sahip olduğu yukarıdaki özellikler nedeniyle talep görmektedir. Konumu, ulaşım imkânları ve diğer nitelikleri birlikte ele alındığında SATILABİLİR nitelikte olduğu değerlendirilmiştir.`,
+    plural: (subject) => `${subject}, sahip oldukları yukarıdaki özellikler nedeniyle talep görmektedir. Konumları, ulaşım imkânları ve diğer nitelikleri birlikte ele alındığında SATILABİLİR nitelikte oldukları değerlendirilmiştir.`,
+  },
+];
+
+function buildAttributedValuationSaleabilityNarrativeSentence(variantIndex, subject, isPlural) {
+  const template = VALUATION_SALEABILITY_ATTRIBUTED_NARRATIVE_TEMPLATES[variantIndex] || VALUATION_SALEABILITY_ATTRIBUTED_NARRATIVE_TEMPLATES[0];
+  return isPlural ? template.plural(subject) : template.singular(subject);
+}
+
+// Karma (2+ grup) durumda HER grup için atıflı cümle kurar. Satılabilir
+// grubu İÇİN "hikaye" varyantının KENDİSİ, öznesi atıfla değiştirilerek
+// kullanılır (bkz. yukarıki yorum) — Satılabilir-OLMAYAN grup İÇİN İSE
+// etiket cümlenin GRAMERİNE ÖRÜLMEZ, sadece BAŞINA eklenir (kullanıcının
+// GERÇEK örneği: "A 8 No'lu Yapı denetim sözleşme feshi bulunmaktadır.
+// Bu sebeple taşınmazın satış kabiliyetinin Alıcısı Az olacağı görüş ve
+// kanaatindeyiz." — "taşınmazın" DEĞİŞMEDEN kalır).
+function buildValuationSaleabilityGroupSentence(group, useGenericOther, variantIndex) {
   const isPlural = group.entries.length > 1;
   const labels = group.entries.map((entry) => formatTitleUnitSuitabilityLabel(entry.fields, entry.index));
-  const labelPhrase = useGenericOther ? "Diğer" : (isPlural ? joinTurkishList(labels) : labels[0]);
-  const unitWord = isPlural ? "bağımsız bölümlerin" : "bağımsız bölümünün";
-  const kabiliyetWord = isPlural ? "kabiliyetlerinin" : "kabiliyetinin";
   if (group.saleability === "Satılabilir") {
-    return `${labelPhrase} ${unitWord} satış ${kabiliyetWord} Satılabilir olduğu değerlendirilmiştir.`;
+    const subject = useGenericOther
+      ? "Diğer tüm taşınmazlar"
+      : isPlural
+        ? `${joinTurkishList(labels)} taşınmazlar`
+        : `${labels[0]} taşınmaz`;
+    return buildAttributedValuationSaleabilityNarrativeSentence(variantIndex, subject, isPlural);
   }
-  const conclusion = `Bu sebeple ${labelPhrase} ${unitWord} satış ${kabiliyetWord} ${group.saleability} olacağı görüş ve kanaatindeyiz.`;
-  return [group.note, conclusion].filter(Boolean).join(" ");
+  const labelPhrase = useGenericOther ? "Diğer taşınmazların" : joinTurkishList(labels);
+  const conclusion = isPlural
+    ? `Bu sebeple taşınmazların satış kabiliyetlerinin ${group.saleability} olacağı görüş ve kanaatindeyiz.`
+    : `Bu sebeple taşınmazın satış kabiliyetinin ${group.saleability} olacağı görüş ve kanaatindeyiz.`;
+  const sentence = [group.note, conclusion].filter(Boolean).join(" ");
+  return `${labelPhrase} ${sentence}`;
 }
 
 // TÜM taşınmazlar (Satılabilir DAHİL) AYNI ise TEK, atıfsız cümle döner —
@@ -9807,9 +9852,18 @@ function buildValuationSaleabilityExplanationForAllTitleUnits() {
     return normalizeReportDescriptionText([group.note, conclusion].filter(Boolean).join(" "));
   }
 
+  // KULLANICI DÜZELTMESİ: ÖZEL etiketli (azınlık/sorunlu) grup(lar) ÖNCE,
+  // jenerik "Diğer" (çoğunluk) grubu HER ZAMAN EN SONA gelir — Array.sort
+  // KARARLI (stable) olduğundan (ES2019+), aynı kategorideki gruplar
+  // KENDİ ARALARINDA özgün (title-unit index) sırasını KORUR.
+  const variantIndex = selectVariant("buildValuationSaleabilityExplanation", valuationSaleabilityExplanationVariants.length);
+  const orderedGroups = groups
+    .map((group, index) => ({ group, useGenericOther: shouldUseGenericOtherLabelForValuationGroup(groups, index) }))
+    .sort((a, b) => Number(a.useGenericOther) - Number(b.useGenericOther));
+
   return normalizeReportDescriptionText(
-    groups
-      .map((group, index) => buildValuationSaleabilityGroupSentence(group, shouldUseGenericOtherLabelForValuationGroup(groups, index)))
+    orderedGroups
+      .map(({ group, useGenericOther }) => buildValuationSaleabilityGroupSentence(group, useGenericOther, variantIndex))
       .join(" ")
   );
 }

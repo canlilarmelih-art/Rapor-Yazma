@@ -17,6 +17,23 @@
 // YALNIZCA AKTİF taşınmazın verisini okuyordu — diğer taşınmazların
 // (farklı olabilecek) satış kabiliyeti tamamen görmezden geliniyordu.
 //
+// KULLANICI DÜZELTMESİ (2026-09-07, GERÇEK üretilen/talep edilen paragraf
+// karşılaştırma görseli): İLK deneme (bu commit'ten ÖNCEki hali) karma
+// durumda Satılabilir grubu İÇİN icat edilmiş sade bir "matbu" şablon
+// ("X bağımsız bölümlerin satış kabiliyetinin Satılabilir olduğu
+// değerlendirilmiştir.") kullanıyordu — YANLIŞTI. Kullanıcının GERÇEK
+// örneği: Satılabilir grubu İÇİN "hikaye" varyant cümlesinin KENDİSİ,
+// SADECE öznesi atıfla değiştirilerek kullanılmalı ("Diğer tüm
+// taşınmazlar yukarıdaki özellikleri sebebiyle tercih edilmektedir. ...
+// SATILABİLİR oldukları kanaatine varılmıştır."); Satılabilir-OLMAYAN
+// grup İÇİN İSE etiket cümlenin GRAMERİNE ÖRÜLMEZ, SADECE BAŞINA eklenir,
+// cümlenin kendisi ("taşınmazın satış kabiliyetinin ... olacağı")
+// DEĞİŞMEDEN kalır ("A 8 No'lu Yapı denetim sözleşme feshi bulunmaktadır.
+// Bu sebeple taşınmazın satış kabiliyetinin Alıcısı Az olacağı görüş ve
+// kanaatindeyiz."). AYRICA sıralama: ÖZEL etiketli (azınlık/sorunlu)
+// grup(lar) ÖNCE, jenerik "Diğer" (çoğunluk/olumlu) grubu HER ZAMAN EN
+// SONA gelir.
+//
 // Bu test kapsamı:
 //  1) Tek taşınmazlı / count<2 raporlarda davranış DEĞİŞMEDİ (eski
 //     tek-taşınmaz fonksiyonuna aynen düşer).
@@ -24,15 +41,18 @@
 //     cümle — kullanıcının BİZZAT verdiği örnek metinle BİREBİR eşleşir.
 //  3) TÜM taşınmazlar AYNI (Satılabilir OLMAYAN, AYNI not) ise atıfsız
 //     TEK ÇOĞUL sonuç cümlesi.
-//  4) KARMA durum: bir grup Satılabilir, kalan grup(lar) kendi
-//     aralarında (satış kabiliyeti + not) gruplanıp HER GRUP kendi
-//     atıflı "matbu" cümlesini alır.
-//  5) "1'e-1 basit fark" (composeSoleRestDecorativeSentence ile AYNI
-//     ilke): tam 2 grup, HER İKİSİ de tekil ise "Diğer" YERİNE ikisi de
-//     kendi özel etiketini alır.
-//  6) 3+ grup (fallback): HİÇBİRİ "Diğer" almaz, HER grup kendi özel
+//  4) KARMA durum (1'e-1): HER İKİ taraf da kendi özel etiketiyle,
+//     Satılabilir tarafı KENDİ "hikaye" cümlesinin (öznesi değişmiş)
+//     tekil hali, diğer taraf not+sonuç cümlesinin BAŞINA etiket eklenmiş
+//     hali.
+//  5) KULLANICI ÖRNEĞİNİN BİREBİR REPRODÜKSİYONU: 1 Alıcısı Az (özel
+//     etiket, not ile) + 2 Satılabilir ("Diğer", hikaye cümlesi öznesi
+//     değişmiş) — sıralama: özel etiketli ÖNCE, "Diğer" SONRA.
+//  6) "1'e-1 basit fark"ın TERSİ: sole=Satılabilir, "Diğer"=Satılamaz
+//     (2+ üye) — jenerik etiket + not-öncesi-etiket kombinasyonu.
+//  7) 3+ grup (fallback): HİÇBİRİ "Diğer" almaz, HER grup kendi özel
 //     etiketleriyle anılır.
-//  7) Farklı notlar AYNI saleability değerine sahip olsa bile taşınmazları
+//  8) Farklı notlar AYNI saleability değerine sahip olsa bile taşınmazları
 //     AYRI gruplara düşürür (grup anahtarı saleability+not ÇİFTİ).
 
 const assert = require("node:assert/strict");
@@ -159,10 +179,10 @@ const unit = (overrides = {}) => ({ unitNo: "", titleBlockName: "", saleability:
   console.log("Tüm taşınmazlar AYNI (Satılamaz) -> atıfsız çoğul sonuç cümlesi testi tamam.");
 }
 
-// --- 4) KARMA durum: 1 Satılabilir + 1 Satılamaz -> HER İKİSİ de KENDİ --
-// özel etiketiyle (1'e-1 basit fark kuralı: "Diğer" YOK).
+// --- 4) KARMA durum (1'e-1): 1 Satılabilir + 1 Satılamaz -> HER İKİSİ de -
+// KENDİ özel etiketiyle ("Diğer" YOK, ikisi de tekil).
 {
-  const context = makeContext();
+  const context = makeContext({ selectVariantIndex: 0 });
   withUnits(context, [
     unit({ unitNo: "5", saleability: "Satılabilir" }),
     unit({ unitNo: "8", saleability: "Satılamaz", saleabilityNote: "Bölgedeki talep çok düşüktür." }),
@@ -170,41 +190,42 @@ const unit = (overrides = {}) => ({ unitNo: "", titleBlockName: "", saleability:
   const result = context.buildValuationSaleabilityExplanationForAllTitleUnits();
   assert.equal(
     result,
-    "5 No'lu bağımsız bölümünün satış kabiliyetinin Satılabilir olduğu değerlendirilmiştir. " +
-      "Bölgedeki talep çok düşüktür. Bu sebeple 8 No'lu bağımsız bölümünün satış kabiliyetinin Satılamaz olacağı görüş ve kanaatindeyiz.",
-    "1'e-1 karma durumda HER İKİ taşınmaz da 'Diğer' YERİNE KENDİ özel etiketiyle anılmalı."
+    "5 No'lu taşınmaz yukarıdaki özellikleri sebebiyle tercih edilmektedir. Konumu, ulaşım imkânları ve diğer özellikleri dikkate alındığında SATILABİLİR olduğu kanaatine varılmıştır. " +
+      "8 No'lu Bölgedeki talep çok düşüktür. Bu sebeple taşınmazın satış kabiliyetinin Satılamaz olacağı görüş ve kanaatindeyiz.",
+    "1'e-1 karma durumda: Satılabilir taraf KENDİ 'hikaye' cümlesinin (öznesi '5 No'lu taşınmaz' olan) tekil hali, Satılamaz taraf ise not+sonuç cümlesinin BAŞINA '8 No'lu' etiketi eklenmiş (cümlenin İÇİ 'taşınmazın' olarak DEĞİŞMEDEN kalmalı) hali almalı."
   );
   console.log("Karma (1 Satılabilir + 1 Satılamaz, 1'e-1) -> iki özel etiketli cümle testi tamam.");
 }
 
-// --- 5) KARMA durum: 2 Satılabilir + 1 Satılamaz -> tam 2 GRUP, biri ----
-// (Satılamaz) TEKİL olduğundan composeSoleRestDecorativeSentence ile AYNI
-// "sole/rest" kuralı gereği 2+ üyeli Satılabilir grubu jenerik "Diğer"
-// alır, TEKİL Satılamaz taşınmaz KENDİ özel etiketini korur (bkz. 5b'nin
-// TERSİ — burada "az" taraf sole, "çok" taraf Satılabilir).
+// --- 5) KULLANICI ÖRNEĞİNİN BİREBİR REPRODÜKSİYONU: 1 Alıcısı Az (özel --
+// etiket + not) + 2 Satılabilir ("Diğer", hikaye cümlesi öznesi
+// değişmiş) — sıralama: özel etiketli ÖNCE, "Diğer" SONRA (gerçek
+// üretilen/talep edilen paragraf karşılaştırma görseliyle BİREBİR eşleşir,
+// yalnızca örnekteki "Yapı denetim sözleşme feshi bulunmaktadır." notu ve
+// "A 8 No'lu" etiketiyle).
 {
-  const context = makeContext();
+  const context = makeContext({ selectVariantIndex: 0 });
   withUnits(context, [
-    unit({ unitNo: "5", saleability: "Satılabilir" }),
-    unit({ unitNo: "8", saleability: "Satılabilir" }),
-    unit({ unitNo: "11", saleability: "Satılamaz", saleabilityNote: "Bölgedeki talep çok düşüktür." }),
+    unit({ titleBlockName: "A", unitNo: "5", saleability: "Satılabilir" }),
+    unit({ titleBlockName: "A", unitNo: "8", saleability: "Alıcısı Az", saleabilityNote: "Yapı denetim sözleşme feshi bulunmaktadır." }),
+    unit({ titleBlockName: "A", unitNo: "11", saleability: "Satılabilir" }),
   ]);
   const result = context.buildValuationSaleabilityExplanationForAllTitleUnits();
   assert.equal(
     result,
-    "Diğer bağımsız bölümlerin satış kabiliyetlerinin Satılabilir olduğu değerlendirilmiştir. " +
-      "Bölgedeki talep çok düşüktür. Bu sebeple 11 No'lu bağımsız bölümünün satış kabiliyetinin Satılamaz olacağı görüş ve kanaatindeyiz.",
-    "Tam 2 grup + biri (Satılamaz) tekil ise, 2+ üyeli Satılabilir grubu jenerik 'Diğer' almalı, tekil taraf KENDİ etiketini korumalı."
+    "A 8 No'lu Yapı denetim sözleşme feshi bulunmaktadır. Bu sebeple taşınmazın satış kabiliyetinin Alıcısı Az olacağı görüş ve kanaatindeyiz. " +
+      "Diğer tüm taşınmazlar yukarıdaki özellikleri sebebiyle tercih edilmektedir. Konumları, ulaşım imkânları ve diğer özellikleri dikkate alındığında SATILABİLİR oldukları kanaatine varılmıştır.",
+    "KULLANICI ÖRNEĞİ: özel etiketli (Alıcısı Az) grup ÖNCE, jenerik 'Diğer tüm taşınmazlar' (Satılabilir, hikaye cümlesi öznesi değişmiş) grup SONRA gelmeli."
   );
-  console.log("Karma (2 Satılabilir + 1 Satılamaz, sole/rest) -> 'Diğer' + tekil özel etiket testi tamam.");
+  console.log("KULLANICI ÖRNEĞİNİN BİREBİR REPRODÜKSİYONU (1 Alıcısı Az + 2 Satılabilir, 'Diğer' sona) testi tamam.");
 }
 
-// --- 5b) "Diğer" jenerik etiketi: 1 Satılabilir (tekil) + 2 Satılamaz ----
-// (AYNI not, çoğul) -> Satılamaz grubu "Diğer bağımsız bölümlerin" alır
-// (composeSoleRestDecorativeSentence ile AYNI ilke: karşı taraf TEKİLSE
-// bu taraf jenerik "Diğer" alabilir).
+// --- 6) "1'e-1 basit fark"ın TERSİ: sole=Satılabilir (özel etiket, ------
+// tekil hikaye cümlesi), "Diğer"=Satılamaz (2+ üye, not+sonuç cümlesinin
+// BAŞINA "Diğer taşınmazların" etiketi eklenir) — sıralama: özel etiketli
+// (Satılabilir) ÖNCE, "Diğer" (Satılamaz) SONRA.
 {
-  const context = makeContext();
+  const context = makeContext({ selectVariantIndex: 0 });
   withUnits(context, [
     unit({ unitNo: "5", saleability: "Satılabilir" }),
     unit({ unitNo: "8", saleability: "Satılamaz", saleabilityNote: "Bölgedeki talep çok düşüktür." }),
@@ -213,17 +234,18 @@ const unit = (overrides = {}) => ({ unitNo: "", titleBlockName: "", saleability:
   const result = context.buildValuationSaleabilityExplanationForAllTitleUnits();
   assert.equal(
     result,
-    "5 No'lu bağımsız bölümünün satış kabiliyetinin Satılabilir olduğu değerlendirilmiştir. " +
-      "Bölgedeki talep çok düşüktür. Bu sebeple Diğer bağımsız bölümlerin satış kabiliyetlerinin Satılamaz olacağı görüş ve kanaatindeyiz.",
-    "Karşı taraf (Satılabilir) TEKİLSE, 2+ üyeli Satılamaz grubu jenerik 'Diğer' etiketini almalı."
+    "5 No'lu taşınmaz yukarıdaki özellikleri sebebiyle tercih edilmektedir. Konumu, ulaşım imkânları ve diğer özellikleri dikkate alındığında SATILABİLİR olduğu kanaatine varılmıştır. " +
+      "Diğer taşınmazların Bölgedeki talep çok düşüktür. Bu sebeple taşınmazların satış kabiliyetlerinin Satılamaz olacağı görüş ve kanaatindeyiz.",
+    "Sole=Satılabilir (özel etiket, tekil hikaye) ÖNCE, 'Diğer'=Satılamaz (2+ üye, çoğul not+sonuç) SONRA gelmeli."
   );
-  console.log("'Diğer' jenerik etiketi (karşı taraf tekil) testi tamam.");
+  console.log("'1e-1 basit fark'in tersi (sole=Satilabilir, Diger=Satilamaz) testi tamam.");
 }
 
-// --- 6) 3+ grup (fallback): HİÇBİRİ 'Diğer' almaz, HER grup KENDİ -------
-// etiketleriyle anılır.
+// --- 7) 3+ grup (fallback): HİÇBİRİ 'Diğer' almaz, HER grup KENDİ -------
+// etiketleriyle anılır (hiçbiri generic olmadığından sıralama title-unit
+// index sırasını korur).
 {
-  const context = makeContext();
+  const context = makeContext({ selectVariantIndex: 0 });
   withUnits(context, [
     unit({ unitNo: "5", saleability: "Satılabilir" }),
     unit({ unitNo: "8", saleability: "Alıcısı Az", saleabilityNote: "Bölgede benzer emsal azdır." }),
@@ -231,13 +253,13 @@ const unit = (overrides = {}) => ({ unitNo: "", titleBlockName: "", saleability:
   ]);
   const result = context.buildValuationSaleabilityExplanationForAllTitleUnits();
   assert.ok(!/\bDiğer\b/.test(result), "3+ grupta HİÇBİR grup jenerik 'Diğer' almamalı.");
-  assert.ok(result.includes("5 No'lu bağımsız bölümünün satış kabiliyetinin Satılabilir olduğu değerlendirilmiştir."), "Satılabilir grubu kendi etiketiyle yer almalı.");
-  assert.ok(result.includes("Bölgede benzer emsal azdır. Bu sebeple 8 No'lu bağımsız bölümünün satış kabiliyetinin Alıcısı Az olacağı görüş ve kanaatindeyiz."), "Alıcısı Az grubu kendi etiketi+notuyla yer almalı.");
-  assert.ok(result.includes("Bölgedeki talep çok düşüktür. Bu sebeple 11 No'lu bağımsız bölümünün satış kabiliyetinin Satılamaz olacağı görüş ve kanaatindeyiz."), "Satılamaz grubu kendi etiketi+notuyla yer almalı.");
+  assert.ok(result.includes("5 No'lu taşınmaz yukarıdaki özellikleri sebebiyle tercih edilmektedir."), "Satılabilir grubu kendi 'hikaye' cümlesiyle (özneli) yer almalı.");
+  assert.ok(result.includes("8 No'lu Bölgede benzer emsal azdır. Bu sebeple taşınmazın satış kabiliyetinin Alıcısı Az olacağı görüş ve kanaatindeyiz."), "Alıcısı Az grubu kendi etiketi+notuyla (cümle içi 'taşınmazın' değişmeden) yer almalı.");
+  assert.ok(result.includes("11 No'lu Bölgedeki talep çok düşüktür. Bu sebeple taşınmazın satış kabiliyetinin Satılamaz olacağı görüş ve kanaatindeyiz."), "Satılamaz grubu kendi etiketi+notuyla yer almalı.");
   console.log("3+ grup (fallback, hiçbiri Diğer almaz) testi tamam.");
 }
 
-// --- 7) AYNI saleability, FARKLI not -> AYRI gruplara düşer -------------
+// --- 8) AYNI saleability, FARKLI not -> AYRI gruplara düşer -------------
 {
   const context = makeContext();
   withUnits(context, [
@@ -245,10 +267,8 @@ const unit = (overrides = {}) => ({ unitNo: "", titleBlockName: "", saleability:
     unit({ unitNo: "8", saleability: "Satılamaz", saleabilityNote: "İmar durumu belirsizdir." }),
   ]);
   const result = context.buildValuationSaleabilityExplanationForAllTitleUnits();
-  assert.ok(result.includes("5 No'lu bağımsız bölümünün satış kabiliyetinin Satılamaz olacağı"), "Farklı notlu 5 No'lu KENDİ ayrı cümlesinde kalmalı.");
-  assert.ok(result.includes("8 No'lu bağımsız bölümünün satış kabiliyetinin Satılamaz olacağı"), "Farklı notlu 8 No'lu KENDİ ayrı cümlesinde kalmalı.");
-  assert.ok(result.includes("Bölgedeki talep çok düşüktür."), "5 No'lunun notu korunmalı.");
-  assert.ok(result.includes("İmar durumu belirsizdir."), "8 No'lunun notu korunmalı.");
+  assert.ok(result.includes("5 No'lu Bölgedeki talep çok düşüktür. Bu sebeple taşınmazın satış kabiliyetinin Satılamaz olacağı"), "Farklı notlu 5 No'lu KENDİ ayrı cümlesinde kalmalı.");
+  assert.ok(result.includes("8 No'lu İmar durumu belirsizdir. Bu sebeple taşınmazın satış kabiliyetinin Satılamaz olacağı"), "Farklı notlu 8 No'lu KENDİ ayrı cümlesinde kalmalı.");
   console.log("Aynı saleability, farklı not -> ayrı gruplara düşme testi tamam.");
 }
 
