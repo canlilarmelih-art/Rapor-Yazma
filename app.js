@@ -9437,7 +9437,13 @@ const valuationMethodExplanationVariants = [
 ];
 registerVariantGroup("buildValuationMethodExplanation", "Değerleme Yöntemi Açıklaması Girişi (Değerleme)", valuationMethodExplanationVariants.length);
 
-function buildValuationMethodExplanation() {
+// buildValuationMethodExplanation()'ın "yöntem cümlesi" kısmı — kullanıcı
+// talebiyle (2026-09-07, "Değerleme Yöntemi Açıklamasını çoğul olarak
+// tekrar oluştur") çoklu taşınmazlı raporlar için AYRI bir çoğullama/
+// gruplama katmanı (buildValuationMethodBaseTextForAllTitleUnits, aşağıda)
+// gerektiğinden, saf bir fonksiyon olarak DIŞARI ÇIKARILDI — davranış
+// BİREBİR AYNI, yalnızca yeniden kullanılabilir hale getirildi.
+function buildValuationMethodBaseText() {
   const approaches = parseValuationMultiValue(state.fields.valuationMethod)
     .map((method) => method.replace(/\s*Yöntemi$/i, "").trim())
     .filter(Boolean);
@@ -9446,7 +9452,12 @@ function buildValuationMethodExplanation() {
     ? approaches[0]
     : `${approaches.slice(0, -1).join(", ")} ve ${approaches[approaches.length - 1]}`;
   const approachWord = approaches.length > 1 ? "yaklaşımları" : "yaklaşımı";
-  const baseText = valuationMethodExplanationVariants[selectVariant("buildValuationMethodExplanation", valuationMethodExplanationVariants.length)](joined, approachWord);
+  return valuationMethodExplanationVariants[selectVariant("buildValuationMethodExplanation", valuationMethodExplanationVariants.length)](joined, approachWord);
+}
+
+function buildValuationMethodExplanation() {
+  const baseText = buildValuationMethodBaseText();
+  if (!baseText) return "";
   const externalAppraisalText = buildValuationExternalAppraisalText();
   const usageNatureDifferenceText = buildValuationUsageNatureDifferenceText();
   const constructionLevelText = buildValuationConstructionLevelRiskText();
@@ -9562,17 +9573,297 @@ function parseConstructionLevelPercentForExplanation(value) {
   return Math.min(percent, 100);
 }
 
+// Kullanıcı talebi (2026-09-07): "Değerleme Yöntemi Açıklamasını çoğul
+// olarak tekrar oluştur ... 3 ek cümleye de aynı çoğullama/gruplama
+// mantığı uygulansın." — "Değerleme Yöntemi Açıklaması" 4 parçadan oluşur
+// (bkz. buildValuationMethodExplanation): (1) yöntem cümlesi (valuationMethod
+// — ARTIK taşınmaza-özgü, buildValuationSaleabilityExplanationForAllTitleUnits
+// ile AYNI grup+atıf mimarisi gerekir), (2) dışarıdan ekspertiz ek
+// paragrafı (appointmentType/externalAppraisalReason/projectInstitution —
+// ÜÇÜ DE rapor-geneli PAYLAŞIMLI alanlar, bkz. TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS
+// — gruplamaya GEREK YOK, TÜM taşınmazlar için HER ZAMAN AYNI, yalnızca
+// ÇOĞUL SÖZCÜKLERLE yeniden yazılması yeterli), (3) kullanım niteliği
+// farkı (legalUsageNature/currentUsageNature/usageNatureDifference —
+// BUNLAR DA "case" bölümünde, rapor-geneli PAYLAŞIMLI — AYNI şekilde
+// yalnızca çoğul sözcük gerektirir), (4) inşaat seviyesi riski
+// (unitConstructionLevel — Bağımsız Bölüm'ün KENDİ alanı, GERÇEKTEN
+// taşınmaza-özgü — grup+atıf mimarisi GEREKİR, (1) ile AYNI).
+
+// groupValuationSaleabilityEntries()'in GENEL (saleability'e özel
+// OLMAYAN) hali — herhangi bir taşınmaz-girdisi listesini VERİLEN anahtar
+// fonksiyonuna göre gruplar. saleability'nin KENDİ (zaten test edilmiş/
+// canlıya alınmış) grup fonksiyonuna BİLİNÇLİ OLARAK DOKUNULMADI — yeni
+// tüketiciler (Değerleme Yöntemi/İnşaat Seviyesi Riski) bu genel yardımcıyı
+// kullanır. shouldUseGenericOtherLabelForValuationGroup() (yukarıda,
+// saleability için yazılmış) ZATEN genel/saleability'e özgü olmadığından
+// (yalnızca group.entries.length okur) burada da AYNEN yeniden kullanılır.
+function groupTitleUnitEntriesByKey(entries, keyFn) {
+  const groups = [];
+  const byKey = new Map();
+  entries.forEach((entry) => {
+    const key = keyFn(entry);
+    if (byKey.has(key)) {
+      byKey.get(key).entries.push(entry);
+      return;
+    }
+    const group = { key, entries: [entry] };
+    byKey.set(key, group);
+    groups.push(group);
+  });
+  return groups;
+}
+
+// valuationMethodExplanationVariants'ın (3 varyant) ÇOĞUL hali (TÜM
+// taşınmazlar AYNI yöntem(ler)i kullanıyorsa) — 2. cümlenin kendi
+// öznesi ("Konumuz taşınmazın"/"Söz konusu taşınmazın"/"Mülkün") DAHİL
+// TÜM özneler çoğullandı.
+const valuationMethodExplanationPluralVariants = [
+  (joined, approachWord) => `Konu gayrimenkullerin değerlemesinde ${joined} ${approachWord} kullanılmıştır. Konumuz taşınmazların değerlendirmesinde civardaki alım satım rayiç değerleri ve günümüz ekonomik koşulları, taşınmazların konumu, yaşı, fiziki özellikleri, emsallerdeki pazarlık payları, arz/talep dengesi gibi dışsal etkenler dikkate alınmıştır.`,
+  (joined, approachWord) => `Değerlemeye konu gayrimenkullerin değer tespitinde ${joined} ${approachWord} esas alınmıştır. Söz konusu taşınmazların değerlendirilmesinde bölgedeki alım-satım rayiç bedelleri ile güncel ekonomik koşullar, taşınmazların konumu, yaşı, fiziksel nitelikleri, emsallerdeki pazarlık payları ve arz-talep dengesi gibi dışsal faktörler göz önünde bulundurulmuştur.`,
+  (joined, approachWord) => `Rapor konusu mülklerin değerlemesinde ${joined} ${approachWord} uygulanmıştır. Mülklerin değerlendirilme sürecinde civar alım-satım rayiçleri ve mevcut ekonomik konjonktür, taşınmazların konumu, yaşı, fiziki durumu, emsallerdeki pazarlık marjları ve arz-talep dengesi gibi harici unsurlar dikkate alınmıştır.`,
+];
+
+// KARMA (2+ farklı yöntem grubu) durumda kullanılan atıf-uyumlu haller —
+// ÖZNE ("Konu gayrimenkulün"/"Değerlemeye konu gayrimenkulün"/"Rapor
+// konusu mülkün") parametre olarak verilen atıf öznesiyle ("{etiket}
+// taşınmazın"/"Diğer taşınmazların") DEĞİŞTİRİLİR; 2. cümledeki TEKRARLI
+// özne (kendi taşınmazına zaten 1. cümlede atıf yapıldığından) DÜŞÜRÜLÜP
+// örtük (iyelik ekiyle devam eden) bir başlangıçla ("Değerlendirmede"/
+// "Değerlendirilmesinde"/"Değerlendirilme sürecinde") sürdürülür — aksi
+// halde "{etiket} taşınmazın ... Konumuz taşınmazın ..." gibi özne
+// TEKRARI/çelişkisi oluşurdu (satış kabiliyeti düzeltmesinde — 0.0.650 —
+// AYNI kusurdan kaçınmak için öğrenilen ders).
+const valuationMethodExplanationAttributedVariants = [
+  (subject, joined, approachWord) => `${subject} değerlemesinde ${joined} ${approachWord} kullanılmıştır. Değerlendirmede civardaki alım satım rayiç değerleri ve günümüz ekonomik koşulları, konumu, yaşı, fiziki özellikleri, emsallerdeki pazarlık payları, arz/talep dengesi gibi dışsal etkenler dikkate alınmıştır.`,
+  (subject, joined, approachWord) => `${subject} değer tespitinde ${joined} ${approachWord} esas alınmıştır. Değerlendirilmesinde bölgedeki alım-satım rayiç bedelleri ile güncel ekonomik koşullar, konumu, yaşı, fiziksel nitelikleri, emsallerdeki pazarlık payları ve arz-talep dengesi gibi dışsal faktörler göz önünde bulundurulmuştur.`,
+  (subject, joined, approachWord) => `${subject} değerlemesinde ${joined} ${approachWord} uygulanmıştır. Değerlendirilme sürecinde civar alım-satım rayiçleri ve mevcut ekonomik konjonktür, konumu, yaşı, fiziki durumu, emsallerdeki pazarlık marjları ve arz-talep dengesi gibi harici unsurlar dikkate alınmıştır.`,
+];
+
+function buildValuationMethodApproachJoinedText(approaches) {
+  const joined = approaches.length === 1
+    ? approaches[0]
+    : `${approaches.slice(0, -1).join(", ")} ve ${approaches[approaches.length - 1]}`;
+  const approachWord = approaches.length > 1 ? "yaklaşımları" : "yaklaşımı";
+  return { joined, approachWord };
+}
+
+function buildValuationMethodBaseTextForAllTitleUnits() {
+  const count = getTitleUnitCount();
+  if (count < 2) return buildValuationMethodBaseText();
+
+  const originalFields = state.fields;
+  const units = buildAllTitleUnitsForSummaryTable();
+  const entries = units.map((unit, index) => {
+    state.fields = { ...originalFields, ...unit.fields };
+    try {
+      const approaches = parseValuationMultiValue(state.fields.valuationMethod)
+        .map((method) => method.replace(/\s*Yöntemi$/i, "").trim())
+        .filter(Boolean);
+      return { index, fields: unit.fields, approaches };
+    } finally {
+      state.fields = originalFields;
+    }
+  }).filter((entry) => entry.approaches.length);
+
+  if (!entries.length) return "";
+
+  const variantIndex = selectVariant("buildValuationMethodExplanation", valuationMethodExplanationVariants.length);
+  const groups = groupTitleUnitEntriesByKey(entries, (entry) => entry.approaches.join("||"));
+
+  if (groups.length <= 1) {
+    const soleGroup = groups[0];
+    const { joined, approachWord } = buildValuationMethodApproachJoinedText(soleGroup.entries[0].approaches);
+    return soleGroup.entries.length > 1
+      ? valuationMethodExplanationPluralVariants[variantIndex](joined, approachWord)
+      : valuationMethodExplanationVariants[variantIndex](joined, approachWord);
+  }
+
+  const orderedGroups = groups
+    .map((group, index) => ({ group, useGenericOther: shouldUseGenericOtherLabelForValuationGroup(groups, index) }))
+    .sort((a, b) => Number(a.useGenericOther) - Number(b.useGenericOther));
+
+  return normalizeReportDescriptionText(
+    orderedGroups.map(({ group, useGenericOther }) => {
+      const isPlural = group.entries.length > 1;
+      const labels = group.entries.map((entry) => formatTitleUnitSuitabilityLabel(entry.fields, entry.index));
+      const subject = useGenericOther
+        ? "Diğer taşınmazların"
+        : isPlural
+          ? `${joinTurkishList(labels)} taşınmazların`
+          : `${labels[0]} taşınmazın`;
+      const { joined, approachWord } = buildValuationMethodApproachJoinedText(group.entries[0].approaches);
+      return valuationMethodExplanationAttributedVariants[variantIndex](subject, joined, approachWord);
+    }).join(" ")
+  );
+}
+
+// "Dışarıdan Ekspertiz" ek paragrafının ÇOĞUL hali — appointmentType/
+// externalAppraisalReason/externalAppraisalOtherNote/projectInstitution
+// DÖRDÜ DE rapor-geneli PAYLAŞIMLI olduğundan (bkz. yukarıki genel yorum)
+// gruplamaya GEREK YOK, TÜM taşınmazlar için HER ZAMAN AYNI metin —
+// yalnızca 2+ taşınmazlı raporlarda ÇOĞUL sözcüklerle yeniden yazılır.
+const valuationExternalAppraisalTextPluralVariants = [
+  (reason, institution) => `${reason} sebebi ile dışarıdan ekspertiz yapılmış, taşınmazların alan ve mimari açıdan proje ile uygunluğu kontrol edilememiş olup proje ile uygun oldukları kabul edilmiştir. Taşınmazların, bağımsız bölüm bazında projesinde planlanan kat ve konumda oldukları ${institution} incelenen projesinden tespit edilmiştir. Proje üzerinden hesaplanan alan dikkate alınmış, iç hacim özellikleri vasat kabulüyle değerleme yapılmıştır.`,
+  (reason, institution) => `${reason} nedeniyle taşınmazların içi dışarıdan değerlendirilmiş, alan ve mimari açıdan proje ile uygunluğu yerinde kontrol edilememiş, projeyle uyumlu oldukları kabul edilmiştir. Taşınmazların bağımsız bölüm bazında projesinde öngörülen kat ve konumda yer aldıkları, ${institution} incelenen proje üzerinden tespit edilmiştir. Değerleme, proje üzerinden hesaplanan alan esas alınarak ve iç hacim özellikleri vasat kabulüyle gerçekleştirilmiştir.`,
+];
+
+function buildValuationExternalAppraisalTextForAllTitleUnits() {
+  if (!isExternalAppointmentType(state.fields.appointmentType)) return "";
+  if (getTitleUnitCount() < 2) return buildValuationExternalAppraisalText();
+  const reason = getExternalAppraisalReasonText() || "Taşınmazların içi görülememesi";
+  const projectInstitution = state.fields.projectInstitution || "ilgili kurumda";
+  const variantIndex = selectVariant("buildValuationExternalAppraisalText", valuationExternalAppraisalTextVariants.length);
+  return valuationExternalAppraisalTextPluralVariants[variantIndex](reason, projectInstitution);
+}
+
+// Tarımsal nitelik farkı + kullanım niteliği farkı giriş cümlelerinin
+// ÇOĞUL halleri — bunlar da (appointmentType gibi) rapor-geneli
+// PAYLAŞIMLI "case" bölümü alanlarına (legalUsageNature/currentUsageNature/
+// usageNatureDifference) bağlı olduğundan gruplamaya GEREK YOK. "Fark Yok"/
+// "Fark Var" devam cümleleri (usageNatureDifferenceNoGap/GapVariants)
+// zaten "bölgedeki X nitelikli gayrimenkuller" gibi GENEL/bölgesel bir
+// ifade kullanıyor (taşınmaza özgü tekil bir özne YOK), bu yüzden
+// DEĞİŞTİRİLMEDİ.
+const agriculturalUsageNatureDifferenceTextPluralVariants = [
+  (legalNature, currentNature) => `Değerlemeye konu taşınmazlar ${legalNature} nitelikli olup mevcut durumda ${currentNature} niteliklidir. Değerleme esnasında yasal durum değeri olarak ham toprak değeri, mevcut durum değeri olarak ise ham toprak + ağaç değeri takdir edilmiştir.`,
+  (legalNature, currentNature) => `Değerlemeye konu taşınmazlar ${legalNature} niteliğinde olup, mevcut durumda ${currentNature} niteliği taşımaktadır. Değerleme çalışmasında yasal durum değeri ham toprak değeri üzerinden, mevcut durum değeri ise ham toprak ile ağaç değerinin toplamı üzerinden takdir edilmiştir.`,
+];
+
+const usageNatureDifferenceIntroPluralVariants = [
+  (legalNature, currentNature) => `Ekspertize konu taşınmazlar Tapu Kayıtlarına göre "${legalNature}" Nitelikli olup, Mevcut Kullanımları "${currentNature}" nitelikli olduğu gözlemlenmiştir.`,
+  (legalNature, currentNature) => `Ekspertize konu taşınmazların Tapu Kayıtlarına göre nitelikleri "${legalNature}" olup, mevcut kullanımlarının "${currentNature}" nitelikte olduğu tespit edilmiştir.`,
+];
+
+function buildAgriculturalUsageNatureDifferenceTextPlural() {
+  const legalNature = String(state.fields.legalUsageNature || "").trim();
+  const currentNature = String(state.fields.currentUsageNature || "").trim();
+  if (
+    state.fields.usageNatureDifference !== "Evet" ||
+    legalNature !== "Tarla" ||
+    !isAgriculturalUsageNature(legalNature) ||
+    !isAgriculturalUsageNature(currentNature) ||
+    legalNature === currentNature
+  ) {
+    return "";
+  }
+  const variantIndex = selectVariant("buildAgriculturalUsageNatureDifferenceText", agriculturalUsageNatureDifferenceVariants.length);
+  return agriculturalUsageNatureDifferenceTextPluralVariants[variantIndex](legalNature, currentNature);
+}
+
+function buildValuationUsageNatureDifferenceTextForAllTitleUnits() {
+  if (getTitleUnitCount() < 2) return buildValuationUsageNatureDifferenceText();
+  const agriculturalPlural = buildAgriculturalUsageNatureDifferenceTextPlural();
+  if (agriculturalPlural) return agriculturalPlural;
+  if (state.fields.usageNatureDifference !== "Evet") return "";
+  const legalNature = state.fields.legalUsageNature || "yasal kullanım";
+  const currentNature = state.fields.currentUsageNature || "mevcut kullanım";
+  const legalUnitValue = parseValuationNumber(state.fields.legalValueUnit);
+  const currentUnitValue = parseValuationNumber(state.fields.currentValueUnit);
+  const introVariantIndex = selectVariant("buildValuationUsageNatureDifferenceText:intro", usageNatureDifferenceIntroVariants.length);
+  const intro = usageNatureDifferenceIntroPluralVariants[introVariantIndex](legalNature, currentNature);
+  if (!Number.isFinite(legalUnitValue) || legalUnitValue <= 0 || !Number.isFinite(currentUnitValue) || currentUnitValue <= 0) {
+    return intro;
+  }
+  const differenceRate = Math.abs(currentUnitValue - legalUnitValue) / legalUnitValue;
+  if (differenceRate < 0.1) {
+    return `${intro} ${usageNatureDifferenceNoGapVariants[selectVariant("buildValuationUsageNatureDifferenceText:noGap", usageNatureDifferenceNoGapVariants.length)](legalNature, currentNature)}`;
+  }
+  return `${intro} ${usageNatureDifferenceGapVariants[selectVariant("buildValuationUsageNatureDifferenceText:gap", usageNatureDifferenceGapVariants.length)](legalNature, currentNature)}`;
+}
+
+// İnşaat Seviyesi Riski — unitConstructionLevel Bağımsız Bölüm'ün KENDİ
+// alanı (GERÇEKTEN taşınmaza-özgü), bu yüzden (appointmentType/usageNature
+// ailesinin aksine) GERÇEK bir grup+atıf mimarisi gerekir — yöntem
+// cümlesiyle (buildValuationMethodBaseTextForAllTitleUnits) AYNI desen.
+// %100 (ya da boş) inşaat seviyeli taşınmazlar TEK-taşınmaz kuralıyla
+// TUTARLI şekilde sessizce ATLANIR (hiçbir cümle üretmezler) — yalnızca
+// GERÇEKTEN eksik (< %100) taşınmazlar gruplanıp cümleye dahil edilir.
+const valuationConstructionLevelRiskPluralVariants = [
+  (level) => `Konu taşınmazlar hali hazırda %${level} inşaat seviyeli olup, herhangi bir nedenle inşaatın yasal prosedürlere uygun tamamlanıp tamamlanamayacağı, yapı ruhsatı süresinin yeterli olup olmayacağı, yenileme ruhsatı ve inşaatın tamamlanması durumunda iskan belgesinin alınıp alınamayacağı rapor tarihi itibari ile öngörülememekte olup, inşaatın herhangi bir nedenle tamamlanamama riski bulunmaktadır.`,
+  (level) => `Konu taşınmazlar hâlihazırda %${level} inşaat seviyesinde olup, inşaatın yasal prosedürlere uygun şekilde tamamlanıp tamamlanamayacağı, mevcut yapı ruhsatı süresinin yeterli olup olmayacağı, yenileme ruhsatı gerekip gerekmeyeceği ve inşaat tamamlandığında iskân belgesinin alınıp alınamayacağı rapor tarihi itibarıyla öngörülememektedir; bu nedenle inşaatın herhangi bir sebeple tamamlanamama riski bulunmaktadır.`,
+];
+
+const valuationConstructionLevelRiskAttributedVariants = [
+  (subject, level) => `${subject} hali hazırda %${level} inşaat seviyeli olup, herhangi bir nedenle inşaatın yasal prosedürlere uygun tamamlanıp tamamlanamayacağı, yapı ruhsatı süresinin yeterli olup olmayacağı, yenileme ruhsatı ve inşaatın tamamlanması durumunda iskan belgesinin alınıp alınamayacağı rapor tarihi itibari ile öngörülememekte olup, inşaatın herhangi bir nedenle tamamlanamama riski bulunmaktadır.`,
+  (subject, level) => `${subject} hâlihazırda %${level} inşaat seviyesinde olup, inşaatın yasal prosedürlere uygun şekilde tamamlanıp tamamlanamayacağı, mevcut yapı ruhsatı süresinin yeterli olup olmayacağı, yenileme ruhsatı gerekip gerekmeyeceği ve inşaat tamamlandığında iskân belgesinin alınıp alınamayacağı rapor tarihi itibarıyla öngörülememektedir; bu nedenle inşaatın herhangi bir sebeple tamamlanamama riski bulunmaktadır.`,
+];
+
+function formatValuationConstructionLevelForExplanation(level) {
+  return level.toLocaleString("tr-TR", {
+    minimumFractionDigits: Number.isInteger(level) ? 0 : 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+function buildValuationConstructionLevelRiskTextForAllTitleUnits() {
+  const count = getTitleUnitCount();
+  if (count < 2) return buildValuationConstructionLevelRiskText();
+
+  const originalFields = state.fields;
+  const units = buildAllTitleUnitsForSummaryTable();
+  const entries = units.map((unit, index) => {
+    state.fields = { ...originalFields, ...unit.fields };
+    try {
+      const level = parseConstructionLevelPercentForExplanation(state.fields.unitConstructionLevel);
+      return { index, fields: unit.fields, level };
+    } finally {
+      state.fields = originalFields;
+    }
+  }).filter((entry) => Number.isFinite(entry.level) && entry.level < 100);
+
+  if (!entries.length) return "";
+
+  const variantIndex = selectVariant("buildValuationConstructionLevelRiskText", valuationConstructionLevelRiskVariants.length);
+  const groups = groupTitleUnitEntriesByKey(entries, (entry) => formatValuationConstructionLevelForExplanation(entry.level));
+
+  if (groups.length <= 1) {
+    const soleGroup = groups[0];
+    const formattedLevel = formatValuationConstructionLevelForExplanation(soleGroup.entries[0].level);
+    return soleGroup.entries.length > 1
+      ? valuationConstructionLevelRiskPluralVariants[variantIndex](formattedLevel)
+      : valuationConstructionLevelRiskVariants[variantIndex](formattedLevel);
+  }
+
+  const orderedGroups = groups
+    .map((group, index) => ({ group, useGenericOther: shouldUseGenericOtherLabelForValuationGroup(groups, index) }))
+    .sort((a, b) => Number(a.useGenericOther) - Number(b.useGenericOther));
+
+  return normalizeReportDescriptionText(
+    orderedGroups.map(({ group, useGenericOther }) => {
+      const isPlural = group.entries.length > 1;
+      const labels = group.entries.map((entry) => formatTitleUnitSuitabilityLabel(entry.fields, entry.index));
+      const subject = useGenericOther
+        ? "Diğer taşınmazlar"
+        : isPlural
+          ? `${joinTurkishList(labels)} taşınmazlar`
+          : `${labels[0]} taşınmaz`;
+      const formattedLevel = formatValuationConstructionLevelForExplanation(group.entries[0].level);
+      return valuationConstructionLevelRiskAttributedVariants[variantIndex](subject, formattedLevel);
+    }).join(" ")
+  );
+}
+
+function buildValuationMethodExplanationForAllTitleUnits() {
+  if (getTitleUnitCount() < 2) return buildValuationMethodExplanation();
+  const baseText = buildValuationMethodBaseTextForAllTitleUnits();
+  if (!baseText) return "";
+  const externalAppraisalText = buildValuationExternalAppraisalTextForAllTitleUnits();
+  const usageNatureDifferenceText = buildValuationUsageNatureDifferenceTextForAllTitleUnits();
+  const constructionLevelText = buildValuationConstructionLevelRiskTextForAllTitleUnits();
+  return [baseText, externalAppraisalText, usageNatureDifferenceText, constructionLevelText].filter(Boolean).join("\n\n");
+}
+
 const valuationMethodExplanationFallback = "Değerleme metodu seçildiğinde açıklama otomatik oluşacaktır.";
 
 function refreshValuationMethodExplanation() {
   if (suppressValuationSideEffects) return;
-  state.fields.valuationMethodExplanation = buildValuationMethodExplanation();
+  state.fields.valuationMethodExplanation = buildValuationMethodExplanationForAllTitleUnits();
   const text = document.querySelector("[data-valuation-method-explanation-text]");
   if (text) text.textContent = state.fields.valuationMethodExplanation || valuationMethodExplanationFallback;
 }
 
 function createValuationMethodExplanationPanel() {
-  state.fields.valuationMethodExplanation = buildValuationMethodExplanation();
+  state.fields.valuationMethodExplanation = buildValuationMethodExplanationForAllTitleUnits();
   const card = document.createElement("div");
   card.className = "valuation-method-explanation-card";
   const head = document.createElement("div");
