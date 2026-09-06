@@ -34266,6 +34266,121 @@ function composeMainRoomDecorativeParagraphSentence(decorativeEntriesBySlot, run
 // classifyMainRoomCompositionMode() + composeMainRoomDecorativeParagraphSentence()'in
 // (aşağıda) 4 yollu (none/combined/woven/split) kararına EVRİLDİ — bkz.
 // o fonksiyonların yorumları.
+// Kullanıcı bulgusu (2026-09-06, GERÇEK bir raporun çıktısını okuyup):
+// "Mutfak dolapları lake dolap olup, tezgahı kuvars olarak
+// düzenlenmiştir. Mutfak dolapları mdf lam dolap olup, tezgahları
+// çimstone olarak düzenlenmiştir. burada bir yanlışlık yok mu?" —
+// HAKLI: composeDecorativeAttributedSentence'ın "continuationSole"/
+// "continuationRest" modu (ardışık AYNI-bölünmeli slotun ÖNCEKİ slotta
+// ZATEN AÇIKÇA belirtilen atfın "üstü kapalı devamı" olduğunu varsayarak)
+// HİÇBİR özne/atıf BIRAKMIYORDU — ama iki kişisiz cümle ("Mutfak
+// dolapları X..." / "Mutfak dolapları Y...") ARKA ARKAYA, HİÇBİR
+// özne/bağlaç OLMADAN gelince, AYNI taşınmazın İKİ ÇELİŞKİLİ mutfağı
+// varmış gibi okunuyor — "üstü kapalı devam" burada YETERSİZ. Düzeltme:
+// AYNI partition'ı (azınlık/çoğunluk bölünmesini) paylaşan ARDIŞIK, KENDİ
+// öznesi OLMAYAN (kişisiz) slotlar artık 0.0.642'nin "; " İLE BİRLEŞTİRME
+// tekniğine (ama YENİ iyelik/genel-özne biçimiyle) DÖNÜLEREK TEK cümlede
+// toplanır — atıf YALNIZCA BİR KEZ (kümenin BAŞINDA), kümedeki TÜM
+// slotların cümleleri ise "; " ile AYNI cümlenin İÇİNDE ardışık sıralanır
+// (ör. "A 5 No'lu taşınmazın dış kapısı ... doğramadır; mutfak dolapları
+// ... düzenlenmiştir."). Kendi öznesi OLAN (leading YA DA cümle-ortası
+// "taşınmaz" içeren, ör. heating/view/constructionLevel'ın bazı
+// varyantları) slotlar bu birleştirmeye HİÇ KATILMAZ — composeDecorativeAttributedSentence'ın
+// KENDİ (leading-subject-replace/virgüllü geri düşüş) mantığı byte-
+// birebir KORUNARAK KENDİ tek-slotluk kümesinde işlenmeye devam eder.
+function decorativeSentenceHasOwnSubject(sentence) {
+  return DECORATIVE_LEADING_SUBJECT_PATTERN.test(sentence) || /\btaşınmaz\b/i.test(sentence);
+}
+
+// Bir slotun TAM OLARAK azınlık/çoğunluk (soleRest) şeklinde olup
+// olmadığını VE kendi öznesi olmayan (birleştirmeye UYGUN) bir slot olup
+// olmadığını birlikte değerlendirir — uygun değilse null döner (çağıran
+// taraf composeDecorativeAttributedSentence'ın MEVCUT, TEK-slotluk
+// mantığına düşer).
+function classifyDecorativeSlotForClustering(entries) {
+  const groups = groupUnitInteriorTextEntries(entries);
+  if (groups.length !== 2) return null;
+  const soleIndex = groups.findIndex((group) => group.entries.length === 1);
+  if (soleIndex === -1) return null;
+  if (groups.some((group) => decorativeSentenceHasOwnSubject(group.canonicalValue))) return null;
+  return { groups, soleIndex, signature: buildDecorativeGroupPartitionSignature(groups) };
+}
+
+// Bir kümedeki (2+ ARDIŞIK, AYNI partition'lı, kişisiz) slotun TÜM
+// cümlelerini TEK bir "sole" ve TEK bir "other" cümlesinde ("; " ile
+// ayrılmış alt-parçalar) birleştirir, atfı (soleLabel/"Diğer
+// taşınmazların") YALNIZCA BİR KEZ, KÜMENİN BAŞINA ekler.
+function composeMergedSoleRestClusterSentence(clusterSlots) {
+  const soleIndex = clusterSlots[0].soleIndex;
+  const otherIndex = soleIndex === 0 ? 1 : 0;
+  const soleFragments = [];
+  const otherFragments = [];
+  clusterSlots.forEach(({ key, groups }) => {
+    const soleGroup = groups[soleIndex];
+    const otherGroup = groups[otherIndex];
+    // Her PARÇA (ilk hariç, ama basitlik+güvenlik için HEPSİ) küçük harfle
+    // BAŞLAR — "; " ile devam eden bir cümle İÇİNDE hiçbir alt-parça
+    // YENİDEN büyük harfle BAŞLAMAMALI (ör. "...doğramadır; Mutfak..."
+    // GİBİ bir cümle-İÇİ büyük harf YANLIŞ olurdu).
+    soleFragments.push(lowercaseFirstLetterTr(applyDecorativeSlotPossessiveConversion(key, soleGroup.canonicalValue, false).trim().replace(/\.+$/, "")));
+    otherFragments.push(lowercaseFirstLetterTr(applyDecorativeSlotPossessiveConversion(key, otherGroup.canonicalValue, otherGroup.entries.length > 1).trim().replace(/\.+$/, "")));
+  });
+  const firstGroups = clusterSlots[0].groups;
+  const soleGroup = firstGroups[soleIndex];
+  const otherGroup = firstGroups[otherIndex];
+  const soleEntry = soleGroup.entries[0];
+  const soleLabel = formatTitleUnitAttributionPhrase([formatTitleUnitSuitabilityLabel(soleEntry.fields, soleEntry.index)]);
+  const soleSentence = `${soleLabel} taşınmazın ${lowercaseFirstLetterTr(soleFragments.join("; "))}.`;
+  // "Diğer taşınmazların" (ÇOĞUL, GENEL) yalnızca öteki taraf GERÇEKTEN
+  // 2+ üyeliyse anlamlıdır — bkz. composeDecorativeAttributedSentence'ın
+  // AYNI kuralı.
+  const otherSentence = otherGroup.entries.length === 1
+    ? `${formatTitleUnitAttributionPhrase([formatTitleUnitSuitabilityLabel(otherGroup.entries[0].fields, otherGroup.entries[0].index)])} taşınmazın ${lowercaseFirstLetterTr(otherFragments.join("; "))}.`
+    : `Diğer taşınmazların ${lowercaseFirstLetterTr(otherFragments.join("; "))}.`;
+  return joinNonEmptySentences([soleSentence, otherSentence]);
+}
+
+// UNIT_DECORATIVE_SLOT_KEY_ORDER sırasındaki (mainRoom/manualOverride
+// DIŞI) TÜM slotları işleyip nihai cümle dizisini üretir — ARDIŞIK, AYNI
+// partition'lı, kişisiz soleRest slotları composeMergedSoleRestClusterSentence
+// İLE TEK cümlede birleştirir; DİĞER TÜM slotlar (all/solo/fallback/kendi
+// öznesi olan soleRest) composeDecorativeAttributedSentence'ın MEVCUT,
+// DEĞİŞMEYEN mantığına düşer (TEK-slotluk küme).
+function buildDecorativeSlotSentences(decorativeEntriesBySlot, runState) {
+  const keys = UNIT_DECORATIVE_SLOT_KEY_ORDER.filter((key) => key !== "manualOverride" && decorativeEntriesBySlot[key]?.length);
+  const sentences = [];
+  let index = 0;
+  while (index < keys.length) {
+    const key = keys[index];
+    const entries = decorativeEntriesBySlot[key];
+    const clusterInfo = classifyDecorativeSlotForClustering(entries);
+    if (!clusterInfo) {
+      sentences.push(composeDecorativeAttributedSentence(key, entries, runState));
+      index += 1;
+      continue;
+    }
+    const clusterSlots = [{ key, ...clusterInfo }];
+    let lookahead = index + 1;
+    while (lookahead < keys.length) {
+      const nextInfo = classifyDecorativeSlotForClustering(decorativeEntriesBySlot[keys[lookahead]]);
+      if (!nextInfo || nextInfo.signature !== clusterInfo.signature) break;
+      clusterSlots.push({ key: keys[lookahead], ...nextInfo });
+      lookahead += 1;
+    }
+    if (clusterSlots.length === 1) {
+      sentences.push(composeDecorativeAttributedSentence(key, entries, runState));
+    } else {
+      sentences.push(composeMergedSoleRestClusterSentence(clusterSlots));
+      // Birleşik küme HER ZAMAN KENDİ BAŞINA AÇIKÇA kurulur (mainRoom
+      // woven ile TUTARLI) — bir sonraki slotun üstü kapalı devamını
+      // TETİKLEMEZ.
+      runState.previousRunKey = null;
+    }
+    index = lookahead;
+  }
+  return sentences;
+}
+
 function buildMultiUnitInteriorDescriptionText() {
   const units = buildAllTitleUnitsForSummaryTable();
   if (units.length < 2) return state.fields.unitInteriorDescription || "";
@@ -34300,11 +34415,7 @@ function buildMultiUnitInteriorDescriptionText() {
   const decorativeSentences = [];
   const mainRoomSentence = composeMainRoomDecorativeParagraphSentence(decorativeEntriesBySlot, runState);
   if (mainRoomSentence) decorativeSentences.push(mainRoomSentence);
-  UNIT_DECORATIVE_SLOT_KEY_ORDER
-    .filter((key) => key !== "manualOverride" && decorativeEntriesBySlot[key]?.length)
-    .forEach((key) => {
-      decorativeSentences.push(composeDecorativeAttributedSentence(key, decorativeEntriesBySlot[key], runState));
-    });
+  decorativeSentences.push(...buildDecorativeSlotSentences(decorativeEntriesBySlot, runState));
   // manualOverride: kullanıcının elle yazdığı serbest metin — YENİ iyelik/
   // genel-özne mekanizmasına HİÇ katılmaz, ESKİ (numara listesi)
   // composeMultiUnitInteriorGroupedText/alwaysAttribute yoluyla kalır.

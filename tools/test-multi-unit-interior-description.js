@@ -372,6 +372,15 @@ const functionNames = [
   "composeMainRoomWovenAttributedSentence",
   "classifyMainRoomCompositionMode",
   "composeMainRoomDecorativeParagraphSentence",
+  // Kullanıcı bulgusu (2026-09-06): ardışık, AYNI-bölünmeli, kişisiz
+  // soleRest slotların (ör. kapı/pencere+mutfak) HİÇBİR özne/atıf
+  // TAŞIMADAN art arda gelmesi ("Mutfak dolapları X... Mutfak dolapları
+  // Y...") YANLIŞ ANLAŞILMAYA açıktı — "; " ile TEK cümlede birleştirme
+  // GERİ GETİRİLDİ (bkz. senaryo 33+).
+  "decorativeSentenceHasOwnSubject",
+  "classifyDecorativeSlotForClustering",
+  "composeMergedSoleRestClusterSentence",
+  "buildDecorativeSlotSentences",
 ];
 const constArrayNames = [
   "UNIT_INTERIOR_AREA_VERB_ENDING_PLURAL_MAP", "UNIT_DECORATIVE_BARE_SUBJECT_VERB_ENDING_PLURAL_MAP", "UNIT_DECORATIVE_SLOT_KEY_ORDER",
@@ -462,6 +471,10 @@ const sandboxSource = `
     composeMainRoomWovenAttributedSentence,
     classifyMainRoomCompositionMode,
     composeMainRoomDecorativeParagraphSentence,
+    decorativeSentenceHasOwnSubject,
+    classifyDecorativeSlotForClustering,
+    composeMergedSoleRestClusterSentence,
+    buildDecorativeSlotSentences,
   };
 `;
 // eslint-disable-next-line no-new-func
@@ -846,20 +859,20 @@ function decorativePartsCommon(mainRoomValue) {
 }
 
 // --- 8c) buildMultiUnitInteriorDescriptionText() GERÇEK gövdesi Dekoratif
-// Özellikler'i (kullanıcı düzeltmesi #10, 2026-09-06) artık
-// composeMainRoomDecorativeParagraphSentence + composeDecorativeAttributedSentence
-// (genel iyelik/atıf + "üstü kapalı devam" katmanı) ÜZERİNDEN mi
-// üretiyor (kaynak-düzeyi) ------------------------------------------------
+// Özellikler'i (kullanıcı düzeltmesi #11, 2026-09-06) artık
+// composeMainRoomDecorativeParagraphSentence + buildDecorativeSlotSentences
+// (genel iyelik/atıf + "üstü kapalı devam" + kişisiz-soleRest-kümeleme
+// katmanı) ÜZERİNDEN mi üretiyor (kaynak-düzeyi) --------------------------
 {
   const realBody = extractFunction("buildMultiUnitInteriorDescriptionText");
   assert.ok(realBody.includes("getUnitDecorativeDescriptionPartsForCombinedText()"), "Çoklu-taşınmaz Dekoratif Özellikler kaynağı getUnitDecorativeDescriptionPartsForCombinedText() (SLOT bazlı) OLMALI.");
   assert.ok(
     realBody.includes("composeMainRoomDecorativeParagraphSentence(decorativeEntriesBySlot, runState)"),
-    "mainRoom* slotları composeMainRoomDecorativeParagraphSentence İLE (özel woven/combined/split ayrımı) İŞLENMELİ (kullanıcı düzeltmesi #10)."
+    "mainRoom* slotları composeMainRoomDecorativeParagraphSentence İLE (özel woven/combined/split ayrımı) İŞLENMELİ."
   );
   assert.ok(
-    /UNIT_DECORATIVE_SLOT_KEY_ORDER\s*\n\s*\.filter\(\(key\) => key !== "manualOverride" && decorativeEntriesBySlot\[key\]\?\.length\)\s*\n\s*\.forEach\(\(key\) => \{\s*\n\s*decorativeSentences\.push\(composeDecorativeAttributedSentence\(key, decorativeEntriesBySlot\[key\], runState\)\);/.test(realBody),
-    "Kalan (mainRoom DIŞI, manualOverride DIŞI) slotlar UNIT_DECORATIVE_SLOT_KEY_ORDER sırasıyla composeDecorativeAttributedSentence'a GEÇMELİ."
+    realBody.includes("buildDecorativeSlotSentences(decorativeEntriesBySlot, runState)"),
+    "Kalan (mainRoom DIŞI, manualOverride DIŞI) slotlar buildDecorativeSlotSentences İLE (kişisiz soleRest slotları kümeleyen katman) İŞLENMELİ (kullanıcı düzeltmesi #11)."
   );
   assert.ok(
     realBody.includes('alwaysAttribute: true'),
@@ -1443,17 +1456,74 @@ const PRESENCE_BALCONY_AND_TERRACE = { hasAny: true, balcony: true, terrace: tru
     + "Taşınmazların ıslak hacimlerde zeminler ve duvarlar seramik kaplıdır. "
     + "Balkon bölümlerinde zeminler seramik kaplı, duvarlar ise plastik boyalıdır. "
     + `${DEKORATIF_BATHROOM.replace("Banyo bölümünde", "Banyo bölümlerinde")} `
-    + "A 5 No'lu taşınmazın dış kapısı çelik, iç kapıları ahşap panel ve pencereleri PVC doğramadır. "
-    + "Diğer taşınmazların dış kapıları ahşap kaplama çelik, iç kapıları amerikan panel ve pencereleri PVC doğramadır. "
-    + "Mutfak dolapları lake dolap olup, tezgahı kuvars olarak düzenlenmiştir. "
-    + "Mutfak dolapları mdf lam dolap olup, tezgahları çimstone olarak düzenlenmiştir. "
+    + "A 5 No'lu taşınmazın dış kapısı çelik, iç kapıları ahşap panel ve pencereleri PVC doğramadır; mutfak dolapları lake dolap olup, tezgahı kuvars olarak düzenlenmiştir. "
+    + "Diğer taşınmazların dış kapıları ahşap kaplama çelik, iç kapıları amerikan panel ve pencereleri PVC doğramadır; mutfak dolapları mdf lam dolap olup, tezgahları çimstone olarak düzenlenmiştir. "
     + "A 15 No'lu taşınmazın iç mekân özellikleri kaliteli seviyede olup, tadilat ihtiyacı bulunmamaktadır. "
     + "Diğer taşınmazların iç mekân özellikleri standart seviyede olup, tadilat ihtiyacı bulunmamaktadır. "
     + `Taşınmazların ${lowerFirst(DEKORATIF_HEATING)}`;
   assert.equal(decorativeParagraph, expected, `UÇTAN UCA MASTER TEST metni beklenenden farklı.\nBulunan:  ${decorativeParagraph}\nBeklenen: ${expected}`);
   assert.ok(!decorativeParagraph.includes("mevcuttur"), "Varoluşsal 'mevcuttur' cümlesi HİÇ ÜRETİLMEMELİ.");
   assert.ok(!/\bNo'lu,/.test(decorativeParagraph), "ESKİ numara-listesi atfı ('...No'lu,') HİÇ görünmemeli — yalnızca 'X No'lu taşınmazın/taşınmazda' (VİRGÜLSÜZ, iyelik ekli) biçimi kullanılmalı.");
-  console.log("UÇTAN UCA MASTER TEST (2026-09-06, GÖRSEL karşılaştırma): TAM 4 taşınmazlı Dekoratif Özellikler paragrafı beklenen metinle BİREBİR eşleşiyor testi tamam.");
+  // Kullanıcı bulgusu (2026-09-06): "Mutfak dolapları X... Mutfak
+  // dolapları Y..." (kapı/pencereden SONRA gelen mutfak cümleleri) HİÇBİR
+  // özne/bağlaç TAŞIMADAN art arda gelince AYNI taşınmazın İKİ ÇELİŞKİLİ
+  // mutfağı varmış gibi YANLIŞ ANLAŞILIYORDU — artık "; " ile kapı/pencere
+  // cümlesinin AYNI (tek) cümlesinin İÇİNDE, TEK atfın altında yer alır.
+  assert.ok(!/\.\s+Mutfak dolapları/.test(decorativeParagraph), "Kullanıcı bulgusu: 'Mutfak dolapları' HİÇ ÖZNESİZ/BAĞLAÇSIZ, önceki cümleden nokta ile ayrı YENİ bir cümle olarak BAŞLAMAMALI — kapı/pencere cümlesine '; ' ile bağlı olmalı.");
+  assert.equal(decorativeParagraph.split("; mutfak dolapları").length - 1, 2, "Kapı/pencere + mutfak cümleleri HER İKİ taşınmaz grubu için de '; ' ile TEK cümlede birleşmeli (A5 için 1 kez, Diğer için 1 kez).");
+  console.log("UÇTAN UCA MASTER TEST (2026-09-06, GÖRSEL karşılaştırma + kullanıcının 'mutfak' belirsizliği bulgusu): TAM 4 taşınmazlı Dekoratif Özellikler paragrafı beklenen metinle BİREBİR eşleşiyor testi tamam.");
+}
+
+// --- 33) Kullanıcı bulgusu (2026-09-06): "Mutfak dolapları lake dolap
+// olup, tezgahı kuvars olarak düzenlenmiştir. Mutfak dolapları mdf lam
+// dolap olup, tezgahları çimstone olarak düzenlenmiştir. burada bir
+// yanlışlık yok mu?" — HAKLI: composeDecorativeAttributedSentence'ın
+// "continuationSole"/"continuationRest" modu (ARDIŞIK AYNI-bölünmeli
+// slotun ÖNCEKİ slotta ZATEN AÇIKÇA belirtilen atfın "üstü kapalı
+// devamı" olduğunu varsayarak) HİÇBİR özne/atıf BIRAKMIYORDU — ama İKİ
+// kişisiz cümle ARKA ARKAYA, HİÇBİR özne/bağlaç OLMADAN gelince AYNI
+// taşınmazın İKİ ÇELİŞKİLİ mutfağı varmış gibi okunuyordu. Düzeltme:
+// decorativeSentenceHasOwnSubject/classifyDecorativeSlotForClustering/
+// composeMergedSoleRestClusterSentence/buildDecorativeSlotSentences
+// birim testleri --------------------------------------------------------
+{
+  assert.equal(fns.decorativeSentenceHasOwnSubject("Taşınmazın ısınma ihtiyacı ..."), true, "decorativeSentenceHasOwnSubject(): leading-subject cümle TRUE dönmeli.");
+  assert.equal(fns.decorativeSentenceHasOwnSubject("... sahip olan taşınmaz bu yönüyle ..."), true, "decorativeSentenceHasOwnSubject(): cümle-ortası çıplak 'taşınmaz' TRUE dönmeli.");
+  assert.equal(fns.decorativeSentenceHasOwnSubject("Dış kapı çelik, iç kapılar ahşap panel ..."), false, "decorativeSentenceHasOwnSubject(): kişisiz cümle FALSE dönmeli.");
+
+  const doorsEntries = [
+    { index: 0, fields: { titleBlockName: "A", unitNo: "5" }, value: "Dış kapı çelik, iç kapılar ahşap panel ve pencereler PVC doğramadır." },
+    { index: 1, fields: { titleBlockName: "A", unitNo: "8" }, value: "Dış kapı ahşap kaplama çelik, iç kapılar amerikan panel ve pencereler PVC doğramadır." },
+    { index: 2, fields: { titleBlockName: "A", unitNo: "11" }, value: "Dış kapı ahşap kaplama çelik, iç kapılar amerikan panel ve pencereler PVC doğramadır." },
+  ];
+  const doorsCluster = fns.classifyDecorativeSlotForClustering(doorsEntries);
+  assert.ok(doorsCluster, "classifyDecorativeSlotForClustering(): kişisiz, TAM azınlık/çoğunluk şekilli bir slot İÇİN null DEĞİL bir sonuç dönmeli.");
+
+  const heatingEntries = [
+    { index: 0, fields: { titleBlockName: "A", unitNo: "5" }, value: "Taşınmazın ısınma ihtiyacı X ile karşılanacaktır." },
+    { index: 1, fields: { titleBlockName: "A", unitNo: "8" }, value: "Taşınmazın ısınma ihtiyacı Y ile karşılanacaktır." },
+    { index: 2, fields: { titleBlockName: "A", unitNo: "11" }, value: "Taşınmazın ısınma ihtiyacı Y ile karşılanacaktır." },
+  ];
+  assert.equal(fns.classifyDecorativeSlotForClustering(heatingEntries), null, "classifyDecorativeSlotForClustering(): KENDİ öznesi olan (leading 'Taşınmazın') bir slot İÇİN null dönmeli — kümelemeye UYGUN DEĞİL.");
+
+  const kitchenEntries = [
+    { index: 0, fields: { titleBlockName: "A", unitNo: "5" }, value: "Mutfak dolapları lake dolap olup, tezgahı kuvars olarak düzenlenmiştir." },
+    { index: 1, fields: { titleBlockName: "A", unitNo: "8" }, value: "Mutfak dolapları mdf lam dolap olup, tezgahı çimstone olarak düzenlenmiştir." },
+    { index: 2, fields: { titleBlockName: "A", unitNo: "11" }, value: "Mutfak dolapları mdf lam dolap olup, tezgahı çimstone olarak düzenlenmiştir." },
+  ];
+  const doorsInfo = fns.classifyDecorativeSlotForClustering(doorsEntries);
+  const kitchenInfo = fns.classifyDecorativeSlotForClustering(kitchenEntries);
+  const merged = fns.composeMergedSoleRestClusterSentence([
+    { key: "doorsWindows", ...doorsInfo },
+    { key: "kitchen", ...kitchenInfo },
+  ]);
+  assert.equal(
+    merged,
+    "A 5 No'lu taşınmazın dış kapısı çelik, iç kapıları ahşap panel ve pencereleri PVC doğramadır; mutfak dolapları lake dolap olup, tezgahı kuvars olarak düzenlenmiştir. "
+    + "Diğer taşınmazların dış kapıları ahşap kaplama çelik, iç kapıları amerikan panel ve pencereleri PVC doğramadır; mutfak dolapları mdf lam dolap olup, tezgahları çimstone olarak düzenlenmiştir.",
+    `composeMergedSoleRestClusterSentence(): kapı/pencere+mutfak TEK cümlede, atıf YALNIZCA BİR KEZ, "; " ile birleşmeli. Bulunan: ${merged}`
+  );
+  console.log("decorativeSentenceHasOwnSubject()/classifyDecorativeSlotForClustering()/composeMergedSoleRestClusterSentence(): kişisiz soleRest kümeleme birim testleri tamam.");
 }
 
 console.log("Tum 'Ic Hacimler Aciklamasi (Coklu Tasinmaz)' testleri basarili.");
