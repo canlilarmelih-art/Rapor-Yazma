@@ -1734,8 +1734,17 @@ assert.match(appSource, /panel\.dataset\.parcelScope = mixedParcels \? "mixed" :
   sandbox.fns.computeValuationFieldsForAllTitleUnits();
   const afterState = sandbox.getState();
 
-  // (a) Aktif tasinmazin KENDI degeri DEGISMEMELI (zaten guncel, "continue" ile atlanir).
-  assert.equal(afterState.fields.legalValue, "AKTIF-ONCEDEN-HESAPLANMIS", "Aktif tasinmazin kendi degeri ETKILENMEMELI (zaten guncel).");
+  // (a) KULLANICI BULGUSU DUZELTMESI (2026-09-07, "coklu raporlarda
+  // degerleme bolumune gecelim, once kendin duzenle"): Aktif tasinmazin
+  // KENDI degeri ARTIK BURADA DA hesaplanir - eskiden "zaten guncel"
+  // varsayimiyla "continue" ile atlaniyordu, AMA ozet tablo
+  // (createValuationUnitsSummaryTablePreview) TAM BU FONKSIYONDAN HEMEN
+  // SONRA, aktif tasinmazin KENDI refreshValuationComputedFields()
+  // cagrisindan (createValuationEditor icinde, DAHA SONRA) ONCE insa
+  // ediliyordu - yani aktif tasinmazin satiri bir render GERIDEN
+  // gorunuyordu. Artik aktif tasinmaz da diger ikisiyle AYNI sekilde
+  // (kendi index'ine gore) hesaplanmis degeri alir.
+  assert.equal(afterState.fields.legalValue, "HESAPLANDI-0", "REGRESYON: aktif tasinmazin (index 0) KENDI degeri de ozet tablo insa edilmeden ONCE TAZELENMELI - artik 'zaten guncel' varsayimiyla atlanmiyor.");
   // (b) activeTitleUnitIndex, dongu SONUNDA orijinal degere GERI DONMELI.
   assert.equal(afterState.activeTitleUnitIndex, 0, "Dongu sonunda activeTitleUnitIndex orijinal (0) degere GERI DONMELI.");
   // (c) Diger IKI tasinmazin da ARTIK kendi (index'e gore) hesaplanmis degeri olmali.

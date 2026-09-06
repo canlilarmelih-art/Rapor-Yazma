@@ -10436,8 +10436,28 @@ function computeValuationFieldsForAllTitleUnits() {
   const originalActiveIndex = state.activeTitleUnitIndex;
   suppressValuationSideEffects = true;
   try {
+    // Kullanıcı bulgusu (2026-09-07, "çoklu raporlarda değerleme bölümüne
+    // geçelim, önce kendin düzenle" talebiyle yapılan kendi-incelemede
+    // bulundu): AKTİF taşınmaz burada ÖNCEDEN "zaten güncel" varsayımıyla
+    // (index === originalActiveIndex) BİLEREK atlanıyordu — OYSA aktif
+    // taşınmazın KENDİ refreshValuationComputedFields() çağrısı bu
+    // fonksiyondan DAHA SONRA, renderSection()'ın "valuation" bölümündeki
+    // createValuationEditor() içinde yapılıyor (bkz. o yorumu). Ama
+    // createValuationUnitsSummaryTablePreview() (özet tablo)
+    // createValuationEditor()'DAN ÖNCE, TAM BU FONKSİYONUN HEMEN ARDINDAN
+    // inşa ediliyor — yani aktif taşınmazın satırı, ekranda görünen
+    // (editördeki) TAZE değerlerden BİR RENDER GERİ (bir önceki
+    // hesaplamadan kalma) görünüyordu: kullanıcı Yapı Sınıfı/Alan/Emsal
+    // gibi hesaplamaya giren bir alanı değiştirip AYNI ekranda hem editörü
+    // hem özet tabloyu gördüğünde, tablo henüz eski değeri gösteriyordu.
+    // Düzeltme: özel bir "aktifi atla" dalı YERİNE, döngü HER index için
+    // (aktif dahil) koşulsuz switchActiveTitleUnit(index) + refresh
+    // çağırır — switchActiveTitleUnit ZATEN yalnızca "index, O ANKİ aktife
+    // eşitse" no-op'tur (bkz. fonksiyonun kendisi); döngü sırasında aktif
+    // taşınmazdan ÖNCE başka bir taşınmaza geçilmiş olabileceğinden, aktif
+    // taşınmazın index'ine tekrar geçiş genelde no-op DEĞİLDİR ve onu
+    // doğru şekilde tazeler.
     for (let index = 0; index < count; index += 1) {
-      if (index === originalActiveIndex) continue;
       switchActiveTitleUnit(index);
       refreshValuationComputedFields();
     }
