@@ -342,6 +342,13 @@ const functionNames = [
   "buildMainRoomDecorativeAllRepresentations",
   "getOutdoorInteriorPrefix",
   "buildOutdoorDecorativeAllRepresentations",
+  // Kullanıcı talebi (2026-09-06): ardışık, TAM OLARAK AYNI taşınmaz
+  // bölünmesini üreten dekoratif slotların "; " ile TEK cümlede
+  // birleştirilip atfın YALNIZCA BİR KEZ yazılması (bkz. senaryo 30-32).
+  "buildDecorativeSlotClusterSignature",
+  "composeDecorativeSlotClusterGroupText",
+  "composeDecorativeSlotClusterText",
+  "buildDecorativeSlotClusters",
 ];
 const constArrayNames = [
   "UNIT_INTERIOR_AREA_VERB_ENDING_PLURAL_MAP", "UNIT_DECORATIVE_BARE_SUBJECT_VERB_ENDING_PLURAL_MAP", "UNIT_DECORATIVE_SLOT_KEY_ORDER",
@@ -413,6 +420,10 @@ const sandboxSource = `
     getOutdoorInteriorPrefix,
     buildOutdoorDecorativeAllRepresentations,
     composeSingleAreaDecorativeSentence,
+    buildDecorativeSlotClusterSignature,
+    composeDecorativeSlotClusterGroupText,
+    composeDecorativeSlotClusterText,
+    buildDecorativeSlotClusters,
   };
 `;
 // eslint-disable-next-line no-new-func
@@ -761,22 +772,32 @@ function decorativePartsCommon(mainRoomValue) {
 }
 
 // --- 8c) buildMultiUnitInteriorDescriptionText() GERÇEK gövdesi Dekoratif
-// Özellikler'i (kullanıcı düzeltmesi #5) SLOT BAZINDA okuyor, alan/oda
-// için pluralizeUnitInteriorAreaDetailsText / dekoratif için
-// pluralizeUnitDecorativeText + joiner:" " GEÇİYOR (kaynak-düzeyi) ------------
+// Özellikler'i (kullanıcı düzeltmesi #5) SLOT BAZINDA, artık KÜMELEME
+// katmanı (buildDecorativeSlotClusters/composeDecorativeSlotClusterText,
+// kullanıcı düzeltmesi #9) ÜZERİNDEN okuyor mu (kaynak-düzeyi) ------------
 {
   const realBody = extractFunction("buildMultiUnitInteriorDescriptionText");
   assert.ok(realBody.includes("getUnitDecorativeDescriptionPartsForCombinedText()"), "Çoklu-taşınmaz Dekoratif Özellikler kaynağı getUnitDecorativeDescriptionPartsForCombinedText() (SLOT bazlı) OLMALI.");
-  assert.ok(realBody.includes("UNIT_DECORATIVE_SLOT_KEY_ORDER"), "Dekoratif slotlar UNIT_DECORATIVE_SLOT_KEY_ORDER sabit sırasıyla işlenmeli.");
   assert.ok(
-    /composeMultiUnitInteriorGroupedText\(groupUnitInteriorTextEntries\(decorativeEntriesBySlot\[key\]\), \{ pluralize: pluralizeUnitDecorativeText, joiner: " ", alwaysAttribute: true \}\)/.test(realBody),
-    "Dekoratif SLOT metni composeMultiUnitInteriorGroupedText'e { pluralize: pluralizeUnitDecorativeText, joiner: \" \", alwaysAttribute: true } İLE geçmeli (tek paragraf + TÜM taşınmazların atfı, kullanıcı düzeltmesi #5/#8)."
+    realBody.includes("buildDecorativeSlotClusters(decorativeEntriesBySlot).map(composeDecorativeSlotClusterText)"),
+    "Dekoratif Özellikler artık buildDecorativeSlotClusters(...).map(composeDecorativeSlotClusterText) İLE (ardışık aynı-bölünmeli slotları birleştiren küme katmanı) üretilmeli (kullanıcı düzeltmesi #9)."
   );
   assert.ok(
     /composeMultiUnitInteriorGroupedText\(groupUnitInteriorTextEntries\(areaEntries\), \{ pluralize: pluralizeUnitInteriorAreaDetailsText \}\)/.test(realBody),
-    "Alan/oda metni composeMultiUnitInteriorGroupedText'e { pluralize: pluralizeUnitInteriorAreaDetailsText } İLE (varsayılan '\\n' joiner'la) geçmeli."
+    "Alan/oda metni composeMultiUnitInteriorGroupedText'e { pluralize: pluralizeUnitInteriorAreaDetailsText } İLE (varsayılan '\\n' joiner'la) geçmeli — BU TALEBİN (küme birleştirme) kapsamı DIŞINDA, DEĞİŞMEMELİ."
   );
-  console.log("buildMultiUnitInteriorDescriptionText(): Dekoratif Özellikler SLOT-bazlı kablolama + çoğullama (kaynak-düzeyi) testi tamam.");
+  console.log("buildMultiUnitInteriorDescriptionText(): Dekoratif Özellikler artık küme katmanı ÜZERİNDEN üretiliyor (kaynak-düzeyi) testi tamam.");
+}
+
+// --- 8f) buildDecorativeSlotClusters() GERÇEK gövdesi UNIT_DECORATIVE_SLOT_KEY_ORDER
+// sabit sırasını kullanıyor, "manualOverride"ı KÜMELEMEYE hiç katmıyor
+// (kaynak-düzeyi) --------------------------------------------------------
+{
+  const realBody = extractFunction("buildDecorativeSlotClusters");
+  assert.ok(realBody.includes("UNIT_DECORATIVE_SLOT_KEY_ORDER"), "Dekoratif slotlar HÂLÂ UNIT_DECORATIVE_SLOT_KEY_ORDER sabit sırasıyla işlenmeli.");
+  assert.ok(realBody.includes('key !== "manualOverride"'), "\"manualOverride\" slotu KÜMELEMEYE (mergeable) HİÇ katılmamalı — kullanıcının elle yazdığı serbest metinle yapılandırılmış bir cümle \"; \" ile birleştirilmemeli.");
+  assert.ok(realBody.includes("groups.length > 1"), "Bir slot yalnızca GERÇEK bir fark (2+ grup) taşıyorsa kümelemeye (mergeable) uygun olmalı — TÜM taşınmazlarda AYNI (TEK grup) olan ardışık slotlar BİLİNÇLİ OLARAK birleştirilmemeli (kullanıcının 'GÜZEL bir seviyeye geldik' dediği kısım zaten bu davranıştaydı).");
+  console.log("buildDecorativeSlotClusters(): sıra + manualOverride istisnası + 'yalnızca gerçek fark varsa kümele' kuralı (kaynak-düzeyi) testi tamam.");
 }
 
 // --- 19) pluralizeUnitDecorativeSentence(): çıplak özne+fiil (2 GERÇEK
@@ -1173,6 +1194,106 @@ const PRESENCE_BALCONY_AND_TERRACE = { hasAny: true, balcony: true, terrace: tru
     "collectGeneratedTextPlaceholders() katalogunda unit_interior_description_multi_text kaydı olmalı."
   );
   console.log("collectGeneratedTextPlaceholders katalog kaydı testi tamam.");
+}
+
+// --- 30) KULLANICININ GERÇEK 4 taşınmazlı örneği (2026-09-06, "GÜZEL bir
+// seviyeye geldik ... ama bence edebi olarak daha iyi seviyeye
+// gelebiliriz. daha organik ve anlaşılabilir olabilir"): kapı/pencere VE
+// mutfak (ARDIŞIK slotlar) AYNI bölünmeyi ({A5} vs {A8,A11,A15}) üretirken
+// İç mekân kalitesi FARKLI bir bölünme ({A5,A8,A11} vs {A15}) üretiyor ->
+// kapı/pencere+mutfak TEK kümede ("; " ile) birleşip atıf YALNIZCA BİR KEZ
+// yazılmalı; İç mekân kalitesi KENDİ AYRI kümesinde (kendi atıflarıyla)
+// kalmalı ---------------------------------------------------------------
+{
+  const DOORS_A = "Dış kapı çelik, iç kapılar ahşap panel ve pencereler PVC doğramadır.";
+  const DOORS_B = "Dış kapı ahşap kaplama çelik, iç kapılar amerikan panel ve pencereler PVC doğramadır.";
+  const KITCHEN_A = "Mutfak dolapları lake dolap olup, tezgahı kuvars olarak düzenlenmiştir.";
+  const KITCHEN_B = "Mutfak dolapları mdf lam dolap olup, tezgahı çimstone olarak düzenlenmiştir.";
+  const QUALITY_STANDARD = "İç mekân özellikleri standart seviyede olup, tadilat ihtiyacı bulunmamaktadır.";
+  const QUALITY_PREMIUM = "İç mekân özellikleri kaliteli seviyede olup, tadilat ihtiyacı bulunmamaktadır.";
+  function realParts(doors, kitchen, quality) {
+    return [
+      { key: "doorsWindows", value: doors },
+      { key: "kitchen", value: kitchen },
+      { key: "materialQuality", value: quality },
+    ];
+  }
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: { titleBlockName: "A", unitNo: "5", mockAreaDetails: SALON_2_ODA, mockDecorativeParts: realParts(DOORS_A, KITCHEN_A, QUALITY_STANDARD) },
+    tables: {},
+    titleUnits: [
+      unit({ titleBlockName: "A", unitNo: "8", mockAreaDetails: SALON_2_ODA, mockDecorativeParts: realParts(DOORS_B, KITCHEN_B, QUALITY_STANDARD) }),
+      unit({ titleBlockName: "A", unitNo: "11", mockAreaDetails: SALON_2_ODA, mockDecorativeParts: realParts(DOORS_B, KITCHEN_B, QUALITY_STANDARD) }),
+      unit({ titleBlockName: "A", unitNo: "15", mockAreaDetails: SALON_2_ODA, mockDecorativeParts: realParts(DOORS_B, KITCHEN_B, QUALITY_PREMIUM) }),
+    ],
+  });
+  const result = fns.buildMultiUnitInteriorDescriptionText();
+  const decorativeParagraph = result.split("\n")[1];
+
+  // Her iki tek-cümlelik değer de KENDİ "." iyle biter — "; " ile
+  // birleştirilirken ARADAKİ nokta SÖKÜLÜR (çift noktalama, ".; ",
+  // OLUŞMAMALI), TEK "." yalnızca EN SONA gelmeli.
+  assert.ok(
+    decorativeParagraph.includes(`A 5 No'lu, ${DOORS_A.replace(/\.$/, "")}; ${KITCHEN_A}`),
+    `A 5'in kapı/pencere+mutfak cümlesi TEK atıfla, ÇİFT NOKTALAMA OLMADAN "; " birleşmiş olmalı. Bulunan: ${decorativeParagraph}`
+  );
+  assert.ok(
+    decorativeParagraph.includes(`A 8 No'lu, A 11 No'lu ve A 15 No'lu, ${DOORS_B.replace(/\.$/, "")}; ${KITCHEN_B}`),
+    `A 8/A 11/A 15'in kapı/pencere+mutfak cümlesi TEK atıfla, ÇİFT NOKTALAMA OLMADAN "; " birleşmiş olmalı. Bulunan: ${decorativeParagraph}`
+  );
+  assert.ok(!decorativeParagraph.includes(".;"), "Birleştirilmiş kümede ÇİFT noktalama (\".; \") ASLA oluşmamalı.");
+  // "A 5 No'lu" atfı toplamda TAM 2 kez geçmeli (kapı/pencere+mutfak KÜMESİ
+  // için 1 kez + kalite KÜMESİ için 1 kez, ÇÜNKÜ bu ikisi FARKLI bölünme
+  // ürettiğinden AYRI kümede kalıyor) — ESKİ davranışta 3 kez geçerdi
+  // (kapı/pencere, mutfak, kalite HER BİRİ kendi atfını AYRI AYRI tekrarlardı).
+  assert.equal(
+    decorativeParagraph.split("A 5 No'lu").length - 1,
+    2,
+    `"A 5 No'lu" atfı toplamda TAM 2 kez geçmeli (küme birleştirmeden ÖNCE 3 kez geçerdi). Bulunan metin: ${decorativeParagraph}`
+  );
+  assert.ok(
+    decorativeParagraph.includes(`A 5 No'lu, A 8 No'lu ve A 11 No'lu, ${QUALITY_STANDARD}`),
+    `İç mekân kalitesi (standart, FARKLI bölünme) KENDİ AYRI kümesinde, KENDİ atfıyla kalmalı. Bulunan: ${decorativeParagraph}`
+  );
+  assert.ok(
+    decorativeParagraph.includes(`A 15 No'lu, ${QUALITY_PREMIUM}`),
+    `İç mekân kalitesi (kaliteli, A 15 tek başına) KENDİ AYRI kümesinde kalmalı. Bulunan: ${decorativeParagraph}`
+  );
+  console.log("KULLANICI ÖRNEĞİ (2026-09-06): ardışık AYNI-bölünmeli slotlar (kapı/pencere+mutfak) TEK kümede birleşip atıf tekrarı azalıyor, FARKLI bölünmeli slot (kalite) AYRI kalıyor testi tamam.");
+}
+
+// --- 31) buildDecorativeSlotClusterSignature()/buildDecorativeSlotClusters()
+// birim testleri: AYNI index-bölünmesi AYNI imzayı üretir, FARKLI
+// bölünme FARKLI imzayı üretir; TEK-gruplu (fark YOK) ardışık slotlar
+// KÜMELENMEZ (mergeable=false, her biri KENDİ tek-slotluk kümesinde kalır) -
+{
+  const groupsA = [{ entries: [{ index: 0 }] }, { entries: [{ index: 1 }, { index: 2 }, { index: 3 }] }];
+  const groupsB = [{ entries: [{ index: 0 }] }, { entries: [{ index: 1 }, { index: 2 }, { index: 3 }] }];
+  const groupsC = [{ entries: [{ index: 0 }, { index: 1 }, { index: 2 }] }, { entries: [{ index: 3 }] }];
+  assert.equal(
+    fns.buildDecorativeSlotClusterSignature(groupsA),
+    fns.buildDecorativeSlotClusterSignature(groupsB),
+    "AYNI index-bölünmesini (partition) üreten iki grup listesi AYNI imzayı üretmeli."
+  );
+  assert.notEqual(
+    fns.buildDecorativeSlotClusterSignature(groupsA),
+    fns.buildDecorativeSlotClusterSignature(groupsC),
+    "FARKLI index-bölünmesini üreten iki grup listesi FARKLI imzayı üretmeli."
+  );
+
+  const entriesSingleGroup = (value) => [
+    { index: 0, fields: { titleBlockName: "A", unitNo: "2" }, value },
+    { index: 1, fields: { titleBlockName: "B", unitNo: "5" }, value },
+  ];
+  const clusters = fns.buildDecorativeSlotClusters({
+    wetArea: entriesSingleGroup(DEKORATIF_WET_AREA),
+    outdoorCombined: entriesSingleGroup(DEKORATIF_OUTDOOR),
+  });
+  assert.equal(clusters.length, 2, "İki ARDIŞIK, TEK-gruplu (fark YOK) slot KÜMELENMEMELİ — her biri KENDİ tek-slotluk kümesinde kalmalı.");
+  assert.equal(clusters[0].slots.length, 1, "TEK-gruplu slot kümesi yalnızca KENDİ slotunu içermeli.");
+  assert.equal(clusters[1].slots.length, 1, "TEK-gruplu slot kümesi yalnızca KENDİ slotunu içermeli.");
+  console.log("buildDecorativeSlotClusterSignature()/buildDecorativeSlotClusters(): imza eşitliği + TEK-gruplu slotların KÜMELENMEMESİ birim testleri tamam.");
 }
 
 console.log("Tum 'Ic Hacimler Aciklamasi (Coklu Tasinmaz)' testleri basarili.");

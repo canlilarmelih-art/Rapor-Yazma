@@ -33884,6 +33884,87 @@ function resolveOutdoorCombinedIgnoringTypeDifferences(entriesBySlot) {
   entriesBySlot.outdoorCombined = combinedEntries.map((entry) => ({ ...entry, value: representativeValue }));
 }
 
+// Kullanıcı talebi (2026-09-06, GERÇEK bir 4 taşınmazlı örnekle): "GÜZEL
+// bir seviyeye geldik ... ama bence edebi olarak daha iyi seviyeye
+// gelebiliriz. daha organik ve anlaşılabilir olabilir." Somut sorun:
+// ARDIŞIK dekoratif slotlar (ör. kapı/pencere VE mutfak) TAM OLARAK AYNI
+// taşınmaz bölünmesini ({A5} vs {A8,A11,A15} gibi) ürettiğinde, HER slot
+// KENDİ atfını (AYNI isim listesini) baştan tekrarlıyordu: "A 5 No'lu,
+// [kapı/pencere]. A 8 No'lu, A 11 No'lu ve A 15 No'lu, [kapı/pencere].
+// A 5 No'lu, [mutfak]. A 8 No'lu, A 11 No'lu ve A 15 No'lu, [mutfak]."
+// — bu VERİTABANI KAYDI gibi, tekrarlı ve mekanik okunuyordu. Düzeltme:
+// ARDIŞIK slotlar TAM OLARAK AYNI bölünmeyi (partition — hangi taşınmazın
+// hangi grupta olduğu) ürettiğinde ve bu bölünme GERÇEK bir fark
+// (2+ grup) içerdiğinde, bu slotlar TEK bir "küme"de birleştirilir — HER
+// taşınmaz grubu İÇİN atıf YALNIZCA BİR KEZ yazılır, o gruba ait TÜM slot
+// cümleleri noktalı virgülle ("; ") TEK cümlede ardışık sıralanır. Sonuç:
+// "A 5 No'lu, [kapı/pencere]; [mutfak]. A 8 No'lu, A 11 No'lu ve A 15
+// No'lu, [kapı/pencere]; [mutfak]." — atıf tekrarı 4'ten 2'ye iner.
+// GERÇEK bir fark OLMAYAN (TEK grup, TÜM taşınmazlar aynı) ardışık
+// slotlar BİLİNÇLİ OLARAK birleştirilmiyor — kullanıcının şikayeti
+// SADECE "gerçek fark var" bloklarındaydı (Islak hacim/Balkon/Banyo gibi
+// TEK cümlelik atıflı/atıfsız ifadeler zaten "GÜZEL" bulundu), TÜM
+// birleştirmeyi genişletmek riskli bir davranış değişikliği olurdu.
+// `manualOverride` KÜMELEMEYE HİÇ KATILMAZ — kullanıcının elle yazdığı
+// serbest metin bloğu olduğundan başka bir yapılandırılmış cümleyle ";"
+// ile birleştirmek anlamsız/riskli olurdu, her zaman KENDİ tek kümesinde
+// kalır.
+function buildDecorativeSlotClusterSignature(groups) {
+  return groups
+    .map((group) => group.entries.map((entry) => entry.index).slice().sort((a, b) => a - b).join(","))
+    .join("|");
+}
+
+function composeDecorativeSlotClusterGroupText(cluster, groupIndex, forceAttribute) {
+  const group = cluster.slots[0].groups[groupIndex];
+  const isShared = group.entries.length > 1;
+  // Her slot değeri ZATEN kendi "." ile bitiyor — birden fazla slot "; "
+  // ile birleştirilirken önce bu son nokta SÖKÜLÜR (aksi halde ".; " gibi
+  // ÇİFT noktalama oluşurdu), TEK bir "." yalnızca EN SONA eklenir.
+  const text = `${cluster.slots
+    .map((slot) => {
+      const value = slot.groups[groupIndex].canonicalValue;
+      const pluralized = isShared ? pluralizeUnitDecorativeText(value) : value;
+      return pluralized.trim().replace(/\.+$/, "");
+    })
+    .join("; ")}.`;
+  return forceAttribute || isShared ? attributeMultiUnitGroupedText(group, text) : text;
+}
+
+function composeDecorativeSlotClusterText(cluster) {
+  const groupCount = cluster.slots[0].groups.length;
+  if (groupCount === 1) return composeDecorativeSlotClusterGroupText(cluster, 0, false);
+  const texts = [];
+  for (let groupIndex = 0; groupIndex < groupCount; groupIndex += 1) {
+    texts.push(composeDecorativeSlotClusterGroupText(cluster, groupIndex, true));
+  }
+  return texts.join(" ");
+}
+
+function buildDecorativeSlotClusters(decorativeEntriesBySlot) {
+  const slots = UNIT_DECORATIVE_SLOT_KEY_ORDER
+    .filter((key) => decorativeEntriesBySlot[key]?.length)
+    .map((key) => {
+      const groups = groupUnitInteriorTextEntries(decorativeEntriesBySlot[key]);
+      return {
+        key,
+        groups,
+        signature: buildDecorativeSlotClusterSignature(groups),
+        mergeable: key !== "manualOverride" && groups.length > 1,
+      };
+    });
+  const clusters = [];
+  slots.forEach((slot) => {
+    const last = clusters.at(-1);
+    if (last && last.mergeable && slot.mergeable && last.signature === slot.signature) {
+      last.slots.push(slot);
+    } else {
+      clusters.push({ mergeable: slot.mergeable, signature: slot.signature, slots: [slot] });
+    }
+  });
+  return clusters;
+}
+
 // Kullanıcı talebi (2026-09-03): "aynı ada parselde yer alan çoklu
 // çalışmalarda bağımsız bölüm özelliklerinde dekoratif özellikler
 // dışında kalan kısımları yazdık [0.0.632/633]. şimdi dekoratif
@@ -33952,9 +34033,7 @@ function buildMultiUnitInteriorDescriptionText() {
   resolveOutdoorCombinedIgnoringTypeDifferences(decorativeEntriesBySlot);
 
   const areaText = composeMultiUnitInteriorGroupedText(groupUnitInteriorTextEntries(areaEntries), { pluralize: pluralizeUnitInteriorAreaDetailsText });
-  const decorativeSlotTexts = UNIT_DECORATIVE_SLOT_KEY_ORDER
-    .filter((key) => decorativeEntriesBySlot[key]?.length)
-    .map((key) => composeMultiUnitInteriorGroupedText(groupUnitInteriorTextEntries(decorativeEntriesBySlot[key]), { pluralize: pluralizeUnitDecorativeText, joiner: " ", alwaysAttribute: true }));
+  const decorativeSlotTexts = buildDecorativeSlotClusters(decorativeEntriesBySlot).map(composeDecorativeSlotClusterText);
   const decorativeText = joinNonEmptySentences(decorativeSlotTexts);
   return [areaText, decorativeText].filter(Boolean).join("\n");
 }
