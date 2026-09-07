@@ -35283,8 +35283,8 @@ function createOpenAddressPanel() {
 //  yasal/mevcut değerlerden hisse oranına göre otomatik hesaplanır.
 //  Toplam değer henüz girilmemişse hisse değeri 0 gösterilir.
 // ==========================================================
-function getMaliklerOwnerRows() {
-  return (state.tables.title || []).filter((row) => String(row?.c0 || "").trim());
+function getMaliklerOwnerRowsForUnit(tables) {
+  return (Array.isArray(tables?.title) ? tables.title : []).filter((row) => String(row?.c0 || "").trim());
 }
 
 // template-engine.js'in kendi (yerel/kapsam-içi) firstTitleRowCell()'inin
@@ -35320,11 +35320,29 @@ function formatMaliklerShareValue(value) {
   return `${Math.round(value).toLocaleString("tr-TR")} TL`;
 }
 
-function buildMaliklerTableRows() {
-  const owners = getMaliklerOwnerRows();
-  const legalTotal = parseValuationNumber(state.fields.legalValue);
-  const currentTotal = parseValuationNumber(state.fields.currentValue);
+// Kullanıcı talebi (2026-09-08): "çoklu raporda excel exportunda malikler
+// bölümün sadece tek bir tapunun malik bölümü var burada Blok Bağımsız
+// Bölüm no sütunları olmalı ve template kısmına bu şekilde aktarılmalı" —
+// eskiden bu tablo YALNIZCA AKTİF taşınmazın (state.tables.title) malikini
+// gösteriyordu, çoklu raporda diğer taşınmazların malikleri HİÇ görünmüyordu.
+// Artık çoklu raporda TÜM taşınmazların malikleri (buildAllTitleUnitsForSummaryTable
+// ile AYNI aktif/gölge okuma deseni) birleştirilir, HER satır KENDİ
+// taşınmazının Blok/Bağımsız Bölüm No etiketini VE KENDİ legalValue/
+// currentValue'suna göre hesaplanmış hisse değerini taşır (tek bir
+// taşınmazın toplam değerini TÜM maliklere uygulamak yanlış olurdu).
+// Tekil raporda davranış AYNEN korunur (Blok/BB No sütunları hiç yok).
+function isMaliklerTableMultiUnit() {
+  return getTitleUnitCount() >= 2;
+}
+
+function buildMaliklerTableRowsForUnit(fields, tables, includeUnitColumns) {
+  const owners = getMaliklerOwnerRowsForUnit(tables);
+  if (!owners.length) return [];
+  const legalTotal = parseValuationNumber(fields?.legalValue);
+  const currentTotal = parseValuationNumber(fields?.currentValue);
   const ownerCount = owners.length;
+  const block = String(fields?.titleBlockName || "").trim() || "-";
+  const unitNo = String(fields?.unitNo || "").trim() || "-";
   return owners.map((row) => {
     const share = cleanTakbisValue(row.c1);
     let ratio = parseOwnerShareRatioValue(share);
@@ -35333,6 +35351,8 @@ function buildMaliklerTableRows() {
     const currentShareValue = Number.isFinite(ratio) && Number.isFinite(currentTotal) ? ratio * currentTotal : 0;
     return {
       malik: String(row.c0 || "").trim().toLocaleUpperCase("tr-TR"),
+      block: includeUnitColumns ? block : "",
+      unitNo: includeUnitColumns ? unitNo : "",
       share: share || "-",
       reason: String(row.c2 || "").trim() || "-",
       deedDate: (dateIsoToTr(String(row.c3 || "").trim()) || "").trim() || "-",
@@ -35343,16 +35363,30 @@ function buildMaliklerTableRows() {
   });
 }
 
+function buildMaliklerTableRows() {
+  if (!isMaliklerTableMultiUnit()) {
+    return buildMaliklerTableRowsForUnit(state.fields, state.tables, false);
+  }
+  const units = buildAllTitleUnitsForSummaryTable();
+  return units.flatMap((unit) => buildMaliklerTableRowsForUnit(unit.fields, unit.tables, true));
+}
+
 function hasMaliklerTableData() {
-  return getMaliklerOwnerRows().length > 0;
+  return buildMaliklerTableRows().length > 0;
 }
 
 function buildMaliklerTableText() {
   const rows = buildMaliklerTableRows();
   if (!rows.length) return "";
-  const header = ["Malik / Hissedar", "Hisse Payı", "Edinme Sebebi", "Tapu Tarihi", "Yevmiye", "Hisse Yasal Durum Değeri", "Hisse Mevcut Durum Değeri"].join(" | ");
+  const multi = isMaliklerTableMultiUnit();
+  const header = [
+    "Malik / Hissedar",
+    ...(multi ? ["Blok", "Bağımsız Bölüm No"] : []),
+    "Hisse Payı", "Edinme Sebebi", "Tapu Tarihi", "Yevmiye", "Hisse Yasal Durum Değeri", "Hisse Mevcut Durum Değeri",
+  ].join(" | ");
   const lines = rows.map((row) => [
     row.malik,
+    ...(multi ? [row.block, row.unitNo] : []),
     row.share,
     row.reason,
     row.deedDate,
@@ -35364,13 +35398,15 @@ function buildMaliklerTableText() {
 }
 
 // Ekrandaki "Malikler Tablosu" panelinin (bkz. createMaliklerTablePanel,
-// .malikler-table) BIREBIR ayni yapida Word/HTML karsiligi: 7 sutun, deger
-// sutunlari sag hizali/tabular, ilk sutun kalin, en altta TOPLAM satiri
+// .malikler-table) BIREBIR ayni yapida Word/HTML karsiligi: 7 sutun (coklu
+// raporda 9 - Blok/Bağımsız Bölüm No eklenir, bkz. isMaliklerTableMultiUnit),
+// deger sutunlari sag hizali/tabular, ilk sutun kalin, en altta TOPLAM satiri
 // (koyu zemin + beyaz yazi). Renkler satir ici stille sabitlenir; hangi
 // banka sablonuna yerlestirilirse yerlestirilsin ayni gorunur.
 function buildMaliklerTableWordHtml() {
   const rows = buildMaliklerTableRows();
   if (!rows.length) return "";
+  const multi = isMaliklerTableMultiUnit();
   const line = getReportThemeToken("--line", "#dde3ef");
   const blue = getReportThemeToken("--blue", "#3a5691");
   const blueSoft = getReportThemeToken("--blue-soft", "#e4ebf8");
@@ -35383,12 +35419,20 @@ function buildMaliklerTableWordHtml() {
   const valueCell = `${border}${cellPad}text-align:right;white-space:nowrap;`;
   const zebraExtra = `background:${surfaceMuted};`;
   const totalCell = `${border}${cellPad}background:${blue};color:#ffffff;font-weight:800;`;
-  const headers = ["Malik / Hissedar", "Hisse Payı", "Edinme Sebebi", "Tapu Tarihi", "Yevmiye", "Hisse Yasal Durum Değeri", "Hisse Mevcut Durum Değeri"];
+  const headers = [
+    "Malik / Hissedar",
+    ...(multi ? ["Blok", "Bağımsız Bölüm No"] : []),
+    "Hisse Payı", "Edinme Sebebi", "Tapu Tarihi", "Yevmiye", "Hisse Yasal Durum Değeri", "Hisse Mevcut Durum Değeri",
+  ];
   const theadHtml = `<tr>${headers.map((header) => `<th style="${headerCell}">${escapeHtml(header)}</th>`).join("")}</tr>`;
   const bodyHtml = rows.map((row, rowIndex) => {
     const zebra = rowIndex % 2 === 1 ? zebraExtra : "";
+    const unitCellsHtml = multi
+      ? `<td style="${plainCell}${zebra}">${escapeHtml(row.block)}</td><td style="${plainCell}${zebra}">${escapeHtml(row.unitNo)}</td>`
+      : "";
     return `<tr>
       <td style="${nameCell}${zebra}">${escapeHtml(row.malik)}</td>
+      ${unitCellsHtml}
       <td style="${plainCell}${zebra}">${escapeHtml(row.share)}</td>
       <td style="${plainCell}${zebra}">${escapeHtml(row.reason)}</td>
       <td style="${plainCell}${zebra}">${escapeHtml(row.deedDate)}</td>
@@ -35399,8 +35443,13 @@ function buildMaliklerTableWordHtml() {
   }).join("");
   const legalSum = rows.reduce((sum, row) => sum + (Number.isFinite(row.legalShareValue) ? row.legalShareValue : 0), 0);
   const currentSum = rows.reduce((sum, row) => sum + (Number.isFinite(row.currentShareValue) ? row.currentShareValue : 0), 0);
+  // "TOPLAM" etiketi deger-oncesi TUM sutunlari kapsar: tekilde 5 (Malik/
+  // Hisse Payi/Edinme Sebebi/Tapu Tarihi/Yevmiye), cokluda 7 (+ Blok/BB No).
+  const totalLabelHtml = multi
+    ? `<th colspan="7" style="${totalCell}text-align:right;">TOPLAM</th>`
+    : `<th colspan="5" style="${totalCell}text-align:right;">TOPLAM</th>`;
   const totalHtml = `<tr>
-    <th colspan="5" style="${totalCell}text-align:right;">TOPLAM</th>
+    ${totalLabelHtml}
     <td style="${totalCell}text-align:right;white-space:nowrap;">${escapeHtml(formatMaliklerShareValue(legalSum))}</td>
     <td style="${totalCell}text-align:right;white-space:nowrap;">${escapeHtml(formatMaliklerShareValue(currentSum))}</td>
   </tr>`;
@@ -35455,6 +35504,7 @@ function createMaliklerTablePanel() {
     return panel;
   }
 
+  const multi = isMaliklerTableMultiUnit();
   const shell = document.createElement("div");
   shell.className = "table-shell malikler-table-shell";
   const table = document.createElement("table");
@@ -35463,6 +35513,7 @@ function createMaliklerTablePanel() {
     <thead>
       <tr>
         <th>Malik / Hissedar</th>
+        ${multi ? "<th>Blok</th><th>Bağımsız Bölüm No</th>" : ""}
         <th>Hisse Payı</th>
         <th>Edinme Sebebi</th>
         <th>Tapu Tarihi</th>
@@ -35475,7 +35526,10 @@ function createMaliklerTablePanel() {
   const tbody = document.createElement("tbody");
   rows.forEach((row) => {
     const tr = document.createElement("tr");
-    [row.malik, row.share, row.reason, row.deedDate, row.journal].forEach((value) => {
+    const cellValues = multi
+      ? [row.malik, row.block, row.unitNo, row.share, row.reason, row.deedDate, row.journal]
+      : [row.malik, row.share, row.reason, row.deedDate, row.journal];
+    cellValues.forEach((value) => {
       const td = document.createElement("td");
       td.textContent = value;
       tr.append(td);
@@ -35497,7 +35551,7 @@ function createMaliklerTablePanel() {
   const totalRow = document.createElement("tr");
   totalRow.className = "malikler-total-row";
   const totalLabel = document.createElement("th");
-  totalLabel.colSpan = 5;
+  totalLabel.colSpan = multi ? 7 : 5;
   totalLabel.textContent = "TOPLAM";
   const legalTotalCell = document.createElement("td");
   legalTotalCell.className = "malikler-value-col";
