@@ -22610,8 +22610,11 @@ const TITLE_UNITS_TABLE_SHARED_FIELD_DEFS = [
   { key: "titleCity", label: "İl" },
   { key: "titleDistrict", label: "İlçe" },
   { key: "titleNeighborhood", label: "Mahalle" },
-  { key: "locationName", label: "Mevkii" },
+  // Kullanıcı talebi (2026-09-08): "çoklu rapor excel exportta tapu
+  // özellikleri sütun sıralaması bu şekilde olmalı" — ekran görüntüsünde
+  // Pafta, Mevkii'DEN ÖNCE geliyordu (eskiden Mevkii önceydi).
   { key: "sheetNo", label: "Pafta" },
+  { key: "locationName", label: "Mevkii" },
   // Kullanıcı talebi (2026-08-27): "TAPU BÖLÜMÜNDE İL İLÇE MAHALLE MEVKİİ
   // PAFTA ESKİ ADA ESKİ PARSEL BÖLÜMLERİNİ EKLEYELİM" — ilk 5'i ZATEN
   // burada vardı, Eski Ada/Eski Parsel (oldBlockNo/oldParcelNo — Tapu
@@ -22853,8 +22856,12 @@ function buildTitleUnitsSummaryTableData() {
     ...sharedFieldsToShow.map((def) => def.label),
     "Blok", "Kat", "Bağımsız Bölüm No", "Bağımsız Bölüm Niteliği", "Ana Taşınmaz Niteliği", "Eklenti",
     ...(showShareColumns ? ["Arsa Payı", "Arsa Payda", "Hissesine Düşen Arsa Payı"] : []),
-    "Malik(ler)", "Hisse Payı",
-    "Edinme Sebebi", "Tapu Tarihi", "Yevmiye No", "Cilt", "Sayfa",
+    // Kullanıcı talebi (2026-09-08): "çoklu rapor excel exportta tapu
+    // özellikleri sütun sıralaması bu şekilde olmalı" — ekran görüntüsünde
+    // Cilt/Sayfa artık Hisse Payı'nın HEMEN ardından (Edinme Sebebi/Tapu
+    // Tarihi/Yevmiye No'DAN ÖNCE) geliyor (eskiden EN SONDAYDI).
+    "Malik(ler)", "Hisse Payı", "Cilt", "Sayfa",
+    "Edinme Sebebi", "Tapu Tarihi", "Yevmiye No",
   ];
 
   const rows = units.map((unit, index) => {
@@ -22879,11 +22886,11 @@ function buildTitleUnitsSummaryTableData() {
       ] : []),
       joinTitleUnitOwnerColumn(ownerRows, (r) => r.c0),
       joinTitleUnitOwnerColumn(ownerRows, (r) => r.c1),
+      String(fields.registryVolume || "").trim() || "-",
+      String(fields.registryPage || "").trim() || "-",
       joinTitleUnitOwnerColumn(ownerRows, (r) => r.c2),
       joinTitleUnitOwnerColumn(ownerRows, (r) => r.c3),
       joinTitleUnitOwnerColumn(ownerRows, (r) => r.c4),
-      String(fields.registryVolume || "").trim() || "-",
-      String(fields.registryPage || "").trim() || "-",
     ];
   });
 
@@ -22916,11 +22923,11 @@ function buildTitleUnitsSummaryTableData() {
     ] : []),
     { kind: "owner", ownerColumn: "c0" },
     { kind: "owner", ownerColumn: "c1" },
+    { kind: "scalar", fieldKey: "registryVolume" },
+    { kind: "scalar", fieldKey: "registryPage" },
     { kind: "owner", ownerColumn: "c2" },
     { kind: "owner", ownerColumn: "c3" },
     { kind: "owner", ownerColumn: "c4" },
-    { kind: "scalar", fieldKey: "registryVolume" },
-    { kind: "scalar", fieldKey: "registryPage" },
   ];
 
   // "eğer sistemde hücrede veri yoksa ... tabloda bu sütunlar gözükmemeli"
@@ -22971,7 +22978,29 @@ function buildTitleUnitsSummaryTableData() {
   const commonFields = [...forcedCommonFields, ...result.commonFields]
     .sort((a, b) => (defOrder.has(a.fieldKey) ? defOrder.get(a.fieldKey) : 999) - (defOrder.has(b.fieldKey) ? defOrder.get(b.fieldKey) : 999));
 
-  return { ...result, commonFields, sharedColumnCount };
+  // KRİTİK DÜZELTME (2026-09-08, kullanıcı talebi "çoklu rapor excel
+  // exportta tapu özellikleri sütun sıralaması bu şekilde olmalı" — gerçek
+  // rapor ekran görüntüsü, TÜM taşınmazlar AYNI ada/parselde): forcedCommonFields
+  // (İl/İlçe/Mahalle/Pafta, yukarıdaki yorum) hiçbir zaman headers/columnMeta'ya
+  // GİRMEDİĞİ için `result.allHeadersInOriginalOrder`da da HİÇ YOK —
+  // Excel'in "ortak değerleri KENDİ orijinal konumuna geri koy" katmanı
+  // (flattenTitleUnitsSummaryCommonFields, report-tables-xlsx.js'in
+  // kullandığı buildTitleUnitsSummaryWordTableHtml(true) yolu) bu referans
+  // listede bulamadığından güvenli varsayılanla EN SONA düşürüyordu (kullanıcının
+  // istediği sıranın TAM TERSİ). Bu 4 etiket, UAVT'nin hemen ardına (sharedFieldsToShow'un
+  // NORMALDE başladığı yere — TITLE_UNITS_TABLE_SHARED_FIELD_DEFS'teki
+  // kendi sırasıyla) eklenerek referans listesi TAMAMLANIR.
+  const allHeadersInOriginalOrder = (() => {
+    const base = Array.isArray(result.allHeadersInOriginalOrder) ? result.allHeadersInOriginalOrder : null;
+    if (!base || !forcedCommonFields.length) return base;
+    const toInsert = forcedCommonFields.map((f) => f.label).filter((label) => !base.includes(label));
+    if (!toInsert.length) return base;
+    const uavtIndex = base.indexOf("UAVT");
+    const insertAt = uavtIndex === -1 ? 0 : uavtIndex + 1;
+    return [...base.slice(0, insertAt), ...toInsert, ...base.slice(insertAt)];
+  })();
+
+  return { ...result, allHeadersInOriginalOrder, commonFields, sharedColumnCount };
 }
 
 // "her bir taşınmazın 'Hissesine Düşen Arsa Payı' bölümünü hesapla.

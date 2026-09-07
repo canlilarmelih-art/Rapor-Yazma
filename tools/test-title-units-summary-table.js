@@ -156,6 +156,7 @@ const sandboxSource = `
     buildAllTitleUnitsForSummaryTable, joinTitleUnitOwnerColumn,
     computeTitleUnitShareOfLandArea, splitTableHeaderLabelIntoTwoLines,
     buildTitleUnitsSummaryTableData, buildTitleUnitsSummaryWordTableHtml,
+    hoistUniformColumnsForWordTable,
     buildTitleUnitsSummaryTableHtmlEditable, flattenTitleUnitsSummaryCommonFields,
     resolveTitleUnitWriteTarget, setTitleUnitFieldValue,
     resolveTitleUnitOwnerRowsWriteTarget, setTitleUnitOwnerRowValue,
@@ -988,6 +989,68 @@ function unit(fields, ownerRows) {
   assert.ok(!commonLabels.includes("Eski Ada"), "\"Eski Ada\" ASLA commonFields'e tasinmamali (artik \"ortak\" degil).");
   assert.ok(!commonLabels.includes("Eski Parsel"), "\"Eski Parsel\" ASLA commonFields'e tasinmamali (artik \"ortak\" degil).");
   console.log("Eski Ada/Eski Parsel (artik HER ZAMAN normal sutun, asla ortak olmaz) testi tamam.");
+}
+
+// --- 12) Kullanici talebi (2026-09-08): "coklu rapor excel exportta tapu
+// ozellikleri sutun siralamasi bu sekilde olmali" — gercek bir 4 bagimsiz
+// bolumlu (ayni ada/parsel: 11652/1) rapor ekran goruntusundeki TAM sutun
+// sirasi. Iki degisiklik: (1) Pafta artik Mevkii'DEN ONCE geliyor (eskiden
+// tersiydi); (2) Cilt/Sayfa artik Hisse Payi'nin HEMEN ardindan (Edinme
+// Sebebi/Tapu Tarihi/Yevmiye No'DAN ONCE), eskiden EN SONDAYDI.
+{
+  const shared = { titleCity: "BURSA", titleDistrict: "OSMANGAZİ", titleNeighborhood: "YUNUSELİ", sheetNo: "H22D01A2A/2D", blockNo: "11652", parcelNo: "1", landArea: "4173.70" };
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: { ...shared, titlePropertyId: "117467483", uavt: "5240501089", titleBlockName: "A", titleFloor: "1", unitNo: "5", titleQuality: "DAİRE", mainPropertyQuality: "ÜÇ ADET ALTI KATLI BETONARME APARTMAN,HAVUZ VE ARSASI", share: "167", denominator: "9282", registryVolume: "142", registryPage: "13917" },
+    tables: { title: [{ c0: "TAMER KORKMAZ SERVİS TAŞIMACILIĞI", c1: "1/1", c2: "SATIŞ", c3: "04.04.2023", c4: "22428" }] },
+    titleUnits: [
+      unit({ ...shared, titlePropertyId: "117467486", uavt: "5228169404", titleBlockName: "A", titleFloor: "2", unitNo: "8", titleQuality: "DAİRE", mainPropertyQuality: "ÜÇ ADET ALTI KATLI BETONARME APARTMAN,HAVUZ VE ARSASI", share: "167", denominator: "9282", registryVolume: "142", registryPage: "13920" }, [{ c0: "TAMER KORKMAZ SERVİS TAŞIMACILIĞI", c1: "1/1", c2: "SATIŞ", c3: "04.04.2023", c4: "22428" }]),
+    ],
+  });
+  // Excel export'unun GERCEKTEN kullandigi yol (report-tables-xlsx.js:
+  // generatedCellGridFor("buildTitleUnitsSummaryWordTableHtml", true)) —
+  // ham buildTitleUnitsSummaryTableData() DEGIL, hoistUniformColumnsForWordTable
+  // + flattenTitleUnitsSummaryCommonFields ZINCIRI (ayni ada/parselde Il/
+  // Ilce/Mahalle/Pafta ZORLA gizlenip commonFields'e tasindigindan, Excel'in
+  // "ortak degerleri de tabloya geri ekle" katmanindan GECMEDEN ham veri
+  // gercek ekran goruntusuyle ESLESMEZ).
+  const data = fns.buildTitleUnitsSummaryTableData();
+  const hoisted = fns.hoistUniformColumnsForWordTable(data, ["share", "denominator"]);
+  const flattened = fns.flattenTitleUnitsSummaryCommonFields(hoisted.headers, hoisted.rows, hoisted.commonFields, null, hoisted.allHeadersInOriginalOrder);
+  assert.deepEqual(flattened.headers, [
+    "Sıra No", "Taşınmaz Kimlik No", "UAVT",
+    "İl", "İlçe", "Mahalle", "Pafta", "Mevkii", "Ada", "Parsel", "Yüzölçümü",
+    "Blok", "Kat", "Bağımsız Bölüm No", "Bağımsız Bölüm Niteliği", "Ana Taşınmaz Niteliği",
+    "Arsa Payı", "Arsa Payda", "Hissesine Düşen Arsa Payı",
+    "Malik(ler)", "Hisse Payı", "Cilt", "Sayfa",
+    "Edinme Sebebi", "Tapu Tarihi", "Yevmiye No",
+  ], `Kullanicinin GERCEK rapor ekran goruntusundeki (Excel export) sutun sirasiyla BIREBIR eslesmeli, bulunan: ${JSON.stringify(flattened.headers)}`);
+  // Deger hucreleri de dogru sutuna yerlesmis olmali (sirali karisikligi
+  // yakalar) — 1. tasinmazin Cilt/Sayfa'si artik Hisse Payi'nin hemen
+  // yaninda, Edinme Sebebi'nden ONCE.
+  const ciltIdx = flattened.headers.indexOf("Cilt");
+  const sayfaIdx = flattened.headers.indexOf("Sayfa");
+  const paftaIdx = flattened.headers.indexOf("Pafta");
+  const mevkiiIdx = flattened.headers.indexOf("Mevkii");
+  assert.ok(paftaIdx < mevkiiIdx, "\"Pafta\" \"Mevkii\"den ONCE gelmeli.");
+  assert.equal(flattened.rows[0][ciltIdx], "142", "1. tasinmazin Cilt degeri dogru sutunda olmali.");
+  assert.equal(flattened.rows[0][sayfaIdx], "13917", "1. tasinmazin Sayfa degeri dogru sutunda olmali.");
+  assert.equal(flattened.rows[1][sayfaIdx], "13920", "2. tasinmazin Sayfa degeri dogru sutunda olmali.");
+  const edinmeIdx = flattened.headers.indexOf("Edinme Sebebi");
+  assert.ok(sayfaIdx < edinmeIdx, "\"Sayfa\" \"Edinme Sebebi\"den ONCE gelmeli.");
+  assert.equal(flattened.rows[0][edinmeIdx], "SATIŞ", "1. tasinmazin Edinme Sebebi degeri dogru sutunda olmali (Cilt/Sayfa arasina girmemis).");
+  // Ham (henuz hoist/flatten edilmemis) data.headers'ta da Cilt/Sayfa'nin
+  // dogru konumda (Hisse Payi'nin hemen ardinda) oldugu — Excel'e ozel bir
+  // ek adim degil, KAYNAK VERININ KENDISI dogru sirada uretiliyor — ayrica
+  // dogrulanir.
+  const rawCiltIdx = data.headers.indexOf("Cilt");
+  const rawSayfaIdx = data.headers.indexOf("Sayfa");
+  const rawEdinmeIdx = data.headers.indexOf("Edinme Sebebi");
+  const rawHissePayiIdx = data.headers.indexOf("Hisse Payı");
+  assert.ok(rawHissePayiIdx < rawCiltIdx && rawCiltIdx < rawSayfaIdx && rawSayfaIdx < rawEdinmeIdx, `Ham veride de Hisse Payı < Cilt < Sayfa < Edinme Sebebi sirasi olmali, bulunan indeksler: ${JSON.stringify({ rawHissePayiIdx, rawCiltIdx, rawSayfaIdx, rawEdinmeIdx })}`);
+  assert.equal(data.columnMeta[rawCiltIdx].fieldKey, "registryVolume", "\"Cilt\" -> registryVolume eslesmeli.");
+  assert.equal(data.columnMeta[rawSayfaIdx].fieldKey, "registryPage", "\"Sayfa\" -> registryPage eslesmeli.");
+  console.log("Kullanicinin gercek rapor ekran goruntusundeki TAM sutun sirasi (Pafta/Mevkii + Cilt-Sayfa konumu, Excel export yolu) testi tamam.");
 }
 
 console.log("Tasinmazlar tapu ozeti tablosu testleri basarili.");
