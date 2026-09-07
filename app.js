@@ -41681,8 +41681,14 @@ function isPerUnitValueFactorId(id) {
 // AYNI — ama burada "Diğer"/sole-rest gibi bir ikili karşıtlık YOK (bir
 // faktör ya bir taşınmazda TETİKLENİR ya HİÇ TETİKLENMEZ, "karşı değer"
 // diye bir kavram yok) — yalnızca AYNI metni üreten taşınmazlar TEK
-// satırda, etiketleri BİRLEŞTİRİLEREK gösterilir.
-function groupAndAttributeValueFactorEntries(entries) {
+// satırda, etiketleri BİRLEŞTİRİLEREK gösterilir. `totalUnitCount`
+// (kullanıcı takip talebi, 2026-09-07: "tüm taşınmazları kapsayan bir
+// faktör var ise taşınmazların numaralarını yazmaya gerek yok") — bir
+// grup RAPORDAKİ TÜM taşınmazları kapsıyorsa (bu grubun üye sayısı TOPLAM
+// taşınmaz sayısına EŞİTSE) buildValueFactorAttributedText()'e iletilip
+// atıf tamamen JENERİK ("Taşınmazların ...") hale getirilir — bkz. o
+// fonksiyonun yorumu.
+function groupAndAttributeValueFactorEntries(entries, totalUnitCount) {
   const groups = [];
   const byText = new Map();
   entries.forEach((entry) => {
@@ -41699,7 +41705,7 @@ function groupAndAttributeValueFactorEntries(entries) {
     const labels = group.entries.map((entry) => formatTitleUnitSuitabilityShortLabel(entry.fields, entry.index));
     return {
       ...group.entries[0].item,
-      text: buildValueFactorAttributedText(labels, group.text),
+      text: buildValueFactorAttributedText(labels, group.text, totalUnitCount),
     };
   });
 }
@@ -41732,11 +41738,26 @@ function pluralizeValueFactorPossessiveSuffix(text) {
 // AYNI teknik). Etiket 2+ taşınmazı kapsıyorsa (isPlural) metnin SONUNDAKİ
 // iyelik eki de pluralizeValueFactorPossessiveSuffix() ile ÇOĞULLANIR —
 // yalnızca özneyi değil, cümlenin TAMAMINI dilbilgisel olarak uyumlu hale
-// getirir (kullanıcının yukarıdaki düzeltmesi).
-function buildValueFactorAttributedText(labels, originalText) {
+// getirir.
+//
+// KULLANICI TAKİP TALEBİ (2026-09-07): "tüm taşınmazları kapsayan
+// taşınmaz bazında bir faktör var ise burada taşınmazların numaralarını
+// yazmaya gerek yok. A-5, A-8, A-11 ve A-15 No'lu taşınmazların iki yöne
+// cepheli olmaları yerine Taşınmazların iki yöne cepheli olmaları gibi" —
+// grup RAPORDAKİ TÜM taşınmazları kapsıyorsa (labels.length ===
+// totalUnitCount) özne, satış kabiliyeti/değerleme yöntemi ailesindeki
+// "TÜM taşınmazlar aynı → atıfsız TEK cümle" ilkesiyle TUTARLI şekilde
+// JENERİK "Taşınmazların" olur — hiçbir etiket LİSTELENMEZ (etiket listesi
+// SADECE gerçekten bir ALT KÜME söz konusu olduğunda, hangi taşınmaz(lar)ın
+// kastedildiğini AÇIKLAMAK için gerekli).
+function buildValueFactorAttributedText(labels, originalText, totalUnitCount) {
   const isPlural = labels.length > 1;
-  const joined = joinTurkishList(labels);
-  const subject = isPlural ? `${joined} No'lu taşınmazların` : `${joined} No'lu taşınmazın`;
+  const coversAllUnits = Number.isFinite(totalUnitCount) && labels.length === totalUnitCount;
+  const subject = coversAllUnits
+    ? "Taşınmazların"
+    : isPlural
+      ? `${joinTurkishList(labels)} No'lu taşınmazların`
+      : `${labels[0]} No'lu taşınmazın`;
   let rest = /^Taşınmazın\s+/.test(originalText)
     ? originalText.replace(/^Taşınmazın\s+/, "")
     : lowercaseFirstLetterTr(originalText);
@@ -41836,8 +41857,8 @@ function calculateValueFactorsForAllTitleUnits(baseInput) {
   });
 
   return {
-    positive: [...sharedPositive, ...groupAndAttributeValueFactorEntries(perUnitPositiveEntries)],
-    negative: [...sharedNegative, ...groupAndAttributeValueFactorEntries(perUnitNegativeEntries)],
+    positive: [...sharedPositive, ...groupAndAttributeValueFactorEntries(perUnitPositiveEntries, units.length)],
+    negative: [...sharedNegative, ...groupAndAttributeValueFactorEntries(perUnitNegativeEntries, units.length)],
   };
 }
 

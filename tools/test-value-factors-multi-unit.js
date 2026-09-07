@@ -33,6 +33,18 @@
 // çoğullanıyor; "Bölgenin.../Statik uygunluğun..." gibi zaten paylaşılan
 // bir ÖZNEYE (bölge/belge/proje/sözleşme) sahip metinler DOKUNULMUYOR.
 //
+// KULLANICI 2. TAKİP TALEBİ (2026-09-07): "tüm taşınmazları kapsayan
+// taşınmaz bazında bir faktör var ise burada taşınmazların numaralarını
+// yazmaya gerek yok. A-5, A-8, A-11 ve A-15 No'lu taşınmazların iki yöne
+// cepheli olmaları yerine Taşınmazların iki yöne cepheli olmaları gibi" —
+// groupAndAttributeValueFactorEntries()/buildValueFactorAttributedText()
+// artık RAPORDAKİ TOPLAM taşınmaz sayısını da alır: bir grup TÜM
+// taşınmazları kapsıyorsa (labels.length === totalUnitCount) özne JENERİK
+// "Taşınmazların" olur, etiket LİSTELENMEZ — SADECE gerçek bir ALT KÜME
+// söz konusu olduğunda etiketler görünür (satış kabiliyeti/değerleme
+// yöntemi ailesindeki "TÜM taşınmazlar aynı → atıfsız TEK cümle" ilkesiyle
+// TUTARLI).
+//
 // Bu test kapsamı:
 //  1) count<2 -> davranış DEĞİŞMEDİ (representative sonuç AYNEN döner).
 //  2) Ana Yapı/Bölge kalemleri: taşınmaza HİÇ atıf yapmayanlar (Bölgenin
@@ -257,12 +269,16 @@ function idsOf(items) {
 }
 
 // --- 6) "Taşınmazın " ile BAŞLAYAN metinlerde önek atıf öznesiyle -------
-// DEĞİŞTİRİLİR VE sondaki iyelik eki de ÇOĞULLANIR (manzara örneği).
+// DEĞİŞTİRİLİR VE sondaki iyelik eki de ÇOĞULLANIR (manzara örneği) —
+// ÜÇÜNCÜ bir taşınmaz (unitViewStatus'u FARKLI/boş) BİLEREK eklendi ki
+// grup TÜM taşınmazları KAPSAMASIN (bu senaryo 6b'de test ediliyor) ve
+// etiket listesi (A-5 ve A-8) GERÇEKTEN gerekli/anlamlı kalsın.
 {
   const context = makeContext();
   withUnits(context, [
     unit({ titleBlockName: "A", unitNo: "5", unitViewStatus: "Geniş Deniz Manzarası" }),
     unit({ titleBlockName: "A", unitNo: "8", unitViewStatus: "Geniş Deniz Manzarası" }),
+    unit({ titleBlockName: "A", unitNo: "11" }), // unitViewStatus YOK -> tetiklenmez, grup TÜMÜNÜ kapsamaz
   ]);
   const baseInput = { fields: context.state.fields, tables: {}, disabledIds: [], manualPositive: [], manualNegative: [] };
   const result = context.calculateValueFactorsForAllTitleUnits(baseInput);
@@ -271,9 +287,33 @@ function idsOf(items) {
   assert.equal(
     viewEntries[0].text,
     "A-5 ve A-8 No'lu taşınmazların geniş deniz manzarasına sahip olmaları",
-    "'Taşınmazın ' öneki atıf öznesiyle DEĞİŞTİRİLMELİ VE sondaki iyelik eki ('olması'->'olmaları') ÇOĞULLANMALI."
+    "'Taşınmazın ' öneki atıf öznesiyle DEĞİŞTİRİLMELİ VE sondaki iyelik eki ('olması'->'olmaları') ÇOĞULLANMALI (grup TÜM taşınmazları KAPSAMADIĞINDAN etiketler GÖRÜNMELİ)."
   );
-  console.log("'Taşınmazın ' oneki + iyelik eki cogullamasi testi tamam.");
+  console.log("'Taşınmazın ' oneki + iyelik eki cogullamasi (kismi grup, etiketli) testi tamam.");
+}
+
+// --- 6b) KULLANICI TAKİP TALEBİ (BİREBİR): grup RAPORDAKİ TÜM taşınmazları
+// kapsıyorsa (A-5, A-8, A-11, A-15 HEPSİ aynı faktörü paylaşıyor) etiket
+// LİSTELENMEZ, JENERİK "Taşınmazların ..." kullanılır.
+{
+  const context = makeContext();
+  withUnits(context, [
+    unit({ titleBlockName: "A", unitNo: "5", facades: "Güney, Batı" }),
+    unit({ titleBlockName: "A", unitNo: "8", facades: "Kuzey, Doğu" }),
+    unit({ titleBlockName: "A", unitNo: "11", facades: "Güney, Doğu" }),
+    unit({ titleBlockName: "A", unitNo: "15", facades: "Kuzey, Batı" }),
+  ]);
+  const baseInput = { fields: context.state.fields, tables: {}, disabledIds: [], manualPositive: [], manualNegative: [] };
+  const result = context.calculateValueFactorsForAllTitleUnits(baseInput);
+  const facadeEntries = result.positive.filter((item) => item.id === "unit-multi-facade");
+  assert.equal(facadeEntries.length, 1, "TÜM taşınmazlar AYNI 'İki yöne cepheli' metnini ürettiğinden TEK grup olmalı.");
+  assert.equal(
+    facadeEntries[0].text,
+    "Taşınmazların iki yöne cepheli olmaları",
+    "KULLANICI TAKİP TALEBİ: grup RAPORDAKİ TÜM taşınmazları (4/4) kapsadığından etiketler ('A-5, A-8, A-11 ve A-15 No'lu') LİSTELENMEMELİ, JENERİK 'Taşınmazların' kullanılmalı."
+  );
+  assert.ok(!facadeEntries[0].text.includes("No'lu"), "Tüm taşınmazları kapsayan grupta HİÇBİR etiket/No görünmemeli.");
+  console.log("KULLANICI TAKIP TALEBININ BIREBIR REPRODUKSIYONU (tum tasinmazlari kapsayan grup -> jenerik 'Tasinmazlarin') testi tamam.");
 }
 
 // --- 7) Bir taşınmazda hiç tetiklenmeyen faktör o taşınmaz için hiç -----
