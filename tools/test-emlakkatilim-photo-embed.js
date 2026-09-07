@@ -62,8 +62,8 @@
      KIRPILMAMIS, KENDI banner'i OLMAYAN bir yer tutucu olarak geliyor.
   6) 6 fotoğraf + stacked_pair (FOTO_ICMEKAN) → TAM 3 sayfa, HER
      sayfada kendi "İç Mekan" etiketi (3 kez tekrar), her görsel TAM
-     16×10,25 cm (2026-09-08, 2. tur: altına eklenen etiket için 1 cm
-     pay ayrıldığından ÖNCEKİ 10,75 cm'den küçüldü).
+     16×9,75 cm (2026-09-08: altına eklenen etiket için ayrılan pay
+     2 cm'ye çıkarıldı, ÖNCEKİ 10,75 cm'den küçüldü).
   7) Her senaryoda ciktinin STORED-zip round-trip'i saglam.
 */
 
@@ -89,14 +89,16 @@ const templateBuffer = fs.readFileSync(templatePath);
 const arrayBuffer = templateBuffer.buffer.slice(templateBuffer.byteOffset, templateBuffer.byteOffset + templateBuffer.byteLength);
 
 // report-photos.js PHOTO_CATEGORIES ile BIREBIR ayni sira/anahtarlar —
-// tokenForCategoryKey ile uretilen tam token adlari.
+// tokenForCategoryKey ile uretilen tam token adlari. 2026-09-08: "harclar"
+// (8.6 Fatura icin yeni eklenen kategori) eklendi, bkz. asagidaki "8.
+// Ekler yeniden yapilandirma" testleri.
 const CATEGORY_KEYS = [
   "kapak", "dis_mekan", "ic_mekan", "yapi_ruhsati", "yapi_kullanma_izin",
   "yapi_kayit", "mimari_proje_belediye", "mimari_proje_tapu", "imar_durumu",
   "kadastro_paftasi", "tapu_senedi", "takbis_belgesi", "konum_kroki",
   "konum_harita", "emsal_harita", "adres_kodu", "enerji_kimlik",
   "tutanaklar", "mahkeme_evraklari", "uzman_ozcekim", "hesaplama_tablolari",
-  "finansal_tablolar", "diger",
+  "finansal_tablolar", "diger", "harclar",
 ];
 function tokenForKey(key) {
   return `FOTO_${key.toUpperCase().replace(/_/g, "")}`;
@@ -341,9 +343,13 @@ function singleCategoryGroup(token, label, layoutKey, photos) {
   // izgarasinin yukseklik butcesi 22 cm'den 21 cm'e dustu (bkz.
   // docx-fill.js'teki CATEGORY_LABEL_RESERVED_HEIGHT_CM) — stacked_pair
   // (1x2) icin (21-0,5)/2 = 10,25 cm (ONCEKI 10,75 cm DEGIL).
+  // 2026-09-08 (4. tur): gercek Word render'inda 1 cm'lik pay bazi
+  // tek-gorsel sayfalarinda HALA yetersiz kaldigi GOZLEMLENDI (bkz.
+  // docx-fill.js CATEGORY_LABEL_RESERVED_HEIGHT_CM notu) — pay 2 cm'ye
+  // cikarildi, stacked_pair (1x2) icin (20-0,5)/2 = 9,75 cm.
   const extents = [...outXml.matchAll(/<wp:extent cx="(\d+)" cy="(\d+)"/g)].map((m) => ({ cx: Number(m[1]), cy: Number(m[2]) }));
-  const stackedPairExtents = extents.filter((e) => e.cx === 5760000 && e.cy === 3690000);
-  check(stackedPairExtents.length === 6, `6 gorselin de TAM 16×10,25 cm (5760000×3690000 EMU) olmasi bekleniyordu, bulunan (eslesen): ${stackedPairExtents.length}`);
+  const stackedPairExtents = extents.filter((e) => e.cx === 5760000 && e.cy === 3510000);
+  check(stackedPairExtents.length === 6, `6 gorselin de TAM 16×9,75 cm (5760000×3510000 EMU) olmasi bekleniyordu, bulunan (eslesen): ${stackedPairExtents.length}`);
 
   try {
     DocxFill.readStoredZip(filled.bytes.buffer);
@@ -385,8 +391,112 @@ function singleCategoryGroup(token, label, layoutKey, photos) {
   check(pageBreakBeforeCount === 1, `Kapak + 1 kategori icin TAM 1 pageBreakBefore bekleniyordu, bulunan: ${pageBreakBeforeCount}`);
 }
 
+// --- 8) "8. Ekler" yeniden yapılandırma (2026-09-08): kontrolör onaylı
+// GERÇEK bir raporun görsel olarak incelenmesiyle keşfedildi — şablonun
+// ORİJİNALİNDE "8. Ekler" 6 ayrı alt bölüm (8.1-8.6) olarak tasarlanmış
+// ama 23-token sistemi eklenirken 8.2-8.5'in kendi başlık satırları
+// silinip TÜM tokenlar "8.1 Fotoğraflar"a tıkıştırılmıştı. Kullanıcının
+// verdiği tabloya göre 22 token (kapak hariç) 5 bölüme yeniden dağıtıldı,
+// eksik 4 başlık satırı (8.2, 8.3, 8.4, 8.5 — 8.6 Fatura'nın sağlam kalan
+// satırından KOPYALANARAK, TOC'un zaten referans verdiği _Toc221099476-479
+// yer imleriyle) geri eklendi; "8.6 Fatura" için yeni "harclar" kategorisi
+// eklendi. KADASTROPAFTASI/KONUMKROKI/KONUMHARITA/EMSALHARITA kullanıcı
+// isteğiyle BİLEREK "8.1 Fotoğraflar"da (taşınmadan) bırakıldı. ------
+{
+  const headings = [
+    "8.1. Fotoğraflar", "8.2. Uavt Kodu,Kroki,İmar Durumu",
+    "8.3. Proje Fotoğrafları", "8.4. Takbis Belgesi", "8.5. Diğer Ekler",
+    "8.6. Fatura",
+  ];
+  headings.forEach((h) => {
+    check(xmlText.includes(h), `Şablonda "${h}" başlığı BULUNAMADI (8. Ekler yeniden yapılandırması bozulmuş olabilir).`);
+  });
+
+  // Her başlık ÖNCE İçindekiler (TOC) tablosunda, SONRA gövdede (asıl
+  // bölüm başlığı olarak) İKİ KEZ geçer — sıra kontrolü için gövdedeki
+  // (İKİNCİ) konumu kullanılmalı, yoksa TOC'un birbirine YAKIN sıralı
+  // listesi (henüz hiçbir token içermez) yanlışlıkla "doğru aralık"
+  // sanılır.
+  function secondOccurrence(haystack, needle) {
+    const first = haystack.indexOf(needle);
+    if (first === -1) return -1;
+    return haystack.indexOf(needle, first + 1);
+  }
+
+  // Her token'ın KENDİ bölümünün başlığından SONRA, bir SONRAKİ bölümün
+  // başlığından ÖNCE geldiğini (yani doğru bölüme dağıtıldığını) sıra
+  // bazlı (indexOf) doğrula.
+  const sectionTokenMap = [
+    { heading: "8.1. Fotoğraflar", nextHeading: "8.2. Uavt Kodu,Kroki,İmar Durumu", tokens: ["FOTO_DISMEKAN", "FOTO_ICMEKAN", "FOTO_KADASTROPAFTASI", "FOTO_KONUMKROKI", "FOTO_KONUMHARITA", "FOTO_EMSALHARITA"] },
+    { heading: "8.2. Uavt Kodu,Kroki,İmar Durumu", nextHeading: "8.3. Proje Fotoğrafları", tokens: ["FOTO_ADRESKODU", "FOTO_IMARDURUMU"] },
+    { heading: "8.3. Proje Fotoğrafları", nextHeading: "8.4. Takbis Belgesi", tokens: ["FOTO_YAPIRUHSATI", "FOTO_YAPIKULLANMAIZIN", "FOTO_YAPIKAYIT", "FOTO_MIMARIPROJEBELEDIYE", "FOTO_MIMARIPROJETAPU"] },
+    { heading: "8.4. Takbis Belgesi", nextHeading: "8.5. Diğer Ekler", tokens: ["FOTO_TAPUSENEDI", "FOTO_TAKBISBELGESI"] },
+    { heading: "8.5. Diğer Ekler", nextHeading: "8.6. Fatura", tokens: ["FOTO_ENERJIKIMLIK", "FOTO_TUTANAKLAR", "FOTO_MAHKEMEEVRAKLARI", "FOTO_UZMANOZCEKIM", "FOTO_HESAPLAMATABLOLARI", "FOTO_FINANSALTABLOLAR", "FOTO_DIGER"] },
+  ];
+  sectionTokenMap.forEach(({ heading, nextHeading, tokens: sectionTokens }) => {
+    const headingIdx = secondOccurrence(xmlText, heading);
+    const nextHeadingIdx = secondOccurrence(xmlText, nextHeading);
+    check(headingIdx !== -1, `"${heading}" başlığının GÖVDEDEKİ (TOC dışı) ikinci geçişi bulunamadı.`);
+    check(nextHeadingIdx !== -1, `"${nextHeading}" başlığının GÖVDEDEKİ (TOC dışı) ikinci geçişi bulunamadı.`);
+    sectionTokens.forEach((t) => {
+      const tokenIdx = xmlText.indexOf(`{{${t}}}`);
+      check(tokenIdx !== -1, `{{${t}}} şablonda hiç bulunamadı.`);
+      check(
+        tokenIdx > headingIdx && tokenIdx < nextHeadingIdx,
+        `{{${t}}} "${heading}" ile "${nextHeading}" arasında OLMALIYDI (yanlış bölüme yerleşmiş olabilir).`
+      );
+    });
+  });
+
+  // FOTO_HARCLAR (yeni kategori) "8.6. Fatura" başlığından SONRA olmalı
+  // (dosyanın sonuna kadar başka bir bölüm başlığı yok).
+  const fatura6Idx = secondOccurrence(xmlText, "8.6. Fatura");
+  const harclarIdx = xmlText.indexOf("{{FOTO_HARCLAR}}");
+  check(harclarIdx !== -1, "{{FOTO_HARCLAR}} şablonda bulunamadı (yeni kategori eklenmemiş olabilir).");
+  check(harclarIdx > fatura6Idx, "{{FOTO_HARCLAR}} \"8.6. Fatura\" başlığından SONRA olmalıydı.");
+
+  // 2026-09-08: [Content_Types].xml'de "jpeg" uzantısı hiç deklare
+  // edilmemişti (yalnızca "png" vardı) — gerçek kamera/telefon
+  // fotoğrafları (JPEG) her embed edildiğinde Word'ün "okunamayan
+  // içerik" onarım uyarısı vermesine yol açan, ÖNCEDEN VAR OLAN,
+  // fark edilmemiş bir hataydı (bu oturumda gerçek Word render'ında
+  // XSD doğrulamasıyla YAKALANDI). Şablona kalıcı olarak eklendi.
+  const contentTypesEntry = entries.find((e) => e.name === "[Content_Types].xml");
+  check(Boolean(contentTypesEntry), "[Content_Types].xml girişi bulunamadı.");
+  const contentTypesXml = contentTypesEntry ? Buffer.from(contentTypesEntry.bytes).toString("utf8") : "";
+  check(contentTypesXml.includes('Extension="jpeg"'), '[Content_Types].xml\'de "jpeg" uzantısı için Default deklarasyonu OLMALIYDI (gerçek JPEG fotoğraflar için gerekli).');
+}
+
+// --- 9) OOXML eleman sırası regresyon testi (2026-09-08): CT_TblPrBase
+// şemasında <w:tblBorders>, <w:tblLayout>'tan ÖNCE; CT_PPrBase şemasında
+// <w:spacing>, <w:jc>'den ÖNCE gelmeli. Bu sıra daha önce TERSTİ — gerçek
+// Word render'ında "okunamayan içerik" onarım uyarısına yol açan,
+// ÖNCEDEN VAR OLAN bir hataydı (fotoğraf özelliği eklendiğinden beri,
+// XSD doğrulamasıyla bu oturumda YAKALANDI). ------------------------
+{
+  const values = buildValuesWithAllTokensMissing(tokens);
+  const photoGroups = [
+    singleCategoryGroup("FOTO_DISMEKAN", "Dış Mekan", "horizontal_pair", [makePhoto("a"), makePhoto("b")]),
+    { token: "FOTO_KAPAK", coverPhoto: makePhoto("kapak") },
+  ];
+  const filled = DocxFill.fillTemplate(arrayBuffer, values, {}, [], photoGroups);
+  const outEntries = DocxFill.readStoredZip(filled.bytes.buffer);
+  const outDoc = outEntries.find((e) => e.name === "word/document.xml");
+  const outXml = Buffer.from(outDoc.bytes).toString("utf8");
+
+  const tblBordersIdx = outXml.indexOf("<w:tblBorders>");
+  const tblLayoutIdx = outXml.indexOf("<w:tblLayout", tblBordersIdx);
+  check(tblBordersIdx !== -1 && tblLayoutIdx !== -1 && tblBordersIdx < tblLayoutIdx, "<w:tblBorders>, <w:tblLayout>'tan ÖNCE gelmeliydi (CT_TblPrBase şema sırası).");
+
+  const drawingCellSpacingIdx = outXml.indexOf('<w:spacing w:before="0" w:after="0"/><w:jc w:val="center"/>');
+  check(drawingCellSpacingIdx !== -1, "Fotoğraf hücresindeki paragrafta <w:spacing>, <w:jc>'den ÖNCE gelmeliydi (CT_PPrBase şema sırası) — buildImageCellXml.");
+
+  const coverSpacingIdx = outXml.indexOf('<w:pPr><w:spacing w:after="80"/><w:jc w:val="center"/></w:pPr>');
+  check(coverSpacingIdx !== -1, "Kapak fotoğrafı etiket paragrafında <w:spacing>, <w:jc>'den ÖNCE gelmeliydi (CT_PPrBase şema sırası) — buildCoverPhotoBlockXml.");
+}
+
 if (failures.length) {
   console.error("emlakkatilim.docx fotograf gomme testi BASARISIZ:\n" + failures.map((f) => ` - ${f}`).join("\n"));
   process.exit(1);
 }
-console.log("emlakkatilim.docx '8. Ekler' fotograf gomme (23 kategori-özel token + 16x22 cm sayfa kutusu + kirpma yok + kapak fotografi yer tutucusu) testleri basarili.");
+console.log("emlakkatilim.docx '8. Ekler' fotograf gomme (24 kategori-özel token, 6 alt bölüme dağıtılmış + 16x22 cm sayfa kutusu + kirpma yok + kapak fotografi yer tutucusu + OOXML şema sırası doğrulaması) testleri basarili.");

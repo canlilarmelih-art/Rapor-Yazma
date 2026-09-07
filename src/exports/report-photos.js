@@ -52,6 +52,18 @@
   // Word'de istediği yere taşıyabilir. Yeni bir kategori eklenirse hem
   // bu diziye HEM DE .docx şablonuna elle yeni bir {{FOTO_XXX}} token'ı
   // eklemek gerekir (docx tarafı artık otomatik değil).
+  //
+  // 2026-09-08: kullanıcı, kontrolör onaylı GERÇEK bir raporu örnek
+  // gösterip "8. Ekler"in aslında 6 ayrı alt bölüme (8.1 Fotoğraflar,
+  // 8.2 Uavt Kodu/Kroki/İmar Durumu, 8.3 Proje Fotoğrafları, 8.4 Takbis
+  // Belgesi, 8.5 Diğer Ekler, 8.6 Fatura) ayrıldığını, ama şablonumuzun
+  // TÜM 23 token'ı yalnızca "8.1 Fotoğraflar" hücresine tıkıştırdığını
+  // gösterdi. 22 token (kapak hariç) kullanıcının verdiği tabloya göre
+  // ilgili 5 bölüme (8.1-8.5) yeniden dağıtıldı — templates/emlakkatilim.docx
+  // içindeki FİZİKSEL KONUMLARI değişti ama bu diziye/token adlarına
+  // dokunulmadı (docx-fill.js her token'ı KENDİ konumunda bulup dolduruyor,
+  // fiziksel konum önemli değil). "8.6 Fatura" için ise şablonda hiç
+  // karşılığı olmayan YENİ bir kategori ("harclar") eklendi.
   const PHOTO_CATEGORIES = [
     { key: "kapak", label: "Kapak Fotoğrafı" },
     { key: "dis_mekan", label: "Dış Mekan" },
@@ -76,6 +88,7 @@
     { key: "hesaplama_tablolari", label: "Hesaplama Tabloları" },
     { key: "finansal_tablolar", label: "Finansal Tablolar" },
     { key: "diger", label: "Diğer" },
+    { key: "harclar", label: "Harçlar" },
   ];
 
   // Her kategori KENDİ token'ına sahip — templates/emlakkatilim.docx'teki

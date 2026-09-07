@@ -432,7 +432,17 @@
   // kapak fotoğrafı (computeCoverPhotoEmuSize, kendi AYRI/önce-gelen
   // etiketi olan farklı bir yol) bu payın DIŞINDA, PAGE_HEIGHT_* sabitleri
   // AYNEN kullanmaya devam ediyor (bu değişiklikten ETKİLENMEZ).
-  const CATEGORY_LABEL_RESERVED_HEIGHT_CM = 1;
+  // 2026-09-08, 4. tur: "8. Ekler" bölümü kategoriler arası yeniden
+  // dağıtılırken (0.0.669) Word'de GERÇEKTEN açıp görsel olarak
+  // doğrulandığında — bu oturumda İLK KEZ gerçek Word render'ı
+  // mümkün oldu — 1 cm'lik payın bazı vertical_single (tek görsel)
+  // sayfalarında (ör. "Mimari Proje - Tapu", "Takbis Belgesi") HÂLÂ
+  // yetersiz kaldığı, etiketin sonraki sayfaya taştığı GÖZLEMLENDİ.
+  // Önceki (0.0.667) doğrulama SADECE XML bayt-ofset hesabıyla
+  // yapılmıştı, gerçek Word render'ında TEYİT EDİLMEMİŞTİ. Pay 1
+  // cm'den 2 cm'ye çıkarılıp AYNI senaryolarla gerçek Word'de tekrar
+  // görsel olarak doğrulandı.
+  const CATEGORY_LABEL_RESERVED_HEIGHT_CM = 2;
   const PHOTO_GRID_HEIGHT_CM = PAGE_CONTENT_HEIGHT_CM - CATEGORY_LABEL_RESERVED_HEIGHT_CM;
   const PHOTO_GRID_HEIGHT_DXA = cmToDxa(PHOTO_GRID_HEIGHT_CM);
   const PHOTO_GRID_HEIGHT_EMU = cmToEmu(PHOTO_GRID_HEIGHT_CM);
@@ -577,8 +587,17 @@
     const pixelSize = extension === "jpeg" ? getJpegPixelSize(imageBytes) : null;
     const { cx, cy } = computeCoverPhotoEmuSize(pixelSize || { width: photo.width, height: photo.height });
     const drawing = buildDrawingXmlCropped(relId, "Kapak Fotoğrafı", cx, cy, null);
-    const label = `<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:after="80"/></w:pPr><w:r><w:rPr><w:b/><w:bCs/><w:i/><w:iCs/><w:sz w:val="18"/><w:szCs w:val="18"/></w:rPr><w:t xml:space="preserve">Kapak Fotoğrafı (yer tutucu — istediğiniz konuma taşıyabilirsiniz)</w:t></w:r></w:p>`;
-    const imageParagraph = `<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:after="200"/></w:pPr><w:r>${drawing}</w:r></w:p>`;
+    // 2026-09-08: OOXML CT_PPrBase şeması w:pPr içinde <w:spacing> öğesinin
+    // <w:jc>'den ÖNCE gelmesini şart koşuyor — ters sıra (jc sonra spacing)
+    // Word'ün "okunamayan içerik" onarım uyarısı verdiği GERÇEK, önceden
+    // var olan bir hataydı (bkz. validate.py XSD doğrulaması, bu oturumda
+    // "8. Ekler" yeniden yapılandırılırken gerçek Word render'ında
+    // yakalandı — templates/emlakkatilim.docx'in KENDİSİ değil, HER
+    // fotoğraflı export'un ÜRETTİĞİ çıktı etkileniyordu, muhtemelen bu
+    // özellik ilk eklendiğinden beri). Sıra düzeltildi: spacing ÖNCE, jc
+    // SONRA.
+    const label = `<w:p><w:pPr><w:spacing w:after="80"/><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:b/><w:bCs/><w:i/><w:iCs/><w:sz w:val="18"/><w:szCs w:val="18"/></w:rPr><w:t xml:space="preserve">Kapak Fotoğrafı (yer tutucu — istediğiniz konuma taşıyabilirsiniz)</w:t></w:r></w:p>`;
+    const imageParagraph = `<w:p><w:pPr><w:spacing w:after="200"/><w:jc w:val="center"/></w:pPr><w:r>${drawing}</w:r></w:p>`;
     return label + imageParagraph;
   }
 
@@ -632,7 +651,11 @@
       // srcRect=null: kırpma YOK, görsel doğrudan hücreye "stretch" ile
       // (en-boy oranı gerekirse bozularak) tam sığdırılır.
       const drawing = buildDrawingXmlCropped(relId, photo.caption || "Rapor fotoğrafı", cellWidthEmu, cellHeightEmu, null);
-      return `<w:tc><w:tcPr><w:tcW w:w="${cellWidthDxa}" w:type="dxa"/><w:vAlign w:val="center"/></w:tcPr><w:p><w:pPr><w:jc w:val="center"/><w:spacing w:before="0" w:after="0"/></w:pPr><w:r>${drawing}</w:r></w:p></w:tc>`;
+      // OOXML CT_PPrBase siralamasinda <w:spacing>, <w:jc>'den ONCE gelmeli
+      // (bkz. buildCoverPhotoBlockXml'deki 2026-09-08 notu — ayni onceden
+      // var olan hata, gercek Word render'inda "okunamayan icerik" onarim
+      // uyarisina yol aciyordu).
+      return `<w:tc><w:tcPr><w:tcW w:w="${cellWidthDxa}" w:type="dxa"/><w:vAlign w:val="center"/></w:tcPr><w:p><w:pPr><w:spacing w:before="0" w:after="0"/><w:jc w:val="center"/></w:pPr><w:r>${drawing}</w:r></w:p></w:tc>`;
     }
 
     function buildGapCellXml() {
@@ -672,7 +695,12 @@
 
     const tableWidthDxa = cellWidthDxa * columns + GAP_DXA * (columns - 1);
     const tblCellMarZero = `<w:tblCellMar><w:top w:w="0" w:type="dxa"/><w:left w:w="0" w:type="dxa"/><w:bottom w:w="0" w:type="dxa"/><w:right w:w="0" w:type="dxa"/></w:tblCellMar>`;
-    return `<w:tbl><w:tblPr><w:tblW w:w="${tableWidthDxa}" w:type="dxa"/><w:jc w:val="center"/><w:tblLayout w:type="fixed"/><w:tblBorders><w:top w:val="none"/><w:left w:val="none"/><w:bottom w:val="none"/><w:right w:val="none"/><w:insideH w:val="none"/><w:insideV w:val="none"/></w:tblBorders>${tblCellMarZero}</w:tblPr><w:tblGrid>${gridColsParts.join("")}</w:tblGrid>${trParts.join("")}</w:tbl><w:p/>`;
+    // OOXML CT_TblPrBase siralamasinda <w:tblBorders>, <w:tblLayout>'tan
+    // ONCE gelmeli (bkz. buildImageCellXml/buildCoverPhotoBlockXml'deki
+    // 2026-09-08 notu) — eski sira (tblLayout sonra tblBorders) ayni
+    // onceden var olan, gercek Word render'inda "okunamayan icerik" onarim
+    // uyarisina yol acan hatanin bir parcasiydi.
+    return `<w:tbl><w:tblPr><w:tblW w:w="${tableWidthDxa}" w:type="dxa"/><w:jc w:val="center"/><w:tblBorders><w:top w:val="none"/><w:left w:val="none"/><w:bottom w:val="none"/><w:right w:val="none"/><w:insideH w:val="none"/><w:insideV w:val="none"/></w:tblBorders><w:tblLayout w:type="fixed"/>${tblCellMarZero}</w:tblPr><w:tblGrid>${gridColsParts.join("")}</w:tblGrid>${trParts.join("")}</w:tbl><w:p/>`;
   }
 
   // xmlText icindeki HER BİR kategori-özel fotoğraf-eki token'ini (ör.
