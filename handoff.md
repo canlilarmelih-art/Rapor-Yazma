@@ -1,5 +1,17 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.674 - 2026-09-08 - Kullanıcı `templates/emlakkatilim.docx`'i Word'de elle düzenledi (tablo boyutları) — STORED'a yeniden paketlendi + Word'ün sessizce sildiği 2 önceki düzeltme geri eklendi
+
+- Kullanıcı: "emlak katılım template dosyasında ufak bir güncelleme yaptım tablo boyutları ile ilgili onu commitlermisin". Word'de kaydedilmiş dosya, projenin standart kuralı gereği (bkz. CLAUDE.md "templates/emlakkatilim.docx'i Word'de düzenledikten sonra") DEFLATE sıkıştırmalı geliyordu (`readStoredZip` bunu bilerek reddediyor) — Python `zipfile` ile orijinal giriş SIRASI korunarak (`[Content_Types].xml` hâlâ ilk giriş) STORED'a yeniden paketlendi.
+- Gerçek değişiklik doğrulandı: birkaç tablonun `<w:tblW>`/`<w:gridCol>` genişlikleri değişmiş (kullanıcının tarif ettiği "tablo boyutları" güncellemesiyle birebir uyumlu) — bu değişikliğe DOKUNULMADI.
+- **Word'ün kendi kaydetme işlemi sırasında SESSİZCE sildiği 2 önceki düzeltme tespit edilip GERİ EKLENDİ** (kullanıcının kendi değişikliğiyle İLGİSİZ, Word'ün "kullanılmıyor/gereksiz" sandığı öğeleri temizleme davranışının yan etkisi):
+  1. `[Content_Types].xml`'deki `jpeg` Default deklarasyonu (0.0.669) — şablonun kendi içinde gerçek bir `.jpeg` medya dosyası YOK (jpeg yalnızca ÇALIŞMA ZAMANINDA gerçek fotoğraf gömüldüğünde kullanılıyor), Word bunu "kullanılmıyor" sanıp kaydederken kaldırmış. Geri eklenmezse HER GERÇEK JPEG fotoğraflı export yeniden "okunamayan içerik" uyarısına döner.
+  2. İmar Durumu açıklaması paragrafının `<w:jc w:val="left"/>` (0.0.672, Fix 6) — Word, değerin paragrafın hesaplanan varsayılanıyla AYNI olduğunu düşünüp gereksiz sayarak sildi. Fonksiyonel olarak zararsız olabilir ama ileride stil değişirse sessizce tekrar ortalı/yaslı hale dönebileceğinden AÇIKÇA geri eklendi.
+  - Kontrol edilip DEĞİŞMEDEN/sağlam kaldığı doğrulananlar: 6 `<w:keepNext/>` (0.0.671), `{{STREET_SOKAK_BUYUK}}`/`{{STREET_CADDE_BUYUK}}` (0.0.672), 2× `{{KULLANICI_AD_SOYAD}}` doğru hücrelerde (0.0.673), 28 nbsp kaldırması (0.0.673) — `<w:caps/>` sayısı 179'dan 177'ye düşmüş ama bu bir Word run-birleştirme optimizasyonu (rPr sayısı da AYNI oranda düşmüş, HİÇBİR hücre büyük harften çıkmadı).
+- `npm run verify` (yalnızca bilinen, ilgisiz `test-title-unit-switch.js` HARİÇ, kalan 156 test) yeşil — özellikle `tools/test-emlakkatilim-photo-embed.js` (jpeg content-type) ve `tools/test-emlakkatilim-template-fixes.js` (jc=left, caps, KULLANICI_AD_SOYAD hücreleri, nbsp) BAŞTA olmak üzere ilgili tüm testler çalıştırıldı.
+- Kod değişikliği YOK (yalnızca `templates/emlakkatilim.docx`), cache-buster bump gerekmedi.
+- Canlı Word/tarayıcı testi yapılamadı — kullanıcının kendi tablo-boyutu değişikliğinin export'ta beklendiği gibi göründüğünü VE gerçek JPEG fotoğraflı bir export'un hâlâ sorunsuz açıldığını teyit etmesi gerekiyor.
+
 ## 0.0.673 - 2026-09-07 - 0.0.672'nin Fix 5b'si YANLIŞ hücreye yazmıştı (imza tablosu) + her placeholder önündeki gizli nbsp boşluğu kaldırıldı
 
 - Kullanıcı, 0.0.672'nin canlı sonucunu gösteren bir ekran görüntüsü paylaştı: imza tablosunda "MELİH CANLILAR" (gerçek kullanıcı adı) **"Raporu Kontrol Eden"** sütununda çıkıyordu, **"Raporu Hazırlayan Değerleme Uzmanı"** sütunu hâlâ sarı vurgulu "….." idi — kırmızı ok "….."den "MELİH CANLILAR"a doğru çiziliydi. "kullanıcı adı soyadı görseldeki yere yazılmalı."
