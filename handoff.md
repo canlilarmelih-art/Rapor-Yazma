@@ -1,5 +1,13 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.668 - 2026-09-08 - Word export "8. Ekler" kategori etiketi: italik + görsele tamamen bitişik (0.0.667'nin devamı)
+
+- Kullanıcı takip talebi (0.0.667'nin hemen ardından), eski bir raporun "(Mimari Proje – Tapu)" ÖRNEK ekran görüntüsüyle birlikte: "açıklama daha da yakın olsun. italik olsun görseldeki gibi."
+- `src/exports/docx-fill.js`'teki `buildCategoryLabelXml()`: örnekteki gibi **italik** eklendi (`<w:i/><w:iCs/>`, kalınlık KORUNDU — örnekte de koyu görünüyor); üst boşluk 20 twip'ten (≈0,04 cm) **0'a** indirilerek etiket görselin ALTINA tamamen bitişik hale getirildi.
+- Test: `tools/test-emlakkatilim-photo-embed.js`'e yeni assertion eklendi — `<w:i/><w:iCs/><w:color w:val="595959"` işaretinin (italik + koyu-gri rengin BİRLİKTE, tam beklenen sırada) her iki kategori etiketinde de bulunduğu doğrulandı. Geçici geri alma ile testin gerçekten BAŞARISIZ olduğu (italik marker bulunamadı, 0) kanıtlanıp geri konuldu. `npm run verify` (yalnızca bilinen, ilgisiz `test-title-unit-switch.js` HARİÇ) yeşil doğrulandı.
+- `index.html`: `src/exports/docx-fill.js` cache-buster'ı `?v=20260908-0545`.
+- Canlı Word testi yapılamadı — kullanıcının GERÇEK bir raporu yeniden export edip "8. Ekler" sayfalarında kategori etiketinin artık italik ve görsele tamamen bitişik göründüğünü doğrulaması gerekiyor.
+
 ## 0.0.667 - 2026-09-08 - Word export "8. Ekler": kategori etiketi sonraki sayfaya taşıyordu, düzeltildi (0.0.666'nın devamı)
 
 - Kullanıcı takip talebi (0.0.666'nın hemen ardından): "alt açıklama diğer sayfaya sarkıyor. gerekirse görsel boyutlarını küçült. tek sayfaya sığmalı. yazı puntosunu küçült ve görsellerin alt kısmına açıklamayı yaklaştır."

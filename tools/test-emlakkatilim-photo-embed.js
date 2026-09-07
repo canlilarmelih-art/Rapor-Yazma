@@ -215,6 +215,11 @@ function singleCategoryGroup(token, label, layoutKey, photos) {
   const labelCount = countOccurrences(outXml, `w:color w:val="595959"`);
   check(labelCount === 2, `2 kategori etiketi (düz metin, dolgu YOK) bekleniyordu, bulunan: ${labelCount}`);
   check(!outXml.includes(`w:fill="1F3864"`), "Artık HİÇBİR lacivert (1F3864) dolgu banner'ı OLMAMALI (kullanıcı talebiyle kaldırıldı).");
+  // 2026-09-08 (3. tur): kullanıcı örnek ekran görüntüsündeki gibi
+  // İTALİK istedi — etiketin rPr'ı hem <w:i/><w:iCs/> HEM DE koyu-gri
+  // rengi (595959) BİRLİKTE, tam beklenen sırada taşımalı.
+  const italicLabelCount = countOccurrences(outXml, `<w:i/><w:iCs/><w:color w:val="595959"`);
+  check(italicLabelCount === 2, `2 kategori etiketinin İKİSİ DE italik OLMALIYDI (<w:i/><w:iCs/>), bulunan: ${italicLabelCount}`);
 
   const drawingCount = countOccurrences(outXml, "<w:drawing>");
   check(drawingCount === baselineDrawingCount + totalPhotos, `Sablona gore +${totalPhotos} <w:drawing> bekleniyordu, gercek fark: ${drawingCount - baselineDrawingCount}`);

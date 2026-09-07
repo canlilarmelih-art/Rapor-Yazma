@@ -535,8 +535,16 @@
   // yüksekliği artık PHOTO_GRID_HEIGHT_* hesabındaki
   // CATEGORY_LABEL_RESERVED_HEIGHT_CM (1 cm) payının rahatça İÇİNDE
   // kalıyor (before+satır+after ≈ 0,5 cm, ~0,5 cm pay BIRAKIYOR).
+  //
+  // 2026-09-08, 3. tur (kullanıcı, eski bir rapordan "(Mimari Proje –
+  // Tapu)" ÖRNEK ekran görüntüsüyle): "açıklama daha da yakın olsun.
+  // italik olsun görseldeki gibi." — örnekteki gibi İTALİK eklendi
+  // (<w:i/><w:iCs/>, kalın KALDI — örnekte de koyu görünüyor); üst
+  // boşluk 20 twip'ten 0'a indirilerek görsele TAMAMEN bitişik hale
+  // getirildi (paragrafın kendi satır aralığı zaten görünür bir boşluk
+  // bırakıyor, ayrıca "before" gerekmiyor).
   function buildCategoryLabelXml(label) {
-    return `<w:p><w:pPr><w:spacing w:before="20" w:after="60"/><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:b/><w:bCs/><w:color w:val="${PHOTO_LABEL_COLOR}"/><w:sz w:val="16"/><w:szCs w:val="16"/></w:rPr><w:t xml:space="preserve">${escapeXmlText(label)}</w:t></w:r></w:p>`;
+    return `<w:p><w:pPr><w:spacing w:before="0" w:after="60"/><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:b/><w:bCs/><w:i/><w:iCs/><w:color w:val="${PHOTO_LABEL_COLOR}"/><w:sz w:val="16"/><w:szCs w:val="16"/></w:rPr><w:t xml:space="preserve">${escapeXmlText(label)}</w:t></w:r></w:p>`;
   }
 
   // "Kapak Fotoğrafı" — kullanıcı talebi (2026-08-13, 3. tur): "kapak
