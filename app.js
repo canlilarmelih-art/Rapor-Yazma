@@ -21750,13 +21750,23 @@ async function refreshReportPhotosGroups(groupsContainer) {
   });
 }
 
+// Kullanıcı talebi (2026-09-08): "bu kısımı değiştireceğiz. bunun yerine
+// eklenen görsel yada görsel grubu altına sadece font olarak yazacağız
+// görselin türünü" — AskUserQuestion ile netleştirildi ("Kategori grid'inin
+// altında TEK etiket", Önerilen): kategori gruplaması (bir kategorideki
+// TÜM fotoğraflar tek grid'de) AYNEN kalıyor — yalnızca üstteki lacivert
+// dolgu banner (`report-photos-category-banner`) KALDIRILDI, YERİNE
+// grid'in ALTINA düz metin (renksiz, yalnızca font ile) bir etiket
+// (`report-photos-category-label`) eklendi. Word/.docx export'undaki
+// lacivert banner (templates/emlakkatilim.docx, "8.1 Fotoğraflar") bu
+// değişiklikten ETKİLENMEDİ — bu YALNIZCA ekran-içi önizleme paneli.
 function createReportPhotoCategoryGroup(category, categoryPhotos, groupsContainer) {
   const group = document.createElement("div");
   group.className = "report-photos-category-group";
   group.dataset.category = category.key;
   group.innerHTML = `
-    <div class="report-photos-category-banner">${escapeHtml(category.label)}</div>
     <div class="report-photos-grid" data-report-photos-grid></div>
+    <p class="report-photos-category-label">${escapeHtml(category.label)}</p>
   `;
   const grid = group.querySelector("[data-report-photos-grid]");
   categoryPhotos.forEach((photo) => {

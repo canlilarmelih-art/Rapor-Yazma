@@ -1,5 +1,16 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.665 - 2026-09-08 - Fotoğraflar paneli: kategori BAŞLIĞI (lacivert banner) yerine görsel grubunun ALTINA düz-metin etiket
+
+- Kullanıcı talebi: "Panel görünümü: Yalnızca içinde fotoğraf olan kategoriler, Word çıktısındakiyle aynı lacivert başlık banner'ı ile listelenir ... bu kısımı değiştireceğiz. bunun yerine eklenen görsel yada görsel grubu altına sadece font olarak yazacağız görselin türünü."
+- `AskUserQuestion` ile netleştirildi: **"Kategori grid'inin altında TEK etiket"** (Önerilen) — mevcut gruplama (bir kategorideki TÜM fotoğraflar tek grid'de) AYNEN korunur, yalnızca üstteki lacivert dolgu banner kaldırılıp YERİNE grid'in ALTINA düz (renksiz, "sadece font") bir metin etiketi eklenir. (Diğer iki seçenek — her fotoğraf kartının kendi altında tekrarlanan etiket, ya da "batch" bazlı çoklu etiket — reddedildi.)
+- **Bu YALNIZCA ekran-içi önizleme panelini etkiler** (`createReportPhotoCategoryGroup`, app.js) — `templates/emlakkatilim.docx`'teki gerçek Word export'unun "8.1 Fotoğraflar" bölümündeki lacivert kategori banner'ı DEĞİŞMEDİ (kullanıcı bunu belirtmedi, kapsam dışı bırakıldı).
+- `app.js`: `<div class="report-photos-category-banner">${etiket}</div>` (grid'in ÜSTÜNDE) → `<p class="report-photos-category-label">${etiket}</p>` (grid'in ALTINDA) — `escapeHtml()` kaçışlaması korunuyor.
+- `styles.css`: `.report-photos-category-banner` (lacivert arka plan, beyaz yazı, üst köşe yuvarlama) kuralı KALDIRILDI; yeni `.report-photos-category-label` (arka plansız, `var(--muted)` renk, ortalanmış, kalın) eklendi; `.report-photos-grid` artık banner'a "yapışık" olmayı varsayan asimetrik kenarlık/köşe (`border-top:none`, `border-radius: 0 0 6px 6px`) YERİNE tam bir kenarlık/köşe (`border-radius: 6px`) kullanıyor.
+- Test: yeni `tools/test-report-photos-category-label.js` — GERÇEK app.js/styles.css kaynağından, banner sınıfının HİÇ kullanılmadığı, yeni etiket sınıfının grid DIV'İNİN HEMEN ARDINDAN (ekranda ALTINDA) geldiği, `escapeHtml` korunduğu, styles.css'te eski kuralın kalkıp yeni kuralın (arka plansız) + grid'in tam kenarlıklı hale geldiği doğrulandı. Geçici geri alma ile testin gerçekten BAŞARISIZ olduğu kanıtlanıp geri konuldu. `npm run test`'teki TÜM 156 komut (yalnızca bilinen, ilgisiz `test-title-unit-switch.js` HARİÇ) tek tek çalıştırılıp yeşil doğrulandı; yeni test `package.json`'a eklendi.
+- `index.html`: `app.js`/`styles.css` cache-buster'ları `?v=20260908-0430`.
+- Canlı tarayıcı testi yapılamadı — kullanıcının "Banka ve Çıktı" bölümündeki "Fotoğraflar" panelinde artık lacivert başlık banner'ı yerine her kategori grubunun altında düz-metin kategori adının göründüğünü doğrulaması gerekiyor.
+
 ## 0.0.664 - 2026-09-08 - Excel'e geri eklenen ortak sütunlar artık SONA değil, ORİJİNAL (sistemdeki) konumlarına İÇ İÇE yerleşiyor
 
 - Kullanıcı takip talebi (0.0.663'ün hemen ardından): "burada tek sorun var oda sistemdeki sıralamaya göre olmalı sütun sıraları şu an en sağ tarafa atılmış ortak değerler" — 0.0.663 ortak alanları (İl/İlçe/Yüzölçümü/Ana Taşınmaz Niteliği vb.) doğru şekilde ana tabloya geri eklemişti ama HEPSİNİ SONA (headers/rows dizisinin sonuna) ekliyordu — kullanıcı bunun yerine her alanın KENDİ doğal/orijinal konumuna (diğer sütunlarla İÇ İÇE) yerleşmesini istedi.

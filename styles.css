@@ -5216,14 +5216,16 @@ td textarea.table-textarea {
   margin-top: 16px;
 }
 
-.report-photos-category-banner {
-  background: #1f3864;
-  color: #ffffff;
-  font-weight: 600;
+/* Kullanıcı talebi (2026-09-08): "eklenen görsel yada görsel grubu
+   altına sadece font olarak yazacağız görselin türünü" — üstteki
+   lacivert dolgu banner (eski "category-banner" kuralı) kaldırıldı,
+   yerine grid'in ALTINA düz (renksiz) bir metin etiketi eklendi. */
+.report-photos-category-label {
+  margin: 8px 0 0;
+  color: var(--muted);
   font-size: 13px;
+  font-weight: 600;
   text-align: center;
-  padding: 8px 12px;
-  border-radius: 6px 6px 0 0;
 }
 
 .report-photos-grid {
@@ -5232,8 +5234,7 @@ td textarea.table-textarea {
   gap: 12px;
   padding: 12px;
   border: 1px solid var(--line);
-  border-top: none;
-  border-radius: 0 0 6px 6px;
+  border-radius: 6px;
   background: var(--surface);
 }
 
