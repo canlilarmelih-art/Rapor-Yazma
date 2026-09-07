@@ -824,14 +824,24 @@ const sections = [
       // "unit" bölümü — her bağımsız bölümün KENDİ oda/salon/mutfak vb.
       // bileşimini anlatan, taşınmaza-özgü metin), "aynı/benzer metinleri
       // TEK cümlede birleştir" — bkz. buildMultiUnitInteriorDescriptionText()
-      // (aşağıda, "Açık Adres (Çoklu Taşınmaz)" ile AYNI "Açıklamalar"a
-      // yeni bir alan ekleme deseni). 0.0.632/633'te DEKORATİF özellikler
-      // ve kat referansı bilerek dışlandı; 0.0.635'te kullanıcı talebiyle
-      // ("dekoratif özellikleri ortak olarak yazmamız gerekiyor")
-      // Dekoratif Özellikler AYRI bir paragraf olarak BU ALANIN SONUNA
-      // geri eklendi (AYRI bir alan DEĞİL, AskUserQuestion'da "Önerilen"
-      // seçilen davranış).
-      { key: "unitInteriorDescriptionMulti", label: "İç Hacimler Açıklaması (Çoklu Taşınmaz)", type: "textarea", wide: true },
+      // (aşağıda). 0.0.632/633'te DEKORATİF özellikler ve kat referansı
+      // bilerek dışlandı; 0.0.635'te kullanıcı talebiyle ("dekoratif
+      // özellikleri ortak olarak yazmamız gerekiyor") Dekoratif Özellikler
+      // AYRI bir paragraf olarak BU METNİN SONUNA geri eklendi.
+      // 2026-09-07: bu metin ARTIK burada (Açıklamalar'da) AYRI, elle
+      // düzenlenebilir bir alan OLARAK GÖSTERİLMİYOR — kullanıcı talebi
+      // "çoklu raporlarda Bağımsız Bölüm İç Hacimler Açıklaması ortak
+      // olmalı ve şu an açıklamalar bölümünde yer alan İç Hacimler
+      // Açıklaması (Çoklu Taşınmaz) kısmı gelmeli": bu metin artık DOĞRUDAN
+      // "Bağımsız Bölüm" sekmesindeki (artık PAYLAŞIMLI) "Bağımsız Bölüm
+      // İç Hacimler Açıklaması" alanında (unitInteriorDescription, bkz.
+      // TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS/composeCurrentUnitInteriorDescription)
+      // görünür/düzenlenir — burada bir UI alanı YOK (kullanıcının açık
+      // tercihi, iki ayrı düzenlenebilir kopyanın tutarsızlık riskine
+      // karşı). Değer state.fields.unitInteriorDescriptionMulti'de DAHİLİ
+      // olarak hesaplanmaya devam eder (yalnızca banka şablonu
+      // placeholder'ı {{ICHACIMLERACIKLAMASICOKLU}} ve "Placeholder"
+      // referans ekranı için, bkz. refreshMultiUnitInteriorDescriptionTextFromCurrentFields).
       {
         key: "ekbEmissionClass",
         label: "Sera Gazı Emisyon Sınıfı",
@@ -1538,6 +1548,27 @@ const TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS = new Set([
   "externalAppraisalReason",
   "externalAppraisalOtherNote",
   "restrictedInspectionNote",
+  // "unitInteriorDescription"/"unitInteriorDescriptionManual" (2026-09-07)
+  // — kullanıcı talebi: "çoklu raporlarda Bağımsız Bölüm İç Hacimler
+  // Açıklaması ortak olmalı ve şu an açıklamalar bölümünde yer alan İç
+  // Hacimler Açıklaması (Çoklu Taşınmaz) kısmı gelmeli". "unit" bölümünün
+  // GERİ KALANI (getUnitSectionFieldKeys()'in yorumu) hâlâ KASITLI OLARAK
+  // her zaman taşınmaza-özgü — bu İKİ alan TEK, BİLİNÇLİ istisna: 2+
+  // taşınmazlı raporlarda artık composeCurrentUnitInteriorDescription()
+  // (aşağıda) üzerinden TÜM taşınmazları birleştiren
+  // buildMultiUnitInteriorDescriptionText() metnini üretir ve PAYLAŞIMLI
+  // kalır (tab değiştirince AYRIŞMAZ/KAYBOLMAZ) — eskiden Açıklamalar
+  // bölümünde AYRI bir "İç Hacimler Açıklaması (Çoklu Taşınmaz)" alanı
+  // (unitInteriorDescriptionMulti) olarak duran metin artık BURADA
+  // (kullanıcının asıl düzenlediği tek alanda) görünür; o eski alan artık
+  // Açıklamalar'da GÖSTERİLMİYOR (kaldırıldı) ama state.fields.unitInteriorDescriptionMulti
+  // DEĞERİ hâlâ dahili olarak (yalnızca banka şablonu placeholder'ı
+  // {{ICHACIMLERACIKLAMASICOKLU}} ve "Placeholder" referans ekranı için)
+  // hesaplanmaya devam eder — bkz. refreshMultiUnitInteriorDescriptionTextFromCurrentFields.
+  // Tekil raporda davranış DEĞİŞMEDİ (composeUnitInteriorDescription()
+  // taşınmaza-özgü üretimine devam eder).
+  "unitInteriorDescription",
+  "unitInteriorDescriptionManual",
 ]);
 
 // Kullanıcı talebi (2026-08-16): "Aynı ada parselde yer alan çoklu rapor
@@ -2620,7 +2651,11 @@ function applyValuationDataToSelectedTitleUnits(targetIndices) {
 // documents/valuation'la AYNI sınıf sessiz kusur). "unit" paylaşım modeli HER
 // ZAMAN taşınmaza-özgü (blok kavramı burada anlamsız — aynı bloktaki iki
 // bağımsız bölüm bile doğası gereği farklı alan/iç mekan/dekorasyon bilgisine
-// sahiptir) — KOŞULSUZ eklenir.
+// sahiptir) — KOŞULSUZ eklenir. TEK bilinçli istisna: "unitInteriorDescription"/
+// "unitInteriorDescriptionManual" (2026-09-07'de TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS'e
+// TAŞINDI, bkz. o sabitin yorumu — "çoklu raporlarda Bağımsız Bölüm İç
+// Hacimler Açıklaması ortak olmalı") — bu yüzden aşağıdaki dönüş listesinde
+// ARTIK YOK.
 // "Dekoratif Özellikler" panelinin (createUnitDecorativePanel) TÜM alan
 // anahtarları — TEK kaynak: panelin KENDİSİNİN render ettiği
 // unitWallFloorRows/unitGeneralDecorativeFields/unitBathroomFixtureFields
@@ -2655,8 +2690,9 @@ function getUnitSectionFieldKeys() {
     "unitFloor", "unitAreaReductionRate", "unitLegalTerrace", "unitCurrentTerrace", "unitTerraceReductionRate", "interiorFeatures",
     // Dekoratif panel (applyUnitDecorativeFieldChange) - bkz. getUnitDecorativeFieldKeys().
     ...getUnitDecorativeFieldKeys(),
-    // Açıklama alanları
-    "unitInteriorDescription", "unitInteriorDescriptionManual",
+    // Açıklama alanları — "unitInteriorDescription"/"unitInteriorDescriptionManual"
+    // (2026-09-07) ARTIK BURADA DEĞİL, TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS'te
+    // (paylaşımlı, bkz. o sabitin yorumu).
     // Eski/dormant fallback alanları (yalnızca unitFloors tablosu henüz
     // migrate edilmemişse getUnitFloorRows() tarafından okunur, bugünün
     // arayüzü artık yazmıyor ama tam koruma için dahil edildi)
@@ -15715,9 +15751,24 @@ function createUnitInteriorDescriptionField() {
   return label;
 }
 
+// Kullanıcı talebi (2026-09-07): "çoklu raporlarda Bağımsız Bölüm İç
+// Hacimler Açıklaması ortak olmalı ve şu an açıklamalar bölümünde yer alan
+// İç Hacimler Açıklaması (Çoklu Taşınmaz) kısmı gelmeli" — 2+ taşınmazlı
+// raporlarda buildMultiUnitInteriorDescriptionText() (aşağıda, TÜM
+// taşınmazları birleştiren/gruplayan/çoğullayan TEK metin), tekil raporda
+// ESKİ composeUnitInteriorDescription() (taşınmaza özgü) kullanılır.
+// updateUnitInteriorDescription()/applyUnitDecorativeFieldChange()/
+// collectGeneratedTextPlaceholders() ÜÇÜ DE bu TEK fonksiyonu kullanır —
+// hangi üretici kullanılacağına dair drift riski olmadan.
+function composeCurrentUnitInteriorDescription() {
+  return getTitleUnitCount() >= 2
+    ? buildMultiUnitInteriorDescriptionText()
+    : composeUnitInteriorDescription();
+}
+
 function updateUnitInteriorDescription(force = false) {
   if (!force && state.fields.unitInteriorDescriptionManual === "Evet") return;
-  const text = composeUnitInteriorDescription();
+  const text = composeCurrentUnitInteriorDescription();
   state.fields.unitInteriorDescription = text;
   const activeTextarea = document.querySelector("[data-field='unitInteriorDescription']");
   if (activeTextarea) activeTextarea.value = text;
@@ -16706,7 +16757,7 @@ function createUnitDecorativeSelectField(labelText, key, options) {
 }
 
 function applyUnitDecorativeFieldChange(key, value) {
-  const previousGeneratedInteriorDescription = composeUnitInteriorDescription();
+  const previousGeneratedInteriorDescription = composeCurrentUnitInteriorDescription();
   clearFieldSourceOwnership(key);
   state.fields[key] = value;
   updateUnitDecorativeDescription();
@@ -31661,11 +31712,18 @@ function refreshMultiUnitInteriorDescriptionTextFromCurrentFields(changedKey = "
     ...getUnitDecorativeFieldKeys(),
   ];
   if (changedKey && !watchedKeys.includes(changedKey)) return;
+  // "unitInteriorDescriptionMulti" (2026-09-03) artık Açıklamalar
+  // bölümünde AYRI, DÜZENLENEBİLİR bir alan DEĞİL (2026-09-07'de
+  // kaldırıldı, bkz. TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS yorumu) —
+  // yalnızca banka şablonu placeholder'ı ({{ICHACIMLERACIKLAMASICOKLU}})
+  // ve "Placeholder" referans ekranı için DAHİLİ olarak güncel tutulur
+  // (kullanıcıya GÖRÜNMEYEN bir alan artık, DOM senkronu GEREKMEZ).
   state.fields.unitInteriorDescriptionMulti = normalizeReportDescriptionText(buildMultiUnitInteriorDescriptionText());
-  const control = document.querySelector('[data-field="unitInteriorDescriptionMulti"]');
-  if (control && control.value !== state.fields.unitInteriorDescriptionMulti) {
-    control.value = state.fields.unitInteriorDescriptionMulti || "";
-  }
+  // Kullanıcı-görünür, ARTIK PAYLAŞIMLI "Bağımsız Bölüm İç Hacimler
+  // Açıklaması" (bkz. updateUnitInteriorDescription/composeCurrentUnitInteriorDescription)
+  // AYNI anda taze tutulur — manuel geçersiz kılmaya (unitInteriorDescriptionManual)
+  // saygı duyar (updateUnitInteriorDescription'ın kendi kuralı).
+  updateUnitInteriorDescription();
 }
 
 function getEkbInspectionDateIso() {
@@ -43413,7 +43471,11 @@ function collectGeneratedTextPlaceholders() {
       category: "Bağımsız Bölüm Özellikleri",
       key: "unit_interior_description_text",
       title: "Kat, Alan ve İç Hacimler Açıklaması",
-      value: composeUnitInteriorDescription(),
+      // composeCurrentUnitInteriorDescription() (2026-09-07) — 2+ taşınmazlı
+      // raporlarda ARTIK unitInteriorDescription alanının kendisiyle AYNI
+      // (paylaşımlı, buildMultiUnitInteriorDescriptionText()) üretici
+      // kullanılır; bkz. o fonksiyonun yorumu.
+      value: composeCurrentUnitInteriorDescription(),
     },
     {
       category: "Bağımsız Bölüm Özellikleri",

@@ -1283,13 +1283,34 @@ const PRESENCE_BALCONY_AND_TERRACE = { hasAny: true, balcony: true, terrace: tru
   console.log("resolveOutdoorCombinedIgnoringTypeDifferences(): malzeme AYNIYSA temsilciye zorlanır / farklıysa dokunulmaz / outdoorMaterial hiç gösterilmez testi tamam.");
 }
 
-// --- 9) explanations bölümünde yeni alan tanımı (kaynak-düzeyi) ------------
+// --- 9) explanations bölümünde ARTIK AYRI bir unitInteriorDescriptionMulti
+// alanı YOK (2026-09-07, kullanıcı talebi: "çoklu raporlarda Bağımsız
+// Bölüm İç Hacimler Açıklaması ortak olmalı ve şu an açıklamalar
+// bölümünde yer alan İç Hacimler Açıklaması (Çoklu Taşınmaz) kısmı
+// gelmeli") — metin artık DOĞRUDAN "Bağımsız Bölüm" sekmesindeki
+// (paylaşımlı) unitInteriorDescription alanında görünür (kaynak-düzeyi) ---
 {
   assert.ok(
-    appSource.includes('{ key: "unitInteriorDescriptionMulti", label: "İç Hacimler Açıklaması (Çoklu Taşınmaz)", type: "textarea", wide: true }'),
-    "'explanations' bölümünde unitInteriorDescriptionMulti alanı tanımlı olmalı."
+    !appSource.includes('{ key: "unitInteriorDescriptionMulti", label: "İç Hacimler Açıklaması (Çoklu Taşınmaz)", type: "textarea", wide: true }'),
+    "'explanations' bölümünde unitInteriorDescriptionMulti artık AYRI, elle düzenlenebilir bir alan OLMAMALI (kaldırıldı)."
   );
-  console.log("explanations bölümünde yeni alan tanımı testi tamam.");
+  const sharedSetStart = appSource.indexOf("const TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS = new Set([");
+  assert.ok(sharedSetStart >= 0, "TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS bulunamadı.");
+  const sharedSetEnd = appSource.indexOf("]);", sharedSetStart);
+  const sharedSetBody = appSource.slice(sharedSetStart, sharedSetEnd);
+  assert.ok(
+    sharedSetBody.includes('"unitInteriorDescription",') && sharedSetBody.includes('"unitInteriorDescriptionManual",'),
+    "unitInteriorDescription/unitInteriorDescriptionManual TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS'te (paylaşımlı) olmalı."
+  );
+  const getUnitSectionFieldKeysStart = appSource.indexOf("function getUnitSectionFieldKeys()");
+  assert.ok(getUnitSectionFieldKeysStart >= 0, "getUnitSectionFieldKeys() bulunamadı.");
+  const getUnitSectionFieldKeysEnd = appSource.indexOf("\n}", getUnitSectionFieldKeysStart);
+  const getUnitSectionFieldKeysBody = appSource.slice(getUnitSectionFieldKeysStart, getUnitSectionFieldKeysEnd);
+  assert.ok(
+    !getUnitSectionFieldKeysBody.includes('"unitInteriorDescription", "unitInteriorDescriptionManual",'),
+    "getUnitSectionFieldKeys() unitInteriorDescription/unitInteriorDescriptionManual'ı ARTIK taşınmaza-özgü listede tutmamalı (paylaşımlıya taşındı)."
+  );
+  console.log("explanations bölümünde unitInteriorDescriptionMulti alanının kaldırılması + unitInteriorDescription'ın paylaşımlıya taşınması testi tamam.");
 }
 
 // --- 10) refreshMultiUnitInteriorDescriptionTextFromCurrentFields kablolaması

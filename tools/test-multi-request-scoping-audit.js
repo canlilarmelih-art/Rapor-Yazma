@@ -142,6 +142,20 @@ const KNOWN_EXCEPTIONS = new Map([
   ["valuationMethodsScheme", "buildValuationMethodsSchemeText()'ten turetilir, Ziraat sema paneli her render'da yeniler."],
   ["landMinimumParcelAssessment", "buildLandMinimumParcelAssessmentSentence()'tan turetilir, zaten scoped Arsa alanlarina bagli, her render'da yenilenir."],
   ["foreignCurrencyValuationExplanation", "yabanci para degerleme aciklamasi, hesaplanan/turetilmis metin."],
+  // "unitInteriorDescriptionMulti" (2026-09-07'ye kadar 'explanations'
+  // bolumunde AYRI, deklaratif, elle duzenlenebilir bir alandi - kullanici
+  // talebi ("coklu raporlarda Bagimsiz Bolum Ic Hacimler Aciklamasi ortak
+  // olmali ve su an aciklamalar bolumunde yer alan Ic Hacimler Aciklamasi
+  // (Coklu Tasinmaz) kismi gelmeli") uzerine bu deklaratif alan KALDIRILDI
+  // - metin artik DOGRUDAN (paylasimli) unitInteriorDescription alaninda
+  // gosteriliyor. state.fields.unitInteriorDescriptionMulti YAZIMI ise
+  // DEVAM EDIYOR (yalnizca banka sablonu placeholder'i
+  // {{ICHACIMLERACIKLAMASICOKLU}} ve "Placeholder" referans ekrani icin,
+  // bkz. refreshMultiUnitInteriorDescriptionTextFromCurrentFields) -
+  // buildMultiUnitInteriorDescriptionText()'ten turetilir, HER render'da
+  // yenilenir, kullaniciya hicbir formda/panelde DOGRUDAN GOSTERILMEZ -
+  // yukaridaki "hesaplanan/turetilmis metin" sinifiyla AYNI, dusuk risk.
+  ["unitInteriorDescriptionMulti", "buildMultiUnitInteriorDescriptionText()'ten turetilir, her render'da yenilenir, artik kullaniciya hicbir UI alaninda gosterilmiyor (yalnizca placeholder icin dahili)."],
   // --- Rapor-geneli UI tercihi/durum - taşınmaza-ozgu VERI degil, hangi
   // secenegin/goruntunun aktif oldugunu izleyen bir anahtar.
   ["variantOverrides", "cumle-varyanti admin override haritasi, rapor-geneli (taşınmaza-ozgu bir kavram degil)."],

@@ -252,8 +252,11 @@ const TITLE_UNIT_SCOPED_TABLE_KEYS_BASE = ["title", "encumbrance", "encumbranceD
 // app.js'teki AYNI eklemeyi yansitir. "externalAppraisalReason"/
 // "externalAppraisalOtherNote"/"restrictedInspectionNote" (2026-08-22,
 // sistematik tarama ile bulundu - appointmentType'in dogal devami) da
-// AYNI sekilde eklendi.
-const TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS = new Set(["transport", "nearby", "environmentDescription", "takbisSummary", "reviewedDocumentsDescription", "comparableMarketAnalysisText", "bank", "customerName", "caseName", "appointmentType", "appointmentDate", "municipalityInspectionDate", "externalAppraisalReason", "externalAppraisalOtherNote", "restrictedInspectionNote"]);
+// AYNI sekilde eklendi. "unitInteriorDescription"/"unitInteriorDescriptionManual"
+// (2026-09-07, kullanici talebi: "coklu raporlarda Bagimsiz Bolum Ic
+// Hacimler Aciklamasi ortak olmali") BURAYA EKLENDI - gercek app.js'teki
+// AYNI eklemeyi yansitir, bkz. asagidaki senaryo 30 duzeltmesi.
+const TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS = new Set(["transport", "nearby", "environmentDescription", "takbisSummary", "reviewedDocumentsDescription", "comparableMarketAnalysisText", "bank", "customerName", "caseName", "appointmentType", "appointmentDate", "municipalityInspectionDate", "externalAppraisalReason", "externalAppraisalOtherNote", "restrictedInspectionNote", "unitInteriorDescription", "unitInteriorDescriptionManual"]);
 // computeValuationFieldsForAllTitleUnits() GERCEK olarak asagida extract
 // edilir, ama onun cagirdigi refreshValuationComputedFields() (gercekte
 // ~15 fonksiyonluk, DOM-erisimli COK GENIS bir zincir) burada BILEREK
@@ -1564,9 +1567,14 @@ assert.match(appSource, /panel\.dataset\.parcelScope = mixedParcels \? "mixed" :
 }
 
 // --- 30) Bağımsız Bölüm (unit): programatik alanlar artik SIZMIYOR --------
-// (2026-08-20, scoping-gap-fix) - unitSalonFloor/unitInteriorDescription
-// vb. ~50 alan section.fields'ta deklaratif OLMADIGINDAN daha once HIC
-// toplanmiyordu (documents/valuation'la AYNI hata sinifi).
+// (2026-08-20, scoping-gap-fix) - unitSalonFloor vb. ~50 alan
+// section.fields'ta deklaratif OLMADIGINDAN daha once HIC toplanmiyordu
+// (documents/valuation'la AYNI hata sinifi). unitInteriorDescription/
+// unitInteriorDescriptionManual (2026-09-07, kullanici talebi: "coklu
+// raporlarda Bagimsiz Bolum Ic Hacimler Aciklamasi ortak olmali") ARTIK
+// TITLE_UNIT_SHARED_EXPLANATION_FIELD_KEYS'e TASINDI - bu ikisi bu
+// SIZMAMALI grubunun DISINDA, asagida AYRI bir "PAYLASILMALI" doğrulaması
+// var (davranis KASITLI OLARAK TERS CEVRILDI, regresyon DEGIL).
 {
   const state = freshState({
     fields: {
@@ -1581,8 +1589,12 @@ assert.match(appSource, /panel\.dataset\.parcelScope = mixedParcels \? "mixed" :
   const secondUnit = sandbox.getState();
   assert.equal(secondUnit.fields.unitUsageStatus, undefined, "REGRESYON: 2. tasinmaza unitUsageStatus SIZMAMALI.");
   assert.equal(secondUnit.fields.unitSalonFloor, undefined, "REGRESYON: 2. tasinmaza unitSalonFloor (dekoratif panel) SIZMAMALI.");
-  assert.equal(secondUnit.fields.unitInteriorDescription, undefined, "REGRESYON: 2. tasinmaza unitInteriorDescription SIZMAMALI.");
   assert.equal(secondUnit.fields.facades, undefined, "REGRESYON: 2. tasinmaza facades SIZMAMALI.");
+  // unitInteriorDescription/unitInteriorDescriptionManual ARTIK PAYLASIMLI
+  // (yukaridaki yorum) - 2. tasinmazda da AYNI degeri GORMELI (eski
+  // "SIZMAMALI" beklentisi BILINCLI OLARAK TERS CEVRILDI).
+  assert.equal(secondUnit.fields.unitInteriorDescription, "İç mekan metni", "unitInteriorDescription artik PAYLASIMLI - 2. tasinmazda da AYNI metin gorunmeli.");
+  assert.equal(secondUnit.fields.unitInteriorDescriptionManual, "1", "unitInteriorDescriptionManual artik PAYLASIMLI - 2. tasinmazda da AYNI bayrak gorunmeli.");
 
   sandbox.fns.switchActiveTitleUnit(0);
   const primaryAgain = sandbox.getState();
