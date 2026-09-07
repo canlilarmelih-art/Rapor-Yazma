@@ -41704,23 +41704,82 @@ function groupAndAttributeValueFactorEntries(entries) {
   });
 }
 
+// KULLANICI DÜZELTMESİ (2026-09-07, GERÇEK çıktı üzerinden): "Taşınmazın
+// asansörlü bir binada yer alması bu cümle çoğul değil. Taşınmazların
+// asansörlü bir binada yer almaları" — İLK denemede (yukarıdaki commit)
+// yalnızca ÖZNE ("taşınmazın"→"taşınmazların") çoğullanıyordu, cümlenin
+// SONUNDAKİ 3. tekil şahıs iyelik eki ("-sı", ör. "alma-sı") ise TEKİL
+// KALIYORDU — Türkçe'de iyelik eki, GENİTİF öznenin sayısıyla UYUMLU
+// olmalı ("taşınmazIN alma-SI" ama "taşınmazlarIN alma-LARI"). Bu
+// dosyadaki (value-factors-rules.js) HER TEK bir faktör metni, İSTİSNASIZ
+// "-ması"/"-maması" gibi ARKA ÜNLÜLÜ (a-tipi) bir ulama+iyelik kalıbıyla
+// BİTTİĞİNDEN (fiil kökleri hep "olmak/almak/bulunmak/yapılmak" ailesinden
+// — ÖN ünlülü "-mesi" hiç YOK), METNİN SONUNDAKİ "sı" harfleri "ları" ile
+// DEĞİŞTİRİLEREK doğru çoğul iyelik eki elde edilir — bkz.
+// pluralizeValueFactorPossessiveSuffix.
+function pluralizeValueFactorPossessiveSuffix(text) {
+  return /sı$/.test(text) ? text.replace(/sı$/, "ları") : text;
+}
+
 // Kullanıcının BİZZAT verdiği örnek: "A-5 ve A-8 No'lu taşınmazların ara
-// katta yer alıyor olması." Etiket formatı ("A-5") YENİDEN İCAT EDİLMEDİ —
+// katta yer alıyor olmaları." Etiket formatı ("A-5") YENİDEN İCAT EDİLMEDİ —
 // Kira Açıklaması'nda (0.0.652) ZATEN kullanılan formatTitleUnitSuitabilityShortLabel()
 // doğrudan yeniden kullanıldı. Faktör metni "Taşınmazın " İLE BAŞLIYORSA
 // (ör. manzara/otopark/sosyal tesis cümleleri) o önek atıf öznesiyle
 // DEĞİŞTİRİLİR; aksi halde (ÇOĞU faktör metni ZATEN öznesiz bir nominal
 // cümle, ör. "Ara katta yer alıyor olması") atıf öznesi BAŞA eklenir,
 // metnin ilk harfi küçültülür (0.0.643'ün lowercaseFirstLetterTr'siyle
-// AYNI teknik).
+// AYNI teknik). Etiket 2+ taşınmazı kapsıyorsa (isPlural) metnin SONUNDAKİ
+// iyelik eki de pluralizeValueFactorPossessiveSuffix() ile ÇOĞULLANIR —
+// yalnızca özneyi değil, cümlenin TAMAMINI dilbilgisel olarak uyumlu hale
+// getirir (kullanıcının yukarıdaki düzeltmesi).
 function buildValueFactorAttributedText(labels, originalText) {
   const isPlural = labels.length > 1;
   const joined = joinTurkishList(labels);
   const subject = isPlural ? `${joined} No'lu taşınmazların` : `${joined} No'lu taşınmazın`;
-  const rest = /^Taşınmazın\s+/.test(originalText)
+  let rest = /^Taşınmazın\s+/.test(originalText)
     ? originalText.replace(/^Taşınmazın\s+/, "")
     : lowercaseFirstLetterTr(originalText);
+  if (isPlural) rest = pluralizeValueFactorPossessiveSuffix(rest);
   return normalizeReportDescriptionText(`${subject} ${rest}`);
+}
+
+// Kullanıcı takip talebi (2026-09-07): "Taşınmazın asansörlü bir binada
+// yer alması bu cümle çoğul değil. Taşınmazların asansörlü bir binada
+// yer almaları buna göre diğer faktörleri çoklu raporlarda güncelle" —
+// Ana Yapı/Bölge (paylaşımlı) faktörleri ÖNCEKİ commit'te BİLİNÇLİ OLARAK
+// hiç değiştirilmiyordu (gruplamaya GEREK YOK, TEK bina/bölge TÜM
+// taşınmazlar için ortak) — ama kullanıcı BUNLARIN da ÇOĞUL yazılmasını
+// istiyor (aynı bina/bölgeyi paylaşan N taşınmaz İÇİN "taşınmazIN X" değil
+// "taşınmazlarIN X" doğru olur). HER metin AYRI AYRI, ELLE incelendi —
+// yalnızca GERÇEKTEN "taşınmazın kendisi" (ya da "bulunduğu"/"yer aldığı"
+// gibi taşınmaza dolaylı atıfta bulunan bir ilgi cümleciği) İÇEREN
+// metinler değişiyor; "Bölgenin.../Statik uygunluğun.../Enerji performans
+// sınıfının..." gibi zaten paylaşılan bir ÖZNEYE (bölge/belge/proje/
+// sözleşme) sahip metinler DOKUNULMADI (bunlar taşınmaz sayısından
+// BAĞIMSIZ, DAİMA tekil kalır — ör. "Yapı Kullanma İzin Belgesi" TEK bir
+// belge, N taşınmaz olsa da "belgesi" ASLA "belgeleri" olmaz burada,
+// yalnızca ONA sahip OLAN taşınmaz(lar) çoğullanır).
+const SHARED_VALUE_FACTOR_PLURAL_TRANSFORMS = {
+  "document-occupancy-permit": { prefixFrom: /^Bulunduğu\s+/, prefixTo: "Bulundukları " },
+  "building-elevator": { prefixFrom: /^Taşınmazın\s+/, prefixTo: "Taşınmazların ", pluralizeSuffix: true },
+  "building-no-elevator": { prefixFrom: /^Bulunduğu\s+/, prefixTo: "Bulundukları " },
+  "building-carpark": { prefixFrom: /^Taşınmazın yer aldığı\s+/, prefixTo: "Taşınmazların yer aldıkları " },
+  "building-no-carpark": { prefixFrom: /^Taşınmazın yer aldığı\s+/, prefixTo: "Taşınmazların yer aldıkları " },
+  "building-no-ekb": { prefixFrom: /^Yer aldığı\s+/, prefixTo: "Yer aldıkları " },
+  "building-new-age": { pluralizeSuffix: true },
+  "building-old-age": { pluralizeSuffix: true },
+  "building-social-facilities": { prefixFrom: /^Taşınmazın\s+/, prefixTo: "Taşınmazların ", pluralizeSuffix: true },
+  "location-main-artery-near": { pluralizeSuffix: true },
+  "location-main-artery-far": { pluralizeSuffix: true },
+};
+
+function pluralizeSharedValueFactorText(id, text) {
+  const rule = SHARED_VALUE_FACTOR_PLURAL_TRANSFORMS[id];
+  if (!rule) return text;
+  let result = rule.prefixFrom ? text.replace(rule.prefixFrom, rule.prefixTo) : text;
+  if (rule.pluralizeSuffix) result = pluralizeValueFactorPossessiveSuffix(result);
+  return result;
 }
 
 // Tek taşınmazlı raporlarda (count<2) davranış BİREBİR DEĞİŞMEDİ — yalnızca
@@ -41728,11 +41787,14 @@ function buildValueFactorAttributedText(labels, originalText) {
 // aynen döner. Çoklu taşınmazlı raporlarda: (1) Ana Yapı/Bölge (+ manuel
 // eklenen kalemler, ID öneki "manual-" olduğundan isPerUnitValueFactorId
 // tarafından zaten "paylaşımlı" sayılır) TEK SEFER, temsilci (aktif)
-// taşınmazın verisinden hesaplanır; (2) Taşınmaz Bazında kalemler HER
-// taşınmaz için AYRI AYRI hesaplanıp (buildValuationSaleabilityExplanationForAllTitleUnits'in
-// state.fields GEÇİCİ değiştirme tekniğiyle AYNI), sonra AYNI metni
-// üreten taşınmazlar groupAndAttributeValueFactorEntries() ile TEK atıflı
-// satırda birleştirilir. manualPositive/manualNegative per-unit çağrılara
+// taşınmazın verisinden hesaplanır — GERÇEKTEN taşınmaza atıf yapanlar
+// pluralizeSharedValueFactorText() ile ÇOĞUL yazıya çevrilir (manuel
+// kalemler SHARED_VALUE_FACTOR_PLURAL_TRANSFORMS'ta YOK, DOKUNULMAZ);
+// (2) Taşınmaz Bazında kalemler HER taşınmaz için AYRI AYRI hesaplanıp
+// (buildValuationSaleabilityExplanationForAllTitleUnits'in state.fields
+// GEÇİCİ değiştirme tekniğiyle AYNI), sonra AYNI metni üreten taşınmazlar
+// groupAndAttributeValueFactorEntries() ile TEK atıflı satırda
+// birleştirilir. manualPositive/manualNegative per-unit çağrılara
 // BİLEREK BOŞ geçilir — aksi halde HER taşınmaz turunda TEKRAR eklenip
 // sonuçta N kat çoğaltılırlardı (zaten TEK SEFER, representative sonuçtan
 // geliyorlar).
@@ -41740,8 +41802,12 @@ function calculateValueFactorsForAllTitleUnits(baseInput) {
   const representativeResult = globalThis.ValueFactorsRules.calculateValueFactors(baseInput);
   if (getTitleUnitCount() < 2) return representativeResult;
 
-  const sharedPositive = representativeResult.positive.filter((item) => !isPerUnitValueFactorId(item.id));
-  const sharedNegative = representativeResult.negative.filter((item) => !isPerUnitValueFactorId(item.id));
+  const sharedPositive = representativeResult.positive
+    .filter((item) => !isPerUnitValueFactorId(item.id))
+    .map((item) => ({ ...item, text: pluralizeSharedValueFactorText(item.id, item.text) }));
+  const sharedNegative = representativeResult.negative
+    .filter((item) => !isPerUnitValueFactorId(item.id))
+    .map((item) => ({ ...item, text: pluralizeSharedValueFactorText(item.id, item.text) }));
 
   const originalFields = state.fields;
   const units = buildAllTitleUnitsForSummaryTable();

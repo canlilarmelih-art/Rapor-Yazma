@@ -19,22 +19,40 @@
 // konumu, cephe, manzara, malzeme kalitesi, arsa/parsel özellikleri, satış
 // kabiliyeti vb.) TAMAMEN GÖRMEZDEN geliniyordu.
 //
+// KULLANICI DÜZELTMESİ (2026-09-07, GERÇEK canlı çıktı üzerinden): "Taşınmazın
+// asansörlü bir binada yer alması bu cümle çoğul değil. Taşınmazların
+// asansörlü bir binada yer almaları buna göre diğer faktörleri çoklu
+// raporlarda güncelle" — İKİ ayrı düzeltme gerektirdi: (a) ÖZNE
+// pluralizasyonuna EK OLARAK metnin SONUNDAKİ 3. tekil şahıs iyelik eki
+// ("-sı", ör. "alma-sı") de ÇOĞUL olmalı ("-ları", "alma-ları") — bu HEM
+// "taşınmaz bazında" (grup+atıf) HEM "Ana Yapı/Bölge" (paylaşımlı)
+// metinlerini etkiler; (b) Ana Yapı/Bölge (paylaşımlı) faktörleri ÖNCEKİ
+// commit'te (0.0.653) BİLİNÇLİ OLARAK HİÇ ÇOĞULLANMIYORDU — artık HER
+// metin AYRI AYRI incelenip, GERÇEKTEN taşınmaza atıf yapanlar (ya da
+// "Bulunduğu"/"Yer aldığı" gibi taşınmaza dolaylı atıfta bulunanlar)
+// çoğullanıyor; "Bölgenin.../Statik uygunluğun..." gibi zaten paylaşılan
+// bir ÖZNEYE (bölge/belge/proje/sözleşme) sahip metinler DOKUNULMUYOR.
+//
 // Bu test kapsamı:
 //  1) count<2 -> davranış DEĞİŞMEDİ (representative sonuç AYNEN döner).
-//  2) Ana Yapı/Bölge (+ manuel eklenen) kalemler ÇOKLU raporda DAHİ
-//     yalnızca TEK SEFER (representative/aktif taşınmazdan) hesaplanır,
-//     "Taşınmaz Bazında" kalemlerle KARIŞTIRILMAZ.
-//  3) AYNI "taşınmaz bazında" faktörü üreten 2+ taşınmaz TEK, atıflı
-//     satırda birleşir — kullanıcının BİZZAT verdiği örnekle BİREBİR
-//     eşleşir ("A-5 ve A-8 No'lu taşınmazların ara katta yer alıyor
-//     olması").
-//  4) YALNIZCA 1 taşınmazda tetiklenen bir faktör TEKİL atıfla (ör. "A-5
-//     No'lu taşınmazın ...") görünür.
-//  5) "Taşınmazın " ile BAŞLAYAN faktör metinlerinde (manzara gibi) önek
-//     atıf öznesiyle DEĞİŞTİRİLİR, metnin GERİ KALANI KORUNUR.
-//  6) manualPositive/manualNegative kalemleri HER taşınmaz turunda TEKRAR
+//  2) Ana Yapı/Bölge kalemleri: taşınmaza HİÇ atıf yapmayanlar (Bölgenin
+//     altyapısı gibi) ÇOKLU raporda DAHİ DEĞİŞMEZ; manuel kalemler TEK
+//     SEFER görünür, ASLA çoğullanmaz/tekrarlanmaz.
+//  3) Ana Yapı kalemleri: taşınmaza AÇIKÇA atıf yapanlar (asansör —
+//     kullanıcının BİZZAT verdiği örnek) DOĞRU çoğul cümleye döner; DOLAYLI
+//     atıf yapanlar ("Bulunduğu binanın..." gibi) yalnızca İLGİLİ kısım
+//     çoğullanır, paylaşılan (belge/imkan) kısım TEKİL kalır.
+//  4) AYNI "taşınmaz bazında" faktörü üreten 2+ taşınmaz TEK, atıflı
+//     satırda birleşir VE metnin SONUNDAKİ iyelik eki de ÇOĞULLANIR
+//     (kullanıcının düzeltmesiyle TUTARLI — "...sahip olması" DEĞİL
+//     "...sahip olmaları").
+//  5) YALNIZCA 1 taşınmazda tetiklenen bir faktör TEKİL atıfla (ör. "A-5
+//     No'lu taşınmazın ... olması") görünür — iyelik eki TEKİL kalır.
+//  6) "Taşınmazın " ile BAŞLAYAN faktör metinlerinde (manzara gibi) önek
+//     atıf öznesiyle DEĞİŞTİRİLİR, SONDAKİ iyelik eki de ÇOĞULLANIR.
+//  7) manualPositive/manualNegative kalemleri HER taşınmaz turunda TEKRAR
 //     EKLENMEZ (yalnızca TEK KEZ, representative sonuçtan gelir).
-//  7) Bir taşınmazda HİÇ tetiklenmeyen bir faktör o taşınmaz İÇİN hiç
+//  8) Bir taşınmazda HİÇ tetiklenmeyen bir faktör o taşınmaz İÇİN hiç
 //     satır üretmez (yalnızca GERÇEKTEN tetiklenen taşınmazlar atfa dahil
 //     olur).
 
@@ -128,12 +146,13 @@ function idsOf(items) {
   console.log("count<2 (tek taşınmaz) geriye dönük uyumluluk testi tamam.");
 }
 
-// --- 2) Ana Yapı/Bölge + manuel kalemler TEK SEFER (representative'ten) -
+// --- 2) Ana Yapı/Bölge (taşınmaza atıf YAPMAYAN) + manuel kalemler TEK ---
+// SEFER görünür, DEĞİŞMEDEN kalır.
 {
   const context = makeContext();
   withUnits(context, [
-    unit({ unitNo: "5", elevator: "Yok", infrastructureLevel: "iyi" }),
-    unit({ unitNo: "8", elevator: "Yok", infrastructureLevel: "iyi" }),
+    unit({ unitNo: "5", infrastructureLevel: "iyi" }),
+    unit({ unitNo: "8", infrastructureLevel: "iyi" }),
   ]);
   const baseInput = {
     fields: context.state.fields,
@@ -145,16 +164,59 @@ function idsOf(items) {
   const result = context.calculateValueFactorsForAllTitleUnits(baseInput);
   const manualEntries = result.positive.filter((item) => item.source === "manual");
   assert.equal(manualEntries.length, 1, "Manuel kalem HER taşınmaz turunda TEKRAR EKLENMEMELİ, TEK KEZ görünmeli.");
+  assert.equal(manualEntries[0].text, "Ek olumlu özellik", "Manuel kalem ASLA çoğullanmamalı (kullanıcının kendi serbest metni).");
   const infraEntries = result.positive.filter((item) => item.id === "location-infrastructure-good");
   assert.equal(infraEntries.length, 1, "Bölge faktörü (paylaşımlı) TEK KEZ görünmeli, taşınmaz sayısı kadar TEKRARLANMAMALI.");
-  assert.ok(!infraEntries[0].text.includes("No'lu"), "Bölge faktörüne ATIF EKLENMEMELİ (taşınmaza-özgü değil).");
-  const elevatorEntries = result.negative.filter((item) => item.id === "building-no-elevator");
-  assert.equal(elevatorEntries.length, 1, "Ana Yapı faktörü (paylaşımlı) TEK KEZ görünmeli.");
-  console.log("Ana Yapı/Bölge/manuel kalemlerin tek sefer hesaplanması testi tamam.");
+  assert.equal(infraEntries[0].text, "Bölgenin altyapı olanaklarının iyi seviyede olması", "Taşınmaza atıf YAPMAYAN Bölge faktörü ÇOKLU raporda DAHİ DEĞİŞMEMELİ (özne zaten 'Bölgenin').");
+  console.log("Ana Yapı/Bölge (atıfsız)/manuel kalemlerin tek sefer, değişmeden hesaplanması testi tamam.");
 }
 
-// --- 3) KULLANICI ÖRNEĞİ: AYNI taşınmaz-bazında faktörü üreten 2 --------
-// taşınmaz TEK atıflı satırda birleşir.
+// --- 3) KULLANICI ÖRNEĞİ (BİREBİR): Ana Yapı faktörü taşınmaza AÇIKÇA ----
+// atıf yapıyorsa (asansör) ÇOKLU raporda DOĞRU çoğul cümleye döner;
+// DOLAYLI atıf yapan (occupancy-permit) yalnızca İLGİLİ kısmı çoğullanır.
+{
+  const context = makeContext();
+  withUnits(context, [
+    unit({ unitNo: "5", elevator: "2 Adet Asansör" }),
+    unit({ unitNo: "8", elevator: "2 Adet Asansör" }),
+  ]);
+  const baseInput = { fields: context.state.fields, tables: {}, disabledIds: [], manualPositive: [], manualNegative: [] };
+  const result = context.calculateValueFactorsForAllTitleUnits(baseInput);
+  const elevatorEntries = result.positive.filter((item) => item.id === "building-elevator");
+  assert.equal(elevatorEntries.length, 1, "Ana Yapı faktörü (paylaşımlı) TEK KEZ görünmeli.");
+  assert.equal(
+    elevatorEntries[0].text,
+    "Taşınmazların asansörlü bir binada yer almaları",
+    "KULLANICI DÜZELTMESİ: 'Taşınmazın ... yer alması' artık 'Taşınmazların ... yer almaları' (hem özne HEM iyelik eki çoğul) olmalı."
+  );
+  console.log("KULLANICI ÖRNEĞİNİN BİREBİR REPRODÜKSİYONU (Ana Yapı: asansör çoğullaması) testi tamam.");
+}
+
+// --- 3b) DOLAYLI atıf (occupancy-permit): yalnızca "Bulunduğu"->"Bulundukları" --
+// değişir, paylaşılan BELGE tekil kalır ("bulunması" DEĞİŞMEZ).
+{
+  const context = makeContext();
+  withUnits(context, [unit({ unitNo: "5" }), unit({ unitNo: "8" })]);
+  const baseInput = {
+    fields: context.state.fields,
+    tables: { documents: [{ type: "Yapı Kullanma İzin Belgesi" }] },
+    disabledIds: [],
+    manualPositive: [],
+    manualNegative: [],
+  };
+  const result = context.calculateValueFactorsForAllTitleUnits(baseInput);
+  const permitEntries = result.positive.filter((item) => item.id === "document-occupancy-permit");
+  assert.equal(permitEntries.length, 1);
+  assert.equal(
+    permitEntries[0].text,
+    "Bulundukları binanın Yapı Kullanma İzin Belgesi bulunması",
+    "Dolaylı atıf ('Bulunduğu'->'Bulundukları') değişmeli, paylaşılan belgenin KENDİSİ ('bulunması') TEKİL kalmalı."
+  );
+  console.log("Dolayli atif (Bulundugu->Bulunduklari, paylasilan belge tekil kalir) testi tamam.");
+}
+
+// --- 4) KULLANICI ÖRNEĞİ (BİREBİR): AYNI taşınmaz-bazında faktörü üreten -
+// 2 taşınmaz TEK atıflı satırda birleşir, SONDAKİ iyelik eki de ÇOĞULLANIR.
 {
   const context = makeContext();
   withUnits(context, [
@@ -168,13 +230,14 @@ function idsOf(items) {
   assert.equal(qualityEntries.length, 1, "AYNI metni üreten 2 taşınmaz TEK satırda birleşmeli.");
   assert.equal(
     qualityEntries[0].text,
-    "A-5 ve A-8 No'lu taşınmazların lüks sınıf iç malzeme kalitesine sahip olması",
-    "Birleşik atıflı metin, kullanıcının verdiği kalıpla (etiketler + küçük harfe çevrilmiş devam) BİREBİR eşleşmeli."
+    "A-5 ve A-8 No'lu taşınmazların lüks sınıf iç malzeme kalitesine sahip olmaları",
+    "Birleşik atıflı metin: özne ÇOĞUL ('taşınmazların') VE sondaki iyelik eki ÇOĞUL ('olmaları', 'olması' DEĞİL) olmalı."
   );
-  console.log("Aynı faktörü üreten taşınmazların TEK atıflı satırda birleşmesi testi tamam.");
+  console.log("Aynı faktörü üreten taşınmazların TEK atıflı satırda (iyelik eki çoğul) birleşmesi testi tamam.");
 }
 
-// --- 4) YALNIZCA 1 taşınmazda tetiklenen faktör TEKİL atıfla görünür ----
+// --- 5) YALNIZCA 1 taşınmazda tetiklenen faktör TEKİL atıfla (iyelik ----
+// eki de TEKİL) görünür.
 {
   const context = makeContext();
   withUnits(context, [
@@ -188,13 +251,13 @@ function idsOf(items) {
   assert.equal(
     qualityEntries[0].text,
     "A-5 No'lu taşınmazın lüks sınıf iç malzeme kalitesine sahip olması",
-    "Tekil atıf 'taşınmazın' (tekil genitif) formunda olmalı."
+    "Tekil atıf 'taşınmazın' (tekil genitif) + 'olması' (tekil iyelik eki) formunda olmalı."
   );
-  console.log("Yalnızca 1 taşınmazda tetiklenen faktörün tekil atıfla görünmesi testi tamam.");
+  console.log("Yalnızca 1 taşınmazda tetiklenen faktörün tekil atıfla (iyelik eki tekil) görünmesi testi tamam.");
 }
 
-// --- 5) "Taşınmazın " ile BAŞLAYAN metinlerde önek atıf öznesiyle -------
-// DEĞİŞTİRİLİR (manzara örneği).
+// --- 6) "Taşınmazın " ile BAŞLAYAN metinlerde önek atıf öznesiyle -------
+// DEĞİŞTİRİLİR VE sondaki iyelik eki de ÇOĞULLANIR (manzara örneği).
 {
   const context = makeContext();
   withUnits(context, [
@@ -205,13 +268,15 @@ function idsOf(items) {
   const result = context.calculateValueFactorsForAllTitleUnits(baseInput);
   const viewEntries = result.positive.filter((item) => item.id === "unit-view-positive");
   assert.equal(viewEntries.length, 1);
-  assert.ok(viewEntries[0].text.startsWith("A-5 ve A-8 No'lu taşınmazların"), "'Taşınmazın ' öneki atıf öznesiyle DEĞİŞTİRİLMELİ.");
-  assert.ok(!viewEntries[0].text.includes("Taşınmazın"), "Orijinal 'Taşınmazın' öneki metinde ARTIK GEÇMEMELİ.");
-  assert.ok(viewEntries[0].text.endsWith("geniş deniz manzarasına sahip olması"), "Önekten SONRAKİ kısım (küçük harfle) KORUNMALI.");
-  console.log("'Taşınmazın ' onekinin atif oznesiyle degistirilmesi testi tamam.");
+  assert.equal(
+    viewEntries[0].text,
+    "A-5 ve A-8 No'lu taşınmazların geniş deniz manzarasına sahip olmaları",
+    "'Taşınmazın ' öneki atıf öznesiyle DEĞİŞTİRİLMELİ VE sondaki iyelik eki ('olması'->'olmaları') ÇOĞULLANMALI."
+  );
+  console.log("'Taşınmazın ' oneki + iyelik eki cogullamasi testi tamam.");
 }
 
-// --- 6) Bir taşınmazda hiç tetiklenmeyen faktör o taşınmaz için hiç -----
+// --- 7) Bir taşınmazda hiç tetiklenmeyen faktör o taşınmaz için hiç -----
 // satır üretmez.
 {
   const context = makeContext();
@@ -227,4 +292,4 @@ function idsOf(items) {
   console.log("Tetiklenmeyen taşınmazın atfa dahil edilmemesi testi tamam.");
 }
 
-console.log("Deger etkileyen faktorler coklu tasinmaz (taşınmaz bazinda gruplama) testleri basarili.");
+console.log("Deger etkileyen faktorler coklu tasinmaz (taşınmaz bazinda + Ana Yapi/Bolge cogullama) testleri basarili.");
