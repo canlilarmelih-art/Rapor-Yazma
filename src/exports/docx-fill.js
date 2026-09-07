@@ -418,6 +418,25 @@
   const GAP_DXA = cmToDxa(CELL_GAP_CM);
   const GAP_EMU = cmToEmu(CELL_GAP_CM);
 
+  // Kullanıcı takip talebi (2026-09-08, 2. tur — kategori etiketi
+  // görsellerin ALTINA taşındıktan SONRA): "alt açıklama diğer sayfaya
+  // sarkıyor. gerekirse görsel boyutlarını küçült. tek sayfaya sığmalı.
+  // yazı puntosunu küçült ve görsellerin alt kısmına açıklamayı
+  // yaklaştır." — Kök neden: görsel ızgarası (computeCellSizeForLayout)
+  // TAM 22 cm'lik sayfa kutusunun TAMAMINI dolduruyordu; ALTINA eklenen
+  // etiket paragrafı (buildCategoryLabelXml) için HİÇ pay AYRILMAMIŞTI,
+  // bu yüzden etiket her zaman 22 cm'i AŞIP sonraki sayfaya taşıyordu.
+  // Düzeltme: yalnızca görsel IZGARASI (buildPhotoPageTableXml) için,
+  // 22 cm'lik toplam kutudan etiketin kendi (küçültülmüş punto +
+  // sıkılaştırılmış boşluklarla) satırına yetecek bir pay DÜŞÜLÜYOR —
+  // kapak fotoğrafı (computeCoverPhotoEmuSize, kendi AYRI/önce-gelen
+  // etiketi olan farklı bir yol) bu payın DIŞINDA, PAGE_HEIGHT_* sabitleri
+  // AYNEN kullanmaya devam ediyor (bu değişiklikten ETKİLENMEZ).
+  const CATEGORY_LABEL_RESERVED_HEIGHT_CM = 1;
+  const PHOTO_GRID_HEIGHT_CM = PAGE_CONTENT_HEIGHT_CM - CATEGORY_LABEL_RESERVED_HEIGHT_CM;
+  const PHOTO_GRID_HEIGHT_DXA = cmToDxa(PHOTO_GRID_HEIGHT_CM);
+  const PHOTO_GRID_HEIGHT_EMU = cmToEmu(PHOTO_GRID_HEIGHT_CM);
+
   const LAYOUT_GRID = {
     horizontal_pair: { columns: 2, rows: 1 },
     vertical_single: { columns: 1, rows: 1 },
@@ -436,9 +455,14 @@
   function computeCellSizeForLayout(layoutKey) {
     const { columns, rows } = getLayoutGrid(layoutKey);
     const cellWidthDxa = Math.round((PAGE_WIDTH_DXA - GAP_DXA * (columns - 1)) / columns);
-    const cellHeightDxa = Math.round((PAGE_HEIGHT_DXA - GAP_DXA * (rows - 1)) / rows);
+    // Yukseklik icin PAGE_HEIGHT_* DEGIL, PHOTO_GRID_HEIGHT_* kullanilir —
+    // altina eklenen kategori etiketine (buildCategoryLabelXml) yer
+    // acmak icin 22 cm'lik toplam sayfa kutusundan CATEGORY_LABEL_RESERVED_HEIGHT_CM
+    // dusulmus, kucultulmus bir yukseklik butcesi (bkz. yukaridaki
+    // 2026-09-08 2. tur notu).
+    const cellHeightDxa = Math.round((PHOTO_GRID_HEIGHT_DXA - GAP_DXA * (rows - 1)) / rows);
     const cellWidthEmu = Math.round((PAGE_WIDTH_EMU - GAP_EMU * (columns - 1)) / columns);
-    const cellHeightEmu = Math.round((PAGE_HEIGHT_EMU - GAP_EMU * (rows - 1)) / rows);
+    const cellHeightEmu = Math.round((PHOTO_GRID_HEIGHT_EMU - GAP_EMU * (rows - 1)) / rows);
     return { columns, rows, cellWidthDxa, cellHeightDxa, cellWidthEmu, cellHeightEmu, cellAspect: cellWidthEmu / cellHeightEmu };
   }
 
@@ -501,8 +525,18 @@
   // report-photos-category-label CSS sınıfı) AYNI tasarım diliyle
   // tutarlı: ortalanmış, kalın, PHOTO_LABEL_COLOR (koyu gri) — beyaz
   // DEĞİL, artık arka plan olmadığından beyaz yazı görünmez olurdu.
+  //
+  // 2026-09-08, 2. tur (devam talebi): "alt açıklama diğer sayfaya
+  // sarkıyor ... yazı puntosunu küçült ve görsellerin alt kısmına
+  // açıklamayı yaklaştır." — punto 10'dan (w:sz=20) 8'e (w:sz=16)
+  // küçültüldü; üst boşluk 120'den (≈0,21 cm) 20 twip'e (≈0,04 cm,
+  // görsele NEREDEYSE bitişik) sıkıştırıldı; alt boşluk 240'tan
+  // (≈0,42 cm) 60 twip'e (≈0,11 cm) indirildi. Bu paragrafın toplam
+  // yüksekliği artık PHOTO_GRID_HEIGHT_* hesabındaki
+  // CATEGORY_LABEL_RESERVED_HEIGHT_CM (1 cm) payının rahatça İÇİNDE
+  // kalıyor (before+satır+after ≈ 0,5 cm, ~0,5 cm pay BIRAKIYOR).
   function buildCategoryLabelXml(label) {
-    return `<w:p><w:pPr><w:spacing w:before="120" w:after="240"/><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:b/><w:bCs/><w:color w:val="${PHOTO_LABEL_COLOR}"/><w:sz w:val="20"/><w:szCs w:val="20"/></w:rPr><w:t xml:space="preserve">${escapeXmlText(label)}</w:t></w:r></w:p>`;
+    return `<w:p><w:pPr><w:spacing w:before="20" w:after="60"/><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:b/><w:bCs/><w:color w:val="${PHOTO_LABEL_COLOR}"/><w:sz w:val="16"/><w:szCs w:val="16"/></w:rPr><w:t xml:space="preserve">${escapeXmlText(label)}</w:t></w:r></w:p>`;
   }
 
   // "Kapak Fotoğrafı" — kullanıcı talebi (2026-08-13, 3. tur): "kapak

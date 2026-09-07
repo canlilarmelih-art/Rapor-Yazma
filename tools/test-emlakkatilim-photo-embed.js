@@ -61,8 +61,9 @@
   5) Kapak Fotografi (FOTO_KAPAK) VARKEN: kendi token'inda, tek,
      KIRPILMAMIS, KENDI banner'i OLMAYAN bir yer tutucu olarak geliyor.
   6) 6 fotoğraf + stacked_pair (FOTO_ICMEKAN) → TAM 3 sayfa, HER
-     sayfada kendi "İç Mekan" banner'ı (3 kez tekrar), her görsel TAM
-     16×10,75 cm.
+     sayfada kendi "İç Mekan" etiketi (3 kez tekrar), her görsel TAM
+     16×10,25 cm (2026-09-08, 2. tur: altına eklenen etiket için 1 cm
+     pay ayrıldığından ÖNCEKİ 10,75 cm'den küçüldü).
   7) Her senaryoda ciktinin STORED-zip round-trip'i saglam.
 */
 
@@ -331,9 +332,13 @@ function singleCategoryGroup(token, label, layoutKey, photos) {
   const drawingCount = countOccurrences(outXml, "<w:drawing>");
   check(drawingCount === baselineDrawingCount + 6, `6 fotograf icin +6 <w:drawing> bekleniyordu, gercek fark: ${drawingCount - baselineDrawingCount}`);
 
+  // 2026-09-08 (2. tur): kategori etiketine yer acmak icin gorsel
+  // izgarasinin yukseklik butcesi 22 cm'den 21 cm'e dustu (bkz.
+  // docx-fill.js'teki CATEGORY_LABEL_RESERVED_HEIGHT_CM) — stacked_pair
+  // (1x2) icin (21-0,5)/2 = 10,25 cm (ONCEKI 10,75 cm DEGIL).
   const extents = [...outXml.matchAll(/<wp:extent cx="(\d+)" cy="(\d+)"/g)].map((m) => ({ cx: Number(m[1]), cy: Number(m[2]) }));
-  const stackedPairExtents = extents.filter((e) => e.cx === 5760000 && e.cy === 3870000);
-  check(stackedPairExtents.length === 6, `6 gorselin de TAM 16×10,75 cm (5760000×3870000 EMU) olmasi bekleniyordu, bulunan (eslesen): ${stackedPairExtents.length}`);
+  const stackedPairExtents = extents.filter((e) => e.cx === 5760000 && e.cy === 3690000);
+  check(stackedPairExtents.length === 6, `6 gorselin de TAM 16×10,25 cm (5760000×3690000 EMU) olmasi bekleniyordu, bulunan (eslesen): ${stackedPairExtents.length}`);
 
   try {
     DocxFill.readStoredZip(filled.bytes.buffer);
