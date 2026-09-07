@@ -381,7 +381,16 @@
     ));
   }
 
-  const PHOTO_BANNER_FILL = "1F3864"; // lacivert (navy blue)
+  // Kullanıcı takip talebi (2026-09-08, ekran görüntüsü — gerçek Word
+  // export çıktısı): "sonuç bu mavi başlık olmayaca görsel altında
+  // yazacak görselin türü" — eski lacivert (1F3864) dolgu banner
+  // (kategori adı, GÖRSELLERİN ÜSTÜNDE, beyaz yazı + koyu kutu)
+  // KALDIRILDI. Yerine düz (kutu/dolgu YOK, "sadece font") bir metin
+  // etiketi, görsel ızgarasının/sayfasının ALTINA eklendi (bkz.
+  // buildCategoryLabelXml). Bu renk yalnızca bu etiketlere özgü —
+  // sayım-tabanlı testlerde (tools/test-emlakkatilim-photo-embed.js)
+  // eski `w:fill="1F3864"` sayımının YERİNİ alır.
+  const PHOTO_LABEL_COLOR = "595959"; // koyu gri (Word'ün standart "ikincil metin" tonu)
 
   // Kullanici talebi (2026-08-14, 5. tur): "her sayfa genişlik 16
   // yükseklik 21,33 olacak şekilde oturum sağlanmalı ... 16 cm X 21,33 cm
@@ -470,9 +479,30 @@
   // hicbir sey onu "sayfa sonuna" itmiyor); SONRAKI HER banner (2.
   // kategori, veya ayni kategorinin 2./3. sayfasi, veya kapak
   // fotografindan sonraki ilk banner) yine pageBreakBefore ALIR.
-  function buildCategoryBannerXml(label, includePageBreakBefore) {
-    const pageBreakXml = includePageBreakBefore ? "<w:pageBreakBefore/>" : "";
-    return `<w:p><w:pPr>${pageBreakXml}<w:shd w:val="clear" w:color="auto" w:fill="${PHOTO_BANNER_FILL}"/><w:spacing w:before="0" w:after="140"/><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:b/><w:bCs/><w:color w:val="FFFFFF"/><w:sz w:val="24"/><w:szCs w:val="24"/></w:rPr><w:t xml:space="preserve">${escapeXmlText(label)}</w:t></w:r></w:p>`;
+  // Sayfa geçişini TAŞIYAN, tamamen GÖRÜNMEZ (metin içermeyen) bir
+  // paragraf — eski buildCategoryBannerXml'in pageBreakBefore'u KENDİ
+  // (görünür, lacivert) paragrafında taşıdığı yerin YERİNİ alır; artık
+  // etiket görsellerin ALTINA taşındığından, sayfa geçişi görsel
+  // ızgarasından/tablosundan HEMEN ÖNCE, ayrı ve görünmez bir paragrafla
+  // sağlanmalı (bir <w:tbl> kendi başına pageBreakBefore TAŞIYAMAZ).
+  // Paragraf işaretinin kendi satır yüksekliğini en aza indirmek için
+  // punto 2'ye (w:sz="2") düşürülür — aksi halde sayfa başında görünür
+  // bir boşluk satırı bırakırdı.
+  function buildPageBreakOnlyXml() {
+    return `<w:p><w:pPr><w:pageBreakBefore/><w:spacing w:before="0" w:after="0"/><w:rPr><w:sz w:val="2"/><w:szCs w:val="2"/></w:rPr></w:pPr></w:p>`;
+  }
+
+  // Kullanıcı talebi (2026-09-08, ekran görüntüsü): "sonuç bu mavi
+  // başlık olmayaca görsel altında yazacak görselin türü" — eski
+  // buildCategoryBannerXml'in (lacivert dolgu + beyaz yazı, görsellerin
+  // ÜSTÜNDE) YERİNE, görsel ızgarasının/sayfasının ALTINA, dolgu/kutu
+  // OLMADAN ("sadece font") düz bir metin etiketi eklenir — web
+  // uygulamasının ekran-içi Fotoğraflar panelindeki (0.0.665,
+  // report-photos-category-label CSS sınıfı) AYNI tasarım diliyle
+  // tutarlı: ortalanmış, kalın, PHOTO_LABEL_COLOR (koyu gri) — beyaz
+  // DEĞİL, artık arka plan olmadığından beyaz yazı görünmez olurdu.
+  function buildCategoryLabelXml(label) {
+    return `<w:p><w:pPr><w:spacing w:before="120" w:after="240"/><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:b/><w:bCs/><w:color w:val="${PHOTO_LABEL_COLOR}"/><w:sz w:val="20"/><w:szCs w:val="20"/></w:rPr><w:t xml:space="preserve">${escapeXmlText(label)}</w:t></w:r></w:p>`;
   }
 
   // "Kapak Fotoğrafı" — kullanıcı talebi (2026-08-13, 3. tur): "kapak
@@ -626,14 +656,17 @@
     // "8.1 Fotoğraflar" hücresine art arda gömülen 23 token — HEPSİ AYNI
     // kenarlıklı hücrenin İÇİNDE. Bu bayrak, TÜM token'lar (fonksiyon
     // çağrısı) BOYUNCA paylaşılır (grup başına SIFIRLANMAZ): hücrenin
-    // FİZİKSEL OLARAK İLK banner'ı (döküman sırasına göre — kapak
+    // FİZİKSEL OLARAK İLK sayfası (döküman sırasına göre — kapak
     // fotoğrafı hariç, o zaten hiç pageBreakBefore almıyor) pageBreakBefore
-    // ALMAZ — o paragraf zaten hücrenin doğal başlangıcına en yakın
-    // konumda; ona "önce sayfa başına git" demek, hücrenin çerçevesini bu
-    // sayfada NEREDEYSE BOŞ bırakıp gerçek içeriği bir sonraki sayfaya
-    // iten bir boş kutu yaratıyordu (kullanıcının ekran görüntüsünde
-    // işaretlediği sorun). SONRAKİ HER banner (başka bir kategori, ya da
-    // aynı kategorinin 2./3. sayfası) YİNE pageBreakBefore alır.
+    // ALMAZ — o zaten hücrenin doğal başlangıcına en yakın konumda; ona
+    // "önce sayfa başına git" demek, hücrenin çerçevesini bu sayfada
+    // NEREDEYSE BOŞ bırakıp gerçek içeriği bir sonraki sayfaya iten bir
+    // boş kutu yaratıyordu (kullanıcının ekran görüntüsünde işaretlediği
+    // sorun). SONRAKİ HER sayfa (başka bir kategori, ya da aynı
+    // kategorinin 2./3. sayfası) YİNE pageBreakBefore alır — bkz.
+    // buildPageBreakOnlyXml (2026-09-08'den itibaren bu ayrı, görünmez
+    // paragrafla taşınıyor; artık kategori ETİKETİ görsellerin ALTINDA
+    // olduğundan, sayfa geçişini KENDİ paragrafında taşıyamaz).
     let isFirstBannerOverall = true;
 
     (Array.isArray(categoryGroups) ? categoryGroups : []).forEach((group) => {
@@ -674,21 +707,27 @@
         // sayfaya sığması gerekiyor ise örnek altı adet iç hacim görseli
         // eklendi alt alta 2 yatay görsel istendi ise 3 sayfada da İç
         // Mekan Başlığı olacak. Hiç bir başlık sayfa ortasından
-        // sonundan başlamayacak" — banner artık kategori başına BİR KEZ
+        // sonundan başlamayacak" — etiket artık kategori başına BİR KEZ
         // değil, o kategorinin ürettiği HER SAYFADA TEKRARLANIR: her
-        // page-table'dan hemen ÖNCE kendi sayfa sonu + kendi banner'ı var.
+        // page-table'ın hemen ÖNCESİNDE (görünmez) kendi sayfa sonu,
+        // hemen SONRASINDA kendi etiketi var.
         validBatches.forEach((batch) => {
           const { columns, rows } = getLayoutGrid(batch.layoutKey);
           const perPage = Math.max(1, columns * rows);
           for (let pageStart = 0; pageStart < batch.photos.length; pageStart += perPage) {
             const pagePhotos = batch.photos.slice(pageStart, pageStart + perPage);
-            // Banner'in KENDİ <w:pPr>'indeki <w:pageBreakBefore/> tek
-            // başına sayfa geçişini sağlıyor — ayrı bir <w:br type="page"/>
-            // paragrafı EKLEMİYORUZ artık (o paragrafın kendi paragraf
-            // işareti yeni sayfada boş bir satır/boşluk bırakıyordu).
-            parts.push(buildCategoryBannerXml(category.label, !isFirstBannerOverall));
+            // Kullanıcı takip talebi (2026-09-08): "sonuç bu mavi başlık
+            // olmayaca görsel altında yazacak görselin türü" — sayfa
+            // geçişi artık ayrı, GÖRÜNMEZ bir paragrafla (buildPageBreakOnlyXml)
+            // tablodan HEMEN ÖNCE sağlanıyor; kategori etiketi ise
+            // tablodan HEMEN SONRA, dolgu/kutu OLMADAN düz metin olarak
+            // ekleniyor (buildCategoryLabelXml) — ayrı bir <w:br type="page"/>
+            // paragrafı YOK (o paragrafın kendi paragraf işareti yeni
+            // sayfada boş bir satır/boşluk bırakırdı).
+            if (!isFirstBannerOverall) parts.push(buildPageBreakOnlyXml());
             isFirstBannerOverall = false;
             parts.push(buildPhotoPageTableXml(pagePhotos, batch.layoutKey, registrar));
+            parts.push(buildCategoryLabelXml(category.label));
           }
         });
       });

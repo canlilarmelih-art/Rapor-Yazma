@@ -183,27 +183,37 @@ function singleCategoryGroup(token, label, layoutKey, photos) {
   const outXml = Buffer.from(outDoc.bytes).toString("utf8");
   check(!outXml.includes("{{FOTO_DISMEKAN}}") && !outXml.includes("{{FOTO_ICMEKAN}}"), "Ciktida ham {{FOTO_*}} metni hala duruyor (gomulmemis).");
 
-  check(outXml.includes("Dış Mekan"), "\"Dış Mekan\" kategori basligi ciktida yok.");
-  check(outXml.includes("İç Mekan"), "\"İç Mekan\" kategori basligi ciktida yok.");
+  check(outXml.includes("Dış Mekan"), "\"Dış Mekan\" kategori etiketi ciktida yok.");
+  check(outXml.includes("İç Mekan"), "\"İç Mekan\" kategori etiketi ciktida yok.");
   check(!outXml.includes("Finansal Tablolar"), "Secilmeyen \"Finansal Tablolar\" kategorisi ciktida gorunmemeliydi (kullanici talebi).");
 
-  // KESIN paragraf-seviyesi kontrol: FİZİKSEL OLARAK İLK gelen banner
-  // ("Dış Mekan", çünkü FOTO_DISMEKAN token'ı FOTO_ICMEKAN'dan ÖNCE
-  // gelir) pageBreakBefore ALMAMALI (hücrenin doğal başlangıcına en
-  // yakın); "İç Mekan" (2.) ALMALI — bu, AYRI token'lar olsa BİLE
-  // dogru calismali (isFirstBannerOverall'un TUM cagri boyunca
-  // paylasilmasi gerektigini kanitlar).
+  // KESIN sıra-seviyesi kontrol (2026-09-08'den itibaren: etiket artık
+  // görsellerin ALTINDA, sayfa geçişi ise AYRI/görünmez bir paragrafla
+  // tablodan HEMEN ÖNCE) — FİZİKSEL OLARAK İLK gelen sayfa ("Dış Mekan",
+  // çünkü FOTO_DISMEKAN token'ı FOTO_ICMEKAN'dan ÖNCE gelir)
+  // pageBreakBefore ALMAMALI (hücrenin doğal başlangıcına en yakın);
+  // "İç Mekan" (2.) sayfası kendi pageBreakBefore'unu ALMALI — bu,
+  // AYRI token'lar olsa BİLE dogru calismali (isFirstBannerOverall'un
+  // TUM cagri boyunca paylasilmasi gerektigini kanitlar). "Dış Mekan"
+  // metni artık YALNIZCA kendi (görsellerinden SONRAKİ) etiket
+  // paragrafında geçtiğinden, TEK pageBreakBefore'un "Dış Mekan"
+  // etiketinden SONRA ama "İç Mekan" etiketinden ÖNCE (yani İç Mekan'ın
+  // tablosundan hemen önce) gelmesi gerekir.
   const disMekanIdx = outXml.indexOf("Dış Mekan");
-  const disMekanParaStart = outXml.lastIndexOf("<w:p><w:pPr>", disMekanIdx);
-  const disMekanPara = outXml.slice(disMekanParaStart, disMekanIdx);
-  check(!disMekanPara.includes("<w:pageBreakBefore/>"), "İLK banner (\"Dış Mekan\") pageBreakBefore ALMAMALIYDI (hücrenin doğal başlangıç konumunda).");
   const icMekanIdx = outXml.indexOf("İç Mekan");
-  const icMekanParaStart = outXml.lastIndexOf("<w:p><w:pPr>", icMekanIdx);
-  const icMekanPara = outXml.slice(icMekanParaStart, icMekanIdx);
-  check(icMekanPara.includes("<w:pageBreakBefore/>"), "2. banner (\"İç Mekan\", AYRI bir token olsa da) pageBreakBefore ALMALIYDI.");
+  const firstPageBreakIdx = outXml.indexOf("<w:pageBreakBefore/>");
+  check(
+    firstPageBreakIdx === -1 || firstPageBreakIdx > disMekanIdx,
+    "İLK sayfanın (\"Dış Mekan\") ÖNCESİNDE hiçbir pageBreakBefore OLMAMALIYDI (hücrenin doğal başlangıç konumunda)."
+  );
+  check(
+    firstPageBreakIdx > disMekanIdx && firstPageBreakIdx < icMekanIdx,
+    "2. sayfa (\"İç Mekan\", AYRI bir token olsa da) kendi pageBreakBefore'unu (Dış Mekan etiketinden SONRA, İç Mekan etiketinden ÖNCE) ALMALIYDI."
+  );
 
-  const bannerCount = countOccurrences(outXml, `w:fill="1F3864"`);
-  check(bannerCount === 2, `2 kategori banner'i (lacivert dolgu) bekleniyordu, bulunan: ${bannerCount}`);
+  const labelCount = countOccurrences(outXml, `w:color w:val="595959"`);
+  check(labelCount === 2, `2 kategori etiketi (düz metin, dolgu YOK) bekleniyordu, bulunan: ${labelCount}`);
+  check(!outXml.includes(`w:fill="1F3864"`), "Artık HİÇBİR lacivert (1F3864) dolgu banner'ı OLMAMALI (kullanıcı talebiyle kaldırıldı).");
 
   const drawingCount = countOccurrences(outXml, "<w:drawing>");
   check(drawingCount === baselineDrawingCount + totalPhotos, `Sablona gore +${totalPhotos} <w:drawing> bekleniyordu, gercek fark: ${drawingCount - baselineDrawingCount}`);
@@ -251,8 +261,8 @@ function singleCategoryGroup(token, label, layoutKey, photos) {
   });
   const drawingCountEmpty = countOccurrences(outXml, "<w:drawing>");
   check(drawingCountEmpty === baselineDrawingCount, `Fotografsiz durumda <w:drawing> sayisi sablonla ayni kalmaliydi (${baselineDrawingCount}), bulunan: ${drawingCountEmpty}`);
-  const bannerCountEmpty = countOccurrences(outXml, `w:fill="1F3864"`);
-  check(bannerCountEmpty === 0, `Fotografsiz durumda kategori banner'i olmamaliydi, bulunan: ${bannerCountEmpty}`);
+  const labelCountEmpty = countOccurrences(outXml, `w:color w:val="595959"`);
+  check(labelCountEmpty === 0, `Fotografsiz durumda kategori etiketi olmamaliydi, bulunan: ${labelCountEmpty}`);
 }
 
 // --- 5) Kapak Fotografi (FOTO_KAPAK): ayri, tek, kirpilmamis -----------
@@ -269,8 +279,8 @@ function singleCategoryGroup(token, label, layoutKey, photos) {
   const outXml = Buffer.from(outDoc.bytes).toString("utf8");
 
   check(outXml.includes("Kapak Fotoğrafı (yer tutucu"), "\"Kapak Fotoğrafı\" yer tutucu etiketi ciktida bulunamadi.");
-  const bannerCount = countOccurrences(outXml, `w:fill="1F3864"`);
-  check(bannerCount === 0, `Kapak fotoğrafı KENDİ banner'ını ALMAMALI, bulunan: ${bannerCount}`);
+  const labelCount = countOccurrences(outXml, `w:color w:val="595959"`);
+  check(labelCount === 0, `Kapak fotoğrafı KENDİ kategori etiketini ALMAMALI (kendi ayrı yer tutucu başlığı var), bulunan: ${labelCount}`);
 
   const drawingCount = countOccurrences(outXml, "<w:drawing>");
   check(drawingCount === baselineDrawingCount + 1, `Sablona gore +1 <w:drawing> bekleniyordu, gercek fark: ${drawingCount - baselineDrawingCount}`);
@@ -303,8 +313,8 @@ function singleCategoryGroup(token, label, layoutKey, photos) {
   const outDoc = outEntries.find((e) => e.name === "word/document.xml");
   const outXml = Buffer.from(outDoc.bytes).toString("utf8");
 
-  const bannerCount = countOccurrences(outXml, `w:fill="1F3864"`);
-  check(bannerCount === 3, `6 fotograf / sayfa basina 2 icin TAM 3 "İç Mekan" banner'i (her sayfada tekrar) bekleniyordu, bulunan: ${bannerCount}`);
+  const labelCount = countOccurrences(outXml, `w:color w:val="595959"`);
+  check(labelCount === 3, `6 fotograf / sayfa basina 2 icin TAM 3 "İç Mekan" etiketi (her sayfada tekrar) bekleniyordu, bulunan: ${labelCount}`);
   const icMekanCount = countOccurrences(outXml, "İç Mekan");
   check(icMekanCount === 3, `"İç Mekan" metni TAM 3 kez (3 sayfa) gecmeliydi, bulunan: ${icMekanCount}`);
 
@@ -347,12 +357,20 @@ function singleCategoryGroup(token, label, layoutKey, photos) {
 
   // Kapak fotoğrafı kendi token'ında (FOTO_KAPAK, hücrenin fiziksel
   // olarak İLK token'ı) hiç pageBreakBefore almaz; "Dış Mekan" (FOTO_
-  // DISMEKAN, kapaktan SONRAKİ ilk gerçek banner) KENDİSİ pageBreakBefore
-  // ALMALI (kapak fotoğrafından sonra kendi sayfasında başlamalı).
+  // DISMEKAN, kapaktan SONRAKİ ilk gerçek sayfa) KENDİ pageBreakBefore'unu
+  // (görsellerinden HEMEN ÖNCE, görünmez bir paragrafla) ALMALI (kapak
+  // fotoğrafından sonra kendi sayfasında başlamalı). "Dış Mekan" metni
+  // artık YALNIZCA kendi (görselinden SONRAKİ) etiket paragrafında
+  // geçtiğinden, TEK pageBreakBefore'un "Kapak Fotoğrafı" yer tutucu
+  // metninden SONRA, "Dış Mekan" etiketinden ÖNCE gelmesi (yani Dış
+  // Mekan'ın tablosundan hemen önce) yeterli kanıttır.
+  const kapakIdx = outXml.indexOf("Kapak Fotoğrafı (yer tutucu");
   const disMekanIdx = outXml.indexOf("Dış Mekan");
-  const disMekanParaStart = outXml.lastIndexOf("<w:p><w:pPr>", disMekanIdx);
-  const disMekanPara = outXml.slice(disMekanParaStart, disMekanIdx);
-  check(disMekanPara.includes("<w:pageBreakBefore/>"), "Kapak fotoğrafından SONRAKİ ilk banner (\"Dış Mekan\") pageBreakBefore ALMALIYDI.");
+  const pageBreakIdx = outXml.indexOf("<w:pageBreakBefore/>");
+  check(
+    pageBreakIdx > kapakIdx && pageBreakIdx < disMekanIdx,
+    "Kapak fotoğrafından SONRAKİ ilk sayfa (\"Dış Mekan\") kendi pageBreakBefore'unu (kapaktan SONRA, Dış Mekan etiketinden ÖNCE) ALMALIYDI."
+  );
   const pageBreakBeforeCount = countOccurrences(outXml, "<w:pageBreakBefore/>");
   check(pageBreakBeforeCount === 1, `Kapak + 1 kategori icin TAM 1 pageBreakBefore bekleniyordu, bulunan: ${pageBreakBeforeCount}`);
 }
