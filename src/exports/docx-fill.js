@@ -718,6 +718,38 @@
   // {{TOKEN}}→"" akışıyla temizlenir, bkz. template-engine.js). Her
   // token'ın İÇİNDE BULUNDUĞU TEK paragraf tamamen KENDİ içeriğiyle
   // DEĞİŞTİRİLİR.
+  // 2026-09-08 (0.0.669 sonrası, kullanıcının GERÇEK bir raporda gösterdiği
+  // ekran görüntüsüyle bulundu — "bu kısım niye boş kaldı"): "8. Ekler"
+  // 0.0.669'da 23 token'ın TEK bir "8.1 Fotoğraflar" hücresinde olduğu
+  // eski mimariden, 6 FİZİKSEL OLARAK AYRI bölüme (8.1-8.6, her biri
+  // KENDİ başlığıyla) dağıtılmış yeni mimariye geçti. AŞAĞIDAKİ
+  // isFirstBannerOverall bayrağı ise TEK ve GLOBAL kaldı — "kategori
+  // İŞLENME SIRASINA" (categoryGroups dizisi, report-photos.js'teki
+  // PHOTO_CATEGORIES sırasını izler) göre "ilk mi" diye bakıyordu, oysa
+  // artık önemli olan token'ın BELGEDEKİ FİZİKSEL KONUMU (hangi bölümde
+  // olduğu). PHOTO_CATEGORIES sırası (ör. "imar_durumu" index 8) ile
+  // FİZİKSEL bölüm sırası (imar_durumu artık "adres_kodu"yla AYNI 8.2
+  // bölümünde ama ondan SONRA) ARTIK BİREBİR ÖRTÜŞMÜYOR — bu yüzden ör.
+  // "Adres Kodu" tek başına yüklendiğinde, İŞLENME SIRASINDA ondan önce
+  // gelen (dis_mekan/ic_mekan gibi, section 8.1'de) kategoriler YÜZÜNDEN
+  // isFirstBannerOverall zaten false olmuş oluyor ve "Adres Kodu" GEREKSİZ
+  // bir pageBreakBefore alıyordu — bu da "8.2" başlığının KENDİ sayfasını
+  // neredeyse TAMAMEN BOŞ bırakıp asıl içeriği bir SONRAKİ sayfaya
+  // itiyordu (tam kullanıcının gösterdiği sorun). Düzeltme: her token'ın
+  // hangi FİZİKSEL bölüme ait olduğunu (0.0.669'daki gerçek dağıtıma göre)
+  // burada haritalayıp, "bu bölüme ait İLK render edilen kategori (işlenme
+  // sırası ÖNEMSİZ) kendi pageBreakBefore'unu ALMAZ, aynı bölümdeki
+  // SONRAKİ kategoriler (veya aynı kategorinin 2./3. sayfası) YİNE alır"
+  // kuralına geçildi.
+  const TOKEN_TO_APPENDIX_SECTION_INDEX = {
+    FOTO_DISMEKAN: 0, FOTO_ICMEKAN: 0, FOTO_KADASTROPAFTASI: 0, FOTO_KONUMKROKI: 0, FOTO_KONUMHARITA: 0, FOTO_EMSALHARITA: 0,
+    FOTO_ADRESKODU: 1, FOTO_IMARDURUMU: 1,
+    FOTO_YAPIRUHSATI: 2, FOTO_YAPIKULLANMAIZIN: 2, FOTO_YAPIKAYIT: 2, FOTO_MIMARIPROJEBELEDIYE: 2, FOTO_MIMARIPROJETAPU: 2,
+    FOTO_TAPUSENEDI: 3, FOTO_TAKBISBELGESI: 3,
+    FOTO_ENERJIKIMLIK: 4, FOTO_TUTANAKLAR: 4, FOTO_MAHKEMEEVRAKLARI: 4, FOTO_UZMANOZCEKIM: 4, FOTO_HESAPLAMATABLOLARI: 4, FOTO_FINANSALTABLOLAR: 4, FOTO_DIGER: 4,
+    FOTO_HARCLAR: 5,
+  };
+
   function embedPhotoGalleryAssets(xmlText, entries, categoryGroups) {
     let nextEntries = entries.slice();
     let text = xmlText;
@@ -737,7 +769,14 @@
     // buildPageBreakOnlyXml (2026-09-08'den itibaren bu ayrı, görünmez
     // paragrafla taşınıyor; artık kategori ETİKETİ görsellerin ALTINDA
     // olduğundan, sayfa geçişini KENDİ paragrafında taşıyamaz).
+    //
+    // 2026-09-08 (0.0.670): bu bayrak artık YETERSİZ — bkz. yukarıdaki
+    // TOKEN_TO_APPENDIX_SECTION_INDEX notu. `isFirstBannerOverall` (KAPAK
+    // fotoğrafının kendi mantığı için hâlâ kullanılıyor) YANINDA
+    // `sectionsStarted` (hangi FİZİKSEL bölümlere şimdiye kadar İÇERİK
+    // render edildiği) de izleniyor.
     let isFirstBannerOverall = true;
+    const sectionsStarted = new Set();
 
     (Array.isArray(categoryGroups) ? categoryGroups : []).forEach((group) => {
       const token = group?.token;
@@ -760,6 +799,7 @@
       const registrar = makeImageRegistrar(nextEntries, dec.decode(relsEntry.bytes));
 
       const parts = [];
+      const tokenSectionIndex = TOKEN_TO_APPENDIX_SECTION_INDEX[token];
       if (coverPhoto) {
         parts.push(buildCoverPhotoBlockXml(coverPhoto, registrar));
         // Kapak fotoğrafı (FOTO_KAPAK) her zaman "8.1 Fotoğraflar"
@@ -768,6 +808,12 @@
         // kategori) artık hücrenin ilk paragrafı DEĞİL; kendi sayfasında
         // başlaması gerekir.
         isFirstBannerOverall = false;
+        // FOTO_KAPAK haritada yok (kendi ayrı yolu) ama FİZİKSEL olarak
+        // "8.1 Fotoğraflar" bölümünün (section 0) İLK paragrafı — o bölümü
+        // "başladı" işaretlemek, aynı bölümdeki dis_mekan/ic_mekan vb.
+        // (işlenme sırası ne olursa olsun) kapaktan SONRA doğru şekilde
+        // kendi pageBreakBefore'unu almasını sağlar.
+        sectionsStarted.add(0);
       }
       categories.forEach((category) => {
         const batches = Array.isArray(category?.batches) ? category.batches : [];
@@ -794,8 +840,19 @@
             // ekleniyor (buildCategoryLabelXml) — ayrı bir <w:br type="page"/>
             // paragrafı YOK (o paragrafın kendi paragraf işareti yeni
             // sayfada boş bir satır/boşluk bırakırdı).
-            if (!isFirstBannerOverall) parts.push(buildPageBreakOnlyXml());
+            //
+            // 2026-09-08 (0.0.670): bu SAYFA, token'ının ait olduğu
+            // FİZİKSEL bölüme (bkz. TOKEN_TO_APPENDIX_SECTION_INDEX)
+            // şimdiye kadar HİÇ içerik render EDİLMEMİŞSE (işlenme
+            // SIRASI ÖNEMSİZ) "o bölümün ilk sayfası" sayılır ve
+            // pageBreakBefore ALMAZ — aksi halde kendi başlığının
+            // sayfasını boş bırakırdı. Aynı bölümde SONRAKİ her sayfa
+            // (başka bir kategori, ya da aynı kategorinin 2./3. sayfası)
+            // YİNE alır.
+            const isFirstPageOfFreshSection = tokenSectionIndex !== undefined && !sectionsStarted.has(tokenSectionIndex);
+            if (!isFirstBannerOverall && !isFirstPageOfFreshSection) parts.push(buildPageBreakOnlyXml());
             isFirstBannerOverall = false;
+            if (tokenSectionIndex !== undefined) sectionsStarted.add(tokenSectionIndex);
             parts.push(buildPhotoPageTableXml(pagePhotos, batch.layoutKey, registrar));
             parts.push(buildCategoryLabelXml(category.label));
           }

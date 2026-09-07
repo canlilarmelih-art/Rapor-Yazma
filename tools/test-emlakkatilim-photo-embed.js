@@ -136,6 +136,17 @@ function countOccurrences(text, needle) {
   return (text.match(new RegExp(needle, "g")) || []).length;
 }
 
+// Her "8.X. ..." bölüm başlığı ÖNCE İçindekiler (TOC) tablosunda, SONRA
+// gövdede (asıl bölüm başlığı olarak) İKİ KEZ geçer — sıra kontrolü için
+// gövdedeki (İKİNCİ) konumu kullanılmalı, yoksa TOC'un birbirine YAKIN
+// sıralı listesi (henüz hiçbir token içermez) yanlışlıkla "doğru aralık"
+// sanılır.
+function secondOccurrence(haystack, needle) {
+  const first = haystack.indexOf(needle);
+  if (first === -1) return -1;
+  return haystack.indexOf(needle, first + 1);
+}
+
 function subtractMultiset(outputArr, baselineArr) {
   const baselineCounts = new Map();
   baselineArr.forEach((v) => baselineCounts.set(v, (baselineCounts.get(v) || 0) + 1));
@@ -412,17 +423,6 @@ function singleCategoryGroup(token, label, layoutKey, photos) {
     check(xmlText.includes(h), `Şablonda "${h}" başlığı BULUNAMADI (8. Ekler yeniden yapılandırması bozulmuş olabilir).`);
   });
 
-  // Her başlık ÖNCE İçindekiler (TOC) tablosunda, SONRA gövdede (asıl
-  // bölüm başlığı olarak) İKİ KEZ geçer — sıra kontrolü için gövdedeki
-  // (İKİNCİ) konumu kullanılmalı, yoksa TOC'un birbirine YAKIN sıralı
-  // listesi (henüz hiçbir token içermez) yanlışlıkla "doğru aralık"
-  // sanılır.
-  function secondOccurrence(haystack, needle) {
-    const first = haystack.indexOf(needle);
-    if (first === -1) return -1;
-    return haystack.indexOf(needle, first + 1);
-  }
-
   // Her token'ın KENDİ bölümünün başlığından SONRA, bir SONRAKİ bölümün
   // başlığından ÖNCE geldiğini (yani doğru bölüme dağıtıldığını) sıra
   // bazlı (indexOf) doğrula.
@@ -493,6 +493,42 @@ function singleCategoryGroup(token, label, layoutKey, photos) {
 
   const coverSpacingIdx = outXml.indexOf('<w:pPr><w:spacing w:after="80"/><w:jc w:val="center"/></w:pPr>');
   check(coverSpacingIdx !== -1, "Kapak fotoğrafı etiket paragrafında <w:spacing>, <w:jc>'den ÖNCE gelmeliydi (CT_PPrBase şema sırası) — buildCoverPhotoBlockXml.");
+}
+
+// --- 10) YENİ BÖLÜM'ün İLK sayfası GEREKSİZ pageBreakBefore ALMAMALI
+// (2026-09-08, kullanıcının GERÇEK bir raporda gösterdiği ekran
+// görüntüsüyle bulundu): "8.2. Uavt Kodu,Kroki,İmar Durumu" başlığının
+// SAYFASI neredeyse tamamen BOŞ kalıyordu, "Adres Kodu" içeriği bir
+// SONRAKİ sayfaya taşıyordu — "bu kısım niye boş kaldı". Kök neden:
+// isFirstBannerOverall TEK global bayraktı; "Adres Kodu" (section 1),
+// İŞLENME SIRASINDA ondan önce gelen "Dış Mekan" (section 0) YÜZÜNDEN
+// zaten "ilk değil" sayılıp GEREKSİZ bir pageBreakBefore alıyordu. Bu
+// senaryo TAM OLARAK kullanıcının verdiği örneği yeniden üretir: Dış
+// Mekan (section 0, İŞLENME SIRASINDA İLK) + Adres Kodu (section 1,
+// TEK BAŞINA — İmar Durumu YOK) birlikte. --------------------------
+{
+  const values = buildValuesWithAllTokensMissing(tokens);
+  const photoGroups = [
+    singleCategoryGroup("FOTO_DISMEKAN", "Dış Mekan", "horizontal_pair", [makePhoto("a"), makePhoto("b")]),
+    singleCategoryGroup("FOTO_ADRESKODU", "Adres Kodu", "vertical_single", [makePhoto("c")]),
+  ];
+  const filled = DocxFill.fillTemplate(arrayBuffer, values, {}, [], photoGroups);
+  const outEntries = DocxFill.readStoredZip(filled.bytes.buffer);
+  const outDoc = outEntries.find((e) => e.name === "word/document.xml");
+  const outXml = Buffer.from(outDoc.bytes).toString("utf8");
+
+  const heading82Idx = secondOccurrence(outXml, "8.2. Uavt Kodu,Kroki,İmar Durumu");
+  check(heading82Idx !== -1, '"8.2. Uavt Kodu,Kroki,İmar Durumu" başlığının gövdedeki (TOC dışı) ikinci geçişi bulunamadı.');
+  const adresKoduLabelIdx = outXml.indexOf("Adres Kodu", heading82Idx + 1);
+  check(adresKoduLabelIdx !== -1, '"Adres Kodu" etiketi "8.2" başlığından SONRA bulunamadı.');
+  const sliceBetween = outXml.slice(heading82Idx, adresKoduLabelIdx);
+  check(
+    !sliceBetween.includes("<w:pageBreakBefore/>"),
+    '"8.2" başlığı ile "Adres Kodu" içeriği ARASINDA gereksiz bir pageBreakBefore VARDI — bu, "8.2" başlığının kendi sayfasını boş bırakıp içeriği bir sonraki sayfaya iter (kullanıcının GERÇEK raporda gösterdiği sorun).'
+  );
+  // Görsel GERÇEKTEN "8.2" başlığıyla AYNI sayfaya (hemen ardından)
+  // gömülmüş mü — <w:drawing> de bu aralıkta olmalı.
+  check(sliceBetween.includes("<w:drawing>"), '"Adres Kodu" görseli "8.2" başlığının HEMEN SONRASINDA gömülü DEĞİL.');
 }
 
 if (failures.length) {
