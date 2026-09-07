@@ -112,13 +112,27 @@ function countOf(text, needle) {
 }
 
 // --- Fix 5b: imza hucresi "….." -> {{KULLANICI_AD_SOYAD}}, digerleri SABIT --
+// 2026-09-07 (duzeltme): ilk turda string-anchor eslesmesi YANLIS hucreyi
+// yakalamisti ("Raporu Hazırlayan"in kendi "…..".si <w:lastRenderedPageBreak/>
+// icerdigi icin anchor'a UYMUYORDU, bunun yerine "Raporu Kontrol Eden"in
+// AYRI "….."si yanlislikla KULLANICI_AD_SOYAD'a donustu — kullanici
+// ekran goruntusunde MELİH CANLILAR'in "Kontrol Eden" sutununda cikip
+// "Hazırlayan"in hala "….." oldugunu gosterdi). Bu yuzden artik STRING
+// ANCHOR yerine GERCEK HUCRE SIRASINI (header row ile value row'u
+// birebir eslestirerek) doğruluyoruz — ayni hata TEKRARLANAMAZ.
 {
-  // Once IKI "….." vardi ("Raporu Hazırlayan" + "Raporu Kontrol Eden");
-  // yalnizca "Raporu Hazırlayan" olan KULLANICI_AD_SOYAD'a donustu, "Raporu
-  // Kontrol Eden"inki ELLE doldurulmak uzere "….." olarak KALMALI.
-  check(countOf(xml, ">…..<") === 1, `Fix5b: "Raporu Hazırlayan" hucresi degismis olmali (1 kaldi, "Raporu Kontrol Eden"in "….."si), bulunan: ${countOf(xml, ">…..<")}.`);
-  check(!xml.includes('<w:highlight w:val="yellow"/><w:lang w:eastAsia="tr-TR"/></w:rPr><w:t>…..</w:t>'), 'Fix5b: "Raporu Hazırlayan" hucresindeki sari vurgulu "….." hala eski haliyle sablonda.');
-  check(xml.includes("Baki Budakoğlu"), 'Fix5b: "Raporu Onaylayan" (Baki Budakoğlu) sabit deger DEGISMEMELIYDI ama artik yok.');
+  const headerIdx = xml.indexOf("Raporu Hazırlayan Değerleme Uzmanı");
+  check(headerIdx !== -1, "Fix5b: \"Raporu Hazırlayan Değerleme Uzmanı\" basligi bulunamadi.");
+  const headerRowEnd = xml.indexOf("</w:tr>", headerIdx) + "</w:tr>".length;
+  const valueRowEnd = xml.indexOf("</w:tr>", headerRowEnd) + "</w:tr>".length;
+  const valueRow = xml.slice(headerRowEnd, valueRowEnd);
+  const cellTexts = [...valueRow.matchAll(/<w:tc>([\s\S]*?)<\/w:tc>/g)].map(
+    (m) => [...m[1].matchAll(/<w:t[^>]*>([^<]*)<\/w:t>/g)].map((t) => t[1]).join("")
+  );
+  check(cellTexts.length >= 3, `Fix5b: imza deger satirinda beklenenden az hucre bulundu: ${cellTexts.length}`);
+  check(cellTexts[0] === "{{KULLANICI_AD_SOYAD}}e-imza", `Fix5b: cellIdx0 ("Raporu Hazırlayan Değerleme Uzmanı" ALTINDAKI hucre) {{KULLANICI_AD_SOYAD}} olmali, bulunan: ${JSON.stringify(cellTexts[0])}`);
+  check(cellTexts[1] === "…..e-imza", `Fix5b: cellIdx1 ("Raporu Kontrol Eden" ALTINDAKI hucre) ELLE doldurulacak "….." olarak KALMALI, bulunan: ${JSON.stringify(cellTexts[1])}`);
+  check(cellTexts[2] === "Baki Budakoğlue-imza", `Fix5b: cellIdx2 ("Raporu Onaylayan" ALTINDAKI hucre) "Baki Budakoğlu" olarak SABIT KALMALI, bulunan: ${JSON.stringify(cellTexts[2])}`);
 }
 
 // --- Fix 6: Imar Durumu aciklamasi jc=both -> jc=left --------------------
@@ -130,6 +144,28 @@ function countOf(text, needle) {
   const pPr = xml.slice(pStart, pPrEnd);
   check(pPr.includes('<w:jc w:val="left"/>'), "Fix6: Imar Durumu aciklamasi paragrafi jc=left DEGIL.");
   check(!pPr.includes('<w:jc w:val="both"/>'), "Fix6: Imar Durumu aciklamasi paragrafi hala jc=both (tam yasla).");
+}
+
+// --- Fix 7 (2026-09-07, kullanici sorusu "her bir placeholder onunde 1
+// adet bosluk var bu neden kaynaklaniyor"): sablon yazarinin elle
+// yerlestirdigi TEK bir Unicode NON-BREAKING SPACE (U+00A0, normal
+// bosluktan (U+0020) GORUNMEZ farkli) karakteri, 28 ayri {{TOKEN}}'un
+// HEMEN ONUNDE duruyordu (26'sı token'la AYNI <w:t> icinde, 2'si AYRI,
+// bosluk-yalniz bir run olarak token run'indan HEMEN ONCE) — dolan
+// deger her zaman " DEGER" gibi bir onculu bosluk ile cikiyordu. -------
+{
+  const NBSP = " ";
+  const sameRunRe = new RegExp(`(<w:t[^>]*>)${NBSP}(\{\{)`, "g");
+  const sepRunRe = new RegExp(`(<w:t[^>]*>)${NBSP}(<\/w:t><\/w:r><w:r>(?:(?!<w:r>|<\/w:r>)[\s\S])*?<w:t[^>]*>\{\{)`, "g");
+  check((xml.match(sameRunRe) || []).length === 0, "Fix7: hala {{TOKEN}} ile AYNI runda nbsp (U+00A0) kalmis.");
+  check((xml.match(sepRunRe) || []).length === 0, "Fix7: hala {{TOKEN}}dan HEMEN ONCE ayri bir nbsp-run kalmis.");
+  // Ornek/spot-check: bu tokenlarin ARTIK duz "{{TOKEN}}" ile (nbsp DAHIL
+  // hicbir bosluk turu olmadan) baslamasi gerekiyor.
+  ["{{CITY_BUYUK}}", "{{SAHIPLER_BUYUK}}", "{{DIGER}}"].forEach((needle) => {
+    const idx = xml.lastIndexOf(needle);
+    check(idx > 0 && xml[idx - 1] !== NBSP, `Fix7: "${needle}" hala nbsp ile geliyor (onceki karakter kod: ${idx > 0 ? xml.charCodeAt(idx - 1) : "yok"}).`);
+  });
+
 }
 
 // --- template-engine.js: STREET_SOKAK_BUYUK/STREET_CADDE_BUYUK + PLANNING_NOTE_TEXT ----
