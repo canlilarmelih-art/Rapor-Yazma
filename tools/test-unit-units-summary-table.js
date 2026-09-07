@@ -678,8 +678,8 @@ const DIFFERENTIATING_UNIT_OVERRIDES = {};
   const xlsxSource = fs.readFileSync(path.join(__dirname, "..", "src", "exports", "report-tables-xlsx.js"), "utf8");
   assert.match(
     xlsxSource,
-    /generatedCellGridFor\("buildUnitUnitsSummaryWordTableHtml"\)/,
-    "report-tables-xlsx.js'te buildUnitUnitsSummaryWordTableHtml için generatedCellGridFor çağrısı bulunamadı."
+    /generatedCellGridFor\("buildUnitUnitsSummaryWordTableHtml", true\)/,
+    "report-tables-xlsx.js'te buildUnitUnitsSummaryWordTableHtml için generatedCellGridFor çağrısı bulunamadı (flattenCommonFields=true ile, bkz. 2026-09-08 kullanıcı talebi)."
   );
   assert.match(
     xlsxSource,

@@ -8498,7 +8498,14 @@ function getValuationUnitsSummarySubheader(label) {
   // kısaltabilirsin ... bu iki sütun olabildiğince dar olsun" — kısaltılmış
   // etiketler + columnMeta.narrow (bkz. buildValuationUnitsSummaryTableData).
   if (normalized === "Yıpranma Payı") return "Yıp. Pay.\n(%)";
-  if (normalized === "İnş. Sev.") return "İnş. Sev.\n(%)";
+  // "İnşaat Seviyesi" (2026-09-08) — hoistValuationConstructionLevelForWordTable()
+  // "Ortak Bilgiler" banner'ı için BİLEREK "İnş. Sev." yerine bu tam adı
+  // kullanıyor (bkz. o fonksiyonun yorumu). flattenCommonFields=true iken
+  // (kullanıcı talebi: "excelde ... ortak değerleride tablolara dahil
+  // edelim") bu tam ad DOĞRUDAN sütun başlığı olarak geri eklendiğinden,
+  // buradaki eşleşme de tam adı TANIMALI — aksi halde alt-başlık yanlışlıkla
+  // varsayılan "Piyasa Değeri (TL)"ye düşerdi.
+  if (normalized === "İnş. Sev." || normalized === "İnşaat Seviyesi") return "İnş. Sev.\n(%)";
   if (normalized.endsWith(" - Alan")) return "Alan\n(m²)";
   if (normalized.endsWith(" - Yapı Birim Değeri")) return "Yapı Birim Değeri\n(TL/m²)";
   if (normalized.endsWith(" - İnşaat Seviyesi")) return "İnş. Sev.\n(%)";
@@ -8718,7 +8725,7 @@ function hoistValuationConstructionLevelForWordTable(data) {
 // Banka şablonlarına {{TASINMAZLARDEGERLEMETABLOSU}} ile enjekte edilecek
 // gerçek HTML tablo (bkz. template-engine.js) — ekran önizlemesi ile aynı
 // Yasal/Mevcut durum grup başlıklarını kullanır.
-function buildValuationUnitsSummaryWordTableHtml() {
+function buildValuationUnitsSummaryWordTableHtml(flattenCommonFields = false) {
   // Değerleme sekmesine hiç girilmeden (ör. toplu içe aktarım sonrası
   // doğrudan) export alınırsa bile Word/Excel/banka şablonu çıktısı
   // güncel olsun diye (bkz. computeValuationFieldsForAllTitleUnits yorumu).
@@ -8726,7 +8733,20 @@ function buildValuationUnitsSummaryWordTableHtml() {
   const data = buildValuationUnitsSummaryTableData();
   if (!data || !data.rows.length) return "";
   const hoisted = hoistValuationConstructionLevelForWordTable(data);
-  return buildUnitsSummaryTableHeadingHtml("Taşınmazlar Değerleme Özeti") + buildValuationUnitsSummaryTableHtml(hoisted);
+  // Kullanıcı talebi (2026-09-08): "excelde ... ortak değerleride
+  // tablolara dahil edelim" — bu bespoke (iki-katmanlı gruplu başlıklı)
+  // renderer buildTitleUnitsSummaryTableHtmlFromData'yı KULLANMADIĞINDAN
+  // (kendi banner çağrısı var, bkz. buildValuationUnitsSummaryTableHtml
+  // içindeki buildTitleUnitsSummaryTableCommonFieldsHtml çağrısı) aynı
+  // flattenTitleUnitsSummaryCommonFields() yardımcı fonksiyonu BURADA,
+  // renderer'a GİRMEDEN ÖNCE veri üzerinde uygulanır — eklenen sütunlar
+  // (İl/İlçe/vb.) getValuationUnitsSummaryHeaderGroup()'un varsayılan
+  // "Diğer" grubuna düşüp mevcut gruplu başlık mekanizmasıyla SORUNSUZ
+  // görüntülenir, renderer'ın kendisi DEĞİŞTİRİLMEDİ.
+  const flattenedForExport = flattenCommonFields
+    ? flattenTitleUnitsSummaryCommonFields(hoisted.headers, hoisted.rows, hoisted.commonFields, hoisted.columnMeta)
+    : hoisted;
+  return buildUnitsSummaryTableHeadingHtml("Taşınmazlar Değerleme Özeti") + buildValuationUnitsSummaryTableHtml(flattenedForExport);
 }
 
 // Kullanıcı takip talebi (2026-08-21): "eksik imalat bölümünü ekledin mi"
@@ -23028,7 +23048,7 @@ function hoistUniformColumnsForWordTable(data, exemptFieldKeys) {
   };
 }
 
-function buildTitleUnitsSummaryWordTableHtml() {
+function buildTitleUnitsSummaryWordTableHtml(flattenCommonFields = false) {
   const data = buildTitleUnitsSummaryTableData();
   if (!data || !data.rows.length) return "";
   // Kullanıcı talebi (2026-09-02): "Tapu bölümünde arsa payda kısmını...
@@ -23038,7 +23058,7 @@ function buildTitleUnitsSummaryWordTableHtml() {
   // rastlantısal olarak aynı çıksa BİLE hoistlenmemesi için hariç
   // tutuldu.
   const hoisted = hoistUniformColumnsForWordTable(data, ["share", "denominator"]);
-  return buildUnitsSummaryTableHeadingHtml("Taşınmazlar Tapu Özeti") + buildTitleUnitsSummaryTableHtmlFromData(hoisted.headers, hoisted.rows, hoisted.commonFields);
+  return buildUnitsSummaryTableHeadingHtml("Taşınmazlar Tapu Özeti") + buildTitleUnitsSummaryTableHtmlFromData(hoisted.headers, hoisted.rows, hoisted.commonFields, 4, flattenCommonFields);
 }
 
 // "sütun başlıklarını 2 satır yap böylelikle hücre genişliği bir nebze
@@ -23086,7 +23106,37 @@ function splitTableHeaderLabelIntoTwoLines(label) {
 // yeniden kullanılıyor, tekrar yazılmadı. Sayılar (Sıra No vb.)
 // büyük/küçük harften etkilenmediğinden zararsız şekilde string'e
 // çevrilir.
-function buildTitleUnitsSummaryTableHtmlFromData(headers, rows, commonFields = [], commonFieldsMaxColumns = 4) {
+// Kullanıcı talebi (2026-09-08): "excel exportta ortak değerler olarak
+// export edilmesin. sistemde ortak değerler işimize yarıyor okunaklı
+// olması sebebi ile ancak excelde tablo yapıları ve gerektiğinde başka
+// tablolara verinin daha kolay aktarımı olması anlamında ortak
+// değerleride tablolara dahil edelim" — "ORTAK BİLGİLER" hoisting'ini
+// (finalizeTitleUnitsSummaryTableData/hoistUniformColumnsForWordTable)
+// TERSİNE çevirip alanları normal (TÜM satırlarda AYNI, tekrarlanan
+// değerli) sütunlar olarak headers/rows'un SONUNA geri ekler — böylece
+// Excel'de düz/tam bir veri tablosu elde edilir (filtre/sıralama/başka
+// bir tabloya kopyalama için hiçbir sütun eksik kalmaz). Ekran/Word
+// görünümü (banner) BU FONKSİYONDAN HİÇ GEÇMEZ, DEĞİŞMEDİ — yalnızca
+// çağıran taraf (report-tables-xlsx.js) AÇIKÇA `flatten:true` istediğinde
+// devreye girer (bkz. buildTitleUnitsSummaryTableHtmlFromData/
+// buildValuationUnitsSummaryWordTableHtml'in flattenCommonFields
+// parametresi).
+function flattenTitleUnitsSummaryCommonFields(headers, rows, commonFields, columnMeta = null) {
+  const fields = Array.isArray(commonFields) ? commonFields : [];
+  if (!fields.length) return { headers, rows, columnMeta, commonFields: [] };
+  return {
+    headers: [...headers, ...fields.map((field) => field.label)],
+    rows: rows.map((row) => [...row, ...fields.map((field) => field.value)]),
+    columnMeta: Array.isArray(columnMeta) ? [...columnMeta, ...fields.map(() => ({ kind: "readonly" }))] : columnMeta,
+    commonFields: [],
+  };
+}
+
+function buildTitleUnitsSummaryTableHtmlFromData(headers, rows, commonFields = [], commonFieldsMaxColumns = 4, flattenCommonFields = false) {
+  const flattened = flattenCommonFields
+    ? flattenTitleUnitsSummaryCommonFields(headers, rows, commonFields)
+    : { headers, rows, commonFields };
+
   const ink = getReportThemeToken("--ink", "#152238");
   const line = getReportThemeToken("--line", "#dde3ef");
   const blue = getReportThemeToken("--blue", "#3a5691");
@@ -23097,13 +23147,13 @@ function buildTitleUnitsSummaryTableHtmlFromData(headers, rows, commonFields = [
   const headerCell = `${baseCell}background:${surfaceMuted};color:${blue};font-weight:800;`;
   const zebraCell = `${baseCell}background:${surfaceMuted};`;
 
-  const headerHtml = `<tr>${headers.map((label) => `<th style="${headerCell}">${splitTableHeaderLabelIntoTwoLines(toTitleFieldUppercase(label))}</th>`).join("")}</tr>`;
-  const bodyHtml = rows.map((row, rowIndex) => {
+  const headerHtml = `<tr>${flattened.headers.map((label) => `<th style="${headerCell}">${splitTableHeaderLabelIntoTwoLines(toTitleFieldUppercase(label))}</th>`).join("")}</tr>`;
+  const bodyHtml = flattened.rows.map((row, rowIndex) => {
     const cellStyle = rowIndex % 2 === 1 ? zebraCell : baseCell;
     return `<tr>${row.map((cell) => `<td style="${cellStyle}">${formatWordCell(toTitleFieldUppercase(cell))}</td>`).join("")}</tr>`;
   }).join("");
 
-  return `${buildTitleUnitsSummaryTableCommonFieldsHtml(commonFields, commonFieldsMaxColumns)}<table class="word-table title-units-summary-table" style="border-collapse:collapse;width:100%;margin:5pt 0 12pt;table-layout:auto;">
+  return `${buildTitleUnitsSummaryTableCommonFieldsHtml(flattened.commonFields, commonFieldsMaxColumns)}<table class="word-table title-units-summary-table" style="border-collapse:collapse;width:100%;margin:5pt 0 12pt;table-layout:auto;">
     <thead>${headerHtml}</thead>
     <tbody>${bodyHtml}</tbody>
   </table>`;
@@ -24195,13 +24245,13 @@ function buildAddressUnitsSummaryTableData() {
 // Banka şablonlarına {{TASINMAZLARADRESTABLOSU}} ile enjekte edilecek
 // gerçek HTML tablo (bkz. template-engine.js) — Tapu tablosunun export
 // akışıyla (buildTitleUnitsSummaryWordTableHtml) BİREBİR AYNI desen.
-function buildAddressUnitsSummaryWordTableHtml() {
+function buildAddressUnitsSummaryWordTableHtml(flattenCommonFields = false) {
   const data = buildAddressUnitsSummaryTableData();
   if (!data || !data.rows.length) return "";
   // bkz. createAddressUnitsSummaryTablePreview() yorumu — bu tablonun
   // Ortak Bilgiler'i 5 sütuna sığdırılıyor, diğer tabloların 4'ü DEĞİL.
   const hoisted = hoistUniformColumnsForWordTable(data);
-  return buildUnitsSummaryTableHeadingHtml("Taşınmazlar Adres Özeti") + buildTitleUnitsSummaryTableHtmlFromData(hoisted.headers, hoisted.rows, hoisted.commonFields, 5);
+  return buildUnitsSummaryTableHeadingHtml("Taşınmazlar Adres Özeti") + buildTitleUnitsSummaryTableHtmlFromData(hoisted.headers, hoisted.rows, hoisted.commonFields, 5, flattenCommonFields);
 }
 
 // İmar Durumu Faz B (Çift Yönlü Düzenleme, 2026-08-16) — kullanıcı talebi:
@@ -24278,11 +24328,11 @@ function buildImarUnitsSummaryTableData() {
 // Banka şablonlarına {{TASINMAZLARIMARTABLOSU}} ile enjekte edilecek
 // gerçek HTML tablo (bkz. template-engine.js) — Tapu/Adres tablolarının
 // export akışıyla BİREBİR AYNI desen.
-function buildImarUnitsSummaryWordTableHtml() {
+function buildImarUnitsSummaryWordTableHtml(flattenCommonFields = false) {
   const data = buildImarUnitsSummaryTableData();
   if (!data || !data.rows.length) return "";
   const hoisted = hoistUniformColumnsForWordTable(data);
-  return buildUnitsSummaryTableHeadingHtml("Taşınmazlar İmar Özeti") + buildTitleUnitsSummaryTableHtmlFromData(hoisted.headers, hoisted.rows, hoisted.commonFields);
+  return buildUnitsSummaryTableHeadingHtml("Taşınmazlar İmar Özeti") + buildTitleUnitsSummaryTableHtmlFromData(hoisted.headers, hoisted.rows, hoisted.commonFields, 4, flattenCommonFields);
 }
 
 // Kullanıcı talebi (2026-08-17): "Çoklu çalışmalarda ada parsel farklı
@@ -24398,11 +24448,11 @@ function buildLandUnitsSummaryTableData() {
 // Banka şablonlarına {{TASINMAZLARARSATABLOSU}} ile enjekte edilecek
 // gerçek HTML tablo (bkz. template-engine.js) — Tapu/Adres/İmar
 // tablolarının export akışıyla BİREBİR AYNI desen.
-function buildLandUnitsSummaryWordTableHtml() {
+function buildLandUnitsSummaryWordTableHtml(flattenCommonFields = false) {
   const data = buildLandUnitsSummaryTableData();
   if (!data || !data.rows.length) return "";
   const hoisted = hoistUniformColumnsForWordTable(data);
-  return buildUnitsSummaryTableHeadingHtml("Taşınmazlar Arsa Özeti") + buildTitleUnitsSummaryTableHtmlFromData(hoisted.headers, hoisted.rows, hoisted.commonFields);
+  return buildUnitsSummaryTableHeadingHtml("Taşınmazlar Arsa Özeti") + buildTitleUnitsSummaryTableHtmlFromData(hoisted.headers, hoisted.rows, hoisted.commonFields, 4, flattenCommonFields);
 }
 
 // Kullanıcı talebi (2026-08-19): "BELGELER ve proje bölümünü incele bu
@@ -24523,11 +24573,11 @@ function buildDocumentsUnitsSummaryTableData() {
 // Banka şablonlarına {{TASINMAZLARBELGETABLOSU}} ile enjekte edilecek
 // gerçek HTML tablo (bkz. template-engine.js) — Tapu/Adres/İmar/Arsa
 // tablolarının export akışıyla BİREBİR AYNI desen.
-function buildDocumentsUnitsSummaryWordTableHtml() {
+function buildDocumentsUnitsSummaryWordTableHtml(flattenCommonFields = false) {
   const data = buildDocumentsUnitsSummaryTableData();
   if (!data || !data.rows.length) return "";
   const hoisted = hoistUniformColumnsForWordTable(data);
-  return buildUnitsSummaryTableHeadingHtml("Taşınmazlar Belgeler Özeti") + buildTitleUnitsSummaryTableHtmlFromData(hoisted.headers, hoisted.rows, hoisted.commonFields);
+  return buildUnitsSummaryTableHeadingHtml("Taşınmazlar Belgeler Özeti") + buildTitleUnitsSummaryTableHtmlFromData(hoisted.headers, hoisted.rows, hoisted.commonFields, 4, flattenCommonFields);
 }
 
 // Kullanıcı talebi (2026-08-21): "çift taraflı tablo mantığını dekoratif
@@ -24790,11 +24840,11 @@ function buildUnitUnitsSummaryTableData() {
 // Banka şablonlarına {{TASINMAZLARBAGIMSIZBOLUMTABLOSU}} ile enjekte
 // edilecek gerçek HTML tablo (bkz. template-engine.js) — diğer 6 bölümün
 // export akışıyla BİREBİR AYNI desen.
-function buildUnitUnitsSummaryWordTableHtml() {
+function buildUnitUnitsSummaryWordTableHtml(flattenCommonFields = false) {
   const data = buildUnitUnitsSummaryTableData();
   if (!data || !data.rows.length) return "";
   const hoisted = hoistUniformColumnsForWordTable(data);
-  return buildUnitsSummaryTableHeadingHtml("Taşınmazlar Bağımsız Bölüm Özeti") + buildTitleUnitsSummaryTableHtmlFromData(hoisted.headers, hoisted.rows, hoisted.commonFields);
+  return buildUnitsSummaryTableHeadingHtml("Taşınmazlar Bağımsız Bölüm Özeti") + buildTitleUnitsSummaryTableHtmlFromData(hoisted.headers, hoisted.rows, hoisted.commonFields, 4, flattenCommonFields);
 }
 
 // Proje Uygunluk Durumu (2026-08-26) — kullanıcı talebi: "uygunluk durumu
@@ -24886,14 +24936,16 @@ function buildProjectSuitabilityUnitsSummaryTableData() {
 // Banka şablonlarına {{TASINMAZLARPROJEUYGUNLUKTABLOSU}} ile enjekte
 // edilecek gerçek HTML tablo (bkz. template-engine.js) — diğer 7 bölümün
 // export akışıyla BİREBİR AYNI desen.
-function buildProjectSuitabilityUnitsSummaryWordTableHtml() {
+function buildProjectSuitabilityUnitsSummaryWordTableHtml(flattenCommonFields = false) {
   const data = buildProjectSuitabilityUnitsSummaryTableData();
   if (!data || !data.rows.length) return "";
   // 0.0.599 (2026-08-27) kullanıcı talebi: "Taşınmazlar Proje Uygunluk
   // Özeti ortak birimler kısmını komple kaldır" — bu tabloda "Ortak
   // Bilgiler" banner'ı HİÇBİR ZAMAN gösterilmemeli, bu yüzden diğer 6
-  // tablonun aksine hoistUniformColumnsForWordTable BİLEREK UYGULANMIYOR.
-  return buildUnitsSummaryTableHeadingHtml("Taşınmazlar Proje Uygunluk Özeti") + buildTitleUnitsSummaryTableHtmlFromData(data.headers, data.rows, data.commonFields);
+  // tablonun aksine hoistUniformColumnsForWordTable BİLEREK UYGULANMIYOR
+  // — data.commonFields zaten hep boş, flattenCommonFields burada no-op
+  // (tutarlılık için AYNI imza taşınır).
+  return buildUnitsSummaryTableHeadingHtml("Taşınmazlar Proje Uygunluk Özeti") + buildTitleUnitsSummaryTableHtmlFromData(data.headers, data.rows, data.commonFields, 4, flattenCommonFields);
 }
 
 // Kullanıcı talebi (2026-08-26). Diğer 7 özet tablosuyla (Tapu/Adres/
@@ -25062,11 +25114,11 @@ function buildBuildingBlockUnitsSummaryTableData() {
 // Banka şablonlarına {{TASINMAZLARANAGAYRIMENKULTABLOSU}} ile enjekte
 // edilecek gerçek HTML tablo (bkz. template-engine.js) — diğer 9 bölümün
 // export akışıyla BİREBİR AYNI desen.
-function buildBuildingBlockUnitsSummaryWordTableHtml() {
+function buildBuildingBlockUnitsSummaryWordTableHtml(flattenCommonFields = false) {
   const data = buildBuildingBlockUnitsSummaryTableData();
   if (!data || !data.rows.length) return "";
   const hoisted = hoistUniformColumnsForWordTable(data);
-  return buildUnitsSummaryTableHeadingHtml("Bloklar Ana Gayrimenkul Özeti") + buildTitleUnitsSummaryTableHtmlFromData(hoisted.headers, hoisted.rows, hoisted.commonFields);
+  return buildUnitsSummaryTableHeadingHtml("Bloklar Ana Gayrimenkul Özeti") + buildTitleUnitsSummaryTableHtmlFromData(hoisted.headers, hoisted.rows, hoisted.commonFields, 4, flattenCommonFields);
 }
 
 function buildTakyidatWordTableHtml() {
@@ -42697,10 +42749,10 @@ function buildGabimUnitsSummaryTableData() {
 // Banka şablonlarına {{TASINMAZLARGABIMTABLOSU}} ile enjekte edilecek
 // gerçek HTML tablo — diğer 8 tabloyla AYNI desen (bkz. o tabloların
 // build*UnitsSummaryWordTableHtml() sarmalayıcıları).
-function buildGabimUnitsSummaryWordTableHtml() {
+function buildGabimUnitsSummaryWordTableHtml(flattenCommonFields = false) {
   const data = buildGabimUnitsSummaryTableData();
   if (!data || !data.rows.length) return "";
-  return buildUnitsSummaryTableHeadingHtml("Taşınmazlar GABİM Özeti") + buildTitleUnitsSummaryTableHtmlFromData(data.headers, data.rows, data.commonFields);
+  return buildUnitsSummaryTableHeadingHtml("Taşınmazlar GABİM Özeti") + buildTitleUnitsSummaryTableHtmlFromData(data.headers, data.rows, data.commonFields, 4, flattenCommonFields);
 }
 
 // Ekrandaki önizleme — diğer 8 tabloyla AYNI desen. Tüm sütunlar

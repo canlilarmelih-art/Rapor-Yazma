@@ -649,10 +649,17 @@
     return rows.filter((row) => row[1]);
   }
 
-  function safeCall(fnName) {
+  // ...args (2026-09-08) — kullanıcı talebi: "excelde ... ortak
+  // değerleride tablolara dahil edelim" — "Taşınmazlar X Özeti"
+  // fonksiyonlarının artık kabul ettiği isteğe bağlı
+  // `flattenCommonFields` parametresini (app.js) buradan GEÇİREBİLMEK
+  // için eklendi. Geriye dönük UYUMLU: mevcut sıfır-argümanlı çağrılar
+  // (ör. "Değerlendirme Tablosu" gibi bu parametreyi TANIMAYAN
+  // fonksiyonlar) etkilenmez — fazladan argüman JS'te sessizce yoksayılır.
+  function safeCall(fnName, ...args) {
     try {
       const fn = window[fnName];
-      return typeof fn === "function" ? fn() : "";
+      return typeof fn === "function" ? fn(...args) : "";
     } catch (error) {
       console.warn(`Tüm tablolar Excel: ${fnName} çağrısı başarısız`, error);
       return "";
@@ -782,8 +789,8 @@
     return rawGridToCellGrid(def.columns, rows);
   }
 
-  function generatedCellGridFor(fnName) {
-    const html = safeCall(fnName);
+  function generatedCellGridFor(fnName, ...args) {
+    const html = safeCall(fnName, ...args);
     return html ? parseHtmlTables(html) : null;
   }
 
@@ -813,58 +820,68 @@
     // üretici YAZILMADAN kullanılıyor. Yalnızca 2+ taşınmazda (Çoklu
     // Talep) veri döndüklerinden, tekil raporlarda bu iki sayfa hiç
     // eklenmez (generatedCellGridFor zaten null döner).
-    const titleUnitsSummaryCellGrid = generatedCellGridFor("buildTitleUnitsSummaryWordTableHtml");
+    //
+    // `true` (2026-09-08) — kullanıcı talebi: "excel exportta ortak
+    // değerler olarak export edilmesin ... excelde tablo yapıları ...
+    // ortak değerleride tablolara dahil edelim" — bu 9 "Taşınmazlar X
+    // Özeti" sayfasının HEPSİNDE "ORTAK BİLGİLER" banner'ı YERİNE ortak
+    // alanlar normal (tekrarlanan-değerli) sütunlar olarak tabloya dahil
+    // edilir (bkz. app.js'teki flattenCommonFields parametresi/
+    // flattenTitleUnitsSummaryCommonFields()) — ekran/Word görünümü
+    // (banner) DEĞİŞMEDİ, bu YALNIZCA Excel yolu.
+    const titleUnitsSummaryCellGrid = generatedCellGridFor("buildTitleUnitsSummaryWordTableHtml", true);
     if (titleUnitsSummaryCellGrid) {
       sheets.push({ name: sanitizeSheetName("Taşınmazlar Tapu Özeti", usedNames), sheetXml: buildSheetXmlFromCellGrid(styleRegistry, titleUnitsSummaryCellGrid) });
     }
-    const addressUnitsSummaryCellGrid = generatedCellGridFor("buildAddressUnitsSummaryWordTableHtml");
+    const addressUnitsSummaryCellGrid = generatedCellGridFor("buildAddressUnitsSummaryWordTableHtml", true);
     if (addressUnitsSummaryCellGrid) {
       sheets.push({ name: sanitizeSheetName("Taşınmazlar Adres Özeti", usedNames), sheetXml: buildSheetXmlFromCellGrid(styleRegistry, addressUnitsSummaryCellGrid) });
     }
     // İmar Durumu Faz B (2026-08-16) — yukarıdaki ikisiyle AYNI desen;
     // yalnızca taşınmazlar FARKLI ada/parselde iken dolu döner (bkz.
     // buildImarUnitsSummaryTableData, app.js).
-    const imarUnitsSummaryCellGrid = generatedCellGridFor("buildImarUnitsSummaryWordTableHtml");
+    const imarUnitsSummaryCellGrid = generatedCellGridFor("buildImarUnitsSummaryWordTableHtml", true);
     if (imarUnitsSummaryCellGrid) {
       sheets.push({ name: sanitizeSheetName("Taşınmazlar İmar Özeti", usedNames), sheetXml: buildSheetXmlFromCellGrid(styleRegistry, imarUnitsSummaryCellGrid) });
     }
     // Arsa Özellikleri (2026-08-17) — yukarıdaki İmar sayfasıyla AYNI
     // desen; yalnızca taşınmazlar FARKLI ada/parselde iken dolu döner
     // (bkz. buildLandUnitsSummaryTableData, app.js).
-    const landUnitsSummaryCellGrid = generatedCellGridFor("buildLandUnitsSummaryWordTableHtml");
+    const landUnitsSummaryCellGrid = generatedCellGridFor("buildLandUnitsSummaryWordTableHtml", true);
     if (landUnitsSummaryCellGrid) {
       sheets.push({ name: sanitizeSheetName("Taşınmazlar Arsa Özeti", usedNames), sheetXml: buildSheetXmlFromCellGrid(styleRegistry, landUnitsSummaryCellGrid) });
     }
     // Belgeler ve Proje (2026-08-19) — yukarıdakilerle AYNI desen; yalnızca
     // taşınmazlar FARKLI BLOKTA iken dolu döner (ada/parsel değil — bkz.
     // buildDocumentsUnitsSummaryTableData/isDocumentsScopedByBlock, app.js).
-    const documentsUnitsSummaryCellGrid = generatedCellGridFor("buildDocumentsUnitsSummaryWordTableHtml");
+    const documentsUnitsSummaryCellGrid = generatedCellGridFor("buildDocumentsUnitsSummaryWordTableHtml", true);
     if (documentsUnitsSummaryCellGrid) {
       sheets.push({ name: sanitizeSheetName("Taşınmazlar Belgeler Özeti", usedNames), sheetXml: buildSheetXmlFromCellGrid(styleRegistry, documentsUnitsSummaryCellGrid) });
     }
     // Değerleme (2026-08-19) — yukarıdakilerle AYNI desen; yalnızca 2+
     // taşınmaz varsa dolu döner (bkz. buildValuationUnitsSummaryTableData, app.js).
-    const valuationUnitsSummaryCellGrid = generatedCellGridFor("buildValuationUnitsSummaryWordTableHtml");
+    const valuationUnitsSummaryCellGrid = generatedCellGridFor("buildValuationUnitsSummaryWordTableHtml", true);
     if (valuationUnitsSummaryCellGrid) {
       sheets.push({ name: sanitizeSheetName("Taşınmazlar Değerleme Özeti", usedNames), sheetXml: buildSheetXmlFromCellGrid(styleRegistry, valuationUnitsSummaryCellGrid) });
     }
     // Bağımsız Bölüm Özellikleri (2026-08-21) — yukarıdakilerle AYNI desen;
     // yalnızca 2+ taşınmaz varsa dolu döner (bkz. buildUnitUnitsSummaryTableData,
     // app.js). Dekoratif Özellikler paneli BİLEREK hariç tutulur.
-    const unitUnitsSummaryCellGrid = generatedCellGridFor("buildUnitUnitsSummaryWordTableHtml");
+    const unitUnitsSummaryCellGrid = generatedCellGridFor("buildUnitUnitsSummaryWordTableHtml", true);
     if (unitUnitsSummaryCellGrid) {
       sheets.push({ name: sanitizeSheetName("Taşınmazlar Bağımsız Bölüm Özeti", usedNames), sheetXml: buildSheetXmlFromCellGrid(styleRegistry, unitUnitsSummaryCellGrid) });
     }
     // Proje Uygunluk Durumu (2026-08-26) — yukarıdakilerle AYNI desen;
     // yalnızca 2+ taşınmaz varsa dolu döner (bkz.
-    // buildProjectSuitabilityUnitsSummaryTableData, app.js).
-    const projectSuitabilityUnitsSummaryCellGrid = generatedCellGridFor("buildProjectSuitabilityUnitsSummaryWordTableHtml");
+    // buildProjectSuitabilityUnitsSummaryTableData, app.js). Bu tablonun
+    // zaten hiç ortak alanı yok (0.0.599), `true` burada no-op.
+    const projectSuitabilityUnitsSummaryCellGrid = generatedCellGridFor("buildProjectSuitabilityUnitsSummaryWordTableHtml", true);
     if (projectSuitabilityUnitsSummaryCellGrid) {
       sheets.push({ name: sanitizeSheetName("Taşınmazlar Proje Uygunluk Özeti", usedNames), sheetXml: buildSheetXmlFromCellGrid(styleRegistry, projectSuitabilityUnitsSummaryCellGrid) });
     }
     // GABİM Veri Seti (2026-09-02) — yukarıdakilerle AYNI desen; yalnızca
     // 2+ taşınmaz varsa dolu döner (bkz. buildGabimUnitsSummaryTableData, app.js).
-    const gabimUnitsSummaryCellGrid = generatedCellGridFor("buildGabimUnitsSummaryWordTableHtml");
+    const gabimUnitsSummaryCellGrid = generatedCellGridFor("buildGabimUnitsSummaryWordTableHtml", true);
     if (gabimUnitsSummaryCellGrid) {
       sheets.push({ name: sanitizeSheetName("Taşınmazlar GABİM Özeti", usedNames), sheetXml: buildSheetXmlFromCellGrid(styleRegistry, gabimUnitsSummaryCellGrid) });
     }
@@ -872,7 +889,7 @@
     // desen; yalnızca 1'den fazla FARKLI blok varsa dolu döner (bkz.
     // buildBuildingBlockUnitsSummaryTableData, app.js) — TEK fark satır
     // başına TAŞINMAZ değil BLOK.
-    const buildingBlockUnitsSummaryCellGrid = generatedCellGridFor("buildBuildingBlockUnitsSummaryWordTableHtml");
+    const buildingBlockUnitsSummaryCellGrid = generatedCellGridFor("buildBuildingBlockUnitsSummaryWordTableHtml", true);
     if (buildingBlockUnitsSummaryCellGrid) {
       sheets.push({ name: sanitizeSheetName("Bloklar Ana Gayrimenkul Özeti", usedNames), sheetXml: buildSheetXmlFromCellGrid(styleRegistry, buildingBlockUnitsSummaryCellGrid) });
     }

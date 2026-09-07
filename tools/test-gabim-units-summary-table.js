@@ -391,8 +391,8 @@ function freshState(overrides = {}) {
   const xlsxSource = fs.readFileSync(path.join(__dirname, "..", "src", "exports", "report-tables-xlsx.js"), "utf8");
   assert.match(
     xlsxSource,
-    /generatedCellGridFor\("buildGabimUnitsSummaryWordTableHtml"\)/,
-    "report-tables-xlsx.js'te buildGabimUnitsSummaryWordTableHtml için generatedCellGridFor çağrısı bulunamadı."
+    /generatedCellGridFor\("buildGabimUnitsSummaryWordTableHtml", true\)/,
+    "report-tables-xlsx.js'te buildGabimUnitsSummaryWordTableHtml için generatedCellGridFor çağrısı bulunamadı (flattenCommonFields=true ile, bkz. 2026-09-08 kullanıcı talebi)."
   );
   assert.match(
     xlsxSource,

@@ -389,7 +389,7 @@ function freshState(overrides = {}) {
 
   // report-tables-xlsx.js sayfası.
   const xlsxSource = fs.readFileSync(path.join(__dirname, "..", "src", "exports", "report-tables-xlsx.js"), "utf8");
-  assert.ok(xlsxSource.includes('generatedCellGridFor("buildBuildingBlockUnitsSummaryWordTableHtml")'), "report-tables-xlsx.js buildBuildingBlockUnitsSummaryWordTableHtml() için bir sayfa üretmeli.");
+  assert.ok(xlsxSource.includes('generatedCellGridFor("buildBuildingBlockUnitsSummaryWordTableHtml", true)'), "report-tables-xlsx.js buildBuildingBlockUnitsSummaryWordTableHtml() için bir sayfa üretmeli (flattenCommonFields=true ile, bkz. 2026-09-08 kullanıcı talebi).");
   assert.ok(xlsxSource.includes("Bloklar Ana Gayrimenkul Özeti"), "report-tables-xlsx.js 'Bloklar Ana Gayrimenkul Özeti' sayfa adını içermeli.");
 
   console.log("Kaynak-düzeyi kablolama (renderSection + commit + select seçenekleri + template-engine + xlsx) testi tamam.");

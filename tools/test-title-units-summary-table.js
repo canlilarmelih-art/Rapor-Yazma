@@ -98,6 +98,11 @@ const functionNames = [
   "splitTableHeaderLabelIntoTwoLines",
   "toTitleFieldUppercase",
   "buildTitleUnitsSummaryTableHtmlFromData",
+  // "excel exportta ortak değerler olarak export edilmesin ... ortak
+  // değerleride tablolara dahil edelim" (2026-09-08) —
+  // buildTitleUnitsSummaryTableHtmlFromData artık bu yardımcıyı
+  // flattenCommonFields=true iken çağırıyor.
+  "flattenTitleUnitsSummaryCommonFields",
   // Çift Yönlü Düzenleme, Faz 2 (2026-08-15) — bkz. app.js'teki yorum:
   // export'tan (buildTitleUnitsSummaryTableHtmlFromData, yukarıda) TAMAMEN
   // AYRI, yalnızca ekran-içi düzenlenebilir önizleme için kullanılan renderer.
@@ -520,6 +525,29 @@ function unit(fields, ownerRows) {
   assert.ok(html.includes("Yüzölçümü") && html.includes("1200"), "Yüzölçümü 'Ortak Bilgiler' banner'ında etiket+değer olarak görünmeli.");
   assert.ok(html.includes("Ana Taşınmaz Niteliği") && html.includes("Arsa"), "Ana Taşınmaz Niteliği de 'Ortak Bilgiler' banner'ında etiket+değer olarak görünmeli.");
   console.log("hoistUniformColumnsForWordTable: Yüzölçümü/Ana Taşınmaz Niteliği gibi HER ZAMAN-aynı sütunlar SADECE Word/şablon çıktısında Ortak Bilgiler'e taşınıyor testi tamam.");
+
+  // --- 6c) YENİ (2026-09-08, kullanıcı takip talebi): "excel exportta ----
+  // ortak değerler olarak export edilmesin ... excelde ... ortak
+  // değerleride tablolara dahil edelim" — AYNI fixture, ama
+  // buildTitleUnitsSummaryWordTableHtml(true) (flattenCommonFields,
+  // yalnızca report-tables-xlsx.js'in Excel yolunun kullandığı) — "Ortak
+  // Bilgiler" banner'ı ARTIK GÖRÜNMEMELİ, Yüzölçümü/Ana Taşınmaz Niteliği
+  // NORMAL (her satırda AYNI, tekrarlanan değerli) sütunlar olarak ANA
+  // TABLOYA (dolayısıyla Excel'e) geri eklenmeli.
+  {
+    const flatHtml = fns.buildTitleUnitsSummaryWordTableHtml(true);
+    assert.ok(!flatHtml.includes("ORTAK BİLGİLER"), "flattenCommonFields=true iken 'ORTAK BİLGİLER' banner'ı HİÇ görünmemeli.");
+    assert.ok(flatHtml.includes("YÜZÖLÇÜMÜ"), "flattenCommonFields=true iken Yüzölçümü ARTIK normal bir sütun BAŞLIĞI olarak görünmeli (BÜYÜK harf, ana tablonun kuralı).");
+    assert.ok(
+      flatHtml.includes("ANA TAŞINMAZ<br>NİTELİĞİ") || flatHtml.includes("ANA TAŞINMAZ NİTELİĞİ"),
+      "flattenCommonFields=true iken Ana Taşınmaz Niteliği de normal bir sütun BAŞLIĞI olarak görünmeli."
+    );
+    // Değer HER İKİ satırda da (2 taşınmaz) AYNI tekrarlanan değerle
+    // görünmeli — "1200" tam olarak 2 kez (her satırda bir hücre).
+    const valueOccurrences = (flatHtml.match(/>1200</g) || []).length;
+    assert.equal(valueOccurrences, 2, `Yüzölçümü değeri (1200) İKİ satırda da (tekrarlanan) ayrı hücrede görünmeli, bulunan: ${valueOccurrences}.`);
+    console.log("buildTitleUnitsSummaryWordTableHtml(true): 'ORTAK BİLGİLER' banner'ı yerine ortak sütunların ana tabloya (Excel'e) geri eklenmesi testi tamam.");
+  }
 }
 
 // --- 6b) DÜZELTME (2026-09-02, kullanıcı geri bildirimi): "Tapu -----------

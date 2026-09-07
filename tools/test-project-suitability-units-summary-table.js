@@ -362,7 +362,7 @@ function freshState(fields, titleUnits = []) {
     "template-engine.js'te {{TASINMAZLARPROJEUYGUNLUKTABLOSU}} kayıtlı olmalı.",
   );
   assert.ok(
-    xlsxSource.includes('generatedCellGridFor("buildProjectSuitabilityUnitsSummaryWordTableHtml")') && xlsxSource.includes('"Taşınmazlar Proje Uygunluk Özeti"'),
+    xlsxSource.includes('generatedCellGridFor("buildProjectSuitabilityUnitsSummaryWordTableHtml", true)') && xlsxSource.includes('"Taşınmazlar Proje Uygunluk Özeti"'),
     "report-tables-xlsx.js'te \"Taşınmazlar Proje Uygunluk Özeti\" sayfası kayıtlı olmalı.",
   );
   console.log("template-engine.js + report-tables-xlsx.js kayit testi tamam.");

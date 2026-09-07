@@ -110,6 +110,11 @@ const functionNames = [
   "buildUnitsSummaryTableHeadingHtml",
   "buildValuationUnitsSummaryWordTableHtml",
   "hoistValuationConstructionLevelForWordTable",
+  // "excel exportta ortak değerler olarak export edilmesin ... ortak
+  // değerleride tablolara dahil edelim" (2026-09-08) —
+  // buildValuationUnitsSummaryWordTableHtml artık flattenCommonFields=true
+  // iken bu yardımcıyı (renderer'a girmeden ÖNCE veri üzerinde) çağırıyor.
+  "flattenTitleUnitsSummaryCommonFields",
   "splitTableHeaderLabelIntoTwoLines",
   "toTitleFieldUppercase",
   "buildTitleUnitsSummaryTableHtmlFromData",
@@ -550,12 +555,16 @@ const DIFFERENTIATING_OVERRIDES = {
 
   assert.match(
     appSource,
-    /if \(section\.id === "valuation" && isCurrentUserAdmin\(\) && state\.fields\.requestType === "Çoklu Talep"\) \{[\s\S]{0,400}?computeValuationFieldsForAllTitleUnits\(\);[\s\S]{0,300}?body\.append\(createTitleUnitTabBar\(/,
+    // Not: bu gate'in gövdesindeki yorum bloğu zamanla büyüyebilir (yeni
+    // kullanıcı talebi notu eklendikçe) — karakter üst sınırı bilerek
+    // cömert tutuldu, sıkı bir eşik burada davranışı değil yorum uzunluğunu
+    // test etmiş olurdu (bkz. handoff.md, 0.0.612 sonrası).
+    /if \(section\.id === "valuation" && isCurrentUserAdmin\(\) && state\.fields\.requestType === "Çoklu Talep"\) \{[\s\S]{0,800}?computeValuationFieldsForAllTitleUnits\(\);[\s\S]{0,300}?body\.append\(createTitleUnitTabBar\(/,
     "renderSection() 'valuation' gate'i computeValuationFieldsForAllTitleUnits()'i tab cubugundan ONCE cagirmiyor."
   );
   assert.match(
     appSource,
-    /function buildValuationUnitsSummaryWordTableHtml\(\) \{[\s\S]{0,300}?computeValuationFieldsForAllTitleUnits\(\);[\s\S]{0,200}?buildValuationUnitsSummaryTableData\(\)/,
+    /function buildValuationUnitsSummaryWordTableHtml\(flattenCommonFields = false\) \{[\s\S]{0,300}?computeValuationFieldsForAllTitleUnits\(\);[\s\S]{0,200}?buildValuationUnitsSummaryTableData\(\)/,
     "buildValuationUnitsSummaryWordTableHtml() computeValuationFieldsForAllTitleUnits()'i cagirmiyor (export'ta guncel olmayabilir)."
   );
   console.log("computeValuationFieldsForAllTitleUnits cagri-noktalari (renderSection + export) kablolama testi tamam.");
@@ -1042,6 +1051,37 @@ const DIFFERENTIATING_OVERRIDES = {
   assert.ok(!diffWordHtml.includes("İnşaat Seviyesi"), "FARKLI değerlerde 'Ortak Bilgiler'e TAŞINMAMALI.");
 
   console.log("hoistValuationConstructionLevelForWordTable: sadece export + yalnizca ayni-ise hoistleme testi tamam.");
+}
+
+// --- 29b2) YENİ (2026-09-08, kullanıcı takip talebi): "excel exportta -----
+// ortak değerler olarak export edilmesin ... ortak değerleride tablolara
+// dahil edelim" — AYNI "TÜM taşınmazlarda AYNI İnş. Sev." fixture'ı, ama
+// buildValuationUnitsSummaryWordTableHtml(true) (flattenCommonFields) —
+// bu bespoke (gruplu iki-satır başlıklı) renderer buildTitleUnitsSummaryTableHtmlFromData'yı
+// KULLANMADIĞINDAN (kendi banner çağrısı var) AYRI doğrulanır:
+// flattenTitleUnitsSummaryCommonFields() renderer'a GİRMEDEN ÖNCE
+// uygulanmalı, "İnş. Sev." sütunu "Diğer" grubuna (colspan'lı üst
+// başlıkta) düşüp NORMAL bir sütun olarak (banner OLMADAN) görünmeli.
+{
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: fullFixtureFields({ unitConstructionLevel: "90" }),
+    tables: {},
+    titleUnits: [unit(fullFixtureFields({ ...DIFFERENTIATING_OVERRIDES, unitConstructionLevel: "90" }))],
+  });
+  const flatWordHtml = fns.buildValuationUnitsSummaryWordTableHtml(true);
+  assert.ok(!flatWordHtml.includes("ORTAK BİLGİLER"), "flattenCommonFields=true iken 'ORTAK BİLGİLER' banner'ı HİÇ görünmemeli.");
+  assert.ok(
+    flatWordHtml.includes(">İNŞ. SEV.<") || flatWordHtml.includes(">İnş. Sev.<"),
+    "flattenCommonFields=true iken 'İnş. Sev.' ARTIK normal bir sütun BAŞLIĞI olarak görünmeli (banner'a taşınmamalı)."
+  );
+  // "İnşaat Seviyesi" (banner'ın tam-ad etiketi) ARTIK HİÇ görünmemeli —
+  // sütun başlığı yine kısaltılmış "İnş. Sev." kalır (Parametreler
+  // grubunun normal alt başlığı, bkz. getValuationUnitsSummarySubheader).
+  assert.ok(!flatWordHtml.includes("İnşaat Seviyesi"), "flattenCommonFields=true iken 'İnşaat Seviyesi' (banner'a özgü tam ad) görünmemeli.");
+  const valueOccurrences = (flatWordHtml.match(/>90</g) || []).length;
+  assert.ok(valueOccurrences >= 2, `İnş. Sev. değeri (90) İKİ satırda da (tekrarlanan) görünmeli, bulunan: ${valueOccurrences}.`);
+  console.log("buildValuationUnitsSummaryWordTableHtml(true): 'İnş. Sev.' banner YERİNE normal sütun olarak Excel'e dahil edilmesi testi tamam.");
 }
 
 // --- 29c) KULLANICI BULGUSU (2026-09-02): "değerleme tablosunda ortak -----
