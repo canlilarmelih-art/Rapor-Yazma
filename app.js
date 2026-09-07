@@ -48725,12 +48725,21 @@ function setCurrentUserProfile(fullName, company) {
 // safeCall("fnAdı") dinamik çağrı mekanizmasıyla (CLAUDE.md'nin "147
 // dinamik çağrı" uyarısı) KULLANILDIĞINDAN adları GREP İLE aranabilir
 // olmalı, isimleri DEĞİŞTİRİLMEMELİ.
+// Kullanıcı talebi (2026-09-07): "bu iki placeholder her zaman tümü
+// büyükharf yazılsın" — ham değer (currentUserFullName/currentUserCompany,
+// window.RaporAccessControl.getUserFullName/getUserCompany ile de erişilen)
+// KENDİ girdiği biçimde SAKLANIR (0.0.342'nin "_BUYUK" ailesi ilkesiyle
+// AYNI: ham alan dokunulmaz, yalnızca ÇIKTI/görüntüleme fonksiyonu büyük
+// harfe çevirir) — büyük harfe çevirme YALNIZCA bu iki üretim fonksiyonunda
+// (dolayısıyla hem {{KULLANICI_AD_SOYAD}}/{{KULLANICI_FIRMA}} template
+// token'larında HEM DE "Kullanıcı Bilgileri" placeholder referans
+// ekranındaki önizlemede — ikisi de AYNI fonksiyonu çağırıyor) uygulanır.
 function buildCurrentUserFullNameText() {
-  return currentUserFullName;
+  return currentUserFullName.toLocaleUpperCase("tr-TR");
 }
 
 function buildCurrentUserCompanyText() {
-  return currentUserCompany;
+  return currentUserCompany.toLocaleUpperCase("tr-TR");
 }
 
 window.RaporAccessControl = {

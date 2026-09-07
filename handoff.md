@@ -1,5 +1,13 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.660 - 2026-09-07 - {{KULLANICI_AD_SOYAD}}/{{KULLANICI_FIRMA}} artık HER ZAMAN Türkçe büyük harf
+
+- Kullanıcı talebi: "bu iki placeholder her zaman tümü büyükharf yazılsın"
+- `app.js`'teki `buildCurrentUserFullNameText()`/`buildCurrentUserCompanyText()` artık `.toLocaleUpperCase("tr-TR")` ile döndürüyor — 0.0.342'nin "_BUYUK" ailesi ilkesiyle AYNI: HAM değer (`currentUserFullName`/`currentUserCompany`, `window.RaporAccessControl.getUserFullName()`/`getUserCompany()` ile de erişilen) kullanıcının girdiği biçimde SAKLANMAYA devam ediyor, büyük harfe çevirme YALNIZCA bu iki ÜRETİM fonksiyonunda uygulanıyor. Bu iki fonksiyon hem `{{KULLANICI_AD_SOYAD}}`/`{{KULLANICI_FIRMA}}` banka şablonu token'larında HEM DE "Kullanıcı Bilgileri" placeholder referans ekranındaki önizlemede kullanıldığından (0.0.658'de AYNI fonksiyona bağlandılar), değişiklik HER İKİ yerde de otomatik yansıyor — ayrı bir "_BUYUK" varyantı GEREKMEDİ (bu iki alan için kullanıcı çift-varyant DEĞİL, HER ZAMAN büyük harf istedi).
+- Test: `tools/test-user-profile-placeholders.js`'in 1. bölümü güncellendi — `buildCurrentUserFullNameText()`/`buildCurrentUserCompanyText()`'in artık trim + Türkçe büyük harfli (İ/ı dahil) sonuç döndürdüğü doğrulanıyor ("Ahmet Yılmaz" → "AHMET YILMAZ", "ABC Değerleme A.Ş." → "ABC DEĞERLEME A.Ş."). Geçici geri alma (yalnızca `app.js`) ile güncellenmiş testin gerçekten BAŞARISIZ olduğu (eski kod büyük harfe çevirmeden döndürdü) doğrulanıp geri konuldu. `npm run verify` tam paket EXIT:0.
+- `index.html`: `app.js` cache-buster `?v=20260908-0145`.
+- Canlı doğrulama YAPILAMADI — kullanıcının (yönetici) "Hesap Bilgileri"nde kaydettiği ad soyad/firmanın "Placeholder" referans ekranında ve banka şablonu export'unda artık BÜYÜK HARFLE göründüğünü doğrulaması gerekiyor.
+
 ## 0.0.659 - 2026-09-07 - Yönetici (admin) artık kendi ad soyad/firma bilgisini "Hesap Bilgileri"nden kaydedebiliyor + Şirket Adı alanı modale eklendi
 
 - Kullanıcı bulgusu: "admin kullanıcısı benim adım melih canlılar. çalıştığım firma Denge Değerleme ve Danışmanlık A.Ş. bunları eklermisin normal kullacını kendisi seçiyor zaten ama admin için bunu girme kısmı yok"

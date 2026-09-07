@@ -61,9 +61,15 @@ function sliceAppFn(marker) {
   assert.equal(ctx.buildCurrentUserFullNameText(), "", "Baslangicta ad soyad bos olmali.");
   assert.equal(ctx.buildCurrentUserCompanyText(), "", "Baslangicta firma adi bos olmali.");
 
+  // Kullanıcı talebi (2026-09-07): "bu iki placeholder her zaman tümü
+  // büyükharf yazılsın" — build*Text() ÇIKTISI trim + Türkçe büyük harf
+  // (İ/ı dahil, toLocaleUpperCase("tr-TR")) olmalı; ham setCurrentUserProfile
+  // girdisi (window.RaporAccessControl.getUserFullName/getUserCompany ile
+  // erişilen) KENDİ biçiminde saklanmaya DEVAM eder (aşağıda AYRICA test
+  // ediliyor).
   ctx.setCurrentUserProfile("  Ahmet Yılmaz  ", "  ABC Değerleme A.Ş.  ");
-  assert.equal(ctx.buildCurrentUserFullNameText(), "Ahmet Yılmaz", "Ad soyad trim edilmemis.");
-  assert.equal(ctx.buildCurrentUserCompanyText(), "ABC Değerleme A.Ş.", "Firma adi trim edilmemis.");
+  assert.equal(ctx.buildCurrentUserFullNameText(), "AHMET YILMAZ", "Ad soyad trim+Turkce buyuk harfe cevrilmemis.");
+  assert.equal(ctx.buildCurrentUserCompanyText(), "ABC DEĞERLEME A.Ş.", "Firma adi trim+Turkce buyuk harfe cevrilmemis.");
 
   // Cikis yapildiginda (veya profil sorgusu basarisiz oldugunda) bosalmali.
   ctx.setCurrentUserProfile(null, undefined);
