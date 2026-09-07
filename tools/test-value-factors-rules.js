@@ -236,6 +236,79 @@ function main() {
   }));
   assert(idsOf(basementGround.negative).includes("unit-basement-ground-floor"), "Bodrum/zemin kat olumsuz faktor olarak gelmeli");
 
+  // Kullanıcı talebi (2026-09-07): "olumsuz faktörlerde bodrum katta/
+  // zemin katta olması şeklinde ibare var bunu düzelt burada bina girişi
+  // hangi kattan yapılıyor dikkate al" — bina girişi TAM O KATTAN
+  // yapılıyorsa (eğimli site/arazi) dezavantaj YOK.
+  const groundFloorIsEntrance = calculateValueFactors(baseInput({
+    fields: { buildingEntranceLevel: "Zemin" },
+    tables: {
+      unitFloors: [{ floor: "Zemin" }],
+    },
+  }));
+  assert(
+    !idsOf(groundFloorIsEntrance.negative).includes("unit-basement-ground-floor"),
+    "Bina girisi TAM taşınmazın bulunduğu Zemin kattan yapiliyorsa 'bodrum/zemin katta olmasi' olumsuz faktoru TETIKLENMEMELI."
+  );
+
+  const basementIsEntranceButOtherFloorIsNot = calculateValueFactors(baseInput({
+    fields: { buildingEntranceLevel: "Zemin" },
+    tables: {
+      // Taşınmaz İKİ kat kaplıyor: biri (Zemin) giriş katıyla AYNI (sorun
+      // değil), diğeri (1. Bodrum) giriş katından FARKLI (hâlâ dezavantaj)
+      // — kısmi muafiyet, TÜM taşınmaz değil, YALNIZCA giriş katına denk
+      // gelen satır muaf tutulmalı.
+      unitFloors: [{ floor: "Zemin" }, { floor: "1. Bodrum" }],
+    },
+  }));
+  assert(
+    idsOf(basementIsEntranceButOtherFloorIsNot.negative).includes("unit-basement-ground-floor"),
+    "Tasinmaz birden fazla kati kapliyorsa VE bunlardan biri giris kati OLMASA BILE, giris kati OLMAYAN bodrum/zemin kat hala olumsuz faktor olarak gelmeli."
+  );
+
+  const basementFloorDiffersFromEntrance = calculateValueFactors(baseInput({
+    fields: { buildingEntranceLevel: "Zemin" },
+    tables: {
+      unitFloors: [{ floor: "1. Bodrum" }],
+    },
+  }));
+  assert(
+    idsOf(basementFloorDiffersFromEntrance.negative).includes("unit-basement-ground-floor"),
+    "Tasinmazin bulundugu bodrum kati bina girisinden FARKLIYSA (giris Zemin'den, tasinmaz 1. Bodrum'da) olumsuz faktor GELMELI."
+  );
+
+  const basementNoEntranceLevelSet = calculateValueFactors(baseInput({
+    tables: {
+      unitFloors: [{ floor: "Zemin" }],
+    },
+  }));
+  assert(
+    idsOf(basementNoEntranceLevelSet.negative).includes("unit-basement-ground-floor"),
+    "buildingEntranceLevel HIC girilmemisse (bos) eski davranis (her zaman olumsuz) KORUNMALI - guvenli varsayilan."
+  );
+
+  // Kullanıcı talebi (2026-09-07): "Eğer Ana taşınmaz niteliği Arsa ise
+  // Kat mülkiyetine geçilmemiş olunması [olumsuz faktör], tekil ve çoğul
+  // raporlarda ekle."
+  const mainPropertyStillLand = calculateValueFactors(baseInput({
+    fields: { mainPropertyQuality: "Arsa" },
+  }));
+  assert(
+    idsOf(mainPropertyStillLand.negative).includes("title-not-condominium"),
+    "Ana tasinmaz niteligi 'Arsa' ise 'Kat mulkiyetine gecilmemis olmasi' olumsuz faktor olarak gelmeli."
+  );
+  assert(
+    mainPropertyStillLand.negative.find((item) => item.id === "title-not-condominium")?.text === "Kat mülkiyetine geçilmemiş olması",
+    "Yeni faktorun metni tam olarak 'Kat mulkiyetine gecilmemis olmasi' olmali."
+  );
+  const mainPropertyAlreadyCondominium = calculateValueFactors(baseInput({
+    fields: { mainPropertyQuality: "Kargir Apartman" },
+  }));
+  assert(
+    !idsOf(mainPropertyAlreadyCondominium.negative).includes("title-not-condominium"),
+    "Ana tasinmaz niteligi 'Arsa' DEGILSE yeni faktor TETIKLENMEMELI."
+  );
+
   const noElevatorUpper = calculateValueFactors(baseInput({
     fields: {
       elevator: "Yok",

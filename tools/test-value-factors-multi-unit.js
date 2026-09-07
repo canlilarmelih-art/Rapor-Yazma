@@ -332,4 +332,28 @@ function idsOf(items) {
   console.log("Tetiklenmeyen taşınmazın atfa dahil edilmemesi testi tamam.");
 }
 
+// --- 8) YENİ "title-not-condominium" faktörü (2026-09-07 talebi): "title-" --
+// önekiyle çoklu-taşınmaz grup+atıf mimarisinden OTOMATİK geçer — ekstra
+// kod YAZILMADAN, TÜM taşınmazlar AYNI Ana Taşınmaz Niteliği'ne ("Arsa")
+// sahipse jenerik "Taşınmazların kat mülkiyetine geçilmemiş olmaları"
+// üretilmeli (0.0.654'ün iyelik-eki + 0.0.655'in "tüm taşınmazları
+// kapsayan grup → jenerik özne" ilkeleriyle TUTARLI).
+{
+  const context = makeContext();
+  withUnits(context, [
+    unit({ titleBlockName: "A", unitNo: "5", mainPropertyQuality: "Arsa" }),
+    unit({ titleBlockName: "A", unitNo: "8", mainPropertyQuality: "Arsa" }),
+  ]);
+  const baseInput = { fields: context.state.fields, tables: {}, disabledIds: [], manualPositive: [], manualNegative: [] };
+  const result = context.calculateValueFactorsForAllTitleUnits(baseInput);
+  const notCondoEntries = result.negative.filter((item) => item.id === "title-not-condominium");
+  assert.equal(notCondoEntries.length, 1);
+  assert.equal(
+    notCondoEntries[0].text,
+    "Taşınmazların kat mülkiyetine geçilmemiş olmaları",
+    "YENİ 'title-not-condominium' faktörü, TÜM taşınmazlar aynı Ana Taşınmaz Niteliği'ne sahipse jenerik çoğul cümleye dönmeli (mevcut grup+atıf+çoğullama mimarisinden hiç ek kod olmadan geçmeli)."
+  );
+  console.log("YENI 'title-not-condominium' faktorunun coklu-tasinmaz mimarisinden otomatik gecmesi testi tamam.");
+}
+
 console.log("Deger etkileyen faktorler coklu tasinmaz (taşınmaz bazinda + Ana Yapi/Bolge cogullama) testleri basarili.");

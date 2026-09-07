@@ -26,6 +26,21 @@
 
     if (fold(fields.titleOwnershipKind).includes("HISSE")) add("negative", "title-shared-ownership", "Hisseli olması", "titleOwnershipKind", "Mülkiyet");
     if (isCondominiumOwnership(fields.groundType)) add("positive", "title-condominium", "Kat mülkiyetli olması", "groundType", "Zemin Tipi");
+    // Kullanıcı talebi (2026-09-07): "Eğer Ana taşınmaz niteliği Arsa ise
+    // Kat mülkiyetine geçilmemiş olunması [olumsuz faktör olarak eklensin],
+    // tekil ve çoğul raporlarda ekle." — "Ana Taşınmaz Niteliği" (Tapu
+    // kaydındaki, ana gayrimenkulün TAMAMINI tarif eden nitelik alanı)
+    // hâlâ "Arsa" ise, üzerindeki yapı henüz kat mülkiyetine/kat irtifakına
+    // GEÇİRİLMEMİŞ demektir — bu, `title-condominium`'un (groundType'a
+    // bağlı, AYRI bir alan) TAM TERSİ değil, ONU TAMAMLAYAN ayrı bir
+    // gösterge (Ana Taşınmaz Niteliği hâlâ "Arsa" YAZIYORSA kat mülkiyeti
+    // kurulmamış olma OLASILIĞI yüksektir). "title-" öneki taşıdığından
+    // (bkz. app.js'teki isPerUnitValueFactorId) çoklu taşınmazlı
+    // raporlarda OTOMATİK olarak taşınmaz-bazında grup+atıf mimarisinden
+    // geçer — TÜM taşınmazlar AYNI Ana Taşınmaz'a (dolayısıyla AYNI
+    // niteliğe) sahipse jenerik "Taşınmazların kat mülkiyetine geçilmemiş
+    // olmaları" üretilir, herhangi bir ek kod GEREKMEZ.
+    if (fold(fields.mainPropertyQuality).includes("ARSA")) add("negative", "title-not-condominium", "Kat mülkiyetine geçilmemiş olması", "mainPropertyQuality", "Ana Taşınmaz Niteliği");
     if (hasOccupancyPermitDocument(tables.documents)) add("positive", "document-occupancy-permit", "Bulunduğu binanın Yapı Kullanma İzin Belgesi bulunması", "documents", "İncelenen Belgeler");
 
     if (hasPositiveElevator(fields.elevator)) add("positive", "building-elevator", "Taşınmazın asansörlü bir binada yer alması", "elevator", "Asansör");
@@ -288,11 +303,29 @@
     return `Taşınmazın ${joinTurkishList(names)} gibi imkanlara sahip bir sitede/apartmanda yer alması`;
   }
 
+  // Kullanıcı talebi (2026-09-07): "olumsuz faktörlerde bodrum katta/
+  // zemin katta olması şeklinde ibare var bunu düzelt burada bina girişi
+  // hangi kattan yapılıyor dikkate al" — bodrum/zemin kat konumu YALNIZCA
+  // bina girişi O KATTAN DEĞİLSE (buildingEntranceLevel — "Bina Giriş Kat
+  // Seviyesi") gerçek bir dezavantajdır; eğimli arazi/site gibi
+  // durumlarda binanın GİRİŞİNİN KENDİSİ "1. Bodrum" ya da "Zemin"
+  // seviyesinden yapılıyorsa, o katta olmak SOKAK/GİRİŞ seviyesinde olmak
+  // demektir — dezavantaj DEĞİL. unitFloorOptions/buildingEntranceLevelOptions
+  // (app.js) AYNI kat adlandırma sözlüğünü ("1. Bodrum", "Zemin" vb.)
+  // kullandığından doğrudan METİN karşılaştırması güvenlidir.
+  function isBuildingEntranceFloor(floor, entranceLevel) {
+    const normalizedEntrance = fold(entranceLevel);
+    return Boolean(normalizedEntrance) && fold(floor) === normalizedEntrance;
+  }
+
   function analyzeUnitFloorFactors(fields = {}, tables = {}) {
     const unitFloors = getUnitFloorNames(fields, tables);
     const normalCount = parseNumber(fields.buildingFloorCounts?.normal);
+    const entranceLevel = fields.buildingEntranceLevel;
     const hasTopFloor = unitFloors.some((floor) => isTopFloor(floor, normalCount));
-    const hasBasementOrGround = unitFloors.some(isBasementOrGroundFloor);
+    const hasBasementOrGround = unitFloors.some(
+      (floor) => isBasementOrGroundFloor(floor) && !isBuildingEntranceFloor(floor, entranceLevel)
+    );
     const hasMiddleFloor = !hasTopFloor && unitFloors.some((floor) => isMiddleFloor(floor, normalCount));
     const hasUpperNormalFloor = unitFloors.some((floor) => {
       const ordinal = extractNormalFloorOrdinal(floor);
