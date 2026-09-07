@@ -41657,6 +41657,124 @@ function buildHalkbankRiskCodesTableText() {
     .join("\n");
 }
 
+// Kullanıcı talebi (2026-09-07): "değere etki eden faktörlere geçelim
+// bunlarda bazı faktörler ana yapı ile ilgili bazı faktörler bulunulan
+// bölge ile ilgili bazı faktörler ise taşınmaz bazında. bunları önce
+// gruplandırarak listele" → onay sonrası: "uygundur buna göre koda geç
+// taşınmaz bazında olanların başına yine gruplandırma mantığı ile yap.
+// Örnek A-5 ve A-8 Nolu taşınmazların ara katta yer alması gibi." —
+// value-factors-rules.js'in ~30 kuralı, ID ÖNEKİNE göre KULLANICI İLE
+// BİRLİKTE üç kategoriye ayrıldı (bkz. handoff): "building-"/"document-"
+// (Ana Yapı), "location-" (Bölge), "title-"/"land-"/"unit-"/"planning-"/
+// "valuation-" (Taşınmaz Bazında). YALNIZCA SONUNCUSU (kullanıcının AÇIKÇA
+// belirttiği kapsam) ÇOKLU taşınmazlı raporlarda GERÇEKTEN taşınmaza-özgü
+// sonuç üretebilir — Ana Yapı/Bölge faktörleri (aktif/temsilci taşınmazın
+// verisinden hesaplanmaya devam eder) BİLİNÇLİ OLARAK KAPSAM DIŞI
+// bırakıldı (bu ikisinin KENDİ blok-bazlı paylaşım durumu AYRI bir karar
+// gerektirir, kullanıcı bunu istemedi).
+function isPerUnitValueFactorId(id) {
+  return /^(title|land|unit|planning|valuation)-/.test(String(id || ""));
+}
+
+// İç Hacimler/Dekoratif Özellikler/Satış Kabiliyeti'nin ZATEN kanıtlanmış
+// "aynı metni üreten taşınmazları TEK (atıflı) satırda birleştir" ilkesiyle
+// AYNI — ama burada "Diğer"/sole-rest gibi bir ikili karşıtlık YOK (bir
+// faktör ya bir taşınmazda TETİKLENİR ya HİÇ TETİKLENMEZ, "karşı değer"
+// diye bir kavram yok) — yalnızca AYNI metni üreten taşınmazlar TEK
+// satırda, etiketleri BİRLEŞTİRİLEREK gösterilir.
+function groupAndAttributeValueFactorEntries(entries) {
+  const groups = [];
+  const byText = new Map();
+  entries.forEach((entry) => {
+    const key = entry.item.text;
+    if (byText.has(key)) {
+      byText.get(key).entries.push(entry);
+      return;
+    }
+    const group = { text: key, entries: [entry] };
+    byText.set(key, group);
+    groups.push(group);
+  });
+  return groups.map((group) => {
+    const labels = group.entries.map((entry) => formatTitleUnitSuitabilityShortLabel(entry.fields, entry.index));
+    return {
+      ...group.entries[0].item,
+      text: buildValueFactorAttributedText(labels, group.text),
+    };
+  });
+}
+
+// Kullanıcının BİZZAT verdiği örnek: "A-5 ve A-8 No'lu taşınmazların ara
+// katta yer alıyor olması." Etiket formatı ("A-5") YENİDEN İCAT EDİLMEDİ —
+// Kira Açıklaması'nda (0.0.652) ZATEN kullanılan formatTitleUnitSuitabilityShortLabel()
+// doğrudan yeniden kullanıldı. Faktör metni "Taşınmazın " İLE BAŞLIYORSA
+// (ör. manzara/otopark/sosyal tesis cümleleri) o önek atıf öznesiyle
+// DEĞİŞTİRİLİR; aksi halde (ÇOĞU faktör metni ZATEN öznesiz bir nominal
+// cümle, ör. "Ara katta yer alıyor olması") atıf öznesi BAŞA eklenir,
+// metnin ilk harfi küçültülür (0.0.643'ün lowercaseFirstLetterTr'siyle
+// AYNI teknik).
+function buildValueFactorAttributedText(labels, originalText) {
+  const isPlural = labels.length > 1;
+  const joined = joinTurkishList(labels);
+  const subject = isPlural ? `${joined} No'lu taşınmazların` : `${joined} No'lu taşınmazın`;
+  const rest = /^Taşınmazın\s+/.test(originalText)
+    ? originalText.replace(/^Taşınmazın\s+/, "")
+    : lowercaseFirstLetterTr(originalText);
+  return normalizeReportDescriptionText(`${subject} ${rest}`);
+}
+
+// Tek taşınmazlı raporlarda (count<2) davranış BİREBİR DEĞİŞMEDİ — yalnızca
+// gerçek `globalThis.ValueFactorsRules.calculateValueFactors()` sonucunu
+// aynen döner. Çoklu taşınmazlı raporlarda: (1) Ana Yapı/Bölge (+ manuel
+// eklenen kalemler, ID öneki "manual-" olduğundan isPerUnitValueFactorId
+// tarafından zaten "paylaşımlı" sayılır) TEK SEFER, temsilci (aktif)
+// taşınmazın verisinden hesaplanır; (2) Taşınmaz Bazında kalemler HER
+// taşınmaz için AYRI AYRI hesaplanıp (buildValuationSaleabilityExplanationForAllTitleUnits'in
+// state.fields GEÇİCİ değiştirme tekniğiyle AYNI), sonra AYNI metni
+// üreten taşınmazlar groupAndAttributeValueFactorEntries() ile TEK atıflı
+// satırda birleştirilir. manualPositive/manualNegative per-unit çağrılara
+// BİLEREK BOŞ geçilir — aksi halde HER taşınmaz turunda TEKRAR eklenip
+// sonuçta N kat çoğaltılırlardı (zaten TEK SEFER, representative sonuçtan
+// geliyorlar).
+function calculateValueFactorsForAllTitleUnits(baseInput) {
+  const representativeResult = globalThis.ValueFactorsRules.calculateValueFactors(baseInput);
+  if (getTitleUnitCount() < 2) return representativeResult;
+
+  const sharedPositive = representativeResult.positive.filter((item) => !isPerUnitValueFactorId(item.id));
+  const sharedNegative = representativeResult.negative.filter((item) => !isPerUnitValueFactorId(item.id));
+
+  const originalFields = state.fields;
+  const units = buildAllTitleUnitsForSummaryTable();
+  const perUnitPositiveEntries = [];
+  const perUnitNegativeEntries = [];
+  units.forEach((unit, index) => {
+    state.fields = { ...originalFields, ...unit.fields };
+    try {
+      const perUnitInput = {
+        ...baseInput,
+        fields: state.fields,
+        tables: { ...baseInput.tables, ...(unit.tables || {}) },
+        manualPositive: [],
+        manualNegative: [],
+      };
+      const result = globalThis.ValueFactorsRules.calculateValueFactors(perUnitInput);
+      result.positive.filter((item) => isPerUnitValueFactorId(item.id)).forEach((item) => {
+        perUnitPositiveEntries.push({ index, fields: unit.fields, item });
+      });
+      result.negative.filter((item) => isPerUnitValueFactorId(item.id)).forEach((item) => {
+        perUnitNegativeEntries.push({ index, fields: unit.fields, item });
+      });
+    } finally {
+      state.fields = originalFields;
+    }
+  });
+
+  return {
+    positive: [...sharedPositive, ...groupAndAttributeValueFactorEntries(perUnitPositiveEntries)],
+    negative: [...sharedNegative, ...groupAndAttributeValueFactorEntries(perUnitNegativeEntries)],
+  };
+}
+
 function createValueFactorsPanel() {
   const panel = document.createElement("div");
   panel.className = "value-factors-panel";
@@ -41680,7 +41798,7 @@ function createValueFactorsPanel() {
 }
 
 function refreshValueFactorsFromCurrentState() {
-  const result = globalThis.ValueFactorsRules.calculateValueFactors(getValueFactorsInput());
+  const result = calculateValueFactorsForAllTitleUnits(getValueFactorsInput());
   state.fields.valueFactorsPositiveText = formatValueFactorsList(result.positive);
   state.fields.valueFactorsNegativeText = formatValueFactorsList(result.negative);
   state.fields.valueFactorsReportText = globalThis.ValueFactorsRules.formatValueFactorsText(result);
@@ -41886,19 +42004,19 @@ function createValueFactorsReportTextBox(result) {
 
 function buildValueFactorsPositiveText() {
   if (!globalThis.ValueFactorsRules) return "";
-  const result = globalThis.ValueFactorsRules.calculateValueFactors(getValueFactorsInput());
+  const result = calculateValueFactorsForAllTitleUnits(getValueFactorsInput());
   return formatValueFactorsList(result.positive);
 }
 
 function buildValueFactorsNegativeText() {
   if (!globalThis.ValueFactorsRules) return "";
-  const result = globalThis.ValueFactorsRules.calculateValueFactors(getValueFactorsInput());
+  const result = calculateValueFactorsForAllTitleUnits(getValueFactorsInput());
   return formatValueFactorsList(result.negative);
 }
 
 function buildValueFactorsReportText() {
   if (!globalThis.ValueFactorsRules) return "";
-  const result = globalThis.ValueFactorsRules.calculateValueFactors(getValueFactorsInput());
+  const result = calculateValueFactorsForAllTitleUnits(getValueFactorsInput());
   return globalThis.ValueFactorsRules.formatValueFactorsText(result);
 }
 
