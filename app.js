@@ -23179,8 +23179,20 @@ function buildTitleUnitsSummaryTableCommonFieldsHtml(commonFields, maxColumns = 
   const labelStyle = `font-size:7.5pt;font-weight:800;letter-spacing:0.3pt;color:${blue};text-transform:uppercase;margin:0 0 2pt;`;
   const valueStyle = `font-size:10pt;font-weight:700;color:${ink};word-break:break-word;`;
 
+  // "data-common-field-cell" (2026-09-08) — kullanıcı bulgusu: "export
+  // edilen excel dosyasında tablolarda ortak değerler tek hücrede
+  // okunaksız olarak gözüküyor". Bu kutucuk tasarımı (etiket üstte,
+  // değer altta, TEK <td> içinde İKİ <div>) ekran/Word için BİLİNÇLİ
+  // (bkz. yukarıdaki 2026-08-27 yorumu) — DEĞİŞTİRİLMEDİ. Ama
+  // src/exports/report-tables-xlsx.js'in genel HTML->Excel dönüştürücüsü
+  // yalnızca <br>'i satır sonu sayar, <div> sınırlarını YOKSAYIP metni
+  // BOŞLUKSUZ birleştiriyordu ("İl"+"BURSA" -> "İLBURSA"). Bu işaret,
+  // yalnızca Excel dönüşümünde (splitCommonFieldCellsForXlsx, o dosyada)
+  // bu hücreyi AYNI temada (aynı kenarlık/kutu) İKİ ayrı düz hücreye
+  // (başlık + bilgi) bölmek için kullanılır — başka hiçbir tüketici
+  // (ekran/Word) bu işareti okumaz/etkilenmez.
   const cellsHtml = commonFields.map((field) => (
-    `<td style="${boxCell}"><div style="${labelStyle}">${escapeHtml(field.label)}</div><div style="${valueStyle}">${escapeHtml(field.value)}</div></td>`
+    `<td data-common-field-cell="1" style="${boxCell}"><div style="${labelStyle}">${escapeHtml(field.label)}</div><div style="${valueStyle}">${escapeHtml(field.value)}</div></td>`
   ));
   const rowsHtml = [];
   for (let index = 0; index < cellsHtml.length; index += COLUMNS) {

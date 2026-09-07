@@ -303,6 +303,50 @@ const stylesXml = alignmentRegistry.buildStylesXml();
 assert(!stylesXml.includes('vertical="center"'), "Hucre stillerinde ARTIK dikey 'center' hizalama OLMAMALI.");
 assert(stylesXml.includes('vertical="top"'), "Hucre stilleri dikeyde 'top' hizalanmali.");
 
+// --- 1g) REGRESYON (2026-09-08, ekran görüntüsü): "ORTAK BİLGİLER" kutucuk
+// hücreleri (buildTitleUnitsSummaryTableCommonFieldsHtml, TÜM "Taşınmazlar
+// X Özeti" tablolarının paylaştığı üretici) artık AYNI temada (aynı
+// kenarlık/dolgu) İKİ ayrı düz hücreye (başlık + bilgi) bölünmeli — eskiden
+// TEK <td> içindeki iki <div> (etiket+değer) boşluksuz birleşip "İl"+
+// "BURSA" -> "İLBURSA" gibi okunaksız tek hücre üretiyordu. -------------
+{
+  // app.js'teki GERÇEK üretici fonksiyonun (buildTitleUnitsSummaryTableCommonFieldsHtml)
+  // ÜRETTİĞİYLE BİREBİR AYNI biçim (data-common-field-cell işareti + iki
+  // <div> + doldurma hücresi) — sabit/basitleştirilmiş bir kopya DEĞİL,
+  // gerçek fonksiyonun kaynağından ("TESTS" ile karışmasın diye ayrı bir
+  // extractFunction kullanmak yerine burada BİREBİR yapıştırılan örnek,
+  // gerçek fonksiyonun cellsHtml/padHtml satırlarıyla birebir eşleşen bir
+  // altkümesi).
+  const commonFieldsHtml = `<div class="title-units-summary-common-fields" style="margin:0 0 8pt;">
+    <div style="font-size:9pt;font-weight:800;">ORTAK BİLGİLER</div>
+    <table style="width:100%;border-collapse:collapse;background:#eef2fa;border:1pt solid #dde3ef;border-radius:4pt;"><tr>` +
+    `<td data-common-field-cell="1" style="border:1pt solid #dde3ef;background:#ffffff;padding:5pt 7pt;text-align:left;vertical-align:top;width:25%;"><div style="font-size:7.5pt;font-weight:800;color:#3a5691;">İl</div><div style="font-size:10pt;font-weight:700;color:#152238;">BURSA</div></td>` +
+    `<td data-common-field-cell="1" style="border:1pt solid #dde3ef;background:#ffffff;padding:5pt 7pt;text-align:left;vertical-align:top;width:25%;"><div style="font-size:7.5pt;font-weight:800;color:#3a5691;">İlçe</div><div style="font-size:10pt;font-weight:700;color:#152238;">OSMANGAZİ</div></td>` +
+    `<td style="border:none;background:transparent;" colspan="2"></td>` +
+    `</tr></table></div>`;
+  const commonParsed = ReportTablesXlsx.parseHtmlTables(commonFieldsHtml);
+  assert(Boolean(commonParsed), "'ORTAK BİLGİLER' kutucuk HTML'i ayrıştırılamadı.");
+  const commonRow = commonParsed.grid[0] || [];
+  assert(commonRow.length === 5, `'ORTAK BİLGİLER' satırında (2 alan x 2 hücre + 1 doldurma) 5 hücre bekleniyordu, bulunan: ${commonRow.length}.`);
+  const ilLabelCell = commonRow.find((c) => c.col === 0);
+  const ilValueCell = commonRow.find((c) => c.col === 1);
+  const ilceLabelCell = commonRow.find((c) => c.col === 2);
+  const ilceValueCell = commonRow.find((c) => c.col === 3);
+  assert(ilLabelCell?.text === "İl", `Başlık hücresi (col 0) 'İl' OLMALI, bulunan: ${JSON.stringify(ilLabelCell?.text)}.`);
+  assert(ilValueCell?.text === "BURSA", `Bilgi hücresi (col 1) 'BURSA' OLMALI (etiketle BİRLEŞİK/okunaksız OLMAMALI), bulunan: ${JSON.stringify(ilValueCell?.text)}.`);
+  assert(ilceLabelCell?.text === "İlçe", `Başlık hücresi (col 2) 'İlçe' OLMALI, bulunan: ${JSON.stringify(ilceLabelCell?.text)}.`);
+  assert(ilceValueCell?.text === "OSMANGAZİ", `Bilgi hücresi (col 3) 'OSMANGAZİ' OLMALI, bulunan: ${JSON.stringify(ilceValueCell?.text)}.`);
+  // Aynı temada: başlık VE bilgi hücreleri AYNI kenarlık/dolgu stiline
+  // (bg beyaz kutu içinde) sahip kalmalı — yalnızca metin İKİYE bölündü,
+  // görsel gruplama (tema) BOZULMADI.
+  assert(ilLabelCell?.bg === "#ffffff" && ilValueCell?.bg === "#ffffff", "Başlık ve bilgi hücreleri AYNI temada (aynı dolgu rengi) kalmalı.");
+  // Doldurma hücresinin colspan'i (gerçek alan hücreleri ikiye bölündüğü
+  // için) İKİYE katlanmalı: orijinal colspan="2" -> 4.
+  const padCell = commonRow.find((c) => c.col === 4);
+  assert(padCell?.colspan === 4, `Doldurma hücresinin colspan'i ikiye katlanıp 4 olmalı, bulunan: ${padCell?.colspan}.`);
+  console.log("'ORTAK BİLGİLER' kutucuklarının Excel'de ayrı başlık/bilgi hücrelerine bölünmesi testi tamam.");
+}
+
 // --- 2) Tam disa aktarma calistir -----------------------------------------
 // Kullanici talebi: Takyidat alt tablolari (Beyanlar/Serhler/Ipotekler) TEK
 // sayfada alt alta; Degerleme ve Emsal tablolari da TEK sayfada alt alta.

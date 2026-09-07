@@ -152,10 +152,41 @@
     return { getXfId, buildStylesXml };
   }
 
+  // Kullanıcı bulgusu (2026-09-08, ekran görüntüsü): "export edilen excel
+  // dosyasında tablolarda ortak değerler tek hücrede okunaksız olarak
+  // gözüküyor" — buildTitleUnitsSummaryTableCommonFieldsHtml() (app.js,
+  // "ORTAK BİLGİLER" kutucukları, TÜM "Taşınmazlar X Özeti" tablolarının
+  // PAYLAŞTIĞI tek üretici) her alanı TEK <td> içinde İKİ <div> (üstte
+  // etiket, altta değer — "bir istatistik kartı gibi", 2026-08-27'nin
+  // BİLİNÇLİ tasarımı) olarak üretiyor. Aşağıdaki cellTextFromInnerHtml()
+  // yalnızca <br>'i satır sonu sayıp DİĞER TÜM etiketleri (div dahil)
+  // BOŞLUKSUZ siliyor — bu yüzden "İl"+"BURSA" gibi iki ayrı kavram
+  // "İLBURSA" olarak BİRLEŞİYORDU. Ekran/Word görünümü (kutucuk tasarımı)
+  // BİLİNÇLİ OLDUĞUNDAN DEĞİŞTİRİLMEDİ — bunun yerine, bu hücreler
+  // parseHtmlTables'a ULAŞMADAN ÖNCE (yalnızca Excel dönüşüm yolunda),
+  // app.js'in eklediği `data-common-field-cell="1"` işaretiyle bulunup
+  // AYNI temada (aynı kenarlık/dolgu stili) İKİ ayrı düz hücreye (başlık +
+  // bilgi) bölünür.
+  function splitCommonFieldCellsForXlsx(html) {
+    return String(html || "").replace(
+      /<td data-common-field-cell="1" style="([^"]*)"><div style="[^"]*">([^<]*)<\/div><div style="[^"]*">([^<]*)<\/div><\/td>/g,
+      (_match, cellStyle, label, value) => (
+        `<td style="${cellStyle}font-weight:700;">${label}</td><td style="${cellStyle}">${value}</td>`
+      )
+    ).replace(
+      // Aynı banner'ın satır-doldurma (padding) hücresi — gerçek alan
+      // hücreleri İKİYE bölündüğünden, satırın toplam sütun sayısını
+      // TUTARLI tutmak için doldurma colspan'i de İKİYE katlanır.
+      /<td style="border:none;background:transparent;" colspan="(\d+)"><\/td>/g,
+      (_match, colspan) => `<td style="border:none;background:transparent;" colspan="${Number(colspan) * 2}"></td>`
+    );
+  }
+
   // --- HTML tablo -> hücre ızgarası ayrıştırıcı --------------------------
   // Not: bu üretici fonksiyonların hücre içeriği yalnızca escapeHtml + <br>
-  // içerir (iç içe etiket yok); bu yüzden basit bir <br> -> \n dönüşümü +
-  // etiket temizliği yeterlidir.
+  // içerir (iç içe etiket yok, "ORTAK BİLGİLER" kutucukları HARİÇ — bkz.
+  // yukarıdaki splitCommonFieldCellsForXlsx()); bu yüzden basit bir <br> ->
+  // \n dönüşümü + etiket temizliği yeterlidir.
   function cellTextFromInnerHtml(innerHtml) {
     return htmlEntityDecode(
       String(innerHtml || "")
@@ -291,7 +322,7 @@
   }
 
   function parseHtmlTables(html) {
-    const tableBlocks = findInnermostTableBlocks(String(html || "")).map((b) => b.html);
+    const tableBlocks = findInnermostTableBlocks(splitCommonFieldCellsForXlsx(html)).map((b) => b.html);
     if (!tableBlocks.length) return null;
     let grid = [];
     let merges = [];
