@@ -1075,6 +1075,18 @@ const encumbranceAnnotationTypeOptions = ["Şerh", "Haciz", "İhtiyati Haciz", "
 let activeSectionId = sections[0].id;
 let state = loadState();
 let currentAccessEmail = "";
+// Kullanıcı talebi (2026-09-07): "kullanıcı adı ve soyadını ve çalıştığı
+// firmanın ticari adını placeholderlar bölümüne ekle" — login.html'deki
+// kayıt formunun ZATEN topladığı (ve server.js'in approved-users.json'da
+// SAKLADIĞI, GET /api/account-profile ile döndürdüğü) fullName/company
+// alanları — sunucu tarafında YENİ hiçbir şey GEREKMEDİ. cloud-sync.js
+// her oturum açılışında (applySensitiveRoleFromServer'ın YANINDA, AYNI
+// handleAuthState() içinde) bu profili sorgulayıp setCurrentUserProfile()
+// ile buraya YAZAR — rapor şablonu placeholder'ları (aşağıdaki
+// buildCurrentUserFullNameText/buildCurrentUserCompanyText) bu ANLIK
+// (senkron, tekrar sunucuya sormadan okunan) değerleri kullanır.
+let currentUserFullName = "";
+let currentUserCompany = "";
 // Çoklu seçim alanı render gerektiren bir güncelleme yaptığında açık panel
 // kaybolmasın; yeniden oluşan aynı alan kendini tekrar açar.
 let multiCheckboxFieldToReopen = "";
@@ -43156,6 +43168,25 @@ function getOwnersListForPlaceholderPreview() {
 function collectGeneratedTextPlaceholders() {
   const generatedRows = [
     ...getValuationFieldPlaceholderRows(),
+    // Kullanıcı talebi (2026-09-07): "kullanıcı adı ve soyadını ve
+    // çalıştığı firmanın ticari adını placeholderlar bölümüne ekle" —
+    // window.RaporAccessControl.setUserProfile() ile cloud-sync.js'in
+    // yazdığı (login.html kayıt formunun ZATEN topladığı) fullName/company
+    // profili — buradaki değer, o ANLIK (senkron) cache'lenmiş değeri
+    // gösterir (bu önizleme paneli AÇILDIĞINDA profil zaten yüklenmiş
+    // olmalı, ilk oturum açılışının HEMEN ardından değilse boş görünebilir).
+    {
+      category: "Kullanıcı Bilgileri",
+      key: "current_user_full_name",
+      title: "Kullanıcı Ad Soyad",
+      value: buildCurrentUserFullNameText(),
+    },
+    {
+      category: "Kullanıcı Bilgileri",
+      key: "current_user_company",
+      title: "Kullanıcının Çalıştığı Firma (Ticari Ad)",
+      value: buildCurrentUserCompanyText(),
+    },
     {
       category: "Açıklamalar",
       key: "foreign_currency_valuation_explanation",
@@ -48678,6 +48709,30 @@ function setCurrentAccessSensitive(canView) {
   render();
 }
 
+// GET /api/account-profile sonucu geldiğinde cloud-sync.js tarafından
+// çağrılır (bkz. currentUserFullName/currentUserCompany yorumu, yukarıda) —
+// render()/ensureActiveSectionVisible() ÇAĞRILMAZ: bu değerler HİÇBİR
+// formda/panelde GÖRÜNTÜLENMİYOR (yalnızca banka şablonu export'unda
+// placeholder olarak OKUNUYOR), bu yüzden setCurrentAccessSensitive'in
+// aksine ekranı yeniden çizmeye GEREK YOK.
+function setCurrentUserProfile(fullName, company) {
+  currentUserFullName = String(fullName || "").trim();
+  currentUserCompany = String(company || "").trim();
+}
+
+// Banka şablonu placeholder'ları ({{KULLANICI_AD_SOYAD}}/{{KULLANICI_FIRMA}},
+// bkz. template-engine.js) — src/templates/template-engine.js'teki
+// safeCall("fnAdı") dinamik çağrı mekanizmasıyla (CLAUDE.md'nin "147
+// dinamik çağrı" uyarısı) KULLANILDIĞINDAN adları GREP İLE aranabilir
+// olmalı, isimleri DEĞİŞTİRİLMEMELİ.
+function buildCurrentUserFullNameText() {
+  return currentUserFullName;
+}
+
+function buildCurrentUserCompanyText() {
+  return currentUserCompany;
+}
+
 window.RaporAccessControl = {
   setCurrentUser: setCurrentAccessUser,
   getRole: getCurrentAccessRole,
@@ -48686,6 +48741,9 @@ window.RaporAccessControl = {
   canViewSection: (sectionId) => !shouldHideSectionForAccess(sectionId),
   setCanViewSensitive: setCurrentAccessSensitive,
   canViewSensitive: canViewSensitiveContent,
+  setUserProfile: setCurrentUserProfile,
+  getUserFullName: () => currentUserFullName,
+  getUserCompany: () => currentUserCompany,
 };
 document.body.dataset.userRole = getCurrentAccessRole();
 

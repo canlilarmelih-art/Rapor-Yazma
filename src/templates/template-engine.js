@@ -993,6 +993,15 @@
     EMLAKBEYANDEGERIACIKLAMASI: { t: () => safeCall("buildPropertyTaxDeclarationExplanationForExport") },
     KATBAZINDAINDIRGENMISALANTABLOSU: { h: () => safeCall("buildExplanationsFloorValuationWordTableHtml") },
 
+    // Kullanıcı talebi (2026-09-07): "kullanıcı adı ve soyadını ve
+    // çalıştığı firmanın ticari adını placeholderlar bölümüne ekle" —
+    // window.RaporAccessControl.setUserProfile() ile cloud-sync.js'in
+    // yazdığı (login.html kayıt formunun ZATEN topladığı) fullName/company
+    // profili — raporun KENDİ verisinden DEĞİL, o an giriş yapmış
+    // kullanıcının HESAP bilgisinden gelir.
+    KULLANICI_AD_SOYAD: { t: () => safeCall("buildCurrentUserFullNameText") },
+    KULLANICI_FIRMA: { t: () => safeCall("buildCurrentUserCompanyText") },
+
     // --- Ziraat Bankası açıklama bölümleri ---
     ZIRAAT_KONUM_CEVRESEL: { t: () => safeCall("buildZiraatLocationEnvironmentalExplanation") },
     ZIRAAT_BOLGE_GELISIMI: { t: () => safeCall("buildZiraatDevelopmentAnalysisExplanation") },

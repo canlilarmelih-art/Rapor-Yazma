@@ -716,6 +716,10 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ fullName: fullNameInput.value.trim(), phone: phoneInput.value.trim() }),
         });
+        // Kullanıcı Ad Soyad'ını burada değiştirebildiğinden, rapor
+        // şablonu placeholder'ının ({{KULLANICI_AD_SOYAD}}) cache'lenmiş
+        // değeri de HEMEN tazelenir — sayfa yenilenmeden bekletilmez.
+        applyUserProfileFromServer();
         profileError.className = "cloud-success";
         profileError.textContent = "Hesap bilgileriniz güncellendi.";
       } catch (error) {
@@ -1028,6 +1032,25 @@
     }
   }
 
+  // Kullanıcı talebi (2026-09-07): "kullanıcı adı ve soyadını ve çalıştığı
+  // firmanın ticari adını placeholderlar bölümüne ekle" — login.html kayıt
+  // formunun ZATEN topladığı (server.js'in approved-users.json'da SAKLADIĞI)
+  // fullName/company profili GET /api/account-profile'dan (accountApi,
+  // yukarıda — hesap ayarları modalının ZATEN kullandığı AYNI uç nokta,
+  // sunucuda YENİ hiçbir şey GEREKMEDİ) sorgulanıp app.js'e (rapor şablonu
+  // placeholder'ları için) yazılır — applySensitiveRoleFromServer'ın (bir
+  // üstte) AYNI "her oturum açılışında taze sorgula" ilkesiyle.
+  async function applyUserProfileFromServer() {
+    try {
+      const result = await accountApi("/api/account-profile");
+      const profile = result.profile || {};
+      window.RaporAccessControl?.setUserProfile?.(profile.fullName || "", profile.company || "");
+    } catch (error) {
+      console.warn("Kullanıcı profil bilgisi (ad soyad/firma) sorgulanamadı:", error);
+      window.RaporAccessControl?.setUserProfile?.("", "");
+    }
+  }
+
   async function handleAuthState(user) {
     cloud.user = user || null;
     firstAuthCheckDone = true;
@@ -1037,12 +1060,14 @@
       cloud.knownRev = 0;
       cloud.lastPushedUpdatedAt = null;
       window.RaporAccessControl?.setCanViewSensitive?.(false);
+      window.RaporAccessControl?.setUserProfile?.("", "");
       setStatus("off", "Bulut senkronu kapalı (giriş yapılmadı).");
       notifyAuthChangeListeners();
       evaluateGate();
       return;
     }
     applySensitiveRoleFromServer();
+    applyUserProfileFromServer();
     if (cloud.activeReportId) {
       await checkForNewerOnOpen();
     } else {
