@@ -156,7 +156,7 @@ const sandboxSource = `
     buildAllTitleUnitsForSummaryTable, joinTitleUnitOwnerColumn,
     computeTitleUnitShareOfLandArea, splitTableHeaderLabelIntoTwoLines,
     buildTitleUnitsSummaryTableData, buildTitleUnitsSummaryWordTableHtml,
-    buildTitleUnitsSummaryTableHtmlEditable,
+    buildTitleUnitsSummaryTableHtmlEditable, flattenTitleUnitsSummaryCommonFields,
     resolveTitleUnitWriteTarget, setTitleUnitFieldValue,
     resolveTitleUnitOwnerRowsWriteTarget, setTitleUnitOwnerRowValue,
     addTitleUnitOwnerRow, removeTitleUnitOwnerRow,
@@ -548,6 +548,52 @@ function unit(fields, ownerRows) {
     assert.equal(valueOccurrences, 2, `Yüzölçümü değeri (1200) İKİ satırda da (tekrarlanan) ayrı hücrede görünmeli, bulunan: ${valueOccurrences}.`);
     console.log("buildTitleUnitsSummaryWordTableHtml(true): 'ORTAK BİLGİLER' banner'ı yerine ortak sütunların ana tabloya (Excel'e) geri eklenmesi testi tamam.");
   }
+}
+
+// --- 6d) YENİ (2026-09-08, kullanıcı takip talebi): "tek sorun ... ------
+// sistemdeki sıralamaya göre olmalı sütun sıraları şu an en sağ tarafa
+// atılmış ortak değerler" — flattenTitleUnitsSummaryCommonFields()'in
+// (saf fonksiyon, GERÇEK kaynaktan) ortak alanları SONA değil, KENDİ
+// orijinal (allHeadersInOriginalOrder'daki) konumuna İÇ İÇE (interleaved)
+// yerleştirdiği İZOLE, kontrollü bir senaryoyla doğrulanır — gerçek
+// tablo fixture'larının (6c) karmaşık kural etkileşiminden BAĞIMSIZ.
+{
+  // Orijinal sıra: A, B(ortak), C, D(ortak), E — B ve D hoistlenip
+  // commonFields'e taşınmış, geriye A/C/E (headers) kalmış.
+  const result = fns.flattenTitleUnitsSummaryCommonFields(
+    ["A", "C", "E"],
+    [["a1", "c1", "e1"], ["a2", "c2", "e2"]],
+    [{ label: "B", value: "b-ortak" }, { label: "D", value: "d-ortak" }],
+    null,
+    ["A", "B", "C", "D", "E"]
+  );
+  assert.deepEqual(result.headers, ["A", "B", "C", "D", "E"], `Ortak alanlar SONA değil, orijinal konumlarına İÇ İÇE yerleşmeli, bulunan sıra: ${JSON.stringify(result.headers)}.`);
+  assert.deepEqual(result.rows[0], ["a1", "b-ortak", "c1", "d-ortak", "e1"], "1. satır hücreleri de AYNI (yeni) sütun sırasını izlemeli.");
+  assert.deepEqual(result.rows[1], ["a2", "b-ortak", "c2", "d-ortak", "e2"], "2. satır hücreleri de AYNI (yeni) sütun sırasını izlemeli — ortak değer İKİ satırda da tekrarlanmalı.");
+  assert.deepEqual(result.commonFields, [], "flatten sonrası commonFields boş dönmeli (banner artık gerekmiyor).");
+
+  // Referans liste yoksa (bilinmeyen bir çağrı yolu) eski, güvenli
+  // varsayılan davranış (SONA ekleme) KORUNMALI — regresyon değil.
+  const noReference = fns.flattenTitleUnitsSummaryCommonFields(
+    ["A", "C"],
+    [["a1", "c1"]],
+    [{ label: "B", value: "b-ortak" }],
+  );
+  assert.deepEqual(noReference.headers, ["A", "C", "B"], "Referans liste (allHeadersInOriginalOrder) verilmezse eski 'sona ekle' davranışı korunmalı.");
+
+  // Referans listede BULUNAMAYAN bir etiket (ör. Değerleme'nin banner'a
+  // özel yeniden-adlandırdığı "İnşaat Seviyesi") güvenli varsayılan olarak
+  // SONA düşmeli (kırılmamalı/hata vermemeli).
+  const unknownLabel = fns.flattenTitleUnitsSummaryCommonFields(
+    ["A", "C"],
+    [["a1", "c1"]],
+    [{ label: "Bilinmeyen Etiket", value: "x" }],
+    null,
+    ["A", "C"]
+  );
+  assert.deepEqual(unknownLabel.headers, ["A", "C", "Bilinmeyen Etiket"], "Referans listede bulunamayan bir etiket SONA düşmeli (güvenli varsayılan).");
+
+  console.log("flattenTitleUnitsSummaryCommonFields(): ortak alanların orijinal konuma İÇ İÇE yerleşmesi (izole) testi tamam.");
 }
 
 // --- 6b) DÜZELTME (2026-09-02, kullanıcı geri bildirimi): "Tapu -----------

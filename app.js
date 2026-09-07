@@ -8719,6 +8719,9 @@ function hoistValuationConstructionLevelForWordTable(data) {
     // Banner'da genişlik kısıtı olmadığından, tablo başlığındaki dar
     // kısaltma ("İnş. Sev.") yerine anlaşılır tam adı kullanılıyor.
     commonFields: [...(Array.isArray(commonFields) ? commonFields : []), { label: "İnşaat Seviyesi", value: firstValue }],
+    // Kullanıcı takip talebi (2026-09-08) — bkz. finalizeTitleUnitsSummaryTableData()'nın
+    // yorumu: pass-through (bu fonksiyon referans listeyi değiştirmiyor).
+    allHeadersInOriginalOrder: data.allHeadersInOriginalOrder,
   };
 }
 
@@ -8744,7 +8747,7 @@ function buildValuationUnitsSummaryWordTableHtml(flattenCommonFields = false) {
   // "Diğer" grubuna düşüp mevcut gruplu başlık mekanizmasıyla SORUNSUZ
   // görüntülenir, renderer'ın kendisi DEĞİŞTİRİLMEDİ.
   const flattenedForExport = flattenCommonFields
-    ? flattenTitleUnitsSummaryCommonFields(hoisted.headers, hoisted.rows, hoisted.commonFields, hoisted.columnMeta)
+    ? flattenTitleUnitsSummaryCommonFields(hoisted.headers, hoisted.rows, hoisted.commonFields, hoisted.columnMeta, hoisted.allHeadersInOriginalOrder)
     : hoisted;
   return buildUnitsSummaryTableHeadingHtml("Taşınmazlar Değerleme Özeti") + buildValuationUnitsSummaryTableHtml(flattenedForExport);
 }
@@ -22729,6 +22732,19 @@ function finalizeTitleUnitsSummaryTableData(headers, rows, columnMeta, options =
     rows: dataRows.map((row) => keptIndices.map((index) => row[index])),
     columnMeta: keptIndices.map((index) => dataColumnMeta[index]),
     commonFields,
+    // Kullanıcı takip talebi (2026-09-08): "sistemdeki sıralamaya göre
+    // olmalı sütun sıraları şu an en sağ tarafa atılmış ortak değerler" —
+    // flattenTitleUnitsSummaryCommonFields() (Excel'e özel, bkz. o
+    // fonksiyonun yorumu) commonFields'i ana tabloya SONA eklemek yerine
+    // ORİJİNAL konumuna geri koyabilsin diye, "boş sütun kaldırma"dan
+    // SONRAKİ ama HERHANGİ bir hoisting'den ÖNCEKİ tam sütun sırası
+    // (dataHeaders) burada saklanır — hoistUniformColumnsForWordTable()/
+    // hoistValuationConstructionLevelForWordTable() bunu DEĞİŞTİRMEDEN
+    // (pass-through) taşır. Etiketler bu tablo İÇİNDE tanım gereği
+    // BENZERSİZ olduğundan (aynı başlık iki sütunda tekrar etmez), konum
+    // bulma LABEL METNİYLE eşleştirilir — ayrı bir indeks-eşleme
+    // mekanizması GEREKMEZ.
+    allHeadersInOriginalOrder: dataHeaders,
   };
 }
 
@@ -23021,8 +23037,8 @@ function buildUnitsSummaryTableHeadingHtml(label) {
 // farklı olabilen bir pay/payda oranı) `exemptFieldKeys` ile AYRICA
 // hariç tutulur (bkz. Tapu sarmalayıcısındaki çağrı).
 function hoistUniformColumnsForWordTable(data, exemptFieldKeys) {
-  const { headers, rows, commonFields, columnMeta } = data;
-  if (!Array.isArray(rows) || rows.length < 2 || headers.length <= 1) return { headers, rows, commonFields };
+  const { headers, rows, commonFields, columnMeta, allHeadersInOriginalOrder } = data;
+  if (!Array.isArray(rows) || rows.length < 2 || headers.length <= 1) return { headers, rows, commonFields, allHeadersInOriginalOrder };
   const exempt = exemptFieldKeys instanceof Set ? exemptFieldKeys : new Set(exemptFieldKeys || []);
   const newCommonFields = Array.isArray(commonFields) ? [...commonFields] : [];
   const keepIndexes = [];
@@ -23040,11 +23056,16 @@ function hoistUniformColumnsForWordTable(data, exemptFieldKeys) {
       keepIndexes.push(index);
     }
   });
-  if (keepIndexes.length === headers.length) return { headers, rows, commonFields };
+  if (keepIndexes.length === headers.length) return { headers, rows, commonFields, allHeadersInOriginalOrder };
   return {
     headers: keepIndexes.map((i) => headers[i]),
     rows: rows.map((row) => keepIndexes.map((i) => row[i])),
     commonFields: newCommonFields,
+    // Kullanıcı takip talebi (2026-09-08) — bkz. finalizeTitleUnitsSummaryTableData()'nın
+    // yorumu: bu ikinci (export-only) hoisting katmanı de ayni referans
+    // listeyi DEĞİŞTİRMEDEN taşır (buradaki `headers` zaten o listenin
+    // bir ALT kümesi olduğundan yeni bir katkısı yok, yalnızca pass-through).
+    allHeadersInOriginalOrder,
   };
 }
 
@@ -23058,7 +23079,7 @@ function buildTitleUnitsSummaryWordTableHtml(flattenCommonFields = false) {
   // rastlantısal olarak aynı çıksa BİLE hoistlenmemesi için hariç
   // tutuldu.
   const hoisted = hoistUniformColumnsForWordTable(data, ["share", "denominator"]);
-  return buildUnitsSummaryTableHeadingHtml("Taşınmazlar Tapu Özeti") + buildTitleUnitsSummaryTableHtmlFromData(hoisted.headers, hoisted.rows, hoisted.commonFields, 4, flattenCommonFields);
+  return buildUnitsSummaryTableHeadingHtml("Taşınmazlar Tapu Özeti") + buildTitleUnitsSummaryTableHtmlFromData(hoisted.headers, hoisted.rows, hoisted.commonFields, 4, flattenCommonFields, hoisted.allHeadersInOriginalOrder);
 }
 
 // "sütun başlıklarını 2 satır yap böylelikle hücre genişliği bir nebze
@@ -23113,28 +23134,68 @@ function splitTableHeaderLabelIntoTwoLines(label) {
 // değerleride tablolara dahil edelim" — "ORTAK BİLGİLER" hoisting'ini
 // (finalizeTitleUnitsSummaryTableData/hoistUniformColumnsForWordTable)
 // TERSİNE çevirip alanları normal (TÜM satırlarda AYNI, tekrarlanan
-// değerli) sütunlar olarak headers/rows'un SONUNA geri ekler — böylece
-// Excel'de düz/tam bir veri tablosu elde edilir (filtre/sıralama/başka
-// bir tabloya kopyalama için hiçbir sütun eksik kalmaz). Ekran/Word
-// görünümü (banner) BU FONKSİYONDAN HİÇ GEÇMEZ, DEĞİŞMEDİ — yalnızca
-// çağıran taraf (report-tables-xlsx.js) AÇIKÇA `flatten:true` istediğinde
-// devreye girer (bkz. buildTitleUnitsSummaryTableHtmlFromData/
-// buildValuationUnitsSummaryWordTableHtml'in flattenCommonFields
-// parametresi).
-function flattenTitleUnitsSummaryCommonFields(headers, rows, commonFields, columnMeta = null) {
+// değerli) sütunlar olarak headers/rows'a geri ekler — böylece Excel'de
+// düz/tam bir veri tablosu elde edilir (filtre/sıralama/başka bir
+// tabloya kopyalama için hiçbir sütun eksik kalmaz). Ekran/Word görünümü
+// (banner) BU FONKSİYONDAN HİÇ GEÇMEZ, DEĞİŞMEDİ — yalnızca çağıran taraf
+// (report-tables-xlsx.js) AÇIKÇA `flatten:true` istediğinde devreye girer
+// (bkz. buildTitleUnitsSummaryTableHtmlFromData/buildValuationUnitsSummaryWordTableHtml'in
+// flattenCommonFields parametresi).
+//
+// Kullanıcı takip talebi (2026-09-08, AYNI gün): "tek sorun ... sistemdeki
+// sıralamaya göre olmalı sütun sıraları şu an en sağ tarafa atılmış ortak
+// değerler" — ilk sürüm commonFields'i SONA ekliyordu; artık her alan,
+// `allHeadersInOriginalOrder`daki (finalizeTitleUnitsSummaryTableData'nın
+// "boş sütun kaldırma"dan SONRA ama HERHANGİ bir hoisting'den ÖNCEKİ tam
+// sütun sırası, bkz. o fonksiyonun yorumu) KENDİ orijinal konumuna geri
+// yerleştirilir — hayatta kalan (hiç hoistlenmemiş) sütunlarla İÇ İÇE
+// (interleaved). Bu referans listede BULUNAMAYAN bir etiket (ör. Değerleme
+// tablosunun banner'a özel yeniden-adlandırdığı "İnşaat Seviyesi" — bkz.
+// hoistValuationConstructionLevelForWordTable) güvenli bir varsayılan
+// olarak SONA düşer (eski davranış, yalnızca bu nadir istisna için).
+function flattenTitleUnitsSummaryCommonFields(headers, rows, commonFields, columnMeta = null, allHeadersInOriginalOrder = null) {
   const fields = Array.isArray(commonFields) ? commonFields : [];
   if (!fields.length) return { headers, rows, columnMeta, commonFields: [] };
+
+  const referenceOrder = Array.isArray(allHeadersInOriginalOrder) ? allHeadersInOriginalOrder : null;
+  if (!referenceOrder) {
+    // Referans liste yoksa (bilinmeyen/eski bir çağrı yolu) eski davranış:
+    // güvenli varsayılan olarak SONA ekle.
+    return {
+      headers: [...headers, ...fields.map((field) => field.label)],
+      rows: rows.map((row) => [...row, ...fields.map((field) => field.value)]),
+      columnMeta: Array.isArray(columnMeta) ? [...columnMeta, ...fields.map(() => ({ kind: "readonly" }))] : columnMeta,
+      commonFields: [],
+    };
+  }
+
+  // Etiketler bu tablo İÇİNDE benzersiz olduğundan (aynı başlık iki
+  // sütunda tekrar etmez) konum eşleştirmesi doğrudan METİNLE yapılır —
+  // ayrı bir indeks-taşıma mekanizması gerekmez.
+  const orderOf = (label) => {
+    const index = referenceOrder.indexOf(label);
+    return index === -1 ? referenceOrder.length : index; // bulunamayan (yeniden adlandırılmış) etiket SONA düşer.
+  };
+  const survivorEntries = headers.map((label, colIndex) => ({ isCommon: false, label, colIndex, order: orderOf(label) }));
+  const commonEntries = fields.map((field) => ({ isCommon: true, label: field.label, value: field.value, order: orderOf(field.label) }));
+  // Array.prototype.sort KARARLIDIR (ECMA-262 2019+) — AYNI order'lı
+  // girdiler (ör. iki bulunamayan etiket) kendi ARALARINDAKİ orijinal
+  // sırayı (survivor'lar önce, sonra commonFields) korur.
+  const merged = [...survivorEntries, ...commonEntries].sort((a, b) => a.order - b.order);
+
   return {
-    headers: [...headers, ...fields.map((field) => field.label)],
-    rows: rows.map((row) => [...row, ...fields.map((field) => field.value)]),
-    columnMeta: Array.isArray(columnMeta) ? [...columnMeta, ...fields.map(() => ({ kind: "readonly" }))] : columnMeta,
+    headers: merged.map((entry) => entry.label),
+    rows: rows.map((row) => merged.map((entry) => (entry.isCommon ? entry.value : row[entry.colIndex]))),
+    columnMeta: Array.isArray(columnMeta)
+      ? merged.map((entry) => (entry.isCommon ? { kind: "readonly" } : columnMeta[entry.colIndex]))
+      : columnMeta,
     commonFields: [],
   };
 }
 
-function buildTitleUnitsSummaryTableHtmlFromData(headers, rows, commonFields = [], commonFieldsMaxColumns = 4, flattenCommonFields = false) {
+function buildTitleUnitsSummaryTableHtmlFromData(headers, rows, commonFields = [], commonFieldsMaxColumns = 4, flattenCommonFields = false, allHeadersInOriginalOrder = null) {
   const flattened = flattenCommonFields
-    ? flattenTitleUnitsSummaryCommonFields(headers, rows, commonFields)
+    ? flattenTitleUnitsSummaryCommonFields(headers, rows, commonFields, null, allHeadersInOriginalOrder)
     : { headers, rows, commonFields };
 
   const ink = getReportThemeToken("--ink", "#152238");
@@ -24251,7 +24312,7 @@ function buildAddressUnitsSummaryWordTableHtml(flattenCommonFields = false) {
   // bkz. createAddressUnitsSummaryTablePreview() yorumu — bu tablonun
   // Ortak Bilgiler'i 5 sütuna sığdırılıyor, diğer tabloların 4'ü DEĞİL.
   const hoisted = hoistUniformColumnsForWordTable(data);
-  return buildUnitsSummaryTableHeadingHtml("Taşınmazlar Adres Özeti") + buildTitleUnitsSummaryTableHtmlFromData(hoisted.headers, hoisted.rows, hoisted.commonFields, 5, flattenCommonFields);
+  return buildUnitsSummaryTableHeadingHtml("Taşınmazlar Adres Özeti") + buildTitleUnitsSummaryTableHtmlFromData(hoisted.headers, hoisted.rows, hoisted.commonFields, 5, flattenCommonFields, hoisted.allHeadersInOriginalOrder);
 }
 
 // İmar Durumu Faz B (Çift Yönlü Düzenleme, 2026-08-16) — kullanıcı talebi:
@@ -24332,7 +24393,7 @@ function buildImarUnitsSummaryWordTableHtml(flattenCommonFields = false) {
   const data = buildImarUnitsSummaryTableData();
   if (!data || !data.rows.length) return "";
   const hoisted = hoistUniformColumnsForWordTable(data);
-  return buildUnitsSummaryTableHeadingHtml("Taşınmazlar İmar Özeti") + buildTitleUnitsSummaryTableHtmlFromData(hoisted.headers, hoisted.rows, hoisted.commonFields, 4, flattenCommonFields);
+  return buildUnitsSummaryTableHeadingHtml("Taşınmazlar İmar Özeti") + buildTitleUnitsSummaryTableHtmlFromData(hoisted.headers, hoisted.rows, hoisted.commonFields, 4, flattenCommonFields, hoisted.allHeadersInOriginalOrder);
 }
 
 // Kullanıcı talebi (2026-08-17): "Çoklu çalışmalarda ada parsel farklı
@@ -24452,7 +24513,7 @@ function buildLandUnitsSummaryWordTableHtml(flattenCommonFields = false) {
   const data = buildLandUnitsSummaryTableData();
   if (!data || !data.rows.length) return "";
   const hoisted = hoistUniformColumnsForWordTable(data);
-  return buildUnitsSummaryTableHeadingHtml("Taşınmazlar Arsa Özeti") + buildTitleUnitsSummaryTableHtmlFromData(hoisted.headers, hoisted.rows, hoisted.commonFields, 4, flattenCommonFields);
+  return buildUnitsSummaryTableHeadingHtml("Taşınmazlar Arsa Özeti") + buildTitleUnitsSummaryTableHtmlFromData(hoisted.headers, hoisted.rows, hoisted.commonFields, 4, flattenCommonFields, hoisted.allHeadersInOriginalOrder);
 }
 
 // Kullanıcı talebi (2026-08-19): "BELGELER ve proje bölümünü incele bu
@@ -24577,7 +24638,7 @@ function buildDocumentsUnitsSummaryWordTableHtml(flattenCommonFields = false) {
   const data = buildDocumentsUnitsSummaryTableData();
   if (!data || !data.rows.length) return "";
   const hoisted = hoistUniformColumnsForWordTable(data);
-  return buildUnitsSummaryTableHeadingHtml("Taşınmazlar Belgeler Özeti") + buildTitleUnitsSummaryTableHtmlFromData(hoisted.headers, hoisted.rows, hoisted.commonFields, 4, flattenCommonFields);
+  return buildUnitsSummaryTableHeadingHtml("Taşınmazlar Belgeler Özeti") + buildTitleUnitsSummaryTableHtmlFromData(hoisted.headers, hoisted.rows, hoisted.commonFields, 4, flattenCommonFields, hoisted.allHeadersInOriginalOrder);
 }
 
 // Kullanıcı talebi (2026-08-21): "çift taraflı tablo mantığını dekoratif
@@ -24844,7 +24905,7 @@ function buildUnitUnitsSummaryWordTableHtml(flattenCommonFields = false) {
   const data = buildUnitUnitsSummaryTableData();
   if (!data || !data.rows.length) return "";
   const hoisted = hoistUniformColumnsForWordTable(data);
-  return buildUnitsSummaryTableHeadingHtml("Taşınmazlar Bağımsız Bölüm Özeti") + buildTitleUnitsSummaryTableHtmlFromData(hoisted.headers, hoisted.rows, hoisted.commonFields, 4, flattenCommonFields);
+  return buildUnitsSummaryTableHeadingHtml("Taşınmazlar Bağımsız Bölüm Özeti") + buildTitleUnitsSummaryTableHtmlFromData(hoisted.headers, hoisted.rows, hoisted.commonFields, 4, flattenCommonFields, hoisted.allHeadersInOriginalOrder);
 }
 
 // Proje Uygunluk Durumu (2026-08-26) — kullanıcı talebi: "uygunluk durumu
@@ -24945,7 +25006,7 @@ function buildProjectSuitabilityUnitsSummaryWordTableHtml(flattenCommonFields = 
   // tablonun aksine hoistUniformColumnsForWordTable BİLEREK UYGULANMIYOR
   // — data.commonFields zaten hep boş, flattenCommonFields burada no-op
   // (tutarlılık için AYNI imza taşınır).
-  return buildUnitsSummaryTableHeadingHtml("Taşınmazlar Proje Uygunluk Özeti") + buildTitleUnitsSummaryTableHtmlFromData(data.headers, data.rows, data.commonFields, 4, flattenCommonFields);
+  return buildUnitsSummaryTableHeadingHtml("Taşınmazlar Proje Uygunluk Özeti") + buildTitleUnitsSummaryTableHtmlFromData(data.headers, data.rows, data.commonFields, 4, flattenCommonFields, data.allHeadersInOriginalOrder);
 }
 
 // Kullanıcı talebi (2026-08-26). Diğer 7 özet tablosuyla (Tapu/Adres/
@@ -25118,7 +25179,7 @@ function buildBuildingBlockUnitsSummaryWordTableHtml(flattenCommonFields = false
   const data = buildBuildingBlockUnitsSummaryTableData();
   if (!data || !data.rows.length) return "";
   const hoisted = hoistUniformColumnsForWordTable(data);
-  return buildUnitsSummaryTableHeadingHtml("Bloklar Ana Gayrimenkul Özeti") + buildTitleUnitsSummaryTableHtmlFromData(hoisted.headers, hoisted.rows, hoisted.commonFields, 4, flattenCommonFields);
+  return buildUnitsSummaryTableHeadingHtml("Bloklar Ana Gayrimenkul Özeti") + buildTitleUnitsSummaryTableHtmlFromData(hoisted.headers, hoisted.rows, hoisted.commonFields, 4, flattenCommonFields, hoisted.allHeadersInOriginalOrder);
 }
 
 function buildTakyidatWordTableHtml() {
@@ -42752,7 +42813,7 @@ function buildGabimUnitsSummaryTableData() {
 function buildGabimUnitsSummaryWordTableHtml(flattenCommonFields = false) {
   const data = buildGabimUnitsSummaryTableData();
   if (!data || !data.rows.length) return "";
-  return buildUnitsSummaryTableHeadingHtml("Taşınmazlar GABİM Özeti") + buildTitleUnitsSummaryTableHtmlFromData(data.headers, data.rows, data.commonFields, 4, flattenCommonFields);
+  return buildUnitsSummaryTableHeadingHtml("Taşınmazlar GABİM Özeti") + buildTitleUnitsSummaryTableHtmlFromData(data.headers, data.rows, data.commonFields, 4, flattenCommonFields, data.allHeadersInOriginalOrder);
 }
 
 // Ekrandaki önizleme — diğer 8 tabloyla AYNI desen. Tüm sütunlar
