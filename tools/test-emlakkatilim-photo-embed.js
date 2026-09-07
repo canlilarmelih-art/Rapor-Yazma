@@ -531,6 +531,66 @@ function singleCategoryGroup(token, label, layoutKey, photos) {
   check(sliceBetween.includes("<w:drawing>"), '"Adres Kodu" görseli "8.2" başlığının HEMEN SONRASINDA gömülü DEĞİL.');
 }
 
+// --- 11) Başlık "yetim" (bir önceki sayfanın en altında) KALMAMALI
+// (2026-09-08, kullanıcının GERÇEK bir raporda gösterdiği ikinci
+// bulgu): "Balk1" stili (bkz. word/styles.xml) <w:keepNext/> İÇERMİYOR
+// — bu yüzden 6 bölüm başlığından HERHANGİ BİRİ, sayfanın DOLU
+// kısmının hemen altına denk gelirse, kendisi sayfaya sığıp İÇERİĞİ
+// (ilk fotoğraf sayfası) bir SONRAKİ sayfaya itebiliyordu. Düzeltme:
+// HER 6 başlığın KENDİ paragrafına açıkça <w:keepNext/> eklendi (Word'e
+// "bu paragrafı bir SONRAKİ paragrafla AYNI sayfada tut" der — sığmazsa
+// İKİSİ BİRDEN sonraki sayfaya gider, başlık asla yalnız kalmaz). -----
+{
+  const headings = [
+    "8.1. Fotoğraflar", "8.2. Uavt Kodu,Kroki,İmar Durumu",
+    "8.3. Proje Fotoğrafları", "8.4. Takbis Belgesi", "8.5. Diğer Ekler",
+    "8.6. Fatura",
+  ];
+  headings.forEach((h) => {
+    const bodyIdx = secondOccurrence(xmlText, h);
+    check(bodyIdx !== -1, `"${h}" başlığının gövdedeki (TOC dışı) ikinci geçişi bulunamadı.`);
+    if (bodyIdx === -1) return;
+    const pStart = xmlText.lastIndexOf("<w:p ", bodyIdx);
+    const pPrEnd = xmlText.indexOf("</w:pPr>", bodyIdx);
+    const pPr = xmlText.slice(pStart, pPrEnd);
+    check(pPr.includes("<w:keepNext/>"), `"${h}" başlığının paragrafında <w:keepNext/> YOK — sayfa sonunda yetim kalıp içeriğini bir sonraki sayfaya itebilir.`);
+  });
+}
+
+// --- 12) {{FOTO_KAPAK}} şablonda TAM OLARAK BİR KEZ geçmeli (2026-09-08,
+// kullanıcının GERÇEK bir raporda gösterdiği üçüncü bulgu: "kapak
+// fotoğrafı ⚠ FOTO_KAPAK bu şekilde yazı halinde geliyor"). Kök neden:
+// {{FOTO_KAPAK}} şablonda İKİ KEZ geçiyordu — biri kapak/özet sayfasında
+// (GERÇEK, çalışan yer tutucu), diğeri "8.1 Fotoğraflar" hücresinde
+// (İŞLEVSİZ artık — embedPhotoGalleryAssets() yalnızca text.indexOf ile
+// İLK geçişi buluyor, İKİNCİSİ hiç dokunulmadan kalıp
+// resolveTemplateTokenValues()'un "tanınmayan alan" uyarısına
+// ("⚠ FOTO_KAPAK") düşüyordu). İşlevsiz ikinci paragraf kaldırıldı. ---
+{
+  const kapakCount = countOccurrences(xmlText, "\\{\\{FOTO_KAPAK\\}\\}");
+  check(kapakCount === 1, `Şablonda TAM OLARAK 1 {{FOTO_KAPAK}} geçişi bekleniyordu (yalnızca kapak/özet sayfasındaki GERÇEK yer tutucu), bulunan: ${kapakCount}. Fazlası "8.1 Fotoğraflar" hücresinde İŞLEVSİZ bir kopya olup "⚠ FOTO_KAPAK" uyarısına yol açar.`);
+
+  // Uçtan uca: gerçek bir kapak fotoğrafı verildiğinde, {{FOTO_KAPAK}}'ın
+  // HİÇBİR kalıntısı normal metin-token döngüsüne (buildValuesWithAllTokensMissing'in
+  // "[TOKEN]" ayraç değeri — GERÇEK uygulamada bunun yerine
+  // template-engine.js'in "⚠ TOKEN" HTML-span uyarısı üretilir, ama BU
+  // test dosyası yalnızca docx-fill.js + şablonu kapsadığından o modülü
+  // simüle ETMİYOR; "[FOTO_KAPAK]" burada AYNI kanıtı taşıyan, bu test
+  // dosyasının KENDİ ayracı) SIZMAMALI — sızarsa bir yerde İŞLENMEDEN
+  // kalan bir {{FOTO_KAPAK}} olduğunu gösterir.
+  const values = buildValuesWithAllTokensMissing(tokens);
+  const photoGroups = [
+    { token: "FOTO_KAPAK", coverPhoto: makePhoto("kapak") },
+    singleCategoryGroup("FOTO_DISMEKAN", "Dış Mekan", "horizontal_pair", [makePhoto("a"), makePhoto("b")]),
+  ];
+  const filled = DocxFill.fillTemplate(arrayBuffer, values, {}, [], photoGroups);
+  const outEntries = DocxFill.readStoredZip(filled.bytes.buffer);
+  const outDoc = outEntries.find((e) => e.name === "word/document.xml");
+  const outXml = Buffer.from(outDoc.bytes).toString("utf8");
+  check(!outXml.includes("[FOTO_KAPAK]"), 'Kapak fotoğrafı VERİLDİĞİ HALDE çıktıda İŞLENMEDEN kalmış bir {{FOTO_KAPAK}} kalıntısı VAR (gerçek uygulamada bu, kullanıcının bildirdiği "⚠ FOTO_KAPAK" uyarısına karşılık gelir).');
+  check(outXml.includes("Kapak Fotoğrafı (yer tutucu"), "Kapak fotoğrafı yer tutucu metni çıktıda bulunamadı.");
+}
+
 if (failures.length) {
   console.error("emlakkatilim.docx fotograf gomme testi BASARISIZ:\n" + failures.map((f) => ` - ${f}`).join("\n"));
   process.exit(1);
