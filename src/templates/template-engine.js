@@ -205,6 +205,18 @@
     return String(value || "").toLocaleUpperCase("tr-TR");
   }
 
+  // "street" alanı serbest metin ("Atatürk Caddesi", "5. Sokak" gibi) —
+  // emlakkatilim.docx'in ayrı Sokak/Cadde hücreleri için hangisine ait
+  // olduğunu belirler. Hiçbiri geçmiyorsa (belirsiz) "sokak"a düşer, veri
+  // kaybolmasın diye — ama artık İKİ hücrede birden TEKRAR etmez.
+  function classifyStreetKind(value) {
+    const upper = toTrUpper(value);
+    const hasCadde = upper.includes("CADDE");
+    const hasSokak = upper.includes("SOKAK") || upper.includes("SOKAĞI");
+    if (hasCadde && !hasSokak) return "cadde";
+    return "sokak";
+  }
+
   function documentsTableHtml() {
     const entries = safeCall("getReviewedDocumentTableEntries", state.tables?.documents)
       || safeCall("getReviewedDocumentChronologicalEntries", state.tables?.documents);
@@ -561,6 +573,15 @@
     ADDRESS_FLOOR_BUYUK: { fn: () => toTrUpper(field("addressFloor")) },
     OUTER_DOOR_BUYUK: { fn: () => toTrUpper(field("outerDoor")) },
     STREET_BUYUK: { fn: () => toTrUpper(field("street")) },
+    // emlakkatilim.docx'in kapak tablosunda "Sokak:" ve "Cadde:" AYRI
+    // hücreler — ikisi de eskiden {{STREET_BUYUK}} kullandığı için aynı
+    // değer İKİ hücrede birden tekrarlanıyordu. Kullanıcı isteği: "street"
+    // metninde "Cadde" geçiyorsa SADECE Cadde hücresi, "Sokak" geçiyorsa
+    // SADECE Sokak hücresi dolsun, diğeri boş kalsın. classifyStreetKind()
+    // hiçbiri geçmiyorsa (belirsiz serbest metin) "sokak"a düşer — veri
+    // kaybolmasın diye, ama iki hücrede birden TEKRAR etmez.
+    STREET_SOKAK_BUYUK: { fn: () => (classifyStreetKind(field("street")) === "sokak" ? toTrUpper(field("street")) : "") },
+    STREET_CADDE_BUYUK: { fn: () => (classifyStreetKind(field("street")) === "cadde" ? toTrUpper(field("street")) : "") },
     TITLE_CITY_BUYUK: { fn: () => toTrUpper(field("titleCity")) },
     TITLE_DISTRICT_BUYUK: { fn: () => toTrUpper(field("titleDistrict")) },
     TITLE_NEIGHBORHOOD_BUYUK: { fn: () => toTrUpper(field("titleNeighborhood")) },
@@ -715,6 +736,12 @@
     KATADEDI: { f: ["floorCount"] },
     IMARDURUMUKISA: { t: () => field("planningNote") || safeCall("buildImarPlanningNote") },
     IMARDURUMU2025: { t: () => field("planningNote") || safeCall("buildImarPlanningNote") },
+    // halkbank.html/isbankasi.html'de kullanılan {{PLANNING_NOTE_TEXT}}
+    // hiçbir alias/alan/üretilmiş-metin dizinine kayıtlı DEĞİLDİ — resolveToken()
+    // bunu tanımadığından "⚠ PLANNING_NOTE_TEXT" uyarı metnine düşüyordu
+    // (0.0.671'deki "⚠ FOTO_KAPAK" ile AYNI kök neden ailesi). emlakkatilim.docx'e
+    // yeni eklenen kullanımı bunu ortaya çıkardı; üçü de AYNI değeri kullanır.
+    PLANNING_NOTE_TEXT: { t: () => field("planningNote") || safeCall("buildImarPlanningNote") },
     IMARKENTSELDONUSUM: { f: ["urbanTransformationArea"] },
     IMARYAPILASMAENGELI: { f: ["licenseObstacle"] },
     ONSEKIZPROBLEM: { f: ["article18Applied"] },

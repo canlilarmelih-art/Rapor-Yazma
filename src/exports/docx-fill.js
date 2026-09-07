@@ -596,9 +596,12 @@
     // fotoğraflı export'un ÜRETTİĞİ çıktı etkileniyordu, muhtemelen bu
     // özellik ilk eklendiğinden beri). Sıra düzeltildi: spacing ÖNCE, jc
     // SONRA.
-    const label = `<w:p><w:pPr><w:spacing w:after="80"/><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:b/><w:bCs/><w:i/><w:iCs/><w:sz w:val="18"/><w:szCs w:val="18"/></w:rPr><w:t xml:space="preserve">Kapak Fotoğrafı (yer tutucu — istediğiniz konuma taşıyabilirsiniz)</w:t></w:r></w:p>`;
+    // 2026-09-07: kullanıcı "Kapak Fotoğrafı (yer tutucu — istediğiniz
+    // konuma taşıyabilirsiniz)" etiketinin gerçek raporda görünmemesi
+    // gerektiğini belirtti ("bu kısmı sil") — hazırlık aşamasında kalması
+    // gereken bir iç not olarak eklenmişti, üretim çıktısına hiç girmemeliydi.
     const imageParagraph = `<w:p><w:pPr><w:spacing w:after="200"/><w:jc w:val="center"/></w:pPr><w:r>${drawing}</w:r></w:p>`;
-    return label + imageParagraph;
+    return imageParagraph;
   }
 
   // "registerImage" — rels/media kayitlarini MUTASYONLA (kapali degiskenler

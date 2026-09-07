@@ -297,9 +297,16 @@ function singleCategoryGroup(token, label, layoutKey, photos) {
   const outDoc = outEntries.find((e) => e.name === "word/document.xml");
   const outXml = Buffer.from(outDoc.bytes).toString("utf8");
 
-  check(outXml.includes("Kapak Fotoğrafı (yer tutucu"), "\"Kapak Fotoğrafı\" yer tutucu etiketi ciktida bulunamadi.");
+  // 2026-09-07: kullanici "Kapak Fotoğrafı (yer tutucu — istediğiniz
+  // konuma taşıyabilirsiniz)" etiketinin gercek raporda GORUNMEMESI
+  // gerektigini belirtti ("bu kismi sil") — hazirlik asamasinda kalmasi
+  // gereken bir ic not olarak eklenmisti. Gorselin kendisi hala
+  // descr="Kapak Fotoğrafı" ile isaretleniyor (drawing docPr/cNvPr),
+  // yalnizca GORUNUR italik etiket paragrafi kaldirildi.
+  check(!outXml.includes("Kapak Fotoğrafı (yer tutucu"), "\"Kapak Fotoğrafı\" yer tutucu ETIKETI artik ciktida OLMAMALI (kullanici talebiyle kaldirildi).");
+  check(outXml.includes('descr="Kapak Fotoğrafı"'), "Kapak fotografinin drawing descr'i \"Kapak Fotoğrafı\" olarak isaretlenmis olmali.");
   const labelCount = countOccurrences(outXml, `w:color w:val="595959"`);
-  check(labelCount === 0, `Kapak fotoğrafı KENDİ kategori etiketini ALMAMALI (kendi ayrı yer tutucu başlığı var), bulunan: ${labelCount}`);
+  check(labelCount === 0, `Kapak fotoğrafı KENDİ kategori etiketini ALMAMALI, bulunan: ${labelCount}`);
 
   const drawingCount = countOccurrences(outXml, "<w:drawing>");
   check(drawingCount === baselineDrawingCount + 1, `Sablona gore +1 <w:drawing> bekleniyordu, gercek fark: ${drawingCount - baselineDrawingCount}`);
@@ -388,10 +395,11 @@ function singleCategoryGroup(token, label, layoutKey, photos) {
   // (görsellerinden HEMEN ÖNCE, görünmez bir paragrafla) ALMALI (kapak
   // fotoğrafından sonra kendi sayfasında başlamalı). "Dış Mekan" metni
   // artık YALNIZCA kendi (görselinden SONRAKİ) etiket paragrafında
-  // geçtiğinden, TEK pageBreakBefore'un "Kapak Fotoğrafı" yer tutucu
-  // metninden SONRA, "Dış Mekan" etiketinden ÖNCE gelmesi (yani Dış
-  // Mekan'ın tablosundan hemen önce) yeterli kanıttır.
-  const kapakIdx = outXml.indexOf("Kapak Fotoğrafı (yer tutucu");
+  // geçtiğinden, TEK pageBreakBefore'un kapak fotoğrafının drawing'inden
+  // (2026-09-07: GÖRÜNÜR yer tutucu ETİKETİ kaldırıldı, bkz. Fix 4/senaryo
+  // 5 — descr="Kapak Fotoğrafı" hâlâ ayırt edici bir çapa) SONRA, "Dış
+  // Mekan" etiketinden ÖNCE gelmesi yeterli kanıttır.
+  const kapakIdx = outXml.indexOf('descr="Kapak Fotoğrafı"');
   const disMekanIdx = outXml.indexOf("Dış Mekan");
   const pageBreakIdx = outXml.indexOf("<w:pageBreakBefore/>");
   check(
@@ -491,8 +499,12 @@ function singleCategoryGroup(token, label, layoutKey, photos) {
   const drawingCellSpacingIdx = outXml.indexOf('<w:spacing w:before="0" w:after="0"/><w:jc w:val="center"/>');
   check(drawingCellSpacingIdx !== -1, "Fotoğraf hücresindeki paragrafta <w:spacing>, <w:jc>'den ÖNCE gelmeliydi (CT_PPrBase şema sırası) — buildImageCellXml.");
 
-  const coverSpacingIdx = outXml.indexOf('<w:pPr><w:spacing w:after="80"/><w:jc w:val="center"/></w:pPr>');
-  check(coverSpacingIdx !== -1, "Kapak fotoğrafı etiket paragrafında <w:spacing>, <w:jc>'den ÖNCE gelmeliydi (CT_PPrBase şema sırası) — buildCoverPhotoBlockXml.");
+  // 2026-09-07: "Kapak Fotoğrafı (yer tutucu...)" GÖRÜNÜR etiket paragrafı
+  // kullanıcı talebiyle kaldırıldı (bkz. Fix 4/senaryo 5) — geriye kalan
+  // TEK paragraf (görselin kendisi) üzerinden AYNI şema-sırası regresyonu
+  // doğrulanmaya devam eder.
+  const coverSpacingIdx = outXml.indexOf('<w:pPr><w:spacing w:after="200"/><w:jc w:val="center"/></w:pPr>');
+  check(coverSpacingIdx !== -1, "Kapak fotoğrafı paragrafında <w:spacing>, <w:jc>'den ÖNCE gelmeliydi (CT_PPrBase şema sırası) — buildCoverPhotoBlockXml.");
 }
 
 // --- 10) YENİ BÖLÜM'ün İLK sayfası GEREKSİZ pageBreakBefore ALMAMALI
@@ -588,7 +600,7 @@ function singleCategoryGroup(token, label, layoutKey, photos) {
   const outDoc = outEntries.find((e) => e.name === "word/document.xml");
   const outXml = Buffer.from(outDoc.bytes).toString("utf8");
   check(!outXml.includes("[FOTO_KAPAK]"), 'Kapak fotoğrafı VERİLDİĞİ HALDE çıktıda İŞLENMEDEN kalmış bir {{FOTO_KAPAK}} kalıntısı VAR (gerçek uygulamada bu, kullanıcının bildirdiği "⚠ FOTO_KAPAK" uyarısına karşılık gelir).');
-  check(outXml.includes("Kapak Fotoğrafı (yer tutucu"), "Kapak fotoğrafı yer tutucu metni çıktıda bulunamadı.");
+  check(outXml.includes('descr="Kapak Fotoğrafı"'), "Kapak fotoğrafının drawing'i çıktıda bulunamadı.");
 }
 
 if (failures.length) {
