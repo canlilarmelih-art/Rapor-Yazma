@@ -105,7 +105,7 @@
     const floorFactors = analyzeUnitFloorFactors(fields, tables);
     if (floorFactors.isMiddleFloor) add("positive", "unit-middle-floor", "Ara katta yer alıyor olması", "unitFloors", "Kat Konumu");
     if (floorFactors.isTopFloor) add("negative", "unit-top-floor", "En üst katta yer alıyor olması", "unitFloors", "Kat Konumu");
-    if (floorFactors.isBasementOrGroundFloor) add("negative", "unit-basement-ground-floor", "Bodrum katta/zemin katta yer alması", "unitFloors", "Kat Konumu");
+    if (floorFactors.basementOrGroundFloorText) add("negative", "unit-basement-ground-floor", floorFactors.basementOrGroundFloorText, "unitFloors", "Kat Konumu");
     if (floorFactors.isNoElevatorUpperFloor) add("negative", "unit-no-elevator-upper-floor", "Asansörsüz binada üst kat konumuna bağlı erişilebilirlik dezavantajı bulunması", "unitFloors", "Kat Konumu");
 
     if (isNo(fields.staticSuitability)) add("negative", "document-static-unsuitable", "Statik uygunluğun olumsuz olması", "staticSuitability", "Statik Uygunluk");
@@ -303,29 +303,62 @@
     return `Taşınmazın ${joinTurkishList(names)} gibi imkanlara sahip bir sitede/apartmanda yer alması`;
   }
 
-  // Kullanıcı talebi (2026-09-07): "olumsuz faktörlerde bodrum katta/
-  // zemin katta olması şeklinde ibare var bunu düzelt burada bina girişi
-  // hangi kattan yapılıyor dikkate al" — bodrum/zemin kat konumu YALNIZCA
-  // bina girişi O KATTAN DEĞİLSE (buildingEntranceLevel — "Bina Giriş Kat
-  // Seviyesi") gerçek bir dezavantajdır; eğimli arazi/site gibi
-  // durumlarda binanın GİRİŞİNİN KENDİSİ "1. Bodrum" ya da "Zemin"
-  // seviyesinden yapılıyorsa, o katta olmak SOKAK/GİRİŞ seviyesinde olmak
-  // demektir — dezavantaj DEĞİL. unitFloorOptions/buildingEntranceLevelOptions
-  // (app.js) AYNI kat adlandırma sözlüğünü ("1. Bodrum", "Zemin" vb.)
-  // kullandığından doğrudan METİN karşılaştırması güvenlidir.
-  function isBuildingEntranceFloor(floor, entranceLevel) {
-    const normalizedEntrance = fold(entranceLevel);
-    return Boolean(normalizedEntrance) && fold(floor) === normalizedEntrance;
+  // Kullanıcı takip talebi (2026-09-07): "bina giriş kat seviyesinde ya da
+  // altında yer alıyor ise zx katta yer alıyor olması şeklinde olmalı" —
+  // 0.0.656'nın "tam giriş katıyla EŞİT mi" (yalnızca o TEK katı muaf
+  // tutan) kontrolü YETERSİZDİ; kullanıcı GENEL bir SIRALAMA karşılaştırması
+  // istiyor: taşınmaz giriş katının KENDİSİNDE YA DA ONUN ALTINDAKİ
+  // (bodrum yönünde) HERHANGİ bir katta ise dezavantaj — İKİ kat arası
+  // (ör. giriş "Zemin" iken taşınmaz "1. Bodrum") DA buna dahil. Kat
+  // SIRALAMASI (rank) bodrum→zemin/asma/ara→normal→çatı/teras yönünde
+  // ARTAR (unitFloorOptions/buildingEntranceLevelOptions'ın — app.js —
+  // PAYLAŞTIĞI sıra) — "N. Bodrum" negatif, "Zemin" 0, "Asma"/"Ara" 0.5,
+  // "N. Normal" pozitif N, "Çatı"/"Teras" en üst. AYRICA metin ARTIK sabit
+  // "Bodrum katta/zemin katta yer alması" DEĞİL, taşınmazın GERÇEKTEN
+  // bulunduğu (tetikleyen) kat adı/adları DİNAMİK olarak yazılır (ör.
+  // "1. Bodrum katta yer alıyor olması").
+  function getFloorRank(floor) {
+    const text = fold(floor);
+    const bodrumMatch = text.match(/^(\d+)\.\s*BODRUM$/);
+    if (bodrumMatch) return -Number(bodrumMatch[1]);
+    if (text === "ZEMIN") return 0;
+    if (text === "ASMA" || text === "ARA") return 0.5;
+    const normalMatch = text.match(/^(\d+)\.\s*NORMAL$/);
+    if (normalMatch) return Number(normalMatch[1]);
+    if (text.includes("CATI") || text.includes("TERAS")) return 1000;
+    return NaN;
+  }
+
+  function isAtOrBelowBuildingEntranceLevel(floor, entranceLevel) {
+    const floorRank = getFloorRank(floor);
+    const entranceRank = getFloorRank(entranceLevel);
+    return Number.isFinite(floorRank) && Number.isFinite(entranceRank) && floorRank <= entranceRank;
+  }
+
+  // `buildingEntranceLevel` HİÇ girilmemişse (rapor henüz doldurulmamış)
+  // sıralama karşılaştırması YAPILAMAZ — bu durumda 0.0.656 ÖNCESİNİN
+  // (metin bazlı "BODRUM"/"ZEMIN" eşleşmesi) GÜVENLİ varsayılanına
+  // düşülür, sabit jenerik metinle.
+  function formatBasementOrGroundFloorText(triggeringFloors) {
+    const clean = Array.from(new Set((triggeringFloors || []).filter(Boolean)));
+    if (!clean.length) return "Bodrum katta/zemin katta yer alması";
+    return `${joinTurkishList(clean)} katta yer alıyor olması`;
+  }
+
+  function resolveBasementOrGroundFloorText(unitFloors, entranceLevel) {
+    const hasEntranceLevel = Boolean(String(entranceLevel || "").trim());
+    if (hasEntranceLevel) {
+      const triggeringFloors = unitFloors.filter((floor) => isAtOrBelowBuildingEntranceLevel(floor, entranceLevel));
+      return triggeringFloors.length ? formatBasementOrGroundFloorText(triggeringFloors) : "";
+    }
+    return unitFloors.some(isBasementOrGroundFloor) ? formatBasementOrGroundFloorText([]) : "";
   }
 
   function analyzeUnitFloorFactors(fields = {}, tables = {}) {
     const unitFloors = getUnitFloorNames(fields, tables);
     const normalCount = parseNumber(fields.buildingFloorCounts?.normal);
-    const entranceLevel = fields.buildingEntranceLevel;
     const hasTopFloor = unitFloors.some((floor) => isTopFloor(floor, normalCount));
-    const hasBasementOrGround = unitFloors.some(
-      (floor) => isBasementOrGroundFloor(floor) && !isBuildingEntranceFloor(floor, entranceLevel)
-    );
+    const basementOrGroundFloorText = resolveBasementOrGroundFloorText(unitFloors, fields.buildingEntranceLevel);
     const hasMiddleFloor = !hasTopFloor && unitFloors.some((floor) => isMiddleFloor(floor, normalCount));
     const hasUpperNormalFloor = unitFloors.some((floor) => {
       const ordinal = extractNormalFloorOrdinal(floor);
@@ -335,7 +368,7 @@
     return {
       isMiddleFloor: hasMiddleFloor,
       isTopFloor: hasTopFloor,
-      isBasementOrGroundFloor: hasBasementOrGround,
+      basementOrGroundFloorText,
       isNoElevatorUpperFloor: isNoLike(fields.elevator) && normalCount > 3 && hasUpperNormalFloor,
     };
   }

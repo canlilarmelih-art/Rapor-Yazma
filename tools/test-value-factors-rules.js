@@ -235,46 +235,86 @@ function main() {
     },
   }));
   assert(idsOf(basementGround.negative).includes("unit-basement-ground-floor"), "Bodrum/zemin kat olumsuz faktor olarak gelmeli");
+  assert(
+    basementGround.negative.find((item) => item.id === "unit-basement-ground-floor")?.text === "Bodrum katta/zemin katta yer alması",
+    "buildingEntranceLevel bosken (bu senaryoda) eski jenerik sabit metin KULLANILMALI."
+  );
 
-  // Kullanıcı talebi (2026-09-07): "olumsuz faktörlerde bodrum katta/
-  // zemin katta olması şeklinde ibare var bunu düzelt burada bina girişi
-  // hangi kattan yapılıyor dikkate al" — bina girişi TAM O KATTAN
-  // yapılıyorsa (eğimli site/arazi) dezavantaj YOK.
-  const groundFloorIsEntrance = calculateValueFactors(baseInput({
+  // Kullanıcı takip talebi (2026-09-07): "bina giriş kat seviyesinde ya da
+  // altında yer alıyor ise zx katta yer alıyor olması şeklinde olmalı" —
+  // 0.0.656'nın "TAM giriş katına eşitse muaf" kararı YANLIŞTI (kullanıcı
+  // BUNU düzeltti): artık taşınmaz giriş kat seviyesinde YA DA ALTINDA
+  // (bodrum yönünde) İSE olumsuz faktör TETİKLENİR — giriş katının
+  // KENDİSİ de dahil (0.0.656'nın "muaf" kararının TAM TERSİ). Metin
+  // ARTIK sabit değil, taşınmazın GERÇEKTEN bulunduğu kat adını yazar.
+  const atEntranceLevel = calculateValueFactors(baseInput({
     fields: { buildingEntranceLevel: "Zemin" },
     tables: {
       unitFloors: [{ floor: "Zemin" }],
     },
   }));
   assert(
-    !idsOf(groundFloorIsEntrance.negative).includes("unit-basement-ground-floor"),
-    "Bina girisi TAM taşınmazın bulunduğu Zemin kattan yapiliyorsa 'bodrum/zemin katta olmasi' olumsuz faktoru TETIKLENMEMELI."
+    idsOf(atEntranceLevel.negative).includes("unit-basement-ground-floor"),
+    "Taşınmaz TAM bina girişi seviyesinde (Zemin) ise DAHİ olumsuz faktör TETİKLENMELİ (0.0.656'nın 'muaf' kararı düzeltildi)."
   );
-
-  const basementIsEntranceButOtherFloorIsNot = calculateValueFactors(baseInput({
-    fields: { buildingEntranceLevel: "Zemin" },
-    tables: {
-      // Taşınmaz İKİ kat kaplıyor: biri (Zemin) giriş katıyla AYNI (sorun
-      // değil), diğeri (1. Bodrum) giriş katından FARKLI (hâlâ dezavantaj)
-      // — kısmi muafiyet, TÜM taşınmaz değil, YALNIZCA giriş katına denk
-      // gelen satır muaf tutulmalı.
-      unitFloors: [{ floor: "Zemin" }, { floor: "1. Bodrum" }],
-    },
-  }));
   assert(
-    idsOf(basementIsEntranceButOtherFloorIsNot.negative).includes("unit-basement-ground-floor"),
-    "Tasinmaz birden fazla kati kapliyorsa VE bunlardan biri giris kati OLMASA BILE, giris kati OLMAYAN bodrum/zemin kat hala olumsuz faktor olarak gelmeli."
+    atEntranceLevel.negative.find((item) => item.id === "unit-basement-ground-floor")?.text === "Zemin katta yer alıyor olması",
+    "Metin taşınmazın GERÇEKTEN bulunduğu kat adını (Zemin) DİNAMİK olarak içermeli."
   );
 
-  const basementFloorDiffersFromEntrance = calculateValueFactors(baseInput({
+  const belowEntranceLevel = calculateValueFactors(baseInput({
     fields: { buildingEntranceLevel: "Zemin" },
     tables: {
       unitFloors: [{ floor: "1. Bodrum" }],
     },
   }));
+  assert(idsOf(belowEntranceLevel.negative).includes("unit-basement-ground-floor"), "Giris seviyesinin ALTINDAKI (1. Bodrum) kat olumsuz faktor olarak gelmeli.");
   assert(
-    idsOf(basementFloorDiffersFromEntrance.negative).includes("unit-basement-ground-floor"),
-    "Tasinmazin bulundugu bodrum kati bina girisinden FARKLIYSA (giris Zemin'den, tasinmaz 1. Bodrum'da) olumsuz faktor GELMELI."
+    belowEntranceLevel.negative.find((item) => item.id === "unit-basement-ground-floor")?.text === "1. Bodrum katta yer alıyor olması",
+    "Metin taşınmazın GERÇEKTEN bulunduğu kat adını (1. Bodrum) DİNAMİK olarak içermeli."
+  );
+
+  // Giriş seviyesinin ÜSTÜNDEKİ bir kat (1. Normal), giriş "Zemin" iken
+  // MUAF olmalı — bu, "at or below" karşılaştırmasının GERÇEK muafiyet
+  // durumu.
+  const aboveEntranceLevel = calculateValueFactors(baseInput({
+    fields: { buildingEntranceLevel: "Zemin" },
+    tables: {
+      unitFloors: [{ floor: "1. Normal" }],
+    },
+  }));
+  assert(
+    !idsOf(aboveEntranceLevel.negative).includes("unit-basement-ground-floor"),
+    "Giris seviyesinin (Zemin) UZERINDEKI bir kat (1. Normal) olumsuz faktoru TETIKLEMEMELI."
+  );
+
+  // GENELLEME: bina girişinin KENDİSİ bodrum seviyesindeyse (eğimli
+  // arazi), "Zemin" kat ARTIK giriş seviyesinin ÜSTÜNDE sayılır ve MUAF
+  // olur — sabit "BODRUM"/"ZEMIN" metin eşleşmesinin YAPAMAYACAĞI, giriş
+  // referans noktasına göre GERÇEK bir genelleme.
+  const entranceBelowGroundMakesGroundFloorSafe = calculateValueFactors(baseInput({
+    fields: { buildingEntranceLevel: "1. Bodrum" },
+    tables: {
+      unitFloors: [{ floor: "Zemin" }],
+    },
+  }));
+  assert(
+    !idsOf(entranceBelowGroundMakesGroundFloorSafe.negative).includes("unit-basement-ground-floor"),
+    "Bina girisi 1. Bodrum'daysa, Zemin kat GIRIS SEVIYESININ UZERINDE sayilir ve MUAF olmali (sabit metin eslesmesinin yapamayacagi bir genelleme)."
+  );
+
+  // Taşınmaz BİRDEN FAZLA kat kaplıyorsa (ör. Zemin + 1. Normal), YALNIZCA
+  // giriş seviyesinde/altında olan satır(lar) metne dahil edilir.
+  const multiFloorPartialTrigger = calculateValueFactors(baseInput({
+    fields: { buildingEntranceLevel: "Zemin" },
+    tables: {
+      unitFloors: [{ floor: "Zemin" }, { floor: "1. Normal" }],
+    },
+  }));
+  assert(idsOf(multiFloorPartialTrigger.negative).includes("unit-basement-ground-floor"), "En az bir kat (Zemin) giris seviyesinde/altindaysa faktor TETIKLENMELI.");
+  assert(
+    multiFloorPartialTrigger.negative.find((item) => item.id === "unit-basement-ground-floor")?.text === "Zemin katta yer alıyor olması",
+    "Metinde YALNIZCA tetikleyen kat (Zemin) yer almali, tetiklemeyen (1. Normal) DAHIL EDILMEMELI."
   );
 
   const basementNoEntranceLevelSet = calculateValueFactors(baseInput({
@@ -284,7 +324,11 @@ function main() {
   }));
   assert(
     idsOf(basementNoEntranceLevelSet.negative).includes("unit-basement-ground-floor"),
-    "buildingEntranceLevel HIC girilmemisse (bos) eski davranis (her zaman olumsuz) KORUNMALI - guvenli varsayilan."
+    "buildingEntranceLevel HIC girilmemisse (bos) eski davranis (her zaman olumsuz, jenerik sabit metin) KORUNMALI - guvenli varsayilan."
+  );
+  assert(
+    basementNoEntranceLevelSet.negative.find((item) => item.id === "unit-basement-ground-floor")?.text === "Bodrum katta/zemin katta yer alması",
+    "buildingEntranceLevel bossa metin ESKİ jenerik sabit hali KORUMALI (dinamik kat adi YAZILAMAZ, veri yok)."
   );
 
   // Kullanıcı talebi (2026-09-07): "Eğer Ana taşınmaz niteliği Arsa ise
