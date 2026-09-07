@@ -51,15 +51,23 @@ function indexAfter(text, needle, fromIndex) {
 // --- 1) Kaynak-duzeyinde: tapu bolumu (Kat No -> İç Kapı No, Taşınmaz ID ->
 // Tapu senedindeki bağımsız bölüm niteliği, UAVT -> Konut Niteliği) --------
 {
-  const katIdx = indexAfter(template, '<td class="l">KAT</td><td>{{TİTLE_FLOOR}}</td>', template.indexOf("Taşınmazın Tapu Bilgileri"));
+  // 2026-09-08: "{{TİTLE_FLOOR}}"/"{{UNİT_NO}}"/"{{TİTLE_PROPERTY_ID}}"/
+  // "{{TİTLE_QUALİTY}}" bu Tapu bolumunde artik "ayni ise deger, farkliysa
+  // EKTEDİR:" mantigi uygulayan `_ORTAK` alias'larina gecirildi (bkz.
+  // tools/test-tapu-field-common-or-ektedir.js) - satir SIRASI DEGISMEDI,
+  // yalnizca token adlari (eski adlar bu dosyanin BASKA, ilgisiz bir
+  // bolumunde hala kullanildigindan degismedi, bu yuzden aramalar burada
+  // GUNCEL token adlariyla YAPILMALI - aksi halde arama YANLIŞLIKLA o
+  // ilgisiz bolumdeki eski adi bulup zincir kirilir).
+  const katIdx = indexAfter(template, '<td class="l">KAT</td><td>{{TITLE_FLOOR_ORTAK}}</td>', template.indexOf("Taşınmazın Tapu Bilgileri"));
   const icKapiIdx = indexAfter(template, "İÇ KAPI NO", katIdx);
   assert(icKapiIdx > katIdx, "İÇ KAPI NO satiri KAT satirindan SONRA gelmeli.");
-  assert(template.slice(icKapiIdx, icKapiIdx + 80).includes("{{UNİT_NO}}"), "İÇ KAPI NO satiri {{UNİT_NO}} kullanmali.");
+  assert(template.slice(icKapiIdx, icKapiIdx + 80).includes("{{UNIT_NO_ORTAK}}"), "İÇ KAPI NO satiri {{UNIT_NO_ORTAK}} kullanmali.");
 
   const tasinmazIdIdx = indexAfter(template, "TAŞINMAZ ID", icKapiIdx);
   const tapuSenediIdx = indexAfter(template, "TAPU SENEDİNDEKİ BAĞIMSIZ BÖLÜM NİTELİĞİ", tasinmazIdIdx);
   assert(tapuSenediIdx > tasinmazIdIdx, "TAPU SENEDİNDEKİ BAĞIMSIZ BÖLÜM NİTELİĞİ satiri TAŞINMAZ ID satirindan SONRA gelmeli.");
-  assert(template.slice(tapuSenediIdx, tapuSenediIdx + 100).includes("{{TİTLE_QUALİTY}}"), "Bu satir {{TİTLE_QUALİTY}} kullanmali.");
+  assert(template.slice(tapuSenediIdx, tapuSenediIdx + 100).includes("{{TITLE_QUALITY_ORTAK}}"), "Bu satir {{TITLE_QUALITY_ORTAK}} kullanmali.");
 
   const uavtIdx = indexAfter(template, "<td class=\"l\">UAVT</td>", tapuSenediIdx);
   const konutNitIdx = indexAfter(template, "KONUT NİTELİĞİ", uavtIdx);

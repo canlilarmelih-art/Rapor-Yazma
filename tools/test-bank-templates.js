@@ -735,32 +735,38 @@ const isbankTapuSection = isbankTemplateSource.slice(
   isbankTemplateSource.indexOf("1. TAPU S"),
   isbankTemplateSource.indexOf("2. KONUM B")
 );
+// 2026-09-08: kullanici talebi ("ortak veriler template dosyalarinda tapu
+// tablo bolumlerinde yazilabilir ayri olan diger veriler icin EKTEDIR:
+// ibaresi kullan") ile bu 15 alan artik cokluda "ayni ise deger, farkliysa
+// EKTEDIR:" mantigini uygulayan `_ORTAK` alias'larina (resolveMultiUnitTapuFieldOrEktedir
+// uzerinden) gecirildi - GORUNUR SIRALARI/YERLESIMLERI DEGISMEDI, yalnizca
+// token ADLARI degisti (bkz. tools/test-tapu-field-common-or-ektedir.js).
 [
   "{{GROUND_TYPE}}",
-  "{{TITLE_CITY}}",
-  "{{TITLE_DISTRICT}}",
-  "{{TITLE_NEIGHBORHOOD}}",
-  "{{LOCATION_NAME}}",
+  "{{TITLE_CITY_ORTAK}}",
+  "{{TITLE_DISTRICT_ORTAK}}",
+  "{{TITLE_NEIGHBORHOOD_ORTAK}}",
+  "{{LOCATION_NAME_ORTAK}}",
   "{{LAND_AREA}}",
-  "{{SHEET_NO}}",
-  "{{BLOCK_NO}}",
-  "{{PARCEL_NO}}",
+  "{{SHEET_NO_ORTAK}}",
+  "{{BLOCK_NO_ORTAK}}",
+  "{{PARCEL_NO_ORTAK}}",
   "{{MAIN_PROPERTY_QUALITY}}",
-  "{{TITLE_QUALITY}}",
-  "{{TITLE_BLOCK_NAME}}",
-  "{{TITLE_FLOOR}}",
-  "{{UNIT_NO}}",
+  "{{TITLE_QUALITY_ORTAK}}",
+  "{{TITLE_BLOCK_NAME_ORTAK}}",
+  "{{TITLE_FLOOR_ORTAK}}",
+  "{{UNIT_NO_ORTAK}}",
   "{{INNER_DOOR}}",
-  "{{SHARE}}",
-  "{{DENOMINATOR}}",
-  "{{EKLENTİ}}",
-  "{{TAPU_TARİHİ}}",
-  "{{TAPU_YEVMİYESİ}}",
-  "{{REGISTRY_VOLUME}}",
-  "{{REGISTRY_PAGE}}",
-  "{{EDİNME_SEBEBİ_BUYUK}}",
+  "{{SHARE_ORTAK}}",
+  "{{DENOMINATOR_ORTAK}}",
+  "{{EKLENTI_ORTAK}}",
+  "{{TAPU_TARIHI_ORTAK}}",
+  "{{TAPU_YEVMIYESI_ORTAK}}",
+  "{{REGISTRY_VOLUME_ORTAK}}",
+  "{{REGISTRY_PAGE_ORTAK}}",
+  "{{EDINME_SEBEBI_BUYUK_ORTAK}}",
   "{{UAVT}}",
-  "{{TITLE_PROPERTY_ID}}",
+  "{{TITLE_PROPERTY_ID_ORTAK}}",
 ].reduce((previousIndex, marker) => {
   const currentIndex = isbankTapuSection.indexOf(marker);
   assert(currentIndex > previousIndex, `Is Bankasi tapu sirasi banka ekranina uymuyor: ${marker}`);
@@ -933,8 +939,12 @@ assert(
     ziraatTapuSection.includes('BUCAĞI</td><td class="tapu-value"><div>&nbsp;</div>') &&
     ziraatTapuSection.includes('SOKAĞI</td><td class="tapu-value"><div>&nbsp;</div>') &&
     ziraatTapuSection.includes('DAİRE NO</td><td class="tapu-value"><div>{{INNER_DOOR}}</div>') &&
-    ziraatTapuSection.indexOf('MAHALLE</td><td class="tapu-value"><div>{{NEİGHBORHOOD}}</div>') < ziraatTapuSection.indexOf('KAT NO</td><td class="tapu-value"><div>{{TİTLE_FLOOR}}</div>') &&
-    ziraatTapuSection.indexOf('KAT NO</td><td class="tapu-value"><div>{{TİTLE_FLOOR}}</div>') < ziraatTapuSection.indexOf('BUCAĞI</td><td class="tapu-value"><div>&nbsp;</div>') &&
+    // 2026-09-08: "{{TİTLE_FLOOR}}" cokluda "ayni ise deger, farkliysa
+    // EKTEDİR:" mantigi uygulayan {{TITLE_FLOOR_ORTAK}}'a gecirildi (bkz.
+    // tools/test-tapu-field-common-or-ektedir.js) - satir SIRASI DEGISMEDI,
+    // yalnizca token adi.
+    ziraatTapuSection.indexOf('KÖY / MAHALLE</td><td class="tapu-value"><div>{{TITLE_NEIGHBORHOOD_ORTAK}}</div>') < ziraatTapuSection.indexOf('KAT NO</td><td class="tapu-value"><div>{{TITLE_FLOOR_ORTAK}}</div>') &&
+    ziraatTapuSection.indexOf('KAT NO</td><td class="tapu-value"><div>{{TITLE_FLOOR_ORTAK}}</div>') < ziraatTapuSection.indexOf('BUCAĞI</td><td class="tapu-value"><div>&nbsp;</div>') &&
     ziraatTapuSection.includes("<div class=\"tapu-owner-panel\"><h3>MALİK BİLGİLERİ</h3>{{MALIKLER_TABLO}}</div>") &&
     !ziraatTapuSection.includes('<table class="field-grid">'),
   "Ziraat tapu bolumu, referans ekrandaki iki bloklu etiket + veri kutusu yerlesimini korumuyor."

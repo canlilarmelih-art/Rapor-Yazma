@@ -43,25 +43,29 @@ function indexAfter(text, needle, fromIndex) {
 }
 
 // --- 1) Tapu tablosu ek satirlari -----------------------------------------
+// 2026-09-08: bu Tapu bolumundeki token'larin TAMAMI artik "ayni ise
+// deger, farkliysa EKTEDİR:" mantigi uygulayan `_ORTAK` alias'larina
+// gecirildi (bkz. tools/test-tapu-field-common-or-ektedir.js) - satir
+// SIRASI DEGISMEDI, yalnizca token adlari.
 {
   const start = template.indexOf("ÖZELLİKLER SEKMESİ");
   const parselIdx = indexAfter(template, "PARSEL</td>", start);
   const eskiAdaIdx = indexAfter(template, "ESKİ ADA - PARSEL", parselIdx);
-  assert(template.slice(eskiAdaIdx, eskiAdaIdx + 80).includes("{{OLD_BLOCK_NO}} - {{OLD_PARCEL_NO}}"));
+  assert(template.slice(eskiAdaIdx, eskiAdaIdx + 80).includes("{{OLD_BLOCK_NO_ORTAK}} - {{OLD_PARCEL_NO_ORTAK}}"));
   const yevmiyeIdx = indexAfter(template, "YEVMİYE NO", eskiAdaIdx);
-  assert(template.slice(yevmiyeIdx, yevmiyeIdx + 60).includes("{{TAPU_YEVMİYESİ}}"));
+  assert(template.slice(yevmiyeIdx, yevmiyeIdx + 60).includes("{{TAPU_YEVMIYESI_ORTAK}}"));
   const ciltIdx = indexAfter(template, "CİLT SAYFA", yevmiyeIdx);
-  assert(template.slice(ciltIdx, ciltIdx + 80).includes("{{REGİSTRY_VOLUME}} / {{REGİSTRY_PAGE}}"));
-  const katIdx = indexAfter(template, "KAT</td><td>{{TİTLE_FLOOR}}", ciltIdx);
+  assert(template.slice(ciltIdx, ciltIdx + 80).includes("{{REGISTRY_VOLUME_ORTAK}} / {{REGISTRY_PAGE_ORTAK}}"));
+  const katIdx = indexAfter(template, "KAT</td><td>{{TITLE_FLOOR_ORTAK}}", ciltIdx);
   const girisIdx = indexAfter(template, "GİRİŞ</td>", katIdx);
-  assert(template.slice(girisIdx, girisIdx + 60).includes("{{TİTLE_ENTRANCE}}"));
+  assert(template.slice(girisIdx, girisIdx + 60).includes("{{TITLE_ENTRANCE_ORTAK}}"));
   const arsaPayiIdx = indexAfter(template, "ARSA PAYI", girisIdx);
   const eklentiIdx = indexAfter(template, "EKLENTİSİ</td>", arsaPayiIdx);
-  assert(template.slice(eklentiIdx, eklentiIdx + 60).includes("{{TİTLE_ATTACHMENT_BUYUK}}"));
+  assert(template.slice(eklentiIdx, eklentiIdx + 60).includes("{{TITLE_ATTACHMENT_BUYUK_ORTAK}}"));
   const tapuTarihiIdx = indexAfter(template, "TAPU TARİHİ", eklentiIdx);
-  assert(template.slice(tapuTarihiIdx, tapuTarihiIdx + 60).includes("{{TAPU_TARİHİ}}"));
+  assert(template.slice(tapuTarihiIdx, tapuTarihiIdx + 60).includes("{{TAPU_TARIHI_ORTAK}}"));
   const edinmeIdx = indexAfter(template, "EDİNME SEBEBİ", tapuTarihiIdx);
-  assert(template.slice(edinmeIdx, edinmeIdx + 70).includes("{{EDİNME_SEBEBİ_BUYUK}}"));
+  assert(template.slice(edinmeIdx, edinmeIdx + 70).includes("{{EDINME_SEBEBI_BUYUK_ORTAK}}"));
   console.log("Tapu tablosu ek satirlari testi tamam.");
 }
 

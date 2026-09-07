@@ -62,17 +62,21 @@ function indexAfter(text, needle, fromIndex) {
 }
 
 // --- 2) Tapu Kaydi: Giriş / Eklentisi -------------------------------------
+// 2026-09-08: "{{TİTLE_FLOOR}}"/"{{TİTLE_ENTRANCE}}"/"{{TİTLE_ATTACHMENT_BUYUK}}"
+// bu Tapu bolumunde artik "ayni ise deger, farkliysa EKTEDİR:" mantigi
+// uygulayan `_ORTAK` alias'larina gecirildi (bkz. tools/test-tapu-field-common-or-ektedir.js)
+// - satir SIRASI DEGISMEDI, yalnizca token adlari.
 {
   const tapuStart = template.indexOf("Tapu Kaydı Sekmesi");
-  const katIdx = indexAfter(template, '<td class="l">KAT</td><td>{{TİTLE_FLOOR}}</td>', tapuStart);
+  const katIdx = indexAfter(template, '<td class="l">KAT</td><td>{{TITLE_FLOOR_ORTAK}}</td>', tapuStart);
   const girisIdx = indexAfter(template, "GİRİŞ</td>", katIdx);
   assert(girisIdx > katIdx, "GİRİŞ satiri KAT satirindan SONRA gelmeli.");
-  assert(template.slice(girisIdx, girisIdx + 60).includes("{{TİTLE_ENTRANCE}}"), "GİRİŞ satiri {{TİTLE_ENTRANCE}} kullanmali.");
+  assert(template.slice(girisIdx, girisIdx + 60).includes("{{TITLE_ENTRANCE_ORTAK}}"), "GİRİŞ satiri {{TITLE_ENTRANCE_ORTAK}} kullanmali.");
 
   const arsaPayiIdx = indexAfter(template, "ARSA PAYI", girisIdx);
   const eklentiIdx = indexAfter(template, "EKLENTİSİ</td>", arsaPayiIdx);
   assert(eklentiIdx > arsaPayiIdx, "EKLENTİSİ satiri ARSA PAYI satirindan SONRA gelmeli.");
-  assert(template.slice(eklentiIdx, eklentiIdx + 60).includes("{{TİTLE_ATTACHMENT_BUYUK}}"), "EKLENTİSİ satiri {{TİTLE_ATTACHMENT_BUYUK}} kullanmali.");
+  assert(template.slice(eklentiIdx, eklentiIdx + 60).includes("{{TITLE_ATTACHMENT_BUYUK_ORTAK}}"), "EKLENTİSİ satiri {{TITLE_ATTACHMENT_BUYUK_ORTAK}} kullanmali.");
 
   console.log("Tapu Kaydi (Giriş / Eklentisi) testi tamam.");
 }

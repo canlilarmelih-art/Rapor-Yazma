@@ -22598,6 +22598,31 @@ function buildAllTitleUnitsForSummaryTable() {
   }));
 }
 
+// Kullanıcı talebi (2026-09-08): "ortak veriler template dosyalarında tapu
+// tablo bölümlerinde yazılabilir ayrı olan diğer veriler için EKTEDİR:
+// ibaresi kullan bu bölümler altta tabloda yer alıyor çünkü" — banka
+// şablonlarının (ör. vakifkatilim.html) TEK taşınmaza özgü, ayrı Tapu
+// hücrelerinde (İl/İlçe/Mahalle/Mevkii/Pafta/Ada/Parsel/Eski Ada-Parsel/
+// BB Niteliği/Tapu Tarihi/Yevmiye/Sayfa/Cilt/Blok/Kat/BB No/Eklenti/Arsa
+// Payı) çoklu raporda TEK BİR taşınmazın değeri gösterilirdi — YANILTICI,
+// çünkü diğer taşınmazların FARKLI değerleri zaten "Taşınmazlar Tapu
+// Özeti" tablosunda (aynı belgenin altında, {{TASINMAZLARTAPUTABLOSU}})
+// gösteriliyor. Artık: tekil raporda (veya çoklu ama tüm taşınmazlarda
+// AYNI değer) GERÇEK değer AYNEN yazılır; taşınmazlar arasında FARKLI
+// ise (özet tablosunda zaten görünüyor olduğundan) "EKTEDİR:" yazılır.
+// `getUnitRawValue(unit)` her taşınmazın KENDİ ham değerini okuyan bir
+// geri çağırma (bazı alanlar `fields.xxx`, bazıları — Tapu Tarihi/Yevmiye
+// gibi — `tables.title[0].c3/c4` üzerinden okunuyor, bkz. template-engine.js
+// firstTitleRowCell() ile AYNI kaynak).
+function resolveMultiUnitTapuFieldOrEktedir(getUnitRawValue, activeFormattedValue) {
+  if (getTitleUnitCount() < 2) return activeFormattedValue;
+  const units = buildAllTitleUnitsForSummaryTable();
+  const rawValues = units.map((unit) => String(getUnitRawValue(unit) || "").trim()).filter(Boolean);
+  if (!rawValues.length) return activeFormattedValue;
+  const allSame = rawValues.every((value) => foldTurkish(value) === foldTurkish(rawValues[0]));
+  return allSame ? activeFormattedValue : "EKTEDİR:";
+}
+
 // "İl ilçe mahalle mevkii pafta ada parsel yüzölçümü" — kullanıcının
 // AYNI ise gizlenmesini istediği alanlar, TAM bu sırayla. Anahtarlar
 // Tapu bölümünün KENDİ alanları (adres bölümüyle KARIŞTIRILMASIN —

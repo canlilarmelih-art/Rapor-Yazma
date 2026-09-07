@@ -544,6 +544,43 @@
     TAPUTARIHI: { fn: () => dateField("titleDate") || outputDate(firstTitleRowCell("c3")) }, // {{TAPU_TARİHİ}}
     TAPUYEVMIYE: { fn: () => firstTitleRowCell("c4") },
     TAPUYEVMIYESI: { fn: () => firstTitleRowCell("c4") }, // {{TAPU_YEVMİYESİ}}
+    // Kullanıcı talebi (2026-09-08): "ortak veriler template dosyalarında
+    // tapu tablo bölümlerinde yazılabilir ayrı olan diğer veriler için
+    // EKTEDİR: ibaresi kullan bu bölümler altta tabloda yer alıyor çünkü" —
+    // banka şablonlarının TEK taşınmaza özgü Tapu hücrelerinde (vakifkatilim.html
+    // vb.) çoklu raporda TEK bir taşınmazın değeri gösterilirdi; artık TÜM
+    // taşınmazlarda AYNI ise gerçek değer, FARKLI ise "EKTEDİR:" yazılır
+    // (farklı değerler zaten {{TASINMAZLARTAPUTABLOSU}}'nda görünüyor).
+    // Tekil raporda davranış DEĞİŞMEZ (her zaman gerçek değer).
+    CITY_BUYUK_ORTAK: { fn: () => safeCall("resolveMultiUnitTapuFieldOrEktedir", (u) => u.fields?.city, toTrUpper(field("city"))) },
+    DISTRICT_BUYUK_ORTAK: { fn: () => safeCall("resolveMultiUnitTapuFieldOrEktedir", (u) => u.fields?.district, toTrUpper(field("district"))) },
+    // halkbank.html/isbankasi.html'de "İl/İlçe" ADRES (city/district) DEĞİL,
+    // Tapu bölümünün KENDİ titleCity/titleDistrict alanını kullanıyor —
+    // CİTY_BUYUK_ORTAK/DİSTRİCT_BUYUK_ORTAK'tan KASITLI OLARAK AYRI.
+    TITLE_CITY_ORTAK: { fn: () => safeCall("resolveMultiUnitTapuFieldOrEktedir", (u) => u.fields?.titleCity, field("titleCity")) },
+    TITLE_DISTRICT_ORTAK: { fn: () => safeCall("resolveMultiUnitTapuFieldOrEktedir", (u) => u.fields?.titleDistrict, field("titleDistrict")) },
+    TITLE_ENTRANCE_ORTAK: { fn: () => safeCall("resolveMultiUnitTapuFieldOrEktedir", (u) => u.fields?.titleEntrance, field("titleEntrance")) },
+    TITLE_ATTACHMENT_BUYUK_ORTAK: { fn: () => safeCall("resolveMultiUnitTapuFieldOrEktedir", (u) => u.fields?.titleAttachment, toTrUpper(field("titleAttachment"))) },
+    EDINME_SEBEBI_BUYUK_ORTAK: { fn: () => safeCall("resolveMultiUnitTapuFieldOrEktedir", (u) => u.tables?.title?.[0]?.c2, toTrUpper(firstTitleRowCell("c2"))) },
+    TITLE_NEIGHBORHOOD_ORTAK: { fn: () => safeCall("resolveMultiUnitTapuFieldOrEktedir", (u) => u.fields?.titleNeighborhood, field("titleNeighborhood")) },
+    LOCATION_NAME_ORTAK: { fn: () => safeCall("resolveMultiUnitTapuFieldOrEktedir", (u) => u.fields?.locationName, field("locationName")) },
+    TITLE_PROPERTY_ID_ORTAK: { fn: () => safeCall("resolveMultiUnitTapuFieldOrEktedir", (u) => u.fields?.titlePropertyId, field("titlePropertyId")) },
+    SHEET_NO_ORTAK: { fn: () => safeCall("resolveMultiUnitTapuFieldOrEktedir", (u) => u.fields?.sheetNo, field("sheetNo")) },
+    BLOCK_NO_ORTAK: { fn: () => safeCall("resolveMultiUnitTapuFieldOrEktedir", (u) => u.fields?.blockNo, field("blockNo")) },
+    PARCEL_NO_ORTAK: { fn: () => safeCall("resolveMultiUnitTapuFieldOrEktedir", (u) => u.fields?.parcelNo, field("parcelNo")) },
+    OLD_BLOCK_NO_ORTAK: { fn: () => safeCall("resolveMultiUnitTapuFieldOrEktedir", (u) => u.fields?.oldBlockNo, field("oldBlockNo")) },
+    OLD_PARCEL_NO_ORTAK: { fn: () => safeCall("resolveMultiUnitTapuFieldOrEktedir", (u) => u.fields?.oldParcelNo, field("oldParcelNo")) },
+    TITLE_QUALITY_ORTAK: { fn: () => safeCall("resolveMultiUnitTapuFieldOrEktedir", (u) => u.fields?.titleQuality, field("titleQuality")) },
+    REGISTRY_PAGE_ORTAK: { fn: () => safeCall("resolveMultiUnitTapuFieldOrEktedir", (u) => u.fields?.registryPage, field("registryPage")) },
+    REGISTRY_VOLUME_ORTAK: { fn: () => safeCall("resolveMultiUnitTapuFieldOrEktedir", (u) => u.fields?.registryVolume, field("registryVolume")) },
+    TITLE_BLOCK_NAME_ORTAK: { fn: () => safeCall("resolveMultiUnitTapuFieldOrEktedir", (u) => u.fields?.titleBlockName, field("titleBlockName")) },
+    TITLE_FLOOR_ORTAK: { fn: () => safeCall("resolveMultiUnitTapuFieldOrEktedir", (u) => u.fields?.titleFloor, field("titleFloor")) },
+    UNIT_NO_ORTAK: { fn: () => safeCall("resolveMultiUnitTapuFieldOrEktedir", (u) => u.fields?.unitNo, field("unitNo")) },
+    EKLENTI_ORTAK: { fn: () => safeCall("resolveMultiUnitTapuFieldOrEktedir", (u) => u.fields?.titleAttachment, field("titleAttachment")) },
+    SHARE_ORTAK: { fn: () => safeCall("resolveMultiUnitTapuFieldOrEktedir", (u) => u.fields?.share, field("share")) },
+    DENOMINATOR_ORTAK: { fn: () => safeCall("resolveMultiUnitTapuFieldOrEktedir", (u) => u.fields?.denominator, field("denominator")) },
+    TAPU_TARIHI_ORTAK: { fn: () => safeCall("resolveMultiUnitTapuFieldOrEktedir", (u) => u.fields?.titleDate || u.tables?.title?.[0]?.c3, dateField("titleDate") || outputDate(firstTitleRowCell("c3"))) },
+    TAPU_YEVMIYESI_ORTAK: { fn: () => safeCall("resolveMultiUnitTapuFieldOrEktedir", (u) => u.tables?.title?.[0]?.c4, firstTitleRowCell("c4")) },
     EDINME: { fn: () => firstTitleRowCell("c2") },
     EDINMESEBEBI: { fn: () => firstTitleRowCell("c2") }, // {{EDİNME_SEBEBİ}}
     SAHIPLER: { fn: ownersListText },
