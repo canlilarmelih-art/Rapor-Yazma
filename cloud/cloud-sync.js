@@ -657,6 +657,7 @@
         <label class="field"><span>Ad Soyad</span><input type="text" id="accountFullName" autocomplete="name" /></label>
         <label class="field"><span>E-posta</span><input type="email" id="accountEmail" autocomplete="email" inputmode="email" autocapitalize="off" /></label>
         <label class="field"><span>Telefon</span><input type="tel" id="accountPhone" autocomplete="tel" inputmode="tel" /></label>
+        <label class="field"><span>Şirket Adı</span><input type="text" id="accountCompany" autocomplete="organization" /></label>
         <p class="cloud-error" id="accountProfileError"></p>
         <button type="button" class="ghost-button" id="accountSaveProfile">Bilgileri Kaydet</button>
       </section>
@@ -684,6 +685,7 @@
     const fullNameInput = overlay.querySelector("#accountFullName");
     const emailInput = overlay.querySelector("#accountEmail");
     const phoneInput = overlay.querySelector("#accountPhone");
+    const companyInput = overlay.querySelector("#accountCompany");
     const profileError = overlay.querySelector("#accountProfileError");
     const profileSaveButton = overlay.querySelector("#accountSaveProfile");
     emailInput.value = cloud.user.email || "";
@@ -693,6 +695,7 @@
         const profile = result.profile || {};
         fullNameInput.value = profile.fullName || "";
         phoneInput.value = profile.phone || "";
+        companyInput.value = profile.company || "";
         emailInput.value = profile.email || cloud.user.email || "";
       })
       .catch(() => { profileError.textContent = "Hesap bilgileri yüklenemedi. Yeniden deneyin."; });
@@ -714,7 +717,11 @@
         await accountApi("/api/account-profile", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ fullName: fullNameInput.value.trim(), phone: phoneInput.value.trim() }),
+          body: JSON.stringify({
+            fullName: fullNameInput.value.trim(),
+            phone: phoneInput.value.trim(),
+            company: companyInput.value.trim(),
+          }),
         });
         // Kullanıcı Ad Soyad'ını burada değiştirebildiğinden, rapor
         // şablonu placeholder'ının ({{KULLANICI_AD_SOYAD}}) cache'lenmiş

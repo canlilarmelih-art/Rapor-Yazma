@@ -1007,19 +1007,31 @@ function approvedUserStatus(entry) {
   return entry?.status === "suspended" ? "suspended" : "active";
 }
 
+// Kullanıcı bulgusu (2026-09-07): "admin kullanıcısı ... normal kullanıcı
+// kendisi seçiyor zaten ama admin için bunu girme kısmı yok" — Yönetici
+// (ADMIN_EMAIL) `isUserApproved()`/`isUserPrivileged()` içinde e-posta
+// karşılaştırmasıyla KISA DEVRE yapıldığından (bkz. yukarıda) normal
+// onay akışından (registerPendingUser/approveUser) HİÇ GEÇMEZ — dolayısıyla
+// approvedUsers'ta bir KAYDI OLMAYABİLİR. Eskiden bu durumda (current yok)
+// fonksiyon `null` dönüp PUT 403 ile başarısız oluyordu — yönetici kendi
+// ad soyad/firma bilgisini HİÇBİR ŞEKİLDE kaydedemiyordu. Bu SADECE
+// yöneticiyi (ya da benzer bir kayıtsız-ama-onaylı ucu) etkiler: normal
+// onaylı bir kullanıcı bu uca ZATEN yalnızca isUserApproved() (Boolean(entry)
+// gerektiren) geçtikten sonra ulaşabildiğinden onun `current`'ı HER ZAMAN
+// var olur — bu davranış onlar için DEĞİŞMEDİ.
 async function updateOwnUserProfile(uid, email, profile) {
   await loadApprovalStateOnce();
   const current = approvedUsers.get(uid);
-  if (!current) return null;
+  const base = current || { approvedAt: new Date().toISOString(), status: "active" };
   const safe = sanitizeRegistrationProfile(profile);
   const next = {
-    ...current,
+    ...base,
     // E-posta Firebase kimlik belirtecinden gelir; istemci girdiğine guvenilmez.
-    email: sanitizeProfileField(email, 320) || current.email || null,
-    fullName: Object.hasOwn(profile || {}, "fullName") ? safe.fullName : current.fullName ?? null,
-    phone: Object.hasOwn(profile || {}, "phone") ? safe.phone : current.phone ?? null,
-    workType: Object.hasOwn(profile || {}, "workType") ? safe.workType : current.workType ?? null,
-    company: Object.hasOwn(profile || {}, "company") ? safe.company : current.company ?? null,
+    email: sanitizeProfileField(email, 320) || base.email || null,
+    fullName: Object.hasOwn(profile || {}, "fullName") ? safe.fullName : base.fullName ?? null,
+    phone: Object.hasOwn(profile || {}, "phone") ? safe.phone : base.phone ?? null,
+    workType: Object.hasOwn(profile || {}, "workType") ? safe.workType : base.workType ?? null,
+    company: Object.hasOwn(profile || {}, "company") ? safe.company : base.company ?? null,
     updatedAt: new Date().toISOString(),
   };
   approvedUsers.set(uid, next);

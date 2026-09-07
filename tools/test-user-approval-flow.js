@@ -255,6 +255,65 @@ const originalFiles = backupAndClearTestFiles();
       assert.equal(await server.deleteManagedUser(uid), true, "Yönetici kullanıcıyı sistem erişiminden silebilmelidir.");
       assert.equal(await server.isUserApproved(uid, "yeni.eposta@example.com"), false, "Silinen kullanıcı onaylı listede kalmamalıdır.");
     }
+
+    console.log("Hesap profili yaşam döngüsü testi tamam.");
+    // --- 8) Yönetici kendi profilini kaydedebilmeli (2026-09-07 bulgusu) --
+    // Kullanıcı bulgusu: "admin kullanıcısı ... normal kullanıcı kendisi
+    // seçiyor zaten ama admin için bunu girme kısmı yok" — Yönetici
+    // (ADMIN_EMAIL) isUserApproved()/isUserPrivileged() içinde e-posta
+    // karşılaştırmasıyla kısa devre yapıldığından registerPendingUser/
+    // approveUser akışından HİÇ GEÇMEZ, dolayısıyla approvedUsers'ta bir
+    // kaydı YOKTUR — updateOwnUserProfile eskiden bu durumda (current yok)
+    // null dönüp PUT'u 403 ile başarısız kılıyordu.
+    {
+      backupAndClearTestFiles();
+      const server = freshServer();
+      const adminEmail = server.accessRoles.ADMIN_EMAIL;
+      const adminUid = "uid-admin-no-prior-entry";
+
+      // Yönetici HİÇ registerPendingUser/approveUser'dan geçmedi — approvedUsers
+      // boş, ama isUserApproved/isUserPrivileged e-posta kısa devresiyle GENE
+      // true (bu davranış DEĞİŞMEDİ, updateOwnUserProfile'dan BAĞIMSIZ).
+      assert.equal(await server.isUserApproved(adminUid, adminEmail), true, "Yönetici kayıtsız da olsa onaylı sayılmalı (değişmedi).");
+      assert.equal(await server.isUserPrivileged(adminUid, adminEmail), true, "Yönetici kayıtsız da olsa ayrıcalıklı sayılmalı (değişmedi).");
+      assert.equal((await server.listApprovedUsers()).find((row) => row.uid === adminUid), undefined, "Kayıt yokken yönetici onaylı listede görünmemeli.");
+
+      const created = await server.updateOwnUserProfile(adminUid, adminEmail, {
+        fullName: "Melih Canlılar",
+        company: "Denge Değerleme ve Danışmanlık A.Ş.",
+      });
+      assert.ok(created, "updateOwnUserProfile önceden kaydı olmayan (yönetici gibi) bir uid için artık null DÖNMEMELİ (yeni kayıt oluşturmalı).");
+      assert.equal(created.fullName, "Melih Canlılar");
+      assert.equal(created.company, "Denge Değerleme ve Danışmanlık A.Ş.");
+      assert.equal(created.email, adminEmail);
+      assert.equal(created.status, "active", "Yeni oluşturulan kayıt aktif sayılmalı (yönetici zaten her zaman erişebilir).");
+
+      // Sonraki bir GET/PUT çağrısı artık BU kaydı bulup üzerine yazmalı
+      // (yeniden oluşturmamalı) — mevcut alanlar (company) korunmalı.
+      const updatedAgain = await server.updateOwnUserProfile(adminUid, adminEmail, { phone: "+90 555 000 00 00" });
+      assert.equal(updatedAgain.fullName, "Melih Canlılar", "İkinci güncellemede önceki ad soyad kaybolmamalı.");
+      assert.equal(updatedAgain.company, "Denge Değerleme ve Danışmanlık A.Ş.", "İkinci güncellemede önceki firma adı kaybolmamalı.");
+      assert.equal(updatedAgain.phone, "+90 555 000 00 00");
+
+      // Kayıt oluşsa BİLE yönetici admin panelindeki "onaylı kullanıcılar"
+      // listesinde GÖRÜNMEMELİ (isAdminEmail filtresi, 1101. satır civarı).
+      assert.equal(
+        (await server.listApprovedUsers()).find((row) => row.uid === adminUid),
+        undefined,
+        "Yönetici kendi profilini kaydettikten SONRA da onaylı kullanıcılar listesinde görünmemeli.",
+      );
+
+      // Normal (onaylı, kaydı ZATEN var olan) bir kullanıcı için davranış
+      // DEĞİŞMEDİ — regresyon: hâlâ mevcut kaydı GÜNCELLİYOR, yeni bir tane
+      // OLUŞTURMUYOR.
+      const normalUid = "uid-normal-existing-entry";
+      await server.registerPendingUser(normalUid, "normal@example.com", { fullName: "Zeynep Kaya" });
+      await server.approveUser(normalUid);
+      const normalUpdated = await server.updateOwnUserProfile(normalUid, "normal@example.com", { company: "Yeni Firma" });
+      assert.equal(normalUpdated.fullName, "Zeynep Kaya", "Normal kullanıcının kaydı SIFIRLANMAMALI, güncellenmelidir.");
+      assert.equal(normalUpdated.company, "Yeni Firma");
+      console.log("Yönetici (önceden kaydı olmayan uid) kendi profilini kaydedebilme testi tamam.");
+    }
   } finally {
     restoreTestFiles(originalFiles);
   }
