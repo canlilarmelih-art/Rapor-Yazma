@@ -148,15 +148,20 @@ jobs:
           nvm use "$required_node"
           node --version
 
+          # PM2 daemon'ı eski Node ile yaşıyorsa --interpreter mevcut süreçte
+          # uygulanmayabilir. update daemon'ı aktif Node ile yeniler.
+          pm2 update
           RAPOR_HOST=0.0.0.0 RAPOR_PORT=5174 MFA_REQUIRED="$MFA_REQUIRED" RESEND_API_KEY="$RESEND_API_KEY" \
             pm2 startOrRestart ecosystem.config.cjs --only rapor-app --interpreter "$(command -v node)" --update-env
           pm2 save
           for attempt in $(seq 1 15); do
-            if curl -fsS http://127.0.0.1:5174/api/readiness | grep -q '"ok":true'; then
+            readiness_response="$(curl -sS http://127.0.0.1:5174/api/readiness || true)"
+            if printf '%s' "$readiness_response" | grep -q '"ok":true'; then
               exit 0
             fi
             sleep 1
           done
+          printf 'Son readiness yaniti: %s\n' "$readiness_response"
           echo "::error::Uygulama 15 saniye icinde hazirlik denetimini gecemedi."
           exit 1
           REMOTE_SCRIPT

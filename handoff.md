@@ -1,5 +1,11 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.698 - 2026-09-08 - PM2 daemon'ı Node 22 ile yenileme
+
+- Sunucuda Node 22 başarıyla indirildi/doğrulandı; buna rağmen eski PM2 daemon'ı uygulamayı eski yorumlayıcıyla başlatmayı sürdürdü ve readiness 503 verdi.
+- Dağıtım, uygulama yeniden başlatılmadan hemen önce `pm2 update` ile daemon'ı aktif Node 22 altında yeniler. Son readiness yanıtı başarısızlık halinde günlüğe yazılır.
+- Değişiklik öncesi yedek: `backups/before-deploy-pm2-daemon-node22-fix_2026-09-08_22-17-25`.
+
 ## 0.0.697 - 2026-09-08 - nvm otomatik `.nvmrc` seçimi ilk kurulumda güvenli
 
 - `nvm.sh`, uygulama dizininden yüklendiğinde `.nvmrc`yi otomatik kullanır. İlk çalışmada Node 22 henüz indirilmediğinden bu otomatik seçim `3` döndürüyordu; nvm fonksiyonu yine de belleğe yüklenmişti.
