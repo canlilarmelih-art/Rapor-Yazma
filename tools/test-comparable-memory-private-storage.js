@@ -17,13 +17,21 @@ async function main() {
   assert.match(clientSource, /const defaultSelectionKeys = new Set\(\["c23", "c32", "c25", "c26", "c28"\]\)/, "EMSAL GETİR, varsayılan seçili alanları dolu emsal olarak saymamalı.");
   assert.match(clientSource, /comparableFields\s*\.filter\(\(field\) => !field\.computed/, "EMSAL GETİR, yalnız gerçek emsal şeması alanlarını değerlendirmeli.");
   assert.match(clientSource, /function buildComparableMemoryCardHtml\(entry\)/, "Geçmiş emsal için kart oluşturulmalı.");
-  for (const fieldKey of ["c4", "c5", "c6", "c7", "c13", "c11", "c15", "calcAdjustedUnitValue"]) {
+  for (const fieldKey of ["c4", "c5", "c6", "c13", "c11", "c15", "calcAdjustedUnitValue"]) {
     assert.match(clientSource, new RegExp(`getComparableMemoryCardValue\\(row, "${fieldKey}"\\)`), `Emsal kartı ${fieldKey} alanını göstermeli.`);
   }
+  assert.match(clientSource, /getComparableMemoryTransferLocation\(getComparableSavedPoint\(row\)\)/, "Emsal kartı Konumu bu raporun KML sınırına göre göstermeli.");
   assert.match(clientSource, /data-comparable-memory-target/, "Emsal kartında hedef sütun butonları bulunmalı.");
   assert.match(clientSource, /function applyComparableMemoryEntryToColumn\(entry, targetIndex\)/, "Geçmiş emsal seçilen sütuna aktarılmalı.");
   assert.match(clientSource, /function isComparableSubjectStatus\(row = \{\}\)/, "Konu taşınmaz emsal durumu ayrı tanınmalı.");
   assert.match(clientSource, /fillColor: subjectComparable \? "#dc2626" : "#14b8a6"/, "Konu taşınmaz noktası kırmızı gösterilmeli.");
+  assert.match(clientSource, /function isPointInsideKmlBoundary\(point, coordinates = \[\]\)/, "Geçmiş emsal KML sınırı içinde mi kontrol edilmeli.");
+  assert.match(clientSource, /function getComparableMemoryTransferLocation\(point\)/, "Geçmiş emsal konumu KML sınırına göre aktarılmalı.");
+  assert.match(clientSource, /if \(!isComparableMemoryPointInsideKml\(point\)\) return "Aynı bölge";/, "KML dışındaki geçmiş emsal aynı bölge olarak aktarılmalı.");
+  assert.match(clientSource, /c7: getComparableMemoryTransferLocation\(point\)/, "Geçmiş emsal konumu aktarımda yeniden belirlenmeli.");
+  for (const key of ["c8", "c9", "c21", "c22"]) {
+    assert.match(clientSource, new RegExp(`${key}: ""`), `Geçmiş emsal aktarımında ${key} şerefiye alanı Seçiniz olmalı.`);
+  }
 
   const firstFile = server.userComparableMemoryFile(firstUser);
   const secondFile = server.userComparableMemoryFile(secondUser);

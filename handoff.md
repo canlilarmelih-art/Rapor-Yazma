@@ -1,5 +1,12 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.705 - 2026-09-09 - Geçmiş emsal KML konum sınıflandırması ve şerefiye sıfırlama
+
+- Geçmiş emsal kartı ve aktarımı artık emsal noktasını bu raporun KML sınırıyla karşılaştırır. KML içinde kalan emsal, konu taşınmazda blok bilgisi varsa `Aynı site`, blok bilgisi yoksa `Aynı bina`; KML dışında kalan emsal `Aynı bölge` olarak aktarılır.
+- Kartın `Konumu` satırı da kaynak rapordaki eski c7 değerini değil, bu raporun KML sınırına göre hesaplanan aktarım değerini gösterir.
+- Geçmiş emsal aktarımında iç özellik ve konum/bölge şerefiye alanları (`c8`, `c9`, `c21`, `c22`) boş/`Seçiniz` durumuna sıfırlanır.
+- Değişiklik öncesi yedek: `backups/before-comparable-memory-kml-location-reset_2026-09-09_01-07-46`.
+
 ## 0.0.704 - 2026-09-09 - Konu taşınmaz emsal işaretçisi ve kart konumu
 
 - Emsal Durumu `Konu taşınmaz` seçili olan emsal noktaları haritada kırmızı dolgu ve koyu kırmızı kenarlıkla gösterilir; etiketleri de `KONU TAŞINMAZ` olarak ayrıştırılır.

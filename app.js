@@ -44255,7 +44255,7 @@ const comparableFields = [
     key: "c7",
     label: "Konumu",
     type: "select",
-    options: ["Aynı bölge / site", "Aynı bölge / bina", "Aynı cadde / site", "Aynı cadde / bina", "Aynı sokak / site", "Aynı sokak / bina", "Aynı site", "Aynı site aynı blok", "Aynı bina"],
+    options: ["Aynı bölge", "Aynı bölge / site", "Aynı bölge / bina", "Aynı cadde / site", "Aynı cadde / bina", "Aynı sokak / site", "Aynı sokak / bina", "Aynı site", "Aynı site aynı blok", "Aynı bina"],
   },
   { key: "c18", label: "Enlem", readOnly: true },
   { key: "c19", label: "Boylam", readOnly: true },
@@ -45018,7 +45018,7 @@ function applyComparableMemoryEntry(entry) {
     window.alert("Boş emsal sütunu yok; mevcut emsallerin üzerine yazılmadı.");
     return;
   }
-  state.tables.comparables[index] = { ...rows[index], ...(entry?.comparable || {}) };
+  state.tables.comparables[index] = { ...rows[index], ...prepareComparableMemoryEntryForColumn(entry) };
   state._comparablesVersion = (state._comparablesVersion || 0) + 1;
   autosave();
   renderSection();
@@ -45038,6 +45038,60 @@ function isComparableSubjectStatus(row = {}) {
   return String(row.c2 || "").trim().toLocaleLowerCase("tr-TR") === "konu taşınmaz";
 }
 
+function isPointInsideKmlBoundary(point, coordinates = []) {
+  if (!Array.isArray(point) || point.length < 2 || !Array.isArray(coordinates) || coordinates.length < 3) return false;
+  const latitude = Number(point[0]);
+  const longitude = Number(point[1]);
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return false;
+  let inside = false;
+  for (let index = 0, previousIndex = coordinates.length - 1; index < coordinates.length; previousIndex = index, index += 1) {
+    const currentLatitude = Number(coordinates[index]?.lat);
+    const currentLongitude = Number(coordinates[index]?.lng);
+    const previousLatitude = Number(coordinates[previousIndex]?.lat);
+    const previousLongitude = Number(coordinates[previousIndex]?.lng);
+    if (![currentLatitude, currentLongitude, previousLatitude, previousLongitude].every(Number.isFinite)) continue;
+    const onHorizontalRange = longitude >= Math.min(currentLongitude, previousLongitude)
+      && longitude <= Math.max(currentLongitude, previousLongitude);
+    const cross = (longitude - currentLongitude) * (previousLatitude - currentLatitude)
+      - (latitude - currentLatitude) * (previousLongitude - currentLongitude);
+    if (Math.abs(cross) < 1e-10 && onHorizontalRange
+      && latitude >= Math.min(currentLatitude, previousLatitude)
+      && latitude <= Math.max(currentLatitude, previousLatitude)) return true;
+    const crossesLatitude = (currentLatitude > latitude) !== (previousLatitude > latitude);
+    if (crossesLatitude && longitude < ((previousLongitude - currentLongitude)
+      * (latitude - currentLatitude)) / (previousLatitude - currentLatitude) + currentLongitude) {
+      inside = !inside;
+    }
+  }
+  return inside;
+}
+
+function isComparableMemoryPointInsideKml(point) {
+  return getTitleUnitKmlRecordsForMap().some((record) => isPointInsideKmlBoundary(point, record.parsed?.coordinates));
+}
+
+function getComparableMemoryTransferLocation(point) {
+  if (!isComparableMemoryPointInsideKml(point)) return "Aynı bölge";
+  const activeRecord = getTitleUnitKmlRecordsForMap().find((record) => record.index === state.activeTitleUnitIndex);
+  const parcelFields = getKmlRecordParcelFields(activeRecord);
+  const reportFields = getTitleUnitFieldsForLabel(state.activeTitleUnitIndex) || {};
+  const blockNo = String(parcelFields.blockNo || reportFields.blockNo || state.fields.blockNo || "").trim();
+  return blockNo ? "Aynı site" : "Aynı bina";
+}
+
+function prepareComparableMemoryEntryForColumn(entry) {
+  const comparable = { ...(entry?.comparable || {}) };
+  const point = getComparableSavedPoint(comparable);
+  return {
+    ...comparable,
+    c7: getComparableMemoryTransferLocation(point),
+    c8: "",
+    c9: "",
+    c21: "",
+    c22: "",
+  };
+}
+
 function getComparableMemoryPremiumValue(row) {
   const metrics = calculateComparableMetrics(row);
   const total = Number(metrics.featureAdjustment || 0) + Number(metrics.locationAdjustment || 0);
@@ -45050,7 +45104,7 @@ function buildComparableMemoryCardHtml(entry) {
     ["Nitelik", getComparableMemoryCardValue(row, "c4")],
     ["Oda Sayısı", getComparableMemoryCardValue(row, "c5")],
     ["Bulunduğu Kat", getComparableMemoryCardValue(row, "c6")],
-    ["Konumu", getComparableMemoryCardValue(row, "c7")],
+    ["Konumu", getComparableMemoryTransferLocation(getComparableSavedPoint(row))],
     ["Düzeltilmiş Alan", getComparableMemoryCardValue(row, "c13")],
     ["Yapı Yaşı", getComparableMemoryCardValue(row, "c11")],
     ["Pazarlıklı Değer", getComparableMemoryCardValue(row, "c15")],
@@ -45081,7 +45135,7 @@ function applyComparableMemoryEntryToColumn(entry, targetIndex) {
   const existing = rows[index] || {};
   if (!isComparableMemoryTargetRowEmpty(existing)
     && !window.confirm(`Emsal ${index + 1} sütununda veri var. Üzerine yazılsın mı?`)) return;
-  state.tables.comparables[index] = { ...existing, ...(entry?.comparable || {}) };
+  state.tables.comparables[index] = { ...existing, ...prepareComparableMemoryEntryForColumn(entry) };
   state._comparablesVersion = (state._comparablesVersion || 0) + 1;
   autosave();
   renderSection();
