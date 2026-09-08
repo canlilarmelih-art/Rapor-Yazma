@@ -1660,10 +1660,15 @@ assert.match(appSource, /panel\.dataset\.parcelScope = mixedParcels \? "mixed" :
 // yeniden hesaplanan, Excel'den ice aktarilsa SESSIZCE ustune yazilacak
 // alanlar) BILINCLI OLARAK DISARIDA - REGRESYON olarak da dogrulanir.
 {
-  const buildingSectionStart = appSource.indexOf('id: "building"');
+  // Windows CRLF checkout'unda yalnız "\n" aramak bölüm sonunu bulamıyor
+  // ve kalan dosyayı yanlışlıkla building bölümü sayıyordu. Kaynağı test
+  // sınırında normalize et; bulunamayan sınırı açık hata olarak bildir.
+  const normalizedAppSource = appSource.replace(/\r\n/g, "\n");
+  const buildingSectionStart = normalizedAppSource.indexOf('id: "building"');
   assert.ok(buildingSectionStart >= 0, "'building' bolumu bulunamadi.");
-  const buildingSectionEnd = appSource.indexOf("},\n  {", buildingSectionStart);
-  const buildingSectionSrc = appSource.slice(buildingSectionStart, buildingSectionEnd);
+  const buildingSectionEnd = normalizedAppSource.indexOf("},\n  {", buildingSectionStart);
+  assert.ok(buildingSectionEnd > buildingSectionStart, "'building' bolumunun son siniri bulunamadi.");
+  const buildingSectionSrc = normalizedAppSource.slice(buildingSectionStart, buildingSectionEnd);
 
   [
     '{ key: "buildingStyle", label: "Bina Yapı Tarzı", type: "select", hidden: true }',

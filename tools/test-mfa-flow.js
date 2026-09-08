@@ -38,14 +38,19 @@ const path = require("node:path");
 const root = path.resolve(__dirname, "..");
 const serverPath = path.join(root, "server.js");
 
-function requireServerWithEnv(resendApiKey) {
+function requireServerWithEnv(resendApiKey, mfaRequired) {
   delete require.cache[require.resolve(serverPath)];
   const previous = process.env.RESEND_API_KEY;
+  const previousMfaRequired = process.env.MFA_REQUIRED;
   if (resendApiKey === undefined) delete process.env.RESEND_API_KEY;
   else process.env.RESEND_API_KEY = resendApiKey;
+  if (mfaRequired === undefined) delete process.env.MFA_REQUIRED;
+  else process.env.MFA_REQUIRED = mfaRequired;
   const mod = require(serverPath);
   if (previous === undefined) delete process.env.RESEND_API_KEY;
   else process.env.RESEND_API_KEY = previous;
+  if (previousMfaRequired === undefined) delete process.env.MFA_REQUIRED;
+  else process.env.MFA_REQUIRED = previousMfaRequired;
   return mod;
 }
 
@@ -59,6 +64,15 @@ function requireServerWithEnv(resendApiKey) {
 
   const withKey = requireServerWithEnv("re_test_1234567890");
   assert.equal(withKey.isMfaConfigured(), true, "RESEND_API_KEY ayarliyken MFA aktif olmali.");
+
+  const requiredWithoutKey = requireServerWithEnv(undefined, "true");
+  assert.equal(requiredWithoutKey.isMfaRequired(), true, "MFA_REQUIRED=true zorunlu politikayi acmali.");
+  assert.equal(requiredWithoutKey.isMfaPolicyConfigured(), false, "Zorunlu MFA anahtarsiz yapilandirilmis sayilmamali.");
+  assert.throws(() => requiredWithoutKey.assertMfaPolicyConfiguration(), /RESEND_API_KEY/, "Zorunlu MFA anahtarsiz baslatmayi reddetmeli.");
+
+  const requiredWithKey = requireServerWithEnv("re_test_1234567890", "true");
+  assert.equal(requiredWithKey.isMfaPolicyConfigured(), true, "Zorunlu MFA anahtarla yapilandirilmis sayilmali.");
+  assert.doesNotThrow(() => requiredWithKey.assertMfaPolicyConfiguration());
 }
 
 // Kalan testler icin MFA aktif modulu kullan.

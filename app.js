@@ -9284,7 +9284,7 @@ function uniqueFloorRateRows(rows = []) {
   });
 }
 
-function joinTurkishList(items = []) {
+function joinTurkishFloorList(items = []) {
   const list = items.filter(Boolean);
   if (list.length <= 1) return list[0] || "";
   if (list.length === 2) return `${list[0]} ve ${list[1]}`;
@@ -15176,7 +15176,7 @@ function getBuildingDistributionSuffix(count) {
   return Number(count) === 2 ? " şer" : " er";
 }
 
-function joinTurkishList(items) {
+function joinTurkishUnitList(items) {
   const clean = items.filter(Boolean);
   if (clean.length <= 1) return clean[0] || "";
   return `${clean.slice(0, -1).join(", ")} ve ${clean[clean.length - 1]}`;
@@ -21945,6 +21945,16 @@ function getExpenseBankGroupGuidance(bankGroup) {
 }
 
 let expenseFeeCloudSyncSelfHealAttempted = false;
+let expenseFeeCloudSyncStatus = { kind: "idle", message: "", lastSuccessAt: null };
+
+function setExpenseFeeCloudSyncStatus(kind, message, lastSuccessAt = null) {
+  expenseFeeCloudSyncStatus = { kind, message, lastSuccessAt };
+  document.querySelectorAll("[data-expense-fee-cloud-status]").forEach((node) => {
+    node.dataset.statusKind = kind;
+    node.textContent = message;
+  });
+}
+
 function createExpenseFeesSummaryPanel() {
   // Yeni bir taslak (Yeni İş) açıldığında admin masraf sabitleri (KDV oranı,
   // birim ücretler, tarife tablosu) state'ten kaybolabilir; buluttan tekrar
@@ -21958,6 +21968,10 @@ function createExpenseFeesSummaryPanel() {
   panel.className = "subsection expense-fees-summary-panel";
   panel.dataset.expenseSummaryPanel = "true";
   panel.innerHTML = `
+    <div class="expense-fee-cloud-status" data-status-kind="${escapeHtml(expenseFeeCloudSyncStatus.kind)}">
+      <span data-expense-fee-cloud-status>${escapeHtml(expenseFeeCloudSyncStatus.message)}</span>
+      <button type="button" class="secondary-button" data-expense-fee-cloud-retry>Tekrar dene</button>
+    </div>
     <div class="subsection-title-row" style="margin-top:14px;">
       <div>
         <h4>Masraf Tablosu</h4>
@@ -21987,6 +22001,7 @@ function createExpenseFeesSummaryPanel() {
       </table>
     </div>
   `;
+  panel.querySelector("[data-expense-fee-cloud-retry]").addEventListener("click", () => syncExpenseFeesFromCloud());
   updateExpenseFeesSummaryPanelIn(panel);
   return panel;
 }
@@ -28217,7 +28232,7 @@ function removeTakbisAcquisitionTokens(value) {
     .join(" ");
 }
 
-function escapeRegExp(value) {
+function escapeTakbisRegExp(value) {
   return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
@@ -32097,7 +32112,7 @@ function normalizeReviewedDocumentScope(value) {
   return text;
 }
 
-function joinTurkishList(items = []) {
+function joinReviewedDocumentList(items = []) {
   const clean = items.filter(Boolean);
   if (clean.length <= 1) return clean[0] || "";
   if (clean.length === 2) return `${clean[0]} ve ${clean[1]}`;
@@ -33371,13 +33386,23 @@ function scheduleExpenseFeeCloudSave() {
   expenseFeeCloudSaveTimer = setTimeout(() => {
     const payload = {};
     EXPENSE_FEE_ADMIN_KEYS.forEach((key) => { payload[key] = state.fields[key] || ""; });
-    window.RaporCloudSync?.saveExpenseFees?.(payload)?.catch?.((error) => {
+    setExpenseFeeCloudSyncStatus("syncing", "Ortak masraf ayarları buluta kaydediliyor…");
+    const saveRequest = window.RaporCloudSync?.saveExpenseFees?.(payload);
+    if (!saveRequest || typeof saveRequest.then !== "function") {
+      setExpenseFeeCloudSyncStatus("local", "Bulut bağlantısı yok; ortak masraf ayarları yalnızca bu cihazda kullanılıyor.");
+      return;
+    }
+    saveRequest.then(() => {
+      setExpenseFeeCloudSyncStatus("synced", "Ortak masraf ayarları bulutta güncel.", new Date().toISOString());
+    }).catch((error) => {
       console.warn("Masraf bilgileri buluta kaydedilemedi:", error?.code || error);
+      setExpenseFeeCloudSyncStatus("error", "Ortak masraf ayarları senkronlanamadı; yerel değer kullanılıyor. Tekrar deneyin.");
     });
   }, 800);
 }
 
 async function syncExpenseFeesFromCloud() {
+  setExpenseFeeCloudSyncStatus("syncing", "Ortak masraf ayarları buluttan yükleniyor…");
   try {
     const remote = await window.RaporCloudSync?.loadExpenseFees?.();
     if (!remote) {
@@ -33390,7 +33415,9 @@ async function syncExpenseFeesFromCloud() {
         saveState();
         render();
         scheduleExpenseFeeCloudSave();
+        setExpenseFeeCloudSyncStatus("syncing", "Varsayılan ortak masraf ayarları buluta kaydediliyor…");
       }
+      if (!isCurrentUserAdmin()) setExpenseFeeCloudSyncStatus("missing", "Ortak masraf ayarları henüz bulutta tanımlı değil; yerel değer kullanılıyor.");
       return;
     }
     let changed = false;
@@ -33406,8 +33433,10 @@ async function syncExpenseFeesFromCloud() {
       saveState();
       render();
     }
+    setExpenseFeeCloudSyncStatus("synced", "Ortak masraf ayarları buluttan güncel.", new Date().toISOString());
   } catch (error) {
     console.warn("Masraf bilgileri buluttan alınamadı:", error?.code || error);
+    setExpenseFeeCloudSyncStatus("error", "Ortak masraf ayarları senkronlanamadı; yerel değer kullanılıyor. Tekrar deneyin.");
   }
 }
 
@@ -44705,6 +44734,9 @@ function createComparablesVerticalEditor(section) {
   shell.className = "table-shell comparables-matrix-shell";
   const topScroll = document.createElement("div");
   topScroll.className = "comparables-top-scroll";
+  const mobileHint = document.createElement("p");
+  mobileHint.className = "comparable-mobile-swipe-hint";
+  mobileHint.textContent = "Emsal sütunları arasında geçmek için tabloyu sağa veya sola kaydırın. Alan adları sabit kalır.";
   const topScrollInner = document.createElement("div");
   topScrollInner.className = "comparables-top-scroll-inner";
   topScroll.append(topScrollInner);
@@ -44754,7 +44786,7 @@ function createComparablesVerticalEditor(section) {
   shell.addEventListener("scroll", () => {
     if (Math.abs(topScroll.scrollLeft - shell.scrollLeft) > 1) topScroll.scrollLeft = shell.scrollLeft;
   });
-  wrapper.append(headingRow, topScroll, shell);
+  wrapper.append(headingRow, mobileHint, topScroll, shell);
   requestAnimationFrame(() => {
     topScrollInner.style.width = `${table.scrollWidth}px`;
   });
@@ -44861,6 +44893,12 @@ function createComparableLocationSketchPanel() {
       <button class="mini-button" type="button" data-comparable-sketch-save>${state.sourceValues?.reportImages?.comparables ? "KROKİ KAYDEDİLDİ" : "KROKİYİ KAYDET"}</button>
       <button class="mini-button" type="button" data-comparable-sketch-export>JPG İNDİR</button>
       <button class="mini-button" type="button" data-comparable-sketch-reset-labels>Etiketleri Sıfırla</button>
+      <button class="mini-button" type="button" data-comparable-memory-toggle>GEÇMİŞ EMSALLER</button>
+      <button class="mini-button" type="button" data-comparable-memory-save>EMSALLERİ HAFIZAYA KAYDET</button>
+      <label class="export-control comparable-memory-archive-control" hidden>
+        <input type="checkbox" data-comparable-memory-archived />
+        <span>6 aydan eskiyi göster</span>
+      </label>
       <label class="export-control">
         <span>Boyut</span>
         <select data-comparable-sketch-export-ratio>
@@ -44891,8 +44929,75 @@ function createComparableLocationSketchPanel() {
     resetComparableSketchLabelOverrides();
     renderComparableLocationSketchMap(wrapper);
   });
+  wrapper.querySelector("[data-comparable-memory-toggle]").addEventListener("click", async (event) => {
+    const memory = state.sourceValues.comparableMemory = state.sourceValues.comparableMemory || {};
+    memory.visible = !memory.visible;
+    event.currentTarget.classList.toggle("is-active", memory.visible);
+    wrapper.querySelector(".comparable-memory-archive-control").hidden = !memory.visible;
+    if (memory.visible) await refreshComparableMemory(memory.includeArchived);
+    renderComparableLocationSketchMap(wrapper);
+  });
+  wrapper.querySelector("[data-comparable-memory-archived]").addEventListener("change", async (event) => {
+    const memory = state.sourceValues.comparableMemory = state.sourceValues.comparableMemory || {};
+    memory.includeArchived = Boolean(event.currentTarget.checked);
+    await refreshComparableMemory(memory.includeArchived);
+    renderComparableLocationSketchMap(wrapper);
+  });
+  wrapper.querySelector("[data-comparable-memory-save]").addEventListener("click", async (event) => {
+    const button = event.currentTarget;
+    const rows = getComparableRows().filter((row) => Number.isFinite(Number(String(row?.c18 || "").replace(",", "."))) && Number.isFinite(Number(String(row?.c19 || "").replace(",", "."))));
+    if (!rows.length) {
+      window.alert("Hafızaya kaydedilecek koordinatlı emsal yok.");
+      return;
+    }
+    button.disabled = true;
+    const previousText = button.textContent;
+    button.textContent = "KAYDEDİLİYOR...";
+    try {
+      for (const comparable of rows) {
+        const response = await fetchRaporApi("/api/comparable-memory", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ comparable }) });
+        const data = await response.json();
+        if (!response.ok || data.ok === false) throw new Error(data.error || "Emsal kaydedilemedi.");
+      }
+      button.textContent = `${rows.length} EMSAL KAYDEDİLDİ`;
+      await refreshComparableMemory(Boolean(state.sourceValues?.comparableMemory?.includeArchived));
+    } catch (error) {
+      window.alert(error.message || "Emsaller hafızaya kaydedilemedi.");
+      button.textContent = previousText;
+    } finally {
+      button.disabled = false;
+    }
+  });
   window.setTimeout(() => renderComparableLocationSketchMap(wrapper), 0);
   return wrapper;
+}
+
+async function refreshComparableMemory(includeArchived = false) {
+  const response = await fetchRaporApi(`/api/comparable-memory${includeArchived ? "?includeArchived=1" : ""}`);
+  const data = await response.json();
+  if (!response.ok || data.ok === false) throw new Error(data.error || "Geçmiş emsaller alınamadı.");
+  state.sourceValues.comparableMemory = {
+    ...(state.sourceValues.comparableMemory || {}),
+    entries: Array.isArray(data.entries) ? data.entries : [],
+    archivedCount: Number(data.archivedCount || 0),
+  };
+}
+
+function isComparableMemoryTargetRowEmpty(row = {}) {
+  return !Object.entries(row).some(([key, value]) => !["c23", "c32"].includes(key) && String(value || "").trim());
+}
+
+function applyComparableMemoryEntry(entry) {
+  const rows = getComparableRows();
+  const index = rows.findIndex(isComparableMemoryTargetRowEmpty);
+  if (index < 0) {
+    window.alert("Boş emsal sütunu yok; mevcut emsallerin üzerine yazılmadı.");
+    return;
+  }
+  state.tables.comparables[index] = { ...rows[index], ...(entry?.comparable || {}) };
+  state._comparablesVersion = (state._comparablesVersion || 0) + 1;
+  autosave();
+  renderSection();
 }
 
 // Kullanıcı talebi: "kullanıcı emsal haritası üzerinden etiketleri istediği
@@ -44995,6 +45100,21 @@ function renderComparableLocationSketchMap(wrapper) {
     }).addTo(map);
     labelEntries.push({ id: `comparable-${item.index}`, kind: "comparable", latlng: item.point, text: `Emsal ${item.index + 1}` });
   });
+
+  const memory = state.sourceValues?.comparableMemory || {};
+  if (memory.visible) {
+    (memory.entries || []).forEach((entry) => {
+      const lat = Number(String(entry?.comparable?.c18 || "").replace(",", "."));
+      const lng = Number(String(entry?.comparable?.c19 || "").replace(",", "."));
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+      const marker = leaflet.circleMarker([lat, lng], { radius: 7, color: "#7c3aed", weight: 2, fillColor: "#a78bfa", fillOpacity: 0.9 }).addTo(map);
+      marker.bindPopup(`<strong>Geçmiş emsal</strong><br>${escapeHtml(entry?.comparable?.c4 || entry?.comparable?.c23 || "Emsal")}<br><button type="button" data-comparable-memory-apply>EMSAL GETİR</button>`);
+      marker.on("popupopen", () => {
+        const button = marker.getPopup()?.getElement()?.querySelector("[data-comparable-memory-apply]");
+        if (button) button.addEventListener("click", () => applyComparableMemoryEntry(entry), { once: true });
+      });
+    });
+  }
 
   if (!comparablePoints.length) {
     const notice = leaflet.control({ position: "bottomleft" });

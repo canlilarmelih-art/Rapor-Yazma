@@ -1525,7 +1525,7 @@
       throw new Error(errorPayload?.error || "Sablon indirilemedi.");
     }
     const arrayBuffer = await docxResponse.arrayBuffer();
-    const zipEntries = window.RaporDocxFill.readStoredZip(arrayBuffer);
+    const zipEntries = await window.RaporDocxFill.readZip(arrayBuffer);
     const docEntry = zipEntries.find((item) => item.name === "word/document.xml");
     if (!docEntry) throw new Error("DOCX şablonunda word/document.xml bulunamadı.");
     const tokens = window.RaporDocxFill.collectTokens(new TextDecoder("utf-8").decode(docEntry.bytes));
@@ -1562,7 +1562,7 @@
         if (!embeddedPhotoTokens.has(token)) values[token] = "";
       });
     }
-    const filled = window.RaporDocxFill.fillTemplate(arrayBuffer, values, boldFlags, imageAssets, photoGroups);
+    const filled = await window.RaporDocxFill.fillTemplateAsync(arrayBuffer, values, boldFlags, imageAssets, photoGroups);
     const fileName = `${safeCall("buildExportBaseFileName") || "rapor"}-${entry.key}.docx`;
     if (download && window.RaporXlsxFill?.downloadBlob) window.RaporXlsxFill.downloadBlob(fileName, filled.blob);
     // {{EMSAL_KROKISI}} resolveTemplateTokenValues() icin her zaman "missing"

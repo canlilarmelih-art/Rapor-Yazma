@@ -82,8 +82,8 @@ const saleabilitySource = sourceBetween(
   "const valuationSaleabilityExplanationFallback"
 );
 const joinTurkishListSource = sourceBetween(
-  "function joinTurkishList(items = []) {",
-  "function fillWorkplaceFloorCalculationTableBody"
+  "function joinTurkishList(items) {",
+  "async function processKmlFile"
 );
 const suitabilityLabelSource = sourceBetween(
   "function formatTitleUnitSuitabilityLabel(fields, index) {",
@@ -94,6 +94,7 @@ function makeContext({ selectVariantIndex = 0 } = {}) {
   const context = {
     state: { fields: {} },
     saleabilityOptions: ["Satılabilir", "Alıcısı Az", "Satışı Güç", "Satılamaz"],
+    cleanupPlaceName: (value) => String(value || "").trim(),
     normalizeReportDescriptionText: (value) => String(value || "").trim().replace(/\s+/g, " "),
     selectVariant: () => selectVariantIndex,
     registerVariantGroup: () => {},

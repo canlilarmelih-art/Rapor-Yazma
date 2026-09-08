@@ -1,0 +1,23 @@
+# Yalnız üretimde çalışması gereken dosya ve dizinler. Yeni bir çalışma zamanı
+# varlığı eklenirse bu liste ve tools/test-deploy-readiness.js birlikte güncellenir.
+/index.html
+/login.html
+/admin-users.html
+/saha-pro.html
+/app.js
+/server.js
+/styles.css
+/manifest.json
+/service-worker.js
+/ecosystem.config.cjs
+/package.json
+/package-lock.json
+/.nvmrc
+/assets/***
+/cloud/***
+/icons/***
+/src/***
+/templates/***
+/themes/***
+/vendor/***
+- *

@@ -60,11 +60,29 @@ const server = require(path.join(root, "server.js"));
     "src/comparables/comparable-market-analysis.js",
     "vendor/leaflet/leaflet.css",
     "templates/isbank.html",
+    "server-data/export-signing-key.txt",
+    "server-data/adlandirilmis_hucreler_listesi.json",
   ];
   protectedPaths.forEach((relativePath) => {
     assert.ok(
       !server.isPublicStaticFile(relativePath),
       `"${relativePath}" oturum ZORUNLU (korumali) olmali — kaynak kodu icerir.`,
+    );
+  });
+}
+
+// --- 1b) Sunucu verisi: yeni dosyalar da varsayılan olarak statik değildir --
+{
+  const sensitivePaths = [
+    "server-data/export-signing-key.txt",
+    "server-data/gelecekte-eklenecek-gizli-veri.json",
+    "server-data/users/test-user/active-case.json",
+  ];
+  sensitivePaths.forEach((relativePath) => {
+    assert.equal(
+      server.resolveStaticPath(`/${relativePath}`),
+      null,
+      `"${relativePath}" static olarak asla cozulmemeli.`,
     );
   });
 }

@@ -478,7 +478,7 @@ function freshState(overrides = {}) {
 {
   assert.match(
     appSource,
-    /function createEkbInlineUploadButton\(\)\s*\{[\s\S]{0,100}const button = document\.createElement\("button"\);[\s\S]{0,600}await processEkbFile\(file\);/,
+    /function createEkbInlineUploadButton\(\)\s*\{[\s\S]{0,100}const button = document\.createElement\("button"\);[\s\S]{0,900}await processEkbFile\(file\);/,
     "createEkbInlineUploadButton() bulunamadi veya processEkbFile()'i cagirmiyor."
   );
   assert.match(

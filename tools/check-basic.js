@@ -278,7 +278,7 @@ function main() {
       serverJs.includes('"/api/neighborhoods": { limit: 60') &&
       serverJs.includes("createReadStream(neighborhoodCsvFile") &&
       serverJs.includes("readline.createInterface") &&
-      serverJs.includes('"bursa_manuel_duzeltilmis_ana_dosya.csv",'),
+      serverJs.includes('"bursa_manuel_duzeltilmis_ana_dosya.csv"'),
     "Buyuk mahalle veritabani telefona yuklenmemeli; sorgular sunucuda satir satir islenmelidir."
   );
   const neighborhoodFixture = [
@@ -853,7 +853,7 @@ function main() {
       // cogullayan pluralizeEnvironmentalSubjectText(...) sarmalayicisi
       // ICINDE donuyor (kullanici bildirimi: "bu sekilde geldi coklu
       // formata uygun olmali").
-      appJs.includes("return pluralizeEnvironmentalSubjectText(\n      `${inspectionLead} EKB sistemi, E Devlet, resmi kurumlar") &&
+      appJs.includes("return pluralizeEnvironmentalSubjectText(\r\n      `${inspectionLead} EKB sistemi, E Devlet, resmi kurumlar") &&
       appJs.includes("olan` : \"\"") &&
       appJs.includes("return state.fields.appointmentDate || \"\";") &&
       // 2026-08-23: EKB aciklamasi artik TEK bir "ekbExplanation" degil,

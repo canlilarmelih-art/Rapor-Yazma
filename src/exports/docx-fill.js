@@ -68,6 +68,46 @@
     return entries;
   }
 
+  // Word, şablonu yeniden kaydettiğinde ZIP girdilerini çoğunlukla DEFLATE
+  // (method 8) ile sıkıştırır. Mevcut senkron STORED okuyucu korunur; bu
+  // asenkron yol ise tarayıcının yerleşik standardıyla sıkıştırılmış girdiyi
+  // açıp, kalan doldurma motorunun beklediği STORED ara pakete dönüştürür.
+  async function readZip(arrayBuffer) {
+    const view = new DataView(arrayBuffer);
+    const bytes = new Uint8Array(arrayBuffer);
+    const entries = [];
+    let off = 0;
+    while (off + 4 <= bytes.length) {
+      const sig = view.getUint32(off, true);
+      if (sig !== 0x04034b50) break;
+      const flags = view.getUint16(off + 6, true);
+      const method = view.getUint16(off + 8, true);
+      const compSize = view.getUint32(off + 18, true);
+      const nameLen = view.getUint16(off + 26, true);
+      const extraLen = view.getUint16(off + 28, true);
+      if (flags & 0x0008) throw new Error("DOCX şablonunda desteklenmeyen ZIP data descriptor kullanılıyor.");
+      const nameStart = off + 30;
+      const name = dec.decode(bytes.subarray(nameStart, nameStart + nameLen));
+      const dataStart = nameStart + nameLen + extraLen;
+      const compressed = bytes.subarray(dataStart, dataStart + compSize);
+      let data;
+      if (method === 0) {
+        data = compressed;
+      } else if (method === 8 && typeof DecompressionStream === "function") {
+        const stream = new Blob([compressed]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+        data = new Uint8Array(await new Response(stream).arrayBuffer());
+      } else if (method === 8) {
+        throw new Error("Bu tarayıcı sıkıştırılmış DOCX şablonlarını desteklemiyor; güncel Chrome, Edge veya Safari kullanın.");
+      } else {
+        throw new Error(`DOCX şablonunda desteklenmeyen ZIP yöntemi (${name} method=${method}).`);
+      }
+      entries.push({ name, bytes: data });
+      off = dataStart + compSize;
+    }
+    if (!entries.length) throw new Error("DOCX şablonu okunamadı (geçerli zip girişi yok).");
+    return entries;
+  }
+
   function writeStoredZip(entries) {
     const chunks = [];
     const central = [];
@@ -934,6 +974,12 @@
     };
   }
 
+  async function fillTemplateAsync(arrayBuffer, values, boldFlags, imageAssets, photoGroups) {
+    const entries = await readZip(arrayBuffer);
+    const storedZip = writeStoredZip(entries);
+    return fillTemplate(storedZip.buffer, values, boldFlags, imageAssets, photoGroups);
+  }
+
   window.RaporDocxFill = {
     fillTemplate,
     collectTokens,
@@ -941,7 +987,9 @@
     htmlValueToXmlText,
     crc32,
     readStoredZip,
+    readZip,
     writeStoredZip,
+    fillTemplateAsync,
     embedImageAssets,
     getJpegPixelSize,
     computeImageEmuSize,

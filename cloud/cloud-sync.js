@@ -203,26 +203,29 @@
       .collection("reports").doc(reportId);
   }
 
-  function buildEnvelope(existingCreatedAt) {
+  function buildEnvelope({ rev, createdAt, payload, summary, lastActiveSection, lastDevice }) {
     const Timestamp = firebase.firestore.Timestamp;
     const now = firebase.firestore.FieldValue.serverTimestamp();
     return {
       schema: CLOUD_SCHEMA,
       schemaVersion: CLOUD_SCHEMA_VERSION,
       status: "draft",
-      rev: cloud.knownRev + 1,
-      lastDevice: window.matchMedia("(max-width: 820px)").matches ? "mobile" : "desktop",
-      lastActiveSection: typeof activeSectionId === "string" ? activeSectionId : "",
-      createdAt: existingCreatedAt || now,
+      rev,
+      lastDevice,
+      lastActiveSection,
+      createdAt: createdAt || now,
       updatedAt: now,
       expireAt: Timestamp.fromMillis(Date.now() + RETENTION_DAYS * 24 * 60 * 60 * 1000),
-      summary: buildSummary(),
-      payload: buildCloudReportPayload(),
+      summary,
+      payload,
     };
   }
 
   // ---------------------------------------------------------------
-  // Gönderme / çekme (her zaman o an AKTİF rapor üzerinde çalışır)
+  // Gönderme / çekme. Gönderme, ilk await'ten ÖNCE hedef raporu ve içeriği
+  // dondurur; aksi halde kullanıcı rapor değiştirirken A'nın hedefine B'nin
+  // verisi yazılabilirdi. Revizyon kontrolü de aynı Firestore transaction'ında
+  // yapıldığı için iki cihaz aynı revizyonu başarılı kaydedemez.
   // ---------------------------------------------------------------
   async function pushReport({ force = false } = {}) {
     if (!cloud.user || !cloud.activeReportId || cloud.pushing) return false;
@@ -230,29 +233,53 @@
       setStatus("ready", "Rapor kÃ¼tÃ¼phaneye alÄ±nmak iÃ§in henÃ¼z yeterince dolu deÄŸil.");
       return false;
     }
+    const reportId = cloud.activeReportId;
+    const expectedRev = cloud.knownRev;
+    const payload = buildCloudReportPayload();
+    const summary = buildSummary();
+    const lastActiveSection = typeof activeSectionId === "string" ? activeSectionId : "";
+    const lastDevice = window.matchMedia("(max-width: 820px)").matches ? "mobile" : "desktop";
+    const localUpdatedAt = state.updatedAt || null;
+    const isStillActiveReport = () => cloud.activeReportId === reportId;
     cloud.pushing = true;
     setStatus("syncing", "Buluta gönderiliyor...");
     try {
-      const ref = reportDocRef();
-      const snapshot = await ref.get();
-      const remote = snapshot.exists ? snapshot.data() : null;
+      const ref = reportDocRef(reportId);
+      const result = await cloud.db.runTransaction(async (transaction) => {
+        const snapshot = await transaction.get(ref);
+        const remote = snapshot.exists ? snapshot.data() : null;
+        const remoteRev = Number(remote?.rev || 0);
+        if (!force && remoteRev !== expectedRev) return { conflict: true, remote };
 
-      if (remote && Number(remote.rev || 0) > cloud.knownRev && !force) {
-        setStatus("warn", "Bulutta daha yeni sürüm var (başka cihaz).");
-        showConflictChoice(remote);
+        const envelope = buildEnvelope({
+          rev: remoteRev + 1,
+          createdAt: remote?.createdAt || null,
+          payload,
+          summary,
+          lastActiveSection,
+          lastDevice,
+        });
+        transaction.set(ref, envelope);
+        return { conflict: false, envelope };
+      });
+
+      if (result.conflict) {
+        if (isStillActiveReport()) {
+          setStatus("warn", "Bulutta daha yeni veya farklı bir sürüm var (başka cihaz).");
+          showConflictChoice(result.remote);
+        }
         return false;
       }
 
-      const envelope = buildEnvelope(remote?.createdAt || null);
-      await ref.set(envelope);
-      cloud.knownRev = envelope.rev;
-      cloud.lastPushedUpdatedAt = state.updatedAt || null;
+      if (!isStillActiveReport()) return true;
+      cloud.knownRev = result.envelope.rev;
+      cloud.lastPushedUpdatedAt = localUpdatedAt;
       cloud.lastPushTime = Date.now();
       bumpDailyPushCounter();
       setStatus("synced", `Bulutta güncel · ${new Date().toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}`);
       return true;
     } catch (error) {
-      setStatus("error", "Gönderilemedi; bağlantı gelince yeniden denenecek.");
+      if (isStillActiveReport()) setStatus("error", "Gönderilemedi; bağlantı gelince yeniden denenecek.");
       console.warn("Bulut gönderme hatası:", error?.code || error?.message || error);
       return false;
     } finally {
@@ -1129,7 +1156,9 @@
       return snapshot.exists ? snapshot.data() : null;
     } catch (error) {
       console.warn(`cloud-sync: appSettings/${docId} okunamadı:`, error?.code || error);
-      return null;
+      // "Belge yok" ile yetki/ağ hatasını ayırmak zorundayız. Aksi halde
+      // çağıran admin varsayılanları yeniden yazıp gerçek hatayı gizleyebilir.
+      throw error;
     }
   }
 

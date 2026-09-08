@@ -95,10 +95,7 @@ jobs:
           test -n "$DEPLOY_USER"
           test -n "$DEPLOY_PATH"
           rsync -az --delete \
-            --exclude '.git/' \
-            --exclude 'server-data/' \
-            --exclude 'backups/' \
-            --exclude 'node_modules/' \
+            --include-from='deploy/rsync-include.txt' \
             -e "ssh -i $HOME/.ssh/deploy_key -p $DEPLOY_PORT -o IdentitiesOnly=yes -o IdentityAgent=none -o BatchMode=yes -o StrictHostKeyChecking=yes" \
             ./ "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/"
 
@@ -108,14 +105,14 @@ jobs:
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
           DEPLOY_PORT: ${{ secrets.DEPLOY_PORT || '22' }}
-          # E-posta 2FA (bkz. server.js isMfaConfigured / ecosystem.config.cjs):
-          # bu secret GitHub'da TANIMLI DEĞİLSE boş string olur, MFA otomatik
-          # devre dışı kalır — mevcut secret'lar tamamlanmadan bu adım deploy'u
-          # BOZMAZ (secrets.RESEND_API_KEY boşsa GitHub Actions hata vermez).
+          # MFA_REQUIRED repository variable'ı true ise, RESEND_API_KEY eksik
+          # olduğunda server başlatmayı reddeder. Varsayılan false, kontrollü
+          # geçiş içindir; zorunlu MFA'ya geçerken variable true yapılmalıdır.
+          MFA_REQUIRED: ${{ vars.MFA_REQUIRED || 'false' }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
         run: |
           ssh -i "$HOME/.ssh/deploy_key" -p "$DEPLOY_PORT" \
             -o IdentitiesOnly=yes -o IdentityAgent=none \
             -o BatchMode=yes -o StrictHostKeyChecking=yes \
             "$DEPLOY_USER@$DEPLOY_HOST" \
-            "set -e; cd '$DEPLOY_PATH'; RAPOR_HOST=0.0.0.0 RAPOR_PORT=5174 RESEND_API_KEY='$RESEND_API_KEY' pm2 startOrRestart ecosystem.config.cjs --only rapor-app --update-env; pm2 save; curl -fsS http://127.0.0.1:5174/ >/dev/null"
+            "set -e; cd '$DEPLOY_PATH'; RAPOR_HOST=0.0.0.0 RAPOR_PORT=5174 MFA_REQUIRED='$MFA_REQUIRED' RESEND_API_KEY='$RESEND_API_KEY' pm2 startOrRestart ecosystem.config.cjs --only rapor-app --update-env; pm2 save; curl -fsS http://127.0.0.1:5174/api/readiness | grep -q '\"ok\":true'"

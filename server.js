@@ -13,6 +13,8 @@ const crypto = require("crypto");
 const accessRoles = require("./src/auth/access-control.js");
 
 const appDir = __dirname;
+const appPackage = require("./package.json");
+const expectedNodeMajor = Number.parseInt(String(require("fs").readFileSync(path.join(appDir, ".nvmrc"), "utf8")).trim(), 10);
 const dataDir = path.join(appDir, "server-data");
 const backupDir = path.join(appDir, "backups");
 // Banka rapor sablonlari HTTP ile statik olarak verilmez. Sablon metni sadece
@@ -81,6 +83,7 @@ let sessionsSaveTimer = null;
 // tasarım kararıdır.
 const RESEND_API_KEY = String(process.env.RESEND_API_KEY || "").trim();
 const RESEND_FROM_EMAIL = String(process.env.RESEND_FROM_EMAIL || "Experify <giris@experify.com.tr>").trim();
+const MFA_REQUIRED = /^(1|true|yes)$/i.test(String(process.env.MFA_REQUIRED || "").trim());
 const MFA_CODE_TTL_MS = 10 * 60 * 1000; // kod 10 dakika gecerli
 const MFA_CODE_MAX_ATTEMPTS = 5; // 5 yanlis denemeden sonra kod gecersiz olur
 const MFA_CODE_REQUEST_LIMIT_PER_HOUR = 5; // kullanici basina, e-posta bombalamayi onler
@@ -142,9 +145,28 @@ let activityEventsSaveTimer = null;
 // çalışmada server-data içinde oluşturulur ve statik erişime kapalıdır.
 const exportSigningKeyFile = path.join(dataDir, "export-signing-key.txt");
 let exportSigningKeyPromise = null;
+const stateWriteQueues = new Map();
+// Hesap oluşturma ve oturum/MFA tamamlama, henüz onaylı bir oturum gerektiren
+// veri API'lerinden bilinçli olarak ayrıdır. Yeni rota eklenirse varsayılan
+// koruma uygulanır; buraya yalnız gerçek bootstrap adımları eklenebilir.
+const API_BOOTSTRAP_ROUTES = new Set(["/api/session", "/api/register-pending"]);
 
 function isMfaConfigured() {
   return Boolean(RESEND_API_KEY);
+}
+
+function isMfaRequired() {
+  return MFA_REQUIRED;
+}
+
+function isMfaPolicyConfigured() {
+  return !isMfaRequired() || isMfaConfigured();
+}
+
+function assertMfaPolicyConfiguration() {
+  if (!isMfaPolicyConfigured()) {
+    throw new Error("MFA_REQUIRED=true iken RESEND_API_KEY yapılandırılmalıdır.");
+  }
 }
 
 // login.html'in kendisini ve giriş yapabilmesi için ihtiyaç duyduğu Firebase
@@ -168,33 +190,16 @@ function isPublicStaticFile(relativePath) {
 // dışarıya servis edilebiliyordu.
 const STATIC_DENYLIST = new Set(["backups", ".git", "node_modules", "graphify-out"]);
 
-// server-data/ klasörü hem KİŞİSEL veriyi hem de paylaşılan referans verilerini
-// içeriyor. Büyük mahalle CSV'si yalnızca kimlik doğrulamalı API tarafından
-// sunucu içinde okunur; tarayıcıya statik dosya olarak verilmez. Küçük legacy
-// placeholder JSON'u ise app.js tarafından doğrudan kullanılmaya devam eder.
-const SENSITIVE_SERVER_DATA_FILES = new Set([
-  "active-case.json",
-  "user-pois.json",
-  "bursa_manuel_duzeltilmis_ana_dosya.csv",
-  "sessions.json",
-  "trusted-devices.json",
-  "pending-users.json",
-  "approved-users.json",
-  "privileged-users.json",
-  "activity-events.json",
-]);
-
 function isSensitivePath(relativeSegments) {
   const first = relativeSegments[0];
   if (!first) return false;
   if (STATIC_DENYLIST.has(first)) return true;
   if (first.startsWith(".env")) return true;
-  if (first === "server-data") {
-    const second = relativeSegments[1];
-    if (!second) return true; // server-data'nın kendisi (dizin listesi vb.) da kapalı.
-    if (second === "uploads" || second === "users") return true;
-    if (SENSITIVE_SERVER_DATA_FILES.has(second)) return true;
-  }
+  // Bu dizin oturumlar, kullanıcı verileri ve rapor imzalama anahtarı gibi
+  // yeni eklenebilecek gizli sunucu verilerini barındırır. Dosya bazlı ret
+  // listesi, yeni bir dosyanın yanlışlıkla oturumlu kullanıcılara sunulmasına
+  // yol açabileceği için statik sunum bütünüyle kapalıdır.
+  if (first === "server-data") return true;
   return false;
 }
 
@@ -228,6 +233,13 @@ async function getExportSigningKey() {
 
 function userPoisFile(uid) {
   return path.join(userDataDirectory(uid), "user-pois.json");
+}
+
+// Emsal hafızası, rapor dosyasından ayrı ve yalnızca oturum sahibinin kendi
+// kullanıcı klasöründe tutulur. Bu rota için yönetici/genel listeleme yolu
+// yoktur; çağıranın uid'si sunucudaki doğrulanmış oturumdan alınır.
+function userComparableMemoryFile(uid) {
+  return path.join(userDataDirectory(uid), "comparable-memory.json");
 }
 
 function parseCsvLine(line) {
@@ -740,6 +752,20 @@ async function getSessionFromRequest(request) {
     return null;
   }
   return { id, uid: entry.uid, email: entry.email };
+}
+
+async function getOperationalApiAccessFailure(request, user, { mfaRequired = isMfaConfigured() } = {}) {
+  if (!(await isUserApproved(user.uid, user.email))) {
+    return { status: 403, code: "approval_required", error: "Hesabınız henüz onaylı değil veya erişimi askıya alınmış." };
+  }
+  const session = await getSessionFromRequest(request);
+  if (!session || session.uid !== user.uid) {
+    return { status: 401, code: "session_required", error: "Bu işlem için geçerli uygulama oturumu gerekir." };
+  }
+  if (mfaRequired && !(await isRequestFromTrustedDevice(request, user.uid))) {
+    return { status: 403, code: "mfa_required", error: "Bu işlem için ikinci doğrulama gerekir." };
+  }
+  return null;
 }
 
 // Yerelde (127.0.0.1/localhost) http üzerinden test edilebilsin diye
@@ -1666,17 +1692,69 @@ async function createDailyBackupIfNeeded() {
   );
 }
 
+function calculateStateRevision(serializedState) {
+  return crypto.createHash("sha256").update(serializedState, "utf8").digest("hex");
+}
+
+function validateLocalStatePayload(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  // Eski kayıtlar tüm alanları taşımayabilir; bu nedenle yalnız mevcut ana
+  // kapsayıcıların beklenen JSON nesnesi biçiminde olmasını zorunlu tutarız.
+  const objectKeys = ["fields", "tables", "uploads", "settings", "sourceValues"];
+  return objectKeys.every((key) => value[key] === undefined
+    || (value[key] && typeof value[key] === "object" && !Array.isArray(value[key])));
+}
+
+function getExpectedStateRevision(request) {
+  const header = request.headers?.["if-match"];
+  const raw = Array.isArray(header) ? header[0] : header;
+  const revision = String(raw || "").trim().replace(/^"|"$/g, "");
+  return /^(?:0|[a-f0-9]{64})$/i.test(revision) ? revision : null;
+}
+
+async function readLocalStateRecord(stateFile) {
+  try {
+    const raw = await fs.readFile(stateFile, "utf8");
+    return { raw, state: JSON.parse(raw), revision: calculateStateRevision(raw) };
+  } catch (error) {
+    if (error.code === "ENOENT") return null;
+    throw error;
+  }
+}
+
+async function writeLocalStateAtomically(stateFile, serializedState) {
+  const directory = path.dirname(stateFile);
+  const tempFile = path.join(directory, `.${path.basename(stateFile)}.${crypto.randomUUID()}.tmp`);
+  await fs.mkdir(directory, { recursive: true });
+  try {
+    await fs.writeFile(tempFile, serializedState, { encoding: "utf8", mode: 0o600, flag: "wx" });
+    await fs.rename(tempFile, stateFile);
+  } catch (error) {
+    await fs.rm(tempFile, { force: true }).catch(() => {});
+    throw error;
+  }
+}
+
+function enqueueStateWrite(stateFile, task) {
+  const previous = stateWriteQueues.get(stateFile) || Promise.resolve();
+  const next = previous.catch(() => {}).then(task);
+  stateWriteQueues.set(stateFile, next);
+  return next.finally(() => {
+    if (stateWriteQueues.get(stateFile) === next) stateWriteQueues.delete(stateFile);
+  });
+}
+
 async function handleStateApi(request, response, user) {
   const stateFile = userStateFile(user.uid);
   if (request.method === "GET") {
     try {
-      const raw = await fs.readFile(stateFile, "utf8");
-      sendJson(response, 200, { exists: true, state: JSON.parse(raw) });
-    } catch (error) {
-      if (error.code === "ENOENT") {
-        sendJson(response, 200, { exists: false, state: null });
+      const record = await readLocalStateRecord(stateFile);
+      if (!record) {
+        sendJson(response, 200, { exists: false, state: null, revision: null });
         return;
       }
+      sendJson(response, 200, { exists: true, state: record.state, revision: record.revision });
+    } catch (error) {
       throw error;
     }
     return;
@@ -1697,13 +1775,28 @@ async function handleStateApi(request, response, user) {
       sendJson(response, 400, { ok: false, error: "Geçersiz JSON." });
       return;
     }
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    if (!validateLocalStatePayload(parsed)) {
       sendJson(response, 400, { ok: false, error: "Geçersiz kayıt verisi." });
       return;
     }
-    await fs.mkdir(path.dirname(stateFile), { recursive: true });
-    await fs.writeFile(stateFile, JSON.stringify(parsed, null, 2), "utf8");
-    sendJson(response, 200, { ok: true, updatedAt: parsed.updatedAt || null });
+    const expectedRevision = getExpectedStateRevision(request);
+    if (!expectedRevision) {
+      sendJson(response, 428, { ok: false, error: "Kayıt revizyonu eksik; önce güncel kaydı okuyun." });
+      return;
+    }
+    const serialized = JSON.stringify(parsed, null, 2);
+    const result = await enqueueStateWrite(stateFile, async () => {
+      const current = await readLocalStateRecord(stateFile);
+      const currentRevision = current?.revision || "0";
+      if (expectedRevision !== currentRevision) return { conflict: true, revision: current?.revision || null };
+      await writeLocalStateAtomically(stateFile, serialized);
+      return { conflict: false, revision: calculateStateRevision(serialized) };
+    });
+    if (result.conflict) {
+      sendJson(response, 409, { ok: false, error: "Kayıt başka bir işlem tarafından güncellendi.", revision: result.revision });
+      return;
+    }
+    sendJson(response, 200, { ok: true, updatedAt: parsed.updatedAt || null, revision: result.revision });
     return;
   }
 
@@ -2025,6 +2118,88 @@ async function handleUserPoisApi(request, response, user) {
     await fs.mkdir(path.dirname(poisFile), { recursive: true });
     await fs.writeFile(poisFile, JSON.stringify(next, null, 2), "utf8");
     sendJson(response, 200, { ok: true, poi: next[0], pois: next });
+    return;
+  }
+  sendJson(response, 405, { ok: false, error: "Bu işlem desteklenmiyor." });
+}
+
+const COMPARABLE_MEMORY_MAX_ITEMS = 1000;
+const COMPARABLE_MEMORY_MAX_AGE_MS = 183 * 24 * 60 * 60 * 1000;
+const comparableMemoryFieldPattern = /^(?:c(?:[0-9]|[12][0-9]|3[0-3])|workplaceFloors)$/;
+
+function comparableMemoryCutoff() {
+  return new Date(Date.now() - COMPARABLE_MEMORY_MAX_AGE_MS).toISOString();
+}
+
+function sanitizeComparableMemoryRow(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const next = {};
+  for (const [key, raw] of Object.entries(value)) {
+    if (!comparableMemoryFieldPattern.test(key)) continue;
+    if (raw === null || raw === undefined) continue;
+    if (key === "workplaceFloors") {
+      const serialized = JSON.stringify(raw);
+      if (serialized && serialized.length <= 8000) next[key] = JSON.parse(serialized);
+      continue;
+    }
+    if (typeof raw !== "string" && typeof raw !== "number" && typeof raw !== "boolean") continue;
+    next[key] = String(raw).replace(/[\x00-\x1F\x7F]/g, "").slice(0, key === "c17" ? 4000 : 1000);
+  }
+  const lat = Number(String(next.c18 || "").replace(",", "."));
+  const lng = Number(String(next.c19 || "").replace(",", "."));
+  if (!Number.isFinite(lat) || lat < 35 || lat > 43 || !Number.isFinite(lng) || lng < 25 || lng > 45) return null;
+  return next;
+}
+
+async function readUserComparableMemory(uid) {
+  try {
+    const raw = await fs.readFile(userComparableMemoryFile(uid), "utf8");
+    const parsed = JSON.parse(raw || "[]");
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    if (error.code === "ENOENT") return [];
+    throw error;
+  }
+}
+
+async function handleComparableMemoryApi(request, response, user) {
+  const memoryFile = userComparableMemoryFile(user.uid);
+  if (request.method === "GET") {
+    const entries = await readUserComparableMemory(user.uid);
+    const includeArchived = new URL(request.url, "http://localhost").searchParams.get("includeArchived") === "1";
+    const cutoff = comparableMemoryCutoff();
+    const recent = entries.filter((entry) => String(entry?.savedAt || "") >= cutoff);
+    sendJson(response, 200, {
+      ok: true,
+      entries: includeArchived ? entries : recent,
+      archivedCount: Math.max(entries.length - recent.length, 0),
+      cutoff,
+    });
+    return;
+  }
+  if (request.method === "POST") {
+    let parsed;
+    try {
+      parsed = JSON.parse(await readBody(request, 32 * 1024) || "{}");
+    } catch (error) {
+      sendJson(response, error.isPayloadTooLarge ? 413 : 400, { ok: false, error: "Geçersiz emsal hafızası isteği." });
+      return;
+    }
+    const comparable = sanitizeComparableMemoryRow(parsed?.comparable);
+    if (!comparable) {
+      sendJson(response, 400, { ok: false, error: "Emsalin geçerli enlem ve boylam bilgisi zorunludur." });
+      return;
+    }
+    const entries = await readUserComparableMemory(user.uid);
+    const entry = {
+      id: `memory-${Date.now()}-${crypto.randomBytes(6).toString("hex")}`,
+      savedAt: new Date().toISOString(),
+      comparable,
+    };
+    const next = [entry, ...entries].slice(0, COMPARABLE_MEMORY_MAX_ITEMS);
+    await fs.mkdir(path.dirname(memoryFile), { recursive: true });
+    await fs.writeFile(memoryFile, JSON.stringify(next, null, 2), "utf8");
+    sendJson(response, 200, { ok: true, entry, count: next.length });
     return;
   }
   sendJson(response, 405, { ok: false, error: "Bu işlem desteklenmiyor." });
@@ -3467,6 +3642,7 @@ const API_RATE_LIMITS = {
   "/api/state": { limit: 60, windowMs: 60 * 1000 },
   "/api/overpass": { limit: 30, windowMs: 60 * 1000 },
   "/api/user-pois": { limit: 60, windowMs: 60 * 1000 },
+  "/api/comparable-memory": { limit: 60, windowMs: 60 * 1000 },
   "/api/neighborhoods": { limit: 60, windowMs: 60 * 1000 },
   "/api/tcmb-rates": { limit: 30, windowMs: 60 * 1000 },
   "/api/pdf-text": { limit: 5, windowMs: 60 * 1000 },
@@ -3502,12 +3678,39 @@ function matchApiRoute(url) {
   return null;
 }
 
+function getReadinessStatus() {
+  const runtimeMajor = Number.parseInt(process.versions.node.split(".")[0], 10);
+  const nodeCompatible = Number.isInteger(expectedNodeMajor) && runtimeMajor === expectedNodeMajor;
+  return {
+    ok: nodeCompatible,
+    service: "rapor-app",
+    version: String(appPackage.version || "unknown"),
+    expectedNodeMajor,
+    runtimeNodeMajor: runtimeMajor,
+  };
+}
+
 const server = http.createServer(async (request, response) => {
   try {
     createDailyBackupIfNeeded().catch((error) => console.warn("Backup skipped:", error.message));
     const url = request.url || "/";
+    if (url === "/api/readiness") {
+      const readiness = getReadinessStatus();
+      sendJson(response, readiness.ok ? 200 : 503, readiness);
+      return;
+    }
     const mapTile = parseMapTileRequest(url);
     if (mapTile) {
+      const session = await getSessionFromRequest(request);
+      if (!session) {
+        sendUnauthorized(response);
+        return;
+      }
+      const accessFailure = await getOperationalApiAccessFailure(request, session);
+      if (accessFailure) {
+        sendJson(response, accessFailure.status, { ok: false, code: accessFailure.code, error: accessFailure.error });
+        return;
+      }
       await handleMapTile(response, mapTile);
       return;
     }
@@ -3534,6 +3737,13 @@ const server = http.createServer(async (request, response) => {
         sendJson(response, 403, { ok: false, error: "İstek doğrulanamadı." });
         return;
       }
+      if (!API_BOOTSTRAP_ROUTES.has(apiRoute)) {
+        const accessFailure = await getOperationalApiAccessFailure(request, authenticatedUser);
+        if (accessFailure) {
+          sendJson(response, accessFailure.status, { ok: false, code: accessFailure.code, error: accessFailure.error });
+          return;
+        }
+      }
     }
 
     if (apiRoute === "/api/state") {
@@ -3546,6 +3756,10 @@ const server = http.createServer(async (request, response) => {
     }
     if (apiRoute === "/api/user-pois") {
       await handleUserPoisApi(request, response, request.user);
+      return;
+    }
+    if (apiRoute === "/api/comparable-memory") {
+      await handleComparableMemoryApi(request, response, request.user);
       return;
     }
     if (apiRoute === "/api/neighborhoods") {
@@ -3660,6 +3874,7 @@ const server = http.createServer(async (request, response) => {
 });
 
 if (require.main === module) {
+  assertMfaPolicyConfiguration();
   server.listen(port, host, () => {
     console.log(`Rapor Yazma yerel sunucu: http://localhost:${port}`);
     createDailyBackupIfNeeded().catch((error) => console.warn("Backup skipped:", error.message));
@@ -3674,14 +3889,25 @@ module.exports = {
   parseMapTileRequest,
   queryNeighborhoodRows,
   isPublicStaticFile,
+  isSensitivePath,
+  resolveStaticPath,
   createSession,
   destroySession,
   getSessionFromRequest,
+  getOperationalApiAccessFailure,
+  userComparableMemoryFile,
+  sanitizeComparableMemoryRow,
+  readUserComparableMemory,
+  handleComparableMemoryApi,
+  COMPARABLE_MEMORY_MAX_AGE_MS,
   setSessionCookie,
   clearSessionCookie,
   parseCookieHeader,
   sessions,
   isMfaConfigured,
+  isMfaRequired,
+  isMfaPolicyConfigured,
+  assertMfaPolicyConfiguration,
   getExportSigningKey,
   handleExportAuthorizationApi,
   privateTemplatePathForKey,
@@ -3738,11 +3964,18 @@ module.exports = {
   sanitizeReportSummary,
   computeReportListForAdmin,
   handleReportListApi,
+  calculateStateRevision,
+  validateLocalStatePayload,
+  getExpectedStateRevision,
+  readLocalStateRecord,
+  writeLocalStateAtomically,
+  enqueueStateWrite,
   listAdminActionEvents,
   handleAdminActionEventsApi,
   computeDirectorySize,
   computeSystemHealth,
   handleSystemHealthApi,
+  getReadinessStatus,
   handleApproveUserApi,
   handleRejectUserApi,
   handleGrantPrivilegeApi,

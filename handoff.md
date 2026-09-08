@@ -1,5 +1,145 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.692 - 2026-09-08 - Emsal Hafızası: harita ve ilk boş sütuna getirme
+
+- Emsal Konum Krokisi araç çubuğuna `GEÇMİŞ EMSALLER`, `6 aydan eskiyi göster` ve açık koordinatlı emsalleri yalnız kullanıcı tıklarsa kaydeden `EMSALLERİ HAFIZAYA KAYDET` eylemleri eklendi.
+- Geçmiş POI seçilince açılan `EMSAL GETİR` düğmesi geçmiş satırı yalnız ilk tamamen boş emsal sütununa taşır; dolu satırlar kesinlikle üzerine yazılmaz.
+- Geçmiş görünüm ilk açıldığında sunucu varsayılanındaki son 6 ayı kullanır. Arşiv onay kutusu seçilirse yalnız kullanıcının kendi eski kayıtları ayrıca istenir.
+- Yedek: `backups/before-comparable-memory-map-ui_2026-09-08_21-21-59`; handoff/plan öncesi: `backups/before-comparable-memory-map-handoff_2026-09-08_21-23-27`.
+- Doğrulama: `node --check app.js`, `npm run test:comparable-memory`, `node tools/test-comparable-tab-navigation.js` başarılı.
+
+## 0.0.691 - 2026-09-08 - Emsal Hafızası: özel sunucu saklama katmanı
+
+- Kullanıcı kararı: Geçmiş Emsaller varsayılan olarak **son 6 ay** ile sınırlı görünür. 6 aydan eski kayıtlar silinmez; kullanıcı harita araç çubuğundan açıkça isterse arşiv de görünür.
+- `server.js`e `/api/comparable-memory` eklendi. Kayıtlar, doğrulanmış oturumdaki uid ile seçilen `server-data/users/<kullanıcı>/comparable-memory.json` dosyasında tutulur; istemci uid gönderemez/seçemez. Yönetici/genel listeleme rotası ve bu işlemler için aktivite kaydı yoktur; böylece yalnız kaydı oluşturan kullanıcı kendi emsallerini görür.
+- Kayıt kabulü yalnız koordinatı Türkiye sınırlarında olan emsaller için yapılır. Bilinmeyen alanlar ve kontrol karakterleri ayıklanır; tek kullanıcı için üst sınır 1000 kayıttır. GET varsayılanı 183 günlük kesim tarihini uygular, `includeArchived=1` yalnız sahibi tarafından istenen eski kayıtları ekler.
+- Yeni `tools/test-comparable-memory-private-storage.js`, kullanıcı dosya ayrımını, koordinat doğrulamasını ve alan temizliğini denetler. Komut: `npm run test:comparable-memory`.
+- Değişiklik öncesi yedekler: `backups/before-comparable-memory-six-month-policy_2026-09-08_21-08-48`, plan/handoff öncesi `backups/before-comparable-memory-server-docs_2026-09-08_21-11-11`.
+- Doğrulama: `node --check server.js`, `npm run test:comparable-memory` ve `git diff --check` başarılı. Tam `npm run verify` çalıştırılmadı; önceden bilinen, kapsam dışı `tools/check-basic.js` kontrolü Node 24 ortamında zinciri durdurmaktadır.
+- Sıradaki: Harita araç çubuğunda Geçmiş Emsaller aç/kapat ve 6 aydan eskiyi isteğe bağlı göster; seçilen geçmiş kaydı yalnız ilk boş emsal sütununa getir. Bu istemci adımından önce yeniden seçici yedek alınacak.
+
+## 0.0.690 - 2026-09-08 - P-01 ilk metin yardımcı taşıması test uyumsuzluğu nedeniyle geri alındı
+
+- `src/core/text-utils.js`e yapılan ilk saf yardımcı taşıması, `test-title-unit-switch.js`in `app.js` kaynak dilimlerini tarayıcı `window` nesnesi olmadan Node içinde değerlendirmesi nedeniyle `foldTurkish` çağrısında `ReferenceError` üretti.
+- Bu gerçek test etkisi görüldüğünden taşıma tamamen geri alındı: ek modül silindi, `app.js`teki üç yardımcı gövdesi ve `index.html` yükleme sırası önceki hâline döndü. Uygulama davranışında veya bölüm bağlarında değişiklik bırakılmadı.
+- Geri alma öncesi yedek: `backups/before-p01-text-utils-rollback_2026-09-08_18-30-16`.
+- Doğrulama: `node --check app.js`, kapsamlı `node tools/test-title-unit-switch.js`, `node tools/test-no-duplicate-top-level-functions.js`, `node tools/test-comparable-tab-navigation.js` ve `git diff --check` başarılı.
+- P-01 beklemede: yeni bir modül çıkarmadan önce tarayıcı ve Node kaynak-dilimi testleri için ortak yükleme/bağımlılık sözleşmesi tasarlanmalı.
+
+## 0.0.689 - 2026-09-08 - Denetim Faz 4: Güvenli ilk istemci modülü çıkarıldı (P-01)
+
+- Kullanıcının bölüm ve alt başlıklar arası çapraz etki uyarısı doğrultusunda `app.js`ten hiçbir `state`, DOM, render, autosave veya aktif taşınmaz erişimi taşınmadı.
+- Yalnız saf, yan etkisiz metin yardımcıları `src/core/text-utils.js`e alındı: `escapeHtml`, `foldTurkish`, `formatTurkishList`. `app.js`teki eski fonksiyon adları sarmalayıcı olarak korundu; mevcut çağrı noktalarının sözleşmesi değişmedi.
+- Yeni modül `index.html`de `app.js`ten önce yüklenir; ikisinin önbellek sürümü `20260908-1832`dir.
+- Değişiklik öncesi seçici yedekler: `backups/before-audit-p01-text-utils-extraction_2026-09-08_18-25-37`, `backups/before-audit-p01-plan-handoff_2026-09-08_18-27-13`.
+- Doğrulama: `node --check src/core/text-utils.js`, `node --check app.js`, `node tools/test-no-duplicate-top-level-functions.js`, `node tools/test-comparable-tab-navigation.js` ve `git diff --check` başarılı.
+- Sıradaki: P-01'in yalnız saf yardımcılarla devamı; `state` veya bölüm etkisi olan gruplar ancak bağımlılık haritası ve ayrı regresyon kontrolüyle ele alınacak.
+
+## 0.0.688 - 2026-09-08 - Denetim Faz 4: Üst kapsam fonksiyon tekrarları korumaya alındı (K-01)
+
+- `app.js`te üst kapsamda aynı adla tanımlanmış `joinTurkishList` (4 kez) ve `escapeRegExp` (2 kez) bulundu. JavaScript function declaration hoisting nedeniyle dosyanın son tanımı önceki tüm çağrıları sessizce eziyordu; bu durum davranışın dosya sırasına bağımlı kalmasına yol açıyordu.
+- Erken/eski tanımlar, çalışmakta olan son tanımın davranışına dokunmadan kendi içerik alanlarını belirten adlara (`joinTurkishFloorList`, `joinTurkishUnitList`, `joinReviewedDocumentList`, `escapeTakbisRegExp`) ayrıldı. Etkin genel tanımlar aynı kaldı.
+- Yeni `tools/test-no-duplicate-top-level-functions.js`, `app.js`teki üst kapsam `function` tanımlarını tarar ve herhangi bir ad tekrarını satır numaralarıyla hata olarak bildirir. `package.json` `check` akışına ve bağımsız `test:top-level-functions` komutuna eklendi.
+- Değişiklik öncesi seçici yedekler: `backups/before-audit-k01-top-level-functions_2026-09-08_18-19-36`, `backups/before-audit-k01-plan-handoff_2026-09-08_18-21-08`.
+- Doğrulama: `node --check app.js`, `node tools/test-no-duplicate-top-level-functions.js`, `node tools/test-comparable-tab-navigation.js` ve `git diff --check` başarılı. `npm run check`, yeni kontrolden önce önceden var olan/kapsam dışı `tools/check-basic.js` mahalle-veritabanı denetiminde duruyor.
+- Sıradaki: Faz 4 / P-01 — büyük istemci dosyasını güvenli modül sınırlarıyla ayırma ve sürümlü varlıkların önbellek politikasını gözden geçirme.
+
+## 0.0.687 - 2026-09-08 - Denetim Faz 4: Mobil emsal düzenleme ilk geçişi (U-02)
+
+- 480 px ve altındaki ekranda emsal matrisi artık mobil giriş için sıkılaştırılmıştır: sol alan etiketleri 118 px ile sabit kalır, her emsal sütunu 196 px rahat giriş alanı alır, alan/fiyat/mobilya gibi değerler aşağı doğru tek eksende düzenlenir; emsal değiştirmek gerektiğinde yatay kaydırma kullanılır.
+- Yatay geçişte `scroll-snap`, dokunmatik kaydırma ve dış sayfaya taşmayı azaltan `overscroll-behavior-x` eklendi. Kaydırma çubuğu 22 px'e çıkarıldı ve üstte kısa, görünür kullanım ipucu yerleştirildi. Girişler mobilde 42 px, metin alanları 76 px asgari yüksekliğe sahip; 16 px yazı boyutu iOS'taki istenmeyen odak yakınlaştırmasını önler.
+- Başlık satırında görünüm, satır etiketi ve ekleme araçları 390 px'e uyacak grid yapıya alındı; dış ilan portalı kısayolları ikinci satıra taşınır. Masaüstü matrisi ve mevcut satır/sütun işleyişi değiştirilmedi.
+- `index.html`de `styles.css` önbellek sürümü `20260908-1825`e yükseltildi.
+- Değişiklik öncesi seçici yedekler: `backups/before-audit-u02-mobile-comparables_2026-09-08_18-16-34`, `backups/before-audit-u02-plan-handoff_2026-09-08_18-18-16`.
+- Doğrulama: `node --check app.js`, `node tools/test-comparable-tab-navigation.js` ve `git diff --check` başarılı. Gerçek 390 px cihazda alan/fiyat/mobilya girişi ile yatay emsal geçişi kabul testi bu ortamda yapılamadı.
+- Sıradaki: Faz 4 / K-01 — yinelenen üst kapsamlı fonksiyonların davranış değişikliği olmadan ayrıştırılması ve yeniden tanımın otomatik yakalanması.
+
+## 0.0.686 - 2026-09-08 - Denetim Faz 3: Word'ün standart sıkıştırılmış DOCX şablonları desteklendi (Ş-01)
+
+- `src/exports/docx-fill.js`teki mevcut senkron `readStoredZip()` korunurken yeni asenkron `readZip()` eklendi. Word'ün yeniden kaydettiği DEFLATE (ZIP method 8) girdileri, tarayıcının yerleşik `DecompressionStream("deflate-raw")` desteğiyle açılıyor; içerik mevcut doldurma motorunun kullandığı STORED ara ZIP paketine dönüştürülüyor.
+- `src/templates/template-engine.js` DOCX export akışında token okumayı `await readZip()` ile, doldurmayı `await fillTemplateAsync()` ile yürütüyor. Böylece kullanıcı Word'de açıp kaydettiği desteklenen şablonu elle ZIP dönüştürmeden export edebilir. STORED şablonlar eski senkron yolun aynı çıktısını korur.
+- Tarayıcı DEFLATE standardını desteklemiyorsa açık ve eyleme dönük bir hata verilir; desteklenmeyen ZIP methodu veya data descriptor sessizce bozuk çıktı üretmez.
+- `index.html`de `template-engine.js` ve `docx-fill.js` önbellek sürümleri `20260908-1815`e yükseltildi.
+- Değişiklik öncesi seçici yedekler: `backups/before-audit-s01-deflate-docx_2026-09-08_18-12-13`, `backups/before-audit-s01-plan-handoff_2026-09-08_18-13-23`.
+- Doğrulama: `node --check src/exports/docx-fill.js`, `node --check src/templates/template-engine.js`, `node tools/test-docx-fill.js` ve `git diff --check` başarılı. Gerçek Microsoft Word ile açma/onarım uyarısı kabul testi bu ortamda yapılmadı.
+- Sıradaki: Faz 4 / U-02 — 390 px ekranda emsal düzenleme alanını sadeleştirme ve gerçek mobil doğrulama hazırlığı.
+
+## 0.0.685 - 2026-09-08 - Denetim Faz 3: Windows CRLF yanlış alarmı kaldırıldı (T-01, ilk hata)
+
+- Denetimde tarif edilen `tools/test-title-unit-switch.js` yanlış alarmı düzeltildi. Testin Ana Gayrimenkul bölüm sonunu bulmak için kullandığı `"},\n  {"` araması, CRLF checkout'ta bulunamıyor ve test dosyanın kalanını yanlışlıkla bölüm sayıyordu.
+- Test artık kaynak metni yalnız kendi analiz sınırında CRLF → LF normalize ediyor; bölüm başlangıcı ve sonu bulunamazsa açık `assert.ok` hatası veriyor. Böylece testin anlamı korunurken Windows/Linux satır sonu farkı yanlış pozitif üretmiyor.
+- Doğrulama: `node tools/test-title-unit-switch.js` gerçek Windows checkout'unda tüm senaryolarla başarılı; `git diff --check` başarılı.
+- Değişiklik öncesi seçici yedekler: `backups/before-audit-t01-crlf-test_2026-09-08_17-55-55`, `backups/before-audit-t01-plan-handoff_2026-09-08_17-56-22`.
+- Açık kapsam: T-01'in diğer olası metin-dilimleme testlerinin taranması ve Node 22 ile temiz Windows/Linux zincirinin CI'da birlikte doğrulanması.
+- Sıradaki: **Q-01**in kalan kurum/belge ve kısmi-adres üreticileri; ardından Ş-01 DOCX şablon uyumluluğu.
+
+## 0.0.684 - 2026-09-08 - Denetim Faz 3: Q-01 otomatik metin değişiklikleri kullanıcı isteğiyle geri alındı
+
+- Denetimde önerilen proje uygunluğu, belge listesi, GABİM ve boş adres varsayılanı değişiklikleri kullanıcı tarafından geri alındı. Kullanıcı, bu metin kalıplarını ve varsayılanları bilinçli olarak ayarladığını; bunların hata olmadığını belirtti.
+- `buildProjectSuitabilityStatusSentence()` boş değerde eski `UYGUNDUR` davranışına, boş belge listesi `buildMissingReviewedDocumentSentences()` yoluna, GABİM "Tamamlanmış (%100)"/"Hasarsız" varsayılanlarına ve mevcut adres giriş metnine geri döndü. Bu değişiklikleri denetleyen `test:unknown-status` betiği de kaldırıldı.
+- Değişiklik öncesi seçici yedek: `backups/before-user-requested-q01-full-revert_2026-09-08_18-08-17`.
+- Doğrulama: `node --check app.js`, ilgili belge testleri ve `git diff --check` çalıştırıldı. Q-01, kullanıcının açık yönlendirmesi olmadan yeniden ele alınmayacak.
+
+## 0.0.683 - 2026-09-08 - Denetim Faz 2: yayın manifesti ve Node sürümü readiness denetimi (O-01, kısmi)
+
+- Denetimdeki **O-01** için `.github/workflows/deploy.yml` artık genel dışlama listesi yerine `deploy/rsync-include.txt` izinli manifestini kullanır. Yalnız uygulamanın çalışma zamanı dosyaları (giriş sayfaları, sunucu, istemci kaynakları, şablonlar, temalar, varlıklar ve çalışma zamanı metadata'sı) gönderilir; `server-data`, yedekler, dokümanlar, testler, araçlar ve kaynak yönetim dosyaları yeni yayın paketine dahil edilmez.
+- `server.js`e oturum gerektirmeyen, veri sızdırmayan `/api/readiness` ucu eklendi. Sadece servis adı, uygulama sürümü, beklenen Node ana sürümü ve çalışan Node ana sürümünü döner. `.nvmrc`teki Node 22 ile uyumsuzlukta 503/`ok:false`, uyumda 200/`ok:true` verir. Dağıtım sonrası SSH komutu artık ana sayfaya `curl` atmak yerine bu ucu çağırır; 302 ile sahte başarılı sayılma kapanır.
+- Yeni `tools/test-deploy-readiness.js` manifestin iç dosyaları taşımadığını, readiness yönlendirmesini ve dağıtım kontrolünün doğru ucu kullandığını denetler. Komut: `npm run test:deploy-readiness`.
+- Değişiklik öncesi seçici yedekler: `backups/before-audit-o01-deploy-readiness_2026-09-08_17-43-19`, `backups/before-audit-o01-plan-handoff_2026-09-08_17-45-04`.
+- Doğrulama: `node --check server.js`, `npm run test:deploy-readiness` ve `git diff --check` başarılı. Yerel ortam Node 24.18.0 olduğu için `getReadinessStatus()` beklenildiği üzere `ok:false, expectedNodeMajor:22, runtimeNodeMajor:24` döndürdü; bu sonuç Node 22 başarısı değildir.
+- **Açık kapsam:** Üretimde giriş yapmış sentetik kullanıcıyla rapor açma ve örnek DOCX/HTML çıktı smoke testi; özel, onaylı test hesabı ile onun güvenli kimlik bilgisini veya eşdeğer gizli test düzenini gerektirir. Böyle bir hesabı/erişimi varsayarak dağıtım betiğine eklenmedi. Sürümlü yayın dizini ve tek komutla geri dönüş de canlı sunucu dizin yapısı kararı gerektirir; mevcut `rsync --delete` düzenine varsayımsal bir geçiş yapılmadı.
+- Sıradaki: **Faz 3 / Q-01** — doğrulanmamış veri için "bilinmiyor/incelenmedi" durum modelinin ve kesin rapor hükmü korumasının tasarımı.
+
+## 0.0.682 - 2026-09-08 - Denetim Faz 2: ortak masraf bulut hatası görünür ve yeniden denenebilir (U-01)
+
+- Denetimdeki **U-01** kapatıldı. `cloud/cloud-sync.js` içindeki `loadAppSetting()` artık Firestore'daki gerçek bir "belge yok" sonucunu `null` olarak döndürüyor; ancak izin, ağ veya diğer okuma hatalarını loglayıp yutmak yerine çağırana tekrar fırlatıyor. Böylece yetki hatası yeni/boş ayar gibi yorumlanıp varsayılanların yanlışlıkla buluta yazılması engelleniyor.
+- `app.js` masraf özetine kalıcı bir bulut durum alanı ve **Tekrar dene** düğmesi ekliyor. Yükleme/kayıt başarılı olduğunda güncel durum; hata olduğunda "yerel değer kullanılıyor" ve yeniden deneme yönlendirmesi; bulut yapılandırılmamışsa yalnız cihazdaki değerlerin kullanıldığı açıkça gösteriliyor. Düzenleme sonrası kaydetme isteği Promise değilse arayüz artık yanıltıcı biçimde "kaydediliyor" durumunda takılı kalmıyor.
+- Yeni `tools/test-expense-fees-cloud-errors.js`, `loadAppSetting()` hata yayılımını ve arayüzün durum/yeniden deneme/yerel kullanım sözleşmesini kaynak düzeyinde denetler. Komut: `npm run test:expense-cloud`.
+- Değişiklik öncesi seçici yedekler: `backups/before-audit-u01-expense-cloud-feedback_2026-09-08_17-38-51`, `backups/before-audit-u01-expense-cloud-test_2026-09-08_17-41-10`, `backups/before-audit-u01-plan-handoff_2026-09-08_17-42-05`.
+- Doğrulama: `node --check app.js`, `node --check cloud/cloud-sync.js`, `npm run test:expense-cloud` ve `git diff --check` başarılı. Tam `npm run verify` bu turda tekrar çalıştırılmadı; daha önce kaydedilen, bu değişiklikle ilgisiz ve kullanıcı tarafından önceden değiştirilmiş `tools/check-basic.js` kontrolündeki bilinen hata sürüyor.
+- Sıradaki: **O-01** — dağıtım için izinli manifest, gerçek oturumla readiness ve örnek çıktı smoke kontrolünü tasarlamak; bunun canlı altyapı erişimi/dağıtım değişikliği gerektiren noktaları varsayılmadan ayrıştırılacak.
+
+## 0.0.681 - 2026-09-08 - Denetim Faz 2: MFA zorunluluk politikası e-posta anahtarından ayrıldı (G-03)
+
+- Denetimdeki **G-03** için `MFA_REQUIRED` ortam politikası eklendi. `isMfaConfigured()` yalnız Resend anahtarının varlığını, `isMfaRequired()` açık politikayı, `isMfaPolicyConfigured()` ikisinin tutarlılığını ifade eder. `MFA_REQUIRED=true` iken `RESEND_API_KEY` boşsa `assertMfaPolicyConfiguration()` hata fırlatır ve gerçek `server.js` başlatması dinlemeye geçmeden durur; MFA sessizce devre dışına düşmez.
+- `ecosystem.config.cjs` bu politikayı PM2 ortamına taşır. `.github/workflows/deploy.yml`, GitHub repository variable'ı `MFA_REQUIRED` değerini (varsayılan `false`) ve Resend secret'ını uzak PM2 başlatma komutuna aktarır. Zorunlu MFA'ya geçmek için önce geçerli `RESEND_API_KEY` secret'ı doğrulanmalı, sonra repository variable `MFA_REQUIRED=true` yapılmalıdır; eksik anahtarla dağıtım/başlatma bilerek başarısız olur.
+- Varsayılan `false` BİLİNÇLİ geçiş davranışıdır: bu kod değişikliği mevcut erişimi veya dağıtımı aniden kesmez. Bu nedenle G-03'ün teknik altyapısı tamamlandı; üretim politikasının FİİLEN etkin olması, kullanıcı tarafından GitHub ayarındaki variable'ın `true` yapılmasına bağlıdır.
+- `tools/test-mfa-flow.js` artık zorunlu MFA + anahtarsız yapılandırmanın başarısız, zorunlu MFA + geçerli anahtarın başarılı olduğunu da denetler. `node tools/test-mfa-flow.js`, `node --check server.js` ve `git diff --check` başarılı.
+- Değişiklik öncesi yedekler: `backups/before-audit-g03-mfa-policy_2026-09-08_17-35-15`, `backups/before-audit-g03-handoff_2026-09-08_17-36-36`.
+- Sıradaki: **U-01** — ortak masraf ayarları bulut senkron hatasının kullanıcıya ayrı, kalıcı ve yeniden denenebilir durum olarak yansıtılması.
+
+## 0.0.680 - 2026-09-08 - Denetim Faz 2: sunucu veri API'leri onay + uygulama oturumu + MFA kapısına alındı (G-02, Firestore kısmı altyapı bekliyor)
+
+- Denetim bulgusu **G-02** için `server.js`'e merkezi `getOperationalApiAccessFailure()` eklendi. Bootstrap dışındaki HER `/api/*` rotası artık Firebase Bearer doğrulamasına ek olarak: (1) `isUserApproved()` ile onaylı/aktif hesap, (2) Bearer kullanıcısıyla AYNI uid'ye ait HttpOnly `rapor_session`, (3) MFA yapılandırılmışsa HttpOnly güvenilir-cihaz çerezi (`rapor_2fa_trust`) ister. Ret yanıtları açık `approval_required` (403), `session_required` (401), `mfa_required` (403) kodları içerir.
+- İstisnalar, yalnız gerçek bootstrap adımları olan `/api/session` (giriş, MFA doğrulama, çıkış) ve `/api/register-pending`dir. İstisna listesi varsayılan-açık DEĞİL, varsayılan-kapalıdır; yeni API rotaları otomatik olarak ortak kapıya girer. Harita karo URL'si `/api/*` dışında olduğu için ayrıca aynı oturum/onay/MFA kapısına alındı.
+- Bu değişiklik, onaylanmamış veya askıya alınmış hesabın yalnız Firebase ID token'ıyla state/POI/PDF/yardımcı API'lere doğrudan erişebilmesi sorununu kapatır. Kullanıcı yalnız girişten çıkmışsa da eski Bearer token ile veri API'sini çağıramaz.
+- Yeni `tools/test-operational-api-access-gate.js`, izole sunucu verisiyle beş senaryoyu çalıştırır: onaysız → 403, onaylı ama oturumsuz → 401, onaylı+oturumlu ama MFA'sız → 403, onaylı+oturumlu+güvenilir cihaz → izin, askıya alınmış → 403. Komut: `npm run test:api-access`.
+- **Bilinçli açık kapsam — doğrudan Firestore:** `cloud/firestore.rules` şu anda doğrudan Firebase istemcisinin `users/{uid}/reports` erişiminde yalnız sahiplik (`request.auth.uid`) denetliyor. Sunucudaki yerel onay/askı/MFA durumu bu kurala güvenli olarak görünmez. Bunu "claim varmış" gibi kural ekleyerek devreye almak, mevcut tüm kullanıcıları kilitleme riski taşır. Tam kapanış için Firebase Admin/Cloud Functions ile onay durumunu özel claim'e yazmak ve MFA politikasını Firebase'e taşımak **veya** rapor yazımını güvenli sunucu aracısına geçirmek gerekir; bu üretim Firebase projesi üzerinde ayrı yetki/yapılandırma kararıdır. Mevcut Firestore kuralı bu turda değiştirilmedi.
+- Değişiklik öncesi yedekler: `backups/before-audit-g02-server-api-access-gate_2026-09-08_17-32-11`, `backups/before-audit-g02-api-gate-docs_2026-09-08_17-33-32`.
+- Doğrulama: `node tools/test-operational-api-access-gate.js`, `node --check server.js`, `git diff --check` başarılı. Tam `npm run verify` hâlâ 0.0.678'de kaydedilen, bu işle ilgisiz önceden-değişmiş `tools/check-basic.js` kontrol hatasında durur.
+- Sıradaki: **G-03** (MFA üretim politikası; e-posta anahtarı eksikse sessizce kapanmamalı). Bu adımda mevcut kullanıcıların erişimini kesmemek için `MFA_REQUIRED` gibi açık bir üretim politikası ve güvenli varsayılanlar tasarlanacak.
+
+## 0.0.679 - 2026-09-08 - Denetim Faz 1: yerel `/api/state` yazımı atomik ve revizyon kontrollü (V-03)
+
+- Denetim raporundaki **V-03** uygulandı. Önceki `handleStateApi()` her PUT/POST gövdesini doğrudan `active-case.json` hedefine yazıyor; eşzamanlı yazma, süreç kesintisi ve eski istemci verisinin yeni kaydı ezmesi için koruma taşımıyordu.
+- Yeni yardımcılar: `calculateStateRevision()` (saklanan ham JSON'un SHA-256 revizyonu), `validateLocalStatePayload()` (beklenen üst seviye JSON nesne biçimi), `readLocalStateRecord()`, `writeLocalStateAtomically()` ve `enqueueStateWrite()`. Her kullanıcı durum dosyası için kuyruk ayrı tutulur; yazım aynı dizindeki benzersiz geçici dosyaya `wx` ile yapılır, tamamlanınca `rename` ile atomik olarak hedefe geçirilir, hata halinde yalnız kendi geçici dosyası temizlenir.
+- `GET /api/state` artık `{ exists, state, revision }` döner. PUT/POST yazımı, GET'ten alınmış SHA-256 değerini `If-Match` başlığında göndermeyi zorunlu tutar; yeni kayıt için `If-Match: 0` kullanılır. Başlık yok/geçersizse `428`, başka işlem kaydı değiştirmişse `409` ve güncel revizyon döner; başarı yanıtı yeni revizyonu içerir. Bu rota için güncel uygulama istemcisinde çağrı yoktur; gelecekteki API tüketicileri önce GET, ardından aynı revizyonla koşullu PUT yapmalıdır.
+- Yeni `tools/test-local-state-atomicity.js` şunları doğrular: üst seviye payload biçimi ve `If-Match` çözümü, boş dosyada ilk kayıt, aynı revizyonla paralel iki yazmadan yalnız birinin kabul edilmesi / diğerinin çakışması ve geçici dosya kalmaması. Komut: `npm run test:local-state`.
+- Değişiklik öncesi yedekler: `backups/before-audit-v03-local-state-atomicity_2026-09-08_17-27-38` ve `backups/before-audit-v03-docs-and-script_2026-09-08_17-29-13`.
+- Doğrulama: `node tools/test-local-state-atomicity.js`, `node tools/test-static-auth-gate.js`, `node --check server.js` ve `git diff --check` başarılı. Tam `npm run verify` hâlâ 0.0.678'de kaydedilen, bu işle ilgisiz önceden-değişmiş `tools/check-basic.js` kontrol hatasında durur.
+- Sıradaki faz: **Faz 2 / G-02** — onaylı kullanıcı ve MFA politikasını tüm API/Firestore erişim yollarına tutarlı biçimde uygulamak; canlı Firebase yapılandırması doğrulanmadan üretim ayarları varsayılmayacak.
+
+## 0.0.678 - 2026-09-08 - Denetim Faz 1: statik sunucu verisi kapatıldı; bulut kayıtları atomik ve rapor-değişimine dayanıklı
+
+- Astra'nın `denetim-2026-09-08/EXPERIFY-DENETIM-RAPORU.md` raporundaki ilk üç yüksek öncelikli bulgu uygulandı: **G-01** (rapor imzalama anahtarı / statik erişim), **V-01** (eşzamanlı bulut kaydı), **V-02** (kayıt sürerken rapor değiştirme).
+- **G-01**: `server-data/` için tek tek hassas dosya listesi kaldırıldı; dizinin TAMAMI `isSensitivePath()` içinde statik erişime kapatıldı. Böylece `server-data/export-signing-key.txt` ve gelecekte bu dizine eklenebilecek herhangi bir sunucu verisi, oturumlu kullanıcıya dahi `handleStatic()` yolundan verilemez. `tools/test-static-auth-gate.js` artık imzalama anahtarını, mevcut legacy JSON'u, kullanıcı alt dizinini ve hayali gelecekteki bir gizli dosyayı doğrudan `resolveStaticPath()` ile test eder. Test edilebilirlik için `isSensitivePath` ve `resolveStaticPath` yalnızca CommonJS test yüzeyine eklendi; HTTP davranışını açmaz.
+- **V-01 + V-02**: `cloud/cloud-sync.js` içindeki `pushReport()` ilk `await` öncesinde hedef `reportId`, beklenen revizyon, payload, özet, aktif bölüm, cihaz türü ve yerel güncelleme zamanını DONDURUR. `cloud.db.runTransaction()` içinde belge okunur, normal kayıtta uzak revizyonun beklenen revizyona EŞİT olması şartı aranır ve yazma aynı transaction içinde yapılır. Uyuşmazlıkta yazma yapılmaz, mevcut çakışma seçim arayüzü gösterilir. Zorla gönderme, kullanıcının açık seçiminden sonra uzak revizyonun bir sonraki numarasıyla yazar. İşlem sonucu geldiğinde aktif rapor değişmişse yeni raporun revizyonu/durum göstergesi değiştirilmez.
+- Yeni `tools/test-cloud-push-atomicity.js`, gerçek `buildEnvelope` + `pushReport` kaynak fonksiyonlarını AST ile alıp sahte Firestore transaction'ında çalıştırır: (a) eski revizyondan yazmanın çakışma gösterip hiç yazmamasını, (b) A kaydı beklerken B'ye geçilse bile A hedefi ve A anlık payload'ının yazılmasını, B'nin revizyonunun değişmemesini doğrular. `package.json`'a `npm run test:cloud-push` eklendi.
+- `index.html` içindeki `cloud/cloud-sync.js` cache-buster `?v=20260908-1716` olarak yükseltildi.
+- Değişiklik öncesi seçici yedekler: `backups/before-audit-g01-static-server-data_2026-09-08_17-09-40`, `backups/before-audit-v01-v02-cloud-push_2026-09-08_17-11-48`, `backups/before-audit-v01-v02-cloud-push-test_2026-09-08_17-12-42`, `backups/before-audit-v01-v02-cloud-cache-buster_2026-09-08_17-16-09`.
+- Doğrulama: `npm run test:cloud-push`, `node tools/test-static-auth-gate.js`, `node tools/test-export-authorization.js`, `node --check cloud/cloud-sync.js` ve `git diff --check` başarılı. `npm run verify`, bu paketle İLGİSİZ ve ÖNCEDEN değişmiş `tools/check-basic.js` dosyasının 273. satırındaki "Buyuk mahalle veritabani telefona yuklenmemeli" kontrolünde duruyor; bu hata düzeltilmedi veya gizlenmedi. Öncül değişiklikler `tools/test-comparable-furnished-support.js` ve `tools/test-documents-block-grouping.js` içinde de korunuyor.
+- İlerleme planı: `docs/denetim-2026-09-08-uygulama-plani.md`. Sıradaki bulgu **V-03**: yerel `/api/state` yazımının atomik dosya değiştirme, şema ve revizyon kontrolüyle güçlendirilmesi.
+
 ## 0.0.677 - 2026-09-08 - Banka şablonlarının tek-taşınmaza-özgü Tapu hücreleri: çoklu raporda AYNI ise gerçek değer, FARKLI ise "EKTEDİR:" (10 şablon)
 
 - Kullanıcı, gerçek bir vakifkatilim.html ekran görüntüsü ("Taşınmazlar Tapu Özeti" tablosunun HEMEN üstünde İl/İlçe/Bucak/Mahalle/Mevkii/Zemin No/Pafta/Ada/Parsel/Eski Parsel-Ada/BB Tapudaki Niteliği/Tapu Tarihi/Yevmiye/Sayfa/Cilt/Blok/Kat/Merkez Bankası Kat Bilgisi/BB No/Giriş/Eklentisi/UAVT/Arsa Payı/Koordinat alanları) paylaşıp: "ortak veriler template dosyalarında tapu tablo bölümlerinde yazılabilir ayrı olan diğer veriler için EKTEDİR: ibaresi kullan bu bölümler altta tabloda yer alıyor çünkü" dedi.
