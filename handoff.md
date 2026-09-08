@@ -1,5 +1,11 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.708 - 2026-09-09 - Geçmiş emsal konum metninin yeni rapora göre yeniden hesaplanması
+
+- Geçmiş emsal aktarımında eski rapordan gelen `c20` “taşınmaza göre mesafe/yön” metni artık aynen taşınmıyor.
+- Emsalin kayıtlı koordinatları varsa `c20`, yeni rapordaki konu taşınmaz koordinatına göre yeniden hesaplanıyor; koordinat yoksa boş bırakılıyor. Böylece eski rapora ait “güneyinde/kuzeyinde” bilgisi yeni rapora sızmıyor.
+- Değişiklik öncesi yedek: `backups/before-comparable-location-recalculation_2026-09-09_01-35-33`.
+
 ## 0.0.707 - 2026-09-09 - Geçmiş emsal aktarımında +/- şerefiye hariç tutulması
 
 - Geçmiş emsal kartından bir emsal sütununa aktarım yapılırken kaynak kaydın +/- şerefiye alanları (`c8`, `c9`, `c21`, `c22`) artık aktarılmaz.

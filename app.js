@@ -45101,6 +45101,7 @@ function prepareComparableMemoryEntryForColumn(entry) {
   return {
     ...transferable,
     c7: getComparableMemoryTransferLocation(point),
+    c20: point ? buildComparableLocationText(point[0], point[1]) : "",
     c8: "",
     c9: "",
     c21: "",

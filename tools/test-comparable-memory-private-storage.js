@@ -31,6 +31,7 @@ async function main() {
   assert.match(clientSource, /function getComparableMemoryTransferLocation\(point\)/, "Geçmiş emsal konumu KML sınırına göre aktarılmalı.");
   assert.match(clientSource, /if \(!isComparableMemoryPointInsideKml\(point\)\) return "Aynı bölge";/, "KML dışındaki geçmiş emsal aynı bölge olarak aktarılmalı.");
   assert.match(clientSource, /c7: getComparableMemoryTransferLocation\(point\)/, "Geçmiş emsal konumu aktarımda yeniden belirlenmeli.");
+  assert.match(clientSource, /c20: point \? buildComparableLocationText\(point\[0\], point\[1\]\) : ""/, "Geçmiş emsal taşınmaza göre konum metnini yeni raporun koordinatlarıyla yeniden hesaplamalı.");
   for (const key of ["c8", "c9", "c21", "c22"]) {
     assert.match(clientSource, new RegExp(`${key}: ""`), `Geçmiş emsal aktarımında ${key} şerefiye alanı Seçiniz olmalı.`);
   }
