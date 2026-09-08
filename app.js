@@ -45090,11 +45090,16 @@ function getComparableMemoryParcelValue(row = {}) {
   return blockNo || parcelNo;
 }
 
+const comparableMemoryPremiumKeys = new Set(["c8", "c9", "c21", "c22"]);
+
 function prepareComparableMemoryEntryForColumn(entry) {
   const comparable = { ...(entry?.comparable || {}) };
   const point = getComparableSavedPoint(comparable);
+  const transferable = Object.fromEntries(
+    Object.entries(comparable).filter(([key]) => !comparableMemoryPremiumKeys.has(key)),
+  );
   return {
-    ...comparable,
+    ...transferable,
     c7: getComparableMemoryTransferLocation(point),
     c8: "",
     c9: "",

@@ -34,6 +34,8 @@ async function main() {
   for (const key of ["c8", "c9", "c21", "c22"]) {
     assert.match(clientSource, new RegExp(`${key}: ""`), `Geçmiş emsal aktarımında ${key} şerefiye alanı Seçiniz olmalı.`);
   }
+  assert.match(clientSource, /const comparableMemoryPremiumKeys = new Set\(\["c8", "c9", "c21", "c22"\]\)/, "Şerefiye alanları aktarım listesinden açıkça çıkarılmalı.");
+  assert.match(clientSource, /Object\.entries\(comparable\)\.filter\(\(\[key\]\) => !comparableMemoryPremiumKeys\.has\(key\)\)/, "Geçmiş emsal aktarımı şerefiye alanlarını taşımamalı.");
 
   const firstFile = server.userComparableMemoryFile(firstUser);
   const secondFile = server.userComparableMemoryFile(secondUser);

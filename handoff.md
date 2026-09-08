@@ -1,5 +1,11 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.707 - 2026-09-09 - Geçmiş emsal aktarımında +/- şerefiye hariç tutulması
+
+- Geçmiş emsal kartından bir emsal sütununa aktarım yapılırken kaynak kaydın +/- şerefiye alanları (`c8`, `c9`, `c21`, `c22`) artık aktarılmaz.
+- Aktarım sonrası bu alanlar boş/`Seçiniz` durumunda bırakılır; +/- şerefiye kararını kullanıcı yeni raporda kendisi verir. Kartta kaynak şerefiye yalnızca inceleme amacıyla görüntülenebilir.
+- Değişiklik öncesi yedek: `backups/before-comparable-memory-premium-transfer-exclusion_2026-09-09_01-24-02`.
+
 ## 0.0.706 - 2026-09-09 - Konu taşınmaz emsal kartında Ada/Parsel
 
 - Emsal kartına `Ada / Parsel` satırı eklendi. `Emsal Durumu` `Konu taşınmaz` olduğunda aktif raporun Ada/Parsel bilgisi gösterilir; diğer geçmiş emsallerde bilgi yoksa kart boş veri yerine `—` gösterir.
