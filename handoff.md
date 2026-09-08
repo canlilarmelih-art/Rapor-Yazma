@@ -1,5 +1,11 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.706 - 2026-09-09 - Konu taşınmaz emsal kartında Ada/Parsel
+
+- Emsal kartına `Ada / Parsel` satırı eklendi. `Emsal Durumu` `Konu taşınmaz` olduğunda aktif raporun Ada/Parsel bilgisi gösterilir; diğer geçmiş emsallerde bilgi yoksa kart boş veri yerine `—` gösterir.
+- KML sınırı içindeki konu taşınmaz emsallerinin konum aktarımı önceki kuralla korunur: blok varsa `Aynı site`, blok yoksa `Aynı bina`; sınır dışı emsaller `Aynı bölge` olur.
+- Değişiklik öncesi yedek: `backups/before-comparable-card-parcel-location-refinement_2026-09-09_01-17-12`.
+
 ## 0.0.705 - 2026-09-09 - Geçmiş emsal KML konum sınıflandırması ve şerefiye sıfırlama
 
 - Geçmiş emsal kartı ve aktarımı artık emsal noktasını bu raporun KML sınırıyla karşılaştırır. KML içinde kalan emsal, konu taşınmazda blok bilgisi varsa `Aynı site`, blok bilgisi yoksa `Aynı bina`; KML dışında kalan emsal `Aynı bölge` olarak aktarılır.

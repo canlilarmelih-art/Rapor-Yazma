@@ -45079,6 +45079,17 @@ function getComparableMemoryTransferLocation(point) {
   return blockNo ? "Aynı site" : "Aynı bina";
 }
 
+function getComparableMemoryParcelValue(row = {}) {
+  if (!isComparableSubjectStatus(row)) return "";
+  const activeRecord = getTitleUnitKmlRecordsForMap().find((record) => record.index === state.activeTitleUnitIndex);
+  const parcelFields = getKmlRecordParcelFields(activeRecord);
+  const reportFields = getTitleUnitFieldsForLabel(state.activeTitleUnitIndex) || {};
+  const blockNo = String(parcelFields.blockNo || reportFields.blockNo || state.fields.blockNo || "").trim();
+  const parcelNo = String(parcelFields.parcelNo || reportFields.parcelNo || state.fields.parcelNo || "").trim();
+  if (blockNo && parcelNo) return `${blockNo} / ${parcelNo}`;
+  return blockNo || parcelNo;
+}
+
 function prepareComparableMemoryEntryForColumn(entry) {
   const comparable = { ...(entry?.comparable || {}) };
   const point = getComparableSavedPoint(comparable);
@@ -45102,6 +45113,7 @@ function buildComparableMemoryCardHtml(entry) {
   const row = entry?.comparable || {};
   const values = [
     ["Nitelik", getComparableMemoryCardValue(row, "c4")],
+    ["Ada / Parsel", getComparableMemoryParcelValue(row)],
     ["Oda Sayısı", getComparableMemoryCardValue(row, "c5")],
     ["Bulunduğu Kat", getComparableMemoryCardValue(row, "c6")],
     ["Konumu", getComparableMemoryTransferLocation(getComparableSavedPoint(row))],

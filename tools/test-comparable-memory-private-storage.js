@@ -21,6 +21,8 @@ async function main() {
     assert.match(clientSource, new RegExp(`getComparableMemoryCardValue\\(row, "${fieldKey}"\\)`), `Emsal kartı ${fieldKey} alanını göstermeli.`);
   }
   assert.match(clientSource, /getComparableMemoryTransferLocation\(getComparableSavedPoint\(row\)\)/, "Emsal kartı Konumu bu raporun KML sınırına göre göstermeli.");
+  assert.match(clientSource, /function getComparableMemoryParcelValue\(row = \{\}\)/, "Konu taşınmaz emsal kartı Ada/Parsel bilgisi gösterebilmeli.");
+  assert.match(clientSource, /\["Ada \/ Parsel", getComparableMemoryParcelValue\(row\)\]/, "Emsal kartında Ada/Parsel satırı bulunmalı.");
   assert.match(clientSource, /data-comparable-memory-target/, "Emsal kartında hedef sütun butonları bulunmalı.");
   assert.match(clientSource, /function applyComparableMemoryEntryToColumn\(entry, targetIndex\)/, "Geçmiş emsal seçilen sütuna aktarılmalı.");
   assert.match(clientSource, /function isComparableSubjectStatus\(row = \{\}\)/, "Konu taşınmaz emsal durumu ayrı tanınmalı.");
