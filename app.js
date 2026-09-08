@@ -45034,6 +45034,10 @@ function getComparableMemoryCardValue(row, fieldKey) {
   return String(value || "").trim();
 }
 
+function isComparableSubjectStatus(row = {}) {
+  return String(row.c2 || "").trim().toLocaleLowerCase("tr-TR") === "konu taşınmaz";
+}
+
 function getComparableMemoryPremiumValue(row) {
   const metrics = calculateComparableMetrics(row);
   const total = Number(metrics.featureAdjustment || 0) + Number(metrics.locationAdjustment || 0);
@@ -45046,6 +45050,7 @@ function buildComparableMemoryCardHtml(entry) {
     ["Nitelik", getComparableMemoryCardValue(row, "c4")],
     ["Oda Sayısı", getComparableMemoryCardValue(row, "c5")],
     ["Bulunduğu Kat", getComparableMemoryCardValue(row, "c6")],
+    ["Konumu", getComparableMemoryCardValue(row, "c7")],
     ["Düzeltilmiş Alan", getComparableMemoryCardValue(row, "c13")],
     ["Yapı Yaşı", getComparableMemoryCardValue(row, "c11")],
     ["Pazarlıklı Değer", getComparableMemoryCardValue(row, "c15")],
@@ -45173,14 +45178,16 @@ function renderComparableLocationSketchMap(wrapper) {
 
   comparablePoints.forEach((item) => {
     boundsPoints.push(item.point);
-    leaflet.circleMarker(item.point, {
+    const subjectComparable = isComparableSubjectStatus(item.row);
+    const marker = leaflet.circleMarker(item.point, {
       radius: 8,
-      color: "#0f766e",
+      color: subjectComparable ? "#991b1b" : "#0f766e",
       weight: 2,
-      fillColor: "#14b8a6",
+      fillColor: subjectComparable ? "#dc2626" : "#14b8a6",
       fillOpacity: 0.95,
     }).addTo(map);
-    labelEntries.push({ id: `comparable-${item.index}`, kind: "comparable", latlng: item.point, text: `Emsal ${item.index + 1}` });
+    marker.bindTooltip(subjectComparable ? "KONU TAŞINMAZ" : `Emsal ${item.index + 1}`, { direction: "top", offset: [0, -8] });
+    labelEntries.push({ id: `comparable-${item.index}`, kind: "comparable", latlng: item.point, text: subjectComparable ? "KONU TAŞINMAZ" : `Emsal ${item.index + 1}` });
   });
 
   const memory = state.sourceValues?.comparableMemory || {};
@@ -45190,7 +45197,14 @@ function renderComparableLocationSketchMap(wrapper) {
       const lng = Number(String(entry?.comparable?.c19 || "").replace(",", "."));
       if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
       if (!isComparableMemoryWithinDisplayRadius(subjectPoint, lat, lng)) return;
-      const marker = leaflet.circleMarker([lat, lng], { radius: 7, color: "#7c3aed", weight: 2, fillColor: "#a78bfa", fillOpacity: 0.9 }).addTo(map);
+      const subjectComparable = isComparableSubjectStatus(entry?.comparable || {});
+      const marker = leaflet.circleMarker([lat, lng], {
+        radius: 7,
+        color: subjectComparable ? "#991b1b" : "#7c3aed",
+        weight: 2,
+        fillColor: subjectComparable ? "#dc2626" : "#a78bfa",
+        fillOpacity: 0.9,
+      }).addTo(map);
       marker.bindPopup(buildComparableMemoryCardHtml(entry), { maxWidth: 320, minWidth: 260 });
       marker.on("popupopen", () => {
         marker.getPopup()?.getElement()?.querySelectorAll("[data-comparable-memory-target]").forEach((button) => {

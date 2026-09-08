@@ -1,5 +1,12 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.704 - 2026-09-09 - Konu taşınmaz emsal işaretçisi ve kart konumu
+
+- Emsal Durumu `Konu taşınmaz` seçili olan emsal noktaları haritada kırmızı dolgu ve koyu kırmızı kenarlıkla gösterilir; etiketleri de `KONU TAŞINMAZ` olarak ayrıştırılır.
+- Bu kırmızı işaretleme hem mevcut emsal noktalarında hem de geçmiş emsal hafızası işaretçilerinde uygulanır.
+- Geçmiş emsal kartına `Konumu` alanı eklendi; mevcut seçenek metinleri (ör. Aynı site, aynı bölge) aynen gösterilir.
+- Değişiklik öncesi yedek: `backups/before-comparable-memory-subject-marker-location-card_2026-09-09_00-59-17`.
+
 ## 0.0.703 - 2026-09-09 - Geçmiş emsal kartı ve hedef sütun seçimi
 
 - Haritadaki geçmiş emsal işaretçisine tıklanınca minimal bir emsal kartı açılır. Kartta Nitelik, Oda Sayısı, Bulunduğu Kat, Düzeltilmiş Alan, Yapı Yaşı, Pazarlıklı Değer, toplam +/- Şerefiye ve İndirgenmiş m² Birim Değeri gösterilir.
