@@ -1,5 +1,12 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.693 - 2026-09-08 - CI: Eşyalı emsal denetimi platformdan bağımsızlaştırıldı
+
+- GitHub Actions doğrulaması, `test-comparable-furnished-support.js`in yalnız Windows CRLF satır sonlarını araması nedeniyle `Emsal Niteliği alanı bulunamadi.` hatasıyla duruyordu; uygulama kodunda veya kullanıcı verisinde hata yoktu.
+- Test, `app.js` kaynağını analiz öncesinde LF'ye normalize edecek biçimde düzeltildi. Böylece Windows yerel checkout'u ve Linux CI aynı alan sırası/görünürlük/hakediş denetimini uygular.
+- Yedekler: `backups/before-ci-comparable-furnished-line-ending-fix_2026-09-08_22-02-41`; handoff öncesi `backups/before-ci-comparable-furnished-handoff_2026-09-08_22-03-21`.
+- Sıradaki: Tam `npm run verify`, commit/push ve GitHub Actions doğrulama + canlı dağıtım sonucunun kontrolü.
+
 ## 0.0.692 - 2026-09-08 - Emsal Hafızası: harita ve ilk boş sütuna getirme
 
 - Emsal Konum Krokisi araç çubuğuna `GEÇMİŞ EMSALLER`, `6 aydan eskiyi göster` ve açık koordinatlı emsalleri yalnız kullanıcı tıklarsa kaydeden `EMSALLERİ HAFIZAYA KAYDET` eylemleri eklendi.

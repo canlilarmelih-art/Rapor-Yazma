@@ -2,7 +2,9 @@ const assert = require("assert");
 const fs = require("fs");
 const path = require("path");
 
-const source = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
+// CI Linux'ta LF, yerel Windows checkout'larında ise CRLF kullanabilir. Kaynak
+// dilimleme denetimlerinin her iki ortamda aynı sonucu vermesi için normalize et.
+const source = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8").replace(/\r\n/g, "\n");
 
 function indexOfOrThrow(text, description) {
   const index = source.indexOf(text);
@@ -10,20 +12,17 @@ function indexOfOrThrow(text, description) {
   return index;
 }
 
-// Not (2026-09-02): app.js CRLF (\r\n) satir sonlariyla kayitli (Windows
-// checkout, core.autocrlf=true) - literal "\n" arayan indexOf hicbir yerde
-// eslesmiyordu. bkz. ayni kok nedenin check-basic.js'teki emsali.
-const natureField = indexOfOrThrow('key: "c23",\r\n    label: "Emsal Niteliği"', "Emsal Niteliği alanı");
-const furnishedField = indexOfOrThrow('key: "c32",\r\n    label: "Eşyalı"', "Eşyalı alanı");
-const furnitureValueField = indexOfOrThrow('key: "c33",\r\n    label: "Eşya Bedeli"', "Eşya Bedeli alanı");
-const statusField = indexOfOrThrow('key: "c2",\r\n    label: "Emsal Durumu"', "Emsal Durumu alanı");
+const natureField = indexOfOrThrow('key: "c23",\n    label: "Emsal Niteliği"', "Emsal Niteliği alanı");
+const furnishedField = indexOfOrThrow('key: "c32",\n    label: "Eşyalı"', "Eşyalı alanı");
+const furnitureValueField = indexOfOrThrow('key: "c33",\n    label: "Eşya Bedeli"', "Eşya Bedeli alanı");
+const statusField = indexOfOrThrow('key: "c2",\n    label: "Emsal Durumu"', "Emsal Durumu alanı");
 
 assert(natureField < furnishedField, "Eşyalı alanı Emsal Niteliğinden sonra gelmelidir.");
 assert(furnishedField < furnitureValueField, "Eşya Bedeli, Eşyalı alanının hemen ardından gelmelidir.");
 assert(furnitureValueField < statusField, "Eşyalı alanları ilk emsal bilgileri arasında görünmelidir.");
 
 const displayFieldsStart = indexOfOrThrow("function getComparableDisplayFields(viewMode)", "Emsal görünürlük fonksiyonu");
-const displayFieldsEnd = source.indexOf("\r\n}\r\n\r\n// Emsaller'de Kat Bazında", displayFieldsStart);
+const displayFieldsEnd = source.indexOf("\n}\n\n// Emsaller'de Kat Bazında", displayFieldsStart);
 const displayFieldsSource = source.slice(displayFieldsStart, displayFieldsEnd);
 assert(displayFieldsSource.includes('field.key === "c33" && !showFurnitureValue'), "Eşya Bedeli yalnızca Evet seçildiğinde görünmelidir.");
 assert(!displayFieldsSource.includes('field.key === "c32" &&'), "Eşyalı seçeneği koşulsuz görünür kalmalıdır.");
