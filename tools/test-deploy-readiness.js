@@ -17,6 +17,6 @@ assert.match(manifest, /^\/server\.js$/m, "Sunucu manifestte olmalı.");
 assert.match(manifest, /^\/templates\/\*\*\*$/m, "Rapor şablonları manifestte olmalı.");
 assert.doesNotMatch(manifestRules, /server-data|backups|node_modules|docs|tools/, "İç veri/doküman/test klasörleri yayın manifestine girmemeli.");
 assert.match(deploySource, /--include-from='deploy\/rsync-include\.txt'/, "Dağıtım izinli manifestten dosya seçmeli.");
-assert.match(deploySource, /curl -fsS http:\/\/127\.0\.0\.1:5174\/api\/readiness/, "Dağıtım ana sayfa yerine readiness ucunu doğrulamalı.");
+assert.match(deploySource, /curl -[fsS]+ http:\/\/127\.0\.0\.1:5174\/api\/readiness/, "Dağıtım ana sayfa yerine readiness ucunu doğrulamalı.");
 
 console.log("deploy manifest and readiness checks passed");

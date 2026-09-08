@@ -1,5 +1,13 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.699 - 2026-09-08 - PM2 uygulaması Node 22 ile yeniden oluşturuluyor
+
+- Günlük, Node 22 kurulmuş ve PM2 daemon güncellenmiş olsa bile dump'tan geri yüklenen `rapor-app` işleminin Node 20 yorumlayıcısını koruduğunu kesinleştirdi. Readiness yanıtı açıkça `expectedNodeMajor: 22`, `runtimeNodeMajor: 20` verdi.
+- `ecosystem.config.cjs`, `RAPOR_NODE_BINARY` ile gelen tam yorumlayıcı yolunu kullanır. Dağıtımda bu yol nvm'in seçtiği Node 22'den alınır.
+- Eski PM2 dump kaydı yorumlayıcıyı ezmesin diye yalnız `rapor-app` işlemi silinip yapılandırmadan yeniden oluşturulur; diğer PM2 uygulamalarına dokunulmaz.
+- `test-deploy-readiness.js`, iyileştirilmiş hata görünürlüğü için kullanılan `curl -sS` biçimini de kabul edecek şekilde güncellendi.
+- Değişiklik öncesi yedek: `backups/before-pm2-explicit-node22-recreate_2026-09-08_22-21-39`.
+
 ## 0.0.698 - 2026-09-08 - PM2 daemon'ı Node 22 ile yenileme
 
 - Sunucuda Node 22 başarıyla indirildi/doğrulandı; buna rağmen eski PM2 daemon'ı uygulamayı eski yorumlayıcıyla başlatmayı sürdürdü ve readiness 503 verdi.

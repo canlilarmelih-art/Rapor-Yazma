@@ -151,8 +151,11 @@ jobs:
           # PM2 daemon'ı eski Node ile yaşıyorsa --interpreter mevcut süreçte
           # uygulanmayabilir. update daemon'ı aktif Node ile yeniler.
           pm2 update
-          RAPOR_HOST=0.0.0.0 RAPOR_PORT=5174 MFA_REQUIRED="$MFA_REQUIRED" RESEND_API_KEY="$RESEND_API_KEY" \
-            pm2 startOrRestart ecosystem.config.cjs --only rapor-app --interpreter "$(command -v node)" --update-env
+          # Eski dump kaydındaki interpreter yolunu tutmamak için süreç yeniden
+          # oluşturulur. Kısa kesinti yalnız bu PM2 uygulamasıyla sınırlıdır.
+          pm2 delete rapor-app || true
+          RAPOR_HOST=0.0.0.0 RAPOR_PORT=5174 RAPOR_NODE_BINARY="$(command -v node)" MFA_REQUIRED="$MFA_REQUIRED" RESEND_API_KEY="$RESEND_API_KEY" \
+            pm2 start ecosystem.config.cjs --only rapor-app --update-env
           pm2 save
           for attempt in $(seq 1 15); do
             readiness_response="$(curl -sS http://127.0.0.1:5174/api/readiness || true)"

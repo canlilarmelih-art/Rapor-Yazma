@@ -4,6 +4,9 @@ module.exports = {
       name: "rapor-app",
       script: "./server.js",
       cwd: __dirname,
+      // Canlı dağıtım bu değişkeni nvm ile seçilmiş Node 22 ikilisine ayarlar.
+      // PM2 daemon'ının kendi eski Node sürümünü kalıtımla kullanmasını önler.
+      interpreter: process.env.RAPOR_NODE_BINARY || process.execPath,
       instances: 1,
       autorestart: true,
       watch: false,
