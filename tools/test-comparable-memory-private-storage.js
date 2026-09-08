@@ -14,7 +14,8 @@ async function main() {
   assert.match(clientSource, /const comparableMemoryDisplayDiameterMeters = 5000;/, "Geçmiş emsal görünüm çapı 5 km olmalı.");
   assert.match(clientSource, /distance <= comparableMemoryDisplayDiameterMeters \/ 2/, "5 km çap, 2,5 km yarıçapla uygulanmalı.");
   assert.match(clientSource, /isComparableMemoryWithinDisplayRadius\(subjectPoint, lat, lng\)/, "Geçmiş emsal işaretçileri konu taşınmaza göre yarıçap filtresinden geçmeli.");
-  assert.match(clientSource, /!key\.startsWith\("_"\)/, "EMSAL GETİR, teknik satır anahtarlarını dolu emsal olarak saymamalı.");
+  assert.match(clientSource, /const defaultSelectionKeys = new Set\(\["c23", "c32", "c25", "c26", "c28"\]\)/, "EMSAL GETİR, varsayılan seçili alanları dolu emsal olarak saymamalı.");
+  assert.match(clientSource, /comparableFields\s*\.filter\(\(field\) => !field\.computed/, "EMSAL GETİR, yalnız gerçek emsal şeması alanlarını değerlendirmeli.");
 
   const firstFile = server.userComparableMemoryFile(firstUser);
   const secondFile = server.userComparableMemoryFile(secondUser);

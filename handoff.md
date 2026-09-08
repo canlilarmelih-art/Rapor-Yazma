@@ -1,5 +1,11 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.702 - 2026-09-08 - EMSAL GETİR boş sütunu şema temelli denetliyor
+
+- İlk düzeltmeden sonra da uyarı alınabildiği bildirildi. Genel nesne anahtarı taraması, boş işyeri kat-bazlı yardımcı dizilerini veya başka görünmeyen destek alanlarını dolu sayabiliyordu.
+- Boş sütun denetimi artık yalnız `comparableFields` içindeki gerçek, hesaplanmayan emsal alanlarını değerlendirir. Otomatik varsayılan seçimler (`c23`, `c32`, `c25`, `c26`, `c28`) ve boş yardımcı kat yapıları engel oluşturmaz; gerçek kullanıcı girdisi varsa üzerine yazma koruması sürer.
+- Değişiklik öncesi yedek: `backups/before-comparable-memory-empty-column-schema-fix_2026-09-08_23-22-01`.
+
 ## 0.0.701 - 2026-09-08 - EMSAL GETİR boş sütun teknik alan düzeltmesi
 
 - Kullanıcı ekranındaki “Boş emsal sütunu yok” uyarısının nedeni, boş oluşturulmuş satırdaki görünmeyen `_comparablesVersion: 2` teknik kaydının dolu emsal sayılmasıydı.
