@@ -1,5 +1,12 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.700 - 2026-09-08 - Geçmiş Emsaller: 5 km çap harita filtresi
+
+- Kullanıcı talebiyle Geçmiş Emsaller, konu taşınmaz koordinatı merkez alınarak **5 km çap** (2,5 km yarıçap) içinde haritada gösterilir.
+- Bu yalnız görünüm filtresidir: kullanıcıya ait geçmiş emsal kaydı silinmez, düzenlenmez ve 6 aylık/arşiv zaman politikası aynen korunur.
+- `test:comparable-memory`, 5.000 m çap sabitini, 2.500 m yarıçap hesabını ve işaretçi filtresini doğrular.
+- Değişiklik öncesi yedek: `backups/before-comparable-memory-5km-diameter-filter_2026-09-08_23-08-06`.
+
 ## 0.0.699 - 2026-09-08 - PM2 uygulaması Node 22 ile yeniden oluşturuluyor
 
 - Günlük, Node 22 kurulmuş ve PM2 daemon güncellenmiş olsa bile dump'tan geri yüklenen `rapor-app` işleminin Node 20 yorumlayıcısını koruduğunu kesinleştirdi. Readiness yanıtı açıkça `expectedNodeMajor: 22`, `runtimeNodeMajor: 20` verdi.

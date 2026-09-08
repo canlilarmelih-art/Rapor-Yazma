@@ -44983,6 +44983,17 @@ async function refreshComparableMemory(includeArchived = false) {
   };
 }
 
+// Kullanıcı kararı: Geçmiş Emsaller, konu taşınmaz merkezli 5 km çapta
+// (2,5 km yarıçap) gösterilir. Bu yalnız harita görünüm filtresidir;
+// kullanıcının kendi kaydedilmiş emsal verisi silinmez veya değiştirilmez.
+const comparableMemoryDisplayDiameterMeters = 5000;
+function isComparableMemoryWithinDisplayRadius(subjectPoint, lat, lng) {
+  if (!Array.isArray(subjectPoint) || subjectPoint.length < 2) return false;
+  const [subjectLat, subjectLng] = subjectPoint;
+  const distance = calculateDistanceMeters(subjectLat, subjectLng, lat, lng);
+  return Number.isFinite(distance) && distance <= comparableMemoryDisplayDiameterMeters / 2;
+}
+
 function isComparableMemoryTargetRowEmpty(row = {}) {
   return !Object.entries(row).some(([key, value]) => !["c23", "c32"].includes(key) && String(value || "").trim());
 }
@@ -45107,6 +45118,7 @@ function renderComparableLocationSketchMap(wrapper) {
       const lat = Number(String(entry?.comparable?.c18 || "").replace(",", "."));
       const lng = Number(String(entry?.comparable?.c19 || "").replace(",", "."));
       if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+      if (!isComparableMemoryWithinDisplayRadius(subjectPoint, lat, lng)) return;
       const marker = leaflet.circleMarker([lat, lng], { radius: 7, color: "#7c3aed", weight: 2, fillColor: "#a78bfa", fillOpacity: 0.9 }).addTo(map);
       marker.bindPopup(`<strong>Geçmiş emsal</strong><br>${escapeHtml(entry?.comparable?.c4 || entry?.comparable?.c23 || "Emsal")}<br><button type="button" data-comparable-memory-apply>EMSAL GETİR</button>`);
       marker.on("popupopen", () => {

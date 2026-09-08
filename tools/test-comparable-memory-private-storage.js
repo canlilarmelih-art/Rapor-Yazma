@@ -6,10 +6,15 @@ const path = require("node:path");
 
 const root = path.resolve(__dirname, "..");
 const server = require(path.join(root, "server.js"));
+const clientSource = fs.readFileSync(path.join(root, "app.js"), "utf8");
 const firstUser = "comparable-memory-owner-a";
 const secondUser = "comparable-memory-owner-b";
 
 async function main() {
+  assert.match(clientSource, /const comparableMemoryDisplayDiameterMeters = 5000;/, "Geçmiş emsal görünüm çapı 5 km olmalı.");
+  assert.match(clientSource, /distance <= comparableMemoryDisplayDiameterMeters \/ 2/, "5 km çap, 2,5 km yarıçapla uygulanmalı.");
+  assert.match(clientSource, /isComparableMemoryWithinDisplayRadius\(subjectPoint, lat, lng\)/, "Geçmiş emsal işaretçileri konu taşınmaza göre yarıçap filtresinden geçmeli.");
+
   const firstFile = server.userComparableMemoryFile(firstUser);
   const secondFile = server.userComparableMemoryFile(secondUser);
   assert.notEqual(firstFile, secondFile, "Her kullanıcının emsal hafızası ayrı bir dosyada tutulmalı.");
