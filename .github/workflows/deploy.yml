@@ -132,7 +132,17 @@ jobs:
               exit "$nvm_installer_status"
             fi
           fi
+          # nvm.sh, proje dizinindeki .nvmrc'yi otomatik seçmeye çalışır.
+          # İlk kurulumda Node 22 henüz yokken bu seçim kod 3 döndürür; nvm
+          # fonksiyonu yine yüklenmiştir ve hemen aşağıda sürüm kurulacaktır.
+          set +e
           . "$NVM_DIR/nvm.sh"
+          nvm_source_status=$?
+          set -e
+          if ! command -v nvm >/dev/null 2>&1; then
+            echo "::error::nvm yuklenemedi (kod: $nvm_source_status)."
+            exit "$nvm_source_status"
+          fi
           required_node="$(tr -d '\r\n' < .nvmrc)"
           nvm install --no-progress "$required_node"
           nvm use "$required_node"

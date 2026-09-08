@@ -1,5 +1,11 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.697 - 2026-09-08 - nvm otomatik `.nvmrc` seçimi ilk kurulumda güvenli
+
+- `nvm.sh`, uygulama dizininden yüklendiğinde `.nvmrc`yi otomatik kullanır. İlk çalışmada Node 22 henüz indirilmediğinden bu otomatik seçim `3` döndürüyordu; nvm fonksiyonu yine de belleğe yüklenmişti.
+- Dağıtım bu beklenen ilk-durum dönüşünü yakalar, `nvm` komutunun gerçekten yüklendiğini denetler, sonra Node 22'yi kurup seçer. Gerçek nvm yüklenme hatası ise açık hata ile kesilmeye devam eder.
+- Değişiklik öncesi yedek: `backups/before-deploy-nvm-autouse-fix_2026-09-08_22-14-53`.
+
 ## 0.0.696 - 2026-09-08 - nvm kurulum sonucu ve PM2 yorumlayıcısı
 
 - nvm kurulum betiği dosyaları başarıyla oluşturmasına rağmen `3` çıkış kodu döndürdü; `set -e` bununla sonraki Node 22 kurulumunu kesiyordu. Akış artık nvm dosyasının oluştuğunu ayrıca doğrular; dosya varsa bu bilgilendirici çıkış kodu dağıtımı kesmez, yoksa açık hatayla durur.
