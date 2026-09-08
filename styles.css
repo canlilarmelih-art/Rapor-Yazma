@@ -4338,6 +4338,77 @@ td .free-lookup input {
   padding: 8px 10px;
 }
 
+.comparable-memory-card {
+  min-width: 246px;
+  color: #18322f;
+  font-size: 12px;
+}
+
+.comparable-memory-card-title {
+  margin-bottom: 8px;
+  color: #0f766e;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.comparable-memory-card-fields {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+}
+
+.comparable-memory-card-row {
+  display: grid;
+  grid-template-columns: minmax(112px, 1fr) minmax(90px, 1fr);
+  gap: 8px;
+  border-bottom: 1px solid #e5ece9;
+  padding-bottom: 3px;
+}
+
+.comparable-memory-card-row dt {
+  color: #5a6e6a;
+  font-weight: 600;
+}
+
+.comparable-memory-card-row dd {
+  margin: 0;
+  color: #18322f;
+  font-weight: 700;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.comparable-memory-card-actions {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+  color: #5a6e6a;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.comparable-memory-column-buttons {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 5px;
+}
+
+.comparable-memory-column-button {
+  border: 1px solid #0f766e;
+  border-radius: 5px;
+  background: #f0fdfa;
+  color: #0f766e;
+  cursor: pointer;
+  font-weight: 800;
+  min-height: 28px;
+}
+
+.comparable-memory-column-button:hover,
+.comparable-memory-column-button:focus-visible {
+  background: #0f766e;
+  color: #ffffff;
+}
+
 /* Emsal krokisi leader-line etiketleri (yakın konumlarda üst üste binmeyi önler) */
 .sketch-leader-label {
   width: 0;

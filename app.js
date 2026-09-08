@@ -45024,6 +45024,64 @@ function applyComparableMemoryEntry(entry) {
   renderSection();
 }
 
+function getComparableMemoryCardValue(row, fieldKey) {
+  const field = comparableFields.find((item) => item.key === fieldKey);
+  if (!field) return "";
+  const value = field.computed
+    ? calculateComparableFieldValue(field.key, row, 0)
+    : formatOutputFieldValue(row[field.key] || "", field);
+  if (Array.isArray(value)) return value.filter(Boolean).join(", ");
+  return String(value || "").trim();
+}
+
+function getComparableMemoryPremiumValue(row) {
+  const metrics = calculateComparableMetrics(row);
+  const total = Number(metrics.featureAdjustment || 0) + Number(metrics.locationAdjustment || 0);
+  return Number.isFinite(total) ? formatComparableSignedPercent(total) : "";
+}
+
+function buildComparableMemoryCardHtml(entry) {
+  const row = entry?.comparable || {};
+  const values = [
+    ["Nitelik", getComparableMemoryCardValue(row, "c4")],
+    ["Oda Sayısı", getComparableMemoryCardValue(row, "c5")],
+    ["Bulunduğu Kat", getComparableMemoryCardValue(row, "c6")],
+    ["Düzeltilmiş Alan", getComparableMemoryCardValue(row, "c13")],
+    ["Yapı Yaşı", getComparableMemoryCardValue(row, "c11")],
+    ["Pazarlıklı Değer", getComparableMemoryCardValue(row, "c15")],
+    ["+/- Şerefiye", getComparableMemoryPremiumValue(row)],
+    ["İndirgenmiş m² Birim Değeri", getComparableMemoryCardValue(row, "calcAdjustedUnitValue")],
+  ];
+  const rowsHtml = values.map(([label, value]) => `
+    <div class="comparable-memory-card-row">
+      <dt>${escapeHtml(label)}</dt>
+      <dd>${escapeHtml(value || "—")}</dd>
+    </div>`).join("");
+  const buttonsHtml = [1, 2, 3, 4, 5].map((number) => `
+    <button type="button" class="comparable-memory-column-button" data-comparable-memory-target="${number - 1}">${number}</button>`).join("");
+  return `<div class="comparable-memory-card">
+    <div class="comparable-memory-card-title">Geçmiş emsal</div>
+    <dl class="comparable-memory-card-fields">${rowsHtml}</dl>
+    <div class="comparable-memory-card-actions">
+      <span>Emsal sütununa aktar:</span>
+      <div class="comparable-memory-column-buttons">${buttonsHtml}</div>
+    </div>
+  </div>`;
+}
+
+function applyComparableMemoryEntryToColumn(entry, targetIndex) {
+  const index = Number(targetIndex);
+  if (!Number.isInteger(index) || index < 0 || index > 4) return;
+  const rows = getComparableRows();
+  const existing = rows[index] || {};
+  if (!isComparableMemoryTargetRowEmpty(existing)
+    && !window.confirm(`Emsal ${index + 1} sütununda veri var. Üzerine yazılsın mı?`)) return;
+  state.tables.comparables[index] = { ...existing, ...(entry?.comparable || {}) };
+  state._comparablesVersion = (state._comparablesVersion || 0) + 1;
+  autosave();
+  renderSection();
+}
+
 // Kullanıcı talebi: "kullanıcı emsal haritası üzerinden etiketleri istediği
 // yere sürüklese ancak emsal ve konu taşınmaz noktaları aynı kalacak" —
 // etiketin (metin kutusunun) kullanıcı tarafından elle bırakıldığı konum,
@@ -45133,10 +45191,11 @@ function renderComparableLocationSketchMap(wrapper) {
       if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
       if (!isComparableMemoryWithinDisplayRadius(subjectPoint, lat, lng)) return;
       const marker = leaflet.circleMarker([lat, lng], { radius: 7, color: "#7c3aed", weight: 2, fillColor: "#a78bfa", fillOpacity: 0.9 }).addTo(map);
-      marker.bindPopup(`<strong>Geçmiş emsal</strong><br>${escapeHtml(entry?.comparable?.c4 || entry?.comparable?.c23 || "Emsal")}<br><button type="button" data-comparable-memory-apply>EMSAL GETİR</button>`);
+      marker.bindPopup(buildComparableMemoryCardHtml(entry), { maxWidth: 320, minWidth: 260 });
       marker.on("popupopen", () => {
-        const button = marker.getPopup()?.getElement()?.querySelector("[data-comparable-memory-apply]");
-        if (button) button.addEventListener("click", () => applyComparableMemoryEntry(entry), { once: true });
+        marker.getPopup()?.getElement()?.querySelectorAll("[data-comparable-memory-target]").forEach((button) => {
+          button.addEventListener("click", () => applyComparableMemoryEntryToColumn(entry, button.dataset.comparableMemoryTarget), { once: true });
+        });
       });
     });
   }

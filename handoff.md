@@ -1,5 +1,12 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.703 - 2026-09-09 - Geçmiş emsal kartı ve hedef sütun seçimi
+
+- Haritadaki geçmiş emsal işaretçisine tıklanınca minimal bir emsal kartı açılır. Kartta Nitelik, Oda Sayısı, Bulunduğu Kat, Düzeltilmiş Alan, Yapı Yaşı, Pazarlıklı Değer, toplam +/- Şerefiye ve İndirgenmiş m² Birim Değeri gösterilir.
+- Kartın altındaki 1–5 düğmeleri, geçmiş emsal verisini doğrudan seçilen emsal sütununa aktarır. Dolu sütun için üzerine yazma teyidi istenir; boş sütun doğrudan doldurulur.
+- Kart işaretlemesi ve sütun aktarımı için kaynak düzeyi emsal hafızası testi genişletildi; genel `npm run verify` başarıyla tamamlandı.
+- Değişiklik öncesi yedek: `backups/before-comparable-memory-card-column-picker_2026-09-09_00-48-08`.
+
 ## 0.0.702 - 2026-09-08 - EMSAL GETİR boş sütunu şema temelli denetliyor
 
 - İlk düzeltmeden sonra da uyarı alınabildiği bildirildi. Genel nesne anahtarı taraması, boş işyeri kat-bazlı yardımcı dizilerini veya başka görünmeyen destek alanlarını dolu sayabiliyordu.

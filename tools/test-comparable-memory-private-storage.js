@@ -16,6 +16,12 @@ async function main() {
   assert.match(clientSource, /isComparableMemoryWithinDisplayRadius\(subjectPoint, lat, lng\)/, "Geçmiş emsal işaretçileri konu taşınmaza göre yarıçap filtresinden geçmeli.");
   assert.match(clientSource, /const defaultSelectionKeys = new Set\(\["c23", "c32", "c25", "c26", "c28"\]\)/, "EMSAL GETİR, varsayılan seçili alanları dolu emsal olarak saymamalı.");
   assert.match(clientSource, /comparableFields\s*\.filter\(\(field\) => !field\.computed/, "EMSAL GETİR, yalnız gerçek emsal şeması alanlarını değerlendirmeli.");
+  assert.match(clientSource, /function buildComparableMemoryCardHtml\(entry\)/, "Geçmiş emsal için kart oluşturulmalı.");
+  for (const fieldKey of ["c4", "c5", "c6", "c13", "c11", "c15", "calcAdjustedUnitValue"]) {
+    assert.match(clientSource, new RegExp(`getComparableMemoryCardValue\\(row, "${fieldKey}"\\)`), `Emsal kartı ${fieldKey} alanını göstermeli.`);
+  }
+  assert.match(clientSource, /data-comparable-memory-target/, "Emsal kartında hedef sütun butonları bulunmalı.");
+  assert.match(clientSource, /function applyComparableMemoryEntryToColumn\(entry, targetIndex\)/, "Geçmiş emsal seçilen sütuna aktarılmalı.");
 
   const firstFile = server.userComparableMemoryFile(firstUser);
   const secondFile = server.userComparableMemoryFile(secondUser);
