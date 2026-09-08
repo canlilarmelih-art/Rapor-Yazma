@@ -231,7 +231,7 @@ function bytesToBase64(bytes) {
   // photoGroups parametresi eklendi — imageAssets'ten SONRA geldigi surece
   // kabul edilir (bkz. tools/test-emlakkatilim-photo-embed.js, o parametreyi
   // ayrica dogruluyor).
-  check(/fillTemplate\(arrayBuffer, values, boldFlags, imageAssets(, \w+)?\)/.test(fnBody), "fillTemplate imageAssets ile cagrilmiyor.");
+  check(/fillTemplate(?:Async)?\(arrayBuffer, values, boldFlags, imageAssets(, \w+)?\)/.test(fnBody), "fillTemplate imageAssets ile cagrilmiyor.");
   check(fnBody.includes('embeddedImageKeys.has("comparables")'), "Basariyla gomulen EMSAL_KROKISI 'missing' listesinden filtrelenmiyor.");
   console.log("exportDocxTemplate gorsel varlik hazirlama kablolamasi testi tamam.");
 }

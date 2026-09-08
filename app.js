@@ -39429,8 +39429,8 @@ function buildNearbyReportText(places) {
   return joinTurkishList(places.map((place) => place.name));
 }
 
-function joinTurkishList(items) {
-  const clean = items.map((item) => cleanupPlaceName(item)).filter(Boolean);
+function joinTurkishList(items = []) {
+  const clean = items.map((item) => typeof cleanupPlaceName === "function" ? cleanupPlaceName(item) : String(item || "").trim()).filter(Boolean);
   if (!clean.length) return "";
   if (clean.length === 1) return clean[0];
   if (clean.length === 2) return `${clean[0]} ve ${clean[1]}`;

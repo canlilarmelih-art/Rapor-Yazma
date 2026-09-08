@@ -82,7 +82,7 @@ const saleabilitySource = sourceBetween(
   "const valuationSaleabilityExplanationFallback"
 );
 const joinTurkishListSource = sourceBetween(
-  "function joinTurkishList(items) {",
+  "function joinTurkishList(items = []) {",
   "async function processKmlFile"
 );
 const suitabilityLabelSource = sourceBetween(

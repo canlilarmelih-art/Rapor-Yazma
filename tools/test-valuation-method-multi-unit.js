@@ -58,7 +58,7 @@ const methodSource = sourceBetween(
 );
 const joinTurkishListSource = sourceBetween(
   "function joinTurkishList(items = []) {",
-  "function fillWorkplaceFloorCalculationTableBody"
+  "async function processKmlFile"
 );
 const suitabilityLabelSource = sourceBetween(
   "function formatTitleUnitSuitabilityLabel(fields, index) {",
