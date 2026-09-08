@@ -1,5 +1,11 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.696 - 2026-09-08 - nvm kurulum sonucu ve PM2 yorumlayıcısı
+
+- nvm kurulum betiği dosyaları başarıyla oluşturmasına rağmen `3` çıkış kodu döndürdü; `set -e` bununla sonraki Node 22 kurulumunu kesiyordu. Akış artık nvm dosyasının oluştuğunu ayrıca doğrular; dosya varsa bu bilgilendirici çıkış kodu dağıtımı kesmez, yoksa açık hatayla durur.
+- PM2 daemon'ının sistemdeki eski Node yorumlayıcısını kalıtımla kullanmasını önlemek için `startOrRestart`, aktif nvm Node ikilisini açık `--interpreter` değeriyle alır.
+- Değişiklik öncesi yedek: `backups/before-deploy-nvm-installer-and-pm2-fix_2026-09-08_22-12-27`.
+
 ## 0.0.695 - 2026-09-08 - Canlı sunucuya Node 22 önyüklemesi
 
 - İkinci dağıtım denemesi, sunucu kullanıcısında nvm bulunmadığını açıkça doğruladı. Node 22 sözleşmesi Temmuz 2026'dan beri projededir; sunucudaki eski Node sürümü readiness rotasının 503 dönmesine neden oluyordu.

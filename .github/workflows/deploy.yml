@@ -122,8 +122,15 @@ jobs:
           export NVM_DIR="$HOME/.nvm"
           if [ ! -s "$NVM_DIR/nvm.sh" ]; then
             # Uygulama kullanıcısına kurulur; sudo/root veya sistem paketine dokunmaz.
+            set +e
             curl --fail --show-error --silent --location --proto '=https' --tlsv1.2 \
               https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
+            nvm_installer_status=$?
+            set -e
+            if [ ! -s "$NVM_DIR/nvm.sh" ]; then
+              echo "::error::nvm kurulumu tamamlanamadi (kod: $nvm_installer_status)."
+              exit "$nvm_installer_status"
+            fi
           fi
           . "$NVM_DIR/nvm.sh"
           required_node="$(tr -d '\r\n' < .nvmrc)"
@@ -132,7 +139,7 @@ jobs:
           node --version
 
           RAPOR_HOST=0.0.0.0 RAPOR_PORT=5174 MFA_REQUIRED="$MFA_REQUIRED" RESEND_API_KEY="$RESEND_API_KEY" \
-            pm2 startOrRestart ecosystem.config.cjs --only rapor-app --update-env
+            pm2 startOrRestart ecosystem.config.cjs --only rapor-app --interpreter "$(command -v node)" --update-env
           pm2 save
           for attempt in $(seq 1 15); do
             if curl -fsS http://127.0.0.1:5174/api/readiness | grep -q '"ok":true'; then
