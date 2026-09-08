@@ -1,5 +1,11 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.701 - 2026-09-08 - EMSAL GETİR boş sütun teknik alan düzeltmesi
+
+- Kullanıcı ekranındaki “Boş emsal sütunu yok” uyarısının nedeni, boş oluşturulmuş satırdaki görünmeyen `_comparablesVersion: 2` teknik kaydının dolu emsal sayılmasıydı.
+- `EMSAL GETİR` boşluk denetimi artık `_` ile başlayan teknik anahtarları, ayrıca kullanıcı girişini temsil etmeyen `c23`/`c32` varsayılanlarını yok sayar. Kullanıcı tarafından girilmiş gerçek bir alan varsa satır yine kesinlikle üzerine yazılmaz.
+- Değişiklik öncesi yedek: `backups/before-comparable-memory-empty-column-fix_2026-09-08_23-17-33`.
+
 ## 0.0.700 - 2026-09-08 - Geçmiş Emsaller: 5 km çap harita filtresi
 
 - Kullanıcı talebiyle Geçmiş Emsaller, konu taşınmaz koordinatı merkez alınarak **5 km çap** (2,5 km yarıçap) içinde haritada gösterilir.

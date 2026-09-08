@@ -44995,7 +44995,15 @@ function isComparableMemoryWithinDisplayRadius(subjectPoint, lat, lng) {
 }
 
 function isComparableMemoryTargetRowEmpty(row = {}) {
-  return !Object.entries(row).some(([key, value]) => !["c23", "c32"].includes(key) && String(value || "").trim());
+  // Yeni/boş satırlar `_comparablesVersion` gibi görünmeyen teknik anahtarlar
+  // taşır. Ayrıca c23/c32, kontrol değerleri boş olsa da arayüzün varsayılan
+  // seçimleriyle dolabilir. EMSAL GETİR yalnız kullanıcının girdiği gerçek
+  // emsal bilgisini dikkate almalıdır.
+  return !Object.entries(row).some(([key, value]) => (
+    !key.startsWith("_")
+    && !["c23", "c32"].includes(key)
+    && String(value || "").trim()
+  ));
 }
 
 function applyComparableMemoryEntry(entry) {
