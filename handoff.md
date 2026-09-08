@@ -1,5 +1,12 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.695 - 2026-09-08 - Canlı sunucuya Node 22 önyüklemesi
+
+- İkinci dağıtım denemesi, sunucu kullanıcısında nvm bulunmadığını açıkça doğruladı. Node 22 sözleşmesi Temmuz 2026'dan beri projededir; sunucudaki eski Node sürümü readiness rotasının 503 dönmesine neden oluyordu.
+- Dağıtım betiği nvm yoksa resmi `nvm-sh/nvm` v0.40.3 kurulumunu yalnız uygulama kullanıcısının ev dizinine yapar; `sudo`, sistem Node paketi veya işletim sistemi yapılandırması kullanılmaz.
+- Sonra `.nvmrc`deki Node 22 sürümü kurulur/seçilir, PM2 bu çalışma zamanı ile yeniden başlar ve readiness en fazla 15 saniye doğrulanır.
+- Değişiklik öncesi yedek: `backups/before-deploy-node22-bootstrap_2026-09-08_22-09-39`.
+
 ## 0.0.694 - 2026-09-08 - Canlı dağıtımda Node çalışma zamanı uyumu
 
 - `ba7d58b` doğrulama işini başarıyla geçti ve dosyaları sunucuya kopyaladı; ancak PM2 uygulamayı `.nvmrc`de istenen Node 22 yerine farklı bir ana sürümle başlattığı için `/api/readiness` bilinçli olarak `503` döndürdü.
