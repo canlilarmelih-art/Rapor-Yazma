@@ -1,5 +1,13 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.694 - 2026-09-08 - Canlı dağıtımda Node çalışma zamanı uyumu
+
+- `ba7d58b` doğrulama işini başarıyla geçti ve dosyaları sunucuya kopyaladı; ancak PM2 uygulamayı `.nvmrc`de istenen Node 22 yerine farklı bir ana sürümle başlattığı için `/api/readiness` bilinçli olarak `503` döndürdü.
+- Dağıtım akışı, PM2'den önce sunucudaki nvm'i yükleyip `.nvmrc`deki Node sürümünü idempotent biçimde kurar/seçer. nvm yoksa belirsiz bir eski Node ile yayın yapmak yerine açık hata verir.
+- Yeniden başlatma sonrası readiness kontrolü en fazla 15 saniye, saniyede bir tekrar eder; böylece gerçek açılış gecikmesi yanlış dağıtım hatası oluşturmaz.
+- Değişiklik öncesi yedek: `backups/before-deploy-node-runtime-fix_2026-09-08_22-06-20`.
+- Sıradaki: Yerel dağıtım-denetimi, commit/push, GitHub doğrulama ve PM2/readiness sonucunun izlenmesi.
+
 ## 0.0.693 - 2026-09-08 - CI: Eşyalı emsal denetimi platformdan bağımsızlaştırıldı
 
 - GitHub Actions doğrulaması, `test-comparable-furnished-support.js`in yalnız Windows CRLF satır sonlarını araması nedeniyle `Emsal Niteliği alanı bulunamadi.` hatasıyla duruyordu; uygulama kodunda veya kullanıcı verisinde hata yoktu.
