@@ -29,6 +29,8 @@ async function main() {
   assert.match(clientSource, /fillColor: subjectComparable \? "#dc2626" : "#14b8a6"/, "Konu taşınmaz noktası kırmızı gösterilmeli.");
   assert.match(clientSource, /function isPointInsideKmlBoundary\(point, coordinates = \[\]\)/, "Geçmiş emsal KML sınırı içinde mi kontrol edilmeli.");
   assert.match(clientSource, /function getComparableMemoryTransferLocation\(point\)/, "Geçmiş emsal konumu KML sınırına göre aktarılmalı.");
+  assert.match(clientSource, /function getDefaultComparableViewMode\(\)/, "Emsal görünümünün kullanım niteliğine göre varsayılanı bulunmalı.");
+  assert.match(clientSource, /\["ARSA", "ARAZI"\]\.includes\(currentUsageNature\) \? "land" : "residential"/, "Arsa/Arazi dışındaki mevcut kullanımda görünüm Konut/Yapı Emsalleri olmalı.");
   assert.match(clientSource, /if \(!isComparableMemoryPointInsideKml\(point\)\) return "Aynı bölge";/, "KML dışındaki geçmiş emsal aynı bölge olarak aktarılmalı.");
   assert.match(clientSource, /c7: getComparableMemoryTransferLocation\(point\)/, "Geçmiş emsal konumu aktarımda yeniden belirlenmeli.");
   assert.match(clientSource, /c20: point \? buildComparableLocationText\(point\[0\], point\[1\]\) : ""/, "Geçmiş emsal taşınmaza göre konum metnini yeni raporun koordinatlarıyla yeniden hesaplamalı.");

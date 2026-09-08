@@ -44348,9 +44348,17 @@ function buildComparableFurnishedMarketNote() {
   return "* Not: Yapılan piyasa araştırmasında, bölgede satışa sunulan benzer nitelikteki gayrimenkullerin çoğunluğunun eşyalı olarak pazarlandığı gözlemlenmiştir. Bu nedenle eşyalı ilanların bedelleri analiz edilirken mobilya ve diğer taşınır eşyalara atfedilen tutarlar mümkün olduğu ölçüde ayrıştırılmış, değerleme hesabında yalnızca gayrimenkule atfedilen net bedel esas alınmıştır.";
 }
 
+function getDefaultComparableViewMode() {
+  const currentUsageNature = foldTurkish(state.fields.currentUsageNature || "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return ["ARSA", "ARAZI"].includes(currentUsageNature) ? "land" : "residential";
+}
+
 function getComparableViewMode() {
-  const value = state.fields.comparableViewMode || "all";
-  return comparableViewModeOptions.some((option) => option.value === value) ? value : "all";
+  const value = state.fields.comparableViewMode;
+  const fallback = getDefaultComparableViewMode();
+  return comparableViewModeOptions.some((option) => option.value === value) ? value : fallback;
 }
 
 function getComparableRowsForView(rows, viewMode) {

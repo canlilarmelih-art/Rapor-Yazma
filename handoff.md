@@ -1,5 +1,11 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.709 - 2026-09-09 - Emsal görünümünün mevcut kullanım niteliğine göre varsayılanı
+
+- Emsaller bölümünde `comparableViewMode` daha önce kullanıcı tarafından seçilmemişse, mevcut kullanım niteliği `Arsa` veya `Arazi` olduğunda `Arsa / Tarla / Meyve Bahçesi Emsalleri`; bunların dışındaki tüm durumlarda `Konut / Yapı Emsalleri` otomatik seçilir.
+- Kullanıcının daha önce yaptığı `Tüm Emsaller`, `Konut / Yapı Emsalleri` veya `Arsa / Tarla / Meyve Bahçesi Emsalleri` seçimi korunur; otomatik varsayılan yalnızca tercih boş/geçersiz olduğunda uygulanır.
+- Değişiklik öncesi yedek: `backups/before-comparable-view-default_2026-09-09_01-43-32`.
+
 ## 0.0.708 - 2026-09-09 - Geçmiş emsal konum metninin yeni rapora göre yeniden hesaplanması
 
 - Geçmiş emsal aktarımında eski rapordan gelen `c20` “taşınmaza göre mesafe/yön” metni artık aynen taşınmıyor.
