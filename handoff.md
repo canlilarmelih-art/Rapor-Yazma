@@ -1,5 +1,11 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.718 - 2026-09-09 - Admin için Mevcut Kullanım Niteliği filtresi düzeltmesi
+
+- Admin alan filtresi istisnası, `Mevcut Kullanım Niteliği` alanını kapsamıyor; admin hesabında da alan yalnızca `Farklılık var` işaretlendiğinde görünür.
+- Diğer görünür ana bölüm alanları için admin filtresi istisnası korunuyor.
+- Değişiklik öncesi yedek: `backups/before-admin-current-usage-visibility-gate_2026-09-09_22-59-57`.
+
 ## 0.0.717 - 2026-09-09 - Kullanım niteliği farkı değer normalizasyonu
 
 - `Mevcut Kullanım Niteliği` görünürlüğü artık fark kutusunun `Evet`, `EVET`, `true`, `1` veya `yes` biçimindeki kayıtlarını aynı şekilde işaretli kabul ediyor.

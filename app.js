@@ -6136,7 +6136,7 @@ function createForm(section) {
       field.hidden ||
       (field.adminOnly && !isCurrentUserAdmin()) ||
       (field.sensitiveOnly && !canViewSensitiveContent() && !isProjectSuitabilityUiField(section.id, field.key)) ||
-      (shouldHideField(section.id, field.key) && !isCurrentUserAdmin())
+      (shouldHideField(section.id, field.key) && (!isCurrentUserAdmin() || (section.id === "case" && field.key === "currentUsageNature")))
     ) return;
 
     if (section.id === "address" && ["latitude", "longitude"].includes(field.key)) {

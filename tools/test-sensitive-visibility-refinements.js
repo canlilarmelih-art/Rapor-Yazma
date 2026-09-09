@@ -80,8 +80,8 @@ function sliceFn(startMarker, { toMarker } = {}) {
   );
   assert.match(
     appSource,
-    /\(shouldHideField\(section\.id, field\.key\)\s*&&\s*!isCurrentUserAdmin\(\)\)/,
-    "Admin, acik ana bolumlerdeki alanlari alan-turu filtresiyle kaybetmemeli.",
+    /shouldHideField\(section\.id, field\.key\)\s*&&\s*\(!isCurrentUserAdmin\(\)\s*\|\|\s*\(section\.id === "case" && field\.key === "currentUsageNature"\)\)/,
+    "Admin diger alan filtresi istisnalarini korurken mevcut kullanim niteligini kosullu gostermeli.",
   );
   assert.match(
     appSource,
