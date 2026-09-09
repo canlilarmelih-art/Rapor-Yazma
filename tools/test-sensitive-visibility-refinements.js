@@ -98,6 +98,11 @@ function sliceFn(startMarker, { toMarker } = {}) {
     /if \(!hasConfiguredExpenseFee\)[\s\S]*?EXPENSE_FEE_2026_DEFAULTS[\s\S]*?scheduleExpenseFeeCloudSave\(\)/,
     "Bos ortak masraf kaydi 2026 varsayilanlariyla geri yuklenmeli.",
   );
+  assert.match(
+    appSource,
+    /if \(fieldKey === "currentUsageNature"\)\s*\{[\s\S]*?return false;/,
+    "Mevcut kullanım niteliği alanı artık rapor türünden bağımsız görünür olmalı.",
+  );
 }
 
 // --- b) Banka bazli bolum gizleme: Halkbank Risk Kodlari -------------------

@@ -1,5 +1,11 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.715 - 2026-09-09 - Mevcut Kullanım Niteliği alanı görünürlüğü
+
+- `Mevcut Kullanım Niteliği` alanı artık `Kullanım Niteliği Farkı` seçimine bağlı olarak gizlenmiyor; tüm raporlarda görünür.
+- Fark seçimi, alanın görünürlüğünü değil yalnızca hukuki nitelikle otomatik senkron davranışını belirlemeye devam ediyor.
+- Değişiklik öncesi yedek: `backups/before-current-usage-nature-visibility_2026-09-09_22-36-51`.
+
 ## 0.0.714 - 2026-09-09 - Boş rapor ücreti kaydının 2026 tarifesiyle onarılması
 
 - `appSettings/expenseFees` kaydı mevcut olsa bile tüm ortak ücret alanları boşsa bu kayıt artık geçerli kabul edilmiyor.
