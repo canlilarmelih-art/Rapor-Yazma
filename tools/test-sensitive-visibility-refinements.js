@@ -100,8 +100,8 @@ function sliceFn(startMarker, { toMarker } = {}) {
   );
   assert.match(
     appSource,
-    /if \(fieldKey === "currentUsageNature"\)\s*\{[\s\S]*?return false;/,
-    "Mevcut kullanım niteliği alanı artık rapor türünden bağımsız görünür olmalı.",
+    /if \(fieldKey === "currentUsageNature"\)\s*\{[\s\S]*?return state\.fields\.usageNatureDifference !== "Evet";/,
+    "Mevcut kullanım niteliği yalnız farklılık var seçildiğinde görünür olmalı.",
   );
 }
 

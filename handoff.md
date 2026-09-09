@@ -1,5 +1,11 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.716 - 2026-09-09 - Mevcut Kullanım Niteliği koşullu görünürlüğü
+
+- `Mevcut Kullanım Niteliği` alanı yeniden varsayılan olarak gizlendi.
+- Alan yalnızca `Kullanım Niteliği Farkı` seçimi `Evet` olduğunda gösterilir; fark yokken önceki davranış korunur.
+- Değişiklik öncesi yedek: `backups/before-current-usage-nature-conditional-hide_2026-09-09_22-39-17`.
+
 ## 0.0.715 - 2026-09-09 - Mevcut Kullanım Niteliği alanı görünürlüğü
 
 - `Mevcut Kullanım Niteliği` alanı artık `Kullanım Niteliği Farkı` seçimine bağlı olarak gizlenmiyor; tüm raporlarda görünür.

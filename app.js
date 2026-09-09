@@ -18031,10 +18031,9 @@ function createProjectSuitabilityNoteField(labelText, key) {
 function shouldHideField(sectionId, fieldKey) {
   if (sectionId === "case") {
     if (fieldKey === "currentUsageNature") {
-      // Mevcut kullanım niteliği her raporda görünür olmalı; kullanım
-      // niteliği farkı yalnızca hukuki niteliğe göre otomatik senkronu
-      // belirler, alanın ekrandan gizlenmesine neden olmaz.
-      return false;
+      // Mevcut kullanım niteliği yalnızca hukuki nitelikten farklı olduğu
+      // bildirildiğinde ayrıca gösterilir.
+      return state.fields.usageNatureDifference !== "Evet";
     }
   }
   if (sectionId === "land") {
