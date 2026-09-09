@@ -1,5 +1,12 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.714 - 2026-09-09 - Boş rapor ücreti kaydının 2026 tarifesiyle onarılması
+
+- `appSettings/expenseFees` kaydı mevcut olsa bile tüm ortak ücret alanları boşsa bu kayıt artık geçerli kabul edilmiyor.
+- Boş kayıt, önceki yedeklerde bulunan 2026 rapor/değerleme ücreti tarifesiyle yerelde geri yükleniyor; admin oturumunda buluttaki ortak kayıt da otomatik olarak yeniden dolduruluyor.
+- Kısmi ve dolu ücret ayarları değiştirilmez.
+- Değişiklik öncesi yedek: `backups/before-expense-fee-default-recovery_2026-09-09_22-30-40`.
+
 ## 0.0.713 - 2026-09-09 - Admin açık bölümlerde alan filtresi istisnası
 
 - Admin kullanıcı, görünür ana bölümlerdeki alanları mülkiyet/kullanım türüne bağlı alan filtresi nedeniyle kaybetmez; bu alanlar admin arayüzünde oluşturulur.

@@ -33424,6 +33424,23 @@ async function syncExpenseFeesFromCloud() {
       if (!isCurrentUserAdmin()) setExpenseFeeCloudSyncStatus("missing", "Ortak masraf ayarları henüz bulutta tanımlı değil; yerel değer kullanılıyor.");
       return;
     }
+    // Boş bir appSettings/expenseFees kaydı geçerli bir tarife değildir.
+    // Önceki akış bu boş dizeleri yerel değerlerin üzerine yazarak tüm rapor
+    // ücretlerini siliyordu. Kayıt tamamen boşsa 2026 tarifesini geri yükle;
+    // admin kullanıcı buluttaki ortak kaydı da yeniden doldursun.
+    const hasConfiguredExpenseFee = EXPENSE_FEE_ADMIN_KEYS.some((key) => {
+      const value = remote[key];
+      return value !== undefined && String(value).trim() !== "";
+    });
+    if (!hasConfiguredExpenseFee) {
+      Object.entries(EXPENSE_FEE_2026_DEFAULTS).forEach(([key, value]) => { state.fields[key] = value; });
+      recalculateExpenseFees();
+      saveState();
+      render();
+      if (isCurrentUserAdmin()) scheduleExpenseFeeCloudSave();
+      setExpenseFeeCloudSyncStatus("repaired", "Boş ortak masraf kaydı 2026 tarifesiyle geri yüklendi.", new Date().toISOString());
+      return;
+    }
     let changed = false;
     EXPENSE_FEE_ADMIN_KEYS.forEach((key) => {
       const value = remote[key];

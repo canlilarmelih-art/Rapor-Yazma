@@ -88,6 +88,16 @@ function sliceFn(startMarker, { toMarker } = {}) {
     /key: "reviewedDocumentsDescription"[\s\S]*?sensitiveOnly: true/,
     "Diger hassas belge aciklamalari koruma altinda kalmali.",
   );
+  assert.match(
+    appSource,
+    /const hasConfiguredExpenseFee = EXPENSE_FEE_ADMIN_KEYS\.some\(/,
+    "Bos ortak masraf kaydi tespit edilmeli.",
+  );
+  assert.match(
+    appSource,
+    /if \(!hasConfiguredExpenseFee\)[\s\S]*?EXPENSE_FEE_2026_DEFAULTS[\s\S]*?scheduleExpenseFeeCloudSave\(\)/,
+    "Bos ortak masraf kaydi 2026 varsayilanlariyla geri yuklenmeli.",
+  );
 }
 
 // --- b) Banka bazli bolum gizleme: Halkbank Risk Kodlari -------------------
