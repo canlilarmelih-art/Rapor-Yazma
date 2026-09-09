@@ -1,5 +1,12 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.710 - 2026-09-09 - Geçmiş emsal harita kullanım niteliği filtresi
+
+- Geçmiş emsal haritasındaki 5 km işaretçileri artık konu taşınmazın `currentUsageNature` alanına göre süzülür.
+- Mevcut kullanım `Konut` ise yalnız `Konut` ve `Müstakil Bina` emsalleri; `İşyeri/Ofis/Ticari Bina/Sanayi Tesisi` ise `Dükkan` ve `Müstakil Bina` emsalleri; `Arsa/Arazi` ise arsa/tarla/meyve bahçesi emsalleri gösterilir.
+- Bu filtre yalnız geçmiş emsal harita görünümünü etkiler; veritabanındaki kayıtlar ve mevcut emsal tablosu değiştirilmez.
+- Değişiklik öncesi yedek: `backups/before-comparable-memory-usage-map-filter_2026-09-09_12-37-41`.
+
 ## 0.0.709 - 2026-09-09 - Emsal görünümünün mevcut kullanım niteliğine göre varsayılanı
 
 - Emsaller bölümünde `comparableViewMode` daha önce kullanıcı tarafından seçilmemişse, mevcut kullanım niteliği `Arsa` veya `Arazi` olduğunda `Arsa / Tarla / Meyve Bahçesi Emsalleri`; bunların dışındaki tüm durumlarda `Konut / Yapı Emsalleri` otomatik seçilir.

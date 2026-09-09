@@ -45002,6 +45002,20 @@ function isComparableMemoryWithinDisplayRadius(subjectPoint, lat, lng) {
   return Number.isFinite(distance) && distance <= comparableMemoryDisplayDiameterMeters / 2;
 }
 
+function isComparableMemoryNatureCompatibleWithCurrentUsage(row = {}) {
+  const currentUsageNature = foldTurkish(state.fields.currentUsageNature || "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!currentUsageNature) return true;
+  const comparableNature = normalizeComparableNature(row);
+  if (["ARSA", "ARAZI"].includes(currentUsageNature)) return isLandComparable(row);
+  if (currentUsageNature === "KONUT") return ["konut", "mustakil bina"].includes(comparableNature);
+  if (["ISYERI", "OFIS", "TICARI BINA", "SANAYI TESISI"].includes(currentUsageNature)) {
+    return ["dukkan", "mustakil bina"].includes(comparableNature);
+  }
+  return true;
+}
+
 function isComparableMemoryTargetRowEmpty(row = {}) {
   // Yeni/boş satırlar teknik anahtarlar ve görünmeyen yardımcı diziler
   // taşıyabilir. EMSAL GETİR yalnız gerçek emsal şemasındaki kullanıcı
@@ -45277,6 +45291,7 @@ function renderComparableLocationSketchMap(wrapper) {
       const lng = Number(String(entry?.comparable?.c19 || "").replace(",", "."));
       if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
       if (!isComparableMemoryWithinDisplayRadius(subjectPoint, lat, lng)) return;
+      if (!isComparableMemoryNatureCompatibleWithCurrentUsage(entry?.comparable || {})) return;
       const subjectComparable = isComparableSubjectStatus(entry?.comparable || {});
       const marker = leaflet.circleMarker([lat, lng], {
         radius: 7,
