@@ -64,6 +64,30 @@ function sliceFn(startMarker, { toMarker } = {}) {
     environmentFieldBlock.includes("sensitiveOnly: true"),
     `"Çevresel özellikler açıklaması" (environmentDescription) alani sensitiveOnly: true OLMALI: ${environmentFieldBlock}`,
   );
+
+  // Proje uygunluğu, normal kullanicinin documents formunda da gorunmeli.
+  // Bu alanlar sensitiveOnly olarak kalir; createForm bunlari ozel proje
+  // uygunlugu arayuzune devrederken genel hassas alan filtresinden muaf tutar.
+  assert.match(
+    appSource,
+    /function isProjectSuitabilityUiField\(sectionId, fieldKey\)\s*\{[\s\S]*?sectionId === "documents"[\s\S]*?projectReviewDescription[\s\S]*?projectConformity/,
+    "Proje uygunlugu alanlari icin normal kullanici arayuzu istisnasi bulunmali.",
+  );
+  assert.match(
+    appSource,
+    /field\.sensitiveOnly\s*&&\s*!canViewSensitiveContent\(\)\s*&&\s*!isProjectSuitabilityUiField\(section\.id, field\.key\)/,
+    "createForm, proje uygunlugu alanlarini hassas alan filtresinden muaf tutmali.",
+  );
+  assert.match(
+    appSource,
+    /\(shouldHideField\(section\.id, field\.key\)\s*&&\s*!isCurrentUserAdmin\(\)\)/,
+    "Admin, acik ana bolumlerdeki alanlari alan-turu filtresiyle kaybetmemeli.",
+  );
+  assert.match(
+    appSource,
+    /key: "reviewedDocumentsDescription"[\s\S]*?sensitiveOnly: true/,
+    "Diger hassas belge aciklamalari koruma altinda kalmali.",
+  );
 }
 
 // --- b) Banka bazli bolum gizleme: Halkbank Risk Kodlari -------------------

@@ -1,5 +1,17 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.713 - 2026-09-09 - Admin açık bölümlerde alan filtresi istisnası
+
+- Admin kullanıcı, görünür ana bölümlerdeki alanları mülkiyet/kullanım türüne bağlı alan filtresi nedeniyle kaybetmez; bu alanlar admin arayüzünde oluşturulur.
+- Hassas açıklama alanlarının `sensitiveOnly` erişim kuralı ve ana bölüm görünürlük kuralları korunur; normal kullanıcı davranışı değiştirilmez.
+- Değişiklik öncesi yedek: `backups/before-admin-open-section-filter-bypass_2026-09-09_16-41-43`.
+
+## 0.0.712 - 2026-09-09 - Normal kullanıcılar için Proje Uygunluğu görünürlüğü
+
+- Normal (admin olmayan) kullanıcılar için `documents` bölümündeki `Projeye uygunluk` ve `Proje İnceleme Açıklaması` alanları artık genel `sensitiveOnly` filtresinde elenmiyor; mevcut özel Proje Uygunluğu arayüzü normal kullanıcıda da oluşturuluyor.
+- Diğer hassas belge alanları, açıklama alanları ve gider alanları aynı erişim korumalarıyla çalışmaya devam ediyor.
+- Değişiklik öncesi yedek: `backups/before-project-suitability-normal-user-visibility_2026-09-09_16-39-58`.
+
 ## 0.0.711 - 2026-09-09 - Ticari ve sanayi taşınmazlarda arsa/tarla geçmiş emsalleri
 
 - Mevcut kullanım `Ticari Bina` veya `Sanayi Tesisi` olduğunda geçmiş emsal haritası artık `Dükkan`, `Müstakil Bina`, `Arsa` ve `Tarla` türlerini gösterir.

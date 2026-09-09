@@ -6123,6 +6123,10 @@ function renderSection() {
   sectionStage.replaceChildren(card);
 }
 
+function isProjectSuitabilityUiField(sectionId, fieldKey) {
+  return sectionId === "documents" && ["projectReviewDescription", "projectConformity"].includes(fieldKey);
+}
+
 function createForm(section) {
   const form = document.createElement("div");
   form.className = "form-grid";
@@ -6131,8 +6135,8 @@ function createForm(section) {
     if (
       field.hidden ||
       (field.adminOnly && !isCurrentUserAdmin()) ||
-      (field.sensitiveOnly && !canViewSensitiveContent()) ||
-      shouldHideField(section.id, field.key)
+      (field.sensitiveOnly && !canViewSensitiveContent() && !isProjectSuitabilityUiField(section.id, field.key)) ||
+      (shouldHideField(section.id, field.key) && !isCurrentUserAdmin())
     ) return;
 
     if (section.id === "address" && ["latitude", "longitude"].includes(field.key)) {
