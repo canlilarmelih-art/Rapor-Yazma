@@ -1,5 +1,12 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.719 - 2026-09-09 - Sıfır/geçersiz ücret kaydının geri yüklenmesi
+
+- Buluttaki ortak masraf kaydı yalnızca boş değil, sıfır veya geçersiz değerlerden oluşuyorsa da bozuk kabul ediliyor.
+- Böyle bir durumda 2026 rapor ücret tarifesi tekrar yükleniyor ve admin oturumunda buluta kaydediliyor.
+- Canlı DOM kontrolünde tüm masraf inputlarının boş olduğu doğrulandı; bu düzeltme bu senaryoyu hedefliyor.
+- Değişiklik öncesi yedek: `backups/before-expense-zero-value-recovery_2026-09-09_23-05-03`.
+
 ## 0.0.718 - 2026-09-09 - Admin için Mevcut Kullanım Niteliği filtresi düzeltmesi
 
 - Admin alan filtresi istisnası, `Mevcut Kullanım Niteliği` alanını kapsamıyor; admin hesabında da alan yalnızca `Farklılık var` işaretlendiğinde görünür.

@@ -95,6 +95,11 @@ function sliceFn(startMarker, { toMarker } = {}) {
   );
   assert.match(
     appSource,
+    /Number\.isFinite\(numericValue\)\s*&&\s*numericValue > 0/,
+    "Sıfır/geçersiz masraf değerleri bozuk kayıt kabul edilmeli.",
+  );
+  assert.match(
+    appSource,
     /if \(!hasConfiguredExpenseFee\)[\s\S]*?EXPENSE_FEE_2026_DEFAULTS[\s\S]*?scheduleExpenseFeeCloudSave\(\)/,
     "Bos ortak masraf kaydi 2026 varsayilanlariyla geri yuklenmeli.",
   );

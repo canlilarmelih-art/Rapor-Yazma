@@ -33437,7 +33437,8 @@ async function syncExpenseFeesFromCloud() {
     // admin kullanıcı buluttaki ortak kaydı da yeniden doldursun.
     const hasConfiguredExpenseFee = EXPENSE_FEE_ADMIN_KEYS.some((key) => {
       const value = remote[key];
-      return value !== undefined && String(value).trim() !== "";
+      const numericValue = Number(String(value ?? "").replace(",", ".").trim());
+      return Number.isFinite(numericValue) && numericValue > 0;
     });
     if (!hasConfiguredExpenseFee) {
       Object.entries(EXPENSE_FEE_2026_DEFAULTS).forEach(([key, value]) => { state.fields[key] = value; });
