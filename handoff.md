@@ -1,5 +1,11 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.711 - 2026-09-09 - Ticari ve sanayi taşınmazlarda arsa/tarla geçmiş emsalleri
+
+- Mevcut kullanım `Ticari Bina` veya `Sanayi Tesisi` olduğunda geçmiş emsal haritası artık `Dükkan`, `Müstakil Bina`, `Arsa` ve `Tarla` türlerini gösterir.
+- Konut, ofis ve diğer kullanım türlerine ait önceki filtre davranışı korunur; yalnızca ticari/sanayi filtresine arsa-tarla eklenmiştir.
+- Değişiklik öncesi yedek: `backups/before-industrial-commercial-land-memory-filter_2026-09-09_14-38-38`.
+
 ## 0.0.710 - 2026-09-09 - Geçmiş emsal harita kullanım niteliği filtresi
 
 - Geçmiş emsal haritasındaki 5 km işaretçileri artık konu taşınmazın `currentUsageNature` alanına göre süzülür.

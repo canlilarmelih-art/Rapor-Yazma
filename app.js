@@ -45011,7 +45011,7 @@ function isComparableMemoryNatureCompatibleWithCurrentUsage(row = {}) {
   if (["ARSA", "ARAZI"].includes(currentUsageNature)) return isLandComparable(row);
   if (currentUsageNature === "KONUT") return ["konut", "mustakil bina"].includes(comparableNature);
   if (["ISYERI", "OFIS", "TICARI BINA", "SANAYI TESISI"].includes(currentUsageNature)) {
-    return ["dukkan", "mustakil bina"].includes(comparableNature);
+    return ["dukkan", "mustakil bina", "arsa", "tarla"].includes(comparableNature);
   }
   return true;
 }

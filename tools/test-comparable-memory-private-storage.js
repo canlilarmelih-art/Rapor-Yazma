@@ -33,6 +33,7 @@ async function main() {
   assert.match(clientSource, /\["ARSA", "ARAZI"\]\.includes\(currentUsageNature\) \? "land" : "residential"/, "Arsa/Arazi dışındaki mevcut kullanımda görünüm Konut/Yapı Emsalleri olmalı.");
   assert.match(clientSource, /function isComparableMemoryNatureCompatibleWithCurrentUsage\(row = \{\}\)/, "Geçmiş emsal harita filtresi mevcut kullanım niteliğini dikkate almalı.");
   assert.match(clientSource, /if \(currentUsageNature === "KONUT"\) return \["konut", "mustakil bina"\]\.includes\(comparableNature\)/, "Konut taşınmazda yalnız konut türevleri gösterilmeli.");
+  assert.match(clientSource, /return \["dukkan", "mustakil bina", "arsa", "tarla"\]\.includes\(comparableNature\)/, "Ticari/sanayi taşınmazlarda dükkan, yapı, arsa ve tarla emsalleri gösterilmeli.");
   assert.match(clientSource, /if \(!isComparableMemoryNatureCompatibleWithCurrentUsage\(entry\?\.comparable \|\| \{\}\)\) return;/, "Uyumsuz geçmiş emsal harita işaretçisi gösterilmemeli.");
   assert.match(clientSource, /if \(!isComparableMemoryPointInsideKml\(point\)\) return "Aynı bölge";/, "KML dışındaki geçmiş emsal aynı bölge olarak aktarılmalı.");
   assert.match(clientSource, /c7: getComparableMemoryTransferLocation\(point\)/, "Geçmiş emsal konumu aktarımda yeniden belirlenmeli.");
