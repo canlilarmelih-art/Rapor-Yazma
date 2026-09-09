@@ -18028,12 +18028,17 @@ function createProjectSuitabilityNoteField(labelText, key) {
   return label;
 }
 
+function isUsageNatureDifferenceEnabled() {
+  const value = foldTurkish(String(state.fields.usageNatureDifference ?? "")).trim();
+  return ["EVET", "TRUE", "1", "YES"].includes(value);
+}
+
 function shouldHideField(sectionId, fieldKey) {
   if (sectionId === "case") {
     if (fieldKey === "currentUsageNature") {
       // Mevcut kullanım niteliği yalnızca hukuki nitelikten farklı olduğu
       // bildirildiğinde ayrıca gösterilir.
-      return state.fields.usageNatureDifference !== "Evet";
+      return !isUsageNatureDifferenceEnabled();
     }
   }
   if (sectionId === "land") {

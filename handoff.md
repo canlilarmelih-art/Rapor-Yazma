@@ -1,5 +1,11 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.717 - 2026-09-09 - Kullanım niteliği farkı değer normalizasyonu
+
+- `Mevcut Kullanım Niteliği` görünürlüğü artık fark kutusunun `Evet`, `EVET`, `true`, `1` veya `yes` biçimindeki kayıtlarını aynı şekilde işaretli kabul ediyor.
+- Fark işaretli değilse alan gizli kalıyor.
+- Değişiklik öncesi yedek: `backups/before-usage-difference-value-normalization_2026-09-09_22-43-50`.
+
 ## 0.0.716 - 2026-09-09 - Mevcut Kullanım Niteliği koşullu görünürlüğü
 
 - `Mevcut Kullanım Niteliği` alanı yeniden varsayılan olarak gizlendi.

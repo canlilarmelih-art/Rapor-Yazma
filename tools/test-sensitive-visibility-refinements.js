@@ -100,8 +100,8 @@ function sliceFn(startMarker, { toMarker } = {}) {
   );
   assert.match(
     appSource,
-    /if \(fieldKey === "currentUsageNature"\)\s*\{[\s\S]*?return state\.fields\.usageNatureDifference !== "Evet";/,
-    "Mevcut kullanım niteliği yalnız farklılık var seçildiğinde görünür olmalı.",
+    /function isUsageNatureDifferenceEnabled\(\)[\s\S]*?\["EVET", "TRUE", "1", "YES"\]\.includes\(value\)/,
+    "Kullanım niteliği farkı işaretinin farklı kayıt biçimleri tanınmalı.",
   );
 }
 
