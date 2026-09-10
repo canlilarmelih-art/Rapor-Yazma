@@ -22351,7 +22351,9 @@ function buildComparableMatrixWordTableHtml() {
         if (field.key === "workplaceFloors") return formatComparableWorkplaceFloorsSummary(row);
         if (field.key === "c1") return formatComparablePhoneForOutput(row.c1);
         return field.computed
-          ? calculateComparableFieldValue(field.key, row, rowIndex)
+          ? (field.key === "calcLongText" && isHalkbankSelectedForReport()
+            ? buildHalkbankShortComparableText(row)
+            : calculateComparableFieldValue(field.key, row, rowIndex))
           : formatOutputFieldValue(row[field.key] || "", field);
       }),
     ])
@@ -32428,6 +32430,31 @@ function normalizeReportStateFields(targetState) {
   });
 
   return changed;
+}
+
+function buildHalkbankShortComparableText(row = {}) {
+  const metrics = calculateComparableMetrics(row) || {};
+  const parts = [];
+  const location = buildComparableLocationLocative(row.c7) || "aynı bölgede";
+  const locationText = String(location).trim();
+  if (locationText) parts.push(locationText.charAt(0).toLocaleUpperCase("tr-TR") + locationText.slice(1));
+  const floor = buildComparableFloorPhrase(row.c6);
+  if (floor) parts.push(floor);
+  const declaredArea = formatComparableArea(row.c12, "m2");
+  const correctedArea = formatComparableArea(row.c13, "m2");
+  if (declaredArea) parts.push(`${declaredArea} olarak beyan edilen`);
+  if (correctedArea) parts.push(`${correctedArea} olduğu düşünülen`);
+  if (row.c5) parts.push(`${String(row.c5).trim()} planında`);
+  if (row.c4) parts.push(String(row.c4).trim().toLocaleLowerCase("tr-TR"));
+  const sentences = [];
+  const status = String(row.c2 || "").toLocaleLowerCase("tr-TR");
+  if (Number.isFinite(metrics.saleValue) && metrics.saleValue > 0) {
+    sentences.push(`${formatComparableMoney(metrics.saleValue)} TL bedelle ${status.includes("satılmış") ? "satılmıştır" : "satılıktır"}.`);
+  }
+  if (Number.isFinite(metrics.rent) && metrics.rent > 0) {
+    sentences.push(`Kira değerinin ${formatComparableMoney(metrics.rent)} TL/ay olacağı düşünülmektedir.`);
+  }
+  return [parts.join(", "), sentences.join(" ")].filter(Boolean).join(" ").trim();
 }
 
 // Kalıcı state'in (yerel JSON veya bulut raporu) tek giriş noktasından

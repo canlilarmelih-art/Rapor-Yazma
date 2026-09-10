@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.724 - 2026-09-10 - Halkbank Word emsal matrisi kısa metin düzeltmesi
+
+- Halkbank Word çıktısındaki `Emsal Metni` matrisi satırı artık uzun emsal açıklaması yerine kısa formatı kullanıyor.
+- Kısa metin; konum, kat, beyan/düzeltilmiş alan, oda planı, nitelik, satış bedeli ve kira değerini içeriyor.
+- Konu taşınmaz, iç özellik/konum şerefiyesi ve pazarlık oranı bu satıra dahil edilmiyor.
+- Diğer banka matrisi ve emsal metni çıktıları korunuyor.
+- Değişiklik öncesi yedek: `backups/before-halkbank-matrix-short-text_2026-09-10_08-38-46`.
+- `npm run check` ve banka şablon testleri başarılı.
+
 ## 0.0.723 - 2026-09-10 - Halkbank kısa emsal açıklama formatı
 
 - Halkbank raporlarında `KISAEMSAL1..7` çıktısı karakter sınırına uygun kısa formata alındı.
