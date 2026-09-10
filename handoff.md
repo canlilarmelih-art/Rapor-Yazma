@@ -1,14 +1,6 @@
 # Rapor Yazma Programı — Handoff Notu
 
-## 0.0.741 - 2026-09-10 - Yatay kat irtifakı: bağımsız bölüme özel havuz açıklaması
-
-- `Bağımsız Bölüm Özellikleri` bölümünde yalnızca mülkiyet türü `Yatay Kat İrtifakı` olduğunda görünen `Özel Havuz` seçimi eklendi: Yok, Açık Yüzme Havuzu, Kapalı Yüzme Havuzu.
-- Özel havuz bilgisi bağımsız bölüm açıklamasına `Taşınmazın kendine ait açık/kapalı yüzme havuzu bulunmaktadır.` cümlesiyle eklenir. Diğer mülkiyet türlerinde alan görünmez ve metne eklenmez.
-- Alan taşınmaz seviyesinde tutulur; çoklu raporlarda ortak site havuzu ile karışmadan ilgili bağımsız bölümün açıklamasına dahil edilir. Eski kayıtlar için değer boş/Yok kabulü korunur.
-- Yedek: `backups/before-private-pool-unit-description_2026-09-10_18-04-24` (`app.js`, `styles.css`, `index.html`). `index.html` app.js cache-buster `?v=20260910-1812` yapıldı.
-- Test: özel havuz yatay/dikey görünürlük ve açıklama testi eklendi; `node --check app.js`, `npm run check` ve tam `npm test` başarılı.
-
-## 0.0.740 - 2026-09-10 - Ana Gayrimenkul: blok/site bağımsız bölüm özeti
+## 0.0.742 - 2026-09-10 - Ana Gayrimenkul: blok/site bağımsız bölüm özeti
 
 *(Not: bu girdi eşzamanlı çalışan başka bir oturuma ait; bu commit'e dahil DEĞİL, o oturum kendi işini commit ettiğinde numara/tarih teyit edilmeli.)*
 
@@ -19,6 +11,24 @@
 - Yedek: `backups/before-building-block-summary_2026-09-10_17-54-05` (`app.js`, `styles.css`, `index.html`).
 - Doğrulama: `node --check app.js`, `npm run check` ve tam `npm test` başarılı.
 - Canlıya gönderilmedi; kullanıcı ayrıca isterse deploy yapılacak.
+
+## 0.0.741 - 2026-09-10 - Yatay kat irtifakı: bağımsız bölüme özel havuz açıklaması
+
+- `Bağımsız Bölüm Özellikleri` bölümünde yalnızca mülkiyet türü `Yatay Kat İrtifakı` olduğunda görünen `Özel Havuz` seçimi eklendi: Yok, Açık Yüzme Havuzu, Kapalı Yüzme Havuzu.
+- Özel havuz bilgisi bağımsız bölüm açıklamasına `Taşınmazın kendine ait açık/kapalı yüzme havuzu bulunmaktadır.` cümlesiyle eklenir. Diğer mülkiyet türlerinde alan görünmez ve metne eklenmez.
+- Alan taşınmaz seviyesinde tutulur; çoklu raporlarda ortak site havuzu ile karışmadan ilgili bağımsız bölümün açıklamasına dahil edilir. Eski kayıtlar için değer boş/Yok kabulü korunur.
+- Yedek: `backups/before-private-pool-unit-description_2026-09-10_18-04-24` (`app.js`, `styles.css`, `index.html`). `index.html` app.js cache-buster `?v=20260910-1812` yapıldı.
+- Test: özel havuz yatay/dikey görünürlük ve açıklama testi eklendi; `node --check app.js`, `npm run check` ve tam `npm test` başarılı.
+
+## 0.0.740 - 2026-09-10 - İncelenen Belgeler tablosu da "exactly" ile gerçekten sıkıştırıldı
+
+- Kullanıcı, Emsal Matrisi'ndeki satır yüksekliği düzeltmesinden sonra "0,55 yüksekliği diğer hangi tablolara uygulayabiliriz. mesela takyidat tablosuna uygulayabilir miyiz" diye sordu. Yanıt: Takyidat'a UYGULANMAMALI — "Açıklama" sütunu sık sık birden fazla satıra yayılan uzun serbest metin içeriyor, "exactly" bunu kırpar/üst üste bindirir (Emsal Matrisi'nin textarea alanları için aynı nedenle kaçınıldığı gibi). Güvenli aday olarak İncelenen Belgeler tablosunu (kısa/tek satırlık alanlar, textarea yok) önerdim; kullanıcı "incelenen belgeler tablosunu yap. önce" dedi.
+- `buildCompactReportWordTableHtml()`'e (Takyidat VE İncelenen Belgeler'in PAYLAŞTIĞI fonksiyon) yeni bir `options.rowHeightRule` parametresi eklendi — varsayılan hâlâ `"at-least"` (Takyidat çağrıları hiçbir şey geçirmiyor, DEĞİŞMEDEN kalıyor). `buildReviewedDocumentsWordTableHtml()` artık `rowHeightRule: "exactly"` geçiriyor — Emsal Matrisi'nde kanıtlanan aynı mekanizmayla (Word'ün kendi "gereken yükseklik" hesabını bypass eden "exactly") satırlar gerçekten zorunlu tutuluyor.
+- Bilerek yükseklik DEĞERLERİ (0.66cm başlık / 0.6cm gövde) DEĞİŞTİRİLMEDİ — bu, ilk (en düşük riskli) adım: Emsal Matrisi'nde olduğu gibi bu tabloda henüz gerçek Word geri bildirimiyle ince ayar yapılmadı, önce mevcut sayıyı GERÇEKTEN zorunlu kılmak yeterli. Kullanıcı gerçek çıktıyı görüp isterse (Emsal Matrisi'nde 0.28→0.4→0.55cm turlarında olduğu gibi) değer ayarlanabilir.
+- Test: yeni `tools/test-reviewed-documents-table-compact-height.js` — varsayılanın hâlâ `at-least` olduğunu, `rowHeightRule:"exactly"` verildiğinde TÜM satırların (başlık + gövde + `__section`) `exactly` aldığını ama yükseklik DEĞERLERİNİN değişmediğini, `buildReviewedDocumentsWordTableHtml()`'in `exactly` geçirdiğini, `buildTakyidatWordTableHtml()`/`buildTakyidatCategoryUnitsSummaryTableHtml()`'in `rowHeightRule` HİÇ geçirmediğini (Takyidat'a SIZMADIĞINI) doğrular. Mevcut `tools/test-bank-templates.js`'teki satır-yüksekliği kaynak-metni kontrolü, artık parametrik `` `mso-height-rule:${rowHeightRule};` `` biçimine göre güncellendi.
+- `npm run check` ve tam `npm test` (186 test) başarılı. `index.html`'de `app.js` cache-buster'ı `?v=20260910-1817`'ye yükseltildi.
+- **Not:** bu turda da `app.js`'te AYNI ANDA çalışan İKİ ayrı ilgisiz oturumun (biri "Ana Gayrimenkul: blok/site bağımsız bölüm özeti", diğeri "Yatay kat irtifakı: özel havuz açıklaması") commit edilmemiş değişiklikleri vardı — `git diff` hunk'ları ayrıştırılıp yalnızca BU değişikliğe ait izole bir patch çıkarılıp uygulandı; diğer oturumların değişiklikleri (ve onlara ait `tools/test-unit-interior-description.js` güncellemesi) `git stash`'te bırakılıp dokunulmadı.
+- Canlı tarayıcı testi yapılamadı. Kullanıcının gerçek bir Word çıktısı alıp İncelenen Belgeler tablosunun satırlarının artık gerçekten sıkıştığını doğrulaması gerekiyor.
 
 ## 0.0.739 - 2026-09-10 - Emsal Matrisi: "Alan" sütunu %25 genişletildi
 

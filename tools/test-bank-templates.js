@@ -28,13 +28,26 @@ function assert(condition, message) {
 // --- app.js kaynağından gerçek anahtarları çıkar -----------------------
 const appSource = fs.readFileSync(path.join(appDir, "app.js"), "utf8");
 
+// Kullanıcı talebi (2026-09-10): İncelenen Belgeler tablosu "exactly"
+// isteyebilsin diye (bkz. buildReviewedDocumentsWordTableHtml,
+// Takyidat'ın "Açıklama" sütunundaki uzun metin nedeniyle bunu
+// ALAMIYOR) satır yüksekliği kuralı artık sabit "at-least" DEĞİL,
+// `${rowHeightRule}` ile parametrik — varsayılanı hâlâ "at-least"
+// (bkz. buildCompactReportWordTableHtml'deki
+// `options.rowHeightRule === "exactly" ? "exactly" : "at-least"`).
+// Kontrol de buna göre güncellendi; yükseklik DEĞERLERİ (0.6cm/0.66cm)
+// DEĞİŞMEDİ.
 assert(
-  appSource.includes('height:0.6cm;mso-height-source:userset;mso-height-rule:at-least;'),
+  appSource.includes('height:0.6cm;mso-height-source:userset;mso-height-rule:${rowHeightRule};'),
   "Kompakt rapor tablolarinin govde satir yuksekligi %20 artirilmis en az 0,60 cm olmali.",
 );
 assert(
-  appSource.includes('height:0.66cm;mso-height-source:userset;mso-height-rule:at-least;'),
+  appSource.includes('height:0.66cm;mso-height-source:userset;mso-height-rule:${rowHeightRule};'),
   "Kompakt rapor tablolarinin baslik satir yuksekligi %20 artirilmis en az 0,66 cm olmali.",
+);
+assert(
+  appSource.includes('const rowHeightRule = options.rowHeightRule === "exactly" ? "exactly" : "at-least";'),
+  "buildCompactReportWordTableHtml() varsayilani hala \"at-least\" olmali (Takyidat'in Aciklama sutunundaki uzun metin KIRPILMASIN)."
 );
 
 const sectionsStart = appSource.indexOf("const sections = [");

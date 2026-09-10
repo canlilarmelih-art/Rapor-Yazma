@@ -22733,14 +22733,34 @@ function buildCompactReportWordTableHtml(headers, rows, options = {}) {
   const columnGroup = columnWidths.length
     ? `<colgroup>${columnWidths.map((width) => `<col style="width:${escapeHtml(width)};">`).join("")}</colgroup>`
     : "";
-  const headerHtml = `<tr height="25" style="height:0.66cm;mso-height-source:userset;mso-height-rule:at-least;">${headers.map((label, index) => (isMergedAway(index) ? "" : `<th${colspanAt(index) > 1 ? ` colspan="${colspanAt(index)}"` : ""} style="${header}">${escapeHtml(label)}</th>`)).join("")}</tr>`;
+  // Kullanıcı talebi (2026-09-10): "0,55 yüksekliği diğer hangi tablolara
+  // uygulayabiliriz... incelenen belgeler tablosunu yap. önce" — Emsal
+  // Matrisi'nde (buildSimpleHtmlTable) "at-least" (Word'ün kendi hesapladığı
+  // "gereken yükseklik"e göre satırı GEREĞİNDEN FAZLA büyütmesine izin
+  // veren bir taban) yerine "exactly" (satırı GERÇEKTEN zorunlu tutan,
+  // Word'ün kendi bloat hesabını BYPASS EDEN) kullanmanın gerçek çözüm
+  // olduğu KANITLANMIŞTI (gerçek Word ekran görüntüsüyle). Bu fonksiyonun
+  // İKİ çağıranı var: İncelenen Belgeler (kısa/tek satırlık alanlar — TÜM
+  // sütunlar type:"textarea" DEĞİL, "exactly" için güvenli) VE Takyidat
+  // (tek + çoklu taşınmaz özeti — "Açıklama" sütunu SIK SIK birden fazla
+  // satıra yayılan UZUN serbest metin içeriyor, "exactly" bunu KIRPAR/ÜST
+  // ÜSTE BİNDİRİR — Emsal Matrisi'nde textarea alanları için AYNI nedenle
+  // kaçınılmıştı). Bu yüzden `options.rowHeightRule` İLE opt-in: yalnızca
+  // İncelenen Belgeler "exactly" ister, Takyidat çağrıları hiçbir şey
+  // geçirmeyip varsayılan "at-least"te (DEĞİŞMEDEN) kalır. Yükseklik
+  // DEĞERLERİ (0.66cm/0.6cm) BİLEREK DEĞİŞTİRİLMEDİ — bu tabloda henüz
+  // Emsal Matrisi'ndeki gibi gerçek Word geri bildirimiyle ince ayar
+  // yapılmadı; ilk (en düşük riskli) adım sadece "at-least"i "exactly"ye
+  // çevirip AYNI sayıyı GERÇEKTEN zorunlu kılmak.
+  const rowHeightRule = options.rowHeightRule === "exactly" ? "exactly" : "at-least";
+  const headerHtml = `<tr height="25" style="height:0.66cm;mso-height-source:userset;mso-height-rule:${rowHeightRule};">${headers.map((label, index) => (isMergedAway(index) ? "" : `<th${colspanAt(index) > 1 ? ` colspan="${colspanAt(index)}"` : ""} style="${header}">${escapeHtml(label)}</th>`)).join("")}</tr>`;
   const bodyHtml = safeRows.map((row, index) => {
     const isSection = Boolean(row.__section);
     if (isSection) {
-      return `<tr height="23" style="height:0.6cm;mso-height-source:userset;mso-height-rule:at-least;"><td colspan="${headers.length}" style="${section}">${formatWordCell(row[0])}</td></tr>`;
+      return `<tr height="23" style="height:0.6cm;mso-height-source:userset;mso-height-rule:${rowHeightRule};"><td colspan="${headers.length}" style="${section}">${formatWordCell(row[0])}</td></tr>`;
     }
     const cellStyle = index % 2 ? zebra : plain;
-    return `<tr height="23" style="height:0.6cm;mso-height-source:userset;mso-height-rule:at-least;">${headers.map((_, cellIndex) => (isMergedAway(cellIndex) ? "" : `<td${colspanAt(cellIndex) > 1 ? ` colspan="${colspanAt(cellIndex)}"` : ""} style="${cellStyle}">${formatWordCell(row[cellIndex])}</td>`)).join("")}</tr>`;
+    return `<tr height="23" style="height:0.6cm;mso-height-source:userset;mso-height-rule:${rowHeightRule};">${headers.map((_, cellIndex) => (isMergedAway(cellIndex) ? "" : `<td${colspanAt(cellIndex) > 1 ? ` colspan="${colspanAt(cellIndex)}"` : ""} style="${cellStyle}">${formatWordCell(row[cellIndex])}</td>`)).join("")}</tr>`;
   }).join("");
 
   return `<table class="word-table word-table-compact-report" style="border-collapse:collapse;width:100%;margin:6pt 0 12pt;table-layout:fixed;${outer}">
@@ -22761,10 +22781,15 @@ function buildReviewedDocumentsWordTableHtml() {
     .filter((row) => Object.values(row || {}).some((value) => String(value || "").trim()))
     .map((row) => [row.c0 || "", row.c1 || "", formatDocumentDate(row.c2), row.c3 || "", row.c4 || ""]);
   if (!rows.length) return "";
+  // Kullanıcı talebi (2026-09-10): Emsal Matrisi'ndeki gibi satırları
+  // GERÇEKTEN sıkıştırmak için "exactly" — bu tablonun hiçbir sütunu
+  // (Takyidat'ın "Açıklama"sının aksine) UZUN serbest metin (textarea)
+  // İÇERMİYOR, bu yüzden güvenli (bkz. buildCompactReportWordTableHtml
+  // içindeki gerekçe).
   return buildCompactReportWordTableHtml(
     ["Belge Türü", "İncelenen Kurum", "Tarih", "No", "Kapsam"],
     rows,
-    { columnWidths: ["18%", "27%", "12%", "12%", "31%"] },
+    { columnWidths: ["18%", "27%", "12%", "12%", "31%"], rowHeightRule: "exactly" },
   );
 }
 
