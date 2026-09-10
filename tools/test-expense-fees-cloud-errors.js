@@ -33,5 +33,10 @@ assert.match(
   /Bulut bağlantısı yok; ortak masraf ayarları yalnızca bu cihazda kullanılıyor\./,
   "Bulut kapalıysa yanlış senkron durumu gösterilmemelidir.",
 );
+assert.match(
+  appSource,
+  /const appraisalArea = appraisalAreaField === "currentArea"[\s\S]*?getValuationUnitAreaTotals\(\)\.current[\s\S]*?lookupExpenseAppraisalFeeExVat\(state\.fields\.expenseAppraisalPropertyType, appraisalArea\)/,
+  "Çok katlı taşınmazlarda değerleme ücreti toplam mevcut alan üzerinden hesaplanmalıdır.",
+);
 
 console.log("expense fees cloud error feedback checks passed");

@@ -1,5 +1,13 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.730 - 2026-09-10 - Çok katlı taşınmazda masraf tarife kademesi düzeltmesi
+
+- Masraf hesaplaması, Daire/Villa/Ofis tarifesinde artık yalnızca ilk katın `currentArea` değerini değil, bağımsız bölümün toplam mevcut kullanım alanını kullanıyor.
+- 373 m² yasal / 394 m² mevcut alanlı çok katlı villa artık 251–500 m² kademesine girerek `20.217 TL` değerini kullanır; önceki hatada yalnızca 160 m² ilk kat okunup `17.622 TL` seçiliyordu.
+- Tek katlı taşınmazlarda mevcut davranış ve arsa/tarım tarifelerinde parsel alanı kullanımı korunmuştur.
+- Değişiklik öncesi yedek: `backups/before-expense-fee-tier-audit_2026-09-10_10-36-29`.
+- `npm run check` ve `tools/test-expense-fees-cloud-errors.js` başarılı.
+
 ## 0.0.729 - 2026-09-10 - Tapu/Belediye proje alanı tekrarının giderilmesi
 
 - `Belgeler ve Proje` formunda proje alanlarını oluşturan bileşik kontrol artık yalnızca `projectType` alanını tek giriş noktası olarak kullanıyor.

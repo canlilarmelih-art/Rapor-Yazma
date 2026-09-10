@@ -33400,7 +33400,14 @@ function recalculateExpenseFees() {
   const multiplier = 1 + (Number.isFinite(vatRate) && vatRate >= 0 ? vatRate : 20) / 100;
 
   const appraisalAreaField = getExpenseAppraisalAreaField(state.fields.expenseAppraisalPropertyType);
-  let appraisalFee = lookupExpenseAppraisalFeeExVat(state.fields.expenseAppraisalPropertyType, state.fields[appraisalAreaField]);
+  // Çok katlı bağımsız bölümlerde `state.fields.currentArea` yalnızca ilk
+  // katın alanını taşır (ör. 160 m²); tarife ise taşınmazın toplam mevcut
+  // kullanım alanına göre uygulanmalıdır (ör. bodrum + zemin = 394 m²).
+  // Toplam yardımcı değeri mevcut değilse eski tek-kat alanına geri dönülür.
+  const appraisalArea = appraisalAreaField === "currentArea"
+    ? (getValuationUnitAreaTotals().current || state.fields.currentArea)
+    : state.fields[appraisalAreaField];
+  let appraisalFee = lookupExpenseAppraisalFeeExVat(state.fields.expenseAppraisalPropertyType, appraisalArea);
 
   const bulkMode = state.fields.expenseBulkValuationMode;
   const bulkCount = parseValuationNumber(state.fields.expenseBulkPropertyCount);
