@@ -110,6 +110,10 @@
     return "";
   }
 
+  function isHalkbankReport() {
+    return /HALK\s*BANKASI|HALKBANK/i.test(foldTokenName(field("bank")));
+  }
+
   function dateField(...keys) {
     const value = field(...keys);
     if (!value) return "";
@@ -372,6 +376,41 @@
       const distance = safeCall("getComparableDistanceTextForWord", matrixRows[index] || {});
       if (distance) parts.push(`(${distance})`);
       return parts.join(" ").replace(/,\s*$/, ".");
+    } catch (error) {
+      return "";
+    }
+  }
+
+  // Halkbank INVEX şablonunda emsal açıklaması karakter sınırına tabidir.
+  // Bu nedenle yalnızca Halkbank için; konum, kat, beyan/düzeltilmiş alan,
+  // oda planı, nitelik, satış bedeli ve kira değerinden oluşan kısa biçim
+  // kullanılır. Konu taşınmaza göre konum/iç özellik şerefiyeleri ile
+  // pazarlık oranı özellikle bu metne dahil edilmez.
+  function halkbankShortComparableLineText(index) {
+    try {
+      const rows = getComparableRows();
+      const row = rows[index];
+      if (!row) return "";
+      const metrics = calculateComparableMetrics(row) || {};
+      const parts = [];
+      const location = safeCall("buildComparableLocationLocative", row.c7) || "aynı bölgede";
+      const locationText = String(location).trim();
+      if (locationText) parts.push(locationText.charAt(0).toLocaleUpperCase("tr-TR") + locationText.slice(1));
+      const floor = safeCall("buildComparableFloorPhrase", row.c6);
+      if (floor) parts.push(floor);
+      if (row.c12) parts.push(`${formatComparableSummaryNumber(parseComparableNumber(row.c12), { decimals: 2 })} m2 olarak beyan edilen`);
+      if (row.c13) parts.push(`${formatComparableSummaryNumber(parseComparableNumber(row.c13), { decimals: 2 })} olduğu düşünülen`);
+      if (row.c5) parts.push(`${row.c5} planında`);
+      if (row.c4) parts.push(String(row.c4).trim());
+      const sentences = [];
+      if (Number.isFinite(metrics.saleValue) && metrics.saleValue > 0) {
+        sentences.push(`${formatComparableSummaryMoney(metrics.saleValue)} TL bedelle satılıktır.`);
+      }
+      if (Number.isFinite(metrics.rent) && metrics.rent > 0) {
+        sentences.push(`Kira değerinin ${formatComparableSummaryMoney(metrics.rent)} TL/ay olacağı düşünülmektedir.`);
+      }
+      const description = parts.join(", ");
+      return [description, sentences.join(" ")].filter(Boolean).join(" ").trim();
     } catch (error) {
       return "";
     }
@@ -1111,7 +1150,7 @@
   // EMSAL1..EMSAL7 ve KISAEMSAL1..KISAEMSAL7
   for (let i = 1; i <= 7; i += 1) {
     LEGACY_ALIASES[`EMSAL${i}`] = { fn: () => comparableLineText(i - 1) };
-    LEGACY_ALIASES[`KISAEMSAL${i}`] = { fn: () => comparableLineText(i - 1) };
+    LEGACY_ALIASES[`KISAEMSAL${i}`] = { fn: () => isHalkbankReport() ? halkbankShortComparableLineText(i - 1) : comparableLineText(i - 1) };
     [
       ["IRTIBAT_KAYNAK", "c0"], ["TELEFON", "c1"], ["EMSAL_NITELIGI", "c23"],
       ["EMSAL_DURUMU", "c2"], ["SATIS_ZAMANI", "c3"], ["NITELIK", "c4"],

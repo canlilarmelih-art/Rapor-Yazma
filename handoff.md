@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.723 - 2026-09-10 - Halkbank kısa emsal açıklama formatı
+
+- Halkbank raporlarında `KISAEMSAL1..7` çıktısı karakter sınırına uygun kısa formata alındı.
+- Kısa metinde konum, kat, beyan/düzeltilmiş alan, oda planı, nitelik, satış bedeli ve kira değeri bulunuyor.
+- Konu taşınmaz karşılaştırması, iç özellik/konum şerefiyesi ve pazarlık oranı kısa metne dahil edilmiyor.
+- Diğer banka şablonlarının mevcut kısa emsal davranışı korunuyor.
+- Değişiklik öncesi yedek: `backups/before-halkbank-short-comparable-format_2026-09-10_08-21-23`.
+- Banka şablonu, alias ve temel kontroller başarılı.
+
 ## 0.0.722 - 2026-09-10 - Halkbank risk kodu kuralları
 
 - İİK 150/c şerhi ile ayrı ipotek tablosunda Halkbank ipoteği birlikte bulunduğunda satışa arz kodu artık `18A` seçiliyor; `126D` takip kodu ayrıca korunuyor.
