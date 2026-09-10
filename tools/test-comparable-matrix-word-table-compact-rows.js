@@ -4,64 +4,56 @@
 // tablosu" — ekran görüntüsü buildComparableMatrixWordTableHtml()'in
 // ürettiği "Emsal Matrisi" tablosuydu (Alan | Emsal 1 | Emsal 2 | ...).
 //
-// Kök sebep: bu tablo buildSimpleHtmlTable(..., { compact: true }) ile
-// üretiliyor, ama compact modu yalnızca <td>/<th> üzerinde CSS
-// padding/line-height küçültüyordu — <tr>'ye ayrıca eklenmesi gereken
-// mso-height-source/mso-height-rule YOKTU. Word (MSO) satır yüksekliğini
-// CSS padding/line-height'tan DEĞİL, <tr>'deki bu MSO-özel stillerden
-// okur; bu dosyadaki DİĞER "tek sayfaya sığmalı" tablolar (ör.
-// buildComparableValuationWordTableHtml, buildValuationSummaryWordTableHtml)
-// zaten bu tekniği kullanıyordu, yalnızca bu genel fonksiyon eksikti —
-// bu yüzden CSS küçük olsa da Word'de satırlar OLMASI GEREKENDEN çok
-// daha uzun görünüyordu.
+// Bu, DÖRT turluk bir düzeltme dizisinin SONUNCUSU:
+//  1) <tr>'ye mso-height-rule (0.0.732) — kök sebep: satır yüksekliği
+//     CSS padding/line-height'tan değil <tr>'deki MSO stilinden okunur.
+//  2) nokta-birimli line-height + mso-line-height-rule:exactly (0.0.733)
+//     — kök sebep: birimsiz line-height Word'de güvenilir değil.
+//  3) hücre mso-padding-alt (0.0.734) — kök sebep: Word padding'i
+//     mso-padding-alt'tan okur, CSS padding'ten değil.
+//  4) BU TUR — şablonların KENDİ CSS'ine AYNI üçlü eklendi (0.0.735,
+//     kaynak: app.js DIŞINDA, templates/*.html) — kök sebep: her banka
+//     şablonunun kendi <style>'ında AYNI .word-table sınıfını hedefleyen
+//     bir kural vardı, mso-padding-alt'sız.
 //
-// TAKİP bildirimi (2026-09-10, İKİNCİ ekran görüntüsü — yukarıdaki <tr>
-// yükseklik düzeltmesinden SONRA): şimdi hücrelerin ÇOĞUNDA metnin
-// hemen altında boş, sınır çizgili bir "boşluk" görünüyordu ("bu
-// boşlukları istemiyorum"). Üretilen ham HTML'de (bkz. bu dosyanın
-// kontrol ettiği kaynak) fazladan hiçbir <tr> YOKTU — kök sebep farklı:
-// line-height BİRİMSİZ bir çarpandı ("1"/"1.05"). Word (MSO) satır
-// aralığını yalnızca NOKTA (pt) birimli bir değer + mso-line-height-
-// rule:exactly VARSA güvenilir şekilde uygular; bu ikisi yoksa kendi
-// "Normal" stilinin varsayılan (bizim küçük puntomuzdan ÇOK daha büyük)
-// satır aralığını/boşluğunu kullanır — dosyadaki DİĞER MSO tabloları
-// zaten nokta-birimli line-height + mso-line-height-rule:exactly
-// kullanıyordu, yalnızca bu genel fonksiyon eksikti. Düzeltme TÜM
-// buildSimpleHtmlTable çağrılarını (compact olsun olmasın) kapsar.
+// SON KANIT (2026-09-10, kullanıcı GERÇEK bir .doc dosyası + Word'ün
+// kendi "Tablo Özellikleri > Satır" iletişim kutusunun ekran görüntüsünü
+// paylaştı): Word, satır yüksekliğini ("0,28 cm" / "En az") DOĞRU
+// ALGILAMIŞ VE SAKLAMIŞ — yani <tr>'deki mso-height-rule mekanizmasının
+// KENDİSİ çalışıyor. Sorun: "at-least" (En az) bir TABAN'dır; Word,
+// satırı GERÇEKTEN ihtiyaç duyduğunu DÜŞÜNDÜĞÜ yüksekliğe kadar
+// büyütüyor — ve bu "gereken yükseklik" hesabı hücre-düzeyi
+// mso-padding-alt/mso-line-height-rule'u GÜVENİLİR şekilde dikkate
+// almıyor (kaynak HTML standart bir tarayıcıda PİKSEL PİKSEL doğru/
+// sıkışık render ediyor — ayrıca doğrulandı — yalnızca Word'ün kendi
+// hesabı farklı).
 //
-// İKİNCİ TAKİP bildirimi (2026-09-10, ÜÇÜNCÜ ekran görüntüsü —
-// "düzelmemiş ki hala boşluk var görmüyor musun"): ilk iki düzeltmeden
-// sonra bile satırlar hâlâ ÇOK yüksekti. Kök sebep: Word (MSO), hücre iç
-// boşluğunu standart CSS `padding`'ten DEĞİL, kendi `mso-padding-alt`
-// özelliğinden okur — bu YOKSA kendi (bizim küçük değerimizden ÇOK daha
-// büyük) varsayılan hücre kenar boşluğunu kullanır. Dosyadaki DİĞER MSO
-// tabloları ZATEN mso-padding-alt kullanıyordu; yalnızca bu genel
-// fonksiyon eksikti — bu ÜÇÜNCÜ, gerçekten eksik parçaydı (ilk ikisi
-// GEREKLİYDİ ama TEK BAŞINA YETMEDİ). Düzeltme de TÜM buildSimpleHtmlTable
-// çağrılarını kapsar.
+// SON DÜZELTME: kısa (textarea/wide OLMAYAN) satırlarda "at-least"
+// YERİNE "exactly" kullanılır — <tr> mekanizması Word tarafından doğru
+// okunduğu KANITLANDIĞINDAN, "exactly" Word'ün kendi (yanlış) "gereken
+// yükseklik" hesabını TAMAMEN BYPASS EDER. UZUN metin (textarea,
+// field.wide === true — "Konum Karşılaştırma Sebebi"/"Açıklama /
+// Düzeltme"/"Emsal Metni") satırları "exactly" ALAMAZ (metni KIRPAR) —
+// bu satırların etiketleri yeni `options.autoHeightRowLabels`
+// parametresiyle işaretlenip o satırlarda <tr> yükseklik ZORLAMASI
+// TAMAMEN ATLANIR (Word'ün doğal büyümesine bırakılır).
 //
 // Bu test kapsamı:
-//  1) compact:true iken (Emsal Matrisi'nin TEK kullanıcısı) hem başlık
-//     hem gövde <tr>'lerinde açık bir minimum yükseklik (mso-height-rule)
-//     olduğu doğrulanır.
-//  2) BİLEREK "exactly" DEĞİL "at-least" kullanıldığı doğrulanır — bu
-//     tablo "Konum Karşılaştırma Sebebi"/"Açıklama / Düzeltme"/"Emsal
-//     Metni" gibi UZUN metin (textarea) satırları da içeriyor; "exactly"
-//     bu satırlarda metni Word'de KIRPARDI.
-//  3) compact:false (varsayılan, DİĞER buildSimpleHtmlTable çağrıları —
-//     Takyidat/İncelenen Belgeler/Hesaplanan Emsal vb.) davranışının
-//     DEĞİŞMEDİĞİ — <tr>'lere herhangi bir yükseklik EKLENMEDİĞİ
-//     (regresyon kilidi) doğrulanır.
-//  4) buildComparableMatrixWordTableHtml() kaynak metninin hâlâ
-//     buildSimpleHtmlTable(..., "is-matrix", { compact: true }) çağırdığı
-//     (kablolama) doğrulanır.
-//  5) her iki modda (compact ve değil) hücre satır-aralığının nokta-
-//     birimli + mso-line-height-rule:exactly olduğu, ASLA birimsiz bir
-//     çarpan olmadığı doğrulanır (yukarıdaki İKİNCİ bildirimin kök
-//     sebebine karşı regresyon kilidi).
-//  6) her iki modda hücre dolgusunun mso-padding-alt'ı da (padding ile
-//     AYNI değerlerle) içerdiği doğrulanır (yukarıdaki ÜÇÜNCÜ bildirimin
-//     kök sebebine karşı regresyon kilidi).
+//  1) compact:true + KISA satır (autoHeightRowLabels'ta YOK) ->
+//     mso-height-rule:exactly (artık "at-least" DEĞİL).
+//  2) compact:true + autoHeightRowLabels'taki bir etiketle eşleşen satır
+//     -> <tr>'ye HİÇBİR yükseklik zorlaması EKLENMEZ (düz <tr>), metin
+//     eksiksiz kalır (KIRPILMAZ).
+//  3) Başlık satırı HER ZAMAN "exactly" alır (autoHeightRowLabels'tan
+//     bağımsız).
+//  4) compact:false (diğer buildSimpleHtmlTable çağrıları) DEĞİŞMEDİ —
+//     hiçbir <tr> yükseklik zorlaması yok.
+//  5) hücre dolgusu (mso-padding-alt) ve satır aralığı (nokta-birimli
+//     line-height + mso-line-height-rule:exactly) ÖNCEKİ turların
+//     regresyon kilitleri olarak korunur.
+//  6) buildComparableMatrixWordTableHtml() kaynak metninin
+//     field.wide'dan autoHeightRowLabels hesaplayıp buildSimpleHtmlTable'a
+//     geçirdiği (kablolama) doğrulanır.
 
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -106,77 +98,84 @@ const sandboxSource = `
 const fns = new Function(sandboxSource)();
 
 const headers = ["Alan", "Emsal 1", "Emsal 2"];
+const longText = "Çok uzun bir açıklama metni burada yer alacak ve Word'de birden fazla satıra sarabilir.";
 const rows = [
   ["İrtibat", "Ali Bey", "Veli Bey"],
   ["Enlem", "40.301190", "40.298161"],
-  ["Emsal Metni", "Çok uzun bir açıklama metni burada yer alacak ve Word'de birden fazla satıra sarabilir.", "İkinci emsalin de kendi uzun metni burada."],
+  ["Emsal Metni", longText, "İkinci emsalin de kendi uzun metni burada."],
 ];
 
-// --- 1) + 2) compact:true -> her <tr>'de "at-least" minimum yükseklik ----
+// --- 1) + 2) + 3) compact:true -> KISA satırlar "exactly", "Emsal ------
+// Metni" (autoHeightRowLabels'ta) hiçbir yükseklik zorlaması ALMAZ.
 {
-  const html = fns.buildSimpleHtmlTable(headers, rows, "is-matrix", { compact: true });
+  const html = fns.buildSimpleHtmlTable(headers, rows, "is-matrix", { compact: true, autoHeightRowLabels: ["Emsal Metni"] });
   const trOpenTags = html.match(/<tr[^>]*>/g) || [];
   assert.equal(trOpenTags.length, rows.length + 1, "Başlık + gövde satırı sayısı kadar <tr> olmalı.");
-  trOpenTags.forEach((tag, index) => {
-    assert.ok(tag.includes('height="11"'), `<tr> #${index} height=\"11\" içermeli: ${tag}`);
-    assert.ok(tag.includes("height:0.28cm"), `<tr> #${index} 0.28cm yükseklik içermeli: ${tag}`);
-    assert.ok(tag.includes("mso-height-source:userset"), `<tr> #${index} mso-height-source:userset içermeli: ${tag}`);
-    assert.ok(tag.includes("mso-height-rule:at-least"), `<tr> #${index} mso-height-rule:at-least içermeli (KIRPMASIN): ${tag}`);
+
+  // Başlık ("Alan"/"Emsal 1"/"Emsal 2") + "İrtibat" + "Enlem" -> exactly.
+  const shortRowTags = [trOpenTags[0], trOpenTags[1], trOpenTags[2]];
+  shortRowTags.forEach((tag, index) => {
+    assert.ok(tag.includes('height="11"'), `Kısa satır #${index} height=\"11\" içermeli: ${tag}`);
+    assert.ok(tag.includes("height:0.28cm"), `Kısa satır #${index} 0.28cm yükseklik içermeli: ${tag}`);
+    assert.ok(tag.includes("mso-height-source:userset"), `Kısa satır #${index} mso-height-source:userset içermeli: ${tag}`);
+    assert.ok(
+      tag.includes("mso-height-rule:exactly"),
+      `Kısa satır #${index} artık mso-height-rule:exactly İÇERMELİ (Word'ün "at-least" ile satırı kendi hesabına göre büyütmesini ENGELLER): ${tag}`
+    );
+    assert.ok(!tag.includes("at-least"), `Kısa satır #${index} artık "at-least" İÇERMEMELİ: ${tag}`);
   });
-  assert.ok(!html.includes("mso-height-rule:exactly"), "compact Emsal Matrisi \"exactly\" KULLANMAMALI (uzun metin satırlarını kırpar).");
+
+  // "Emsal Metni" (autoHeightRowLabels'ta) -> düz <tr>, HİÇBİR yükseklik yok.
+  const wideRowTag = trOpenTags[3];
+  assert.equal(wideRowTag, "<tr>", `"Emsal Metni" satırına HİÇBİR yükseklik zorlaması eklenmemeli (Word'ün doğal büyümesine bırakılmalı): ${wideRowTag}`);
+  assert.ok(html.includes("Çok uzun bir açıklama metni burada yer alacak"), "Uzun metin içeriği eksiksiz kalmalı (KIRPILMAMALI).");
+  console.log("compact Emsal Matrisi: kisa satirlar exactly, uzun-metin satiri yukseklik-zorlamasiz testi tamam.");
+}
+
+// --- Hücre dolgusu/satır aralığı: önceki turların regresyon kilitleri --
+{
+  const html = fns.buildSimpleHtmlTable(headers, rows, "is-matrix", { compact: true, autoHeightRowLabels: [] });
   assert.ok(html.includes("padding:0.7pt 1.2pt;"), "compact hücre dolgusu sıkılaştırılmış olmalı.");
-  // Kullanıcı bildirimi (2026-09-10, ÜÇÜNCÜ ekran görüntüsü — "düzelmemiş
-  // ki hala boşluk var"): ilk İKİ düzeltmeden (<tr> yüksekliği + line-
-  // height/mso-line-height-rule) SONRA bile satırlar hâlâ çok yüksekti.
-  // Kök sebep: Word, hücre iç boşluğunu standart CSS `padding`'ten DEĞİL,
-  // kendi `mso-padding-alt` özelliğinden okur — bu YOKSA kendi çok daha
-  // büyük varsayılan hücre kenar boşluğunu kullanır.
   assert.ok(
     html.includes("mso-padding-alt:0.7pt 1.2pt 0.7pt 1.2pt;"),
     "compact hücrelerde mso-padding-alt (padding ile AYNI değerlerle) olmalı — yoksa Word kendi buyuk varsayilan hucre bosluğunu kullanir."
   );
-  // Kullanıcı bildirimi (2026-09-10, İKİNCİ ekran görüntüsü — yukarıdaki
-  // <tr> yüksekliği düzeltmesinden SONRA): hücrelerin çoğunda metnin
-  // altında boş bir "boşluk" görünüyordu. Kök sebep: line-height BİRİMSİZ
-  // bir çarpandı ("1") — Word (MSO) satır aralığını yalnızca NOKTA (pt)
-  // birimli bir değer + mso-line-height-rule:exactly VARSA dikkate alır;
-  // yoksa kendi (bizim küçük puntomuzdan çok daha büyük) varsayılan satır
-  // aralığını kullanıp fazladan boşluk ekler.
-  assert.ok(html.includes("line-height:6.5pt;mso-line-height-rule:exactly;"), "compact hücrelerde nokta-birimli line-height + mso-line-height-rule:exactly olmalı (fazladan bosluk BIRAKMAMALI).");
+  assert.ok(html.includes("line-height:6.5pt;mso-line-height-rule:exactly;"), "compact hücrelerde nokta-birimli line-height + mso-line-height-rule:exactly olmalı.");
   assert.ok(!/line-height:1;/.test(html), "line-height artik BIRIMSIZ bir carpan (\"1\") OLMAMALI — Word bunu guvenilir yorumlamiyor.");
-  // Uzun metin hücresi HÂLÂ tam olarak içerikte yer almalı (kırpılmamalı) —
-  // yükseklik kısıtlaması yalnızca <tr> ATTRIBUTE/STYLE düzeyinde, metnin
-  // kendisi buildSimpleHtmlTable tarafından hiç kesilmiyor.
-  assert.ok(html.includes("Çok uzun bir açıklama metni burada yer alacak"), "Uzun metin içeriği eksiksiz kalmalı.");
-  console.log("compact Emsal Matrisi: <tr> minimum yukseklik (at-least, kirpmayan) testi tamam.");
+  console.log("compact hucre dolgusu/satir araligi regresyon kilidi testi tamam.");
 }
 
-// --- 3) compact:false (varsayılan) -> <tr> YÜKSEKLİK ZORLAMASI/dolgu -----
-// DEĞİŞMEZ (o kısım hâlâ yalnızca compact'e özel); ama satır-aralığı
-// düzeltmesi (mso-line-height-rule:exactly) TÜM çağrıları etkiliyor —
-// eksiklik ORADA da vardı, yalnızca Emsal Matrisi'nde fark edildi.
+// --- 4) compact:false (varsayılan) -> DEĞİŞMEDİ ---------------------------
 {
   const html = fns.buildSimpleHtmlTable(headers, rows, "meta");
   assert.ok(!html.includes("mso-height-rule"), "compact:false iken <tr>'lere HİÇBİR satır-yüksekliği mso-height-rule EKLENMEMELİ (regresyon, <tr> düzeyi).");
   assert.ok(!html.includes('height="11"'), "compact:false iken height=\"11\" attribute'ü EKLENMEMELİ.");
   assert.ok(!html.includes("padding:0.7pt 1.2pt;"), "compact:false iken sıkılaştırılmış compact dolgu KULLANILMAMALI.");
-  assert.ok(html.includes("line-height:8pt;mso-line-height-rule:exactly;"), "compact:false (dar tablo) iken de nokta-birimli line-height + mso-line-height-rule:exactly OLMALI (bu düzeltme TÜM çağrıları kapsar).");
+  assert.ok(html.includes("line-height:8pt;mso-line-height-rule:exactly;"), "compact:false (dar tablo) iken de nokta-birimli line-height + mso-line-height-rule:exactly OLMALI.");
   assert.ok(
     html.includes("mso-padding-alt:2.4pt 3pt 2.4pt 3pt;"),
-    "compact:false (dar tablo) iken de mso-padding-alt OLMALI (bu düzeltme de TÜM çağrıları kapsar)."
+    "compact:false (dar tablo) iken de mso-padding-alt OLMALI."
   );
-  console.log("compact:false (diger tablolar): satir yuksekligi zorlamasi degismedi, dolgu/satir araligi duzeltmesi UYGULANDI testi tamam.");
+  console.log("compact:false (diger tablolar): degismedi REGRESYON testi tamam.");
 }
 
-// --- 4) Kaynak metin: buildComparableMatrixWordTableHtml hâlâ compact ----
-// modunu kullanarak buildSimpleHtmlTable çağırıyor.
+// --- 5) Kaynak metin: buildComparableMatrixWordTableHtml field.wide'dan --
+// autoHeightRowLabels hesaplayıp buildSimpleHtmlTable'a geçiriyor.
 {
   const fnSource = extractFunction("buildComparableMatrixWordTableHtml");
   assert.ok(
-    fnSource.includes('buildSimpleHtmlTable(headers, bodyRows, "is-matrix", { compact: true })'),
-    "buildComparableMatrixWordTableHtml() hâlâ buildSimpleHtmlTable(..., \"is-matrix\", { compact: true }) çağırmalı."
+    fnSource.includes("fields.filter((field) => field.wide)"),
+    "buildComparableMatrixWordTableHtml() UZUN metin (field.wide) alanlarını tespit etmeli."
   );
-  console.log("buildComparableMatrixWordTableHtml kaynak-duzeyi kablolama testi tamam.");
+  assert.ok(
+    fnSource.includes("autoHeightRowLabels"),
+    "buildComparableMatrixWordTableHtml() autoHeightRowLabels hesaplamalı."
+  );
+  assert.ok(
+    fnSource.includes('buildSimpleHtmlTable(headers, bodyRows, "is-matrix", { compact: true, autoHeightRowLabels })'),
+    "buildComparableMatrixWordTableHtml() hâlâ buildSimpleHtmlTable(..., \"is-matrix\", { compact: true, autoHeightRowLabels }) çağırmalı."
+  );
+  console.log("buildComparableMatrixWordTableHtml kaynak-duzeyi kablolama (autoHeightRowLabels) testi tamam.");
 }
 
-console.log("Emsal Matrisi Word tablosu: kompakt satir yuksekligi testleri basarili.");
+console.log("Emsal Matrisi Word tablosu: kompakt satir yuksekligi (exactly + uzun-metin istisnasi) testleri basarili.");

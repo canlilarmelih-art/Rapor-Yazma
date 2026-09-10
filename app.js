@@ -22399,7 +22399,17 @@ function buildComparableMatrixWordTableHtml() {
     }
   }
   if (!bodyRows.length) return "";
-  return buildSimpleHtmlTable(headers, bodyRows, "is-matrix", { compact: true });
+  // Kullanıcı kanıtı (2026-09-10, gerçek Word "Tablo Özellikleri > Satır"
+  // ekran görüntüsü): kısa satırlar artık "exactly" (bkz.
+  // buildSimpleHtmlTable) ile GERÇEKTEN sıkıştırılıyor — ama "exactly"
+  // UZUN metin (textarea, field.wide === true — "Konum Karşılaştırma
+  // Sebebi"/"Açıklama / Düzeltme"/"Emsal Metni") satırlarında metni
+  // KIRPAR. Bu satırların etiketleri autoHeightRowLabels'a geçirilip
+  // <tr> yükseklik zorlaması o satırlarda TAMAMEN atlanır (doğal
+  // büyüme).
+  const wideFieldLabels = new Set(fields.filter((field) => field.wide).map((field) => field.label));
+  const autoHeightRowLabels = bodyRows.filter((row) => wideFieldLabels.has(row[0])).map((row) => row[0]);
+  return buildSimpleHtmlTable(headers, bodyRows, "is-matrix", { compact: true, autoHeightRowLabels });
 }
 
 function buildComparableDistanceWordMatrixRow(rows) {
@@ -25529,6 +25539,29 @@ function buildSimpleHtmlTable(headers, rows, className = "", options = {}) {
   // çağıran: Emsal Matrisi) etkilenir — diğer buildSimpleHtmlTable
   // çağrıları (Takyidat, İncelenen Belgeler, Hesaplanan Emsal vb.)
   // dokunulmadan kalır.
+  //
+  // KULLANICI KANITI (2026-09-10, DÖRDÜNCÜ tur, gerçek .doc'un Word
+  // "Tablo Özellikleri > Satır" ekran görüntüsü): Word, satır
+  // yüksekliğimizi ("0,28 cm" / "En az") DOĞRU ALGILAMIŞ ve saklamış —
+  // yani yukarıdaki "at-least" (En az) MEKANİZMASI çalışıyor. Sorun şu
+  // ki "at-least" bir TABAN'dır — Word, satırı GERÇEKTEN ihtiyaç
+  // duyduğunu DÜŞÜNDÜĞÜ yüksekliğe kadar büyütüyor, ve bu hesaplama
+  // hücre-düzeyi mso-padding-alt/mso-line-height-rule'u GÜVENİLİR
+  // şekilde dikkate almıyor (kaynak HTML standart bir tarayıcıda PİKSEL
+  // PİKSEL doğru/sıkışık render ediyor — ayrıca kanıtlandı — yalnızca
+  // Word'ün "gereken yükseklik" hesabı farklı/büyük). Çözüm: KISA
+  // (textarea/wide OLMAYAN) satırlarda "at-least" YERİNE "exactly"
+  // kullanılır — <tr> mekanizması Word tarafından doğru okunduğu
+  // KANITLANDIĞINDAN, "exactly" Word'ün kendi (yanlış) "gereken
+  // yükseklik" hesabını TAMAMEN BYPASS EDER. UZUN metin (textarea,
+  // wide:true — "Konum Karşılaştırma Sebebi"/"Açıklama / Düzeltme"/
+  // "Emsal Metni") satırları HÂLÂ "exactly" ALAMAZ (metni KIRPAR) — bu
+  // satırlar `options.autoHeightRowLabels` ile işaretlenip <tr>
+  // yükseklik ZORLAMASI TAMAMEN ATLANIR (Word'ün doğal büyümesine
+  // bırakılır, tıpkı compact:false tablolarında olduğu gibi).
+  const autoHeightRowLabels = options.autoHeightRowLabels instanceof Set
+    ? options.autoHeightRowLabels
+    : new Set(Array.isArray(options.autoHeightRowLabels) ? options.autoHeightRowLabels : []);
   const padValues = compact ? ["0.7pt", "1.2pt"] : isWide ? ["1.8pt", "2.2pt"] : ["2.4pt", "3pt"];
   const [padTop, padSide] = padValues;
   // Kullanıcı bildirimi (2026-09-10, ÜÇÜNCÜ ekran görüntüsü — "düzelmemiş
@@ -25570,12 +25603,17 @@ function buildSimpleHtmlTable(headers, rows, className = "", options = {}) {
   const classes = ["word-table"];
   if (isWide) classes.push("is-wide");
   classes.push(...classNames);
-  const compactRowAttrs = compact ? ' height="11" style="height:0.28cm;mso-height-source:userset;mso-height-rule:at-least;"' : "";
-  const theadHtml = `<tr${compactRowAttrs}>${headers.map((header) => `<th style="${headerCell}">${escapeHtml(header)}</th>`).join("")}</tr>`;
+  // Başlık satırı ("Alan"/"Emsal N" gibi) her zaman kısa — asla
+  // autoHeightRowLabels'a girmez, her zaman "exactly" alır.
+  const compactHeaderRowAttrs = compact ? ' height="11" style="height:0.28cm;mso-height-source:userset;mso-height-rule:exactly;"' : "";
+  const compactShortRowAttrs = ' height="11" style="height:0.28cm;mso-height-source:userset;mso-height-rule:exactly;"';
+  const theadHtml = `<tr${compactHeaderRowAttrs}>${headers.map((header) => `<th style="${headerCell}">${escapeHtml(header)}</th>`).join("")}</tr>`;
   const lastIndex = rows.length - 1;
   const bodyHtml = rows.map((row, rowIndex) => {
     const isSummaryRow = isSummaryLastRow && rowIndex === lastIndex;
-    return `<tr${compactRowAttrs}>${row.map((cell, cellIndex) => {
+    const isAutoHeightRow = compact && autoHeightRowLabels.has(row[0]);
+    const rowAttrs = compact && !isAutoHeightRow ? compactShortRowAttrs : "";
+    return `<tr${rowAttrs}>${row.map((cell, cellIndex) => {
       let cellStyle = baseCell;
       if (isSummaryRow) cellStyle = summaryCell;
       else if (isEmphasisFirstCol && cellIndex === 0) cellStyle = emphasisCell;
