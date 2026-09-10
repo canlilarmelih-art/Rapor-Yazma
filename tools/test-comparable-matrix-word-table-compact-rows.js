@@ -15,6 +15,20 @@
 // bu yüzden CSS küçük olsa da Word'de satırlar OLMASI GEREKENDEN çok
 // daha uzun görünüyordu.
 //
+// TAKİP bildirimi (2026-09-10, İKİNCİ ekran görüntüsü — yukarıdaki <tr>
+// yükseklik düzeltmesinden SONRA): şimdi hücrelerin ÇOĞUNDA metnin
+// hemen altında boş, sınır çizgili bir "boşluk" görünüyordu ("bu
+// boşlukları istemiyorum"). Üretilen ham HTML'de (bkz. bu dosyanın
+// kontrol ettiği kaynak) fazladan hiçbir <tr> YOKTU — kök sebep farklı:
+// line-height BİRİMSİZ bir çarpandı ("1"/"1.05"). Word (MSO) satır
+// aralığını yalnızca NOKTA (pt) birimli bir değer + mso-line-height-
+// rule:exactly VARSA güvenilir şekilde uygular; bu ikisi yoksa kendi
+// "Normal" stilinin varsayılan (bizim küçük puntomuzdan ÇOK daha büyük)
+// satır aralığını/boşluğunu kullanır — dosyadaki DİĞER MSO tabloları
+// zaten nokta-birimli line-height + mso-line-height-rule:exactly
+// kullanıyordu, yalnızca bu genel fonksiyon eksikti. Düzeltme TÜM
+// buildSimpleHtmlTable çağrılarını (compact olsun olmasın) kapsar.
+//
 // Bu test kapsamı:
 //  1) compact:true iken (Emsal Matrisi'nin TEK kullanıcısı) hem başlık
 //     hem gövde <tr>'lerinde açık bir minimum yükseklik (mso-height-rule)
@@ -30,6 +44,10 @@
 //  4) buildComparableMatrixWordTableHtml() kaynak metninin hâlâ
 //     buildSimpleHtmlTable(..., "is-matrix", { compact: true }) çağırdığı
 //     (kablolama) doğrulanır.
+//  5) her iki modda (compact ve değil) hücre satır-aralığının nokta-
+//     birimli + mso-line-height-rule:exactly olduğu, ASLA birimsiz bir
+//     çarpan olmadığı doğrulanır (yukarıdaki İKİNCİ bildirimin kök
+//     sebebine karşı regresyon kilidi).
 
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -93,6 +111,15 @@ const rows = [
   });
   assert.ok(!html.includes("mso-height-rule:exactly"), "compact Emsal Matrisi \"exactly\" KULLANMAMALI (uzun metin satırlarını kırpar).");
   assert.ok(html.includes("padding:0.7pt 1.2pt;"), "compact hücre dolgusu sıkılaştırılmış olmalı.");
+  // Kullanıcı bildirimi (2026-09-10, İKİNCİ ekran görüntüsü — yukarıdaki
+  // <tr> yüksekliği düzeltmesinden SONRA): hücrelerin çoğunda metnin
+  // altında boş bir "boşluk" görünüyordu. Kök sebep: line-height BİRİMSİZ
+  // bir çarpandı ("1") — Word (MSO) satır aralığını yalnızca NOKTA (pt)
+  // birimli bir değer + mso-line-height-rule:exactly VARSA dikkate alır;
+  // yoksa kendi (bizim küçük puntomuzdan çok daha büyük) varsayılan satır
+  // aralığını kullanıp fazladan boşluk ekler.
+  assert.ok(html.includes("line-height:6.5pt;mso-line-height-rule:exactly;"), "compact hücrelerde nokta-birimli line-height + mso-line-height-rule:exactly olmalı (fazladan bosluk BIRAKMAMALI).");
+  assert.ok(!/line-height:1;/.test(html), "line-height artik BIRIMSIZ bir carpan (\"1\") OLMAMALI — Word bunu guvenilir yorumlamiyor.");
   // Uzun metin hücresi HÂLÂ tam olarak içerikte yer almalı (kırpılmamalı) —
   // yükseklik kısıtlaması yalnızca <tr> ATTRIBUTE/STYLE düzeyinde, metnin
   // kendisi buildSimpleHtmlTable tarafından hiç kesilmiyor.
@@ -100,13 +127,17 @@ const rows = [
   console.log("compact Emsal Matrisi: <tr> minimum yukseklik (at-least, kirpmayan) testi tamam.");
 }
 
-// --- 3) compact:false (varsayılan) -> DİĞER tablolar ETKİLENMEMELİ ------
+// --- 3) compact:false (varsayılan) -> <tr> YÜKSEKLİK ZORLAMASI/dolgu -----
+// DEĞİŞMEZ (o kısım hâlâ yalnızca compact'e özel); ama satır-aralığı
+// düzeltmesi (mso-line-height-rule:exactly) TÜM çağrıları etkiliyor —
+// eksiklik ORADA da vardı, yalnızca Emsal Matrisi'nde fark edildi.
 {
   const html = fns.buildSimpleHtmlTable(headers, rows, "meta");
-  assert.ok(!html.includes("mso-height-rule"), "compact:false iken <tr>'lere HİÇBİR mso-height-rule EKLENMEMELİ (regresyon).");
+  assert.ok(!html.includes("mso-height-rule"), "compact:false iken <tr>'lere HİÇBİR satır-yüksekliği mso-height-rule EKLENMEMELİ (regresyon, <tr> düzeyi).");
   assert.ok(!html.includes('height="11"'), "compact:false iken height=\"11\" attribute'ü EKLENMEMELİ.");
   assert.ok(!html.includes("padding:0.7pt 1.2pt;"), "compact:false iken sıkılaştırılmış compact dolgu KULLANILMAMALI.");
-  console.log("compact:false (diger tablolar): degismedi REGRESYON testi tamam.");
+  assert.ok(html.includes("line-height:8pt;mso-line-height-rule:exactly;"), "compact:false (dar tablo) iken de nokta-birimli line-height + mso-line-height-rule:exactly OLMALI (bu düzeltme TÜM çağrıları kapsar).");
+  console.log("compact:false (diger tablolar): satir yuksekligi/dolgu degismedi, satir araligi duzeltmesi UYGULANDI testi tamam.");
 }
 
 // --- 4) Kaynak metin: buildComparableMatrixWordTableHtml hâlâ compact ----

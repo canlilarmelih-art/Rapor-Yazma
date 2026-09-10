@@ -25530,8 +25530,25 @@ function buildSimpleHtmlTable(headers, rows, className = "", options = {}) {
   // çağrıları (Takyidat, İncelenen Belgeler, Hesaplanan Emsal vb.)
   // dokunulmadan kalır.
   const pad = compact ? "padding:0.7pt 1.2pt;" : isWide ? "padding:1.8pt 2.2pt;" : "padding:2.4pt 3pt;";
-  const lineHeight = compact ? "1" : "1.05";
-  const baseCell = `${border}${pad}vertical-align:top;line-height:${lineHeight};color:${ink};background:${surface};`;
+  const fontSize = compact ? "5.5pt" : isWide ? "6pt" : "7pt";
+  // Kullanıcı bildirimi (2026-09-10, ekran görüntüsüyle): kompakt satır
+  // yüksekliği düzeltmesinden (yukarıdaki <tr> yorumu) SONRA, Word
+  // çıktısında hücrelerin ÇOĞUNDA metnin hemen altında boş, sınırlı bir
+  // "boşluk" (fazladan bir satırmış gibi görünen) beliriyordu. Kök sebep:
+  // burada line-height BİRİMSİZ bir çarpan olarak veriliyordu (ör. "1"),
+  // ama Word (MSO) satır aralığını birimsiz CSS line-height'tan DEĞİL,
+  // NOKTA (pt) birimli bir değer + mso-line-height-rule:exactly'den okur
+  // — bu ikisi YOKSA Word kendi "Normal" stilinin varsayılan (genelde
+  // bizim küçük punto ayarımızdan ÇOK daha büyük) satır aralığını/boşluk
+  // ayarını kullanır. Dosyadaki DİĞER MSO-hedefli tablolar (ör.
+  // buildComparableValuationWordTableHtml, buildValuationSummaryWordTableHtml)
+  // ZATEN nokta-birimli line-height + mso-line-height-rule:exactly
+  // kullanıyor; yalnızca bu genel fonksiyon eksikti. Düzeltme: punto
+  // büyüklüğüne göre nokta-birimli bir satır aralığı + mso-line-height-
+  // rule:exactly eklendi — TÜM buildSimpleHtmlTable çağrıları (compact
+  // olsun olmasın) için, çünkü bu eksiklik hepsini etkiliyordu.
+  const lineHeightPt = compact ? "6.5pt" : isWide ? "7pt" : "8pt";
+  const baseCell = `${border}${pad}vertical-align:top;line-height:${lineHeightPt};mso-line-height-rule:exactly;color:${ink};background:${surface};`;
   const headerCell = `${baseCell}background:${surfaceMuted};color:${blue};font-weight:800;text-align:left;`;
   const emphasisCell = `${baseCell}background:${blueSoft};color:${blue};font-weight:900;`;
   const summaryCell = `${baseCell}background:#1f2a32;color:#ffffff;font-weight:900;`;
@@ -25552,7 +25569,6 @@ function buildSimpleHtmlTable(headers, rows, className = "", options = {}) {
       return `<td style="${cellStyle}">${formatWordCell(cell)}</td>`;
     }).join("")}</tr>`;
   }).join("");
-  const fontSize = compact ? "5.5pt" : isWide ? "6pt" : "7pt";
   return `<table class="${escapeHtml(classes.join(" "))}" style="border-collapse:collapse;width:100%;margin:${compact ? "3pt 0 12pt" : "5pt 0 12pt"};table-layout:${isWide ? "auto" : "fixed"};font-size:${fontSize};">
     <thead>${theadHtml}</thead>
     <tbody>${bodyHtml}</tbody>
