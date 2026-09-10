@@ -331,27 +331,56 @@ function main() {
     "buildingEntranceLevel bossa metin ESKİ jenerik sabit hali KORUMALI (dinamik kat adi YAZILAMAZ, veri yok)."
   );
 
-  // Kullanıcı talebi (2026-09-07): "Eğer Ana taşınmaz niteliği Arsa ise
-  // Kat mülkiyetine geçilmemiş olunması [olumsuz faktör], tekil ve çoğul
-  // raporlarda ekle."
-  const mainPropertyStillLand = calculateValueFactors(baseInput({
-    fields: { mainPropertyQuality: "Arsa" },
+  // Zemin Tipi Kat İrtifakı ise olumsuz; Ana Taşınmaz Niteliği bu kararı etkilemez.
+  const easementTitle = calculateValueFactors(baseInput({
+    fields: { groundType: "KatIrtifaki", mainPropertyQuality: "Kargir Apartman" },
   }));
   assert(
-    idsOf(mainPropertyStillLand.negative).includes("title-not-condominium"),
-    "Ana tasinmaz niteligi 'Arsa' ise 'Kat mulkiyetine gecilmemis olmasi' olumsuz faktor olarak gelmeli."
+    idsOf(easementTitle.negative).includes("title-not-condominium"),
+    "Zemin Tipi Kat Irtifakı ise olumsuz faktor gelmeli."
   );
   assert(
-    mainPropertyStillLand.negative.find((item) => item.id === "title-not-condominium")?.text === "Kat mülkiyetine geçilmemiş olması",
+    easementTitle.negative.find((item) => item.id === "title-not-condominium")?.text === "Kat mülkiyetine geçilmemiş olması",
     "Yeni faktorun metni tam olarak 'Kat mulkiyetine gecilmemis olmasi' olmali."
   );
-  const mainPropertyAlreadyCondominium = calculateValueFactors(baseInput({
-    fields: { mainPropertyQuality: "Kargir Apartman" },
+  ["KatIrtifaki", "Kat İrtifakı", "Katİrtifakı", "KAT IRTIFAKI"].forEach((groundType) => {
+    const variant = calculateValueFactors(baseInput({ fields: { groundType } }));
+    assert(
+      idsOf(variant.negative).includes("title-not-condominium"),
+      `Zemin Tipi '${groundType}' yazım varyantı Kat İrtifakı olarak algılanmalı.`
+    );
+  });
+  const horizontalSpecialFactors = calculateValueFactors(baseInput({
+    fields: {
+      ownershipType: "Yatay Kat İrtifakı",
+      groundType: "Kat İrtifakı",
+      landArea: "100000",
+      denominator: "1000",
+      share: "10",
+      unitPrivatePool: "Açık Yüzme Havuzu",
+      buildingFloorCounts: { normal: "5" },
+    },
+    tables: { unitFloors: [{ floor: "5. normal kat" }] },
+  }));
+  assert(!idsOf(horizontalSpecialFactors.negative).includes("unit-top-floor"), "Yatay kat irtifakında en üst kat olumsuz faktör olmamalı.");
+  assert(idsOf(horizontalSpecialFactors.positive).includes("title-large-land-share"), "Yatay kat irtifakında 750 m² üzeri arsa payı olumlu faktör olmalı.");
+  assert(idsOf(horizontalSpecialFactors.positive).includes("unit-private-pool"), "Yatay kat irtifakında özel havuz olumlu faktör olmalı.");
+  const mainPropertyQualityAlone = calculateValueFactors(baseInput({
+    fields: { mainPropertyQuality: "Arsa", groundType: "Kat Mülkiyeti" },
   }));
   assert(
-    !idsOf(mainPropertyAlreadyCondominium.negative).includes("title-not-condominium"),
-    "Ana tasinmaz niteligi 'Arsa' DEGILSE yeni faktor TETIKLENMEMELI."
+    !idsOf(mainPropertyQualityAlone.negative).includes("title-not-condominium"),
+    "Ana Taşınmaz Niteliği tek başına Arsa olduğunda yeni faktor tetiklenmemeli."
   );
+  [
+    "blok bazında konum olarak uygun değildir.",
+    "mimari olarak uygun değildir.",
+    "kullanım alanı olarak uygun değildir.",
+    "kullanım alanı ve mimari olarak uygun değildir.",
+  ].forEach((status) => {
+    const projectStatus = calculateValueFactors(baseInput({ fields: { projectSuitabilityStatus: status } }));
+    assert(idsOf(projectStatus.negative).includes("project-unsuitable-work"), `Proje durumu '${status}' olumsuz faktör üretmeli.`);
+  });
 
   const noElevatorUpper = calculateValueFactors(baseInput({
     fields: {

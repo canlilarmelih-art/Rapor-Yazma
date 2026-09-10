@@ -26,22 +26,19 @@
 
     if (fold(fields.titleOwnershipKind).includes("HISSE")) add("negative", "title-shared-ownership", "Hisseli olması", "titleOwnershipKind", "Mülkiyet");
     if (isCondominiumOwnership(fields.groundType)) add("positive", "title-condominium", "Kat mülkiyetli olması", "groundType", "Zemin Tipi");
-    // Kullanıcı talebi (2026-09-07): "Eğer Ana taşınmaz niteliği Arsa ise
-    // Kat mülkiyetine geçilmemiş olunması [olumsuz faktör olarak eklensin],
-    // tekil ve çoğul raporlarda ekle." — "Ana Taşınmaz Niteliği" (Tapu
-    // kaydındaki, ana gayrimenkulün TAMAMINI tarif eden nitelik alanı)
-    // hâlâ "Arsa" ise, üzerindeki yapı henüz kat mülkiyetine/kat irtifakına
-    // GEÇİRİLMEMİŞ demektir — bu, `title-condominium`'un (groundType'a
-    // bağlı, AYRI bir alan) TAM TERSİ değil, ONU TAMAMLAYAN ayrı bir
-    // gösterge (Ana Taşınmaz Niteliği hâlâ "Arsa" YAZIYORSA kat mülkiyeti
-    // kurulmamış olma OLASILIĞI yüksektir). "title-" öneki taşıdığından
-    // (bkz. app.js'teki isPerUnitValueFactorId) çoklu taşınmazlı
-    // raporlarda OTOMATİK olarak taşınmaz-bazında grup+atıf mimarisinden
-    // geçer — TÜM taşınmazlar AYNI Ana Taşınmaz'a (dolayısıyla AYNI
-    // niteliğe) sahipse jenerik "Taşınmazların kat mülkiyetine geçilmemiş
-    // olmaları" üretilir, herhangi bir ek kod GEREKMEZ.
-    if (fold(fields.mainPropertyQuality).includes("ARSA")) add("negative", "title-not-condominium", "Kat mülkiyetine geçilmemiş olması", "mainPropertyQuality", "Ana Taşınmaz Niteliği");
+    // Kat mülkiyeti olumlu, kat irtifakı ise olumsuz faktördür. Ana Taşınmaz
+    // Niteliği bu kararda kullanılmaz; çünkü aynı raporda Zemin Tipi ile
+    // çelişebilen ayrı bir tapu alanıdır.
+    if (isCondominiumEasement(fields.groundType)) add("negative", "title-not-condominium", "Kat mülkiyetine geçilmemiş olması", "groundType", "Zemin Tipi");
     if (hasOccupancyPermitDocument(tables.documents)) add("positive", "document-occupancy-permit", "Bulunduğu binanın Yapı Kullanma İzin Belgesi bulunması", "documents", "İncelenen Belgeler");
+
+    const horizontalEasement = isHorizontalCondominiumEasement(fields.ownershipType);
+    if (horizontalEasement && computeShareOfLandArea(fields) > 750) {
+      add("positive", "title-large-land-share", "Taşınmazın Hissesine düşen arsa Payının büyük olması", "share", "Arsa Payı");
+    }
+    if (horizontalEasement && isPrivatePool(fields.unitPrivatePool)) {
+      add("positive", "unit-private-pool", "Taşınmazın kendine ait özel açık yüzme ya da kapalı yüzme havuzunun bulunması", "unitPrivatePool", "Özel Havuz");
+    }
 
     if (hasPositiveElevator(fields.elevator)) add("positive", "building-elevator", "Taşınmazın asansörlü bir binada yer alması", "elevator", "Asansör");
     if (isNoLike(fields.elevator)) add("negative", "building-no-elevator", "Bulunduğu binada asansör bulunmaması", "elevator", "Asansör");
@@ -104,12 +101,16 @@
 
     const floorFactors = analyzeUnitFloorFactors(fields, tables);
     if (floorFactors.isMiddleFloor) add("positive", "unit-middle-floor", "Ara katta yer alıyor olması", "unitFloors", "Kat Konumu");
-    if (floorFactors.isTopFloor) add("negative", "unit-top-floor", "En üst katta yer alıyor olması", "unitFloors", "Kat Konumu");
-    if (floorFactors.basementOrGroundFloorText) add("negative", "unit-basement-ground-floor", floorFactors.basementOrGroundFloorText, "unitFloors", "Kat Konumu");
-    if (floorFactors.isNoElevatorUpperFloor) add("negative", "unit-no-elevator-upper-floor", "Asansörsüz binada üst kat konumuna bağlı erişilebilirlik dezavantajı bulunması", "unitFloors", "Kat Konumu");
+    if (!horizontalEasement && floorFactors.isTopFloor) add("negative", "unit-top-floor", "En üst katta yer alıyor olması", "unitFloors", "Kat Konumu");
+    if (!horizontalEasement && floorFactors.basementOrGroundFloorText) add("negative", "unit-basement-ground-floor", floorFactors.basementOrGroundFloorText, "unitFloors", "Kat Konumu");
+    if (!horizontalEasement && floorFactors.isNoElevatorUpperFloor) add("negative", "unit-no-elevator-upper-floor", "Asansörsüz binada üst kat konumuna bağlı erişilebilirlik dezavantajı bulunması", "unitFloors", "Kat Konumu");
 
     if (isNo(fields.staticSuitability)) add("negative", "document-static-unsuitable", "Statik uygunluğun olumsuz olması", "staticSuitability", "Statik Uygunluk");
     if (isYes(fields.projectDifference)) add("negative", "document-project-difference", "Tapu projesi ile belediye projesi arasında farklılık bulunması", "projectDifference", "Proje Farkı");
+    const projectStatusValues = [fields.projectSuitabilityStatus, fields.titleProjectSuitabilityStatus, fields.municipalityProjectSuitabilityStatus];
+    if (projectStatusValues.some(isProjectUnsuitable)) {
+      add("negative", "project-unsuitable-work", "Projeye aykırı imalatların bulunması", "projectSuitabilityStatus", "Proje Uygunluğu");
+    }
     if (isBuildingInspectionTerminated(fields.buildingInspectionContractActive)) add("negative", "document-building-inspection-terminated", "Yapı denetim sözleşmesinin fesihli olması", "buildingInspectionContractActive", "Yapı Denetim");
 
     if (isYes(fields.roadSetback)) add("negative", "planning-road-setback", "Taşınmazın yer aldığı parselin yola terki bulunması", "roadSetback", "Yola Terk");
@@ -234,6 +235,40 @@
     const text = fold(value);
     const compact = text.replace(/[^A-Z0-9]/g, "");
     return text.includes("KAT MULKIYET") || compact.includes("KATMULKIYET");
+  }
+
+  function isCondominiumEasement(value) {
+    const text = fold(value);
+    const compact = text.replace(/[^A-Z0-9]/g, "");
+    // fold() i/ı/İ harflerini aynılaştırır; boşluk ve yazım biçimi farkları
+    // compact değerinde etkisiz hale gelir (KatIrtifaki, Kat İrtifakı,
+    // Katİrtifakı vb.).
+    return compact === "KATIRTIFAKI";
+  }
+
+  function isHorizontalCondominiumEasement(value) {
+    const compact = fold(value).replace(/[^A-Z0-9]/g, "");
+    return compact === "YATAYKATIRTIFAKI";
+  }
+
+  function isPrivatePool(value) {
+    const text = fold(value).trim();
+    return text.includes("ACIK YUZME HAVUZU") || text.includes("KAPALI YUZME HAVUZU");
+  }
+
+  function isProjectUnsuitable(value) {
+    const text = fold(value).replace(/\s+/g, " ").trim();
+    return text.includes("UYGUN DEGIL") || text.includes("AYKIRI");
+  }
+
+  function computeShareOfLandArea(fields = {}) {
+    const explicit = parseNumber(fields.hissedeneDusenArsaPayi || fields.shareOfLandArea || fields.landShareArea);
+    if (Number.isFinite(explicit)) return explicit;
+    const area = parseNumber(fields.landArea);
+    const denominator = parseNumber(fields.denominator);
+    const share = parseNumber(fields.share);
+    if (!Number.isFinite(area) || !Number.isFinite(denominator) || !Number.isFinite(share) || denominator === 0) return NaN;
+    return (area / denominator) * share;
   }
 
   function hasOccupancyPermitDocument(rows) {

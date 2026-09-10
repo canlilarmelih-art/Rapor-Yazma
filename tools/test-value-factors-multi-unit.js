@@ -334,15 +334,15 @@ function idsOf(items) {
 
 // --- 8) YENİ "title-not-condominium" faktörü (2026-09-07 talebi): "title-" --
 // önekiyle çoklu-taşınmaz grup+atıf mimarisinden OTOMATİK geçer — ekstra
-// kod YAZILMADAN, TÜM taşınmazlar AYNI Ana Taşınmaz Niteliği'ne ("Arsa")
+// kod YAZILMADAN, TÜM taşınmazlar AYNI Zemin Tipi'ne ("Kat İrtifakı")
 // sahipse jenerik "Taşınmazların kat mülkiyetine geçilmemiş olmaları"
 // üretilmeli (0.0.654'ün iyelik-eki + 0.0.655'in "tüm taşınmazları
 // kapsayan grup → jenerik özne" ilkeleriyle TUTARLI).
 {
   const context = makeContext();
   withUnits(context, [
-    unit({ titleBlockName: "A", unitNo: "5", mainPropertyQuality: "Arsa" }),
-    unit({ titleBlockName: "A", unitNo: "8", mainPropertyQuality: "Arsa" }),
+    unit({ titleBlockName: "A", unitNo: "5", groundType: "KatIrtifaki", mainPropertyQuality: "Kargir Apartman" }),
+    unit({ titleBlockName: "A", unitNo: "8", groundType: "KatIrtifaki", mainPropertyQuality: "Kargir Apartman" }),
   ]);
   const baseInput = { fields: context.state.fields, tables: {}, disabledIds: [], manualPositive: [], manualNegative: [] };
   const result = context.calculateValueFactorsForAllTitleUnits(baseInput);

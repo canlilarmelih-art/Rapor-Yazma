@@ -1,14 +1,63 @@
 # Rapor Yazma Programı — Handoff Notu
 
-## 0.0.741 - 2026-09-10 - Yatay kat irtifakı: bağımsız bölüme özel havuz açıklaması
+## 0.0.749 - 2026-09-10 - İç hacim listesine Açık Mutfak eklendi
 
-- `Bağımsız Bölüm Özellikleri` bölümünde yalnızca mülkiyet türü `Yatay Kat İrtifakı` olduğunda görünen `Özel Havuz` seçimi eklendi: Yok, Açık Yüzme Havuzu, Kapalı Yüzme Havuzu.
-- Özel havuz bilgisi bağımsız bölüm açıklamasına `Taşınmazın kendine ait açık/kapalı yüzme havuzu bulunmaktadır.` cümlesiyle eklenir. Diğer mülkiyet türlerinde alan görünmez ve metne eklenmez.
-- Alan taşınmaz seviyesinde tutulur; çoklu raporlarda ortak site havuzu ile karışmadan ilgili bağımsız bölümün açıklamasına dahil edilir. Eski kayıtlar için değer boş/Yok kabulü korunur.
-- Yedek: `backups/before-private-pool-unit-description_2026-09-10_18-04-24` (`app.js`, `styles.css`, `index.html`). `index.html` app.js cache-buster `?v=20260910-1812` yapıldı.
-- Test: özel havuz yatay/dikey görünürlük ve açıklama testi eklendi; `node --check app.js`, `npm run check` ve tam `npm test` başarılı.
+- Bağımsız Bölüm iç hacim seçeneklerine konut raporları için `Açık Mutfak` eklendi.
+- İç hacim grup/sayım mantığı, “Açık Mutfak” değerini Mutfak grubunda tanır; diğer hacim kategorisine düşmez.
+- Yedek: `backups/before-open-kitchen-interior-option-2026-09-10_23-41-17`.
+- İlgili iç hacim testleri ve temel kontroller başarılı.
 
-## 0.0.740 - 2026-09-10 - Ana Gayrimenkul: blok/site bağımsız bölüm özeti
+## 0.0.748 - 2026-09-10 - Proje uygunluk seçenekleri olumsuz faktöre bağlandı
+
+- Proje uygunluk durumunda “blok bazında konum olarak uygun değildir”, “mimari olarak uygun değildir”, “kullanım alanı olarak uygun değildir” veya bunların birleşik varyantı seçildiğinde Değeri Etkileyen Faktörler'e tek bir `Projeye aykırı imalatların bulunması` olumsuz faktörü eklenir.
+- Aynı kontrol tapu/belediye ayrı proje alanları (`titleProjectSuitabilityStatus`, `municipalityProjectSuitabilityStatus`) için de geçerlidir.
+- Mevcut `projectDifference = Evet` kuralı korunur; iki farklı durum ayrı kaynak kayıtlarıdır.
+- Test: dört proje durum varyantı için otomatik faktör üretimi doğrulandı.
+- Yedek: `backups/before-project-status-negative-factor-2026-09-10_21-54-38`.
+
+## 0.0.747 - 2026-09-10 - Yatay kat irtifakı özel değer faktörleri
+
+- Yatay kat irtifakı raporlarında en üst kat, bodrum/zemin kat ve asansörsüz üst kat kaynaklı olumsuz faktörler gösterilmez.
+- Hissesine düşen arsa payı `(Yüzölçümü / Arsa Payda) × Arsa Payı` hesabıyla 750 m²'yi aşarsa olumlu “Taşınmazın Hissesine düşen arsa Payının büyük olması” faktörü eklenir.
+- `Özel Havuz` alanı açık veya kapalı yüzme havuzu olduğunda olumlu “Taşınmazın kendine ait özel açık yüzme ya da kapalı yüzme havuzunun bulunması” faktörü eklenir.
+- Yazım varyasyonları normalizasyonu korunur; yalnızca `Yatay Kat İrtifakı` mülkiyet türü bu yeni kuralları tetikler.
+- Test: `tools/test-value-factors-rules.js` genişletildi; temel kontroller başarılı.
+
+## 0.0.746 - 2026-09-10 - Kat İrtifakı yazım varyasyonları normalize edildi
+
+- `Zemin Tipi` değerleri `KatIrtifaki`, `Kat İrtifakı`, `Katİrtifakı` veya büyük/küçük harf farkıyla gelse de aynı şekilde tanınır.
+- `src/value-factors/value-factors-rules.js`: Türkçe `i/ı/İ` normalizasyonu ve boşluk/ayraç kaldırma sonrası tam `KATIRTIFAKI` eşleşmesi kullanılıyor.
+- Test: dört yazım varyantı için olumsuz “Kat mülkiyetine geçilmemiş olması” faktörü doğrulandı.
+- Yedek: `backups/before-ground-type-turkish-letter-normalization-2026-09-10_18-46-54`.
+
+## 0.0.745 - 2026-09-10 - Kat mülkiyeti/irtifakı değere etki eden faktör kuralı netleştirildi
+
+- Kullanıcı düzeltmesi: `Ana Taşınmaz Niteliği` artık bu faktör kararında kullanılmayacak. “Arsa” kelimesinin geçmesi veya alanın “Arsa” olması tek başına olumsuz faktör üretmez.
+- `src/value-factors/value-factors-rules.js`: `Zemin Tipi = Kat Mülkiyeti` olumlu “Kat mülkiyetli olması” faktörünü, `Zemin Tipi = Kat İrtifakı` olumsuz “Kat mülkiyetine geçilmemiş olması” faktörünü üretir. Kaynak her iki durumda da `Zemin Tipi`dir.
+- Testler güncellendi: `test-value-factors-rules.js` ve `test-value-factors-multi-unit.js`.
+- Yedek: `backups/before-exact-main-property-arsa-2026-09-10_18-40-45`.
+
+## 0.0.744 - 2026-09-10 - Arsa/Tarla raporlarında dört boş emsal sütunu
+
+- Kullanıcı: "Emsaller bölümünde konut raporlarında 4 emsal sütunu geliyor ancak arsa tarla raporlarında emsal sütunları gelmiyor; boş bir biçimde 4 adet emsal sütunu hangi gayrimenkul türü olursa olsun gelmeli."
+- Kök neden: `getComparableRowsForView()` arsa/tarla görünümünde yalnızca niteliği arsa/tarla/meyve bahçesi olan satırları geçiriyordu. Başlangıçtaki dört boş varsayılan satır herhangi bir türe ait olmadığı için filtreleniyor ve tablo ancak "Emsal ekle" sonrasında görünüyordu.
+- `app.js`: `getComparableRows()` artık eski/kaydedilmiş `comparables: []` durumunu da dört boş satıra tamamlıyor; boş varsayılan emsal satırları `residential`, `land` ve `all` görünümlerinde filtrelenmiyor. Böylece her gayrimenkul türünde matris başlangıçta dört boş sütunla açılıyor. Dolu emsal niteliği filtrelemesi korunuyor.
+- `tools/test-comparable-nature-filter.js`: arsa/tarla görünümünde boş varsayılan satırın ve konut/yapı görünümünde boş satırın korunmasını doğrulayan test eklendi.
+- Yedek: `backups/before-comparable-default-columns-2026-09-10_18-32-51`.
+
+## 0.0.743 - 2026-09-10 - Tüm şablonlar tarandı: isbankasi.html'de de AYNI Emsal Matrisi sorunu bulundu, düzeltildi
+
+- Kullanıcı talebi: "mevcut tüm template dosyalarını tara. burada emsal matrisi tablosunda yaşadığımız sorunu yaşadığımız soruna sahip tabloları tespit et ve bunları aynı mantık ile düzelt."
+- `templates/*.html` (12 dosya) taranıp `.word-table` sınıfı (app.js'in ürettiği dinamik tabloların — Emsal Matrisi/Malikler/Takyidat/Tapu Özeti vb. — ortak sınıfı) kullanan/kullanmayan ayrımı yapıldı:
+  - 9 şablon (`akbank`, `halkbank`, `kuveytturk`, `kuveytturk-arsa-arazi`, `vakifbank`, `vakifkatilim`, `yapikredi`, `ziraat`, `ziraat-arsa-arazi`) 0.0.735'te ZATEN düzeltilmişti.
+  - **`isbankasi.html` GÖZDEN KAÇMIŞ** — bu şablonda da `{{EMSAL_MATRISI}}` token'ı VAR (5. "EMSALLER SEKMESİ"), ve AYNI eksik `mso-padding-alt`/`mso-line-height-rule`/satır yüksekliği sorununa sahip. 0.0.735'teki tarama yalnızca "EMSALMATRISI" (bitişik) dizesini arıyordu — `isbankasi.html`'in ALT ÇİZGİLİ yazımı (`EMSAL_MATRISI`) bu metin taramasında GÖRÜNMEDİ (foldTokenName() token ÇÖZÜMLEMESİ için alt çizgiyi yok sayar, ama önceki taramanın kendisi salt metin arşivlemesiydi).
+  - `isbankasi-masraf.html` (düz bir ücret yazısı) ve `ziraat-ek-tablo.html` (statik/elle doldurulan tek tablo, `.word-table` sınıfı HİÇ kullanmıyor) — bu ikisi gerçekten kapsam dışı, dokunulmadı.
+- `isbankasi.html`'in `.word-table th/td` (taban) ve `.pg-section table.meta td, .pg-section .word-table td/th` (özgül) kurallarına, diğer 9 şablonla AYNI teknikle `mso-padding-alt` + nokta-birimli `line-height`+`mso-line-height-rule: exactly` eklendi; yeni bir `.pg-section .word-table tr { height: 0.55cm; mso-height-source: userset; mso-height-rule: at-least; }` satır-yüksekliği kuralı eklendi (0.55cm, kullanıcının GERÇEK Word testiyle onayladığı aynı değer).
+- Test: `tools/test-bank-template-word-table-css-mso-padding.js` güncellendi — `isbankasi` artık 10 şablonluk kontrol listesinde; eski (yanlış) "isbankasi.html'e dokunulmamalı" varsayımı kaldırılıp yerine gerçekten `.word-table` KULLANMAYAN 2 şablonun (`isbankasi-masraf`, `ziraat-ek-tablo`) doğru kontrolü eklendi. Geçici geri alma (`git stash`) ile `isbankasi.html`'de gerçekten başarısız olduğu kanıtlanıp geri konuldu.
+- `npm run check` ve tam `npm test` (186 test) başarılı. `app.js`/`styles.css`/`src/**` DEĞİŞMEDİ — cache-buster bump GEREKMEDİ (şablon dosyaları sunucu tarafında her render isteğinde diskten okunur).
+- Canlı tarayıcı testi yapılamadı. Kullanıcının İş Bankası şablonuyla gerçek bir Word çıktısı alıp Emsal Matrisi (ve varsa diğer `.word-table` tabloların) artık sıkışık göründüğünü doğrulaması gerekiyor.
+
+## 0.0.742 - 2026-09-10 - Ana Gayrimenkul: blok/site bağımsız bölüm özeti
 
 *(Not: bu girdi eşzamanlı çalışan başka bir oturuma ait; bu commit'e dahil DEĞİL, o oturum kendi işini commit ettiğinde numara/tarih teyit edilmeli.)*
 
@@ -19,6 +68,24 @@
 - Yedek: `backups/before-building-block-summary_2026-09-10_17-54-05` (`app.js`, `styles.css`, `index.html`).
 - Doğrulama: `node --check app.js`, `npm run check` ve tam `npm test` başarılı.
 - Canlıya gönderilmedi; kullanıcı ayrıca isterse deploy yapılacak.
+
+## 0.0.741 - 2026-09-10 - Yatay kat irtifakı: bağımsız bölüme özel havuz açıklaması
+
+- `Bağımsız Bölüm Özellikleri` bölümünde yalnızca mülkiyet türü `Yatay Kat İrtifakı` olduğunda görünen `Özel Havuz` seçimi eklendi: Yok, Açık Yüzme Havuzu, Kapalı Yüzme Havuzu.
+- Özel havuz bilgisi bağımsız bölüm açıklamasına `Taşınmazın kendine ait açık/kapalı yüzme havuzu bulunmaktadır.` cümlesiyle eklenir. Diğer mülkiyet türlerinde alan görünmez ve metne eklenmez.
+- Alan taşınmaz seviyesinde tutulur; çoklu raporlarda ortak site havuzu ile karışmadan ilgili bağımsız bölümün açıklamasına dahil edilir. Eski kayıtlar için değer boş/Yok kabulü korunur.
+- Yedek: `backups/before-private-pool-unit-description_2026-09-10_18-04-24` (`app.js`, `styles.css`, `index.html`). `index.html` app.js cache-buster `?v=20260910-1812` yapıldı.
+- Test: özel havuz yatay/dikey görünürlük ve açıklama testi eklendi; `node --check app.js`, `npm run check` ve tam `npm test` başarılı.
+
+## 0.0.740 - 2026-09-10 - İncelenen Belgeler tablosu da "exactly" ile gerçekten sıkıştırıldı
+
+- Kullanıcı, Emsal Matrisi'ndeki satır yüksekliği düzeltmesinden sonra "0,55 yüksekliği diğer hangi tablolara uygulayabiliriz. mesela takyidat tablosuna uygulayabilir miyiz" diye sordu. Yanıt: Takyidat'a UYGULANMAMALI — "Açıklama" sütunu sık sık birden fazla satıra yayılan uzun serbest metin içeriyor, "exactly" bunu kırpar/üst üste bindirir (Emsal Matrisi'nin textarea alanları için aynı nedenle kaçınıldığı gibi). Güvenli aday olarak İncelenen Belgeler tablosunu (kısa/tek satırlık alanlar, textarea yok) önerdim; kullanıcı "incelenen belgeler tablosunu yap. önce" dedi.
+- `buildCompactReportWordTableHtml()`'e (Takyidat VE İncelenen Belgeler'in PAYLAŞTIĞI fonksiyon) yeni bir `options.rowHeightRule` parametresi eklendi — varsayılan hâlâ `"at-least"` (Takyidat çağrıları hiçbir şey geçirmiyor, DEĞİŞMEDEN kalıyor). `buildReviewedDocumentsWordTableHtml()` artık `rowHeightRule: "exactly"` geçiriyor — Emsal Matrisi'nde kanıtlanan aynı mekanizmayla (Word'ün kendi "gereken yükseklik" hesabını bypass eden "exactly") satırlar gerçekten zorunlu tutuluyor.
+- Bilerek yükseklik DEĞERLERİ (0.66cm başlık / 0.6cm gövde) DEĞİŞTİRİLMEDİ — bu, ilk (en düşük riskli) adım: Emsal Matrisi'nde olduğu gibi bu tabloda henüz gerçek Word geri bildirimiyle ince ayar yapılmadı, önce mevcut sayıyı GERÇEKTEN zorunlu kılmak yeterli. Kullanıcı gerçek çıktıyı görüp isterse (Emsal Matrisi'nde 0.28→0.4→0.55cm turlarında olduğu gibi) değer ayarlanabilir.
+- Test: yeni `tools/test-reviewed-documents-table-compact-height.js` — varsayılanın hâlâ `at-least` olduğunu, `rowHeightRule:"exactly"` verildiğinde TÜM satırların (başlık + gövde + `__section`) `exactly` aldığını ama yükseklik DEĞERLERİNİN değişmediğini, `buildReviewedDocumentsWordTableHtml()`'in `exactly` geçirdiğini, `buildTakyidatWordTableHtml()`/`buildTakyidatCategoryUnitsSummaryTableHtml()`'in `rowHeightRule` HİÇ geçirmediğini (Takyidat'a SIZMADIĞINI) doğrular. Mevcut `tools/test-bank-templates.js`'teki satır-yüksekliği kaynak-metni kontrolü, artık parametrik `` `mso-height-rule:${rowHeightRule};` `` biçimine göre güncellendi.
+- `npm run check` ve tam `npm test` (186 test) başarılı. `index.html`'de `app.js` cache-buster'ı `?v=20260910-1817`'ye yükseltildi.
+- **Not:** bu turda da `app.js`'te AYNI ANDA çalışan İKİ ayrı ilgisiz oturumun (biri "Ana Gayrimenkul: blok/site bağımsız bölüm özeti", diğeri "Yatay kat irtifakı: özel havuz açıklaması") commit edilmemiş değişiklikleri vardı — `git diff` hunk'ları ayrıştırılıp yalnızca BU değişikliğe ait izole bir patch çıkarılıp uygulandı; diğer oturumların değişiklikleri (ve onlara ait `tools/test-unit-interior-description.js` güncellemesi) `git stash`'te bırakılıp dokunulmadı.
+- Canlı tarayıcı testi yapılamadı. Kullanıcının gerçek bir Word çıktısı alıp İncelenen Belgeler tablosunun satırlarının artık gerçekten sıkıştığını doğrulaması gerekiyor.
 
 ## 0.0.739 - 2026-09-10 - Emsal Matrisi: "Alan" sütunu %25 genişletildi
 
