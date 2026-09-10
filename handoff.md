@@ -1,5 +1,13 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.729 - 2026-09-10 - Tapu/Belediye proje alanı tekrarının giderilmesi
+
+- `Belgeler ve Proje` formunda proje alanlarını oluşturan bileşik kontrol artık yalnızca `projectType` alanını tek giriş noktası olarak kullanıyor.
+- `titleProjectType` alanının ikinci giriş noktası olarak yeniden aynı kontrolü eklemesi engellendi; Tapu ve Belediye proje satırları artık bir kez görünür.
+- Mevcut proje tarih, numara ve tür değerleri korunur; yalnızca mükerrer görsel alan kaldırıldı.
+- Değişiklik öncesi yedek: `backups/before-duplicate-project-fields-fix_2026-09-10_10-06-21`.
+- `npm run check`, belgeler blok gruplama ve belgeler özet tablo regresyon testleri başarılı.
+
 ## 0.0.728 - 2026-09-10 - Çevresel bölge türü filtresinin admin görünümünde korunması
 
 - `Çevresel Özellik Bölge Türü` seçimine bağlı ticari ve tarımsal alanlar artık admin kullanıcıda da filtrelenir.

@@ -6167,7 +6167,11 @@ function createForm(section) {
     }
 
     if (section.id === "documents" && isProjectDetailFieldKey(field.key)) {
-      if (field.key === "projectType" || field.key === "titleProjectType") {
+      // `projectType` is the single anchor for this composite control. The
+      // legacy field order still contains `titleProjectType` later in the
+      // declaration; using it as a second anchor rendered the complete
+      // Tapu/Belediye grid twice when project comparison was enabled.
+      if (field.key === "projectType") {
         form.append(createProjectDetailsGrid(section));
       }
       return;
