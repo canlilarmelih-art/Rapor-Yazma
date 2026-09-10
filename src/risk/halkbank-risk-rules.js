@@ -91,13 +91,15 @@
     if (isBuildingInspectionTerminated(fields)) add("101K", "Yapı denetim sözleşmesi fesihli/aktif değil olarak işaretlendi.");
     if (isExternalAppointment(fields.appointmentType)) {
       add("108A", "Randevu türü dışarıdan ekspertiz olarak seçildi.");
-      add("129A", "Dışarıdan ekspertizde konum/yön tespiti riski için otomatik eklendi.");
+      add("129B", "Dışarıdan ekspertizde bağımsız bölüm konumunun kısmen tespit edilebilmesi riski için otomatik eklendi.");
     }
     if (isNo(fields.staticSuitability)) add("109B", "Statik uygunluk Hayır olarak seçildi.");
     if (isYes(fields.projectDifference)) add("109E", "Tapu projesi ile belediye projesi arasında fark var olarak seçildi.");
     if (encumbrance.ownerPresenceRestriction) add("16B", "Malik/ilgili gelmeden işlem yapılamaz beyanı bulundu.");
     if (encumbrance.saleToExecution) {
-      add(encumbrance.saleToExecutionByHalkbank ? "18A" : "18B", encumbrance.saleToExecutionByHalkbank
+      const halkbankExecutionSale = encumbrance.saleToExecutionByHalkbank
+        || (encumbrance.hasIikArt150cAnnotation && encumbrance.hasHalkbankMortgage);
+      add(halkbankExecutionSale ? "18A" : "18B", halkbankExecutionSale
         ? "Satışa arz şerhi Halkbank ipoteğiyle birlikte bulundu."
         : "Satışa arz şerhi Halkbank dışı kişi/kurumla ilişkilendirildi.");
     }

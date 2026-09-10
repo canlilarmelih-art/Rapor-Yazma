@@ -85,7 +85,7 @@ function main() {
     manualCodes: ["36A"],
     disabledCodes: ["109E"],
   }));
-  assertDeepEqual(codesOf(projectAndInspection), ["3A", "36A", "101B", "101K", "108A", "109B", "129A"], "Belge/proje ve manuel/pasif kuralları");
+  assertDeepEqual(codesOf(projectAndInspection), ["3A", "36A", "101B", "101K", "108A", "109B", "129B"], "Belge/proje ve manuel/pasif kuralları");
 
   assertDeepEqual(sortHalkbankRiskCodes(["110A", "1B", "36A", "2E", "0"]), ["0", "1B", "2E", "36A", "110A"], "Kod sıralaması");
 
@@ -156,11 +156,10 @@ function main() {
       ],
     },
   }));
-  // Not: 18A/18B mevcut (DEĞİŞTİRİLMEMİŞ) mantığa göre AYNI şerh satırının
-  // metninde "HALK" gecmedigi icin 18B doner (Halkbank sinyali burada
-  // yalnizca 126D'nin kendi kontrolunde, İpotekler tablosundan ayrı
-  // okunuyor) - 126D 18B ile BİRLİKTE, onun YERİNE değil EK olarak eklenir.
-  assertDeepEqual(codesOf(iikTakip), ["1A", "18B", "126D"], "İİK 150/c + Halkbank ipoteği -> 126D (18B ile BİRLİKTE, 126D bunun YERİNE değil EK).");
+  // İİK 150/c şerhinin metninde banka adı bulunmasa da ayrı ipotekler
+  // tablosundaki Halkbank kaydı 18A için yeterli sinyaldir; 126D ayrıca
+  // takip çalışması riskini belirtir.
+  assertDeepEqual(codesOf(iikTakip), ["1A", "18A", "126D"], "İİK 150/c + Halkbank ipoteği -> 18A ve 126D");
 
   // Regresyon: İİK 150/c şerhi VAR ama Halkbank ipoteği YOKSA 126D
   // eklenmemeli (yalnızca başka bankanın ipoteği).

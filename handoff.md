@@ -1,5 +1,12 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.722 - 2026-09-10 - Halkbank risk kodu kuralları
+
+- İİK 150/c şerhi ile ayrı ipotek tablosunda Halkbank ipoteği birlikte bulunduğunda satışa arz kodu artık `18A` seçiliyor; `126D` takip kodu ayrıca korunuyor.
+- Randevu türü `Dışarıdan ekspertiz` olduğunda konum riski artık `129B` olarak seçiliyor.
+- Halkbank risk regresyon testi güncellendi ve temel kontroller başarılı.
+- Değişiklik öncesi yedek: `backups/before-halkbank-risk-code-update_2026-09-10_08-09-58`.
+
 ## 0.0.721 - 2026-09-10 - Bulut state migration akışının merkezileştirilmesi
 
 - Buluttan rapor yüklenirken genel state normalizasyonu artık bölüm açılmasını beklemeden çalışıyor.
