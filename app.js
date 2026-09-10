@@ -25507,8 +25507,31 @@ function buildSimpleHtmlTable(headers, rows, className = "", options = {}) {
   const surface = getReportThemeToken("--surface", "#ffffff");
   const surfaceMuted = getReportThemeToken("--surface-muted", "#eef2fa");
   const border = `border:1pt solid ${line};`;
-  const pad = compact ? "padding:1pt 1.6pt;" : isWide ? "padding:1.8pt 2.2pt;" : "padding:2.4pt 3pt;";
-  const baseCell = `${border}${pad}vertical-align:top;line-height:1.05;color:${ink};background:${surface};`;
+  // Kullanıcı talebi (2026-09-10, ekran görüntüsüyle): Emsal Matrisi
+  // (buildComparableMatrixWordTableHtml -> burası, compact:true) Word
+  // çıktısında satırlar CSS'in (padding/line-height) öngördüğünden ÇOK
+  // daha uzun görünüyordu — kök sebep, Word'ün (MSO) satır yüksekliğini
+  // <td>/<th> üzerindeki CSS padding/line-height'tan DEĞİL, <tr>'ye
+  // ayrıca eklenmesi gereken mso-height-rule:exactly'den okuması; bu
+  // dosyadaki DİĞER "tek sayfaya sığmalı" tablolar (ör.
+  // buildComparableValuationWordTableHtml, buildValuationSummaryWordTableHtml)
+  // zaten bu tekniği kullanıyor, yalnızca bu genel fonksiyon eksikti.
+  // Düzeltme: (1) compact dolgu/satır aralığı ~%30 daha da sıkılaştırıldı,
+  // (2) compact modda <tr>'lere gerçek sonucu Word'e ZORLAYAN açık bir
+  // minimum yükseklik eklendi — "mso-height-rule:exactly" DEĞİL, bilerek
+  // "at-least" seçildi: bu tablo "Konum Karşılaştırma Sebebi"/"Açıklama /
+  // Düzeltme"/"Emsal Metni" gibi UZUN metin (textarea, wide:true)
+  // satırları da içeriyor; "exactly" bu satırlarda metni KIRPARDI (bkz.
+  // yukarıdaki 22612/22616/22619 satırlarındaki AYNI "at-least" tercihi,
+  // benzer değişken-içerikli satırlar için). "at-least" kısa satırları
+  // (çoğunluk) sıkıştırırken uzun metin satırlarının gerektiği kadar
+  // büyümesine izin verir. Yalnızca compact:true (bugün itibarıyla TEK
+  // çağıran: Emsal Matrisi) etkilenir — diğer buildSimpleHtmlTable
+  // çağrıları (Takyidat, İncelenen Belgeler, Hesaplanan Emsal vb.)
+  // dokunulmadan kalır.
+  const pad = compact ? "padding:0.7pt 1.2pt;" : isWide ? "padding:1.8pt 2.2pt;" : "padding:2.4pt 3pt;";
+  const lineHeight = compact ? "1" : "1.05";
+  const baseCell = `${border}${pad}vertical-align:top;line-height:${lineHeight};color:${ink};background:${surface};`;
   const headerCell = `${baseCell}background:${surfaceMuted};color:${blue};font-weight:800;text-align:left;`;
   const emphasisCell = `${baseCell}background:${blueSoft};color:${blue};font-weight:900;`;
   const summaryCell = `${baseCell}background:#1f2a32;color:#ffffff;font-weight:900;`;
@@ -25516,11 +25539,12 @@ function buildSimpleHtmlTable(headers, rows, className = "", options = {}) {
   const classes = ["word-table"];
   if (isWide) classes.push("is-wide");
   classes.push(...classNames);
-  const theadHtml = `<tr>${headers.map((header) => `<th style="${headerCell}">${escapeHtml(header)}</th>`).join("")}</tr>`;
+  const compactRowAttrs = compact ? ' height="11" style="height:0.28cm;mso-height-source:userset;mso-height-rule:at-least;"' : "";
+  const theadHtml = `<tr${compactRowAttrs}>${headers.map((header) => `<th style="${headerCell}">${escapeHtml(header)}</th>`).join("")}</tr>`;
   const lastIndex = rows.length - 1;
   const bodyHtml = rows.map((row, rowIndex) => {
     const isSummaryRow = isSummaryLastRow && rowIndex === lastIndex;
-    return `<tr>${row.map((cell, cellIndex) => {
+    return `<tr${compactRowAttrs}>${row.map((cell, cellIndex) => {
       let cellStyle = baseCell;
       if (isSummaryRow) cellStyle = summaryCell;
       else if (isEmphasisFirstCol && cellIndex === 0) cellStyle = emphasisCell;

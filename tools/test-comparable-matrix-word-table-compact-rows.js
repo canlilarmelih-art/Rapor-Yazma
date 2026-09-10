@@ -1,0 +1,123 @@
+// Kullanıcı bildirimi (2026-09-10, ekran görüntüsüyle): "TEMPLATE ile
+// alınan word çıktılarında görseldeki emsaller tablosunda satır
+// yüksekliklerini %30 oranında kısaltalım. tek bir sayfaya sığmalı emsal
+// tablosu" — ekran görüntüsü buildComparableMatrixWordTableHtml()'in
+// ürettiği "Emsal Matrisi" tablosuydu (Alan | Emsal 1 | Emsal 2 | ...).
+//
+// Kök sebep: bu tablo buildSimpleHtmlTable(..., { compact: true }) ile
+// üretiliyor, ama compact modu yalnızca <td>/<th> üzerinde CSS
+// padding/line-height küçültüyordu — <tr>'ye ayrıca eklenmesi gereken
+// mso-height-source/mso-height-rule YOKTU. Word (MSO) satır yüksekliğini
+// CSS padding/line-height'tan DEĞİL, <tr>'deki bu MSO-özel stillerden
+// okur; bu dosyadaki DİĞER "tek sayfaya sığmalı" tablolar (ör.
+// buildComparableValuationWordTableHtml, buildValuationSummaryWordTableHtml)
+// zaten bu tekniği kullanıyordu, yalnızca bu genel fonksiyon eksikti —
+// bu yüzden CSS küçük olsa da Word'de satırlar OLMASI GEREKENDEN çok
+// daha uzun görünüyordu.
+//
+// Bu test kapsamı:
+//  1) compact:true iken (Emsal Matrisi'nin TEK kullanıcısı) hem başlık
+//     hem gövde <tr>'lerinde açık bir minimum yükseklik (mso-height-rule)
+//     olduğu doğrulanır.
+//  2) BİLEREK "exactly" DEĞİL "at-least" kullanıldığı doğrulanır — bu
+//     tablo "Konum Karşılaştırma Sebebi"/"Açıklama / Düzeltme"/"Emsal
+//     Metni" gibi UZUN metin (textarea) satırları da içeriyor; "exactly"
+//     bu satırlarda metni Word'de KIRPARDI.
+//  3) compact:false (varsayılan, DİĞER buildSimpleHtmlTable çağrıları —
+//     Takyidat/İncelenen Belgeler/Hesaplanan Emsal vb.) davranışının
+//     DEĞİŞMEDİĞİ — <tr>'lere herhangi bir yükseklik EKLENMEDİĞİ
+//     (regresyon kilidi) doğrulanır.
+//  4) buildComparableMatrixWordTableHtml() kaynak metninin hâlâ
+//     buildSimpleHtmlTable(..., "is-matrix", { compact: true }) çağırdığı
+//     (kablolama) doğrulanır.
+
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+
+const appSource = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
+
+function extractFunction(name) {
+  const marker = `function ${name}(`;
+  const start = appSource.indexOf(`\n${marker}`);
+  assert(start >= 0, `Fonksiyon bulunamadı: ${name}`);
+  const parenStart = appSource.indexOf("(", start);
+  let parenDepth = 0;
+  let cursor = parenStart;
+  for (; cursor < appSource.length; cursor += 1) {
+    const char = appSource[cursor];
+    if (char === "(") parenDepth += 1;
+    if (char === ")") {
+      parenDepth -= 1;
+      if (parenDepth === 0) break;
+    }
+  }
+  let index = appSource.indexOf("{", cursor);
+  let depth = 0;
+  for (; index < appSource.length; index += 1) {
+    const char = appSource[index];
+    if (char === "{") depth += 1;
+    if (char === "}") {
+      depth -= 1;
+      if (depth === 0) return appSource.slice(start + 1, index + 1);
+    }
+  }
+  throw new Error(`Fonksiyon gövdesi kapanmadı: ${name}`);
+}
+
+const functionNames = ["buildSimpleHtmlTable", "getReportThemeToken", "formatWordCell", "escapeHtml"];
+const sandboxSource = `
+  ${functionNames.map(extractFunction).join("\n")}
+  return { buildSimpleHtmlTable };
+`;
+// eslint-disable-next-line no-new-func
+const fns = new Function(sandboxSource)();
+
+const headers = ["Alan", "Emsal 1", "Emsal 2"];
+const rows = [
+  ["İrtibat", "Ali Bey", "Veli Bey"],
+  ["Enlem", "40.301190", "40.298161"],
+  ["Emsal Metni", "Çok uzun bir açıklama metni burada yer alacak ve Word'de birden fazla satıra sarabilir.", "İkinci emsalin de kendi uzun metni burada."],
+];
+
+// --- 1) + 2) compact:true -> her <tr>'de "at-least" minimum yükseklik ----
+{
+  const html = fns.buildSimpleHtmlTable(headers, rows, "is-matrix", { compact: true });
+  const trOpenTags = html.match(/<tr[^>]*>/g) || [];
+  assert.equal(trOpenTags.length, rows.length + 1, "Başlık + gövde satırı sayısı kadar <tr> olmalı.");
+  trOpenTags.forEach((tag, index) => {
+    assert.ok(tag.includes('height="11"'), `<tr> #${index} height=\"11\" içermeli: ${tag}`);
+    assert.ok(tag.includes("height:0.28cm"), `<tr> #${index} 0.28cm yükseklik içermeli: ${tag}`);
+    assert.ok(tag.includes("mso-height-source:userset"), `<tr> #${index} mso-height-source:userset içermeli: ${tag}`);
+    assert.ok(tag.includes("mso-height-rule:at-least"), `<tr> #${index} mso-height-rule:at-least içermeli (KIRPMASIN): ${tag}`);
+  });
+  assert.ok(!html.includes("mso-height-rule:exactly"), "compact Emsal Matrisi \"exactly\" KULLANMAMALI (uzun metin satırlarını kırpar).");
+  assert.ok(html.includes("padding:0.7pt 1.2pt;"), "compact hücre dolgusu sıkılaştırılmış olmalı.");
+  // Uzun metin hücresi HÂLÂ tam olarak içerikte yer almalı (kırpılmamalı) —
+  // yükseklik kısıtlaması yalnızca <tr> ATTRIBUTE/STYLE düzeyinde, metnin
+  // kendisi buildSimpleHtmlTable tarafından hiç kesilmiyor.
+  assert.ok(html.includes("Çok uzun bir açıklama metni burada yer alacak"), "Uzun metin içeriği eksiksiz kalmalı.");
+  console.log("compact Emsal Matrisi: <tr> minimum yukseklik (at-least, kirpmayan) testi tamam.");
+}
+
+// --- 3) compact:false (varsayılan) -> DİĞER tablolar ETKİLENMEMELİ ------
+{
+  const html = fns.buildSimpleHtmlTable(headers, rows, "meta");
+  assert.ok(!html.includes("mso-height-rule"), "compact:false iken <tr>'lere HİÇBİR mso-height-rule EKLENMEMELİ (regresyon).");
+  assert.ok(!html.includes('height="11"'), "compact:false iken height=\"11\" attribute'ü EKLENMEMELİ.");
+  assert.ok(!html.includes("padding:0.7pt 1.2pt;"), "compact:false iken sıkılaştırılmış compact dolgu KULLANILMAMALI.");
+  console.log("compact:false (diger tablolar): degismedi REGRESYON testi tamam.");
+}
+
+// --- 4) Kaynak metin: buildComparableMatrixWordTableHtml hâlâ compact ----
+// modunu kullanarak buildSimpleHtmlTable çağırıyor.
+{
+  const fnSource = extractFunction("buildComparableMatrixWordTableHtml");
+  assert.ok(
+    fnSource.includes('buildSimpleHtmlTable(headers, bodyRows, "is-matrix", { compact: true })'),
+    "buildComparableMatrixWordTableHtml() hâlâ buildSimpleHtmlTable(..., \"is-matrix\", { compact: true }) çağırmalı."
+  );
+  console.log("buildComparableMatrixWordTableHtml kaynak-duzeyi kablolama testi tamam.");
+}
+
+console.log("Emsal Matrisi Word tablosu: kompakt satir yuksekligi testleri basarili.");
