@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.737 - 2026-09-10 - Emsal Matrisi: "exactly" 0.28cm çok dardı, metinler çakışıyordu — 0.4cm'e çıkarıldı
+
+- Kullanıcı, 0.0.736'dan SONRA yeni bir ekran görüntüsü paylaştı: satırlar bu sefer gerçekten sıkışmıştı (mekanizma çalışıyordu, doğrulandı) AMA metinler satırlar arasında ÇAKIŞIYORDU — "şimdi de çok dar". Word'ün "Tablo Özellikleri" penceresi "Satır yüksekliği: Tam" (exactly) gösteriyordu, yani 0.0.736'nın "exactly" düzeltmesi gerçekten Word'e ulaşmıştı.
+- Kök sebep: `0.28cm`, hücre dolgusu + satır aralığı TOPLAMIYLA (0.7pt×2 + 6.5pt ≈ 7.9pt ≈ 0.279cm) neredeyse BİREBİR aynıydı — pratikte SIFIR pay/tolerans bırakıyordu. "exactly" satırı bu değere KESİN olarak sabitlediğinden, Word'ün gerçek font/hinting/subpiksel render farkları bu SIFIR payı aştığında metin KIRPILMAK yerine (Word tablo satırlarında overflow'u clip etmiyor) bir SONRAKİ satırın üzerine BİNİYORDU.
+- Düzeltme: satır yüksekliği `0.28cm` → `0.4cm`'e çıkarıldı (hem `app.js`'teki `buildSimpleHtmlTable()`'ın compact `<tr>` değeri, hem tutarlılık için 9 şablonun `.pg-section .word-table tr` (kuveytturk'te ayrıca `table.kt-list tr`) CSS kuralındaki aynı değer) — artık gerçek bir pay var (~%40, 0.4cm≈11.3pt vs ihtiyaç ~7.9pt). Hâlâ orijinal (sıkıştırma öncesi, ~22-30pt) satırların kabaca yarısı kadar kompakt, ama artık metin çakışmayacak kadar rahat.
+- Test: `tools/test-comparable-matrix-word-table-compact-rows.js`'teki `height="11"`/`height:0.28cm` beklentileri `height="15"`/`height:0.4cm`'e güncellendi.
+- `npm run check` ve tam `npm test` (185 test) başarılı. `index.html`'de `app.js` cache-buster'ı `?v=20260910-1742`'e yükseltildi.
+- Canlı tarayıcı testi yapılamadı. Bu BEŞİNCİ tur — kullanıcının gerçek bir Word çıktısı alıp hem satırların sıkışık kaldığını HEM DE metinlerin artık çakışmadığını doğrulaması gerekiyor.
+
 ## 0.0.736 - 2026-09-10 - Emsal Matrisi: "at-least" -> "exactly" (KANITLANMIŞ kök sebep, gerçek Word ekran görüntüsüyle)
 
 - Kullanıcı, 0.0.735'ten SONRA gerçek bir `.doc` dosyası GÖNDERDİ ve Word'ün kendi "Tablo Özellikleri > Satır" iletişim kutusunun ekran görüntüsünü paylaştı. Bu, saga boyunca ilk kez teoriden çıkıp GERÇEK KANITA dayanmayı mümkün kıldı.

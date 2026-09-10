@@ -25605,8 +25605,21 @@ function buildSimpleHtmlTable(headers, rows, className = "", options = {}) {
   classes.push(...classNames);
   // Başlık satırı ("Alan"/"Emsal N" gibi) her zaman kısa — asla
   // autoHeightRowLabels'a girmez, her zaman "exactly" alır.
-  const compactHeaderRowAttrs = compact ? ' height="11" style="height:0.28cm;mso-height-source:userset;mso-height-rule:exactly;"' : "";
-  const compactShortRowAttrs = ' height="11" style="height:0.28cm;mso-height-source:userset;mso-height-rule:exactly;"';
+  //
+  // Kullanıcı bildirimi (2026-09-10, BEŞİNCİ tur, "şimdi de çok dar" +
+  // Word'de satırlar arası metin ÇAKIŞIYORDU ekran görüntüsü): "exactly"
+  // mekanizmasının KENDİSİ artık kanıtlanmış şekilde çalışıyordu (bkz.
+  // bir önceki turun "Tablo Özellikleri" kanıtı), ama 0.28cm değeri
+  // dolgu+satır aralığı TOPLAMIYLA (1.4pt+6.5pt=7.9pt≈0.279cm) neredeyse
+  // BİREBİR aynıydı — pratikte SIFIR tolerans/pay bırakıyordu. Word'ün
+  // gerçek font/hinting/subpiksel render farkları bu payı aştığında,
+  // "exactly" metni KIRPMAK yerine ÜST ÜSTE BİNDİRİYOR (çakışan, okunmaz
+  // satırlar). Düzeltme: satır yüksekliği 0.28cm -> 0.4cm'e çıkarıldı —
+  // hâlâ orijinal (sıkıştırma öncesi, ~22-30pt/~0.8-1.1cm) satırların
+  // KABACA YARISI kadar kompakt, ama artık gerçek payla (0.4cm≈11.3pt
+  // vs ihtiyaç ~7.9pt, ~%40 pay).
+  const compactHeaderRowAttrs = compact ? ' height="15" style="height:0.4cm;mso-height-source:userset;mso-height-rule:exactly;"' : "";
+  const compactShortRowAttrs = ' height="15" style="height:0.4cm;mso-height-source:userset;mso-height-rule:exactly;"';
   const theadHtml = `<tr${compactHeaderRowAttrs}>${headers.map((header) => `<th style="${headerCell}">${escapeHtml(header)}</th>`).join("")}</tr>`;
   const lastIndex = rows.length - 1;
   const bodyHtml = rows.map((row, rowIndex) => {
