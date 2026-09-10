@@ -1,5 +1,11 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.720 - 2026-09-10 - Masraf panelinde yerel ücret tarifesi hydration
+
+- Masraf paneli oluşturulurken mevcut rapor state’inde geçerli ücret yoksa 2026 tarifesi doğrudan state’e uygulanıyor.
+- Böylece bulut senkronu gecikse veya mevcut rapor boş ücretlerle açılsa bile masraf inputları boş kalmıyor; admin hesabı onarılan değerleri buluta da kaydediyor.
+- Değişiklik öncesi yedek: `backups/before-expense-panel-state-hydration_2026-09-10_07-43-23`.
+
 ## 0.0.719 - 2026-09-09 - Sıfır/geçersiz ücret kaydının geri yüklenmesi
 
 - Buluttaki ortak masraf kaydı yalnızca boş değil, sıfır veya geçersiz değerlerden oluşuyorsa da bozuk kabul ediliyor.

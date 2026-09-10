@@ -100,6 +100,11 @@ function sliceFn(startMarker, { toMarker } = {}) {
   );
   assert.match(
     appSource,
+    /function ensureExpenseFeeDefaultsInState\(\)[\s\S]*?function createExpenseFeesSummaryPanel\(\)[\s\S]*?ensureExpenseFeeDefaultsInState\(\);/,
+    "Masraf paneli acilirken yerel state ucret tarifesiyle doldurulmali.",
+  );
+  assert.match(
+    appSource,
     /if \(!hasConfiguredExpenseFee\)[\s\S]*?EXPENSE_FEE_2026_DEFAULTS[\s\S]*?scheduleExpenseFeeCloudSave\(\)/,
     "Bos ortak masraf kaydi 2026 varsayilanlariyla geri yuklenmeli.",
   );

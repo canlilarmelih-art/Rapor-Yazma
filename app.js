@@ -21966,7 +21966,20 @@ function setExpenseFeeCloudSyncStatus(kind, message, lastSuccessAt = null) {
   });
 }
 
+function ensureExpenseFeeDefaultsInState() {
+  const hasConfiguredExpenseFee = EXPENSE_FEE_ADMIN_KEYS.some((key) => {
+    const numericValue = Number(String(state.fields[key] ?? "").replace(",", ".").trim());
+    return Number.isFinite(numericValue) && numericValue > 0;
+  });
+  if (hasConfiguredExpenseFee) return false;
+  Object.entries(EXPENSE_FEE_2026_DEFAULTS).forEach(([key, value]) => { state.fields[key] = value; });
+  saveState();
+  if (isCurrentUserAdmin()) scheduleExpenseFeeCloudSave();
+  return true;
+}
+
 function createExpenseFeesSummaryPanel() {
+  ensureExpenseFeeDefaultsInState();
   // Yeni bir taslak (Yeni İş) açıldığında admin masraf sabitleri (KDV oranı,
   // birim ücretler, tarife tablosu) state'ten kaybolabilir; buluttan tekrar
   // çekilmezse bu panel her zaman boş görünür. Bir kez yeniden dener.
