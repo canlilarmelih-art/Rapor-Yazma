@@ -25529,7 +25529,21 @@ function buildSimpleHtmlTable(headers, rows, className = "", options = {}) {
   // çağıran: Emsal Matrisi) etkilenir — diğer buildSimpleHtmlTable
   // çağrıları (Takyidat, İncelenen Belgeler, Hesaplanan Emsal vb.)
   // dokunulmadan kalır.
-  const pad = compact ? "padding:0.7pt 1.2pt;" : isWide ? "padding:1.8pt 2.2pt;" : "padding:2.4pt 3pt;";
+  const padValues = compact ? ["0.7pt", "1.2pt"] : isWide ? ["1.8pt", "2.2pt"] : ["2.4pt", "3pt"];
+  const [padTop, padSide] = padValues;
+  // Kullanıcı bildirimi (2026-09-10, ÜÇÜNCÜ ekran görüntüsü — "düzelmemiş
+  // ki hala boşluk var"): önceki iki düzeltmeden (<tr> yüksekliği +
+  // line-height/mso-line-height-rule) SONRA bile satırlar hâlâ çok
+  // yüksekti. Kök sebep: Word (MSO), hücre iç boşluğunu (padding) da
+  // standart CSS `padding`'ten DEĞİL, kendi `mso-padding-alt` özelliğinden
+  // okur — bu YOKSA kendi VARSAYILAN (bizim küçük değerimizden ÇOK daha
+  // büyük) hücre kenar boşluğunu kullanır. Dosyadaki DİĞER MSO-hedefli
+  // tablolar (buildComparableValuationWordTableHtml, buildValuationSummaryWordTableHtml,
+  // ~satır 12098/22604) ZATEN mso-padding-alt kullanıyordu; yalnızca bu
+  // genel fonksiyon eksikti (satır yüksekliği + satır aralığı
+  // düzeltmelerinin ikisi de DOĞRUYDU ama Word'ün büyük varsayılan
+  // hücre kenar boşluğunu YENEMEDİ — bu üçüncü, eksik parçaydı).
+  const pad = `padding:${padTop} ${padSide};mso-padding-alt:${padTop} ${padSide} ${padTop} ${padSide};`;
   const fontSize = compact ? "5.5pt" : isWide ? "6pt" : "7pt";
   // Kullanıcı bildirimi (2026-09-10, ekran görüntüsüyle): kompakt satır
   // yüksekliği düzeltmesinden (yukarıdaki <tr> yorumu) SONRA, Word

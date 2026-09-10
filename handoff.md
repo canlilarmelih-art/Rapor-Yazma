@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.734 - 2026-09-10 - Emsal Matrisi Word çıktısında satırlar hâlâ yüksekti — üçüncü ve gerçek eksik parça bulundu
+
+- Kullanıcı, bir önceki düzeltmeden (0.0.733) SONRA yine gerçek bir Word çıktısı ekran görüntüsü paylaşıp "düzelmemiş ki hala boşluk var görmüyor musun" dedi — bu sefer boşluk artık ayrı, sınır çizgili bir şerit değil, HER satırın kendisinin hâlâ (metnin gerektirdiğinden çok) yüksek olmasıydı.
+- İlk iki düzeltme (0.0.732: `<tr>` satır yüksekliği zorlaması; 0.0.733: nokta-birimli `line-height` + `mso-line-height-rule:exactly`) GEREKLİYDİ ama TEK BAŞINA YETMEDİ — üçüncü, gerçek eksik parça bulundu: `buildSimpleHtmlTable()`'ın hücre stilinde `padding` yalnızca STANDART CSS özelliği olarak veriliyordu. Word (MSO), hücre iç boşluğunu standart CSS `padding`'ten DEĞİL, kendi `mso-padding-alt` özelliğinden okur — bu YOKSA kendi (bizim küçük değerlerimizden çok daha büyük) varsayılan hücre kenar boşluğunu kullanır ve satırlar hep şişkin kalır. Dosyadaki DİĞER MSO-hedefli tablolar (`buildComparableValuationWordTableHtml`, `buildValuationSummaryWordTableHtml` ve iki tane daha, ~satır 12098/22604) ZATEN `mso-padding-alt` kullanıyordu; yalnızca bu genel `buildSimpleHtmlTable()` fonksiyonu eksikti.
+- Düzeltme: her punto katmanı için `padding` ile BİREBİR aynı değerlerle bir `mso-padding-alt` eklendi (compact: `0.7pt 1.2pt 0.7pt 1.2pt`, dar/wide: `1.8pt 2.2pt 1.8pt 2.2pt`, normal: `2.4pt 3pt 2.4pt 3pt`) — `buildSimpleHtmlTable()`'ın TÜM çağrılarını (compact olsun olmasın) kapsar, aynı 0.0.733'teki gerekçeyle: eksiklik hepsini etkiliyordu, yalnızca Emsal Matrisi'nde (en küçük/sıkışık punto olduğu için, oransal olarak fazla dolgu en görünür olduğundan) fark edilir hale gelmişti.
+- Test: `tools/test-comparable-matrix-word-table-compact-rows.js`'e yeni doğrulamalar eklendi — compact VE compact-olmayan modda `mso-padding-alt`'ın `padding` ile AYNI değerlerle mevcut olduğu doğrulanır.
+- `npm run check` ve tam `npm test` (184 test) başarılı; `index.html`'de `app.js` cache-buster'ı `?v=20260910-1659`'a yükseltildi.
+- Canlı tarayıcı testi yapılamadı (Word'ün kendi HTML render motoruna özgü davranış). Kullanıcının gerçek bir banka şablonu Word çıktısı alıp Emsal Matrisi satırlarının bu SEFER GERÇEKTEN sıkışık göründüğünü doğrulaması gerekiyor — üç ayrı düzeltme turu olduğundan bu doğrulama özellikle önemli.
+
 ## 0.0.733 - 2026-09-10 - Emsal Matrisi Word çıktısındaki hücrelerin altındaki fazladan boşluk kaldırıldı
 
 - Kullanıcı, bir önceki düzeltmeden (0.0.732, satır yüksekliği sıkıştırma) SONRA alınan yeni bir ekran görüntüsünde bildirdi: Emsal Matrisi tablosunda birçok hücrenin (İrtibat/Telefon/Emsal Niteliği/Eşyalı/Emsal Durumu/Nitelik vb.) hemen altında, kendi sınır çizgisiyle ayrılmış boş bir şerit görünüyordu — "bu boşlukları istemiyorum".

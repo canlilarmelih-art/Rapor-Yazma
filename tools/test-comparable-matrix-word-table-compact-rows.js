@@ -29,6 +29,17 @@
 // kullanıyordu, yalnızca bu genel fonksiyon eksikti. Düzeltme TÜM
 // buildSimpleHtmlTable çağrılarını (compact olsun olmasın) kapsar.
 //
+// İKİNCİ TAKİP bildirimi (2026-09-10, ÜÇÜNCÜ ekran görüntüsü —
+// "düzelmemiş ki hala boşluk var görmüyor musun"): ilk iki düzeltmeden
+// sonra bile satırlar hâlâ ÇOK yüksekti. Kök sebep: Word (MSO), hücre iç
+// boşluğunu standart CSS `padding`'ten DEĞİL, kendi `mso-padding-alt`
+// özelliğinden okur — bu YOKSA kendi (bizim küçük değerimizden ÇOK daha
+// büyük) varsayılan hücre kenar boşluğunu kullanır. Dosyadaki DİĞER MSO
+// tabloları ZATEN mso-padding-alt kullanıyordu; yalnızca bu genel
+// fonksiyon eksikti — bu ÜÇÜNCÜ, gerçekten eksik parçaydı (ilk ikisi
+// GEREKLİYDİ ama TEK BAŞINA YETMEDİ). Düzeltme de TÜM buildSimpleHtmlTable
+// çağrılarını kapsar.
+//
 // Bu test kapsamı:
 //  1) compact:true iken (Emsal Matrisi'nin TEK kullanıcısı) hem başlık
 //     hem gövde <tr>'lerinde açık bir minimum yükseklik (mso-height-rule)
@@ -48,6 +59,9 @@
 //     birimli + mso-line-height-rule:exactly olduğu, ASLA birimsiz bir
 //     çarpan olmadığı doğrulanır (yukarıdaki İKİNCİ bildirimin kök
 //     sebebine karşı regresyon kilidi).
+//  6) her iki modda hücre dolgusunun mso-padding-alt'ı da (padding ile
+//     AYNI değerlerle) içerdiği doğrulanır (yukarıdaki ÜÇÜNCÜ bildirimin
+//     kök sebebine karşı regresyon kilidi).
 
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -111,6 +125,16 @@ const rows = [
   });
   assert.ok(!html.includes("mso-height-rule:exactly"), "compact Emsal Matrisi \"exactly\" KULLANMAMALI (uzun metin satırlarını kırpar).");
   assert.ok(html.includes("padding:0.7pt 1.2pt;"), "compact hücre dolgusu sıkılaştırılmış olmalı.");
+  // Kullanıcı bildirimi (2026-09-10, ÜÇÜNCÜ ekran görüntüsü — "düzelmemiş
+  // ki hala boşluk var"): ilk İKİ düzeltmeden (<tr> yüksekliği + line-
+  // height/mso-line-height-rule) SONRA bile satırlar hâlâ çok yüksekti.
+  // Kök sebep: Word, hücre iç boşluğunu standart CSS `padding`'ten DEĞİL,
+  // kendi `mso-padding-alt` özelliğinden okur — bu YOKSA kendi çok daha
+  // büyük varsayılan hücre kenar boşluğunu kullanır.
+  assert.ok(
+    html.includes("mso-padding-alt:0.7pt 1.2pt 0.7pt 1.2pt;"),
+    "compact hücrelerde mso-padding-alt (padding ile AYNI değerlerle) olmalı — yoksa Word kendi buyuk varsayilan hucre bosluğunu kullanir."
+  );
   // Kullanıcı bildirimi (2026-09-10, İKİNCİ ekran görüntüsü — yukarıdaki
   // <tr> yüksekliği düzeltmesinden SONRA): hücrelerin çoğunda metnin
   // altında boş bir "boşluk" görünüyordu. Kök sebep: line-height BİRİMSİZ
@@ -137,7 +161,11 @@ const rows = [
   assert.ok(!html.includes('height="11"'), "compact:false iken height=\"11\" attribute'ü EKLENMEMELİ.");
   assert.ok(!html.includes("padding:0.7pt 1.2pt;"), "compact:false iken sıkılaştırılmış compact dolgu KULLANILMAMALI.");
   assert.ok(html.includes("line-height:8pt;mso-line-height-rule:exactly;"), "compact:false (dar tablo) iken de nokta-birimli line-height + mso-line-height-rule:exactly OLMALI (bu düzeltme TÜM çağrıları kapsar).");
-  console.log("compact:false (diger tablolar): satir yuksekligi/dolgu degismedi, satir araligi duzeltmesi UYGULANDI testi tamam.");
+  assert.ok(
+    html.includes("mso-padding-alt:2.4pt 3pt 2.4pt 3pt;"),
+    "compact:false (dar tablo) iken de mso-padding-alt OLMALI (bu düzeltme de TÜM çağrıları kapsar)."
+  );
+  console.log("compact:false (diger tablolar): satir yuksekligi zorlamasi degismedi, dolgu/satir araligi duzeltmesi UYGULANDI testi tamam.");
 }
 
 // --- 4) Kaynak metin: buildComparableMatrixWordTableHtml hâlâ compact ----
