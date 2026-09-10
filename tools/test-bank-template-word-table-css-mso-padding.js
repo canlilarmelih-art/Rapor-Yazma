@@ -22,20 +22,23 @@
 // varsayım daha önce BİLİNÇLİ olarak yapılmış ve YANLIŞ çıkmış.
 //
 // Düzeltme: Emsal Matrisi ({{EMSALMATRISI}}/{{EMSAL_MATRISI}}/
-// {{EMSALTABLOSU}}/{{EMSALDEGERLEMETABLOSU}}) token'ına sahip TÜM 9
-// şablonun KENDİ `.word-table`/`.pg-section .word-table` (ve
-// kuveytturk'te ayrıca `table.kt-list`) CSS kurallarına DA (yalnızca
-// app.js'e DEĞİL) mso-padding-alt + mso-line-height-rule:exactly +
-// (yalnızca .pg-section kapsamında) satır yüksekliği (mso-height-rule:
-// at-least) eklendi — kaynak (satır-içi mi, sınıf kuralı mı) HANGİSİ
-// kazanırsa kazansın artık İKİSİ DE kompakt.
+// {{EMSALTABLOSU}}/{{EMSALDEGERLEMETABLOSU}}) VEYA başka herhangi bir
+// `.word-table` sınıflı dinamik tablo (Malikler/Takyidat/Tapu Özeti
+// vb.) kullanan TÜM 10 şablonun (bkz. aşağıdaki "2026-09-10 tarama"
+// notu) KENDİ `.word-table`/`.pg-section .word-table` (ve kuveytturk'te
+// ayrıca `table.kt-list`) CSS kurallarına DA (yalnızca app.js'e DEĞİL)
+// mso-padding-alt + mso-line-height-rule:exactly + (yalnızca .pg-section
+// kapsamında) satır yüksekliği (mso-height-rule:at-least) eklendi —
+// kaynak (satır-içi mi, sınıf kuralı mı) HANGİSİ kazanırsa kazansın
+// artık İKİSİ DE kompakt.
 //
-// Bu test kapsamı: her 9 şablonda hem TABAN (.word-table th/td, veya
+// Bu test kapsamı: her 10 şablonda hem TABAN (.word-table th/td, veya
 // kuveytturk'te + table.kt-list) hem de .pg-section İÇİNDEKİ (daha
 // özgül) kuralın mso-padding-alt VE mso-line-height-rule:exactly
 // içerdiği, ve .pg-section .word-table (kuveytturk'te + table.kt-list)
 // için satır yüksekliği (mso-height-rule:at-least) kuralı olduğu
-// doğrulanır.
+// doğrulanır; `.word-table` HİÇ kullanmayan 2 şablonun (isbankasi-
+// masraf, ziraat-ek-tablo) dokunulmadığı da ayrıca doğrulanır.
 
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -51,7 +54,21 @@ function extractStyleBlock(source) {
 }
 
 // Genel (kuveytturk dışı) şablonlar: yalnızca .word-table sınıfı.
-const GENERIC_TEMPLATES = ["akbank", "halkbank", "vakifbank", "vakifkatilim", "yapikredi", "ziraat", "ziraat-arsa-arazi"];
+//
+// Kullanıcı talebi (2026-09-10): "mevcut tüm template dosyalarını
+// tara... emsal matrisi tablosunda yaşadığımız soruna sahip tabloları
+// tespit et ve düzelt" — tarama sırasında `isbankasi.html`'in de
+// {{EMSAL_MATRISI}} (ALT ÇİZGİLİ yazım) kullandığı ve AYNI eksik
+// mso-padding-alt/mso-line-height-rule kuralına sahip olduğu bulundu.
+// Bir önceki tur (0.0.735) bunu KAÇIRMIŞTI çünkü envanter taraması
+// yalnızca "EMSALMATRISI" (bitişik) dizesini arıyordu — foldTokenName()
+// alt çizgiyi RESOLUTION için yok sayar (ikisi de AYNI token'a çözülür),
+// ama o taramanın kendisi salt metin arşivlemesiydi, alt çizgili
+// yazımı GÖRMEDİ. `isbankasi.html`'in seçici kalıpları (.word-table
+// th/td, .pg-section table.meta td/.pg-section .word-table td/th,
+// .pg-section .word-table tr) diğer GENERIC şablonlarla BİREBİR aynı
+// olduğundan buraya eklenmesi yeterli.
+const GENERIC_TEMPLATES = ["akbank", "halkbank", "isbankasi", "vakifbank", "vakifkatilim", "yapikredi", "ziraat", "ziraat-arsa-arazi"];
 // kuveytturk ailesi: .word-table VE table.kt-list ikisi de kullanılıyor.
 const KUVEYTTURK_TEMPLATES = ["kuveytturk", "kuveytturk-arsa-arazi"];
 
@@ -101,12 +118,16 @@ const KUVEYTTURK_TEMPLATES = ["kuveytturk", "kuveytturk-arsa-arazi"];
   console.log(`${templateName}.html: .word-table CSS kuralları (mso-padding-alt/mso-line-height-rule/satır yüksekliği) testi tamam.`);
 });
 
-// isbankasi.html'de Emsal Matrisi token'ı YOK (bilinçli olarak dışarıda
-// bırakıldı, bkz. 0.0.677 handoff notu) — bu dosyaya dokunulmadığını
-// (yeni CSS eklenmediğini) doğrula, kapsam sürüklenmesin.
-{
-  const isbankasiSource = fs.readFileSync(path.join(TEMPLATES_DIR, "isbankasi.html"), "utf8");
-  assert.ok(!isbankasiSource.includes("mso-padding-alt"), "isbankasi.html'e YANLIŞLIKLA mso-padding-alt eklenmiş (bu şablonda Emsal Matrisi token'ı yok).");
-}
+// isbankasi-masraf.html ve ziraat-ek-tablo.html HİÇ .word-table sınıfı
+// kullanmıyor (biri düz bir ücret yazısı, diğeri statik/elle doldurulan
+// tek bir tablo — app.js'in ürettiği HİÇBİR dinamik <table
+// class="word-table"...> buraya enjekte edilmiyor) — bu iki dosyaya
+// dokunulmadığını doğrula, kapsam sürüklenmesin.
+["isbankasi-masraf", "ziraat-ek-tablo"].forEach((templateName) => {
+  const source = fs.readFileSync(path.join(TEMPLATES_DIR, `${templateName}.html`), "utf8");
+  assert.ok(!source.includes(".word-table"), `${templateName}.html HİÇ .word-table sınıfı kullanmamalı (bu düzeltmenin kapsamı dışında).`);
+  assert.ok(!source.includes("mso-padding-alt"), `${templateName}.html'e YANLIŞLIKLA mso-padding-alt eklenmiş.`);
+  console.log(`${templateName}.html: .word-table kullanmıyor, dokunulmadı (kapsam dışı) testi tamam.`);
+});
 
 console.log("Banka sablonlari: .word-table CSS'inde mso-padding-alt/mso-line-height-rule/satir yuksekligi testleri basarili.");
