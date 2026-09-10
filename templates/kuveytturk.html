@@ -47,7 +47,7 @@
 
   /* --- liste tabloları (malikler, belgeler, motor tabloları) --- */
   .word-table, table.kt-list { border-collapse: collapse; width: 100%; margin: 3pt 0 12pt; border: 0.75pt solid #bee0d2; font-size: 6.5pt; }
-  .word-table th, .word-table td, table.kt-list th, table.kt-list td { border: 0.75pt solid #cfe4da; padding: 2.2pt 4pt; vertical-align: top; }
+  .word-table th, .word-table td, table.kt-list th, table.kt-list td { border: 0.75pt solid #cfe4da; padding: 2.2pt 4pt; mso-padding-alt: 2.2pt 4pt 2.2pt 4pt; vertical-align: top; line-height: 7.5pt; mso-line-height-rule: exactly; }
   .word-table th, table.kt-list th { background: #e7f5ee; color: #17493b; font-weight: bold; text-align: left; }
   .word-table tbody tr:nth-child(even) td, table.kt-list tbody tr:nth-child(even) td { background: #f4faf7; }
 
@@ -61,7 +61,11 @@
      motoru bunu dış sarmalayıcı div üzerine konursa içindeki HER
      PARAGRAFA miras bırakıyordu (canlı testte görüldü). */
   .pg-section .kt-sec { margin-top: 0; }
-  .pg-section table.kt-form td, .pg-section .word-table td, .pg-section .word-table th, .pg-section table.kt-list td, .pg-section table.kt-list th { padding: 1pt 2pt; font-size: 5.5pt; }
+  /* KULLANICI BULGUSU (2026-09-10): Word, app.js'in ürettiği satır-içi
+     style'ı bu sınıf kuralıyla güvenilir şekilde eşlemiyor; aşağıdaki
+     kurala mso-padding-alt/mso-line-height-rule/satır yüksekliği eklendi. */
+  .pg-section table.kt-form td, .pg-section .word-table td, .pg-section .word-table th, .pg-section table.kt-list td, .pg-section table.kt-list th { padding: 1pt 2pt; mso-padding-alt: 1pt 2pt 1pt 2pt; font-size: 5.5pt; line-height: 6.5pt; mso-line-height-rule: exactly; }
+  .pg-section .word-table tr, .pg-section table.kt-list tr { height: 0.28cm; mso-height-source: userset; mso-height-rule: at-least; }
   .table-block { margin-bottom: 16px; page-break-inside: avoid; break-inside: avoid; }
 </style>
 </head>

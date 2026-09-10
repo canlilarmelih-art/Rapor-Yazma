@@ -30,7 +30,7 @@
   table.meta td { border: 1pt solid #a6a6a6; padding: 2pt 3pt; vertical-align: top; background: #ffffff; }
   table.meta td.l { width: 32%; font-weight: 700; background: #ededed; color: #000000; }
   .word-table { border-collapse: collapse; width: 100%; margin: 3pt 5pt 6pt; border: 1pt solid #9f9f9f; font-size: 7pt; }
-  .word-table th, .word-table td { border: 1pt solid #a6a6a6; padding: 2pt 3pt; vertical-align: top; background: #ffffff; }
+  .word-table th, .word-table td { border: 1pt solid #a6a6a6; padding: 2pt 3pt; mso-padding-alt: 2pt 3pt 2pt 3pt; vertical-align: top; background: #ffffff; line-height: 8pt; mso-line-height-rule: exactly; }
   .word-table th { background: #d9d9d9; color: #000000; font-weight: 700; text-align: left; }
   .word-table tbody tr:nth-child(even) td { background: #ffffff; }
 
@@ -95,7 +95,11 @@
      motoru bunu div üzerine konursa içindeki HER PARAGRAFA miras
      bırakıyordu (canlı testte görüldü). */
   .pg-section h2 { margin-top: 0; }
-  .pg-section table.meta td, .pg-section .word-table td, .pg-section .word-table th { padding: 1.5pt 2.5pt; font-size: 6.3pt; }
+  /* KULLANICI BULGUSU (2026-09-10): Word, app.js'in ürettiği satır-içi
+     style'ı bu sınıf kuralıyla güvenilir şekilde eşlemiyor; aşağıdaki
+     kurala mso-padding-alt/mso-line-height-rule/satır yüksekliği eklendi. */
+  .pg-section table.meta td, .pg-section .word-table td, .pg-section .word-table th { padding: 1.5pt 2.5pt; mso-padding-alt: 1.5pt 2.5pt 1.5pt 2.5pt; font-size: 6.3pt; line-height: 6.8pt; mso-line-height-rule: exactly; }
+  .pg-section .word-table tr { height: 0.28cm; mso-height-source: userset; mso-height-rule: at-least; }
   .pg-section .field-grid .fg-label { font-size: 5.6pt; }
   .pg-section .field-grid .fg-box { font-size: 6pt; padding: 1.5pt 2.5pt; }
   .table-block { margin-bottom: 16px; page-break-inside: avoid; break-inside: avoid; }

@@ -24,7 +24,7 @@
   table.meta td { border: 1pt solid #dde3ef; padding: 2.4pt 3pt; vertical-align: top; }
   table.meta td.l { width: 32%; font-weight: 900; background: #e4ebf8; color: #3a5691; }
   .word-table { border-collapse: collapse; width: 100%; margin: 5pt 0 12pt; border: 1pt solid #dde3ef; font-size: 7pt; }
-  .word-table th, .word-table td { border: 1pt solid #dde3ef; padding: 2.4pt 3pt; vertical-align: top; }
+  .word-table th, .word-table td { border: 1pt solid #dde3ef; padding: 2.4pt 3pt; mso-padding-alt: 2.4pt 3pt 2.4pt 3pt; vertical-align: top; line-height: 8pt; mso-line-height-rule: exactly; }
   .word-table th { background: #e4ebf8; color: #3a5691; font-weight: 900; text-align: left; }
   .word-table tbody tr:nth-child(even) td { background: #f7f9f8; }
 
@@ -33,9 +33,15 @@
      .pg-section üzerinde DEĞİL, başlık etiketinde satır içi
      style="page-break-before:always" ile uygulanır — Word'ün .doc HTML
      motoru bunu div üzerine konursa içindeki HER PARAGRAFA miras
-     bırakıyordu (canlı testte görüldü). */
+     bırakıyordu (canlı testte görüldü).
+     KULLANICI BULGUSU (2026-09-10, üç ayrı ekran görüntüsü turu): Word,
+     app.js'in ürettiği <td>/<tr> satır-içi style="..." değerlerini bu
+     .word-table SINIF kuralına karşı GÜVENİLİR şekilde ÖNCELEMİYOR — bu
+     yüzden BURADAKİ (ve yukarıdaki .word-table th/td) kural da artık
+     kompakt punto+mso-padding-alt+mso-line-height-rule TAŞIYOR. */
   .pg-section h2 { margin-top: 0; }
-  .pg-section table.meta td, .pg-section .word-table td, .pg-section .word-table th { padding: 1pt 2pt; font-size: 6pt; }
+  .pg-section table.meta td, .pg-section .word-table td, .pg-section .word-table th { padding: 1pt 2pt; mso-padding-alt: 1pt 2pt 1pt 2pt; font-size: 6pt; line-height: 6.5pt; mso-line-height-rule: exactly; }
+  .pg-section .word-table tr { height: 0.28cm; mso-height-source: userset; mso-height-rule: at-least; }
   .table-block { margin-bottom: 16px; page-break-inside: avoid; break-inside: avoid; }
 </style>
 </head>

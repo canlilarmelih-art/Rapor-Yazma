@@ -22,12 +22,16 @@
      (getReportThemeToken) aynı görünsün diye. Başlık renkleri banka kimliği. */
   table.meta td.l { width: 31%; background: #e4ebf8; color: #3a5691; font-weight: 900; }
   .word-table { width: 100%; margin: 5pt 0 12pt; border-collapse: collapse; border: 1pt solid #d8e0ea; font-size: 7pt; }
-  .word-table th, .word-table td { padding: 1.55pt 2.8pt; border: 1pt solid #d8e0ea; vertical-align: top; }
+  .word-table th, .word-table td { padding: 1.55pt 2.8pt; mso-padding-alt: 1.55pt 2.8pt 1.55pt 2.8pt; border: 1pt solid #d8e0ea; vertical-align: top; line-height: 8pt; mso-line-height-rule: exactly; }
   .word-table th { background: #e4ebf8; color: #3a5691; font-weight: 900; text-align: left; }
   .word-table tbody tr:nth-child(even) td { background: #f6f8fa; }
   .table-spacer { height: 10pt; font-size: 1pt; line-height: 10pt; }
   .pg-section h2 { margin-top: 0; }
-  .pg-section table.meta td, .pg-section .word-table td, .pg-section .word-table th { padding: 0.85pt 1.8pt; font-size: 6.5pt; }
+  /* KULLANICI BULGUSU (2026-09-10): Word, app.js'in ürettiği satır-içi
+     style'ı bu sınıf kuralıyla güvenilir şekilde eşlemiyor; aşağıdaki
+     kurala mso-padding-alt/mso-line-height-rule/satır yüksekliği eklendi. */
+  .pg-section table.meta td, .pg-section .word-table td, .pg-section .word-table th { padding: 0.85pt 1.8pt; mso-padding-alt: 0.85pt 1.8pt 0.85pt 1.8pt; font-size: 6.5pt; line-height: 7pt; mso-line-height-rule: exactly; }
+  .pg-section .word-table tr { height: 0.28cm; mso-height-source: userset; mso-height-rule: at-least; }
   .table-block { margin-bottom: 16px; page-break-inside: avoid; break-inside: avoid; }
 </style>
 </head>
