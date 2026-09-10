@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.731 - 2026-09-10 - Emsal haritasından konum kaydetme artık ekranı sütun 1'e geri çekmiyor
+
+- Kullanıcı bildirimi: "emsaller bölümünde haritadan konum seçiyorum örnek 4. emsal sütununda seçip kaydettikten sonra ilk sütuna çekiyor ekranı bu ui açısından iyi bir deneyim değil".
+- Kök sebep: Emsal matrisi (`comparables-matrix-shell`) yatay kaydırılabilir bir tablo. Harita modalının ("Haritadan seç" düğmesi, `openComparableLocationModal`) "Kaydet" callback'i tam bir bölüm yeniden kurulumu (`renderSection()`) çağırıyordu — bu, TÜM "Emsaller" bölümünü sıfırdan kurup DOM'u değiştirdiği için matrisin (ve sayfanın) kaydırma konumu sıfırlanıyordu; kullanıcı 4. (veya sonraki) emsal sütununda olsa bile kayıttan sonra ekran 1. sütuna dönüyordu.
+- Düzeltme: harita modalının onSave callback'i artık `renderSection()` ÇAĞIRMIYOR. Bunun yerine, diğer emsal alanı input/change dinleyicilerinin ZATEN kullandığı yerinde-güncelleme deseniyle aynı yeni `updateComparableLocationCellsInPlace(rowIndex, row)` fonksiyonunu çağırıyor: yalnızca ilgili satırın Enlem/Boylam hücrelerini (`c18`/`c19`), hesaplanan hücreleri (`refreshComparableComputedCells`) ve açıksa Emsal Konum Krokisi panelini (`renderComparableLocationSketchMap`) günceller; "Taşınmaza Göre Konum" metni (`row.c20`) düğmenin yanındaki küçük metinde doğrudan güncellenir. DOM hiç yeniden kurulmadığı için matris ve sayfa kaydırma konumu bozulmaz.
+- Yeni test: `tools/test-comparable-map-scroll-preserving-save.js` — (1) kaynak metin düzeyinde "c7" (harita) bloğunun artık `renderSection()` çağırmadığını ve `updateComparableLocationCellsInPlace`'i çağırdığını doğrular, (2) yeni fonksiyonun doğru satırı güncelleyip BAŞKA satırlara dokunmadığını, bağımlı fonksiyonları doğru argümanlarla çağırdığını ve kendisinin `renderSection()` çağırmadığını (stub'lanmamış referans olsaydı hata fırlatırdı) doğrular, (3) kroki paneli ekranda yokken sessizce atlandığını doğrular.
+- `npm run check` ve tam `npm test` (183 test) başarılı; `index.html`'de `app.js` cache-buster'ı `?v=20260910-1255`'e yükseltildi.
+- Canlı tarayıcı testi yapılamadı — kullanıcının gerçek bir çoklu emsal raporunda "Emsaller" bölümünde 4. (veya sonraki) sütunda haritadan konum seçip kaydettiğinde artık ekranın aynı sütunda kaldığını, Enlem/Boylam alanlarının ve (açıksa) Emsal Konum Krokisi'nin doğru güncellendiğini doğrulaması gerekiyor.
+
 ## 0.0.730 - 2026-09-10 - Çok katlı taşınmazda masraf tarife kademesi düzeltmesi
 
 - Masraf hesaplaması, Daire/Villa/Ofis tarifesinde artık yalnızca ilk katın `currentArea` değerini değil, bağımsız bölümün toplam mevcut kullanım alanını kullanıyor.

@@ -46294,7 +46294,17 @@ function createComparableMatrixCell(section, field, row, rowIndex) {
     mapButton.addEventListener("click", () => {
       openComparableLocationModal(row, rowIndex, () => {
         autosave();
-        renderSection();
+        // Kullanıcı bildirimi (2026-09-10): "4. emsal sütununda seçip
+        // kaydettikten sonra ilk sütuna çekiyor" — burada tam bölüm
+        // yeniden kurulumu TÜM bölümü (ve dolayısıyla emsal matrisinin
+        // yatay kaydırma konumunu) sıfırdan kurup kullanıcıyı ekranın
+        // başına fırlatıyordu. Diğer emsal alanı input/change dinleyicileri
+        // (bkz. bu fonksiyonun üstündeki "control.addEventListener" bloğu)
+        // zaten tam render YAPMADAN sadece ilgili hücreleri güncelliyor —
+        // aynı yerinde-güncelleme deseni burada da uygulanır, kaydırma
+        // konumu (yatay ve dikey) korunur.
+        locationText.textContent = row.c20 || (row.c18 && row.c19 ? `${row.c18}, ${row.c19}` : "");
+        updateComparableLocationCellsInPlace(rowIndex, row);
       });
     });
     const locationText = document.createElement("small");
@@ -46501,6 +46511,27 @@ function createComparableComputedControl(field, row, rowIndex) {
     control.rows = field.key === "calcLongText" ? 4 : 3;
   }
   return control;
+}
+
+// Kullanıcı bildirimi (2026-09-10): emsal haritasından konum seçip
+// kaydettikten sonra ekranın (yatay kaydırılan emsal matrisinin) ilk
+// sütuna sıçraması — tam bir renderSection() yerine, diğer emsal alanı
+// düzenleme dinleyicileriyle (bkz. createComparableMatrixCell'deki
+// "control.addEventListener('input'/'change', ...)" blokları) AYNI
+// yerinde-güncelleme desenini kullanır: yalnızca ilgili satırın Enlem/
+// Boylam hücrelerini, hesaplanan (mesafe/yön içeren) hücreleri ve konum
+// krokisini günceller — matris kaydırma konumu ve sayfa kaydırma konumu
+// HİÇ bozulmaz.
+function updateComparableLocationCellsInPlace(rowIndex, row) {
+  ["c18", "c19"].forEach((fieldKey) => {
+    document.querySelectorAll(`[data-comparable-row="${rowIndex}"][data-comparable-field="${fieldKey}"]`).forEach((control) => {
+      control.value = row[fieldKey] || "";
+    });
+  });
+  refreshComparableComputedCells(row, rowIndex);
+  updateComparableReasonRowsVisibility(document.querySelector(".comparables-matrix-shell"));
+  const sketchWrapper = document.querySelector(".comparable-location-sketch");
+  if (sketchWrapper) renderComparableLocationSketchMap(sketchWrapper);
 }
 
 function refreshComparableComputedCells(row, rowIndex) {
