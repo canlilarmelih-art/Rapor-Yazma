@@ -1,5 +1,13 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.728 - 2026-09-10 - Çevresel bölge türü filtresinin admin görünümünde korunması
+
+- `Çevresel Özellik Bölge Türü` seçimine bağlı ticari ve tarımsal alanlar artık admin kullanıcıda da filtrelenir.
+- Konut Bölgesi seçiliyken tarımsal/ticari alan alanları, Tarımsal Alan seçiliyken yapılaşma alanları görünmez kalır.
+- Diğer admin görünürlük istisnaları ve açıklama alanları korunmuştur.
+- Değişiklik öncesi yedekler: `backups/before-environment-region-filter-fix_2026-09-10_09-55-14` ve `backups/before-environment-region-filter-test-update_2026-09-10_09-56-15`.
+- `npm run check`, görünürlük ve proje uygunluğu testleri başarılı.
+
 ## 0.0.727 - 2026-09-10 - Halkbank kısa emsal metninde TL tekrarının kaldırılması
 
 - Halkbank kısa `Emsal Metni` artık satış ve kira tutarlarında `TL TL` tekrarını üretmez.

@@ -6127,6 +6127,26 @@ function isProjectSuitabilityUiField(sectionId, fieldKey) {
   return sectionId === "documents" && ["projectReviewDescription", "projectConformity"].includes(fieldKey);
 }
 
+function isEnvironmentRegionTypeFilteredField(fieldKey) {
+  return [
+    "commercialFunctionDensity",
+    "commercialFirmType",
+    "commercialFrontageRoadType",
+    "commercialDevelopmentCompleted",
+    "agriculturalActivityDensity",
+    "agriculturalActivityTypes",
+    "agriculturalSuitability",
+    "regionBuildOrder",
+    "regionFloorRange",
+    "regionIncomeLevel",
+    "infrastructureLevel",
+    "developmentSpeed",
+    "regionBuildingAge",
+    "socialNeeds",
+    "regionUsePurpose",
+  ].includes(fieldKey);
+}
+
 function createForm(section) {
   const form = document.createElement("div");
   form.className = "form-grid";
@@ -6138,7 +6158,8 @@ function createForm(section) {
       (field.sensitiveOnly && !canViewSensitiveContent() && !isProjectSuitabilityUiField(section.id, field.key)) ||
       (shouldHideField(section.id, field.key) && (!isCurrentUserAdmin()
         || (section.id === "case" && field.key === "currentUsageNature")
-        || (section.id === "documents" && isCadastralProjectVisibilityField(field.key))))
+        || (section.id === "documents" && isCadastralProjectVisibilityField(field.key))
+        || (section.id === "address" && isEnvironmentRegionTypeFilteredField(field.key))))
     ) return;
 
     if (section.id === "address" && ["latitude", "longitude"].includes(field.key)) {

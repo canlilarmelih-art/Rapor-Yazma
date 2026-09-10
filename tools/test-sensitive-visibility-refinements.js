@@ -80,13 +80,18 @@ function sliceFn(startMarker, { toMarker } = {}) {
   );
   assert.match(
     appSource,
-    /shouldHideField\(section\.id, field\.key\)\s*&&\s*\(!isCurrentUserAdmin\(\)\s*\|\|\s*\(section\.id === "case" && field\.key === "currentUsageNature"\)\s*\|\|\s*\(section\.id === "documents" && isCadastralProjectVisibilityField\(field\.key\)\)\)/,
+    /shouldHideField\(section\.id, field\.key\)\s*&&\s*\(!isCurrentUserAdmin\(\)\s*\|\|\s*\(section\.id === "case" && field\.key === "currentUsageNature"\)\s*\|\|\s*\(section\.id === "documents" && isCadastralProjectVisibilityField\(field\.key\)\)\s*\|\|\s*\(section\.id === "address" && isEnvironmentRegionTypeFilteredField\(field\.key\)\)\)/,
     "Admin diger alan filtresi istisnalarini korurken mevcut kullanim ve kadastro gorunurlugu kurallarini uygulamali.",
   );
   assert.match(
     appSource,
     /function isCadastralProjectVisibilityField\(fieldKey\)\s*\{[\s\S]*?fieldKey === "projectRegisteredInCadastre"[\s\S]*?isCadastralRegistrationDetailField\(fieldKey\)/,
     "Mimari proje secimine bagli kadastro alanlari admin istisnasindan ayrilmali.",
+  );
+  assert.match(
+    appSource,
+    /function isEnvironmentRegionTypeFilteredField\(fieldKey\)\s*\{[\s\S]*?commercialFunctionDensity[\s\S]*?agriculturalActivityDensity[\s\S]*?regionUsePurpose[\s\S]*?\}\s*\n\s*\n\s*function createForm[\s\S]*?section\.id === "address" && isEnvironmentRegionTypeFilteredField\(field\.key\)/,
+    "Cevresel bolge turu filtresi admin gorunurluk istisnasindan ayrilmali.",
   );
   assert.match(
     appSource,
