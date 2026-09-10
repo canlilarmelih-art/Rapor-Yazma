@@ -1,5 +1,13 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.721 - 2026-09-10 - Bulut state migration akışının merkezileştirilmesi
+
+- Buluttan rapor yüklenirken genel state normalizasyonu artık bölüm açılmasını beklemeden çalışıyor.
+- Adres, varsayılanlar, imar kuralları, metin normalizasyonu ve mevcut bölüm migration yardımcıları aynı yükleme akışında korunuyor.
+- Yerel/JSON dışa aktarma state şeması 2’ye yükseltildi; bulut sürümü 2’den yeni kayıtlar uyumsuz kabul ediliyor, eski sürüm 1 kayıtları yükseltilerek açılıyor.
+- Değişiklik öncesi yedek: `backups/before-cloud-migration-hardening_2026-09-10_08-00-01`.
+- Kontroller: `npm run check` ve ilgili bulut/multi-unit/migration regresyon testleri başarılı.
+
 ## 0.0.720 - 2026-09-10 - Masraf panelinde yerel ücret tarifesi hydration
 
 - Masraf paneli oluşturulurken mevcut rapor state’inde geçerli ücret yoksa 2026 tarifesi doğrudan state’e uygulanıyor.

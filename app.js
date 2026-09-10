@@ -22241,7 +22241,7 @@ function showOutputExportStatus(status, text) {
 function buildReportJsonExportPayload() {
   const payload = {
     schema: "rapor-yazma-programi-state",
-    schemaVersion: 1,
+    schemaVersion: REPORT_STATE_SCHEMA_VERSION,
     exportedAt: new Date().toISOString(),
     appVersion: "20260707-1101",
     activeSectionId,
@@ -32427,6 +32427,35 @@ function normalizeReportStateFields(targetState) {
     });
   });
 
+  return changed;
+}
+
+// Kalıcı state'in (yerel JSON veya bulut raporu) tek giriş noktasından
+// güncel uygulama kurallarına yükseltilmesi. Bölüm panellerinin kendi lazy
+// migration'ları korunur; burada özellikle buluttan gelen raporun panel
+// açılmadan önce de genel alan normalizasyonundan geçmesi sağlanır.
+const REPORT_STATE_SCHEMA_VERSION = 2;
+
+function migratePersistedReportState(targetState = state) {
+  if (!targetState || typeof targetState !== "object") return false;
+  let changed = false;
+  const beforeVersion = Number(targetState.schemaVersion || 1);
+  if (beforeVersion !== REPORT_STATE_SCHEMA_VERSION) {
+    targetState.schemaVersion = REPORT_STATE_SCHEMA_VERSION;
+    changed = true;
+  }
+  normalizeAddressSourceState(targetState);
+  applySystemDefaults(targetState);
+  applyUserFieldDefaults(targetState);
+  applyImarDerivedBusinessRules(targetState);
+  if (normalizeReportStateFields(targetState)) changed = true;
+  if (targetState === state) {
+    migrateLegacyUnitFloorFields();
+    migrateUnitDecorativeFields();
+    getComparableRows();
+    hydrateEncumbranceReportTablesFromLegacy();
+    splitReviewedDocumentsDescriptionsIfNeeded();
+  }
   return changed;
 }
 

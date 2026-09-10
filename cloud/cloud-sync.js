@@ -33,7 +33,7 @@
   // ayrı kod gerekmedi.
   const CLOUD_WHITELIST = ["fields", "tables", "lookupOptions", "titleUnits", "activeTitleUnitIndex", "primaryTitleUnitShadow", "updatedAt"];
   const CLOUD_SCHEMA = "rapor-yazma-cloud";
-  const CLOUD_SCHEMA_VERSION = 1;
+  const CLOUD_SCHEMA_VERSION = 2;
   // Kullanıcı talebi (2026-08-13): 30 günden 14 güne düşürüldü — "bulutta
   // saklama süresini 30 günden 7 güne düşürelim" olarak geldi, ama 7 gün
   // iOS Safari'nin 7-gün-etkileşimsiz-siteler-için yerel depolamayı
@@ -293,6 +293,9 @@
       if (payload[key] !== undefined) state[key] = JSON.parse(JSON.stringify(payload[key]));
     });
     applyCloudMapState(payload.mapState);
+    if (typeof migratePersistedReportState === "function") {
+      migratePersistedReportState(state);
+    }
     if (typeof hydrateImportedAddressAdministrativeFields === "function") {
       hydrateImportedAddressAdministrativeFields(state);
     }
@@ -332,7 +335,7 @@
         }
         data = snapshot.data();
       }
-      if (data.schema !== CLOUD_SCHEMA || !data.payload) {
+      if (data.schema !== CLOUD_SCHEMA || !data.payload || Number(data.schemaVersion || 1) > CLOUD_SCHEMA_VERSION) {
         setStatus("error", "Bulut kaydı tanınmadı (şema uyumsuz).");
         return false;
       }
