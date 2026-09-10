@@ -1,12 +1,32 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.741 - 2026-09-10 - Yatay kat irtifakı: bağımsız bölüme özel havuz açıklaması
+
+- `Bağımsız Bölüm Özellikleri` bölümünde yalnızca mülkiyet türü `Yatay Kat İrtifakı` olduğunda görünen `Özel Havuz` seçimi eklendi: Yok, Açık Yüzme Havuzu, Kapalı Yüzme Havuzu.
+- Özel havuz bilgisi bağımsız bölüm açıklamasına `Taşınmazın kendine ait açık/kapalı yüzme havuzu bulunmaktadır.` cümlesiyle eklenir. Diğer mülkiyet türlerinde alan görünmez ve metne eklenmez.
+- Alan taşınmaz seviyesinde tutulur; çoklu raporlarda ortak site havuzu ile karışmadan ilgili bağımsız bölümün açıklamasına dahil edilir. Eski kayıtlar için değer boş/Yok kabulü korunur.
+- Yedek: `backups/before-private-pool-unit-description_2026-09-10_18-04-24` (`app.js`, `styles.css`, `index.html`). `index.html` app.js cache-buster `?v=20260910-1812` yapıldı.
+- Test: özel havuz yatay/dikey görünürlük ve açıklama testi eklendi; `node --check app.js`, `npm run check` ve tam `npm test` başarılı.
+
+## 0.0.740 - 2026-09-10 - Ana Gayrimenkul: blok/site bağımsız bölüm özeti
+
+*(Not: bu girdi eşzamanlı çalışan başka bir oturuma ait; bu commit'e dahil DEĞİL, o oturum kendi işini commit ettiğinde numara/tarih teyit edilmeli.)*
+
+- Kullanıcı talebi: “Ana Taşınmaz Kat Dağılımı” bölümü korunacak; görünür Kat satırları yerine bulunduğu blok içindeki bağımsız bölüm sayısı ve site genelindeki toplam bağımsız bölüm sayısı alanları ile örnekteki açıklama üretilecek.
+- `app.js`'te eski `state.tables.buildingFloors` ve kat dağılımı hesapları korunarak yeni iki alan eklendi: `buildingBlockUnitCount` ve `buildingSiteUnitCount`. Bu alanlar aynı bloktaki taşınmazlara paylaşılan bina alanları ile senkronlanır.
+- Yeni panel, blok/site sayılarını alır ve “5 blok ve 10 adet bağımsız bölüm bulunmakta olup, E Blokta 2 adet bağımsız bölüm mevcuttur” / tek bağımsız bölüm kalıbını canlı önizler. Ana gayrimenkul açıklaması da bu değerleri kullanır; eski kayıtlar için kat satırlarından gelen toplam bağımsız bölüm sayısı başlangıç değeri olarak korunur.
+- `index.html` app.js cache-buster `?v=20260910-1810` yapıldı. Stil önizleme için mevcut `--surface-muted` token'ı kullanıldı.
+- Yedek: `backups/before-building-block-summary_2026-09-10_17-54-05` (`app.js`, `styles.css`, `index.html`).
+- Doğrulama: `node --check app.js`, `npm run check` ve tam `npm test` başarılı.
+- Canlıya gönderilmedi; kullanıcı ayrıca isterse deploy yapılacak.
+
 ## 0.0.739 - 2026-09-10 - Emsal Matrisi: "Alan" sütunu %25 genişletildi
 
 - Kullanıcı talebi: "en soldaki alan sütununun genişliğini %25 arttır" — gerçek bir Word çıktısı ekran görüntüsünde, satırlar artık sıkışık/çakışmasız göründüğü için (önceki turlar) bu sefer yalnızca sütun genişliği isteği geldi.
 - `buildSimpleHtmlTable()`'a (`app.js`) Emsal Matrisi'nin (`is-matrix` sınıfı) tablosu için `<colgroup>` eklendi — bu dosyada `buildCompactReportWordTableHtml()`'in ZATEN kullandığı, Word'de güvenilir çalıştığı bilinen aynı teknik. İlk ("Alan") sütuna 1,25 birim, diğer (emsal sayısı kadar, DİNAMİK) sütunlara 1'er birim ağırlık verilip toplamı %100 olacak şekilde yüzdeye çevrilir — sonuç: "Alan" sütunu her zaman diğerlerinden TAM %25 daha geniş, kaç emsal olursa olsun. Yalnızca `is-matrix` etkilenir, diğer `buildSimpleHtmlTable` çağrıları dokunulmadan kalır.
 - Test: `tools/test-comparable-matrix-word-table-compact-rows.js`'e yeni bir senaryo eklendi — 4 emsallik ve 2 emsallik iki ayrı tabloda "Alan" sütununun oranının TAM 1.25 olduğu, toplam genişliğin %100 olduğu, `is-matrix` OLMAYAN tablolarda `<colgroup>` hiç üretilmediği doğrulanır.
 - `npm run check` ve tam `npm test` (185 test) başarılı. `index.html`'de `app.js` cache-buster'ı `?v=20260910-1759`'a yükseltildi.
-- **Not:** bu turda `app.js`'te AYNI ANDA çalışan başka bir oturumun (Ana Gayrimenkul: blok/site bağımsız bölüm özeti, "0.0.739" olarak adlandırdığı, henüz commit edilmemiş, ilgisiz bir değişikliği) kod satırları da vardı — `git diff`'teki hunk'lar ayrıştırılıp yalnızca BU değişikliğe (Emsal Matrisi sütun genişliği) ait izole bir patch çıkarılıp uygulandı, diğer oturumun değişiklikleri `git stash`'te bırakılıp dokunulmadı (onların kendi commit'i için hâlâ orada duruyor).
+- **Not:** bu turda `app.js`'te AYNI ANDA çalışan başka bir oturumun (Ana Gayrimenkul: blok/site bağımsız bölüm özeti, ilgisiz bir değişikliği) kod satırları da vardı — `git diff`'teki hunk'lar ayrıştırılıp yalnızca BU değişikliğe (Emsal Matrisi sütun genişliği) ait izole bir patch çıkarılıp uygulandı, diğer oturumun değişiklikleri `git stash`'te bırakılıp dokunulmadı (onların kendi commit'i için hâlâ orada duruyor).
 - Canlı tarayıcı testi yapılamadı. Kullanıcının gerçek bir Word çıktısı alıp "Alan" sütununun artık gözle görülür şekilde daha geniş olduğunu doğrulaması gerekiyor.
 
 ## 0.0.738 - 2026-09-10 - Emsal Matrisi satır yüksekliği: kullanıcı ölçüsüyle 0.55cm'e çıkarıldı

@@ -3264,6 +3264,23 @@ td .free-lookup input {
   gap: 12px;
 }
 
+.building-unit-distribution-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.building-unit-distribution-summary-preview {
+  margin-top: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: var(--surface-muted);
+  color: var(--ink);
+  font-weight: 600;
+  line-height: 1.55;
+}
+
 .building-apply-selected-blocks-button,
 .documents-apply-all-blocks-button {
   white-space: nowrap;
@@ -6595,6 +6612,10 @@ td textarea.table-textarea {
 
   .building-floor-count-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .building-unit-distribution-summary-grid {
+    grid-template-columns: 1fr;
   }
 
   .unit-inline-checkboxes {

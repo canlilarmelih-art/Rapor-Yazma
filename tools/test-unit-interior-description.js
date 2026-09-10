@@ -25,6 +25,9 @@ const AREA_TEXT = "3. Normal Kat projesine göre 56 m2 kullanım alanına sahipt
 const DECORATIVE_TEXT = "Salon ve oda zeminleri laminant parke kaplıdır.";
 
 const context = {
+  state: { fields: { ownershipType: "Dikey Kat İrtifakı", unitPrivatePool: "" } },
+  shouldMentionMainPropertyOwnership: () => false,
+  toLowerText: (value) => String(value || "").toLocaleLowerCase("tr-TR"),
   getUnitFloorRows: () => [{ floor: "3. Normal Kat" }],
   normalizeUnitFloorDescriptionRow: (row) => ({ ...row, interiorText: "x" }),
   composeUnitDescriptionIntro: () => "Ekspertize konu taşınmaz, dubleks mesken niteliklidir.",
@@ -70,6 +73,22 @@ assert.equal(paragraphs[1], DECORATIVE_TEXT, "Ikinci paragraf dekoratif aciklama
 assert(
   paragraphs[0].includes("dubleks mesken niteliklidir.") && paragraphs[0].includes(AREA_TEXT),
   "Giris ile alan anlatisi ayni paragrafta kalmali."
+);
+
+context.shouldMentionMainPropertyOwnership = (value) => String(value || "").includes("Yatay Kat İrtifakı");
+context.state.fields.ownershipType = "Yatay Kat İrtifakı";
+context.state.fields.unitPrivatePool = "Açık Yüzme Havuzu";
+const horizontalPoolParts = context.buildUnitInteriorDescriptionParts();
+assert(
+  horizontalPoolParts.areaDetails.includes("kendine ait açık yüzme havuzu"),
+  "Yatay kat irtifakinda ozel havuz bagimsiz bolum aciklamasina eklenmeli."
+);
+
+context.state.fields.ownershipType = "Dikey Kat İrtifakı";
+const verticalPoolParts = context.buildUnitInteriorDescriptionParts();
+assert(
+  !verticalPoolParts.areaDetails.includes("kendine ait açık yüzme havuzu"),
+  "Dikey kat irtifakinda ozel havuz aciklamaya eklenmemeli."
 );
 
 console.log("Bagimsiz bolum ic hacimler aciklamasi testi tamam.");

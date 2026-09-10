@@ -648,6 +648,7 @@ const sections = [
     fields: [
       { key: "legalArea", label: "Yasal kullanım alanı", type: "text", required: true, critical: true, hidden: true },
       { key: "currentArea", label: "Mevcut kullanım alanı", type: "text", required: true, critical: true, hidden: true },
+      { key: "unitPrivatePool", label: "Özel Havuz", type: "select", hidden: true },
     ],
   },
   {
@@ -2688,6 +2689,7 @@ function getUnitSectionFieldKeys() {
     "unitUsageStatus", "unitFirstSaleStatus", "unitFirstSaleStatusManual", "unitEntrancePosition", "facades",
     "unitConstructionLevel", "unitViewStatus", "unitHeatingType", "unitHeatingMounted",
     "unitShopFrontage", "unitShopDepth",
+    "unitPrivatePool",
     // Alan/iç mekan özeti (syncUnitFloorSummaryFields, unitFloors[0]'dan türetilir)
     "unitFloor", "unitAreaReductionRate", "unitLegalTerrace", "unitCurrentTerrace", "unitTerraceReductionRate", "interiorFeatures",
     // Dekoratif panel (applyUnitDecorativeFieldChange) - bkz. getUnitDecorativeFieldKeys().
@@ -13386,7 +13388,7 @@ function createBuildingFloorDistribution() {
   countPanel.innerHTML = `
     <div class="subsection-title-row">
       <h4>Ana Taşınmaz Kat Dağılımı</h4>
-      <p>Her kat türü için adet giriniz; kaydedildiğinde alt kısımda kat satırları oluşur.</p>
+      <p>Her kat türü için adet giriniz; bu dağılım ana gayrimenkul açıklamasında kullanılacaktır.</p>
     </div>
   `;
 
@@ -15309,6 +15311,7 @@ function joinTurkishUnitList(items) {
 
 const unitEntrancePositionOptions = ["", "Sağ", "Sağ Ön", "Sağ Arka", "Sol", "Sol Ön", "Sol Arka", "Ön", "Arka"];
 const unitUsageStatusOptions = ["", "Boş (Hiç Kullanılmamış)", "Boş (Kullanılmış)", "Mal Sahibi", "Kiracı", "İşgalci"];
+const unitPrivatePoolOptions = ["", "Yok", "Açık Yüzme Havuzu", "Kapalı Yüzme Havuzu"];
 const unitFirstSaleStatusOptions = ["1.El", "2.El"];
 const unitFacadeOptions = ["Kuzey", "Güney", "Doğu", "Batı"];
 const unitConstructionLevelOptions = Array.from({ length: 101 }, (_, index) => `${100 - index}%`);
@@ -15634,6 +15637,9 @@ function createUnitGeneralPanel() {
     createUnitSelectField("Manzara Var mı?", "unitViewStatus", unitViewStatusOptions),
     createUnitHeatingControl(),
   );
+  if (shouldMentionMainPropertyOwnership(state.fields.ownershipType)) {
+    grid.append(createUnitSelectField("Özel Havuz", "unitPrivatePool", unitPrivatePoolOptions));
+  }
   if (shouldShowWorkplaceFrontageDepthFields()) {
     grid.append(
       createUnitTextField("Cephe (m)", "unitShopFrontage"),
@@ -15927,7 +15933,9 @@ function buildUnitInteriorDescriptionParts() {
     .map((row) => normalizeUnitFloorDescriptionRow(row))
     .filter((row) => row.floor || row.legalArea || row.currentArea || row.legalTerrace || row.currentTerrace || row.interiorText);
   const intro = composeUnitDescriptionIntro(rows);
-  if (!rows.length) return { intro, areaDetails: "", details: "" };
+  const privatePoolSentence = composeUnitPrivatePoolSentence();
+  if (!rows.length && !privatePoolSentence) return { intro, areaDetails: "", details: "" };
+  if (!rows.length) return { intro, areaDetails: privatePoolSentence, details: privatePoolSentence };
 
   let areaDescription = "";
   if (rows.length === 1) {
@@ -15960,7 +15968,12 @@ function buildUnitInteriorDescriptionParts() {
   const externalSentence = shouldUseExternalUnitInspectionText() ? composeExternalUnitInspectionSentence() : "";
   const decorativeDescription = getUnitDecorativeDescriptionForCombinedText();
   const shopFrontageDepthSentence = composeUnitShopFrontageDepthSentence();
-  const areaDetails = joinNonEmptySentences([areaDescription, shopFrontageDepthSentence, externalSentence]);
+  const areaDetails = joinNonEmptySentences([
+    areaDescription,
+    shopFrontageDepthSentence,
+    externalSentence,
+    privatePoolSentence,
+  ]);
   // Dekoratif Özellikler Açıklaması YENİ PARAGRAFTA başlar (kullanıcı talebi):
   // alan/iç hacim anlatısıyla aynı paragrafta birleşiyordu. Tek "\n" yeterli —
   // normalizeReportWhitespace boş satırları zaten eliyor, formatWordParagraphs
@@ -15981,6 +15994,13 @@ function buildUnitInteriorDescriptionParts() {
     areaDetails,
     details: [areaDetails, String(decorativeDescription || "").trim()].filter(Boolean).join("\n"),
   };
+}
+
+function composeUnitPrivatePoolSentence() {
+  if (!shouldMentionMainPropertyOwnership(state.fields.ownershipType)) return "";
+  const pool = String(state.fields.unitPrivatePool || "").trim();
+  if (!pool || pool === "Yok") return "";
+  return `Taşınmazın kendine ait ${toLowerText(pool)} bulunmaktadır.`;
 }
 
 function composeUnitInteriorDescription() {
