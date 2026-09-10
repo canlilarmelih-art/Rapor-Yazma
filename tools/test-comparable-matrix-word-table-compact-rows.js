@@ -47,6 +47,10 @@
 // ÜSTE BİNDİRİYOR. Düzeltme: satır yüksekliği 0.28cm -> 0.4cm (gerçek
 // pay: ~%40).
 //
+// ALTINCI tur (2026-09-10, kullanıcı talebi: "0,55 e çıkar" — kendi
+// gerçek Word çıktısını görerek verdiği ölçü): satır yüksekliği
+// 0.4cm -> 0.55cm'e çıkarıldı.
+//
 // Bu test kapsamı:
 //  1) compact:true + KISA satır (autoHeightRowLabels'ta YOK) ->
 //     mso-height-rule:exactly (artık "at-least" DEĞİL).
@@ -124,8 +128,8 @@ const rows = [
   // Başlık ("Alan"/"Emsal 1"/"Emsal 2") + "İrtibat" + "Enlem" -> exactly.
   const shortRowTags = [trOpenTags[0], trOpenTags[1], trOpenTags[2]];
   shortRowTags.forEach((tag, index) => {
-    assert.ok(tag.includes('height="15"'), `Kısa satır #${index} height=\"15\" içermeli: ${tag}`);
-    assert.ok(tag.includes("height:0.4cm"), `Kısa satır #${index} 0.4cm yükseklik içermeli: ${tag}`);
+    assert.ok(tag.includes('height="21"'), `Kısa satır #${index} height=\"21\" içermeli: ${tag}`);
+    assert.ok(tag.includes("height:0.55cm"), `Kısa satır #${index} 0.55cm yükseklik içermeli: ${tag}`);
     assert.ok(tag.includes("mso-height-source:userset"), `Kısa satır #${index} mso-height-source:userset içermeli: ${tag}`);
     assert.ok(
       tag.includes("mso-height-rule:exactly"),
@@ -158,7 +162,7 @@ const rows = [
 {
   const html = fns.buildSimpleHtmlTable(headers, rows, "meta");
   assert.ok(!html.includes("mso-height-rule"), "compact:false iken <tr>'lere HİÇBİR satır-yüksekliği mso-height-rule EKLENMEMELİ (regresyon, <tr> düzeyi).");
-  assert.ok(!html.includes('height="15"'), "compact:false iken height=\"15\" attribute'ü EKLENMEMELİ.");
+  assert.ok(!html.includes('height="21"'), "compact:false iken height=\"21\" attribute'ü EKLENMEMELİ.");
   assert.ok(!html.includes("padding:0.7pt 1.2pt;"), "compact:false iken sıkılaştırılmış compact dolgu KULLANILMAMALI.");
   assert.ok(html.includes("line-height:8pt;mso-line-height-rule:exactly;"), "compact:false (dar tablo) iken de nokta-birimli line-height + mso-line-height-rule:exactly OLMALI.");
   assert.ok(

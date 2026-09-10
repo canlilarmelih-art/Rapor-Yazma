@@ -1,5 +1,13 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.738 - 2026-09-10 - Emsal Matrisi satır yüksekliği: kullanıcı ölçüsüyle 0.55cm'e çıkarıldı
+
+- Kullanıcı, 0.0.737'deki `0.4cm` değerini kendi gerçek Word çıktısında test edip "0,55 e çıkar" dedi — gerçek ölçüye dayalı, doğrudan bir talep.
+- `app.js`'teki `buildSimpleHtmlTable()`'ın compact `<tr>` satır yüksekliği (`height="21" style="height:0.55cm;...mso-height-rule:exactly;"`) ve tutarlılık için 9 şablonun (`akbank`, `halkbank`, `kuveytturk`, `kuveytturk-arsa-arazi`, `vakifbank`, `vakifkatilim`, `yapikredi`, `ziraat`, `ziraat-arsa-arazi`) `.pg-section .word-table tr` (kuveytturk'te ayrıca `table.kt-list tr`) CSS kuralı `0.4cm` → `0.55cm`'e güncellendi.
+- Test: `tools/test-comparable-matrix-word-table-compact-rows.js`'teki `height="15"`/`height:0.4cm` beklentileri `height="21"`/`height:0.55cm`'e güncellendi.
+- `npm run check` ve tam `npm test` (185 test) başarılı. `index.html`'de `app.js` cache-buster'ı `?v=20260910-1749`'a yükseltildi.
+- Canlı tarayıcı testi yapılamadı. ALTINCI tur — kullanıcının gerçek bir Word çıktısı alıp 0,55 cm'nin beklediği görünümü verdiğini doğrulaması gerekiyor.
+
 ## 0.0.737 - 2026-09-10 - Emsal Matrisi: "exactly" 0.28cm çok dardı, metinler çakışıyordu — 0.4cm'e çıkarıldı
 
 - Kullanıcı, 0.0.736'dan SONRA yeni bir ekran görüntüsü paylaştı: satırlar bu sefer gerçekten sıkışmıştı (mekanizma çalışıyordu, doğrulandı) AMA metinler satırlar arasında ÇAKIŞIYORDU — "şimdi de çok dar". Word'ün "Tablo Özellikleri" penceresi "Satır yüksekliği: Tam" (exactly) gösteriyordu, yani 0.0.736'nın "exactly" düzeltmesi gerçekten Word'e ulaşmıştı.

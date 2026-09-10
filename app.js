@@ -633,6 +633,8 @@ const sections = [
       { key: "socialFacilities", label: "Sosyal Tesisler", type: "text", hidden: true },
       { key: "buildingBlockCount", label: "Blok Adedi - Konumu", type: "select", hidden: true },
       { key: "buildingSubjectBlockPosition", label: "Konu Taşınmazın Yer Aldığı Blokun Parsel Üzerindeki Konumu", type: "text", hidden: true },
+      { key: "buildingBlockUnitCount", label: "Bulunduğu Blok İçindeki Bağımsız Bölüm Sayısı", type: "number", hidden: true },
+      { key: "buildingSiteUnitCount", label: "Site Genelinde Toplam Bağımsız Bölüm Sayısı", type: "number", hidden: true },
       { key: "mainPropertyDescription", label: "Ana Gayrimenkul Açıklaması", type: "textarea", hidden: true },
       { key: "mainPropertyFloorCountText", label: "Ana Gayrimenkul Kat Adedi", type: "text", hidden: true },
     ],
@@ -2824,6 +2826,7 @@ function getBuildingSectionFieldKeys() {
     "carpark", "elevator", "exteriorCladding", "stairLanding", "interiorWalls",
     "buildingEntranceDoor", "buildingFootprintReference", "buildingEntranceLevel", "buildingEntranceDirection",
     "socialFacilities", "buildingBlockCount", "buildingSubjectBlockPosition",
+    "buildingBlockUnitCount", "buildingSiteUnitCount",
     "buildingFloorCounts", "totalFloors", "totalUnits",
     "mainPropertyFloorSummary", "mainPropertyDescription", "mainPropertyFloorCountText",
     "buildingConstructionYear", "buildingCompletionDate", "buildingCompletionExplanation",
@@ -13429,8 +13432,78 @@ function createBuildingFloorDistribution() {
   });
 
   countPanel.append(countGrid, saveButton);
-  wrapper.append(countPanel, createBuildingFloorRowsTable(), createMainPropertyDescriptionPanel());
+  wrapper.append(countPanel, createBuildingUnitDistributionSummaryPanel(), createMainPropertyDescriptionPanel());
   return wrapper;
+}
+
+function createBuildingUnitDistributionSummaryPanel() {
+  const panel = document.createElement("div");
+  panel.className = "subsection is-detail building-unit-distribution-summary-panel";
+  panel.innerHTML = `
+    <div class="subsection-title-row">
+      <h4>Bağımsız Bölüm Dağılımı</h4>
+      <p>Kat satırları yerine, taşınmazın bulunduğu blok ve site genelindeki bağımsız bölüm sayılarını giriniz.</p>
+    </div>
+    <div class="building-unit-distribution-summary-grid">
+      <label class="field">
+        <span>Bulunduğu Blok İçindeki Bağımsız Bölüm Sayısı</span>
+        <input type="number" min="1" step="1" inputmode="numeric" data-building-unit-count="block">
+      </label>
+      <label class="field">
+        <span>Site Genelinde Toplam Bağımsız Bölüm Sayısı</span>
+        <input type="number" min="1" step="1" inputmode="numeric" data-building-unit-count="site">
+      </label>
+    </div>
+    <div class="building-unit-distribution-summary-preview" data-building-unit-count-preview></div>
+  `;
+  const blockInput = panel.querySelector('[data-building-unit-count="block"]');
+  const siteInput = panel.querySelector('[data-building-unit-count="site"]');
+  const legacyTotal = normalizeNonNegativeInteger(state.fields.totalUnits);
+  blockInput.value = state.fields.buildingBlockUnitCount || legacyTotal;
+  siteInput.value = state.fields.buildingSiteUnitCount || legacyTotal;
+
+  const commit = (input, key) => {
+    const value = normalizeNonNegativeInteger(input.value);
+    input.value = value;
+    state.fields[key] = value;
+    refreshBuildingUnitDistributionSummary(panel);
+    refreshMainPropertyDescriptionFromCurrentFields(key);
+    autosave();
+    renderValidation();
+    updateStatus();
+  };
+  blockInput.addEventListener("input", () => commit(blockInput, "buildingBlockUnitCount"));
+  siteInput.addEventListener("input", () => commit(siteInput, "buildingSiteUnitCount"));
+  refreshBuildingUnitDistributionSummary(panel);
+  return panel;
+}
+
+function refreshBuildingUnitDistributionSummary(panel) {
+  const preview = panel?.querySelector("[data-building-unit-count-preview]");
+  if (!preview) return;
+  const blockUnits = parseBuildingFloorCount(state.fields.buildingBlockUnitCount);
+  const siteUnits = parseBuildingFloorCount(state.fields.buildingSiteUnitCount || state.fields.totalUnits);
+  const blockCountText = String(state.fields.buildingBlockCount || "").trim();
+  const blockCount = parseBuildingFloorCount(blockCountText) || (blockCountText.toLocaleLowerCase("tr-TR") === "tek" ? 1 : 0);
+  const blockName = String(state.fields.titleBlockName || "").trim();
+  const blockLocative = blockName
+    ? (/blok$/i.test(blockName) ? `${blockName}ta` : `${blockName} Blokta`)
+    : "bulunduğu blokta";
+  if (!siteUnits && !blockUnits) {
+    preview.textContent = "Bağımsız bölüm sayıları girildiğinde açıklama burada oluşur.";
+    return;
+  }
+  const sitePhrase = [
+    blockCount ? `${blockCount.toLocaleString("tr-TR")} ${blockCount === 1 ? "blok" : "blok"}` : "",
+    siteUnits ? `${siteUnits.toLocaleString("tr-TR")} adet bağımsız bölüm` : "",
+  ].filter(Boolean).join(" ve ");
+  if (sitePhrase && blockUnits) {
+    preview.textContent = `Taşınmazın yer aldığı sitede ${sitePhrase} bulunmakta olup, ${blockLocative} ${blockUnits === 1 ? "tek bağımsız bölümdür" : `${blockUnits.toLocaleString("tr-TR")} adet bağımsız bölüm mevcuttur`}.`;
+  } else if (sitePhrase) {
+    preview.textContent = `Taşınmazın yer aldığı sitede ${sitePhrase} bulunmaktadır.`;
+  } else {
+    preview.textContent = `${blockLocative} ${blockUnits} adet bağımsız bölüm mevcuttur.`;
+  }
 }
 
 function createBuildingTechnicalOptionsPanel() {
@@ -14231,6 +14304,8 @@ const mainPropertyDescriptionAutoRefreshFields = new Set([
   "elevator",
   "buildingBlockCount",
   "buildingSubjectBlockPosition",
+  "buildingBlockUnitCount",
+  "buildingSiteUnitCount",
   "carpark",
   "exteriorCladding",
   "stairLanding",
@@ -14263,6 +14338,9 @@ function refreshMainPropertyDescriptionFromCurrentFields(changedKey = "") {
   // alanları, sosyal tesisler, blok adedi/konumu, kat satırı düzenlemeleri)
   // TEK yerden kapsar.
   syncBuildingSharedDataToBlockSiblings();
+  document.querySelectorAll(".building-unit-distribution-summary-panel").forEach((panel) => {
+    refreshBuildingUnitDistributionSummary(panel);
+  });
   // "Bloklar Ana Gayrimenkul Özeti" (2026-09-03) — YUKARIDAKİ 15 alanın
   // TAMAMI bu özet tablonun sütunları; canlı panelden (bu fonksiyonun
   // KENDİSİ üzerinden) yapılan HERHANGİ bir değişiklik sonrası tablo da
@@ -14340,6 +14418,8 @@ function buildMainPropertyValues(usePlaceholderTokens) {
     elevator: readMainPropertyField("elevator", "ASANSÖR", { usePlaceholderTokens }),
     blockCount: readMainPropertyField("buildingBlockCount", "BLOK.ADEDİ", { usePlaceholderTokens }),
     blockPosition: readMainPropertyField("buildingSubjectBlockPosition", "BLOĞUN.KONUMU", { usePlaceholderTokens, fallbackToToken: false }),
+    blockUnitCount: readMainPropertyField("buildingBlockUnitCount", "BLOK.BAĞIMSIZ.BÖLÜM.SAYISI", { usePlaceholderTokens, fallbackToToken: false }),
+    siteUnitCount: readMainPropertyField("buildingSiteUnitCount", "SİTE.BAĞIMSIZ.BÖLÜM.SAYISI", { usePlaceholderTokens, fallbackToToken: false }),
     carpark: readMainPropertyField("carpark", "OTOPARK", { usePlaceholderTokens }),
     exteriorCladding: readMainPropertyField("exteriorCladding", "DIŞ.CEPHE.KAPLAMA", { usePlaceholderTokens }),
     stairLanding: readMainPropertyField("stairLanding", "MERDİVEN.SAHANLIK", { usePlaceholderTokens }),
@@ -14670,10 +14750,24 @@ registerVariantGroup("buildHorizontalMainPropertySiteSentence", "Yatay Kat İrti
 function buildHorizontalMainPropertySiteSentence(values) {
   const order = values.buildingOrder ? `${toLowerText(values.buildingOrder)} nizamda` : "site bütünlüğünde";
   const usePhrase = detectHorizontalBlockUsePhrase();
-  const totalUnits = parseBuildingFloorCount(values.totalUnits);
-  const totalText = totalUnits
-    ? ` Site genelinde toplam ${totalUnits.toLocaleString("tr-TR")} adet bağımsız bölüm bulunmaktadır.`
-    : "";
+  const siteUnits = parseBuildingFloorCount(values.siteUnitCount || values.totalUnits);
+  const blockUnits = parseBuildingFloorCount(values.blockUnitCount);
+  const blockCount = parseBuildingFloorCount(values.blockCount) || (String(values.blockCount || "").trim().toLocaleLowerCase("tr-TR") === "tek" ? 1 : 0);
+  const blockName = String(values.titleBlockName || "").trim();
+  const blockLocative = blockName
+    ? (/blok$/i.test(blockName) ? `${blockName}ta` : `${blockName} Blokta`)
+    : "bulunduğu blokta";
+  const siteParts = [];
+  if (blockCount) siteParts.push(`${blockCount.toLocaleString("tr-TR")} ${blockCount === 1 ? "blok" : "blok"}`);
+  if (siteUnits) siteParts.push(`${siteUnits.toLocaleString("tr-TR")} adet bağımsız bölüm`);
+  let totalText = "";
+  if (siteParts.length === 2 && blockUnits) {
+    totalText = ` Taşınmazın yer aldığı sitede ${siteParts[0]} ve ${siteParts[1]} bulunmakta olup, ${blockLocative} ${blockUnits === 1 ? "tek bağımsız bölümdür" : `${blockUnits.toLocaleString("tr-TR")} adet bağımsız bölüm mevcuttur`}.`;
+  } else if (siteParts.length === 2) {
+    totalText = ` Taşınmazın yer aldığı sitede ${siteParts[0]} ve ${siteParts[1]} bulunmaktadır.`;
+  } else if (siteUnits) {
+    totalText = ` Site genelinde toplam ${siteUnits.toLocaleString("tr-TR")} adet bağımsız bölüm bulunmaktadır.`;
+  }
   const variantIndex = selectVariant("buildHorizontalMainPropertySiteSentence", horizontalSiteVariants.length);
   return horizontalSiteVariants[variantIndex](order, usePhrase, totalText);
 }
@@ -25618,8 +25712,13 @@ function buildSimpleHtmlTable(headers, rows, className = "", options = {}) {
   // hâlâ orijinal (sıkıştırma öncesi, ~22-30pt/~0.8-1.1cm) satırların
   // KABACA YARISI kadar kompakt, ama artık gerçek payla (0.4cm≈11.3pt
   // vs ihtiyaç ~7.9pt, ~%40 pay).
-  const compactHeaderRowAttrs = compact ? ' height="15" style="height:0.4cm;mso-height-source:userset;mso-height-rule:exactly;"' : "";
-  const compactShortRowAttrs = ' height="15" style="height:0.4cm;mso-height-source:userset;mso-height-rule:exactly;"';
+  //
+  // Kullanıcı talebi (2026-09-10, ALTINCI tur): "0,55 e çıkar" — 0.4cm
+  // hâlâ kullanıcıya dar geldi, doğrudan 0.55cm'e çıkarıldı (kullanıcının
+  // gerçek Word çıktısını görerek verdiği ölçü — daha fazla teorik
+  // hesap/tahmin YOK).
+  const compactHeaderRowAttrs = compact ? ' height="21" style="height:0.55cm;mso-height-source:userset;mso-height-rule:exactly;"' : "";
+  const compactShortRowAttrs = ' height="21" style="height:0.55cm;mso-height-source:userset;mso-height-rule:exactly;"';
   const theadHtml = `<tr${compactHeaderRowAttrs}>${headers.map((header) => `<th style="${headerCell}">${escapeHtml(header)}</th>`).join("")}</tr>`;
   const lastIndex = rows.length - 1;
   const bodyHtml = rows.map((row, rowIndex) => {
