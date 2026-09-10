@@ -1,5 +1,12 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.725 - 2026-09-10 - Mimari proje seçiliyken kadastro alanlarının gizlenmesi
+
+- `Mimari Proje Var mı?` seçili olduğunda `Kadastroya İşli mi?` ve üç kadastro detay alanı gizli kalır.
+- Admin görünürlük istisnası bu dört alanı artık geçersiz kılamaz; diğer admin ve normal kullanıcı görünürlük kuralları korunmuştur.
+- Değişiklik öncesi yedekler: `backups/before-cadastral-project-visibility-fix_2026-09-10_08-46-09` ve `backups/before-cadastral-project-visibility-test-update_2026-09-10_08-47-43`.
+- `npm run check`, `tools/test-sensitive-visibility-refinements.js` ve `tools/test-project-suitability-status.js` başarılı.
+
 ## 0.0.724 - 2026-09-10 - Halkbank Word emsal matrisi kısa metin düzeltmesi
 
 - Halkbank Word çıktısındaki `Emsal Metni` matrisi satırı artık uzun emsal açıklaması yerine kısa formatı kullanıyor.

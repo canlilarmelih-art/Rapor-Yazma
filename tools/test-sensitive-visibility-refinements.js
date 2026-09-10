@@ -80,8 +80,13 @@ function sliceFn(startMarker, { toMarker } = {}) {
   );
   assert.match(
     appSource,
-    /shouldHideField\(section\.id, field\.key\)\s*&&\s*\(!isCurrentUserAdmin\(\)\s*\|\|\s*\(section\.id === "case" && field\.key === "currentUsageNature"\)\)/,
-    "Admin diger alan filtresi istisnalarini korurken mevcut kullanim niteligini kosullu gostermeli.",
+    /shouldHideField\(section\.id, field\.key\)\s*&&\s*\(!isCurrentUserAdmin\(\)\s*\|\|\s*\(section\.id === "case" && field\.key === "currentUsageNature"\)\s*\|\|\s*\(section\.id === "documents" && isCadastralProjectVisibilityField\(field\.key\)\)\)/,
+    "Admin diger alan filtresi istisnalarini korurken mevcut kullanim ve kadastro gorunurlugu kurallarini uygulamali.",
+  );
+  assert.match(
+    appSource,
+    /function isCadastralProjectVisibilityField\(fieldKey\)\s*\{[\s\S]*?fieldKey === "projectRegisteredInCadastre"[\s\S]*?isCadastralRegistrationDetailField\(fieldKey\)/,
+    "Mimari proje secimine bagli kadastro alanlari admin istisnasindan ayrilmali.",
   );
   assert.match(
     appSource,
