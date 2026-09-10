@@ -25719,6 +25719,31 @@ function buildSimpleHtmlTable(headers, rows, className = "", options = {}) {
   // hesap/tahmin YOK).
   const compactHeaderRowAttrs = compact ? ' height="21" style="height:0.55cm;mso-height-source:userset;mso-height-rule:exactly;"' : "";
   const compactShortRowAttrs = ' height="21" style="height:0.55cm;mso-height-source:userset;mso-height-rule:exactly;"';
+  // Kullanıcı talebi (2026-09-10): "en soldaki alan sütununun genişliğini
+  // %25 arttır" — Emsal Matrisi'nin (is-matrix) ilk ("Alan") sütunu HER
+  // ZAMAN diğer (emsal sayısına göre değişen adette) sütunlardan %25 daha
+  // geniş olmalı. `table-layout:fixed` zaten var; genişlik, bu dosyada
+  // buildCompactReportWordTableHtml'in ZATEN kullandığı, Word'ün
+  // güvenilir uyguladığı `<colgroup><col style="width:...">` tekniğiyle
+  // uygulanır — ilk sütuna 1.25 birim, diğerlerine 1'er birim ağırlık
+  // verilip toplamı 100% olacak şekilde yüzdeye çevrilir (sütun sayısı
+  // sabit DEĞİL — kaç emsal varsa o kadar sütun, bu yüzden oranlar
+  // dinamik hesaplanır). Yalnızca is-matrix (Emsal Matrisi) etkilenir —
+  // diğer buildSimpleHtmlTable çağrıları dokunulmadan kalır.
+  const isMatrixTable = classNames.includes("is-matrix");
+  const columnGroupHtml = isMatrixTable && headers.length > 1
+    ? (() => {
+        const otherColumnCount = headers.length - 1;
+        const totalUnits = 1.25 + otherColumnCount;
+        const labelColumnWidth = ((1.25 / totalUnits) * 100).toFixed(4);
+        const otherColumnWidth = ((1 / totalUnits) * 100).toFixed(4);
+        const cols = [
+          `<col style="width:${labelColumnWidth}%;">`,
+          ...Array.from({ length: otherColumnCount }, () => `<col style="width:${otherColumnWidth}%;">`),
+        ];
+        return `<colgroup>${cols.join("")}</colgroup>`;
+      })()
+    : "";
   const theadHtml = `<tr${compactHeaderRowAttrs}>${headers.map((header) => `<th style="${headerCell}">${escapeHtml(header)}</th>`).join("")}</tr>`;
   const lastIndex = rows.length - 1;
   const bodyHtml = rows.map((row, rowIndex) => {
@@ -25734,6 +25759,7 @@ function buildSimpleHtmlTable(headers, rows, className = "", options = {}) {
     }).join("")}</tr>`;
   }).join("");
   return `<table class="${escapeHtml(classes.join(" "))}" style="border-collapse:collapse;width:100%;margin:${compact ? "3pt 0 12pt" : "5pt 0 12pt"};table-layout:${isWide ? "auto" : "fixed"};font-size:${fontSize};">
+    ${columnGroupHtml}
     <thead>${theadHtml}</thead>
     <tbody>${bodyHtml}</tbody>
   </table>`;

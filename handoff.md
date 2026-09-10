@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.739 - 2026-09-10 - Emsal Matrisi: "Alan" sütunu %25 genişletildi
+
+- Kullanıcı talebi: "en soldaki alan sütununun genişliğini %25 arttır" — gerçek bir Word çıktısı ekran görüntüsünde, satırlar artık sıkışık/çakışmasız göründüğü için (önceki turlar) bu sefer yalnızca sütun genişliği isteği geldi.
+- `buildSimpleHtmlTable()`'a (`app.js`) Emsal Matrisi'nin (`is-matrix` sınıfı) tablosu için `<colgroup>` eklendi — bu dosyada `buildCompactReportWordTableHtml()`'in ZATEN kullandığı, Word'de güvenilir çalıştığı bilinen aynı teknik. İlk ("Alan") sütuna 1,25 birim, diğer (emsal sayısı kadar, DİNAMİK) sütunlara 1'er birim ağırlık verilip toplamı %100 olacak şekilde yüzdeye çevrilir — sonuç: "Alan" sütunu her zaman diğerlerinden TAM %25 daha geniş, kaç emsal olursa olsun. Yalnızca `is-matrix` etkilenir, diğer `buildSimpleHtmlTable` çağrıları dokunulmadan kalır.
+- Test: `tools/test-comparable-matrix-word-table-compact-rows.js`'e yeni bir senaryo eklendi — 4 emsallik ve 2 emsallik iki ayrı tabloda "Alan" sütununun oranının TAM 1.25 olduğu, toplam genişliğin %100 olduğu, `is-matrix` OLMAYAN tablolarda `<colgroup>` hiç üretilmediği doğrulanır.
+- `npm run check` ve tam `npm test` (185 test) başarılı. `index.html`'de `app.js` cache-buster'ı `?v=20260910-1759`'a yükseltildi.
+- **Not:** bu turda `app.js`'te AYNI ANDA çalışan başka bir oturumun (Ana Gayrimenkul: blok/site bağımsız bölüm özeti, "0.0.739" olarak adlandırdığı, henüz commit edilmemiş, ilgisiz bir değişikliği) kod satırları da vardı — `git diff`'teki hunk'lar ayrıştırılıp yalnızca BU değişikliğe (Emsal Matrisi sütun genişliği) ait izole bir patch çıkarılıp uygulandı, diğer oturumun değişiklikleri `git stash`'te bırakılıp dokunulmadı (onların kendi commit'i için hâlâ orada duruyor).
+- Canlı tarayıcı testi yapılamadı. Kullanıcının gerçek bir Word çıktısı alıp "Alan" sütununun artık gözle görülür şekilde daha geniş olduğunu doğrulaması gerekiyor.
+
 ## 0.0.738 - 2026-09-10 - Emsal Matrisi satır yüksekliği: kullanıcı ölçüsüyle 0.55cm'e çıkarıldı
 
 - Kullanıcı, 0.0.737'deki `0.4cm` değerini kendi gerçek Word çıktısında test edip "0,55 e çıkar" dedi — gerçek ölçüye dayalı, doğrudan bir talep.

@@ -51,6 +51,13 @@
 // gerçek Word çıktısını görerek verdiği ölçü): satır yüksekliği
 // 0.4cm -> 0.55cm'e çıkarıldı.
 //
+// YEDİNCİ tur (2026-09-10, kullanıcı talebi: "en soldaki alan sütununun
+// genişliğini %25 arttır"): Emsal Matrisi'nin ilk ("Alan") sütunu artık
+// (kaç emsal sütunu olursa olsun) diğerlerinden %25 daha geniş — bu
+// dosyada buildCompactReportWordTableHtml'in ZATEN kullandığı
+// <colgroup><col style="width:..."> tekniğiyle (Word'de güvenilir
+// çalıştığı bilinen bir teknik).
+//
 // Bu test kapsamı:
 //  1) compact:true + KISA satır (autoHeightRowLabels'ta YOK) ->
 //     mso-height-rule:exactly (artık "at-least" DEĞİL).
@@ -67,6 +74,10 @@
 //  6) buildComparableMatrixWordTableHtml() kaynak metninin
 //     field.wide'dan autoHeightRowLabels hesaplayıp buildSimpleHtmlTable'a
 //     geçirdiği (kablolama) doğrulanır.
+//  7) is-matrix tabloda ilk sütun her zaman DİĞERLERİNDEN %25 daha geniş
+//     (<colgroup>) — sütun sayısından BAĞIMSIZ (2 ve 4 emsal sütunuyla
+//     ayrı ayrı doğrulanır); is-matrix OLMAYAN tablolarda <colgroup>
+//     HİÇ üretilmez (regresyon kilidi).
 
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -191,4 +202,52 @@ const rows = [
   console.log("buildComparableMatrixWordTableHtml kaynak-duzeyi kablolama (autoHeightRowLabels) testi tamam.");
 }
 
-console.log("Emsal Matrisi Word tablosu: kompakt satir yuksekligi (exactly + uzun-metin istisnasi) testleri basarili.");
+// --- 6) is-matrix: ilk sütun HER ZAMAN diğerlerinden %25 daha geniş -----
+// (<colgroup>), sütun sayısından BAĞIMSIZ.
+{
+  const extractColWidths = (html) => {
+    const colgroupMatch = html.match(/<colgroup>([\s\S]*?)<\/colgroup>/);
+    assert.ok(colgroupMatch, "is-matrix tabloda <colgroup> bulunamadı.");
+    return Array.from(colgroupMatch[1].matchAll(/width:([\d.]+)%/g)).map((m) => Number(m[1]));
+  };
+
+  // 4 emsal sütunu (5 başlık: Alan + 4).
+  {
+    const html4 = fns.buildSimpleHtmlTable(headers, rows, "is-matrix", { compact: true, autoHeightRowLabels: [] });
+    const widths = extractColWidths(html4);
+    assert.equal(widths.length, headers.length, "colgroup, başlık sayısı kadar <col> içermeli.");
+    const [labelWidth, ...otherWidths] = widths;
+    otherWidths.forEach((width, index) => {
+      assert.ok(Math.abs(width - otherWidths[0]) < 0.01, `Diğer sütunlar (Emsal ${index + 1}) birbiriyle AYNI genişlikte olmalı.`);
+    });
+    const ratio = labelWidth / otherWidths[0];
+    assert.ok(Math.abs(ratio - 1.25) < 0.001, `"Alan" sütunu diğerlerinden TAM %25 daha geniş olmalı (oran=${ratio}).`);
+    const total = widths.reduce((sum, w) => sum + w, 0);
+    assert.ok(Math.abs(total - 100) < 0.01, `Sütun genişlikleri toplamı %100 olmalı (toplam=${total}).`);
+  }
+
+  // 2 emsal sütunu (3 başlık) — sütun sayısı değişince de AYNI %25 oranı.
+  {
+    const headers2 = ["Alan", "Emsal 1", "Emsal 2"];
+    const rows2 = [["İrtibat", "Ali Bey", "Veli Bey"]];
+    const html2 = fns.buildSimpleHtmlTable(headers2, rows2, "is-matrix", { compact: true, autoHeightRowLabels: [] });
+    const widths2 = extractColWidths(html2);
+    assert.equal(widths2.length, 3, "2 emsallik tabloda colgroup 3 <col> içermeli.");
+    const ratio2 = widths2[0] / widths2[1];
+    assert.ok(Math.abs(ratio2 - 1.25) < 0.001, `2 emsallik tabloda da "Alan" sütunu %25 daha geniş olmalı (oran=${ratio2}).`);
+  }
+
+  // is-matrix OLMAYAN tablolarda <colgroup> HİÇ üretilmemeli (regresyon).
+  {
+    const htmlMeta = fns.buildSimpleHtmlTable(headers, rows, "meta");
+    assert.ok(!htmlMeta.includes("<colgroup>"), "is-matrix OLMAYAN (meta) tabloda <colgroup> ÜRETİLMEMELİ.");
+  }
+  {
+    const htmlPlain = fns.buildSimpleHtmlTable(headers, rows, "");
+    assert.ok(!htmlPlain.includes("<colgroup>"), "is-matrix OLMAYAN (sınıfsız) tabloda <colgroup> ÜRETİLMEMELİ.");
+  }
+
+  console.log("is-matrix: ilk sutun her zaman %25 daha genis (colgroup, sutun-sayisindan bagimsiz) testi tamam.");
+}
+
+console.log("Emsal Matrisi Word tablosu: kompakt satir yuksekligi (exactly + uzun-metin istisnasi) + ilk sutun genisligi testleri basarili.");
