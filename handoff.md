@@ -1,5 +1,21 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.727 - 2026-09-10 - Halkbank kısa emsal metninde TL tekrarının kaldırılması
+
+- Halkbank kısa `Emsal Metni` artık satış ve kira tutarlarında `TL TL` tekrarını üretmez.
+- Çıktı biçimi `7.000.000 TL bedelle...` ve `32.000 TL/ay...` şeklindedir.
+- Değişiklik öncesi yedek: `backups/before-halkbank-short-text-currency-duplication_2026-09-10_08-59-03`.
+- `npm run check`, banka şablonları ve kat bazlı emsal açıklaması testleri başarılı.
+
+## 0.0.726 - 2026-09-10 - Halkbank emsal açıklaması ekranda kısa format
+
+- Halkbank seçiliyken Emsaller bölümündeki `Emsal Metni` hesaplanan alanı kısa emsal formatını kullanır.
+- Kısa format; konum, kat, beyan/düzeltilmiş alan, oda planı, nitelik, satış bedeli ve kira değerini içerir.
+- İrtibat kişisi/telefon, konu taşınmaz açıklaması, iç özellik/konum şerefiyesi ve pazarlık payı kısa metne dahil edilmez.
+- Diğer bankaların emsal açıklaması formatı korunmuştur.
+- Değişiklik öncesi yedek: `backups/before-halkbank-onscreen-comparable-short-text_2026-09-10_08-55-20`.
+- `npm run check`, görünürlük, proje uygunluğu, kat bazlı emsal açıklaması ve banka şablon testleri başarılı.
+
 ## 0.0.725 - 2026-09-10 - Mimari proje seçiliyken kadastro alanlarının gizlenmesi
 
 - `Mimari Proje Var mı?` seçili olduğunda `Kadastroya İşli mi?` ve üç kadastro detay alanı gizli kalır.

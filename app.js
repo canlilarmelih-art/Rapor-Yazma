@@ -32455,10 +32455,10 @@ function buildHalkbankShortComparableText(row = {}) {
   const sentences = [];
   const status = String(row.c2 || "").toLocaleLowerCase("tr-TR");
   if (Number.isFinite(metrics.saleValue) && metrics.saleValue > 0) {
-    sentences.push(`${formatComparableMoney(metrics.saleValue)} TL bedelle ${status.includes("satılmış") ? "satılmıştır" : "satılıktır"}.`);
+    sentences.push(`${formatComparableMoney(metrics.saleValue)} bedelle ${status.includes("satılmış") ? "satılmıştır" : "satılıktır"}.`);
   }
   if (Number.isFinite(metrics.rent) && metrics.rent > 0) {
-    sentences.push(`Kira değerinin ${formatComparableMoney(metrics.rent)} TL/ay olacağı düşünülmektedir.`);
+    sentences.push(`Kira değerinin ${formatComparableMoney(metrics.rent)}/ay olacağı düşünülmektedir.`);
   }
   return [parts.join(", "), sentences.join(" ")].filter(Boolean).join(" ").trim();
 }
@@ -46898,7 +46898,11 @@ function calculateComparableFieldValue(key, row, rowIndex = 0) {
   if (key === "calcAdjustedCalculatedEmsalUnitValue") return formatComparableMoney(metrics.adjustedCalculatedEmsalUnitValue, " TL/m²");
   if (key === "calcRentUnitValue") return formatComparableMoney(metrics.rentUnitValue, " TL/m²/ay");
   if (key === "calcWorkplaceReducedArea") return formatComparableMoney(metrics.workplaceReducedArea, " m²");
-  if (key === "calcLongText") return buildComparableLongText(row, rowIndex, metrics);
+  if (key === "calcLongText") {
+    return isHalkbankSelectedForReport()
+      ? buildHalkbankShortComparableText(row)
+      : buildComparableLongText(row, rowIndex, metrics);
+  }
   return "";
 }
 
