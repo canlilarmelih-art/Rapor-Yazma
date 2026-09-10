@@ -33,14 +33,24 @@
   table.meta td.section-cell { padding: 3pt 4pt; background: #e5e7e9; color: #173d5c; font-weight: 900; }
 
   .word-table { width: 100%; margin: 5pt 0 12pt; border-collapse: collapse; border: 1pt solid #c7ccd1; font-size: 7pt; }
-  .word-table th, .word-table td { padding: 1.7pt 3pt; border: 1pt solid #d5d9dd; vertical-align: top; }
+  .word-table th, .word-table td { padding: 1.7pt 3pt; mso-padding-alt: 1.7pt 3pt 1.7pt 3pt; border: 1pt solid #d5d9dd; vertical-align: top; line-height: 8pt; mso-line-height-rule: exactly; }
   .word-table th { background: #e9ebed; color: #2d89c5; font-weight: 900; text-align: left; }
   .word-table tbody tr:nth-child(even) td { background: #f6f7f8; }
 
   .narrative { margin: 5pt 0 12pt; padding: 5pt 6pt; border: 1pt solid #d5d9dd; background: #f8f8f8; }
   .narrative p:last-child { margin-bottom: 0; }
   .pg-section h2 { margin-top: 0; }
-  .pg-section table.meta td, .pg-section .word-table td, .pg-section .word-table th { padding: 1pt 2pt; font-size: 6pt; }
+  /* Kullanıcı talebi (2026-09-10): "mevcut tüm template dosyalarını tara...
+     emsal matrisi tablosunda yaşadığımız soruna sahip tabloları tespit et
+     ve düzelt" — bu şablonda da ({{EMSAL_MATRISI}} DAHİL, bkz. "5. EMSALLER
+     SEKMESİ") AYNI kural geçerli: Word, app.js'in ürettiği satır-içi
+     style="..." değerlerini bu .word-table sınıf kuralına karşı güvenilir
+     şekilde öncelemiyor; aşağıdaki kurala mso-padding-alt/mso-line-height-
+     rule/satır yüksekliği eklendi (diğer 9 şablonla AYNI teknik).
+     0.55cm değeri kullanıcının GERÇEK Word ekran görüntüsüyle test edip
+     onayladığı değerle AYNI. */
+  .pg-section table.meta td, .pg-section .word-table td, .pg-section .word-table th { padding: 1pt 2pt; mso-padding-alt: 1pt 2pt 1pt 2pt; font-size: 6pt; line-height: 6.5pt; mso-line-height-rule: exactly; }
+  .pg-section .word-table tr { height: 0.55cm; mso-height-source: userset; mso-height-rule: at-least; }
   .table-block { margin-bottom: 16px; page-break-inside: avoid; break-inside: avoid; }
 </style>
 </head>

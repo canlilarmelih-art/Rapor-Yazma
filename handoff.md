@@ -57,6 +57,18 @@
 - `npm run check` ve tam `npm test` (186 test) başarılı. `app.js`/`styles.css`/`src/**` DEĞİŞMEDİ — cache-buster bump GEREKMEDİ (şablon dosyaları sunucu tarafında her render isteğinde diskten okunur).
 - Canlı tarayıcı testi yapılamadı. Kullanıcının İş Bankası şablonuyla gerçek bir Word çıktısı alıp Emsal Matrisi (ve varsa diğer `.word-table` tabloların) artık sıkışık göründüğünü doğrulaması gerekiyor.
 
+## 0.0.743 - 2026-09-10 - Tüm şablonlar tarandı: isbankasi.html'de de AYNI Emsal Matrisi sorunu bulundu, düzeltildi
+
+- Kullanıcı talebi: "mevcut tüm template dosyalarını tara. burada emsal matrisi tablosunda yaşadığımız sorunu yaşadığımız soruna sahip tabloları tespit et ve bunları aynı mantık ile düzelt."
+- `templates/*.html` (12 dosya) taranıp `.word-table` sınıfı (app.js'in ürettiği dinamik tabloların — Emsal Matrisi/Malikler/Takyidat/Tapu Özeti vb. — ortak sınıfı) kullanan/kullanmayan ayrımı yapıldı:
+  - 9 şablon (`akbank`, `halkbank`, `kuveytturk`, `kuveytturk-arsa-arazi`, `vakifbank`, `vakifkatilim`, `yapikredi`, `ziraat`, `ziraat-arsa-arazi`) 0.0.735'te ZATEN düzeltilmişti.
+  - **`isbankasi.html` GÖZDEN KAÇMIŞ** — bu şablonda da `{{EMSAL_MATRISI}}` token'ı VAR (5. "EMSALLER SEKMESİ"), ve AYNI eksik `mso-padding-alt`/`mso-line-height-rule`/satır yüksekliği sorununa sahip. 0.0.735'teki tarama yalnızca "EMSALMATRISI" (bitişik) dizesini arıyordu — `isbankasi.html`'in ALT ÇİZGİLİ yazımı (`EMSAL_MATRISI`) bu metin taramasında GÖRÜNMEDİ (foldTokenName() token ÇÖZÜMLEMESİ için alt çizgiyi yok sayar, ama önceki taramanın kendisi salt metin arşivlemesiydi).
+  - `isbankasi-masraf.html` (düz bir ücret yazısı) ve `ziraat-ek-tablo.html` (statik/elle doldurulan tek tablo, `.word-table` sınıfı HİÇ kullanmıyor) — bu ikisi gerçekten kapsam dışı, dokunulmadı.
+- `isbankasi.html`'in `.word-table th/td` (taban) ve `.pg-section table.meta td, .pg-section .word-table td/th` (özgül) kurallarına, diğer 9 şablonla AYNI teknikle `mso-padding-alt` + nokta-birimli `line-height`+`mso-line-height-rule: exactly` eklendi; yeni bir `.pg-section .word-table tr { height: 0.55cm; mso-height-source: userset; mso-height-rule: at-least; }` satır-yüksekliği kuralı eklendi (0.55cm, kullanıcının GERÇEK Word testiyle onayladığı aynı değer).
+- Test: `tools/test-bank-template-word-table-css-mso-padding.js` güncellendi — `isbankasi` artık 10 şablonluk kontrol listesinde; eski (yanlış) "isbankasi.html'e dokunulmamalı" varsayımı kaldırılıp yerine gerçekten `.word-table` KULLANMAYAN 2 şablonun (`isbankasi-masraf`, `ziraat-ek-tablo`) doğru kontrolü eklendi. Geçici geri alma (`git stash`) ile `isbankasi.html`'de gerçekten başarısız olduğu kanıtlanıp geri konuldu.
+- `npm run check` ve tam `npm test` (186 test) başarılı. `app.js`/`styles.css`/`src/**` DEĞİŞMEDİ — cache-buster bump GEREKMEDİ (şablon dosyaları sunucu tarafında her render isteğinde diskten okunur).
+- Canlı tarayıcı testi yapılamadı. Kullanıcının İş Bankası şablonuyla gerçek bir Word çıktısı alıp Emsal Matrisi (ve varsa diğer `.word-table` tabloların) artık sıkışık göründüğünü doğrulaması gerekiyor.
+
 ## 0.0.742 - 2026-09-10 - Ana Gayrimenkul: blok/site bağımsız bölüm özeti
 
 *(Not: bu girdi eşzamanlı çalışan başka bir oturuma ait; bu commit'e dahil DEĞİL, o oturum kendi işini commit ettiğinde numara/tarih teyit edilmeli.)*
