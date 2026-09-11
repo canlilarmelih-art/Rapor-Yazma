@@ -2686,7 +2686,7 @@ function getUnitSectionFieldKeys() {
   return [
     ...keys,
     // Genel panel (createUnitGeneralPanel)
-    "unitUsageStatus", "unitFirstSaleStatus", "unitFirstSaleStatusManual", "unitEntrancePosition", "facades",
+    "unitUsageStatus", "unitFirstSaleStatus", "unitFirstSaleStatusManual", "unitEntrancePosition", "unitHorizontalViewingDirection", "unitHorizontalPosition", "facades",
     "unitConstructionLevel", "unitViewStatus", "unitHeatingType", "unitHeatingMounted",
     "unitShopFrontage", "unitShopDepth",
     "unitPrivatePool",
@@ -13434,11 +13434,26 @@ function createBuildingFloorDistribution() {
   });
 
   countPanel.append(countGrid, saveButton);
-  wrapper.append(countPanel, createBuildingUnitDistributionSummaryPanel(), createMainPropertyDescriptionPanel());
+  const isHorizontalOwnership = shouldMentionMainPropertyOwnership(state.fields.ownershipType);
+  // Yatay kat irtifakında kat satırları yerine blok/site bağımsız bölüm özeti
+  // kullanılır. Dikey ve diğer mülkiyet türlerinde eski “Kat Satırları”
+  // tablosu (hangi katta kaç daire/dükkan bulunduğu) mutlaka korunur.
+  wrapper.append(countPanel);
+  if (isHorizontalOwnership) {
+    wrapper.append(createBuildingUnitDistributionSummaryPanel());
+  } else {
+    wrapper.append(createBuildingFloorRowsTable());
+  }
+  wrapper.append(createMainPropertyDescriptionPanel());
   return wrapper;
 }
 
 function createBuildingUnitDistributionSummaryPanel() {
+  // Site/blok bağımsız bölüm özeti yalnızca yatay kat irtifakı raporlarına
+  // özgüdür. Dikey kat irtifakında eski kat dağılımı tablosu korunmalıdır.
+  if (!shouldMentionMainPropertyOwnership(state.fields.ownershipType)) {
+    return document.createDocumentFragment();
+  }
   const panel = document.createElement("div");
   panel.className = "subsection is-detail building-unit-distribution-summary-panel";
   panel.innerHTML = `
@@ -15310,6 +15325,8 @@ function joinTurkishUnitList(items) {
 }
 
 const unitEntrancePositionOptions = ["", "Sağ", "Sağ Ön", "Sağ Arka", "Sol", "Sol Ön", "Sol Arka", "Ön", "Arka"];
+const unitHorizontalViewingDirectionOptions = ["", "Kuzey", "Güney", "Doğu", "Batı"];
+const unitHorizontalPositionOptions = ["", "Ön", "Arka", "Sağ", "Sol", "Tek / Belirtilmemiş"];
 const unitUsageStatusOptions = ["", "Boş (Hiç Kullanılmamış)", "Boş (Kullanılmış)", "Mal Sahibi", "Kiracı", "İşgalci"];
 const unitPrivatePoolOptions = ["", "Yok", "Açık Yüzme Havuzu", "Kapalı Yüzme Havuzu"];
 const unitFirstSaleStatusOptions = ["1.El", "2.El"];
@@ -15354,6 +15371,7 @@ const unitInteriorValidationOptions = [
   "Giyinme Odası",
   "Antre-Hol",
   "Mutfak",
+  "Açık Mutfak",
   "Banyo",
   "WC",
   "Duş",
@@ -15462,6 +15480,31 @@ const commercialUnitInteriorValidationOptions = [
   "Mal indirme-bindirme alanı",
   "Vitrin önü kullanım alanı",
 ];
+const shopUnitInteriorValidationOptions = [
+  "Dükkan", "İşyeri", "Satış alanı", "Mağaza alanı", "Showroom", "Teşhir alanı",
+  "Müşteri kabul alanı", "Kasa bölümü", "Banko alanı", "Tezgah alanı", "Servis alanı",
+  "Depo", "Arka depo", "Mal kabul alanı", "WC", "Müşteri WC", "Engelli WC", "Lavabo",
+  "Giriş holü", "Hol", "Koridor", "İç merdiven", "Vitrin önü kullanım alanı",
+  "Ön kullanım alanı", "Bahçe kullanım alanı", "Açık otopark", "Kapalı otopark", "Garaj",
+];
+const officeUnitInteriorValidationOptions = [
+  "İşyeri", "Ofis alanı", "Çalışma alanı", "Açık ofis alanı", "Kapalı ofis", "Yönetici odası",
+  "Toplantı odası", "Eğitim odası", "Müşteri kabul alanı", "Resepsiyon", "Arşiv", "Dosya odası",
+  "Personel odası", "Dinlenme odası", "Çay ocağı", "Mini mutfak", "Mutfak", "Personel mutfağı",
+  "WC", "Personel WC", "Müşteri WC", "Engelli WC", "Lavabo", "Duş", "Giriş holü", "Hol",
+  "Koridor", "Ara hol", "Teknik hacim", "Elektrik odası", "Sistem odası", "Teras kullanım alanı",
+];
+const commercialBuildingUnitInteriorValidationOptions = [
+  ...new Set([...commercialUnitInteriorValidationOptions, "Müşteri alanı", "Satış alanı", "Ofis çalışma alanı"]),
+];
+const industrialUnitInteriorValidationOptions = [
+  "Sanayi tesisi", "Üretim alanı", "İmalat alanı", "Atölye alanı", "Tamir-bakım alanı", "Hazırlık bölümü",
+  "Paketleme alanı", "Sevkiyat alanı", "Yükleme-boşaltma alanı", "Yükleme rampası", "Mal kabul alanı",
+  "Depo", "Arka depo", "Bodrum depo", "Soğuk hava deposu", "Teknik hacim", "Elektrik odası", "Mekanik oda",
+  "Sistem odası", "İdari bölüm", "Ofis alanı", "Yönetici odası", "Personel odası", "Soyunma odası",
+  "Dinlenme odası", "Yemekhane", "WC", "Personel WC", "Duş", "Banyo", "Temizlik odası", "Giriş holü",
+  "Hol", "Koridor", "İç merdiven", "Kapalı otopark", "Açık otopark", "Araç kabul alanı", "Garaj",
+];
 const unitDecorativeFields = [
   { key: "unitWindows", label: "Pencereler", options: ["", "PVC", "Alüminyum", "Ahşap", "Çelik", "Isıcamlı", "Yok"] },
   { key: "unitExteriorDoor", label: "Dış Kapı", options: ["", "Çelik", "Ahşap", "Lake", "Camlı Alüminyum", "Demir Doğrama", "Yok"] },
@@ -15542,6 +15585,13 @@ const unitGeneralDecorativeFields = [
   { key: "unitKitchenCounter", label: "Mutfak Tezgahı", options: unitKitchenCounterOptions },
   { key: "unitMaterialQuality", label: "Malzeme ve İşçilik Kalitesi", options: unitMaterialQualityOptions },
 ];
+const unitDoorWindowDecorativeFields = unitGeneralDecorativeFields.filter((field) =>
+  ["unitWindows", "unitExteriorDoor", "unitInteriorDoors"].includes(field.key)
+);
+const unitKitchenDecorativeFields = unitGeneralDecorativeFields.filter((field) =>
+  ["unitKitchenCabinet", "unitKitchenCounter"].includes(field.key)
+);
+const unitMaterialQualityDecorativeFields = unitGeneralDecorativeFields.filter((field) => field.key === "unitMaterialQuality");
 const unitBathroomFixtureFields = [
   { key: "unitBathroomFixture1", label: "Vitrifiye 1", options: unitBathroomFixtureOptions },
   { key: "unitBathroomFixture2", label: "Vitrifiye 2", options: unitBathroomFixtureOptions },
@@ -15631,7 +15681,12 @@ function createUnitGeneralPanel() {
   grid.append(
     createUnitSelectField("Kullanım Durumu", "unitUsageStatus", unitUsageStatusOptions),
     createUnitSelectField("İlk Kez mi Satışa Konu Ediliyor?", "unitFirstSaleStatus", unitFirstSaleStatusOptions),
-    createUnitSelectField("Projeye Göre B. Bölümün Bina Girişine Göre Konumu", "unitEntrancePosition", unitEntrancePositionOptions),
+    ...(shouldMentionMainPropertyOwnership(state.fields.ownershipType)
+      ? [
+        createUnitSelectField("Projeye Göre Bakış Yönü", "unitHorizontalViewingDirection", unitHorizontalViewingDirectionOptions),
+        createUnitSelectField("Projeye Göre Konumu", "unitHorizontalPosition", unitHorizontalPositionOptions),
+      ]
+      : [createUnitSelectField("Projeye Göre B. Bölümün Bina Girişine Göre Konumu", "unitEntrancePosition", unitEntrancePositionOptions)]),
     createUnitFacadeControl(),
     createUnitSelectField("İnşaat Seviye", "unitConstructionLevel", unitConstructionLevelOptions),
     createUnitSelectField("Manzara Var mı?", "unitViewStatus", unitViewStatusOptions),
@@ -16120,7 +16175,15 @@ function composeHorizontalUnitDescriptionIntro() {
   const floorPhrase = floorComposition
     ? horizontalUnitFloorPhraseVariants[selectVariant("composeHorizontalUnitDescriptionIntro:floorPhrase", horizontalUnitFloorPhraseVariants.length)](floorComposition, totalFloors)
     : "";
-  return joinNonEmptySentences([sharePhrase, floorPhrase]);
+  const positionPhrase = formatHorizontalUnitPositionPhrase(state.fields.unitHorizontalViewingDirection, state.fields.unitHorizontalPosition);
+  return joinNonEmptySentences([sharePhrase, floorPhrase, positionPhrase]);
+}
+
+function formatHorizontalUnitPositionPhrase(viewingDirection, position) {
+  const direction = toLowerText(viewingDirection);
+  const location = toLowerText(position);
+  if (!direction || !location || foldTurkish(location).includes("TEK") || foldTurkish(location).includes("BELIRTILMEMIS")) return "";
+  return `Bulunduğu Blok'a ${direction} yönünden bakıldığında ${location} tarafta yer almaktadır.`;
 }
 
 const unitLandShareWithAreaVariants = [
@@ -16757,9 +16820,12 @@ function createUnitFloorInteriorPicker(index) {
 }
 
 function getUnitInteriorValidationOptions() {
-  return isCommercialLegalUsageNature(state.fields.legalUsageNature)
-    ? commercialUnitInteriorValidationOptions
-    : unitInteriorValidationOptions;
+  const normalized = foldTurkish(state.fields.legalUsageNature || "").replace(/\s+/g, " ").trim();
+  if (normalized === "ISYERI" || normalized === "DUKKAN") return shopUnitInteriorValidationOptions;
+  if (normalized === "OFIS") return officeUnitInteriorValidationOptions;
+  if (normalized === "TICARI BINA") return commercialBuildingUnitInteriorValidationOptions;
+  if (normalized === "SANAYI TESISI" || normalized === "SANAYI TESIS") return industrialUnitInteriorValidationOptions;
+  return unitInteriorValidationOptions;
 }
 
 function isCommercialLegalUsageNature(value) {
@@ -16784,6 +16850,7 @@ function createUnitFloorDeleteButton(index) {
 
 function createUnitDecorativePanel() {
   migrateUnitDecorativeFields();
+  const presence = getUnitInteriorPresence();
   const panel = createUnitSubsection("Dekoratif Özellikler", "Duvar, zemin, kapı-pencere, mutfak, vitrifiye ve işçilik bilgileri makro mantığıyla gruplandırılır.");
   // Kullanıcı talebi (2026-08-27): "Dekoratif Özellikler kısmına seçilenlere
   // uygula seçeneği ekleyebilir miyiz", sonra: "düğmenin ui tasarımı berbat
@@ -16808,8 +16875,10 @@ function createUnitDecorativePanel() {
   wrapper.className = "unit-decorative-groups";
   wrapper.append(
     createUnitWallFloorTable(),
-    createUnitDecorativeFieldCard("Kapı, Pencere ve Mutfak", unitGeneralDecorativeFields),
-    createUnitDecorativeFieldCard("Banyo Vitrifiye Elemanları", unitBathroomFixtureFields),
+    createUnitDecorativeFieldCard("Kapı ve Pencere", unitDoorWindowDecorativeFields),
+    ...(presence.mutfak ? [createUnitDecorativeFieldCard("Mutfak", unitKitchenDecorativeFields)] : []),
+    createUnitDecorativeFieldCard("Malzeme ve İşçilik", unitMaterialQualityDecorativeFields),
+    ...(presence.bathroom ? [createUnitDecorativeFieldCard("Banyo Vitrifiye Elemanları", unitBathroomFixtureFields)] : []),
   );
   panel.append(wrapper);
   return panel;
@@ -16860,7 +16929,7 @@ function createUnitWallFloorTable() {
     <div class="unit-wall-floor-head">Zemin</div>
     <div class="unit-wall-floor-head">Duvar</div>
   `;
-  unitWallFloorRows.forEach((row) => {
+  getUnitDecorativeWallFloorRows().forEach((row) => {
     const group = document.createElement("div");
     group.className = "unit-wall-floor-group";
     group.textContent = row.label;
@@ -16875,7 +16944,7 @@ function createUnitWallFloorTable() {
 }
 
 function getDecorativeOptionsWithCurrentValue(options, key) {
-  const currentValue = state.fields[key] || "";
+  const currentValue = getUnitDecorativeFieldValue(key);
   if (!currentValue || options.includes(currentValue)) {
     return options;
   }
@@ -16892,7 +16961,8 @@ function createUnitDecorativeSelectOnly(key, options) {
     item.textContent = option || "Seçiniz";
     select.append(item);
   });
-  select.value = optionValues.includes(state.fields[key]) ? state.fields[key] : "";
+  const currentValue = getUnitDecorativeFieldValue(key);
+  select.value = optionValues.includes(currentValue) ? currentValue : "";
   markFieldSourceState(select, key);
   const handleDecorativeChange = (event) => {
     applyUnitDecorativeFieldChange(key, event.target.value);
@@ -16999,6 +17069,7 @@ function getUnitInteriorPresence() {
     antreHol: /antre|hol/.test(folded),
     mutfak: /mutfak/.test(folded),
     wetArea: /banyo|wc|duş|dus/.test(folded),
+    bathroom: /banyo|duş|dus/.test(folded),
     balcony: /balkon/.test(folded),
     terrace: /teras|veranda/.test(folded),
   };
@@ -17010,11 +17081,35 @@ function shouldUseInteriorDecorativeArea(presence, key, floorValue, wallValue) {
 }
 
 function hasWetAreaInterior(presence) {
-  return !presence.hasAny || presence.wetArea;
+  return Boolean(presence?.wetArea);
+}
+
+function getUnitDecorativeFieldValue(key) {
+  return state.fields[key] || "";
+}
+
+function getUnitDecorativeWallFloorRows() {
+  const names = getUnitFloorRows().flatMap((floorRow) => String(floorRow.interiors || "").split(",").map((item) => parseUnitInteriorItem(item.trim()).name).filter(Boolean));
+  const unique = [...new Set(names)];
+  if (!unique.length) return [];
+  return unique.map((name) => {
+    const folded = foldTurkish(name).toLocaleLowerCase("tr");
+    let canonical = "other";
+    if (folded.startsWith("salon")) canonical = "salon";
+    else if (folded.startsWith("oda")) canonical = "oda";
+    else if (folded.startsWith("antre") || folded.startsWith("hol")) canonical = "antreHol";
+    else if (folded.includes("mutfak")) canonical = "mutfak";
+    else if (/^(banyo|wc|dus|tuvalet)/.test(folded)) canonical = "wetArea";
+    else if (/^(balkon|teras|veranda)/.test(folded)) canonical = "balcony";
+    const fixed = unitWallFloorRows.find((row) => row.label.toLocaleLowerCase("tr-TR") === name.toLocaleLowerCase("tr-TR"));
+    const suffix = canonical === "other" ? `_${folded.replace(/[^a-z0-9]+/g, "_")}` : "";
+    const label = folded === "wc" ? "WC" : name ? `${name.charAt(0).toLocaleUpperCase("tr-TR")}${name.slice(1)}` : name;
+    return { label, floorKey: fixed?.floorKey || `unitDecorativeArea_${canonical}${suffix}_floor`, wallKey: fixed?.wallKey || `unitDecorativeArea_${canonical}${suffix}_wall` };
+  });
 }
 
 function hasKitchenInterior(presence) {
-  return !presence.hasAny || presence.mutfak;
+  return Boolean(presence?.mutfak);
 }
 
 function getOutdoorInteriorPrefix(presence) {
@@ -17039,13 +17134,19 @@ function getOutdoorInteriorPrefix(presence) {
 function buildUnitDecorativeDescriptionPartsList() {
   if (shouldUseExternalUnitInspectionText()) return [];
   const presence = getUnitInteriorPresence();
+  const dynamicAreaSentences = getUnitDecorativeWallFloorRows()
+    .filter((row) => row.floorKey.startsWith("unitDecorativeArea_") || row.wallKey.startsWith("unitDecorativeArea_"))
+    .map((row) => composeSingleAreaDecorativeSentence(row.label.toLocaleLowerCase("tr-TR"), getUnitDecorativeFieldValue(row.floorKey), getUnitDecorativeFieldValue(row.wallKey)))
+    .filter(Boolean)
+    .join(" ");
   return [
     { key: "mainRoom", value: composeMainRoomDecorativeSentence(presence) },
     { key: "wetArea", value: hasWetAreaInterior(presence) ? composeSingleAreaDecorativeSentence("Islak hacimlerde", state.fields.unitWetFloor, state.fields.unitWetWall) : "" },
     { key: "outdoor", value: getOutdoorInteriorPrefix(presence) ? composeSingleAreaDecorativeSentence(getOutdoorInteriorPrefix(presence), state.fields.unitBalconyFloor, state.fields.unitBalconyWall) : "" },
-    { key: "bathroomFixture", value: hasWetAreaInterior(presence) ? composeBathroomFixtureSentence() : "" },
+    { key: "bathroomFixture", value: presence.bathroom ? composeBathroomFixtureSentence() : "" },
     { key: "doorsWindows", value: composeDoorsWindowsSentence() },
     { key: "kitchen", value: hasKitchenInterior(presence) ? composeKitchenCabinetCounterSentence() : "" },
+    { key: "dynamicAreas", value: dynamicAreaSentences },
     { key: "materialQuality", value: composeMaterialQualitySentence() },
     { key: "view", value: composeUnitViewSentence() },
     { key: "heating", value: composeUnitHeatingSentence() },
@@ -17081,6 +17182,11 @@ function buildUnitDecorativeDescriptionPartsListForMultiUnitMerge() {
   const mainRoom = buildMainRoomDecorativeAllRepresentations(presence);
   const outdoorPrefix = getOutdoorInteriorPrefix(presence);
   const outdoor = outdoorPrefix ? buildOutdoorDecorativeAllRepresentations(presence) : { combined: "", materialSentence: "" };
+  const dynamicAreas = getUnitDecorativeWallFloorRows()
+    .filter((row) => row.floorKey.startsWith("unitDecorativeArea_") || row.wallKey.startsWith("unitDecorativeArea_"))
+    .map((row) => composeSingleAreaDecorativeSentence(row.label.toLocaleLowerCase("tr-TR"), getUnitDecorativeFieldValue(row.floorKey), getUnitDecorativeFieldValue(row.wallKey)))
+    .filter(Boolean)
+    .join(" ");
   return [
     { key: "mainRoomCombined", value: mainRoom.combined },
     { key: "mainRoomFloor", value: mainRoom.floorSentence },
@@ -17099,9 +17205,10 @@ function buildUnitDecorativeDescriptionPartsListForMultiUnitMerge() {
     // (aşağıda) tip-farkını YOKSAYAN adaptif kararı İÇİN — ASLA doğrudan
     // gösterilmez (UNIT_DECORATIVE_SLOT_KEY_ORDER'da YOK).
     { key: "outdoorMaterial", value: outdoor.materialSentence },
-    { key: "bathroomFixture", value: hasWetAreaInterior(presence) ? composeBathroomFixtureSentence() : "" },
+    { key: "bathroomFixture", value: presence.bathroom ? composeBathroomFixtureSentence() : "" },
     { key: "doorsWindows", value: composeDoorsWindowsSentence() },
     { key: "kitchen", value: hasKitchenInterior(presence) ? composeKitchenCabinetCounterSentence() : "" },
+    { key: "dynamicAreas", value: dynamicAreas },
     { key: "materialQuality", value: composeMaterialQualitySentence() },
     { key: "view", value: composeUnitViewSentence() },
     { key: "heating", value: composeUnitHeatingSentence() },
@@ -25085,7 +25192,7 @@ function classifyUnitFloorInteriorItemGroup(name) {
   const folded = foldTurkish(name || "").toLocaleLowerCase("tr");
   if (folded.startsWith("salon")) return "salon";
   if (folded.startsWith("oda")) return "oda";
-  if (folded.startsWith("mutfak")) return "mutfak";
+  if (folded.includes("mutfak")) return "mutfak";
   if (folded.startsWith("banyo") || folded.startsWith("dus")) return "banyo";
   if (folded.startsWith("wc") || folded.startsWith("tuvalet")) return "wc";
   if (folded.startsWith("antre") || folded.startsWith("hol")) return "antre";
@@ -42647,8 +42754,9 @@ function refreshValueFactorsFromCurrentState() {
 
 function getValueFactorsInput() {
   refreshHalkbankRiskCodesFromCurrentState();
+  const currentValueUsd = getCurrentValueUsdForValueFactors();
   return {
-    fields: state.fields || {},
+    fields: { ...(state.fields || {}), ...(Number.isFinite(currentValueUsd) ? { currentValueUsd } : {}) },
     tables: {
       unitFloors: Array.isArray(state.tables.unitFloors) ? state.tables.unitFloors : [],
       documents: Array.isArray(state.tables.documents)
@@ -42659,6 +42767,14 @@ function getValueFactorsInput() {
     manualPositive: getValueFactorsManualRows("positive"),
     manualNegative: getValueFactorsManualRows("negative"),
   };
+}
+
+function getCurrentValueUsdForValueFactors() {
+  const explicit = parseValuationNumber(state.fields?.currentValueUsd);
+  if (Number.isFinite(explicit)) return explicit;
+  const currentValue = parseValuationNumber(state.fields?.currentValue);
+  const usdRate = getTcmbBuyingRate("USD");
+  return Number.isFinite(currentValue) && usdRate ? currentValue / usdRate : NaN;
 }
 
 function parseValueFactorsDisabledIds() {
@@ -43777,7 +43893,7 @@ const UNIT_INTERIOR_KNOWN_GROUP_PREFIXES = ["salon", "oda", "mutfak", "banyo", "
 
 function isKnownUnitInteriorGroupName(name) {
   const folded = foldTurkish(name || "").toLocaleLowerCase("tr");
-  return UNIT_INTERIOR_KNOWN_GROUP_PREFIXES.some((prefix) => folded.startsWith(prefix));
+  return UNIT_INTERIOR_KNOWN_GROUP_PREFIXES.some((prefix) => prefix === "mutfak" ? folded.includes(prefix) : folded.startsWith(prefix));
 }
 
 // Kullanıcı talebi: "bu gruplandırmalar harici iç hacimleri diğer kategorisi
@@ -44776,8 +44892,13 @@ function getComparableRowsForView(rows, viewMode) {
   return rows
     .map((row, index) => ({ row, index }))
     .filter(({ row }) => {
-      if (viewMode === "land") return isLandComparable(row);
-      if (viewMode === "residential") return !isLandComparable(row);
+      // Emsal matrisi her görünümde başlangıçta dört boş sütun sunar.
+      // Boş varsayılan satırlar bir türe ait olmadığı için görünüm filtresi
+      // tarafından elenmemeli; kullanıcı arsa/tarla raporunda da "Emsal ekle"
+      // demeden aynı dört boş sütunu görebilmelidir.
+      const emptyDefaultRow = isComparableRowEmpty(row);
+      if (viewMode === "land") return isLandComparable(row) || emptyDefaultRow;
+      if (viewMode === "residential") return !isLandComparable(row) || emptyDefaultRow;
       return true;
     });
 }
@@ -46391,6 +46512,13 @@ function getComparableRows() {
     rows = Array.from({ length: comparableDefaultRowCount }, () => ({ _comparablesVersion: 2 }));
   }
   rows = rows.map(migrateComparableRow);
+  // Eski/kaydedilmiş raporlarda `comparables: []` bulunabilir. Bu durum,
+  // özellikle arsa/tarla raporlarında matrisin "Emsal ekle" tıklanana kadar
+  // hiç görünmemesine yol açıyordu. Matris her zaman dört boş sütunla başlar;
+  // kullanıcı daha sonra gerçek emsal verilerini bu sütunlara girebilir.
+  while (rows.length < comparableDefaultRowCount) {
+    rows.push({ _comparablesVersion: 2 });
+  }
   rows.forEach((row) => {
     if (isAgriculturalComparable(row)) {
       comparableTarlaZoningFieldKeys.forEach((key) => {

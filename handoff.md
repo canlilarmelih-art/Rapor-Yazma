@@ -1,5 +1,97 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.755 - 2026-09-11 - İç hacim seçeneklerinin taşınmaz niteliğine göre filtrelenmesi
+
+- İç Hacimler seçim listesi artık niteliğe göre ayrılır: İşyeri/Dükkan, Ofis, Ticari Bina ve Sanayi Tesisi için ayrı seçenek kümeleri gelir.
+- İşyeri/Dükkan listesinde satış, vitrin, müşteri, kasa, depo ve WC alanları; Ofis listesinde çalışma, yönetici, toplantı, arşiv ve personel alanları; Ticari Bina listesinde geniş ticari seçenekler; Sanayi Tesisi listesinde üretim, imalat, sevkiyat, teknik ve personel alanları yer alır.
+- Konut niteliğinde mevcut Salon/Oda/Mutfak/Banyo/Balkon seçenekleri korunur.
+- Yedek: `backups/before-nature-specific-interior-options_2026-09-11_13-46-40`
+- Testler: temel kontrol, iç hacim grup sayımı, iç hacim açıklama ve akıcı anlatım testleri başarılı.
+
+## 0.0.754 - 2026-09-11 - Konut dışı iç hacim dekoratif alanlarının koşullu gösterimi
+
+- Dekoratif özellikler paneli artık “Kapı ve Pencere”, “Mutfak”, “Malzeme ve İşçilik” ve “Banyo Vitrifiye Elemanları” olarak ayrıdır.
+- İç hacimlerde mutfak/mutfak nişi yoksa mutfak dolabı ve tezgâhı kartı gizlenir; banyo/WC yoksa vitrifiye kartı gizlenir.
+- Zemin/duvar açıklamaları ile vitrifiye ve mutfak cümleleri, ilgili iç hacim seçilmemişse üretilmez. İç kapılar veya diğer dekoratif alanlar seçilmemişse açıklamaya eklenmez.
+- Konut dışı taşınmazlarda da zemin ve duvar kaplaması/boyası seçimleri mevcut hacim grupları üzerinden kullanılabilir.
+- Yedek: `backups/before-interior-conditional-decorative-fields_2026-09-11_13-37-37`
+- Testler: iç hacim açıklama, akıcı anlatım, grup sayımı, paylaşımlı açıklama ve temel kontrol testleri başarılı.
+
+## 0.0.753 - 2026-09-11 - Yatay konum cümlesi blok referansı
+
+- Yatay kat irtifakı konum açıklaması artık `Bulunduğu Blok'a kuzey yönünden bakıldığında sağ tarafta yer almaktadır.` biçiminde, bulunduğu blok referansını açıkça içerir.
+- Yedek: `backups/before-horizontal-position-wording_2026-09-11_13-05-27`
+- `npm run check` başarılı.
+
+## 0.0.752 - 2026-09-11 - Yatay kat irtifakı bağımsız bölüm konum alanları
+
+- Yatay kat irtifakı seçiliyken “bina girişine göre konumu” alanı yerine iki alan gösterilir: “Projeye Göre Bakış Yönü” (Kuzey/Güney/Doğu/Batı) ve “Projeye Göre Konumu” (Ön/Arka/Sağ/Sol/Tek-Belirtilmemiş).
+- Bakış yönü ve konum seçildiğinde bağımsız bölüm açıklamasına “... yönünden bakıldığında ... tarafta yer almaktadır.” cümlesi eklenir. Tek/Belirtilmemiş seçiminde cümle eklenmez.
+- Yatay olmayan mülkiyet türlerinde mevcut bina girişine göre konum alanı korunur.
+- Yedek: `backups/before-horizontal-position-fields_2026-09-11_13-00-41`
+- Testler: `npm run check` ve değer etkileyen faktörler testi başarılı.
+
+## 0.0.751 - 2026-09-11 - 1 milyon USD üzeri değer için sınırlı alıcı faktörü
+
+- Mevcut Durum Değeri’nin USD karşılığı 1.000.000 USD’yi aştığında Olumsuz Özellikler listesine `Sınırlı bir alıcı kitlesine hitap ediyor olması` eklenir.
+- Eşik değeri olan tam 1.000.000 USD tetiklenmez; yalnızca üzerindeki değerler tetiklenir.
+- USD değeri mevcutsa doğrudan kullanılır; yoksa TCMB USD alış kuru üzerinden `currentValue` TL değerinden hesaplanır.
+- Yedek: `backups/before-million-usd-factor_2026-09-11_12-17-54`
+- Testler: değer etkileyen faktörler, çoklu taşınmaz ve temel kontrol testleri başarılı.
+
+## 0.0.750 - 2026-09-11 - Birinci derece deprem bölgesi olumsuz faktörü
+
+- Değeri Etkileyen Faktörler kurallarına `earthquakeZone` alanı eklendi. Değer 1. derece olarak girildiğinde yalnızca Olumsuz Özellikler listesine `1. Derece Deprem bölgesinde yer alıyor olması` eklenir.
+- 2., 3., 4. ve 5. derece değerlerinde deprem kaynaklı otomatik özellik eklenmez.
+- Türkçe yazım/boşluk varyasyonları için derece başlangıcı ve `1. DERECE` biçimleri normalize edilerek test edildi.
+- Yedek: `backups/before-earthquake-first-degree-factor_2026-09-11_12-08-04`
+- Testler: `node tools/test-value-factors-rules.js`, `npm run check` başarılı.
+
+## 0.0.749 - 2026-09-10 - İç hacim listesine Açık Mutfak eklendi
+
+- Bağımsız Bölüm iç hacim seçeneklerine konut raporları için `Açık Mutfak` eklendi.
+- İç hacim grup/sayım mantığı, “Açık Mutfak” değerini Mutfak grubunda tanır; diğer hacim kategorisine düşmez.
+- Yedek: `backups/before-open-kitchen-interior-option-2026-09-10_23-41-17`.
+- İlgili iç hacim testleri ve temel kontroller başarılı.
+
+## 0.0.748 - 2026-09-10 - Proje uygunluk seçenekleri olumsuz faktöre bağlandı
+
+- Proje uygunluk durumunda “blok bazında konum olarak uygun değildir”, “mimari olarak uygun değildir”, “kullanım alanı olarak uygun değildir” veya bunların birleşik varyantı seçildiğinde Değeri Etkileyen Faktörler'e tek bir `Projeye aykırı imalatların bulunması` olumsuz faktörü eklenir.
+- Aynı kontrol tapu/belediye ayrı proje alanları (`titleProjectSuitabilityStatus`, `municipalityProjectSuitabilityStatus`) için de geçerlidir.
+- Mevcut `projectDifference = Evet` kuralı korunur; iki farklı durum ayrı kaynak kayıtlarıdır.
+- Test: dört proje durum varyantı için otomatik faktör üretimi doğrulandı.
+- Yedek: `backups/before-project-status-negative-factor-2026-09-10_21-54-38`.
+
+## 0.0.747 - 2026-09-10 - Yatay kat irtifakı özel değer faktörleri
+
+- Yatay kat irtifakı raporlarında en üst kat, bodrum/zemin kat ve asansörsüz üst kat kaynaklı olumsuz faktörler gösterilmez.
+- Hissesine düşen arsa payı `(Yüzölçümü / Arsa Payda) × Arsa Payı` hesabıyla 750 m²'yi aşarsa olumlu “Taşınmazın Hissesine düşen arsa Payının büyük olması” faktörü eklenir.
+- `Özel Havuz` alanı açık veya kapalı yüzme havuzu olduğunda olumlu “Taşınmazın kendine ait özel açık yüzme ya da kapalı yüzme havuzunun bulunması” faktörü eklenir.
+- Yazım varyasyonları normalizasyonu korunur; yalnızca `Yatay Kat İrtifakı` mülkiyet türü bu yeni kuralları tetikler.
+- Test: `tools/test-value-factors-rules.js` genişletildi; temel kontroller başarılı.
+
+## 0.0.746 - 2026-09-10 - Kat İrtifakı yazım varyasyonları normalize edildi
+
+- `Zemin Tipi` değerleri `KatIrtifaki`, `Kat İrtifakı`, `Katİrtifakı` veya büyük/küçük harf farkıyla gelse de aynı şekilde tanınır.
+- `src/value-factors/value-factors-rules.js`: Türkçe `i/ı/İ` normalizasyonu ve boşluk/ayraç kaldırma sonrası tam `KATIRTIFAKI` eşleşmesi kullanılıyor.
+- Test: dört yazım varyantı için olumsuz “Kat mülkiyetine geçilmemiş olması” faktörü doğrulandı.
+- Yedek: `backups/before-ground-type-turkish-letter-normalization-2026-09-10_18-46-54`.
+
+## 0.0.745 - 2026-09-10 - Kat mülkiyeti/irtifakı değere etki eden faktör kuralı netleştirildi
+
+- Kullanıcı düzeltmesi: `Ana Taşınmaz Niteliği` artık bu faktör kararında kullanılmayacak. “Arsa” kelimesinin geçmesi veya alanın “Arsa” olması tek başına olumsuz faktör üretmez.
+- `src/value-factors/value-factors-rules.js`: `Zemin Tipi = Kat Mülkiyeti` olumlu “Kat mülkiyetli olması” faktörünü, `Zemin Tipi = Kat İrtifakı` olumsuz “Kat mülkiyetine geçilmemiş olması” faktörünü üretir. Kaynak her iki durumda da `Zemin Tipi`dir.
+- Testler güncellendi: `test-value-factors-rules.js` ve `test-value-factors-multi-unit.js`.
+- Yedek: `backups/before-exact-main-property-arsa-2026-09-10_18-40-45`.
+
+## 0.0.744 - 2026-09-10 - Arsa/Tarla raporlarında dört boş emsal sütunu
+
+- Kullanıcı: "Emsaller bölümünde konut raporlarında 4 emsal sütunu geliyor ancak arsa tarla raporlarında emsal sütunları gelmiyor; boş bir biçimde 4 adet emsal sütunu hangi gayrimenkul türü olursa olsun gelmeli."
+- Kök neden: `getComparableRowsForView()` arsa/tarla görünümünde yalnızca niteliği arsa/tarla/meyve bahçesi olan satırları geçiriyordu. Başlangıçtaki dört boş varsayılan satır herhangi bir türe ait olmadığı için filtreleniyor ve tablo ancak "Emsal ekle" sonrasında görünüyordu.
+- `app.js`: `getComparableRows()` artık eski/kaydedilmiş `comparables: []` durumunu da dört boş satıra tamamlıyor; boş varsayılan emsal satırları `residential`, `land` ve `all` görünümlerinde filtrelenmiyor. Böylece her gayrimenkul türünde matris başlangıçta dört boş sütunla açılıyor. Dolu emsal niteliği filtrelemesi korunuyor.
+- `tools/test-comparable-nature-filter.js`: arsa/tarla görünümünde boş varsayılan satırın ve konut/yapı görünümünde boş satırın korunmasını doğrulayan test eklendi.
+- Yedek: `backups/before-comparable-default-columns-2026-09-10_18-32-51`.
+
 ## 0.0.743 - 2026-09-10 - Tüm şablonlar tarandı: isbankasi.html'de de AYNI Emsal Matrisi sorunu bulundu, düzeltildi
 
 - Kullanıcı talebi: "mevcut tüm template dosyalarını tara. burada emsal matrisi tablosunda yaşadığımız sorunu yaşadığımız soruna sahip tabloları tespit et ve bunları aynı mantık ile düzelt."
@@ -12845,3 +12937,23 @@ devreye girdi.
   üreticinin `table-layout:auto` + tam ortalama içerdiğini doğruluyor.
   `npm run verify` tam zincirle yeşil.
 - Cache-buster: `app.js?v=20260814-1815`.
+
+## 2026-09-11 — Dinamik ticari iç hacim dekoratif satırları
+- `createUnitWallFloorTable()` artık katlardaki seçili iç hacimlerden satırları dinamik üretir; seçilmeyen Salon/Oda/Mutfak/Balkon satırları gösterilmez.
+- Ticari/konut dışı adlar için dinamik dekoratif alan anahtarları oluşturulur; mevcut sabit alanlar korunur.
+- Banyo vitrifiye kartı yalnızca Banyo/Duş iç hacmi seçildiğinde görünür; yalnızca WC seçimi vitrifiye kartını açmaz.
+- Yedek: `backups/before-dynamic-commercial-decorative-rows_2026-09-11_14-00-26`.
+   - Tarayıcı doğrulaması: İşyeri + WC seçiminde dekoratif tabloda yalnızca “İşyeri” ve “WC” satırları göründü; “Banyo Vitrifiye Elemanları” gizlendi.
+
+## 2026-09-11 — Dinamik dekoratif açıklama cümleleri doğrulaması
+- Dinamik iç hacim satırlarının seçilen zemin/duvar malzemeleri `Bağımsız Bölüm İç Hacimler Açıklaması` metnine aktarılıyor.
+- Tarayıcı doğrulaması: İşyeri için Seramik + Alçı Sıva Üzeri Saten Boya seçildiğinde “Dükkan zeminler seramik kaplı, duvarlar ise alçı sıva üzeri saten boyalıdır.” cümlesi oluştu; WC için Fayans cümlesi korunuyor.
+- `npm run verify` başarıyla tamamlandı.
+
+## 2026-09-11 — Kat irtifakı bazlı ana taşınmaz dağılım görünürlüğü
+- “Bulunduğu Blok İçindeki Bağımsız Bölüm Sayısı” ve site toplamı özeti yalnızca `Yatay Kat İrtifakı` seçiliyken oluşturulur.
+- `Dikey Kat İrtifakı` ve diğer mülkiyet türlerinde eski “Ana Taşınmaz Kat Dağılımı” tablosu korunur; yeni özet paneli DOM’a eklenmez.
+
+## 2026-09-11 — Dikey raporda kat satırları tablosunun geri eklenmesi
+- Dikey/diğer mülkiyet türlerinde `Kat Satırları` tablosu yeniden render ediliyor; kat bazında Daire/Dükkan/Ofis/Depo sütunları tekrar görünür.
+- Yatay kat irtifakında bu tablo yerine blok/site bağımsız bölüm özeti kullanılmaya devam ediyor.
