@@ -12974,3 +12974,9 @@ devreye girdi.
 ## 2026-09-11 — Dikey raporda kat satırları tablosunun geri eklenmesi
 - Dikey/diğer mülkiyet türlerinde `Kat Satırları` tablosu yeniden render ediliyor; kat bazında Daire/Dükkan/Ofis/Depo sütunları tekrar görünür.
 - Yatay kat irtifakında bu tablo yerine blok/site bağımsız bölüm özeti kullanılmaya devam ediyor.
+
+## 2026-09-12 — Çoklu taşınmaz dekoratif zemin/duvar metni
+- Çoklu taşınmaz iç hacim açıklamasında ticari/konut dışı dinamik dekoratif alanların zemin ve duvar değerleri taşınmaz bazlı saklama/geri yükleme kapsamına alındı.
+- `dynamicAreas` dekoratif metin birleştirme sırasına eklendi; böylece seçilen zemin/duvar kaplamaları çoklu taşınmaz paragrafında artık görünür.
+- Yedek: `backups/before-multi-unit-decorative-floor-wall_2026-09-12_00-29-10`.
+- Doğrulama: `node --check app.js`, `tools/test-multi-unit-interior-description.js`, `tools/test-unit-interior-description.js` ve `tools/test-unit-interior-fluent-wording.js` başarıyla tamamlandı.

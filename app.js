@@ -2669,9 +2669,23 @@ function applyValuationDataToSelectedTitleUnits(targetIndices) {
 // Özellikler kısmına seçilenlere uygula seçeneği ekleyebilir miyiz" —
 // applyUnitDecorativeDataToSelectedTitleUnits() (aşağıda) bu listeyi
 // KENDİ, DAR kopyalama kapsamı için kullanır.
+function getDynamicUnitDecorativeFieldKeys() {
+  const keys = new Set();
+  const collect = (fields) => {
+    Object.keys(fields || {}).forEach((key) => {
+      if (key.startsWith("unitDecorativeArea_")) keys.add(key);
+    });
+  };
+  collect(state.fields);
+  collect(state.primaryTitleUnitShadow?.fields);
+  (Array.isArray(state.titleUnits) ? state.titleUnits : []).forEach((unit) => collect(unit?.fields));
+  return [...keys];
+}
+
 function getUnitDecorativeFieldKeys() {
   return [
     ...unitWallFloorRows.flatMap((row) => [row.floorKey, row.wallKey]),
+    ...getDynamicUnitDecorativeFieldKeys(),
     ...unitGeneralDecorativeFields.map((field) => field.key),
     ...unitBathroomFixtureFields.map((field) => field.key),
     "unitDecorativeDescription", "unitDecorativeDescriptionManual",
@@ -35241,7 +35255,7 @@ function composeMultiUnitInteriorGroupedText(groups, { pluralize = null, joiner 
 const UNIT_DECORATIVE_SLOT_KEY_ORDER = [
   "mainRoomCombined", "mainRoomFloor", "mainRoomWall", "wetArea",
   "outdoorCombined",
-  "bathroomFixture", "doorsWindows", "kitchen", "materialQuality", "view",
+  "bathroomFixture", "doorsWindows", "kitchen", "dynamicAreas", "materialQuality", "view",
   "heating", "constructionLevel", "manualOverride",
 ];
 
