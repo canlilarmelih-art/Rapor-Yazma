@@ -15915,12 +15915,24 @@ function buildUnitFloorAreaDistributionText(mode = "current") {
 function updateUnitFloorRow(index, key, value) {
   const rows = getUnitFloorRows();
   if (!rows[index]) return;
+  const previousGeneratedInteriorDescription = composeCurrentUnitInteriorDescription();
   rows[index][key] = value;
   setUnitFloorRows(rows);
   updateUnitReducedAreaControls(index);
   updateUnitReducedTotalControls();
   updateUnitDecorativeDescription();
-  updateUnitInteriorDescription();
+  // Kullanıcı metni elle değiştirmediyse, yeni iç hacim/kat bilgilerini
+  // açıklamaya hemen aktar. Elle yazılmış metin varsa onu koru; mevcut metin
+  // son otomatik üretime eşitse otomatik moda dön.
+  if (
+    state.fields.unitInteriorDescriptionManual !== "Evet" ||
+    state.fields.unitInteriorDescription === previousGeneratedInteriorDescription
+  ) {
+    state.fields.unitInteriorDescriptionManual = "";
+    updateUnitInteriorDescription(true);
+  } else {
+    updateUnitInteriorDescription();
+  }
   // İç hacim seçimi dekoratif alanların görünürlüğünü belirler. Kat satırı
   // güncellendiğinde yalnızca dekoratif paneli yenileyerek yeni seçimi
   // (ör. Dükkan) Duvar/Zemin tablosuna anında yansıt.

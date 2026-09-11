@@ -1,5 +1,11 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 2026-09-12 — İç hacim değişikliklerinin açıklamayı yenilemesi
+- İç Hacimler kat satırı değiştiğinde, otomatik üretilen “Bağımsız Bölüm İç Hacimler Açıklaması” artık yeni hacim ve dekoratif bilgileri hemen içeriyor.
+- Kullanıcının elle düzenlediği açıklama, manuel metin koruma kuralı ile ezilmiyor; son otomatik metin değişmişse otomatik üretim yeniden devreye giriyor.
+- Yedek: `backups/before-interior-description-regeneration_2026-09-12_00-20-11`.
+
+
 ## 2026-09-12 — İşyeri/Dükkan iç hacimlerine ofis seçenekleri
 - İşyeri/Dükkan iç hacim seçim listesine Ofis, Ofis alanı, Açık/Kapalı ofis, Çalışma alanı, Yönetici odası, Toplantı odası, Eğitim odası, Resepsiyon, Arşiv, Dosya odası ve Personel odası seçenekleri eklendi.
 - Yedek: `backups/before-shop-office-interior-options_2026-09-12_00-05-20`.
