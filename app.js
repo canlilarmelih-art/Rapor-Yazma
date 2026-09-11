@@ -15483,6 +15483,8 @@ const commercialUnitInteriorValidationOptions = [
 const shopUnitInteriorValidationOptions = [
   "Dükkan", "İşyeri", "Satış alanı", "Mağaza alanı", "Showroom", "Teşhir alanı",
   "Müşteri kabul alanı", "Kasa bölümü", "Banko alanı", "Tezgah alanı", "Servis alanı",
+  "Ofis", "Ofis alanı", "Açık ofis alanı", "Kapalı ofis", "Çalışma alanı", "Yönetici odası",
+  "Toplantı odası", "Eğitim odası", "Resepsiyon", "Arşiv", "Dosya odası", "Personel odası",
   "Depo", "Arka depo", "Mal kabul alanı", "WC", "Müşteri WC", "Engelli WC", "Lavabo",
   "Giriş holü", "Hol", "Koridor", "İç merdiven", "Vitrin önü kullanım alanı",
   "Ön kullanım alanı", "Bahçe kullanım alanı", "Açık otopark", "Kapalı otopark", "Garaj",

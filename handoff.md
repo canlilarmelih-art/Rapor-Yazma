@@ -1,5 +1,10 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 2026-09-12 — İşyeri/Dükkan iç hacimlerine ofis seçenekleri
+- İşyeri/Dükkan iç hacim seçim listesine Ofis, Ofis alanı, Açık/Kapalı ofis, Çalışma alanı, Yönetici odası, Toplantı odası, Eğitim odası, Resepsiyon, Arşiv, Dosya odası ve Personel odası seçenekleri eklendi.
+- Yedek: `backups/before-shop-office-interior-options_2026-09-12_00-05-20`.
+
+
 ## 2026-09-11 — İç hacim seçimi sonrası dekoratif panelin anında yenilenmesi
 - İç Hacimler bölümünde “Dükkan/İşyeri” gibi dinamik bir seçenek seçildiğinde, Duvar ve Zemin tablosu artık yalnızca sonraki bölüm render’ında değil, seçim anında güncelleniyor.
 - Tüm bölüm yerine sadece Dekoratif Özellikler paneli yerinde yenileniyor; diğer bağımsız bölüm alanlarının değerleri korunuyor.
