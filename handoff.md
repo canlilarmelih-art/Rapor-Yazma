@@ -13027,3 +13027,11 @@ devreye girdi.
 - Ortak dinamik hacim cümlelerine ayrıca “Taşınmazların” atfı eklenmiyor; kullanıcı örneğindeki akıcı biçim korunuyor.
 - Yedek: `backups/before-single-pass-decorative-grouping_2026-09-12_01-21-10`.
 - `npm test` tam zinciri başarıyla tamamlandı.
+# 2026-09-12 — Çoklu taşınmaz dekoratif iç hacimlerinin tek sefer yazılması (regresyon düzeltmesi)
+
+- Kullanıcı bulgusu: çoklu taşınmazlarda Dükkan/Ofis/Yönetici odası gibi dekoratif iç hacim cümleleri ortak özellikler olmasına rağmen paragrafta tekrarlanıyordu.
+- `buildMultiUnitInteriorDescriptionText()` artık dinamik alanları yalnızca aynı `dynamicArea` anahtarındaki değil, alan grubunun tamamındaki etiketlerle başlıklandırıyor; böylece Ofis/Yönetici odası/Toplantı odası ortak başlık altında toplanıyor.
+- Aynı normalize edilmiş dinamik cümle birden fazla anahtardan oluşsa bile çıktı paragrafına yalnızca bir kez ekleniyor. Malzeme gerçekten farklıysa ayrı varyant korunuyor.
+- Değişiklik öncesi yedek: `app/backups/before-multi-unit-one-pass-fix_2026-09-12_01-26-51`
+- Doğrulama: `node --check app.js`, `node tools/test-multi-unit-interior-description.js` ve tam `npm test` başarılı.
+- Bu düzeltme henüz canlıya gönderilmedi; kullanıcı ayrıca canlıya alma talimatı verirse commit/push/deploy yapılacak.

@@ -35872,13 +35872,30 @@ function buildMultiUnitInteriorDescriptionText() {
     state.tables = originalTables;
   }
 
+  // Çoklu taşınmazlarda aynı alan grubu (özellikle Ofis/Yönetici odası/
+  // Toplantı odası) farklı birimlerde farklı anahtarlarla toplanabiliyordu.
+  // Bu durumda her anahtar kendi etiketini kullanıyor ve paragrafta aynı
+  // iç özellik cümlesi tekrar ediyordu. Önce grup genelindeki tüm etiketleri
+  // topla; sonra her malzeme varyantını aynı ortak başlıkla bir kez üret.
+  const dynamicLabelsByGroup = {};
+  Object.keys(decorativeEntriesBySlot)
+    .filter((key) => key.startsWith("dynamicArea:"))
+    .forEach((key) => {
+      (decorativeEntriesBySlot[key] || []).forEach((entry) => {
+        const group = entry.dynamicMeta?.group;
+        const label = entry.dynamicMeta?.label;
+        if (!group || !label) return;
+        if (!dynamicLabelsByGroup[group]) dynamicLabelsByGroup[group] = [];
+        if (!dynamicLabelsByGroup[group].includes(label)) dynamicLabelsByGroup[group].push(label);
+      });
+    });
   Object.keys(decorativeEntriesBySlot)
     .filter((key) => key.startsWith("dynamicArea:"))
     .forEach((key) => {
       const entries = decorativeEntriesBySlot[key];
-      const labels = [...new Set(entries.map((entry) => entry.dynamicMeta?.label).filter(Boolean))];
-      if (labels.length < 2) return;
-      const meta = entries[0].dynamicMeta;
+      const meta = entries[0]?.dynamicMeta;
+      if (!meta) return;
+      const labels = dynamicLabelsByGroup[meta.group] || [meta.label];
       const prefix = getDynamicDecorativeAreaGroupPrefix(meta.group, labels);
       entries.forEach((entry) => {
         entry.value = composeSingleAreaDecorativeSentence(prefix, meta.floor, meta.wall);
@@ -35898,10 +35915,15 @@ function buildMultiUnitInteriorDescriptionText() {
     .forEach((key) => {
       decorativeSentences.push(composeDecorativeAttributedSentence(key, decorativeEntriesBySlot[key], runState));
     });
+  const emittedDynamicSentences = new Set();
   Object.keys(decorativeEntriesBySlot)
     .filter((key) => key.startsWith("dynamicArea:") && decorativeEntriesBySlot[key]?.length)
     .forEach((key) => {
-      decorativeSentences.push(composeDecorativeAttributedSentence(key, decorativeEntriesBySlot[key], runState));
+      const sentence = composeDecorativeAttributedSentence(key, decorativeEntriesBySlot[key], runState);
+      const normalizedSentence = normalizeTextForSimilarityComparison(sentence);
+      if (!normalizedSentence || emittedDynamicSentences.has(normalizedSentence)) return;
+      emittedDynamicSentences.add(normalizedSentence);
+      decorativeSentences.push(sentence);
     });
   // manualOverride: kullanıcının elle yazdığı serbest metin — YENİ iyelik/
   // genel-özne mekanizmasına HİÇ katılmaz, ESKİ (numara listesi)
