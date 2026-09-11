@@ -17154,6 +17154,33 @@ function getDynamicDecorativeAreaPrefix(label) {
   return area ? `${area.toLocaleLowerCase("tr-TR")} hacimlerinde` : "";
 }
 
+function getDynamicDecorativeAreaGroup(label) {
+  const folded = foldTurkish(String(label || "")).toLocaleLowerCase("tr");
+  if (/ofis|yonetici odasi|toplanti odasi|egitim odasi|idari/.test(folded)) return "administrative";
+  return folded;
+}
+
+function getDynamicDecorativeAreaGroupPrefix(group) {
+  return group === "administrative" ? "idari bölümlerde" : getDynamicDecorativeAreaPrefix(group);
+}
+
+function buildDynamicDecorativeAreaSentences() {
+  const groups = [];
+  const rows = getUnitDecorativeWallFloorRows()
+    .filter((row) => row.floorKey.startsWith("unitDecorativeArea_") || row.wallKey.startsWith("unitDecorativeArea_"));
+  rows.forEach((row) => {
+    const group = getDynamicDecorativeAreaGroup(row.label);
+    const floor = getUnitDecorativeFieldValue(row.floorKey);
+    const wall = getUnitDecorativeFieldValue(row.wallKey);
+    const existing = groups.find((entry) => entry.group === group && entry.floor === floor && entry.wall === wall);
+    if (!existing) groups.push({ group, floor, wall });
+  });
+  return groups
+    .map((entry) => composeSingleAreaDecorativeSentence(getDynamicDecorativeAreaGroupPrefix(entry.group), entry.floor, entry.wall))
+    .filter(Boolean)
+    .join(" ");
+}
+
 function hasKitchenInterior(presence) {
   return Boolean(presence?.mutfak);
 }
@@ -17180,11 +17207,7 @@ function getOutdoorInteriorPrefix(presence) {
 function buildUnitDecorativeDescriptionPartsList() {
   if (shouldUseExternalUnitInspectionText()) return [];
   const presence = getUnitInteriorPresence();
-  const dynamicAreaSentences = getUnitDecorativeWallFloorRows()
-    .filter((row) => row.floorKey.startsWith("unitDecorativeArea_") || row.wallKey.startsWith("unitDecorativeArea_"))
-    .map((row) => composeSingleAreaDecorativeSentence(getDynamicDecorativeAreaPrefix(row.label), getUnitDecorativeFieldValue(row.floorKey), getUnitDecorativeFieldValue(row.wallKey)))
-    .filter(Boolean)
-    .join(" ");
+  const dynamicAreaSentences = buildDynamicDecorativeAreaSentences();
   return [
     { key: "mainRoom", value: composeMainRoomDecorativeSentence(presence) },
     { key: "wetArea", value: hasWetAreaInterior(presence) ? composeSingleAreaDecorativeSentence("Islak hacimlerde", state.fields.unitWetFloor, state.fields.unitWetWall) : "" },
@@ -17228,11 +17251,7 @@ function buildUnitDecorativeDescriptionPartsListForMultiUnitMerge() {
   const mainRoom = buildMainRoomDecorativeAllRepresentations(presence);
   const outdoorPrefix = getOutdoorInteriorPrefix(presence);
   const outdoor = outdoorPrefix ? buildOutdoorDecorativeAllRepresentations(presence) : { combined: "", materialSentence: "" };
-  const dynamicAreas = getUnitDecorativeWallFloorRows()
-    .filter((row) => row.floorKey.startsWith("unitDecorativeArea_") || row.wallKey.startsWith("unitDecorativeArea_"))
-    .map((row) => composeSingleAreaDecorativeSentence(getDynamicDecorativeAreaPrefix(row.label), getUnitDecorativeFieldValue(row.floorKey), getUnitDecorativeFieldValue(row.wallKey)))
-    .filter(Boolean)
-    .join(" ");
+  const dynamicAreas = buildDynamicDecorativeAreaSentences();
   return [
     { key: "mainRoomCombined", value: mainRoom.combined },
     { key: "mainRoomFloor", value: mainRoom.floorSentence },

@@ -12993,3 +12993,9 @@ devreye girdi.
 - Aynı kural Ofis, Yönetici odası, WC ve diğer dinamik iç hacim adlarına uygulanıyor.
 - Yedek: `backups/before-dynamic-area-locative-wording_2026-09-12_00-39-30`.
 - Doğrulama: `node --check app.js`, `tools/test-unit-interior-description.js` ve `tools/test-multi-unit-interior-description.js` başarıyla tamamlandı.
+
+## 2026-09-12 — Ofis hacimlerinin idari bölüm olarak gruplanması
+- Ofis, yönetici odası, toplantı odası, eğitim odası ve benzeri hacimler dekoratif açıklama üretiminde “idari bölümler” grubuna alındı.
+- Aynı idari hacim özellikleri tek cümlede birleştiriliyor; farklı zemin/duvar seçimleri ayrı cümle olarak korunuyor.
+- Yedek: `backups/before-administrative-area-grouping_2026-09-12_00-48-39`.
+- Doğrulama: `node --check app.js`, `tools/test-unit-interior-description.js` ve `tools/test-multi-unit-interior-description.js` başarıyla tamamlandı.
