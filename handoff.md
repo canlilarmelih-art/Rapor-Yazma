@@ -13021,3 +13021,9 @@ devreye girdi.
 ## 2026-09-12 — Deploy doğrulama düzeltmesi
 - İlk push sonrası CI parser testi, test izolasyonunda dekoratif alan anahtar yardımcısının eksik kapsamı nedeniyle başarısız oldu; bağımlılık güvenli koşulla mevcut fonksiyon içine alındı.
 - `npm test` tam zinciri yeniden başarıyla tamamlandı.
+
+## 2026-09-12 — Dekoratif hacimlerin tek seferde yazılması
+- Aynı dinamik hacim ve aynı zemin/duvar özellikleri çoklu taşınmaz metninde tek kez yazılıyor; gereksiz “C 1, C 2...” tekrarları kaldırılıyor.
+- Ortak dinamik hacim cümlelerine ayrıca “Taşınmazların” atfı eklenmiyor; kullanıcı örneğindeki akıcı biçim korunuyor.
+- Yedek: `backups/before-single-pass-decorative-grouping_2026-09-12_01-21-10`.
+- `npm test` tam zinciri başarıyla tamamlandı.

@@ -35585,6 +35585,10 @@ function composeDecorativeAttributedSentence(slotKey, entries, runState) {
       runState.previousRunKey = null;
       return group.canonicalValue;
     }
+    if (slotKey.startsWith("dynamicArea:")) {
+      runState.previousRunKey = null;
+      return group.canonicalValue;
+    }
     const runKey = "ALL";
     const isContinuation = runState.previousRunKey === runKey;
     runState.previousRunKey = runKey;
