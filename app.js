@@ -17191,6 +17191,19 @@ function buildDynamicDecorativeAreaSentences() {
     .join(" ");
 }
 
+function buildDynamicDecorativeAreaPartsForMultiUnitMerge() {
+  return getUnitDecorativeWallFloorRows()
+    .filter((row) => row.floorKey.startsWith("unitDecorativeArea_") || row.wallKey.startsWith("unitDecorativeArea_"))
+    .map((row) => {
+      const group = getDynamicDecorativeAreaGroup(row.label);
+      const floor = getUnitDecorativeFieldValue(row.floorKey);
+      const wall = getUnitDecorativeFieldValue(row.wallKey);
+      const value = composeSingleAreaDecorativeSentence(getDynamicDecorativeAreaGroupPrefix(group, [row.label]), floor, wall);
+      return value ? { key: `dynamicArea:${group}:${floor}:${wall}`, value } : null;
+    })
+    .filter(Boolean);
+}
+
 function hasKitchenInterior(presence) {
   return Boolean(presence?.mutfak);
 }
@@ -17261,7 +17274,6 @@ function buildUnitDecorativeDescriptionPartsListForMultiUnitMerge() {
   const mainRoom = buildMainRoomDecorativeAllRepresentations(presence);
   const outdoorPrefix = getOutdoorInteriorPrefix(presence);
   const outdoor = outdoorPrefix ? buildOutdoorDecorativeAllRepresentations(presence) : { combined: "", materialSentence: "" };
-  const dynamicAreas = buildDynamicDecorativeAreaSentences();
   return [
     { key: "mainRoomCombined", value: mainRoom.combined },
     { key: "mainRoomFloor", value: mainRoom.floorSentence },
@@ -17283,7 +17295,7 @@ function buildUnitDecorativeDescriptionPartsListForMultiUnitMerge() {
     { key: "bathroomFixture", value: presence.bathroom ? composeBathroomFixtureSentence() : "" },
     { key: "doorsWindows", value: composeDoorsWindowsSentence() },
     { key: "kitchen", value: hasKitchenInterior(presence) ? composeKitchenCabinetCounterSentence() : "" },
-    { key: "dynamicAreas", value: dynamicAreas },
+    ...buildDynamicDecorativeAreaPartsForMultiUnitMerge(),
     { key: "materialQuality", value: composeMaterialQualitySentence() },
     { key: "view", value: composeUnitViewSentence() },
     { key: "heating", value: composeUnitHeatingSentence() },
@@ -35870,6 +35882,11 @@ function buildMultiUnitInteriorDescriptionText() {
   if (mainRoomSentence) decorativeSentences.push(mainRoomSentence);
   UNIT_DECORATIVE_SLOT_KEY_ORDER
     .filter((key) => key !== "manualOverride" && decorativeEntriesBySlot[key]?.length)
+    .forEach((key) => {
+      decorativeSentences.push(composeDecorativeAttributedSentence(key, decorativeEntriesBySlot[key], runState));
+    });
+  Object.keys(decorativeEntriesBySlot)
+    .filter((key) => key.startsWith("dynamicArea:") && decorativeEntriesBySlot[key]?.length)
     .forEach((key) => {
       decorativeSentences.push(composeDecorativeAttributedSentence(key, decorativeEntriesBySlot[key], runState));
     });

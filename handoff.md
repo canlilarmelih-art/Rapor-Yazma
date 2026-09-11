@@ -13005,3 +13005,9 @@ devreye girdi.
 - Ofis, toplantı odası, yönetici odası ve benzeri hacimler birlikte olduğunda “ofis ve toplantı odalarında” gibi doğal ortak ifade üretiliyor.
 - Yedek: `backups/before-office-area-wording_2026-09-12_00-51-20`.
 - Doğrulama: `node --check app.js`, `tools/test-unit-interior-description.js` ve `tools/test-multi-unit-interior-description.js` başarıyla tamamlandı.
+
+## 2026-09-12 — Çoklu hacimlerde ortak dekoratif cümle gruplaması
+- Çoklu taşınmaz dekoratif metni artık her taşınmazın tüm hacim cümlesini tek blok olarak karşılaştırmıyor; hacim ve zemin/duvar özelliği bazında ayrı grupluyor.
+- Böylece C 1, C 2 ve C 3’ün ortak dükkan özellikleri tek cümlede; yalnızca belirli taşınmazlara ait ofis, toplantı odası ve WC özellikleri kendi atıflarıyla yazılıyor.
+- Yedek: `backups/before-office-area-wording_2026-09-12_00-51-20`.
+- Doğrulama: `node --check app.js`, `tools/test-unit-interior-description.js` ve `tools/test-multi-unit-interior-description.js` başarıyla tamamlandı.
