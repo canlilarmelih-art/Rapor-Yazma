@@ -1,5 +1,35 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.753 - 2026-09-11 - Yatay konum cümlesi blok referansı
+
+- Yatay kat irtifakı konum açıklaması artık `Bulunduğu Blok'a kuzey yönünden bakıldığında sağ tarafta yer almaktadır.` biçiminde, bulunduğu blok referansını açıkça içerir.
+- Yedek: `backups/before-horizontal-position-wording_2026-09-11_13-05-27`
+- `npm run check` başarılı.
+
+## 0.0.752 - 2026-09-11 - Yatay kat irtifakı bağımsız bölüm konum alanları
+
+- Yatay kat irtifakı seçiliyken “bina girişine göre konumu” alanı yerine iki alan gösterilir: “Projeye Göre Bakış Yönü” (Kuzey/Güney/Doğu/Batı) ve “Projeye Göre Konumu” (Ön/Arka/Sağ/Sol/Tek-Belirtilmemiş).
+- Bakış yönü ve konum seçildiğinde bağımsız bölüm açıklamasına “... yönünden bakıldığında ... tarafta yer almaktadır.” cümlesi eklenir. Tek/Belirtilmemiş seçiminde cümle eklenmez.
+- Yatay olmayan mülkiyet türlerinde mevcut bina girişine göre konum alanı korunur.
+- Yedek: `backups/before-horizontal-position-fields_2026-09-11_13-00-41`
+- Testler: `npm run check` ve değer etkileyen faktörler testi başarılı.
+
+## 0.0.751 - 2026-09-11 - 1 milyon USD üzeri değer için sınırlı alıcı faktörü
+
+- Mevcut Durum Değeri’nin USD karşılığı 1.000.000 USD’yi aştığında Olumsuz Özellikler listesine `Sınırlı bir alıcı kitlesine hitap ediyor olması` eklenir.
+- Eşik değeri olan tam 1.000.000 USD tetiklenmez; yalnızca üzerindeki değerler tetiklenir.
+- USD değeri mevcutsa doğrudan kullanılır; yoksa TCMB USD alış kuru üzerinden `currentValue` TL değerinden hesaplanır.
+- Yedek: `backups/before-million-usd-factor_2026-09-11_12-17-54`
+- Testler: değer etkileyen faktörler, çoklu taşınmaz ve temel kontrol testleri başarılı.
+
+## 0.0.750 - 2026-09-11 - Birinci derece deprem bölgesi olumsuz faktörü
+
+- Değeri Etkileyen Faktörler kurallarına `earthquakeZone` alanı eklendi. Değer 1. derece olarak girildiğinde yalnızca Olumsuz Özellikler listesine `1. Derece Deprem bölgesinde yer alıyor olması` eklenir.
+- 2., 3., 4. ve 5. derece değerlerinde deprem kaynaklı otomatik özellik eklenmez.
+- Türkçe yazım/boşluk varyasyonları için derece başlangıcı ve `1. DERECE` biçimleri normalize edilerek test edildi.
+- Yedek: `backups/before-earthquake-first-degree-factor_2026-09-11_12-08-04`
+- Testler: `node tools/test-value-factors-rules.js`, `npm run check` başarılı.
+
 ## 0.0.749 - 2026-09-10 - İç hacim listesine Açık Mutfak eklendi
 
 - Bağımsız Bölüm iç hacim seçeneklerine konut raporları için `Açık Mutfak` eklendi.
@@ -44,18 +74,6 @@
 - `app.js`: `getComparableRows()` artık eski/kaydedilmiş `comparables: []` durumunu da dört boş satıra tamamlıyor; boş varsayılan emsal satırları `residential`, `land` ve `all` görünümlerinde filtrelenmiyor. Böylece her gayrimenkul türünde matris başlangıçta dört boş sütunla açılıyor. Dolu emsal niteliği filtrelemesi korunuyor.
 - `tools/test-comparable-nature-filter.js`: arsa/tarla görünümünde boş varsayılan satırın ve konut/yapı görünümünde boş satırın korunmasını doğrulayan test eklendi.
 - Yedek: `backups/before-comparable-default-columns-2026-09-10_18-32-51`.
-
-## 0.0.743 - 2026-09-10 - Tüm şablonlar tarandı: isbankasi.html'de de AYNI Emsal Matrisi sorunu bulundu, düzeltildi
-
-- Kullanıcı talebi: "mevcut tüm template dosyalarını tara. burada emsal matrisi tablosunda yaşadığımız sorunu yaşadığımız soruna sahip tabloları tespit et ve bunları aynı mantık ile düzelt."
-- `templates/*.html` (12 dosya) taranıp `.word-table` sınıfı (app.js'in ürettiği dinamik tabloların — Emsal Matrisi/Malikler/Takyidat/Tapu Özeti vb. — ortak sınıfı) kullanan/kullanmayan ayrımı yapıldı:
-  - 9 şablon (`akbank`, `halkbank`, `kuveytturk`, `kuveytturk-arsa-arazi`, `vakifbank`, `vakifkatilim`, `yapikredi`, `ziraat`, `ziraat-arsa-arazi`) 0.0.735'te ZATEN düzeltilmişti.
-  - **`isbankasi.html` GÖZDEN KAÇMIŞ** — bu şablonda da `{{EMSAL_MATRISI}}` token'ı VAR (5. "EMSALLER SEKMESİ"), ve AYNI eksik `mso-padding-alt`/`mso-line-height-rule`/satır yüksekliği sorununa sahip. 0.0.735'teki tarama yalnızca "EMSALMATRISI" (bitişik) dizesini arıyordu — `isbankasi.html`'in ALT ÇİZGİLİ yazımı (`EMSAL_MATRISI`) bu metin taramasında GÖRÜNMEDİ (foldTokenName() token ÇÖZÜMLEMESİ için alt çizgiyi yok sayar, ama önceki taramanın kendisi salt metin arşivlemesiydi).
-  - `isbankasi-masraf.html` (düz bir ücret yazısı) ve `ziraat-ek-tablo.html` (statik/elle doldurulan tek tablo, `.word-table` sınıfı HİÇ kullanmıyor) — bu ikisi gerçekten kapsam dışı, dokunulmadı.
-- `isbankasi.html`'in `.word-table th/td` (taban) ve `.pg-section table.meta td, .pg-section .word-table td/th` (özgül) kurallarına, diğer 9 şablonla AYNI teknikle `mso-padding-alt` + nokta-birimli `line-height`+`mso-line-height-rule: exactly` eklendi; yeni bir `.pg-section .word-table tr { height: 0.55cm; mso-height-source: userset; mso-height-rule: at-least; }` satır-yüksekliği kuralı eklendi (0.55cm, kullanıcının GERÇEK Word testiyle onayladığı aynı değer).
-- Test: `tools/test-bank-template-word-table-css-mso-padding.js` güncellendi — `isbankasi` artık 10 şablonluk kontrol listesinde; eski (yanlış) "isbankasi.html'e dokunulmamalı" varsayımı kaldırılıp yerine gerçekten `.word-table` KULLANMAYAN 2 şablonun (`isbankasi-masraf`, `ziraat-ek-tablo`) doğru kontrolü eklendi. Geçici geri alma (`git stash`) ile `isbankasi.html`'de gerçekten başarısız olduğu kanıtlanıp geri konuldu.
-- `npm run check` ve tam `npm test` (186 test) başarılı. `app.js`/`styles.css`/`src/**` DEĞİŞMEDİ — cache-buster bump GEREKMEDİ (şablon dosyaları sunucu tarafında her render isteğinde diskten okunur).
-- Canlı tarayıcı testi yapılamadı. Kullanıcının İş Bankası şablonuyla gerçek bir Word çıktısı alıp Emsal Matrisi (ve varsa diğer `.word-table` tabloların) artık sıkışık göründüğünü doğrulaması gerekiyor.
 
 ## 0.0.743 - 2026-09-10 - Tüm şablonlar tarandı: isbankasi.html'de de AYNI Emsal Matrisi sorunu bulundu, düzeltildi
 

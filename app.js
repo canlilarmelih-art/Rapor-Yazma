@@ -2686,7 +2686,7 @@ function getUnitSectionFieldKeys() {
   return [
     ...keys,
     // Genel panel (createUnitGeneralPanel)
-    "unitUsageStatus", "unitFirstSaleStatus", "unitFirstSaleStatusManual", "unitEntrancePosition", "facades",
+    "unitUsageStatus", "unitFirstSaleStatus", "unitFirstSaleStatusManual", "unitEntrancePosition", "unitHorizontalViewingDirection", "unitHorizontalPosition", "facades",
     "unitConstructionLevel", "unitViewStatus", "unitHeatingType", "unitHeatingMounted",
     "unitShopFrontage", "unitShopDepth",
     "unitPrivatePool",
@@ -15310,6 +15310,8 @@ function joinTurkishUnitList(items) {
 }
 
 const unitEntrancePositionOptions = ["", "Sağ", "Sağ Ön", "Sağ Arka", "Sol", "Sol Ön", "Sol Arka", "Ön", "Arka"];
+const unitHorizontalViewingDirectionOptions = ["", "Kuzey", "Güney", "Doğu", "Batı"];
+const unitHorizontalPositionOptions = ["", "Ön", "Arka", "Sağ", "Sol", "Tek / Belirtilmemiş"];
 const unitUsageStatusOptions = ["", "Boş (Hiç Kullanılmamış)", "Boş (Kullanılmış)", "Mal Sahibi", "Kiracı", "İşgalci"];
 const unitPrivatePoolOptions = ["", "Yok", "Açık Yüzme Havuzu", "Kapalı Yüzme Havuzu"];
 const unitFirstSaleStatusOptions = ["1.El", "2.El"];
@@ -15632,7 +15634,12 @@ function createUnitGeneralPanel() {
   grid.append(
     createUnitSelectField("Kullanım Durumu", "unitUsageStatus", unitUsageStatusOptions),
     createUnitSelectField("İlk Kez mi Satışa Konu Ediliyor?", "unitFirstSaleStatus", unitFirstSaleStatusOptions),
-    createUnitSelectField("Projeye Göre B. Bölümün Bina Girişine Göre Konumu", "unitEntrancePosition", unitEntrancePositionOptions),
+    ...(shouldMentionMainPropertyOwnership(state.fields.ownershipType)
+      ? [
+        createUnitSelectField("Projeye Göre Bakış Yönü", "unitHorizontalViewingDirection", unitHorizontalViewingDirectionOptions),
+        createUnitSelectField("Projeye Göre Konumu", "unitHorizontalPosition", unitHorizontalPositionOptions),
+      ]
+      : [createUnitSelectField("Projeye Göre B. Bölümün Bina Girişine Göre Konumu", "unitEntrancePosition", unitEntrancePositionOptions)]),
     createUnitFacadeControl(),
     createUnitSelectField("İnşaat Seviye", "unitConstructionLevel", unitConstructionLevelOptions),
     createUnitSelectField("Manzara Var mı?", "unitViewStatus", unitViewStatusOptions),
@@ -16121,7 +16128,15 @@ function composeHorizontalUnitDescriptionIntro() {
   const floorPhrase = floorComposition
     ? horizontalUnitFloorPhraseVariants[selectVariant("composeHorizontalUnitDescriptionIntro:floorPhrase", horizontalUnitFloorPhraseVariants.length)](floorComposition, totalFloors)
     : "";
-  return joinNonEmptySentences([sharePhrase, floorPhrase]);
+  const positionPhrase = formatHorizontalUnitPositionPhrase(state.fields.unitHorizontalViewingDirection, state.fields.unitHorizontalPosition);
+  return joinNonEmptySentences([sharePhrase, floorPhrase, positionPhrase]);
+}
+
+function formatHorizontalUnitPositionPhrase(viewingDirection, position) {
+  const direction = toLowerText(viewingDirection);
+  const location = toLowerText(position);
+  if (!direction || !location || foldTurkish(location).includes("TEK") || foldTurkish(location).includes("BELIRTILMEMIS")) return "";
+  return `Bulunduğu Blok'a ${direction} yönünden bakıldığında ${location} tarafta yer almaktadır.`;
 }
 
 const unitLandShareWithAreaVariants = [
@@ -42648,8 +42663,9 @@ function refreshValueFactorsFromCurrentState() {
 
 function getValueFactorsInput() {
   refreshHalkbankRiskCodesFromCurrentState();
+  const currentValueUsd = getCurrentValueUsdForValueFactors();
   return {
-    fields: state.fields || {},
+    fields: { ...(state.fields || {}), ...(Number.isFinite(currentValueUsd) ? { currentValueUsd } : {}) },
     tables: {
       unitFloors: Array.isArray(state.tables.unitFloors) ? state.tables.unitFloors : [],
       documents: Array.isArray(state.tables.documents)
@@ -42660,6 +42676,14 @@ function getValueFactorsInput() {
     manualPositive: getValueFactorsManualRows("positive"),
     manualNegative: getValueFactorsManualRows("negative"),
   };
+}
+
+function getCurrentValueUsdForValueFactors() {
+  const explicit = parseValuationNumber(state.fields?.currentValueUsd);
+  if (Number.isFinite(explicit)) return explicit;
+  const currentValue = parseValuationNumber(state.fields?.currentValue);
+  const usdRate = getTcmbBuyingRate("USD");
+  return Number.isFinite(currentValue) && usdRate ? currentValue / usdRate : NaN;
 }
 
 function parseValueFactorsDisabledIds() {
