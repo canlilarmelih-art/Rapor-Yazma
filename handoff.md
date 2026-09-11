@@ -12987,3 +12987,9 @@ devreye girdi.
 - `Yok` seçildiğinde iç kapı ile ilgili cümle tamamen açıklamadan çıkarılır; diğer kapı ve pencere bilgileri etkilenmez.
 - Yedek: `backups/before-interior-door-demonte-option_2026-09-12_00-35-09`.
 - Doğrulama: `node --check app.js`, `tools/test-unit-interior-description.js` ve `tools/test-multi-unit-interior-description.js` başarıyla tamamlandı.
+
+## 2026-09-12 — Dinamik hacim dekoratif cümlelerinin akıcılaştırılması
+- Dinamik hacimlerde dekoratif zemin/duvar cümlesi artık “Dükkan hacimlerinde zeminler ...” biçiminde oluşturuluyor.
+- Aynı kural Ofis, Yönetici odası, WC ve diğer dinamik iç hacim adlarına uygulanıyor.
+- Yedek: `backups/before-dynamic-area-locative-wording_2026-09-12_00-39-30`.
+- Doğrulama: `node --check app.js`, `tools/test-unit-interior-description.js` ve `tools/test-multi-unit-interior-description.js` başarıyla tamamlandı.
