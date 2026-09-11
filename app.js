@@ -17199,7 +17199,7 @@ function buildDynamicDecorativeAreaPartsForMultiUnitMerge() {
       const floor = getUnitDecorativeFieldValue(row.floorKey);
       const wall = getUnitDecorativeFieldValue(row.wallKey);
       const value = composeSingleAreaDecorativeSentence(getDynamicDecorativeAreaGroupPrefix(group, [row.label]), floor, wall);
-      return value ? { key: `dynamicArea:${group}:${floor}:${wall}`, value } : null;
+      return value ? { key: `dynamicArea:${group}:${floor}:${wall}`, value, dynamicMeta: { group, floor, wall, label: row.label } } : null;
     })
     .filter(Boolean);
 }
@@ -35864,13 +35864,26 @@ function buildMultiUnitInteriorDescriptionText() {
         const value = normalizeReportDescriptionText(part.value || "").trim();
         if (!value) return;
         if (!decorativeEntriesBySlot[part.key]) decorativeEntriesBySlot[part.key] = [];
-        decorativeEntriesBySlot[part.key].push({ index, fields: state.fields, value });
+        decorativeEntriesBySlot[part.key].push({ index, fields: state.fields, value, ...(part.dynamicMeta ? { dynamicMeta: part.dynamicMeta } : {}) });
       });
     });
   } finally {
     state.fields = originalFields;
     state.tables = originalTables;
   }
+
+  Object.keys(decorativeEntriesBySlot)
+    .filter((key) => key.startsWith("dynamicArea:"))
+    .forEach((key) => {
+      const entries = decorativeEntriesBySlot[key];
+      const labels = [...new Set(entries.map((entry) => entry.dynamicMeta?.label).filter(Boolean))];
+      if (labels.length < 2) return;
+      const meta = entries[0].dynamicMeta;
+      const prefix = getDynamicDecorativeAreaGroupPrefix(meta.group, labels);
+      entries.forEach((entry) => {
+        entry.value = composeSingleAreaDecorativeSentence(prefix, meta.floor, meta.wall);
+      });
+    });
 
   resolveOutdoorCombinedIgnoringTypeDifferences(decorativeEntriesBySlot);
 

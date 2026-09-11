@@ -13011,3 +13011,9 @@ devreye girdi.
 - Böylece C 1, C 2 ve C 3’ün ortak dükkan özellikleri tek cümlede; yalnızca belirli taşınmazlara ait ofis, toplantı odası ve WC özellikleri kendi atıflarıyla yazılıyor.
 - Yedek: `backups/before-office-area-wording_2026-09-12_00-51-20`.
 - Doğrulama: `node --check app.js`, `tools/test-unit-interior-description.js` ve `tools/test-multi-unit-interior-description.js` başarıyla tamamlandı.
+
+## 2026-09-12 — Çoklu taşınmazlar arası hacim gruplamasının güçlendirilmesi
+- Dinamik hacim cümleleri artık tüm taşınmazlar arasında hacim/zemin/duvar özelliği imzasına göre gruplanıyor; aynı dükkan özelliği her taşınmazda tekrar edilmiyor.
+- Aynı özellikteki ofis grubu hacimleri ortak ifade altında birleştiriliyor; farklı malzeme seçimleri korunuyor.
+- Yedek: `backups/before-office-area-wording_2026-09-12_00-51-20`.
+- Doğrulama: `node --check app.js`, `tools/test-unit-interior-description.js` ve `tools/test-multi-unit-interior-description.js` başarıyla tamamlandı.
