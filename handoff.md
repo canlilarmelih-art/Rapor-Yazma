@@ -1,5 +1,12 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 2026-09-12 — Çoklu iç hacim paragrafında manuel override temizliği
+- “Bağımsız Bölüm İç Hacimler Açıklaması / Metni yeniden oluştur” düğmesi çoklu taşınmazlarda tüm taşınmazların dekoratif açıklamalarını otomatik moda alıyor.
+- Böylece daha önce kaydedilmiş manuel dekoratif metinler yeni ofis/idari bölüm gruplamasını bastırmıyor; tek paragrafta güncel gruplama üretiliyor.
+- Yedek: `backups/before-multi-unit-regenerate-manual-fix_2026-09-12_01-37-02`.
+- Uygulama önbelleğinin eski `app.js` sürümünü göstermemesi için script sürümü `20260912-0140` olarak yenilendi; ek yedek: `backups/before-multi-unit-cache-bust_2026-09-12_01-39-43`.
+
+
 ## 2026-09-12 — İç hacim değişikliklerinin açıklamayı yenilemesi
 - İç Hacimler kat satırı değiştiğinde, otomatik üretilen “Bağımsız Bölüm İç Hacimler Açıklaması” artık yeni hacim ve dekoratif bilgileri hemen içeriyor.
 - Kullanıcının elle düzenlediği açıklama, manuel metin koruma kuralı ile ezilmiyor; son otomatik metin değişmişse otomatik üretim yeniden devreye giriyor.
@@ -13035,3 +13042,9 @@ devreye girdi.
 - Değişiklik öncesi yedek: `app/backups/before-multi-unit-one-pass-fix_2026-09-12_01-26-51`
 - Doğrulama: `node --check app.js`, `node tools/test-multi-unit-interior-description.js` ve tam `npm test` başarılı.
 - Bu düzeltme henüz canlıya gönderilmedi; kullanıcı ayrıca canlıya alma talimatı verirse commit/push/deploy yapılacak.
+# 2026-09-12 — Çoklu paragraf yeniden oluşturma yolu güçlendirildi
+
+- Artifact testinde eski çoklu taşınmaz dekoratif metninin, taşınmaz snapshot'larındaki manuel override nedeniyle yeni gruplamayı bastırdığı görüldü.
+- “Metni yeniden oluştur” düğmesi artık özet tablosunun gerçek taşınmaz alan referanslarını temizliyor ve üretim sırasında manuel override'ları geçici olarak bypass ediyor.
+- Script cache-bust sürümü `20260912-0143` olarak güncellendi.
+- İlgili commit: `0a63145`.

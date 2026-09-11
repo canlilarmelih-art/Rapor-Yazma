@@ -15939,7 +15939,11 @@ function updateUnitFloorRow(index, key, value) {
     state.fields.unitInteriorDescription === previousGeneratedInteriorDescription
   ) {
     state.fields.unitInteriorDescriptionManual = "";
+    // Ünitelerin eski manuel dekoratif metinleri snapshot'ta kalmış olsa
+    // bile bu açık kullanıcı isteğinde programatik gruplama kullanılmalı.
+    state.forceMultiInteriorDescriptionRegenerate = true;
     updateUnitInteriorDescription(true);
+    state.forceMultiInteriorDescriptionRegenerate = false;
   } else {
     updateUnitInteriorDescription();
   }
@@ -15977,6 +15981,26 @@ function createUnitInteriorDescriptionField() {
   regenerate.className = "secondary-button";
   regenerate.textContent = "Metni yeniden oluştur";
   regenerate.addEventListener("click", () => {
+    // Çoklu taşınmazlarda iç hacim paragrafı, dekoratif açıklamaların
+    // manuel override değerlerini de birleştirir. Kullanıcı bu düğmeyle
+    // paragrafı yeniden oluşturmayı istediğinde tüm taşınmazları otomatik
+    // moda al; aksi halde eski manuel metinler yeni gruplamayı bastırır.
+    if (getTitleUnitCount() >= 2) {
+      // Özet tablosunun kullandığı gerçek alan referanslarını da temizle.
+      // Bazı çoklu raporlarda aktif/gölge alan eşlemesi nedeniyle yalnızca
+      // state.titleUnits üzerinden dönmek tüm manuel bayraklara ulaşmayabilir.
+      buildAllTitleUnitsForSummaryTable().forEach((unit) => {
+        if (unit.fields) unit.fields.unitDecorativeDescriptionManual = "";
+      });
+      for (let index = 0; index < getTitleUnitCount(); index += 1) {
+        const fields = index === state.activeTitleUnitIndex
+          ? state.fields
+          : (index === 0
+            ? state.primaryTitleUnitShadow?.fields
+            : state.titleUnits[index - 1]?.fields);
+        if (fields) fields.unitDecorativeDescriptionManual = "";
+      }
+    }
     state.fields.unitInteriorDescriptionManual = "";
     updateUnitInteriorDescription(true);
     autosave();
@@ -16109,7 +16133,7 @@ function composeUnitDescriptionIntroForReport() {
 // birleştirmeye çalışmaz).
 function getUnitDecorativeDescriptionPartsForCombinedText() {
   if (shouldUseExternalUnitInspectionText()) return [];
-  if (state.fields.unitDecorativeDescriptionManual === "Evet" && state.fields.unitDecorativeDescription) {
+  if (!state.forceMultiInteriorDescriptionRegenerate && state.fields.unitDecorativeDescriptionManual === "Evet" && state.fields.unitDecorativeDescription) {
     return [{ key: "manualOverride", value: state.fields.unitDecorativeDescription }];
   }
   return buildUnitDecorativeDescriptionPartsListForMultiUnitMerge();
@@ -16125,7 +16149,7 @@ function getUnitDecorativeDescriptionPartsForCombinedText() {
 // vb.) etkilenmesin diye TEK SATIR bile değiştirilmedi.
 function getUnitDecorativeDescriptionForCombinedText() {
   if (shouldUseExternalUnitInspectionText()) return "";
-  if (state.fields.unitDecorativeDescriptionManual === "Evet" && state.fields.unitDecorativeDescription) {
+  if (!state.forceMultiInteriorDescriptionRegenerate && state.fields.unitDecorativeDescriptionManual === "Evet" && state.fields.unitDecorativeDescription) {
     return state.fields.unitDecorativeDescription;
   }
   return composeUnitDecorativeDescription();
