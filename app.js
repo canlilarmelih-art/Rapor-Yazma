@@ -17160,8 +17160,17 @@ function getDynamicDecorativeAreaGroup(label) {
   return folded;
 }
 
-function getDynamicDecorativeAreaGroupPrefix(group) {
-  return group === "administrative" ? "idari bölümlerde" : getDynamicDecorativeAreaPrefix(group);
+function getDynamicDecorativeAreaGroupPrefix(group, labels = []) {
+  if (group !== "administrative") return getDynamicDecorativeAreaPrefix(group);
+  const names = [...new Set(labels.map((label) => String(label || "").trim().toLocaleLowerCase("tr-TR")).filter(Boolean))];
+  if (names.length === 1 && names[0] === "ofis") return "ofis bölümlerinde";
+  if (names.length > 1) {
+    const last = names[names.length - 1];
+    const lastLocative = /odası$/i.test(last) ? last.replace(/odası$/i, "odalarında") : `${last}larında`;
+    const head = names.slice(0, -1);
+    return `${head.length > 1 ? `${formatTurkishList(head)},` : head[0]} ve ${lastLocative}`;
+  }
+  return names[0] ? `${names[0]} hacimlerinde` : "ofis bölümlerinde";
 }
 
 function buildDynamicDecorativeAreaSentences() {
@@ -17173,10 +17182,11 @@ function buildDynamicDecorativeAreaSentences() {
     const floor = getUnitDecorativeFieldValue(row.floorKey);
     const wall = getUnitDecorativeFieldValue(row.wallKey);
     const existing = groups.find((entry) => entry.group === group && entry.floor === floor && entry.wall === wall);
-    if (!existing) groups.push({ group, floor, wall });
+    if (existing) existing.labels.push(row.label);
+    else groups.push({ group, floor, wall, labels: [row.label] });
   });
   return groups
-    .map((entry) => composeSingleAreaDecorativeSentence(getDynamicDecorativeAreaGroupPrefix(entry.group), entry.floor, entry.wall))
+    .map((entry) => composeSingleAreaDecorativeSentence(getDynamicDecorativeAreaGroupPrefix(entry.group, entry.labels), entry.floor, entry.wall))
     .filter(Boolean)
     .join(" ");
 }

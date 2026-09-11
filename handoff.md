@@ -12999,3 +12999,9 @@ devreye girdi.
 - Aynı idari hacim özellikleri tek cümlede birleştiriliyor; farklı zemin/duvar seçimleri ayrı cümle olarak korunuyor.
 - Yedek: `backups/before-administrative-area-grouping_2026-09-12_00-48-39`.
 - Doğrulama: `node --check app.js`, `tools/test-unit-interior-description.js` ve `tools/test-multi-unit-interior-description.js` başarıyla tamamlandı.
+
+## 2026-09-12 — Ofis grubu terminolojisinin güncellenmesi
+- “İdari bölümler” ifadesi kaldırıldı; tek ofis grubu için “ofis bölümlerinde” kullanılıyor.
+- Ofis, toplantı odası, yönetici odası ve benzeri hacimler birlikte olduğunda “ofis ve toplantı odalarında” gibi doğal ortak ifade üretiliyor.
+- Yedek: `backups/before-office-area-wording_2026-09-12_00-51-20`.
+- Doğrulama: `node --check app.js`, `tools/test-unit-interior-description.js` ve `tools/test-multi-unit-interior-description.js` başarıyla tamamlandı.
