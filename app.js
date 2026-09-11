@@ -2669,23 +2669,19 @@ function applyValuationDataToSelectedTitleUnits(targetIndices) {
 // Özellikler kısmına seçilenlere uygula seçeneği ekleyebilir miyiz" —
 // applyUnitDecorativeDataToSelectedTitleUnits() (aşağıda) bu listeyi
 // KENDİ, DAR kopyalama kapsamı için kullanır.
-function getDynamicUnitDecorativeFieldKeys() {
-  const keys = new Set();
-  const collect = (fields) => {
-    Object.keys(fields || {}).forEach((key) => {
-      if (key.startsWith("unitDecorativeArea_")) keys.add(key);
-    });
-  };
-  collect(state.fields);
-  collect(state.primaryTitleUnitShadow?.fields);
-  (Array.isArray(state.titleUnits) ? state.titleUnits : []).forEach((unit) => collect(unit?.fields));
-  return [...keys];
-}
-
 function getUnitDecorativeFieldKeys() {
+  const dynamicKeys = new Set();
+  const collectDynamicKeys = (fields) => Object.keys(fields || {}).forEach((key) => {
+    if (key.startsWith("unitDecorativeArea_")) dynamicKeys.add(key);
+  });
+  if (typeof state !== "undefined") {
+    collectDynamicKeys(state.fields);
+    collectDynamicKeys(state.primaryTitleUnitShadow?.fields);
+    (Array.isArray(state.titleUnits) ? state.titleUnits : []).forEach((unit) => collectDynamicKeys(unit?.fields));
+  }
   return [
     ...unitWallFloorRows.flatMap((row) => [row.floorKey, row.wallKey]),
-    ...getDynamicUnitDecorativeFieldKeys(),
+    ...dynamicKeys,
     ...unitGeneralDecorativeFields.map((field) => field.key),
     ...unitBathroomFixtureFields.map((field) => field.key),
     "unitDecorativeDescription", "unitDecorativeDescriptionManual",

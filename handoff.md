@@ -13017,3 +13017,7 @@ devreye girdi.
 - Aynı özellikteki ofis grubu hacimleri ortak ifade altında birleştiriliyor; farklı malzeme seçimleri korunuyor.
 - Yedek: `backups/before-office-area-wording_2026-09-12_00-51-20`.
 - Doğrulama: `node --check app.js`, `tools/test-unit-interior-description.js` ve `tools/test-multi-unit-interior-description.js` başarıyla tamamlandı.
+
+## 2026-09-12 — Deploy doğrulama düzeltmesi
+- İlk push sonrası CI parser testi, test izolasyonunda dekoratif alan anahtar yardımcısının eksik kapsamı nedeniyle başarısız oldu; bağımlılık güvenli koşulla mevcut fonksiyon içine alındı.
+- `npm test` tam zinciri yeniden başarıyla tamamlandı.
