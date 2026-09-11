@@ -1,5 +1,11 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 2026-09-11 — İç hacim seçimi sonrası dekoratif panelin anında yenilenmesi
+- İç Hacimler bölümünde “Dükkan/İşyeri” gibi dinamik bir seçenek seçildiğinde, Duvar ve Zemin tablosu artık yalnızca sonraki bölüm render’ında değil, seçim anında güncelleniyor.
+- Tüm bölüm yerine sadece Dekoratif Özellikler paneli yerinde yenileniyor; diğer bağımsız bölüm alanlarının değerleri korunuyor.
+- Yedek: `backups/before-interior-decorative-live-refresh_2026-09-11_19-30-35`.
+
+
 ## 0.0.755 - 2026-09-11 - İç hacim seçeneklerinin taşınmaz niteliğine göre filtrelenmesi
 
 - İç Hacimler seçim listesi artık niteliğe göre ayrılır: İşyeri/Dükkan, Ofis, Ticari Bina ve Sanayi Tesisi için ayrı seçenek kümeleri gelir.

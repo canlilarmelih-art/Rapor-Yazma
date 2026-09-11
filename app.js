@@ -15919,6 +15919,10 @@ function updateUnitFloorRow(index, key, value) {
   updateUnitReducedTotalControls();
   updateUnitDecorativeDescription();
   updateUnitInteriorDescription();
+  // İç hacim seçimi dekoratif alanların görünürlüğünü belirler. Kat satırı
+  // güncellendiğinde yalnızca dekoratif paneli yenileyerek yeni seçimi
+  // (ör. Dükkan) Duvar/Zemin tablosuna anında yansıt.
+  refreshUnitDecorativePanelInPlace();
 }
 
 function createUnitInteriorDescriptionField() {
@@ -16882,6 +16886,15 @@ function createUnitDecorativePanel() {
   );
   panel.append(wrapper);
   return panel;
+}
+
+function refreshUnitDecorativePanelInPlace() {
+  if (typeof document === "undefined") return;
+  const currentPanel = [...document.querySelectorAll(".subsection")].find((panel) =>
+    panel.querySelector("h4")?.textContent?.trim() === "Dekoratif Özellikler"
+  );
+  if (!currentPanel) return;
+  currentPanel.replaceWith(createUnitDecorativePanel());
 }
 
 function migrateUnitDecorativeFields() {
