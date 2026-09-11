@@ -12980,3 +12980,10 @@ devreye girdi.
 - `dynamicAreas` dekoratif metin birleştirme sırasına eklendi; böylece seçilen zemin/duvar kaplamaları çoklu taşınmaz paragrafında artık görünür.
 - Yedek: `backups/before-multi-unit-decorative-floor-wall_2026-09-12_00-29-10`.
 - Doğrulama: `node --check app.js`, `tools/test-multi-unit-interior-description.js`, `tools/test-unit-interior-description.js` ve `tools/test-unit-interior-fluent-wording.js` başarıyla tamamlandı.
+
+## 2026-09-12 — İç kapı için Demonte/Yok seçenekleri
+- İç Kapılar açılır listesine `Demonte` seçeneği eklendi.
+- `Demonte` seçildiğinde “İç kapı montajı henüz yapılmamıştır.” cümlesi korunur.
+- `Yok` seçildiğinde iç kapı ile ilgili cümle tamamen açıklamadan çıkarılır; diğer kapı ve pencere bilgileri etkilenmez.
+- Yedek: `backups/before-interior-door-demonte-option_2026-09-12_00-35-09`.
+- Doğrulama: `node --check app.js`, `tools/test-unit-interior-description.js` ve `tools/test-multi-unit-interior-description.js` başarıyla tamamlandı.

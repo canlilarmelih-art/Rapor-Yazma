@@ -15524,7 +15524,7 @@ const industrialUnitInteriorValidationOptions = [
 const unitDecorativeFields = [
   { key: "unitWindows", label: "Pencereler", options: ["", "PVC", "Alüminyum", "Ahşap", "Çelik", "Isıcamlı", "Yok"] },
   { key: "unitExteriorDoor", label: "Dış Kapı", options: ["", "Çelik", "Ahşap", "Lake", "Camlı Alüminyum", "Demir Doğrama", "Yok"] },
-  { key: "unitInteriorDoors", label: "İç Kapılar", options: ["", "Lake", "Amerikan Panel", "Ahşap", "Ahşap Panel", "Akrilik", "PVC", "Laminat", "Melamin", "Yok"] },
+  { key: "unitInteriorDoors", label: "İç Kapılar", options: ["", "Lake", "Amerikan Panel", "Ahşap", "Ahşap Panel", "Akrilik", "PVC", "Laminat", "Melamin", "Demonte", "Yok"] },
   { key: "unitKitchenCabinet", label: "Mutfak Dolabı", options: ["", "Akrilik", "Lake", "Membran", "MDF Lam", "Yok"] },
   { key: "unitKitchenCounter", label: "Mutfak Tezgahı", options: ["", "Çimstone", "Kuvars", "Granit", "Mermer", "Porselen", "Akrilik / Corian", "Laminat", "Mermerit", "Paslanmaz Çelik", "Yok"] },
   { key: "unitSalonFloor", label: "Salon Zemin", options: ["", "Laminant Parke", "Seramik", "Mermer", "Ahşap Parke", "Şap"] },
@@ -15553,7 +15553,7 @@ const unitDecorativeGroups = [
     fields: [
       { key: "unitWindows", label: "Pencereler", options: ["", "PVC", "Isıcamlı PVC", "Alüminyum", "Isıcamlı Alüminyum", "Ahşap", "Demir Doğrama", "Yok"] },
       { key: "unitExteriorDoor", label: "Dış Kapı", options: ["", "Çelik", "Ahşap Kaplama Çelik", "Camlı Alüminyum", "Demir Doğrama", "Ferforje", "Ahşap", "Yok"] },
-      { key: "unitInteriorDoors", label: "İç Kapılar", options: ["", "Lake", "Amerikan Panel", "Ahşap", "Ahşap Panel", "Akrilik", "PVC", "Laminat", "Melamin", "Yok"] },
+      { key: "unitInteriorDoors", label: "İç Kapılar", options: ["", "Lake", "Amerikan Panel", "Ahşap", "Ahşap Panel", "Akrilik", "PVC", "Laminat", "Melamin", "Demonte", "Yok"] },
       { key: "unitKitchenCabinet", label: "Mutfak Dolabı", options: unitKitchenCabinetOptions },
       { key: "unitKitchenCounter", label: "Mutfak Tezgahı", options: unitKitchenCounterOptions },
       { key: "unitMaterialQuality", label: "Malzeme ve İşçilik Kalitesi", options: unitMaterialQualityOptions },
@@ -15596,7 +15596,7 @@ const unitWallFloorRows = [
 const unitGeneralDecorativeFields = [
   { key: "unitWindows", label: "Pencereler", options: ["", "PVC", "Isıcamlı PVC", "Alüminyum", "Isıcamlı Alüminyum", "Ahşap", "Demir Doğrama", "Yok"] },
   { key: "unitExteriorDoor", label: "Dış Kapı", options: ["", "Çelik", "Ahşap Kaplama Çelik", "Camlı Alüminyum", "Demir Doğrama", "Ferforje", "Ahşap", "Yok"] },
-  { key: "unitInteriorDoors", label: "İç Kapılar", options: ["", "Lake", "Amerikan Panel", "Ahşap", "Ahşap Panel", "Akrilik", "PVC", "Laminat", "Melamin", "Yok"] },
+  { key: "unitInteriorDoors", label: "İç Kapılar", options: ["", "Lake", "Amerikan Panel", "Ahşap", "Ahşap Panel", "Akrilik", "PVC", "Laminat", "Melamin", "Demonte", "Yok"] },
   { key: "unitKitchenCabinet", label: "Mutfak Dolabı", options: unitKitchenCabinetOptions },
   { key: "unitKitchenCounter", label: "Mutfak Tezgahı", options: unitKitchenCounterOptions },
   { key: "unitMaterialQuality", label: "Malzeme ve İşçilik Kalitesi", options: unitMaterialQualityOptions },
@@ -17504,13 +17504,15 @@ function composeDoorsWindowsSentence() {
   const interiorDoors = state.fields.unitInteriorDoors || "";
   const windows = state.fields.unitWindows || "";
   const exteriorMissing = isNotInstalledDecorative(exteriorDoor);
-  const interiorMissing = isNotInstalledDecorative(interiorDoors);
+  const interiorDemonte = /^demonte$/i.test(foldTurkish(interiorDoors || "").trim());
+  const interiorAbsent = /^yok$/i.test(foldTurkish(interiorDoors || "").trim());
+  const interiorMissing = interiorDemonte;
   const windowMissing = isNotInstalledDecorative(windows);
   const parts = [];
   const missingParts = [];
   if (exteriorDoor && !exteriorMissing) parts.push(`dış kapı ${formatDoorWindowMaterial(exteriorDoor)}`);
   if (exteriorMissing) missingParts.push("dış kapı");
-  if (interiorDoors && !interiorMissing) parts.push(`iç kapılar ${formatDoorWindowMaterial(interiorDoors)}`);
+  if (interiorDoors && !interiorMissing && !interiorAbsent) parts.push(`iç kapılar ${formatDoorWindowMaterial(interiorDoors)}`);
   if (interiorMissing) missingParts.push("iç kapı");
   if (windows && !windowMissing) parts.push(`pencereler ${formatDoorWindowMaterial(windows)} doğramadır`);
   if (windowMissing) missingParts.push("pencere");
