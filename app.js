@@ -12027,10 +12027,26 @@ function getExplanationsFloorValuationMetrics(detailRows = [], mode = "legal") {
   const rentUnitValue = hasReferenceRentUnitValue
     ? comparableAverage.adjustedRentUnitValue
     : (Number.isFinite(fallbackRentValue) && totalReducedArea > 0 ? fallbackRentValue / totalReducedArea : Number.NaN);
+  // Kullanıcı bildirimi (2026-09-12, devam): "85,50 × 44.000 = 3.762.000 TL
+  // bu bölümde 50.000'e yuvarla yap" — ileriye doğru hesaplanan Piyasa
+  // Değeri de, uygulamanın diğer her yerinde (bkz. syncComparableValuationMarketValue,
+  // roundComparableValuationValue) emsal ortalamasından türetilen değerlere
+  // uygulanan AYNI yuvarlama kuralına tabi: Piyasa Değeri en yakın 50.000
+  // TL'ye (comparableValuationRoundStep), Piyasa Kira Değeri en yakın 1.000
+  // TL'ye (comparableValuationRentRoundStep) yuvarlanır. Yalnızca emsal
+  // ortalamasından İLERİYE DOĞRU hesaplanan dalda uygulanır — eski geri-uyum
+  // (state.fields üzerinden ters türetim) dalı kullanıcının kendi girdiği
+  // değeri AYNEN korur, yeniden yuvarlanmaz.
+  const roundedMarketValue = hasReferenceUnitValue
+    ? roundComparableValuationValue(totalReducedArea * marketUnitValue, comparableValuationRoundStep)
+    : fallbackMarketValue;
+  const roundedRentValue = hasReferenceRentUnitValue
+    ? roundComparableValuationValue(totalReducedArea * rentUnitValue, comparableValuationRentRoundStep)
+    : fallbackRentValue;
   return {
-    marketValue: hasReferenceUnitValue ? totalReducedArea * marketUnitValue : fallbackMarketValue,
+    marketValue: hasReferenceUnitValue && Number.isFinite(roundedMarketValue) ? roundedMarketValue : fallbackMarketValue,
     marketUnitValue,
-    rentValue: hasReferenceRentUnitValue ? totalReducedArea * rentUnitValue : fallbackRentValue,
+    rentValue: hasReferenceRentUnitValue && Number.isFinite(roundedRentValue) ? roundedRentValue : fallbackRentValue,
     rentUnitValue,
   };
 }

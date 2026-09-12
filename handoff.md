@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.757 - 2026-09-12 - Kat Bazında Hesaplama Tablosu: ileriye doğru hesaplanan Piyasa Değeri de 50.000'e yuvarlanıyor
+
+- 0.0.756'nın devamı: kullanıcı "85,50 × 44.000 = 3.762.000 TL bu bölümde 50.000'e yuvarla yap" dedi.
+- `getExplanationsFloorValuationMetrics()`'te emsal ortalamasından İLERİYE DOĞRU hesaplanan Piyasa Değeri artık uygulamanın HER YERİNDE (bkz. `syncComparableValuationMarketValue`, `roundComparableValuationValue`) emsal ortalamasından türetilen değerlere uygulanan AYNI yuvarlama kuralına tabi: Piyasa Değeri en yakın 50.000 TL'ye (`comparableValuationRoundStep`), Piyasa Kira Değeri en yakın 1.000 TL'ye (`comparableValuationRentRoundStep`) yuvarlanıyor. Örnekte Mevcut Piyasa Değeri artık 3.762.000 TL yerine **3.750.000 TL** gösteriliyor.
+- Emsal girilmemişken düşülen eski geri-uyumlu (state.fields üzerinden ters türetim) dal bu yuvarlamadan ETKİLENMEDİ — kullanıcının kendi girdiği değer aynen korunuyor, yeniden yuvarlanmıyor.
+- Test: `tools/test-explanations-floor-valuation-comparable-average.js` güncellendi (beklenen değerler 3.750.000 TL / 17.000 TL/ay olarak düzeltildi) — stash ile yuvarlama öncesi koda karşı gerçekten kırıldığı doğrulandı.
+- `npm run verify` (164 test dosyası) EXIT:0. Canlı tarayıcı testi yapılamadı.
+
+
 ## 0.0.756 - 2026-09-12 - Kat Bazında Hesaplama Tablosu: Piyasa m² Birim Değeri artık gerçek emsal ortalamasını kullanıyor
 
 - Kullanıcı ekran görüntüsü bildirdi: "Kat Bazında Hesaplama Tablosu"nda Mevcut Alana Göre Hesaplama satırında Piyasa m² Birim Değeri 56.140,35 TL/m² görünüyordu — Yasal Durum Değeri satırındaki (75 m², %100 indirgeme) gerçek emsal ortalaması olan 44.000,00 TL/m²'den YAPAY şekilde yüksekti. "Mevcut durum değeri hesaplanırken zemin kata indirgenen alan emsaller bölümünde bulunan ortalama m2 birim değeri ile çarpılmalıydı."

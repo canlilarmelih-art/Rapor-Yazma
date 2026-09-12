@@ -29,19 +29,30 @@
   girilmemisse (ortalama hesaplanamiyorsa) eski (state.fields uzerinden ters
   turetim) davranisa dusulur -- geri uyumluluk.
 
+  Kullanici devam bildirimi (2026-09-12): "85,50 × 44.000 = 3.762.000 TL bu
+  bölümde 50.000'e yuvarla yap" -- ileriye dogru hesaplanan Piyasa Degeri de
+  uygulamanin HER YERİNDE emsal ortalamasindan turetilen degerlere uygulanan
+  AYNI yuvarlama kuralina (roundComparableValuationValue, bkz.
+  syncComparableValuationMarketValue) tabi: Piyasa Degeri en yakin 50.000
+  TL'ye (comparableValuationRoundStep), Piyasa Kira Degeri en yakin 1.000
+  TL'ye (comparableValuationRentRoundStep) yuvarlanir. 85,50 × 44.000 =
+  3.762.000 -> 50.000'e yuvarlaninca 3.750.000 TL olur.
+
   Bu test dort senaryoyu dogrular:
   1) Emsal ortalamasi mevcutken Mevcut satirinin "Piyasa m² Birim Degeri"
      artik YAPAY sekilde sismiyor, gercek emsal ortalamasini (44.000)
      kullaniyor; "Piyasa Degeri" = indirgenmis alan (85,50) × 44.000 =
-     3.762.000 TL (ONCEKI hatali 4.800.000 DEGIL).
+     3.762.000 TL, en yakin 50.000'e yuvarlaninca 3.750.000 TL (ONCEKI
+     hatali 4.800.000 DEGIL).
   2) Yasal satirinda (raw alan = indirgenmis alan oldugu icin onceden de
-     dogru gorunen) sonuc DEGISMEDEN kaliyor (44.000 TL/m², 3.300.000 TL) --
-     regresyon yok.
-  3) Kira (rentUnitValue/rentValue) icin de AYNI mantik (adjustedRentUnitValue)
-     uygulaniyor.
+     dogru gorunen) sonuc DEGISMEDEN kaliyor (44.000 TL/m², 3.300.000 TL,
+     zaten 50.000'in tam kati) -- regresyon yok.
+  3) Kira (rentUnitValue/rentValue) icin de AYNI mantik (adjustedRentUnitValue
+     + en yakin 1.000'e yuvarlama) uygulaniyor.
   4) Emsal hic girilmemisse (ortalama hesaplanamiyor, NaN) eski geri-uyumlu
-     davranisa (state.fields degerini indirgenmis alana bolme) dusuluyor --
-     boylece emsal doldurulmamis eski raporlarda tablo BOMBOŞ kalmiyor.
+     davranisa (state.fields degerini indirgenmis alana bolme, YENIDEN
+     YUVARLANMADAN) dusuluyor -- boylece emsal doldurulmamis eski raporlarda
+     tablo BOMBOŞ kalmiyor ve kullanicinin kendi girdigi deger degistirilmiyor.
 */
 
 const assert = require("node:assert/strict");
@@ -62,6 +73,13 @@ function sliceArray(startMarker) {
   const start = appSource.indexOf(startMarker);
   assert(start >= 0, `Bulunamadi: ${startMarker}`);
   const end = appSource.indexOf("\n];", start) + 3;
+  return appSource.slice(start, end);
+}
+
+function sliceConst(startMarker) {
+  const start = appSource.indexOf(startMarker);
+  assert(start >= 0, `Bulunamadi: ${startMarker}`);
+  const end = appSource.indexOf(";", start) + 1;
   return appSource.slice(start, end);
 }
 
@@ -88,6 +106,9 @@ function buildContext(comparableRows) {
   vm.runInContext(sliceFn("function parseReportNumber("), context);
   vm.runInContext(sliceFn("function parseUnitReductionRate("), context);
   vm.runInContext(sliceFn("function parseValuationNumber("), context);
+  vm.runInContext(sliceConst("const comparableValuationRoundStep = "), context);
+  vm.runInContext(sliceConst("const comparableValuationRentRoundStep = "), context);
+  vm.runInContext(sliceFn("function roundComparableValuationValue("), context);
   vm.runInContext(sliceFn("function buildExplanationsFloorValuationRows("), context);
   vm.runInContext(sliceFn("function getExplanationsFloorValuationMetrics("), context);
   return context;
@@ -133,15 +154,16 @@ const currentFloorRows = [
   );
   assert.equal(
     Math.round(currentMetrics.marketValue),
-    3762000,
-    `Mevcut Piyasa Degeri indirgenmis alan (85,50) × 44.000 = 3.762.000 olmali (ONCEKI hatali 4.800.000 DEGIL): ${currentMetrics.marketValue}`
+    3750000,
+    `Mevcut Piyasa Degeri indirgenmis alan (85,50) × 44.000 = 3.762.000, en yakin 50.000'e yuvarlaninca 3.750.000 olmali (ONCEKI hatali 4.800.000 DEGIL): ${currentMetrics.marketValue}`
   );
 
-  // 3) Kira icin ayni mantik: adjustedRentUnitValue = 200 TL/m² referans alinir.
+  // 3) Kira icin ayni mantik: adjustedRentUnitValue = 200 TL/m² referans alinir,
+  // sonuc en yakin 1.000 TL'ye yuvarlanir.
   assert.equal(Math.round(legalMetrics.rentUnitValue), 200, `Yasal kira birim degeri emsal ortalamasi (200) olmali: ${legalMetrics.rentUnitValue}`);
-  assert.equal(Math.round(legalMetrics.rentValue), 15000, `Yasal Piyasa Kira Degeri 75 × 200 = 15.000 olmali: ${legalMetrics.rentValue}`);
+  assert.equal(Math.round(legalMetrics.rentValue), 15000, `Yasal Piyasa Kira Degeri 75 × 200 = 15.000 olmali (zaten 1.000'in tam kati): ${legalMetrics.rentValue}`);
   assert.equal(Math.round(currentMetrics.rentUnitValue), 200, `Mevcut kira birim degeri de AYNI emsal ortalamasini (200) kullanmali: ${currentMetrics.rentUnitValue}`);
-  assert.equal(Math.round(currentMetrics.rentValue), 17100, `Mevcut Piyasa Kira Degeri 85,50 × 200 = 17.100 olmali (ONCEKI hatali 23.000 DEGIL): ${currentMetrics.rentValue}`);
+  assert.equal(Math.round(currentMetrics.rentValue), 17000, `Mevcut Piyasa Kira Degeri 85,50 × 200 = 17.100, en yakin 1.000'e yuvarlaninca 17.000 olmali (ONCEKI hatali 23.000 DEGIL): ${currentMetrics.rentValue}`);
 
   console.log("Emsal ortalamasi mevcutken Mevcut/Yasal Piyasa m² Birim Degeri + Piyasa Degeri testi tamam.");
 }
