@@ -11990,19 +11990,48 @@ function createExplanationsFloorValuationSectionRows(label, rows, mode) {
   });
 }
 
+// Kullanıcı bildirimi (2026-09-12, ekran görüntüsü — "Kat Bazında Hesaplama
+// Tablosu"): "bu kısımda mevcut durum değeri hesaplanırken zemin kata
+// indirgenen alan emsaller bölümünde bulunan ortalama m2 birim değeri ile
+// çarpılmalıydı". Önceki hesap TERSİNE işliyordu: legalValue/currentValue
+// (RAW/indirgenmemiş toplam alana göre girilen TOPLAM Piyasa Değeri)
+// İNDİRGENMİŞ alana (totalReducedArea) bölünerek "birim değer" TÜRETİLİYORDU
+// — indirgeme oranı arttıkça (asma kat vb.) bu türetilen birim değer YAPAY
+// şekilde ŞİŞİYORDU (ör. asma katın %30'a indirgenmesiyle mevcut alan 110
+// m²'den 85,50 m²'ye düşünce, 4.800.000 TL / 85,50 m² = 56.140,35 TL/m²
+// görünüyordu; oysa Yasal Durum Değeri satırında GERÇEK emsal ortalaması
+// zaten 44.000,00 TL/m² idi). Doğrusu: Emsal Değerleme Tablosu'ndaki
+// ("ORTALAMA" satırı, İND. M² BİRİM sütunu — bkz. calculateComparableValuationAverages)
+// GERÇEK ortalama emsal birim değeri referans alınır; Piyasa Değeri bu
+// birim değerin İNDİRGENMİŞ alanla İLERİYE DOĞRU çarpılmasıyla (alan ×
+// birim = değer) hesaplanır — legalValue/currentValue alanlarına GERİ
+// YAZILMAZ (bu alanlar eksperin kendi elle girdiği resmi Piyasa Değeri
+// alanlarıdır, sessizce üzerine yazmak ayrı ve çok daha büyük bir davranış
+// değişikliği olurdu), yalnızca BU tablonun kendi (ekran + Word export)
+// gösterimi düzeltilir. Emsal girilmemişse/ortalama hesaplanamıyorsa eski
+// (state.fields üzerinden ters türetim) davranışa düşülür — geri uyumluluk.
 function getExplanationsFloorValuationMetrics(detailRows = [], mode = "legal") {
   const totalReducedArea = detailRows
     .filter((row) => !row.isTotal)
     .reduce((sum, row) => sum + (Number.isFinite(row.reducedArea) ? row.reducedArea : 0), 0);
   const marketKey = mode === "current" ? "currentValue" : "legalValue";
   const rentKey = mode === "current" ? "currentRent" : "legalRent";
-  const marketValue = parseValuationNumber(state.fields[marketKey]);
-  const rentValue = parseValuationNumber(state.fields[rentKey]);
+  const fallbackMarketValue = parseValuationNumber(state.fields[marketKey]);
+  const fallbackRentValue = parseValuationNumber(state.fields[rentKey]);
+  const comparableAverage = calculateComparableValuationAverages(getComparableValuationRows());
+  const hasReferenceUnitValue = Number.isFinite(comparableAverage.adjustedUnitValue) && totalReducedArea > 0;
+  const hasReferenceRentUnitValue = Number.isFinite(comparableAverage.adjustedRentUnitValue) && totalReducedArea > 0;
+  const marketUnitValue = hasReferenceUnitValue
+    ? comparableAverage.adjustedUnitValue
+    : (Number.isFinite(fallbackMarketValue) && totalReducedArea > 0 ? fallbackMarketValue / totalReducedArea : Number.NaN);
+  const rentUnitValue = hasReferenceRentUnitValue
+    ? comparableAverage.adjustedRentUnitValue
+    : (Number.isFinite(fallbackRentValue) && totalReducedArea > 0 ? fallbackRentValue / totalReducedArea : Number.NaN);
   return {
-    marketValue,
-    marketUnitValue: Number.isFinite(marketValue) && totalReducedArea > 0 ? marketValue / totalReducedArea : Number.NaN,
-    rentValue,
-    rentUnitValue: Number.isFinite(rentValue) && totalReducedArea > 0 ? rentValue / totalReducedArea : Number.NaN,
+    marketValue: hasReferenceUnitValue ? totalReducedArea * marketUnitValue : fallbackMarketValue,
+    marketUnitValue,
+    rentValue: hasReferenceRentUnitValue ? totalReducedArea * rentUnitValue : fallbackRentValue,
+    rentUnitValue,
   };
 }
 
