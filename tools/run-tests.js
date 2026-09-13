@@ -208,6 +208,7 @@ const TEST_FILES = [
   "test-explanations-floor-valuation-comparable-average.js",
   "test-dynamic-decorative-area-administrative-group.js",
   "test-multi-unit-doors-windows-field-split.js",
+  "test-gabim-table-template-coverage.js",
 ];
 
 let failed = null;

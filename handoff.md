@@ -1,5 +1,15 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.761 - 2026-09-13 - Gabim Özeti tablosu artık 10 banka şablonunda da mevcut
+
+- Kullanıcı: "Gabim çoklu tablo template dosyalarında yok. kuveyttürkte kesin yok diğerlerine bakmadım kontrol eder misin".
+- Tarama: `{{TASINMAZLARGABIMTABLOSU}}` (bkz. `buildGabimUnitsSummaryWordTableHtml`) HİÇBİR şablonda YOKTU — yalnızca Kuveyt Türk değil, 10 "gerçek" şablonun (akbank, halkbank, isbankasi, kuveytturk, kuveytturk-arsa-arazi, vakifbank, vakifkatilim, yapikredi, ziraat, ziraat-arsa-arazi) TAMAMINDA eksikti. Hesaplama tarafı (`buildGabimUnitsSummaryTableData`/`buildGabimUnitsSummaryWordTableHtml`) VE `template-engine.js`'teki `TASINMAZLARGABIMTABLOSU` kablolaması ZATEN tam çalışır durumdaydı — yalnızca şablon dosyalarına token'ın KENDİSİ hiç eklenmemişti.
+- Gabim'in alan yapısının (Genel Ek Bilgiler/Tapu Bilgileri/Tapuya Özel Bilgiler/Araziye-Yapıya Özel Bilgiler/Ek Bilgiler) Ziraat'in kendi ekspertiz sistemine göre modellendiğine dair kod-içi yorumlar bulununca kapsam kullanıcıya soruldu (AskUserQuestion): "sadece Ziraat" / "Bağımsız Bölüm tablosuyla aynı 8 şablon (arsa/arazi hariç)" / "Tapu tablosuyla aynı 10 şablon (arsa/arazi dahil)". Kullanıcı **10 şablon** seçeneğini seçti.
+- Düzeltme: `{{TASINMAZLARGABIMTABLOSU}}`, her 10 şablonda kendi `{{TASINMAZLARTAPUTABLOSU}}` satırının HEMEN ALTINA (aynı girinti biçimiyle) eklendi — Tapu Bilgileri'ni takip eden en doğal konum. `isbankasi-masraf.html`/`ziraat-ek-tablo.html` (hiçbir dinamik `.word-table`/token mekanizması kullanmayan, önceki taramalarda da kapsam dışı bırakılan 2 dosya) dokunulmadı.
+- Test: yeni `tools/test-gabim-table-template-coverage.js` — 10 şablonun HER BİRİNİN Gabim tablosunu Tapu tablosuyla AYNI kapsamda içerdiğini, 2 kapsam-dışı dosyanın dokunulmadığını, `template-engine.js` kablolamasının sağlam olduğunu doğruluyor. Stash ile eski (token eksik) haline karşı gerçekten kırıldığı doğrulandı.
+- `npm run verify` (168 test dosyası) EXIT:0. Şablon-only değişiklik olduğundan `index.html` cache-buster'ı bump edilmedi (sunucu tarafında render ediliyor, istemci önbelleklemesi yok). Canlı tarayıcı testi yapılamadı — kullanıcıdan çoklu taşınmazlı bir raporda herhangi bir bankaya "Banka Şablonuyla Kaydet" ile export alıp "Taşınmazlar GABİM Özeti" tablosunun artık Word çıktısında Tapu Bilgileri'nin altında göründüğünü doğrulaması isteniyor.
+
+
 ## 0.0.760 - 2026-09-13 - Kat Bazında Hesaplama Tablosu artık Piyasa Değeri paneliyle GERÇEKTEN senkron
 
 - Kullanıcı, Kat Bazında Hesaplama Tablosu ekran görüntüsü paylaşıp: "bu tablo aşağıda yer alan Yasal Durum Değeri Mevcut Durum Değeri Yasal Kira Değeri Mevcut Kira Değeri bölümleri ile dinamik bir şekilde senkronize olmalı" dedi.
