@@ -205,6 +205,7 @@ const TEST_FILES = [
   "test-unit-interior-description-shared.js",
   "test-report-photos-category-label.js",
   "test-explanations-floor-valuation-comparable-average.js",
+  "test-dynamic-decorative-area-administrative-group.js",
 ];
 
 let failed = null;

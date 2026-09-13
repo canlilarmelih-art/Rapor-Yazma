@@ -17219,8 +17219,37 @@ function getDynamicDecorativeAreaPrefix(label) {
   return area ? `${area.toLocaleLowerCase("tr-TR")} hacimlerinde` : "";
 }
 
+// Kullanıcı bildirimi (2026-09-13, ekran görüntüsü — "işyerleri için aynı
+// konutlardaki gibi gruplandırma yapmak istedik ama istediğimiz sonuca
+// ulaşamadık"): Çoklu taşınmazlı işyeri raporlarında "Ofis"/"Açık ofis
+// alanı"/"Yönetici odası" gibi zemin+duvarı AYNI idari alan tipleri TEK
+// bir cümlede birleşmesi GEREKİRKEN (bkz. getDynamicDecorativeAreaGroupPrefix)
+// hiçbir zaman birleşmiyor, üstelik "Yönetici odası" gibi etiketler
+// paragrafta "Yonetıcı odası" gibi BOZUK yazılıyordu.
+//
+// Kök neden: `foldTurkish()` ÖNCE `.toLocaleUpperCase("tr")` uygulayıp
+// SONUNDA ASCII büyük harfe indirger (ör. "Ofis" -> "OFIS"). Bu fonksiyon
+// ARDINDAN o ASCII büyük harfli sonucu TEKRAR `.toLocaleLowerCase("tr")`
+// ile küçültüyordu — Türkçe yerel ayarında düz ASCII "I" harfinin küçüğü
+// "i" DEĞİL, NOKTASIZ "ı"dır ("ünlü Türkçe I sorunu", ama TERSİNDEN:
+// burada normal "i" harfi önce "I"ya (foldTurkish'in kendi İ->I
+// dönüşümüyle), sonra o "I" da Türkçe küçültmeyle "ı"ya dönüşüyordu).
+// Sonuç: "Ofis" -> "ofıs", "Yönetici odası" -> "yonetıcı odası" — İKİSİ
+// DE aşağıdaki ASCII "i" içeren regex'le ASLA eşleşmiyordu (grup her
+// zaman "administrative" YERİNE bu bozuk dizenin KENDİSİ oluyordu, VE bu
+// bozuk dize -- getDynamicDecorativeAreaGroupPrefix'in "administrative
+// DEĞİLSE" dalı üzerinden -- doğrudan CÜMLEYE de SIZIYORDU).
+//
+// Düzeltme: foldTurkish()'in çıktısı zaten SAF ASCII büyük harf (Türkçe'ye
+// özgü hiçbir karakter kalmıyor) — bu nedenle Türkçe yerel ayarlı
+// `.toLocaleLowerCase("tr")` YERİNE DÜZ (yerel ayarsız) `.toLowerCase()`
+// kullanmak GÜVENLİ ve YETERLİ ("OFIS" -> "ofis", yerel ayar kuralı
+// devreye HİÇ girmiyor). foldTurkish()'in KENDİSİ veya onun 137+ diğer
+// çağıranı DEĞİŞTİRİLMEDİ — bu düzeltme YALNIZCA bu fonksiyonun KENDİ
+// (nadir görülen "foldTurkish sonucunu regex'le eşleştir") kullanım
+// biçimine özgü.
 function getDynamicDecorativeAreaGroup(label) {
-  const folded = foldTurkish(String(label || "")).toLocaleLowerCase("tr");
+  const folded = foldTurkish(String(label || "")).toLowerCase();
   if (/ofis|yonetici odasi|toplanti odasi|egitim odasi|idari/.test(folded)) return "administrative";
   return folded;
 }
@@ -17233,7 +17262,18 @@ function getDynamicDecorativeAreaGroupPrefix(group, labels = []) {
     const last = names[names.length - 1];
     const lastLocative = /odası$/i.test(last) ? last.replace(/odası$/i, "odalarında") : `${last}larında`;
     const head = names.slice(0, -1);
-    return `${head.length > 1 ? `${formatTurkishList(head)},` : head[0]} ve ${lastLocative}`;
+    // Kullanıcı bildirimi (2026-09-13): 3+ idari alan tipi birleştiğinde
+    // (bkz. getDynamicDecorativeAreaGroup düzeltmesi — bu dal daha önce o
+    // fonksiyondaki bir kusur yüzünden HİÇ ÇALIŞMIYORDU, bu yüzden bu ikinci
+    // kusur şimdiye kadar hiç fark edilmemişti) `formatTurkishList(head)`
+    // ZATEN 2+ öğeli listelerde KENDİSİ " ve " ekliyordu — sonra buraya
+    // AYRICA " ve {lastLocative}" eklenince "açık ofis alanı ve ofis, ve
+    // yönetici odalarında" gibi ÇİFT "ve"li, virgülü yanlış yerde bir metin
+    // çıkıyordu. Düzeltme: `head` (son öğe HARİÇ tümü) düz virgülle
+    // birleştirilir (formatTurkishList YERİNE `head.join(", ")`), tek
+    // "ve" YALNIZCA sonda kalır — "açık ofis alanı, ofis ve yönetici
+    // odalarında" (standart Türkçe liste biçimi).
+    return `${head.length > 1 ? head.join(", ") : head[0]} ve ${lastLocative}`;
   }
   return names[0] ? `${names[0]} hacimlerinde` : "ofis bölümlerinde";
 }
