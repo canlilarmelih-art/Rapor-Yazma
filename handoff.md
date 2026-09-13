@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.763 - 2026-09-13 - Dükkan emsallerinde gereksiz "Kat bazında indirgenmiş alan" cümlesi kaldırıldı
+
+- Kullanıcı: "dükkan raporlarında emsal bölümünde düzeltilmiş alan ile toplam indirgenmiş alan aynı ise emsal açıklamasında şu cümlenin oluşturulmasına gerek yok 'Kat bazında indirgenmiş alan zemin kat etkili alan olarak belirlenmiş olup etkili alan 70 m2 olarak hesaplanmıştır.'"
+- Kök neden: `buildComparableWorkplaceFloorReductionExplanation()` tek katlı (yalnızca Zemin, %100 oranlı) bir emsalde HİÇBİR GERÇEK indirgeme (rate<1 olan bir kat) yokken bile bu cümleyi üretiyordu — cümle sadece "etkili alan X m²" diyerek Düzeltilmiş Alan'ı OLDUĞU GİBİ tekrar ediyordu (hiçbir kat indirgenmediğinde Düzeltilmiş Alan zaten HER ZAMAN Toplam İndirgenmiş Alan'a eşittir — kullanıcının gözlemi bunun doğal sonucu), bilgi katmıyordu.
+- Düzeltme: fonksiyon artık HİÇBİR kat GERÇEKTEN indirgenmemişse (tüm katlar rate>=%100) boş döner — tek katlı VEYA çok katlı ama hepsi %100 durumlarının İKİSİNDE de. Gerçekten bir kat indirgenmişse (asma kat vb.) davranış DEĞİŞMEDEN devam eder.
+- Test: `tools/test-comparable-workplace-floor-description.js` güncellendi — eski "İndirgeme yokken sadece baz cümlesi kurulmalı" beklentisi (artık geçersiz) kaldırıldı, yerine "hiçbir kat indirgenmemişse cümle üretilmemeli" (tek katlı + çok katlı) senaryoları eklendi; asma kat gibi gerçek indirgeme senaryoları regresyonsuz geçmeye devam ediyor. Stash ile eski koda karşı gerçekten kırıldığı doğrulandı.
+- `npm run verify` (169 test dosyası) EXIT:0. Canlı tarayıcı testi yapılamadı — kullanıcıdan gerçek bir dükkan raporunda tek katlı (indirgeme oranı %100) bir emsalin açıklamasında bu cümlenin artık görünmediğini, asma katlı bir emsalde ise değişmeden görünmeye devam ettiğini doğrulaması isteniyor.
+
+
 ## 0.0.762 - 2026-09-13 - GABİM Veri Seti sekmesine taşınmaz tab çubuğu eklendi
 
 - Kullanıcı: "gabim bölümünde taşınmaz tabları yok. bu bölüme de taşınmaz tablarını ekleyelim."

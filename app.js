@@ -48789,6 +48789,21 @@ function buildComparableWorkplaceFloorAreaPhrase(row) {
 // asma kat %30 oranında indirgenerek etkili alan 115 m2 olarak
 // hesaplanmıştır." (kullanıcı talebi — kira cümlesinden hemen sonra).
 // Hiçbir katta alan girilmemişse boş döner.
+//
+// Kullanıcı bildirimi (2026-09-13, Dükkan raporları): "dükkan
+// raporlarında emsal bölümünde düzeltilmiş alan ile toplam indirgenmiş
+// alan aynı ise emsal açıklamasında şu cümlenin oluşturulmasına gerek
+// yok" — tek katlı (ör. yalnızca Zemin, %100 oranlı) bir emsalde HİÇBİR
+// GERÇEK indirgeme (rate<1 olan bir kat) yokken bu cümle sadece "etkili
+// alan X m²" diyerek Düzeltilmiş Alan'ı (c13/c12, ki bu durumda
+// GERÇEKTEN Toplam İndirgenmiş Alan'a EŞİTTİR — hiçbir kat indirgenmediği
+// için) OLDUĞU GİBİ tekrar ediyordu — bilgi katmıyor, gereksiz tekrar.
+// Düzeltme: HİÇBİR katın GERÇEKTEN indirgenmediği (tüm katlar rate>=1,
+// yani `reducedLabels` boş) durumda cümle HİÇ üretilmez — bu, kullanıcının
+// gözlemlediği "Düzeltilmiş Alan = Toplam İndirgenmiş Alan" eşitliğinin
+// KÖK NEDENİDİR (hiçbir kat indirgenmemişse ikisi zaten HER ZAMAN eşittir).
+// GERÇEKTEN bir kat indirgenmişse (asma kat vb., reducedLabels dolu)
+// davranış DEĞİŞMEDEN devam eder.
 function buildComparableWorkplaceFloorReductionExplanation(row, metrics) {
   const floors = (Array.isArray(row?.workplaceFloors) ? row.workplaceFloors : [])
     .filter((entry) => String(entry?.area || "").trim());
@@ -48801,6 +48816,7 @@ function buildComparableWorkplaceFloorReductionExplanation(row, metrics) {
   const reducedLabels = withRate
     .filter((entry) => entry.rate < 1)
     .map((entry) => `${entry.label} %${Math.round(entry.rate * 100)}`);
+  if (!reducedLabels.length) return "";
   const totalArea = formatComparableArea(metrics?.workplaceReducedArea, "m2");
   if (!totalArea) return "";
   const baselinePhrase = baselineLabels.length ? `${joinComparableTurkishList(baselineLabels)} etkili alan olarak belirlenmiş olup ` : "";

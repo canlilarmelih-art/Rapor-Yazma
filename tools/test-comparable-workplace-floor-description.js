@@ -24,6 +24,21 @@
      pazarlik/kira, hesaplama metni vb.) sabit/basit stub'larla degistirilir;
      odak SADECE kat-bazli alan ifadesinin dogru yerde gorunmesi VE eski
      floor/declaredArea/correctedArea parcalarinin bu durumda BASTIRILMASIDIR.
+
+  Kullanici bildirimi (2026-09-13, Dukkan raporlari, devam): "dukkan
+  raporlarinda emsal bolumunde duzeltilmis alan ile toplam indirgenmis
+  alan ayni ise emsal aciklamasinda su cumlenin olusturulmasina gerek
+  yok: 'Kat bazinda indirgenmis alan zemin kat etkili alan olarak
+  belirlenmis olup etkili alan 70 m2 olarak hesaplanmistir.'" — tek
+  katli (yalnizca Zemin, %100 oranli) bir emsalde HICBIR GERCEK indirgeme
+  (rate<1 olan bir kat) yokken bu cumle sadece Duzeltilmis Alan'i OLDUGU
+  GIBI tekrar ediyordu (hicbir kat indirgenmediginde Duzeltilmis Alan
+  HER ZAMAN Toplam Indirgenmis Alan'a esittir — kullanicinin gozlemi
+  BUNUN dogal sonucu). Duzeltme: buildComparableWorkplaceFloorReductionExplanation()
+  artik HICBIR kat GERCEKTEN indirgenmemisse (reducedLabels bos, yani
+  TUM katlar rate>=1) BOS DONER — asagidaki 1b bolumundeki "noReduction"/
+  "multiFloorNoReduction" senaryolari bunu dogrular (ESKI, artik gecersiz
+  "Indirgeme yokken sadece baz cumlesi kurulmali" beklentisi KALDIRILDI).
 */
 
 const assert = require("node:assert/strict");
@@ -144,15 +159,20 @@ const buildComparableLongTextSrc = sliceFn("function buildComparableLongText(");
     `Açıklama kullanıcının verdiği örnekle birebir eşleşmeli: "${explanation}"`
   );
 
-  // Hiç indirgeme yoksa (tüm katlar %100): sadece baz alan cümlesi kurulmalı.
+  // Kullanıcı bildirimi (2026-09-13, Dükkan raporları): "düzeltilmiş alan
+  // ile toplam indirgenmiş alan aynı ise ... cümlenin oluşturulmasına
+  // gerek yok" — hiç indirgeme yoksa (tüm katlar %100, yani HİÇBİR kat
+  // GERÇEKTEN indirgenmemiş) cümle ARTIK HİÇ ÜRETİLMEZ (ESKİ davranış —
+  // yalnızca "etkili alan X m²" diyen, bilgi katmayan baz cümlesi —
+  // KALDIRILDI, bkz. handoff.md).
   const noReduction = context.buildComparableWorkplaceFloorReductionExplanation(
     { workplaceFloors: [{ floor: "Zemin kat", area: "100", rate: "100%" }] },
     { workplaceReducedArea: 100 }
   );
   assert.equal(
     noReduction,
-    "Kat bazında indirgenmiş alan zemin kat etkili alan olarak belirlenmiş olup etkili alan 100 m2 olarak hesaplanmıştır.",
-    `İndirgeme yokken sadece baz cümlesi kurulmalı: "${noReduction}"`
+    "",
+    `Hiçbir kat GERÇEKTEN indirgenmemişse (tüm katlar %100) cümle HİÇ üretilmemeli: "${noReduction}"`
   );
 
   // Tüm katlar indirgenmiş (hiç %100 baz yoksa): baz ibaresi atlanmalı.
@@ -164,6 +184,24 @@ const buildComparableLongTextSrc = sliceFn("function buildComparableLongText(");
     allReduced,
     "Kat bazında indirgenmiş alan bodrum kat %50 oranında indirgenerek etkili alan 20 m2 olarak hesaplanmıştır.",
     `Baz kat yokken sadece indirgeme ibaresi kurulmalı: "${allReduced}"`
+  );
+
+  // Birden fazla kat girilmiş ama HİÇBİRİ gerçekten indirgenmemişse
+  // (hepsi %100) de cümle üretilmemeli — yalnızca "tek kat" özel durumu
+  // DEĞİL, genel kural.
+  const multiFloorNoReduction = context.buildComparableWorkplaceFloorReductionExplanation(
+    {
+      workplaceFloors: [
+        { floor: "Zemin kat", area: "70", rate: "100%" },
+        { floor: "1. Normal kat", area: "70", rate: "100%" },
+      ],
+    },
+    { workplaceReducedArea: 140 }
+  );
+  assert.equal(
+    multiFloorNoReduction,
+    "",
+    `Birden fazla kat olsa bile HİÇBİRİ indirgenmemişse cümle üretilmemeli: "${multiFloorNoReduction}"`
   );
 
   // Hiç kat/alan yoksa boş dönmeli.
