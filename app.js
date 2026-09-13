@@ -9067,7 +9067,10 @@ function applyValuationDefaults() {
 function createValuationMarketTable() {
   const landOwnership = isLandOwnershipType();
   syncLandOwnershipValuationDefaults();
-  const panel = createValuationPanel("Piyasa Değeri", "Kullanıcı piyasa değerini girer; m2 birim değeri alan bilgisine göre otomatik hesaplanır.");
+  const panel = createValuationPanel(
+    "Piyasa Değeri",
+    "Alanlar bağımsız bölümden alınır; geçerli emsal verisi varsa değer otomatik hesaplanır. Elle değiştirilen satır, düğmesiyle yeniden otomatiğe alınabilir."
+  );
   const table = document.createElement("table");
   table.className = "valuation-table valuation-market-table";
   table.innerHTML = `
@@ -9087,6 +9090,7 @@ function createValuationMarketTable() {
   marketRows.forEach((row) => {
     const tr = document.createElement("tr");
     const labelCell = createValuationLabelCell(getValuationMarketRowLabel(row), { note: buildValuationIncomeMetricNote(row.totalKey), marketRowKey: row.totalKey });
+    labelCell.append(createValuationSourceBadge(row.totalKey));
     // Kullanıcı bildirimi (2026-08-13): "Emsaller'de Arsa Emsali değerlerini
     // değiştirdim ama Yasal/Mevcut Durum Değeri otomatik yazılmadı — var
     // olan taslak olabilir mi?" — EVET: bu değerlere daha önce (aynı
@@ -9100,6 +9104,8 @@ function createValuationMarketTable() {
     // yeniden devreye sokar.
     if (landOwnership && hasUserDefinedLandMarketValue(row.totalKey)) {
       labelCell.append(createLandValuationResetToAutoButton(row.totalKey));
+    } else if (hasComparableValuationManualOverride(row.totalKey)) {
+      labelCell.append(createValuationResetToAutoButton(row.totalKey));
     }
     tr.append(
       labelCell,
@@ -10975,6 +10981,41 @@ function markValuationManualField(key) {
   }
 }
 
+function isComparableValuationTotalKey(key) {
+  return ["legalValue", "currentValue", "legalRent", "currentRent"].includes(key);
+}
+
+function hasComparableValuationManualOverride(key) {
+  if (!isComparableValuationTotalKey(key)) return false;
+  return state.fields[`${key}ComparableAutoManual`] === "1"
+    || (["legalValue", "currentValue"].includes(key) && state.fields[`${key}UserDefined`] === "1");
+}
+
+function getComparableValuationSourceStatus(key) {
+  if (hasComparableValuationManualOverride(key)) {
+    return { label: "Kullanıcı değeri", className: "is-manual" };
+  }
+  const value = String(state.fields[key] || "").trim();
+  const autoValue = String(state.fields[`${key}ComparableAuto`] || "").trim();
+  if (value && autoValue && value === autoValue) {
+    return { label: "Emsalden otomatik", className: "is-auto" };
+  }
+  if (!value) {
+    return { label: "Emsal verisi bulunamadı", className: "is-unavailable" };
+  }
+  return { label: "Kullanıcı değeri", className: "is-manual" };
+}
+
+function createValuationSourceBadge(key) {
+  const badge = document.createElement("span");
+  badge.className = "valuation-source-badge";
+  badge.dataset.valuationSource = key;
+  const status = getComparableValuationSourceStatus(key);
+  badge.textContent = status.label;
+  badge.classList.add(status.className);
+  return badge;
+}
+
 // "Otomatik hesaplamaya dön" (0.0.42x, 2026-08-13) — markValuationManualField()'in
 // kalıcı olarak set ettiği manuel-geçersiz-kılma bayraklarını (bkz.
 // hasUserDefinedLandMarketValue) temizleyip Yasal/Mevcut Durum Değeri'ni
@@ -10984,11 +11025,18 @@ function markValuationManualField(key) {
 function clearLandValuationManualOverride(key) {
   state.fields[`${key}UserDefined`] = "";
   state.fields[`${key}ComparableAutoManual`] = "";
+  state.fields[key] = "";
+  state.fields[`${key}ComparableAuto`] = "";
   refreshValuationComputedFields();
   autosave();
   renderSection();
   renderValidation();
   updateStatus();
+}
+
+function clearValuationManualOverride(key) {
+  if (!isComparableValuationTotalKey(key)) return;
+  clearLandValuationManualOverride(key);
 }
 
 function createLandValuationResetToAutoButton(key) {
@@ -11002,6 +11050,13 @@ function createLandValuationResetToAutoButton(key) {
     event.stopPropagation();
     clearLandValuationManualOverride(key);
   });
+  return button;
+}
+
+function createValuationResetToAutoButton(key) {
+  const button = createLandValuationResetToAutoButton(key);
+  button.classList.add("valuation-reset-button");
+  button.title = "Bu değer kullanıcı tarafından sabitlenmiş. Tıklayınca geçerli emsal verisinden yeniden otomatik hesaplanır.";
   return button;
 }
 
@@ -12348,6 +12403,13 @@ function refreshValuationMarketLabels() {
       note.textContent = nextNote;
     } else if (note) {
       note.remove();
+    }
+    const sourceBadge = cell.querySelector("[data-valuation-source]");
+    if (sourceBadge) {
+      const status = getComparableValuationSourceStatus(key);
+      sourceBadge.textContent = status.label;
+      sourceBadge.classList.remove("is-auto", "is-manual", "is-unavailable");
+      sourceBadge.classList.add(status.className);
     }
   });
 }
@@ -47744,28 +47806,71 @@ function roundComparableValuationValue(value, step = comparableValuationRoundSte
   return Math.round(value / step) * step;
 }
 
+function getComparableValuationRowsForAutoSync() {
+  const rows = getComparableValuationRows();
+  // Arsa/Tarla raporlarında yalnız arazi emsalleri, yapı raporlarında ise
+  // yalnız yapı/bağımsız bölüm emsalleri değerleme ortalamasına girer.
+  // Haritadaki "Tümü" görünümü bundan etkilenmez; bu ayrım yalnız otomatik
+  // piyasa değeri hesabında karışık emsal ortalamasını önler.
+  if (typeof isLandOwnershipType === "function" && isLandOwnershipType()) {
+    return rows.filter((row) => row.landComparable);
+  }
+  return rows.filter((row) => !row.landComparable);
+}
+
+function clearComparableAutoValueIfStale(totalKey) {
+  if (!isComparableValuationTotalKey(totalKey) || hasComparableValuationManualOverride(totalKey)) return;
+  const autoKey = `${totalKey}ComparableAuto`;
+  const currentValue = String(state.fields[totalKey] || "").trim();
+  const previousAutoValue = String(state.fields[autoKey] || "").trim();
+  if (currentValue && previousAutoValue && currentValue !== previousAutoValue) {
+    // Eski kayıt formatlarında manuel giriş bayrağı bulunmayabilir. Otomatik
+    // kaynak artık geçersizse bu değeri kaybetmemek için manuel olarak koru.
+    state.fields[`${totalKey}ComparableAutoManual`] = "1";
+    if (isLandOwnershipType() && ["legalValue", "currentValue"].includes(totalKey)) {
+      state.fields[`${totalKey}UserDefined`] = "1";
+    }
+    state.fields[autoKey] = "";
+    return;
+  }
+  state.fields[totalKey] = "";
+  state.fields[autoKey] = "";
+}
+
 function syncComparableValuationMarketValues() {
   syncValuationAreasFromUnitAreas();
-  const average = calculateComparableValuationAverages();
+  const average = calculateComparableValuationAverages(getComparableValuationRowsForAutoSync());
   const unitValue = average.adjustedUnitValue;
   if (Number.isFinite(unitValue) && unitValue > 0) {
     syncComparableValuationMarketValue("legalValue", "legalValueArea", unitValue);
     syncComparableValuationMarketValue("currentValue", "currentValueArea", unitValue);
+  } else {
+    clearComparableAutoValueIfStale("legalValue");
+    clearComparableAutoValueIfStale("currentValue");
   }
   const rentUnitValue = average.adjustedRentUnitValue;
   if (Number.isFinite(rentUnitValue) && rentUnitValue > 0) {
     syncComparableValuationMarketValue("legalRent", "legalRentArea", rentUnitValue, comparableValuationRentRoundStep);
     syncComparableValuationMarketValue("currentRent", "currentRentArea", rentUnitValue, comparableValuationRentRoundStep);
+  } else {
+    clearComparableAutoValueIfStale("legalRent");
+    clearComparableAutoValueIfStale("currentRent");
   }
   refreshValuationControls();
 }
 
 function syncComparableValuationMarketValue(totalKey, areaKey, unitValue, roundStep = comparableValuationRoundStep) {
-  if (state.fields[`${totalKey}ComparableAutoManual`] === "1" || hasUserDefinedLandMarketValue(totalKey)) return;
+  if (state.fields[`${totalKey}ComparableAutoManual`] === "1" || hasUserDefinedLandMarketValue(totalKey) || hasComparableValuationManualOverride(totalKey)) return;
   const area = parseValuationNumber(state.fields[areaKey]);
-  if (!Number.isFinite(area) || area <= 0) return;
+  if (!Number.isFinite(area) || area <= 0) {
+    clearComparableAutoValueIfStale(totalKey);
+    return;
+  }
   const roundedValue = roundComparableValuationValue(area * unitValue, roundStep);
-  if (!Number.isFinite(roundedValue)) return;
+  if (!Number.isFinite(roundedValue)) {
+    clearComparableAutoValueIfStale(totalKey);
+    return;
+  }
   const formatted = formatValuationMoney(roundedValue);
   state.fields[totalKey] = formatted;
   state.fields[`${totalKey}ComparableAuto`] = formatted;

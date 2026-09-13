@@ -51,6 +51,7 @@ const TEST_FILES = [
   "test-access-control.js",
   "test-map-tile-contract.js",
   "test-land-valuation-manual-override.js",
+  "test-valuation-comparable-auto-sync.js",
   "test-tarla-usage-nature-difference.js",
   "test-tarla-saleability-explanation.js",
   "test-valuation-saleability-multi-unit.js",

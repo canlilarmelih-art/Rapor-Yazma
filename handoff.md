@@ -13091,3 +13091,22 @@ devreye girdi.
 - “Metni yeniden oluştur” düğmesi artık özet tablosunun gerçek taşınmaz alan referanslarını temizliyor ve üretim sırasında manuel override'ları geçici olarak bypass ediyor.
 - Script cache-bust sürümü `20260912-0143` olarak güncellendi.
 - İlgili commit: `0a63145`.
+
+# 2026-09-13 — Emsal kaynaklı piyasa değeri otomatik/manuel senkronizasyonu
+
+- Kullanıcı bulgusu: Yasal ve mevcut alan aynı olmasına rağmen emsalden gelen
+  piyasa değerleri farklı kalabiliyordu (ör. 55 m² için 2.250.000 TL ve
+  2.400.000 TL). Kök neden, bir tarafta kalıcı `ComparableAutoManual` bayrağı
+  bulunması ve yapı raporlarında bu kilidi kaldıran bir arayüz olmamasıydı.
+- Yapı/bağımsız bölüm raporlarında yalnız yapı emsalleri, Arsa/Tarla
+  raporlarında yalnız arazi emsalleri otomatik ortalamaya alınır; haritadaki
+  emsal görünümü bundan etkilenmez.
+- Emsal ortalaması geçersizleştiğinde makine tarafından yazılmış eski toplam
+  değerler temizlenir; eski kayıtlardaki bayraksız fakat kullanıcı tarafından
+  değiştirilmiş değerler korunarak manuel kilide alınır.
+- Piyasa Değeri satırlarına `Emsalden otomatik`, `Kullanıcı değeri` veya
+  `Emsal verisi bulunamadı` durum etiketi eklendi. Manuel değerler için tüm
+  rapor türlerinde “Otomatik hesaplamaya dön” düğmesi kullanılabilir.
+- Yedek: `backups/before-valuation-auto-manual-fix_2026-09-13_10-29-26`.
+- Doğrulama: `npm run check`, `node tools/test-valuation-comparable-auto-sync.js`
+  ve tam `npm test` başarıyla tamamlandı (165 test dosyası).

@@ -2934,6 +2934,39 @@ td .free-lookup input {
   line-height: 1.25;
 }
 
+.valuation-source-badge {
+  display: block;
+  width: fit-content;
+  margin-top: 5px;
+  padding: 2px 6px;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.valuation-source-badge.is-auto {
+  border-color: #9bd7b1;
+  background: #ecfdf3;
+  color: #166534;
+}
+
+.valuation-source-badge.is-manual {
+  border-color: #f0c36d;
+  background: #fff7e6;
+  color: #92640a;
+}
+
+.valuation-source-badge.is-unavailable {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+  color: #64748b;
+}
+
 /* "Otomatik hesaplamaya dön" — Yasal/Mevcut Durum Değeri elle geçersiz
    kılındığında (bkz. hasUserDefinedLandMarketValue) Emsaller tablosundaki
    değerlerin buraya yeniden otomatik yansımasını sağlayan küçük düğme. */
@@ -2957,6 +2990,18 @@ td .free-lookup input {
   background: var(--green-soft);
   color: var(--green);
   border-color: var(--green-soft);
+}
+
+.valuation-reset-button {
+  border-color: #93c5fd;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.valuation-reset-button:hover {
+  border-color: #60a5fa;
+  background: #dbeafe;
+  color: #1e40af;
 }
 
 .workplace-floor-calculation-panel {
