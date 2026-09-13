@@ -428,9 +428,10 @@ function main() {
   );
   assert(
     appJs.includes("function syncValuationAreasFromUnitAreas()") &&
-      appJs.includes("state.fields.insuranceValueArea = totals.legal") &&
-      appJs.includes("function getValuationUnitAreaTotals()"),
-    "Degerleme alanlari bagimsiz bolum toplam alanlarindan beslenmiyor."
+      appJs.includes("state.fields.insuranceValueArea = rawTotals.legal") &&
+      appJs.includes("function getValuationUnitAreaTotals()") &&
+      appJs.includes("function getValuationUnitReducedAreaTotals()"),
+    "Degerleme alanlari bagimsiz bolum toplam alanlarindan (indirgenmis) beslenmiyor."
   );
   assert(
     appJs.includes("hasOnlyThousandDots") &&

@@ -12045,64 +12045,43 @@ function createExplanationsFloorValuationSectionRows(label, rows, mode) {
   });
 }
 
-// Kullanıcı bildirimi (2026-09-12, ekran görüntüsü — "Kat Bazında Hesaplama
-// Tablosu"): "bu kısımda mevcut durum değeri hesaplanırken zemin kata
-// indirgenen alan emsaller bölümünde bulunan ortalama m2 birim değeri ile
-// çarpılmalıydı". Önceki hesap TERSİNE işliyordu: legalValue/currentValue
-// (RAW/indirgenmemiş toplam alana göre girilen TOPLAM Piyasa Değeri)
-// İNDİRGENMİŞ alana (totalReducedArea) bölünerek "birim değer" TÜRETİLİYORDU
-// — indirgeme oranı arttıkça (asma kat vb.) bu türetilen birim değer YAPAY
-// şekilde ŞİŞİYORDU (ör. asma katın %30'a indirgenmesiyle mevcut alan 110
-// m²'den 85,50 m²'ye düşünce, 4.800.000 TL / 85,50 m² = 56.140,35 TL/m²
-// görünüyordu; oysa Yasal Durum Değeri satırında GERÇEK emsal ortalaması
-// zaten 44.000,00 TL/m² idi). Doğrusu: Emsal Değerleme Tablosu'ndaki
-// ("ORTALAMA" satırı, İND. M² BİRİM sütunu — bkz. calculateComparableValuationAverages)
-// GERÇEK ortalama emsal birim değeri referans alınır; Piyasa Değeri bu
-// birim değerin İNDİRGENMİŞ alanla İLERİYE DOĞRU çarpılmasıyla (alan ×
-// birim = değer) hesaplanır — legalValue/currentValue alanlarına GERİ
-// YAZILMAZ (bu alanlar eksperin kendi elle girdiği resmi Piyasa Değeri
-// alanlarıdır, sessizce üzerine yazmak ayrı ve çok daha büyük bir davranış
-// değişikliği olurdu), yalnızca BU tablonun kendi (ekran + Word export)
-// gösterimi düzeltilir. Emsal girilmemişse/ortalama hesaplanamıyorsa eski
-// (state.fields üzerinden ters türetim) davranışa düşülür — geri uyumluluk.
+// Kullanıcı bildirimi (2026-09-13, devam — "bu tablo aşağıda yer alan
+// Yasal Durum Değeri Mevcut Durum Değeri Yasal Kira Değeri Mevcut Kira
+// Değeri bölümleri ile dinamik bir şekilde senkronize olmalı"): 0.0.756/
+// 0.0.757'de bu fonksiyon legalValue/currentValue'yu OKUMAK YERİNE emsal
+// ortalamasından KENDİ BAŞINA (İLERİYE DOĞRU, indirgenmiş alan × emsal
+// ortalaması) yeniden hesaplıyordu — Piyasa Değeri paneli ise legalValue/
+// currentValue'yu (syncComparableValuationMarketValue üzerinden) HAM
+// (indirgenmemiş) toplam alanla hesaplıyordu. İKİ AYRI hesaplama AYNI
+// emsal ortalamasından besleniyor ama FARKLI alan tabanı kullandığından
+// asma kat gibi indirgeme UYGULANAN raporlarda İKİ TABLO FARKLI Piyasa
+// Değeri gösteriyordu — kullanıcı bunu "senkron değil" olarak bildirdi.
+//
+// Kök düzeltme artık YUKARI TAŞINDI: syncValuationAreasFromUnitAreas()
+// legalValueArea/currentValueArea/legalRentArea/currentRentArea'yı ARTIK
+// İNDİRGENMİŞ (etkili) toplam alanla dolduruyor (bkz. o fonksiyonun
+// yorumu) — bu sayede legalValue/currentValue/legalRent/currentRent
+// (syncComparableValuationMarketValue ile otomatik hesaplanan) ZATEN
+// doğru (indirgenmiş alan tabanlı) değeri taşıyor; eksper elle geçersiz
+// kılmışsa (hasUserDefinedLandMarketValue/...ComparableAutoManual) o
+// zaman da KENDİ girdiği resmi değeri taşıyor — HER İKİ durumda da bu
+// fonksiyon artık BAŞKA bir hesaplama İCAT ETMEDEN doğrudan state.fields'ı
+// okuyup İNDİRGENMİŞ alana böler; birim değer + toplam değer İKİ TABLODA
+// DA (Kat Bazında Hesaplama + Piyasa Değeri paneli) GERÇEKTEN TEK bir
+// kaynaktan (aynı legalValue/currentValue alanı) gelir.
 function getExplanationsFloorValuationMetrics(detailRows = [], mode = "legal") {
   const totalReducedArea = detailRows
     .filter((row) => !row.isTotal)
     .reduce((sum, row) => sum + (Number.isFinite(row.reducedArea) ? row.reducedArea : 0), 0);
   const marketKey = mode === "current" ? "currentValue" : "legalValue";
   const rentKey = mode === "current" ? "currentRent" : "legalRent";
-  const fallbackMarketValue = parseValuationNumber(state.fields[marketKey]);
-  const fallbackRentValue = parseValuationNumber(state.fields[rentKey]);
-  const comparableAverage = calculateComparableValuationAverages(getComparableValuationRows());
-  const hasReferenceUnitValue = Number.isFinite(comparableAverage.adjustedUnitValue) && totalReducedArea > 0;
-  const hasReferenceRentUnitValue = Number.isFinite(comparableAverage.adjustedRentUnitValue) && totalReducedArea > 0;
-  const marketUnitValue = hasReferenceUnitValue
-    ? comparableAverage.adjustedUnitValue
-    : (Number.isFinite(fallbackMarketValue) && totalReducedArea > 0 ? fallbackMarketValue / totalReducedArea : Number.NaN);
-  const rentUnitValue = hasReferenceRentUnitValue
-    ? comparableAverage.adjustedRentUnitValue
-    : (Number.isFinite(fallbackRentValue) && totalReducedArea > 0 ? fallbackRentValue / totalReducedArea : Number.NaN);
-  // Kullanıcı bildirimi (2026-09-12, devam): "85,50 × 44.000 = 3.762.000 TL
-  // bu bölümde 50.000'e yuvarla yap" — ileriye doğru hesaplanan Piyasa
-  // Değeri de, uygulamanın diğer her yerinde (bkz. syncComparableValuationMarketValue,
-  // roundComparableValuationValue) emsal ortalamasından türetilen değerlere
-  // uygulanan AYNI yuvarlama kuralına tabi: Piyasa Değeri en yakın 50.000
-  // TL'ye (comparableValuationRoundStep), Piyasa Kira Değeri en yakın 1.000
-  // TL'ye (comparableValuationRentRoundStep) yuvarlanır. Yalnızca emsal
-  // ortalamasından İLERİYE DOĞRU hesaplanan dalda uygulanır — eski geri-uyum
-  // (state.fields üzerinden ters türetim) dalı kullanıcının kendi girdiği
-  // değeri AYNEN korur, yeniden yuvarlanmaz.
-  const roundedMarketValue = hasReferenceUnitValue
-    ? roundComparableValuationValue(totalReducedArea * marketUnitValue, comparableValuationRoundStep)
-    : fallbackMarketValue;
-  const roundedRentValue = hasReferenceRentUnitValue
-    ? roundComparableValuationValue(totalReducedArea * rentUnitValue, comparableValuationRentRoundStep)
-    : fallbackRentValue;
+  const marketValue = parseValuationNumber(state.fields[marketKey]);
+  const rentValue = parseValuationNumber(state.fields[rentKey]);
   return {
-    marketValue: hasReferenceUnitValue && Number.isFinite(roundedMarketValue) ? roundedMarketValue : fallbackMarketValue,
-    marketUnitValue,
-    rentValue: hasReferenceRentUnitValue && Number.isFinite(roundedRentValue) ? roundedRentValue : fallbackRentValue,
-    rentUnitValue,
+    marketValue,
+    marketUnitValue: Number.isFinite(marketValue) && totalReducedArea > 0 ? marketValue / totalReducedArea : Number.NaN,
+    rentValue,
+    rentUnitValue: Number.isFinite(rentValue) && totalReducedArea > 0 ? rentValue / totalReducedArea : Number.NaN,
   };
 }
 
@@ -12289,16 +12268,43 @@ function buildPropertyTaxDeclarationExplanationForExport() {
   );
 }
 
+// Kullanıcı bildirimi (2026-09-13): "bu tablo [Kat Bazında Hesaplama
+// Tablosu] aşağıda yer alan Yasal Durum Değeri Mevcut Durum Değeri Yasal
+// Kira Değeri Mevcut Kira Değeri bölümleri ile dinamik bir şekilde
+// senkronize olmalı" — Kat Bazında Hesaplama Tablosu (bkz.
+// getExplanationsFloorValuationMetrics) İNDİRGENMİŞ (etkili) toplam alan
+// üzerinden hesap yaparken, Piyasa Değeri paneli legalValue/currentValue'yu
+// (syncComparableValuationMarketValue üzerinden) HAM (indirgenmemiş) toplam
+// alan × emsal ortalamasıyla otomatik hesaplıyordu — asma kat gibi
+// indirgeme UYGULANAN raporlarda İKİ tablo FARKLI Piyasa Değeri
+// gösteriyordu (ör. Kat Bazında 3.750.000 TL derken Piyasa Değeri paneli
+// HAM alan 110 m² ile 4.800.000 TL diyordu). Düzeltme: legalValueArea/
+// currentValueArea/legalRentArea/currentRentArea artık İNDİRGENMİŞ
+// (etkili) toplam alanı kullanıyor — Kat Bazında Hesaplama Tablosu'nun
+// KENDİ alan tabanıyla AYNI — böylece legalValue/currentValue/legalRent/
+// currentRent (ve onlardan türeyen legalValueUnit/currentValueUnit)
+// GERÇEKTEN TEK bir kaynaktan besleniyor, iki ayrı yerde ayrı ayrı
+// hesaplanmıyor. insuranceValueArea BİLEREK HAM kalıyor — sigorta/yeniden
+// inşa maliyeti "etkili piyasa değeri" değil GERÇEK fiziksel inşaat
+// alanına bağlıdır, indirgeme yöntemiyle İLGİSİZ (bkz. legalBuildingValueArea/
+// currentBuildingValueArea'nın da AYRICA, HER ZAMAN ham kalan syncBuildingValueDefaults()).
+// İndirgeme UYGULANMAYAN (asma kat vb. olmayan) raporlarda ham=indirgenmiş
+// olduğundan bu değişiklik GÖRÜNMEZ (regresyon yok) — bkz.
+// shouldHideWorkplaceFloorCalculationTableByEqualAreas()'ın AYNI eşitlik
+// varsayımı.
 function syncValuationAreasFromUnitAreas() {
-  const totals = getValuationUnitAreaTotals();
-  if (totals.legal) {
-    state.fields.legalValueArea = totals.legal;
-    state.fields.legalRentArea = totals.legal;
-    state.fields.insuranceValueArea = totals.legal;
+  const reducedTotals = getValuationUnitReducedAreaTotals();
+  const rawTotals = getValuationUnitAreaTotals();
+  if (reducedTotals.legal) {
+    state.fields.legalValueArea = reducedTotals.legal;
+    state.fields.legalRentArea = reducedTotals.legal;
   }
-  if (totals.current) {
-    state.fields.currentValueArea = totals.current;
-    state.fields.currentRentArea = totals.current;
+  if (reducedTotals.current) {
+    state.fields.currentValueArea = reducedTotals.current;
+    state.fields.currentRentArea = reducedTotals.current;
+  }
+  if (rawTotals.legal) {
+    state.fields.insuranceValueArea = rawTotals.legal;
   }
 }
 
@@ -12311,6 +12317,23 @@ function getValuationUnitAreaTotals() {
   return {
     legal: formatValuationArea(totalLegal || legalFallback),
     current: formatValuationArea(totalCurrent || currentFallback),
+  };
+}
+
+// getValuationUnitAreaTotals()'ın İNDİRGENMİŞ (etkili) eşdeğeri —
+// calculateReducedUnitFloorTotal (Kat Bazında Hesaplama Tablosu'nun DA
+// kullandığı GERÇEK indirgeme fonksiyonu) ile hesaplanır. Kat satırı/
+// indirgeme verisi hiç yoksa (calculateReducedUnitFloorTotal 0 döner)
+// getValuationUnitAreaTotals()'ın KENDİ (legacy alan) yedeğine düşülür —
+// bu durumda ham=indirgenmiş (indirgeme oranı zaten %100 varsayılır).
+function getValuationUnitReducedAreaTotals() {
+  const rows = getUnitFloorRows();
+  const totalLegal = calculateReducedUnitFloorTotal(rows, "legal");
+  const totalCurrent = calculateReducedUnitFloorTotal(rows, "current");
+  const rawTotals = getValuationUnitAreaTotals();
+  return {
+    legal: totalLegal > 0 ? formatValuationArea(totalLegal) : rawTotals.legal,
+    current: totalCurrent > 0 ? formatValuationArea(totalCurrent) : rawTotals.current,
   };
 }
 

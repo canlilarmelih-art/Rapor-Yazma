@@ -1,190 +1,269 @@
 "use strict";
 
 /*
-  Kullanici bildirimi (2026-09-12, ekran goruntusu — "Kat Bazinda Hesaplama
-  Tablosu"): "bu kısımda mevcut durum değeri hesaplanırken zemin kata
-  indirgenen alan emsaller bölümünde bulunan ortalama m2 birim değeri ile
-  çarpılmalıydı".
+  Kullanıcı bildirimi (2026-09-13, devam — ekran görüntüsü, "Kat Bazında
+  Hesaplama Tablosu"): "bu tablo aşağıda yer alan Yasal Durum Değeri
+  Mevcut Durum Değeri Yasal Kira Değeri Mevcut Kira Değeri bölümleri ile
+  dinamik bir şekilde senkronize olmalı".
 
-  Gercek ornek (kullanicinin ekran goruntusu): Zemin 75 m² (%100 indirgeme,
-  75 m² efektif), Asma 35 m² (%30 indirgeme, 10,50 m² efektif) -> Mevcut
-  Toplam Indirgenmis Alan = 85,50 m². Yasal tarafta sadece Zemin (75 m²,
-  %100) var, Yasal Toplam Indirgenmis Alan = 75 m² (raw alanla AYNI).
+  ÖNCEKİ İKİ TUR (0.0.756/0.0.757, bu dosyanın ESKİ hali): "Kat Bazında
+  Hesaplama Tablosu"nun (getExplanationsFloorValuationMetrics) kendisi
+  legalValue/currentValue'yu OKUMAK YERİNE emsal ortalamasından KENDİ
+  BAŞINA (İLERİYE DOĞRU, indirgenmiş alan × emsal ortalaması, 50.000'e
+  yuvarlanarak) yeniden hesaplıyordu. Bu, TEK BAŞINA doğru sonucu
+  veriyordu AMA "Piyasa Değeri" paneli legalValue/currentValue'yu
+  (syncComparableValuationMarketValue üzerinden) HAM (indirgenmemiş)
+  toplam alanla hesaplamaya DEVAM ediyordu — asma kat gibi indirgeme
+  UYGULANAN raporlarda İKİ TABLO FARKLI Piyasa Değeri gösteriyordu (ör.
+  Kat Bazında 3.750.000 TL derken Piyasa Değeri paneli HAM alan 110 m²
+  ile 4.800.000 TL diyordu) — kullanıcı bunu "senkron değil" bildirdi.
 
-  ONCEKI (hatali) davranis: getExplanationsFloorValuationMetrics() "Piyasa
-  m² Birim Degeri" sutununu state.fields.legalValue/currentValue (RAW/
-  indirgenmemis toplam alana gore kullanicinin elle girdigi TOPLAM Piyasa
-  Degeri) degerini INDIRGENMIS alana BOLEREK turetiyordu. Yasal'da raw alan
-  (75) = indirgenmis alan (75) oldugundan bu TESADUFEN dogru sonucu
-  veriyordu (44.000 TL/m² -- gercek emsal ortalamasiyla ayni), ama
-  Mevcut'ta raw alan (110) != indirgenmis alan (85,50) oldugundan turetilen
-  "birim deger" YAPAY sekilde SISIYORDU (4.800.000 / 85,50 = 56.140,35
-  TL/m² -- oysa asil emsal ortalamasi hala 44.000,00 TL/m² idi).
+  KÖK DÜZELTME (bu tur): sorunun asıl kaynağı getExplanationsFloorValuationMetrics
+  DEĞİL, syncValuationAreasFromUnitAreas()'ın legalValueArea/currentValueArea/
+  legalRentArea/currentRentArea'yı HAM (indirgenmemiş) toplam alanla
+  doldurmasıydı. Düzeltme YUKARI TAŞINDI:
+  - Yeni getValuationUnitReducedAreaTotals() — calculateReducedUnitFloorTotal
+    (Kat Bazında Hesaplama Tablosu'nun DA kullandığı GERÇEK indirgeme
+    fonksiyonu) ile İNDİRGENMİŞ (etkili) toplam alanı hesaplar; kat/
+    indirgeme verisi yoksa getValuationUnitAreaTotals()'ın (HAM) kendi
+    legacy-alan yedeğine düşer.
+  - syncValuationAreasFromUnitAreas() artık legalValueArea/currentValueArea/
+    legalRentArea/currentRentArea'yı BU İNDİRGENMİŞ toplamla dolduruyor —
+    insuranceValueArea BİLEREK HAM kalıyor (sigorta/yeniden inşa maliyeti
+    GERÇEK fiziksel inşaat alanına bağlıdır, indirgeme yöntemiyle İLGİSİZ).
+  - getExplanationsFloorValuationMetrics() BASİTLEŞTİRİLDİ — artık KENDİ
+    BAŞINA bir hesaplama İCAT ETMİYOR, doğrudan state.fields[legalValue/
+    currentValue/legalRent/currentRent]'i okuyup İNDİRGENMİŞ alana bölüyor
+    (0.0.756 ÖNCESİ formülün AYNISI) — AMA artık DOĞRU sonucu verir, çünkü
+    legalValue/currentValue'nun KENDİSİ (syncComparableValuationMarketValue
+    ile otomatik hesaplanan) ARTIK indirgenmiş alan tabanlı. Eksper elle
+    geçersiz kılmışsa (hasUserDefinedLandMarketValue/...ComparableAutoManual)
+    o zaman da KENDİ girdiği resmi değeri (yine indirgenmiş alana bölünerek
+    "ima edilen" birim değer gösterilir) taşır.
+  - Sonuç: Kat Bazında Hesaplama Tablosu + Piyasa Değeri paneli artık
+    GERÇEKTEN TEK bir kaynaktan (aynı legalValue/currentValue alanı,
+    aynı indirgenmiş alan tabanı) besleniyor — iki ayrı yerde ayrı ayrı
+    HESAPLANMIYOR, senkronizasyon garanti.
 
-  DOGRU davranis: Emsal Degerleme Tablosu'ndaki ("ORTALAMA" satiri, IND. M²
-  BIRIM sutunu -- calculateComparableValuationAverages().adjustedUnitValue)
-  GERCEK ortalama emsal birim degeri HEM Yasal HEM Mevcut icin ayni referans
-  olarak kullanilir; Piyasa Degeri bu birim degerin INDIRGENMIS alanla
-  ILERIYE DOGRU carpilmasiyla (alan × birim = deger) hesaplanir. Emsal
-  girilmemisse (ortalama hesaplanamiyorsa) eski (state.fields uzerinden ters
-  turetim) davranisa dusulur -- geri uyumluluk.
-
-  Kullanici devam bildirimi (2026-09-12): "85,50 × 44.000 = 3.762.000 TL bu
-  bölümde 50.000'e yuvarla yap" -- ileriye dogru hesaplanan Piyasa Degeri de
-  uygulamanin HER YERİNDE emsal ortalamasindan turetilen degerlere uygulanan
-  AYNI yuvarlama kuralina (roundComparableValuationValue, bkz.
-  syncComparableValuationMarketValue) tabi: Piyasa Degeri en yakin 50.000
-  TL'ye (comparableValuationRoundStep), Piyasa Kira Degeri en yakin 1.000
-  TL'ye (comparableValuationRentRoundStep) yuvarlanir. 85,50 × 44.000 =
-  3.762.000 -> 50.000'e yuvarlaninca 3.750.000 TL olur.
-
-  Bu test dort senaryoyu dogrular:
-  1) Emsal ortalamasi mevcutken Mevcut satirinin "Piyasa m² Birim Degeri"
-     artik YAPAY sekilde sismiyor, gercek emsal ortalamasini (44.000)
-     kullaniyor; "Piyasa Degeri" = indirgenmis alan (85,50) × 44.000 =
-     3.762.000 TL, en yakin 50.000'e yuvarlaninca 3.750.000 TL (ONCEKI
-     hatali 4.800.000 DEGIL).
-  2) Yasal satirinda (raw alan = indirgenmis alan oldugu icin onceden de
-     dogru gorunen) sonuc DEGISMEDEN kaliyor (44.000 TL/m², 3.300.000 TL,
-     zaten 50.000'in tam kati) -- regresyon yok.
-  3) Kira (rentUnitValue/rentValue) icin de AYNI mantik (adjustedRentUnitValue
-     + en yakin 1.000'e yuvarlama) uygulaniyor.
-  4) Emsal hic girilmemisse (ortalama hesaplanamiyor, NaN) eski geri-uyumlu
-     davranisa (state.fields degerini indirgenmis alana bolme, YENIDEN
-     YUVARLANMADAN) dusuluyor -- boylece emsal doldurulmamis eski raporlarda
-     tablo BOMBOŞ kalmiyor ve kullanicinin kendi girdigi deger degistirilmiyor.
+  Bu test dosyası:
+  1) getValuationUnitReducedAreaTotals(): kullanıcının GERÇEK örneğiyle
+     (Zemin 75/%100, Asma 35/%30) Mevcut için İNDİRGENMİŞ toplamın 85,50
+     (HAM 110 DEĞİL) olduğunu; kat/indirgeme verisi yokken HAM yedeğe
+     düştüğünü doğrular.
+  2) syncValuationAreasFromUnitAreas(): legalValueArea/currentValueArea/
+     legalRentArea/currentRentArea İNDİRGENMİŞ toplamı, insuranceValueArea
+     İSE HAM toplamı almalı (regresyon kilidi — sigorta alanı BİLEREK
+     DEĞİŞMEMELİ).
+  3) UÇTAN UCA SENKRONİZASYON: syncValuationAreasFromUnitAreas() +
+     syncComparableValuationMarketValue() (GERÇEK, indirgenmiş alan
+     tabanlı otomatik hesap) çalıştırıldıktan SONRA
+     getExplanationsFloorValuationMetrics()'in ürettiği marketValue/
+     rentValue, state.fields.currentValue/currentRent İLE BİREBİR AYNI
+     olmalı (kullanıcının gerçek sayılarıyla: emsal ortalaması 43.689,90
+     TL/m² → Yasal 3.300.000 TL, Mevcut 3.750.000 TL — İKİ TABLO DA AYNI).
+  4) getExplanationsFloorValuationMetrics(): basit bölme formülüne
+     (0.0.756 ÖNCESİ) GERİ DÖNDÜĞÜ, emsal ortalamasını KENDİ BAŞINA
+     YENİDEN HESAPLAMADIĞI kaynak-düzeyinde doğrulanır (regresyon kilidi
+     — bu fonksiyon artık calculateComparableValuationAverages/
+     getComparableValuationRows'u HİÇ ÇAĞIRMAMALI).
 */
 
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
-const vm = require("node:vm");
 
 const appSource = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
 
-function sliceFn(startMarker) {
-  const start = appSource.indexOf(startMarker);
-  assert(start >= 0, `Bulunamadi: ${startMarker}`);
-  const end = appSource.indexOf("\n}", start) + 2;
-  return appSource.slice(start, end);
+function extractFunction(name) {
+  const marker = `function ${name}(`;
+  const start = appSource.indexOf(`\n${marker}`);
+  assert.ok(start >= 0, `Fonksiyon bulunamadı: ${name}`);
+  return extractFunctionBodyFrom(start);
+}
+function extractFunctionBodyFrom(start) {
+  const parenStart = appSource.indexOf("(", start);
+  let parenDepth = 0;
+  let cursor = parenStart;
+  for (; cursor < appSource.length; cursor += 1) {
+    const char = appSource[cursor];
+    if (char === "(") parenDepth += 1;
+    if (char === ")") { parenDepth -= 1; if (parenDepth === 0) break; }
+  }
+  let index = appSource.indexOf("{", cursor);
+  let depth = 0;
+  for (; index < appSource.length; index += 1) {
+    const char = appSource[index];
+    if (char === "{") depth += 1;
+    if (char === "}") { depth -= 1; if (depth === 0) return appSource.slice(start + 1, index + 1); }
+  }
+  throw new Error(`Fonksiyon gövdesi kapanmadı: ${name}`);
 }
 
-function sliceArray(startMarker) {
-  const start = appSource.indexOf(startMarker);
-  assert(start >= 0, `Bulunamadi: ${startMarker}`);
-  const end = appSource.indexOf("\n];", start) + 3;
-  return appSource.slice(start, end);
-}
+const functionNames = [
+  "parseReportNumber",
+  "parseUnitReductionRate",
+  "calculateReducedUnitFloorArea",
+  "calculateReducedUnitFloorTotal",
+  "parseValuationNumber",
+  "parseValuationNumberOrZero",
+  "formatValuationArea",
+  "formatValuationMoney",
+  "createEmptyUnitFloorRow",
+  "getUnitFloorRows",
+  "getValuationUnitAreaTotals",
+  "getValuationUnitReducedAreaTotals",
+  "syncValuationAreasFromUnitAreas",
+  "buildExplanationsFloorValuationRows",
+  "getExplanationsFloorValuationMetrics",
+  "hasUserDefinedLandMarketValue",
+  "isComparableValuationTotalKey",
+  "hasComparableValuationManualOverride",
+  "syncComparableValuationMarketValue",
+  "roundComparableValuationValue",
+];
 
-function sliceConst(startMarker) {
-  const start = appSource.indexOf(startMarker);
-  assert(start >= 0, `Bulunamadi: ${startMarker}`);
-  const end = appSource.indexOf(";", start) + 1;
-  return appSource.slice(start, end);
-}
-
-function buildContext(comparableRows) {
+function buildContext(state) {
   const context = {
-    state: { fields: { legalUsageNature: "İşyeri" } },
-    isLandComparable: (row) => ["arsa", "tarla", "meyve bahcesi"].includes(String(row?.c23 || "").toLocaleLowerCase("tr")),
-    syncComparableLandBuildableArea: () => {},
-    getComparableRows: () => comparableRows,
+    state,
+    isLandOwnershipType: () => false,
+    comparableValuationRoundStep: 50000,
+    comparableValuationRentRoundStep: 1000,
+    // getUnitFloorRows()'un legacy (tekil kat) yedek dalının bağımlılığı —
+    // bu testin kapsamı DIŞINDA, boş dizi yeterli (yalnızca .map çağrılıyor).
+    unitInteriorFeatureFields: [],
   };
+  const source = functionNames.map(extractFunction).join("\n");
+  const vm = require("node:vm");
   vm.createContext(context);
-  vm.runInContext(sliceArray("const comparableFloorOptions = ["), context);
-  vm.runInContext(sliceFn("function foldTurkish("), context);
-  vm.runInContext(sliceFn("function isWorkplaceLikeUsageNature("), context);
-  vm.runInContext(sliceFn("function getComparableMultiValues("), context);
-  vm.runInContext(sliceFn("function syncComparableWorkplaceFloors("), context);
-  vm.runInContext(sliceFn("function parseComparableNumber("), context);
-  vm.runInContext(sliceFn("function parseComparablePercent("), context);
-  vm.runInContext(sliceFn("function parseComparableWorkplaceReductionRate("), context);
-  vm.runInContext(sliceFn("function calculateComparableAdjustment("), context);
-  vm.runInContext(sliceFn("function calculateComparableMetrics("), context);
-  vm.runInContext(sliceFn("function getComparableValuationRows("), context);
-  vm.runInContext(sliceFn("function calculateComparableValuationAverages("), context);
-  vm.runInContext(sliceFn("function parseReportNumber("), context);
-  vm.runInContext(sliceFn("function parseUnitReductionRate("), context);
-  vm.runInContext(sliceFn("function parseValuationNumber("), context);
-  vm.runInContext(sliceConst("const comparableValuationRoundStep = "), context);
-  vm.runInContext(sliceConst("const comparableValuationRentRoundStep = "), context);
-  vm.runInContext(sliceFn("function roundComparableValuationValue("), context);
-  vm.runInContext(sliceFn("function buildExplanationsFloorValuationRows("), context);
-  vm.runInContext(sliceFn("function getExplanationsFloorValuationMetrics("), context);
+  vm.runInContext(source, context);
   return context;
 }
 
-// Kullanicinin gercek ornegindeki kat satirlari.
-const legalFloorRows = [{ floor: "Zemin kat", legalArea: "75", areaReductionRate: "100" }];
+// Kullanıcının gerçek örneği: Zemin 75 m² (%100), Asma 35 m² (%30) ->
+// Mevcut indirgenmiş toplam = 85,50 m² (HAM 110 m² DEĞİL). Yasal
+// tarafta sadece Zemin (75 m², %100) var -> Yasal indirgenmiş = 75 m²
+// (ham ile AYNI, asma kat yok).
+const legalFloorRows = [{ floor: "Zemin kat", legalArea: "75", currentArea: "75", areaReductionRate: "100" }];
 const currentFloorRows = [
-  { floor: "Zemin kat", currentArea: "75", areaReductionRate: "100" },
-  { floor: "Asma kat", currentArea: "35", areaReductionRate: "30" },
+  { floor: "Zemin kat", legalArea: "75", currentArea: "75", areaReductionRate: "100" },
+  { floor: "", currentArea: "35", areaReductionRate: "30" },
+];
+const allFloorRows = [
+  { floor: "Zemin kat", legalArea: "75", currentArea: "75", areaReductionRate: "100" },
+  { floor: "Asma kat", legalArea: "", currentArea: "35", areaReductionRate: "30" },
 ];
 
-// --- 1) & 2) Emsal ortalamasi mevcutken Mevcut DUZELIYOR, Yasal AYNI kaliyor
+// --- 1) getValuationUnitReducedAreaTotals() -----------------------------
 {
-  const comparableRows = [
-    // saleValue/area = 880.000/20 = 44.000 TL/m² (ozellik/konum ayari yok
-    // -> adjustedUnitValue de 44.000). Kira: 4.000/20 = 200 TL/m².
-    { c23: "İşyeri", c2: "Satılık", c12: "20", c14: "880.000", c16: "4.000" },
-  ];
-  const context = buildContext(comparableRows);
-  context.state.fields.legalValue = "3.300.000"; // eski dogru deger (geri uyum icin fallback'i de dogrulamak icin tutuluyor)
-  context.state.fields.currentValue = "4.800.000"; // KULLANICININ bildirdigi hatali senaryo
-  context.state.fields.legalRent = "16.000";
-  context.state.fields.currentRent = "23.000";
+  const context = buildContext({ tables: { unitFloors: allFloorRows }, fields: {} });
+  const totals = context.getValuationUnitReducedAreaTotals();
+  assert.equal(totals.legal, "75", `Yasal indirgenmiş toplam 75 olmalı (asma kat yasalda yok): ${totals.legal}`);
+  assert.equal(totals.current, "85,50", `Mevcut indirgenmiş toplam 85,50 olmalı (110 HAM DEĞİL): ${totals.current}`);
 
+  // Kat/indirgeme verisi hiç yokken (legacy tekil alan) HAM yedeğe düşer.
+  const legacyContext = buildContext({ tables: {}, fields: { legalArea: "60", currentArea: "60" } });
+  const legacyTotals = legacyContext.getValuationUnitReducedAreaTotals();
+  assert.equal(legacyTotals.legal, "60", `Kat verisi yokken HAM (legacy) yedeğe düşmeli: ${legacyTotals.legal}`);
+  assert.equal(legacyTotals.current, "60", `Kat verisi yokken HAM (legacy) yedeğe düşmeli: ${legacyTotals.current}`);
+
+  console.log("getValuationUnitReducedAreaTotals(): kullanıcının gerçek örneğiyle indirgenmiş toplam testi tamam.");
+}
+
+// --- 2) syncValuationAreasFromUnitAreas(): value/rent İNDİRGENMİŞ, ------
+// insurance HAM kalmalı (regresyon kilidi) ------------------------------
+{
+  const context = buildContext({ tables: { unitFloors: allFloorRows }, fields: {} });
+  context.syncValuationAreasFromUnitAreas();
+  assert.equal(context.state.fields.legalValueArea, "75", `legalValueArea indirgenmiş (75) olmalı: ${context.state.fields.legalValueArea}`);
+  assert.equal(context.state.fields.currentValueArea, "85,50", `currentValueArea indirgenmiş (85,50) olmalı, HAM 110 DEĞİL: ${context.state.fields.currentValueArea}`);
+  assert.equal(context.state.fields.legalRentArea, "75", `legalRentArea indirgenmiş (75) olmalı: ${context.state.fields.legalRentArea}`);
+  assert.equal(context.state.fields.currentRentArea, "85,50", `currentRentArea indirgenmiş (85,50) olmalı: ${context.state.fields.currentRentArea}`);
+  // NOT: insuranceValueArea her zaman "legal" (Yasal) HAM toplamdan gelir
+  // (orijinal kod da SADECE totals.legal kullanıyordu) — bu senaryoda
+  // Asma kat legalArea'sı BOŞ (yalnızca mevcut/currentArea'sı dolu,
+  // asma kat yasal krokide yok) olduğundan Yasal HAM toplam 75'tir (110
+  // DEĞİL — 110 yalnızca MEVCUT ham toplamı).
+  assert.equal(
+    context.state.fields.insuranceValueArea,
+    "75",
+    `insuranceValueArea BİLEREK HAM Yasal toplamdan (75) gelmeli, İNDİRGENMİŞ olarak DEĞİŞMEMELİ (sigorta/yeniden inşa maliyeti indirgemeyle İLGİSİZ) — REGRESYON: ${context.state.fields.insuranceValueArea}`
+  );
+
+  // Yukarıdaki senaryoda Yasal HAM (75) = Yasal İNDİRGENMİŞ (75) olduğundan
+  // (asma kat yasalda yok) bu TEK BAŞINA HAM/İNDİRGENMİŞ ayrımını KANITLAMAZ.
+  // Yasal tarafın KENDİSİ de indirgeme İÇEREN AYRI bir senaryo: Zemin 75
+  // (%100) + Üst kat 20 (%50, YASAL krokide de var) -> Yasal HAM = 95,
+  // Yasal İNDİRGENMİŞ = 75+10=85. insuranceValueArea BURADA da HAM (95)
+  // kalmalı, İNDİRGENMİŞ (85) OLMAMALI.
+  const reducedLegalRows = [
+    { floor: "Zemin kat", legalArea: "75", currentArea: "75", areaReductionRate: "100" },
+    { floor: "Üst kat", legalArea: "20", currentArea: "20", areaReductionRate: "50" },
+  ];
+  const reducedLegalContext = buildContext({ tables: { unitFloors: reducedLegalRows }, fields: {} });
+  reducedLegalContext.syncValuationAreasFromUnitAreas();
+  assert.equal(reducedLegalContext.state.fields.legalValueArea, "85", `legalValueArea İNDİRGENMİŞ (85) olmalı: ${reducedLegalContext.state.fields.legalValueArea}`);
+  assert.equal(
+    reducedLegalContext.state.fields.insuranceValueArea,
+    "95",
+    `insuranceValueArea Yasal İNDİRGEME olsa BİLE HAM (95) kalmalı, İNDİRGENMİŞ (85) OLMAMALI — GERÇEK regresyon kilidi: ${reducedLegalContext.state.fields.insuranceValueArea}`
+  );
+
+  console.log("syncValuationAreasFromUnitAreas(): value/rent alanı indirgenmiş, insurance alanı HAM (regresyon kilidi) testi tamam.");
+}
+
+// --- 3) UÇTAN UCA SENKRONİZASYON: Kat Bazında Hesaplama Tablosu === -----
+// Piyasa Değeri paneli (kullanıcının GERÇEK sayılarıyla) ----------------
+{
+  const context = buildContext({ tables: { unitFloors: allFloorRows }, fields: {} });
+  context.syncValuationAreasFromUnitAreas();
+  // Emsal Değerleme Tablosu'ndaki GERÇEK ortalama (kullanıcının ekran
+  // görüntüsü): 43.689,90 TL/m².
+  const comparableAverage = 43689.9;
+  context.syncComparableValuationMarketValue("legalValue", "legalValueArea", comparableAverage);
+  context.syncComparableValuationMarketValue("currentValue", "currentValueArea", comparableAverage);
+
+  assert.equal(context.state.fields.legalValue, "3.300.000", `Yasal Piyasa Degeri 75 × 43.689,90 -> 50.000'e yuvarlanınca 3.300.000 olmalı: ${context.state.fields.legalValue}`);
+  assert.equal(context.state.fields.currentValue, "3.750.000", `Mevcut Piyasa Degeri 85,50 × 43.689,90 -> 50.000'e yuvarlanınca 3.750.000 olmalı (ONCEKI hatalı 4.800.000 DEĞİL): ${context.state.fields.currentValue}`);
+
+  // Kat Bazında Hesaplama Tablosu'nun KENDİ hesabı — AYRI bir emsal
+  // ortalaması ARAMADAN, doğrudan state.fields.legalValue/currentValue'yu
+  // okuyup AYNI indirgenmiş alana böler.
   const legalDetailRows = context.buildExplanationsFloorValuationRows(legalFloorRows, "legal");
   const legalMetrics = context.getExplanationsFloorValuationMetrics(legalDetailRows, "legal");
-  assert.equal(Math.round(legalMetrics.marketUnitValue), 44000, `Yasal birim deger gercek emsal ortalamasi (44.000) olmali: ${legalMetrics.marketUnitValue}`);
-  assert.equal(Math.round(legalMetrics.marketValue), 3300000, `Yasal Piyasa Degeri 75 m² × 44.000 = 3.300.000 olmali (regresyon yok): ${legalMetrics.marketValue}`);
-
   const currentDetailRows = context.buildExplanationsFloorValuationRows(currentFloorRows, "current");
   const currentMetrics = context.getExplanationsFloorValuationMetrics(currentDetailRows, "current");
-  // Toplam indirgenmis alan: 75×1 + 35×0,30 = 85,50 m².
+
   assert.equal(
-    Math.round(currentMetrics.marketUnitValue),
-    44000,
-    `Mevcut birim deger ARTIK YAPAY sekilde sismemeli, gercek emsal ortalamasi (44.000) kullanilmali: ${currentMetrics.marketUnitValue}`
-  );
-  assert.notEqual(
-    Math.round(currentMetrics.marketUnitValue * 100) / 100,
-    56140.35,
-    "Mevcut birim deger ESKI hatali (56.140,35 TL/m², marketValue/reducedArea) degerine DONMEMELI."
+    legalMetrics.marketValue,
+    context.parseValuationNumber(context.state.fields.legalValue),
+    `Kat Bazında Tablosu'nun Yasal Piyasa Değeri, Piyasa Değeri paneliyle (legalValue) BİREBİR AYNI olmalı (senkron): ${legalMetrics.marketValue} vs ${context.state.fields.legalValue}`
   );
   assert.equal(
-    Math.round(currentMetrics.marketValue),
-    3750000,
-    `Mevcut Piyasa Degeri indirgenmis alan (85,50) × 44.000 = 3.762.000, en yakin 50.000'e yuvarlaninca 3.750.000 olmali (ONCEKI hatali 4.800.000 DEGIL): ${currentMetrics.marketValue}`
+    currentMetrics.marketValue,
+    context.parseValuationNumber(context.state.fields.currentValue),
+    `Kat Bazında Tablosu'nun Mevcut Piyasa Değeri, Piyasa Değeri paneliyle (currentValue) BİREBİR AYNI olmalı (senkron — kullanıcının bildirdiği "senkron değil" sorunu): ${currentMetrics.marketValue} vs ${context.state.fields.currentValue}`
   );
+  // Birim değer de İKİ satırda AYNI emsal ortalamasına (43.689,90) yakın
+  // olmalı — kullanıcının önceki bildirdiği "56.140,35 gibi yapay şişme"
+  // ARTIK OLMAMALI.
+  // 50.000'e yuvarlama nedeniyle birim değer emsal ortalamasından KÜÇÜK
+  // bir miktar (bu örnekte ~170 TL/m²) sapabilir — asıl kanıt ESKİ yapay
+  // şişmenin (56.140,35, aşağıda) ARTIK OLMAMASI.
+  assert.ok(Math.abs(currentMetrics.marketUnitValue - comparableAverage) < 500, `Mevcut birim değer emsal ortalamasına yakın olmalı, yapay şişmemeli: ${currentMetrics.marketUnitValue}`);
+  assert.notEqual(Math.round(currentMetrics.marketUnitValue * 100) / 100, 56140.35, "Mevcut birim değer ESKİ hatalı (56.140,35 TL/m²) değerine DÖNMEMELİ.");
 
-  // 3) Kira icin ayni mantik: adjustedRentUnitValue = 200 TL/m² referans alinir,
-  // sonuc en yakin 1.000 TL'ye yuvarlanir.
-  assert.equal(Math.round(legalMetrics.rentUnitValue), 200, `Yasal kira birim degeri emsal ortalamasi (200) olmali: ${legalMetrics.rentUnitValue}`);
-  assert.equal(Math.round(legalMetrics.rentValue), 15000, `Yasal Piyasa Kira Degeri 75 × 200 = 15.000 olmali (zaten 1.000'in tam kati): ${legalMetrics.rentValue}`);
-  assert.equal(Math.round(currentMetrics.rentUnitValue), 200, `Mevcut kira birim degeri de AYNI emsal ortalamasini (200) kullanmali: ${currentMetrics.rentUnitValue}`);
-  assert.equal(Math.round(currentMetrics.rentValue), 17000, `Mevcut Piyasa Kira Degeri 85,50 × 200 = 17.100, en yakin 1.000'e yuvarlaninca 17.000 olmali (ONCEKI hatali 23.000 DEGIL): ${currentMetrics.rentValue}`);
-
-  console.log("Emsal ortalamasi mevcutken Mevcut/Yasal Piyasa m² Birim Degeri + Piyasa Degeri testi tamam.");
+  console.log("UÇTAN UCA: Kat Bazında Hesaplama Tablosu artık Piyasa Değeri paneliyle GERÇEKTEN senkron (kullanıcının tam sayılarıyla) testi tamam.");
 }
 
-// --- 4) Emsal hic girilmemisse (ortalama NaN) eski geri-uyumlu davranisa dusulur
+// --- 4) getExplanationsFloorValuationMetrics(): kaynak-düzeyi regresyon -
+// kilidi — artık emsal ortalamasını KENDİ BAŞINA hesaplamıyor ------------
 {
-  const context = buildContext([]); // hic emsal yok -> average.adjustedUnitValue NaN
-  context.state.fields.currentValue = "4.800.000";
-  context.state.fields.currentRent = "23.000";
-
-  const currentDetailRows = context.buildExplanationsFloorValuationRows(currentFloorRows, "current");
-  const currentMetrics = context.getExplanationsFloorValuationMetrics(currentDetailRows, "current");
-  // Geri uyum: eski ters-turetim (marketValue / totalReducedArea) korunur.
-  assert.equal(
-    Math.round(currentMetrics.marketUnitValue * 100) / 100,
-    56140.35,
-    `Emsal girilmemisken eski geri-uyumlu ters-turetim davranisi korunmali: ${currentMetrics.marketUnitValue}`
-  );
-  assert.equal(Math.round(currentMetrics.marketValue), 4800000, `Emsal yokken Piyasa Degeri state.fields.currentValue'dan degismeden gelmeli: ${currentMetrics.marketValue}`);
-
-  console.log("Emsal girilmemisken geri-uyumlu (eski) davranis testi tamam.");
+  const fnStart = appSource.indexOf("\nfunction getExplanationsFloorValuationMetrics(");
+  const fnBody = extractFunctionBodyFrom(fnStart);
+  assert.ok(!fnBody.includes("calculateComparableValuationAverages"), "getExplanationsFloorValuationMetrics() artık calculateComparableValuationAverages() ÇAĞIRMAMALI (basitleştirildi, kaynak yukarı taşındı).");
+  assert.ok(!fnBody.includes("getComparableValuationRows"), "getExplanationsFloorValuationMetrics() artık getComparableValuationRows() ÇAĞIRMAMALI.");
+  assert.ok(fnBody.includes("parseValuationNumber(state.fields[marketKey])"), "getExplanationsFloorValuationMetrics() doğrudan state.fields[marketKey]'i okumalı (basit, 0.0.756 ÖNCESİ formül).");
+  console.log("getExplanationsFloorValuationMetrics(): kaynak-düzeyi basitleştirme regresyon kilidi testi tamam.");
 }
 
-console.log("Kat Bazinda Hesaplama Tablosu: emsal ortalamasi ile Piyasa m² Birim Degeri/Piyasa Degeri testi basarili.");
+console.log("Kat Bazında Hesaplama Tablosu <-> Piyasa Değeri paneli dinamik senkronizasyon testi başarılı.");
