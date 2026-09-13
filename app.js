@@ -17398,7 +17398,7 @@ function buildUnitDecorativeDescriptionPartsListForMultiUnitMerge() {
     // gösterilmez (UNIT_DECORATIVE_SLOT_KEY_ORDER'da YOK).
     { key: "outdoorMaterial", value: outdoor.materialSentence },
     { key: "bathroomFixture", value: presence.bathroom ? composeBathroomFixtureSentence() : "" },
-    { key: "doorsWindows", value: composeDoorsWindowsSentence() },
+    ...buildMultiUnitDoorsWindowsPartsForMerge(),
     { key: "kitchen", value: hasKitchenInterior(presence) ? composeKitchenCabinetCounterSentence() : "" },
     ...buildDynamicDecorativeAreaPartsForMultiUnitMerge(),
     { key: "materialQuality", value: composeMaterialQualitySentence() },
@@ -17681,6 +17681,159 @@ function composeDoorsWindowsSentence() {
   return sentences.join(" ");
 }
 registerVariantGroup("composeDoorsWindowsSentence:missing", "Kapı/Pencere — Eksik Montaj (Bağımsız Bölüm)", 2);
+
+// ===================================================================
+// Kullanıcı bildirimi (2026-09-13, devam — "yap bunu da"): İşyerleri
+// için işlek "gruplandırma" (dynamicArea idari alan birleştirmesi,
+// 0.0.758) düzeltmesinden SONRA kalan ikinci sorun: composeDoorsWindowsSentence()
+// üç alanı (dış kapı/iç kapı/pencere) TEK STRING olarak birleştirdiğinden,
+// çoklu taşınmazda yalnızca BİR alt-alan (ör. iç kapı — yalnızca BAZI
+// taşınmazlarda mevcut, ör. C 2/C 3'te var, C 1'de YOK) farklı/eksik
+// olsa bile TÜM cümle (dış kapı+pencere DAHİL) gereksiz yere tekrar
+// ediliyordu. Kullanıcının GERÇEK örneği:
+//   ÖNCEKİ (hatalı): "C 1 No'lu taşınmazın dış kapısı camlı alüminyum
+//   ve pencereleri PVC doğramadır. Diğer taşınmazların dış kapıları
+//   camlı alüminyum, iç kapıları amerikan panel ve pencereleri PVC
+//   doğramadır." — dış kapı VE pencere AYNI olduğu halde İKİ KEZ yazılı.
+//   İSTENEN: "Taşınmazların dış kapısı camlı alüminyum ve pencereleri
+//   PVC doğramadır. C 2 No'lu ve C 3 No'lu taşınmazların iç kapıları
+//   amerikan panel doğramadır." — dış kapı+pencere (TÜM taşınmazlarda
+//   AYNI) TEK ortak cümlede, yalnızca iç kapı (yalnızca BAZI
+//   taşınmazlarda dolu) KENDİ AYRI, açık atıflı cümlesinde.
+//
+// Çözüm: composeDoorsWindowsSentence()'ın (TEK taşınmaz/canlı panel —
+// DOKUNULMADI, davranışı SIFIR fark) KENDİ alan-çıkarma mantığı, KASITLI
+// OLARAK küçük bir kod tekrarıyla (paylaşımlı bir refactor DEĞİL — bu
+// projede zaten yerleşik bir desen: buildXxxForMultiUnitMerge ailesinin
+// diğer üyeleri de kendi TEK-taşınmaz karşılıklarını aynı şekilde
+// tekrarlar, test edilmiş davranışı riske atmamak için) üç AYRI alan
+// olarak (`doorsWindows:exterior`/`doorsWindows:interior`/`doorsWindows:windows`)
+// buildMultiUnitInteriorDescriptionText()'e taşınır. Her alan KENDİ
+// BAŞINA tam bir cümle (composeDoorsWindowsSentence'ın pencere-parçasına
+// gömülü "doğramadır" kalıbından FARKLI olarak HER alan kendi "doğramadır"
+// ekini taşır — kullanıcının kendi örneği TEK BAŞINA gösterilen iç kapı
+// cümlesinin de "doğramadır" ile bittiğini doğruluyor); composeMultiUnitDoorsWindowsParagraphSentence()
+// (aşağıda, buildMultiUnitInteriorDescriptionText içinde çağrılır) TÜM
+// taşınmazlarda AYNI olan alanları TEK ortak cümlede birleştirir, geri
+// kalanları (farklı DEĞER YA DA yalnızca BAZI taşınmazlarda dolu) KENDİ
+// AYRI cümlesinde bırakır.
+function getDoorsWindowsFieldParts(fieldKey) {
+  const exteriorDoor = state.fields.unitExteriorDoor || "";
+  const interiorDoors = state.fields.unitInteriorDoors || "";
+  const windows = state.fields.unitWindows || "";
+  if (fieldKey === "exterior") {
+    if (isNotInstalledDecorative(exteriorDoor)) return { missing: true, label: "dış kapı" };
+    if (!exteriorDoor) return null;
+    return { missing: false, phrase: `dış kapı ${formatDoorWindowMaterial(exteriorDoor)}` };
+  }
+  if (fieldKey === "interior") {
+    const folded = foldTurkish(interiorDoors || "").trim();
+    if (/^demonte$/i.test(folded)) return { missing: true, label: "iç kapı" };
+    if (!interiorDoors || /^yok$/i.test(folded)) return null;
+    return { missing: false, phrase: `iç kapılar ${formatDoorWindowMaterial(interiorDoors)}` };
+  }
+  if (isNotInstalledDecorative(windows)) return { missing: true, label: "pencere" };
+  if (!windows) return null;
+  return { missing: false, phrase: `pencereler ${formatDoorWindowMaterial(windows)}` };
+}
+
+// Kapı/pencere "eksik montaj" varyantları — composeDoorsWindowsSentence()'ın
+// KENDİ (o fonksiyona ÖZEL, dokunulmayan) yerel dizisiyle AYNI metinler;
+// AYNI selectVariant KAYDI ("composeDoorsWindowsSentence:missing") KASITLI
+// OLARAK paylaşılır (tek/çoklu taşınmaz aynı varyant döngüsünü kullansın).
+const doorsWindowsFieldMissingVariants = [
+  (list) => `${list} montajı henüz yapılmamıştır.`,
+  (list) => `${list} henüz monte edilmemiştir.`,
+];
+
+function composeDoorsWindowsFieldSentenceFromParts(parts) {
+  if (!parts) return "";
+  if (parts.missing) {
+    return doorsWindowsFieldMissingVariants[selectVariant("composeDoorsWindowsSentence:missing", doorsWindowsFieldMissingVariants.length)](capitalizeSentence(parts.label));
+  }
+  return `${capitalizeSentence(parts.phrase)} doğramadır.`;
+}
+
+function buildMultiUnitDoorsWindowsPartsForMerge() {
+  return ["exterior", "interior", "windows"]
+    .map((fieldKey) => {
+      const parts = getDoorsWindowsFieldParts(fieldKey);
+      if (!parts) return null;
+      const value = composeDoorsWindowsFieldSentenceFromParts(parts);
+      return value ? { key: `doorsWindows:${fieldKey}`, value, doorsWindowsMeta: { missing: parts.missing, rawPhrase: parts.missing ? parts.label : parts.phrase } } : null;
+    })
+    .filter(Boolean);
+}
+
+// Bir alan-bazında (doorsWindows:exterior/interior/windows) grubun nihai
+// cümlesini kurar — composeDecorativeAttributedSentence'ın (TÜM diğer
+// slotlarla PAYLAŞILAN, TÜM taşınmazların katkı yaptığı varsayımıyla
+// çalışan) mekanizmasından TEK farkı: `entries.length < totalUnits`
+// (yani bu alan yalnızca BAZI taşınmazlarda dolu — ör. iç kapı BAZI
+// birimlerde mimariye bağlı olarak hiç yok) durumunda "Taşınmazların"/
+// "Diğer taşınmazların" YANLIŞ olurdu (ne TÜMÜ ne net bir çoğunluk/azınlık
+// bölünmesi var, sadece KATKI SAĞLAYAN taşınmazlar var) — bunun yerine
+// AÇIK numaralı atıf ("{X} No'lu ve {Y} No'lu taşınmazların ...")
+// kullanılır. TÜM taşınmazlar katkı sağlıyorsa (entries.length===totalUnits)
+// davranış composeDecorativeAttributedSentence'a AYNEN devredilir (diğer
+// slotlarla TUTARLI: tek grup->"Taşınmazların", azınlık/çoğunluk->
+// composeSoleRestDecorativeSentence, 3+ grup->numaralı liste).
+function composeDoorsWindowsFieldAttributedSentence(slotKey, entries, totalUnits, runState) {
+  if (!entries.length) return "";
+  if (entries.length < totalUnits) {
+    runState.previousRunKey = null;
+    return groupUnitInteriorTextEntries(entries)
+      .map((group) => {
+        const labels = group.entries.map((entry) => formatTitleUnitSuitabilityLabel(entry.fields, entry.index));
+        const attribution = formatTitleUnitAttributionPhrase(labels);
+        const body = applyDecorativeSlotPossessiveConversion(slotKey, group.canonicalValue, group.entries.length > 1);
+        return attribution
+          ? normalizeReportDescriptionText(`${attribution} taşınmazların ${lowercaseFirstLetterTr(body)}`)
+          : body;
+      })
+      .join(" ");
+  }
+  return composeDecorativeAttributedSentence(slotKey, entries, runState);
+}
+
+// "Kapı/Pencere" özel paragraf birleştiricisi — buildMultiUnitInteriorDescriptionText()'in
+// UNIT_DECORATIVE_SLOT_KEY_ORDER genel döngüsünden ÖNCE çağrılır (bkz.
+// composeMainRoomDecorativeParagraphSentence ile AYNI desen): üç alt-alan
+// anahtarını (doorsWindows:exterior/interior/windows) decorativeEntriesBySlot'tan
+// OKUYUP SİLER (genel döngüye asla girmezler), TÜM taşınmazlarda AYNI
+// (missing OLMAYAN) alanları TEK ortak listede birleştirir, geri kalanları
+// (farklı değer YA DA yalnızca bazı taşınmazlarda dolu YA DA "missing")
+// composeDoorsWindowsFieldAttributedSentence ile KENDİ ayrı cümlesinde
+// bırakır.
+function composeMultiUnitDoorsWindowsParagraphSentence(decorativeEntriesBySlot, totalUnits, runState) {
+  const fieldKeys = ["doorsWindows:exterior", "doorsWindows:interior", "doorsWindows:windows"];
+  const fieldsData = fieldKeys.map((key) => {
+    const entries = decorativeEntriesBySlot[key] || [];
+    delete decorativeEntriesBySlot[key];
+    return { key, entries };
+  });
+  if (!fieldsData.some((field) => field.entries.length)) return "";
+
+  const universalPhrases = [];
+  const ownSentences = [];
+  fieldsData.forEach(({ key, entries }) => {
+    if (!entries.length) return;
+    const groups = groupUnitInteriorTextEntries(entries);
+    const isUniversal = entries.length === totalUnits && groups.length === 1 && !entries[0].doorsWindowsMeta.missing;
+    if (isUniversal) {
+      universalPhrases.push(entries[0].doorsWindowsMeta.rawPhrase);
+      return;
+    }
+    const sentence = composeDoorsWindowsFieldAttributedSentence(key, entries, totalUnits, runState);
+    if (sentence) ownSentences.push(sentence);
+  });
+
+  const universalSentence = universalPhrases.length
+    ? composeDecorativeSentenceWithAttribution("doorsWindows", `${capitalizeSentence(formatTurkishList(universalPhrases))} doğramadır.`, "all", "")
+    : "";
+  runState.previousRunKey = null;
+  return joinNonEmptySentences([universalSentence, ...ownSentences]);
+}
 
 const kitchenCabinetCounterNoneVariants = [
   "Mutfak dolabı ve tezgahının montajı henüz yapılmamıştır.",
@@ -35541,11 +35694,25 @@ function replaceDecorativeLeadingSubject(sentence, genitivePhrase, locativePhras
 // kullanılır — "kapıya" gibi FARKLI bir çekimli forma YANLIŞLIKLA
 // eşleşmeyi de engeller.
 const TURKISH_WORD_END_LOOKAHEAD = "(?![a-zA-ZçÇğĞıİöÖşŞüÜ])";
+// Kullanıcı bildirimi (2026-09-13, "Kapı/Pencere" alan-bazında bölünme,
+// 0.0.759) SIRASINDA bizzat bulunup düzeltilen bir kusur: `\b` (word
+// boundary) yalnızca ASCII [A-Za-z0-9_] karakterlerini "kelime karakteri"
+// sayar (bkz. TURKISH_WORD_END_LOOKAHEAD'in AYNI sorunu, ama BURADA
+// kelimenin SONUNDA DEĞİL, BAŞINDA — büyük "İ" harfi). Bu yüzden
+// `\bİç kapılar\b` cümlenin BAŞINDA ("İç kapılar ..." — composeDoorsWindowsSentence'ın
+// TEK-birleşik-cümle biçiminde dış kapı HER ZAMAN İLK sırada geldiğinden
+// "İç kapılar" ASLA cümle-başı OLMADIĞI için bu kusur şimdiye kadar HİÇ
+// FARK EDİLMEMİŞTİ) ASLA eşleşmiyordu — yeni alan-bazında bölünmüş
+// (composeDoorsWindowsFieldSentenceFromParts) STANDALONE "İç kapılar ..."
+// cümlesinde bu artık GERÇEKTEN tetikleniyor. Düzeltme: `\b` YERİNE,
+// öncesinde bir Türkçe/Latin harfi OLMADIĞINI doğrulayan negatif bir
+// lookbehind (dize başında YA DA boşluk/noktalama sonrasında eşleşir).
+const TURKISH_WORD_START_LOOKBEHIND = "(?<![a-zA-ZçÇğĞıİöÖşŞüÜ])";
 function applyDoorsWindowsPossessiveSuffix(sentence, ownerIsPlural) {
   return sentence
     .replace(new RegExp(`\\bDış kapı${TURKISH_WORD_END_LOOKAHEAD}`), ownerIsPlural ? "Dış kapıları" : "Dış kapısı")
     .replace(new RegExp(`\\bdış kapı${TURKISH_WORD_END_LOOKAHEAD}`), ownerIsPlural ? "dış kapıları" : "dış kapısı")
-    .replace(/\bİç kapılar\b/, "İç kapıları")
+    .replace(new RegExp(`${TURKISH_WORD_START_LOOKBEHIND}İç kapılar\\b`), "İç kapıları")
     .replace(/\biç kapılar\b/, "iç kapıları")
     .replace(/\bPencereler\b/, "Pencereleri")
     .replace(/\bpencereler\b/, "pencereleri");
@@ -35607,7 +35774,12 @@ function pluralizeDecorativeLocativePrefix(sentence) {
 // İKİ sahip biçiminde de metinsel olarak AYNI kalıyor, yalnızca ÖNÜNE
 // gelen özne DEĞİŞİYOR).
 function applyDecorativeSlotPossessiveConversion(slotKey, sentence, ownerIsPlural) {
-  if (slotKey === "doorsWindows") return applyDoorsWindowsPossessiveSuffix(sentence, ownerIsPlural);
+  // "doorsWindows:exterior"/"doorsWindows:interior"/"doorsWindows:windows"
+  // (0.0.759, alan-bazında bölünme) HER BİRİ composeDoorsWindowsSentence'ın
+  // AYNI üç kelime öbeğinden (dış kapı/iç kapılar/pencereler) YALNIZCA
+  // BİRİNİ taşır — applyDoorsWindowsPossessiveSuffix'in tüm üç deseni
+  // denemesi zararsızdır (yalnızca eşleşen tek desen değişir).
+  if (slotKey === "doorsWindows" || slotKey.startsWith("doorsWindows:")) return applyDoorsWindowsPossessiveSuffix(sentence, ownerIsPlural);
   if (slotKey === "kitchen") return applyKitchenPossessiveSuffix(sentence, ownerIsPlural);
   if (ownerIsPlural && (slotKey === "wetArea" || slotKey === "outdoorCombined" || slotKey === "bathroomFixture")) {
     return pluralizeDecorativeLocativePrefix(sentence);
@@ -35973,7 +36145,13 @@ function buildMultiUnitInteriorDescriptionText() {
         const value = normalizeReportDescriptionText(part.value || "").trim();
         if (!value) return;
         if (!decorativeEntriesBySlot[part.key]) decorativeEntriesBySlot[part.key] = [];
-        decorativeEntriesBySlot[part.key].push({ index, fields: state.fields, value, ...(part.dynamicMeta ? { dynamicMeta: part.dynamicMeta } : {}) });
+        decorativeEntriesBySlot[part.key].push({
+          index,
+          fields: state.fields,
+          value,
+          ...(part.dynamicMeta ? { dynamicMeta: part.dynamicMeta } : {}),
+          ...(part.doorsWindowsMeta ? { doorsWindowsMeta: part.doorsWindowsMeta } : {}),
+        });
       });
     });
   } finally {
@@ -36019,6 +36197,8 @@ function buildMultiUnitInteriorDescriptionText() {
   const decorativeSentences = [];
   const mainRoomSentence = composeMainRoomDecorativeParagraphSentence(decorativeEntriesBySlot, runState);
   if (mainRoomSentence) decorativeSentences.push(mainRoomSentence);
+  const doorsWindowsSentence = composeMultiUnitDoorsWindowsParagraphSentence(decorativeEntriesBySlot, units.length, runState);
+  if (doorsWindowsSentence) decorativeSentences.push(doorsWindowsSentence);
   UNIT_DECORATIVE_SLOT_KEY_ORDER
     .filter((key) => key !== "manualOverride" && decorativeEntriesBySlot[key]?.length)
     .forEach((key) => {

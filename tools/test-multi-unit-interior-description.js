@@ -384,6 +384,19 @@ const functionNames = [
   "canWeaveDecorativeSentence",
   "composeWovenSoleRestDecorativeSentence",
   "composeSoleRestDecorativeSentence",
+  // Kullanıcı talebi (2026-09-13): "Kapı/Pencere" alan-bazında bölünme
+  // (0.0.759) — buildMultiUnitInteriorDescriptionText()'in GERÇEK gövdesi
+  // artık composeMultiUnitDoorsWindowsParagraphSentence()'ı çağırıyor,
+  // sandbox'ta TANIMLI olması gerekiyor (mockDecorativeParts hâlâ eski
+  // bare "doorsWindows" anahtarını kullandığından bu fonksiyon MEVCUT
+  // senaryolarda "" döner — regresyon yok, yalnızca ReferenceError'ı önler).
+  "isNotInstalledDecorative",
+  "formatDoorWindowMaterial",
+  "getDoorsWindowsFieldParts",
+  "composeDoorsWindowsFieldSentenceFromParts",
+  "buildMultiUnitDoorsWindowsPartsForMerge",
+  "composeDoorsWindowsFieldAttributedSentence",
+  "composeMultiUnitDoorsWindowsParagraphSentence",
 ];
 const constArrayNames = [
   "UNIT_INTERIOR_AREA_VERB_ENDING_PLURAL_MAP", "UNIT_DECORATIVE_BARE_SUBJECT_VERB_ENDING_PLURAL_MAP", "UNIT_DECORATIVE_SLOT_KEY_ORDER",
@@ -391,12 +404,16 @@ const constArrayNames = [
   "singleAreaDecorativeBothSameVariants", "singleAreaDecorativeBothDiffVariants", "singleAreaDecorativeFloorOnlyVariants", "singleAreaDecorativeWallOnlyVariants",
   // Kullanıcı talebi (2026-09-06): iyelik/atıf dönüşüm haritaları.
   "KITCHEN_PLURAL_OWNER_POSSESSIVE_MAP", "DECORATIVE_LOCATIVE_PREFIX_PLURAL_MAP",
+  // Kullanıcı talebi (2026-09-13): doorsWindowsFieldMissingVariants
+  // (composeMultiUnitDoorsWindowsParagraphSentence zincirinin bağımlılığı).
+  "doorsWindowsFieldMissingVariants",
 ];
 const constObjectNames = ["MAIN_ROOM_FLOOR_TAIL_STANDALONE_SUFFIX_MAP"];
-// TURKISH_WORD_END_LOOKAHEAD (dize) — KITCHEN_PLURAL_OWNER_POSSESSIVE_MAP'İN
-// KENDİSİNDEN ÖNCE tanımlanmalı (o, bu sabiti KULLANIYOR). DECORATIVE_LEADING_SUBJECT_PATTERN
+// TURKISH_WORD_END_LOOKAHEAD/TURKISH_WORD_START_LOOKBEHIND (dizeler) —
+// KITCHEN_PLURAL_OWNER_POSSESSIVE_MAP'İN KENDİSİNDEN ÖNCE tanımlanmalı
+// (o, bu sabitlerden birini KULLANIYOR). DECORATIVE_LEADING_SUBJECT_PATTERN
 // (regex) — replaceDecorativeLeadingSubject'ten ÖNCE tanımlanmalı.
-const constLineNames = ["TURKISH_WORD_END_LOOKAHEAD", "DECORATIVE_LEADING_SUBJECT_PATTERN"];
+const constLineNames = ["TURKISH_WORD_END_LOOKAHEAD", "TURKISH_WORD_START_LOOKBEHIND", "DECORATIVE_LEADING_SUBJECT_PATTERN"];
 
 const sandboxSource = `
   let state = {};
