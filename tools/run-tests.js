@@ -209,6 +209,7 @@ const TEST_FILES = [
   "test-dynamic-decorative-area-administrative-group.js",
   "test-multi-unit-doors-windows-field-split.js",
   "test-gabim-table-template-coverage.js",
+  "test-gabim-tab-bar-gate.js",
 ];
 
 let failed = null;

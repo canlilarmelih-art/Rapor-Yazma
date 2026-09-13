@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.762 - 2026-09-13 - GABİM Veri Seti sekmesine taşınmaz tab çubuğu eklendi
+
+- Kullanıcı: "gabim bölümünde taşınmaz tabları yok. bu bölüme de taşınmaz tablarını ekleyelim."
+- Kök neden: Tapu/Adres/İmar/Arsa/Değerleme/Bağımsız Bölüm sekmelerinin HEPSİNDE bulunan `createTitleUnitTabBar()` (çoklu taşınmazlı raporlarda hangi taşınmazı düzenlediğinizi gösteren/değiştiren tab çubuğu) Gabim'e (`gabimData`) HİÇ eklenmemişti — kullanıcı Gabim verilerini görmek/düzenlemek için Tapu sekmesi üzerinden aktif taşınmazı değiştirmek zorunda kalıyordu. Bu, `tools/test-unit-tab-bar-gate.js`'te belgelenen 0.0.488'deki "Bağımsız bölüm özellikleri bölümünde bağımsız bölüm tabları bulunmuyor" kusurunun BİREBİR AYNISI, farklı bir sekmede.
+- Düzeltme: Değerleme/Bağımsız Bölüm ile BİREBİR AYNI gate (ada/parsel/blok koşulu YOK, yalnızca admin + Çoklu Talep) ile `createTitleUnitTabBar()` çağrısı GABİM veri panelinden (`createGabimDataSetPanel`) ÖNCE eklendi. "Tümüne uygula"/"Seçili Taşınmazlara Kopyala" BİLİNÇLİ OLARAK eklenmedi — GABİM alanları salt-okunur (diğer bölümlerden otomatik dolar), kopyalanacak elle girilmiş bir değer yok.
+- Test: yeni `tools/test-gabim-tab-bar-gate.js` — tab çubuğunun doğru koşulla (extraActions olmadan) eklendiğini, panelden ÖNCE geldiğini, mevcut özet-tablo gate'inin regresyona uğramadığını doğruluyor. Stash ile eski (tab çubuğu eksik) haline karşı gerçekten kırıldığı doğrulandı.
+- `npm run verify` (169 test dosyası) EXIT:0. Canlı tarayıcı testi yapılamadı (admin girişi gerektiriyor, standart proje kısıtlaması) — kullanıcıdan çoklu taşınmazlı bir raporda GABİM Veri Seti sekmesine gidip artık taşınmaz tab çubuğunun göründüğünü ve tab değiştirince doğru taşınmazın verisinin geldiğini doğrulaması isteniyor.
+
+
 ## 0.0.761 - 2026-09-13 - Gabim Özeti tablosu artık 10 banka şablonunda da mevcut
 
 - Kullanıcı: "Gabim çoklu tablo template dosyalarında yok. kuveyttürkte kesin yok diğerlerine bakmadım kontrol eder misin".

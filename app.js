@@ -6059,6 +6059,24 @@ function renderSection() {
     body.append(createValueFactorsPanel());
   }
 
+  // Kullanıcı bildirimi (2026-09-13): "gabim bölümünde taşınmaz tabları
+  // yok. bu bölüme de taşınmaz tablarını ekleyelim" — Tapu/Adres/İmar/
+  // Arsa/Değerleme/Bağımsız Bölüm sekmelerinin HEPSİNDE bulunan
+  // createTitleUnitTabBar() Gabim'e HİÇ eklenmemişti (unit sekmesinde
+  // 0.0.488'de YAŞANAN BİREBİR AYNI kusur — "Bağımsız bölüm özellikleri
+  // bölümünde bağımsız bölüm tabları bulunmuyor", bkz. aşağıdaki "unit"
+  // bloğunun yorumu) — kullanıcı Gabim sekmesine gelmek için TAPU
+  // sekmesi üzerinden aktif taşınmazı değiştirmek zorunda kalıyordu. Gate
+  // Değerleme/Bağımsız Bölüm ile BİREBİR AYNI (ada/parsel/blok koşulu
+  // YOK, yalnızca admin + Çoklu Talep) — "Tümüne uygula"/"Seçili
+  // Taşınmazlara Kopyala" YOK, çünkü GABİM alanları salt-okunur (diğer
+  // bölümlerden otomatik dolar, bkz. createGabimUnitsSummaryTablePreview'in
+  // kendi "düzenlemek için ilgili taşınmazın kendi sekmesine gidin"
+  // ipucu) — kopyalanacak elle girilmiş bir değer YOK.
+  if (section.id === "gabimData" && isCurrentUserAdmin() && state.fields.requestType === "Çoklu Talep") {
+    body.append(createTitleUnitTabBar());
+  }
+
   if (section.id === "gabimData") {
     body.append(createGabimDataSetPanel());
   }
