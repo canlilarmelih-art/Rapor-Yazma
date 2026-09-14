@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.773 - 2026-09-14 - Taşınmaz-bazında tarife ücreti tablosunda vurgu kriteri düzeltildi: en büyük alan DEĞİL, en yüksek bedel
+
+- Kullanıcı: "bu tabloda en büyük alanlıyı işaretleme. en yüksek rapor bedeline sahip olanı işaretle."
+- Kök neden: 0.0.772'de eklenen tablo, vurgulanacak/"Diğer Taşınmazlar Toplamı"ndan hariç tutulacak satırı EN BÜYÜK ALAN'a göre seçiyordu — ama alan büyüklüğü ile hesaplanan tarife ücreti DOĞRUSAL ORANTILI DEĞİL (farklı gayrimenkul türlerinin kademeli tarifeleri farklı eşiklerde artar; küçük alanlı ama pahalı bir tarife türü, büyük alanlı ama ucuz bir türden daha yüksek ücrete çıkabilir).
+- Düzeltme: seçim kriteri artık doğrudan hesaplanan `feeExVat` (tarife ücreti) — `row.area > largestArea` yerine `row.feeExVat > largestFee`. Satır etiketi "(En Büyük Alanlı)"'dan "(En Yüksek Bedelli)"'ye, alt satır "Diğer Taşınmazlar Toplamı (En Büyük Alanlı Hariç)"'tan "...(En Yüksek Bedelli Hariç)"'e güncellendi.
+- Test: `tools/test-expense-bulk-per-unit-fee-breakdown.js`'e yeni senaryo 5 eklendi — GERÇEK seçim döngüsünü kaynaktan çıkarıp, alan/ücret sırası KASITLI TERS bir örnek üzerinde (büyük alanlı+düşük ücretli A vs küçük alanlı+yüksek ücretli B) çalıştırıp doğru satırın (B, yüksek ücretli) seçildiğini kanıtlıyor; ayrıca kaynakta artık `largestArea`/`row.area > largest...` kalmadığını doğruluyor. Stash ile eski koda karşı gerçekten kırıldığı doğrulandı.
+- `npm run verify` (177 test dosyası) EXIT:0. `index.html`'de `app.js` cache-buster'ı `20260914-2245`'e yükseltildi. Canlı tarayıcı testi yapılamadı — kullanıcıdan farklı gayrimenkul türlerinden oluşan çoklu taşınmazlı bir raporda tablodaki vurgunun artık en yüksek ücretli satırda olduğunu doğrulaması isteniyor.
+
+
 ## 0.0.772 - 2026-09-14 - "Masraf Bilgileri"ne taşınmaz-bazında tarife ücreti tablosu eklendi (Toplu Değerleme yardımcı verisi)
 
 - Kullanıcı: "toplam eklenen tüm taşınmazların tek rapor olsaydı ücret tarifesini listeleyebilir miyiz tablo halinde."

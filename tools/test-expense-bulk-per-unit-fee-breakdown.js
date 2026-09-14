@@ -178,11 +178,39 @@ const unit = (fields, tables) => ({ fields, tables: tables || {} });
   const panelSource = extractFunction("createExpenseBulkPerUnitFeeBreakdownPanel");
   assert.ok(panelSource.includes("getTitleUnitCount() < 2"), "Panel, tek taşınmazlı raporlarda null dönmeli (2+ taşınmaz şartı).");
   assert.ok(panelSource.includes("buildExpenseBulkPerUnitFeeBreakdown()"), "Panel buildExpenseBulkPerUnitFeeBreakdown() verisini kullanmalı.");
-  assert.ok(panelSource.includes("Diğer Taşınmazlar Toplamı"), "Panel 'Diğer Taşınmazlar Toplamı' (en büyük alanlı hariç) satırını göstermeli.");
+  assert.ok(panelSource.includes("Diğer Taşınmazlar Toplamı"), "Panel 'Diğer Taşınmazlar Toplamı' (en yüksek bedelli hariç) satırını göstermeli.");
 
   const renderSectionMatch = /if \(section\.id === "expenseFees"\) \{\s*\n\s*const bulkFeeBreakdownPanel = createExpenseBulkPerUnitFeeBreakdownPanel\(\);\s*\n\s*if \(bulkFeeBreakdownPanel\) body\.append\(bulkFeeBreakdownPanel\);/.test(appSource);
   assert.ok(renderSectionMatch, "renderSection() 'expenseFees' bölümüne createExpenseBulkPerUnitFeeBreakdownPanel() panelini eklemeli.");
   console.log("Panel + renderSection() kaynak-duzeyi kablolama testi tamam.");
+}
+
+// --- 5) Kullanıcı DÜZELTMESİ (2026-09-14): "bu tabloda en büyük alanlıyı --
+// işaretleme. en yüksek rapor bedeline sahip olanı işaretle" — vurgulanan/
+// hariç tutulan satırın kriteri artık ALAN DEĞİL, HESAPLANAN ÜCRETİN
+// KENDİSİ (alan büyüklüğü ile tarife ücreti doğrusal orantılı DEĞİL —
+// farklı gayrimenkul türlerinin kademeli tarifeleri farklı eşiklerde
+// artar). GERÇEK seçim döngüsünü (panelSource'tan) çıkarıp, alan/ücret
+// SIRASI KASITLI TERS bir örnek üzerinde çalıştırarak doğrular: en büyük
+// ALANLI satır (A, 5000 m², düşük tarife) DEĞİL, en yüksek ÜCRETLİ satır
+// (B, 50 m², yüksek tarife) seçilmeli.
+{
+  const panelSource = extractFunction("createExpenseBulkPerUnitFeeBreakdownPanel");
+  assert.ok(!/largestArea|row\.area > largest/.test(panelSource), "Panelde ARTIK alan-bazlı ('largestArea'/'row.area > largest...') bir seçim kalmamalı.");
+  const selectionSnippetMatch = /let largestIndex = -1;\s*\n\s*let largestFee = -Infinity;\s*\n\s*rows\.forEach\(\(row, index\) => \{[\s\S]*?\n  \}\);/.exec(panelSource);
+  assert.ok(selectionSnippetMatch, "'En yüksek bedelli' seçim döngüsü (largestFee bazlı) bulunamadı.");
+
+  const context = { rows: [
+    { label: "A", area: 5000, feeExVat: 20985 }, // En BÜYÜK ALAN ama DAHA DÜŞÜK ücret (Dükkan 101-500 dilimi ALTINDA kalan başka bir örnek gibi düşünülebilir — burada sadece SAYISAL karşıtlık önemli).
+    { label: "B", area: 50, feeExVat: 55569 }, // KÜÇÜK alan ama EN YÜKSEK ücret.
+  ] };
+  vm.createContext(context);
+  // `let` ile tanımlanan degiskenler vm context nesnesine ozellik olarak
+  // EKLENMEZ (top-level let/const, var'dan farkli) — IIFE ile SARIP
+  // dogrudan donus degerini yakaliyoruz.
+  const largestIndex = vm.runInContext(`(() => {\n${selectionSnippetMatch[0]}\n  return largestIndex;\n})()`, context);
+  assert.equal(largestIndex, 1, "En YÜKSEK ÜCRETLİ satır (B, index 1) seçilmeli — en büyük ALANLI (A, index 0) DEĞİL.");
+  console.log("KULLANICI DUZELTMESI: vurgu kriteri artik EN YUKSEK UCRET (alan degil) testi tamam.");
 }
 
 console.log("Toplu Degerleme tasinmaz-bazinda tarife ucreti tablosu testleri basarili.");

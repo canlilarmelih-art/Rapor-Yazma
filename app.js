@@ -34664,7 +34664,13 @@ function createExpenseBulkPerUnitFeeBreakdownPanel() {
 
   const hint = document.createElement("p");
   hint.className = "subtle-text";
-  hint.textContent = "Her taşınmazın KENDİ mevcut kullanım niteliği/mülkiyeti ve alanına göre, o taşınmaz TEK BAŞINA bir rapora konu olsaydı hangi tarife ücretini alacağı gösterilir. \"En Büyük Alanlı\" satırı yukarıdaki \"Değerleme Ücreti Tarife Türü\" alanınca zaten hesaplanır; \"Diğer Taşınmazlar Toplamı\" satırındaki tutarı \"Toplu Değerleme - Diğer Taşınmazların Kendi Tarifelerindeki Toplam Ücreti\" alanına girebilirsiniz.";
+  // Kullanıcı düzeltmesi (2026-09-14): "bu tabloda en büyük alanlıyı
+  // işaretleme. en yüksek rapor bedeline sahip olanı işaretle" — alan
+  // büyüklüğü ile tarife ücreti DOĞRUSAL (birebir orantılı) DEĞİL (farklı
+  // gayrimenkul türlerinin kademeli tarifeleri farklı eşiklerde artıyor);
+  // en yüksek ALAN, en yüksek ÜCRETİ garanti etmiyordu. Kriter artık
+  // doğrudan hesaplanan tarife ücretinin (feeExVat) KENDİSİ.
+  hint.textContent = "Her taşınmazın KENDİ mevcut kullanım niteliği/mülkiyeti ve alanına göre, o taşınmaz TEK BAŞINA bir rapora konu olsaydı hangi tarife ücretini alacağı gösterilir. \"En Yüksek Bedelli\" satırı yukarıdaki \"Değerleme Ücreti Tarife Türü\" alanınca zaten hesaplanır; \"Diğer Taşınmazlar Toplamı\" satırındaki tutarı \"Toplu Değerleme - Diğer Taşınmazların Kendi Tarifelerindeki Toplam Ücreti\" alanına girebilirsiniz.";
   panel.append(hint);
 
   const validRows = rows.filter((row) => row.propertyType && Number.isFinite(row.feeExVat));
@@ -34677,10 +34683,10 @@ function createExpenseBulkPerUnitFeeBreakdownPanel() {
   }
 
   let largestIndex = -1;
-  let largestArea = -Infinity;
+  let largestFee = -Infinity;
   rows.forEach((row, index) => {
-    if (Number.isFinite(row.area) && row.area > largestArea) {
-      largestArea = row.area;
+    if (Number.isFinite(row.feeExVat) && row.feeExVat > largestFee) {
+      largestFee = row.feeExVat;
       largestIndex = index;
     }
   });
@@ -34706,7 +34712,7 @@ function createExpenseBulkPerUnitFeeBreakdownPanel() {
     const tr = document.createElement("tr");
     if (index === largestIndex) tr.className = "expense-bulk-breakdown-largest-row";
     const labelCell = document.createElement("td");
-    labelCell.textContent = index === largestIndex ? `${row.label} (En Büyük Alanlı)` : row.label;
+    labelCell.textContent = index === largestIndex ? `${row.label} (En Yüksek Bedelli)` : row.label;
     const typeCell = document.createElement("td");
     typeCell.textContent = row.propertyType || "—";
     const areaCell = document.createElement("td");
@@ -34726,7 +34732,7 @@ function createExpenseBulkPerUnitFeeBreakdownPanel() {
   const totalRow = document.createElement("tr");
   totalRow.innerHTML = `<td colspan="3"><strong>Toplam (${rows.length} taşınmaz)</strong></td><td><strong>${escapeHtml(formatValuationMoney(total, { decimals: 2 }))}</strong></td>`;
   const otherTotalRow = document.createElement("tr");
-  otherTotalRow.innerHTML = `<td colspan="3">Diğer Taşınmazlar Toplamı (En Büyük Alanlı Hariç)</td><td>${escapeHtml(formatValuationMoney(otherTotal, { decimals: 2 }))}</td>`;
+  otherTotalRow.innerHTML = `<td colspan="3">Diğer Taşınmazlar Toplamı (En Yüksek Bedelli Hariç)</td><td>${escapeHtml(formatValuationMoney(otherTotal, { decimals: 2 }))}</td>`;
   tfoot.append(totalRow, otherTotalRow);
   table.append(tfoot);
 
