@@ -613,7 +613,7 @@ assert(
 );
 assert(
   engineSource.includes("VALUATIONSALEABILITYEXPLANATION") &&
-    engineSource.includes('VALUATIONSALEABILITYEXPLANATION: { t: () => safeCall("buildValuationSaleabilityExplanation") }'),
+    engineSource.includes('VALUATIONSALEABILITYEXPLANATION: { t: () => safeCall("buildValuationSaleabilityExplanationForAllTitleUnits") }'),
   "Halkbank valuation saleability placeholder aliasi bulunamadi."
 );
 assert(
@@ -627,9 +627,9 @@ assert(
   buildingFootprintEntranceHtml.includes("Bina oturumu; vaziyet planında belirtilen bina girişi referansından tespit edilmiştir."),
   "Bina oturumu ve giris aciklamasi placeholder'i cozumlenemedi."
 );
-globalThis.buildValuationSaleabilityExplanation = () => "SATILABİLİR olduğu kanaatine varılmıştır.";
+globalThis.buildValuationSaleabilityExplanationForAllTitleUnits = () => "SATILABİLİR olduğu kanaatine varılmıştır.";
 const halkbankSaleabilityHtml = engine.resolveToken("VALUATİON_SALEABİLİTY_EXPLANATİON").html;
-delete globalThis.buildValuationSaleabilityExplanation;
+delete globalThis.buildValuationSaleabilityExplanationForAllTitleUnits;
 assert(
   halkbankSaleabilityHtml.includes("SATILABİLİR olduğu kanaatine varılmıştır."),
   "Halkbank Onemli Not satis kabiliyeti aciklamasi cozumlenirken bos kaliyor."

@@ -210,6 +210,7 @@ const TEST_FILES = [
   "test-multi-unit-doors-windows-field-split.js",
   "test-gabim-table-template-coverage.js",
   "test-gabim-tab-bar-gate.js",
+  "test-valuation-export-multi-unit-wiring.js",
 ];
 
 let failed = null;

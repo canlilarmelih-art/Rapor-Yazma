@@ -12268,7 +12268,33 @@ function buildExplanationsFloorValuationWordTableHtml() {
 
 // Kullanıcının belirttiği banka şablonu sırasına göre (bkz. handoff)
 // Satılabilir seçiminde standart şablonlar bu alanı boş bırakır.
+//
+// Kullanıcı bildirimi (2026-09-14): "kuveyttürk rapor çıktısında değerleme
+// bölümündeki cümleler rapor çoklu olmasına rağmen tekli rapor formatında
+// geldi." Kök neden: bu fonksiyon (ve DEGERLEME_YONTEMI_ACIKLAMASI/
+// KIRA_ACIKLAMASI şablon token'larının bağlı olduğu build*Explanation
+// fonksiyonları) YALNIZCA AKTİF taşınmazın state.fields'ını okuyordu —
+// buildValuationSaleabilityExplanationForAllTitleUnits() (panel için
+// ZATEN var olan, tüm taşınmazları gruplayan doğru fonksiyon) rapor
+// EXPORT'unda hiç çağrılmıyordu, yalnızca canlı panelde
+// (refreshValuationSaleabilityExplanation) kullanılıyordu. Bu yüzden ekran
+// PANELİ doğru (çoklu) metni gösterirken, banka şablonuna basılan Word
+// çıktısı tek taşınmazlı gibi davranıyordu. Düzeltme: 2+ taşınmazlı
+// raporlarda TÜM taşınmazlar "Satılabilir" (varsayılan) DEĞİLSE
+// ForAllTitleUnits sürümüne devredilir; hepsi varsayılansa (tek taşınmazlı
+// davranışla TUTARLI şekilde) boş döner.
 function buildValuationSaleabilityExplanationForExport() {
+  if (getTitleUnitCount() >= 2) {
+    const originalFields = state.fields;
+    const units = buildAllTitleUnitsForSummaryTable();
+    const allDefault = units.every((unit) => {
+      const fields = { ...originalFields, ...unit.fields };
+      const saleability = saleabilityOptions.includes(fields.saleability) ? fields.saleability : "Satılabilir";
+      return saleability === "Satılabilir";
+    });
+    if (allDefault) return "";
+    return buildValuationSaleabilityExplanationForAllTitleUnits();
+  }
   const saleability = saleabilityOptions.includes(state.fields.saleability) ? state.fields.saleability : "Satılabilir";
   if (saleability === "Satılabilir") return "";
   return buildValuationSaleabilityExplanation();

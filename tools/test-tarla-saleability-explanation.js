@@ -39,6 +39,10 @@ function evaluate({ tarla, saleability = "Satılabilir" }) {
     // hemen ardında, modül-yükleme anında çalışır) burada no-op — kayıt
     // defteri ayrıca tools/test-variant-selection.js'te test ediliyor.
     registerVariantGroup: () => {},
+    // Bu test yalnızca TEK taşınmazlı (count<2) dalı doğruluyor — çoklu
+    // taşınmaz dalı tools/test-valuation-export-multi-unit-wiring.js'te.
+    getTitleUnitCount: () => 1,
+    buildAllTitleUnitsForSummaryTable: () => [],
   };
   vm.runInNewContext(`${saleabilitySource}\n${tarlaRiskSource}\n${exportSource}`, context);
   return {
