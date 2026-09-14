@@ -711,7 +711,19 @@ const sections = [
     description:
       "Eksik alan kontrolü, banka özel ekler ve Word şablonu ile dışa aktarma bu bölümde toplanır. İş Bankası masraf yazısı için rapora özgü masraf girişleri de burada yapılır.",
     fields: [
-      { key: "expenseTitleDeedCount", label: "Tapu Adedi", type: "number", defaultValue: "1" },
+      // Kullanıcı talebi (2026-09-14): "tapu adedi zaten yüklediğim takbisten
+      // belli ... şu an bunları kullanıcı manuel giriyor bunlar otomatik bir
+      // şekilde girilmeli" — AskUserQuestion ile netleştirildi: "Tapu Adedi"
+      // raporda KAÇ taşınmaz/bağımsız bölüm varsa (getTitleUnitCount()) o
+      // kadardır — AYNI ada/parselde olsalar bile HER bağımsız bölümün kendi
+      // tapu kaydı/senedi olduğundan her biri ayrı sayılır. Artık
+      // syncExpenseTitleDeedCountFromUnits() (renderSection() başında,
+      // syncMultiTitleUnitOwnershipType ile AYNI desen) her render'da
+      // KOŞULSUZ senkronlar — bu yüzden `readOnly: true` (elle girilen bir
+      // değer bir sonraki render'da zaten ezilirdi, kullanıcıyı yanıltmamak
+      // için input artık düzenlenemez, `buildingAge`/`buildingCompletionDate`
+      // ile AYNI "otomatik hesaplanan ama görünür" deseni).
+      { key: "expenseTitleDeedCount", label: "Tapu Adedi (Taşınmaz Sayısından Otomatik)", type: "number", readOnly: true },
       { key: "expenseMunicipalityFeeReceipt", label: "Belediye Masrafı (Makbuz Tutarı)", type: "number" },
       { key: "expenseMunicipalityVatIncluded", label: "Makbuzda KDV Belirtilmiş mi?", type: "checkbox", checkedValue: "Evet", uncheckedValue: "Hayır", defaultValue: "Hayır", wide: true, note: "İşaretliyse girilen tutar KDV dahil kabul edilir (KDV hariç geriye hesaplanır). İşaretli değilse girilen tutar KDV hariç kabul edilir ve üzerine KDV eklenir." },
     ],
@@ -5779,6 +5791,7 @@ function renderNavState() {
 
 function renderSection() {
   syncMultiTitleUnitOwnershipType();
+  syncExpenseTitleDeedCountFromUnits();
   // Kullanıcı bildirimi (2026-08-22, "düzelmemiş halen boş geliyor"):
   // ownershipType'ın KENDİ "input"/"blur" olay dinleyicilerine eklenen
   // suggestLegalUsageNatureForAllTitleUnits() çağrısı, Mülkiyet değeri
@@ -34400,6 +34413,27 @@ function lookupExpenseAppraisalFeeExVat(propertyType, area) {
   const tier = tiers.find((item) => numericArea >= item.min && numericArea <= item.max);
   if (!tier) return Number.NaN;
   return parseValuationNumber(state.fields[tier.key]);
+}
+
+// Kullanıcı talebi (2026-09-14): "MASRAF bilgilerinde tapu adedi zaten
+// yüklediğim takbisten belli yada talebin aynı ada parsel mi farklı ada
+// parsel mi talep olduğu belli şu an bunları kullanıcı manuel giriyor
+// bunlar otomatik bir şekilde girilmeli" — AskUserQuestion ile netleştirildi:
+// "Tapu Adedi" = raporda KAÇ taşınmaz/bağımsız bölüm varsa (getTitleUnitCount())
+// o kadardır (AYNI ada/parselde olsalar bile HER bağımsız bölümün kendi
+// tapu kaydı/senedi vardır, her biri AYRI sayılır — "farklı ada/parsel"
+// bilgisi bu sayıyı DEĞİŞTİRMEZ, yalnızca kullanıcının "zaten biliniyor"
+// dediği ikinci bir işaret). `syncMultiTitleUnitOwnershipType()` ile AYNI
+// desen: renderSection() başında KOŞULSUZ çağrılır; değer GERÇEKTEN
+// değiştiyse (rapor tek taşınmazlıyken çoklu hale geldi/taşınmaz eklendi-
+// silindi) `recalculateExpenseFees()` de tetiklenir ki Tapu Harcı ve
+// toplam ücret anında güncellensin — alan artık `readOnly: true` (elle
+// girilen bir değer BİR SONRAKİ render'da zaten sessizce ezilirdi).
+function syncExpenseTitleDeedCountFromUnits() {
+  const computed = String(getTitleUnitCount());
+  if (state.fields.expenseTitleDeedCount === computed) return;
+  state.fields.expenseTitleDeedCount = computed;
+  recalculateExpenseFees();
 }
 
 function recalculateExpenseFees() {

@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.770 - 2026-09-14 - "Tapu Adedi" artık taşınmaz sayısından otomatik hesaplanıyor (elle giriş kaldırıldı)
+
+- Kullanıcı: "MASRAF bilgilerinde tapu adedi zaten yüklediğim takbisten belli yada talebin aynı ada parsel mi farklı ada parsel mi talep olduğu belli şu an bunları kullanıcı manuel giriyor bunlar otomatik bir şekilde girilmeli."
+- AskUserQuestion ile netleştirildi: "Tapu Adedi" = raporda kaç taşınmaz/bağımsız bölüm varsa (`getTitleUnitCount()`) o kadardır — AYNI ada/parselde olsalar bile HER bağımsız bölümün kendi tapu kaydı/senedi olduğundan her biri AYRI sayılır (kullanıcı "Farklı ada/parsel sayısı" alternatifini DEĞİL bu seçeneği onayladı).
+- Düzeltme: yeni `syncExpenseTitleDeedCountFromUnits()` — `syncMultiTitleUnitOwnershipType()` ile AYNI desende, `renderSection()` başında KOŞULSUZ çağrılır; değer gerçekten değiştiyse (taşınmaz eklendi/silindi) `recalculateExpenseFees()`'i de tetikleyip Tapu Harcı/toplam ücreti anında günceller. `expenseTitleDeedCount` alanı artık `readOnly: true` (elle girilen bir değer bir sonraki render'da zaten sessizce ezilirdi, kullanıcıyı yanıltmamak için input artık düzenlenemez — `buildingAge`/`buildingCompletionDate` ile AYNI "otomatik hesaplanan ama görünür" deseni) ve etiketi "Tapu Adedi (Taşınmaz Sayısından Otomatik)" oldu; eski statik `defaultValue: "1"` kaldırıldı.
+- Test: yeni `tools/test-expense-title-deed-count-auto-sync.js` — GERÇEK `getTitleUnitCount()` ile senkronu (1/3/1 taşınmaz senaryoları), değer değişmediğinde `recalculateExpenseFees()`'in GEREKSİZ çağrılmadığını, alan şemasının (readOnly, eski defaultValue yok) ve `renderSection()`'ın kaynak-düzeyi kablolamasını doğruluyor. Stash ile eski koda karşı gerçekten kırıldığı doğrulandı.
+- `npm run verify` (175 test dosyası) EXIT:0. `index.html`'de `app.js` cache-buster'ı `20260914-1930`'a yükseltildi. Canlı tarayıcı testi yapılamadı — kullanıcıdan çoklu taşınmazlı bir rapor açıp "Banka ve Çıktı" bölümünde "Tapu Adedi" alanının artık taşınmaz sayısıyla otomatik güncellendiğini (ve elle değiştirilemediğini) doğrulaması isteniyor.
+
+
 ## 0.0.769 - 2026-09-14 - Çoklu taşınmazlı Dekoratif Özellikler: zemin/duvar cümleleri artık en başta + büyük/küçük harf düzeltildi
 
 - Kullanıcı: "Bağımsız bölüm özellikleri dekoratif açıklama çoklu raporlarda dekoratif açıklama '...dukkan hacimlerinde zeminler seramik kaplı... açık ofis alanı, ofis ve yönetici odalarında zeminler laminant parke kaplı... wc hacimlerinde zeminler seramik kaplı...' bu şekilde geliyor türkçe dil kurallarına uygun olmayan büyük küçük harf olayları var. ayrıca dekoratif açıklamada ilk başta zemin ve duvar açıklamaları yer almalı."

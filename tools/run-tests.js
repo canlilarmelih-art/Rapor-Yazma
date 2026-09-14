@@ -215,6 +215,7 @@ const TEST_FILES = [
   "test-static-suitability-building-inspection-plural.js",
   "test-operational-api-mfa-policy-default.js",
   "test-multi-unit-decorative-order-and-capitalization.js",
+  "test-expense-title-deed-count-auto-sync.js",
 ];
 
 let failed = null;
