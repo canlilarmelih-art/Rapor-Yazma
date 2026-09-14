@@ -754,7 +754,7 @@ async function getSessionFromRequest(request) {
   return { id, uid: entry.uid, email: entry.email };
 }
 
-async function getOperationalApiAccessFailure(request, user, { mfaRequired = isMfaConfigured() } = {}) {
+async function getOperationalApiAccessFailure(request, user, { mfaRequired = isMfaRequired() } = {}) {
   if (!(await isUserApproved(user.uid, user.email))) {
     return { status: 403, code: "approval_required", error: "Hesabınız henüz onaylı değil veya erişimi askıya alınmış." };
   }
@@ -2382,12 +2382,28 @@ async function handlePdfTextApi(request, response) {
 
 // login.html'de Firebase ile giriş yapıldıktan sonra çağrılır: geçerli bir
 // Firebase ID token'ı (genel /api/* Bearer kontrolüyle zaten doğrulanmış
-// olur) HttpOnly bir oturum çerezine bağlar. RESEND_API_KEY ayarlıysa (MFA
-// aktifse) ve bu cihaz güvenilir değilse, oturum çerezi HENÜZ verilmez —
-// önce e-posta kodu doğrulanmalı (bkz. /api/session/request-code ve
-// /api/session/verify-code). /api/session/logout ise oturum çerezini
-// sunucu tarafında da iptal eder (güvenilir cihaz durumuna dokunmaz —
-// standart pratik: çıkış yapmak cihaz güvenini SIFIRLAMAZ).
+// olur) HttpOnly bir oturum çerezine bağlar. MFA_REQUIRED=true (açık
+// politika, bkz. isMfaRequired) ve bu cihaz güvenilir değilse, oturum
+// çerezi HENÜZ verilmez — önce e-posta kodu doğrulanmalı (bkz.
+// /api/session/request-code ve /api/session/verify-code). /api/session/logout
+// ise oturum çerezini sunucu tarafında da iptal eder (güvenilir cihaz
+// durumuna dokunmaz — standart pratik: çıkış yapmak cihaz güvenini
+// SIFIRLAMAZ).
+//
+// Kullanıcı bildirimi (2026-09-14): "normal kullanıcı böyle bir hata
+// alıyor" — export sırasında "Bu işlem için ikinci doğrulama gerekir."
+// Kök neden: bu gate (ve getOperationalApiAccessFailure'ın varsayılanı)
+// RESEND_API_KEY'in salt VARLIĞINA (isMfaConfigured()) bakıyordu, 0.0.681'de
+// eklenen `MFA_REQUIRED` AÇIK POLİTİKA anahtarına (isMfaRequired()) DEĞİL.
+// RESEND_API_KEY üretimde BAŞKA bir amaçla (yeni kullanıcı bildirim
+// e-postası, 0.0.305) zaten yapılandırılı olduğundan, "MFA_REQUIRED
+// varsayılan false — bu değişiklik mevcut erişimi ANİDEN KESMEZ" şeklinde
+// 0.0.681'de BİLİNÇLİ olarak belgelenen davranış hiç gerçekleşmiyordu — MFA
+// GitHub repository variable'ı hiç `true` yapılmadan TÜM normal kullanıcılar
+// için sessizce zorunlu hale gelmişti. Düzeltme: her iki gate de artık
+// isMfaRequired() kullanıyor (isMfaConfigured() yalnızca RESEND_API_KEY'in
+// e-posta GÖNDEREBİLME kapasitesini soran /api/session/request-code|verify-code
+// gibi noktalarda DOĞRU/DEĞİŞMEDEN kalıyor).
 async function handleSessionApi(request, response, url, user) {
   if (request.method !== "POST") {
     sendJson(response, 405, { ok: false, error: "Bu işlem desteklenmiyor." });
@@ -2403,7 +2419,7 @@ async function handleSessionApi(request, response, url, user) {
   }
 
   if (url === "/api/session") {
-    if (isMfaConfigured() && !(await isRequestFromTrustedDevice(request, user.uid))) {
+    if (isMfaRequired() && !(await isRequestFromTrustedDevice(request, user.uid))) {
       sendJson(response, 200, { ok: true, requiresMfa: true });
       return;
     }

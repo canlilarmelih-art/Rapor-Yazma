@@ -213,6 +213,7 @@ const TEST_FILES = [
   "test-valuation-export-multi-unit-wiring.js",
   "test-title-units-summary-common-fields-font-size.js",
   "test-static-suitability-building-inspection-plural.js",
+  "test-operational-api-mfa-policy-default.js",
 ];
 
 let failed = null;
