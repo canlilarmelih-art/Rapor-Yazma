@@ -20,6 +20,20 @@
 // Üç gerçek wrapper'ın doğru şekilde bu çekirdeğe delege ettiği VE üç
 // refresh fonksiyonunun artık \n\n-birleştirilmiş Parts çıktısını yazdığı
 // ayrıca kaynak-düzeyinde (grep tabanlı) doğrulanır (bkz. senaryo 5).
+//
+// GÜNCELLEME (2026-09-14, ekran görüntüsü — "DEĞERLEME — GENEL BİLGİLER",
+// C-1/C-2/C-3 üç bağımsız bölüm AYNI blokta): "ALTTA bazı cümleler hala
+// tekil olarak oluşuyor." Kök neden: yukarıdaki (2026-08-26) düzeltme
+// yalnızca `isDocumentsBlockGroupingActive()` (2+ FARKLI blok) şartına
+// bakıyordu — AYNI blokta 2+ bağımsız bölüm varsa bu şart hiç sağlanmıyor,
+// üstelik "order.length<=1" dalı metni OLDUĞU GİBİ (tekil gramerle)
+// döndürüyordu, GERÇEK bir çoğullama hiç yapılmıyordu.
+// buildDocumentsBlockAttributedExplanationParts artık `isDocumentsBlockGroupingActive()`
+// KULLANMIYOR — bunun yerine TOPLAM taşınmaz sayısına (`buildAllTitleUnitsForSummaryTable().length`)
+// bakıyor, her metin-grubunun KAÇ taşınmazı temsil ettiğini (`unitIndices`,
+// blok sınırlarını AŞARAK toplanır) izliyor, 2+ taşınmaz AYNI metni
+// paylaşıyorsa `buildExplanationFn(true)` ile GERÇEKTEN çoğul gramerli
+// sürüm istiyor (senaryo 2b/2c, aşağıda YENİ).
 
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -106,9 +120,19 @@ const fns = new Function(sandboxSource)();
 // yüzden `fns.getState()`'in döndürdüğü referans HER ZAMAN güncel kalır
 // (gerçek buildPenaltyDecisionExplanation/vb.'nin "state.fields'tan
 // hesaplanan bir metin döner" davranışını doğru taklit eder).
-function makeMarkerExplanationFn(markerToText) {
-  return () => {
+//
+// `markerToPluralText` (opsiyonel, 2026-09-14): gerçek buildStaticSuitabilityExplanation(isPlural)
+// gibi fonksiyonları taklit eder — verilirse, `isPlural=true` ile
+// çağrıldığında (buildDocumentsBlockAttributedExplanationParts 2+
+// taşınmaz AYNI metni ürettiğinde bunu talep eder) FARKLI bir metin
+// döner; verilmezse (varsayılan davranış, 2/3/4. senaryolarda kullanılan
+// fake builder'lar) isPlural argümanı YOK SAYILIR — gerçek fonksiyonun
+// plural varyant SAĞLAMADIĞI durumda (buildPenaltyDecisionExplanation
+// gibi) tekil metne sessizce geri düşüldüğünü doğrular.
+function makeMarkerExplanationFn(markerToText, markerToPluralText = null) {
+  return (isPlural = false) => {
     const marker = fns.getState().fields?.marker;
+    if (isPlural && markerToPluralText) return markerToPluralText[marker] || "";
     return markerToText[marker] || "";
   };
 }
@@ -137,12 +161,73 @@ function makeMarkerExplanationFn(markerToText) {
   );
   let callCount = 0;
   const builder = makeMarkerExplanationFn({ AYNI: "Ortak sonuç cümlesi." });
-  const wrappedBuilder = () => { callCount += 1; return builder(); };
+  const wrappedBuilder = (isPlural) => { callCount += 1; return builder(isPlural); };
   const parts = fns.buildDocumentsBlockAttributedExplanationParts(wrappedBuilder);
-  assert.equal(callCount, 2, "HER blok için (temsilci alanlarla) builder ÇAĞRILMALI.");
-  assert.deepEqual(parts, ["Ortak sonuç cümlesi."], "Tüm bloklar AYNI metni ürettiğinde TEK atıfsız cümle dönmeli.");
+  // 2 çağrı: her blok için (temsilci alanlarla, metin-tespiti için,
+  // isPlural=false) + 1 EK çağrı: 2+ taşınmaz (A Blok'taki 1 + B Blok'taki
+  // 1) AYNI metni paylaştığından SONUNDA isPlural=true ile GERÇEKTEN
+  // çoğul sürüm istenir (2026-09-14) — fake builder plural pool
+  // sağlamadığından (markerToPluralText verilmedi) aynı metne sessizce
+  // geri düşer, ama çağrı YİNE DE yapılır.
+  assert.equal(callCount, 3, "2 blok tespiti + 1 plural-cozumleme cagrisi (2026-09-14) toplam 3 cagri beklenir.");
+  assert.deepEqual(parts, ["Ortak sonuç cümlesi."], "Tüm bloklar AYNI metni ürettiğinde TEK atıfsız cümle dönmeli (fake builder plural saglamadigindan tekil metne geri duser).");
   assert.equal(fns.getState().fields.marker, "DIŞ", "REGRESYON: temp-swap sonrası state.fields ORİJİNALE geri yüklenmeli.");
   console.log("Blok gruplama ACIK + TUM bloklar AYNI metin -> tek atifsiz cumle testi tamam.");
+}
+
+// --- 2b) YENİ (2026-09-14): 2+ taşınmaz AYNI metni paylaşıyor VE builder --
+// GERÇEKTEN bir plural sürüm sağlıyor -> final metin PLURAL sürüm olmalı
+// (kullanıcının "ALTTA bazı cümleler hala tekil" bildirdiği asıl senaryo:
+// AYNI TEK blokta 2+ bağımsız bölüm, ör. C-1/C-2/C-3).
+{
+  fns.setState({ fields: {} });
+  fns.setFakeUnitsAndGroups(
+    [{ fields: { marker: "AYNI" } }, { fields: { marker: "AYNI" } }, { fields: { marker: "AYNI" } }],
+    // TEK blok, 3 taşınmazın HEPSİ o bloğa ait (kullanıcının C-1/C-2/C-3
+    // örneğiyle BİREBİR — isDocumentsBlockGroupingActive() ESKİDEN bunu
+    // "2+ blok yok" diye tamamen atlıyordu).
+    [{ label: "C Blok", unitIndices: [0, 1, 2] }]
+  );
+  const builder = makeMarkerExplanationFn(
+    { AYNI: "Taşınmazın statik projesi incelenmiştir." },
+    { AYNI: "Taşınmazların statik projesi incelenmiştir." }
+  );
+  const parts = fns.buildDocumentsBlockAttributedExplanationParts(builder);
+  assert.deepEqual(
+    parts,
+    ["Taşınmazların statik projesi incelenmiştir."],
+    "AYNI TEK blokta 3 tasinmaz ayni metni paylasiyorsa GERCEK plural surum donmeli (eskiden tekil metin OLDUGU GIBI donuyordu)."
+  );
+  console.log("YENI: AYNI TEK blokta 2+ tasinmaz + plural saglayan builder -> gercek cogul metin testi tamam.");
+}
+
+// --- 2c) YENİ (2026-09-14): FARKLI metin üreten bloklardan biri kendi ----
+// İÇİNDE 2+ taşınmaz barındırıyor -> O GRUP kendi plural sürümünü alır,
+// TEK taşınmazlı diğer grup tekil kalır (attribution ile birlikte).
+{
+  fns.setState({ fields: {} });
+  fns.setFakeUnitsAndGroups(
+    [{ fields: { marker: "COK" } }, { fields: { marker: "COK" } }, { fields: { marker: "TEK" } }],
+    [
+      { label: "A Blok", unitIndices: [0, 1] },
+      { label: "B Blok", unitIndices: [2] },
+    ]
+  );
+  const builder = makeMarkerExplanationFn(
+    { COK: "Taşınmazın statik projesi incelenmiştir.", TEK: "Taşınmazın statik projesi uyumsuzdur." },
+    { COK: "Taşınmazların statik projesi incelenmiştir." } // TEK icin plural pool YOK -> tekil kalmali
+  );
+  const parts = fns.buildDocumentsBlockAttributedExplanationParts(builder);
+  assert.equal(parts.length, 2, `2 FARKLI metin bekleniyordu, bulunan: ${JSON.stringify(parts)}`);
+  assert.ok(
+    parts.includes("A Blok'a ait: Taşınmazların statik projesi incelenmiştir."),
+    `A Blok (2 tasinmaz) kendi PLURAL surumunu almali, bulunan: ${JSON.stringify(parts)}`
+  );
+  assert.ok(
+    parts.includes("B Blok'a ait: Taşınmazın statik projesi uyumsuzdur."),
+    `B Blok (1 tasinmaz, plural pool yok) TEKIL kalmali, bulunan: ${JSON.stringify(parts)}`
+  );
+  console.log("YENI: FARKLI metinli bloklardan biri kendi icinde 2+ tasinmaz -> SADECE o grup plural testi tamam.");
 }
 
 // --- 3) Blok gruplama AKTİF, bloklar FARKLI metin üretiyor -> HER FARKLI --

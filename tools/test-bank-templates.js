@@ -454,7 +454,7 @@ assert(
   "Uretilen Word tablolarinda tablo arasi 12pt bosluk standardi korunmuyor."
 );
 const kuveytturkTemplate = fs.readFileSync(path.join(appDir, "templates", "kuveytturk.html"), "utf8");
-const kuveytturkNoteIndex = kuveytturkTemplate.indexOf("*** Taşınmazın değerlemesi takyidatlardan bağımsız yapılmıştır.");
+const kuveytturkNoteIndex = kuveytturkTemplate.indexOf("{{TAKYIDAT_BAGIMSIZ_DEGERLEME_NOTU}}");
 const kuveytturkStaticIndex = kuveytturkTemplate.indexOf("{{STATIC_SUITABILITY_EXPLANATION_TEXT}}");
 const kuveytturkValuationTableIndex = kuveytturkTemplate.indexOf("{{DEGERLENDIRME_TABLOSU}}");
 assert(

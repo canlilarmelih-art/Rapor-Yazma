@@ -1093,6 +1093,8 @@
     TARLABAHCEDEGERLEMERISKIACIKLAMASI: { t: () => safeCall("buildTarlaValuationRiskExplanation") },
     VALUATIONSALEABILITYEXPLANATION: { t: () => safeCall("buildValuationSaleabilityExplanationForAllTitleUnits") },
     KIRAACIKLAMASI: { t: () => safeCall("buildValuationRentExplanationForAllTitleUnits") },
+    TAKYIDATBAGIMSIZDEGERLEMENOTU: { t: () => safeCall("buildTakyidatIndependentValuationNoteText") },
+    TAKYIDATBAGIMSIZSATISKABILIYETINOTU: { t: () => safeCall("buildTakyidatIndependentSaleabilityNoteText") },
     EMLAKBEYANDEGERIACIKLAMASI: { t: () => safeCall("buildPropertyTaxDeclarationExplanationForExport") },
     KATBAZINDAINDIRGENMISALANTABLOSU: { h: () => safeCall("buildExplanationsFloorValuationWordTableHtml") },
 

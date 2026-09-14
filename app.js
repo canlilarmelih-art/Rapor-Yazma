@@ -10527,6 +10527,27 @@ function createValuationRentExplanationPanel() {
   return card;
 }
 
+// Kullanıcı bildirimi (2026-09-14, ekran görüntüsü): "ALTTA bazı cümleler
+// hala tekil olarak oluşuyor" — "*** Taşınmazın değerlemesi takyidatlardan
+// bağımsız yapılmıştır." (kuveytturk.html/kuveytturk-arsa-arazi.html) ve
+// "** Taşınmazın satış kabiliyeti takyidatlardan bağımsız olarak
+// belirlenmiştir." (yapikredi.html) şablon dosyalarına DÜZ METİN olarak
+// (herhangi bir token/fonksiyon OLMADAN) yazılmıştı — hiçbir zaman
+// çoğullanamazlardı, kaç taşınmaz olursa olsun HER ZAMAN "Taşınmazın"
+// (tekil) basıyordu. Bu iki küçük fonksiyon YALNIZCA özneyi
+// (getTitleUnitCount() >= 2 ise "Taşınmazların") üretir; şablonlardaki
+// "***"/"**" öneki ve cümlenin geri kalanı DEĞİŞMEDEN şablon dosyasında
+// kalır (bkz. templates/*.html'deki {{TAKYIDAT_BAGIMSIZ_...}} kullanımı).
+function buildTakyidatIndependentValuationNoteText() {
+  const subject = getTitleUnitCount() >= 2 ? "Taşınmazların" : "Taşınmazın";
+  return `${subject} değerlemesi takyidatlardan bağımsız yapılmıştır.`;
+}
+
+function buildTakyidatIndependentSaleabilityNoteText() {
+  const subject = getTitleUnitCount() >= 2 ? "Taşınmazların" : "Taşınmazın";
+  return `${subject} satış kabiliyeti takyidatlardan bağımsız olarak belirlenmiştir.`;
+}
+
 function isPropertyTaxDeclarationEnabled() {
   return state.fields.propertyTaxDeclarationEnabled === "1";
 }
@@ -32488,13 +32509,30 @@ function buildDefaultDocumentReviewInstitution() {
 // "Etiket: Cümle" kalıbıyla (0.0.564'ün "Kısa Etiketler: Not." kalıbıyla
 // AYNI ilke) eklenir — HER varyantın kendi grameriyle "doğal" bir atıf
 // noktası bulmaya çalışmak yerine, HER ZAMAN doğru/anlaşılır sonuç verir.
+// Kullanıcı bildirimi (2026-09-14, ekran görüntüsü — "DEĞERLEME — GENEL
+// BİLGİLER" bölümü, C-1/C-2/C-3 üç bağımsız bölüm AYNI blokta): "ALTTA
+// bazı cümleler hala tekil olarak oluşuyor." Kök neden: yukarıdaki
+// (2026-08-26) düzeltme yalnızca `isDocumentsBlockGroupingActive()` (2+
+// FARKLI blok) şartına bakıyordu — bu şart yalnızca blok SEKME ÇUBUĞU
+// (createDocumentsBlockTabBar) için anlamlıdır. AYNI blokta 2+ bağımsız
+// bölüm varsa (kullanıcının örneği) bu şart HİÇ sağlanmıyor, fonksiyon
+// doğrudan tekil `buildExplanationFn()`'e düşüyor VE bulunsa bile "TÜM
+// bloklar aynı sonuca ulaştıysa (order.length<=1) atıf eklenmez" dalı
+// metni OLDUĞU GİBİ (tekil gramerle) döndürüyordu — gerçek bir gramer
+// çoğullaması HİÇBİR ZAMAN yapılmıyordu. Düzeltme: artık (1) TOPLAM
+// taşınmaz sayısına (blok sayısına DEĞİL) bakılır, (2) her metin-grubunun
+// KAÇ taşınmazı temsil ettiği (`unitIndices`, blok sınırlarını AŞARAK
+// toplanır) izlenir, (3) 2+ taşınmaz AYNI metni paylaşıyorsa
+// `buildExplanationFn(true)` ile GERÇEKTEN çoğul gramerli sürüm üretilir
+// (fonksiyon plural varyant sağlamıyorsa/`""` dönerse tekil metne sessizce
+// geri düşülür — geriye dönük UYUMLU).
 function buildDocumentsBlockAttributedExplanationParts(buildExplanationFn) {
-  if (!isDocumentsBlockGroupingActive()) {
-    const single = buildExplanationFn();
-    return single ? [single] : [];
-  }
   const originalFields = state.fields;
   const units = buildAllTitleUnitsForSummaryTable();
+  if (units.length < 2) {
+    const single = buildExplanationFn(false);
+    return single ? [single] : [];
+  }
   const groups = computeDocumentsBlockGroups(units);
   const byText = new Map();
   const order = [];
@@ -32503,26 +32541,49 @@ function buildDocumentsBlockAttributedExplanationParts(buildExplanationFn) {
     const representativeFields = units[group.unitIndices[0]]?.fields || {};
     state.fields = { ...originalFields, ...representativeFields };
     try {
-      const text = buildExplanationFn();
+      const text = buildExplanationFn(false);
       if (!text) return;
       if (!byText.has(text)) {
-        byText.set(text, []);
+        byText.set(text, { blockLabels: [], unitIndices: [] });
         order.push(text);
       }
-      byText.get(text).push(blockLabel);
+      const entry = byText.get(text);
+      entry.blockLabels.push(blockLabel);
+      entry.unitIndices.push(...group.unitIndices);
     } finally {
       state.fields = originalFields;
     }
   });
+
+  // 2+ taşınmaz AYNI (singular baz alınarak karşılaştırılmış) metni
+  // paylaşıyorsa, o metnin İLK katılımcı taşınmazının alanlarıyla
+  // `isPlural=true` çağrılıp GERÇEK çoğul gramerli sürüm istenir.
+  function resolveFinalText(singularText, entry) {
+    if (entry.unitIndices.length < 2) return singularText;
+    const representativeFields = units[entry.unitIndices[0]]?.fields || {};
+    state.fields = { ...originalFields, ...representativeFields };
+    try {
+      return buildExplanationFn(true) || singularText;
+    } finally {
+      state.fields = originalFields;
+    }
+  }
+
   // TÜM bloklar (metin üreten bloklar) AYNI sonuca ulaştıysa (order.length
   // <= 1) atıf eklenmez — blok sayısı 1'den fazla olsa bile ortak/tek
   // cümle yeterlidir (kullanıcı: "hepsi aynıysa blok adı tekrar etmeden
   // tek genel cümle kurulmalı", buildProjectReviewConsolidatedSentences
   // ile AYNI ilke).
-  if (order.length <= 1) return order;
+  if (order.length <= 1) {
+    const only = order[0];
+    if (only === undefined) return [];
+    return [resolveFinalText(only, byText.get(only))];
+  }
   return order.map((text) => {
-    const attribution = formatDocumentBlockAttributionPhrase(byText.get(text));
-    return attribution ? normalizeReportDescriptionText(`${attribution}: ${text}`) : text;
+    const entry = byText.get(text);
+    const attribution = formatDocumentBlockAttributionPhrase(entry.blockLabels);
+    const finalText = resolveFinalText(text, entry);
+    return attribution ? normalizeReportDescriptionText(`${attribution}: ${finalText}`) : finalText;
   });
 }
 
@@ -32622,7 +32683,33 @@ const staticSuitabilityNotOkVariants = [
 registerVariantGroup("buildStaticSuitabilityExplanation:evet", "Statik Proje Uygunluğu — Uyumlu (İmar Durumu)", staticSuitabilityOkVariants.length);
 registerVariantGroup("buildStaticSuitabilityExplanation:hayir", "Statik Proje Uygunluğu — Uyumsuz (İmar Durumu)", staticSuitabilityNotOkVariants.length);
 
-function buildStaticSuitabilityExplanation() {
+// Kullanıcı bildirimi (2026-09-14): "ALTTA bazı cümleler hala tekil olarak
+// oluşuyor" — AYNI bloktaki 2+ taşınmaz statik uygunluk açıklamasını
+// PAYLAŞTIĞINDA (staticSuitability DOCUMENTS_BLOCK_SHARED_FIELD_KEYS'te)
+// buildDocumentsBlockAttributedExplanationParts() artık bu çoğul
+// varyantları `isPlural=true` ile talep ediyor. Her singular varyantla
+// AYNI INDEX'te (selectVariant() AYNI kayıt anahtarını kullanır, bkz.
+// aşağıdaki fonksiyon) — "Taşınmazın"→"Taşınmazların"/"Gayrimenkule ait"→
+// "Gayrimenkullere ait"/"Gayrimenkulün"→"Gayrimenkullerin" DIŞINDA metin
+// DEĞİŞMEDİ (statik proje TEK/ortak dosya olduğundan "proje(si)" tekil
+// kalır — 3. varyant zaten öznesiz olduğundan (yalnızca fileText ile
+// başlıyor) DEĞİŞMEDEN aynen kopyalandı).
+const staticSuitabilityOkPluralVariants = [
+  (fileText) => `Taşınmazların ${fileText} bulunan statik proje incelenmiştir. Statik proje, mimari proje ve mahal durum ile uyumludur.`,
+  (fileText) => `Gayrimenkullere ait ${fileText} bulunan statik proje incelenmiş olup, statik projenin mimari proje ve yerinde tespit edilen mahal durumu ile uyumlu olduğu görülmüştür.`,
+  (fileText) => `${fileText} yer alan statik proje incelenmiş, mimari proje ve mahal durumu ile uyumlu olduğu belirlenmiştir.`,
+  (fileText) => `Taşınmazların ${fileText} bulunan statik projesi incelenmiş olup, mimari proje ve yerinde tespit edilen mahal durumuyla uyumluluğu saptanmıştır.`,
+  (fileText) => `Gayrimenkullerin ${fileText} bulunan statik projesi değerlendirilmiş, mimari proje ve mahal durumuyla uyumlu olduğu görülmüştür.`,
+];
+const staticSuitabilityNotOkPluralVariants = [
+  (fileText) => `Taşınmazların ${fileText} bulunan statik proje incelenmiştir. Statik proje, mimari proje ve mahal durum ile uyumlu değildir.`,
+  (fileText) => `Gayrimenkullere ait ${fileText} bulunan statik proje incelenmiş olup, statik projenin mimari proje ve yerinde tespit edilen mahal durumu ile uyumlu olmadığı görülmüştür.`,
+  (fileText) => `${fileText} yer alan statik proje incelenmiş, mimari proje ve mahal durumu ile uyumsuz olduğu belirlenmiştir.`,
+  (fileText) => `Taşınmazların ${fileText} bulunan statik projesi incelenmiş olup, mimari proje ve yerinde tespit edilen mahal durumuyla uyumsuzluğu saptanmıştır.`,
+  (fileText) => `Gayrimenkullerin ${fileText} bulunan statik projesi değerlendirilmiş, mimari proje ve mahal durumuyla uyumsuz olduğu görülmüştür.`,
+];
+
+function buildStaticSuitabilityExplanation(isPlural = false) {
   const decision = normalizeYesNoChoice(state.fields.staticSuitability);
   if (!["Evet", "Hayır"].includes(decision)) return "";
   const institution = formatStaticSuitabilityInstitution(
@@ -32631,12 +32718,14 @@ function buildStaticSuitabilityExplanation() {
   const fileText = institution ? `${institution} dosyasında` : "ilgili kurum dosyasında";
   if (decision === "Evet") {
     const variantIndex = selectVariant("buildStaticSuitabilityExplanation:evet", staticSuitabilityOkVariants.length);
-    return normalizeReportDescriptionText(staticSuitabilityOkVariants[variantIndex](fileText));
+    const variants = isPlural ? staticSuitabilityOkPluralVariants : staticSuitabilityOkVariants;
+    return normalizeReportDescriptionText(variants[variantIndex](fileText));
   }
   const note = normalizeReportDescriptionText(state.fields.staticSuitabilityNote || "").trim();
   const variantIndex = selectVariant("buildStaticSuitabilityExplanation:hayir", staticSuitabilityNotOkVariants.length);
+  const variants = isPlural ? staticSuitabilityNotOkPluralVariants : staticSuitabilityNotOkVariants;
   return normalizeReportDescriptionText(
-    `${staticSuitabilityNotOkVariants[variantIndex](fileText)}${note ? ` ${note}` : ""}`
+    `${variants[variantIndex](fileText)}${note ? ` ${note}` : ""}`
   );
 }
 
@@ -32708,12 +32797,25 @@ const buildingInspectionLawExemptVariants = [
 ];
 registerVariantGroup("buildBuildingInspectionLawExemptionExplanation", "Yapı Denetim Kanunu Kapsamı Dışı (Ana Gayrimenkul)", buildingInspectionLawExemptVariants.length);
 
-function buildBuildingInspectionLawExemptionExplanation() {
+// Kullanıcı bildirimi (2026-09-14): "ALTTA bazı cümleler hala tekil olarak
+// oluşuyor" — AYNI Yapı Denetim ailesindeki (Statik Uygunluk ile aynı kök
+// neden) plural varyantlar. Yalnızca özne ("taşınmazın"/"söz konusu
+// taşınmazın"/"gayrimenkulün"/"mülkün") çoğullandı, ruhsat tarihi TEK
+// (ortak/paylaşımlı bilgi) olduğundan cümlenin geri kalanı DEĞİŞMEDİ.
+const buildingInspectionLawExemptPluralVariants = [
+  (permitDateText) => `Ekspertize konu taşınmazların yeni yapı ruhsat tarihi ${permitDateText} olup, 13.07.2001 tarih ve 4708 sayılı Yapı Denetimi Hakkında Kanun'un kapsamı dışında kalmaktadır.`,
+  (permitDateText) => `Söz konusu taşınmazların yeni yapı ruhsat tarihi ${permitDateText} olup, 13.07.2001 tarih ve 4708 sayılı Yapı Denetimi Hakkında Kanun kapsamına girmemektedir.`,
+  (permitDateText) => `Rapor konusu gayrimenkullerin yeni yapı ruhsatı ${permitDateText} tarihli olup, 4708 sayılı Yapı Denetimi Hakkında Kanun'un kapsamı dışında bulunmaktadır.`,
+  (permitDateText) => `Mülklerin yeni yapı ruhsat tarihi ${permitDateText} olup, 13.07.2001 tarih ve 4708 sayılı Kanun'un uygulama alanına girmemektedir.`,
+];
+
+function buildBuildingInspectionLawExemptionExplanation(isPlural = false) {
   if (!isBuildingInspectionLawExempt()) return "";
   const permitRow = getLatestBuildingPermitDocumentRow();
   const permitDateText = dateIsoToTr(parseReviewedDocumentDate(permitRow.c2));
   const variantIndex = selectVariant("buildBuildingInspectionLawExemptionExplanation", buildingInspectionLawExemptVariants.length);
-  return normalizeReportDescriptionText(buildingInspectionLawExemptVariants[variantIndex](permitDateText));
+  const variants = isPlural ? buildingInspectionLawExemptPluralVariants : buildingInspectionLawExemptVariants;
+  return normalizeReportDescriptionText(variants[variantIndex](permitDateText));
 }
 
 const buildingInspectionActiveVariants = [
@@ -32727,9 +32829,22 @@ const buildingInspectionTerminatedVariants = [
 registerVariantGroup("buildBuildingInspectionExplanation:active", "Yapı Denetim Sözleşmesi — Aktif (Ana Gayrimenkul)", buildingInspectionActiveVariants.length);
 registerVariantGroup("buildBuildingInspectionExplanation:terminated", "Yapı Denetim Sözleşmesi — Feshedilmiş (Ana Gayrimenkul)", buildingInspectionTerminatedVariants.length);
 
-function buildBuildingInspectionExplanation() {
+// Yukarıdaki iki varyant havuzunun plural sürümleri — YALNIZCA "taşınmazın"
+// (özne) "taşınmazların" oldu, "binanın" (yapı denetim sözleşmesi TEK/ortak
+// bina için) DEĞİŞMEDEN kaldı (aynı binadaki 2+ bağımsız bölüm İÇİN AYNI
+// binadan bahsedilir, bina çoğullanmaz).
+const buildingInspectionActivePluralVariants = [
+  (dateText, municipality, level) => `${dateText}${municipality} alınan sözlü bilgiye göre taşınmazların yer aldığı binanın yapı denetim sözleşmesinin aktif olduğu${level ? ` ve yapı denetim hakediş seviyesinin ${level} olduğu` : ""} bilgisine ulaşılmıştır.`,
+  (dateText, municipality, level) => `${dateText}${municipality} edinilen sözlü bilgiye göre, taşınmazların bulunduğu binanın yapı denetim sözleşmesinin aktif durumda olduğu${level ? ` ve yapı denetim hakediş seviyesinin ${level} olduğu` : ""} bilgisine erişilmiştir.`,
+];
+const buildingInspectionTerminatedPluralVariants = [
+  (dateText, municipality, terminationDate, level) => `${dateText}${municipality} alınan sözlü bilgiye göre taşınmazların yer aldığı binanın yapı denetim sözleşmesinin${terminationDate ? ` ${terminationDate} tarihinde` : ""} feshedildiği${level ? ` ve yapı denetim fesih seviyesinin ${level} olduğu` : ""} bilgisine ulaşılmıştır.`,
+  (dateText, municipality, terminationDate, level) => `${dateText}${municipality} edinilen sözlü bilgiye göre, taşınmazların bulunduğu binanın yapı denetim sözleşmesinin${terminationDate ? ` ${terminationDate} tarihinde` : ""} feshedildiği${level ? ` ve yapı denetim fesih seviyesinin ${level} olduğu` : ""} bilgisine erişilmiştir.`,
+];
+
+function buildBuildingInspectionExplanation(isPlural = false) {
   if (hasReviewedOccupancyPermitDocument()) return "";
-  const lawExemptionExplanation = buildBuildingInspectionLawExemptionExplanation();
+  const lawExemptionExplanation = buildBuildingInspectionLawExemptionExplanation(isPlural);
   if (lawExemptionExplanation) return lawExemptionExplanation;
   const status = String(state.fields.buildingInspectionContractActive || "").trim();
   if (!status) return "";
@@ -32740,13 +32855,15 @@ function buildBuildingInspectionExplanation() {
   if (status === "Evet") {
     const level = state.fields.buildingInspectionProgressLevel || "";
     const variantIndex = selectVariant("buildBuildingInspectionExplanation:active", buildingInspectionActiveVariants.length);
-    return normalizeReportDescriptionText(buildingInspectionActiveVariants[variantIndex](dateText, municipality, level));
+    const variants = isPlural ? buildingInspectionActivePluralVariants : buildingInspectionActiveVariants;
+    return normalizeReportDescriptionText(variants[variantIndex](dateText, municipality, level));
   }
   if (status === "Hayır (Fesihli)") {
     const terminationDate = dateIsoToTr(state.fields.buildingInspectionTerminationDate || "");
     const level = state.fields.buildingInspectionTerminationLevel || "";
     const variantIndex = selectVariant("buildBuildingInspectionExplanation:terminated", buildingInspectionTerminatedVariants.length);
-    return normalizeReportDescriptionText(buildingInspectionTerminatedVariants[variantIndex](dateText, municipality, terminationDate, level));
+    const variants = isPlural ? buildingInspectionTerminatedPluralVariants : buildingInspectionTerminatedVariants;
+    return normalizeReportDescriptionText(variants[variantIndex](dateText, municipality, terminationDate, level));
   }
   return "";
 }

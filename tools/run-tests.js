@@ -212,6 +212,7 @@ const TEST_FILES = [
   "test-gabim-tab-bar-gate.js",
   "test-valuation-export-multi-unit-wiring.js",
   "test-title-units-summary-common-fields-font-size.js",
+  "test-static-suitability-building-inspection-plural.js",
 ];
 
 let failed = null;
