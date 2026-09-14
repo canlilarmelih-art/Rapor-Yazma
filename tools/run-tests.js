@@ -216,6 +216,7 @@ const TEST_FILES = [
   "test-operational-api-mfa-policy-default.js",
   "test-multi-unit-decorative-order-and-capitalization.js",
   "test-expense-title-deed-count-auto-sync.js",
+  "test-expense-bulk-valuation-mode-auto-sync.js",
 ];
 
 let failed = null;

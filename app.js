@@ -739,19 +739,24 @@ const sections = [
       { key: "expenseAppraisalPropertyType", label: "Değerleme Ücreti Tarife Türü (En Büyük Alanlı Taşınmaz)", type: "select", options: ["", "Daire / Villa / Ofis", "Dükkan", "Depo", "Arsa / Tarım Alanı (İmarsız)", "Arsa (İmarlı)", "Akaryakıt İstasyonu"] },
 
       {
+        // Kullanıcı talebi (2026-09-14): artık taşınmaz sayısı + AYNI/FARKLI
+        // ada-parsel bilgisinden OTOMATIK belirlenir (bkz.
+        // syncExpenseBulkValuationModeFromUnits(), renderSection()). Elle
+        // seçim bir sonraki render'da zaten sessizce ezilirdi, bu yüzden
+        // artık readOnly:true.
         key: "expenseBulkValuationMode",
-        label: "Toplu Değerleme (6. Grup)",
+        label: "Toplu Değerleme (6. Grup, Taşınmaz Sayısından Otomatik)",
         type: "select",
-        defaultValue: "Yok",
+        readOnly: true,
         options: [
           "",
           "Yok",
           "1. Grup - Farklı Taşınmazlar (Aynı Mahalle/Köy)",
           "2. Grup - Aynı Parsel Birden Fazla Bağımsız Bölüm",
         ],
-        note: "Sistem şu an toplu değerlemeyi kapsamıyor, bu yüzden varsayılan \"Yok\"tur. Birden fazla taşınmaz tek raporda değerlendiriliyorsa seçin. En büyük alanlı taşınmaz yukarıdaki tarife türü/mevcut kullanım alanı ile tam ücret üzerinden hesaplanır; diğer taşınmazların KENDİ tarifelerindeki toplam ücretini aşağıya girin.",
+        note: "Tek taşınmazlı raporlarda \"Yok\", çoklu taşınmazlı raporlarda taşınmazların AYNI/FARKLI ada-parselde olmasına göre \"1. Grup\"/\"2. Grup\" otomatik seçilir. En büyük alanlı taşınmaz yukarıdaki tarife türü/mevcut kullanım alanı ile tam ücret üzerinden hesaplanır; diğer taşınmazların KENDİ tarifelerindeki toplam ücretini aşağıya girin.",
       },
-      { key: "expenseBulkPropertyCount", label: "Toplu Değerleme - Toplam Taşınmaz Adedi", type: "number" },
+      { key: "expenseBulkPropertyCount", label: "Toplu Değerleme - Toplam Taşınmaz Adedi (Otomatik)", type: "number", readOnly: true },
       { key: "expenseBulkOtherPropertiesFeeSum", label: "Toplu Değerleme - Diğer Taşınmazların Kendi Tarifelerindeki Toplam Ücreti (KDV Hariç)", type: "number" },
       { key: "expenseAppraisalBulkFlatFee201Plus", label: "Toplu Değerleme 2. Grup - 201 ve Üzeri Sabit Ücret (KDV Hariç)", type: "number", adminEditableOnly: true },
 
@@ -5792,6 +5797,7 @@ function renderNavState() {
 function renderSection() {
   syncMultiTitleUnitOwnershipType();
   syncExpenseTitleDeedCountFromUnits();
+  syncExpenseBulkValuationModeFromUnits();
   // Kullanıcı bildirimi (2026-08-22, "düzelmemiş halen boş geliyor"):
   // ownershipType'ın KENDİ "input"/"blur" olay dinleyicilerine eklenen
   // suggestLegalUsageNatureForAllTitleUnits() çağrısı, Mülkiyet değeri
@@ -6420,7 +6426,14 @@ function createForm(section) {
       }
     }
     if (isFieldReadOnly(field)) {
-      control.readOnly = true;
+      // Kullanıcı talebi (2026-09-14, "Toplu Değerleme" dropdown'u):
+      // native <select> elemanları `readOnly` özelliğini TANIMAZ (yalnızca
+      // <input>/<textarea> için geçerlidir) — bir "select" alanı
+      // `readOnly: true` işaretlense bile kullanıcı dropdown'u AÇIP
+      // FARKLI bir seçenek seçebiliyordu (sessizce işe yaramayan bir
+      // kilit). `disabled` ise select'i GERÇEKTEN etkileşimsiz yapar.
+      if (field.type === "select") control.disabled = true;
+      else control.readOnly = true;
       control.classList.add("is-readonly");
     }
 
@@ -34434,6 +34447,52 @@ function syncExpenseTitleDeedCountFromUnits() {
   if (state.fields.expenseTitleDeedCount === computed) return;
   state.fields.expenseTitleDeedCount = computed;
   recalculateExpenseFees();
+}
+
+// Kullanıcı talebi (2026-09-14, ikinci ekran görüntüsü — "Deneme Çoklu"
+// raporunda "Toplu Değerleme (6. Grup)" hâlâ "Yok" + "Toplam Taşınmaz
+// Adedi" boş kalmıştı): "bu satırlar otomatik gelmeli." Bu iki alan da
+// zaten bilinen veriden (taşınmaz sayısı + AYNI/FARKLI ada-parsel) türer
+// — dropdown'un KENDİ seçenek metinleri kriteri açıkça veriyor: "2. Grup
+// - Aynı Parsel Birden Fazla Bağımsız Bölüm" (TÜM taşınmazlar AYNI ada/
+// parselde) vs "1. Grup - Farklı Taşınmazlar (Aynı Mahalle/Köy)" (taşınmazlar
+// FARKLI ada/parselde) — bu yüzden (Tapu Adedi'nin aksine) burada AYRICA
+// bir AskUserQuestion'a gerek görülmedi. Aynı/farklı parsel karşılaştırması
+// getSharedNarrativeParcelPhrase()'in ZATEN kullandığı AYNI teknikle
+// (getNarrativeTitleUnitFields() + blockNo/titleBlockNo, parcelNo/
+// titleParcelNo ikili karşılaştırması) yapılır — yeni bir karşılaştırma
+// yöntemi İCAT EDİLMEDİ. syncExpenseTitleDeedCountFromUnits() İLE AYNI
+// desen: renderSection() başında KOŞULSUZ, değer değiştiyse recalculateExpenseFees()
+// tetiklenir; her iki alan da artık `readOnly: true`.
+function syncExpenseBulkValuationModeFromUnits() {
+  const count = getTitleUnitCount();
+  let mode;
+  let countValue;
+  if (count < 2) {
+    mode = "Yok";
+    countValue = "";
+  } else {
+    const units = getNarrativeTitleUnitFields();
+    const first = units[0] || {};
+    const firstBlock = String(first.blockNo || first.titleBlockNo || "").trim();
+    const firstParcel = String(first.parcelNo || first.titleParcelNo || "").trim();
+    const sameParcel = Boolean(firstBlock) && Boolean(firstParcel) && units.every((unit) =>
+      String(unit.blockNo || unit.titleBlockNo || "").trim() === firstBlock
+      && String(unit.parcelNo || unit.titleParcelNo || "").trim() === firstParcel
+    );
+    mode = sameParcel ? EXPENSE_BULK_MODE_2 : EXPENSE_BULK_MODE_1;
+    countValue = String(count);
+  }
+  let changed = false;
+  if (state.fields.expenseBulkValuationMode !== mode) {
+    state.fields.expenseBulkValuationMode = mode;
+    changed = true;
+  }
+  if (state.fields.expenseBulkPropertyCount !== countValue) {
+    state.fields.expenseBulkPropertyCount = countValue;
+    changed = true;
+  }
+  if (changed) recalculateExpenseFees();
 }
 
 function recalculateExpenseFees() {

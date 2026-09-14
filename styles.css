@@ -3280,9 +3280,12 @@ td .free-lookup input {
 
 .valuation-input input.is-readonly,
 .field input.is-readonly,
-.field textarea.is-readonly {
+.field textarea.is-readonly,
+.field select.is-readonly,
+.field select.is-readonly:disabled {
   background: #eef7ff;
   color: #1c4257;
+  opacity: 1;
 }
 
 .valuation-input input.valuation-input-negative {
