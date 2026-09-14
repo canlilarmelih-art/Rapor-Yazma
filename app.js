@@ -6115,6 +6115,17 @@ function renderSection() {
     body.append(createOutputExportPanel());
   }
 
+  // Kullanıcı talebi (2026-09-14): "toplam eklenen tüm taşınmazların tek
+  // rapor olsaydı ücret tarifesini listeleyebilir miyiz tablo halinde" —
+  // "Masraf Bilgileri" (expenseFees) bölümü zaten sensitiveOnly:true
+  // olduğundan (canViewSensitiveContent() bölüm GÖRÜNÜRLÜĞÜNÜ ZATEN
+  // kapıladığından) burada AYRICA bir yetki kontrolü GEREKMİYOR — yalnızca
+  // gerçekten çoklu taşınmazlı bir rapor olup olmadığına bakılır.
+  if (section.id === "expenseFees") {
+    const bulkFeeBreakdownPanel = createExpenseBulkPerUnitFeeBreakdownPanel();
+    if (bulkFeeBreakdownPanel) body.append(bulkFeeBreakdownPanel);
+  }
+
   if (section.uploads && section.id === "case") {
     body.append(createUploadGrid(section.uploads));
   }
@@ -34589,6 +34600,139 @@ function recalculateExpenseFees() {
   });
   state.fields.expenseTotalFeeIncVat = total > 0 ? formatValuationMoney(total, { decimals: 2 }) : "";
   state.fields.expenseTotalFeeExVat = totalExVat > 0 ? formatValuationMoney(totalExVat, { decimals: 2 }) : "";
+}
+
+// Kullanıcı talebi (2026-09-14): "toplam eklenen tüm taşınmazların tek
+// rapor olsaydı ücret tarifesini listeleyebilir miyiz tablo halinde" —
+// her taşınmaz kendi (currentUsageNature/ownershipType'a göre önerilen)
+// tarife türü + KENDİ alanıyla, TEK BAŞINA bir rapor olsaydı ne ücret
+// alacağını gösterir. state.fields/state.tables her taşınmaz için GEÇİCİ
+// değiştirilir (buildMultiUnitInteriorDescriptionText vb. ile AYNI
+// try/finally teknik) — `{...originalFields, ...unit.fields}` sırası
+// ÖNEMLİ: unit.fields yalnızca o taşınmazın KENDİ scoped alanlarını
+// (currentUsageNature/currentArea/landArea/ownershipType) taşır, admin
+// tarafından yönetilen PAYLAŞIMLI tarife tutarları (expenseAppraisalTierDukkan1
+// vb.) unit.fields'te YOKTUR — bu yüzden originalFields ALTTA spread
+// edilerek korunur, lookupExpenseAppraisalFeeExVat() doğru tutarları okur.
+// Çok katlı bağımsız bölümlerde currentArea yalnızca ilk katı taşıdığından
+// (bkz. recalculateExpenseFees'teki AYNI uyarı) getUnitFloorRows() +
+// calculateReducedUnitFloorTotal() ile o taşınmazın TOPLAM mevcut alanı
+// hesaplanır, yoksa currentArea'ya geri düşülür.
+function buildExpenseBulkPerUnitFeeBreakdown() {
+  const units = buildAllTitleUnitsForSummaryTable();
+  const originalFields = state.fields;
+  const originalTables = state.tables;
+  try {
+    return units.map((unit, index) => {
+      state.fields = { ...originalFields, ...(unit.fields || {}) };
+      state.tables = { ...originalTables, ...(unit.tables || {}) };
+      const propertyType = suggestExpenseAppraisalPropertyType();
+      const areaField = getExpenseAppraisalAreaField(propertyType);
+      let area;
+      if (areaField === "currentArea") {
+        const totalCurrent = calculateReducedUnitFloorTotal(getUnitFloorRows(), "current");
+        area = totalCurrent > 0 ? totalCurrent : parseValuationNumber(state.fields.currentArea);
+      } else {
+        area = parseValuationNumber(state.fields.landArea);
+      }
+      const feeExVat = propertyType ? lookupExpenseAppraisalFeeExVat(propertyType, area) : Number.NaN;
+      return {
+        label: formatTitleUnitSuitabilityShortLabel(state.fields, index),
+        propertyType,
+        area: Number.isFinite(area) && area > 0 ? area : Number.NaN,
+        feeExVat,
+      };
+    });
+  } finally {
+    state.fields = originalFields;
+    state.tables = originalTables;
+  }
+}
+
+function createExpenseBulkPerUnitFeeBreakdownPanel() {
+  if (getTitleUnitCount() < 2) return null;
+  const rows = buildExpenseBulkPerUnitFeeBreakdown();
+  const panel = document.createElement("div");
+  panel.className = "subsection expense-bulk-breakdown-panel";
+
+  const head = document.createElement("div");
+  head.className = "subsection-title-row";
+  const title = document.createElement("h4");
+  title.textContent = "Toplu Değerleme — Taşınmaz Bazında Tarife Ücreti (Tek Rapor Olsaydı)";
+  head.append(title);
+  panel.append(head);
+
+  const hint = document.createElement("p");
+  hint.className = "subtle-text";
+  hint.textContent = "Her taşınmazın KENDİ mevcut kullanım niteliği/mülkiyeti ve alanına göre, o taşınmaz TEK BAŞINA bir rapora konu olsaydı hangi tarife ücretini alacağı gösterilir. \"En Büyük Alanlı\" satırı yukarıdaki \"Değerleme Ücreti Tarife Türü\" alanınca zaten hesaplanır; \"Diğer Taşınmazlar Toplamı\" satırındaki tutarı \"Toplu Değerleme - Diğer Taşınmazların Kendi Tarifelerindeki Toplam Ücreti\" alanına girebilirsiniz.";
+  panel.append(hint);
+
+  const validRows = rows.filter((row) => row.propertyType && Number.isFinite(row.feeExVat));
+  if (!validRows.length) {
+    const note = document.createElement("p");
+    note.className = "subtle-text valuation-summary-empty-note";
+    note.textContent = "Taşınmazların Mevcut Kullanım Niteliği/Mülkiyeti ve alanı doldurulduğunda tarife ücretleri burada otomatik listelenecektir.";
+    panel.append(note);
+    return panel;
+  }
+
+  let largestIndex = -1;
+  let largestArea = -Infinity;
+  rows.forEach((row, index) => {
+    if (Number.isFinite(row.area) && row.area > largestArea) {
+      largestArea = row.area;
+      largestIndex = index;
+    }
+  });
+
+  const shell = document.createElement("div");
+  shell.className = "table-shell expense-bulk-breakdown-shell";
+  const table = document.createElement("table");
+  table.className = "valuation-summary-table expense-bulk-breakdown-table";
+  table.innerHTML = `
+    <thead>
+      <tr>
+        <th>Taşınmaz</th>
+        <th>Tarife Türü</th>
+        <th>Alan (m²)</th>
+        <th>Tarife Ücreti (KDV Hariç)</th>
+      </tr>
+    </thead>
+  `;
+  const tbody = document.createElement("tbody");
+  let total = 0;
+  let otherTotal = 0;
+  rows.forEach((row, index) => {
+    const tr = document.createElement("tr");
+    if (index === largestIndex) tr.className = "expense-bulk-breakdown-largest-row";
+    const labelCell = document.createElement("td");
+    labelCell.textContent = index === largestIndex ? `${row.label} (En Büyük Alanlı)` : row.label;
+    const typeCell = document.createElement("td");
+    typeCell.textContent = row.propertyType || "—";
+    const areaCell = document.createElement("td");
+    areaCell.textContent = Number.isFinite(row.area) ? row.area.toLocaleString("tr-TR") : "—";
+    const feeCell = document.createElement("td");
+    feeCell.textContent = Number.isFinite(row.feeExVat) ? formatValuationMoney(row.feeExVat, { decimals: 2 }) : "—";
+    tr.append(labelCell, typeCell, areaCell, feeCell);
+    tbody.append(tr);
+    if (Number.isFinite(row.feeExVat)) {
+      total += row.feeExVat;
+      if (index !== largestIndex) otherTotal += row.feeExVat;
+    }
+  });
+  table.append(tbody);
+
+  const tfoot = document.createElement("tfoot");
+  const totalRow = document.createElement("tr");
+  totalRow.innerHTML = `<td colspan="3"><strong>Toplam (${rows.length} taşınmaz)</strong></td><td><strong>${escapeHtml(formatValuationMoney(total, { decimals: 2 }))}</strong></td>`;
+  const otherTotalRow = document.createElement("tr");
+  otherTotalRow.innerHTML = `<td colspan="3">Diğer Taşınmazlar Toplamı (En Büyük Alanlı Hariç)</td><td>${escapeHtml(formatValuationMoney(otherTotal, { decimals: 2 }))}</td>`;
+  tfoot.append(totalRow, otherTotalRow);
+  table.append(tfoot);
+
+  shell.append(table);
+  panel.append(shell);
+  return panel;
 }
 
 function refreshExpenseFeesFromCurrentFields(changedKey) {

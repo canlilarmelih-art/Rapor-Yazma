@@ -2642,6 +2642,27 @@ td .free-lookup input {
   margin-top: 18px;
 }
 
+/* Kullanıcı talebi (2026-09-14): "toplam eklenen tüm taşınmazların tek
+   rapor olsaydı ücret tarifesini listeleyebilir miyiz tablo halinde" —
+   .valuation-summary-table temel stilini paylaşır, yalnızca "en büyük
+   alanlı" satır vurgusu ve toplam/diğer-toplam alt satırları içindir. */
+.expense-bulk-breakdown-table .expense-bulk-breakdown-largest-row td {
+  background: var(--blue-soft);
+  font-weight: 700;
+}
+
+.expense-bulk-breakdown-table tfoot td {
+  border-top: 2px solid var(--line);
+  border-bottom: none;
+  padding: 7px 12px;
+  background: var(--surface-muted);
+}
+
+.expense-bulk-breakdown-table tfoot tr:last-child td {
+  color: var(--muted);
+  font-size: 11.5px;
+}
+
 .single-structure-cost-method-section + .single-structure-cost-method-section {
   margin-top: 18px;
 }

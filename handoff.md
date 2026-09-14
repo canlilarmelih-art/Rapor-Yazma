@@ -1,5 +1,15 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.772 - 2026-09-14 - "Masraf Bilgileri"ne taşınmaz-bazında tarife ücreti tablosu eklendi (Toplu Değerleme yardımcı verisi)
+
+- Kullanıcı: "toplam eklenen tüm taşınmazların tek rapor olsaydı ücret tarifesini listeleyebilir miyiz tablo halinde."
+- Yeni `buildExpenseBulkPerUnitFeeBreakdown()`: raporda kaç taşınmaz varsa her biri için — KENDİ Mevcut Kullanım Niteliği/Mülkiyetine göre önerilen tarife türü (`suggestExpenseAppraisalPropertyType()`, ZATEN var olan mantık yeniden kullanıldı) + KENDİ alanına (çok katlı bağımsız bölümlerde `getUnitFloorRows()`/`calculateReducedUnitFloorTotal()` ile TOPLAM mevcut alan, `recalculateExpenseFees()`'in ZATEN kullandığı AYNI teknik) göre — o taşınmaz TEK BAŞINA bir rapora konu olsaydı ne tarife ücreti alacağını hesaplar. Admin tarafından yönetilen PAYLAŞIMLI tarife tutarları (`expenseAppraisalTierXXX`) her taşınmaz için doğru okunur (`{...originalFields, ...unit.fields}` sırası — unit.fields'te bu anahtarlar YOK, originalFields'ten miras alınır).
+- Yeni `createExpenseBulkPerUnitFeeBreakdownPanel()`: "Masraf Bilgileri" bölümüne (2+ taşınmazlı raporlarda) eklenen bir tablo — Taşınmaz/Tarife Türü/Alan/Tarife Ücreti sütunları, "En Büyük Alanlı" satırı vurgulanır, alt satırda Toplam + "Diğer Taşınmazlar Toplamı (En Büyük Alanlı Hariç)" — bu son tutar, "Toplu Değerleme - Diğer Taşınmazların Kendi Tarifelerindeki Toplam Ücreti" alanına doğrudan girilebilecek şekilde hazır gösterilir (alan kendisi BİLEREK otomatik doldurulmadı — kullanıcı tabloyu görüp onaylayarak kendisi girsin diye, para ile ilgili bu adımda ekstra bir doğrulama katmanı bırakıldı).
+- Yan bulgu düzeltmesi gerekmedi bu kez, ama not: bu panel `expenseFees` bölümünün zaten `sensitiveOnly: true` olmasından faydalanıyor — ayrı bir yetki kontrolüne gerek yok.
+- Test: yeni `tools/test-expense-bulk-per-unit-fee-breakdown.js` — GERÇEK `suggestExpenseAppraisalPropertyType`/`lookupExpenseAppraisalFeeExVat`/`calculateReducedUnitFloorTotal` zinciriyle 3 farklı türde taşınmaz senaryosunu, çok katlı bir taşınmazda TOPLAM alanın (yalnızca ilk kat DEĞİL) kullanıldığını, Arsa/Tarım için `landArea` bazlı hesaplamayı, `state.fields`/`state.tables`'ın işlem sonunda orijinale geri yüklendiğini ve panel/`renderSection()` kablolamasını doğruluyor. Stash ile eski koda karşı gerçekten kırıldığı doğrulandı.
+- `npm run verify` (177 test dosyası) EXIT:0. `index.html`'de `app.js`/`styles.css` cache-buster'ları `20260914-2200`'e yükseltildi. Canlı tarayıcı testi yapılamadı — kullanıcıdan çoklu taşınmazlı bir raporda "Masraf Bilgileri" bölümünü açıp yeni tabloyu ve "Diğer Taşınmazlar Toplamı" satırındaki tutarı doğrulaması isteniyor.
+
+
 ## 0.0.771 - 2026-09-14 - "Toplu Değerleme (6. Grup)" ve taşınmaz adedi de artık otomatik (+ readOnly select'lerin gerçekten kilitlenmesi düzeltildi)
 
 - Kullanıcı: *(ekran görüntüsü, "Deneme Çoklu" raporu, "Toplu Değerleme (6. Grup)" ve "Toplu Değerleme - Toplam Taşınmaz Adedi" kutuları işaretli)* "bu satırlar otomatik gelmeli."

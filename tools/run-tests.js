@@ -217,6 +217,7 @@ const TEST_FILES = [
   "test-multi-unit-decorative-order-and-capitalization.js",
   "test-expense-title-deed-count-auto-sync.js",
   "test-expense-bulk-valuation-mode-auto-sync.js",
+  "test-expense-bulk-per-unit-fee-breakdown.js",
 ];
 
 let failed = null;
