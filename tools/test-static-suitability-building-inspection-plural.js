@@ -149,7 +149,7 @@ function sourceBetween(startMarker, endMarker, label) {
 {
   const source = sourceBetween(
     "const BUILDING_INSPECTION_LAW_EFFECTIVE_ISO_DATE",
-    "function buildBuildingInspectionTerminationExplanation() {",
+    "function buildBuildingInspectionTerminationExplanationParts() {",
     "buildBuildingInspectionExplanation ailesi"
   );
   function makeContext(overrides = {}) {
@@ -211,6 +211,34 @@ function sourceBetween(startMarker, endMarker, label) {
       "Kanun kapsami disi + isPlural=true -> isPlural, buildBuildingInspectionLawExemptionExplanation'a DOGRU sekilde ILETILMELI (kullanicinin bildirdigi ikinci fonksiyon zinciri kirigi)."
     );
     console.log("buildBuildingInspectionExplanation(isPlural) -> buildBuildingInspectionLawExemptionExplanation(isPlural) zincirleme aktarim testi tamam.");
+  }
+
+  // 4d) YENİ (2026-09-14, takip görevi): buildBuildingInspectionTerminationExplanation(isPlural)
+  // — {{BUILDING_INSPECTION_TERMINATION_EXPLANATION_TEXT}} için AYRI üretilen
+  // (buildBuildingInspectionExplanation'dan TAMAMEN BAĞIMSIZ çağrılan) fonksiyon
+  // — AYNI "feshedilmiş" plural varyant havuzunu (buildingInspectionTerminatedPluralVariants)
+  // isPlural ile paylaştığını doğrular. Sözleşme "Hayır (Fesihli)" DIŞINDaki
+  // durumlarda hâlâ "" dönmeli (regresyon).
+  {
+    const context = makeContext({ buildingInspectionContractActive: "Hayır (Fesihli)", buildingInspectionTerminationLevel: "" });
+    assert.equal(
+      context.buildBuildingInspectionTerminationExplanation(false),
+      "Osmangazi Belediyesinden alınan sözlü bilgiye göre taşınmazın yer aldığı binanın yapı denetim sözleşmesinin feshedildiği bilgisine ulaşılmıştır.",
+      "isPlural=false -> tekil 'taşınmazın' beklenir."
+    );
+    assert.equal(
+      context.buildBuildingInspectionTerminationExplanation(true),
+      "Osmangazi Belediyesinden alınan sözlü bilgiye göre taşınmazların yer aldığı binanın yapı denetim sözleşmesinin feshedildiği bilgisine ulaşılmıştır.",
+      "isPlural=true -> 'taşınmazın'->'taşınmazların' DIŞINDA metin AYNI ('binanın' TEKİL kalmalı — aynı bina) — AYNI plural havuzu buildBuildingInspectionExplanation ile PAYLAŞILMALI."
+    );
+    console.log("buildBuildingInspectionTerminationExplanation(isPlural): feshedilmis sozlesme cogul testi tamam.");
+
+    const activeContext = makeContext({ buildingInspectionContractActive: "Evet" });
+    assert.equal(
+      activeContext.buildBuildingInspectionTerminationExplanation(true),
+      "",
+      "Sözleşme 'Evet' (fesihli DEĞİL) iken isPlural=true olsa bile boş metin dönmeli (regresyon)."
+    );
   }
 }
 

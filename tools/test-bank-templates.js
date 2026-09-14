@@ -1038,7 +1038,7 @@ assert(
 assert(
   engineSource.includes("BUILDINGINSPECTIONEXPLANATIONTEXT") &&
     engineSource.includes("BUILDINGINSPECTIONTERMINATIONEXPLANATIONTEXT") &&
-    appSource.includes("function buildBuildingInspectionTerminationExplanation()") &&
+    appSource.includes("function buildBuildingInspectionTerminationExplanation(isPlural = false)") &&
     engineSource.includes("PENALTYDECISIONEXPLANATION") &&
     engineSource.includes("OCCUPANCYPERMITDATE") &&
     engineSource.includes("MUNICIPALITYBOUNDARYSTATUS") &&

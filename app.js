@@ -32868,7 +32868,16 @@ function buildBuildingInspectionExplanation(isPlural = false) {
   return "";
 }
 
-function buildBuildingInspectionTerminationExplanation() {
+// Kullanıcı bildirimi (2026-09-14): AYNI bug class'ının bir örneği daha —
+// buildBuildingInspectionExplanation() (yukarıda) 0.0.766'da isPlural aldı,
+// ama bu fonksiyon (YALNIZCA {{BUILDING_INSPECTION_TERMINATION_EXPLANATION_TEXT}}
+// için, template-engine.js) buildDocumentsBlockAttributedExplanationParts
+// ailesinden TAMAMEN AYRI kalmıştı — hiçbir çoklu-taşınmaz/çoğullama
+// farkındalığı yoktu. Artık AYNI "feshedilmiş" plural varyant havuzunu
+// (buildingInspectionTerminatedPluralVariants) isPlural ile paylaşır —
+// buildBuildingInspectionExplanation'ın terminated dalıyla BİREBİR AYNI
+// desen.
+function buildBuildingInspectionTerminationExplanation(isPlural = false) {
   if (String(state.fields.buildingInspectionContractActive || "").trim() !== "Hayır (Fesihli)") return "";
   const date = dateIsoToTr(state.fields.municipalityInspectionDate || state.fields.appointmentDate || "");
   const district = getProjectReviewDistrictText();
@@ -32876,11 +32885,28 @@ function buildBuildingInspectionTerminationExplanation() {
   const terminationDate = dateIsoToTr(state.fields.buildingInspectionTerminationDate || "");
   const level = state.fields.buildingInspectionTerminationLevel || "";
   const dateText = date ? `${date} tarihinde ` : "";
-  // Ayni "feshedilmis" varyant havuzunu buildBuildingInspectionExplanation
-  // ile PAYLAŞIR (ayni anahtar) — bu iki fonksiyon ayni bilgiyi farkli
-  // placeholder'lar icin uretir, tutarli olmasi icin ayni secim kullanilir.
+  // Ayni "feshedilmis" varyant havuzunu (VE ayni secim anahtarini) VE artik
+  // ayni isPlural parametresini buildBuildingInspectionExplanation ile
+  // PAYLAŞIR — bu iki fonksiyon ayni bilgiyi farkli placeholder'lar icin
+  // uretir, tutarli olmasi icin ayni secim kullanilir.
   const variantIndex = selectVariant("buildBuildingInspectionExplanation:terminated", buildingInspectionTerminatedVariants.length);
-  return normalizeReportDescriptionText(buildingInspectionTerminatedVariants[variantIndex](dateText, municipality, terminationDate, level));
+  const variants = isPlural ? buildingInspectionTerminatedPluralVariants : buildingInspectionTerminatedVariants;
+  return normalizeReportDescriptionText(variants[variantIndex](dateText, municipality, terminationDate, level));
+}
+
+// buildStaticSuitabilityExplanationParts()/buildBuildingInspectionExplanationParts()
+// ile AYNI desen (bkz. buildDocumentsBlockAttributedExplanationParts yorumu).
+function buildBuildingInspectionTerminationExplanationParts() {
+  return buildDocumentsBlockAttributedExplanationParts(buildBuildingInspectionTerminationExplanation);
+}
+
+// {{BUILDING_INSPECTION_TERMINATION_EXPLANATION_TEXT}} (template-engine.js)
+// ve collectGeneratedTextPlaceholders() bu birleştirilmiş metni kullanır —
+// bu alan için düzenlenebilir bir textarea/state.fields önbelleği YOK (diğer
+// üç kardeşinden farklı), bu yüzden buildProjectReviewExplanation() ile AYNI
+// "Parts dizisini \n\n ile birleştir" deseni izlenir.
+function buildBuildingInspectionTerminationExplanationText() {
+  return normalizeReportDescriptionText(buildBuildingInspectionTerminationExplanationParts().join("\n\n"));
 }
 
 // buildPenaltyDecisionExplanationParts() ile AYNI desen.
@@ -44897,7 +44923,7 @@ function collectGeneratedTextPlaceholders() {
       category: "Değerleme",
       key: "building_inspection_termination_explanation_text",
       title: "Yapı Denetim Fesih Açıklaması",
-      value: buildBuildingInspectionTerminationExplanation(),
+      value: buildBuildingInspectionTerminationExplanationText(),
     },
     {
       category: "Ana Gayrimenkul Özellikleri",

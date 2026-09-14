@@ -836,7 +836,7 @@
     PROJECTREVIEWDESCRIPTION: { t: () => field("projectReviewDescription") || safeCall("buildProjectReviewDescription") || field("projectConformity") },
     REVIEWEDDOCUMENTSDESCRIPTION: { t: () => field("reviewedDocumentsDescription") || safeCall("buildReviewedDocumentsDescription") },
     BUILDINGINSPECTIONEXPLANATIONTEXT: { t: () => field("buildingInspectionExplanation") || safeCall("buildBuildingInspectionExplanation") },
-    BUILDINGINSPECTIONTERMINATIONEXPLANATIONTEXT: { t: () => safeCall("buildBuildingInspectionTerminationExplanation") },
+    BUILDINGINSPECTIONTERMINATIONEXPLANATIONTEXT: { t: () => safeCall("buildBuildingInspectionTerminationExplanationText") },
     PENALTYDECISIONEXPLANATION: { t: () => field("penaltyDecisionExplanation") || safeCall("buildPenaltyDecisionExplanation") },
     PROJEYEUYGUNMU2025: { f: ["projectDifference", "mainRealEstateProjectSuitable"] },
     MIMARIUYGUNLUK: { f: ["mainRealEstateProjectSuitable", "projectDifference"] },

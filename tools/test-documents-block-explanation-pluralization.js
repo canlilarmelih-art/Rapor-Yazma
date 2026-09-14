@@ -40,6 +40,10 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const appSource = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
+const templateEngineSource = fs.readFileSync(
+  path.join(__dirname, "..", "src", "templates", "template-engine.js"),
+  "utf8"
+);
 
 function extractFunction(name) {
   const marker = `function ${name}(`;
@@ -281,6 +285,10 @@ function makeMarkerExplanationFn(markerToText, markerToPluralText = null) {
     ["buildPenaltyDecisionExplanationParts", "buildPenaltyDecisionExplanation"],
     ["buildStaticSuitabilityExplanationParts", "buildStaticSuitabilityExplanation"],
     ["buildBuildingInspectionExplanationParts", "buildBuildingInspectionExplanation"],
+    // Takip görevi (2026-09-14): {{BUILDING_INSPECTION_TERMINATION_EXPLANATION_TEXT}}
+    // artık AYNI çekirdeğe delege ediyor — buildBuildingInspectionExplanation'ın
+    // (2026-08-26'da düzeltilen) üç kardeşinden AYRI kalmış son örnekti.
+    ["buildBuildingInspectionTerminationExplanationParts", "buildBuildingInspectionTerminationExplanation"],
   ].forEach(([partsFnName, singleFnName]) => {
     const body = extractFunction(partsFnName);
     assert.ok(
@@ -306,6 +314,38 @@ function makeMarkerExplanationFn(markerToText, markerToPluralText = null) {
   });
 
   console.log("Uc gercek wrapper + refresh fonksiyonunun kaynak-duzeyi kablolamasi testi tamam.");
+}
+
+// --- 6) Yapı Denetim Fesih Açıklaması (buildingInspectionExplanation'ın ----
+// düzenlenebilir bir textarea/state.fields önbelleği OLMAYAN kardeşi):
+// buildBuildingInspectionTerminationExplanationText() Parts çıktısını \n\n
+// ile birleştirmeli VE template-engine.js'teki {{BUILDING_INSPECTION_TERMINATION_EXPLANATION_TEXT}}
+// token'ı artık eski tekil safeCall("buildBuildingInspectionTerminationExplanation")
+// DEĞİL, bu birleştirilmiş metin fonksiyonuna sarılı olmalı.
+{
+  const textFnBody = extractFunction("buildBuildingInspectionTerminationExplanationText");
+  assert.ok(
+    textFnBody.includes('buildBuildingInspectionTerminationExplanationParts().join("\\n\\n")'),
+    "buildBuildingInspectionTerminationExplanationText() Parts cikisini \\n\\n ile birlestirmeli."
+  );
+
+  assert.ok(
+    templateEngineSource.includes(
+      'BUILDINGINSPECTIONTERMINATIONEXPLANATIONTEXT: { t: () => safeCall("buildBuildingInspectionTerminationExplanationText") }'
+    ),
+    "{{BUILDING_INSPECTION_TERMINATION_EXPLANATION_TEXT}} token'i artik cogullama-farkinda buildBuildingInspectionTerminationExplanationText'e sarili olmali (eski tekil buildBuildingInspectionTerminationExplanation DEGIL)."
+  );
+  assert.ok(
+    !templateEngineSource.includes('safeCall("buildBuildingInspectionTerminationExplanation")'),
+    "Eski tekil (cogullama-farkinda OLMAYAN) safeCall(\"buildBuildingInspectionTerminationExplanation\") cagrisi template-engine.js'te KALMAMALI."
+  );
+
+  assert.ok(
+    appSource.includes("value: buildBuildingInspectionTerminationExplanationText(),"),
+    "collectGeneratedTextPlaceholders() 'building_inspection_termination_explanation_text' girdisi de ayni cogullama-farkinda fonksiyonu kullanmali."
+  );
+
+  console.log("Yapi Denetim Fesih Aciklamasi (Parts + template-engine kablolamasi) testi tamam.");
 }
 
 console.log("Belgeler ve Proje aciklamalari (Cezai Karar/Statik Uygunluk/Yapi Denetim) blok-atifli cogullama testleri basarili.");
