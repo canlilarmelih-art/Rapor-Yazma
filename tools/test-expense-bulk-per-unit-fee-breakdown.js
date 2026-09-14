@@ -54,9 +54,11 @@ function extractFunction(name) {
   throw new Error(`Fonksiyon gövdesi kapanmadı: ${name}`);
 }
 
-// `const NAME = ...;` — sağ taraf `{...}`, `[...]` veya `new Set([...])`
-// olabilir; ilk açılan parantez/köşeli-ayraç/süslü-ayraçtan başlayıp
-// derinlik 0'a dönene kadar (kapanan `;` dahil) alır.
+// `const NAME = ...;` — sağ taraf `{...}`, `[...]`, `new Set([...])` VEYA
+// düz bir string/sayı literali olabilir (ör. EXPENSE_BULK_MODE_2_FLAT_THRESHOLD
+// = 201). Tırnak içindeki `(`/`)`/`;` karakterlerini (Türkçe metinlerde sık
+// geçiyor, ör. "(Aynı Mahalle/Köy)") derinlik/sonlandırma SAYMAZ — string
+// literalleri ATOMİK atlanır; kapanışı derinlik 0'da bulunan İLK `;`.
 function extractConstArray(name) {
   const marker = `const ${name} = `;
   const start = appSource.indexOf(`\n${marker}`);
@@ -64,20 +66,20 @@ function extractConstArray(name) {
   const valueStart = start + 1 + marker.length;
   let depth = 0;
   let index = valueStart;
-  let opened = false;
   for (; index < appSource.length; index += 1) {
     const char = appSource[index];
-    if (char === "{" || char === "[" || char === "(") {
-      depth += 1;
-      opened = true;
-    }
-    if (char === "}" || char === "]" || char === ")") {
-      depth -= 1;
-    }
-    if (opened && depth === 0 && appSource[index + 1] === ";") {
+    if (char === '"' || char === "'" || char === "`") {
+      const quote = char;
       index += 1;
-      break;
+      while (index < appSource.length && appSource[index] !== quote) {
+        if (appSource[index] === "\\") index += 1;
+        index += 1;
+      }
+      continue;
     }
+    if (char === "{" || char === "[" || char === "(") depth += 1;
+    if (char === "}" || char === "]" || char === ")") depth -= 1;
+    if (depth === 0 && char === ";") break;
   }
   return appSource.slice(start + 1, index + 1);
 }
@@ -211,6 +213,53 @@ const unit = (fields, tables) => ({ fields, tables: tables || {} });
   const largestIndex = vm.runInContext(`(() => {\n${selectionSnippetMatch[0]}\n  return largestIndex;\n})()`, context);
   assert.equal(largestIndex, 1, "En YÜKSEK ÜCRETLİ satır (B, index 1) seçilmeli — en büyük ALANLI (A, index 0) DEĞİL.");
   console.log("KULLANICI DUZELTMESI: vurgu kriteri artik EN YUKSEK UCRET (alan degil) testi tamam.");
+}
+
+// --- 6) Kullanıcı talebi (2026-09-14): "rapor bedeli hesaplanırken en ----
+// yüksek bedelli rapor ücreti + diğer kalan tüm gayrimenkullerin
+// değerleme ücretinin %15'i aynı ada parsel taleplerinde. tabloda bu
+// hesaplama detaylarını göster." Bu ZATEN recalculateExpenseFees()'in
+// kullandığı EXPENSE_BULK_MODE_DISCOUNT formülüyle BİREBİR aynı (2. Grup/
+// Aynı Parsel = %15) — bu senaryo hem kullanıcının verdiği %15 rakamının
+// sistemdeki sabitle TUTARLI olduğunu, hem de panelin GERÇEK
+// hesaplama-detay satırlarını (indirim oranı + indirimli katkı + nihai
+// toplam rapor bedeli) doğru ürettiğini kanıtlar.
+{
+  const bulkModeConstsSource = [extractConstArray("EXPENSE_BULK_MODE_1"), extractConstArray("EXPENSE_BULK_MODE_2"), extractConstArray("EXPENSE_BULK_MODE_2_FLAT_THRESHOLD"), extractConstArray("EXPENSE_BULK_MODE_DISCOUNT")].join("\n");
+  // Top-level `const`/`let` vm context'e ÖZELLİK olarak EKLENMEZ (var'dan
+  // farkli) — IIFE ile SARIP dört sabiti TEK bir nesnede DÖNDÜRÜYORUZ.
+  const bulkModeConsts = vm.runInContext(
+    `(() => {\n${bulkModeConstsSource}\n  return { EXPENSE_BULK_MODE_1, EXPENSE_BULK_MODE_2, EXPENSE_BULK_MODE_2_FLAT_THRESHOLD, EXPENSE_BULK_MODE_DISCOUNT };\n})()`,
+    vm.createContext({})
+  );
+  assert.equal(
+    bulkModeConsts.EXPENSE_BULK_MODE_DISCOUNT[bulkModeConsts.EXPENSE_BULK_MODE_2],
+    0.15,
+    "KULLANICI RAKAMI DOĞRULAMASI: '2. Grup - Aynı Parsel Birden Fazla Bağımsız Bölüm' indirim oranı sistemde ZATEN %15 olmalı (kullanıcının verdiği oranla birebir uyuşuyor)."
+  );
+
+  const panelSource = extractFunction("createExpenseBulkPerUnitFeeBreakdownPanel");
+  const calcStart = panelSource.indexOf("const bulkMode = state.fields.expenseBulkValuationMode;");
+  const calcEnd = panelSource.indexOf("const finalReportFee = largestFee + discountedOtherContribution;") + "const finalReportFee = largestFee + discountedOtherContribution;".length;
+  assert(calcStart >= 0 && calcEnd > calcStart, "Panelde hesaplama-detay bloğu (bulkMode/discountRate/finalReportFee) bulunamadı.");
+  // Kaynaktaki `if (Number.isFinite(discountRate)) {` bloğu bu noktada
+  // KAPANMAMIŞ (DOM satırları devam ediyor) — `finalReportFee` bu bloğun
+  // İÇİNDE (const, blok-scope'lu) tanımlı olduğundan `return` de KAPANIŞTAN
+  // ÖNCE (aynı blok içinde) eklenir.
+  const calcSnippet = `${panelSource.slice(calcStart, calcEnd)}\n  return finalReportFee;\n}`;
+
+  const calcContext = {
+    state: { fields: { expenseBulkValuationMode: bulkModeConsts.EXPENSE_BULK_MODE_2 } },
+    EXPENSE_BULK_MODE_DISCOUNT: bulkModeConsts.EXPENSE_BULK_MODE_DISCOUNT,
+    largestFee: 100000, // en yüksek bedelli taşınmazın kendi ücreti (KULLANICI ÖRNEĞİ: "en yüksek bedelli rapor ücreti")
+    otherTotal: 40000, // diğer TÜM taşınmazların toplamı (KULLANICI ÖRNEĞİ: "diğer kalan tüm gayrimenkullerin değerleme ücreti")
+  };
+  vm.createContext(calcContext);
+  const finalReportFee = vm.runInContext(`(() => {\n${calcSnippet}\n})()`, calcContext);
+  // KULLANICI FORMÜLÜ (BİREBİR): en yüksek bedelli (100.000) + diğerlerinin
+  // %15'i (40.000 × 0.15 = 6.000) = 106.000.
+  assert.equal(finalReportFee, 106000, "Nihai rapor bedeli = en yüksek bedelli (100.000) + diğerlerinin %15'i (40.000×0.15=6.000) = 106.000 olmalı.");
+  console.log("KULLANICI FORMULU (en yuksek bedelli + digerlerinin %15'i, Ayni Parsel) hesaplama testi tamam.");
 }
 
 console.log("Toplu Degerleme tasinmaz-bazinda tarife ucreti tablosu testleri basarili.");

@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.774 - 2026-09-14 - Taşınmaz-bazında tarife ücreti tablosuna nihai rapor bedeli hesaplama detayları eklendi
+
+- Kullanıcı: "rapor bedeli hesaplanırken en yüksek bedelli rapor ücreti + diğer kalan tüm gayrimenkullerin değerleme ücretinin %15'i aynı ada parsel taleplerinde. tabloda bu hesaplama detaylarını göster."
+- Doğrulama: bu formül, sistemde ZATEN `recalculateExpenseFees()`'in kullandığı `EXPENSE_BULK_MODE_DISCOUNT` sabitiyle BİREBİR örtüşüyor — "2. Grup - Aynı Parsel Birden Fazla Bağımsız Bölüm" için `%15`, "1. Grup - Farklı Taşınmazlar" için `%20`. Kullanıcının verdiği rakam sistemdeki mevcut oranı doğruluyor.
+- Düzeltme: 0.0.772'de eklenen tabloya, `syncExpenseBulkValuationModeFromUnits()`'in ZATEN otomatik belirlediği Toplu Değerleme grubuna göre üç yeni satır eklendi — "İndirim Oranı (grup adı)", "Diğer Taşınmazların İndirimli Katkısı (Toplam × %oran)" ve kalın vurgulu "Toplam Rapor Bedeli (En Yüksek Bedelli + İndirimli Katkı, KDV Hariç)" — bu son satır tam olarak kullanıcının formülünü uygular: `en yüksek bedelli taşınmazın kendi ücreti + (diğer taşınmazlar toplamı × grup oranı)`. 201+ taşınmazlı 2. Grup taleplerinde sabit ücretin devreye girdiğine dair bir not eklendi (mevcut `EXPENSE_BULK_MODE_2_FLAT_THRESHOLD` istisnası). Tutar yine `expenseAppraisalFeeExVat`/`expenseBulkOtherPropertiesFeeSum` alanlarına OTOMATİK yazılmıyor — yalnızca bilgi amaçlı gösteriliyor, kullanıcı onaylayarak kendisi girer.
+- Test: `tools/test-expense-bulk-per-unit-fee-breakdown.js`'e yeni senaryo 6 eklendi — hem `EXPENSE_BULK_MODE_DISCOUNT[EXPENSE_BULK_MODE_2] === 0.15` (kullanıcının rakamının sistemdeki sabitle tutarlılığı) hem de panelin GERÇEK hesaplama snippet'ini çalıştırıp kullanıcının BİREBİR örneğiyle (100.000 en yüksek bedelli + 40.000×%15=6.000 → 106.000 toplam) doğru sonucu ürettiğini kanıtlıyor. Stash ile eski koda karşı gerçekten kırıldığı doğrulandı.
+- `npm run verify` (177 test dosyası) EXIT:0. `index.html`'de `app.js` cache-buster'ı `20260914-2330`'a yükseltildi. Canlı tarayıcı testi yapılamadı — kullanıcıdan aynı ada/parselde çoklu taşınmazlı bir raporda tablonun altındaki "Toplam Rapor Bedeli" satırının doğru hesaplandığını doğrulaması isteniyor.
+
+
 ## 0.0.773 - 2026-09-14 - Taşınmaz-bazında tarife ücreti tablosunda vurgu kriteri düzeltildi: en büyük alan DEĞİL, en yüksek bedel
 
 - Kullanıcı: "bu tabloda en büyük alanlıyı işaretleme. en yüksek rapor bedeline sahip olanı işaretle."

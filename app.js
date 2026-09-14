@@ -34730,10 +34730,47 @@ function createExpenseBulkPerUnitFeeBreakdownPanel() {
 
   const tfoot = document.createElement("tfoot");
   const totalRow = document.createElement("tr");
-  totalRow.innerHTML = `<td colspan="3"><strong>Toplam (${rows.length} taşınmaz)</strong></td><td><strong>${escapeHtml(formatValuationMoney(total, { decimals: 2 }))}</strong></td>`;
+  totalRow.innerHTML = `<td colspan="3">Toplam (${rows.length} taşınmaz)</td><td>${escapeHtml(formatValuationMoney(total, { decimals: 2 }))}</td>`;
   const otherTotalRow = document.createElement("tr");
   otherTotalRow.innerHTML = `<td colspan="3">Diğer Taşınmazlar Toplamı (En Yüksek Bedelli Hariç)</td><td>${escapeHtml(formatValuationMoney(otherTotal, { decimals: 2 }))}</td>`;
   tfoot.append(totalRow, otherTotalRow);
+
+  // Kullanıcı talebi (2026-09-14): "rapor bedeli hesaplanırken en yüksek
+  // bedelli rapor ücreti + diğer kalan tüm gayrimenkullerin değerleme
+  // ücretinin %15'i aynı ada parsel taleplerinde. tabloda bu hesaplama
+  // detaylarını göster" — bu ZATEN recalculateExpenseFees()'in kullandığı
+  // formül (EXPENSE_BULK_MODE_DISCOUNT[bulkMode]: 2. Grup/Aynı Parsel
+  // %15, 1. Grup/Farklı Parsel %20); kullanıcının verdiği rakam (%15)
+  // sistemdeki 2. Grup oranıyla BİREBİR uyuşuyor. Bu tabloda —
+  // syncExpenseBulkValuationModeFromUnits()'in ZATEN otomatik belirlediği
+  // Toplu Değerleme grubuna göre — indirim oranı + indirimli katkı +
+  // NİHAİ toplam rapor bedeli GÖRÜNÜR hale getirilir (yalnızca bilgi
+  // amaçlı; expenseAppraisalFeeExVat/expenseBulkOtherPropertiesFeeSum
+  // alanlarına OTOMATİK yazılmaz — kullanıcı gördüğü rakamı kendi onayıyla
+  // girer, tıpkı "Diğer Taşınmazlar Toplamı" satırında olduğu gibi).
+  const bulkMode = state.fields.expenseBulkValuationMode;
+  const discountRate = EXPENSE_BULK_MODE_DISCOUNT[bulkMode];
+  if (Number.isFinite(discountRate)) {
+    const discountedOtherContribution = otherTotal * discountRate;
+    const finalReportFee = largestFee + discountedOtherContribution;
+    const discountRateRow = document.createElement("tr");
+    discountRateRow.innerHTML = `<td colspan="3">İndirim Oranı (${escapeHtml(bulkMode)})</td><td>%${escapeHtml((discountRate * 100).toLocaleString("tr-TR"))}</td>`;
+    const discountedRow = document.createElement("tr");
+    discountedRow.innerHTML = `<td colspan="3">Diğer Taşınmazların İndirimli Katkısı (Toplam × %${escapeHtml((discountRate * 100).toLocaleString("tr-TR"))})</td><td>${escapeHtml(formatValuationMoney(discountedOtherContribution, { decimals: 2 }))}</td>`;
+    const finalRow = document.createElement("tr");
+    finalRow.className = "expense-bulk-breakdown-final-row";
+    finalRow.innerHTML = `<td colspan="3"><strong>Toplam Rapor Bedeli (En Yüksek Bedelli + İndirimli Katkı, KDV Hariç)</strong></td><td><strong>${escapeHtml(formatValuationMoney(finalReportFee, { decimals: 2 }))}</strong></td>`;
+    tfoot.append(discountRateRow, discountedRow, finalRow);
+    if (bulkMode === EXPENSE_BULK_MODE_2 && rows.length >= EXPENSE_BULK_MODE_2_FLAT_THRESHOLD) {
+      const flatNote = document.createElement("tr");
+      flatNote.innerHTML = `<td colspan="4">Not: ${EXPENSE_BULK_MODE_2_FLAT_THRESHOLD}+ taşınmazlı 2. Grup (Aynı Parsel) taleplerinde bu formül YERİNE sabit ücret ("Toplu Değerleme 2. Grup - ${EXPENSE_BULK_MODE_2_FLAT_THRESHOLD} ve Üzeri Sabit Ücret") uygulanır.</td>`;
+      tfoot.append(flatNote);
+    }
+  } else if (bulkMode && bulkMode !== "Yok") {
+    const noDiscountNote = document.createElement("tr");
+    noDiscountNote.innerHTML = `<td colspan="4">"${escapeHtml(bulkMode)}" grubu için standart indirim oranı tanımlı değil.</td>`;
+    tfoot.append(noDiscountNote);
+  }
   table.append(tfoot);
 
   shell.append(table);
