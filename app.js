@@ -33636,6 +33636,7 @@ function preserveReportSpecialWords(value) {
     ["kaks", "KAKS"],
     ["hmax", "Hmax"],
     ["tl", "TL"],
+    ["wc", "WC"],
     ["m²", "m2"],
     ["m2", "m2"],
   ];
@@ -36474,10 +36475,18 @@ function buildMultiUnitInteriorDescriptionText() {
   const decorativeSentences = [];
   const mainRoomSentence = composeMainRoomDecorativeParagraphSentence(decorativeEntriesBySlot, runState);
   if (mainRoomSentence) decorativeSentences.push(mainRoomSentence);
-  const doorsWindowsSentence = composeMultiUnitDoorsWindowsParagraphSentence(decorativeEntriesBySlot, units.length, runState);
-  if (doorsWindowsSentence) decorativeSentences.push(doorsWindowsSentence);
-  UNIT_DECORATIVE_SLOT_KEY_ORDER
-    .filter((key) => key !== "manualOverride" && decorativeEntriesBySlot[key]?.length)
+  // Kullanıcı bildirimi (2026-09-14): "dekoratif açıklamada ilk başta
+  // zemin ve duvar açıklamaları yer almalı" — zemin/duvar bilgisi taşıyan
+  // TÜM cümleler (mainRoom [yukarıda] + Islak Hacimler + Balkon/Teras +
+  // işyeri-tipi dinamik alanlar [Dükkan/Ofis/WC vb.]) artık kapı/pencere
+  // ve diğer dekoratif cümlelerden (bathroomFixture/kitchen/materialQuality/
+  // view/heating/constructionLevel) ÖNCE, TEK BLOKTA toplanır — eskiden
+  // dynamicArea:* (işyeri alanları) HER ZAMAN paragrafın EN SONUNA
+  // düşüyordu, doorsWindows ise wetArea/outdoorCombined'dan BİLE ÖNCE
+  // (mainRoom'un hemen ardından) geliyordu.
+  const floorWallSlotKeys = ["wetArea", "outdoorCombined"];
+  floorWallSlotKeys
+    .filter((key) => decorativeEntriesBySlot[key]?.length)
     .forEach((key) => {
       decorativeSentences.push(composeDecorativeAttributedSentence(key, decorativeEntriesBySlot[key], runState));
     });
@@ -36491,6 +36500,13 @@ function buildMultiUnitInteriorDescriptionText() {
       emittedDynamicSentences.add(normalizedSentence);
       decorativeSentences.push(sentence);
     });
+  const doorsWindowsSentence = composeMultiUnitDoorsWindowsParagraphSentence(decorativeEntriesBySlot, units.length, runState);
+  if (doorsWindowsSentence) decorativeSentences.push(doorsWindowsSentence);
+  UNIT_DECORATIVE_SLOT_KEY_ORDER
+    .filter((key) => !floorWallSlotKeys.includes(key) && key !== "manualOverride" && decorativeEntriesBySlot[key]?.length)
+    .forEach((key) => {
+      decorativeSentences.push(composeDecorativeAttributedSentence(key, decorativeEntriesBySlot[key], runState));
+    });
   // manualOverride: kullanıcının elle yazdığı serbest metin — YENİ iyelik/
   // genel-özne mekanizmasına HİÇ katılmaz, ESKİ (numara listesi)
   // composeMultiUnitInteriorGroupedText/alwaysAttribute yoluyla kalır.
@@ -36500,7 +36516,17 @@ function buildMultiUnitInteriorDescriptionText() {
       composeMultiUnitInteriorGroupedText(groupUnitInteriorTextEntries(decorativeEntriesBySlot.manualOverride), { pluralize: pluralizeUnitDecorativeText, joiner: " ", alwaysAttribute: true })
     );
   }
-  const decorativeText = joinNonEmptySentences(decorativeSentences);
+  // Kullanıcı bildirimi (2026-09-14, ekran görüntüsü — "dukkan hacimlerinde
+  // zeminler...", "wc hacimlerinde..."): dynamicArea:* öncüllerinin (ve
+  // genel olarak herhangi bir parçanın) cümle-başı öneki HER ZAMAN küçük
+  // harfle üretiliyordu (composeSingleAreaDecorativeSentence/
+  // getDynamicDecorativeAreaPrefix mid-sentence kullanım için tasarlanmış)
+  // — yeniden sıralama sonrası bu cümleler PARAGRAFIN İLK cümlesi haline
+  // gelebiliyordu ama hiçbir yerde cümle-başı büyütme uygulanmıyordu; tek
+  // taşınmazlı composeUnitDecorativeDescription() zaten normalizeReportDescriptionText
+  // ile SARILIYORDU (cümle-başı büyütme + "wc"->"WC" gibi sabit kelime
+  // düzeltmeleri içerir), ama bu ÇOKLU taşınmazlı sürüm hiç sarılmıyordu.
+  const decorativeText = normalizeReportDescriptionText(joinNonEmptySentences(decorativeSentences));
   return [areaText, decorativeText].filter(Boolean).join("\n");
 }
 

@@ -898,8 +898,27 @@ function decorativePartsCommon(mainRoomValue) {
     "mainRoom* slotları composeMainRoomDecorativeParagraphSentence İLE (özel woven/combined/split ayrımı) İŞLENMELİ."
   );
   assert.ok(
-    /UNIT_DECORATIVE_SLOT_KEY_ORDER\s*\n\s*\.filter\(\(key\) => key !== "manualOverride" && decorativeEntriesBySlot\[key\]\?\.length\)\s*\n\s*\.forEach\(\(key\) => \{\s*\n\s*decorativeSentences\.push\(composeDecorativeAttributedSentence\(key, decorativeEntriesBySlot\[key\], runState\)\);/.test(realBody),
-    "Kalan (mainRoom DIŞI, manualOverride DIŞI) slotlar UNIT_DECORATIVE_SLOT_KEY_ORDER sırasıyla composeDecorativeAttributedSentence'a GEÇMELİ (kullanıcı düzeltmesi #12 — HER slot KENDİ BAŞINA işlenir, başka bir slotla BİRLEŞMEZ)."
+    /UNIT_DECORATIVE_SLOT_KEY_ORDER\s*\n\s*\.filter\(\(key\) => !floorWallSlotKeys\.includes\(key\) && key !== "manualOverride" && decorativeEntriesBySlot\[key\]\?\.length\)\s*\n\s*\.forEach\(\(key\) => \{\s*\n\s*decorativeSentences\.push\(composeDecorativeAttributedSentence\(key, decorativeEntriesBySlot\[key\], runState\)\);/.test(realBody),
+    "Kalan (mainRoom/zemin-duvar/manualOverride DIŞI) slotlar UNIT_DECORATIVE_SLOT_KEY_ORDER sırasıyla composeDecorativeAttributedSentence'a GEÇMELİ (kullanıcı düzeltmesi #12 — HER slot KENDİ BAŞINA işlenir, başka bir slotla BİRLEŞMEZ)."
+  );
+  // Kullanıcı bildirimi (2026-09-14): "dekoratif açıklamada ilk başta zemin
+  // ve duvar açıklamaları yer almalı" — wetArea/outdoorCombined artık
+  // doorsWindows'tan ÖNCE, ayrı bir floorWallSlotKeys döngüsünde işlenir;
+  // dynamicArea:* (işyeri alanları) da doorsWindows'tan ÖNCE emitlenir;
+  // nihai metin artık normalizeReportDescriptionText ile SARILIR (cümle-başı
+  // büyütme + "wc"->"WC" gibi sabit kelime düzeltmeleri için, tek taşınmazlı
+  // composeUnitDecorativeDescription() ile TUTARLI).
+  assert.ok(
+    realBody.indexOf("floorWallSlotKeys") < realBody.indexOf("composeMultiUnitDoorsWindowsParagraphSentence"),
+    "Zemin/duvar (wetArea/outdoorCombined) işleme bloğu, kapı/pencere cümlesinden ÖNCE gelmeli."
+  );
+  assert.ok(
+    realBody.indexOf('key.startsWith("dynamicArea:")') < realBody.indexOf("composeMultiUnitDoorsWindowsParagraphSentence"),
+    "dynamicArea:* (işyeri alan) döngüsü, kapı/pencere cümlesinden ÖNCE gelmeli."
+  );
+  assert.ok(
+    /const decorativeText = normalizeReportDescriptionText\(joinNonEmptySentences\(decorativeSentences\)\);/.test(realBody),
+    "Nihai dekoratif metin normalizeReportDescriptionText ile SARILMALI (cümle-başı büyütme + sabit kelime düzeltmeleri)."
   );
   assert.ok(
     realBody.includes('alwaysAttribute: true'),
