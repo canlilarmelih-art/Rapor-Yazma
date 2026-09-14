@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.765 - 2026-09-14 - "Taşınmazlar X Özeti" tablolarının "ORTAK BİLGİLER" kutucuklarında punto 7pt'ye indirildi
+
+- Kullanıcı: "rapor çıktılarında ortak bölümler tablosunda puntoyu 7 ye indir şu an normal tablolara göre çok büyük duruyor" (ekran görüntüsü: "Taşınmazlar Tapu Özeti" → "ORTAK BİLGİLER" kutucukları, ör. "BURSA"/"OSMANGAZİ" çok büyük).
+- Kök neden: Tüm "Taşınmazlar X Özeti" bölümlerinin (Tapu/Adres/İmar/Arsa/Değerleme/Bağımsız Bölüm/Belgeler/Gabim/Proje Uygunluk/Bina Bloğu) PAYLAŞTIĞI tek üretici `buildTitleUnitsSummaryTableCommonFieldsHtml()`'de DEĞER metni 10pt kalın punto ile üretiliyordu — normal tablo hücrelerinin (6.5pt) neredeyse iki katı, ekranda ve export'ta orantısız büyük görünüyordu. ETİKET metni de 7.5pt idi.
+- Düzeltme: hem ETİKET hem DEĞER stili 7pt'ye indirildi. Bu tek fonksiyon hem ekran önizlemesinde hem banka şablonu Word export'unda kullanıldığından (3 çağrı yeri) düzeltme her iki yerde de aynı anda geçerli, TÜM "Taşınmazlar X Özeti" bölümlerini kapsıyor.
+- Test: yeni `tools/test-title-units-summary-common-fields-font-size.js` — fonksiyonu gerçekten çalıştırıp ürettiği HTML'de eski (7.5pt/10pt) puntoların ARTIK üretilmediğini, yeni 7pt'nin hem etiket hem değer için üretildiğini doğruluyor. Stash ile eski koda karşı gerçekten kırıldığı doğrulandı.
+- `npm run verify` (171 test dosyası) EXIT:0. `index.html`'de `app.js` cache-buster'ı `20260914-1130`'a yükseltildi. Canlı tarayıcı testi yapılamadı — kullanıcıdan çoklu taşınmazlı bir raporda "Taşınmazlar Tapu Özeti" (veya başka bir X Özeti) tablosunun "ORTAK BİLGİLER" kutucuklarının artık normal tablo puntosuyla orantılı göründüğünü doğrulaması isteniyor.
+
+
 ## 0.0.764 - 2026-09-14 - Değerleme açıklamaları (Yöntem/Satış Kabiliyeti/Kira) banka şablonu çıktısında artık çoklu taşınmazı yansıtıyor
 
 - Kullanıcı: "kuveyttürk rapor çıktısında değerleme bölümündeki cümleler rapor çoklu olmasına rağmen tekli rapor formatında geldi."

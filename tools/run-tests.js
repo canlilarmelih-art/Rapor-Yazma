@@ -211,6 +211,7 @@ const TEST_FILES = [
   "test-gabim-table-template-coverage.js",
   "test-gabim-tab-bar-gate.js",
   "test-valuation-export-multi-unit-wiring.js",
+  "test-title-units-summary-common-fields-font-size.js",
 ];
 
 let failed = null;

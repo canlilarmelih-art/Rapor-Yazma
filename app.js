@@ -24155,8 +24155,13 @@ function buildTitleUnitsSummaryTableCommonFieldsHtml(commonFields, maxColumns = 
   const surfaceMuted = getReportThemeToken("--surface-muted", "#eef2fa");
   const COLUMNS = Number.isFinite(maxColumns) && maxColumns > 0 ? Math.floor(maxColumns) : 4;
   const boxCell = `border:1pt solid ${line};background:${surface};padding:5pt 7pt;text-align:left;vertical-align:top;width:${Math.floor(100 / COLUMNS)}%;`;
-  const labelStyle = `font-size:7.5pt;font-weight:800;letter-spacing:0.3pt;color:${blue};text-transform:uppercase;margin:0 0 2pt;`;
-  const valueStyle = `font-size:10pt;font-weight:700;color:${ink};word-break:break-word;`;
+  // Kullanıcı talebi (2026-09-14): "rapor çıktılarında ortak bölümler
+  // tablosunda puntoyu 7 ye indir şu an normal tablolara göre çok büyük
+  // duruyor" — DEĞER metni (10pt, kalın) normal tablo hücrelerine (6.5pt,
+  // bkz. buildTitleUnitsSummaryTableHtmlEditable'daki baseCell) göre
+  // orantısız büyüktü; hem ETİKET (7.5pt) hem DEĞER artık 7pt'ye indirildi.
+  const labelStyle = `font-size:7pt;font-weight:800;letter-spacing:0.3pt;color:${blue};text-transform:uppercase;margin:0 0 2pt;`;
+  const valueStyle = `font-size:7pt;font-weight:700;color:${ink};word-break:break-word;`;
 
   // "data-common-field-cell" (2026-09-08) — kullanıcı bulgusu: "export
   // edilen excel dosyasında tablolarda ortak değerler tek hücrede
