@@ -15823,13 +15823,16 @@ const unitDecorativeGroups = [
     ],
   },
 ];
+// canonicalKey: getUnitDecorativeWallFloorRows()'un "İç Hacimler"nden
+// gelen isimleri (Salon/Oda/Antre-Hol/Mutfak/Banyo/WC/Duş/Balkon/Teras/
+// Veranda...) hangi SABİT satıra eşleyeceğini belirler — bkz. o fonksiyon.
 const unitWallFloorRows = [
-  { label: "Salon", floorKey: "unitSalonFloor", wallKey: "unitSalonWall" },
-  { label: "Oda", floorKey: "unitRoomFloor", wallKey: "unitRoomWall" },
-  { label: "Antre-Hol", floorKey: "unitHallFloor", wallKey: "unitHallWall" },
-  { label: "Mutfak", floorKey: "unitKitchenFloor", wallKey: "unitKitchenWall" },
-  { label: "Islak Hacimler", floorKey: "unitWetFloor", wallKey: "unitWetWall" },
-  { label: "Balkon", floorKey: "unitBalconyFloor", wallKey: "unitBalconyWall" },
+  { label: "Salon", floorKey: "unitSalonFloor", wallKey: "unitSalonWall", canonicalKey: "salon" },
+  { label: "Oda", floorKey: "unitRoomFloor", wallKey: "unitRoomWall", canonicalKey: "oda" },
+  { label: "Antre-Hol", floorKey: "unitHallFloor", wallKey: "unitHallWall", canonicalKey: "antreHol" },
+  { label: "Mutfak", floorKey: "unitKitchenFloor", wallKey: "unitKitchenWall", canonicalKey: "mutfak" },
+  { label: "Islak Hacimler", floorKey: "unitWetFloor", wallKey: "unitWetWall", canonicalKey: "wetArea" },
+  { label: "Balkon / Teras", floorKey: "unitBalconyFloor", wallKey: "unitBalconyWall", canonicalKey: "balcony" },
 ];
 const unitGeneralDecorativeFields = [
   { key: "unitWindows", label: "Pencereler", options: ["", "PVC", "Isıcamlı PVC", "Alüminyum", "Isıcamlı Alüminyum", "Ahşap", "Demir Doğrama", "Yok"] },
@@ -17393,9 +17396,23 @@ function getUnitDecorativeFieldValue(key) {
 
 function getUnitDecorativeWallFloorRows() {
   const names = getUnitFloorRows().flatMap((floorRow) => String(floorRow.interiors || "").split(",").map((item) => parseUnitInteriorItem(item.trim()).name).filter(Boolean));
-  const unique = [...new Set(names)];
-  if (!unique.length) return [];
-  return unique.map((name) => {
+  if (!names.length) return [];
+  // Kullanıcı bildirimi (2026-09-15, ekran görüntüsü — "Duvar ve Zemin"
+  // tablosu): "banyo wc duş ıslak hacim olarak gruplanmalı. balkon ve teras
+  // hacimleri de gruplanmalıydı." Kök neden: satırlar daha önce İSİM
+  // bazında (her benzersiz "Banyo"/"WC"/"Duş"/"Balkon"/"Teras" AYRI bir
+  // satır) tekilleştiriliyordu; aşağıdaki `canonical` tespiti zaten
+  // Banyo/WC/Duş/Tuvalet'i TEK "wetArea", Balkon/Teras/Veranda'yı TEK
+  // "balcony" grubuna atıyordu ama bu bilgi kullanılmıyordu (satır
+  // tekilleştirme hâlâ isim bazlıydı, `unitWallFloorRows`'taki sabit satır
+  // eşleşmesi de İSMİN TAM OLARAK "Islak Hacimler"/"Balkon / Teras" olmasını
+  // gerektiriyordu, "Banyo" ASLA eşleşmiyordu). Düzeltme: hem tekilleştirme
+  // hem sabit-satır eşleşmesi artık CANONICAL grup anahtarıyla yapılıyor —
+  // "other" (eşlenmemiş/bilinmeyen hacimler, ör. ofis/ticari alan adları)
+  // ise ESKİ gibi kendi ismiyle ayrı kalmaya devam eder.
+  const order = [];
+  const groupSources = new Map();
+  names.forEach((name) => {
     const folded = foldTurkish(name).toLocaleLowerCase("tr");
     let canonical = "other";
     if (folded.startsWith("salon")) canonical = "salon";
@@ -17404,9 +17421,17 @@ function getUnitDecorativeWallFloorRows() {
     else if (folded.includes("mutfak")) canonical = "mutfak";
     else if (/^(banyo|wc|dus|tuvalet)/.test(folded)) canonical = "wetArea";
     else if (/^(balkon|teras|veranda)/.test(folded)) canonical = "balcony";
-    const fixed = unitWallFloorRows.find((row) => row.label.toLocaleLowerCase("tr-TR") === name.toLocaleLowerCase("tr-TR"));
+    const groupKey = canonical === "other" ? `other:${folded}` : canonical;
+    if (!groupSources.has(groupKey)) {
+      order.push(groupKey);
+      groupSources.set(groupKey, { canonical, folded, name });
+    }
+  });
+  return order.map((groupKey) => {
+    const { canonical, folded, name } = groupSources.get(groupKey);
+    const fixed = canonical !== "other" ? unitWallFloorRows.find((row) => row.canonicalKey === canonical) : undefined;
     const suffix = canonical === "other" ? `_${folded.replace(/[^a-z0-9]+/g, "_")}` : "";
-    const label = folded === "wc" ? "WC" : name ? `${name.charAt(0).toLocaleUpperCase("tr-TR")}${name.slice(1)}` : name;
+    const label = fixed ? fixed.label : (folded === "wc" ? "WC" : name ? `${name.charAt(0).toLocaleUpperCase("tr-TR")}${name.slice(1)}` : name);
     return { label, floorKey: fixed?.floorKey || `unitDecorativeArea_${canonical}${suffix}_floor`, wallKey: fixed?.wallKey || `unitDecorativeArea_${canonical}${suffix}_wall` };
   });
 }

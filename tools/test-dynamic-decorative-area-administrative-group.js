@@ -48,8 +48,18 @@
   3) buildDynamicDecorativeAreaPartsForMultiUnitMerge(): AYNI zemin/duvara
      sahip 3 idari alan (Ofis/Açık ofis alanı/Yönetici odası) artık
      AYNI "dynamicArea:" anahtarını paylaşıyor (birleşmenin veri
-     katmanındaki ön koşulu) — Dükkan/WC (farklı grup/zemin/duvar)
-     kendi AYRI anahtarlarında kalıyor.
+     katmanındaki ön koşulu) — Dükkan (farklı grup/zemin/duvar) kendi
+     AYRI anahtarında kalıyor.
+
+  GÜNCELLEME (2026-09-15, "Duvar ve Zemin" tablosu grup düzeltmesi):
+  "WC" artık bu senaryoda PARTS listesinde HİÇ görünmüyor — kullanıcının
+  ayrı bir bildirimiyle (bkz. getUnitDecorativeWallFloorRows() üzerindeki
+  yorum) Banyo/WC/Duş artık DİNAMİK bir "unitDecorativeArea_*" anahtarı
+  DEĞİL, SABİT "Islak Hacimler" satırının (unitWetFloor/unitWetWall)
+  KENDİSİ olarak eşleşiyor; bu fonksiyon SADECE dinamik (eşlenmemiş)
+  satırları döndürdüğünden WC artık bu listenin KAPSAMI DIŞINDA (doğru
+  davranış — WC verisi artık gerçek rapor paragrafının okuduğu ALANA
+  yazılıyor, önceki gibi kullanılmayan bir dinamik anahtara DEĞİL).
 */
 
 const assert = require("node:assert/strict");
@@ -135,6 +145,7 @@ function buildSandbox() {
       getDynamicDecorativeAreaGroup,
       getDynamicDecorativeAreaGroupPrefix,
       buildDynamicDecorativeAreaPartsForMultiUnitMerge,
+      getUnitDecorativeWallFloorRows,
     };
   `;
   return new Function(sandboxSource)();
@@ -185,7 +196,10 @@ function buildSandbox() {
 // --- 3) buildDynamicDecorativeAreaPartsForMultiUnitMerge(): AYNI zemin/
 // duvarlı 3 idari alan artık AYNI anahtarı paylaşıyor (birleşmenin veri
 // katmanı ön koşulu) — kullanıcının GERÇEK senaryosu (Dükkan + Açık ofis
-// alanı + Ofis + Yönetici odası + WC, idari üçlü AYNI malzeme).
+// alanı + Ofis + Yönetici odası + WC, idari üçlü AYNI malzeme). WC artık
+// (2026-09-15 düzeltmesi) SABİT "Islak Hacimler" satırına eşlendiğinden
+// bu dinamik listenin KAPSAMI DIŞINDA kalmalı (bkz. dosya başı GÜNCELLEME
+// notu).
 {
   const fns = buildSandbox();
   const state = {
@@ -205,22 +219,61 @@ function buildSandbox() {
       unitDecorativeArea_other_of_s_wall: "Alçı Sıva Üzeri Saten Boyalı",
       unitDecorativeArea_other_yonet_c_odas__floor: "Laminant Parke",
       unitDecorativeArea_other_yonet_c_odas__wall: "Alçı Sıva Üzeri Saten Boyalı",
-      unitDecorativeArea_wetArea_floor: "Seramik",
-      unitDecorativeArea_wetArea_wall: "Fayans",
+      // WC artık BURADA (dinamik anahtar) DEĞİL, gerçek "Islak Hacimler"
+      // alanında (unitWetFloor/unitWetWall) yaşar — bkz. senaryo 4.
+      unitWetFloor: "Seramik",
+      unitWetWall: "Fayans",
     },
   };
   fns.setState(state);
   const parts = fns.buildDynamicDecorativeAreaPartsForMultiUnitMerge();
-  assert.equal(parts.length, 5, `5 idari/diğer satır (Dükkan, Açık ofis alanı, Ofis, Yönetici odası, WC) dönmeli: ${parts.length}`);
+  assert.equal(parts.length, 4, `4 idari/diğer satır (Dükkan, Açık ofis alanı, Ofis, Yönetici odası — WC ARTIK DAHİL DEĞİL) dönmeli: ${parts.length}`);
   const officeParts = parts.filter((p) => p.dynamicMeta.group === "administrative");
   assert.equal(officeParts.length, 3, `3 idari satır (Açık ofis alanı/Ofis/Yönetici odası) 'administrative' grubunda olmalı: ${officeParts.length}`);
   const officeKeys = new Set(officeParts.map((p) => p.key));
   assert.equal(officeKeys.size, 1, `AYNI zemin/duvarlı 3 idari alan AYNI 'dynamicArea:' anahtarını PAYLAŞMALI (birleşmenin ön koşulu): ${[...officeKeys]}`);
   const dukkanKey = parts.find((p) => p.dynamicMeta.label === "Dükkan").key;
-  const wcKey = parts.find((p) => p.dynamicMeta.label === "WC").key;
   assert.notEqual(dukkanKey, [...officeKeys][0], "Dükkan (farklı zemin/duvar) idari grupla AYNI anahtarı PAYLAŞMAMALI.");
-  assert.notEqual(wcKey, [...officeKeys][0], "WC (farklı zemin/duvar) idari grupla AYNI anahtarı PAYLAŞMAMALI.");
-  console.log("buildDynamicDecorativeAreaPartsForMultiUnitMerge(): aynı zemin/duvarlı idari alanlar AYNI anahtarı paylaşıyor testi tamam.");
+  assert.equal(parts.find((p) => p.dynamicMeta.label === "WC"), undefined, "WC artık FIXED 'Islak Hacimler' satırına eşleniyor, dinamik alan listesinde YER ALMAMALI.");
+  console.log("buildDynamicDecorativeAreaPartsForMultiUnitMerge(): aynı zemin/duvarlı idari alanlar AYNI anahtarı paylaşıyor, WC artık dinamik listede değil testi tamam.");
+}
+
+// --- 4) getUnitDecorativeWallFloorRows(): Banyo/WC/Duş TEK "Islak Hacimler"
+// satırında, Balkon/Teras TEK "Balkon / Teras" satırında GRUPLANMALI
+// (kullanıcı bildirimi, 2026-09-15 ekran görüntüsü) — kullanıcının BİREBİR
+// senaryosu: Salon, Oda, Antre-Hol, Mutfak, Banyo, WC, Balkon, Teras.
+{
+  const fns = buildSandbox();
+  fns.setState({
+    tables: { unitFloors: [{ interiors: "Salon, Oda, Antre-Hol, Mutfak, Banyo, WC, Balkon, Teras" }] },
+    fields: {},
+  });
+  const rows = fns.getUnitDecorativeWallFloorRows();
+  const labels = rows.map((row) => row.label);
+  assert.equal(rows.length, 6, `8 farklı isim 6 GRUBA (Salon/Oda/Antre-Hol/Mutfak/Islak Hacimler/Balkon-Teras) düşmeli: ${labels.join(", ")}`);
+  assert.deepEqual(labels, ["Salon", "Oda", "Antre-Hol", "Mutfak", "Islak Hacimler", "Balkon / Teras"], `Satır sırası/etiketleri: ${labels.join(", ")}`);
+  const wetRow = rows.find((row) => row.label === "Islak Hacimler");
+  assert.equal(wetRow.floorKey, "unitWetFloor", "Islak Hacimler satırı GERÇEK unitWetFloor alanını kullanmalı (Banyo/WC birbirinden AYRI dinamik alan ÜRETMEMELİ).");
+  assert.equal(wetRow.wallKey, "unitWetWall", "Islak Hacimler satırı GERÇEK unitWetWall alanını kullanmalı.");
+  const balconyRow = rows.find((row) => row.label === "Balkon / Teras");
+  assert.equal(balconyRow.floorKey, "unitBalconyFloor", "Balkon / Teras satırı GERÇEK unitBalconyFloor alanını kullanmalı (Balkon/Teras birbirinden AYRI dinamik alan ÜRETMEMELİ).");
+  assert.equal(balconyRow.wallKey, "unitBalconyWall", "Balkon / Teras satırı GERÇEK unitBalconyWall alanını kullanmalı.");
+  console.log("getUnitDecorativeWallFloorRows(): Banyo/WC 'Islak Hacimler'de, Balkon/Teras 'Balkon / Teras'ta GRUPLANIYOR testi tamam.");
+}
+
+// --- 5) Duş dahil / karışık sıra + yalnızca Teras (Balkon YOK) senaryosu —
+// gruplama SADECE Banyo+WC ikilisine özel bir hack DEĞİL, canonical
+// tabanlı genel bir kural olmalı.
+{
+  const fns = buildSandbox();
+  fns.setState({
+    tables: { unitFloors: [{ interiors: "Oda, Duş, Teras, Banyo" }] },
+    fields: {},
+  });
+  const rows = fns.getUnitDecorativeWallFloorRows();
+  const labels = rows.map((row) => row.label);
+  assert.deepEqual(labels, ["Oda", "Islak Hacimler", "Balkon / Teras"], `Duş+Banyo TEK 'Islak Hacimler', tek başına Teras da 'Balkon / Teras' satırına düşmeli: ${labels.join(", ")}`);
+  console.log("Karışık sıra + Duş + yalnızca Teras senaryosu testi tamam.");
 }
 
 console.log("Dinamik dekoratif alan (İşyeri 'idari' grup birleştirme) testleri başarılı.");
