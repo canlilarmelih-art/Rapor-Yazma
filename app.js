@@ -6073,18 +6073,6 @@ function renderSection() {
     if (encumbranceSummaryPanel) card.insertBefore(encumbranceSummaryPanel, body);
   }
 
-  // Kullanıcı talebi (2026-09-15): "İklim ve Deprem Bilgileri bölümünü
-  // adres ve konum sekmesine Çevresel Özellikler Açıklaması bölümünün
-  // altına taşıyalım" — önceden "land" (Arsa Özellikleri) bölümünün
-  // SONUNA ekleniyordu; "environmentDescription" (Çevresel Özellikler
-  // Açıklaması) "address" bölümünün fields[] dizisindeki SON alan
-  // olduğundan, panel createForm(section)'ın HEMEN ardından eklenince
-  // doğal olarak o alanın altında görünür.
-  if (section.id === "address") {
-    const climatePanel = createLandClimateEarthquakePanel();
-    if (climatePanel) body.append(climatePanel);
-  }
-
   if (section.id === "explanations") {
     body.append(createOpenAddressPanel());
     body.append(createEncumbranceCountSummaryPanel());
@@ -6467,7 +6455,7 @@ function createForm(section) {
       value = state.fields.takbisSummary;
     }
     if (field.key === "environmentDescription" && (!value || /\{\{[^}]+\}\}/.test(value))) {
-      state.fields.environmentDescription = buildEnvironmentalDescription();
+      state.fields.environmentDescription = buildEnvironmentDescriptionWithClimate();
       value = state.fields.environmentDescription;
     }
     if (field.key === "landNote" && !value) {
@@ -7402,33 +7390,6 @@ function refreshClimateEarthquakeExplanationFromCurrentFields(changedKey = "") {
   if (control && control.value !== text) control.value = text;
   const panelText = document.querySelector("[data-land-climate-earthquake-text]");
   if (panelText) panelText.textContent = text || "İl ve ilçe seçildiğinde iklim ve deprem bilgileri burada oluşturulur.";
-}
-
-function createLandClimateEarthquakePanel() {
-  refreshClimateEarthquakeExplanationFromCurrentFields();
-  const text = state.fields.landClimateEarthquakeExplanation || "";
-  if (!text) return null;
-
-  const panel = document.createElement("div");
-  panel.className = "land-climate-earthquake-panel";
-  panel.innerHTML = `
-    <div class="land-climate-earthquake-head">
-      <h3>İklim ve Deprem Bilgileri</h3>
-      <button type="button" class="secondary-button" data-copy-climate-earthquake> Kopyala </button>
-    </div>
-    <p data-land-climate-earthquake-text>${escapeHtml(text)}</p>
-  `;
-  panel.querySelector("[data-copy-climate-earthquake]").addEventListener("click", async () => {
-    const button = panel.querySelector("[data-copy-climate-earthquake]");
-    try {
-      await navigator.clipboard.writeText(state.fields.landClimateEarthquakeExplanation || "");
-      button.textContent = "Kopyalandı";
-    } catch {
-      button.textContent = "Kopyalanamadı";
-    }
-    setTimeout(() => { button.textContent = "Kopyala"; }, 1500);
-  });
-  return panel;
 }
 
 function buildLandDescription() {
@@ -13031,11 +12992,18 @@ const environmentDescriptionAutoRefreshFields = new Set([
   "titleFloor",
   "unitNo",
   "environmentRegionType",
+  // Kullanıcı talebi (2026-09-15): "iklim ve deprem bilgileri paragrafını
+  // çevresel özellik açıklaması bölümünün en altına paragraf olarak
+  // ekle" — İklim ve Deprem Bilgileri artık bu alanın SONUNA eklenen bir
+  // paragraf (bkz. buildEnvironmentDescriptionWithClimate), bu yüzden
+  // "Deprem derecesi" değişimi de (il/ilçe zaten YUKARIDA vardı) bu
+  // alanı tazelemeli.
+  "earthquakeZone",
 ]);
 
 function refreshEnvironmentDescriptionFromCurrentFields(changedKey = "") {
   if (!environmentDescriptionAutoRefreshFields.has(changedKey)) return;
-  const nextDescription = buildEnvironmentalDescription();
+  const nextDescription = buildEnvironmentDescriptionWithClimate();
   state.fields.environmentDescription = nextDescription;
   const control = document.querySelector('[data-field="environmentDescription"]');
   if (control && control.value !== nextDescription) {
@@ -13552,6 +13520,27 @@ function refreshMultiTitleUnitAgriculturalTransport() {
     transportControl.value = nextTransport;
   }
   return true;
+}
+
+// Kullanıcı talebi (2026-09-15): "iklim ve deprem bilgileri paragrafını
+// çevresel özellik açıklaması bölümünün en altına paragraf olarak ekle"
+// — 0.0.799'da AYRI bir panel olarak "Adres ve Konum"a taşınmıştı
+// (createLandClimateEarthquakePanel), şimdi o panel TAMAMEN kaldırılıp
+// metni doğrudan environmentDescription'ın SONUNA "\n\n" ile eklenen
+// bir paragraf olarak ekleniyor. buildEnvironmentalDescription()'ın 4
+// bölge dalının (Konut/Ticaret/Sanayi/Tarımsal) HİÇBİRİNE AYRI AYRI
+// dokunulmuyor — TEK bir sarmalayıcı ile, o fonksiyonun state.fields'ı
+// gerçekten YAZAN İKİ çağıranı (createForm'un "self-heal" dalı +
+// refreshEnvironmentDescriptionFromCurrentFields) buraya yönlendirildi;
+// "Placeholder" referans ekranındaki 4 izole bölge-önizleme çağrısı
+// (buildEnvironmentalDescription("Konut Bölgesi", {usePlaceholderTokens:true})
+// vb.) BİLEREK DEĞİŞMEDİ — onlar yalnızca bölge açılış cümlesi kalıbını
+// izole gösterir, iklim/deprem bu ekranın kapsamı DEĞİL.
+function buildEnvironmentDescriptionWithClimate(regionType = state.fields?.environmentRegionType || "", options = {}) {
+  const base = buildEnvironmentalDescription(regionType, options);
+  if (options.usePlaceholderTokens) return base;
+  const climate = buildClimateEarthquakeExplanation();
+  return normalizeReportDescriptionText([base, climate].filter(Boolean).join("\n\n"));
 }
 
 function buildEnvironmentalDescription(regionType = state.fields?.environmentRegionType || "", options = {}) {

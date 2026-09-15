@@ -381,6 +381,12 @@ function boundFields(blockNo, parcelNo, distanceText) {
     let state = {};
     const document = { querySelector: () => null };
     function buildEnvironmentalDescription() { return "STUB-DESCRIPTION"; }
+    // 2026-09-15: refreshEnvironmentDescriptionFromCurrentFields() artık
+    // buildEnvironmentalDescription() yerine buildEnvironmentDescriptionWithClimate()'i
+    // çağırıyor (İklim ve Deprem Bilgileri paragrafı eklendi) — bu testin
+    // odağı SADECE tetikleyici kablolaması (refreshMultiTitleUnitAgriculturalTransport'un
+    // birlikte çağrıldığı), o yüzden STUB-DESCRIPTION'ı AYNEN geçiren hafif bir stub yeterli.
+    function buildEnvironmentDescriptionWithClimate() { return buildEnvironmentalDescription(); }
     ${envAutoRefreshFieldsSrc}
     ${extractConstArray("agriculturalMultiUnitParcelListTransportFragmentVariants")}
     ${extractConstArray("agriculturalMultiUnitManyParcelsTransportVariants")}

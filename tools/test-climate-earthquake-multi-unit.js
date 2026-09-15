@@ -1,20 +1,33 @@
 "use strict";
 
 /*
-  Kullanici talebi (2026-09-15): "İklim ve Deprem Bilgileri bölümünü adres
-  ve konum sekmesine Çevresel Özellikler Açıklaması bölümünün altına
-  taşıyalım. çoklu arazi taleplerinde İklim ve Deprem Bilgileri bölümünü
-  çoklu olarak uyarla Taşınmaz > Taşınmazlar"
+  Kullanici talebi (2026-09-15, iki mesaj):
+  1) "İklim ve Deprem Bilgileri bölümünü adres ve konum sekmesine
+     Çevresel Özellikler Açıklaması bölümünün altına taşıyalım. çoklu
+     arazi taleplerinde İklim ve Deprem Bilgileri bölümünü çoklu olarak
+     uyarla Taşınmaz > Taşınmazlar" (0.0.799 — AYRI panel, "address"
+     bölümüne taşındı).
+  2) "iklim ve deprem bilgileri paragrafını çevresel özellik açıklaması
+     bölümünün en altına paragraf olarak ekle" (bu commit — AYRI panel
+     TAMAMEN KALDIRILDI, metin artık environmentDescription'ın KENDİSİNİN
+     SONUNA "\n\n" ile eklenen bir paragraf).
 
-  Bu test iki kısmı doğrular:
-  a) Panel artık "land" (Arsa Özellikleri) DEĞİL "address" (Adres ve Konum)
-     bölümünde, createForm(section)'ın hemen ardından ekleniyor —
-     "environmentDescription" (Çevresel Özellikler Açıklaması) "address"
-     bölümünün fields[] dizisindeki SON alan olduğundan panel doğal olarak
-     onun altında görünür (kaynak-düzeyi kontrol).
+  Bu test üç kısmı doğrular:
+  a) Kaynak-düzeyi: eski AYRI panel mekanizması (createLandClimateEarthquakePanel
+     çağrısı/tanımı) TAMAMEN kaldırılmış; environmentDescription'ı yazan
+     İKİ gerçek çağıran (createForm'un "self-heal" dalı +
+     refreshEnvironmentDescriptionFromCurrentFields) artık
+     buildEnvironmentDescriptionWithClimate()'i çağırıyor;
+     "earthquakeZone" tetikleyici kümesine eklenmiş.
   b) buildClimateEarthquakeExplanation() çoklu taşınmaz raporunda
      "Taşınmazın"/"taşınmaz" -> "Taşınmazların"/"taşınmazlar" çoğullanır;
-     tekil raporda DEĞİŞMEZ (gerçek fonksiyon, vm/Function extraction).
+     tekil raporda DEĞİŞMEZ (gerçek fonksiyon, vm/Function extraction,
+     0.0.799'dan DEĞİŞMEDİ).
+  c) buildEnvironmentDescriptionWithClimate() (gerçek fonksiyon, alttaki
+     buildEnvironmentalDescription/buildClimateEarthquakeExplanation
+     GÖZLEMLENEBİLİR stub'larla) taban metnin SONUNA iklim paragrafını
+     doğru ekliyor; iklim boşsa/usePlaceholderTokens iken taban metin
+     TEK BAŞINA kalıyor.
 */
 
 const assert = require("node:assert/strict");
@@ -23,30 +36,31 @@ const path = require("node:path");
 
 const appSource = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
 
-// --- a) Kaynak-düzeyi: panel "address" bölümünde, "land" bölümünde DEĞİL --
+// --- a) Kaynak-düzeyi: eski AYRI panel TAMAMEN kaldırıldı, iki gerçek -----
+// yazan çağıran artık buildEnvironmentDescriptionWithClimate()'i kullanıyor.
 {
   assert.doesNotMatch(
     appSource,
-    /if \(section\.id === "land"\) \{\s*const climatePanel = createLandClimateEarthquakePanel\(\);/,
-    "İklim ve Deprem Bilgileri paneli ARTIK 'land' bölümünde eklenmemeli (kullanıcı talebiyle 'address'e taşındı)."
+    /function createLandClimateEarthquakePanel\(|const climatePanel = createLandClimateEarthquakePanel\(\)/,
+    "createLandClimateEarthquakePanel() (eski AYRI panel mekanizması) hem tanımı hem çağrısıyla TAMAMEN kaldırılmış olmalı — İklim ve Deprem Bilgileri artık environmentDescription'ın KENDİSİNE eklenen bir paragraf."
   );
   assert.match(
     appSource,
-    /if \(section\.id === "address"\) \{\s*const climatePanel = createLandClimateEarthquakePanel\(\);\s*if \(climatePanel\) body\.append\(climatePanel\);\s*\}/,
-    "İklim ve Deprem Bilgileri paneli 'address' bölümünde, createForm(section)'ın hemen ardından eklenmeli."
+    /field\.key === "environmentDescription" && \(!value \|\| \/\\\{\\\{\[\^\}\]\+\\\}\\\}\/\.test\(value\)\)\) \{\s*state\.fields\.environmentDescription = buildEnvironmentDescriptionWithClimate\(\);/,
+    "createForm()'un 'self-heal' dalı artık buildEnvironmentDescriptionWithClimate()'i çağırmalı (buildEnvironmentalDescription() DOĞRUDAN DEĞİL)."
   );
-  // "environmentDescription" address bölümünün fields[] dizisindeki SON
-  // alan olmalı (panelin "Çevresel Özellikler Açıklaması"nın ALTINDA
-  // görünmesini garanti eden yapısal koşul) — regresyon kilidi.
-  const addressStart = appSource.indexOf('id: "address"');
-  assert(addressStart >= 0, "'address' bölümü bulunamadı.");
-  const fieldsStart = appSource.indexOf("fields: [", addressStart);
-  const fieldsEnd = appSource.indexOf("\n    ],", fieldsStart);
-  const fieldsSlice = appSource.slice(fieldsStart, fieldsEnd);
-  const lastKeyMatch = [...fieldsSlice.matchAll(/key: "([A-Za-z0-9_]+)"/g)].map((m) => m[1]).pop();
-  assert.equal(lastKeyMatch, "environmentDescription", `REGRESYON: 'address' bölümünün SON alanı 'environmentDescription' olmalı (panel konumu buna bağlı), bulunan: ${lastKeyMatch}`);
+  assert.match(
+    appSource,
+    /function refreshEnvironmentDescriptionFromCurrentFields\(changedKey = ""\) \{\s*if \(!environmentDescriptionAutoRefreshFields\.has\(changedKey\)\) return;\s*const nextDescription = buildEnvironmentDescriptionWithClimate\(\);/,
+    "refreshEnvironmentDescriptionFromCurrentFields() artık buildEnvironmentDescriptionWithClimate()'i çağırmalı."
+  );
+  assert.match(
+    appSource,
+    /const environmentDescriptionAutoRefreshFields = new Set\(\[[\s\S]{0,1500}?"earthquakeZone",\s*\]\);/,
+    "'earthquakeZone' artık environmentDescriptionAutoRefreshFields tetikleyici kümesinde olmalı (Deprem derecesi değişince iklim paragrafı da tazelenmeli)."
+  );
 
-  console.log("İklim ve Deprem Bilgileri paneli kaynak-düzeyi konum (address, Çevresel Özellikler'in altı) testi tamam.");
+  console.log("İklim ve Deprem Bilgileri: eski AYRI panelin kaldırılması + yeni sarmalayıcının kablolanması kaynak-düzeyi testi tamam.");
 }
 
 // --- b) buildClimateEarthquakeExplanation() gerçek fonksiyon testi --------
@@ -162,4 +176,72 @@ function freshState(overrides = {}, titleUnits = []) {
 
 delete globalThis.climateEarthquakeData;
 
-console.log("İklim ve Deprem Bilgileri: bölüm taşıma + çoklu taşınmaz çoğullama testleri başarılı.");
+// --- c) buildEnvironmentDescriptionWithClimate() (gerçek fonksiyon, -------
+// alttaki İKİ ağır bağımlılık — buildEnvironmentalDescription (4 bölge
+// dallı, bu testin odağı DEĞİL) ve buildClimateEarthquakeExplanation
+// (yukarıda ZATEN gerçek fonksiyonla ayrıca test edildi) — gözlemlenebilir
+// sabit stub'larla değiştirilir; bu testin odağı SADECE sarmalayıcının
+// "\n\n" ile birleştirme/atlama mantığı).
+{
+  function extractWrapperFunction(name) {
+    const marker = `function ${name}(`;
+    const start = appSource.indexOf(`\n${marker}`);
+    assert(start >= 0, `Fonksiyon bulunamadı: ${name}`);
+    const parenStart = appSource.indexOf("(", start);
+    let parenDepth = 0;
+    let cursor = parenStart;
+    for (; cursor < appSource.length; cursor += 1) {
+      const char = appSource[cursor];
+      if (char === "(") parenDepth += 1;
+      if (char === ")") {
+        parenDepth -= 1;
+        if (parenDepth === 0) break;
+      }
+    }
+    let index = appSource.indexOf("{", cursor);
+    let depth = 0;
+    for (; index < appSource.length; index += 1) {
+      const char = appSource[index];
+      if (char === "{") depth += 1;
+      if (char === "}") {
+        depth -= 1;
+        if (depth === 0) return appSource.slice(start + 1, index + 1);
+      }
+    }
+    throw new Error(`Fonksiyon gövdesi kapanmadı: ${name}`);
+  }
+
+  const wrapperSandboxSource = `
+    let state = {};
+    function setState(s) { state = s; }
+    function normalizeReportDescriptionText(value) {
+      return String(value || "").split("\\n").map((line) => line.trim()).filter(Boolean).join("\\n").trim();
+    }
+    function buildEnvironmentalDescription(regionType, options = {}) {
+      return options.usePlaceholderTokens ? "BASE_PLACEHOLDER_TOKENS_METNİ" : (state.fields.__baseText ?? "TEMEL_ÇEVRESEL_METİN");
+    }
+    function buildClimateEarthquakeExplanation() {
+      return state.fields.__climateText ?? "İKLİM_VE_DEPREM_METNİ";
+    }
+    ${extractWrapperFunction("buildEnvironmentDescriptionWithClimate")}
+    return { setState, buildEnvironmentDescriptionWithClimate };
+  `;
+  // eslint-disable-next-line no-new-func
+  const wrapperFns = new Function(wrapperSandboxSource)();
+
+  wrapperFns.setState({ fields: {} });
+  const combined = wrapperFns.buildEnvironmentDescriptionWithClimate();
+  assert.equal(combined, "TEMEL_ÇEVRESEL_METİN\nİKLİM_VE_DEPREM_METNİ", `KULLANICI TALEBİ: iklim paragrafı taban metnin SONUNA eklenmeli, bulunan: ${combined}`);
+
+  wrapperFns.setState({ fields: { __climateText: "" } });
+  const noClimate = wrapperFns.buildEnvironmentDescriptionWithClimate();
+  assert.equal(noClimate, "TEMEL_ÇEVRESEL_METİN", `İklim verisi (il/ilçe eşleşmesi) yoksa taban metin TEK BAŞINA kalmalı, bulunan: ${noClimate}`);
+
+  wrapperFns.setState({ fields: {} });
+  const placeholderPreview = wrapperFns.buildEnvironmentDescriptionWithClimate("Konut Bölgesi", { usePlaceholderTokens: true });
+  assert.equal(placeholderPreview, "BASE_PLACEHOLDER_TOKENS_METNİ", `usePlaceholderTokens (Placeholder referans ekranı) modunda iklim paragrafı EKLENMEMELİ, bulunan: ${placeholderPreview}`);
+
+  console.log("buildEnvironmentDescriptionWithClimate() birleştirme/atlama mantığı (gerçek sarmalayıcı fonksiyon) testi tamam.");
+}
+
+console.log("İklim ve Deprem Bilgileri: panel kaldırma + en alta paragraf ekleme + çoklu çoğullama testleri başarılı.");
