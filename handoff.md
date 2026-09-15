@@ -1,5 +1,12 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.805 - 2026-09-16 - Sol panelde "Değeri Etkileyen Faktörler" artık "Emsaller"den önce
+
+- Kullanıcı, sol panelde "Değeri Etkileyen Faktörler" bölümünü işaret edip "emsallerden önceye al" dedi.
+- Düzeltme: `sections[]` dizisinde saf sıralama değişikliği — `valueFactors` bölüm nesnesi (davranışı/alanları AYNI, hiçbir mantık değişmedi) eski konumundan ("Açıklamalar"/`halkbankRisk`'ten sonra, "Gabim Veri Seti"nden önce) alınıp "Arsa Özellikleri"nden hemen sonra, "Emsaller"den (`comparables`) hemen önceye taşındı. Sol panel gezinme listesi `sections[]` sırasını doğrudan yansıttığından başka bir kablolamaya gerek yoktu.
+- `npm run verify` (184 test dosyası) EXIT:0 — hiçbir test `sections[]` sırasına bağımlı değildi. Yerel sunucuda canlı doğrulandı: sol panel artık "... Arsa Özellikleri, Değeri Etkileyen Faktörler, Emsaller, Değerleme ..." sırasını gösteriyor.
+- `index.html`'de `app.js` cache-buster'ı `20260916-1145`'e yükseltildi.
+
 ## 0.0.804 - 2026-09-16 - Ziraat banka şablonlarında EMSALLER bölümü artık gerçek tablo olarak çıkıyor (EMSAL_MATRISIV2 ham HTML olarak kayıtlı değildi)
 
 - Kullanıcı ekran görüntüsüyle bildirdi: "emsaller template çıktısında bu şekilde gözüküyor. neyi bozdun bilmiyorum ama lütfen biran evvel düzelt" — çıktıda "EMSALLER" başlığının altında gerçek bir tablo yerine kaçış karakterli (`&lt;table...&gt;`) ham HTML kaynak kodu düz metin olarak görünüyordu.

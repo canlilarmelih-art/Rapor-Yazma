@@ -661,6 +661,18 @@ const sections = [
     ],
   },
   {
+    id: "valueFactors",
+    title: "Değeri Etkileyen Faktörler",
+    badge: "Analiz",
+    description:
+      "Sistem alanlarından otomatik gelen olumlu ve olumsuz değer etkenleri bu bölümde listelenir; kullanıcı gerekirse faktörleri pasife alır veya manuel ekleme yapar.",
+    fields: [
+      { key: "valueFactorsPositiveText", label: "Olumlu Özellikler", type: "textarea", hidden: true },
+      { key: "valueFactorsNegativeText", label: "Olumsuz Özellikler", type: "textarea", hidden: true },
+      { key: "valueFactorsReportText", label: "Değeri Etkileyen Faktörler", type: "textarea", hidden: true },
+    ],
+  },
+  {
     id: "comparables",
     title: "Emsaller",
     badge: "Piyasa",
@@ -923,18 +935,6 @@ const sections = [
     fields: [
       { key: "halkbankRiskSelectedCodes", label: "Seçilen Halkbank Risk Kodları", type: "text", hidden: true },
       { key: "halkbankRiskReportText", label: "Halkbank Risk Kodları Rapor Metni", type: "textarea", hidden: true },
-    ],
-  },
-  {
-    id: "valueFactors",
-    title: "Değeri Etkileyen Faktörler",
-    badge: "Analiz",
-    description:
-      "Sistem alanlarından otomatik gelen olumlu ve olumsuz değer etkenleri bu bölümde listelenir; kullanıcı gerekirse faktörleri pasife alır veya manuel ekleme yapar.",
-    fields: [
-      { key: "valueFactorsPositiveText", label: "Olumlu Özellikler", type: "textarea", hidden: true },
-      { key: "valueFactorsNegativeText", label: "Olumsuz Özellikler", type: "textarea", hidden: true },
-      { key: "valueFactorsReportText", label: "Değeri Etkileyen Faktörler", type: "textarea", hidden: true },
     ],
   },
   {
