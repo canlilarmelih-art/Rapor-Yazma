@@ -143,6 +143,12 @@ const functionNames = [
   "isDocumentsBlockSharingApplicable",
   "formatDocumentBlockAttributionPhrase",
   "normalizeBlockLabelPrefixForAttribution",
+  // 2026-09-15: farklı ada/parsel çoklu rapor dalı (bkz. app.js'teki
+  // buildProjectReviewExplanationParts yorumu) — Blok yerine parsel
+  // bazlı etiket/atıf üreten yeni yardımcılar.
+  "computeDocumentsParcelGroupLabel",
+  "formatTitleUnitParcelLabel",
+  "formatParcelAttributionPhrase",
   "formatTitleUnitSuitabilityLabel",
   "formatTitleUnitSuitabilityShortLabel",
   "getProjectSuitabilityShortConformityNote",
@@ -227,6 +233,9 @@ const sandboxSource = `
     buildAllTitleUnitsForSummaryTable,
     getTurkishDistributiveNumberSuffix,
     formatTitleUnitSuitabilityShortLabel,
+    hasMixedTitleUnitParcels,
+    computeDocumentsParcelGroupLabel,
+    formatParcelAttributionPhrase,
   };
 `;
 // eslint-disable-next-line no-new-func
@@ -754,6 +763,92 @@ function freshState(overrides = {}) {
   assert.ok(!suitabilityText.includes("Blok'a ait bağımsız bölümler kat, kattaki konum, alan ve mimari olarak projesine uygundur.") || suitabilityText.includes("uygun değildir"), `Eski hata: TEK bloklu raporda hepsi 'uygundur' diye YAZILIP azinligin (BB 15) SESSIZCE kaybolmasi ARTIK OLMAMALI, bulunan: ${suitabilityText}`);
 
   console.log("buildProjectReviewExplanationParts() TEK bloklu raporda FARKLI bagimsiz bolum uygunluk durumu (kullanici bulgusu, BB 15) REGRESYON testi tamam.");
+}
+
+// --- 13) Kullanıcı talebi (2026-09-15): "farklı ada parsel çoklu -----------
+// raporlarda belgeler ve proje bölümünde tekil cümleler var proje açıklama
+// ruhsat açıklama gibi bunlar tüm taşınmazlarda ortak olup açıklama çoğul
+// cümle kalıplarına uygun olarak yapılmalı" — Kat İrtifakı DIŞI (burada
+// Müstakil Bina) ownershipType'ta isDocumentsBlockSharingApplicable() HER
+// ZAMAN false döner; DÜZELTMEDEN ÖNCE bu durumda buildProjectReviewExplanationParts()
+// ilk dala düşüp SADECE aktif taşınmazın (tek parselin) açıklamasını
+// üretiyor, farklı ada/parseldeki DİĞER taşınmazın proje/ruhsat bilgisi
+// TAMAMEN kayboluyordu. Artık hasMixedTitleUnitParcels() doğruyken AYNI
+// buildProjectReviewConsolidatedParts makinesi (Kat İrtifakı'na özgü
+// hiçbir varsayımı yok) computeDocumentsParcelGroupLabel/formatParcelAttributionPhrase
+// ile çağrılır — "Blok" yerine "{Ada} Ada {Parsel} Parsel" etiketi/atfı.
+{
+  // 13a) 2 FARKLI parsel, AYNI proje tarihi/sayısı (unanimous) -> TEK
+  // birleşik/çoğul cümle, atıf YOK (ne "Blok'a ait" ne "Parsel'e ait").
+  const mixedUnanimousState = freshState({
+    ownershipType: "Müstakil Bina",
+    blockNo: "0",
+    parcelNo: "56",
+    titleBlockName: "",
+    projectType: "Mimari Proje",
+  });
+  mixedUnanimousState.titleUnits = [
+    unit(mixedUnanimousState.fields, "0", "315", ""),
+  ];
+  fns.setState(mixedUnanimousState);
+  assert.equal(fns.isDocumentsBlockSharingApplicable(), false, "sanity: Mustakil Bina'da isDocumentsBlockSharingApplicable() HER ZAMAN false olmali.");
+  assert.equal(fns.hasMixedTitleUnitParcels(), true, "sanity: 0 Ada 56 Parsel / 0 Ada 315 Parsel FARKLI parsel sayilmali.");
+  const unanimousParts = fns.buildProjectReviewExplanationParts();
+  assert.ok(unanimousParts.length >= 2, `Farkli parselli raporda da giris+proje(+uygunluk) parcalari donmeli (eski tekil davranisa DUSMEMELI), bulunan: ${JSON.stringify(unanimousParts)}`);
+  const unanimousReview = unanimousParts[1];
+  assert.ok(unanimousReview.includes("taşınmazlara ait 12.12.2024 tarih 14/895 sayılı"), `Ayni proje bilgisine sahip 2 FARKLI parsel TEK duz cogul cumlede birlesmeli, bulunan: ${unanimousReview}`);
+  assert.ok(!unanimousReview.includes("Blok'a ait"), `Farkli parselli raporda ESKI 'Blok'a ait' etiketlemesi ASLA gorunmemeli, bulunan: ${unanimousReview}`);
+  assert.ok(!unanimousReview.includes("Parsel'e ait") && !unanimousReview.includes("Parsel taşınmazına ait"), `Unanimous durumda (tum parseller ayni bilgiyi paylasiyor) parsel atfi HIC eklenmemeli, bulunan: ${unanimousReview}`);
+
+  console.log("buildProjectReviewExplanationParts() farkli ada/parsel (Mustakil Bina) + AYNI proje bilgisi -> tek cogul cumle, atifsiz testi tamam.");
+}
+{
+  // 13b) 2 FARKLI parsel, FARKLI proje tarihi/sayısı -> proje cümlesi HER
+  // parselin KENDİ "{Ada} Ada {Parsel} Parsel taşınmazına ait" atfıyla TEK
+  // cümlede birleşmeli (formatParcelAttributionPhrase, formatDocumentBlockAttributionPhrase
+  // DEĞİL).
+  const mixedDifferentState = freshState({
+    ownershipType: "Müstakil Bina",
+    blockNo: "0",
+    parcelNo: "56",
+    titleBlockName: "",
+    projectType: "Mimari Proje",
+  });
+  mixedDifferentState.titleUnits = [
+    unit(mixedDifferentState.fields, "0", "315", "", { projectDate: "2020-05-05", projectNo: "9/100" }),
+  ];
+  fns.setState(mixedDifferentState);
+  const differentParts = fns.buildProjectReviewExplanationParts();
+  const differentReview = differentParts[1];
+  assert.ok(differentReview.includes("0 Ada 56 Parsel taşınmazına ait 12.12.2024 tarih 14/895 sayılı"), `56 parselin KENDI atfiyla gorunmeli, bulunan: ${differentReview}`);
+  assert.ok(differentReview.includes("0 Ada 315 Parsel taşınmazına ait 05.05.2020 tarih 9/100 sayılı"), `315 parselin KENDI (FARKLI) atfiyla gorunmeli - eskiden bu parsel TAMAMEN kayboluyordu, bulunan: ${differentReview}`);
+  assert.ok(!differentReview.includes("Blok'a ait"), `Parsel bazli atifta ESKI 'Blok'a ait' soneki gorunmemeli, bulunan: ${differentReview}`);
+  assert.ok(differentReview.includes(" ve 0 Ada 315 Parsel"), `Iki parsel atfi 'X ve Y' ile (joinTurkishList) baglanmali, bulunan: ${differentReview}`);
+
+  console.log("buildProjectReviewExplanationParts() farkli ada/parsel (Mustakil Bina) + FARKLI proje bilgisi -> parsel atifli birlesik cumle testi tamam.");
+}
+{
+  // 13c) REGRESYON (kullanicinin bildirdigi TAM kusur): duzeltmeden ONCE
+  // (stash) bu senaryoda SADECE aktif (56 nolu) parselin bilgisi
+  // gorunuyor, 315 parselin proje bilgisi TAMAMEN kayboluyordu - bu blok
+  // gercek app.js kaynagina karsi (stash edilmeden) calistiginda GECMELI.
+  const regressionState = freshState({
+    ownershipType: "Müstakil Bina",
+    blockNo: "0",
+    parcelNo: "56",
+    titleBlockName: "",
+    projectType: "Mimari Proje",
+  });
+  regressionState.titleUnits = [
+    unit(regressionState.fields, "0", "315", "", { projectDate: "2020-05-05", projectNo: "9/100" }),
+  ];
+  fns.setState(regressionState);
+  const regressionParts = fns.buildProjectReviewExplanationParts();
+  const regressionJoined = regressionParts.join(" ||| ");
+  assert.ok(regressionJoined.includes("9/100"), `315 parselin proje sayisi (9/100) aciklamada gorunmeli - eskiden bu bilgi SESSIZCE kayboluyordu, bulunan: ${regressionJoined}`);
+  assert.ok(regressionJoined.includes("14/895"), `56 parselin proje sayisi (14/895) da aciklamada gorunmeye devam etmeli, bulunan: ${regressionJoined}`);
+
+  console.log("buildProjectReviewExplanationParts() farkli ada/parsel REGRESYON (diger parselin bilgisinin kaybolmamasi) testi tamam.");
 }
 
 console.log("Proje Inceleme Aciklamasi cogullama + blok bazinda ortak/ayri/sade cumle testleri basarili.");

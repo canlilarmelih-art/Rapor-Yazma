@@ -1709,6 +1709,22 @@ function computeDocumentsBlockLabel(group, allGroups) {
   return `${fallbackIndex > 0 ? fallbackIndex : 1}. Blok`;
 }
 
+// Kullanıcı talebi (2026-09-15): "farklı ada parsel çoklu raporlarda
+// belgeler ve proje bölümünde tekil cümleler var ... bunlar tüm
+// taşınmazlarda ortak olup açıklama çoğul cümle kalıplarına uygun
+// olarak yapılmalı" — computeDocumentsBlockLabel()'in "Blok" sonekli
+// etiketi (ör. "1. Blok") burada anlamsız: farklı ada/parsel raporlarında
+// (Kat İrtifakı dışı, titleBlockName genelde boş) computeDocumentsBlockGroups()
+// grupları FARKLI BLOKLARI değil FARKLI PARSELLERİ temsil ediyor. Bu
+// yardımcı buildProjectReviewConsolidatedParts()'a opsiyonel etiket
+// üretici olarak geçirilir, formatTitleUnitParcelLabel ile "{Ada} Ada
+// {Parsel} Parsel" üretir (Madde 1/2'nin de kullandığı aynı etiket).
+function computeDocumentsParcelGroupLabel(group, allGroups) {
+  const list = Array.isArray(allGroups) ? allGroups : [group];
+  const fallbackIndex = list.indexOf(group);
+  return formatTitleUnitParcelLabel(group?.fields?.blockNo, group?.fields?.parcelNo, fallbackIndex);
+}
+
 // computeDocumentsBlockLabel() bazen çıplak blok adını ("A"), bazen
 // HAZIR "Blok" son ekli bir yedek etiketi ("1. Blok") döndürür — bu
 // fonksiyon birleştirme öncesi son eki tekrar SIYIRIR ki
@@ -31181,7 +31197,7 @@ function getProjectReviewSimpleReferenceParts() {
 // varsa HER FARKLI referans kendi blok atfını alır ve TEK cümlede
 // virgül/"ve" ile art arda sıralanır (kullanıcı örneği: "A ve B Blok'a
 // ait ... , C Blok'a ait ... ve D Blok'a ait ... incelenmiştir.").
-function buildProjectReviewConsolidatedReferenceSentence(leadDateText, placeText, typeLower, refItems) {
+function buildProjectReviewConsolidatedReferenceSentence(leadDateText, placeText, typeLower, refItems, attributionBuilder = formatDocumentBlockAttributionPhrase) {
   const byReference = new Map();
   const order = [];
   refItems.forEach(({ label, date, no }) => {
@@ -31195,7 +31211,7 @@ function buildProjectReviewConsolidatedReferenceSentence(leadDateText, placeText
   const unanimous = order.length === 1;
   const clauses = order.map((key) => {
     const { date, no, labels } = byReference.get(key);
-    const attribution = unanimous ? "" : formatDocumentBlockAttributionPhrase(labels);
+    const attribution = unanimous ? "" : attributionBuilder(labels);
     const refPiece = [date && `${date} tarih`, no && `${no} sayılı`].filter(Boolean).join(" ");
     return [attribution || "taşınmazlara ait", refPiece].filter(Boolean).join(" ");
   });
@@ -31439,7 +31455,7 @@ function formatTitleUnitAttributionPhrase(labels) {
 // için AYRI AYRI (temsilci DEĞİL, TÜM bağımsız bölümler) hesaplanıp
 // bağımsız bölüm kimliğiyle (bkz. formatTitleUnitSuitabilityLabel) atıflı
 // şekilde birleştiriliyor.
-function buildProjectReviewConsolidatedParts(units, groups) {
+function buildProjectReviewConsolidatedParts(units, groups, labelBuilder = computeDocumentsBlockLabel, attributionBuilder = formatDocumentBlockAttributionPhrase) {
   const originalFields = state.fields;
   const refItems = [];
   let oldAdaParcelNote = "";
@@ -31447,7 +31463,7 @@ function buildProjectReviewConsolidatedParts(units, groups) {
 
   groups.forEach((group) => {
     if (disqualified) return;
-    const label = computeDocumentsBlockLabel(group, groups);
+    const label = labelBuilder(group, groups);
     const representativeFields = units[group.unitIndices[0]]?.fields || originalFields;
     state.fields = { ...originalFields, ...representativeFields };
     try {
@@ -31492,7 +31508,7 @@ function buildProjectReviewConsolidatedParts(units, groups) {
 
   const reviewDate = getProjectReviewDateText();
   const leadDateText = reviewDate ? `${reviewDate} tarihinde ` : "";
-  const reviewSentence = buildProjectReviewConsolidatedReferenceSentence(leadDateText, firstPlaceText, firstTypeLower, refItems);
+  const reviewSentence = buildProjectReviewConsolidatedReferenceSentence(leadDateText, firstPlaceText, firstTypeLower, refItems, attributionBuilder);
   const footprintSentences = buildProjectReviewConsolidatedSentences(footprintItems);
   const suitabilitySentences = buildProjectReviewConsolidatedSentences(suitabilityItems);
 
@@ -31579,6 +31595,28 @@ function buildProjectReviewBlockFallbackParts(units, groups) {
 // tetiklenemiyordu) ve kaldırıldı.
 function buildProjectReviewExplanationParts() {
   if (!isDocumentsBlockSharingApplicable()) {
+    // Kullanıcı talebi (2026-09-15): "farklı ada parsel çoklu raporlarda
+    // belgeler ve proje bölümünde tekil cümleler var proje açıklama
+    // ruhsat açıklama gibi bunlar tüm taşınmazlarda ortak olup açıklama
+    // çoğul cümle kalıplarına uygun olarak yapılmalı" — isDocumentsBlockSharingApplicable()
+    // yalnızca Kat İrtifakı mülkiyetinde doğru döndüğünden, farklı ada/
+    // parsel raporları (TİPİK OLARAK Müstakil Bina/Arsa/Tarla) her zaman
+    // bu ilk dala düşüyor ve SADECE aktif taşınmazın açıklamasını
+    // gösteriyordu — diğer (farklı ada/parseldeki) taşınmazların proje/
+    // ruhsat durumu tamamen kayboluyordu. buildProjectReviewConsolidatedParts
+    // Kat İrtifakı'na özgü hiçbir varsayım taşımadığından (bkz. kendi
+    // yorumu), farklı-parsel raporlarda da AYNI üçlü (buildAllTitleUnitsForSummaryTable/
+    // computeDocumentsBlockGroups/buildProjectReviewConsolidatedParts)
+    // doğrudan çağrılır — yalnızca "Blok" etiketleyici, parsel-bağlamında
+    // anlamlı computeDocumentsParcelGroupLabel/formatParcelAttributionPhrase
+    // ile DEĞİŞTİRİLİR. `null` dönerse (nadir şekil uyumsuzluğu) mevcut
+    // tekil davranışa GÜVENLİ düşülür.
+    if (isMultiTitleUnitReportForNarrative() && hasMixedTitleUnitParcels()) {
+      const mixedUnits = buildAllTitleUnitsForSummaryTable();
+      const mixedGroups = computeDocumentsBlockGroups(mixedUnits);
+      const mixedConsolidated = buildProjectReviewConsolidatedParts(mixedUnits, mixedGroups, computeDocumentsParcelGroupLabel, formatParcelAttributionPhrase);
+      if (mixedConsolidated) return mixedConsolidated;
+    }
     const text = buildProjectReviewExplanationSingle();
     if (!text) return [];
     const shouldPluralize = isMultiTitleUnitReportForNarrative() && !hasMixedTitleUnitParcels();
@@ -31947,6 +31985,21 @@ function formatDocumentBlockAttributionPhrase(blockLabels) {
   const prefixes = (blockLabels || []).filter(Boolean).map(normalizeBlockLabelPrefixForAttribution).filter(Boolean);
   if (!prefixes.length) return "";
   return `${joinTurkishList(prefixes)} Blok'a ait`;
+}
+
+// formatDocumentBlockAttributionPhrase()'in farklı ada/parsel muadili —
+// etiketler ("0 Ada 56 Parsel" gibi) "Blok" ile bitmediğinden o
+// fonksiyonun HER ZAMAN eklediği "Blok'a ait" soneki burada anlamsız
+// (ve yanlış) olurdu. Etiketin kendisine doğrudan bir iyelik eki
+// eklemek yerine (son kelime "Parsel"/"Ada"/"taşınmaz" arasında değişip
+// Türkçe ünlü uyumu bozulabileceğinden) sabit "taşınmaz(lar)ına ait"
+// ifadesiyle SARILIR — hangi etiket gelirse gelsin ek her zaman doğru
+// çekimlenir.
+function formatParcelAttributionPhrase(parcelLabels) {
+  const clean = (parcelLabels || []).filter(Boolean);
+  if (!clean.length) return "";
+  const suffix = clean.length > 1 ? "taşınmazlarına ait" : "taşınmazına ait";
+  return `${joinTurkishList(clean)} ${suffix}`;
 }
 
 // Bir arşiv-önek (kurum/tarih) grubu içindeki belge referanslarını
