@@ -34522,7 +34522,29 @@ function recalculateExpenseFees() {
 
   const bulkMode = state.fields.expenseBulkValuationMode;
   const bulkCount = parseValuationNumber(state.fields.expenseBulkPropertyCount);
-  const bulkOtherSum = parseValuationNumber(state.fields.expenseBulkOtherPropertiesFeeSum);
+  let bulkOtherSum = parseValuationNumber(state.fields.expenseBulkOtherPropertiesFeeSum);
+  // Kullanıcı talebi (2026-09-15): "masraf tablosunda rapor ücreti
+  // kısmında hesaplanan rapor ücreti yazılmalı çoklu raporlarda" — 2+
+  // taşınmazlı raporlarda "Değerleme Ücreti Tarife Türü"/"Diğer
+  // Taşınmazların Kendi Tarifelerindeki Toplam Ücreti" alanlarını elle
+  // eşleştirmeye ARTIK gerek yok: taban ücret (appraisalFee) ve diğer
+  // taşınmazlar toplamı (bulkOtherSum), Toplu Değerleme tablosunun
+  // (buildExpenseBulkPerUnitFeeBreakdown/computeExpenseBulkHighestAndOtherTotal,
+  // ZATEN "en yüksek bedelli taşınmazı" doğru tespit eden AYNI çekirdek)
+  // otomatik hesapladığı değerlerle DEĞİŞTİRİLİR — aşağıdaki indirim/sabit-
+  // ücret dalları (kullanıcının "aynı ada parselde %15" doğruladığı
+  // formül) DOKUNULMADAN aynı kalır. Tek taşınmazlı raporlarda
+  // (getTitleUnitCount() < 2) davranış DEĞİŞMEDİ.
+  if (getTitleUnitCount() >= 2) {
+    const perUnitRows = buildExpenseBulkPerUnitFeeBreakdown().filter((row) => row.propertyType && Number.isFinite(row.feeExVat));
+    if (perUnitRows.length) {
+      const { highestFee, otherTotal } = computeExpenseBulkHighestAndOtherTotal(perUnitRows);
+      if (Number.isFinite(highestFee)) {
+        appraisalFee = highestFee;
+        bulkOtherSum = otherTotal;
+      }
+    }
+  }
   if (bulkMode === EXPENSE_BULK_MODE_2 && Number.isFinite(bulkCount) && bulkCount >= EXPENSE_BULK_MODE_2_FLAT_THRESHOLD) {
     appraisalFee = parseValuationNumber(state.fields.expenseAppraisalBulkFlatFee201Plus);
   } else if (EXPENSE_BULK_MODE_DISCOUNT[bulkMode] && Number.isFinite(appraisalFee) && Number.isFinite(bulkOtherSum) && bulkOtherSum > 0) {
@@ -34649,6 +34671,30 @@ function buildExpenseBulkPerUnitFeeBreakdown() {
   }
 }
 
+// Kullanıcı düzeltmesi (2026-09-14): "bu tabloda en büyük alanlıyı
+// işaretleme. en yüksek rapor bedeline sahip olanı işaretle" — hem
+// createExpenseBulkPerUnitFeeBreakdownPanel() (tablo) HEM DE (2026-09-15
+// itibarıyla) recalculateExpenseFees() (GERÇEK hesaplama) "en yüksek
+// bedelli taşınmaz" + "diğer taşınmazların toplamı" ikilisine ihtiyaç
+// duyduğundan, TEK bir paylaşımlı çekirdeğe çıkarıldı (iki yerde AYNI
+// mantığın KENDİ kopyasını taşıması, biri düzeltilip diğeri unutulursa
+// sessiz bir sapma/drift riski taşırdı).
+function computeExpenseBulkHighestAndOtherTotal(rows = []) {
+  let highestIndex = -1;
+  let highestFee = -Infinity;
+  rows.forEach((row, index) => {
+    if (Number.isFinite(row.feeExVat) && row.feeExVat > highestFee) {
+      highestFee = row.feeExVat;
+      highestIndex = index;
+    }
+  });
+  const otherTotal = rows.reduce((sum, row, index) => {
+    if (index === highestIndex || !Number.isFinite(row.feeExVat)) return sum;
+    return sum + row.feeExVat;
+  }, 0);
+  return { highestIndex, highestFee: Number.isFinite(highestFee) ? highestFee : Number.NaN, otherTotal };
+}
+
 function createExpenseBulkPerUnitFeeBreakdownPanel() {
   if (getTitleUnitCount() < 2) return null;
   const rows = buildExpenseBulkPerUnitFeeBreakdown();
@@ -34664,32 +34710,27 @@ function createExpenseBulkPerUnitFeeBreakdownPanel() {
 
   const hint = document.createElement("p");
   hint.className = "subtle-text";
-  // Kullanıcı düzeltmesi (2026-09-14): "bu tabloda en büyük alanlıyı
-  // işaretleme. en yüksek rapor bedeline sahip olanı işaretle" — alan
-  // büyüklüğü ile tarife ücreti DOĞRUSAL (birebir orantılı) DEĞİL (farklı
-  // gayrimenkul türlerinin kademeli tarifeleri farklı eşiklerde artıyor);
-  // en yüksek ALAN, en yüksek ÜCRETİ garanti etmiyordu. Kriter artık
-  // doğrudan hesaplanan tarife ücretinin (feeExVat) KENDİSİ.
-  hint.textContent = "Her taşınmazın KENDİ mevcut kullanım niteliği/mülkiyeti ve alanına göre, o taşınmaz TEK BAŞINA bir rapora konu olsaydı hangi tarife ücretini alacağı gösterilir. \"En Yüksek Bedelli\" satırı yukarıdaki \"Değerleme Ücreti Tarife Türü\" alanınca zaten hesaplanır; \"Diğer Taşınmazlar Toplamı\" satırındaki tutarı \"Toplu Değerleme - Diğer Taşınmazların Kendi Tarifelerindeki Toplam Ücreti\" alanına girebilirsiniz.";
+  // Kullanıcı talebi (2026-09-15): "masraf tablosunda rapor ücreti
+  // kısmında hesaplanan rapor ücreti yazılmalı çoklu raporlarda" — bu
+  // tablonun hesapladığı "Toplam Rapor Bedeli" artık recalculateExpenseFees()
+  // TARAFINDAN da (bu SAYFADAKİ AYNI formül, computeExpenseBulkHighestAndOtherTotal()
+  // paylaşımlı çekirdeği üzerinden) doğrudan "Değerleme Ücreti (KDV Hariç)"
+  // alanına YAZILIYOR — elle "Değerleme Ücreti Tarife Türü"/"Diğer
+  // Taşınmazların Toplam Ücreti" eşleştirmesi GEREKMİYOR (2+ taşınmazlı
+  // raporlarda bu iki manuel alan artık HESABA KATILMIYOR).
+  hint.textContent = "Her taşınmazın KENDİ mevcut kullanım niteliği/mülkiyeti ve alanına göre, o taşınmaz TEK BAŞINA bir rapora konu olsaydı hangi tarife ücretini alacağı gösterilir. Aşağıdaki \"Toplam Rapor Bedeli\" artık \"Değerleme Ücreti (KDV Hariç)\" alanına OTOMATİK yazılır — yukarıdaki \"Değerleme Ücreti Tarife Türü\"/\"Diğer Taşınmazların Toplam Ücreti\" alanlarını elle eşleştirmenize gerek yoktur.";
   panel.append(hint);
 
   const validRows = rows.filter((row) => row.propertyType && Number.isFinite(row.feeExVat));
   if (!validRows.length) {
     const note = document.createElement("p");
     note.className = "subtle-text valuation-summary-empty-note";
-    note.textContent = "Taşınmazların Mevcut Kullanım Niteliği/Mülkiyeti ve alanı doldurulduğunda tarife ücretleri burada otomatik listelenecektir.";
+    note.textContent = "Taşınmazların Mevcut Kullanım Niteliği/Mülkiyeti ve alanı doldurulduğunda tarife ücretleri burada otomatik listelenecek ve rapor bedeli otomatik hesaplanacaktır.";
     panel.append(note);
     return panel;
   }
 
-  let largestIndex = -1;
-  let largestFee = -Infinity;
-  rows.forEach((row, index) => {
-    if (Number.isFinite(row.feeExVat) && row.feeExVat > largestFee) {
-      largestFee = row.feeExVat;
-      largestIndex = index;
-    }
-  });
+  const { highestIndex, highestFee, otherTotal } = computeExpenseBulkHighestAndOtherTotal(rows);
 
   const shell = document.createElement("div");
   shell.className = "table-shell expense-bulk-breakdown-shell";
@@ -34707,12 +34748,11 @@ function createExpenseBulkPerUnitFeeBreakdownPanel() {
   `;
   const tbody = document.createElement("tbody");
   let total = 0;
-  let otherTotal = 0;
   rows.forEach((row, index) => {
     const tr = document.createElement("tr");
-    if (index === largestIndex) tr.className = "expense-bulk-breakdown-largest-row";
+    if (index === highestIndex) tr.className = "expense-bulk-breakdown-largest-row";
     const labelCell = document.createElement("td");
-    labelCell.textContent = index === largestIndex ? `${row.label} (En Yüksek Bedelli)` : row.label;
+    labelCell.textContent = index === highestIndex ? `${row.label} (En Yüksek Bedelli)` : row.label;
     const typeCell = document.createElement("td");
     typeCell.textContent = row.propertyType || "—";
     const areaCell = document.createElement("td");
@@ -34721,10 +34761,7 @@ function createExpenseBulkPerUnitFeeBreakdownPanel() {
     feeCell.textContent = Number.isFinite(row.feeExVat) ? formatValuationMoney(row.feeExVat, { decimals: 2 }) : "—";
     tr.append(labelCell, typeCell, areaCell, feeCell);
     tbody.append(tr);
-    if (Number.isFinite(row.feeExVat)) {
-      total += row.feeExVat;
-      if (index !== largestIndex) otherTotal += row.feeExVat;
-    }
+    if (Number.isFinite(row.feeExVat)) total += row.feeExVat;
   });
   table.append(tbody);
 
@@ -34744,26 +34781,27 @@ function createExpenseBulkPerUnitFeeBreakdownPanel() {
   // sistemdeki 2. Grup oranıyla BİREBİR uyuşuyor. Bu tabloda —
   // syncExpenseBulkValuationModeFromUnits()'in ZATEN otomatik belirlediği
   // Toplu Değerleme grubuna göre — indirim oranı + indirimli katkı +
-  // NİHAİ toplam rapor bedeli GÖRÜNÜR hale getirilir (yalnızca bilgi
-  // amaçlı; expenseAppraisalFeeExVat/expenseBulkOtherPropertiesFeeSum
-  // alanlarına OTOMATİK yazılmaz — kullanıcı gördüğü rakamı kendi onayıyla
-  // girer, tıpkı "Diğer Taşınmazlar Toplamı" satırında olduğu gibi).
+  // NİHAİ toplam rapor bedeli GÖRÜNÜR hale getirilir. Kullanıcı talebi
+  // (2026-09-15): bu NİHAİ tutar artık YALNIZCA GÖRÜNTÜLENMİYOR, aynı
+  // zamanda recalculateExpenseFees() tarafından (AYNI formül, AYNI
+  // computeExpenseBulkHighestAndOtherTotal() çekirdeği ile) doğrudan
+  // "Değerleme Ücreti (KDV Hariç)" alanına da YAZILIYOR.
   const bulkMode = state.fields.expenseBulkValuationMode;
   const discountRate = EXPENSE_BULK_MODE_DISCOUNT[bulkMode];
   if (Number.isFinite(discountRate)) {
     const discountedOtherContribution = otherTotal * discountRate;
-    const finalReportFee = largestFee + discountedOtherContribution;
+    const finalReportFee = highestFee + discountedOtherContribution;
     const discountRateRow = document.createElement("tr");
     discountRateRow.innerHTML = `<td colspan="3">İndirim Oranı (${escapeHtml(bulkMode)})</td><td>%${escapeHtml((discountRate * 100).toLocaleString("tr-TR"))}</td>`;
     const discountedRow = document.createElement("tr");
     discountedRow.innerHTML = `<td colspan="3">Diğer Taşınmazların İndirimli Katkısı (Toplam × %${escapeHtml((discountRate * 100).toLocaleString("tr-TR"))})</td><td>${escapeHtml(formatValuationMoney(discountedOtherContribution, { decimals: 2 }))}</td>`;
     const finalRow = document.createElement("tr");
     finalRow.className = "expense-bulk-breakdown-final-row";
-    finalRow.innerHTML = `<td colspan="3"><strong>Toplam Rapor Bedeli (En Yüksek Bedelli + İndirimli Katkı, KDV Hariç)</strong></td><td><strong>${escapeHtml(formatValuationMoney(finalReportFee, { decimals: 2 }))}</strong></td>`;
+    finalRow.innerHTML = `<td colspan="3"><strong>Toplam Rapor Bedeli (Değerleme Ücreti alanına otomatik yazılır)</strong></td><td><strong>${escapeHtml(formatValuationMoney(finalReportFee, { decimals: 2 }))}</strong></td>`;
     tfoot.append(discountRateRow, discountedRow, finalRow);
     if (bulkMode === EXPENSE_BULK_MODE_2 && rows.length >= EXPENSE_BULK_MODE_2_FLAT_THRESHOLD) {
       const flatNote = document.createElement("tr");
-      flatNote.innerHTML = `<td colspan="4">Not: ${EXPENSE_BULK_MODE_2_FLAT_THRESHOLD}+ taşınmazlı 2. Grup (Aynı Parsel) taleplerinde bu formül YERİNE sabit ücret ("Toplu Değerleme 2. Grup - ${EXPENSE_BULK_MODE_2_FLAT_THRESHOLD} ve Üzeri Sabit Ücret") uygulanır.</td>`;
+      flatNote.innerHTML = `<td colspan="4">Not: ${EXPENSE_BULK_MODE_2_FLAT_THRESHOLD}+ taşınmazlı 2. Grup (Aynı Parsel) taleplerinde bu formül YERİNE sabit ücret ("Toplu Değerleme 2. Grup - ${EXPENSE_BULK_MODE_2_FLAT_THRESHOLD} ve Üzeri Sabit Ücret", "Değerleme Ücreti" alanına YİNE OTOMATİK yazılır) uygulanır.</td>`;
       tfoot.append(flatNote);
     }
   } else if (bulkMode && bulkMode !== "Yok") {
