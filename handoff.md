@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.777 - 2026-09-15 - "Ana Gayrimenkul Kat Dağılımı" tablosunda "Ortak Ve Eklentiler" metni artık büyük harfe dönüşmüyor
+
+- Kullanıcı: *(ekran görüntüsü — Ana Gayrimenkul Kat Dağılımı tablosu, "1. Bodrum" satırı "Ortak Ve Eklentiler" hücresi "otopark ve ortak alanlar", "Çatı" satırı "4. normal katta yer alan dairelerin devamları")* "ortak ve eklentiler kullanıcı nasıl yazdı ise büyük küçük harf o şekilde paragrafa aktarılmalı."
+- Kök neden: `buildBuildingFloorMacroSummary()` bu hücrenin metnini `normalizeReportDescriptionText()` ile işliyordu — bu fonksiyonun cümle-içi büyütme kuralı (satır başı VE her ". " sonrasını büyütme) hücrede yazan "otopark ve ortak alanlar"ı paragrafın başında "Otopark ve ortak alanlar"a, "4. normal katta..." içindeki "4. "yi "4. Normal..."a çeviriyordu. Oysa bu hücre (daha önceki, ayrı bir kullanıcı talebiyle) zaten girişte `normalizeLowercaseFreeText()` ile DAİMA küçük harfe zorlanıp öyle saklanıyor (bkz. `tools/test-building-floor-common-lowercase.js`) — paragrafa aktarılırken YANLIŞ bir ikinci normalizasyon uygulanmış oluyordu.
+- Düzeltme: `buildBuildingFloorMacroSummary()` artık bu hücre için `normalizeReportDescriptionText()` yerine, hücrenin kendisinin de kullandığı AYNI `normalizeLowercaseFreeText()`'i (idempotent, yeni bir kural EKLENMEDİ) çağırıyor — sonuç hücrede görünen metni birebir yansıtıyor. Kat adı/sayısal birim metinleri (`formatBuildingFloorLocative`, `joinBuildingUnitCounts` vb.) bu değişiklikten etkilenmedi.
+- Test: yeni `tools/test-building-floor-common-case-preserved.js` — kullanıcının BİREBİR ekran görüntüsü senaryosunu (1. Bodrum "otopark ve ortak alanlar", Çatı "4. normal katta yer alan dairelerin devamları") gerçek `buildBuildingFloorMacroSummary()` fonksiyonuyla uçtan uca çalıştırıp küçük harfin korunduğunu, eski (blur'dan geçmemiş) karışık harfli veride de self-heal ile küçük harfe döndüğünü ve kat-adı kaynaklı metnin etkilenmediğini doğruluyor. Stash ile eski koda karşı çalıştırıldığında kullanıcının BİREBİR bildirdiği "Otopark ve ortak alanlar" / "Çatı katta 4. Normal katta..." değerlerini gerçekten ürettiği (regresyon genuine) doğrulandı.
+- `npm run verify` (179 test dosyası) EXIT:0. `index.html`'de `app.js` cache-buster'ı `20260915-0215`'e yükseltildi. Canlı tarayıcı testi yapılamadı — kullanıcıdan "Ortak Ve Eklentiler" hücresine küçük harfle bir şey yazdığı bir raporda "Ana Gayrimenkul Açıklaması"nın artık aynı küçük harfle çıktığını doğrulaması isteniyor.
+
+
 ## 0.0.776 - 2026-09-15 - Tapu Harcı KDV Dahil tutarı artık küsüratsız (4 taşınmazda 1.228,00 TL, 1.227,98 TL DEĞİL)
 
 - Kullanıcı: *(ekran görüntüsü — Masraf Tablosu, 4 taşınmazlı rapor)* "tapu harcı 2026 yılında 307 TL Kdv Dahil 255,833333 TL ise KDV hariç ancak ekran görüntüsünde KDV dahil küsüratlı çıkıyor. bu sorun büyük ihtimal küsürattan kaynaklanıyor. bu sorunu giderelim. KDV hari. 255,83 KDV dahil 307 TL olacak."

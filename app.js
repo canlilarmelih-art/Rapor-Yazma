@@ -15393,7 +15393,17 @@ function buildBuildingFloorMacroSummary() {
   const mixedNormalFlags = rows.map(() => false);
 
   rows.forEach((row, rowIndex) => {
-    const manualText = normalizeReportDescriptionText(row.common || "");
+    // Kullanici bildirimi (2026-09-15, ekran goruntusu): "Ortak Ve Eklentiler"
+    // hucresi zaten girisde normalizeLowercaseFreeText() ile kucuk harfe
+    // zorlanip oyle saklaniyor (bkz. test-building-floor-common-lowercase.js).
+    // Burada normalizeReportDescriptionText() kullanmak YANLIS bir ikinci
+    // donusum ekliyordu: onun cumle-basi-buyutme regex'i "otopark..." -> "Otopark..."
+    // ve "4. normal katta..." -> "4. Normal katta..." (nokta+bosluk sonrasi
+    // buyutme) gibi ISTENMEYEN buyuk harfler uretiyordu. Alan zaten hangi
+    // harfle saklanmissa (bu projede daima kucuk harf) PARAGRAFA AYNEN
+    // aktarilmali - ayni normalizeLowercaseFreeText() burada da (idempotent)
+    // kullanilir, YENI bir normalizasyon kurali EKLENMEZ.
+    const manualText = normalizeLowercaseFreeText(row.common || "");
     const nonZeroIndexes = counts[rowIndex]
       .map((value, index) => (value > 0 ? index : -1))
       .filter((index) => index >= 0);

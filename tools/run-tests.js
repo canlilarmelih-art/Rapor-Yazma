@@ -219,6 +219,7 @@ const TEST_FILES = [
   "test-expense-bulk-valuation-mode-auto-sync.js",
   "test-expense-bulk-per-unit-fee-breakdown.js",
   "test-expense-title-deed-fee-vat-rounding.js",
+  "test-building-floor-common-case-preserved.js",
 ];
 
 let failed = null;
