@@ -1,5 +1,13 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.792 - 2026-09-15 - İncelenen Belgeler Açıklaması: HİÇ belge yokken de artık çoğul
+
+- Kullanıcı, 0.0.791'in canlı çıktısını ("19.08.2026 tarihinde, Gürsu Belediyesi İmar Arşiv dosyasında yapılan incelemelerde taşınmaza ait yapı kullanma izin belgesi bulunamamıştır." + aynı tekil kalıpta ruhsat cümlesi) paylaşıp "olmamış" dedi.
+- Kök neden: 0.0.791'in parsel-birleştirme düzeltmesi `buildReviewedDocumentsDescription()`'ın `rows.length > 0` (en az bir parselde en az bir belge satırı) dalını hedefliyordu — kullanıcının test ettiği rapor (tarımsal/arazi, mimari proje yok) HİÇBİR parselde belge girişi olmadığından `rows.length === 0` kalıyor, fonksiyon `buildMissingReviewedDocumentSentences()`'in rapor-geneli SABİT (kurum/tarih dışında taşınmaza-özgü hiçbir veri içermeyen) tekil metnini AYNEN döndürüyordu — parsel-birleştirme dalı hiç devreye girmiyordu.
+- Düzeltme: bu dal artık `isMultiTitleUnitReportForNarrative()` doğruyken `pluralizeEnvironmentalSubjectText()` ile "taşınmaza ait" → "taşınmazlara ait" çoğullanıyor (parsel etiketine gerek yok — metnin taşınmaza-özgü hiçbir içeriği olmadığından farklı/aynı parsel ayrımı ANLAMSIZ, yalnızca özne çoğullanması yeterli — Proje İnceleme Açıklaması'nın "mimari proje yok" sade-cümle ilkesiyle AYNI mantık).
+- Test: `tools/test-documents-block-description.js`'e 3 yeni senaryo (farklı parsel + hiç belge yok → çoğul; aynı parsel çoklu bağımsız bölüm + hiç belge yok → çoğul; tekil taşınmaz REGRESYON → tekil kalır). `buildMissingReviewedDocumentSentences` sandbox stub'ı da (opak "MISSING_SENTENCE" yerine) gerçekçi "taşınmaza ait" kalıbı taşıyacak şekilde güncellendi ki çoğullama gözlemlenebilsin. Stash ile kullanıcının bildirdiği TAM metin reprodüklendi.
+- `npm run verify` (181 test dosyası) EXIT:0. `index.html`'de `app.js` cache-buster'ı `20260915-1030`'a yükseltildi. Canlı tarayıcı testi yapılamadı — kullanıcıdan aynı raporda "İncelenen Belgeler Açıklaması"nın artık çoğul ("taşınmazlara ait") göründüğünü doğrulaması isteniyor.
+
 ## 0.0.791 - 2026-09-15 - Mimari proje YOK'ta Tapu/Belediye Fark sorusu gizlendi + İncelenen Belgeler Açıklaması farklı parselde artık ortak
 
 - Kullanıcı: "mimiar proje yok seçildiğinde Tapu Projesi Ve Belediye Projesi Arasında Fark Var Mı? bu şık saklanacak. sadece belediye kalacak. İncelenen Belgeler Açıklaması ise yine ortak cümle çoklu formata uygun olacak" — iki ayrı istek.

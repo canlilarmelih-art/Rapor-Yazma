@@ -32250,7 +32250,18 @@ function buildReviewedDocumentsDescription() {
   )).filter((row) => row.type);
   const ekbParts = buildEkbExplanationParts();
   if (!rows.length) {
-    return normalizeReportDescriptionText([...buildMissingReviewedDocumentSentences(), ...ekbParts].filter(Boolean).join("\n\n"));
+    // Kullanıcı bulgusu (2026-09-15, "olmamış" — canlı rapor ekran
+    // görüntüsü): çoklu taşınmaz raporunda HİÇBİR parselin belge tablosu
+    // dolu değilse (rows.length === 0, yukarıdaki parsel-birleştirme dalı
+    // hiç DEVREYE GİRMEDEN) bu dal TEKİL "taşınmaza ait ... bulunamamıştır."
+    // metnini AYNEN döndürüyordu — buildMissingReviewedDocumentSentences()
+    // rapor-geneli sabit metinler ürettiğinden (kurum/tarih dışında
+    // taşınmaza-özgü hiçbir veri yok) parsel bazlı atfa gerek yok, yalnızca
+    // özne çoğullanır (buildMixedParcelNoArchitecturalProjectText'in "sadece
+    // sade/çoğul cümle" ilkesiyle AYNI).
+    const missingSentences = buildMissingReviewedDocumentSentences()
+      .map((sentence) => pluralizeEnvironmentalSubjectText(sentence, isMultiTitleUnitReportForNarrative()));
+    return normalizeReportDescriptionText([...missingSentences, ...ekbParts].filter(Boolean).join("\n\n"));
   }
 
   const permitGroups = new Map();

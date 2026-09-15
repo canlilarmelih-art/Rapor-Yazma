@@ -126,6 +126,10 @@ const functionNames = [
   "computeDocumentsParcelGroupLabel",
   "formatTitleUnitParcelLabel",
   "formatParcelAttributionPhrase",
+  // 2026-09-15 (kullanıcı bulgusu, "olmamış" — hiçbir parselin belge
+  // tablosu dolu değilken buildMissingReviewedDocumentSentences() tekil
+  // kalıyordu) — çoğullama için.
+  "pluralizeEnvironmentalSubjectText",
 ];
 
 // Ağır/kapsam-dışı bağımlılıklar (bu testin odağı DEĞİL, mevcut/değişmeyen
@@ -180,7 +184,18 @@ const sandboxSource = `
     if (!row.date || !row.no) return "OLD_MISSING_OCCUPANCY_SENTENCE";
     return \`OCCUPANCY_FOUND(\${row.date},\${row.no})\`;
   }
-  function buildMissingReviewedDocumentSentences() { return ["MISSING_SENTENCE"]; }
+  // 2026-09-15: gerçekçi "taşınmaza ait" kalıbı taşıyan bir sabit metin
+  // kullanılıyor (önceki "MISSING_SENTENCE" opak stub'u DEĞİL) - çağıran
+  // tarafın (buildReviewedDocumentsDescription) etrafına eklediği
+  // pluralizeEnvironmentalSubjectText() çoğullamasının GÖZLEMLENEBİLİR
+  // olması için (bu testin odağı buildMissingReviewedDocumentSentences'in
+  // KENDİ iç mantığı DEĞİL, çağıranın onu çoğullama şekli).
+  function buildMissingReviewedDocumentSentences() {
+    return [
+      "PREFIX(DEFAULT) yapılan incelemelerde taşınmaza ait yapı kullanma izin belgesi bulunamamıştır.",
+      "PREFIX(DEFAULT) yapılan incelemelerde taşınmaza ait yeni yapı ruhsatı bulunamamıştır.",
+    ];
+  }
   // Gozlemlenebilir stub (2026-08-23) - gercek cumle metni bu dosyanin
   // odagi DEGIL (ruhsat/izin blok-gruplama mantigi); yalnizca
   // buildEkbExplanationParts()'in DOGRU fields/attribution'la cagirdigini
@@ -632,6 +647,78 @@ function freshState(overrides = {}) {
   assert.ok(samePartcelDescription.includes("256/47"), "Belge referansi yine de dogru gorunmeli.");
 
   console.log("buildReviewedDocumentsDescription() REGRESYON (ayni ada/parsel -> parsel atfi YOK) testi tamam.");
+}
+
+// --- 12) Kullanıcı bulgusu (2026-09-15, "olmamış" — canlı rapor ekran ----
+// görüntüsü): farklı ada/parsel çoklu bir raporda HİÇBİR parselin belge
+// tablosu dolu değilse ("19.08.2026 tarihinde, Gürsu Belediyesi İmar Arşiv
+// dosyasında yapılan incelemelerde taşınmaza ait yapı kullanma izin belgesi
+// bulunamamıştır." + aynı tekil kalıpta ruhsat cümlesi) rows.length === 0
+// olduğundan Madde 4'ün 11 numaralı senaryolardaki parsel-birleştirme dalı
+// HİÇ DEVREYE GİRMİYORDU — buildMissingReviewedDocumentSentences() rapor-
+// geneli SABİT metinler ürettiğinden (taşınmaza-özgü veri yok) yalnızca
+// özne çoğullanır, parsel etiketine gerek yok.
+{
+  // 12a) Farklı ada/parsel (Müstakil Bina) + HER İKİ parselin de belge
+  // tablosu BOŞ -> her iki cümle de coğul ("taşınmazlara ait") olmalı.
+  fns.setState(freshState({
+    fields: {
+      requestType: "Çoklu Talep", ownershipType: "Müstakil Bina",
+      blockNo: "0", parcelNo: "56", titleBlockName: "",
+      documentReviewInstitution: "Merkez Belediyesi",
+    },
+    tables: { documents: [] },
+    titleUnits: [{
+      fields: { blockNo: "0", parcelNo: "315", titleBlockName: "" },
+      tables: { documents: [] },
+    }],
+  }));
+  assert.equal(fns.hasMixedTitleUnitParcels(), true, "sanity: 0/56 ve 0/315 farkli parsel sayilmali.");
+  const emptyMixedDescription = fns.buildReviewedDocumentsDescription();
+  assert.ok(emptyMixedDescription.includes("taşınmazlara ait yapı kullanma izin belgesi bulunamamıştır."), `Iskan-yok cumlesi COGUL olmali, bulunan: ${emptyMixedDescription}`);
+  assert.ok(emptyMixedDescription.includes("taşınmazlara ait yeni yapı ruhsatı bulunamamıştır."), `Ruhsat-yok cumlesi de COGUL olmali, bulunan: ${emptyMixedDescription}`);
+  assert.ok(!emptyMixedDescription.includes("taşınmaza ait"), `Eski TEKIL 'tasinmaza ait' kalibi KALMAMALI, bulunan: ${emptyMixedDescription}`);
+
+  console.log("buildReviewedDocumentsDescription() farkli ada/parsel + HICBIR belge yokken cogul ozne testi tamam.");
+}
+{
+  // 12b) Aynı ada/parsel (hasMixedTitleUnitParcels false) çoklu bağımsız
+  // bölüm + belge tablosu BOŞ -> yine çoğul olmalı (yalnızca farklı
+  // parselle SINIRLI bir düzeltme DEĞİL, isMultiTitleUnitReportForNarrative
+  // TEK basina yeterli).
+  fns.setState(freshState({
+    fields: {
+      requestType: "Çoklu Talep", ownershipType: "Yatay Kat İrtifakı",
+      blockNo: "100", parcelNo: "1", titleBlockName: "A Blok",
+      documentReviewInstitution: "Merkez Belediyesi",
+    },
+    tables: { documents: [] },
+    titleUnits: [{
+      fields: { blockNo: "100", parcelNo: "1", titleBlockName: "A Blok" },
+      tables: { documents: [] },
+    }],
+  }));
+  assert.equal(fns.hasMixedTitleUnitParcels(), false, "sanity: ayni ada/parselde 2 bagimsiz bolum FARKLI parsel SAYILMAMALI.");
+  const emptySameParcelDescription = fns.buildReviewedDocumentsDescription();
+  assert.ok(emptySameParcelDescription.includes("taşınmazlara ait yapı kullanma izin belgesi bulunamamıştır."), `Ayni ada/parselde COKLU bagimsiz bolum de cogul olmali, bulunan: ${emptySameParcelDescription}`);
+
+  console.log("buildReviewedDocumentsDescription() ayni ada/parsel coklu + HICBIR belge yokken cogul ozne testi tamam.");
+}
+{
+  // 12c) REGRESYON: tekil taşınmaz + belge tablosu boş -> TEKİL kalmalı.
+  fns.setState(freshState({
+    fields: {
+      requestType: "Tekli Talep", ownershipType: "Müstakil Bina",
+      blockNo: "0", parcelNo: "56", titleBlockName: "",
+      documentReviewInstitution: "Merkez Belediyesi",
+    },
+    tables: { documents: [] },
+  }));
+  const singleEmptyDescription = fns.buildReviewedDocumentsDescription();
+  assert.ok(singleEmptyDescription.includes("taşınmaza ait yapı kullanma izin belgesi bulunamamıştır."), `Tekil tasinmazda TEKIL kalmali (regresyon), bulunan: ${singleEmptyDescription}`);
+  assert.ok(!singleEmptyDescription.includes("taşınmazlara ait"), `Tekil tasinmazda COGUL OLMAMALI (regresyon), bulunan: ${singleEmptyDescription}`);
+
+  console.log("buildReviewedDocumentsDescription() tekil tasinmaz + HICBIR belge yokken TEKIL kalmasi (REGRESYON) testi tamam.");
 }
 
 console.log("Incelenen Belgeler Aciklamasi blok-bazli gruplama testleri basarili.");
