@@ -80,8 +80,8 @@ function sliceFn(startMarker, { toMarker } = {}) {
   );
   assert.match(
     appSource,
-    /shouldHideField\(section\.id, field\.key\)\s*&&\s*\(!isCurrentUserAdmin\(\)\s*\|\|\s*\(section\.id === "case" && field\.key === "currentUsageNature"\)\s*\|\|\s*\(section\.id === "documents" && isCadastralProjectVisibilityField\(field\.key\)\)\s*\|\|\s*\(section\.id === "address" && isEnvironmentRegionTypeFilteredField\(field\.key\)\)\)/,
-    "Admin diger alan filtresi istisnalarini korurken mevcut kullanim ve kadastro gorunurlugu kurallarini uygulamali.",
+    /shouldHideField\(section\.id, field\.key\)\s*&&\s*\(!isCurrentUserAdmin\(\)\s*\|\|\s*\(section\.id === "case" && field\.key === "currentUsageNature"\)\s*\|\|\s*\(section\.id === "documents" && isCadastralProjectVisibilityField\(field\.key\)\)\s*\|\|\s*\(section\.id === "address" && isEnvironmentRegionTypeFilteredField\(field\.key\)\)[\s\S]{0,1500}?\|\|\s*section\.id === "title"\)\)/,
+    "Admin diger alan filtresi istisnalarini korurken mevcut kullanim, kadastro gorunurlugu VE tapu (title) bagimsiz bolum kurallarini uygulamali.",
   );
   assert.match(
     appSource,
@@ -158,6 +158,77 @@ function sliceFn(startMarker, { toMarker } = {}) {
   // Banka secimi diger bolumleri ETKİLEMEMELİ.
   assert.equal(halkbankResult.hidesOtherSection, false, "Banka bazli gizleme yalnizca 'halkbankRisk' bolumunu etkilemeli.");
   assert.equal(isbankResult.hidesOtherSection, false, "Banka bazli gizleme yalnizca 'halkbankRisk' bolumunu etkilemeli.");
+}
+
+// --- c) Kullanıcı bildirimi (2026-09-15, çoklu Tarla talebi): Tapu (title)
+// bölümünde Ana Taşınmaz/Kat İrtifakı-dışı mülkiyette gizlenmesi gereken
+// bağımsız bölüm alanları YÖNETİCİ hesabında görünmeye devam ediyordu —
+// case/documents/address'teki "admin'e bile gösterme" istisnası "title"e
+// hiç eklenmemişti. createForm'un GERÇEK karar ifadesi (kaynaktan aynen
+// çıkarılır, YENİDEN YAZILMAZ) çalıştırılıp admin/normal kullanıcı VE
+// title/case bölümleri için davranışsal olarak doğrulanır.
+{
+  const startMarker = "shouldHideField(section.id, field.key) && (!isCurrentUserAdmin()";
+  const endMarker = '|| section.id === "title"))';
+  const startIndex = appSource.indexOf(startMarker);
+  assert(startIndex >= 0, "createForm admin-bypass ifadesi bulunamadı.");
+  const endIndex = appSource.indexOf(endMarker, startIndex);
+  assert(endIndex >= 0, "createForm admin-bypass ifadesinin sonu bulunamadı.");
+  // Son ")" ifadenin KENDİSİNE ait (shouldHideField(...) && (...)  şeklindeki
+  // dış parantez), endMarker'ın kendi kapanışına DAHİL değil — bu yüzden
+  // endMarker'ın uzunluğu + 1 (dış parantez) ile kesilir.
+  const decisionExpr = appSource.slice(startIndex, endIndex + endMarker.length - 1);
+
+  function computeHideDecision({ sectionId, fieldKey, hideResult, isAdmin, cadastralVisible = false, environmentFiltered = false }) {
+    const context = {
+      section: { id: sectionId },
+      field: { key: fieldKey },
+      shouldHideField: () => hideResult,
+      isCurrentUserAdmin: () => isAdmin,
+      isCadastralProjectVisibilityField: () => cadastralVisible,
+      isEnvironmentRegionTypeFilteredField: () => environmentFiltered,
+    };
+    vm.createContext(context);
+    return vm.runInContext(decisionExpr, context);
+  }
+
+  // Yönetici + Tapu bölümü + shouldHideField true (Ana Taşınmaz/Kat
+  // İrtifakı-dışı mülkiyet) -> ARTIK yöneticide de GİZLENMELİ.
+  assert.equal(
+    computeHideDecision({ sectionId: "title", fieldKey: "unitNo", hideResult: true, isAdmin: true }),
+    true,
+    "KULLANICI BİLDİRİMİ: yönetici hesabında Tapu bölümünde Ana Taşınmaz/Tarla gibi durumlarda 'Bağımsız Bölüm No' vb. alanlar GİZLENMELİ."
+  );
+  // Normal kullanıcı + Tapu + shouldHideField true -> zaten gizliydi (regresyon).
+  assert.equal(
+    computeHideDecision({ sectionId: "title", fieldKey: "unitNo", hideResult: true, isAdmin: false }),
+    true,
+    "Normal kullanıcıda Tapu bölümü gizleme davranışı DEĞİŞMEMELİ (regresyon)."
+  );
+  // shouldHideField false (ör. Kat İrtifakı + bağımsız bölüm) -> kimse için gizlenmemeli.
+  assert.equal(
+    computeHideDecision({ sectionId: "title", fieldKey: "unitNo", hideResult: false, isAdmin: true }),
+    false,
+    "shouldHideField false iken (ör. gerçek bağımsız bölüm) Tapu alanı yöneticide de GİZLENMEMELİ."
+  );
+  // Diğer bölümler (case/documents/address) YÖNETİCİ istisnası regresyon
+  // kontrolü — "title" eklemesi bunları BOZMAMALI.
+  assert.equal(
+    computeHideDecision({ sectionId: "case", fieldKey: "currentUsageNature", hideResult: true, isAdmin: true }),
+    true,
+    "REGRESYON: 'case' bölümünün admin istisnası bozulmuş olabilir."
+  );
+  assert.equal(
+    computeHideDecision({ sectionId: "documents", fieldKey: "projectRegisteredInCadastre", hideResult: true, isAdmin: true, cadastralVisible: false }),
+    false,
+    "REGRESYON: 'documents' bölümünün admin istisnası (kadastro GÖRÜNÜR alan) bozulmuş olabilir."
+  );
+  assert.equal(
+    computeHideDecision({ sectionId: "address", fieldKey: "commercialFunctionDensity", hideResult: true, isAdmin: true, environmentFiltered: false }),
+    false,
+    "REGRESYON: 'address' bölümünün admin istisnası bozulmuş olabilir."
+  );
+  console.log("KULLANICI BİLDİRİMİ: Tapu (title) bölümü admin-bypass düzeltmesi (gerçek karar ifadesi) testi tamam.");
 }
 
 console.log("Ayrıcalıklı görünürlük düzeltmeleri (transport/nearby/environment/Halkbank) testi tamam.");

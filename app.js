@@ -6222,7 +6222,21 @@ function createForm(section) {
       (shouldHideField(section.id, field.key) && (!isCurrentUserAdmin()
         || (section.id === "case" && field.key === "currentUsageNature")
         || (section.id === "documents" && isCadastralProjectVisibilityField(field.key))
-        || (section.id === "address" && isEnvironmentRegionTypeFilteredField(field.key))))
+        || (section.id === "address" && isEnvironmentRegionTypeFilteredField(field.key))
+        // Kullanıcı bildirimi (2026-09-15, çoklu Tarla talebi): "tapu
+        // bölümünde ana taşınmaz seçeneğinde gizlenmesi gereken bağımsız
+        // bölüm no tapu katı ve benzeri seçenekler gözüküyor" — shouldHideField
+        // "title" dalı Ana Taşınmaz/Kat İrtifakı-dışı mülkiyette bağımsız
+        // bölüme özgü 7 alanı (Bağımsız Bölüm Niteliği/Blok/Giriş/Tapu Katı/
+        // Bağımsız Bölüm No/Arsa Payı/Payda) İÇERİK olarak anlamsız bulduğu
+        // için gizliyor — case/documents/address'teki AYNI "admin'e bile
+        // gösterme" kuralı burada YOKTU (yalnızca EKSİK, bilerek hariç
+        // tutulmamıştı), bu yüzden yönetici hesabında bu alanlar Ana
+        // Taşınmaz/Tarla gibi durumlarda YANLIŞLIKLA görünmeye devam
+        // ediyordu. "title" bölümünün shouldHideField dalı case gibi TEK bir
+        // gerekçeye (bağımsız bölüm alaka'sızlığı) sahip, bu yüzden ayrı bir
+        // alan-anahtarı kontrolüne gerek yok.
+        || section.id === "title"))
     ) return;
 
     if (section.id === "address" && ["latitude", "longitude"].includes(field.key)) {
