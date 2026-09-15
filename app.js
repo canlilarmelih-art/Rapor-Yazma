@@ -49622,13 +49622,39 @@ function buildComparableRoadFrontageText(row = {}) {
   return frontage ? `yola cephe durumu ${frontage.toLocaleLowerCase("tr-TR")}` : "";
 }
 
+// cleanBoundNeighborhoodCenterName()'in ("{ad} Mahalle Merkezinin", Ziraat
+// konum cümlesinde kullanılır) emsal-konum cümlesine özgü kardeşi —
+// "{ad} Mahallesinin" (kullanıcının verdiği tam örnek: "Canbazlarköyü
+// Mahallesinin 2,39 km güneyinde" — "Merkezinin" DEĞİL, "Mahallesinin").
+function formatComparableBoundNeighborhoodSubject(value = "") {
+  const baseName = String(value || "")
+    .split(/\s*-\s*|\s*\/\s*/)[0]
+    .replace(/\b(mahallesi|mahalle|mah\.?|köyü|köy)\b/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return baseName ? `${baseName} Mahallesinin` : "";
+}
+
 function formatComparableMapLocationPhrase(row = {}) {
   const text = String(row.c20 || "").trim();
   if (!text) return "";
-  // bkz. buildComparableLongText() yorumu — Emsaller Çoklu Talep'te ortak
-  // olduğundan (isComparablesSharedAcrossUnits) tekil "taşınmazın" (genitif)
-  // referansı burada da çoğullaştırılır.
-  const subjectGenitive = isComparablesSharedAcrossUnits() ? "taşınmazların" : "taşınmazın";
+  // Kullanıcı talebi (2026-09-16): "çoklu tarla ve arsa raporlarında
+  // emsaller kısmında emsal metninde 'taşınmazların 2,39 km kuzeyinde,'
+  // ibaresi var bu ibare çoklu raporlarda taşınmazlar farklı konumlarda
+  // olabileceği için mantıksızdır. bunun yerine emsalin konumunu
+  // taşınmazların bağlı bulunduğu köye yön ve mesafe olarak belirtelim"
+  // (örnek: "canbazlarköyü mahallesinin 2,39 km güneyinde") — Emsaller
+  // Çoklu Talep'te paylaşımlı olduğunda (isComparablesSharedAcrossUnits)
+  // "taşınmazların" öznesi farklı konumlardaki taşınmazlar için
+  // ANLAMSIZDIR; SAYISAL mesafe/yön (zaten tek bir referans noktasından,
+  // bkz. buildComparableLocationText/getComparableSubjectPoint, hesaplanmış
+  // olup DEĞİŞMEZ) artık TEK, somut bir referans noktası olan "bağlı
+  // mahalle/köy" adına atfedilir. Alan boşsa (kullanıcı doldurmadıysa)
+  // eski "taşınmazların" ifadesine GÜVENLİ düşülür.
+  const boundNeighborhoodSubject = isComparablesSharedAcrossUnits()
+    ? formatComparableBoundNeighborhoodSubject(state.fields.boundNeighborhood)
+    : "";
+  const subjectGenitive = boundNeighborhoodSubject || (isComparablesSharedAcrossUnits() ? "taşınmazların" : "taşınmazın");
   const match = text.match(/([\d.,]+)\s*(?:m|metre)\s+(.+)/i);
   if (!match) return `${subjectGenitive} ${text}`;
   const distance = parseComparableNumber(match[1]);

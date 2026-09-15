@@ -194,4 +194,48 @@ function createContext(overrides = {}) {
   console.log("Emsal karti (Arsa/Tarla) tekil/cogul testi tamam.");
 }
 
+// --- 4) KULLANICI TALEBİ (2026-09-16): "çoklu tarla ve arsa raporlarında --
+// emsaller kısmında emsal metninde 'taşınmazların 2,39 km kuzeyinde,'
+// ibaresi ... mantıksızdır ... bunun yerine emsalin konumunu taşınmazların
+// bağlı bulunduğu köye yön ve mesafe olarak belirtelim" (örnek:
+// "canbazlarköyü mahallesinin 2,39 km güneyinde") — "Bağlı mahalle/köy"
+// (boundNeighborhood) doluysa Çoklu Talep'te "taşınmazların" öznesinin
+// YERİNİ alır; boşsa ESKİ davranışa güvenli düşülür. -----------------------
+{
+  // 4a) km biçimi (kullanıcının TAM bildirdiği kusur — "m|metre" regex'i
+  // eşleşmediğinden eski kodda HİÇ işlenmeden "taşınmazların {ham metin}"
+  // olarak düz birleştiriliyordu).
+  const context = createContext({ fields: { boundNeighborhood: "Canbazlarköyü" } });
+  context.setMultiUnit(true);
+  const kmPhrase = context.formatComparableMapLocationPhrase({ c20: "2,39 km kuzeyinde" });
+  assert.equal(kmPhrase, "Canbazlarköyü Mahallesinin 2,39 km kuzeyinde", `KULLANICI TALEBİ: km biçiminde 'taşınmazların' yerine bağlı köy adı kullanılmalı, bulunan: ${kmPhrase}`);
+  assert.ok(!kmPhrase.includes("taşınmazların"), `'taşınmazların' ifadesi ARTIK gorunmemeli (bagli koy adi doluyken), bulunan: ${kmPhrase}`);
+
+  // 4b) metre biçimi (formatComparableMapLocationPhrase'in DİĞER dalı,
+  // sayısal yuvarlama uygulanan) da AYNI şekilde etkilenmeli.
+  const meterPhrase = context.formatComparableMapLocationPhrase({ c20: "250 m kuzeyinde" });
+  assert.equal(meterPhrase, "Canbazlarköyü Mahallesinin yaklaşık 250 metre kuzeyinde", `Metre bicimi de bagli koy adina atfedilmeli, bulunan: ${meterPhrase}`);
+
+  console.log("formatComparableMapLocationPhrase() bagli koy/mahalle adina atif (KULLANICI TALEBİ) testi tamam.");
+}
+{
+  // 4c) REGRESYON: "Bağlı mahalle/köy" alanı BOŞSA eski "taşınmazların"
+  // davranışı AYNEN korunmalı (yeni özellik yalnızca alan doluyken devreye girer).
+  const context = createContext();
+  context.setMultiUnit(true);
+  const phrase = context.formatComparableMapLocationPhrase({ c20: "2,39 km kuzeyinde" });
+  assert.equal(phrase, "taşınmazların 2,39 km kuzeyinde", `Bagli koy/mahalle BOSKEN eski 'taşınmazların' davranisi korunmali (regresyon), bulunan: ${phrase}`);
+  console.log("formatComparableMapLocationPhrase() bagli koy/mahalle BOSKEN eski davranis (REGRESYON) testi tamam.");
+}
+{
+  // 4d) REGRESYON: tekil (paylaşımsız) raporlarda bağlı köy adı devreye
+  // GİRMEMELİ — "taşınmazın 2,39 km kuzeyinde" (tekil) AYNEN korunur,
+  // çünkü tek taşınmazlı raporlarda zaten belirsizlik/mantıksızlık yok.
+  const context = createContext({ fields: { boundNeighborhood: "Canbazlarköyü" } });
+  context.setMultiUnit(false);
+  const phrase = context.formatComparableMapLocationPhrase({ c20: "2,39 km kuzeyinde" });
+  assert.equal(phrase, "taşınmazın 2,39 km kuzeyinde", `Tekil raporda bagli koy adina GECILMEMELI (regresyon), bulunan: ${phrase}`);
+  console.log("formatComparableMapLocationPhrase() tekil raporda bagli koy adina GECILMEMESI (REGRESYON) testi tamam.");
+}
+
 console.log("Emsal karti coklu-talep cogullastirma testleri basarili.");

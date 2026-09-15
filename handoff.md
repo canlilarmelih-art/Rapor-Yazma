@@ -1,5 +1,13 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.801 - 2026-09-16 - Emsal konum ifadesi çoklu Tarla/Arsa raporlarında artık "taşınmazların" yerine bağlı köy/mahalle adına atfediliyor
+
+- Kullanıcı: "çoklu tarla ve arsa raporlarında emsaller kısmında emsal metninde 'taşınmazların 2,39 km kuzeyinde,' ibaresi var bu ibare çoklu raporlarda taşınmazlar farklı konumlarda olabileceği için mantıksızdır. bunun yerine emsalin konumunu taşınmazların bağlı bulunduğu köye yön ve mesafe olarak belirtelim" (örnek: "canbazlarköyü mahallesinin 2,39 km güneyinde").
+- Kök neden: `formatComparableMapLocationPhrase()` — emsalin taşınmaza olan mesafe/yönünü (`buildComparableLocationText`, TEK bir referans noktasından hesaplanır) "taşınmazın"/"taşınmazların" öznesiyle sunuyordu. Çoklu Talep'te (emsaller rapor-geneli paylaşımlı, `isComparablesSharedAcrossUnits`) "taşınmazların" farklı konumlardaki parseller için anlamsızdı — SAYISAL mesafe/yön zaten TEK bir noktadan hesaplandığından yanlış değildi, yalnızca ÖZNESİ yanıltıcıydı.
+- Düzeltme: yeni `formatComparableBoundNeighborhoodSubject()` — "Bağlı mahalle / köy" (`boundNeighborhood`) alanı doluysa (`cleanBoundNeighborhoodCenterName`'in Ziraat paragrafındaki "Mahalle Merkezinin" kardeşi, burada "Mahallesinin") somut, tek bir referans noktası üretir; Çoklu Talep'te bu, "taşınmazların" öznesinin YERİNİ alır — sayısal mesafe/yön DEĞİŞMEZ. Alan boşsa veya rapor tekilse ESKİ davranış (`taşınmazın`/`taşınmazların`) AYNEN korunur.
+- Test: `tools/test-comparable-card-multi-unit-plural.js`'e 3 yeni senaryo — kullanıcının TAM bildirdiği km biçimi ("Canbazlarköyü Mahallesinin 2,39 km kuzeyinde") + metre biçimi + iki REGRESYON (bağlı köy boşken eski davranış, tekil raporda bağlı köy adına geçilmemesi). Stash ile kullanıcının bildirdiği TAM metin reprodüklendi.
+- `npm run verify` (183 test dosyası) EXIT:0. `index.html`'de `app.js` cache-buster'ı `20260916-0900`'e yükseltildi. Canlı tarayıcı testi yapılamadı — kullanıcıdan çoklu bir Tarla/Arazi raporunda "Bağlı mahalle / köy" alanı doluyken emsal metninin artık bu ada atfedildiğini doğrulaması isteniyor.
+
 ## 0.0.800 - 2026-09-15 - İklim ve Deprem Bilgileri artık AYRI panel DEĞİL, Çevresel Özellikler Açıklaması'nın SONUNA eklenen bir paragraf
 
 - Kullanıcı: "iklim ve deprem bilgileri paragrafını çevresel özellik açıklaması bölümünün en altına paragraf olarak ekle" — 0.0.799'da "Adres ve Konum" sekmesine taşınan AYRI panel yeterli değildi, metnin doğrudan `environmentDescription` alanının KENDİSİNE (aynı textarea, aynı "Kopyala" düğmesi) bir paragraf olarak eklenmesi istendi.
