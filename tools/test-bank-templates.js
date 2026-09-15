@@ -468,12 +468,20 @@ assert(
 );
 comparableTemplateFiles.filter((file) => file !== "isbankasi.html").forEach((file) => {
   const text = fs.readFileSync(path.join(appDir, "templates", file), "utf8");
-  assert(text.includes("{{EMSAL_MATRISI}}"), `${file}: EMSAL_MATRISI (dinamik sutunlu emsal matrisi) bulunamadi.`);
+  // Kullanıcı talebi (2026-09-15): "Emsaller bölümünde sadece ziraat bankası
+  // template çıktısında emsal koordinatlarını virgüllü ondalıkla export
+  // edebilir miyiz" — Ziraat sistemi (ENLEMV2/BOYLAMV2 ile AYNI ihtiyaç)
+  // artık EMSAL_MATRISI YERİNE EMSAL_MATRISIV2 (aynı tablo, yalnızca
+  // Enlem/Boylan sütunları virgüllü) kullanıyor; diğer TÜM bankalar
+  // EMSAL_MATRISI'nı (noktalı) kullanmaya devam ediyor.
+  const isZiraatSystemTemplate = file === "ziraat.html" || file === "ziraat-arsa-arazi.html";
+  const matrixToken = isZiraatSystemTemplate ? "{{EMSAL_MATRISIV2}}" : "{{EMSAL_MATRISI}}";
+  assert(text.includes(matrixToken), `${file}: ${matrixToken} (dinamik sutunlu emsal matrisi) bulunamadi.`);
   assert(text.includes("Emsal Açıklaması"), `${file}: "Emsal Açıklaması" basligi bulunamadi.`);
   assert(!text.includes("{{EMSAL_TABLOSU}}"), `${file}: eski EMSAL_TABLOSU hala kullanimda (tek format kuralina aykiri).`);
   assert(text.includes("{{EMSAL_DEGERLEME_TABLOSU}}"), `${file}: Emsal Degerleme Tablosu placeholder'i bulunamadi.`);
   const valuationTableIndex = text.lastIndexOf("{{EMSAL_DEGERLEME_TABLOSU}}");
-  const lastComparableSectionContent = Math.max(text.lastIndexOf("{{EMSAL_MATRISI}}"), text.lastIndexOf("{{COMPARABLE_SKETCH_SECTION}}"));
+  const lastComparableSectionContent = Math.max(text.lastIndexOf(matrixToken), text.lastIndexOf("{{COMPARABLE_SKETCH_SECTION}}"));
   assert(valuationTableIndex > lastComparableSectionContent, `${file}: Emsal Degerleme Tablosu emsaller bolumunun sonunda degil.`);
   for (let i = 1; i <= 7; i += 1) {
     assert(!text.includes(`{{EMSAL_${i}}}`), `${file}: eski EMSAL_${i} paragraf placeholder'i hala kullanimda.`);

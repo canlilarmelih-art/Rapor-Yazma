@@ -23144,7 +23144,16 @@ function toBase64Utf8(value) {
 }
 
 
-function buildComparableMatrixWordTableHtml() {
+// Kullanıcı talebi (2026-09-15): "Emsaller bölümünde sadece ziraat bankası
+// template çıktısında emsal koordinatlarını ... 40,252656 şeklinde export
+// edebilir miyiz" — Ziraat sistemi zaten konu taşınmaz koordinatları için
+// virgüllü ondalık istiyor (bkz. ENLEMV2/BOYLAMV2, template-engine.js);
+// aynı ihtiyaç emsal matrisindeki Enlem/Boylam (c18/c19) sütunları için de
+// var. `commaDecimalCoordinates` seçeneği YALNIZCA bu iki sütunun ondalık
+// ayıracını nokta->virgüle çevirir, diğer TÜM bankaların kullandığı
+// varsayılan (parametresiz) çağrı DEĞİŞMEDEN kalır.
+function buildComparableMatrixWordTableHtml(options = {}) {
+  const { commaDecimalCoordinates = false } = options;
   const rows = getComparableRows().filter((row) => Object.values(row || {}).some((value) => String(value || "").trim()));
   if (!rows.length) return "";
   // Kullanıcı talebi: emsal listesinde arsa/tarla ile konut/yapı emsalleri
@@ -23171,11 +23180,15 @@ function buildComparableMatrixWordTableHtml() {
       ...rows.map((row, rowIndex) => {
         if (field.key === "workplaceFloors") return formatComparableWorkplaceFloorsSummary(row);
         if (field.key === "c1") return formatComparablePhoneForOutput(row.c1);
-        return field.computed
+        const value = field.computed
           ? (field.key === "calcLongText" && isHalkbankSelectedForReport()
             ? buildHalkbankShortComparableText(row)
             : calculateComparableFieldValue(field.key, row, rowIndex))
           : formatOutputFieldValue(row[field.key] || "", field);
+        if (commaDecimalCoordinates && (field.key === "c18" || field.key === "c19")) {
+          return String(value || "").replace(/\./g, ",");
+        }
+        return value;
       }),
     ])
     .filter((row) => row.slice(1).some((value) => String(value || "").trim()));
@@ -45433,6 +45446,17 @@ function collectGeneratedTextPlaceholders() {
       key: "EMSAL_MATRISI",
       title: "Emsal Karşılaştırma Matrisi",
       value: buildComparableMatrixWordTableHtml(),
+    },
+    // Ziraat Bankası şablonları (ziraat.html/ziraat-arsa-arazi.html) bu
+    // token'ı kullanır — EMSAL_MATRISI ile AYNI tablo, yalnızca Enlem/Boylam
+    // (c18/c19) sütunları virgüllü ondalıkla (ENLEMV2/BOYLAMV2 ile AYNI
+    // kullanıcı ihtiyacı). Diğer bankalar EMSAL_MATRISI'nı (noktalı) kullanmaya
+    // devam eder.
+    {
+      category: "Emsaller",
+      key: "EMSAL_MATRISIV2",
+      title: "Emsal Karşılaştırma Matrisi (Koordinat Virgüllü — Ziraat)",
+      value: buildComparableMatrixWordTableHtml({ commaDecimalCoordinates: true }),
     },
     {
       category: "Emsaller",

@@ -220,6 +220,7 @@ const TEST_FILES = [
   "test-expense-bulk-per-unit-fee-breakdown.js",
   "test-expense-title-deed-fee-vat-rounding.js",
   "test-building-floor-common-case-preserved.js",
+  "test-comparable-matrix-ziraat-comma-coordinates.js",
 ];
 
 let failed = null;
