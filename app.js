@@ -6578,11 +6578,11 @@ function createForm(section) {
       if (section.id === "address" && ["city", "district"].includes(field.key)) renderSection();
       if (section.id === "address" && field.key === "environmentRegionType") {
         normalizeRegionUsePurposeForEnvironment();
+        // refreshEnvironmentDescriptionFromCurrentFields artık KENDİ İÇİNDE
+        // refreshMultiTitleUnitAgriculturalTransport()'u da çağırıyor
+        // (0.0.786) — burada AYRICA çağırmak (eski hâl) gereksiz/yinelemeli
+        // hâle geldi, kaldırıldı.
         refreshEnvironmentDescriptionFromCurrentFields("regionUsePurpose");
-        // Bölge türü KML'den SONRA "Tarımsal Alan"a çevrilirse Ulaşım
-        // Tarifi'ni de bu andan itibaren yeniden üret (bkz. yorum,
-        // refreshMultiTitleUnitAgriculturalTransport).
-        refreshMultiTitleUnitAgriculturalTransport();
         renderSection();
       }
       if (section.id === "documents" && ["hasArchitecturalProject", "hasEkb"].includes(field.key)) renderSection();
@@ -12704,6 +12704,20 @@ function refreshEnvironmentDescriptionFromCurrentFields(changedKey = "") {
   if (control && control.value !== nextDescription) {
     control.value = nextDescription;
   }
+  // Kullanıcı bildirimi (2026-09-15): "Çevresel Özellikler Açıklaması"
+  // (bu fonksiyon) bu 34 alandan HERHANGİ biri değiştiğinde tazeleniyordu,
+  // ama farklı ada/parselli Tarımsal Alan raporlarının "Ulaşım Tarifi"
+  // (state.fields.transport) alanı SADECE environmentRegionType değişimi/
+  // KML yeniden işlenmesiyle tazeleniyordu (refreshMultiTitleUnitAgriculturalTransport)
+  // — kullanıcı BAŞKA bir izlenen alanı (ör. developmentDensity) güncellediğinde
+  // "Çevresel Özellikler" tazeleniyor ama "Ulaşım Tarifi" ESKİ (0.0.785
+  // öncesi "taşınmaz" ibareli) metinde KALIYORDU. Bu iki alan AYNI
+  // farklı-parsel Tarımsal Alan senaryosunu paylaştığından, AYNI
+  // tetikleyici kümesinden (bu fonksiyonun zaten gated olduğu 34 alan)
+  // birlikte tazelenmeleri gerekir. refreshMultiTitleUnitAgriculturalTransport
+  // KENDİSİ zaten no-op'tur (Tarımsal Alan + çoklu + farklı parsel
+  // DEĞİLSE boş döner) — bu yüzden koşulsuz çağırmak GÜVENLİDİR.
+  refreshMultiTitleUnitAgriculturalTransport();
 }
 
 function readEnvironmentalField(primaryKey, token, options = {}) {
@@ -41351,14 +41365,14 @@ async function applyKmlRecordsToTitleUnits(records) {
     }
   }
   switchActiveTitleUnit(0);
-  // Tüm taşınmazların KML/mesafe verisi artık bilinir (döngü bitti) — Çoklu
-  // Talep + Tarımsal Alan raporlarında "Ulaşım Tarifi"ni bu güncel listeyle
-  // yeniden üret (bkz. refreshMultiTitleUnitAgriculturalTransport yorumu).
-  refreshMultiTitleUnitAgriculturalTransport();
-  // Paylaşımlı "Çevresel Özellikler Açıklaması" da (buildAgriculturalKmlDistanceSentence
-  // üzerinden) aynı güncel taşınmaz listesiyle yeniden hesaplansın — aksi
+  // Tüm taşınmazların KML/mesafe verisi artık bilinir (döngü bitti) —
+  // paylaşımlı "Çevresel Özellikler Açıklaması" (buildAgriculturalKmlDistanceSentence
+  // üzerinden) bu güncel taşınmaz listesiyle yeniden hesaplansın — aksi
   // halde son işlenen taşınmazın mesafesiyle donmuş kalırdı (kullanıcı
-  // bildirimi, 2026-08-12).
+  // bildirimi, 2026-08-12). refreshEnvironmentDescriptionFromCurrentFields
+  // artık KENDİ İÇİNDE refreshMultiTitleUnitAgriculturalTransport()'u da
+  // çağırıyor (0.0.786) — Çoklu Talep + Tarımsal Alan raporlarında "Ulaşım
+  // Tarifi" AYNI çağrıyla birlikte tazelenir, ayrı bir çağrıya gerek yok.
   refreshEnvironmentDescriptionFromCurrentFields("boundNeighborhoodDistance");
   autosave();
   renderValidation();

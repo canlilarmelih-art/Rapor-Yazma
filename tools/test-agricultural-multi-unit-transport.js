@@ -327,23 +327,88 @@ function boundFields(blockNo, parcelNo, distanceText) {
 }
 
 // 6) Kaynak-düzeyi doğrulama: farklı-parsel tetikleyicileri kablolanmış mı?
+//
+// GÜNCELLEME (2026-09-15, kullanıcı bildirimi — "halen taşınmaz ibaresi
+// geçiyor" / "ulaşım tarifinde diyor adres konum düzelmiş"): "Çevresel
+// Özellikler Açıklaması" 34 farklı alandan (environmentDescriptionAutoRefreshFields)
+// HERHANGİ biri değiştiğinde tazeleniyordu, ama "Ulaşım Tarifi" SADECE
+// environmentRegionType değişimi/KML işleme gibi İKİ dar tetikleyiciye
+// bağlıydı — kullanıcı BAŞKA izlenen bir alanı (ör. developmentDensity)
+// güncelleyince "Çevresel Özellikler" tazeleniyor, "Ulaşım Tarifi" ESKİ
+// metinde (0.0.785 öncesi "taşınmaz" ibareli) donmuş kalıyordu. Artık
+// refreshMultiTitleUnitAgriculturalTransport() TEK bir yerden —
+// refreshEnvironmentDescriptionFromCurrentFields()'in KENDİ İÇİNDEN —
+// çağrılıyor (34 alanın TAMAMI için, no-op olduğu durumlarda güvenli),
+// iki eski ayrı çağrı noktası (renderSection'daki environmentRegionType
+// dalı + applyKmlRecordsToTitleUnits) artık bu TEK ortak çağrıya güveniyor.
 {
   assert.match(
     appSource,
-    /switchActiveTitleUnit\(0\);[\s\S]{0,300}?refreshMultiTitleUnitAgriculturalTransport\(\);/,
-    "applyKmlRecordsToTitleUnits, tüm KML kayıtları işlendikten sonra refreshMultiTitleUnitAgriculturalTransport() çağırmalı.",
+    /function refreshEnvironmentDescriptionFromCurrentFields\(changedKey = ""\) \{[\s\S]*?refreshMultiTitleUnitAgriculturalTransport\(\);\s*\n\}/,
+    "refreshEnvironmentDescriptionFromCurrentFields KENDİ İÇİNDE refreshMultiTitleUnitAgriculturalTransport()'u çağırmalı (34 alanın TÜMÜ için ortak tazeleme).",
   );
   assert.match(
     appSource,
-    /field\.key === "environmentRegionType"[\s\S]{0,500}?refreshMultiTitleUnitAgriculturalTransport\(\);/,
-    "environmentRegionType alanı değiştiğinde de refreshMultiTitleUnitAgriculturalTransport() çağrılmalı (KML'den SONRA Tarımsal Alan'a geçiş senaryosu).",
+    /switchActiveTitleUnit\(0\);[\s\S]{0,900}?refreshEnvironmentDescriptionFromCurrentFields\("boundNeighborhoodDistance"\);/,
+    "applyKmlRecordsToTitleUnits, TÜM KML kayıtları işlendikten sonra \"Çevresel Özellikler Açıklaması\"nı (VE onun üzerinden Ulaşım Tarifi'ni) boundNeighborhoodDistance tetikleyicisiyle yeniden hesaplatmalı.",
   );
   assert.match(
     appSource,
-    /switchActiveTitleUnit\(0\);[\s\S]{0,600}?refreshEnvironmentDescriptionFromCurrentFields\("boundNeighborhoodDistance"\);/,
-    "applyKmlRecordsToTitleUnits, TÜM KML kayıtları işlendikten sonra \"Çevresel Özellikler Açıklaması\"nı da (boundNeighborhoodDistance tetikleyicisiyle) yeniden hesaplatmalı.",
+    /field\.key === "environmentRegionType"[\s\S]{0,500}?refreshEnvironmentDescriptionFromCurrentFields\("regionUsePurpose"\);/,
+    "environmentRegionType alanı değiştiğinde de refreshEnvironmentDescriptionFromCurrentFields() (VE onun üzerinden Ulaşım Tarifi) çağrılmalı.",
   );
   console.log("Tetikleyici kablolamasi - kaynak-duzeyi dogrulama testi tamam.");
+}
+
+// 6b) Kullanıcının BİREBİR bildirdiği senaryo — davranışsal kanıt:
+// refreshMultiTitleUnitAgriculturalTransport() GERÇEKTEN
+// refreshEnvironmentDescriptionFromCurrentFields()'ten (34 alandan
+// HERHANGİ biri, ör. "developmentDensity") tetiklenip state.fields.transport'u
+// güncel (taşınmaz ibaresiz) metinle yeniliyor mu?
+{
+  const refreshEnvSrc = extractFunction("refreshEnvironmentDescriptionFromCurrentFields");
+  const refreshTransportSrc = extractFunction("refreshMultiTitleUnitAgriculturalTransport");
+  // environmentDescriptionAutoRefreshFields bir "const X = [...]" DEĞİL,
+  // "const X = new Set([...]);" — extractConstArray'in "\n];" kapanışı
+  // burada UYMUYOR (gerçek kapanış "]);"), bu yüzden ayrı, dar bir
+  // çıkarma yapılır.
+  const envAutoRefreshFieldsStart = appSource.indexOf("const environmentDescriptionAutoRefreshFields = new Set([");
+  assert(envAutoRefreshFieldsStart >= 0, "environmentDescriptionAutoRefreshFields bulunamadı.");
+  const envAutoRefreshFieldsEnd = appSource.indexOf("]);", envAutoRefreshFieldsStart);
+  assert(envAutoRefreshFieldsEnd > envAutoRefreshFieldsStart, "environmentDescriptionAutoRefreshFields kapanışı bulunamadı.");
+  const envAutoRefreshFieldsSrc = appSource.slice(envAutoRefreshFieldsStart, envAutoRefreshFieldsEnd + 3);
+  const combined = `
+    let state = {};
+    const document = { querySelector: () => null };
+    function buildEnvironmentalDescription() { return "STUB-DESCRIPTION"; }
+    ${envAutoRefreshFieldsSrc}
+    ${extractConstArray("agriculturalMultiUnitParcelListTransportFragmentVariants")}
+    ${extractConstArray("agriculturalMultiUnitManyParcelsTransportVariants")}
+    const MIXED_PARCEL_NARRATIVE_LIST_LIMIT = 5;
+    ${functionNames.filter((name) => !["buildAgriculturalKmlDistanceSentence", "buildEnvironmentalDescription"].includes(name)).map(extractFunction).join("\n")}
+    ${refreshTransportSrc}
+    ${refreshEnvSrc}
+    return { setState: (s) => { state = s; }, getState: () => state, refreshEnvironmentDescriptionFromCurrentFields };
+  `;
+  // eslint-disable-next-line no-new-func
+  const combinedSandbox = new Function(combined)();
+  combinedSandbox.setState({
+    fields: { environmentRegionType: "Tarımsal Alan", transport: "ESKİ (taşınmaz ibareli) metin", ...boundFields("0", "56", "759 m kuzeyinde") },
+    titleUnits: [{ fields: boundFields("0", "315", "1,27 km güneybatısında") }],
+    activeTitleUnitIndex: 0,
+    primaryTitleUnitShadow: null,
+  });
+  // "developmentDensity" transport'un KENDİ tetikleyici kümesinde YOK ama
+  // environmentDescriptionAutoRefreshFields'TA VAR — kullanıcının tam
+  // bildirdiği ayrışma senaryosu.
+  combinedSandbox.refreshEnvironmentDescriptionFromCurrentFields("developmentDensity");
+  const finalTransport = combinedSandbox.getState().fields.transport;
+  assert.equal(
+    finalTransport,
+    "0 Ada 56 Parsel bağlı bulunduğu Ataevler Mahalle Merkezinin 759 m kuzeyinde, 0 Ada 315 Parsel bağlı bulunduğu Ataevler Mahalle Merkezinin 1,27 km güneybatısında yer almaktadır.",
+    `KULLANICI BİLDİRİMİ: "developmentDensity" gibi izlenen BAŞKA bir alan değiştiğinde de Ulaşım Tarifi (transport) tazelenmeli, eski ("taşınmaz" ibareli) metinde donmuş KALMAMALI: ${finalTransport}`
+  );
+  console.log("KULLANICI BILDIRIMI: izlenen HERHANGI bir alan degistiginde Ulasim Tarifi de tazeleniyor testi tamam.");
 }
 
 // 7) Kullanıcı bildirimi (2026-08-12): "Çevresel Özellikler Açıklaması"
