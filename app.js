@@ -41021,6 +41021,7 @@ function applyLocalNeighborhoodFields(fields, options = {}) {
 
 function buildLocalNeighborhoodFields(row, boundRow = null) {
   const bound = boundRow || row;
+  const hasBoundCoordinates = Boolean(bound) && Number.isFinite(bound.lat) && Number.isFinite(bound.lng);
   return {
     city: row.city,
     district: row.district,
@@ -41028,6 +41029,15 @@ function buildLocalNeighborhoodFields(row, boundRow = null) {
     postalCode: row.postalCode,
     boundNeighborhood: bound ? `${bound.neighborhood} - ${bound.district} / ${bound.city}` : "",
     boundNeighborhoodDistance: bound ? formatBoundNeighborhoodDistance(bound.distance, bound.direction) : "",
+    // Kullanıcı talebi (2026-09-16): "köy ve mahalle koordinatları ve
+    // bağlı bulunduğu köy koordinatları zaten veritabanında mevcut" —
+    // bağlı mahalle/köyün KENDİ ham koordinatları (yalnızca dahili
+    // kullanım için, hiçbir UI alanında GÖSTERİLMEZ/düzenlenmez)
+    // saklanır ki çoklu/farklı-parsel raporlarda emsal konum mesafesi
+    // GERÇEKTEN bu noktadan hesaplanabilsin (bkz.
+    // getComparableBoundNeighborhoodPoint/buildComparableLocationText).
+    boundNeighborhoodLat: hasBoundCoordinates ? bound.lat.toFixed(6) : "",
+    boundNeighborhoodLng: hasBoundCoordinates ? bound.lng.toFixed(6) : "",
     nearestNeighborhood: `${row.neighborhood} - ${row.district} / ${row.city}`,
     nearestNeighborhoodDistance: formatDistanceWithDirection(row.distance, row.direction),
     districtCenterDistance: formatDistanceWithDirection(row.districtCenterDistance, row.districtCenterDirectionFromPoint) || formatCenterDistance(row.districtCenterDistanceKm, row.districtCenterDirection),
@@ -50297,6 +50307,41 @@ function getComparableSubjectPoint() {
   return null;
 }
 
+// Bağlı mahalle/köyün (bkz. buildLocalNeighborhoodFields) SAKLANMIŞ ham
+// koordinatları — yalnızca dahili emsal-mesafe hesaplaması için, hiçbir
+// UI alanında GÖSTERİLMEZ.
+function getComparableBoundNeighborhoodPoint() {
+  const lat = Number(state.fields.boundNeighborhoodLat);
+  const lng = Number(state.fields.boundNeighborhoodLng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  return [lat, lng];
+}
+
+// Kullanıcı talebi (2026-09-16): "çoklu tarla ve arsa raporlarında ...
+// taşınmazların 2,39 km kuzeyinde ... mantıksızdır ... emsalin konumunu
+// taşınmazların bağlı bulunduğu köye yön ve mesafe olarak belirtelim"
+// + devam: "konumu mahalle merkezinden mi alıyor yoksa taşınmazdan mı"
+// — 0.0.801 yalnızca CÜMLENİN öznesini değiştirmişti (sayı hâlâ
+// taşınmazın kendi noktasından ölçülüyordu). Kullanıcı köy/mahalle
+// koordinatlarının VERİTABANINDA (bkz. /api/neighborhoods,
+// normalizeNeighborhoodApiRow'un lat/lng alanları) zaten mevcut
+// olduğunu belirtti — bu fonksiyon artık Çoklu Talep'te (emsaller
+// paylaşımlı) GERÇEKTEN bağlı köyün (persist edilmiş, bkz.
+// getComparableBoundNeighborhoodPoint) koordinatını referans alır;
+// veri yoksa (ör. bağlı mahalle hiç hesaplanmamışsa) ESKİ (taşınmazın
+// kendi noktası, bkz. getComparableSubjectPoint) davranışa GÜVENLİ
+// düşülür. NOT: harita üzerindeki "KONU TAŞINMAZ" işaretçisi (bkz.
+// renderComparableLocationMap) BİLEREK bu fonksiyonu KULLANMAZ, HER
+// ZAMAN getComparableSubjectPoint()'i doğrudan kullanmaya devam eder —
+// haritada gösterilen taşınmazın KENDİ konumu, köyün konumu DEĞİL.
+function getComparableDistanceReferencePoint() {
+  if (isComparablesSharedAcrossUnits()) {
+    const boundPoint = getComparableBoundNeighborhoodPoint();
+    if (boundPoint) return boundPoint;
+  }
+  return getComparableSubjectPoint();
+}
+
 function getComparableSketchExportKml() {
   const records = getTitleUnitKmlRecordsForMap();
   if (!records.length) return state.sourceValues.kml;
@@ -50314,7 +50359,7 @@ function getComparableSavedPoint(row) {
 }
 
 function buildComparableLocationText(lat, lng) {
-  const subjectPoint = getComparableSubjectPoint();
+  const subjectPoint = getComparableDistanceReferencePoint();
   if (!subjectPoint) return "";
   const distance = calculateDistanceMeters(subjectPoint[0], subjectPoint[1], lat, lng);
   const direction = calculateRelativeDirectionText(subjectPoint[0], subjectPoint[1], lat, lng);
