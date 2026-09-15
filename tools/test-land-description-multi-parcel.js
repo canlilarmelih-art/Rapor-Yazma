@@ -169,6 +169,8 @@ const functionNames = [
   "buildLandParcelPhysicalParagraph",
   "formatLandParcelLabel",
   "attributeLandAgricultureSentenceToParcel",
+  "readLandAgricultureStructuredEntry",
+  "buildLandIrrigationConsolidatedSentence",
   "buildLandAgricultureConsolidatedParts",
   "buildMultiParcelLandDescription",
 ];
@@ -331,6 +333,42 @@ function freshState(fields = {}, titleUnits = []) {
     `312 parselin KENDİ (kuru) cümlesi de '312 parselde' atfıyla görünmeli - eskiden bu TAMAMEN kayboluyordu, bulunan: ${agricultureParagraph}`,
   );
   console.log("buildMultiParcelLandDescription() FARKLI sulama/tarım türü -> parsel atıflı ayrı cümleler testi tamam.");
+}
+
+// --- 4b) KULLANICI BULGUSU (2026-09-15, canlı rapor): "ortak cümle -------
+// kurulmamış sadece" — TÜM taşınmazlar AYNI tarım türünde (Sulu Tarım)
+// VE AYNI sulama sisteminde (damlama tipi), YALNIZCA sulama KAYNAĞI
+// farklı (56: sulama kanalı, 315: kuyu suyu) iken düzeltmeden ÖNCE TÜM
+// cümle (tarım türü + sistem DAHİL) gereksiz yere ayrı ayrı tekrarlanıp
+// atıflı hale düşüyordu — artık yalnızca GERÇEKTEN farklı olan kaynak
+// kısmı taşınmaz-atıflı listelenir, tarım türü/sistem cümlesi TEK kalır.
+{
+  const fields56 = {
+    ownershipType: "Tarla",
+    blockNo: "0", parcelNo: "56",
+    mainPropertyQuality: "Armut Bahçesi",
+    landArea: "6100",
+    landAgricultureType: "Sulu Tarım",
+    landIrrigationWaterSource: "Sulama Kanalı",
+    landIrrigationSystem: "Damla Sulama",
+  };
+  const fields315 = {
+    ...fields56,
+    parcelNo: "315",
+    landIrrigationWaterSource: "Kuyu Suyu",
+  };
+  fns.setState(freshState(fields56, [unit(fields315)]));
+  const multi = fns.buildMultiParcelLandDescription();
+  const paragraphs = multi.split("\n");
+  const agricultureParagraph = paragraphs[paragraphs.length - 1];
+  assert.equal(
+    agricultureParagraph,
+    "Taşınmazlarda sulu tarım yapılmakta olup, sulama ihtiyacı 56 parselde sulama kanalından ve 315 parselde kuyu suyundan sağlanmaktadır. Parsel üzerinde damlama tipi sulama sistemi bulunmaktadır.",
+    `KULLANICI BULGUSU: tarım türü/sistem AYNI oldugundan TEK kalmalı, yalnızca FARKLI olan kaynak parsel-atıflı listelenmeli, bulunan: ${agricultureParagraph}`,
+  );
+  assert.equal(paragraphs.length, 3, `2 taşınmaz paragrafı + 1 GRANÜLER birleşik sulama cümlesi = 3 parça beklenir, bulunan: ${JSON.stringify(paragraphs)}`);
+
+  console.log("buildMultiParcelLandDescription() KULLANICI BULGUSU (AYNI tür/sistem, FARKLI kaynak -> yalnızca kaynak atıflı, GRANÜLER birleşim) testi tamam.");
 }
 
 // --- 5) REGRESYON: aynı ada/parselde çoklu taşınmaz -> eski (tekil) -------

@@ -7541,7 +7541,11 @@ function buildLandParcelPhysicalParagraph(label) {
 // parselde" ile DEĞİŞTİRİLİR — kullanıcının "56 parselde Sulu tarım
 // yapılmakta olup..." örneğiyle BİREBİR (gerçek/mevcut cümle içeriği
 // KORUNUR, yalnızca öznesi atıflı hale getirilir; yeni/uydurma bir cümle
-// kalıbı İCAT EDİLMEZ).
+// kalıbı İCAT EDİLMEZ). Yalnızca tarım TÜRÜ (Sulu/Kuru) taşınmazlar
+// arasında GERÇEKTEN FARKLIYSA (bkz. buildLandAgricultureConsolidatedParts)
+// kullanılan GENEL/kaba geri dönüş — aynı türde ama kaynak/sistem
+// farklıysa artık buildLandIrrigationConsolidatedSentence() (daha
+// GRANÜLER) kullanılır.
 function attributeLandAgricultureSentenceToParcel(sentence, parcelLabel) {
   if (!sentence || !parcelLabel) return sentence;
   return sentence
@@ -7549,18 +7553,87 @@ function attributeLandAgricultureSentenceToParcel(sentence, parcelLabel) {
     .replace(/^Parselin\b/, `${parcelLabel} parselde`);
 }
 
-// `entries`: [{ label, parcelNo, sentence }] — her taşınmazın KENDİ
-// buildLandAgricultureSentence() çıktısı. Hepsi (metin olarak) AYNIYSA
-// TEK, çoğul ("Taşınmazlarda ...") cümlede birleşir (kullanıcının 2.
-// örneği); FARKLIYSA her biri KENDİ parsel atfıyla art arda eklenir
-// (kullanıcının 3. örneği, "56 parselde ... 312 parselde ...").
-function buildLandAgricultureConsolidatedParts(entries) {
-  if (!entries.length) return [];
-  const uniqueTexts = [...new Set(entries.map((entry) => entry.sentence))];
-  if (uniqueTexts.length === 1) {
-    return [pluralizeEnvironmentalSubjectText(uniqueTexts[0], true)];
+// Bir taşınmazın (AKTİF state.fields üzerinden) tarım türü + sulama
+// bilgisini YAPISAL (tek bir serbest metin DEĞİL, alan alan) okur —
+// buildLandAgricultureConsolidatedParts()'ın kaynak/sistem bazında
+// GRANÜLER birleştirme yapabilmesi için (kullanıcı bulgusu, 2026-09-15:
+// "ortak cümle kurulmamış sadece" — tarım türü VE sulama sistemi AYNI,
+// yalnızca sulama KAYNAĞI farklıyken TÜM cümle farklı sayılıp gereksiz
+// yere tamamen atıflı hale düşüyordu, oysa yalnızca farklı olan kaynak
+// kısmı atıflı olmalıydı).
+function readLandAgricultureStructuredEntry() {
+  if (shouldHideLandAgricultureControls()) return null;
+  const type = state.fields.landAgricultureType || "";
+  if (type === "Kuru Tarım") {
+    if (normalizeYesNoChoice(state.fields.landAgriculturalProduct) === "Hayır") return null;
+    return { type: "Kuru Tarım" };
   }
-  const attributed = entries
+  if (type !== "Sulu Tarım") return null;
+  return {
+    type: "Sulu Tarım",
+    source: formatIrrigationWaterSourceForDescription(state.fields.landIrrigationWaterSource),
+    system: formatIrrigationSystemForDescription(state.fields.landIrrigationSystem),
+  };
+}
+
+// TÜM taşınmazlar "Sulu Tarım" iken (bkz. buildLandAgricultureConsolidatedParts)
+// kaynak ve sistemi AYRI AYRI karşılaştırıp birleştirir: bir alan (kaynak
+// veya sistem) TÜM taşınmazlarda AYNIYSA TEK ortak cümle parçasında,
+// FARKLIYSA yalnızca O alan "{parselNo} parselde {değer}" şeklinde
+// taşınmaz-atıflı listelenir — kullanıcının bildirdiği TAM senaryo (tarım
+// türü ve sulama sistemi AYNI, yalnızca su kaynağı farklı) burada
+// tarım türü/sistem cümlesi tekrarlanmadan TEK kalır, yalnızca kaynak
+// listelenir.
+function buildLandIrrigationConsolidatedSentence(entries) {
+  const sourceEntries = entries.filter((entry) => entry.source);
+  const uniqueSources = [...new Set(sourceEntries.map((entry) => entry.source))];
+  let sourceClause;
+  if (!sourceEntries.length) {
+    sourceClause = "Taşınmazlarda sulu tarım yapılmaktadır.";
+  } else if (uniqueSources.length === 1) {
+    sourceClause = `Taşınmazlarda sulu tarım yapılmakta olup, sulama ihtiyacı ${uniqueSources[0]} sağlanmaktadır.`;
+  } else {
+    const phrase = formatTurkishList(sourceEntries.map((entry) => `${entry.parcelLabel} parselde ${entry.source}`));
+    sourceClause = `Taşınmazlarda sulu tarım yapılmakta olup, sulama ihtiyacı ${phrase} sağlanmaktadır.`;
+  }
+
+  const systemEntries = entries.filter((entry) => entry.system);
+  const uniqueSystems = [...new Set(systemEntries.map((entry) => entry.system))];
+  let systemClause = "";
+  if (uniqueSystems.length === 1) {
+    systemClause = `Parsel üzerinde ${uniqueSystems[0]} sulama sistemi bulunmaktadır.`;
+  } else if (uniqueSystems.length > 1) {
+    const phrase = formatTurkishList(systemEntries.map((entry) => `${entry.parcelLabel} parselde ${entry.system}`));
+    systemClause = `${phrase} sulama sistemi bulunmaktadır.`;
+  }
+
+  return [sourceClause, systemClause].filter(Boolean).join(" ");
+}
+
+// `entries`: [{ label, parcelNo, sentence, structured }] — her taşınmazın
+// KENDİ buildLandAgricultureSentence() (geri dönüş için) + readLandAgricultureStructuredEntry()
+// (granüler karşılaştırma için) çıktısı. TÜM taşınmazlar AYNI türdeyse
+// (hepsi Sulu VEYA hepsi Kuru) tür cümlesi TEK kalır, Sulu ise kaynak/
+// sistem KENDİ İÇİNDE ayrı ayrı karşılaştırılır (kullanıcının "ortak
+// cümle kurulmamış" bulgusu — bkz. buildLandIrrigationConsolidatedSentence).
+// Tarım TÜRÜ taşınmazlar arasında GERÇEKTEN FARKLIYSA (bazısı Sulu,
+// bazısı Kuru) eski, genel/kaba tam-cümle atfına güvenli düşülür.
+function buildLandAgricultureConsolidatedParts(entries) {
+  const withData = entries.filter((entry) => entry.structured);
+  if (!withData.length) return [];
+  const uniqueTypes = [...new Set(withData.map((entry) => entry.structured.type))];
+  if (uniqueTypes.length === 1 && uniqueTypes[0] === "Sulu Tarım") {
+    const irrigationEntries = withData.map((entry) => ({
+      parcelLabel: entry.parcelNo || entry.label,
+      source: entry.structured.source,
+      system: entry.structured.system,
+    }));
+    return [buildLandIrrigationConsolidatedSentence(irrigationEntries)];
+  }
+  if (uniqueTypes.length === 1 && uniqueTypes[0] === "Kuru Tarım") {
+    return ["Taşınmazların kuru tarım arazisi niteliğinde olduğu değerlendirilmektedir."];
+  }
+  const attributed = withData
     .map((entry) => attributeLandAgricultureSentenceToParcel(entry.sentence, entry.parcelNo || entry.label))
     .filter(Boolean);
   return attributed.length ? [attributed.join(" ")] : [];
@@ -7580,10 +7653,10 @@ function buildMultiParcelLandDescription() {
       const label = formatLandParcelLabel(state.fields.blockNo, state.fields.parcelNo, index);
       const paragraph = buildLandParcelPhysicalParagraph(label);
       if (paragraph) parcelParagraphs.push(paragraph);
-      const agricultureSentence = buildLandAgricultureSentence();
-      if (agricultureSentence) {
+      const structured = readLandAgricultureStructuredEntry();
+      if (structured) {
         const parcelNo = normalizeReportTitleText(state.fields.parcelNo || "").trim();
-        agricultureEntries.push({ label, parcelNo: parcelNo || label, sentence: agricultureSentence });
+        agricultureEntries.push({ label, parcelNo: parcelNo || label, sentence: buildLandAgricultureSentence(), structured });
       }
     } finally {
       state.fields = originalFields;

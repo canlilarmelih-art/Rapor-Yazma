@@ -1,5 +1,13 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.797 - 2026-09-15 - Arsa Özellikleri sulama cümlesi artık GRANÜLER birleşiyor (yalnızca gerçekten farklı olan kısım atıflı)
+
+- Kullanıcı, 0.0.796'nın canlı çıktısını paylaşıp "ortak cümle kurulmamış sadece" dedi: iki taşınmaz da "Sulu Tarım" VE aynı "damlama tipi" sulama sistemindeydi, yalnızca sulama KAYNAĞI farklıydı (56: sulama kanalı, 315: kuyu suyu) — ama TÜM cümle (tarım türü + sistem dahil) gereksiz yere iki kez tekrarlanıp tamamen ayrı/atıflı hale düşmüştü.
+- Kök neden: `buildLandAgricultureConsolidatedParts()` TÜM sulama cümlesini (tarım türü+kaynak+sistem, TEK serbest metin) bütün olarak karşılaştırıyordu — metnin HERHANGİ bir kısmı (yalnızca kaynak bile olsa) farklıysa TÜM cümle "farklı" sayılıp iki taşınmaz için ayrı ayrı tekrarlanıyordu.
+- Düzeltme: yeni `readLandAgricultureStructuredEntry()` her taşınmazın tarım türü/kaynak/sistemini AYRI AYRI (serbest metin değil, alan alan) okur; yeni `buildLandIrrigationConsolidatedSentence()` TÜM taşınmazlar "Sulu Tarım" iken kaynağı VE sistemi BAĞIMSIZ karşılaştırır — bir alan TÜM taşınmazlarda AYNIYSA o alan TEK/ortak kalır, yalnızca GERÇEKTEN farklı olan alan "{parselNo} parselde {değer}" şeklinde taşınmaz-atıflı listelenir. Tarım TÜRÜ (Sulu/Kuru) taşınmazlar arasında GERÇEKTEN farklıysa (0.0.796'nın zaten doğru çalışan "56 parselde sulu... 312 parselde kuru..." örneği) eski, tam-cümle atıflı davranış DEĞİŞMEDEN korunur.
+- Test: `tools/test-land-description-multi-parcel.js`'e kullanıcının TAM bildirdiği senaryoyu (aynı tür/sistem, farklı kaynak) yansıtan yeni bir senaryo eklendi — beklenen çıktı artık "Taşınmazlarda sulu tarım yapılmakta olup, sulama ihtiyacı 56 parselde sulama kanalından ve 315 parselde kuyu suyundan sağlanmaktadır. Parsel üzerinde damlama tipi sulama sistemi bulunmaktadır." (tek, granüler birleşik cümle). Stash ile eski koda karşı çalıştırıldığında gerçekten kırıldığı doğrulandı.
+- `npm run verify` (182 test dosyası) EXIT:0. `index.html`'de `app.js` cache-buster'ı `20260915-1230`'a yükseltildi. Canlı tarayıcı testi yapılamadı — kullanıcıdan aynı raporda sulama cümlesinin artık istediği gibi tek/granüler birleştiğini doğrulaması isteniyor.
+
 ## 0.0.796 - 2026-09-15 - Arsa Özellikleri: çoklu (farklı ada/parsel, ≤10 taşınmaz) raporlarda artık taşınmaz başına ayrı paragraf
 
 - Kullanıcı: "çoklu raporlarda 10 taşınmaza kadar arsa özellikleri yazılsın paragraf paragraf" — bir "OLUŞTURULAN PARAGRAF" (mevcut, tekil/aktif taşınmaza özgü) ve tam bir "TALEP EDİLEN PARAGRAF" (istenen, çoklu) örneği verdi.
