@@ -158,6 +158,7 @@ const TEST_FILES = [
   "test-address-source-reload-preserves-city-district.js",
   "test-cloud-only-delete-failure-feedback.js",
   "test-land-address-fields-hidden.js",
+  "test-land-description-multi-parcel.js",
   "test-tarla-environment-region-type-default.js",
   "test-land-units-summary-table.js",
   "test-title-unit-table-select-editing.js",

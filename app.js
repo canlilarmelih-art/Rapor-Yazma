@@ -6911,7 +6911,12 @@ function refreshLandDescriptionFromCurrentFields(changedKey = "") {
   refreshLandDetailTextFieldsFromCurrentFields(changedKey);
   if (changedKey && !landDescriptionAutoRefreshFields.has(changedKey)) return;
   refreshLandMinimumParcelAssessment();
-  const description = buildLandDescription();
+  // Kullanıcı talebi (2026-09-15): "çoklu raporlarda 10 taşınmaza kadar
+  // arsa özellikleri yazılsın paragraf paragraf" — farklı ada/parsel
+  // çoklu raporlarda (≤10 taşınmaz) her taşınmazın KENDİ paragrafını
+  // içeren birleşik metin denenir; uygulanamazsa (tekil/aynı parsel/>10
+  // taşınmaz) ESKİ (yalnızca aktif taşınmaz) davranışa GÜVENLİ düşülür.
+  const description = buildMultiParcelLandDescription() || buildLandDescription();
   if (!description) return;
   state.fields.landNote = description;
   const control = document.querySelector('[data-field="landNote"]');
@@ -7424,6 +7429,172 @@ function buildLandDescription() {
   return normalizeReportDescriptionText(sentences.join(" "));
 }
 
+// Kullanıcı talebi (2026-09-15): "çoklu raporlarda 10 taşınmaza kadar
+// arsa özellikleri yazılsın paragraf paragraf." — buildLandDescription()
+// SADECE aktif taşınmazı yansıtıyordu; farklı ada/parsel çoklu (Arsa/
+// Tarla, bağımsız bölüm kavramı olmadığından "çoklu taşınmaz" burada
+// pratikte HER ZAMAN "farklı parsel" demektir) raporlarda diğer
+// parsellerin arsa özellikleri (nitelik/yüzölçüm/şekil/topografya/yol
+// cephesi/ağaç-ürün/sınır) TAMAMEN kayboluyordu — Madde 1-4'ün düzelttiği
+// AYNI kusur sınıfı, ama `landNote` için hiç ele alınmamıştı.
+//
+// Her taşınmaz KENDİ "{Parsel Etiketi}: ..." ile başlayan öz/kısa
+// fiziksel paragrafını alır (kullanıcının verdiği "TALEP EDİLEN
+// PARAGRAF" örneğiyle BİREBİR: "Ekspertize konu"/"tapu kaydında"/"Konu
+// parselin" gibi tekrarlayan öznler düşer, "bakım durumu" gözlem cümlesi
+// bu KISA paragrafta YER ALMAZ). Tarım türü + sulama bilgisi AYRI ele
+// alınır: TÜM taşınmazlarda AYNIYSA (kullanıcının 2. örneği) TEK, çoğul
+// "Taşınmazlarda ..." cümlesinde; FARKLIYSA (3. örneği: "56 parselde ...
+// 312 parselde ...") her taşınmazın KENDİ (değişmemiş, gerçek)
+// cümlesi "{parselNo} parselde" öznesiyle atıflı şekilde art arda
+// eklenir. 10'dan FAZLA taşınmazda (kullanıcının belirttiği eşik) bu
+// kadar uzun bir paragraf listesi anlamsızlaşacağından eski (tekil/
+// aktif taşınmaz) davranışa GÜVENLİ düşülür (`""` döner, çağıran taraf
+// buildLandDescription()'a döner — Madde 1/2'nin ">5 birim" genel özet
+// dalıyla AYNI ilke, farklı bir eşikle).
+const LAND_MULTI_PARCEL_DESCRIPTION_LIMIT = 10;
+
+// formatTitleUnitParcelLabel()'dan farklı olarak "0" ada değerini de
+// (boş ada ile AYNI şekilde) yok sayar — Arsa/Tarla raporlarında "0 Ada"
+// tipik olarak atanmamış/varsayılan bir değerdir, anlamlı bir ada
+// numarası DEĞİLDİR (kullanıcı talebi: "eğer ada no yok veya 0 ise 56
+// Parsel: ..."). Yalnızca BU özellik nedeniyle formatTitleUnitParcelLabel
+// DEĞİŞTİRİLMEDİ — o fonksiyon Ziraat/Adres-Konum/Proje paragraflarında
+// ZATEN test edilmiş/yayınlanmış "0 Ada" davranışını korur, buradaki
+// istisna yalnızca Arsa Özellikleri paragrafına özgüdür.
+function formatLandParcelLabel(blockNo, parcelNo, fallbackIndex = 0) {
+  const block = String(blockNo || "").trim();
+  const parcel = String(parcelNo || "").trim();
+  const hasMeaningfulBlock = Boolean(block) && block !== "0";
+  if (hasMeaningfulBlock && parcel) return `${block} Ada ${parcel} Parsel`;
+  if (parcel) return `${parcel} Parsel`;
+  if (hasMeaningfulBlock) return `${block} Ada`;
+  return `${fallbackIndex + 1}. taşınmaz`;
+}
+
+// buildLandGeometrySentence()'ın "{Etiket}: ..." paragraf-başlangıcının
+// HEMEN ardından gelen, tekrarlayan "Parsel"/"forma sahip olup" gibi
+// öznesiz/kısa hali.
+function buildLandGeometrySentenceCompact() {
+  const shape = toLowerText(state.fields.landShape || "");
+  const topography = toLowerText(state.fields.landTopography || "");
+  if (shape && topography) return `Geometrik olarak ${shape} formda, topografik açıdan ${topography} zemin yapısındadır.`;
+  if (shape) return `Geometrik olarak ${shape} formdadır.`;
+  if (topography) return `Topografik açıdan ${topography} zemin yapısındadır.`;
+  return "";
+}
+
+// buildLandRoadFrontageSentence()'ın "Konu parselin"/"yer alan" gibi
+// tekrarlayan öznesiz kısa hali.
+function buildLandRoadFrontageSentenceCompact() {
+  const frontage = normalizeYesNoChoice(state.fields.landRoadFrontage);
+  if (frontage === "Hayır") return "Kadastro yoluna veya imar yoluna cephesi bulunmamaktadır.";
+  if (frontage !== "Evet") return "";
+  const items = getLandRoadFrontageItems()
+    .map(formatLandRoadFrontagePhraseCompact)
+    .filter(Boolean);
+  if (!items.length) return "";
+  return `${formatTurkishList(items)} cephelidir.`;
+}
+
+function formatLandRoadFrontagePhraseCompact(item = {}) {
+  const direction = item.direction ? `${toLowerText(item.direction)} yönünde ` : "";
+  const road = formatLandRoadNameForDescription(item);
+  const length = formatLandFrontageLength(item.length);
+  if (!road && !length) return "";
+  return `${direction}${road || "kadastro/imar yoluna"}${length ? ` yaklaşık ${length}` : ""}`;
+}
+
+// buildLandBoundarySentence()'ın "Parsel" öznesi düşürülmüş kısa hali.
+function buildLandBoundarySentenceCompact() {
+  const value = normalizeYesNoChoice(state.fields.landBoundaryElement);
+  if (value === "Hayır") return "Sınırlarını arazide belirgin şekilde gösteren çit, duvar, tel örgü vb. herhangi bir unsur bulunmamaktadır.";
+  if (value !== "Evet") return "";
+  const items = [...getLandBoundaryElementItems()];
+  if (state.fields.landBoundaryElementOther) items.push(state.fields.landBoundaryElementOther);
+  const text = formatTurkishList(items.map(formatLandBoundaryElementForDescription).filter(Boolean));
+  return text ? `Sınırları ${text} ile belirgin vaziyettedir.` : "";
+}
+
+// Bir taşınmazın (AKTİF state.fields üzerinden okunur — çağıran taraf
+// state.fields'ı ilgili taşınmazla GEÇİCİ değiştirir) öz/kısa fiziksel
+// arsa özellikleri paragrafı — sulama/tarım türü cümlesi HARİÇ (o AYRI
+// ele alınır, bkz. buildLandAgricultureConsolidatedParts).
+function buildLandParcelPhysicalParagraph(label) {
+  const quality = normalizeReportTitleText(state.fields.mainPropertyQuality || state.fields.titleQuality || "Arsa") || "Arsa";
+  const area = formatLandAreaForDescription(state.fields.landArea);
+  const identity = area
+    ? `${label}: “${quality}” vasıflı olup, ${area} yüzölçümlüdür.`
+    : `${label}: “${quality}” vasıflıdır.`;
+  return [
+    identity,
+    buildLandGeometrySentenceCompact(),
+    buildLandRoadFrontageSentenceCompact(),
+    buildLandAgriculturalProductSentence(false),
+    buildLandBoundarySentenceCompact(),
+  ].filter(Boolean).join(" ");
+}
+
+// buildLandAgricultureSentence()'ın ("Taşınmazda sulu tarım
+// yapılmakta..."/"Parselin kuru tarım arazisi niteliğinde...") taşınmaz-
+// atıflı hali: cümlenin KENDİ (bilinen, sabit) özne kalıbı "{parselNo}
+// parselde" ile DEĞİŞTİRİLİR — kullanıcının "56 parselde Sulu tarım
+// yapılmakta olup..." örneğiyle BİREBİR (gerçek/mevcut cümle içeriği
+// KORUNUR, yalnızca öznesi atıflı hale getirilir; yeni/uydurma bir cümle
+// kalıbı İCAT EDİLMEZ).
+function attributeLandAgricultureSentenceToParcel(sentence, parcelLabel) {
+  if (!sentence || !parcelLabel) return sentence;
+  return sentence
+    .replace(/^Taşınmazda\b/, `${parcelLabel} parselde`)
+    .replace(/^Parselin\b/, `${parcelLabel} parselde`);
+}
+
+// `entries`: [{ label, parcelNo, sentence }] — her taşınmazın KENDİ
+// buildLandAgricultureSentence() çıktısı. Hepsi (metin olarak) AYNIYSA
+// TEK, çoğul ("Taşınmazlarda ...") cümlede birleşir (kullanıcının 2.
+// örneği); FARKLIYSA her biri KENDİ parsel atfıyla art arda eklenir
+// (kullanıcının 3. örneği, "56 parselde ... 312 parselde ...").
+function buildLandAgricultureConsolidatedParts(entries) {
+  if (!entries.length) return [];
+  const uniqueTexts = [...new Set(entries.map((entry) => entry.sentence))];
+  if (uniqueTexts.length === 1) {
+    return [pluralizeEnvironmentalSubjectText(uniqueTexts[0], true)];
+  }
+  const attributed = entries
+    .map((entry) => attributeLandAgricultureSentenceToParcel(entry.sentence, entry.parcelNo || entry.label))
+    .filter(Boolean);
+  return attributed.length ? [attributed.join(" ")] : [];
+}
+
+function buildMultiParcelLandDescription() {
+  if (!isMultiTitleUnitReportForNarrative() || !hasMixedTitleUnitParcels()) return "";
+  const units = getNarrativeTitleUnitFields();
+  if (units.length < 2 || units.length > LAND_MULTI_PARCEL_DESCRIPTION_LIMIT) return "";
+
+  const originalFields = state.fields;
+  const parcelParagraphs = [];
+  const agricultureEntries = [];
+  units.forEach((fields, index) => {
+    state.fields = { ...originalFields, ...fields };
+    try {
+      const label = formatLandParcelLabel(state.fields.blockNo, state.fields.parcelNo, index);
+      const paragraph = buildLandParcelPhysicalParagraph(label);
+      if (paragraph) parcelParagraphs.push(paragraph);
+      const agricultureSentence = buildLandAgricultureSentence();
+      if (agricultureSentence) {
+        const parcelNo = normalizeReportTitleText(state.fields.parcelNo || "").trim();
+        agricultureEntries.push({ label, parcelNo: parcelNo || label, sentence: agricultureSentence });
+      }
+    } finally {
+      state.fields = originalFields;
+    }
+  });
+  if (!parcelParagraphs.length) return "";
+
+  const agricultureParts = buildLandAgricultureConsolidatedParts(agricultureEntries);
+  return normalizeReportDescriptionText([...parcelParagraphs, ...agricultureParts].join("\n\n"));
+}
+
 function buildLandIdentitySentence() {
   const subject = buildLandParcelSubject();
   const quality = normalizeReportTitleText(state.fields.mainPropertyQuality || state.fields.titleQuality || "Arsa") || "Arsa";
@@ -7493,7 +7664,18 @@ function formatLandFrontageLength(value) {
   return `${formatted} metre`;
 }
 
-function buildLandAgriculturalProductSentence() {
+// `includeYield` (2026-09-15, çoklu ada/parsel taşınmaz-bazlı paragraf
+// talebi): her taşınmazın KENDİ kısa/öz fiziksel paragrafında ağaç/ürün
+// "bakım durumu" gözlem cümlesi (buildLandAgriculturalYieldSentence)
+// İSTENMEDİĞİNDEN (kullanıcının verdiği "TALEP EDİLEN PARAGRAF" örneği
+// bu cümleyi İÇERMİYOR) opsiyonel olarak atlanabilir hale getirildi —
+// varsayılan (buildLandDescription()'ın TEK taşınmazlı ESKİ, DEĞİŞMEYEN
+// çağrısı) `true` kalır. BİLEREK düz bir boolean parametre (`{}` içeren
+// bir options nesnesi DEĞİL) — test-kuveytturk-arsa-arazi-template.js'in
+// KENDİ (parametre listesindeki varsayılan nesne literallerini paren-
+// derinliğiyle atlamayan, daha kırılgan) fonksiyon çıkarıcısı bir
+// "{}" varsayılan değeriyle YANLIŞ yorumlayıp gövdeyi erken keserdi.
+function buildLandAgriculturalProductSentence(includeYield = true) {
   if (shouldHideLandAgricultureControls()) return "";
   const value = normalizeYesNoChoice(state.fields.landAgriculturalProduct);
   if (value === "Hayır") {
@@ -7507,7 +7689,7 @@ function buildLandAgriculturalProductSentence() {
   const productSentences = items
     .map(formatLandAgriculturalProductPhrase)
     .filter(Boolean);
-  const yieldSentence = buildLandAgriculturalYieldSentence(items);
+  const yieldSentence = includeYield ? buildLandAgriculturalYieldSentence(items) : "";
   return [productSentences.join(" "), yieldSentence].filter(Boolean).join(" ");
 }
 
