@@ -221,6 +221,7 @@ const TEST_FILES = [
   "test-expense-title-deed-fee-vat-rounding.js",
   "test-building-floor-common-case-preserved.js",
   "test-comparable-matrix-ziraat-comma-coordinates.js",
+  "test-comparable-memory-auto-save.js",
 ];
 
 let failed = null;

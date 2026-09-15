@@ -46550,7 +46550,6 @@ function createComparableLocationSketchPanel() {
       <button class="mini-button" type="button" data-comparable-sketch-export>JPG İNDİR</button>
       <button class="mini-button" type="button" data-comparable-sketch-reset-labels>Etiketleri Sıfırla</button>
       <button class="mini-button" type="button" data-comparable-memory-toggle>GEÇMİŞ EMSALLER</button>
-      <button class="mini-button" type="button" data-comparable-memory-save>EMSALLERİ HAFIZAYA KAYDET</button>
       <label class="export-control comparable-memory-archive-control" hidden>
         <input type="checkbox" data-comparable-memory-archived />
         <span>6 aydan eskiyi göster</span>
@@ -46599,31 +46598,6 @@ function createComparableLocationSketchPanel() {
     await refreshComparableMemory(memory.includeArchived);
     renderComparableLocationSketchMap(wrapper);
   });
-  wrapper.querySelector("[data-comparable-memory-save]").addEventListener("click", async (event) => {
-    const button = event.currentTarget;
-    const rows = getComparableRows().filter((row) => Number.isFinite(Number(String(row?.c18 || "").replace(",", "."))) && Number.isFinite(Number(String(row?.c19 || "").replace(",", "."))));
-    if (!rows.length) {
-      window.alert("Hafızaya kaydedilecek koordinatlı emsal yok.");
-      return;
-    }
-    button.disabled = true;
-    const previousText = button.textContent;
-    button.textContent = "KAYDEDİLİYOR...";
-    try {
-      for (const comparable of rows) {
-        const response = await fetchRaporApi("/api/comparable-memory", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ comparable }) });
-        const data = await response.json();
-        if (!response.ok || data.ok === false) throw new Error(data.error || "Emsal kaydedilemedi.");
-      }
-      button.textContent = `${rows.length} EMSAL KAYDEDİLDİ`;
-      await refreshComparableMemory(Boolean(state.sourceValues?.comparableMemory?.includeArchived));
-    } catch (error) {
-      window.alert(error.message || "Emsaller hafızaya kaydedilemedi.");
-      button.textContent = previousText;
-    } finally {
-      button.disabled = false;
-    }
-  });
   window.setTimeout(() => renderComparableLocationSketchMap(wrapper), 0);
   return wrapper;
 }
@@ -46637,6 +46611,38 @@ async function refreshComparableMemory(includeArchived = false) {
     entries: Array.isArray(data.entries) ? data.entries : [],
     archivedCount: Number(data.archivedCount || 0),
   };
+}
+
+// Kullanıcı talebi (2026-09-15): "kullanıcı tarafından girilen emsaller
+// otomatik kaydedilsin sonradan kullanılmak üzere. emsalleri hafızaya
+// kaydet butonunu kaldır." Manuel "EMSALLERİ HAFIZAYA KAYDET" düğmesi
+// (tüm koordinatlı emsalleri tek seferde POST eden döngü) kaldırıldı;
+// aynı `/api/comparable-memory` POST çağrısı artık TEK bir emsal için,
+// o emsalin konumu haritadan onaylandığı ANDA (openComparableLocationModal
+// "Kaydet" -> çağıranın onSave callback'i, bkz. aşağıdaki çağrı noktası)
+// otomatik yapılır — c18/c19 (Enlem/Boylam) zaten SADECE bu modal
+// üzerinden set edilebiliyor (comparableFields'ta readOnly), yani bu
+// tek nokta emsalin konumunun GERÇEKTEN belirlendiği/değiştiği an.
+// Sessiz arka plan işlemi: kullanıcıya alert GÖSTERMEZ (manuel düğmenin
+// aksine, bu artık kullanıcının izlediği bir eylem değil).
+async function autoSaveComparableToMemory(row) {
+  const lat = Number.parseFloat(String(row?.c18 || "").replace(",", "."));
+  const lng = Number.parseFloat(String(row?.c19 || "").replace(",", "."));
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+  try {
+    const response = await fetchRaporApi("/api/comparable-memory", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ comparable: row }),
+    });
+    const data = await response.json();
+    if (!response.ok || data.ok === false) throw new Error(data.error || "Emsal kaydedilemedi.");
+    if (state.sourceValues?.comparableMemory?.visible) {
+      await refreshComparableMemory(Boolean(state.sourceValues.comparableMemory.includeArchived));
+    }
+  } catch (error) {
+    console.error("Emsal otomatik hafızaya kaydedilemedi:", error);
+  }
 }
 
 // Kullanıcı kararı: Geçmiş Emsaller, konu taşınmaz merkezli 5 km çapta
@@ -47811,6 +47817,8 @@ function createComparableMatrixCell(section, field, row, rowIndex) {
     mapButton.dataset.comparableRow = String(rowIndex);
     mapButton.dataset.comparableField = "c7map";
     mapButton.addEventListener("click", () => {
+      const previousLat = row.c18;
+      const previousLng = row.c19;
       openComparableLocationModal(row, rowIndex, () => {
         autosave();
         // Kullanıcı bildirimi (2026-09-10): "4. emsal sütununda seçip
@@ -47824,6 +47832,14 @@ function createComparableMatrixCell(section, field, row, rowIndex) {
         // konumu (yatay ve dikey) korunur.
         locationText.textContent = row.c20 || (row.c18 && row.c19 ? `${row.c18}, ${row.c19}` : "");
         updateComparableLocationCellsInPlace(rowIndex, row);
+        // Kullanıcı talebi (2026-09-15): manuel "hafızaya kaydet" düğmesi
+        // kaldırıldı — konum burada (c18/c19'un TEK giriş noktası) GERÇEKTEN
+        // değiştiyse otomatik hafızaya kaydedilir (bkz. autoSaveComparableToMemory).
+        // Modal sadece açılıp aynı konumla kapatılırsa (değişiklik yok)
+        // gereksiz bir kayıt OLUŞTURULMAZ.
+        if (row.c18 && row.c19 && (row.c18 !== previousLat || row.c19 !== previousLng)) {
+          autoSaveComparableToMemory(row);
+        }
       });
     });
     const locationText = document.createElement("small");

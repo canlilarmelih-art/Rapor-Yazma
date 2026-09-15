@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.780 - 2026-09-15 - Emsaller artık otomatik hafızaya kaydediliyor; manuel "EMSALLERİ HAFIZAYA KAYDET" düğmesi kaldırıldı
+
+- Kullanıcı: "emsaller bölümünde kullanıcı tarafından girilen emsaller otomatik kaydedilsin sonradan kullanılmak üzere. emsalleri hafızaya kaydet butonunu kaldır."
+- Eski akış: koordinatlı emsaller yalnızca kullanıcı "Emsal Konum Krokisi" araç çubuğundaki "EMSALLERİ HAFIZAYA KAYDET" düğmesine ELLE tıklarsa `/api/comparable-memory`'ye kaydediliyordu (tüm koordinatlı satırları tek seferde döngüyle POST eden `data-comparable-memory-save` tıklama dinleyicisi) — unutulursa emsal hiç hafızaya girmiyordu, sonraki raporlarda "GEÇMİŞ EMSALLER" listesinde görünmüyordu.
+- Düzeltme: `c18`/`c19` (Enlem/Boylam) zaten SADECE `openComparableLocationModal()` ("Haritadan seç" → "Kaydet") üzerinden set edilebiliyor (`comparableFields`'ta `readOnly: true`) — yani bu TEK nokta bir emsalin konumunun gerçekten belirlendiği/değiştiği andır. Yeni `autoSaveComparableToMemory(row)` bu modalın `onSave` geri çağrısı içinden, konum önceki değerinden GERÇEKTEN farklıysa (modal sadece açılıp aynı konumla kapatılırsa gereksiz kayıt oluşmaz) otomatik çağrılır — aynı `POST /api/comparable-memory` isteğini (eski düğmenin kullandığı) tek bir emsal için sessizce (arka planda, hata olursa yalnızca konsola loglanır, kullanıcıya alert GÖSTERİLMEZ) yapar; hafıza paneli ("GEÇMİŞ EMSALLER") o an açıksa listeyi de yeniler. Manuel düğme (`data-comparable-memory-save`) ve tüm tıklama kablolaması TAMAMEN kaldırıldı; "GEÇMİŞ EMSALLER" (görüntüleme) düğmesi ve "6 aydan eskiyi göster" arşiv kontrolü DOKUNULMADAN kaldı.
+- Test: yeni `tools/test-comparable-memory-auto-save.js` — manuel düğmenin kaldırıldığını, görüntüleme akışının korunduğunu, GERÇEK `autoSaveComparableToMemory()`'nin geçerli koordinatta doğru gövdeyle (`{ comparable: row }`) POST attığını, hafıza paneli açıkken listeyi yenilediğini, koordinatsız satırda fetch'e HİÇ dokunmadığını ve "Haritadan seç" akışının bu fonksiyonu yalnızca konum GERÇEKTEN değiştiğinde çağırdığını doğruluyor. Stash ile eski koda karşı çalıştırıldığında düğmenin hâlâ mevcut olduğu hatasıyla gerçekten kırıldığı doğrulandı.
+- `npm run verify` (181 test dosyası) EXIT:0. `index.html`'de `app.js` cache-buster'ı `20260915-0420`'e yükseltildi. Canlı tarayıcı testi yapılamadı — kullanıcıdan bir emsalin konumunu haritadan işaretleyip kaydettikten sonra (artık düğmeye TIKLAMADAN) "GEÇMİŞ EMSALLER" listesinde veya sonraki bir raporda bu emsalin göründüğünü doğrulaması isteniyor.
+
+
 ## 0.0.779 - 2026-09-15 - Emsal Karşılaştırma Matrisi: SADECE Ziraat Bankası şablonunda koordinatlar virgüllü ondalık
 
 - Kullanıcı: "Emsaller bölümünde sadece ziraat bankası template çıktısında emsal koordinatlarını 40.252565 yerine 40,252656 şeklinde export edebilir miyiz."
