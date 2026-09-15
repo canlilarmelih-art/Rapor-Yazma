@@ -1,5 +1,12 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.798 - 2026-09-15 - Arsa Özellikleri ortak sulama sistemi cümlesinde artık "Parseller üzerinde" (çoğul)
+
+- Kullanıcı: "Parsel üzerinde damlama tipi sulama sistemi bulunmaktadır. yerine parsellerde sulama sistemi ortak ise parseller üzerinde dememiz gerekmiyor mu?"
+- Düzeltme: `buildLandIrrigationConsolidatedSentence()`'ın ortak (tüm taşınmazlarda AYNI sistem) dalı artık "Parsel üzerinde" yerine "Parseller üzerinde" diyor — hemen üstündeki "Taşınmazlarda ..." cümlesiyle AYNI çoğul özneye uyumlu. Tek taşınmazlı raporların (`buildLandDescription()`/`buildLandAgricultureSentence()`) kendi cümlesi "Parsel üzerinde" olarak DEĞİŞMEDİ (yalnızca gerçekten çoklu/ortak bağlamda kullanılan cümle etkilendi).
+- Test: `tools/test-land-description-multi-parcel.js`'teki ilgili 2 senaryo (aynı sulama, aynı tür/farklı kaynak) "Parseller üzerinde" bekleyecek şekilde güncellendi. Stash ile eski koda karşı çalıştırıldığında gerçekten kırıldığı doğrulandı.
+- `npm run verify` (182 test dosyası) EXIT:0. `index.html`'de `app.js` cache-buster'ı `20260915-1245`'e yükseltildi. Canlı tarayıcı testi yapılamadı.
+
 ## 0.0.797 - 2026-09-15 - Arsa Özellikleri sulama cümlesi artık GRANÜLER birleşiyor (yalnızca gerçekten farklı olan kısım atıflı)
 
 - Kullanıcı, 0.0.796'nın canlı çıktısını paylaşıp "ortak cümle kurulmamış sadece" dedi: iki taşınmaz da "Sulu Tarım" VE aynı "damlama tipi" sulama sistemindeydi, yalnızca sulama KAYNAĞI farklıydı (56: sulama kanalı, 315: kuyu suyu) — ama TÜM cümle (tarım türü + sistem dahil) gereksiz yere iki kez tekrarlanıp tamamen ayrı/atıflı hale düşmüştü.

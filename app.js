@@ -7601,7 +7601,15 @@ function buildLandIrrigationConsolidatedSentence(entries) {
   const uniqueSystems = [...new Set(systemEntries.map((entry) => entry.system))];
   let systemClause = "";
   if (uniqueSystems.length === 1) {
-    systemClause = `Parsel üzerinde ${uniqueSystems[0]} sulama sistemi bulunmaktadır.`;
+    // Kullanıcı talebi (2026-09-15): "parsellerde sulama sistemi ortak
+    // ise parseller üzerinde dememiz gerekmiyor mu?" — bu cümle SADECE
+    // birden fazla taşınmazın ORTAK sulama sistemini anlattığından
+    // (buildLandIrrigationConsolidatedSentence yalnızca çoklu/farklı
+    // parsel bağlamında çağrılır) özne "Parsel" DEĞİL "Parseller" olmalı
+    // (hemen üstündeki "Taşınmazlarda" ile AYNI çoğul özne — tekil kalan
+    // buildLandAgricultureSentence()'ın kendisi, tek taşınmaz bağlamında
+    // kullanıldığından DEĞİŞMEDİ).
+    systemClause = `Parseller üzerinde ${uniqueSystems[0]} sulama sistemi bulunmaktadır.`;
   } else if (uniqueSystems.length > 1) {
     const phrase = formatTurkishList(systemEntries.map((entry) => `${entry.parcelLabel} parselde ${entry.system}`));
     systemClause = `${phrase} sulama sistemi bulunmaktadır.`;

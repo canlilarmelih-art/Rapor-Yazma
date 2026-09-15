@@ -295,8 +295,8 @@ function freshState(fields = {}, titleUnits = []) {
   assert.ok(paragraphs[1].startsWith("315 Parsel: “Tarla” vasıflı olup, 4.200,00 m² yüzölçümlüdür."), `315 parselin KENDİ (farklı nitelik/alan) paragrafı da görünmeli, bulunan: ${paragraphs[1]}`);
   assert.equal(
     paragraphs[2],
-    "Taşınmazlarda sulu tarım yapılmakta olup, sulama ihtiyacı sulama kanalından sağlanmaktadır. Parsel üzerinde damlama tipi sulama sistemi bulunmaktadır.",
-    `İki parsel AYNI sulama bilgisini paylaştığından TEK ortak çoğul cümlede birleşmeli (kullanıcının 2. örneği), bulunan: ${paragraphs[2]}`,
+    "Taşınmazlarda sulu tarım yapılmakta olup, sulama ihtiyacı sulama kanalından sağlanmaktadır. Parseller üzerinde damlama tipi sulama sistemi bulunmaktadır.",
+    `İki parsel AYNI sulama bilgisini paylaştığından TEK ortak çoğul cümlede (kullanıcı talebi: 'Parseller üzerinde' çoğul özne) birleşmeli, bulunan: ${paragraphs[2]}`,
   );
   console.log("buildMultiParcelLandDescription() kullanıcının TALEP EDİLEN örneğiyle (AYNI sulama -> ortak cümle) birebir eşleşme testi tamam.");
 }
@@ -363,8 +363,8 @@ function freshState(fields = {}, titleUnits = []) {
   const agricultureParagraph = paragraphs[paragraphs.length - 1];
   assert.equal(
     agricultureParagraph,
-    "Taşınmazlarda sulu tarım yapılmakta olup, sulama ihtiyacı 56 parselde sulama kanalından ve 315 parselde kuyu suyundan sağlanmaktadır. Parsel üzerinde damlama tipi sulama sistemi bulunmaktadır.",
-    `KULLANICI BULGUSU: tarım türü/sistem AYNI oldugundan TEK kalmalı, yalnızca FARKLI olan kaynak parsel-atıflı listelenmeli, bulunan: ${agricultureParagraph}`,
+    "Taşınmazlarda sulu tarım yapılmakta olup, sulama ihtiyacı 56 parselde sulama kanalından ve 315 parselde kuyu suyundan sağlanmaktadır. Parseller üzerinde damlama tipi sulama sistemi bulunmaktadır.",
+    `KULLANICI BULGUSU: tarım türü/sistem AYNI oldugundan TEK kalmalı (kullanıcı talebi: 'Parseller üzerinde' çoğul özne), yalnızca FARKLI olan kaynak parsel-atıflı listelenmeli, bulunan: ${agricultureParagraph}`,
   );
   assert.equal(paragraphs.length, 3, `2 taşınmaz paragrafı + 1 GRANÜLER birleşik sulama cümlesi = 3 parça beklenir, bulunan: ${JSON.stringify(paragraphs)}`);
 
