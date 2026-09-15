@@ -78,7 +78,7 @@ const functionNames = [
   "cleanBoundNeighborhoodCenterName",
   "cleanEnvironmentalDistancePhrase",
   "getAgriculturalNeighborhoodBaseName",
-  "formatAgriculturalParcelLabel",
+  "formatTitleUnitParcelLabel",
   "buildAgriculturalMultiUnitParcelDistanceSentence",
   "buildAgriculturalMultiTitleUnitTransportText",
   "buildAgriculturalKmlDistanceSentence",
@@ -98,7 +98,7 @@ let state = {};
 const VARIANT_REGISTRY = [];
 ${extractConstArray("agriculturalMultiUnitParcelListTransportFragmentVariants")}
 ${extractConstArray("agriculturalMultiUnitManyParcelsTransportVariants")}
-const AGRICULTURAL_MULTI_UNIT_TRANSPORT_LIST_LIMIT = 5;
+const MIXED_PARCEL_NARRATIVE_LIST_LIMIT = 5;
 ${functionNames.map(extractFunction).join("\n")}
 return {
   buildAgriculturalMultiTitleUnitTransportText,

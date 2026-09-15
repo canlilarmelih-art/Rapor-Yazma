@@ -30,12 +30,17 @@ vm.createContext(context);
 vm.runInContext(
   [
     "function registerVariantGroup() {}",
+    "const MIXED_PARCEL_NARRATIVE_LIST_LIMIT = 5;",
     sliceConstArray("openAddressStyleVariants"),
     sliceFunction("formatOpenAddressBuildingName"),
     sliceFunction("normalizeBlockLabelPrefixForAttribution"),
+    sliceFunction("getTitleUnitCount"),
     sliceFunction("isMultiTitleUnitReportForNarrative"),
     sliceFunction("getNarrativeTitleUnitFields"),
     sliceFunction("getSharedNarrativeParcelPhrase"),
+    sliceFunction("hasMixedTitleUnitParcels"),
+    sliceFunction("formatTurkishList"),
+    sliceFunction("buildMixedParcelLocationPhrase"),
     sliceFunction("pluralizeEnvironmentalSubjectText"),
     sliceFunction("formatZiraatLocationSubject"),
   ].join("\n"),
@@ -87,13 +92,42 @@ assert.equal(
   "Ekspertize konu taşınmazlar, Düzce ili, Merkez ilçesi, Sancaklar mahallesi, 0 ada 709 parsel üzerinde A, B, C bloklarda yer almaktadır.",
 );
 
+// Kullanıcı talebi (2026-09-15, "farklı ada parseldeki mantığı ...
+// paragraflar bazında kendi mantığını kullanarak uygula"): parseller
+// GERÇEKTEN farklıyken (0/709 + 0/709 + 0/710, hasMixedTitleUnitParcels
+// true) önceden TÜM ada/parsel bilgisi kayboluyor, tekil ve parselsiz bir
+// cümleye düşülüyordu. Artık her taşınmazın KENDİ ada/parseli (tekrar eden
+// "0 ada 709 parsel" TEKİLLEŞTİRİLEREK) listelenir, "yer almaktadır" ile
+// biten TAM bir cümle üretilir.
 context.state.titleUnits[1].fields.parcelNo = "710";
 const differentParcelSubject = context.formatZiraatLocationSubject({
   city: "Düzce",
   district: "Merkez",
   neighborhood: "Sancaklar",
 });
-assert.ok(!differentParcelSubject.includes("0 ada 709 parsel"));
+assert.equal(
+  differentParcelSubject,
+  "Ekspertize konu taşınmazlar, Düzce ili, Merkez ilçesi, Sancaklar mahallesi, 0 ada 709 parsel ve 0 ada 710 parsel üzerinde yer almaktadır.",
+  "Farklı ada/parselde HER taşınmazın (tekrarsız) kendi ada/parseli listelenip 'yer almaktadır' ile tam bir cümle olmalı."
+);
+
+// 5'ten fazla FARKLI parsel — taşınmaz bazlı liste yerine genel özet
+// ("farklı ada ve parsellerde yer almaktadır"), Tarımsal Alan Ulaşım
+// Tarifi'ndeki AYNI eşik/davranışla (MIXED_PARCEL_NARRATIVE_LIST_LIMIT).
+context.state.fields = { blockNo: "1", parcelNo: "1", titleBlockName: "" };
+context.state.titleUnits = Array.from({ length: 5 }, (_, index) => ({
+  fields: { blockNo: String(index + 2), parcelNo: String(index + 2), titleBlockName: "" },
+}));
+const manyDifferentParcelsSubject = context.formatZiraatLocationSubject({
+  city: "Düzce",
+  district: "Merkez",
+  neighborhood: "Sancaklar",
+});
+assert.equal(
+  manyDifferentParcelsSubject,
+  "Ekspertize konu taşınmazlar, Düzce ili, Merkez ilçesi, Sancaklar mahallesi, farklı ada ve parsellerde yer almaktadır.",
+  "5'ten fazla farklı parselde taşınmaz-bazlı liste DEĞİL, genel özet cümlesi üretilmeli."
+);
 
 // REGRESYON (2026-08-27, kullanıcı bildirimi): "ilk cümle eksik kalmış
 // nedense" — blok adı hiç YOKKEN (blocks.length === 0) cümle "... parsel

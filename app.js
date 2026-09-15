@@ -7063,6 +7063,22 @@ function formatZiraatLocationSubject(values) {
       addressParts.push(sharedParcelPhrase);
       return `Ekspertize konu taşınmazlar, ${[...addressParts, ...unitParts].join(", ")}.`;
     }
+    // Kullanıcı talebi (2026-09-15, "farklı ada parseldeki mantığı ...
+    // paragraflar bazında kendi mantığını kullanarak uygula"): parseller
+    // GERÇEKTEN farklıyken (sharedParcelPhrase boş) TÜM ada/parsel/site/
+    // kat/BB no bilgisi (yukarıdaki `!isSharedMultiTitleUnitNarrative`
+    // filtresiyle) kayboluyor, "Ekspertize konu taşınmaz, {il} ili, ...
+    // mahallesinde üzerinde konumludur" gibi TEKİL/parselsiz bir cümleye
+    // düşülüyordu — 2+ FARKLI parselli bir raporda yanlış (hem dilbilgisi
+    // hem içerik). buildMixedParcelLocationPhrase() (Adres/Konum/Çevre
+    // giriş cümlesiyle PAYLAŞIMLI çekirdek, bkz. o fonksiyon) her
+    // taşınmazın KENDİ ada/parselini listeler (≤5) veya genel özet (>5).
+    if (hasMixedTitleUnitParcels()) {
+      const mixedParcelPhrase = buildMixedParcelLocationPhrase(getNarrativeTitleUnitFields());
+      if (mixedParcelPhrase) {
+        return `Ekspertize konu taşınmazlar, ${[...addressParts, mixedParcelPhrase].join(", ")}.`;
+      }
+    }
   }
   if (!addressParts.length && !unitParts.length) return "Ekspertize konu taşınmaz";
   return `Ekspertize konu taşınmaz, ${[...addressParts, ...unitParts].join(", ")} üzerinde konumludur`;
@@ -12981,7 +12997,7 @@ function buildAgriculturalKmlDistanceSentence(values, options = {}) {
 //     "anlamsız" bir cümle). Etiket burada AMAÇLICA
 //     computeTitleUnitTabLabel'İ (UI tab/takyidat etiketi) KULLANMIYOR —
 //     doğrudan blockNo/parcelNo'dan "Ada"/"Parsel" kelimeleriyle kuruluyor
-//     (bkz. formatAgriculturalParcelLabel).
+//     (bkz. formatTitleUnitParcelLabel).
 //  3) Taşınmazlar FARKLI ada/parsellerdeyse VE sayı > 5 ise → tek bir genel
 //     özet cümlesi (mahalle çevresi).
 // Diğer bölge türlerini (Konut/Ticaret/Sanayi) ETKİLEMEZ — yalnızca
@@ -12995,7 +13011,14 @@ function getAgriculturalNeighborhoodBaseName(value = "") {
     .trim();
 }
 
-function formatAgriculturalParcelLabel(blockNo = "", parcelNo = "", fallbackIndex = 0) {
+// Nötr/genel amaçlı ad-parsel etiketi üretici — YALNIZCA
+// buildAgriculturalMultiUnitParcelDistanceSentence tarafından kullanılırken
+// "formatAgriculturalParcelLabel" adını taşıyordu; tarıma özgü hiçbir şey
+// içermediğinden (0.0.781, farklı ada/parsel çoklu rapor anlatım paragrafları
+// işi) diğer "farklı ada parsel" paragraf üreticileri (Ziraat konum cümlesi,
+// Adres/Konum/Çevre giriş cümlesi vb.) tarafından da PAYLAŞILACAK şekilde
+// nötr bir ada taşındı — davranış DEĞİŞMEDİ, yalnızca isim/konum.
+function formatTitleUnitParcelLabel(blockNo = "", parcelNo = "", fallbackIndex = 0) {
   const block = String(blockNo || "").trim();
   const parcel = String(parcelNo || "").trim();
   if (block && parcel) return `${block} Ada ${parcel} Parsel`;
@@ -13026,7 +13049,11 @@ registerVariantGroup(
 
 // Farklı ada/parsellerde kaçtan sonra taşınmaz bazlı listelemenin yerini
 // genel özet cümlesinin aldığı eşik (kullanıcı talebi: "5 ten fazla ise").
-const AGRICULTURAL_MULTI_UNIT_TRANSPORT_LIST_LIMIT = 5;
+// Eskiden yalnızca Tarımsal Alan Ulaşım Tarifi'ne özgüydü
+// (AGRICULTURAL_MULTI_UNIT_TRANSPORT_LIST_LIMIT); 0.0.781'den itibaren TÜM
+// "farklı ada parsel" anlatım paragrafları (Ziraat konum cümlesi, Adres/
+// Konum/Çevre giriş cümlesi vb.) AYNI eşiği PAYLAŞIR — davranış DEĞİŞMEDİ.
+const MIXED_PARCEL_NARRATIVE_LIST_LIMIT = 5;
 
 // Farklı ada/parsellerdeki taşınmazlar için ORTAK mesafe cümlesi/özeti —
 // hem "Ulaşım Tarifi" (buildAgriculturalMultiTitleUnitTransportText) hem
@@ -13039,7 +13066,7 @@ const AGRICULTURAL_MULTI_UNIT_TRANSPORT_LIST_LIMIT = 5;
 function buildAgriculturalMultiUnitParcelDistanceSentence() {
   const units = getNarrativeTitleUnitFields();
 
-  if (units.length > AGRICULTURAL_MULTI_UNIT_TRANSPORT_LIST_LIMIT) {
+  if (units.length > MIXED_PARCEL_NARRATIVE_LIST_LIMIT) {
     // 5'ten fazla farklı ada/parsel — taşınmaz bazlı liste yerine genel
     // özet (birincil taşınmazın bağlı bulunduğu mahalle esas alınır).
     const primary = units[0] || {};
@@ -13063,7 +13090,7 @@ function buildAgriculturalMultiUnitParcelDistanceSentence() {
       const center = cleanBoundNeighborhoodCenterName(unit.boundNeighborhood);
       const distance = cleanEnvironmentalDistancePhrase(unit.boundNeighborhoodDistance);
       if (!center || !distance) return "";
-      const label = formatAgriculturalParcelLabel(unit.blockNo, unit.parcelNo, index);
+      const label = formatTitleUnitParcelLabel(unit.blockNo, unit.parcelNo, index);
       return agriculturalMultiUnitParcelListTransportFragmentVariants[fragmentVariantIndex](label, center, distance);
     })
     .filter(Boolean);
@@ -13072,6 +13099,47 @@ function buildAgriculturalMultiUnitParcelDistanceSentence() {
   // ("yer almaktadır") yalnızca SONDA, bir kez gelir (kullanıcı bildirimi:
   // önceki hâlde hiç yüklem yoktu, cümle anlamsız kalıyordu).
   return `${fragments.join(", ")} yer almaktadır.`;
+}
+
+// Farklı ada/parsellerdeki taşınmazlar için PAYLAŞIMLI "konum" cümle
+// parçası (0.0.781, kullanıcı talebi: "aynı ada parseldeki mantığı farklı
+// ada parsele paragraflar bazında kendi mantığını kullanarak uygula") —
+// getSharedNarrativeParcelPhrase()'in TAM TERSİ senaryosu: o yalnızca TÜM
+// taşınmazlar AYNI parseldeyken bir şey döner ("" farklı parselde); bu
+// fonksiyon İSE yalnızca parseller GERÇEKTEN FARKLIYKEN kullanılır.
+// formatZiraatLocationSubject() VE buildEnvironmentalIntro() tarafından
+// PAYLAŞILIR — aynı mantığın iki yerde ayrı kopyası TUTULMAZ (bu
+// oturumda computeExpenseBulkHighestAndOtherTotal() için uygulanan AYNI
+// "paylaşımlı çekirdek" prensibi).
+//
+// MIXED_PARCEL_NARRATIVE_LIST_LIMIT (≤5) taşınmazda her birinin ada/
+// parseli Türkçe liste kuralıyla (virgül..., son öğeden önce "ve")
+// birleştirilip "üzerinde yer almaktadır" ile TEK yüklemle biter; daha
+// fazla taşınmazda (liste okunaksız olurdu) tek bir genel özet ifadesi
+// döner. Çağıran taraf bu parçayı KENDİ cümlesinin/öznesinin İÇİNE sarar
+// (bu fonksiyon baştan/sondan nokta veya büyük harfle BAŞLAMAZ/BİTMEZ).
+function buildMixedParcelLocationPhrase(units = []) {
+  const list = Array.isArray(units) ? units : [];
+  if (!list.length) return "";
+  if (list.length > MIXED_PARCEL_NARRATIVE_LIST_LIMIT) {
+    return "farklı ada ve parsellerde yer almaktadır";
+  }
+  // Birden fazla taşınmaz AYNI ada/parseli paylaşabilir (rapor "karışık":
+  // bazı taşınmazlar ortak, bazıları farklı parselde) — aynı ifadenin
+  // listede TEKRAR ETMEMESİ için tekilleştirilir (formatTurkishList kendisi
+  // tekilleştirme yapmaz).
+  const parcelPhrases = [...new Set(list
+    .map((unit) => {
+      const block = String(unit?.blockNo || unit?.titleBlockNo || "").trim();
+      const parcel = String(unit?.parcelNo || unit?.titleParcelNo || "").trim();
+      if (block && parcel) return `${block} ada ${parcel} parsel`;
+      if (parcel) return `${parcel} parsel`;
+      if (block) return `${block} ada`;
+      return "";
+    })
+    .filter(Boolean))];
+  if (!parcelPhrases.length) return "";
+  return `${formatTurkishList(parcelPhrases)} üzerinde yer almaktadır`;
 }
 
 function buildAgriculturalMultiTitleUnitTransportText() {
