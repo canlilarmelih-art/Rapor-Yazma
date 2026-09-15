@@ -47,13 +47,43 @@ function extractFunction(name) {
   }
   let index = appSource.indexOf("{", cursor);
   let depth = 0;
+  // 0.0.783: bazı fonksiyon gövdeleri (ör. formatEnvironmentalList) süslü
+  // ayraç İÇEREN düz regex hazır bilgileri (/\{\{[^}]+\}\}/) barındırıyor —
+  // saf karakter-bazlı derinlik sayacı bunları GERÇEK kod ayraçlarıymış
+  // gibi sayıp gövdeyi ERKEN kesiyordu (yarım bir regex, "Invalid regular
+  // expression: missing /" hatası). Aşağıda dize/şablon/regex hazır
+  // bilgileri VE yorumlar ATLANARAK (içlerindeki `{`/`}` SAYILMADAN) doğru
+  // derinlik takibi yapılır.
+  let quote = null; // '"', "'", '`', veya '/' (regex) — o an İÇİNDEYSEK
+  let prevSignificant = ""; // regex/bölme ayrımı için son anlamlı karakter
   for (; index < appSource.length; index += 1) {
     const char = appSource[index];
+    if (quote) {
+      if (char === "\\") { index += 1; continue; }
+      if (char === quote) quote = null;
+      continue;
+    }
+    if (char === "\"" || char === "'" || char === "`") { quote = char; continue; }
+    if (char === "/" && appSource[index + 1] === "/") {
+      const newline = appSource.indexOf("\n", index);
+      index = newline < 0 ? appSource.length : newline;
+      continue;
+    }
+    if (char === "/" && appSource[index + 1] === "*") {
+      const end = appSource.indexOf("*/", index + 2);
+      index = end < 0 ? appSource.length : end + 1;
+      continue;
+    }
+    if (char === "/" && /[([{,;:=!&|?+\-*%^~<>\n]/.test(prevSignificant || "\n")) {
+      quote = "/";
+      continue;
+    }
     if (char === "{") depth += 1;
     if (char === "}") {
       depth -= 1;
       if (depth === 0) return appSource.slice(start + 1, index + 1);
     }
+    if (!/\s/.test(char)) prevSignificant = char;
   }
   throw new Error(`Fonksiyon gövdesi kapanmadı: ${name}`);
 }
@@ -91,6 +121,27 @@ const functionNames = [
   "isCondominiumEasementOwnershipType",
   "normalizeOwnershipTypeForSectionVisibility",
   "foldTurkish",
+  // 0.0.783 (buildEnvironmentalDescription Tarimsal Alan dalindaki
+  // farkli-parsel KML mesafe cumlesinin yanlislikla cogullanmasi duzeltmesi)
+  // icin eklendi - asagidaki "buildEnvironmentalDescription: farkli parsel"
+  // senaryolari GERCEK fonksiyonu tum bagimliliklariyla calistirir.
+  "buildMixedParcelLocationPhrase",
+  "getSharedNarrativeParcelPhrase",
+  "buildEnvironmentalIntro",
+  "readEnvironmentalField",
+  "detectEnvironmentalRegionType",
+  "formatEnvironmentalList",
+  "buildAgriculturalActivityText",
+  "buildEnvironmentalDescription",
+  "normalizeReportDescriptionText",
+  "normalizeReportWhitespace",
+  "shouldLowercaseReportLine",
+  "normalizeReportSentenceLine",
+  "normalizeReportProperPhrases",
+  "preserveReportSpecialWords",
+  "normalizeReportNumberFormats",
+  "toTitleCaseTr",
+  "escapeRegExp",
 ];
 
 const sandboxSource = `
@@ -98,11 +149,21 @@ let state = {};
 const VARIANT_REGISTRY = [];
 ${extractConstArray("agriculturalMultiUnitParcelListTransportFragmentVariants")}
 ${extractConstArray("agriculturalMultiUnitManyParcelsTransportVariants")}
+${extractConstArray("environmentalIntroSubjectVariants")}
 const MIXED_PARCEL_NARRATIVE_LIST_LIMIT = 5;
+// buildCommercialFunctionSentence/buildIndustrialUsePurposeText: Ticaret/
+// Sanayi bolgesine ozgu, buildEnvironmentalDescription tarafindan HER
+// zaman (bolge turunden bagimsiz) cagirilir ama Tarimsal Alan dalinin
+// SONUCUNDA hic kullanilmaz - bu testin odagi DEGIL, guvenli no-op stub
+// yeterli (gercek mantiklari BASKA testlerde zaten kapsam disi).
+function buildCommercialFunctionSentence() { return ""; }
+function buildIndustrialUsePurposeText() { return ""; }
 ${functionNames.map(extractFunction).join("\n")}
 return {
   buildAgriculturalMultiTitleUnitTransportText,
   buildAgriculturalKmlDistanceSentence,
+  buildEnvironmentalIntro,
+  buildEnvironmentalDescription,
   pluralizeEnvironmentalSubjectText,
   setState: (s) => { state = s; },
 };
@@ -343,4 +404,72 @@ function boundFields(blockNo, parcelNo, distanceText) {
   const text = sandbox.buildAgriculturalKmlDistanceSentence(values, {});
   assert.match(text, /^KML koordinat verisine göre taşınmaz, bağlı bulunduğu Ataevler Mahalle Merkezinin 800 m güneyinde yer almaktadır\.\s$/);
   console.log("Ayni parselde KML mesafe cumlesi - tekli mantik regresyon testi tamam.");
+}
+
+// 8) KULLANICI BİLDİRİMİ (2026-09-15, GERÇEK rapor metni): "0 Ada 56
+// Parsel taşınmazlar bağlı bulunduğu ... taşınmazlar gereksiz kullanılmış."
+// buildEnvironmentalDescription()'ın Tarımsal Alan dalı, farklı ada/
+// parselli KML mesafe cümlesini (buildAgriculturalMultiUnitParcelDistanceSentence,
+// her fragmanı KENDİ TEKİL "taşınmaz" öznesiyle TEK bir parseli tanımlar)
+// paragrafın GERİ KALANIYLA (bilinçli olarak ÇOĞUL: "Taşınmazın bulunduğu
+// bölge..." -> "Taşınmazların...") AYNI blanket pluralizeEnvironmentalSubjectText
+// çağrısından geçiriyordu — bu, her fragmanın TEKİL öznesini de YANLIŞLIKLA
+// çoğullaştırıp "0 Ada 56 Parsel taşınmazlar" gibi dilbilgisi hatası
+// üretiyordu (o parsel TEK bir taşınmazı ifade eder).
+{
+  sandbox.setState({
+    fields: {
+      environmentRegionType: "Tarımsal Alan",
+      city: "Bursa",
+      district: "Gürsu",
+      neighborhood: "Canbazlarköyü",
+      developmentDensity: "düşük",
+      ...boundFields("0", "56", "759 m kuzeyinde"),
+    },
+    titleUnits: [{ fields: boundFields("0", "315", "1,27 km güneybatısında") }],
+    activeTitleUnitIndex: 0,
+    primaryTitleUnitShadow: null,
+  });
+  const description = sandbox.buildEnvironmentalDescription();
+  assert.ok(
+    !/Parsel taşınmazlar\b/.test(description),
+    `KULLANICI BİLDİRİMİ: farklı-parselli fragmanlarda "taşınmazlar" (ÇOĞUL) OLMAMALI, her fragman KENDİ parselini TEKİL tanımlamalı: ${description}`
+  );
+  assert.match(
+    description,
+    /0 Ada 56 Parsel taşınmaz bağlı bulunduğu Ataevler Mahalle Merkezinin 759 m kuzeyinde, 0 Ada 315 Parsel taşınmaz bağlı bulunduğu Ataevler Mahalle Merkezinin 1,27 km güneybatısında yer almaktadır\./,
+    `Farklı-parselli mesafe cümlesi (her fragman TEKİL) birebir üretilmeli: ${description}`
+  );
+  assert.match(
+    description,
+    /Taşınmazların bulunduğu bölge/,
+    `Paragrafın GERİ KALANI (bölge geneli cümleler) doğru şekilde ÇOĞUL kalmalı (regresyon): ${description}`
+  );
+  console.log("KULLANICI BILDIRIMI: buildEnvironmentalDescription() Tarimsal Alan - farkli-parsel fragmani TEKIL, paragrafin geri kalani COGUL testi tamam.");
+}
+
+// 8b) Aynı parselde (regresyon) — KML mesafe cümlesi de dahil TÜM paragraf
+// çoğullaşmalı (yalnızca farklı-parselli fragmanlar korunuyor, aynı
+// parselin TEK ortak mesafe cümlesi ÇOĞUL kalmaya devam etmeli).
+{
+  sandbox.setState({
+    fields: {
+      environmentRegionType: "Tarımsal Alan",
+      city: "Bursa",
+      district: "Gürsu",
+      neighborhood: "Canbazlarköyü",
+      developmentDensity: "düşük",
+      ...boundFields("1408", "3", "800 m güneyinde"),
+    },
+    titleUnits: [{ fields: boundFields("1408", "3", "800 m güneyinde") }],
+    activeTitleUnitIndex: 0,
+    primaryTitleUnitShadow: null,
+  });
+  const sameParcelDescription = sandbox.buildEnvironmentalDescription();
+  assert.match(
+    sameParcelDescription,
+    /KML koordinat verisine göre taşınmazlar, bağlı bulunduğu Ataevler Mahalle Merkezinin 800 m güneyinde yer almaktadır\./,
+    `Aynı parselde (regresyon) KML mesafe cümlesi de dahil ÇOĞUL kalmalı: ${sameParcelDescription}`
+  );
+  console.log("Ayni parselde (regresyon) buildEnvironmentalDescription() KML cumlesi de dahil cogul testi tamam.");
 }
