@@ -130,6 +130,12 @@ const functionNames = [
   // tablosu dolu değilken buildMissingReviewedDocumentSentences() tekil
   // kalıyordu) — çoğullama için.
   "pluralizeEnvironmentalSubjectText",
+  // 2026-09-15 (ikinci düzeltme): "... yapı ruhsatı ve yapı kullanma izin
+  // belgesi bulunamamıştır." TEK cümle birleştirme mantığını (prefix ===
+  // occupancyPrefix ise) sınamak için artık GERÇEK kaynaktan çalıştırılıyor
+  // (eski hand-written stub kaldırıldı) — buildMissingOccupancyPermitArchivePrefix
+  // KENDİSİ hâlâ stub (bkz. sandboxSource yorumu), bu yüzden burada YOK.
+  "buildMissingReviewedDocumentSentences",
 ];
 
 // Ağır/kapsam-dışı bağımlılıklar (bu testin odağı DEĞİL, mevcut/değişmeyen
@@ -184,17 +190,20 @@ const sandboxSource = `
     if (!row.date || !row.no) return "OLD_MISSING_OCCUPANCY_SENTENCE";
     return \`OCCUPANCY_FOUND(\${row.date},\${row.no})\`;
   }
-  // 2026-09-15: gerçekçi "taşınmaza ait" kalıbı taşıyan bir sabit metin
-  // kullanılıyor (önceki "MISSING_SENTENCE" opak stub'u DEĞİL) - çağıran
-  // tarafın (buildReviewedDocumentsDescription) etrafına eklediği
-  // pluralizeEnvironmentalSubjectText() çoğullamasının GÖZLEMLENEBİLİR
-  // olması için (bu testin odağı buildMissingReviewedDocumentSentences'in
-  // KENDİ iç mantığı DEĞİL, çağıranın onu çoğullama şekli).
-  function buildMissingReviewedDocumentSentences() {
-    return [
-      "PREFIX(DEFAULT) yapılan incelemelerde taşınmaza ait yapı kullanma izin belgesi bulunamamıştır.",
-      "PREFIX(DEFAULT) yapılan incelemelerde taşınmaza ait yeni yapı ruhsatı bulunamamıştır.",
-    ];
+  // 2026-09-15 (ikinci düzeltme, "yapı ruhsatı ve yapı kullanma izin
+  // belgesi bulunamamıştır" TEK cümle talebi): buildMissingReviewedDocumentSentences()
+  // artık GERÇEK kaynaktan çalıştırılıyor (aşağıda, functionNames listesi
+  // ile) — bu stub SİLİNDİ. buildMissingOccupancyPermitArchivePrefix()'in
+  // KENDİ gerçek dallanması (shouldUseMunicipalityOnlyForMissingOccupancyPermit,
+  // Webtapu+Belediye birlikte seçiliyken) bu testin odağı DEĞİL (ayrı,
+  // değişmeyen bir mekanizma) — normalde buildDocumentArchivePrefix ile
+  // AYNI değeri döner, yalnızca test senaryosu state.fields.forceDifferentOccupancyPrefix
+  // bayrağını açtığında FARKLI bir değer döner (buildMissingReviewedDocumentSentences'ın
+  // "prefix !== occupancyPrefix -> eski AYRI 2 cümle" güvenli geri dönüşünü
+  // sınamak için).
+  function buildMissingOccupancyPermitArchivePrefix(institutionValue = "") {
+    if (state.fields && state.fields.forceDifferentOccupancyPrefix) return "FARKLI-ISKAN-PREFIX";
+    return buildDocumentArchivePrefix(institutionValue);
   }
   // Gozlemlenebilir stub (2026-08-23) - gercek cumle metni bu dosyanin
   // odagi DEGIL (ruhsat/izin blok-gruplama mantigi); yalnizca
@@ -651,16 +660,17 @@ function freshState(overrides = {}) {
 
 // --- 12) Kullanıcı bulgusu (2026-09-15, "olmamış" — canlı rapor ekran ----
 // görüntüsü): farklı ada/parsel çoklu bir raporda HİÇBİR parselin belge
-// tablosu dolu değilse ("19.08.2026 tarihinde, Gürsu Belediyesi İmar Arşiv
-// dosyasında yapılan incelemelerde taşınmaza ait yapı kullanma izin belgesi
-// bulunamamıştır." + aynı tekil kalıpta ruhsat cümlesi) rows.length === 0
-// olduğundan Madde 4'ün 11 numaralı senaryolardaki parsel-birleştirme dalı
-// HİÇ DEVREYE GİRMİYORDU — buildMissingReviewedDocumentSentences() rapor-
-// geneli SABİT metinler ürettiğinden (taşınmaza-özgü veri yok) yalnızca
-// özne çoğullanır, parsel etiketine gerek yok.
+// tablosu dolu değilse rows.length === 0 olduğundan Madde 4'ün 11 numaralı
+// senaryolardaki parsel-birleştirme dalı HİÇ DEVREYE GİRMİYORDU —
+// buildMissingReviewedDocumentSentences() rapor-geneli SABİT metinler
+// ürettiğinden (taşınmaza-özgü veri yok) yalnızca özne çoğullanır, parsel
+// etiketine gerek yok. DEVAM (aynı gün, ikinci mesaj): "İncelenen Belgeler
+// Açıklaması '... taşınmazlara ait yapı ruhsatı ve yapı kullanma izin
+// belgesi bulunamamıştır.' şeklinde olmalı" — iki AYRI cümle yerine (AYNI
+// kaynak/tarih ifadesini paylaştıkları TİPİK durumda) TEK birleşik cümle.
 {
   // 12a) Farklı ada/parsel (Müstakil Bina) + HER İKİ parselin de belge
-  // tablosu BOŞ -> her iki cümle de coğul ("taşınmazlara ait") olmalı.
+  // tablosu BOŞ -> TEK birleşik, çoğul ("taşınmazlara ait ... ve ...") cümle.
   fns.setState(freshState({
     fields: {
       requestType: "Çoklu Talep", ownershipType: "Müstakil Bina",
@@ -675,16 +685,15 @@ function freshState(overrides = {}) {
   }));
   assert.equal(fns.hasMixedTitleUnitParcels(), true, "sanity: 0/56 ve 0/315 farkli parsel sayilmali.");
   const emptyMixedDescription = fns.buildReviewedDocumentsDescription();
-  assert.ok(emptyMixedDescription.includes("taşınmazlara ait yapı kullanma izin belgesi bulunamamıştır."), `Iskan-yok cumlesi COGUL olmali, bulunan: ${emptyMixedDescription}`);
-  assert.ok(emptyMixedDescription.includes("taşınmazlara ait yeni yapı ruhsatı bulunamamıştır."), `Ruhsat-yok cumlesi de COGUL olmali, bulunan: ${emptyMixedDescription}`);
+  assert.equal(emptyMixedDescription, "PREFIX(DEFAULT) yapılan incelemelerde taşınmazlara ait yapı ruhsatı ve yapı kullanma izin belgesi bulunamamıştır.", `KULLANICI TALEBİ: TEK birlesik cogul cumle beklenir, bulunan: ${emptyMixedDescription}`);
   assert.ok(!emptyMixedDescription.includes("taşınmaza ait"), `Eski TEKIL 'tasinmaza ait' kalibi KALMAMALI, bulunan: ${emptyMixedDescription}`);
 
-  console.log("buildReviewedDocumentsDescription() farkli ada/parsel + HICBIR belge yokken cogul ozne testi tamam.");
+  console.log("buildReviewedDocumentsDescription() farkli ada/parsel + HICBIR belge yokken TEK birlesik cogul cumle testi tamam.");
 }
 {
   // 12b) Aynı ada/parsel (hasMixedTitleUnitParcels false) çoklu bağımsız
-  // bölüm + belge tablosu BOŞ -> yine çoğul olmalı (yalnızca farklı
-  // parselle SINIRLI bir düzeltme DEĞİL, isMultiTitleUnitReportForNarrative
+  // bölüm + belge tablosu BOŞ -> yine TEK birleşik çoğul cümle (yalnızca
+  // farklı parselle SINIRLI bir düzeltme DEĞİL, isMultiTitleUnitReportForNarrative
   // TEK basina yeterli).
   fns.setState(freshState({
     fields: {
@@ -700,12 +709,13 @@ function freshState(overrides = {}) {
   }));
   assert.equal(fns.hasMixedTitleUnitParcels(), false, "sanity: ayni ada/parselde 2 bagimsiz bolum FARKLI parsel SAYILMAMALI.");
   const emptySameParcelDescription = fns.buildReviewedDocumentsDescription();
-  assert.ok(emptySameParcelDescription.includes("taşınmazlara ait yapı kullanma izin belgesi bulunamamıştır."), `Ayni ada/parselde COKLU bagimsiz bolum de cogul olmali, bulunan: ${emptySameParcelDescription}`);
+  assert.equal(emptySameParcelDescription, "PREFIX(DEFAULT) yapılan incelemelerde taşınmazlara ait yapı ruhsatı ve yapı kullanma izin belgesi bulunamamıştır.", `Ayni ada/parselde COKLU bagimsiz bolum de TEK birlesik cogul cumle olmali, bulunan: ${emptySameParcelDescription}`);
 
-  console.log("buildReviewedDocumentsDescription() ayni ada/parsel coklu + HICBIR belge yokken cogul ozne testi tamam.");
+  console.log("buildReviewedDocumentsDescription() ayni ada/parsel coklu + HICBIR belge yokken TEK birlesik cogul cumle testi tamam.");
 }
 {
-  // 12c) REGRESYON: tekil taşınmaz + belge tablosu boş -> TEKİL kalmalı.
+  // 12c) REGRESYON: tekil taşınmaz + belge tablosu boş -> TEKİL (ama YİNE
+  // DE birleşik, "ve" ile bağlı TEK cümle) kalmalı.
   fns.setState(freshState({
     fields: {
       requestType: "Tekli Talep", ownershipType: "Müstakil Bina",
@@ -715,10 +725,32 @@ function freshState(overrides = {}) {
     tables: { documents: [] },
   }));
   const singleEmptyDescription = fns.buildReviewedDocumentsDescription();
-  assert.ok(singleEmptyDescription.includes("taşınmaza ait yapı kullanma izin belgesi bulunamamıştır."), `Tekil tasinmazda TEKIL kalmali (regresyon), bulunan: ${singleEmptyDescription}`);
+  assert.equal(singleEmptyDescription, "PREFIX(DEFAULT) yapılan incelemelerde taşınmaza ait yapı ruhsatı ve yapı kullanma izin belgesi bulunamamıştır.", `Tekil tasinmazda TEK birlesik ama TEKIL cumle olmali (regresyon), bulunan: ${singleEmptyDescription}`);
   assert.ok(!singleEmptyDescription.includes("taşınmazlara ait"), `Tekil tasinmazda COGUL OLMAMALI (regresyon), bulunan: ${singleEmptyDescription}`);
 
   console.log("buildReviewedDocumentsDescription() tekil tasinmaz + HICBIR belge yokken TEKIL kalmasi (REGRESYON) testi tamam.");
+}
+{
+  // 12d) GÜVENLİ GERİ DÖNÜŞ: kaynak/tarih ifadesi (prefix) İskan ve Ruhsat
+  // için FARKLI çıkarsa (shouldUseMunicipalityOnlyForMissingOccupancyPermit
+  // true olan nadir durum, burada forceDifferentOccupancyPrefix ile
+  // simüle edilir) TEK cümlede YANLIŞ birleştirme YAPILMAZ, eski AYRI 2
+  // cümle davranışına düşülür.
+  fns.setState(freshState({
+    fields: {
+      requestType: "Tekli Talep", ownershipType: "Müstakil Bina",
+      blockNo: "0", parcelNo: "56", titleBlockName: "",
+      documentReviewInstitution: "Merkez Belediyesi",
+      forceDifferentOccupancyPrefix: true,
+    },
+    tables: { documents: [] },
+  }));
+  const differentPrefixDescription = fns.buildReviewedDocumentsDescription();
+  assert.ok(differentPrefixDescription.includes("FARKLI-ISKAN-PREFIX yapılan incelemelerde taşınmaza ait yapı kullanma izin belgesi bulunamamıştır."), `Iskan cumlesi KENDI (farkli) prefix'iyle AYRI kalmali, bulunan: ${differentPrefixDescription}`);
+  assert.ok(differentPrefixDescription.includes("PREFIX(DEFAULT) yapılan incelemelerde taşınmaza ait yeni yapı ruhsatı bulunamamıştır."), `Ruhsat cumlesi de KENDI prefix'iyle AYRI kalmali (eski 'yeni yapı ruhsatı' ifadesi KORUNUR), bulunan: ${differentPrefixDescription}`);
+  assert.ok(!differentPrefixDescription.includes(" ve yapı kullanma izin belgesi bulunamamıştır."), `Prefix'ler FARKLIYKEN YANLIS birlestirme YAPILMAMALI, bulunan: ${differentPrefixDescription}`);
+
+  console.log("buildReviewedDocumentsDescription() FARKLI prefix -> guvenli 2-ayri-cumle geri donusu testi tamam.");
 }
 
 console.log("Incelenen Belgeler Aciklamasi blok-bazli gruplama testleri basarili.");

@@ -32030,9 +32030,23 @@ function sanitizeUndeterminedProjectSuitabilityState() {
   return changed;
 }
 
+// Kullanıcı talebi (2026-09-15): "eğer tüm taşınmazlarda mimari proje var
+// mı kutucuğu işaretli değilse ve incelenen belgelere herhangi bir satır
+// eklenmedi ise İncelenen Belgeler Açıklaması '... yapılan incelemelerde
+// taşınmazlara ait yapı ruhsatı ve yapı kullanma izin belgesi
+// bulunamamıştır.' şeklinde olmalı" — ruhsat/iskan yok cümleleri artık
+// (AYNI "yer" ifadesini paylaştıkları TİPİK durumda) TEK cümlede
+// birleştirilir; kaynak/tarih ifadesi (prefix) FARKLI çıkarsa (yalnızca
+// shouldUseMunicipalityOnlyForMissingOccupancyPermit() true iken, ör.
+// Webtapu+Belediye birlikte seçiliyken) ESKİ, AYRI 2 cümle davranışına
+// güvenli düşülür — yanlış birleştirmektense doğru ayrı kalmak tercih
+// edilir.
 function buildMissingReviewedDocumentSentences(institutionValue = "") {
   const prefix = buildDocumentArchivePrefix(institutionValue);
   const occupancyPrefix = buildMissingOccupancyPermitArchivePrefix(institutionValue);
+  if (prefix === occupancyPrefix) {
+    return [`${prefix} yapılan incelemelerde taşınmaza ait yapı ruhsatı ve yapı kullanma izin belgesi bulunamamıştır.`];
+  }
   return [
     `${occupancyPrefix} yapılan incelemelerde taşınmaza ait yapı kullanma izin belgesi bulunamamıştır.`,
     `${prefix} yapılan incelemelerde taşınmaza ait yeni yapı ruhsatı bulunamamıştır.`,
