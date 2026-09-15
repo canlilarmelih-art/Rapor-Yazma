@@ -32044,7 +32044,11 @@ function sanitizeUndeterminedProjectSuitabilityState() {
 function buildMissingReviewedDocumentSentences(institutionValue = "") {
   const prefix = buildDocumentArchivePrefix(institutionValue);
   const occupancyPrefix = buildMissingOccupancyPermitArchivePrefix(institutionValue);
-  if (prefix === occupancyPrefix) {
+  // Kullanıcı talebi (2026-09-15): "sadece çoklu raporlarda" — tek
+  // cümlede birleştirme YALNIZCA çoklu taşınmaz raporlarında (Madde 4'ün
+  // diğer tüm "ortak/çoğul" düzeltmeleriyle AYNI kapsam) uygulanır; tekli
+  // raporlarda ESKİ (ayrı ayrı 2 cümle) davranış AYNEN korunur.
+  if (prefix === occupancyPrefix && isMultiTitleUnitReportForNarrative()) {
     return [`${prefix} yapılan incelemelerde taşınmaza ait yapı ruhsatı ve yapı kullanma izin belgesi bulunamamıştır.`];
   }
   return [

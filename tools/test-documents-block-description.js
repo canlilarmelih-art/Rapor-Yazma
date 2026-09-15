@@ -714,8 +714,10 @@ function freshState(overrides = {}) {
   console.log("buildReviewedDocumentsDescription() ayni ada/parsel coklu + HICBIR belge yokken TEK birlesik cogul cumle testi tamam.");
 }
 {
-  // 12c) REGRESYON: tekil taşınmaz + belge tablosu boş -> TEKİL (ama YİNE
-  // DE birleşik, "ve" ile bağlı TEK cümle) kalmalı.
+  // 12c) Kullanıcı talebi (2026-09-15, devam): "sadece çoklu raporlarda"
+  // — tek cümlede birleştirme YALNIZCA çoklu taşınmaz raporlarında
+  // uygulanır. Tekil taşınmaz + belge tablosu boş -> ESKİ (ayrı ayrı 2
+  // cümle) davranış AYNEN korunur.
   fns.setState(freshState({
     fields: {
       requestType: "Tekli Talep", ownershipType: "Müstakil Bina",
@@ -725,32 +727,38 @@ function freshState(overrides = {}) {
     tables: { documents: [] },
   }));
   const singleEmptyDescription = fns.buildReviewedDocumentsDescription();
-  assert.equal(singleEmptyDescription, "PREFIX(DEFAULT) yapılan incelemelerde taşınmaza ait yapı ruhsatı ve yapı kullanma izin belgesi bulunamamıştır.", `Tekil tasinmazda TEK birlesik ama TEKIL cumle olmali (regresyon), bulunan: ${singleEmptyDescription}`);
-  assert.ok(!singleEmptyDescription.includes("taşınmazlara ait"), `Tekil tasinmazda COGUL OLMAMALI (regresyon), bulunan: ${singleEmptyDescription}`);
+  assert.ok(singleEmptyDescription.includes("PREFIX(DEFAULT) yapılan incelemelerde taşınmaza ait yapı kullanma izin belgesi bulunamamıştır."), `Tekil tasinmazda Iskan-yok cumlesi AYRI (eski) kalmali, bulunan: ${singleEmptyDescription}`);
+  assert.ok(singleEmptyDescription.includes("PREFIX(DEFAULT) yapılan incelemelerde taşınmaza ait yeni yapı ruhsatı bulunamamıştır."), `Tekil tasinmazda Ruhsat-yok cumlesi de AYRI (eski 'yeni yapı ruhsatı' ifadesiyle) kalmali, bulunan: ${singleEmptyDescription}`);
+  assert.ok(!singleEmptyDescription.includes("taşınmazlara ait") && !singleEmptyDescription.includes(" ve yapı kullanma izin belgesi bulunamamıştır."), `KULLANICI TALEBI: tekil raporda birlestirme/cogullama UYGULANMAMALI, bulunan: ${singleEmptyDescription}`);
 
-  console.log("buildReviewedDocumentsDescription() tekil tasinmaz + HICBIR belge yokken TEKIL kalmasi (REGRESYON) testi tamam.");
+  console.log("buildReviewedDocumentsDescription() tekil tasinmaz + HICBIR belge yokken ESKI 2-ayri-cumle davranisinin korunmasi testi tamam.");
 }
 {
-  // 12d) GÜVENLİ GERİ DÖNÜŞ: kaynak/tarih ifadesi (prefix) İskan ve Ruhsat
-  // için FARKLI çıkarsa (shouldUseMunicipalityOnlyForMissingOccupancyPermit
-  // true olan nadir durum, burada forceDifferentOccupancyPrefix ile
-  // simüle edilir) TEK cümlede YANLIŞ birleştirme YAPILMAZ, eski AYRI 2
-  // cümle davranışına düşülür.
+  // 12d) GÜVENLİ GERİ DÖNÜŞ: çoklu raporda bile, kaynak/tarih ifadesi
+  // (prefix) İskan ve Ruhsat için FARKLI çıkarsa
+  // (shouldUseMunicipalityOnlyForMissingOccupancyPermit true olan nadir
+  // durum, burada forceDifferentOccupancyPrefix ile simüle edilir) TEK
+  // cümlede YANLIŞ birleştirme YAPILMAZ, eski AYRI 2 cümle davranışına
+  // düşülür.
   fns.setState(freshState({
     fields: {
-      requestType: "Tekli Talep", ownershipType: "Müstakil Bina",
+      requestType: "Çoklu Talep", ownershipType: "Müstakil Bina",
       blockNo: "0", parcelNo: "56", titleBlockName: "",
       documentReviewInstitution: "Merkez Belediyesi",
       forceDifferentOccupancyPrefix: true,
     },
     tables: { documents: [] },
+    titleUnits: [{
+      fields: { blockNo: "0", parcelNo: "315", titleBlockName: "" },
+      tables: { documents: [] },
+    }],
   }));
   const differentPrefixDescription = fns.buildReviewedDocumentsDescription();
-  assert.ok(differentPrefixDescription.includes("FARKLI-ISKAN-PREFIX yapılan incelemelerde taşınmaza ait yapı kullanma izin belgesi bulunamamıştır."), `Iskan cumlesi KENDI (farkli) prefix'iyle AYRI kalmali, bulunan: ${differentPrefixDescription}`);
-  assert.ok(differentPrefixDescription.includes("PREFIX(DEFAULT) yapılan incelemelerde taşınmaza ait yeni yapı ruhsatı bulunamamıştır."), `Ruhsat cumlesi de KENDI prefix'iyle AYRI kalmali (eski 'yeni yapı ruhsatı' ifadesi KORUNUR), bulunan: ${differentPrefixDescription}`);
-  assert.ok(!differentPrefixDescription.includes(" ve yapı kullanma izin belgesi bulunamamıştır."), `Prefix'ler FARKLIYKEN YANLIS birlestirme YAPILMAMALI, bulunan: ${differentPrefixDescription}`);
+  assert.ok(differentPrefixDescription.includes("FARKLI-ISKAN-PREFIX yapılan incelemelerde taşınmazlara ait yapı kullanma izin belgesi bulunamamıştır."), `Iskan cumlesi KENDI (farkli) prefix'iyle AYRI (ama yine de cogul) kalmali, bulunan: ${differentPrefixDescription}`);
+  assert.ok(differentPrefixDescription.includes("PREFIX(DEFAULT) yapılan incelemelerde taşınmazlara ait yeni yapı ruhsatı bulunamamıştır."), `Ruhsat cumlesi de KENDI prefix'iyle AYRI kalmali (eski 'yeni yapı ruhsatı' ifadesi KORUNUR), bulunan: ${differentPrefixDescription}`);
+  assert.ok(!differentPrefixDescription.includes(" ve yapı kullanma izin belgesi bulunamamıştır."), `Prefix'ler FARKLIYKEN YANLIS birlestirme YAPILMAMALI (coklu raporda bile), bulunan: ${differentPrefixDescription}`);
 
-  console.log("buildReviewedDocumentsDescription() FARKLI prefix -> guvenli 2-ayri-cumle geri donusu testi tamam.");
+  console.log("buildReviewedDocumentsDescription() coklu rapor + FARKLI prefix -> guvenli 2-ayri-cumle geri donusu testi tamam.");
 }
 
 console.log("Incelenen Belgeler Aciklamasi blok-bazli gruplama testleri basarili.");

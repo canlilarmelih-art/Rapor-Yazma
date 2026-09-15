@@ -1,5 +1,12 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.795 - 2026-09-15 - İncelenen Belgeler Açıklaması'ndaki tek-cümle birleştirmesi yalnızca çoklu raporlarda
+
+- Kullanıcı, 0.0.793'ün "ruhsat+iskan yok → tek cümle" birleştirmesinin TEKİL raporları da etkilediğini sorunca ("NORMAL tekli raporlardaki paragraflar etkilenmiyor anladığım kadarı ile") bunu doğruladım ve net olmadığını belirttim; kullanıcı: "sadece çoklu raporlarda."
+- Düzeltme: `buildMissingReviewedDocumentSentences()`'teki tek-cümle birleştirmesi artık `isMultiTitleUnitReportForNarrative()` şartına da bağlı — yalnızca çoklu taşınmaz raporlarında (Madde 4'ün diğer tüm "ortak/çoğul" düzeltmeleriyle AYNI kapsam) devreye girer. Tekil raporlarda ESKİ (ayrı ayrı 2 cümle, "yeni yapı ruhsatı" ifadesiyle) davranış AYNEN korunur.
+- Test: `tools/test-documents-block-description.js`'teki tekil-taşınmaz senaryosu (12c) ESKİ 2-ayrı-cümle beklentisine güncellendi; prefix-farklılığı güvenli-geri-dönüş senaryosu (12d) anlamlı kalması için çoklu-taşınmaz kurgusuna taşındı (tekilde artık HER ZAMAN 2 ayrı cümle olduğundan prefix farkı ayrımı yalnızca çoklu bağlamda test edilebilir). Stash ile eski (0.0.793) koda karşı çalıştırıldığında tekil senaryonun hâlâ yanlışlıkla birleştiği doğrulandı.
+- `npm run verify` (181 test dosyası) EXIT:0. `index.html`'de `app.js` cache-buster'ı `20260915-1130`'a yükseltildi. Canlı tarayıcı testi yapılamadı.
+
 ## 0.0.794 - 2026-09-15 - Banka şablonu export'larında Proje İnceleme Açıklaması artık ekrandakiyle AYNI (güvenli-geri-dönüş düzeltmesi)
 
 - Kullanıcı: "Proje İnceleme Açıklaması ve İncelenen Belgeler Açıklaması ortak bölümler. formatlarda bu şekilde yer alacaklar" — bu iki alanın banka şablonu (Word) export'larında da ekranda görünen (farklı ada/parsel + mimari-proje-yok birleştirme mantığı dahil) haliyle çıkması gerektiğini belirtti.
