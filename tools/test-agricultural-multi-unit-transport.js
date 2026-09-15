@@ -7,8 +7,10 @@
 //     (buildTransportDirectionText) kullanılır, yalnızca "taşınmaz" →
 //     "taşınmazlar" çoğullaştırılır (updateTransportFromMainArtery içinde).
 //  2) Farklı ada/parseller, taşınmaz sayısı ≤ 5 → her taşınmaz için ayrı
-//     "{tab etiketi} taşınmaz bağlı bulunduğu {mahalle} Mahalle Merkezinin
-//     {mesafe}" cümleciği, virgülle birleştirilir (buildAgriculturalMultiTitleUnitTransportText).
+//     "{tab etiketi} bağlı bulunduğu {mahalle} Mahalle Merkezinin {mesafe}"
+//     cümleciği (0.0.785, kullanıcı talebi: "taşınmaz ibaresine gerek yok" —
+//     etiket zaten somut bir ada/parsel kimliği taşıyor), virgülle
+//     birleştirilir (buildAgriculturalMultiTitleUnitTransportText).
 //  3) Farklı ada/parseller, taşınmaz sayısı > 5 → genel özet cümlesi.
 // buildAgriculturalMultiTitleUnitTransportText (2 ve 3) HÂLÂ "Tarımsal
 // Alan"a ÖZGÜ — farklı ada/parseldeki taşınmazlar için mahalle-merkezi-
@@ -255,8 +257,9 @@ function boundFields(blockNo, parcelNo, distanceText) {
     primaryTitleUnitShadow: null,
   });
   const text = sandbox.buildAgriculturalMultiTitleUnitTransportText();
-  assert.match(text, /1408 Ada 3 Parsel taşınmaz bağlı bulunduğu Ataevler Mahalle Merkezinin 800 m güneyinde/, "Etiket \"Ada\"/\"Parsel\" kelimeleriyle kurulmalı.");
-  assert.match(text, /1409 Ada 7 Parsel taşınmaz bağlı bulunduğu Ataevler Mahalle Merkezinin 400 m kuzeyinde/);
+  assert.match(text, /1408 Ada 3 Parsel bağlı bulunduğu Ataevler Mahalle Merkezinin 800 m güneyinde/, "Etiket \"Ada\"/\"Parsel\" kelimeleriyle kurulmalı, \"taşınmaz\" ibaresi OLMAMALI (kullanıcı talebi 2026-09-15).");
+  assert.match(text, /1409 Ada 7 Parsel bağlı bulunduğu Ataevler Mahalle Merkezinin 400 m kuzeyinde/);
+  assert.ok(!text.includes("taşınmaz bağlı"), `"taşınmaz" ibaresi fragmanda OLMAMALI: ${text}`);
   assert.ok(text.includes(", "), "Taşınmaz cümlecikleri virgülle ayrılmalı.");
   assert.match(text, /kuzeyinde yer almaktadır\.$/, "Cümle TEK bir yüklemle (\"yer almaktadır\") tamamlanmalı, yarım kalmamalı.");
   console.log("Farkli ada/parsel (<=5 tasinmaz) - tasinmaz bazli liste testi tamam.");
@@ -277,9 +280,9 @@ function boundFields(blockNo, parcelNo, distanceText) {
   const text = sandbox.buildAgriculturalMultiTitleUnitTransportText();
   assert.equal(
     text,
-    "2928 Ada 46 Parsel taşınmaz bağlı bulunduğu Ataevler Mahalle Merkezinin 1,83 km güneyinde, "
-      + "2927 Ada 12 Parsel taşınmaz bağlı bulunduğu Ataevler Mahalle Merkezinin 2,57 km güneydoğusunda, "
-      + "2930 Ada 1 Parsel taşınmaz bağlı bulunduğu Ataevler Mahalle Merkezinin 1,67 km güneybatısında yer almaktadır.",
+    "2928 Ada 46 Parsel bağlı bulunduğu Ataevler Mahalle Merkezinin 1,83 km güneyinde, "
+      + "2927 Ada 12 Parsel bağlı bulunduğu Ataevler Mahalle Merkezinin 2,57 km güneydoğusunda, "
+      + "2930 Ada 1 Parsel bağlı bulunduğu Ataevler Mahalle Merkezinin 1,67 km güneybatısında yer almaktadır.",
   );
   console.log("Kullanici ornegi (3 farkli parsel) - birebir cumle testi tamam.");
 }
@@ -295,7 +298,7 @@ function boundFields(blockNo, parcelNo, distanceText) {
   const text = sandbox.buildAgriculturalMultiTitleUnitTransportText();
   assert.match(text, /^Ekspertize konu taşınmazlar/);
   assert.match(text, /Ataevler mahallesinin çevresinde/);
-  assert.ok(!text.includes("taşınmaz bağlı bulunduğu"), "6+ farklı parselde taşınmaz-bazlı liste ÜRETİLMEMELİ, özet cümlesi olmalı.");
+  assert.ok(!text.includes(" bağlı bulunduğu"), "6+ farklı parselde taşınmaz-bazlı liste ÜRETİLMEMELİ, özet cümlesi olmalı.");
   console.log("Farkli ada/parsel (>5 tasinmaz) - genel ozet testi tamam.");
 }
 
@@ -381,8 +384,8 @@ function boundFields(blockNo, parcelNo, distanceText) {
     1,
     `Cümle, HANGİ taşınmaz aktifken hesaplandığından bağımsız aynı olmalı (aksi halde tab değiştirince "değişen" bir cümle görünür). Üretilenler: ${JSON.stringify(resultsByActiveIndex)}`,
   );
-  assert.match(resultsByActiveIndex[0], /2928 Ada 46 Parsel taşınmaz bağlı bulunduğu Ataevler Mahalle Merkezinin 1,83 km güneyinde/);
-  assert.match(resultsByActiveIndex[0], /2927 Ada 12 Parsel taşınmaz bağlı bulunduğu Ataevler Mahalle Merkezinin 2,57 km güneydoğusunda/);
+  assert.match(resultsByActiveIndex[0], /2928 Ada 46 Parsel bağlı bulunduğu Ataevler Mahalle Merkezinin 1,83 km güneyinde/);
+  assert.match(resultsByActiveIndex[0], /2927 Ada 12 Parsel bağlı bulunduğu Ataevler Mahalle Merkezinin 2,57 km güneydoğusunda/);
   assert.match(resultsByActiveIndex[0], /yer almaktadır\.\s$/, "Cümle bir sonrakiyle temiz birleşsin diye sonunda tek boşluk olmalı.");
   console.log("Cevresel Ozellikler Aciklamasi mesafe cumlesi - tab-bagimsiz kararlilik testi tamam.");
 }
@@ -435,10 +438,18 @@ function boundFields(blockNo, parcelNo, distanceText) {
     !/Parsel taşınmazlar\b/.test(description),
     `KULLANICI BİLDİRİMİ: farklı-parselli fragmanlarda "taşınmazlar" (ÇOĞUL) OLMAMALI, her fragman KENDİ parselini TEKİL tanımlamalı: ${description}`
   );
+  // Kullanıcı takip talebi (2026-09-15): "burada taşınmaz ibaresine gerek
+  // yok 0 ada 56 parsel bağlı bulunduğu... şeklinde olmalı" — etiket
+  // (Ada/Parsel) zaten somut bir kimlik taşıdığından "taşınmaz" kelimesi
+  // fragmandan TAMAMEN kaldırıldı.
+  assert.ok(
+    !/Parsel taşınmaz\b/.test(description),
+    `KULLANICI BİLDİRİMİ: fragmanlarda "taşınmaz" ibaresine hiç gerek yok, "{Ada} Ada {Parsel} Parsel bağlı bulunduğu..." şeklinde olmalı: ${description}`
+  );
   assert.match(
     description,
-    /0 Ada 56 Parsel taşınmaz bağlı bulunduğu Ataevler Mahalle Merkezinin 759 m kuzeyinde, 0 Ada 315 Parsel taşınmaz bağlı bulunduğu Ataevler Mahalle Merkezinin 1,27 km güneybatısında yer almaktadır\./,
-    `Farklı-parselli mesafe cümlesi (her fragman TEKİL) birebir üretilmeli: ${description}`
+    /0 Ada 56 Parsel bağlı bulunduğu Ataevler Mahalle Merkezinin 759 m kuzeyinde, 0 Ada 315 Parsel bağlı bulunduğu Ataevler Mahalle Merkezinin 1,27 km güneybatısında yer almaktadır\./,
+    `Farklı-parselli mesafe cümlesi (her fragman TEKİL, "taşınmaz" ibaresiz) birebir üretilmeli: ${description}`
   );
   assert.match(
     description,

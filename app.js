@@ -13054,9 +13054,13 @@ function formatTitleUnitParcelLabel(blockNo = "", parcelNo = "", fallbackIndex =
   return `${fallbackIndex + 1}. taşınmaz`;
 }
 
+// Kullanıcı talebi (2026-09-15): "burada taşınmaz ibaresine gerek yok
+// '0 ada 56 parsel bağlı bulunduğu...' şeklinde olmalı" — etiket (label)
+// zaten "{Ada} Ada {Parsel} Parsel" biçiminde somut bir taşınmaz kimliği
+// taşıdığından ayrıca "taşınmaz" kelimesine gerek yok.
 const agriculturalMultiUnitParcelListTransportFragmentVariants = [
-  (label, center, distance) => `${label} taşınmaz bağlı bulunduğu ${center} ${distance}`,
-  (label, center, distance) => `${label} taşınmaz, bağlı bulunduğu ${center} ${distance}`,
+  (label, center, distance) => `${label} bağlı bulunduğu ${center} ${distance}`,
+  (label, center, distance) => `${label}, bağlı bulunduğu ${center} ${distance}`,
 ];
 registerVariantGroup(
   "agriculturalMultiUnitParcelListTransportFragment",

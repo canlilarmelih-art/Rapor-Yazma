@@ -1,5 +1,13 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.785 - 2026-09-15 - Tarımsal Alan farklı-parsel mesafe cümlesinden gereksiz "taşınmaz" ibaresi kaldırıldı
+
+- Kullanıcı: "0 Ada 56 Parsel taşınmaz bağlı bulunduğu ... burada taşınmaz ibaresine gerek yok 0 ada 56 parsel bağlı bulunduğu... şeklinde olmalı." (0.0.783'te düzeltilen çoğullama kusurunun HEMEN ardından, aynı cümlenin ifade tarzı üzerine ince ayar isteği.)
+- Düzeltme: `agriculturalMultiUnitParcelListTransportFragmentVariants` (her farklı-parselli taşınmaz için ayrı cümlecik üreten varyant çifti) artık "{Ada} Ada {Parsel} Parsel bağlı bulunduğu {mahalle} Mahalle Merkezinin {mesafe}" biçiminde — "taşınmaz" kelimesi kaldırıldı (etiket zaten somut bir ada/parsel kimliği taşıdığından gereksizdi). Bu çekirdek hem "Ulaşım Tarifi" (`buildAgriculturalMultiTitleUnitTransportText`) hem "Çevresel Özellikler Açıklaması"nın KML mesafe cümlesi (`buildAgriculturalKmlDistanceSentence`, dolayısıyla `buildEnvironmentalDescription`'ın Tarımsal Alan dalı) tarafından PAYLAŞILDIĞINDAN tek bir değişiklik her ikisini de düzeltiyor. Aynı parseldeki tek/ortak KML cümlesi ("KML koordinat verisine göre taşınmaz, ...") DOKUNULMADI — kullanıcının bildirimi özellikle farklı-parselli, etiketli fragmanlar hakkındaydı.
+- Test: `tools/test-agricultural-multi-unit-transport.js`'teki ilgili TÜM sabit metin beklentileri ("taşınmaz bağlı bulunduğu" → "bağlı bulunduğu") güncellendi, kullanıcının BİREBİR yeni örneğini doğrulayan ek bir assertion eklendi (hem Ulaşım Tarifi hem `buildEnvironmentalDescription()` üzerinden). Stash ile eski koda karşı çalıştırıldığında gerçekten kırıldığı doğrulandı.
+- `npm run verify` (181 test dosyası) EXIT:0. `index.html`'de `app.js` cache-buster'ı `20260915-0700`'e yükseltildi. Canlı tarayıcı testi yapılamadı — kullanıcıdan aynı farklı-ada-parselli Tarımsal Alan raporunda mesafe cümlesinin artık "taşınmaz" ibaresi olmadan ("0 Ada 56 Parsel bağlı bulunduğu...") göründüğünü doğrulaması isteniyor. Plan dosyasındaki madde 3/4 (Ulaşım Tarifi, non-agricultural) ve 4/4 (Proje İnceleme Açıklaması) devam edecek.
+
+
 ## 0.0.784 - 2026-09-15 - Tapu bölümünde Ana Taşınmaz/Tarla iken bağımsız bölüme özgü alanlar artık yönetici hesabında da gizleniyor
 
 - Kullanıcı: "şu an çoklu tarla talebi içindeyim tapu bölümünde ana taşınmaz seçeneğinde gizlenmesi gereken bağımsız bölüm no tapu katı ve benzeri seçenekler gözüküyor. bunlar gözükmemeliydi."
