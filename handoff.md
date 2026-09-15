@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.776 - 2026-09-15 - Tapu Harcı KDV Dahil tutarı artık küsüratsız (4 taşınmazda 1.228,00 TL, 1.227,98 TL DEĞİL)
+
+- Kullanıcı: *(ekran görüntüsü — Masraf Tablosu, 4 taşınmazlı rapor)* "tapu harcı 2026 yılında 307 TL Kdv Dahil 255,833333 TL ise KDV hariç ancak ekran görüntüsünde KDV dahil küsüratlı çıkıyor. bu sorun büyük ihtimal küsürattan kaynaklanıyor. bu sorunu giderelim. KDV hari. 255,83 KDV dahil 307 TL olacak."
+- Kök neden: admin panelindeki KDV-HARİÇ birim tutar (`expenseTitleDeedUnitFeeExVat`, `EXPENSE_FEE_2026_DEFAULTS`'ta "255.83") 2 ondalığa YUVARLANMIŞ olarak saklanır (gerçek değer 307/1,20=255,8333...). Eski kod KDV-DAHİL toplamı "birim(yuvarlanmış) × KDV oranı × ADET" sırasıyla hesaplıyordu — yuvarlama HATASI (255,83×1,20=306,996, 307,00 DEĞİL) tek taşınmazda 307,00'a yuvarlandığından gözle görülmüyordu, ama ADETLE ÇARPILINCA (kullanıcının örneğinde 4×) büyüyüp "1.227,98 TL" gibi küsüratlı bir toplam üretiyordu (307×4=1.228,00 OLMASI gerekirken).
+- Düzeltme: BİRİM KDV-dahil tutar artık ÖNCE KENDİ BAŞINA yuvarlanır (255,83×1,20=306,996 → 307,00, devletin sabit "307 TL/tapu" rakamıyla BİREBİR), SONRA adede çarpılır (307,00×4=1.228,00, hangi adet olursa olsun HER ZAMAN tam katı). KDV-hariç toplam (A/B bankaları) hiç round-trip yapılmadan doğrudan birim×adet hesaplanıyor (255,83×4=1.023,32 — zaten doğruydu, DEĞİŞMEDİ). C/D bankalarının "düz gösterim" (KDV Hariç = KDV Dahil) davranışı da artık aynı küsüratsız 307-bazlı tutarı kullanıyor.
+- Test: yeni `tools/test-expense-title-deed-fee-vat-rounding.js` — kullanıcının BİREBİR iki örneğini (tek tapu: 255,83/307,00; 4 taşınmaz: 1.023,32/1.228,00), 2/3/5/10 taşınmazlı genel regresyon kilidini (KDV Dahil HER ZAMAN 307'nin tam katı), C/D banka grubu düz gösterimini ve "Toplam Ücret" satırının biriktirdiği tutarları doğruluyor. Stash ile eski koda karşı kullanıcının BİREBİR bildirdiği "1.227,98" değerini ürettiği (regresyon genuine) doğrulandı.
+- `npm run verify` (178 test dosyası) EXIT:0. `index.html`'de `app.js` cache-buster'ı `20260915-0130`'a yükseltildi. Canlı tarayıcı testi yapılamadı — kullanıcıdan çoklu taşınmazlı bir raporda "Tapu Harcı" satırının KDV Dahil sütununun artık 307'nin tam katı (küsüratsız) göründüğünü doğrulaması isteniyor.
+
+
 ## 0.0.775 - 2026-09-15 - Çoklu raporlarda "Değerleme Ücreti" artık otomatik hesaplanan rapor bedeliyle dolduruluyor
 
 - Kullanıcı: "masraf tablosunda rapor ücreti kısmında hesaplanan rapor ücreti yazılmalı çoklu raporlarda."

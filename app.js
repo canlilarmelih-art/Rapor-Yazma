@@ -34564,11 +34564,29 @@ function recalculateExpenseFees() {
   // oranı × adet (2026: 255,83 × 1,20 = 307 TL/tapu). Fark yalnız KDV
   // kırılımında: A,B gruplarında 307 içinden ayrıştırılır (hariç 255,83 +
   // KDV 51,17); C,D gruplarında düz gösterilir (hariç = 307, KDV = 0).
+  //
+  // Kullanıcı bildirimi (2026-09-15, ekran görüntüsü — 4 taşınmazlı rapor):
+  // "tapu harcı 2026 yılında 307 TL Kdv Dahil 255,833333 TL ise KDV hariç
+  // ancak ekran görüntüsünde KDV dahil küsüratlı çıkıyor (1.227,98 TL,
+  // 1.228,00 TL DEĞİL)." Kök neden: admin panelindeki KDV-HARİÇ birim
+  // tutar (`expenseTitleDeedUnitFeeExVat`) 2 ondalığa YUVARLANMIŞ olarak
+  // saklanır ("255,83" — gerçek değer 307/1,20=255,8333...). Eski kod
+  // KDV-DAHİL toplamı "birim(yuvarlanmış) × KDV oranı × ADET" sırasıyla
+  // hesaplıyordu — yuvarlama HATASI (255,83×1,20=306,996, 307,00 DEĞİL)
+  // TEK bir taşınmazda gözle görülmezken (307,00'a yuvarlanır), ADETLE
+  // ÇARPILINCA (4×) büyüyüp "1.227,98" gibi küsüratlı bir toplam
+  // üretiyordu. Düzeltme: BİRİM KDV-dahil tutar ÖNCE KENDİ BAŞINA
+  // yuvarlanır (255,83×1,20=306,996 → 307,00, devletin sabit "307 TL/tapu"
+  // rakamıyla BİREBİR), SONRA adede çarpılır (307,00×4=1.228,00, KÜSÜRATSIZ
+  // — hangi adet olursa olsun HER ZAMAN tam katı). KDV-hariç toplam
+  // (A/B grupları) ise HİÇ round-trip YAPILMADAN doğrudan birim×adet
+  // (255,83×4=1.023,32 — zaten doğruydu, DEĞİŞMEDİ).
   const titleDeedUnitFee = parseValuationNumber(state.fields.expenseTitleDeedUnitFeeExVat);
   const titleDeedCount = parseValuationNumber(state.fields.expenseTitleDeedCount);
   if (Number.isFinite(titleDeedUnitFee) && titleDeedUnitFee > 0 && Number.isFinite(titleDeedCount) && titleDeedCount > 0) {
-    const titleDeedIncVat = titleDeedUnitFee * multiplier * titleDeedCount;
-    const titleDeedExVat = (bankGroup === "C" || bankGroup === "D") ? titleDeedIncVat : titleDeedIncVat / multiplier;
+    const titleDeedUnitIncVat = Math.round(titleDeedUnitFee * multiplier * 100) / 100;
+    const titleDeedIncVat = titleDeedUnitIncVat * titleDeedCount;
+    const titleDeedExVat = (bankGroup === "C" || bankGroup === "D") ? titleDeedIncVat : titleDeedUnitFee * titleDeedCount;
     state.fields.expenseTitleDeedFeeExVat = formatValuationMoney(titleDeedExVat, { decimals: 2 });
     state.fields.expenseTitleDeedFeeIncVat = formatValuationMoney(titleDeedIncVat, { decimals: 2 });
     total += titleDeedIncVat;
