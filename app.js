@@ -6190,6 +6190,13 @@ function isProjectSuitabilityUiField(sectionId, fieldKey) {
   return sectionId === "documents" && ["projectReviewDescription", "projectConformity"].includes(fieldKey);
 }
 
+// Kullanıcı talebi (2026-08-17): "arsa ve arazi raporlarında adres ve konum
+// bölümünde site apartman blok giriş dış kapı no iç kapı no uavt ve posta
+// kodu bölümleri gizlenmeli" — shouldHideField()'ın "address" dalıyla
+// PAYLAŞILAN TEK liste (0.0.787'ye kadar shouldHideField İÇİNDE yerel bir
+// kopyaydı, iki liste ayrı ayrı elle senkron tutulma riski taşıyordu).
+const landAddressHiddenKeys = ["addressSiteName", "addressBlockName", "addressEntrance", "outerDoor", "addressFloor", "innerDoor", "uavt", "postalCode"];
+
 function isEnvironmentRegionTypeFilteredField(fieldKey) {
   return [
     "commercialFunctionDensity",
@@ -6223,6 +6230,17 @@ function createForm(section) {
         || (section.id === "case" && field.key === "currentUsageNature")
         || (section.id === "documents" && isCadastralProjectVisibilityField(field.key))
         || (section.id === "address" && isEnvironmentRegionTypeFilteredField(field.key))
+        // Kullanıcı talebi (2026-09-15): "adres ve konum bölümünde arsa ve
+        // arazi raporlarında uavt kat site apartman blok gibi kısımlar
+        // gizlensin" — shouldHideField()'ın "address" dalındaki
+        // landAddressHiddenKeys kuralı (0.0.343'ten beri VAR, bkz. o
+        // yorum) da AYNI "title" kusuruna sahipti: yalnızca
+        // isEnvironmentRegionTypeFilteredField eşleşen alanlar admin'e
+        // bile gizli kalıyordu, landAddressHiddenKeys (site/blok/giriş/
+        // dış-iç kapı/kat/UAVT/posta kodu) bu istisnaya HİÇ dahil değildi
+        // — yönetici hesabında Arsa/Arazi raporlarında bu alanlar
+        // YANLIŞLIKLA görünmeye devam ediyordu.
+        || (section.id === "address" && landAddressHiddenKeys.includes(field.key))
         // Kullanıcı bildirimi (2026-09-15, çoklu Tarla talebi): "tapu
         // bölümünde ana taşınmaz seçeneğinde gizlenmesi gereken bağımsız
         // bölüm no tapu katı ve benzeri seçenekler gözüküyor" — shouldHideField
@@ -19022,7 +19040,8 @@ function shouldHideField(sectionId, fieldKey) {
     // kaydına aittir; Arsa/Tarla raporlarında ortada bir bağımsız bölüm
     // olmadığından anlamsızdır (isLandOwnershipType, bkz.
     // clearLandOwnershipDependentData'nın AYNI Arsa/Tarla ayrımı).
-    const landAddressHiddenKeys = ["addressSiteName", "addressBlockName", "addressEntrance", "outerDoor", "addressFloor", "innerDoor", "uavt", "postalCode"];
+    // landAddressHiddenKeys artık modül düzeyinde (bkz. tanım) —
+    // createForm()'un admin-bypass kontrolüyle PAYLAŞILIYOR (0.0.787).
     if (landAddressHiddenKeys.includes(fieldKey)) {
       return isLandOwnershipType();
     }

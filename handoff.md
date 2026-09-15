@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.787 - 2026-09-15 - Adres ve Konum'da Arsa/Arazi'de UAVT/Kat/Site/Apartman/Blok artık yönetici hesabında da gizleniyor
+
+- Kullanıcı: "adres ve konum bölümünde arsa ve arazi raporlarında uavt kat site apartman blok gibi kısımlar gizlensin."
+- Bağlam: Bu 8 alanın (Site/Apartman, Blok, Giriş, Dış Kapı No, Kat, İç Kapı No, UAVT, Posta Kodu) Arsa/Tarla mülkiyetinde gizlenmesi kuralı ZATEN mevcuttu (0.0.343, `shouldHideField()`'ın "address" dalındaki `landAddressHiddenKeys`) — ama 0.0.784'te "title" (Tapu) bölümünde bulduğumuzla BİREBİR AYNI kusuru taşıyordu: `createForm()`'un admin-bypass mekanizması yalnızca `isEnvironmentRegionTypeFilteredField` (Ticaret/Sanayi/Tarımsal Alan'a özgü alanlar) eşleşen "address" alanlarını yönetici hesabında bile gizli tutuyordu — `landAddressHiddenKeys` (site/blok/kat/UAVT vb.) bu istisnaya HİÇ dahil değildi, bu yüzden yönetici hesabında Arsa/Arazi raporlarında bu 8 alan yine de görünmeye devam ediyordu.
+- Düzeltme: `landAddressHiddenKeys` artık `shouldHideField()` İÇİNDE yerel bir sabit DEĞİL, modül düzeyinde tek bir dizi (`isEnvironmentRegionTypeFilteredField`'ın yanına taşındı) — hem `shouldHideField()` hem `createForm()`'un admin-bypass kontrolü AYNI diziyi paylaşıyor (iki ayrı, elle senkron tutulan liste riski ortadan kalktı). `createForm`'un admin-bypass koşuluna case/documents/address(region-type)/title'la AYNI desende beşinci bir istisna eklendi: `section.id === "address" && landAddressHiddenKeys.includes(field.key)`.
+- Test: `tools/test-sensitive-visibility-refinements.js`'e (0.0.784'teki "title" admin-bypass testiyle AYNI gerçek-karar-ifadesi tekniğiyle) yeni bir bölüm eklendi — yönetici + Arsa/Arazi + UAVT gibi bir alanın artık gizlendiğini, normal kullanıcı davranışının DEĞİŞMEDİĞİNİ kanıtlıyor. `tools/test-land-address-fields-hidden.js` (mevcut, `shouldHideField`'ın kendi mantığını test eden dosya) `landAddressHiddenKeys`'in artık modül düzeyinde olmasına göre güncellendi (vm.runInContext const/let paylaşım kısıtı nedeniyle TEK bir birleşik çağrıda çalıştırılıyor). Stash ile eski koda karşı çalıştırıldığında gerçekten kırıldığı doğrulandı.
+- `npm run verify` (181 test dosyası) EXIT:0. `index.html`'de `app.js` cache-buster'ı `20260915-0800`'e yükseltildi. Canlı tarayıcı testi yapılamadı — kullanıcıdan Arsa veya Arazi mülkiyetli bir raporda "Adres ve Konum" bölümünde UAVT/Kat/Site/Apartman/Blok/Giriş/Dış-İç Kapı No/Posta Kodu alanlarının artık görünmediğini doğrulaması isteniyor.
+
+
 ## 0.0.786 - 2026-09-15 - Ulaşım Tarifi artık Çevresel Özellikler Açıklaması'yla AYNI 34 tetikleyiciden birlikte tazeleniyor
 
 - Kullanıcı: "halen taşınmaz ibaresi geçiyor" (0.0.785'in hemen ardından) → netleştirme: "ulaşım tarifinde diyor adres konum düzelmiş" — yani "Çevresel Özellikler Açıklaması" (Adres/Konum) 0.0.785 ile düzelmişti, ama "Ulaşım Tarifi" hâlâ eski ("taşınmaz" ibareli) metni gösteriyordu.

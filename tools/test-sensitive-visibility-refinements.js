@@ -80,8 +80,8 @@ function sliceFn(startMarker, { toMarker } = {}) {
   );
   assert.match(
     appSource,
-    /shouldHideField\(section\.id, field\.key\)\s*&&\s*\(!isCurrentUserAdmin\(\)\s*\|\|\s*\(section\.id === "case" && field\.key === "currentUsageNature"\)\s*\|\|\s*\(section\.id === "documents" && isCadastralProjectVisibilityField\(field\.key\)\)\s*\|\|\s*\(section\.id === "address" && isEnvironmentRegionTypeFilteredField\(field\.key\)\)[\s\S]{0,1500}?\|\|\s*section\.id === "title"\)\)/,
-    "Admin diger alan filtresi istisnalarini korurken mevcut kullanim, kadastro gorunurlugu VE tapu (title) bagimsiz bolum kurallarini uygulamali.",
+    /shouldHideField\(section\.id, field\.key\)\s*&&\s*\(!isCurrentUserAdmin\(\)\s*\|\|\s*\(section\.id === "case" && field\.key === "currentUsageNature"\)\s*\|\|\s*\(section\.id === "documents" && isCadastralProjectVisibilityField\(field\.key\)\)\s*\|\|\s*\(section\.id === "address" && isEnvironmentRegionTypeFilteredField\(field\.key\)\)[\s\S]{0,2500}?\|\|\s*\(section\.id === "address" && landAddressHiddenKeys\.includes\(field\.key\)\)[\s\S]{0,1500}?\|\|\s*section\.id === "title"\)\)/,
+    "Admin diger alan filtresi istisnalarini korurken mevcut kullanim, kadastro gorunurlugu, arazi adres alanlari VE tapu (title) bagimsiz bolum kurallarini uygulamali.",
   );
   assert.match(
     appSource,
@@ -179,7 +179,7 @@ function sliceFn(startMarker, { toMarker } = {}) {
   // endMarker'ın uzunluğu + 1 (dış parantez) ile kesilir.
   const decisionExpr = appSource.slice(startIndex, endIndex + endMarker.length - 1);
 
-  function computeHideDecision({ sectionId, fieldKey, hideResult, isAdmin, cadastralVisible = false, environmentFiltered = false }) {
+  function computeHideDecision({ sectionId, fieldKey, hideResult, isAdmin, cadastralVisible = false, environmentFiltered = false, landAddressField = false }) {
     const context = {
       section: { id: sectionId },
       field: { key: fieldKey },
@@ -187,6 +187,7 @@ function sliceFn(startMarker, { toMarker } = {}) {
       isCurrentUserAdmin: () => isAdmin,
       isCadastralProjectVisibilityField: () => cadastralVisible,
       isEnvironmentRegionTypeFilteredField: () => environmentFiltered,
+      landAddressHiddenKeys: { includes: () => landAddressField },
     };
     vm.createContext(context);
     return vm.runInContext(decisionExpr, context);
@@ -229,6 +230,30 @@ function sliceFn(startMarker, { toMarker } = {}) {
     "REGRESYON: 'address' bölümünün admin istisnası bozulmuş olabilir."
   );
   console.log("KULLANICI BİLDİRİMİ: Tapu (title) bölümü admin-bypass düzeltmesi (gerçek karar ifadesi) testi tamam.");
+
+  // --- d) Kullanıcı bildirimi (2026-09-15): "adres ve konum bölümünde arsa
+  // ve arazi raporlarında uavt kat site apartman blok gibi kısımlar
+  // gizlensin" — 0.0.343'ten beri VAR olan shouldHideField()'ın "address"
+  // dalındaki landAddressHiddenKeys kuralı (site/blok/giriş/dış-iç kapı/
+  // kat/UAVT/posta kodu) AYNI "title" kusuruna sahipti: yalnızca
+  // isEnvironmentRegionTypeFilteredField eşleşen alanlar admin'e bile
+  // gizli kalıyordu, bu 8 alan İSTİSNAYA HİÇ dahil değildi.
+  assert.equal(
+    computeHideDecision({ sectionId: "address", fieldKey: "uavt", hideResult: true, isAdmin: true, landAddressField: true }),
+    true,
+    "KULLANICI BİLDİRİMİ: yönetici hesabında Arsa/Arazi raporlarında UAVT/Kat/Site/Apartman/Blok gibi alanlar GİZLENMELİ."
+  );
+  assert.equal(
+    computeHideDecision({ sectionId: "address", fieldKey: "uavt", hideResult: true, isAdmin: false, landAddressField: true }),
+    true,
+    "Normal kullanıcıda Arsa/Arazi adres alanı gizleme davranışı DEĞİŞMEMELİ (regresyon)."
+  );
+  assert.equal(
+    computeHideDecision({ sectionId: "address", fieldKey: "uavt", hideResult: false, isAdmin: true, landAddressField: true }),
+    false,
+    "shouldHideField false iken (ör. Kat İrtifakı, gerçek bağımsız bölüm) UAVT alanı yöneticide de GİZLENMEMELİ."
+  );
+  console.log("KULLANICI BİLDİRİMİ: Adres (arazi adres alanları) bölümü admin-bypass düzeltmesi (gerçek karar ifadesi) testi tamam.");
 }
 
 console.log("Ayrıcalıklı görünürlük düzeltmeleri (transport/nearby/environment/Halkbank) testi tamam.");

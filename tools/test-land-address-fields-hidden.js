@@ -37,6 +37,15 @@ const isLandOwnershipTypeSrc = sliceFn("function isLandOwnershipType(");
 const isTarlaOwnershipTypeSrc = sliceFn("function isTarlaOwnershipType(");
 const isArsaOwnershipTypeSrc = sliceFn("function isArsaOwnershipType(");
 
+// 0.0.787: landAddressHiddenKeys artık shouldHideField() İÇİNDE yerel bir
+// const DEĞİL, modül düzeyinde (createForm()'un admin-bypass kontrolüyle
+// PAYLAŞILIYOR) — shouldHideFieldSrc bu ayrık dizinin varlığına bağımlı,
+// AYRICA çıkarılıp context'e eklenmesi gerekiyor.
+const landAddressHiddenKeysStart = appSource.indexOf("const landAddressHiddenKeys = [");
+assert(landAddressHiddenKeysStart >= 0, "landAddressHiddenKeys bulunamadı.");
+const landAddressHiddenKeysEnd = appSource.indexOf("];", landAddressHiddenKeysStart) + 2;
+const landAddressHiddenKeysSrc = appSource.slice(landAddressHiddenKeysStart, landAddressHiddenKeysEnd);
+
 function isHiddenFor(ownershipType, fieldKey) {
   const context = {
     state: { fields: { ownershipType } },
@@ -53,7 +62,11 @@ function isHiddenFor(ownershipType, fieldKey) {
   vm.runInContext(isLandOwnershipTypeSrc, context);
   vm.runInContext(isTarlaOwnershipTypeSrc, context);
   vm.runInContext(isArsaOwnershipTypeSrc, context);
-  vm.runInContext(shouldHideFieldSrc, context);
+  // landAddressHiddenKeysSrc (bir `const`) ve shouldHideFieldSrc AYNI
+  // vm.runInContext çağrısında birleştirilir — ayrı çağrılardaki top-level
+  // const/let bindingleri birbirine GÖRÜNMEZ (proje belleği, tekrarlanan
+  // vm.runInContext tuzağı).
+  vm.runInContext(`${landAddressHiddenKeysSrc}\n${shouldHideFieldSrc}`, context);
   return context.shouldHideField("address", fieldKey);
 }
 
