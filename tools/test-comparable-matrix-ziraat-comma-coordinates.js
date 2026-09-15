@@ -171,4 +171,83 @@ function computeCellValue({ field, row, rowIndex = 0, commaDecimalCoordinates = 
   console.log(`Sadece Ziraat sablonlari (${ziraatFiles.join(", ")}) EMSAL_MATRISIV2 kullaniyor, diger ${otherComparableFiles.length} sablon noktali EMSAL_MATRISI'nda kaliyor testi tamam.`);
 }
 
+// --- 4) KULLANICI BİLDİRİMİ (2026-09-16, ekran görüntüsüyle): "emsaller
+// template çıktısında" EMSALLER bölümü ham (kaçış karakterli) tablo HTML'i
+// METİN olarak görünüyordu. Kök neden: EMSAL_MATRISIV2 template-engine.js'in
+// LEGACY_ALIASES'ında HİÇ KAYITLI DEĞİLDİ (yalnızca kardeşi EMSALMATRISI
+// vardı) — bu yüzden resolveToken() "generated" katalog düşüşüne
+// (textParagraphsHtml -> formatWordParagraphs) düşüp HTML'i escapeHtml'den
+// geçirip <p> içine sarıyordu (0.0.296'daki AYNI hata sınıfı). Bu test,
+// template-engine.js'i GERÇEK kaynağından yükleyip {{EMSAL_MATRISIV2}}'nin
+// (ve regresyon için {{EMSAL_MATRISI}}'nin) HAM (kaçışsız) HTML olarak
+// çözümlendiğini kanıtlar — yalnızca kaynak metninde ".h" işaretinin var
+// olduğunu değil, UÇTAN UCA gerçek fillTemplate() çıktısını doğrular.
+{
+  const engineSource = fs.readFileSync(path.join(APP_DIR, "src", "templates", "template-engine.js"), "utf8");
+  const sandboxWindow = {};
+  process.env.NODE_ENV = "test";
+  const stubState = { fields: { city: "Bursa" }, tables: {} };
+  const stubSections = [{ id: "test", fields: [{ key: "city", type: "text" }] }];
+
+  function stubEscapeHtml(value) {
+    return String(value ?? "")
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  }
+
+  const sampleTableHtml = '<table class="word-table-is-matrix"><tr><td>40,250672</td></tr></table>';
+  let capturedOptions = null;
+  globalThis.buildComparableMatrixWordTableHtml = (options = {}) => {
+    capturedOptions = options;
+    return sampleTableHtml;
+  };
+
+  const loader = new Function(
+    "window", "state", "sections", "collectGeneratedTextPlaceholders",
+    "escapeHtml", "formatWordParagraphs", "dateIsoToTr", "parseValuationNumber", "formatSchemeNumber",
+    engineSource
+  );
+  loader(
+    sandboxWindow,
+    stubState,
+    stubSections,
+    // Gerçek app.js'in collectGeneratedTextPlaceholders() katalogundaki
+    // AYNI (yedek/"generated") EMSAL_MATRISIV2 girdisini taklit eder — bu
+    // GERÇEK katalog GİRİŞİNİN VARLIĞI, LEGACY_ALIASES kaydı EKSİKKEN
+    // resolveToken()'ın onu HTML sanmayıp escapeHtml'den geçirmesine (asıl
+    // kullanıcı bildirimindeki TAM semptom) neden oluyordu.
+    () => [{ reference: "EMSAL_MATRISIV2", value: sampleTableHtml }],
+    stubEscapeHtml,
+    (text, paragraphClass) => {
+      const classAttr = paragraphClass ? ` class="${stubEscapeHtml(paragraphClass)}"` : "";
+      return `<p${classAttr}>${stubEscapeHtml(text)}</p>`;
+    },
+    (iso) => String(iso || ""),
+    (value) => Number.parseFloat(String(value).replace(/\./g, "").replace(",", ".")),
+    (value) => new Intl.NumberFormat("tr-TR").format(value)
+  );
+  const engine = sandboxWindow.RaporTemplates;
+  assert.ok(engine, "window.RaporTemplates olusmadi.");
+
+  const outputV2 = engine.fillTemplate("<div>EMSALLER</div>{{EMSAL_MATRISIV2}}").html;
+  assert.equal(
+    outputV2,
+    `<div>EMSALLER</div>${sampleTableHtml}`,
+    `KULLANICI BİLDİRİMİ: {{EMSAL_MATRISIV2}} HAM (kaçışsız) HTML olarak çözümlenmeli, kaçış karakterli/metne sarılı DEĞİL, bulunan: ${outputV2}`,
+  );
+  assert.deepEqual(capturedOptions, { commaDecimalCoordinates: true }, "EMSAL_MATRISIV2, buildComparableMatrixWordTableHtml'i commaDecimalCoordinates:true ile çağırmalı.");
+
+  capturedOptions = null;
+  const outputV1 = engine.fillTemplate("<div>EMSALLER</div>{{EMSAL_MATRISI}}").html;
+  assert.equal(
+    outputV1,
+    `<div>EMSALLER</div>${sampleTableHtml}`,
+    `REGRESYON: {{EMSAL_MATRISI}} de HAM HTML olarak çözümlenmeye devam etmeli, bulunan: ${outputV1}`,
+  );
+  assert.deepEqual(capturedOptions, {}, "REGRESYON: EMSAL_MATRISI (V1) parametresiz çağrılmalı (commaDecimalCoordinates olmadan).");
+
+  delete globalThis.buildComparableMatrixWordTableHtml;
+  console.log("KULLANICI BİLDİRİMİ: EMSAL_MATRISIV2 (ve EMSAL_MATRISI regresyonu) uçtan uca HAM HTML çözümleme testi tamam.");
+}
+
 console.log("Emsal matrisi (Ziraat virgullu koordinat) testleri basarili.");

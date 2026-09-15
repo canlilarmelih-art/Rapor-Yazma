@@ -1129,6 +1129,16 @@
     EMSALTABLOSU: { h: () => safeCall("buildComparableValuationWordTableHtml") || safeCall("buildComparableMatrixWordTableHtml") },
     EMSALDEGERLEMETABLOSU: { h: () => safeCall("buildComparableValuationWordTableHtml") || safeCall("buildComparableMatrixWordTableHtml") },
     EMSALMATRISI: { h: () => safeCall("buildComparableMatrixWordTableHtml") },
+    // Kullanıcı bildirimi (2026-09-16, ekran görüntüsüyle): "EMSALLER" bölümünde
+    // ham (kaçış karakterli) tablo HTML'i METİN olarak görünüyordu. Kök neden:
+    // EMSAL_MATRISIV2 (yalnızca ziraat.html/ziraat-arsa-arazi.html'in virgüllü
+    // koordinat varyantı, bkz. app.js collectGeneratedTextPlaceholders) burada
+    // HİÇ kayıtlı değildi — EMSALMATRISI'nin aksine ".h" (ham HTML) bayrağı
+    // olmadan resolveToken() "generated" katalog düşüşüne (textParagraphsHtml ->
+    // formatWordParagraphs) düşüyor, bu da HTML'i düz metin sanıp escapeHtml
+    // uyguluyordu (tıpkı 0.0.296'daki AYNI hata sınıfı). Düzeltme: EMSALMATRISI
+    // ile AYNI ".h" deseni, yalnızca virgüllü koordinat seçeneğiyle.
+    EMSALMATRISIV2: { h: () => safeCall("buildComparableMatrixWordTableHtml", { commaDecimalCoordinates: true }) },
     EMSAL_ARSA_PIYASA_DEGERI: { h: () => safeCall("buildComparableCalculatedEmsalWordTableHtml") },
     EMSALPIYASAANALIZI: { t: () => field("comparableMarketAnalysisText") || safeCall("buildComparableMarketAnalysisText") },
 
