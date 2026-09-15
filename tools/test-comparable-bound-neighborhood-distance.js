@@ -16,7 +16,7 @@
   bicimlenmis "759 m kuzeyinde" METNI - boundNeighborhoodDistance -
   saklaniyordu).
 
-  Duzeltme: buildLocalNeighborhoodFields() artik boundNeighborhoodLat/
+  Duzeltme (0.0.802): buildLocalNeighborhoodFields() artik boundNeighborhoodLat/
   boundNeighborhoodLng adinda YENI dahili (UI'da hic gosterilmeyen) iki
   alan da uretiyor. buildComparableLocationText() - emsalin konu
   tasinmaz(lar)a olan mesafe/yon METNINI ureten fonksiyon - artik Coklu
@@ -25,6 +25,23 @@
   ESKI (tasinmazin kendi noktasi) davranisa GUVENLI dusuyor. Harita
   uzerindeki "KONU TASINMAZ" isaretcisi (getComparableSubjectPoint,
   DEGISTIRILMEDI) hala tasinmazin KENDI konumunu gosterir.
+
+  DEVAM (0.0.802 sonrasi, kullanici testi basarisiz oldu): kullanici
+  0.0.802'yi test edip "hala tasinmazdan aliniyor koy yada mahalle
+  merkezinden alinmali test ettim ama sonuc basarisiz" dedi. Kok neden:
+  "Bagli mahalle / koy" (boundNeighborhood) duz bir METIN alani - kullanici
+  bunu ELLE YAZABILIR/DUZELTEBILIR, VEYA applyLocalNeighborhoodForCurrentLocation
+  icindeki sunucu "bound" eslesmesi (SADECE KML'nin "Mahalle" etiketiyle
+  calisir) hic tetiklenmemis/bos donmus olabilir - bu durumlarda
+  buildLocalNeighborhoodFields SESSIZCE "nearest" (tasinmaza GPS ile en
+  yakin veritabani satiri) satirina dusuyordu; boundNeighborhoodLat/Lng
+  kullanicinin GERCEKTEN yazdigi/gordugu koy adinin veritabani koordinatini
+  YANSITMIYORDU. Duzeltme: yeni parseBoundNeighborhoodTextForLookup()/
+  refreshBoundNeighborhoodCoordinatesFromCurrentFields() - "Bagli mahalle /
+  koy" alaninin GUNCEL METNINDEN dogrudan AD BAZLI bir veritabani sorgusu
+  (mevcut "postal" islemi, GPS noktasina ihtiyac duymaz) yapip GERCEK
+  koordinati YENIDEN senkronluyor; createForm'un genel alan-commit (blur)
+  noktasinda tetikleniyor.
 */
 
 const assert = require("node:assert/strict");
@@ -38,7 +55,8 @@ const appSource = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
 // string literallerdeki "{"/"}" karakterlerini gercek kod blogu sanmaz).
 function extractFunction(name) {
   const marker = `function ${name}(`;
-  const start = appSource.indexOf(`\n${marker}`);
+  let start = appSource.indexOf(`\n${marker}`);
+  if (start < 0) start = appSource.indexOf(`\nasync ${marker}`);
   assert(start >= 0, `Fonksiyon bulunamadı: ${name}`);
   const parenStart = appSource.indexOf("(", start);
   let parenDepth = 0;
@@ -117,20 +135,44 @@ const functionNames = [
   "getComparableDistanceReferencePoint",
   "buildComparableLocationText",
   "buildLocalNeighborhoodFields",
+  "parseCsvNumber",
+  "calculateDistanceMetersIfPossible",
+  "normalizeNeighborhoodApiRow",
+  "parseBoundNeighborhoodTextForLookup",
+  "refreshBoundNeighborhoodCoordinatesFromCurrentFields",
 ];
 
+// normalizeNeighborhoodApiRow'un metin-temizleme yardımcıları (cleanupPlaceName/
+// cleanNeighborhoodName/normalizePostalCodeValue/normalizeLocalPlaceKey/
+// normalizeLocalNeighborhoodKey) bu dosyanın konusu DEĞİL — o alan-bazlı
+// büyük/küçük harf davranışı zaten tools/test-address-place-casing.js'te
+// ayrı test ediliyor. Burada YALNIZCA basit "geçiştir" (passthrough) saplama
+// kullanılır ki normalizeNeighborhoodApiRow'un GERÇEK yapısı (lat/lng
+// geçerlilik kontrolü + "postal" işleminde nokta olmadan çalışması) test
+// edilebilsin, devasa bir bağımlılık ağacı çekmeden.
 const sandboxSource = `
   let state = {};
   function setState(s) { state = s; }
+  let fetchNeighborhoodLookupImpl = async () => ({ ok: true, match: null });
+  function setFetchNeighborhoodLookupImpl(fn) { fetchNeighborhoodLookupImpl = fn; }
+  async function fetchNeighborhoodLookup(operation, payload) { return fetchNeighborhoodLookupImpl(operation, payload); }
+  function cleanupPlaceName(value) { return String(value || "").trim(); }
+  function cleanNeighborhoodName(value) { return String(value || "").trim(); }
+  function normalizePostalCodeValue(value) { return String(value || "").trim(); }
+  function normalizeLocalPlaceKey(value) { return String(value || "").toLowerCase().trim(); }
+  function normalizeLocalNeighborhoodKey(value) { return String(value || "").toLowerCase().trim(); }
   ${functionNames.map(extractFunction).join("\n")}
   return {
     setState,
+    setFetchNeighborhoodLookupImpl,
     isComparablesSharedAcrossUnits,
     getComparableSubjectPoint,
     getComparableBoundNeighborhoodPoint,
     getComparableDistanceReferencePoint,
     buildComparableLocationText,
     buildLocalNeighborhoodFields,
+    parseBoundNeighborhoodTextForLookup,
+    refreshBoundNeighborhoodCoordinatesFromCurrentFields,
   };
 `;
 // eslint-disable-next-line no-new-func
@@ -223,4 +265,126 @@ function freshState(fields = {}) {
   console.log("getComparableDistanceReferencePoint() tekil raporda bağlı köy noktasına GEÇİLMEMESİ (REGRESYON) testi tamam.");
 }
 
-console.log("Emsal konum mesafesinin bağlı köy koordinatından GERÇEK ölçümü testleri başarılı.");
+// --- 5) parseBoundNeighborhoodTextForLookup(): "Ad - İlçe / İl" biçimini ---
+// AYRIŞTIRIR (buildLocalNeighborhoodFields'in ürettiği GERÇEK biçim);
+// serbest metin girildiğinde (kullanıcı elle yazmışsa) mevcut il/ilçe
+// alanlarına GÜVENLİ düşer. -------------------------------------------
+{
+  fns.setState(freshState({ district: "Mustafakemalpaşa", city: "Bursa" }));
+  assert.deepEqual(
+    fns.parseBoundNeighborhoodTextForLookup("Canbazlar - Mustafakemalpaşa / Bursa"),
+    { neighborhood: "Canbazlar", district: "Mustafakemalpaşa", city: "Bursa" },
+    "KULLANICI TALEBİ: 'Ad - İlçe / İl' biçimi doğru ayrıştırılmalı.",
+  );
+  assert.deepEqual(
+    fns.parseBoundNeighborhoodTextForLookup("Hasanköy"),
+    { neighborhood: "Hasanköy", district: "Mustafakemalpaşa", city: "Bursa" },
+    "Serbest metin (kullanıcının elle yazdığı) mevcut il/ilçe alanlarına düşmeli.",
+  );
+  assert.equal(fns.parseBoundNeighborhoodTextForLookup(""), null, "Boş metin -> sorgu YAPILMAMALI (null).");
+  assert.equal(fns.parseBoundNeighborhoodTextForLookup("   "), null, "Yalnızca boşluk -> null.");
+  console.log("parseBoundNeighborhoodTextForLookup() ayrıştırma testi tamam.");
+}
+
+// --- 6-9) Aşağıdaki senaryolar refreshBoundNeighborhoodCoordinatesFromCurrentFields()
+// ASYNC olduğundan (fetchNeighborhoodLookup çağırır) tek bir async IIFE
+// içinde çalıştırılır — tools/test-address-location-select.js'teki AYNI
+// üst-düzey async test deseni. --------------------------------------------
+(async () => {
+  // --- 6) KULLANICI TALEBİ: "Bağlı mahalle / köy" alanı ELLE YAZILDIĞINDA
+  // (veya otomatik dolup sonradan düzeltildiğinde FARK ETMEZ) GERÇEK
+  // ad-bazlı veritabanı koordinatı YENİDEN senkronlanmalı — kullanıcının
+  // "hala tasinmazdan aliniyor ... test ettim ama sonuc basarisiz"
+  // bildirimini giderir. ----------------------------------------------
+  {
+    const context = freshState({
+      boundNeighborhood: "Canbazlar - Mustafakemalpaşa / Bursa",
+      // Kasıtlı olarak YANLIŞ/eski bir koordinat (ör. önceki "nearest"
+      // düşüşünden kalma, taşınmazın kendi noktasına yakın) — düzeltme
+      // sonrası GERÇEK köy koordinatıyla EZİLMELİ.
+      boundNeighborhoodLat: "40.500000", boundNeighborhoodLng: "29.500000",
+    });
+    fns.setState(context);
+    let capturedCall = null;
+    fns.setFetchNeighborhoodLookupImpl(async (operation, payload) => {
+      capturedCall = { operation, payload };
+      return {
+        ok: true,
+        match: { city: "Bursa", district: "Mustafakemalpaşa", neighborhood: "Canbazlar", lat: "40.123456", lng: "28.654321" },
+      };
+    });
+
+    await fns.refreshBoundNeighborhoodCoordinatesFromCurrentFields("boundNeighborhood");
+
+    assert.equal(capturedCall.operation, "postal", "KULLANICI TALEBİ: AD BAZLI ('postal') sorgu yapılmalı, GPS-yakınlık DEĞİL.");
+    assert.deepEqual(capturedCall.payload, { neighborhood: "Canbazlar", district: "Mustafakemalpaşa", city: "Bursa" }, "Sorgu, 'Bağlı mahalle / köy' metninden AYRIŞTIRILAN ad/ilçe/il ile yapılmalı.");
+    assert.equal(context.fields.boundNeighborhoodLat, "40.123456", `KULLANICI TALEBİ: koordinat GERÇEK köy veritabanı satırıyla GÜNCELLENMELİ (eski/yanlış değerle EZİLMEMELİ), bulunan: ${context.fields.boundNeighborhoodLat}`);
+    assert.equal(context.fields.boundNeighborhoodLng, "28.654321", `Boylam da güncellenmeli, bulunan: ${context.fields.boundNeighborhoodLng}`);
+
+    console.log("refreshBoundNeighborhoodCoordinatesFromCurrentFields() KULLANICI TALEBİ (ad-bazlı yeniden senkron) testi tamam.");
+  }
+
+  // --- 7) REGRESYON: değişen alan "boundNeighborhood" DEĞİLSE hiçbir ---
+  // ağ çağrısı/güncelleme YAPILMAMALI (her alan commit'inde gereksiz
+  // istek atılmasın). --------------------------------------------------
+  {
+    const context = freshState({
+      boundNeighborhood: "Canbazlar - Mustafakemalpaşa / Bursa",
+      boundNeighborhoodLat: "40.500000", boundNeighborhoodLng: "29.500000",
+    });
+    fns.setState(context);
+    let callCount = 0;
+    fns.setFetchNeighborhoodLookupImpl(async () => { callCount += 1; return { ok: true, match: null }; });
+
+    await fns.refreshBoundNeighborhoodCoordinatesFromCurrentFields("city");
+
+    assert.equal(callCount, 0, "REGRESYON: 'boundNeighborhood' DIŞINDA bir alan değiştiğinde ağ çağrısı YAPILMAMALI.");
+    assert.equal(context.fields.boundNeighborhoodLat, "40.500000", "İlgisiz alan değişiminde koordinat DEĞİŞMEMELİ.");
+    console.log("refreshBoundNeighborhoodCoordinatesFromCurrentFields() ilgisiz alan REGRESYON testi tamam.");
+  }
+
+  // --- 8) REGRESYON: veritabanında eşleşme YOKSA (match: null) mevcut ---
+  // koordinat KORUNMALI, boş/hatalı değerle EZİLMEMELİ. -------------------
+  {
+    const context = freshState({
+      boundNeighborhood: "Var Olmayan Köy - Mustafakemalpaşa / Bursa",
+      boundNeighborhoodLat: "40.500000", boundNeighborhoodLng: "29.500000",
+    });
+    fns.setState(context);
+    fns.setFetchNeighborhoodLookupImpl(async () => ({ ok: true, match: null }));
+
+    await fns.refreshBoundNeighborhoodCoordinatesFromCurrentFields("boundNeighborhood");
+
+    assert.equal(context.fields.boundNeighborhoodLat, "40.500000", "REGRESYON: eşleşme yoksa mevcut koordinat KORUNMALI (boş metinle EZİLMEMELİ).");
+    assert.equal(context.fields.boundNeighborhoodLng, "29.500000", "REGRESYON: eşleşme yoksa mevcut boylam KORUNMALI.");
+    console.log("refreshBoundNeighborhoodCoordinatesFromCurrentFields() eşleşme-yok REGRESYON testi tamam.");
+  }
+
+  // --- 9) UÇTAN UCA: manuel düzeltme SONRASI emsal mesafesi de GERÇEKTEN ---
+  // yeni köyden ölçülüyor (parseleme + ağ senkronu + mesafe hesabı BİR
+  // ARADA). ----------------------------------------------------------------
+  {
+    const context = freshState({
+      requestType: "Çoklu Talep",
+      latitude: "40.500000", longitude: "29.500000",
+      boundNeighborhood: "Canbazlar - Mustafakemalpaşa / Bursa",
+      // Kullanıcı bu alanı ELLE yazdı/düzeltti; koordinat henüz senkron
+      // DEĞİL (boş) - tıpkı kullanıcının bildirdiği gerçek senaryo gibi.
+    });
+    fns.setState(context);
+    fns.setFetchNeighborhoodLookupImpl(async () => ({
+      ok: true,
+      match: { city: "Bursa", district: "Mustafakemalpaşa", neighborhood: "Canbazlar", lat: "40.000000", lng: "29.000000" },
+    }));
+
+    await fns.refreshBoundNeighborhoodCoordinatesFromCurrentFields("boundNeighborhood");
+
+    const emsalLat = 40.0215; // yeni (doğru) köy noktasının ~2,39 km kuzeyi
+    const emsalLng = 29.0;
+    const locationText = fns.buildComparableLocationText(emsalLat, emsalLng);
+    assert.match(locationText, /^2,39\s?km kuzeyinde$/, `UÇTAN UCA: manuel düzeltme SONRASI emsal mesafesi GERÇEKTEN yeni köyden ölçülmeli, bulunan: ${locationText}`);
+    console.log("UÇTAN UCA: manuel 'Bağlı mahalle / köy' düzeltmesi -> emsal mesafesi doğru köyden testi tamam.");
+  }
+
+  console.log("Emsal konum mesafesinin bağlı köy koordinatından GERÇEK ölçümü testleri başarılı.");
+})();

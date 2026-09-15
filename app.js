@@ -231,6 +231,15 @@ const sections = [
       { key: "longitude", label: "Boylam", type: "text", critical: true },
       { key: "boundNeighborhood", label: "Bağlı mahalle / köy", type: "text" },
       { key: "boundNeighborhoodDistance", label: "Bağlı mahalle merkezi mesafesi", type: "text" },
+      // Kullanıcı talebi (2026-09-16): bağlı köyün HAM koordinatı — yalnızca
+      // dahili emsal-mesafe hesaplaması için (bkz. getComparableBoundNeighborhoodPoint),
+      // hiçbir formda GÖSTERİLMEZ/düzenlenmez. "boundNeighborhood" ile AYNI
+      // ("address") bölümde, hidden:true olarak deklaratif tanımlanır ki
+      // taşınmaz sekmeleri arasında geçişte (çoklu taşınmaz) DİĞER adres
+      // alanlarıyla AYNI per-taşınmaz gölgeleme mekanizmasıyla doğru
+      // korunsun/değişsin (addressRaw'daki AYNI desen, bkz. hemen altı).
+      { key: "boundNeighborhoodLat", label: "Bağlı köy enlemi (dahili)", type: "text", hidden: true },
+      { key: "boundNeighborhoodLng", label: "Bağlı köy boylamı (dahili)", type: "text", hidden: true },
       { key: "nearestNeighborhood", label: "En yakın mahalle / köy", type: "text" },
       { key: "nearestNeighborhoodDistance", label: "Mahalle / köy mesafesi", type: "text" },
       { key: "districtCenterDistance", label: "İlçe merkezine mesafe", type: "text" },
@@ -6748,6 +6757,7 @@ function createForm(section) {
       if (["bank", "titleDistrict", "district", "municipalityInspectionDate", "appointmentDate"].includes(field.key)) {
         refreshPropertyTaxDeclarationExplanation();
       }
+      refreshBoundNeighborhoodCoordinatesFromCurrentFields(field.key);
       autosave();
       renderValidation();
       updateStatus();
@@ -41043,6 +41053,54 @@ function buildLocalNeighborhoodFields(row, boundRow = null) {
     districtCenterDistance: formatDistanceWithDirection(row.districtCenterDistance, row.districtCenterDirectionFromPoint) || formatCenterDistance(row.districtCenterDistanceKm, row.districtCenterDirection),
     cityCenterDistance: formatDistanceWithDirection(row.cityCenterDistance, row.cityCenterDirectionFromPoint) || formatCenterDistance(row.cityCenterDistanceKm, row.cityCenterDirection),
   };
+}
+
+// Kullanıcı testi (2026-09-16): "hala tasinmazdan aliniyor koy yada mahalle
+// merkezinden alinmali test ettim ama sonuc basarisiz" — 0.0.802'nin
+// varsayımı (bağlı köy koordinatının SADECE applyLocalNeighborhoodForCurrentLocation
+// içindeki GPS-yakınlık eşleşmesinden geldiği) pratikte YETERSİZ çıktı:
+// "Bağlı mahalle / köy" (boundNeighborhood) düz bir METİN alanı —
+// kullanıcı bunu ELLE YAZABİLİR/DÜZELTEBİLİR, VEYA sunucudaki "bound"
+// eşleşmesi (yalnızca KML'nin "Mahalle" etiketiyle çalışır) hiç
+// tetiklenmemiş/boş dönmüş olabilir — bu durumlarda buildLocalNeighborhoodFields
+// SESSİZCE "nearest" (taşınmaza GPS ile en yakın veritabanı satırı) satırına
+// düşüyordu; boundNeighborhoodLat/Lng pratikte kullanıcının GERÇEKTEN
+// yazdığı/gördüğü köy adının veritabanı koordinatını YANSITMIYORDU.
+//
+// Düzeltme: "Bağlı mahalle / köy" alanının GÜNCEL METNİNDEN (otomatik
+// dolmuş olsun ya da kullanıcı elle yazmış olsun FARK ETMEZ) doğrudan AD
+// BAZLI bir veritabanı sorgusu (mevcut "postal" işlemi — GPS noktasına
+// ihtiyaç duymadan yalnızca il/ilçe/mahalle adıyla eşleşen satırı
+// döndürür) yapılır; bulunursa GERÇEK bağlı köy koordinatı bu isimle
+// YENİDEN senkronlanır. createForm'un genel alan-commit (blur) noktasında
+// tetiklenir (bkz. "boundNeighborhood" anahtar kontrolü) — kullanıcı bu
+// alanı elle yazıp/düzeltip odağı ayırdığı ANDA çalışır.
+function parseBoundNeighborhoodTextForLookup(value = "") {
+  const text = String(value || "").trim();
+  if (!text) return null;
+  const match = text.match(/^(.*?)\s*-\s*(.*?)\s*\/\s*(.*)$/);
+  const neighborhood = match ? match[1].trim() : text;
+  const district = match ? match[2].trim() : (state.fields.district || state.fields.titleDistrict || "");
+  const city = match ? match[3].trim() : (state.fields.city || state.fields.titleCity || "");
+  if (!neighborhood || !city) return null;
+  return { neighborhood, district, city };
+}
+
+async function refreshBoundNeighborhoodCoordinatesFromCurrentFields(changedKey = "") {
+  if (changedKey && changedKey !== "boundNeighborhood") return;
+  const parts = parseBoundNeighborhoodTextForLookup(state.fields.boundNeighborhood);
+  if (!parts) return;
+  try {
+    const result = await fetchNeighborhoodLookup("postal", parts);
+    const match = normalizeNeighborhoodApiRow(result.match);
+    if (!match || !Number.isFinite(match.lat) || !Number.isFinite(match.lng)) return;
+    state.fields.boundNeighborhoodLat = match.lat.toFixed(6);
+    state.fields.boundNeighborhoodLng = match.lng.toFixed(6);
+  } catch {
+    // Sessiz: bağlı köy koordinatı emsal mesafesi için isteğe bağlı bir
+    // iyileştirme — ağ hatası rapor akışını KESMEMELİ (bkz.
+    // applyPostalCodeFromSelectedNeighborhood'daki AYNI ilke).
+  }
 }
 
 function cleanNeighborhoodName(value) {
