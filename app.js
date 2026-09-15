@@ -2943,6 +2943,16 @@ function getDocumentsPerUnitOnlyFieldKeys() {
     // (bkz. refreshEkbExplanationFromCurrentFields), scoping'e gerek yok.
     "ekbEmissionClass",
     "ekbRawText",
+    // "penaltyDecision"/"penaltyNote" (2026-09-15) — staticSuitability ile
+    // AYNI boşluk sınıfı: createDocumentDecisionControls()'teki
+    // createConditionalYesNoControl({key: "penaltyDecision", ...}) ile
+    // PROGRAMATİK yazılıyorlardı ve bugüne kadar HİÇ scoped değildi (yalnızca
+    // Arsa/Tarla'da state.fields.penaltyDecision = "" dolu-yazımı eklenince
+    // tools/test-multi-request-scoping-audit.js'in dot-notation taraması bunu
+    // yakaladı) — "Belgeler ve Proje" TITLE_UNIT_SCOPED olmasına RAĞMEN
+    // Cezai Karar durumu taşınmazlar arasında PAYLAŞILIYORDU.
+    "penaltyDecision",
+    "penaltyNote",
   ];
 }
 
@@ -6257,6 +6267,13 @@ function createForm(section) {
         // — yönetici hesabında Arsa/Arazi raporlarında bu alanlar
         // YANLIŞLIKLA görünmeye devam ediyordu.
         || (section.id === "address" && landAddressHiddenKeys.includes(field.key))
+        // Kullanıcı talebi (2026-09-15): "arsa ve arazi raporlarında
+        // enerji kimlik belgesi cezai karar bölümlerini gizle" —
+        // landAddressHiddenKeys/isEnvironmentRegionTypeFilteredField ile
+        // AYNI kusur: isLandHiddenDocumentsField (hasEkb + EKB detay
+        // alanları) yönetici hesabında Arsa/Arazi raporlarında YANLIŞLIKLA
+        // görünmeye devam ederdi, bu istisnaya BAŞTAN dahil edildi.
+        || (section.id === "documents" && isLandHiddenDocumentsField(field.key))
         // Kullanıcı bildirimi (2026-09-15, çoklu Tarla talebi): "tapu
         // bölümünde ana taşınmaz seçeneğinde gizlenmesi gereken bağımsız
         // bölüm no tapu katı ve benzeri seçenekler gözüküyor" — shouldHideField
@@ -19108,6 +19125,16 @@ function shouldHideField(sectionId, fieldKey) {
       return hasDifferentProjects;
     }
   }
+  // Kullanıcı talebi (2026-09-15): "arsa ve arazi raporlarında enerji
+  // kimlik belgesi cezai karar bölümlerini gizle" — EKB hem toplu seçim
+  // (hasEkb) hem detay alanları (isEkbFieldKey) Arsa/Tarla/Arazi
+  // raporlarında (isLandProjectReview, createDocumentDecisionControls'un
+  // Statik Uygunluk/Yapı Denetim'i ZATEN gizlediği AYNI kontrol)
+  // ANLAMSIZDIR — kullanıcının hasEkb'ye ne yazdığından bağımsız olarak
+  // HER ZAMAN gizlenir.
+  if (sectionId === "documents" && isLandHiddenDocumentsField(fieldKey) && isLandProjectReview()) {
+    return true;
+  }
   if (sectionId === "documents" && isEkbFieldKey(fieldKey)) {
     return !shouldShowEkbFields();
   }
@@ -19234,6 +19261,15 @@ function isEkbFieldKey(fieldKey) {
 
 function shouldShowEkbFields() {
   return normalizeYesNoChoice(state.fields.hasEkb) === "Evet";
+}
+
+// "hasEkb" (toplu Evet/Hayır seçimi) isEkbFieldKey() kapsamında DEĞİL
+// (o yalnızca DETAY alanlarını kapsar) — Arsa/Tarla/Arazi raporlarında
+// EKB'nin KENDİSİ de (yalnızca detayları değil) anlamsız olduğundan
+// shouldHideField() VE createForm()'un admin-bypass kontrolü bu ikisini
+// TEK bir yerden PAYLAŞIYOR (landAddressHiddenKeys ile AYNI desen).
+function isLandHiddenDocumentsField(fieldKey) {
+  return fieldKey === "hasEkb" || isEkbFieldKey(fieldKey);
 }
 
 function isMainPropertyGroundType(value) {
@@ -21614,20 +21650,30 @@ function createDocumentDecisionControls() {
   const wrapper = document.createElement("div");
   wrapper.className = "document-decision-grid";
   const isLandReport = typeof isLandProjectReview === "function" && isLandProjectReview();
-  wrapper.append(
-    createConditionalYesNoControl({
-      key: "penaltyDecision",
-      label: "Cezai Karar Var mı?",
-      type: "conditionalYesNo",
-      critical: true,
-      detailWhen: "Evet",
-      detailKey: "penaltyNote",
-      detailLabel: "Cezai karar açıklama",
-      detailTitle: "Cezai Karar Açıklama",
-      defaultValue: "Hayır",
-      hideInactiveDetail: true,
-    })
-  );
+  if (isLandReport) {
+    // Kullanıcı talebi (2026-09-15): "arsa ve arazi raporlarında ...
+    // cezai karar bölümlerini gizle" — Cezai Karar da (Statik Uygunluk/
+    // Yapı Denetim gibi) yapı niteliğiyle ilgilidir, Arsa/Tarla/Arazi
+    // raporlarında anlamlı değildir; önceki rapor verisi varsa çıktıya
+    // sızmaması için temizlenir.
+    state.fields.penaltyDecision = "";
+    state.fields.penaltyNote = "";
+  } else {
+    wrapper.append(
+      createConditionalYesNoControl({
+        key: "penaltyDecision",
+        label: "Cezai Karar Var mı?",
+        type: "conditionalYesNo",
+        critical: true,
+        detailWhen: "Evet",
+        detailKey: "penaltyNote",
+        detailLabel: "Cezai karar açıklama",
+        detailTitle: "Cezai Karar Açıklama",
+        defaultValue: "Hayır",
+        hideInactiveDetail: true,
+      })
+    );
+  }
 
   if (isLandReport) {
     // Arsa/Tarla raporlarında yapı niteliğiyle ilgili bu iki karar alanı
@@ -31593,6 +31639,35 @@ function buildProjectReviewBlockFallbackParts(units, groups, labelBuilder = comp
 // bkz. o fonksiyonun yorumu) — "groups.length < 2" dalı artık gereksiz
 // (dead code'du zaten, isDocumentsBlockGroupingActive() true iken hiç
 // tetiklenemiyordu) ve kaldırıldı.
+// Bir taşınmazın (temsilci fields objesi) mimari proje/ruhsat ARANMAYAN
+// bir arazi/arsa niteliğinde olup olmadığını (isLandProjectReview +
+// hasArchitecturalProject="Hayır") state.fields'ı GEÇİCİ değiştirerek
+// (diğer per-unit kontrollerle AYNI teknik) saf şekilde döner.
+function isUnitLandWithoutArchitecturalProject(fields) {
+  const originalFields = state.fields;
+  state.fields = { ...originalFields, ...(fields || {}) };
+  try {
+    return isLandProjectReview() && normalizeYesNoChoice(state.fields.hasArchitecturalProject || "Evet") === "Hayır";
+  } finally {
+    state.fields = originalFields;
+  }
+}
+
+// Kullanıcı talebi (2026-09-15): kullanıcı canlı bir farklı ada/parsel
+// tarımsal rapor örneği paylaştı — "Ekspertize konu taşınmaz Şeftali
+// Bahçesi niteliğinde olup ..." + "Ekspertize konu taşınmaz Tarla
+// niteliğinde olup ..." (2 AYRI cümle, nitelik farklı olduğundan
+// buildProjectReviewBlockFallbackParts birleştirmiyordu) — "bunun yerine
+// şöyle cümle olsun 'Gürsu Belediyesinde yapılan incelemelerde
+// taşınmazlara ait mimari proje bulunmamaktadır.' diğer detayları geç."
+// Nitelik zaten Taşınmazlar Özeti tablosunda taşınmaz başına ayrı ayrı
+// göründüğünden burada TEKRAR edilmez — TEK, nitelikten bağımsız, HER
+// ZAMAN çoğul bir cümle kullanılır.
+function buildMixedParcelNoArchitecturalProjectText() {
+  const district = getProjectReviewDistrictText() || "İlgili";
+  return `${district} Belediyesinde yapılan incelemelerde taşınmazlara ait mimari proje bulunmamaktadır.`;
+}
+
 function buildProjectReviewExplanationParts() {
   if (!isDocumentsBlockSharingApplicable()) {
     // Kullanıcı talebi (2026-09-15): "farklı ada parsel çoklu raporlarda
@@ -31613,23 +31688,29 @@ function buildProjectReviewExplanationParts() {
     // tekil davranışa GÜVENLİ düşülür.
     if (isMultiTitleUnitReportForNarrative() && hasMixedTitleUnitParcels()) {
       const mixedUnits = buildAllTitleUnitsForSummaryTable();
+      // Kullanıcı talebi (2026-09-15): TÜM taşınmazlar mimari proje/ruhsat
+      // ARANMAYAN arazi/arsa niteliğindeyse (isLandProjectReview +
+      // hasArchitecturalProject="Hayır" — farklı ada/parsel raporlarının
+      // EN YAYGIN şekli), buildProjectReviewBlockFallbackParts'ın HER
+      // taşınmazın KENDİ niteliğini ("... Bahçe niteliğinde olup"/"...
+      // Tarla niteliğinde olup") tekrar tekrar yazan, nitelik farklıysa
+      // 2+ AYRI cümleye bölen eski davranışı yerine TEK, sade, nitelikten
+      // bağımsız cümle kullanılır (bkz. buildMixedParcelNoArchitecturalProjectText
+      // yorumu).
+      if (mixedUnits.every((unit) => isUnitLandWithoutArchitecturalProject(unit?.fields))) {
+        return [buildMixedParcelNoArchitecturalProjectText()];
+      }
       const mixedGroups = computeDocumentsBlockGroups(mixedUnits);
       const mixedConsolidated = buildProjectReviewConsolidatedParts(mixedUnits, mixedGroups, computeDocumentsParcelGroupLabel, formatParcelAttributionPhrase);
       if (mixedConsolidated) return mixedConsolidated;
-      // Kullanıcı bulgusu (2026-09-15, "Şeftali Bahçesi" örneği):
-      // buildProjectReviewConsolidatedParts() mimari proje YOK (hasArchitecturalProject
-      // = Hayır, tarımsal/arazi raporlarında TİPİK) durumda
-      // getProjectReviewSimpleReferenceParts() null döndüğünden HER ZAMAN
-      // disqualified olup null döner — bu, farklı ada/parsel raporlarının
-      // EN YAYGIN şeklidir (arazi/bahçe niteliğinde taşınmazlarda ruhsat/
-      // mimari proje genelde yoktur), "nadir şekil uyumsuzluğu" DEĞİL. Bu
-      // durumda eski (Kat İrtifakı'nın da paylaştığı) genel amaçlı
-      // buildProjectReviewBlockFallbackParts'a (her parsel kendi TAM
-      // paragrafını üretir, AYNI ham metni üreten parseller birleşip
-      // çoğullanır — buildNoArchitecturalProjectDescription() gibi
-      // getProjectReviewSimpleReferenceParts'a bağımlı OLMAYAN her metne
-      // uyar) parsel etiketiyle düşülür — eski (yalnızca aktif taşınmaz)
-      // davranışına gitmeden ÖNCE.
+      // buildProjectReviewConsolidatedParts() mimari proje YOK durumda
+      // getProjectReviewSimpleReferenceParts() null döndüğünden disqualified
+      // olup null döner (yukarıdaki "hepsi arazi+projesiz" kısayolu bunu
+      // ZATEN kapsar) — burası yalnızca KARIŞIK (bazı taşınmazlarda proje
+      // VAR, bazılarında YOK, ya da bina niteliğinde "proje yok" durumu)
+      // nadir şekiller için eski (Kat İrtifakı'nın da paylaştığı) genel
+      // amaçlı buildProjectReviewBlockFallbackParts'a parsel etiketiyle
+      // düşülür — eski (yalnızca aktif taşınmaz) davranışına gitmeden ÖNCE.
       const mixedBlockFallback = buildProjectReviewBlockFallbackParts(mixedUnits, mixedGroups, computeDocumentsParcelGroupLabel, formatParcelAttributionPhrase);
       if (mixedBlockFallback.length) return mixedBlockFallback;
     }

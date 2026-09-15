@@ -80,7 +80,7 @@ function sliceFn(startMarker, { toMarker } = {}) {
   );
   assert.match(
     appSource,
-    /shouldHideField\(section\.id, field\.key\)\s*&&\s*\(!isCurrentUserAdmin\(\)\s*\|\|\s*\(section\.id === "case" && field\.key === "currentUsageNature"\)\s*\|\|\s*\(section\.id === "documents" && isCadastralProjectVisibilityField\(field\.key\)\)\s*\|\|\s*\(section\.id === "address" && isEnvironmentRegionTypeFilteredField\(field\.key\)\)[\s\S]{0,2500}?\|\|\s*\(section\.id === "address" && landAddressHiddenKeys\.includes\(field\.key\)\)[\s\S]{0,1500}?\|\|\s*section\.id === "title"\)\)/,
+    /shouldHideField\(section\.id, field\.key\)\s*&&\s*\(!isCurrentUserAdmin\(\)\s*\|\|\s*\(section\.id === "case" && field\.key === "currentUsageNature"\)\s*\|\|\s*\(section\.id === "documents" && isCadastralProjectVisibilityField\(field\.key\)\)\s*\|\|\s*\(section\.id === "address" && isEnvironmentRegionTypeFilteredField\(field\.key\)\)[\s\S]{0,2500}?\|\|\s*\(section\.id === "address" && landAddressHiddenKeys\.includes\(field\.key\)\)[\s\S]{0,800}?\|\|\s*\(section\.id === "documents" && isLandHiddenDocumentsField\(field\.key\)\)[\s\S]{0,1300}?\|\|\s*section\.id === "title"\)\)/,
     "Admin diger alan filtresi istisnalarini korurken mevcut kullanim, kadastro gorunurlugu, arazi adres alanlari VE tapu (title) bagimsiz bolum kurallarini uygulamali.",
   );
   assert.match(
@@ -179,7 +179,7 @@ function sliceFn(startMarker, { toMarker } = {}) {
   // endMarker'ın uzunluğu + 1 (dış parantez) ile kesilir.
   const decisionExpr = appSource.slice(startIndex, endIndex + endMarker.length - 1);
 
-  function computeHideDecision({ sectionId, fieldKey, hideResult, isAdmin, cadastralVisible = false, environmentFiltered = false, landAddressField = false }) {
+  function computeHideDecision({ sectionId, fieldKey, hideResult, isAdmin, cadastralVisible = false, environmentFiltered = false, landAddressField = false, landDocumentsField = false }) {
     const context = {
       section: { id: sectionId },
       field: { key: fieldKey },
@@ -188,6 +188,7 @@ function sliceFn(startMarker, { toMarker } = {}) {
       isCadastralProjectVisibilityField: () => cadastralVisible,
       isEnvironmentRegionTypeFilteredField: () => environmentFiltered,
       landAddressHiddenKeys: { includes: () => landAddressField },
+      isLandHiddenDocumentsField: () => landDocumentsField,
     };
     vm.createContext(context);
     return vm.runInContext(decisionExpr, context);
@@ -254,6 +255,44 @@ function sliceFn(startMarker, { toMarker } = {}) {
     "shouldHideField false iken (ör. Kat İrtifakı, gerçek bağımsız bölüm) UAVT alanı yöneticide de GİZLENMEMELİ."
   );
   console.log("KULLANICI BİLDİRİMİ: Adres (arazi adres alanları) bölümü admin-bypass düzeltmesi (gerçek karar ifadesi) testi tamam.");
+
+  // --- e) Kullanıcı talebi (2026-09-15): "arsa ve arazi raporlarında
+  // enerji kimlik belgesi cezai karar bölümlerini gizle" — Belgeler ve
+  // Proje (documents) bölümünde hasEkb + EKB detay alanları (isLandHiddenDocumentsField)
+  // için de landAddressHiddenKeys/title ile AYNI desende bir admin-bypass
+  // istisnası eklendi.
+  assert.equal(
+    computeHideDecision({ sectionId: "documents", fieldKey: "hasEkb", hideResult: true, isAdmin: true, landDocumentsField: true }),
+    true,
+    "KULLANICI BİLDİRİMİ: yönetici hesabında Arsa/Arazi raporlarında Enerji Kimlik Belgesi alanı GİZLENMELİ."
+  );
+  assert.equal(
+    computeHideDecision({ sectionId: "documents", fieldKey: "hasEkb", hideResult: true, isAdmin: false, landDocumentsField: true }),
+    true,
+    "Normal kullanıcıda Arsa/Arazi EKB gizleme davranışı DEĞİŞMEMELİ (regresyon)."
+  );
+  assert.equal(
+    computeHideDecision({ sectionId: "documents", fieldKey: "hasEkb", hideResult: false, isAdmin: true, landDocumentsField: true }),
+    false,
+    "shouldHideField false iken (ör. Müstakil Bina) EKB alanı yöneticide de GİZLENMEMELİ."
+  );
+  console.log("KULLANICI BİLDİRİMİ: Belgeler ve Proje (EKB) bölümü admin-bypass düzeltmesi (gerçek karar ifadesi) testi tamam.");
+}
+
+// --- f) isLandHiddenDocumentsField() kaynak-düzeyi tanım kontrolü ----------
+// (hasEkb + isEkbFieldKey'in TÜMÜNÜ kapsamalı, iki ayrı listeye BÖLÜNMEMELİ).
+{
+  assert.match(
+    appSource,
+    /function isLandHiddenDocumentsField\(fieldKey\)\s*\{\s*return fieldKey === "hasEkb" \|\| isEkbFieldKey\(fieldKey\);\s*\}/,
+    "isLandHiddenDocumentsField() hasEkb VE isEkbFieldKey() alanlarının TÜMÜNÜ kapsamalı."
+  );
+  assert.match(
+    appSource,
+    /if \(sectionId === "documents" && isLandHiddenDocumentsField\(fieldKey\) && isLandProjectReview\(\)\) \{\s*return true;\s*\}/,
+    "shouldHideField() 'documents' dalında EKB alanları Arsa\\/Arazi\\/Tarla'da (isLandProjectReview) HER ZAMAN gizlemeli."
+  );
+  console.log("isLandHiddenDocumentsField() kaynak-düzeyi tanım testi tamam.");
 }
 
 console.log("Ayrıcalıklı görünürlük düzeltmeleri (transport/nearby/environment/Halkbank) testi tamam.");

@@ -216,11 +216,23 @@ const modernPermitRow = { c0: "Yeni Yapı Ruhsatı", c1: "X Belediyesi", c2: "20
 
 console.log("Yapi denetim kanunu kapsam disinda Sözleşme/Hakediş hucrelerinin gizlenmesi testi tamam.");
 // 5) Arsa/Tarla raporlarında statik uygunluk ve yapı denetim alanları tamamen gizlenmeli.
+// Kullanıcı talebi (2026-09-15): "arsa ve arazi raporlarında enerji kimlik
+// belgesi cezai karar bölümlerini gizle" — Cezai Karar (penaltyDecision)
+// artık Statik Uygunluk/Yapı Denetim ile AYNI Arsa/Tarla dalında gizlenir
+// (eskiden bu tek istisnaydı, korunuyordu — bkz. eski assert, ARTIK TERS).
 {
   const { fieldKeys, fields } = runScenario({ documents: [modernPermitRow], contractActive: "Evet", landReport: true });
-  assert.ok(fieldKeys.includes("penaltyDecision"), `Arsa raporunda cezai karar alanı korunmalı: ${JSON.stringify(fieldKeys)}`);
+  assert.ok(!fieldKeys.includes("penaltyDecision"), `Arsa raporunda cezai karar alanı ARTIK gizlenmeli: ${JSON.stringify(fieldKeys)}`);
   assert.ok(!fieldKeys.includes("staticSuitability"), `Arsa raporunda statik uygunluk gizlenmeli: ${JSON.stringify(fieldKeys)}`);
   assert.ok(!fieldKeys.includes("buildingInspectionContractActive"), `Arsa raporunda yapı denetim sözleşmesi gizlenmeli: ${JSON.stringify(fieldKeys)}`);
+  assert.equal(fields.penaltyDecision, "", "Gizlenen cezai karar değeri temizlenmeli (eski rapor verisi çıktıya sızmamalı).");
   assert.equal(fields.staticSuitability, "", "Gizlenen statik uygunluk değeri temizlenmeli.");
   assert.equal(fields.buildingInspectionContractActive, "", "Gizlenen sözleşme değeri temizlenmeli.");
 }
+// 6) Müstakil Bina/Kat İrtifakı (bina niteliğindeki) raporlarda Cezai Karar
+// alanı REGRESYON olarak korunmalı (yalnızca Arsa/Tarla/Arazi'de gizlenir).
+{
+  const { fieldKeys } = runScenario({ documents: [modernPermitRow], contractActive: "Evet", landReport: false });
+  assert.ok(fieldKeys.includes("penaltyDecision"), `Bina niteliğindeki raporda cezai karar alanı GİZLENMEMELİ (regresyon): ${JSON.stringify(fieldKeys)}`);
+}
+console.log("Arsa/Tarla raporlarinda Cezai Karar (penaltyDecision) alaninin gizlenmesi testi tamam.");
