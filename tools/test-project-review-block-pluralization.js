@@ -851,4 +851,69 @@ function freshState(overrides = {}) {
   console.log("buildProjectReviewExplanationParts() farkli ada/parsel REGRESYON (diger parselin bilgisinin kaybolmamasi) testi tamam.");
 }
 
+// --- 14) Kullanıcı bulgusu (2026-09-15, canlı rapor ekran görüntüsü): -----
+// "Şeftali Bahçesi" — farklı ada/parsel + hasArchitecturalProject="Hayır"
+// (tarımsal/arazi raporlarında TİPİK, mimari proje/ruhsat aranmaz) ->
+// getProjectReviewSimpleReferenceParts() HER GRUPTA null döner ->
+// buildProjectReviewConsolidatedParts() HER ZAMAN disqualified olup null
+// döner. Bu "nadir şekil uyumsuzluğu" DEĞİL, farklı ada/parsel tarımsal
+// raporların EN YAYGIN şeklidir — 13a/13b'nin kapsadığı (mimari proje VAR)
+// dal buraya hiç girmiyordu, kullanıcının gerçek raporunda düzeltme HİÇ
+// görünmüyordu. Artık consolidated null dönünce buildProjectReviewBlockFallbackParts
+// (parsel etiketiyle) devreye giriyor.
+{
+  // 14a) 2 farklı parsel AYNI nitelikte (Bahçe) -> AYNI ham metin, TEK
+  // cogul cumlede birlesmeli (parsel etiketi/atif GEREKMEZ, metnin kendisi
+  // zaten "taşınmaz"/"taşınmaza" bare-form icerdiginden dogrudan cogullanir).
+  const noProjectSameTextState = freshState({
+    ownershipType: "Tarla",
+    hasArchitecturalProject: "Hayır",
+    mainPropertyQuality: "Bahçe",
+    blockNo: "0",
+    parcelNo: "56",
+    titleBlockName: "",
+    titleDistrict: "Gürsu",
+  });
+  noProjectSameTextState.titleUnits = [
+    unit(noProjectSameTextState.fields, "0", "315", ""),
+  ];
+  fns.setState(noProjectSameTextState);
+  assert.equal(fns.isDocumentsBlockSharingApplicable(), false, "sanity: Tarla mulkiyetinde isDocumentsBlockSharingApplicable() false olmali.");
+  assert.equal(fns.hasMixedTitleUnitParcels(), true, "sanity: 0/56 ve 0/315 farkli parsel sayilmali.");
+  const sameTextParts = fns.buildProjectReviewExplanationParts();
+  const sameTextJoined = sameTextParts.join(" ||| ");
+  assert.ok(sameTextJoined.includes("taşınmazlar Bahçe niteliğinde olup"), `AYNI (Bahce) nitelikteki 2 parsel TEK cogul cumlede birlesmeli ('taşınmaz'->'taşınmazlar'), bulunan: ${sameTextJoined}`);
+  assert.ok(sameTextJoined.includes("taşınmazlara ait ruhsat ve mimari proje bulunmamaktadır"), `Cumle sonundaki 'taşınmaza ait' de coğullanmalı, bulunan: ${sameTextJoined}`);
+  assert.ok(!sameTextJoined.includes("Blok'a ait"), `Parsel bazli raporda ESKI 'Blok'a ait' etiketi ASLA gorunmemeli, bulunan: ${sameTextJoined}`);
+  assert.equal(sameTextParts.length, 1, `Ayni metin URETEN 2 parsel TEK parcada birlesmeli, bulunan: ${JSON.stringify(sameTextParts)}`);
+
+  console.log("buildProjectReviewExplanationParts() farkli parsel + mimari proje YOK + AYNI nitelik -> tek cogul cumle testi tamam.");
+}
+{
+  // 14b) 2 farklı parsel FARKLI nitelikte (Bahçe / Tarla) -> FARKLI ham
+  // metin uretir, HER İKİSİ DE (kendi tekil cumlesiyle) gorunmeli - eskiden
+  // (duzeltme oncesi) sadece aktif parselin (Bahce) metni gorunup Tarla
+  // nitelikli diger parsel TAMAMEN kayboluyordu.
+  const noProjectDifferentTextState = freshState({
+    ownershipType: "Tarla",
+    hasArchitecturalProject: "Hayır",
+    mainPropertyQuality: "Bahçe",
+    blockNo: "0",
+    parcelNo: "56",
+    titleBlockName: "",
+  });
+  noProjectDifferentTextState.titleUnits = [
+    unit(noProjectDifferentTextState.fields, "0", "315", "", { mainPropertyQuality: "Tarla" }),
+  ];
+  fns.setState(noProjectDifferentTextState);
+  const differentTextParts = fns.buildProjectReviewExplanationParts();
+  const differentTextJoined = differentTextParts.join(" ||| ");
+  assert.ok(differentTextJoined.includes("taşınmaz Bahçe niteliğinde olup"), `56 parselin (Bahce) metni gorunmeli, bulunan: ${differentTextJoined}`);
+  assert.ok(differentTextJoined.includes("taşınmaz Tarla niteliğinde olup"), `315 parselin (Tarla, FARKLI nitelik) metni de gorunmeli - eskiden bu TAMAMEN kayboluyordu, bulunan: ${differentTextJoined}`);
+  assert.ok(!differentTextJoined.includes("Blok'a ait"), `Parsel bazli raporda ESKI 'Blok'a ait' etiketi ASLA gorunmemeli, bulunan: ${differentTextJoined}`);
+  assert.equal(differentTextParts.length, 2, `Farkli 2 metin 2 AYRI parcada kalmali, bulunan: ${JSON.stringify(differentTextParts)}`);
+
+  console.log("buildProjectReviewExplanationParts() farkli parsel + mimari proje YOK + FARKLI nitelik -> iki ayri cumle (kayip yok) REGRESYON testi tamam.");
+}
+
 console.log("Proje Inceleme Aciklamasi cogullama + blok bazinda ortak/ayri/sade cumle testleri basarili.");

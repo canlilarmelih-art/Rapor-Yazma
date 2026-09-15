@@ -31522,13 +31522,13 @@ function buildProjectReviewConsolidatedParts(units, groups, labelBuilder = compu
 // korunuyor (bkz. yukarıdaki yorum) — aynı merkezi paylaşımlı-alan
 // düzeltmesi ({ ...originalFields, ...representativeFields }) burada da
 // uygulanıyor.
-function buildProjectReviewBlockFallbackParts(units, groups) {
+function buildProjectReviewBlockFallbackParts(units, groups, labelBuilder = computeDocumentsBlockLabel, attributionBuilder = formatDocumentBlockAttributionPhrase) {
   const originalFields = state.fields;
   const unitCountByLabel = new Map();
   const rawTextByLabel = new Map();
   const labelOrder = [];
   groups.forEach((group) => {
-    const label = computeDocumentsBlockLabel(group, groups);
+    const label = labelBuilder(group, groups);
     const representativeFields = units[group.unitIndices[0]]?.fields || originalFields;
     state.fields = { ...originalFields, ...representativeFields };
     let text;
@@ -31557,7 +31557,7 @@ function buildProjectReviewBlockFallbackParts(units, groups) {
   return textOrder.map((text) => {
     const labels = groupsByText.get(text);
     const totalUnits = labels.reduce((sum, label) => sum + (unitCountByLabel.get(label) || 1), 0);
-    const attribution = formatDocumentBlockAttributionPhrase(labels);
+    const attribution = attributionBuilder(labels);
     return pluralizeProjectReviewSubjectText(text, totalUnits > 1, attribution);
   });
 }
@@ -31616,6 +31616,22 @@ function buildProjectReviewExplanationParts() {
       const mixedGroups = computeDocumentsBlockGroups(mixedUnits);
       const mixedConsolidated = buildProjectReviewConsolidatedParts(mixedUnits, mixedGroups, computeDocumentsParcelGroupLabel, formatParcelAttributionPhrase);
       if (mixedConsolidated) return mixedConsolidated;
+      // Kullanıcı bulgusu (2026-09-15, "Şeftali Bahçesi" örneği):
+      // buildProjectReviewConsolidatedParts() mimari proje YOK (hasArchitecturalProject
+      // = Hayır, tarımsal/arazi raporlarında TİPİK) durumda
+      // getProjectReviewSimpleReferenceParts() null döndüğünden HER ZAMAN
+      // disqualified olup null döner — bu, farklı ada/parsel raporlarının
+      // EN YAYGIN şeklidir (arazi/bahçe niteliğinde taşınmazlarda ruhsat/
+      // mimari proje genelde yoktur), "nadir şekil uyumsuzluğu" DEĞİL. Bu
+      // durumda eski (Kat İrtifakı'nın da paylaştığı) genel amaçlı
+      // buildProjectReviewBlockFallbackParts'a (her parsel kendi TAM
+      // paragrafını üretir, AYNI ham metni üreten parseller birleşip
+      // çoğullanır — buildNoArchitecturalProjectDescription() gibi
+      // getProjectReviewSimpleReferenceParts'a bağımlı OLMAYAN her metne
+      // uyar) parsel etiketiyle düşülür — eski (yalnızca aktif taşınmaz)
+      // davranışına gitmeden ÖNCE.
+      const mixedBlockFallback = buildProjectReviewBlockFallbackParts(mixedUnits, mixedGroups, computeDocumentsParcelGroupLabel, formatParcelAttributionPhrase);
+      if (mixedBlockFallback.length) return mixedBlockFallback;
     }
     const text = buildProjectReviewExplanationSingle();
     if (!text) return [];
