@@ -159,6 +159,7 @@ const TEST_FILES = [
   "test-cloud-only-delete-failure-feedback.js",
   "test-land-address-fields-hidden.js",
   "test-land-description-multi-parcel.js",
+  "test-climate-earthquake-multi-unit.js",
   "test-tarla-environment-region-type-default.js",
   "test-land-units-summary-table.js",
   "test-title-unit-table-select-editing.js",

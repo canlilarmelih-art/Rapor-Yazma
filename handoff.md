@@ -1,5 +1,13 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.799 - 2026-09-15 - İklim ve Deprem Bilgileri artık Adres ve Konum'da (Çevresel Özellikler'in altında) + çoklu raporda çoğul
+
+- Kullanıcı: "İklim ve Deprem Bilgileri bölümünü adres ve konum sekmesine Çevresel Özellikler Açıklaması bölümünün altına taşıyalım. çoklu arazi taleplerinde İklim ve Deprem Bilgileri bölümünü çoklu olarak uyarla Taşınmaz > Taşınmazlar."
+- **1) Bölüm taşıma**: panel önceden "Arsa Özellikleri" (`land`) bölümünün SONUNA ekleniyordu — bu bölüm yalnızca Dikey/Yatay Kat İrtifakı (kat irtifaklı/condo) raporlarda GİZLİ olduğundan, condo raporlarda İklim ve Deprem Bilgileri hiç görünmüyordu (oysa iklim/deprem verisi il/ilçeye bağlı, mülkiyet türünden bağımsız). Artık "Adres ve Konum" (`address`) bölümünde, `createForm(section)`'ın hemen ardından ekleniyor — "Çevresel Özellikler Açıklaması" (`environmentDescription`) bu bölümün fields[] dizisindeki SON alan olduğundan panel doğal olarak onun altında görünüyor. Yan etki (muhtemelen istenen): artık condo raporlarında da görünüyor.
+- **2) Çoklu taşınmaz çoğullama**: `buildClimateEarthquakeExplanation()` — il/ilçe/deprem bölgesi verisi rapor-geneli (parsel bağımsız) olduğundan Madde 1-4'teki gibi taşınmaz-bazlı birleştirmeye gerek yok; yalnızca özne çoğullanıyor: "Taşınmazın konumlandığı ..." → "Taşınmazların konumlandığı ...", "söz konusu taşınmaz, ..." → "söz konusu taşınmazlar, ...". Panel zaten HER render'da (`renderSection`) koşulsuz yeniden hesaplandığından (bkz. `createLandClimateEarthquakePanel`'in kendi `refreshClimateEarthquakeExplanationFromCurrentFields()` çağrısı) ayrı bir tetikleyici kablolamaya gerek yoktu.
+- Test: yeni `tools/test-climate-earthquake-multi-unit.js` — (a) kaynak-düzeyi: panelin artık "land" DEĞİL "address" bölümünde olduğunu VE "environmentDescription"ın o bölümün son alanı olduğunu (panel konumunun dayandığı yapısal koşul) doğruluyor; (b) gerçek `buildClimateEarthquakeExplanation()` fonksiyonunu çalıştırıp tekil raporda TEKİL, çoklu raporda ÇOĞUL kaldığını kanıtlıyor. `tools/run-tests.js`'e kaydedildi (183 dosya). Stash ile eski koda karşı gerçekten kırıldığı doğrulandı.
+- `npm run verify` (183 test dosyası) EXIT:0. `index.html`'de `app.js` cache-buster'ı `20260915-1315`'e yükseltildi. Canlı tarayıcı testi yapılamadı — kullanıcıdan Adres ve Konum sekmesinde panelin yeni konumunu VE çoklu bir arazi raporunda metnin çoğul çıktığını doğrulaması isteniyor.
+
 ## 0.0.798 - 2026-09-15 - Arsa Özellikleri ortak sulama sistemi cümlesinde artık "Parseller üzerinde" (çoğul)
 
 - Kullanıcı: "Parsel üzerinde damlama tipi sulama sistemi bulunmaktadır. yerine parsellerde sulama sistemi ortak ise parseller üzerinde dememiz gerekmiyor mu?"

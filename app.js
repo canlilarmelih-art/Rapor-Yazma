@@ -6073,7 +6073,14 @@ function renderSection() {
     if (encumbranceSummaryPanel) card.insertBefore(encumbranceSummaryPanel, body);
   }
 
-  if (section.id === "land") {
+  // Kullanıcı talebi (2026-09-15): "İklim ve Deprem Bilgileri bölümünü
+  // adres ve konum sekmesine Çevresel Özellikler Açıklaması bölümünün
+  // altına taşıyalım" — önceden "land" (Arsa Özellikleri) bölümünün
+  // SONUNA ekleniyordu; "environmentDescription" (Çevresel Özellikler
+  // Açıklaması) "address" bölümünün fields[] dizisindeki SON alan
+  // olduğundan, panel createForm(section)'ın HEMEN ardından eklenince
+  // doğal olarak o alanın altında görünür.
+  if (section.id === "address") {
     const climatePanel = createLandClimateEarthquakePanel();
     if (climatePanel) body.append(climatePanel);
   }
@@ -7375,7 +7382,14 @@ function buildClimateEarthquakeExplanation() {
     `Öte yandan yapısal risk ve planlama kriterleri açısından önem arz eden depremsellik verilerine göre söz konusu taşınmaz, \"${earthquakeZone}\" deprem bölgesinde yer almaktadır.`,
   ].filter(Boolean).join(" ");
 
-  return normalizeReportDescriptionText(climateSentence);
+  // Kullanıcı talebi (2026-09-15): "çoklu arazi taleplerinde İklim ve
+  // Deprem Bilgileri bölümünü çoklu olarak uyarla Taşınmaz > Taşınmazlar"
+  // — il/ilçe/deprem bölgesi verisi rapor-geneli (parsel bağımsız)
+  // olduğundan Madde 1-4'teki gibi taşınmaz-bazlı birleştirmeye gerek
+  // yok, yalnızca özne ("Taşınmazın"/"taşınmaz") çoğullanır.
+  return normalizeReportDescriptionText(
+    pluralizeEnvironmentalSubjectText(climateSentence, isMultiTitleUnitReportForNarrative())
+  );
 }
 
 function refreshClimateEarthquakeExplanationFromCurrentFields(changedKey = "") {
