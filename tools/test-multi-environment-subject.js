@@ -25,13 +25,21 @@ function sliceConstArray(name) {
   return appSource.slice(start, end);
 }
 
-const context = { state: { titleUnits: [{}] }, registerVariantGroup: () => {} };
+const context = {
+  state: { titleUnits: [{}] },
+  registerVariantGroup: () => {},
+  // buildEnvironmentalIntro'nun özne/fiil seçimi için — test kararlılığı
+  // adına HER ZAMAN ilk varyantı ("Ekspertize konu taşınmaz"/"konumludur")
+  // döndürür (diğer testlerdeki AYNI desen).
+  selectVariant: () => 0,
+};
 vm.createContext(context);
 vm.runInContext(
   [
     "function registerVariantGroup() {}",
     "const MIXED_PARCEL_NARRATIVE_LIST_LIMIT = 5;",
     sliceConstArray("openAddressStyleVariants"),
+    sliceConstArray("environmentalIntroSubjectVariants"),
     sliceFunction("formatOpenAddressBuildingName"),
     sliceFunction("normalizeBlockLabelPrefixForAttribution"),
     sliceFunction("getTitleUnitCount"),
@@ -43,6 +51,7 @@ vm.runInContext(
     sliceFunction("buildMixedParcelLocationPhrase"),
     sliceFunction("pluralizeEnvironmentalSubjectText"),
     sliceFunction("formatZiraatLocationSubject"),
+    sliceFunction("buildEnvironmentalIntro"),
   ].join("\n"),
   context,
 );
@@ -192,5 +201,60 @@ assert.equal(
   "Ekspertize konu taşınmazlar, Bursa ili, Osmangazi ilçesi, Yunuseli mahallesi, 11652 ada 1 parsel üzerinde Nurol Sitesi içinde A Blokta yer almaktadırlar.",
   "Site adi VARKEN cumle '{Site} Sitesi icinde {Blok} Blokta yer almaktadirlar' bicimini almali."
 );
+
+// --- Madde 2/4 (buildEnvironmentalIntro — Adres/Konum/Çevre giriş cümlesi) ---
+// Kullanıcı talebi (2026-09-15): Ziraat konum cümlesiyle (Madde 1) AYNI kök
+// neden/AYNI çözüm — sharedParcelPhrase boşken (farklı parsel) önceden ada/
+// parsel bilgisi hiç yansıtılmıyordu, PAYLAŞIMLI buildMixedParcelLocationPhrase()
+// ile düzeltildi.
+
+// Aynı parselde (regresyon) — sharedParcelPhrase dolu, mixedParcelPhrase dalı
+// HİÇ devreye girmemeli, davranış AYNEN korunmalı.
+{
+  context.state.fields = { blockNo: "0", parcelNo: "709", titleBlockName: "A" };
+  context.state.titleUnits = [
+    { fields: { blockNo: "0", parcelNo: "709", titleBlockName: "B" } },
+    { fields: { blockNo: "0", parcelNo: "709", titleBlockName: "C" } },
+  ];
+  const sameParcelIntro = context.buildEnvironmentalIntro({ city: "Düzce", district: "Merkez", neighborhood: "Sancaklar" });
+  assert.equal(
+    sameParcelIntro,
+    "Ekspertize konu taşınmazlar, Düzce ili, Merkez ilçesi, Sancaklar mahallesinde, 0 ada 709 parsel üzerinde A, B, C bloklarda yer almaktadır.",
+    "Ayni parselde (regresyon) davranis degismemeli."
+  );
+  console.log("buildEnvironmentalIntro: ayni parsel (regresyon) testi tamam.");
+}
+
+// Farklı parsel, ≤5 taşınmaz — her taşınmazın KENDİ ada/parseli listelenip
+// tam bir cümleyle bitmeli (önceden ada/parsel bilgisi TAMAMEN kayboluyordu).
+{
+  context.state.fields = { blockNo: "1408", parcelNo: "3", titleBlockName: "" };
+  context.state.titleUnits = [
+    { fields: { blockNo: "1408", parcelNo: "3", titleBlockName: "" } },
+    { fields: { blockNo: "1409", parcelNo: "7", titleBlockName: "" } },
+  ];
+  const mixedParcelIntro = context.buildEnvironmentalIntro({ city: "Sakarya", district: "Adapazarı", neighborhood: "Maltepe" });
+  assert.equal(
+    mixedParcelIntro,
+    "Ekspertize konu taşınmazlar, Sakarya ili, Adapazarı ilçesi, Maltepe mahallesinde, 1408 ada 3 parsel ve 1409 ada 7 parsel üzerinde yer almaktadır.",
+    "Farkli parselde HER tasinmazin (tekrarsiz) kendi ada/parseli listelenip 'yer almaktadir' ile tam bir cumle olmali."
+  );
+  console.log("buildEnvironmentalIntro: farkli parsel (<=5 tasinmaz) - tasinmaz bazli liste testi tamam.");
+}
+
+// Farklı parsel, >5 taşınmaz — genel özet cümlesine düşmeli.
+{
+  context.state.fields = { blockNo: "1", parcelNo: "1", titleBlockName: "" };
+  context.state.titleUnits = Array.from({ length: 5 }, (_, index) => ({
+    fields: { blockNo: String(index + 2), parcelNo: String(index + 2), titleBlockName: "" },
+  }));
+  const manyMixedParcelIntro = context.buildEnvironmentalIntro({ city: "Sakarya", district: "Adapazarı", neighborhood: "Maltepe" });
+  assert.equal(
+    manyMixedParcelIntro,
+    "Ekspertize konu taşınmazlar, Sakarya ili, Adapazarı ilçesi, Maltepe mahallesinde, farklı ada ve parsellerde yer almaktadır.",
+    "5'ten fazla farkli parselde tasinmaz-bazli liste DEGIL, genel ozet cumlesi uretilmeli."
+  );
+  console.log("buildEnvironmentalIntro: farkli parsel (>5 tasinmaz) - genel ozet testi tamam.");
+}
 
 console.log("Coklu cevre aciklamalarinda tasinmaz cogullastirma testi tamam.");

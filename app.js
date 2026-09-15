@@ -12799,9 +12799,22 @@ function buildEnvironmentalIntro(values, options = {}) {
     const sharedBaseLocation =
       `${subject}, ${values.city} ili, ${values.district} ilçesi, ${values.neighborhood} mahallesinde`;
     const sharedParcelPhrase = getSharedNarrativeParcelPhrase();
+    // Kullanıcı talebi (2026-09-15, "farklı ada parseldeki mantığı ...
+    // paragraflar bazında kendi mantığını kullanarak uygula", madde 2/4):
+    // sharedParcelPhrase yalnızca TÜM taşınmazlar AYNI parseldeyken bir
+    // şey döner; parseller GERÇEKTEN farklıyken (hasMixedTitleUnitParcels)
+    // önceden ada/parsel bilgisi hiç yansıtılmadan düz "{subject}, {il}
+    // ili, {ilçe} ilçesi, {mahalle} mahallesinde {verb}." cümlesine
+    // düşülüyordu. Madde 1'le (formatZiraatLocationSubject) PAYLAŞIMLI
+    // buildMixedParcelLocationPhrase() burada da kullanılır.
+    const mixedParcelPhrase = !sharedParcelPhrase && hasMixedTitleUnitParcels()
+      ? buildMixedParcelLocationPhrase(getNarrativeTitleUnitFields())
+      : "";
     const sharedLocation = sharedParcelPhrase
       ? `${sharedBaseLocation}, ${sharedParcelPhrase}`
-      : `${sharedBaseLocation} ${verb}`;
+      : mixedParcelPhrase
+        ? `${sharedBaseLocation}, ${mixedParcelPhrase}`
+        : `${sharedBaseLocation} ${verb}`;
     return pluralizeEnvironmentalSubjectText(
       `${sharedLocation}.`,
       true,

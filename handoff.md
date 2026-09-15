@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.782 - 2026-09-15 - Farklı ada/parsel çoklu raporlar (2/4): Adres/Konum/Çevre giriş cümlesi artık her taşınmazın kendi ada/parselini listeliyor
+
+- Kullanıcı: "onayladım devam et" (0.0.781'deki Ziraat düzeltmesinin onayı, plan dosyasındaki madde 2/4'e geçiş).
+- Kök neden: `buildEnvironmentalIntro()` — Konut/Ticaret/Sanayi/Tarımsal Alan raporlarının HEPSİNİN paylaştığı "Adres/Konum/Çevre" paragrafının giriş cümlesi — aynı parselde `getSharedNarrativeParcelPhrase()` ile iyi çalışıyordu, ama farklı ada/parselde bu "" döndüğünden ada/parsel bilgisi HİÇ yansıtılmadan düz "Ekspertize konu taşınmazlar, {il} ili, {ilçe} ilçesi, {mahalle} mahallesinde konumludur." cümlesine düşülüyordu (0.0.781'in Ziraat düzeltmesiyle BİREBİR aynı kök neden).
+- Düzeltme: 0.0.781'de eklenen paylaşımlı çekirdek `buildMixedParcelLocationPhrase()` burada da kullanılır — `sharedParcelPhrase` boşken VE `hasMixedTitleUnitParcels()` doğruyken bu çekirdek devreye girip "..., {ada1} {parsel1} ve {adaN} {parselN} üzerinde yer almaktadır." cümlesini üretir. `buildEnvironmentalDescription()`'ın 4 bölge dalı (Konut/Ticaret/Sanayi/Tarımsal) okundu — hepsi bu `intro`yu paragrafın BAŞINA koyup gerisinde yalnızca bölge-geneli (paylaşımlı, parsel-bağımsız) bilgi kullanıyor, bu yüzden yalnızca `buildEnvironmentalIntro`'yu düzeltmek yeterli oldu, 4 bölge dalına AYRICA dokunulmadı.
+- Test: `tools/test-multi-environment-subject.js`'e `buildEnvironmentalIntro()`'yu gerçek app.js kaynağından çıkarıp çalıştıran 3 yeni senaryo eklendi (aynı parsel regresyonu, ≤5 farklı parsel liste, >5 farklı parsel özet) — sandbox 0.0.781'de zaten kurulmuş `buildMixedParcelLocationPhrase`/`hasMixedTitleUnitParcels` bağımlılıklarını yeniden kullanıyor. Stash ile eski koda karşı çalıştırıldığında "...mahallesinde konumludur." (ada/parsel bilgisi sıfır) ürettiği, gerçekten kırıldığı doğrulandı.
+- `npm run verify` (181 test dosyası) EXIT:0. `index.html`'de `app.js` cache-buster'ı `20260915-0530`'a yükseltildi. Canlı tarayıcı testi yapılamadı — kullanıcıdan farklı ada/parselli (2-5 taşınmazlı) bir Konut/Ticaret/Sanayi raporunda "Adres ve Konum" paragrafının giriş cümlesinin artık HER taşınmazın kendi ada/parselini listelediğini doğrulaması isteniyor. Kalan 2 madde (Ulaşım Tarifi, Proje İnceleme Açıklaması) ayrı commit'lerde devam edecek.
+
+
 ## 0.0.781 - 2026-09-15 - Farklı ada/parsel çoklu raporlar (1/4): Ziraat Bankası konum cümlesi artık her taşınmazın kendi ada/parselini listeliyor
 
 - Kullanıcı: "aynı ada parseldeki mantığı farklı ada parsele paragraflar bazında kendi mantığını kullanarak uygula daha sonra düzeltmeleri beraber yapalım." Kapsam ve desen `AskUserQuestion` ile netleştirildi — bkz. plan dosyası `idempotent-launching-kernighan.md` (4 paragraf grubu onaylandı: Ziraat konum cümlesi, Adres/Konum/Çevre giriş cümlesi, Ulaşım Tarifi, Proje İnceleme Açıklaması; "Ana Gayrimenkul Açıklaması" açılışı ayrı bir tura bırakıldı). Bu, madde 1/4.
