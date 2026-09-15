@@ -832,8 +832,21 @@
     CEZAINOTU: { t: () => field("penaltyDecisionExplanation") || safeCall("buildPenaltyDecisionExplanation") },
     STATIK2025SON: { t: () => field("staticSuitabilityExplanation") || safeCall("buildStaticSuitabilityExplanation") },
     YAPIDENETIMACIKLAMA: { t: () => field("buildingInspectionExplanation") || safeCall("buildBuildingInspectionExplanation") },
-    PROJEYEUYGUNLUK2025: { t: () => field("projectReviewDescription") || safeCall("buildProjectReviewDescription") || field("projectConformity") },
-    PROJECTREVIEWDESCRIPTION: { t: () => field("projectReviewDescription") || safeCall("buildProjectReviewDescription") || field("projectConformity") },
+    // Kullanıcı talebi (2026-09-15): "Proje İnceleme Açıklaması ve
+    // İncelenen Belgeler Açıklaması ortak bölümler. formatlarda bu
+    // şekilde yer alacaklar" — field("projectReviewDescription") normalde
+    // (rapor açık/düzenlenmişken) zaten app.js'teki buildProjectReviewExplanation()'ın
+    // (farklı ada/parsel + mimari-proje-yok birleştirme mantığı DAHİL,
+    // bkz. o fonksiyonun yorumu) senkronladığı DOLU değeri döner — ama
+    // alan HERHANGİ bir sebeple boş kalırsa (ör. rapor hiç render
+    // edilmeden export edilirse) bu güvenli-geri-dönüş (fallback)
+    // ESKİ buildProjectReviewDescription() (farklı-parsel/mimari-proje-
+    // yok mantığından TAMAMEN habersiz, footprint/suitability bile
+    // İÇERMİYOR) yerine AYNI buildProjectReviewExplanation()'ı çağırmalı
+    // — aksi halde export'ta ekrandaki metinden FARKLI/eksik bir sonuç
+    // çıkabilirdi.
+    PROJEYEUYGUNLUK2025: { t: () => field("projectReviewDescription") || safeCall("buildProjectReviewExplanation") || field("projectConformity") },
+    PROJECTREVIEWDESCRIPTION: { t: () => field("projectReviewDescription") || safeCall("buildProjectReviewExplanation") || field("projectConformity") },
     REVIEWEDDOCUMENTSDESCRIPTION: { t: () => field("reviewedDocumentsDescription") || safeCall("buildReviewedDocumentsDescription") },
     BUILDINGINSPECTIONEXPLANATIONTEXT: { t: () => field("buildingInspectionExplanation") || safeCall("buildBuildingInspectionExplanation") },
     BUILDINGINSPECTIONTERMINATIONEXPLANATIONTEXT: { t: () => safeCall("buildBuildingInspectionTerminationExplanationText") },
@@ -910,10 +923,10 @@
     EMSAL4INDIRGENMISKULLANIMALANI: { fn: () => safeCall("getComparableCardAreaText", 3) },
     EMSAL4INDIRGENMISSATISFIYATI: { fn: () => safeCall("getComparableCardSaleValueText", 3) },
     EMSAL4INDIRGENMISBIRIMFIYAT: { fn: () => safeCall("getComparableCardUnitValueText", 3) },
-    ISBANKMIMARIPROJE: { t: () => field("projectReviewDescription") || safeCall("buildProjectReviewDescription") || field("projectConformity") },
-    UYGACIKLAMA: { t: () => field("projectReviewDescription") || safeCall("buildProjectReviewDescription") || field("projectConformity") },
-    VAKIFMIMARIPROJE: { t: () => field("projectReviewDescription") || safeCall("buildProjectReviewDescription") || field("projectConformity") },
-    KONUMTEYIDI: { t: () => field("projectReviewDescription") || safeCall("buildProjectReviewDescription") || field("projectConformity") },
+    ISBANKMIMARIPROJE: { t: () => field("projectReviewDescription") || safeCall("buildProjectReviewExplanation") || field("projectConformity") },
+    UYGACIKLAMA: { t: () => field("projectReviewDescription") || safeCall("buildProjectReviewExplanation") || field("projectConformity") },
+    VAKIFMIMARIPROJE: { t: () => field("projectReviewDescription") || safeCall("buildProjectReviewExplanation") || field("projectConformity") },
+    KONUMTEYIDI: { t: () => field("projectReviewDescription") || safeCall("buildProjectReviewExplanation") || field("projectConformity") },
     EKBSINIF: { f: ["ekbEnergyClass"] },
     EKBBELGENO: { f: ["ekbDocumentNo"] },
     EKBVERILIS: { d: ["ekbIssueDate"] },
@@ -1124,7 +1137,7 @@
     HALKBANKRISKKODLARI: { t: () => safeCall("buildHalkbankRiskCodesText") },
     HALKBANKRISKKODLARITABLO: { h: () => safeCall("formatTextTableForWord", safeCall("buildHalkbankRiskCodesTableText")) },
     HALKBANKDEGERLEME: { t: () => field("saleabilityNote") || safeCall("buildValuationMethodExplanationForAllTitleUnits") },
-    HALKBANKPROJEUYGUNLUK: { t: () => field("projectReviewDescription") || safeCall("buildProjectReviewDescription") || field("projectConformity") },
+    HALKBANKPROJEUYGUNLUK: { t: () => field("projectReviewDescription") || safeCall("buildProjectReviewExplanation") || field("projectConformity") },
     HALKBANKDEGERLEMEDETAYTABLO: { h: halkbankValuationDetailsTableHtml },
     HALKBANKEMSALLISTESITABLO: { h: halkbankComparableListTableHtml },
     HALKBANKEMSALARALIGI: { h: halkbankComparableRangeText },

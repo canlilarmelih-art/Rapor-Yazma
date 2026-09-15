@@ -375,6 +375,29 @@ assert(
   `RUHSATVEISKANLAR2025 belge aciklamasindan gelmiyor: ${resolved("RUHSATVEISKANLAR2025")}`
 );
 
+// Kullanıcı talebi (2026-09-15): "Proje İnceleme Açıklaması ve İncelenen
+// Belgeler Açıklaması ortak bölümler. formatlarda bu şekilde yer
+// alacaklar" — field("projectReviewDescription") boşken (ör. rapor hiç
+// render edilmeden export edilirse) proje-inceleme placeholder'larının
+// güvenli-geri-dönüşü (fallback) artık ESKİ buildProjectReviewDescription()
+// (farklı ada/parsel + mimari-proje-yok birleştirme mantığından TAMAMEN
+// habersiz, footprint/suitability bile İÇERMİYOR) DEĞİL, ekranda
+// gösterilen/senkronlanan AYNI buildProjectReviewExplanation() olmalı.
+{
+  stubState.fields.projectReviewDescription = "";
+  globalThis.buildProjectReviewExplanation = () => "YENİ_BİRLEŞİK_METİN";
+  globalThis.buildProjectReviewDescription = () => "ESKİ_TEKİL_METİN";
+  ["PROJEYEUYGUNLUK2025", "PROJECTREVIEWDESCRIPTION", "ISBANKMIMARIPROJE", "UYGACIKLAMA", "VAKIFMIMARIPROJE", "KONUMTEYIDI", "HALKBANKPROJEUYGUNLUK"].forEach((key) => {
+    assert(
+      resolved(key).includes("YENİ_BİRLEŞİK_METİN") && !resolved(key).includes("ESKİ_TEKİL_METİN"),
+      `${key} bos alanda buildProjectReviewExplanation() (YENI, farkli-parsel/mimari-proje-yok mantigi dahil) fallback'ini kullanmali, bulunan: ${resolved(key)}`
+    );
+  });
+  delete globalThis.buildProjectReviewExplanation;
+  delete globalThis.buildProjectReviewDescription;
+  stubState.fields.projectReviewDescription = "Proje inceleme metni";
+}
+
 // Takyidat özeti HTML olarak yalnızca bir kez üretilmeli; aksi halde Word
 // çıktısında <p class="encumbrance-summary"> etiketleri görünür metne dönüşür.
 stubState.fields.takbisSummary = "Birinci takyidat satırı\nİkinci takyidat satırı";
