@@ -116,6 +116,16 @@ const functionNames = [
   "buildEkbExplanationParts",
   "getEkbInspectionLead",
   "getEkbInspectionDateIso",
+  // 2026-09-15 (kullanıcı talebi: "İncelenen Belgeler Açıklaması ise yine
+  // ortak cümle çoklu formata uygun olacak") — farklı ada/parsel (Kat
+  // İrtifakı dışı) çoklu rapor dalı, Madde 4'ün (0.0.788) PAYLAŞTIĞI
+  // parsel etiketleyici/atfı.
+  "isMultiTitleUnitReportForNarrative",
+  "getNarrativeTitleUnitFields",
+  "hasMixedTitleUnitParcels",
+  "computeDocumentsParcelGroupLabel",
+  "formatTitleUnitParcelLabel",
+  "formatParcelAttributionPhrase",
 ];
 
 // Ağır/kapsam-dışı bağımlılıklar (bu testin odağı DEĞİL, mevcut/değişmeyen
@@ -192,6 +202,7 @@ const sandboxSource = `
     buildDocumentsPermitGroupPhrase, collectDocumentsDescriptionRowGroups,
     buildReviewedDocumentsDescription, buildDocumentsOccupancyParts, isDocumentsBlockGroupingActive,
     buildEkbExplanationParts,
+    hasMixedTitleUnitParcels, computeDocumentsParcelGroupLabel, formatParcelAttributionPhrase,
   };
 `;
 // eslint-disable-next-line no-new-func
@@ -521,6 +532,106 @@ function freshState(overrides = {}) {
   assert.ok(description.includes("EKB_FOUND[A Blok'a ait]"), `buildReviewedDocumentsDescription() EKB (Evet) parcasini icermeli, bulunan: ${description}`);
   assert.ok(description.includes("B Blok'a ait Enerji Kimlik Belgesi bulunamamıştır."), `buildReviewedDocumentsDescription() EKB (Hayir) parcasini icermeli, bulunan: ${description}`);
   console.log("buildReviewedDocumentsDescription EKB parcalari uctan uca kablolama testi tamam.");
+}
+
+// --- 11) Kullanıcı talebi (2026-09-15): "İncelenen Belgeler Açıklaması ---
+// ise yine ortak cümle çoklu formata uygun olacak" — farklı ada/parsel
+// (Kat İrtifakı DIŞI, isDocumentsBlockGroupingActive HER ZAMAN false)
+// çoklu raporlarda önceden yalnızca AKTİF taşınmazın belge tablosu
+// yansıyordu, diğer parsellerin belgeleri TAMAMEN kayboluyordu — Madde 4
+// (0.0.788) proje açıklamasında düzelttiği AYNI kusur. "Blok" yerine
+// "{Ada} Ada {Parsel} Parsel" etiketi/atfı kullanılır.
+{
+  // 11a) 2 farklı parsel, FARKLI ruhsatlar -> HER İKİSİ DE kendi parsel
+  // atfıyla görünmeli (eskiden yalnızca aktif/56 parselin ruhsatı görünürdü).
+  fns.setState(freshState({
+    fields: {
+      requestType: "Çoklu Talep", ownershipType: "Müstakil Bina",
+      blockNo: "0", parcelNo: "56", titleBlockName: "",
+      documentReviewInstitution: "Merkez Belediyesi",
+    },
+    tables: { documents: [{ c0: "Yeni Yapı Ruhsatı", c1: "Merkez Belediyesi", c2: "16.11.2012", c3: "256/47" }] },
+    titleUnits: [{
+      fields: { blockNo: "0", parcelNo: "315", titleBlockName: "" },
+      tables: { documents: [{ c0: "Yeni Yapı Ruhsatı", c1: "Merkez Belediyesi", c2: "18.12.2013", c3: "569/78" }] },
+    }],
+  }));
+  assert.equal(fns.isDocumentsBlockGroupingActive(), false, "sanity: Mustakil Bina'da isDocumentsBlockGroupingActive() HER ZAMAN false olmali.");
+  assert.equal(fns.hasMixedTitleUnitParcels(), true, "sanity: 0/56 ve 0/315 farkli parsel sayilmali.");
+  const mixedDescription = fns.buildReviewedDocumentsDescription();
+  assert.ok(mixedDescription.includes("0 Ada 56 Parsel taşınmazına ait 16.11.2012 tarih, 256/47 sayılı Yeni Yapı Ruhsatı"), `56 parselin kendi ruhsati parsel atfiyla gorunmeli, bulunan: ${mixedDescription}`);
+  assert.ok(mixedDescription.includes("0 Ada 315 Parsel taşınmazına ait 18.12.2013 tarih, 569/78 sayılı Yeni Yapı Ruhsatı"), `315 parselin ruhsati da gorunmeli - eskiden bu TAMAMEN kayboluyordu, bulunan: ${mixedDescription}`);
+  assert.ok(!mixedDescription.includes("Blok'a ait"), `Farkli parselli raporda ESKI 'Blok'a ait' etiketi ASLA gorunmemeli, bulunan: ${mixedDescription}`);
+
+  console.log("buildReviewedDocumentsDescription() farkli ada/parsel + FARKLI ruhsatlar -> parsel atifli, kayipsiz testi tamam.");
+}
+{
+  // 11b) 2 farklı parsel AYNI belgeyi paylaşıyorsa "X ve Y taşınmazlarına
+  // ait" ile TEK kez birleşmeli (formatDocumentBlockAttributionPhrase'in
+  // "A ve B Blok'a ait" birleştirmesiyle AYNI ilke, parsel bağlamında).
+  fns.setState(freshState({
+    fields: {
+      requestType: "Çoklu Talep", ownershipType: "Müstakil Bina",
+      blockNo: "0", parcelNo: "56", titleBlockName: "",
+      documentReviewInstitution: "Merkez Belediyesi",
+    },
+    tables: { documents: [{ c0: "Yeni Yapı Ruhsatı", c1: "Merkez Belediyesi", c2: "16.11.2012", c3: "256/47" }] },
+    titleUnits: [{
+      fields: { blockNo: "0", parcelNo: "315", titleBlockName: "" },
+      tables: { documents: [{ c0: "Yeni Yapı Ruhsatı", c1: "Merkez Belediyesi", c2: "16.11.2012", c3: "256/47" }] },
+    }],
+  }));
+  const sharedDescription = fns.buildReviewedDocumentsDescription();
+  assert.ok(sharedDescription.includes("0 Ada 56 Parsel ve 0 Ada 315 Parsel taşınmazlarına ait 16.11.2012 tarih, 256/47 sayılı Yeni Yapı Ruhsatı"), `Iki parsel AYNI belgeyi paylasiyorsa TEK birlesik parsel atfinda gecmeli, bulunan: ${sharedDescription}`);
+  assert.equal((sharedDescription.match(/256\/47/g) || []).length, 1, "Ayni belge (256/47) aciklamada YALNIZCA BIR KEZ gecmeli (birlesmis olmali).");
+
+  console.log("buildReviewedDocumentsDescription() farkli ada/parsel + AYNI belge -> birlesik parsel atfi testi tamam.");
+}
+{
+  // 11c) İskan (yapı kullanma izin belgesi) eksik-parsel cümlesi de parsel
+  // atfıyla kurulmalı (buildDocumentsOccupancyParts'ın rowGroups.length
+  // tabanlı yeni gate'i, "Blok"tan bağımsız).
+  fns.setState(freshState({
+    fields: {
+      requestType: "Çoklu Talep", ownershipType: "Müstakil Bina",
+      blockNo: "0", parcelNo: "56", titleBlockName: "",
+      documentReviewInstitution: "Merkez Belediyesi",
+    },
+    tables: { documents: [{ c0: "Yapı Kullanım İzin Belgesi", c1: "Merkez Belediyesi", c2: "01.01.2015", c3: "1/1" }] },
+    titleUnits: [{
+      fields: { blockNo: "0", parcelNo: "315", titleBlockName: "" },
+      tables: { documents: [] },
+    }],
+  }));
+  const occupancyDescription = fns.buildReviewedDocumentsDescription();
+  assert.ok(occupancyDescription.includes("0 Ada 56 Parsel taşınmazına ait 01.01.2015 tarih, 1/1 sayılı Yapı Kullanım İzin Belgesi"), `56 parselin bulunan Iskani parsel atfiyla gorunmeli, bulunan: ${occupancyDescription}`);
+  assert.ok(occupancyDescription.includes("Ekspertize konu taşınmazların yer aldığı 0 Ada 315 Parsel taşınmazına ait yapı kullanma izin belgesi bulunamamıştır."), `315 parselin eksik Iskani parsel atfiyla belirtilmeli, bulunan: ${occupancyDescription}`);
+  assert.ok(!occupancyDescription.includes("Blok"), `Farkli parselli raporda 'Blok' kelimesi HIC gecmemeli, bulunan: ${occupancyDescription}`);
+
+  console.log("buildReviewedDocumentsDescription() farkli ada/parsel + eksik Iskan -> parsel atifli 'bulunamamistir' testi tamam.");
+}
+{
+  // 11d) REGRESYON: AYNI ada/parselde 2+ bağımsız bölüm (hasMixedTitleUnitParcels
+  // false) -> eski (parsel etiketsiz, düz) davranış korunmalı — bu dal
+  // YALNIZCA gerçekten FARKLI parsellerde devreye girmeli.
+  fns.setState(freshState({
+    fields: {
+      requestType: "Çoklu Talep", ownershipType: "Müstakil Bina",
+      blockNo: "0", parcelNo: "56", titleBlockName: "",
+      documentReviewInstitution: "Merkez Belediyesi",
+    },
+    tables: { documents: [{ c0: "Yeni Yapı Ruhsatı", c1: "Merkez Belediyesi", c2: "16.11.2012", c3: "256/47" }] },
+    titleUnits: [{
+      fields: { blockNo: "0", parcelNo: "56", titleBlockName: "" },
+      tables: { documents: [] },
+    }],
+  }));
+  assert.equal(fns.hasMixedTitleUnitParcels(), false, "sanity: ayni ada/parselde 2 bagimsiz bolum FARKLI parsel SAYILMAMALI.");
+  const samePartcelDescription = fns.buildReviewedDocumentsDescription();
+  assert.ok(!samePartcelDescription.includes("taşınmazına ait") && !samePartcelDescription.includes("taşınmazlarına ait"), `Ayni ada/parselde parsel atfi EKLENMEMELI (eski duz davranis korunmali), bulunan: ${samePartcelDescription}`);
+  assert.ok(samePartcelDescription.includes("256/47"), "Belge referansi yine de dogru gorunmeli.");
+
+  console.log("buildReviewedDocumentsDescription() REGRESYON (ayni ada/parsel -> parsel atfi YOK) testi tamam.");
 }
 
 console.log("Incelenen Belgeler Aciklamasi blok-bazli gruplama testleri basarili.");

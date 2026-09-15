@@ -80,7 +80,7 @@ function sliceFn(startMarker, { toMarker } = {}) {
   );
   assert.match(
     appSource,
-    /shouldHideField\(section\.id, field\.key\)\s*&&\s*\(!isCurrentUserAdmin\(\)\s*\|\|\s*\(section\.id === "case" && field\.key === "currentUsageNature"\)\s*\|\|\s*\(section\.id === "documents" && isCadastralProjectVisibilityField\(field\.key\)\)\s*\|\|\s*\(section\.id === "address" && isEnvironmentRegionTypeFilteredField\(field\.key\)\)[\s\S]{0,2500}?\|\|\s*\(section\.id === "address" && landAddressHiddenKeys\.includes\(field\.key\)\)[\s\S]{0,800}?\|\|\s*\(section\.id === "documents" && isLandHiddenDocumentsField\(field\.key\)\)[\s\S]{0,1300}?\|\|\s*section\.id === "title"\)\)/,
+    /shouldHideField\(section\.id, field\.key\)\s*&&\s*\(!isCurrentUserAdmin\(\)\s*\|\|\s*\(section\.id === "case" && field\.key === "currentUsageNature"\)\s*\|\|\s*\(section\.id === "documents" && isCadastralProjectVisibilityField\(field\.key\)\)\s*\|\|\s*\(section\.id === "address" && isEnvironmentRegionTypeFilteredField\(field\.key\)\)[\s\S]{0,2500}?\|\|\s*\(section\.id === "address" && landAddressHiddenKeys\.includes\(field\.key\)\)[\s\S]{0,800}?\|\|\s*\(section\.id === "documents" && isLandHiddenDocumentsField\(field\.key\)\)[\s\S]{0,900}?\|\|\s*\(section\.id === "documents" && !shouldShowArchitecturalProjectFields\(\) && isArchitecturalProjectDependentField\(field\.key\)\)[\s\S]{0,1200}?\|\|\s*section\.id === "title"\)\)/,
     "Admin diger alan filtresi istisnalarini korurken mevcut kullanim, kadastro gorunurlugu, arazi adres alanlari VE tapu (title) bagimsiz bolum kurallarini uygulamali.",
   );
   assert.match(
@@ -179,7 +179,7 @@ function sliceFn(startMarker, { toMarker } = {}) {
   // endMarker'ın uzunluğu + 1 (dış parantez) ile kesilir.
   const decisionExpr = appSource.slice(startIndex, endIndex + endMarker.length - 1);
 
-  function computeHideDecision({ sectionId, fieldKey, hideResult, isAdmin, cadastralVisible = false, environmentFiltered = false, landAddressField = false, landDocumentsField = false }) {
+  function computeHideDecision({ sectionId, fieldKey, hideResult, isAdmin, cadastralVisible = false, environmentFiltered = false, landAddressField = false, landDocumentsField = false, architecturalProjectDependent = false, showArchitecturalProjectFields = true }) {
     const context = {
       section: { id: sectionId },
       field: { key: fieldKey },
@@ -189,6 +189,8 @@ function sliceFn(startMarker, { toMarker } = {}) {
       isEnvironmentRegionTypeFilteredField: () => environmentFiltered,
       landAddressHiddenKeys: { includes: () => landAddressField },
       isLandHiddenDocumentsField: () => landDocumentsField,
+      isArchitecturalProjectDependentField: () => architecturalProjectDependent,
+      shouldShowArchitecturalProjectFields: () => showArchitecturalProjectFields,
     };
     vm.createContext(context);
     return vm.runInContext(decisionExpr, context);
@@ -277,6 +279,28 @@ function sliceFn(startMarker, { toMarker } = {}) {
     "shouldHideField false iken (ör. Müstakil Bina) EKB alanı yöneticide de GİZLENMEMELİ."
   );
   console.log("KULLANICI BİLDİRİMİ: Belgeler ve Proje (EKB) bölümü admin-bypass düzeltmesi (gerçek karar ifadesi) testi tamam.");
+
+  // --- g) Kullanıcı talebi (2026-09-15): "mimari proje yok seçildiğinde
+  // Tapu Projesi Ve Belediye Projesi Arasında Fark Var Mı? bu şık
+  // saklanacak" — isArchitecturalProjectDependentField (projectDifference
+  // DAHİL 13 alan) için de landAddressHiddenKeys/isLandHiddenDocumentsField
+  // ile AYNI desende bir admin-bypass istisnası eklendi.
+  assert.equal(
+    computeHideDecision({ sectionId: "documents", fieldKey: "projectDifference", hideResult: true, isAdmin: true, architecturalProjectDependent: true, showArchitecturalProjectFields: false }),
+    true,
+    "KULLANICI BİLDİRİMİ: yönetici hesabında mimari proje YOK iken 'Tapu Projesi Ve Belediye Projesi Arasında Fark Var Mı?' GİZLENMELİ."
+  );
+  assert.equal(
+    computeHideDecision({ sectionId: "documents", fieldKey: "projectDifference", hideResult: true, isAdmin: false, architecturalProjectDependent: true, showArchitecturalProjectFields: false }),
+    true,
+    "Normal kullanıcıda mimari proje YOK iken gizleme davranışı DEĞİŞMEMELİ (regresyon)."
+  );
+  assert.equal(
+    computeHideDecision({ sectionId: "documents", fieldKey: "projectDifference", hideResult: false, isAdmin: true, architecturalProjectDependent: true, showArchitecturalProjectFields: true }),
+    false,
+    "Mimari proje VARKEN (shouldShowArchitecturalProjectFields true) projectDifference yöneticide de GİZLENMEMELİ."
+  );
+  console.log("KULLANICI BİLDİRİMİ: Belgeler ve Proje (mimari proje YOK -> projectDifference) admin-bypass düzeltmesi (gerçek karar ifadesi) testi tamam.");
 }
 
 // --- f) isLandHiddenDocumentsField() kaynak-düzeyi tanım kontrolü ----------
@@ -293,6 +317,14 @@ function sliceFn(startMarker, { toMarker } = {}) {
     "shouldHideField() 'documents' dalında EKB alanları Arsa\\/Arazi\\/Tarla'da (isLandProjectReview) HER ZAMAN gizlemeli."
   );
   console.log("isLandHiddenDocumentsField() kaynak-düzeyi tanım testi tamam.");
+
+  // --- g) createForm() admin-bypass istisnasının kaynak-düzeyi varlığı ------
+  assert.match(
+    appSource,
+    /\|\|\s*\(section\.id === "documents" && !shouldShowArchitecturalProjectFields\(\) && isArchitecturalProjectDependentField\(field\.key\)\)/,
+    "createForm() admin-bypass istisnası isArchitecturalProjectDependentField (mimari proje YOK) için de eklenmeli."
+  );
+  console.log("isArchitecturalProjectDependentField() admin-bypass kaynak-düzeyi kablolama testi tamam.");
 }
 
 console.log("Ayrıcalıklı görünürlük düzeltmeleri (transport/nearby/environment/Halkbank) testi tamam.");

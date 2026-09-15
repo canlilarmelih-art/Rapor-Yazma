@@ -6274,6 +6274,15 @@ function createForm(section) {
         // alanları) yönetici hesabında Arsa/Arazi raporlarında YANLIŞLIKLA
         // görünmeye devam ederdi, bu istisnaya BAŞTAN dahil edildi.
         || (section.id === "documents" && isLandHiddenDocumentsField(field.key))
+        // Kullanıcı talebi (2026-09-15): "mimari proje yok seçildiğinde
+        // Tapu Projesi Ve Belediye Projesi Arasında Fark Var Mı? bu şık
+        // saklanacak" — shouldHideField()'ın "documents" dalındaki
+        // `!shouldShowArchitecturalProjectFields() && isArchitecturalProjectDependentField(fieldKey)`
+        // kuralı (projectDifference DAHİL 13 alan, hasArchitecturalProject
+        // = "Hayır" olduğunda) landAddressHiddenKeys/isLandHiddenDocumentsField
+        // ile AYNI kusura sahipti: admin'e bile gizli kalması gerekirken
+        // istisnaya hiç dahil değildi.
+        || (section.id === "documents" && !shouldShowArchitecturalProjectFields() && isArchitecturalProjectDependentField(field.key))
         // Kullanıcı bildirimi (2026-09-15, çoklu Tarla talebi): "tapu
         // bölümünde ana taşınmaz seçeneğinde gizlenmesi gereken bağımsız
         // bölüm no tapu katı ve benzeri seçenekler gözüküyor" — shouldHideField
@@ -32043,16 +32052,36 @@ function buildMissingReviewedDocumentSentences(institutionValue = "") {
 // syncDocumentsSharedDataToBlockSiblings ile senkron) kayıt toplar; aksi
 // halde (kat irtifakı dışı / tek blok / tekil taşınmaz) DAVRANIŞ AYNEN
 // KORUNUR (yalnızca aktif taşınmazın tablosu, blok etiketi YOK).
-function collectDocumentsDescriptionRowGroups() {
-  if (!isDocumentsBlockGroupingActive()) {
-    return [{ blockLabel: null, rows: state.tables?.documents || [] }];
+function collectDocumentsDescriptionRowGroups(labelBuilder = computeDocumentsBlockLabel) {
+  if (isDocumentsBlockGroupingActive()) {
+    const units = buildAllTitleUnitsForSummaryTable();
+    const groups = computeDocumentsBlockGroups(units);
+    return groups.map((group) => ({
+      blockLabel: labelBuilder(group, groups),
+      rows: units[group.unitIndices[0]]?.tables?.documents || [],
+    }));
   }
-  const units = buildAllTitleUnitsForSummaryTable();
-  const groups = computeDocumentsBlockGroups(units);
-  return groups.map((group) => ({
-    blockLabel: computeDocumentsBlockLabel(group, groups),
-    rows: units[group.unitIndices[0]]?.tables?.documents || [],
-  }));
+  // Kullanıcı talebi (2026-09-15): "İncelenen Belgeler Açıklaması ise
+  // yine ortak cümle çoklu formata uygun olacak" — isDocumentsBlockGroupingActive()
+  // yalnızca Kat İrtifakı mülkiyetinde doğru döndüğünden, farklı ada/
+  // parsel raporları (Proje İnceleme Açıklaması'nda 0.0.788'de düzeltilen
+  // AYNI kusur) her zaman aşağıdaki tekil/aktif-taşınmaz dalına düşüyordu.
+  // computeDocumentsBlockGroups doğal olarak farklı parsellere göre de
+  // gruplandığından (titleBlockName boşken), farklı-parsel raporlarda da
+  // 2+ farklı parsel grubu varsa AYNI birleştirilmiş yol kullanılır —
+  // çağıran taraf (buildReviewedDocumentsDescription) parsel-bağlamlı
+  // labelBuilder (computeDocumentsParcelGroupLabel) geçirir.
+  if (isMultiTitleUnitReportForNarrative() && hasMixedTitleUnitParcels()) {
+    const units = buildAllTitleUnitsForSummaryTable();
+    const groups = computeDocumentsBlockGroups(units);
+    if (groups.length > 1) {
+      return groups.map((group) => ({
+        blockLabel: labelBuilder(group, groups),
+        rows: units[group.unitIndices[0]]?.tables?.documents || [],
+      }));
+    }
+  }
+  return [{ blockLabel: null, rows: state.tables?.documents || [] }];
 }
 
 // "A Blok"/"B Blok" gibi " Blok" ekiyle biten etiketlerden ayırt edici
@@ -32107,7 +32136,7 @@ function formatParcelAttributionPhrase(parcelLabels) {
 // (kullanıcının "ortak olarak cümle kurulabilir" örneği). Blok etiketi
 // hiç YOKSA (isDocumentsBlockGroupingActive false) ESKİ/DEĞİŞMEYEN
 // davranış: referanslar düz joinTurkishList ile birleştirilir.
-function buildDocumentsPermitGroupPhrase(items, blockOrder) {
+function buildDocumentsPermitGroupPhrase(items, blockOrder, attributionBuilder = formatDocumentBlockAttributionPhrase) {
   const hasAnyBlockLabel = items.some((item) => item.blockLabel);
   if (!hasAnyBlockLabel) {
     return joinTurkishList(items.map((item) => item.referenceText));
@@ -32140,7 +32169,7 @@ function buildDocumentsPermitGroupPhrase(items, blockOrder) {
   return attributionOrder
     .map((key) => {
       const { labels, references } = groupsByAttribution.get(key);
-      const attribution = formatDocumentBlockAttributionPhrase(labels);
+      const attribution = attributionBuilder(labels);
       const referenceList = references.join(", ");
       return attribution ? `${attribution} ${referenceList}` : referenceList;
     })
@@ -32165,8 +32194,15 @@ function buildDocumentsPermitGroupPhrase(items, blockOrder) {
 // tek blok/tekil taşınmaz) davranış AYNEN korunur — her satır kendi
 // (mevcut, değiştirilmeyen) cümlesini üretir, hiçbiri yoksa TEK genel
 // "bulunamamıştır" cümlesi (buildOccupancyPermitDocumentSentence({})).
-function buildDocumentsOccupancyParts(rowGroups, rows, blockOrder) {
-  if (!isDocumentsBlockGroupingActive()) {
+// Kullanıcı talebi (2026-09-15): "İncelenen Belgeler Açıklaması ise yine
+// ortak cümle çoklu formata uygun olacak" — gate artık isDocumentsBlockGroupingActive()
+// (yalnızca Kat İrtifakı) DEĞİL, doğrudan `rowGroups.length` (çağıranın —
+// buildReviewedDocumentsDescription'ın — Kat İrtifakı BLOĞU veya farklı-
+// parsel GRUBU fark etmeksizin zaten doğru şekilde topladığı grup sayısı)
+// — TEK gerçek kaynak, iki yerde ayrı ayrı "gruplama aktif mi" kararı
+// tekrarlanmıyor.
+function buildDocumentsOccupancyParts(rowGroups, rows, blockOrder, attributionBuilder = formatDocumentBlockAttributionPhrase) {
+  if (rowGroups.length <= 1) {
     const occupancyTexts = rows.filter((row) => isOccupancyPermitDocument(row.type)).map((row) => buildOccupancyPermitDocumentSentence(row));
     return occupancyTexts.length ? occupancyTexts : [buildOccupancyPermitDocumentSentence({})];
   }
@@ -32188,18 +32224,25 @@ function buildDocumentsOccupancyParts(rowGroups, rows, blockOrder) {
 
   const parts = [];
   foundGroups.forEach((items, prefix) => {
-    parts.push(`${prefix} yer alan ${buildDocumentsPermitGroupPhrase(items, blockOrder)} incelenmiştir.`);
+    parts.push(`${prefix} yer alan ${buildDocumentsPermitGroupPhrase(items, blockOrder, attributionBuilder)} incelenmiştir.`);
   });
   if (missingBlockLabels.length) {
     const sortedMissingLabels = missingBlockLabels.slice().sort((a, b) => (blockOrder.get(a) ?? 0) - (blockOrder.get(b) ?? 0));
-    const attribution = formatDocumentBlockAttributionPhrase(sortedMissingLabels);
+    const attribution = attributionBuilder(sortedMissingLabels);
     parts.push(`Ekspertize konu taşınmazların yer aldığı ${attribution} yapı kullanma izin belgesi bulunamamıştır.`);
   }
   return parts;
 }
 
 function buildReviewedDocumentsDescription() {
-  const rowGroups = collectDocumentsDescriptionRowGroups();
+  // Kullanıcı talebi (2026-09-15): "İncelenen Belgeler Açıklaması ise
+  // yine ortak cümle çoklu formata uygun olacak" — farklı ada/parsel
+  // (Kat İrtifakı dışı) çoklu raporlarda "Blok" etiketleyici/atfı yerine
+  // Madde 4'te (0.0.788) tanıtılan parsel etiketleyici/atfı kullanılır.
+  const isParcelMode = !isDocumentsBlockGroupingActive() && isMultiTitleUnitReportForNarrative() && hasMixedTitleUnitParcels();
+  const labelBuilder = isParcelMode ? computeDocumentsParcelGroupLabel : computeDocumentsBlockLabel;
+  const attributionBuilder = isParcelMode ? formatParcelAttributionPhrase : formatDocumentBlockAttributionPhrase;
+  const rowGroups = collectDocumentsDescriptionRowGroups(labelBuilder);
   const blockOrder = new Map(rowGroups.map((group, index) => [group.blockLabel, index]));
   const rows = rowGroups.flatMap((group) => (
     getReviewedDocumentChronologicalEntries(group.rows)
@@ -32224,13 +32267,13 @@ function buildReviewedDocumentsDescription() {
   const parts = [];
   if (permitGroups.size) {
     permitGroups.forEach((permitItems, prefix) => {
-      parts.push(`${prefix} yer alan ${buildDocumentsPermitGroupPhrase(permitItems, blockOrder)} incelenmiştir.`);
+      parts.push(`${prefix} yer alan ${buildDocumentsPermitGroupPhrase(permitItems, blockOrder, attributionBuilder)} incelenmiştir.`);
     });
   } else {
     const prefix = buildDocumentArchivePrefix();
     parts.push(`${prefix} yapılan incelemelerde taşınmaza ait yeni yapı ruhsatı bulunamamıştır.`);
   }
-  parts.push(...buildDocumentsOccupancyParts(rowGroups, rows, blockOrder));
+  parts.push(...buildDocumentsOccupancyParts(rowGroups, rows, blockOrder, attributionBuilder));
   parts.push(...ekbParts);
 
   return normalizeReportDescriptionText(parts.join("\n\n"));
