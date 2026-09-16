@@ -41087,20 +41087,32 @@ function parseBoundNeighborhoodTextForLookup(value = "") {
   return { neighborhood, district, city };
 }
 
+// Dönüş değeri (bkz. selfHealBoundNeighborhoodCoordinatesIfNeeded'in bunu
+// NASIL kullandığı): { attempted, found, error }. "error: true" —
+// GEÇİCİ bir başarısızlık (ör. sayfa yeni açılırken Firebase kimlik
+// doğrulama jetonu henüz hazır değilken atılan istek — bkz. fetchRaporApi'nin
+// "await window.RaporCloudSync?.getIdToken?.()" satırı, sayfa yüklenirken
+// bu HENÜZ null dönebilir) — bunu "köy veritabanında hiç yok" (found:false,
+// error yok) durumundan AYIRT ETMEK önemli: ilki YENİDEN denenmeli, ikincisi
+// gereksiz yere tekrar tekrar denenmemeli.
 async function refreshBoundNeighborhoodCoordinatesFromCurrentFields(changedKey = "") {
-  if (changedKey && changedKey !== "boundNeighborhood") return;
+  if (changedKey && changedKey !== "boundNeighborhood") return { attempted: false };
   const parts = parseBoundNeighborhoodTextForLookup(state.fields.boundNeighborhood);
-  if (!parts) return;
+  if (!parts) return { attempted: false };
   try {
     const result = await fetchNeighborhoodLookup("postal", parts);
     const match = normalizeNeighborhoodApiRow(result.match);
-    if (!match || !Number.isFinite(match.lat) || !Number.isFinite(match.lng)) return;
+    if (!match || !Number.isFinite(match.lat) || !Number.isFinite(match.lng)) return { attempted: true, found: false };
     state.fields.boundNeighborhoodLat = match.lat.toFixed(6);
     state.fields.boundNeighborhoodLng = match.lng.toFixed(6);
+    return { attempted: true, found: true };
   } catch {
     // Sessiz: bağlı köy koordinatı emsal mesafesi için isteğe bağlı bir
     // iyileştirme — ağ hatası rapor akışını KESMEMELİ (bkz.
-    // applyPostalCodeFromSelectedNeighborhood'daki AYNI ilke).
+    // applyPostalCodeFromSelectedNeighborhood'daki AYNI ilke). Ama çağıranın
+    // bunu GEÇİCİ bir hata olarak tanıyıp YENİDEN deneyebilmesi için
+    // error:true olarak işaretlenir.
+    return { attempted: true, found: false, error: true };
   }
 }
 
@@ -41124,12 +41136,22 @@ async function refreshBoundNeighborhoodCoordinatesFromCurrentFields(changedKey =
 // güncellemez — düzeltilmiş mesafenin görünmesi için ilgili emsalin
 // konumunun (Haritadan seç) YENİDEN seçilmesi/kaydedilmesi gerekir.
 const boundNeighborhoodCoordinateSyncAttempts = new Set();
-function selfHealBoundNeighborhoodCoordinatesIfNeeded() {
+async function selfHealBoundNeighborhoodCoordinatesIfNeeded() {
   const value = state.fields.boundNeighborhood;
   if (!value || state.fields.boundNeighborhoodLat) return;
   if (boundNeighborhoodCoordinateSyncAttempts.has(value)) return;
   boundNeighborhoodCoordinateSyncAttempts.add(value);
-  refreshBoundNeighborhoodCoordinatesFromCurrentFields("boundNeighborhood");
+  const outcome = await refreshBoundNeighborhoodCoordinatesFromCurrentFields("boundNeighborhood");
+  // Kullanıcı bildirimi (2026-09-16, canlı kanıt): sayfa YENİ açılırken bu
+  // self-heal ilk denemesi Firebase kimlik doğrulama jetonu henüz hazır
+  // olmadığı için (bkz. fetchRaporApi/getIdToken) SESSİZCE başarısız
+  // oluyordu — ama değer YUKARIDA zaten "denendi" işaretlendiğinden bir
+  // SONRAKİ render() ASLA yeniden denemiyordu (koordinat SONSUZA KADAR boş
+  // kalıyordu). Yalnızca GEÇİCİ hatada (error:true) işareti geri al ki bir
+  // SONRAKİ render() gerçekten yeniden dener; GERÇEK "köy veritabanında
+  // yok" durumunda (found:false, error yok) işaretli kalır (gereksiz
+  // tekrar istek atılmaz).
+  if (outcome?.error) boundNeighborhoodCoordinateSyncAttempts.delete(value);
 }
 
 function cleanNeighborhoodName(value) {

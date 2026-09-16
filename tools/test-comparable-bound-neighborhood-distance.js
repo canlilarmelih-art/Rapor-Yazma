@@ -489,5 +489,42 @@ function freshState(fields = {}) {
     console.log("selfHealBoundNeighborhoodCoordinatesIfNeeded() aynı-değer tekrar-render REGRESYON testi tamam.");
   }
 
+  // --- 13) KULLANICI TALEBİ (2026-09-16, canlı tarayıcı kanıtıyla doğrulandı):
+  // sayfa YENİ açılırken bu self-heal'in İLK denemesi GEÇİCİ bir nedenle
+  // (canlı üründe: Firebase kimlik doğrulama jetonu henüz hazır değilken
+  // atılan istek, bkz. fetchRaporApi/getIdToken — burada bir "throw" ile
+  // taklit edilir) başarısız olabiliyordu — ESKİ kodda değer YİNE DE
+  // "denendi" olarak KALICI işaretlenip bir daha ASLA yeniden denenmiyordu
+  // (koordinat SONSUZA KADAR boş kalıyordu, tıpkı kullanıcının bildirdiği
+  // gerçek raporda olduğu gibi). Düzeltme: yalnızca GEÇİCİ hatada (error:true)
+  // işaret geri alınır ki BİR SONRAKİ render() çağrısı (burada: self-heal'in
+  // İKİNCİ çağrısı) GERÇEKTEN yeniden dener ve başarılı olur.
+  {
+    fns.resetBoundNeighborhoodCoordinateSyncAttempts();
+    const context = freshState({
+      boundNeighborhood: "Canbazlarköyü - Gürsu / Bursa",
+    });
+    fns.setState(context);
+    let callCount = 0;
+    fns.setFetchNeighborhoodLookupImpl(async () => {
+      callCount += 1;
+      if (callCount === 1) throw new Error("Sunucu işlemleri için geçerli bir oturum açın.");
+      return { ok: true, match: { city: "Bursa", district: "Gürsu", neighborhood: "Canbazlarköyü", lat: "40.243823", lng: "29.188681" } };
+    });
+
+    // 1. deneme (sayfa ilk açıldığında, kimlik doğrulama jetonu henüz hazır DEĞİL) — BAŞARISIZ olmalı.
+    await fns.selfHealBoundNeighborhoodCoordinatesIfNeeded();
+    assert.equal(context.fields.boundNeighborhoodLat, undefined, "1. deneme (geçici hata) koordinatı YANLIŞLIKLA doldurmamalı.");
+    assert.equal(callCount, 1, "1. deneme tam olarak bir ağ çağrısı yapmalı.");
+
+    // 2. deneme (bir SONRAKİ render() — jeton artık hazır) — BAŞARILI olmalı,
+    // ESKİ kod bu noktada (kalıcı işaret nedeniyle) SESSİZCE hiçbir şey yapmazdı.
+    await fns.selfHealBoundNeighborhoodCoordinatesIfNeeded();
+    assert.equal(callCount, 2, "KULLANICI TALEBİ: geçici hatadan SONRA bir sonraki render() YENİDEN denemeli (kalıcı olarak vazgeçmemeli).");
+    assert.equal(context.fields.boundNeighborhoodLat, "40.243823", `KULLANICI TALEBİ: 2. denemede koordinat GERÇEKTEN senkronlanmalı, bulunan: ${context.fields.boundNeighborhoodLat}`);
+
+    console.log("selfHealBoundNeighborhoodCoordinatesIfNeeded() KULLANICI TALEBİ (geçici hatadan sonra yeniden deneme) testi tamam.");
+  }
+
   console.log("Emsal konum mesafesinin bağlı köy koordinatından GERÇEK ölçümü testleri başarılı.");
 })();
