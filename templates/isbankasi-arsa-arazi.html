@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word">
+<head>
+<meta charset="utf-8">
+<title>İş Bankası Rapor Formatı (Arsa/Arazi)</title>
+<!--
+  İŞ BANKASI ARSA/ARAZİ GAYRİMENKUL DEĞERLEME RAPOR ŞABLONU —
+  templates/isbankasi.html (konut) ile AYNI mantık/biçim kullanılır;
+  yalnızca "Bağımsız Bölüm Genel Özellikleri" ve "Bağımsız Bölümün Diğer
+  Özellikleri" (bina/bağımsız bölüme özgü) bölümleri TAMAMEN KALDIRILDI,
+  "Yapının Genel Özellikleri" bölümü "Arsa Özellikleri" (LAND_* alanları,
+  templates/kuveytturk-arsa-arazi.html/ziraat-arsa-arazi.html'deki AYNI
+  alan seti) ile DEĞİŞTİRİLDİ; dağınık bina/BB'ye özgü diğer satırlar da
+  kaldırıldı. Diğer tüm bölümler konut şablonuyla birebir aynıdır.
+-->
+<style>
+  @page WordSection1 { size: 595.35pt 841.95pt; margin: 36pt; mso-header-margin:35.4pt; mso-footer-margin:35.4pt; mso-paper-source:0; }
+  body { margin: 0; font-family: Arial, sans-serif; font-size: 7pt; color: #555f68; background: #ffffff; }
+  div.WordSection1 { page: WordSection1; }
+  h1 { margin: 0; padding: 7pt 9pt; border: 1pt solid #c7ccd1; background: #eef0f2; color: #173d5c; font-size: 13pt; font-weight: 900; }
+  .report-kicker { margin: 0 0 8pt; padding: 3pt 9pt; border: 1pt solid #d5d9dd; border-top: 0; color: #2d89c5; font-size: 7pt; font-weight: 700; }
+  h2 { margin: 12pt 0 5pt; padding: 4pt 6pt; border: 1pt solid #c7ccd1; background: #eef0f2; color: #173d5c; font-size: 9pt; font-weight: 900; }
+  h3 { margin: 7pt 0 3pt; padding: 2.5pt 4pt; border-left: 3pt solid #4ca6d2; background: #f6f7f8; color: #2d89c5; font-size: 7.5pt; font-weight: 900; }
+  p { margin: 0 0 6pt; line-height: 1.25; text-align: justify; }
+  .encumbrance-summary { font-size: 10pt; text-align: justify; }
+  .share-explanation { font-size: 10pt; text-align: justify; }
+  .subtle { color: #7b848c; font-size: 6.5pt; }
+  .page-start { page-break-before: always; }
+  .keep { page-break-inside: avoid; break-inside: avoid; }
+
+  table.meta { width: 100%; margin: 5pt 0 12pt; border-collapse: collapse; border: 1pt solid #c7ccd1; table-layout: fixed; font-size: 7pt; }
+  table.meta tr { height: 18pt; mso-height-source: userset; mso-height-rule: at-least; }
+  table.meta td { height: 18pt; padding: 1.7pt 3pt; border: 1pt solid #d5d9dd; vertical-align: middle; line-height: 1.05; }
+  table.meta td p { margin: 0; line-height: 1.05; }
+  table.meta td.l { width: 20%; background: #f0f1f2; color: #2d89c5; font-weight: 900; }
+  table.meta td.v { width: 30%; background: #fafafa; color: #5a636b; }
+  table.meta td.section-cell { padding: 3pt 4pt; background: #e5e7e9; color: #173d5c; font-weight: 900; }
+
+  .word-table { width: 100%; margin: 5pt 0 12pt; border-collapse: collapse; border: 1pt solid #c7ccd1; font-size: 7pt; }
+  .word-table th, .word-table td { padding: 1.7pt 3pt; mso-padding-alt: 1.7pt 3pt 1.7pt 3pt; border: 1pt solid #d5d9dd; vertical-align: top; line-height: 8pt; mso-line-height-rule: exactly; }
+  .word-table th { background: #e9ebed; color: #2d89c5; font-weight: 900; text-align: left; }
+  .word-table tbody tr:nth-child(even) td { background: #f6f7f8; }
+
+  .narrative { margin: 5pt 0 12pt; padding: 5pt 6pt; border: 1pt solid #d5d9dd; background: #f8f8f8; }
+  .narrative p:last-child { margin-bottom: 0; }
+  .pg-section h2 { margin-top: 0; }
+  .pg-section table.meta td, .pg-section .word-table td, .pg-section .word-table th { padding: 1pt 2pt; mso-padding-alt: 1pt 2pt 1pt 2pt; font-size: 6pt; line-height: 6.5pt; mso-line-height-rule: exactly; }
+  .pg-section .word-table tr { height: 0.55cm; mso-height-source: userset; mso-height-rule: at-least; }
+  .table-block { margin-bottom: 16px; page-break-inside: avoid; break-inside: avoid; }
+</style>
+</head>
+<body>
+<div class="WordSection1">
+
+<h1>İŞ BANKASI GAYRİMENKUL DEĞERLEME RAPORU (ARSA/ARAZİ)</h1>
+<div class="report-kicker">RAPOR / DEĞERLEME RAPORU</div>
+
+<table class="meta keep">
+  <tr><td class="l">BANKA</td><td class="v">{{BANK}}</td><td class="l">RAPOR NO</td><td class="v">{{İŞ_ADI}}</td></tr>
+  <tr><td class="l">MÜŞTERİ / TALEP EDEN</td><td class="v">{{CUSTOMER_NAME}}</td><td class="l">RANDEVU TARİHİ</td><td class="v">{{APPOINTMENT_DATE}}</td></tr>
+  <tr><td class="l">BELEDİYE İNCELEME TARİHİ</td><td class="v">{{MUNICIPALITY_INSPECTION_DATE}}</td><td class="l">RANDEVU TÜRÜ</td><td class="v">{{APPOINTMENT_TYPE}}</td></tr>
+</table>
+
+<h2>1. TAPU SEKMESİ</h2>
+<table class="meta">
+  <tr><td class="section-cell" colspan="4">Tapu ve Taşınmaz Kimlik Bilgileri</td></tr>
+  <tr><td class="l">TAPUNUN TÜRÜ</td><td class="v">{{GROUND_TYPE}}</td><td class="l">MÜLKİYET TÜRÜ</td><td class="v">{{OWNERSHIP_TYPE}}</td></tr>
+  <tr><td class="l">İL</td><td class="v">{{TITLE_CITY_ORTAK}}</td><td class="l">İLÇE</td><td class="v">{{TITLE_DISTRICT_ORTAK}}</td></tr>
+  <tr><td class="l">MAHALLE / KÖY</td><td class="v">{{TITLE_NEIGHBORHOOD_ORTAK}}</td><td class="l">MEVKİ / BUCAK</td><td class="v">{{LOCATION_NAME_ORTAK}}</td></tr>
+  <tr><td class="l">YÜZÖLÇÜMÜ</td><td class="v">{{LAND_AREA}} m²</td><td class="l">PAFTA</td><td class="v">{{SHEET_NO_ORTAK}}</td></tr>
+  <tr><td class="l">ADA</td><td class="v">{{BLOCK_NO_ORTAK}}</td><td class="l">PARSEL</td><td class="v">{{PARCEL_NO_ORTAK}}</td></tr>
+  <tr><td class="l">ANA TAŞINMAZ VASFI GRUBU</td><td class="v">{{MAIN_PROPERTY_QUALITY}}</td><td class="l">ANA TAŞINMAZ VASFI</td><td class="v">{{MAIN_PROPERTY_QUALITY}}</td></tr>
+  <tr><td class="l">TAŞINMAZIN TAPUDAKİ NİTELİĞİ</td><td class="v" colspan="3">{{TITLE_QUALITY_ORTAK}}</td></tr>
+  <tr><td class="l">ARSA PAYI</td><td class="v">{{SHARE_ORTAK}}</td><td class="l">ARSA PAYDA</td><td class="v">{{DENOMINATOR_ORTAK}}</td></tr>
+  <tr><td class="l">YEVMİYE TARİHİ</td><td class="v">{{TAPU_TARIHI_ORTAK}}</td><td class="l">YEVMİYE NO</td><td class="v">{{TAPU_YEVMIYESI_ORTAK}}</td></tr>
+  <tr><td class="l">CİLT NO</td><td class="v">{{REGISTRY_VOLUME_ORTAK}}</td><td class="l">SAHİFE NO</td><td class="v">{{REGISTRY_PAGE_ORTAK}}</td></tr>
+  <tr><td class="l">EDİNME SEBEBİ</td><td class="v" colspan="3">{{EDINME_SEBEBI_BUYUK_ORTAK}}</td></tr>
+  <tr><td class="l">UAVT TESPİT EDİLDİ Mİ?</td><td class="v">&nbsp;</td><td class="l">UAVT</td><td class="v">{{UAVT}}</td></tr>
+  <tr><td class="l">TAŞINMAZ (ZEMİN) ID</td><td class="v" colspan="3">{{TITLE_PROPERTY_ID_ORTAK}}</td></tr>
+</table>
+<h3>Malik Bilgileri</h3>
+{{MALIKLER_TABLO}}
+{{TASINMAZLARTAPUTABLOSU}}
+{{TASINMAZLARGABIMTABLOSU}}
+
+<h2>2. KONUM BİLGİLERİ</h2>
+<table class="meta">
+  <tr><td class="section-cell" colspan="4">Adres ve Koordinat Bilgileri</td></tr>
+  <tr><td class="l">İL</td><td class="v">{{CITY_BUYUK}}</td><td class="l">İLÇE</td><td class="v">{{DISTRICT_BUYUK}}</td></tr>
+  <tr><td class="l">MAHALLE / KÖY</td><td class="v">{{NEIGHBORHOOD_BUYUK}}</td><td class="l">SEMT / MEVKİ</td><td class="v">{{LOCATION_NAME}}</td></tr>
+  <tr><td class="l">POSTA KODU</td><td class="v">{{POSTAL_CODE}}</td><td class="l">ENLEM / BOYLAM</td><td class="v">{{LATITUDE}} / {{LONGITUDE}}</td></tr>
+  <tr><td class="l">AÇIK ADRES</td><td class="v" colspan="3">{{LAND_OPEN_ADDRESS_TEXT}}</td></tr>
+</table>
+<h3>Ulaşım Tarifi</h3>
+<div class="narrative">{{TRANSPORT_REPORT_TEXT}}</div>
+{{LOCATION_MAP_SECTION}}
+{{TASINMAZLARADRESTABLOSU}}
+
+<h2>3. ÖZELLİKLER SEKMESİ</h2>
+{{TAKYIDAT_TABLO}}
+
+<h3>Tapu Kayıtları ve Kısıtlar</h3>
+<table class="meta keep">
+  <tr><td class="l">FİİLİ KULLANIM NİTELİĞİ</td><td class="v">{{FIILIBBTURU}}</td><td class="l">KULLANIM DURUMU</td><td class="v">{{ISBANKKULLANIMDURUMU}}</td></tr>
+  <tr><td class="l">TAPU KAYDI DEĞİŞİKLİĞİ</td><td class="v" colspan="3">{{TAPUKAYIT}}</td></tr>
+  <tr><td class="l">TAKYİDAT TARİHİ</td><td class="v">{{TAKBİS_DATE}}</td><td class="l">TAKYİDAT SAATİ</td><td class="v">{{TAKBİS_TIME}}</td></tr>
+</table>
+<div class="narrative">{{ISBANK_ENCUMBRANCE_EXPLANATION}}</div>
+<div class="narrative">{{ENCUMBRANCE_SUMMARY_TEXT}}</div>
+
+<h3>İmar Durumu Bilgileri</h3>
+<table class="meta">
+  <tr><td class="l">BİLGİ ALINAN KURUM</td><td class="v">{{IMAR_INFO_INSTITUTION}}</td><td class="l">PLAN TÜRÜ</td><td class="v">{{PLAN_TYPE}}</td></tr>
+  <tr><td class="l">PLAN ADI / TARİHİ</td><td class="v">{{PLAN_NAME}} / {{PLAN_DATE}}</td><td class="l">PLAN ÖLÇEĞİ</td><td class="v">{{PLAN_SCALE}}</td></tr>
+  <tr><td class="l">İMAR LEJANDI</td><td class="v">{{LEGEND}}</td><td class="l">PLANI ONAYLAYAN İDARE</td><td class="v">{{IMAR_INFO_INSTITUTION}}</td></tr>
+  <tr><td class="l">YAPI NİZAMI / KAT ADEDİ</td><td class="v">{{ORDER}} / {{FLOOR_COUNT}}</td><td class="l">HMAX</td><td class="v">{{HMAX}}</td></tr>
+  <tr><td class="l">TAKS / KAKS</td><td class="v">{{TAKS}} / {{KAKS}}</td><td class="l">HESAPLANAN EMSAL</td><td class="v">{{CALCULATED_EMSAL}}</td></tr>
+  <tr><td class="l">ÖN / YAN BAHÇE</td><td class="v">{{FRONT_GARDEN}} / {{SIDE_GARDEN}}</td><td class="l">TEVHİD ŞARTI</td><td class="v">{{TEVHİD_CONDITION}}</td></tr>
+  <tr><td class="l">MİNİMUM CEPHE ŞARTI</td><td class="v">{{MINIMUM_FRONTAGE_CONDITION}}</td><td class="l">18. MADDE UYGULAMASI</td><td class="v">{{ARTICLE18_APPLIED}}</td></tr>
+</table>
+<div class="narrative">{{PLANNING_NOTE_TEXT}}</div>
+{{TASINMAZLARIMARTABLOSU}}
+
+<h3>İncelenen Belgeler</h3>
+{{İNCELENEN_BELGELER_TABLO}}
+<table class="meta">
+  <tr><td class="l">MİMARİ PROJE VAR MI?</td><td class="v">{{HAS_ARCHITECTURAL_PROJECT}}</td><td class="l">PROJE İNCELENEN KURUM</td><td class="v">{{PROJECT_INSTITUTION}}</td></tr>
+  <tr><td class="l">PROJE TÜRÜ</td><td class="v">{{PROJECT_TYPE}}</td><td class="l">PROJE TARİHİ / NO</td><td class="v">{{PROJECT_DATE}} / {{PROJECT_NO}}</td></tr>
+  <tr><td class="l">PROJE UYGUNLUK DURUMU</td><td class="v">{{PROJECT_SUITABILITY_STATUS}}</td><td class="l">VAR İSE AÇIKLAMASI</td><td class="v">{{PROJECT_CONFORMITY}}</td></tr>
+  <tr><td class="l">CEZAİ KARAR VAR MI?</td><td class="v">{{PENALTY_DECISION_STATUS}}</td><td class="l">STATİK UYGUNLUK</td><td class="v">{{STATIC_SUITABILITY}}</td></tr>
+</table>
+<h3>İncelenen Diğer Belgeler ve Yapılan Araştırmalar</h3>
+<div class="narrative">{{PROJECT_REVIEW_DESCRIPTION}}</div>
+<div class="narrative">{{REVIEWED_DOCUMENTS_DESCRIPTION}}</div>
+{{TASINMAZLARBELGETABLOSU}}
+
+<!-- Konut şablonundaki "Yapının Genel Özellikleri" (bina yapı tarzı/sınıfı/
+     asansör/otopark/havuz vb.) bölümü yerine "Arsa Özellikleri" (LAND_*
+     alanları, templates/kuveytturk-arsa-arazi.html ile AYNI alan seti)
+     geldi — çıplak arsa/arazide bina özellikleri karşılığı yok. -->
+<h3>Arsa Özellikleri</h3>
+<table class="meta">
+  <tr><td class="l">PARSELİN GEOMETRİK ŞEKLİ</td><td class="v">{{LAND_SHAPE}}</td><td class="l">KADASTRAL/İMAR YOLUNA CEPHELİ Mİ?</td><td class="v">{{LAND_ROAD_FRONTAGE}}</td></tr>
+  <tr><td class="l">ARAZİ SINIFLANDIRMASI</td><td class="v">{{LAND_CLASSIFICATION}}</td><td class="l">PARSEL ÜZERİNDE ZİRAİ ÜRÜN VAR MI?</td><td class="v">{{LAND_AGRICULTURAL_PRODUCT}}</td></tr>
+  <tr><td class="l">DEPREM BÖLGESİ DERECESİ</td><td class="v" colspan="3">{{EARTHQUAKE_ZONE}}</td></tr>
+</table>
+<div class="narrative">{{LAND_USAGE_SHAPE_TEXT}}</div>
+<div class="narrative">{{LAND_USAGE_PURPOSE_TEXT}}</div>
+<div class="narrative">{{LAND_DEVELOPMENT_OBSTACLE_TEXT}}</div>
+<div class="narrative">{{LAND_INFRASTRUCTURE_TOPOGRAPHY_TEXT}}</div>
+<div class="narrative">{{LAND_FRONTAGE_DEPTH_TEXT}}</div>
+<div class="narrative">{{LAND_BOUNDARY_STATUS_TEXT}}</div>
+{{TASINMAZLARARSATABLOSU}}
+{{LAND_NOTE}}
+<div class="narrative">Türkiye Deprem Tehlike Haritaları üzerinden yapılan sorgulamada değerleme konusu taşınmazın konumu için PGA 475 değeri {{PGA_475}} olarak tespit edilmiştir.</div>
+<table class="meta keep"><tr><td class="v"><a href="https://tdth.afad.gov.tr/TDTH/main.xhtml">tdth.afad.gov.tr/TDTH/main.xhtml</a></td></tr></table>
+<table class="meta keep"><tr><td class="v">Enlem: {{LATITUDE}} / Boylam: {{LONGITUDE}}</td></tr></table>
+<div class="narrative">Taşınmazın PGA değerini enlem ve boylam bilgileri ile yukarıda yer alan link üzerinden öğrenebilirsiniz.</div>
+
+<h3>Çevresel Özellikler</h3>
+<table class="meta">
+  <tr><td class="l">ULAŞIM İMKANI</td><td class="v">{{GABIM_TRANSPORTATION}}</td><td class="l">YAPILAŞMA HIZI</td><td class="v">{{GABIM_DEVELOPMENT_SPEED}}</td></tr>
+  <tr><td class="l">BÜYÜK YATIRIM PROJELERİ YOĞUNLUĞU</td><td class="v">{{GABIM_MAJOR_INVESTMENT}}</td><td class="l">TİCARİ ALAN GELİŞME HIZI</td><td class="v">{{GABIM_COMMERCIAL_SPEED}}</td></tr>
+</table>
+<div class="narrative">{{ENVIRONMENTAL_FEATURES_TEXT}}</div>
+
+<h3>Değere Etki Eden Faktörler</h3>
+<table class="meta">
+  <tr><td class="section-cell" colspan="2">OLUMLU FAKTÖRLER</td><td class="section-cell" colspan="2">OLUMSUZ FAKTÖRLER</td></tr>
+  <tr><td class="v" colspan="2">{{DEGERI_ETKILEYEN_OLUMLU_FAKTORLER}}</td><td class="v" colspan="2">{{DEGERI_ETKILEYEN_OLUMSUZ_FAKTORLER}}</td></tr>
+</table>
+
+<div class="pg-section">
+<h2 class="page-start">4. DEĞERLEME SEKMESİ</h2>
+<table class="meta">
+  <tr><td class="section-cell" colspan="4">Değerler</td></tr>
+  <tr><td class="l">YASAL DURUM ACİL SATIŞ DEĞERİ</td><td class="v">{{LEGAL_URGENT_SALE_VALUE}}</td><td class="l">MEVCUT DURUM ACİL SATIŞ DEĞERİ</td><td class="v">{{CURRENT_URGENT_SALE_VALUE}}</td></tr>
+  <tr><td class="l">YASAL DURUM PİYASA DEĞERİ</td><td class="v">{{LEGAL_VALUE}}</td><td class="l">MEVCUT DURUM PİYASA DEĞERİ</td><td class="v">{{CURRENT_VALUE}}</td></tr>
+  <tr><td class="l">SİGORTAYA ESAS DEĞER</td><td class="v">{{INSURANCE_VALUE}}</td><td class="l">AYLIK KİRA DEĞERİ</td><td class="v">{{CURRENT_RENT}}</td></tr>
+  <tr><td class="l">UZMAN KANAATİ</td><td class="v" colspan="3">{{SALEABILITY_NOTE}}</td></tr>
+</table>
+<h3>Değerle İlgili Açıklamalar</h3>
+{{DEGERLEME_YONTEMI_ACIKLAMASI}}
+{{BUILDING_INSPECTION_TERMINATION_EXPLANATION_TEXT}}
+{{HISSE_ACIKLAMASI}}
+{{SATIS_KABILIYETI_ACIKLAMASI}}
+{{TARLA_BAHCE_DEGERLEME_RISKI_ACIKLAMASI}}
+{{KIRA_ACIKLAMASI}}
+{{EMLAK_BEYAN_DEGERI_ACIKLAMASI}}
+<div class="table-block">{{DEGERLENDIRME_TABLOSU}}</div>
+<div class="table-block">{{KAT_BAZINDA_INDIRGENMIS_ALAN_TABLOSU}}</div>
+<div class="table-block">{{DEGERLENDIRME_SEMASI}}</div>
+{{TASINMAZLARDEGERLEMETABLOSU}}
+</div>
+
+<div class="pg-section">
+<h2 class="page-start">5. EMSALLER SEKMESİ</h2>
+{{EMSAL_MATRISI}}
+<h3>Emsal Açıklaması</h3>
+<div class="narrative">{{EMSAL_PIYASA_ANALIZI}}</div>
+{{COMPARABLE_SKETCH_SECTION}}
+<p style="margin:0;padding:0;height:12pt;line-height:12pt;font-size:1pt;mso-line-height-rule:exactly;">&nbsp;</p>
+</div>
+
+<div class="pg-section">
+<h2 class="page-start">GDYS YARDIMCI BİLGİLER</h2>
+<table class="meta">
+  <tr><td class="l">İL / İLÇE</td><td class="v">{{CITY_BUYUK}} / {{DISTRICT_BUYUK}}</td><td class="l">MAHALLE / KÖY</td><td class="v">{{NEIGHBORHOOD_BUYUK}}</td></tr>
+  <tr><td class="l">AÇIK ADRES</td><td class="v">{{LAND_OPEN_ADDRESS_TEXT}}</td><td class="l">UAVT KODU</td><td class="v">{{UAVT}}</td></tr>
+  <tr><td class="l">ARAZİ SINIFLANDIRMASI</td><td class="v">{{LAND_CLASSIFICATION}}</td><td class="l">YASAL / MEVCUT ALAN</td><td class="v">{{LEGAL_AREA}} / {{CURRENT_AREA}}</td></tr>
+  <tr><td class="l">YASAL / MEVCUT DEĞER</td><td class="v">{{LEGAL_VALUE}} / {{CURRENT_VALUE}}</td><td class="l">SATIŞ KABİLİYETİ</td><td class="v">{{SALEABILITY_NOTE}}</td></tr>
+</table>
+</div>
+
+<div class="pg-section">
+<h2 class="page-start">GABİM VERİ SETİ</h2>
+{{GABIM_VERI_SETI}}
+</div>
+
+<h2>ÇALIŞMA KAĞIDI</h2>
+<table class="meta">
+  <tr><td class="l">PLAN ADI</td><td class="v">{{PLAN_NAME}}</td><td class="l">PLAN ÖLÇEĞİ</td><td class="v">{{PLAN_SCALE}}</td></tr>
+  <tr><td class="l">İMAR LEJANDI</td><td class="v">{{LEGEND}}</td><td class="l">PLAN ONAY TARİHİ</td><td class="v">{{PLAN_DATE}}</td></tr>
+  <tr><td class="l">TAKS / KAKS / HMAX</td><td class="v">{{TAKS}} / {{KAKS}} / {{HMAX}}</td><td class="l">ÖN / YAN BAHÇE</td><td class="v">{{FRONT_GARDEN}} / {{SIDE_GARDEN}}</td></tr>
+</table>
+{{İNCELENEN_BELGELER_TABLO}}
+
+</div>
+</body>
+</html>

@@ -439,7 +439,10 @@ comparableTemplateFiles.forEach((file) => {
   const text = fs.readFileSync(path.join(appDir, "templates", file), "utf8");
   const isZiraatSystemTemplate = file === "ziraat.html" || file === "ziraat-arsa-arazi.html";
   let previousIndex = text.indexOf("{{DEGERLEME_YONTEMI_ACIKLAMASI}}") - 1;
-  const expectedValuationTokens = file === "halkbank.html"
+  // "-arsa-arazi" varyantı, temel bankanın KENDİ (bilinçli) kısıtını
+  // (Halkbank'ın Kira Açıklaması'nı hiç göstermemesi) MİRAS alır — bu
+  // bankaya özgü bir tercih, arsa/arazi'ye özgü değil.
+  const expectedValuationTokens = (file === "halkbank.html" || file === "halkbank-arsa-arazi.html")
     ? valuationSectionOrderTokens.filter((token) => token !== "{{KIRA_ACIKLAMASI}}")
     : valuationSectionOrderTokens;
   expectedValuationTokens.forEach((token) => {
@@ -489,7 +492,10 @@ assert(
   !kuveytturkTemplate.includes("<div class=\"kt-subsec\">Statik Uygunluk Açıklaması</div>"),
   "kuveytturk.html: degerleme tablo onu not/statik uygunluk metinlerinde alt baslik kalmis."
 );
-comparableTemplateFiles.filter((file) => file !== "isbankasi.html").forEach((file) => {
+// "-arsa-arazi" varyantı, temel bankanın KENDİ (bilinçli) kısıtını (İş
+// Bankası'nın ayrı bir "Emsal Değerleme Tablosu" bloğu göstermemesi)
+// MİRAS alır — bu bankaya özgü bir tercih, arsa/arazi'ye özgü değil.
+comparableTemplateFiles.filter((file) => file !== "isbankasi.html" && file !== "isbankasi-arsa-arazi.html").forEach((file) => {
   const text = fs.readFileSync(path.join(appDir, "templates", file), "utf8");
   // Kullanıcı talebi (2026-09-15): "Emsaller bölümünde sadece ziraat bankası
   // template çıktısında emsal koordinatlarını virgüllü ondalıkla export

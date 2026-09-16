@@ -29,6 +29,10 @@
   // --------------------------------------------------------------
   const TEMPLATE_REGISTRY = [
     { key: "akbank", file: "templates/akbank.html", title: "Akbank Rapor Formatı", bank: "Akbank T.A.Ş." },
+    // ownershipType (Mülkiyet) Arsa/Tarla ise otomatik olarak bu varyanta yönlendirilir
+    // (bkz. resolveBankTemplateKeyForExport / appendBankTemplateExportBlock). Karışıklığı
+    // önlemek için açılır listede AYRI bir seçenek olarak GÖSTERİLMEZ.
+    { key: "akbank-arsa-arazi", file: "templates/akbank-arsa-arazi.html", title: "Akbank Rapor Formatı (Arsa/Arazi)", bank: "Akbank T.A.Ş.", variant: "arsa-arazi", hiddenFromList: true },
     // Kullanıcı talebi (2026-08-03): "word formatını bozmamalıydın logolar
     // sayfa yapısı çerçeveler... word olarak tutabilirsin" — bu şablon HTML
     // DEĞİL, kullanıcının bize sunduğu gerçek .docx dosyası (format: "docx").
@@ -37,7 +41,15 @@
     // src/exports/docx-fill.js ile yerelde doldurur.
     { key: "emlakkatilim", file: "templates/emlakkatilim.docx", format: "docx", title: "Emlak Katılım Rapor Formatı", bank: "Emlak Katılım Tasarruf Finansman Fonu" },
     { key: "halkbank", file: "templates/halkbank.html", title: "Halkbank Rapor Formatı", bank: "Türkiye Halk Bankası A.Ş." },
+    // ownershipType (Mülkiyet) Arsa/Tarla ise otomatik olarak bu varyanta yönlendirilir
+    // (bkz. resolveBankTemplateKeyForExport / appendBankTemplateExportBlock). Karışıklığı
+    // önlemek için açılır listede AYRI bir seçenek olarak GÖSTERİLMEZ.
+    { key: "halkbank-arsa-arazi", file: "templates/halkbank-arsa-arazi.html", title: "Halkbank Rapor Formatı (Arsa/Arazi)", bank: "Türkiye Halk Bankası A.Ş.", variant: "arsa-arazi", hiddenFromList: true },
     { key: "isbankasi", file: "templates/isbankasi.html", title: "İş Bankası Rapor Formatı", bank: "Türkiye İş Bankası A.Ş." },
+    // ownershipType (Mülkiyet) Arsa/Tarla ise otomatik olarak bu varyanta yönlendirilir
+    // (bkz. resolveBankTemplateKeyForExport / appendBankTemplateExportBlock). Karışıklığı
+    // önlemek için açılır listede AYRI bir seçenek olarak GÖSTERİLMEZ.
+    { key: "isbankasi-arsa-arazi", file: "templates/isbankasi-arsa-arazi.html", title: "İş Bankası Rapor Formatı (Arsa/Arazi)", bank: "Türkiye İş Bankası A.Ş.", variant: "arsa-arazi", hiddenFromList: true },
     { key: "isbankasi-masraf", file: "templates/isbankasi-masraf.html", title: "İş Bankası Masraf Yazısı", bank: "" },
     { key: "kuveytturk", file: "templates/kuveytturk.html", title: "Kuveyt Türk Rapor Formatı", bank: "Kuveyt Türk Katılım Bankası A.Ş." },
     // ownershipType (Mülkiyet) Arsa/Tarla ise otomatik olarak bu varyanta yönlendirilir
@@ -45,8 +57,20 @@
     // önlemek için açılır listede AYRI bir seçenek olarak GÖSTERİLMEZ.
     { key: "kuveytturk-arsa-arazi", file: "templates/kuveytturk-arsa-arazi.html", title: "Kuveyt Türk Rapor Formatı (Arsa/Arazi)", bank: "Kuveyt Türk Katılım Bankası A.Ş.", variant: "arsa-arazi", hiddenFromList: true },
     { key: "vakifbank", file: "templates/vakifbank.html", title: "Vakıfbank Rapor Formatı", bank: "Türkiye Vakıflar Bankası T.A.O." },
+    // ownershipType (Mülkiyet) Arsa/Tarla ise otomatik olarak bu varyanta yönlendirilir
+    // (bkz. resolveBankTemplateKeyForExport / appendBankTemplateExportBlock). Karışıklığı
+    // önlemek için açılır listede AYRI bir seçenek olarak GÖSTERİLMEZ.
+    { key: "vakifbank-arsa-arazi", file: "templates/vakifbank-arsa-arazi.html", title: "Vakıfbank Rapor Formatı (Arsa/Arazi)", bank: "Türkiye Vakıflar Bankası T.A.O.", variant: "arsa-arazi", hiddenFromList: true },
     { key: "vakifkatilim", file: "templates/vakifkatilim.html", title: "Vakıf Katılım Rapor Formatı", bank: "Vakıf Katılım Bankası A.Ş." },
+    // ownershipType (Mülkiyet) Arsa/Tarla ise otomatik olarak bu varyanta yönlendirilir
+    // (bkz. resolveBankTemplateKeyForExport / appendBankTemplateExportBlock). Karışıklığı
+    // önlemek için açılır listede AYRI bir seçenek olarak GÖSTERİLMEZ.
+    { key: "vakifkatilim-arsa-arazi", file: "templates/vakifkatilim-arsa-arazi.html", title: "Vakıf Katılım Rapor Formatı (Arsa/Arazi)", bank: "Vakıf Katılım Bankası A.Ş.", variant: "arsa-arazi", hiddenFromList: true },
     { key: "yapikredi", file: "templates/yapikredi.html", title: "Yapı Kredi Rapor Formatı", bank: "Yapı ve Kredi Bankası A.Ş." },
+    // ownershipType (Mülkiyet) Arsa/Tarla ise otomatik olarak bu varyanta yönlendirilir
+    // (bkz. resolveBankTemplateKeyForExport / appendBankTemplateExportBlock). Karışıklığı
+    // önlemek için açılır listede AYRI bir seçenek olarak GÖSTERİLMEZ.
+    { key: "yapikredi-arsa-arazi", file: "templates/yapikredi-arsa-arazi.html", title: "Yapı Kredi Rapor Formatı (Arsa/Arazi)", bank: "Yapı ve Kredi Bankası A.Ş.", variant: "arsa-arazi", hiddenFromList: true },
     { key: "ziraat", file: "templates/ziraat.html", title: "Ziraat Bankası Rapor Formatı", bank: "T.C. Ziraat Bankası A.Ş." },
     // ownershipType (Mülkiyet) Arsa/Tarla ise otomatik olarak bu varyanta yönlendirilir
     // (bkz. resolveBankTemplateKeyForExport / appendBankTemplateExportBlock). Karışıklığı
