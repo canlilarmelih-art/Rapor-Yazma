@@ -6241,6 +6241,17 @@ function isProjectSuitabilityUiField(sectionId, fieldKey) {
 // kopyaydı, iki liste ayrı ayrı elle senkron tutulma riski taşıyordu).
 const landAddressHiddenKeys = ["addressSiteName", "addressBlockName", "addressEntrance", "outerDoor", "addressFloor", "innerDoor", "uavt", "postalCode"];
 
+// Kullanıcı talebi (2026-09-17): "adres ve konum bölümünde kat iç kapı no
+// gibi bölümleri kaldırmalıydın" (Müstakil Bina) — landAddressHiddenKeys'in
+// 8 alanından SADECE apartman/bağımsız-bölüm-adresleme kavramına özgü 4'ü
+// (Blok/Giriş/Kat/İç Kapı No) müstakil binada da anlamsız — bir müstakil
+// bina bir binadaki "kat" veya "iç kapı"ya sahip değildir, kendisi tek bir
+// yapıdır. Site/Apartman, Dış Kapı No, UAVT, Posta Kodu ise müstakil bina
+// için de geçerli kalabilir (site içindeki müstakil ev, her binanın dış
+// kapı numarası olması gibi) — bu yüzden landAddressHiddenKeys'in TAMAMI
+// DEĞİL, bu dar alt küme Müstakil Bina'ya uygulanır.
+const mustakilBinaAddressHiddenKeys = ["addressBlockName", "addressEntrance", "addressFloor", "innerDoor"];
+
 function isEnvironmentRegionTypeFilteredField(fieldKey) {
   return [
     "commercialFunctionDensity",
@@ -19459,8 +19470,12 @@ function shouldHideField(sectionId, fieldKey) {
     // clearLandOwnershipDependentData'nın AYNI Arsa/Tarla ayrımı).
     // landAddressHiddenKeys artık modül düzeyinde (bkz. tanım) —
     // createForm()'un admin-bypass kontrolüyle PAYLAŞILIYOR (0.0.787).
+    // Müstakil Bina (2026-09-17): AYNI 8 alanın DAR bir alt kümesi
+    // (mustakilBinaAddressHiddenKeys) Müstakil Bina'da da gizlenir — bkz.
+    // yukarıdaki tanım yorumu.
     if (landAddressHiddenKeys.includes(fieldKey)) {
-      return isLandOwnershipType();
+      if (isLandOwnershipType()) return true;
+      return mustakilBinaAddressHiddenKeys.includes(fieldKey) && isMustakilBinaOwnershipType();
     }
     const environmentType = detectEnvironmentalRegionType(state.fields.environmentRegionType);
     const commercialEnvironmentKeys = ["commercialFunctionDensity", "commercialFirmType", "commercialFrontageRoadType", "commercialDevelopmentCompleted"];

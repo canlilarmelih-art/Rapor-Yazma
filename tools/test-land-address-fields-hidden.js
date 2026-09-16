@@ -36,6 +36,16 @@ const normalizeOwnershipTypeSrc = sliceFn("function normalizeOwnershipTypeForSec
 const isLandOwnershipTypeSrc = sliceFn("function isLandOwnershipType(");
 const isTarlaOwnershipTypeSrc = sliceFn("function isTarlaOwnershipType(");
 const isArsaOwnershipTypeSrc = sliceFn("function isArsaOwnershipType(");
+const isMustakilBinaOwnershipTypeSrc = sliceFn("function isMustakilBinaOwnershipType(");
+
+// Müstakil Bina (2026-09-17): "adres ve konum bölümünde kat iç kapı no gibi
+// bölümleri kaldırmalıydın" — landAddressHiddenKeys'in DAR bir alt kümesi
+// (mustakilBinaAddressHiddenKeys) Müstakil Bina'da da gizlenir; şouldHideField
+// bu ikinci sabite bağımlı, AYRICA çıkarılıp context'e eklenmesi gerekiyor.
+const mustakilBinaAddressHiddenKeysStart = appSource.indexOf("const mustakilBinaAddressHiddenKeys = [");
+assert(mustakilBinaAddressHiddenKeysStart >= 0, "mustakilBinaAddressHiddenKeys bulunamadı.");
+const mustakilBinaAddressHiddenKeysEnd = appSource.indexOf("];", mustakilBinaAddressHiddenKeysStart) + 2;
+const mustakilBinaAddressHiddenKeysSrc = appSource.slice(mustakilBinaAddressHiddenKeysStart, mustakilBinaAddressHiddenKeysEnd);
 
 // 0.0.787: landAddressHiddenKeys artık shouldHideField() İÇİNDE yerel bir
 // const DEĞİL, modül düzeyinde (createForm()'un admin-bypass kontrolüyle
@@ -62,11 +72,12 @@ function isHiddenFor(ownershipType, fieldKey) {
   vm.runInContext(isLandOwnershipTypeSrc, context);
   vm.runInContext(isTarlaOwnershipTypeSrc, context);
   vm.runInContext(isArsaOwnershipTypeSrc, context);
-  // landAddressHiddenKeysSrc (bir `const`) ve shouldHideFieldSrc AYNI
-  // vm.runInContext çağrısında birleştirilir — ayrı çağrılardaki top-level
-  // const/let bindingleri birbirine GÖRÜNMEZ (proje belleği, tekrarlanan
-  // vm.runInContext tuzağı).
-  vm.runInContext(`${landAddressHiddenKeysSrc}\n${shouldHideFieldSrc}`, context);
+  vm.runInContext(isMustakilBinaOwnershipTypeSrc, context);
+  // landAddressHiddenKeysSrc/mustakilBinaAddressHiddenKeysSrc (birer `const`)
+  // ve shouldHideFieldSrc AYNI vm.runInContext çağrısında birleştirilir —
+  // ayrı çağrılardaki top-level const/let bindingleri birbirine GÖRÜNMEZ
+  // (proje belleği, tekrarlanan vm.runInContext tuzağı).
+  vm.runInContext(`${landAddressHiddenKeysSrc}\n${mustakilBinaAddressHiddenKeysSrc}\n${shouldHideFieldSrc}`, context);
   return context.shouldHideField("address", fieldKey);
 }
 
@@ -83,10 +94,9 @@ const LAND_HIDDEN_KEYS = ["addressSiteName", "addressBlockName", "addressEntranc
   });
 });
 
-// --- 2) Bina niteligindeki mulkiyet turlerinde (Dikey/Yatay Kat Irtifaki, --
-// Mustakil Bina) HICBIRI gizlenmemeli — REGRESYON kontrolu (bagimsiz
-// bolumu olan raporlarda bu alanlar hala gerekli).
-["Dikey Kat İrtifakı", "Yatay Kat İrtifakı", "Müstakil Bina", ""].forEach((ownershipType) => {
+// --- 2) Kat Irtifaki/Mulkiyeti (bagimsiz bolumu olan) mulkiyet turlerinde --
+// HICBIRI gizlenmemeli — REGRESYON kontrolu.
+["Dikey Kat İrtifakı", "Yatay Kat İrtifakı", ""].forEach((ownershipType) => {
   LAND_HIDDEN_KEYS.forEach((fieldKey) => {
     assert.equal(
       isHiddenFor(ownershipType, fieldKey),
@@ -95,6 +105,22 @@ const LAND_HIDDEN_KEYS = ["addressSiteName", "addressBlockName", "addressEntranc
     );
   });
 });
+
+// --- 2b) Musttakil Bina (2026-09-17 kullanici talebi): 8 alanin SADECE ------
+// apartman/bagimsiz-bolum-adresleme kavramina ozgu DAR alt kumesi
+// (Blok/Giris/Kat/Ic Kapi No) gizlenmeli — Site/Apartman, Dis Kapi No,
+// UAVT, Posta Kodu bir mustakil bina icin de gecerli kalir.
+const MUSTAKIL_BINA_HIDDEN_KEYS = ["addressBlockName", "addressEntrance", "addressFloor", "innerDoor"];
+LAND_HIDDEN_KEYS.forEach((fieldKey) => {
+  const expected = MUSTAKIL_BINA_HIDDEN_KEYS.includes(fieldKey);
+  assert.equal(
+    isHiddenFor("Müstakil Bina", fieldKey),
+    expected,
+    `Müstakil Bina mulkiyetinde "${fieldKey}" icin gizlenme durumu beklenenden farkli (beklenen: ${expected}).`
+  );
+});
+
+console.log("Musttakil Bina'da Blok/Giris/Kat/Ic Kapi No gizlenmesi (Site/Disi Kapi/UAVT/Posta Kodu KORUNUR) testi tamam.");
 
 // --- 3) Listeye dahil OLMAYAN adres alanlari (Sokak/Cadde, Il/Ilce/Mahalle --
 // vb.) HICBIR mulkiyet turunde bu kuralla gizlenmemeli.
