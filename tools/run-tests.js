@@ -58,6 +58,7 @@ const TEST_FILES = [
   "test-valuation-method-multi-unit.js",
   "test-valuation-rent-multi-unit.js",
   "test-minimum-parcel-classification.js",
+  "test-land-minimum-parcel-multi-unit-grouping.js",
   "test-project-suitability-status.js",
   "test-comparable-nature-filter.js",
   "test-bank-templates.js",

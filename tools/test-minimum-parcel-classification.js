@@ -4,7 +4,12 @@ const path = require("node:path");
 const vm = require("node:vm");
 
 const appSource = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
-const start = appSource.indexOf("function getMinimumAgriculturalParcelLimit()");
+// Kullanıcı talebi (2026-09-16, çoklu taşınmaz gruplama işi) — gerçek
+// hesaplama çekirdeği getMinimumAgriculturalParcelLimitForFields()'e taşındı
+// (getMinimumAgriculturalParcelLimit() artık yalnızca ona delege eden ince
+// bir sarmalayıcı) — başlangıç işaretçisi buna göre güncellendi ki dilim
+// GERÇEK hesaplama gövdesini içersin.
+const start = appSource.indexOf("function getMinimumAgriculturalParcelLimitForFields(");
 const end = appSource.indexOf("function refreshLandMinimumParcelAssessment()", start);
 assert(start >= 0 && end > start, "5403 minimum parsel fonksiyonlari bulunamadi.");
 const source = appSource.slice(start, end);
@@ -22,6 +27,11 @@ function evaluate(fields) {
       }],
     },
     shouldHideLandAgricultureControls: () => false,
+    // Bu dosyadaki TÜM senaryolar TEKİL (çoklu taşınmaz DEĞİL) — bu yüzden
+    // isMultiTitleUnitReportForNarrative() false dönmeli ki eski (bu testin
+    // konusu olan) TEKİL kod yolu çalışsın; çoklu-taşınmaz gruplama
+    // tools/test-land-minimum-parcel-multi-unit-grouping.js'te AYRI test edilir.
+    isMultiTitleUnitReportForNarrative: () => false,
     foldTurkish: (value) => String(value || "").toLocaleUpperCase("tr-TR")
       .replaceAll("İ", "I")
       .replaceAll("Ş", "S")

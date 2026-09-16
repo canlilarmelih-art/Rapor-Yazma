@@ -7802,14 +7802,19 @@ function buildLandAgricultureSentence() {
   return sentences.filter(Boolean).join(" ");
 }
 
-function getMinimumAgriculturalParcelLimit() {
-  if (shouldHideLandAgricultureControls()) return null;
+// "fields" parametresi (2026-09-16, çoklu taşınmaz gruplama işi) —
+// getMinimumAgriculturalParcelLimit()'in ÇEKİRDEĞİ, ANCAK herhangi bir
+// taşınmazın fields nesnesiyle (state.fields DEĞİL) çağrılabilsin diye
+// dışa çıkarıldı; getMinimumAgriculturalParcelLimit() aynen state.fields
+// ile çağırmaya devam eder (davranış DEĞİŞMEDİ), buildLandMinimumParcelAssessmentMultiUnitSentence()
+// HER taşınmazın kendi fields'ıyla ayrı ayrı çağırır.
+function getMinimumAgriculturalParcelLimitForFields(fields = state.fields) {
   const rows = Array.isArray(globalThis.MinimumAgriculturalParcelSizes) ? globalThis.MinimumAgriculturalParcelSizes : [];
-  const city = foldTurkish(state.fields.titleCity || state.fields.city || "");
-  const district = foldTurkish(state.fields.titleDistrict || state.fields.district || "");
-  const area = parseReportNumber(state.fields.landArea);
-  const agricultureType = normalizeReportTitleText(state.fields.landAgricultureType || "");
-  const classification = normalizeReportTitleText(state.fields.landClassification || "");
+  const city = foldTurkish(fields.titleCity || fields.city || "");
+  const district = foldTurkish(fields.titleDistrict || fields.district || "");
+  const area = parseReportNumber(fields.landArea);
+  const agricultureType = normalizeReportTitleText(fields.landAgricultureType || "");
+  const classification = normalizeReportTitleText(fields.landClassification || "");
   const row = rows.find((item) => foldTurkish(item.city) === city && foldTurkish(item.district) === district);
   if (!row || !Number.isFinite(area) || area <= 0 || !agricultureType || !classification) return null;
 
@@ -7828,13 +7833,68 @@ function getMinimumAgriculturalParcelLimit() {
     label: landKind.label,
     classification,
     agricultureType,
-    city: state.fields.titleCity || state.fields.city,
-    district: state.fields.titleDistrict || state.fields.district,
+    city: fields.titleCity || fields.city,
+    district: fields.titleDistrict || fields.district,
   };
+}
+
+function getMinimumAgriculturalParcelLimit() {
+  if (shouldHideLandAgricultureControls()) return null;
+  return getMinimumAgriculturalParcelLimitForFields(state.fields);
+}
+
+// Kullanıcı talebi (2026-09-16): "5403 Sayılı Kanuna Göre Minimum Parsel
+// Kontrolü bunu çoklamamız lazım dikili arazi kuru ve sulu tarıma göre
+// raporda yer alan taşınmazları gruplayarak her grup için ayrı cümle kur
+// tamamı aynı grup ise tek cümle kur" — taşınmazlar Arazi Sınıflandırması/
+// Tarım Türü kombinasyonunun karşılık geldiği arazi türüne (Dikili Arazi/
+// Kuru Arazi/Sulu Arazi, bkz. getMinimumAgriculturalParcelLimitForFields'in
+// "landKind.label"ı) VE il/ilçeye göre gruplanır (minimum sınır il/ilçeye
+// göre değiştiğinden aynı arazi türünde bile farklı il/ilçede farklı
+// sınır olabilir). Her grup İÇİN o gruptaki taşınmazların TAMAMI TEK bir
+// (paylaşımlı sınıflandırma/tarım türü/il-ilçe/minimum sınır anlatan) blokta,
+// kendi alan/sonuçlarıyla listelenir — formatTitleUnitParcelLabel/
+// formatTurkishList, bu oturumda "farklı ada/parsel" paragraflarında
+// (buildAgriculturalMultiUnitParcelDistanceSentence, buildMixedParcelLocationPhrase)
+// ZATEN kurulmuş AYNI liste/etiketleme kuralları. TÜM taşınmazlar AYNI
+// grupta ise Map'te TEK anahtar oluşur, dolayısıyla doğal olarak TEK
+// (çoklanmamış) blok üretilir.
+function buildLandMinimumParcelGroupSentence(groupItems) {
+  const first = groupItems[0].assessment;
+  const minimumText = first.minimum.toLocaleString("tr-TR", { maximumFractionDigits: 2 });
+  const lead = `${first.city}/${first.district} için Arazi Sınıflandırması ${first.classification} ve Tarım Türü ${first.agricultureType} dikkate alındığında, ${first.label} bakımından 5403 sayılı Kanuna göre belirlenen minimum parsel sınırı ${minimumText} m²'dir.`;
+  const clauses = groupItems.map(({ unit, index, assessment }) => {
+    const label = formatTitleUnitParcelLabel(unit.blockNo, unit.parcelNo, index);
+    const areaText = assessment.area.toLocaleString("tr-TR", { maximumFractionDigits: 2 });
+    const result = assessment.area >= assessment.minimum ? "karşılamaktadır" : "karşılamamaktadır";
+    return `${label}'in ${areaText} m² yüzölçümü bu sınırı ${result}`;
+  });
+  return `${lead} ${formatTurkishList(clauses)}.`;
+}
+
+function buildLandMinimumParcelAssessmentMultiUnitSentence() {
+  const assessed = getNarrativeTitleUnitFields()
+    .map((unit, index) => ({ unit, index, assessment: getMinimumAgriculturalParcelLimitForFields(unit) }))
+    .filter((item) => item.assessment);
+  if (!assessed.length) return "";
+  const groups = new Map();
+  assessed.forEach((item) => {
+    const key = `${item.assessment.label}|${item.assessment.city}|${item.assessment.district}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(item);
+  });
+  return [...groups.values()].map((groupItems) => buildLandMinimumParcelGroupSentence(groupItems)).join(" ");
 }
 
 function buildLandMinimumParcelAssessmentSentence() {
   if (shouldHideLandAgricultureControls()) return "";
+  if (isMultiTitleUnitReportForNarrative()) {
+    const multiSentence = buildLandMinimumParcelAssessmentMultiUnitSentence();
+    if (multiSentence) return multiSentence;
+    // Hiçbir taşınmaz değerlendirilemediyse (ör. hiçbirinde Arazi
+    // Sınıflandırması/minimum veri girilmemiş) aşağıdaki TEKİL (aktif
+    // taşınmaza özgü) tanılama mesajlarına GÜVENLİ düşülür.
+  }
   const city = state.fields.titleCity || state.fields.city || "";
   const district = state.fields.titleDistrict || state.fields.district || "";
   const area = parseReportNumber(state.fields.landArea);
