@@ -196,6 +196,29 @@
   <tr><td class="l">MÜLK DEĞERİ DEĞİŞİMİ</td><td>{{PROPERTY_VALUE_TREND}}</td></tr>
 </table>
 
+<!-- Kullanıcı talebi (2026-09-17): "müstakil bina formatında arsa
+     özellikleri bölümü de olmalı" — müstakil bina, apartman dairesinin
+     aksine kendi parselinin tamamına sahiptir, bu yüzden binanın ÜZERİNDE
+     durduğu parselin kendi özellikleri de (arsa-arazi varyantındaki AYNI
+     LAND_* alan seti, templates/akbank-arsa-arazi.html ile birebir) ayrıca
+     gösterilmeli. DEPREM DERECESİ satırı burada TEKRAR EDİLMEDİ, "Bina
+     Özellikleri" bölümünde zaten var. -->
+<h2>Arsa Özellikleri</h2>
+<table class="meta">
+  <tr><td class="l">PARSELİN GEOMETRİK ŞEKLİ</td><td>{{LAND_SHAPE}}</td></tr>
+  <tr><td class="l">KADASTRAL/İMAR YOLUNA CEPHELİ Mİ?</td><td>{{LAND_ROAD_FRONTAGE}}</td></tr>
+  <tr><td class="l">ARAZİ SINIFLANDIRMASI</td><td>{{LAND_CLASSIFICATION}}</td></tr>
+  <tr><td class="l">PARSEL ÜZERİNDE ZİRAİ ÜRÜN VAR MI?</td><td>{{LAND_AGRICULTURAL_PRODUCT}}</td></tr>
+  <tr><td class="l">HALİHAZIRDAKİ KULLANIM ŞEKLİ</td><td>{{LAND_USAGE_SHAPE_TEXT}}</td></tr>
+  <tr><td class="l">HALİHAZIRDAKİ KULLANIM AMACI</td><td>{{LAND_USAGE_PURPOSE_TEXT}}</td></tr>
+  <tr><td class="l">YAPILAŞMAYA ENGEL TEŞKİL EDEBİLECEK UNSURLAR</td><td>{{LAND_DEVELOPMENT_OBSTACLE_TEXT}}</td></tr>
+  <tr><td class="l">PARSELİN ALT YAPISI VE TOPOGRAFİK DURUMU</td><td>{{LAND_INFRASTRUCTURE_TOPOGRAPHY_TEXT}}</td></tr>
+  <tr><td class="l">PARSELİN CEPHE VE DERİNLİK BİLGİLERİ</td><td>{{LAND_FRONTAGE_DEPTH_TEXT}}</td></tr>
+  <tr><td class="l">PARSELİN SINIRLARININ DURUMU</td><td>{{LAND_BOUNDARY_STATUS_TEXT}}</td></tr>
+</table>
+{{TASINMAZLARARSATABLOSU}}
+{{LAND_NOTE}}
+
 <h2>Gayrimenkulun Çap, İskan, Ruhsat, Onaylı Proje vb. Bilgileri</h2>
 {{PROJECT_CONFORMİTY}}
 {{REVİEWED_DOCUMENTS_TEXT}}

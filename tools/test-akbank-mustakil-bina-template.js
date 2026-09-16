@@ -182,9 +182,34 @@ console.log("appendBankTemplateExportBlock Mustakil Bina kablolamasi testi tamam
 [
   "Bina Özellikleri",
   "{{TASINMAZLARBINATABLOSU}}",
+  // Kullanıcı takip talebi (2026-09-17): "müstakil bina formatında arsa
+  // özellikleri bölümü de olmalı" — müstakil bina kendi parselinin
+  // TAMAMINA sahiptir, bu yüzden arsa-arazi varyantındaki AYNI LAND_*
+  // alan seti burada da bulunmalı.
+  "<h2>Arsa Özellikleri</h2>",
+  "{{LAND_SHAPE}}",
+  "{{LAND_ROAD_FRONTAGE}}",
+  "{{LAND_CLASSIFICATION}}",
+  "{{LAND_AGRICULTURAL_PRODUCT}}",
+  "{{LAND_USAGE_SHAPE_TEXT}}",
+  "{{LAND_USAGE_PURPOSE_TEXT}}",
+  "{{LAND_DEVELOPMENT_OBSTACLE_TEXT}}",
+  "{{LAND_INFRASTRUCTURE_TOPOGRAPHY_TEXT}}",
+  "{{LAND_FRONTAGE_DEPTH_TEXT}}",
+  "{{LAND_BOUNDARY_STATUS_TEXT}}",
+  "{{TASINMAZLARARSATABLOSU}}",
+  "{{LAND_NOTE}}",
 ].forEach((needle) => {
   assert(templateSource.includes(needle), `akbank-mustakil-bina.html icinde beklenen icerik yok: ${needle}`);
 });
+// DEPREM DERECESI satiri "Bina Ozellikleri"nde zaten var - Arsa
+// Ozellikleri'nde TEKRAR EDILMEMELI (iki ayri {{EARTHQUAKE_ZONE}} satiri
+// olmamali).
+assert.equal(
+  (templateSource.match(/\{\{EARTHQUAKE_ZONE\}\}/g) || []).length,
+  1,
+  "akbank-mustakil-bina.html icinde {{EARTHQUAKE_ZONE}} birden fazla kez (Bina Ozellikleri + Arsa Ozellikleri) tekrar ediyor."
+);
 // Not: dosyanin ust-bilgi HTML yorumu ("neden kaldirildi" aciklamasi) bu
 // basliklardan BAHSETMESI beklenir (bkz. dosyanin <!-- --> yorumu) — bu
 // yuzden bare substring yerine GERCEK baslik etiketi HALINDE aranir
