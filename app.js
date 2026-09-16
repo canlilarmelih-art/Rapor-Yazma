@@ -10994,10 +10994,22 @@ const propertyTaxDeclarationUnavailableVariants = [
 ];
 registerVariantGroup("buildPropertyTaxDeclarationUnavailableExplanation", "Emlak Beyan Değeri — Bilgi Alınamadı (Değerleme)", propertyTaxDeclarationUnavailableVariants.length);
 
+// Kullanıcı talebi (2026-09-16): "Çoklu raporlarda eğer tüm taşınmazların
+// emlak beyan değeri kutucuğu işaretsiz ise ... taşınmazlara ait rayiç
+// bedel ... şeklinde olmalı" — propertyTaxDeclarationEnabled taşınmaza
+// özgü (per-unit) bir alan olduğundan, çoğullama yalnızca TÜM taşınmazlar
+// aynı anda işaretsizken uygulanır; bir kısmı işaretliyse (karışık durum)
+// mevcut tekil (aktif taşınmazın kendi durumunu yansıtan) davranış korunur.
+function areAllTitleUnitsPropertyTaxDeclarationDisabled() {
+  return getNarrativeTitleUnitFields().every((fields) => fields.propertyTaxDeclarationEnabled !== "1");
+}
+
 function buildPropertyTaxDeclarationUnavailableExplanation() {
   if (isPropertyTaxDeclarationEnabled()) return "";
   const municipality = getPropertyTaxDeclarationMunicipalityText();
-  return propertyTaxDeclarationUnavailableVariants[selectVariant("buildPropertyTaxDeclarationUnavailableExplanation", propertyTaxDeclarationUnavailableVariants.length)](municipality);
+  const sentence = propertyTaxDeclarationUnavailableVariants[selectVariant("buildPropertyTaxDeclarationUnavailableExplanation", propertyTaxDeclarationUnavailableVariants.length)](municipality);
+  const shouldPluralize = isMultiTitleUnitReportForNarrative() && areAllTitleUnitsPropertyTaxDeclarationDisabled();
+  return pluralizeEnvironmentalSubjectText(sentence, shouldPluralize);
 }
 
 const propertyTaxDeclarationExplanationFallback = "Emlak beyan değeri girildiğinde açıklama otomatik oluşacaktır.";

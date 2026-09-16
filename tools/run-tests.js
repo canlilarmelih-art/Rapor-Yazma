@@ -176,6 +176,7 @@ const TEST_FILES = [
   "test-tcmb-rates.js",
   "test-comparable-card-multi-unit-plural.js",
   "test-comparable-bound-neighborhood-distance.js",
+  "test-property-tax-declaration-multi-unit-plural.js",
   "test-unit-copy-to-selected.js",
   "test-land-copy-to-selected.js",
   "test-imar-copy-to-selected.js",
