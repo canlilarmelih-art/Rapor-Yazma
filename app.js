@@ -7095,10 +7095,21 @@ function pluralizeEnvironmentalSubjectText(value, enabled = true) {
     .replace(/\bGayrimenkule\b/g, "Gayrimenkullere")
     .replace(/\bgayrimenkulün\b/g, "gayrimenkullerin")
     .replace(/\bgayrimenkule\b/g, "gayrimenkullere")
+    .replace(/\bGayrimenkul\b/g, "Gayrimenkuller")
+    .replace(/\bgayrimenkul\b/g, "gayrimenkuller")
     .replace(/\bMülkün\b/g, "Mülklerin")
     .replace(/\bMülke\b/g, "Mülklere")
     .replace(/\bmülkün\b/g, "mülklerin")
-    .replace(/\bmülke\b/g, "mülklere");
+    .replace(/\bmülke\b/g, "mülklere")
+    .replace(/\bMülk\b/g, "Mülkler")
+    .replace(/\bmülk\b/g, "mülkler")
+    // Kullanıcı talebi (2026-09-16, "Hisseli Taşınmazlar" matbu cümlesi) —
+    // bu cümlelerdeki BÜYÜK HARFLİ vurgulu kısımlar ("TAŞINMAZIN TÜM
+    // HİSSELERİNİN", "GAYRİMENKULÜN TÜM HİSSELERİNİN") de çoğullanmalı;
+    // yukarıdaki kurallar yalnızca Baş Harf Büyük/küçük harf biçimlerini
+    // kapsıyordu.
+    .replace(/\bTAŞINMAZIN\b/g, "TAŞINMAZLARIN")
+    .replace(/\bGAYRİMENKULÜN\b/g, "GAYRİMENKULLERİN");
 }
 
 function getZiraatExplanationValues() {
@@ -9481,7 +9492,7 @@ function createValuationEditor() {
   if (canViewSensitiveContent()) {
     explanationPanels = [
       createValuationMethodExplanationPanel(),
-      ...(isSharedTitleOwnership() ? [createValuationShareExplanationPanel()] : []),
+      ...(hasAnyHisseliTitleUnit() ? [createValuationShareExplanationPanel()] : []),
       createValuationSaleabilityExplanationPanel(),
       ...(isTarlaOwnershipType() ? [createTarlaValuationRiskExplanationPanel()] : []),
       createValuationRentExplanationPanel(),
@@ -9493,6 +9504,7 @@ function createValuationEditor() {
     // hesaplamaları (valuationMethodExplanation, valuationSaleabilityExplanation,
     // valuationRentExplanation, propertyTaxDeclarationExplanation) yine yapılır.
     refreshValuationMethodExplanation();
+    applyShareExplanationAutoText();
     refreshValuationSaleabilityExplanation();
     refreshValuationRentExplanation();
     refreshPropertyTaxDeclarationExplanation();
@@ -10473,6 +10485,7 @@ function createValuationMethodExplanationPanel() {
 }
 
 function createValuationShareExplanationPanel() {
+  applyShareExplanationAutoText();
   const card = document.createElement("div");
   card.className = "valuation-method-explanation-card valuation-share-explanation-card";
   const head = document.createElement("div");
@@ -34846,13 +34859,84 @@ function buildShareExplanation() {
   return shareExplanationVariants[variantIndex];
 }
 
+// "fields" parametreli çekirdek (2026-09-16, "Hisseli Taşınmazlar" çoklu
+// taşınmaz işi) — isSharedTitleOwnership()'in ÇEKİRDEĞİ, ANCAK herhangi
+// bir taşınmazın fields nesnesiyle (state.fields DEĞİL) çağrılabilsin
+// diye dışa çıkarıldı; isSharedTitleOwnership() aynen state.fields ile
+// çağırmaya devam eder (davranış DEĞİŞMEDİ).
+function isHisseliTitleOwnershipKindForFields(fields = state.fields) {
+  return foldTurkish(fields.titleOwnershipKind || "").replace(/\s+/g, " ").trim() === "HISSELI MULKIYET";
+}
+
+function isSharedTitleOwnership() {
+  return isHisseliTitleOwnershipKindForFields(state.fields);
+}
+
+// Kullanıcı talebi (2026-09-16): "HİSSELİ TAŞINMAZLAR içinde aynı mantığı
+// kullanalım hisseli taşınmazlar için matbu olan cümleyi kuralım. tam
+// mülkiyete sahip olanlar için bir cümle kurmaya gerek yok." — 5403
+// Sayılı Kanun işiyle (buildLandMinimumParcelAssessmentMultiUnitSentence)
+// AYNI "raporda yer alan tüm taşınmazları tara" ilkesi: panel/cümle
+// artık yalnızca AKTİF taşınmaza değil, RAPORDAKİ HERHANGİ bir taşınmazın
+// hisseli olup olmadığına bakar.
+function hasAnyHisseliTitleUnit() {
+  if (!isMultiTitleUnitReportForNarrative()) return isSharedTitleOwnership();
+  return getNarrativeTitleUnitFields().some((fields) => isHisseliTitleOwnershipKindForFields(fields));
+}
+
+// Matbu (3 varyanttan biri, davranışı DEĞİŞMEYEN) metni Çoklu Talep
+// raporlarında TÜM taşınmazları tarayarak üretir: (1) HİÇ hisseli
+// taşınmaz yoksa (tamamı Tam Mülkiyet) "" — kullanıcı talebi: "tam
+// mülkiyete sahip olanlar için bir cümle kurmaya gerek yok". (2) TÜM
+// taşınmazlar hisseli ise (5403 işindeki "tamamı aynı grup ise tek
+// cümle" ile AYNI ilke) matbu metin ÇOĞULLANARAK (taşınmaz-bazlı listeye
+// GEREK YOK, hepsini kapsıyor) tek metin olarak döner. (3) KARIŞIK ise
+// (bazı taşınmazlar hisseli, bazıları tam mülkiyet) yalnızca hisseli
+// olanlar formatTitleUnitParcelLabel/formatTurkishList (bu oturumda
+// "farklı ada/parsel" paragraflarında zaten kurulmuş AYNI etiketleme)
+// ile adlandırılıp matbu metnin başına eklenir — tam mülkiyet olanlar
+// İMA bile edilmez.
+function buildShareExplanationForAllTitleUnits() {
+  if (!isMultiTitleUnitReportForNarrative()) {
+    return isSharedTitleOwnership() ? buildShareExplanation() : "";
+  }
+  const units = getNarrativeTitleUnitFields();
+  const hisseliItems = units
+    .map((fields, index) => ({ fields, index }))
+    .filter((item) => isHisseliTitleOwnershipKindForFields(item.fields));
+  if (!hisseliItems.length) return "";
+
+  const baseText = buildShareExplanation();
+  if (hisseliItems.length === units.length) {
+    return pluralizeEnvironmentalSubjectText(baseText, true);
+  }
+
+  const labels = hisseliItems.map((item) => formatTitleUnitParcelLabel(item.fields.blockNo, item.fields.parcelNo, item.index));
+  const parcelList = formatTurkishList(labels);
+  const pluralized = hisseliItems.length > 1 ? pluralizeEnvironmentalSubjectText(baseText, true) : baseText;
+  // Her 3 varyant da "... hisseli olup, ..." ile başlar (tek bir "olup,"
+  // geçer) — bu ortak açılış, hangi taşınmazların hisseli olduğunu
+  // adlandıran bir öbekle DEĞİŞTİRİLİR, cümlenin geri kalanı (İPOTEK
+  // şartı/SATILABİLİR kanaati) AYNEN korunur.
+  return pluralized.replace(/^.*?olup,\s*/, `${parcelList} hisseli olup, `);
+}
+
 function refreshShareExplanationFromCurrentFields(changedKey = "") {
   if (changedKey && changedKey !== "titleOwnershipKind") return;
-  const autoText = buildShareExplanation();
-  const currentText = String(state.fields.shareExplanation || "").trim();
-  const isAutoText = currentText === autoText;
+  applyShareExplanationAutoText();
+}
 
-  if (state.fields.titleOwnershipKind === "Hisseli Mülkiyet") {
+// createValuationShareExplanationPanel()'in her render'da çağırdığı
+// self-heal girişi (buildLandMinimumParcelAssessmentPanel'in
+// refreshLandMinimumParcelAssessment() self-heal'iyle AYNI ilke) — bu
+// sayede taşınmaz sekmesi değiştirildiğinde (titleOwnershipKind alanının
+// KENDİSİ değişmese bile) metin GÜNCEL kalır.
+function applyShareExplanationAutoText() {
+  const autoText = buildShareExplanationForAllTitleUnits();
+  const currentText = String(state.fields.shareExplanation || "").trim();
+  const isAutoText = currentText === autoText || shareExplanationVariants.includes(currentText);
+
+  if (autoText) {
     if (currentText && !isAutoText) return;
     state.fields.shareExplanation = autoText;
   } else if (isAutoText) {
@@ -34867,10 +34951,6 @@ function refreshShareExplanationFromCurrentFields(changedKey = "") {
   }
   const valuationText = document.querySelector("[data-valuation-share-explanation-text]");
   if (valuationText) valuationText.textContent = state.fields.shareExplanation || "";
-}
-
-function isSharedTitleOwnership() {
-  return foldTurkish(state.fields.titleOwnershipKind || "").replace(/\s+/g, " ").trim() === "HISSELI MULKIYET";
 }
 
 function inferTitleOwnershipKindFromOwnerRows(rows = []) {
