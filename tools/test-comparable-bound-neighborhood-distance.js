@@ -42,6 +42,19 @@
   (mevcut "postal" islemi, GPS noktasina ihtiyac duymaz) yapip GERCEK
   koordinati YENIDEN senkronluyor; createForm'un genel alan-commit (blur)
   noktasinda tetikleniyor.
+
+  DEVAM (2026-09-16, ekran goruntusuyle): kullanici yine "hala coklu
+  tarla raporlarinda mahalle merkezi yerine tasinmaz konumunu baz aliyor"
+  dedi. Kok neden: bir onceki duzeltme (refreshBoundNeighborhoodCoordinatesFromCurrentFields)
+  YALNIZCA kullanici "Bagli mahalle / koy" alanini ELLE duzenleyip blur
+  olduğunda tetikleniyordu - 0.0.803'TEN ONCE olusturulmus (veya bu alana
+  hic yeniden dokunulmamis) raporlarda boundNeighborhoodLat/Lng SONSUZA
+  KADAR bos kaliyor, emsal mesafesi sessizce tasinmazin kendi noktasina
+  geri donuyordu. Duzeltme: yeni selfHealBoundNeighborhoodCoordinatesIfNeeded()
+  - render() HER calistiginda (kullanici HANGI sekmede olursa olsun,
+  maybeAutoFetchNearbyPlaces() ile AYNI ilke) deger VARSA ama koordinat
+  YOKSA otomatik senkronlanir; "Adres ve Konum" sekmesine gidilmesini
+  BEKLEMEZ.
 */
 
 const assert = require("node:assert/strict");
@@ -49,6 +62,26 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const appSource = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
+
+// --- Kaynak-düzeyi: render() (DOM'a bağımlı, izole edilip çalıştırılamaz) ---
+// gerçekten selfHealBoundNeighborhoodCoordinatesIfNeeded()'i çağırıyor mu?
+// KULLANICI TALEBİ: kullanıcı "Adres ve Konum" sekmesine hiç gitmeden
+// (ör. doğrudan "Emsaller" sekmesindeyken) bile bu self-heal çalışmalı —
+// bu yüzden createForm("address")'e DEĞİL, render()'ın kendisine (HER
+// sekmede çalışır, maybeAutoFetchNearbyPlaces() ile AYNI nokta) kablolu
+// olmalı.
+{
+  const renderStart = appSource.indexOf("\nfunction render() {");
+  assert(renderStart >= 0, "render() fonksiyonu bulunamadı.");
+  const renderEnd = appSource.indexOf("\n}", renderStart);
+  const renderBody = appSource.slice(renderStart, renderEnd);
+  assert.match(
+    renderBody,
+    /maybeAutoFetchNearbyPlaces\(\);\s*\n\s*selfHealBoundNeighborhoodCoordinatesIfNeeded\(\);/,
+    "KULLANICI TALEBİ: render() artık selfHealBoundNeighborhoodCoordinatesIfNeeded()'i (maybeAutoFetchNearbyPlaces() ile AYNI ilkeyle, HER sekmede) çağırmalı.",
+  );
+  console.log("Kaynak-düzeyi: render() -> selfHealBoundNeighborhoodCoordinatesIfNeeded() kablolaması testi tamam.");
+}
 
 // test-project-review-block-pluralization.js'teki AYNI paren+quote-farkinda
 // brace-derinligi sayaci (varsayilan parametrelerdeki "{}" veya regex/
@@ -140,6 +173,7 @@ const functionNames = [
   "normalizeNeighborhoodApiRow",
   "parseBoundNeighborhoodTextForLookup",
   "refreshBoundNeighborhoodCoordinatesFromCurrentFields",
+  "selfHealBoundNeighborhoodCoordinatesIfNeeded",
 ];
 
 // normalizeNeighborhoodApiRow'un metin-temizleme yardımcıları (cleanupPlaceName/
@@ -161,10 +195,13 @@ const sandboxSource = `
   function normalizePostalCodeValue(value) { return String(value || "").trim(); }
   function normalizeLocalPlaceKey(value) { return String(value || "").toLowerCase().trim(); }
   function normalizeLocalNeighborhoodKey(value) { return String(value || "").toLowerCase().trim(); }
+  let boundNeighborhoodCoordinateSyncAttempts = new Set();
+  function resetBoundNeighborhoodCoordinateSyncAttempts() { boundNeighborhoodCoordinateSyncAttempts = new Set(); }
   ${functionNames.map(extractFunction).join("\n")}
   return {
     setState,
     setFetchNeighborhoodLookupImpl,
+    resetBoundNeighborhoodCoordinateSyncAttempts,
     isComparablesSharedAcrossUnits,
     getComparableSubjectPoint,
     getComparableBoundNeighborhoodPoint,
@@ -173,6 +210,7 @@ const sandboxSource = `
     buildLocalNeighborhoodFields,
     parseBoundNeighborhoodTextForLookup,
     refreshBoundNeighborhoodCoordinatesFromCurrentFields,
+    selfHealBoundNeighborhoodCoordinatesIfNeeded,
   };
 `;
 // eslint-disable-next-line no-new-func
@@ -384,6 +422,71 @@ function freshState(fields = {}) {
     const locationText = fns.buildComparableLocationText(emsalLat, emsalLng);
     assert.match(locationText, /^2,39\s?km kuzeyinde$/, `UÇTAN UCA: manuel düzeltme SONRASI emsal mesafesi GERÇEKTEN yeni köyden ölçülmeli, bulunan: ${locationText}`);
     console.log("UÇTAN UCA: manuel 'Bağlı mahalle / köy' düzeltmesi -> emsal mesafesi doğru köyden testi tamam.");
+  }
+
+  // --- 10) KULLANICI TALEBİ (2026-09-16, devam): selfHealBoundNeighborhoodCoordinatesIfNeeded()
+  // — "Bağlı mahalle / köy" alanına HİÇ dokunulmadan (0.0.803'ten ÖNCE
+  // oluşturulmuş bir rapor gibi) bile, render() her çalıştığında otomatik
+  // senkronlanmalı; kullanıcının "Adres ve Konum" sekmesine gitmesi
+  // GEREKMEMELİ.
+  {
+    fns.resetBoundNeighborhoodCoordinateSyncAttempts();
+    const context = freshState({
+      boundNeighborhood: "Canbazlar - Mustafakemalpaşa / Bursa",
+      // boundNeighborhoodLat/Lng YOK — 0.0.803 öncesi/hiç düzenlenmemiş rapor.
+    });
+    fns.setState(context);
+    let callCount = 0;
+    fns.setFetchNeighborhoodLookupImpl(async () => {
+      callCount += 1;
+      return { ok: true, match: { city: "Bursa", district: "Mustafakemalpaşa", neighborhood: "Canbazlar", lat: "40.000000", lng: "29.000000" } };
+    });
+
+    fns.selfHealBoundNeighborhoodCoordinatesIfNeeded();
+    await new Promise((resolve) => setImmediate(resolve));
+
+    assert.equal(callCount, 1, "KULLANICI TALEBİ: 'Adres ve Konum' sekmesine hiç gidilmeden (render() her çalıştığında) otomatik senkron denenmeli.");
+    assert.equal(context.fields.boundNeighborhoodLat, "40.000000", `Koordinat otomatik senkronlanmalı, bulunan: ${context.fields.boundNeighborhoodLat}`);
+    console.log("selfHealBoundNeighborhoodCoordinatesIfNeeded() KULLANICI TALEBİ (sekmeye gitmeden otomatik senkron) testi tamam.");
+  }
+
+  // --- 11) REGRESYON: koordinat ZATEN varsa self-heal HİÇ ağ çağrısı YAPMAMALI.
+  {
+    fns.resetBoundNeighborhoodCoordinateSyncAttempts();
+    const context = freshState({
+      boundNeighborhood: "Canbazlar - Mustafakemalpaşa / Bursa",
+      boundNeighborhoodLat: "40.000000", boundNeighborhoodLng: "29.000000",
+    });
+    fns.setState(context);
+    let callCount = 0;
+    fns.setFetchNeighborhoodLookupImpl(async () => { callCount += 1; return { ok: true, match: null }; });
+
+    fns.selfHealBoundNeighborhoodCoordinatesIfNeeded();
+    await new Promise((resolve) => setImmediate(resolve));
+
+    assert.equal(callCount, 0, "REGRESYON: koordinat zaten varken self-heal gereksiz ağ çağrısı YAPMAMALI.");
+    console.log("selfHealBoundNeighborhoodCoordinatesIfNeeded() koordinat-zaten-var REGRESYON testi tamam.");
+  }
+
+  // --- 12) REGRESYON: AYNI değer için render() TEKRAR TEKRAR çağrılsa bile
+  // (eşleşme bulunamayan bir köy adı gibi) ağ isteği yalnızca BİR KEZ
+  // denenmeli — her render'da gereksiz istek atılmamalı.
+  {
+    fns.resetBoundNeighborhoodCoordinateSyncAttempts();
+    const context = freshState({
+      boundNeighborhood: "Var Olmayan Köy - Mustafakemalpaşa / Bursa",
+    });
+    fns.setState(context);
+    let callCount = 0;
+    fns.setFetchNeighborhoodLookupImpl(async () => { callCount += 1; return { ok: true, match: null }; });
+
+    fns.selfHealBoundNeighborhoodCoordinatesIfNeeded();
+    fns.selfHealBoundNeighborhoodCoordinatesIfNeeded();
+    fns.selfHealBoundNeighborhoodCoordinatesIfNeeded();
+    await new Promise((resolve) => setImmediate(resolve));
+
+    assert.equal(callCount, 1, `REGRESYON: aynı metin için render() tekrar tekrar çağrılsa bile ağ isteği yalnızca BİR KEZ denenmeli, bulunan: ${callCount}`);
+    console.log("selfHealBoundNeighborhoodCoordinatesIfNeeded() aynı-değer tekrar-render REGRESYON testi tamam.");
   }
 
   console.log("Emsal konum mesafesinin bağlı köy koordinatından GERÇEK ölçümü testleri başarılı.");

@@ -5821,6 +5821,7 @@ function render() {
   renderValidation();
   updateStatus();
   maybeAutoFetchNearbyPlaces();
+  selfHealBoundNeighborhoodCoordinatesIfNeeded();
 }
 
 function renderNavState() {
@@ -41101,6 +41102,34 @@ async function refreshBoundNeighborhoodCoordinatesFromCurrentFields(changedKey =
     // iyileştirme — ağ hatası rapor akışını KESMEMELİ (bkz.
     // applyPostalCodeFromSelectedNeighborhood'daki AYNI ilke).
   }
+}
+
+// Kullanıcı bildirimi (2026-09-16, ekran görüntüsüyle): "hala çoklu tarla
+// raporlarında mahalle merkezi yerine taşınmaz konumunu baz alıyor" —
+// yukarıdaki senkron YALNIZCA "Bağlı mahalle / köy" alanı ELLE
+// düzenlenip blur olduğunda tetikleniyordu. Bu, 0.0.803'TEN ÖNCE
+// oluşturulmuş (veya bu alana hiç yeniden dokunulmamış) raporlarda
+// boundNeighborhoodLat/Lng'nin SONSUZA KADAR boş kalmasına — ve emsal
+// mesafesinin sessizce taşınmazın kendi noktasına geri dönmesine —
+// neden oluyordu. Çözüm: render() HER çalıştığında (kullanıcı HANGİ
+// sekmede olursa olsun — maybeAutoFetchNearbyPlaces() ile AYNI "her
+// render'da kontrol et" ilkesi) değer VARSA ama koordinat YOKSA otomatik
+// senkronlanır; "Adres ve Konum" sekmesine gidilmesini BEKLEMEZ. Aynı
+// METİN için tekrar tekrar (her render'da) gereksiz ağ isteği atmamak
+// için bir kez denenen değerler saklanır — kullanıcı metni DEĞİŞTİRİRSE
+// yeniden denenir. NOT: emsalin `c20` mesafe METNİ yalnızca konum
+// SEÇİLDİĞİ/kaydedildiği anda hesaplanıp saklandığından (bkz.
+// buildComparableLocationText yorumu), bu düzeltme koordinatı senkronlar
+// ama DAHA ÖNCE kaydedilmiş emsallerin metnini KENDİLİĞİNDEN
+// güncellemez — düzeltilmiş mesafenin görünmesi için ilgili emsalin
+// konumunun (Haritadan seç) YENİDEN seçilmesi/kaydedilmesi gerekir.
+const boundNeighborhoodCoordinateSyncAttempts = new Set();
+function selfHealBoundNeighborhoodCoordinatesIfNeeded() {
+  const value = state.fields.boundNeighborhood;
+  if (!value || state.fields.boundNeighborhoodLat) return;
+  if (boundNeighborhoodCoordinateSyncAttempts.has(value)) return;
+  boundNeighborhoodCoordinateSyncAttempts.add(value);
+  refreshBoundNeighborhoodCoordinatesFromCurrentFields("boundNeighborhood");
 }
 
 function cleanNeighborhoodName(value) {
