@@ -1,5 +1,12 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.814 - 2026-09-17 - Müstakil Bina şablonunda Tapu/Adres tablolarındaki bağımsız bölüm hücreleri temizlendi
+
+- Kullanıcı: "müstakil format bağımsız bölüm içermemektedir tapu bilgileri ve adres konum bölümünde bulunan bağımsız bölüm ile ilgili hucreleri gizleyelim." app.js'in gerçek `shouldHideField("title", ...)` kuralı doğrulandı: Müstakil Bina için `titleQuality`/`titleBlockName`/`titleEntrance`/`titleFloor`/`unitNo`/`share`/`denominator` alanları ZATEN sol panelde gizli — bunlar kat mülkiyetine/irtifakına özgü kavramlar (bağımsız bölümün KENDİ tapu niteliği + arsa payı), müstakil binada parselin TAMAMI zaten malikin, "payı" yok.
+- `templates/akbank-mustakil-bina.html`: Tapu tablosundan "TAPUDAKİ NİTELİK" (`{{TITLE_QUALITY_ORTAK}}`) ve "ARSA PAYI" (`{{SHARE_ORTAK}}`/`{{DENOMINATOR_ORTAK}}`) satırları kaldırıldı — Blok/Kat/Giriş/BB.No satırları zaten 0.0.812'de kaldırılmıştı, bu ikisi kaçmıştı. "EKLENTİSİ" (titleAttachment) BB'ye özgü olmadığı için (TAKBİS'ten gelen genel bir alan, ownership-bağımsız) korundu.
+- `tools/test-akbank-mustakil-bina-template.js`'e yeni bölüm eklendi: TAPUDAKİ NİTELİK/ARSA PAYI hücrelerinin yokluğu + app.js'teki ilgili `shouldHideField` kaynak satırının hâlâ mevcut olduğu (kaynak-düzeyi regresyon) doğrulanıyor. `npm run verify` (188 dosya) EXIT:0 — sadece bir `templates/*.html` ve bir test dosyası değişti, cache-buster bump gerekmedi.
+- Canlı tarayıcı testi yapılamadı — kullanıcıdan Mülkiyet="Müstakil Bina" bir Akbank raporunda Tapu bölümünün artık "Tapudaki Nitelik"/"Arsa Payı" satırları olmadan doğru göründüğünü kontrol etmesi isteniyor.
+
 ## 0.0.813 - 2026-09-17 - Müstakil Bina şablonuna Arsa Özellikleri bölümü eklendi
 
 - Kullanıcı: "müstakil bina formatında arsa özellikleri bölümü de olmalı." Kod taraması gösterdi ki `shouldHideSectionForOwnership()` "land" (Arsa Özellikleri) bölümünü Müstakil Bina için ZATEN gizlemiyor — sol panelde kullanıcı bu alanları doldurabiliyor; eksik olan yalnızca Akbank Müstakil Bina BANKA ŞABLONUNDAydı (0.0.812 pilotu bu bölümü hiç içermiyordu).

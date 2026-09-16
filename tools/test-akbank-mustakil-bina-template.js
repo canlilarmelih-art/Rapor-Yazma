@@ -225,4 +225,27 @@ assert.equal(
 
 console.log("akbank-mustakil-bina.html Bina Ozellikleri birlesimi icerik testi tamam.");
 
+// --- 7) Kullanıcı takip talebi (2026-09-17): "müstakil format bağımsız ----
+//        bölüm içermemektedir tapu bilgileri ve adres konum bölümünde
+//        bulunan bağımsız bölüm ile ilgili hücreleri gizleyelim." app.js'in
+//        GERÇEK shouldHideField("title", ...) kuralı Müstakil Bina için
+//        titleQuality/titleBlockName/titleEntrance/titleFloor/unitNo/share/
+//        denominator alanlarını zaten gizliyor (bağımsız bölümün KENDİ
+//        tapu niteliği + arsa payı — kat mülkiyetine özgü kavramlar,
+//        müstakil binada parselin TAMAMI zaten malikin). Şablondaki
+//        karşılıkları (TAPUDAKİ NİTELİK/ARSA PAYI satırları, Blok/Kat/
+//        Giriş/BB.No zaten 0.0.812'de kaldırılmıştı) da kaldırılmalı.
+[
+  "TAPUDAKİ NİTELİK",
+  "{{TITLE_QUALITY_ORTAK}}",
+  "ARSA PAYI",
+  "{{SHARE_ORTAK}}",
+  "{{DENOMINATOR_ORTAK}}",
+].forEach((needle) => {
+  assert(!templateSource.includes(needle), `akbank-mustakil-bina.html hala bagimsiz-bolume ozgu tapu hucresi barindiriyor: ${needle}`);
+});
+assert(appSource.includes('if (!["titleQuality", "titleBlockName", "titleEntrance", "titleFloor", "unitNo", "share", "denominator"].includes(fieldKey)) return false;'), "app.js'te title bolumu bagimsiz-bolum-ozgu alan listesi degismis (kaynak-duzeyi dogrulama kirilir).");
+
+console.log("akbank-mustakil-bina.html Tapu Bilgileri bagimsiz-bolum hucre temizligi testi tamam.");
+
 console.log("Akbank Mustakil Bina sablonu testleri basarili.");

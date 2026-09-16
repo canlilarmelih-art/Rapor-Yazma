@@ -9,7 +9,9 @@
   AYNI fiziksel varlıktır (taşınmazın kendisi tek başına bir yapıdır), bu
   yüzden akbank.html'deki "Ana Gayrimenkulün Fiziksel Özellikleri" ve
   "Bağımsız Bölümün Bilgileri" bölümleri burada TEK bir "Bina Özellikleri"
-  bölümünde birleştirilmiştir; ayrı bir "bağımsız bölüm" kavramı yoktur.
+  bölümünde birleştirilmiştir; ayrı bir "bağımsız bölüm" kavramı yoktur. Bu
+  yüzden Tapu ve Konum tablolarındaki bağımsız-bölüme-özgü hücreler de
+  (Blok/Kat/Giriş/BB.No, Tapudaki Nitelik, Arsa Payı) kaldırılmıştır.
   {{PLACEHOLDER}} işaretleri dışa aktarma sırasında programdaki verilerle
   doldurulur. Kullanılabilir tüm placeholder adları için
   templates/PLACEHOLDER-REHBERI.md dosyasına bakın.
@@ -88,8 +90,6 @@
   <tr><td class="l">ESKİ ADA - PARSEL</td><td>{{OLD_BLOCK_NO_ORTAK}} - {{OLD_PARCEL_NO_ORTAK}}</td></tr>
   <tr><td class="l">YEVMİYE NO</td><td>{{TAPU_YEVMIYESI_ORTAK}}</td></tr>
   <tr><td class="l">CİLT SAYFA</td><td>{{REGISTRY_VOLUME_ORTAK}} / {{REGISTRY_PAGE_ORTAK}}</td></tr>
-  <tr><td class="l">TAPUDAKİ NİTELİK</td><td>{{TITLE_QUALITY_ORTAK}}</td></tr>
-  <tr><td class="l">ARSA PAYI</td><td>{{SHARE_ORTAK}} / {{DENOMINATOR_ORTAK}}</td></tr>
   <tr><td class="l">EKLENTİSİ</td><td>{{TITLE_ATTACHMENT_BUYUK_ORTAK}}</td></tr>
   <tr><td class="l">TAPU TARİHİ</td><td>{{TAPU_TARIHI_ORTAK}}</td></tr>
   <tr><td class="l">EDİNME SEBEBİ</td><td>{{EDINME_SEBEBI_BUYUK_ORTAK}}</td></tr>
