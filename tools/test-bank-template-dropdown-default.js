@@ -53,8 +53,8 @@ assert.match(
 );
 assert.match(
   blockFnSrc,
-  /resolveTemplateKeyForExport\(select\.value, isLandPropertyForBankTemplate\(\)\)/,
-  "Export tiklama aninda arsa-arazi yonlendirmesi (resolveTemplateKeyForExport) kaybolmus — bu KORUNMALIYDI, yalnizca dropdown varsayilani degismeliydi."
+  /resolveTemplateKeyForExport\(select\.value, isLandPropertyForBankTemplate\(\), isMustakilBinaPropertyForBankTemplate\(\)\)/,
+  "Export tiklama aninda arsa-arazi/mustakil-bina yonlendirmesi (resolveTemplateKeyForExport) kaybolmus — bu KORUNMALIYDI, yalnizca dropdown varsayilani degismeliydi."
 );
 
 console.log("appendBankTemplateExportBlock kaynak-duzeyi kablolama testi tamam.");

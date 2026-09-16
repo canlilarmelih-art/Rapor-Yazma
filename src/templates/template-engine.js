@@ -33,6 +33,9 @@
     // (bkz. resolveBankTemplateKeyForExport / appendBankTemplateExportBlock). Karışıklığı
     // önlemek için açılır listede AYRI bir seçenek olarak GÖSTERİLMEZ.
     { key: "akbank-arsa-arazi", file: "templates/akbank-arsa-arazi.html", title: "Akbank Rapor Formatı (Arsa/Arazi)", bank: "Akbank T.A.Ş.", variant: "arsa-arazi", hiddenFromList: true },
+    // Müstakil Bina (2026-09-17, pilot) — Mülkiyet Müstakil Bina ise otomatik
+    // yönlendirilir; arsa-arazi ile AYNI gizli-varyant deseni.
+    { key: "akbank-mustakil-bina", file: "templates/akbank-mustakil-bina.html", title: "Akbank Rapor Formatı (Müstakil Bina)", bank: "Akbank T.A.Ş.", variant: "mustakil-bina", hiddenFromList: true },
     // Kullanıcı talebi (2026-08-03): "word formatını bozmamalıydın logolar
     // sayfa yapısı çerçeveler... word olarak tutabilirsin" — bu şablon HTML
     // DEĞİL, kullanıcının bize sunduğu gerçek .docx dosyası (format: "docx").
@@ -760,6 +763,10 @@
     // buildUnitUnitsSummaryTableData, app.js) — Dekoratif Özellikler paneli
     // BİLEREK hariç tutulur.
     TASINMAZLARBAGIMSIZBOLUMTABLOSU: { h: () => safeCall("buildUnitUnitsSummaryWordTableHtml") },
+    // Müstakil Bina (2026-09-17) — AYNI çoklu-taşınmaz tablosu, yalnızca
+    // başlık farklı: müstakil binada "bağımsız bölüm" kavramı yok, taşınmazın
+    // KENDİSİ bir bina olduğundan başlık "Taşınmazlar Bina Özeti" olmalı.
+    TASINMAZLARBINATABLOSU: { h: () => safeCall("buildUnitUnitsSummaryWordTableHtml", false, "Taşınmazlar Bina Özeti") },
     // Proje Uygunluk Durumu (2026-08-26) — yukarıdakilerle AYNI desen;
     // görünürlük kuralı Değerleme/Bağımsız Bölüm ile AYNI (yalnızca 2+
     // taşınmaz, bkz. buildProjectSuitabilityUnitsSummaryTableData, app.js).
@@ -1520,25 +1527,31 @@
     return TEMPLATE_REGISTRY.map((entry) => ({ ...entry }));
   }
 
-  function defaultTemplateKeyForBank(bankName, isLandOwnership = false) {
+  // Müstakil Bina (2026-09-17) — Arsa/Arazi'nin yanına ÜÇÜNCÜ bir gizli
+  // varyant sinyali eklendi. Geriye dönük uyumluluk KORUNUR: isMustakilBina
+  // verilmezse (eski 2 parametreli çağrılar) davranış birebir eskisiyle
+  // aynıdır (yalnızca isLandOwnership'e göre arsa-arazi/temel seçimi).
+  function defaultTemplateKeyForBank(bankName, isLandOwnership = false, isMustakilBina = false) {
     const bank = String(bankName || "").trim();
     const matches = TEMPLATE_REGISTRY.filter((entry) => entry.bank && entry.bank === bank);
     if (!matches.length) return "";
     if (matches.length > 1) {
-      const preferred = matches.find((entry) => Boolean(entry.variant === "arsa-arazi") === Boolean(isLandOwnership));
+      const wantedVariant = isLandOwnership ? "arsa-arazi" : isMustakilBina ? "mustakil-bina" : "";
+      const preferred = matches.find((entry) => (entry.variant || "") === wantedVariant);
       if (preferred) return preferred.key;
     }
     return matches[0].key;
   }
 
-  // Mülkiyet (ownershipType) Arsa/Tarla ise banka için "arsa-arazi" varyantı
-  // varsa o kullanılır; aksi halde seçilen anahtar aynen döner. Açılır listede
-  // (hiddenFromList) yalnızca tek seçenek gösterildiği için asıl indirmede
-  // doğru dosyaya yönlendirmek için bu fonksiyon kullanılır.
-  function resolveTemplateKeyForExport(templateKey, isLandOwnership = false) {
+  // Mülkiyet (ownershipType) Arsa/Tarla ise banka için "arsa-arazi", Müstakil
+  // Bina ise "mustakil-bina" varyantı varsa o kullanılır; aksi halde seçilen
+  // anahtar aynen döner. Açılır listede (hiddenFromList) yalnızca tek seçenek
+  // gösterildiği için asıl indirmede doğru dosyaya yönlendirmek için bu
+  // fonksiyon kullanılır.
+  function resolveTemplateKeyForExport(templateKey, isLandOwnership = false, isMustakilBina = false) {
     const entry = TEMPLATE_REGISTRY.find((item) => item.key === templateKey);
     if (!entry || !entry.bank) return templateKey;
-    return defaultTemplateKeyForBank(entry.bank, isLandOwnership) || templateKey;
+    return defaultTemplateKeyForBank(entry.bank, isLandOwnership, isMustakilBina) || templateKey;
   }
 
   // options.download = false: dosyayı otomatik indirmek yerine içeriği

@@ -22,6 +22,7 @@ const backupDir = path.join(appDir, "backups");
 const PRIVATE_REPORT_TEMPLATES = Object.freeze({
   akbank: "akbank.html",
   "akbank-arsa-arazi": "akbank-arsa-arazi.html",
+  "akbank-mustakil-bina": "akbank-mustakil-bina.html",
   emlakkatilim: "emlakkatilim.docx",
   halkbank: "halkbank.html",
   "halkbank-arsa-arazi": "halkbank-arsa-arazi.html",

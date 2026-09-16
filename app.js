@@ -5631,6 +5631,10 @@ function isArsaOwnershipType(value = state.fields.ownershipType) {
   return normalizeOwnershipTypeForSectionVisibility(value) === "ARSA";
 }
 
+function isMustakilBinaOwnershipType(value = state.fields.ownershipType) {
+  return normalizeOwnershipTypeForSectionVisibility(value) === "MUSTAKIL BINA";
+}
+
 // Banka sablonu (konut/isyeri vs arsa/arazi) otomatik secimi icin: Mülkiyet
 // (ownershipType) Arsa/Tarla ise, VEYA kullanıcı yalnızca Mevcut Kullanım
 // Niteliğini (currentUsageNature) Arsa/Arazi olarak doldurup Mülkiyet'i hiç
@@ -5638,6 +5642,15 @@ function isArsaOwnershipType(value = state.fields.ownershipType) {
 function isLandPropertyForBankTemplate() {
   if (isLandOwnershipType()) return true;
   return ["ARAZI", "ARSA"].includes(foldTurkish(state.fields.currentUsageNature || ""));
+}
+
+// Müstakil Bina banka şablonu varyantı (2026-09-17) — kullanıcı talebi:
+// "müstakil bina formatlarını ... yazma aşamasına geldik". Arsa/Arazi'nin
+// isLandPropertyForBankTemplate() ile AYNI desen: Mülkiyet Müstakil Bina
+// ise banka şablonunun (varsa) gizli "-mustakil-bina" varyantına
+// yönlendirilir.
+function isMustakilBinaPropertyForBankTemplate() {
+  return isMustakilBinaOwnershipType();
 }
 
 function isLandProjectReview() {
@@ -23499,7 +23512,7 @@ function appendBankTemplateExportBlock(panel) {
       // Arsa/Arazi ise, dropdown'da gösterilmeyen "arsa-arazi" varyantına
       // sessizce yönlendirilir (kullanıcı deneyimini sadeleştirmek için banka
       // basina tek secenek gosterilir).
-      const templateKey = window.RaporTemplates.resolveTemplateKeyForExport(select.value, isLandPropertyForBankTemplate());
+      const templateKey = window.RaporTemplates.resolveTemplateKeyForExport(select.value, isLandPropertyForBankTemplate(), isMustakilBinaPropertyForBankTemplate());
       const exportCertificate = await createOfficialExportCertificate(templateKey);
       const result = await buildBankTemplateZipBundle(templateKey, { exportCertificate });
       pingReportEvent("exported", state.reportId, buildReportSummaryForPing());
@@ -26467,11 +26480,11 @@ function buildUnitUnitsSummaryTableData() {
 // Banka şablonlarına {{TASINMAZLARBAGIMSIZBOLUMTABLOSU}} ile enjekte
 // edilecek gerçek HTML tablo (bkz. template-engine.js) — diğer 6 bölümün
 // export akışıyla BİREBİR AYNI desen.
-function buildUnitUnitsSummaryWordTableHtml(flattenCommonFields = false) {
+function buildUnitUnitsSummaryWordTableHtml(flattenCommonFields = false, headingOverride = "") {
   const data = buildUnitUnitsSummaryTableData();
   if (!data || !data.rows.length) return "";
   const hoisted = hoistUniformColumnsForWordTable(data);
-  return buildUnitsSummaryTableHeadingHtml("Taşınmazlar Bağımsız Bölüm Özeti") + buildTitleUnitsSummaryTableHtmlFromData(hoisted.headers, hoisted.rows, hoisted.commonFields, 4, flattenCommonFields, hoisted.allHeadersInOriginalOrder);
+  return buildUnitsSummaryTableHeadingHtml(headingOverride || "Taşınmazlar Bağımsız Bölüm Özeti") + buildTitleUnitsSummaryTableHtmlFromData(hoisted.headers, hoisted.rows, hoisted.commonFields, 4, flattenCommonFields, hoisted.allHeadersInOriginalOrder);
 }
 
 // Proje Uygunluk Durumu (2026-08-26) — kullanıcı talebi: "uygunluk durumu

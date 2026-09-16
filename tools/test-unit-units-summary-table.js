@@ -689,4 +689,39 @@ const DIFFERENTIATING_UNIT_OVERRIDES = {};
   console.log("report-tables-xlsx.js Bagimsiz Bolum sayfasi kablolama testi tamam.");
 }
 
+// --- 16) Müstakil Bina (2026-09-17): buildUnitUnitsSummaryWordTableHtml -----
+// artık opsiyonel bir 2. parametre (headingOverride) alıyor — Akbank
+// Müstakil Bina şablonundaki {{TASINMAZLARBINATABLOSU}} bunu "Taşınmazlar
+// Bina Özeti" ile çağırır (müstakil binada "bağımsız bölüm" kavramı
+// anlamsız). Parametre verilmezse ESKİ davranış (varsayılan başlık)
+// DEĞİŞMEMELİ — bu, mevcut TASINMAZLARBAGIMSIZBOLUMTABLOSU kablolamasının
+// regresyonudur.
+{
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: fullUnitFields({ ownershipType: "Müstakil Bina" }),
+    tables: {},
+    titleUnits: [unit(fullUnitFields({ ownershipType: "Müstakil Bina", unitFloor: "Zemin" }))],
+  });
+  const defaultHtml = fns.buildUnitUnitsSummaryWordTableHtml();
+  assert.ok(defaultHtml.includes("Taşınmazlar Bağımsız Bölüm Özeti"), "headingOverride verilmeyince eski varsayilan baslik kaybolmus (regresyon).");
+  assert.ok(!defaultHtml.includes("Taşınmazlar Bina Özeti"), "headingOverride verilmeyince yanlislikla Bina Ozeti basligi cikti.");
+  const overriddenHtml = fns.buildUnitUnitsSummaryWordTableHtml(false, "Taşınmazlar Bina Özeti");
+  assert.ok(overriddenHtml.includes("Taşınmazlar Bina Özeti"), "headingOverride ile 'Taşınmazlar Bina Özeti' basligi uretilmedi.");
+  assert.ok(!overriddenHtml.includes("Taşınmazlar Bağımsız Bölüm Özeti"), "headingOverride verilmesine ragmen eski baslik hala cikiyor.");
+  console.log("buildUnitUnitsSummaryWordTableHtml headingOverride parametresi (Musttakil Bina icin) testi tamam.");
+}
+
+// --- 17) template-engine.js'te {{TASINMAZLARBINATABLOSU}} -> AYNI fonksiyon -
+// ama "Taşınmazlar Bina Özeti" başlığıyla kayıtlı.
+{
+  const templateEngineSource = fs.readFileSync(path.join(__dirname, "..", "src", "templates", "template-engine.js"), "utf8");
+  assert.match(
+    templateEngineSource,
+    /TASINMAZLARBINATABLOSU:\s*\{\s*h:\s*\(\)\s*=>\s*safeCall\("buildUnitUnitsSummaryWordTableHtml",\s*false,\s*"Taşınmazlar Bina Özeti"\)\s*\}/,
+    "template-engine.js'te {{TASINMAZLARBINATABLOSU}} -> buildUnitUnitsSummaryWordTableHtml(false, \"Taşınmazlar Bina Özeti\") kablolaması bulunamadı."
+  );
+  console.log("{{TASINMAZLARBINATABLOSU}} template-engine.js kablolama testi tamam.");
+}
+
 console.log("Tasinmazlar bagimsiz bolum ozeti tablosu testleri basarili.");
