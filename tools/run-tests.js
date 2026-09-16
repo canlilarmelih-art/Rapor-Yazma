@@ -141,6 +141,7 @@ const TEST_FILES = [
   "test-environmental-fields-shared-across-units.js",
   "test-kuveytturk-arsa-arazi-template.js",
   "test-akbank-mustakil-bina-template.js",
+  "test-building-structures-editor.js",
   "test-bank-template-dropdown-default.js",
   "test-report-library-cloud-search.js",
   "test-cloud-retention-days.js",
