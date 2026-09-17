@@ -14295,10 +14295,6 @@ const buildingFloorUnitColumns = [
 // geriye dönük veri taşıma GEREKMEDİ.
 let activeBuildingStructureTabIndex = 0;
 
-function createEmptyBuildingStructureFloorRow() {
-  return { floor: "", legalArea: "", currentArea: "", interiors: "" };
-}
-
 function createEmptyBuildingStructureRow() {
   return {
     name: "",
@@ -14534,11 +14530,37 @@ function createBuildingStructureFloorCountPanel(row) {
       row.floorCountText = generated;
       totalInput.value = generated;
     }
+    // Kullanıcı takip talebi (2026-09-17): "aynı ana gayrimenkuldeki gibi
+    // aşağıya kat satırları ... açılmalı" — Ana Taşınmaz Kat Dağılımı'nın
+    // "Kaydet" düğmesi createBuildingFloorRowsTable() satırlarını nasıl
+    // adet grid'inden türetiyorsa (buildBuildingFloorRowsFromCounts), bu
+    // düğme de AYNI mantıkla row.floors'u YENİDEN üretir — halen var olan
+    // kat isimleri için girilmiş Yasal/Mevcut Alan + İç Hacimler DEĞERLERİ
+    // korunur (isme göre eşleştirme), artık sayılmayan katlar düşer.
+    row.floors = buildBuildingStructureFloorRowsFromCounts(row.floorCounts, Array.isArray(row.floors) ? row.floors : []);
     autosave();
+    renderSection();
   });
 
   panel.append(countGrid, calculateButton, totalLabel);
   return panel;
+}
+
+// buildBuildingFloorRowsFromCounts()'un (Ana Taşınmaz) KENDİSİ yeniden
+// kullanılmadı — o sabit alan şemasına (residential/shop/office/storage)
+// sahip; burada Bağımsız Bölüm'ünkiyle AYNI şema (legalArea/currentArea/
+// interiors) gerekiyor. Kat İSİMLERİNİ üreten getBuildingFloorNamesFromCounts()
+// ise SAF/duruma-bağımlı olmadığından DOĞRUDAN paylaşılıyor.
+function buildBuildingStructureFloorRowsFromCounts(floorCounts, existingRows = []) {
+  const existingByName = new Map(
+    existingRows.filter((floorRow) => floorRow?.floor).map((floorRow) => [floorRow.floor, floorRow])
+  );
+  return getBuildingFloorNamesFromCounts(floorCounts).map((floorName) => ({
+    floor: floorName,
+    legalArea: existingByName.get(floorName)?.legalArea || "",
+    currentArea: existingByName.get(floorName)?.currentArea || "",
+    interiors: existingByName.get(floorName)?.interiors || "",
+  }));
 }
 
 function createBuildingStructureTextField(row, key, labelText, placeholder = "") {
@@ -14623,50 +14645,51 @@ function createBuildingStructureInteriorFeaturesField(row) {
   return label;
 }
 
+// Kullanıcı takip talebi (2026-09-17): "aynı ana gayrimenkuldeki gibi
+// aşağıya kat satırları ve katlar ile ilgili sütunlar açılmalı ... ana
+// taşınmaz katlarında yer alan kat, ortak alanlar daire dükkan ofis depo
+// sütunları yerine kat, yasal alan, mevcut alan, iç hacimler (çoktan
+// seçmeli 10 alt hücre) ... ana gayrimenkul özellikleri ile bağımsız bölüm
+// özelliklerinin harmanlanmış hali gibi bir şey." Bu panel artık MANUEL
+// "Kat ekle" İLE DEĞİL, Kat Dağılımı panelinin "Hesapla" düğmesiyle
+// (buildBuildingStructureFloorRowsFromCounts) OTOMATİK dolduruluyor — Ana
+// Taşınmaz Kat Satırları (createBuildingFloorRowsTable) İLE AYNI mekanizma
+// (satır silme/ekleme YOK, sayıyı değiştirip yeniden Hesapla'ya basılır).
+// Sütunlar ise Bağımsız Bölüm'ün Katlar/Alanlar/İç Hacimler kartlarından
+// (createUnitFloorInteriorRows/createUnitFloorInteriorPicker) ödünç alındı:
+// Kat (artık düzenlenemez, adet grid'inden gelen sabit ad) + Yasal/Mevcut
+// Alan + İç Hacimler (10 ayrı select, unitInteriorValidationOptions).
 function createBuildingStructureFloorPanel(row) {
-  const panel = createUnitSubsection("Kat Bazlı Alanlar ve İç Hacimler", "Bu yapı birden fazla kattan oluşuyorsa her katı ayrı satır olarak ekleyiniz.");
+  const panel = createUnitSubsection("Kat Bazlı Alanlar ve İç Hacimler", "Kat Dağılımı girilip \"Kat Dağılımını Hesapla\" tıklandığında kat satırları burada otomatik oluşur (Ana Taşınmaz Kat Satırları ile AYNI mantık).");
   panel.classList.add("building-structure-floor-panel");
 
-  const toolbar = document.createElement("div");
-  toolbar.className = "unit-floor-toolbar";
-  const addButton = document.createElement("button");
-  addButton.type = "button";
-  addButton.className = "secondary-button";
-  addButton.textContent = "Kat ekle";
-  addButton.addEventListener("click", () => {
-    row.floors.push(createEmptyBuildingStructureFloorRow());
-    autosave();
-    renderSection();
-  });
-  toolbar.append(addButton);
-  panel.append(toolbar);
+  const floors = Array.isArray(row.floors) ? row.floors : (row.floors = []);
 
-  if (!row.floors.length) {
+  if (!floors.length) {
     const empty = document.createElement("div");
     empty.className = "empty-table-note";
-    empty.textContent = "Henüz kat eklenmedi.";
+    empty.textContent = "Kat Dağılımı girilip \"Kat Dağılımını Hesapla\" düğmesine basıldığında kat satırları burada oluşur.";
     panel.append(empty);
     return panel;
   }
 
-  panel.append(createBuildingStructureFloorTotalsSummary(row.floors));
+  panel.append(createBuildingStructureFloorTotalsSummary(floors));
 
   const rowsWrapper = document.createElement("div");
   rowsWrapper.className = "unit-floor-rows";
-  row.floors.forEach((floorRow, floorIndex) => {
+  floors.forEach((floorRow, floorIndex) => {
     const card = document.createElement("div");
     card.className = "unit-floor-card";
     const head = document.createElement("div");
-    head.className = "unit-floor-card-head";
+    head.className = "unit-floor-card-head building-structure-floor-head";
     head.append(
-      createBuildingStructureFloorSelect(floorRow, "floor", "Kat", unitFloorOptions),
+      createBuildingStructureFloorNameField(floorRow),
       createBuildingStructureFloorInput(floorRow, "legalArea", "Yasal Alan"),
       createBuildingStructureFloorInput(floorRow, "currentArea", "Mevcut Alan"),
-      createBuildingStructureFloorDeleteButton(row, floorIndex),
     );
     const interiorRow = document.createElement("div");
     interiorRow.className = "unit-floor-card-interior-row";
-    interiorRow.append(createBuildingStructureFloorInput(floorRow, "interiors", "İç Hacimler"));
+    interiorRow.append(createBuildingStructureFloorInteriorPicker(floorRow));
     card.append(head, interiorRow);
     rowsWrapper.append(card);
   });
@@ -14675,22 +14698,13 @@ function createBuildingStructureFloorPanel(row) {
   return panel;
 }
 
-function createBuildingStructureFloorSelect(floorRow, key, labelText, options) {
+function createBuildingStructureFloorNameField(floorRow) {
   const label = document.createElement("label");
   label.className = "field";
-  const select = document.createElement("select");
-  options.forEach((option) => {
-    const item = document.createElement("option");
-    item.value = option;
-    item.textContent = option || "Seçiniz";
-    select.append(item);
-  });
-  select.value = options.includes(floorRow[key]) ? floorRow[key] : "";
-  select.addEventListener("input", () => {
-    floorRow[key] = select.value;
-    autosave();
-  });
-  label.append(createSpan(labelText), select);
+  const display = document.createElement("span");
+  display.className = "unit-floor-card-floor-name is-readonly";
+  display.textContent = floorRow.floor || "";
+  label.append(createSpan("Kat"), display);
   return label;
 }
 
@@ -14708,18 +14722,45 @@ function createBuildingStructureFloorInput(floorRow, key, labelText) {
   return label;
 }
 
-function createBuildingStructureFloorDeleteButton(row, floorIndex) {
-  const button = document.createElement("button");
-  button.type = "button";
-  button.className = "delete-row-button unit-floor-delete";
-  button.textContent = "×";
-  button.title = "Katı sil";
-  button.addEventListener("click", () => {
-    row.floors.splice(floorIndex, 1);
-    autosave();
-    renderSection();
+// createUnitFloorInteriorPicker()'ın (Bağımsız Bölüm) BİREBİR deseni — 10
+// ayrı select, virgülle birleştirilip floorRow.interiors'a yazılıyor. O
+// fonksiyon `state.tables.unitFloors` (rapor-geneli TEK bağımsız bölüm)
+// okur/yazar; burada HER YAPININ KENDİ floorRow'u var, o yüzden doğrudan
+// çağrılmadı — ama seçenek listesi getUnitInteriorValidationOptions() İLE
+// AYNI (raporun legalUsageNature'ına göre konut/işyeri/ofis/sanayi
+// varyasyonu otomatik uygulanır).
+function createBuildingStructureFloorInteriorPicker(floorRow) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "field field-wide unit-floor-interior-picker";
+  const options = getUnitInteriorValidationOptions();
+  const selected = String(floorRow.interiors || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter((item) => options.includes(item));
+  const list = document.createElement("div");
+  list.className = "unit-interior-validation-list";
+  Array.from({ length: 10 }, (_, selectIndex) => {
+    const select = document.createElement("select");
+    const empty = document.createElement("option");
+    empty.value = "";
+    empty.textContent = "Seçiniz";
+    select.append(empty);
+    options.forEach((option) => {
+      const item = document.createElement("option");
+      item.value = option;
+      item.textContent = option;
+      select.append(item);
+    });
+    select.value = selected[selectIndex] || "";
+    select.addEventListener("input", () => {
+      const values = [...list.querySelectorAll("select")].map((item) => item.value).filter(Boolean);
+      floorRow.interiors = values.join(", ");
+      autosave();
+    });
+    list.append(select);
   });
-  return button;
+  wrapper.append(createSpan("İç Hacimler"), list);
+  return wrapper;
 }
 
 function createBuildingStructureFloorTotalsSummary(floors) {

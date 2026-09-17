@@ -3348,6 +3348,34 @@ td .free-lookup input {
   justify-content: flex-end;
 }
 
+/* Yapı kat satırları (0.0.824) — .unit-floor-card-head'in Bağımsız Bölüm'e
+   özgü 10-kolonlu grid'i (Kat/Yasal Teras/İnd. Oranı/vb.) burada UYGUN
+   DEĞİL: bu kart yalnızca 3 alan (Kat/Yasal Alan/Mevcut Alan) taşıyor —
+   miras alınan grid-template-columns/min-width kullanılırsa kart 910px'e
+   kadar boş sütunlarla gereksiz genişler. Kendi (dar) grid'i + Kat adının
+   salt-okunur (span) görünümü burada tanımlı. */
+.unit-floor-card-head.building-structure-floor-head {
+  grid-template-columns: 160px 140px 140px;
+  min-width: 0;
+}
+
+.unit-floor-card-floor-name {
+  display: flex;
+  align-items: center;
+  height: 34px;
+  min-height: 34px;
+  padding: 6px 7px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.unit-floor-card-floor-name.is-readonly {
+  background: #eef7ff;
+  color: #1c4257;
+}
+
 .building-unit-distribution-summary-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

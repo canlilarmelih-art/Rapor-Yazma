@@ -104,6 +104,25 @@ function makeElementStub(tag) {
       el._listeners[type]?.(event);
     },
     setAttribute() {},
+    // createBuildingStructureFloorInteriorPicker() (10-select İç Hacimler
+    // secici, 0.0.824) `list.querySelectorAll("select")` kullanıyor — bu
+    // sadece BASİT tag-adı secicilerini destekleyen, o cagriyi calistirmaya
+    // yeten minimal bir karsilik.
+    querySelectorAll(selector) {
+      const tag = String(selector || "").toUpperCase();
+      const results = [];
+      const walk = (node) => {
+        (node.children || []).forEach((child) => {
+          if (child.tagName === tag) results.push(child);
+          walk(child);
+        });
+      };
+      walk(el);
+      return results;
+    },
+    querySelector(selector) {
+      return el.querySelectorAll(selector)[0];
+    },
   };
   return el;
 }
@@ -128,9 +147,9 @@ function findAllStubs(node, tag, acc = []) {
   return acc;
 }
 
-function makeContext(rows) {
+function makeContext(rows, fields = {}) {
   const context = {
-    state: { tables: rows === undefined ? {} : { buildings: rows } },
+    state: { fields, tables: rows === undefined ? {} : { buildings: rows } },
     document: {
       createElement: (tag) => makeElementStub(tag),
       createDocumentFragment: () => makeFragmentStub(),
@@ -165,9 +184,15 @@ function makeContext(rows) {
   vm.runInContext(sliceConst("buildingOrderOptions"), context);
   vm.runInContext(sliceConst("buildingClassOptions"), context);
   vm.runInContext(sliceConst("buildingEntranceDirectionOptions"), context);
-  vm.runInContext(sliceConst("unitFloorOptions"), context);
+  vm.runInContext(sliceConst("unitInteriorValidationOptions"), context);
+  vm.runInContext(sliceConst("commercialUnitInteriorValidationOptions"), context);
+  vm.runInContext(sliceConst("shopUnitInteriorValidationOptions"), context);
+  vm.runInContext(sliceConst("officeUnitInteriorValidationOptions"), context);
+  vm.runInContext(sliceConst("commercialBuildingUnitInteriorValidationOptions"), context);
+  vm.runInContext(sliceConst("industrialUnitInteriorValidationOptions"), context);
+  vm.runInContext(sliceFn("function foldTurkish("), context);
+  vm.runInContext(sliceFn("function getUnitInteriorValidationOptions("), context);
   vm.runInContext(sliceFn("let activeBuildingStructureTabIndex = 0;", { toMarker: ";" }), context);
-  vm.runInContext(sliceFn("function createEmptyBuildingStructureFloorRow("), context);
   vm.runInContext(sliceFn("function createEmptyBuildingStructureRow("), context);
   vm.runInContext(sliceFn("function buildBuildingStructureFloorComposition("), context);
   vm.runInContext(sliceFn("function buildBuildingStructureElevatorOptions("), context);
@@ -177,6 +202,8 @@ function makeContext(rows) {
   vm.runInContext(sliceFn("function formatBuildingStructureAreaNumber("), context);
   vm.runInContext(sliceFn("function normalizeNonNegativeInteger("), context);
   vm.runInContext(sliceFn("function parseBuildingFloorCount("), context);
+  vm.runInContext(sliceFn("function getBuildingFloorNamesFromCounts("), context);
+  vm.runInContext(sliceFn("function buildBuildingStructureFloorRowsFromCounts("), context);
   vm.runInContext(sliceFn("function createBuildingStructuresEditor("), context);
   vm.runInContext(sliceFn("function createBuildingStructureAddButton("), context);
   vm.runInContext(sliceFn("function createBuildingStructureTabContent("), context);
@@ -186,16 +213,16 @@ function makeContext(rows) {
   vm.runInContext(sliceFn("function createBuildingStructureConstructionYearField("), context);
   vm.runInContext(sliceFn("function createBuildingStructureInteriorFeaturesField("), context);
   vm.runInContext(sliceFn("function createBuildingStructureFloorPanel("), context);
-  vm.runInContext(sliceFn("function createBuildingStructureFloorSelect("), context);
+  vm.runInContext(sliceFn("function createBuildingStructureFloorNameField("), context);
   vm.runInContext(sliceFn("function createBuildingStructureFloorInput("), context);
-  vm.runInContext(sliceFn("function createBuildingStructureFloorDeleteButton("), context);
+  vm.runInContext(sliceFn("function createBuildingStructureFloorInteriorPicker("), context);
   vm.runInContext(sliceFn("function createBuildingStructureFloorTotalsSummary("), context);
   vm.runInContext(sliceFn("function createBuildingStructureDeleteButton("), context);
   return context;
 }
 
-function runEditorScenario(rows) {
-  const context = makeContext(rows);
+function runEditorScenario(rows, fields = {}) {
+  const context = makeContext(rows, fields);
   const panel = context.createBuildingStructuresEditor();
   return { panel, context };
 }
@@ -368,8 +395,10 @@ function runEditorScenario(rows) {
 
 // --- 8) Kat Dağılımı paneli: Ana Taşınmaz Kat Dağılımı İLE AYNI mantık —
 //        kat turu basina adet grid'i + "Hesapla" ile Toplam Kat Adedi metni
-//        uretilir; kullanicinin metni ELLE duzenlemesi bir SONRAKI "Hesapla"
-//        tiklanana kadar EZILMEZ.
+//        VE kat satirlari (row.floors) BİRLİKTE uretilir; kullanicinin
+//        Toplam Kat Adedi metnini ELLE duzenlemesi bir SONRAKI "Hesapla"
+//        tiklanana kadar EZILMEZ. "Hesapla" artik yapisal (floors) bir
+//        degisiklik ureettiginden renderSection() de tetikler.
 {
   const rows = [{ name: "Fabrika Binası" }];
   const { panel, context } = runEditorScenario(rows);
@@ -387,53 +416,64 @@ function runEditorScenario(rows) {
   const groundInput = countGrid.children[1].children[1];
   const normalInput = countGrid.children[4].children[1];
   groundInput.value = "1";
-  normalInput.value = "1";
+  normalInput.value = "2";
 
   const calculateButton = floorCountPanel.children.find((n) => n.tagName === "BUTTON");
   assert.equal(calculateButton.textContent, "Kat Dağılımını Hesapla", "'Kat Dağılımını Hesapla' butonu bulunamadi.");
   calculateButton.fire("click");
 
   const totalInput = floorCountPanel.children.find((n) => (n.children[0] || {}).textContent === "Toplam Kat Adedi").children[1];
-  assert.equal(totalInput.value, "Zemin + 1 Normal Kat", "Toplam Kat Adedi metni kat dağılımından dogru uretilmedi.");
+  assert.equal(totalInput.value, "Zemin + 2 Normal Kat", "Toplam Kat Adedi metni kat dağılımından dogru uretilmedi.");
   assert.equal(context.state.tables.buildings[0].floorCounts.ground, "1", "Zemin adedi row.floorCounts'a yazilmadi.");
-  assert.equal(context.state.tables.buildings[0].floorCounts.normal, "1", "Normal kat adedi row.floorCounts'a yazilmadi.");
-  assert.equal(context.state.tables.buildings[0].floorCountText, "Zemin + 1 Normal Kat", "Toplam Kat Adedi row'a yazilmadi.");
+  assert.equal(context.state.tables.buildings[0].floorCounts.normal, "2", "Normal kat adedi row.floorCounts'a yazilmadi.");
+  assert.equal(context.state.tables.buildings[0].floorCountText, "Zemin + 2 Normal Kat", "Toplam Kat Adedi row'a yazilmadi.");
+  // Not: context.state.tables.buildings[0].floors VM-realm'de olusturulan
+  // bir dizi — .map()'in ONA ait sonucu da VM-realm Array'i olabiliyor;
+  // dis-realm bir dizi literaliyle assert.deepEqual bu yuzden YANILTICI
+  // sekilde basarisiz olabilir (bu oturumda daha once de rastlanan bir
+  // durum). join(",") karsilastirmasi realm'den bagimsiz calisir.
+  assert.equal(
+    context.state.tables.buildings[0].floors.map((floorRow) => floorRow.floor).join(","),
+    "Zemin,1. Normal,2. Normal",
+    "'Hesapla' kat sayimindan (1 Zemin + 2 Normal) dogru kat SATIRLARI uretmedi (Ana Taşınmaz Kat Satırları ile AYNI mantık bekleniyordu)."
+  );
+  assert.equal(context.state.tables.buildings[0].floors.length, 3, "'Hesapla' sonrasi kat satiri sayisi (3) beklenenden farkli.");
+  assert.equal(context.renderSectionCalls, 1, "'Hesapla' yapisal (floors) degisiklik urettigi icin renderSection() cagirmali.");
 
   // Kullanici metni ELLE duzeltirse (ör. ek bir aciklama), sonraki "Hesapla"
   // tiklanana kadar bu deger KORUNMALI (autosave() cagrilir, ama grid'den
   // yeniden UZERINE YAZILMAZ).
-  totalInput.value = "Zemin + 1 Normal Kat (çatı katı hariç)";
+  totalInput.value = "Zemin + 2 Normal Kat (çatı katı hariç)";
   totalInput.fire("input");
-  assert.equal(context.state.tables.buildings[0].floorCountText, "Zemin + 1 Normal Kat (çatı katı hariç)", "Elle duzenlenen Toplam Kat Adedi metni satira yazilmadi.");
-  assert(context.autosaveCalls > 0, "Toplam Kat Adedi elle duzenlemesi autosave() tetiklemedi.");
+  assert.equal(context.state.tables.buildings[0].floorCountText, "Zemin + 2 Normal Kat (çatı katı hariç)", "Elle duzenlenen Toplam Kat Adedi metni satira yazilmadi.");
+  assert(context.autosaveCalls > 1, "Toplam Kat Adedi elle duzenlemesi autosave() tetiklemedi.");
 }
 
-// --- 9) Kat Bazlı Alanlar paneli: bos durumda mesaj, "Kat ekle" ile satir -
-//        eklenir (renderSection GEREKIR, yapisal degisiklik).
+// --- 9) Kat Bazlı Alanlar paneli: bos durumda mesaj (MANUEL "Kat ekle" -----
+//        YOK artik — satirlar SADECE Kat Dağılımı "Hesapla" ile olusur).
 {
   const rows = [{ name: "Ana Bina", floors: [] }];
-  const { panel, context } = runEditorScenario(rows);
+  const { panel } = runEditorScenario(rows);
   const content = panel.children.find((n) => (n.className || "").includes("building-structure-tab-content"));
   const floorPanel = content.children.find((n) => (n.className || "").includes("building-structure-floor-panel"));
   assert(floorPanel, "Kat Bazlı Alanlar paneli bulunamadi.");
   const emptyNote = floorPanel.children.find((n) => (n.className || "").includes("empty-table-note"));
-  assert(emptyNote, "Bos kat listesinde 'Henüz kat eklenmedi.' mesaji yok.");
-  const addFloorButton = floorPanel.children[0].children[0];
-  assert.equal(addFloorButton.textContent, "Kat ekle", "'Kat ekle' butonu bulunamadi.");
-  addFloorButton.fire("click");
-  assert.equal(context.state.tables.buildings[0].floors.length, 1, "'Kat ekle' yeni bir kat satiri eklemedi.");
-  assert.equal(context.autosaveCalls, 1, "'Kat ekle' sonrasi autosave() cagrilmadi.");
-  assert.equal(context.renderSectionCalls, 1, "'Kat ekle' sonrasi renderSection() cagrilmadi.");
+  assert(emptyNote, "Bos kat listesinde bilgilendirme mesaji yok.");
+  assert.match(emptyNote.textContent, /Kat Dağılımını Hesapla/, "Bos durum mesaji artik 'Kat Dağılımını Hesapla' akisina yonlendirmeli.");
+  const addFloorButton = floorPanel.children.find((n) => n.tagName === "BUTTON");
+  assert.equal(addFloorButton, undefined, "'Kat Bazlı Alanlar' panelinde artik MANUEL 'Kat ekle' butonu OLMAMALI (satirlar Kat Dağılımı'ndan turer).");
 }
 
-// --- 10) Kat satirlari: alanlar duzenlenebilir, Toplam Yasal/Mevcut Alan --
-//        otomatik hesaplanir, satir silme calisir.
+// --- 10) Kat Dağılımı'ndan uretilen kat satirlari: Kat adi SALT-OKUNUR, ---
+//        Yasal/Mevcut Alan duzenlenebilir, Toplam Yasal/Mevcut Alan otomatik
+//        hesaplanir, İç Hacimler 10 ayri select ile (Bağımsız Bölüm ile AYNI
+//        desen) coklu secilir — "harmanlanmis" istegin tam karsiligi.
 {
   const rows = [{
     name: "Fabrika Binası",
     floors: [
-      { floor: "Zemin", legalArea: "1000", currentArea: "1050", interiors: "Üretim salonu" },
-      { floor: "1. Normal", legalArea: "500", currentArea: "600", interiors: "İdari ofis" },
+      { floor: "Zemin", legalArea: "1000", currentArea: "1050", interiors: "Salon, Depo" },
+      { floor: "1. Normal", legalArea: "500", currentArea: "600", interiors: "" },
     ],
   }];
   const { panel, context } = runEditorScenario(rows);
@@ -449,21 +489,38 @@ function runEditorScenario(rows) {
   assert.equal(rowsWrapper.children.length, 2, "Kat karti sayisi beklenenden farkli.");
   const [firstCard] = rowsWrapper.children;
   const head = firstCard.children.find((n) => (n.className || "").includes("unit-floor-card-head"));
-  const floorSelect = head.children[0].children[1];
+  assert.equal(head.className, "unit-floor-card-head building-structure-floor-head", "Kat karti basligi kendi (dar) grid sinifini kullanmiyor.");
+  assert.equal(head.children.length, 3, "Kat karti basliginda tam olarak 3 alan (Kat/Yasal Alan/Mevcut Alan) olmali — silme butonu YOK artik.");
+
+  const floorNameField = head.children[0];
+  const floorNameDisplay = floorNameField.children[1];
+  assert.equal(floorNameDisplay.tagName, "SPAN", "Kat adi artik duzenlenebilir SELECT degil, salt-okunur bir span olmali.");
+  assert.equal(floorNameDisplay.textContent, "Zemin", "Kat adi dogru gosterilmedi.");
+  assert(floorNameDisplay.className.includes("is-readonly"), "Kat adi span'i salt-okunur gorunumde olmali.");
+
   const legalInput = head.children[1].children[1];
   const currentInput = head.children[2].children[1];
-  assert.equal(floorSelect.value, "Zemin", "Kat secimi on-doldurulmadi.");
   assert.equal(legalInput.value, "1000", "Yasal Alan on-doldurulmadi.");
   assert.equal(currentInput.value, "1050", "Mevcut Alan on-doldurulmadi.");
-  const interiorRow = firstCard.children.find((n) => (n.className || "").includes("unit-floor-card-interior-row"));
-  assert.equal(interiorRow.children[0].children[1].value, "Üretim salonu", "İç Hacimler on-doldurulmadi.");
+  legalInput.value = "1100";
+  legalInput.fire("input");
+  assert.equal(context.state.tables.buildings[0].floors[0].legalArea, "1100", "Yasal Alan duzenlemesi satira yazilmadi.");
 
-  const deleteButton = head.children[head.children.length - 1];
-  assert.equal(deleteButton.textContent, "×", "Kat silme butonu bulunamadi.");
-  deleteButton.fire("click");
-  assert.equal(context.state.tables.buildings[0].floors.length, 1, "Kat silme sonrasi satir sayisi azalmadi.");
-  assert.equal(context.state.tables.buildings[0].floors[0].floor, "1. Normal", "Yanlis kat satiri silindi.");
-  assert.equal(context.renderSectionCalls, 1, "Kat silme sonrasi renderSection() cagrilmadi.");
+  const interiorRow = firstCard.children.find((n) => (n.className || "").includes("unit-floor-card-interior-row"));
+  const picker = interiorRow.children[0];
+  assert(picker.className.includes("unit-floor-interior-picker"), "İç Hacimler picker'i bulunamadi.");
+  const selects = picker.children[1].children;
+  assert.equal(selects.length, 10, "İç Hacimler TAM OLARAK 10 ayri select icermeli (kullanici talebi).");
+  assert.equal(selects[0].value, "Salon", "Onceden secili ilk İç Hacim ('Salon') on-doldurulmadi.");
+  assert.equal(selects[1].value, "Depo", "Onceden secili ikinci İç Hacim ('Depo') on-doldurulmadi.");
+  assert.equal(selects[2].value, "", "Kullanilmayan select bos ('Seçiniz') olmali.");
+
+  // Bir select degistirilince TUM secili degerler virgulle birlestirilip
+  // floorRow.interiors'a yazilir (Bağımsız Bölüm'un unitFloor picker'i
+  // ile AYNI birlestirme mantigi).
+  selects[2].value = "Mutfak";
+  selects[2].fire("input");
+  assert.equal(context.state.tables.buildings[0].floors[0].interiors, "Salon, Depo, Mutfak", "İç Hacimler secimi virgullu metne dogru birlestirilmedi.");
 }
 
 // --- 11) "Bu Yapıyı Sil": onay reddedilirse hicbir sey degismez; onaylanirsa
