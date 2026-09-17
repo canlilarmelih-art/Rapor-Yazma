@@ -1,5 +1,13 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.827 - 2026-09-17 - Yapılarda Asansör artık pop-up yerine ice-gömülü açılır liste
+
+- Kullanıcı, 0.0.826'daki modal (pop-up) tabanlı çoktan-seçmeli Asansör alanının bir ekran görüntüsünü paylaşıp "Proje İncelenen Kurum" alanındaki gibi (açılır düğme + hemen altında AÇILAN onay kutusu listesi, ayrı bir pop-up pencere DEĞİL) yapılmasını istedi: "yani pop up yerine bu şekilde yapabilirdin bence."
+- `app.js`: `openBuildingStructureElevatorModal()` (modal) tamamen kaldırıldı. `createBuildingStructureElevatorControl()` artık genel `createMultiCheckboxControl()`'ün (Proje İncelenen Kurum'un kullandığı, `.multi-checkbox-dropdown`/`.inline-checkbox-list`/`.checkbox-row` — özet düğme + hemen altında aç/kapa listesi, dışarı tıklayınca otomatik kapanır) BİREBİR AYNI görsel/etkileşim desenini kullanıyor. O genel fonksiyon `state.fields`/`getMultiCheckboxValues()` ve `projectInstitution`'a özgü OSB modal dalı gibi buraya uymayan parçalara bağlı olduğundan yeniden kullanılmadı — `row.elevator` üzerinde çalışan, gereksiz kısımları içermeyen küçük bağımsız bir kopyası yazıldı (bu Yapı özelliğindeki diğer yardımcılarla aynı ilke).
+- `tools/test-building-structures-editor.js`: modal-özel kaynak-düzeyi kontroller kaldırıldı; yerine DOM stub ile GERÇEKTEN çalıştırılan aç/kapa (özet düğmesine tıklayınca liste açılır/`is-open` sınıfı eklenir, tekrar tıklayınca kapanır) davranış testi + onay kutusu satırlarının (innerHTML şablonu, stub HTML parse etmediğinden diğer benzer testlerdeki gibi kaynak-düzeyinde) `BUILDING_STRUCTURE_ELEVATOR_OPTIONS`'tan üretilip `row.elevator`/`autosave()`'e doğru kablolandığını doğrulayan kontroller eklendi. `npm run verify` (191 dosya) EXIT:0.
+- **Canlı tarayıcıda doğrulandı**: gerçek bir Yapı sekmesinde "Asansör" düğmesine tıklanınca (ekran görüntüsündeki "Proje İncelenen Kurum" ile TIPATIP AYNI biçimde) liste doğrudan altına açılıyor; bir seçenek işaretlenince özet ANINDA güncelleniyor; dışarı tıklanınca liste kapanıyor. Önceki turda kaydedilen seçim ("2 Adet Yolcu Asansörü, 1 Adet Yük Asansörü") sorunsuz yüklendi. Konsolda hata yok.
+- `index.html`'de `app.js` cache-buster'ı `20260917-2200`'e yükseltildi.
+
 ## 0.0.826 - 2026-09-17 - Yapılarda Asansör tek çoktan-seçmeli alana birleştirildi
 
 - Kullanıcı: "yük asansörü ve yolcu asansörünü asansör bölümüne al burada açılır listeyi çoktan seçmeli olarak güncelle." 0.0.823'te "Asansör"ün yanına AYRI iki alan (Yük Asansörü/Yolcu Asansörü) eklenmişti — kullanıcı bir turdan sonra bunun yerine TEK bir "Asansör" alanı istedi, ama tekli-seçim açılır liste değil, birden fazla asansör türü/adedi AYNI ANDA seçilebilen çoktan-seçmeli bir yapı.

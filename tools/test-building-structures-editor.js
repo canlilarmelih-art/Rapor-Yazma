@@ -203,6 +203,7 @@ function makeContext(rows, fields = {}) {
   vm.runInContext(sliceConst("industrialUnitInteriorValidationOptions"), context);
   vm.runInContext(sliceFn("function foldTurkish("), context);
   vm.runInContext(sliceFn("function getUnitInteriorValidationOptions("), context);
+  vm.runInContext(sliceFn("function escapeHtml("), context);
   vm.runInContext(sliceFn("let activeBuildingStructureTabIndex = 0;", { toMarker: ";" }), context);
   vm.runInContext(sliceFn("function createEmptyBuildingStructureRow("), context);
   vm.runInContext(sliceFn("function buildBuildingStructureFloorComposition("), context);
@@ -383,14 +384,15 @@ function runEditorScenario(rows, fields = {}) {
   assert.equal(context.renderSectionCalls || 0, 0, "Yapım Yılı degisikligi gereksiz yere renderSection() tetikledi.");
 }
 
-// --- 6) Asansör coktan-secmeli alan (0.0.826): secenek listesi Yolcu/Yük -
-//        Asansörü adetlerini + "Montajı henüz yapılmamıştır"i icerir;
-//        getBuildingStructureElevatorValues/formatBuildingStructureElevatorSummary
-//        gecerli/gecersiz degerleri dogru ayikliyor; openBuildingStructureElevatorModal
-//        kaynak-duzeyinde (innerHTML/querySelector agirlikli oldugundan DOM
-//        stub'la TAM calistirilmiyor — diger testlerde de bu desen izlendi)
-//        onay kutulari BUILDING_STRUCTURE_ELEVATOR_OPTIONS'tan uretiyor ve
-//        Kaydet/Yok/Vazgec butonlarini row.elevator'a dogru kablolamis.
+// --- 6) Asansör coktan-secmeli alan (0.0.827: "pop-up yerine Proje --------
+//        İncelenen Kurum'daki gibi acilir-ice-gomulu liste yap" — modal
+//        YERİNE createMultiCheckboxControl() (Proje İncelenen Kurum) İLE
+//        AYNI .multi-checkbox-dropdown/.inline-checkbox-list deseni).
+//        Secenek listesi + deger ayiklama/ozetleme saf fonksiyonlari TAM
+//        calistirilarak, ac/kapa etkilesimi DOM stub'la GERCEKTEN dogrulanir;
+//        onay kutusu satirlarinin GOVDESI (innerHTML sablonu, stub HTML
+//        parse ETMEDIGINDEN diger innerHTML-agirlikli testlerde de izlenen
+//        desenle) kaynak-duzeyinde dogrulanir.
 {
   const context = makeContext([{}]);
   const elevatorOptions = evalConstArray("BUILDING_STRUCTURE_ELEVATOR_OPTIONS");
@@ -424,13 +426,44 @@ function runEditorScenario(rows, fields = {}) {
   );
 }
 {
-  const modalSrc = sliceFn("function openBuildingStructureElevatorModal(");
-  assert.match(modalSrc, /BUILDING_STRUCTURE_ELEVATOR_OPTIONS\.map/, "Modal onay kutularini BUILDING_STRUCTURE_ELEVATOR_OPTIONS'tan uretmiyor.");
-  assert.match(modalSrc, /data-building-structure-elevator-save[\s\S]{0,300}row\.elevator\s*=/, "'Kaydet' dugmesi row.elevator'a yazmiyor.");
-  assert.match(modalSrc, /data-building-structure-elevator-clear[\s\S]{0,100}row\.elevator\s*=\s*""/, "'Yok' dugmesi row.elevator'u temizlemiyor.");
-  assert.match(modalSrc, /data-building-structure-elevator-cancel/, "'Vazgeç' dugmesi bulunamadi.");
+  // document.addEventListener/removeEventListener + setTimeout, sadece
+  // BU test icin: gercek kod "disari tiklayinca kapat" icin document
+  // seviyesinde pointerdown dinliyor ve kaydi bir setTimeout(...,0) ile
+  // erteliyor (createMultiCheckboxControl ile AYNI teknik) — testte
+  // setTimeout'u ESZAMANLI calistirmak yeterli, gercek zamanlayiciya
+  // gerek yok.
+  const context = makeContext([{}]);
+  context.document.addEventListener = () => {};
+  context.document.removeEventListener = () => {};
+  context.setTimeout = (fn) => fn();
+
+  const row = { elevator: "1 Adet Yolcu Asansörü" };
+  const wrapper = context.createBuildingStructureElevatorControl(row);
+  assert.equal(wrapper.className, "field multi-checkbox-dropdown", "Asansör kontrolu artik Proje İncelenen Kurum ile AYNI 'field multi-checkbox-dropdown' sinifini kullanmiyor (pop-up'a geri donulmus olabilir).");
+  const [, summaryButton, list] = wrapper.children;
+  assert.equal(summaryButton.tagName, "BUTTON", "Ozet dugmesi bulunamadi.");
+  assert.equal(summaryButton.className, "multi-checkbox-summary", "Ozet dugmesi yanlis sinifta.");
+  assert.equal(summaryButton.textContent, "1 Adet Yolcu Asansörü", "Ozet metni mevcut secimi yansitmiyor.");
+  assert.equal(list.className, "inline-checkbox-list", "Onay kutusu listesi bulunamadi.");
+  assert.equal(list.hidden, true, "Liste baslangicta GİZLİ olmali (pop-up gibi ayri bir modal DEGIL, ice-gomulu ac/kapa).");
+
+  summaryButton.fire("click");
+  assert.equal(list.hidden, false, "Ozet dugmesine tiklamak listeyi ACMALI.");
+  assert(wrapper.className.includes("is-open"), "Liste acikken sarmalayiciya 'is-open' sinifi eklenmeli.");
+
+  summaryButton.fire("click");
+  assert.equal(list.hidden, true, "Ozet dugmesine TEKRAR tiklamak listeyi KAPATMALI.");
+  assert(!wrapper.className.includes("is-open"), "Liste kapaninca 'is-open' sinifi kaldirilmali.");
 }
-console.log("Asansör coktan-secmeli alan testleri tamam.");
+{
+  const controlSrc = sliceFn("function createBuildingStructureElevatorControl(");
+  assert.match(controlSrc, /const options = BUILDING_STRUCTURE_ELEVATOR_OPTIONS/, "Onay kutulari BUILDING_STRUCTURE_ELEVATOR_OPTIONS'tan uretilmiyor.");
+  assert.match(controlSrc, /type="checkbox"/, "Onay kutusu <input type=\"checkbox\"> govdesi bulunamadi.");
+  assert.match(controlSrc, /addEventListener\("change"[\s\S]{0,200}row\.elevator\s*=/, "Onay kutusu degisince row.elevator guncellenmiyor.");
+  assert.match(controlSrc, /row\.elevator\s*=[\s\S]{0,150}autosave\(\)/, "Secim degisince autosave() cagrilmiyor.");
+  assert.match(controlSrc, /summaryButton\.textContent\s*=\s*formatBuildingStructureElevatorSummary\(row\)/, "Secim degisince ozet metni yeniden hesaplanmiyor.");
+}
+console.log("Asansör coktan-secmeli (ice-gomulu acilir liste) alan testleri tamam.");
 
 // --- 7) Skaler alan duzenlemesi (ör. Yapı Adı) satira yazar, autosave -----
 //        cagrilir, renderSection GEREKMEZ.

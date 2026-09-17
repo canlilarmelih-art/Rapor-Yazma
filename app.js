@@ -14343,18 +14343,23 @@ function buildBuildingStructureFloorComposition(floorCounts = {}) {
   return parts.join(" + ");
 }
 
-// Asansör (2026-09-17, iki adımlı takip talebi): önce "asansör bölümüne
+// Asansör (2026-09-17, üç adımlı takip talebi): önce "asansör bölümüne
 // yük asansörü ve yolcu asansörü bölümlerini ekleyelim" ile Yük/Yolcu
-// Asansörü AYRI iki alan olarak eklendi; hemen ardından "yük asansörü ve
-// yolcu asansörünü asansör bölümüne al, açılır listeyi çoktan seçmeli
-// yap" ile bu İKİ AYRI alan TEKRAR TEK "Asansör" alanına birleştirildi —
-// ama artık tekli-seçim değil, Sosyal Tesisler'in (createBuildingSocialFacilitiesControl/
-// openBuildingSocialFacilitiesModal) İLE AYNI "özet düğme + onay kutulu
-// modal" deseninde ÇOKTAN SEÇMELİ. O mekanizma `state.fields`/genel
-// `getMultiCheckboxValues()` altyapısını kullanıyor; burada HER YAPININ
-// KENDİ `row.elevator`'ı (virgülle ayrılmış metin) olduğundan aynı genel
-// alt yapıya bağlanmadı, küçük bağımsız bir kopyası yazıldı (bu dosyadaki
-// diğer Yapı-özel yardımcılarla AYNI ilke).
+// Asansörü AYRI iki alan olarak eklendi; sonra "yük asansörü ve yolcu
+// asansörünü asansör bölümüne al, açılır listeyi çoktan seçmeli yap" ile
+// bu İKİ AYRI alan TEK "Asansör" alanına birleştirilip (o adımda modal
+// tabanlı, Sosyal Tesisler ile aynı desende) çoktan seçmeli yapıldı; son
+// olarak ekran görüntüsüyle "pop-up yerine bu şekilde yapabilirdin" —
+// kullanıcı "Proje İncelenen Kurum" (createMultiCheckboxControl) alanının
+// AÇILIR-İÇE-GÖMÜLÜ (inline dropdown, modal DEĞİL) desenini işaret etti.
+// Bu yüzden görsel/etkileşim deseni createMultiCheckboxControl'den KOPYALANDI
+// (.multi-checkbox-dropdown/.inline-checkbox-list/.checkbox-row, özet
+// düğme + dışarı tıklayınca kapanan liste) — ama o fonksiyon `state.fields`/
+// genel `getMultiCheckboxValues()`'a bağlı; burada HER YAPININ KENDİ
+// `row.elevator`'ı (virgülle ayrılmış metin) olduğundan, ve projectInstitution'a
+// özgü OSB modal dalı gibi buraya uymayan kısımlar hariç tutularak, küçük
+// bağımsız bir kopyası yazıldı (bu dosyadaki diğer Yapı-özel yardımcılarla
+// AYNI ilke).
 const BUILDING_STRUCTURE_ELEVATOR_OPTIONS = [
   ...[1, 2, 3, 4].map((count) => `${count} Adet Yolcu Asansörü`),
   ...[1, 2, 3, 4].map((count) => `${count} Adet Yük Asansörü`),
@@ -14374,74 +14379,77 @@ function formatBuildingStructureElevatorSummary(row) {
 }
 
 function createBuildingStructureElevatorControl(row) {
-  const label = document.createElement("label");
-  label.className = "field";
-  const button = document.createElement("button");
-  button.type = "button";
-  button.className = "multi-checkbox-summary";
-  button.textContent = formatBuildingStructureElevatorSummary(row);
-  button.addEventListener("click", () => {
-    openBuildingStructureElevatorModal(row, () => {
-      button.textContent = formatBuildingStructureElevatorSummary(row);
+  const wrapper = document.createElement("div");
+  wrapper.className = "field multi-checkbox-dropdown";
+
+  const options = BUILDING_STRUCTURE_ELEVATOR_OPTIONS;
+  const selected = getBuildingStructureElevatorValues(row);
+
+  const summaryButton = document.createElement("button");
+  summaryButton.type = "button";
+  summaryButton.className = "multi-checkbox-summary";
+  summaryButton.setAttribute("aria-expanded", "false");
+  summaryButton.textContent = formatBuildingStructureElevatorSummary(row);
+
+  const list = document.createElement("div");
+  list.className = "inline-checkbox-list";
+  list.hidden = true;
+
+  options.forEach((option) => {
+    const item = document.createElement("label");
+    item.className = "checkbox-row";
+    item.innerHTML = `
+      <input type="checkbox" value="${escapeHtml(option)}" ${selected.includes(option) ? "checked" : ""}>
+      <span>${escapeHtml(option)}</span>
+    `;
+    list.append(item);
+  });
+
+  list.querySelectorAll("input[type='checkbox']").forEach((input) => {
+    input.addEventListener("change", () => {
+      const values = [...list.querySelectorAll("input[type='checkbox']:checked")].map((checkbox) => checkbox.value);
+      row.elevator = values.join(", ");
+      summaryButton.textContent = formatBuildingStructureElevatorSummary(row);
+      autosave();
     });
   });
-  label.append(createSpan("Asansör"), button);
-  return label;
-}
 
-function openBuildingStructureElevatorModal(row, onSave = () => {}) {
-  document.querySelector(".modal-overlay")?.remove();
-  const selected = new Set(getBuildingStructureElevatorValues(row));
+  // createMultiCheckboxControl()'deki AYNI "açık/kapalı" ve "dışarı
+  // tıklayınca kapat" mekanizması — özet düğmesine her tıklamada listeyi
+  // aç/kapat, açıkken belge genelinde bir yere (pointerdown) tıklanırsa
+  // kapat.
+  let outsideClickListener = null;
+  const setOpen = (isOpen) => {
+    list.hidden = !isOpen;
+    wrapper.classList.toggle("is-open", isOpen);
+    summaryButton.setAttribute("aria-expanded", String(isOpen));
+    if (outsideClickListener) {
+      document.removeEventListener("pointerdown", outsideClickListener);
+      outsideClickListener = null;
+    }
+    if (isOpen) {
+      outsideClickListener = (event) => {
+        if (!wrapper.contains(event.target)) setOpen(false);
+      };
+      const currentOutsideClickListener = outsideClickListener;
+      setTimeout(() => {
+        if (outsideClickListener === currentOutsideClickListener) {
+          document.addEventListener("pointerdown", currentOutsideClickListener);
+        }
+      }, 0);
+    }
+  };
 
-  const overlay = document.createElement("div");
-  overlay.className = "modal-overlay";
-  overlay.innerHTML = `
-    <div class="modal-card modal-card-wide" role="dialog" aria-modal="true" aria-labelledby="buildingStructureElevatorModalTitle">
-      <div class="modal-head">
-        <h3 id="buildingStructureElevatorModalTitle">Asansör</h3>
-        <button class="modal-close" type="button" aria-label="Kapat">×</button>
-      </div>
-      <div class="modal-body">
-        <div class="checkbox-list checkbox-list-four">
-          ${BUILDING_STRUCTURE_ELEVATOR_OPTIONS.map((option) => `
-            <label class="checkbox-pill">
-              <input type="checkbox" value="${escapeHtml(option)}" data-building-structure-elevator ${selected.has(option) ? "checked" : ""}>
-              <span>${escapeHtml(option)}</span>
-            </label>
-          `).join("")}
-        </div>
-      </div>
-      <div class="modal-actions">
-        <button class="secondary-button" type="button" data-building-structure-elevator-clear>Yok</button>
-        <button class="secondary-button" type="button" data-building-structure-elevator-cancel>Vazgeç</button>
-        <button class="primary-button" type="button" data-building-structure-elevator-save>Kaydet</button>
-      </div>
-    </div>
-  `;
-
-  const close = () => overlay.remove();
-  overlay.querySelector(".modal-close").addEventListener("click", close);
-  overlay.querySelector("[data-building-structure-elevator-cancel]").addEventListener("click", close);
-  overlay.querySelector("[data-building-structure-elevator-clear]").addEventListener("click", () => {
-    row.elevator = "";
-    autosave();
-    onSave();
-    close();
-  });
-  overlay.addEventListener("click", (event) => {
-    if (event.target === overlay) close();
-  });
-  overlay.querySelector("[data-building-structure-elevator-save]").addEventListener("click", () => {
-    row.elevator = [...overlay.querySelectorAll("[data-building-structure-elevator]:checked")]
-      .map((checkbox) => checkbox.value)
-      .join(", ");
-    autosave();
-    onSave();
-    close();
+  summaryButton.addEventListener("click", () => {
+    setOpen(list.hidden);
   });
 
-  document.body.append(overlay);
-  overlay.querySelector("[data-building-structure-elevator]")?.focus();
+  list.addEventListener("pointerdown", (event) => {
+    event.stopPropagation();
+  });
+
+  wrapper.append(createSpan("Asansör"), summaryButton, list);
+  return wrapper;
 }
 
 function getBuildingStructureRows() {
