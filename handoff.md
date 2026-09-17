@@ -1,5 +1,13 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.832 - 2026-09-18 - Toplulaştırma Bilgileri artık "Taşınmazın İmar Durumunda Sorun Var Mı?" ile aynı gizlenme mantığında + manuel açma
+
+- Kullanıcı: "Taşınmazın İmar Durumunda Sorun Var Mı? bu kısımda olmalı toplulaştırma bölümü. burada gizlenmeli. Ola ki okumadı takbisten ama toplulaştırma var kullanıcı manuel olarak ta girebilmeli." 0.0.831'e kadar "Toplulaştırma Bilgileri" hücresi `hasPlanningIssue`'nun (Evet/Hayır) KENDİ değerinden tamamen BAĞIMSIZDI — SADECE otomatik takyidat tespitine bağlıydı. Kullanıcı bunun yerine diğer "sorun var mı" detay alanlarıyla (`planCancellationStay`/`roadSetback`/.../`licenseObstacle`, hepsi `hasPlanningIssue`="Hayır" iken GİZLİ) AYNI davranışı istedi — AMA otomatik tespit (TAKBİS/takyidat metni okunamamış olabilir) başarısız olsa bile kullanıcının "Evet" işaretleyip MANUEL girebilmesini de istedi.
+- `app.js`: hem `createForm()`'un "planning" dalındaki `hasPlanningIssue` kesişiminin koşulu hem `shouldHideField()`'in "planning" dalı `reportMentionsToplulastirma()`'dan `(reportMentionsToplulastirma() || shouldShowPlanningIssueFields())`'e genişletildi (`shouldShowPlanningIssueFields()` = `hasPlanningIssue === "Evet"`, diğer 7 detay alanının ZATEN kullandığı fonksiyon) — artık iki tetikleyici birlikte çalışıyor: otomatik (takyidat tespiti) VEYA manuel (kullanıcı "Evet" işaretler).
+- `tools/test-toplulastirma-imar-field.js`: yeni gerçek-çalıştırma senaryosu — otomatik tespit YOKKEN `hasPlanningIssue=""/"Hayır"` iken gizli, `hasPlanningIssue="Evet"` olunca (tespit hâlâ yokken) görünür oluyor; kaynak-düzeyi kontroller güncellendi. `npm run verify` (194 dosya) EXIT:0.
+- **Canlı tarayıcıda doğrulandı**: takyidatında toplulaştırma geçmeyen gerçek bir raporda hücre başta gizli; "Taşınmazın İmar Durumunda Sorun Var Mı?" işaretlenince ANINDA görünür oluyor (manuel giriş yolu açılıyor), işaret kaldırılınca tekrar gizleniyor. Konsolda (bilinen harita ağ gürültüsü dışında) hata yok.
+- `index.html`'de `app.js` cache-buster'ı `20260918-1200`'e yükseltildi.
+
 ## 0.0.831 - 2026-09-18 - Toplulaştırma Bilgileri: yanlış admin-bypass kaldırıldı
 
 - Kullanıcı, bir ekran görüntüsüyle bildirdi: admin hesabıyla açılan, takyidat kayıtlarında HİÇ "toplulaştırma" geçmeyen bir raporda "Toplulaştırma Bilgileri" hücresi "hala gözüküyor"du.

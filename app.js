@@ -6479,23 +6479,23 @@ function createForm(section) {
       return;
     }
 
-    // Kullanıcı takip talebi (2026-09-18): "toplulaştırma durumu ve
-    // toplulaştırmayı yapan kurum bölümlerini Taşınmazın imar durumunda
-    // sorun var mı bölümüne taşı ... otomatik açılsın ... tek bir hücrede
-    // ... pop up ile göster." "Taşınmazın İmar Durumunda Sorun Var mı?"
-    // (hasPlanningIssue) render edildiği ANDA, HEMEN ARDINA (floorCount/hmax
-    // ÇİFTİYLE AYNI desen) reportMentionsToplulastirma() true iken TEK bir
-    // özet+pop-up hücresi (createToplulastirmaControl) eklenir — hasPlanningIssue'nun
-    // KENDİ Evet/Hayır degerinden BAĞIMSIZ (tetikleyici SADECE Takyidat
-    // tespiti, kullanıcının "otomatik açılsın" talebi tam bunu istiyor).
-    // BİLEREK admin-bypass YOK (diğer koşullu alanların aksine) — kullanıcı
-    // ekran görüntüsüyle "hala gözüküyor" dedi: admin hesabıyla, takyidatta
-    // hiç "toplulaştırma" geçmeyen bir raporda hücre görünüyordu (önceki
-    // turda eklenen isCurrentUserAdmin() bypass'ı YANLIŞTI, kaldırıldı) —
-    // bu alan SADECE gerçek tespit varken görünmeli, admin dahil.
+    // Kullanıcı takip talebi (2026-09-18, ÜÇÜNCÜ tur): "Taşınmazın İmar
+    // Durumunda Sorun Var Mı? bu kısımda olmalı toplulaştırma bölümü.
+    // burada gizlenmeli. Ola ki okumadı takbisten ama toplulaştırma var
+    // kullanıcı manuel olarak ta girebilmeli." Yani Toplulaştırma hücresi
+    // diğer "sorun var mı" detay alanları (planCancellationStay/roadSetback/
+    // .../licenseObstacle, hepsi isPlanningIssueDetailField+shouldShowPlanningIssueFields
+    // ile hasPlanningIssue="Evet" olmadıkça GİZLİ) İLE AYNI şekilde
+    // hasPlanningIssue="Hayır" iken GİZLENMELİ — ama BUNA EK olarak, TAKBİS/
+    // takyidat otomatik tespiti (reportMentionsToplulastirma) BAŞARISIZ
+    // olsa bile (ör. metin okunamadı) kullanıcı "Evet"i işaretleyip MANUEL
+    // olarak girebilmeli. İki tetikleyici de (otomatik VEYA manuel-Evet)
+    // görünürlüğü açar — hasPlanningIssue'nun KENDİ Evet/Hayır değerinden
+    // artık BAĞIMSIZ DEĞİL, aksine onunla TUTARLI (0.0.830'daki "bağımsız"
+    // tasarım kullanıcı tarafından düzeltildi).
     if (section.id === "planning" && field.key === "hasPlanningIssue") {
       form.append(createCheckboxControl(section, field));
-      if (reportMentionsToplulastirma()) {
+      if (reportMentionsToplulastirma() || shouldShowPlanningIssueFields()) {
         form.append(createToplulastirmaControl());
       }
       return;
@@ -21226,7 +21226,13 @@ function shouldHideField(sectionId, fieldKey) {
     return group !== "A" && group !== "D";
   }
   if (sectionId === "planning" && ["toplulastirmaStatus", "toplulastirmaInstitution"].includes(fieldKey)) {
-    return !reportMentionsToplulastirma();
+    // Kullanıcı takip talebi (2026-09-18, üçüncü tur): "Taşınmazın İmar
+    // Durumunda Sorun Var Mı? bu kısımda olmalı ... burada gizlenmeli ...
+    // kullanıcı manuel olarak ta girebilmeli" — createToplulastirmaControl()'ün
+    // (createForm, "planning" dalı) KENDİ görünürlük koşuluyla AYNI: otomatik
+    // tespit YOKSA bile kullanıcı hasPlanningIssue'yu "Evet" yapıp manuel
+    // girebilsin.
+    return !(reportMentionsToplulastirma() || shouldShowPlanningIssueFields());
   }
   return false;
 }

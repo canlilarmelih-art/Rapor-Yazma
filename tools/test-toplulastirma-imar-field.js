@@ -13,27 +13,41 @@
   durumunda sorun var mı bölümüne taşı. eğer takyidat kayıtlarında
   toplulaştırma ibaresi var ise otomatik açılsın toplulaştırma ile ilgili
   bölüm ayrıca toplulaştırmayı yapan kurumu ve toplulaştırma durumunu tek
-  bir hücrede gerekiyorsa pop up ile göster."
+  bir hücrede gerekiyorsa pop up ile göster." + AYNI GUN takip 4 (bulgu +
+  DUZELTME): kullanici bir ekran goruntusuyle admin hesabinda, takyidatta
+  toplulastirma GECMEYEN bir raporda hucrenin "hala gözüktüğünü" bildirdi
+  (0.0.830'daki YANLIS isCurrentUserAdmin() bypass'i — 0.0.831'de kaldirildi)
+  — HEMEN ARDINDAN, AYNI konu icin takip 5 (NIHAI mantik): "Taşınmazın İmar
+  Durumunda Sorun Var Mı? bu kısımda olmalı toplulaştırma bölümü. burada
+  gizlenmeli. Ola ki okumadı takbisten ama toplulaştırma var kullanıcı
+  manuel olarak ta girebilmeli." Yani: hasPlanningIssue="Hayır" iken GİZLİ
+  (diğer "sorun var mı" detay alanlarıyla AYNI davranış), AMA otomatik
+  tespit BAŞARISIZ olsa bile kullanıcı hasPlanningIssue="Evet" yapıp MANUEL
+  girebilsin — iki tetikleyici (otomatik VEYA manuel-Evet) BİRLİKTE.
 
   "İmar Durumu" (planning) bölümüne iki YENİ, KOŞULLU alan eklendi:
   - toplulastirmaStatus (select: Devam Ediyor / Tamamlanmış)
   - toplulastirmaInstitution (text, serbest — kurum adı raporlar arasinda
     cok degisken, diger "kurum" alanlarinin coguyla AYNI serbest-metin
     deseni, ör. documentReviewInstitution)
-  Ikisi de SADECE reportMentionsToplulastirma() true iken gorunur
-  (shouldHideField'in "planning" dali) — mulkiyet turunden BAGIMSIZ, TUM
-  rapor turlerinde gecerli (kullanicinin "tum raporlar icin" talebi).
+  Ikisi de SADECE (reportMentionsToplulastirma() VEYA shouldShowPlanningIssueFields())
+  true iken gorunur (shouldHideField'in "planning" dali + createForm()'un
+  hasPlanningIssue kesisimi, İKİSİ DE AYNI birlesik kosulu kullanir) —
+  mulkiyet turunden BAGIMSIZ, TUM rapor turlerinde gecerli (kullanicinin
+  "tum raporlar icin" talebi), admin dahil (KASITLI OLARAK admin-bypass YOK).
 
   Takip 3 (2026-09-18) ile: (a) section.fields dizisinde konumlari
   hasPlanningIssue'nun ("Taşınmazın İmar Durumunda Sorun Var mı?") HEMEN
   ARDINA tasindi (eski konum: en alt, planningNote'tan sonra); (b) createForm()
   hasPlanningIssue'yu render ederken KOSULLU olarak createToplulastirmaControl()'u
   hemen ardina ekliyor (floorCount/hmax ÇİFTİYLE AYNI "tetikleyicide render
-  et, takipçi alanlarin generic render'ini atla" deseni) — hasPlanningIssue'nun
-  KENDI Evet/Hayır degerinden BAGIMSIZ, TEK tetikleyici reportMentionsToplulastirma();
-  (c) iki alan artik TEK bir hucrede (ozet dugme, createRoadSetbackControl/
-  createBuildingSocialFacilitiesControl İLE AYNI "ozet + pop-up" deseni)
-  birlestirilip openToplulastirmaModal() pop-up'inda birlikte duzenleniyor.
+  et, takipçi alanlarin generic render'ini atla" deseni); (c) iki alan artik
+  TEK bir hucrede (ozet dugme, createRoadSetbackControl/createBuildingSocialFacilitiesControl
+  İLE AYNI "ozet + pop-up" deseni) birlestirilip openToplulastirmaModal()
+  pop-up'inda birlikte duzenleniyor. Takip 5 ile: (d) gorunurluk kosulu
+  reportMentionsToplulastirma()'dan (reportMentionsToplulastirma() ||
+  shouldShowPlanningIssueFields())'e genisletildi — hasPlanningIssue'nun
+  KENDI Evet/Hayır degeri artik BAGIMSIZ DEGIL, TUTARLI (manuel acma yolu).
 
   reportMentionsToplulastirma() ILK surumde Tapu'nun Malikler tablosundaki
   "Edinme sebebi" sutununu VE Nitelik alanlarini (titleQuality/mainPropertyQuality)
@@ -55,8 +69,9 @@
      tasinmaz, buyuk/kucuk harf ve Turkce karakter duyarsizligi, yanlis-
      pozitif OLMAMASI) VE Tapu/Edinme-sebebi/Nitelik alanlarinin ARTIK
      KAPSAM DISI oldugunu (kullanicinin duzeltme talebi) dogrular.
-  2) Kaynak-duzeyinde: shouldHideField()'in "planning" dali iki YENI alani
-     dogru kosula (!reportMentionsToplulastirma()) bagliyor mu.
+  2) Kaynak-duzeyinde VE GERCEK CALISTIRMAYLA: shouldHideField()'in "planning"
+     dali iki YENI alani dogru birlesik kosula (!(reportMentionsToplulastirma()
+     || shouldShowPlanningIssueFields())) bagliyor mu — manuel acma yolu dahil.
   3) Kaynak-duzeyinde: "planning" section.fields dizisinde iki alanin
      hasPlanningIssue'nun HEMEN ARDINA tasindigini (eski en-alt konumunda
      OLMADIGINI) dogrular.
@@ -228,16 +243,59 @@ console.log("Coklu Talep (birden fazla tasinmaz) tarama testi tamam.");
 console.log("Yanlis-pozitif OLMAMASI (benzer kelimeler) regresyon testi tamam.");
 
 // --- 8) Kaynak-duzeyi: shouldHideField() 'planning' dali dogru kosula ------
-//        bagli mi.
+//        bagli mi. KULLANICI TAKİP TALEBİ (2026-09-18, ucuncu tur):
+//        "Taşınmazın İmar Durumunda Sorun Var Mı? bu kısımda olmalı
+//        toplulaştırma bölümü. burada gizlenmeli. Ola ki okumadı takbisten
+//        ama toplulaştırma var kullanıcı manuel olarak ta girebilmeli" —
+//        artik SADECE reportMentionsToplulastirma() DEGIL, otomatik tespit
+//        basarisiz olsa bile hasPlanningIssue="Evet" ile MANUEL acilabiliyor.
 {
   const shouldHideSrc = sliceFn("function shouldHideField(");
   assert.match(
     shouldHideSrc,
-    /sectionId === "planning" && \["toplulastirmaStatus", "toplulastirmaInstitution"\]\.includes\(fieldKey\)\) \{\s*\n\s*return !reportMentionsToplulastirma\(\);/,
-    "shouldHideField()'in 'planning' dali toplulastirmaStatus/toplulastirmaInstitution'i reportMentionsToplulastirma()'ya dogru baglamiyor."
+    /sectionId === "planning" && \["toplulastirmaStatus", "toplulastirmaInstitution"\]\.includes\(fieldKey\)\) \{[\s\S]{0,600}?return !\(reportMentionsToplulastirma\(\) \|\| shouldShowPlanningIssueFields\(\)\);/,
+    "shouldHideField()'in 'planning' dali artik (reportMentionsToplulastirma() VEYA shouldShowPlanningIssueFields()) kosuluna dogru baglanmamis (manuel acma yolu eksik)."
   );
 }
-console.log("shouldHideField() 'planning' dali kaynak-duzeyi kablolama testi tamam.");
+console.log("shouldHideField() 'planning' dali (otomatik VEYA manuel) kaynak-duzeyi kablolama testi tamam.");
+
+// --- 8b) GERCEK CALISTIRMA: hasPlanningIssue="Evet" iken (otomatik tespit --
+//         OLMASA BILE) alan gorunur olmali — kullanicinin "manuel olarak
+//         ta girebilmeli" talebinin dogrudan davranis testi.
+{
+  const context = {
+    state: { fields: { hasPlanningIssue: "" } },
+    buildAllTitleUnitsForSummaryTable: () => [{ fields: {}, tables: {} }],
+  };
+  vm.createContext(context);
+  vm.runInContext(sliceFn("function foldTurkish("), context);
+  vm.runInContext(sliceConst("TOPLULASTIRMA_SCANNED_TABLE_KEYS"), context);
+  vm.runInContext(sliceConst("TOPLULASTIRMA_SCANNED_FIELD_KEYS"), context);
+  vm.runInContext(sliceFn("function reportMentionsToplulastirma("), context);
+  vm.runInContext(sliceFn("function normalizeYesNoChoice("), context);
+  vm.runInContext(sliceFn("function shouldShowPlanningIssueFields("), context);
+  vm.runInContext(sliceFn("function shouldHideField("), context);
+
+  context.state.fields.hasPlanningIssue = "";
+  assert.equal(
+    context.shouldHideField("planning", "toplulastirmaStatus"),
+    true,
+    "Takyidat'ta tespit YOK ve hasPlanningIssue bos/Hayır iken alan GİZLİ olmali."
+  );
+
+  context.state.fields.hasPlanningIssue = "Evet";
+  assert.equal(
+    context.shouldHideField("planning", "toplulastirmaStatus"),
+    false,
+    "hasPlanningIssue='Evet' iken (otomatik tespit OLMASA BILE) alan GORUNUR olmali (manuel giris yolu)."
+  );
+  assert.equal(
+    context.shouldHideField("planning", "toplulastirmaInstitution"),
+    false,
+    "toplulastirmaInstitution icin de ayni manuel-acma yolu calismali."
+  );
+}
+console.log("Manuel acma (hasPlanningIssue='Evet', otomatik tespit OLMADAN) GERCEK davranis testi tamam.");
 
 // --- 9) KULLANICI TAKİP TALEBİ (2026-09-18): "toplulaştırma durumu ve ------
 //        toplulaştırmayı yapan kurum bölümlerini Taşınmazın imar durumunda
@@ -271,14 +329,15 @@ console.log("'planning' section.fields: iki alan hasPlanningIssue'nun ardina TAS
 //         KULLANICI BULGUSU (2026-09-18, ekran goruntusu): admin hesabiyla,
 //         takyidatta HİÇ "toplulaştırma" gecmeyen bir raporda hucre HALA
 //         gorunuyordu — bir onceki turda eklenen isCurrentUserAdmin() admin-
-//         bypass'i YANLIŞTI ve kaldirildi; asagidaki regex artik BU
-//         bypass'in OLMADIGINI da dogruluyor (sadece reportMentionsToplulastirma()).
+//         bypass'i YANLIŞTI ve kaldirildi. UCUNCU tur: kosul artik
+//         (reportMentionsToplulastirma() VEYA shouldShowPlanningIssueFields())
+//         — manuel acma yolu icin.
 {
   const createFormSrc = sliceFn("function createForm(section) {");
   assert.match(
     createFormSrc,
-    /section\.id === "planning" && field\.key === "hasPlanningIssue"\) \{\s*\n\s*form\.append\(createCheckboxControl\(section, field\)\);\s*\n\s*if \(reportMentionsToplulastirma\(\)\) \{\s*\n\s*form\.append\(createToplulastirmaControl\(\)\);/,
-    "createForm() 'hasPlanningIssue' render edildiginde kosullu olarak createToplulastirmaControl() eklemiyor."
+    /section\.id === "planning" && field\.key === "hasPlanningIssue"\) \{\s*\n\s*form\.append\(createCheckboxControl\(section, field\)\);\s*\n\s*if \(reportMentionsToplulastirma\(\) \|\| shouldShowPlanningIssueFields\(\)\) \{\s*\n\s*form\.append\(createToplulastirmaControl\(\)\);/,
+    "createForm() 'hasPlanningIssue' render edildiginde kosullu olarak createToplulastirmaControl() eklemiyor (reportMentionsToplulastirma() VEYA shouldShowPlanningIssueFields())."
   );
   {
     const blockStart = appSource.indexOf('if (section.id === "planning" && field.key === "hasPlanningIssue") {');
