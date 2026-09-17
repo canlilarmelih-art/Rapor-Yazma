@@ -1,5 +1,13 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.828 - 2026-09-17 - Ana Taşınmaz Asansör alanı artık her mülkiyet türünde görünüyor
+
+- Kullanıcı: "diğer rapor türlerinde asansör bölümü niye gözükmüyor. eski hali ile gözükmeli." "Ana Taşınmaz Teknik Bilgileri" panelindeki (Yapılar'daki YENİ Asansör alanından FARKLI, sitenin en başından beri var olan) "Asansör" alanı yalnızca dikey mülkiyet türlerinde gösteriliyordu (`!isHorizontalOwnership` koşulunun içinde) — Yatay Kat İrtifakı'nda tamamen GİZLİYDİ. Bu, bu oturumdan ÖNCE (repo'nun ilk commit'inden beri) var olan bir davranıştı, bugünkü Yapılar/Asansör çalışmasıyla İLGİSİZDİ — ama incelemede ortaya çıktı ki `buildConsolidatedMainPropertyAmenityParagraph()`/`buildConsolidatedMainPropertyElevatorSentence()` (Yatay Kat İrtifakı'nın blok-bazlı anlatım akışı, app.js ~16227-16260) zaten HER blok'un KENDİ `elevator` alanını okuyup metne birleştiriyordu — yani veri modeli yatay mülkiyette de bu alanı BEKLİYORDU, sadece formda GİRME imkanı eksikti. Gerçek bir eksiklikti, kasıtlı bir tasarım değil.
+- `app.js`: `createBuildingTechnicalOptionsPanel()`'de "Asansör" alanı `!isHorizontalOwnership` bloğunun DIŞINA (koşulsuz diziye) taşındı — artık HER mülkiyet türünde gösteriliyor. Aynı bloktaki DİĞER 7 alan (Dış Cephe Kaplama/Apartman Merdiven Ve Sahanlık/Apartman İç Duvarlar/Bina Giriş Kapısı/Bina Oturumu Referansı/Bina Giriş Kat Seviyesi/Bina Giriş Yönü — tek bina kavramına özgü, blok-bazlı anlatımda kullanılmıyor) DEĞİŞMEDİ, hâlâ yalnızca dikey mülkiyette gösteriliyor.
+- Yeni test: `tools/test-building-elevator-always-visible.js` — kaynak-düzeyinde Asansör çağrısının `!isHorizontalOwnership` gate'inin DIŞINDA olduğunu + diğer 7 alanın HÂLÂ içinde kaldığını (regresyon) doğruluyor; `tools/run-tests.js`'e kaydedildi. `tools/test-building-block-shared-sync.js` (aynı fonksiyonu dolaylı test eden mevcut dosya) regresyonsuz geçti. `npm run verify` (192 dosya) EXIT:0.
+- **Canlı tarayıcıda doğrulandı**: gerçek bir Yatay Kat İrtifakı raporunda (KUVYT-202600926, Güneş Tekstil) "Ana Taşınmaz Teknik Bilgileri"nde artık "Asansör" alanı görünüyor (Yapı Yaşı'nın hemen ardından); "Dış Cephe Kaplama" vb. 7 alan hâlâ doğru şekilde gizli kalıyor (regresyon yok); seçim yapılabiliyor. Konsolda hata yok.
+- `index.html`'de `app.js` cache-buster'ı `20260917-2300`'e yükseltildi.
+
 ## 0.0.827 - 2026-09-17 - Yapılarda Asansör artık pop-up yerine ice-gömülü açılır liste
 
 - Kullanıcı, 0.0.826'daki modal (pop-up) tabanlı çoktan-seçmeli Asansör alanının bir ekran görüntüsünü paylaşıp "Proje İncelenen Kurum" alanındaki gibi (açılır düğme + hemen altında AÇILAN onay kutusu listesi, ayrı bir pop-up pencere DEĞİL) yapılmasını istedi: "yani pop up yerine bu şekilde yapabilirdin bence."

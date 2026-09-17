@@ -174,6 +174,7 @@ const TEST_FILES = [
   "test-documents-block-description.js",
   "test-valuation-units-summary-table.js",
   "test-building-block-shared-sync.js",
+  "test-building-elevator-always-visible.js",
   "test-unit-tab-bar-gate.js",
   "test-halkbank-risk-rules.js",
   "test-comparable-market-analysis.js",

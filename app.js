@@ -15072,16 +15072,24 @@ function createBuildingTechnicalOptionsPanel() {
     createBuildingSelectField("Mevcut Yapı Nizamı", "buildingOrder", buildingOrderOptions),
     createBuildingSelectField("Yapı Sınıfı", "buildingClass", buildingClassOptions),
     createBuildingReadOnlyField("Yapı Yaşı", "buildingAge"),
+    // Kullanıcı bildirimi (2026-09-17): "diğer rapor türlerinde asansör
+    // bölümü niye gözükmüyor. eski hali ile gözükmeli" — Asansör alanı
+    // ESKİDEN yalnızca dikey mülkiyette gösteriliyordu (aşağıdaki
+    // !isHorizontalOwnership bloğunun İÇİNDE), ama buildConsolidatedMainPropertyAmenityParagraph/
+    // buildConsolidatedMainPropertyElevatorSentence (yatay kat irtifakı
+    // BLOK-BAZLI anlatım akışı) zaten HER blok'un KENDİ `elevator` alanını
+    // okuyup birleştiriyor — yani veri modeli yatay mülkiyette de bu alanı
+    // BEKLİYORDU, formda girme imkanı eksikti. Bu yüzden Asansör artık
+    // mülkiyet türünden BAĞIMSIZ HER ZAMAN gösteriliyor; aşağıdaki
+    // !isHorizontalOwnership bloğundaki DİĞER alanlar (Dış Cephe Kaplama/
+    // Merdiven/İç Duvarlar/Giriş Kapısı-Kat Seviyesi-Yönü — TEK bina
+    // kavramına özgü, blok-bazlı narratifte kullanılmıyor) DEĞİŞMEDİ.
+    createBuildingSelectField("Asansör", "elevator", ["", "Yok", "1 Adet Asansör", "2 Adet Asansör", "3 Adet Asansör", "4 Adet Asansör", "Montajı henüz yapılmamıştır"]),
     createBuildingBlockCountControl(),
     createBuildingSelectField("Otopark", "carpark", buildingCarparkOptions),
   ];
 
   if (!isHorizontalOwnership) {
-    technicalFields.splice(
-      3,
-      0,
-      createBuildingSelectField("Asansör", "elevator", ["", "Yok", "1 Adet Asansör", "2 Adet Asansör", "3 Adet Asansör", "4 Adet Asansör", "Montajı henüz yapılmamıştır"]),
-    );
     technicalFields.push(
       createBuildingSelectField("Dış Cephe Kaplama", "exteriorCladding", buildingExteriorCladdingOptions),
       createBuildingSelectField("Apartman Merdiven Ve Sahanlık", "stairLanding", buildingStairLandingOptions),
