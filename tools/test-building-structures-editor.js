@@ -180,15 +180,22 @@ console.log("createBuildingStructuresEditor() (Yapı Ekle) davranış testleri t
 // --- 6) renderSection() kaynak-duzeyinde "building" bolumune -------------
 //        createBuildingStructuresEditor() cagrisi eklendi mi?
 // Not: tam dal sekli (Musttakil Bina'da createUnitFeaturesEditor() birlesimi
-// dahil) tools/test-mustakil-bina-section-merge.js'te dogrulanir - burada
-// yalnizca createBuildingStructuresEditor()'un "building" dalinda, ayni
-// blok icinde createBuildingFloorDistribution()'dan SONRA cagrildigi
-// (kesin bitisiklik ARANMADAN) kontrol edilir.
-assert.match(
-  appSource,
-  /if \(section\.id === "building"\) \{\s*\n\s*body\.append\(createBuildingFloorDistribution\(\)\);[\s\S]{0,1200}?body\.append\(createBuildingStructuresEditor\(\)\);\s*\n\s*\}/,
-  "renderSection() 'building' bolumune createBuildingStructuresEditor() cagrisi eklenmemis."
-);
+// + "Yapı Ekle" en-uste/gizle-ac duzeni dahil) tools/test-mustakil-bina-section-merge.js'te
+// dogrulanir - burada yalnizca UC cagrinin "building" dalinin (2026-09-17'de
+// buyuk olcude genisleyen) govdesi ICINDE, dogru SIRADA (Kat Dagilimi ->
+// Yapilar) gectigi (kesin bitisiklik ARANMADAN) kontrol edilir.
+{
+  const buildingBranchStart = appSource.indexOf('if (section.id === "building") {');
+  assert(buildingBranchStart >= 0, "renderSection() 'building' dali bulunamadi.");
+  const buildingBranchEnd = appSource.indexOf('\n  if (section.id === "unit") {', buildingBranchStart);
+  assert(buildingBranchEnd > buildingBranchStart, "'building' dalinin sonu ('unit' dali) bulunamadi.");
+  const buildingBranchSrc = appSource.slice(buildingBranchStart, buildingBranchEnd);
+  const floorDistIndex = buildingBranchSrc.indexOf("createBuildingFloorDistribution()");
+  const structuresIndex = buildingBranchSrc.indexOf("createBuildingStructuresEditor()");
+  assert(floorDistIndex >= 0, "'building' dalinda createBuildingFloorDistribution() cagrisi bulunamadi.");
+  assert(structuresIndex >= 0, "'building' dalinda createBuildingStructuresEditor() cagrisi bulunamadi.");
+  assert(structuresIndex > floorDistIndex, "createBuildingStructuresEditor() createBuildingFloorDistribution()'dan ONCE geliyor (beklenen sira bozulmus).");
+}
 console.log("renderSection 'building' bolumu Yapilar kablolamasi kaynak-duzeyi testi tamam.");
 
 // --- 7) "buildings" tablosu TITLE_UNIT_SCOPED_TABLE_KEYS_BASE'e eklendi mi -

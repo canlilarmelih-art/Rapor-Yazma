@@ -108,18 +108,92 @@ console.log("getSectionDisplayTitle() gerçek-kaynak testleri tamam.");
 });
 console.log("shouldHideSectionForOwnership() REGRESYON + Müstakil Bina 'unit' gizleme testleri tamam.");
 
-// --- 3) renderSection() "building" dalı kaynak-düzeyi kablolaması ----------
-assert.match(
-  appSource,
-  /if \(section\.id === "building"\) \{\s*\n\s*body\.append\(createBuildingFloorDistribution\(\)\);[\s\S]{0,600}?if \(isMustakilBinaOwnershipType\(\)\) \{\s*\n\s*body\.append\(createUnitFeaturesEditor\(\)\);\s*\n\s*\}\s*\n\s*body\.append\(createBuildingStructuresEditor\(\)\);\s*\n\s*\}/,
-  "renderSection() 'building' dalı artık Müstakil Bina'da createUnitFeaturesEditor()'ü çağırmıyor (veya sıra/yapı bozulmuş)."
-);
+// --- 3) renderSection() "building" dalı - GERÇEK DAVRANIŞ testi -----------
+// Kullanıcı takip talebi (2026-09-17): "yapi ekle en üstte olmalı hatta
+// yapi ekle altındaki bütün alanlar ilk başta gizli olmalı yapi ekle
+// butonuna basıldığında gizlenen hücreler açılmalı." Bu, kaynak-düzeyi bir
+// regex'le değil, snippet'in GERÇEKTEN çalıştırılmasıyla doğrulanır (DOM
+// stub + gerçek isMustakilBinaOwnershipType()).
+function extractBuildingBranchSrc() {
+  const buildingStart = appSource.indexOf('if (section.id === "building") {');
+  assert(buildingStart >= 0, "renderSection() 'building' dalı bulunamadı.");
+  const unitStart = appSource.indexOf('\n  if (section.id === "unit") {', buildingStart);
+  assert(unitStart > buildingStart, "'building' dalının sonu ('unit' dalı) bulunamadı.");
+  return appSource.slice(buildingStart, unitStart);
+}
+
+function makeStub(tag, marker) {
+  return { tagName: tag, _marker: marker, hidden: false, className: "", children: [], append(...nodes) { this.children.push(...nodes); } };
+}
+
+function runBuildingBranch({ ownershipType, buildings, sectionFields = [{ key: "x" }] }) {
+  const bodyEl = makeStub("DIV", "body");
+  const context = {
+    state: { fields: { ownershipType }, tables: { buildings } },
+    section: { id: "building", fields: sectionFields },
+    body: bodyEl,
+    document: { createElement: (tag) => makeStub(tag, "wrapper") },
+    createForm: () => makeStub("DIV", "form"),
+    createBuildingFloorDistribution: () => makeStub("DIV", "floorDistribution"),
+    createUnitFeaturesEditor: () => makeStub("DIV", "unitFeatures"),
+    createBuildingStructuresEditor: () => makeStub("DIV", "structuresEditor"),
+  };
+  vm.createContext(context);
+  vm.runInContext(sliceFn("function foldTurkish("), context);
+  vm.runInContext(sliceFn("function normalizeOwnershipTypeForSectionVisibility("), context);
+  vm.runInContext(sliceFn("function isMustakilBinaOwnershipType("), context);
+  vm.runInContext(extractBuildingBranchSrc(), context);
+  return bodyEl;
+}
+
+// 3a) Müstakil Bina + HENÜZ yapı eklenmemiş -> detay sarmalayıcı GİZLİ,
+//     "Yapılar" (structuresEditor) EN ÜSTTE.
+{
+  const body = runBuildingBranch({ ownershipType: "Müstakil Bina", buildings: [] });
+  assert.equal(body.children.length, 2, "Müstakil Bina'da 'building' gövdesine tam olarak 2 üst-düzey eleman eklenmeli (Yapılar + detay sarmalayıcı).");
+  const [first, wrapper] = body.children;
+  assert.equal(first._marker, "structuresEditor", "'Yapılar' (createBuildingStructuresEditor) EN ÜSTTE olmalı.");
+  assert.equal(wrapper.hidden, true, "Henüz yapı eklenmemişken detay sarmalayıcı GİZLİ olmalı.");
+  assert.deepEqual(wrapper.children.map((c) => c._marker), ["form", "floorDistribution", "unitFeatures"], "Detay sarmalayıcının içeriği (form + kat dağılımı + bağımsız bölüm alanları) eksik/yanlış sırada.");
+}
+
+// 3b) Müstakil Bina + state.tables.buildings undefined (hiç dokunulmamış) ->
+//     AYNI şekilde gizli davranmalı (regresyon: Array.isArray kontrolü).
+{
+  const body = runBuildingBranch({ ownershipType: "Müstakil Bina", buildings: undefined });
+  assert.equal(body.children[1].hidden, true, "state.tables.buildings tanımsızken de detay sarmalayıcı GİZLİ olmalı.");
+}
+
+// 3c) Müstakil Bina + EN AZ BİR yapı eklenmiş -> detay sarmalayıcı AÇIK.
+{
+  const body = runBuildingBranch({ ownershipType: "Müstakil Bina", buildings: [{ name: "Ana Bina" }] });
+  const [first, wrapper] = body.children;
+  assert.equal(first._marker, "structuresEditor", "'Yapılar' yine EN ÜSTTE olmalı.");
+  assert.equal(wrapper.hidden, false, "'+ Yapı Ekle' ile en az bir satır eklendiğinde detay sarmalayıcı AÇILMALI.");
+}
+
+// 3d) REGRESYON: Müstakil Bina DIŞI mülkiyet türlerinde (ör. Dikey Kat
+//     İrtifakı) eski davranış DEĞİŞMEMELİ - alanlar HER ZAMAN görünür,
+//     "Yapılar" EN ALTTA kalır, createUnitFeaturesEditor() ÇAĞRILMAZ
+//     ("unit" sekmesi zaten ayrı ve görünür kalmaya devam ediyor).
+{
+  const body = runBuildingBranch({ ownershipType: "Dikey Kat İrtifakı", buildings: [] });
+  assert.equal(body.children.length, 2, "Müstakil Bina DIŞINDA da 2 üst-düzey eleman olmalı (sarmalayıcı + Yapılar), sadece SIRA ters.");
+  const [wrapper, last] = body.children;
+  assert.equal(wrapper._marker, "wrapper", "Müstakil Bina DIŞINDA detay sarmalayıcı EN ÜSTTE (eski davranış) olmalı.");
+  assert.equal(wrapper.hidden, false, "Müstakil Bina DIŞINDA detay sarmalayıcı HİÇBİR ZAMAN gizlenmemeli.");
+  assert.equal(last._marker, "structuresEditor", "Müstakil Bina DIŞINDA 'Yapılar' EN ALTTA kalmalı (eski davranış, REGRESYON).");
+  assert.deepEqual(wrapper.children.map((c) => c._marker), ["form", "floorDistribution"], "Müstakil Bina DIŞINDA createUnitFeaturesEditor() ÇAĞRILMAMALI (REGRESYON — 'unit' sekmesi zaten ayrı).");
+}
+
+console.log("renderSection() 'building' dalı: Yapılar en üstte + gizle/aç GERÇEK DAVRANIŞ testleri tamam.");
+
 assert.match(
   appSource,
   /if \(section\.id === "unit"\) \{\s*\n\s*body\.append\(createUnitFeaturesEditor\(\)\);\s*\n\s*\}/,
   "renderSection() 'unit' dalı (Müstakil Bina DIŞI raporlar için hâlâ gerekli) bozulmuş/kaldırılmış."
 );
-console.log("renderSection() 'building' dalı Müstakil Bina birleştirme kablolaması testi tamam.");
+console.log("renderSection() 'unit' dalı regresyon testi tamam.");
 
 // --- 4) createNav() getSectionDisplayTitle() kullanıyor mu ------------------
 assert.match(

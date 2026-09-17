@@ -6103,7 +6103,12 @@ function renderSection() {
     body.append(createTable(section));
   }
 
-  if ((section.fields || []).length && section.id !== "unit") {
+  // Müstakil Bina "Yapı Ekle" yeniden düzenlemesi (2026-09-17, kullanıcı
+  // takip talebi — bkz. "building" dalının kendi yorumu aşağıda):
+  // "building" bölümünün form alanları artık BURADA değil, aşağıdaki
+  // "building" dalında (Müstakil Bina'da gizli/açılır bir sarmalayıcı
+  // İÇİNDE) render ediliyor — "unit" ile AYNI dışlama deseni.
+  if ((section.fields || []).length && section.id !== "unit" && section.id !== "building") {
     body.append(createForm(section));
   }
 
@@ -6226,7 +6231,11 @@ function renderSection() {
   }
 
   if (section.id === "building") {
-    body.append(createBuildingFloorDistribution());
+    const isMustakilBina = isMustakilBinaOwnershipType();
+    const detailsWrapper = document.createElement("div");
+    detailsWrapper.className = "building-details-wrapper";
+    if ((section.fields || []).length) detailsWrapper.append(createForm(section));
+    detailsWrapper.append(createBuildingFloorDistribution());
     // Müstakil Bina (2026-09-17, kullanıcı talebi): "bağımsız bölüm
     // özellikleri bölümünü gizle" + takip: alanlar KAYBOLMASIN, "Bina
     // Özellikleri" (bu bölüm, bkz. getSectionDisplayTitle) İÇİNE taşınsın.
@@ -6235,10 +6244,29 @@ function renderSection() {
     // kullanılabiliyor — "unit" sekmesi shouldHideSectionForOwnership()'te
     // Müstakil Bina için ayrıca gizlenir (bkz. orası), bu yüzden aynı
     // alanlar İKİ YERDE birden GÖRÜNMEZ.
-    if (isMustakilBinaOwnershipType()) {
-      body.append(createUnitFeaturesEditor());
+    if (isMustakilBina) {
+      detailsWrapper.append(createUnitFeaturesEditor());
     }
-    body.append(createBuildingStructuresEditor());
+    // Kullanıcı takip talebi (2026-09-17): "yapi ekle en üstte olmalı
+    // hatta yapi ekle altındaki bütün alanlar ilk başta gizli olmalı
+    // yapi ekle butonuna basıldığında gizlenen hücreler açılmalı" — bu
+    // hücreler MÜSTAKİL BİNA'ya özgü şekilde daha sonra ayrıca
+    // düzenlenecek (bu, o işin İLK adımı). "Yapılar" widget'ı EN ÜSTE
+    // taşındı; altındaki TÜM detay alanları (yukarıdaki sarmalayıcı)
+    // en az bir yapı eklenene kadar gizli kalır — createBuildingStructuresEditor()
+    // "+ Yapı Ekle" tıklanınca zaten renderSection()'ı çağırdığından
+    // (bkz. tanımı) bu görünürlük her yeniden çizimde state.tables.buildings'in
+    // GÜNCEL uzunluğuna göre yeniden hesaplanır, ayrı bir olay dinleyicisi
+    // GEREKMEZ.
+    if (isMustakilBina) {
+      const hasBuildingRows = Array.isArray(state.tables.buildings) && state.tables.buildings.length > 0;
+      detailsWrapper.hidden = !hasBuildingRows;
+      body.append(createBuildingStructuresEditor());
+      body.append(detailsWrapper);
+    } else {
+      body.append(detailsWrapper);
+      body.append(createBuildingStructuresEditor());
+    }
   }
 
   if (section.id === "unit") {
