@@ -8,7 +8,12 @@
   yapan Kurum Kısmı da olmalı." + ayni turda takip 2 (DUZELTME): "sadece
   takyidat bölümünde toplulaştırma ibaresi geçiyor ise edinme sebebini
   karıştırma. edinme sebebi toplulaştırma ise zaten toplulaştırma
-  tamamlanmıştır."
+  tamamlanmıştır." + ERTESI GUN takip 3 (YENIDEN KONUMLANDIRMA): "toplulaştırma
+  durumu ve toplulaştırmayı yapan kurum bölümlerini Taşınmazın imar
+  durumunda sorun var mı bölümüne taşı. eğer takyidat kayıtlarında
+  toplulaştırma ibaresi var ise otomatik açılsın toplulaştırma ile ilgili
+  bölüm ayrıca toplulaştırmayı yapan kurumu ve toplulaştırma durumunu tek
+  bir hücrede gerekiyorsa pop up ile göster."
 
   "İmar Durumu" (planning) bölümüne iki YENİ, KOŞULLU alan eklendi:
   - toplulastirmaStatus (select: Devam Ediyor / Tamamlanmış)
@@ -18,6 +23,17 @@
   Ikisi de SADECE reportMentionsToplulastirma() true iken gorunur
   (shouldHideField'in "planning" dali) — mulkiyet turunden BAGIMSIZ, TUM
   rapor turlerinde gecerli (kullanicinin "tum raporlar icin" talebi).
+
+  Takip 3 (2026-09-18) ile: (a) section.fields dizisinde konumlari
+  hasPlanningIssue'nun ("Taşınmazın İmar Durumunda Sorun Var mı?") HEMEN
+  ARDINA tasindi (eski konum: en alt, planningNote'tan sonra); (b) createForm()
+  hasPlanningIssue'yu render ederken KOSULLU olarak createToplulastirmaControl()'u
+  hemen ardina ekliyor (floorCount/hmax ÇİFTİYLE AYNI "tetikleyicide render
+  et, takipçi alanlarin generic render'ini atla" deseni) — hasPlanningIssue'nun
+  KENDI Evet/Hayır degerinden BAGIMSIZ, TEK tetikleyici reportMentionsToplulastirma();
+  (c) iki alan artik TEK bir hucrede (ozet dugme, createRoadSetbackControl/
+  createBuildingSocialFacilitiesControl İLE AYNI "ozet + pop-up" deseni)
+  birlestirilip openToplulastirmaModal() pop-up'inda birlikte duzenleniyor.
 
   reportMentionsToplulastirma() ILK surumde Tapu'nun Malikler tablosundaki
   "Edinme sebebi" sutununu VE Nitelik alanlarini (titleQuality/mainPropertyQuality)
@@ -41,8 +57,19 @@
      KAPSAM DISI oldugunu (kullanicinin duzeltme talebi) dogrular.
   2) Kaynak-duzeyinde: shouldHideField()'in "planning" dali iki YENI alani
      dogru kosula (!reportMentionsToplulastirma()) bagliyor mu.
-  3) Kaynak-duzeyinde: "planning" section.fields dizisinin EN SONUNDA iki
-     yeni alan (dogru type/options/label ile) var mi.
+  3) Kaynak-duzeyinde: "planning" section.fields dizisinde iki alanin
+     hasPlanningIssue'nun HEMEN ARDINA tasindigini (eski en-alt konumunda
+     OLMADIGINI) dogrular.
+  4) Kaynak-duzeyinde: createForm()'un hasPlanningIssue'yu render ederken
+     kosullu createToplulastirmaControl() eklendigini + iki alanin KENDI
+     generic render'inin atlandigini dogrular.
+  5) formatToplulastirmaSummary() GERCEK kaynagindan (bos/kismi/dolu "Durum
+     — Kurum" ozetleme) calistirilir.
+  6) createToplulastirmaControl() DOM stub ile GERCEKTEN calistirilir: tek
+     'field' hucresi, ozet dugmesi mevcut degerleri gosterir, tiklaninca
+     openToplulastirmaModal() (stub'lanmis) cagrilir.
+  7) Kaynak-duzeyinde: openToplulastirmaModal() iki alani TEK pop-up'ta
+     birlikte duzenleyip Kaydet'te ikisini de yaziyor mu.
 */
 
 const assert = require("node:assert/strict");
@@ -212,20 +239,124 @@ console.log("Yanlis-pozitif OLMAMASI (benzer kelimeler) regresyon testi tamam.")
 }
 console.log("shouldHideField() 'planning' dali kaynak-duzeyi kablolama testi tamam.");
 
-// --- 9) Kaynak-duzeyi: "planning" section.fields dizisinin EN SONUNDA ------
-//        iki yeni alan (dogru type/options/label) var mi.
+// --- 9) KULLANICI TAKİP TALEBİ (2026-09-18): "toplulaştırma durumu ve ------
+//        toplulaştırmayı yapan kurum bölümlerini Taşınmazın imar durumunda
+//        sorun var mı bölümüne taşı" — iki alan artik "planning"
+//        section.fields dizisinde hasPlanningIssue'nun HEMEN ARDINDA (eski
+//        konumu: en altta, planningNote'tan SONRA — ARTIK ORADA DEGIL).
 {
   const planningSectionStart = appSource.indexOf('id: "planning",');
   assert(planningSectionStart >= 0, "'planning' section bulunamadi.");
   const fieldsEnd = appSource.indexOf("\n    ],", planningSectionStart);
-  assert(fieldsEnd > planningSectionStart, "'planning' section.fields dizisinin sonu bulunamadi.");
-  const tailSrc = appSource.slice(fieldsEnd - 400, fieldsEnd + 10);
+  const sectionSrc = appSource.slice(planningSectionStart, fieldsEnd);
+
   assert.match(
-    tailSrc,
-    /\{ key: "toplulastirmaStatus", label: "Toplulaştırma Durumu", type: "select", options: \["", "Devam Ediyor", "Tamamlanmış"\] \},\s*\n\s*\{ key: "toplulastirmaInstitution", label: "Toplulaştırmayı Yapan Kurum", type: "text" \},\s*\n\s*\],/,
-    "'planning' section.fields dizisinin EN SONUNDA (planningNote'tan SONRA) iki yeni alan beklenen sekilde bulunamadi."
+    sectionSrc,
+    /\{ key: "hasPlanningIssue"[^}]*\},\s*\n(?:\s*\/\/[^\n]*\n)*\s*\{ key: "toplulastirmaStatus", label: "Toplulaştırma Durumu", type: "select", options: \["", "Devam Ediyor", "Tamamlanmış"\] \},\s*\n\s*\{ key: "toplulastirmaInstitution", label: "Toplulaştırmayı Yapan Kurum", type: "text" \},\s*\n\s*\{ key: "planCancellationStay"/,
+    "İki yeni alan 'hasPlanningIssue'nun HEMEN ARDINDA (planCancellationStay'den ONCE) degil."
+  );
+  assert.doesNotMatch(
+    sectionSrc.slice(sectionSrc.indexOf("planningNote")),
+    /toplulastirmaStatus/,
+    "İki alan HALA eski konumunda (planningNote'tan SONRA, en altta) duruyor — tasima YAPILMAMIS."
   );
 }
-console.log("'planning' section.fields en-alt konumu kaynak-duzeyi testi tamam.");
+console.log("'planning' section.fields: iki alan hasPlanningIssue'nun ardina TASINDI testi tamam.");
 
-console.log("Toplulaştırma Durumu / Toplulaştırmayı Yapan Kurum (İmar Durumu, koşullu, SADECE Takyidat) testleri başarılı.");
+// --- 10) Kaynak-duzeyi: createForm()'un 'planning' dali hasPlanningIssue'yu
+//         render ettikten HEMEN SONRA (kosullu olarak) createToplulastirmaControl()
+//         ekliyor mu; toplulastirmaStatus/Institution'in KENDI generic
+//         render'i (select/text) atlaniyor mu (floorCount/hmax ÇİFTİYLE
+//         AYNI "tetikleyicide render et, takipçilerini atla" deseni).
+{
+  const createFormSrc = sliceFn("function createForm(section) {");
+  assert.match(
+    createFormSrc,
+    /section\.id === "planning" && field\.key === "hasPlanningIssue"\) \{\s*\n\s*form\.append\(createCheckboxControl\(section, field\)\);\s*\n\s*if \(reportMentionsToplulastirma\(\) \|\| isCurrentUserAdmin\(\)\) \{\s*\n\s*form\.append\(createToplulastirmaControl\(\)\);/,
+    "createForm() 'hasPlanningIssue' render edildiginde kosullu olarak createToplulastirmaControl() eklemiyor (reportMentionsToplulastirma() VEYA admin-bypass icin isCurrentUserAdmin())."
+  );
+  assert.match(
+    createFormSrc,
+    /section\.id === "planning" && \(field\.key === "toplulastirmaStatus" \|\| field\.key === "toplulastirmaInstitution"\)\) \{\s*\n\s*return;/,
+    "createForm() toplulastirmaStatus/toplulastirmaInstitution'in KENDI generic render'ini atlamiyor (cift render riski)."
+  );
+}
+console.log("createForm() 'planning' dali: hasPlanningIssue -> Toplulaştırma kontrolu kaynak-duzeyi kablolama testi tamam.");
+
+// --- 11) formatToplulastirmaSummary(): bos/kismi/dolu durumlar ------------
+{
+  const context = { state: { fields: {} } };
+  vm.createContext(context);
+  vm.runInContext(sliceFn("function formatToplulastirmaSummary("), context);
+
+  context.state.fields = {};
+  assert.equal(context.formatToplulastirmaSummary(), "Bilgi girilmedi (düzenlemek için tıklayın)", "Bos durumda yer tutucu metin yanlis.");
+
+  context.state.fields = { toplulastirmaStatus: "Devam Ediyor" };
+  assert.equal(context.formatToplulastirmaSummary(), "Devam Ediyor", "Sadece Durum doluyken ozet yanlis.");
+
+  context.state.fields = { toplulastirmaInstitution: "Tarım ve Orman Bakanlığı" };
+  assert.equal(context.formatToplulastirmaSummary(), "Tarım ve Orman Bakanlığı", "Sadece Kurum doluyken ozet yanlis.");
+
+  context.state.fields = { toplulastirmaStatus: "Tamamlanmış", toplulastirmaInstitution: "Tarım ve Orman Bakanlığı" };
+  assert.equal(
+    context.formatToplulastirmaSummary(),
+    "Tamamlanmış — Tarım ve Orman Bakanlığı",
+    "Ikisi de doluyken ozet 'Durum — Kurum' bicimini kullanmiyor (kullanicinin 'tek bir hucrede' talebi)."
+  );
+}
+console.log("formatToplulastirmaSummary() (tek hucre ozeti) testi tamam.");
+
+// --- 12) createToplulastirmaControl(): tek bir 'field' hucresi dondurur, --
+//         ozet dugmesine tiklamak openToplulastirmaModal()'i cagirir (pop-up
+//         tetikleyicisi, kullanicinin 'gerekirse pop up ile goster' talebi).
+{
+  function makeElementStub(tag) {
+    const el = { tagName: String(tag || "").toUpperCase(), className: "", textContent: "", children: [], _listeners: {},
+      append(...nodes) { el.children.push(...nodes); },
+      addEventListener(type, handler) { el._listeners[type] = handler; },
+      fire(type) { el._listeners[type]?.(); },
+    };
+    return el;
+  }
+  let modalOpenCalls = 0;
+  const context = {
+    state: { fields: { toplulastirmaStatus: "Devam Ediyor", toplulastirmaInstitution: "Tarım ve Orman Bakanlığı" } },
+    document: { createElement: (tag) => makeElementStub(tag) },
+    createSpan: (text) => { const span = makeElementStub("span"); span.textContent = text; return span; },
+    openToplulastirmaModal: (onSave) => { modalOpenCalls += 1; onSave(); },
+  };
+  vm.createContext(context);
+  vm.runInContext(sliceFn("function formatToplulastirmaSummary("), context);
+  vm.runInContext(sliceFn("function createToplulastirmaControl("), context);
+
+  const control = context.createToplulastirmaControl();
+  assert.equal(control.tagName, "LABEL", "createToplulastirmaControl() bir <label> dondurmuyor.");
+  assert.equal(control.className, "field", "Tek hucre 'field' sinifini kullanmiyor.");
+  const [spanEl, button] = control.children;
+  assert.equal(spanEl.textContent, "Toplulaştırma Bilgileri", "Etiket metni yanlis.");
+  assert.equal(button.tagName, "BUTTON", "Ozet dugmesi bulunamadi.");
+  assert.equal(button.className, "multi-checkbox-summary", "Ozet dugmesi dogru gorsel sinifi kullanmiyor.");
+  assert.equal(button.textContent, "Devam Ediyor — Tarım ve Orman Bakanlığı", "Ozet dugmesi mevcut degerleri yansitmiyor.");
+
+  button.fire("click");
+  assert.equal(modalOpenCalls, 1, "Ozet dugmesine tiklamak openToplulastirmaModal()'i cagirmadi (pop-up acilmiyor).");
+}
+console.log("createToplulastirmaControl() (tek hucre + pop-up tetikleyici) testi tamam.");
+
+// --- 13) Kaynak-duzeyi: openToplulastirmaModal() iki alani TEK pop-up'ta --
+//         birlikte duzenleyip Kaydet'te HER IKISINI de yaziyor.
+{
+  const modalSrc = sliceFn("function openToplulastirmaModal(");
+  assert.match(modalSrc, /data-toplulastirma-status/, "Pop-up'ta Toplulaştırma Durumu secimi yok.");
+  assert.match(modalSrc, /data-toplulastirma-institution/, "Pop-up'ta Toplulaştırmayı Yapan Kurum alani yok.");
+  assert.match(
+    modalSrc,
+    /data-toplulastirma-save[\s\S]{0,300}state\.fields\.toplulastirmaStatus\s*=\s*statusSelect\.value;\s*\n\s*state\.fields\.toplulastirmaInstitution\s*=\s*institutionInput\.value;/,
+    "'Kaydet' dugmesi HER IKI alani da (Durum + Kurum) yazmiyor."
+  );
+  assert.match(modalSrc, /data-toplulastirma-cancel/, "'Vazgeç' dugmesi bulunamadi.");
+}
+console.log("openToplulastirmaModal() (tek pop-up, iki alan birlikte) kaynak-duzeyi testi tamam.");
+
+console.log("Toplulaştırma Durumu / Toplulaştırmayı Yapan Kurum (İmar Durumu, koşullu, SADECE Takyidat, tek hücre + pop-up) testleri başarılı.");

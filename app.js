@@ -494,6 +494,18 @@ const sections = [
       { key: "sideGarden", label: "Yan bahçe", type: "text" },
       { key: "backGarden", label: "Arka bahçe", type: "text" },
       { key: "hasPlanningIssue", label: "Taşınmazın İmar Durumunda Sorun Var mı?", type: "checkbox", checkedValue: "Evet", uncheckedValue: "Hayır", defaultValue: "Hayır", wide: true },
+      // Kullanıcı takip talebi (2026-09-18): "toplulaştırma durumu ve
+      // toplulaştırmayı yapan kurum bölümlerini Taşınmazın imar durumunda
+      // sorun var mı bölümüne taşı" — bu iki alan "Taşınmazın İmar
+      // Durumunda Sorun Var mı?"nın HEMEN ARDINA taşındı (createForm()'un
+      // "planning" dalında createToplulastirmaControl() ile TEK bir
+      // hücrede/pop-up'ta birleştirilip render ediliyor, bkz. orası) —
+      // burada declaratif olarak KALMALARININ TEK amacı getImarSectionFieldKeys()
+      // gibi "İmar Durumu alanları" listeleyen tüketicilerin bu ikisini de
+      // kapsaması (floorCount/hmax, frontGarden/.../roadSetback ÇİFTİNİN
+      // AYNI kurduğu emsal deseni).
+      { key: "toplulastirmaStatus", label: "Toplulaştırma Durumu", type: "select", options: ["", "Devam Ediyor", "Tamamlanmış"] },
+      { key: "toplulastirmaInstitution", label: "Toplulaştırmayı Yapan Kurum", type: "text" },
       { key: "planCancellationStay", label: "Plan İptali/Yürütmeyi Durdurma Kararı Var mı?", type: "conditionalYesNo", detailWhen: "Evet", detailKey: "planCancellationStayNote", hideInactiveDetail: true },
       { key: "roadSetback", label: "Yola terk var mı", type: "select", options: ["", "Evet", "Hayır"] },
       { key: "minimumFrontageCondition", label: "Minimum cephe şartı var mı?", type: "conditionalYesNo", detailWhen: "Evet", detailKey: "minimumFrontageConditionNote" },
@@ -503,17 +515,6 @@ const sections = [
       { key: "licenseObstacle", label: "Ruhsatı almaya engel bir durum bulunuyor mu?", type: "conditionalYesNo", detailWhen: "Evet", detailKey: "licenseObstacleNote" },
       { key: "planRestrictionNote", label: "Plan Özel Notu / Kısıtlama Açıklama", type: "textarea", sensitiveOnly: true },
       { key: "planningNote", label: "İmar açıklaması", type: "textarea", sensitiveOnly: true },
-      // Kullanıcı talebi (2026-09-17): "tapu ve takyidat kayıtlarında tüm
-      // raporlar için eğer toplulaştırma ibaresi geçiyor ise; İmar Durumu
-      // bölümüne en alt kısıma Toplulaştırma Durumu bölümü eklensin" +
-      // takip: "Ayrıca Toplulaştırma yapan Kurum Kısmı da olmalı". Bu iki
-      // alan yalnızca reportMentionsToplulastirma() true iken görünür
-      // (bkz. shouldHideField, "planning" dalı) — mülkiyet türünden
-      // BAĞIMSIZ, TÜM rapor türlerinde (kullanıcının "tüm raporlar için"
-      // talebi) geçerli, TEK tetikleyici tapu/takyidat kayıtlarındaki
-      // "toplulaştırma" ibaresi.
-      { key: "toplulastirmaStatus", label: "Toplulaştırma Durumu", type: "select", options: ["", "Devam Ediyor", "Tamamlanmış"] },
-      { key: "toplulastirmaInstitution", label: "Toplulaştırmayı Yapan Kurum", type: "text" },
     ],
   },
   {
@@ -6475,6 +6476,31 @@ function createForm(section) {
     }
 
     if (section.id === "planning" && isPlanningIssueDetailField(field.key) && !shouldShowPlanningIssueFields()) {
+      return;
+    }
+
+    // Kullanıcı takip talebi (2026-09-18): "toplulaştırma durumu ve
+    // toplulaştırmayı yapan kurum bölümlerini Taşınmazın imar durumunda
+    // sorun var mı bölümüne taşı ... otomatik açılsın ... tek bir hücrede
+    // ... pop up ile göster." "Taşınmazın İmar Durumunda Sorun Var mı?"
+    // (hasPlanningIssue) render edildiği ANDA, HEMEN ARDINA (floorCount/hmax
+    // ÇİFTİYLE AYNI desen) reportMentionsToplulastirma() true iken TEK bir
+    // özet+pop-up hücresi (createToplulastirmaControl) eklenir — hasPlanningIssue'nun
+    // KENDİ Evet/Hayır degerinden BAĞIMSIZ (tetikleyici SADECE Takyidat
+    // tespiti, kullanıcının "otomatik açılsın" talebi tam bunu istiyor).
+    // Diğer koşullu alanların (shouldHideField üzerinden) admin'e HER ZAMAN
+    // görünmesiyle AYNI tutarlılık için isCurrentUserAdmin() de eklendi —
+    // bu bespoke kontrol shouldHideField'ın genel admin-bypass mekanizmasına
+    // GİRMEDİĞİNDEN burada elle tekrarlanması gerekiyordu.
+    if (section.id === "planning" && field.key === "hasPlanningIssue") {
+      form.append(createCheckboxControl(section, field));
+      if (reportMentionsToplulastirma() || isCurrentUserAdmin()) {
+        form.append(createToplulastirmaControl());
+      }
+      return;
+    }
+
+    if (section.id === "planning" && (field.key === "toplulastirmaStatus" || field.key === "toplulastirmaInstitution")) {
       return;
     }
 
@@ -24096,6 +24122,90 @@ function openRoadSetbackModal(onSave = () => {}) {
 
   document.body.append(overlay);
   amountInput.focus();
+}
+
+// Kullanıcı takip talebi (2026-09-18): "toplulaştırma durumu ve
+// toplulaştırmayı yapan kurum bölümlerini Taşınmazın imar durumunda
+// sorun var mı bölümüne taşı ... ayrıca toplulaştırmayı yapan kurumu ve
+// toplulaştırma durumunu tek bir hücrede gerekiyorsa pop up ile göster."
+// createRoadSetbackControl()/openRoadSetbackModal() İLE AYNI "özet
+// düğme + pop-up" deseni — TEK fark, burada düğmenin KENDİSİ zaten özeti
+// gösteriyor (roadSetback'teki gibi AYRICA bir select yok, çünkü iki
+// alanın İKİSİ de pop-up'ta düzenleniyor, düğme sadece özet/tetikleyici).
+function createToplulastirmaControl() {
+  const label = document.createElement("label");
+  label.className = "field";
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "multi-checkbox-summary";
+  button.textContent = formatToplulastirmaSummary();
+  button.addEventListener("click", () => {
+    openToplulastirmaModal(() => {
+      button.textContent = formatToplulastirmaSummary();
+    });
+  });
+  label.append(createSpan("Toplulaştırma Bilgileri"), button);
+  return label;
+}
+
+function formatToplulastirmaSummary() {
+  const parts = [state.fields.toplulastirmaStatus, state.fields.toplulastirmaInstitution].filter(Boolean);
+  return parts.length ? parts.join(" — ") : "Bilgi girilmedi (düzenlemek için tıklayın)";
+}
+
+function openToplulastirmaModal(onSave = () => {}) {
+  document.querySelector(".modal-overlay")?.remove();
+
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.innerHTML = `
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="toplulastirmaModalTitle">
+      <div class="modal-head">
+        <h3 id="toplulastirmaModalTitle">Toplulaştırma Bilgileri</h3>
+        <button class="modal-close" type="button" aria-label="Kapat">×</button>
+      </div>
+      <div class="modal-body">
+        <label class="field">
+          <span>Toplulaştırma Durumu</span>
+          <select data-toplulastirma-status>
+            ${["", "Devam Ediyor", "Tamamlanmış"].map((option) => `<option value="${escapeHtml(option)}">${escapeHtml(option || "Seçiniz")}</option>`).join("")}
+          </select>
+        </label>
+        <label class="field">
+          <span>Toplulaştırmayı Yapan Kurum</span>
+          <input type="text" data-toplulastirma-institution>
+        </label>
+      </div>
+      <div class="modal-actions">
+        <button class="secondary-button" type="button" data-toplulastirma-cancel>Vazgeç</button>
+        <button class="primary-button" type="button" data-toplulastirma-save>Kaydet</button>
+      </div>
+    </div>
+  `;
+
+  const statusSelect = overlay.querySelector("[data-toplulastirma-status]");
+  statusSelect.value = state.fields.toplulastirmaStatus || "";
+  const institutionInput = overlay.querySelector("[data-toplulastirma-institution]");
+  institutionInput.value = state.fields.toplulastirmaInstitution || "";
+
+  const close = () => overlay.remove();
+  overlay.querySelector(".modal-close").addEventListener("click", close);
+  overlay.querySelector("[data-toplulastirma-cancel]").addEventListener("click", close);
+  overlay.addEventListener("click", (event) => {
+    if (event.target === overlay) close();
+  });
+  overlay.querySelector("[data-toplulastirma-save]").addEventListener("click", () => {
+    state.fields.toplulastirmaStatus = statusSelect.value;
+    state.fields.toplulastirmaInstitution = institutionInput.value;
+    autosave();
+    renderValidation();
+    updateStatus();
+    onSave();
+    close();
+  });
+
+  document.body.append(overlay);
+  statusSelect.focus();
 }
 
 function createMainArteryComposer(field) {
