@@ -178,6 +178,13 @@
     return "";
   }
 
+  // Kullanıcı bildirimi (2026-09-17): "normal kullanıcı yine bu uyarıyı
+  // alıyor" — "Banka Şablonuyla Kaydet" tıklandığında "Paket hazırlanamadı:
+  // Bu işlem için geçerli uygulama oturumu gerekir." Kök neden ve çözüm:
+  // app.js'teki fetchRaporApi()/RaporCloudSync.ensureAppSession() ile AYNI
+  // (bkz. o yorumlar) — HttpOnly oturum çerezi Firebase istemci oturumundan
+  // bağımsız sessizce süresi doluyor. Burada da 401/session_required
+  // görülünce çerez sessizce yenilenip istek BİR KEZ yeniden denenir.
   async function fetchProtectedTemplateApi(url, options = {}) {
     const getIdToken = window.RaporCloudSync?.getIdToken;
     const idToken = typeof getIdToken === "function" ? await getIdToken() : null;
@@ -185,7 +192,24 @@
     const headers = new Headers(options.headers || {});
     headers.set("Authorization", `Bearer ${idToken}`);
     headers.set("X-Rapor-Client", "1");
-    return fetch(url, { ...options, headers, credentials: "same-origin" });
+    const response = await fetch(url, { ...options, headers, credentials: "same-origin" });
+    if (response.status !== 401) return response;
+    let sessionRequired = false;
+    try {
+      const body = await response.clone().json();
+      sessionRequired = body?.code === "session_required";
+    } catch {
+      sessionRequired = false;
+    }
+    if (!sessionRequired) return response;
+    const refreshed = await window.RaporCloudSync?.ensureAppSession?.();
+    if (!refreshed) return response;
+    const freshToken = typeof getIdToken === "function" ? await getIdToken() : null;
+    if (!freshToken) return response;
+    const retryHeaders = new Headers(options.headers || {});
+    retryHeaders.set("Authorization", `Bearer ${freshToken}`);
+    retryHeaders.set("X-Rapor-Client", "1");
+    return fetch(url, { ...options, headers: retryHeaders, credentials: "same-origin" });
   }
 
   function firstTitleRowCell(cellKey) {

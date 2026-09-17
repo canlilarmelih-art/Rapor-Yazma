@@ -30231,6 +30231,24 @@ async function readPdfTextInBrowser(file) {
   return recognizePdfPages(pdf);
 }
 
+// Kullanıcı bildirimi (2026-09-17): "normal kullanıcı yine bu uyarıyı
+// alıyor" — HttpOnly oturum çerezi (7 gün TTL) Firebase istemci oturumundan
+// BAĞIMSIZ sessizce süresi doluyor (bkz. RaporCloudSync.ensureAppSession
+// yorumu, cloud/cloud-sync.js) ve sunucu TÜM korumalı API'lerde
+// "session_required" (401) döndürüyor. Bu yardımcı bir 401/session_required
+// yanıtı GÖRÜRSE çerezi sessizce yeniler (ensureAppSession) ve isteği BİR
+// KEZ yeniden dener — kullanıcı "Bulut oturumu açın" gibi bir uyarı görmez,
+// sayfayı yenilemesi de gerekmez.
+async function isSessionRequiredResponse(response) {
+  if (response.status !== 401) return false;
+  try {
+    const body = await response.clone().json();
+    return body?.code === "session_required";
+  } catch {
+    return false;
+  }
+}
+
 async function fetchRaporApi(input, init = {}, timeoutMs = 0) {
   const token = await window.RaporCloudSync?.getIdToken?.();
   if (!token) throw new Error("Sunucu işlemleri için geçerli bir oturum açın.");
@@ -30238,7 +30256,17 @@ async function fetchRaporApi(input, init = {}, timeoutMs = 0) {
   headers.set("Authorization", `Bearer ${token}`);
   headers.set("X-Rapor-Client", "1");
   const requestInit = { ...init, headers };
-  return timeoutMs > 0 ? fetchWithTimeout(input, timeoutMs, requestInit) : fetch(input, requestInit);
+  const response = await (timeoutMs > 0 ? fetchWithTimeout(input, timeoutMs, requestInit) : fetch(input, requestInit));
+  if (!(await isSessionRequiredResponse(response))) return response;
+  const refreshed = await window.RaporCloudSync?.ensureAppSession?.();
+  if (!refreshed) return response;
+  const freshToken = await window.RaporCloudSync?.getIdToken?.();
+  if (!freshToken) return response;
+  const retryHeaders = new Headers(init.headers || {});
+  retryHeaders.set("Authorization", `Bearer ${freshToken}`);
+  retryHeaders.set("X-Rapor-Client", "1");
+  const retryInit = { ...init, headers: retryHeaders };
+  return timeoutMs > 0 ? fetchWithTimeout(input, timeoutMs, retryInit) : fetch(input, retryInit);
 }
 
 // Admin dashboard'daki "kaç rapor oluşturdu / ne kadar sürede tamamladı"

@@ -646,7 +646,7 @@
   async function accountApi(path, options = {}) {
     const token = await getIdToken(true);
     if (!token) throw new Error("oturum bulunamadı");
-    const response = await fetch(path, {
+    let response = await fetch(path, {
       ...options,
       headers: {
         Authorization: `Bearer ${token}`,
@@ -654,7 +654,25 @@
         ...(options.headers || {}),
       },
     });
-    const body = await response.json().catch(() => ({}));
+    let body = await response.json().catch(() => ({}));
+    // Kullanıcı bildirimi (2026-09-17): "normal kullanıcı yine bu uyarıyı
+    // alıyor" — getIdToken/ensureAppSession yorumundaki AYNI kök neden
+    // (bkz. yukarısı). session_required görülürse çerez sessizce yenilenip
+    // istek bir kez daha denenir.
+    if (response.status === 401 && body?.code === "session_required" && (await ensureAppSession())) {
+      const freshToken = await getIdToken();
+      if (freshToken) {
+        response = await fetch(path, {
+          ...options,
+          headers: {
+            Authorization: `Bearer ${freshToken}`,
+            "X-Rapor-Client": "1",
+            ...(options.headers || {}),
+          },
+        });
+        body = await response.json().catch(() => ({}));
+      }
+    }
     if (!response.ok || !body.ok) throw new Error(body.error || "İşlem tamamlanamadı.");
     return body;
   }
@@ -902,6 +920,50 @@
     } catch (error) {
       console.warn("Sunucu API oturum anahtarı alınamadı:", error?.code || error);
       return null;
+    }
+  }
+
+  // Kullanıcı bildirimi (2026-09-17): "normal kullanıcı yine bu uyarıyı
+  // alıyor" — export sırasında "Paket hazırlanamadı: Bu işlem için geçerli
+  // uygulama oturumu gerekir." Kök neden: HttpOnly `rapor_session` çerezi
+  // (server.js, 7 gün TTL) yalnızca login.html'de İLK girişte POST
+  // /api/session ile kuruluyor — Firebase istemci oturumu (ID token) SDK
+  // tarafından sessizce yenilenip günlerce/haftalarca canlı kalabildiği
+  // halde, sunucu tarafındaki 7 günlük çerez bunun FARKINDA DEĞİL ve süresi
+  // dolunca sessizce geçersiz kalıyor. Kullanıcı uygulamayı kapatıp
+  // açmadığı sürece (tarayıcı sekmesi günlerce açık kaldığı sürece) bunu
+  // FARK ETMİYOR, ta ki getOperationalApiAccessFailure() (server.js) tüm
+  // korumalı API'lerde "session_required" ile reddedene kadar. Bu fonksiyon
+  // geçerli (hâlâ oturum açık) Firebase token'ı ile çerezi SESSİZCE yeniden
+  // kurar — fetchRaporApi()/fetchProtectedTemplateApi() bir "session_required"
+  // yanıtı gördüğünde bunu çağırıp isteği YENİDEN dener (kullanıcı ekstra bir
+  // şey yapmaz, sayfayı yenilemesi bile gerekmez).
+  let pendingSessionRefresh = null;
+  async function ensureAppSession() {
+    if (pendingSessionRefresh) return pendingSessionRefresh;
+    pendingSessionRefresh = (async () => {
+      try {
+        const token = await getIdToken(true);
+        if (!token) return false;
+        const response = await fetch("/api/session", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}`, "X-Rapor-Client": "1" },
+        });
+        if (!response.ok) return false;
+        const result = await response.json().catch(() => null);
+        // pendingApproval/requiresMfa durumlarında SESSİZCE devam edilemez
+        // (onay veya ikinci doğrulama kullanıcı etkileşimi gerektirir) —
+        // orijinal istek olduğu gibi başarısız kalmaya devam eder.
+        return Boolean(result && result.ok !== false && !result.pendingApproval && !result.requiresMfa);
+      } catch (error) {
+        console.warn("Uygulama oturumu yenilenemedi:", error);
+        return false;
+      }
+    })();
+    try {
+      return await pendingSessionRefresh;
+    } finally {
+      pendingSessionRefresh = null;
     }
   }
 
@@ -1192,6 +1254,7 @@
     signOutAndClearLocalData,
     onAuthChange,
     getIdToken,
+    ensureAppSession,
     loadExpenseFees,
     saveExpenseFees,
     getStatus: () => ({
