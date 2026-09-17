@@ -14307,8 +14307,6 @@ function createEmptyBuildingStructureRow() {
     floorCountText: "",
     buildingHeight: "",
     elevator: "",
-    freightElevator: "",
-    passengerElevator: "",
     constructionYear: "",
     parcelPosition: "",
     interiorFeatures: "",
@@ -14345,12 +14343,105 @@ function buildBuildingStructureFloorComposition(floorCounts = {}) {
   return parts.join(" + ");
 }
 
-// Asansör (2026-09-17 takip talebi): "asansör bölümüne yük asansörü ve
-// yolcu asansörü bölümlerini ekleyelim" — mevcut genel "Asansör" alanı
-// KORUNUP yanına iki yeni alan eklendi. Üçü de AYNI seçenek kalıbını
-// (adet + "Montajı henüz yapılmamıştır") paylaştığından tek bir üreteç.
-function buildBuildingStructureElevatorOptions(suffix) {
-  return ["", "Yok", `1 Adet ${suffix}`, `2 Adet ${suffix}`, `3 Adet ${suffix}`, `4 Adet ${suffix}`, "Montajı henüz yapılmamıştır"];
+// Asansör (2026-09-17, iki adımlı takip talebi): önce "asansör bölümüne
+// yük asansörü ve yolcu asansörü bölümlerini ekleyelim" ile Yük/Yolcu
+// Asansörü AYRI iki alan olarak eklendi; hemen ardından "yük asansörü ve
+// yolcu asansörünü asansör bölümüne al, açılır listeyi çoktan seçmeli
+// yap" ile bu İKİ AYRI alan TEKRAR TEK "Asansör" alanına birleştirildi —
+// ama artık tekli-seçim değil, Sosyal Tesisler'in (createBuildingSocialFacilitiesControl/
+// openBuildingSocialFacilitiesModal) İLE AYNI "özet düğme + onay kutulu
+// modal" deseninde ÇOKTAN SEÇMELİ. O mekanizma `state.fields`/genel
+// `getMultiCheckboxValues()` altyapısını kullanıyor; burada HER YAPININ
+// KENDİ `row.elevator`'ı (virgülle ayrılmış metin) olduğundan aynı genel
+// alt yapıya bağlanmadı, küçük bağımsız bir kopyası yazıldı (bu dosyadaki
+// diğer Yapı-özel yardımcılarla AYNI ilke).
+const BUILDING_STRUCTURE_ELEVATOR_OPTIONS = [
+  ...[1, 2, 3, 4].map((count) => `${count} Adet Yolcu Asansörü`),
+  ...[1, 2, 3, 4].map((count) => `${count} Adet Yük Asansörü`),
+  "Montajı henüz yapılmamıştır",
+];
+
+function getBuildingStructureElevatorValues(row) {
+  return String(row.elevator || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter((item) => BUILDING_STRUCTURE_ELEVATOR_OPTIONS.includes(item));
+}
+
+function formatBuildingStructureElevatorSummary(row) {
+  const values = getBuildingStructureElevatorValues(row);
+  return values.length ? values.join(", ") : "Yok";
+}
+
+function createBuildingStructureElevatorControl(row) {
+  const label = document.createElement("label");
+  label.className = "field";
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "multi-checkbox-summary";
+  button.textContent = formatBuildingStructureElevatorSummary(row);
+  button.addEventListener("click", () => {
+    openBuildingStructureElevatorModal(row, () => {
+      button.textContent = formatBuildingStructureElevatorSummary(row);
+    });
+  });
+  label.append(createSpan("Asansör"), button);
+  return label;
+}
+
+function openBuildingStructureElevatorModal(row, onSave = () => {}) {
+  document.querySelector(".modal-overlay")?.remove();
+  const selected = new Set(getBuildingStructureElevatorValues(row));
+
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.innerHTML = `
+    <div class="modal-card modal-card-wide" role="dialog" aria-modal="true" aria-labelledby="buildingStructureElevatorModalTitle">
+      <div class="modal-head">
+        <h3 id="buildingStructureElevatorModalTitle">Asansör</h3>
+        <button class="modal-close" type="button" aria-label="Kapat">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="checkbox-list checkbox-list-four">
+          ${BUILDING_STRUCTURE_ELEVATOR_OPTIONS.map((option) => `
+            <label class="checkbox-pill">
+              <input type="checkbox" value="${escapeHtml(option)}" data-building-structure-elevator ${selected.has(option) ? "checked" : ""}>
+              <span>${escapeHtml(option)}</span>
+            </label>
+          `).join("")}
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="secondary-button" type="button" data-building-structure-elevator-clear>Yok</button>
+        <button class="secondary-button" type="button" data-building-structure-elevator-cancel>Vazgeç</button>
+        <button class="primary-button" type="button" data-building-structure-elevator-save>Kaydet</button>
+      </div>
+    </div>
+  `;
+
+  const close = () => overlay.remove();
+  overlay.querySelector(".modal-close").addEventListener("click", close);
+  overlay.querySelector("[data-building-structure-elevator-cancel]").addEventListener("click", close);
+  overlay.querySelector("[data-building-structure-elevator-clear]").addEventListener("click", () => {
+    row.elevator = "";
+    autosave();
+    onSave();
+    close();
+  });
+  overlay.addEventListener("click", (event) => {
+    if (event.target === overlay) close();
+  });
+  overlay.querySelector("[data-building-structure-elevator-save]").addEventListener("click", () => {
+    row.elevator = [...overlay.querySelectorAll("[data-building-structure-elevator]:checked")]
+      .map((checkbox) => checkbox.value)
+      .join(", ");
+    autosave();
+    onSave();
+    close();
+  });
+
+  document.body.append(overlay);
+  overlay.querySelector("[data-building-structure-elevator]")?.focus();
 }
 
 function getBuildingStructureRows() {
@@ -14463,9 +14554,7 @@ function createBuildingStructureTabContent(rows, index) {
     createBuildingStructureSelectField(row, "buildingStyle", "Bina Yapı Tarzı", buildingStructureStyleOptions),
     createBuildingStructureSelectField(row, "buildingOrder", "Mevcut Yapı Nizamı", buildingOrderOptions),
     createBuildingStructureTextField(row, "buildingHeight", "Bina Yüksekliği", "Örn. 8,00 metre (opsiyonel)"),
-    createBuildingStructureSelectField(row, "elevator", "Asansör", buildBuildingStructureElevatorOptions("Asansör")),
-    createBuildingStructureSelectField(row, "freightElevator", "Yük Asansörü", buildBuildingStructureElevatorOptions("Yük Asansörü")),
-    createBuildingStructureSelectField(row, "passengerElevator", "Yolcu Asansörü", buildBuildingStructureElevatorOptions("Yolcu Asansörü")),
+    createBuildingStructureElevatorControl(row),
     createBuildingStructureConstructionYearField(row),
     createBuildingStructureSelectField(row, "parcelPosition", "Parselin Hangi Kısmında Yer Aldığı", buildingEntranceDirectionOptions),
   );
