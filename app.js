@@ -14305,14 +14305,54 @@ function createEmptyBuildingStructureRow() {
     buildingClass: "",
     buildingStyle: "",
     buildingOrder: "",
+    floorCounts: {},
     floorCountText: "",
     buildingHeight: "",
     elevator: "",
+    freightElevator: "",
+    passengerElevator: "",
     constructionYear: "",
     parcelPosition: "",
     interiorFeatures: "",
     floors: [],
   };
+}
+
+// Kullanıcı takip talebi (2026-09-17): "Toplam Kat Adedi bölümü ana
+// gayrimenkul kat adedi mantığında olmalı" — 0.0.822'deki serbest metin
+// alanı yerine, Ana Taşınmaz Kat Dağılımı (buildingFloorCountFields +
+// createMainPropertyFloorCountTextControl) İLE AYNI mekanizma: kat türü
+// başına adet girilen bir grid + "Hesapla" düğmesi + üretilen metnin
+// serbestçe düzenlenebildiği bir alan. buildMainPropertyFloorComposition()'ın
+// KENDİSİ BİLEREK yeniden kullanılmadı — o `state.fields.buildingFloorCounts`
+// (rapor-geneli TEK bina) okur, burada ise HER YAPININ KENDİ `row.floorCounts`
+// nesnesi var; iki ayrı veri kaynağını karıştırmamak için küçük bir kopya
+// tercih edildi (calculateSimpleBuildingAgeFromYear'daki AYNI ilke).
+function buildBuildingStructureFloorComposition(floorCounts = {}) {
+  const parts = [];
+  const basement = parseBuildingFloorCount(floorCounts.basement);
+  const ground = parseBuildingFloorCount(floorCounts.ground);
+  const mezzanine = parseBuildingFloorCount(floorCounts.mezzanine);
+  const intermediate = parseBuildingFloorCount(floorCounts.intermediate);
+  const normal = parseBuildingFloorCount(floorCounts.normal);
+  const roof = parseBuildingFloorCount(floorCounts.roof);
+  const terrace = parseBuildingFloorCount(floorCounts.terrace);
+  if (basement) parts.push(basement === 1 ? "Bodrum" : `${basement} Bodrum`);
+  if (ground) parts.push("Zemin");
+  if (mezzanine) parts.push(mezzanine === 1 ? "Asma Kat" : `${mezzanine} Asma Kat`);
+  if (intermediate) parts.push(intermediate === 1 ? "Ara Kat" : `${intermediate} Ara Kat`);
+  if (normal) parts.push(`${normal} Normal Kat`);
+  if (roof) parts.push(roof === 1 ? "Çatı Katı" : `${roof} Çatı Katı`);
+  if (terrace) parts.push(terrace === 1 ? "Teras Kat" : `${terrace} Teras Kat`);
+  return parts.join(" + ");
+}
+
+// Asansör (2026-09-17 takip talebi): "asansör bölümüne yük asansörü ve
+// yolcu asansörü bölümlerini ekleyelim" — mevcut genel "Asansör" alanı
+// KORUNUP yanına iki yeni alan eklendi. Üçü de AYNI seçenek kalıbını
+// (adet + "Montajı henüz yapılmamıştır") paylaştığından tek bir üreteç.
+function buildBuildingStructureElevatorOptions(suffix) {
+  return ["", "Yok", `1 Adet ${suffix}`, `2 Adet ${suffix}`, `3 Adet ${suffix}`, `4 Adet ${suffix}`, "Montajı henüz yapılmamıştır"];
 }
 
 function getBuildingStructureRows() {
@@ -14424,18 +14464,81 @@ function createBuildingStructureTabContent(rows, index) {
     createBuildingStructureSelectField(row, "buildingClass", "Yapı Sınıfı", buildingClassOptions),
     createBuildingStructureSelectField(row, "buildingStyle", "Bina Yapı Tarzı", buildingStructureStyleOptions),
     createBuildingStructureSelectField(row, "buildingOrder", "Mevcut Yapı Nizamı", buildingOrderOptions),
-    createBuildingStructureTextField(row, "floorCountText", "Toplam Kat Adedi", "Örn. Zemin + 1 Normal Kat"),
     createBuildingStructureTextField(row, "buildingHeight", "Bina Yüksekliği", "Örn. 8,00 metre (opsiyonel)"),
-    createBuildingStructureSelectField(row, "elevator", "Asansör", ["", "Yok", "1 Adet Asansör", "2 Adet Asansör", "3 Adet Asansör", "4 Adet Asansör", "Montajı henüz yapılmamıştır"]),
+    createBuildingStructureSelectField(row, "elevator", "Asansör", buildBuildingStructureElevatorOptions("Asansör")),
+    createBuildingStructureSelectField(row, "freightElevator", "Yük Asansörü", buildBuildingStructureElevatorOptions("Yük Asansörü")),
+    createBuildingStructureSelectField(row, "passengerElevator", "Yolcu Asansörü", buildBuildingStructureElevatorOptions("Yolcu Asansörü")),
     createBuildingStructureConstructionYearField(row),
     createBuildingStructureSelectField(row, "parcelPosition", "Parselin Hangi Kısmında Yer Aldığı", buildingEntranceDirectionOptions),
   );
   wrapper.append(grid);
+  wrapper.append(createBuildingStructureFloorCountPanel(row));
   wrapper.append(createBuildingStructureInteriorFeaturesField(row));
   wrapper.append(createBuildingStructureFloorPanel(row));
   wrapper.append(createBuildingStructureDeleteButton(rows, index));
 
   return wrapper;
+}
+
+function createBuildingStructureFloorCountPanel(row) {
+  if (!row.floorCounts || typeof row.floorCounts !== "object") row.floorCounts = {};
+
+  const panel = document.createElement("div");
+  panel.className = "subsection is-detail building-floor-count-panel building-structure-floor-count-panel";
+  panel.innerHTML = `
+    <div class="subsection-title-row">
+      <h4>Kat Dağılımı</h4>
+      <p>Her kat türü için adet giriniz; Toplam Kat Adedi metni bu dağılımdan otomatik oluşturulur (Ana Taşınmaz Kat Dağılımı ile AYNI mantık).</p>
+    </div>
+  `;
+
+  const countGrid = document.createElement("div");
+  countGrid.className = "building-floor-count-grid";
+  const countInputs = [];
+  buildingFloorCountFields.forEach((field) => {
+    const label = document.createElement("label");
+    label.className = "field";
+    const input = document.createElement("input");
+    input.type = "number";
+    input.min = "0";
+    input.step = "1";
+    input.inputMode = "numeric";
+    input.value = row.floorCounts[field.key] || "";
+    countInputs.push({ key: field.key, input });
+    label.append(createSpan(field.label), input);
+    countGrid.append(label);
+  });
+
+  const totalLabel = document.createElement("label");
+  totalLabel.className = "field field-wide";
+  const totalInput = document.createElement("input");
+  totalInput.type = "text";
+  totalInput.placeholder = "Örn. Zemin + 1 Normal Kat";
+  totalInput.value = row.floorCountText || "";
+  totalInput.addEventListener("input", () => {
+    row.floorCountText = totalInput.value;
+    autosave();
+  });
+  totalLabel.append(createSpan("Toplam Kat Adedi"), totalInput);
+
+  const calculateButton = document.createElement("button");
+  calculateButton.type = "button";
+  calculateButton.className = "secondary-button building-floor-save-button";
+  calculateButton.textContent = "Kat Dağılımını Hesapla";
+  calculateButton.addEventListener("click", () => {
+    countInputs.forEach(({ key, input }) => {
+      row.floorCounts[key] = normalizeNonNegativeInteger(input.value);
+    });
+    const generated = buildBuildingStructureFloorComposition(row.floorCounts);
+    if (generated) {
+      row.floorCountText = generated;
+      totalInput.value = generated;
+    }
+    autosave();
+  });
+
+  panel.append(countGrid, calculateButton, totalLabel);
+  return panel;
 }
 
 function createBuildingStructureTextField(row, key, labelText, placeholder = "") {

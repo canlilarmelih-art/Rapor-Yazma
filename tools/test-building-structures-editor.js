@@ -160,6 +160,7 @@ function makeContext(rows) {
     },
   };
   vm.createContext(context);
+  vm.runInContext(sliceConst("buildingFloorCountFields"), context);
   vm.runInContext(sliceConst("buildingStructureStyleOptions"), context);
   vm.runInContext(sliceConst("buildingOrderOptions"), context);
   vm.runInContext(sliceConst("buildingClassOptions"), context);
@@ -168,13 +169,18 @@ function makeContext(rows) {
   vm.runInContext(sliceFn("let activeBuildingStructureTabIndex = 0;", { toMarker: ";" }), context);
   vm.runInContext(sliceFn("function createEmptyBuildingStructureFloorRow("), context);
   vm.runInContext(sliceFn("function createEmptyBuildingStructureRow("), context);
+  vm.runInContext(sliceFn("function buildBuildingStructureFloorComposition("), context);
+  vm.runInContext(sliceFn("function buildBuildingStructureElevatorOptions("), context);
   vm.runInContext(sliceFn("function getBuildingStructureRows("), context);
   vm.runInContext(sliceFn("function calculateSimpleBuildingAgeFromYear("), context);
   vm.runInContext(sliceFn("function parseBuildingStructureAreaNumber("), context);
   vm.runInContext(sliceFn("function formatBuildingStructureAreaNumber("), context);
+  vm.runInContext(sliceFn("function normalizeNonNegativeInteger("), context);
+  vm.runInContext(sliceFn("function parseBuildingFloorCount("), context);
   vm.runInContext(sliceFn("function createBuildingStructuresEditor("), context);
   vm.runInContext(sliceFn("function createBuildingStructureAddButton("), context);
   vm.runInContext(sliceFn("function createBuildingStructureTabContent("), context);
+  vm.runInContext(sliceFn("function createBuildingStructureFloorCountPanel("), context);
   vm.runInContext(sliceFn("function createBuildingStructureTextField("), context);
   vm.runInContext(sliceFn("function createBuildingStructureSelectField("), context);
   vm.runInContext(sliceFn("function createBuildingStructureConstructionYearField("), context);
@@ -227,10 +233,11 @@ function runEditorScenario(rows) {
   addButton.fire("click");
   assert.equal(context.state.tables.buildings.length, 2, "Yapi Ekle tiklaninca yeni satir eklenmedi.");
   const newRow = context.state.tables.buildings[1];
-  ["name", "buildingClass", "buildingStyle", "buildingOrder", "floorCountText", "buildingHeight", "elevator", "constructionYear", "parcelPosition", "interiorFeatures", "floors"].forEach((key) => {
+  ["name", "buildingClass", "buildingStyle", "buildingOrder", "floorCounts", "floorCountText", "buildingHeight", "elevator", "freightElevator", "passengerElevator", "constructionYear", "parcelPosition", "interiorFeatures", "floors"].forEach((key) => {
     assert(Object.prototype.hasOwnProperty.call(newRow, key), `Yeni yapi satirinda '${key}' alani eksik.`);
   });
   assert(Array.isArray(newRow.floors) && newRow.floors.length === 0, "Yeni yapi satirinin 'floors' alani bos bir dizi olmali.");
+  assert.equal(Object.keys(newRow.floorCounts).length, 0, "Yeni yapi satirinin 'floorCounts' alani bos bir nesne olmali.");
   assert.equal(context.autosaveCalls, 1, "Yapi Ekle sonrasi autosave() cagrilmadi.");
   assert.equal(context.renderSectionCalls, 1, "Yapi Ekle sonrasi renderSection() cagrilmadi.");
 
@@ -290,9 +297,10 @@ function runEditorScenario(rows) {
     buildingClass: "2/C",
     buildingStyle: "Betonarme Karkas",
     buildingOrder: "Ayrık",
-    floorCountText: "Zemin + 1 Normal Kat",
     buildingHeight: "8,00 metre",
     elevator: "Yok",
+    freightElevator: "1 Adet Yük Asansörü",
+    passengerElevator: "2 Adet Yolcu Asansörü",
     constructionYear: String(currentYear - 10),
     parcelPosition: "Kuzey",
     interiorFeatures: "Üretim ofisi mevcut",
@@ -308,15 +316,16 @@ function runEditorScenario(rows) {
   assert.equal(fieldValue(1), "2/C", "Yapı Sınıfı on-doldurulmadi.");
   assert.equal(fieldValue(2), "Betonarme Karkas", "Bina Yapı Tarzı on-doldurulmadi.");
   assert.equal(fieldValue(3), "Ayrık", "Mevcut Yapı Nizamı on-doldurulmadi.");
-  assert.equal(fieldValue(4), "Zemin + 1 Normal Kat", "Toplam Kat Adedi on-doldurulmadi.");
-  assert.equal(fieldValue(5), "8,00 metre", "Bina Yüksekliği on-doldurulmadi.");
-  assert.equal(fieldValue(6), "Yok", "Asansör on-doldurulmadi.");
-  const yearInput = grid.children[7].children[1];
-  const ageInput = grid.children[8].children[1];
+  assert.equal(fieldValue(4), "8,00 metre", "Bina Yüksekliği on-doldurulmadi.");
+  assert.equal(fieldValue(5), "Yok", "Asansör on-doldurulmadi.");
+  assert.equal(fieldValue(6), "1 Adet Yük Asansörü", "Yük Asansörü on-doldurulmadi.");
+  assert.equal(fieldValue(7), "2 Adet Yolcu Asansörü", "Yolcu Asansörü on-doldurulmadi.");
+  const yearInput = grid.children[8].children[1];
+  const ageInput = grid.children[9].children[1];
   assert.equal(yearInput.value, String(currentYear - 10), "Yapım Yılı on-doldurulmadi.");
   assert.equal(ageInput.value, "10 yıl", "Yapı Yaşı Yapım Yılı'ndan dogru hesaplanmadi.");
   assert.equal(ageInput.readOnly, true, "Yapı Yaşı alani salt-okunur olmali.");
-  assert.equal(fieldValue(9), "Kuzey", "Parselin hangi kısmında yer aldığı on-doldurulmadi.");
+  assert.equal(fieldValue(10), "Kuzey", "Parselin hangi kısmında yer aldığı on-doldurulmadi.");
 
   // Yapım Yılı degistirilince Yapı Yaşı ayni tikte (renderSection OLMADAN)
   // guncellenmeli.
@@ -357,7 +366,49 @@ function runEditorScenario(rows) {
   assert.equal(context.state.tables.buildings[0].interiorFeatures, "Depo raflı", "İç Hacim Özellikleri duzenlemesi satira yazilmadi.");
 }
 
-// --- 8) Kat Bazlı Alanlar paneli: bos durumda mesaj, "Kat ekle" ile satir -
+// --- 8) Kat Dağılımı paneli: Ana Taşınmaz Kat Dağılımı İLE AYNI mantık —
+//        kat turu basina adet grid'i + "Hesapla" ile Toplam Kat Adedi metni
+//        uretilir; kullanicinin metni ELLE duzenlemesi bir SONRAKI "Hesapla"
+//        tiklanana kadar EZILMEZ.
+{
+  const rows = [{ name: "Fabrika Binası" }];
+  const { panel, context } = runEditorScenario(rows);
+  const content = panel.children.find((n) => (n.className || "").includes("building-structure-tab-content"));
+  const floorCountPanel = content.children.find((n) => (n.className || "").includes("building-structure-floor-count-panel"));
+  assert(floorCountPanel, "Kat Dağılımı paneli bulunamadi.");
+  const countGrid = floorCountPanel.children.find((n) => (n.className || "").includes("building-floor-count-grid"));
+  assert(countGrid, "Kat dağılımı grid'i bulunamadi.");
+  assert.deepEqual(
+    countGrid.children.map((label) => label.children[0].textContent),
+    ["Bodrum", "Zemin", "Asma", "Ara", "Normal", "Çatı", "Teras"],
+    "Kat dağılımı grid'i buildingFloorCountFields ile AYNI kat turlerini icermiyor (Ana Taşınmaz Kat Dağılımı ile tutarsiz)."
+  );
+
+  const groundInput = countGrid.children[1].children[1];
+  const normalInput = countGrid.children[4].children[1];
+  groundInput.value = "1";
+  normalInput.value = "1";
+
+  const calculateButton = floorCountPanel.children.find((n) => n.tagName === "BUTTON");
+  assert.equal(calculateButton.textContent, "Kat Dağılımını Hesapla", "'Kat Dağılımını Hesapla' butonu bulunamadi.");
+  calculateButton.fire("click");
+
+  const totalInput = floorCountPanel.children.find((n) => (n.children[0] || {}).textContent === "Toplam Kat Adedi").children[1];
+  assert.equal(totalInput.value, "Zemin + 1 Normal Kat", "Toplam Kat Adedi metni kat dağılımından dogru uretilmedi.");
+  assert.equal(context.state.tables.buildings[0].floorCounts.ground, "1", "Zemin adedi row.floorCounts'a yazilmadi.");
+  assert.equal(context.state.tables.buildings[0].floorCounts.normal, "1", "Normal kat adedi row.floorCounts'a yazilmadi.");
+  assert.equal(context.state.tables.buildings[0].floorCountText, "Zemin + 1 Normal Kat", "Toplam Kat Adedi row'a yazilmadi.");
+
+  // Kullanici metni ELLE duzeltirse (ör. ek bir aciklama), sonraki "Hesapla"
+  // tiklanana kadar bu deger KORUNMALI (autosave() cagrilir, ama grid'den
+  // yeniden UZERINE YAZILMAZ).
+  totalInput.value = "Zemin + 1 Normal Kat (çatı katı hariç)";
+  totalInput.fire("input");
+  assert.equal(context.state.tables.buildings[0].floorCountText, "Zemin + 1 Normal Kat (çatı katı hariç)", "Elle duzenlenen Toplam Kat Adedi metni satira yazilmadi.");
+  assert(context.autosaveCalls > 0, "Toplam Kat Adedi elle duzenlemesi autosave() tetiklemedi.");
+}
+
+// --- 9) Kat Bazlı Alanlar paneli: bos durumda mesaj, "Kat ekle" ile satir -
 //        eklenir (renderSection GEREKIR, yapisal degisiklik).
 {
   const rows = [{ name: "Ana Bina", floors: [] }];
@@ -375,7 +426,7 @@ function runEditorScenario(rows) {
   assert.equal(context.renderSectionCalls, 1, "'Kat ekle' sonrasi renderSection() cagrilmadi.");
 }
 
-// --- 9) Kat satirlari: alanlar duzenlenebilir, Toplam Yasal/Mevcut Alan ---
+// --- 10) Kat satirlari: alanlar duzenlenebilir, Toplam Yasal/Mevcut Alan --
 //        otomatik hesaplanir, satir silme calisir.
 {
   const rows = [{
@@ -415,7 +466,7 @@ function runEditorScenario(rows) {
   assert.equal(context.renderSectionCalls, 1, "Kat silme sonrasi renderSection() cagrilmadi.");
 }
 
-// --- 10) "Bu Yapıyı Sil": onay reddedilirse hicbir sey degismez; onaylanirsa
+// --- 11) "Bu Yapıyı Sil": onay reddedilirse hicbir sey degismez; onaylanirsa
 //         satir silinir, aktif sekme indeksi sinira cekilir.
 {
   const rows = [{ name: "Ana Bina" }, { name: "Depo" }];
@@ -453,7 +504,7 @@ function runEditorScenario(rows) {
 
 console.log("createBuildingStructuresEditor() (Yapı Ekle, tab mantığı) davranış testleri tamam.");
 
-// --- 11) renderSection() kaynak-duzeyinde "building" bolumune -------------
+// --- 12) renderSection() kaynak-duzeyinde "building" bolumune -------------
 //        createBuildingStructuresEditor() cagrisi eklendi mi?
 // Not: tam dal sekli (Musttakil Bina'da createUnitFeaturesEditor() birlesimi
 // + "Yapı Ekle" en-uste/gizle-ac duzeni dahil) tools/test-mustakil-bina-section-merge.js'te
@@ -474,7 +525,7 @@ console.log("createBuildingStructuresEditor() (Yapı Ekle, tab mantığı) davra
 }
 console.log("renderSection 'building' bolumu Yapilar kablolamasi kaynak-duzeyi testi tamam.");
 
-// --- 12) "buildings" tablosu TITLE_UNIT_SCOPED_TABLE_KEYS_BASE'e eklendi mi
+// --- 13) "buildings" tablosu TITLE_UNIT_SCOPED_TABLE_KEYS_BASE'e eklendi mi
 //         (coklu tasinmaz sekmeleri arasinda veri sizmasin) — hem kaynak
 //         duzeyinde hem GERCEK fonksiyonla.
 assert.match(
