@@ -218,6 +218,7 @@ const sandboxSource = `
     return text === "Evet" || text === "Hayır" ? text : "";
   }
   function dateTrToIso(value) { return String(value || ""); }
+  function buildStructureDocumentsDescriptionParts() { return []; }
   ${functionNames.map(extractFunction).join("\n")}
   return {
     setState: (s) => { state = s; },

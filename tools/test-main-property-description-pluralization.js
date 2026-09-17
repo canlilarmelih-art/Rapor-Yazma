@@ -192,6 +192,7 @@ const sandboxSource = `
   function normalizeReportTitleText(value) { return String(value || "").trim(); }
   function normalizeReportDescriptionText(value) { return String(value || "").replace(/\\s+/g, " ").trim(); }
   function updateBuildingFloorTotals() {}
+  function buildBuildingStructuresTechnicalDescription() { return ""; }
   // Gercek buildMainPropertyFloorComposition/buildBuildingFloorMacroSummary
   // state.tables.buildingFloors uzerinden karmasik bir hesaplama yapiyor
   // (bu testin kapsami DEGIL) - bunun yerine dogrudan kontrol edilebilen

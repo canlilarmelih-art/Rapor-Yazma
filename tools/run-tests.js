@@ -175,6 +175,7 @@ const TEST_FILES = [
   "test-valuation-units-summary-table.js",
   "test-building-block-shared-sync.js",
   "test-building-elevator-always-visible.js",
+  "test-toplulastirma-imar-field.js",
   "test-unit-tab-bar-gate.js",
   "test-halkbank-risk-rules.js",
   "test-comparable-market-analysis.js",
@@ -233,6 +234,7 @@ const TEST_FILES = [
   "test-building-floor-common-case-preserved.js",
   "test-comparable-matrix-ziraat-comma-coordinates.js",
   "test-comparable-memory-auto-save.js",
+  "test-structure-documents-all-phases.js",
 ];
 
 let failed = null;
