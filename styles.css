@@ -3333,6 +3333,21 @@ td .free-lookup input {
   gap: 12px;
 }
 
+/* Yapılar sekme içeriği (0.0.822) — .building-technical-grid'in KENDİSİ
+   burada da kullanılıyor (Yapı teknik alanları), ama bu sarmalayıcı bir
+   .subsection OLMADIĞINDAN (title-unit-tab-bar'ın hemen altına eklendiği
+   için panel'in kendi .subsection grid/gap'ine güvenemez) kendi grid/gap'i
+   gerekiyor. */
+.building-structure-tab-content {
+  display: grid;
+  gap: 16px;
+}
+
+.building-structure-delete-wrap {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .building-unit-distribution-summary-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

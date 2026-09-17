@@ -14280,15 +14280,68 @@ const buildingFloorUnitColumns = [
 // çoğaltılabilen bir liste. Ana Gayrimenkul'ün TEK bina varsayan mevcut
 // alanlarından (buildingFloorCounts vb.) BAĞIMSIZ, isteğe bağlı bir ek
 // kayıt — mevcut tekil-bina alanlarının davranışını DEĞİŞTİRMEZ.
-const BUILDING_STRUCTURE_FIELD_DEFS = [
-  { key: "name", label: "Yapı Adı", type: "text" },
-  { key: "buildingType", label: "Yapı Cinsi", type: "text" },
-  { key: "floorCount", label: "Kat Sayısı", type: "text" },
-  { key: "constructionYear", label: "İnşaat Yılı", type: "text" },
-  { key: "area", label: "Toplam İnşaat Alanı (m²)", type: "text" },
-  { key: "materialQuality", label: "Yapı Kalitesi", type: "text" },
-  { key: "note", label: "Açıklama", type: "textarea" },
-];
+//
+// 0.0.822 (kullanıcı takip talebi, aynı gün): "yapı ekle bölümünde
+// anlaşamıyoruz" — gerçek bir fabrika raporu örneği paylaşılıp önceki düz
+// tablo tasarımının (yukarıdaki eski BUILDING_STRUCTURE_FIELD_DEFS) yetersiz
+// kaldığı belirtildi. Kullanıcının onayladığı yeni model: her yapı KENDİ
+// SEKMESİNDE (title-unit-tab görsel deseniyle, bkz. createTitleUnitTabBar/
+// createBuildingBlockTabBar — AYNI CSS sınıfları, kendi bağımsız aktif-
+// sekme değişkeniyle) açılır; sekme içinde yapının teknik alanları VE
+// KENDİ kat bazlı alan/iç hacim alt tablosu bulunur (AskUserQuestion,
+// "Yapı sekmesi içinde ayrıca kat-bazı alt tablo"). Eski düz satır şeması
+// (buildingType/floorCount/area/materialQuality/note) TAMAMEN terk edildi;
+// bu özellik aynı gün eklenip henüz gerçek bir raporda kullanılmadığından
+// geriye dönük veri taşıma GEREKMEDİ.
+let activeBuildingStructureTabIndex = 0;
+
+function createEmptyBuildingStructureFloorRow() {
+  return { floor: "", legalArea: "", currentArea: "", interiors: "" };
+}
+
+function createEmptyBuildingStructureRow() {
+  return {
+    name: "",
+    buildingClass: "",
+    buildingStyle: "",
+    buildingOrder: "",
+    floorCountText: "",
+    buildingHeight: "",
+    elevator: "",
+    constructionYear: "",
+    parcelPosition: "",
+    interiorFeatures: "",
+    floors: [],
+  };
+}
+
+function getBuildingStructureRows() {
+  if (!Array.isArray(state.tables.buildings)) state.tables.buildings = [];
+  return state.tables.buildings;
+}
+
+// Yapı bazlı basit yaş hesabı — tek bina alanlarının kullandığı iskan/ruhsat
+// tarihine bağlı calculateBuildingAgeText()'ten BİLEREK bağımsız: burada tek
+// girdi Yapım Yılı (4 haneli), o yüzden yıl farkı yeterli.
+function calculateSimpleBuildingAgeFromYear(yearText) {
+  const match = String(yearText || "").match(/(\d{4})/);
+  if (!match) return "";
+  const year = Number(match[1]);
+  const currentYear = new Date().getFullYear();
+  if (year < 1800 || year > currentYear) return "";
+  return `${currentYear - year} yıl`;
+}
+
+function parseBuildingStructureAreaNumber(value) {
+  const normalized = String(value || "").replace(/\./g, "").replace(",", ".").replace(/[^\d.]/g, "");
+  const number = Number(normalized);
+  return Number.isFinite(number) ? number : 0;
+}
+
+function formatBuildingStructureAreaNumber(number) {
+  if (!number) return "";
+  return number.toLocaleString("tr-TR", { maximumFractionDigits: 2 });
+}
 
 function createBuildingStructuresEditor() {
   const panel = document.createElement("div");
@@ -14297,74 +14350,319 @@ function createBuildingStructuresEditor() {
   heading.className = "subsection-title-row";
   heading.innerHTML = `
     <h4>Yapılar</h4>
-    <p>Parselde birden fazla bina varsa (ör. ana üretim binası, depo, idari bina) her biri için ayrı bir satır ekleyin.</p>
+    <p>Parselde birden fazla bina varsa (ör. ana üretim binası, idari bina, depo, bekçi kulübesi) her biri için ayrı bir sekme ekleyin; her sekmenin kendi kat bazlı alan kırılımı olur.</p>
   `;
   panel.append(heading);
 
-  const rows = Array.isArray(state.tables.buildings) ? state.tables.buildings : [];
-  state.tables.buildings = rows;
+  const rows = getBuildingStructureRows();
 
-  const shell = document.createElement("div");
-  shell.className = "table-shell";
-
-  if (rows.length) {
-    const table = document.createElement("table");
-    table.className = "table-building-structures";
-    const thead = document.createElement("thead");
-    thead.innerHTML = `<tr>${BUILDING_STRUCTURE_FIELD_DEFS.map((def) => `<th>${def.label}</th>`).join("")}<th></th></tr>`;
-    const tbody = document.createElement("tbody");
-    rows.forEach((row, rowIndex) => {
-      const tr = document.createElement("tr");
-      BUILDING_STRUCTURE_FIELD_DEFS.forEach((def) => {
-        const td = document.createElement("td");
-        const input = document.createElement(def.type === "textarea" ? "textarea" : "input");
-        if (def.type === "textarea") input.rows = 2;
-        else input.type = "text";
-        input.value = row[def.key] || "";
-        input.addEventListener("input", () => {
-          row[def.key] = input.value;
-          autosave();
-        });
-        td.append(input);
-        tr.append(td);
-      });
-      const actionCell = document.createElement("td");
-      const deleteButton = document.createElement("button");
-      deleteButton.type = "button";
-      deleteButton.className = "row-delete-button";
-      deleteButton.setAttribute("aria-label", "Yapıyı sil");
-      deleteButton.textContent = "×";
-      deleteButton.addEventListener("click", () => {
-        rows.splice(rowIndex, 1);
-        autosave();
-        renderSection();
-      });
-      actionCell.append(deleteButton);
-      tr.append(actionCell);
-      tbody.append(tr);
-    });
-    table.append(thead, tbody);
-    shell.append(table);
-  } else {
+  if (!rows.length) {
     const empty = document.createElement("p");
     empty.className = "empty-frontage-list";
     empty.textContent = "Henüz yapı eklenmedi.";
-    shell.append(empty);
+    panel.append(empty, createBuildingStructureAddButton(rows));
+    return panel;
   }
-  panel.append(shell);
 
+  if (activeBuildingStructureTabIndex >= rows.length) activeBuildingStructureTabIndex = rows.length - 1;
+  if (activeBuildingStructureTabIndex < 0) activeBuildingStructureTabIndex = 0;
+
+  const tabBar = document.createElement("div");
+  tabBar.className = "title-unit-tab-bar building-structure-tab-bar";
+  const tabs = document.createElement("div");
+  tabs.className = "title-unit-tab-bar-tabs";
+  rows.forEach((row, index) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "title-unit-tab";
+    button.classList.toggle("is-active", index === activeBuildingStructureTabIndex);
+    button.textContent = String(row.name || "").trim() || `Yapı ${index + 1}`;
+    button.addEventListener("click", () => {
+      if (index === activeBuildingStructureTabIndex) return;
+      activeBuildingStructureTabIndex = index;
+      renderSection();
+    });
+    tabs.append(button);
+  });
+  tabBar.append(tabs);
+
+  const actions = document.createElement("div");
+  actions.className = "title-unit-tab-bar-actions";
+  actions.append(createBuildingStructureAddButton(rows));
+  tabBar.append(actions);
+  panel.append(tabBar);
+
+  panel.append(createBuildingStructureTabContent(rows, activeBuildingStructureTabIndex));
+
+  return panel;
+}
+
+function createBuildingStructureAddButton(rows) {
   const addButton = document.createElement("button");
   addButton.type = "button";
-  addButton.className = "secondary-button";
+  addButton.className = "title-unit-tab-add";
   addButton.textContent = "+ Yapı Ekle";
   addButton.addEventListener("click", () => {
-    rows.push({});
+    rows.push(createEmptyBuildingStructureRow());
+    activeBuildingStructureTabIndex = rows.length - 1;
     autosave();
     renderSection();
   });
-  panel.append(addButton);
+  return addButton;
+}
+
+function createBuildingStructureTabContent(rows, index) {
+  const row = rows[index];
+  if (!Array.isArray(row.floors)) row.floors = [];
+  const wrapper = document.createElement("div");
+  wrapper.className = "building-structure-tab-content";
+
+  const grid = document.createElement("div");
+  grid.className = "building-technical-grid";
+  grid.append(
+    createBuildingStructureTextField(row, "name", "Yapı Adı"),
+    createBuildingStructureSelectField(row, "buildingClass", "Yapı Sınıfı", buildingClassOptions),
+    createBuildingStructureSelectField(row, "buildingStyle", "Bina Yapı Tarzı", buildingStructureStyleOptions),
+    createBuildingStructureSelectField(row, "buildingOrder", "Mevcut Yapı Nizamı", buildingOrderOptions),
+    createBuildingStructureTextField(row, "floorCountText", "Toplam Kat Adedi", "Örn. Zemin + 1 Normal Kat"),
+    createBuildingStructureTextField(row, "buildingHeight", "Bina Yüksekliği", "Örn. 8,00 metre (opsiyonel)"),
+    createBuildingStructureSelectField(row, "elevator", "Asansör", ["", "Yok", "1 Adet Asansör", "2 Adet Asansör", "3 Adet Asansör", "4 Adet Asansör", "Montajı henüz yapılmamıştır"]),
+    createBuildingStructureConstructionYearField(row),
+    createBuildingStructureSelectField(row, "parcelPosition", "Parselin Hangi Kısmında Yer Aldığı", buildingEntranceDirectionOptions),
+  );
+  wrapper.append(grid);
+  wrapper.append(createBuildingStructureInteriorFeaturesField(row));
+  wrapper.append(createBuildingStructureFloorPanel(row));
+  wrapper.append(createBuildingStructureDeleteButton(rows, index));
+
+  return wrapper;
+}
+
+function createBuildingStructureTextField(row, key, labelText, placeholder = "") {
+  const label = document.createElement("label");
+  label.className = "field";
+  const input = document.createElement("input");
+  input.type = "text";
+  if (placeholder) input.placeholder = placeholder;
+  input.value = row[key] || "";
+  input.addEventListener("input", () => {
+    row[key] = input.value;
+    autosave();
+  });
+  label.append(createSpan(labelText), input);
+  return label;
+}
+
+function createBuildingStructureSelectField(row, key, labelText, options) {
+  const label = document.createElement("label");
+  label.className = "field";
+  const select = document.createElement("select");
+  options.forEach((option) => {
+    const item = document.createElement("option");
+    item.value = option;
+    item.textContent = option || "Seçiniz";
+    select.append(item);
+  });
+  select.value = options.includes(row[key]) ? row[key] : "";
+  select.addEventListener("input", () => {
+    row[key] = select.value;
+    autosave();
+  });
+  label.append(createSpan(labelText), select);
+  return label;
+}
+
+// Bina Yüksekliği gibi zorunlu olmayan alanlardan farklı olarak Yapım
+// Yılı'ndan Yapı Yaşı TÜRETİLİR (kullanıcı listesi: "Yapım Yılı – Yapı
+// yaşı") — bu yüzden tek input yerine iki alanlı bir çift döner.
+function createBuildingStructureConstructionYearField(row) {
+  const fragment = document.createDocumentFragment();
+
+  const yearLabel = document.createElement("label");
+  yearLabel.className = "field";
+  const yearInput = document.createElement("input");
+  yearInput.type = "text";
+  yearInput.inputMode = "numeric";
+  yearInput.placeholder = "Örn. 2015";
+  yearInput.value = row.constructionYear || "";
+
+  const ageLabel = document.createElement("label");
+  ageLabel.className = "field";
+  const ageInput = document.createElement("input");
+  ageInput.type = "text";
+  ageInput.readOnly = true;
+  ageInput.classList.add("is-readonly");
+  ageInput.value = calculateSimpleBuildingAgeFromYear(row.constructionYear);
+
+  yearInput.addEventListener("input", () => {
+    row.constructionYear = yearInput.value;
+    ageInput.value = calculateSimpleBuildingAgeFromYear(row.constructionYear);
+    autosave();
+  });
+
+  yearLabel.append(createSpan("Yapım Yılı"), yearInput);
+  ageLabel.append(createSpan("Yapı Yaşı"), ageInput);
+  fragment.append(yearLabel, ageLabel);
+  return fragment;
+}
+
+function createBuildingStructureInteriorFeaturesField(row) {
+  const label = document.createElement("label");
+  label.className = "field building-structure-interior-features-field";
+  const textarea = document.createElement("textarea");
+  textarea.rows = 2;
+  textarea.value = row.interiorFeatures || "";
+  textarea.addEventListener("input", () => {
+    row.interiorFeatures = textarea.value;
+    autosave();
+  });
+  label.append(createSpan("İç Hacim Özellikleri (Tefrişat)"), textarea);
+  return label;
+}
+
+function createBuildingStructureFloorPanel(row) {
+  const panel = createUnitSubsection("Kat Bazlı Alanlar ve İç Hacimler", "Bu yapı birden fazla kattan oluşuyorsa her katı ayrı satır olarak ekleyiniz.");
+  panel.classList.add("building-structure-floor-panel");
+
+  const toolbar = document.createElement("div");
+  toolbar.className = "unit-floor-toolbar";
+  const addButton = document.createElement("button");
+  addButton.type = "button";
+  addButton.className = "secondary-button";
+  addButton.textContent = "Kat ekle";
+  addButton.addEventListener("click", () => {
+    row.floors.push(createEmptyBuildingStructureFloorRow());
+    autosave();
+    renderSection();
+  });
+  toolbar.append(addButton);
+  panel.append(toolbar);
+
+  if (!row.floors.length) {
+    const empty = document.createElement("div");
+    empty.className = "empty-table-note";
+    empty.textContent = "Henüz kat eklenmedi.";
+    panel.append(empty);
+    return panel;
+  }
+
+  panel.append(createBuildingStructureFloorTotalsSummary(row.floors));
+
+  const rowsWrapper = document.createElement("div");
+  rowsWrapper.className = "unit-floor-rows";
+  row.floors.forEach((floorRow, floorIndex) => {
+    const card = document.createElement("div");
+    card.className = "unit-floor-card";
+    const head = document.createElement("div");
+    head.className = "unit-floor-card-head";
+    head.append(
+      createBuildingStructureFloorSelect(floorRow, "floor", "Kat", unitFloorOptions),
+      createBuildingStructureFloorInput(floorRow, "legalArea", "Yasal Alan"),
+      createBuildingStructureFloorInput(floorRow, "currentArea", "Mevcut Alan"),
+      createBuildingStructureFloorDeleteButton(row, floorIndex),
+    );
+    const interiorRow = document.createElement("div");
+    interiorRow.className = "unit-floor-card-interior-row";
+    interiorRow.append(createBuildingStructureFloorInput(floorRow, "interiors", "İç Hacimler"));
+    card.append(head, interiorRow);
+    rowsWrapper.append(card);
+  });
+  panel.append(rowsWrapper);
 
   return panel;
+}
+
+function createBuildingStructureFloorSelect(floorRow, key, labelText, options) {
+  const label = document.createElement("label");
+  label.className = "field";
+  const select = document.createElement("select");
+  options.forEach((option) => {
+    const item = document.createElement("option");
+    item.value = option;
+    item.textContent = option || "Seçiniz";
+    select.append(item);
+  });
+  select.value = options.includes(floorRow[key]) ? floorRow[key] : "";
+  select.addEventListener("input", () => {
+    floorRow[key] = select.value;
+    autosave();
+  });
+  label.append(createSpan(labelText), select);
+  return label;
+}
+
+function createBuildingStructureFloorInput(floorRow, key, labelText) {
+  const label = document.createElement("label");
+  label.className = "field";
+  const input = document.createElement("input");
+  input.type = "text";
+  input.value = floorRow[key] || "";
+  input.addEventListener("input", () => {
+    floorRow[key] = input.value;
+    autosave();
+  });
+  label.append(createSpan(labelText), input);
+  return label;
+}
+
+function createBuildingStructureFloorDeleteButton(row, floorIndex) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "delete-row-button unit-floor-delete";
+  button.textContent = "×";
+  button.title = "Katı sil";
+  button.addEventListener("click", () => {
+    row.floors.splice(floorIndex, 1);
+    autosave();
+    renderSection();
+  });
+  return button;
+}
+
+function createBuildingStructureFloorTotalsSummary(floors) {
+  const summary = document.createElement("div");
+  summary.className = "unit-floor-reduced-total-summary";
+  const legalTotal = floors.reduce((sum, floorRow) => sum + parseBuildingStructureAreaNumber(floorRow.legalArea), 0);
+  const currentTotal = floors.reduce((sum, floorRow) => sum + parseBuildingStructureAreaNumber(floorRow.currentArea), 0);
+
+  const legalLabel = document.createElement("label");
+  legalLabel.className = "field";
+  const legalInput = document.createElement("input");
+  legalInput.type = "text";
+  legalInput.readOnly = true;
+  legalInput.classList.add("is-readonly");
+  legalInput.value = formatBuildingStructureAreaNumber(legalTotal);
+  legalLabel.append(createSpan("Toplam Yasal Alan"), legalInput);
+
+  const currentLabel = document.createElement("label");
+  currentLabel.className = "field";
+  const currentInput = document.createElement("input");
+  currentInput.type = "text";
+  currentInput.readOnly = true;
+  currentInput.classList.add("is-readonly");
+  currentInput.value = formatBuildingStructureAreaNumber(currentTotal);
+  currentLabel.append(createSpan("Toplam Mevcut Alan"), currentInput);
+
+  summary.append(legalLabel, currentLabel);
+  return summary;
+}
+
+function createBuildingStructureDeleteButton(rows, index) {
+  const wrap = document.createElement("div");
+  wrap.className = "building-structure-delete-wrap";
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "secondary-button";
+  button.textContent = "Bu Yapıyı Sil";
+  button.addEventListener("click", () => {
+    if (!window.confirm("Bu yapıyı ve tüm kat bilgilerini silmek istediğinize emin misiniz?")) return;
+    rows.splice(index, 1);
+    if (activeBuildingStructureTabIndex >= rows.length) activeBuildingStructureTabIndex = Math.max(0, rows.length - 1);
+    autosave();
+    renderSection();
+  });
+  wrap.append(button);
+  return wrap;
 }
 
 function createBuildingFloorDistribution() {
