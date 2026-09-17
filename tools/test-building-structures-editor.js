@@ -179,9 +179,14 @@ console.log("createBuildingStructuresEditor() (Yapı Ekle) davranış testleri t
 
 // --- 6) renderSection() kaynak-duzeyinde "building" bolumune -------------
 //        createBuildingStructuresEditor() cagrisi eklendi mi?
+// Not: tam dal sekli (Musttakil Bina'da createUnitFeaturesEditor() birlesimi
+// dahil) tools/test-mustakil-bina-section-merge.js'te dogrulanir - burada
+// yalnizca createBuildingStructuresEditor()'un "building" dalinda, ayni
+// blok icinde createBuildingFloorDistribution()'dan SONRA cagrildigi
+// (kesin bitisiklik ARANMADAN) kontrol edilir.
 assert.match(
   appSource,
-  /if \(section\.id === "building"\) \{\s*\n\s*body\.append\(createBuildingFloorDistribution\(\)\);\s*\n\s*body\.append\(createBuildingStructuresEditor\(\)\);\s*\n\s*\}/,
+  /if \(section\.id === "building"\) \{\s*\n\s*body\.append\(createBuildingFloorDistribution\(\)\);[\s\S]{0,1200}?body\.append\(createBuildingStructuresEditor\(\)\);\s*\n\s*\}/,
   "renderSection() 'building' bolumune createBuildingStructuresEditor() cagrisi eklenmemis."
 );
 console.log("renderSection 'building' bolumu Yapilar kablolamasi kaynak-duzeyi testi tamam.");

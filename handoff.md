@@ -1,5 +1,17 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.819 - 2026-09-17 - Sol panelde "Bina Özellikleri": Ana Gayrimenkul yeniden adlandırıldı, Bağımsız Bölüm birleştirildi
+
+- Kullanıcı: "bina özellikleri bölümü yok ana başlıklarda bu kısımı eklememiş miydik." Netlik: "Bina Özellikleri" adı o ana kadar SADECE Müstakil Bina banka şablonu ÇIKTISINDA (0.0.812/0.0.813) kullanılmıştı — sol panelde (ana başlıklar) hâlâ "Ana Gayrimenkul Özellikleri" ve "Bağımsız Bölüm Özellikleri" adında İKİ AYRI sekme vardı. AskUserQuestion ile iki turda netleştirildi: (1) "Ana Gayrimenkul Özellikleri"ni yeniden adlandır + "Bağımsız Bölüm Özellikleri"ni gizle; (2) İKİNCİ soruyla, "Bağımsız Bölüm Özellikleri" içindeki ~20+ alanın (Oda/Salon/Mutfak/Banyo/WC/Balkon, Yapı Kalitesi, Isınma Sistemi, Asansör, İç Kapı, Pencere, iç mekan açıklama metinleri — TAM OLARAK Müstakil Bina banka şablonundaki "Bina Özellikleri"nin kullandığı alanlar) kaybolmaması için "Bina Özellikleri"nin İÇİNE taşınması onaylandı.
+- `app.js`:
+  - Yeni `getSectionDisplayTitle(section)` — `section.id === "building" && isMustakilBinaOwnershipType()` iken "Bina Özellikleri" döner, aksi halde `section.title` değişmeden döner (sections dizisi MUTATE edilmez — bir sonraki render'da/farklı bir raporda otomatik doğru davranır).
+  - `createNav()` (sidebar + mobil alt nav) artık `section.title` yerine `getSectionDisplayTitle(section)` kullanıyor.
+  - `shouldHideSectionForOwnership()`e yeni dal: Müstakil Bina'da `"unit"` (Bağımsız Bölüm Özellikleri) sekmesi gizlenir — `"land"`/`"building"` Müstakil Bina'da GİZLENMEZ (0.0.813/bu turdaki gibi görünür kalır).
+  - `renderSection()`'ın `"building"` dalı artık Müstakil Bina'da `createUnitFeaturesEditor()`'ü (section-id'den bağımsız, kendi kendine yeten widget — Bağımsız Bölüm Genel Bilgileri/Katlar-Alanlar-İç Hacimler/Dekoratif Özellikler panelleri) DOĞRUDAN çağırıyor — "Ana Taşınmaz Kat Dağılımı"ndan SONRA, "Yapılar"dan (Yapı Ekle) ÖNCE. "unit" sekmesi zaten gizli olduğundan aynı alanlar iki yerde birden GÖRÜNMEZ, veri KAYBOLMAZ.
+- Yeni test: `tools/test-mustakil-bina-section-merge.js` — `getSectionDisplayTitle`/`shouldHideSectionForOwnership` gerçek kaynaktan (Müstakil Bina + REGRESYON: Arsa/Tarla/Kat İrtifakı/boş davranışı DEĞİŞMEDİ) + `renderSection()`/`createNav()` kaynak-düzeyi kablolaması. `tools/test-building-structures-editor.js`'teki eski dar regex gevşetildi (yeni birleşme bloğuyla çakışmasın diye). `npm run verify` (191 dosya) EXIT:0.
+- **Canlı tarayıcıda doğrulandı**: Mülkiyet="Müstakil Bina" gerçek bir raporda sol panelde artık tek bir "Bina Özellikleri" sekmesi var (8. sıra), içinde SIRAYLA Ana Taşınmaz Teknik Bilgileri → Kat Dağılımı → Ana Gayrimenkul Açıklaması → Bağımsız Bölüm Genel Bilgileri → Katlar/Alanlar/İç Hacimler → Dekoratif Özellikler → **Yapılar (+ Yapı Ekle)** görünüyor; "Bağımsız Bölüm Özellikleri" ayrı sekme olarak KAYBOLDU. Konsolda ilgisiz (bu ortama özgü, önceden de gözlemlenen) harita/overpass ağ hatası dışında hata yok.
+- `index.html`'de `app.js` cache-buster'ı `20260917-1400`'e yükseltildi.
+
 ## 0.0.818 - 2026-09-17 - Müstakil Bina'da Tapu ve Mülkiyet bölümünde Eklenti gizlendi
 
 - Kullanıcı: "tapu ve mülkiyet bölümünden müstakil formatta eklenti bölümünü gizle."

@@ -143,6 +143,7 @@ const TEST_FILES = [
   "test-akbank-mustakil-bina-template.js",
   "test-building-structures-editor.js",
   "test-session-auto-refresh.js",
+  "test-mustakil-bina-section-merge.js",
   "test-bank-template-dropdown-default.js",
   "test-report-library-cloud-search.js",
   "test-cloud-retention-days.js",

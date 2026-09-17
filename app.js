@@ -5566,7 +5566,7 @@ function createNav() {
     button.dataset.section = section.id;
     button.innerHTML = `
       <span class="nav-index">${index + 1}</span>
-      <span class="nav-title">${formatUiHeading(section.title)}</span>
+      <span class="nav-title">${formatUiHeading(getSectionDisplayTitle(section))}</span>
       <span class="nav-badge">${section.badge}</span>
     `;
     button.addEventListener("click", () => setActiveSection(section.id));
@@ -5579,7 +5579,7 @@ function createNav() {
     button.dataset.section = section.id;
     button.innerHTML = `
       <span class="bottom-nav-index">${index + 1}</span>
-      <span class="bottom-nav-title">${formatMobileNavTitle(section.title)}</span>
+      <span class="bottom-nav-title">${formatMobileNavTitle(getSectionDisplayTitle(section))}</span>
     `;
     button.addEventListener("click", () => setActiveSection(section.id));
     bottomNav.append(button);
@@ -5747,7 +5747,21 @@ function shouldHideSectionForOwnership(sectionId) {
   if (["ARSA", "TARLA"].includes(ownershipType)) {
     return sectionId === "building" || sectionId === "unit";
   }
+  // Müstakil Bina (2026-09-17, kullanıcı talebi): "bina özellikleri bölümü
+  // yok ana başlıklarda bu kısımı eklememiş miydik" — "Ana Gayrimenkul
+  // Özellikleri" sekmesi "Bina Özellikleri" olarak yeniden adlandırılıp
+  // (bkz. getSectionDisplayTitle) "Bağımsız Bölüm Özellikleri" sekmesinin
+  // TÜM alanları (renderSection()'daki "building" dalına, bkz. orada) İÇİNE
+  // taşındı — ayrı "unit" sekmesi artık gizlenir, veri kaybı YOK.
+  if (ownershipType === "MUSTAKIL BINA") {
+    return sectionId === "unit";
+  }
   return false;
+}
+
+function getSectionDisplayTitle(section) {
+  if (section.id === "building" && isMustakilBinaOwnershipType()) return "Bina Özellikleri";
+  return section.title;
 }
 
 function shouldHideSectionForAccess(sectionId) {
@@ -6213,6 +6227,17 @@ function renderSection() {
 
   if (section.id === "building") {
     body.append(createBuildingFloorDistribution());
+    // Müstakil Bina (2026-09-17, kullanıcı talebi): "bağımsız bölüm
+    // özellikleri bölümünü gizle" + takip: alanlar KAYBOLMASIN, "Bina
+    // Özellikleri" (bu bölüm, bkz. getSectionDisplayTitle) İÇİNE taşınsın.
+    // createUnitFeaturesEditor() section-id'den bağımsız/kendi kendine
+    // yeten bir widget olduğundan (bkz. tanımı) burada DOĞRUDAN yeniden
+    // kullanılabiliyor — "unit" sekmesi shouldHideSectionForOwnership()'te
+    // Müstakil Bina için ayrıca gizlenir (bkz. orası), bu yüzden aynı
+    // alanlar İKİ YERDE birden GÖRÜNMEZ.
+    if (isMustakilBinaOwnershipType()) {
+      body.append(createUnitFeaturesEditor());
+    }
     body.append(createBuildingStructuresEditor());
   }
 
