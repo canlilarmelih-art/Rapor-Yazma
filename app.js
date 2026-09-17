@@ -14021,6 +14021,8 @@ const buildingStructureStyleOptions = [
   "Yığma",
   "Prefabrik",
   "Ahşap",
+  "Betonarme + Prefabrik",
+  "Betonarme + Çelik Konstrüksiyon",
   "Karma Sistem",
 ];
 
