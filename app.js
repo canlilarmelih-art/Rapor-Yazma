@@ -6488,13 +6488,14 @@ function createForm(section) {
     // özet+pop-up hücresi (createToplulastirmaControl) eklenir — hasPlanningIssue'nun
     // KENDİ Evet/Hayır degerinden BAĞIMSIZ (tetikleyici SADECE Takyidat
     // tespiti, kullanıcının "otomatik açılsın" talebi tam bunu istiyor).
-    // Diğer koşullu alanların (shouldHideField üzerinden) admin'e HER ZAMAN
-    // görünmesiyle AYNI tutarlılık için isCurrentUserAdmin() de eklendi —
-    // bu bespoke kontrol shouldHideField'ın genel admin-bypass mekanizmasına
-    // GİRMEDİĞİNDEN burada elle tekrarlanması gerekiyordu.
+    // BİLEREK admin-bypass YOK (diğer koşullu alanların aksine) — kullanıcı
+    // ekran görüntüsüyle "hala gözüküyor" dedi: admin hesabıyla, takyidatta
+    // hiç "toplulaştırma" geçmeyen bir raporda hücre görünüyordu (önceki
+    // turda eklenen isCurrentUserAdmin() bypass'ı YANLIŞTI, kaldırıldı) —
+    // bu alan SADECE gerçek tespit varken görünmeli, admin dahil.
     if (section.id === "planning" && field.key === "hasPlanningIssue") {
       form.append(createCheckboxControl(section, field));
-      if (reportMentionsToplulastirma() || isCurrentUserAdmin()) {
+      if (reportMentionsToplulastirma()) {
         form.append(createToplulastirmaControl());
       }
       return;

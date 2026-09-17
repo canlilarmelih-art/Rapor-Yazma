@@ -268,13 +268,28 @@ console.log("'planning' section.fields: iki alan hasPlanningIssue'nun ardina TAS
 //         ekliyor mu; toplulastirmaStatus/Institution'in KENDI generic
 //         render'i (select/text) atlaniyor mu (floorCount/hmax ÇİFTİYLE
 //         AYNI "tetikleyicide render et, takipçilerini atla" deseni).
+//         KULLANICI BULGUSU (2026-09-18, ekran goruntusu): admin hesabiyla,
+//         takyidatta HİÇ "toplulaştırma" gecmeyen bir raporda hucre HALA
+//         gorunuyordu — bir onceki turda eklenen isCurrentUserAdmin() admin-
+//         bypass'i YANLIŞTI ve kaldirildi; asagidaki regex artik BU
+//         bypass'in OLMADIGINI da dogruluyor (sadece reportMentionsToplulastirma()).
 {
   const createFormSrc = sliceFn("function createForm(section) {");
   assert.match(
     createFormSrc,
-    /section\.id === "planning" && field\.key === "hasPlanningIssue"\) \{\s*\n\s*form\.append\(createCheckboxControl\(section, field\)\);\s*\n\s*if \(reportMentionsToplulastirma\(\) \|\| isCurrentUserAdmin\(\)\) \{\s*\n\s*form\.append\(createToplulastirmaControl\(\)\);/,
-    "createForm() 'hasPlanningIssue' render edildiginde kosullu olarak createToplulastirmaControl() eklemiyor (reportMentionsToplulastirma() VEYA admin-bypass icin isCurrentUserAdmin())."
+    /section\.id === "planning" && field\.key === "hasPlanningIssue"\) \{\s*\n\s*form\.append\(createCheckboxControl\(section, field\)\);\s*\n\s*if \(reportMentionsToplulastirma\(\)\) \{\s*\n\s*form\.append\(createToplulastirmaControl\(\)\);/,
+    "createForm() 'hasPlanningIssue' render edildiginde kosullu olarak createToplulastirmaControl() eklemiyor."
   );
+  {
+    const blockStart = appSource.indexOf('if (section.id === "planning" && field.key === "hasPlanningIssue") {');
+    assert(blockStart >= 0, "hasPlanningIssue intercept bloğu bulunamadı.");
+    const blockEnd = appSource.indexOf("\n    }", blockStart);
+    assert.doesNotMatch(
+      appSource.slice(blockStart, blockEnd),
+      /isCurrentUserAdmin/,
+      "REGRESYON: admin-bypass (isCurrentUserAdmin()) GERI EKLENMIS — kullanicinin ekran goruntusuyle bildirdigi soruna geri donus."
+    );
+  }
   assert.match(
     createFormSrc,
     /section\.id === "planning" && \(field\.key === "toplulastirmaStatus" \|\| field\.key === "toplulastirmaInstitution"\)\) \{\s*\n\s*return;/,

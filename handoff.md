@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.831 - 2026-09-18 - Toplulaştırma Bilgileri: yanlış admin-bypass kaldırıldı
+
+- Kullanıcı, bir ekran görüntüsüyle bildirdi: admin hesabıyla açılan, takyidat kayıtlarında HİÇ "toplulaştırma" geçmeyen bir raporda "Toplulaştırma Bilgileri" hücresi "hala gözüküyor"du.
+- Kök neden: 0.0.830'da, diğer koşullu "İmar Durumu" alanlarının (`shouldHideField`'ın genel admin-bypass'ı sayesinde) admin'e her zaman görünmesiyle "tutarlı" olsun diye BİLEREK `reportMentionsToplulastirma() || isCurrentUserAdmin()` eklenmişti — ama kullanıcı bunu istemedi: bu hücre SADECE gerçek tespit varken görünmeli, admin dahil, çünkü amacı zaten "otomatik açılma" (ilgisiz raporlarda admin'in bile görmesi gereken bir "gizli/ileri düzey" alan değil, tamamen duruma bağlı bir bilgi).
+- `app.js`: `createForm()`'un "planning" dalındaki `hasPlanningIssue` kesişiminden `|| isCurrentUserAdmin()` kaldırıldı — artık TEK koşul `reportMentionsToplulastirma()`.
+- `tools/test-toplulastirma-imar-field.js`: kaynak-düzeyi test güncellendi — hem doğru (admin-bypass'sız) koşulu doğruluyor hem de REGRESYON kilidi olarak `isCurrentUserAdmin()`'in bu kesişime bir daha eklenmediğini kontrol ediyor. `npm run verify` (194 dosya) EXIT:0.
+- **Canlı tarayıcıda doğrulandı**: admin hesabıyla, takyidatında "toplulaştırma" geçmeyen gerçek bir raporda "Toplulaştırma Bilgileri" artık GÖRÜNMÜYOR (diğer tüm İmar Durumu alanları değişmeden duruyor). Konsolda (bilinen harita/Overpass ağ gürültüsü dışında) hata yok.
+- `index.html`'de `app.js` cache-buster'ı `20260918-1100`'e yükseltildi.
+
 ## 0.0.830 - 2026-09-18 - Toplulaştırma Bilgileri: "Taşınmazın İmar Durumunda Sorun Var mı?"nın hemen ardına, tek hücre + pop-up
 
 - Kullanıcı (0.0.828'in bir gün sonraki takibi): "toplulaştırma durumu ve toplulaştırmayı yapan kurum bölümlerini Taşınmazın imar durumunda sorun var mı bölümüne taşı. eğer takyidat kayıtlarında toplulaştırma ibaresi var ise otomatik açılsın toplulaştırma ile ilgili bölüm ayrıca toplulaştırmayı yapan kurumu ve toplulaştırma durumunu tek bir hücrede gerekiyorsa pop up ile göster." 0.0.828'de iki alan (Toplulaştırma Durumu + Toplulaştırmayı Yapan Kurum) "İmar Durumu"nun EN ALTINDA, AYRI iki declaratif hücre olarak duruyordu.
