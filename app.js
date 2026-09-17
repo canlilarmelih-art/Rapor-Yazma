@@ -503,6 +503,17 @@ const sections = [
       { key: "licenseObstacle", label: "Ruhsatı almaya engel bir durum bulunuyor mu?", type: "conditionalYesNo", detailWhen: "Evet", detailKey: "licenseObstacleNote" },
       { key: "planRestrictionNote", label: "Plan Özel Notu / Kısıtlama Açıklama", type: "textarea", sensitiveOnly: true },
       { key: "planningNote", label: "İmar açıklaması", type: "textarea", sensitiveOnly: true },
+      // Kullanıcı talebi (2026-09-17): "tapu ve takyidat kayıtlarında tüm
+      // raporlar için eğer toplulaştırma ibaresi geçiyor ise; İmar Durumu
+      // bölümüne en alt kısıma Toplulaştırma Durumu bölümü eklensin" +
+      // takip: "Ayrıca Toplulaştırma yapan Kurum Kısmı da olmalı". Bu iki
+      // alan yalnızca reportMentionsToplulastirma() true iken görünür
+      // (bkz. shouldHideField, "planning" dalı) — mülkiyet türünden
+      // BAĞIMSIZ, TÜM rapor türlerinde (kullanıcının "tüm raporlar için"
+      // talebi) geçerli, TEK tetikleyici tapu/takyidat kayıtlarındaki
+      // "toplulaştırma" ibaresi.
+      { key: "toplulastirmaStatus", label: "Toplulaştırma Durumu", type: "select", options: ["", "Devam Ediyor", "Tamamlanmış"] },
+      { key: "toplulastirmaInstitution", label: "Toplulaştırmayı Yapan Kurum", type: "text" },
     ],
   },
   {
@@ -1431,6 +1442,7 @@ const TITLE_UNIT_SCOPED_TABLE_KEYS_BASE = [
   // "bölümün ana veri giriş yüzeyi" sınıfı: bir parseldeki yapı listesi
   // taşınmaza özgüdür (fabrika örneğindeki ana bina/depo/idari bina o
   // TAŞINMAZA aittir), diğer sekmelere/tab'lara sızmamalı.
+  "buildingParts", "documentScopes",
   "buildings",
 ];
 // Kullanıcı talebi (2026-08-19, 2026-08-20'de TÜM mülkiyet türlerine
@@ -5504,6 +5516,7 @@ function refreshAllVariantDependentExplanationFields() {
 }
 
 function saveState() {
+  normalizeStructureDocumentData(state);
   applySystemDefaults(state);
   applyUserFieldDefaults(state);
   applyImarDerivedBusinessRules(state);
@@ -6084,7 +6097,12 @@ function renderSection() {
   }
 
   if (section.id === "documents") {
+    normalizeStructureDocumentData(state);
     ensureDocumentReviewInstitutionDefault();
+    if (isStructureDocumentsMode()) {
+      body.append(createStructureDocumentsTabBar());
+      body.append(createStructureDocumentProfilePanel());
+    }
   }
 
   if (section.id === "placeholders") {
@@ -6101,6 +6119,10 @@ function renderSection() {
 
   if (section.id === "documents" && section.table) {
     body.append(createTable(section));
+    if (isStructureDocumentsMode()) {
+      body.append(createDocumentScopeEditorPanel());
+      body.append(createStructureAreaReconciliationPanel());
+    }
   }
 
   // Müstakil Bina "Yapı Ekle" yeniden düzenlemesi (2026-09-17, kullanıcı
@@ -14296,9 +14318,158 @@ const buildingFloorUnitColumns = [
 // bu özellik aynı gün eklenip henüz gerçek bir raporda kullanılmadığından
 // geriye dönük veri taşıma GEREKMEDİ.
 let activeBuildingStructureTabIndex = 0;
+let activeDocumentsStructureTarget = "parcel";
+
+const BUILDING_STRUCTURE_STATUS_OPTIONS = [
+  "", "Planlanan", "İnşaat Halinde", "Aktif", "Kısmen Aktif", "Boş", "Atıl", "Yıkılmış",
+];
+const BUILDING_STRUCTURE_USAGE_OPTIONS = [
+  "", "Üretim", "Depolama", "İdari", "Sosyal Tesis", "Teknik Hacim", "Güvenlik", "Sundurma", "Diğer",
+];
+const DOCUMENT_SCOPE_EFFECT_OPTIONS = [
+  ["Additive", "İlave alan"],
+  ["Replacement", "Önceki belgenin yerine geçen"],
+  ["Informational", "Bilgilendirme / alan toplamına girmez"],
+];
+
+function createPersistentRecordId(prefix = "row") {
+  const randomPart = typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+    ? crypto.randomUUID().replace(/-/g, "").slice(0, 12)
+    : `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+  return `${prefix}-${randomPart}`;
+}
+
+function ensurePersistentRecordId(row, prefix) {
+  if (!row || typeof row !== "object") return "";
+  if (!String(row.id || "").trim()) row.id = createPersistentRecordId(prefix);
+  return row.id;
+}
+
+function normalizeBuildingStructureRow(row = {}) {
+  const normalized = row && typeof row === "object" ? row : {};
+  ensurePersistentRecordId(normalized, "building");
+  if (!normalized.floorCounts || typeof normalized.floorCounts !== "object") normalized.floorCounts = {};
+  if (!Array.isArray(normalized.floors)) normalized.floors = [];
+  if (!normalized.documentProfile || typeof normalized.documentProfile !== "object") normalized.documentProfile = {};
+  if (!normalized.technicalProfile || typeof normalized.technicalProfile !== "object") normalized.technicalProfile = {};
+  if (!normalized.factorDecisions || typeof normalized.factorDecisions !== "object") normalized.factorDecisions = {};
+  [
+    "name", "buildingClass", "buildingStyle", "buildingOrder", "floorCountText", "buildingHeight",
+    "elevator", "constructionYear", "parcelPosition", "interiorFeatures", "status", "usage",
+  ].forEach((key) => {
+    if (normalized[key] === undefined || normalized[key] === null) normalized[key] = "";
+  });
+  return normalized;
+}
+
+function normalizeBuildingPartRow(row = {}, fallbackBuildingId = "") {
+  const normalized = row && typeof row === "object" ? row : {};
+  ensurePersistentRecordId(normalized, "part");
+  normalized.buildingId = String(normalized.buildingId || fallbackBuildingId || "");
+  ["name", "usage", "status", "legalArea", "currentArea", "constructionYear", "note"].forEach((key) => {
+    if (normalized[key] === undefined || normalized[key] === null) normalized[key] = "";
+  });
+  return normalized;
+}
+
+function normalizeDocumentScopeRow(row = {}) {
+  const normalized = row && typeof row === "object" ? row : {};
+  ensurePersistentRecordId(normalized, "scope");
+  ["documentId", "documentType", "targetType", "buildingId", "buildingPartId", "licensedArea", "occupancyArea", "legalArea", "currentArea", "note"].forEach((key) => {
+    if (normalized[key] === undefined || normalized[key] === null) normalized[key] = "";
+  });
+  // Hedef türünü kimliklerden türetmek kapsamın tek bir doğru kaynağa sahip
+  // olmasını sağlar. Eski taslaklarda targetType="parcel" kalıp buildingId /
+  // buildingPartId dolu olabildiğinden ekran "Parsel Geneli" gösterirken alan
+  // hesabı yapıya dahil olabiliyordu.
+  normalized.targetType = normalized.buildingPartId ? "part" : (normalized.buildingId ? "building" : "parcel");
+  const canonicalEffect = DOCUMENT_SCOPE_EFFECT_OPTIONS.find(([value]) => value.toLocaleLowerCase("tr-TR") === String(normalized.effect || "").toLocaleLowerCase("tr-TR"))?.[0];
+  normalized.effect = canonicalEffect || "Additive";
+  return normalized;
+}
+
+function normalizeStructureDocumentTables(tables = {}) {
+  if (!tables || typeof tables !== "object") return false;
+  let changed = false;
+  if (!Array.isArray(tables.buildings)) tables.buildings = [];
+  if (!Array.isArray(tables.buildingParts)) tables.buildingParts = [];
+  if (!Array.isArray(tables.documentScopes)) tables.documentScopes = [];
+  if (!Array.isArray(tables.documents)) tables.documents = [];
+
+  tables.buildings = tables.buildings.map((row) => {
+    const before = JSON.stringify(row || {});
+    const normalized = normalizeBuildingStructureRow(row);
+    if (JSON.stringify(normalized) !== before) changed = true;
+    return normalized;
+  });
+  const buildingIds = new Set(tables.buildings.map((row) => row.id));
+  tables.buildingParts = tables.buildingParts.map((row) => {
+    const before = JSON.stringify(row || {});
+    const normalized = normalizeBuildingPartRow(row);
+    if (JSON.stringify(normalized) !== before) changed = true;
+    return normalized;
+  });
+
+  tables.documents.forEach((row) => {
+    const beforeId = row?.id;
+    ensurePersistentRecordId(row, "document");
+    if (row?.id !== beforeId) changed = true;
+  });
+  const documentIds = new Set(tables.documents.map((row) => row.id).filter(Boolean));
+  tables.documentScopes = tables.documentScopes.map((row) => normalizeDocumentScopeRow(row));
+  const documentsById = new Map(tables.documents.map((row) => [row.id, row]));
+  tables.documentScopes.forEach((scope) => {
+    const documentType = String(documentsById.get(scope.documentId)?.c0 || scope.documentType || "");
+    if (scope.documentType !== documentType) {
+      scope.documentType = documentType;
+      changed = true;
+    }
+  });
+
+  // Eski raporlar kapsam tablosuna sahip değildi. Her eski belgeyi parsel
+  // geneli olarak işaretlemek, mevcut çıktı/anlatım davranışını aynen korur;
+  // kullanıcı isterse sonradan yapı veya yapı bölümü kapsamına taşıyabilir.
+  tables.documents.forEach((documentRow) => {
+    if (!tables.documentScopes.some((scope) => scope.documentId === documentRow.id)) {
+      tables.documentScopes.push(normalizeDocumentScopeRow({
+        documentId: documentRow.id,
+        documentType: documentRow.c0 || "",
+        targetType: "parcel",
+        effect: "Additive",
+      }));
+      changed = true;
+    }
+  });
+
+  // Kayıp bir yapı/belgeye bağlı kayıtlar veri kaybı yaratmamak için silinmez;
+  // yalnızca hedefi parsel geneline indirilir. Böylece eski/yarım JSON'lar da açılır.
+  tables.documentScopes.forEach((scope) => {
+    if (!documentIds.has(scope.documentId)) return;
+    if (scope.buildingId && !buildingIds.has(scope.buildingId)) {
+      scope.targetType = "parcel";
+      scope.buildingId = "";
+      scope.buildingPartId = "";
+      changed = true;
+    }
+  });
+  return changed;
+}
+
+function normalizeStructureDocumentData(appState = state) {
+  if (!appState || typeof appState !== "object") return false;
+  let changed = normalizeStructureDocumentTables(appState.tables || (appState.tables = {}));
+  if (appState.primaryTitleUnitShadow?.tables) {
+    changed = normalizeStructureDocumentTables(appState.primaryTitleUnitShadow.tables) || changed;
+  }
+  (Array.isArray(appState.titleUnits) ? appState.titleUnits : []).forEach((unit) => {
+    if (!unit.tables || typeof unit.tables !== "object") unit.tables = {};
+    changed = normalizeStructureDocumentTables(unit.tables) || changed;
+  });
+  return changed;
+}
 
 function createEmptyBuildingStructureRow() {
-  return {
+  return normalizeBuildingStructureRow({
     name: "",
     buildingClass: "",
     buildingStyle: "",
@@ -14310,8 +14481,10 @@ function createEmptyBuildingStructureRow() {
     constructionYear: "",
     parcelPosition: "",
     interiorFeatures: "",
+    status: "Aktif",
+    usage: "",
     floors: [],
-  };
+  });
 }
 
 // Kullanıcı takip talebi (2026-09-17): "Toplam Kat Adedi bölümü ana
@@ -14565,11 +14738,15 @@ function createBuildingStructureTabContent(rows, index) {
     createBuildingStructureElevatorControl(row),
     createBuildingStructureConstructionYearField(row),
     createBuildingStructureSelectField(row, "parcelPosition", "Parselin Hangi Kısmında Yer Aldığı", buildingEntranceDirectionOptions),
+    createBuildingStructureSelectField(row, "usage", "Yapı Kullanımı", BUILDING_STRUCTURE_USAGE_OPTIONS),
+    createBuildingStructureSelectField(row, "status", "Yapı Durumu", BUILDING_STRUCTURE_STATUS_OPTIONS),
   );
   wrapper.append(grid);
+  wrapper.append(createBuildingStructureTechnicalProfilePanel(row));
   wrapper.append(createBuildingStructureFloorCountPanel(row));
   wrapper.append(createBuildingStructureInteriorFeaturesField(row));
   wrapper.append(createBuildingStructureFloorPanel(row));
+  wrapper.append(createBuildingStructureFactorPanel(row));
   wrapper.append(createBuildingStructureDeleteButton(rows, index));
 
   return wrapper;
@@ -14899,13 +15076,707 @@ function createBuildingStructureDeleteButton(rows, index) {
   button.textContent = "Bu Yapıyı Sil";
   button.addEventListener("click", () => {
     if (!window.confirm("Bu yapıyı ve tüm kat bilgilerini silmek istediğinize emin misiniz?")) return;
+    const deletedBuildingId = rows[index]?.id || "";
     rows.splice(index, 1);
+    if (deletedBuildingId) {
+      const deletedPartIds = new Set(getBuildingParts(deletedBuildingId).map((part) => part.id));
+      state.tables.buildingParts = (state.tables.buildingParts || []).filter((part) => part.buildingId !== deletedBuildingId);
+      (state.tables.documentScopes || []).forEach((scope) => {
+        if (scope.buildingId === deletedBuildingId || deletedPartIds.has(scope.buildingPartId)) {
+          scope.targetType = "parcel";
+          scope.buildingId = "";
+          scope.buildingPartId = "";
+          refreshDocumentScopeSummary(scope.documentId, { force: true });
+        }
+      });
+      if (activeDocumentsStructureTarget === deletedBuildingId) activeDocumentsStructureTarget = "parcel";
+    }
     if (activeBuildingStructureTabIndex >= rows.length) activeBuildingStructureTabIndex = Math.max(0, rows.length - 1);
-    autosave();
+    commitStructureDocumentDescriptionChange();
     renderSection();
   });
   wrap.append(button);
   return wrap;
+}
+
+function createBuildingStructureTechnicalProfilePanel(row) {
+  const profile = row.technicalProfile || (row.technicalProfile = {});
+  const panel = createUnitSubsection("Sanayi Yapısı Teknik Özellikleri", "Üretim, depolama ve idari yapılarda değer, kullanım ve işletilebilirliği etkileyen teknik değişkenler.");
+  panel.classList.add("building-structure-technical-profile-panel");
+  const grid = document.createElement("div");
+  grid.className = "building-technical-grid";
+  const definitions = [
+    ["clearHeight", "Net İç Yükseklik (m)", "text", []],
+    ["floorLoad", "Zemin Taşıma Kapasitesi", "text", []],
+    ["loadingAccess", "Tır / Yükleme Erişimi", "select", ["", "Uygun", "Kısıtlı", "Yok"]],
+    ["loadingDock", "Yükleme Rampası", "select", ["", "Var", "Yok"]],
+    ["crane", "Vinç Sistemi", "select", ["", "Gezer Köprülü Vinç", "Portal Vinç", "Monoray", "Yok"]],
+    ["powerInfrastructure", "Elektrik Gücü / Trafo", "text", []],
+    ["naturalGas", "Doğalgaz Altyapısı", "select", ["", "Var", "Yok", "Tespit Edilemedi"]],
+    ["sprinkler", "Sprinkler Sistemi", "select", ["", "Var", "Yok", "Kısmi"]],
+    ["fireSystem", "Yangın Algılama / Söndürme", "select", ["", "Yeterli", "Kısmi", "Yetersiz", "Tespit Edilemedi"]],
+    ["insulation", "Isı / Ses Yalıtımı", "select", ["", "İyi", "Orta", "Zayıf", "Tespit Edilemedi"]],
+    ["ventilation", "Havalandırma", "select", ["", "Yeterli", "Kısmi", "Yetersiz", "Tespit Edilemedi"]],
+    ["expansionPotential", "Tevsi / Genişleme Potansiyeli", "select", ["", "Var", "Kısıtlı", "Yok"]],
+    ["environmentalRisk", "Çevresel / Kontaminasyon Riski", "select", ["", "Yok", "Düşük", "Orta", "Yüksek", "İncelenmedi"]],
+    ["condition", "Fiziki Durum", "select", ["", "İyi", "Orta", "Tadilat Gerekli", "Kötü"]],
+  ];
+  definitions.forEach(([key, labelText, type, options]) => {
+    const label = document.createElement("label");
+    label.className = "field";
+    const control = document.createElement(type === "select" ? "select" : "input");
+    if (type === "select") {
+      options.forEach((option) => {
+        const item = document.createElement("option");
+        item.value = option;
+        item.textContent = option || "Seçiniz";
+        control.append(item);
+      });
+    } else control.type = "text";
+    control.value = profile[key] || "";
+    control.addEventListener("input", () => {
+      profile[key] = control.value;
+      autosave();
+    });
+    label.append(createSpan(labelText), control);
+    grid.append(label);
+  });
+  panel.append(grid);
+  return panel;
+}
+
+function getBuildingStructureFactorSuggestions(row) {
+  const tech = row.technicalProfile || {};
+  const reconciliation = calculateStructureAreaReconciliation(row);
+  const suggestions = [];
+  const add = (kind, id, text, objective = true) => suggestions.push({ kind, id: `structure-${row.id}-${id}`, text, objective });
+  const foldedStatus = foldTurkish(row.status || "");
+  if (/AKTIF/.test(foldedStatus)) add("positive", "active", `${row.name || "Yapının"} aktif ve kullanılabilir durumda olması`);
+  if (/INSAAT|ATIL|YIKILMIS|KOTU/.test(`${foldedStatus} ${foldTurkish(tech.condition || "")}`)) add("negative", "status", `${row.name || "Yapının"} kullanım/fiziki durumunun olumsuz olması`);
+  if (tech.loadingAccess === "Uygun") add("positive", "loading-access", "Ağır vasıta ve yükleme erişiminin uygun olması");
+  if (["Kısıtlı", "Yok"].includes(tech.loadingAccess)) add("negative", "loading-access", "Ağır vasıta ve yükleme erişiminin kısıtlı olması");
+  if (tech.crane && tech.crane !== "Yok") add("positive", "crane", "Üretim ve elleçleme faaliyetlerini destekleyen vinç sisteminin bulunması");
+  if (tech.sprinkler === "Var" && tech.fireSystem === "Yeterli") add("positive", "fire", "Yangın algılama ve sprinkler altyapısının yeterli olması");
+  if (["Yok", "Kısmi"].includes(tech.sprinkler) || ["Kısmi", "Yetersiz"].includes(tech.fireSystem)) add("negative", "fire", "Yangın güvenliği altyapısının geliştirilmesi gerekliliği");
+  if (tech.expansionPotential === "Var") add("positive", "expansion", "Parsel ve yapılaşma düzeninin tevsi imkanına sahip olması", false);
+  if (["Orta", "Yüksek"].includes(tech.environmentalRisk)) add("negative", "environment", "Çevresel yükümlülük veya kontaminasyon riski bulunması", false);
+  if (reconciliation?.licensedArea && reconciliation?.occupancyArea && !reconciliation.warnings.some((warning) => warning.includes("Ruhsat alanı") && warning.includes("iskan alanı"))) {
+    add("positive", "document-coverage", "Ruhsat ve yapı kullanma izin belgesi alanlarının birbiriyle uyumlu olması");
+  }
+  if (reconciliation?.warnings.some((warning) => /Ruhsat alanı|Yasal alan/.test(warning))) add("negative", "area-mismatch", "Ruhsat, iskan, yasal veya mevcut alanlar arasında farklılık bulunması");
+  return suggestions;
+}
+
+function getAcceptedBuildingStructureFactors() {
+  return (state.tables.buildings || []).flatMap((row) => getBuildingStructureFactorSuggestions(row).filter((item) => {
+    const decision = row.factorDecisions?.[item.id];
+    return decision === true || (decision === undefined && item.objective);
+  }));
+}
+
+function createBuildingStructureFactorPanel(row) {
+  const panel = createUnitSubsection("Yapı Bazlı Değer Faktörleri", "Nesnel faktörler varsayılan olarak rapora dahil edilir. Mesleki yorum gerektiren önerileri kullanıcı onaylar.");
+  panel.classList.add("building-structure-factor-panel");
+  const suggestions = getBuildingStructureFactorSuggestions(row);
+  if (!suggestions.length) {
+    const empty = document.createElement("p");
+    empty.className = "empty-table-note";
+    empty.textContent = "Teknik bilgiler girildikçe yapı bazlı olumlu/olumsuz faktör önerileri burada oluşur.";
+    panel.append(empty);
+    return panel;
+  }
+  suggestions.forEach((item) => {
+    const label = document.createElement("label");
+    label.className = `checkbox-row structure-factor-row is-${item.kind}`;
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    const decision = row.factorDecisions?.[item.id];
+    input.checked = decision === true || (decision === undefined && item.objective);
+    input.addEventListener("change", () => {
+      row.factorDecisions[item.id] = input.checked;
+      autosave();
+    });
+    const text = document.createElement("span");
+    text.textContent = `${item.kind === "positive" ? "Olumlu" : "Olumsuz"}: ${item.text}${item.objective ? "" : " (uzman onayı)"}`;
+    label.append(input, text);
+    panel.append(label);
+  });
+  return panel;
+}
+
+function isStructureDocumentsMode() {
+  return isMustakilBinaOwnershipType()
+    && Array.isArray(state.tables?.buildings)
+    && state.tables.buildings.length > 0
+    && !isDocumentsBlockGroupingActive();
+}
+
+function getActiveDocumentsBuilding() {
+  if (!isStructureDocumentsMode() || activeDocumentsStructureTarget === "parcel") return null;
+  return state.tables.buildings.find((row) => row.id === activeDocumentsStructureTarget) || null;
+}
+
+function getBuildingParts(buildingId = "") {
+  if (!Array.isArray(state.tables.buildingParts)) state.tables.buildingParts = [];
+  return state.tables.buildingParts.filter((part) => !buildingId || part.buildingId === buildingId);
+}
+
+function getDocumentScopes(documentId = "") {
+  if (!Array.isArray(state.tables.documentScopes)) state.tables.documentScopes = [];
+  return state.tables.documentScopes.filter((scope) => !documentId || scope.documentId === documentId);
+}
+
+function documentMatchesActiveStructureTarget(row) {
+  if (!isStructureDocumentsMode()) return true;
+  const scopes = getDocumentScopes(row?.id);
+  if (activeDocumentsStructureTarget === "parcel") {
+    return scopes.some((scope) => scope.targetType === "parcel");
+  }
+  return scopes.some((scope) => scope.buildingId === activeDocumentsStructureTarget);
+}
+
+function createDefaultDocumentScope(documentId, documentType = "") {
+  const building = getActiveDocumentsBuilding();
+  const scope = normalizeDocumentScopeRow({
+    documentId,
+    documentType,
+    targetType: building ? "building" : "parcel",
+    buildingId: building?.id || "",
+    effect: "Additive",
+  });
+  state.tables.documentScopes.push(scope);
+  return scope;
+}
+
+function buildDocumentScopeTargetOptions() {
+  const options = [{ value: "parcel", label: "Parsel Geneli" }];
+  (state.tables.buildings || []).forEach((building, buildingIndex) => {
+    const buildingLabel = String(building.name || "").trim() || `Yapı ${buildingIndex + 1}`;
+    options.push({ value: `building:${building.id}`, label: buildingLabel });
+    getBuildingParts(building.id).forEach((part, partIndex) => {
+      options.push({
+        value: `part:${part.id}`,
+        label: `${buildingLabel} / ${String(part.name || "").trim() || `Bölüm ${partIndex + 1}`}`,
+      });
+    });
+  });
+  return options;
+}
+
+function getDocumentScopeTargetValue(scope) {
+  if (scope.targetType === "part" && scope.buildingPartId) return `part:${scope.buildingPartId}`;
+  if (scope.targetType === "building" && scope.buildingId) return `building:${scope.buildingId}`;
+  return "parcel";
+}
+
+function applyDocumentScopeTargetValue(scope, value) {
+  scope.targetType = "parcel";
+  scope.buildingId = "";
+  scope.buildingPartId = "";
+  if (String(value).startsWith("building:")) {
+    scope.targetType = "building";
+    scope.buildingId = String(value).slice("building:".length);
+  } else if (String(value).startsWith("part:")) {
+    const partId = String(value).slice("part:".length);
+    const part = (state.tables.buildingParts || []).find((item) => item.id === partId);
+    scope.targetType = "part";
+    scope.buildingPartId = partId;
+    scope.buildingId = part?.buildingId || "";
+  }
+}
+
+function buildDocumentScopeSummary(documentId) {
+  const targetOptions = new Map(buildDocumentScopeTargetOptions().map((item) => [item.value, item.label]));
+  const parts = getDocumentScopes(documentId).map((scope) => {
+    const target = targetOptions.get(getDocumentScopeTargetValue(scope)) || "Parsel Geneli";
+    const area = scope.licensedArea || scope.occupancyArea || scope.legalArea || "";
+    return area ? `${target} (${area} m²)` : target;
+  });
+  return joinTurkishList(parts.filter(Boolean));
+}
+
+function refreshDocumentScopeSummary(documentId, options = {}) {
+  if (!options.force && !isStructureDocumentsMode()) return;
+  const row = (state.tables.documents || []).find((item) => item.id === documentId);
+  if (!row) return;
+  row.c4 = buildDocumentScopeSummary(documentId);
+}
+
+function commitStructureDocumentDescriptionChange() {
+  refreshReviewedDocumentsDescriptionFromCurrentRows();
+  autosave();
+}
+
+function createStructureDocumentsTabBar() {
+  const wrap = document.createElement("div");
+  wrap.className = "title-unit-tab-bar structure-documents-tab-bar";
+  const tabs = document.createElement("div");
+  tabs.className = "title-unit-tab-bar-tabs";
+  const targets = [
+    { id: "parcel", label: "Parsel Geneli" },
+    ...(state.tables.buildings || []).map((building, index) => ({
+      id: building.id,
+      label: String(building.name || "").trim() || `Yapı ${index + 1}`,
+    })),
+  ];
+  if (!targets.some((target) => target.id === activeDocumentsStructureTarget)) activeDocumentsStructureTarget = "parcel";
+  targets.forEach((target) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "title-unit-tab";
+    button.classList.toggle("is-active", target.id === activeDocumentsStructureTarget);
+    const count = (state.tables.documents || []).filter((row) => {
+      if (target.id === "parcel") return getDocumentScopes(row.id).some((scope) => scope.targetType === "parcel");
+      return getDocumentScopes(row.id).some((scope) => scope.buildingId === target.id);
+    }).length;
+    button.textContent = `${target.label} (${count})`;
+    button.addEventListener("click", () => {
+      activeDocumentsStructureTarget = target.id;
+      renderSection();
+    });
+    tabs.append(button);
+  });
+  wrap.append(tabs);
+  return wrap;
+}
+
+function createStructureDocumentProfilePanel() {
+  const building = getActiveDocumentsBuilding();
+  if (!building) return document.createDocumentFragment();
+  const profile = building.documentProfile || (building.documentProfile = {});
+  const panel = createUnitSubsection("Yapı Bazlı Proje ve Belge Bilgileri", "Bu bilgiler yalnızca seçili yapıya aittir; parsel geneli alanları ve Kat İrtifakı blok akışı değişmez.");
+  panel.classList.add("structure-document-profile-panel");
+  const grid = document.createElement("div");
+  grid.className = "building-technical-grid";
+  const addText = (key, label, type = "text") => {
+    const field = document.createElement("label");
+    field.className = "field";
+    const input = document.createElement("input");
+    input.type = type;
+    input.value = profile[key] || "";
+    input.addEventListener("input", () => {
+      profile[key] = input.value;
+      commitStructureDocumentDescriptionChange();
+    });
+    field.append(createSpan(label), input);
+    return field;
+  };
+  const addSelect = (key, label, options) => {
+    const field = document.createElement("label");
+    field.className = "field";
+    const select = document.createElement("select");
+    options.forEach((option) => {
+      const item = document.createElement("option");
+      item.value = option;
+      item.textContent = option || "Seçiniz";
+      select.append(item);
+    });
+    select.value = options.includes(profile[key]) ? profile[key] : "";
+    select.addEventListener("change", () => {
+      profile[key] = select.value;
+      commitStructureDocumentDescriptionChange();
+    });
+    field.append(createSpan(label), select);
+    return field;
+  };
+  grid.append(
+    addSelect("architecturalProjectAvailable", "Mimari Proje Var mı?", ["", "Evet", "Hayır"]),
+    addSelect("projectType", "Proje Türü", projectTypeOptions),
+    addText("projectDate", "Proje Tarihi", "date"),
+    addText("projectNo", "Proje No"),
+    addText("reviewInstitution", "İncelenen Kurum"),
+    addSelect("projectConformity", "Projeye Uygunluk", ["", "Uygun", "Kısmen Uygun", "Uygun Değil", "Tespit Edilemedi"]),
+    addSelect("ekbStatus", "Enerji Kimlik Belgesi", ["", "Evet", "Hayır", "Kapsam Dışı"]),
+    addSelect("ekbClass", "Enerji Sınıfı", ["", "A", "B", "C", "D", "E", "F", "G"]),
+    addText("ekbNo", "EKB Belge No"),
+    addText("ekbDate", "EKB Tarihi", "date"),
+    addSelect("structuralSuitability", "Statik / Yapısal Uygunluk", ["", "Uygun", "Uygun Değil", "İncelenmedi"]),
+    addSelect("buildingInspection", "Yapı Denetim Durumu", ["", "Mevcut", "Muaf", "Fesihli", "Tespit Edilemedi"]),
+  );
+  const note = document.createElement("label");
+  note.className = "field field-wide";
+  const textarea = document.createElement("textarea");
+  textarea.rows = 2;
+  textarea.value = profile.note || "";
+  textarea.addEventListener("input", () => {
+    profile.note = textarea.value;
+    commitStructureDocumentDescriptionChange();
+  });
+  note.append(createSpan("Yapı Bazlı Proje / Belge Notu"), textarea);
+  panel.append(grid, note, createBuildingPartsEditor(building));
+  return panel;
+}
+
+function createBuildingPartsEditor(building) {
+  const panel = document.createElement("div");
+  panel.className = "building-parts-editor";
+  const title = document.createElement("div");
+  title.className = "subsection-table-head";
+  title.innerHTML = "<h4>Yapı Bölümleri / Etapları</h4>";
+  const addButton = document.createElement("button");
+  addButton.type = "button";
+  addButton.className = "mini-button";
+  addButton.textContent = "+ Bölüm / Etap Ekle";
+  addButton.addEventListener("click", () => {
+    state.tables.buildingParts.push(normalizeBuildingPartRow({ buildingId: building.id, status: "Aktif" }));
+    autosave();
+    renderSection();
+  });
+  title.append(addButton);
+  panel.append(title);
+  const rows = getBuildingParts(building.id);
+  if (!rows.length) {
+    const empty = document.createElement("p");
+    empty.className = "empty-table-note";
+    empty.textContent = "Bu yapıya ait bölüm veya etap eklenmedi.";
+    panel.append(empty);
+    return panel;
+  }
+  rows.forEach((part) => {
+    const card = document.createElement("div");
+    card.className = "building-part-card";
+    const definitions = [
+      ["name", "Bölüm / Etap Adı", "text", []],
+      ["usage", "Kullanım", "select", BUILDING_STRUCTURE_USAGE_OPTIONS],
+      ["status", "Durum", "select", BUILDING_STRUCTURE_STATUS_OPTIONS],
+      ["legalArea", "Yasal Alan (m²)", "text", []],
+      ["currentArea", "Mevcut Alan (m²)", "text", []],
+      ["constructionYear", "Yapım Yılı", "text", []],
+    ];
+    definitions.forEach(([key, labelText, type, options]) => {
+      const label = document.createElement("label");
+      label.className = "field";
+      const control = document.createElement(type === "select" ? "select" : "input");
+      if (type === "select") {
+        options.forEach((option) => {
+          const item = document.createElement("option");
+          item.value = option;
+          item.textContent = option || "Seçiniz";
+          control.append(item);
+        });
+      } else control.type = "text";
+      control.value = part[key] || "";
+      control.addEventListener("input", () => {
+        part[key] = control.value;
+        commitStructureDocumentDescriptionChange();
+      });
+      label.append(createSpan(labelText), control);
+      card.append(label);
+    });
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "row-delete-button";
+    remove.textContent = "X";
+    remove.setAttribute("aria-label", "Yapı bölümünü sil");
+    remove.addEventListener("click", () => {
+      if (!window.confirm("Bu yapı bölümünü silmek istediğinize emin misiniz?")) return;
+      state.tables.buildingParts = state.tables.buildingParts.filter((item) => item.id !== part.id);
+      state.tables.documentScopes.forEach((scope) => {
+        if (scope.buildingPartId === part.id) {
+          scope.targetType = "building";
+          scope.buildingPartId = "";
+          scope.buildingId = building.id;
+        }
+      });
+      state.tables.documents.forEach((documentRow) => refreshDocumentScopeSummary(documentRow.id, { force: true }));
+      commitStructureDocumentDescriptionChange();
+      renderSection();
+    });
+    card.append(remove);
+    panel.append(card);
+  });
+  return panel;
+}
+
+function createDocumentScopeEditorPanel() {
+  if (!isStructureDocumentsMode()) return document.createDocumentFragment();
+  const panel = createUnitSubsection("Belge Kapsamları ve Alanları", "Bir belge birden fazla yapı veya yapı bölümünü kapsayabilir. Her kapsamın alanını ve önceki belgeyle ilişkisini ayrı girin.");
+  panel.classList.add("document-scope-editor-panel");
+  const visibleRows = (state.tables.documents || []).filter(documentMatchesActiveStructureTarget);
+  if (!visibleRows.length) {
+    const empty = document.createElement("p");
+    empty.className = "empty-table-note";
+    empty.textContent = "Bu sekmede kapsamı düzenlenecek belge bulunmuyor.";
+    panel.append(empty);
+    return panel;
+  }
+  visibleRows.forEach((documentRow, documentIndex) => {
+    const card = document.createElement("div");
+    card.className = "document-scope-card";
+    const head = document.createElement("div");
+    head.className = "subsection-table-head";
+    const title = document.createElement("h4");
+    title.textContent = String(documentRow.c0 || "").trim() || `Belge ${documentIndex + 1}`;
+    const add = document.createElement("button");
+    add.type = "button";
+    add.className = "mini-button";
+    add.textContent = "+ Kapsam Ekle";
+    add.addEventListener("click", () => {
+      const scope = normalizeDocumentScopeRow({ documentId: documentRow.id, documentType: documentRow.c0 || "", effect: "Additive" });
+      const building = getActiveDocumentsBuilding();
+      if (building) {
+        scope.targetType = "building";
+        scope.buildingId = building.id;
+      }
+      state.tables.documentScopes.push(scope);
+      refreshDocumentScopeSummary(documentRow.id);
+      commitStructureDocumentDescriptionChange();
+      renderSection();
+    });
+    head.append(title, add);
+    card.append(head);
+    getDocumentScopes(documentRow.id).forEach((scope) => card.append(createDocumentScopeRow(documentRow, scope)));
+    panel.append(card);
+  });
+  return panel;
+}
+
+function createDocumentScopeRow(documentRow, scope) {
+  const row = document.createElement("div");
+  row.className = "document-scope-row";
+  const targetLabel = document.createElement("label");
+  targetLabel.className = "field";
+  const targetSelect = document.createElement("select");
+  buildDocumentScopeTargetOptions().forEach(({ value, label }) => {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = label;
+    targetSelect.append(option);
+  });
+  targetSelect.value = getDocumentScopeTargetValue(scope);
+  targetSelect.addEventListener("change", () => {
+    applyDocumentScopeTargetValue(scope, targetSelect.value);
+    refreshDocumentScopeSummary(documentRow.id);
+    refreshReviewedDocumentsDescriptionFromCurrentRows();
+    autosave();
+    renderSection();
+  });
+  targetLabel.append(createSpan("Kapsadığı Yapı / Bölüm"), targetSelect);
+  row.append(targetLabel);
+
+  const fields = [
+    ["licensedArea", "Ruhsat Alanı (m²)"],
+    ["occupancyArea", "İskan Alanı (m²)"],
+    ["legalArea", "Yasal Alan (m²)"],
+    ["currentArea", "Mevcut Alan (m²)"],
+  ];
+  fields.forEach(([key, labelText]) => {
+    const label = document.createElement("label");
+    label.className = "field";
+    const input = document.createElement("input");
+    input.type = "text";
+    input.inputMode = "decimal";
+    input.value = scope[key] || "";
+    input.addEventListener("input", () => {
+      scope[key] = input.value;
+      refreshDocumentScopeSummary(documentRow.id);
+      commitStructureDocumentDescriptionChange();
+    });
+    input.addEventListener("change", () => {
+      renderSection();
+    });
+    label.append(createSpan(labelText), input);
+    row.append(label);
+  });
+  const effectLabel = document.createElement("label");
+  effectLabel.className = "field";
+  const effectSelect = document.createElement("select");
+  DOCUMENT_SCOPE_EFFECT_OPTIONS.forEach(([value, label]) => {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = label;
+    effectSelect.append(option);
+  });
+  effectSelect.value = scope.effect || "Additive";
+  const saveScopeEffect = () => {
+    const nextEffect = effectSelect.value;
+    if (!nextEffect || scope.effect === nextEffect) return;
+    scope.effect = nextEffect;
+    refreshReviewedDocumentsDescriptionFromCurrentRows();
+    // İlave / yerine geçen / bilgilendirme ilişkisi alan toplamını doğrudan
+    // değiştirdiğinden `input` olayında (üst seviye yeniden çizimden önce)
+    // ve seçim anında kalıcılaştırılır. Böylece eski "additive" değerin geri
+    // gelmesi önlenir.
+    saveState();
+    renderSection();
+  };
+  effectSelect.addEventListener("input", saveScopeEffect);
+  effectSelect.addEventListener("change", saveScopeEffect);
+  effectLabel.append(createSpan("Belge İlişkisi"), effectSelect);
+  row.append(effectLabel);
+  const noteLabel = document.createElement("label");
+  noteLabel.className = "field field-wide";
+  const note = document.createElement("input");
+  note.type = "text";
+  note.placeholder = "Örn. 2. ve 3. üretim holü";
+  note.value = scope.note || "";
+  note.addEventListener("input", () => {
+    scope.note = note.value;
+    commitStructureDocumentDescriptionChange();
+  });
+  noteLabel.append(createSpan("Kapsam Notu"), note);
+  row.append(noteLabel);
+  const remove = document.createElement("button");
+  remove.type = "button";
+  remove.className = "row-delete-button";
+  remove.textContent = "X";
+  remove.setAttribute("aria-label", "Belge kapsamını sil");
+  remove.addEventListener("click", () => {
+    if (getDocumentScopes(documentRow.id).length <= 1) {
+      window.alert("Belgenin en az bir kapsamı bulunmalıdır.");
+      return;
+    }
+    state.tables.documentScopes = state.tables.documentScopes.filter((item) => item.id !== scope.id);
+    refreshDocumentScopeSummary(documentRow.id);
+    commitStructureDocumentDescriptionChange();
+    renderSection();
+  });
+  row.append(remove);
+  return row;
+}
+
+function getDocumentKind(row = {}) {
+  const type = foldTurkish(row.c0 || "");
+  if (/KULLANMA|KULLANIM|ISKAN|OTURMA/.test(type)) return "occupancy";
+  if (/RUHSAT|YAPI KAYIT BELGESI/.test(type)) return "permit";
+  if (/PROJE/.test(type)) return "project";
+  return "other";
+}
+
+function calculateScopedMetric(entries, metricKey) {
+  let total = 0;
+  let hasValue = false;
+  entries.forEach(({ scope }) => {
+    const effect = String(scope.effect || "").toLocaleLowerCase("tr-TR");
+    if (effect === "informational") return;
+    const value = parseBuildingStructureAreaNumber(scope[metricKey]);
+    if (!value) return;
+    hasValue = true;
+    if (effect === "replacement") total = value;
+    else total += value;
+  });
+  return hasValue ? total : 0;
+}
+
+function calculateStructureAreaReconciliation(building) {
+  if (!building) return null;
+  const documentsById = new Map((state.tables.documents || []).map((row) => [row.id, row]));
+  const entries = (state.tables.documentScopes || [])
+    .filter((scope) => scope.buildingId === building.id)
+    .map((scope, index) => ({
+      scope,
+      document: documentsById.get(scope.documentId) || {},
+      index,
+      date: parseReviewedDocumentDate(documentsById.get(scope.documentId)?.c2),
+    }))
+    .sort((left, right) => (left.date || "9999").localeCompare(right.date || "9999") || left.index - right.index);
+  const buildingFloorLegal = (building.floors || []).reduce((sum, floor) => sum + parseBuildingStructureAreaNumber(floor.legalArea), 0);
+  const buildingFloorCurrent = (building.floors || []).reduce((sum, floor) => sum + parseBuildingStructureAreaNumber(floor.currentArea), 0);
+  const partRows = getBuildingParts(building.id);
+  const partLegal = partRows.reduce((sum, part) => sum + parseBuildingStructureAreaNumber(part.legalArea), 0);
+  const partCurrent = partRows.reduce((sum, part) => sum + parseBuildingStructureAreaNumber(part.currentArea), 0);
+  // Scope üzerinde belge türünün bir kopyasını da tutuyoruz. Çoklu talep/blok
+  // senkronunda belge satırı başka bir diziye kopyalansa bile kapsamın ruhsat
+  // veya iskan niteliği kaybolmamalı; document kaydı bulunduğunda asıl değer
+  // her zaman önceliklidir.
+  const permitEntries = entries.filter(({ document, scope }) => getDocumentKind({ c0: document.c0 || scope.documentType }) === "permit");
+  const occupancyEntries = entries.filter(({ document, scope }) => getDocumentKind({ c0: document.c0 || scope.documentType }) === "occupancy");
+  const licensedArea = calculateScopedMetric(permitEntries, "licensedArea");
+  const occupancyArea = calculateScopedMetric(occupancyEntries, "occupancyArea");
+  const scopedLegal = calculateScopedMetric(entries, "legalArea");
+  const scopedCurrent = calculateScopedMetric(entries, "currentArea");
+  const legalArea = scopedLegal || buildingFloorLegal || partLegal;
+  const currentArea = scopedCurrent || buildingFloorCurrent || partCurrent;
+  const warnings = [];
+  const mismatch = (left, right) => left > 0 && right > 0 && Math.abs(left - right) > 0.5;
+  if (mismatch(licensedArea, occupancyArea)) warnings.push(`Ruhsat alanı (${formatBuildingStructureAreaNumber(licensedArea)} m²) ile iskan alanı (${formatBuildingStructureAreaNumber(occupancyArea)} m²) farklıdır.`);
+  if (mismatch(licensedArea, legalArea)) warnings.push(`Ruhsat alanı (${formatBuildingStructureAreaNumber(licensedArea)} m²) ile yasal alan (${formatBuildingStructureAreaNumber(legalArea)} m²) farklıdır.`);
+  if (mismatch(legalArea, currentArea)) warnings.push(`Yasal alan (${formatBuildingStructureAreaNumber(legalArea)} m²) ile mevcut alan (${formatBuildingStructureAreaNumber(currentArea)} m²) farklıdır.`);
+  if (partRows.length && mismatch(partLegal, buildingFloorLegal)) warnings.push(`Yapı bölümleri yasal alan toplamı (${formatBuildingStructureAreaNumber(partLegal)} m²) ile kat alanları toplamı (${formatBuildingStructureAreaNumber(buildingFloorLegal)} m²) farklıdır.`);
+  if (!entries.length) warnings.push("Bu yapı ile ilişkilendirilmiş resmi belge bulunmamaktadır.");
+  return { building, entries, licensedArea, occupancyArea, legalArea, currentArea, partLegal, partCurrent, warnings };
+}
+
+function createStructureAreaReconciliationPanel() {
+  const building = getActiveDocumentsBuilding();
+  if (!building) return document.createDocumentFragment();
+  const result = calculateStructureAreaReconciliation(building);
+  const panel = createUnitSubsection("Alan Mutabakatı", "Ruhsat, iskan, yasal ve mevcut alanlar aynı yapı için yan yana denetlenir. Farklar yalnızca uyarı üretir; kullanıcı verisi otomatik değiştirilmez.");
+  panel.classList.add("structure-area-reconciliation-panel");
+  const grid = document.createElement("div");
+  grid.className = "structure-area-summary-grid";
+  [
+    ["Ruhsat Alanı", result.licensedArea],
+    ["İskan Alanı", result.occupancyArea],
+    ["Yasal Alan", result.legalArea],
+    ["Mevcut Alan", result.currentArea],
+  ].forEach(([label, value]) => {
+    const item = document.createElement("div");
+    item.className = "structure-area-summary-item";
+    item.innerHTML = `<span>${escapeHtml(label)}</span><strong>${escapeHtml(value ? `${formatBuildingStructureAreaNumber(value)} m²` : "—")}</strong>`;
+    grid.append(item);
+  });
+  panel.append(grid);
+  const status = document.createElement("div");
+  status.className = result.warnings.length ? "structure-reconciliation-warnings" : "structure-reconciliation-ok";
+  if (result.warnings.length) {
+    status.innerHTML = `<strong>Kontrol edilmesi gerekenler</strong><ul>${result.warnings.map((warning) => `<li>${escapeHtml(warning)}</li>`).join("")}</ul>`;
+  } else {
+    status.textContent = "Belge ve yapı alanları arasında fark tespit edilmedi.";
+  }
+  panel.append(status);
+  return panel;
+}
+
+function buildStructureDocumentReferenceText(dateValue = "", noValue = "") {
+  const date = dateIsoToTr(dateValue || "");
+  const no = String(noValue || "").trim();
+  if (date && no) return `${date} tarih ve ${no} sayılı `;
+  if (date) return `${date} tarihli `;
+  if (no) return `${no} sayılı `;
+  return "";
+}
+
+function buildStructureDocumentsDescriptionParts() {
+  if (!isStructureDocumentsMode()) return [];
+  const documentsById = new Map((state.tables.documents || []).map((row) => [row.id, row]));
+  return (state.tables.buildings || []).flatMap((building, buildingIndex) => {
+    const buildingLabel = String(building.name || "").trim() || `Yapı ${buildingIndex + 1}`;
+    const profile = building.documentProfile || {};
+    const profileParts = [];
+    if (profile.architecturalProjectAvailable === "Hayır") {
+      profileParts.push(`${buildingLabel} için mimari proje bulunmamaktadır.`);
+    } else if (profile.architecturalProjectAvailable === "Evet") {
+      const projectReference = buildStructureDocumentReferenceText(profile.projectDate, profile.projectNo);
+      profileParts.push(`${buildingLabel} için ${projectReference}${profile.projectType || "mimari proje"}${profile.reviewInstitution ? ` ${profile.reviewInstitution} nezdinde` : ""} incelenmiştir${profile.projectConformity ? `; projeye uygunluk durumu ${profile.projectConformity.toLocaleLowerCase("tr-TR")} olarak değerlendirilmiştir` : ""}.`);
+    }
+    if (profile.ekbStatus === "Evet") {
+      const ekbDetails = [profile.ekbNo ? `${profile.ekbNo} no.lu` : "", profile.ekbClass ? `${profile.ekbClass} enerji sınıfında` : ""].filter(Boolean).join(", ");
+      profileParts.push(`${buildingLabel} için ${ekbDetails ? `${ekbDetails} ` : ""}Enerji Kimlik Belgesi incelenmiştir.`);
+    } else if (profile.ekbStatus === "Hayır") {
+      profileParts.push(`${buildingLabel} için Enerji Kimlik Belgesi bulunamamıştır.`);
+    }
+    const scopes = (state.tables.documentScopes || []).filter((scope) => scope.buildingId === building.id);
+    if (!scopes.length) return [...profileParts, `${buildingLabel} için yapı bazında ilişkilendirilmiş resmi belge bulunmamaktadır.`];
+    const byDocument = new Map();
+    scopes.forEach((scope) => {
+      if (!byDocument.has(scope.documentId)) byDocument.set(scope.documentId, []);
+      byDocument.get(scope.documentId).push(scope);
+    });
+    const documentParts = [...byDocument.entries()].map(([documentId, documentScopes]) => {
+      const documentRow = documentsById.get(documentId) || {};
+      const type = String(documentRow.c0 || documentScopes[0]?.documentType || "Resmi belge").trim();
+      const reference = buildStructureDocumentReferenceText(documentRow.c2, documentRow.c3);
+      const scopeTexts = documentScopes.map((scope) => {
+        const part = (state.tables.buildingParts || []).find((item) => item.id === scope.buildingPartId);
+        const target = part ? String(part.name || "Yapı bölümü").trim() : buildingLabel;
+        const area = scope.licensedArea || scope.occupancyArea || scope.legalArea || scope.currentArea || "";
+        return area ? `${target} için ${area} m²` : target;
+      });
+      return `${reference}${type}, ${joinTurkishList(scopeTexts)} kapsamıyla incelenmiştir.`;
+    });
+    return [...profileParts, ...documentParts];
+  });
 }
 
 function createBuildingFloorDistribution() {
@@ -15995,6 +16866,65 @@ function buildMainPropertyValues(usePlaceholderTokens) {
   };
 }
 
+function buildBuildingStructuresTechnicalDescription() {
+  if (!isMustakilBinaOwnershipType() || !Array.isArray(state.tables?.buildings) || !state.tables.buildings.length) return "";
+  const paragraphs = state.tables.buildings.map((building, buildingIndex) => {
+    const label = String(building.name || "").trim() || `Yapı ${buildingIndex + 1}`;
+    const floorLegalArea = (building.floors || []).reduce((sum, floor) => sum + parseBuildingStructureAreaNumber(floor.legalArea), 0);
+    const floorCurrentArea = (building.floors || []).reduce((sum, floor) => sum + parseBuildingStructureAreaNumber(floor.currentArea), 0);
+    const parts = getBuildingParts(building.id);
+    const partLegalArea = parts.reduce((sum, part) => sum + parseBuildingStructureAreaNumber(part.legalArea), 0);
+    const partCurrentArea = parts.reduce((sum, part) => sum + parseBuildingStructureAreaNumber(part.currentArea), 0);
+    const legalArea = floorLegalArea || partLegalArea;
+    const currentArea = floorCurrentArea || partCurrentArea;
+    const identity = [
+      building.usage ? `${building.usage.toLocaleLowerCase("tr-TR")} kullanımlı` : "",
+      building.status ? `${building.status.toLocaleLowerCase("tr-TR")} durumda` : "",
+      building.buildingStyle ? `${building.buildingStyle.toLocaleLowerCase("tr-TR")} yapı tarzında` : "",
+      building.constructionYear ? `${building.constructionYear} yılında inşa edilmiş` : "",
+    ].filter(Boolean);
+    const areaParts = [
+      legalArea ? `${formatBuildingStructureAreaNumber(legalArea)} m² yasal alanlı` : "",
+      currentArea ? `${formatBuildingStructureAreaNumber(currentArea)} m² mevcut alanlı` : "",
+    ].filter(Boolean);
+    const sentences = [];
+    const openingParts = [...identity, ...areaParts];
+    if (openingParts.length) sentences.push(`${label}, ${joinTurkishList(openingParts)} bir yapıdır.`);
+    else sentences.push(`${label} parsel üzerindeki yapılardan biridir.`);
+
+    const tech = building.technicalProfile || {};
+    const technicalDetails = [
+      tech.clearHeight ? `net iç yüksekliği ${tech.clearHeight} m` : "",
+      tech.floorLoad ? `zemin taşıma kapasitesi ${tech.floorLoad}` : "",
+      tech.loadingAccess ? `tır/yükleme erişimi ${tech.loadingAccess.toLocaleLowerCase("tr-TR")}` : "",
+      tech.loadingDock ? `yükleme rampası ${tech.loadingDock.toLocaleLowerCase("tr-TR")}` : "",
+      tech.crane ? `vinç sistemi ${tech.crane.toLocaleLowerCase("tr-TR")}` : "",
+      tech.powerInfrastructure ? `elektrik/trafo altyapısı ${tech.powerInfrastructure}` : "",
+      tech.naturalGas ? `doğalgaz altyapısı ${tech.naturalGas.toLocaleLowerCase("tr-TR")}` : "",
+      tech.fireSystem ? `yangın sistemi ${tech.fireSystem.toLocaleLowerCase("tr-TR")}` : "",
+      tech.sprinkler ? `sprinkler sistemi ${tech.sprinkler.toLocaleLowerCase("tr-TR")}` : "",
+      tech.ventilation ? `havalandırması ${tech.ventilation.toLocaleLowerCase("tr-TR")}` : "",
+      tech.condition ? `fiziki durumu ${tech.condition.toLocaleLowerCase("tr-TR")}` : "",
+    ].filter(Boolean);
+    if (technicalDetails.length) sentences.push(`Yapının ${joinTurkishList(technicalDetails)} olarak belirlenmiştir.`);
+
+    const partTexts = parts.map((part, partIndex) => {
+      const partLabel = String(part.name || "").trim() || `Bölüm ${partIndex + 1}`;
+      const details = [
+        part.usage ? part.usage.toLocaleLowerCase("tr-TR") : "",
+        part.status ? `${part.status.toLocaleLowerCase("tr-TR")} durumda` : "",
+        part.legalArea ? `${part.legalArea} m² yasal` : "",
+        part.currentArea ? `${part.currentArea} m² mevcut alanlı` : "",
+        part.constructionYear ? `${part.constructionYear} yapım yıllı` : "",
+      ].filter(Boolean);
+      return details.length ? `${partLabel} (${details.join(", ")})` : partLabel;
+    });
+    if (partTexts.length) sentences.push(`Yapı; ${joinTurkishList(partTexts)} bölümlerinden oluşmaktadır.`);
+    return normalizeReportDescriptionText(cleanComparablePunctuation(sentences.join(" ")));
+  }).filter(Boolean);
+  return paragraphs.join("\n\n");
+}
+
 function buildMainPropertyDescription(options = {}) {
   const usePlaceholderTokens = Boolean(options.usePlaceholderTokens);
   const values = buildMainPropertyValues(usePlaceholderTokens);
@@ -16038,7 +16968,9 @@ function buildMainPropertyDescription(options = {}) {
     .map((paragraph) => normalizeReportDescriptionText(cleanComparablePunctuation(paragraph)))
     .filter(Boolean);
 
-  return pluralizeMainPropertyDescriptionText(paragraphs.join("\n\n"), enablePlural);
+  const standardDescription = pluralizeMainPropertyDescriptionText(paragraphs.join("\n\n"), enablePlural);
+  const structureDescription = usePlaceholderTokens ? "" : buildBuildingStructuresTechnicalDescription();
+  return [standardDescription, structureDescription].filter(Boolean).join("\n\n");
 }
 
 // ============================================================
@@ -20266,7 +21198,45 @@ function shouldHideField(sectionId, fieldKey) {
     const group = getExpenseBankGroup(state.fields.bank);
     return group !== "A" && group !== "D";
   }
+  if (sectionId === "planning" && ["toplulastirmaStatus", "toplulastirmaInstitution"].includes(fieldKey)) {
+    return !reportMentionsToplulastirma();
+  }
   return false;
+}
+
+// Kullanıcı talebi (2026-09-17): "tapu ve takyidat kayıtlarında tüm
+// raporlar için eğer toplulaştırma ibaresi geçiyor ise" — takip düzeltmesi
+// (aynı gün): "sadece takyidat bölümünde toplulaştırma ibaresi geçiyor ise
+// edinme sebebini karıştırma. edinme sebebi toplulaştırma ise zaten
+// toplulaştırma tamamlanmıştır." Yani Tapu'nun Malikler tablosundaki
+// "Edinme sebebi" (ve Nitelik alanları) İLK sürümde YANLIŞLIKLA dahil
+// edilmişti — "Edinme sebebi: Toplulaştırma" zaten TAMAMLANMIŞ bir
+// toplulaştırmanın kanıtıdır (mülkiyet o yolla edinilmiş), "Devam Ediyor"
+// durumunu tespit etmek için anlamlı bir sinyal DEĞİLDİR ve karıştırma
+// riski taşır. Artık SADECE Takyidat (Beyanlar/Şerhler/İpotekler, her
+// satırdaki TÜM hücreler — hangi sütunda geçtiği ÖNEMSİZ, generic
+// Object.values() ile) + Takyidat açıklaması (takbisSummary, serbest
+// metin) taranır — Tapu (title) tablosu/Nitelik alanları KAPSAM DIŞI.
+// Çoklu Talep (birden fazla taşınmaz) raporlarında TÜM taşınmazlar
+// kontrol edilir (buildAllTitleUnitsForSummaryTable — bu projede
+// "herhangi bir taşınmazda X var mı" sorularının TEK kaynağı).
+const TOPLULASTIRMA_SCANNED_TABLE_KEYS = ["encumbranceDeclarations", "encumbranceAnnotations", "encumbranceMortgages"];
+const TOPLULASTIRMA_SCANNED_FIELD_KEYS = ["takbisSummary"];
+
+function reportMentionsToplulastirma() {
+  const units = buildAllTitleUnitsForSummaryTable();
+  return units.some((unit) => {
+    const fields = unit.fields || {};
+    if (TOPLULASTIRMA_SCANNED_FIELD_KEYS.some((key) => foldTurkish(fields[key] || "").includes("TOPLULASTIRMA"))) {
+      return true;
+    }
+    const tables = unit.tables || {};
+    return TOPLULASTIRMA_SCANNED_TABLE_KEYS.some((tableKey) =>
+      (tables[tableKey] || []).some((row) =>
+        Object.values(row || {}).some((cell) => foldTurkish(String(cell || "")).includes("TOPLULASTIRMA"))
+      )
+    );
+  });
 }
 
 function shouldHideLandAgricultureControls() {
@@ -23345,6 +24315,7 @@ function restoreStateFromImportedJson(payload, fileName = "") {
     importedAt: new Date().toISOString(),
     importedFileName: fileName,
   };
+  normalizeStructureDocumentData(state);
   normalizeAddressSourceState(state);
   applySystemDefaults(state);
   applyUserFieldDefaults(state);
@@ -23449,7 +24420,8 @@ function getSectionExcelTableKeys(sectionId) {
   const tableKeys = {
     title: ["title"],
     encumbrance: ["encumbrance", "encumbranceDeclarations", "encumbranceAnnotations", "encumbranceMortgages"],
-    documents: ["documents"],
+    documents: ["documents", "documentScopes"],
+    building: ["buildings", "buildingParts"],
     comparables: ["comparables"],
   };
   return (tableKeys[sectionId] || []).filter((key) => getTitleUnitScopedTableKeys().includes(key));
@@ -33419,7 +34391,7 @@ function buildReviewedDocumentsDescription() {
     // sade/çoğul cümle" ilkesiyle AYNI).
     const missingSentences = buildMissingReviewedDocumentSentences()
       .map((sentence) => pluralizeEnvironmentalSubjectText(sentence, isMultiTitleUnitReportForNarrative()));
-    return normalizeReportDescriptionText([...missingSentences, ...ekbParts].filter(Boolean).join("\n\n"));
+    return normalizeReportDescriptionText([...missingSentences, ...buildStructureDocumentsDescriptionParts(), ...ekbParts].filter(Boolean).join("\n\n"));
   }
 
   const permitGroups = new Map();
@@ -33443,6 +34415,7 @@ function buildReviewedDocumentsDescription() {
     parts.push(`${prefix} yapılan incelemelerde taşınmaza ait yeni yapı ruhsatı bulunamamıştır.`);
   }
   parts.push(...buildDocumentsOccupancyParts(rowGroups, rows, blockOrder, attributionBuilder));
+  parts.push(...buildStructureDocumentsDescriptionParts());
   parts.push(...ekbParts);
 
   return normalizeReportDescriptionText(parts.join("\n\n"));
@@ -33762,6 +34735,7 @@ function normalizeReviewedDocumentStorageRow(row = {}) {
   const c2LooksLikeInstitution = looksLikeDocumentInstitution(row.c2);
   if (c1LooksLikeDate && c2LooksLikeInstitution) {
     return {
+      ...row,
       c0: row.c0 || "",
       c1: row.c2 || "",
       c2: row.c1 || "",
@@ -33773,6 +34747,7 @@ function normalizeReviewedDocumentStorageRow(row = {}) {
   const c1LooksLikeInstitution = looksLikeDocumentInstitution(row.c1);
   if (!c1LooksLikeDate && c1LooksLikeInstitution) return row;
   return {
+    ...row,
     c0: row.c0 || "",
     c1: buildDefaultDocumentReviewInstitution(),
     c2: row.c1 || "",
@@ -45551,6 +46526,7 @@ function refreshValueFactorsFromCurrentState() {
 function getValueFactorsInput() {
   refreshHalkbankRiskCodesFromCurrentState();
   const currentValueUsd = getCurrentValueUsdForValueFactors();
+  const structureFactors = getAcceptedBuildingStructureFactors();
   return {
     fields: { ...(state.fields || {}), ...(Number.isFinite(currentValueUsd) ? { currentValueUsd } : {}) },
     tables: {
@@ -45560,8 +46536,8 @@ function getValueFactorsInput() {
         : [],
     },
     disabledIds: parseValueFactorsDisabledIds(),
-    manualPositive: getValueFactorsManualRows("positive"),
-    manualNegative: getValueFactorsManualRows("negative"),
+    manualPositive: [...getValueFactorsManualRows("positive"), ...structureFactors.filter((item) => item.kind === "positive")],
+    manualNegative: [...getValueFactorsManualRows("negative"), ...structureFactors.filter((item) => item.kind === "negative")],
   };
 }
 
@@ -51543,7 +52519,11 @@ function createTable(section) {
   let annotationLienSummary = null;
 
   const tableEntries = isDocumentsTable
-    ? getReviewedDocumentTableEntries(tableState)
+    ? getReviewedDocumentTableEntries(tableState).filter((entry) => {
+      if (!isStructureDocumentsMode()) return true;
+      if (entry.isArchitecturalProject) return activeDocumentsStructureTarget === "parcel";
+      return documentMatchesActiveStructureTarget(entry.row);
+    })
     : tableState.map((row, index) => ({ row, index }));
   tableEntries.forEach(({ row, index: rowIndex, isArchitecturalProject = false }) => {
     const tr = document.createElement("tr");
@@ -51593,6 +52573,12 @@ function createTable(section) {
           refreshEncumbranceSummaryFromCurrentData();
         }
         if (isDocumentsTable) {
+          if (key === "c0") {
+            getDocumentScopes(row.id).forEach((scope) => {
+              scope.documentType = row.c0 || "";
+            });
+          }
+          refreshDocumentScopeSummary(row.id);
           refreshReviewedDocumentsDescriptionFromCurrentRows();
           // Belgeler ve Proje blok-senkronu (2026-08-19) — "İncelenen
           // Belgeler" tablosu blok ortak alanlardan; ayrı ele alınır (bkz.
@@ -51647,6 +52633,7 @@ function createTable(section) {
           refreshEncumbranceSummaryFromCurrentData();
         }
         if (isDocumentsTable) {
+          refreshDocumentScopeSummary(row.id);
           refreshReviewedDocumentsDescriptionFromCurrentRows();
           syncDocumentsSharedDataToBlockSiblings();
         }
@@ -51685,6 +52672,7 @@ function createTable(section) {
           refreshEncumbranceSummaryFromCurrentData();
         }
         if (isDocumentsTable) {
+          state.tables.documentScopes = (state.tables.documentScopes || []).filter((scope) => scope.documentId !== row.id);
           refreshReviewedDocumentsDescriptionFromCurrentRows();
           syncDocumentsSharedDataToBlockSiblings();
         }
@@ -51719,7 +52707,8 @@ function createTable(section) {
   addButton.textContent = getTableAddButtonText(section.id, isOwnersTable);
   if (isDocumentsTable) addButton.dataset.documentsAddButton = "true";
   addButton.addEventListener("click", () => {
-    state.tables[section.id].push(isDocumentsTable ? createEmptyReviewedDocumentRow() : {});
+    const newRow = isDocumentsTable ? createEmptyReviewedDocumentRow() : {};
+    state.tables[section.id].push(newRow);
     if (isOwnersTable) {
       refreshTitleOwnershipKindFromOwners();
     }
@@ -51728,6 +52717,8 @@ function createTable(section) {
       refreshEncumbranceSummaryFromCurrentData();
     }
     if (isDocumentsTable) {
+      createDefaultDocumentScope(newRow.id, newRow.c0 || "");
+      refreshDocumentScopeSummary(newRow.id);
       refreshReviewedDocumentsDescriptionFromCurrentRows();
       syncDocumentsSharedDataToBlockSiblings();
     }
@@ -51803,6 +52794,7 @@ function isLegacyEmptyDocumentTable(rows = []) {
 
 function prepareReviewedDocumentTableRow(row = {}) {
   const prepared = normalizeReviewedDocumentStorageRow(row);
+  ensurePersistentRecordId(prepared, "document");
   if (!String(prepared.c1 || "").trim()) {
     prepared.c1 = buildDefaultDocumentReviewInstitution();
   }
@@ -51810,7 +52802,9 @@ function prepareReviewedDocumentTableRow(row = {}) {
 }
 
 function createEmptyReviewedDocumentRow() {
-  return { c1: buildDefaultDocumentReviewInstitution() };
+  const row = { c1: buildDefaultDocumentReviewInstitution() };
+  ensurePersistentRecordId(row, "document");
+  return row;
 }
 
 function createTableCellControl(section, key, isAnnotationDescription = false) {
@@ -52892,10 +53886,11 @@ window.RaporAccessControl = {
 document.body.dataset.userRole = getCurrentAccessRole();
 
 const initialImarRulesChanged = applyImarDerivedBusinessRules(state);
+const initialStructureDocumentMigrationChanged = normalizeStructureDocumentData(state);
 const initialTextNormalizationChanged = normalizeReportStateFields(state);
 const initialReviewedDocumentsSplitChanged = splitReviewedDocumentsDescriptionsIfNeeded();
 const initialImarPlanDateChanged = refreshMissingImarPlanDateFromRawText();
-if (initialImarRulesChanged || initialTextNormalizationChanged || initialReviewedDocumentsSplitChanged || initialImarPlanDateChanged) {
+if (initialImarRulesChanged || initialStructureDocumentMigrationChanged || initialTextNormalizationChanged || initialReviewedDocumentsSplitChanged || initialImarPlanDateChanged) {
   saveState();
 }
 

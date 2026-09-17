@@ -39,6 +39,108 @@
   --speed: 240ms;
 }
 
+/* Yapı bazlı resmi belge / sanayi tesisi editörü (2026-09-17). */
+.structure-documents-tab-bar {
+  margin-bottom: 14px;
+}
+
+.structure-document-profile-panel,
+.document-scope-editor-panel,
+.structure-area-reconciliation-panel,
+.building-structure-technical-profile-panel,
+.building-structure-factor-panel {
+  margin-top: 14px;
+}
+
+.building-parts-editor {
+  margin-top: 16px;
+}
+
+.building-part-card,
+.document-scope-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(170px, 1fr));
+  gap: 10px;
+  align-items: end;
+  margin-top: 10px;
+  padding: 12px;
+  border: 1px solid var(--border, #d9e2ee);
+  border-radius: 12px;
+  background: var(--surface-soft, #f8fbff);
+}
+
+.document-scope-card {
+  padding: 12px;
+  margin-top: 12px;
+  border: 1px solid var(--border, #d9e2ee);
+  border-radius: 14px;
+  background: #fff;
+}
+
+.structure-area-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(130px, 1fr));
+  gap: 10px;
+}
+
+.structure-area-summary-item {
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+  border: 1px solid var(--border, #d9e2ee);
+  border-radius: 12px;
+  background: var(--surface-soft, #f8fbff);
+}
+
+.structure-area-summary-item span {
+  color: var(--text-muted, #64748b);
+  font-size: 12px;
+}
+
+.structure-reconciliation-warnings,
+.structure-reconciliation-ok {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+}
+
+.structure-reconciliation-warnings {
+  border: 1px solid #f0b7b7;
+  background: #fff5f5;
+  color: #9f2626;
+}
+
+.structure-reconciliation-warnings ul {
+  margin: 8px 0 0 18px;
+}
+
+.structure-reconciliation-ok {
+  border: 1px solid #a9d9c2;
+  background: #f1fbf6;
+  color: #176b47;
+}
+
+.structure-factor-row {
+  margin-top: 7px;
+  border-radius: 10px;
+}
+
+.structure-factor-row.is-positive {
+  background: #f1fbf6;
+}
+
+.structure-factor-row.is-negative {
+  background: #fff5f5;
+}
+
+@media (max-width: 900px) {
+  .building-part-card,
+  .document-scope-row,
+  .structure-area-summary-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .halkbank-risk-panel {
   display: grid;
   gap: 18px;

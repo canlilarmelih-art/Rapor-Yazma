@@ -188,6 +188,19 @@ function makeContext(rows, fields = {}) {
       panel._description = description;
       return panel;
     },
+    normalizeBuildingStructureRow: (row) => ({
+      id: row.id || `building-test-${Math.random().toString(36).slice(2, 8)}`,
+      documentProfile: row.documentProfile || {},
+      technicalProfile: row.technicalProfile || {},
+      factorDecisions: row.factorDecisions || {},
+      ...row,
+    }),
+    createBuildingStructureTechnicalProfilePanel: () => makeElementStub("div"),
+    createBuildingStructureFactorPanel: () => makeElementStub("div"),
+    getBuildingParts: () => [],
+    refreshDocumentScopeSummary: () => {},
+    commitStructureDocumentDescriptionChange: () => {},
+    activeDocumentsStructureTarget: "parcel",
   };
   vm.createContext(context);
   vm.runInContext(sliceConst("buildingFloorCountFields"), context);
@@ -195,6 +208,8 @@ function makeContext(rows, fields = {}) {
   vm.runInContext(sliceConst("buildingOrderOptions"), context);
   vm.runInContext(sliceConst("buildingClassOptions"), context);
   vm.runInContext(sliceConst("buildingEntranceDirectionOptions"), context);
+  vm.runInContext(sliceConst("BUILDING_STRUCTURE_STATUS_OPTIONS"), context);
+  vm.runInContext(sliceConst("BUILDING_STRUCTURE_USAGE_OPTIONS"), context);
   vm.runInContext(sliceConst("unitInteriorValidationOptions"), context);
   vm.runInContext(sliceConst("commercialUnitInteriorValidationOptions"), context);
   vm.runInContext(sliceConst("shopUnitInteriorValidationOptions"), context);
