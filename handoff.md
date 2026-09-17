@@ -1,5 +1,13 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.818 - 2026-09-17 - Müstakil Bina'da Tapu ve Mülkiyet bölümünde Eklenti gizlendi
+
+- Kullanıcı: "tapu ve mülkiyet bölümünden müstakil formatta eklenti bölümünü gizle."
+- `app.js`: `shouldHideField("title", ...)`'e yeni bir dal eklendi — `titleAttachment` (Eklenti) alanı yalnızca Mülkiyet="Müstakil Bina" iken gizlenir (`isMustakilBinaOwnershipType()`); diğer mülkiyet türlerinde (Kat İrtifakı dahil, Arsa/Tarla dahil) DEĞİŞMEDEN görünür kalır — kullanıcı yalnızca müstakil formatı belirtti, kapsam genişletilmedi. Bu bölüm zaten admin-bypass istisnasına dahil olduğundan (0.0.787'den beri TÜM "title" bölümü kuralları yöneticide de geçerli) ayrıca bir kablolama gerekmedi.
+- `templates/akbank-mustakil-bina.html`: "EKLENTİSİ" (`{{TITLE_ATTACHMENT_BUYUK_ORTAK}}`) satırı Tapu tablosundan kaldırıldı — artık hiçbir zaman doldurulmayacağı için (0.0.814'teki TAPUDAKİ NİTELİK/ARSA PAYI ile AYNI mantık).
+- `tools/test-title-main-property-hidden-fields.js`e yeni senaryo eklendi: `titleAttachment` SADECE Müstakil Bina'da gizli, diğer tüm mülkiyet türlerinde (Kat İrtifakı/Arsa/Tarla/boş) görünür — gerçek kaynaktan. `tools/test-akbank-mustakil-bina-template.js`e EKLENTİSİ hücresinin yokluğu + kaynak-düzeyi kural kontrolü eklendi. `npm run verify` (190 dosya) EXIT:0. `index.html`'de `app.js` cache-buster'ı `20260917-1300`'e yükseltildi.
+- Canlı tarayıcı testi yapılamadı — kullanıcıdan Mülkiyet="Müstakil Bina" bir raporda Tapu ve Mülkiyet bölümünde "Eklenti" alanının artık görünmediğini kontrol etmesi isteniyor.
+
 ## 0.0.817 - 2026-09-17 - Normal kullanıcının "geçerli uygulama oturumu gerekir" uyarısı: sessiz oturum yenileme
 
 - Kullanıcı: "normal kullanıcı yine bu uyarıyı alıyor" + ekran görüntüsü: "experify.com.tr web sitesinin mesajı — Paket hazırlanamadı: Bu işlem için geçerli uygulama oturumu gerekir." ("Banka Şablonuyla Kaydet" tıklanınca).

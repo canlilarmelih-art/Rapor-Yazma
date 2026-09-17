@@ -248,4 +248,19 @@ assert(appSource.includes('if (!["titleQuality", "titleBlockName", "titleEntranc
 
 console.log("akbank-mustakil-bina.html Tapu Bilgileri bagimsiz-bolum hucre temizligi testi tamam.");
 
+// --- 8) Kullanıcı takip talebi (2026-09-17): "tapu ve mülkiyet bölümünden -
+//        müstakil formatta eklenti bölümünü gizle" - EKLENTİSİ satırı da
+//        (Tapudaki Nitelik/Arsa Payı ile AYNI mantık) kaldırılmalı.
+[
+  "EKLENTİSİ",
+  "{{TITLE_ATTACHMENT_BUYUK_ORTAK}}",
+].forEach((needle) => {
+  assert(!templateSource.includes(needle), `akbank-mustakil-bina.html hala Eklenti hucresi barindiriyor: ${needle}`);
+});
+assert(
+  appSource.includes('if (fieldKey === "titleAttachment") return isMustakilBinaOwnershipType();'),
+  "app.js'te shouldHideField(\"title\", \"titleAttachment\") -> isMustakilBinaOwnershipType() kurali bulunamadi."
+);
+console.log("akbank-mustakil-bina.html + app.js Eklenti (titleAttachment) gizleme testi tamam.");
+
 console.log("Akbank Mustakil Bina sablonu testleri basarili.");

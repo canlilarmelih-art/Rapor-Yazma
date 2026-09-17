@@ -42,9 +42,16 @@ const condoValueStart = appSource.indexOf("function isCondominiumOwnershipTypeVa
 const condoValueEnd = appSource.indexOf("\n}", condoValueStart) + 2;
 const condoStart = appSource.indexOf("function isCondominiumOwnershipType(");
 const condoEnd = appSource.indexOf("\n}", condoStart) + 2;
+// Musttakil Bina (2026-09-17, "tapu ve mulkiyet bolumunden mustakil formatta
+// eklenti bolumunu gizle") - titleAttachment gizleme kurali icin.
+const normalizeOwnershipStart = appSource.indexOf("function normalizeOwnershipTypeForSectionVisibility(");
+const normalizeOwnershipEnd = appSource.indexOf("\n}", normalizeOwnershipStart) + 2;
+const mustakilBinaStart = appSource.indexOf("function isMustakilBinaOwnershipType(");
+const mustakilBinaEnd = appSource.indexOf("\n}", mustakilBinaStart) + 2;
 assert(
-  foldStart >= 0 && mainGroundStart >= 0 && ownershipTextStart >= 0 && condoValueStart >= 0 && condoStart >= 0,
-  "foldTurkish / isMainPropertyGroundType / getOwnershipTypeText / isCondominiumOwnershipTypeValue / isCondominiumOwnershipType bulunamadi."
+  foldStart >= 0 && mainGroundStart >= 0 && ownershipTextStart >= 0 && condoValueStart >= 0 && condoStart >= 0
+    && normalizeOwnershipStart >= 0 && mustakilBinaStart >= 0,
+  "foldTurkish / isMainPropertyGroundType / getOwnershipTypeText / isCondominiumOwnershipTypeValue / isCondominiumOwnershipType / normalizeOwnershipTypeForSectionVisibility / isMustakilBinaOwnershipType bulunamadi."
 );
 
 function hiddenFieldsFor(groundType, ownershipType = "") {
@@ -58,9 +65,28 @@ function hiddenFieldsFor(groundType, ownershipType = "") {
   vm.runInContext(appSource.slice(ownershipTextStart, ownershipTextEnd), context);
   vm.runInContext(appSource.slice(condoValueStart, condoValueEnd), context);
   vm.runInContext(appSource.slice(condoStart, condoEnd), context);
+  vm.runInContext(appSource.slice(normalizeOwnershipStart, normalizeOwnershipEnd), context);
+  vm.runInContext(appSource.slice(mustakilBinaStart, mustakilBinaEnd), context);
   vm.runInContext(appSource.slice(start, end), context);
   const keys = ["titleQuality", "titleBlockName", "titleEntrance", "titleFloor", "unitNo", "share", "denominator"];
   return Object.fromEntries(keys.map((key) => [key, context.shouldHideField("title", key)]));
+}
+
+function isTitleAttachmentHiddenFor(ownershipType) {
+  const context = {
+    state: { fields: { groundType: "KatMulkiyeti", ownershipType } },
+    normalizeReportTitleText: (value) => value,
+  };
+  vm.createContext(context);
+  vm.runInContext(appSource.slice(foldStart, foldEnd), context);
+  vm.runInContext(appSource.slice(mainGroundStart, mainGroundEnd), context);
+  vm.runInContext(appSource.slice(ownershipTextStart, ownershipTextEnd), context);
+  vm.runInContext(appSource.slice(condoValueStart, condoValueEnd), context);
+  vm.runInContext(appSource.slice(condoStart, condoEnd), context);
+  vm.runInContext(appSource.slice(normalizeOwnershipStart, normalizeOwnershipEnd), context);
+  vm.runInContext(appSource.slice(mustakilBinaStart, mustakilBinaEnd), context);
+  vm.runInContext(appSource.slice(start, end), context);
+  return context.shouldHideField("title", "titleAttachment");
 }
 
 function assertAllHidden(fields, groundType, ownershipType, label) {
@@ -94,3 +120,18 @@ assertAllVisible(hiddenFieldsFor("KatMulkiyeti", "Yatay Kat İrtifakı"), "KatMu
 });
 
 console.log("Ana Tasinmaz / Kat Irtifaki disi gizli alanlar testi tamam.");
+
+// 4) Kullanici talebi (2026-09-17): "tapu ve mulkiyet bolumunden mustakil
+//    formatta eklenti bolumunu gizle" - titleAttachment SADECE Mustakil
+//    Bina'da gizlenmeli, diger mulkiyet turlerinde (Kat Irtifaki dahil,
+//    Arsa/Tarla dahil) GORUNUR kalmali (kullanici SADECE mustakil formati
+//    belirtti, kapsam genisletilmedi).
+assert.equal(isTitleAttachmentHiddenFor("Müstakil Bina"), true, "Müstakil Bina mulkiyetinde titleAttachment gizlenmeli.");
+["Dikey Kat İrtifakı", "Yatay Kat İrtifakı", "Arsa", "Tarla", ""].forEach((ownershipType) => {
+  assert.equal(
+    isTitleAttachmentHiddenFor(ownershipType),
+    false,
+    `"${ownershipType || "(bos)"}" mulkiyetinde titleAttachment GIZLENMEMELIYDI (yalnizca Musttakil Bina'ya ozgu olmali).`
+  );
+});
+console.log("Tapu ve Mulkiyet: titleAttachment (Eklenti) Musttakil Bina'ya ozgu gizleme testi tamam.");

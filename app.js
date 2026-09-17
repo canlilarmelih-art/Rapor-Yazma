@@ -19548,6 +19548,12 @@ function shouldHideField(sectionId, fieldKey) {
     }
   }
   if (sectionId === "title") {
+    // Kullanıcı talebi (2026-09-17): "tapu ve mülkiyet bölümünden müstakil
+    // formatta eklenti bölümünü gizle" — Eklenti (titleAttachment), bir
+    // bağımsız bölüme ait AYRI bir alanı (ör. kömürlük, depo) tanımlar;
+    // müstakil binada zaten parselin/binanın TAMAMI malikin olduğundan
+    // ayrı bir "eklenti" kavramı anlamsızdır.
+    if (fieldKey === "titleAttachment") return isMustakilBinaOwnershipType();
     // Zemin tipi Ana Taşınmaz ise VEYA Mülkiyet "Yatay Kat İrtifakı"/"Dikey
     // Kat İrtifakı" değilse (Müstakil Bina/Arsa/Tarla/seçilmemiş) bağımsız
     // bölüme özgü alanlar anlamsızdır — Ana Taşınmaz'ın kendisi ve kat
