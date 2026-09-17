@@ -56,8 +56,22 @@ const appSource = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
   );
   assert.match(
     appSource,
-    /const environmentDescriptionAutoRefreshFields = new Set\(\[[\s\S]{0,1500}?"earthquakeZone",\s*\]\);/,
+    /const environmentDescriptionAutoRefreshFields = new Set\(\[[\s\S]{0,2000}?"earthquakeZone",\s*\]\);/,
     "'earthquakeZone' artık environmentDescriptionAutoRefreshFields tetikleyici kümesinde olmalı (Deprem derecesi değişince iklim paragrafı da tazelenmeli)."
+  );
+  // Kullanıcı takip talebi (2026-09-17): "ownershipType" de tetikleyici
+  // kümesinde olmalı - aksi halde Mülkiyet Tarla'dan başka bir türe (veya
+  // tam tersi) değiştirildiğinde iklim paragrafının eklenip/kaldırılması
+  // başka bir izlenen alan değişene kadar EKRANDA BAYAT kalır.
+  assert.match(
+    appSource,
+    /const environmentDescriptionAutoRefreshFields = new Set\(\[[\s\S]{0,900}?"ownershipType",/,
+    "'ownershipType' artık environmentDescriptionAutoRefreshFields tetikleyici kümesinde olmalı (Mülkiyet değişince İklim paragrafı hemen tazelenmeli)."
+  );
+  assert.match(
+    appSource,
+    /function buildEnvironmentDescriptionWithClimate\([\s\S]{0,300}?if \(!isTarlaOwnershipType\(\)\) return base;/,
+    "buildEnvironmentDescriptionWithClimate() artık İklim ve Deprem Bilgileri paragrafını yalnızca Tarla mülkiyetinde eklemiyor (isTarlaOwnershipType() kapısı bulunamadı)."
   );
 
   console.log("İklim ve Deprem Bilgileri: eski AYRI panelin kaldırılması + yeni sarmalayıcının kablolanması kaynak-düzeyi testi tamam.");
@@ -223,23 +237,47 @@ delete globalThis.climateEarthquakeData;
     function buildClimateEarthquakeExplanation() {
       return state.fields.__climateText ?? "İKLİM_VE_DEPREM_METNİ";
     }
+    // Kullanıcı takip talebi (2026-09-17): "bu adres ve konum kısmında
+    // yalnızca Tarla raporlarında gözükmeli bu bölüm" - gerçek
+    // isTarlaOwnershipType() (foldTurkish bağımlılığı olmadan, saf
+    // karşılaştırma) buradaki AYNI davranışı taklit eder.
+    function isTarlaOwnershipType() {
+      return state.fields.ownershipType === "Tarla";
+    }
     ${extractWrapperFunction("buildEnvironmentDescriptionWithClimate")}
     return { setState, buildEnvironmentDescriptionWithClimate };
   `;
   // eslint-disable-next-line no-new-func
   const wrapperFns = new Function(wrapperSandboxSource)();
 
-  wrapperFns.setState({ fields: {} });
+  wrapperFns.setState({ fields: { ownershipType: "Tarla" } });
   const combined = wrapperFns.buildEnvironmentDescriptionWithClimate();
-  assert.equal(combined, "TEMEL_ÇEVRESEL_METİN\nİKLİM_VE_DEPREM_METNİ", `KULLANICI TALEBİ: iklim paragrafı taban metnin SONUNA eklenmeli, bulunan: ${combined}`);
+  assert.equal(combined, "TEMEL_ÇEVRESEL_METİN\nİKLİM_VE_DEPREM_METNİ", `KULLANICI TALEBİ: Tarla mülkiyetinde iklim paragrafı taban metnin SONUNA eklenmeli, bulunan: ${combined}`);
 
-  wrapperFns.setState({ fields: { __climateText: "" } });
+  wrapperFns.setState({ fields: { ownershipType: "Tarla", __climateText: "" } });
   const noClimate = wrapperFns.buildEnvironmentDescriptionWithClimate();
-  assert.equal(noClimate, "TEMEL_ÇEVRESEL_METİN", `İklim verisi (il/ilçe eşleşmesi) yoksa taban metin TEK BAŞINA kalmalı, bulunan: ${noClimate}`);
+  assert.equal(noClimate, "TEMEL_ÇEVRESEL_METİN", `Tarla'da bile iklim verisi (il/ilçe eşleşmesi) yoksa taban metin TEK BAŞINA kalmalı, bulunan: ${noClimate}`);
 
-  wrapperFns.setState({ fields: {} });
+  wrapperFns.setState({ fields: { ownershipType: "Tarla" } });
   const placeholderPreview = wrapperFns.buildEnvironmentDescriptionWithClimate("Konut Bölgesi", { usePlaceholderTokens: true });
   assert.equal(placeholderPreview, "BASE_PLACEHOLDER_TOKENS_METNİ", `usePlaceholderTokens (Placeholder referans ekranı) modunda iklim paragrafı EKLENMEMELİ, bulunan: ${placeholderPreview}`);
+
+  // --- KULLANICI TAKİP TALEBİ (2026-09-17): "iklim verilerini adres ve ------
+  // konuma eklemiştik ... bu adres ve konum kısmında yalnızca Tarla
+  // raporlarında gözükmeli bu bölüm" - Tarla DIŞINDAKİ HER mülkiyet
+  // türünde (Arsa dahil - iklim/yağış/don-günü verileri TARIMSAL
+  // değerlendirmeye özgüdür, çıplak arsada anlamsızdır), iklim metni
+  // MEVCUT olsa bile EKLENMEMELİ.
+  ["Arsa", "Dikey Kat İrtifakı", "Yatay Kat İrtifakı", "Müstakil Bina", ""].forEach((ownershipType) => {
+    wrapperFns.setState({ fields: { ownershipType } });
+    const nonTarla = wrapperFns.buildEnvironmentDescriptionWithClimate();
+    assert.equal(
+      nonTarla,
+      "TEMEL_ÇEVRESEL_METİN",
+      `KULLANICI TALEBİ: "${ownershipType || "(boş)"}" mülkiyetinde iklim paragrafı EKLENMEMELİ (yalnızca Tarla'da gösterilmeli), bulunan: ${nonTarla}`
+    );
+  });
+  console.log("buildEnvironmentDescriptionWithClimate(): İklim ve Deprem Bilgileri artık YALNIZCA Tarla mülkiyetinde ekleniyor testi tamam.");
 
   console.log("buildEnvironmentDescriptionWithClimate() birleştirme/atlama mantığı (gerçek sarmalayıcı fonksiyon) testi tamam.");
 }

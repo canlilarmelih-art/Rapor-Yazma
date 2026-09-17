@@ -1,5 +1,13 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.821 - 2026-09-17 - İklim ve Deprem Bilgileri artık yalnızca Tarla raporlarında
+
+- Kullanıcı: "iklim verilerini adres ve konuma eklemiştik hatırlıyorsan bu adres ve konum kısmında yalnızca Tarla raporlarında gözükmeli bu bölüm." 0.0.799/0.0.800'de "İklim ve Deprem Bilgileri" (yağış/sıcaklık/don günü/güneşlenme/deprem bölgesi) "Çevresel Özellikler Açıklaması"nın (Adres ve Konum) SONUNA paragraf olarak ekleniyordu — ama HİÇBİR mülkiyet türü ayrımı yoktu, TÜM raporlarda (Konut/Ticaret/Sanayi/Arsa/Müstakil Bina dahil) görünüyordu. Bu veriler (yıllık yağış, don günü sayısı vb.) tarımsal değerlendirmeye özgü olduğundan çıplak arsada/binalı taşınmazda anlamsızdı.
+- `app.js`: `buildEnvironmentDescriptionWithClimate()`'e `if (!isTarlaOwnershipType()) return base;` kapısı eklendi — Tarla DIŞINDAKİ (Arsa dahil) her mülkiyet türünde iklim paragrafı taban metne HİÇ eklenmiyor. `environmentDescriptionAutoRefreshFields` tetikleyici kümesine `"ownershipType"` eklendi — aksi halde Mülkiyet değiştirildiğinde iklim paragrafının eklenip/kaldırılması başka bir izlenen alan değişene kadar ekranda bayat kalırdı (bu, canlı testte ilk denemede YAKALANDI ve düzeltildi).
+- `tools/test-climate-earthquake-multi-unit.js` genişletildi: yeni kaynak-düzeyi kontroller (`isTarlaOwnershipType()` kapısı + `"ownershipType"` tetikleyicisi) + gerçek sarmalayıcı fonksiyon testine YENİ senaryo (Tarla DIŞINDAKİ 5 mülkiyet türünde iklim metni MEVCUT olsa bile EKLENMEMELİ). Mevcut Tarla senaryoları `ownershipType: "Tarla"` ile güncellendi (regresyon). `npm run verify` (191 dosya) EXIT:0.
+- **Canlı tarayıcıda doğrulandı**: gerçek bir raporda Mülkiyet Tarla iken "Çevresel Özellikler Açıklaması" iklim paragrafını İÇERİYOR; Mülkiyet Arsa'ya çevrilince paragraf ANINDA kayboluyor (ownershipType tetikleyicisi sayesinde, sayfa yenilemeye gerek yok). Konsolda hata yok.
+- `index.html`'de `app.js` cache-buster'ı `20260917-1600`'e yükseltildi.
+
 ## 0.0.820 - 2026-09-17 - Müstakil Bina'da "Yapılar" en üstte + "+ Yapı Ekle" ile alanlar açılıyor
 
 - Kullanıcı: "yapi ekle mantığında biraz farklılaşma yaşıyoruz yapi ekle en üstte olmalı hatta yapi ekle altındaki bütün alanlar ilk başta gizli olmalı yapi ekle butonuna basıldığında gizlenen hücreler açılmalı bu hücreleri müstakil formata göre daha sonra düzenleyeceğiz." 0.0.816/0.0.819'daki "Bina Özellikleri" düzeninde "Yapılar" EN ALTTA, diğer tüm alanlar HER ZAMAN görünürdü — bu tur SADECE Müstakil Bina için sırayı ve varsayılan görünürlüğü tersine çeviriyor (diğer mülkiyet türlerinde "building" bölümü eski davranışını AYNEN koruyor). Açıkça belirtildi ki bu, alanların müstakil-bina-formatına göre yeniden düzenleneceği DAHA BÜYÜK bir işin İLK adımı.

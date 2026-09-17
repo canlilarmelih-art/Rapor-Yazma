@@ -13136,6 +13136,13 @@ function refreshPlanningNoteFromCurrentFields(changedKey = "") {
 }
 
 const environmentDescriptionAutoRefreshFields = new Set([
+  // Kullanıcı takip talebi (2026-09-17): İklim ve Deprem Bilgileri paragrafı
+  // artık SADECE Tarla mülkiyetinde ekleniyor (bkz. buildEnvironmentDescriptionWithClimate)
+  // — Mülkiyet (ownershipType) değiştiğinde bu paragrafın eklenip/kaldırılması
+  // için "Çevresel Özellikler Açıklaması" HEMEN yeniden üretilmeli, aksi
+  // halde Tarla'dan başka bir türe geçilince ESKİ metin (climate dahil)
+  // başka bir izlenen alan değişene kadar ekranda KALIR (bayat görünür).
+  "ownershipType",
   "city",
   "district",
   "neighborhood",
@@ -13715,9 +13722,16 @@ function refreshMultiTitleUnitAgriculturalTransport() {
 // (buildEnvironmentalDescription("Konut Bölgesi", {usePlaceholderTokens:true})
 // vb.) BİLEREK DEĞİŞMEDİ — onlar yalnızca bölge açılış cümlesi kalıbını
 // izole gösterir, iklim/deprem bu ekranın kapsamı DEĞİL.
+// Kullanıcı takip talebi (2026-09-17): "iklim verilerini adres ve konuma
+// eklemiştik ... bu adres ve konum kısmında yalnızca Tarla raporlarında
+// gözükmeli bu bölüm" — İklim ve Deprem Bilgileri paragrafı (yağış/sıcaklık/
+// don günü/güneşlenme gibi TARIMSAL değerlendirmeye özgü veriler) yalnızca
+// Tarla mülkiyetinde anlamlıdır; Arsa dahil diğer tüm mülkiyet türlerinde
+// "Çevresel Özellikler Açıklaması"nın SONUNA eklenmemeli.
 function buildEnvironmentDescriptionWithClimate(regionType = state.fields?.environmentRegionType || "", options = {}) {
   const base = buildEnvironmentalDescription(regionType, options);
   if (options.usePlaceholderTokens) return base;
+  if (!isTarlaOwnershipType()) return base;
   const climate = buildClimateEarthquakeExplanation();
   return normalizeReportDescriptionText([base, climate].filter(Boolean).join("\n\n"));
 }
