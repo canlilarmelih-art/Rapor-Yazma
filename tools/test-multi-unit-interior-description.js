@@ -339,6 +339,9 @@ const functionNames = [
   "composeMultiUnitInteriorGroupedText",
   "resolveOutdoorCombinedIgnoringTypeDifferences",
   "buildMultiUnitInteriorIntroText",
+  "buildLabeledUnitIntroSentence",
+  "buildMultiUnitInteriorDescriptionTextPerUnit",
+  "buildMultiUnitInteriorDescriptionTextGrouped",
   "buildMultiUnitInteriorDescriptionText",
   // Kullanıcı talebi (2026-09-05): mainRoom (zemin/duvar) + outdoor
   // (balkon/teras tipi/malzemesi) SLOT-BÖLME testleri için GERÇEK
@@ -410,6 +413,10 @@ const constArrayNames = [
   // Kullanıcı talebi (2026-09-13): doorsWindowsFieldMissingVariants
   // (composeMultiUnitDoorsWindowsParagraphSentence zincirinin bağımlılığı).
   "doorsWindowsFieldMissingVariants",
+  // Kullanıcı takip talebi (2026-09-19): buildLabeledUnitIntroSentence()'ın
+  // (taşınmaz-başına-paragraf modu) bağımlılığı — composeVerticalUnitDescriptionIntro'nun
+  // 3 özne varyantı.
+  "verticalUnitIntroSubjectVariants",
 ];
 const constObjectNames = ["MAIN_ROOM_FLOOR_TAIL_STANDALONE_SUFFIX_MAP"];
 // TURKISH_WORD_END_LOOKAHEAD/TURKISH_WORD_START_LOOKBEHIND (dizeler) —
@@ -446,6 +453,17 @@ const sandboxSource = `
   function getUnitDecorativeDescriptionPartsForCombinedText() {
     return state.fields.mockDecorativeParts || [];
   }
+  // getUnitDecorativeDescriptionForCombinedText() (GERÇEK fonksiyon, TEK
+  // taşınmazın TAM/birleştirilmiş dekoratif paragrafını üretir — bu SAHTE
+  // yalnızca buildMultiUnitInteriorDescriptionTextPerUnit'in [2026-09-19]
+  // "her taşınmaz KENDİ dekoratif metnini taşır" senaryoları İÇİN eklendi,
+  // slot-bazlı gruplu senaryolarda (mockDecorativeParts) KULLANILMAZ) —
+  // davranış-koruyan SAHTE: state.fields.mockDecorativeOwnText'i AYNEN
+  // döner. Varsayılan "" (tanımsız) olduğundan bunu HİÇ ayarlamayan eski
+  // senaryolar (grouped yola dahi girse) etkilenmez.
+  function getUnitDecorativeDescriptionForCombinedText() {
+    return state.fields.mockDecorativeOwnText || "";
+  }
   // selectVariant/registerVariantGroup (GERÇEK varyant-rotasyon
   // altyapısı, bu testin kapsamı DIŞINDA) — diğer test dosyalarındaki
   // AYNI emsal (bkz. test-main-property-description-pluralization.js):
@@ -469,6 +487,10 @@ const sandboxSource = `
     resetStateSwapLog: () => { stateSwapLog = []; },
     getState: () => state,
     buildMultiUnitInteriorDescriptionText,
+    buildMultiUnitInteriorDescriptionTextPerUnit,
+    buildMultiUnitInteriorDescriptionTextGrouped,
+    buildLabeledUnitIntroSentence,
+    buildAllTitleUnitsForSummaryTable,
     pluralizeUnitInteriorAreaSentence,
     pluralizeUnitInteriorAreaDetailsText,
     pluralizeUnitDecorativeSentence,
@@ -538,7 +560,7 @@ const SALON_3_ODA = "Dubleks bağımsız bölüm zemin katta 1 salon ve mutfakta
     tables: {},
     titleUnits: [unit({ titleBlockName: "B", unitNo: "5", mockAreaDetails: SALON_2_ODA })],
   });
-  const result = fns.buildMultiUnitInteriorDescriptionText();
+  const result = fns.buildMultiUnitInteriorDescriptionTextGrouped(fns.buildAllTitleUnitsForSummaryTable());
   assert.equal(result, SALON_2_ODA_PLURAL, "2+ bağımsız bölüm AYNI areaDetails ürettiyse atıf EKLENMEDEN TEK, ÇOĞUL ('Taşınmazlar ... oluşmaktadırlar') metin dönmeli.");
   assert.ok(!result.includes("No'lu"), "Atıf etiketi (ör. 'No'lu') HİÇ görünmemeli (tek grup = atıfsız).");
   console.log("2+ taşınmaz, TÜM areaDetails AYNI -> atıfsız TEK ÇOĞUL ortak metin testi tamam.");
@@ -553,7 +575,7 @@ const SALON_3_ODA = "Dubleks bağımsız bölüm zemin katta 1 salon ve mutfakta
     tables: {},
     titleUnits: [unit({ titleBlockName: "B", unitNo: "5", mockAreaDetails: SALON_2_ODA_TYPO })],
   });
-  const result = fns.buildMultiUnitInteriorDescriptionText();
+  const result = fns.buildMultiUnitInteriorDescriptionTextGrouped(fns.buildAllTitleUnitsForSummaryTable());
   assert.equal(result, SALON_2_ODA_PLURAL, "Yazım/noktalama farkı OLAN ama %90+ BENZER areaDetails de TEK, ÇOĞUL (İLK yazılan tabana dayalı) ortak metinde birleşmeli.");
   console.log("2+ taşınmaz, %90+ BENZER (yazım/noktalama farklı) areaDetails -> TEK ÇOĞUL ortak metin testi tamam.");
 }
@@ -576,7 +598,7 @@ const SALON_3_ODA = "Dubleks bağımsız bölüm zemin katta 1 salon ve mutfakta
     tables: {},
     titleUnits: [unit({ titleBlockName: "", unitNo: "2", mockAreaDetails: AREA_72 })],
   });
-  const result = fns.buildMultiUnitInteriorDescriptionText();
+  const result = fns.buildMultiUnitInteriorDescriptionTextGrouped(fns.buildAllTitleUnitsForSummaryTable());
   assert.ok(result.includes("76 m2"), `76 m² değeri sonuçtan KAYBOLMUŞ. Bulunan: ${JSON.stringify(result)}`);
   assert.ok(result.includes("72 m2"), `72 m² değeri sonuçtan KAYBOLMUŞ (kullanıcının bildirdiği hata). Bulunan: ${JSON.stringify(result)}`);
   const lines = result.split("\n");
@@ -593,7 +615,7 @@ const SALON_3_ODA = "Dubleks bağımsız bölüm zemin katta 1 salon ve mutfakta
     tables: {},
     titleUnits: [unit({ titleBlockName: "B", unitNo: "5", mockAreaDetails: SALON_3_ODA })],
   });
-  const result = fns.buildMultiUnitInteriorDescriptionText();
+  const result = fns.buildMultiUnitInteriorDescriptionTextGrouped(fns.buildAllTitleUnitsForSummaryTable());
   const lines = result.split("\n");
   assert.equal(lines.length, 2, `2 FARKLI grup -> 2 ayrı satır beklenir. Bulunan: ${JSON.stringify(lines)}`);
   assert.ok(lines.some((line) => line.includes("A 2 No'lu, " + SALON_2_ODA)), `A 2 No'lu atıflı TEKİL satır bulunamadı (VİRGÜLLE bağlanmalı, ':' DEĞİL). Bulunan: ${JSON.stringify(lines)}`);
@@ -616,7 +638,7 @@ const SALON_3_ODA = "Dubleks bağımsız bölüm zemin katta 1 salon ve mutfakta
       unit({ titleBlockName: "A", unitNo: "15", mockAreaDetails: SALON_3_ODA }),
     ],
   });
-  const result = fns.buildMultiUnitInteriorDescriptionText();
+  const result = fns.buildMultiUnitInteriorDescriptionTextGrouped(fns.buildAllTitleUnitsForSummaryTable());
   const lines = result.split("\n");
   assert.equal(lines.length, 2, `3-üyeli + 1-üyeli grup -> 2 satır beklenir. Bulunan: ${JSON.stringify(lines)}`);
   const groupLine = lines.find((line) => line.includes(SALON_2_ODA_PLURAL));
@@ -688,7 +710,7 @@ const SALON_3_ODA = "Dubleks bağımsız bölüm zemin katta 1 salon ve mutfakta
       unit({ titleBlockName: "C", unitNo: "9", mockAreaDetails: "" }),
     ],
   });
-  const result = fns.buildMultiUnitInteriorDescriptionText();
+  const result = fns.buildMultiUnitInteriorDescriptionTextGrouped(fns.buildAllTitleUnitsForSummaryTable());
   assert.equal(result, SALON_2_ODA, "Boş/whitespace-only areaDetails'li taşınmazlar hariç tutulup TEK dolu metin AYNEN dönmeli.");
   console.log("Boş/whitespace-only areaDetails'lerin gruplamaya katılmaması testi tamam.");
 }
@@ -703,7 +725,7 @@ const SALON_3_ODA = "Dubleks bağımsız bölüm zemin katta 1 salon ve mutfakta
     titleUnits: [unit({ titleBlockName: "B", unitNo: "5", mockAreaDetails: SALON_3_ODA })],
   });
   fns.resetStateSwapLog();
-  fns.buildMultiUnitInteriorDescriptionText();
+  fns.buildMultiUnitInteriorDescriptionTextGrouped(fns.buildAllTitleUnitsForSummaryTable());
   const swapLog = fns.getStateSwapLog();
   assert.equal(swapLog.length, 2, "Her taşınmaz için (2 taşınmaz) buildUnitInteriorDescriptionParts() TAM 1 kez çağrılmalı.");
   assert.equal(swapLog[0].titleBlockName, "A", "1. çağrıda state.fields A taşınmazınınkine değişmeli.");
@@ -758,7 +780,7 @@ function decorativePartsCommon(mainRoomValue) {
     tables: {},
     titleUnits: [unit({ titleBlockName: "B", unitNo: "5", mockAreaDetails: SALON_2_ODA, mockDecorativeParts: decorativePartsCommon(DEKORATIF_MAIN_ROOM_A) })],
   });
-  const result = fns.buildMultiUnitInteriorDescriptionText();
+  const result = fns.buildMultiUnitInteriorDescriptionTextGrouped(fns.buildAllTitleUnitsForSummaryTable());
   const lines = result.split("\n");
   assert.equal(lines.length, 2, `Alan paragrafı + ortak dekoratif paragrafı -> TAM 2 satır (TEK "\\n") beklenir. Bulunan: ${JSON.stringify(lines)}`);
   assert.equal(lines[0], SALON_2_ODA_PLURAL, "1. satır (alan/oda) HÂLÂ atıfsız (bu talebin kapsamı DIŞINDA) ÇOĞUL ortak metin olmalı.");
@@ -797,7 +819,7 @@ function decorativePartsCommon(mainRoomValue) {
     tables: {},
     titleUnits: [unit({ titleBlockName: "B", unitNo: "5", mockAreaDetails: SALON_2_ODA, mockDecorativeParts: decorativePartsCommon(DEKORATIF_MAIN_ROOM_B) })],
   });
-  const result = fns.buildMultiUnitInteriorDescriptionText();
+  const result = fns.buildMultiUnitInteriorDescriptionTextGrouped(fns.buildAllTitleUnitsForSummaryTable());
   const lines = result.split("\n");
   assert.equal(lines.length, 2, `Alan paragrafı (1) + Dekoratif TEK paragraf (1, "\\n" içermemeli) -> TAM 2 satır beklenir. Bulunan: ${JSON.stringify(lines)}`);
   const decorativeParagraph = lines[1];
@@ -838,7 +860,7 @@ function decorativePartsCommon(mainRoomValue) {
     tables: {},
     titleUnits: [unit({ titleBlockName: "B", unitNo: "5", mockAreaDetails: SALON_2_ODA })],
   });
-  const result = fns.buildMultiUnitInteriorDescriptionText();
+  const result = fns.buildMultiUnitInteriorDescriptionTextGrouped(fns.buildAllTitleUnitsForSummaryTable());
   assert.equal(result, SALON_2_ODA_PLURAL, "Dekoratif Özellikler tüm taşınmazlarda boşsa sonuç yalnızca alan/oda paragrafından ibaret olmalı (ekstra '\\n' veya boş satır YOK).");
   console.log("Dekoratif Özellikler tümüyle boş -> yalnızca alan/oda paragrafı (regresyon) testi tamam.");
 }
@@ -858,7 +880,7 @@ function decorativePartsCommon(mainRoomValue) {
     tables: {},
     titleUnits: [unit({ titleBlockName: "B", unitNo: "5", mockAreaDetails: SALON_2_ODA, mockDecorativeParts: [{ key: "view", value: VIEW_BARE_SUBJECT }] })],
   });
-  const result = fns.buildMultiUnitInteriorDescriptionText();
+  const result = fns.buildMultiUnitInteriorDescriptionTextGrouped(fns.buildAllTitleUnitsForSummaryTable());
   const lines = result.split("\n");
   assert.equal(lines[1], "Taşınmazların, " + VIEW_BARE_SUBJECT_PLURAL, `"view" slotu AYNI VE çıplak/cümle-ortası "taşınmaz" özneli olduğundan ÇOĞULLANMALI + genel "Taşınmazların," (virgüllü geri düşüş) etiketini taşımalı. Bulunan: ${lines[1]}`);
   console.log("Dekoratif Özellikler: AYNI + cümle-ortası 'taşınmaz' özneli slot -> ÇOĞULLANIR + genel özne (virgüllü geri düşüş) testi tamam.");
@@ -872,25 +894,25 @@ function decorativePartsCommon(mainRoomValue) {
   console.log("buildUnitInteriorDescriptionParts() areaDetails alanı (kaynak-düzeyi) testi tamam.");
 }
 
-// --- 8) buildMultiUnitInteriorDescriptionText() GERÇEK gövdesi .areaDetails
-// (VE artık 2026-09-19'dan beri .intro) okuyor, .details/unitInteriorDescription
-// OKUMUYOR (REGRESYON) ------------
-// Not (2026-09-19): önceden bu fonksiyon `buildUnitInteriorDescriptionParts().areaDetails`'i
-// DOĞRUDAN, TEK SEFERDE çağırıyordu; artık dönüş değerini `const parts = ...`
-// olarak SAKLAYIP HEM `parts.intro` HEM `parts.areaDetails`'i okuyor (kullanıcı
-// bildirimi: "bina girişine göre konum cümleleri kaybolmuş" — intro hiç
-// toplanmıyordu) — bu yüzden literal `buildUnitInteriorDescriptionParts().areaDetails`
-// alt-dizesi ARTIK kaynakta YOK, `parts.intro`/`parts.areaDetails` aranır.
+// --- 8) buildMultiUnitInteriorDescriptionTextGrouped() GERÇEK gövdesi
+// .areaDetails (VE 2026-09-19'dan beri .intro) okuyor, .details/
+// unitInteriorDescription OKUMUYOR (REGRESYON) ------------
+// Not (2026-09-19, İKİNCİ tur): "buildMultiUnitInteriorDescriptionText()"
+// artık yalnızca 2-10/11+ taşınmaz ayrımını yapan KÜÇÜK bir dispatcher
+// (bkz. aşağıdaki senaryo 8h) — asıl benzerlik+atıf tabanlı gruplama
+// mantığı `buildMultiUnitInteriorDescriptionTextGrouped()`'e taşındı
+// (kullanıcı: "10 tapudan fazla olan çalışmalarda ... gruplandırma
+// eskisi gibi yapılabilecek" — bu fonksiyon O senaryo için AYNEN korunur).
 {
-  const realBody = extractFunction("buildMultiUnitInteriorDescriptionText");
+  const realBody = extractFunction("buildMultiUnitInteriorDescriptionTextGrouped");
   assert.ok(realBody.includes("buildUnitInteriorDescriptionParts()"), "Çoklu-taşınmaz döngüsü her taşınmaz için buildUnitInteriorDescriptionParts()'ı çağırmalı.");
   assert.ok(realBody.includes("parts.intro"), "Çoklu-taşınmaz kaynağı artık parts.intro'yu da (bina girişine göre konum/kat/no cümlesi) toplamalı.");
   assert.ok(realBody.includes("parts.areaDetails"), "Çoklu-taşınmaz kaynağı parts.areaDetails OLMALI.");
   assert.ok(!realBody.includes("unit.fields?.unitInteriorDescription") && !realBody.includes("unit.fields.unitInteriorDescription"), "REGRESYON: unitInteriorDescription (dekoratif+kat DAHİL tam metin) artık ÇOKLU-taşınmaz döngüsünde DOĞRUDAN okunmamalı.");
-  console.log("buildMultiUnitInteriorDescriptionText() .intro/.areaDetails kaynağı (dekoratif/kat sızıntısı REGRESYONU) testi tamam.");
+  console.log("buildMultiUnitInteriorDescriptionTextGrouped() .intro/.areaDetails kaynağı (dekoratif/kat sızıntısı REGRESYONU) testi tamam.");
 }
 
-// --- 8d) REGRESYON (2026-09-19, kullanıcı ekran görüntüsüyle bildirdi):
+// --- 8a-intro) REGRESYON (2026-09-19, kullanıcı ekran görüntüsüyle bildirdi):
 // "'Ekspertize konu taşınmaz, ... bina giriş istikametine göre sağ
 // tarafta konumlu, ... 11 bağımsız bölüm no.lu ...' bu örnek cümle şu
 // an yok çoklu raporumuzda." Her taşınmazın introsu (kat/bina-girişi-
@@ -906,7 +928,7 @@ function decorativePartsCommon(mainRoomValue) {
     tables: {},
     titleUnits: [unit({ titleBlockName: "", unitNo: "12", mockIntro: INTRO_B, mockAreaDetails: SALON_2_ODA })],
   });
-  const result = fns.buildMultiUnitInteriorDescriptionText();
+  const result = fns.buildMultiUnitInteriorDescriptionTextGrouped(fns.buildAllTitleUnitsForSummaryTable());
   assert.ok(result.includes(INTRO_A), `1. taşınmazın intro cümlesi sonuçta YOK. Bulunan: ${JSON.stringify(result)}`);
   assert.ok(result.includes(INTRO_B), `2. taşınmazın intro cümlesi sonuçta YOK (kullanıcının bildirdiği hata). Bulunan: ${JSON.stringify(result)}`);
   assert.ok(!result.includes("No'lu, " + INTRO_A) && !result.includes("No'lu, " + INTRO_B), "Intro cümlesi zaten kendi bağımsız bölüm no'sunu içerdiğinden AYRICA 'X No'lu,' atıf öneki EKLENMEMELİ (sayı iki kez görünür).");
@@ -953,7 +975,7 @@ function decorativePartsCommon(mainRoomValue) {
 // (genel iyelik/atıf + "all" biçimi İÇİN üstü kapalı devam + soleRest
 // İÇİN örme/weave katmanı) ÜZERİNDEN mi üretiyor (kaynak-düzeyi) ----------
 {
-  const realBody = extractFunction("buildMultiUnitInteriorDescriptionText");
+  const realBody = extractFunction("buildMultiUnitInteriorDescriptionTextGrouped");
   assert.ok(realBody.includes("getUnitDecorativeDescriptionPartsForCombinedText()"), "Çoklu-taşınmaz Dekoratif Özellikler kaynağı getUnitDecorativeDescriptionPartsForCombinedText() (SLOT bazlı) OLMALI.");
   assert.ok(
     realBody.includes("composeMainRoomDecorativeParagraphSentence(decorativeEntriesBySlot, runState)"),
@@ -990,7 +1012,7 @@ function decorativePartsCommon(mainRoomValue) {
     /composeMultiUnitInteriorGroupedText\(groupUnitInteriorTextEntries\(areaEntries\), \{ pluralize: pluralizeUnitInteriorAreaDetailsText \}\)/.test(realBody),
     "Alan/oda metni composeMultiUnitInteriorGroupedText'e { pluralize: pluralizeUnitInteriorAreaDetailsText } İLE (varsayılan '\\n' joiner'la) geçmeli — BU TALEBİN kapsamı DIŞINDA, DEĞİŞMEMELİ."
   );
-  console.log("buildMultiUnitInteriorDescriptionText(): Dekoratif Özellikler artık genel iyelik/atıf katmanı ÜZERİNDEN üretiliyor, manualOverride ESKİ yolda kalıyor (kaynak-düzeyi) testi tamam.");
+  console.log("buildMultiUnitInteriorDescriptionTextGrouped(): Dekoratif Özellikler artık genel iyelik/atıf katmanı ÜZERİNDEN üretiliyor, manualOverride ESKİ yolda kalıyor (kaynak-düzeyi) testi tamam.");
 }
 
 // --- 8f) composeSoleRestDecorativeSentence()/composeMainRoomWovenAttributedSentence()
@@ -1067,7 +1089,7 @@ function decorativePartsCommon(mainRoomValue) {
     tables: {},
     titleUnits: [unit({ titleBlockName: "B", unitNo: "5", mockAreaDetails: SALON_2_ODA, mockDecorativeParts: [{ key: "mainRoomWall", value: DEKORATIF_MAIN_ROOM_A }] })],
   });
-  const result = fns.buildMultiUnitInteriorDescriptionText();
+  const result = fns.buildMultiUnitInteriorDescriptionTextGrouped(fns.buildAllTitleUnitsForSummaryTable());
   const lines = result.split("\n");
   const decorativeParagraph = lines[1];
   assert.ok(decorativeParagraph.includes("Elle yazılmış TAMAMEN farklı bir dekoratif metin."), "manualOverride slotunun metni sonuçta bulunmalı.");
@@ -1207,7 +1229,7 @@ const PRESENCE_BALCONY_AND_TERRACE = { hasAny: true, balcony: true, terrace: tru
       unit({ titleBlockName: "A", unitNo: "15", mockAreaDetails: SALON_2_ODA, mockDecorativeParts: realDecorativeParts(REAL_MAIN_ROOM_WALL_A, PRESENCE_BALCONY_AND_TERRACE) }),
     ],
   });
-  const result = fns.buildMultiUnitInteriorDescriptionText();
+  const result = fns.buildMultiUnitInteriorDescriptionTextGrouped(fns.buildAllTitleUnitsForSummaryTable());
   const lines = result.split("\n");
   assert.equal(lines.length, 2, `Alan paragrafı (1) + Dekoratif TEK paragraf (1) -> TAM 2 satır beklenir. Bulunan: ${JSON.stringify(lines)}`);
   const decorativeParagraph = lines[1];
@@ -1265,7 +1287,7 @@ const PRESENCE_BALCONY_AND_TERRACE = { hasAny: true, balcony: true, terrace: tru
       unit({ titleBlockName: "A", unitNo: "15", mockAreaDetails: SALON_2_ODA, mockDecorativeParts: realOutdoorPartsOnly("Plastik Boya", PRESENCE_BALCONY_AND_TERRACE) }),
     ],
   });
-  const result = fns.buildMultiUnitInteriorDescriptionText();
+  const result = fns.buildMultiUnitInteriorDescriptionTextGrouped(fns.buildAllTitleUnitsForSummaryTable());
   const lines = result.split("\n");
   assert.equal(lines.length, 2, `Alan paragrafı (1) + Dekoratif TEK paragraf (1) -> TAM 2 satır beklenir. Bulunan: ${JSON.stringify(lines)}`);
   const decorativeParagraph = lines[1];
@@ -1304,7 +1326,7 @@ const PRESENCE_BALCONY_AND_TERRACE = { hasAny: true, balcony: true, terrace: tru
     tables: {},
     titleUnits: [unit({ titleBlockName: "B", unitNo: "5", mockAreaDetails: SALON_2_ODA, mockDecorativeParts: identicalRealDecorativeParts() })],
   });
-  const result = fns.buildMultiUnitInteriorDescriptionText();
+  const result = fns.buildMultiUnitInteriorDescriptionTextGrouped(fns.buildAllTitleUnitsForSummaryTable());
   const lines = result.split("\n");
   assert.equal(lines.length, 2, `Alan paragrafı (1) + Dekoratif TEK paragraf (1) -> TAM 2 satır beklenir. Bulunan: ${JSON.stringify(lines)}`);
   const decorativeParagraph = lines[1];
@@ -1597,7 +1619,7 @@ const PRESENCE_BALCONY_AND_TERRACE = { hasAny: true, balcony: true, terrace: tru
       unit({ titleBlockName: "A", unitNo: "15", mockAreaDetails: SALON_2_ODA, mockDecorativeParts: fullUnitDecorativeParts(REAL_MAIN_ROOM_WALL_A, DOORS_B, KITCHEN_B, QUALITY_PREMIUM) }),
     ],
   });
-  const result = fns.buildMultiUnitInteriorDescriptionText();
+  const result = fns.buildMultiUnitInteriorDescriptionTextGrouped(fns.buildAllTitleUnitsForSummaryTable());
   const decorativeParagraph = result.split("\n")[1];
   const lowerFirst = (text) => text.charAt(0).toLocaleLowerCase("tr-TR") + text.slice(1);
   const expected = "Taşınmazların salon ve oda zeminleri laminant parke kaplı, antre-hol ve mutfak zeminleri seramik kaplı vaziyette olup, "
@@ -1671,6 +1693,109 @@ const PRESENCE_BALCONY_AND_TERRACE = { hasAny: true, balcony: true, terrace: tru
     `composeSoleRestDecorativeSentence(): düz liste (doorsWindows) İKİ AYRI TAM cümlede kalmalı (ÖRÜLMEMELİ). Bulunan: ${doorsResult}`
   );
   console.log("decorativeSentenceHasOwnSubject()/canWeaveDecorativeSentence()/composeWovenSoleRestDecorativeSentence()/composeSoleRestDecorativeSentence(): \" olup, \" örme kararı birim testleri tamam.");
+}
+
+// --- 20) YENİ (2026-09-19, kullanıcı takip talebi): "bu gruplandırma
+// yerine paragraf halinde her bir paragraf bir bağımsız bölümü içerir
+// şekilde olsun" — 2-10 taşınmazlı raporlarda buildMultiUnitInteriorDescriptionText()
+// artık dispatcher olarak buildMultiUnitInteriorDescriptionTextPerUnit()'e
+// yönlenir: HER taşınmaz "{N} No'lu Taşınmaz, {intro gövdesi}. {kendi
+// alan cümlesi}. {kendi dekoratif cümlesi}." biçiminde KENDİ TAM
+// paragrafını (kullanıcının verdiği örnekle birebir yapıda) alır,
+// paragraflar birbirinden BAĞIMSIZDIR (gruplanmaz/birleşmez).
+{
+  const INTRO_1 = "Ekspertize konu taşınmaz, incelenen onaylı mimari projesine göre, binanın Zemin Katında yer alan, batı yönünden sağlanan, bina giriş istikametine göre sol ön tarafta konumlu, (batı cepheli), 1 bağımsız bölüm no.lu, konut nitelikli bağımsız bölümdür.";
+  const INTRO_2 = "Ekspertize konu taşınmaz, incelenen onaylı mimari projesine göre, binanın 1. Normal Katında yer alan, doğu yönünden sağlanan, bina giriş istikametine göre sağ arka tarafta konumlu, (doğu cepheli), 2 bağımsız bölüm no.lu, konut nitelikli bağımsız bölümdür.";
+  const AREA_1 = "Taşınmaz projesine göre 76 m2 kullanım alanına sahip olup, antre-hol, salon, 2 oda, banyo, balkon ve açık mutfak hacimlerinden oluşmaktadır. Yer görme işlemi şube bilgisi dahilinde dışarıdan yapılmış olup mimari uygunluk tespit edilememiş ve iç hacimlerin malzeme ve işçilik kalitesi standart olarak varsayılmıştır.";
+  const AREA_2 = "Taşınmaz projesine göre 72 m2 kullanım alanına sahip olup, antre-hol, salon, 2 oda, banyo, balkon ve açık mutfak hacimlerinden oluşmaktadır. Yer görme işlemi şube bilgisi dahilinde dışarıdan yapılmış olup mimari uygunluk tespit edilememiş ve iç hacimlerin malzeme ve işçilik kalitesi standart olarak varsayılmıştır.";
+  const DECOR_1 = "Duvarlar saten boyalı, zeminler laminat parkedir.";
+  const DECOR_2 = "Duvarlar alçı sıva, zeminler seramiktir.";
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: { titleBlockName: "", unitNo: "1", mockIntro: INTRO_1, mockAreaDetails: AREA_1, mockDecorativeOwnText: DECOR_1 },
+    tables: {},
+    titleUnits: [unit({ titleBlockName: "", unitNo: "2", mockIntro: INTRO_2, mockAreaDetails: AREA_2, mockDecorativeOwnText: DECOR_2 })],
+  });
+  const result = fns.buildMultiUnitInteriorDescriptionText();
+  const paragraphs = result.split("\n");
+  assert.equal(paragraphs.length, 2, `İKİ farklı taşınmaz İKİ AYRI paragrafa düşmeli (gruplanmamalı). Bulunan: ${JSON.stringify(paragraphs)}`);
+  assert.equal(
+    paragraphs[0],
+    `1 No'lu Taşınmaz, incelenen onaylı mimari projesine göre, binanın Zemin Katında yer alan, batı yönünden sağlanan, bina giriş istikametine göre sol ön tarafta konumlu, (batı cepheli), 1 bağımsız bölüm no.lu, konut nitelikli bağımsız bölümdür. ${AREA_1} ${DECOR_1}`,
+    `1. taşınmazın paragrafı kullanıcının verdiği örnek yapıyla (etiket+intro+alan+dekoratif TEK paragrafta) eşleşmiyor. Bulunan: ${paragraphs[0]}`
+  );
+  assert.equal(
+    paragraphs[1],
+    `2 No'lu Taşınmaz, incelenen onaylı mimari projesine göre, binanın 1. Normal Katında yer alan, doğu yönünden sağlanan, bina giriş istikametine göre sağ arka tarafta konumlu, (doğu cepheli), 2 bağımsız bölüm no.lu, konut nitelikli bağımsız bölümdür. ${AREA_2} ${DECOR_2}`,
+    `2. taşınmazın paragrafı beklenen yapıyla eşleşmiyor. Bulunan: ${paragraphs[1]}`
+  );
+  console.log("YENİ: 2-10 taşınmazlı raporda her taşınmaz KENDİ TAM paragrafını (etiket+intro+alan+dekoratif) alıyor, kullanıcının örnek cümlesiyle BİREBİR eşleşiyor testi tamam.");
+}
+
+// --- 21) YENİ takip talebi: "ama dekoratif cümleler birebir aynı ise
+// ortak cümle olacak" — TÜM taşınmazların dekoratif metni AYNIYSA
+// (groupUnitInteriorTextEntries, sayısal-token guard'lı) hiçbir
+// paragrafa eklenmez; bunun yerine TÜM paragraflardan SONRA TEK, ortak
+// (2+ ise pluralizeUnitDecorativeText ile çoğullanmış) bir dekoratif
+// cümle eklenir.
+{
+  const INTRO_1 = "Ekspertize konu taşınmaz, incelenen onaylı mimari projesine göre, binanın Zemin Katında yer alan, 1 bağımsız bölüm no.lu, konut nitelikli bağımsız bölümdür.";
+  const INTRO_2 = "Ekspertize konu taşınmaz, incelenen onaylı mimari projesine göre, binanın 1. Normal Katında yer alan, 2 bağımsız bölüm no.lu, konut nitelikli bağımsız bölümdür.";
+  const AREA_1 = "Taşınmaz projesine göre 76 m2 kullanım alanına sahiptir.";
+  const AREA_2 = "Taşınmaz projesine göre 72 m2 kullanım alanına sahiptir.";
+  const DECOR_SAME = "Taşınmaz duvarları saten boyalıdır.";
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: { titleBlockName: "", unitNo: "1", mockIntro: INTRO_1, mockAreaDetails: AREA_1, mockDecorativeOwnText: DECOR_SAME },
+    tables: {},
+    titleUnits: [unit({ titleBlockName: "", unitNo: "2", mockIntro: INTRO_2, mockAreaDetails: AREA_2, mockDecorativeOwnText: DECOR_SAME })],
+  });
+  const result = fns.buildMultiUnitInteriorDescriptionText();
+  const lines = result.split("\n");
+  assert.equal(lines.length, 3, `2 taşınmaz paragrafı + 1 ORTAK dekoratif satırı = 3 satır beklenir. Bulunan: ${JSON.stringify(lines)}`);
+  assert.ok(!lines[0].includes("saten boyalı") && !lines[1].includes("saten boyalı"), "AYNI dekoratif metin taşınmaz paragraflarının İÇİNE tekrar tekrar EKLENMEMELİ (ortak cümleye taşınmalı).");
+  assert.equal(lines[2], fns.pluralizeUnitDecorativeText(DECOR_SAME), `TÜM taşınmazların dekoratif metni aynıysa TEK, ÇOĞULLANMIŞ ortak cümle EN SONDA olmalı. Bulunan: ${lines[2]}`);
+  console.log("YENİ: TÜM taşınmazların dekoratif metni birebir aynıysa paragraflara tekrar tekrar EKLENMEZ, TEK ortak (çoğullanmış) cümle olarak EN SONA eklenir testi tamam.");
+}
+
+// --- 22) YENİ: kullanıcının belirttiği istisna — "10 tapudan fazla olan
+// çalışmalarda [per-unit paragraf] olmayacak ve gruplandırma eskisi
+// gibi yapılabilecek" — dispatcher kaynak-düzeyinde eşiği doğru
+// uyguluyor mu (11+ -> Grouped, 2-10 -> PerUnit).
+{
+  const dispatcherBody = extractFunction("buildMultiUnitInteriorDescriptionText");
+  assert.ok(
+    /if \(units\.length > 10\) return buildMultiUnitInteriorDescriptionTextGrouped\(units\);/.test(dispatcherBody),
+    "10'dan fazla taşınmazda ESKİ (gruplu) davranışa yönlendirilmeli."
+  );
+  assert.ok(
+    /return buildMultiUnitInteriorDescriptionTextPerUnit\(units\);/.test(dispatcherBody),
+    "2-10 taşınmazda YENİ (taşınmaz-başına-paragraf) davranışa yönlendirilmeli."
+  );
+  console.log("YENİ: dispatcher kaynak-düzeyinde 10 taşınmaz eşiğini doğru uyguluyor (11+ Grouped, 2-10 PerUnit) testi tamam.");
+}
+
+// --- 23) buildLabeledUnitIntroSentence(): özne değiştirme + bilinmeyen
+// özne GÜVENLİ geri düşüş birim testleri.
+{
+  assert.equal(
+    fns.buildLabeledUnitIntroSentence("3 No'lu", "Ekspertize konu taşınmaz, incelenen onaylı mimari projesine göre değerlendirilmiştir."),
+    "3 No'lu Taşınmaz, incelenen onaylı mimari projesine göre değerlendirilmiştir.",
+    "'Ekspertize konu taşınmaz' öznesi 'X No'lu Taşınmaz' ile DEĞİŞTİRİLMELİ."
+  );
+  assert.equal(
+    fns.buildLabeledUnitIntroSentence("A Blok", "Söz konusu taşınmaz, projeye uygundur."),
+    "A Blok Taşınmaz, projeye uygundur.",
+    "'Söz konusu taşınmaz' öznesi de DEĞİŞTİRİLMELİ."
+  );
+  assert.equal(fns.buildLabeledUnitIntroSentence("1 No'lu", ""), "", "Boş intro metni boş dönmeli.");
+  const unknownSubjectText = "Bilinmeyen bir özneyle başlayan cümle.";
+  assert.equal(
+    fns.buildLabeledUnitIntroSentence("1 No'lu", unknownSubjectText),
+    unknownSubjectText,
+    "Bilinen 3 özne kalıbından biriyle BAŞLAMAYAN metin (ör. yatay mülkiyet varyantı) GÜVENLİ GERİ DÜŞÜŞLE olduğu gibi dönmeli (çift özneli bozuk cümle üretilmemeli)."
+  );
+  console.log("buildLabeledUnitIntroSentence(): özne değiştirme + bilinmeyen özne güvenli geri düşüş testleri tamam.");
 }
 
 console.log("Tum 'Ic Hacimler Aciklamasi (Coklu Tasinmaz)' testleri basarili.");

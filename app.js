@@ -39724,10 +39724,112 @@ function buildMultiUnitInteriorIntroText(introEntries) {
   return introEntries.map((entry) => entry.value).join("\n");
 }
 
+// Kullanıcı bildirimi (2026-09-19): "bu gruplandırma yerine paragraf
+// halinde her bir paragraf bir bağımsız bölümü içerir şekilde olsun"
+// — 2-10 taşınmazlı raporlarda artık HER taşınmaz kendi TAM paragrafını
+// alır (bkz. buildMultiUnitInteriorDescriptionTextPerUnit). Kullanıcının
+// AYRICA belirttiği istisna: "10 tapudan fazla olan çalışmalarda [per-
+// unit örnek cümlesi] olmayacak ve gruplandırma eskisi gibi yapılabilecek"
+// — 10'dan FAZLA taşınmazda ESKİ (0.0.839/840, benzerlik+atıf tabanlı
+// gruplama) davranış AYNEN korunur, aksi halde 11+ ayrı tam paragraf
+// raporu okunamaz hale getirirdi. Eşik TAM "10" (10 dahil per-unit,
+// 11+ gruplu) — kullanıcının kendi ifadesiyle birebir.
 function buildMultiUnitInteriorDescriptionText() {
   const units = buildAllTitleUnitsForSummaryTable();
   if (units.length < 2) return state.fields.unitInteriorDescription || "";
+  if (units.length > 10) return buildMultiUnitInteriorDescriptionTextGrouped(units);
+  return buildMultiUnitInteriorDescriptionTextPerUnit(units);
+}
 
+// verticalUnitIntroSubjectVariants'ın (composeVerticalUnitDescriptionIntro
+// yakınında tanımlı) ÜÇ öznesinden biriyle başlıyorsa onu ATIP yerine
+// "{label} Taşınmaz, " koyar — intro cümlesi zaten kendi bağımsız bölüm
+// no'sunu/kat/konum bilgisini TAŞIDIĞINDAN yalnızca cümlenin GÖRÜNÜR
+// öznesi (paragrafın hangi taşınmaza ait olduğunu baştan belli eden
+// etiket) değişir, geri kalan İÇERİK dokunulmadan kalır. Bilinmeyen bir
+// özneyle başlıyorsa (ör. yatay mülkiyetin composeHorizontalUnitDescriptionIntro
+// varyantı) GÜVENLİ GERİ DÜŞÜŞ: metin OLDUĞU GİBİ döner (çift özneli
+// bozuk bir cümle üretmektense etiketsiz kalması tercih edildi).
+function buildLabeledUnitIntroSentence(label, introText) {
+  if (!introText) return "";
+  for (const variant of verticalUnitIntroSubjectVariants) {
+    const prefix = `${variant}, `;
+    if (introText.startsWith(prefix)) {
+      return `${label} Taşınmaz, ${introText.slice(prefix.length)}`;
+    }
+  }
+  return introText;
+}
+
+// 2-10 taşınmazlı raporlar için (bkz. buildMultiUnitInteriorDescriptionText
+// dispatcher'ı) — HER taşınmaz KENDİ TAM paragrafını alır: "{N} No'lu
+// Taşınmaz, {intro-gövdesi}. {kendi alan/oda cümlesi}. {kendi dekoratif
+// cümlesi (yalnızca TÜM taşınmazlarınki BİREBİR/%90+ benzer DEĞİLSE)}."
+// Kullanıcı takip talebi: "ama dekoratif cümleler birebir aynı ise
+// ortak cümle olacak" — TÜM taşınmazların dekoratif metni aynı gruba
+// düşerse (groupUnitInteriorTextEntries, sayısal-token guard'lı) HİÇBİR
+// paragrafa eklenmez, bunun yerine TÜM paragraflardan SONRA TEK, ortak
+// (2+ ise çoğullanmış) bir dekoratif cümle/paragraf eklenir — mevcut
+// "hepsi aynıysa tek ortak cümle" ilkesiyle (buildDocumentsBlockAttributedExplanationParts/
+// buildProjectReviewConsolidatedSentences ile AYNI) tutarlı.
+function buildMultiUnitInteriorDescriptionTextPerUnit(units) {
+  const originalFields = state.fields;
+  const originalTables = state.tables;
+  const perUnit = [];
+  try {
+    units.forEach((unit, index) => {
+      state.fields = { ...originalFields, ...(unit.fields || {}) };
+      state.tables = { ...originalTables, ...(unit.tables || {}) };
+      const parts = buildUnitInteriorDescriptionParts();
+      perUnit.push({
+        index,
+        fields: state.fields,
+        introRaw: normalizeReportDescriptionText(parts.intro || "").trim(),
+        areaValue: normalizeReportDescriptionText(parts.areaDetails || "").trim(),
+        decorativeOwnText: normalizeReportDescriptionText(getUnitDecorativeDescriptionForCombinedText() || "").trim(),
+      });
+    });
+  } finally {
+    state.fields = originalFields;
+    state.tables = originalTables;
+  }
+
+  let decorativeIsShared = false;
+  let sharedDecorativeText = "";
+  if (perUnit.length && perUnit.every((item) => item.decorativeOwnText)) {
+    const decorativeGroups = groupUnitInteriorTextEntries(
+      perUnit.map((item) => ({ index: item.index, fields: item.fields, value: item.decorativeOwnText }))
+    );
+    if (decorativeGroups.length === 1) {
+      decorativeIsShared = true;
+      const soleGroup = decorativeGroups[0];
+      sharedDecorativeText = soleGroup.entries.length > 1
+        ? pluralizeUnitDecorativeText(soleGroup.canonicalValue)
+        : soleGroup.canonicalValue;
+    }
+  }
+
+  const paragraphs = perUnit
+    .map((item) => {
+      const label = formatTitleUnitSuitabilityLabel(item.fields, item.index);
+      const introSentence = buildLabeledUnitIntroSentence(label, item.introRaw);
+      const sentenceParts = [introSentence, item.areaValue];
+      if (!decorativeIsShared && item.decorativeOwnText) sentenceParts.push(item.decorativeOwnText);
+      return normalizeReportDescriptionText(joinNonEmptySentences(sentenceParts));
+    })
+    .filter(Boolean);
+
+  const combinedParagraphs = paragraphs.join("\n");
+  return decorativeIsShared && sharedDecorativeText
+    ? [combinedParagraphs, sharedDecorativeText].filter(Boolean).join("\n")
+    : combinedParagraphs;
+}
+
+// 11+ taşınmazlı raporlar için (bkz. buildMultiUnitInteriorDescriptionText
+// dispatcher'ı) — 0.0.839/0.0.840'ta şekillenen, benzerlik+atıf tabanlı
+// ESKİ gruplama davranışı DEĞİŞMEDEN korunur (kullanıcı: "10 tapudan
+// fazla olan çalışmalarda ... gruplandırma eskisi gibi yapılabilecek").
+function buildMultiUnitInteriorDescriptionTextGrouped(units) {
   const originalFields = state.fields;
   const originalTables = state.tables;
   const introEntries = [];
