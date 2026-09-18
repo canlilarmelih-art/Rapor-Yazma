@@ -208,4 +208,93 @@ assert.match(
 );
 console.log("createNav() getSectionDisplayTitle() kablolama testi tamam.");
 
+// --- 5) Müstakil Bina'da yinelenen bağımsız bölüm panelleri gizli ---------
+// Kullanıcı talebi (2026-09-18): Bina Özellikleri içine taşınan eski
+// bağımsız-bölüm akışında Ana Gayrimenkul Açıklaması, Bağımsız Bölüm Genel
+// Bilgileri, Katlar/Alanlar/İç Hacimler ve Bağımsız Bölüm İç Hacimler
+// Açıklaması görünmemeli; Dekoratif Özellikler görünmeye devam etmeli.
+{
+  const context = {
+    state: { fields: { mainPropertyDescription: "" } },
+    buildMainPropertyDescription: () => "üretilen açıklama",
+    refreshMainPropertyFloorCountTextFromCounts: () => {},
+    isMustakilBinaOwnershipType: () => true,
+    canViewSensitiveContent: () => true,
+    document: {
+      createDocumentFragment: () => ({ _marker: "fragment" }),
+      createElement: () => { throw new Error("Müstakil Bina'da açıklama paneli DOM'a hiç oluşturulmamalı."); },
+    },
+  };
+  vm.createContext(context);
+  vm.runInContext(sliceFn("function createMainPropertyDescriptionPanel("), context);
+  const result = context.createMainPropertyDescriptionPanel();
+  assert.equal(result._marker, "fragment", "Müstakil Bina'da Ana Gayrimenkul Açıklaması gizlenmeli.");
+  assert.equal(
+    context.state.fields.mainPropertyDescription,
+    "üretilen açıklama",
+    "Panel gizlenirken rapor açıklaması state hesabı korunmalı."
+  );
+}
+
+function runUnitFeaturesEditorForVisibility(isMustakil) {
+  const calls = [];
+  const wrapper = { children: [], append(...nodes) { this.children.push(...nodes); } };
+  const marker = (name) => ({ _marker: name });
+  const context = {
+    document: { createElement: () => wrapper },
+    isMustakilBinaOwnershipType: () => isMustakil,
+    createUnitGeneralPanel: () => { calls.push("general"); return marker("general"); },
+    createUnitAreaInteriorPanel: () => { calls.push("areaInterior"); return marker("areaInterior"); },
+    shouldHideUnitDecorativePanel: () => false,
+    createUnitDecorativePanel: () => { calls.push("decorative"); return marker("decorative"); },
+    canViewSensitiveContent: () => true,
+    createUnitInteriorDescriptionField: () => { calls.push("description"); return marker("description"); },
+    updateUnitInteriorDescription: () => { calls.push("descriptionStateUpdate"); },
+  };
+  vm.createContext(context);
+  vm.runInContext(sliceFn("function createUnitFeaturesEditor("), context);
+  const result = context.createUnitFeaturesEditor();
+  return { calls, children: result.children.map((item) => item._marker) };
+}
+
+{
+  const mustakil = runUnitFeaturesEditorForVisibility(true);
+  assert.deepEqual(
+    mustakil.children,
+    ["decorative"],
+    "Müstakil Bina'da yalnız Dekoratif Özellikler görünmeli; genel bilgiler, kat/alan/iç hacim ve açıklama gizlenmeli."
+  );
+  assert.deepEqual(
+    mustakil.calls,
+    ["decorative", "descriptionStateUpdate"],
+    "Gizli paneller oluşturulmamalı; açıklama state hesabı görünürlükten bağımsız korunmalı."
+  );
+}
+
+{
+  const regular = runUnitFeaturesEditorForVisibility(false);
+  assert.deepEqual(
+    regular.children,
+    ["general", "areaInterior", "decorative", "description"],
+    "Müstakil Bina dışındaki raporlarda mevcut dört panel sırası değişmemeli."
+  );
+}
+console.log("Müstakil Bina dört panel gizleme + Dekoratif Özellikler regresyon testleri tamam.");
+
+// --- 6) Ana Taşınmaz Kat Dağılımı da yalnız Müstakil Bina'da gizli ------
+{
+  const floorDistributionSource = sliceFn("function createBuildingFloorDistribution(");
+  assert.match(
+    floorDistributionSource,
+    /if \(!isMustakilBinaOwnershipType\(\)\) \{\s*wrapper\.append\(countPanel\);\s*\}/,
+    "Ana Taşınmaz Kat Dağılımı paneli yalnız Müstakil Bina'da gizlenecek koşula bağlanmamış."
+  );
+  assert.match(
+    floorDistributionSource,
+    /if \(!isMustakilBinaOwnershipType\(\)\) \{\s*wrapper\.append\(createBuildingTechnicalOptionsPanel\(\)\);\s*\}/,
+    "Ana Taşınmaz Teknik Bilgileri paneli yalnız Müstakil Bina'da gizlenecek koşula bağlanmamış."
+  );
+}
+console.log("Müstakil Bina ana teknik bilgiler ve kat dağılımı gizleme testleri tamam.");
+
 console.log("Müstakil Bina 'Bina Özellikleri' birleştirme testleri başarılı.");

@@ -13787,3 +13787,8 @@ devreye girdi.
 - Yedek: `backups/before-valuation-auto-manual-fix_2026-09-13_10-29-26`.
 - Doğrulama: `npm run check`, `node tools/test-valuation-comparable-auto-sync.js`
   ve tam `npm test` başarıyla tamamlandı (165 test dosyası).
+## 0.0.833 - 2026-09-18 - Müstakil Bina ekranındaki eski ortak bina panelleri kaldırıldı
+
+- Müstakil Bina formatında, yapı bazlı yeni bilgi alanlarını tekrar eden eski `Ana Taşınmaz Teknik Bilgileri`, `Ana Taşınmaz Kat Dağılımı`, `Ana Gayrimenkul Açıklaması`, `Bağımsız Bölüm Genel Bilgileri`, `Katlar, Alanlar ve İç Hacimler` ve `Bağımsız Bölüm İç Hacimler Açıklaması` panelleri gizlendi.
+- Yapı bazlı `Sanayi Yapısı Teknik Özellikleri`, yapı içi `Kat Dağılımı` ve `Dekoratif Özellikler` akışları korunmuştur. Diğer mülkiyet türlerinin mevcut ekran davranışı değişmemiştir.
+- Görünürlük kuralları için regresyon testleri eklendi; uygulama önbellek anahtarı `20260918-1201` olarak yenilendi.
