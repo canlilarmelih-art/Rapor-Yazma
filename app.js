@@ -15810,7 +15810,9 @@ function createBuildingFloorDistribution() {
   const wrapper = document.createElement("div");
   wrapper.className = "building-floor-editor";
 
-  wrapper.append(createBuildingTechnicalOptionsPanel());
+  if (!isMustakilBinaOwnershipType()) {
+    wrapper.append(createBuildingTechnicalOptionsPanel());
+  }
 
   const countPanel = document.createElement("div");
   countPanel.className = "subsection is-detail building-floor-count-panel";
@@ -15867,7 +15869,9 @@ function createBuildingFloorDistribution() {
   // Yatay kat irtifakında kat satırları yerine blok/site bağımsız bölüm özeti
   // kullanılır. Dikey ve diğer mülkiyet türlerinde eski “Kat Satırları”
   // tablosu (hangi katta kaç daire/dükkan bulunduğu) mutlaka korunur.
-  wrapper.append(countPanel);
+  if (!isMustakilBinaOwnershipType()) {
+    wrapper.append(countPanel);
+  }
   if (isHorizontalOwnership) {
     wrapper.append(createBuildingUnitDistributionSummaryPanel());
   } else {
@@ -16642,7 +16646,9 @@ function createMainPropertyDescriptionPanel() {
   const nextDescription = state.fields.mainPropertyDescription || buildMainPropertyDescription();
   state.fields.mainPropertyDescription = nextDescription;
   refreshMainPropertyFloorCountTextFromCounts();
-  if (!canViewSensitiveContent()) return document.createDocumentFragment();
+  if (isMustakilBinaOwnershipType() || !canViewSensitiveContent()) {
+    return document.createDocumentFragment();
+  }
 
   const panel = document.createElement("div");
   panel.className = "subsection is-detail building-description-panel";
@@ -18114,10 +18120,14 @@ const unitBathroomFixtureFields = [
 function createUnitFeaturesEditor() {
   const wrapper = document.createElement("div");
   wrapper.className = "unit-features-editor";
-  const panels = [
-    createUnitGeneralPanel(),
-    createUnitAreaInteriorPanel(),
-  ];
+  const isMustakilBuildingFormat = isMustakilBinaOwnershipType();
+  const panels = [];
+  if (!isMustakilBuildingFormat) {
+    panels.push(
+      createUnitGeneralPanel(),
+      createUnitAreaInteriorPanel(),
+    );
+  }
   if (!shouldHideUnitDecorativePanel()) {
     panels.push(createUnitDecorativePanel());
   }
@@ -18125,7 +18135,7 @@ function createUnitFeaturesEditor() {
   // Açıklaması kısmını gizle" — normal kullanıcılar bu paneli görmesin.
   // updateUnitInteriorDescription() state hesaplamasını görünürlükten
   // bağımsız yine de tetiklemek için doğrudan çağrılır.
-  if (canViewSensitiveContent()) {
+  if (!isMustakilBuildingFormat && canViewSensitiveContent()) {
     panels.push(createUnitInteriorDescriptionField());
   } else {
     updateUnitInteriorDescription();
