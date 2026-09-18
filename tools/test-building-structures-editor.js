@@ -164,6 +164,7 @@ function makeContext(rows, fields = {}) {
     document: {
       createElement: (tag) => makeElementStub(tag),
       createDocumentFragment: () => makeFragmentStub(),
+      querySelectorAll: () => [],
     },
     window: { confirm: () => true },
     autosave: () => {
@@ -236,6 +237,7 @@ function makeContext(rows, fields = {}) {
   vm.runInContext(sliceFn("function getBuildingFloorNamesFromCounts("), context);
   vm.runInContext(sliceFn("function buildBuildingStructureFloorRowsFromCounts("), context);
   vm.runInContext(sliceFn("function createBuildingStructuresEditor("), context);
+  vm.runInContext(sliceFn("function commitPendingParcelBuildingRegistryControls("), context);
   vm.runInContext(sliceFn("function createBuildingStructureAddButton("), context);
   vm.runInContext(sliceFn("function createBuildingStructureTabContent("), context);
   vm.runInContext(sliceFn("function createBuildingStructureFloorCountPanel("), context);

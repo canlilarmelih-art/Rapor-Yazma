@@ -568,6 +568,14 @@ const sections = [
     },
   },
   {
+    id: "structures",
+    title: "Yapılar",
+    badge: "Fiziki",
+    description:
+      "Parsel üzerindeki yapılar burada bir kez tanımlanır. Her yapının teknik bilgileri, kat dağılımı ve belge ilişkileri sonraki bölümlerde bu kayıtlara bağlanır.",
+    fields: [],
+  },
+  {
     id: "land",
     title: "Arsa Özellikleri",
     badge: "Fiziki",
@@ -5756,10 +5764,10 @@ function shouldHideSectionForBank(sectionId) {
 function shouldHideSectionForOwnership(sectionId) {
   const ownershipType = normalizeOwnershipTypeForSectionVisibility(state.fields.ownershipType);
   if (["DIKEY KAT IRTIFAKI", "YATAY KAT IRTIFAKI"].includes(ownershipType)) {
-    return sectionId === "land";
+    return sectionId === "land" || sectionId === "structures";
   }
   if (["ARSA", "TARLA"].includes(ownershipType)) {
-    return sectionId === "building" || sectionId === "unit";
+    return sectionId === "building" || sectionId === "unit" || sectionId === "structures";
   }
   // Müstakil Bina (2026-09-17, kullanıcı talebi): "bina özellikleri bölümü
   // yok ana başlıklarda bu kısımı eklememiş miydik" — "Ana Gayrimenkul
@@ -5770,7 +5778,7 @@ function shouldHideSectionForOwnership(sectionId) {
   if (ownershipType === "MUSTAKIL BINA") {
     return sectionId === "unit";
   }
-  return false;
+  return sectionId === "structures";
 }
 
 function getSectionDisplayTitle(section) {
@@ -5818,6 +5826,7 @@ function formatMobileNavTitle(title) {
     ["Takyidat", "Takyidat"],
     ["İmar Durumu", "İmar"],
     ["Belgeler ve Proje", "Belge"],
+    ["Yapılar", "Yapı"],
     ["Arsa Özellikleri", "Arsa"],
     ["Ana Gayrimenkul Özellikleri", "Ana"],
     ["Bağımsız Bölüm Özellikleri", "BB"],
@@ -6100,13 +6109,15 @@ function renderSection() {
   if (section.id === "documents") {
     normalizeStructureDocumentData(state);
     ensureDocumentReviewInstitutionDefault();
-    if (isCentralStructureRegistryMode()) {
-      body.append(createParcelBuildingsRegistryEditor());
-    }
     if (isStructureDocumentsMode()) {
       body.append(createStructureDocumentsTabBar());
       body.append(createStructureDocumentProfilePanel());
     }
+  }
+
+  if (section.id === "structures") {
+    normalizeStructureDocumentData(state);
+    body.append(createParcelBuildingsRegistryEditor());
   }
 
   if (section.id === "placeholders") {
@@ -6287,7 +6298,6 @@ function renderSection() {
     if (isMustakilBina) {
       const hasBuildingRows = Array.isArray(state.tables.buildings) && state.tables.buildings.length > 0;
       detailsWrapper.hidden = !hasBuildingRows;
-      body.append(createBuildingStructuresEditor());
       body.append(detailsWrapper);
     } else {
       body.append(detailsWrapper);
@@ -14690,7 +14700,7 @@ function createBuildingStructuresEditor() {
   heading.className = "subsection-title-row";
   heading.innerHTML = `
     <h4>Yapı Özellikleri</h4>
-    <p>Buradaki yapı sekmeleri Belgeler ve Proje bölümündeki Parseldeki Yapılar tablosundan gelir. Yapı ekleme, silme ve temel tanımlar yalnızca o tablodan yönetilir.</p>
+    <p>Buradaki yapı sekmeleri Yapılar ana bölümündeki Parseldeki Yapılar tablosundan gelir. Yapı ekleme, silme ve temel tanımlar yalnızca o bölümden yönetilir.</p>
   `;
   panel.append(heading);
 
@@ -14699,7 +14709,7 @@ function createBuildingStructuresEditor() {
   if (!rows.length) {
     const empty = document.createElement("p");
     empty.className = "empty-frontage-list";
-    empty.textContent = "Henüz yapı eklenmedi. Önce Belgeler ve Proje bölümündeki Parseldeki Yapılar tablosundan yapı ekleyin.";
+    empty.textContent = "Henüz yapı eklenmedi. Önce Yapılar ana bölümündeki Parseldeki Yapılar tablosundan yapı ekleyin.";
     panel.append(empty);
     if (!isCentralStructureRegistryMode()) panel.append(createBuildingStructureAddButton(rows));
     return panel;
@@ -14745,14 +14755,38 @@ function createBuildingStructureAddButton(rows) {
   addButton.className = "title-unit-tab-add";
   addButton.textContent = "+ Yapı Ekle";
   addButton.addEventListener("click", () => {
+    // Merkezi liste alanlarında input/change olayı sonrasında tüm bölümün
+    // yeniden çizilmesi, kullanıcı "Yapı Ekle"ye ilk kez tıkladığında eski
+    // düğümün DOM'dan kalkmasına neden olabiliyordu. Liste değerlerini canlı
+    // state'te bırakıp ekleme anında güncel diziyi yeniden alıyoruz.
+    const currentRows = getBuildingStructureRows();
+    // Özellikle bazı mobil tarayıcılarda <select> için change olayı, seçim
+    // menüsü kapandıktan sonra kuyruğa alınabiliyor. Bölümü yeniden çizmeden
+    // önce ekrandaki tüm hücreleri state'e geçirerek seçili Yapı Sınıfı'nın
+    // "Seçiniz"e dönmesini engelliyoruz.
+    commitPendingParcelBuildingRegistryControls(currentRows);
     const row = createEmptyBuildingStructureRow();
-    rows.push(row);
-    activeBuildingStructureTabIndex = rows.length - 1;
+    currentRows.push(row);
+    activeBuildingStructureTabIndex = currentRows.length - 1;
     activeDocumentsStructureTarget = row.id;
     autosave();
     renderSection();
   });
   return addButton;
+}
+
+function commitPendingParcelBuildingRegistryControls(rows = getBuildingStructureRows()) {
+  if (!document.querySelectorAll) return false;
+  let changed = false;
+  document.querySelectorAll("[data-parcel-building-id][data-parcel-building-key]").forEach((control) => {
+    const row = rows.find((item) => item.id === control.getAttribute("data-parcel-building-id"));
+    const key = control.getAttribute("data-parcel-building-key");
+    if (!row || !key || row[key] === control.value) return;
+    row[key] = control.value;
+    changed = true;
+  });
+  if (changed) commitStructureDocumentDescriptionChange();
+  return changed;
 }
 
 function createBuildingStructureTabContent(rows, index) {
@@ -14844,17 +14878,20 @@ function createParcelBuildingsRegistryEditor() {
   const createTextControl = (row, key, placeholder = "") => {
     const input = document.createElement("input");
     input.type = "text";
+    input.setAttribute("data-parcel-building-id", row.id);
+    input.setAttribute("data-parcel-building-key", key);
     input.value = row[key] || "";
     input.placeholder = placeholder;
     input.addEventListener("input", () => {
       row[key] = input.value;
       commitStructureDocumentDescriptionChange();
     });
-    input.addEventListener("change", () => renderSection());
     return input;
   };
   const createSelectControl = (row, key, options) => {
     const select = document.createElement("select");
+    select.setAttribute("data-parcel-building-id", row.id);
+    select.setAttribute("data-parcel-building-key", key);
     options.forEach((option) => {
       const item = document.createElement("option");
       item.value = option;
@@ -14862,11 +14899,12 @@ function createParcelBuildingsRegistryEditor() {
       select.append(item);
     });
     select.value = options.includes(row[key]) ? row[key] : "";
-    select.addEventListener("change", () => {
+    const commitSelection = () => {
       row[key] = select.value;
       commitStructureDocumentDescriptionChange();
-      renderSection();
-    });
+    };
+    select.addEventListener("input", commitSelection);
+    select.addEventListener("change", commitSelection);
     return select;
   };
 

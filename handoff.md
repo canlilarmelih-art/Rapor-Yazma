@@ -1,5 +1,19 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.836 - 2026-09-19 - Yapı Ekle, seçili Yapı Sınıfı'nı korur
+
+- Kullanıcı bildirimi: Merkezi `Yapılar > Parseldeki Yapılar` tablosunda `+ Yapı Ekle` kullanıldığında üst satırdaki `Yapı Sınıfı` tekrar `Seçiniz` görünümüne dönüyordu; aynı zamanda hücreden düğmeye ilk geçişte tıklama bazen kaçabiliyordu.
+- `app.js`: Satır hücreleri artık değer değişiminde bölümü yeniden çizmez. Ekleme anında `commitPendingParcelBuildingRegistryControls()` ekrandaki tüm yapı hücrelerini (özellikle native select değerlerini) güncel `state.tables.buildings` satırlarına geçirir, ardından yeni satırı ekler. Böylece gecikmeli `change` olayı ve yeniden çizim sırası sınıf seçimini silemez.
+- `tools/test-building-structures-editor.js` ve `tools/test-structure-documents-all-phases.js`: Güncel diziyle ekleme, gecikmeli select koruması ve yeniden çizimsiz hücre güncellemesi için regresyon kapsaması eklendi. `npm run verify` EXIT:0.
+- `index.html`: `app.js` önbellek sürümü `20260919-0025`e yükseltildi.
+
+## 0.0.835 - 2026-09-18 - Yapılar sol menüde ayrı ana bölüm
+
+- Kullanıcı, Müstakil Bina akışındaki yapı ekleme alanının Belgeler ve Proje içinde bulunmasını yeterince görünür bulmadı ve "Yapı bölümünü ayrı bir ana başlıkta göster sol paneldeki kısımda" talebini iletti.
+- `app.js`: sol menüye `Yapılar` ana bölümü eklendi. Müstakil Bina'da görünür; Kat İrtifakı ile Arsa/Tarla akışlarında mevcut blok/ana taşınmaz düzenini değiştirmemek için gizli kalır. Merkezi `Parseldeki Yapılar` kayıt tablosu Belgeler ve Proje'den bu yeni bölüme taşındı.
+- `Bina Özellikleri` bölümü yapı kayıtlarını eklemek yerine, eklenmiş yapının kat dağılımı, teknik özellikleri ve iç mekân detaylarını göstermeye devam eder. Boş durumda kullanıcı açıkça Yapılar ana bölümüne yönlendirilir. Belgeler ve Proje'deki ortak belge, kapsam ve yapı-bazlı proje detayları korunmuştur.
+- Regresyon testleri yeni menü/yerleşim kuralına göre güncellendi. `npm run verify` EXIT:0. `index.html` içinde `app.js`/`styles.css` önbellek sürümü `20260918-2340` olarak yenilendi.
+
 ## 0.0.832 - 2026-09-18 - Toplulaştırma Bilgileri artık "Taşınmazın İmar Durumunda Sorun Var Mı?" ile aynı gizlenme mantığında + manuel açma
 
 - Kullanıcı: "Taşınmazın İmar Durumunda Sorun Var Mı? bu kısımda olmalı toplulaştırma bölümü. burada gizlenmeli. Ola ki okumadı takbisten ama toplulaştırma var kullanıcı manuel olarak ta girebilmeli." 0.0.831'e kadar "Toplulaştırma Bilgileri" hücresi `hasPlanningIssue`'nun (Evet/Hayır) KENDİ değerinden tamamen BAĞIMSIZDI — SADECE otomatik takyidat tespitine bağlıydı. Kullanıcı bunun yerine diğer "sorun var mı" detay alanlarıyla (`planCancellationStay`/`roadSetback`/.../`licenseObstacle`, hepsi `hasPlanningIssue`="Hayır" iken GİZLİ) AYNI davranışı istedi — AMA otomatik tespit (TAKBİS/takyidat metni okunamamış olabilir) başarısız olsa bile kullanıcının "Evet" işaretleyip MANUEL girebilmesini de istedi.

@@ -146,13 +146,12 @@ function runBuildingBranch({ ownershipType, buildings, sectionFields = [{ key: "
   return bodyEl;
 }
 
-// 3a) Müstakil Bina + HENÜZ yapı eklenmemiş -> detay sarmalayıcı GİZLİ,
-//     "Yapılar" (structuresEditor) EN ÜSTTE.
+// 3a) Müstakil Bina + HENÜZ yapı eklenmemiş -> detay sarmalayıcı GİZLİ.
+//     Yapı ekleme artık sol menüdeki ayrı "Yapılar" ana bölümündedir.
 {
   const body = runBuildingBranch({ ownershipType: "Müstakil Bina", buildings: [] });
-  assert.equal(body.children.length, 2, "Müstakil Bina'da 'building' gövdesine tam olarak 2 üst-düzey eleman eklenmeli (Yapılar + detay sarmalayıcı).");
-  const [first, wrapper] = body.children;
-  assert.equal(first._marker, "structuresEditor", "'Yapılar' (createBuildingStructuresEditor) EN ÜSTTE olmalı.");
+  assert.equal(body.children.length, 1, "Müstakil Bina'da yapı listesi ayrı ana bölümde olduğundan building gövdesinde yalnızca detay sarmalayıcı kalmalı.");
+  const [wrapper] = body.children;
   assert.equal(wrapper.hidden, true, "Henüz yapı eklenmemişken detay sarmalayıcı GİZLİ olmalı.");
   assert.deepEqual(wrapper.children.map((c) => c._marker), ["form", "floorDistribution", "unitFeatures"], "Detay sarmalayıcının içeriği (form + kat dağılımı + bağımsız bölüm alanları) eksik/yanlış sırada.");
 }
@@ -161,14 +160,13 @@ function runBuildingBranch({ ownershipType, buildings, sectionFields = [{ key: "
 //     AYNI şekilde gizli davranmalı (regresyon: Array.isArray kontrolü).
 {
   const body = runBuildingBranch({ ownershipType: "Müstakil Bina", buildings: undefined });
-  assert.equal(body.children[1].hidden, true, "state.tables.buildings tanımsızken de detay sarmalayıcı GİZLİ olmalı.");
+  assert.equal(body.children[0].hidden, true, "state.tables.buildings tanımsızken de detay sarmalayıcı GİZLİ olmalı.");
 }
 
 // 3c) Müstakil Bina + EN AZ BİR yapı eklenmiş -> detay sarmalayıcı AÇIK.
 {
   const body = runBuildingBranch({ ownershipType: "Müstakil Bina", buildings: [{ name: "Ana Bina" }] });
-  const [first, wrapper] = body.children;
-  assert.equal(first._marker, "structuresEditor", "'Yapılar' yine EN ÜSTTE olmalı.");
+  const [wrapper] = body.children;
   assert.equal(wrapper.hidden, false, "'+ Yapı Ekle' ile en az bir satır eklendiğinde detay sarmalayıcı AÇILMALI.");
 }
 
@@ -186,7 +184,9 @@ function runBuildingBranch({ ownershipType, buildings, sectionFields = [{ key: "
   assert.deepEqual(wrapper.children.map((c) => c._marker), ["form", "floorDistribution"], "Müstakil Bina DIŞINDA createUnitFeaturesEditor() ÇAĞRILMAMALI (REGRESYON — 'unit' sekmesi zaten ayrı).");
 }
 
-console.log("renderSection() 'building' dalı: Yapılar en üstte + gizle/aç GERÇEK DAVRANIŞ testleri tamam.");
+assert.match(appSource, /id: "structures"[\s\S]*?title: "Yapılar"/, "Sol menude ayri Yapılar ana bolumu tanimlanmadi.");
+assert.match(appSource, /if \(section\.id === "structures"\) \{\s*normalizeStructureDocumentData\(state\);\s*body\.append\(createParcelBuildingsRegistryEditor\(\)\);\s*\}/, "Yapılar ana bolumu merkezi kayit editorune baglanmadi.");
+console.log("renderSection() 'building' dalı ve ayrı Yapılar ana bölümü gizle/aç davranış testleri tamam.");
 
 assert.match(
   appSource,
