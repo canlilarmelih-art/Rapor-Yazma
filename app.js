@@ -6100,6 +6100,9 @@ function renderSection() {
   if (section.id === "documents") {
     normalizeStructureDocumentData(state);
     ensureDocumentReviewInstitutionDefault();
+    if (isCentralStructureRegistryMode()) {
+      body.append(createParcelBuildingsRegistryEditor());
+    }
     if (isStructureDocumentsMode()) {
       body.append(createStructureDocumentsTabBar());
       body.append(createStructureDocumentProfilePanel());
@@ -14686,8 +14689,8 @@ function createBuildingStructuresEditor() {
   const heading = document.createElement("div");
   heading.className = "subsection-title-row";
   heading.innerHTML = `
-    <h4>Yapılar</h4>
-    <p>Parselde birden fazla bina varsa (ör. ana üretim binası, idari bina, depo, bekçi kulübesi) her biri için ayrı bir sekme ekleyin; her sekmenin kendi kat bazlı alan kırılımı olur.</p>
+    <h4>Yapı Özellikleri</h4>
+    <p>Buradaki yapı sekmeleri Belgeler ve Proje bölümündeki Parseldeki Yapılar tablosundan gelir. Yapı ekleme, silme ve temel tanımlar yalnızca o tablodan yönetilir.</p>
   `;
   panel.append(heading);
 
@@ -14696,8 +14699,9 @@ function createBuildingStructuresEditor() {
   if (!rows.length) {
     const empty = document.createElement("p");
     empty.className = "empty-frontage-list";
-    empty.textContent = "Henüz yapı eklenmedi.";
-    panel.append(empty, createBuildingStructureAddButton(rows));
+    empty.textContent = "Henüz yapı eklenmedi. Önce Belgeler ve Proje bölümündeki Parseldeki Yapılar tablosundan yapı ekleyin.";
+    panel.append(empty);
+    if (!isCentralStructureRegistryMode()) panel.append(createBuildingStructureAddButton(rows));
     return panel;
   }
 
@@ -14722,11 +14726,12 @@ function createBuildingStructuresEditor() {
     tabs.append(button);
   });
   tabBar.append(tabs);
-
-  const actions = document.createElement("div");
-  actions.className = "title-unit-tab-bar-actions";
-  actions.append(createBuildingStructureAddButton(rows));
-  tabBar.append(actions);
+  if (!isCentralStructureRegistryMode()) {
+    const actions = document.createElement("div");
+    actions.className = "title-unit-tab-bar-actions";
+    actions.append(createBuildingStructureAddButton(rows));
+    tabBar.append(actions);
+  }
   panel.append(tabBar);
 
   panel.append(createBuildingStructureTabContent(rows, activeBuildingStructureTabIndex));
@@ -14740,8 +14745,10 @@ function createBuildingStructureAddButton(rows) {
   addButton.className = "title-unit-tab-add";
   addButton.textContent = "+ Yapı Ekle";
   addButton.addEventListener("click", () => {
-    rows.push(createEmptyBuildingStructureRow());
+    const row = createEmptyBuildingStructureRow();
+    rows.push(row);
     activeBuildingStructureTabIndex = rows.length - 1;
+    activeDocumentsStructureTarget = row.id;
     autosave();
     renderSection();
   });
@@ -14756,27 +14763,153 @@ function createBuildingStructureTabContent(rows, index) {
 
   const grid = document.createElement("div");
   grid.className = "building-technical-grid";
+  const centralRegistryMode = isCentralStructureRegistryMode();
+  if (!centralRegistryMode) {
+    grid.append(
+      createBuildingStructureTextField(row, "name", "Yapı Adı"),
+      createBuildingStructureSelectField(row, "buildingClass", "Yapı Sınıfı", buildingClassOptions),
+      createBuildingStructureSelectField(row, "buildingStyle", "Bina Yapı Tarzı", buildingStructureStyleOptions),
+    );
+  }
   grid.append(
-    createBuildingStructureTextField(row, "name", "Yapı Adı"),
-    createBuildingStructureSelectField(row, "buildingClass", "Yapı Sınıfı", buildingClassOptions),
-    createBuildingStructureSelectField(row, "buildingStyle", "Bina Yapı Tarzı", buildingStructureStyleOptions),
     createBuildingStructureSelectField(row, "buildingOrder", "Mevcut Yapı Nizamı", buildingOrderOptions),
     createBuildingStructureTextField(row, "buildingHeight", "Bina Yüksekliği", "Örn. 8,00 metre (opsiyonel)"),
     createBuildingStructureElevatorControl(row),
     createBuildingStructureConstructionYearField(row),
     createBuildingStructureSelectField(row, "parcelPosition", "Parselin Hangi Kısmında Yer Aldığı", buildingEntranceDirectionOptions),
-    createBuildingStructureSelectField(row, "usage", "Yapı Kullanımı", BUILDING_STRUCTURE_USAGE_OPTIONS),
-    createBuildingStructureSelectField(row, "status", "Yapı Durumu", BUILDING_STRUCTURE_STATUS_OPTIONS),
   );
+  if (!centralRegistryMode) grid.append(createBuildingStructureSelectField(row, "usage", "Yapı Kullanımı", BUILDING_STRUCTURE_USAGE_OPTIONS));
+  grid.append(createBuildingStructureSelectField(row, "status", "Yapı Durumu", BUILDING_STRUCTURE_STATUS_OPTIONS));
+  if (centralRegistryMode) wrapper.append(createBuildingStructureRegistrySummary(row));
   wrapper.append(grid);
   wrapper.append(createBuildingStructureTechnicalProfilePanel(row));
   wrapper.append(createBuildingStructureFloorCountPanel(row));
   wrapper.append(createBuildingStructureInteriorFeaturesField(row));
   wrapper.append(createBuildingStructureFloorPanel(row));
   wrapper.append(createBuildingStructureFactorPanel(row));
-  wrapper.append(createBuildingStructureDeleteButton(rows, index));
+  if (!isCentralStructureRegistryMode()) wrapper.append(createBuildingStructureDeleteButton(rows, index));
 
   return wrapper;
+}
+
+function createBuildingStructureRegistrySummary(row) {
+  const summary = document.createElement("div");
+  summary.className = "building-registry-summary";
+  const definitions = [
+    ["Yapı Adı", row.name],
+    ["Kullanım", row.usage],
+    ["Yapı Tarzı", row.buildingStyle],
+    ["Yapı Sınıfı", row.buildingClass],
+    ["Kat Adedi / Dağılımı", row.floorCountText],
+  ];
+  definitions.forEach(([labelText, value]) => {
+    const item = document.createElement("div");
+    item.className = "building-registry-summary-item";
+    item.append(createSpan(labelText));
+    const strong = document.createElement("strong");
+    strong.textContent = String(value || "").trim() || "—";
+    item.append(strong);
+    summary.append(item);
+  });
+  return summary;
+}
+
+function isCentralStructureRegistryMode() {
+  return isMustakilBinaOwnershipType() && !isDocumentsBlockGroupingActive();
+}
+
+function createParcelBuildingsRegistryEditor() {
+  const panel = createUnitSubsection(
+    "Parseldeki Yapılar",
+    "Parsel üzerindeki yapıları bir kez tanımlayın. Bu kayıtlar Belgeler ve Proje ile Bina Özellikleri bölümlerinde ortak kullanılır."
+  );
+  panel.classList.add("parcel-buildings-registry-panel");
+  const rows = getBuildingStructureRows();
+  const shell = document.createElement("div");
+  shell.className = "table-shell parcel-buildings-registry-shell";
+  const table = document.createElement("table");
+  table.className = "parcel-buildings-registry-table";
+  table.innerHTML = `
+    <thead><tr>
+      <th>Yapı Adı</th>
+      <th>Kullanım</th>
+      <th>Yapı Tarzı</th>
+      <th>Yapı Sınıfı</th>
+      <th>Kat Adedi / Dağılımı</th>
+      <th></th>
+    </tr></thead>
+  `;
+  const tbody = document.createElement("tbody");
+
+  const createTextControl = (row, key, placeholder = "") => {
+    const input = document.createElement("input");
+    input.type = "text";
+    input.value = row[key] || "";
+    input.placeholder = placeholder;
+    input.addEventListener("input", () => {
+      row[key] = input.value;
+      commitStructureDocumentDescriptionChange();
+    });
+    input.addEventListener("change", () => renderSection());
+    return input;
+  };
+  const createSelectControl = (row, key, options) => {
+    const select = document.createElement("select");
+    options.forEach((option) => {
+      const item = document.createElement("option");
+      item.value = option;
+      item.textContent = option || "Seçiniz";
+      select.append(item);
+    });
+    select.value = options.includes(row[key]) ? row[key] : "";
+    select.addEventListener("change", () => {
+      row[key] = select.value;
+      commitStructureDocumentDescriptionChange();
+      renderSection();
+    });
+    return select;
+  };
+
+  rows.forEach((row, index) => {
+    const tr = document.createElement("tr");
+    const controls = [
+      createTextControl(row, "name", `Yapı ${index + 1}`),
+      createSelectControl(row, "usage", BUILDING_STRUCTURE_USAGE_OPTIONS),
+      createSelectControl(row, "buildingStyle", buildingStructureStyleOptions),
+      createSelectControl(row, "buildingClass", buildingClassOptions),
+      createTextControl(row, "floorCountText", "Örn. Zemin + 2 Normal Kat"),
+    ];
+    controls.forEach((control) => {
+      const td = document.createElement("td");
+      td.append(control);
+      tr.append(td);
+    });
+    const actionCell = document.createElement("td");
+    actionCell.className = "table-action-cell";
+    actionCell.append(createBuildingStructureDeleteButton(rows, index, { compact: true }));
+    tr.append(actionCell);
+    tbody.append(tr);
+  });
+  table.append(tbody);
+  if (rows.length) shell.append(table);
+
+  const addButton = createBuildingStructureAddButton(rows);
+  addButton.classList.add("parcel-building-add-button");
+  if (!rows.length) {
+    const empty = document.createElement("div");
+    empty.className = "documents-table-empty-state parcel-buildings-empty-state";
+    const message = document.createElement("p");
+    message.className = "documents-table-empty-state-text";
+    message.textContent = "Parseldeki yapıları ekleyerek ruhsat, iskan ve proje belgelerini doğru yapılarla ilişkilendirin.";
+    empty.append(message, addButton);
+    panel.append(empty);
+  } else {
+    const actions = document.createElement("div");
+    actions.className = "parcel-buildings-registry-actions";
+    actions.append(addButton);
+    panel.append(shell, actions);
+  }
+  return panel;
 }
 
 function createBuildingStructureFloorCountPanel(row) {
@@ -15094,13 +15227,14 @@ function createBuildingStructureFloorTotalsSummary(floors) {
   return summary;
 }
 
-function createBuildingStructureDeleteButton(rows, index) {
+function createBuildingStructureDeleteButton(rows, index, options = {}) {
   const wrap = document.createElement("div");
   wrap.className = "building-structure-delete-wrap";
   const button = document.createElement("button");
   button.type = "button";
-  button.className = "secondary-button";
-  button.textContent = "Bu Yapıyı Sil";
+  button.className = options.compact ? "row-delete-button" : "secondary-button";
+  button.textContent = options.compact ? "X" : "Bu Yapıyı Sil";
+  button.setAttribute("aria-label", "Yapıyı sil");
   button.addEventListener("click", () => {
     if (!window.confirm("Bu yapıyı ve tüm kat bilgilerini silmek istediğinize emin misiniz?")) return;
     const deletedBuildingId = rows[index]?.id || "";
@@ -15232,10 +15366,9 @@ function createBuildingStructureFactorPanel(row) {
 }
 
 function isStructureDocumentsMode() {
-  return isMustakilBinaOwnershipType()
+  return isCentralStructureRegistryMode()
     && Array.isArray(state.tables?.buildings)
-    && state.tables.buildings.length > 0
-    && !isDocumentsBlockGroupingActive();
+    && state.tables.buildings.length > 0;
 }
 
 function getActiveDocumentsBuilding() {
@@ -15263,12 +15396,10 @@ function documentMatchesActiveStructureTarget(row) {
 }
 
 function createDefaultDocumentScope(documentId, documentType = "") {
-  const building = getActiveDocumentsBuilding();
   const scope = normalizeDocumentScopeRow({
     documentId,
     documentType,
-    targetType: building ? "building" : "parcel",
-    buildingId: building?.id || "",
+    targetType: "parcel",
     effect: "Additive",
   });
   state.tables.documentScopes.push(scope);
@@ -15337,33 +15468,29 @@ function commitStructureDocumentDescriptionChange() {
 function createStructureDocumentsTabBar() {
   const wrap = document.createElement("div");
   wrap.className = "title-unit-tab-bar structure-documents-tab-bar";
+  const heading = document.createElement("div");
+  heading.className = "structure-documents-tab-heading";
+  heading.innerHTML = "<strong>Yapı Proje Detayları</strong><span>Belge tablosu ortaktır; burada yalnızca seçili yapının proje ve etap bilgileri düzenlenir.</span>";
   const tabs = document.createElement("div");
   tabs.className = "title-unit-tab-bar-tabs";
-  const targets = [
-    { id: "parcel", label: "Parsel Geneli" },
-    ...(state.tables.buildings || []).map((building, index) => ({
-      id: building.id,
-      label: String(building.name || "").trim() || `Yapı ${index + 1}`,
-    })),
-  ];
-  if (!targets.some((target) => target.id === activeDocumentsStructureTarget)) activeDocumentsStructureTarget = "parcel";
+  const targets = (state.tables.buildings || []).map((building, index) => ({
+    id: building.id,
+    label: String(building.name || "").trim() || `Yapı ${index + 1}`,
+  }));
+  if (!targets.some((target) => target.id === activeDocumentsStructureTarget)) activeDocumentsStructureTarget = targets[0]?.id || "parcel";
   targets.forEach((target) => {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "title-unit-tab";
     button.classList.toggle("is-active", target.id === activeDocumentsStructureTarget);
-    const count = (state.tables.documents || []).filter((row) => {
-      if (target.id === "parcel") return getDocumentScopes(row.id).some((scope) => scope.targetType === "parcel");
-      return getDocumentScopes(row.id).some((scope) => scope.buildingId === target.id);
-    }).length;
-    button.textContent = `${target.label} (${count})`;
+    button.textContent = target.label;
     button.addEventListener("click", () => {
       activeDocumentsStructureTarget = target.id;
       renderSection();
     });
     tabs.append(button);
   });
-  wrap.append(tabs);
+  wrap.append(heading, tabs);
   return wrap;
 }
 
@@ -15517,13 +15644,13 @@ function createBuildingPartsEditor(building) {
 
 function createDocumentScopeEditorPanel() {
   if (!isStructureDocumentsMode()) return document.createDocumentFragment();
-  const panel = createUnitSubsection("Belge Kapsamları ve Alanları", "Bir belge birden fazla yapı veya yapı bölümünü kapsayabilir. Her kapsamın alanını ve önceki belgeyle ilişkisini ayrı girin.");
+  const panel = createUnitSubsection("Belge Kapsamları ve Alanları", "Tek bir belge birden fazla yapıyı veya yapı bölümünü kapsayabilir. Aynı belgeye her yapı için ayrı kapsam ve alan satırı ekleyin.");
   panel.classList.add("document-scope-editor-panel");
-  const visibleRows = (state.tables.documents || []).filter(documentMatchesActiveStructureTarget);
+  const visibleRows = state.tables.documents || [];
   if (!visibleRows.length) {
     const empty = document.createElement("p");
     empty.className = "empty-table-note";
-    empty.textContent = "Bu sekmede kapsamı düzenlenecek belge bulunmuyor.";
+    empty.textContent = "Kapsamı düzenlenecek belge bulunmuyor. Önce yukarıdaki ortak belge tablosuna bir belge ekleyin.";
     panel.append(empty);
     return panel;
   }
@@ -15540,7 +15667,8 @@ function createDocumentScopeEditorPanel() {
     add.textContent = "+ Kapsam Ekle";
     add.addEventListener("click", () => {
       const scope = normalizeDocumentScopeRow({ documentId: documentRow.id, documentType: documentRow.c0 || "", effect: "Additive" });
-      const building = getActiveDocumentsBuilding();
+      const existingBuildingIds = new Set(getDocumentScopes(documentRow.id).map((item) => item.buildingId).filter(Boolean));
+      const building = (state.tables.buildings || []).find((item) => !existingBuildingIds.has(item.id));
       if (building) {
         scope.targetType = "building";
         scope.buildingId = building.id;
@@ -52642,15 +52770,14 @@ function createTable(section) {
     });
   }
   state.tables[section.id] = tableState;
+  if (isDocumentsTable && isStructureDocumentsMode()) {
+    tableState.forEach((row) => refreshDocumentScopeSummary(row.id, { force: true }));
+  }
   let ownerSummary = null;
   let annotationLienSummary = null;
 
   const tableEntries = isDocumentsTable
-    ? getReviewedDocumentTableEntries(tableState).filter((entry) => {
-      if (!isStructureDocumentsMode()) return true;
-      if (entry.isArchitecturalProject) return activeDocumentsStructureTarget === "parcel";
-      return documentMatchesActiveStructureTarget(entry.row);
-    })
+    ? getReviewedDocumentTableEntries(tableState)
     : tableState.map((row, index) => ({ row, index }));
   tableEntries.forEach(({ row, index: rowIndex, isArchitecturalProject = false }) => {
     const tr = document.createElement("tr");
