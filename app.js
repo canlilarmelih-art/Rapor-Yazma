@@ -40320,12 +40320,26 @@ function getEncumbranceRowJournalNo(tableKey, row) {
   return encumbranceCleanText(row?.[column] || "");
 }
 
+// Kullanıcı bildirimi (2026-09-19, ekran görüntüsüyle): İpotek kaydının
+// aynı ada/parsel üzerindeki 2 bağımsız bölüme (2 ve 3 no'lu) ait olduğu
+// "compact" (bkz. groupEncumbranceRowsAcrossTitleUnits'in `sameParcel`
+// parametresi — bu true iken block/parcel TÜM referanslarda ZATEN
+// birebir AYNI) durumda referans "(165-2 üzerinde)"/"(165-3 üzerinde)"
+// şeklinde görünüyordu — "165" burada gerçek bir Blok adı (A Blok/B
+// Blok) DEĞİL, ada numarasıydı (titleBlockName/addressBlockName boş
+// olduğundan `block`'a GERİ DÜŞÜLMÜŞTÜ). Kullanıcı: "2 Nolu B.B. 3 Nolu
+// B.B. yazmalı" — sameParcel zaten TÜM referanslarda ada/parseli SABİT
+// tuttuğundan, ada numarasını TEKRAR yazmak hem gereksiz hem YANLIŞ
+// (block-adı gibi okunuyor). Düzeltme: `buildingBlock` artık YALNIZCA
+// GERÇEK bir blok adı (titleBlockName/addressBlockName) varsa dolar,
+// `block` (ada) fallback'i KALDIRILDI — gerçek bir blok adı yoksa
+// compact referans yalnızca "{unitNo} Nolu B.B." olur.
 function formatTitleUnitEncumbranceReference(fields = {}, index = 0, compact = false) {
   const block = encumbranceCleanText(fields.blockNo);
   const parcel = encumbranceCleanText(fields.parcelNo);
   const unitNo = encumbranceCleanText(fields.unitNo);
-  const buildingBlock = encumbranceCleanText(fields.titleBlockName || fields.addressBlockName || block);
-  if (compact && buildingBlock && unitNo) return `${buildingBlock}-${unitNo}`;
+  const buildingBlock = encumbranceCleanText(fields.titleBlockName || fields.addressBlockName);
+  if (compact && unitNo) return buildingBlock ? `${buildingBlock}-${unitNo}` : `${unitNo} Nolu B.B.`;
   if (block && parcel && unitNo) return `${block} ada ${parcel} parsel, ${unitNo} no.lu B.B.`;
   if (block && parcel) return `${block} ada ${parcel} parsel`;
   if (fields.titlePropertyId) return `${encumbranceCleanText(fields.titlePropertyId)} kimlik no.lu taşınmaz`;

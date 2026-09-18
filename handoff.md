@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.843 - 2026-09-19 - Takyidat çoklu-taşınmaz atfı: "165-2" yerine "2 Nolu B.B."
+
+- Kullanıcı, Takyidat Açıklaması'nda bir ipotek kaydının ardındaki "(165-2 üzerinde)" / "(165-3 üzerinde)" ifadelerini ekran görüntüsünde kırmızı kutu+ok ile işaretleyip "2 Nolu B.B. 3 Nolu B.B. yazmalı" dedi.
+- Kök neden: `formatTitleUnitEncumbranceReference()`'ın "compact" (aynı ada/parseldeki taşınmazlar için, bkz. `groupEncumbranceRowsAcrossTitleUnits`'in `sameParcel` parametresi) dalı, gerçek bir Blok adı (`titleBlockName`/`addressBlockName`) BOŞ olduğunda `blockNo` (ADA numarası, "165") değerine GERİ DÜŞÜYORDU — "165-2" gibi Blok-adı görünümlü ama aslında "Ada-BBNo" olan yanıltıcı bir etiket üretiyordu. `sameParcel` zaten TÜM referanslarda ada/parseli SABİT tuttuğundan, ada numarasını tekrar yazmak hem gereksiz hem kafa karıştırıcıydı.
+- `app.js`: `buildingBlock` artık YALNIZCA gerçek bir Blok adı varsa dolar (`blockNo` fallback'i kaldırıldı); compact referans gerçek Blok adı YOKSA artık yalnızca `"{unitNo} Nolu B.B."` döner (VARSA eski `"{blokAdı}-{unitNo}"` biçimi DEĞİŞMEDEN korunur — REGRESYON testiyle kilitlendi).
+- `tools/test-multi-encumbrance-grouping.js`: kullanıcının gerçek senaryosuyla (aynı ada/parsel, boş Blok adı, 2 ve 3 no'lu BB, farklı yevmiye no'lu 2 ipotek kaydı) birebir yeni regresyon senaryosu eklendi; `git stash` ile eski kodun GERÇEKTEN "165-2" ürettiği doğrulandı. Gerçek Blok adı VARKEN eski "A-2" biçiminin DEĞİŞMEDİĞini doğrulayan ayrı bir regresyon kilidi de eklendi. `npm run verify`: 194 dosyadan 193'ü EXIT:0 (kalan 1'i, önceden belgelenen yerel CRLF/LF checkout artefaktı, bu değişiklikten bağımsız).
+- **Canlı tarayıcıda doğrulandı**: gerçek app.js'te (aynı senaryo) `groupEncumbranceRowsAcrossTitleUnits`/`formatEncumbranceTitleUnitScope` artık `" (2 Nolu B.B. üzerinde)"` / `" (3 Nolu B.B. üzerinde)"` döndürüyor.
+- `index.html`'de `app.js` cache-buster'ı `20260919-0500`'e yükseltildi.
+
 ## 0.0.842 - 2026-09-19 - Taşınmaz-başına paragrafta fazlalık "X bağımsız bölüm no.lu," ifadesi kaldırıldı
 
 - Kullanıcı, 0.0.841 çıktısının ekran görüntüsünde "1 bağımsız bölüm no.lu," / "2 bağımsız bölüm no.lu," ifadelerini üzeri çizili işaretledi; netleştirme sorusuyla onaylandı: "{N} No'lu Taşınmaz," etiketi paragrafın BAŞINDA zaten numarayı taşıdığından, cümle İÇİNDEKİ "{unitNo} bağımsız bölüm no.lu," ifadesi FAZLALIK — kaldırılmalı.

@@ -77,6 +77,59 @@ assert.equal(
 );
 console.log("Coklu takyidat ayni yevmiye gruplama testi tamam.");
 
+// --- REGRESYON (2026-09-19, kullanıcı ekran görüntüsüyle bildirdi, kırmızı
+// kutu+ok ile işaretledi): "2 Nolu B.B. 3 Nolu B.B. yazmalı." Aynı ada/
+// parselde (165 ada, gerçek bir "A Blok/B Blok" adı OLMADAN — titleBlockName/
+// addressBlockName BOŞ) 2 ve 3 no'lu bağımsız bölümlere ait bir ipotek
+// kaydı önceden "(165-2 üzerinde)"/"(165-3 üzerinde)" gösteriyordu — "165"
+// burada gerçek bir Blok adı DEĞİL, ada numarasıydı (buildingBlock'un
+// eski `|| block` GERİ DÜŞÜŞÜ yüzünden); sameParcel zaten TÜM referanslarda
+// ada/parseli SABİT tuttuğundan bu tekrar YANLIŞ/kafa karıştırıcıydı. -----
+{
+  const sameParcelRowsByUnit = [
+    {
+      index: 0,
+      fields: { blockNo: "165", parcelNo: "1", titleBlockName: "", unitNo: "2" },
+      rows: [{ c0: "Türkiye Halk Bankası A.Ş.", c1: "1", c2: "5.000.000,00 TL", c4: "2429" }],
+    },
+    {
+      index: 1,
+      fields: { blockNo: "165", parcelNo: "1", titleBlockName: "", unitNo: "3" },
+      rows: [{ c0: "Türkiye Halk Bankası A.Ş.", c1: "1", c2: "5.000.000,00 TL", c4: "2428" }],
+    },
+  ];
+  const groupedSameParcel = fns.groupEncumbranceRowsAcrossTitleUnits(sameParcelRowsByUnit, "encumbranceMortgages");
+  assert.equal(groupedSameParcel.length, 2, "Farklı yevmiye no'lu 2 ipotek kaydı 2 AYRI satıra inmeli.");
+  assert.deepEqual(
+    groupedSameParcel[0].__titleUnitReferences,
+    ["2 Nolu B.B."],
+    `Aynı parselde gerçek Blok adı YOKKEN referans "{unitNo} Nolu B.B." olmalı, ada numarası (165) İLE BİRLEŞTİRİLMEMELİ. Bulunan: ${JSON.stringify(groupedSameParcel[0].__titleUnitReferences)}`
+  );
+  assert.deepEqual(
+    groupedSameParcel[1].__titleUnitReferences,
+    ["3 Nolu B.B."],
+    `İkinci kayıt için de referans "3 Nolu B.B." olmalı. Bulunan: ${JSON.stringify(groupedSameParcel[1].__titleUnitReferences)}`
+  );
+  assert.equal(
+    fns.formatEncumbranceTitleUnitScope(groupedSameParcel[0], 2),
+    " (2 Nolu B.B. üzerinde)",
+    "Kullanıcının bildirdiği ekran görüntüsündeki nihai metin biçimiyle (kırmızı kutuyla işaretlenen kısım) birebir eşleşmeli."
+  );
+  // REGRESYON: gerçek bir Blok adı VARSA (titleBlockName/addressBlockName
+  // dolu) eski "A-2" biçimi DEĞİŞMEMELİ.
+  const realBlockRowsByUnit = [
+    { index: 0, fields: { blockNo: "165", parcelNo: "1", titleBlockName: "A", unitNo: "2" }, rows: [{ c0: "X", c4: "1" }] },
+    { index: 1, fields: { blockNo: "165", parcelNo: "1", titleBlockName: "A", unitNo: "3" }, rows: [{ c0: "X", c4: "1" }] },
+  ];
+  const groupedRealBlock = fns.groupEncumbranceRowsAcrossTitleUnits(realBlockRowsByUnit, "encumbranceMortgages");
+  assert.deepEqual(
+    groupedRealBlock[0].__titleUnitReferences,
+    ["A-2", "A-3"],
+    "Gerçek bir Blok adı (titleBlockName) VARKEN eski 'BlokAdı-No' biçimi DEĞİŞMEMELİ (REGRESYON)."
+  );
+  console.log("REGRESYON: aynı parselde gerçek Blok adı yokken referans 'ada-no' yerine '{no} Nolu B.B.' oluyor testi tamam.");
+}
+
 // --- REGRESYON (2026-08-27, kullanıcı bildirimi, ekran görüntüsüyle): ------
 // "burada aynı beyan 4 kere art arda yazılmış sebebi beyanın yevmiye
 // numarasının bulunmaması. böyle durumlarda eğer yevmiye numarası yok
