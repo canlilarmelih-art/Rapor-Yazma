@@ -34051,10 +34051,22 @@ function buildProjectReviewBlockFallbackParts(units, groups, labelBuilder = comp
     groupsByText.get(text).push(label);
   });
 
+  // Kullanıcı bildirimi (2026-09-19, ekran görüntüsüyle): "Ekspertize
+  // konu 1. Blok'a ait bağımsız bölümler ..." — değerlenen taşınmazlar
+  // TEK bloklu bir apartmanda (gerçek bir "A Blok/B Blok" ayrımı YOK,
+  // computeDocumentsBlockLabel titleBlockName boşken sadece "1. Blok"
+  // YEDEĞİNE düşüyor) yer alıyordu; "1. Blok'a ait" ifadesi VAR OLMAYAN
+  // bir ikinci bloğu ima ettiğinden yanıltıcıydı. `groups` BAŞTAN TEK
+  // elemanlıysa (computeDocumentsBlockGroups'un tüm taşınmazları AYNI
+  // blockNo/parcelNo/titleBlockName anahtarıyla TEK grupta topladığı
+  // durum — gerçekten TEK/adsız blok) atıf HİÇ eklenmez (mevcut "hepsi
+  // aynıysa atıfsız tek cümle" ilkesiyle AYNI, bkz. composeMultiUnitInteriorGroupedText/
+  // buildProjectReviewConsolidatedSentences); 2+ GERÇEK blok varsa
+  // (isimli veya isimsiz farklı bloklar) eski atıflandırma DEĞİŞMEDEN kalır.
   return textOrder.map((text) => {
     const labels = groupsByText.get(text);
     const totalUnits = labels.reduce((sum, label) => sum + (unitCountByLabel.get(label) || 1), 0);
-    const attribution = attributionBuilder(labels);
+    const attribution = groups.length > 1 ? attributionBuilder(labels) : "";
     return pluralizeProjectReviewSubjectText(text, totalUnits > 1, attribution);
   });
 }

@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.844 - 2026-09-19 - Proje İnceleme Açıklaması: tek/adsız bloklu raporda "1. Blok'a ait" ifadesi kaldırıldı
+
+- Kullanıcı, "Proje İnceleme Açıklaması"nda "Ekspertize konu 1. Blok'a ait bağımsız bölümler ..." ifadesini gördüğünü, ama değerlenen taşınmazların TEK bloklu bir apartmanda (gerçek bir "A Blok/B Blok" ayrımı OLMADAN) yer aldığını bildirdi — yani "blok" kavramı bu rapor için hiç geçerli değil.
+- Kök neden: "Tapu Projesi Ve Belediye Projesi Arasında Fark Var Mı? = Evet" (`shouldUseProjectDifferenceComparison()`) olduğunda `getProjectReviewSimpleReferenceParts()` `null` döndürüp akışı ESKİ `buildProjectReviewBlockFallbackParts()`'a düşürüyor. Bu fonksiyon HER grup için `computeDocumentsBlockLabel()`'i çağırıp `attributionBuilder(labels)` ile atıf kuruyordu — `titleBlockName` BOŞ olduğunda (gerçek bir blok adı yokken) `computeDocumentsBlockLabel` "1. Blok" YEDEĞİNE düşüyordu ve bu, TEK grup (`groups.length === 1`, yani gerçekten TEK/adsız blok) olsa BİLE atıf olarak kullanılıyordu — var olmayan bir "2. Blok"u ima eden yanıltıcı bir ifade üretiyordu.
+- `app.js`: `buildProjectReviewBlockFallbackParts()`'ta atıf artık yalnızca `groups.length > 1` (GERÇEKTEN 2+ farklı blok var) iken hesaplanıyor; `groups.length === 1` iken atıf boş string ("") kalıyor — bu, kodun geri kalanında zaten yerleşik "hepsi aynıysa/tekse atıf eklenmeden tek genel cümle" ilkesiyle (bkz. `buildProjectReviewConsolidatedReferenceSentence`'ın `unanimous` kontrolü) TUTARLI. Gerçek bir Blok adı (`titleBlockName` dolu) varken davranış DEĞİŞMEDİ.
+- `tools/test-project-review-block-pluralization.js`: kullanıcının GERÇEK senaryosuyla (Çoklu Talep + Kat İrtifakı + tek/adsız blok + Tapu/Belediye proje farkı + Tapu tarafı "mimari olarak uygun değildir", Belediye tarafı "uygundur") birebir yeni regresyon senaryosu (6b) eklendi; eski kodun GERÇEKTEN "Ekspertize konu 1. Blok'a ait bağımsız bölümler ..." ürettiği doğrulandı. 2+ GERÇEK farklı blok varken atfın DEĞİŞMEDİĞİni doğrulayan ayrı bir regresyon kilidi (6c) de eklendi. `npm run verify`: 194 dosyadan 193'ü EXIT:0 (kalan 1'i, önceden belgelenen yerel CRLF/LF checkout artefaktı, bu değişiklikten bağımsız).
+- **Canlı tarayıcıda doğrulandı**: gerçek app.js'te (aynı senaryo — Çoklu Talep, Kat İrtifakı, boş titleBlockName, projectDifference="Evet", Tapu tarafı uygun değil/Belediye tarafı uygun) `buildProjectReviewExplanationParts()` artık "Ekspertize konu **bağımsız bölümler** ..." döndürüyor — "1. Blok'a ait" ifadesi YOK.
+- `index.html`'de `app.js` cache-buster'ı `20260919-0530`'a yükseltildi.
+
 ## 0.0.843 - 2026-09-19 - Takyidat çoklu-taşınmaz atfı: "165-2" yerine "2 Nolu B.B."
 
 - Kullanıcı, Takyidat Açıklaması'nda bir ipotek kaydının ardındaki "(165-2 üzerinde)" / "(165-3 üzerinde)" ifadelerini ekran görüntüsünde kırmızı kutu+ok ile işaretleyip "2 Nolu B.B. 3 Nolu B.B. yazmalı" dedi.

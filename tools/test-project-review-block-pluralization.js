@@ -119,6 +119,7 @@ const functionNames = [
   "isProjectSuitabilityOk",
   "selectVariant",
   "buildProjectSuitabilityDescription",
+  "buildProjectSuitabilityStatusSentence",
   "buildProjectReviewExplanationSingle",
   "pluralizeProjectReviewSubjectText",
   "buildProjectReviewExplanationParts",
@@ -501,6 +502,65 @@ function freshState(overrides = {}) {
   assert.ok(!fallbackJoined.includes("kat irtifakı projeleri incelenmiştir."), "Fallback modunda YENİ konsolide/çoğul 'projeleri incelenmiştir' cümlesi ASLA üretilmemeli (sadeleştirme atlandı).");
 
   console.log("buildProjectReviewExplanationParts() sade sekle uymayan blok -> eski coklu-paragraf fallback testi tamam.");
+}
+
+// --- 6b) REGRESYON (2026-09-19, kullanıcı ekran görüntüsüyle bildirdi):
+// "Ekspertize konu 1. Blok'a ait bağımsız bölümler ..." — değerlenen
+// taşınmazlar TEK bloklu bir apartmanda (gerçek bir "A Blok/B Blok"
+// ayrımı YOK, titleBlockName BOŞ) yer alıyor; computeDocumentsBlockGroups
+// TÜM taşınmazları AYNI (tek) grupta topladığından computeDocumentsBlockLabel
+// "1. Blok" YEDEĞİNE düşüyor ve buildProjectReviewBlockFallbackParts bunu
+// "1. Blok'a ait" olarak ATFEDİYORDU — var olmayan bir ikinci bloğu ima
+// eden yanıltıcı bir ifadeydi. Kullanıcının GERÇEK raporunda fallback'i
+// tetikleyen şey "Tapu Projesi Ve Belediye Projesi Arasında Fark Var Mı?"
+// = Evet idi (getProjectReviewSimpleReferenceParts'ı disqualified eden
+// shouldUseProjectDifferenceComparison() koşulu) — burada AYNI tetikleyici
+// kullanılır (senaryo 6a'nın "proje yok" tetikleyicisinden FARKLI).
+{
+  const singleUnnamedBlockState = freshState({
+    titleBlockName: "",
+    projectDifference: "Evet",
+    // Kullanıcının GERÇEK ekran görüntüsündeki tam senaryo: Tapu tarafı
+    // uygun değil, Belediye tarafı uygun (hasDifferentProjects+!bothOk dalı,
+    // "vaziyet planına göre blok bazında konum ... mimari olarak projesine
+    // uygun değildir" cümlesini üretir).
+    titleProjectSuitabilityStatus: "mimari olarak uygun değildir.",
+    municipalityProjectSuitabilityStatus: "uygundur.",
+  });
+  singleUnnamedBlockState.titleUnits = [
+    unit(singleUnnamedBlockState.fields, "100", "1", ""),
+  ];
+  fns.setState(singleUnnamedBlockState);
+  const singleUnnamedGroups = fns.computeDocumentsBlockGroups(fns.buildAllTitleUnitsForSummaryTable());
+  assert.equal(singleUnnamedGroups.length, 1, "sanity: TEK bloklu (gerçek Blok adı YOK) rapor.");
+  const singleUnnamedParts = fns.buildProjectReviewExplanationParts();
+  const singleUnnamedJoined = singleUnnamedParts.join(" ||| ");
+  assert.ok(
+    !singleUnnamedJoined.includes("Blok'a ait"),
+    `Tek/adsız blokta "N. Blok'a ait" ifadesi ASLA görünmemeli (kullanıcının bildirdiği hata — var olmayan bir ikinci bloğu ima ediyordu). Bulunan: ${singleUnnamedJoined}`
+  );
+  console.log("buildProjectReviewExplanationParts() TEK/adsız bloklu (fallback tetiklenmiş) raporda 'N. Blok'a ait' atfı ARTIK görünmüyor testi tamam.");
+}
+
+// --- 6c) REGRESYON (aynı düzeltmenin YANLIŞLIKLA GERÇEK, isimli blokları
+// da bastırmadığını doğrular): 2+ GERÇEK farklı blok varsa (isimli veya
+// isimsiz) atıf DEĞİŞMEDEN görünmeye devam etmeli — yalnızca groups.length
+// === 1 (gerçekten TEK blok) iken bastırılır.
+{
+  const namedSingleBlockState = freshState({ titleBlockName: "A Blok" });
+  namedSingleBlockState.titleUnits = [
+    unit(namedSingleBlockState.fields, "100", "1", "B Blok", { hasArchitecturalProject: "Hayır" }),
+  ];
+  fns.setState(namedSingleBlockState);
+  const twoBlockGroups = fns.computeDocumentsBlockGroups(fns.buildAllTitleUnitsForSummaryTable());
+  assert.equal(twoBlockGroups.length, 2, "sanity: 2 GERÇEK (isimli) farklı blok.");
+  const twoBlockParts = fns.buildProjectReviewExplanationParts();
+  const twoBlockJoined = twoBlockParts.join(" ||| ");
+  assert.ok(
+    twoBlockJoined.includes("A Blok") || twoBlockJoined.includes("B Blok"),
+    `2+ GERÇEK farklı blok varken atıf DEĞİŞMEDEN görünmeye devam etmeli (REGRESYON — 6b düzeltmesi bunu bastırmamalı). Bulunan: ${twoBlockJoined}`
+  );
+  console.log("buildProjectReviewExplanationParts() 2+ GERÇEK farklı blok varken atıf DEĞİŞMEDEN kalıyor (REGRESYON) testi tamam.");
 }
 
 // --- 7) buildProjectReviewExplanation(): parts birlesimi ------------------
