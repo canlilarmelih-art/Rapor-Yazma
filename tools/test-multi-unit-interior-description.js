@@ -340,6 +340,7 @@ const functionNames = [
   "resolveOutdoorCombinedIgnoringTypeDifferences",
   "buildMultiUnitInteriorIntroText",
   "buildLabeledUnitIntroSentence",
+  "stripRedundantUnitNoPhraseFromIntro",
   "buildMultiUnitInteriorDescriptionTextPerUnit",
   "buildMultiUnitInteriorDescriptionTextGrouped",
   "buildMultiUnitInteriorDescriptionText",
@@ -490,6 +491,7 @@ const sandboxSource = `
     buildMultiUnitInteriorDescriptionTextPerUnit,
     buildMultiUnitInteriorDescriptionTextGrouped,
     buildLabeledUnitIntroSentence,
+    stripRedundantUnitNoPhraseFromIntro,
     buildAllTitleUnitsForSummaryTable,
     pluralizeUnitInteriorAreaSentence,
     pluralizeUnitInteriorAreaDetailsText,
@@ -1721,12 +1723,12 @@ const PRESENCE_BALCONY_AND_TERRACE = { hasAny: true, balcony: true, terrace: tru
   assert.equal(paragraphs.length, 2, `İKİ farklı taşınmaz İKİ AYRI paragrafa düşmeli (gruplanmamalı). Bulunan: ${JSON.stringify(paragraphs)}`);
   assert.equal(
     paragraphs[0],
-    `1 No'lu Taşınmaz, incelenen onaylı mimari projesine göre, binanın Zemin Katında yer alan, batı yönünden sağlanan, bina giriş istikametine göre sol ön tarafta konumlu, (batı cepheli), 1 bağımsız bölüm no.lu, konut nitelikli bağımsız bölümdür. ${AREA_1} ${DECOR_1}`,
+    `1 No'lu Taşınmaz, incelenen onaylı mimari projesine göre, binanın Zemin Katında yer alan, batı yönünden sağlanan, bina giriş istikametine göre sol ön tarafta konumlu, (batı cepheli), konut nitelikli bağımsız bölümdür. ${AREA_1} ${DECOR_1}`,
     `1. taşınmazın paragrafı kullanıcının verdiği örnek yapıyla (etiket+intro+alan+dekoratif TEK paragrafta) eşleşmiyor. Bulunan: ${paragraphs[0]}`
   );
   assert.equal(
     paragraphs[1],
-    `2 No'lu Taşınmaz, incelenen onaylı mimari projesine göre, binanın 1. Normal Katında yer alan, doğu yönünden sağlanan, bina giriş istikametine göre sağ arka tarafta konumlu, (doğu cepheli), 2 bağımsız bölüm no.lu, konut nitelikli bağımsız bölümdür. ${AREA_2} ${DECOR_2}`,
+    `2 No'lu Taşınmaz, incelenen onaylı mimari projesine göre, binanın 1. Normal Katında yer alan, doğu yönünden sağlanan, bina giriş istikametine göre sağ arka tarafta konumlu, (doğu cepheli), konut nitelikli bağımsız bölümdür. ${AREA_2} ${DECOR_2}`,
     `2. taşınmazın paragrafı beklenen yapıyla eşleşmiyor. Bulunan: ${paragraphs[1]}`
   );
   console.log("YENİ: 2-10 taşınmazlı raporda her taşınmaz KENDİ TAM paragrafını (etiket+intro+alan+dekoratif) alıyor, kullanıcının örnek cümlesiyle BİREBİR eşleşiyor testi tamam.");
@@ -1796,6 +1798,43 @@ const PRESENCE_BALCONY_AND_TERRACE = { hasAny: true, balcony: true, terrace: tru
     "Bilinen 3 özne kalıbından biriyle BAŞLAMAYAN metin (ör. yatay mülkiyet varyantı) GÜVENLİ GERİ DÜŞÜŞLE olduğu gibi dönmeli (çift özneli bozuk cümle üretilmemeli)."
   );
   console.log("buildLabeledUnitIntroSentence(): özne değiştirme + bilinmeyen özne güvenli geri düşüş testleri tamam.");
+}
+
+// --- 24) stripRedundantUnitNoPhraseFromIntro(): REGRESYON (2026-09-19,
+// kullanıcı ekran görüntüsünde "X bağımsız bölüm no.lu," ifadesini üzeri
+// çizili işaretleyip "kaldır" dedi) — "{N} No'lu Taşınmaz," etiketi
+// paragrafın başında zaten numarayı taşıdığından, intro cümlesinin
+// İÇİNDEKİ "{unitNo} bağımsız bölüm no.lu," fazlalık, kaldırılmalı;
+// hem cümle-ortası (naturePhrase devam ediyor) hem cümle-sonu (nokta
+// ile bitiyor) hem de unitNo boş/eşleşmiyor durumları test edilir.
+{
+  assert.equal(
+    fns.stripRedundantUnitNoPhraseFromIntro(
+      "1 No'lu Taşınmaz, ..., (batı cepheli), 1 bağımsız bölüm no.lu, konut nitelikli bağımsız bölümdür.",
+      "1"
+    ),
+    "1 No'lu Taşınmaz, ..., (batı cepheli), konut nitelikli bağımsız bölümdür.",
+    "Cümle-ortası (naturePhrase İLE devam eden) unitNoPhrase doğru kaldırılmalı."
+  );
+  assert.equal(
+    fns.stripRedundantUnitNoPhraseFromIntro(
+      "1 No'lu Taşınmaz, ..., (batı cepheli), 1 bağımsız bölüm no.lu.",
+      "1"
+    ),
+    "1 No'lu Taşınmaz, ..., (batı cepheli).",
+    "Cümle-SONUNDA (naturePhrase YOKSA, nokta ile biten) unitNoPhrase doğru kaldırılmalı (fazladan virgül/nokta KALMAMALI)."
+  );
+  assert.equal(
+    fns.stripRedundantUnitNoPhraseFromIntro("Herhangi bir metin.", ""),
+    "Herhangi bir metin.",
+    "unitNo boşsa metin DEĞİŞMEDEN dönmeli (formatTitleUnitSuitabilityLabel'ın '{index+1}. taşınmaz' yedeğine düştüğü durum — intro'da zaten unitNoPhrase YOK)."
+  );
+  assert.equal(
+    fns.stripRedundantUnitNoPhraseFromIntro("", "1"),
+    "",
+    "Boş intro metni boş dönmeli."
+  );
+  console.log("stripRedundantUnitNoPhraseFromIntro(): cümle-ortası/cümle-sonu unitNoPhrase kaldırma + boş girdi güvenli geri düşüş testleri tamam.");
 }
 
 console.log("Tum 'Ic Hacimler Aciklamasi (Coklu Tasinmaz)' testleri basarili.");

@@ -39761,6 +39761,27 @@ function buildLabeledUnitIntroSentence(label, introText) {
   return introText;
 }
 
+// Kullanıcı bildirimi (2026-09-19, ekran görüntüsü — "X bağımsız bölüm
+// no.lu," ifadesini üzeri çizili işaretledi): "{N} No'lu Taşınmaz,"
+// etiketi paragrafın BAŞINDA zaten numarayı taşıdığından, intro
+// cümlesinin İÇİNDEKİ "{unitNo} bağımsız bölüm no.lu," (composeVerticalUnitDescriptionIntro'nun
+// unitNoPhrase'i) FAZLALIK/tekrar oluyordu — kaldırılmalı. Bu, YALNIZCA
+// taşınmaz-başına-paragraf (Per Unit) modunda uygulanır: tek taşınmazlı
+// raporlarda (composeUnitInteriorDescription) veya 11+ taşınmazlı
+// Grouped modda BAŞTA hiç "{N} No'lu Taşınmaz," etiketi olmadığından
+// unitNoPhrase TEK yer BB no'sunu taşır, ORADA DOKUNULMAZ.
+// unitNo boşsa (formatTitleUnitSuitabilityLabel'ın "{index+1}. taşınmaz"
+// yedeğine düştüğü durum) zaten intro'da hiç unitNoPhrase YOKTUR,
+// fonksiyon metni değişmeden döner.
+function stripRedundantUnitNoPhraseFromIntro(introSentence, unitNo) {
+  const trimmedUnitNo = String(unitNo || "").trim();
+  if (!trimmedUnitNo || !introSentence) return introSentence;
+  const escapedUnitNo = trimmedUnitNo.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return introSentence
+    .replace(new RegExp(`${escapedUnitNo} bağımsız bölüm no\\.lu,\\s*`), "")
+    .replace(new RegExp(`,\\s*${escapedUnitNo} bağımsız bölüm no\\.lu\\.`), ".");
+}
+
 // 2-10 taşınmazlı raporlar için (bkz. buildMultiUnitInteriorDescriptionText
 // dispatcher'ı) — HER taşınmaz KENDİ TAM paragrafını alır: "{N} No'lu
 // Taşınmaz, {intro-gövdesi}. {kendi alan/oda cümlesi}. {kendi dekoratif
@@ -39812,7 +39833,10 @@ function buildMultiUnitInteriorDescriptionTextPerUnit(units) {
   const paragraphs = perUnit
     .map((item) => {
       const label = formatTitleUnitSuitabilityLabel(item.fields, item.index);
-      const introSentence = buildLabeledUnitIntroSentence(label, item.introRaw);
+      const introSentence = stripRedundantUnitNoPhraseFromIntro(
+        buildLabeledUnitIntroSentence(label, item.introRaw),
+        item.fields.unitNo
+      );
       const sentenceParts = [introSentence, item.areaValue];
       if (!decorativeIsShared && item.decorativeOwnText) sentenceParts.push(item.decorativeOwnText);
       return normalizeReportDescriptionText(joinNonEmptySentences(sentenceParts));
