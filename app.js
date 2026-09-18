@@ -15288,10 +15288,32 @@ function createBuildingStructureDeleteButton(rows, index, options = {}) {
   button.className = options.compact ? "row-delete-button" : "secondary-button";
   button.textContent = options.compact ? "X" : "Bu Yapıyı Sil";
   button.setAttribute("aria-label", "Yapıyı sil");
+  // Kullanıcı bildirimi (2026-09-19, ekran görüntüsüyle): "bu tuşa
+  // basıyorum ancak silme işlemi gerçekleşmiyor. hiç bir şey olmuyor."
+  // Kök neden: bu düğme render ANINDAKİ `rows` dizi REFERANSINI kapatıyordu
+  // (closure). Ama debounced autosave (350ms, ANY alan değişikliğinde) →
+  // saveState() → normalizeStructureDocumentData() → normalizeStructureDocumentTables()
+  // HER ÇAĞRIDA `tables.buildings = tables.buildings.map(...)` ile
+  // state.tables.buildings'i YENİ bir dizi NESNESİYLE değiştiriyor (satır
+  // objeleri aynı kalsa da dizi SARMALAYICISI yeni). Render ile tıklama
+  // arasında bu otomatik kayıt bir kez bile tetiklense, düğmenin elindeki
+  // `rows` artık state.tables.buildings'ten TAMAMEN KOPUK, silinemez bir
+  // "hayalet" diziye dönüşüyor — splice() o hayalet diziyi değiştiriyor,
+  // ekranda hiçbir şey değişmiyor. Düzeltme: render anında yalnızca
+  // SABİT `id`'yi yakala, tıklama anında GÜNCEL diziyi getBuildingStructureRows()
+  // ile YENİDEN oku ve satırı id'ye göre bul (Yapı Ekle düğmesi zaten aynı
+  // "tıklama anında taze veri" ilkesini kullanıyordu, bkz. createBuildingStructureAddButton).
+  const targetId = rows[index]?.id || "";
   button.addEventListener("click", () => {
     if (!window.confirm("Bu yapıyı ve tüm kat bilgilerini silmek istediğinize emin misiniz?")) return;
-    const deletedBuildingId = rows[index]?.id || "";
-    rows.splice(index, 1);
+    const liveRows = getBuildingStructureRows();
+    const liveIndex = targetId ? liveRows.findIndex((row) => row.id === targetId) : index;
+    if (liveIndex === -1) {
+      renderSection();
+      return;
+    }
+    const deletedBuildingId = liveRows[liveIndex]?.id || "";
+    liveRows.splice(liveIndex, 1);
     if (deletedBuildingId) {
       const deletedPartIds = new Set(getBuildingParts(deletedBuildingId).map((part) => part.id));
       state.tables.buildingParts = (state.tables.buildingParts || []).filter((part) => part.buildingId !== deletedBuildingId);
@@ -15305,7 +15327,7 @@ function createBuildingStructureDeleteButton(rows, index, options = {}) {
       });
       if (activeDocumentsStructureTarget === deletedBuildingId) activeDocumentsStructureTarget = "parcel";
     }
-    if (activeBuildingStructureTabIndex >= rows.length) activeBuildingStructureTabIndex = Math.max(0, rows.length - 1);
+    if (activeBuildingStructureTabIndex >= liveRows.length) activeBuildingStructureTabIndex = Math.max(0, liveRows.length - 1);
     commitStructureDocumentDescriptionChange();
     renderSection();
   });

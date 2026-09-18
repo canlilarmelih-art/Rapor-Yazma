@@ -678,6 +678,59 @@ console.log("Asansör coktan-secmeli (ice-gomulu acilir liste) alan testleri tam
   assert.equal(onlyTab3.textContent, "Ana Bina", "Aktif sekme yanlis yapiyi gosteriyor.");
 }
 
+// --- 12b) REGRESYON (2026-09-19, kullanici ekran goruntusuyle bildirdi):
+//          "Bu tusa basiyorum ancak silme islemi gerceklesmiyor. Hic bir
+//          sey olmuyor." Kok neden: normalizeStructureDocumentTables()
+//          HER debounced autosave'de `tables.buildings = tables.buildings.map(...)`
+//          ile diziyi YENI bir sarmalayiciyla degistiriyor (satir objeleri
+//          ayni kalsa da). Render ile tiklama arasinda BU bir kez bile
+//          olsa, ESKI kod (`rows[index]` closure) hayalet bir diziyi
+//          splice'liyordu — ekranda hicbir sey degismiyordu. Bu senaryo
+//          TAM O DURUMU simule eder: render SONRASI, state.tables.buildings
+//          (ayni satir objeleriyle) YENI bir dizi sarmalayicisina degistirilir,
+//          SONRA silme tuşuna basilir — duzeltme YENI diziyi (id'ye gore
+//          bulup) degistirmeli.
+{
+  // createBuildingStructuresEditor() kendisi normalizeBuildingStructureRow'u
+  // toplu cagirmiyor (bunu gercek app.js'te normalizeStructureDocumentTables()
+  // yapiyor, bu test dosyasinin kapsami DISINDA) — bu yuzden id'ler burada
+  // ELLE atanir (gercek uygulamada ensurePersistentRecordId ile ayni sekilde
+  // olusurlar).
+  const rowA = { id: "building-test-a", name: "Ana Bina" };
+  const rowB = { id: "building-test-b", name: "Depo" };
+  const rows = [rowA, rowB];
+  const { panel, context } = runEditorScenario(rows);
+  const [normalizedA, normalizedB] = context.state.tables.buildings;
+  assert(normalizedA.id && normalizedB.id, "Test on-kosulu: satirlara id atanmadi.");
+
+  const tabBar = panel.children.find((n) => (n.className || "").includes("building-structure-tab-bar"));
+  const content = panel.children.find((n) => (n.className || "").includes("building-structure-tab-content"));
+  const deleteWrap = content.children.find((n) => (n.className || "").includes("building-structure-delete-wrap"));
+  const deleteButton = deleteWrap.children[0];
+
+  // normalizeStructureDocumentTables()'in HER autosave'de yaptigi gibi,
+  // AYNI satir objeleriyle YENI bir dizi sarmalayicisi olustur ve
+  // state.tables.buildings'i BUNUNLA degistir (render anindaki `rows`
+  // referansindan artik BAGIMSIZ).
+  context.state.tables.buildings = context.state.tables.buildings.map((row) => row);
+  const liveArrayAfterNormalize = context.state.tables.buildings;
+
+  context.window.confirm = () => true;
+  deleteButton.fire("click"); // aktif sekme hala ilk yapi ("Ana Bina"), silinmesi beklenen o
+
+  assert.equal(
+    context.state.tables.buildings.length,
+    1,
+    "Render sonrasi dizi yeniden olusturulunca (normalize simulasyonu) silme calismiyor (kullanicinin bildirdigi hata)."
+  );
+  assert.equal(
+    liveArrayAfterNormalize,
+    context.state.tables.buildings,
+    "Duzeltme normalize-sonrasi GUNCEL diziyi mutasyona ugratmali (ayni referans); eski kod render anindaki hayalet diziyi degistirip bu referansi HIC etkilemezdi."
+  );
+  assert.equal(context.state.tables.buildings[0].name, "Depo", "Yanlis yapi silindi; aktif sekmedeki 'Ana Bina' silinmeliydi.");
+}
+
 console.log("createBuildingStructuresEditor() (Yapı Ekle, tab mantığı) davranış testleri tamam.");
 
 // --- 13) renderSection() kaynak-duzeyinde "building" bolumune -------------
