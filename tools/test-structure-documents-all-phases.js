@@ -118,6 +118,7 @@ assert.equal(referenceContext.buildReference("", "2005/125"), "2005/125 sayılı
 
 assert(source.includes('body.append(createStructureDocumentsTabBar());'));
 assert(source.includes('body.append(createStructureDocumentProfilePanel());'));
+assert(source.includes('body.append(createParcelBuildingsRegistryEditor());'), "Merkezi Parseldeki Yapilar tablosu Belgeler ve Proje bolumune eklenmedi.");
 assert(source.includes('body.append(createDocumentScopeEditorPanel());'));
 assert(source.includes('body.append(createStructureAreaReconciliationPanel());'));
 assert(source.includes('parts.push(...buildStructureDocumentsDescriptionParts());'));
@@ -128,5 +129,11 @@ assert(source.includes('documents: ["documents", "documentScopes"]'));
 assert(source.includes('building: ["buildings", "buildingParts"]'));
 assert(source.includes('buildBuildingStructuresTechnicalDescription()'));
 assert(source.includes('commitStructureDocumentDescriptionChange()'));
+assert(source.includes('function isCentralStructureRegistryMode()'), "Merkezi yapi kaydi modu tanimlanmadi.");
+assert(source.includes('const visibleRows = state.tables.documents || [];'), "Belge kapsamlari secili yapiya gore filtrelenmemeli; tum belgeler tek tabloda kalmali.");
+assert(source.includes('? getReviewedDocumentTableEntries(tableState)\n    : tableState.map'), "Ortak belge tablosu yapi sekmesine gore filtreleniyor.");
+assert(source.includes('tableState.forEach((row) => refreshDocumentScopeSummary(row.id, { force: true }))'), "Belge tablosu kapsam ozeti render oncesinde guncellenmiyor.");
+assert(source.includes('const existingBuildingIds = new Set(getDocumentScopes(documentRow.id)'), "Ayni belgeye birden fazla yapi kapsami ekleme akisi bulunamadi.");
+assert(source.includes('createBuildingStructureDeleteButton(rows, index, { compact: true })'), "Yapi silme islemi merkezi tablodan yonetilmiyor.");
 
 console.log("Yapi bazli belgeler: migrasyon, coklu kapsam, alan mutabakati, aciklama/cikti ve faktor kablolamasi testleri tamam.");

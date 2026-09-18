@@ -200,6 +200,7 @@ function makeContext(rows, fields = {}) {
     getBuildingParts: () => [],
     refreshDocumentScopeSummary: () => {},
     commitStructureDocumentDescriptionChange: () => {},
+    isCentralStructureRegistryMode: () => false,
     activeDocumentsStructureTarget: "parcel",
   };
   vm.createContext(context);
