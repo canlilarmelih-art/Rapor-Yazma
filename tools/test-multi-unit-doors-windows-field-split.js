@@ -130,6 +130,8 @@ const functionNames = [
   "getDoorsWindowsFieldParts",
   "composeDoorsWindowsFieldSentenceFromParts",
   "buildMultiUnitDoorsWindowsPartsForMerge",
+  "extractNumericTokensForGroupingGuard",
+  "hasMatchingNumericTokensForGroupingGuard",
   "groupUnitInteriorTextEntries",
   "normalizeTextForSimilarityComparison",
   "levenshteinDistance",

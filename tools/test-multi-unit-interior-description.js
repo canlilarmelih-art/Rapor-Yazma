@@ -332,6 +332,8 @@ const functionNames = [
   "pluralizeUnitDecorativeSentence",
   "pluralizeUnitDecorativeText",
   "joinNonEmptySentences",
+  "extractNumericTokensForGroupingGuard",
+  "hasMatchingNumericTokensForGroupingGuard",
   "groupUnitInteriorTextEntries",
   "attributeMultiUnitGroupedText",
   "composeMultiUnitInteriorGroupedText",
@@ -553,6 +555,32 @@ const SALON_3_ODA = "Dubleks bağımsız bölüm zemin katta 1 salon ve mutfakta
   const result = fns.buildMultiUnitInteriorDescriptionText();
   assert.equal(result, SALON_2_ODA_PLURAL, "Yazım/noktalama farkı OLAN ama %90+ BENZER areaDetails de TEK, ÇOĞUL (İLK yazılan tabana dayalı) ortak metinde birleşmeli.");
   console.log("2+ taşınmaz, %90+ BENZER (yazım/noktalama farklı) areaDetails -> TEK ÇOĞUL ortak metin testi tamam.");
+}
+
+// --- 3b) REGRESYON (2026-09-19, kullanıcı ekran görüntüsüyle bildirdi):
+// "2 bağımsız bölümün verileri farklı olsa da ortak açıklama yapılıyor
+// ... biri 76 m2 biri 72 m2 biri sağ önde biri sol önde." İki taşınmazın
+// areaDetails metni yalnızca m² RAKAMINDA farklılaşıyor (76 vs 72), geri
+// kalan ~20 kelime BİREBİR aynı — bu, salt metin benzerliğine göre %90
+// eşiğini KOLAYLIKLA aşıyor ve düzeltmeden ÖNCE yanlışlıkla TEK grup
+// (yalnızca 76 m² metni, 72 m² SESSİZCE kaybolur) sayılıyordu. Sayısal
+// token guard'ı (hasMatchingNumericTokensForGroupingGuard) artık bunu
+// AYRI grup olarak zorluyor.
+{
+  const AREA_76 = "Taşınmaz projesine göre 76 m2 kullanım alanına sahip olup, antre-hol, salon, 2 oda, banyo, balkon ve açık mutfak hacimlerinden oluşmaktadır.";
+  const AREA_72 = "Taşınmaz projesine göre 72 m2 kullanım alanına sahip olup, antre-hol, salon, 2 oda, banyo, balkon ve açık mutfak hacimlerinden oluşmaktadır.";
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: { titleBlockName: "", unitNo: "1", mockAreaDetails: AREA_76 },
+    tables: {},
+    titleUnits: [unit({ titleBlockName: "", unitNo: "2", mockAreaDetails: AREA_72 })],
+  });
+  const result = fns.buildMultiUnitInteriorDescriptionText();
+  assert.ok(result.includes("76 m2"), `76 m² değeri sonuçtan KAYBOLMUŞ. Bulunan: ${JSON.stringify(result)}`);
+  assert.ok(result.includes("72 m2"), `72 m² değeri sonuçtan KAYBOLMUŞ (kullanıcının bildirdiği hata). Bulunan: ${JSON.stringify(result)}`);
+  const lines = result.split("\n");
+  assert.equal(lines.length, 2, `Yalnızca m² rakamı farklı iki areaDetails 2 AYRI satıra düşmeli (yanlışlıkla TEK ortak metne birleşmemeli). Bulunan: ${JSON.stringify(lines)}`);
+  console.log("REGRESYON: yalnızca m² rakamı farklı areaDetails artık YANLIŞLIKLA birleştirilmiyor (76/72 m² örneği) testi tamam.");
 }
 
 // --- 4) 2+ taşınmaz, 2 FARKLI grup, HER İKİ grup da TEK üyeli: HER grup

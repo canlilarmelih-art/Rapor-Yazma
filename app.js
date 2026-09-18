@@ -39011,12 +39011,29 @@ function pluralizeUnitDecorativeText(text) {
 // (Ana Gayrimenkul/Açık Adres'in kullandığı) BİLEREK kullanılmadı —
 // burada atıf `formatTitleUnitAttributionPhrase` ile (entry.fields/
 // entry.index gerektirir), o fonksiyon ise blok-adı listesi döndürür.
+// Kullanıcı bildirimi (2026-09-19, ekran görüntüsüyle): 2 bağımsız
+// bölümlü bir raporda 76 m² (Sol Ön) ile 72 m² (Sağ Ön) taşınmazların
+// İç Hacimler Açıklaması TEK ORTAK metne ("76 m2...") düşüyordu —
+// alanlar FARKLI olmasına rağmen. Kök neden: iki cümle yalnızca "76"/"72"
+// rakamında farklılaşıyor, geri kalan ~20 kelime BİREBİR aynı olduğundan
+// %90 benzerlik oranını KOLAYLIKLA aşıyor ve yanlışlıkla AYNI grup
+// sayılıyorlardı — grup temsilcisi (canonicalValue) yalnızca İLK girdinin
+// metni olduğundan, ikinci taşınmazın 72 m² değeri sessizce KAYBOLUYORDU.
+// Düzeltme: `buildProjectReviewConsolidatedSentences`'ın (33726 civarı)
+// AYNI sınıf sorunu (blok atıfları, ör. "12" vs "31" No'lu) çözmek için
+// zaten kullandığı `hasMatchingNumericTokensForGroupingGuard` guard'ı
+// buraya da eklendi — iki metindeki TÜM sayısal token'lar (sırayla)
+// BİREBİR eşleşmedikçe (76≠72 gibi) iki girdi ARTIK aynı gruba düşmez,
+// benzerlik oranı ne olursa olsun. Saf metin (rakamsız) benzerlik
+// davranışı DEĞİŞMEDİ — yalnızca sayı İÇEREN ve sayıları FARKLI olan
+// metinler artık doğru şekilde AYRI kalıyor.
 function groupUnitInteriorTextEntries(entries) {
   const groups = [];
   entries.forEach((entry) => {
     const normalized = normalizeTextForSimilarityComparison(entry.value);
     const matchedGroup = groups.find(
       (group) => computeTextSimilarityRatio(group.normalized, normalized) >= 0.9
+        && hasMatchingNumericTokensForGroupingGuard(group.canonicalValue, entry.value)
     );
     if (matchedGroup) {
       matchedGroup.entries.push(entry);
