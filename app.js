@@ -39694,19 +39694,53 @@ function decorativeSentenceHasOwnSubject(sentence) {
   return DECORATIVE_LEADING_SUBJECT_PATTERN.test(sentence) || /\btaşınmaz\b/i.test(sentence);
 }
 
+// Kullanıcı bildirimi (2026-09-19, ekran görüntüsüyle): "'Ekspertize
+// konu taşınmaz, ... binanın 3. Normal Katında yer alan, kuzey
+// yönünden sağlanan, bina giriş istikametine göre sağ tarafta
+// konumlu, ... 11 bağımsız bölüm no.lu, mesken nitelikli bağımsız
+// bölümdür.' bu örnek cümle şu an yok çoklu raporumuzda." Kök neden:
+// composeUnitInteriorDescription() (TEKİL rapor) `intro + details`
+// birleştirirken, bu ÇOKLU sürüm YALNIZCA `.areaDetails` (+ Dekoratif
+// Özellikler) toplardı — `buildUnitInteriorDescriptionParts().intro`
+// (kat/bina-giriş-yönü/bina-girişine-göre-konum/cephe/bağımsız-bölüm-no/
+// nitelik cümlesi) HİÇ toplanmıyordu; bu ÇOKLU sürümün YAZILDIĞI
+// günden beri var olan, bu turda ayrıca giderilen bir eksiklikti (bir
+// önceki turdaki 76/72 m² gruplama düzeltmesiyle İLİŞKİLİ AMA FARKLI
+// bir kusur). Düzeltme: `intro` da (areaDetails'la AYNI döngüde,
+// EK bir fonksiyon çağrısı gerekmeden) toplanır. Intro cümlesi zaten
+// kendi bağımsız bölüm numarasını/kat/konum bilgisini İÇİNDE taşıdığından
+// (unitNoPhrase vb.) `areaDetails`'teki gibi AYRI bir "X No'lu," ATIF
+// öneki EKLENMEZ — eklenirse numara İKİ KEZ görünürdü. Yalnızca TÜM
+// taşınmazların introsu GERÇEKTEN birebir/%90+ benzer VE sayısal
+// token'ları eşleşiyorsa (nadir — kat/no farklı olduğu sürece olmaz)
+// TEK metne indirgenir, aksi halde HER taşınmazın KENDİ tam cümlesi
+// ayrı satırda (paragraf başına bir taşınmaz) listelenir.
+function buildMultiUnitInteriorIntroText(introEntries) {
+  if (!introEntries.length) return "";
+  const groups = groupUnitInteriorTextEntries(introEntries);
+  if (groups.length === 1 && groups[0].entries.length === introEntries.length) {
+    return groups[0].canonicalValue;
+  }
+  return introEntries.map((entry) => entry.value).join("\n");
+}
+
 function buildMultiUnitInteriorDescriptionText() {
   const units = buildAllTitleUnitsForSummaryTable();
   if (units.length < 2) return state.fields.unitInteriorDescription || "";
 
   const originalFields = state.fields;
   const originalTables = state.tables;
+  const introEntries = [];
   const areaEntries = [];
   const decorativeEntriesBySlot = {};
   try {
     units.forEach((unit, index) => {
       state.fields = { ...originalFields, ...(unit.fields || {}) };
       state.tables = { ...originalTables, ...(unit.tables || {}) };
-      const areaValue = normalizeReportDescriptionText(buildUnitInteriorDescriptionParts().areaDetails || "").trim();
+      const parts = buildUnitInteriorDescriptionParts();
+      const introValue = normalizeReportDescriptionText(parts.intro || "").trim();
+      if (introValue) introEntries.push({ index, fields: state.fields, value: introValue });
+      const areaValue = normalizeReportDescriptionText(parts.areaDetails || "").trim();
       if (areaValue) areaEntries.push({ index, fields: state.fields, value: areaValue });
       getUnitDecorativeDescriptionPartsForCombinedText().forEach((part) => {
         const value = normalizeReportDescriptionText(part.value || "").trim();
@@ -39816,7 +39850,8 @@ function buildMultiUnitInteriorDescriptionText() {
   // ile SARILIYORDU (cümle-başı büyütme + "wc"->"WC" gibi sabit kelime
   // düzeltmeleri içerir), ama bu ÇOKLU taşınmazlı sürüm hiç sarılmıyordu.
   const decorativeText = normalizeReportDescriptionText(joinNonEmptySentences(decorativeSentences));
-  return [areaText, decorativeText].filter(Boolean).join("\n");
+  const introText = buildMultiUnitInteriorIntroText(introEntries);
+  return [introText, areaText, decorativeText].filter(Boolean).join("\n");
 }
 
 function createOpenAddressPanel() {

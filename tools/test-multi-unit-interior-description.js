@@ -338,6 +338,7 @@ const functionNames = [
   "attributeMultiUnitGroupedText",
   "composeMultiUnitInteriorGroupedText",
   "resolveOutdoorCombinedIgnoringTypeDifferences",
+  "buildMultiUnitInteriorIntroText",
   "buildMultiUnitInteriorDescriptionText",
   // Kullanıcı talebi (2026-09-05): mainRoom (zemin/duvar) + outdoor
   // (balkon/teras tipi/malzemesi) SLOT-BÖLME testleri için GERÇEK
@@ -427,13 +428,13 @@ const sandboxSource = `
   function normalizeReportDescriptionText(value) { return String(value || "").trim(); }
   // buildUnitInteriorDescriptionParts() (GERÇEK fonksiyon, kat satırları/
   // registerVariantGroup zincirine bağımlı, bu testin kapsamı DIŞINDA) —
-  // davranış-koruyan basit bir SAHTE: state.fields.mockAreaDetails'i AYNEN
-  // döner. Her çağrıda mevcut state.fields'ı (o an HANGİ taşınmazınki
-  // olursa) kaydeder — senaryo 6'nın "state doğru değiştirildi mi" testi
-  // için.
+  // davranış-koruyan basit bir SAHTE: state.fields.mockAreaDetails'i (ve
+  // 2026-09-19'dan beri mockIntro'yu) AYNEN döner. Her çağrıda mevcut
+  // state.fields'ı (o an HANGİ taşınmazınki olursa) kaydeder — senaryo
+  // 6'nın "state doğru değiştirildi mi" testi için.
   function buildUnitInteriorDescriptionParts() {
     stateSwapLog.push(state.fields);
-    return { areaDetails: state.fields.mockAreaDetails || "" };
+    return { intro: state.fields.mockIntro || "", areaDetails: state.fields.mockAreaDetails || "" };
   }
   // getUnitDecorativeDescriptionPartsForCombinedText() (GERÇEK fonksiyon,
   // buildUnitDecorativeDescriptionPartsList/composeUnitViewSentence vb.
@@ -872,12 +873,45 @@ function decorativePartsCommon(mainRoomValue) {
 }
 
 // --- 8) buildMultiUnitInteriorDescriptionText() GERÇEK gövdesi .areaDetails
-// okuyor, .details/unitInteriorDescription OKUMUYOR (REGRESYON) ------------
+// (VE artık 2026-09-19'dan beri .intro) okuyor, .details/unitInteriorDescription
+// OKUMUYOR (REGRESYON) ------------
+// Not (2026-09-19): önceden bu fonksiyon `buildUnitInteriorDescriptionParts().areaDetails`'i
+// DOĞRUDAN, TEK SEFERDE çağırıyordu; artık dönüş değerini `const parts = ...`
+// olarak SAKLAYIP HEM `parts.intro` HEM `parts.areaDetails`'i okuyor (kullanıcı
+// bildirimi: "bina girişine göre konum cümleleri kaybolmuş" — intro hiç
+// toplanmıyordu) — bu yüzden literal `buildUnitInteriorDescriptionParts().areaDetails`
+// alt-dizesi ARTIK kaynakta YOK, `parts.intro`/`parts.areaDetails` aranır.
 {
   const realBody = extractFunction("buildMultiUnitInteriorDescriptionText");
-  assert.ok(realBody.includes("buildUnitInteriorDescriptionParts().areaDetails"), "Çoklu-taşınmaz kaynağı buildUnitInteriorDescriptionParts().areaDetails OLMALI.");
+  assert.ok(realBody.includes("buildUnitInteriorDescriptionParts()"), "Çoklu-taşınmaz döngüsü her taşınmaz için buildUnitInteriorDescriptionParts()'ı çağırmalı.");
+  assert.ok(realBody.includes("parts.intro"), "Çoklu-taşınmaz kaynağı artık parts.intro'yu da (bina girişine göre konum/kat/no cümlesi) toplamalı.");
+  assert.ok(realBody.includes("parts.areaDetails"), "Çoklu-taşınmaz kaynağı parts.areaDetails OLMALI.");
   assert.ok(!realBody.includes("unit.fields?.unitInteriorDescription") && !realBody.includes("unit.fields.unitInteriorDescription"), "REGRESYON: unitInteriorDescription (dekoratif+kat DAHİL tam metin) artık ÇOKLU-taşınmaz döngüsünde DOĞRUDAN okunmamalı.");
-  console.log("buildMultiUnitInteriorDescriptionText() .areaDetails kaynağı (dekoratif/kat sızıntısı REGRESYONU) testi tamam.");
+  console.log("buildMultiUnitInteriorDescriptionText() .intro/.areaDetails kaynağı (dekoratif/kat sızıntısı REGRESYONU) testi tamam.");
+}
+
+// --- 8d) REGRESYON (2026-09-19, kullanıcı ekran görüntüsüyle bildirdi):
+// "'Ekspertize konu taşınmaz, ... bina giriş istikametine göre sağ
+// tarafta konumlu, ... 11 bağımsız bölüm no.lu ...' bu örnek cümle şu
+// an yok çoklu raporumuzda." Her taşınmazın introsu (kat/bina-girişi-
+// yönü/konum/cephe/no/nitelik cümlesi) artık BİRLEŞTİRİLMİŞ metinde
+// (kendi tam haliyle, "X No'lu," ATIF ÖNEKİ EKLENMEDEN — sayı zaten
+// cümlenin İÇİNDE) yer almalı.
+{
+  const INTRO_A = "Ekspertize konu taşınmaz, incelenen onaylı mimari projesine göre, binanın 3. Normal Katında yer alan, kuzey yönünden sağlanan, bina giriş istikametine göre sağ tarafta konumlu, 11 bağımsız bölüm no.lu, mesken nitelikli bağımsız bölümdür.";
+  const INTRO_B = "Ekspertize konu taşınmaz, incelenen onaylı mimari projesine göre, binanın 4. Normal Katında yer alan, kuzey yönünden sağlanan, bina giriş istikametine göre sol tarafta konumlu, 12 bağımsız bölüm no.lu, mesken nitelikli bağımsız bölümdür.";
+  fns.setState({
+    activeTitleUnitIndex: 0,
+    fields: { titleBlockName: "", unitNo: "11", mockIntro: INTRO_A, mockAreaDetails: SALON_2_ODA },
+    tables: {},
+    titleUnits: [unit({ titleBlockName: "", unitNo: "12", mockIntro: INTRO_B, mockAreaDetails: SALON_2_ODA })],
+  });
+  const result = fns.buildMultiUnitInteriorDescriptionText();
+  assert.ok(result.includes(INTRO_A), `1. taşınmazın intro cümlesi sonuçta YOK. Bulunan: ${JSON.stringify(result)}`);
+  assert.ok(result.includes(INTRO_B), `2. taşınmazın intro cümlesi sonuçta YOK (kullanıcının bildirdiği hata). Bulunan: ${JSON.stringify(result)}`);
+  assert.ok(!result.includes("No'lu, " + INTRO_A) && !result.includes("No'lu, " + INTRO_B), "Intro cümlesi zaten kendi bağımsız bölüm no'sunu içerdiğinden AYRICA 'X No'lu,' atıf öneki EKLENMEMELİ (sayı iki kez görünür).");
+  assert.ok(result.indexOf(INTRO_A) < result.indexOf(SALON_2_ODA.split(" ")[0] === "Taşınmaz" ? "Taşınmazlar" : SALON_2_ODA), "Intro metni alan/oda (areaDetails) paragrafından ÖNCE gelmeli.");
+  console.log("REGRESYON: her taşınmazın 'Bina Girişine Göre Konum' dahil TAM intro cümlesi artık çoklu raporda kayıp DEĞİL testi tamam.");
 }
 
 // --- 8b) composeMultiUnitInteriorGroupedText() GERÇEK gövdesi çoğullamayı
