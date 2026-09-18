@@ -6283,6 +6283,21 @@ function renderSection() {
     // alanlar İKİ YERDE birden GÖRÜNMEZ.
     if (isMustakilBina) {
       detailsWrapper.append(createUnitFeaturesEditor());
+      // Kullanıcı bildirimi (2026-09-19): "yapı ekledikten sonra ...
+      // bina özellikleri kısımlarına tab olarak bu yapıların gelmesi
+      // gerekiyor" — 0.0.835'te "Parseldeki Yapılar" kayıt tablosu ayrı
+      // "Yapılar" ana bölümüne taşınırken, o bölümün YAPI SEKMELERİ
+      // (Yapı Sınıfı/Tarzı/Kat Dağılımı/Asansör/Teknik Profil/Faktörler,
+      // createBuildingStructuresEditor()/createBuildingStructureTabContent())
+      // buradan YANLIŞLIKLA hiç çağrılmaz olmuştu — handoff notu "Bina
+      // Özellikleri ... teknik özellikleri ve iç mekân detaylarını
+      // göstermeye devam eder" dese de kod bunu YAPMIYORDU (yalnızca
+      // Kat Satırları/Dekoratif Özellikler gibi Bağımsız-Bölüm-tarzı genel
+      // içerik görünüyordu, yapı sekmeleri hiç yoktu). isCentralStructureRegistryMode()
+      // burada true olduğundan createBuildingStructuresEditor() kendi
+      // ekle/sil düğmelerini GÖSTERMEZ (yalnızca "Yapılar" bölümünden
+      // yönetilir), sadece sekmeler + o yapının alanlarını render eder.
+      detailsWrapper.append(createBuildingStructuresEditor());
     }
     // Kullanıcı takip talebi (2026-09-17): "yapi ekle en üstte olmalı
     // hatta yapi ekle altındaki bütün alanlar ilk başta gizli olmalı

@@ -28,6 +28,18 @@
      DEĞİŞMEDEN kaldığı.
   4) createNav()'ın (sidebar + mobil alt nav) section.title yerine
      getSectionDisplayTitle(section) kullandığı.
+
+  Düzeltme (2026-09-19): Kullanıcı bildirimi — "yapı ekledikten sonra ...
+  bina özellikleri kısımlarına tab olarak bu yapıların gelmesi gerekiyor."
+  0.0.835'te "Parseldeki Yapılar" kayıt tablosu ayrı "Yapılar" ana
+  bölümüne taşınırken, "building" dalının Müstakil Bina koluna
+  createBuildingStructuresEditor() (yapı sekmeleri + her yapının teknik
+  alanları) eklenmesi UNUTULMUŞTU — yalnızca createUnitFeaturesEditor()
+  (Bağımsız-Bölüm-tarzı Kat Satırları/Dekoratif Özellikler) kalmıştı, yapı
+  sekmeleri HİÇ görünmüyordu. Senaryo 3a'daki beklenen dizi buna göre
+  ["form","floorDistribution","unitFeatures","structuresEditor"] olarak
+  düzeltildi (eskiden "structuresEditor" YOKTU — bu HATALI davranışı
+  doğruluyordu).
 */
 
 const assert = require("node:assert/strict");
@@ -153,7 +165,11 @@ function runBuildingBranch({ ownershipType, buildings, sectionFields = [{ key: "
   assert.equal(body.children.length, 1, "Müstakil Bina'da yapı listesi ayrı ana bölümde olduğundan building gövdesinde yalnızca detay sarmalayıcı kalmalı.");
   const [wrapper] = body.children;
   assert.equal(wrapper.hidden, true, "Henüz yapı eklenmemişken detay sarmalayıcı GİZLİ olmalı.");
-  assert.deepEqual(wrapper.children.map((c) => c._marker), ["form", "floorDistribution", "unitFeatures"], "Detay sarmalayıcının içeriği (form + kat dağılımı + bağımsız bölüm alanları) eksik/yanlış sırada.");
+  assert.deepEqual(
+    wrapper.children.map((c) => c._marker),
+    ["form", "floorDistribution", "unitFeatures", "structuresEditor"],
+    "Detay sarmalayıcının içeriği (form + kat dağılımı + bağımsız bölüm alanları + yapı sekmeleri) eksik/yanlış sırada."
+  );
 }
 
 // 3b) Müstakil Bina + state.tables.buildings undefined (hiç dokunulmamış) ->
