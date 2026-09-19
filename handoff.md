@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.846 - 2026-09-19 - "Yapı Sınıfı" (ve buildingParts/documentScopes) artık her autosave'de kendini resetlemiyor
+
+- Kullanıcı: "yapı sınıfı bölümü kendini resetliyor" — takip: "yeni bir yapı eklenince." Yapı Sınıfı için "1/A" seçilip başka bir yapı eklendiğinde (veya herhangi bir autosave sonrası) seçim "Seçiniz"e dönüyordu.
+- Kök neden: `normalizeReportStateFields()` (her ~350ms debounced autosave'de çalışır) `state.tables` içindeki HER diziyi satır/hücre bazında normalize ediyor; eşleşen bir `section.id` bulamadığı tablolarda (0.0.-öncesi bir turda `unitFloors` için AYNI kusur bulunup düzeltilmişti — "WC" → "Wc" örneği) varsayılan "başlık büyütme" (`toTitleCaseTr`) dalına düşüyor. `state.tables.buildings` (name/buildingClass/usage/... ADLANDIRILMIŞ anahtarlar) için de eşleşen bir section YOK — "1/A" her autosave'de "1/a"ya çevrilip `<option value="1/A">` ile eşleşmeyince BİR SONRAKİ render'da (Yapı Ekle/Sil dahil HERHANGİ bir render) seçim sıfırlanmış GÖRÜNÜYORDU (veri gerçekten bozulmuştu, salt görsel bir gecikme değildi). Araştırma sırasında AYNI kusurun `buildingParts` (usage/status) ve — DAHA CİDDİSİ — `documentScopes.buildingId`/`buildingPartId` (TAM EŞLEŞME ile karşılaştırılan kimlik dizeleri, ör. "Building-8926ac545184") için de geçerli olduğu, bu ikincisinin belge↔yapı bağlantılarını GÖRÜNMEDEN koparabileceği tespit edildi.
+- `app.js`: `normalizeReportStateFields()`'in tablo döngüsüne, `unitFloors`/`comparables` ile AYNI ilkeyle `buildings`, `buildingParts`, `documentScopes` de eklendi — üçü de artık bu toplu normalizasyondan tamamen atlanıyor.
+- `tools/test-unit-floors-normalization-skip.js`: kullanıcının GERÇEK örneğiyle (Yapı Sınıfı "1/A") + `buildingParts.usage/status` + `documentScopes.buildingId` kimlik-koruması için 3 yeni senaryo eklendi; `git stash` ile eski kodun GERÇEKTEN "1/A"yı "1/a"ya çevirdiği doğrulandı. `npm run verify`: 194 dosyadan 193'ü EXIT:0 (kalan 1'i, önceden belgelenen yerel CRLF/LF checkout artefaktı, bu değişiklikten bağımsız).
+- **Canlı tarayıcıda doğrulandı**: izole bir test raporunda Yapı Sınıfı "1/A" seçilip GERÇEK ~2 saniye beklenip (autosave debounce'unun genuinely tetiklenmesi için) kontrol edildi — değer "1/A" olarak KALDI (önceden "1/a"ya dönüşüyordu); ardından "+ Yapı Ekle" ile ikinci bir yapı eklendi, birinci yapının Yapı Sınıfı hâlâ doğru "1/A" gösteriyor (kullanıcının bildirdiği "yeni bir yapı eklenince" senaryosuyla birebir).
+- `index.html`'de `app.js` cache-buster'ı `20260919-0630`'a yükseltildi.
+
 ## 0.0.845 - 2026-09-19 - "Yapıyı Sil" artık native confirm() yerine uygulama-içi onay penceresi kullanıyor
 
 - Kullanıcı, 0.0.838'in (hayalet-dizi) düzeltmesinden SONRA, AYNI raporda ("Deneme Mustakil - Kopya"), ekranda seçtiği TAM O düğmeyi göstererek ÜÇÜNCÜ kez bildirdi: "silme butonu halen çalışmıyor."

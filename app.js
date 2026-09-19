@@ -36432,6 +36432,22 @@ function normalizeReportStateFields(targetState) {
     // "Wc"ye çevrilip <option value="WC"> ile eşleşmeyince sekme değişince seçim
     // boş görünüyordu (kullanıcı bildirimi). Bu tablo da atlanır.
     if (tableKey === "unitFloors") return;
+    // Kullanıcı bildirimi (2026-09-19): "yapı sınıfı bölümü kendini
+    // resetliyor ... yeni bir yapı eklenince." Kök neden AYNI unitFloors
+    // kusuru: `buildings`/`buildingParts`/`documentScopes` de c0/c1 değil
+    // ADLANDIRILMIŞ anahtarlar kullanır (name/buildingClass/usage/status/
+    // buildingId/buildingPartId...) ve bunlara karşılık gelen bir section.id
+    // YOKTUR — section bulunamadığından normalizeReportTableValue varsayılan
+    // "başlık büyütme" (toTitleCaseTr) dalına düşüyor: "1/A" gibi bir Yapı
+    // Sınıfı kodu her autosave'de "1/a"ya çevrilip <option value="1/A">
+    // ile eşleşmeyince BİR SONRAKİ render'da (ör. "+ Yapı Ekle"/"Sil"
+    // tıklanınca) seçim sıfırlanmış GÖRÜNÜYORDU (veri aslında kayboldu,
+    // yalnızca <select>'in gösterebileceği bir değere artık eşleşmiyordu).
+    // DAHA CİDDİSİ: documentScopes.buildingId/buildingPartId TAM EŞLEŞME
+    // (===) ile karşılaştırılan kimlik dizeleridir (ör. "Building-8926ac545184")
+    // — bunlar başlık büyütmeyle sessizce bozulursa belge↔yapı bağlantıları
+    // GÖRÜNMEDEN kopabilirdi. Üçü de (unitFloors ile AYNI ilkeyle) atlanır.
+    if (tableKey === "buildings" || tableKey === "buildingParts" || tableKey === "documentScopes") return;
     const section = sections.find((item) => item.id === tableKey);
     rows.forEach((row) => {
       if (!row || typeof row !== "object") return;
