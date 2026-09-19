@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.857 - 2026-09-19 - Müstakil Bina/Arsa/Tarla'da "Tapu Projesi Ve Belediye Projesi Arasında Fark Var Mı?" yönetici hesabında da gizlendi
+
+- Kullanıcı: "tamam müstakil formatta tapu proje arasında farklılık var mı kısmını kaldıralım."
+- Kök neden: `shouldShowProjectDifferenceField()` (`isOwnershipProjectDifferenceComparable()` üzerinden) bu alanı Müstakil Bina/Arsa/Tarla'da ZATEN normal kullanıcıdan gizliyordu — ama `createForm()`'un admin-bypass istisna listesi bu gizleme NEDENİNİ kapsamıyordu (yalnızca "mimari proje yok" nedenini kapsıyordu, 2026-09-15). Bu, aynı dosyada 2026-09-15'te tekrar tekrar düzeltilen "admin'e bile gizli kalması gerekirken istisnaya dahil edilmemiş alan" kusur sınıfının BİR ÖRNEĞİ DAHA — yönetici hesabında (mimari proje VARKEN) bu soru YANLIŞLIKLA görünmeye devam ediyordu.
+- `app.js`: `createForm()`'un admin-bypass istisna listesine `(section.id === "documents" && field.key === "projectDifference" && !shouldShowProjectDifferenceField())` eklendi — landAddressHiddenKeys/isLandHiddenDocumentsField/isArchitecturalProjectDependentField ile AYNI desen.
+- `tools/test-sensitive-visibility-refinements.js`: kaynak-düzeyi regex genişletildi (yeni istisna cümlesini de kapsar); yeni "h" davranışsal senaryo bloğu, yönetici hesabında Müstakil Bina/Arsa/Tarla'da (mimari proje VARKEN bile) alanın gizlendiğini, normal kullanıcı davranışının DEĞİŞMEDİĞİNİ ve karşılaştırılabilir mülkiyette (ör. Kat İrtifakı) alanın hâlâ görünür kaldığını doğruluyor. Önceki (0.0.856) app.js sürümüne karşı gerçekten kırıldığı kanıtlandı.
+- `npm run verify`: 195 test dosyasının 194'ü EXIT:0; kalan tek hata (`test-structure-documents-all-phases.js`) bu değişiklikten bağımsız, önceden belgelenmiş CRLF/LF yerel checkout artefaktı.
+- `index.html` içindeki `app.js` cache-buster `20260919-1715` sürümüne yükseltildi.
+
 ## 0.0.856 - 2026-09-19 - Gerçek hedef bulundu: Kat İrtifakında tek kurum seçiliyken diğeri artık "bulunamamıştır" ile anılmıyor
 
 - Kullanıcı, 0.0.852-855 turlarının (Müstakil Bina'nın "Mimari Proje Var mı? = Hayır" durumunu hedef alan) YANLIŞ fonksiyonu düzelttiğini fark etti ("bulunamamıştır ne alaka bu incelenen kurumlar") ve gerçek sorunu netleştirdi: "bak konu tam olarak şu normal dikey kat irtifakli raporda webtapu seçili değilse proje incelenen kurum cümlesi nasıl geliyor."

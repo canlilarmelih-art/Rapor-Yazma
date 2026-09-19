@@ -6422,6 +6422,17 @@ function createForm(section) {
         // ile AYNI kusura sahipti: admin'e bile gizli kalması gerekirken
         // istisnaya hiç dahil değildi.
         || (section.id === "documents" && !shouldShowArchitecturalProjectFields() && isArchitecturalProjectDependentField(field.key))
+        // Kullanıcı talebi (2026-09-19): "müstakil formatta tapu proje
+        // arasında farklılık var mı kısmını kaldıralım" — shouldHideField()'ın
+        // "documents" dalındaki `!shouldShowProjectDifferenceField()` kuralı
+        // (isOwnershipProjectDifferenceComparable() ile Müstakil Bina/Arsa/
+        // Tarla'yı ZATEN dışlıyordu) landAddressHiddenKeys/isLandHiddenDocumentsField
+        // ile AYNI kusura sahipti: normal kullanıcıda doğru gizleniyordu ama
+        // istisnaya hiç dahil olmadığından yönetici hesabında (mimari proje
+        // VARKEN, yani yukarıdaki isArchitecturalProjectDependentField dalı
+        // devreye girmeden) "Tapu Projesi Ve Belediye Projesi Arasında Fark
+        // Var Mı?" görünmeye devam ediyordu.
+        || (section.id === "documents" && field.key === "projectDifference" && !shouldShowProjectDifferenceField())
         // Kullanıcı bildirimi (2026-09-15, çoklu Tarla talebi): "tapu
         // bölümünde ana taşınmaz seçeneğinde gizlenmesi gereken bağımsız
         // bölüm no tapu katı ve benzeri seçenekler gözüküyor" — shouldHideField
