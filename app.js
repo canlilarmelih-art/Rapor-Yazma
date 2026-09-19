@@ -15280,6 +15280,54 @@ function createBuildingStructureFloorTotalsSummary(floors) {
   return summary;
 }
 
+// Kullanıcı bildirimi (2026-09-19, ekran görüntüsüyle, ÜÇÜNCÜ kez): "silme
+// butonu halen çalışmıyor." 0.0.838'deki hayalet-dizi düzeltmesi bizzat bu
+// raporda (Deneme Mustakil - Kopya) canlı doğrulandı — GÜNCEL veri üzerinde
+// splice() doğru çalışıyor. Kalan tek makul açıklama, `window.confirm()`'in
+// (native tarayıcı diyaloğu) bazı ortamlarda SESSİZCE devre dışı kalabilmesi:
+// Chrome, KISA sürede art arda birkaç confirm()/alert() gösterildiğinde
+// "Bu sayfanın başka iletişim kutusu oluşturmasını engelle" onay kutusunu
+// SUNAR — kullanıcı bunu (frustrasyonla tekrar tekrar tıklarken) yanlışlıkla
+// işaretlerse, SAYFA O ANDAN İTİBAREN confirm()'e HER ZAMAN sessizce `false`
+// döner, HİÇBİR diyalog göstermeden — kod tarafından tespit/kurtarma
+// İMKANSIZDIR, sayfa yeniden yüklenene kadar. `if (!window.confirm(...)) return;`
+// bu durumda HER TIKLAMADA sessizce erken çıkar — kullanıcının tarif ettiği
+// "hiçbir şey olmuyor" ile TAM eşleşir. Kalıcı çözüm: native confirm()
+// yerine, tarayıcı tarafından ASLA bastırılamayan (bu dosyadaki mevcut
+// openRoadSetbackModal ile AYNI .modal-overlay/.modal-card deseni) bir
+// UYGULAMA-İÇİ onay penceresi.
+function openConfirmActionModal(message, onConfirm = () => {}) {
+  document.querySelector(".modal-overlay")?.remove();
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.innerHTML = `
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="confirmActionModalTitle">
+      <div class="modal-head">
+        <h3 id="confirmActionModalTitle">Emin misiniz?</h3>
+        <button class="modal-close" type="button" aria-label="Kapat">×</button>
+      </div>
+      <div class="modal-body">
+        <p>${escapeHtml(message)}</p>
+      </div>
+      <div class="modal-actions">
+        <button class="secondary-button" type="button" data-confirm-action-cancel>Vazgeç</button>
+        <button class="primary-button" type="button" data-confirm-action-ok>Evet, Sil</button>
+      </div>
+    </div>
+  `;
+  const close = () => overlay.remove();
+  overlay.querySelector(".modal-close").addEventListener("click", close);
+  overlay.querySelector("[data-confirm-action-cancel]").addEventListener("click", close);
+  overlay.addEventListener("click", (event) => {
+    if (event.target === overlay) close();
+  });
+  overlay.querySelector("[data-confirm-action-ok]").addEventListener("click", () => {
+    close();
+    onConfirm();
+  });
+  document.body.append(overlay);
+}
+
 function createBuildingStructureDeleteButton(rows, index, options = {}) {
   const wrap = document.createElement("div");
   wrap.className = "building-structure-delete-wrap";
@@ -15304,35 +15352,51 @@ function createBuildingStructureDeleteButton(rows, index, options = {}) {
   // ile YENİDEN oku ve satırı id'ye göre bul (Yapı Ekle düğmesi zaten aynı
   // "tıklama anında taze veri" ilkesini kullanıyordu, bkz. createBuildingStructureAddButton).
   const targetId = rows[index]?.id || "";
+  // Kullanıcı bildirimi (2026-09-19, ÜÇÜNCÜ kez, ekran görüntüsüyle): "silme
+  // butonu halen çalışmıyor" — 0.0.838'in dizi-referans düzeltmesi bizzat bu
+  // raporda canlı doğrulandı (GÜNCEL veriyle splice() sorunsuz çalışıyor).
+  // Kalan tek makul açıklama, native `window.confirm()`'ün bazı tarayıcı
+  // durumlarında (ör. Chrome'un art arda birkaç diyalogdan sonra sunduğu
+  // "Bu sayfanın başka iletişim kutusu oluşturmasını engelle" onay kutusu
+  // yanlışlıkla işaretlenirse) SESSİZCE ve KALICI olarak `false` dönmeye
+  // başlaması — kod bunu tespit/kurtaramaz, `if (!window.confirm(...))
+  // return;` her tıklamada sessizce erken çıkar (kullanıcının tarif ettiği
+  // "hiçbir şey olmuyor" ile TAM eşleşir). native confirm() yerine tarayıcı
+  // tarafından ASLA bastırılamayan openConfirmActionModal() kullanılır.
   button.addEventListener("click", () => {
-    if (!window.confirm("Bu yapıyı ve tüm kat bilgilerini silmek istediğinize emin misiniz?")) return;
-    const liveRows = getBuildingStructureRows();
-    const liveIndex = targetId ? liveRows.findIndex((row) => row.id === targetId) : index;
-    if (liveIndex === -1) {
-      renderSection();
-      return;
-    }
-    const deletedBuildingId = liveRows[liveIndex]?.id || "";
-    liveRows.splice(liveIndex, 1);
-    if (deletedBuildingId) {
-      const deletedPartIds = new Set(getBuildingParts(deletedBuildingId).map((part) => part.id));
-      state.tables.buildingParts = (state.tables.buildingParts || []).filter((part) => part.buildingId !== deletedBuildingId);
-      (state.tables.documentScopes || []).forEach((scope) => {
-        if (scope.buildingId === deletedBuildingId || deletedPartIds.has(scope.buildingPartId)) {
-          scope.targetType = "parcel";
-          scope.buildingId = "";
-          scope.buildingPartId = "";
-          refreshDocumentScopeSummary(scope.documentId, { force: true });
-        }
-      });
-      if (activeDocumentsStructureTarget === deletedBuildingId) activeDocumentsStructureTarget = "parcel";
-    }
-    if (activeBuildingStructureTabIndex >= liveRows.length) activeBuildingStructureTabIndex = Math.max(0, liveRows.length - 1);
-    commitStructureDocumentDescriptionChange();
-    renderSection();
+    openConfirmActionModal("Bu yapıyı ve tüm kat bilgilerini silmek istediğinize emin misiniz?", () => {
+      deleteBuildingStructureRowById(targetId, index);
+    });
   });
   wrap.append(button);
   return wrap;
+}
+
+function deleteBuildingStructureRowById(targetId, index) {
+  const liveRows = getBuildingStructureRows();
+  const liveIndex = targetId ? liveRows.findIndex((row) => row.id === targetId) : index;
+  if (liveIndex === -1) {
+    renderSection();
+    return;
+  }
+  const deletedBuildingId = liveRows[liveIndex]?.id || "";
+  liveRows.splice(liveIndex, 1);
+  if (deletedBuildingId) {
+    const deletedPartIds = new Set(getBuildingParts(deletedBuildingId).map((part) => part.id));
+    state.tables.buildingParts = (state.tables.buildingParts || []).filter((part) => part.buildingId !== deletedBuildingId);
+    (state.tables.documentScopes || []).forEach((scope) => {
+      if (scope.buildingId === deletedBuildingId || deletedPartIds.has(scope.buildingPartId)) {
+        scope.targetType = "parcel";
+        scope.buildingId = "";
+        scope.buildingPartId = "";
+        refreshDocumentScopeSummary(scope.documentId, { force: true });
+      }
+    });
+    if (activeDocumentsStructureTarget === deletedBuildingId) activeDocumentsStructureTarget = "parcel";
+  }
+  if (activeBuildingStructureTabIndex >= liveRows.length) activeBuildingStructureTabIndex = Math.max(0, liveRows.length - 1);
+  commitStructureDocumentDescriptionChange();
+  renderSection();
 }
 
 function createBuildingStructureTechnicalProfilePanel(row) {

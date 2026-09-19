@@ -1,5 +1,14 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.845 - 2026-09-19 - "Yapıyı Sil" artık native confirm() yerine uygulama-içi onay penceresi kullanıyor
+
+- Kullanıcı, 0.0.838'in (hayalet-dizi) düzeltmesinden SONRA, AYNI raporda ("Deneme Mustakil - Kopya"), ekranda seçtiği TAM O düğmeyi göstererek ÜÇÜNCÜ kez bildirdi: "silme butonu halen çalışmıyor."
+- Araştırma: 0.0.838'in düzeltmesi bizzat bu raporda (`window.confirm`'ü canlıda `true`'ya sabitleyip) doğrulandı — GÜNCEL veri üzerinde `splice()` doğru çalışıyor, veri katmanında başka bir hata YOK. Kalan tek makul açıklama: `window.confirm()` (native tarayıcı diyaloğu) bazı tarayıcı durumlarında (ör. Chrome'un art arda birkaç diyalogdan sonra sunduğu "Bu sayfanın başka iletişim kutusu oluşturmasını engelle" onay kutusu bir kez işaretlenirse) SESSİZCE ve KALICI olarak `false` dönmeye başlayabiliyor — kod bunu tespit/kurtaramaz, `if (!window.confirm(...)) return;` her tıklamada sessizce erken çıkar; bu, kullanıcının tarif ettiği "hiçbir şey olmuyor" ile TAM eşleşir ve sayfa yeniden yüklenene kadar düzelmez.
+- `app.js`: Yeni genel `openConfirmActionModal(message, onConfirm)` — bu dosyadaki mevcut `openRoadSetbackModal` ile AYNI `.modal-overlay`/`.modal-card` deseni, tarayıcı tarafından ASLA bastırılamaz (sıradan bir DOM elemanı). `createBuildingStructureDeleteButton()`'daki `window.confirm()` çağrısı bununla değiştirildi; asıl silme mantığı yeni `deleteBuildingStructureRowById(targetId, index)` fonksiyonuna taşındı (0.0.838'in id-bazlı güncel-veri okuma ilkesi AYNEN korunur, artık modal onay geldiğinde — click anında değil — çağrılır, bu da hayalet-dizi penceresini daha da daraltır).
+- `tools/test-building-structures-editor.js`: sandbox'a `openConfirmActionModal` sahtesi (`context.confirmActionShouldConfirm` bayrağıyla kontrol edilebilir) eklendi; senaryo 12/12b `context.window.confirm` yerine bunu kullanacak şekilde güncellendi (aynı red/onay davranışını doğrular + onay mesajının doğru geçtiğini de kontrol eder). `npm run verify`: 194 dosyadan 193'ü EXIT:0 (kalan 1'i, önceden belgelenen yerel CRLF/LF checkout artefaktı, bu değişiklikten bağımsız).
+- **Canlı tarayıcıda doğrulandı (bizzat kullanıcının bildirdiği "Deneme Mustakil - Kopya" raporunda)**: "İdari Bina" satırının "X" düğmesine (native confirm hiç devreye girmeden) basıldığında artık uygulama-içi "Emin misiniz?" penceresi (Vazgeç/Evet, Sil düğmeleriyle) açılıyor; "Evet, Sil"e basılınca satır doğru şekilde siliniyor, yalnızca "Fabrika" kalıyor.
+- `index.html`'de `app.js` cache-buster'ı `20260919-0600`'e yükseltildi.
+
 ## 0.0.844 - 2026-09-19 - Proje İnceleme Açıklaması: tek/adsız bloklu raporda "1. Blok'a ait" ifadesi kaldırıldı
 
 - Kullanıcı, "Proje İnceleme Açıklaması"nda "Ekspertize konu 1. Blok'a ait bağımsız bölümler ..." ifadesini gördüğünü, ama değerlenen taşınmazların TEK bloklu bir apartmanda (gerçek bir "A Blok/B Blok" ayrımı OLMADAN) yer aldığını bildirdi — yani "blok" kavramı bu rapor için hiç geçerli değil.

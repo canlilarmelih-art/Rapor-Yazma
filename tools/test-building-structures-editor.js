@@ -167,6 +167,16 @@ function makeContext(rows, fields = {}) {
       querySelectorAll: () => [],
     },
     window: { confirm: () => true },
+    // openConfirmActionModal (2026-09-19, native window.confirm() yerine —
+    // bkz. app.js yorumu: bazı tarayıcı durumlarında confirm() sessizce ve
+    // kalıcı olarak false dönebiliyordu) — davranış-koruyan SAHTE:
+    // context.confirmActionShouldConfirm true (varsayılan, eski
+    // window.confirm:()=>true ile AYNI) ise onConfirm'i HEMEN çağırır.
+    confirmActionShouldConfirm: true,
+    openConfirmActionModal: (message, onConfirm) => {
+      context.lastConfirmActionMessage = message;
+      if (context.confirmActionShouldConfirm) onConfirm();
+    },
     autosave: () => {
       context.autosaveCalls = (context.autosaveCalls || 0) + 1;
     },
@@ -251,6 +261,7 @@ function makeContext(rows, fields = {}) {
   vm.runInContext(sliceFn("function createBuildingStructureFloorInteriorPicker("), context);
   vm.runInContext(sliceFn("function createBuildingStructureFloorTotalsSummary("), context);
   vm.runInContext(sliceFn("function createBuildingStructureDeleteButton("), context);
+  vm.runInContext(sliceFn("function deleteBuildingStructureRowById("), context);
   return context;
 }
 
@@ -659,11 +670,12 @@ console.log("Asansör coktan-secmeli (ice-gomulu acilir liste) alan testleri tam
   const deleteButton = deleteWrap.children[0];
   assert.equal(deleteButton.textContent, "Bu Yapıyı Sil", "'Bu Yapıyı Sil' butonu bulunamadi.");
 
-  context.window.confirm = () => false;
+  context.confirmActionShouldConfirm = false;
   deleteButton.fire("click");
   assert.equal(context.state.tables.buildings.length, 2, "Onay reddedilmesine ragmen yapi silindi.");
+  assert.equal(context.lastConfirmActionMessage, "Bu yapıyı ve tüm kat bilgilerini silmek istediğinize emin misiniz?", "Onay penceresi dogru mesajla acilmadi.");
 
-  context.window.confirm = () => true;
+  context.confirmActionShouldConfirm = true;
   deleteButton.fire("click");
   assert.equal(context.state.tables.buildings.length, 1, "Onaylanan silme islemi (aktif sekmedeki 'Depo'yu) kaldirmadi.");
   assert.equal(context.state.tables.buildings[0].name, "Ana Bina", "Yanlis yapi silindi (aktif sekme 'Depo' silinmeliydi).");
@@ -715,7 +727,7 @@ console.log("Asansör coktan-secmeli (ice-gomulu acilir liste) alan testleri tam
   context.state.tables.buildings = context.state.tables.buildings.map((row) => row);
   const liveArrayAfterNormalize = context.state.tables.buildings;
 
-  context.window.confirm = () => true;
+  context.confirmActionShouldConfirm = true;
   deleteButton.fire("click"); // aktif sekme hala ilk yapi ("Ana Bina"), silinmesi beklenen o
 
   assert.equal(
