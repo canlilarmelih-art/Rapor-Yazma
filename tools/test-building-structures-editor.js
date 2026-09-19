@@ -262,6 +262,7 @@ function makeContext(rows, fields = {}) {
   vm.runInContext(sliceFn("function createBuildingStructureFloorTotalsSummary("), context);
   vm.runInContext(sliceFn("function createBuildingStructureDeleteButton("), context);
   vm.runInContext(sliceFn("function deleteBuildingStructureRowById("), context);
+  vm.runInContext(sliceFn("function createParcelBuildingsRegistryEditor("), context);
   return context;
 }
 
@@ -786,5 +787,47 @@ assert.match(
   );
 }
 console.log("'buildings' tablosunun tasinmaza-ozgu scoped set'e eklenmesi testi tamam.");
+
+// --- 13) REGRESYON (2026-09-19, kullanıcı talebi): "yapı bölümünden kat
+// adedi / dağılımı bölümünü çıkar ve bu bölüme yapı durumu bölümünü
+// taşı" — "Parseldeki Yapılar" merkezi tablosu artık "Kat Adedi /
+// Dağılımı" (salt-okunur özet metni — asıl düzenleme zaten Bina
+// Özellikleri'ndeki Kat Dağılımı panelinde yapılıyor, ORAYA DOKUNULMADI)
+// yerine "Yapı Durumu" (BUILDING_STRUCTURE_STATUS_OPTIONS) sütununu
+// gösteriyor.
+{
+  const rowA = { id: "building-test-a", name: "Fabrika", status: "Aktif" };
+  const { context } = runEditorScenario([rowA]);
+  const panel = context.createParcelBuildingsRegistryEditor();
+  const table = findAllStubs(panel, "TABLE")[0];
+  assert(table, "'Parseldeki Yapılar' tablosu bulunamadı.");
+  assert.match(table.innerHTML, /<th>Yapı Durumu<\/th>/, "'Yapı Durumu' sütun başlığı tabloda yok.");
+  assert.doesNotMatch(table.innerHTML, /Kat Adedi \/ Dağılımı/, "'Kat Adedi \/ Dağılımı' sütunu HÂLÂ tabloda (kaldırılmalıydı).");
+
+  const tbody = table.children.find((n) => n.tagName === "TBODY");
+  const dataRow = tbody.children[0];
+  const statusSelect = dataRow.children[4].children[0]; // 0:Yapı Adı, 1:Kullanım, 2:Yapı Tarzı, 3:Yapı Sınıfı, 4:[Yapı Durumu]
+  assert.equal(dataRow.children.length, 6, `Satırda 4 alan + Yapı Durumu + silme sütunu = 6 hücre beklenir, bulunan: ${dataRow.children.length}`);
+  const statusOptionValues = statusSelect.children.map((opt) => opt.value);
+  assert(statusOptionValues.length > 1, "Yapı Durumu <select>'inde BUILDING_STRUCTURE_STATUS_OPTIONS seçenekleri yok.");
+  statusSelect.value = statusOptionValues[1];
+  statusSelect.fire("change");
+  assert.equal(context.state.tables.buildings[0].status, statusOptionValues[1], "Yapı Durumu seçimi row.status'e yazılmadı.");
+
+  console.log("createParcelBuildingsRegistryEditor(): 'Kat Adedi / Dağılımı' kaldırıldı, 'Yapı Durumu' eklendi testi tamam.");
+}
+
+// --- 14) createBuildingStructureTabContent(): merkezi kayıt modunda
+// "Yapı Durumu" ARTIK TEKRAR gösterilmemeli (tabloya taşındı); merkezi
+// OLMAYAN modda (blok gruplaması aktifken) DEĞİŞMEDEN kalmalı.
+{
+  const realBody = sliceFn("function createBuildingStructureTabContent(");
+  assert.match(
+    realBody,
+    /if \(!centralRegistryMode\) grid\.append\(createBuildingStructureSelectField\(row, "status", "Yapı Durumu", BUILDING_STRUCTURE_STATUS_OPTIONS\)\);/,
+    "'Yapı Durumu' alanı artık yalnızca merkezi-OLMAYAN modda eklenmeli (kaynak-düzeyi)."
+  );
+  console.log("createBuildingStructureTabContent(): 'Yapı Durumu' yalnızca merkezi-OLMAYAN modda ekleniyor (kaynak-düzeyi) testi tamam.");
+}
 
 console.log("Yapilar (Bina Ozellikleri 'Yapı Ekle', tab mantığı) testleri basarili.");

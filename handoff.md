@@ -1,5 +1,13 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.847 - 2026-09-19 - "Parseldeki Yapılar" tablosu: "Kat Adedi / Dağılımı" çıkarıldı, "Yapı Durumu" eklendi
+
+- Kullanıcı: "yapı bölümünden kat adedi / dağılımı bölümünü çıkar ve bu bölüme yapı durumu bölümünü taşı."
+- `app.js`: `createParcelBuildingsRegistryEditor()`'daki (Yapılar ana bölümündeki merkezi "Parseldeki Yapılar" tablosu) "Kat Adedi / Dağılımı" sütunu (salt-okunur bir özet metniydi — asıl kat dağılımı düzenlemesi zaten "Bina Özellikleri"ndeki Kat Dağılımı panelinde yapılıyordu, o panele DOKUNULMADI) kaldırılıp yerine "Yapı Durumu" (`BUILDING_STRUCTURE_STATUS_OPTIONS`, ör. "Aktif") seçim sütunu eklendi. `createBuildingStructureTabContent()`'teki "Yapı Durumu" alanı artık YALNIZCA merkezi-OLMAYAN modda (blok gruplaması aktifken) gösteriliyor — merkezi kayıt modunda (Müstakil Bina, tipik durum) TEKRAR edilmiyor, tabloya taşındı. `createBuildingStructureRegistrySummary()`'deki (Bina Özellikleri'ndeki salt-okunur özet) "Kat Adedi / Dağılımı" satırı da tutarlılık için "Yapı Durumu"na güncellendi.
+- `tools/test-building-structures-editor.js`: yeni 2 senaryo — (13) tablo başlığının "Yapı Durumu" olduğu + "Kat Adedi / Dağılımı"nın HİÇ görünmediği + Yapı Durumu seçiminin `row.status`'e doğru yazıldığı (gerçek DOM-stub çalıştırması); (14) `createBuildingStructureTabContent()`'in "Yapı Durumu"yu yalnızca merkezi-OLMAYAN modda eklediği (kaynak-düzeyi). `git stash` ile eski kodun hâlâ "Kat Adedi / Dağılımı" gösterdiği doğrulandı. `npm run verify`: 194 dosyadan 193'ü EXIT:0 (kalan 1'i, önceden belgelenen yerel CRLF/LF checkout artefaktı, bu değişiklikten bağımsız).
+- **Canlı tarayıcıda doğrulandı**: kullanıcının "Deneme Mustakil - Kopya" raporunda "Parseldeki Yapılar" tablosunda artık "Kat Adedi / Dağılımı" sütunu YOK, yerine "Yapı Durumu" sütunu ("Aktif" değerleriyle) görünüyor.
+- `index.html`'de `app.js` cache-buster'ı `20260919-0700`'e yükseltildi.
+
 ## 0.0.846 - 2026-09-19 - "Yapı Sınıfı" (ve buildingParts/documentScopes) artık her autosave'de kendini resetlemiyor
 
 - Kullanıcı: "yapı sınıfı bölümü kendini resetliyor" — takip: "yeni bir yapı eklenince." Yapı Sınıfı için "1/A" seçilip başka bir yapı eklendiğinde (veya herhangi bir autosave sonrası) seçim "Seçiniz"e dönüyordu.

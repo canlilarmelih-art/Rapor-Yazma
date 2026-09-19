@@ -14828,7 +14828,10 @@ function createBuildingStructureTabContent(rows, index) {
     createBuildingStructureSelectField(row, "parcelPosition", "Parselin Hangi Kısmında Yer Aldığı", buildingEntranceDirectionOptions),
   );
   if (!centralRegistryMode) grid.append(createBuildingStructureSelectField(row, "usage", "Yapı Kullanımı", BUILDING_STRUCTURE_USAGE_OPTIONS));
-  grid.append(createBuildingStructureSelectField(row, "status", "Yapı Durumu", BUILDING_STRUCTURE_STATUS_OPTIONS));
+  // "Yapı Durumu" merkezi kayıt modunda artık "Parseldeki Yapılar"
+  // tablosunda düzenleniyor (bkz. createParcelBuildingsRegistryEditor
+  // yorumu) — burada TEKRAR gösterilmez.
+  if (!centralRegistryMode) grid.append(createBuildingStructureSelectField(row, "status", "Yapı Durumu", BUILDING_STRUCTURE_STATUS_OPTIONS));
   if (centralRegistryMode) wrapper.append(createBuildingStructureRegistrySummary(row));
   wrapper.append(grid);
   wrapper.append(createBuildingStructureTechnicalProfilePanel(row));
@@ -14849,7 +14852,7 @@ function createBuildingStructureRegistrySummary(row) {
     ["Kullanım", row.usage],
     ["Yapı Tarzı", row.buildingStyle],
     ["Yapı Sınıfı", row.buildingClass],
-    ["Kat Adedi / Dağılımı", row.floorCountText],
+    ["Yapı Durumu", row.status],
   ];
   definitions.forEach(([labelText, value]) => {
     const item = document.createElement("div");
@@ -14867,6 +14870,16 @@ function isCentralStructureRegistryMode() {
   return isMustakilBinaOwnershipType() && !isDocumentsBlockGroupingActive();
 }
 
+// Kullanıcı talebi (2026-09-19): "yapı bölümünden kat adedi / dağılımı
+// bölümünü çıkar ve bu bölüme yapı durumu bölümünü taşı" — "Kat Adedi /
+// Dağılımı" burada yalnızca SALT-OKUNUR bir özet metniydi (row.floorCountText),
+// asıl düzenleme zaten "Bina Özellikleri"ndeki createBuildingStructureFloorCountPanel()
+// panelinde (adet grid'i + "Kat Dağılımını Hesapla") yapılıyordu — bu
+// panele DOKUNULMADI, yalnızca bu tablodaki tekrar eden özet sütunu
+// kaldırıldı. Yerine "Yapı Durumu" (BUILDING_STRUCTURE_STATUS_OPTIONS)
+// taşındı — createBuildingStructureTabContent()'teki karşılığı SADECE
+// merkezi kayıt modunda (isCentralStructureRegistryMode()) gizlenir,
+// aksi halde (blok gruplaması aktifse) eskisi gibi orada kalır.
 function createParcelBuildingsRegistryEditor() {
   const panel = createUnitSubsection(
     "Parseldeki Yapılar",
@@ -14884,7 +14897,7 @@ function createParcelBuildingsRegistryEditor() {
       <th>Kullanım</th>
       <th>Yapı Tarzı</th>
       <th>Yapı Sınıfı</th>
-      <th>Kat Adedi / Dağılımı</th>
+      <th>Yapı Durumu</th>
       <th></th>
     </tr></thead>
   `;
@@ -14930,7 +14943,7 @@ function createParcelBuildingsRegistryEditor() {
       createSelectControl(row, "usage", BUILDING_STRUCTURE_USAGE_OPTIONS),
       createSelectControl(row, "buildingStyle", buildingStructureStyleOptions),
       createSelectControl(row, "buildingClass", buildingClassOptions),
-      createTextControl(row, "floorCountText", "Örn. Zemin + 2 Normal Kat"),
+      createSelectControl(row, "status", BUILDING_STRUCTURE_STATUS_OPTIONS),
     ];
     controls.forEach((control) => {
       const td = document.createElement("td");
