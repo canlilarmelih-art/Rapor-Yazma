@@ -33509,23 +33509,29 @@ function buildNoArchitecturalProjectDescription() {
   // seçilmesi ise webtapuda incelenmemiştir/bulunamamıştır gibi ibareler
   // olmamalı" — müstakil binalarda mimari proje YOKKEN bu cümle ŞİMDİYE
   // KADAR kullanıcının seçtiği kurumdan BAĞIMSIZ olarak HER ZAMAN
-  // "Belediyesi VE Webtapu Portalında ... bulunamamıştır" diyordu; Webtapu
-  // müstakil (genelde ruhsatsız/kayıt dışı) yapılarda projeyi arayıp
-  // "bulamadık" demeye değer bir kaynak değil — beklenen/normal durum.
-  // Yalnızca Müstakil Bina'da VE kullanıcı kurumu (projectInstitution)
-  // gerçekten Webtapu'yu İÇERECEK şekilde seçtiyse Webtapu bu cümleden
-  // ÇIKARILIR (Belediye seçiliyse yalnız Belediye anılır, hiçbiri
-  // seçilmemişse eski varsayılan iki-kurumlu cümle DEĞİŞMEDEN kalır —
-  // bu durumda "seçilmiş" bir kurum yok, kullanıcı henüz karar vermemiş).
+  // "Belediyesi VE Webtapu Portalında ... bulunamamıştır" diyordu. Takip
+  // açıklaması: "webtapu seçilmesi ise bulunamamıştır demene gerek yok
+  // müstakil binalarda webtapuda proje olmuyor zaten" — yani Webtapu'yu
+  // cümleden ÇIKARIP yerine kurumsuz genel bir "bulunamamıştır" cümlesi
+  // bırakmak YETERSİZDİ, kullanıcı Webtapu TEK seçiliyken "bulunamamıştır"
+  // demenin KENDİSİNİN gereksiz olduğunu söylüyor (zaten beklenen bir
+  // durum, raporda ayrıca belirtilmeye değmez). Yalnızca Müstakil Bina'da
+  // VE kullanıcı kurumu (projectInstitution) gerçekten Webtapu'yu İÇERECEK
+  // şekilde seçtiyse: Belediye de seçiliyse yalnız Belediye anılır (orası
+  // GERÇEKTEN kontrol edilmiş bir kaynak, "bulunamamıştır" demeye değer);
+  // Belediye seçili DEĞİLSE (yalnız Webtapu) bu cümle TAMAMEN atlanır —
+  // "" döner, aşağıdaki .filter(Boolean) paragraftan düşürür. Hiçbir kurum
+  // seçilmemişse (varsayılan durum) eski iki-kurumlu cümle DEĞİŞMEDEN
+  // kalır (kullanıcı henüz bir seçim yapmamış).
   const suppressWebtapuForMustakil = isMustakilBinaOwnershipType()
     && getSelectedProjectInstitutions().length > 0
     && projectInstitutionIncludes("Webtapu");
   const noProjectSentence = suppressWebtapuForMustakil
     ? (projectInstitutionIncludes("Belediye")
       ? `${district} Belediyesinde yapılan incelemelerde ekspertize konu taşınmaza ait mimari proje bulunamamıştır.`
-      : `Ekspertize konu taşınmaza ait mimari proje bulunamamıştır.`)
+      : "")
     : `${district} Belediyesi ve Webtapu Portalında yapılan incelemelerde ekspertize konu taşınmaza ait mimari proje bulunamamıştır.`;
-  const paragraphs = [noProjectSentence];
+  const paragraphs = [noProjectSentence].filter(Boolean);
   const cadastreValue = normalizeYesNoChoice(state.fields.projectRegisteredInCadastre);
   const cadastrePrefix = `${district} Kadastro Müdürlüğünden alınan sözlü bilgiye göre parsel üzerinde yer alan yapının kadastral paftasına`;
   if (cadastreValue === "Hayır") {

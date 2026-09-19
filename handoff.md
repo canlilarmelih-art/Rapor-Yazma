@@ -1,5 +1,13 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.853 - 2026-09-19 - Müstakil Bina + yalnız Webtapu: "bulunamamıştır" cümlesi artık hiç üretilmiyor
+
+- Kullanıcı, 0.0.852'nin ("Belediyesi VE Webtapu Portalında ... bulunamamıştır" cümlesinden Webtapu'yu çıkaran, ama kurumsuz genel bir "Ekspertize konu taşınmaza ait mimari proje bulunamamıştır." cümlesi bırakan düzeltmenin) hemen ardından netleştirdi: "demek istediğim şuydu webtapu seçilmesi ise bulunamamıştır demene gerek yok müstakil binalarda webtapuda proje olmuyor zaten" — yani Webtapu'yu isimden çıkarmak YETERSİZDİ, yalnız Webtapu seçiliyken "bulunamamıştır" demenin KENDİSİ gereksiz.
+- `app.js`: `buildNoArchitecturalProjectDescription()` — Müstakil Bina'da `projectInstitution` Webtapu'yu içeriyor VE Belediye seçili DEĞİLSE, "mimari proje bulunamamıştır" cümlesi artık `""` döner (üretilmez); `paragraphs` dizisi `.filter(Boolean)` ile bu boş cümleyi düşürür. Belediye de seçiliyse davranış DEĞİŞMEDİ (yalnız Belediye anılır — orası gerçekten kontrol edilmiş bir kaynak, "bulunamamıştır" demeye değer). Kadastro paragrafı (varsa) bu durumda TEK BAŞINA görünmeye devam ediyor (Webtapu/proje cümlesinden bağımsız, ayrı bir veri kaynağı).
+- `tools/test-no-architectural-project-mustakil-webtapu.js`: Senaryo 3, "kurum adı olmadan sade cümle" beklentisinden "cümle tamamen boş" beklentisine güncellendi; yeni Senaryo 3b, kadastro verisi girildiğinde o paragrafın TEK BAŞINA (baştaki cümle olmadan) göründüğünü doğruluyor. Eski app.js (0.0.852) sürümüne karşı `git show`+dosya değişimiyle gerçekten kırıldığı kanıtlandı.
+- `npm run verify`: 195 test dosyasının 194'ü EXIT:0; kalan tek hata (`test-structure-documents-all-phases.js`) bu değişiklikten bağımsız, önceden belgelenmiş CRLF/LF yerel checkout artefaktı.
+- `index.html` içindeki `app.js` cache-buster `20260919-1600` sürümüne yükseltildi.
+
 ## 0.0.852 - 2026-09-19 - Müstakil Bina + Webtapu: "mimari proje bulunamamıştır" ibaresinden Webtapu kaldırıldı
 
 - Kullanıcı: "müstakil yapılarda tapuda genelde proje bulunmuyor o yüzden eğer proje incelenen kurum webtapu seçilmesi ise webtapuda incelenmemistir bulunamamıştır gibi ibareler olmamalı."

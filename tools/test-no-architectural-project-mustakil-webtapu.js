@@ -16,11 +16,18 @@
 
   Düzeltme: Müstakil Bina'da VE kullanıcı projectInstitution'ı GERÇEKTEN
   Webtapu'yu İÇERECEK şekilde seçtiyse Webtapu bu cümleden çıkarılır
-  (Belediye de seçiliyse yalnız Belediye anılır; yalnız Webtapu seçiliyse
-  kurum adı hiç anılmaz). Hiçbir kurum seçilmemişse (varsayılan durum)
-  eski iki-kurumlu cümle DEĞİŞMEDEN kalır. Müstakil Bina DIŞINDAKİ (ör.
-  Dikey Kat İrtifakı) mülkiyet türlerinde davranış TAMAMEN DEĞİŞMEDEN
-  kalır (regresyon kilidi, bkz. Senaryo 1).
+  (Belediye de seçiliyse yalnız Belediye anılır — orası GERÇEKTEN kontrol
+  edilmiş bir kaynak). Hiçbir kurum seçilmemişse (varsayılan durum) eski
+  iki-kurumlu cümle DEĞİŞMEDEN kalır. Müstakil Bina DIŞINDAKİ (ör. Dikey
+  Kat İrtifakı) mülkiyet türlerinde davranış TAMAMEN DEĞİŞMEDEN kalır
+  (regresyon kilidi, bkz. Senaryo 1).
+
+  TAKİP BİLDİRİMİ (2026-09-19, aynı gün): "webtapu seçilmesi ise
+  bulunamamıştır demene gerek yok müstakil binalarda webtapuda proje
+  olmuyor zaten" — Webtapu'yu cümleden çıkarıp yerine kurumsuz genel bir
+  "bulunamamıştır" cümlesi bırakmak YETERSİZDİ; yalnız Webtapu seçiliyken
+  "bulunamamıştır" demenin KENDİSİ gereksiz. Düzeltme: Belediye seçili
+  DEĞİLSE (yalnız Webtapu) bu cümle TAMAMEN atlanır (bkz. Senaryo 3/3b).
 
   Bu test buildNoArchitecturalProjectDescription()'ı GERÇEK app.js
   kaynağından (yardımcı fonksiyonlarıyla birlikte) izole çalıştırır.
@@ -124,8 +131,10 @@ function buildContext(fields) {
   console.log("Regresyon: Müstakil Bina + kurum seçilmemiş -> eski cümle DEĞİŞMEDİ testi tamam.");
 }
 
-// --- 3) YENİ DAVRANIŞ: Müstakil Bina + SADECE Webtapu seçili -> Webtapu -
-// hiç anılmamalı, kurum adı olmadan sade cümle. ---------------------------
+// --- 3) YENİ DAVRANIŞ (takip bildirimi, 2026-09-19: "webtapu seçilmesi
+// ise bulunamamıştır demene gerek yok müstakil binalarda webtapuda proje
+// olmuyor zaten"): Müstakil Bina + SADECE Webtapu seçili -> "bulunamamıştır"
+// cümlesinin KENDİSİ tamamen düşmeli (yalnız kurum adı değil). -----------
 {
   const context = buildContext({
     ownershipType: "Müstakil Bina",
@@ -133,13 +142,33 @@ function buildContext(fields) {
     projectInstitution: "Webtapu",
   });
   const result = context.buildNoArchitecturalProjectDescription();
-  assert.doesNotMatch(result, /Webtapu/i, `Müstakil Bina + yalnız Webtapu seçiliyken cümlede Webtapu HİÇ geçmemeli: ${result}`);
+  assert.equal(
+    result,
+    "",
+    `Müstakil Bina + yalnız Webtapu seçiliyken (kadastro verisi de yokken) "bulunamamıştır" cümlesi hiç üretilmemeli: ${JSON.stringify(result)}`
+  );
+  console.log("YENİ: Müstakil Bina + yalnız Webtapu seçili -> 'bulunamamıştır' cümlesi TAMAMEN kaldırıldı testi tamam.");
+}
+
+// --- 3b) Aynı senaryoda (yalnız Webtapu) kadastro bilgisi GİRİLMİŞSE o ---
+// paragraf, "bulunamamıştır" cümlesi olmadan TEK BAŞINA görünmeye devam
+// etmeli (kadastro bilgisi Webtapu'dan bağımsız, ayrı bir veri kaynağı). -
+{
+  const context = buildContext({
+    ownershipType: "Müstakil Bina",
+    titleDistrict: "Kadıköy",
+    projectInstitution: "Webtapu",
+    projectRegisteredInCadastre: "Hayır",
+  });
+  const result = context.buildNoArchitecturalProjectDescription();
+  assert.doesNotMatch(result, /Webtapu/i, `Kadastro paragrafı olsa bile Webtapu HİÇ geçmemeli: ${result}`);
+  assert.doesNotMatch(result, /bulunamamıştır/, `"bulunamamıştır" cümlesi bu senaryoda hiç geçmemeli: ${result}`);
   assert.match(
     result,
-    /^Ekspertize konu taşınmaza ait mimari proje bulunamamıştır\./,
-    `Müstakil Bina + yalnız Webtapu seçiliyken kurum adı olmadan sade cümle beklenir: ${result}`
+    /^Kadıköy Kadastro Müdürlüğünden alınan sözlü bilgiye göre parsel üzerinde yer alan yapının kadastral paftasına işli olmadığı bilgisi alınmıştır\.$/,
+    `Kadastro paragrafı tek başına (baştaki cümle olmadan) görünmeli: ${result}`
   );
-  console.log("YENİ: Müstakil Bina + yalnız Webtapu seçili -> Webtapu ifadesi kaldırıldı testi tamam.");
+  console.log("YENİ: Müstakil Bina + yalnız Webtapu + kadastro verisi -> yalnız kadastro paragrafı kaldı testi tamam.");
 }
 
 // --- 4) YENİ DAVRANIŞ: Müstakil Bina + Webtapu VE Belediye ikisi de -----
