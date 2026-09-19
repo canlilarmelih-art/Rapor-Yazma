@@ -234,7 +234,7 @@ const TEST_FILES = [
   "test-building-floor-common-case-preserved.js",
   "test-comparable-matrix-ziraat-comma-coordinates.js",
   "test-comparable-memory-auto-save.js",
-  "test-no-architectural-project-mustakil-webtapu.js",
+  "test-single-institution-condominium-project-description.js",
   "test-structure-documents-all-phases.js",
 ];
 

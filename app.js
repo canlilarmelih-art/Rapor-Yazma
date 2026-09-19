@@ -33504,38 +33504,23 @@ function buildNoArchitecturalProjectDescription() {
     ).trim() || "Arsa";
     return `Ekspertize konu taşınmaz ${quality} niteliğinde olup, ${district} Belediyesinde yapılan incelemelerde taşınmaza ait ruhsat ve mimari proje bulunmamaktadır.`;
   }
-  // Kullanıcı bildirimi (2026-09-19): "müstakil yapılarda tapuda genelde
-  // proje bulunmuyor o yüzden eğer proje incelenen kurum webtapu
-  // seçilmesi ise webtapuda incelenmemiştir/bulunamamıştır gibi ibareler
-  // olmamalı" — bu cümle ŞİMDİYE KADAR kullanıcının seçtiği kurumdan
-  // BAĞIMSIZ olarak HER ZAMAN "Belediyesi VE Webtapu Portalında ...
-  // bulunamamıştır" diyordu. SON netleştirme ("tamamen yanlış anladın"):
-  // "eğer webtapu ve belediye seçili ise webtapu ve belediye olarak
-  // cümleyi kur, başka kurum seçili ise yine kur, sadece [yalnız] webtapu
-  // seçili olduğunda webtapuda proje bulunamamıştır ya da incelenememiştir
-  // yazmayalım" — yani kural Webtapu'yu HER YERDE bastırmak DEĞİL, SADECE
-  // Webtapu'nun TEK BAŞINA seçili olduğu dar durumda cümleyi atlamak;
-  // Webtapu birden fazla kurumdan biri olarak seçiliyse (ör. Belediye ile
-  // birlikte) veya herhangi BAŞKA bir kurum (Belediye, OSB, İl Özel İdare,
-  // Büyükşehir, Anıtlar Kurulu) seçiliyse cümle GERÇEKTEN seçilen
-  // kurum(lar)ı yansıtarak kurulmaya devam eder — daha önce hiç
-  // kullanılmayan formatProjectReviewLocationForMissing() (Webtapu için
-  // sade "Webtapu Portalında", Belediye için "{ilçe} Belediyesi İmar ve
-  // Şehircilik Müdürlüğünde", diğerleri için formatProjectReviewLocation
-  // yedeği) TAM bunun için hazırlanmış, burada ilk kez kullanılıyor.
-  // Hiçbir kurum seçilmemişse (varsayılan durum) VEYA Müstakil Bina
-  // DIŞINDAKİ mülkiyet türlerinde eski iki-kurumlu cümle DEĞİŞMEDEN kalır.
-  const selectedInstitutionsForNoProject = isMustakilBinaOwnershipType() ? getSelectedProjectInstitutions() : [];
-  let noProjectSentence;
-  if (selectedInstitutionsForNoProject.length === 1 && projectInstitutionIncludes("Webtapu")) {
-    noProjectSentence = "";
-  } else if (selectedInstitutionsForNoProject.length > 0) {
-    const placeText = joinTurkishList(selectedInstitutionsForNoProject.map(formatProjectReviewLocationForMissing));
-    noProjectSentence = `${placeText} yapılan incelemelerde ekspertize konu taşınmaza ait mimari proje bulunamamıştır.`;
-  } else {
-    noProjectSentence = `${district} Belediyesi ve Webtapu Portalında yapılan incelemelerde ekspertize konu taşınmaza ait mimari proje bulunamamıştır.`;
-  }
-  const paragraphs = [noProjectSentence].filter(Boolean);
+  // 2026-09-19 NOT: Bu fonksiyon yalnızca hasArchitecturalProject="Hayır"
+  // iken çalışır — ve TAM O DURUMDA "Proje İncelenen Kurum" (projectInstitution)
+  // alanı isArchitecturalProjectDependentField() ile EKRANDAN GİZLENİR
+  // (bkz. shouldHideField/isFieldHiddenFromNormalUser, "documents" dalı).
+  // Yani kullanıcı bu ekrandayken o kurumu SEÇEMEZ BİLE — 2026-09-19'da
+  // buraya eklenip SONRA geri alınan (kullanıcının "bulunamamıştır ne
+  // alaka bu incelenen kurumlar" tepkisiyle fark edilen) dört turluk bir
+  // "projectInstitution'a göre Webtapu'yu bastır" denemesi TAMAMEN YANLIŞ
+  // bir koda dayanıyordu (state.fields.projectInstitution burada var
+  // olsa olsa ekran GİZLENMEDEN ÖNCEKİ bayat bir değerdi). Kullanıcının
+  // GERÇEK sorunu farklı bir fonksiyondaydı — bkz.
+  // buildSingleInstitutionCondominiumProjectDescription()'ın üstündeki
+  // 2026-09-19 notu. Bu fonksiyon BİLEREK orijinal (kurum seçiminden
+  // bağımsız) haline döndürüldü.
+  const paragraphs = [
+    `${district} Belediyesi ve Webtapu Portalında yapılan incelemelerde ekspertize konu taşınmaza ait mimari proje bulunamamıştır.`,
+  ];
   const cadastreValue = normalizeYesNoChoice(state.fields.projectRegisteredInCadastre);
   const cadastrePrefix = `${district} Kadastro Müdürlüğünden alınan sözlü bilgiye göre parsel üzerinde yer alan yapının kadastral paftasına`;
   if (cadastreValue === "Hayır") {
@@ -33567,20 +33552,32 @@ function buildNoArchitecturalProjectDescription() {
   return normalizeReportDescriptionText(paragraphs.filter(Boolean).join("\n\n"));
 }
 
+// Kullanıcı bildirimi (2026-09-19, "normal Dikey Kat İrtifaklı raporda
+// Webtapu seçili değilse Proje İncelenen Kurum cümlesi nasıl geliyor"):
+// bu fonksiyon tek kurum (ör. yalnız Belediye) seçiliyken kendiliğinden
+// DİĞER (hiç seçilmemiş, hiç kontrol edilmemiş) kurumu da anıp "orada
+// mimari proje bulunamamıştır" diye EKLİYORDU — kullanıcı hiçbir zaman
+// Webtapu'yu kontrol ettiğini belirtmemişken rapor Webtapu hakkında
+// olumsuz bir iddia içeriyordu (ve simetrik olarak yalnız Webtapu
+// seçiliyken Belediye için aynı sorun vardı). Kullanıcının netleştirmesi:
+// "sadece seçileni anlat, diğerini hiç anma". Düzeltme: yalnızca GERÇEKTEN
+// seçilen kurumdaki inceleme ("incelenmiştir") anlatılır; seçilmeyen
+// kurum hakkında HİÇBİR iddia (ne "bulunamamıştır" ne "incelenememiştir")
+// eklenmez. TAKBİS-yok dalı (tapu kaydı hiç alınamadığı için tapu
+// projesinin incelenememesi) BAĞIMSIZ, GERÇEK bir tespit olduğundan
+// DEĞİŞMEDİ — bu, "diğer kurum kontrol edilmedi" varsayımı değil, TAKBİS
+// belgesinin GERÇEKTEN alınamadığı bilgisine dayanır.
 function buildSingleInstitutionCondominiumProjectDescription(institution, projectReference, dateLead) {
-  const district = getProjectReviewDistrictText();
   const folded = foldTurkish(institution || "");
   if (folded.includes("BELEDIYE") && !folded.includes("WEBTAPU")) {
     const reviewedAt = formatProjectReviewLocation("Belediye");
     if (state.fields.takbisMethod === "Tapu Kaydı Alınmamıştır.") {
       return `${dateLead}${reviewedAt} ekspertize konu taşınmaza ait ${projectReference} incelenmiştir. TAKBİS belgesi alınmadığından taşınmaza ait tapu projesi incelenememiştir.`;
     }
-    const missingPlace = district ? `Webtapu Portalında ve ${district} Tapu Müdürlüğünde` : "Webtapu Portalında ve Tapu Müdürlüğünde";
-    return `${dateLead}${reviewedAt} ekspertize konu taşınmaza ait ${projectReference} incelenmiştir. ${missingPlace} taşınmazın yer aldığı binaya ait mimari proje bulunamamıştır.`;
+    return `${dateLead}${reviewedAt} ekspertize konu taşınmaza ait ${projectReference} incelenmiştir.`;
   }
   if (folded.includes("WEBTAPU")) {
-    const missingPlace = district ? `${district} Belediyesi İmar ve Şehircilik Arşivinde` : "Belediye İmar ve Şehircilik Arşivinde";
-    return `${dateLead}Webtapu Portalında ekspertize konu taşınmaza ait ${projectReference} incelenmiştir. ${missingPlace} taşınmazın yer aldığı binaya ait mimari proje bulunamamıştır.`;
+    return `${dateLead}Webtapu Portalında ekspertize konu taşınmaza ait ${projectReference} incelenmiştir.`;
   }
   return "";
 }
