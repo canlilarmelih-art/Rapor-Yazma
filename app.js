@@ -33507,26 +33507,28 @@ function buildNoArchitecturalProjectDescription() {
   // Kullanıcı bildirimi (2026-09-19): "müstakil yapılarda tapuda genelde
   // proje bulunmuyor o yüzden eğer proje incelenen kurum webtapu
   // seçilmesi ise webtapuda incelenmemiştir/bulunamamıştır gibi ibareler
-  // olmamalı" — müstakil binalarda mimari proje YOKKEN bu cümle ŞİMDİYE
-  // KADAR kullanıcının seçtiği kurumdan BAĞIMSIZ olarak HER ZAMAN
-  // "Belediyesi VE Webtapu Portalında ... bulunamamıştır" diyordu. Takip
-  // açıklaması: "webtapu seçilmesi ise bulunamamıştır demene gerek yok
-  // müstakil binalarda webtapuda proje olmuyor zaten" — yani Webtapu'yu
-  // cümleden ÇIKARIP yerine kurumsuz genel bir "bulunamamıştır" cümlesi
-  // bırakmak YETERSİZDİ, kullanıcı Webtapu TEK seçiliyken "bulunamamıştır"
-  // demenin KENDİSİNİN gereksiz olduğunu söylüyor (zaten beklenen bir
-  // durum, raporda ayrıca belirtilmeye değmez). Yalnızca Müstakil Bina'da
-  // VE kullanıcı kurumu (projectInstitution) gerçekten Webtapu'yu İÇERECEK
-  // şekilde seçtiyse: Belediye de seçiliyse yalnız Belediye anılır (orası
-  // GERÇEKTEN kontrol edilmiş bir kaynak, "bulunamamıştır" demeye değer);
-  // Belediye seçili DEĞİLSE (yalnız Webtapu) bu cümle TAMAMEN atlanır —
-  // "" döner, aşağıdaki .filter(Boolean) paragraftan düşürür. Hiçbir kurum
-  // seçilmemişse (varsayılan durum) eski iki-kurumlu cümle DEĞİŞMEDEN
-  // kalır (kullanıcı henüz bir seçim yapmamış).
-  const suppressWebtapuForMustakil = isMustakilBinaOwnershipType()
-    && getSelectedProjectInstitutions().length > 0
-    && projectInstitutionIncludes("Webtapu");
-  const noProjectSentence = suppressWebtapuForMustakil
+  // olmamalı", takip: "webtapu seçilmesi ise bulunamamıştır demene gerek
+  // yok müstakil binalarda webtapuda proje olmuyor zaten" — müstakil
+  // binalarda mimari proje YOKKEN bu cümle ŞİMDİYE KADAR kullanıcının
+  // seçtiği kurumdan BAĞIMSIZ olarak HER ZAMAN "Belediyesi VE Webtapu
+  // Portalında ... bulunamamıştır" diyordu; Webtapu'da proje aranıp
+  // bulunamaması müstakil binada beklenen/normal bir durum, ayrıca
+  // belirtilmeye değmez. İKİNCİ takip sorusu ("sadece belediye seçili ise
+  // nasıl cümle kuruluyor?") ilk düzeltmenin (yalnızca "Webtapu seçili mi"
+  // kontrolü yapan) EKSİĞİNİ ortaya çıkardı: yalnız Belediye seçiliyken
+  // gate hiç tetiklenmiyor, cümle YİNE "Belediyesi ve Webtapu Portalında"
+  // diyerek Webtapu'yu SEÇİLMEMİŞ olsa bile anıyordu. Kök kural artık
+  // "Webtapu seçili mi" DEĞİL, "Müstakil Bina'da HERHANGİ bir kurum
+  // seçilmiş mi" — seçim varsa cümle SADECE gerçekten seçilen kurumu
+  // (Belediye) yansıtır, Webtapu ne olursa olsun HİÇ anılmaz: Belediye
+  // seçiliyse (Webtapu seçili olsun ya da olmasın) yalnız Belediye anılır;
+  // Belediye seçili DEĞİLSE (yalnız Webtapu veya başka bir kurum) cümle
+  // TAMAMEN atlanır — "" döner, aşağıdaki .filter(Boolean) paragraftan
+  // düşürür. Hiçbir kurum seçilmemişse (varsayılan durum) eski iki-kurumlu
+  // cümle DEĞİŞMEDEN kalır (kullanıcı henüz bir seçim yapmamış).
+  const hasSelectedProjectInstitution = isMustakilBinaOwnershipType()
+    && getSelectedProjectInstitutions().length > 0;
+  const noProjectSentence = hasSelectedProjectInstitution
     ? (projectInstitutionIncludes("Belediye")
       ? `${district} Belediyesinde yapılan incelemelerde ekspertize konu taşınmaza ait mimari proje bulunamamıştır.`
       : "")

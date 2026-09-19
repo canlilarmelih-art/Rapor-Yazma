@@ -22,12 +22,21 @@
   Kat İrtifakı) mülkiyet türlerinde davranış TAMAMEN DEĞİŞMEDEN kalır
   (regresyon kilidi, bkz. Senaryo 1).
 
-  TAKİP BİLDİRİMİ (2026-09-19, aynı gün): "webtapu seçilmesi ise
+  TAKİP BİLDİRİMİ 1 (2026-09-19, aynı gün): "webtapu seçilmesi ise
   bulunamamıştır demene gerek yok müstakil binalarda webtapuda proje
   olmuyor zaten" — Webtapu'yu cümleden çıkarıp yerine kurumsuz genel bir
   "bulunamamıştır" cümlesi bırakmak YETERSİZDİ; yalnız Webtapu seçiliyken
   "bulunamamıştır" demenin KENDİSİ gereksiz. Düzeltme: Belediye seçili
   DEĞİLSE (yalnız Webtapu) bu cümle TAMAMEN atlanır (bkz. Senaryo 3/3b).
+
+  TAKİP SORUSU 2 (2026-09-19, aynı gün): "sadece belediye seçili ise nasıl
+  cümle kuruluyor?" — Bu soru, ilk iki düzeltmenin gate'inin ("Webtapu
+  seçili mi?") EKSİĞİNİ ortaya çıkardı: yalnız Belediye seçiliyken gate
+  hiç tetiklenmiyor, cümle YİNE "Belediyesi ve Webtapu Portalında" diyerek
+  Webtapu'yu SEÇİLMEMİŞ olsa bile anıyordu. Kök kural artık "Webtapu
+  seçili mi" DEĞİL, "Müstakil Bina'da HERHANGİ bir kurum seçilmiş mi" —
+  seçim varsa cümle SADECE gerçekten seçilen kurumu (Belediye) yansıtır,
+  Webtapu (seçili olsun ya da olmasın) HİÇ anılmaz (bkz. Senaryo 5/5b).
 
   Bu test buildNoArchitecturalProjectDescription()'ı GERÇEK app.js
   kaynağından (yardımcı fonksiyonlarıyla birlikte) izole çalıştırır.
@@ -189,10 +198,12 @@ function buildContext(fields) {
   console.log("YENİ: Müstakil Bina + Webtapu+Belediye seçili -> yalnız Belediye anıldı testi tamam.");
 }
 
-// --- 5) REGRESYON KİLİDİ: Müstakil Bina + SADECE Belediye seçili -> ------
-// Webtapu zaten SEÇİLMEDİĞİ için suppress tetiklenmez, eski iki-kurumlu
-// cümle DEĞİŞMEDEN kalır (kullanıcının bildirdiği koşul özellikle
-// "webtapu seçilmesi ise" idi). -------------------------------------------
+// --- 5) TAKİP SORUSU (2026-09-19, kullanıcı: "sadece belediye seçili ise
+// nasıl cümle kuruluyor"): Müstakil Bina + SADECE Belediye seçili -> ------
+// GERÇEKTEN kontrol edilen tek kurum Belediye olduğundan Webtapu artık HİÇ
+// anılmamalı ("Belediyesi ve Webtapu Portalında" ilk düzeltmenin EKSİĞİYDİ
+// — gate yalnızca "Webtapu seçili mi" diye bakıyordu, Belediye-tek
+// senaryosunu hiç kapsamıyordu). --------------------------------------------
 {
   const context = buildContext({
     ownershipType: "Müstakil Bina",
@@ -200,12 +211,32 @@ function buildContext(fields) {
     projectInstitution: "Belediye",
   });
   const result = context.buildNoArchitecturalProjectDescription();
+  assert.doesNotMatch(result, /Webtapu/i, `Müstakil Bina + yalnız Belediye seçiliyken Webtapu artık HİÇ geçmemeli: ${result}`);
   assert.match(
     result,
-    /Kadıköy Belediyesi ve Webtapu Portalında yapılan incelemelerde ekspertize konu taşınmaza ait mimari proje bulunamamıştır\./,
-    `Müstakil Bina + yalnız Belediye seçiliyken (Webtapu seçili DEĞİL) eski cümle DEĞİŞMEMELİ: ${result}`
+    /^Kadıköy Belediyesinde yapılan incelemelerde ekspertize konu taşınmaza ait mimari proje bulunamamıştır\./,
+    `Müstakil Bina + yalnız Belediye seçiliyken yalnız Belediye anılmalı: ${result}`
   );
-  console.log("Regresyon: Müstakil Bina + yalnız Belediye seçili (Webtapu seçili değil) -> eski cümle DEĞİŞMEDİ testi tamam.");
+  console.log("YENİ: Müstakil Bina + yalnız Belediye seçili -> Webtapu artık anılmıyor testi tamam.");
+}
+
+// --- 5b) Müstakil Bina + Belediye DIŞI başka bir kurum (ör. OSB Bölge -----
+// Müdürlüğü) SEÇİLİ -> Belediye de kontrol edilmediğinden cümle TAMAMEN
+// atlanmalı (Webtapu/Belediye'yi olmayan bir gerçekliği anlatmaktansa hiç
+// anmamak tercih edilir). ---------------------------------------------------
+{
+  const context = buildContext({
+    ownershipType: "Müstakil Bina",
+    titleDistrict: "Kadıköy",
+    projectInstitution: "OSB Bölge Müdürlüğü",
+  });
+  const result = context.buildNoArchitecturalProjectDescription();
+  assert.equal(
+    result,
+    "",
+    `Müstakil Bina + Belediye/Webtapu DIŞI bir kurum seçiliyken cümle hiç üretilmemeli: ${JSON.stringify(result)}`
+  );
+  console.log("YENİ: Müstakil Bina + Belediye/Webtapu dışı kurum seçili -> cümle üretilmedi testi tamam.");
 }
 
 // --- 6) Kadastro paragrafı, YENİ davranışta da eskisi gibi eklenmeye -----

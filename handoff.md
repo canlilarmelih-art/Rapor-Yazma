@@ -1,5 +1,13 @@
 # Rapor Yazma Programı — Handoff Notu
 
+## 0.0.854 - 2026-09-19 - Müstakil Bina + yalnız Belediye: Webtapu artık burada da anılmıyor
+
+- Kullanıcı, 0.0.853'ün ardından sordu: "sadece belediye seçili ise nasıl cümle kuruluyor" — bu soru, önceki iki düzeltmenin gate'inin ("Webtapu seçili mi?") EKSİĞİNİ ortaya çıkardı: Müstakil Bina'da yalnızca Belediye seçiliyken (Webtapu HİÇ seçilmemişken) gate hiç tetiklenmiyor, cümle YİNE eski "{ilçe} Belediyesi ve Webtapu Portalında ... bulunamamıştır" halini koruyordu — Webtapu, seçilmemiş olmasına rağmen cümlede geçmeye devam ediyordu.
+- `app.js`: `buildNoArchitecturalProjectDescription()`'daki kural artık "Webtapu seçili mi" DEĞİL, "Müstakil Bina'da HERHANGİ bir proje-incelenen-kurum seçilmiş mi" — seçim varsa cümle SADECE gerçekten seçilen kurumu (Belediye) yansıtır, Webtapu (seçili olsun ya da olmasın) HİÇ anılmaz: Belediye seçiliyse yalnız Belediye anılır; Belediye seçili DEĞİLSE (yalnız Webtapu, veya Belediye/Webtapu dışı bir kurum — ör. OSB Bölge Müdürlüğü) cümle tamamen atlanır. Hiçbir kurum seçilmemişse (varsayılan durum) eski iki-kurumlu cümle DEĞİŞMEDEN kalır.
+- `tools/test-no-architectural-project-mustakil-webtapu.js`: Senaryo 5 (yalnız Belediye) eski "değişmemeli" beklentisinden "Webtapu artık hiç geçmemeli" beklentisine çevrildi; yeni Senaryo 5b, Belediye/Webtapu dışı bir kurum (OSB Bölge Müdürlüğü) seçiliyken cümlenin tamamen atlandığını doğruluyor. Önceki app.js (0.0.853) sürümüne karşı gerçekten kırıldığı kanıtlandı.
+- `npm run verify`: 195 test dosyasının 194'ü EXIT:0; kalan tek hata (`test-structure-documents-all-phases.js`) bu değişiklikten bağımsız, önceden belgelenmiş CRLF/LF yerel checkout artefaktı.
+- `index.html` içindeki `app.js` cache-buster `20260919-1615` sürümüne yükseltildi.
+
 ## 0.0.853 - 2026-09-19 - Müstakil Bina + yalnız Webtapu: "bulunamamıştır" cümlesi artık hiç üretilmiyor
 
 - Kullanıcı, 0.0.852'nin ("Belediyesi VE Webtapu Portalında ... bulunamamıştır" cümlesinden Webtapu'yu çıkaran, ama kurumsuz genel bir "Ekspertize konu taşınmaza ait mimari proje bulunamamıştır." cümlesi bırakan düzeltmenin) hemen ardından netleştirdi: "demek istediğim şuydu webtapu seçilmesi ise bulunamamıştır demene gerek yok müstakil binalarda webtapuda proje olmuyor zaten" — yani Webtapu'yu isimden çıkarmak YETERSİZDİ, yalnız Webtapu seçiliyken "bulunamamıştır" demenin KENDİSİ gereksiz.
