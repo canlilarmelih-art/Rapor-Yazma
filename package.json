@@ -20,6 +20,6 @@
     "test:comparable-memory": "node tools/test-comparable-memory-private-storage.js"
   },
   "devDependencies": {
-    "terser": "^5.49.0"
+    "terser": "^5.51.2"
   }
 }
