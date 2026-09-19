@@ -66,6 +66,22 @@
      YENİDEN HESAPLAMADIĞI kaynak-düzeyinde doğrulanır (regresyon kilidi
      — bu fonksiyon artık calculateComparableValuationAverages/
      getComparableValuationRows'u HİÇ ÇAĞIRMAMALI).
+
+  EK TUR (2026-09-19, kullanıcı bildirimi, "Kat Bazında Hesaplama
+  Tablosu" ekran görüntüsü): "buraya teras hariç toplam yasal alan
+  gelmeli indirgenmiş alan değil" / "...toplam mevcut alan gelmeli...".
+  Yukarıdaki (2026-09-13) düzeltme "İNDİRGENMİŞ (etkili) toplam alan"ı
+  calculateReducedUnitFloorTotal ile hesaplıyordu — bu fonksiyon TERASI
+  DA (kendi indirgeme oranıyla) toplama KATIYORDU. Bu,
+  composeWorkplaceFloorEffectiveAreaSummary()'nin ürettiği "Teras
+  Alanları ... kapalı kullanım alanına dahil edilmemiş, şerefiye unsuru
+  olarak dikkate alınmıştır" cümlesiyle DOĞRUDAN ÇELİŞİYORDU.
+  5) YENİ calculateReducedUnitFloorAreaExcludingTerrace/
+     calculateReducedUnitFloorTotalExcludingTerrace: teras katkısını
+     TAMAMEN dışlar, kat bazlı indirgeme (asma kat) davranışını KORUR.
+  6) getValuationUnitReducedAreaTotals(): artık bu YENİ (teras hariç)
+     fonksiyonu kullanıyor — terası olan bir katta bile toplam, terası
+     HİÇ SAYMAMALI (terasın KENDİ indirgeme oranı ne olursa olsun).
 */
 
 const assert = require("node:assert/strict");
@@ -104,6 +120,8 @@ const functionNames = [
   "parseUnitReductionRate",
   "calculateReducedUnitFloorArea",
   "calculateReducedUnitFloorTotal",
+  "calculateReducedUnitFloorAreaExcludingTerrace",
+  "calculateReducedUnitFloorTotalExcludingTerrace",
   "parseValuationNumber",
   "parseValuationNumberOrZero",
   "formatValuationArea",
@@ -264,6 +282,62 @@ const allFloorRows = [
   assert.ok(!fnBody.includes("getComparableValuationRows"), "getExplanationsFloorValuationMetrics() artık getComparableValuationRows() ÇAĞIRMAMALI.");
   assert.ok(fnBody.includes("parseValuationNumber(state.fields[marketKey])"), "getExplanationsFloorValuationMetrics() doğrudan state.fields[marketKey]'i okumalı (basit, 0.0.756 ÖNCESİ formül).");
   console.log("getExplanationsFloorValuationMetrics(): kaynak-düzeyi basitleştirme regresyon kilidi testi tamam.");
+}
+
+// --- 5) Teras HARİÇ toplam alan (kullanıcının GERÇEK örneğine yakın: -----
+// 2. Normal Kat 62 m² (%100, teras yok) + Çatı Katı 58 m² (%100) + 6 m²
+// teras (%90 indirgeme) — Yasal alanda asma kat YOK) ---------------------
+{
+  const legalRowsWithTerrace = [
+    { floor: "2. Normal Kat", legalArea: "62", areaReductionRate: "100" },
+    { floor: "Çatı Katı", legalArea: "58", areaReductionRate: "100", legalTerrace: "6", terraceReductionRate: "90" },
+  ];
+  // Mevcut tarafta AYRICA asma-kat tarzı bir kat indirgemesi de var (%50)
+  // — teras hariç tutma davranışının, kat bazlı indirgemeyi BOZMADIĞINI
+  // kanıtlamak için.
+  const currentRowsWithTerrace = [
+    { floor: "2. Normal Kat", currentArea: "62", areaReductionRate: "100" },
+    { floor: "Asma Kat", currentArea: "64", areaReductionRate: "50", currentTerrace: "8", terraceReductionRate: "90" },
+  ];
+  const rowsWithTerrace = [
+    { floor: "2. Normal Kat", legalArea: "62", currentArea: "62", areaReductionRate: "100" },
+    { floor: "Çatı Katı", legalArea: "58", areaReductionRate: "100", legalTerrace: "6", terraceReductionRate: "90" },
+    { floor: "Asma Kat", currentArea: "64", areaReductionRate: "50", currentTerrace: "8", terraceReductionRate: "90" },
+  ];
+
+  const context = buildContext({ tables: { unitFloors: rowsWithTerrace }, fields: {} });
+
+  // 5a) calculateReducedUnitFloorTotalExcludingTerrace: teras (6 m², %90
+  // indirgeme) toplama HİÇ girmemeli — Yasal = 62+58 = 120 (125,4 DEĞİL).
+  const legalExcludingTerrace = context.calculateReducedUnitFloorTotalExcludingTerrace(legalRowsWithTerrace, "legal");
+  assert.equal(legalExcludingTerrace, 120, `Yasal teras-hariç toplam 120 olmalı (teras dahil 125,4 DEĞİL): ${legalExcludingTerrace}`);
+  // Aynı satırların ESKİ (teras dahil) fonksiyonu HÂLÂ 125,4 vermeli —
+  // yeni fonksiyonun eskiyi BOZMADIĞININ kanıtı.
+  const legalIncludingTerrace = context.calculateReducedUnitFloorTotal(legalRowsWithTerrace, "legal");
+  assert.ok(Math.abs(legalIncludingTerrace - 125.4) < 0.001, `calculateReducedUnitFloorTotal (ESKİ, teras dahil) hâlâ 125,4 vermeli: ${legalIncludingTerrace}`);
+
+  // 5b) Mevcut tarafta asma kat indirgemesi (%50) KORUNMALI: 62 + 64×0,5 =
+  // 94 (teras 8 m²/%90 toplama hiç girmiyor; ham 126 da DEĞİL).
+  const currentExcludingTerrace = context.calculateReducedUnitFloorTotalExcludingTerrace(currentRowsWithTerrace, "current");
+  assert.equal(currentExcludingTerrace, 94, `Mevcut teras-hariç toplam 94 olmalı (kat indirgemesi korunur, teras dahil değil, ham 126 değil): ${currentExcludingTerrace}`);
+
+  // 5c) getValuationUnitReducedAreaTotals(): artık teras hariç toplamı
+  // döndürmeli.
+  const totals = context.getValuationUnitReducedAreaTotals();
+  assert.equal(totals.legal, "120", `getValuationUnitReducedAreaTotals().legal teras hariç (120) olmalı: ${totals.legal}`);
+  assert.equal(totals.current, "94", `getValuationUnitReducedAreaTotals().current teras hariç (94) olmalı: ${totals.current}`);
+
+  // 5d) UÇTAN UCA: syncValuationAreasFromUnitAreas() sonrası legalValueArea/
+  // currentValueArea/legalRentArea/currentRentArea BU teras-hariç toplamı
+  // almalı — kullanıcının doğrudan bildirdiği alan (Piyasa Değeri
+  // panelindeki "Alan" kutucuğu).
+  context.syncValuationAreasFromUnitAreas();
+  assert.equal(context.state.fields.legalValueArea, "120", `legalValueArea teras hariç (120) olmalı: ${context.state.fields.legalValueArea}`);
+  assert.equal(context.state.fields.currentValueArea, "94", `currentValueArea teras hariç (94) olmalı: ${context.state.fields.currentValueArea}`);
+  assert.equal(context.state.fields.legalRentArea, "120", `legalRentArea teras hariç (120) olmalı: ${context.state.fields.legalRentArea}`);
+  assert.equal(context.state.fields.currentRentArea, "94", `currentRentArea teras hariç (94) olmalı: ${context.state.fields.currentRentArea}`);
+
+  console.log("Teras HARİÇ toplam yasal/mevcut alan (2026-09-19 kullanıcı bildirimi) testi tamam.");
 }
 
 console.log("Kat Bazında Hesaplama Tablosu <-> Piyasa Değeri paneli dinamik senkronizasyon testi başarılı.");

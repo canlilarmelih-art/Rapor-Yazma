@@ -12978,6 +12978,10 @@ function buildPropertyTaxDeclarationExplanationForExport() {
 // olduğundan bu değişiklik GÖRÜNMEZ (regresyon yok) — bkz.
 // shouldHideWorkplaceFloorCalculationTableByEqualAreas()'ın AYNI eşitlik
 // varsayımı.
+// EK DÜZELTME (2026-09-19): "İNDİRGENMİŞ (etkili) toplam alan" tanımı
+// teras'ı da (kendi indirgeme oranıyla) toplama katıyordu — bkz.
+// getValuationUnitReducedAreaTotals()'ın üstündeki yeni not, artık teras
+// bu toplama HİÇ girmiyor (kat bazlı indirgeme davranışı DEĞİŞMEDİ).
 function syncValuationAreasFromUnitAreas() {
   const reducedTotals = getValuationUnitReducedAreaTotals();
   const rawTotals = getValuationUnitAreaTotals();
@@ -13007,15 +13011,25 @@ function getValuationUnitAreaTotals() {
 }
 
 // getValuationUnitAreaTotals()'ın İNDİRGENMİŞ (etkili) eşdeğeri —
-// calculateReducedUnitFloorTotal (Kat Bazında Hesaplama Tablosu'nun DA
-// kullandığı GERÇEK indirgeme fonksiyonu) ile hesaplanır. Kat satırı/
-// indirgeme verisi hiç yoksa (calculateReducedUnitFloorTotal 0 döner)
-// getValuationUnitAreaTotals()'ın KENDİ (legacy alan) yedeğine düşülür —
-// bu durumda ham=indirgenmiş (indirgeme oranı zaten %100 varsayılır).
+// calculateReducedUnitFloorTotalExcludingTerrace (kat alanının KENDİ
+// indirgeme oranını uygular, ör. asma kat) ile hesaplanır. Kat satırı/
+// indirgeme verisi hiç yoksa (0 döner) getValuationUnitAreaTotals()'ın
+// KENDİ (legacy alan) yedeğine düşülür — bu durumda ham=indirgenmiş
+// (indirgeme oranı zaten %100 varsayılır).
+// Kullanıcı bildirimi (2026-09-19, "Kat Bazında Hesaplama Tablosu" ekran
+// görüntüsü): "buraya teras hariç toplam yasal/mevcut alan gelmeli
+// indirgenmiş alan değil" — ÖNCEKİ hali calculateReducedUnitFloorTotal
+// (teras'ı KENDİ indirgeme oranıyla toplama KATAN sürüm) kullanıyordu;
+// bu, composeWorkplaceFloorEffectiveAreaSummary()'nin ürettiği "Teras
+// Alanları ... kapalı kullanım alanına dahil edilmemiş, şerefiye unsuru
+// olarak dikkate alınmıştır" cümlesiyle ÇELİŞİYORDU (rapor metni terası
+// hariç tutuyor derken, altındaki Alan değeri terası dahil ediyordu).
+// Düzeltme: teras'ı TAMAMEN dışlayan calculateReducedUnitFloorTotalExcludingTerrace
+// kullanılıyor — kat bazlı indirgeme (asma kat vb.) davranışı DEĞİŞMEDİ.
 function getValuationUnitReducedAreaTotals() {
   const rows = getUnitFloorRows();
-  const totalLegal = calculateReducedUnitFloorTotal(rows, "legal");
-  const totalCurrent = calculateReducedUnitFloorTotal(rows, "current");
+  const totalLegal = calculateReducedUnitFloorTotalExcludingTerrace(rows, "legal");
+  const totalCurrent = calculateReducedUnitFloorTotalExcludingTerrace(rows, "current");
   const rawTotals = getValuationUnitAreaTotals();
   return {
     legal: totalLegal > 0 ? formatValuationArea(totalLegal) : rawTotals.legal,
@@ -19575,6 +19589,27 @@ function calculateReducedUnitFloorArea(row = {}, mode = "legal") {
 
 function calculateReducedUnitFloorTotal(rows = [], mode = "legal") {
   return rows.reduce((total, row) => total + calculateReducedUnitFloorArea(row, mode), 0);
+}
+
+// calculateReducedUnitFloorArea()'nın teras HARİÇ eşdeğeri — yalnızca kat
+// alanının kendi indirgeme oranını (ör. asma kat) uygular, teras katkısını
+// (reducedTerrace) TAMAMEN dışarıda bırakır. Kullanıcı bildirimi
+// (2026-09-19): "Kat Bazında Hesaplama Tablosu" ekranında "buraya teras
+// hariç toplam yasal/mevcut alan gelmeli indirgenmiş alan değil" —
+// composeWorkplaceFloorEffectiveAreaSummary()'nin ürettiği rapor cümlesi
+// zaten "Teras Alanları ... kapalı kullanım alanına dahil edilmemiş,
+// ancak şerefiye unsuru olarak dikkate alınmıştır" diyor; ama
+// getValuationUnitReducedAreaTotals() (bkz. aşağıda) teras'ı İNDİRGENMİŞ
+// oranıyla toplama KATIYORDU — rapor metniyle çelişen bir veri hatasıydı.
+function calculateReducedUnitFloorAreaExcludingTerrace(row = {}, mode = "legal") {
+  const areaKey = mode === "current" ? "currentArea" : "legalArea";
+  const area = parseReportNumber(row[areaKey]);
+  const rate = parseUnitReductionRate(row.areaReductionRate);
+  return (Number.isFinite(area) ? area : 0) * rate;
+}
+
+function calculateReducedUnitFloorTotalExcludingTerrace(rows = [], mode = "legal") {
+  return rows.reduce((total, row) => total + calculateReducedUnitFloorAreaExcludingTerrace(row, mode), 0);
 }
 
 function parseUnitReductionRate(value) {
