@@ -81,6 +81,7 @@ const functionNames = [
   "formatSquareMeterArea",
   "normalizeOwnershipTypeForSectionVisibility",
   "isCondominiumEasementOwnershipType",
+  "isMustakilBinaOwnershipType",
   "isLandProjectReview",
   "shouldShowArchitecturalProjectFields",
   "getOwnershipTypeText",

@@ -33504,9 +33504,28 @@ function buildNoArchitecturalProjectDescription() {
     ).trim() || "Arsa";
     return `Ekspertize konu taşınmaz ${quality} niteliğinde olup, ${district} Belediyesinde yapılan incelemelerde taşınmaza ait ruhsat ve mimari proje bulunmamaktadır.`;
   }
-  const paragraphs = [
-    `${district} Belediyesi ve Webtapu Portalında yapılan incelemelerde ekspertize konu taşınmaza ait mimari proje bulunamamıştır.`,
-  ];
+  // Kullanıcı bildirimi (2026-09-19): "müstakil yapılarda tapuda genelde
+  // proje bulunmuyor o yüzden eğer proje incelenen kurum webtapu
+  // seçilmesi ise webtapuda incelenmemiştir/bulunamamıştır gibi ibareler
+  // olmamalı" — müstakil binalarda mimari proje YOKKEN bu cümle ŞİMDİYE
+  // KADAR kullanıcının seçtiği kurumdan BAĞIMSIZ olarak HER ZAMAN
+  // "Belediyesi VE Webtapu Portalında ... bulunamamıştır" diyordu; Webtapu
+  // müstakil (genelde ruhsatsız/kayıt dışı) yapılarda projeyi arayıp
+  // "bulamadık" demeye değer bir kaynak değil — beklenen/normal durum.
+  // Yalnızca Müstakil Bina'da VE kullanıcı kurumu (projectInstitution)
+  // gerçekten Webtapu'yu İÇERECEK şekilde seçtiyse Webtapu bu cümleden
+  // ÇIKARILIR (Belediye seçiliyse yalnız Belediye anılır, hiçbiri
+  // seçilmemişse eski varsayılan iki-kurumlu cümle DEĞİŞMEDEN kalır —
+  // bu durumda "seçilmiş" bir kurum yok, kullanıcı henüz karar vermemiş).
+  const suppressWebtapuForMustakil = isMustakilBinaOwnershipType()
+    && getSelectedProjectInstitutions().length > 0
+    && projectInstitutionIncludes("Webtapu");
+  const noProjectSentence = suppressWebtapuForMustakil
+    ? (projectInstitutionIncludes("Belediye")
+      ? `${district} Belediyesinde yapılan incelemelerde ekspertize konu taşınmaza ait mimari proje bulunamamıştır.`
+      : `Ekspertize konu taşınmaza ait mimari proje bulunamamıştır.`)
+    : `${district} Belediyesi ve Webtapu Portalında yapılan incelemelerde ekspertize konu taşınmaza ait mimari proje bulunamamıştır.`;
+  const paragraphs = [noProjectSentence];
   const cadastreValue = normalizeYesNoChoice(state.fields.projectRegisteredInCadastre);
   const cadastrePrefix = `${district} Kadastro Müdürlüğünden alınan sözlü bilgiye göre parsel üzerinde yer alan yapının kadastral paftasına`;
   if (cadastreValue === "Hayır") {
