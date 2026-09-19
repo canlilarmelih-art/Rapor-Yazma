@@ -9,34 +9,36 @@
   "Hayır" iken "Proje İnceleme Açıklaması"nı üreten fonksiyon), kullanıcının
   Belgeler ve Proje bölümünde SEÇTİĞİ kurumdan (projectInstitution) TAMAMEN
   BAĞIMSIZ olarak HER ZAMAN "{ilçe} Belediyesi ve Webtapu Portalında ...
-  bulunamamıştır" diyordu. Müstakil Bina (genelde ruhsatsız/kayıt dışı)
-  yapılarda Webtapu'da proje "aranıp bulunamaması" beklenen/normal bir
-  durumdur, rapor metninde bunu bir "eksiklik" gibi vurgulamak yanıltıcı —
-  kullanıcı bunun KALDIRILMASINI istedi.
+  bulunamamıştır" diyordu.
 
-  Düzeltme: Müstakil Bina'da VE kullanıcı projectInstitution'ı GERÇEKTEN
-  Webtapu'yu İÇERECEK şekilde seçtiyse Webtapu bu cümleden çıkarılır
-  (Belediye de seçiliyse yalnız Belediye anılır — orası GERÇEKTEN kontrol
-  edilmiş bir kaynak). Hiçbir kurum seçilmemişse (varsayılan durum) eski
-  iki-kurumlu cümle DEĞİŞMEDEN kalır. Müstakil Bina DIŞINDAKİ (ör. Dikey
-  Kat İrtifakı) mülkiyet türlerinde davranış TAMAMEN DEĞİŞMEDEN kalır
-  (regresyon kilidi, bkz. Senaryo 1).
+  ARA TURLAR (aynı gün, iki YANLIŞ deneme): Önce yalnızca "Webtapu seçili
+  mi" kontrolüyle Webtapu'yu cümleden çıkarmayı, sonra Belediye seçili
+  DEĞİLSE cümleyi TAMAMEN atlamayı denedim — ama bu, "sadece belediye
+  seçili ise nasıl cümle kuruluyor" sorusuna kadar yalnız-Belediye
+  senaryosunu hâlâ eski (Webtapu'yu da anan) cümleyle bırakıyordu, VE daha
+  ciddisi kullanıcının SON netleştirmesiyle ("tamamen yanlış anladın")
+  TÜMÜYLE YANLIŞ bir kural uyguluyordu.
 
-  TAKİP BİLDİRİMİ 1 (2026-09-19, aynı gün): "webtapu seçilmesi ise
-  bulunamamıştır demene gerek yok müstakil binalarda webtapuda proje
-  olmuyor zaten" — Webtapu'yu cümleden çıkarıp yerine kurumsuz genel bir
-  "bulunamamıştır" cümlesi bırakmak YETERSİZDİ; yalnız Webtapu seçiliyken
-  "bulunamamıştır" demenin KENDİSİ gereksiz. Düzeltme: Belediye seçili
-  DEĞİLSE (yalnız Webtapu) bu cümle TAMAMEN atlanır (bkz. Senaryo 3/3b).
+  KESİN KURAL (kullanıcının son, net tarifi): "eğer webtapu ve belediye
+  seçili ise webtapu ve belediye olarak cümleyi kur, başka kurum seçili
+  ise yine kur, sadece [yalnız] webtapu seçili olduğunda webtapuda proje
+  bulunamamıştır ya da incelenememiştir yazmayalım." Yani:
+  - Webtapu + Belediye (veya Webtapu + başka bir kurum, veya yalnız
+    Belediye, veya yalnız başka bir kurum) seçiliyse: cümle GERÇEKTEN
+    seçilen kurum(lar)ı yansıtarak NORMAL şekilde kurulur (Webtapu dahil
+    olsa bile, birden fazla kurumdan biriyse sorun yok).
+  - YALNIZ Webtapu seçiliyse (başka HİÇBİR kurum yokken): cümle TAMAMEN
+    atlanır ("" döner) — müstakil binada Webtapu'da proje aranıp
+    bulunamaması tek başına beklenen/normal, ayrıca belirtilmeye değmez.
+  - Hiçbir kurum seçilmemişse (varsayılan durum) VEYA Müstakil Bina
+    DIŞINDAKİ mülkiyet türlerinde eski iki-kurumlu cümle DEĞİŞMEDEN kalır.
 
-  TAKİP SORUSU 2 (2026-09-19, aynı gün): "sadece belediye seçili ise nasıl
-  cümle kuruluyor?" — Bu soru, ilk iki düzeltmenin gate'inin ("Webtapu
-  seçili mi?") EKSİĞİNİ ortaya çıkardı: yalnız Belediye seçiliyken gate
-  hiç tetiklenmiyor, cümle YİNE "Belediyesi ve Webtapu Portalında" diyerek
-  Webtapu'yu SEÇİLMEMİŞ olsa bile anıyordu. Kök kural artık "Webtapu
-  seçili mi" DEĞİL, "Müstakil Bina'da HERHANGİ bir kurum seçilmiş mi" —
-  seçim varsa cümle SADECE gerçekten seçilen kurumu (Belediye) yansıtır,
-  Webtapu (seçili olsun ya da olmasın) HİÇ anılmaz (bkz. Senaryo 5/5b).
+  Kurum(lar)ı yansıtan cümle, önceden HİÇ kullanılmayan (yalnızca bir
+  yorumda adı geçen) formatProjectReviewLocationForMissing() yardımcısıyla
+  kurulur — Webtapu için sade "Webtapu Portalında", Belediye için "{ilçe}
+  Belediyesi İmar ve Şehircilik Müdürlüğünde", diğer kurumlar (OSB, İl Özel
+  İdare, Büyükşehir, Anıtlar Kurulu) için formatProjectReviewLocation
+  yedeği ("{kurum} arşivinde") — joinTurkishList ile birleştirilir.
 
   Bu test buildNoArchitecturalProjectDescription()'ı GERÇEK app.js
   kaynağından (yardımcı fonksiyonlarıyla birlikte) izole çalıştırır.
@@ -80,6 +82,9 @@ const functionNames = [
   "projectInstitutionIncludes",
   "isOsbInstitutionValue",
   "getProjectReviewDistrictText",
+  "formatProjectReviewLocation",
+  "formatProjectReviewLocationForMissing",
+  "joinTurkishList",
   "buildNoArchitecturalProjectDescription",
 ];
 
@@ -140,10 +145,8 @@ function buildContext(fields) {
   console.log("Regresyon: Müstakil Bina + kurum seçilmemiş -> eski cümle DEĞİŞMEDİ testi tamam.");
 }
 
-// --- 3) YENİ DAVRANIŞ (takip bildirimi, 2026-09-19: "webtapu seçilmesi
-// ise bulunamamıştır demene gerek yok müstakil binalarda webtapuda proje
-// olmuyor zaten"): Müstakil Bina + SADECE Webtapu seçili -> "bulunamamıştır"
-// cümlesinin KENDİSİ tamamen düşmeli (yalnız kurum adı değil). -----------
+// --- 3) KESİN KURAL: Müstakil Bina + SADECE (yalnız) Webtapu seçili -> ---
+// "bulunamamıştır" cümlesi TAMAMEN atlanmalı. -----------------------------
 {
   const context = buildContext({
     ownershipType: "Müstakil Bina",
@@ -156,7 +159,7 @@ function buildContext(fields) {
     "",
     `Müstakil Bina + yalnız Webtapu seçiliyken (kadastro verisi de yokken) "bulunamamıştır" cümlesi hiç üretilmemeli: ${JSON.stringify(result)}`
   );
-  console.log("YENİ: Müstakil Bina + yalnız Webtapu seçili -> 'bulunamamıştır' cümlesi TAMAMEN kaldırıldı testi tamam.");
+  console.log("Müstakil Bina + yalnız Webtapu seçili -> 'bulunamamıştır' cümlesi TAMAMEN kaldırıldı testi tamam.");
 }
 
 // --- 3b) Aynı senaryoda (yalnız Webtapu) kadastro bilgisi GİRİLMİŞSE o ---
@@ -177,11 +180,13 @@ function buildContext(fields) {
     /^Kadıköy Kadastro Müdürlüğünden alınan sözlü bilgiye göre parsel üzerinde yer alan yapının kadastral paftasına işli olmadığı bilgisi alınmıştır\.$/,
     `Kadastro paragrafı tek başına (baştaki cümle olmadan) görünmeli: ${result}`
   );
-  console.log("YENİ: Müstakil Bina + yalnız Webtapu + kadastro verisi -> yalnız kadastro paragrafı kaldı testi tamam.");
+  console.log("Müstakil Bina + yalnız Webtapu + kadastro verisi -> yalnız kadastro paragrafı kaldı testi tamam.");
 }
 
-// --- 4) YENİ DAVRANIŞ: Müstakil Bina + Webtapu VE Belediye ikisi de -----
-// seçili -> yalnız Belediye anılmalı, Webtapu kaldırılmalı. ---------------
+// --- 4) KESİN KURAL: Müstakil Bina + Webtapu VE Belediye ikisi de -------
+// seçili -> Webtapu ARTIK BİR ŞEY DEĞİL, tek başına değil; cümle İKİSİNİ
+// DE anmalı (kullanıcı: "webtapu ve belediye seçili ise webtapu ve
+// belediye olarak cümleyi kur"). ------------------------------------------
 {
   const context = buildContext({
     ownershipType: "Müstakil Bina",
@@ -189,21 +194,18 @@ function buildContext(fields) {
     projectInstitution: "Webtapu, Belediye",
   });
   const result = context.buildNoArchitecturalProjectDescription();
-  assert.doesNotMatch(result, /Webtapu/i, `Müstakil Bina + Webtapu+Belediye seçiliyken cümlede Webtapu HİÇ geçmemeli: ${result}`);
+  assert.match(result, /Webtapu/i, `Müstakil Bina + Webtapu+Belediye seçiliyken Webtapu cümlede GEÇMELİ (yalnız-Webtapu değil): ${result}`);
+  assert.match(result, /Belediye/i, `Müstakil Bina + Webtapu+Belediye seçiliyken Belediye de cümlede geçmeli: ${result}`);
   assert.match(
     result,
-    /^Kadıköy Belediyesinde yapılan incelemelerde ekspertize konu taşınmaza ait mimari proje bulunamamıştır\./,
-    `Müstakil Bina + Webtapu+Belediye seçiliyken yalnız Belediye anılmalı: ${result}`
+    /^Webtapu Portalında ve Kadıköy Belediyesi İmar ve Şehircilik Müdürlüğünde yapılan incelemelerde ekspertize konu taşınmaza ait mimari proje bulunamamıştır\./,
+    `Müstakil Bina + Webtapu+Belediye seçiliyken ikisi de GERÇEK yerleriyle anılmalı: ${result}`
   );
-  console.log("YENİ: Müstakil Bina + Webtapu+Belediye seçili -> yalnız Belediye anıldı testi tamam.");
+  console.log("Müstakil Bina + Webtapu+Belediye seçili -> ikisi de anıldı testi tamam.");
 }
 
-// --- 5) TAKİP SORUSU (2026-09-19, kullanıcı: "sadece belediye seçili ise
-// nasıl cümle kuruluyor"): Müstakil Bina + SADECE Belediye seçili -> ------
-// GERÇEKTEN kontrol edilen tek kurum Belediye olduğundan Webtapu artık HİÇ
-// anılmamalı ("Belediyesi ve Webtapu Portalında" ilk düzeltmenin EKSİĞİYDİ
-// — gate yalnızca "Webtapu seçili mi" diye bakıyordu, Belediye-tek
-// senaryosunu hiç kapsamıyordu). --------------------------------------------
+// --- 5) KESİN KURAL: Müstakil Bina + SADECE Belediye seçili -> Webtapu ---
+// seçili OLMADIĞINDAN cümlede hiç geçmemeli, yalnız Belediye anılmalı. ----
 {
   const context = buildContext({
     ownershipType: "Müstakil Bina",
@@ -211,19 +213,18 @@ function buildContext(fields) {
     projectInstitution: "Belediye",
   });
   const result = context.buildNoArchitecturalProjectDescription();
-  assert.doesNotMatch(result, /Webtapu/i, `Müstakil Bina + yalnız Belediye seçiliyken Webtapu artık HİÇ geçmemeli: ${result}`);
+  assert.doesNotMatch(result, /Webtapu/i, `Müstakil Bina + yalnız Belediye seçiliyken Webtapu geçmemeli: ${result}`);
   assert.match(
     result,
-    /^Kadıköy Belediyesinde yapılan incelemelerde ekspertize konu taşınmaza ait mimari proje bulunamamıştır\./,
+    /^Kadıköy Belediyesi İmar ve Şehircilik Müdürlüğünde yapılan incelemelerde ekspertize konu taşınmaza ait mimari proje bulunamamıştır\./,
     `Müstakil Bina + yalnız Belediye seçiliyken yalnız Belediye anılmalı: ${result}`
   );
-  console.log("YENİ: Müstakil Bina + yalnız Belediye seçili -> Webtapu artık anılmıyor testi tamam.");
+  console.log("Müstakil Bina + yalnız Belediye seçili -> yalnız Belediye anıldı testi tamam.");
 }
 
-// --- 5b) Müstakil Bina + Belediye DIŞI başka bir kurum (ör. OSB Bölge -----
-// Müdürlüğü) SEÇİLİ -> Belediye de kontrol edilmediğinden cümle TAMAMEN
-// atlanmalı (Webtapu/Belediye'yi olmayan bir gerçekliği anlatmaktansa hiç
-// anmamak tercih edilir). ---------------------------------------------------
+// --- 6) KESİN KURAL: Müstakil Bina + Belediye/Webtapu DIŞI başka bir -----
+// kurum (ör. OSB Bölge Müdürlüğü) SEÇİLİ -> "başka kurum seçili ise yine
+// kur" — cümle bu kurumu yansıtarak normal şekilde kurulmalı (ATLANMAMALI). -
 {
   const context = buildContext({
     ownershipType: "Müstakil Bina",
@@ -231,27 +232,27 @@ function buildContext(fields) {
     projectInstitution: "OSB Bölge Müdürlüğü",
   });
   const result = context.buildNoArchitecturalProjectDescription();
-  assert.equal(
+  assert.match(
     result,
-    "",
-    `Müstakil Bina + Belediye/Webtapu DIŞI bir kurum seçiliyken cümle hiç üretilmemeli: ${JSON.stringify(result)}`
+    /^OSB Bölge Müdürlüğü arşivinde yapılan incelemelerde ekspertize konu taşınmaza ait mimari proje bulunamamıştır\./,
+    `Müstakil Bina + Belediye/Webtapu dışı bir kurum seçiliyken cümle o kurumu yansıtarak kurulmalı, ATLANMAMALI: ${result}`
   );
-  console.log("YENİ: Müstakil Bina + Belediye/Webtapu dışı kurum seçili -> cümle üretilmedi testi tamam.");
+  console.log("Müstakil Bina + Belediye/Webtapu dışı kurum seçili -> cümle o kurumla kuruldu testi tamam.");
 }
 
-// --- 6) Kadastro paragrafı, YENİ davranışta da eskisi gibi eklenmeye -----
-// devam ediyor (ikinci paragraf, kurum cümlesinden BAĞIMSIZ). ------------
+// --- 7) Kadastro paragrafı, tüm YENİ senaryolarda da eskisi gibi ---------
+// eklenmeye devam ediyor (ikinci paragraf, kurum cümlesinden BAĞIMSIZ). --
 {
   const context = buildContext({
     ownershipType: "Müstakil Bina",
     titleDistrict: "Kadıköy",
-    projectInstitution: "Webtapu",
+    projectInstitution: "Belediye",
     projectRegisteredInCadastre: "Evet",
     cadastralRegisteredBaseArea: "120",
   });
   const result = context.buildNoArchitecturalProjectDescription();
-  assert.match(result, /pafta üzerine işli taban alanının 120 m² olduğu bilgisi alınmıştır\./, `Kadastro paragrafı Webtapu-hariç senaryoda da eklenmeye devam etmeli: ${result}`);
-  console.log("Kadastro paragrafı, Webtapu kaldırılan senaryoda da korunuyor testi tamam.");
+  assert.match(result, /pafta üzerine işli taban alanının 120 m² olduğu bilgisi alınmıştır\./, `Kadastro paragrafı yalnız-Belediye senaryosunda da eklenmeye devam etmeli: ${result}`);
+  console.log("Kadastro paragrafı, yalnız-Belediye senaryosunda da korunuyor testi tamam.");
 }
 
 console.log("Müstakil Bina + Webtapu 'mimari proje bulunamamıştır' düzeltmesi testleri başarılı.");

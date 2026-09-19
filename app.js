@@ -33507,32 +33507,34 @@ function buildNoArchitecturalProjectDescription() {
   // Kullanıcı bildirimi (2026-09-19): "müstakil yapılarda tapuda genelde
   // proje bulunmuyor o yüzden eğer proje incelenen kurum webtapu
   // seçilmesi ise webtapuda incelenmemiştir/bulunamamıştır gibi ibareler
-  // olmamalı", takip: "webtapu seçilmesi ise bulunamamıştır demene gerek
-  // yok müstakil binalarda webtapuda proje olmuyor zaten" — müstakil
-  // binalarda mimari proje YOKKEN bu cümle ŞİMDİYE KADAR kullanıcının
-  // seçtiği kurumdan BAĞIMSIZ olarak HER ZAMAN "Belediyesi VE Webtapu
-  // Portalında ... bulunamamıştır" diyordu; Webtapu'da proje aranıp
-  // bulunamaması müstakil binada beklenen/normal bir durum, ayrıca
-  // belirtilmeye değmez. İKİNCİ takip sorusu ("sadece belediye seçili ise
-  // nasıl cümle kuruluyor?") ilk düzeltmenin (yalnızca "Webtapu seçili mi"
-  // kontrolü yapan) EKSİĞİNİ ortaya çıkardı: yalnız Belediye seçiliyken
-  // gate hiç tetiklenmiyor, cümle YİNE "Belediyesi ve Webtapu Portalında"
-  // diyerek Webtapu'yu SEÇİLMEMİŞ olsa bile anıyordu. Kök kural artık
-  // "Webtapu seçili mi" DEĞİL, "Müstakil Bina'da HERHANGİ bir kurum
-  // seçilmiş mi" — seçim varsa cümle SADECE gerçekten seçilen kurumu
-  // (Belediye) yansıtır, Webtapu ne olursa olsun HİÇ anılmaz: Belediye
-  // seçiliyse (Webtapu seçili olsun ya da olmasın) yalnız Belediye anılır;
-  // Belediye seçili DEĞİLSE (yalnız Webtapu veya başka bir kurum) cümle
-  // TAMAMEN atlanır — "" döner, aşağıdaki .filter(Boolean) paragraftan
-  // düşürür. Hiçbir kurum seçilmemişse (varsayılan durum) eski iki-kurumlu
-  // cümle DEĞİŞMEDEN kalır (kullanıcı henüz bir seçim yapmamış).
-  const hasSelectedProjectInstitution = isMustakilBinaOwnershipType()
-    && getSelectedProjectInstitutions().length > 0;
-  const noProjectSentence = hasSelectedProjectInstitution
-    ? (projectInstitutionIncludes("Belediye")
-      ? `${district} Belediyesinde yapılan incelemelerde ekspertize konu taşınmaza ait mimari proje bulunamamıştır.`
-      : "")
-    : `${district} Belediyesi ve Webtapu Portalında yapılan incelemelerde ekspertize konu taşınmaza ait mimari proje bulunamamıştır.`;
+  // olmamalı" — bu cümle ŞİMDİYE KADAR kullanıcının seçtiği kurumdan
+  // BAĞIMSIZ olarak HER ZAMAN "Belediyesi VE Webtapu Portalında ...
+  // bulunamamıştır" diyordu. SON netleştirme ("tamamen yanlış anladın"):
+  // "eğer webtapu ve belediye seçili ise webtapu ve belediye olarak
+  // cümleyi kur, başka kurum seçili ise yine kur, sadece [yalnız] webtapu
+  // seçili olduğunda webtapuda proje bulunamamıştır ya da incelenememiştir
+  // yazmayalım" — yani kural Webtapu'yu HER YERDE bastırmak DEĞİL, SADECE
+  // Webtapu'nun TEK BAŞINA seçili olduğu dar durumda cümleyi atlamak;
+  // Webtapu birden fazla kurumdan biri olarak seçiliyse (ör. Belediye ile
+  // birlikte) veya herhangi BAŞKA bir kurum (Belediye, OSB, İl Özel İdare,
+  // Büyükşehir, Anıtlar Kurulu) seçiliyse cümle GERÇEKTEN seçilen
+  // kurum(lar)ı yansıtarak kurulmaya devam eder — daha önce hiç
+  // kullanılmayan formatProjectReviewLocationForMissing() (Webtapu için
+  // sade "Webtapu Portalında", Belediye için "{ilçe} Belediyesi İmar ve
+  // Şehircilik Müdürlüğünde", diğerleri için formatProjectReviewLocation
+  // yedeği) TAM bunun için hazırlanmış, burada ilk kez kullanılıyor.
+  // Hiçbir kurum seçilmemişse (varsayılan durum) VEYA Müstakil Bina
+  // DIŞINDAKİ mülkiyet türlerinde eski iki-kurumlu cümle DEĞİŞMEDEN kalır.
+  const selectedInstitutionsForNoProject = isMustakilBinaOwnershipType() ? getSelectedProjectInstitutions() : [];
+  let noProjectSentence;
+  if (selectedInstitutionsForNoProject.length === 1 && projectInstitutionIncludes("Webtapu")) {
+    noProjectSentence = "";
+  } else if (selectedInstitutionsForNoProject.length > 0) {
+    const placeText = joinTurkishList(selectedInstitutionsForNoProject.map(formatProjectReviewLocationForMissing));
+    noProjectSentence = `${placeText} yapılan incelemelerde ekspertize konu taşınmaza ait mimari proje bulunamamıştır.`;
+  } else {
+    noProjectSentence = `${district} Belediyesi ve Webtapu Portalında yapılan incelemelerde ekspertize konu taşınmaza ait mimari proje bulunamamıştır.`;
+  }
   const paragraphs = [noProjectSentence].filter(Boolean);
   const cadastreValue = normalizeYesNoChoice(state.fields.projectRegisteredInCadastre);
   const cadastrePrefix = `${district} Kadastro Müdürlüğünden alınan sözlü bilgiye göre parsel üzerinde yer alan yapının kadastral paftasına`;
